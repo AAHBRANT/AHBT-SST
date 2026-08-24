@@ -1,3 +1,4 @@
+using AAHBRANT.SST.Application.Common;
 using AAHBRANT.SST.Application.Common.Interfaces;
 using AAHBRANT.SST.Domain.Entidades;
 using AAHBRANT.SST.Domain.Enums;
@@ -25,7 +26,8 @@ public class CriarTrabalhadorCommandValidator : AbstractValidator<CriarTrabalhad
         RuleFor(x => x.FuncaoId).NotEmpty();
         RuleFor(x => x.Nome).NotEmpty().MaximumLength(200);
         RuleFor(x => x.Matricula).NotEmpty().MaximumLength(30);
-        RuleFor(x => x.Cpf).NotEmpty().Length(11).Matches("^[0-9]+$");
+        RuleFor(x => x.Cpf).NotEmpty().Length(11).Matches("^[0-9]+$")
+            .Must(CpfValidador.EhValido).WithMessage("CPF inválido.");
         RuleFor(x => x.DataAdmissao).NotEmpty();
     }
 }
