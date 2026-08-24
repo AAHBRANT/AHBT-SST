@@ -1,6 +1,7 @@
 using AAHBRANT.SST.Api.Autorizacao;
 using AAHBRANT.SST.Api.Middlewares;
 using AAHBRANT.SST.Application;
+using AAHBRANT.SST.Application.Common.Interfaces;
 using AAHBRANT.SST.Infrastructure;
 using AAHBRANT.SST.Infrastructure.Persistencia.Seed;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
@@ -39,6 +40,10 @@ builder.Services.AddAuthorization();
 builder.Services.AddSingleton<IAuthorizationPolicyProvider, PermissaoAuthorizationPolicyProvider>();
 builder.Services.AddScoped<IAuthorizationHandler, PermissaoAuthorizationHandler>();
 
+// Camada 3 do RBAC (docs/RBAC-Matrix.md §4) — ver EscopoPorObraMiddleware e o filtro global em
+// SstDbContext. Scoped: uma instância por requisição, preenchida pelo middleware.
+builder.Services.AddScoped<ICurrentUserService, CurrentUserService>();
+
 builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
@@ -75,6 +80,11 @@ if (autenticacaoEntraIdHabilitada)
     app.UseAuthentication();
     app.UseAuthorization();
 }
+
+// Depois da autenticação, antes de qualquer controller: resolve o escopo por obra do usuário da
+// requisição (camada 3 do RBAC — ver SstDbContext) para que o filtro global já esteja pronto
+// quando o primeiro DbSet for consultado.
+app.UseMiddleware<EscopoPorObraMiddleware>();
 
 // Depois da autenticação de propósito: a chave de idempotência (sincronização offline) só deve
 // devolver uma resposta em cache para quem já passou pelo crivo de auth da requisição original —
