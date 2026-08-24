@@ -1,7 +1,6 @@
 using AAHBRANT.SST.Api.Autorizacao;
 using AAHBRANT.SST.Api.Middlewares;
 using AAHBRANT.SST.Application;
-using AAHBRANT.SST.Application.Common.Interfaces;
 using AAHBRANT.SST.Infrastructure;
 using AAHBRANT.SST.Infrastructure.Persistencia.Seed;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
@@ -14,6 +13,7 @@ var builder = WebApplication.CreateBuilder(args);
 
 builder.Services.AddApplication();
 builder.Services.AddInfrastructure(builder.Configuration);
+builder.Services.AddPollingDeAtualizacoesTelegram();
 
 // Autenticação Entra ID: só é ativada se a seção "AzureAd" estiver configurada com um
 // App Registration real (TenantId/ClientId). Provisionamento desse recurso no Azure
@@ -39,10 +39,7 @@ if (autenticacaoEntraIdHabilitada)
 builder.Services.AddAuthorization();
 builder.Services.AddSingleton<IAuthorizationPolicyProvider, PermissaoAuthorizationPolicyProvider>();
 builder.Services.AddScoped<IAuthorizationHandler, PermissaoAuthorizationHandler>();
-
-// Camada 3 do RBAC (docs/RBAC-Matrix.md §4) — ver EscopoPorObraMiddleware e o filtro global em
-// SstDbContext. Scoped: uma instância por requisição, preenchida pelo middleware.
-builder.Services.AddScoped<ICurrentUserService, CurrentUserService>();
+// ICurrentUserService (camada 3 do RBAC) é registrado em AddInfrastructure — ver EscopoPorObraMiddleware.
 
 builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();

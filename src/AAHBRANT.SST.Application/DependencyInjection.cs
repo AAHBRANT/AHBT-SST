@@ -1,3 +1,4 @@
+using AAHBRANT.SST.Application.Alertas;
 using AAHBRANT.SST.Application.Common.Behaviors;
 using AAHBRANT.SST.Application.Elegibilidade;
 using AAHBRANT.SST.Application.Elegibilidade.Rules;
@@ -22,6 +23,8 @@ public static class DependencyInjection
         services.AddScoped<IEligibilityRule, AprValidaRule>();
         services.AddScoped<IEligibilityRule, PermissaoTrabalhoValidaRule>();
         services.AddScoped<IEligibilityService, EligibilityService>();
+
+        services.AddScoped<VerificacaoAutomaticaAlertasService>();
 
         return services;
     }
