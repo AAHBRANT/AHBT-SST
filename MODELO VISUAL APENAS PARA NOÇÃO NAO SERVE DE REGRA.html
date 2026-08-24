@@ -1,0 +1,580 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Hub Administrativo - Gênesis SST</title>
+  
+  <!-- Fontes Institucionais: Inter e Poppins -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
+
+  <style>
+    :root {
+      /* Cores Institucionais */
+      --color-primary: #7B1E2B;
+      --color-secondary: #9E2A37;
+      --color-neutral-dark: #1F1F1F;
+      --color-neutral-medium: #6D6D6D;
+      --color-neutral-light: #F5F5F7;
+      --color-white: #FFFFFF;
+      --border-color: #E5E7EB;
+
+      /* Cores de Status */
+      --color-success: #16A34A;
+      --color-warning: #F59E0B;
+      --color-alert: #EF4444;
+      --color-info: #3B82F6;
+
+      /* Fontes */
+      --font-ui: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+      --font-heading: 'Poppins', sans-serif;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; font-family: var(--font-ui); }
+    body { background-color: var(--color-neutral-light); color: var(--color-neutral-dark); display: flex; flex-direction: column; height: 100vh; overflow: hidden; }
+
+    /* Header Superior Fixos */
+    header {
+      background-color: var(--color-white);
+      border-bottom: 1px solid var(--border-color);
+      height: 60px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 24px;
+      z-index: 10;
+      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+    }
+
+    .brand-title {
+      font-family: var(--font-heading);
+      font-weight: 700;
+      font-size: 1.15rem;
+      color: var(--color-primary);
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      letter-spacing: 0.5px;
+    }
+
+    .header-actions { display: flex; align-items: center; gap: 16px; }
+    .icon-btn { background: none; border: none; cursor: pointer; font-size: 1.1rem; position: relative; padding: 8px; border-radius: 50%; transition: background 0.2s; }
+    .icon-btn:hover { background-color: var(--color-neutral-light); }
+    .badge-count { position: absolute; top: 4px; right: 4px; background: var(--color-alert); color: white; font-size: 0.65rem; padding: 2px 6px; border-radius: 10px; font-weight: bold; }
+    
+    .user-profile {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      font-weight: 500;
+      font-size: 0.85rem;
+      cursor: pointer;
+      background: var(--color-neutral-light);
+      padding: 6px 14px;
+      border-radius: 20px;
+      border: 1px solid var(--border-color);
+    }
+    .user-avatar {
+      width: 26px;
+      height: 26px;
+      border-radius: 50%;
+      background-color: var(--color-primary);
+      color: white;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 0.75rem;
+      font-weight: bold;
+    }
+
+    /* Layout Principal */
+    .app-container { display: flex; flex: 1; overflow: hidden; }
+
+    /* Sidebar Dark Fixed */
+    aside {
+      width: 240px;
+      background-color: var(--color-neutral-dark);
+      color: #9CA3AF;
+      display: flex;
+      flex-direction: column;
+      overflow-y: auto;
+      padding: 16px 0;
+      flex-shrink: 0;
+    }
+
+    .menu-group { margin-bottom: 20px; }
+    .menu-title { font-size: 0.65rem; text-transform: uppercase; letter-spacing: 0.08em; padding: 0 20px 8px 20px; color: #6B7280; font-weight: 700; }
+    
+    .menu-item {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 10px 20px;
+      color: #D1D5DB;
+      text-decoration: none;
+      font-size: 0.85rem;
+      cursor: pointer;
+      transition: all 0.2s;
+      border-left: 3px solid transparent;
+    }
+    .menu-item:hover { background-color: #2B2B2B; color: var(--color-white); }
+    .menu-item.active { background-color: #2B2B2B; color: var(--color-white); border-left-color: var(--color-primary); font-weight: 600; }
+
+    /* Main Area Container */
+    main { flex: 1; padding: 24px; overflow-y: auto; display: flex; flex-direction: column; gap: 24px; }
+    .page-header { display: flex; justify-content: space-between; align-items: center; }
+    .page-title { font-family: var(--font-heading); font-size: 1.35rem; font-weight: 600; color: var(--color-neutral-dark); }
+    
+    .view-pane { display: none; flex-direction: column; gap: 20px; }
+    .view-pane.active { display: flex; }
+
+    /* Componentes UI */
+    .btn {
+      background-color: var(--color-primary);
+      color: var(--color-white);
+      border: none;
+      padding: 10px 20px;
+      border-radius: 6px;
+      font-weight: 600;
+      font-size: 0.85rem;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      transition: background 0.2s;
+    }
+    .btn:hover { background-color: var(--color-secondary); }
+    .btn-secondary { background-color: transparent; border: 1px solid var(--color-neutral-medium); color: var(--color-neutral-dark); padding: 8px 14px; }
+    .btn-secondary:hover { background-color: #E5E7EB; }
+
+    .card {
+      background-color: var(--color-white);
+      border: 1px solid var(--border-color);
+      border-radius: 8px;
+      padding: 20px;
+      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+    }
+
+    /* Cards de Métricas (KPIs) */
+    .kpi-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 16px; }
+    .kpi-title { font-size: 0.75rem; color: var(--color-neutral-medium); text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 8px; font-weight: 600; }
+    .kpi-value { font-size: 1.65rem; font-weight: 700; color: var(--color-neutral-dark); }
+    .kpi-sub { font-size: 0.8rem; font-weight: 600; margin-top: 6px; display: flex; align-items: center; gap: 4px; }
+    .kpi-sub.up { color: var(--color-success); }
+    .kpi-sub.down { color: var(--color-alert); }
+
+    /* Layout Grids */
+    .content-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+    @media (max-width: 1023px) { .content-grid { grid-template-columns: 1fr; } }
+
+    /* Tabelas de Dados */
+    .data-table { width: 100%; border-collapse: collapse; text-align: left; font-size: 0.85rem; }
+    .data-table th { background-color: var(--color-neutral-light); padding: 12px 16px; color: var(--color-neutral-medium); font-weight: 600; border-bottom: 1px solid var(--border-color); text-transform: uppercase; font-size: 0.72rem; }
+    .data-table td { padding: 14px 16px; border-bottom: 1px solid var(--border-color); color: var(--color-neutral-dark); }
+    .data-table tr:hover { background-color: #F9FAFB; }
+
+    /* Badges de Status */
+    .badge { padding: 4px 10px; border-radius: 12px; font-size: 0.75rem; font-weight: 600; display: inline-block; }
+    .badge-success { background: #DCFCE7; color: #15803D; }
+    .badge-warning { background: #FEF3C7; color: #B45309; }
+    .badge-danger { background: #FEE2E2; color: #B91C1C; }
+
+    /* Barras de Desempenho / DataViz */
+    .bar-item { display: flex; align-items: center; gap: 12px; margin-bottom: 14px; font-size: 0.85rem; }
+    .bar-label { width: 90px; font-weight: 500; color: var(--color-neutral-medium); }
+    .bar-track { flex: 1; height: 10px; background: #E5E7EB; border-radius: 6px; overflow: hidden; }
+    .bar-fill { height: 100%; border-radius: 6px; }
+
+    /* Modal Generico */
+    .modal-overlay { display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.5); z-index: 100; align-items: center; justify-content: center; }
+    .modal-overlay.active { display: flex; }
+    .modal { background: var(--color-white); padding: 24px; border-radius: 8px; width: 100%; max-width: 480px; display: flex; flex-direction: column; gap: 18px; box-shadow: 0 10px 25px rgba(0,0,0,0.1); }
+    .modal-title { font-family: var(--font-heading); font-size: 1.15rem; font-weight: 600; color: var(--color-neutral-dark); }
+    .form-group { display: flex; flex-direction: column; gap: 6px; }
+    .form-group label { font-size: 0.8rem; font-weight: 600; color: var(--color-neutral-medium); }
+    .form-group input, .form-group select { padding: 10px 14px; border: 1px solid var(--border-color); border-radius: 6px; font-size: 0.875rem; }
+    .form-group input:focus, .form-group select:focus { outline: 2px solid rgba(123, 30, 43, 0.15); border-color: var(--color-primary); }
+  </style>
+</head>
+<body>
+
+  <!-- Top Header -->
+  <header>
+    <div class="brand-title">
+      <span style="background: var(--color-primary); color: white; padding: 4px 8px; border-radius: 4px; font-size: 0.9rem;">A&B</span>
+      GÊNESIS • SST
+    </div>
+    <div class="header-actions">
+      <button class="icon-btn" id="notif-btn" title="Central de Notificações">
+        🔔<span class="badge-count" id="alert-count">4</span>
+      </button>
+      <div class="user-profile">
+        <div class="user-avatar">CS</div>
+        <span>Eng. Carlos Silva</span>
+      </div>
+    </div>
+  </header>
+
+  <div class="app-container">
+    <!-- Sidebar de Navegação -->
+    <aside>
+      <div class="menu-group">
+        <div class="menu-item active" onclick="switchView('dashboard', this)"><span>📊</span> Dashboard</div>
+      </div>
+
+      <div class="menu-group">
+        <div class="menu-title">Conformidade</div>
+        <div class="menu-item" onclick="switchView('matriz', this)"><span>⚖️</span> Matriz Legal</div>
+        <div class="menu-item" onclick="switchView('documentos', this)"><span>📄</span> Documentos SST</div>
+      </div>
+
+      <div class="menu-group">
+        <div class="menu-title">Prevenção</div>
+        <div class="menu-item" onclick="switchView('riscos', this)"><span>⚠️</span> Riscos & Inventário</div>
+        <div class="menu-item" onclick="switchView('pgr', this)"><span>📋</span> PGR</div>
+        <div class="menu-item" onclick="switchView('inspecoes', this)"><span>🔍</span> Inspeções</div>
+      </div>
+
+      <div class="menu-group">
+        <div class="menu-title">Operação</div>
+        <div class="menu-item" onclick="switchView('pessoas', this)"><span>👷</span> Pessoas & Aptidão</div>
+        <div class="menu-item" onclick="switchView('obras', this)"><span>🏗️</span> Obras / Unidades</div>
+        <div class="menu-item" onclick="switchView('pt', this)"><span>🔐</span> Permissão de Trabalho</div>
+        <div class="menu-item" onclick="switchView('epi', this)"><span>🦺</span> Controle de EPI</div>
+      </div>
+
+      <div class="menu-group">
+        <div class="menu-title">Melhoria</div>
+        <div class="menu-item" onclick="switchView('nc', this)"><span>❌</span> Não Conformidades</div>
+        <div class="menu-item" onclick="switchView('acoes', this)"><span>🎯</span> Plano de Ação</div>
+        <div class="menu-item" onclick="switchView('acidentes', this)"><span>🚨</span> Acidentes / CAT</div>
+      </div>
+
+      <div class="menu-group" style="margin-top: auto;">
+        <div class="menu-item" onclick="switchView('config', this)"><span>⚙️</span> Configurações</div>
+      </div>
+    </aside>
+
+    <!-- Área Principal de Conteúdo -->
+    <main>
+
+      <!-- 1. DASHBOARD -->
+      <div id="view-dashboard" class="view-pane active">
+        <div class="page-header">
+          <h1 class="page-title">Dashboard Operacional de SST</h1>
+          <button class="btn" onclick="openModal('QuickAction')">⚡ Ação Rápida</button>
+        </div>
+
+        <div class="kpi-grid">
+          <div class="card">
+            <div class="kpi-title">Conformidade Geral</div>
+            <div class="kpi-value" style="color: var(--color-primary);">87%</div>
+            <div class="kpi-sub up">▲ 3% vs mês anterior</div>
+          </div>
+          <div class="card">
+            <div class="kpi-title">Trabalhadores Ativos</div>
+            <div class="kpi-value">342</div>
+            <div class="kpi-sub up">328 Aptos | 14 Pend.</div>
+          </div>
+          <div class="card">
+            <div class="kpi-title">Riscos Críticos Mapeados</div>
+            <div class="kpi-value" style="color: var(--color-warning);">18</div>
+            <div class="kpi-sub down">▼ 5 Requerem Atenção</div>
+          </div>
+          <div class="card">
+            <div class="kpi-title">Ações em Aberto</div>
+            <div class="kpi-value" style="color: var(--color-alert);">27</div>
+            <div class="kpi-sub down">▼ 8 Atrasadas</div>
+          </div>
+        </div>
+
+        <div class="content-grid">
+          <div class="card">
+            <h3 style="margin-bottom: 20px; font-size: 0.95rem; font-family: var(--font-heading);">Distribuição de Riscos por Severidade</h3>
+            <div class="bar-item">
+              <span class="bar-label">Crítico</span>
+              <div class="bar-track"><div class="bar-fill" style="width: 25%; background: var(--color-alert);"></div></div>
+            </div>
+            <div class="bar-item">
+              <span class="bar-label">Alto</span>
+              <div class="bar-track"><div class="bar-fill" style="width: 50%; background: #F97316;"></div></div>
+            </div>
+            <div class="bar-item">
+              <span class="bar-label">Moderado</span>
+              <div class="bar-track"><div class="bar-fill" style="width: 75%; background: var(--color-warning);"></div></div>
+            </div>
+            <div class="bar-item">
+              <span class="bar-label">Baixo</span>
+              <div class="bar-track"><div class="bar-fill" style="width: 90%; background: var(--color-success);"></div></div>
+            </div>
+          </div>
+
+          <div class="card">
+            <h3 style="margin-bottom: 20px; font-size: 0.95rem; font-family: var(--font-heading);">Central de Alertas Críticos</h3>
+            <table class="data-table">
+              <tbody>
+                <tr><td>🔴 <b>3 ASOs Vencidos</b> (Obra C)</td><td><span class="badge badge-danger">Urgente</span></td></tr>
+                <tr><td>🟠 <b>7 Treinamentos a vencer</b> (NR-35)</td><td><span class="badge badge-warning">Atenção</span></td></tr>
+                <tr><td>🟡 <b>4 Inspeções Pendentes</b></td><td><span class="badge badge-warning">Pendente</span></td></tr>
+                <tr><td>🔴 <b>2 Ações corretivas atrasadas</b></td><td><span class="badge badge-danger">Atrasado</span></td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <!-- 2. MATRIZ LEGAL -->
+      <div id="view-matriz" class="view-pane">
+        <div class="page-header">
+          <h1 class="page-title">Matriz de Requisitos Legais</h1>
+          <button class="btn" onclick="alert('Relatório da Matriz Exportado com Sucesso!')">📥 Exportar PDF</button>
+        </div>
+        <div class="card">
+          <table class="data-table">
+            <thead>
+              <tr><th>Norma / Requisito</th><th>Tema</th><th>Aplicabilidade</th><th>Status</th><th>Última Evidência</th></tr>
+            </thead>
+            <tbody>
+              <tr><td>NR-01 (GRO / PGR)</td><td>Gestão de Riscos</td><td>Aplicável</td><td><span class="badge badge-success">Conforme</span></td><td>Inventário 2026.pdf</td></tr>
+              <tr><td>NR-10 (Eletricidade)</td><td>Instalações Elétricas</td><td>Aplicável</td><td><span class="badge badge-warning">Atenção</span></td><td>Laudo Vencendo</td></tr>
+              <tr><td>NR-18 (Construção)</td><td>Canteiro de Obras</td><td>Aplicável</td><td><span class="badge badge-success">Conforme</span></td><td>Checklist_ObraA.pdf</td></tr>
+              <tr><td>NR-35 (Altura)</td><td>Trabalho em Altura</td><td>Aplicável</td><td><span class="badge badge-danger">Não Conforme</span></td><td>ASO de operador vencido</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- 3. PESSOAS -->
+      <div id="view-pessoas" class="view-pane">
+        <div class="page-header">
+          <h1 class="page-title">Gestão de Pessoas & Aptidões</h1>
+          <button class="btn" onclick="openModal('Pessoa')">+ Novo Trabalhador</button>
+        </div>
+        <div class="card">
+          <table class="data-table" id="table-pessoas">
+            <thead>
+              <tr><th>Nome</th><th>Função</th><th>Obra</th><th>Status ASO</th><th>NR-35</th><th>Ação</th></tr>
+            </thead>
+            <tbody>
+              <tr><td>João Pereira</td><td>Armador</td><td>Obra A - Residencial</td><td><span class="badge badge-success">Apto</span></td><td>Válido</td><td><button class="btn btn-secondary" onclick="alert('Perfil de João Pereira visualizado.')">Ver</button></td></tr>
+              <tr><td>Maria Santos</td><td>Eletricista</td><td>Obra B - Comercial</td><td><span class="badge badge-success">Apto</span></td><td>N/A</td><td><button class="btn btn-secondary" onclick="alert('Perfil de Maria Santos visualizado.')">Ver</button></td></tr>
+              <tr><td>Carlos Souza</td><td>Montador Andaime</td><td>Obra C - Ponte</td><td><span class="badge badge-danger">Inapto (Vencido)</span></td><td>Vencido</td><td><button class="btn btn-secondary" onclick="alert('Acesso do trabalhador bloqueado preventivamente.')">Ver</button></td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- 4. RISCOS -->
+      <div id="view-riscos" class="view-pane">
+        <div class="page-header">
+          <h1 class="page-title">Inventário de Riscos Ocupacionais</h1>
+        </div>
+        <div class="card">
+          <table class="data-table">
+            <thead>
+              <tr><th>Atividade / Setor</th><th>Perigo / Fator</th><th>Risco</th><th>Nível</th><th>Medidas de Controle</th></tr>
+            </thead>
+            <tbody>
+              <tr><td>Trabalho em Andaime</td><td>Queda de nível diferente</td><td>Traumatismo, Morte</td><td><span class="badge badge-danger">Crítico</span></td><td>Cinto de Segurança, Linha de Vida</td></tr>
+              <tr><td>Operação de Betoneira</td><td>Ruído contínuo</td><td>Perda Auditiva</td><td><span class="badge badge-warning">Moderado</span></td><td>Protetor Auricular Plug/Concha</td></tr>
+              <tr><td>Escavação de Vala</td><td>Soterramento</td><td>Asfixia, Morte</td><td><span class="badge badge-danger">Crítico</span></td><td>Escoramento de Valas</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- 5. OBRAS -->
+      <div id="view-obras" class="view-pane">
+        <div class="page-header">
+          <h1 class="page-title">Obras & Unidades Operacionais</h1>
+        </div>
+        <div class="kpi-grid">
+          <div class="card">
+            <h3 style="font-family: var(--font-heading); font-size: 1rem;">Obra A - Residencial Solar</h3>
+            <div class="kpi-value" style="color: var(--color-success); margin: 12px 0;">94%</div>
+            <p style="font-size: 0.8rem; color: var(--color-neutral-medium);">Status: Conforme | 120 Trabalhadores</p>
+          </div>
+          <div class="card">
+            <h3 style="font-family: var(--font-heading); font-size: 1rem;">Obra B - Centro Comercial</h3>
+            <div class="kpi-value" style="color: var(--color-warning); margin: 12px 0;">81%</div>
+            <p style="font-size: 0.8rem; color: var(--color-neutral-medium);">Status: Atenção | 85 Trabalhadores</p>
+          </div>
+          <div class="card">
+            <h3 style="font-family: var(--font-heading); font-size: 1rem;">Obra C - Viaduto Sul</h3>
+            <div class="kpi-value" style="color: var(--color-alert); margin: 12px 0;">62%</div>
+            <p style="font-size: 0.8rem; color: var(--color-neutral-medium);">Status: Crítico | 137 Trabalhadores</p>
+          </div>
+        </div>
+      </div>
+
+      <!-- 6. PERMISSÃO DE TRABALHO (PT) -->
+      <div id="view-pt" class="view-pane">
+        <div class="page-header">
+          <h1 class="page-title">Permissões de Trabalho (PT)</h1>
+          <button class="btn" onclick="openModal('PT')">+ Emitir Nova PT</button>
+        </div>
+        <div class="card">
+          <table class="data-table" id="table-pt">
+            <thead>
+              <tr><th>Nº PT</th><th>Atividade</th><th>Local / Obra</th><th>Responsável</th><th>Status</th></tr>
+            </thead>
+            <tbody>
+              <tr><td>PT-2026-088</td><td>Manutenção Elétrica em Altura</td><td>Obra B</td><td>Eng. Carlos</td><td><span class="badge badge-success">Ativa / Liberada</span></td></tr>
+              <tr><td>PT-2026-087</td><td>Solda em Espaço Confinado</td><td>Obra C</td><td>Tec. Marcos</td><td><span class="badge badge-danger">Bloqueada (Falta ASO)</span></td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- 7. NÃO CONFORMIDADES -->
+      <div id="view-nc" class="view-pane">
+        <div class="page-header">
+          <h1 class="page-title">Não Conformidades (NC)</h1>
+        </div>
+        <div class="card">
+          <table class="data-table">
+            <thead>
+              <tr><th>Cód.</th><th>Descrição do Desvio</th><th>Origem</th><th>Gravidade</th><th>Status</th></tr>
+            </thead>
+            <tbody>
+              <tr><td>NC-012</td><td>Trabalhador sem cinto em altura superior a 2m</td><td>Inspeção Obra C</td><td><span class="badge badge-danger">Grave</span></td><td>Em Tratamento</td></tr>
+              <tr><td>NC-011</td><td>Guarda-corpo incompleto no 3º pavimento</td><td>Auditoria Interna</td><td><span class="badge badge-warning">Média</span></td><td>Aguardando Validação</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- VIZUALIZAÇÕES ADICIONAIS -->
+      <div id="view-pgr" class="view-pane">
+        <div class="page-header"><h1 class="page-title">Programa de Gerenciamento de Riscos (PGR)</h1></div>
+        <div class="card"><p style="color: var(--color-neutral-medium);">Módulo de estruturação do PGR, emissão de laudos e acompanhamento do Plano de Ação do GRO.</p></div>
+      </div>
+
+      <div id="view-documentos" class="view-pane">
+        <div class="page-header"><h1 class="page-title">Gestão Documental de SST</h1></div>
+        <div class="card"><p style="color: var(--color-neutral-medium);">Repositório de PCMSO, PGR, LTCAT, Laudos Elétricos e FISPQ com controle automático de validade.</p></div>
+      </div>
+
+      <div id="view-inspecoes" class="view-pane">
+        <div class="page-header"><h1 class="page-title">Inspeções & Checklists</h1></div>
+        <div class="card"><p style="color: var(--color-neutral-medium);">Aplicação de checklists diários de canteiro, máquinas, equipamentos e EPIs.</p></div>
+      </div>
+
+      <div id="view-epi" class="view-pane">
+        <div class="page-header"><h1 class="page-title">Controle de EPI / EPC</h1></div>
+        <div class="card"><p style="color: var(--color-neutral-medium);">Ficha de EPI digital, controle de Certificados de Aprovação (CA) e histórico de entregas.</p></div>
+      </div>
+
+      <div id="view-acoes" class="view-pane">
+        <div class="page-header"><h1 class="page-title">Plano de Ação Integrado</h1></div>
+        <div class="card"><p style="color: var(--color-neutral-medium);">Central de ações preventivas e corretivas decorrentes de NCs, auditorias e inspeções.</p></div>
+      </div>
+
+      <div id="view-acidentes" class="view-pane">
+        <div class="page-header"><h1 class="page-title">Registro e Investigação de Acidentes / CAT</h1></div>
+        <div class="card"><p style="color: var(--color-neutral-medium);">Módulo para comunicação de acidentes, árvore de causas e integração eSocial (S-2210).</p></div>
+      </div>
+
+      <div id="view-config" class="view-pane">
+        <div class="page-header"><h1 class="page-title">Configurações do Sistema</h1></div>
+        <div class="card"><p style="color: var(--color-neutral-medium);">Parâmetros globais, permissões de usuários, integração eSocial e matriz de risco.</p></div>
+      </div>
+
+    </main>
+  </div>
+
+  <!-- Modal Interativo -->
+  <div class="modal-overlay" id="modal-container">
+    <div class="modal">
+      <h2 class="modal-title" id="modal-title">Novo Registro</h2>
+      <div id="modal-body"></div>
+      <div style="display: flex; justify-content: flex-end; gap: 10px; margin-top: 8px;">
+        <button class="btn btn-secondary" onclick="closeModal()">Cancelar</button>
+        <button class="btn" onclick="saveModalData()">Salvar</button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // Navegação Dinâmica entre Telas
+    function switchView(viewId, element) {
+      document.querySelectorAll('.view-pane').forEach(el => el.classList.remove('active'));
+      document.querySelectorAll('.menu-item').forEach(el => el.classList.remove('active'));
+      
+      const targetView = document.getElementById('view-' + viewId);
+      if(targetView) {
+        targetView.classList.add('active');
+        element.classList.add('active');
+      }
+    }
+
+    // Modal Controller
+    let currentModalType = '';
+
+    function openModal(type) {
+      currentModalType = type;
+      const modal = document.getElementById('modal-container');
+      const title = document.getElementById('modal-title');
+      const body = document.getElementById('modal-body');
+
+      modal.classList.add('active');
+
+      if (type === 'Pessoa') {
+        title.innerText = "Cadastrar Novo Trabalhador";
+        body.innerHTML = `
+          <div class="form-group"><label>Nome Completo</label><input type="text" id="input-nome" placeholder="Ex: Roberto Alves"></div>
+          <div class="form-group"><label>Função</label><input type="text" id="input-funcao" placeholder="Ex: Pedreiro"></div>
+          <div class="form-group"><label>Obra / Unidade</label><select id="input-obra"><option>Obra A - Residencial</option><option>Obra B - Comercial</option><option>Obra C - Viaduto</option></select></div>
+        `;
+      } else if (type === 'PT') {
+        title.innerText = "Emitir Permissão de Trabalho (PT)";
+        body.innerHTML = `
+          <div class="form-group"><label>Descrição da Atividade</label><input type="text" id="pt-desc" placeholder="Ex: Montagem Elétrica"></div>
+          <div class="form-group"><label>Local do Serviço</label><input type="text" id="pt-local" placeholder="Ex: Subsolo Obra A"></div>
+          <div class="form-group"><label>Responsável Técnico</label><input type="text" id="pt-resp" placeholder="Nome do Responsável"></div>
+        `;
+      } else {
+        title.innerText = "Ação Rápida SST";
+        body.innerHTML = `<p style="font-size: 0.85rem; color: var(--color-neutral-medium);">Selecione um apontamento imediato para registro de ocorrências ou emissão rápida de alertas.</p>`;
+      }
+    }
+
+    function closeModal() {
+      document.getElementById('modal-container').classList.remove('active');
+    }
+
+    function saveModalData() {
+      if (currentModalType === 'Pessoa') {
+        const nome = document.getElementById('input-nome').value;
+        const funcao = document.getElementById('input-funcao').value;
+        const obra = document.getElementById('input-obra').value;
+
+        if (nome) {
+          const tbody = document.querySelector('#table-pessoas tbody');
+          const newRow = `<tr><td>${nome}</td><td>${funcao}</td><td>${obra}</td><td><span class="badge badge-success">Apto</span></td><td>Pendente</td><td><button class="btn btn-secondary" onclick="alert('Perfil de ${nome} visualizado.')">Ver</button></td></tr>`;
+          tbody.innerHTML += newRow;
+        }
+      } else if (currentModalType === 'PT') {
+        const desc = document.getElementById('pt-desc').value;
+        const local = document.getElementById('pt-local').value;
+        const resp = document.getElementById('pt-resp').value;
+
+        if (desc) {
+          const tbody = document.querySelector('#table-pt tbody');
+          const randomNum = Math.floor(100 + Math.random() * 900);
+          const newRow = `<tr><td>PT-2026-${randomNum}</td><td>${desc}</td><td>${local}</td><td>${resp}</td><td><span class="badge badge-success">Ativa / Liberada</span></td></tr>`;
+          tbody.innerHTML += newRow;
+        }
+      }
+      closeModal();
+    }
+
+    // Ação do Botão de Alerta do Header
+    document.getElementById('notif-btn').addEventListener('click', () => {
+      alert("Alertas Ativos em Tempo Real:\n- 3 ASOs Vencidos em Obra C\n- 7 Capacitações NR-35 prestes a expirar\n- 2 Ações preventivas com atraso");
+    });
+  </script>
+</body>
+</html>

@@ -1,0 +1,6 @@
+@AAHBRANT.SST.Api_HostAddress = http://localhost:5102
+
+GET {{AAHBRANT.SST.Api_HostAddress}}/weatherforecast/
+Accept: application/json
+
+###

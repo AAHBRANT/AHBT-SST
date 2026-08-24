@@ -1,0 +1,30 @@
+# .NET
+bin/
+obj/
+*.user
+*.suo
+
+# Node / Vite
+node_modules/
+dist/
+
+# Segredos e configuração local — NUNCA commitar
+CREDENCIAIS.txt
+**/appsettings.Development.json
+**/appsettings.*.Local.json
+.env
+.env.*
+!.env.example
+
+# Logs
+*.log
+
+# Banco local
+db/*.mdf
+db/*.ldf
+
+# IDE / OS
+.vs/
+.idea/
+Thumbs.db
+.DS_Store

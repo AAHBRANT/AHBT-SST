@@ -1,0 +1,46 @@
+{
+  "$schema": "https://developer.microsoft.com/en-us/json-schemas/teams/v1.19/MicrosoftTeams.schema.json",
+  "manifestVersion": "1.19",
+  "version": "0.1.0",
+  "id": "fdf875ee-359e-4c16-b56e-7ee6e2034dd3",
+  "developer": {
+    "name": "AAHBRANT",
+    "websiteUrl": "https://SUBSTITUIR-quando-existir-app-service.example.com",
+    "privacyUrl": "https://SUBSTITUIR-quando-existir-app-service.example.com/privacidade",
+    "termsOfUseUrl": "https://SUBSTITUIR-quando-existir-app-service.example.com/termos"
+  },
+  "name": {
+    "short": "AAHBRANT SST",
+    "full": "AAHBRANT — Segurança e Saúde no Trabalho"
+  },
+  "description": {
+    "short": "Gestão de SST: empresas, obras, trabalhadores, ASO, treinamentos e alertas.",
+    "full": "Aplicação de Segurança e Saúde no Trabalho da AAHBRANT: cadastro de empresas, obras, trabalhadores e funções, controle de aptidão (ASO), treinamentos, EPI e alertas de vencimento, com bloqueio preventivo de atividades de risco conforme NR-01/§45."
+  },
+  "icons": {
+    "outline": "outline.png",
+    "color": "color.png"
+  },
+  "accentColor": "#7B1E2B",
+  "staticTabs": [
+    {
+      "entityId": "dashboard",
+      "name": "SST",
+      "contentUrl": "https://SUBSTITUIR-quando-existir-app-service.example.com/index.html#/",
+      "scopes": ["personal"]
+    }
+  ],
+  "configurableTabs": [
+    {
+      "configurationUrl": "https://SUBSTITUIR-quando-existir-app-service.example.com/index.html#/config",
+      "canUpdateConfiguration": true,
+      "scopes": ["team", "groupChat"]
+    }
+  ],
+  "permissions": ["identity", "messageTeamMembers"],
+  "validDomains": ["SUBSTITUIR-quando-existir-app-service.example.com"],
+  "webApplicationInfo": {
+    "id": "SUBSTITUIR-pelo-ClientId-do-App-Registration",
+    "resource": "api://SUBSTITUIR-quando-existir-app-service.example.com/SUBSTITUIR-ClientId"
+  }
+}

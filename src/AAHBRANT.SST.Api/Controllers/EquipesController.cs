@@ -1,0 +1,54 @@
+using AAHBRANT.SST.Application.Equipes.Commands;
+using AAHBRANT.SST.Application.Equipes.Queries;
+using MediatR;
+using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Mvc;
+
+namespace AAHBRANT.SST.Api.Controllers;
+
+[ApiController]
+[Route("api/[controller]")]
+public class EquipesController : ControllerBase
+{
+    private readonly IMediator _mediator;
+
+    public EquipesController(IMediator mediator) => _mediator = mediator;
+
+    [Authorize(Policy = "organizacional:ver")]
+    [HttpGet]
+    public async Task<IActionResult> Listar([FromQuery] Guid? obraId, [FromQuery] Guid? setorId, CancellationToken ct)
+        => Ok(await _mediator.Send(new ListarEquipesQuery(obraId, setorId), ct));
+
+    [Authorize(Policy = "organizacional:ver")]
+    [HttpGet("{id:guid}")]
+    public async Task<IActionResult> ObterPorId(Guid id, CancellationToken ct)
+    {
+        var equipe = await _mediator.Send(new ObterEquipePorIdQuery(id), ct);
+        return equipe is null ? NotFound() : Ok(equipe);
+    }
+
+    [Authorize(Policy = "organizacional:criar")]
+    [HttpPost]
+    public async Task<IActionResult> Criar(CriarEquipeCommand command, CancellationToken ct)
+    {
+        var id = await _mediator.Send(command, ct);
+        return CreatedAtAction(nameof(ObterPorId), new { id }, new { id });
+    }
+
+    [Authorize(Policy = "organizacional:editar")]
+    [HttpPut("{id:guid}")]
+    public async Task<IActionResult> Atualizar(Guid id, AtualizarEquipeCommand command, CancellationToken ct)
+    {
+        if (id != command.Id) return BadRequest("Id da rota difere do corpo da requisição.");
+        await _mediator.Send(command, ct);
+        return NoContent();
+    }
+
+    [Authorize(Policy = "organizacional:excluir")]
+    [HttpDelete("{id:guid}")]
+    public async Task<IActionResult> Excluir(Guid id, CancellationToken ct)
+    {
+        await _mediator.Send(new ExcluirEquipeCommand(id), ct);
+        return NoContent();
+    }
+}
