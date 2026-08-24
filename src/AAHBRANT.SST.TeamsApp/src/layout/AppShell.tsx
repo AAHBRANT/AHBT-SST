@@ -14,6 +14,7 @@ import {
 import { designTokens } from '../theme';
 import { useTeamsContext } from '../teams/useTeamsContext';
 import { api, StatusAlerta } from '../lib/api';
+import { SyncStatusBadge } from '../components/SyncStatusBadge';
 
 const useStyles = makeStyles({
   root: {
@@ -179,6 +180,7 @@ export function AppShell({ children }: { children: ReactNode }) {
           {tituloDaRota(location.pathname)}
         </Text>
         <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
+          <SyncStatusBadge />
           {!carregando && (
             <Badge color={dentroDoTeams ? 'success' : 'informative'} appearance="tint">
               {dentroDoTeams ? 'Executando no Teams' : 'Modo standalone (dev)'}

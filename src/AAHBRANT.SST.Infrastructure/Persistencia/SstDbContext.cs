@@ -83,9 +83,26 @@ public class SstDbContext : DbContext, IAppDbContext
     public DbSet<DocumentoGestao> DocumentosGestao => Set<DocumentoGestao>();
     public DbSet<DocumentoRevisao> DocumentoRevisoes => Set<DocumentoRevisao>();
 
+    public DbSet<IdempotenciaRegistro> IdempotenciaRegistros => Set<IdempotenciaRegistro>();
+
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         modelBuilder.ApplyConfigurationsFromAssembly(typeof(SstDbContext).Assembly);
+
+        // Sincronização offline: RowVersion (já existente em AuditableEntity para todas as
+        // entidades, mas até aqui nunca configurado) passa a ser o token de concorrência otimista.
+        // Necessário para o app de campo detectar quando um registro editado offline mudou no
+        // servidor nesse meio tempo (ver docs/RBAC-Matrix.md e o middleware de conflito em
+        // TratamentoDeExcecaoMiddleware). Exige migration (ALTER COLUMN para "rowversion") antes de
+        // ter efeito real no banco — ver instruções no PR.
+        foreach (var entityType in modelBuilder.Model.GetEntityTypes())
+        {
+            if (typeof(AuditableEntity).IsAssignableFrom(entityType.ClrType))
+            {
+                modelBuilder.Entity(entityType.ClrType).Property(nameof(AuditableEntity.RowVersion)).IsRowVersion();
+            }
+        }
+
         base.OnModelCreating(modelBuilder);
     }
 

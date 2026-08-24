@@ -1,4 +1,5 @@
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL ?? 'https://localhost:7095';
+import { API_BASE_URL } from './apiBase';
+import { syncFetchBlob, syncFetchJson, syncMutateJson, syncMutateMultipart } from './offline/syncEngine';
 
 export const StatusObra = {
   Planejada: 1,
@@ -1524,7 +1525,26 @@ export interface AtualizarAlertaPayload {
   dataLimiteTratamento?: string | null;
 }
 
+// Módulos com suporte a uso offline (piloto acordado com o usuário em 24/08: módulos de campo,
+// onde falta de sinal é mais comum — obra/canteiro). Os demais ~25 módulos seguem com fetch
+// direto, sem fila local nem cache — extensão do piloto é trabalho futuro, módulo a módulo.
+const PREFIXOS_OFFLINE = ['/api/dds', '/api/inspecoes', '/api/checklistmodelos', '/api/aprs', '/api/aprEtapas', '/api/aprAssinaturas'];
+
+function ehRotaOffline(path: string): boolean {
+  return PREFIXOS_OFFLINE.some((prefixo) => path.startsWith(prefixo));
+}
+
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
+  const metodo = (init?.method ?? 'GET').toUpperCase();
+
+  if (ehRotaOffline(path)) {
+    if (metodo === 'GET') {
+      return syncFetchJson<T>(path, init);
+    }
+    const corpo = init?.body ? JSON.parse(init.body as string) : undefined;
+    return syncMutateJson<T>(path, metodo as 'POST' | 'PUT' | 'DELETE', corpo);
+  }
+
   const response = await fetch(`${API_BASE_URL}${path}`, {
     ...init,
     headers: {
@@ -1834,17 +1854,11 @@ export const api = {
       formData.append('trabalhadorId', trabalhadorId);
       formData.append('fotoTipo', String(fotoTipo));
       formData.append('foto', foto);
-      const response = await fetch(`${API_BASE_URL}/api/dds/${ddsId}/participantes`, {
-        method: 'POST',
-        body: formData,
-      });
-      if (!response.ok) {
-        const corpo = await response.text().catch(() => '');
-        throw new Error(`${response.status} ${response.statusText}: ${corpo}`);
-      }
-      return (await response.json()) as { id: string };
+      return syncMutateMultipart<{ id: string }>(`/api/dds/${ddsId}/participantes`, formData);
     },
     encerrar: (id: string) => request<void>(`/api/dds/${id}/encerrar`, { method: 'POST' }),
+    // PDF gerado sob demanda no servidor a partir do estado atual — não faz sentido cachear para
+    // uso offline (ficaria sempre desatualizado assim que o DDS mudasse). Segue fetch direto.
     baixarPdf: async (id: string) => {
       const response = await fetch(`${API_BASE_URL}/api/dds/${id}/pdf`);
       if (!response.ok) {
@@ -1853,14 +1867,7 @@ export const api = {
       }
       return response.blob();
     },
-    baixarFotoParticipante: async (participanteId: string) => {
-      const response = await fetch(`${API_BASE_URL}/api/dds/participantes/${participanteId}/foto`);
-      if (!response.ok) {
-        const corpo = await response.text().catch(() => '');
-        throw new Error(`${response.status} ${response.statusText}: ${corpo}`);
-      }
-      return response.blob();
-    },
+    baixarFotoParticipante: (participanteId: string) => syncFetchBlob(`/api/dds/participantes/${participanteId}/foto`),
     enviarTelegram: (id: string) =>
       request<EnviarDdsTelegramResultado>(`/api/dds/${id}/telegram/enviar`, { method: 'POST' }),
   },

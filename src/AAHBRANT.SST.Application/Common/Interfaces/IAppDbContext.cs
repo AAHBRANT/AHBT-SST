@@ -79,5 +79,7 @@ public interface IAppDbContext
     DbSet<DocumentoGestao> DocumentosGestao { get; }
     DbSet<DocumentoRevisao> DocumentoRevisoes { get; }
 
+    DbSet<IdempotenciaRegistro> IdempotenciaRegistros { get; }
+
     Task<int> SaveChangesAsync(CancellationToken cancellationToken = default);
 }

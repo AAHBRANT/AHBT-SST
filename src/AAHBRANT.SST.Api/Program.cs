@@ -76,6 +76,12 @@ if (autenticacaoEntraIdHabilitada)
     app.UseAuthorization();
 }
 
+// Depois da autenticação de propósito: a chave de idempotência (sincronização offline) só deve
+// devolver uma resposta em cache para quem já passou pelo crivo de auth da requisição original —
+// caso contrário um Idempotency-Key adivinhado (improvável, é um GUID, mas por princípio) poderia
+// vazar a resposta de outro usuário sem autenticação nenhuma.
+app.UseMiddleware<IdempotenciaMiddleware>();
+
 await RbacSeeder.ExecutarAsync(app.Services);
 await CpfLgpdBackfillSeeder.ExecutarAsync(app.Services);
 
