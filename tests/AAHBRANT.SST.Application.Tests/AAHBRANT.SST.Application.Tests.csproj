@@ -11,6 +11,7 @@
 
   <ItemGroup>
     <PackageReference Include="coverlet.collector" Version="6.0.0" />
+    <PackageReference Include="Microsoft.EntityFrameworkCore.InMemory" Version="8.0.11" />
     <PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.8.0" />
     <PackageReference Include="xunit" Version="2.5.3" />
     <PackageReference Include="xunit.runner.visualstudio" Version="2.5.3" />
@@ -22,6 +23,10 @@
 
   <ItemGroup>
     <ProjectReference Include="..\..\src\AAHBRANT.SST.Application\AAHBRANT.SST.Application.csproj" />
+    <!-- Referência à Infrastructure só para reaproveitar o SstDbContext real (via InMemory
+         provider) como dublê de IAppDbContext nos testes — ver TestSupport/DbContextFactory.cs.
+         Evita reimplementar à mão as ~50 propriedades DbSet de IAppDbContext num fake. -->
+    <ProjectReference Include="..\..\src\AAHBRANT.SST.Infrastructure\AAHBRANT.SST.Infrastructure.csproj" />
   </ItemGroup>
 
 </Project>
