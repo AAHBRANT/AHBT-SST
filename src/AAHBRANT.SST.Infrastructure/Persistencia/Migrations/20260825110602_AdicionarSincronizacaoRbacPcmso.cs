@@ -11,565 +11,621 @@ namespace AAHBRANT.SST.Infrastructure.Persistencia.Migrations
         /// <inheritdoc />
         protected override void Up(MigrationBuilder migrationBuilder)
         {
-            migrationBuilder.AlterColumn<byte[]>(
+            migrationBuilder.DropColumn(
+                name: "RowVersion",
+                table: "UsuariosPerfilObra");
+
+            migrationBuilder.AddColumn<byte[]>(
                 name: "RowVersion",
                 table: "UsuariosPerfilObra",
                 type: "rowversion",
                 rowVersion: true,
-                nullable: true,
-                oldClrType: typeof(byte[]),
-                oldType: "varbinary(max)",
-                oldNullable: true);
+                nullable: true);
 
-            migrationBuilder.AlterColumn<byte[]>(
+            migrationBuilder.DropColumn(
+                name: "RowVersion",
+                table: "Usuarios");
+
+            migrationBuilder.AddColumn<byte[]>(
                 name: "RowVersion",
                 table: "Usuarios",
                 type: "rowversion",
                 rowVersion: true,
-                nullable: true,
-                oldClrType: typeof(byte[]),
-                oldType: "varbinary(max)",
-                oldNullable: true);
+                nullable: true);
 
-            migrationBuilder.AlterColumn<byte[]>(
+            migrationBuilder.DropColumn(
+                name: "RowVersion",
+                table: "TrilhaAuditoria");
+
+            migrationBuilder.AddColumn<byte[]>(
                 name: "RowVersion",
                 table: "TrilhaAuditoria",
                 type: "rowversion",
                 rowVersion: true,
-                nullable: true,
-                oldClrType: typeof(byte[]),
-                oldType: "varbinary(max)",
-                oldNullable: true);
+                nullable: true);
 
-            migrationBuilder.AlterColumn<byte[]>(
+            migrationBuilder.DropColumn(
+                name: "RowVersion",
+                table: "Treinamentos");
+
+            migrationBuilder.AddColumn<byte[]>(
                 name: "RowVersion",
                 table: "Treinamentos",
                 type: "rowversion",
                 rowVersion: true,
-                nullable: true,
-                oldClrType: typeof(byte[]),
-                oldType: "varbinary(max)",
-                oldNullable: true);
+                nullable: true);
 
-            migrationBuilder.AlterColumn<byte[]>(
+            migrationBuilder.DropColumn(
+                name: "RowVersion",
+                table: "Trabalhadores");
+
+            migrationBuilder.AddColumn<byte[]>(
                 name: "RowVersion",
                 table: "Trabalhadores",
                 type: "rowversion",
                 rowVersion: true,
-                nullable: true,
-                oldClrType: typeof(byte[]),
-                oldType: "varbinary(max)",
-                oldNullable: true);
+                nullable: true);
 
-            migrationBuilder.AlterColumn<byte[]>(
+            migrationBuilder.DropColumn(
+                name: "RowVersion",
+                table: "TagsIdentificacao");
+
+            migrationBuilder.AddColumn<byte[]>(
                 name: "RowVersion",
                 table: "TagsIdentificacao",
                 type: "rowversion",
                 rowVersion: true,
-                nullable: true,
-                oldClrType: typeof(byte[]),
-                oldType: "varbinary(max)",
-                oldNullable: true);
+                nullable: true);
 
-            migrationBuilder.AlterColumn<byte[]>(
+            migrationBuilder.DropColumn(
+                name: "RowVersion",
+                table: "Setores");
+
+            migrationBuilder.AddColumn<byte[]>(
                 name: "RowVersion",
                 table: "Setores",
                 type: "rowversion",
                 rowVersion: true,
-                nullable: true,
-                oldClrType: typeof(byte[]),
-                oldType: "varbinary(max)",
-                oldNullable: true);
+                nullable: true);
 
-            migrationBuilder.AlterColumn<byte[]>(
+            migrationBuilder.DropColumn(
+                name: "RowVersion",
+                table: "RiscoTrabalhadorExpostos");
+
+            migrationBuilder.AddColumn<byte[]>(
                 name: "RowVersion",
                 table: "RiscoTrabalhadorExpostos",
                 type: "rowversion",
                 rowVersion: true,
-                nullable: true,
-                oldClrType: typeof(byte[]),
-                oldType: "varbinary(max)",
-                oldNullable: true);
+                nullable: true);
 
-            migrationBuilder.AlterColumn<byte[]>(
+            migrationBuilder.DropColumn(
+                name: "RowVersion",
+                table: "Riscos");
+
+            migrationBuilder.AddColumn<byte[]>(
                 name: "RowVersion",
                 table: "Riscos",
                 type: "rowversion",
                 rowVersion: true,
-                nullable: true,
-                oldClrType: typeof(byte[]),
-                oldType: "varbinary(max)",
-                oldNullable: true);
+                nullable: true);
 
-            migrationBuilder.AlterColumn<byte[]>(
+            migrationBuilder.DropColumn(
+                name: "RowVersion",
+                table: "RequisitosLegais");
+
+            migrationBuilder.AddColumn<byte[]>(
                 name: "RowVersion",
                 table: "RequisitosLegais",
                 type: "rowversion",
                 rowVersion: true,
-                nullable: true,
-                oldClrType: typeof(byte[]),
-                oldType: "varbinary(max)",
-                oldNullable: true);
+                nullable: true);
 
-            migrationBuilder.AlterColumn<byte[]>(
+            migrationBuilder.DropColumn(
+                name: "RowVersion",
+                table: "PlanoAcaoItens");
+
+            migrationBuilder.AddColumn<byte[]>(
                 name: "RowVersion",
                 table: "PlanoAcaoItens",
                 type: "rowversion",
                 rowVersion: true,
-                nullable: true,
-                oldClrType: typeof(byte[]),
-                oldType: "varbinary(max)",
-                oldNullable: true);
+                nullable: true);
 
-            migrationBuilder.AlterColumn<byte[]>(
+            migrationBuilder.DropColumn(
+                name: "RowVersion",
+                table: "Pgrs");
+
+            migrationBuilder.AddColumn<byte[]>(
                 name: "RowVersion",
                 table: "Pgrs",
                 type: "rowversion",
                 rowVersion: true,
-                nullable: true,
-                oldClrType: typeof(byte[]),
-                oldType: "varbinary(max)",
-                oldNullable: true);
+                nullable: true);
 
-            migrationBuilder.AlterColumn<byte[]>(
+            migrationBuilder.DropColumn(
+                name: "RowVersion",
+                table: "PgrRevisoes");
+
+            migrationBuilder.AddColumn<byte[]>(
                 name: "RowVersion",
                 table: "PgrRevisoes",
                 type: "rowversion",
                 rowVersion: true,
-                nullable: true,
-                oldClrType: typeof(byte[]),
-                oldType: "varbinary(max)",
-                oldNullable: true);
+                nullable: true);
 
-            migrationBuilder.AlterColumn<byte[]>(
+            migrationBuilder.DropColumn(
+                name: "RowVersion",
+                table: "PermissoesTrabalho");
+
+            migrationBuilder.AddColumn<byte[]>(
                 name: "RowVersion",
                 table: "PermissoesTrabalho",
                 type: "rowversion",
                 rowVersion: true,
-                nullable: true,
-                oldClrType: typeof(byte[]),
-                oldType: "varbinary(max)",
-                oldNullable: true);
+                nullable: true);
 
-            migrationBuilder.AlterColumn<byte[]>(
+            migrationBuilder.DropColumn(
+                name: "RowVersion",
+                table: "Permissoes");
+
+            migrationBuilder.AddColumn<byte[]>(
                 name: "RowVersion",
                 table: "Permissoes",
                 type: "rowversion",
                 rowVersion: true,
-                nullable: true,
-                oldClrType: typeof(byte[]),
-                oldType: "varbinary(max)",
-                oldNullable: true);
+                nullable: true);
 
-            migrationBuilder.AlterColumn<byte[]>(
+            migrationBuilder.DropColumn(
+                name: "RowVersion",
+                table: "PermissaoTrabalhoResponsaveis");
+
+            migrationBuilder.AddColumn<byte[]>(
                 name: "RowVersion",
                 table: "PermissaoTrabalhoResponsaveis",
                 type: "rowversion",
                 rowVersion: true,
-                nullable: true,
-                oldClrType: typeof(byte[]),
-                oldType: "varbinary(max)",
-                oldNullable: true);
+                nullable: true);
 
-            migrationBuilder.AlterColumn<byte[]>(
+            migrationBuilder.DropColumn(
+                name: "RowVersion",
+                table: "PermissaoTrabalhoRequisitos");
+
+            migrationBuilder.AddColumn<byte[]>(
                 name: "RowVersion",
                 table: "PermissaoTrabalhoRequisitos",
                 type: "rowversion",
                 rowVersion: true,
-                nullable: true,
-                oldClrType: typeof(byte[]),
-                oldType: "varbinary(max)",
-                oldNullable: true);
+                nullable: true);
 
-            migrationBuilder.AlterColumn<byte[]>(
+            migrationBuilder.DropColumn(
+                name: "RowVersion",
+                table: "PermissaoTrabalhoPerigos");
+
+            migrationBuilder.AddColumn<byte[]>(
                 name: "RowVersion",
                 table: "PermissaoTrabalhoPerigos",
                 type: "rowversion",
                 rowVersion: true,
-                nullable: true,
-                oldClrType: typeof(byte[]),
-                oldType: "varbinary(max)",
-                oldNullable: true);
+                nullable: true);
 
-            migrationBuilder.AlterColumn<byte[]>(
+            migrationBuilder.DropColumn(
+                name: "RowVersion",
+                table: "PermissaoTrabalhoControles");
+
+            migrationBuilder.AddColumn<byte[]>(
                 name: "RowVersion",
                 table: "PermissaoTrabalhoControles",
                 type: "rowversion",
                 rowVersion: true,
-                nullable: true,
-                oldClrType: typeof(byte[]),
-                oldType: "varbinary(max)",
-                oldNullable: true);
+                nullable: true);
 
-            migrationBuilder.AlterColumn<byte[]>(
+            migrationBuilder.DropColumn(
+                name: "RowVersion",
+                table: "Perigos");
+
+            migrationBuilder.AddColumn<byte[]>(
                 name: "RowVersion",
                 table: "Perigos",
                 type: "rowversion",
                 rowVersion: true,
-                nullable: true,
-                oldClrType: typeof(byte[]),
-                oldType: "varbinary(max)",
-                oldNullable: true);
+                nullable: true);
 
-            migrationBuilder.AlterColumn<byte[]>(
+            migrationBuilder.DropColumn(
+                name: "RowVersion",
+                table: "PerfisAcessoPermissoes");
+
+            migrationBuilder.AddColumn<byte[]>(
                 name: "RowVersion",
                 table: "PerfisAcessoPermissoes",
                 type: "rowversion",
                 rowVersion: true,
-                nullable: true,
-                oldClrType: typeof(byte[]),
-                oldType: "varbinary(max)",
-                oldNullable: true);
+                nullable: true);
 
-            migrationBuilder.AlterColumn<byte[]>(
+            migrationBuilder.DropColumn(
+                name: "RowVersion",
+                table: "PerfisAcesso");
+
+            migrationBuilder.AddColumn<byte[]>(
                 name: "RowVersion",
                 table: "PerfisAcesso",
                 type: "rowversion",
                 rowVersion: true,
-                nullable: true,
-                oldClrType: typeof(byte[]),
-                oldType: "varbinary(max)",
-                oldNullable: true);
+                nullable: true);
 
-            migrationBuilder.AlterColumn<byte[]>(
+            migrationBuilder.DropColumn(
+                name: "RowVersion",
+                table: "Obras");
+
+            migrationBuilder.AddColumn<byte[]>(
                 name: "RowVersion",
                 table: "Obras",
                 type: "rowversion",
                 rowVersion: true,
-                nullable: true,
-                oldClrType: typeof(byte[]),
-                oldType: "varbinary(max)",
-                oldNullable: true);
+                nullable: true);
 
-            migrationBuilder.AlterColumn<byte[]>(
+            migrationBuilder.DropColumn(
+                name: "RowVersion",
+                table: "NaoConformidades");
+
+            migrationBuilder.AddColumn<byte[]>(
                 name: "RowVersion",
                 table: "NaoConformidades",
                 type: "rowversion",
                 rowVersion: true,
-                nullable: true,
-                oldClrType: typeof(byte[]),
-                oldType: "varbinary(max)",
-                oldNullable: true);
+                nullable: true);
 
-            migrationBuilder.AlterColumn<byte[]>(
+            migrationBuilder.DropColumn(
+                name: "RowVersion",
+                table: "MatrizRiscoConfigs");
+
+            migrationBuilder.AddColumn<byte[]>(
                 name: "RowVersion",
                 table: "MatrizRiscoConfigs",
                 type: "rowversion",
                 rowVersion: true,
-                nullable: true,
-                oldClrType: typeof(byte[]),
-                oldType: "varbinary(max)",
-                oldNullable: true);
+                nullable: true);
 
-            migrationBuilder.AlterColumn<byte[]>(
+            migrationBuilder.DropColumn(
+                name: "RowVersion",
+                table: "MatrizRiscoCelulas");
+
+            migrationBuilder.AddColumn<byte[]>(
                 name: "RowVersion",
                 table: "MatrizRiscoCelulas",
                 type: "rowversion",
                 rowVersion: true,
-                nullable: true,
-                oldClrType: typeof(byte[]),
-                oldType: "varbinary(max)",
-                oldNullable: true);
+                nullable: true);
 
-            migrationBuilder.AlterColumn<byte[]>(
+            migrationBuilder.DropColumn(
+                name: "RowVersion",
+                table: "Inspecoes");
+
+            migrationBuilder.AddColumn<byte[]>(
                 name: "RowVersion",
                 table: "Inspecoes",
                 type: "rowversion",
                 rowVersion: true,
-                nullable: true,
-                oldClrType: typeof(byte[]),
-                oldType: "varbinary(max)",
-                oldNullable: true);
+                nullable: true);
 
-            migrationBuilder.AlterColumn<byte[]>(
+            migrationBuilder.DropColumn(
+                name: "RowVersion",
+                table: "InspecaoItemRespostas");
+
+            migrationBuilder.AddColumn<byte[]>(
                 name: "RowVersion",
                 table: "InspecaoItemRespostas",
                 type: "rowversion",
                 rowVersion: true,
-                nullable: true,
-                oldClrType: typeof(byte[]),
-                oldType: "varbinary(max)",
-                oldNullable: true);
+                nullable: true);
 
-            migrationBuilder.AlterColumn<byte[]>(
+            migrationBuilder.DropColumn(
+                name: "RowVersion",
+                table: "Funcoes");
+
+            migrationBuilder.AddColumn<byte[]>(
                 name: "RowVersion",
                 table: "Funcoes",
                 type: "rowversion",
                 rowVersion: true,
-                nullable: true,
-                oldClrType: typeof(byte[]),
-                oldType: "varbinary(max)",
-                oldNullable: true);
+                nullable: true);
 
-            migrationBuilder.AlterColumn<byte[]>(
+            migrationBuilder.DropColumn(
+                name: "RowVersion",
+                table: "Evidencias");
+
+            migrationBuilder.AddColumn<byte[]>(
                 name: "RowVersion",
                 table: "Evidencias",
                 type: "rowversion",
                 rowVersion: true,
-                nullable: true,
-                oldClrType: typeof(byte[]),
-                oldType: "varbinary(max)",
-                oldNullable: true);
+                nullable: true);
 
-            migrationBuilder.AlterColumn<byte[]>(
+            migrationBuilder.DropColumn(
+                name: "RowVersion",
+                table: "Equipes");
+
+            migrationBuilder.AddColumn<byte[]>(
                 name: "RowVersion",
                 table: "Equipes",
                 type: "rowversion",
                 rowVersion: true,
-                nullable: true,
-                oldClrType: typeof(byte[]),
-                oldType: "varbinary(max)",
-                oldNullable: true);
+                nullable: true);
 
-            migrationBuilder.AlterColumn<byte[]>(
+            migrationBuilder.DropColumn(
+                name: "RowVersion",
+                table: "EntregasEpi");
+
+            migrationBuilder.AddColumn<byte[]>(
                 name: "RowVersion",
                 table: "EntregasEpi",
                 type: "rowversion",
                 rowVersion: true,
-                nullable: true,
-                oldClrType: typeof(byte[]),
-                oldType: "varbinary(max)",
-                oldNullable: true);
+                nullable: true);
 
-            migrationBuilder.AlterColumn<byte[]>(
+            migrationBuilder.DropColumn(
+                name: "RowVersion",
+                table: "DocumentosGestao");
+
+            migrationBuilder.AddColumn<byte[]>(
                 name: "RowVersion",
                 table: "DocumentosGestao",
                 type: "rowversion",
                 rowVersion: true,
-                nullable: true,
-                oldClrType: typeof(byte[]),
-                oldType: "varbinary(max)",
-                oldNullable: true);
+                nullable: true);
 
-            migrationBuilder.AlterColumn<byte[]>(
+            migrationBuilder.DropColumn(
+                name: "RowVersion",
+                table: "DocumentoRevisoes");
+
+            migrationBuilder.AddColumn<byte[]>(
                 name: "RowVersion",
                 table: "DocumentoRevisoes",
                 type: "rowversion",
                 rowVersion: true,
-                nullable: true,
-                oldClrType: typeof(byte[]),
-                oldType: "varbinary(max)",
-                oldNullable: true);
+                nullable: true);
 
-            migrationBuilder.AlterColumn<byte[]>(
+            migrationBuilder.DropColumn(
+                name: "RowVersion",
+                table: "DdsTelegramEnvios");
+
+            migrationBuilder.AddColumn<byte[]>(
                 name: "RowVersion",
                 table: "DdsTelegramEnvios",
                 type: "rowversion",
                 rowVersion: true,
-                nullable: true,
-                oldClrType: typeof(byte[]),
-                oldType: "varbinary(max)",
-                oldNullable: true);
+                nullable: true);
 
-            migrationBuilder.AlterColumn<byte[]>(
+            migrationBuilder.DropColumn(
+                name: "RowVersion",
+                table: "DdsParticipantes");
+
+            migrationBuilder.AddColumn<byte[]>(
                 name: "RowVersion",
                 table: "DdsParticipantes",
                 type: "rowversion",
                 rowVersion: true,
-                nullable: true,
-                oldClrType: typeof(byte[]),
-                oldType: "varbinary(max)",
-                oldNullable: true);
+                nullable: true);
 
-            migrationBuilder.AlterColumn<byte[]>(
+            migrationBuilder.DropColumn(
+                name: "RowVersion",
+                table: "DdsItensChecklist");
+
+            migrationBuilder.AddColumn<byte[]>(
                 name: "RowVersion",
                 table: "DdsItensChecklist",
                 type: "rowversion",
                 rowVersion: true,
-                nullable: true,
-                oldClrType: typeof(byte[]),
-                oldType: "varbinary(max)",
-                oldNullable: true);
+                nullable: true);
 
-            migrationBuilder.AlterColumn<byte[]>(
+            migrationBuilder.DropColumn(
+                name: "RowVersion",
+                table: "DdsAtividades");
+
+            migrationBuilder.AddColumn<byte[]>(
                 name: "RowVersion",
                 table: "DdsAtividades",
                 type: "rowversion",
                 rowVersion: true,
-                nullable: true,
-                oldClrType: typeof(byte[]),
-                oldType: "varbinary(max)",
-                oldNullable: true);
+                nullable: true);
 
-            migrationBuilder.AlterColumn<byte[]>(
+            migrationBuilder.DropColumn(
+                name: "RowVersion",
+                table: "Dds");
+
+            migrationBuilder.AddColumn<byte[]>(
                 name: "RowVersion",
                 table: "Dds",
                 type: "rowversion",
                 rowVersion: true,
-                nullable: true,
-                oldClrType: typeof(byte[]),
-                oldType: "varbinary(max)",
-                oldNullable: true);
+                nullable: true);
 
-            migrationBuilder.AlterColumn<byte[]>(
+            migrationBuilder.DropColumn(
+                name: "RowVersion",
+                table: "CursosTreinamento");
+
+            migrationBuilder.AddColumn<byte[]>(
                 name: "RowVersion",
                 table: "CursosTreinamento",
                 type: "rowversion",
                 rowVersion: true,
-                nullable: true,
-                oldClrType: typeof(byte[]),
-                oldType: "varbinary(max)",
-                oldNullable: true);
+                nullable: true);
 
-            migrationBuilder.AlterColumn<byte[]>(
+            migrationBuilder.DropColumn(
+                name: "RowVersion",
+                table: "ChecklistModelos");
+
+            migrationBuilder.AddColumn<byte[]>(
                 name: "RowVersion",
                 table: "ChecklistModelos",
                 type: "rowversion",
                 rowVersion: true,
-                nullable: true,
-                oldClrType: typeof(byte[]),
-                oldType: "varbinary(max)",
-                oldNullable: true);
+                nullable: true);
 
-            migrationBuilder.AlterColumn<byte[]>(
+            migrationBuilder.DropColumn(
+                name: "RowVersion",
+                table: "ChecklistModeloItens");
+
+            migrationBuilder.AddColumn<byte[]>(
                 name: "RowVersion",
                 table: "ChecklistModeloItens",
                 type: "rowversion",
                 rowVersion: true,
-                nullable: true,
-                oldClrType: typeof(byte[]),
-                oldType: "varbinary(max)",
-                oldNullable: true);
+                nullable: true);
 
-            migrationBuilder.AlterColumn<byte[]>(
+            migrationBuilder.DropColumn(
+                name: "RowVersion",
+                table: "CatalogoEpis");
+
+            migrationBuilder.AddColumn<byte[]>(
                 name: "RowVersion",
                 table: "CatalogoEpis",
                 type: "rowversion",
                 rowVersion: true,
-                nullable: true,
-                oldClrType: typeof(byte[]),
-                oldType: "varbinary(max)",
-                oldNullable: true);
+                nullable: true);
 
-            migrationBuilder.AlterColumn<byte[]>(
+            migrationBuilder.DropColumn(
+                name: "RowVersion",
+                table: "Atividades");
+
+            migrationBuilder.AddColumn<byte[]>(
                 name: "RowVersion",
                 table: "Atividades",
                 type: "rowversion",
                 rowVersion: true,
-                nullable: true,
-                oldClrType: typeof(byte[]),
-                oldType: "varbinary(max)",
-                oldNullable: true);
+                nullable: true);
 
-            migrationBuilder.AlterColumn<byte[]>(
+            migrationBuilder.DropColumn(
+                name: "RowVersion",
+                table: "Asos");
+
+            migrationBuilder.AddColumn<byte[]>(
                 name: "RowVersion",
                 table: "Asos",
                 type: "rowversion",
                 rowVersion: true,
-                nullable: true,
-                oldClrType: typeof(byte[]),
-                oldType: "varbinary(max)",
-                oldNullable: true);
+                nullable: true);
 
-            migrationBuilder.AlterColumn<byte[]>(
+            migrationBuilder.DropColumn(
+                name: "RowVersion",
+                table: "AsoRestricoes");
+
+            migrationBuilder.AddColumn<byte[]>(
                 name: "RowVersion",
                 table: "AsoRestricoes",
                 type: "rowversion",
                 rowVersion: true,
-                nullable: true,
-                oldClrType: typeof(byte[]),
-                oldType: "varbinary(max)",
-                oldNullable: true);
+                nullable: true);
 
-            migrationBuilder.AlterColumn<byte[]>(
+            migrationBuilder.DropColumn(
+                name: "RowVersion",
+                table: "AreasSst");
+
+            migrationBuilder.AddColumn<byte[]>(
                 name: "RowVersion",
                 table: "AreasSst",
                 type: "rowversion",
                 rowVersion: true,
-                nullable: true,
-                oldClrType: typeof(byte[]),
-                oldType: "varbinary(max)",
-                oldNullable: true);
+                nullable: true);
 
-            migrationBuilder.AlterColumn<byte[]>(
+            migrationBuilder.DropColumn(
+                name: "RowVersion",
+                table: "Aprs");
+
+            migrationBuilder.AddColumn<byte[]>(
                 name: "RowVersion",
                 table: "Aprs",
                 type: "rowversion",
                 rowVersion: true,
-                nullable: true,
-                oldClrType: typeof(byte[]),
-                oldType: "varbinary(max)",
-                oldNullable: true);
+                nullable: true);
 
-            migrationBuilder.AlterColumn<byte[]>(
+            migrationBuilder.DropColumn(
+                name: "RowVersion",
+                table: "AprResponsaveis");
+
+            migrationBuilder.AddColumn<byte[]>(
                 name: "RowVersion",
                 table: "AprResponsaveis",
                 type: "rowversion",
                 rowVersion: true,
-                nullable: true,
-                oldClrType: typeof(byte[]),
-                oldType: "varbinary(max)",
-                oldNullable: true);
+                nullable: true);
 
-            migrationBuilder.AlterColumn<byte[]>(
+            migrationBuilder.DropColumn(
+                name: "RowVersion",
+                table: "AprEtapas");
+
+            migrationBuilder.AddColumn<byte[]>(
                 name: "RowVersion",
                 table: "AprEtapas",
                 type: "rowversion",
                 rowVersion: true,
-                nullable: true,
-                oldClrType: typeof(byte[]),
-                oldType: "varbinary(max)",
-                oldNullable: true);
+                nullable: true);
 
-            migrationBuilder.AlterColumn<byte[]>(
+            migrationBuilder.DropColumn(
+                name: "RowVersion",
+                table: "AprEtapaRiscos");
+
+            migrationBuilder.AddColumn<byte[]>(
                 name: "RowVersion",
                 table: "AprEtapaRiscos",
                 type: "rowversion",
                 rowVersion: true,
-                nullable: true,
-                oldClrType: typeof(byte[]),
-                oldType: "varbinary(max)",
-                oldNullable: true);
+                nullable: true);
 
-            migrationBuilder.AlterColumn<byte[]>(
+            migrationBuilder.DropColumn(
+                name: "RowVersion",
+                table: "AprAssinaturas");
+
+            migrationBuilder.AddColumn<byte[]>(
                 name: "RowVersion",
                 table: "AprAssinaturas",
                 type: "rowversion",
                 rowVersion: true,
-                nullable: true,
-                oldClrType: typeof(byte[]),
-                oldType: "varbinary(max)",
-                oldNullable: true);
+                nullable: true);
 
-            migrationBuilder.AlterColumn<byte[]>(
+            migrationBuilder.DropColumn(
+                name: "RowVersion",
+                table: "Alertas");
+
+            migrationBuilder.AddColumn<byte[]>(
                 name: "RowVersion",
                 table: "Alertas",
                 type: "rowversion",
                 rowVersion: true,
-                nullable: true,
-                oldClrType: typeof(byte[]),
-                oldType: "varbinary(max)",
-                oldNullable: true);
+                nullable: true);
 
-            migrationBuilder.AlterColumn<byte[]>(
+            migrationBuilder.DropColumn(
+                name: "RowVersion",
+                table: "AlertaHistoricoEnvios");
+
+            migrationBuilder.AddColumn<byte[]>(
                 name: "RowVersion",
                 table: "AlertaHistoricoEnvios",
                 type: "rowversion",
                 rowVersion: true,
-                nullable: true,
-                oldClrType: typeof(byte[]),
-                oldType: "varbinary(max)",
-                oldNullable: true);
+                nullable: true);
 
-            migrationBuilder.AlterColumn<byte[]>(
+            migrationBuilder.DropColumn(
+                name: "RowVersion",
+                table: "AcoesPlano");
+
+            migrationBuilder.AddColumn<byte[]>(
                 name: "RowVersion",
                 table: "AcoesPlano",
                 type: "rowversion",
                 rowVersion: true,
-                nullable: true,
-                oldClrType: typeof(byte[]),
-                oldType: "varbinary(max)",
-                oldNullable: true);
+                nullable: true);
 
-            migrationBuilder.AlterColumn<byte[]>(
+            migrationBuilder.DropColumn(
+                name: "RowVersion",
+                table: "Acidentes");
+
+            migrationBuilder.AddColumn<byte[]>(
                 name: "RowVersion",
                 table: "Acidentes",
                 type: "rowversion",
                 rowVersion: true,
-                nullable: true,
-                oldClrType: typeof(byte[]),
-                oldType: "varbinary(max)",
-                oldNullable: true);
+                nullable: true);
 
             migrationBuilder.CreateTable(
                 name: "IdempotenciaRegistros",
@@ -770,565 +826,565 @@ namespace AAHBRANT.SST.Infrastructure.Persistencia.Migrations
             migrationBuilder.DropTable(
                 name: "Pcmsos");
 
-            migrationBuilder.AlterColumn<byte[]>(
+            migrationBuilder.DropColumn(
+                name: "RowVersion",
+                table: "UsuariosPerfilObra");
+
+            migrationBuilder.AddColumn<byte[]>(
                 name: "RowVersion",
                 table: "UsuariosPerfilObra",
                 type: "varbinary(max)",
-                nullable: true,
-                oldClrType: typeof(byte[]),
-                oldType: "rowversion",
-                oldRowVersion: true,
-                oldNullable: true);
+                nullable: true);
 
-            migrationBuilder.AlterColumn<byte[]>(
+            migrationBuilder.DropColumn(
+                name: "RowVersion",
+                table: "Usuarios");
+
+            migrationBuilder.AddColumn<byte[]>(
                 name: "RowVersion",
                 table: "Usuarios",
                 type: "varbinary(max)",
-                nullable: true,
-                oldClrType: typeof(byte[]),
-                oldType: "rowversion",
-                oldRowVersion: true,
-                oldNullable: true);
+                nullable: true);
 
-            migrationBuilder.AlterColumn<byte[]>(
+            migrationBuilder.DropColumn(
+                name: "RowVersion",
+                table: "TrilhaAuditoria");
+
+            migrationBuilder.AddColumn<byte[]>(
                 name: "RowVersion",
                 table: "TrilhaAuditoria",
                 type: "varbinary(max)",
-                nullable: true,
-                oldClrType: typeof(byte[]),
-                oldType: "rowversion",
-                oldRowVersion: true,
-                oldNullable: true);
+                nullable: true);
 
-            migrationBuilder.AlterColumn<byte[]>(
+            migrationBuilder.DropColumn(
+                name: "RowVersion",
+                table: "Treinamentos");
+
+            migrationBuilder.AddColumn<byte[]>(
                 name: "RowVersion",
                 table: "Treinamentos",
                 type: "varbinary(max)",
-                nullable: true,
-                oldClrType: typeof(byte[]),
-                oldType: "rowversion",
-                oldRowVersion: true,
-                oldNullable: true);
+                nullable: true);
 
-            migrationBuilder.AlterColumn<byte[]>(
+            migrationBuilder.DropColumn(
+                name: "RowVersion",
+                table: "Trabalhadores");
+
+            migrationBuilder.AddColumn<byte[]>(
                 name: "RowVersion",
                 table: "Trabalhadores",
                 type: "varbinary(max)",
-                nullable: true,
-                oldClrType: typeof(byte[]),
-                oldType: "rowversion",
-                oldRowVersion: true,
-                oldNullable: true);
+                nullable: true);
 
-            migrationBuilder.AlterColumn<byte[]>(
+            migrationBuilder.DropColumn(
+                name: "RowVersion",
+                table: "TagsIdentificacao");
+
+            migrationBuilder.AddColumn<byte[]>(
                 name: "RowVersion",
                 table: "TagsIdentificacao",
                 type: "varbinary(max)",
-                nullable: true,
-                oldClrType: typeof(byte[]),
-                oldType: "rowversion",
-                oldRowVersion: true,
-                oldNullable: true);
+                nullable: true);
 
-            migrationBuilder.AlterColumn<byte[]>(
+            migrationBuilder.DropColumn(
+                name: "RowVersion",
+                table: "Setores");
+
+            migrationBuilder.AddColumn<byte[]>(
                 name: "RowVersion",
                 table: "Setores",
                 type: "varbinary(max)",
-                nullable: true,
-                oldClrType: typeof(byte[]),
-                oldType: "rowversion",
-                oldRowVersion: true,
-                oldNullable: true);
+                nullable: true);
 
-            migrationBuilder.AlterColumn<byte[]>(
+            migrationBuilder.DropColumn(
+                name: "RowVersion",
+                table: "RiscoTrabalhadorExpostos");
+
+            migrationBuilder.AddColumn<byte[]>(
                 name: "RowVersion",
                 table: "RiscoTrabalhadorExpostos",
                 type: "varbinary(max)",
-                nullable: true,
-                oldClrType: typeof(byte[]),
-                oldType: "rowversion",
-                oldRowVersion: true,
-                oldNullable: true);
+                nullable: true);
 
-            migrationBuilder.AlterColumn<byte[]>(
+            migrationBuilder.DropColumn(
+                name: "RowVersion",
+                table: "Riscos");
+
+            migrationBuilder.AddColumn<byte[]>(
                 name: "RowVersion",
                 table: "Riscos",
                 type: "varbinary(max)",
-                nullable: true,
-                oldClrType: typeof(byte[]),
-                oldType: "rowversion",
-                oldRowVersion: true,
-                oldNullable: true);
+                nullable: true);
 
-            migrationBuilder.AlterColumn<byte[]>(
+            migrationBuilder.DropColumn(
+                name: "RowVersion",
+                table: "RequisitosLegais");
+
+            migrationBuilder.AddColumn<byte[]>(
                 name: "RowVersion",
                 table: "RequisitosLegais",
                 type: "varbinary(max)",
-                nullable: true,
-                oldClrType: typeof(byte[]),
-                oldType: "rowversion",
-                oldRowVersion: true,
-                oldNullable: true);
+                nullable: true);
 
-            migrationBuilder.AlterColumn<byte[]>(
+            migrationBuilder.DropColumn(
+                name: "RowVersion",
+                table: "PlanoAcaoItens");
+
+            migrationBuilder.AddColumn<byte[]>(
                 name: "RowVersion",
                 table: "PlanoAcaoItens",
                 type: "varbinary(max)",
-                nullable: true,
-                oldClrType: typeof(byte[]),
-                oldType: "rowversion",
-                oldRowVersion: true,
-                oldNullable: true);
+                nullable: true);
 
-            migrationBuilder.AlterColumn<byte[]>(
+            migrationBuilder.DropColumn(
+                name: "RowVersion",
+                table: "Pgrs");
+
+            migrationBuilder.AddColumn<byte[]>(
                 name: "RowVersion",
                 table: "Pgrs",
                 type: "varbinary(max)",
-                nullable: true,
-                oldClrType: typeof(byte[]),
-                oldType: "rowversion",
-                oldRowVersion: true,
-                oldNullable: true);
+                nullable: true);
 
-            migrationBuilder.AlterColumn<byte[]>(
+            migrationBuilder.DropColumn(
+                name: "RowVersion",
+                table: "PgrRevisoes");
+
+            migrationBuilder.AddColumn<byte[]>(
                 name: "RowVersion",
                 table: "PgrRevisoes",
                 type: "varbinary(max)",
-                nullable: true,
-                oldClrType: typeof(byte[]),
-                oldType: "rowversion",
-                oldRowVersion: true,
-                oldNullable: true);
+                nullable: true);
 
-            migrationBuilder.AlterColumn<byte[]>(
+            migrationBuilder.DropColumn(
+                name: "RowVersion",
+                table: "PermissoesTrabalho");
+
+            migrationBuilder.AddColumn<byte[]>(
                 name: "RowVersion",
                 table: "PermissoesTrabalho",
                 type: "varbinary(max)",
-                nullable: true,
-                oldClrType: typeof(byte[]),
-                oldType: "rowversion",
-                oldRowVersion: true,
-                oldNullable: true);
+                nullable: true);
 
-            migrationBuilder.AlterColumn<byte[]>(
+            migrationBuilder.DropColumn(
+                name: "RowVersion",
+                table: "Permissoes");
+
+            migrationBuilder.AddColumn<byte[]>(
                 name: "RowVersion",
                 table: "Permissoes",
                 type: "varbinary(max)",
-                nullable: true,
-                oldClrType: typeof(byte[]),
-                oldType: "rowversion",
-                oldRowVersion: true,
-                oldNullable: true);
+                nullable: true);
 
-            migrationBuilder.AlterColumn<byte[]>(
+            migrationBuilder.DropColumn(
+                name: "RowVersion",
+                table: "PermissaoTrabalhoResponsaveis");
+
+            migrationBuilder.AddColumn<byte[]>(
                 name: "RowVersion",
                 table: "PermissaoTrabalhoResponsaveis",
                 type: "varbinary(max)",
-                nullable: true,
-                oldClrType: typeof(byte[]),
-                oldType: "rowversion",
-                oldRowVersion: true,
-                oldNullable: true);
+                nullable: true);
 
-            migrationBuilder.AlterColumn<byte[]>(
+            migrationBuilder.DropColumn(
+                name: "RowVersion",
+                table: "PermissaoTrabalhoRequisitos");
+
+            migrationBuilder.AddColumn<byte[]>(
                 name: "RowVersion",
                 table: "PermissaoTrabalhoRequisitos",
                 type: "varbinary(max)",
-                nullable: true,
-                oldClrType: typeof(byte[]),
-                oldType: "rowversion",
-                oldRowVersion: true,
-                oldNullable: true);
+                nullable: true);
 
-            migrationBuilder.AlterColumn<byte[]>(
+            migrationBuilder.DropColumn(
+                name: "RowVersion",
+                table: "PermissaoTrabalhoPerigos");
+
+            migrationBuilder.AddColumn<byte[]>(
                 name: "RowVersion",
                 table: "PermissaoTrabalhoPerigos",
                 type: "varbinary(max)",
-                nullable: true,
-                oldClrType: typeof(byte[]),
-                oldType: "rowversion",
-                oldRowVersion: true,
-                oldNullable: true);
+                nullable: true);
 
-            migrationBuilder.AlterColumn<byte[]>(
+            migrationBuilder.DropColumn(
+                name: "RowVersion",
+                table: "PermissaoTrabalhoControles");
+
+            migrationBuilder.AddColumn<byte[]>(
                 name: "RowVersion",
                 table: "PermissaoTrabalhoControles",
                 type: "varbinary(max)",
-                nullable: true,
-                oldClrType: typeof(byte[]),
-                oldType: "rowversion",
-                oldRowVersion: true,
-                oldNullable: true);
+                nullable: true);
 
-            migrationBuilder.AlterColumn<byte[]>(
+            migrationBuilder.DropColumn(
+                name: "RowVersion",
+                table: "Perigos");
+
+            migrationBuilder.AddColumn<byte[]>(
                 name: "RowVersion",
                 table: "Perigos",
                 type: "varbinary(max)",
-                nullable: true,
-                oldClrType: typeof(byte[]),
-                oldType: "rowversion",
-                oldRowVersion: true,
-                oldNullable: true);
+                nullable: true);
 
-            migrationBuilder.AlterColumn<byte[]>(
+            migrationBuilder.DropColumn(
+                name: "RowVersion",
+                table: "PerfisAcessoPermissoes");
+
+            migrationBuilder.AddColumn<byte[]>(
                 name: "RowVersion",
                 table: "PerfisAcessoPermissoes",
                 type: "varbinary(max)",
-                nullable: true,
-                oldClrType: typeof(byte[]),
-                oldType: "rowversion",
-                oldRowVersion: true,
-                oldNullable: true);
+                nullable: true);
 
-            migrationBuilder.AlterColumn<byte[]>(
+            migrationBuilder.DropColumn(
+                name: "RowVersion",
+                table: "PerfisAcesso");
+
+            migrationBuilder.AddColumn<byte[]>(
                 name: "RowVersion",
                 table: "PerfisAcesso",
                 type: "varbinary(max)",
-                nullable: true,
-                oldClrType: typeof(byte[]),
-                oldType: "rowversion",
-                oldRowVersion: true,
-                oldNullable: true);
+                nullable: true);
 
-            migrationBuilder.AlterColumn<byte[]>(
+            migrationBuilder.DropColumn(
+                name: "RowVersion",
+                table: "Obras");
+
+            migrationBuilder.AddColumn<byte[]>(
                 name: "RowVersion",
                 table: "Obras",
                 type: "varbinary(max)",
-                nullable: true,
-                oldClrType: typeof(byte[]),
-                oldType: "rowversion",
-                oldRowVersion: true,
-                oldNullable: true);
+                nullable: true);
 
-            migrationBuilder.AlterColumn<byte[]>(
+            migrationBuilder.DropColumn(
+                name: "RowVersion",
+                table: "NaoConformidades");
+
+            migrationBuilder.AddColumn<byte[]>(
                 name: "RowVersion",
                 table: "NaoConformidades",
                 type: "varbinary(max)",
-                nullable: true,
-                oldClrType: typeof(byte[]),
-                oldType: "rowversion",
-                oldRowVersion: true,
-                oldNullable: true);
+                nullable: true);
 
-            migrationBuilder.AlterColumn<byte[]>(
+            migrationBuilder.DropColumn(
+                name: "RowVersion",
+                table: "MatrizRiscoConfigs");
+
+            migrationBuilder.AddColumn<byte[]>(
                 name: "RowVersion",
                 table: "MatrizRiscoConfigs",
                 type: "varbinary(max)",
-                nullable: true,
-                oldClrType: typeof(byte[]),
-                oldType: "rowversion",
-                oldRowVersion: true,
-                oldNullable: true);
+                nullable: true);
 
-            migrationBuilder.AlterColumn<byte[]>(
+            migrationBuilder.DropColumn(
+                name: "RowVersion",
+                table: "MatrizRiscoCelulas");
+
+            migrationBuilder.AddColumn<byte[]>(
                 name: "RowVersion",
                 table: "MatrizRiscoCelulas",
                 type: "varbinary(max)",
-                nullable: true,
-                oldClrType: typeof(byte[]),
-                oldType: "rowversion",
-                oldRowVersion: true,
-                oldNullable: true);
+                nullable: true);
 
-            migrationBuilder.AlterColumn<byte[]>(
+            migrationBuilder.DropColumn(
+                name: "RowVersion",
+                table: "Inspecoes");
+
+            migrationBuilder.AddColumn<byte[]>(
                 name: "RowVersion",
                 table: "Inspecoes",
                 type: "varbinary(max)",
-                nullable: true,
-                oldClrType: typeof(byte[]),
-                oldType: "rowversion",
-                oldRowVersion: true,
-                oldNullable: true);
+                nullable: true);
 
-            migrationBuilder.AlterColumn<byte[]>(
+            migrationBuilder.DropColumn(
+                name: "RowVersion",
+                table: "InspecaoItemRespostas");
+
+            migrationBuilder.AddColumn<byte[]>(
                 name: "RowVersion",
                 table: "InspecaoItemRespostas",
                 type: "varbinary(max)",
-                nullable: true,
-                oldClrType: typeof(byte[]),
-                oldType: "rowversion",
-                oldRowVersion: true,
-                oldNullable: true);
+                nullable: true);
 
-            migrationBuilder.AlterColumn<byte[]>(
+            migrationBuilder.DropColumn(
+                name: "RowVersion",
+                table: "Funcoes");
+
+            migrationBuilder.AddColumn<byte[]>(
                 name: "RowVersion",
                 table: "Funcoes",
                 type: "varbinary(max)",
-                nullable: true,
-                oldClrType: typeof(byte[]),
-                oldType: "rowversion",
-                oldRowVersion: true,
-                oldNullable: true);
+                nullable: true);
 
-            migrationBuilder.AlterColumn<byte[]>(
+            migrationBuilder.DropColumn(
+                name: "RowVersion",
+                table: "Evidencias");
+
+            migrationBuilder.AddColumn<byte[]>(
                 name: "RowVersion",
                 table: "Evidencias",
                 type: "varbinary(max)",
-                nullable: true,
-                oldClrType: typeof(byte[]),
-                oldType: "rowversion",
-                oldRowVersion: true,
-                oldNullable: true);
+                nullable: true);
 
-            migrationBuilder.AlterColumn<byte[]>(
+            migrationBuilder.DropColumn(
+                name: "RowVersion",
+                table: "Equipes");
+
+            migrationBuilder.AddColumn<byte[]>(
                 name: "RowVersion",
                 table: "Equipes",
                 type: "varbinary(max)",
-                nullable: true,
-                oldClrType: typeof(byte[]),
-                oldType: "rowversion",
-                oldRowVersion: true,
-                oldNullable: true);
+                nullable: true);
 
-            migrationBuilder.AlterColumn<byte[]>(
+            migrationBuilder.DropColumn(
+                name: "RowVersion",
+                table: "EntregasEpi");
+
+            migrationBuilder.AddColumn<byte[]>(
                 name: "RowVersion",
                 table: "EntregasEpi",
                 type: "varbinary(max)",
-                nullable: true,
-                oldClrType: typeof(byte[]),
-                oldType: "rowversion",
-                oldRowVersion: true,
-                oldNullable: true);
+                nullable: true);
 
-            migrationBuilder.AlterColumn<byte[]>(
+            migrationBuilder.DropColumn(
+                name: "RowVersion",
+                table: "DocumentosGestao");
+
+            migrationBuilder.AddColumn<byte[]>(
                 name: "RowVersion",
                 table: "DocumentosGestao",
                 type: "varbinary(max)",
-                nullable: true,
-                oldClrType: typeof(byte[]),
-                oldType: "rowversion",
-                oldRowVersion: true,
-                oldNullable: true);
+                nullable: true);
 
-            migrationBuilder.AlterColumn<byte[]>(
+            migrationBuilder.DropColumn(
+                name: "RowVersion",
+                table: "DocumentoRevisoes");
+
+            migrationBuilder.AddColumn<byte[]>(
                 name: "RowVersion",
                 table: "DocumentoRevisoes",
                 type: "varbinary(max)",
-                nullable: true,
-                oldClrType: typeof(byte[]),
-                oldType: "rowversion",
-                oldRowVersion: true,
-                oldNullable: true);
+                nullable: true);
 
-            migrationBuilder.AlterColumn<byte[]>(
+            migrationBuilder.DropColumn(
+                name: "RowVersion",
+                table: "DdsTelegramEnvios");
+
+            migrationBuilder.AddColumn<byte[]>(
                 name: "RowVersion",
                 table: "DdsTelegramEnvios",
                 type: "varbinary(max)",
-                nullable: true,
-                oldClrType: typeof(byte[]),
-                oldType: "rowversion",
-                oldRowVersion: true,
-                oldNullable: true);
+                nullable: true);
 
-            migrationBuilder.AlterColumn<byte[]>(
+            migrationBuilder.DropColumn(
+                name: "RowVersion",
+                table: "DdsParticipantes");
+
+            migrationBuilder.AddColumn<byte[]>(
                 name: "RowVersion",
                 table: "DdsParticipantes",
                 type: "varbinary(max)",
-                nullable: true,
-                oldClrType: typeof(byte[]),
-                oldType: "rowversion",
-                oldRowVersion: true,
-                oldNullable: true);
+                nullable: true);
 
-            migrationBuilder.AlterColumn<byte[]>(
+            migrationBuilder.DropColumn(
+                name: "RowVersion",
+                table: "DdsItensChecklist");
+
+            migrationBuilder.AddColumn<byte[]>(
                 name: "RowVersion",
                 table: "DdsItensChecklist",
                 type: "varbinary(max)",
-                nullable: true,
-                oldClrType: typeof(byte[]),
-                oldType: "rowversion",
-                oldRowVersion: true,
-                oldNullable: true);
+                nullable: true);
 
-            migrationBuilder.AlterColumn<byte[]>(
+            migrationBuilder.DropColumn(
+                name: "RowVersion",
+                table: "DdsAtividades");
+
+            migrationBuilder.AddColumn<byte[]>(
                 name: "RowVersion",
                 table: "DdsAtividades",
                 type: "varbinary(max)",
-                nullable: true,
-                oldClrType: typeof(byte[]),
-                oldType: "rowversion",
-                oldRowVersion: true,
-                oldNullable: true);
+                nullable: true);
 
-            migrationBuilder.AlterColumn<byte[]>(
+            migrationBuilder.DropColumn(
+                name: "RowVersion",
+                table: "Dds");
+
+            migrationBuilder.AddColumn<byte[]>(
                 name: "RowVersion",
                 table: "Dds",
                 type: "varbinary(max)",
-                nullable: true,
-                oldClrType: typeof(byte[]),
-                oldType: "rowversion",
-                oldRowVersion: true,
-                oldNullable: true);
+                nullable: true);
 
-            migrationBuilder.AlterColumn<byte[]>(
+            migrationBuilder.DropColumn(
+                name: "RowVersion",
+                table: "CursosTreinamento");
+
+            migrationBuilder.AddColumn<byte[]>(
                 name: "RowVersion",
                 table: "CursosTreinamento",
                 type: "varbinary(max)",
-                nullable: true,
-                oldClrType: typeof(byte[]),
-                oldType: "rowversion",
-                oldRowVersion: true,
-                oldNullable: true);
+                nullable: true);
 
-            migrationBuilder.AlterColumn<byte[]>(
+            migrationBuilder.DropColumn(
+                name: "RowVersion",
+                table: "ChecklistModelos");
+
+            migrationBuilder.AddColumn<byte[]>(
                 name: "RowVersion",
                 table: "ChecklistModelos",
                 type: "varbinary(max)",
-                nullable: true,
-                oldClrType: typeof(byte[]),
-                oldType: "rowversion",
-                oldRowVersion: true,
-                oldNullable: true);
+                nullable: true);
 
-            migrationBuilder.AlterColumn<byte[]>(
+            migrationBuilder.DropColumn(
+                name: "RowVersion",
+                table: "ChecklistModeloItens");
+
+            migrationBuilder.AddColumn<byte[]>(
                 name: "RowVersion",
                 table: "ChecklistModeloItens",
                 type: "varbinary(max)",
-                nullable: true,
-                oldClrType: typeof(byte[]),
-                oldType: "rowversion",
-                oldRowVersion: true,
-                oldNullable: true);
+                nullable: true);
 
-            migrationBuilder.AlterColumn<byte[]>(
+            migrationBuilder.DropColumn(
+                name: "RowVersion",
+                table: "CatalogoEpis");
+
+            migrationBuilder.AddColumn<byte[]>(
                 name: "RowVersion",
                 table: "CatalogoEpis",
                 type: "varbinary(max)",
-                nullable: true,
-                oldClrType: typeof(byte[]),
-                oldType: "rowversion",
-                oldRowVersion: true,
-                oldNullable: true);
+                nullable: true);
 
-            migrationBuilder.AlterColumn<byte[]>(
+            migrationBuilder.DropColumn(
+                name: "RowVersion",
+                table: "Atividades");
+
+            migrationBuilder.AddColumn<byte[]>(
                 name: "RowVersion",
                 table: "Atividades",
                 type: "varbinary(max)",
-                nullable: true,
-                oldClrType: typeof(byte[]),
-                oldType: "rowversion",
-                oldRowVersion: true,
-                oldNullable: true);
+                nullable: true);
 
-            migrationBuilder.AlterColumn<byte[]>(
+            migrationBuilder.DropColumn(
+                name: "RowVersion",
+                table: "Asos");
+
+            migrationBuilder.AddColumn<byte[]>(
                 name: "RowVersion",
                 table: "Asos",
                 type: "varbinary(max)",
-                nullable: true,
-                oldClrType: typeof(byte[]),
-                oldType: "rowversion",
-                oldRowVersion: true,
-                oldNullable: true);
+                nullable: true);
 
-            migrationBuilder.AlterColumn<byte[]>(
+            migrationBuilder.DropColumn(
+                name: "RowVersion",
+                table: "AsoRestricoes");
+
+            migrationBuilder.AddColumn<byte[]>(
                 name: "RowVersion",
                 table: "AsoRestricoes",
                 type: "varbinary(max)",
-                nullable: true,
-                oldClrType: typeof(byte[]),
-                oldType: "rowversion",
-                oldRowVersion: true,
-                oldNullable: true);
+                nullable: true);
 
-            migrationBuilder.AlterColumn<byte[]>(
+            migrationBuilder.DropColumn(
+                name: "RowVersion",
+                table: "AreasSst");
+
+            migrationBuilder.AddColumn<byte[]>(
                 name: "RowVersion",
                 table: "AreasSst",
                 type: "varbinary(max)",
-                nullable: true,
-                oldClrType: typeof(byte[]),
-                oldType: "rowversion",
-                oldRowVersion: true,
-                oldNullable: true);
+                nullable: true);
 
-            migrationBuilder.AlterColumn<byte[]>(
+            migrationBuilder.DropColumn(
+                name: "RowVersion",
+                table: "Aprs");
+
+            migrationBuilder.AddColumn<byte[]>(
                 name: "RowVersion",
                 table: "Aprs",
                 type: "varbinary(max)",
-                nullable: true,
-                oldClrType: typeof(byte[]),
-                oldType: "rowversion",
-                oldRowVersion: true,
-                oldNullable: true);
+                nullable: true);
 
-            migrationBuilder.AlterColumn<byte[]>(
+            migrationBuilder.DropColumn(
+                name: "RowVersion",
+                table: "AprResponsaveis");
+
+            migrationBuilder.AddColumn<byte[]>(
                 name: "RowVersion",
                 table: "AprResponsaveis",
                 type: "varbinary(max)",
-                nullable: true,
-                oldClrType: typeof(byte[]),
-                oldType: "rowversion",
-                oldRowVersion: true,
-                oldNullable: true);
+                nullable: true);
 
-            migrationBuilder.AlterColumn<byte[]>(
+            migrationBuilder.DropColumn(
+                name: "RowVersion",
+                table: "AprEtapas");
+
+            migrationBuilder.AddColumn<byte[]>(
                 name: "RowVersion",
                 table: "AprEtapas",
                 type: "varbinary(max)",
-                nullable: true,
-                oldClrType: typeof(byte[]),
-                oldType: "rowversion",
-                oldRowVersion: true,
-                oldNullable: true);
+                nullable: true);
 
-            migrationBuilder.AlterColumn<byte[]>(
+            migrationBuilder.DropColumn(
+                name: "RowVersion",
+                table: "AprEtapaRiscos");
+
+            migrationBuilder.AddColumn<byte[]>(
                 name: "RowVersion",
                 table: "AprEtapaRiscos",
                 type: "varbinary(max)",
-                nullable: true,
-                oldClrType: typeof(byte[]),
-                oldType: "rowversion",
-                oldRowVersion: true,
-                oldNullable: true);
+                nullable: true);
 
-            migrationBuilder.AlterColumn<byte[]>(
+            migrationBuilder.DropColumn(
+                name: "RowVersion",
+                table: "AprAssinaturas");
+
+            migrationBuilder.AddColumn<byte[]>(
                 name: "RowVersion",
                 table: "AprAssinaturas",
                 type: "varbinary(max)",
-                nullable: true,
-                oldClrType: typeof(byte[]),
-                oldType: "rowversion",
-                oldRowVersion: true,
-                oldNullable: true);
+                nullable: true);
 
-            migrationBuilder.AlterColumn<byte[]>(
+            migrationBuilder.DropColumn(
+                name: "RowVersion",
+                table: "Alertas");
+
+            migrationBuilder.AddColumn<byte[]>(
                 name: "RowVersion",
                 table: "Alertas",
                 type: "varbinary(max)",
-                nullable: true,
-                oldClrType: typeof(byte[]),
-                oldType: "rowversion",
-                oldRowVersion: true,
-                oldNullable: true);
+                nullable: true);
 
-            migrationBuilder.AlterColumn<byte[]>(
+            migrationBuilder.DropColumn(
+                name: "RowVersion",
+                table: "AlertaHistoricoEnvios");
+
+            migrationBuilder.AddColumn<byte[]>(
                 name: "RowVersion",
                 table: "AlertaHistoricoEnvios",
                 type: "varbinary(max)",
-                nullable: true,
-                oldClrType: typeof(byte[]),
-                oldType: "rowversion",
-                oldRowVersion: true,
-                oldNullable: true);
+                nullable: true);
 
-            migrationBuilder.AlterColumn<byte[]>(
+            migrationBuilder.DropColumn(
+                name: "RowVersion",
+                table: "AcoesPlano");
+
+            migrationBuilder.AddColumn<byte[]>(
                 name: "RowVersion",
                 table: "AcoesPlano",
                 type: "varbinary(max)",
-                nullable: true,
-                oldClrType: typeof(byte[]),
-                oldType: "rowversion",
-                oldRowVersion: true,
-                oldNullable: true);
+                nullable: true);
 
-            migrationBuilder.AlterColumn<byte[]>(
+            migrationBuilder.DropColumn(
+                name: "RowVersion",
+                table: "Acidentes");
+
+            migrationBuilder.AddColumn<byte[]>(
                 name: "RowVersion",
                 table: "Acidentes",
                 type: "varbinary(max)",
-                nullable: true,
-                oldClrType: typeof(byte[]),
-                oldType: "rowversion",
-                oldRowVersion: true,
-                oldNullable: true);
+                nullable: true);
         }
     }
 }
