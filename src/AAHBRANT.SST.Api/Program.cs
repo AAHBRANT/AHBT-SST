@@ -2,9 +2,11 @@ using AAHBRANT.SST.Api.Autorizacao;
 using AAHBRANT.SST.Api.Middlewares;
 using AAHBRANT.SST.Application;
 using AAHBRANT.SST.Infrastructure;
+using AAHBRANT.SST.Infrastructure.Persistencia;
 using AAHBRANT.SST.Infrastructure.Persistencia.Seed;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Authorization;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Identity.Web;
 
 QuestPDF.Settings.License = QuestPDF.Infrastructure.LicenseType.Community;
@@ -44,6 +46,8 @@ builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
 
 const string PoliticaCorsDev = "TeamsTabDev";
+const string PoliticaCorsProd = "TeamsTabProd";
+var origemPermitidaProd = builder.Configuration["Cors:AllowedOrigin"];
 builder.Services.AddCors(options =>
 {
     options.AddPolicy(PoliticaCorsDev, policy =>
@@ -52,6 +56,14 @@ builder.Services.AddCors(options =>
         policy.SetIsOriginAllowed(origin => new Uri(origin).Host == "localhost")
               .AllowAnyHeader()
               .AllowAnyMethod());
+
+    if (!string.IsNullOrWhiteSpace(origemPermitidaProd))
+    {
+        options.AddPolicy(PoliticaCorsProd, policy =>
+            policy.WithOrigins(origemPermitidaProd)
+                  .AllowAnyHeader()
+                  .AllowAnyMethod());
+    }
 });
 
 var app = builder.Build();
@@ -68,16 +80,30 @@ if (app.Environment.IsDevelopment())
 if (!app.Environment.IsDevelopment())
 {
     app.UseHttpsRedirection();
+    if (!string.IsNullOrWhiteSpace(origemPermitidaProd))
+    {
+        app.UseCors(PoliticaCorsProd);
+    }
 }
 
 if (autenticacaoEntraIdHabilitada)
 {
     app.UseAuthentication();
+    app.UseMiddleware<VinculoAzureAdMiddleware>();
     app.UseAuthorization();
+}
+
+// Aplica migrations pendentes automaticamente no start — antes não existia isso no código
+// (schema do banco de homologação era atualizado manualmente a cada nova migration).
+using (var escopoMigracao = app.Services.CreateScope())
+{
+    var db = escopoMigracao.ServiceProvider.GetRequiredService<SstDbContext>();
+    await db.Database.MigrateAsync();
 }
 
 await RbacSeeder.ExecutarAsync(app.Services);
 await CpfLgpdBackfillSeeder.ExecutarAsync(app.Services);
+await RegraAlertaSeeder.ExecutarAsync(app.Services);
 
 app.MapControllers();
 

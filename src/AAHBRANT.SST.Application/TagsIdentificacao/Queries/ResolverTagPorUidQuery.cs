@@ -37,7 +37,15 @@ public class ResolverTagPorUidQueryHandler : IRequestHandler<ResolverTagPorUidQu
                 .Select(t => t.Nome)
                 .FirstOrDefaultAsync(ct);
         }
-        // TipoEntidadeVinculada.Ativo: sem catálogo de equipamentos no sistema hoje — só o Id cru é retornado.
+        else if (tag.EntidadeVinculadaTipo == TipoEntidadeVinculada.Ativo && tag.EntidadeVinculadaId.HasValue)
+        {
+            // Catálogo de ativos (Motor Central de Alertas + Cadastro de Ativos, 2026-08-25) — antes
+            // desta entidade existir, só o Id cru era retornado (ver comentário original removido aqui).
+            nomeEntidade = await _db.AtivosSst
+                .Where(a => a.Id == tag.EntidadeVinculadaId.Value)
+                .Select(a => a.Descricao + " — " + a.Identificacao)
+                .FirstOrDefaultAsync(ct);
+        }
 
         return new ResolverTagDto
         {

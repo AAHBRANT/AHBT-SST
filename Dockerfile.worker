@@ -1,0 +1,16 @@
+FROM mcr.microsoft.com/dotnet/sdk:8.0 AS build
+WORKDIR /src
+
+COPY src/AAHBRANT.SST.Domain/*.csproj src/AAHBRANT.SST.Domain/
+COPY src/AAHBRANT.SST.Application/*.csproj src/AAHBRANT.SST.Application/
+COPY src/AAHBRANT.SST.Infrastructure/*.csproj src/AAHBRANT.SST.Infrastructure/
+COPY src/AAHBRANT.SST.Worker/*.csproj src/AAHBRANT.SST.Worker/
+RUN dotnet restore src/AAHBRANT.SST.Worker/AAHBRANT.SST.Worker.csproj
+
+COPY src/ src/
+RUN dotnet publish src/AAHBRANT.SST.Worker/AAHBRANT.SST.Worker.csproj -c Release -o /app --no-restore
+
+FROM mcr.microsoft.com/dotnet/runtime:8.0 AS runtime
+WORKDIR /app
+COPY --from=build /app .
+ENTRYPOINT ["dotnet", "AAHBRANT.SST.Worker.dll"]

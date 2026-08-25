@@ -5,7 +5,7 @@ namespace AAHBRANT.SST.Application.Usuarios;
 public class UsuarioDto
 {
     public Guid Id { get; set; }
-    public string AzureAdObjectId { get; set; } = string.Empty;
+    public string? AzureAdObjectId { get; set; }
     public string Email { get; set; } = string.Empty;
     public string Nome { get; set; } = string.Empty;
     public StatusUsuario Status { get; set; }

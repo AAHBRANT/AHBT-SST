@@ -35,8 +35,13 @@ public class CriarAlertaCommandValidator : AbstractValidator<CriarAlertaCommand>
 public class CriarAlertaCommandHandler : IRequestHandler<CriarAlertaCommand, Guid>
 {
     private readonly IAppDbContext _db;
+    private readonly IFilaNotificacaoTeams _filaNotificacaoTeams;
 
-    public CriarAlertaCommandHandler(IAppDbContext db) => _db = db;
+    public CriarAlertaCommandHandler(IAppDbContext db, IFilaNotificacaoTeams filaNotificacaoTeams)
+    {
+        _db = db;
+        _filaNotificacaoTeams = filaNotificacaoTeams;
+    }
 
     public async Task<Guid> Handle(CriarAlertaCommand request, CancellationToken ct)
     {
@@ -68,6 +73,16 @@ public class CriarAlertaCommandHandler : IRequestHandler<CriarAlertaCommand, Gui
 
         _db.Alertas.Add(alerta);
         await _db.SaveChangesAsync(ct);
+
+        // Envio proativo no Teams — enfileira e segue em frente (PROJECT RULES.md §4); o envio de
+        // fato e o retry em caso de falha acontecem em background (ver IFilaNotificacaoTeams).
+        if (alerta.DestinatarioUsuarioId.HasValue)
+        {
+            await _filaNotificacaoTeams.EnfileirarAsync(
+                new NotificacaoTeamsMensagem(alerta.Id, alerta.DestinatarioUsuarioId.Value, alerta.Titulo, alerta.Descricao),
+                ct);
+        }
+
         return alerta.Id;
     }
 }

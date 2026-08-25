@@ -33,6 +33,7 @@ public class SstDbContext : DbContext, IAppDbContext
 
     public DbSet<Alerta> Alertas => Set<Alerta>();
     public DbSet<AlertaHistoricoEnvio> AlertaHistoricoEnvios => Set<AlertaHistoricoEnvio>();
+    public DbSet<RegraAlerta> RegrasAlerta => Set<RegraAlerta>();
     public DbSet<Evidencia> Evidencias => Set<Evidencia>();
     public DbSet<TrilhaAuditoria> TrilhaAuditoria => Set<TrilhaAuditoria>();
 
@@ -82,6 +83,11 @@ public class SstDbContext : DbContext, IAppDbContext
 
     public DbSet<DocumentoGestao> DocumentosGestao => Set<DocumentoGestao>();
     public DbSet<DocumentoRevisao> DocumentoRevisoes => Set<DocumentoRevisao>();
+
+    public DbSet<ItemHigienizacao> ItensHigienizacao => Set<ItemHigienizacao>();
+    public DbSet<RegistroHigienizacao> RegistrosHigienizacao => Set<RegistroHigienizacao>();
+
+    public DbSet<AtivoSst> AtivosSst => Set<AtivoSst>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {

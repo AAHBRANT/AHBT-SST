@@ -45,3 +45,23 @@ public class AlertaHistoricoEnvio : AuditableEntity
     public int NumeroTentativa { get; set; } = 1;
     public string? MensagemErro { get; set; }
 }
+
+// Motor Central de Alertas (requisito do usuário, 2026-08-24): limiar de antecedência configurável
+// por módulo — em vez de hardcodar "sempre 30 dias antes" no código, o usuário autorizado cadastra
+// N linhas por módulo (ex.: 30 dias/Info, 15 dias/Atencao, 7 dias/Critico) e o AlertaEngineService
+// (Application/Alertas/Motor) escolhe a regra mais urgente cujo DiasAntecedencia cobre os dias
+// restantes até o vencimento. Item vencido (dias restantes < 0) sempre gera Severidade=Critico,
+// independentemente de existir uma regra configurada para isso.
+public class RegraAlerta : AuditableEntity
+{
+    public TipoModuloAlerta Modulo { get; set; }
+    public int DiasAntecedencia { get; set; }
+    public SeveridadeAlerta Severidade { get; set; }
+
+    // Responsável fixo pelo módulo (requisito do usuário, 2026-08-25): usuário que recebe a
+    // notificação de "sino" do Teams quando o motor cria automaticamente um Alerta associado a
+    // esta regra — ver AlertaEngineService.ProcessarAsync. Opcional: sem responsável configurado,
+    // o alerta automático é criado normalmente, apenas sem notificação proativa.
+    public Guid? ResponsavelUsuarioId { get; set; }
+    public Usuario? ResponsavelUsuario { get; set; }
+}

@@ -152,6 +152,20 @@ public static class RbacSeeder
         ("dds:conduzir", "Dds", "Conduzir", "Marcar itens do checklist e registrar participantes durante a condução do DDS"),
         ("dds:encerrar", "Dds", "Encerrar", "Encerrar DDS"),
         ("dds:exportar", "Dds", "Exportar", "Exportar DDS em PDF e enviar via Telegram"),
+
+        ("higienizacao:ver", "Higienizacao", "Ver", "Ver itens e histórico de higienização"),
+        ("higienizacao:criar", "Higienizacao", "Criar", "Cadastrar item de higienização (local + periodicidade)"),
+        ("higienizacao:registrar", "Higienizacao", "Registrar", "Registrar higienização executada, com foto"),
+
+        ("ativo:ver", "Ativo", "Ver", "Ver cadastro de ativos de SST (extintores/equipamentos)"),
+        ("ativo:criar", "Ativo", "Criar", "Cadastrar ativo de SST"),
+        ("ativo:editar", "Ativo", "Editar", "Editar ativo de SST"),
+        ("ativo:excluir", "Ativo", "Excluir", "Excluir ativo de SST"),
+
+        ("regraalerta:ver", "RegraAlerta", "Ver", "Ver limiares de antecedência/severidade do Motor Central de Alertas"),
+        ("regraalerta:criar", "RegraAlerta", "Criar", "Cadastrar limiar de antecedência/severidade por módulo"),
+        ("regraalerta:editar", "RegraAlerta", "Editar", "Editar limiar de antecedência/severidade por módulo"),
+        ("regraalerta:excluir", "RegraAlerta", "Excluir", "Excluir limiar de antecedência/severidade por módulo"),
     };
 
     public static async Task ExecutarAsync(IServiceProvider services, CancellationToken ct = default)

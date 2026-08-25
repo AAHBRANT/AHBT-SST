@@ -43,7 +43,10 @@ public class PerfilAcessoPermissao : AuditableEntity
 
 public class Usuario : AuditableEntity
 {
-    public string AzureAdObjectId { get; set; } = string.Empty;
+    // Nulo = pré-cadastro administrativo ainda sem primeiro login. É preenchido automaticamente
+    // (claim `oid` do token) no primeiro acesso via Teams SSO — nunca digitado manualmente, pois
+    // o Administrador não tem como conhecer o Object Id de outra identidade no Entra ID.
+    public string? AzureAdObjectId { get; set; }
     public string Email { get; set; } = string.Empty;
     public string Nome { get; set; } = string.Empty;
 

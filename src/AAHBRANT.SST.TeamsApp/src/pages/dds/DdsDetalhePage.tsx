@@ -18,7 +18,6 @@ import {
 import {
   ArrowDownload24Regular,
   ArrowLeft24Regular,
-  Camera24Regular,
   LockClosed24Regular,
   PersonAdd24Regular,
   Send24Regular,

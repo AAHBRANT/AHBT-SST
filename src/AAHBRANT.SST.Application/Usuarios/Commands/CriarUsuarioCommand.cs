@@ -6,11 +6,11 @@ using Microsoft.EntityFrameworkCore;
 
 namespace AAHBRANT.SST.Application.Usuarios.Commands;
 
-// Não recebe senha/hash: autenticação é 100% Entra ID SSO. AzureAdObjectId é o vínculo
-// com a identidade real, obtido do claim `oid` do token — aqui é só o cadastro administrativo
-// (pré-provisionamento de acesso antes do primeiro login, ou vínculo manual pelo Administrador).
+// Não recebe senha/hash: autenticação é 100% Entra ID SSO. AzureAdObjectId NÃO é digitado aqui —
+// o Administrador não tem como conhecer o Object Id de outra identidade no Entra ID. Este comando
+// faz o pré-cadastro só por Email/Nome; o vínculo com o claim `oid` é preenchido automaticamente
+// no primeiro login via Teams (ver VinculoAzureAdMiddleware), casando pelo Email.
 public record CriarUsuarioCommand(
-    string AzureAdObjectId,
     string Email,
     string Nome,
     Guid? TrabalhadorId) : IRequest<Guid>;
@@ -19,7 +19,6 @@ public class CriarUsuarioCommandValidator : AbstractValidator<CriarUsuarioComman
 {
     public CriarUsuarioCommandValidator()
     {
-        RuleFor(x => x.AzureAdObjectId).NotEmpty().MaximumLength(36);
         RuleFor(x => x.Email).NotEmpty().EmailAddress().MaximumLength(200);
         RuleFor(x => x.Nome).NotEmpty().MaximumLength(200);
     }
@@ -33,14 +32,12 @@ public class CriarUsuarioCommandHandler : IRequestHandler<CriarUsuarioCommand, G
 
     public async Task<Guid> Handle(CriarUsuarioCommand request, CancellationToken ct)
     {
-        var jaExiste = await _db.Usuarios.AnyAsync(
-            u => u.AzureAdObjectId == request.AzureAdObjectId || u.Email == request.Email, ct);
+        var jaExiste = await _db.Usuarios.AnyAsync(u => u.Email == request.Email, ct);
         if (jaExiste)
-            throw new InvalidOperationException("Já existe um usuário com este AzureAdObjectId ou Email.");
+            throw new InvalidOperationException("Já existe um usuário com este Email.");
 
         var usuario = new Usuario
         {
-            AzureAdObjectId = request.AzureAdObjectId,
             Email = request.Email,
             Nome = request.Nome,
             TrabalhadorId = request.TrabalhadorId

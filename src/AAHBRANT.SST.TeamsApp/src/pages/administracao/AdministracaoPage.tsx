@@ -1,13 +1,12 @@
 import { useState } from 'react';
 import { Tab, TabList, Text, type SelectTabData, type SelectTabEvent } from '@fluentui/react-components';
-import { UsuariosTab } from './UsuariosTab';
-import { PerfisAcessoTab } from './PerfisAcessoTab';
+import { ControleAcessoTab } from './ControleAcessoTab';
 import { TrilhaAuditoriaTab } from './TrilhaAuditoriaTab';
 
-type AbaAdministracao = 'usuarios' | 'perfis' | 'auditoria';
+type AbaAdministracao = 'acesso' | 'auditoria';
 
 export function AdministracaoPage() {
-  const [aba, setAba] = useState<AbaAdministracao>('usuarios');
+  const [aba, setAba] = useState<AbaAdministracao>('acesso');
 
   return (
     <div>
@@ -22,13 +21,11 @@ export function AdministracaoPage() {
         onTabSelect={(_: SelectTabEvent, data: SelectTabData) => setAba(data.value as AbaAdministracao)}
         style={{ marginBottom: 16 }}
       >
-        <Tab value="usuarios">Usuários</Tab>
-        <Tab value="perfis">Perfis & Permissões</Tab>
+        <Tab value="acesso">Controle de Acesso</Tab>
         <Tab value="auditoria">Trilha de Auditoria</Tab>
       </TabList>
 
-      {aba === 'usuarios' && <UsuariosTab />}
-      {aba === 'perfis' && <PerfisAcessoTab />}
+      {aba === 'acesso' && <ControleAcessoTab />}
       {aba === 'auditoria' && <TrilhaAuditoriaTab />}
     </div>
   );

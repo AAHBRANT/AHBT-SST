@@ -18,6 +18,7 @@ import { InspecoesPage } from './pages/inspecoes/InspecoesPage';
 import { InspecaoDetalhePage } from './pages/inspecoes/InspecaoDetalhePage';
 import { IdentificacaoPage } from './pages/identificacao/IdentificacaoPage';
 import { AreaPublicaPage } from './pages/identificacao/AreaPublicaPage';
+import { AtivosPage } from './pages/ativos/AtivosPage';
 import { AdministracaoPage } from './pages/administracao/AdministracaoPage';
 import { NaoConformidadesPage } from './pages/naoconformidades/NaoConformidadesPage';
 import { NaoConformidadeDetalhePage } from './pages/naoconformidades/NaoConformidadeDetalhePage';
@@ -30,6 +31,8 @@ import { DocumentosGestaoPage } from './pages/gestaodocumental/DocumentosGestaoP
 import { DocumentoGestaoDetalhePage } from './pages/gestaodocumental/DocumentoGestaoDetalhePage';
 import { DdsPage } from './pages/dds/DdsPage';
 import { DdsDetalhePage } from './pages/dds/DdsDetalhePage';
+import { HigienizacaoPage } from './pages/higienizacao/HigienizacaoPage';
+import { HigienizacaoDetalhePage } from './pages/higienizacao/HigienizacaoDetalhePage';
 
 // Envolve as rotas internas do app com o AppShell (sidebar/header do Teams). A rota pública
 // /p/:codigoOuUid fica de fora dessa camada — ver AreaPublicaPage.
@@ -91,6 +94,7 @@ function App() {
                     { valor: 'pgr', rotulo: 'PGR' },
                     { valor: 'inspecoes', rotulo: 'Inspeções' },
                     { valor: 'dds', rotulo: 'DDS' },
+                    { valor: 'higienizacao', rotulo: 'Higienização' },
                   ]}
                 />
               }
@@ -103,6 +107,8 @@ function App() {
               <Route path="inspecoes/:id" element={<InspecaoDetalhePage />} />
               <Route path="dds" element={<DdsPage />} />
               <Route path="dds/:id" element={<DdsDetalhePage />} />
+              <Route path="higienizacao" element={<HigienizacaoPage />} />
+              <Route path="higienizacao/:id" element={<HigienizacaoDetalhePage />} />
             </Route>
 
             {/* Módulo Operação: Obras, Pessoas, APR, PT, Identificação & Acesso */}
@@ -118,6 +124,7 @@ function App() {
                     { valor: 'apr', rotulo: 'APR' },
                     { valor: 'pt', rotulo: 'PT (Permissão de Trabalho)' },
                     { valor: 'identificacao', rotulo: 'Identificação & Acesso' },
+                    { valor: 'ativos', rotulo: 'Ativos (Extintores & Equipamentos)' },
                   ]}
                 />
               }
@@ -131,6 +138,7 @@ function App() {
               <Route path="pt" element={<PermissoesTrabalhoPage />} />
               <Route path="pt/:id" element={<PermissaoTrabalhoDetalhePage />} />
               <Route path="identificacao" element={<IdentificacaoPage />} />
+              <Route path="ativos" element={<AtivosPage />} />
             </Route>
 
             {/* Módulo Melhoria Contínua: Não Conformidades, Acidentes & Incidentes */}
@@ -180,6 +188,11 @@ function App() {
             />
             <Route path="/dds" element={<Navigate to="/prevencao/dds" replace />} />
             <Route path="/dds/:id" element={<RedirecionarComId para={(id) => `/prevencao/dds/${id}`} />} />
+            <Route path="/higienizacao" element={<Navigate to="/prevencao/higienizacao" replace />} />
+            <Route
+              path="/higienizacao/:id"
+              element={<RedirecionarComId para={(id) => `/prevencao/higienizacao/${id}`} />}
+            />
 
             <Route path="/obras" element={<Navigate to="/operacao/obras" replace />} />
             <Route path="/pessoas" element={<Navigate to="/operacao/pessoas" replace />} />

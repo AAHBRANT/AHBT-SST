@@ -90,7 +90,12 @@ public enum TipoAlerta
     DocumentoVencendo = 12,
     DocumentoVencido = 13,
     AtividadeBloqueada = 14,
-    PtVencida = 15
+    PtVencida = 15,
+    HigienizacaoVencendo = 16,
+    ExtintorVencendo = 17,
+    ExtintorVencido = 18,
+    EquipamentoVencendo = 19,
+    EquipamentoVencido = 20
 }
 
 public enum SeveridadeAlerta
@@ -98,6 +103,27 @@ public enum SeveridadeAlerta
     Info = 1,
     Atencao = 2,
     Critico = 3
+}
+
+// Motor Central de Alertas (requisito adicionado pelo usuário em 2026-08-24): generaliza o padrão
+// de vencimento/alerta para qualquer módulo, em vez de cada um reimplementar sua própria checagem
+// de dias/severidade. Formaliza o que hoje é o campo livre Alerta.EntidadeOrigemTipo. Só Aso,
+// Treinamento e Higienizacao têm IAlertaOrigemProvider registrado nesta fase — os demais valores
+// existem para os módulos de ativos (Extintor/Equipamento) e os já existentes (Epi/Documento/
+// Inspecao/Dds/AcaoPlano) previstos no requisito do usuário, plugados em fases seguintes.
+public enum TipoModuloAlerta
+{
+    Aso = 1,
+    Treinamento = 2,
+    Higienizacao = 3,
+    Epi = 4,
+    Documento = 5,
+    Inspecao = 6,
+    Extintor = 7,
+    Equipamento = 8,
+    Dds = 9,
+    PlanoAcao = 10,
+    Outro = 11
 }
 
 public enum StatusAlerta
@@ -358,4 +384,15 @@ public enum TipoFotoParticipante
 {
     Pessoa = 1,
     DocumentoAssinado = 2
+}
+
+// Motor Central de Alertas + Cadastro de Ativos (requisito do usuário, 2026-08-25): entidade única
+// AtivoSst (ver Domain/Entidades/AtivoSst.cs) com este campo discriminador — em vez de duas tabelas
+// separadas (Extintor/Equipamento) — para permitir adicionar novos tipos de ativo no futuro sem
+// migration de schema. Distinto de TipoModuloAlerta.Extintor/Equipamento (que classifica o módulo
+// dentro do motor de alertas): este enum classifica o registro dentro da tabela AtivoSst.
+public enum TipoAtivo
+{
+    Extintor = 1,
+    Equipamento = 2
 }

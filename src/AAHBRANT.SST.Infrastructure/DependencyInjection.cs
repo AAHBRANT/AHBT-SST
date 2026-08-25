@@ -2,17 +2,24 @@ using AAHBRANT.SST.Application.Common.Interfaces;
 using AAHBRANT.SST.Application.Dds;
 using AAHBRANT.SST.Infrastructure.Documentos;
 using AAHBRANT.SST.Infrastructure.Integracao;
+using AAHBRANT.SST.Infrastructure.Integracao.Bot;
+using AAHBRANT.SST.Infrastructure.Integracao.Teams;
 using AAHBRANT.SST.Infrastructure.Persistencia;
 using AAHBRANT.SST.Infrastructure.Seguranca;
+using Azure.Messaging.ServiceBus;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
 
 namespace AAHBRANT.SST.Infrastructure;
 
 public static class DependencyInjection
 {
-    public static IServiceCollection AddInfrastructure(this IServiceCollection services, IConfiguration configuration)
+    public static IServiceCollection AddInfrastructure(
+        this IServiceCollection services,
+        IConfiguration configuration,
+        bool habilitarPollingTelegram = true)
     {
         var connectionString = configuration.GetConnectionString("SstDatabase")
             ?? throw new InvalidOperationException("Connection string 'SstDatabase' não configurada.");
@@ -37,9 +44,41 @@ public static class DependencyInjection
         services.Configure<TelegramOptions>(configuration.GetSection("Telegram"));
         services.AddHttpClient();
         services.AddScoped<ITelegramService, TelegramBotService>();
-        services.AddHostedService<TelegramUpdatesPollingService>();
+
+        // O Telegram getUpdates (long polling) só permite um consumidor simultâneo por bot token.
+        // A Api já roda esse polling; o Worker (AlertaEngineWorker) chama AddInfrastructure com
+        // habilitarPollingTelegram: false para não abrir um segundo consumidor e causar 409 Conflict.
+        if (habilitarPollingTelegram)
+            services.AddHostedService<TelegramUpdatesPollingService>();
 
         services.AddScoped<IDdsPdfService, DdsPdfService>();
+
+        // Motor Central de Alertas, Etapa 4 — notificação de "sino" do Teams (Activity Feed) via
+        // Microsoft Graph (POST /users/{aadObjectId}/teamwork/sendActivityNotification), sem Bot
+        // Framework/Bot Channels Registration. TenantId/ClientId/ClientSecret ficam vazios até o App
+        // Registration com a permissão de aplicativo TeamsActivity.Send ser provisionado no Entra ID —
+        // ver GraphActivityNotificacaoTeamsService, que lança exceção graciosamente enquanto isso.
+        services.Configure<GraphOptions>(configuration.GetSection("Graph"));
+        services.AddScoped<INotificacaoTeamsService, GraphActivityNotificacaoTeamsService>();
+
+        // Fila de retry para falhas de envio (PROJECT RULES.md §4). Usa Azure Service Bus quando
+        // "ServiceBus:ConnectionString" estiver preenchida (recurso provisionado manualmente no
+        // Azure); caso contrário, cai para um fallback local em memória — não bloqueia a aplicação
+        // nem exige nenhum recurso externo para rodar em desenvolvimento/CI.
+        services.Configure<ServiceBusOptions>(configuration.GetSection("ServiceBus"));
+        var serviceBusConnectionString = configuration["ServiceBus:ConnectionString"];
+        if (!string.IsNullOrWhiteSpace(serviceBusConnectionString))
+        {
+            services.AddSingleton(sp => new ServiceBusClient(serviceBusConnectionString));
+            services.AddSingleton<IFilaNotificacaoTeams, ServiceBusFilaNotificacaoTeams>();
+            services.AddHostedService<ServiceBusNotificacaoTeamsProcessor>();
+        }
+        else
+        {
+            services.AddSingleton<InMemoryFilaNotificacaoTeams>();
+            services.AddSingleton<IFilaNotificacaoTeams>(sp => sp.GetRequiredService<InMemoryFilaNotificacaoTeams>());
+            services.AddHostedService<InMemoryNotificacaoTeamsProcessor>();
+        }
 
         return services;
     }

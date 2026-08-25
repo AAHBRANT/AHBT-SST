@@ -1,3 +1,4 @@
+using AAHBRANT.SST.Application.Alertas.Motor;
 using AAHBRANT.SST.Application.Common.Behaviors;
 using AAHBRANT.SST.Application.Elegibilidade;
 using AAHBRANT.SST.Application.Elegibilidade.Rules;
@@ -22,6 +23,13 @@ public static class DependencyInjection
         services.AddScoped<IEligibilityRule, AprValidaRule>();
         services.AddScoped<IEligibilityRule, PermissaoTrabalhoValidaRule>();
         services.AddScoped<IEligibilityService, EligibilityService>();
+
+        services.AddScoped<IAlertaOrigemProvider, AsoAlertaProvider>();
+        services.AddScoped<IAlertaOrigemProvider, TreinamentoAlertaProvider>();
+        services.AddScoped<IAlertaOrigemProvider, HigienizacaoAlertaProvider>();
+        services.AddScoped<IAlertaOrigemProvider, ExtintorAlertaProvider>();
+        services.AddScoped<IAlertaOrigemProvider, EquipamentoAlertaProvider>();
+        services.AddScoped<IAlertaEngineService, AlertaEngineService>();
 
         return services;
     }

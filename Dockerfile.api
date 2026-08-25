@@ -1,0 +1,18 @@
+FROM mcr.microsoft.com/dotnet/sdk:8.0 AS build
+WORKDIR /src
+
+COPY src/AAHBRANT.SST.Domain/*.csproj src/AAHBRANT.SST.Domain/
+COPY src/AAHBRANT.SST.Application/*.csproj src/AAHBRANT.SST.Application/
+COPY src/AAHBRANT.SST.Infrastructure/*.csproj src/AAHBRANT.SST.Infrastructure/
+COPY src/AAHBRANT.SST.Api/*.csproj src/AAHBRANT.SST.Api/
+RUN dotnet restore src/AAHBRANT.SST.Api/AAHBRANT.SST.Api.csproj
+
+COPY src/ src/
+RUN dotnet publish src/AAHBRANT.SST.Api/AAHBRANT.SST.Api.csproj -c Release -o /app --no-restore
+
+FROM mcr.microsoft.com/dotnet/aspnet:8.0 AS runtime
+WORKDIR /app
+COPY --from=build /app .
+EXPOSE 8080
+ENV ASPNETCORE_URLS=http://+:8080
+ENTRYPOINT ["dotnet", "AAHBRANT.SST.Api.dll"]

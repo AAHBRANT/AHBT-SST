@@ -47,9 +47,11 @@ public class UsuarioConfiguracao : IEntityTypeConfiguration<Usuario>
 {
     public void Configure(EntityTypeBuilder<Usuario> builder)
     {
-        builder.Property(u => u.AzureAdObjectId).IsRequired().HasMaxLength(36);
+        builder.Property(u => u.AzureAdObjectId).HasMaxLength(36);
         builder.Property(u => u.Email).IsRequired().HasMaxLength(200);
         builder.Property(u => u.Nome).IsRequired().HasMaxLength(200);
+        // SQL Server trata cada NULL como distinto num índice único — múltiplos usuários
+        // pré-cadastrados (sem primeiro login ainda) podem conviver com AzureAdObjectId nulo.
         builder.HasIndex(u => u.AzureAdObjectId).IsUnique();
         builder.HasIndex(u => u.Email).IsUnique();
         // Sem HasDefaultValue, o EF gera DEFAULT 0 na coluna — valor inexistente no enum

@@ -1,4 +1,21 @@
+import { authentication } from '@microsoft/teams-js';
+
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL ?? 'https://localhost:7095';
+
+// Fora do Teams (dev local no navegador) o SDK não está inicializado e getAuthToken rejeita —
+// nesse caso seguimos sem o header, como já era o comportamento (API local roda sem auth).
+async function obterTokenAutenticacaoTeams(): Promise<string | null> {
+  try {
+    return await authentication.getAuthToken();
+  } catch {
+    return null;
+  }
+}
+
+async function montarHeadersAuth(): Promise<Record<string, string>> {
+  const token = await obterTokenAutenticacaoTeams();
+  return token ? { Authorization: `Bearer ${token}` } : {};
+}
 
 export const StatusObra = {
   Planejada: 1,
@@ -758,7 +775,9 @@ export interface UsuarioPerfilObra {
 
 export interface Usuario {
   id: string;
-  azureAdObjectId: string;
+  // Nulo até o primeiro login via Teams SSO: é vinculado automaticamente pelo backend
+  // (claim 'oid' do token), nunca digitado manualmente no cadastro.
+  azureAdObjectId: string | null;
   email: string;
   nome: string;
   status: number;
@@ -768,7 +787,6 @@ export interface Usuario {
 }
 
 export interface NovoUsuario {
-  azureAdObjectId: string;
   email: string;
   nome: string;
   trabalhadorId?: string | null;
@@ -1028,6 +1046,65 @@ export interface EnviarDdsTelegramResultado {
   enviados: number;
   semVinculo: number;
 }
+
+export interface ItemHigienizacao {
+  id: string;
+  obraId: string;
+  obraNome: string;
+  nome: string;
+  local?: string | null;
+  periodicidadeDias: number;
+  ultimaHigienizacaoEm?: string | null;
+  proximoVencimentoEm: string;
+  totalRegistros: number;
+}
+
+export interface NovoItemHigienizacao {
+  obraId: string;
+  nome: string;
+  local?: string | null;
+  periodicidadeDias: number;
+}
+
+export interface RegistroHigienizacao {
+  id: string;
+  trabalhadorId: string;
+  trabalhadorNome: string;
+  dataHora: string;
+  observacoes?: string | null;
+}
+
+export interface ItemHigienizacaoDetalhe {
+  item: ItemHigienizacao;
+  registros: RegistroHigienizacao[];
+}
+
+// Motor Central de Alertas + Cadastro de Ativos (requisito do usuário, 2026-08-25): entidade única
+// AtivoSst com campo discriminador TipoAtivo — diferente de Higienização, a validade aqui é um
+// campo fixo (DataValidade), não calculada a partir de um histórico de registros.
+export const TipoAtivo = {
+  Extintor: 1,
+  Equipamento: 2,
+} as const;
+
+export const tipoAtivoLabel: Record<number, string> = {
+  1: 'Extintor',
+  2: 'Equipamento',
+};
+
+export interface AtivoSst {
+  id: string;
+  obraId: string;
+  obraNome: string;
+  tipoAtivo: number;
+  identificacao: string;
+  descricao: string;
+  localizacao?: string | null;
+  dataValidade: string;
+  observacoes?: string | null;
+}
+
+export type NovoAtivoSst = Omit<AtivoSst, 'id' | 'obraNome'>;
 
 export interface TrilhaAuditoria {
   id: string;
@@ -1416,38 +1493,48 @@ export interface DocumentoGestaoDetalhe {
 
 export const TipoAlerta = {
   AsoVencendo: 1,
-  AsoVencida: 2,
+  AsoVencido: 2,
   TreinamentoVencendo: 3,
   TreinamentoVencido: 4,
-  EppVencendo: 5,
-  EppVencido: 6,
-  NaoConformidadeAtrasada: 7,
-  AcaoPlanoAtrasada: 8,
-  AcidenteAberto: 9,
-  DocumentoVencendo: 10,
-  DocumentoVencido: 11,
-  ObrigacaoLegalVencendo: 12,
-  ObrigacaoLegalVencida: 13,
-  PtVencendo: 14,
+  AutorizacaoVencendo: 5,
+  AutorizacaoVencida: 6,
+  EpiValidadeProxima: 7,
+  EpiVencido: 8,
+  InspecaoPendente: 9,
+  NaoConformidadeAberta: 10,
+  AcaoAtrasada: 11,
+  DocumentoVencendo: 12,
+  DocumentoVencido: 13,
+  AtividadeBloqueada: 14,
   PtVencida: 15,
+  HigienizacaoVencendo: 16,
+  ExtintorVencendo: 17,
+  ExtintorVencido: 18,
+  EquipamentoVencendo: 19,
+  EquipamentoVencido: 20,
 } as const;
 
 export const tipoAlertaLabel: Record<number, string> = {
   1: 'ASO vencendo',
-  2: 'ASO vencida',
+  2: 'ASO vencido',
   3: 'Treinamento vencendo',
   4: 'Treinamento vencido',
-  5: 'EPP vencendo',
-  6: 'EPP vencido',
-  7: 'Não conformidade atrasada',
-  8: 'Ação de plano atrasada',
-  9: 'Acidente em aberto',
-  10: 'Documento vencendo',
-  11: 'Documento vencido',
-  12: 'Obrigação legal vencendo',
-  13: 'Obrigação legal vencida',
-  14: 'PT vencendo',
+  5: 'Autorização vencendo',
+  6: 'Autorização vencida',
+  7: 'EPI com validade próxima',
+  8: 'EPI vencido',
+  9: 'Inspeção pendente',
+  10: 'Não conformidade aberta',
+  11: 'Ação atrasada',
+  12: 'Documento vencendo',
+  13: 'Documento vencido',
+  14: 'Atividade bloqueada',
   15: 'PT vencida',
+  16: 'Higienização vencendo',
+  17: 'Extintor vencendo',
+  18: 'Extintor vencido',
+  19: 'Equipamento vencendo',
+  20: 'Equipamento vencido',
 };
 
 export const SeveridadeAlerta = {
@@ -1477,6 +1564,21 @@ export const statusAlertaLabel: Record<number, string> = {
   4: 'Resolvido',
   5: 'Ignorado',
 };
+
+// Rótulo amigável do módulo de origem do alerta (Alerta.EntidadeOrigemTipo) — alimentado tanto
+// pelos IAlertaOrigemProvider do Motor Central de Alertas (Aso, Treinamento, ItemHigienizacao,
+// AtivoSst) quanto por alertas criados manualmente, cujo EntidadeOrigemTipo é texto livre (ver
+// CriarAlertaCommand); por isso o fallback retorna o próprio valor quando não reconhecido.
+export const categoriaAlertaLabel: Record<string, string> = {
+  Aso: 'ASO',
+  Treinamento: 'Treinamentos',
+  ItemHigienizacao: 'Higienização',
+  AtivoSst: 'Ativos (Extintores/Equipamentos)',
+};
+
+export function categoriaAlertaRotulo(entidadeOrigemTipo: string): string {
+  return categoriaAlertaLabel[entidadeOrigemTipo] ?? entidadeOrigemTipo;
+}
 
 export interface Alerta {
   id: string;
@@ -1524,11 +1626,56 @@ export interface AtualizarAlertaPayload {
   dataLimiteTratamento?: string | null;
 }
 
+// Motor Central de Alertas (requisito do usuário, 2026-08-25): tela de administração que permite
+// ajustar RegraAlerta.DiasAntecedencia/Severidade por módulo, hoje só editável direto no banco. O
+// AlertaEngineService escolhe a regra mais urgente cujo DiasAntecedencia cobre os dias restantes —
+// ver AAHBRANT.SST.Application/Alertas/Motor/AlertaEngineService.cs.
+export const TipoModuloAlerta = {
+  Aso: 1,
+  Treinamento: 2,
+  Higienizacao: 3,
+  Epi: 4,
+  Documento: 5,
+  Inspecao: 6,
+  Extintor: 7,
+  Equipamento: 8,
+  Dds: 9,
+  PlanoAcao: 10,
+  Outro: 11,
+} as const;
+
+export const moduloAlertaLabel: Record<number, string> = {
+  1: 'ASO',
+  2: 'Treinamento',
+  3: 'Higienização',
+  4: 'EPI',
+  5: 'Documento',
+  6: 'Inspeção',
+  7: 'Extintor',
+  8: 'Equipamento',
+  9: 'DDS',
+  10: 'Plano de ação',
+  11: 'Outro',
+};
+
+export interface RegraAlerta {
+  id: string;
+  modulo: number;
+  diasAntecedencia: number;
+  severidade: number;
+  responsavelUsuarioId?: string | null;
+  responsavelUsuarioNome?: string | null;
+}
+
+export type NovaRegraAlerta = Omit<RegraAlerta, 'id'>;
+
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
+  const authHeaders = await montarHeadersAuth();
   const response = await fetch(`${API_BASE_URL}${path}`, {
     ...init,
     headers: {
       'Content-Type': 'application/json',
+      ...authHeaders,
       ...init?.headers,
     },
   });
@@ -1836,6 +1983,7 @@ export const api = {
       formData.append('foto', foto);
       const response = await fetch(`${API_BASE_URL}/api/dds/${ddsId}/participantes`, {
         method: 'POST',
+        headers: await montarHeadersAuth(),
         body: formData,
       });
       if (!response.ok) {
@@ -1846,7 +1994,7 @@ export const api = {
     },
     encerrar: (id: string) => request<void>(`/api/dds/${id}/encerrar`, { method: 'POST' }),
     baixarPdf: async (id: string) => {
-      const response = await fetch(`${API_BASE_URL}/api/dds/${id}/pdf`);
+      const response = await fetch(`${API_BASE_URL}/api/dds/${id}/pdf`, { headers: await montarHeadersAuth() });
       if (!response.ok) {
         const corpo = await response.text().catch(() => '');
         throw new Error(`${response.status} ${response.statusText}: ${corpo}`);
@@ -1854,7 +2002,9 @@ export const api = {
       return response.blob();
     },
     baixarFotoParticipante: async (participanteId: string) => {
-      const response = await fetch(`${API_BASE_URL}/api/dds/participantes/${participanteId}/foto`);
+      const response = await fetch(`${API_BASE_URL}/api/dds/participantes/${participanteId}/foto`, {
+        headers: await montarHeadersAuth(),
+      });
       if (!response.ok) {
         const corpo = await response.text().catch(() => '');
         throw new Error(`${response.status} ${response.statusText}: ${corpo}`);
@@ -1863,6 +2013,59 @@ export const api = {
     },
     enviarTelegram: (id: string) =>
       request<EnviarDdsTelegramResultado>(`/api/dds/${id}/telegram/enviar`, { method: 'POST' }),
+  },
+  higienizacao: {
+    listar: (obraId?: string) =>
+      request<ItemHigienizacao[]>(`/api/higienizacao${obraId ? `?obraId=${obraId}` : ''}`),
+    obterDetalhe: (id: string) => request<ItemHigienizacaoDetalhe>(`/api/higienizacao/${id}`),
+    criar: (item: NovoItemHigienizacao) =>
+      request<{ id: string }>('/api/higienizacao', { method: 'POST', body: JSON.stringify(item) }),
+    registrarHigienizacao: async (
+      itemId: string,
+      trabalhadorId: string,
+      observacoes: string | null,
+      foto: File,
+    ) => {
+      const formData = new FormData();
+      formData.append('trabalhadorId', trabalhadorId);
+      if (observacoes) formData.append('observacoes', observacoes);
+      formData.append('foto', foto);
+      const response = await fetch(`${API_BASE_URL}/api/higienizacao/${itemId}/registros`, {
+        method: 'POST',
+        headers: await montarHeadersAuth(),
+        body: formData,
+      });
+      if (!response.ok) {
+        const corpo = await response.text().catch(() => '');
+        throw new Error(`${response.status} ${response.statusText}: ${corpo}`);
+      }
+      return (await response.json()) as { id: string };
+    },
+    baixarFotoRegistro: async (registroId: string) => {
+      const response = await fetch(`${API_BASE_URL}/api/higienizacao/registros/${registroId}/foto`, {
+        headers: await montarHeadersAuth(),
+      });
+      if (!response.ok) {
+        const corpo = await response.text().catch(() => '');
+        throw new Error(`${response.status} ${response.statusText}: ${corpo}`);
+      }
+      return response.blob();
+    },
+  },
+  ativos: {
+    listar: (obraId?: string, tipoAtivo?: number) => {
+      const params = new URLSearchParams();
+      if (obraId) params.set('obraId', obraId);
+      if (tipoAtivo) params.set('tipoAtivo', String(tipoAtivo));
+      const query = params.toString();
+      return request<AtivoSst[]>(`/api/ativos${query ? `?${query}` : ''}`);
+    },
+    obterDetalhe: (id: string) => request<AtivoSst>(`/api/ativos/${id}`),
+    criar: (ativo: NovoAtivoSst) =>
+      request<{ id: string }>('/api/ativos', { method: 'POST', body: JSON.stringify(ativo) }),
+    atualizar: (id: string, ativo: AtivoSst) =>
+      request<void>(`/api/ativos/${id}`, { method: 'PUT', body: JSON.stringify(ativo) }),
+    excluir: (id: string) => request<void>(`/api/ativos/${id}`, { method: 'DELETE' }),
   },
   naoConformidades: {
     listar: (status?: number) =>
@@ -1984,6 +2187,14 @@ export const api = {
       }),
     resolver: (id: string) => request<void>(`/api/alertas/${id}/resolver`, { method: 'POST' }),
     ignorar: (id: string) => request<void>(`/api/alertas/${id}/ignorar`, { method: 'POST' }),
+  },
+  regrasAlerta: {
+    listar: () => request<RegraAlerta[]>('/api/regrasalerta'),
+    criar: (regra: NovaRegraAlerta) =>
+      request<{ id: string }>('/api/regrasalerta', { method: 'POST', body: JSON.stringify(regra) }),
+    atualizar: (id: string, regra: RegraAlerta) =>
+      request<void>(`/api/regrasalerta/${id}`, { method: 'PUT', body: JSON.stringify(regra) }),
+    excluir: (id: string) => request<void>(`/api/regrasalerta/${id}`, { method: 'DELETE' }),
   },
   elegibilidade: {
     avaliar: (query: AvaliarElegibilidadeQuery) =>

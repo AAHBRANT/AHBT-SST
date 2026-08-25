@@ -27,6 +27,7 @@ public interface IAppDbContext
     DbSet<EntregaEpi> EntregasEpi { get; }
     DbSet<Alerta> Alertas { get; }
     DbSet<AlertaHistoricoEnvio> AlertaHistoricoEnvios { get; }
+    DbSet<RegraAlerta> RegrasAlerta { get; }
     DbSet<Evidencia> Evidencias { get; }
 
     DbSet<Atividade> Atividades { get; }
@@ -78,6 +79,11 @@ public interface IAppDbContext
 
     DbSet<DocumentoGestao> DocumentosGestao { get; }
     DbSet<DocumentoRevisao> DocumentoRevisoes { get; }
+
+    DbSet<ItemHigienizacao> ItensHigienizacao { get; }
+    DbSet<RegistroHigienizacao> RegistrosHigienizacao { get; }
+
+    DbSet<AtivoSst> AtivosSst { get; }
 
     Task<int> SaveChangesAsync(CancellationToken cancellationToken = default);
 }
