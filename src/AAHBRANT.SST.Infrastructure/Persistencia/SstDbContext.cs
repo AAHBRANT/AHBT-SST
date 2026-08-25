@@ -50,6 +50,10 @@ public class SstDbContext : DbContext, IAppDbContext
     public DbSet<PlanoAcaoItem> PlanoAcaoItens => Set<PlanoAcaoItem>();
     public DbSet<PgrRevisao> PgrRevisoes => Set<PgrRevisao>();
 
+    public DbSet<Pcmso> Pcmsos => Set<Pcmso>();
+    public DbSet<PcmsoItemMatriz> PcmsoItensMatriz => Set<PcmsoItemMatriz>();
+    public DbSet<PcmsoRevisao> PcmsoRevisoes => Set<PcmsoRevisao>();
+
     public DbSet<TagIdentificacao> TagsIdentificacao => Set<TagIdentificacao>();
     public DbSet<AreaSst> AreasSst => Set<AreaSst>();
 
@@ -106,7 +110,7 @@ public class SstDbContext : DbContext, IAppDbContext
             }
         }
 
-        // Camada 3 do RBAC (docs/RBAC-Matrix.md §4, "Global Query Filter... mitiga BOLA"): as 8
+        // Camada 3 do RBAC (docs/RBAC-Matrix.md §4, "Global Query Filter... mitiga BOLA"): as 9
         // entidades abaixo têm ObraId direto na própria tabela — são o alvo do filtro. Cada uma
         // SUBSTITUI (não acumula com) o HasQueryFilter(x => x.Ativo) já registrado por sua própria
         // Configuracao logo acima (EF Core só guarda um filtro por entidade) — por isso a condição
@@ -130,6 +134,8 @@ public class SstDbContext : DbContext, IAppDbContext
             t.Ativo && (_usuarioAtual.TemAcessoGlobal || _usuarioAtual.ObrasPermitidas.Contains(t.ObraId)));
         modelBuilder.Entity<AreaSst>().HasQueryFilter(a =>
             a.Ativo && (_usuarioAtual.TemAcessoGlobal || _usuarioAtual.ObrasPermitidas.Contains(a.ObraId)));
+        modelBuilder.Entity<Pcmso>().HasQueryFilter(p =>
+            p.Ativo && (_usuarioAtual.TemAcessoGlobal || _usuarioAtual.ObrasPermitidas.Contains(p.ObraId)));
 
         base.OnModelCreating(modelBuilder);
     }

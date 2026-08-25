@@ -40,6 +40,12 @@ public interface IAppDbContext
     DbSet<PlanoAcaoItem> PlanoAcaoItens { get; }
     DbSet<PgrRevisao> PgrRevisoes { get; }
 
+    // Qualificação explícita necessária pelo mesmo motivo de "Dds" acima: a namespace
+    // AAHBRANT.SST.Application.Pcmso (Commands/Queries deste módulo) sombreia o tipo de domínio.
+    DbSet<Domain.Entidades.Pcmso> Pcmsos { get; }
+    DbSet<PcmsoItemMatriz> PcmsoItensMatriz { get; }
+    DbSet<PcmsoRevisao> PcmsoRevisoes { get; }
+
     DbSet<TagIdentificacao> TagsIdentificacao { get; }
     DbSet<AreaSst> AreasSst { get; }
 

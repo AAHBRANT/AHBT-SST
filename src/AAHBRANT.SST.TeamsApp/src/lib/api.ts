@@ -372,6 +372,93 @@ export interface PgrDetalhe {
   revisoes: PgrRevisao[];
 }
 
+export const StatusPcmso = {
+  EmElaboracao: 1,
+  Vigente: 2,
+  EmRevisao: 3,
+  Encerrado: 4,
+} as const;
+
+export const statusPcmsoLabel: Record<number, string> = {
+  1: 'Em elaboração',
+  2: 'Vigente',
+  3: 'Em revisão',
+  4: 'Encerrado',
+};
+
+export interface Pcmso {
+  id: string;
+  obraId: string;
+  nome: string;
+  objetivo?: string | null;
+  medicoCoordenadorNome: string;
+  medicoCoordenadorCrm?: string | null;
+  medicoCoordenadorUsuarioId?: string | null;
+  dataElaboracao: string;
+  dataVigenciaInicio?: string | null;
+  dataVigenciaFim?: string | null;
+  status: number;
+}
+
+export type NovoPcmso = Omit<Pcmso, 'id'>;
+
+export interface PcmsoItemMatriz {
+  id: string;
+  pcmsoId: string;
+  funcaoId: string;
+  funcaoNome: string;
+  riscoId?: string | null;
+  nomeExame: string;
+  periodicidadeEmMeses: number;
+  obrigatorioNoAdmissional: boolean;
+  obrigatorioNoDemissional: boolean;
+  observacoes?: string | null;
+}
+
+export type NovoPcmsoItemMatriz = Omit<PcmsoItemMatriz, 'id' | 'funcaoNome'>;
+
+export interface PcmsoRevisao {
+  id: string;
+  pcmsoId: string;
+  numeroRevisao: number;
+  dataRevisao: string;
+  motivo: string;
+  responsavelUsuarioId?: string | null;
+}
+
+export type NovaPcmsoRevisao = Omit<PcmsoRevisao, 'id' | 'numeroRevisao'>;
+
+// Calendário e relatório são computados no backend a cada consulta (ver
+// ObterPcmsoDetalheQuery) — não existe endpoint de escrita para eles aqui.
+export interface ItemCalendarioExame {
+  trabalhadorId: string;
+  trabalhadorNome: string;
+  funcaoId: string;
+  funcaoNome: string;
+  nomeExame: string;
+  ultimoExameData?: string | null;
+  proximaDataPrevista: string;
+  vencido: boolean;
+}
+
+export interface LinhaRelatorioAnalitico {
+  funcaoId: string;
+  funcaoNome: string;
+  totalAsos: number;
+  aptos: number;
+  aptosComRestricao: number;
+  inaptos: number;
+  pendentes: number;
+}
+
+export interface PcmsoDetalhe {
+  pcmso: Pcmso;
+  itensMatriz: PcmsoItemMatriz[];
+  revisoes: PcmsoRevisao[];
+  calendario: ItemCalendarioExame[];
+  relatorioAnalitico: LinhaRelatorioAnalitico[];
+}
+
 export const TipoArea = {
   AreaDeTrabalho: 1,
   ZonaDeRisco: 2,
@@ -1609,6 +1696,26 @@ export const api = {
       request<Aso[]>(`/api/asos${trabalhadorId ? `?trabalhadorId=${trabalhadorId}` : ''}`),
     criar: (aso: NovoAso) => request<{ id: string }>('/api/asos', { method: 'POST', body: JSON.stringify(aso) }),
     excluir: (id: string) => request<void>(`/api/asos/${id}`, { method: 'DELETE' }),
+  },
+  pcmsos: {
+    listar: (obraId?: string) => request<Pcmso[]>(`/api/pcmsos${obraId ? `?obraId=${obraId}` : ''}`),
+    obterDetalhe: (id: string) => request<PcmsoDetalhe>(`/api/pcmsos/${id}`),
+    criar: (pcmso: NovoPcmso) =>
+      request<{ id: string }>('/api/pcmsos', { method: 'POST', body: JSON.stringify(pcmso) }),
+    atualizar: (id: string, pcmso: Pcmso) =>
+      request<void>(`/api/pcmsos/${id}`, { method: 'PUT', body: JSON.stringify(pcmso) }),
+    excluir: (id: string) => request<void>(`/api/pcmsos/${id}`, { method: 'DELETE' }),
+  },
+  pcmsoItensMatriz: {
+    listar: (pcmsoId: string) => request<PcmsoItemMatriz[]>(`/api/pcmsoitensmatriz?pcmsoId=${pcmsoId}`),
+    criar: (item: NovoPcmsoItemMatriz) =>
+      request<{ id: string }>('/api/pcmsoitensmatriz', { method: 'POST', body: JSON.stringify(item) }),
+    excluir: (id: string) => request<void>(`/api/pcmsoitensmatriz/${id}`, { method: 'DELETE' }),
+  },
+  pcmsoRevisoes: {
+    listar: (pcmsoId: string) => request<PcmsoRevisao[]>(`/api/pcmsorevisoes?pcmsoId=${pcmsoId}`),
+    criar: (revisao: NovaPcmsoRevisao) =>
+      request<{ id: string }>('/api/pcmsorevisoes', { method: 'POST', body: JSON.stringify(revisao) }),
   },
   cursosTreinamento: {
     listar: () => request<CursoTreinamento[]>('/api/cursostreinamento'),

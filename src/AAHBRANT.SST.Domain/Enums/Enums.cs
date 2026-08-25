@@ -138,6 +138,16 @@ public enum StatusPgr
     Encerrado = 4
 }
 
+// Não há vocabulário literal para o "status" do PCMSO — mesmo desenho de StatusPgr (proposta
+// própria; avisar o usuário se ele quiser outro fluxo).
+public enum StatusPcmso
+{
+    EmElaboracao = 1,
+    Vigente = 2,
+    EmRevisao = 3,
+    Encerrado = 4
+}
+
 // NTAG.md §2 — identification_tags.type: CHECK (type IN ('NTAG215', 'NTAG213', 'QR_CODE', 'RFID')).
 // Valores literais do documento; a numeração 1-4 é atribuição própria (o documento usa VARCHAR/CHECK,
 // não enum numérico), mesmo padrão já aplicado a NivelRisco/StatusObra.
