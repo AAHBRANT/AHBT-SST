@@ -26,6 +26,14 @@ if (autenticacaoEntraIdHabilitada)
     builder.Services
         .AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
         .AddMicrosoftIdentityWebApi(azureAdSection);
+
+    // Sem isso, o ASP.NET Core renomeia claims curtas do token ("oid", "sub") para URIs longas
+    // (ClaimTypes.*) por padrão, então VinculoAzureAdMiddleware.FindFirst("oid") nunca encontra
+    // nada e cai no fallback (sub), que não é GUID e estoura a coluna AzureAdObjectId (nvarchar(36)) —
+    // descoberto ao vivo: toda request autenticada quebrava com DbUpdateException/truncation.
+    builder.Services.Configure<Microsoft.AspNetCore.Authentication.JwtBearer.JwtBearerOptions>(
+        JwtBearerDefaults.AuthenticationScheme,
+        options => options.MapInboundClaims = false);
 }
 
 // Enforcement real de autorização (estrutura pronta — ver docs/RBAC-Matrix.md §4, camada 1). Qualquer
