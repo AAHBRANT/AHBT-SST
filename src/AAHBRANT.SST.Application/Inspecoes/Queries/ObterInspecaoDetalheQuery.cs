@@ -66,7 +66,8 @@ public class ObterInspecaoDetalheQueryHandler : IRequestHandler<ObterInspecaoDet
                 Observacao = r.Observacao,
                 ResponsavelUsuarioId = r.ResponsavelUsuarioId,
                 ResponsavelUsuarioNome = r.ResponsavelUsuario?.Nome,
-                Prazo = r.Prazo
+                Prazo = r.Prazo,
+                TemFoto = r.FotoConteudo.Length > 0
             }).ToList()
         };
     }

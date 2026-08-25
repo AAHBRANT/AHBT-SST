@@ -969,6 +969,7 @@ export interface InspecaoItemResposta {
   responsavelUsuarioId?: string | null;
   responsavelUsuarioNome?: string | null;
   prazo?: string | null;
+  temFoto: boolean;
 }
 
 export interface InspecaoDetalhe {
@@ -1968,6 +1969,29 @@ export const api = {
         method: 'POST',
         body: JSON.stringify({ statusItem, observacao, responsavelUsuarioId, prazo }),
       }),
+    anexarFoto: async (respostaId: string, foto: File) => {
+      const formData = new FormData();
+      formData.append('foto', foto);
+      const response = await fetch(`${API_BASE_URL}/api/inspecoes/respostas/${respostaId}/foto`, {
+        method: 'POST',
+        headers: await montarHeadersAuth(),
+        body: formData,
+      });
+      if (!response.ok) {
+        const corpo = await response.text().catch(() => '');
+        throw new Error(`${response.status} ${response.statusText}: ${corpo}`);
+      }
+    },
+    baixarFoto: async (respostaId: string) => {
+      const response = await fetch(`${API_BASE_URL}/api/inspecoes/respostas/${respostaId}/foto`, {
+        headers: await montarHeadersAuth(),
+      });
+      if (!response.ok) {
+        const corpo = await response.text().catch(() => '');
+        throw new Error(`${response.status} ${response.statusText}: ${corpo}`);
+      }
+      return response.blob();
+    },
     encerrar: (id: string) => request<void>(`/api/inspecoes/${id}/encerrar`, { method: 'POST' }),
   },
   dds: {

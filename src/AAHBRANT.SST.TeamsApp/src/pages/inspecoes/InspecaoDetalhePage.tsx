@@ -13,7 +13,13 @@ import {
   TableRow,
   Text,
 } from '@fluentui/react-components';
-import { ArrowLeft24Regular, LockClosed24Regular, Save24Regular } from '@fluentui/react-icons';
+import {
+  ArrowDownload24Regular,
+  ArrowLeft24Regular,
+  ArrowUpload24Regular,
+  LockClosed24Regular,
+  Save24Regular,
+} from '@fluentui/react-icons';
 import {
   api,
   StatusInspecao,
@@ -43,8 +49,11 @@ export function InspecaoDetalhePage() {
   const [detalhe, setDetalhe] = useState<InspecaoDetalhe | null>(null);
   const [usuarios, setUsuarios] = useState<Usuario[]>([]);
   const [edicoes, setEdicoes] = useState<Record<string, EdicaoResposta>>({});
+  const [fotosSelecionadas, setFotosSelecionadas] = useState<Record<string, File | null>>({});
   const [erro, setErro] = useState<string | null>(null);
   const [processando, setProcessando] = useState(false);
+  const [enviandoFotoId, setEnviandoFotoId] = useState<string | null>(null);
+  const [baixandoFotoId, setBaixandoFotoId] = useState<string | null>(null);
 
   async function carregar() {
     if (!id) return;
@@ -103,6 +112,44 @@ export function InspecaoDetalhePage() {
       setErro(e instanceof Error ? e.message : 'Falha ao salvar resposta do item.');
     } finally {
       setProcessando(false);
+    }
+  }
+
+  function selecionarFoto(respostaId: string, arquivo: File | null) {
+    setFotosSelecionadas((atual) => ({ ...atual, [respostaId]: arquivo }));
+  }
+
+  async function enviarFoto(respostaId: string) {
+    const arquivo = fotosSelecionadas[respostaId];
+    if (!arquivo) return;
+    try {
+      setEnviandoFotoId(respostaId);
+      setErro(null);
+      await api.inspecoes.anexarFoto(respostaId, arquivo);
+      selecionarFoto(respostaId, null);
+      await carregar();
+    } catch (e) {
+      setErro(e instanceof Error ? e.message : 'Falha ao enviar a foto do item.');
+    } finally {
+      setEnviandoFotoId(null);
+    }
+  }
+
+  async function baixarFoto(respostaId: string) {
+    try {
+      setBaixandoFotoId(respostaId);
+      setErro(null);
+      const blob = await api.inspecoes.baixarFoto(respostaId);
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = `inspecao-item-${respostaId}`;
+      link.click();
+      URL.revokeObjectURL(url);
+    } catch (e) {
+      setErro(e instanceof Error ? e.message : 'Falha ao baixar a foto do item.');
+    } finally {
+      setBaixandoFotoId(null);
     }
   }
 
@@ -196,6 +243,7 @@ export function InspecaoDetalhePage() {
               <TableHeaderCell>Observação</TableHeaderCell>
               <TableHeaderCell>Responsável</TableHeaderCell>
               <TableHeaderCell>Prazo</TableHeaderCell>
+              <TableHeaderCell>Foto</TableHeaderCell>
               <TableHeaderCell></TableHeaderCell>
             </TableRow>
           </TableHeader>
@@ -264,6 +312,41 @@ export function InspecaoDetalhePage() {
                     ) : (
                       '—'
                     )}
+                  </TableCell>
+                  <TableCell>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 4, alignItems: 'flex-start' }}>
+                      {!somenteLeitura && (
+                        <>
+                          <input
+                            type="file"
+                            accept="image/*"
+                            capture="environment"
+                            onChange={(e) => selecionarFoto(resposta.id, e.target.files?.[0] ?? null)}
+                            style={{ maxWidth: 140 }}
+                          />
+                          <Button
+                            appearance="subtle"
+                            size="small"
+                            icon={<ArrowUpload24Regular />}
+                            onClick={() => enviarFoto(resposta.id)}
+                            disabled={!fotosSelecionadas[resposta.id] || enviandoFotoId === resposta.id}
+                          >
+                            Enviar
+                          </Button>
+                        </>
+                      )}
+                      {resposta.temFoto && (
+                        <Button
+                          appearance="subtle"
+                          size="small"
+                          icon={<ArrowDownload24Regular />}
+                          onClick={() => baixarFoto(resposta.id)}
+                          disabled={baixandoFotoId === resposta.id}
+                        >
+                          Ver foto
+                        </Button>
+                      )}
+                    </div>
                   </TableCell>
                   <TableCell>
                     {!somenteLeitura && (

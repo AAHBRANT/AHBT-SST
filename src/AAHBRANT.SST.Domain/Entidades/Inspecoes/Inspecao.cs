@@ -62,4 +62,11 @@ public class InspecaoItemResposta : AuditableEntity
     public Guid? ResponsavelUsuarioId { get; set; }
     public Usuario? ResponsavelUsuario { get; set; }
     public DateTime? Prazo { get; set; }
+
+    // Campo próprio em vez da Evidencia genérica citada acima: decisão tomada em 2026-08-25
+    // (confirmada com o usuário) para reaproveitar o mesmo padrão já em produção em
+    // Dds.FotoConteudo/Higienizacao.FotoConteudo, já que a entidade Evidencia (BlobUrl) nunca
+    // chegou a ser implementada (sem controller/command/blob storage por trás).
+    public byte[] FotoConteudo { get; set; } = Array.Empty<byte>();
+    public string FotoContentType { get; set; } = string.Empty;
 }

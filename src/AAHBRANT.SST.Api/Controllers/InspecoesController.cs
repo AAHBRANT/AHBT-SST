@@ -45,6 +45,26 @@ public class InspecoesController : ControllerBase
         return NoContent();
     }
 
+    [Authorize(Policy = "inspecao:responder")]
+    [HttpPost("respostas/{respostaId:guid}/foto")]
+    [RequestSizeLimit(6_000_000)]
+    public async Task<IActionResult> AnexarFoto(Guid respostaId, [FromForm] AnexarFotoItemInspecaoRequestBody body, CancellationToken ct)
+    {
+        await using var stream = new MemoryStream();
+        await body.Foto.CopyToAsync(stream, ct);
+
+        await _mediator.Send(new AnexarFotoItemInspecaoCommand(respostaId, stream.ToArray(), body.Foto.ContentType), ct);
+        return NoContent();
+    }
+
+    [Authorize(Policy = "inspecao:ver")]
+    [HttpGet("respostas/{respostaId:guid}/foto")]
+    public async Task<IActionResult> ObterFoto(Guid respostaId, CancellationToken ct)
+    {
+        var foto = await _mediator.Send(new ObterFotoItemInspecaoQuery(respostaId), ct);
+        return foto is null ? NotFound() : File(foto.Conteudo, foto.ContentType, foto.NomeArquivo);
+    }
+
     [Authorize(Policy = "inspecao:encerrar")]
     [HttpPost("{id:guid}/encerrar")]
     public async Task<IActionResult> Encerrar(Guid id, CancellationToken ct)
@@ -59,3 +79,8 @@ public record ResponderItemInspecaoRequestBody(
     string? Observacao,
     Guid? ResponsavelUsuarioId,
     DateTime? Prazo);
+
+public class AnexarFotoItemInspecaoRequestBody
+{
+    public IFormFile Foto { get; set; } = null!;
+}
