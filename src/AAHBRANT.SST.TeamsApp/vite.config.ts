@@ -1,6 +1,16 @@
+﻿import fs from 'node:fs'
 import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
 import { VitePWA } from 'vite-plugin-pwa'
+
+// Sideload no Teams exige HTTPS na contentUrl da tab — reaproveita o certificado de
+// desenvolvimento do ASP.NET Core (já confiável na máquina via `dotnet dev-certs https --trust`)
+// em vez de gerar um certificado próprio ou depender de um dev tunnel externo. Só ativa quando as
+// variáveis de ambiente existem, então o `npm run dev` normal (sem Teams) continua em HTTP puro.
+const certificadoDev =
+  process.env.VITE_DEV_CERT_PATH && process.env.VITE_DEV_CERT_PASSWORD
+    ? { pfx: fs.readFileSync(process.env.VITE_DEV_CERT_PATH), passphrase: process.env.VITE_DEV_CERT_PASSWORD }
+    : undefined
 
 // https://vite.dev/config/
 export default defineConfig({
@@ -31,5 +41,6 @@ export default defineConfig({
   ],
   server: {
     port: process.env.PORT ? Number(process.env.PORT) : 5173,
+    https: certificadoDev,
   },
 })
