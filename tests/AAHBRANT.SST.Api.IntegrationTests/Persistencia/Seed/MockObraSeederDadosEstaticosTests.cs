@@ -45,4 +45,17 @@ public class MockObraSeederDadosEstaticosTests
 
         Assert.True(nomes.Distinct().Count() >= 150, "Esperado ao menos 150 nomes distintos em 200 gerados");
     }
+
+    [Fact]
+    public void DistribuicaoFuncoes_QuantidadeAntesDeEncarregado_DeveSerMultiploDeDezEquipes()
+    {
+        // A distribuição de trabalhadores por equipe (10 equipes) depende de a soma das
+        // quantidades das funções anteriores a "Encarregado" na tabela ser múltiplo de 10 —
+        // caso contrário, alguma(s) equipe(s) ficam sem Encarregado sem que nenhum erro apareça.
+        var somaAntes = MockObraSeeder.DistribuicaoFuncoes
+            .TakeWhile(f => f.Funcao != MockObraSeeder.FuncaoEncarregado)
+            .Sum(f => f.Quantidade);
+
+        Assert.Equal(0, somaAntes % 10);
+    }
 }

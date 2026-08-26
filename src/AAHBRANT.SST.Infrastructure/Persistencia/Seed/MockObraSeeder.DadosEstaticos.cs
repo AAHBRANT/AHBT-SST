@@ -16,7 +16,7 @@ public static partial class MockObraSeeder
         ("Soldador", 8, new[] { "NR-06", "NR-18", "NR-12" }),
         ("Operador de Grua/Betoneira", 8, new[] { "NR-06", "NR-11", "NR-12" }),
         ("Mestre de Obras", 4, new[] { "NR-06", "NR-18", "NR-35" }),
-        ("Encarregado", 10, new[] { "NR-06", "NR-18", "NR-35" }),
+        (FuncaoEncarregado, 10, new[] { "NR-06", "NR-18", "NR-35" }),
         ("Técnico de Segurança do Trabalho", 4, new[] { "NR-06", "NR-18", "NR-33" }),
         ("Engenheiro Civil", 6, new[] { "NR-06", "NR-18" }),
         ("Almoxarife", 3, new[] { "NR-06", "NR-11" }),

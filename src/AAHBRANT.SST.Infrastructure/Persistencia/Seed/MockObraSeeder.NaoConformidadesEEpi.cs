@@ -24,7 +24,9 @@ public static partial class MockObraSeeder
                     Local = area.Nome,
                     Prazo = prazo,
                     Status = status,
-                    DataConclusao = status == StatusNaoConformidade.Encerrada ? prazo.AddDays(-2) : null,
+                    DataConclusao = status == StatusNaoConformidade.Encerrada
+                        ? (prazo < referenciaUtc ? prazo.AddDays(-2) : referenciaUtc.AddDays(-2))
+                        : null,
                 });
                 indiceNc++;
             }

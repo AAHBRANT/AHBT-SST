@@ -53,7 +53,7 @@ public static partial class MockObraSeeder
             {
                 Trabalhador = trabalhador,
                 Tipo = tipoExame,
-                DataExame = tipoExame == TipoExameAso.Admissional ? trabalhador.DataAdmissao : dataValidadeAso.AddYears(-1),
+                DataExame = dataValidadeAso.AddYears(-1),
                 DataValidade = dataValidadeAso,
                 ResultadoStatus = ResultadoAso.Apto,
                 MedicoNome = "Dr. Marcelo Andrade",

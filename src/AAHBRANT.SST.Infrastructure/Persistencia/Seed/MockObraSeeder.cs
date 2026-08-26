@@ -15,6 +15,12 @@ public static partial class MockObraSeeder
 {
     public const string CodigoObraMock = "OBRA-MOCK-AURORA";
 
+    // Nome da função usada como referência para garantir 1 Encarregado por equipe (ver uso
+    // abaixo) e também como um dos itens de DistribuicaoFuncoes (MockObraSeeder.DadosEstaticos.cs).
+    // Ver MockObraSeederDadosEstaticosTests.DistribuicaoFuncoes_QuantidadeAntesDeEncarregado_DeveSerMultiploDeDezEquipes
+    // para a invariante que depende dessa função existir e estar posicionada corretamente na tabela.
+    public const string FuncaoEncarregado = "Encarregado";
+
     public static async Task ExecutarAsync(IServiceProvider services, CancellationToken ct = default)
     {
         using var scope = services.CreateScope();
@@ -53,7 +59,7 @@ public static partial class MockObraSeeder
 
         foreach (var equipe in equipes)
         {
-            var encarregado = trabalhadores.FirstOrDefault(t => t.Equipe == equipe && t.Funcao?.Nome == "Encarregado");
+            var encarregado = trabalhadores.FirstOrDefault(t => t.Equipe == equipe && t.Funcao?.Nome == FuncaoEncarregado);
             if (encarregado is not null)
                 equipe.EncarregadoId = encarregado.Id;
         }
