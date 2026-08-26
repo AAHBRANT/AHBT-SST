@@ -18,6 +18,7 @@ import { InspecoesPage } from './pages/inspecoes/InspecoesPage';
 import { InspecaoDetalhePage } from './pages/inspecoes/InspecaoDetalhePage';
 import { IdentificacaoPage } from './pages/identificacao/IdentificacaoPage';
 import { AreaPublicaPage } from './pages/identificacao/AreaPublicaPage';
+import { ValidarDocumentoPage } from './pages/validacao/ValidarDocumentoPage';
 import { AtivosPage } from './pages/ativos/AtivosPage';
 import { AdministracaoPage } from './pages/administracao/AdministracaoPage';
 import { NaoConformidadesPage } from './pages/naoconformidades/NaoConformidadesPage';
@@ -31,11 +32,12 @@ import { DocumentosGestaoPage } from './pages/gestaodocumental/DocumentosGestaoP
 import { DocumentoGestaoDetalhePage } from './pages/gestaodocumental/DocumentoGestaoDetalhePage';
 import { DdsPage } from './pages/dds/DdsPage';
 import { DdsDetalhePage } from './pages/dds/DdsDetalhePage';
+import { AssinarDdsPage } from './pages/dds/AssinarDdsPage';
 import { HigienizacaoPage } from './pages/higienizacao/HigienizacaoPage';
 import { HigienizacaoDetalhePage } from './pages/higienizacao/HigienizacaoDetalhePage';
 
-// Envolve as rotas internas do app com o AppShell (sidebar/header do Teams). A rota pública
-// /p/:codigoOuUid fica de fora dessa camada — ver AreaPublicaPage.
+// Envolve as rotas internas do app com o AppShell (sidebar/header do Teams). As rotas públicas
+// /p/:codigoOuUid e /validar/:token ficam de fora dessa camada — ver AreaPublicaPage/ValidarDocumentoPage.
 function LayoutComTeams() {
   return (
     <AppShell>
@@ -58,6 +60,7 @@ function App() {
       <HashRouter>
         <Routes>
           <Route path="/p/:codigoOuUid" element={<AreaPublicaPage />} />
+          <Route path="/validar/:token" element={<ValidarDocumentoPage />} />
           <Route element={<LayoutComTeams />}>
             <Route path="/" element={<DashboardPage />} />
 
@@ -107,6 +110,7 @@ function App() {
               <Route path="inspecoes/:id" element={<InspecaoDetalhePage />} />
               <Route path="dds" element={<DdsPage />} />
               <Route path="dds/:id" element={<DdsDetalhePage />} />
+              <Route path="dds/:id/assinar" element={<AssinarDdsPage />} />
               <Route path="higienizacao" element={<HigienizacaoPage />} />
               <Route path="higienizacao/:id" element={<HigienizacaoDetalhePage />} />
             </Route>

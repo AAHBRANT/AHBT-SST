@@ -126,6 +126,8 @@ public class TrilhaAuditoriaConfiguracao : IEntityTypeConfiguration<TrilhaAudito
         builder.Property(t => t.HashRegistroAtual).IsRequired().HasMaxLength(64);
         builder.HasOne(t => t.Usuario).WithMany()
             .HasForeignKey(t => t.UsuarioId).OnDelete(DeleteBehavior.Restrict);
+        builder.HasOne(t => t.Trabalhador).WithMany()
+            .HasForeignKey(t => t.TrabalhadorId).OnDelete(DeleteBehavior.Restrict);
         builder.HasIndex(t => new { t.EntidadeTipo, t.EntidadeId, t.Timestamp });
     }
 }

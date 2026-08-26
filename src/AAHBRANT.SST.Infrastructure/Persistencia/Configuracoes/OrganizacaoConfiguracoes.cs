@@ -13,6 +13,7 @@ public class ObraConfiguracao : IEntityTypeConfiguration<Obra>
         builder.Property(o => o.Nome).IsRequired().HasMaxLength(200);
         builder.HasIndex(o => o.Codigo).IsUnique();
         builder.HasQueryFilter(o => o.Ativo);
+        builder.Property(o => o.MetodosAutenticacaoHabilitados).IsRequired();
     }
 }
 
@@ -47,6 +48,10 @@ public class FuncaoConfiguracao : IEntityTypeConfiguration<Funcao>
         builder.Property(f => f.Nome).IsRequired().HasMaxLength(150);
         builder.Property(f => f.CboCodigo).HasMaxLength(10);
         builder.HasQueryFilter(f => f.Ativo);
+        // Mesma divergência pré-existente de schema descrita em PermissaoConfiguracao (AcessoConfiguracoes.cs):
+        // a coluna física já é timestamp/rowversion; sem IsRowVersion() o EF tenta inserir valor explícito
+        // nela e o SQL Server rejeita o INSERT. Confirmado via sys.columns antes de aplicar.
+        builder.Property(f => f.RowVersion).IsRowVersion();
     }
 }
 
@@ -66,6 +71,11 @@ public class TrabalhadorConfiguracao : IEntityTypeConfiguration<Trabalhador>
         builder.HasIndex(t => t.CpfHash).IsUnique().HasFilter("[CpfHash] IS NOT NULL");
         builder.HasIndex(t => new { t.ObraId, t.Matricula }).IsUnique();
 
+        // Motor de Assinatura Eletrônica — PinHash é auto-contido (algoritmo+iterações+salt+hash em
+        // uma string, ver PinHasher), por isso o tamanho generoso; não é indexado (nunca é buscado
+        // por valor, só verificado contra o Id do trabalhador já conhecido).
+        builder.Property(t => t.PinHash).HasMaxLength(200);
+
         builder.HasOne(t => t.Obra).WithMany(o => o.Trabalhadores)
             .HasForeignKey(t => t.ObraId).OnDelete(DeleteBehavior.Restrict);
         builder.HasOne(t => t.Setor).WithMany()
@@ -76,5 +86,10 @@ public class TrabalhadorConfiguracao : IEntityTypeConfiguration<Trabalhador>
             .HasForeignKey(t => t.FuncaoId).OnDelete(DeleteBehavior.Restrict);
 
         builder.HasQueryFilter(t => t.Ativo);
+
+        // Mesma divergência pré-existente de schema descrita em PermissaoConfiguracao (AcessoConfiguracoes.cs):
+        // a coluna física já é timestamp/rowversion; sem IsRowVersion() o EF tenta inserir valor explícito
+        // nela e o SQL Server rejeita o INSERT. Confirmado via sys.columns antes de aplicar.
+        builder.Property(t => t.RowVersion).IsRowVersion();
     }
 }

@@ -1,5 +1,8 @@
+using AAHBRANT.SST.Application.Assinatura;
 using AAHBRANT.SST.Application.Common.Interfaces;
 using AAHBRANT.SST.Application.Dds;
+using AAHBRANT.SST.Infrastructure.Assinatura;
+using AAHBRANT.SST.Infrastructure.Auditoria;
 using AAHBRANT.SST.Infrastructure.Documentos;
 using AAHBRANT.SST.Infrastructure.Integracao;
 using AAHBRANT.SST.Infrastructure.Integracao.Bot;
@@ -7,6 +10,7 @@ using AAHBRANT.SST.Infrastructure.Integracao.Teams;
 using AAHBRANT.SST.Infrastructure.Persistencia;
 using AAHBRANT.SST.Infrastructure.Seguranca;
 using Azure.Messaging.ServiceBus;
+using Fido2NetLib;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
@@ -52,6 +56,31 @@ public static class DependencyInjection
             services.AddHostedService<TelegramUpdatesPollingService>();
 
         services.AddScoped<IDdsPdfService, DdsPdfService>();
+
+        // Motor de Assinatura Eletrônica (docs/Motor-Assinatura-Eletronica.md §5, etapa 4) — crachá/QR
+        // + PIN é o método de reserva e roda como principal temporário até o leitor biométrico FIDO2
+        // ser confirmado; a estratégia biométrica (Fido2AutenticacaoStrategy) troca este registro
+        // quando implementada, sem exigir mudança no restante da aplicação (depende só da abstração).
+        services.AddScoped<IAutenticacaoAssinaturaService, CrachaPinAutenticacaoStrategy>();
+        services.AddScoped<IPinHasher, PinHasherService>();
+        services.AddScoped<IAuditoriaService, AuditoriaService>();
+        services.AddScoped<IDocumentoAssinaturaPdfService, DocumentoAssinaturaPdfService>();
+        services.Configure<AssinaturaOptions>(configuration.GetSection("Assinatura"));
+        services.AddScoped<IQrCodeDocumentoService, QrCodeDocumentoService>();
+        services.AddScoped<IRegistradorAssinaturaService, RegistradorAssinaturaService>();
+
+        // Estratégia biométrica (etapa 13) — ServerDomain/Origins ficam vazios até o domínio de
+        // produção (e o leitor FIDO2 da obra) serem confirmados; Fido2AutenticacaoStrategy só falha
+        // quando efetivamente usada, mesmo padrão de tolerância de GraphOptions/TelegramOptions.
+        var fido2Options = configuration.GetSection("Fido2").Get<Fido2Options>() ?? new Fido2Options();
+        services.Configure<Fido2Options>(configuration.GetSection("Fido2"));
+        services.AddSingleton<IFido2>(sp => new Fido2NetLib.Fido2(new Fido2Configuration
+        {
+            ServerDomain = fido2Options.ServerDomain,
+            ServerName = fido2Options.ServerName,
+            Origins = fido2Options.Origins.ToHashSet(),
+        }));
+        services.AddScoped<IAutenticacaoWebAuthnService, Fido2AutenticacaoStrategy>();
 
         // Motor Central de Alertas, Etapa 4 — notificação de "sino" do Teams (Activity Feed) via
         // Microsoft Graph (POST /users/{aadObjectId}/teamwork/sendActivityNotification), sem Bot

@@ -2,8 +2,9 @@ import { useState } from 'react';
 import { Tab, TabList, Text, type SelectTabData, type SelectTabEvent } from '@fluentui/react-components';
 import { ControleAcessoTab } from './ControleAcessoTab';
 import { TrilhaAuditoriaTab } from './TrilhaAuditoriaTab';
+import { PainelAssinaturasTab } from './PainelAssinaturasTab';
 
-type AbaAdministracao = 'acesso' | 'auditoria';
+type AbaAdministracao = 'acesso' | 'auditoria' | 'assinaturas';
 
 export function AdministracaoPage() {
   const [aba, setAba] = useState<AbaAdministracao>('acesso');
@@ -23,10 +24,12 @@ export function AdministracaoPage() {
       >
         <Tab value="acesso">Controle de Acesso</Tab>
         <Tab value="auditoria">Trilha de Auditoria</Tab>
+        <Tab value="assinaturas">Assinaturas</Tab>
       </TabList>
 
       {aba === 'acesso' && <ControleAcessoTab />}
       {aba === 'auditoria' && <TrilhaAuditoriaTab />}
+      {aba === 'assinaturas' && <PainelAssinaturasTab />}
     </div>
   );
 }

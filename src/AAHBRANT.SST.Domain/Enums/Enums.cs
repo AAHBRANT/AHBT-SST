@@ -396,3 +396,47 @@ public enum TipoAtivo
     Extintor = 1,
     Equipamento = 2
 }
+
+// Motor Central de Assinatura Eletrônica (docs/Motor-Assinatura-Eletronica.md, requisito do usuário
+// em 2026-08-25): arquitetura final após 2 revisões — biometria digital (leitor FIDO2 por obra) é o
+// método principal, crachá/QR+PIN é a reserva automática, WebAuthn por celular próprio é opcional.
+// Vocabulário próprio, sem seção literal da Base de Conhecimento.
+public enum StatusDocumentoAssinatura
+{
+    EmAndamento = 1,
+    Finalizado = 2,
+    Cancelado = 3
+}
+
+// Método efetivamente usado por UM signatário em UMA assinatura — distinto de
+// MetodoAutenticacaoObra (que é o cardápio de métodos habilitados na obra como um todo).
+public enum MetodoAutenticacaoAssinatura
+{
+    Biometria = 1,
+    CrachaPin = 2,
+    QrCodePin = 3,
+    WebAuthnCelular = 4
+}
+
+// [Flags] em Obra.MetodosAutenticacaoHabilitados: cada obra decide quais métodos aceita (ex.: obra
+// sem leitor biométrico ainda comprado opera só com CrachaPin até o hardware chegar — ver §3 do doc,
+// "usar como principal temporário até o hardware ser confirmado").
+[Flags]
+public enum MetodoAutenticacaoObra
+{
+    Nenhum = 0,
+    Biometria = 1,
+    CrachaPin = 2,
+    QrCodePin = 4,
+    WebAuthnCelular = 8
+}
+
+// Etapa 13 do Motor de Assinatura Eletrônica — CredencialWebAuthn.Tipo. LeitorObra e CelularProprio
+// usam a mesma cerimônia FIDO2/WebAuthn (Fido2AutenticacaoStrategy); só o autenticador físico muda:
+// leitor biométrico compartilhado da obra (credencial "discoverable", vários trabalhadores por
+// dispositivo) vs. celular do próprio trabalhador (credencial de um único dono).
+public enum TipoAutenticadorWebAuthn
+{
+    LeitorObra = 1,
+    CelularProprio = 2
+}

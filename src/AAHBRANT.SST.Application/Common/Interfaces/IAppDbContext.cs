@@ -85,5 +85,9 @@ public interface IAppDbContext
 
     DbSet<AtivoSst> AtivosSst { get; }
 
+    DbSet<DocumentoAssinatura> DocumentosAssinatura { get; }
+    DbSet<DocumentoSignatario> DocumentoSignatarios { get; }
+    DbSet<CredencialWebAuthn> CredenciaisWebAuthn { get; }
+
     Task<int> SaveChangesAsync(CancellationToken cancellationToken = default);
 }

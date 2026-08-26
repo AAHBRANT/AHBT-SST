@@ -9,8 +9,9 @@ import { AsoTab } from './AsoTab';
 import { TreinamentosTab } from './TreinamentosTab';
 import { EntregasEpiTab } from './EntregasEpiTab';
 import { TelegramTab } from './TelegramTab';
+import { AssinaturaTab } from './AssinaturaTab';
 
-type AbaPerfil = 'aso' | 'treinamentos' | 'epi' | 'telegram';
+type AbaPerfil = 'aso' | 'treinamentos' | 'epi' | 'telegram' | 'assinatura';
 
 export function TrabalhadorDetalhePage() {
   const { id } = useParams<{ id: string }>();
@@ -107,6 +108,7 @@ export function TrabalhadorDetalhePage() {
         <Tab value="treinamentos">Treinamentos</Tab>
         <Tab value="epi">EPIs</Tab>
         <Tab value="telegram">Telegram</Tab>
+        <Tab value="assinatura">Assinatura</Tab>
       </TabList>
 
       {aba === 'aso' && <AsoTab trabalhadorId={id} />}
@@ -120,6 +122,7 @@ export function TrabalhadorDetalhePage() {
           aoAtualizar={carregar}
         />
       )}
+      {aba === 'assinatura' && <AssinaturaTab trabalhadorId={id} />}
     </div>
   );
 }

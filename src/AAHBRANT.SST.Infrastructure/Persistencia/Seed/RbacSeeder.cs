@@ -50,6 +50,7 @@ public static class RbacSeeder
         ("trabalhador:editar", "Trabalhador", "Editar", "Editar cadastro de trabalhador"),
         ("trabalhador:excluir", "Trabalhador", "Excluir", "Excluir cadastro de trabalhador"),
         ("trabalhador:telegram", "Trabalhador", "Telegram", "Gerar vínculo de Telegram do trabalhador"),
+        ("trabalhador:assinatura", "Trabalhador", "Assinatura", "Configurar assinatura eletrônica do trabalhador (PIN, Termo de Aceite, consentimento biométrico)"),
 
         ("aso:ver_status", "Aso", "VerStatus", "Ver status do ASO (Apto/Inapto/etc.), sem detalhe clínico"),
         ("aso:ver_clinico", "Aso", "VerClinico", "Ver conteúdo clínico completo do ASO"),
@@ -152,6 +153,13 @@ public static class RbacSeeder
         ("dds:conduzir", "Dds", "Conduzir", "Marcar itens do checklist e registrar participantes durante a condução do DDS"),
         ("dds:encerrar", "Dds", "Encerrar", "Encerrar DDS"),
         ("dds:exportar", "Dds", "Exportar", "Exportar DDS em PDF e enviar via Telegram"),
+
+        // Motor de Assinatura Eletrônica (docs/Motor-Assinatura-Eletronica.md §5, etapa 6) — genérico,
+        // usado pela tela de quiosque de qualquer módulo (Dds hoje, Treinamento/EPI/APR/PT/Inspeções
+        // depois), por isso módulo próprio em vez de reaproveitar "dds:conduzir".
+        ("assinatura:ver", "Assinatura", "Ver", "Ver status e signatários de um documento de assinatura eletrônica"),
+        ("assinatura:assinar", "Assinatura", "Assinar", "Assinar um documento no quiosque (crachá/QR + PIN ou biometria)"),
+        ("assinatura:finalizar", "Assinatura", "Finalizar", "Fechar um documento de assinatura para novas assinaturas e gerar o hash de integridade (etapa 8)"),
 
         ("higienizacao:ver", "Higienizacao", "Ver", "Ver itens e histórico de higienização"),
         ("higienizacao:criar", "Higienizacao", "Criar", "Cadastrar item de higienização (local + periodicidade)"),

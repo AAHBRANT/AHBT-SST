@@ -21,6 +21,7 @@ import {
   LockClosed24Regular,
   PersonAdd24Regular,
   Send24Regular,
+  Signature24Regular,
 } from '@fluentui/react-icons';
 import {
   api,
@@ -218,6 +219,9 @@ export function DdsDetalhePage() {
                   Encerrar DDS
                 </Button>
               )}
+              <Button icon={<Signature24Regular />} onClick={() => navigate(`/prevencao/dds/${id}/assinar`)}>
+                Assinar DDS
+              </Button>
               <Button icon={<ArrowDownload24Regular />} onClick={baixarPdf} disabled={baixandoPdf}>
                 Baixar PDF
               </Button>

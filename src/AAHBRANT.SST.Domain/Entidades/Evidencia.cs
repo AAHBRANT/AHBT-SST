@@ -35,6 +35,14 @@ public class TrilhaAuditoria : AuditableEntity
     public Guid? UsuarioId { get; set; }
     public Usuario? Usuario { get; set; }
 
+    // Adicionado para o Motor de Assinatura Eletrônica (docs/Motor-Assinatura-Eletronica.md §5,
+    // etapa "auditoria"): trabalhador de obra que assina por crachá/PIN ou biometria normalmente não
+    // tem conta Usuario, então UsuarioId sozinho não capturava "quem" para esses registros. Mesmo
+    // padrão nullable/opcional de UsuarioId, pelo mesmo motivo — não esconder autor de registros
+    // antigos quando o trabalhador for desativado.
+    public Guid? TrabalhadorId { get; set; }
+    public Trabalhador? Trabalhador { get; set; }
+
     public string Acao { get; set; } = string.Empty; // ex.: "Aso.VisualizarClinico", "PT.Bloqueada"
     public string EntidadeTipo { get; set; } = string.Empty;
     public Guid EntidadeId { get; set; }

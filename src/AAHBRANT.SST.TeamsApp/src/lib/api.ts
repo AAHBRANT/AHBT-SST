@@ -1048,6 +1048,91 @@ export interface EnviarDdsTelegramResultado {
   semVinculo: number;
 }
 
+// Motor de Assinatura Eletrônica (docs/Motor-Assinatura-Eletronica.md §3/§5, etapa 6) — genérico,
+// identificado por EntidadeTipo/EntidadeId (ex.: "Dds" + ddsId). Primeiro consumidor: AssinarDdsPage.
+export const MetodoAutenticacaoAssinatura = {
+  Biometria: 1,
+  CrachaPin: 2,
+  QrCodePin: 3,
+  WebAuthnCelular: 4,
+} as const;
+
+export const metodoAutenticacaoAssinaturaLabel: Record<number, string> = {
+  1: 'Biometria',
+  2: 'Crachá + PIN',
+  3: 'QR Code + PIN',
+  4: 'Celular (WebAuthn)',
+};
+
+export const StatusDocumentoAssinatura = {
+  EmAndamento: 1,
+  Finalizado: 2,
+  Cancelado: 3,
+} as const;
+
+// Etapa 13 — leitor biométrico fixo da obra (credencial "discoverable", vários trabalhadores) vs.
+// celular próprio do trabalhador (credencial vinculada a um único TrabalhadorId).
+export const TipoAutenticadorWebAuthn = {
+  LeitorObra: 1,
+  CelularProprio: 2,
+} as const;
+
+export const tipoAutenticadorWebAuthnLabel: Record<number, string> = {
+  1: 'Leitor biométrico da obra',
+  2: 'Celular próprio',
+};
+
+export const statusDocumentoAssinaturaLabel: Record<number, string> = {
+  1: 'Em andamento',
+  2: 'Finalizado',
+  3: 'Cancelado',
+};
+
+export interface DocumentoSignatario {
+  trabalhadorId: string;
+  trabalhadorNome: string;
+  metodoAutenticacao: number;
+  assinadoEm: string;
+}
+
+export interface DocumentoAssinatura {
+  id: string;
+  entidadeTipo: string;
+  entidadeId: string;
+  status: number;
+  signatarios: DocumentoSignatario[];
+}
+
+// Página pública de validação (/#/validar/{token}, etapa 11) — deliberadamente sem id/entidadeId
+// (ver DocumentoPublicoDto no backend: "nunca expor Id/EntidadeId/dado pessoal na página pública").
+export interface DocumentoPublicoSignatario {
+  trabalhadorNome: string;
+  metodoAutenticacao: number;
+  assinadoEm: string;
+}
+
+export interface DocumentoPublico {
+  entidadeTipo: string;
+  finalizadoEm: string;
+  conteudoHash: string;
+  signatarios: DocumentoPublicoSignatario[];
+}
+
+// Painel administrativo (etapa 12) — ao contrário de DocumentoPublico, aqui o consumidor já está
+// autenticado/autorizado (assinatura:ver), então id/entidadeId aparecem: os botões de ação precisam
+// deles (baixar PDF, copiar link público).
+export interface DocumentoAssinaturaResumo {
+  id: string;
+  entidadeTipo: string;
+  entidadeId: string;
+  status: number;
+  criadoEm: string;
+  finalizadoEm?: string | null;
+  quantidadeSignatarios: number;
+  temPdf: boolean;
+  tokenValidacaoPublica?: string | null;
+}
+
 export interface ItemHigienizacao {
   id: string;
   obraId: string;
@@ -1707,6 +1792,22 @@ export const api = {
     excluir: (id: string) => request<void>(`/api/trabalhadores/${id}`, { method: 'DELETE' }),
     gerarVinculoTelegram: (id: string) =>
       request<GerarVinculoTelegramResultado>(`/api/trabalhadores/${id}/telegram/vinculo`, { method: 'POST' }),
+    definirPinAssinatura: (id: string, pin: string, confirmarPin: string) =>
+      request<void>(`/api/trabalhadores/${id}/assinatura/pin`, {
+        method: 'POST',
+        body: JSON.stringify({ trabalhadorId: id, pin, confirmarPin }),
+      }),
+    // Cadastro de credencial WebAuthn/FIDO2 (etapa 13) — cerimônia em duas chamadas; a conversão
+    // JSON<->ArrayBuffer com o navegador fica em lib/webauthn.ts (criarCredencialWebAuthn).
+    iniciarCadastroWebAuthn: (id: string, tipo: number) =>
+      request<string>(`/api/trabalhadores/${id}/assinatura/webauthn/cadastro/iniciar?tipo=${tipo}`, {
+        method: 'POST',
+      }),
+    confirmarCadastroWebAuthn: (id: string, tipo: number, opcoesJson: string, respostaJson: string) =>
+      request<void>(`/api/trabalhadores/${id}/assinatura/webauthn/cadastro/confirmar`, {
+        method: 'POST',
+        body: JSON.stringify({ tipo, opcoesJson, respostaJson }),
+      }),
   },
   funcoes: {
     listar: () => request<Funcao[]>('/api/funcoes'),
@@ -1843,6 +1944,9 @@ export const api = {
   },
   identificacaoPublica: {
     resolver: (codigoOuUid: string) => request<AreaPublicaDto>(`/sst/p/${encodeURIComponent(codigoOuUid)}`),
+  },
+  validacaoPublica: {
+    resolver: (token: string) => request<DocumentoPublico>(`/sst/validar/${encodeURIComponent(token)}`),
   },
   aprs: {
     listar: (atividadeId?: string) => request<Apr[]>(`/api/aprs${atividadeId ? `?atividadeId=${atividadeId}` : ''}`),
@@ -2037,6 +2141,58 @@ export const api = {
     },
     enviarTelegram: (id: string) =>
       request<EnviarDdsTelegramResultado>(`/api/dds/${id}/telegram/enviar`, { method: 'POST' }),
+  },
+  assinatura: {
+    obter: async (entidadeTipo: string, entidadeId: string) => {
+      const query = new URLSearchParams({ entidadeTipo, entidadeId });
+      const response = await fetch(`${API_BASE_URL}/api/documentos?${query.toString()}`, {
+        headers: await montarHeadersAuth(),
+      });
+      if (response.status === 404) return null;
+      if (!response.ok) {
+        const corpo = await response.text().catch(() => '');
+        throw new Error(`${response.status} ${response.statusText}: ${corpo}`);
+      }
+      return (await response.json()) as DocumentoAssinatura;
+    },
+    criar: (entidadeTipo: string, entidadeId: string) =>
+      request<{ id: string }>('/api/documentos', {
+        method: 'POST',
+        body: JSON.stringify({ entidadeTipo, entidadeId }),
+      }),
+    assinar: (documentoId: string, uid: string, pin: string) =>
+      request<DocumentoSignatario>(`/api/documentos/${documentoId}/assinar`, {
+        method: 'POST',
+        body: JSON.stringify({ uid, pin }),
+      }),
+    // Assinatura biométrica WebAuthn/FIDO2 (etapa 13) — cerimônia em duas chamadas; ver
+    // lib/webauthn.ts (obterAssercaoWebAuthn) para a conversão JSON<->ArrayBuffer com o navegador.
+    iniciarAssinaturaWebAuthn: (trabalhadorId?: string) =>
+      request<string>(`/api/documentos/assinar/webauthn/iniciar${trabalhadorId ? `?trabalhadorId=${trabalhadorId}` : ''}`, {
+        method: 'POST',
+      }),
+    confirmarAssinaturaWebAuthn: (documentoId: string, opcoesJson: string, respostaJson: string) =>
+      request<DocumentoSignatario>(`/api/documentos/${documentoId}/assinar/webauthn/confirmar`, {
+        method: 'POST',
+        body: JSON.stringify({ opcoesJson, respostaJson }),
+      }),
+    listar: (filtros?: { entidadeTipo?: string; status?: number; dataInicio?: string; dataFim?: string }) => {
+      const query = new URLSearchParams();
+      if (filtros?.entidadeTipo) query.set('entidadeTipo', filtros.entidadeTipo);
+      if (filtros?.status) query.set('status', String(filtros.status));
+      if (filtros?.dataInicio) query.set('dataInicio', filtros.dataInicio);
+      if (filtros?.dataFim) query.set('dataFim', filtros.dataFim);
+      const suffix = query.toString();
+      return request<DocumentoAssinaturaResumo[]>(`/api/documentos/listar${suffix ? `?${suffix}` : ''}`);
+    },
+    baixarPdf: async (id: string) => {
+      const response = await fetch(`${API_BASE_URL}/api/documentos/${id}/pdf`, { headers: await montarHeadersAuth() });
+      if (!response.ok) {
+        const corpo = await response.text().catch(() => '');
+        throw new Error(`${response.status} ${response.statusText}: ${corpo}`);
+      }
+      return response.blob();
+    },
   },
   higienizacao: {
     listar: (obraId?: string) =>

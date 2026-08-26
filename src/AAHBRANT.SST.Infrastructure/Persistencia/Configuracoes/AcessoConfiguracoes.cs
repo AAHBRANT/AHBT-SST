@@ -27,6 +27,14 @@ public class PermissaoConfiguracao : IEntityTypeConfiguration<Permissao>
         builder.Property(p => p.Descricao).IsRequired().HasMaxLength(255);
         builder.HasIndex(p => p.Codigo).IsUnique();
         builder.HasQueryFilter(p => p.Ativo);
+        // A coluna física no banco já é "rowversion"/"timestamp" (schema legado, anterior ao modelo
+        // atual do EF que a descreve como varbinary(max) — divergência pré-existente, não introduzida
+        // pela etapa 13). Sem IsRowVersion() o EF tenta inserir um valor explícito nela, e o SQL Server
+        // rejeita qualquer INSERT explícito numa coluna timestamp — quebrava o RbacSeeder no startup da
+        // API sempre que havia permissão nova a inserir. Corrigido apenas aqui (Permissao), sem alterar
+        // as demais 66 tabelas nem gerar migration, para não arriscar os dados de desenvolvimento já
+        // existentes; ver docs/Motor-Assinatura-Eletronica.md para o registro completo dessa divergência.
+        builder.Property(p => p.RowVersion).IsRowVersion();
     }
 }
 

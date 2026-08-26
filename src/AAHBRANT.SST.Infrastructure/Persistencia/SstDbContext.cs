@@ -89,6 +89,10 @@ public class SstDbContext : DbContext, IAppDbContext
 
     public DbSet<AtivoSst> AtivosSst => Set<AtivoSst>();
 
+    public DbSet<DocumentoAssinatura> DocumentosAssinatura => Set<DocumentoAssinatura>();
+    public DbSet<DocumentoSignatario> DocumentoSignatarios => Set<DocumentoSignatario>();
+    public DbSet<CredencialWebAuthn> CredenciaisWebAuthn => Set<CredencialWebAuthn>();
+
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         modelBuilder.ApplyConfigurationsFromAssembly(typeof(SstDbContext).Assembly);

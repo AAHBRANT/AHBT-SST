@@ -5,10 +5,10 @@ using Microsoft.EntityFrameworkCore;
 
 namespace AAHBRANT.SST.Application.Auditoria.Queries;
 
-// Append-only por design — só leitura aqui, sem Commands (nenhum endpoint de escrita).
-// A trilha em si é populada pelos próprios handlers de cada módulo (fora do escopo desta
-// fatia: hoje só o esqueleto/entidade existe; nenhum handler ainda grava nela — ver aviso
-// ao usuário sobre isso não ser "trilha em uso", só "trilha consultável").
+// Append-only por design — só leitura aqui, sem Commands (nenhum endpoint de escrita direto).
+// A trilha em si é populada pelos próprios handlers de cada módulo via IAuditoriaService (hoje só
+// RegistrarAssinaturaCommand grava, ver docs/Motor-Assinatura-Eletronica.md §5 etapa 7 — outros
+// módulos ainda não chamam IAuditoriaService).
 public record ListarTrilhaAuditoriaQuery(
     string? EntidadeTipo = null,
     Guid? EntidadeId = null,
