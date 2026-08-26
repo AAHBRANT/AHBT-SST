@@ -28,3 +28,7 @@ db/*.ldf
 .idea/
 Thumbs.db
 .DS_Store
+
+# Git worktrees isolados (subagent-driven-development)
+.worktrees/
+.superpowers/
