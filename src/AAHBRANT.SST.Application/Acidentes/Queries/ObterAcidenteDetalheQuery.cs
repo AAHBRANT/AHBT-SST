@@ -42,6 +42,8 @@ public class ObterAcidenteDetalheQueryHandler : IRequestHandler<ObterAcidenteDet
                 HouveAfastamento = a.HouveAfastamento,
                 DiasAfastamento = a.DiasAfastamento,
                 NumeroCat = a.NumeroCat,
+                Gravidade = a.Gravidade,
+                DiasDebitados = a.DiasDebitados,
                 MetodologiaInvestigacao = a.MetodologiaInvestigacao,
                 Causas = a.Causas,
                 Status = a.Status,

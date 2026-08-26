@@ -30,6 +30,9 @@ public class AcidenteDto
     public int? DiasAfastamento { get; set; }
     public string? NumeroCat { get; set; }
 
+    public GravidadeAcidente Gravidade { get; set; }
+    public int DiasDebitados { get; set; }
+
     public MetodologiaInvestigacao? MetodologiaInvestigacao { get; set; }
     public string? Causas { get; set; }
 

@@ -6,6 +6,8 @@ import {
   Field,
   Input,
   Select,
+  Tab,
+  TabList,
   Table,
   TableBody,
   TableCell,
@@ -14,10 +16,14 @@ import {
   TableRow,
   Text,
   Textarea,
+  type SelectTabData,
+  type SelectTabEvent,
 } from '@fluentui/react-components';
 import { AddCircle24Regular, ChevronRight24Regular } from '@fluentui/react-icons';
 import {
   api,
+  GravidadeAcidente,
+  gravidadeAcidenteLabel,
   statusAcidenteLabel,
   tipoOcorrenciaLabel,
   type Acidente,
@@ -27,6 +33,7 @@ import {
   type Trabalhador,
 } from '../../lib/api';
 import { usePageStyles } from '../pageStyles';
+import { HhtMensalTab } from './HhtMensalTab';
 
 function novaInicial(): NovoAcidente {
   return {
@@ -45,6 +52,8 @@ function novaInicial(): NovoAcidente {
     diasAfastamento: undefined,
     numeroCat: '',
     causas: '',
+    gravidade: GravidadeAcidente.SemAfastamento,
+    diasDebitadosInformados: undefined,
   };
 }
 
@@ -60,6 +69,7 @@ export function AcidentesPage() {
   const [filtroTipo, setFiltroTipo] = useState<string>('');
   const [erro, setErro] = useState<string | null>(null);
   const [carregando, setCarregando] = useState(false);
+  const [aba, setAba] = useState<'ocorrencias' | 'hht'>('ocorrencias');
 
   async function carregar() {
     try {
@@ -133,6 +143,19 @@ export function AcidentesPage() {
     <div>
       {erro && <Text className={estilos.erro}>{erro}</Text>}
 
+      <TabList
+        selectedValue={aba}
+        onTabSelect={(_: SelectTabEvent, d: SelectTabData) => setAba(d.value as 'ocorrencias' | 'hht')}
+        style={{ marginBottom: 16 }}
+      >
+        <Tab value="ocorrencias">Acidentes & Incidentes</Tab>
+        <Tab value="hht">HHT Mensal</Tab>
+      </TabList>
+
+      {aba === 'hht' && <HhtMensalTab obras={obras} />}
+
+      {aba === 'ocorrencias' && (
+        <>
       <div className={estilos.card} style={{ marginBottom: 16 }}>
         <div className={estilos.toolbar}>
           <Text weight="semibold">Registrar acidente / incidente</Text>
@@ -223,6 +246,42 @@ export function AcidentesPage() {
               />
             </Field>
           )}
+          <Field label="Gravidade" required>
+            <Select
+              value={String(nova.gravidade)}
+              onChange={(_, d) =>
+                setNova({ ...nova, gravidade: Number(d.value), diasDebitadosInformados: undefined })
+              }
+            >
+              {Object.entries(gravidadeAcidenteLabel).map(([valor, rotulo]) => (
+                <option key={valor} value={valor}>
+                  {rotulo}
+                </option>
+              ))}
+            </Select>
+          </Field>
+          {nova.gravidade === GravidadeAcidente.IncapacidadePermanenteParcial && (
+            <Field
+              label="Dias Debitados (consultar Quadro III da NBR 14280)"
+              required
+              hint="Valor não calculado automaticamente pelo sistema — consulte a tabela oficial de Dias Debitados por lesão/parte do corpo."
+            >
+              <Input
+                type="number"
+                min={1}
+                value={nova.diasDebitadosInformados?.toString() ?? ''}
+                onChange={(_, d) =>
+                  setNova({ ...nova, diasDebitadosInformados: d.value ? Number(d.value) : undefined })
+                }
+              />
+            </Field>
+          )}
+          {(nova.gravidade === GravidadeAcidente.Obito ||
+            nova.gravidade === GravidadeAcidente.IncapacidadePermanenteTotal) && (
+            <Field label="Dias Debitados">
+              <Text>6.000 dias (fixo, calculado automaticamente)</Text>
+            </Field>
+          )}
           <Field label="Número da CAT">
             <Input value={nova.numeroCat ?? ''} onChange={(_, d) => setNova({ ...nova, numeroCat: d.value })} />
           </Field>
@@ -267,6 +326,7 @@ export function AcidentesPage() {
               <TableHeaderCell>Data</TableHeaderCell>
               <TableHeaderCell>Local</TableHeaderCell>
               <TableHeaderCell>Status</TableHeaderCell>
+              <TableHeaderCell>Gravidade</TableHeaderCell>
               <TableHeaderCell></TableHeaderCell>
             </TableRow>
           </TableHeader>
@@ -285,6 +345,7 @@ export function AcidentesPage() {
                 <TableCell>
                   <Badge appearance="tint">{statusAcidenteLabel[acidente.status]}</Badge>
                 </TableCell>
+                <TableCell>{gravidadeAcidenteLabel[acidente.gravidade]}</TableCell>
                 <TableCell>
                   <ChevronRight24Regular />
                 </TableCell>
@@ -293,6 +354,8 @@ export function AcidentesPage() {
           </TableBody>
         </Table>
       </div>
+        </>
+      )}
     </div>
   );
 }

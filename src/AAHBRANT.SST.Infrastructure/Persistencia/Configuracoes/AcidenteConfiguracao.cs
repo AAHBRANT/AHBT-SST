@@ -16,6 +16,11 @@ public class AcidenteConfiguracao : IEntityTypeConfiguration<Acidente>
         builder.Property(a => a.NumeroCat).HasMaxLength(50);
         builder.Property(a => a.Causas).HasMaxLength(2000);
 
+        // A coluna física já é timestamp/rowversion; sem IsRowVersion() o EF tenta inserir valor
+        // explícito nela, e o SQL Server rejeita (drift pré-existente, igual ao de
+        // OrganizacaoConfiguracoes/AcessoConfiguracoes).
+        builder.Property(a => a.RowVersion).IsRowVersion();
+
         builder.HasOne(a => a.Obra).WithMany()
             .HasForeignKey(a => a.ObraId).OnDelete(DeleteBehavior.Restrict);
         builder.HasOne(a => a.Trabalhador).WithMany()

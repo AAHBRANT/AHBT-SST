@@ -78,6 +78,7 @@ public class SstDbContext : DbContext, IAppDbContext
     public DbSet<AcaoPlano> AcoesPlano => Set<AcaoPlano>();
 
     public DbSet<Acidente> Acidentes => Set<Acidente>();
+    public DbSet<RegistroHhtMensal> RegistrosHhtMensais => Set<RegistroHhtMensal>();
 
     public DbSet<RequisitoLegal> RequisitosLegais => Set<RequisitoLegal>();
 

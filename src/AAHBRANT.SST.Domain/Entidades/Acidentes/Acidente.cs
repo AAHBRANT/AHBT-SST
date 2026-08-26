@@ -33,6 +33,14 @@ public class Acidente : AuditableEntity
     public bool HouveAfastamento { get; set; }
     public int? DiasAfastamento { get; set; }
 
+    // Gravidade e DiasDebitados alimentam a Taxa de Gravidade (NBR 14280) exibida no Painel
+    // Inicial — ver TabelaDiasDebitados. DiasDebitados é sempre o valor final calculado/gravado
+    // pelo handler (nunca aceito diretamente do cliente): fixo em 6.000 para Óbito/Incapacidade
+    // Permanente Total, ou o valor informado manualmente para Incapacidade Permanente Parcial
+    // (tabela detalhada do Quadro III não reproduzida no sistema).
+    public GravidadeAcidente Gravidade { get; set; } = GravidadeAcidente.SemAfastamento;
+    public int DiasDebitados { get; set; }
+
     // Número/protocolo da Comunicação de Acidente de Trabalho (CAT), quando emitida.
     public string? NumeroCat { get; set; }
 

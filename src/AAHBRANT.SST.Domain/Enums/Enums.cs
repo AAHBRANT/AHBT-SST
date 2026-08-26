@@ -349,6 +349,18 @@ public enum StatusAcidente
     Concluido = 3
 }
 
+// Classificação de gravidade do acidente, usada para calcular Dias Debitados na Taxa de
+// Gravidade (NBR 14280, ver TabelaDiasDebitados). Vocabulário não citado literalmente na Base
+// de Conhecimento — proposta própria, mesma natureza de StatusAcidente acima.
+public enum GravidadeAcidente
+{
+    SemAfastamento = 1,
+    ComAfastamento = 2,
+    IncapacidadePermanenteParcial = 3,
+    IncapacidadePermanenteTotal = 4,
+    Obito = 5
+}
+
 // Seção 32 da Base de Conhecimento (linha 811) — vocabulário literal de status: "Conforme/Não conforme".
 public enum StatusRequisitoLegal
 {

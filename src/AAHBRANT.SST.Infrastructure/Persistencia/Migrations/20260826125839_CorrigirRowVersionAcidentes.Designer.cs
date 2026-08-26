@@ -4,6 +4,7 @@ using AAHBRANT.SST.Infrastructure.Persistencia;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 
 #nullable disable
@@ -11,9 +12,11 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace AAHBRANT.SST.Infrastructure.Persistencia.Migrations
 {
     [DbContext(typeof(SstDbContext))]
-    partial class SstDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260826125839_CorrigirRowVersionAcidentes")]
+    partial class CorrigirRowVersionAcidentes
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -1999,6 +2002,55 @@ namespace AAHBRANT.SST.Infrastructure.Persistencia.Migrations
                     b.ToTable("InspecaoItemRespostas");
                 });
 
+            modelBuilder.Entity("AAHBRANT.SST.Domain.Entidades.ItemHigienizacao", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<bool>("Ativo")
+                        .HasColumnType("bit");
+
+                    b.Property<DateTime>("CreatedAtUtc")
+                        .HasColumnType("datetime2");
+
+                    b.Property<Guid?>("CreatedBy")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("Local")
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)");
+
+                    b.Property<string>("Nome")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)");
+
+                    b.Property<Guid>("ObraId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<int>("Origem")
+                        .HasColumnType("int");
+
+                    b.Property<int>("PeriodicidadeDias")
+                        .HasColumnType("int");
+
+                    b.Property<byte[]>("RowVersion")
+                        .HasColumnType("varbinary(max)");
+
+                    b.Property<DateTime?>("UpdatedAtUtc")
+                        .HasColumnType("datetime2");
+
+                    b.Property<Guid?>("UpdatedBy")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ObraId");
+
+                    b.ToTable("ItensHigienizacao");
+                });
+
             modelBuilder.Entity("AAHBRANT.SST.Domain.Entidades.MatrizRiscoCelula", b =>
                 {
                     b.Property<Guid>("Id")
@@ -2913,6 +2965,62 @@ namespace AAHBRANT.SST.Infrastructure.Persistencia.Migrations
                         .IsUnique();
 
                     b.ToTable("RegistrosHhtMensais");
+                });
+
+            modelBuilder.Entity("AAHBRANT.SST.Domain.Entidades.RegistroHigienizacao", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<bool>("Ativo")
+                        .HasColumnType("bit");
+
+                    b.Property<DateTime>("CreatedAtUtc")
+                        .HasColumnType("datetime2");
+
+                    b.Property<Guid?>("CreatedBy")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTime>("DataHora")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("FotoContentType")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<byte[]>("FotoConteudo")
+                        .IsRequired()
+                        .HasColumnType("varbinary(max)");
+
+                    b.Property<Guid>("ItemHigienizacaoId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("Observacoes")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<int>("Origem")
+                        .HasColumnType("int");
+
+                    b.Property<byte[]>("RowVersion")
+                        .HasColumnType("varbinary(max)");
+
+                    b.Property<Guid>("TrabalhadorId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTime?>("UpdatedAtUtc")
+                        .HasColumnType("datetime2");
+
+                    b.Property<Guid?>("UpdatedBy")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ItemHigienizacaoId");
+
+                    b.HasIndex("TrabalhadorId");
+
+                    b.ToTable("RegistrosHigienizacao");
                 });
 
             modelBuilder.Entity("AAHBRANT.SST.Domain.Entidades.RegraAlerta", b =>
@@ -4176,6 +4284,17 @@ namespace AAHBRANT.SST.Infrastructure.Persistencia.Migrations
                     b.Navigation("ResponsavelUsuario");
                 });
 
+            modelBuilder.Entity("AAHBRANT.SST.Domain.Entidades.ItemHigienizacao", b =>
+                {
+                    b.HasOne("AAHBRANT.SST.Domain.Entidades.Obra", "Obra")
+                        .WithMany()
+                        .HasForeignKey("ObraId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("Obra");
+                });
+
             modelBuilder.Entity("AAHBRANT.SST.Domain.Entidades.MatrizRiscoCelula", b =>
                 {
                     b.HasOne("AAHBRANT.SST.Domain.Entidades.MatrizRiscoConfig", "MatrizRiscoConfig")
@@ -4392,6 +4511,25 @@ namespace AAHBRANT.SST.Infrastructure.Persistencia.Migrations
                         .IsRequired();
 
                     b.Navigation("Obra");
+                });
+
+            modelBuilder.Entity("AAHBRANT.SST.Domain.Entidades.RegistroHigienizacao", b =>
+                {
+                    b.HasOne("AAHBRANT.SST.Domain.Entidades.ItemHigienizacao", "ItemHigienizacao")
+                        .WithMany("Registros")
+                        .HasForeignKey("ItemHigienizacaoId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("AAHBRANT.SST.Domain.Entidades.Trabalhador", "Trabalhador")
+                        .WithMany()
+                        .HasForeignKey("TrabalhadorId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("ItemHigienizacao");
+
+                    b.Navigation("Trabalhador");
                 });
 
             modelBuilder.Entity("AAHBRANT.SST.Domain.Entidades.RegraAlerta", b =>
@@ -4665,6 +4803,11 @@ namespace AAHBRANT.SST.Infrastructure.Persistencia.Migrations
             modelBuilder.Entity("AAHBRANT.SST.Domain.Entidades.Inspecao", b =>
                 {
                     b.Navigation("Respostas");
+                });
+
+            modelBuilder.Entity("AAHBRANT.SST.Domain.Entidades.ItemHigienizacao", b =>
+                {
+                    b.Navigation("Registros");
                 });
 
             modelBuilder.Entity("AAHBRANT.SST.Domain.Entidades.MatrizRiscoConfig", b =>

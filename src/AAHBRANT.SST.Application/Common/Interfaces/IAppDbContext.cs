@@ -74,6 +74,7 @@ public interface IAppDbContext
     DbSet<AcaoPlano> AcoesPlano { get; }
 
     DbSet<Acidente> Acidentes { get; }
+    DbSet<RegistroHhtMensal> RegistrosHhtMensais { get; }
 
     DbSet<RequisitoLegal> RequisitosLegais { get; }
 

@@ -2,11 +2,18 @@ import { authentication } from '@microsoft/teams-js';
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL ?? 'https://localhost:7095';
 
-// Fora do Teams (dev local no navegador) o SDK não está inicializado e getAuthToken rejeita —
-// nesse caso seguimos sem o header, como já era o comportamento (API local roda sem auth).
+// Fora de um host real do Teams (ex.: dev local no navegador), getAuthToken() tem dois
+// comportamentos possíveis: rejeita rápido com "library not initialized" nos primeiros
+// instantes após o mount, OU — passada essa janela — nunca resolve nem rejeita, pois fica
+// esperando resposta de um frame pai do Teams que não existe. Sem o timeout, esse segundo
+// caso travaria para sempre qualquer requisição feita depois do boot inicial do SDK. Em
+// ambos os casos seguimos sem o header, como já era o comportamento (API local roda sem auth).
 async function obterTokenAutenticacaoTeams(): Promise<string | null> {
   try {
-    return await authentication.getAuthToken();
+    return await Promise.race([
+      authentication.getAuthToken(),
+      new Promise<null>((resolve) => setTimeout(() => resolve(null), 3000)),
+    ]);
   } catch {
     return null;
   }
@@ -1374,6 +1381,25 @@ export const statusAcidenteLabel: Record<number, string> = {
   3: 'Concluído',
 };
 
+// Classificação de gravidade do acidente, usada para calcular Dias Debitados na Taxa de
+// Gravidade (NBR 14280). Vocabulário não citado literalmente na Base de Conhecimento —
+// proposta própria, mesma natureza de StatusAcidente acima.
+export const GravidadeAcidente = {
+  SemAfastamento: 1,
+  ComAfastamento: 2,
+  IncapacidadePermanenteParcial: 3,
+  IncapacidadePermanenteTotal: 4,
+  Obito: 5,
+} as const;
+
+export const gravidadeAcidenteLabel: Record<number, string> = {
+  1: 'Sem afastamento',
+  2: 'Com afastamento',
+  3: 'Incapacidade permanente parcial',
+  4: 'Incapacidade permanente total',
+  5: 'Óbito',
+};
+
 export interface Acidente {
   id: string;
   tipo: number;
@@ -1393,6 +1419,8 @@ export interface Acidente {
   houveAfastamento: boolean;
   diasAfastamento?: number | null;
   numeroCat?: string | null;
+  gravidade: number;
+  diasDebitados: number;
   metodologiaInvestigacao?: number | null;
   causas?: string | null;
   status: number;
@@ -1414,6 +1442,8 @@ export interface NovoAcidente {
   houveAfastamento: boolean;
   diasAfastamento?: number | null;
   numeroCat?: string | null;
+  gravidade: number;
+  diasDebitadosInformados?: number | null;
   metodologiaInvestigacao?: number | null;
   causas?: string | null;
 }
@@ -1424,6 +1454,21 @@ export interface AcidenteDetalhe {
   acidente: Acidente;
   acoesPlano: AcaoPlano[];
 }
+
+// Lançamento mensal de HHT (Horas-Homem Trabalhadas) por obra, usado no cálculo da Taxa de
+// Gravidade (NBR 14280) — TG = (Dias Perdidos + Dias Debitados) × 1.000.000 / HHT.
+export interface RegistroHhtMensal {
+  id: string;
+  obraId: string;
+  obraNome?: string | null;
+  ano: number;
+  mes: number;
+  horasHomemTrabalhadas: number;
+}
+
+export type NovoRegistroHhtMensal = Omit<RegistroHhtMensal, 'id' | 'obraNome'>;
+
+export type AtualizarRegistroHhtMensalPayload = NovoRegistroHhtMensal;
 
 // Seção 32 da Base de Conhecimento (linha 811) — vocabulário literal: "Conforme/Não conforme".
 export const StatusRequisitoLegal = {
@@ -2241,6 +2286,20 @@ export const api = {
       request<void>(`/api/acidentes/${id}`, { method: 'PUT', body: JSON.stringify(acidente) }),
     excluir: (id: string) => request<void>(`/api/acidentes/${id}`, { method: 'DELETE' }),
     avancarStatus: (id: string) => request<void>(`/api/acidentes/${id}/avancar-status`, { method: 'POST' }),
+  },
+  registrosHht: {
+    listar: (filtros?: { obraId?: string; ano?: number }) => {
+      const params = new URLSearchParams();
+      if (filtros?.obraId) params.set('obraId', filtros.obraId);
+      if (filtros?.ano) params.set('ano', String(filtros.ano));
+      const query = params.toString();
+      return request<RegistroHhtMensal[]>(`/api/registroshhtmensais${query ? `?${query}` : ''}`);
+    },
+    criar: (registro: NovoRegistroHhtMensal) =>
+      request<{ id: string }>('/api/registroshhtmensais', { method: 'POST', body: JSON.stringify(registro) }),
+    atualizar: (id: string, registro: AtualizarRegistroHhtMensalPayload) =>
+      request<void>(`/api/registroshhtmensais/${id}`, { method: 'PUT', body: JSON.stringify(registro) }),
+    excluir: (id: string) => request<void>(`/api/registroshhtmensais/${id}`, { method: 'DELETE' }),
   },
   matrizLegal: {
     listar: (filtros?: { norma?: string; tema?: string; aplicabilidade?: boolean; status?: number; obraId?: string }) => {
