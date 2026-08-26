@@ -161,6 +161,44 @@ O que falta, e será construído nesta feature:
 > suporte cadastro de ~100 digitais por equipamento (uma obra típica). Isso
 > precisa ser levantado com fornecedores antes da compra do hardware —
 > **PROVISÓRIO**, não assumir um modelo específico até confirmar.
+>
+> **Atualização 2026-08-26 — levantamento de mercado (ainda PROVISÓRIO,
+> nenhuma compra feita)**:
+> - **Futronic FS80H — descartado.** Não é um autenticador FIDO2; é um
+>   scanner óptico genérico que captura a imagem crua da digital e faz o
+>   matching via SDK proprietário no host/servidor (`ftrapi.so`/`ScanAPI`,
+>   compatível com engines como VeriFinger/MegaMatcher). Usá-lo exigiria
+>   reescrever toda a estratégia de autenticação (fora do `Fido2NetLib`/
+>   ceremônia WebAuthn já implementada) e passaria a trafegar a digital até
+>   o backend — contraria a premissa da seção 4 ("o template não sai do
+>   leitor").
+> - **Chaves de segurança FIDO2 pessoais (YubiKey Bio, FEITIAN BioPass K50
+>   Pro, Kensington VeriMark Guard) — todas são FIDO2/WebAuthn nativas de
+>   verdade** (falam CTAP2 direto com o navegador, sem SDK/middleware),
+>   resolvendo o requisito (a). Mas nenhuma bate o requisito (b) sozinha —
+>   foram desenhadas como token pessoal, não terminal compartilhado:
+>   - YubiKey Bio: até 5 digitais.
+>   - Kensington VeriMark Guard: até 10 usuários.
+>   - FEITIAN BioPass K50 Pro (~R$479, compra direta): até 50 digitais — a
+>     melhor das três, mas ainda metade da meta de ~100/obra.
+> - **1Kosmos 1Key — candidato que bate os dois requisitos no papel**:
+>   produto desenhado especificamente para "shared workstation", cadastro
+>   anunciado como "ilimitado por dispositivo", matching 100% no hardware,
+>   certificado FIDO2/CTAP2 + FIDO Biometric Component (iBeta
+>   ISO/IEC 30107-3) + NIST 800-63-3. **Não confirmado ainda**: preço e
+>   disponibilidade no Brasil não são públicos (venda B2B por orçamento);
+>   e — ponto crítico antes de comprar — se ele funciona como autenticador
+>   FIDO2/CTAP2 *standalone* ou se exige assinatura da plataforma de
+>   identidade da própria 1Kosmos (BlockID) para operar, o que reintroduziria
+>   dependência de serviço terceiro pago e contrariaria o desenho atual
+>   (`Fido2NetLib` próprio, sem dependência externa).
+> - **Plano recomendado**: (1) mandar para a 1Kosmos as 3 perguntas acima
+>   (standalone sem BlockID? capacidade real de digitais? preço/revenda no
+>   Brasil?); (2) se não fechar, plano B já validado é comprar 2-3 unidades
+>   do FEITIAN BioPass K50 Pro por obra grande (50 digitais cada) em vez de
+>   1 leitor único — ajusta a premissa da tabela da seção 2 sem exigir
+>   retrabalho de código, já que a UI/backend são agnósticos de quantos
+>   leitores existem por obra.
 
 ## 2. Decisões assumidas para desbloquear a implementação
 
@@ -622,6 +660,23 @@ redação jurídica em si.
     verificação end-to-end do fluxo de assinatura no navegador** (exige
     login via Teams SSO + DDS já provisionado no banco — mesma limitação já
     registrada no item 12).
+
+    **Atualização 2026-08-26 — integração da PT concluída**: `AssinaturaQuiosque`
+    plugado em Permissão de Trabalho, o segundo módulo (depois do DDS) a expor
+    assinatura eletrônica. Escolhido como próximo alvo em vez de APR porque a PT
+    não tem nenhum conceito de assinatura pré-existente (diferente da APR, que
+    já tem `AprAssinatura`/`AprAssinaturasTab` como confirmação simples de
+    ciência e exigiria uma decisão de produto antes de integrar o motor real).
+    Criado `TeamsApp/src/pages/pt/AssinarPtPage.tsx` (mesmo padrão de
+    `AssinarDdsPage.tsx`: cabeçalho com atividade/local/data, rota de volta
+    `/operacao/pt/:id`, `entidadeTipo="PermissaoTrabalho"`); adicionado botão
+    "Assinar PT" em `PermissaoTrabalhoDetalhePage.tsx` (sempre visível,
+    independente do status da PT) navegando para `/operacao/pt/:id/assinar`;
+    registrada a rota em `App.tsx`. Nenhuma mudança de backend — o motor já era
+    genérico. `tsc --noEmit` verificado (0 erros). Sem verificação end-to-end no
+    navegador (mesma limitação de Teams SSO + dado provisionado já registrada
+    acima). Treinamento, EPI, Inspeções e APR seguem fora do escopo pelos
+    mesmos motivos já documentados.
 
 ## 6. Referências
 

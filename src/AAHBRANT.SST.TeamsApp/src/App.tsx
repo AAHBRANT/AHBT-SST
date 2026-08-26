@@ -14,6 +14,7 @@ import { AprsPage } from './pages/apr/AprsPage';
 import { AprDetalhePage } from './pages/apr/AprDetalhePage';
 import { PermissoesTrabalhoPage } from './pages/pt/PermissoesTrabalhoPage';
 import { PermissaoTrabalhoDetalhePage } from './pages/pt/PermissaoTrabalhoDetalhePage';
+import { AssinarPtPage } from './pages/pt/AssinarPtPage';
 import { InspecoesPage } from './pages/inspecoes/InspecoesPage';
 import { InspecaoDetalhePage } from './pages/inspecoes/InspecaoDetalhePage';
 import { IdentificacaoPage } from './pages/identificacao/IdentificacaoPage';
@@ -141,6 +142,7 @@ function App() {
               <Route path="apr/:id" element={<AprDetalhePage />} />
               <Route path="pt" element={<PermissoesTrabalhoPage />} />
               <Route path="pt/:id" element={<PermissaoTrabalhoDetalhePage />} />
+              <Route path="pt/:id/assinar" element={<AssinarPtPage />} />
               <Route path="identificacao" element={<IdentificacaoPage />} />
               <Route path="ativos" element={<AtivosPage />} />
             </Route>

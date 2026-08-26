@@ -12,7 +12,12 @@ import {
   type SelectTabData,
   type SelectTabEvent,
 } from '@fluentui/react-components';
-import { ArrowLeft24Regular, CheckmarkCircle24Regular, LockClosed24Regular } from '@fluentui/react-icons';
+import {
+  ArrowLeft24Regular,
+  CheckmarkCircle24Regular,
+  LockClosed24Regular,
+  Signature24Regular,
+} from '@fluentui/react-icons';
 import { api, StatusPt, statusPtLabel, type PermissaoTrabalhoDetalhe } from '../../lib/api';
 import { usePageStyles } from '../pageStyles';
 import { PermissaoTrabalhoControlesTab } from './PermissaoTrabalhoControlesTab';
@@ -128,6 +133,12 @@ export function PermissaoTrabalhoDetalhePage() {
                 Responsáveis: {detalhe.responsaveis.map((r) => r.trabalhadorNome).join(', ')}
               </Text>
             )}
+
+            <div style={{ marginTop: 16 }}>
+              <Button icon={<Signature24Regular />} onClick={() => navigate(`/operacao/pt/${id}/assinar`)}>
+                Assinar PT
+              </Button>
+            </div>
 
             {pt.status === StatusPt.EmElaboracao && (
               <div style={{ display: 'flex', gap: 16, marginTop: 16, flexWrap: 'wrap', alignItems: 'flex-end' }}>
