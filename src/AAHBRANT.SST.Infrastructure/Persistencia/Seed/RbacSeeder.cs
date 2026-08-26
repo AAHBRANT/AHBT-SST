@@ -126,6 +126,11 @@ public static class RbacSeeder
         ("acidente:editar", "Acidente", "Editar", "Editar registro de acidente/investigação"),
         ("acidente:avancar_status", "Acidente", "AvancarStatus", "Avançar status do acidente"),
 
+        ("hht:ver", "RegistroHht", "Ver", "Ver registros mensais de HHT por obra"),
+        ("hht:criar", "RegistroHht", "Criar", "Lançar registro mensal de HHT"),
+        ("hht:editar", "RegistroHht", "Editar", "Editar registro mensal de HHT"),
+        ("hht:excluir", "RegistroHht", "Excluir", "Excluir registro mensal de HHT"),
+
         ("matrizlegal:ver", "MatrizLegal", "Ver", "Ver matriz de requisitos legais"),
         ("matrizlegal:criar", "MatrizLegal", "Criar", "Criar requisito legal"),
         ("matrizlegal:editar", "MatrizLegal", "Editar", "Editar requisito legal"),
