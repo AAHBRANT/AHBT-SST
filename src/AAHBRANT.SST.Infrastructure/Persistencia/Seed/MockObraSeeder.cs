@@ -42,7 +42,24 @@ public static partial class MockObraSeeder
         db.CatalogoEpis.AddRange(catalogosEpi);
         db.EntregasEpi.AddRange(entregasEpi);
 
+        // Equipe.EncarregadoId e Trabalhador.EquipeId formam uma dependência circular entre duas
+        // entidades novas ([Added] <-> [Added]) que o EF Core não consegue linearizar num único
+        // SaveChanges (só quebra ciclo de autorreferência dentro da mesma entidade). Por isso o
+        // vínculo de Encarregado é persistido numa segunda passada, após Trabalhador já ter Id —
+        // as duas chamadas ficam numa transação para preservar a atomicidade (tudo ou nada).
+        await using var transaction = await db.Database.BeginTransactionAsync(ct);
+
         await db.SaveChangesAsync(ct);
+
+        foreach (var equipe in equipes)
+        {
+            var encarregado = trabalhadores.FirstOrDefault(t => t.Equipe == equipe && t.Funcao?.Nome == "Encarregado");
+            if (encarregado is not null)
+                equipe.EncarregadoId = encarregado.Id;
+        }
+
+        await db.SaveChangesAsync(ct);
+        await transaction.CommitAsync(ct);
     }
 
     private static (Obra Obra, List<AreaSst> Areas, List<Funcao> Funcoes, List<Setor> Setores, List<Equipe> Equipes, List<Trabalhador> Trabalhadores)
@@ -113,9 +130,6 @@ public static partial class MockObraSeeder
                     DataAdmissao = referenciaUtc.AddMonths(-6).AddDays(indiceGlobal % 150),
                 };
                 trabalhadores.Add(trabalhador);
-
-                if (nomeFuncao == "Encarregado" && equipe.Encarregado is null)
-                    equipe.Encarregado = trabalhador;
 
                 indiceGlobal++;
                 indiceEquipe++;
