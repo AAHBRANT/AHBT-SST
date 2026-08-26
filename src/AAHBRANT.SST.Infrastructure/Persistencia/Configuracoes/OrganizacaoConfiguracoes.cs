@@ -14,6 +14,11 @@ public class ObraConfiguracao : IEntityTypeConfiguration<Obra>
         builder.HasIndex(o => o.Codigo).IsUnique();
         builder.HasQueryFilter(o => o.Ativo);
         builder.Property(o => o.MetodosAutenticacaoHabilitados).IsRequired();
+
+        // Mesmo bug já corrigido para Acidentes (ver migration CorrigirRowVersionAcidentes): sem
+        // IsRowVersion() o EF tenta INSERT com valor explícito na coluna RowVersion, e o SQL Server
+        // rejeita. A migration seguinte recria a coluna física como "rowversion" de fato.
+        builder.Property(o => o.RowVersion).IsRowVersion();
     }
 }
 
@@ -25,6 +30,11 @@ public class SetorConfiguracao : IEntityTypeConfiguration<Setor>
         builder.HasOne(s => s.Obra).WithMany(o => o.Setores)
             .HasForeignKey(s => s.ObraId).OnDelete(DeleteBehavior.Restrict);
         builder.HasQueryFilter(s => s.Ativo);
+
+        // Mesmo bug já corrigido para Acidentes (ver migration CorrigirRowVersionAcidentes): sem
+        // IsRowVersion() o EF tenta INSERT com valor explícito na coluna RowVersion, e o SQL Server
+        // rejeita. A migration seguinte recria a coluna física como "rowversion" de fato.
+        builder.Property(s => s.RowVersion).IsRowVersion();
     }
 }
 
@@ -38,6 +48,11 @@ public class EquipeConfiguracao : IEntityTypeConfiguration<Equipe>
         builder.HasOne(e => e.Encarregado).WithMany()
             .HasForeignKey(e => e.EncarregadoId).OnDelete(DeleteBehavior.Restrict);
         builder.HasQueryFilter(e => e.Ativo);
+
+        // Mesmo bug já corrigido para Acidentes (ver migration CorrigirRowVersionAcidentes): sem
+        // IsRowVersion() o EF tenta INSERT com valor explícito na coluna RowVersion, e o SQL Server
+        // rejeita. A migration seguinte recria a coluna física como "rowversion" de fato.
+        builder.Property(e => e.RowVersion).IsRowVersion();
     }
 }
 

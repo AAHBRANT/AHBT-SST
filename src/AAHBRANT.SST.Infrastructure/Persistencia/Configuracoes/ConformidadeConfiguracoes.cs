@@ -12,6 +12,11 @@ public class AsoConfiguracao : IEntityTypeConfiguration<Aso>
             .HasForeignKey(a => a.TrabalhadorId).OnDelete(DeleteBehavior.Restrict);
         builder.HasIndex(a => new { a.TrabalhadorId, a.DataValidade });
         builder.HasQueryFilter(a => a.Ativo);
+
+        // Mesmo bug já corrigido para Acidentes (ver migration CorrigirRowVersionAcidentes): sem
+        // IsRowVersion() o EF tenta INSERT com valor explícito na coluna RowVersion, e o SQL Server
+        // rejeita. A migration seguinte recria a coluna física como "rowversion" de fato.
+        builder.Property(a => a.RowVersion).IsRowVersion();
     }
 }
 
@@ -32,6 +37,11 @@ public class CursoTreinamentoConfiguracao : IEntityTypeConfiguration<CursoTreina
     {
         builder.Property(c => c.Nome).IsRequired().HasMaxLength(150);
         builder.HasQueryFilter(c => c.Ativo);
+
+        // Mesmo bug já corrigido para Acidentes (ver migration CorrigirRowVersionAcidentes): sem
+        // IsRowVersion() o EF tenta INSERT com valor explícito na coluna RowVersion, e o SQL Server
+        // rejeita. A migration seguinte recria a coluna física como "rowversion" de fato.
+        builder.Property(c => c.RowVersion).IsRowVersion();
     }
 }
 
@@ -45,6 +55,11 @@ public class TreinamentoConfiguracao : IEntityTypeConfiguration<Treinamento>
             .HasForeignKey(t => t.CursoTreinamentoId).OnDelete(DeleteBehavior.Restrict);
         builder.HasIndex(t => new { t.TrabalhadorId, t.DataValidade });
         builder.HasQueryFilter(t => t.Ativo);
+
+        // Mesmo bug já corrigido para Acidentes (ver migration CorrigirRowVersionAcidentes): sem
+        // IsRowVersion() o EF tenta INSERT com valor explícito na coluna RowVersion, e o SQL Server
+        // rejeita. A migration seguinte recria a coluna física como "rowversion" de fato.
+        builder.Property(t => t.RowVersion).IsRowVersion();
     }
 }
 
@@ -56,6 +71,11 @@ public class CatalogoEpiConfiguracao : IEntityTypeConfiguration<CatalogoEpi>
         builder.Property(c => c.Fabricante).HasMaxLength(150);
         builder.Property(c => c.CertificadoAprovacaoNumero).HasMaxLength(20);
         builder.HasQueryFilter(c => c.Ativo);
+
+        // Mesmo bug já corrigido para Acidentes (ver migration CorrigirRowVersionAcidentes): sem
+        // IsRowVersion() o EF tenta INSERT com valor explícito na coluna RowVersion, e o SQL Server
+        // rejeita. A migration seguinte recria a coluna física como "rowversion" de fato.
+        builder.Property(c => c.RowVersion).IsRowVersion();
     }
 }
 
@@ -71,6 +91,11 @@ public class EntregaEpiConfiguracao : IEntityTypeConfiguration<EntregaEpi>
             .HasForeignKey(e => e.CatalogoEpiId).OnDelete(DeleteBehavior.Restrict);
         builder.HasIndex(e => new { e.TrabalhadorId, e.DataValidade });
         builder.HasQueryFilter(e => e.Ativo);
+
+        // Mesmo bug já corrigido para Acidentes (ver migration CorrigirRowVersionAcidentes): sem
+        // IsRowVersion() o EF tenta INSERT com valor explícito na coluna RowVersion, e o SQL Server
+        // rejeita. A migration seguinte recria a coluna física como "rowversion" de fato.
+        builder.Property(e => e.RowVersion).IsRowVersion();
     }
 }
 

@@ -49,5 +49,10 @@ public class AreaSstConfiguracao : IEntityTypeConfiguration<AreaSst>
             .HasColumnType("nvarchar(max)");
 
         builder.HasQueryFilter(a => a.Ativo);
+
+        // Mesmo bug já corrigido para Acidentes (ver migration CorrigirRowVersionAcidentes): sem
+        // IsRowVersion() o EF tenta INSERT com valor explícito na coluna RowVersion, e o SQL Server
+        // rejeita. A migration seguinte recria a coluna física como "rowversion" de fato.
+        builder.Property(a => a.RowVersion).IsRowVersion();
     }
 }
