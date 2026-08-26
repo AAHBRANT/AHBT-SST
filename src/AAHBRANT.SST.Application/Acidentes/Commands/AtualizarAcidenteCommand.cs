@@ -1,4 +1,5 @@
 using AAHBRANT.SST.Application.Common.Interfaces;
+using AAHBRANT.SST.Domain.Entidades;
 using AAHBRANT.SST.Domain.Enums;
 using FluentValidation;
 using MediatR;
@@ -23,7 +24,9 @@ public record AtualizarAcidenteCommand(
     int? DiasAfastamento,
     string? NumeroCat,
     MetodologiaInvestigacao? MetodologiaInvestigacao,
-    string? Causas) : IRequest;
+    string? Causas,
+    GravidadeAcidente Gravidade,
+    int? DiasDebitadosInformados) : IRequest;
 
 public class AtualizarAcidenteCommandValidator : AbstractValidator<AtualizarAcidenteCommand>
 {
@@ -39,6 +42,10 @@ public class AtualizarAcidenteCommandValidator : AbstractValidator<AtualizarAcid
         RuleFor(x => x.NumeroCat).MaximumLength(50);
         RuleFor(x => x.Causas).MaximumLength(2000);
         RuleFor(x => x.DiasAfastamento).GreaterThanOrEqualTo(0).When(x => x.DiasAfastamento.HasValue);
+        RuleFor(x => x.DiasDebitadosInformados)
+            .NotNull().WithMessage("Informe os Dias Debitados consultando o Quadro III da NBR 14280.")
+            .GreaterThan(0)
+            .When(x => x.Gravidade == GravidadeAcidente.IncapacidadePermanenteParcial);
     }
 }
 
@@ -80,6 +87,8 @@ public class AtualizarAcidenteCommandHandler : IRequestHandler<AtualizarAcidente
         acidente.NumeroCat = request.NumeroCat;
         acidente.MetodologiaInvestigacao = request.MetodologiaInvestigacao;
         acidente.Causas = request.Causas;
+        acidente.Gravidade = request.Gravidade;
+        acidente.DiasDebitados = TabelaDiasDebitados.Calcular(request.Gravidade, request.DiasDebitadosInformados);
 
         await _db.SaveChangesAsync(ct);
     }

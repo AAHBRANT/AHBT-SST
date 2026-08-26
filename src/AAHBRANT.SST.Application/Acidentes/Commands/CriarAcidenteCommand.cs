@@ -23,7 +23,9 @@ public record CriarAcidenteCommand(
     int? DiasAfastamento,
     string? NumeroCat,
     MetodologiaInvestigacao? MetodologiaInvestigacao,
-    string? Causas) : IRequest<Guid>;
+    string? Causas,
+    GravidadeAcidente Gravidade,
+    int? DiasDebitadosInformados) : IRequest<Guid>;
 
 public class CriarAcidenteCommandValidator : AbstractValidator<CriarAcidenteCommand>
 {
@@ -38,6 +40,10 @@ public class CriarAcidenteCommandValidator : AbstractValidator<CriarAcidenteComm
         RuleFor(x => x.NumeroCat).MaximumLength(50);
         RuleFor(x => x.Causas).MaximumLength(2000);
         RuleFor(x => x.DiasAfastamento).GreaterThanOrEqualTo(0).When(x => x.DiasAfastamento.HasValue);
+        RuleFor(x => x.DiasDebitadosInformados)
+            .NotNull().WithMessage("Informe os Dias Debitados consultando o Quadro III da NBR 14280.")
+            .GreaterThan(0)
+            .When(x => x.Gravidade == GravidadeAcidente.IncapacidadePermanenteParcial);
     }
 }
 
@@ -78,6 +84,8 @@ public class CriarAcidenteCommandHandler : IRequestHandler<CriarAcidenteCommand,
             NumeroCat = request.NumeroCat,
             MetodologiaInvestigacao = request.MetodologiaInvestigacao,
             Causas = request.Causas,
+            Gravidade = request.Gravidade,
+            DiasDebitados = TabelaDiasDebitados.Calcular(request.Gravidade, request.DiasDebitadosInformados),
         };
 
         _db.Acidentes.Add(acidente);
