@@ -1653,23 +1653,23 @@ git commit -m "feat: adiciona card de Taxa de Gravidade (NBR 14280) ao Painel In
 
 **Files:** nenhum (só build + verificação manual)
 
-- [ ] **Step 1: Build completo do backend**
+- [x] **Step 1: Build completo do backend**
 
 Run: `dotnet build`
 Expected: Build succeeded, 0 erros.
 
-- [ ] **Step 2: Rodar toda a suíte de testes**
+- [x] **Step 2: Rodar toda a suíte de testes**
 
 Run: `dotnet test`
 Expected: todos os testes existentes continuam passando + os novos `TabelaDiasDebitadosTests`.
 
-- [ ] **Step 3: Subir a API localmente e confirmar o seed do RBAC**
+- [x] **Step 3: Subir a API localmente e confirmar o seed do RBAC**
 
 Run a API local (`dotnet run --project src/AAHBRANT.SST.Api`) e confirmar nos logs/õu numa consulta
 que os códigos `hht:ver`, `hht:criar`, `hht:editar`, `hht:excluir` foram inseridos em `Permissoes`
 pelo `RbacSeeder` no start.
 
-- [ ] **Step 4: Verificação visual no navegador (Browser pane)**
+- [x] **Step 4: Verificação visual no navegador (Browser pane)**
 
 Com a API e o frontend (`npm run dev` no TeamsApp) no ar:
 1. Abrir `AcidentesPage`, criar um acidente com Gravidade = "Com afastamento" e Dias de afastamento
@@ -1685,7 +1685,7 @@ Com a API e o frontend (`npm run dev` no TeamsApp) no ar:
    badge "Dentro da meta"/"Acima da meta" aparece com a cor certa, e que recarregar a página
    mantém a meta salva (localStorage).
 
-- [ ] **Step 5: Commit final (se houver ajustes da verificação)**
+- [x] **Step 5: Commit final (se houver ajustes da verificação)**
 
 ```bash
 git add -A
