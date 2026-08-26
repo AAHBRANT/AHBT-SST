@@ -26,6 +26,8 @@ public static partial class MockObraSeeder
         var referenciaUtc = DateTime.UtcNow;
 
         var (obra, areas, funcoes, setores, equipes, trabalhadores) = ConstruirEstruturaOrganizacional(referenciaUtc);
+        var (cursos, treinamentos, asos) = ConstruirTreinamentosEAsos(trabalhadores, referenciaUtc);
+        var (naoConformidades, catalogosEpi, entregasEpi) = ConstruirNaoConformidadesEEpi(trabalhadores, areas, referenciaUtc);
 
         db.Obras.Add(obra);
         db.AreasSst.AddRange(areas);
@@ -33,6 +35,12 @@ public static partial class MockObraSeeder
         db.Setores.AddRange(setores);
         db.Equipes.AddRange(equipes);
         db.Trabalhadores.AddRange(trabalhadores);
+        db.CursosTreinamento.AddRange(cursos);
+        db.Treinamentos.AddRange(treinamentos);
+        db.Asos.AddRange(asos);
+        db.NaoConformidades.AddRange(naoConformidades);
+        db.CatalogoEpis.AddRange(catalogosEpi);
+        db.EntregasEpi.AddRange(entregasEpi);
 
         await db.SaveChangesAsync(ct);
     }
