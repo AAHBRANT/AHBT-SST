@@ -113,6 +113,11 @@ await RbacSeeder.ExecutarAsync(app.Services);
 await CpfLgpdBackfillSeeder.ExecutarAsync(app.Services);
 await RegraAlertaSeeder.ExecutarAsync(app.Services);
 
+if (app.Environment.IsDevelopment())
+{
+    await MockObraSeeder.ExecutarAsync(app.Services);
+}
+
 app.MapControllers();
 
 app.Run();
