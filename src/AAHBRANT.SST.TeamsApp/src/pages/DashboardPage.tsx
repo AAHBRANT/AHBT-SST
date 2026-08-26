@@ -7,10 +7,11 @@ import {
   DocumentLock24Regular,
   ClipboardTaskListLtr24Regular,
 } from '@fluentui/react-icons';
-import { api, StatusApr, StatusPt } from '../lib/api';
+import { api, StatusApr, StatusPt, type Acidente, type RegistroHhtMensal } from '../lib/api';
 import { CardGrid } from '../layout/AppShell';
 import { usePageStyles } from './pageStyles';
 import { designTokens } from '../theme';
+import { TaxaGravidadeCard } from '../components/dashboard/TaxaGravidadeCard';
 
 interface Kpi {
   rotulo: string;
@@ -30,6 +31,8 @@ const kpisIniciais: Kpi[] = [
 export function DashboardPage() {
   const estilos = usePageStyles();
   const [kpis, setKpis] = useState<Kpi[]>(kpisIniciais);
+  const [acidentes, setAcidentes] = useState<Acidente[]>([]);
+  const [registrosHht, setRegistrosHht] = useState<RegistroHhtMensal[]>([]);
   const [erro, setErro] = useState<string | null>(null);
 
   useEffect(() => {
@@ -40,8 +43,10 @@ export function DashboardPage() {
       api.treinamentos.listar(),
       api.permissoesTrabalho.listar(),
       api.aprs.listar(),
+      api.acidentes.listar(),
+      api.registrosHht.listar(),
     ])
-      .then(([obras, trabalhadores, asos, treinamentos, pts, aprs]) => {
+      .then(([obras, trabalhadores, asos, treinamentos, pts, aprs, acidentesLista, registrosHhtLista]) => {
         const hoje = new Date().toISOString().slice(0, 10);
         const asosVencidos = asos.filter((a) => a.dataValidade < hoje).length;
         const treinamentosVencidos = treinamentos.filter((t) => t.dataValidade < hoje).length;
@@ -56,6 +61,8 @@ export function DashboardPage() {
           { rotulo: 'PTs abertas', valor: ptsAbertas, icone: <DocumentLock24Regular /> },
           { rotulo: 'APRs aguardando aprovação', valor: aprsAguardando, icone: <ClipboardTaskListLtr24Regular /> },
         ]);
+        setAcidentes(acidentesLista);
+        setRegistrosHht(registrosHhtLista);
       })
       .catch((e) => setErro(e instanceof Error ? e.message : 'Falha ao carregar indicadores.'));
   }, []);
@@ -75,6 +82,7 @@ export function DashboardPage() {
             <Text style={{ color: designTokens.colorNeutralMedium }}>{kpi.rotulo}</Text>
           </div>
         ))}
+        <TaxaGravidadeCard acidentes={acidentes} registrosHht={registrosHht} />
       </CardGrid>
     </div>
   );
