@@ -6,6 +6,12 @@
       "runtimeExecutable": "dotnet",
       "runtimeArgs": ["run", "--project", "src/AAHBRANT.SST.Api/AAHBRANT.SST.Api.csproj", "--urls", "http://localhost:5102"],
       "port": 5102
+    },
+    {
+      "name": "sst-web",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": ["--prefix", "src/AAHBRANT.SST.TeamsApp", "run", "dev"],
+      "port": 5173
     }
   ]
 }
