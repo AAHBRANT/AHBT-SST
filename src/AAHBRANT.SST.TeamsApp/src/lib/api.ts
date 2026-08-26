@@ -2,11 +2,18 @@ import { authentication } from '@microsoft/teams-js';
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL ?? 'https://localhost:7095';
 
-// Fora do Teams (dev local no navegador) o SDK não está inicializado e getAuthToken rejeita —
-// nesse caso seguimos sem o header, como já era o comportamento (API local roda sem auth).
+// Fora de um host real do Teams (ex.: dev local no navegador), getAuthToken() tem dois
+// comportamentos possíveis: rejeita rápido com "library not initialized" nos primeiros
+// instantes após o mount, OU — passada essa janela — nunca resolve nem rejeita, pois fica
+// esperando resposta de um frame pai do Teams que não existe. Sem o timeout, esse segundo
+// caso travaria para sempre qualquer requisição feita depois do boot inicial do SDK. Em
+// ambos os casos seguimos sem o header, como já era o comportamento (API local roda sem auth).
 async function obterTokenAutenticacaoTeams(): Promise<string | null> {
   try {
-    return await authentication.getAuthToken();
+    return await Promise.race([
+      authentication.getAuthToken(),
+      new Promise<null>((resolve) => setTimeout(() => resolve(null), 3000)),
+    ]);
   } catch {
     return null;
   }
