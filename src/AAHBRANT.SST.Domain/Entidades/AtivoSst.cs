@@ -7,8 +7,8 @@ namespace AAHBRANT.SST.Domain.Entidades;
 // para os ativos de SST monitorados pelo motor de alertas (extintores, equipamentos), discriminada
 // por TipoAtivo — decisão de arquitetura confirmada pelo usuário, não escolha própria. Nome
 // "AtivoSst" (não apenas "Ativo") para não colidir semanticamente com o campo booleano Ativo de
-// soft-delete que toda AuditableEntity já tem. Diferente de ItemHigienizacao, a validade aqui é um
-// campo fixo armazenado (DataValidade) — não calculada a partir de um histórico de registros.
+// soft-delete que toda AuditableEntity já tem. A validade aqui é um campo fixo armazenado
+// (DataValidade) — não calculada a partir de um histórico de registros.
 public class AtivoSst : AuditableEntity
 {
     public Guid ObraId { get; set; }

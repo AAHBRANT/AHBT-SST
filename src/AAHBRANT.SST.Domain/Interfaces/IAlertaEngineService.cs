@@ -5,8 +5,8 @@ namespace AAHBRANT.SST.Domain.Interfaces;
 // Motor Central de Alertas (requisito do usuário, 2026-08-24) — generaliza o padrão de
 // vencimento/alerta para qualquer módulo, em vez de cada um reimplementar sua própria checagem de
 // dias/severidade. Espelha o Strategy pattern já validado em IEligibilityService/IEligibilityRule:
-// uma implementação de IAlertaOrigemProvider por módulo (Aso, Treinamento, Higienizacao hoje;
-// Extintor/Equipamento/Epi/Documento em fases seguintes), avaliadas em conjunto pelo
+// uma implementação de IAlertaOrigemProvider por módulo (Aso, Treinamento hoje; Extintor/
+// Equipamento/Epi/Documento em fases seguintes), avaliadas em conjunto pelo
 // IAlertaEngineService contra as RegraAlerta configuráveis daquele módulo.
 public interface IAlertaOrigemProvider
 {
@@ -23,9 +23,9 @@ public class AlertaOrigemItem
     public Guid EntidadeOrigemId { get; set; }
     public DateTime DataVencimento { get; set; }
 
-    // TipoAlertaVencido é opcional porque nem todo módulo tem um valor "Vencido" próprio no enum
-    // (ex.: HigienizacaoVencendo não tem par — o módulo entrou depois, ver Enums.cs). Quando nulo,
-    // o motor usa TipoAlertaVencendo também para o caso vencido, diferenciando só pelo texto.
+    // TipoAlertaVencido é opcional porque nem todo módulo tem um valor "Vencido" próprio no enum.
+    // Quando nulo, o motor usa TipoAlertaVencendo também para o caso vencido, diferenciando só
+    // pelo texto.
     public TipoAlerta TipoAlertaVencendo { get; set; }
     public TipoAlerta? TipoAlertaVencido { get; set; }
 

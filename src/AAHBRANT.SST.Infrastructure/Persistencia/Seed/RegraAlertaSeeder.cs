@@ -16,9 +16,9 @@ public static class RegraAlertaSeeder
     {
         TipoModuloAlerta.Aso,
         TipoModuloAlerta.Treinamento,
-        TipoModuloAlerta.Higienizacao,
         TipoModuloAlerta.Extintor,
         TipoModuloAlerta.Equipamento,
+        TipoModuloAlerta.Epi,
     };
 
     public static async Task ExecutarAsync(IServiceProvider services, CancellationToken ct = default)

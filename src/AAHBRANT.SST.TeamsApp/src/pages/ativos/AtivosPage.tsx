@@ -37,8 +37,8 @@ function ativoVazio(): NovoAtivoSst {
   };
 }
 
-// Diferente de Higienização, a validade aqui é um campo fixo cadastrado (DataValidade) — não
-// calculado a partir de um histórico de registros — então o cálculo do badge é só a diferença
+// A validade aqui é um campo fixo cadastrado (DataValidade) — não calculado a partir de um
+// histórico de registros — então o cálculo do badge é só a diferença
 // entre a data cadastrada e hoje.
 function vencimentoInfo(dataValidade: string): { texto: string; cor: 'success' | 'warning' | 'danger' } {
   const hoje = new Date();

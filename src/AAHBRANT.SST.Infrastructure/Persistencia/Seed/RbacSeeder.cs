@@ -161,9 +161,6 @@ public static class RbacSeeder
         ("assinatura:assinar", "Assinatura", "Assinar", "Assinar um documento no quiosque (crachá/QR + PIN ou biometria)"),
         ("assinatura:finalizar", "Assinatura", "Finalizar", "Fechar um documento de assinatura para novas assinaturas e gerar o hash de integridade (etapa 8)"),
 
-        ("higienizacao:ver", "Higienizacao", "Ver", "Ver itens e histórico de higienização"),
-        ("higienizacao:criar", "Higienizacao", "Criar", "Cadastrar item de higienização (local + periodicidade)"),
-        ("higienizacao:registrar", "Higienizacao", "Registrar", "Registrar higienização executada, com foto"),
 
         ("ativo:ver", "Ativo", "Ver", "Ver cadastro de ativos de SST (extintores/equipamentos)"),
         ("ativo:criar", "Ativo", "Criar", "Cadastrar ativo de SST"),

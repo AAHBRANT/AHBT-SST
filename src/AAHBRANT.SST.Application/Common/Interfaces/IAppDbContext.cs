@@ -80,8 +80,6 @@ public interface IAppDbContext
     DbSet<DocumentoGestao> DocumentosGestao { get; }
     DbSet<DocumentoRevisao> DocumentoRevisoes { get; }
 
-    DbSet<ItemHigienizacao> ItensHigienizacao { get; }
-    DbSet<RegistroHigienizacao> RegistrosHigienizacao { get; }
 
     DbSet<AtivoSst> AtivosSst { get; }
 

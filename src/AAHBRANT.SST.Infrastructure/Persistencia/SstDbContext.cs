@@ -84,8 +84,6 @@ public class SstDbContext : DbContext, IAppDbContext
     public DbSet<DocumentoGestao> DocumentosGestao => Set<DocumentoGestao>();
     public DbSet<DocumentoRevisao> DocumentoRevisoes => Set<DocumentoRevisao>();
 
-    public DbSet<ItemHigienizacao> ItensHigienizacao => Set<ItemHigienizacao>();
-    public DbSet<RegistroHigienizacao> RegistrosHigienizacao => Set<RegistroHigienizacao>();
 
     public DbSet<AtivoSst> AtivosSst => Set<AtivoSst>();
 

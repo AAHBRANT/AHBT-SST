@@ -7,4 +7,8 @@ public record EntregaEpiDto(
     DateTime DataEntrega,
     DateTime? DataDevolucao,
     DateTime? DataValidade,
-    bool AssinaturaColetada);
+    int Quantidade,
+    int? QuantidadeDevolucao,
+    string? VistoConsorcioResponsavel,
+    string? Motivo,
+    string? Observacoes);

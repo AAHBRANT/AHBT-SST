@@ -2,6 +2,7 @@ using AAHBRANT.SST.Application.Common.Interfaces;
 using AAHBRANT.SST.Domain.Entidades;
 using FluentValidation;
 using MediatR;
+using Microsoft.EntityFrameworkCore;
 
 namespace AAHBRANT.SST.Application.EntregasEpi.Commands;
 
@@ -11,7 +12,10 @@ public record CriarEntregaEpiCommand(
     DateTime DataEntrega,
     DateTime? DataDevolucao,
     DateTime? DataValidade,
-    bool AssinaturaColetada) : IRequest<Guid>;
+    int Quantidade,
+    string? VistoConsorcioResponsavel,
+    string? Motivo,
+    string? Observacoes) : IRequest<Guid>;
 
 public class CriarEntregaEpiCommandValidator : AbstractValidator<CriarEntregaEpiCommand>
 {
@@ -20,6 +24,7 @@ public class CriarEntregaEpiCommandValidator : AbstractValidator<CriarEntregaEpi
         RuleFor(x => x.TrabalhadorId).NotEmpty();
         RuleFor(x => x.CatalogoEpiId).NotEmpty();
         RuleFor(x => x.DataEntrega).NotEmpty();
+        RuleFor(x => x.Quantidade).GreaterThan(0);
     }
 }
 
@@ -30,6 +35,17 @@ public class CriarEntregaEpiCommandHandler : IRequestHandler<CriarEntregaEpiComm
 
     public async Task<Guid> Handle(CriarEntregaEpiCommand request, CancellationToken ct)
     {
+        var catalogo = await _db.CatalogoEpis.FirstOrDefaultAsync(x => x.Id == request.CatalogoEpiId, ct)
+            ?? throw new KeyNotFoundException("EPI de catálogo não encontrado.");
+
+        // Bloqueio de entrega com CA vencido e de estoque insuficiente: decisões confirmadas com o
+        // usuário — não apenas um aviso, a entrega não é registrada.
+        if (catalogo.CertificadoAprovacaoValidade is not null && catalogo.CertificadoAprovacaoValidade < DateTime.UtcNow)
+            throw new InvalidOperationException("Este EPI está com o Certificado de Aprovação (CA) vencido — não é possível registrar a entrega.");
+
+        if (catalogo.SaldoEstoque < request.Quantidade)
+            throw new InvalidOperationException($"Estoque insuficiente para este EPI (saldo atual: {catalogo.SaldoEstoque}).");
+
         var entrega = new EntregaEpi
         {
             TrabalhadorId = request.TrabalhadorId,
@@ -37,8 +53,13 @@ public class CriarEntregaEpiCommandHandler : IRequestHandler<CriarEntregaEpiComm
             DataEntrega = request.DataEntrega,
             DataDevolucao = request.DataDevolucao,
             DataValidade = request.DataValidade,
-            AssinaturaColetada = request.AssinaturaColetada,
+            Quantidade = request.Quantidade,
+            VistoConsorcioResponsavel = request.VistoConsorcioResponsavel,
+            Motivo = request.Motivo,
+            Observacoes = request.Observacoes,
         };
+        catalogo.SaldoEstoque -= request.Quantidade;
+
         _db.EntregasEpi.Add(entrega);
         await _db.SaveChangesAsync(ct);
         return entrega.Id;

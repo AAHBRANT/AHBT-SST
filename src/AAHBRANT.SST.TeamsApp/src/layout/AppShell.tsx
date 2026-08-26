@@ -10,6 +10,7 @@ import {
   Settings24Regular,
   Alert24Regular,
   Gavel24Regular,
+  ShieldCheckmark24Regular,
   ChevronLeft24Regular,
   ChevronRight24Regular,
 } from '@fluentui/react-icons';
@@ -163,6 +164,9 @@ const secoesNavegacao: Array<{ pilar: string | null; itens: Array<{ rota: string
   { pilar: null, itens: [{ rota: '/prevencao', rotulo: 'Prevenção', icone: ShieldError24Regular }] },
   { pilar: null, itens: [{ rota: '/operacao', rotulo: 'Operação', icone: BuildingBank24Regular }] },
   { pilar: null, itens: [{ rota: '/melhoria', rotulo: 'Melhoria Contínua', icone: Warning24Regular }] },
+  // EPI ficou fora dos 4 pilares (sidebar fixa própria) por decisão do usuário: catálogo/estoque
+  // e entregas são dado operacional/compartilhado, não pessoal — não caberia como aba de um pilar.
+  { pilar: null, itens: [{ rota: '/epi', rotulo: 'EPI', icone: ShieldCheckmark24Regular }] },
   { pilar: null, itens: [{ rota: '/administracao', rotulo: 'Administração', icone: Settings24Regular }] },
 ];
 
@@ -174,6 +178,7 @@ function tituloDaRota(pathname: string): string {
   if (pathname.startsWith('/prevencao')) return 'Prevenção';
   if (pathname.startsWith('/operacao')) return 'Operação';
   if (pathname.startsWith('/melhoria')) return 'Melhoria Contínua';
+  if (pathname.startsWith('/epi')) return 'EPI';
   const item = itensNavegacaoFlat.find((i) => i.rota === pathname);
   return item?.rotulo ?? 'AAHBRANT SST';
 }

@@ -91,7 +91,7 @@ public enum TipoAlerta
     DocumentoVencido = 13,
     AtividadeBloqueada = 14,
     PtVencida = 15,
-    HigienizacaoVencendo = 16,
+    // 16 reservado (módulo Higienização removido) — não reaproveitar, alertas antigos podem ter esse tipo gravado.
     ExtintorVencendo = 17,
     ExtintorVencido = 18,
     EquipamentoVencendo = 19,
@@ -107,15 +107,15 @@ public enum SeveridadeAlerta
 
 // Motor Central de Alertas (requisito adicionado pelo usuário em 2026-08-24): generaliza o padrão
 // de vencimento/alerta para qualquer módulo, em vez de cada um reimplementar sua própria checagem
-// de dias/severidade. Formaliza o que hoje é o campo livre Alerta.EntidadeOrigemTipo. Só Aso,
-// Treinamento e Higienizacao têm IAlertaOrigemProvider registrado nesta fase — os demais valores
-// existem para os módulos de ativos (Extintor/Equipamento) e os já existentes (Epi/Documento/
-// Inspecao/Dds/AcaoPlano) previstos no requisito do usuário, plugados em fases seguintes.
+// de dias/severidade. Formaliza o que hoje é o campo livre Alerta.EntidadeOrigemTipo. Só Aso e
+// Treinamento têm IAlertaOrigemProvider registrado nesta fase — os demais valores existem para os
+// módulos de ativos (Extintor/Equipamento) e os já existentes (Epi/Documento/Inspecao/Dds/
+// AcaoPlano) previstos no requisito do usuário, plugados em fases seguintes.
 public enum TipoModuloAlerta
 {
     Aso = 1,
     Treinamento = 2,
-    Higienizacao = 3,
+    // 3 reservado (módulo Higienização removido) — não reaproveitar, regras/alertas antigos podem ter esse módulo gravado.
     Epi = 4,
     Documento = 5,
     Inspecao = 6,

@@ -191,12 +191,15 @@ export type NovoTreinamento = Omit<Treinamento, 'id'>;
 export interface CatalogoEpi {
   id: string;
   nome: string;
+  fabricante?: string | null;
   certificadoAprovacaoNumero?: string | null;
   certificadoAprovacaoValidade?: string | null;
   vidaUtilEmMeses: number;
+  saldoEstoque: number;
 }
 
 export type NovoCatalogoEpi = Omit<CatalogoEpi, 'id'>;
+export type AtualizarCatalogoEpi = CatalogoEpi;
 
 export interface EntregaEpi {
   id: string;
@@ -205,10 +208,15 @@ export interface EntregaEpi {
   dataEntrega: string;
   dataDevolucao?: string | null;
   dataValidade?: string | null;
-  assinaturaColetada: boolean;
+  quantidade: number;
+  quantidadeDevolucao?: number | null;
+  vistoConsorcioResponsavel?: string | null;
+  motivo?: string | null;
+  observacoes?: string | null;
 }
 
 export type NovaEntregaEpi = Omit<EntregaEpi, 'id'>;
+export type AtualizarEntregaEpi = EntregaEpi;
 
 export interface Atividade {
   id: string;
@@ -1133,41 +1141,9 @@ export interface DocumentoAssinaturaResumo {
   tokenValidacaoPublica?: string | null;
 }
 
-export interface ItemHigienizacao {
-  id: string;
-  obraId: string;
-  obraNome: string;
-  nome: string;
-  local?: string | null;
-  periodicidadeDias: number;
-  ultimaHigienizacaoEm?: string | null;
-  proximoVencimentoEm: string;
-  totalRegistros: number;
-}
-
-export interface NovoItemHigienizacao {
-  obraId: string;
-  nome: string;
-  local?: string | null;
-  periodicidadeDias: number;
-}
-
-export interface RegistroHigienizacao {
-  id: string;
-  trabalhadorId: string;
-  trabalhadorNome: string;
-  dataHora: string;
-  observacoes?: string | null;
-}
-
-export interface ItemHigienizacaoDetalhe {
-  item: ItemHigienizacao;
-  registros: RegistroHigienizacao[];
-}
-
 // Motor Central de Alertas + Cadastro de Ativos (requisito do usuário, 2026-08-25): entidade única
-// AtivoSst com campo discriminador TipoAtivo — diferente de Higienização, a validade aqui é um
-// campo fixo (DataValidade), não calculada a partir de um histórico de registros.
+// AtivoSst com campo discriminador TipoAtivo — a validade aqui é um campo fixo (DataValidade), não
+// calculada a partir de um histórico de registros.
 export const TipoAtivo = {
   Extintor: 1,
   Equipamento: 2,
@@ -1593,7 +1569,7 @@ export const TipoAlerta = {
   DocumentoVencido: 13,
   AtividadeBloqueada: 14,
   PtVencida: 15,
-  HigienizacaoVencendo: 16,
+  // 16 reservado (módulo Higienização removido) — não reaproveitar, alertas antigos podem ter esse tipo gravado.
   ExtintorVencendo: 17,
   ExtintorVencido: 18,
   EquipamentoVencendo: 19,
@@ -1652,9 +1628,10 @@ export const statusAlertaLabel: Record<number, string> = {
 };
 
 // Rótulo amigável do módulo de origem do alerta (Alerta.EntidadeOrigemTipo) — alimentado tanto
-// pelos IAlertaOrigemProvider do Motor Central de Alertas (Aso, Treinamento, ItemHigienizacao,
-// AtivoSst) quanto por alertas criados manualmente, cujo EntidadeOrigemTipo é texto livre (ver
-// CriarAlertaCommand); por isso o fallback retorna o próprio valor quando não reconhecido.
+// pelos IAlertaOrigemProvider do Motor Central de Alertas (Aso, Treinamento, AtivoSst) quanto por
+// alertas criados manualmente, cujo EntidadeOrigemTipo é texto livre (ver CriarAlertaCommand); por
+// isso o fallback retorna o próprio valor quando não reconhecido. ItemHigienizacao é mantido aqui
+// (módulo Higienização removido) só para exibir corretamente alertas antigos já gravados no banco.
 export const categoriaAlertaLabel: Record<string, string> = {
   Aso: 'ASO',
   Treinamento: 'Treinamentos',
@@ -1719,7 +1696,7 @@ export interface AtualizarAlertaPayload {
 export const TipoModuloAlerta = {
   Aso: 1,
   Treinamento: 2,
-  Higienizacao: 3,
+  // 3 reservado (módulo Higienização removido) — não reaproveitar, regras/alertas antigos podem ter esse módulo gravado.
   Epi: 4,
   Documento: 5,
   Inspecao: 6,
@@ -1856,14 +1833,27 @@ export const api = {
     listar: () => request<CatalogoEpi[]>('/api/catalogosepi'),
     criar: (epi: NovoCatalogoEpi) =>
       request<{ id: string }>('/api/catalogosepi', { method: 'POST', body: JSON.stringify(epi) }),
+    atualizar: (epi: AtualizarCatalogoEpi) =>
+      request<void>(`/api/catalogosepi/${epi.id}`, { method: 'PUT', body: JSON.stringify(epi) }),
     excluir: (id: string) => request<void>(`/api/catalogosepi/${id}`, { method: 'DELETE' }),
   },
   entregasEpi: {
     listar: (trabalhadorId?: string) =>
       request<EntregaEpi[]>(`/api/entregasepi${trabalhadorId ? `?trabalhadorId=${trabalhadorId}` : ''}`),
+    obterPorId: (id: string) => request<EntregaEpi>(`/api/entregasepi/${id}`),
     criar: (entrega: NovaEntregaEpi) =>
       request<{ id: string }>('/api/entregasepi', { method: 'POST', body: JSON.stringify(entrega) }),
+    atualizar: (entrega: AtualizarEntregaEpi) =>
+      request<void>(`/api/entregasepi/${entrega.id}`, { method: 'PUT', body: JSON.stringify(entrega) }),
     excluir: (id: string) => request<void>(`/api/entregasepi/${id}`, { method: 'DELETE' }),
+    baixarPdf: async (id: string) => {
+      const response = await fetch(`${API_BASE_URL}/api/entregasepi/${id}/pdf`, { headers: await montarHeadersAuth() });
+      if (!response.ok) {
+        const corpo = await response.text().catch(() => '');
+        throw new Error(`${response.status} ${response.statusText}: ${corpo}`);
+      }
+      return response.blob();
+    },
   },
   atividades: {
     listar: (obraId?: string) => request<Atividade[]>(`/api/atividades${obraId ? `?obraId=${obraId}` : ''}`),
@@ -2187,44 +2177,6 @@ export const api = {
     },
     baixarPdf: async (id: string) => {
       const response = await fetch(`${API_BASE_URL}/api/documentos/${id}/pdf`, { headers: await montarHeadersAuth() });
-      if (!response.ok) {
-        const corpo = await response.text().catch(() => '');
-        throw new Error(`${response.status} ${response.statusText}: ${corpo}`);
-      }
-      return response.blob();
-    },
-  },
-  higienizacao: {
-    listar: (obraId?: string) =>
-      request<ItemHigienizacao[]>(`/api/higienizacao${obraId ? `?obraId=${obraId}` : ''}`),
-    obterDetalhe: (id: string) => request<ItemHigienizacaoDetalhe>(`/api/higienizacao/${id}`),
-    criar: (item: NovoItemHigienizacao) =>
-      request<{ id: string }>('/api/higienizacao', { method: 'POST', body: JSON.stringify(item) }),
-    registrarHigienizacao: async (
-      itemId: string,
-      trabalhadorId: string,
-      observacoes: string | null,
-      foto: File,
-    ) => {
-      const formData = new FormData();
-      formData.append('trabalhadorId', trabalhadorId);
-      if (observacoes) formData.append('observacoes', observacoes);
-      formData.append('foto', foto);
-      const response = await fetch(`${API_BASE_URL}/api/higienizacao/${itemId}/registros`, {
-        method: 'POST',
-        headers: await montarHeadersAuth(),
-        body: formData,
-      });
-      if (!response.ok) {
-        const corpo = await response.text().catch(() => '');
-        throw new Error(`${response.status} ${response.statusText}: ${corpo}`);
-      }
-      return (await response.json()) as { id: string };
-    },
-    baixarFotoRegistro: async (registroId: string) => {
-      const response = await fetch(`${API_BASE_URL}/api/higienizacao/registros/${registroId}/foto`, {
-        headers: await montarHeadersAuth(),
-      });
       if (!response.ok) {
         const corpo = await response.text().catch(() => '');
         throw new Error(`${response.status} ${response.statusText}: ${corpo}`);

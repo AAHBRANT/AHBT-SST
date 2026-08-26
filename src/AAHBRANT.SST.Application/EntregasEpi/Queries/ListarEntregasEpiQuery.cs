@@ -26,7 +26,11 @@ public class ListarEntregasEpiQueryHandler : IRequestHandler<ListarEntregasEpiQu
                 x.DataEntrega,
                 x.DataDevolucao,
                 x.DataValidade,
-                x.AssinaturaColetada))
+                x.Quantidade,
+                x.QuantidadeDevolucao,
+                x.VistoConsorcioResponsavel,
+                x.Motivo,
+                x.Observacoes))
             .ToListAsync(ct);
     }
 }

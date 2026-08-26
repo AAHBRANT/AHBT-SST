@@ -3,6 +3,8 @@ namespace AAHBRANT.SST.Application.CatalogosEpi;
 public record CatalogoEpiDto(
     Guid Id,
     string Nome,
+    string? Fabricante,
     string? CertificadoAprovacaoNumero,
     DateTime? CertificadoAprovacaoValidade,
-    int VidaUtilEmMeses);
+    int VidaUtilEmMeses,
+    int SaldoEstoque);

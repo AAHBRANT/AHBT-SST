@@ -53,6 +53,7 @@ public class CatalogoEpiConfiguracao : IEntityTypeConfiguration<CatalogoEpi>
     public void Configure(EntityTypeBuilder<CatalogoEpi> builder)
     {
         builder.Property(c => c.Nome).IsRequired().HasMaxLength(150);
+        builder.Property(c => c.Fabricante).HasMaxLength(150);
         builder.Property(c => c.CertificadoAprovacaoNumero).HasMaxLength(20);
         builder.HasQueryFilter(c => c.Ativo);
     }
@@ -62,10 +63,13 @@ public class EntregaEpiConfiguracao : IEntityTypeConfiguration<EntregaEpi>
 {
     public void Configure(EntityTypeBuilder<EntregaEpi> builder)
     {
+        builder.Property(e => e.VistoConsorcioResponsavel).HasMaxLength(150);
+        builder.Property(e => e.Motivo).HasMaxLength(200);
         builder.HasOne(e => e.Trabalhador).WithMany(t => t.EntregasEpi)
             .HasForeignKey(e => e.TrabalhadorId).OnDelete(DeleteBehavior.Restrict);
         builder.HasOne(e => e.CatalogoEpi).WithMany(c => c.Entregas)
             .HasForeignKey(e => e.CatalogoEpiId).OnDelete(DeleteBehavior.Restrict);
+        builder.HasIndex(e => new { e.TrabalhadorId, e.DataValidade });
         builder.HasQueryFilter(e => e.Ativo);
     }
 }

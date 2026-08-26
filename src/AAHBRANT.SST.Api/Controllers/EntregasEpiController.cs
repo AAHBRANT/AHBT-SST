@@ -51,4 +51,12 @@ public class EntregasEpiController : ControllerBase
         await _mediator.Send(new ExcluirEntregaEpiCommand(id), ct);
         return NoContent();
     }
+
+    [Authorize(Policy = "epi:ver")]
+    [HttpGet("{id:guid}/pdf")]
+    public async Task<IActionResult> ExportarPdf(Guid id, CancellationToken ct)
+    {
+        var pdf = await _mediator.Send(new ExportarEntregaEpiPdfQuery(id), ct);
+        return pdf is null ? NotFound() : File(pdf, "application/pdf", $"ficha-epi-{id}.pdf");
+    }
 }

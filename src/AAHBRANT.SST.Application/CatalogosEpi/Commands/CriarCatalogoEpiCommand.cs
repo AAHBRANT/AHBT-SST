@@ -6,9 +6,11 @@ namespace AAHBRANT.SST.Application.CatalogosEpi.Commands;
 
 public record CriarCatalogoEpiCommand(
     string Nome,
+    string? Fabricante,
     string? CertificadoAprovacaoNumero,
     DateTime? CertificadoAprovacaoValidade,
-    int VidaUtilEmMeses) : IRequest<Guid>;
+    int VidaUtilEmMeses,
+    int SaldoEstoque) : IRequest<Guid>;
 
 public class CriarCatalogoEpiCommandValidator : AbstractValidator<CriarCatalogoEpiCommand>
 {
@@ -16,6 +18,7 @@ public class CriarCatalogoEpiCommandValidator : AbstractValidator<CriarCatalogoE
     {
         RuleFor(x => x.Nome).NotEmpty();
         RuleFor(x => x.VidaUtilEmMeses).GreaterThan(0);
+        RuleFor(x => x.SaldoEstoque).GreaterThanOrEqualTo(0);
     }
 }
 
@@ -29,9 +32,11 @@ public class CriarCatalogoEpiCommandHandler : IRequestHandler<CriarCatalogoEpiCo
         var epi = new Domain.Entidades.CatalogoEpi
         {
             Nome = request.Nome,
+            Fabricante = request.Fabricante,
             CertificadoAprovacaoNumero = request.CertificadoAprovacaoNumero,
             CertificadoAprovacaoValidade = request.CertificadoAprovacaoValidade,
             VidaUtilEmMeses = request.VidaUtilEmMeses,
+            SaldoEstoque = request.SaldoEstoque,
         };
         _db.CatalogoEpis.Add(epi);
         await _db.SaveChangesAsync(ct);

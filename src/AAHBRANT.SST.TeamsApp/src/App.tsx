@@ -34,8 +34,8 @@ import { DocumentoGestaoDetalhePage } from './pages/gestaodocumental/DocumentoGe
 import { DdsPage } from './pages/dds/DdsPage';
 import { DdsDetalhePage } from './pages/dds/DdsDetalhePage';
 import { AssinarDdsPage } from './pages/dds/AssinarDdsPage';
-import { HigienizacaoPage } from './pages/higienizacao/HigienizacaoPage';
-import { HigienizacaoDetalhePage } from './pages/higienizacao/HigienizacaoDetalhePage';
+import { EpiPage } from './pages/epi/EpiPage';
+import { AssinarEntregaEpiPage } from './pages/epi/AssinarEntregaEpiPage';
 
 // Envolve as rotas internas do app com o AppShell (sidebar/header do Teams). As rotas públicas
 // /p/:codigoOuUid e /validar/:token ficam de fora dessa camada — ver AreaPublicaPage/ValidarDocumentoPage.
@@ -98,7 +98,6 @@ function App() {
                     { valor: 'pgr', rotulo: 'PGR' },
                     { valor: 'inspecoes', rotulo: 'Inspeções' },
                     { valor: 'dds', rotulo: 'DDS' },
-                    { valor: 'higienizacao', rotulo: 'Higienização' },
                   ]}
                 />
               }
@@ -112,8 +111,6 @@ function App() {
               <Route path="dds" element={<DdsPage />} />
               <Route path="dds/:id" element={<DdsDetalhePage />} />
               <Route path="dds/:id/assinar" element={<AssinarDdsPage />} />
-              <Route path="higienizacao" element={<HigienizacaoPage />} />
-              <Route path="higienizacao/:id" element={<HigienizacaoDetalhePage />} />
             </Route>
 
             {/* Módulo Operação: Obras, Pessoas, APR, PT, Identificação & Acesso */}
@@ -169,6 +166,8 @@ function App() {
             </Route>
 
             <Route path="/alertas" element={<AlertasPage />} />
+            <Route path="/epi" element={<EpiPage />} />
+            <Route path="/epi/:id/assinar" element={<AssinarEntregaEpiPage />} />
             <Route path="/administracao" element={<AdministracaoPage />} />
 
             {/* Redirecionamentos legados: caminhos antigos (pré-consolidação de 24/08) apontando
@@ -194,11 +193,6 @@ function App() {
             />
             <Route path="/dds" element={<Navigate to="/prevencao/dds" replace />} />
             <Route path="/dds/:id" element={<RedirecionarComId para={(id) => `/prevencao/dds/${id}`} />} />
-            <Route path="/higienizacao" element={<Navigate to="/prevencao/higienizacao" replace />} />
-            <Route
-              path="/higienizacao/:id"
-              element={<RedirecionarComId para={(id) => `/prevencao/higienizacao/${id}`} />}
-            />
 
             <Route path="/obras" element={<Navigate to="/operacao/obras" replace />} />
             <Route path="/pessoas" element={<Navigate to="/operacao/pessoas" replace />} />

@@ -2,17 +2,10 @@
   "version": "0.0.1",
   "configurations": [
     {
-      "name": "teamsapp",
-      "runtimeExecutable": "npm",
-      "runtimeArgs": ["run", "dev", "--prefix", "src/AAHBRANT.SST.TeamsApp"],
-      "port": 5173,
-      "autoPort": true
-    },
-    {
-      "name": "api",
+      "name": "sst-api",
       "runtimeExecutable": "dotnet",
-      "runtimeArgs": ["run", "--project", "src/AAHBRANT.SST.Api", "--launch-profile", "https"],
-      "port": 7095
+      "runtimeArgs": ["run", "--project", "src/AAHBRANT.SST.Api/AAHBRANT.SST.Api.csproj", "--urls", "http://localhost:5102"],
+      "port": 5102
     }
   ]
 }

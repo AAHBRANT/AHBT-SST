@@ -12,7 +12,11 @@ public record AtualizarEntregaEpiCommand(
     DateTime DataEntrega,
     DateTime? DataDevolucao,
     DateTime? DataValidade,
-    bool AssinaturaColetada) : IRequest;
+    int Quantidade,
+    int? QuantidadeDevolucao,
+    string? VistoConsorcioResponsavel,
+    string? Motivo,
+    string? Observacoes) : IRequest;
 
 public class AtualizarEntregaEpiCommandValidator : AbstractValidator<AtualizarEntregaEpiCommand>
 {
@@ -22,6 +26,7 @@ public class AtualizarEntregaEpiCommandValidator : AbstractValidator<AtualizarEn
         RuleFor(x => x.TrabalhadorId).NotEmpty();
         RuleFor(x => x.CatalogoEpiId).NotEmpty();
         RuleFor(x => x.DataEntrega).NotEmpty();
+        RuleFor(x => x.Quantidade).GreaterThan(0);
     }
 }
 
@@ -35,12 +40,25 @@ public class AtualizarEntregaEpiCommandHandler : IRequestHandler<AtualizarEntreg
         var entrega = await _db.EntregasEpi.FirstOrDefaultAsync(x => x.Id == request.Id, ct)
             ?? throw new KeyNotFoundException("Entrega de EPI não encontrada.");
 
+        // Devolução registrada agora (não tinha DataDevolucao antes): repõe o estoque do catálogo
+        // com a quantidade devolvida, para manter SaldoEstoque coerente com o item físico voltando.
+        if (entrega.DataDevolucao is null && request.DataDevolucao is not null)
+        {
+            var catalogo = await _db.CatalogoEpis.FirstOrDefaultAsync(x => x.Id == entrega.CatalogoEpiId, ct)
+                ?? throw new KeyNotFoundException("EPI de catálogo não encontrado.");
+            catalogo.SaldoEstoque += request.QuantidadeDevolucao ?? entrega.Quantidade;
+        }
+
         entrega.TrabalhadorId = request.TrabalhadorId;
         entrega.CatalogoEpiId = request.CatalogoEpiId;
         entrega.DataEntrega = request.DataEntrega;
         entrega.DataDevolucao = request.DataDevolucao;
         entrega.DataValidade = request.DataValidade;
-        entrega.AssinaturaColetada = request.AssinaturaColetada;
+        entrega.Quantidade = request.Quantidade;
+        entrega.QuantidadeDevolucao = request.QuantidadeDevolucao;
+        entrega.VistoConsorcioResponsavel = request.VistoConsorcioResponsavel;
+        entrega.Motivo = request.Motivo;
+        entrega.Observacoes = request.Observacoes;
 
         await _db.SaveChangesAsync(ct);
     }

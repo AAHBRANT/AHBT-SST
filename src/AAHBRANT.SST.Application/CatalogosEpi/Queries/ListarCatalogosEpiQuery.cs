@@ -14,6 +14,6 @@ public class ListarCatalogosEpiQueryHandler : IRequestHandler<ListarCatalogosEpi
     public async Task<List<CatalogoEpiDto>> Handle(ListarCatalogosEpiQuery request, CancellationToken ct)
         => await _db.CatalogoEpis
             .OrderBy(x => x.Nome)
-            .Select(x => new CatalogoEpiDto(x.Id, x.Nome, x.CertificadoAprovacaoNumero, x.CertificadoAprovacaoValidade, x.VidaUtilEmMeses))
+            .Select(x => new CatalogoEpiDto(x.Id, x.Nome, x.Fabricante, x.CertificadoAprovacaoNumero, x.CertificadoAprovacaoValidade, x.VidaUtilEmMeses, x.SaldoEstoque))
             .ToListAsync(ct);
 }
