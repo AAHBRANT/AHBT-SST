@@ -33,6 +33,10 @@ documento em papel com a identidade AAHBRANT, já entregue em
   papéis), Recomendações/Observações de SST.
 - Catálogos de referência semeados com o texto literal do papel (não
   inventado — ver Seção 5).
+- Registro fotográfico da PT (evidências), reaproveitando a entidade
+  genérica `Evidencia` já usada por outros módulos — ver Seção 4.5.
+- Botão de download do documento (exportação em PDF do registro da PT),
+  seguindo o mesmo padrão já usado por DDS e Entrega de EPI — ver Seção 4.6.
 - Migration EF Core nova (nunca altera a migration existente
   `20260820185848_AdicionarPermissaoTrabalho`).
 - Ajustes em Commands/Queries/Controllers/DTOs da Application/Api.
@@ -45,8 +49,9 @@ documento em papel com a identidade AAHBRANT, já entregue em
   suporta múltiplos signatários por entidade). Nenhuma mudança de schema é
   necessária aqui; só validar em teste que múltiplas pessoas conseguem assinar
   a mesma PT em sequência pelo quiosque já existente (`AssinarPtPage`).
-- Geração de PDF fiel ao layout do papel — pode ser um trabalho futuro
-  reaproveitando `DocumentoAssinaturaPdfService`, não faz parte desta spec.
+- Réplica pixel-a-pixel do layout do xlsx original no PDF exportado — o PDF
+  segue o padrão institucional já usado em DDS/EPI, não o grid exato do
+  papel (ver nota na Seção 4.6).
 - Qualquer mudança no módulo de estoque/entrega de EPI (`CatalogoEpi`/
   `EntregaEpi`) além de uma nova associação de leitura.
 
@@ -219,7 +224,40 @@ public class PermissaoTrabalhoAprovacao : AuditableEntity
 
 ```csharp
 public MotivoEncerramentoPt? MotivoEncerramento { get; set; }
-```//
+```
+
+### 4.5 Evidências fotográficas
+
+Sem entidade nova: reaproveita a entidade genérica `Evidencia` (já usada por
+ASO, Treinamento e Entrega de EPI), habilitando `EntidadeTipo =
+"PermissaoTrabalho"`. Já vem com hash SHA-256, autor e
+latitude/longitude — mesmo padrão probatório dos outros módulos. Trabalho de
+implementação: endpoint de upload (se ainda não for genérico o suficiente
+para qualquer `EntidadeTipo`) + aba/seção "Fotos" na
+`PermissaoTrabalhoDetalhePage`, reaproveitando o componente de upload já
+usado em `EntregasEpiTab`/`InspecaoDetalhePage`.
+
+### 4.6 Exportação em PDF (botão de download)
+
+Segue o padrão já existente em DDS (`IDdsPdfService` +
+`ExportarDdsPdfQuery`) e Entrega de EPI (`IEntregaEpiPdfService` +
+`ExportarEntregaEpiPdfQuery`): novo `IPermissaoTrabalhoPdfService` +
+`ExportarPermissaoTrabalhoPdfQuery`, endpoint dedicado no
+`PermissaoTrabalhoController`, e botão "Baixar PDF"
+(`ArrowDownload24Regular`, mesmo componente usado em
+`PainelAssinaturasTab.tsx`) na tela de detalhe da PT.
+
+Importante distinguir de algo que já existe: isso é o PDF do **registro da
+PT no sistema** (dados + checklists preenchidos), formatado conforme a
+identidade AAHBRANT — não o mesmo artefato que o **comprovante de
+assinatura** do Motor de Assinatura Eletrônica (que já existe, é o PDF do
+documento assinado digitalmente por cada signatário). Os dois podem
+conviver: o botão novo baixa a PT a qualquer momento (mesmo em elaboração);
+o comprovante de assinatura só existe depois que a formalização for
+concluída. Não é compromisso de réplica pixel-a-pixel do layout do xlsx
+original — é um documento institucional formatado, com todos os dados da
+Seção 4 legíveis e organizados, seguindo o mesmo padrão visual dos PDFs de
+DDS/EPI já existentes.
 
 ## 5. Conteúdo dos catálogos (extraído literalmente do papel)
 
@@ -370,16 +408,21 @@ confirmar no plano).
 
 - **Application:** novos Commands (`AdicionarTipoServicoPtCommand`,
   `MarcarPrecaucaoPtCommand`, `MarcarEquipamentoPtCommand`,
-  `MarcarEpiObrigatorioPtCommand`, `RegistrarAprovacaoPtCommand`, etc.) e
+  `MarcarEpiObrigatorioPtCommand`, `RegistrarAprovacaoPtCommand`, etc.),
   Queries (`ListarCatalogoPrecaucaoPtQuery` etc.), seguindo o padrão já usado
-  por `PermissaoTrabalhoRequisito`/`PermissaoTrabalhoControle`.
+  por `PermissaoTrabalhoRequisito`/`PermissaoTrabalhoControle`, mais
+  `ExportarPermissaoTrabalhoPdfQuery` + `IPermissaoTrabalhoPdfService`
+  (Seção 4.6).
 - **Api:** novos endpoints em `PermissaoTrabalhoController` (ou controller de
   catálogos dedicado para os `Catalogo*Pt`, análogo a um controller de
-  catálogo de Perigos, se existir).
+  catálogo de Perigos, se existir), incluindo `GET .../pdf` para o download e
+  reaproveitamento do endpoint genérico de upload de `Evidencia` (Seção 4.5).
 - **TeamsApp:** `PermissaoTrabalhoDetalhePage` ganha novas abas (Tipo de
-  Serviço, Equipamentos, Precauções, EPI, Aprovação/Conclusão), seguindo o
-  padrão de aba já usado por `PermissaoTrabalhoControlesTab`/
-  `PermissaoTrabalhoRequisitosTab`.
+  Serviço, Equipamentos, Precauções, EPI, Aprovação/Conclusão, Fotos),
+  seguindo o padrão de aba já usado por
+  `PermissaoTrabalhoControlesTab`/`PermissaoTrabalhoRequisitosTab`, mais o
+  botão "Baixar PDF" no cabeçalho (mesmo padrão de
+  `PainelAssinaturasTab.tsx`).
 
 ## 8. Migration
 
