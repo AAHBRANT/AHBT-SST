@@ -22,7 +22,10 @@ public static class DistribuidorFaixaVencimento
 
     public static DateTime CalcularData(int indice, DateTime referenciaUtc)
     {
-        var variacao = ((indice % 10) + 10) % 10; // 0-9, varia a data dentro da faixa
+        var posicao = ((indice % 20) + 20) % 20;
+        var bloco = (int)Math.Floor(indice / 20.0);
+        // Combina bloco + posicao para garantir diversidade 0-9 em qualquer faixa, independente da distribuição
+        var variacao = (((bloco + posicao) % 10) + 10) % 10;
 
         return ObterFaixa(indice) switch
         {

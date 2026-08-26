@@ -61,4 +61,44 @@ public class DistribuidorFaixaVencimentoTests
             Assert.InRange(diasNoFuturo, 31, 365);
         }
     }
+
+    [Fact]
+    public void CalcularData_FaixaVencida_DeveProduziDiversidadeCompletuDe10Valores()
+    {
+        var referencia = new DateTime(2026, 8, 26, 0, 0, 0, DateTimeKind.Utc);
+
+        // Percorre 200 índices (10 blocos de 20) para cobrir variação completa
+        var indicesVencidos = Enumerable.Range(0, 200)
+            .Where(i => DistribuidorFaixaVencimento.ObterFaixa(i) == DistribuidorFaixaVencimento.Faixa.Vencido);
+
+        var diasDistintos = indicesVencidos
+            .Select(i => DistribuidorFaixaVencimento.CalcularData(i, referencia))
+            .Select(d => (referencia - d).TotalDays)
+            .Distinct()
+            .ToList();
+
+        // Esperamos pelo menos 9 valores distintos (cobrindo quase todo o range 5-59)
+        Assert.True(diasDistintos.Count >= 9,
+            $"Faixa Vencido deveria produzir pelo menos 9 valores distintos, mas produziu {diasDistintos.Count}: {string.Join(", ", diasDistintos.OrderBy(d => d))}");
+    }
+
+    [Fact]
+    public void CalcularData_FaixaAVencerEmBreve_DeveProduziDiversidadeCompletuDe10Valores()
+    {
+        var referencia = new DateTime(2026, 8, 26, 0, 0, 0, DateTimeKind.Utc);
+
+        // Percorre 200 índices (10 blocos de 20) para cobrir variação completa
+        var indices = Enumerable.Range(0, 200)
+            .Where(i => DistribuidorFaixaVencimento.ObterFaixa(i) == DistribuidorFaixaVencimento.Faixa.AVencerEmBreve);
+
+        var diasDistintos = indices
+            .Select(i => DistribuidorFaixaVencimento.CalcularData(i, referencia))
+            .Select(d => (d - referencia).TotalDays)
+            .Distinct()
+            .ToList();
+
+        // Esperamos pelo menos 9 valores distintos (cobrindo quase todo o range 1-28)
+        Assert.True(diasDistintos.Count >= 9,
+            $"Faixa AVencerEmBreve deveria produzir pelo menos 9 valores distintos, mas produziu {diasDistintos.Count}: {string.Join(", ", diasDistintos.OrderBy(d => d))}");
+    }
 }
