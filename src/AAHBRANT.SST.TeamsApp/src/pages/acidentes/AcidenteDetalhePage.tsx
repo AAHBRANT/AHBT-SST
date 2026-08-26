@@ -89,6 +89,7 @@ export function AcidenteDetalhePage() {
         houveAfastamento: a.houveAfastamento,
         diasAfastamento: a.diasAfastamento,
         numeroCat: a.numeroCat,
+        gravidade: a.gravidade,
         metodologiaInvestigacao: metodologia ? Number(metodologia) : null,
         causas: causas || null,
       });

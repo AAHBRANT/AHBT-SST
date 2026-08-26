@@ -17,35 +17,43 @@ namespace AAHBRANT.SST.Infrastructure.Persistencia.Migrations
             migrationBuilder.DropTable(
                 name: "ItensHigienizacao");
 
-            migrationBuilder.AlterColumn<byte[]>(
+            // SQL Server rejeita ALTER COLUMN direto para timestamp/rowversion, mesmo quando a
+            // coluna física já é desse tipo (erro 4927 "Cannot alter column ... to be data type
+            // timestamp") — não é possível converter via ALTER COLUMN em nenhum sentido. A única
+            // forma é dropar e recriar a coluna. Isso reseta o token de concorrência otimista de
+            // linhas existentes (inofensivo). Mesmo padrão de CorrigirRowVersionAcidentes.
+            migrationBuilder.DropColumn(
+                name: "RowVersion",
+                table: "Trabalhadores");
+
+            migrationBuilder.AddColumn<byte[]>(
                 name: "RowVersion",
                 table: "Trabalhadores",
                 type: "rowversion",
                 rowVersion: true,
-                nullable: true,
-                oldClrType: typeof(byte[]),
-                oldType: "varbinary(max)",
-                oldNullable: true);
+                nullable: true);
 
-            migrationBuilder.AlterColumn<byte[]>(
+            migrationBuilder.DropColumn(
+                name: "RowVersion",
+                table: "Permissoes");
+
+            migrationBuilder.AddColumn<byte[]>(
                 name: "RowVersion",
                 table: "Permissoes",
                 type: "rowversion",
                 rowVersion: true,
-                nullable: true,
-                oldClrType: typeof(byte[]),
-                oldType: "varbinary(max)",
-                oldNullable: true);
+                nullable: true);
 
-            migrationBuilder.AlterColumn<byte[]>(
+            migrationBuilder.DropColumn(
+                name: "RowVersion",
+                table: "Funcoes");
+
+            migrationBuilder.AddColumn<byte[]>(
                 name: "RowVersion",
                 table: "Funcoes",
                 type: "rowversion",
                 rowVersion: true,
-                nullable: true,
-                oldClrType: typeof(byte[]),
-                oldType: "varbinary(max)",
-                oldNullable: true);
+                nullable: true);
         }
 
         /// <inheritdoc />
