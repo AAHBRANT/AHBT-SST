@@ -101,7 +101,28 @@ entrar uma lib nova.
    tabela ainda não exercida por um fluxo de criação pode apresentar o mesmo
    erro; recomenda-se um levantamento dedicado (`sys.columns`/`sys.types`) e
    uma correção única e revisada, em vez de continuar corrigindo tabela por
-   tabela conforme aparecem.
+   tabela conforme aparecem. **Atualização 2026-08-26**: banco de homologação
+   (Azure SQL `AAHBRANT.SST.Hml`) foi testado ao vivo — as duas migrations do
+   Motor de Assinatura e o RBAC seeder rodaram sem esse erro, ou seja, o
+   schema de lá **não** tem o mesmo desvio físico do dev local. O risco segue
+   em aberto só para o ambiente de desenvolvimento local.
+5. **[RESOLVIDO em 2026-08-26] Cache de build do ACR ignorando `--build-arg`
+   do frontend**: ao publicar a imagem `sst-web` no Azure Container Registry
+   via `az acr build`, a camada Docker do `RUN npm run build` foi reaproveitada
+   do cache mesmo passando um `--build-arg VITE_API_BASE_URL` diferente do
+   build anterior — o bundle final ficou com a URL da API vazia, e a tela
+   caía em erro `Unexpected token '<'` (a chamada `/api/...` virava relativa
+   ao próprio host estático, que devolve o `index.html` da SPA). Confirmado
+   comparando o hash de um build local (`vite build` com a env var correta,
+   fora do Docker) contra o bundle publicado — divergiam. Corrigido
+   adicionando `ARG CACHEBUST` no `Dockerfile.web` logo antes do
+   `RUN npm run build`, forçando invalidação de cache em todo redeploy do
+   frontend (commit `1ef2538`). **Recomendação para próximos redeploys do
+   frontend**: sempre passar um valor novo de `--build-arg CACHEBUST=<algo
+   único>` junto do `az acr build`, e depois de atualizar o Container App,
+   conferir que o nome do arquivo `assets/index-*.js` servido mudou — se
+   ficar igual ao anterior, o cache não invalidou e a imagem antiga ainda
+   está no ar (mesmo que `az containerapp update` reporte sucesso).
 
 ### 1.6 Reavaliação do método de identificação/autenticação
 
