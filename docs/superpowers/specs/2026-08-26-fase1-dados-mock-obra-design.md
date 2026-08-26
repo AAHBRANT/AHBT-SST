@@ -24,7 +24,7 @@ Não é criada nenhuma entidade nova nesta fase. É puramente um seeder de dados
 
 **Dentro do escopo:**
 - 1 `Obra` fictícia — "Edifício Aurora Corporate".
-- 22 `AreaSst` (Subsolo, Térreo, P1–P20, Canteiro/Almoxarifado) — um registro por
+- 23 `AreaSst` (Subsolo, Térreo, P1–P20, Canteiro/Almoxarifado) — um registro por
   pavimento, usando o cadastro de Área já existente. Os campos `Riscos`/
   `Requisitos` (List<string>) recebem valores placeholder plausíveis (ex.:
   `["Queda de altura", "Queda de material"]`) já que a estrutura de risco por
@@ -182,7 +182,7 @@ Depois do seeder rodar (primeiro `dotnet run` da Api em Development):
    worker).
 4. Confirmar no módulo de EPI que pelo menos 2 itens do catálogo aparecem
    com saldo crítico/zero.
-5. Confirmar as 22 Áreas cadastradas (Subsolo, Térreo, P1–P20, Canteiro).
+5. Confirmar as 23 Áreas cadastradas (Subsolo, Térreo, P1–P20, Canteiro).
 
 Não há teste automatizado dedicado — é um seeder de dados de desenvolvimento,
 não lógica de negócio nova; a verificação é visual no navegador conforme
