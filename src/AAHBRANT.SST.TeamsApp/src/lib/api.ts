@@ -1836,6 +1836,12 @@ export const api = {
     criar: (funcao: NovaFuncao) =>
       request<{ id: string }>('/api/funcoes', { method: 'POST', body: JSON.stringify(funcao) }),
     excluir: (id: string) => request<void>(`/api/funcoes/${id}`, { method: 'DELETE' }),
+    listarEpis: (funcaoId: string) => request<CatalogoEpi[]>(`/api/funcoes/${funcaoId}/epis`),
+    definirEpis: (funcaoId: string, catalogoEpiIds: string[]) =>
+      request<void>(`/api/funcoes/${funcaoId}/epis`, {
+        method: 'PUT',
+        body: JSON.stringify({ catalogoEpiIds }),
+      }),
   },
   setores: {
     listar: (obraId?: string) => request<Setor[]>(`/api/setores${obraId ? `?obraId=${obraId}` : ''}`),
