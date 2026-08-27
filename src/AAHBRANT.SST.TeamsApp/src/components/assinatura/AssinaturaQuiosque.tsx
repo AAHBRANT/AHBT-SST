@@ -15,6 +15,7 @@ import {
 import { Checkmark24Filled, Fingerprint24Regular } from '@fluentui/react-icons';
 import { api, metodoAutenticacaoAssinaturaLabel, type DocumentoAssinatura } from '../../lib/api';
 import { estaWebAuthnDisponivel, obterAssercaoWebAuthn } from '../../lib/webauthn';
+import { capturarDigitalLocal, estaAgenteLocalDisponivel, obterDispositivoLocal } from '../../lib/agenteBiometricoLocal';
 import { usePageStyles } from '../../pages/pageStyles';
 
 function extrairMensagemErro(e: unknown, fallback: string): string {
@@ -57,6 +58,18 @@ export function AssinaturaQuiosque({ entidadeTipo, entidadeId }: AssinaturaQuios
   const uidInputRef = useRef<HTMLInputElement>(null);
   const pinInputRef = useRef<HTMLInputElement>(null);
   const webAuthnDisponivel = estaWebAuthnDisponivel();
+  const [agenteLocalDisponivel, setAgenteLocalDisponivel] = useState(false);
+  const [dispositivoLocal, setDispositivoLocal] = useState<{ dispositivoId: string; segredoDispositivo: string } | null>(null);
+
+  useEffect(() => {
+    estaAgenteLocalDisponivel().then(async (disponivel) => {
+      setAgenteLocalDisponivel(disponivel);
+      if (disponivel) {
+        const dispositivo = await obterDispositivoLocal();
+        setDispositivoLocal(dispositivo);
+      }
+    });
+  }, []);
 
   async function carregar() {
     try {
@@ -119,6 +132,30 @@ export function AssinaturaQuiosque({ entidadeTipo, entidadeId }: AssinaturaQuios
     }
   }
 
+  async function assinarComBiometriaLocal() {
+    if (!documento || !dispositivoLocal) return;
+    try {
+      setProcessando(true);
+      setErro(null);
+      setUltimoAssinante(null);
+      const captura = await capturarDigitalLocal();
+      const signatario = await api.assinatura.autenticarBiometriaLocal(
+        documento.id,
+        dispositivoLocal.dispositivoId,
+        dispositivoLocal.segredoDispositivo,
+        captura.trabalhadorId,
+        captura.score,
+      );
+      setUltimoAssinante(signatario.trabalhadorNome);
+      const doc = await api.assinatura.obter(entidadeTipo, entidadeId);
+      setDocumento(doc);
+    } catch (e) {
+      setErro(extrairMensagemErro(e, 'Falha na autenticação via biometria local. Use o crachá/QR + PIN abaixo.'));
+    } finally {
+      setProcessando(false);
+    }
+  }
+
   return (
     <div>
       {erro && <Text className={estilos.erro}>{erro}</Text>}
@@ -136,6 +173,23 @@ export function AssinaturaQuiosque({ entidadeTipo, entidadeId }: AssinaturaQuios
             disabled={processando || !documento}
           >
             Autenticar com biometria
+          </Button>
+        </div>
+      )}
+
+      {agenteLocalDisponivel && dispositivoLocal && (
+        <div className={estilos.card} style={{ marginBottom: 16, maxWidth: 480 }}>
+          <Text weight="semibold" style={{ display: 'block', marginBottom: 12 }}>
+            Biometria (leitor local)
+          </Text>
+          <Button
+            appearance="primary"
+            size="large"
+            icon={<Fingerprint24Regular />}
+            onClick={assinarComBiometriaLocal}
+            disabled={processando || !documento}
+          >
+            Autenticar com digital
           </Button>
         </div>
       )}

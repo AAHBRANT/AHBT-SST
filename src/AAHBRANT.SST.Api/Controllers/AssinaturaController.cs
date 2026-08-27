@@ -75,6 +75,17 @@ public class AssinaturaController : ControllerBase
         return Ok(signatario);
     }
 
+    public record AutenticarBiometriaLocalRequestBody(Guid DispositivoId, string SegredoDispositivo, Guid TrabalhadorId, double Score);
+
+    [Authorize(Policy = "assinatura:assinar")]
+    [HttpPost("{id:guid}/autenticacao/biometria-local")]
+    public async Task<ActionResult<DocumentoSignatarioDto>> AutenticarBiometriaLocal(Guid id, AutenticarBiometriaLocalRequestBody body, CancellationToken ct)
+    {
+        var resultado = await _mediator.Send(
+            new RegistrarAssinaturaBiometriaLocalCommand(id, body.DispositivoId, body.SegredoDispositivo, body.TrabalhadorId, body.Score), ct);
+        return Ok(resultado);
+    }
+
     [Authorize(Policy = "assinatura:finalizar")]
     [HttpPost("{id:guid}/finalizar")]
     public async Task<IActionResult> Finalizar(Guid id, CancellationToken ct)

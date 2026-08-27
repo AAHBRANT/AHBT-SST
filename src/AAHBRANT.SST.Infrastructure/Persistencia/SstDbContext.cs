@@ -91,6 +91,8 @@ public class SstDbContext : DbContext, IAppDbContext
     public DbSet<DocumentoAssinatura> DocumentosAssinatura => Set<DocumentoAssinatura>();
     public DbSet<DocumentoSignatario> DocumentoSignatarios => Set<DocumentoSignatario>();
     public DbSet<CredencialWebAuthn> CredenciaisWebAuthn => Set<CredencialWebAuthn>();
+    public DbSet<DispositivoAgenteBiometrico> DispositivosAgenteBiometrico => Set<DispositivoAgenteBiometrico>();
+    public DbSet<TemplateBiometricoFutronic> TemplatesBiometricoFutronic => Set<TemplateBiometricoFutronic>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {

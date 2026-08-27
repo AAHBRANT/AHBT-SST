@@ -43,6 +43,15 @@ public static class DependencyInjection
             throw new InvalidOperationException("Configuração 'Lgpd:ChaveHashCpfBase64' não configurada.");
         CpfCriptografiaContexto.Configurar(Convert.FromBase64String(chaveCriptografiaCpf), Convert.FromBase64String(chaveHashCpf));
 
+        // Chave de criptografia do template biométrico (Futronic) — mesmo padrão acima. É uma chave
+        // simétrica dedicada (não reaproveita a do CPF) porque também é distribuída, fora de banda,
+        // para o AAHBRANT.SST.AgenteBiometria (processo Windows separado, fora deste container/App
+        // Service) que precisa descriptografar os templates sincronizados; ver TemplateCacheService.
+        var chaveCriptografiaBiometria = configuration["Lgpd:ChaveCriptografiaBiometriaBase64"];
+        if (string.IsNullOrWhiteSpace(chaveCriptografiaBiometria))
+            throw new InvalidOperationException("Configuração 'Lgpd:ChaveCriptografiaBiometriaBase64' não configurada.");
+        TemplateBiometricoCriptografiaContexto.Configurar(Convert.FromBase64String(chaveCriptografiaBiometria));
+
         // Integração Telegram (DDS Fase 3) — token/username ficam vazios até o usuário criar o
         // bot via @BotFather e preencher appsettings; ver disclosures em TelegramBotService/
         // TelegramUpdatesPollingService sobre o comportamento com a configuração vazia.
@@ -65,6 +74,10 @@ public static class DependencyInjection
         // quando implementada, sem exigir mudança no restante da aplicação (depende só da abstração).
         services.AddScoped<IAutenticacaoAssinaturaService, CrachaPinAutenticacaoStrategy>();
         services.AddScoped<IPinHasher, PinHasherService>();
+        services.AddScoped<ISegredoDispositivoHasher, SegredoDispositivoHasherService>();
+        services.AddScoped<ITemplateBiometricoCriptografia, TemplateBiometricoCriptografiaService>();
+        services.AddScoped<IDispositivoAgenteAutenticador, DispositivoAgenteAutenticador>();
+        services.AddScoped<IAutenticacaoBiometriaLocalService, FutronicAutenticacaoStrategy>();
         services.AddScoped<IAuditoriaService, AuditoriaService>();
         services.AddScoped<IDocumentoAssinaturaPdfService, DocumentoAssinaturaPdfService>();
         services.Configure<AssinaturaOptions>(configuration.GetSection("Assinatura"));

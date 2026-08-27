@@ -1830,6 +1830,13 @@ export const api = {
         method: 'POST',
         body: JSON.stringify({ tipo, opcoesJson, respostaJson }),
       }),
+    // Cadastro de digital via agente local (Futronic FS80H) — templateBruto vem em base64 do
+    // agente (fetch local a /api/capturar-bruto); o backend criptografa antes de persistir.
+    cadastrarBiometriaLocal: (id: string, templateBrutoBase64: string) =>
+      request<void>(`/api/trabalhadores/${id}/assinatura/biometria-local/cadastro`, {
+        method: 'POST',
+        body: JSON.stringify({ templateBruto: templateBrutoBase64 }),
+      }),
   },
   funcoes: {
     listar: () => request<Funcao[]>('/api/funcoes'),
@@ -2211,6 +2218,13 @@ export const api = {
         method: 'POST',
         body: JSON.stringify({ opcoesJson, respostaJson }),
       }),
+    // Autenticação via biometria digital local (Futronic FS80H) — dispositivoId/segredoDispositivo
+    // vêm do agente local (fetch a /api/dispositivo), nunca de localStorage.
+    autenticarBiometriaLocal: (documentoId: string, dispositivoId: string, segredoDispositivo: string, trabalhadorId: string, score: number) =>
+      request<DocumentoSignatario>(`/api/documentos/${documentoId}/autenticacao/biometria-local`, {
+        method: 'POST',
+        body: JSON.stringify({ dispositivoId, segredoDispositivo, trabalhadorId, score }),
+      }),
     listar: (filtros?: { entidadeTipo?: string; status?: number; dataInicio?: string; dataFim?: string }) => {
       const query = new URLSearchParams();
       if (filtros?.entidadeTipo) query.set('entidadeTipo', filtros.entidadeTipo);
@@ -2408,5 +2422,14 @@ export const api = {
       const query = params.toString();
       return request<TrilhaAuditoria[]>(`/api/trilhaauditoria${query ? `?${query}` : ''}`);
     },
+  },
+  dispositivosAgente: {
+    // Chamado uma vez na configuração inicial de cada totem/quiosque (tela administrativa,
+    // fora de escopo deste plano) — retorna o segredo em claro, exibido uma única vez.
+    registrar: (obraId: string, nome: string) =>
+      request<string>('/api/dispositivos-agente', {
+        method: 'POST',
+        body: JSON.stringify({ obraId, nome }),
+      }),
   },
 };
