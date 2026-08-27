@@ -4,6 +4,7 @@ using AAHBRANT.SST.Domain.Enums;
 using MediatR;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using System.Security.Claims;
 
 namespace AAHBRANT.SST.Api.Controllers;
 
@@ -55,6 +56,19 @@ public class AssinaturaController : ControllerBase
     public async Task<IActionResult> Assinar(Guid id, AssinarRequestBody body, CancellationToken ct)
     {
         var signatario = await _mediator.Send(new RegistrarAssinaturaCommand(id, body.Uid, body.Pin), ct);
+        return Ok(signatario);
+    }
+
+    // Assinatura em um clique do usuário logado (ex.: entregador de EPI assinando com a própria
+    // sessão, sem crachá/PIN) — sem corpo de requisição, o TrabalhadorId é resolvido no handler a
+    // partir do claim "oid" (mesmo padrão de VinculoAzureAdMiddleware/PermissaoAuthorizationHandler;
+    // em dev com Entra ID desligado o claim não existe e o handler falha com mensagem amigável).
+    [Authorize(Policy = "assinatura:assinar")]
+    [HttpPost("{id:guid}/assinar/sessao")]
+    public async Task<IActionResult> AssinarComSessaoLogada(Guid id, CancellationToken ct)
+    {
+        var azureAdObjectId = User.FindFirst("oid")?.Value ?? User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+        var signatario = await _mediator.Send(new RegistrarAssinaturaSessaoLogadaCommand(id, azureAdObjectId), ct);
         return Ok(signatario);
     }
 

@@ -1070,6 +1070,7 @@ export const MetodoAutenticacaoAssinatura = {
   CrachaPin: 2,
   QrCodePin: 3,
   WebAuthnCelular: 4,
+  SessaoLogada: 5,
 } as const;
 
 export const metodoAutenticacaoAssinaturaLabel: Record<number, string> = {
@@ -1077,6 +1078,7 @@ export const metodoAutenticacaoAssinaturaLabel: Record<number, string> = {
   2: 'Crachá + PIN',
   3: 'QR Code + PIN',
   4: 'Celular (WebAuthn)',
+  5: 'Sessão logada',
 };
 
 export const StatusDocumentoAssinatura = {
@@ -2206,6 +2208,10 @@ export const api = {
         method: 'POST',
         body: JSON.stringify({ uid, pin }),
       }),
+    // Assinatura em um clique do usuário logado (entregador) — sem uid/pin, o backend resolve o
+    // trabalhador a partir da sessão autenticada (claim "oid" do Entra ID).
+    assinarComSessao: (documentoId: string) =>
+      request<DocumentoSignatario>(`/api/documentos/${documentoId}/assinar/sessao`, { method: 'POST' }),
     // Assinatura biométrica WebAuthn/FIDO2 (etapa 13) — cerimônia em duas chamadas; ver
     // lib/webauthn.ts (obterAssercaoWebAuthn) para a conversão JSON<->ArrayBuffer com o navegador.
     iniciarAssinaturaWebAuthn: (trabalhadorId?: string) =>

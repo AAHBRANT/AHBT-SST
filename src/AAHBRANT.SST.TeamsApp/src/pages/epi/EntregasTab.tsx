@@ -16,6 +16,7 @@ import {
 } from '@fluentui/react-components';
 import { Add24Regular, ArrowDownload24Regular, Signature24Regular } from '@fluentui/react-icons';
 import { api, type CatalogoEpi, type EntregaEpi, type NovaEntregaEpi, type Trabalhador } from '../../lib/api';
+import { AssinaturaEntregaEpiDialog } from '../../components/assinatura/AssinaturaEntregaEpiDialog';
 import { usePageStyles } from '../pageStyles';
 
 function entregaVazia(): NovaEntregaEpi {
@@ -54,6 +55,7 @@ export function EntregasTab({ aoNavegarParaMatriz }: EntregasTabProps) {
   const [devolucaoId, setDevolucaoId] = useState<string | null>(null);
   const [devolucaoData, setDevolucaoData] = useState('');
   const [devolucaoQtd, setDevolucaoQtd] = useState('');
+  const [entregaParaAssinar, setEntregaParaAssinar] = useState<EntregaEpi | null>(null);
 
   async function carregar() {
     try {
@@ -117,7 +119,13 @@ export function EntregasTab({ aoNavegarParaMatriz }: EntregasTabProps) {
     try {
       setCarregando(true);
       setErro(null);
-      await api.entregasEpi.criar(novaEntrega);
+      const payload: NovaEntregaEpi = {
+        ...novaEntrega,
+        dataDevolucao: novaEntrega.dataDevolucao || null,
+        dataValidade: novaEntrega.dataValidade || null,
+      };
+      const { id } = await api.entregasEpi.criar(payload);
+      setEntregaParaAssinar({ ...payload, id });
       setNovaEntrega(entregaVazia());
       await carregar();
     } catch (e) {
@@ -343,6 +351,18 @@ export function EntregasTab({ aoNavegarParaMatriz }: EntregasTabProps) {
           </TableBody>
         </Table>
       </div>
+
+      {entregaParaAssinar && (
+        <AssinaturaEntregaEpiDialog
+          open={!!entregaParaAssinar}
+          onClose={() => setEntregaParaAssinar(null)}
+          entregaId={entregaParaAssinar.id}
+          trabalhadorNome={nomeTrabalhador(entregaParaAssinar.trabalhadorId)}
+          epiNome={nomeEpi(entregaParaAssinar.catalogoEpiId)}
+          quantidade={entregaParaAssinar.quantidade}
+          dataEntrega={entregaParaAssinar.dataEntrega}
+        />
+      )}
     </div>
   );
 }

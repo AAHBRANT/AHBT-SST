@@ -427,7 +427,11 @@ public enum MetodoAutenticacaoAssinatura
     Biometria = 1,
     CrachaPin = 2,
     QrCodePin = 3,
-    WebAuthnCelular = 4
+    WebAuthnCelular = 4,
+    // Assinatura em um clique do usuário logado (ex.: entregador de EPI assinando com a própria
+    // sessão) — não é um método do "cardápio" por obra (MetodoAutenticacaoObra), pois não depende
+    // de hardware/kiosque: está sempre disponível para quem já está autenticado no app.
+    SessaoLogada = 5
 }
 
 // [Flags] em Obra.MetodosAutenticacaoHabilitados: cada obra decide quais métodos aceita (ex.: obra
