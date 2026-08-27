@@ -45,6 +45,29 @@ public static partial class MockObraSeeder
         ("Máscara Respiratória PFF2", "3M", "CA-34972", 2, 500),
     };
 
+    // Dados de demonstração da Matriz de EPI por Função (Fase 1) — cada obra real define sua
+    // própria matriz depois do deploy; isto só preenche o seeder de obra mocada para a tela e o
+    // filtro terem o que mostrar. Funções com NR-35 (trabalho em altura) em DistribuicaoFuncoes
+    // recebem também o cinto de segurança.
+    public static readonly (string Funcao, string[] Epis)[] MatrizEpiPorFuncao =
+    {
+        ("Servente", new[] { "Capacete de Segurança Classe B", "Bota de Segurança com Bico de Aço", "Luva de Vaqueta" }),
+        ("Pedreiro", new[] { "Capacete de Segurança Classe B", "Bota de Segurança com Bico de Aço", "Luva de Vaqueta", "Óculos de Proteção Ampla Visão", "Cinto de Segurança Tipo Paraquedista" }),
+        ("Armador", new[] { "Capacete de Segurança Classe B", "Bota de Segurança com Bico de Aço", "Luva de Vaqueta", "Óculos de Proteção Ampla Visão" }),
+        ("Carpinteiro", new[] { "Capacete de Segurança Classe B", "Bota de Segurança com Bico de Aço", "Luva de Vaqueta", "Protetor Auricular Tipo Plug", "Cinto de Segurança Tipo Paraquedista" }),
+        ("Eletricista", new[] { "Capacete de Segurança Classe B", "Bota de Segurança com Bico de Aço", "Luva de Vaqueta", "Óculos de Proteção Ampla Visão", "Cinto de Segurança Tipo Paraquedista" }),
+        ("Encanador", new[] { "Capacete de Segurança Classe B", "Bota de Segurança com Bico de Aço", "Luva de Vaqueta" }),
+        ("Pintor", new[] { "Capacete de Segurança Classe B", "Bota de Segurança com Bico de Aço", "Máscara Respiratória PFF2", "Óculos de Proteção Ampla Visão", "Cinto de Segurança Tipo Paraquedista" }),
+        ("Soldador", new[] { "Capacete de Segurança Classe B", "Bota de Segurança com Bico de Aço", "Luva de Vaqueta", "Óculos de Proteção Ampla Visão", "Protetor Auricular Tipo Plug" }),
+        ("Operador de Grua/Betoneira", new[] { "Capacete de Segurança Classe B", "Bota de Segurança com Bico de Aço", "Protetor Auricular Tipo Plug" }),
+        ("Mestre de Obras", new[] { "Capacete de Segurança Classe B", "Bota de Segurança com Bico de Aço", "Cinto de Segurança Tipo Paraquedista" }),
+        (FuncaoEncarregado, new[] { "Capacete de Segurança Classe B", "Bota de Segurança com Bico de Aço", "Cinto de Segurança Tipo Paraquedista" }),
+        ("Técnico de Segurança do Trabalho", new[] { "Capacete de Segurança Classe B", "Bota de Segurança com Bico de Aço" }),
+        ("Engenheiro Civil", new[] { "Capacete de Segurança Classe B", "Bota de Segurança com Bico de Aço" }),
+        ("Almoxarife", new[] { "Bota de Segurança com Bico de Aço", "Luva de Vaqueta" }),
+        ("Vigia/Porteiro", new[] { "Bota de Segurança com Bico de Aço" }),
+    };
+
     public static readonly (StatusNaoConformidade Status, int Quantidade)[] DistribuicaoNaoConformidades =
     {
         (StatusNaoConformidade.Aberta, 8),
