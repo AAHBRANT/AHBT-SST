@@ -39,7 +39,7 @@ public class VerificarIntegridadeQueryHandler : IRequestHandler<VerificarIntegri
         var signatarios = await _db.DocumentoSignatarios
             .Where(s => s.DocumentoAssinaturaId == documento.Id)
             .Join(_db.Trabalhadores, s => s.TrabalhadorId, t => t.Id,
-                (s, t) => new DocumentoSignatarioDto(t.Id, t.Nome, s.MetodoAutenticacao, s.AssinadoEm))
+                (s, t) => new DocumentoSignatarioDto(t.Id, t.Nome, s.MetodoAutenticacao, s.AssinadoEm, s.IpAddress))
             .ToListAsync(ct);
 
         var hashRecalculado = HashConteudoDocumentoCalculador.Calcular(documento.EntidadeTipo, documento.EntidadeId, signatarios);

@@ -32,7 +32,7 @@ import {
   type Obra,
   type Trabalhador,
 } from '../../lib/api';
-import { usePageStyles } from '../pageStyles';
+import { usePageStyles, usePillTabStyles } from '../pageStyles';
 import { HhtMensalTab } from './HhtMensalTab';
 
 function novaInicial(): NovoAcidente {
@@ -60,6 +60,7 @@ function novaInicial(): NovoAcidente {
 export function AcidentesPage() {
   const navigate = useNavigate();
   const estilos = usePageStyles();
+  const estilosAba = usePillTabStyles();
   const [acidentes, setAcidentes] = useState<Acidente[]>([]);
   const [obras, setObras] = useState<Obra[]>([]);
   const [trabalhadores, setTrabalhadores] = useState<Trabalhador[]>([]);
@@ -146,7 +147,7 @@ export function AcidentesPage() {
       <TabList
         selectedValue={aba}
         onTabSelect={(_: SelectTabEvent, d: SelectTabData) => setAba(d.value as 'ocorrencias' | 'hht')}
-        style={{ marginBottom: 16 }}
+        className={estilosAba.lista}
       >
         <Tab value="ocorrencias">Acidentes & Incidentes</Tab>
         <Tab value="hht">HHT Mensal</Tab>
@@ -334,7 +335,7 @@ export function AcidentesPage() {
             {acidentes.map((acidente) => (
               <TableRow
                 key={acidente.id}
-                onClick={() => navigate(`/melhoria/acidentes/${acidente.id}`)}
+                onClick={() => navigate(`/acidentes/${acidente.id}`)}
                 style={{ cursor: 'pointer' }}
               >
                 <TableCell>{tipoOcorrenciaLabel[acidente.tipo]}</TableCell>

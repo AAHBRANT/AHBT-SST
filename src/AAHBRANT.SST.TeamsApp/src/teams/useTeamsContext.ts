@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { app } from '@microsoft/teams-js';
+import { aguardarInicializacaoTeams } from './teamsInit';
 
 interface TeamsContextState {
   carregando: boolean;
@@ -20,13 +21,18 @@ export function useTeamsContext(): TeamsContextState {
   useEffect(() => {
     let cancelado = false;
 
-    app
-      .initialize()
-      .then(() => app.getContext())
-      .then((contexto) => {
-        if (!cancelado) {
-          setEstado({ carregando: false, dentroDoTeams: true, contexto });
+    aguardarInicializacaoTeams()
+      .then((dentroDoTeams) => {
+        if (cancelado) return undefined;
+        if (!dentroDoTeams) {
+          setEstado({ carregando: false, dentroDoTeams: false, contexto: null });
+          return undefined;
         }
+        return app.getContext().then((contexto) => {
+          if (!cancelado) {
+            setEstado({ carregando: false, dentroDoTeams: true, contexto });
+          }
+        });
       })
       .catch(() => {
         if (!cancelado) {

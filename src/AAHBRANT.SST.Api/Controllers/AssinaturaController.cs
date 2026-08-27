@@ -54,7 +54,7 @@ public class AssinaturaController : ControllerBase
     [HttpPost("{id:guid}/assinar")]
     public async Task<IActionResult> Assinar(Guid id, AssinarRequestBody body, CancellationToken ct)
     {
-        var signatario = await _mediator.Send(new RegistrarAssinaturaCommand(id, body.Uid, body.Pin), ct);
+        var signatario = await _mediator.Send(new RegistrarAssinaturaCommand(id, body.Uid, body.Pin, ObterIpCliente()), ct);
         return Ok(signatario);
     }
 
@@ -71,8 +71,20 @@ public class AssinaturaController : ControllerBase
     [HttpPost("{id:guid}/assinar/webauthn/confirmar")]
     public async Task<IActionResult> ConfirmarAssinaturaWebAuthn(Guid id, ConfirmarAssinaturaWebAuthnRequestBody body, CancellationToken ct)
     {
-        var signatario = await _mediator.Send(new ConfirmarAutenticacaoWebAuthnCommand(id, body.OpcoesJson, body.RespostaJson), ct);
+        var signatario = await _mediator.Send(new ConfirmarAutenticacaoWebAuthnCommand(id, body.OpcoesJson, body.RespostaJson, ObterIpCliente()), ct);
         return Ok(signatario);
+    }
+
+    // IP para o audit trail jurídico do Cofre de Assinaturas — nunca aceito do corpo da requisição
+    // (evidência não pode ser controlada pelo cliente). Preferimos X-Forwarded-For porque a API roda
+    // atrás de reverse proxy no Azure App Service; RemoteIpAddress é o fallback direto.
+    private string? ObterIpCliente()
+    {
+        var forwardedFor = Request.Headers["X-Forwarded-For"].FirstOrDefault();
+        if (!string.IsNullOrWhiteSpace(forwardedFor))
+            return forwardedFor.Split(',')[0].Trim();
+
+        return HttpContext.Connection.RemoteIpAddress?.ToString();
     }
 
     [Authorize(Policy = "assinatura:finalizar")]

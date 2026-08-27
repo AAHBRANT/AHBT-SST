@@ -136,7 +136,7 @@ export function NaoConformidadeDetalhePage() {
       <Button
         appearance="subtle"
         icon={<ArrowLeft24Regular />}
-        onClick={() => navigate('/melhoria/nao-conformidades')}
+        onClick={() => navigate('/nao-conformidades')}
         style={{ marginBottom: 12 }}
       >
         Voltar para Não Conformidades

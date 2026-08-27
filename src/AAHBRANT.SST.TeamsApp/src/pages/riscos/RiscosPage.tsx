@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { Tab, TabList, Text, type SelectTabData, type SelectTabEvent } from '@fluentui/react-components';
+import { usePillTabStyles } from '../pageStyles';
 import { RiscosDashboardTab } from './dashboard/RiscosDashboardTab';
 import { AtividadesTab } from './AtividadesTab';
 import { PerigosTab } from './PerigosTab';
@@ -10,6 +11,7 @@ type AbaRiscos = 'dashboard' | 'matriz' | 'perigos' | 'atividades' | 'avaliacoes
 
 export function RiscosPage() {
   const [aba, setAba] = useState<AbaRiscos>('dashboard');
+  const estilosAba = usePillTabStyles();
 
   return (
     <div>
@@ -22,7 +24,7 @@ export function RiscosPage() {
       <TabList
         selectedValue={aba}
         onTabSelect={(_: SelectTabEvent, data: SelectTabData) => setAba(data.value as AbaRiscos)}
-        style={{ marginBottom: 16 }}
+        className={estilosAba.lista}
       >
         <Tab value="dashboard">Dashboard</Tab>
         <Tab value="matriz">Matriz de Risco</Tab>

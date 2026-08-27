@@ -2,6 +2,7 @@ using AAHBRANT.SST.Application.Assinatura;
 using AAHBRANT.SST.Application.Common.Interfaces;
 using AAHBRANT.SST.Application.Dds;
 using AAHBRANT.SST.Application.EntregasEpi;
+using AAHBRANT.SST.Application.Trabalhadores;
 using AAHBRANT.SST.Infrastructure.Assinatura;
 using AAHBRANT.SST.Infrastructure.Auditoria;
 using AAHBRANT.SST.Infrastructure.Documentos;
@@ -10,6 +11,7 @@ using AAHBRANT.SST.Infrastructure.Integracao.Bot;
 using AAHBRANT.SST.Infrastructure.Integracao.Teams;
 using AAHBRANT.SST.Infrastructure.Persistencia;
 using AAHBRANT.SST.Infrastructure.Seguranca;
+using AAHBRANT.SST.Infrastructure.Trabalhadores;
 using Azure.Messaging.ServiceBus;
 using Fido2NetLib;
 using Microsoft.EntityFrameworkCore;
@@ -58,6 +60,7 @@ public static class DependencyInjection
 
         services.AddScoped<IDdsPdfService, DdsPdfService>();
         services.AddScoped<IEntregaEpiPdfService, EntregaEpiPdfService>();
+        services.AddScoped<IRelatorioFiscalizacaoPdfService, RelatorioFiscalizacaoPdfService>();
 
         // Motor de Assinatura Eletrônica (docs/Motor-Assinatura-Eletronica.md §5, etapa 4) — crachá/QR
         // + PIN é o método de reserva e roda como principal temporário até o leitor biométrico FIDO2

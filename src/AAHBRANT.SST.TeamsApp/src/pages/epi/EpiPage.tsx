@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { Tab, TabList, Text, type SelectTabData, type SelectTabEvent } from '@fluentui/react-components';
+import { usePillTabStyles } from '../pageStyles';
 import { CatalogoTab } from './CatalogoTab';
 import { EntregasTab } from './EntregasTab';
 
@@ -11,6 +12,7 @@ type AbaEpi = 'catalogo' | 'entregas';
 // que ficou só como histórico somente-leitura apontando para cá).
 export function EpiPage() {
   const [aba, setAba] = useState<AbaEpi>('entregas');
+  const estilosAba = usePillTabStyles();
 
   return (
     <div>
@@ -23,7 +25,7 @@ export function EpiPage() {
       <TabList
         selectedValue={aba}
         onTabSelect={(_: SelectTabEvent, data: SelectTabData) => setAba(data.value as AbaEpi)}
-        style={{ marginBottom: 16 }}
+        className={estilosAba.lista}
       >
         <Tab value="entregas">Entregas</Tab>
         <Tab value="catalogo">Catálogo e estoque</Tab>

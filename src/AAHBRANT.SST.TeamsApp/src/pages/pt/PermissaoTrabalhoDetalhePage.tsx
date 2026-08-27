@@ -19,7 +19,7 @@ import {
   Signature24Regular,
 } from '@fluentui/react-icons';
 import { api, StatusPt, statusPtLabel, type PermissaoTrabalhoDetalhe } from '../../lib/api';
-import { usePageStyles } from '../pageStyles';
+import { usePageStyles, usePillTabStyles } from '../pageStyles';
 import { PermissaoTrabalhoControlesTab } from './PermissaoTrabalhoControlesTab';
 import { PermissaoTrabalhoRequisitosTab } from './PermissaoTrabalhoRequisitosTab';
 
@@ -29,6 +29,7 @@ export function PermissaoTrabalhoDetalhePage() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const estilos = usePageStyles();
+  const estilosAba = usePillTabStyles();
   const [aba, setAba] = useState<AbaPt>('requisitos');
   const [detalhe, setDetalhe] = useState<PermissaoTrabalhoDetalhe | null>(null);
   const [erro, setErro] = useState<string | null>(null);
@@ -183,7 +184,7 @@ export function PermissaoTrabalhoDetalhePage() {
       <TabList
         selectedValue={aba}
         onTabSelect={(_: SelectTabEvent, data: SelectTabData) => setAba(data.value as AbaPt)}
-        style={{ marginBottom: 16 }}
+        className={estilosAba.lista}
       >
         <Tab value="requisitos">Requisitos</Tab>
         <Tab value="controles">Controles</Tab>

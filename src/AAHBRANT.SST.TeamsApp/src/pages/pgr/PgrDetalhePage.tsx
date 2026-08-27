@@ -3,7 +3,7 @@ import { useNavigate, useParams } from 'react-router-dom';
 import { Badge, Button, Tab, TabList, Text, type SelectTabData, type SelectTabEvent } from '@fluentui/react-components';
 import { ArrowLeft24Regular } from '@fluentui/react-icons';
 import { api, statusPgrLabel, type Obra, type PgrDetalhe } from '../../lib/api';
-import { usePageStyles } from '../pageStyles';
+import { usePageStyles, usePillTabStyles } from '../pageStyles';
 import { InventarioTab } from './InventarioTab';
 import { PlanoAcaoTab } from './PlanoAcaoTab';
 import { PgrRevisoesTab } from './PgrRevisoesTab';
@@ -14,6 +14,7 @@ export function PgrDetalhePage() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const estilos = usePageStyles();
+  const estilosAba = usePillTabStyles();
   const [aba, setAba] = useState<AbaPgr>('inventario');
   const [detalhe, setDetalhe] = useState<PgrDetalhe | null>(null);
   const [obras, setObras] = useState<Obra[]>([]);
@@ -80,7 +81,7 @@ export function PgrDetalhePage() {
       <TabList
         selectedValue={aba}
         onTabSelect={(_: SelectTabEvent, data: SelectTabData) => setAba(data.value as AbaPgr)}
-        style={{ marginBottom: 16 }}
+        className={estilosAba.lista}
       >
         <Tab value="inventario">Inventário de riscos</Tab>
         <Tab value="planoAcao">Plano de ação</Tab>

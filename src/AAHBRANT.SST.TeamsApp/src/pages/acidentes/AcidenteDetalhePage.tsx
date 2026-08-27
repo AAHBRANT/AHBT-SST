@@ -172,7 +172,7 @@ export function AcidenteDetalhePage() {
       <Button
         appearance="subtle"
         icon={<ArrowLeft24Regular />}
-        onClick={() => navigate('/melhoria/acidentes')}
+        onClick={() => navigate('/acidentes')}
         style={{ marginBottom: 12 }}
       >
         Voltar para Acidentes

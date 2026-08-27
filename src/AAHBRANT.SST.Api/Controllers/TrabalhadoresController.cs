@@ -28,6 +28,25 @@ public class TrabalhadoresController : ControllerBase
         return trabalhador is null ? NotFound() : Ok(trabalhador);
     }
 
+    // Perfil de Vida do Trabalhador — agrega ASO/EPI/Treinamentos/Riscos/Ocorrências/Assinaturas numa
+    // única chamada (ver ObterPerfilCompletoTrabalhadorQuery).
+    [Authorize(Policy = "trabalhador:ver")]
+    [HttpGet("{id:guid}/perfil-completo")]
+    public async Task<IActionResult> ObterPerfilCompleto(Guid id, CancellationToken ct)
+    {
+        var perfil = await _mediator.Send(new ObterPerfilCompletoTrabalhadorQuery(id), ct);
+        return perfil is null ? NotFound() : Ok(perfil);
+    }
+
+    [Authorize(Policy = "trabalhador:ver")]
+    [HttpGet("{id:guid}/relatorio-pdf")]
+    public async Task<IActionResult> ObterRelatorioFiscalizacao(Guid id, CancellationToken ct)
+    {
+        var pdf = await _mediator.Send(new GerarRelatorioFiscalizacaoTrabalhadorQuery(id), ct);
+        if (pdf is null) return NotFound();
+        return File(pdf, "application/pdf", $"relatorio-fiscalizacao-{id}.pdf");
+    }
+
     [Authorize(Policy = "trabalhador:criar")]
     [HttpPost]
     public async Task<IActionResult> Criar(CriarTrabalhadorCommand command, CancellationToken ct)

@@ -46,4 +46,8 @@ public class DocumentoSignatario : AuditableEntity
 
     public MetodoAutenticacaoAssinatura MetodoAutenticacao { get; set; }
     public DateTime AssinadoEm { get; set; }
+
+    // Rastro de IP para o audit trail jurídico (Cofre de Assinaturas) — capturado no controller a
+    // partir do HttpContext, nunca aceito do cliente (ver AssinaturaController.ObterIpCliente).
+    public string? IpAddress { get; set; }
 }

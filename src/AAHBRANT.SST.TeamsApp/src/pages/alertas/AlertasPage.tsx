@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { Tab, TabList, Text, type SelectTabData, type SelectTabEvent } from '@fluentui/react-components';
+import { usePillTabStyles } from '../pageStyles';
 import { AlertasDashboardTab } from './dashboard/AlertasDashboardTab';
 import { AlertasListaTab } from './AlertasListaTab';
 import { AlertasConfiguracaoTab } from './AlertasConfiguracaoTab';
@@ -8,6 +9,7 @@ type AbaAlertas = 'dashboard' | 'lista' | 'configuracao';
 
 export function AlertasPage() {
   const [aba, setAba] = useState<AbaAlertas>('dashboard');
+  const estilosAba = usePillTabStyles();
 
   return (
     <div>
@@ -20,7 +22,7 @@ export function AlertasPage() {
       <TabList
         selectedValue={aba}
         onTabSelect={(_: SelectTabEvent, data: SelectTabData) => setAba(data.value as AbaAlertas)}
-        style={{ marginBottom: 16 }}
+        className={estilosAba.lista}
       >
         <Tab value="dashboard">Dashboard</Tab>
         <Tab value="lista">Lista</Tab>

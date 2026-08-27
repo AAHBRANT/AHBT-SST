@@ -6,7 +6,7 @@ using Microsoft.EntityFrameworkCore;
 
 namespace AAHBRANT.SST.Application.Assinatura.Queries;
 
-public record DocumentoSignatarioDto(Guid TrabalhadorId, string TrabalhadorNome, MetodoAutenticacaoAssinatura MetodoAutenticacao, DateTime AssinadoEm);
+public record DocumentoSignatarioDto(Guid TrabalhadorId, string TrabalhadorNome, MetodoAutenticacaoAssinatura MetodoAutenticacao, DateTime AssinadoEm, string? IpAddress = null);
 
 public record DocumentoAssinaturaDto(
     Guid Id,
@@ -52,7 +52,7 @@ public class ObterDocumentoQueryHandler : IRequestHandler<ObterDocumentoQuery, D
         var signatarios = await _db.DocumentoSignatarios
             .Where(s => s.DocumentoAssinaturaId == documento.Id)
             .Join(_db.Trabalhadores, s => s.TrabalhadorId, t => t.Id,
-                (s, t) => new DocumentoSignatarioDto(t.Id, t.Nome, s.MetodoAutenticacao, s.AssinadoEm))
+                (s, t) => new DocumentoSignatarioDto(t.Id, t.Nome, s.MetodoAutenticacao, s.AssinadoEm, s.IpAddress))
             .OrderBy(s => s.AssinadoEm)
             .ToListAsync(ct);
 

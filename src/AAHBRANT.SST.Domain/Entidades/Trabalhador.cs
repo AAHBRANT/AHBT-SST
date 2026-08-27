@@ -19,6 +19,7 @@ public class Trabalhador : AuditableEntity
 
     public string Nome { get; set; } = string.Empty;
     public string Matricula { get; set; } = string.Empty;
+    public string? Rg { get; set; }
 
     // LGPD: valor armazenado é sempre o CPF criptografado (AES-256-GCM via CpfCriptografiaConversor,
     // aplicado na configuração do EF Core). Nunca gravar/ler este campo fora do EF Core.
