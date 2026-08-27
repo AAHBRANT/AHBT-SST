@@ -30,6 +30,7 @@ public class SstDbContext : DbContext, IAppDbContext
     public DbSet<Treinamento> Treinamentos => Set<Treinamento>();
     public DbSet<CatalogoEpi> CatalogoEpis => Set<CatalogoEpi>();
     public DbSet<EntregaEpi> EntregasEpi => Set<EntregaEpi>();
+    public DbSet<MatrizEpiFuncao> MatrizEpiFuncoes => Set<MatrizEpiFuncao>();
 
     public DbSet<Alerta> Alertas => Set<Alerta>();
     public DbSet<AlertaHistoricoEnvio> AlertaHistoricoEnvios => Set<AlertaHistoricoEnvio>();

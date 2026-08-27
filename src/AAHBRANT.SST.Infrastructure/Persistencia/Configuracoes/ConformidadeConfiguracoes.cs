@@ -160,3 +160,21 @@ public class TrilhaAuditoriaConfiguracao : IEntityTypeConfiguration<TrilhaAudito
         builder.HasIndex(t => new { t.EntidadeTipo, t.EntidadeId, t.Timestamp });
     }
 }
+
+public class MatrizEpiFuncaoConfiguracao : IEntityTypeConfiguration<MatrizEpiFuncao>
+{
+    public void Configure(EntityTypeBuilder<MatrizEpiFuncao> builder)
+    {
+        builder.HasOne(m => m.Funcao).WithMany()
+            .HasForeignKey(m => m.FuncaoId).OnDelete(DeleteBehavior.Restrict);
+        builder.HasOne(m => m.CatalogoEpi).WithMany()
+            .HasForeignKey(m => m.CatalogoEpiId).OnDelete(DeleteBehavior.Restrict);
+        builder.HasIndex(m => new { m.FuncaoId, m.CatalogoEpiId }).IsUnique();
+        builder.HasQueryFilter(m => m.Ativo);
+
+        // Entidade nova, sem coluna varbinary legada — diferente do resto do arquivo (que corrige
+        // um bug retroativo), IsRowVersion() aqui já deve gerar coluna "rowversion" na primeira
+        // migration (ver verificação no Passo 6 abaixo).
+        builder.Property(m => m.RowVersion).IsRowVersion();
+    }
+}

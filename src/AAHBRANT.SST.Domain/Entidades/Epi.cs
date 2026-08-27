@@ -45,3 +45,11 @@ public class EntregaEpi : AuditableEntity
     // que nunca teve um campo equivalente na própria entidade.
     public ICollection<Evidencia> Evidencias { get; set; } = new List<Evidencia>();
 }
+
+public class MatrizEpiFuncao : AuditableEntity
+{
+    public Guid FuncaoId { get; set; }
+    public Funcao? Funcao { get; set; }
+    public Guid CatalogoEpiId { get; set; }
+    public CatalogoEpi? CatalogoEpi { get; set; }
+}
