@@ -41,6 +41,7 @@ export function EntregasTab() {
   const navigate = useNavigate();
   const [entregas, setEntregas] = useState<EntregaEpi[]>([]);
   const [epis, setEpis] = useState<CatalogoEpi[]>([]);
+  const [episPermitidos, setEpisPermitidos] = useState<CatalogoEpi[]>([]);
   const [trabalhadores, setTrabalhadores] = useState<Trabalhador[]>([]);
   const [novaEntrega, setNovaEntrega] = useState<NovaEntregaEpi>(entregaVazia());
   const [erro, setErro] = useState<string | null>(null);
@@ -69,6 +70,27 @@ export function EntregasTab() {
   useEffect(() => {
     carregar();
   }, []);
+
+  useEffect(() => {
+    let cancelado = false;
+    async function carregarEpisPermitidos() {
+      const trabalhador = trabalhadores.find((t) => t.id === novaEntrega.trabalhadorId);
+      if (!trabalhador) {
+        setEpisPermitidos([]);
+        return;
+      }
+      try {
+        const lista = await api.funcoes.listarEpis(trabalhador.funcaoId);
+        if (!cancelado) setEpisPermitidos(lista);
+      } catch {
+        if (!cancelado) setEpisPermitidos([]);
+      }
+    }
+    carregarEpisPermitidos();
+    return () => {
+      cancelado = true;
+    };
+  }, [novaEntrega.trabalhadorId, trabalhadores]);
 
   function nomeEpi(id: string) {
     return epis.find((e) => e.id === id)?.nome ?? id;
@@ -155,7 +177,7 @@ export function EntregasTab() {
           <Field label="Trabalhador">
             <Select
               value={novaEntrega.trabalhadorId}
-              onChange={(_, d) => setNovaEntrega({ ...novaEntrega, trabalhadorId: d.value })}
+              onChange={(_, d) => setNovaEntrega({ ...novaEntrega, trabalhadorId: d.value, catalogoEpiId: '' })}
             >
               <option value="">Selecione</option>
               {trabalhadores.map((t) => (
@@ -169,14 +191,23 @@ export function EntregasTab() {
             <Select
               value={novaEntrega.catalogoEpiId}
               onChange={(_, d) => setNovaEntrega({ ...novaEntrega, catalogoEpiId: d.value })}
+              disabled={!novaEntrega.trabalhadorId || episPermitidos.length === 0}
             >
               <option value="">Selecione</option>
-              {epis.map((e) => (
+              {episPermitidos.map((e) => (
                 <option key={e.id} value={e.id}>
                   {e.nome} (estoque: {e.saldoEstoque})
                 </option>
               ))}
             </Select>
+            {novaEntrega.trabalhadorId && episPermitidos.length === 0 && (
+              <Text size={200}>
+                Esta função não tem EPIs cadastrados na matriz.{' '}
+                <Button appearance="transparent" size="small" onClick={() => navigate('/operacao/pessoas')}>
+                  Cadastrar em Pessoas → Funções
+                </Button>
+              </Text>
+            )}
           </Field>
           <Field label="Quantidade">
             <Input
