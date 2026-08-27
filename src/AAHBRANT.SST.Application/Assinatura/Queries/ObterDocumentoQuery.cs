@@ -51,9 +51,9 @@ public class ObterDocumentoQueryHandler : IRequestHandler<ObterDocumentoQuery, D
 
         var signatarios = await _db.DocumentoSignatarios
             .Where(s => s.DocumentoAssinaturaId == documento.Id)
-            .Join(_db.Trabalhadores, s => s.TrabalhadorId, t => t.Id,
-                (s, t) => new DocumentoSignatarioDto(t.Id, t.Nome, s.MetodoAutenticacao, s.AssinadoEm))
-            .OrderBy(s => s.AssinadoEm)
+            .Join(_db.Trabalhadores, s => s.TrabalhadorId, t => t.Id, (s, t) => new { s, t })
+            .OrderBy(x => x.s.AssinadoEm)
+            .Select(x => new DocumentoSignatarioDto(x.t.Id, x.t.Nome, x.s.MetodoAutenticacao, x.s.AssinadoEm))
             .ToListAsync(ct);
 
         return new DocumentoAssinaturaDto(
