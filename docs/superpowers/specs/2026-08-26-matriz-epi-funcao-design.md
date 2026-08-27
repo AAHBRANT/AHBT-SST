@@ -34,7 +34,9 @@ das Fases 2 e 3 (a Ficha reformulada e a validação de entrega dependem dela).
 **Entra:**
 - Entidade `MatrizEpiFuncao` (associação simples Função × CatalogoEpi).
 - Endpoints para consultar e definir os EPIs de uma função.
-- Tela de gestão da matriz dentro de `FuncoesTab.tsx` (Pessoas → Funções).
+- Tela de gestão da matriz como aba dedicada no módulo EPI (`MatrizEpiTab.tsx`
+  em `pages/epi`) — decisão final: a matriz é dado do módulo EPI, não de
+  Pessoas → Funções (que continua só com o CRUD da função).
 - Filtro no formulário de nova `EntregaEpi`: o select de EPI só lista os
   itens vinculados à função do trabalhador selecionado.
 - Migration EF Core nova.
@@ -124,19 +126,29 @@ administração da função, não operação de campo).
 
 ### 4.4 TeamsApp — UI
 
-**`FuncoesTab.tsx`:** cada linha da tabela ganha comportamento de
+**`MatrizEpiTab.tsx` (nova, dentro do módulo EPI — `pages/epi`):** nova
+terceira aba do `EpiPage.tsx`, "Matriz de EPI por Função", ao lado de
+"Entregas" e "Catálogo e estoque". Lista as funções já cadastradas
+(somente leitura quanto ao CRUD da função — criar/excluir função continua em
+Pessoas → Funções); cada linha da tabela ganha comportamento de
 expandir/editar (mesmo padrão de `CatalogoTab.tsx` — clique na linha abre um
 painel). O painel expandido mostra um checklist com todos os itens de
 `CatalogoEpi` (nome + fabricante), cada um com checkbox marcado se já
 vinculado àquela função (via `GET /api/funcoes/{id}/epis`), botão "Salvar
 matriz" que chama `PUT /api/funcoes/{id}/epis` com a lista de IDs marcados.
 
+**`FuncoesTab.tsx` (Pessoas → Funções, inalterada quanto ao escopo original
+além de perder a matriz):** mantém só o CRUD da função (nome/CBO/descrição),
+com um texto apontando para EPI → Matriz de EPI por Função.
+
 **`EntregasTab.tsx`:** ao selecionar o trabalhador no formulário de nova
 entrega, buscar `GET /api/funcoes/{trabalhador.funcaoId}/epis` e restringir
 o select de EPI a esse conjunto. Se a função não tiver EPIs vinculados (ou o
 trabalhador não tiver função definida), mostrar estado vazio orientando a
-cadastrar a matriz da função antes de registrar a entrega, com atalho para
-`Pessoas → Funções`.
+cadastrar a matriz da função antes de registrar a entrega, com atalho que
+troca para a aba "Matriz de EPI por Função" dentro do próprio módulo EPI
+(callback `aoNavegarParaMatriz`, já que é troca de aba e não navegação de
+rota).
 
 **`lib/api.ts`:** novos métodos `api.funcoes.listarEpis(funcaoId)` e
 `api.funcoes.definirEpis(funcaoId, catalogoEpiIds)`.
@@ -167,7 +179,9 @@ dados de demonstração já existentes.
   lista).
 - Teste de integração: `GET /api/funcoes/{id}/epis` retorna vazio para
   função sem matriz definida; retorna os itens certos após `PUT`.
-- Teste manual no navegador: cadastrar matriz para uma função em
-  `FuncoesTab`, depois abrir `EntregasTab`, selecionar um trabalhador dessa
-  função e confirmar que o select de EPI mostra só os itens da matriz (e
-  mostra o estado vazio para trabalhador de função sem matriz).
+- Teste manual no navegador: cadastrar matriz para uma função na aba
+  "Matriz de EPI por Função" do módulo EPI (`MatrizEpiTab`), depois abrir a
+  aba "Entregas" do mesmo módulo, selecionar um trabalhador dessa função e
+  confirmar que o select de EPI mostra só os itens da matriz (e mostra o
+  estado vazio, com atalho para a aba da matriz, para trabalhador de função
+  sem matriz).
