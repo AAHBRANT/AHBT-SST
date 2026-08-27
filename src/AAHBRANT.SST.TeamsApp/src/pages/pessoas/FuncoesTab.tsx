@@ -1,7 +1,6 @@
-import { Fragment, useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import {
   Button,
-  Checkbox,
   Field,
   Input,
   Table,
@@ -13,28 +12,25 @@ import {
   Text,
 } from '@fluentui/react-components';
 import { Add24Regular, Delete24Regular } from '@fluentui/react-icons';
-import { api, type CatalogoEpi, type Funcao, type NovaFuncao } from '../../lib/api';
+import { api, type Funcao, type NovaFuncao } from '../../lib/api';
 import { usePageStyles } from '../pageStyles';
 
 const funcaoVazia: NovaFuncao = { nome: '', cboCodigo: '', descricao: '' };
 
+// A matriz de EPI por função fica no módulo EPI (ver MatrizEpiTab.tsx em pages/epi) — aqui é só o
+// cadastro (CRUD) da função em si, usado também por Trabalhadores/Equipes.
 export function FuncoesTab() {
   const estilos = usePageStyles();
   const [funcoes, setFuncoes] = useState<Funcao[]>([]);
   const [novaFuncao, setNovaFuncao] = useState<NovaFuncao>(funcaoVazia);
   const [erro, setErro] = useState<string | null>(null);
   const [carregando, setCarregando] = useState(false);
-  const [episCatalogo, setEpisCatalogo] = useState<CatalogoEpi[]>([]);
-  const [expandidoId, setExpandidoId] = useState<string | null>(null);
-  const [vinculosSelecionados, setVinculosSelecionados] = useState<string[]>([]);
-  const [salvandoMatriz, setSalvandoMatriz] = useState(false);
 
   async function carregar() {
     try {
       setErro(null);
-      const [listaFuncoes, listaEpis] = await Promise.all([api.funcoes.listar(), api.catalogosEpi.listar()]);
+      const listaFuncoes = await api.funcoes.listar();
       setFuncoes(listaFuncoes);
-      setEpisCatalogo(listaEpis);
     } catch (e) {
       setErro(e instanceof Error ? e.message : 'Falha ao carregar funções.');
     }
@@ -64,40 +60,6 @@ export function FuncoesTab() {
       await carregar();
     } catch (e) {
       setErro(e instanceof Error ? e.message : 'Falha ao excluir função.');
-    }
-  }
-
-  async function alternarExpansao(funcao: Funcao) {
-    if (expandidoId === funcao.id) {
-      setExpandidoId(null);
-      return;
-    }
-    try {
-      setErro(null);
-      const vinculados = await api.funcoes.listarEpis(funcao.id);
-      setVinculosSelecionados(vinculados.map((e) => e.id));
-      setExpandidoId(funcao.id);
-    } catch (e) {
-      setErro(e instanceof Error ? e.message : 'Falha ao carregar matriz de EPI da função.');
-    }
-  }
-
-  function alternarEpi(catalogoEpiId: string, marcado: boolean) {
-    setVinculosSelecionados((atual) =>
-      marcado ? [...atual, catalogoEpiId] : atual.filter((id) => id !== catalogoEpiId)
-    );
-  }
-
-  async function salvarMatriz(funcaoId: string) {
-    try {
-      setSalvandoMatriz(true);
-      setErro(null);
-      await api.funcoes.definirEpis(funcaoId, vinculosSelecionados);
-      setExpandidoId(null);
-    } catch (e) {
-      setErro(e instanceof Error ? e.message : 'Falha ao salvar matriz de EPI.');
-    } finally {
-      setSalvandoMatriz(false);
     }
   }
 
@@ -132,7 +94,7 @@ export function FuncoesTab() {
         </Button>
       </div>
 
-      <Text size={200}>Clique numa linha para editar a matriz de EPI daquela função.</Text>
+      <Text size={200}>A matriz de EPI de cada função é definida em EPI → Matriz de EPI por Função.</Text>
 
       <Table>
         <TableHeader>
@@ -145,50 +107,19 @@ export function FuncoesTab() {
         </TableHeader>
         <TableBody>
           {funcoes.map((funcao) => (
-            <Fragment key={funcao.id}>
-              <TableRow onClick={() => alternarExpansao(funcao)} style={{ cursor: 'pointer' }}>
-                <TableCell>{funcao.nome}</TableCell>
-                <TableCell>{funcao.cboCodigo}</TableCell>
-                <TableCell>{funcao.descricao}</TableCell>
-                <TableCell>
-                  <Button
-                    appearance="subtle"
-                    icon={<Delete24Regular />}
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      excluir(funcao.id);
-                    }}
-                    aria-label="Excluir"
-                  />
-                </TableCell>
-              </TableRow>
-              {expandidoId === funcao.id && (
-                <TableRow>
-                  <TableCell colSpan={4}>
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: 8, padding: '8px 0' }}>
-                      <Text weight="semibold">Matriz de EPI — {funcao.nome}</Text>
-                      {episCatalogo.length === 0 ? (
-                        <Text>Nenhum EPI cadastrado no catálogo ainda.</Text>
-                      ) : (
-                        episCatalogo.map((epi) => (
-                          <Checkbox
-                            key={epi.id}
-                            label={epi.fabricante ? `${epi.nome} (${epi.fabricante})` : epi.nome}
-                            checked={vinculosSelecionados.includes(epi.id)}
-                            onChange={(_, d) => alternarEpi(epi.id, !!d.checked)}
-                          />
-                        ))
-                      )}
-                      <div>
-                        <Button appearance="primary" onClick={() => salvarMatriz(funcao.id)} disabled={salvandoMatriz}>
-                          Salvar matriz
-                        </Button>
-                      </div>
-                    </div>
-                  </TableCell>
-                </TableRow>
-              )}
-            </Fragment>
+            <TableRow key={funcao.id}>
+              <TableCell>{funcao.nome}</TableCell>
+              <TableCell>{funcao.cboCodigo}</TableCell>
+              <TableCell>{funcao.descricao}</TableCell>
+              <TableCell>
+                <Button
+                  appearance="subtle"
+                  icon={<Delete24Regular />}
+                  onClick={() => excluir(funcao.id)}
+                  aria-label="Excluir"
+                />
+              </TableCell>
+            </TableRow>
           ))}
         </TableBody>
       </Table>

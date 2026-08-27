@@ -36,7 +36,11 @@ function entregaVazia(): NovaEntregaEpi {
 // ficha em PDF e atalho para a assinatura eletrônica (AssinarEntregaEpiPage). O bloqueio de
 // estoque insuficiente / CA vencido acontece no backend (CriarEntregaEpiCommand); o erro retornado
 // é exibido como veio, mesmo padrão já usado em todo o resto do frontend (ver api.ts request()).
-export function EntregasTab() {
+interface EntregasTabProps {
+  aoNavegarParaMatriz: () => void;
+}
+
+export function EntregasTab({ aoNavegarParaMatriz }: EntregasTabProps) {
   const estilos = usePageStyles();
   const navigate = useNavigate();
   const [entregas, setEntregas] = useState<EntregaEpi[]>([]);
@@ -203,8 +207,8 @@ export function EntregasTab() {
             {novaEntrega.trabalhadorId && episPermitidos.length === 0 && (
               <Text size={200}>
                 Esta função não tem EPIs cadastrados na matriz.{' '}
-                <Button appearance="transparent" size="small" onClick={() => navigate('/operacao/pessoas')}>
-                  Cadastrar em Pessoas → Funções
+                <Button appearance="transparent" size="small" onClick={aoNavegarParaMatriz}>
+                  Cadastrar em Matriz de EPI por Função
                 </Button>
               </Text>
             )}
