@@ -51,4 +51,19 @@ public class FuncoesController : ControllerBase
         await _mediator.Send(new ExcluirFuncaoCommand(id), ct);
         return NoContent();
     }
+
+    [Authorize(Policy = "organizacional:ver")]
+    [HttpGet("{id:guid}/epis")]
+    public async Task<IActionResult> ListarEpis(Guid id, CancellationToken ct)
+        => Ok(await _mediator.Send(new ListarEpisPorFuncaoQuery(id), ct));
+
+    [Authorize(Policy = "organizacional:editar")]
+    [HttpPut("{id:guid}/epis")]
+    public async Task<IActionResult> DefinirEpis(Guid id, DefinirEpisRequest request, CancellationToken ct)
+    {
+        await _mediator.Send(new DefinirMatrizEpiFuncaoCommand(id, request.CatalogoEpiIds), ct);
+        return NoContent();
+    }
 }
+
+public record DefinirEpisRequest(List<Guid> CatalogoEpiIds);
