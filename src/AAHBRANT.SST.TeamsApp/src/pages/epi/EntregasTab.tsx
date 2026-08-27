@@ -19,6 +19,7 @@ import {
   api,
   motivoEntregaEpiLabel,
   MotivoEntregaEpi,
+  type AtualizarEntregaEpi,
   type CatalogoEpi,
   type EntregaEpi,
   type NovaEntregaEpi,
@@ -160,7 +161,7 @@ export function EntregasTab({ aoNavegarParaMatriz }: EntregasTabProps) {
     try {
       setCarregando(true);
       setErro(null);
-      const atualizada: EntregaEpi = {
+      const atualizada: AtualizarEntregaEpi = {
         ...entrega,
         // Entregas registradas antes da Fase 2 podem não ter motivoTipo (campo era opcional);
         // o backend exige o enum em toda atualização, então assume Inicial como padrão seguro.
