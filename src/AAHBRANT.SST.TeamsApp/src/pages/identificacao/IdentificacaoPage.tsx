@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { Tab, TabList, Text, type SelectTabData, type SelectTabEvent } from '@fluentui/react-components';
+import { usePillTabStyles } from '../pageStyles';
 import { IdentificacaoDashboardTab } from './dashboard/IdentificacaoDashboardTab';
 import { AreasSstTab } from './AreasSstTab';
 import { TagsIdentificacaoTab } from './TagsIdentificacaoTab';
@@ -9,6 +10,7 @@ type AbaIdentificacao = 'dashboard' | 'areas' | 'tags' | 'leitor';
 
 export function IdentificacaoPage() {
   const [aba, setAba] = useState<AbaIdentificacao>('dashboard');
+  const estilosAba = usePillTabStyles();
 
   return (
     <div>
@@ -21,7 +23,7 @@ export function IdentificacaoPage() {
       <TabList
         selectedValue={aba}
         onTabSelect={(_: SelectTabEvent, data: SelectTabData) => setAba(data.value as AbaIdentificacao)}
-        style={{ marginBottom: 16 }}
+        className={estilosAba.lista}
       >
         <Tab value="dashboard">Dashboard</Tab>
         <Tab value="areas">Áreas</Tab>

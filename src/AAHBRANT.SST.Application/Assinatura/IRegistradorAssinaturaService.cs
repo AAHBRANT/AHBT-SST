@@ -14,7 +14,7 @@ namespace AAHBRANT.SST.Application.Assinatura;
 // esta lógica inteira.
 public interface IRegistradorAssinaturaService
 {
-    Task<DocumentoSignatarioDto> RegistrarAsync(Guid documentoAssinaturaId, ResultadoAutenticacaoAssinatura resultado, CancellationToken ct);
+    Task<DocumentoSignatarioDto> RegistrarAsync(Guid documentoAssinaturaId, ResultadoAutenticacaoAssinatura resultado, string? ipAddress, CancellationToken ct);
 }
 
 public class RegistradorAssinaturaService : IRegistradorAssinaturaService
@@ -28,7 +28,7 @@ public class RegistradorAssinaturaService : IRegistradorAssinaturaService
         _auditoria = auditoria;
     }
 
-    public async Task<DocumentoSignatarioDto> RegistrarAsync(Guid documentoAssinaturaId, ResultadoAutenticacaoAssinatura resultado, CancellationToken ct)
+    public async Task<DocumentoSignatarioDto> RegistrarAsync(Guid documentoAssinaturaId, ResultadoAutenticacaoAssinatura resultado, string? ipAddress, CancellationToken ct)
     {
         var documento = await _db.DocumentosAssinatura.FirstOrDefaultAsync(d => d.Id == documentoAssinaturaId, ct);
         if (documento is null)
@@ -49,6 +49,7 @@ public class RegistradorAssinaturaService : IRegistradorAssinaturaService
             TrabalhadorId = resultado.TrabalhadorId,
             MetodoAutenticacao = resultado.Metodo,
             AssinadoEm = DateTime.UtcNow,
+            IpAddress = ipAddress,
         };
         _db.DocumentoSignatarios.Add(signatario);
 
@@ -63,6 +64,6 @@ public class RegistradorAssinaturaService : IRegistradorAssinaturaService
 
         await _db.SaveChangesAsync(ct);
 
-        return new DocumentoSignatarioDto(trabalhador.Id, trabalhador.Nome, signatario.MetodoAutenticacao, signatario.AssinadoEm);
+        return new DocumentoSignatarioDto(trabalhador.Id, trabalhador.Nome, signatario.MetodoAutenticacao, signatario.AssinadoEm, signatario.IpAddress);
     }
 }

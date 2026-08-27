@@ -86,7 +86,7 @@ function App() {
               <Route path="gestao-documental/:id" element={<DocumentoGestaoDetalhePage />} />
             </Route>
 
-            {/* Módulo Prevenção: Riscos, PGR, Inspeções, DDS */}
+            {/* Módulo Prevenção: PGR, Inspeções, DDS (Riscos virou item de 1º nível — ver /riscos) */}
             <Route
               path="/prevencao"
               element={
@@ -94,7 +94,6 @@ function App() {
                   titulo="Prevenção"
                   prefixo="prevencao"
                   abas={[
-                    { valor: 'riscos', rotulo: 'Riscos' },
                     { valor: 'pgr', rotulo: 'PGR' },
                     { valor: 'inspecoes', rotulo: 'Inspeções' },
                     { valor: 'dds', rotulo: 'DDS' },
@@ -102,8 +101,7 @@ function App() {
                 />
               }
             >
-              <Route index element={<Navigate to="riscos" replace />} />
-              <Route path="riscos" element={<RiscosPage />} />
+              <Route index element={<Navigate to="pgr" replace />} />
               <Route path="pgr" element={<PgrsPage />} />
               <Route path="pgr/:id" element={<PgrDetalhePage />} />
               <Route path="inspecoes" element={<InspecoesPage />} />
@@ -144,28 +142,18 @@ function App() {
               <Route path="ativos" element={<AtivosPage />} />
             </Route>
 
-            {/* Módulo Melhoria Contínua: Não Conformidades, Acidentes & Incidentes */}
-            <Route
-              path="/melhoria"
-              element={
-                <PillarLayout
-                  titulo="Melhoria Contínua"
-                  prefixo="melhoria"
-                  abas={[
-                    { valor: 'nao-conformidades', rotulo: 'Não Conformidades' },
-                    { valor: 'acidentes', rotulo: 'Acidentes & Incidentes' },
-                  ]}
-                />
-              }
-            >
-              <Route index element={<Navigate to="nao-conformidades" replace />} />
-              <Route path="nao-conformidades" element={<NaoConformidadesPage />} />
-              <Route path="nao-conformidades/:id" element={<NaoConformidadeDetalhePage />} />
-              <Route path="acidentes" element={<AcidentesPage />} />
-              <Route path="acidentes/:id" element={<AcidenteDetalhePage />} />
-            </Route>
-
             <Route path="/alertas" element={<AlertasPage />} />
+
+            {/* Riscos, Não Conformidades e Acidentes & Incidentes viraram itens de 1º nível na
+                sidebar (antes eram abas de Prevenção e de Melhoria Contínua, respectivamente —
+                Melhoria Contínua foi removida). Cada página já é autossuficiente (título + abas
+                internas próprias), mesmo padrão já usado por EpiPage. */}
+            <Route path="/riscos" element={<RiscosPage />} />
+            <Route path="/nao-conformidades" element={<NaoConformidadesPage />} />
+            <Route path="/nao-conformidades/:id" element={<NaoConformidadeDetalhePage />} />
+            <Route path="/acidentes" element={<AcidentesPage />} />
+            <Route path="/acidentes/:id" element={<AcidenteDetalhePage />} />
+
             <Route path="/epi" element={<EpiPage />} />
             <Route path="/epi/:id/assinar" element={<AssinarEntregaEpiPage />} />
             <Route path="/administracao" element={<AdministracaoPage />} />
@@ -183,7 +171,7 @@ function App() {
               element={<RedirecionarComId para={(id) => `/conformidade/gestao-documental/${id}`} />}
             />
 
-            <Route path="/riscos" element={<Navigate to="/prevencao/riscos" replace />} />
+            <Route path="/prevencao/riscos" element={<Navigate to="/riscos" replace />} />
             <Route path="/pgr" element={<Navigate to="/prevencao/pgr" replace />} />
             <Route path="/pgr/:id" element={<RedirecionarComId para={(id) => `/prevencao/pgr/${id}`} />} />
             <Route path="/inspecoes" element={<Navigate to="/prevencao/inspecoes" replace />} />
@@ -203,15 +191,24 @@ function App() {
             <Route path="/pt/:id" element={<RedirecionarComId para={(id) => `/operacao/pt/${id}`} />} />
             <Route path="/identificacao" element={<Navigate to="/operacao/identificacao" replace />} />
 
-            <Route path="/naoconformidades" element={<Navigate to="/melhoria/nao-conformidades" replace />} />
+            <Route path="/naoconformidades" element={<Navigate to="/nao-conformidades" replace />} />
             <Route
               path="/naoconformidades/:id"
-              element={<RedirecionarComId para={(id) => `/melhoria/nao-conformidades/${id}`} />}
+              element={<RedirecionarComId para={(id) => `/nao-conformidades/${id}`} />}
             />
-            <Route path="/acidentes" element={<Navigate to="/melhoria/acidentes" replace />} />
+
+            {/* Módulo Melhoria Contínua removido (24/26/08) — Não Conformidades e Acidentes &
+                Incidentes viraram itens de 1º nível. Redirecionamentos preservam links antigos. */}
+            <Route path="/melhoria" element={<Navigate to="/nao-conformidades" replace />} />
+            <Route path="/melhoria/nao-conformidades" element={<Navigate to="/nao-conformidades" replace />} />
             <Route
-              path="/acidentes/:id"
-              element={<RedirecionarComId para={(id) => `/melhoria/acidentes/${id}`} />}
+              path="/melhoria/nao-conformidades/:id"
+              element={<RedirecionarComId para={(id) => `/nao-conformidades/${id}`} />}
+            />
+            <Route path="/melhoria/acidentes" element={<Navigate to="/acidentes" replace />} />
+            <Route
+              path="/melhoria/acidentes/:id"
+              element={<RedirecionarComId para={(id) => `/acidentes/${id}`} />}
             />
           </Route>
         </Routes>

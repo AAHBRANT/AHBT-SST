@@ -199,7 +199,7 @@ export function NaoConformidadesTab() {
             {naoConformidades.map((nc) => (
               <TableRow
                 key={nc.id}
-                onClick={() => navigate(`/melhoria/nao-conformidades/${nc.id}`)}
+                onClick={() => navigate(`/nao-conformidades/${nc.id}`)}
                 style={{ cursor: 'pointer' }}
               >
                 <TableCell>{origemNaoConformidadeLabel[nc.origemDeteccao]}</TableCell>

@@ -45,6 +45,6 @@ public class RegistrarAssinaturaSessaoLogadaCommandHandler : IRequestHandler<Reg
                 "Seu usuário não está vinculado a um cadastro de trabalhador. Peça a um administrador para vincular seu usuário antes de assinar.");
 
         var resultado = new ResultadoAutenticacaoAssinatura(usuario.TrabalhadorId.Value, MetodoAutenticacaoAssinatura.SessaoLogada);
-        return await _registrador.RegistrarAsync(request.DocumentoAssinaturaId, resultado, ct);
+        return await _registrador.RegistrarAsync(request.DocumentoAssinaturaId, resultado, null, ct);
     }
 }

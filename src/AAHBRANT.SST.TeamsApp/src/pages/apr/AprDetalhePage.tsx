@@ -14,7 +14,7 @@ import {
 } from '@fluentui/react-components';
 import { ArrowLeft24Regular, Checkmark24Regular, Dismiss24Regular } from '@fluentui/react-icons';
 import { api, StatusApr, statusAprLabel, type AprDetalhe } from '../../lib/api';
-import { usePageStyles } from '../pageStyles';
+import { usePageStyles, usePillTabStyles } from '../pageStyles';
 import { AprEtapasTab } from './AprEtapasTab';
 import { AprAssinaturasTab } from './AprAssinaturasTab';
 
@@ -24,6 +24,7 @@ export function AprDetalhePage() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const estilos = usePageStyles();
+  const estilosAba = usePillTabStyles();
   const [aba, setAba] = useState<AbaApr>('etapas');
   const [detalhe, setDetalhe] = useState<AprDetalhe | null>(null);
   const [erro, setErro] = useState<string | null>(null);
@@ -156,7 +157,7 @@ export function AprDetalhePage() {
       <TabList
         selectedValue={aba}
         onTabSelect={(_: SelectTabEvent, data: SelectTabData) => setAba(data.value as AbaApr)}
-        style={{ marginBottom: 16 }}
+        className={estilosAba.lista}
       >
         <Tab value="etapas">Etapas</Tab>
         <Tab value="assinaturas">Assinaturas</Tab>

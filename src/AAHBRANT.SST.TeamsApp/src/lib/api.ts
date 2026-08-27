@@ -1,14 +1,17 @@
 import { authentication } from '@microsoft/teams-js';
+import { aguardarInicializacaoTeams } from '../teams/teamsInit';
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL ?? 'https://localhost:7095';
 
-// Fora de um host real do Teams (ex.: dev local no navegador), getAuthToken() tem dois
-// comportamentos possíveis: rejeita rápido com "library not initialized" nos primeiros
-// instantes após o mount, OU — passada essa janela — nunca resolve nem rejeita, pois fica
-// esperando resposta de um frame pai do Teams que não existe. Sem o timeout, esse segundo
-// caso travaria para sempre qualquer requisição feita depois do boot inicial do SDK. Em
-// ambos os casos seguimos sem o header, como já era o comportamento (API local roda sem auth).
+// Espera a mesma promise de app.initialize() usada por useTeamsContext antes de tentar obter o
+// token: chamar getAuthToken() antes do SDK terminar de assentar falha rápido ("library not
+// initialized"), derrubando a chamada para 401 mesmo com o usuário autenticado/autorizado no
+// Teams (ver AAHBRANT.SST.TeamsApp/src/teams/teamsInit.ts). Importante: NÃO condicionamos a
+// tentativa ao resultado (dentroDoTeams) — em alguns hosts reais do Teams (ex.: cliente web)
+// app.initialize()/getContext() podem falhar mesmo com getAuthToken() funcionando normalmente
+// depois, então só usamos a promise para esperar o SDK assentar, não para decidir se tentamos.
 async function obterTokenAutenticacaoTeams(): Promise<string | null> {
+  await aguardarInicializacaoTeams();
   try {
     return await Promise.race([
       authentication.getAuthToken(),
@@ -1849,6 +1852,79 @@ export interface RegraAlerta {
 
 export type NovaRegraAlerta = Omit<RegraAlerta, 'id'>;
 
+// Perfil de Vida do Trabalhador — espelha PerfilCompletoTrabalhadorDto (backend), reaproveitando os
+// tipos Aso/Treinamento/EntregaEpi já existentes acima para as sub-listas correspondentes.
+export interface FrequenciaTrocaEpi {
+  catalogoEpiId: string;
+  catalogoEpiNome: string;
+  quantidadeTrocas: number;
+}
+
+export interface AssiduidadeDds {
+  totalRealizados: number;
+  totalParticipados: number;
+}
+
+export interface RiscoExpostoPerfil {
+  riscoId: string;
+  perigoNome: string;
+  atividadeNome: string;
+  ambiente?: string | null;
+  exposicao?: string | null;
+  consequencia?: string | null;
+  probabilidade: number;
+  severidade: number;
+  nivelRisco: number;
+  controlesExistentes?: string | null;
+  controlesAdicionais?: string | null;
+  status: number;
+}
+
+export interface OcorrenciaPerfil {
+  id: string;
+  tipo: number;
+  data: string;
+  local: string;
+  descricao: string;
+  gravidade: number;
+  houveAfastamento: boolean;
+  diasAfastamento?: number | null;
+  status: number;
+}
+
+export interface AssinaturaPerfil {
+  documentoAssinaturaId: string;
+  entidadeTipo: string;
+  entidadeId: string;
+  metodo: number;
+  assinadoEm: string;
+  ipAddress?: string | null;
+  temPdf: boolean;
+}
+
+export interface PerfilCompletoTrabalhador {
+  id: string;
+  nome: string;
+  matricula: string;
+  cpf: string;
+  rg?: string | null;
+  obraId: string;
+  obraNome: string;
+  funcaoId: string;
+  funcaoNome: string;
+  vinculo: number;
+  dataAdmissao: string;
+  statusAptidao: string;
+  asos: Aso[];
+  episAtivos: EntregaEpi[];
+  frequenciaTrocas: FrequenciaTrocaEpi[];
+  treinamentos: Treinamento[];
+  assiduidadeDds: AssiduidadeDds;
+  riscos: RiscoExpostoPerfil[];
+  ocorrencias: OcorrenciaPerfil[];
+  assinaturas: AssinaturaPerfil[];
+}
+
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
   const authHeaders = await montarHeadersAuth();
   const response = await fetch(`${API_BASE_URL}${path}`, {
@@ -1923,6 +1999,16 @@ export const api = {
         method: 'POST',
         body: JSON.stringify({ tipo, opcoesJson, respostaJson }),
       }),
+    obterPerfilCompleto: (id: string) =>
+      request<PerfilCompletoTrabalhador>(`/api/trabalhadores/${id}/perfil-completo`),
+    baixarRelatorioFiscalizacao: async (id: string) => {
+      const response = await fetch(`${API_BASE_URL}/api/trabalhadores/${id}/relatorio-pdf`, { headers: await montarHeadersAuth() });
+      if (!response.ok) {
+        const corpo = await response.text().catch(() => '');
+        throw new Error(`${response.status} ${response.statusText}: ${corpo}`);
+      }
+      return response.blob();
+    },
   },
   funcoes: {
     listar: () => request<Funcao[]>('/api/funcoes'),

@@ -11,6 +11,8 @@ import {
   Alert24Regular,
   Gavel24Regular,
   ShieldCheckmark24Regular,
+  DocumentError24Regular,
+  BriefcaseMedical24Regular,
   ChevronLeft24Regular,
   ChevronRight24Regular,
 } from '@fluentui/react-icons';
@@ -154,17 +156,20 @@ const useStyles = makeStyles({
   },
 });
 
-// Navegação consolidada em 5-6 módulos principais (pedido do usuário em 24/08): Dashboard +
-// os 4 pilares (cada um agora é 1 item de sidebar, com abas internas — ver PillarLayout) +
-// Administração. Os antigos 12+ itens soltos (Riscos, PGR, PT, Pessoas etc.) viraram abas
-// dentro do módulo-pilar correspondente em vez de entradas próprias na sidebar.
+// Navegação consolidada (pedido do usuário em 24/08, revisada em 26/08): Dashboard + módulos-pilar
+// (Conformidade/Prevenção/Operação, cada um com abas internas — ver PillarLayout) + itens de 1º
+// nível próprios. Riscos (antes aba de Prevenção) e Não Conformidades/Acidentes & Incidentes
+// (antes abas do extinto módulo Melhoria Contínua) viraram itens de 1º nível na sidebar, cada um
+// abrindo direto sua tela (que já tem título + abas internas próprias, mesmo padrão de EPI).
 const secoesNavegacao: Array<{ pilar: string | null; itens: Array<{ rota: string; rotulo: string; icone: typeof Grid24Regular }> }> = [
   { pilar: null, itens: [{ rota: '/', rotulo: 'Dashboard', icone: Grid24Regular }] },
   { pilar: null, itens: [{ rota: '/conformidade', rotulo: 'Conformidade', icone: Gavel24Regular }] },
   { pilar: null, itens: [{ rota: '/prevencao', rotulo: 'Prevenção', icone: ShieldError24Regular }] },
+  { pilar: null, itens: [{ rota: '/riscos', rotulo: 'Riscos', icone: Warning24Regular }] },
   { pilar: null, itens: [{ rota: '/operacao', rotulo: 'Operação', icone: BuildingBank24Regular }] },
-  { pilar: null, itens: [{ rota: '/melhoria', rotulo: 'Melhoria Contínua', icone: Warning24Regular }] },
-  // EPI ficou fora dos 4 pilares (sidebar fixa própria) por decisão do usuário: catálogo/estoque
+  { pilar: null, itens: [{ rota: '/nao-conformidades', rotulo: 'Não Conformidades', icone: DocumentError24Regular }] },
+  { pilar: null, itens: [{ rota: '/acidentes', rotulo: 'Acidentes & Incidentes', icone: BriefcaseMedical24Regular }] },
+  // EPI ficou fora dos módulos-pilar (sidebar fixa própria) por decisão do usuário: catálogo/estoque
   // e entregas são dado operacional/compartilhado, não pessoal — não caberia como aba de um pilar.
   { pilar: null, itens: [{ rota: '/epi', rotulo: 'EPI', icone: ShieldCheckmark24Regular }] },
   { pilar: null, itens: [{ rota: '/administracao', rotulo: 'Administração', icone: Settings24Regular }] },
@@ -177,7 +182,9 @@ function tituloDaRota(pathname: string): string {
   if (pathname.startsWith('/conformidade')) return 'Conformidade';
   if (pathname.startsWith('/prevencao')) return 'Prevenção';
   if (pathname.startsWith('/operacao')) return 'Operação';
-  if (pathname.startsWith('/melhoria')) return 'Melhoria Contínua';
+  if (pathname.startsWith('/riscos')) return 'Riscos';
+  if (pathname.startsWith('/nao-conformidades')) return 'Não Conformidades';
+  if (pathname.startsWith('/acidentes')) return 'Acidentes & Incidentes';
   if (pathname.startsWith('/epi')) return 'EPI';
   const item = itensNavegacaoFlat.find((i) => i.rota === pathname);
   return item?.rotulo ?? 'AAHBRANT SST';
