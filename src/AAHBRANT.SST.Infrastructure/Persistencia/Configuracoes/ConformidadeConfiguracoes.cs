@@ -85,6 +85,7 @@ public class EntregaEpiConfiguracao : IEntityTypeConfiguration<EntregaEpi>
     {
         builder.Property(e => e.VistoConsorcioResponsavel).HasMaxLength(150);
         builder.Property(e => e.Motivo).HasMaxLength(200);
+        builder.Property(e => e.NumeroListaPresencaNr6).HasMaxLength(50);
         builder.HasOne(e => e.Trabalhador).WithMany(t => t.EntregasEpi)
             .HasForeignKey(e => e.TrabalhadorId).OnDelete(DeleteBehavior.Restrict);
         builder.HasOne(e => e.CatalogoEpi).WithMany(c => c.Entregas)

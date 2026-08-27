@@ -1,5 +1,6 @@
 using AAHBRANT.SST.Application.Common.Interfaces;
 using AAHBRANT.SST.Domain.Entidades;
+using AAHBRANT.SST.Domain.Enums;
 using FluentValidation;
 using MediatR;
 using Microsoft.EntityFrameworkCore;
@@ -15,7 +16,10 @@ public record CriarEntregaEpiCommand(
     int Quantidade,
     string? VistoConsorcioResponsavel,
     string? Motivo,
-    string? Observacoes) : IRequest<Guid>;
+    string? Observacoes,
+    MotivoEntregaEpi MotivoTipo,
+    string? NumeroListaPresencaNr6,
+    DateTime? DataTreinamentoNr6) : IRequest<Guid>;
 
 public class CriarEntregaEpiCommandValidator : AbstractValidator<CriarEntregaEpiCommand>
 {
@@ -25,6 +29,8 @@ public class CriarEntregaEpiCommandValidator : AbstractValidator<CriarEntregaEpi
         RuleFor(x => x.CatalogoEpiId).NotEmpty();
         RuleFor(x => x.DataEntrega).NotEmpty();
         RuleFor(x => x.Quantidade).GreaterThan(0);
+        RuleFor(x => x.MotivoTipo).IsInEnum();
+        RuleFor(x => x.NumeroListaPresencaNr6).MaximumLength(50);
     }
 }
 
@@ -57,6 +63,9 @@ public class CriarEntregaEpiCommandHandler : IRequestHandler<CriarEntregaEpiComm
             VistoConsorcioResponsavel = request.VistoConsorcioResponsavel,
             Motivo = request.Motivo,
             Observacoes = request.Observacoes,
+            MotivoTipo = request.MotivoTipo,
+            NumeroListaPresencaNr6 = request.NumeroListaPresencaNr6,
+            DataTreinamentoNr6 = request.DataTreinamentoNr6,
         };
         catalogo.SaldoEstoque -= request.Quantidade;
 

@@ -52,11 +52,14 @@ public class EntregasEpiController : ControllerBase
         return NoContent();
     }
 
+    // Ficha de EPI reformulada — PDF passa a ser consolidado por trabalhador (todas as entregas e
+    // devoluções dele), não mais por entrega individual. Rota fica aqui em EntregasEpiController
+    // (e não em TrabalhadoresController) por já concentrar toda a lógica/dependências de PDF de EPI.
     [Authorize(Policy = "epi:ver")]
-    [HttpGet("{id:guid}/pdf")]
-    public async Task<IActionResult> ExportarPdf(Guid id, CancellationToken ct)
+    [HttpGet("ficha-trabalhador/{trabalhadorId:guid}/pdf")]
+    public async Task<IActionResult> ExportarFichaTrabalhador(Guid trabalhadorId, CancellationToken ct)
     {
-        var pdf = await _mediator.Send(new ExportarEntregaEpiPdfQuery(id), ct);
-        return pdf is null ? NotFound() : File(pdf, "application/pdf", $"ficha-epi-{id}.pdf");
+        var pdf = await _mediator.Send(new ExportarFichaEpiTrabalhadorQuery(trabalhadorId), ct);
+        return pdf is null ? NotFound() : File(pdf, "application/pdf", $"ficha-epi-{trabalhadorId}.pdf");
     }
 }

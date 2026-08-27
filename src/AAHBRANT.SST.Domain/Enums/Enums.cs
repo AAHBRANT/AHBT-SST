@@ -456,3 +456,14 @@ public enum TipoAutenticadorWebAuthn
     LeitorObra = 1,
     CelularProprio = 2
 }
+
+// Ficha de EPI reformulada (docs/superpowers/specs/2026-08-27-ficha-epi-reformulada-design.md) —
+// espelha exatamente as opções da coluna "Motivo" do modelo oficial AHBT-FIC-SSO-XXX-00.
+public enum MotivoEntregaEpi
+{
+    Inicial,
+    Dano,
+    Extravio,
+    Vencimento,
+    TrocaDeFuncao,
+}

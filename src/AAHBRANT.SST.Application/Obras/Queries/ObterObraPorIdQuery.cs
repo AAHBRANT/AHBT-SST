@@ -28,7 +28,9 @@ public class ObterObraPorIdQueryHandler : IRequestHandler<ObterObraPorIdQuery, O
                 DataTerminoReal = o.DataTerminoReal,
                 Endereco = o.Endereco,
                 Cidade = o.Cidade,
-                Uf = o.Uf
+                Uf = o.Uf,
+                Cnpj = o.Cnpj,
+                TemLogo = o.LogoConteudo != null
             })
             .FirstOrDefaultAsync(ct);
     }

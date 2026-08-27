@@ -29,6 +29,7 @@ public class ObterTrabalhadorPorIdQueryHandler : IRequestHandler<ObterTrabalhado
                 Vinculo = t.Vinculo,
                 DataAdmissao = t.DataAdmissao,
                 DataDemissao = t.DataDemissao,
+                Turno = t.Turno,
                 TelegramVinculado = t.TelegramChatId != null,
                 TelegramCodigoVinculo = t.TelegramCodigoVinculo
             })

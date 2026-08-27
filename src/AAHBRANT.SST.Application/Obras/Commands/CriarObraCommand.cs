@@ -15,7 +15,8 @@ public record CriarObraCommand(
     DateTime? DataPrevisaoTermino,
     string? Endereco,
     string? Cidade,
-    string? Uf) : IRequest<Guid>;
+    string? Uf,
+    string? Cnpj) : IRequest<Guid>;
 
 public class CriarObraCommandValidator : AbstractValidator<CriarObraCommand>
 {
@@ -24,6 +25,7 @@ public class CriarObraCommandValidator : AbstractValidator<CriarObraCommand>
         RuleFor(x => x.Codigo).NotEmpty().MaximumLength(30);
         RuleFor(x => x.Nome).NotEmpty().MaximumLength(200);
         RuleFor(x => x.Uf).MaximumLength(2);
+        RuleFor(x => x.Cnpj).MaximumLength(18);
     }
 }
 
@@ -45,7 +47,8 @@ public class CriarObraCommandHandler : IRequestHandler<CriarObraCommand, Guid>
             DataPrevisaoTermino = request.DataPrevisaoTermino,
             Endereco = request.Endereco,
             Cidade = request.Cidade,
-            Uf = request.Uf
+            Uf = request.Uf,
+            Cnpj = request.Cnpj
         };
 
         _db.Obras.Add(obra);

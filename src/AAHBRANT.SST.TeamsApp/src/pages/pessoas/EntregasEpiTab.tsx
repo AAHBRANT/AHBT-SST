@@ -24,7 +24,7 @@ export function EntregasEpiTab({ trabalhadorId }: { trabalhadorId: string }) {
   const [entregas, setEntregas] = useState<EntregaEpi[]>([]);
   const [epis, setEpis] = useState<CatalogoEpi[]>([]);
   const [erro, setErro] = useState<string | null>(null);
-  const [baixandoId, setBaixandoId] = useState<string | null>(null);
+  const [baixando, setBaixando] = useState(false);
 
   async function carregar() {
     try {
@@ -54,20 +54,20 @@ export function EntregasEpiTab({ trabalhadorId }: { trabalhadorId: string }) {
     return new Date(dataValidade) < new Date(new Date().toDateString());
   }
 
-  async function baixarFicha(id: string) {
+  async function baixarFicha() {
     try {
-      setBaixandoId(id);
-      const blob = await api.entregasEpi.baixarPdf(id);
+      setBaixando(true);
+      const blob = await api.entregasEpi.baixarFichaTrabalhador(trabalhadorId);
       const url = URL.createObjectURL(blob);
       const link = document.createElement('a');
       link.href = url;
-      link.download = `ficha-epi-${id}.pdf`;
+      link.download = `ficha-epi-${trabalhadorId}.pdf`;
       link.click();
       URL.revokeObjectURL(url);
     } catch (e) {
       setErro(e instanceof Error ? e.message : 'Falha ao baixar a ficha em PDF.');
     } finally {
-      setBaixandoId(null);
+      setBaixando(false);
     }
   }
 
@@ -75,9 +75,19 @@ export function EntregasEpiTab({ trabalhadorId }: { trabalhadorId: string }) {
     <div className={estilos.card}>
       <div className={estilos.toolbar}>
         <Text weight="semibold">Entregas de EPI do trabalhador</Text>
-        <Button appearance="primary" icon={<Open24Regular />} onClick={() => navigate('/epi')}>
-          Registrar nova entrega
-        </Button>
+        <div style={{ display: 'flex', gap: 8 }}>
+          <Button
+            appearance="subtle"
+            icon={<ArrowDownload24Regular />}
+            onClick={baixarFicha}
+            disabled={baixando || entregas.length === 0}
+          >
+            Baixar ficha (PDF)
+          </Button>
+          <Button appearance="primary" icon={<Open24Regular />} onClick={() => navigate('/epi')}>
+            Registrar nova entrega
+          </Button>
+        </div>
       </div>
 
       {erro && <Text className={estilos.erro}>{erro}</Text>}
@@ -90,7 +100,6 @@ export function EntregasEpiTab({ trabalhadorId }: { trabalhadorId: string }) {
             <TableHeaderCell>Entrega</TableHeaderCell>
             <TableHeaderCell>Validade</TableHeaderCell>
             <TableHeaderCell>Devolução</TableHeaderCell>
-            <TableHeaderCell></TableHeaderCell>
           </TableRow>
         </TableHeader>
         <TableBody>
@@ -108,16 +117,6 @@ export function EntregasEpiTab({ trabalhadorId }: { trabalhadorId: string }) {
                 )}
               </TableCell>
               <TableCell>{entrega.dataDevolucao?.slice(0, 10)}</TableCell>
-              <TableCell>
-                <Button
-                  appearance="subtle"
-                  icon={<ArrowDownload24Regular />}
-                  onClick={() => baixarFicha(entrega.id)}
-                  disabled={baixandoId === entrega.id}
-                  aria-label="Baixar ficha"
-                  title="Baixar ficha em PDF"
-                />
-              </TableCell>
             </TableRow>
           ))}
         </TableBody>

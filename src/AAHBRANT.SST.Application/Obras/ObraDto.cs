@@ -15,4 +15,6 @@ public class ObraDto
     public string? Endereco { get; set; }
     public string? Cidade { get; set; }
     public string? Uf { get; set; }
+    public string? Cnpj { get; set; }
+    public bool TemLogo { get; set; }
 }

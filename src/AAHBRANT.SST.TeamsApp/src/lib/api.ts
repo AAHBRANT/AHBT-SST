@@ -52,9 +52,11 @@ export interface Obra {
   endereco?: string | null;
   cidade?: string | null;
   uf?: string | null;
+  cnpj?: string | null;
+  temLogo: boolean;
 }
 
-export type NovaObra = Omit<Obra, 'id' | 'dataTerminoReal'>;
+export type NovaObra = Omit<Obra, 'id' | 'dataTerminoReal' | 'temLogo'>;
 
 export const TipoVinculo = {
   Clt: 1,
@@ -84,6 +86,7 @@ export interface Trabalhador {
   dataDemissao?: string | null;
   telegramVinculado: boolean;
   telegramCodigoVinculo?: string | null;
+  turno?: string | null;
 }
 
 export type NovoTrabalhador = Omit<
@@ -208,6 +211,22 @@ export interface CatalogoEpi {
 export type NovoCatalogoEpi = Omit<CatalogoEpi, 'id'>;
 export type AtualizarCatalogoEpi = CatalogoEpi;
 
+export const MotivoEntregaEpi = {
+  Inicial: 0,
+  Dano: 1,
+  Extravio: 2,
+  Vencimento: 3,
+  TrocaDeFuncao: 4,
+} as const;
+
+export const motivoEntregaEpiLabel: Record<number, string> = {
+  0: 'Entrega inicial',
+  1: 'Dano',
+  2: 'Extravio',
+  3: 'Vencimento',
+  4: 'Troca de função',
+};
+
 export interface EntregaEpi {
   id: string;
   trabalhadorId: string;
@@ -220,10 +239,13 @@ export interface EntregaEpi {
   vistoConsorcioResponsavel?: string | null;
   motivo?: string | null;
   observacoes?: string | null;
+  motivoTipo: number | null;
+  numeroListaPresencaNr6?: string | null;
+  dataTreinamentoNr6?: string | null;
 }
 
-export type NovaEntregaEpi = Omit<EntregaEpi, 'id'>;
-export type AtualizarEntregaEpi = EntregaEpi;
+export type NovaEntregaEpi = Omit<EntregaEpi, 'id'> & { motivoTipo: number };
+export type AtualizarEntregaEpi = EntregaEpi & { motivoTipo: number };
 
 export interface Atividade {
   id: string;
@@ -1807,6 +1829,27 @@ export const api = {
     listar: () => request<Obra[]>('/api/obras'),
     criar: (obra: NovaObra) => request<{ id: string }>('/api/obras', { method: 'POST', body: JSON.stringify(obra) }),
     excluir: (id: string) => request<void>(`/api/obras/${id}`, { method: 'DELETE' }),
+    anexarLogo: async (id: string, arquivo: File) => {
+      const formData = new FormData();
+      formData.append('Logo', arquivo);
+      const response = await fetch(`${API_BASE_URL}/api/obras/${id}/logo`, {
+        method: 'POST',
+        headers: await montarHeadersAuth(),
+        body: formData,
+      });
+      if (!response.ok) {
+        const corpo = await response.text().catch(() => '');
+        throw new Error(`${response.status} ${response.statusText}: ${corpo}`);
+      }
+    },
+    baixarLogo: async (id: string) => {
+      const response = await fetch(`${API_BASE_URL}/api/obras/${id}/logo`, { headers: await montarHeadersAuth() });
+      if (!response.ok) {
+        const corpo = await response.text().catch(() => '');
+        throw new Error(`${response.status} ${response.statusText}: ${corpo}`);
+      }
+      return response.blob();
+    },
   },
   trabalhadores: {
     listar: (obraId?: string) =>
@@ -1899,8 +1942,10 @@ export const api = {
     atualizar: (entrega: AtualizarEntregaEpi) =>
       request<void>(`/api/entregasepi/${entrega.id}`, { method: 'PUT', body: JSON.stringify(entrega) }),
     excluir: (id: string) => request<void>(`/api/entregasepi/${id}`, { method: 'DELETE' }),
-    baixarPdf: async (id: string) => {
-      const response = await fetch(`${API_BASE_URL}/api/entregasepi/${id}/pdf`, { headers: await montarHeadersAuth() });
+    baixarFichaTrabalhador: async (trabalhadorId: string) => {
+      const response = await fetch(`${API_BASE_URL}/api/entregasepi/ficha-trabalhador/${trabalhadorId}/pdf`, {
+        headers: await montarHeadersAuth(),
+      });
       if (!response.ok) {
         const corpo = await response.text().catch(() => '');
         throw new Error(`${response.status} ${response.statusText}: ${corpo}`);

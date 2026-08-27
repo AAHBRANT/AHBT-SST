@@ -1,3 +1,5 @@
+using AAHBRANT.SST.Domain.Enums;
+
 namespace AAHBRANT.SST.Application.EntregasEpi;
 
 public record EntregaEpiDto(
@@ -11,4 +13,7 @@ public record EntregaEpiDto(
     int? QuantidadeDevolucao,
     string? VistoConsorcioResponsavel,
     string? Motivo,
-    string? Observacoes);
+    string? Observacoes,
+    MotivoEntregaEpi? MotivoTipo,
+    string? NumeroListaPresencaNr6,
+    DateTime? DataTreinamentoNr6);

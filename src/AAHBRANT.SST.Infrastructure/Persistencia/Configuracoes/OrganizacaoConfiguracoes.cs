@@ -15,6 +15,9 @@ public class ObraConfiguracao : IEntityTypeConfiguration<Obra>
         builder.HasQueryFilter(o => o.Ativo);
         builder.Property(o => o.MetodosAutenticacaoHabilitados).IsRequired();
 
+        builder.Property(o => o.Cnpj).HasMaxLength(18);
+        builder.Property(o => o.LogoContentType).HasMaxLength(100);
+
         // Mesmo bug já corrigido para Acidentes (ver migration CorrigirRowVersionAcidentes): sem
         // IsRowVersion() o EF tenta INSERT com valor explícito na coluna RowVersion, e o SQL Server
         // rejeita. A migration seguinte recria a coluna física como "rowversion" de fato.
@@ -90,6 +93,8 @@ public class TrabalhadorConfiguracao : IEntityTypeConfiguration<Trabalhador>
         // uma string, ver PinHasher), por isso o tamanho generoso; não é indexado (nunca é buscado
         // por valor, só verificado contra o Id do trabalhador já conhecido).
         builder.Property(t => t.PinHash).HasMaxLength(200);
+
+        builder.Property(t => t.Turno).HasMaxLength(50);
 
         builder.HasOne(t => t.Obra).WithMany(o => o.Trabalhadores)
             .HasForeignKey(t => t.ObraId).OnDelete(DeleteBehavior.Restrict);

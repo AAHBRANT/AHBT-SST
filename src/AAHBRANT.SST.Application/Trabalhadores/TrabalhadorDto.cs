@@ -15,6 +15,7 @@ public class TrabalhadorDto
     public TipoVinculo Vinculo { get; set; }
     public DateTime DataAdmissao { get; set; }
     public DateTime? DataDemissao { get; set; }
+    public string? Turno { get; set; }
     public bool TelegramVinculado { get; set; }
     public string? TelegramCodigoVinculo { get; set; }
 }

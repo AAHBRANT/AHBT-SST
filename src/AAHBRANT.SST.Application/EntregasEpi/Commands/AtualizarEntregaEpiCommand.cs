@@ -1,4 +1,5 @@
 using AAHBRANT.SST.Application.Common.Interfaces;
+using AAHBRANT.SST.Domain.Enums;
 using FluentValidation;
 using MediatR;
 using Microsoft.EntityFrameworkCore;
@@ -16,7 +17,10 @@ public record AtualizarEntregaEpiCommand(
     int? QuantidadeDevolucao,
     string? VistoConsorcioResponsavel,
     string? Motivo,
-    string? Observacoes) : IRequest;
+    string? Observacoes,
+    MotivoEntregaEpi MotivoTipo,
+    string? NumeroListaPresencaNr6,
+    DateTime? DataTreinamentoNr6) : IRequest;
 
 public class AtualizarEntregaEpiCommandValidator : AbstractValidator<AtualizarEntregaEpiCommand>
 {
@@ -27,6 +31,8 @@ public class AtualizarEntregaEpiCommandValidator : AbstractValidator<AtualizarEn
         RuleFor(x => x.CatalogoEpiId).NotEmpty();
         RuleFor(x => x.DataEntrega).NotEmpty();
         RuleFor(x => x.Quantidade).GreaterThan(0);
+        RuleFor(x => x.MotivoTipo).IsInEnum();
+        RuleFor(x => x.NumeroListaPresencaNr6).MaximumLength(50);
     }
 }
 
@@ -59,6 +65,9 @@ public class AtualizarEntregaEpiCommandHandler : IRequestHandler<AtualizarEntreg
         entrega.VistoConsorcioResponsavel = request.VistoConsorcioResponsavel;
         entrega.Motivo = request.Motivo;
         entrega.Observacoes = request.Observacoes;
+        entrega.MotivoTipo = request.MotivoTipo;
+        entrega.NumeroListaPresencaNr6 = request.NumeroListaPresencaNr6;
+        entrega.DataTreinamentoNr6 = request.DataTreinamentoNr6;
 
         await _db.SaveChangesAsync(ct);
     }

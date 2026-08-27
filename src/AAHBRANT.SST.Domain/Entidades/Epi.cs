@@ -1,4 +1,5 @@
 using AAHBRANT.SST.Domain.Common;
+using AAHBRANT.SST.Domain.Enums;
 
 namespace AAHBRANT.SST.Domain.Entidades;
 
@@ -38,6 +39,13 @@ public class EntregaEpi : AuditableEntity
     public string? VistoConsorcioResponsavel { get; set; }
     public string? Motivo { get; set; } // ex.: "Entrega inicial", "Substituição por desgaste"
     public string? Observacoes { get; set; }
+
+    // Ficha de EPI reformulada — MotivoTipo é o campo estruturado exigido pelo modelo oficial
+    // (Motivo acima vira observação complementar opcional). Nullable para não quebrar entregas
+    // antigas; obrigatório apenas via validação de aplicação em CriarEntregaEpiCommand.
+    public MotivoEntregaEpi? MotivoTipo { get; set; }
+    public string? NumeroListaPresencaNr6 { get; set; }
+    public DateTime? DataTreinamentoNr6 { get; set; }
 
     // AssinaturaColetada (bool solto) removido: a partir do Motor de Assinatura Eletrônica, o
     // status de assinatura desta entrega passa a ser consultado via DocumentoAssinatura

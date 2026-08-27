@@ -57,7 +57,7 @@ public static class DependencyInjection
             services.AddHostedService<TelegramUpdatesPollingService>();
 
         services.AddScoped<IDdsPdfService, DdsPdfService>();
-        services.AddScoped<IEntregaEpiPdfService, EntregaEpiPdfService>();
+        services.AddScoped<IFichaEpiPdfService, EntregaEpiPdfService>();
 
         // Motor de Assinatura Eletrônica (docs/Motor-Assinatura-Eletronica.md §5, etapa 4) — crachá/QR
         // + PIN é o método de reserva e roda como principal temporário até o leitor biométrico FIDO2

@@ -18,7 +18,8 @@ public record AtualizarTrabalhadorCommand(
     string Cpf,
     TipoVinculo Vinculo,
     DateTime DataAdmissao,
-    DateTime? DataDemissao) : IRequest;
+    DateTime? DataDemissao,
+    string? Turno) : IRequest;
 
 public class AtualizarTrabalhadorCommandValidator : AbstractValidator<AtualizarTrabalhadorCommand>
 {
@@ -56,6 +57,7 @@ public class AtualizarTrabalhadorCommandHandler : IRequestHandler<AtualizarTraba
         trabalhador.Vinculo = request.Vinculo;
         trabalhador.DataAdmissao = request.DataAdmissao;
         trabalhador.DataDemissao = request.DataDemissao;
+        trabalhador.Turno = request.Turno;
 
         await _db.SaveChangesAsync(ct);
     }

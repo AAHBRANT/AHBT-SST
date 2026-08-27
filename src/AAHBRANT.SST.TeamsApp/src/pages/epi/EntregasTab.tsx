@@ -15,8 +15,17 @@ import {
   Text,
 } from '@fluentui/react-components';
 import { Add24Regular, ArrowDownload24Regular, Signature24Regular } from '@fluentui/react-icons';
-import { api, type CatalogoEpi, type EntregaEpi, type NovaEntregaEpi, type Trabalhador } from '../../lib/api';
+import {
+  api,
+  motivoEntregaEpiLabel,
+  MotivoEntregaEpi,
+  type CatalogoEpi,
+  type EntregaEpi,
+  type NovaEntregaEpi,
+  type Trabalhador,
+} from '../../lib/api';
 import { AssinaturaEntregaEpiDialog } from '../../components/assinatura/AssinaturaEntregaEpiDialog';
+import { AssinaturaDevolucaoEpiDialog } from '../../components/assinatura/AssinaturaDevolucaoEpiDialog';
 import { usePageStyles } from '../pageStyles';
 
 function entregaVazia(): NovaEntregaEpi {
@@ -28,8 +37,11 @@ function entregaVazia(): NovaEntregaEpi {
     dataValidade: '',
     quantidade: 1,
     vistoConsorcioResponsavel: '',
-    motivo: 'Entrega inicial',
+    motivo: '',
     observacoes: '',
+    motivoTipo: MotivoEntregaEpi.Inicial,
+    numeroListaPresencaNr6: '',
+    dataTreinamentoNr6: '',
   };
 }
 
@@ -56,6 +68,7 @@ export function EntregasTab({ aoNavegarParaMatriz }: EntregasTabProps) {
   const [devolucaoData, setDevolucaoData] = useState('');
   const [devolucaoQtd, setDevolucaoQtd] = useState('');
   const [entregaParaAssinar, setEntregaParaAssinar] = useState<EntregaEpi | null>(null);
+  const [devolucaoParaAssinar, setDevolucaoParaAssinar] = useState<EntregaEpi | null>(null);
 
   async function carregar() {
     try {
@@ -123,6 +136,8 @@ export function EntregasTab({ aoNavegarParaMatriz }: EntregasTabProps) {
         ...novaEntrega,
         dataDevolucao: novaEntrega.dataDevolucao || null,
         dataValidade: novaEntrega.dataValidade || null,
+        numeroListaPresencaNr6: novaEntrega.numeroListaPresencaNr6 || null,
+        dataTreinamentoNr6: novaEntrega.dataTreinamentoNr6 || null,
       };
       const { id } = await api.entregasEpi.criar(payload);
       setEntregaParaAssinar({ ...payload, id });
@@ -145,12 +160,17 @@ export function EntregasTab({ aoNavegarParaMatriz }: EntregasTabProps) {
     try {
       setCarregando(true);
       setErro(null);
-      await api.entregasEpi.atualizar({
+      const atualizada: EntregaEpi = {
         ...entrega,
+        // Entregas registradas antes da Fase 2 podem não ter motivoTipo (campo era opcional);
+        // o backend exige o enum em toda atualização, então assume Inicial como padrão seguro.
+        motivoTipo: entrega.motivoTipo ?? MotivoEntregaEpi.Inicial,
         dataDevolucao: devolucaoData,
         quantidadeDevolucao: Number(devolucaoQtd) || entrega.quantidade,
-      });
+      };
+      await api.entregasEpi.atualizar(atualizada);
       setDevolucaoId(null);
+      setDevolucaoParaAssinar(atualizada);
       await carregar();
     } catch (e) {
       setErro(e instanceof Error ? e.message : 'Falha ao registrar devolução.');
@@ -159,14 +179,14 @@ export function EntregasTab({ aoNavegarParaMatriz }: EntregasTabProps) {
     }
   }
 
-  async function baixarFicha(id: string) {
+  async function baixarFicha(trabalhadorId: string) {
     try {
-      setBaixandoId(id);
-      const blob = await api.entregasEpi.baixarPdf(id);
+      setBaixandoId(trabalhadorId);
+      const blob = await api.entregasEpi.baixarFichaTrabalhador(trabalhadorId);
       const url = URL.createObjectURL(blob);
       const link = document.createElement('a');
       link.href = url;
-      link.download = `ficha-epi-${id}.pdf`;
+      link.download = `ficha-epi-${trabalhadorId}.pdf`;
       link.click();
       URL.revokeObjectURL(url);
     } catch (e) {
@@ -243,15 +263,40 @@ export function EntregasTab({ aoNavegarParaMatriz }: EntregasTabProps) {
             />
           </Field>
           <Field label="Motivo">
+            <Select
+              value={novaEntrega.motivoTipo}
+              onChange={(_, d) => setNovaEntrega({ ...novaEntrega, motivoTipo: Number(d.value) })}
+            >
+              {Object.entries(motivoEntregaEpiLabel).map(([valor, rotulo]) => (
+                <option key={valor} value={valor}>
+                  {rotulo}
+                </option>
+              ))}
+            </Select>
+          </Field>
+          <Field label="Nº lista de presença (NR-6)">
             <Input
-              value={novaEntrega.motivo ?? ''}
-              onChange={(_, d) => setNovaEntrega({ ...novaEntrega, motivo: d.value })}
+              value={novaEntrega.numeroListaPresencaNr6 ?? ''}
+              onChange={(_, d) => setNovaEntrega({ ...novaEntrega, numeroListaPresencaNr6: d.value })}
+            />
+          </Field>
+          <Field label="Data do treinamento (NR-6)">
+            <Input
+              type="date"
+              value={novaEntrega.dataTreinamentoNr6 ?? ''}
+              onChange={(_, d) => setNovaEntrega({ ...novaEntrega, dataTreinamentoNr6: d.value })}
             />
           </Field>
           <Field label="Visto do consórcio/responsável">
             <Input
               value={novaEntrega.vistoConsorcioResponsavel ?? ''}
               onChange={(_, d) => setNovaEntrega({ ...novaEntrega, vistoConsorcioResponsavel: d.value })}
+            />
+          </Field>
+          <Field label="Observação do motivo (opcional)">
+            <Input
+              value={novaEntrega.motivo ?? ''}
+              onChange={(_, d) => setNovaEntrega({ ...novaEntrega, motivo: d.value })}
             />
           </Field>
           <Field label="Observações">
@@ -339,10 +384,10 @@ export function EntregasTab({ aoNavegarParaMatriz }: EntregasTabProps) {
                     <Button
                       appearance="subtle"
                       icon={<ArrowDownload24Regular />}
-                      onClick={() => baixarFicha(entrega.id)}
-                      disabled={baixandoId === entrega.id}
-                      aria-label="Baixar ficha"
-                      title="Baixar ficha em PDF"
+                      onClick={() => baixarFicha(entrega.trabalhadorId)}
+                      disabled={baixandoId === entrega.trabalhadorId}
+                      aria-label="Baixar ficha do trabalhador"
+                      title="Baixar ficha de EPI do trabalhador em PDF"
                     />
                   </div>
                 </TableCell>
@@ -361,6 +406,20 @@ export function EntregasTab({ aoNavegarParaMatriz }: EntregasTabProps) {
           epiNome={nomeEpi(entregaParaAssinar.catalogoEpiId)}
           quantidade={entregaParaAssinar.quantidade}
           dataEntrega={entregaParaAssinar.dataEntrega}
+          numeroListaPresencaNr6={entregaParaAssinar.numeroListaPresencaNr6}
+          dataTreinamentoNr6={entregaParaAssinar.dataTreinamentoNr6}
+        />
+      )}
+
+      {devolucaoParaAssinar && (
+        <AssinaturaDevolucaoEpiDialog
+          open={!!devolucaoParaAssinar}
+          onClose={() => setDevolucaoParaAssinar(null)}
+          entregaId={devolucaoParaAssinar.id}
+          trabalhadorNome={nomeTrabalhador(devolucaoParaAssinar.trabalhadorId)}
+          epiNome={nomeEpi(devolucaoParaAssinar.catalogoEpiId)}
+          quantidadeDevolucao={devolucaoParaAssinar.quantidadeDevolucao ?? devolucaoParaAssinar.quantidade}
+          dataDevolucao={devolucaoParaAssinar.dataDevolucao ?? ''}
         />
       )}
     </div>

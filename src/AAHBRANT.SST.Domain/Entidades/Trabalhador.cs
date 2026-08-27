@@ -33,6 +33,10 @@ public class Trabalhador : AuditableEntity
     public DateTime DataAdmissao { get; set; }
     public DateTime? DataDemissao { get; set; }
 
+    // Ficha de EPI reformulada — texto livre (o modelo oficial não define uma lista fechada de
+    // turnos, então nenhuma lista fixa é assumida).
+    public string? Turno { get; set; }
+
     // Integração com Telegram (DDS Fase 3): ChatId só é preenchido depois que o trabalhador
     // manda /start <codigo> para o bot — bots não podem iniciar a conversa. CodigoVinculo é o
     // código temporário exibido no perfil para o trabalhador usar nesse /start.

@@ -16,7 +16,8 @@ public record CriarTrabalhadorCommand(
     string Matricula,
     string Cpf,
     TipoVinculo Vinculo,
-    DateTime DataAdmissao) : IRequest<Guid>;
+    DateTime DataAdmissao,
+    string? Turno) : IRequest<Guid>;
 
 public class CriarTrabalhadorCommandValidator : AbstractValidator<CriarTrabalhadorCommand>
 {
@@ -50,7 +51,8 @@ public class CriarTrabalhadorCommandHandler : IRequestHandler<CriarTrabalhadorCo
             Matricula = request.Matricula,
             Cpf = request.Cpf,
             Vinculo = request.Vinculo,
-            DataAdmissao = request.DataAdmissao
+            DataAdmissao = request.DataAdmissao,
+            Turno = request.Turno
         };
 
         _db.Trabalhadores.Add(trabalhador);

@@ -36,6 +36,7 @@ const trabalhadorVazio: NovoTrabalhador = {
   cpf: '',
   vinculo: TipoVinculo.Clt,
   dataAdmissao: '',
+  turno: '',
 };
 
 export function TrabalhadoresTab() {
@@ -172,6 +173,12 @@ export function TrabalhadoresTab() {
             type="date"
             value={novoTrabalhador.dataAdmissao}
             onChange={(_, d) => setNovoTrabalhador({ ...novoTrabalhador, dataAdmissao: d.value })}
+          />
+        </Field>
+        <Field label="Turno">
+          <Input
+            value={novoTrabalhador.turno ?? ''}
+            onChange={(_, d) => setNovoTrabalhador({ ...novoTrabalhador, turno: d.value })}
           />
         </Field>
       </div>

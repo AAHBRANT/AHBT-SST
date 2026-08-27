@@ -25,6 +25,9 @@ public class ObterEntregaEpiPorIdQueryHandler : IRequestHandler<ObterEntregaEpiP
                 x.QuantidadeDevolucao,
                 x.VistoConsorcioResponsavel,
                 x.Motivo,
-                x.Observacoes))
+                x.Observacoes,
+                x.MotivoTipo,
+                x.NumeroListaPresencaNr6,
+                x.DataTreinamentoNr6))
             .FirstOrDefaultAsync(ct);
 }

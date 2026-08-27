@@ -51,4 +51,30 @@ public class ObrasController : ControllerBase
         await _mediator.Send(new ExcluirObraCommand(id), ct);
         return NoContent();
     }
+
+    [Authorize(Policy = "organizacional:editar")]
+    [HttpPost("{id:guid}/logo")]
+    [RequestSizeLimit(6_000_000)]
+    public async Task<IActionResult> AnexarLogo(Guid id, [FromForm] AnexarLogoObraRequestBody body, CancellationToken ct)
+    {
+        await using var stream = new MemoryStream();
+        await body.Logo.CopyToAsync(stream, ct);
+
+        var command = new AnexarLogoObraCommand(id, stream.ToArray(), body.Logo.ContentType);
+        await _mediator.Send(command, ct);
+        return NoContent();
+    }
+
+    [Authorize(Policy = "organizacional:ver")]
+    [HttpGet("{id:guid}/logo")]
+    public async Task<IActionResult> ObterLogo(Guid id, CancellationToken ct)
+    {
+        var logo = await _mediator.Send(new ObterLogoObraQuery(id), ct);
+        return logo is null ? NotFound() : File(logo.Conteudo, logo.ContentType, logo.NomeArquivo);
+    }
+}
+
+public class AnexarLogoObraRequestBody
+{
+    public IFormFile Logo { get; set; } = null!;
 }

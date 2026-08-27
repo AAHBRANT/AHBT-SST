@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import {
   Button,
   Field,
@@ -12,7 +12,7 @@ import {
   TableRow,
   Text,
 } from '@fluentui/react-components';
-import { Add24Regular, Delete24Regular } from '@fluentui/react-icons';
+import { Add24Regular, ArrowUpload24Regular, Delete24Regular } from '@fluentui/react-icons';
 import { api, statusObraLabel, StatusObra, type NovaObra, type Obra } from '../lib/api';
 import { usePageStyles } from './pageStyles';
 
@@ -26,6 +26,7 @@ const obraVazia: NovaObra = {
   endereco: '',
   cidade: '',
   uf: '',
+  cnpj: '',
 };
 
 export function ObrasPage() {
@@ -34,6 +35,10 @@ export function ObrasPage() {
   const [novaObra, setNovaObra] = useState<NovaObra>(obraVazia);
   const [erro, setErro] = useState<string | null>(null);
   const [carregando, setCarregando] = useState(false);
+  const [logoUrls, setLogoUrls] = useState<Record<string, string>>({});
+  const [enviandoLogoId, setEnviandoLogoId] = useState<string | null>(null);
+  const inputLogoRef = useRef<HTMLInputElement>(null);
+  const obraAlvoLogoRef = useRef<string | null>(null);
 
   async function carregar() {
     try {
@@ -47,6 +52,63 @@ export function ObrasPage() {
   useEffect(() => {
     carregar();
   }, []);
+
+  // Miniaturas do logo são baixadas sob demanda (só para obras com temLogo) e mantidas como
+  // object URL até a página ser desmontada — diferente do padrão "baixar PDF" já usado no
+  // restante do app (que cria e revoga a URL na mesma função), pois aqui a URL precisa
+  // permanecer viva para o <img> renderizar.
+  useEffect(() => {
+    let cancelado = false;
+    (async () => {
+      for (const obra of obras) {
+        if (!obra.temLogo || logoUrls[obra.id]) continue;
+        try {
+          const blob = await api.obras.baixarLogo(obra.id);
+          if (cancelado) return;
+          setLogoUrls((atual) => ({ ...atual, [obra.id]: URL.createObjectURL(blob) }));
+        } catch {
+          // Falha ao carregar miniatura não impede o uso da página; a obra fica sem preview.
+        }
+      }
+    })();
+    return () => {
+      cancelado = true;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [obras]);
+
+  useEffect(() => {
+    return () => {
+      Object.values(logoUrls).forEach((url) => URL.revokeObjectURL(url));
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  function abrirSeletorLogo(obraId: string) {
+    obraAlvoLogoRef.current = obraId;
+    inputLogoRef.current?.click();
+  }
+
+  async function enviarLogo(arquivo: File | null) {
+    const obraId = obraAlvoLogoRef.current;
+    if (!arquivo || !obraId) return;
+    try {
+      setEnviandoLogoId(obraId);
+      setErro(null);
+      await api.obras.anexarLogo(obraId, arquivo);
+      setLogoUrls((atual) => {
+        const anterior = atual[obraId];
+        if (anterior) URL.revokeObjectURL(anterior);
+        const { [obraId]: _removido, ...resto } = atual;
+        return resto;
+      });
+      await carregar();
+    } catch (e) {
+      setErro(e instanceof Error ? e.message : 'Falha ao enviar o logo.');
+    } finally {
+      setEnviandoLogoId(null);
+    }
+  }
 
   async function criar() {
     try {
@@ -138,12 +200,30 @@ export function ObrasPage() {
             onChange={(_, d) => setNovaObra({ ...novaObra, uf: d.value.toUpperCase() })}
           />
         </Field>
+        <Field label="CNPJ">
+          <Input
+            value={novaObra.cnpj ?? ''}
+            maxLength={18}
+            onChange={(_, d) => setNovaObra({ ...novaObra, cnpj: d.value })}
+          />
+        </Field>
       </div>
       <div className={estilos.formActions}>
         <Button appearance="primary" icon={<Add24Regular />} onClick={criar} disabled={carregando}>
           Adicionar obra
         </Button>
       </div>
+
+      <input
+        ref={inputLogoRef}
+        type="file"
+        accept="image/*"
+        style={{ display: 'none' }}
+        onChange={(e) => {
+          enviarLogo(e.target.files?.[0] ?? null);
+          e.target.value = '';
+        }}
+      />
 
       <Table>
         <TableHeader>
@@ -153,6 +233,8 @@ export function ObrasPage() {
             <TableHeaderCell>Cliente</TableHeaderCell>
             <TableHeaderCell>Status</TableHeaderCell>
             <TableHeaderCell>Cidade/UF</TableHeaderCell>
+            <TableHeaderCell>CNPJ</TableHeaderCell>
+            <TableHeaderCell>Logo</TableHeaderCell>
             <TableHeaderCell></TableHeaderCell>
           </TableRow>
         </TableHeader>
@@ -166,6 +248,25 @@ export function ObrasPage() {
               <TableCell>
                 {obra.cidade}
                 {obra.uf ? `/${obra.uf}` : ''}
+              </TableCell>
+              <TableCell>{obra.cnpj}</TableCell>
+              <TableCell>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                  {logoUrls[obra.id] && (
+                    <img
+                      src={logoUrls[obra.id]}
+                      alt={`Logo de ${obra.nome}`}
+                      style={{ height: 32, width: 32, objectFit: 'contain', borderRadius: 4 }}
+                    />
+                  )}
+                  <Button
+                    appearance="subtle"
+                    icon={<ArrowUpload24Regular />}
+                    onClick={() => abrirSeletorLogo(obra.id)}
+                    disabled={enviandoLogoId === obra.id}
+                    aria-label="Enviar logo"
+                  />
+                </div>
               </TableCell>
               <TableCell>
                 <Button

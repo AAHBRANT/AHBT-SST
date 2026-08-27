@@ -9,9 +9,11 @@ namespace AAHBRANT.SST.Application.Assinatura.Commands;
 
 // Ponto de entrada genérico do motor (§3/§5 do doc, etapa 6) — qualquer módulo que precise de
 // assinatura (Dds hoje, Treinamento/EPI/APR/PT/Inspeções depois) chama isso passando seu próprio
-// EntidadeTipo/EntidadeId. Idempotente: se já existe um documento EmAndamento para a entidade,
-// devolve o mesmo Id em vez de criar um duplicado (a tela de quiosque pode ser reaberta várias vezes
-// para o mesmo DDS sem gerar documentos órfãos).
+// EntidadeTipo/EntidadeId. Idempotente: se já existe QUALQUER documento para a entidade (em
+// andamento ou já finalizado), devolve o mesmo Id em vez de criar um duplicado — a tela de
+// assinatura pode ser reaberta várias vezes para a mesma entidade (ex.: revisitar uma entrega de
+// EPI já assinada) sem gerar uma segunda linha para a mesma (EntidadeTipo, EntidadeId), o que
+// quebraria consultas que assumem um documento por entidade (ex.: ExportarFichaEpiTrabalhadorQuery).
 public record CriarDocumentoAssinaturaCommand(string EntidadeTipo, Guid EntidadeId) : IRequest<Guid>;
 
 public class CriarDocumentoAssinaturaCommandValidator : AbstractValidator<CriarDocumentoAssinaturaCommand>
@@ -32,9 +34,7 @@ public class CriarDocumentoAssinaturaCommandHandler : IRequestHandler<CriarDocum
     public async Task<Guid> Handle(CriarDocumentoAssinaturaCommand request, CancellationToken ct)
     {
         var existente = await _db.DocumentosAssinatura.FirstOrDefaultAsync(
-            d => d.EntidadeTipo == request.EntidadeTipo
-                && d.EntidadeId == request.EntidadeId
-                && d.Status == StatusDocumentoAssinatura.EmAndamento,
+            d => d.EntidadeTipo == request.EntidadeTipo && d.EntidadeId == request.EntidadeId,
             ct);
         if (existente is not null)
             return existente.Id;

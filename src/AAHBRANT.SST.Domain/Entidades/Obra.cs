@@ -18,6 +18,13 @@ public class Obra : AuditableEntity
     public string? Cidade { get; set; }
     public string? Uf { get; set; }
 
+    // Ficha de EPI reformulada (docs/superpowers/specs/2026-08-27-ficha-epi-reformulada-design.md) —
+    // CNPJ e logo da obra aparecem no cabeçalho da ficha consolidada; logo é opcional, com fallback
+    // em texto (nome da obra) quando ausente.
+    public string? Cnpj { get; set; }
+    public byte[]? LogoConteudo { get; set; }
+    public string? LogoContentType { get; set; }
+
     // Motor de Assinatura Eletrônica (docs/Motor-Assinatura-Eletronica.md §2/§3) — cada obra decide
     // quais métodos aceita; ex.: obra sem leitor biométrico ainda comprado opera só com CrachaPin
     // até o hardware chegar. Default Nenhum: uma obra só passa a assinar depois de configurada
