@@ -199,6 +199,197 @@ O que falta, e será construído nesta feature:
 >   1 leitor único — ajusta a premissa da tabela da seção 2 sem exigir
 >   retrabalho de código, já que a UI/backend são agnósticos de quantos
 >   leitores existem por obra.
+>
+> **Atualização 2026-08-26 (continuação) — checagem contra fontes primárias
+> (ainda PROVISÓRIO, nenhuma compra feita)**:
+> - **1Kosmos 1Key — segue não confirmado, indício negativo novo.** Em
+>   nenhuma fonte oficial (página do produto, blog "Unlocking the Future of
+>   Secure Authentication for Shared Workstations", press release da
+>   Business Wire, página de datasheet) o produto aparece nomeado ou vendido
+>   como algo diferente de **"BlockID 1Key"** — o nome comercial já embute a
+>   plataforma. Nenhuma dessas páginas afirma que o dispositivo funciona como
+>   autenticador FIDO2/CTAP2 *bare-metal*/standalone sem assinatura do
+>   BlockID; a arquitetura descrita é sempre "1Key + BlockID" (nuvem própria
+>   da 1Kosmos ou serviço gerenciado como "Credential Service Provider").
+>   Preço: nenhuma fonte pública (nem a página comercial, nem imprensa)
+>   divulga valor — é venda B2B por orçamento ("Talk to Sales"), sem
+>   indício de distribuidor no Brasil/LATAM.
+>   (https://www.1kosmos.com/resources/insights/1key-by-1kosmos-datasheet;
+>   https://www.1kosmos.com/authentication/unlocking-the-future-of-secure-authentication-for-shared-workstations-with-1kosmos-blockid-1key/;
+>   https://www.businesswire.com/news/hk-zh/20240124332603/en/1Kosmos-BlockID-1Key-Extends-Passwordless-MFA-to-Restricted-Environments-Where-Mobile-Devices-are-Not-Accessible).
+>   **Conclusão prática**: continuar mandando as 3 perguntas para a 1Kosmos
+>   não custa nada, mas não há mais motivo para tratá-lo como candidato
+>   forte enquanto isso não for confirmado — o padrão de marketing sugere
+>   dependência da plataforma paga.
+> - **Terminais de ponto biométrico industrial (Control iD, Henry,
+>   Suprema) — pesquisados, nenhum é FIDO2/WebAuthn nativo.** Todos batem o
+>   requisito (b) com folga (centenas de milhares de digitais, matching
+>   1:N feito localmente no próprio equipamento, sem enviar template para
+>   nuvem do fabricante), mas nenhum fala CTAP2/WebAuthn com o navegador —
+>   usam protocolo/SDK proprietário, o que reproduz o mesmo problema do
+>   Futronic (backend teria que abandonar `Fido2NetLib`/cerimônia WebAuthn e
+>   construir uma ponte de integração proprietária por fabricante):
+>   - **Control iD iDAccess Pro**: até 100.000 digitais em modo 1:N e
+>     "mais de 200.000 usuários" em stand-alone, matching local
+>     (processador quad-core embarcado). Tem API REST própria +
+>     biblioteca/DLL (C#/Delphi) documentadas publicamente, com exemplos no
+>     GitHub oficial, então dá para captar o evento de identificação sem
+>     depender de nuvem do fabricante — mas ainda é uma integração
+>     proprietária, não WebAuthn. Preço não encontrado em fonte oficial
+>     (revendedores de produtos correlatos, como o iDFace facial, vão de
+>     R$1.099 a R$2.781 dependendo do modelo).
+>     (https://www.controlid.com.br/controle-de-acesso/idaccess-pro/;
+>     https://github.com/controlid/integracao/blob/master/Ponto%20Eletr%C3%B4nico/README.md)
+>   - **Henry Primme SF Ponto**: 1.000 digitais no padrão, 9.500 ou 19.000
+>     digitais em versões opcionais; gerencia até 15.000 colaboradores;
+>     matching local em dois modos (1:N e 1:1). Tem web server embarcado
+>     para exportar eventos e importar/exportar biometrias, mas a
+>     documentação pública não confirma push/webhook em tempo real (parece
+>     ser exportação/consulta, não evento assíncrono) — precisa confirmar
+>     com o fabricante. R$1.099-1.499 dependendo do revendedor/modelo.
+>     (https://henry.com.br/produtos/primme-sf-ponto/)
+>   - **Suprema BioStation 2**: capacidade altíssima (até 1.000.000 de
+>     templates 1:1 / 40.000 usuários em modo 1:N), mas nenhuma fonte oficial
+>     (site do fabricante, manual do usuário) menciona suporte a
+>     WebAuthn/FIDO2 — usa formato de template proprietário Suprema.
+>     (https://www.supremainc.com/en/hardware/outdoor-fingerprint-terminal-biostation-2.asp)
+>   - Em resumo: essa categoria resolve bem o problema de **capacidade**,
+>     mas não resolve o requisito de **protocolo aberto** que motivou a
+>     escolha do `Fido2NetLib` desde o início — adotá-la significaria trocar
+>     a arquitetura de autenticação do projeto, não só o hardware.
+> - **Esclarecimento técnico que vale registrar**: a "capacidade de
+>   credenciais residentes" citada em specs de chaves FIDO2 (ex.: "até 100
+>   slots") é um conceito **diferente** do que este projeto precisa. Ela
+>   mede quantos *relying parties* (sites/apps) diferentes UMA pessoa pode
+>   cadastrar na mesma chave — não quantas PESSOAS diferentes podem se
+>   cadastrar no mesmo leitor físico. Não se aplica ao requisito (b); a
+>   métrica certa continua sendo a que já vínhamos cobrando dos fabricantes
+>   de chave biométrica pessoal (FEITIAN, YubiKey, Kensington): quantos
+>   usuários/digitais distintos cabem no mesmo dispositivo compartilhado.
+> - **Plano recomendado (atualizado)**: nada mudou na conclusão prática —
+>   como nenhum terminal de ponto industrial é FIDO2 nativo e o 1Kosmos
+>   1Key segue sem confirmação (e com indício de depender do BlockID pago),
+>   o caminho de menor risco no curto prazo continua sendo o plano B já
+>   validado: 2-3 unidades do FEITIAN BioPass K50 Pro por obra grande (50
+>   digitais cada), que é FIDO2/CTAP2 nativo de verdade e não exige
+>   reescrever a camada de autenticação. Mandar as 3 perguntas à 1Kosmos
+>   continua valendo como aposta paralela de baixo custo, mas não deve
+>   bloquear a decisão de compra do plano B.
+>
+> **Biometria FACIAL como alternativa/complemento — mesmo levantamento,
+> mesma data (PROVISÓRIO)**:
+> - **Não existe "leitor facial FIDO2/CTAP2 nativo" compartilhado
+>   equivalente ao YubiKey Bio/FEITIAN para digital — e isso parece ser uma
+>   limitação real do mercado, não uma lacuna da pesquisa.** No modelo
+>   FIDO2, reconhecimento facial quase sempre aparece como *platform
+>   authenticator* (Windows Hello, Face ID), amarrado ao hardware de UM
+>   dispositivo pessoal específico — não como *roaming authenticator*
+>   (token externo via USB/NFC/BLE) que um terminal compartilhado de obra
+>   poderia usar. Não foi encontrado nenhum produto comercial do tipo
+>   "chave de segurança facial" standalone. Ou seja: a rota FIDO2 nativa
+>   que funciona para digital (requisito a) **não tem equivalente para
+>   facial** — isso derruba a opção "facial nativo" antes mesmo de discutir
+>   capacidade (requisito b).
+>   (buscas em Yubico, Microsoft, Duo, Corbado, ManageEngine sobre
+>   platform vs. roaming authenticators — nenhuma cita hardware facial
+>   roaming; ver também `https://www.oloid.com/blog/fido-2-webauthn`)
+> - **Terminais faciais industriais — mesma família de fabricantes já
+>   pesquisada para digital, mesmo trade-off (resolve capacidade, não
+>   resolve protocolo)**:
+>   - **Control iD iDFace** (mesmo fabricante do iDAccess Pro já
+>     pesquisado): versão Lite com 3.000 faces; padrão até 10.000 faces
+>     1:N; **iDFace Max** até 100.000 faces 1:N (upgrade de licença Pro
+>     libera 10.000/15.000/30.000). Detecção de "rosto vivo" (liveness) e
+>     reconhecimento com máscara nativos. Matching local (mesmo hardware
+>     embarcado da linha iDAccess), mesma API REST/DLL de integração já
+>     documentada. Preço: iDFace Max por ~R$1.444 (à vista) até R$2.529
+>     dependendo do revendedor/licença.
+>     (https://www.controlid.com.br/en/access-control/idface/;
+>     https://www.controlid.com.br/en/access-control/idface-max/)
+>   - **Confirmação de preço real (2026-08-26, Mercado Livre, oferta do
+>     vendedor "cmtech", MercadoLíder, +5 mil vendas, nota 4.8/121
+>     avaliações — oferta consolidada, não ponta de estoque)**: **iDFace
+>     Pro 10.000 faces por R$885** (10x R$88,50 sem juros). Confirma
+>     interface **Wiegand** (protocolo padrão de controladora de
+>     acesso/catraca) e **entrada USB** para transferência de dados — nenhum
+>     dos dois é WebAuthn/FIDO2, reforça a conclusão já registrada acima.
+>   - **Suprema FaceStation 2**: até 30.000 usuários em modo 1:1 e 3.000
+>     usuários em modo 1:N (matching local, até 4.000 correspondências/seg
+>     — bem abaixo da capacidade de digitais do BioStation 2 do mesmo
+>     fabricante). Nenhuma fonte oficial menciona FIDO2/WebAuthn.
+>     (https://www.supremainc.com/en/hardware/face-recognition-terminal-facestation2.asp)
+>   - **Hikvision DS-K1T673DX**: até 50.000 faces + 10.000 digitais
+>     (terminal combinado), tela 7", função antifraude/anti-spoofing que
+>     impede uso de fotos/vídeos (liveness). Matching local. Preço e
+>     confirmação de API para integração terceira não localizados em fonte
+>     oficial da Hikvision — apenas em páginas de revenda.
+>     (https://modestodistribuidora.com.br/terminal-de-reconhecimento-facial-hikvision-7-polegadas-2mp-capacidade-de-50-mil-faces-e-10-mil-impressoes-digitais-ds-k1t673dx)
+>   - Conclusão: assim como nos terminais de digital, todos batem (b) com
+>     folga e fazem matching local, mas nenhum é FIDO2 nativo — a mesma
+>     ressalva de "trocar a arquitetura de autenticação do projeto, não só
+>     o hardware" se aplica.
+> - **LGPD — facial atrai mais escrutínio regulatório que digital, com uma
+>   ressalva de escopo**: a ANPD publicou em jun/2024 o 2º volume do
+>   "Radar Tecnológico" dedicado a biometria, com foco declarado em
+>   reconhecimento facial voltado a identificação de indivíduos e
+>   vigilância em massa em espaços públicos/segurança pública — não
+>   especificamente controle de acesso corporativo com consentimento
+>   explícito de trabalhador cadastrado, que é o nosso cenário. Fontes
+>   jurídicas secundárias (escritórios de advocacia) também registram que
+>   a ANPD declarou reconhecimento facial em áreas de acesso público como
+>   prioridade de fiscalização no ciclo 2024-2025.
+>   (https://www.gov.br/anpd/pt-br/centrais-de-conteudo/documentos-tecnicos-orientativos/radar-tecnologico-biometria-anpd-1.pdf;
+>   https://www.tauilchequer.com.br/pt/insights/publications/2024/07/biometrics-and-facial-recognition-anpd-releases-report).
+>   **Não confirmado nas fontes consultadas** (não inventar): comparação
+>   explícita de risco ANPD entre facial x digital, e menção específica a
+>   "prova de vida"/liveness dentro dos documentos da ANPD — o liveness
+>   aparece apenas como recurso técnico dos próprios equipamentos (item
+>   acima), não como exigência regulatória documentada nas fontes
+>   encontradas. Também não foi encontrada, em fonte primária, discussão
+>   específica sobre câmera captar imagem de terceiros não cadastrados no
+>   ambiente — é um risco plausível por natureza (sensor de contato da
+>   digital só captura quem toca o leitor; câmera capta quem estiver no
+>   campo de visão), mas isso é **inferência nossa**, não achado de fonte.
+> - **Comparação direcional digital x facial para este caso de uso**: a
+>   digital continua sendo a rota mais madura — é a única modalidade com
+>   hardware FIDO2/CTAP2 nativo de verdade disponível no mercado (FEITIAN/
+>   YubiKey/Kensington), mesmo que ainda sub-dimensionado para 100
+>   usuários por leitor. A facial não tem equivalente FIDO2 nativo em
+>   nenhum porte — só está disponível via terminal proprietário (mesma
+>   classe dos terminais de ponto de digital), e ainda concentra mais
+>   atenção regulatória da ANPD. Ou seja, a facial não é hoje um atalho
+>   melhor que a digital para os requisitos (a)+(b) deste projeto — na
+>   melhor das hipóteses é equivalente em risco de protocolo (não-FIDO2) e
+>   pior em risco regulatório.
+>
+> **Decisão 2026-08-26 — Futronic FS80H aprovado para compra pelo usuário.**
+> FIDO2/WebAuthn deixou de ser critério de decisão (trade-off aceito
+> explicitamente: o template deixa de ficar isolado no leitor, diferente da
+> premissa original da seção 4). Reabre o Futronic como opção viável agora
+> que a comparação não é mais restrita a autenticadores FIDO2 nativos.
+> Decisões de arquitetura fechadas para a integração:
+> - **Matching roda no agente local**, não no backend. O agente (a ser
+>   construído em .NET, rodando no PC do quiosque) mantém um cache
+>   criptografado dos templates e faz a identificação 1:N localmente; só o
+>   resultado (`TrabalhadorId` + confiança do match) trafega até o backend.
+>   Minimiza exposição da digital na rede e mantém o quiosque funcional com
+>   internet instável na obra.
+> - **Confirmação de motor de matching (2026-08-26, busca em fontes do
+>   fabricante e revendedores — Fulcrum Biometrics, Neurotechnology,
+>   CardLogix, futronic-tech.com)**: o SDK Futronic já inclui matcher
+>   próprio, não precisa de VeriFinger/MegaMatcher nem de licença separada.
+>   No SDK Linux há duas bibliotecas: `libScanAPI.so` (captura da imagem) e
+>   `ftrapi.so` (extração de minúcias + matching 1:1 e 1:N, com FAR/FRR
+>   ajustável, templates em ANSI 378/ISO 19794-2). A referência anterior
+>   nesta seção a "compatível com engines como VeriFinger/MegaMatcher"
+>   ficava por precaução — passa a ser dado confirmado: **não é necessário**.
+>   (https://store.fulcrumbiometrics.com/products/futronic-fingerprint-sdk-for-linux;
+>   https://neurotechnology.com/fingerprint-scanner-futronic-fs80.html)
+> - **Pendente de atualização antes de qualquer coleta real**: o texto de
+>   consentimento LGPD do trabalhador (`Trabalhador.ConsentimentoBiometriaEm`,
+>   seção 4) promete "o template não sai do leitor" — precisa ser reescrito
+>   para refletir esta arquitetura (template cacheado e comparado no agente
+>   local do quiosque, não mais preso a um secure element de hardware).
 
 ## 2. Decisões assumidas para desbloquear a implementação
 
