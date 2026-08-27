@@ -89,6 +89,17 @@ public class AssinaturaController : ControllerBase
         return Ok(signatario);
     }
 
+    public record AutenticarBiometriaLocalRequestBody(Guid DispositivoId, string SegredoDispositivo, Guid TrabalhadorId, double Score);
+
+    [Authorize(Policy = "assinatura:assinar")]
+    [HttpPost("{id:guid}/autenticacao/biometria-local")]
+    public async Task<ActionResult<DocumentoSignatarioDto>> AutenticarBiometriaLocal(Guid id, AutenticarBiometriaLocalRequestBody body, CancellationToken ct)
+    {
+        var resultado = await _mediator.Send(
+            new RegistrarAssinaturaBiometriaLocalCommand(id, body.DispositivoId, body.SegredoDispositivo, body.TrabalhadorId, body.Score, ObterIpCliente()), ct);
+        return Ok(resultado);
+    }
+
     // IP para o audit trail jurídico do Cofre de Assinaturas — nunca aceito do corpo da requisição
     // (evidência não pode ser controlada pelo cliente). Preferimos X-Forwarded-For porque a API roda
     // atrás de reverse proxy no Azure App Service; RemoteIpAddress é o fallback direto.

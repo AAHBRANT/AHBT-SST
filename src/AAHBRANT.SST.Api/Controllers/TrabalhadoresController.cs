@@ -1,3 +1,4 @@
+using AAHBRANT.SST.Application.Assinatura.Commands;
 using AAHBRANT.SST.Application.Trabalhadores.Commands;
 using AAHBRANT.SST.Application.Trabalhadores.Queries;
 using AAHBRANT.SST.Domain.Enums;
@@ -115,6 +116,16 @@ public class TrabalhadoresController : ControllerBase
     public async Task<IActionResult> ConfirmarCadastroWebAuthn(Guid id, ConfirmarCadastroWebAuthnRequestBody body, CancellationToken ct)
     {
         await _mediator.Send(new ConfirmarCadastroWebAuthnCommand(id, body.Tipo, body.OpcoesJson, body.RespostaJson), ct);
+        return NoContent();
+    }
+
+    public record CadastrarBiometriaLocalRequestBody(byte[] TemplateBruto);
+
+    [Authorize(Policy = "trabalhador:assinatura")]
+    [HttpPost("{id:guid}/assinatura/biometria-local/cadastro")]
+    public async Task<IActionResult> CadastrarBiometriaLocal(Guid id, CadastrarBiometriaLocalRequestBody body, CancellationToken ct)
+    {
+        await _mediator.Send(new CadastrarTemplateBiometricoCommand(id, body.TemplateBruto), ct);
         return NoContent();
     }
 }

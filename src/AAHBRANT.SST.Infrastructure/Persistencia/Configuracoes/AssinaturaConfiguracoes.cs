@@ -54,3 +54,32 @@ public class CredencialWebAuthnConfiguracao : IEntityTypeConfiguration<Credencia
         builder.HasQueryFilter(c => c.Ativo);
     }
 }
+
+public class DispositivoAgenteBiometricoConfiguracao : IEntityTypeConfiguration<DispositivoAgenteBiometrico>
+{
+    public void Configure(EntityTypeBuilder<DispositivoAgenteBiometrico> builder)
+    {
+        builder.HasOne(d => d.Obra).WithMany()
+            .HasForeignKey(d => d.ObraId).OnDelete(DeleteBehavior.Restrict);
+
+        builder.Property(d => d.Nome).IsRequired().HasMaxLength(120);
+        builder.Property(d => d.SegredoHash).IsRequired().HasMaxLength(128);
+
+        builder.HasQueryFilter(d => d.Ativo);
+    }
+}
+
+public class TemplateBiometricoFutronicConfiguracao : IEntityTypeConfiguration<TemplateBiometricoFutronic>
+{
+    public void Configure(EntityTypeBuilder<TemplateBiometricoFutronic> builder)
+    {
+        // TemplateCriptografado é opaco para o EF — nunca HasConversion<T> aqui. Ver rationale
+        // completo em TemplateBiometricoCriptografiaConversor.cs.
+        builder.Property(t => t.TemplateCriptografado).IsRequired().HasMaxLength(4000);
+
+        builder.HasOne(t => t.Trabalhador).WithMany()
+            .HasForeignKey(t => t.TrabalhadorId).OnDelete(DeleteBehavior.Restrict);
+
+        builder.HasQueryFilter(t => t.Ativo);
+    }
+}

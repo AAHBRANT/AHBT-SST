@@ -3,6 +3,7 @@ import { Button, Input, Text } from '@fluentui/react-components';
 import { Fingerprint24Regular, Phone24Regular } from '@fluentui/react-icons';
 import { api, TipoAutenticadorWebAuthn } from '../../lib/api';
 import { criarCredencialWebAuthn, estaWebAuthnDisponivel } from '../../lib/webauthn';
+import { capturarDigitalBrutaLocal } from '../../lib/agenteBiometricoLocal';
 import { usePageStyles } from '../pageStyles';
 
 interface AssinaturaTabProps {
@@ -43,6 +44,10 @@ export function AssinaturaTab({ trabalhadorId }: AssinaturaTabProps) {
   const [erroWebAuthn, setErroWebAuthn] = useState<string | null>(null);
   const [webAuthnCadastrado, setWebAuthnCadastrado] = useState<'obra' | 'celular' | null>(null);
 
+  const [cadastrandoBiometriaLocal, setCadastrandoBiometriaLocal] = useState(false);
+  const [erroBiometriaLocal, setErroBiometriaLocal] = useState<string | null>(null);
+  const [biometriaLocalCadastrada, setBiometriaLocalCadastrada] = useState(false);
+
   async function salvarPin() {
     try {
       setSalvandoPin(true);
@@ -74,6 +79,21 @@ export function AssinaturaTab({ trabalhadorId }: AssinaturaTabProps) {
       setErroWebAuthn(extrairMensagemErro(e, 'Falha ao cadastrar a credencial biométrica.'));
     } finally {
       setCadastrando(null);
+    }
+  }
+
+  async function cadastrarBiometriaLocal() {
+    try {
+      setCadastrandoBiometriaLocal(true);
+      setErroBiometriaLocal(null);
+      setBiometriaLocalCadastrada(false);
+      const templateBase64 = await capturarDigitalBrutaLocal();
+      await api.trabalhadores.cadastrarBiometriaLocal(trabalhadorId, templateBase64);
+      setBiometriaLocalCadastrada(true);
+    } catch (e) {
+      setErroBiometriaLocal(extrairMensagemErro(e, 'Falha ao cadastrar a digital.'));
+    } finally {
+      setCadastrandoBiometriaLocal(false);
     }
   }
 
@@ -146,6 +166,26 @@ export function AssinaturaTab({ trabalhadorId }: AssinaturaTabProps) {
             </Button>
           </div>
         )}
+      </div>
+
+      <div className={estilos.card} style={{ maxWidth: 480 }}>
+        <Text weight="semibold" style={{ display: 'block', marginBottom: 4 }}>
+          Digital (leitor local — Futronic FS80H)
+        </Text>
+        <Text style={{ display: 'block', marginBottom: 12, color: 'var(--colorNeutralForeground3)' }}>
+          Exige Termo de Aceite e consentimento de uso de biometria já registrados para este trabalhador.
+        </Text>
+        {erroBiometriaLocal && <Text className={estilos.erro}>{erroBiometriaLocal}</Text>}
+        {biometriaLocalCadastrada && (
+          <Text style={{ display: 'block', marginBottom: 8 }}>Digital cadastrada com sucesso.</Text>
+        )}
+        <Button
+          icon={<Fingerprint24Regular />}
+          onClick={cadastrarBiometriaLocal}
+          disabled={cadastrandoBiometriaLocal}
+        >
+          Capturar digital
+        </Button>
       </div>
     </div>
   );
