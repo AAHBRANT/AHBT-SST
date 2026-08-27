@@ -23,6 +23,6 @@ public class ListarEpisPorFuncaoQueryHandler : IRequestHandler<ListarEpisPorFunc
                 m.CatalogoEpi!.CertificadoAprovacaoNumero,
                 m.CatalogoEpi!.CertificadoAprovacaoValidade,
                 m.CatalogoEpi!.VidaUtilEmMeses,
-                m.CatalogoEpi!.SaldoEstoque))
+                m.CatalogoEpi!.Estoques.Sum(e => (int?)e.Saldo) ?? 0))
             .ToListAsync(ct);
 }

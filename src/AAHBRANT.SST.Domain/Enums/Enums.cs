@@ -467,3 +467,14 @@ public enum MotivoEntregaEpi
     Vencimento,
     TrocaDeFuncao,
 }
+
+// Fase 3 da reformulação do módulo EPI (estoque segmentado por Obra) — classifica cada linha do
+// ledger MovimentacaoEstoqueEpi. SaidaEntrega/DevolucaoEntrada são geradas automaticamente pelos
+// commands de EntregaEpi; EntradaManual e AjusteManual vêm da tela de estoque.
+public enum TipoMovimentacaoEstoqueEpi
+{
+    EntradaManual = 0,
+    SaidaEntrega = 1,
+    DevolucaoEntrada = 2,
+    AjusteManual = 3,
+}

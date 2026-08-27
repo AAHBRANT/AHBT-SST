@@ -6,8 +6,8 @@ namespace AAHBRANT.SST.Infrastructure.Persistencia.Seed;
 
 public static partial class MockObraSeeder
 {
-    private static (List<NaoConformidade> NaoConformidades, List<CatalogoEpi> CatalogosEpi, List<EntregaEpi> EntregasEpi)
-        ConstruirNaoConformidadesEEpi(List<Trabalhador> trabalhadores, List<AreaSst> areas, DateTime referenciaUtc)
+    private static (List<NaoConformidade> NaoConformidades, List<CatalogoEpi> CatalogosEpi, List<EntregaEpi> EntregasEpi, List<EstoqueEpi> EstoquesEpi)
+        ConstruirNaoConformidadesEEpi(Obra obra, List<Trabalhador> trabalhadores, List<AreaSst> areas, DateTime referenciaUtc)
     {
         var naoConformidades = new List<NaoConformidade>();
         var indiceNc = 0;
@@ -40,7 +40,17 @@ public static partial class MockObraSeeder
                 CertificadoAprovacaoNumero = e.CertificadoAprovacaoNumero,
                 CertificadoAprovacaoValidade = referenciaUtc.AddYears(2),
                 VidaUtilEmMeses = e.VidaUtilEmMeses,
-                SaldoEstoque = e.SaldoEstoque,
+            })
+            .ToList();
+
+        // Fase 3 — estoque segmentado por Obra: a obra mocada é única, então cada CatalogoEpi
+        // recebe exatamente uma linha de EstoqueEpi com o saldo inicial definido em CatalogoEpisPadrao.
+        var estoquesEpi = catalogosEpi
+            .Zip(CatalogoEpisPadrao, (catalogo, dados) => new EstoqueEpi
+            {
+                Obra = obra,
+                CatalogoEpi = catalogo,
+                Saldo = dados.SaldoEstoque,
             })
             .ToList();
 
@@ -55,7 +65,7 @@ public static partial class MockObraSeeder
             entregasEpi.Add(NovaEntrega(trabalhador, epiBota, referenciaUtc, indiceEntrega++));
         }
 
-        return (naoConformidades, catalogosEpi, entregasEpi);
+        return (naoConformidades, catalogosEpi, entregasEpi, estoquesEpi);
     }
 
     private static EntregaEpi NovaEntrega(Trabalhador trabalhador, CatalogoEpi epi, DateTime referenciaUtc, int indice) => new()

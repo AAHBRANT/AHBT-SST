@@ -44,13 +44,22 @@ public class CriarEntregaEpiCommandHandler : IRequestHandler<CriarEntregaEpiComm
         var catalogo = await _db.CatalogoEpis.FirstOrDefaultAsync(x => x.Id == request.CatalogoEpiId, ct)
             ?? throw new KeyNotFoundException("EPI de catálogo não encontrado.");
 
+        var trabalhador = await _db.Trabalhadores.FirstOrDefaultAsync(x => x.Id == request.TrabalhadorId, ct)
+            ?? throw new KeyNotFoundException("Trabalhador não encontrado.");
+
         // Bloqueio de entrega com CA vencido e de estoque insuficiente: decisões confirmadas com o
         // usuário — não apenas um aviso, a entrega não é registrada.
         if (catalogo.CertificadoAprovacaoValidade is not null && catalogo.CertificadoAprovacaoValidade < DateTime.UtcNow)
             throw new InvalidOperationException("Este EPI está com o Certificado de Aprovação (CA) vencido — não é possível registrar a entrega.");
 
-        if (catalogo.SaldoEstoque < request.Quantidade)
-            throw new InvalidOperationException($"Estoque insuficiente para este EPI (saldo atual: {catalogo.SaldoEstoque}).");
+        // Fase 3 — estoque segmentado por Obra: resolve a Obra do trabalhador e busca (ou cria, com
+        // saldo zero) a linha de estoque desse EPI nessa Obra.
+        var estoque = await _db.EstoquesEpi
+            .FirstOrDefaultAsync(x => x.CatalogoEpiId == request.CatalogoEpiId && x.ObraId == trabalhador.ObraId, ct);
+        var saldoAtual = estoque?.Saldo ?? 0;
+
+        if (saldoAtual < request.Quantidade)
+            throw new InvalidOperationException($"Estoque insuficiente para este EPI nesta obra (saldo atual: {saldoAtual}).");
 
         var entrega = new EntregaEpi
         {
@@ -67,9 +76,18 @@ public class CriarEntregaEpiCommandHandler : IRequestHandler<CriarEntregaEpiComm
             NumeroListaPresencaNr6 = request.NumeroListaPresencaNr6,
             DataTreinamentoNr6 = request.DataTreinamentoNr6,
         };
-        catalogo.SaldoEstoque -= request.Quantidade;
-
         _db.EntregasEpi.Add(entrega);
+
+        estoque!.Saldo -= request.Quantidade;
+        _db.MovimentacoesEstoqueEpi.Add(new MovimentacaoEstoqueEpi
+        {
+            EstoqueEpiId = estoque.Id,
+            Tipo = TipoMovimentacaoEstoqueEpi.SaidaEntrega,
+            Quantidade = request.Quantidade,
+            SaldoResultante = estoque.Saldo,
+            EntregaEpiId = entrega.Id,
+        });
+
         await _db.SaveChangesAsync(ct);
         return entrega.Id;
     }

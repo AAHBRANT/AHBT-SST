@@ -11,8 +11,7 @@ public record AtualizarCatalogoEpiCommand(
     string? Fabricante,
     string? CertificadoAprovacaoNumero,
     DateTime? CertificadoAprovacaoValidade,
-    int VidaUtilEmMeses,
-    int SaldoEstoque) : IRequest;
+    int VidaUtilEmMeses) : IRequest;
 
 public class AtualizarCatalogoEpiCommandValidator : AbstractValidator<AtualizarCatalogoEpiCommand>
 {
@@ -21,7 +20,6 @@ public class AtualizarCatalogoEpiCommandValidator : AbstractValidator<AtualizarC
         RuleFor(x => x.Id).NotEmpty();
         RuleFor(x => x.Nome).NotEmpty();
         RuleFor(x => x.VidaUtilEmMeses).GreaterThan(0);
-        RuleFor(x => x.SaldoEstoque).GreaterThanOrEqualTo(0);
     }
 }
 
@@ -40,7 +38,6 @@ public class AtualizarCatalogoEpiCommandHandler : IRequestHandler<AtualizarCatal
         epi.CertificadoAprovacaoNumero = request.CertificadoAprovacaoNumero;
         epi.CertificadoAprovacaoValidade = request.CertificadoAprovacaoValidade;
         epi.VidaUtilEmMeses = request.VidaUtilEmMeses;
-        epi.SaldoEstoque = request.SaldoEstoque;
 
         await _db.SaveChangesAsync(ct);
     }

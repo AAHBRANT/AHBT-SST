@@ -26,6 +26,8 @@ public interface IAppDbContext
     DbSet<CatalogoEpi> CatalogoEpis { get; }
     DbSet<EntregaEpi> EntregasEpi { get; }
     DbSet<MatrizEpiFuncao> MatrizEpiFuncoes { get; }
+    DbSet<EstoqueEpi> EstoquesEpi { get; }
+    DbSet<MovimentacaoEstoqueEpi> MovimentacoesEstoqueEpi { get; }
     DbSet<Alerta> Alertas { get; }
     DbSet<AlertaHistoricoEnvio> AlertaHistoricoEnvios { get; }
     DbSet<RegraAlerta> RegrasAlerta { get; }

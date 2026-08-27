@@ -33,7 +33,7 @@ public static partial class MockObraSeeder
 
         var (obra, areas, funcoes, setores, equipes, trabalhadores) = ConstruirEstruturaOrganizacional(referenciaUtc);
         var (cursos, treinamentos, asos) = ConstruirTreinamentosEAsos(trabalhadores, referenciaUtc);
-        var (naoConformidades, catalogosEpi, entregasEpi) = ConstruirNaoConformidadesEEpi(trabalhadores, areas, referenciaUtc);
+        var (naoConformidades, catalogosEpi, entregasEpi, estoquesEpi) = ConstruirNaoConformidadesEEpi(obra, trabalhadores, areas, referenciaUtc);
 
         db.Obras.Add(obra);
         db.AreasSst.AddRange(areas);
@@ -46,6 +46,7 @@ public static partial class MockObraSeeder
         db.Asos.AddRange(asos);
         db.NaoConformidades.AddRange(naoConformidades);
         db.CatalogoEpis.AddRange(catalogosEpi);
+        db.EstoquesEpi.AddRange(estoquesEpi);
         db.EntregasEpi.AddRange(entregasEpi);
         db.MatrizEpiFuncoes.AddRange(ConstruirMatrizEpiFuncao(funcoes, catalogosEpi));
 

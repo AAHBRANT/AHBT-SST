@@ -2,9 +2,10 @@ import { useState } from 'react';
 import { Tab, TabList, Text, type SelectTabData, type SelectTabEvent } from '@fluentui/react-components';
 import { CatalogoTab } from './CatalogoTab';
 import { EntregasTab } from './EntregasTab';
+import { EstoqueTab } from './EstoqueTab';
 import { MatrizEpiTab } from './MatrizEpiTab';
 
-type AbaEpi = 'catalogo' | 'entregas' | 'matriz';
+type AbaEpi = 'catalogo' | 'entregas' | 'estoque' | 'matriz';
 
 // Módulo dedicado de EPI (sidebar fixa própria, fora dos 4 pilares) — decisão confirmada com o
 // usuário: catálogo/estoque, entregas e a matriz de EPI por função são dado operacional/compartilhado,
@@ -28,12 +29,14 @@ export function EpiPage() {
         style={{ marginBottom: 16 }}
       >
         <Tab value="entregas">Entregas</Tab>
-        <Tab value="catalogo">Catálogo e estoque</Tab>
+        <Tab value="catalogo">Catálogo</Tab>
+        <Tab value="estoque">Estoque</Tab>
         <Tab value="matriz">Matriz de EPI por Função</Tab>
       </TabList>
 
       {aba === 'entregas' && <EntregasTab aoNavegarParaMatriz={() => setAba('matriz')} />}
       {aba === 'catalogo' && <CatalogoTab />}
+      {aba === 'estoque' && <EstoqueTab />}
       {aba === 'matriz' && <MatrizEpiTab />}
     </div>
   );

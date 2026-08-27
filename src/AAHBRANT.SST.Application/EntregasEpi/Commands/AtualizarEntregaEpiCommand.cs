@@ -1,4 +1,5 @@
 using AAHBRANT.SST.Application.Common.Interfaces;
+using AAHBRANT.SST.Domain.Entidades;
 using AAHBRANT.SST.Domain.Enums;
 using FluentValidation;
 using MediatR;
@@ -46,13 +47,32 @@ public class AtualizarEntregaEpiCommandHandler : IRequestHandler<AtualizarEntreg
         var entrega = await _db.EntregasEpi.FirstOrDefaultAsync(x => x.Id == request.Id, ct)
             ?? throw new KeyNotFoundException("Entrega de EPI não encontrada.");
 
-        // Devolução registrada agora (não tinha DataDevolucao antes): repõe o estoque do catálogo
-        // com a quantidade devolvida, para manter SaldoEstoque coerente com o item físico voltando.
+        // Devolução registrada agora (não tinha DataDevolucao antes): repõe o estoque segmentado por
+        // Obra (Fase 3) com a quantidade devolvida. Usa a Obra do trabalhador ANTES da atualização
+        // abaixo (entrega.TrabalhadorId), já que foi essa Obra que teve o item físico saindo do estoque.
         if (entrega.DataDevolucao is null && request.DataDevolucao is not null)
         {
-            var catalogo = await _db.CatalogoEpis.FirstOrDefaultAsync(x => x.Id == entrega.CatalogoEpiId, ct)
-                ?? throw new KeyNotFoundException("EPI de catálogo não encontrado.");
-            catalogo.SaldoEstoque += request.QuantidadeDevolucao ?? entrega.Quantidade;
+            var trabalhadorOriginal = await _db.Trabalhadores.FirstOrDefaultAsync(x => x.Id == entrega.TrabalhadorId, ct)
+                ?? throw new KeyNotFoundException("Trabalhador não encontrado.");
+
+            var estoque = await _db.EstoquesEpi
+                .FirstOrDefaultAsync(x => x.CatalogoEpiId == entrega.CatalogoEpiId && x.ObraId == trabalhadorOriginal.ObraId, ct);
+            if (estoque is null)
+            {
+                estoque = new EstoqueEpi { CatalogoEpiId = entrega.CatalogoEpiId, ObraId = trabalhadorOriginal.ObraId, Saldo = 0 };
+                _db.EstoquesEpi.Add(estoque);
+            }
+
+            var quantidadeDevolvida = request.QuantidadeDevolucao ?? entrega.Quantidade;
+            estoque.Saldo += quantidadeDevolvida;
+            _db.MovimentacoesEstoqueEpi.Add(new MovimentacaoEstoqueEpi
+            {
+                EstoqueEpiId = estoque.Id,
+                Tipo = TipoMovimentacaoEstoqueEpi.DevolucaoEntrada,
+                Quantidade = quantidadeDevolvida,
+                SaldoResultante = estoque.Saldo,
+                EntregaEpiId = entrega.Id,
+            });
         }
 
         entrega.TrabalhadorId = request.TrabalhadorId;

@@ -11,14 +11,12 @@ public class CatalogoEpi : AuditableEntity
     public DateTime? CertificadoAprovacaoValidade { get; set; }
     public int VidaUtilEmMeses { get; set; }
 
-    // Módulo de Controle e Entrega de EPI (especificação fornecida pelo usuário) — saldo simples
-    // por item de catálogo, não por lote/obra: decisão própria por não haver estrutura de lote no
-    // documento. Cada CriarEntregaEpi
-    // decrementa este saldo (bloqueando a entrega se insuficiente, decisão confirmada com o
-    // usuário) e cada devolução o incrementa de volta.
-    public int SaldoEstoque { get; set; }
-
     public ICollection<EntregaEpi> Entregas { get; set; } = new List<EntregaEpi>();
+
+    // Fase 3 (estoque segmentado por Obra) — substitui o antigo campo SaldoEstoque único e global.
+    // Uma linha de EstoqueEpi por (CatalogoEpiId, ObraId); o saldo "total" exibido no catálogo é a
+    // soma desta coleção.
+    public ICollection<EstoqueEpi> Estoques { get; set; } = new List<EstoqueEpi>();
 }
 
 public class EntregaEpi : AuditableEntity
@@ -60,4 +58,35 @@ public class MatrizEpiFuncao : AuditableEntity
     public Funcao? Funcao { get; set; }
     public Guid CatalogoEpiId { get; set; }
     public CatalogoEpi? CatalogoEpi { get; set; }
+}
+
+// Fase 3 da reformulação do módulo EPI — saldo de um CatalogoEpi segmentado por Obra (decisão já
+// confirmada com o usuário em sessão anterior: segmentação por Obra apenas, sem Almoxarifado
+// separado). Uma linha por (CatalogoEpiId, ObraId); CriarEntregaEpiCommand/AtualizarEntregaEpiCommand
+// resolvem a Obra via Trabalhador.ObraId para decrementar/incrementar a linha correta.
+public class EstoqueEpi : AuditableEntity
+{
+    public Guid CatalogoEpiId { get; set; }
+    public CatalogoEpi? CatalogoEpi { get; set; }
+    public Guid ObraId { get; set; }
+    public Obra? Obra { get; set; }
+    public int Saldo { get; set; }
+
+    public ICollection<MovimentacaoEstoqueEpi> Movimentacoes { get; set; } = new List<MovimentacaoEstoqueEpi>();
+}
+
+// Ledger append-only de movimentações de estoque — cada entrada/saída/devolução/ajuste gera uma
+// linha com o saldo resultante, dando histórico e auditoria (o antigo CatalogoEpi.SaldoEstoque não
+// tinha nenhum). EntregaEpiId é preenchido só para SaidaEntrega/DevolucaoEntrada, que são geradas
+// automaticamente pelos commands de EntregaEpi.
+public class MovimentacaoEstoqueEpi : AuditableEntity
+{
+    public Guid EstoqueEpiId { get; set; }
+    public EstoqueEpi? EstoqueEpi { get; set; }
+    public TipoMovimentacaoEstoqueEpi Tipo { get; set; }
+    public int Quantidade { get; set; }
+    public int SaldoResultante { get; set; }
+    public Guid? EntregaEpiId { get; set; }
+    public EntregaEpi? EntregaEpi { get; set; }
+    public string? Observacao { get; set; }
 }

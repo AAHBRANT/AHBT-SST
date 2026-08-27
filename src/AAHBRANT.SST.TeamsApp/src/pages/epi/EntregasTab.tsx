@@ -228,7 +228,7 @@ export function EntregasTab({ aoNavegarParaMatriz }: EntregasTabProps) {
               <option value="">Selecione</option>
               {episPermitidos.map((e) => (
                 <option key={e.id} value={e.id}>
-                  {e.nome} (estoque: {e.saldoEstoque})
+                  {e.nome} (estoque total: {e.saldoTotal})
                 </option>
               ))}
             </Select>

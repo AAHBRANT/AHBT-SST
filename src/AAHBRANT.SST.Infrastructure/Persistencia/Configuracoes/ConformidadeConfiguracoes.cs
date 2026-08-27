@@ -179,3 +179,38 @@ public class MatrizEpiFuncaoConfiguracao : IEntityTypeConfiguration<MatrizEpiFun
         builder.Property(m => m.RowVersion).IsRowVersion();
     }
 }
+
+public class EstoqueEpiConfiguracao : IEntityTypeConfiguration<EstoqueEpi>
+{
+    public void Configure(EntityTypeBuilder<EstoqueEpi> builder)
+    {
+        builder.HasOne(e => e.CatalogoEpi).WithMany(c => c.Estoques)
+            .HasForeignKey(e => e.CatalogoEpiId).OnDelete(DeleteBehavior.Restrict);
+        builder.HasOne(e => e.Obra).WithMany()
+            .HasForeignKey(e => e.ObraId).OnDelete(DeleteBehavior.Restrict);
+        builder.HasIndex(e => new { e.CatalogoEpiId, e.ObraId }).IsUnique();
+        builder.HasQueryFilter(e => e.Ativo);
+
+        // Entidade nova — mesmo padrão de MatrizEpiFuncaoConfiguracao acima: sem coluna varbinary
+        // legada, então IsRowVersion() já gera a coluna "rowversion" corretamente na primeira migration.
+        builder.Property(e => e.RowVersion).IsRowVersion();
+    }
+}
+
+public class MovimentacaoEstoqueEpiConfiguracao : IEntityTypeConfiguration<MovimentacaoEstoqueEpi>
+{
+    public void Configure(EntityTypeBuilder<MovimentacaoEstoqueEpi> builder)
+    {
+        builder.Property(m => m.Observacao).HasMaxLength(300);
+        builder.HasOne(m => m.EstoqueEpi).WithMany(e => e.Movimentacoes)
+            .HasForeignKey(m => m.EstoqueEpiId).OnDelete(DeleteBehavior.Restrict);
+        builder.HasOne(m => m.EntregaEpi).WithMany()
+            .HasForeignKey(m => m.EntregaEpiId).OnDelete(DeleteBehavior.Restrict);
+        builder.HasIndex(m => new { m.EstoqueEpiId, m.CreatedAtUtc });
+        builder.HasQueryFilter(m => m.Ativo);
+
+        // Entidade nova — mesmo padrão de MatrizEpiFuncaoConfiguracao acima: sem coluna varbinary
+        // legada, então IsRowVersion() já gera a coluna "rowversion" corretamente na primeira migration.
+        builder.Property(m => m.RowVersion).IsRowVersion();
+    }
+}

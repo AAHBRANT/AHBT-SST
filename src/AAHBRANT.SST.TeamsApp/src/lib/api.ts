@@ -205,11 +205,59 @@ export interface CatalogoEpi {
   certificadoAprovacaoNumero?: string | null;
   certificadoAprovacaoValidade?: string | null;
   vidaUtilEmMeses: number;
-  saldoEstoque: number;
+  // Soma do estoque do EPI em todas as Obras (Fase 3) — somente leitura; não editável via
+  // catálogo. Ver api.estoquesEpi para o estoque segmentado por Obra.
+  saldoTotal: number;
 }
 
-export type NovoCatalogoEpi = Omit<CatalogoEpi, 'id'>;
-export type AtualizarCatalogoEpi = CatalogoEpi;
+export type NovoCatalogoEpi = Omit<CatalogoEpi, 'id' | 'saldoTotal'>;
+export type AtualizarCatalogoEpi = Omit<CatalogoEpi, 'saldoTotal'>;
+
+// Fase 3 — estoque de EPI segmentado por Obra (substitui o antigo saldo único global).
+export const TipoMovimentacaoEstoqueEpi = {
+  EntradaManual: 0,
+  SaidaEntrega: 1,
+  DevolucaoEntrada: 2,
+  AjusteManual: 3,
+} as const;
+
+export const tipoMovimentacaoEstoqueEpiLabel: Record<number, string> = {
+  0: 'Entrada manual',
+  1: 'Saída (entrega)',
+  2: 'Devolução',
+  3: 'Ajuste manual',
+};
+
+export interface EstoqueEpiPorObra {
+  catalogoEpiId: string;
+  catalogoEpiNome: string;
+  fabricante?: string | null;
+  saldo: number;
+}
+
+export interface MovimentacaoEstoqueEpi {
+  id: string;
+  tipo: number;
+  quantidade: number;
+  saldoResultante: number;
+  createdAtUtc: string;
+  observacao?: string | null;
+  entregaEpiId?: string | null;
+}
+
+export interface RegistrarEntradaEstoqueEpi {
+  catalogoEpiId: string;
+  obraId: string;
+  quantidade: number;
+  observacao?: string | null;
+}
+
+export interface AjustarEstoqueEpi {
+  catalogoEpiId: string;
+  obraId: string;
+  novoSaldo: number;
+  observacao: string;
+}
 
 export const MotivoEntregaEpi = {
   Inicial: 0,
@@ -1932,6 +1980,15 @@ export const api = {
     atualizar: (epi: AtualizarCatalogoEpi) =>
       request<void>(`/api/catalogosepi/${epi.id}`, { method: 'PUT', body: JSON.stringify(epi) }),
     excluir: (id: string) => request<void>(`/api/catalogosepi/${id}`, { method: 'DELETE' }),
+  },
+  estoquesEpi: {
+    listarPorObra: (obraId: string) => request<EstoqueEpiPorObra[]>(`/api/estoquesepi/obra/${obraId}`),
+    listarMovimentacoes: (obraId: string, catalogoEpiId: string) =>
+      request<MovimentacaoEstoqueEpi[]>(`/api/estoquesepi/obra/${obraId}/epi/${catalogoEpiId}/movimentacoes`),
+    registrarEntrada: (dados: RegistrarEntradaEstoqueEpi) =>
+      request<void>('/api/estoquesepi/entrada', { method: 'POST', body: JSON.stringify(dados) }),
+    ajustar: (dados: AjustarEstoqueEpi) =>
+      request<void>('/api/estoquesepi/ajuste', { method: 'POST', body: JSON.stringify(dados) }),
   },
   entregasEpi: {
     listar: (trabalhadorId?: string) =>

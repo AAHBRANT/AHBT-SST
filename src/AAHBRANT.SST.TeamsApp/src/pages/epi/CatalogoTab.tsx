@@ -21,7 +21,6 @@ const epiVazio: NovoCatalogoEpi = {
   certificadoAprovacaoNumero: '',
   certificadoAprovacaoValidade: '',
   vidaUtilEmMeses: 12,
-  saldoEstoque: 0,
 };
 
 // Catálogo de EPI (item + estoque) do módulo dedicado /epi — antes vivia como aba dentro de
@@ -97,7 +96,7 @@ export function CatalogoTab() {
   return (
     <div className={estilos.card}>
       <div className={estilos.toolbar}>
-        <Text weight="semibold">EPIs (catálogo e estoque)</Text>
+        <Text weight="semibold">Catálogo de EPIs</Text>
       </div>
 
       {erro && <Text className={estilos.erro}>{erro}</Text>}
@@ -132,13 +131,6 @@ export function CatalogoTab() {
             onChange={(_, d) => setNovoEpi({ ...novoEpi, vidaUtilEmMeses: Number(d.value) })}
           />
         </Field>
-        <Field label="Estoque inicial">
-          <Input
-            type="number"
-            value={String(novoEpi.saldoEstoque)}
-            onChange={(_, d) => setNovoEpi({ ...novoEpi, saldoEstoque: Number(d.value) })}
-          />
-        </Field>
       </div>
       <div className={estilos.formActions}>
         <Button appearance="primary" icon={<Add24Regular />} onClick={criar} disabled={carregando}>
@@ -154,7 +146,7 @@ export function CatalogoTab() {
             <TableHeaderCell>Nº do CA</TableHeaderCell>
             <TableHeaderCell>Validade do CA</TableHeaderCell>
             <TableHeaderCell>Vida útil (meses)</TableHeaderCell>
-            <TableHeaderCell>Estoque</TableHeaderCell>
+            <TableHeaderCell>Estoque total</TableHeaderCell>
             <TableHeaderCell></TableHeaderCell>
           </TableRow>
         </TableHeader>
@@ -191,13 +183,7 @@ export function CatalogoTab() {
                     onChange={(_, d) => setEdicao({ ...edicao, vidaUtilEmMeses: Number(d.value) })}
                   />
                 </TableCell>
-                <TableCell>
-                  <Input
-                    type="number"
-                    value={String(edicao.saldoEstoque)}
-                    onChange={(_, d) => setEdicao({ ...edicao, saldoEstoque: Number(d.value) })}
-                  />
-                </TableCell>
+                <TableCell>{edicao.saldoTotal}</TableCell>
                 <TableCell>
                   <Button
                     appearance="subtle"
@@ -215,7 +201,7 @@ export function CatalogoTab() {
                 <TableCell>{epi.certificadoAprovacaoNumero}</TableCell>
                 <TableCell>{epi.certificadoAprovacaoValidade?.slice(0, 10)}</TableCell>
                 <TableCell>{epi.vidaUtilEmMeses}</TableCell>
-                <TableCell>{epi.saldoEstoque}</TableCell>
+                <TableCell>{epi.saldoTotal}</TableCell>
                 <TableCell>
                   <Button
                     appearance="subtle"
@@ -233,7 +219,8 @@ export function CatalogoTab() {
         </TableBody>
       </Table>
       <Text size={200} style={{ display: 'block', marginTop: 8 }}>
-        Clique em uma linha para editar (inclusive ajustar o estoque manualmente).
+        Clique em uma linha para editar os dados do EPI. O estoque é controlado por Obra na aba
+        Estoque.
       </Text>
     </div>
   );
