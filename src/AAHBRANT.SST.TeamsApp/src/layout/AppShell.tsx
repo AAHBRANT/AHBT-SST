@@ -13,6 +13,7 @@ import {
   ShieldCheckmark24Regular,
   DocumentError24Regular,
   BriefcaseMedical24Regular,
+  HatGraduation24Regular,
   ChevronLeft24Regular,
   ChevronRight24Regular,
 } from '@fluentui/react-icons';
@@ -172,6 +173,9 @@ const secoesNavegacao: Array<{ pilar: string | null; itens: Array<{ rota: string
   // EPI ficou fora dos módulos-pilar (sidebar fixa própria) por decisão do usuário: catálogo/estoque
   // e entregas são dado operacional/compartilhado, não pessoal — não caberia como aba de um pilar.
   { pilar: null, itens: [{ rota: '/epi', rotulo: 'EPI', icone: ShieldCheckmark24Regular }] },
+  // Treinamentos (PR-SST-002) é módulo de 1º nível na sidebar, não aba de outro pilar — mesma regra
+  // do EPI acima: cada módulo do PR-SST vira item próprio (correção explícita do usuário, 27/08).
+  { pilar: null, itens: [{ rota: '/treinamentos', rotulo: 'Treinamentos', icone: HatGraduation24Regular }] },
   { pilar: null, itens: [{ rota: '/administracao', rotulo: 'Administração', icone: Settings24Regular }] },
 ];
 
@@ -186,6 +190,7 @@ function tituloDaRota(pathname: string): string {
   if (pathname.startsWith('/nao-conformidades')) return 'Não Conformidades';
   if (pathname.startsWith('/acidentes')) return 'Acidentes & Incidentes';
   if (pathname.startsWith('/epi')) return 'EPI';
+  if (pathname.startsWith('/treinamentos')) return 'Treinamentos';
   const item = itensNavegacaoFlat.find((i) => i.rota === pathname);
   return item?.rotulo ?? 'AAHBRANT SST';
 }

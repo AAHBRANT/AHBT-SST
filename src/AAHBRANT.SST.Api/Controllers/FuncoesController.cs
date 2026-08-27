@@ -64,6 +64,20 @@ public class FuncoesController : ControllerBase
         await _mediator.Send(new DefinirMatrizEpiFuncaoCommand(id, request.CatalogoEpiIds), ct);
         return NoContent();
     }
+
+    [Authorize(Policy = "organizacional:ver")]
+    [HttpGet("{id:guid}/treinamentos")]
+    public async Task<IActionResult> ListarTreinamentos(Guid id, CancellationToken ct)
+        => Ok(await _mediator.Send(new ListarCursosTreinamentoPorFuncaoQuery(id), ct));
+
+    [Authorize(Policy = "organizacional:editar")]
+    [HttpPut("{id:guid}/treinamentos")]
+    public async Task<IActionResult> DefinirTreinamentos(Guid id, DefinirTreinamentosRequest request, CancellationToken ct)
+    {
+        await _mediator.Send(new DefinirMatrizTreinamentoFuncaoCommand(id, request.CursoTreinamentoIds), ct);
+        return NoContent();
+    }
 }
 
 public record DefinirEpisRequest(List<Guid> CatalogoEpiIds);
+public record DefinirTreinamentosRequest(List<Guid> CursoTreinamentoIds);

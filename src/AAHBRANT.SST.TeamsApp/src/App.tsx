@@ -36,6 +36,8 @@ import { DdsDetalhePage } from './pages/dds/DdsDetalhePage';
 import { AssinarDdsPage } from './pages/dds/AssinarDdsPage';
 import { EpiPage } from './pages/epi/EpiPage';
 import { AssinarEntregaEpiPage } from './pages/epi/AssinarEntregaEpiPage';
+import { TreinamentosPage } from './pages/treinamentos/TreinamentosPage';
+import { AssinarTreinamentoPage } from './pages/treinamentos/AssinarTreinamentoPage';
 
 // Envolve as rotas internas do app com o AppShell (sidebar/header do Teams). As rotas públicas
 // /p/:codigoOuUid e /validar/:token ficam de fora dessa camada — ver AreaPublicaPage/ValidarDocumentoPage.
@@ -156,6 +158,8 @@ function App() {
 
             <Route path="/epi" element={<EpiPage />} />
             <Route path="/epi/:id/assinar" element={<AssinarEntregaEpiPage />} />
+            <Route path="/treinamentos" element={<TreinamentosPage />} />
+            <Route path="/treinamentos/:id/assinar" element={<AssinarTreinamentoPage />} />
             <Route path="/administracao" element={<AdministracaoPage />} />
 
             {/* Redirecionamentos legados: caminhos antigos (pré-consolidação de 24/08) apontando

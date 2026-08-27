@@ -3,6 +3,7 @@ using AAHBRANT.SST.Application.Common.Interfaces;
 using AAHBRANT.SST.Application.Dds;
 using AAHBRANT.SST.Application.EntregasEpi;
 using AAHBRANT.SST.Application.Trabalhadores;
+using AAHBRANT.SST.Application.Treinamentos;
 using AAHBRANT.SST.Infrastructure.Assinatura;
 using AAHBRANT.SST.Infrastructure.Auditoria;
 using AAHBRANT.SST.Infrastructure.Documentos;
@@ -69,6 +70,7 @@ public static class DependencyInjection
 
         services.AddScoped<IDdsPdfService, DdsPdfService>();
         services.AddScoped<IFichaEpiPdfService, EntregaEpiPdfService>();
+        services.AddScoped<ICertificadoTreinamentoPdfService, CertificadoTreinamentoPdfService>();
         services.AddScoped<IRelatorioFiscalizacaoPdfService, RelatorioFiscalizacaoPdfService>();
 
         // Motor de Assinatura Eletrônica (docs/Motor-Assinatura-Eletronica.md §5, etapa 4) — crachá/QR

@@ -6,9 +6,8 @@ import { TrabalhadoresTab } from './TrabalhadoresTab';
 import { FuncoesTab } from './FuncoesTab';
 import { SetoresTab } from './SetoresTab';
 import { EquipesTab } from './EquipesTab';
-import { CursosTreinamentoTab } from './CursosTreinamentoTab';
 
-type AbaPessoas = 'dashboard' | 'trabalhadores' | 'funcoes' | 'setores' | 'equipes' | 'cursos';
+type AbaPessoas = 'dashboard' | 'trabalhadores' | 'funcoes' | 'setores' | 'equipes';
 
 export function PessoasPage() {
   const [aba, setAba] = useState<AbaPessoas>('dashboard');
@@ -32,7 +31,6 @@ export function PessoasPage() {
         <Tab value="funcoes">Funções</Tab>
         <Tab value="setores">Setores</Tab>
         <Tab value="equipes">Equipes</Tab>
-        <Tab value="cursos">Cursos de treinamento</Tab>
       </TabList>
 
       {aba === 'dashboard' && <PessoasDashboardTab />}
@@ -40,7 +38,6 @@ export function PessoasPage() {
       {aba === 'funcoes' && <FuncoesTab />}
       {aba === 'setores' && <SetoresTab />}
       {aba === 'equipes' && <EquipesTab />}
-      {aba === 'cursos' && <CursosTreinamentoTab />}
     </div>
   );
 }

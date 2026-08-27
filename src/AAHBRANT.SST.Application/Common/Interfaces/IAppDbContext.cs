@@ -23,6 +23,7 @@ public interface IAppDbContext
     DbSet<Aso> Asos { get; }
     DbSet<CursoTreinamento> CursosTreinamento { get; }
     DbSet<Treinamento> Treinamentos { get; }
+    DbSet<MatrizTreinamentoFuncao> MatrizTreinamentoFuncoes { get; }
     DbSet<CatalogoEpi> CatalogoEpis { get; }
     DbSet<EntregaEpi> EntregasEpi { get; }
     DbSet<MatrizEpiFuncao> MatrizEpiFuncoes { get; }

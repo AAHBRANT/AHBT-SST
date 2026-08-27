@@ -9,7 +9,8 @@ public record CriarCursoTreinamentoCommand(
     string Nome,
     string? NormaReferencia,
     int CargaHorariaMinima,
-    int ValidadeEmMeses) : IRequest<Guid>;
+    int ValidadeEmMeses,
+    string? ConteudoProgramatico = null) : IRequest<Guid>;
 
 public class CriarCursoTreinamentoCommandValidator : AbstractValidator<CriarCursoTreinamentoCommand>
 {
@@ -34,6 +35,7 @@ public class CriarCursoTreinamentoCommandHandler : IRequestHandler<CriarCursoTre
             NormaReferencia = request.NormaReferencia,
             CargaHorariaMinima = request.CargaHorariaMinima,
             ValidadeEmMeses = request.ValidadeEmMeses,
+            ConteudoProgramatico = request.ConteudoProgramatico,
         };
         _db.CursosTreinamento.Add(curso);
         await _db.SaveChangesAsync(ct);
