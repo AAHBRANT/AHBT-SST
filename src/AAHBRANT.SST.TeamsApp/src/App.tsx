@@ -63,13 +63,14 @@ function App() {
           <Route element={<LayoutComTeams />}>
             <Route path="/" element={<DashboardPage />} />
 
-            {/* Módulo Prevenção: PGR, Inspeções, DDS (Riscos virou item de 1º nível — ver /riscos;
-                PCMSO faz parte de Saúde Ocupacional, item próprio — ver /saude-ocupacional) */}
+            {/* Módulo Procedimentos & Planos (ex-Prevenção): PGR, Inspeções, DDS (Riscos virou
+                item de 1º nível — ver /riscos; PCMSO faz parte de Saúde Ocupacional, aba de
+                Operação — ver /operacao/saude-ocupacional) */}
             <Route
               path="/prevencao"
               element={
                 <PillarLayout
-                  titulo="Prevenção"
+                  titulo="Procedimentos & Planos"
                   prefixo="prevencao"
                   abas={[
                     { valor: 'pgr', rotulo: 'PGR' },
@@ -93,7 +94,8 @@ function App() {
             <Route path="/prevencao/pcmso" element={<Navigate to="/operacao/saude-ocupacional" replace />} />
             <Route path="/prevencao/pcmso/:id" element={<RedirecionarComId para={(id) => `/operacao/saude-ocupacional/pcmso/${id}`} />} />
 
-            {/* Módulo Operação: Obras, Pessoas, APR, PT, Identificação & Acesso, Saúde Ocupacional */}
+            {/* Módulo Operação: Obras, APR, PT, Identificação & Acesso, Saúde Ocupacional (Pessoas
+                virou item de 1º nível na sidebar — ver abaixo) */}
             <Route
               path="/operacao"
               element={
@@ -102,7 +104,6 @@ function App() {
                   prefixo="operacao"
                   abas={[
                     { valor: 'obras', rotulo: 'Obras' },
-                    { valor: 'pessoas', rotulo: 'Pessoas' },
                     { valor: 'apr', rotulo: 'APR' },
                     { valor: 'pt', rotulo: 'PT (Permissão de Trabalho)' },
                     { valor: 'identificacao', rotulo: 'Identificação & Acesso' },
@@ -114,8 +115,6 @@ function App() {
             >
               <Route index element={<Navigate to="obras" replace />} />
               <Route path="obras" element={<ObrasPage />} />
-              <Route path="pessoas" element={<PessoasPage />} />
-              <Route path="pessoas/:id" element={<TrabalhadorDetalhePage />} />
               <Route path="apr" element={<AprsPage />} />
               <Route path="apr/:id" element={<AprDetalhePage />} />
               <Route path="pt" element={<PermissoesTrabalhoPage />} />
@@ -129,10 +128,12 @@ function App() {
 
             <Route path="/alertas" element={<AlertasPage />} />
 
-            {/* Riscos, Não Conformidades e Acidentes & Incidentes viraram itens de 1º nível na
-                sidebar (antes eram abas de Prevenção e de Melhoria Contínua, respectivamente —
-                Melhoria Contínua foi removida). Cada página já é autossuficiente (título + abas
-                internas próprias), mesmo padrão já usado por EpiPage. */}
+            {/* Riscos, Pessoas, Não Conformidades e Acidentes & Incidentes viraram itens de 1º
+                nível na sidebar (antes eram abas de Prevenção/Operação e de Melhoria Contínua,
+                respectivamente — Melhoria Contínua foi removida). Cada página já é autossuficiente
+                (título + abas internas próprias), mesmo padrão já usado por EpiPage. */}
+            <Route path="/pessoas" element={<PessoasPage />} />
+            <Route path="/pessoas/:id" element={<TrabalhadorDetalhePage />} />
             <Route path="/riscos" element={<RiscosPage />} />
             <Route path="/nao-conformidades" element={<NaoConformidadesPage />} />
             <Route path="/nao-conformidades/:id" element={<NaoConformidadeDetalhePage />} />
@@ -159,8 +160,9 @@ function App() {
             <Route path="/dds/:id" element={<RedirecionarComId para={(id) => `/prevencao/dds/${id}`} />} />
 
             <Route path="/obras" element={<Navigate to="/operacao/obras" replace />} />
-            <Route path="/pessoas" element={<Navigate to="/operacao/pessoas" replace />} />
-            <Route path="/pessoas/:id" element={<RedirecionarComId para={(id) => `/operacao/pessoas/${id}`} />} />
+            {/* Legado: Pessoas era aba de Operação (até 28/08), virou item de 1º nível. */}
+            <Route path="/operacao/pessoas" element={<Navigate to="/pessoas" replace />} />
+            <Route path="/operacao/pessoas/:id" element={<RedirecionarComId para={(id) => `/pessoas/${id}`} />} />
             <Route path="/apr" element={<Navigate to="/operacao/apr" replace />} />
             <Route path="/apr/:id" element={<RedirecionarComId para={(id) => `/operacao/apr/${id}`} />} />
             <Route path="/pt" element={<Navigate to="/operacao/pt" replace />} />

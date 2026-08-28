@@ -12,6 +12,7 @@ import {
   ShieldCheckmark24Regular,
   DocumentError24Regular,
   BriefcaseMedical24Regular,
+  People24Regular,
   ChevronLeft24Regular,
   ChevronRight24Regular,
 } from '@fluentui/react-icons';
@@ -156,15 +157,17 @@ const useStyles = makeStyles({
   },
 });
 
-// Navegação consolidada (pedido do usuário em 24/08, revisada em 26/08): Dashboard + módulos-pilar
-// (Conformidade/Prevenção/Operação, cada um com abas internas — ver PillarLayout) + itens de 1º
-// nível próprios. Riscos (antes aba de Prevenção) e Não Conformidades/Acidentes & Incidentes
-// (antes abas do extinto módulo Melhoria Contínua) viraram itens de 1º nível na sidebar, cada um
-// abrindo direto sua tela (que já tem título + abas internas próprias, mesmo padrão de EPI).
+// Navegação consolidada (pedido do usuário em 24/08, revisada em 26 e 28/08): Dashboard + módulos-
+// pilar (Procedimentos & Planos [ex-Prevenção]/Operação, cada um com abas internas — ver
+// PillarLayout) + itens de 1º nível próprios. Riscos e Pessoas (antes abas de Prevenção/Operação)
+// e Não Conformidades/Acidentes & Incidentes (antes abas do extinto módulo Melhoria Contínua)
+// viraram itens de 1º nível na sidebar, cada um abrindo direto sua tela (que já tem título + abas
+// internas próprias, mesmo padrão de EPI).
 const secoesNavegacao: Array<{ pilar: string | null; itens: Array<{ rota: string; rotulo: string; icone: typeof Grid24Regular }> }> = [
   { pilar: null, itens: [{ rota: '/', rotulo: 'Dashboard', icone: Grid24Regular }] },
-  { pilar: null, itens: [{ rota: '/prevencao', rotulo: 'Prevenção', icone: ShieldError24Regular }] },
+  { pilar: null, itens: [{ rota: '/prevencao', rotulo: 'Procedimentos & Planos', icone: ShieldError24Regular }] },
   { pilar: null, itens: [{ rota: '/riscos', rotulo: 'Riscos', icone: Warning24Regular }] },
+  { pilar: null, itens: [{ rota: '/pessoas', rotulo: 'Pessoas', icone: People24Regular }] },
   { pilar: null, itens: [{ rota: '/operacao', rotulo: 'Operação', icone: BuildingBank24Regular }] },
   { pilar: null, itens: [{ rota: '/nao-conformidades', rotulo: 'Não Conformidades', icone: DocumentError24Regular }] },
   { pilar: null, itens: [{ rota: '/acidentes', rotulo: 'Acidentes & Incidentes', icone: BriefcaseMedical24Regular }] },
@@ -178,9 +181,10 @@ const itensNavegacaoFlat = secoesNavegacao.flatMap((secao) => secao.itens);
 
 function tituloDaRota(pathname: string): string {
   if (pathname === '/alertas') return 'Alertas';
-  if (pathname.startsWith('/prevencao')) return 'Prevenção';
+  if (pathname.startsWith('/prevencao')) return 'Procedimentos & Planos';
   if (pathname.startsWith('/operacao')) return 'Operação';
   if (pathname.startsWith('/riscos')) return 'Riscos';
+  if (pathname.startsWith('/pessoas')) return 'Pessoas';
   if (pathname.startsWith('/nao-conformidades')) return 'Não Conformidades';
   if (pathname.startsWith('/acidentes')) return 'Acidentes & Incidentes';
   if (pathname.startsWith('/epi')) return 'EPI';
