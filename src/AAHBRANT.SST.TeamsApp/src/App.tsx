@@ -36,6 +36,8 @@ import { DdsDetalhePage } from './pages/dds/DdsDetalhePage';
 import { AssinarDdsPage } from './pages/dds/AssinarDdsPage';
 import { EpiPage } from './pages/epi/EpiPage';
 import { AssinarEntregaEpiPage } from './pages/epi/AssinarEntregaEpiPage';
+import { PcmsosPage } from './pages/pcmso/PcmsosPage';
+import { PcmsoDetalhePage } from './pages/pcmso/PcmsoDetalhePage';
 
 // Envolve as rotas internas do app com o AppShell (sidebar/header do Teams). As rotas públicas
 // /p/:codigoOuUid e /validar/:token ficam de fora dessa camada — ver AreaPublicaPage/ValidarDocumentoPage.
@@ -86,7 +88,7 @@ function App() {
               <Route path="gestao-documental/:id" element={<DocumentoGestaoDetalhePage />} />
             </Route>
 
-            {/* Módulo Prevenção: PGR, Inspeções, DDS (Riscos virou item de 1º nível — ver /riscos) */}
+            {/* Módulo Prevenção: PGR, PCMSO, Inspeções, DDS (Riscos virou item de 1º nível — ver /riscos) */}
             <Route
               path="/prevencao"
               element={
@@ -95,6 +97,7 @@ function App() {
                   prefixo="prevencao"
                   abas={[
                     { valor: 'pgr', rotulo: 'PGR' },
+                    { valor: 'pcmso', rotulo: 'PCMSO' },
                     { valor: 'inspecoes', rotulo: 'Inspeções' },
                     { valor: 'dds', rotulo: 'DDS' },
                   ]}
@@ -104,6 +107,8 @@ function App() {
               <Route index element={<Navigate to="pgr" replace />} />
               <Route path="pgr" element={<PgrsPage />} />
               <Route path="pgr/:id" element={<PgrDetalhePage />} />
+              <Route path="pcmso" element={<PcmsosPage />} />
+              <Route path="pcmso/:id" element={<PcmsoDetalhePage />} />
               <Route path="inspecoes" element={<InspecoesPage />} />
               <Route path="inspecoes/:id" element={<InspecaoDetalhePage />} />
               <Route path="dds" element={<DdsPage />} />
@@ -174,6 +179,8 @@ function App() {
             <Route path="/prevencao/riscos" element={<Navigate to="/riscos" replace />} />
             <Route path="/pgr" element={<Navigate to="/prevencao/pgr" replace />} />
             <Route path="/pgr/:id" element={<RedirecionarComId para={(id) => `/prevencao/pgr/${id}`} />} />
+            <Route path="/pcmso" element={<Navigate to="/prevencao/pcmso" replace />} />
+            <Route path="/pcmso/:id" element={<RedirecionarComId para={(id) => `/prevencao/pcmso/${id}`} />} />
             <Route path="/inspecoes" element={<Navigate to="/prevencao/inspecoes" replace />} />
             <Route
               path="/inspecoes/:id"

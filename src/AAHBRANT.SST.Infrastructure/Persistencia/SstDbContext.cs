@@ -8,8 +8,11 @@ namespace AAHBRANT.SST.Infrastructure.Persistencia;
 
 public class SstDbContext : DbContext, IAppDbContext
 {
-    public SstDbContext(DbContextOptions<SstDbContext> options) : base(options)
+    private readonly ICurrentUserService _usuarioAtual;
+
+    public SstDbContext(DbContextOptions<SstDbContext> options, ICurrentUserService usuarioAtual) : base(options)
     {
+        _usuarioAtual = usuarioAtual;
     }
 
     public DbSet<Obra> Obras => Set<Obra>();
@@ -51,6 +54,10 @@ public class SstDbContext : DbContext, IAppDbContext
     public DbSet<Pgr> Pgrs => Set<Pgr>();
     public DbSet<PlanoAcaoItem> PlanoAcaoItens => Set<PlanoAcaoItem>();
     public DbSet<PgrRevisao> PgrRevisoes => Set<PgrRevisao>();
+
+    public DbSet<Pcmso> Pcmsos => Set<Pcmso>();
+    public DbSet<PcmsoItemMatriz> PcmsoItensMatriz => Set<PcmsoItemMatriz>();
+    public DbSet<PcmsoRevisao> PcmsoRevisoes => Set<PcmsoRevisao>();
 
     public DbSet<TagIdentificacao> TagsIdentificacao => Set<TagIdentificacao>();
     public DbSet<AreaSst> AreasSst => Set<AreaSst>();
@@ -98,9 +105,53 @@ public class SstDbContext : DbContext, IAppDbContext
     public DbSet<DispositivoAgenteBiometrico> DispositivosAgenteBiometrico => Set<DispositivoAgenteBiometrico>();
     public DbSet<TemplateBiometricoFutronic> TemplatesBiometricoFutronic => Set<TemplateBiometricoFutronic>();
 
+    public DbSet<IdempotenciaRegistro> IdempotenciaRegistros => Set<IdempotenciaRegistro>();
+
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         modelBuilder.ApplyConfigurationsFromAssembly(typeof(SstDbContext).Assembly);
+
+        // Sincronização offline: RowVersion (já existente em AuditableEntity para todas as
+        // entidades, mas até aqui nunca configurado) passa a ser o token de concorrência otimista.
+        // Necessário para o app de campo detectar quando um registro editado offline mudou no
+        // servidor nesse meio tempo (ver docs/RBAC-Matrix.md e o middleware de conflito em
+        // TratamentoDeExcecaoMiddleware). Exige migration (ALTER COLUMN para "rowversion") antes de
+        // ter efeito real no banco — ver instruções no PR.
+        foreach (var entityType in modelBuilder.Model.GetEntityTypes())
+        {
+            if (typeof(AuditableEntity).IsAssignableFrom(entityType.ClrType))
+            {
+                modelBuilder.Entity(entityType.ClrType).Property(nameof(AuditableEntity.RowVersion)).IsRowVersion();
+            }
+        }
+
+        // Camada 3 do RBAC (docs/RBAC-Matrix.md §4, "Global Query Filter... mitiga BOLA"): as 9
+        // entidades abaixo têm ObraId direto na própria tabela — são o alvo do filtro. Cada uma
+        // SUBSTITUI (não acumula com) o HasQueryFilter(x => x.Ativo) já registrado por sua própria
+        // Configuracao logo acima (EF Core só guarda um filtro por entidade) — por isso a condição
+        // Ativo é repetida aqui explicitamente, senão o soft-delete deixaria de funcionar para
+        // estas 8 entidades. Sem efeito hoje (TemAcessoGlobal fica true enquanto a autenticação
+        // Entra ID não estiver configurada — ver EscopoPorObraMiddleware): a consulta gerada é
+        // idêntica à de antes até a autenticação real entrar em vigor.
+        modelBuilder.Entity<Dds>().HasQueryFilter(d =>
+            d.Ativo && (_usuarioAtual.TemAcessoGlobal || _usuarioAtual.ObrasPermitidas.Contains(d.ObraId)));
+        modelBuilder.Entity<Inspecao>().HasQueryFilter(i =>
+            i.Ativo && (_usuarioAtual.TemAcessoGlobal || _usuarioAtual.ObrasPermitidas.Contains(i.ObraId)));
+        modelBuilder.Entity<Acidente>().HasQueryFilter(a =>
+            a.Ativo && (_usuarioAtual.TemAcessoGlobal || _usuarioAtual.ObrasPermitidas.Contains(a.ObraId)));
+        modelBuilder.Entity<Pgr>().HasQueryFilter(p =>
+            p.Ativo && (_usuarioAtual.TemAcessoGlobal || _usuarioAtual.ObrasPermitidas.Contains(p.ObraId)));
+        modelBuilder.Entity<Atividade>().HasQueryFilter(a =>
+            a.Ativo && (_usuarioAtual.TemAcessoGlobal || _usuarioAtual.ObrasPermitidas.Contains(a.ObraId)));
+        modelBuilder.Entity<Setor>().HasQueryFilter(s =>
+            s.Ativo && (_usuarioAtual.TemAcessoGlobal || _usuarioAtual.ObrasPermitidas.Contains(s.ObraId)));
+        modelBuilder.Entity<Trabalhador>().HasQueryFilter(t =>
+            t.Ativo && (_usuarioAtual.TemAcessoGlobal || _usuarioAtual.ObrasPermitidas.Contains(t.ObraId)));
+        modelBuilder.Entity<AreaSst>().HasQueryFilter(a =>
+            a.Ativo && (_usuarioAtual.TemAcessoGlobal || _usuarioAtual.ObrasPermitidas.Contains(a.ObraId)));
+        modelBuilder.Entity<Pcmso>().HasQueryFilter(p =>
+            p.Ativo && (_usuarioAtual.TemAcessoGlobal || _usuarioAtual.ObrasPermitidas.Contains(p.ObraId)));
+
         base.OnModelCreating(modelBuilder);
     }
 

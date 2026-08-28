@@ -58,6 +58,10 @@ public static class RbacSeeder
         ("aso:editar", "Aso", "Editar", "Editar ASO"),
         ("aso:homologar", "Aso", "Homologar", "Homologar resultado clínico do ASO"),
 
+        ("pcmso:ver", "Pcmso", "Ver", "Ver PCMSO/matriz de exames/calendário/relatório analítico"),
+        ("pcmso:criar", "Pcmso", "Criar", "Criar PCMSO/item de matriz/revisão"),
+        ("pcmso:editar", "Pcmso", "Editar", "Editar PCMSO/matriz de exames"),
+
         ("treinamento:ver", "Treinamento", "Ver", "Ver treinamentos"),
         ("treinamento:criar", "Treinamento", "Criar", "Criar treinamento/curso"),
         ("treinamento:editar", "Treinamento", "Editar", "Editar treinamento/curso"),

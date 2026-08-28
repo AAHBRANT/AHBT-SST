@@ -1,31 +1,6 @@
-import { authentication } from '@microsoft/teams-js';
-import { aguardarInicializacaoTeams } from '../teams/teamsInit';
-
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL ?? 'https://localhost:7095';
-
-// Espera a mesma promise de app.initialize() usada por useTeamsContext antes de tentar obter o
-// token: chamar getAuthToken() antes do SDK terminar de assentar falha rápido ("library not
-// initialized"), derrubando a chamada para 401 mesmo com o usuário autenticado/autorizado no
-// Teams (ver AAHBRANT.SST.TeamsApp/src/teams/teamsInit.ts). Importante: NÃO condicionamos a
-// tentativa ao resultado (dentroDoTeams) — em alguns hosts reais do Teams (ex.: cliente web)
-// app.initialize()/getContext() podem falhar mesmo com getAuthToken() funcionando normalmente
-// depois, então só usamos a promise para esperar o SDK assentar, não para decidir se tentamos.
-async function obterTokenAutenticacaoTeams(): Promise<string | null> {
-  await aguardarInicializacaoTeams();
-  try {
-    return await Promise.race([
-      authentication.getAuthToken(),
-      new Promise<null>((resolve) => setTimeout(() => resolve(null), 3000)),
-    ]);
-  } catch {
-    return null;
-  }
-}
-
-async function montarHeadersAuth(): Promise<Record<string, string>> {
-  const token = await obterTokenAutenticacaoTeams();
-  return token ? { Authorization: `Bearer ${token}` } : {};
-}
+import { API_BASE_URL } from './apiBase';
+import { montarHeadersAuth } from './authHeaders';
+import { syncFetchBlob, syncFetchJson, syncMutateJson, syncMutateMultipart } from './offline/syncEngine';
 
 export const StatusObra = {
   Planejada: 1,
@@ -474,6 +449,93 @@ export interface PgrDetalhe {
   atividades: AtividadeCaracterizada[];
   planoDeAcao: PlanoAcaoItem[];
   revisoes: PgrRevisao[];
+}
+
+export const StatusPcmso = {
+  EmElaboracao: 1,
+  Vigente: 2,
+  EmRevisao: 3,
+  Encerrado: 4,
+} as const;
+
+export const statusPcmsoLabel: Record<number, string> = {
+  1: 'Em elaboração',
+  2: 'Vigente',
+  3: 'Em revisão',
+  4: 'Encerrado',
+};
+
+export interface Pcmso {
+  id: string;
+  obraId: string;
+  nome: string;
+  objetivo?: string | null;
+  medicoCoordenadorNome: string;
+  medicoCoordenadorCrm?: string | null;
+  medicoCoordenadorUsuarioId?: string | null;
+  dataElaboracao: string;
+  dataVigenciaInicio?: string | null;
+  dataVigenciaFim?: string | null;
+  status: number;
+}
+
+export type NovoPcmso = Omit<Pcmso, 'id'>;
+
+export interface PcmsoItemMatriz {
+  id: string;
+  pcmsoId: string;
+  funcaoId: string;
+  funcaoNome: string;
+  riscoId?: string | null;
+  nomeExame: string;
+  periodicidadeEmMeses: number;
+  obrigatorioNoAdmissional: boolean;
+  obrigatorioNoDemissional: boolean;
+  observacoes?: string | null;
+}
+
+export type NovoPcmsoItemMatriz = Omit<PcmsoItemMatriz, 'id' | 'funcaoNome'>;
+
+export interface PcmsoRevisao {
+  id: string;
+  pcmsoId: string;
+  numeroRevisao: number;
+  dataRevisao: string;
+  motivo: string;
+  responsavelUsuarioId?: string | null;
+}
+
+export type NovaPcmsoRevisao = Omit<PcmsoRevisao, 'id' | 'numeroRevisao'>;
+
+// Calendário e relatório são computados no backend a cada consulta (ver
+// ObterPcmsoDetalheQuery) — não existe endpoint de escrita para eles aqui.
+export interface ItemCalendarioExame {
+  trabalhadorId: string;
+  trabalhadorNome: string;
+  funcaoId: string;
+  funcaoNome: string;
+  nomeExame: string;
+  ultimoExameData?: string | null;
+  proximaDataPrevista: string;
+  vencido: boolean;
+}
+
+export interface LinhaRelatorioAnalitico {
+  funcaoId: string;
+  funcaoNome: string;
+  totalAsos: number;
+  aptos: number;
+  aptosComRestricao: number;
+  inaptos: number;
+  pendentes: number;
+}
+
+export interface PcmsoDetalhe {
+  pcmso: Pcmso;
+  itensMatriz: PcmsoItemMatriz[];
+  revisoes: PcmsoRevisao[];
+  calendario: ItemCalendarioExame[];
+  relatorioAnalitico: LinhaRelatorioAnalitico[];
 }
 
 export const TipoArea = {
@@ -1925,8 +1987,27 @@ export interface PerfilCompletoTrabalhador {
   assinaturas: AssinaturaPerfil[];
 }
 
+// Módulos com suporte a uso offline (piloto acordado com o usuário em 24/08: módulos de campo,
+// onde falta de sinal é mais comum — obra/canteiro). Os demais ~25 módulos seguem com fetch
+// direto, sem fila local nem cache — extensão do piloto é trabalho futuro, módulo a módulo.
+const PREFIXOS_OFFLINE = ['/api/dds', '/api/inspecoes', '/api/checklistmodelos', '/api/aprs', '/api/aprEtapas', '/api/aprAssinaturas'];
+
+function ehRotaOffline(path: string): boolean {
+  return PREFIXOS_OFFLINE.some((prefixo) => path.startsWith(prefixo));
+}
+
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
   const authHeaders = await montarHeadersAuth();
+  const metodo = (init?.method ?? 'GET').toUpperCase();
+
+  if (ehRotaOffline(path)) {
+    if (metodo === 'GET') {
+      return syncFetchJson<T>(path, init, authHeaders);
+    }
+    const corpo = init?.body ? JSON.parse(init.body as string) : undefined;
+    return syncMutateJson<T>(path, metodo as 'POST' | 'PUT' | 'DELETE', corpo, authHeaders);
+  }
+
   const response = await fetch(`${API_BASE_URL}${path}`, {
     ...init,
     headers: {
@@ -2052,6 +2133,26 @@ export const api = {
       request<Aso[]>(`/api/asos${trabalhadorId ? `?trabalhadorId=${trabalhadorId}` : ''}`),
     criar: (aso: NovoAso) => request<{ id: string }>('/api/asos', { method: 'POST', body: JSON.stringify(aso) }),
     excluir: (id: string) => request<void>(`/api/asos/${id}`, { method: 'DELETE' }),
+  },
+  pcmsos: {
+    listar: (obraId?: string) => request<Pcmso[]>(`/api/pcmsos${obraId ? `?obraId=${obraId}` : ''}`),
+    obterDetalhe: (id: string) => request<PcmsoDetalhe>(`/api/pcmsos/${id}`),
+    criar: (pcmso: NovoPcmso) =>
+      request<{ id: string }>('/api/pcmsos', { method: 'POST', body: JSON.stringify(pcmso) }),
+    atualizar: (id: string, pcmso: Pcmso) =>
+      request<void>(`/api/pcmsos/${id}`, { method: 'PUT', body: JSON.stringify(pcmso) }),
+    excluir: (id: string) => request<void>(`/api/pcmsos/${id}`, { method: 'DELETE' }),
+  },
+  pcmsoItensMatriz: {
+    listar: (pcmsoId: string) => request<PcmsoItemMatriz[]>(`/api/pcmsoitensmatriz?pcmsoId=${pcmsoId}`),
+    criar: (item: NovoPcmsoItemMatriz) =>
+      request<{ id: string }>('/api/pcmsoitensmatriz', { method: 'POST', body: JSON.stringify(item) }),
+    excluir: (id: string) => request<void>(`/api/pcmsoitensmatriz/${id}`, { method: 'DELETE' }),
+  },
+  pcmsoRevisoes: {
+    listar: (pcmsoId: string) => request<PcmsoRevisao[]>(`/api/pcmsorevisoes?pcmsoId=${pcmsoId}`),
+    criar: (revisao: NovaPcmsoRevisao) =>
+      request<{ id: string }>('/api/pcmsorevisoes', { method: 'POST', body: JSON.stringify(revisao) }),
   },
   cursosTreinamento: {
     listar: () => request<CursoTreinamento[]>('/api/cursostreinamento'),
@@ -2347,18 +2448,12 @@ export const api = {
       formData.append('trabalhadorId', trabalhadorId);
       formData.append('fotoTipo', String(fotoTipo));
       formData.append('foto', foto);
-      const response = await fetch(`${API_BASE_URL}/api/dds/${ddsId}/participantes`, {
-        method: 'POST',
-        headers: await montarHeadersAuth(),
-        body: formData,
-      });
-      if (!response.ok) {
-        const corpo = await response.text().catch(() => '');
-        throw new Error(`${response.status} ${response.statusText}: ${corpo}`);
-      }
-      return (await response.json()) as { id: string };
+      const authHeaders = await montarHeadersAuth();
+      return syncMutateMultipart<{ id: string }>(`/api/dds/${ddsId}/participantes`, formData, authHeaders);
     },
     encerrar: (id: string) => request<void>(`/api/dds/${id}/encerrar`, { method: 'POST' }),
+    // PDF gerado sob demanda no servidor a partir do estado atual — não faz sentido cachear para
+    // uso offline (ficaria sempre desatualizado assim que o DDS mudasse). Segue fetch direto.
     baixarPdf: async (id: string) => {
       const response = await fetch(`${API_BASE_URL}/api/dds/${id}/pdf`, { headers: await montarHeadersAuth() });
       if (!response.ok) {
@@ -2368,14 +2463,8 @@ export const api = {
       return response.blob();
     },
     baixarFotoParticipante: async (participanteId: string) => {
-      const response = await fetch(`${API_BASE_URL}/api/dds/participantes/${participanteId}/foto`, {
-        headers: await montarHeadersAuth(),
-      });
-      if (!response.ok) {
-        const corpo = await response.text().catch(() => '');
-        throw new Error(`${response.status} ${response.statusText}: ${corpo}`);
-      }
-      return response.blob();
+      const authHeaders = await montarHeadersAuth();
+      return syncFetchBlob(`/api/dds/participantes/${participanteId}/foto`, authHeaders);
     },
     enviarTelegram: (id: string) =>
       request<EnviarDdsTelegramResultado>(`/api/dds/${id}/telegram/enviar`, { method: 'POST' }),
