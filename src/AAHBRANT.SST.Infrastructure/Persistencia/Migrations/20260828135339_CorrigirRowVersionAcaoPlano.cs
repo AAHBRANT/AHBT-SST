@@ -10,25 +10,13 @@ namespace AAHBRANT.SST.Infrastructure.Persistencia.Migrations
         /// <inheritdoc />
         protected override void Up(MigrationBuilder migrationBuilder)
         {
-            // Mesmo padrão de CorrigirRowVersionDocumentoGestao: guardado com IF + SQL dinâmico
-            // (EXEC), pois o SQL Server valida ALTER COLUMN...rowversion em tempo de compilação do
-            // batch, ignorando o IF em tempo de execução (erro 4927 se a coluna já for rowversion).
-            migrationBuilder.Sql(@"
-IF NOT EXISTS (
-    SELECT 1 FROM sys.columns c
-    JOIN sys.types t ON c.user_type_id = t.user_type_id
-    WHERE c.object_id = OBJECT_ID(N'[AcoesPlano]') AND c.name = N'RowVersion' AND t.name = 'timestamp'
-)
-BEGIN
-    DECLARE @var0 sysname;
-    SELECT @var0 = [d].[name]
-    FROM [sys].[default_constraints] [d]
-    INNER JOIN [sys].[columns] [c] ON [d].[parent_column_id] = [c].[column_id] AND [d].[parent_object_id] = [c].[object_id]
-    WHERE ([d].[parent_object_id] = OBJECT_ID(N'[AcoesPlano]') AND [c].[name] = N'RowVersion');
-    IF @var0 IS NOT NULL EXEC(N'ALTER TABLE [AcoesPlano] DROP CONSTRAINT [' + @var0 + '];');
-    EXEC(N'ALTER TABLE [AcoesPlano] ALTER COLUMN [RowVersion] rowversion NULL;');
-END
-");
+            // SQL Server rejeita ALTER COLUMN direto para timestamp/rowversion mesmo vindo de
+            // varbinary(max) ("Cannot alter column 'RowVersion' to be data type timestamp", erro
+            // 4927) — mesma limitação documentada na migration CorrigirRowVersionAcidentes. A única
+            // forma é dropar e recriar a coluna. Isso reseta o token de concorrência otimista de
+            // linhas existentes (inofensivo em Development/hml — sem linhas reais dependendo dele).
+            migrationBuilder.DropColumn(name: "RowVersion", table: "AcoesPlano");
+            migrationBuilder.AddColumn<byte[]>(name: "RowVersion", table: "AcoesPlano", type: "rowversion", rowVersion: true, nullable: true);
         }
 
         /// <inheritdoc />
