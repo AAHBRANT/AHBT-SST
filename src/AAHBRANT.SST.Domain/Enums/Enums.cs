@@ -379,24 +379,6 @@ public enum GravidadeAcidente
     Obito = 5
 }
 
-// Seção 32 da Base de Conhecimento (linha 811) — vocabulário literal de status: "Conforme/Não conforme".
-public enum StatusRequisitoLegal
-{
-    Conforme = 1,
-    NaoConforme = 2
-}
-
-// Seção 31 da Base de Conhecimento (linhas 767-769) — vocabulário literal de status:
-// "Rascunho → Em aprovação → Vigente → Obsoleto → Cancelado".
-public enum StatusDocumentoGestao
-{
-    Rascunho = 1,
-    EmAprovacao = 2,
-    Vigente = 3,
-    Obsoleto = 4,
-    Cancelado = 5
-}
-
 // DDS não tem seção própria na Base de Conhecimento (módulo pedido pelo usuário em 2026-08-20,
 // fora do MVP da §47) — mesma lacuna já registrada em StatusApr/StatusPgr/StatusPt/
 // StatusInspecao. Proposta própria.

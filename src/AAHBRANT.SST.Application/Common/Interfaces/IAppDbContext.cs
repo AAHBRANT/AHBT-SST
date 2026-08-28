@@ -80,12 +80,6 @@ public interface IAppDbContext
     DbSet<Acidente> Acidentes { get; }
     DbSet<RegistroHhtMensal> RegistrosHhtMensais { get; }
 
-    DbSet<RequisitoLegal> RequisitosLegais { get; }
-
-    DbSet<DocumentoGestao> DocumentosGestao { get; }
-    DbSet<DocumentoRevisao> DocumentoRevisoes { get; }
-
-
     DbSet<AtivoSst> AtivosSst { get; }
 
     DbSet<DocumentoAssinatura> DocumentosAssinatura { get; }

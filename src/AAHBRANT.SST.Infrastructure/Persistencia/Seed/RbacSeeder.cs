@@ -131,24 +131,13 @@ public static class RbacSeeder
         ("hht:editar", "RegistroHht", "Editar", "Editar registro mensal de HHT"),
         ("hht:excluir", "RegistroHht", "Excluir", "Excluir registro mensal de HHT"),
 
-        ("matrizlegal:ver", "MatrizLegal", "Ver", "Ver matriz de requisitos legais"),
-        ("matrizlegal:criar", "MatrizLegal", "Criar", "Criar requisito legal"),
-        ("matrizlegal:editar", "MatrizLegal", "Editar", "Editar requisito legal"),
-        ("matrizlegal:atualizar_status", "MatrizLegal", "AtualizarStatus", "Reclassificar conformidade do requisito legal"),
-
-        ("documento:ver", "GestaoDocumental", "Ver", "Ver documentos da gestão documental"),
-        ("documento:criar", "GestaoDocumental", "Criar", "Criar documento"),
-        ("documento:editar", "GestaoDocumental", "Editar", "Editar documento"),
-        ("documento:atualizar_status", "GestaoDocumental", "AtualizarStatus", "Reclassificar status do documento"),
-        ("documento:revisar", "GestaoDocumental", "Revisar", "Registrar revisão do documento"),
-
         ("alerta:ver", "Alerta", "Ver", "Ver alertas"),
         ("alerta:criar", "Alerta", "Criar", "Criar alerta manualmente"),
         ("alerta:editar", "Alerta", "Editar", "Editar/excluir registro de alerta"),
         ("alerta:tratar", "Alerta", "Tratar", "Iniciar tratamento/resolver/ignorar alerta"),
         ("alerta:escalonar", "Alerta", "Escalonar", "Escalonar alerta"),
 
-        ("planoacao:ver", "AcaoPlano", "Ver", "Ver ações de plano vinculadas (NC/Acidente/Matriz Legal)"),
+        ("planoacao:ver", "AcaoPlano", "Ver", "Ver ações de plano vinculadas (NC/Acidente)"),
         ("planoacao:criar", "AcaoPlano", "Criar", "Criar ação de plano"),
         ("planoacao:editar", "AcaoPlano", "Editar", "Editar ação de plano"),
         ("planoacao:validar", "AcaoPlano", "Validar", "Validar/concluir ação de plano"),

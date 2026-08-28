@@ -27,10 +27,6 @@ import { NaoConformidadeDetalhePage } from './pages/naoconformidades/NaoConformi
 import { AlertasPage } from './pages/alertas/AlertasPage';
 import { AcidentesPage } from './pages/acidentes/AcidentesPage';
 import { AcidenteDetalhePage } from './pages/acidentes/AcidenteDetalhePage';
-import { MatrizLegalPage } from './pages/matrizlegal/MatrizLegalPage';
-import { RequisitoLegalDetalhePage } from './pages/matrizlegal/RequisitoLegalDetalhePage';
-import { DocumentosGestaoPage } from './pages/gestaodocumental/DocumentosGestaoPage';
-import { DocumentoGestaoDetalhePage } from './pages/gestaodocumental/DocumentoGestaoDetalhePage';
 import { DdsPage } from './pages/dds/DdsPage';
 import { DdsDetalhePage } from './pages/dds/DdsDetalhePage';
 import { AssinarDdsPage } from './pages/dds/AssinarDdsPage';
@@ -64,27 +60,6 @@ function App() {
           <Route path="/validar/:token" element={<ValidarDocumentoPage />} />
           <Route element={<LayoutComTeams />}>
             <Route path="/" element={<DashboardPage />} />
-
-            {/* Módulo Conformidade: Matriz Legal + Gestão Documental */}
-            <Route
-              path="/conformidade"
-              element={
-                <PillarLayout
-                  titulo="Conformidade"
-                  prefixo="conformidade"
-                  abas={[
-                    { valor: 'matriz-legal', rotulo: 'Matriz Legal' },
-                    { valor: 'gestao-documental', rotulo: 'Gestão Documental' },
-                  ]}
-                />
-              }
-            >
-              <Route index element={<Navigate to="matriz-legal" replace />} />
-              <Route path="matriz-legal" element={<MatrizLegalPage />} />
-              <Route path="matriz-legal/:id" element={<RequisitoLegalDetalhePage />} />
-              <Route path="gestao-documental" element={<DocumentosGestaoPage />} />
-              <Route path="gestao-documental/:id" element={<DocumentoGestaoDetalhePage />} />
-            </Route>
 
             {/* Módulo Prevenção: PGR, Inspeções, DDS (Riscos virou item de 1º nível — ver /riscos) */}
             <Route
@@ -160,17 +135,6 @@ function App() {
 
             {/* Redirecionamentos legados: caminhos antigos (pré-consolidação de 24/08) apontando
                 para as novas sub-rotas dentro dos módulos-pilar — preserva links/favoritos antigos. */}
-            <Route path="/matriz-legal" element={<Navigate to="/conformidade/matriz-legal" replace />} />
-            <Route
-              path="/matriz-legal/:id"
-              element={<RedirecionarComId para={(id) => `/conformidade/matriz-legal/${id}`} />}
-            />
-            <Route path="/gestao-documental" element={<Navigate to="/conformidade/gestao-documental" replace />} />
-            <Route
-              path="/gestao-documental/:id"
-              element={<RedirecionarComId para={(id) => `/conformidade/gestao-documental/${id}`} />}
-            />
-
             <Route path="/prevencao/riscos" element={<Navigate to="/riscos" replace />} />
             <Route path="/pgr" element={<Navigate to="/prevencao/pgr" replace />} />
             <Route path="/pgr/:id" element={<RedirecionarComId para={(id) => `/prevencao/pgr/${id}`} />} />
