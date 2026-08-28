@@ -90,10 +90,10 @@ function App() {
             </Route>
             {/* Legado: /prevencao/pcmso apontava pro PCMSO antigo (descontinuado em 28/08 —
                 ver ONBOARDING.md) — redireciona pro módulo Saúde Ocupacional atual. */}
-            <Route path="/prevencao/pcmso" element={<Navigate to="/saude-ocupacional" replace />} />
-            <Route path="/prevencao/pcmso/:id" element={<RedirecionarComId para={(id) => `/saude-ocupacional/pcmso/${id}`} />} />
+            <Route path="/prevencao/pcmso" element={<Navigate to="/operacao/saude-ocupacional" replace />} />
+            <Route path="/prevencao/pcmso/:id" element={<RedirecionarComId para={(id) => `/operacao/saude-ocupacional/pcmso/${id}`} />} />
 
-            {/* Módulo Operação: Obras, Pessoas, APR, PT, Identificação & Acesso */}
+            {/* Módulo Operação: Obras, Pessoas, APR, PT, Identificação & Acesso, Saúde Ocupacional */}
             <Route
               path="/operacao"
               element={
@@ -107,6 +107,7 @@ function App() {
                     { valor: 'pt', rotulo: 'PT (Permissão de Trabalho)' },
                     { valor: 'identificacao', rotulo: 'Identificação & Acesso' },
                     { valor: 'ativos', rotulo: 'Ativos (Extintores & Equipamentos)' },
+                    { valor: 'saude-ocupacional', rotulo: 'Saúde Ocupacional' },
                   ]}
                 />
               }
@@ -122,6 +123,8 @@ function App() {
               <Route path="pt/:id/assinar" element={<AssinarPtPage />} />
               <Route path="identificacao" element={<IdentificacaoPage />} />
               <Route path="ativos" element={<AtivosPage />} />
+              <Route path="saude-ocupacional" element={<SaudeOcupacionalPage />} />
+              <Route path="saude-ocupacional/pcmso/:id" element={<PcmsoDetalhePage />} />
             </Route>
 
             <Route path="/alertas" element={<AlertasPage />} />
@@ -138,8 +141,6 @@ function App() {
 
             <Route path="/epi" element={<EpiPage />} />
             <Route path="/epi/:id/assinar" element={<AssinarEntregaEpiPage />} />
-            <Route path="/saude-ocupacional" element={<SaudeOcupacionalPage />} />
-            <Route path="/saude-ocupacional/pcmso/:id" element={<PcmsoDetalhePage />} />
             <Route path="/administracao" element={<AdministracaoPage />} />
 
             {/* Redirecionamentos legados: caminhos antigos (pré-consolidação de 24/08) apontando
@@ -147,8 +148,8 @@ function App() {
             <Route path="/prevencao/riscos" element={<Navigate to="/riscos" replace />} />
             <Route path="/pgr" element={<Navigate to="/prevencao/pgr" replace />} />
             <Route path="/pgr/:id" element={<RedirecionarComId para={(id) => `/prevencao/pgr/${id}`} />} />
-            <Route path="/pcmso" element={<Navigate to="/saude-ocupacional" replace />} />
-            <Route path="/pcmso/:id" element={<RedirecionarComId para={(id) => `/saude-ocupacional/pcmso/${id}`} />} />
+            <Route path="/pcmso" element={<Navigate to="/operacao/saude-ocupacional" replace />} />
+            <Route path="/pcmso/:id" element={<RedirecionarComId para={(id) => `/operacao/saude-ocupacional/pcmso/${id}`} />} />
             <Route path="/inspecoes" element={<Navigate to="/prevencao/inspecoes" replace />} />
             <Route
               path="/inspecoes/:id"
@@ -165,6 +166,13 @@ function App() {
             <Route path="/pt" element={<Navigate to="/operacao/pt" replace />} />
             <Route path="/pt/:id" element={<RedirecionarComId para={(id) => `/operacao/pt/${id}`} />} />
             <Route path="/identificacao" element={<Navigate to="/operacao/identificacao" replace />} />
+            {/* Legado: Saúde Ocupacional era item de 1º nível na sidebar (até 28/08), virou aba
+                de Operação. */}
+            <Route path="/saude-ocupacional" element={<Navigate to="/operacao/saude-ocupacional" replace />} />
+            <Route
+              path="/saude-ocupacional/pcmso/:id"
+              element={<RedirecionarComId para={(id) => `/operacao/saude-ocupacional/pcmso/${id}`} />}
+            />
 
             <Route path="/naoconformidades" element={<Navigate to="/nao-conformidades" replace />} />
             <Route

@@ -12,7 +12,6 @@ import {
   ShieldCheckmark24Regular,
   DocumentError24Regular,
   BriefcaseMedical24Regular,
-  HeartPulse24Regular,
   ChevronLeft24Regular,
   ChevronRight24Regular,
 } from '@fluentui/react-icons';
@@ -172,9 +171,6 @@ const secoesNavegacao: Array<{ pilar: string | null; itens: Array<{ rota: string
   // EPI ficou fora dos módulos-pilar (sidebar fixa própria) por decisão do usuário: catálogo/estoque
   // e entregas são dado operacional/compartilhado, não pessoal — não caberia como aba de um pilar.
   { pilar: null, itens: [{ rota: '/epi', rotulo: 'EPI', icone: ShieldCheckmark24Regular }] },
-  // Saúde Ocupacional (PR-SST-003) segue o mesmo padrão de EPI: sidebar fixa própria (ASO, PCMSO,
-  // Exames Complementares e Aptidões são dado operacional/cross-worker, não caberiam como aba de pilar).
-  { pilar: null, itens: [{ rota: '/saude-ocupacional', rotulo: 'Saúde Ocupacional', icone: HeartPulse24Regular }] },
   { pilar: null, itens: [{ rota: '/administracao', rotulo: 'Administração', icone: Settings24Regular }] },
 ];
 
@@ -188,7 +184,6 @@ function tituloDaRota(pathname: string): string {
   if (pathname.startsWith('/nao-conformidades')) return 'Não Conformidades';
   if (pathname.startsWith('/acidentes')) return 'Acidentes & Incidentes';
   if (pathname.startsWith('/epi')) return 'EPI';
-  if (pathname.startsWith('/saude-ocupacional')) return 'Saúde Ocupacional';
   const item = itensNavegacaoFlat.find((i) => i.rota === pathname);
   return item?.rotulo ?? 'AAHBRANT SST';
 }
