@@ -146,6 +146,57 @@ export interface Aso {
 
 export type NovoAso = Omit<Aso, 'id'>;
 
+// PR-SST-003 — exames complementares do PCMSO (audiometria, acuidade visual etc.), vinculados
+// opcionalmente a um ASO.
+export const TipoExameComplementar = {
+  Audiometria: 1,
+  AcuidadeVisual: 2,
+  Espirometria: 3,
+  Laboratoriais: 4,
+  AvaliacaoClinica: 5,
+  ExameEspecifico: 6,
+} as const;
+
+export const tipoExameComplementarLabel: Record<number, string> = {
+  1: 'Audiometria',
+  2: 'Acuidade visual',
+  3: 'Espirometria',
+  4: 'Laboratoriais',
+  5: 'Avaliação clínica',
+  6: 'Exame específico',
+};
+
+export interface ExameComplementar {
+  id: string;
+  trabalhadorId: string;
+  asoId?: string | null;
+  tipo: number;
+  dataRealizacao: string;
+  dataValidade: string;
+  resultado: string;
+  observacoes?: string | null;
+  responsavelTecnico?: string | null;
+}
+
+export type NovoExameComplementar = Omit<ExameComplementar, 'id'>;
+export type AtualizarExameComplementarPayload = ExameComplementar;
+
+// PR-SST-003 — aptidão para atividade crítica (ex.: trabalho em altura, espaço confinado),
+// distinta do ASO geral: reaproveita ResultadoAso (Apto/Apto com restrição/Inapto/Pendente).
+export interface Aptidao {
+  id: string;
+  trabalhadorId: string;
+  atividadeCritica: string;
+  aptidao: number;
+  dataAvaliacao: string;
+  dataValidade?: string | null;
+  medicoResponsavel?: string | null;
+  observacoes?: string | null;
+}
+
+export type NovaAptidao = Omit<Aptidao, 'id'>;
+export type AtualizarAptidaoPayload = Aptidao;
+
 export interface Funcao {
   id: string;
   nome: string;
@@ -1673,6 +1724,51 @@ export interface DocumentoGestaoDetalhe {
   historico: DocumentoRevisao[];
 }
 
+// PR-SST-003 — PCMSO reaproveita DocumentoGestao (Tipo="PCMSO") como documento controlado +
+// PcmsoDetalhe com os campos clínicos específicos. Id abaixo é o Id do próprio PcmsoDetalhe;
+// documentoGestaoId aponta para o DocumentoGestao vinculado (edição/exclusão usam este último).
+export interface Pcmso {
+  id: string;
+  documentoGestaoId: string;
+  nome: string;
+  versao?: string | null;
+  validade?: string | null;
+  dataEmissao: string;
+  responsavelUsuarioId?: string | null;
+  responsavelUsuarioNome?: string | null;
+  obraId?: string | null;
+  setorId?: string | null;
+  arquivo?: string | null;
+  status: number;
+  medicoResponsavelNome?: string | null;
+  medicoResponsavelCrm?: string | null;
+  funcoesContempladas?: string | null;
+  riscosConsiderados?: string | null;
+  examesPrevistos?: string | null;
+  periodicidades?: string | null;
+  unidadesObrasAbrangidas?: string | null;
+}
+
+export interface NovoPcmso {
+  nome: string;
+  versao?: string | null;
+  validade?: string | null;
+  dataEmissao: string;
+  responsavelUsuarioId?: string | null;
+  obraId?: string | null;
+  setorId?: string | null;
+  arquivo?: string | null;
+  medicoResponsavelNome?: string | null;
+  medicoResponsavelCrm?: string | null;
+  funcoesContempladas?: string | null;
+  riscosConsiderados?: string | null;
+  examesPrevistos?: string | null;
+  periodicidades?: string | null;
+  unidadesObrasAbrangidas?: string | null;
+}
+
+export type AtualizarPcmsoPayload = NovoPcmso;
+
 export const TipoAlerta = {
   AsoVencendo: 1,
   AsoVencido: 2,
@@ -2050,8 +2146,41 @@ export const api = {
   asos: {
     listar: (trabalhadorId?: string) =>
       request<Aso[]>(`/api/asos${trabalhadorId ? `?trabalhadorId=${trabalhadorId}` : ''}`),
+    obterPorId: (id: string) => request<Aso>(`/api/asos/${id}`),
     criar: (aso: NovoAso) => request<{ id: string }>('/api/asos', { method: 'POST', body: JSON.stringify(aso) }),
+    atualizar: (aso: Aso) => request<void>(`/api/asos/${aso.id}`, { method: 'PUT', body: JSON.stringify(aso) }),
     excluir: (id: string) => request<void>(`/api/asos/${id}`, { method: 'DELETE' }),
+  },
+  examesComplementares: {
+    listar: (trabalhadorId?: string) =>
+      request<ExameComplementar[]>(`/api/examescomplementares${trabalhadorId ? `?trabalhadorId=${trabalhadorId}` : ''}`),
+    obterPorId: (id: string) => request<ExameComplementar>(`/api/examescomplementares/${id}`),
+    criar: (exame: NovoExameComplementar) =>
+      request<{ id: string }>('/api/examescomplementares', { method: 'POST', body: JSON.stringify(exame) }),
+    atualizar: (exame: AtualizarExameComplementarPayload) =>
+      request<void>(`/api/examescomplementares/${exame.id}`, { method: 'PUT', body: JSON.stringify(exame) }),
+    excluir: (id: string) => request<void>(`/api/examescomplementares/${id}`, { method: 'DELETE' }),
+  },
+  aptidoes: {
+    listar: (trabalhadorId?: string) =>
+      request<Aptidao[]>(`/api/aptidoes${trabalhadorId ? `?trabalhadorId=${trabalhadorId}` : ''}`),
+    obterPorId: (id: string) => request<Aptidao>(`/api/aptidoes/${id}`),
+    criar: (aptidao: NovaAptidao) =>
+      request<{ id: string }>('/api/aptidoes', { method: 'POST', body: JSON.stringify(aptidao) }),
+    atualizar: (aptidao: AtualizarAptidaoPayload) =>
+      request<void>(`/api/aptidoes/${aptidao.id}`, { method: 'PUT', body: JSON.stringify(aptidao) }),
+    excluir: (id: string) => request<void>(`/api/aptidoes/${id}`, { method: 'DELETE' }),
+  },
+  pcmsos: {
+    listar: (obraId?: string) => request<Pcmso[]>(`/api/pcmsos${obraId ? `?obraId=${obraId}` : ''}`),
+    obterPorId: (id: string) => request<Pcmso>(`/api/pcmsos/${id}`),
+    criar: (pcmso: NovoPcmso) => request<{ id: string }>('/api/pcmsos', { method: 'POST', body: JSON.stringify(pcmso) }),
+    atualizar: (id: string, pcmso: AtualizarPcmsoPayload) =>
+      // ...pcmso primeiro: pcmso é o Pcmso DTO (que tem seu próprio "id" = PcmsoDetalhe.Id) espalhado
+      // em cima do NovoPcmso; "id" precisa vir por último para sempre prevalecer como o
+      // documentoGestaoId esperado pela rota (PcmsoDetalhePage navega/edita por documentoGestaoId).
+      request<void>(`/api/pcmsos/${id}`, { method: 'PUT', body: JSON.stringify({ ...pcmso, id }) }),
+    excluir: (id: string) => request<void>(`/api/pcmsos/${id}`, { method: 'DELETE' }),
   },
   cursosTreinamento: {
     listar: () => request<CursoTreinamento[]>('/api/cursostreinamento'),

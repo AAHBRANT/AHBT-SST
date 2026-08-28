@@ -21,6 +21,9 @@ public interface IAppDbContext
     DbSet<TrilhaAuditoria> TrilhaAuditoria { get; }
 
     DbSet<Aso> Asos { get; }
+    DbSet<ExameComplementar> ExamesComplementares { get; }
+    DbSet<AptidaoAtividadeEspecifica> AptidoesAtividadeEspecifica { get; }
+    DbSet<PcmsoDetalhe> PcmsoDetalhes { get; }
     DbSet<CursoTreinamento> CursosTreinamento { get; }
     DbSet<Treinamento> Treinamentos { get; }
     DbSet<CatalogoEpi> CatalogoEpis { get; }

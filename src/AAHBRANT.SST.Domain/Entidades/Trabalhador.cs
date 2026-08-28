@@ -65,4 +65,6 @@ public class Trabalhador : AuditableEntity
     public ICollection<Treinamento> Treinamentos { get; set; } = new List<Treinamento>();
     public ICollection<EntregaEpi> EntregasEpi { get; set; } = new List<EntregaEpi>();
     public ICollection<RiscoTrabalhadorExposto> RiscosExpostos { get; set; } = new List<RiscoTrabalhadorExposto>();
+    public ICollection<ExameComplementar> ExamesComplementares { get; set; } = new List<ExameComplementar>();
+    public ICollection<AptidaoAtividadeEspecifica> AptidoesAtividadeEspecifica { get; set; } = new List<AptidaoAtividadeEspecifica>();
 }

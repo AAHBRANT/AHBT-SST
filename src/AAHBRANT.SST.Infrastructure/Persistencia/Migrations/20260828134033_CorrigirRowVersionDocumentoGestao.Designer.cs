@@ -4,6 +4,7 @@ using AAHBRANT.SST.Infrastructure.Persistencia;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 
 #nullable disable
@@ -11,9 +12,11 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace AAHBRANT.SST.Infrastructure.Persistencia.Migrations
 {
     [DbContext(typeof(SstDbContext))]
-    partial class SstDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260828134033_CorrigirRowVersionDocumentoGestao")]
+    partial class CorrigirRowVersionDocumentoGestao
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -69,9 +72,7 @@ namespace AAHBRANT.SST.Infrastructure.Persistencia.Migrations
                         .HasColumnType("uniqueidentifier");
 
                     b.Property<byte[]>("RowVersion")
-                        .IsConcurrencyToken()
-                        .ValueGeneratedOnAddOrUpdate()
-                        .HasColumnType("rowversion");
+                        .HasColumnType("varbinary(max)");
 
                     b.Property<int>("Status")
                         .HasColumnType("int");
@@ -934,59 +935,6 @@ namespace AAHBRANT.SST.Infrastructure.Persistencia.Migrations
                     b.HasIndex("TipoAtivo");
 
                     b.ToTable("AtivosSst");
-                });
-
-            modelBuilder.Entity("AAHBRANT.SST.Domain.Entidades.CalendarioEventoTeams", b =>
-                {
-                    b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("uniqueidentifier");
-
-                    b.Property<bool>("Ativo")
-                        .HasColumnType("bit");
-
-                    b.Property<DateTime>("CreatedAtUtc")
-                        .HasColumnType("datetime2");
-
-                    b.Property<Guid?>("CreatedBy")
-                        .HasColumnType("uniqueidentifier");
-
-                    b.Property<Guid>("EntidadeOrigemId")
-                        .HasColumnType("uniqueidentifier");
-
-                    b.Property<string>("EntidadeOrigemTipo")
-                        .IsRequired()
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<string>("GraphEventId")
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<string>("MensagemErro")
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<Guid>("OrganizadorUsuarioId")
-                        .HasColumnType("uniqueidentifier");
-
-                    b.Property<int>("Origem")
-                        .HasColumnType("int");
-
-                    b.Property<byte[]>("RowVersion")
-                        .HasColumnType("varbinary(max)");
-
-                    b.Property<int>("Status")
-                        .HasColumnType("int");
-
-                    b.Property<DateTime?>("UpdatedAtUtc")
-                        .HasColumnType("datetime2");
-
-                    b.Property<Guid?>("UpdatedBy")
-                        .HasColumnType("uniqueidentifier");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("OrganizadorUsuarioId");
-
-                    b.ToTable("CalendariosEventosTeams");
                 });
 
             modelBuilder.Entity("AAHBRANT.SST.Domain.Entidades.CatalogoEpi", b =>
@@ -4430,17 +4378,6 @@ namespace AAHBRANT.SST.Infrastructure.Persistencia.Migrations
                         .IsRequired();
 
                     b.Navigation("Obra");
-                });
-
-            modelBuilder.Entity("AAHBRANT.SST.Domain.Entidades.CalendarioEventoTeams", b =>
-                {
-                    b.HasOne("AAHBRANT.SST.Domain.Entidades.Usuario", "OrganizadorUsuario")
-                        .WithMany()
-                        .HasForeignKey("OrganizadorUsuarioId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.Navigation("OrganizadorUsuario");
                 });
 
             modelBuilder.Entity("AAHBRANT.SST.Domain.Entidades.ChecklistModelo", b =>
