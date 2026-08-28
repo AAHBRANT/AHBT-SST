@@ -108,6 +108,11 @@ public static class DependencyInjection
         services.Configure<GraphOptions>(configuration.GetSection("Graph"));
         services.AddScoped<INotificacaoTeamsService, GraphActivityNotificacaoTeamsService>();
 
+        // Integração do Motor de Alertas com o Calendário do Teams (docs/superpowers/specs/
+        // 2026-08-28-calendario-teams-design.md) — mesmo App Registration/GraphOptions do Activity
+        // Feed acima, faltando apenas a permissão de aplicativo Calendars.ReadWrite ser provisionada.
+        services.AddScoped<ICalendarioTeamsService, GraphCalendarioTeamsService>();
+
         // Fila de retry para falhas de envio (PROJECT RULES.md §4). Usa Azure Service Bus quando
         // "ServiceBus:ConnectionString" estiver preenchida (recurso provisionado manualmente no
         // Azure); caso contrário, cai para um fallback local em memória — não bloqueia a aplicação
@@ -119,12 +124,17 @@ public static class DependencyInjection
             services.AddSingleton(sp => new ServiceBusClient(serviceBusConnectionString));
             services.AddSingleton<IFilaNotificacaoTeams, ServiceBusFilaNotificacaoTeams>();
             services.AddHostedService<ServiceBusNotificacaoTeamsProcessor>();
+            services.AddSingleton<IFilaCalendarioTeams, ServiceBusFilaCalendarioTeams>();
+            services.AddHostedService<ServiceBusCalendarioTeamsProcessor>();
         }
         else
         {
             services.AddSingleton<InMemoryFilaNotificacaoTeams>();
             services.AddSingleton<IFilaNotificacaoTeams>(sp => sp.GetRequiredService<InMemoryFilaNotificacaoTeams>());
             services.AddHostedService<InMemoryNotificacaoTeamsProcessor>();
+            services.AddSingleton<InMemoryFilaCalendarioTeams>();
+            services.AddSingleton<IFilaCalendarioTeams>(sp => sp.GetRequiredService<InMemoryFilaCalendarioTeams>());
+            services.AddHostedService<InMemoryCalendarioTeamsProcessor>();
         }
 
         return services;

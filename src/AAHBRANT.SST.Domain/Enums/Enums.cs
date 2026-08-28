@@ -135,6 +135,24 @@ public enum StatusAlerta
     Ignorado = 5
 }
 
+// Integração do Motor de Alertas com o Calendário do Teams (docs/superpowers/specs/
+// 2026-08-28-calendario-teams-design.md) — canal plugado no AlertaEngineService e nos Commands
+// manuais de Alerta, espelhando o padrão de fila já usado pelo Activity Feed.
+public enum OperacaoCalendarioTeams
+{
+    Criar = 1,
+    Atualizar = 2,
+    Cancelar = 3
+}
+
+public enum StatusCalendarioEvento
+{
+    Pendente = 1,
+    Criado = 2,
+    Cancelado = 3,
+    Falhou = 4
+}
+
 // Seção 36 da Base de Conhecimento — 5 categorias literais da matriz de classificação de risco.
 public enum NivelRisco
 {

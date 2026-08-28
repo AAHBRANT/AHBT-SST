@@ -1,3 +1,4 @@
+using AAHBRANT.SST.Application.Alertas.Motor;
 using AAHBRANT.SST.Application.Common.Interfaces;
 using AAHBRANT.SST.Domain.Enums;
 using FluentValidation;
@@ -32,8 +33,13 @@ public class AtualizarAlertaCommandValidator : AbstractValidator<AtualizarAlerta
 public class AtualizarAlertaCommandHandler : IRequestHandler<AtualizarAlertaCommand>
 {
     private readonly IAppDbContext _db;
+    private readonly IFilaCalendarioTeams _filaCalendarioTeams;
 
-    public AtualizarAlertaCommandHandler(IAppDbContext db) => _db = db;
+    public AtualizarAlertaCommandHandler(IAppDbContext db, IFilaCalendarioTeams filaCalendarioTeams)
+    {
+        _db = db;
+        _filaCalendarioTeams = filaCalendarioTeams;
+    }
 
     public async Task Handle(AtualizarAlertaCommand request, CancellationToken ct)
     {
@@ -62,5 +68,23 @@ public class AtualizarAlertaCommandHandler : IRequestHandler<AtualizarAlertaComm
         alerta.DataLimiteTratamento = request.DataLimiteTratamento;
 
         await _db.SaveChangesAsync(ct);
+
+        // Canal de calendário do Teams — Atualizar se já existe evento criado para este alerta,
+        // senão Criar (docs/superpowers/specs/2026-08-28-calendario-teams-design.md §4.4).
+        if (alerta.DestinatarioUsuarioId.HasValue && alerta.DataLimiteTratamento.HasValue)
+        {
+            var existeEventoCriado = await _db.CalendariosEventosTeams.AnyAsync(
+                c => c.EntidadeOrigemTipo == AlertaEngineService.OrigemCalendarioAlerta
+                    && c.EntidadeOrigemId == alerta.Id
+                    && c.Status == StatusCalendarioEvento.Criado,
+                ct);
+
+            await _filaCalendarioTeams.EnfileirarAsync(
+                new CalendarioTeamsMensagem(
+                    AlertaEngineService.OrigemCalendarioAlerta, alerta.Id,
+                    existeEventoCriado ? OperacaoCalendarioTeams.Atualizar : OperacaoCalendarioTeams.Criar,
+                    alerta.DestinatarioUsuarioId.Value, alerta.Titulo, alerta.Descricao, alerta.DataLimiteTratamento.Value),
+                ct);
+        }
     }
 }

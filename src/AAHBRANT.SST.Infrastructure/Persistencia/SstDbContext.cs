@@ -37,6 +37,7 @@ public class SstDbContext : DbContext, IAppDbContext
     public DbSet<Alerta> Alertas => Set<Alerta>();
     public DbSet<AlertaHistoricoEnvio> AlertaHistoricoEnvios => Set<AlertaHistoricoEnvio>();
     public DbSet<RegraAlerta> RegrasAlerta => Set<RegraAlerta>();
+    public DbSet<CalendarioEventoTeams> CalendariosEventosTeams => Set<CalendarioEventoTeams>();
     public DbSet<Evidencia> Evidencias => Set<Evidencia>();
     public DbSet<TrilhaAuditoria> TrilhaAuditoria => Set<TrilhaAuditoria>();
 

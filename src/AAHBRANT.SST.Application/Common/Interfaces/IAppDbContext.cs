@@ -31,6 +31,7 @@ public interface IAppDbContext
     DbSet<Alerta> Alertas { get; }
     DbSet<AlertaHistoricoEnvio> AlertaHistoricoEnvios { get; }
     DbSet<RegraAlerta> RegrasAlerta { get; }
+    DbSet<CalendarioEventoTeams> CalendariosEventosTeams { get; }
     DbSet<Evidencia> Evidencias { get; }
 
     DbSet<Atividade> Atividades { get; }

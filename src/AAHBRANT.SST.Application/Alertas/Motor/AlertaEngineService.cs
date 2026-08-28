@@ -15,16 +15,26 @@ public class AlertaEngineService : IAlertaEngineService
     private static readonly StatusAlerta[] StatusEmAberto =
         { StatusAlerta.Aberto, StatusAlerta.EmTratamento, StatusAlerta.Escalonado };
 
+    // CalendarioEventoTeams.EntidadeOrigemTipo referencia o Alerta em si (não a origem mais profunda
+    // dele, como AsoPeriodico/EPI) — ver docs/superpowers/specs/2026-08-28-calendario-teams-design.md
+    // §4.1. Mesmo padrão em CriarAlertaCommand/AtualizarAlertaCommand/Resolver/Ignorar/ExcluirAlertaCommand.
+    internal const string OrigemCalendarioAlerta = "Alerta";
+
     private readonly IAppDbContext _db;
     private readonly IEnumerable<IAlertaOrigemProvider> _providers;
     private readonly IFilaNotificacaoTeams _filaNotificacaoTeams;
+    private readonly IFilaCalendarioTeams _filaCalendarioTeams;
 
     public AlertaEngineService(
-        IAppDbContext db, IEnumerable<IAlertaOrigemProvider> providers, IFilaNotificacaoTeams filaNotificacaoTeams)
+        IAppDbContext db,
+        IEnumerable<IAlertaOrigemProvider> providers,
+        IFilaNotificacaoTeams filaNotificacaoTeams,
+        IFilaCalendarioTeams filaCalendarioTeams)
     {
         _db = db;
         _providers = providers;
         _filaNotificacaoTeams = filaNotificacaoTeams;
+        _filaCalendarioTeams = filaCalendarioTeams;
     }
 
     public async Task ProcessarAsync(CancellationToken ct = default)
@@ -43,6 +53,14 @@ public class AlertaEngineService : IAlertaEngineService
         // requisito do usuário, 2026-08-25); fica vazio quando o módulo não tem responsável
         // configurado em Configurações.
         var alertasCriadosComDestinatario = new List<Alerta>();
+
+        // Espelha o canal de calendário do Teams (docs/superpowers/specs/2026-08-28-calendario-teams-
+        // design.md §4.4) nos mesmos três casos do motor: alerta novo com destinatário (Criar), alerta
+        // existente com destinatário que teve título/severidade atualizados (Atualizar) e alerta
+        // resolvido automaticamente porque o item saiu do vencimento (Cancelar).
+        var alertasCriadosParaCalendario = new List<(Alerta Alerta, DateTime DataVencimento)>();
+        var alertasAtualizadosComDestinatario = new List<(Alerta Alerta, DateTime DataVencimento)>();
+        var alertasResolvidosAutomaticamente = new List<Alerta>();
 
         var hoje = DateTime.UtcNow.Date;
 
@@ -81,7 +99,11 @@ public class AlertaEngineService : IAlertaEngineService
                     // Item ficou dentro do prazo (ex.: nova higienização registrada) — se havia um
                     // alerta em aberto gerado por este motor, encerra automaticamente.
                     if (alertaExistente is not null)
+                    {
                         alertaExistente.Status = StatusAlerta.Resolvido;
+                        if (alertaExistente.DestinatarioUsuarioId.HasValue)
+                            alertasResolvidosAutomaticamente.Add(alertaExistente);
+                    }
                     continue;
                 }
 
@@ -105,13 +127,19 @@ public class AlertaEngineService : IAlertaEngineService
                     _db.Alertas.Add(novoAlerta);
 
                     if (novoAlerta.DestinatarioUsuarioId.HasValue)
+                    {
                         alertasCriadosComDestinatario.Add(novoAlerta);
+                        alertasCriadosParaCalendario.Add((novoAlerta, item.DataVencimento));
+                    }
                 }
                 else
                 {
                     alertaExistente.Tipo = tipoAlerta;
                     alertaExistente.Severidade = severidade.Value;
                     alertaExistente.Titulo = titulo;
+
+                    if (alertaExistente.DestinatarioUsuarioId.HasValue)
+                        alertasAtualizadosComDestinatario.Add((alertaExistente, item.DataVencimento));
                 }
             }
         }
@@ -124,6 +152,35 @@ public class AlertaEngineService : IAlertaEngineService
         {
             await _filaNotificacaoTeams.EnfileirarAsync(
                 new NotificacaoTeamsMensagem(alerta.Id, alerta.DestinatarioUsuarioId!.Value, alerta.Titulo, alerta.Descricao),
+                ct);
+        }
+
+        // Canal de calendário do Teams — mesmo princípio de "enfileira e segue em frente"; a criação/
+        // atualização/cancelamento de fato no Graph acontece em background (ver IFilaCalendarioTeams).
+        foreach (var (alerta, dataVencimento) in alertasCriadosParaCalendario)
+        {
+            await _filaCalendarioTeams.EnfileirarAsync(
+                new CalendarioTeamsMensagem(
+                    OrigemCalendarioAlerta, alerta.Id, OperacaoCalendarioTeams.Criar,
+                    alerta.DestinatarioUsuarioId!.Value, alerta.Titulo, alerta.Descricao, dataVencimento),
+                ct);
+        }
+
+        foreach (var (alerta, dataVencimento) in alertasAtualizadosComDestinatario)
+        {
+            await _filaCalendarioTeams.EnfileirarAsync(
+                new CalendarioTeamsMensagem(
+                    OrigemCalendarioAlerta, alerta.Id, OperacaoCalendarioTeams.Atualizar,
+                    alerta.DestinatarioUsuarioId!.Value, alerta.Titulo, alerta.Descricao, dataVencimento),
+                ct);
+        }
+
+        foreach (var alerta in alertasResolvidosAutomaticamente)
+        {
+            await _filaCalendarioTeams.EnfileirarAsync(
+                new CalendarioTeamsMensagem(
+                    OrigemCalendarioAlerta, alerta.Id, OperacaoCalendarioTeams.Cancelar,
+                    alerta.DestinatarioUsuarioId!.Value, null, null, null),
                 ct);
         }
     }

@@ -8,4 +8,5 @@ public class ServiceBusOptions
 {
     public string ConnectionString { get; set; } = string.Empty;
     public string FilaNotificacoesTeams { get; set; } = "notificacoes-teams";
+    public string FilaCalendarioTeams { get; set; } = "calendario-teams";
 }

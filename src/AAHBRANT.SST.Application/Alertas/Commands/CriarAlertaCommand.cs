@@ -1,3 +1,4 @@
+using AAHBRANT.SST.Application.Alertas.Motor;
 using AAHBRANT.SST.Application.Common.Interfaces;
 using AAHBRANT.SST.Domain.Entidades;
 using AAHBRANT.SST.Domain.Enums;
@@ -36,11 +37,14 @@ public class CriarAlertaCommandHandler : IRequestHandler<CriarAlertaCommand, Gui
 {
     private readonly IAppDbContext _db;
     private readonly IFilaNotificacaoTeams _filaNotificacaoTeams;
+    private readonly IFilaCalendarioTeams _filaCalendarioTeams;
 
-    public CriarAlertaCommandHandler(IAppDbContext db, IFilaNotificacaoTeams filaNotificacaoTeams)
+    public CriarAlertaCommandHandler(
+        IAppDbContext db, IFilaNotificacaoTeams filaNotificacaoTeams, IFilaCalendarioTeams filaCalendarioTeams)
     {
         _db = db;
         _filaNotificacaoTeams = filaNotificacaoTeams;
+        _filaCalendarioTeams = filaCalendarioTeams;
     }
 
     public async Task<Guid> Handle(CriarAlertaCommand request, CancellationToken ct)
@@ -80,6 +84,17 @@ public class CriarAlertaCommandHandler : IRequestHandler<CriarAlertaCommand, Gui
         {
             await _filaNotificacaoTeams.EnfileirarAsync(
                 new NotificacaoTeamsMensagem(alerta.Id, alerta.DestinatarioUsuarioId.Value, alerta.Titulo, alerta.Descricao),
+                ct);
+        }
+
+        // Canal de calendário do Teams — só enfileira com destinatário e data (docs/superpowers/specs/
+        // 2026-08-28-calendario-teams-design.md §4.4).
+        if (alerta.DestinatarioUsuarioId.HasValue && alerta.DataLimiteTratamento.HasValue)
+        {
+            await _filaCalendarioTeams.EnfileirarAsync(
+                new CalendarioTeamsMensagem(
+                    AlertaEngineService.OrigemCalendarioAlerta, alerta.Id, OperacaoCalendarioTeams.Criar,
+                    alerta.DestinatarioUsuarioId.Value, alerta.Titulo, alerta.Descricao, alerta.DataLimiteTratamento.Value),
                 ct);
         }
 
