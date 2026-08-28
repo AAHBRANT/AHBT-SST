@@ -238,9 +238,11 @@ database `AAHBRANT.SST.Hml`).
 
 Container Apps: `sst-api-hml`, `sst-web-hml`, `sst-worker-hml` (`--min-replicas 1`).
 
-**A tag no ar antes desta sessão (2026-08-28) era `saude-ocupacional-v1`** (commit `16af19f` da
-pasta local, não desta branch) — **está desatualizada**: não tem RBAC Camada 2/3 nem sincronização
-offline, que só entraram na reconciliação de hoje. Sempre conferir a tag real antes de deployar:
+**A tag no ar em 28/08, após a remoção do módulo de Conformidade (branch
+`claude/remover-modulo-conformidade-y5e3n9`), é `sem-modulo-conformidade-v2`** (API/Worker) e
+`sem-modulo-conformidade-v1` (Web) — deployada a partir de uma sessão Claude Code on the web (ver
+§7.1 para o caminho usado). Antes disso era `saude-ocupacional-v1` (commit `16af19f`, sem RBAC
+Camada 2/3 nem sync offline). Sempre conferir a tag real antes de deployar:
 ```bash
 az containerapp show -g rg-gnezis-hub-staging -n sst-api-hml --query "properties.template.containers[0].image" -o tsv
 ```
@@ -264,6 +266,77 @@ Nunca reaproveitar uma tag já publicada. `CACHEBUST` é obrigatório no build d
    Container Apps NÃO sincronizam automaticamente.** Toda config obrigatória nova precisa ser
    copiada manualmente para os secrets do Worker também — comparar `env` via
    `az containerapp show ... --query "properties.template.containers[0].env"`.
+
+### 7.1 Deploy a partir de uma sessão Claude Code on the web (sandbox remoto)
+
+Diferente do terminal Windows local (§7 acima): a sessão roda num container isolado, sem Docker
+rodando, sem Azure CLI instalado, e com **rede de saída restrita por política da organização**
+(proxy `HTTPS_PROXY`, allowlist de domínios). Passos que funcionaram de ponta a ponta em 28/08:
+
+1. **Instalar Azure CLI via pip** (não use o script `curl ... | bash` do `aka.ms` — esse host
+   normalmente está bloqueado): `python3 -m venv /root/azcli-venv && /root/azcli-venv/bin/pip
+   install azure-cli`. Adicionar `/root/azcli-venv/bin` ao `PATH`.
+2. **Rede**: por padrão o ambiente bloqueia `management.azure.com`, `login.microsoftonline.com`,
+   `*.azurecr.io` e `*.blob.core.windows.net` — sem isso nem `az login` funciona. Peça pro usuário
+   (se for admin) trocar o ambiente do Claude Code on the web de rede "Confiável" para
+   "Personalizado" e adicionar esses 4 domínios (mantendo a "lista padrão de gerenciadores de
+   pacotes comuns" marcada, que já cobre npm/PyPI/GitHub). O ajuste vale pra sessão em andamento,
+   não precisa reiniciar.
+3. **Autenticação**: peça um Service Principal de curta duração escopado só ao resource group
+   (`az ad sp create-for-rbac --role Contributor --scopes /subscriptions/<sub>/resourceGroups/rg-gnezis-hub-staging`),
+   depois `az login --service-principal -u <appId> -p <password> --tenant <tenant>`. Avisar o
+   usuário pra revogar (`az ad sp delete --id <appId>`) depois do deploy.
+4. **`az acr build` NÃO funciona nesse ambiente**, mesmo com os 4 domínios acima liberados: ele
+   sobe o tarball do código-fonte para um host de blob storage regional aleatório
+   (`acrtaskprod<região>.blob.core.windows.net`, ex. `acrtaskprodbrs034...`) que muda a cada
+   chamada e não dá pra pré-liberar. **Alternativa que funciona**: build local com Docker.
+   - O daemon não roda por padrão nesse sandbox: `dockerd > /tmp/dockerd.log 2>&1 &` (não precisa
+     de flag especial, mas requer cgroup v1/privilégios que o ambiente já concede).
+   - `az acr login --name <acr>` autentica o `docker` no ACR.
+   - Toda chamada `docker build`/`docker pull`/`docker push` precisa de `--network host` (containers
+     isolados não enxergam `127.0.0.1:38301`, o proxy da sessão).
+   - Puxar `FROM mcr.microsoft.com/...` funciona direto (já liberado por padrão). Puxar
+     `FROM node:...`/`FROM nginx:...` do Docker Hub falha com 429 (rate limit do IP compartilhado do
+     proxy) — e puxar do próprio ACR também falha (redireciona pra blob storage, mesmo problema do
+     item acima). **Solução**: importar a imagem pro seu ACR uma vez, server-side, sem passar pela
+     rede da sessão: `az acr import --name <acr> --source docker.io/library/node:20-alpine --image
+     node:20-alpine` (idem pra `nginx:1.27-alpine`) — depois usar `FROM <acr>.azurecr.io/node:20-alpine`
+     no Dockerfile.
+   - `dotnet restore`/`nuget` dentro do build do .NET SDK **precisam do proxy configurado**
+     (`api.nuget.org` não está na lista de exceção da sessão, diferente de `registry.npmjs.org`,
+     que já é isento): passar `--build-arg HTTP_PROXY=$HTTPS_PROXY --build-arg
+     HTTPS_PROXY=$HTTPS_PROXY`, e instalar o CA bundle da sessão (`/root/.ccr/ca-bundle.crt`) via
+     `COPY` + `update-ca-certificates` num estágio inicial do Dockerfile (a imagem `dotnet/sdk` já
+     tem esse comando; **a imagem `node:alpine` não tem** `update-ca-certificates`/`ca-certificates`
+     instalados nem consegue baixá-los do `apk` — por sorte não precisa: `npm ci` já funciona sem
+     proxy, só pule esse passo pro estágio Node).
+   - Mais simples ainda pro frontend: `npm ci`/`npm run build` **dentro** do container Docker
+     falhou de forma intermitente (`npm error Exit handler never called!`, bug conhecido do npm).
+     Prefira gerar o `dist/` **direto no host** (`cd TeamsApp && VITE_API_BASE_URL=<url> npm run
+     build`) e usar um Dockerfile de runtime mínimo só com `FROM .../nginx:1.27-alpine` + `COPY
+     dist /usr/share/nginx/html` (sem estágio Node nenhum). `dist/` está no `.dockerignore` global
+     — copie pra uma pasta com outro nome antes (ex. `webdist-deploy/`) ou ajuste o contexto.
+   - Depois do build: `docker push <acr>.azurecr.io/<imagem>:<tag>` funciona normalmente (push não
+     tem o problema de redirect que o pull tem).
+5. **Diagnóstico pós-deploy**: `az containerapp logs show --revision <rev>` costuma vir **vazio**
+   quando o container está em `CrashLoopBackOff` (morre rápido demais pro stream capturar). Use
+   Log Analytics em vez disso: descobrir o workspace com `az containerapp env show --name <env>
+   --query "properties.appLogsConfiguration.logAnalyticsConfiguration.customerId" -o tsv`, depois
+   `az monitor log-analytics query --workspace <id> --analytics-query "ContainerAppConsoleLogs_CL |
+   where ContainerAppName_s == '<app>' and RevisionName_s == '<rev>' | order by TimeGenerated desc
+   | project TimeGenerated, Log_s | take 100" -o table` (instala a extensão `log-analytics` na
+   primeira vez, confirmar o prompt).
+6. **Gotcha de migration que já mordeu duas vezes**: o `Program.cs` da API roda `Database.Migrate()`
+   automaticamente no startup — uma migration ruim = `CrashLoopBackOff` direto em produção/hml.
+   Sempre que `dotnet ef migrations add` gerar `AlterColumn<byte[]>(..., type: "rowversion",
+   rowVersion: true, ...)` pra uma coluna que já existia como `varbinary(max)`, **trocar por
+   `DropColumn` + `AddColumn`** antes de buildar a imagem — SQL Server rejeita esse ALTER direto
+   (erro 4927 "Cannot alter column ... to be data type timestamp"). Já aconteceu e foi corrigido em
+   `CorrigirRowVersionAcaoPlano`, `CorrigirRowVersionDocumentoGestao`, `CorrigirRowVersionCatalogo...`,
+   `CorrigirRowVersionObraSetorEquipeAreaSst`, `CorrigirRowVersionAsoTreinamentoEntregaEpi` e de
+   novo em `RemoverMatrizLegalEGestaoDocumental` (28/08) — **revisar toda migration nova em busca
+   desse padrão antes de aplicar em qualquer ambiente real**, não só confiar no `dotnet ef migrations
+   add` cegamente.
 
 **Repositório git**: `https://github.com/AAHBRANT/AHBT-SST` — **atenção**: o remote configurado em
 `C:\Projetos\SST-APP` ainda aponta para `https://github.com/DesenvolvimentoAHBT/AHBT-SST.git`, o
