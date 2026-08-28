@@ -31,6 +31,12 @@ public class DocumentoGestaoConfiguracao : IEntityTypeConfiguration<DocumentoGes
         builder.HasIndex(d => d.Tipo);
         builder.HasIndex(d => d.Categoria);
         builder.HasQueryFilter(d => d.Ativo);
+
+        // Faltava aqui (única configuração sem essa linha, ao contrário de todas as demais
+        // entidades do projeto) — causava "Cannot insert an explicit value into a timestamp
+        // column" ao criar PCMSO, pois a coluna física já é rowversion mas o EF a tratava
+        // como varbinary(max) comum e tentava inserir NULL explicitamente nela.
+        builder.Property(d => d.RowVersion).IsRowVersion();
     }
 }
 

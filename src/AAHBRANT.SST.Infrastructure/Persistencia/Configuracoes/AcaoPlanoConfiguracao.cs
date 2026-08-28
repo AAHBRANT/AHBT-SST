@@ -19,5 +19,9 @@ public class AcaoPlanoConfiguracao : IEntityTypeConfiguration<AcaoPlano>
         // Índice composto é o principal caminho de acesso: "todas as ações desta NC/Acidente/...".
         builder.HasIndex(a => new { a.OrigemTipo, a.OrigemId });
         builder.HasQueryFilter(a => a.Ativo);
+
+        // Faltava aqui, mesmo bug já corrigido em DocumentoGestaoConfiguracao: "Cannot insert an
+        // explicit value into a timestamp column" ao criar Ação do Plano.
+        builder.Property(a => a.RowVersion).IsRowVersion();
     }
 }

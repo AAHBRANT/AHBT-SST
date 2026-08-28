@@ -26,6 +26,9 @@ public class SstDbContext : DbContext, IAppDbContext
 
     public DbSet<Aso> Asos => Set<Aso>();
     public DbSet<AsoRestricao> AsoRestricoes => Set<AsoRestricao>();
+    public DbSet<ExameComplementar> ExamesComplementares => Set<ExameComplementar>();
+    public DbSet<AptidaoAtividadeEspecifica> AptidoesAtividadeEspecifica => Set<AptidaoAtividadeEspecifica>();
+    public DbSet<PcmsoDetalhe> PcmsoDetalhes => Set<PcmsoDetalhe>();
     public DbSet<CursoTreinamento> CursosTreinamento => Set<CursoTreinamento>();
     public DbSet<Treinamento> Treinamentos => Set<Treinamento>();
     public DbSet<CatalogoEpi> CatalogoEpis => Set<CatalogoEpi>();
