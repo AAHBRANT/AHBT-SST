@@ -37,7 +37,7 @@ public class ExportarFichaEpiTrabalhadorQueryHandlerTests
         var options = new DbContextOptionsBuilder<SstDbContext>()
             .UseInMemoryDatabase(nomeBanco)
             .Options;
-        return new SstDbContext(options);
+        return new SstDbContext(options, new CurrentUserService());
     }
 
     [Fact]
