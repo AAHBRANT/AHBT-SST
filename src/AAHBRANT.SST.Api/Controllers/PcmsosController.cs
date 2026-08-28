@@ -1,5 +1,5 @@
-using AAHBRANT.SST.Application.Pcmso.Commands;
-using AAHBRANT.SST.Application.Pcmso.Queries;
+using AAHBRANT.SST.Application.Pcmsos.Commands;
+using AAHBRANT.SST.Application.Pcmsos.Queries;
 using MediatR;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -21,10 +21,10 @@ public class PcmsosController : ControllerBase
 
     [Authorize(Policy = "pcmso:ver")]
     [HttpGet("{id:guid}")]
-    public async Task<IActionResult> ObterDetalhe(Guid id, CancellationToken ct)
+    public async Task<IActionResult> ObterPorId(Guid id, CancellationToken ct)
     {
-        var detalhe = await _mediator.Send(new ObterPcmsoDetalheQuery(id), ct);
-        return detalhe is null ? NotFound() : Ok(detalhe);
+        var pcmso = await _mediator.Send(new ObterPcmsoPorIdQuery(id), ct);
+        return pcmso is null ? NotFound() : Ok(pcmso);
     }
 
     [Authorize(Policy = "pcmso:criar")]
@@ -32,7 +32,7 @@ public class PcmsosController : ControllerBase
     public async Task<IActionResult> Criar(CriarPcmsoCommand command, CancellationToken ct)
     {
         var id = await _mediator.Send(command, ct);
-        return CreatedAtAction(nameof(ObterDetalhe), new { id }, new { id });
+        return CreatedAtAction(nameof(ObterPorId), new { id }, new { id });
     }
 
     [Authorize(Policy = "pcmso:editar")]

@@ -71,6 +71,18 @@ public enum TipoExameAso
     Demissional = 5
 }
 
+// PR-SST-003 — exames complementares do PCMSO (audiometria, acuidade visual etc.), vinculados
+// opcionalmente a um ASO.
+public enum TipoExameComplementar
+{
+    Audiometria = 1,
+    AcuidadeVisual = 2,
+    Espirometria = 3,
+    Laboratoriais = 4,
+    AvaliacaoClinica = 5,
+    ExameEspecifico = 6
+}
+
 // Seção 34 da Base de Conhecimento — tipos de alerta. "PT vencida" é item literal próprio
 // (linha 869), distinto de "autorização vencida" (linha 871) — adicionado agora que o módulo
 // PT existe; os demais 13 itens já estavam mapeados desde o módulo de Riscos/Alertas.

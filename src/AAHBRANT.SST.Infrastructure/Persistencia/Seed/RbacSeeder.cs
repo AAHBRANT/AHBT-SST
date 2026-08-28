@@ -58,9 +58,19 @@ public static class RbacSeeder
         ("aso:editar", "Aso", "Editar", "Editar ASO"),
         ("aso:homologar", "Aso", "Homologar", "Homologar resultado clínico do ASO"),
 
-        ("pcmso:ver", "Pcmso", "Ver", "Ver PCMSO/matriz de exames/calendário/relatório analítico"),
-        ("pcmso:criar", "Pcmso", "Criar", "Criar PCMSO/item de matriz/revisão"),
-        ("pcmso:editar", "Pcmso", "Editar", "Editar PCMSO/matriz de exames"),
+        // PR-SST-003 — Saúde Ocupacional: PCMSO (documento + campos específicos), exames
+        // complementares e aptidões para atividade crítica, além do ASO já existente acima.
+        ("pcmso:ver", "Pcmso", "Ver", "Ver PCMSO"),
+        ("pcmso:criar", "Pcmso", "Criar", "Criar PCMSO"),
+        ("pcmso:editar", "Pcmso", "Editar", "Editar PCMSO"),
+
+        ("examecomplementar:ver", "ExameComplementar", "Ver", "Ver exames complementares (audiometria, acuidade visual etc.)"),
+        ("examecomplementar:criar", "ExameComplementar", "Criar", "Registrar exame complementar"),
+        ("examecomplementar:editar", "ExameComplementar", "Editar", "Editar exame complementar"),
+
+        ("aptidao:ver", "Aptidao", "Ver", "Ver aptidões para atividade crítica"),
+        ("aptidao:criar", "Aptidao", "Criar", "Registrar aptidão para atividade crítica"),
+        ("aptidao:editar", "Aptidao", "Editar", "Editar aptidão para atividade crítica"),
 
         ("treinamento:ver", "Treinamento", "Ver", "Ver treinamentos"),
         ("treinamento:criar", "Treinamento", "Criar", "Criar treinamento/curso"),

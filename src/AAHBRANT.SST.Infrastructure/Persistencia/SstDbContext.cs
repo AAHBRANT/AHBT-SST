@@ -29,6 +29,9 @@ public class SstDbContext : DbContext, IAppDbContext
 
     public DbSet<Aso> Asos => Set<Aso>();
     public DbSet<AsoRestricao> AsoRestricoes => Set<AsoRestricao>();
+    public DbSet<ExameComplementar> ExamesComplementares => Set<ExameComplementar>();
+    public DbSet<AptidaoAtividadeEspecifica> AptidoesAtividadeEspecifica => Set<AptidaoAtividadeEspecifica>();
+    public DbSet<PcmsoDetalhe> PcmsoDetalhes => Set<PcmsoDetalhe>();
     public DbSet<CursoTreinamento> CursosTreinamento => Set<CursoTreinamento>();
     public DbSet<Treinamento> Treinamentos => Set<Treinamento>();
     public DbSet<CatalogoEpi> CatalogoEpis => Set<CatalogoEpi>();
@@ -54,10 +57,6 @@ public class SstDbContext : DbContext, IAppDbContext
     public DbSet<Pgr> Pgrs => Set<Pgr>();
     public DbSet<PlanoAcaoItem> PlanoAcaoItens => Set<PlanoAcaoItem>();
     public DbSet<PgrRevisao> PgrRevisoes => Set<PgrRevisao>();
-
-    public DbSet<Pcmso> Pcmsos => Set<Pcmso>();
-    public DbSet<PcmsoItemMatriz> PcmsoItensMatriz => Set<PcmsoItemMatriz>();
-    public DbSet<PcmsoRevisao> PcmsoRevisoes => Set<PcmsoRevisao>();
 
     public DbSet<TagIdentificacao> TagsIdentificacao => Set<TagIdentificacao>();
     public DbSet<AreaSst> AreasSst => Set<AreaSst>();
@@ -149,8 +148,11 @@ public class SstDbContext : DbContext, IAppDbContext
             t.Ativo && (_usuarioAtual.TemAcessoGlobal || _usuarioAtual.ObrasPermitidas.Contains(t.ObraId)));
         modelBuilder.Entity<AreaSst>().HasQueryFilter(a =>
             a.Ativo && (_usuarioAtual.TemAcessoGlobal || _usuarioAtual.ObrasPermitidas.Contains(a.ObraId)));
-        modelBuilder.Entity<Pcmso>().HasQueryFilter(p =>
-            p.Ativo && (_usuarioAtual.TemAcessoGlobal || _usuarioAtual.ObrasPermitidas.Contains(p.ObraId)));
+
+        // PcmsoDetalhe/ExameComplementar/AptidaoAtividadeEspecifica (Saúde Ocupacional, PR-SST-003)
+        // ainda NÃO têm filtro de escopo por obra (Camada 3) — PcmsoDetalhe não tem ObraId direto
+        // (herda de DocumentoGestao via DocumentoGestaoId) e os outros dois são por Trabalhador, não
+        // por Obra. Pendência a avaliar antes de confiar no RBAC Camada 2/3 para esses três.
 
         base.OnModelCreating(modelBuilder);
     }
