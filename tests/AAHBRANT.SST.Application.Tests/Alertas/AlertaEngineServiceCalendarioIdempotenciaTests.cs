@@ -4,7 +4,8 @@ using AAHBRANT.SST.Domain.Entidades;
 using AAHBRANT.SST.Domain.Enums;
 using AAHBRANT.SST.Domain.Interfaces;
 using AAHBRANT.SST.Infrastructure.Integracao.Bot;
-using AAHBRANT.SST.Infrastructure.Persistencia;`nusing AAHBRANT.SST.Infrastructure.Seguranca;
+using AAHBRANT.SST.Infrastructure.Persistencia;
+using AAHBRANT.SST.Infrastructure.Seguranca;
 using Microsoft.EntityFrameworkCore;
 
 namespace AAHBRANT.SST.Application.Tests.Alertas;

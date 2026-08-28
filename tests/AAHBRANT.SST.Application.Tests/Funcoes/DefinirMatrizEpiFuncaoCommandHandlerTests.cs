@@ -1,7 +1,8 @@
 using AAHBRANT.SST.Application.Common.Interfaces;
 using AAHBRANT.SST.Application.Funcoes.Commands;
 using AAHBRANT.SST.Domain.Entidades;
-using AAHBRANT.SST.Infrastructure.Persistencia;`nusing AAHBRANT.SST.Infrastructure.Seguranca;
+using AAHBRANT.SST.Infrastructure.Persistencia;
+using AAHBRANT.SST.Infrastructure.Seguranca;
 using Microsoft.EntityFrameworkCore;
 
 namespace AAHBRANT.SST.Application.Tests.Funcoes;
