@@ -49,95 +49,38 @@ namespace AAHBRANT.SST.Infrastructure.Persistencia.Migrations
             migrationBuilder.DropTable(
                 name: "RequisitosLegais");
 
-            migrationBuilder.AlterColumn<byte[]>(
-                name: "RowVersion",
-                table: "TemplatesBiometricoFutronic",
-                type: "rowversion",
-                rowVersion: true,
-                nullable: true,
-                oldClrType: typeof(byte[]),
-                oldType: "varbinary(max)",
-                oldNullable: true);
+            // SQL Server rejeita ALTER COLUMN direto para timestamp/rowversion mesmo vindo de
+            // varbinary(max) ("Cannot alter column 'RowVersion' to be data type timestamp", erro
+            // 4927) — mesma limitação já corrigida em CorrigirRowVersionAcaoPlano/
+            // CorrigirRowVersionDocumentoGestao/etc. A única forma é dropar e recriar a coluna. Isso
+            // reseta o token de concorrência otimista de linhas existentes (inofensivo em
+            // Development/hml — sem linhas reais dependendo dele).
+            migrationBuilder.DropColumn(name: "RowVersion", table: "TemplatesBiometricoFutronic");
+            migrationBuilder.AddColumn<byte[]>(name: "RowVersion", table: "TemplatesBiometricoFutronic", type: "rowversion", rowVersion: true, nullable: true);
 
-            migrationBuilder.AlterColumn<byte[]>(
-                name: "RowVersion",
-                table: "RegrasAlerta",
-                type: "rowversion",
-                rowVersion: true,
-                nullable: true,
-                oldClrType: typeof(byte[]),
-                oldType: "varbinary(max)",
-                oldNullable: true);
+            migrationBuilder.DropColumn(name: "RowVersion", table: "RegrasAlerta");
+            migrationBuilder.AddColumn<byte[]>(name: "RowVersion", table: "RegrasAlerta", type: "rowversion", rowVersion: true, nullable: true);
 
-            migrationBuilder.AlterColumn<byte[]>(
-                name: "RowVersion",
-                table: "RegistrosHhtMensais",
-                type: "rowversion",
-                rowVersion: true,
-                nullable: true,
-                oldClrType: typeof(byte[]),
-                oldType: "varbinary(max)",
-                oldNullable: true);
+            migrationBuilder.DropColumn(name: "RowVersion", table: "RegistrosHhtMensais");
+            migrationBuilder.AddColumn<byte[]>(name: "RowVersion", table: "RegistrosHhtMensais", type: "rowversion", rowVersion: true, nullable: true);
 
-            migrationBuilder.AlterColumn<byte[]>(
-                name: "RowVersion",
-                table: "DocumentoSignatarios",
-                type: "rowversion",
-                rowVersion: true,
-                nullable: true,
-                oldClrType: typeof(byte[]),
-                oldType: "varbinary(max)",
-                oldNullable: true);
+            migrationBuilder.DropColumn(name: "RowVersion", table: "DocumentoSignatarios");
+            migrationBuilder.AddColumn<byte[]>(name: "RowVersion", table: "DocumentoSignatarios", type: "rowversion", rowVersion: true, nullable: true);
 
-            migrationBuilder.AlterColumn<byte[]>(
-                name: "RowVersion",
-                table: "DocumentosAssinatura",
-                type: "rowversion",
-                rowVersion: true,
-                nullable: true,
-                oldClrType: typeof(byte[]),
-                oldType: "varbinary(max)",
-                oldNullable: true);
+            migrationBuilder.DropColumn(name: "RowVersion", table: "DocumentosAssinatura");
+            migrationBuilder.AddColumn<byte[]>(name: "RowVersion", table: "DocumentosAssinatura", type: "rowversion", rowVersion: true, nullable: true);
 
-            migrationBuilder.AlterColumn<byte[]>(
-                name: "RowVersion",
-                table: "DispositivosAgenteBiometrico",
-                type: "rowversion",
-                rowVersion: true,
-                nullable: true,
-                oldClrType: typeof(byte[]),
-                oldType: "varbinary(max)",
-                oldNullable: true);
+            migrationBuilder.DropColumn(name: "RowVersion", table: "DispositivosAgenteBiometrico");
+            migrationBuilder.AddColumn<byte[]>(name: "RowVersion", table: "DispositivosAgenteBiometrico", type: "rowversion", rowVersion: true, nullable: true);
 
-            migrationBuilder.AlterColumn<byte[]>(
-                name: "RowVersion",
-                table: "CredenciaisWebAuthn",
-                type: "rowversion",
-                rowVersion: true,
-                nullable: true,
-                oldClrType: typeof(byte[]),
-                oldType: "varbinary(max)",
-                oldNullable: true);
+            migrationBuilder.DropColumn(name: "RowVersion", table: "CredenciaisWebAuthn");
+            migrationBuilder.AddColumn<byte[]>(name: "RowVersion", table: "CredenciaisWebAuthn", type: "rowversion", rowVersion: true, nullable: true);
 
-            migrationBuilder.AlterColumn<byte[]>(
-                name: "RowVersion",
-                table: "CalendariosEventosTeams",
-                type: "rowversion",
-                rowVersion: true,
-                nullable: true,
-                oldClrType: typeof(byte[]),
-                oldType: "varbinary(max)",
-                oldNullable: true);
+            migrationBuilder.DropColumn(name: "RowVersion", table: "CalendariosEventosTeams");
+            migrationBuilder.AddColumn<byte[]>(name: "RowVersion", table: "CalendariosEventosTeams", type: "rowversion", rowVersion: true, nullable: true);
 
-            migrationBuilder.AlterColumn<byte[]>(
-                name: "RowVersion",
-                table: "AtivosSst",
-                type: "rowversion",
-                rowVersion: true,
-                nullable: true,
-                oldClrType: typeof(byte[]),
-                oldType: "varbinary(max)",
-                oldNullable: true);
+            migrationBuilder.DropColumn(name: "RowVersion", table: "AtivosSst");
+            migrationBuilder.AddColumn<byte[]>(name: "RowVersion", table: "AtivosSst", type: "rowversion", rowVersion: true, nullable: true);
         }
 
         /// <inheritdoc />
