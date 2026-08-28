@@ -90,12 +90,6 @@ public class SstDbContext : DbContext, IAppDbContext
     public DbSet<Acidente> Acidentes => Set<Acidente>();
     public DbSet<RegistroHhtMensal> RegistrosHhtMensais => Set<RegistroHhtMensal>();
 
-    public DbSet<RequisitoLegal> RequisitosLegais => Set<RequisitoLegal>();
-
-    public DbSet<DocumentoGestao> DocumentosGestao => Set<DocumentoGestao>();
-    public DbSet<DocumentoRevisao> DocumentoRevisoes => Set<DocumentoRevisao>();
-
-
     public DbSet<AtivoSst> AtivosSst => Set<AtivoSst>();
 
     public DbSet<DocumentoAssinatura> DocumentosAssinatura => Set<DocumentoAssinatura>();

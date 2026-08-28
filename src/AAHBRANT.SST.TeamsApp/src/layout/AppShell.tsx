@@ -9,7 +9,6 @@ import {
   Warning24Regular,
   Settings24Regular,
   Alert24Regular,
-  Gavel24Regular,
   ShieldCheckmark24Regular,
   DocumentError24Regular,
   BriefcaseMedical24Regular,
@@ -165,7 +164,6 @@ const useStyles = makeStyles({
 // abrindo direto sua tela (que já tem título + abas internas próprias, mesmo padrão de EPI).
 const secoesNavegacao: Array<{ pilar: string | null; itens: Array<{ rota: string; rotulo: string; icone: typeof Grid24Regular }> }> = [
   { pilar: null, itens: [{ rota: '/', rotulo: 'Dashboard', icone: Grid24Regular }] },
-  { pilar: null, itens: [{ rota: '/conformidade', rotulo: 'Conformidade', icone: Gavel24Regular }] },
   { pilar: null, itens: [{ rota: '/prevencao', rotulo: 'Prevenção', icone: ShieldError24Regular }] },
   { pilar: null, itens: [{ rota: '/riscos', rotulo: 'Riscos', icone: Warning24Regular }] },
   { pilar: null, itens: [{ rota: '/operacao', rotulo: 'Operação', icone: BuildingBank24Regular }] },
@@ -184,7 +182,6 @@ const itensNavegacaoFlat = secoesNavegacao.flatMap((secao) => secao.itens);
 
 function tituloDaRota(pathname: string): string {
   if (pathname === '/alertas') return 'Alertas';
-  if (pathname.startsWith('/conformidade')) return 'Conformidade';
   if (pathname.startsWith('/prevencao')) return 'Prevenção';
   if (pathname.startsWith('/operacao')) return 'Operação';
   if (pathname.startsWith('/riscos')) return 'Riscos';

@@ -1585,135 +1585,7 @@ export type NovoRegistroHhtMensal = Omit<RegistroHhtMensal, 'id' | 'obraNome'>;
 
 export type AtualizarRegistroHhtMensalPayload = NovoRegistroHhtMensal;
 
-// Seção 32 da Base de Conhecimento (linha 811) — vocabulário literal: "Conforme/Não conforme".
-export const StatusRequisitoLegal = {
-  Conforme: 1,
-  NaoConforme: 2,
-} as const;
-
-export const statusRequisitoLegalLabel: Record<number, string> = {
-  1: 'Conforme',
-  2: 'Não conforme',
-};
-
-export interface RequisitoLegal {
-  id: string;
-  codigo: string;
-  norma: string;
-  item?: string | null;
-  tema: string;
-  requisito: string;
-  aplicabilidade: boolean;
-  justificativa?: string | null;
-  evidencia?: string | null;
-  responsavelUsuarioId?: string | null;
-  responsavelUsuarioNome?: string | null;
-  periodicidade?: string | null;
-  prazo?: string | null;
-  status: number;
-  ultimaRevisao?: string | null;
-  proximaRevisao?: string | null;
-  obraId?: string | null;
-  obraNome?: string | null;
-}
-
-export interface NovoRequisitoLegal {
-  codigo: string;
-  norma: string;
-  item?: string | null;
-  tema: string;
-  requisito: string;
-  aplicabilidade: boolean;
-  justificativa?: string | null;
-  evidencia?: string | null;
-  responsavelUsuarioId?: string | null;
-  periodicidade?: string | null;
-  prazo?: string | null;
-  ultimaRevisao?: string | null;
-  proximaRevisao?: string | null;
-  obraId?: string | null;
-}
-
-export type AtualizarRequisitoLegalPayload = NovoRequisitoLegal;
-
-export interface RequisitoLegalDetalhe {
-  requisitoLegal: RequisitoLegal;
-  acoesPlano: AcaoPlano[];
-}
-
-// Seção 31 da Base de Conhecimento (linhas 767-769) — vocabulário literal de status:
-// "Rascunho → Em aprovação → Vigente → Obsoleto → Cancelado".
-export const StatusDocumentoGestao = {
-  Rascunho: 1,
-  EmAprovacao: 2,
-  Vigente: 3,
-  Obsoleto: 4,
-  Cancelado: 5,
-} as const;
-
-export const statusDocumentoGestaoLabel: Record<number, string> = {
-  1: 'Rascunho',
-  2: 'Em aprovação',
-  3: 'Vigente',
-  4: 'Obsoleto',
-  5: 'Cancelado',
-};
-
-export interface DocumentoGestao {
-  id: string;
-  nome: string;
-  tipo?: string | null;
-  categoria?: string | null;
-  origemDocumento?: string | null;
-  responsavelUsuarioId?: string | null;
-  responsavelUsuarioNome?: string | null;
-  versao?: string | null;
-  validade?: string | null;
-  dataEmissao: string;
-  dataRevisao?: string | null;
-  requisitoLegalId?: string | null;
-  requisitoLegalCodigo?: string | null;
-  obraId?: string | null;
-  obraNome?: string | null;
-  setorId?: string | null;
-  setorNome?: string | null;
-  status: number;
-  arquivo?: string | null;
-}
-
-export interface NovoDocumentoGestao {
-  nome: string;
-  tipo?: string | null;
-  categoria?: string | null;
-  origemDocumento?: string | null;
-  responsavelUsuarioId?: string | null;
-  versao?: string | null;
-  validade?: string | null;
-  dataEmissao: string;
-  dataRevisao?: string | null;
-  requisitoLegalId?: string | null;
-  obraId?: string | null;
-  setorId?: string | null;
-  arquivo?: string | null;
-}
-
-export type AtualizarDocumentoGestaoPayload = NovoDocumentoGestao;
-
-export interface DocumentoRevisao {
-  id: string;
-  numeroRevisao: number;
-  dataRevisao: string;
-  motivo: string;
-  responsavelUsuarioId?: string | null;
-  responsavelUsuarioNome?: string | null;
-}
-
-export interface DocumentoGestaoDetalhe {
-  documento: DocumentoGestao;
-  historico: DocumentoRevisao[];
-}
-
-// PR-SST-003 — PCMSO reaproveita DocumentoGestao (Tipo="PCMSO") como documento controlado +
+// PR-SST-003 — PCMSO reaproveitava DocumentoGestao (Tipo="PCMSO") como documento controlado +
 // PcmsoDetalhe com os campos clínicos específicos. Id abaixo é o Id do próprio PcmsoDetalhe;
 // documentoGestaoId aponta para o DocumentoGestao vinculado (edição/exclusão usam este último).
 export interface Pcmso {
@@ -1757,6 +1629,11 @@ export interface NovoPcmso {
 }
 
 export type AtualizarPcmsoPayload = NovoPcmso;
+
+// PENDENTE: DocumentoGestao (e o backend de src/AAHBRANT.SST.Application/Pcmsos) foi removido
+// junto com o módulo de Conformidade (Matriz Legal + Gestão Documental) em 2026-08-28. O PCMSO
+// fica sem armazenamento de documento até ser reformulado para não depender mais dele — ver
+// AAHBRANT.SST.Application/Pcmsos/* e DocumentoAlertaProvider.cs no backend.
 
 export const TipoAlerta = {
   AsoVencendo: 1,
@@ -2639,59 +2516,6 @@ export const api = {
     atualizar: (id: string, registro: AtualizarRegistroHhtMensalPayload) =>
       request<void>(`/api/registroshhtmensais/${id}`, { method: 'PUT', body: JSON.stringify(registro) }),
     excluir: (id: string) => request<void>(`/api/registroshhtmensais/${id}`, { method: 'DELETE' }),
-  },
-  matrizLegal: {
-    listar: (filtros?: { norma?: string; tema?: string; aplicabilidade?: boolean; status?: number; obraId?: string }) => {
-      const params = new URLSearchParams();
-      if (filtros?.norma) params.set('norma', filtros.norma);
-      if (filtros?.tema) params.set('tema', filtros.tema);
-      if (filtros?.aplicabilidade !== undefined) params.set('aplicabilidade', String(filtros.aplicabilidade));
-      if (filtros?.status) params.set('status', String(filtros.status));
-      if (filtros?.obraId) params.set('obraId', filtros.obraId);
-      const query = params.toString();
-      return request<RequisitoLegal[]>(`/api/matrizlegal${query ? `?${query}` : ''}`);
-    },
-    obterDetalhe: (id: string) => request<RequisitoLegalDetalhe>(`/api/matrizlegal/${id}`),
-    criar: (requisito: NovoRequisitoLegal) =>
-      request<{ id: string }>('/api/matrizlegal', { method: 'POST', body: JSON.stringify(requisito) }),
-    atualizar: (id: string, requisito: AtualizarRequisitoLegalPayload) =>
-      request<void>(`/api/matrizlegal/${id}`, { method: 'PUT', body: JSON.stringify(requisito) }),
-    excluir: (id: string) => request<void>(`/api/matrizlegal/${id}`, { method: 'DELETE' }),
-    atualizarStatus: (id: string, novoStatus: number) =>
-      request<void>(`/api/matrizlegal/${id}/status`, { method: 'POST', body: JSON.stringify({ novoStatus }) }),
-  },
-  gestaoDocumental: {
-    listar: (filtros?: {
-      nome?: string;
-      tipo?: string;
-      categoria?: string;
-      status?: number;
-      obraId?: string;
-      setorId?: string;
-    }) => {
-      const params = new URLSearchParams();
-      if (filtros?.nome) params.set('nome', filtros.nome);
-      if (filtros?.tipo) params.set('tipo', filtros.tipo);
-      if (filtros?.categoria) params.set('categoria', filtros.categoria);
-      if (filtros?.status) params.set('status', String(filtros.status));
-      if (filtros?.obraId) params.set('obraId', filtros.obraId);
-      if (filtros?.setorId) params.set('setorId', filtros.setorId);
-      const query = params.toString();
-      return request<DocumentoGestao[]>(`/api/gestaodocumental${query ? `?${query}` : ''}`);
-    },
-    obterDetalhe: (id: string) => request<DocumentoGestaoDetalhe>(`/api/gestaodocumental/${id}`),
-    criar: (documento: NovoDocumentoGestao) =>
-      request<{ id: string }>('/api/gestaodocumental', { method: 'POST', body: JSON.stringify(documento) }),
-    atualizar: (id: string, documento: AtualizarDocumentoGestaoPayload) =>
-      request<void>(`/api/gestaodocumental/${id}`, { method: 'PUT', body: JSON.stringify(documento) }),
-    excluir: (id: string) => request<void>(`/api/gestaodocumental/${id}`, { method: 'DELETE' }),
-    atualizarStatus: (id: string, novoStatus: number) =>
-      request<void>(`/api/gestaodocumental/${id}/status`, { method: 'POST', body: JSON.stringify({ novoStatus }) }),
-    criarRevisao: (id: string, motivo: string, responsavelUsuarioId?: string | null, novaVersao?: string | null) =>
-      request<{ id: string }>(`/api/gestaodocumental/${id}/revisoes`, {
-        method: 'POST',
-        body: JSON.stringify({ motivo, responsavelUsuarioId, novaVersao }),
-      }),
   },
   alertas: {
     listar: (filtros?: { status?: number; severidade?: number; obraId?: string; trabalhadorId?: string }) => {
