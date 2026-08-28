@@ -36,6 +36,10 @@ namespace AAHBRANT.SST.Infrastructure.Persistencia.Migrations
                     N'documento:ver', N'documento:criar', N'documento:editar', N'documento:atualizar_status', N'documento:revisar'
                 );");
 
+            migrationBuilder.DropForeignKey(
+                name: "FK_PcmsoDetalhes_DocumentosGestao_DocumentoGestaoId",
+                table: "PcmsoDetalhes");
+
             migrationBuilder.DropTable(
                 name: "DocumentoRevisoes");
 
@@ -44,11 +48,191 @@ namespace AAHBRANT.SST.Infrastructure.Persistencia.Migrations
 
             migrationBuilder.DropTable(
                 name: "RequisitosLegais");
+
+            migrationBuilder.AlterColumn<byte[]>(
+                name: "RowVersion",
+                table: "TemplatesBiometricoFutronic",
+                type: "rowversion",
+                rowVersion: true,
+                nullable: true,
+                oldClrType: typeof(byte[]),
+                oldType: "varbinary(max)",
+                oldNullable: true);
+
+            migrationBuilder.AlterColumn<byte[]>(
+                name: "RowVersion",
+                table: "RegrasAlerta",
+                type: "rowversion",
+                rowVersion: true,
+                nullable: true,
+                oldClrType: typeof(byte[]),
+                oldType: "varbinary(max)",
+                oldNullable: true);
+
+            migrationBuilder.AlterColumn<byte[]>(
+                name: "RowVersion",
+                table: "RegistrosHhtMensais",
+                type: "rowversion",
+                rowVersion: true,
+                nullable: true,
+                oldClrType: typeof(byte[]),
+                oldType: "varbinary(max)",
+                oldNullable: true);
+
+            migrationBuilder.AlterColumn<byte[]>(
+                name: "RowVersion",
+                table: "DocumentoSignatarios",
+                type: "rowversion",
+                rowVersion: true,
+                nullable: true,
+                oldClrType: typeof(byte[]),
+                oldType: "varbinary(max)",
+                oldNullable: true);
+
+            migrationBuilder.AlterColumn<byte[]>(
+                name: "RowVersion",
+                table: "DocumentosAssinatura",
+                type: "rowversion",
+                rowVersion: true,
+                nullable: true,
+                oldClrType: typeof(byte[]),
+                oldType: "varbinary(max)",
+                oldNullable: true);
+
+            migrationBuilder.AlterColumn<byte[]>(
+                name: "RowVersion",
+                table: "DispositivosAgenteBiometrico",
+                type: "rowversion",
+                rowVersion: true,
+                nullable: true,
+                oldClrType: typeof(byte[]),
+                oldType: "varbinary(max)",
+                oldNullable: true);
+
+            migrationBuilder.AlterColumn<byte[]>(
+                name: "RowVersion",
+                table: "CredenciaisWebAuthn",
+                type: "rowversion",
+                rowVersion: true,
+                nullable: true,
+                oldClrType: typeof(byte[]),
+                oldType: "varbinary(max)",
+                oldNullable: true);
+
+            migrationBuilder.AlterColumn<byte[]>(
+                name: "RowVersion",
+                table: "CalendariosEventosTeams",
+                type: "rowversion",
+                rowVersion: true,
+                nullable: true,
+                oldClrType: typeof(byte[]),
+                oldType: "varbinary(max)",
+                oldNullable: true);
+
+            migrationBuilder.AlterColumn<byte[]>(
+                name: "RowVersion",
+                table: "AtivosSst",
+                type: "rowversion",
+                rowVersion: true,
+                nullable: true,
+                oldClrType: typeof(byte[]),
+                oldType: "varbinary(max)",
+                oldNullable: true);
         }
 
         /// <inheritdoc />
         protected override void Down(MigrationBuilder migrationBuilder)
         {
+            migrationBuilder.AlterColumn<byte[]>(
+                name: "RowVersion",
+                table: "TemplatesBiometricoFutronic",
+                type: "varbinary(max)",
+                nullable: true,
+                oldClrType: typeof(byte[]),
+                oldType: "rowversion",
+                oldRowVersion: true,
+                oldNullable: true);
+
+            migrationBuilder.AlterColumn<byte[]>(
+                name: "RowVersion",
+                table: "RegrasAlerta",
+                type: "varbinary(max)",
+                nullable: true,
+                oldClrType: typeof(byte[]),
+                oldType: "rowversion",
+                oldRowVersion: true,
+                oldNullable: true);
+
+            migrationBuilder.AlterColumn<byte[]>(
+                name: "RowVersion",
+                table: "RegistrosHhtMensais",
+                type: "varbinary(max)",
+                nullable: true,
+                oldClrType: typeof(byte[]),
+                oldType: "rowversion",
+                oldRowVersion: true,
+                oldNullable: true);
+
+            migrationBuilder.AlterColumn<byte[]>(
+                name: "RowVersion",
+                table: "DocumentoSignatarios",
+                type: "varbinary(max)",
+                nullable: true,
+                oldClrType: typeof(byte[]),
+                oldType: "rowversion",
+                oldRowVersion: true,
+                oldNullable: true);
+
+            migrationBuilder.AlterColumn<byte[]>(
+                name: "RowVersion",
+                table: "DocumentosAssinatura",
+                type: "varbinary(max)",
+                nullable: true,
+                oldClrType: typeof(byte[]),
+                oldType: "rowversion",
+                oldRowVersion: true,
+                oldNullable: true);
+
+            migrationBuilder.AlterColumn<byte[]>(
+                name: "RowVersion",
+                table: "DispositivosAgenteBiometrico",
+                type: "varbinary(max)",
+                nullable: true,
+                oldClrType: typeof(byte[]),
+                oldType: "rowversion",
+                oldRowVersion: true,
+                oldNullable: true);
+
+            migrationBuilder.AlterColumn<byte[]>(
+                name: "RowVersion",
+                table: "CredenciaisWebAuthn",
+                type: "varbinary(max)",
+                nullable: true,
+                oldClrType: typeof(byte[]),
+                oldType: "rowversion",
+                oldRowVersion: true,
+                oldNullable: true);
+
+            migrationBuilder.AlterColumn<byte[]>(
+                name: "RowVersion",
+                table: "CalendariosEventosTeams",
+                type: "varbinary(max)",
+                nullable: true,
+                oldClrType: typeof(byte[]),
+                oldType: "rowversion",
+                oldRowVersion: true,
+                oldNullable: true);
+
+            migrationBuilder.AlterColumn<byte[]>(
+                name: "RowVersion",
+                table: "AtivosSst",
+                type: "varbinary(max)",
+                nullable: true,
+                oldClrType: typeof(byte[]),
+                oldType: "rowversion",
+                oldRowVersion: true,
+                oldNullable: true);
+
             migrationBuilder.CreateTable(
                 name: "RequisitosLegais",
                 columns: table => new
@@ -70,7 +254,7 @@ namespace AAHBRANT.SST.Infrastructure.Persistencia.Migrations
                     Prazo = table.Column<DateTime>(type: "datetime2", nullable: true),
                     ProximaRevisao = table.Column<DateTime>(type: "datetime2", nullable: true),
                     Requisito = table.Column<string>(type: "nvarchar(2000)", maxLength: 2000, nullable: false),
-                    RowVersion = table.Column<byte[]>(type: "varbinary(max)", nullable: true),
+                    RowVersion = table.Column<byte[]>(type: "rowversion", rowVersion: true, nullable: true),
                     Status = table.Column<int>(type: "int", nullable: false),
                     Tema = table.Column<string>(type: "nvarchar(200)", maxLength: 200, nullable: false),
                     UltimaRevisao = table.Column<DateTime>(type: "datetime2", nullable: true),
@@ -113,7 +297,7 @@ namespace AAHBRANT.SST.Infrastructure.Persistencia.Migrations
                     Nome = table.Column<string>(type: "nvarchar(200)", maxLength: 200, nullable: false),
                     Origem = table.Column<int>(type: "int", nullable: false),
                     OrigemDocumento = table.Column<string>(type: "nvarchar(200)", maxLength: 200, nullable: true),
-                    RowVersion = table.Column<byte[]>(type: "varbinary(max)", nullable: true),
+                    RowVersion = table.Column<byte[]>(type: "rowversion", rowVersion: true, nullable: true),
                     Status = table.Column<int>(type: "int", nullable: false),
                     Tipo = table.Column<string>(type: "nvarchar(100)", maxLength: 100, nullable: true),
                     UpdatedAtUtc = table.Column<DateTime>(type: "datetime2", nullable: true),
@@ -164,7 +348,7 @@ namespace AAHBRANT.SST.Infrastructure.Persistencia.Migrations
                     Motivo = table.Column<string>(type: "nvarchar(1000)", maxLength: 1000, nullable: false),
                     NumeroRevisao = table.Column<int>(type: "int", nullable: false),
                     Origem = table.Column<int>(type: "int", nullable: false),
-                    RowVersion = table.Column<byte[]>(type: "varbinary(max)", nullable: true),
+                    RowVersion = table.Column<byte[]>(type: "rowversion", rowVersion: true, nullable: true),
                     UpdatedAtUtc = table.Column<DateTime>(type: "datetime2", nullable: true),
                     UpdatedBy = table.Column<Guid>(type: "uniqueidentifier", nullable: true)
                 },
@@ -249,6 +433,14 @@ namespace AAHBRANT.SST.Infrastructure.Persistencia.Migrations
                 name: "IX_RequisitosLegais_Status",
                 table: "RequisitosLegais",
                 column: "Status");
+
+            migrationBuilder.AddForeignKey(
+                name: "FK_PcmsoDetalhes_DocumentosGestao_DocumentoGestaoId",
+                table: "PcmsoDetalhes",
+                column: "DocumentoGestaoId",
+                principalTable: "DocumentosGestao",
+                principalColumn: "Id",
+                onDelete: ReferentialAction.Cascade);
         }
     }
 }

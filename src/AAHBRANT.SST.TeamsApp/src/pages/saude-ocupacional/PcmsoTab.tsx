@@ -17,8 +17,8 @@ import {
 import { Add24Regular, ChevronRight24Regular, Delete24Regular } from '@fluentui/react-icons';
 import {
   api,
-  statusDocumentoGestaoLabel,
-  StatusDocumentoGestao,
+  statusPcmsoDocumentoLabel,
+  StatusPcmsoDocumento,
   type NovoPcmso,
   type Obra,
   type Pcmso,
@@ -210,9 +210,9 @@ export function PcmsoTab() {
                 <TableCell>
                   <Badge
                     appearance="tint"
-                    color={pcmso.status === StatusDocumentoGestao.Vigente ? 'success' : 'informative'}
+                    color={pcmso.status === StatusPcmsoDocumento.Vigente ? 'success' : 'informative'}
                   >
-                    {statusDocumentoGestaoLabel[pcmso.status]}
+                    {statusPcmsoDocumentoLabel[pcmso.status]}
                   </Badge>
                 </TableCell>
                 <TableCell>

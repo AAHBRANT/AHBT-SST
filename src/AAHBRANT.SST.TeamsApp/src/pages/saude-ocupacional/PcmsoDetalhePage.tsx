@@ -20,10 +20,10 @@ import {
   api,
   prioridadeAcaoLabel,
   statusAcaoPlanoLabel,
-  statusDocumentoGestaoLabel,
+  statusPcmsoDocumentoLabel,
   tipoAcaoPlanoLabel,
   StatusAcaoPlano,
-  StatusDocumentoGestao,
+  StatusPcmsoDocumento,
   type AcaoPlano,
   type AtualizarPcmsoPayload,
   type NovaAcaoPlano,
@@ -184,8 +184,8 @@ export function PcmsoDetalhePage() {
               <Text size={500} weight="semibold">
                 {pcmso.nome}
               </Text>
-              <Badge appearance="tint" color={pcmso.status === StatusDocumentoGestao.Vigente ? 'success' : 'informative'}>
-                {statusDocumentoGestaoLabel[pcmso.status]}
+              <Badge appearance="tint" color={pcmso.status === StatusPcmsoDocumento.Vigente ? 'success' : 'informative'}>
+                {statusPcmsoDocumentoLabel[pcmso.status]}
               </Badge>
               <BadgeVencimento dataValidade={pcmso.validade} />
             </div>
@@ -256,7 +256,7 @@ export function PcmsoDetalhePage() {
                   value={pcmso.status}
                   disabled
                 >
-                  {Object.entries(statusDocumentoGestaoLabel).map(([valor, rotulo]) => (
+                  {Object.entries(statusPcmsoDocumentoLabel).map(([valor, rotulo]) => (
                     <option key={valor} value={valor}>
                       {rotulo}
                     </option>

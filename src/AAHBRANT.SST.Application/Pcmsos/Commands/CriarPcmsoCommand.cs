@@ -1,8 +1,6 @@
 using AAHBRANT.SST.Application.Common.Interfaces;
-using AAHBRANT.SST.Domain.Entidades;
 using FluentValidation;
 using MediatR;
-using Microsoft.EntityFrameworkCore;
 
 namespace AAHBRANT.SST.Application.Pcmsos.Commands;
 
@@ -42,49 +40,13 @@ public class CriarPcmsoCommandHandler : IRequestHandler<CriarPcmsoCommand, Guid>
 
     public CriarPcmsoCommandHandler(IAppDbContext db) => _db = db;
 
-    public async Task<Guid> Handle(CriarPcmsoCommand request, CancellationToken ct)
+    public Task<Guid> Handle(CriarPcmsoCommand request, CancellationToken ct)
     {
-        if (request.ResponsavelUsuarioId.HasValue &&
-            !await _db.Usuarios.AnyAsync(u => u.Id == request.ResponsavelUsuarioId, ct))
-            throw new KeyNotFoundException($"Usuário {request.ResponsavelUsuarioId} não encontrado.");
-
-        if (request.ObraId.HasValue &&
-            !await _db.Obras.AnyAsync(o => o.Id == request.ObraId, ct))
-            throw new KeyNotFoundException($"Obra {request.ObraId} não encontrada.");
-
-        if (request.SetorId.HasValue &&
-            !await _db.Setores.AnyAsync(s => s.Id == request.SetorId, ct))
-            throw new KeyNotFoundException($"Setor {request.SetorId} não encontrado.");
-
-        var documento = new DocumentoGestao
-        {
-            Nome = request.Nome,
-            Tipo = "PCMSO",
-            Categoria = "SST",
-            ResponsavelUsuarioId = request.ResponsavelUsuarioId,
-            Versao = request.Versao,
-            Validade = request.Validade,
-            DataEmissao = request.DataEmissao,
-            ObraId = request.ObraId,
-            SetorId = request.SetorId,
-            Arquivo = request.Arquivo,
-        };
-        _db.DocumentosGestao.Add(documento);
-
-        var detalhe = new PcmsoDetalhe
-        {
-            DocumentoGestao = documento,
-            MedicoResponsavelNome = request.MedicoResponsavelNome,
-            MedicoResponsavelCrm = request.MedicoResponsavelCrm,
-            FuncoesContempladas = request.FuncoesContempladas,
-            RiscosConsiderados = request.RiscosConsiderados,
-            ExamesPrevistos = request.ExamesPrevistos,
-            Periodicidades = request.Periodicidades,
-            UnidadesObrasAbrangidas = request.UnidadesObrasAbrangidas,
-        };
-        _db.PcmsoDetalhes.Add(detalhe);
-
-        await _db.SaveChangesAsync(ct);
-        return documento.Id;
+        // PENDENTE: este handler criava um DocumentoGestao (Tipo="PCMSO") para guardar
+        // nome/versão/validade/status/arquivo — DocumentoGestao foi removido junto com Gestão
+        // Documental (Conformidade) em 2026-08-28. Precisa ser reformulado para não depender mais
+        // dele antes de voltar a funcionar (ver PcmsoDetalhe).
+        throw new NotSupportedException(
+            "Criação de PCMSO está temporariamente indisponível: dependia de DocumentoGestao, removido junto com o módulo de Conformidade.");
     }
 }

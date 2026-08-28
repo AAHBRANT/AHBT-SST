@@ -37,13 +37,14 @@ public class AptidaoAtividadeEspecifica : AuditableEntity
     public string? Observacoes { get; set; }
 }
 
-// PR-SST-003 — dados específicos do PCMSO, em cima de um DocumentoGestao (Tipo="PCMSO") que já
-// cobre nome/versão/validade/status/histórico de revisões. Reuso do genérico em vez de duplicar
-// esses campos, mesmo padrão já usado pelo módulo de Gestão Documental.
+// PR-SST-003 — dados específicos do PCMSO, originalmente em cima de um DocumentoGestao
+// (Tipo="PCMSO") para nome/versão/validade/status/histórico de revisões. PENDENTE: DocumentoGestao
+// foi removido junto com o módulo de Conformidade (2026-08-28) — DocumentoGestaoId ficou sem
+// entidade correspondente (nenhuma FK real no banco) até o PCMSO ser reformulado para não depender
+// mais dele.
 public class PcmsoDetalhe : AuditableEntity
 {
     public Guid DocumentoGestaoId { get; set; }
-    public DocumentoGestao? DocumentoGestao { get; set; }
 
     public string? MedicoResponsavelNome { get; set; }
     public string? MedicoResponsavelCrm { get; set; }

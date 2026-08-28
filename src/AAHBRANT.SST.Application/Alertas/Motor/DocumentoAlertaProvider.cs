@@ -1,35 +1,17 @@
-using AAHBRANT.SST.Application.Common.Interfaces;
 using AAHBRANT.SST.Domain.Enums;
 using AAHBRANT.SST.Domain.Interfaces;
-using Microsoft.EntityFrameworkCore;
 
 namespace AAHBRANT.SST.Application.Alertas.Motor;
 
-// Cobre todo DocumentoGestao com Validade preenchida — inclui PCMSO (Tipo="PCMSO", PR-SST-003),
-// já que Pcmso reaproveita DocumentoGestao sem entidade de vencimento própria.
+// PENDENTE: cobria todo DocumentoGestao com Validade preenchida (inclusive PCMSO, que reaproveitava
+// DocumentoGestao sem entidade de vencimento própria) — DocumentoGestao foi removido junto com
+// Gestão Documental/Conformidade em 2026-08-28. Retorna lista vazia (sem gerar alertas de documento)
+// em vez de lançar exceção, pois o AlertaEngineService não isola falha de um provider dos demais
+// (Aso/Treinamento/Epi/etc. não podem parar de funcionar por causa deste).
 public class DocumentoAlertaProvider : IAlertaOrigemProvider
 {
-    private readonly IAppDbContext _db;
-
     public TipoModuloAlerta Modulo => TipoModuloAlerta.Documento;
 
-    public DocumentoAlertaProvider(IAppDbContext db) => _db = db;
-
-    public async Task<List<AlertaOrigemItem>> ObterItensAsync(CancellationToken ct = default)
-    {
-        var documentos = await _db.DocumentosGestao
-            .Where(d => d.Validade.HasValue)
-            .ToListAsync(ct);
-
-        return documentos.Select(d => new AlertaOrigemItem
-        {
-            EntidadeOrigemTipo = "DocumentoGestao",
-            EntidadeOrigemId = d.Id,
-            DataVencimento = d.Validade!.Value,
-            TipoAlertaVencendo = TipoAlerta.DocumentoVencendo,
-            TipoAlertaVencido = TipoAlerta.DocumentoVencido,
-            Titulo = $"{d.Nome} — validade {d.Validade:dd/MM/yyyy}",
-            ObraId = d.ObraId,
-        }).ToList();
-    }
+    public Task<List<AlertaOrigemItem>> ObterItensAsync(CancellationToken ct = default) =>
+        Task.FromResult(new List<AlertaOrigemItem>());
 }

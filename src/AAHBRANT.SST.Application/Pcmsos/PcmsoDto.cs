@@ -19,7 +19,9 @@ public class PcmsoDto
     public Guid? ObraId { get; set; }
     public Guid? SetorId { get; set; }
     public string? Arquivo { get; set; }
-    public StatusDocumentoGestao Status { get; set; }
+    // PENDENTE: era StatusDocumentoGestao — o enum foi removido junto com Gestão Documental
+    // (2026-08-28); ver nota em PcmsoDetalhe (Domain/Entidades/SaudeOcupacional/SaudeOcupacional.cs).
+    public int Status { get; set; }
 
     public string? MedicoResponsavelNome { get; set; }
     public string? MedicoResponsavelCrm { get; set; }

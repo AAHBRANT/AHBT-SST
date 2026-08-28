@@ -45,8 +45,9 @@ public class PcmsoDetalheConfiguracao : IEntityTypeConfiguration<PcmsoDetalhe>
     {
         builder.Property(p => p.MedicoResponsavelNome).HasMaxLength(150);
         builder.Property(p => p.MedicoResponsavelCrm).HasMaxLength(30);
-        builder.HasOne(p => p.DocumentoGestao).WithMany()
-            .HasForeignKey(p => p.DocumentoGestaoId).OnDelete(DeleteBehavior.Cascade);
+        // PENDENTE: DocumentoGestaoId era FK para DocumentoGestao (removido junto com Gestão
+        // Documental/Conformidade em 2026-08-28) — ver nota em PcmsoDetalhe. Fica só como coluna
+        // solta, sem FK/navegação, até o PCMSO ser reformulado.
         builder.HasIndex(p => p.DocumentoGestaoId).IsUnique();
         builder.HasQueryFilter(p => p.Ativo);
 

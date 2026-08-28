@@ -1630,6 +1630,27 @@ export interface NovoPcmso {
 
 export type AtualizarPcmsoPayload = NovoPcmso;
 
+// Vocabulário de status que este PCMSO (PR-SST-003, reaproveitando DocumentoGestao) usava emprestado
+// de StatusDocumentoGestao (removido junto com Gestão Documental/Conformidade em 2026-08-28) —
+// mantido aqui, escopado só a este PCMSO, para as telas não perderem o rótulo/cor de status enquanto
+// o backend não é reformulado (ver PENDENTE acima e em Pcmsos/* no backend). Nome diferente de
+// StatusPcmso (acima) de propósito: aquele é do PCMSO v1 antigo, vocabulário numérico incompatível.
+export const StatusPcmsoDocumento = {
+  Rascunho: 1,
+  EmAprovacao: 2,
+  Vigente: 3,
+  Obsoleto: 4,
+  Cancelado: 5,
+} as const;
+
+export const statusPcmsoDocumentoLabel: Record<number, string> = {
+  1: 'Rascunho',
+  2: 'Em aprovação',
+  3: 'Vigente',
+  4: 'Obsoleto',
+  5: 'Cancelado',
+};
+
 // PENDENTE: DocumentoGestao (e o backend de src/AAHBRANT.SST.Application/Pcmsos) foi removido
 // junto com o módulo de Conformidade (Matriz Legal + Gestão Documental) em 2026-08-28. O PCMSO
 // fica sem armazenamento de documento até ser reformulado para não depender mais dele — ver
