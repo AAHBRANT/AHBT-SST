@@ -1,7 +1,20 @@
 # ONBOARDING — App de SST AAHBRANT
 
 > Handoff para iniciar uma sessão nova (outra conta/máquina) sem perder contexto.
-> Gerado em 2026-08-21, **reformulado em 2026-08-28** para refletir o estado real do código (a versão anterior estava desatualizada em vários pontos — ver §9 "O que mudou nesta reformulação").
+> Gerado em 2026-08-21, **reformulado em 2026-08-28** para refletir o estado real do código, e **atualizado no mesmo dia** após mesclar a branch `master-q7x0c1` (divergente desde 24/08, nunca integrada) em `master` — ver §0.
+
+## 0. Merge crítico feito em 28/08 — leia antes de tudo
+
+O repositório tinha **duas linhas de desenvolvimento divergentes** a partir do commit `b4bf2a7` (24/08), nunca reconciliadas: `master` (que seguiu até 28/08 com EPI reformulado, Motor de Assinatura, biometria, Calendário Teams) e `origin/master-q7x0c1` (parou em 25/08, mas tinha PCMSO/Saúde Ocupacional, RBAC Camada 2/3 e o piloto de sincronização offline — nenhuma dessas três coisas existia em `master`). Isso explica por que um deploy de "Saúde Ocupacional" não aparecia no Teams: o código existia, só que numa branch que não tinha sido integrada.
+
+**Nesta sessão as duas foram mescladas.** O que passou a existir em `master` a partir daí:
+- **Módulo PCMSO** (Saúde Ocupacional) — ver §4.
+- **RBAC Camada 2/3** (escopo por obra + Global Query Filter) — ver §9, item agora resolvido.
+- **Piloto de sincronização offline** (DDS, Inspeções, Checklists, APRs) — ver §6.
+
+Dois pontos importantes sobre esse merge:
+1. **Não foi possível compilar o backend nesta sessão** (SDK .NET indisponível no ambiente) — só o frontend foi validado (`npx tsc --noEmit`, sem erros). **Rodar `dotnet build` + suíte de testes antes de considerar o merge seguro para deploy.**
+2. O motor de alertas estava duplicado nas duas branches (implementações diferentes). Ficou a versão de `master` (mais completa — regras configuráveis, fila Teams, Calendário). A versão descartada tinha duas capacidades que a atual **não tem**: alerta de vencimento de **Documento de Gestão** e **escalonamento automático** de alertas parados sem tratamento para o Gestor QSMS. Ver §9 — pendência nova, não portada.
 
 ## 1. O que é este projeto
 
@@ -44,7 +57,7 @@ AHBT-SST/
 
 Padrão de tela do frontend: 1 item de menu por **domínio** (nunca por tabela), com `TabList`/abas internas para sub-cadastros — ver §6 "Decisões de IA/UX".
 
-## 4. Estado atual — 16 módulos, todos com Domain+migration+Application(CQRS)+Api+tela React
+## 4. Estado atual — 17 módulos, todos com Domain+migration+Application(CQRS)+Api+tela React
 
 O menu já está organizado em **4 pilares** (ver §6 — decisão que já foi executada, não é mais "projeto à parte"):
 
@@ -53,11 +66,12 @@ O menu já está organizado em **4 pilares** (ver §6 — decisão que já foi e
 | **Conformidade** | Matriz Legal | `/conformidade/matriz-legal` | Requisitos legais aplicáveis |
 | **Conformidade** | Gestão Documental | `/conformidade/gestao-documental` | Documentos controlados do SGI |
 | **Prevenção** | PGR | `/prevencao/pgr` | Inventário de riscos + Plano de ação + Revisões |
-| **Prevenção** | Inspeções/Checklists | `/prevencao/inspecoes` | Checklists versionados (append-only) + Execuções |
-| **Prevenção** | DDS | `/prevencao/dds` | Diálogo Diário de Segurança, com assinatura eletrônica (1º módulo integrado ao motor de assinatura) |
+| **Prevenção** | **PCMSO (Saúde Ocupacional)** | `/prevencao/pcmso` | Programa de Controle Médico de Saúde Ocupacional: matriz de exames por risco/função + revisões. **Trazido pelo merge de 28/08 (ver §0) — ainda não verificado ponta-a-ponta no navegador nesta sessão, tratar como não-verificado até alguém clicar de verdade.** |
+| **Prevenção** | Inspeções/Checklists | `/prevencao/inspecoes` | Checklists versionados (append-only) + Execuções — suporte a uso offline, ver §6 |
+| **Prevenção** | DDS | `/prevencao/dds` | Diálogo Diário de Segurança, com assinatura eletrônica (1º módulo integrado ao motor de assinatura) — suporte a uso offline, ver §6 |
 | **Operação** | Empresas/Obras | `/operacao/obras` | Base organizacional |
 | **Operação** | Pessoas | `/operacao/pessoas` + `/pessoas/:id` | Perfil de Vida do Trabalhador em **6 abas** — ver §6 |
-| **Operação** | APR | `/operacao/apr` | Etapas + Assinaturas (ainda `AprAssinatura` simples, não integrada ao motor genérico) + Aprovar/Reprovar |
+| **Operação** | APR | `/operacao/apr` | Etapas + Assinaturas (ainda `AprAssinatura` simples, não integrada ao motor genérico) + Aprovar/Reprovar — suporte a uso offline, ver §6 |
 | **Operação** | PT (Permissão de Trabalho) | `/operacao/pt` | Requisitos + Controles, Autorizar/Encerrar; **fidelidade ao formulário em papel ainda pendente, ver §7** |
 | **Operação** | Identificação (NTAG/QR) | `/operacao/identificacao` | Áreas + Tags, resolver por UID |
 | **Operação** | Ativos | `/operacao/ativos` | Ativos de SST (extintores, equipamentos etc.) |
@@ -83,6 +97,7 @@ Todas implementadas e mescladas (ver `docs/superpowers/specs/2026-08-26-matriz-e
 - **Motor de Alertas** (`Application/Alertas/Motor/AlertaEngineService`, rodando via `AlertaEngineWorker` no projeto Worker): agrega 5 provedores de origem (ASO, EPI, Equipamento, Extintor, Treinamento) e cria/atualiza/resolve `Alerta` automaticamente, notificando por Activity Feed do Teams. **Extensão recente (28/08)**: qualquer alerta agora também gera evento no **Calendário do Teams/Outlook** do destinatário (`CalendarioEventoTeams` + `GraphCalendarioTeamsService`), plugado no mesmo ponto de criação/atualização/resolução — novos módulos ganham isso de graça.
 - **Motor de Assinatura Eletrônica genérico** (`Entidades/Assinatura/DocumentoAssinatura`+`DocumentoSignatario`, chave `(EntidadeTipo, EntidadeId)`): estratégias plugáveis — crachá NFC/QR+PIN (`CrachaPinAutenticacaoStrategy`, principal), WebAuthn (`Fido2AutenticacaoStrategy`, opcional), biometria física (`FutronicAutenticacaoStrategy`). UI reutilizável: `components/assinatura/AssinaturaQuiosque.tsx`. **Já integrado a**: DDS, PT, Entrega/Devolução de EPI. **Ainda não integrado a**: Treinamento (modelo de dados incompatível), Inspeções, APR (decisão de produto pendente sobre substituir `AprAssinatura`). Doc vivo: `docs/Motor-Assinatura-Eletronica.md`.
 - **Biometria Futronic FS80H** (projeto `AAHBRANT.SST.AgenteBiometria`): arquitetura completa (agente local Windows com API HTTP, cache de templates, matching 1:N) — **mas hoje roda com `SimuladoFingerprintReader`/`SimuladoFingerprintMatcher`**, porque o SDK real (ScanAPI/ftrapi) depende do hardware físico ainda não disponível. Não tratar como pronto para produção até essa troca.
+- **Sincronização offline** (`TeamsApp/src/lib/offline/syncEngine.ts` + `db.ts`, trazido pelo merge de 28/08 — ver §0): piloto restrito a DDS, Inspeções, Checklists e APRs (módulos de campo, onde falta de sinal é mais comum). Leituras (`GET`) usam cache-then-network (IndexedDB); mutações sem conexão entram numa fila local com `Idempotency-Key` e reenviam sozinhas quando a internet volta — conflito (registro mudou no servidor enquanto offline) sempre resolve a favor do servidor, avisando o usuário (`SyncStatusBadge` na UI). Os outros ~25 módulos seguem com fetch direto, sem cache nem fila — estender o piloto é trabalho futuro, módulo a módulo. Limite conhecido e aceito: criar um registro novo enquanto offline não retorna o id real (lança `MutacaoEnfileiradaOfflineError`); ações sobre um registro já existente funcionam offline normalmente.
 
 ## 7. Perfil de Vida do Trabalhador — as 6 abas (`/operacao/pessoas/:id`)
 
@@ -108,14 +123,16 @@ Confirma a regra do §6-antigo: dado que pertence a uma pessoa nunca vira item d
 - ~~Sem middleware global de exceção~~ → `TratamentoDeExcecaoMiddleware` (`Api/Middlewares/`) trata `ValidationException`→400, `KeyNotFoundException`→404, `InvalidOperationException`→400, genérico→500 sem stack trace exposto.
 - ~~Sem CRUD de Equipe~~ → `EquipesController` completo, com `[Authorize(Policy=...)]`.
 - ~~LGPD/CPF sem medida técnica~~ → implementado, mas **não** via "Always Encrypted" (que o onboarding antigo previa) — em vez disso, criptografia em nível de aplicação: `CpfCriptografiaConversor` (AES-256-GCM via `ValueConverter`) + `Trabalhador.CpfHash` (HMAC-SHA256 determinístico, só para unicidade) + `CpfMascarador` na exibição. Migration `20260823161315_AdicionarCriptografiaCpf` já rodou com backfill. **`docs/ERD.md` ainda cita "Always Encrypted" — desatualizado, atualizar quando alguém mexer nesse doc.**
+- ~~RBAC Camada 2/3 (escopo por obra + Global Query Filter) pendente~~ → resolvido pelo merge de 28/08 (§0): `ICurrentUserService.DefinirEscopo` + `EscopoPorObraMiddleware` (resolve o escopo a cada requisição) + `HasQueryFilter` em `SstDbContext` para Dds/Inspecao/Acidente/Pgr/Atividade/Setor/Trabalhador/AreaSst/Pcmso. Continua no-op (acesso global) enquanto `AzureAd:TenantId` não estiver configurado — mesmo comportamento de antes, só passa a restringir de verdade quando o Entra ID for provisionado. **Não testado ponta a ponta nesta sessão** (não havia SDK .NET disponível para compilar) — validar antes de confiar nisso em produção.
+- ~~"Saúde Ocupacional" como módulo próprio não existe~~ → **existe como PCMSO**, trazido pelo mesmo merge (matriz de exames por função/risco + revisões, `/prevencao/pcmso`). Não é a mesma coisa que foi cogitada como "a definir com o usuário" na versão anterior deste doc — é o que já estava implementado numa branch não integrada. **Ainda não verificado no navegador nesta sessão** — antes de dar como pronto, clicar de verdade e conferir se cobre o que o usuário esperava (ver §0).
 
 **Ainda pendentes:**
-- **RBAC — só a Camada 1 está implementada.** Existem `[Authorize(Policy=...)]` reais (~45 pontos) e `PermissaoAuthorizationHandler` checando `PerfilAcesso`/`PerfilAcessoPermissao` no banco. Mas **Camada 2 (escopo por obra) e Camada 3 (Global Query Filter por perfil)** — descritas em `docs/RBAC-Matrix.md §4` — seguem deliberadamente pendentes (comentário no próprio handler: aguardando "threading do contexto de obra por requisição"). **Além disso, se `AzureAd:TenantId` estiver vazio (Entra ID não configurado), o handler autoriza tudo incondicionalmente** — RBAC é no-op nesse cenário, cuidado ao testar localmente achando que está protegido.
-- **Matriz RBAC não validada pela Diretoria/Gestor QSMS** — `docs/RBAC-Matrix.md` segue como rascunho técnico.
+- **RBAC — Matriz não validada pela Diretoria/Gestor QSMS** — `docs/RBAC-Matrix.md` segue como rascunho técnico, mesmo com as 3 camadas agora implementadas tecnicamente.
 - **PT — fidelidade ao formulário em papel.** Spec pronta (`docs/superpowers/specs/2026-08-26-pt-fidelidade-documento-design.md`), status "em revisão pelo usuário" — **implementação não iniciada**. É o item mais concreto e pronto para puxar (Tipo de Serviço estruturado, Cuidados Comuns, Precauções por categoria, 3 papéis de aprovação/encerramento em vez de 1, fotos de evidência, exportação PDF).
 - **Biometria Futronic real** — SDK ainda simulado, ver §6.
 - **Motor de assinatura não integrado a** Treinamento/Inspeções/APR (ver §6).
-- **"Saúde Ocupacional" como módulo próprio não existe.** Hoje só há: (a) aba ASO dentro do perfil do trabalhador (atestados pontuais); (b) enum `DoençaOcupacional` dentro de Acidentes (registro de ocorrência isolada). Não há PCMSO, periodicidade de exames por risco, indicadores epidemiológicos, nem tela dedicada. **Sinalizado pelo usuário em 28/08 — escopo ainda a definir com ele antes de desenhar qualquer entidade nova** (buscar seção específica na Base de Conhecimento primeiro).
+- **Motor de Alertas não cobre vencimento de Documento de Gestão nem escalonamento automático.** A implementação alternativa que existia em `master-q7x0c1` tinha essas duas capacidades (alertar quando um `DocumentoGestao` vence e escalonar automaticamente, para o Gestor QSMS, alertas parados sem tratamento) e foi descartada no merge de 28/08 em favor da versão de `master` (mais completa noutros aspectos — ver §0). **Avaliar com o usuário se vale portar essas duas capacidades para o `AlertaEngineService` atual.**
+- **Backend não compilado desde o merge de 28/08** — rodar `dotnet build` + testes assim que houver SDK .NET disponível, antes de qualquer deploy.
 - **Divergência de cor vinho oficial**: o tema web (`TeamsApp/src/theme.ts`) usa `#7B1E2B` (igual ao `DESING SYSTEM AAHBRANT.md`), mas os 4 serviços de PDF (`DdsPdfService`, `EntregaEpiPdfService`, `DocumentoAssinaturaPdfService`, `RelatorioFiscalizacaoPdfService`) usam `#670000` (const `CorMarca`). **Confirmar com o usuário/marca qual é a cor-mestra real** antes de alterar qualquer um dos dois lados.
 - **Senha do SA em texto puro** — não foi possível confirmar nem descartar nesta reformulação (nenhum `appsettings.Development.json` versionado foi encontrado; pode existir localmente fora do controle de versão). Confirmar manualmente no ambiente de desenvolvimento.
 - Provisionamento de recursos Azure reais (App Registration, Azure SQL, App Service/Functions) só ocorre com confirmação explícita do usuário, passo a passo.
@@ -124,11 +141,12 @@ Confirma a regra do §6-antigo: dado que pertence a uma pessoa nunca vira item d
 ## 10. Próximo passo sugerido
 
 Ordem sugerida, mas **sempre alinhar com o usuário antes de implementar**:
-1. **PT — fidelidade ao formulário em papel** (spec já pronta, só falta aprovação final + implementação).
-2. **RBAC Camada 2/3** (escopo por obra + query filter), quando o contexto de obra por requisição estiver desenhado.
-3. **Saúde Ocupacional** — definir escopo com o usuário (PCMSO? periodicidade de exames? indicadores?) antes de qualquer entidade nova, citando a seção exata da Base de Conhecimento.
-4. **Biometria Futronic real** (troca dos simuladores pelo SDK, quando o hardware estiver disponível para teste).
-5. Integrar motor de assinatura a Treinamento/Inspeções/APR (depende de decisão de produto sobre `AprAssinatura`).
+1. **Rodar `dotnet build` + testes** do merge de 28/08 (§0) assim que houver SDK .NET disponível — não foi possível compilar o backend nesta sessão.
+2. **Verificar PCMSO no navegador** — módulo veio pronto do merge, mas ninguém clicou nele ainda nesta sessão; confirmar que cobre o que o usuário espera de "Saúde Ocupacional" antes de dar como concluído.
+3. **PT — fidelidade ao formulário em papel** (spec já pronta, só falta aprovação final + implementação).
+4. Avaliar com o usuário se porta para o `AlertaEngineService` as duas capacidades descartadas no merge (alerta de Documento de Gestão vencendo, escalonamento automático para Gestor QSMS).
+5. **Biometria Futronic real** (troca dos simuladores pelo SDK, quando o hardware estiver disponível para teste).
+6. Integrar motor de assinatura a Treinamento/Inspeções/APR (depende de decisão de produto sobre `AprAssinatura`).
 
 ## 11. Como retomar na sessão nova
 
@@ -136,4 +154,5 @@ Ordem sugerida, mas **sempre alinhar com o usuário antes de implementar**:
 2. Ler a Base de Conhecimento na seção relevante ao próximo módulo antes de propor schema.
 3. Seguir o padrão de camadas já estabelecido (replicar a estrutura de módulos já prontos, ex. `Asos`/`Riscos`/`PermissoesTrabalho`, para o módulo novo).
 4. Não considerar nenhum módulo "pronto" sem a verificação real no navegador (não pular esta etapa mesmo sob pressão de tempo).
-5. Tratar este documento como o estado mais recente conhecido, mas **sempre confirmar contra o código atual** antes de agir (arquivos podem ter mudado desde a geração deste handoff) — em especial os pontos marcados como "a confirmar" no §9 (cor oficial, senha SA, escopo de Saúde Ocupacional).
+5. Tratar este documento como o estado mais recente conhecido, mas **sempre confirmar contra o código atual** antes de agir (arquivos podem ter mudado desde a geração deste handoff) — em especial os pontos marcados como "a confirmar" no §9 (cor oficial, senha SA) e a verificação pendente do PCMSO no navegador (§0/§4).
+6. **Antes de criar qualquer branch nova ou continuar trabalho de uma sessão anterior, rodar `git log --all --oneline` e comparar branches** (`git log origin/master..origin/<branch>`) — o incidente do §0 (duas linhas divergentes por 4 dias sem ninguém perceber) pode se repetir se branches não forem mescladas ou pelo menos revisadas com frequência.
