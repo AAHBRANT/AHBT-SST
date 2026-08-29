@@ -6,14 +6,10 @@ using Microsoft.EntityFrameworkCore;
 
 namespace AAHBRANT.SST.Application.AprEtapas.Commands;
 
-// "Etapas" + "riscos" por etapa (§17) — RiscosIds referencia Risco já cadastrado no módulo
-// Riscos (mesmo padrão de child-collection inline de CriarRiscoCommand.TrabalhadoresExpostosIds).
-public record CriarAprEtapaCommand(
-    Guid AprId,
-    int Ordem,
-    string Descricao,
-    string? MedidasPreventivas,
-    List<Guid> RiscosIds) : IRequest<Guid>;
+// "ETAPA DA ATIVIDADE" (só Ordem/Descrição) — os perigos/riscos dessa etapa são adicionados depois,
+// linha a linha, via CriarAprEtapaRiscoCommand (mesmo princípio de granularidade incremental já
+// usado em outros módulos com child-collection, ex. CriarAcaoPlanoCommand).
+public record CriarAprEtapaCommand(Guid AprId, int Ordem, string Descricao) : IRequest<Guid>;
 
 public class CriarAprEtapaCommandValidator : AbstractValidator<CriarAprEtapaCommand>
 {
@@ -41,11 +37,7 @@ public class CriarAprEtapaCommandHandler : IRequestHandler<CriarAprEtapaCommand,
             AprId = request.AprId,
             Ordem = request.Ordem,
             Descricao = request.Descricao,
-            MedidasPreventivas = request.MedidasPreventivas,
         };
-
-        foreach (var riscoId in request.RiscosIds.Distinct())
-            etapa.Riscos.Add(new AprEtapaRisco { RiscoId = riscoId });
 
         _db.AprEtapas.Add(etapa);
         await _db.SaveChangesAsync(ct);

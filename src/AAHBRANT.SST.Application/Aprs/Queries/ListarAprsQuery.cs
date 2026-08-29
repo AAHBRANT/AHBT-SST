@@ -15,7 +15,7 @@ public class ListarAprsQueryHandler : IRequestHandler<ListarAprsQuery, List<AprD
     public async Task<List<AprDto>> Handle(ListarAprsQuery request, CancellationToken ct)
     {
         var query = _db.Aprs
-            .Include(a => a.Atividade)
+            .Include(a => a.Atividade!).ThenInclude(at => at.Obra)
             .Include(a => a.Equipe)
             .Include(a => a.AprovadoPorUsuario)
             .AsQueryable();
@@ -28,9 +28,13 @@ public class ListarAprsQueryHandler : IRequestHandler<ListarAprsQuery, List<AprD
         return aprs.Select(a => new AprDto
         {
             Id = a.Id,
+            NumeroApr = a.NumeroApr,
             AtividadeId = a.AtividadeId,
             AtividadeNome = a.Atividade?.Nome ?? string.Empty,
+            ObraNome = a.Atividade?.Obra?.Nome,
             Local = a.Local,
+            MaquinasEquipamentos = a.MaquinasEquipamentos,
+            PgrReferencia = a.PgrReferencia,
             EquipeId = a.EquipeId,
             EquipeNome = a.Equipe?.Nome,
             Data = a.Data,

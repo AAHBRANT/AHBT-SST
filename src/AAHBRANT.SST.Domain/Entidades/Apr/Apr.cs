@@ -3,17 +3,26 @@ using AAHBRANT.SST.Domain.Enums;
 
 namespace AAHBRANT.SST.Domain.Entidades;
 
-// Análise Preliminar de Risco (Base de Conhecimento §17): estrutura literal
-// Atividade → etapas → perigos → riscos → controles → responsáveis → aprovação.
-// Campos literais citados: identificação da atividade; local; equipe; data; validade;
-// etapas; riscos; medidas preventivas; responsáveis; aprovação; assinatura; evidências.
-// §46 confirma que "Análise de risco" precede "Liberação da atividade" no fluxo operacional.
+// Análise Preliminar de Risco — reformulada em 2026-08-29 para reproduzir literalmente o formulário
+// "APR – ANÁLISE PRELIMINAR DE RISCO | REV.02" (planilha fornecida pelo usuário), substituindo o
+// desenho anterior (que reaproveitava a entidade genérica Risco do módulo Riscos, sem risco
+// residual e sem os campos de texto do formulário). Sem dado real cadastrado no seeder para migrar.
 public class Apr : AuditableEntity
 {
+    // Campo "Nº APR:" do cabeçalho — texto livre preenchido manualmente, sem numeração automática
+    // (o documento não define uma regra de numeração).
+    public string? NumeroApr { get; set; }
+
     public Guid AtividadeId { get; set; }
     public Atividade? Atividade { get; set; }
 
     public string Local { get; set; } = string.Empty;
+
+    // "MÁQUINAS / EQUIP.:" e "PGR / PROCEDIMENTO REF.:" do cabeçalho — texto livre; PgrReferencia
+    // não vira FK para o Pgr do módulo Riscos porque o campo do documento é uma citação/referência
+    // (ex.: número do documento), não necessariamente o mesmo Pgr cadastrado no sistema.
+    public string? MaquinasEquipamentos { get; set; }
+    public string? PgrReferencia { get; set; }
 
     public Guid? EquipeId { get; set; }
     public Equipe? Equipe { get; set; }
@@ -21,9 +30,9 @@ public class Apr : AuditableEntity
     public DateTime Data { get; set; }
     public DateTime? Validade { get; set; }
 
-    // "Aprovação" (§17) — o documento não descreve um fluxo de status literal para a APR (mesma
-    // lacuna já registrada em StatusPgr/StatusControleRisco) — proposta própria, avisar o usuário
-    // se quiser outro vocabulário.
+    // "Aprovação" — o documento não descreve um fluxo de status literal para a APR (mesma lacuna já
+    // registrada em StatusPgr/StatusControleRisco) — proposta própria, avisar o usuário se quiser
+    // outro vocabulário.
     public StatusApr Status { get; set; } = StatusApr.EmElaboracao;
 
     public Guid? AprovadoPorUsuarioId { get; set; }
@@ -32,11 +41,16 @@ public class Apr : AuditableEntity
     public string? MotivoReprovacao { get; set; }
 
     public ICollection<AprEtapa> Etapas { get; set; } = new List<AprEtapa>();
+    // "ENVOLVIDOS NA ATIVIDADE / EQUIPE EXPOSTA" (Nome/Função) do documento — o "Ass./Visto" de cada
+    // um é uma AprAssinatura com Papel=Envolvido para o mesmo TrabalhadorId.
     public ICollection<AprResponsavel> Responsaveis { get; set; } = new List<AprResponsavel>();
     public ICollection<AprAssinatura> Assinaturas { get; set; } = new List<AprAssinatura>();
 }
 
-// "Etapas" (§17) — elemento estrutural próprio da APR, sem equivalente já cadastrado em Risco/PGR.
+// "ETAPA DA ATIVIDADE" — no documento, a mesma etapa se repete em várias linhas da tabela (uma por
+// perigo/evento perigoso identificado nela); aqui isso é literalmente Etapa (Ordem/Descrição) → N
+// AprEtapaRisco. MedidasPreventivas (texto por etapa) foi removido: no documento a coluna
+// "MEDIDAS DE PREVENÇÃO/CONTROLE" é por linha de risco, não por etapa — ver AprEtapaRisco.
 public class AprEtapa : AuditableEntity
 {
     public Guid AprId { get; set; }
@@ -45,27 +59,44 @@ public class AprEtapa : AuditableEntity
     public int Ordem { get; set; }
     public string Descricao { get; set; } = string.Empty;
 
-    // "Medidas preventivas" (§17) — texto livre por etapa, complementar aos campos
-    // ControlesExistentes/ControlesAdicionais já registrados no Risco vinculado (não duplica dado).
-    public string? MedidasPreventivas { get; set; }
-
     public ICollection<AprEtapaRisco> Riscos { get; set; } = new List<AprEtapaRisco>();
 }
 
-// "Perigos"/"riscos"/"controles" (§17) por etapa — reaproveita o cadastro já existente de
-// Risco/Perigo (módulo Riscos) em vez de duplicar, mesmo princípio já usado no PlanoAcaoItem do PGR.
+// Uma linha da tabela principal do formulário — todos os campos são literais das colunas da
+// planilha. Diferente do desenho anterior (FK para o Risco genérico do módulo Riscos), aqui os
+// dados são inteiramente próprios da APR: "Trabalhadores Expostos" e "Responsável" são texto livre
+// (o documento os preenche como descrição de papel/função — ex. "Encarregado / Operador" — não como
+// vínculo a um Trabalhador/Usuario específico do cadastro).
 public class AprEtapaRisco : AuditableEntity
 {
     public Guid AprEtapaId { get; set; }
     public AprEtapa? AprEtapa { get; set; }
 
-    public Guid RiscoId { get; set; }
-    public Risco? Risco { get; set; }
+    public string PerigoEventoPerigoso { get; set; } = string.Empty;
+    public string? FonteCircunstancia { get; set; }
+    public string? PossiveisLesoes { get; set; }
+    public string? TrabalhadoresExpostos { get; set; }
+
+    // "P" / "S" / "RISCO INICIAL" — RiscoInicial calculado por AprNivelRiscoCalculator no momento do
+    // salvamento (mesmo princípio já usado em Risco.NivelRisco), não uma coluna computada no banco.
+    public int ProbabilidadeInicial { get; set; }
+    public int SeveridadeInicial { get; set; }
+    public NivelRiscoApr NivelRiscoInicial { get; set; }
+
+    public string? MedidasPrevencao { get; set; }
+    public string? Responsavel { get; set; }
+
+    // "P RES." / "S RES." / "RISCO RESIDUAL" — mesmo cálculo, aplicado depois das medidas de
+    // prevenção/controle.
+    public int ProbabilidadeResidual { get; set; }
+    public int SeveridadeResidual { get; set; }
+    public NivelRiscoApr NivelRiscoResidual { get; set; }
 }
 
-// "Responsáveis" (§17) — trabalhadores designados/cobertos por esta APR. Relação a Trabalhador
-// identificável (não apenas contagem), mesmo padrão de RiscoTrabalhadorExposto — necessário para
-// o motor de elegibilidade (§45) saber quem está autorizado a executar sob esta análise de risco.
+// "Responsáveis"/"Envolvidos" — trabalhadores designados/cobertos por esta APR. Relação a
+// Trabalhador identificável (não apenas contagem), mesmo padrão de RiscoTrabalhadorExposto —
+// necessário para o motor de elegibilidade (§45) saber quem está autorizado a executar sob esta
+// análise de risco.
 public class AprResponsavel : AuditableEntity
 {
     public Guid AprId { get; set; }
@@ -75,10 +106,13 @@ public class AprResponsavel : AuditableEntity
     public Trabalhador? Trabalhador { get; set; }
 }
 
-// "Assinatura" (§17) — o documento não descreve infraestrutura de assinatura digital/certificado
-// (inexistente no projeto). Modelada como confirmação simples de ciência por pessoa envolvida
-// (não uma assinatura criptográfica/ICP-Brasil) — sinalizar ao usuário se precisar de assinatura
-// eletrônica com validade jurídica real. Append-only (sem edição/exclusão), mesmo padrão de PgrRevisao.
+// "Ass./Visto" (linha de envolvido) e os dois blocos formais "Elaboração"/"Supervisão" do rodapé —
+// o documento não descreve infraestrutura de assinatura digital/certificado (inexistente no
+// projeto). Modelada como confirmação simples de ciência por pessoa (não uma assinatura
+// criptográfica/ICP-Brasil) — sinalizar ao usuário se precisar de assinatura eletrônica com
+// validade jurídica real (o Motor de Assinatura Eletrônica do sistema, hoje usado por Dds, poderia
+// ser estendido para cá numa fase futura). Append-only (sem edição/exclusão), mesmo padrão de
+// PgrRevisao.
 public class AprAssinatura : AuditableEntity
 {
     public Guid AprId { get; set; }

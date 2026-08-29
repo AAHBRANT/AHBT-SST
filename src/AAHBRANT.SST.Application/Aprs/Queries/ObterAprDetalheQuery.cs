@@ -15,7 +15,7 @@ public class ObterAprDetalheQueryHandler : IRequestHandler<ObterAprDetalheQuery,
     public async Task<AprDetalheDto?> Handle(ObterAprDetalheQuery request, CancellationToken ct)
     {
         var apr = await _db.Aprs
-            .Include(a => a.Atividade)
+            .Include(a => a.Atividade!).ThenInclude(at => at.Obra)
             .Include(a => a.Equipe)
             .Include(a => a.AprovadoPorUsuario)
             .FirstOrDefaultAsync(a => a.Id == request.Id, ct);
@@ -29,7 +29,7 @@ public class ObterAprDetalheQueryHandler : IRequestHandler<ObterAprDetalheQuery,
 
         var responsaveis = await _db.AprResponsaveis
             .Where(r => r.AprId == apr.Id)
-            .Include(r => r.Trabalhador)
+            .Include(r => r.Trabalhador!).ThenInclude(t => t.Funcao)
             .ToListAsync(ct);
 
         var assinaturas = await _db.AprAssinaturas
@@ -43,9 +43,13 @@ public class ObterAprDetalheQueryHandler : IRequestHandler<ObterAprDetalheQuery,
             Apr = new AprDto
             {
                 Id = apr.Id,
+                NumeroApr = apr.NumeroApr,
                 AtividadeId = apr.AtividadeId,
                 AtividadeNome = apr.Atividade?.Nome ?? string.Empty,
+                ObraNome = apr.Atividade?.Obra?.Nome,
                 Local = apr.Local,
+                MaquinasEquipamentos = apr.MaquinasEquipamentos,
+                PgrReferencia = apr.PgrReferencia,
                 EquipeId = apr.EquipeId,
                 EquipeNome = apr.Equipe?.Nome,
                 Data = apr.Data,
@@ -62,15 +66,31 @@ public class ObterAprDetalheQueryHandler : IRequestHandler<ObterAprDetalheQuery,
                 AprId = e.AprId,
                 Ordem = e.Ordem,
                 Descricao = e.Descricao,
-                MedidasPreventivas = e.MedidasPreventivas,
-                RiscosIds = e.Riscos.Select(r => r.RiscoId).ToList()
+                Riscos = e.Riscos.Select(r => new AprEtapaRiscoDto
+                {
+                    Id = r.Id,
+                    AprEtapaId = r.AprEtapaId,
+                    PerigoEventoPerigoso = r.PerigoEventoPerigoso,
+                    FonteCircunstancia = r.FonteCircunstancia,
+                    PossiveisLesoes = r.PossiveisLesoes,
+                    TrabalhadoresExpostos = r.TrabalhadoresExpostos,
+                    ProbabilidadeInicial = r.ProbabilidadeInicial,
+                    SeveridadeInicial = r.SeveridadeInicial,
+                    NivelRiscoInicial = r.NivelRiscoInicial,
+                    MedidasPrevencao = r.MedidasPrevencao,
+                    Responsavel = r.Responsavel,
+                    ProbabilidadeResidual = r.ProbabilidadeResidual,
+                    SeveridadeResidual = r.SeveridadeResidual,
+                    NivelRiscoResidual = r.NivelRiscoResidual,
+                }).ToList()
             }).ToList(),
             Responsaveis = responsaveis.Select(r => new AprResponsavelDto
             {
                 Id = r.Id,
                 AprId = r.AprId,
                 TrabalhadorId = r.TrabalhadorId,
-                TrabalhadorNome = r.Trabalhador?.Nome ?? string.Empty
+                TrabalhadorNome = r.Trabalhador?.Nome ?? string.Empty,
+                TrabalhadorFuncaoNome = r.Trabalhador?.Funcao?.Nome
             }).ToList(),
             Assinaturas = assinaturas.Select(s => new AprAssinaturaDto
             {

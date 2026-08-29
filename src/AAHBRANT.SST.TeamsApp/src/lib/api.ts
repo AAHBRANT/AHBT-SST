@@ -733,23 +733,55 @@ export const statusAprLabel: Record<number, string> = {
   5: 'Encerrada',
 };
 
+// Renomeado para bater com os 3 papéis literais do formulário "APR REV.02" (planilha do usuário,
+// 2026-08-29): Envolvido é a linha de "Ass./Visto" da equipe exposta; Elaboração e Supervisão são os
+// dois blocos formais do rodapé do documento.
 export const PapelAssinaturaApr = {
-  Elaborador: 1,
-  Executante: 2,
-  Aprovador: 3,
+  Envolvido: 1,
+  Elaboracao: 2,
+  Supervisao: 3,
 } as const;
 
 export const papelAssinaturaAprLabel: Record<number, string> = {
-  1: 'Elaborador',
-  2: 'Executante',
-  3: 'Aprovador',
+  1: 'Envolvido',
+  2: 'Elaboração / SST / Responsável Técnico',
+  3: 'Supervisão / Encarregado / Engenharia',
+};
+
+// Matriz de critérios própria da APR (aba "Matriz de Risco" da planilha) — fórmula fixa
+// (1-4 Baixo, 5-9 Moderado, 10-15 Alto, 16-25 Crítico), distinta da matriz configurável genérica
+// do módulo Riscos (NivelRisco).
+export const NivelRiscoApr = {
+  Baixo: 1,
+  Moderado: 2,
+  Alto: 3,
+  Critico: 4,
+} as const;
+
+export const nivelRiscoAprLabel: Record<number, string> = {
+  1: 'BAIXO',
+  2: 'MODERADO',
+  3: 'ALTO',
+  4: 'CRÍTICO',
+};
+
+// Cores idênticas à formatação condicional da planilha original.
+export const nivelRiscoAprCor: Record<number, string> = {
+  1: '#A9D18E',
+  2: '#FFD966',
+  3: '#F4B183',
+  4: '#C00000',
 };
 
 export interface Apr {
   id: string;
+  numeroApr?: string | null;
   atividadeId: string;
   atividadeNome: string;
+  obraNome?: string | null;
   local: string;
+  maquinasEquipamentos?: string | null;
+  pgrReferencia?: string | null;
   equipeId?: string | null;
   equipeNome?: string | null;
   data: string;
@@ -762,39 +794,50 @@ export interface Apr {
 }
 
 export interface NovaApr {
+  numeroApr?: string | null;
   atividadeId: string;
   local: string;
+  maquinasEquipamentos?: string | null;
+  pgrReferencia?: string | null;
   equipeId?: string | null;
   data: string;
   validade?: string | null;
   responsaveisIds: string[];
 }
 
-export interface AtualizarAprPayload {
+export type AtualizarAprPayload = NovaApr & { id: string };
+
+export interface AprEtapaRisco {
   id: string;
-  atividadeId: string;
-  local: string;
-  equipeId?: string | null;
-  data: string;
-  validade?: string | null;
-  responsaveisIds: string[];
+  aprEtapaId: string;
+  perigoEventoPerigoso: string;
+  fonteCircunstancia?: string | null;
+  possiveisLesoes?: string | null;
+  trabalhadoresExpostos?: string | null;
+  probabilidadeInicial: number;
+  severidadeInicial: number;
+  nivelRiscoInicial: number;
+  medidasPrevencao?: string | null;
+  responsavel?: string | null;
+  probabilidadeResidual: number;
+  severidadeResidual: number;
+  nivelRiscoResidual: number;
 }
+
+export type NovoAprEtapaRisco = Omit<AprEtapaRisco, 'id' | 'nivelRiscoInicial' | 'nivelRiscoResidual'>;
 
 export interface AprEtapa {
   id: string;
   aprId: string;
   ordem: number;
   descricao: string;
-  medidasPreventivas?: string | null;
-  riscosIds: string[];
+  riscos: AprEtapaRisco[];
 }
 
 export interface NovaAprEtapa {
   aprId: string;
   ordem: number;
   descricao: string;
-  medidasPreventivas?: string | null;
-  riscosIds: string[];
 }
 
 export interface AprResponsavel {
@@ -802,6 +845,7 @@ export interface AprResponsavel {
   aprId: string;
   trabalhadorId: string;
   trabalhadorNome: string;
+  trabalhadorFuncaoNome?: string | null;
 }
 
 export interface AprAssinatura {
@@ -2380,12 +2424,27 @@ export const api = {
       request<void>(`/api/aprs/${id}/aprovar`, { method: 'POST', body: JSON.stringify({ aprovadoPorUsuarioId }) }),
     reprovar: (id: string, motivo: string) =>
       request<void>(`/api/aprs/${id}/reprovar`, { method: 'POST', body: JSON.stringify({ motivo }) }),
+    exportarPdf: async (id: string) => {
+      const response = await fetch(`${API_BASE_URL}/api/aprs/${id}/pdf`, {
+        headers: await montarHeadersAuth(),
+      });
+      if (!response.ok) {
+        const corpo = await response.text().catch(() => '');
+        throw new Error(`${response.status} ${response.statusText}: ${corpo}`);
+      }
+      return response.blob();
+    },
   },
   aprEtapas: {
     listar: (aprId: string) => request<AprEtapa[]>(`/api/aprEtapas?aprId=${aprId}`),
     criar: (etapa: NovaAprEtapa) =>
       request<{ id: string }>('/api/aprEtapas', { method: 'POST', body: JSON.stringify(etapa) }),
     excluir: (id: string) => request<void>(`/api/aprEtapas/${id}`, { method: 'DELETE' }),
+    criarRisco: (risco: NovoAprEtapaRisco) =>
+      request<{ id: string }>('/api/aprEtapas/riscos', { method: 'POST', body: JSON.stringify(risco) }),
+    atualizarRisco: (id: string, risco: Omit<NovoAprEtapaRisco, 'aprEtapaId'>) =>
+      request<void>(`/api/aprEtapas/riscos/${id}`, { method: 'PUT', body: JSON.stringify(risco) }),
+    excluirRisco: (id: string) => request<void>(`/api/aprEtapas/riscos/${id}`, { method: 'DELETE' }),
   },
   aprAssinaturas: {
     listar: (aprId: string) => request<AprAssinatura[]>(`/api/aprAssinaturas?aprId=${aprId}`),

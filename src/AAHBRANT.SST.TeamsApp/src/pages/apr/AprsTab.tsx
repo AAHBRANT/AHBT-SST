@@ -20,8 +20,11 @@ import { api, statusAprLabel, type Apr, type Atividade, type Equipe, type NovaAp
 import { usePageStyles } from '../pageStyles';
 
 const aprVazia: NovaApr = {
+  numeroApr: '',
   atividadeId: '',
   local: '',
+  maquinasEquipamentos: '',
+  pgrReferencia: '',
   equipeId: null,
   data: '',
   validade: null,
@@ -119,6 +122,9 @@ export function AprsTab() {
       {erro && <Text className={estilos.erro}>{erro}</Text>}
 
       <div className={estilos.form}>
+        <Field label="Nº APR">
+          <Input value={novaApr.numeroApr ?? ''} onChange={(_, d) => setNovaApr({ ...novaApr, numeroApr: d.value })} />
+        </Field>
         <Field label="Atividade">
           <Select
             value={novaApr.atividadeId}
@@ -132,8 +138,20 @@ export function AprsTab() {
             ))}
           </Select>
         </Field>
-        <Field label="Local">
+        <Field label="Local / Frente">
           <Input value={novaApr.local} onChange={(_, d) => setNovaApr({ ...novaApr, local: d.value })} />
+        </Field>
+        <Field label="Máquinas / Equip.">
+          <Input
+            value={novaApr.maquinasEquipamentos ?? ''}
+            onChange={(_, d) => setNovaApr({ ...novaApr, maquinasEquipamentos: d.value })}
+          />
+        </Field>
+        <Field label="PGR / Procedimento ref.">
+          <Input
+            value={novaApr.pgrReferencia ?? ''}
+            onChange={(_, d) => setNovaApr({ ...novaApr, pgrReferencia: d.value })}
+          />
         </Field>
         <Field label="Equipe">
           <Select
@@ -186,6 +204,7 @@ export function AprsTab() {
       <Table>
         <TableHeader>
           <TableRow>
+            <TableHeaderCell>Nº APR</TableHeaderCell>
             <TableHeaderCell>Atividade</TableHeaderCell>
             <TableHeaderCell>Local</TableHeaderCell>
             <TableHeaderCell>Data</TableHeaderCell>
@@ -197,6 +216,7 @@ export function AprsTab() {
         <TableBody>
           {aprs.map((apr) => (
             <TableRow key={apr.id} onClick={() => navigate(`/operacao/apr/${apr.id}`)} style={{ cursor: 'pointer' }}>
+              <TableCell>{apr.numeroApr ?? '-'}</TableCell>
               <TableCell>{apr.atividadeNome}</TableCell>
               <TableCell>{apr.local}</TableCell>
               <TableCell>{apr.data?.slice(0, 10)}</TableCell>

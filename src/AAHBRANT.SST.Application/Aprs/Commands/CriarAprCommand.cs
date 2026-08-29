@@ -6,11 +6,14 @@ using Microsoft.EntityFrameworkCore;
 
 namespace AAHBRANT.SST.Application.Aprs.Commands;
 
-// A APR sempre nasce em elaboração (§17 "aprovação" é uma etapa distinta do cadastro) — o campo
+// A APR sempre nasce em elaboração ("aprovação" é uma etapa distinta do cadastro) — o campo
 // Status não é exposto aqui; a mudança de status passa por AprovarAprCommand/ReprovarAprCommand.
 public record CriarAprCommand(
+    string? NumeroApr,
     Guid AtividadeId,
     string Local,
+    string? MaquinasEquipamentos,
+    string? PgrReferencia,
     Guid? EquipeId,
     DateTime Data,
     DateTime? Validade,
@@ -20,8 +23,11 @@ public class CriarAprCommandValidator : AbstractValidator<CriarAprCommand>
 {
     public CriarAprCommandValidator()
     {
+        RuleFor(x => x.NumeroApr).MaximumLength(60);
         RuleFor(x => x.AtividadeId).NotEmpty();
         RuleFor(x => x.Local).NotEmpty().MaximumLength(200);
+        RuleFor(x => x.MaquinasEquipamentos).MaximumLength(500);
+        RuleFor(x => x.PgrReferencia).MaximumLength(300);
     }
 }
 
@@ -39,8 +45,11 @@ public class CriarAprCommandHandler : IRequestHandler<CriarAprCommand, Guid>
 
         var apr = new Apr
         {
+            NumeroApr = request.NumeroApr,
             AtividadeId = request.AtividadeId,
             Local = request.Local,
+            MaquinasEquipamentos = request.MaquinasEquipamentos,
+            PgrReferencia = request.PgrReferencia,
             EquipeId = request.EquipeId,
             Data = request.Data,
             Validade = request.Validade,

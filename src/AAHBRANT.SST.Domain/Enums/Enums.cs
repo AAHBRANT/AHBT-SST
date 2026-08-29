@@ -260,11 +260,29 @@ public enum StatusApr
 }
 
 // "Assinatura" (§17) não especifica papéis — proposta própria para diferenciar quem assina a APR.
+// Renomeado para bater com os 3 papéis literais do formulário APR REV.02 (planilha do usuário,
+// 2026-08-29): "envolvido" é qualquer trabalhador da equipe exposta (Ass./Visto), e os dois blocos
+// formais do rodapé do documento são "Elaboração / SST / Responsável Técnico" e "Supervisão /
+// Encarregado / Engenharia". Substitui os valores antigos (Elaborador/Executante/Aprovador), que
+// não correspondiam a nenhum desses três papéis do documento — sem dados existentes a migrar.
 public enum PapelAssinaturaApr
 {
-    Elaborador = 1,
-    Executante = 2,
-    Aprovador = 3
+    Envolvido = 1,
+    Elaboracao = 2,
+    Supervisao = 3
+}
+
+// Matriz de critérios própria da APR (planilha "APR REV.02", aba "Matriz de Risco", 2026-08-29) —
+// fórmula fixa e literal do documento (P × S: 1-4 Baixo, 5-9 Moderado, 10-15 Alto, 16-25 Crítico),
+// distinta da matriz configurável genérica do módulo Riscos (MatrizRiscoConfig/NivelRisco, que tem
+// 5 níveis e é parametrizável por célula). Usar o NivelRisco genérico aqui misturaria duas matrizes
+// com propósitos diferentes — a da APR é a fórmula literal do formulário, não configurável.
+public enum NivelRiscoApr
+{
+    Baixo = 1,
+    Moderado = 2,
+    Alto = 3,
+    Critico = 4
 }
 
 // "Autorização" e "encerramento" (§18) — documento não lista vocabulário literal de status para

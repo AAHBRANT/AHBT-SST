@@ -23,7 +23,7 @@ import {
 import { usePageStyles } from '../pageStyles';
 
 function assinaturaVazia(aprId: string): NovaAprAssinatura {
-  return { aprId, trabalhadorId: '', papel: PapelAssinaturaApr.Executante };
+  return { aprId, trabalhadorId: '', papel: PapelAssinaturaApr.Envolvido };
 }
 
 // Assinatura (§17) é registro de ciência append-only — sem edição/exclusão, mesmo padrão de
