@@ -238,7 +238,7 @@ public static partial class MockObraSeeder
     public static readonly (StatusNaoConformidade Status, int Quantidade)[] DistribuicaoNaoConformidades =
     {
         (StatusNaoConformidade.Aberta, 8),
-        (StatusNaoConformidade.EmTratamento, 7),
+        (StatusNaoConformidade.EmAndamento, 7),
         (StatusNaoConformidade.AguardandoValidacao, 4),
         (StatusNaoConformidade.Encerrada, 6),
     };

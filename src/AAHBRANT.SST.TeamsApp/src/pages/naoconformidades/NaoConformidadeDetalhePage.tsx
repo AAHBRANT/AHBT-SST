@@ -13,6 +13,7 @@ import {
   TableHeaderCell,
   TableRow,
   Text,
+  Textarea,
 } from '@fluentui/react-components';
 import { ArrowLeft24Regular, CheckmarkCircle24Regular } from '@fluentui/react-icons';
 import {
@@ -34,6 +35,10 @@ function novaAcaoInicial(): Omit<NovaAcaoPlano, 'origemTipo' | 'origemId'> {
   return { tipo: 1, descricao: '', responsavelUsuarioId: '', prioridade: 3, prazo: '' };
 }
 
+function respostaInicial() {
+  return { descricaoAcao: '', responsavelExecucaoId: '', prioridade: 3, prazo: '', justificativaPrazo: '' };
+}
+
 export function NaoConformidadeDetalhePage() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
@@ -44,6 +49,10 @@ export function NaoConformidadeDetalhePage() {
   const [usuarioValidador, setUsuarioValidador] = useState('');
   const [erro, setErro] = useState<string | null>(null);
   const [processando, setProcessando] = useState(false);
+  const [resposta, setResposta] = useState(respostaInicial());
+  const [descricaoConclusao, setDescricaoConclusao] = useState('');
+  const [motivoDevolucao, setMotivoDevolucao] = useState('');
+  const [observacoesEncerramento, setObservacoesEncerramento] = useState('');
 
   async function carregar() {
     if (!id) return;
@@ -65,18 +74,98 @@ export function NaoConformidadeDetalhePage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id]);
 
-  async function avancarStatus() {
+  async function enviar() {
     if (!id) return;
     try {
       setProcessando(true);
       setErro(null);
-      await api.naoConformidades.avancarStatus(id);
+      await api.naoConformidades.enviar(id);
+      await carregar();
+    } catch (e) {
+      setErro(
+        e instanceof Error ? e.message : 'Falha ao enviar. Defina o responsável pela tratativa antes.',
+      );
+    } finally {
+      setProcessando(false);
+    }
+  }
+
+  async function responder() {
+    if (!id) return;
+    if (!resposta.descricaoAcao.trim()) {
+      setErro('Informe a ação que será realizada.');
+      return;
+    }
+    try {
+      setProcessando(true);
+      setErro(null);
+      await api.naoConformidades.responder(id, {
+        descricaoAcao: resposta.descricaoAcao,
+        responsavelExecucaoId: resposta.responsavelExecucaoId || null,
+        prioridade: resposta.prioridade,
+        prazo: resposta.prazo || null,
+        justificativaPrazo: resposta.justificativaPrazo || null,
+      });
+      setResposta(respostaInicial());
+      await carregar();
+    } catch (e) {
+      setErro(e instanceof Error ? e.message : 'Falha ao responder a ocorrência.');
+    } finally {
+      setProcessando(false);
+    }
+  }
+
+  async function registrarConclusao() {
+    if (!id) return;
+    try {
+      setProcessando(true);
+      setErro(null);
+      await api.naoConformidades.registrarConclusao(id, descricaoConclusao || null);
+      setDescricaoConclusao('');
+      await carregar();
+    } catch (e) {
+      setErro(e instanceof Error ? e.message : 'Falha ao registrar conclusão.');
+    } finally {
+      setProcessando(false);
+    }
+  }
+
+  async function devolver() {
+    if (!id) return;
+    if (!motivoDevolucao.trim()) {
+      setErro('Informe o motivo da devolução.');
+      return;
+    }
+    try {
+      setProcessando(true);
+      setErro(null);
+      await api.naoConformidades.devolver(id, motivoDevolucao);
+      setMotivoDevolucao('');
+      await carregar();
+    } catch (e) {
+      setErro(e instanceof Error ? e.message : 'Falha ao devolver a ocorrência.');
+    } finally {
+      setProcessando(false);
+    }
+  }
+
+  async function encerrar() {
+    if (!id) return;
+    if (!usuarioValidador) {
+      setErro('Selecione o usuário responsável pela validação.');
+      return;
+    }
+    try {
+      setProcessando(true);
+      setErro(null);
+      await api.naoConformidades.encerrar(id, usuarioValidador, observacoesEncerramento || null);
+      setObservacoesEncerramento('');
       await carregar();
     } catch (e) {
       setErro(
         e instanceof Error
           ? e.message
-          : 'Falha ao avançar status. Confira se todas as ações do plano já foram concluídas.',
+          : 'Falha ao encerrar. Confira se todas as ações do plano já foram concluídas.',
       );
     } finally {
       setProcessando(false);
@@ -162,17 +251,127 @@ export function NaoConformidadeDetalhePage() {
               {nc.prazo && <Text>Prazo: {nc.prazo.slice(0, 10)}</Text>}
             </div>
 
-            {nc.status !== StatusNaoConformidade.Encerrada && (
+            {nc.status === StatusNaoConformidade.Aberta && (
               <div className={estilos.formActions} style={{ marginTop: 16 }}>
-                <Button
-                  appearance="primary"
-                  icon={<CheckmarkCircle24Regular />}
-                  onClick={avancarStatus}
-                  disabled={processando}
-                >
-                  Avançar status ({statusNaoConformidadeLabel[nc.status]} →{' '}
-                  {statusNaoConformidadeLabel[nc.status + 1]})
+                <Button appearance="primary" icon={<CheckmarkCircle24Regular />} onClick={enviar} disabled={processando}>
+                  Enviar ao responsável
                 </Button>
+              </div>
+            )}
+
+            {(nc.status === StatusNaoConformidade.Enviada || nc.status === StatusNaoConformidade.Devolvida) && (
+              <div style={{ marginTop: 16 }}>
+                {nc.status === StatusNaoConformidade.Devolvida && nc.motivoDevolucao && (
+                  <Text className={estilos.erro} style={{ display: 'block', marginBottom: 8 }}>
+                    Motivo da devolução: {nc.motivoDevolucao}
+                  </Text>
+                )}
+                <Text weight="semibold">Responder ocorrência</Text>
+                <div className={estilos.form}>
+                  <Field label="Ação a ser realizada" required>
+                    <Input
+                      value={resposta.descricaoAcao}
+                      onChange={(_, d) => setResposta({ ...resposta, descricaoAcao: d.value })}
+                    />
+                  </Field>
+                  <Field label="Executor">
+                    <Select
+                      value={resposta.responsavelExecucaoId}
+                      onChange={(_, d) => setResposta({ ...resposta, responsavelExecucaoId: d.value })}
+                    >
+                      <option value="">Manter responsável atual</option>
+                      {usuarios.map((usuario) => (
+                        <option key={usuario.id} value={usuario.id}>
+                          {usuario.nome}
+                        </option>
+                      ))}
+                    </Select>
+                  </Field>
+                  <Field label="Prioridade">
+                    <Select
+                      value={String(resposta.prioridade)}
+                      onChange={(_, d) => setResposta({ ...resposta, prioridade: Number(d.value) })}
+                    >
+                      {Object.entries(prioridadeAcaoLabel).map(([valor, rotulo]) => (
+                        <option key={valor} value={valor}>
+                          {rotulo}
+                        </option>
+                      ))}
+                    </Select>
+                  </Field>
+                  <Field label="Prazo (opcional — sugerido pela prioridade se em branco)">
+                    <Input
+                      type="date"
+                      value={resposta.prazo}
+                      onChange={(_, d) => setResposta({ ...resposta, prazo: d.value })}
+                    />
+                  </Field>
+                  <Field label="Justificativa do prazo (opcional)">
+                    <Input
+                      value={resposta.justificativaPrazo}
+                      onChange={(_, d) => setResposta({ ...resposta, justificativaPrazo: d.value })}
+                    />
+                  </Field>
+                </div>
+                <div className={estilos.formActions}>
+                  <Button appearance="primary" onClick={responder} disabled={processando}>
+                    Responder
+                  </Button>
+                </div>
+              </div>
+            )}
+
+            {nc.status === StatusNaoConformidade.EmAndamento && (
+              <div style={{ marginTop: 16 }}>
+                <Text weight="semibold">Registrar conclusão da execução</Text>
+                <div className={estilos.form}>
+                  <Field label="Descrição da conclusão (opcional)">
+                    <Textarea
+                      value={descricaoConclusao}
+                      onChange={(_, d) => setDescricaoConclusao(d.value)}
+                    />
+                  </Field>
+                </div>
+                <div className={estilos.formActions}>
+                  <Button appearance="primary" onClick={registrarConclusao} disabled={processando}>
+                    Registrar conclusão
+                  </Button>
+                </div>
+              </div>
+            )}
+
+            {nc.status === StatusNaoConformidade.AguardandoValidacao && (
+              <div style={{ marginTop: 16 }}>
+                <Text weight="semibold">Validação do inspetor</Text>
+                <div className={estilos.form}>
+                  <Field label="Validar como">
+                    <Select value={usuarioValidador} onChange={(_, d) => setUsuarioValidador(d.value)}>
+                      <option value="">Selecione um usuário</option>
+                      {usuarios.map((usuario) => (
+                        <option key={usuario.id} value={usuario.id}>
+                          {usuario.nome}
+                        </option>
+                      ))}
+                    </Select>
+                  </Field>
+                  <Field label="Observações de encerramento (opcional)">
+                    <Input
+                      value={observacoesEncerramento}
+                      onChange={(_, d) => setObservacoesEncerramento(d.value)}
+                    />
+                  </Field>
+                  <Field label="Motivo da devolução (se for devolver)">
+                    <Input value={motivoDevolucao} onChange={(_, d) => setMotivoDevolucao(d.value)} />
+                  </Field>
+                </div>
+                <div className={estilos.formActions}>
+                  <Button appearance="primary" icon={<CheckmarkCircle24Regular />} onClick={encerrar} disabled={processando}>
+                    Encerrar
+                  </Button>
+                  <Button appearance="secondary" onClick={devolver} disabled={processando}>
+                    Devolver
+                  </Button>
+                </div>
               </div>
             )}
           </>

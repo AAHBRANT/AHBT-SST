@@ -33,6 +33,13 @@ public class CriarAcaoPlanoCommandHandler : IRequestHandler<CriarAcaoPlanoComman
 
     public async Task<Guid> Handle(CriarAcaoPlanoCommand request, CancellationToken ct)
     {
+        // Procedimento de Inspeção Técnica de Campo (§7): quando o prazo não é informado
+        // explicitamente, sugere um valor a partir da prioridade (Crítica=24h/Alta=48h/Média=5 dias
+        // úteis/Baixa=10 dias úteis) — ver SlaPrioridadeCalculator. O usuário pode ajustar depois via
+        // AtualizarAcaoPlanoCommand; os prazos do documento são "referência para parametrização",
+        // não um teto rígido.
+        var prazo = request.Prazo ?? SlaPrioridadeCalculator.CalcularPrazoSugerido(request.Prioridade, DateTime.UtcNow);
+
         var acao = new AcaoPlano
         {
             OrigemTipo = request.OrigemTipo,
@@ -41,7 +48,7 @@ public class CriarAcaoPlanoCommandHandler : IRequestHandler<CriarAcaoPlanoComman
             Descricao = request.Descricao,
             ResponsavelUsuarioId = request.ResponsavelUsuarioId,
             Prioridade = request.Prioridade,
-            Prazo = request.Prazo,
+            Prazo = prazo,
         };
 
         _db.AcoesPlano.Add(acao);

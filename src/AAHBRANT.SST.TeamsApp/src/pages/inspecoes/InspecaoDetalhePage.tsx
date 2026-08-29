@@ -19,10 +19,12 @@ import {
   ArrowUpload24Regular,
   LockClosed24Regular,
   Save24Regular,
+  Warning24Regular,
 } from '@fluentui/react-icons';
 import {
   api,
   StatusInspecao,
+  StatusItemChecklist,
   statusInspecaoLabel,
   statusItemChecklistLabel,
   tipoInspecaoLabel,
@@ -54,6 +56,7 @@ export function InspecaoDetalhePage() {
   const [processando, setProcessando] = useState(false);
   const [enviandoFotoId, setEnviandoFotoId] = useState<string | null>(null);
   const [baixandoFotoId, setBaixandoFotoId] = useState<string | null>(null);
+  const [gerandoOcorrenciaId, setGerandoOcorrenciaId] = useState<string | null>(null);
 
   async function carregar() {
     if (!id) return;
@@ -153,6 +156,20 @@ export function InspecaoDetalhePage() {
     }
   }
 
+  async function gerarOcorrencia(respostaId: string) {
+    try {
+      setGerandoOcorrenciaId(respostaId);
+      setErro(null);
+      const { id: ncId } = await api.inspecoes.gerarOcorrencia(respostaId, {});
+      await carregar();
+      navigate(`/nao-conformidades/${ncId}`);
+    } catch (e) {
+      setErro(e instanceof Error ? e.message : 'Falha ao gerar ocorrência a partir do item.');
+    } finally {
+      setGerandoOcorrenciaId(null);
+    }
+  }
+
   async function encerrar() {
     if (!id) return;
     try {
@@ -244,6 +261,7 @@ export function InspecaoDetalhePage() {
               <TableHeaderCell>Responsável</TableHeaderCell>
               <TableHeaderCell>Prazo</TableHeaderCell>
               <TableHeaderCell>Foto</TableHeaderCell>
+              <TableHeaderCell>Ocorrência</TableHeaderCell>
               <TableHeaderCell></TableHeaderCell>
             </TableRow>
           </TableHeader>
@@ -347,6 +365,29 @@ export function InspecaoDetalhePage() {
                         </Button>
                       )}
                     </div>
+                  </TableCell>
+                  <TableCell>
+                    {resposta.naoConformidadeId ? (
+                      <Button
+                        appearance="subtle"
+                        size="small"
+                        onClick={() => navigate(`/nao-conformidades/${resposta.naoConformidadeId}`)}
+                      >
+                        Ver ocorrência
+                      </Button>
+                    ) : (
+                      resposta.statusItem === StatusItemChecklist.NaoConforme && (
+                        <Button
+                          appearance="subtle"
+                          size="small"
+                          icon={<Warning24Regular />}
+                          onClick={() => gerarOcorrencia(resposta.id)}
+                          disabled={gerandoOcorrenciaId === resposta.id}
+                        >
+                          Gerar ocorrência
+                        </Button>
+                      )
+                    )}
                   </TableCell>
                   <TableCell>
                     {!somenteLeitura && (

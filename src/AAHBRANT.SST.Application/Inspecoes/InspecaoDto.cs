@@ -38,6 +38,7 @@ public class InspecaoItemRespostaDto
     public string? ResponsavelUsuarioNome { get; set; }
     public DateTime? Prazo { get; set; }
     public bool TemFoto { get; set; }
+    public Guid? NaoConformidadeId { get; set; }
 }
 
 // Composição por query, não por tabela nova — mesmo princípio já usado em PermissaoTrabalhoDetalheDto.

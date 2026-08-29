@@ -31,6 +31,11 @@ public class ObterInspecaoDetalheQueryHandler : IRequestHandler<ObterInspecaoDet
 
         var respostasOrdenadas = respostas.OrderBy(r => r.ChecklistModeloItem?.Ordem ?? 0).ToList();
 
+        var idsRespostas = respostasOrdenadas.Select(r => r.Id).ToList();
+        var ncPorResposta = await _db.NaoConformidades
+            .Where(n => n.InspecaoItemRespostaId != null && idsRespostas.Contains(n.InspecaoItemRespostaId!.Value))
+            .ToDictionaryAsync(n => n.InspecaoItemRespostaId!.Value, n => n.Id, ct);
+
         return new InspecaoDetalheDto
         {
             Inspecao = new InspecaoDto
@@ -67,7 +72,8 @@ public class ObterInspecaoDetalheQueryHandler : IRequestHandler<ObterInspecaoDet
                 ResponsavelUsuarioId = r.ResponsavelUsuarioId,
                 ResponsavelUsuarioNome = r.ResponsavelUsuario?.Nome,
                 Prazo = r.Prazo,
-                TemFoto = r.FotoConteudo.Length > 0
+                TemFoto = r.FotoConteudo.Length > 0,
+                NaoConformidadeId = ncPorResposta.GetValueOrDefault(r.Id)
             }).ToList()
         };
     }

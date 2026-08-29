@@ -1,5 +1,6 @@
 using AAHBRANT.SST.Application.Inspecoes.Commands;
 using AAHBRANT.SST.Application.Inspecoes.Queries;
+using AAHBRANT.SST.Application.NaoConformidades.Commands;
 using AAHBRANT.SST.Domain.Enums;
 using MediatR;
 using Microsoft.AspNetCore.Authorization;
@@ -72,11 +73,31 @@ public class InspecoesController : ControllerBase
         await _mediator.Send(new EncerrarInspecaoCommand(id), ct);
         return NoContent();
     }
+
+    // Procedimento de Inspeção Técnica de Campo (§6.2) — gerar ocorrência a partir de um item do
+    // checklist marcado como não conforme. Fica em InspecoesController (não em
+    // NaoConformidadesController) porque a origem é sempre "um item de UMA inspeção" — mesmo
+    // agrupamento de rota de ResponderItem/AnexarFoto/ObterFoto acima.
+    [Authorize(Policy = "nc:criar")]
+    [HttpPost("respostas/{respostaId:guid}/gerar-ocorrencia")]
+    public async Task<IActionResult> GerarOcorrencia(Guid respostaId, GerarOcorrenciaRequestBody body, CancellationToken ct)
+    {
+        var id = await _mediator.Send(new CriarNaoConformidadeDeItemCommand(
+            respostaId, body.RequisitoRelacionado, body.Local, body.RiscoId, body.ResponsavelUsuarioId, body.Prazo), ct);
+        return Ok(new { id });
+    }
 }
 
 public record ResponderItemInspecaoRequestBody(
     StatusItemChecklist StatusItem,
     string? Observacao,
+    Guid? ResponsavelUsuarioId,
+    DateTime? Prazo);
+
+public record GerarOcorrenciaRequestBody(
+    string? RequisitoRelacionado,
+    string? Local,
+    Guid? RiscoId,
     Guid? ResponsavelUsuarioId,
     DateTime? Prazo);
 

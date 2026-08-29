@@ -33,6 +33,13 @@ public class NaoConformidade : AuditableEntity
     public Guid? RiscoId { get; set; }
     public Risco? Risco { get; set; }
 
+    // Procedimento de Inspeção Técnica de Campo (§6.2) — "gerar ocorrência a partir do item não
+    // conforme da inspeção". Um-para-um (no máx. uma NC por item): CriarNaoConformidadeDeItemCommand
+    // é idempotente, mesmo padrão já usado em CriarDocumentoAssinaturaCommand (devolve a NC
+    // existente em vez de duplicar se o item já tiver uma gerada).
+    public Guid? InspecaoItemRespostaId { get; set; }
+    public InspecaoItemResposta? InspecaoItemResposta { get; set; }
+
     public Guid? ResponsavelUsuarioId { get; set; }
     public Usuario? ResponsavelUsuario { get; set; }
 
@@ -42,4 +49,10 @@ public class NaoConformidade : AuditableEntity
 
     public DateTime? DataConclusao { get; set; }
     public string? ObservacoesEncerramento { get; set; }
+
+    // Procedimento de Inspeção Técnica de Campo (§6.7/§9) — "DEVOLVER/CORRIGIR, registra o motivo".
+    // Guarda só o motivo da devolução mais recente — TrilhaAuditoria hoje só é gravada pelo Motor de
+    // Assinatura Eletrônica (AuditoriaService), não é um interceptor genérico de toda mudança de
+    // entidade; um histórico completo de devoluções exigiria gravação própria, fora de escopo aqui.
+    public string? MotivoDevolucao { get; set; }
 }

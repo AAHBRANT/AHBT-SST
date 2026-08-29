@@ -5,8 +5,8 @@ namespace AAHBRANT.SST.Domain.Entidades;
 
 // Inspeção (§23/§46): execução de um ChecklistModelo vigente. "Cada inspeção deverá gerar
 // evidência e, quando necessário, uma não conformidade" (§23) — evidência é por item
-// (InspecaoItemResposta, via Evidencia genérica); NC é tratada como decisão de escopo à parte
-// (ver disclosure em InspecaoItemResposta.StatusItem), pois o módulo de NC (§25) ainda não existe.
+// (InspecaoItemResposta, via Evidencia genérica); geração de NC a partir de um item não conforme
+// está implementada — ver disclosure em InspecaoItemResposta.
 public class Inspecao : AuditableEntity
 {
     public TipoInspecao TipoInspecao { get; set; }
@@ -39,11 +39,11 @@ public class Inspecao : AuditableEntity
 // Evidencia (EntidadeTipo="InspecaoItemResposta"), mesmo padrão de ASO/Treinamento/EPI/APR/PT —
 // não cria campo de anexo próprio.
 //
-// Geração de Não Conformidade a partir de StatusItem=NaoConforme: decisão de escopo — o módulo
-// de NC (§25, item 16 do MVP) ainda não existe nesta fatia. Por ora este status apenas registra
-// o desvio no item; não há vínculo/geração automática de NaoConformidade. Quando o módulo de NC
-// for implementado, ele lerá os itens com StatusItem=NaoConforme para oferecer "gerar NC a partir
-// deste item" — avisar o usuário se quiser um campo de vínculo já reservado agora.
+// Geração de Não Conformidade a partir de StatusItem=NaoConforme: implementado em 2026-08-29
+// conforme o Procedimento de Inspeção Técnica de Campo (§6.2) — CriarNaoConformidadeDeItemCommand
+// oferece "gerar NC a partir deste item" para itens com StatusItem=NaoConforme, gravando o vínculo
+// em NaoConformidade.InspecaoItemRespostaId (não o inverso: um item pode, em tese, já existir sem
+// NC gerada — a FK fica do lado da NC, que é sempre opcional/posterior ao item).
 public class InspecaoItemResposta : AuditableEntity
 {
     public Guid InspecaoId { get; set; }

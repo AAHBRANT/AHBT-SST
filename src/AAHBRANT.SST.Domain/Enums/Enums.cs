@@ -324,13 +324,22 @@ public enum OrigemNaoConformidade
 }
 
 // Seção 25 da Base de Conhecimento (linha 641) — vocabulário literal do fluxo de status da NC:
-// "Aberta → Em tratamento → Aguardando validação → Encerrada".
+// "Aberta → Em tratamento → Aguardando validação → Encerrada". Ampliado em 2026-08-29 conforme o
+// Procedimento de Inspeção Técnica de Campo (§9): Enviada/EmAnalise/Devolvida entram como valores
+// NOVOS (5/6/7, não reaproveitam números existentes); EmTratamento foi apenas RENOMEADO para
+// EmAndamento (mesmo valor 2, vocabulário do documento) — renomear um nome de enum não afeta dados
+// já gravados, só reatribuir o número afetaria. "Atrasada" (§9) não vira valor de status: é
+// calculada pelo motor de alertas (ver NaoConformidadeAlertaProvider), mesmo padrão já usado por
+// Aso/Treinamento/etc., em vez de duplicar o conceito de vencimento como estado gravado.
 public enum StatusNaoConformidade
 {
     Aberta = 1,
-    EmTratamento = 2,
+    EmAndamento = 2,
     AguardandoValidacao = 3,
-    Encerrada = 4
+    Encerrada = 4,
+    Enviada = 5,
+    EmAnalise = 6,
+    Devolvida = 7,
 }
 
 // Seção 26 da Base de Conhecimento (linha 660) — vocabulário literal de prioridade do plano de ação:

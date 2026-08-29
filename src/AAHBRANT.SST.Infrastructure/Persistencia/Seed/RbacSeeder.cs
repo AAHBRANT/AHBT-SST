@@ -133,7 +133,9 @@ public static class RbacSeeder
         ("nc:ver", "NaoConformidade", "Ver", "Ver não conformidades"),
         ("nc:criar", "NaoConformidade", "Criar", "Registrar não conformidade"),
         ("nc:editar", "NaoConformidade", "Editar", "Editar não conformidade"),
-        ("nc:avancar_status", "NaoConformidade", "AvancarStatus", "Avançar status da não conformidade"),
+        ("nc:enviar", "NaoConformidade", "Enviar", "Encaminhar formalmente a ocorrência ao responsável"),
+        ("nc:responder", "NaoConformidade", "Responder", "Responder a ocorrência e registrar/concluir a ação corretiva"),
+        ("nc:encerrar", "NaoConformidade", "Encerrar", "Validar, devolver ou encerrar a ocorrência"),
 
         ("acidente:ver", "Acidente", "Ver", "Ver acidentes/incidentes"),
         ("acidente:criar", "Acidente", "Criar", "Registrar acidente/incidente"),

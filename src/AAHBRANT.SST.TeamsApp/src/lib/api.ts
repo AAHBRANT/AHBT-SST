@@ -1098,6 +1098,7 @@ export interface InspecaoItemResposta {
   responsavelUsuarioNome?: string | null;
   prazo?: string | null;
   temFoto: boolean;
+  naoConformidadeId?: string | null;
 }
 
 export interface InspecaoDetalhe {
@@ -1320,16 +1321,22 @@ export const origemNaoConformidadeLabel: Record<number, string> = {
 
 export const StatusNaoConformidade = {
   Aberta: 1,
-  EmTratamento: 2,
+  EmAndamento: 2,
   AguardandoValidacao: 3,
   Encerrada: 4,
+  Enviada: 5,
+  EmAnalise: 6,
+  Devolvida: 7,
 } as const;
 
 export const statusNaoConformidadeLabel: Record<number, string> = {
   1: 'Aberta',
-  2: 'Em tratamento',
+  2: 'Em andamento',
   3: 'Aguardando validação',
   4: 'Encerrada',
+  5: 'Enviada',
+  6: 'Em análise',
+  7: 'Devolvida',
 };
 
 export const PrioridadeAcao = {
@@ -1389,6 +1396,8 @@ export interface NaoConformidade {
   status: number;
   dataConclusao?: string | null;
   observacoesEncerramento?: string | null;
+  motivoDevolucao?: string | null;
+  inspecaoItemRespostaId?: string | null;
 }
 
 export interface NovaNaoConformidade {
@@ -1740,6 +1749,8 @@ export const categoriaAlertaLabel: Record<string, string> = {
   Treinamento: 'Treinamentos',
   ItemHigienizacao: 'Higienização',
   AtivoSst: 'Ativos (Extintores/Equipamentos)',
+  NaoConformidade: 'Ocorrências de inspeção',
+  AcaoPlano: 'Ações do plano',
 };
 
 export function categoriaAlertaRotulo(entidadeOrigemTipo: string): string {
@@ -2370,6 +2381,17 @@ export const api = {
       return response.blob();
     },
     encerrar: (id: string) => request<void>(`/api/inspecoes/${id}/encerrar`, { method: 'POST' }),
+    gerarOcorrencia: (respostaId: string, body: {
+      requisitoRelacionado?: string | null;
+      local?: string | null;
+      riscoId?: string | null;
+      responsavelUsuarioId?: string | null;
+      prazo?: string | null;
+    }) =>
+      request<{ id: string }>(`/api/inspecoes/respostas/${respostaId}/gerar-ocorrencia`, {
+        method: 'POST',
+        body: JSON.stringify(body),
+      }),
   },
   dds: {
     listar: (obraId?: string) => request<Dds[]>(`/api/dds${obraId ? `?obraId=${obraId}` : ''}`),
@@ -2490,8 +2512,34 @@ export const api = {
     atualizar: (id: string, nc: AtualizarNaoConformidadePayload) =>
       request<void>(`/api/naoconformidades/${id}`, { method: 'PUT', body: JSON.stringify(nc) }),
     excluir: (id: string) => request<void>(`/api/naoconformidades/${id}`, { method: 'DELETE' }),
-    avancarStatus: (id: string) =>
-      request<void>(`/api/naoconformidades/${id}/avancar-status`, { method: 'POST' }),
+    enviar: (id: string) =>
+      request<void>(`/api/naoconformidades/${id}/enviar`, { method: 'POST' }),
+    responder: (id: string, body: {
+      descricaoAcao: string;
+      responsavelExecucaoId?: string | null;
+      prioridade: number;
+      prazo?: string | null;
+      justificativaPrazo?: string | null;
+    }) =>
+      request<{ acaoId: string }>(`/api/naoconformidades/${id}/responder`, {
+        method: 'POST',
+        body: JSON.stringify(body),
+      }),
+    registrarConclusao: (id: string, descricaoConclusao?: string | null) =>
+      request<void>(`/api/naoconformidades/${id}/registrar-conclusao`, {
+        method: 'POST',
+        body: JSON.stringify({ descricaoConclusao }),
+      }),
+    devolver: (id: string, motivo: string) =>
+      request<void>(`/api/naoconformidades/${id}/devolver`, {
+        method: 'POST',
+        body: JSON.stringify({ motivo }),
+      }),
+    encerrar: (id: string, validadoPorUsuarioId: string, observacoesEncerramento?: string | null) =>
+      request<void>(`/api/naoconformidades/${id}/encerrar`, {
+        method: 'POST',
+        body: JSON.stringify({ validadoPorUsuarioId, observacoesEncerramento }),
+      }),
   },
   acoesPlano: {
     listar: (origemTipo: string, origemId: string) =>
