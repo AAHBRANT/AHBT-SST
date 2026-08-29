@@ -22,28 +22,33 @@ import {
   type Atividade,
   type Equipe,
   type NovaPermissaoTrabalho,
-  type Perigo,
   type PermissaoTrabalho,
   type Trabalhador,
+  type Usuario,
 } from '../../lib/api';
 import { usePageStyles } from '../pageStyles';
 
 const ptVazia: NovaPermissaoTrabalho = {
+  numeroPt: '',
   atividadeId: '',
+  descricaoAtividade: '',
   local: '',
+  empresaExecutante: '',
   equipeId: null,
   data: '',
   horarioInicio: null,
   horarioFim: null,
   validade: null,
-  perigosIds: [],
+  responsavelExecucaoUsuarioId: null,
+  responsavelAreaUsuarioId: null,
   responsaveisIds: [],
 };
 
 const corBadgeStatus: Record<number, 'informative' | 'warning' | 'success' | 'danger' | 'subtle'> = {
   1: 'subtle',
   2: 'success',
-  3: 'informative',
+  3: 'warning',
+  4: 'informative',
 };
 
 export function PermissoesTrabalhoTab() {
@@ -51,9 +56,9 @@ export function PermissoesTrabalhoTab() {
   const navigate = useNavigate();
   const [permissoes, setPermissoes] = useState<PermissaoTrabalho[]>([]);
   const [atividades, setAtividades] = useState<Atividade[]>([]);
-  const [perigos, setPerigos] = useState<Perigo[]>([]);
   const [trabalhadores, setTrabalhadores] = useState<Trabalhador[]>([]);
   const [equipes, setEquipes] = useState<Equipe[]>([]);
+  const [usuarios, setUsuarios] = useState<Usuario[]>([]);
   const [novaPt, setNovaPt] = useState<NovaPermissaoTrabalho>(ptVazia);
   const [erro, setErro] = useState<string | null>(null);
   const [carregando, setCarregando] = useState(false);
@@ -61,18 +66,18 @@ export function PermissoesTrabalhoTab() {
   async function carregar() {
     try {
       setErro(null);
-      const [lista, ativs, prgs, trabs, equips] = await Promise.all([
+      const [lista, ativs, trabs, equips, usrs] = await Promise.all([
         api.permissoesTrabalho.listar(),
         api.atividades.listar(),
-        api.perigos.listar(),
         api.trabalhadores.listar(),
         api.equipes.listar(),
+        api.usuarios.listar(),
       ]);
       setPermissoes(lista);
       setAtividades(ativs);
-      setPerigos(prgs);
       setTrabalhadores(trabs);
       setEquipes(equips);
+      setUsuarios(usrs);
     } catch (e) {
       setErro(e instanceof Error ? e.message : 'Falha ao carregar Permissões de Trabalho.');
     }
@@ -87,13 +92,6 @@ export function PermissoesTrabalhoTab() {
     carregar();
   }, []);
 
-  function alternarPerigo(id: string, marcado: boolean) {
-    setNovaPt((atual) => ({
-      ...atual,
-      perigosIds: marcado ? [...atual.perigosIds, id] : atual.perigosIds.filter((p) => p !== id),
-    }));
-  }
-
   function alternarResponsavel(id: string, marcado: boolean) {
     setNovaPt((atual) => ({
       ...atual,
@@ -107,10 +105,14 @@ export function PermissoesTrabalhoTab() {
       setErro(null);
       await api.permissoesTrabalho.criar({
         ...novaPt,
+        numeroPt: novaPt.numeroPt || null,
+        empresaExecutante: novaPt.empresaExecutante || null,
         equipeId: novaPt.equipeId || null,
         horarioInicio: novaPt.horarioInicio ? `${novaPt.horarioInicio}:00` : null,
         horarioFim: novaPt.horarioFim ? `${novaPt.horarioFim}:00` : null,
         validade: novaPt.validade || null,
+        responsavelExecucaoUsuarioId: novaPt.responsavelExecucaoUsuarioId || null,
+        responsavelAreaUsuarioId: novaPt.responsavelAreaUsuarioId || null,
       });
       setNovaPt(ptVazia);
       await carregar();
@@ -140,6 +142,9 @@ export function PermissoesTrabalhoTab() {
       {erro && <Text className={estilos.erro}>{erro}</Text>}
 
       <div className={estilos.form}>
+        <Field label="Nº PT">
+          <Input value={novaPt.numeroPt ?? ''} onChange={(_, d) => setNovaPt({ ...novaPt, numeroPt: d.value })} />
+        </Field>
         <Field label="Atividade">
           <Select value={novaPt.atividadeId} onChange={(_, d) => setNovaPt({ ...novaPt, atividadeId: d.value })}>
             <option value="">Selecione</option>
@@ -150,8 +155,20 @@ export function PermissoesTrabalhoTab() {
             ))}
           </Select>
         </Field>
+        <Field label="Descrição da atividade">
+          <Input
+            value={novaPt.descricaoAtividade}
+            onChange={(_, d) => setNovaPt({ ...novaPt, descricaoAtividade: d.value })}
+          />
+        </Field>
         <Field label="Local">
           <Input value={novaPt.local} onChange={(_, d) => setNovaPt({ ...novaPt, local: d.value })} />
+        </Field>
+        <Field label="Empresa executante">
+          <Input
+            value={novaPt.empresaExecutante ?? ''}
+            onChange={(_, d) => setNovaPt({ ...novaPt, empresaExecutante: d.value })}
+          />
         </Field>
         <Field label="Equipe">
           <Select
@@ -190,22 +207,35 @@ export function PermissoesTrabalhoTab() {
             onChange={(_, d) => setNovaPt({ ...novaPt, validade: d.value || null })}
           />
         </Field>
+        <Field label="Responsável pela execução">
+          <Select
+            value={novaPt.responsavelExecucaoUsuarioId ?? ''}
+            onChange={(_, d) => setNovaPt({ ...novaPt, responsavelExecucaoUsuarioId: d.value || null })}
+          >
+            <option value="">Não definido</option>
+            {usuarios.map((usuario) => (
+              <option key={usuario.id} value={usuario.id}>
+                {usuario.nome}
+              </option>
+            ))}
+          </Select>
+        </Field>
+        <Field label="Responsável pela área">
+          <Select
+            value={novaPt.responsavelAreaUsuarioId ?? ''}
+            onChange={(_, d) => setNovaPt({ ...novaPt, responsavelAreaUsuarioId: d.value || null })}
+          >
+            <option value="">Não definido</option>
+            {usuarios.map((usuario) => (
+              <option key={usuario.id} value={usuario.id}>
+                {usuario.nome}
+              </option>
+            ))}
+          </Select>
+        </Field>
       </div>
 
-      <Field label="Perigos" style={{ marginBottom: 16 }}>
-        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
-          {perigos.map((perigo) => (
-            <Checkbox
-              key={perigo.id}
-              label={perigo.nome}
-              checked={novaPt.perigosIds.includes(perigo.id)}
-              onChange={(_, d) => alternarPerigo(perigo.id, !!d.checked)}
-            />
-          ))}
-        </div>
-      </Field>
-
-      <Field label="Responsáveis" style={{ marginBottom: 16 }}>
+      <Field label="Equipe executante (responsáveis)" style={{ marginBottom: 16 }}>
         <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
           {trabalhadores.map((trabalhador) => (
             <Checkbox
@@ -219,7 +249,12 @@ export function PermissoesTrabalhoTab() {
       </Field>
 
       <div className={estilos.formActions}>
-        <Button appearance="primary" icon={<Add24Regular />} onClick={criar} disabled={carregando}>
+        <Button
+          appearance="primary"
+          icon={<Add24Regular />}
+          onClick={criar}
+          disabled={carregando || !novaPt.atividadeId || !novaPt.descricaoAtividade || !novaPt.local || !novaPt.data}
+        >
           Adicionar PT
         </Button>
       </div>
@@ -227,6 +262,7 @@ export function PermissoesTrabalhoTab() {
       <Table>
         <TableHeader>
           <TableRow>
+            <TableHeaderCell>Nº PT</TableHeaderCell>
             <TableHeaderCell>Atividade</TableHeaderCell>
             <TableHeaderCell>Local</TableHeaderCell>
             <TableHeaderCell>Data</TableHeaderCell>
@@ -238,6 +274,7 @@ export function PermissoesTrabalhoTab() {
         <TableBody>
           {permissoes.map((pt) => (
             <TableRow key={pt.id} onClick={() => navigate(`/operacao/pt/${pt.id}`)} style={{ cursor: 'pointer' }}>
+              <TableCell>{pt.numeroPt ?? '-'}</TableCell>
               <TableCell>{pt.atividadeNome}</TableCell>
               <TableCell>{pt.local}</TableCell>
               <TableCell>{pt.data?.slice(0, 10)}</TableCell>

@@ -6,8 +6,9 @@ using Microsoft.EntityFrameworkCore;
 
 namespace AAHBRANT.SST.Application.PermissoesTrabalho.Commands;
 
-// "Encerramento" (§18) — ação dedicada, só permitida a partir de uma PT já autorizada
-// (mesmo padrão de gate de transição de estado usado em AprovarAprCommand/ReprovarAprCommand).
+// §8 "Encerramento" — "área inspecionada, limpa, segura e liberada" (texto literal do documento).
+// Permitida a partir de Autorizada ou Suspensa (uma PT suspensa pode ser encerrada diretamente, sem
+// precisar ser revalidada antes).
 public record EncerrarPermissaoTrabalhoCommand(
     Guid Id,
     Guid EncerradaPorUsuarioId,
@@ -34,8 +35,8 @@ public class EncerrarPermissaoTrabalhoCommandHandler : IRequestHandler<EncerrarP
         var pt = await _db.PermissoesTrabalho.FirstOrDefaultAsync(p => p.Id == request.Id, ct)
             ?? throw new KeyNotFoundException($"Permissão de Trabalho {request.Id} não encontrada.");
 
-        if (pt.Status != StatusPt.Autorizada)
-            throw new InvalidOperationException("Só é possível encerrar uma PT autorizada.");
+        if (pt.Status is not (StatusPt.Autorizada or StatusPt.Suspensa))
+            throw new InvalidOperationException("Só é possível encerrar uma PT autorizada ou suspensa.");
 
         var usuarioExiste = await _db.Usuarios.AnyAsync(u => u.Id == request.EncerradaPorUsuarioId, ct);
         if (!usuarioExiste)

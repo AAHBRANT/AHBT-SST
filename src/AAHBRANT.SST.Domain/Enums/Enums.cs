@@ -285,13 +285,109 @@ public enum NivelRiscoApr
     Critico = 4
 }
 
-// "Autorização" e "encerramento" (§18) — documento não lista vocabulário literal de status para
-// a PT (mesma lacuna já registrada em StatusApr/StatusPgr/StatusControleRisco) — proposta própria.
+// Formulário "PT – PERMISSÃO DE TRABALHO REV.01" (planilha do usuário, 2026-08-29), §8: a PT tem
+// um estado "Suspensa" próprio (mudança de condição/escopo/emergência etc.), distinto de Encerrada
+// — adicionado ao vocabulário que antes só tinha EmElaboracao/Autorizada/Encerrada.
 public enum StatusPt
 {
     EmElaboracao = 1,
     Autorizada = 2,
-    Encerrada = 3
+    Suspensa = 3,
+    Encerrada = 4
+}
+
+// §2 do formulário — 6 itens fixos de "Documentos e pré-requisitos", cada PT nasce com os 6 (ver
+// CriarPermissaoTrabalhoCommand), cada um marcado Atendido/pendente. Substitui o antigo
+// PermissaoTrabalhoRequisito (checklist de texto livre criado pelo usuário) — o documento define uma
+// lista fixa e literal, não um catálogo configurável.
+public enum ItemPreRequisitoPt
+{
+    AprEspecificaRevisadaDisponivel = 1,
+    PgrInventarioRiscosCompativel = 2,
+    InspecoesChecklistsEquipamentosValidos = 3,
+    ProcedimentoInstrucaoTrabalhoAplicavelDisponivel = 4,
+    TrabalhadoresCapacitadosAutorizadosAptos = 5,
+    PlanoEmergenciaMeiosComunicacaoConhecidos = 6
+}
+
+// §3 do formulário — 12 opções fixas de "Tipo de trabalho / permissões específicas" (multi-select:
+// só os tipos marcados viram linha em PermissaoTrabalhoTipoTrabalho). "Outro" carrega texto livre
+// complementar (PermissaoTrabalhoTipoTrabalho.DescricaoOutro).
+public enum TipoTrabalhoEspecialPt
+{
+    TrabalhoEmAltura = 1, // NR-35
+    TrabalhoAQuenteFonteIgnicao = 2,
+    BloqueioEnergiasPerigosas = 3, // LOTO
+    DemolicaoCortePerfuracao = 4,
+    EspacoConfinado = 5, // NR-33
+    EscavacaoValaFundacao = 6,
+    TrabalhoProximoTrafegoVias = 7,
+    MaquinasEquipamentos = 8,
+    EletricidadeIntervencaoEletrica = 9, // NR-10
+    MovimentacaoIcamentoCargas = 10,
+    ProdutosQuimicosInflamaveis = 11,
+    Outro = 12
+}
+
+// §4 do formulário — 15 itens fixos de "Verificações obrigatórias antes da liberação", cada PT
+// nasce com os 15 (ver CriarPermissaoTrabalhoCommand), cada um respondido C/NC/NA (ver
+// RespostaVerificacaoPt) ou ainda não respondido (null). Um 16º item da planilha ("Rota de fuga,
+// resgate, primeiros socorros...", linha 34) é só texto informativo, sem caixa C/NC/NA — não vira
+// item aqui, fica só como texto fixo na tela/PDF (mesmo tratamento das RECOMENDAÇÕES da APR).
+public enum ItemVerificacaoPt
+{
+    AreaIsoladaSinalizadaAcessoControlado = 1,
+    AprDiscutidaComEquipeAntesDoInicio = 2,
+    InterferenciasExistentesIdentificadas = 3,
+    FontesEnergiaIdentificadasBloqueadasTestadas = 4,
+    MaquinasFerramentasAcessoriosInspecionados = 5,
+    EpcsInstaladosCondicoesUso = 6,
+    EpisDisponiveisAdequadosCaValido = 7,
+    CondicoesAcessoCirculacaoIluminacaoOrganizacao = 8,
+    CondicoesMeteorologicasPermitemExecucaoSegura = 9,
+    RiscoQuedaPessoasObjetosControlado = 10,
+    RiscoIncendioExplosaoControladoExtintorDisponivel = 11,
+    AtmosferaAvaliadaMonitorada = 12,
+    EscavacoesTaludesEscoramentosAcessosInspecionados = 13,
+    PlanoIcamentoAcessoriosMovimentacaoVerificados = 14,
+    VigiaObservadorSinaleiroApoioDefinido = 15
+}
+
+public enum RespostaVerificacaoPt
+{
+    Conforme = 1,
+    NaoConforme = 2,
+    NaoAplicavel = 3
+}
+
+// §5 do formulário, coluna "EPIs aplicáveis" — algumas opções têm complemento de texto livre
+// embutido no próprio formulário (Luvas/Respirador/Cinturão-talabarte: "____"), guardado em
+// PermissaoTrabalhoEpi.Complemento quando aplicável.
+public enum ItemEpiPt
+{
+    Capacete = 1,
+    Oculos = 2,
+    ProtetorFacial = 3,
+    ProtetorAuditivo = 4,
+    Luvas = 5,
+    Calcado = 6,
+    Respirador = 7,
+    CinturaoTalabarte = 8,
+    VestimentaEspecifica = 9
+}
+
+// §5 do formulário, coluna "EPCs / recursos aplicáveis".
+public enum ItemEpcPt
+{
+    IsolamentoBarreira = 1,
+    GuardaCorpo = 2,
+    LinhaDeVida = 3,
+    Extintor = 4,
+    ExaustaoVentilacao = 5,
+    DetectorGases = 6,
+    KitResgate = 7,
+    Iluminacao = 8,
+    Sinalizacao = 9
 }
 
 // Seção 23 da Base de Conhecimento (linhas 581-595) — 13 tipos literais de inspeção.

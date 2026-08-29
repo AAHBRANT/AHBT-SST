@@ -1,31 +1,40 @@
 using AAHBRANT.SST.Application.Common.Interfaces;
 using AAHBRANT.SST.Domain.Entidades;
+using AAHBRANT.SST.Domain.Enums;
 using FluentValidation;
 using MediatR;
 using Microsoft.EntityFrameworkCore;
 
 namespace AAHBRANT.SST.Application.PermissoesTrabalho.Commands;
 
-// A PT sempre nasce em elaboração (§18 "autorização" é uma etapa distinta do cadastro, mesmo
-// padrão de CriarAprCommand) — Perigos/Responsáveis (catálogos existentes) entram aqui;
-// Controles/Requisitos (conteúdo próprio da PT) entram via seus próprios módulos.
+// A PT sempre nasce em elaboração ("autorização" é uma etapa distinta do cadastro, mesmo padrão de
+// CriarAprCommand). Nasce já com os 6 PreRequisitos (§2) e os 15 Verificacoes (§4) do formulário —
+// todos "em branco" (Atendido=false / Resposta=null) — mesmo princípio de CriarInspecaoCommand
+// gerando uma InspecaoItemResposta em branco por item do checklist.
 public record CriarPermissaoTrabalhoCommand(
+    string? NumeroPt,
     Guid AtividadeId,
+    string DescricaoAtividade,
     string Local,
+    string? EmpresaExecutante,
     Guid? EquipeId,
     DateTime Data,
     TimeSpan? HorarioInicio,
     TimeSpan? HorarioFim,
     DateTime? Validade,
-    List<Guid> PerigosIds,
+    Guid? ResponsavelExecucaoUsuarioId,
+    Guid? ResponsavelAreaUsuarioId,
     List<Guid> ResponsaveisIds) : IRequest<Guid>;
 
 public class CriarPermissaoTrabalhoCommandValidator : AbstractValidator<CriarPermissaoTrabalhoCommand>
 {
     public CriarPermissaoTrabalhoCommandValidator()
     {
+        RuleFor(x => x.NumeroPt).MaximumLength(60);
         RuleFor(x => x.AtividadeId).NotEmpty();
+        RuleFor(x => x.DescricaoAtividade).NotEmpty().MaximumLength(500);
         RuleFor(x => x.Local).NotEmpty().MaximumLength(200);
+        RuleFor(x => x.EmpresaExecutante).MaximumLength(200);
     }
 }
 
@@ -43,17 +52,25 @@ public class CriarPermissaoTrabalhoCommandHandler : IRequestHandler<CriarPermiss
 
         var pt = new PermissaoTrabalho
         {
+            NumeroPt = request.NumeroPt,
             AtividadeId = request.AtividadeId,
+            DescricaoAtividade = request.DescricaoAtividade,
             Local = request.Local,
+            EmpresaExecutante = request.EmpresaExecutante,
             EquipeId = request.EquipeId,
             Data = request.Data,
             HorarioInicio = request.HorarioInicio,
             HorarioFim = request.HorarioFim,
             Validade = request.Validade,
+            ResponsavelExecucaoUsuarioId = request.ResponsavelExecucaoUsuarioId,
+            ResponsavelAreaUsuarioId = request.ResponsavelAreaUsuarioId,
         };
 
-        foreach (var perigoId in request.PerigosIds.Distinct())
-            pt.Perigos.Add(new PermissaoTrabalhoPerigo { PerigoId = perigoId });
+        foreach (var item in Enum.GetValues<ItemPreRequisitoPt>())
+            pt.PreRequisitos.Add(new PermissaoTrabalhoPreRequisito { Item = item });
+
+        foreach (var item in Enum.GetValues<ItemVerificacaoPt>())
+            pt.Verificacoes.Add(new PermissaoTrabalhoVerificacao { Item = item });
 
         foreach (var trabalhadorId in request.ResponsaveisIds.Distinct())
             pt.Responsaveis.Add(new PermissaoTrabalhoResponsavel { TrabalhadorId = trabalhadorId });

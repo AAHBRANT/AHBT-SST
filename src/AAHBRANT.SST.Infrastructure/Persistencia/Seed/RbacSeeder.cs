@@ -118,7 +118,7 @@ public static class RbacSeeder
         // original (PT, Inspeções, NC, Acidentes, Matriz Legal, Gestão Documental, Alertas).
         ("pt:ver", "PermissaoTrabalho", "Ver", "Ver Permissão de Trabalho"),
         ("pt:criar", "PermissaoTrabalho", "Criar", "Elaborar Permissão de Trabalho"),
-        ("pt:editar", "PermissaoTrabalho", "Editar", "Editar perigos/controles/requisitos da PT"),
+        ("pt:editar", "PermissaoTrabalho", "Editar", "Editar cabeçalho, pré-requisitos, tipos de trabalho, verificações, EPI/EPC e riscos críticos da PT"),
         ("pt:autorizar", "PermissaoTrabalho", "Autorizar", "Autorizar/liberar a Permissão de Trabalho"),
         ("pt:encerrar", "PermissaoTrabalho", "Encerrar", "Encerrar a Permissão de Trabalho"),
 

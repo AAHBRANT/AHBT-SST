@@ -68,9 +68,12 @@ public class SstDbContext : DbContext, IAppDbContext
     public DbSet<AprAssinatura> AprAssinaturas => Set<AprAssinatura>();
 
     public DbSet<PermissaoTrabalho> PermissoesTrabalho => Set<PermissaoTrabalho>();
-    public DbSet<PermissaoTrabalhoPerigo> PermissaoTrabalhoPerigos => Set<PermissaoTrabalhoPerigo>();
-    public DbSet<PermissaoTrabalhoControle> PermissaoTrabalhoControles => Set<PermissaoTrabalhoControle>();
-    public DbSet<PermissaoTrabalhoRequisito> PermissaoTrabalhoRequisitos => Set<PermissaoTrabalhoRequisito>();
+    public DbSet<PermissaoTrabalhoPreRequisito> PermissaoTrabalhoPreRequisitos => Set<PermissaoTrabalhoPreRequisito>();
+    public DbSet<PermissaoTrabalhoTipoTrabalho> PermissaoTrabalhoTiposTrabalho => Set<PermissaoTrabalhoTipoTrabalho>();
+    public DbSet<PermissaoTrabalhoVerificacao> PermissaoTrabalhoVerificacoes => Set<PermissaoTrabalhoVerificacao>();
+    public DbSet<PermissaoTrabalhoEpi> PermissaoTrabalhoEpis => Set<PermissaoTrabalhoEpi>();
+    public DbSet<PermissaoTrabalhoEpc> PermissaoTrabalhoEpcs => Set<PermissaoTrabalhoEpc>();
+    public DbSet<PermissaoTrabalhoRiscoCritico> PermissaoTrabalhoRiscosCriticos => Set<PermissaoTrabalhoRiscoCritico>();
     public DbSet<PermissaoTrabalhoResponsavel> PermissaoTrabalhoResponsaveis => Set<PermissaoTrabalhoResponsavel>();
 
     public DbSet<ChecklistModelo> ChecklistModelos => Set<ChecklistModelo>();

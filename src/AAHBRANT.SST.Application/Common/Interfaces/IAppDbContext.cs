@@ -58,9 +58,12 @@ public interface IAppDbContext
     DbSet<AprAssinatura> AprAssinaturas { get; }
 
     DbSet<PermissaoTrabalho> PermissoesTrabalho { get; }
-    DbSet<PermissaoTrabalhoPerigo> PermissaoTrabalhoPerigos { get; }
-    DbSet<PermissaoTrabalhoControle> PermissaoTrabalhoControles { get; }
-    DbSet<PermissaoTrabalhoRequisito> PermissaoTrabalhoRequisitos { get; }
+    DbSet<PermissaoTrabalhoPreRequisito> PermissaoTrabalhoPreRequisitos { get; }
+    DbSet<PermissaoTrabalhoTipoTrabalho> PermissaoTrabalhoTiposTrabalho { get; }
+    DbSet<PermissaoTrabalhoVerificacao> PermissaoTrabalhoVerificacoes { get; }
+    DbSet<PermissaoTrabalhoEpi> PermissaoTrabalhoEpis { get; }
+    DbSet<PermissaoTrabalhoEpc> PermissaoTrabalhoEpcs { get; }
+    DbSet<PermissaoTrabalhoRiscoCritico> PermissaoTrabalhoRiscosCriticos { get; }
     DbSet<PermissaoTrabalhoResponsavel> PermissaoTrabalhoResponsaveis { get; }
 
     DbSet<ChecklistModelo> ChecklistModelos { get; }

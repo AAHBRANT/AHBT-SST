@@ -870,92 +870,286 @@ export interface AprDetalhe {
   assinaturas: AprAssinatura[];
 }
 
+// PT REV.01 — reformulação literal do formulário "PT – PERMISSÃO DE TRABALHO" (planilha do
+// usuário, 2026-08-29). Mesmo princípio da APR REV.02: os catálogos fixos do documento (§2 a §5)
+// viram enums no backend (não catálogos editáveis), refletidos aqui como const objects + labels.
 export const StatusPt = {
   EmElaboracao: 1,
   Autorizada: 2,
-  Encerrada: 3,
+  Suspensa: 3,
+  Encerrada: 4,
 } as const;
 
 export const statusPtLabel: Record<number, string> = {
   1: 'Em elaboração',
   2: 'Autorizada',
-  3: 'Encerrada',
+  3: 'Suspensa',
+  4: 'Encerrada',
+};
+
+export const ItemPreRequisitoPt = {
+  AprEspecificaRevisadaDisponivel: 1,
+  PgrInventarioRiscosCompativel: 2,
+  InspecoesChecklistsEquipamentosValidos: 3,
+  ProcedimentoInstrucaoTrabalhoAplicavelDisponivel: 4,
+  TrabalhadoresCapacitadosAutorizadosAptos: 5,
+  PlanoEmergenciaMeiosComunicacaoConhecidos: 6,
+} as const;
+
+export const itemPreRequisitoPtLabel: Record<number, string> = {
+  1: 'APR específica da atividade revisada e disponível',
+  2: 'PGR / Inventário de Riscos compatível com a atividade',
+  3: 'Inspeções / checklists dos equipamentos válidos',
+  4: 'Procedimento / instrução de trabalho aplicável disponível',
+  5: 'Trabalhadores capacitados, autorizados e aptos quando aplicável',
+  6: 'Plano de emergência e meios de comunicação conhecidos pela equipe',
+};
+
+export const TipoTrabalhoEspecialPt = {
+  TrabalhoEmAltura: 1,
+  TrabalhoAQuenteFonteIgnicao: 2,
+  BloqueioEnergiasPerigosas: 3,
+  DemolicaoCortePerfuracao: 4,
+  EspacoConfinado: 5,
+  EscavacaoValaFundacao: 6,
+  TrabalhoProximoTrafegoVias: 7,
+  MaquinasEquipamentos: 8,
+  EletricidadeIntervencaoEletrica: 9,
+  MovimentacaoIcamentoCargas: 10,
+  ProdutosQuimicosInflamaveis: 11,
+  Outro: 12,
+} as const;
+
+export const tipoTrabalhoEspecialPtLabel: Record<number, string> = {
+  1: 'Trabalho em altura – NR-35',
+  2: 'Trabalho a quente / fonte de ignição',
+  3: 'Bloqueio de energias perigosas (LOTO)',
+  4: 'Demolição / corte / perfuração',
+  5: 'Espaço confinado – NR-33',
+  6: 'Escavação / vala / fundação',
+  7: 'Trabalho próximo a tráfego / vias',
+  8: 'Máquinas e equipamentos',
+  9: 'Eletricidade / intervenção elétrica – NR-10',
+  10: 'Movimentação e içamento de cargas',
+  11: 'Produtos químicos / inflamáveis',
+  12: 'Outro',
+};
+
+export const ItemVerificacaoPt = {
+  AreaIsoladaSinalizadaAcessoControlado: 1,
+  AprDiscutidaComEquipeAntesDoInicio: 2,
+  InterferenciasExistentesIdentificadas: 3,
+  FontesEnergiaIdentificadasBloqueadasTestadas: 4,
+  MaquinasFerramentasAcessoriosInspecionados: 5,
+  EpcsInstaladosCondicoesUso: 6,
+  EpisDisponiveisAdequadosCaValido: 7,
+  CondicoesAcessoCirculacaoIluminacaoOrganizacao: 8,
+  CondicoesMeteorologicasPermitemExecucaoSegura: 9,
+  RiscoQuedaPessoasObjetosControlado: 10,
+  RiscoIncendioExplosaoControladoExtintorDisponivel: 11,
+  AtmosferaAvaliadaMonitorada: 12,
+  EscavacoesTaludesEscoramentosAcessosInspecionados: 13,
+  PlanoIcamentoAcessoriosMovimentacaoVerificados: 14,
+  VigiaObservadorSinaleiroApoioDefinido: 15,
+} as const;
+
+export const itemVerificacaoPtLabel: Record<number, string> = {
+  1: 'Área isolada, sinalizada e com acesso controlado?',
+  2: 'APR discutida com toda a equipe antes do início?',
+  3: 'Interferências existentes identificadas (redes, tubulações, energia, tráfego etc.)?',
+  4: 'Fontes de energia identificadas, bloqueadas e testadas quando aplicável?',
+  5: 'Máquinas, ferramentas, acessórios e dispositivos inspecionados e adequados?',
+  6: 'EPCs instalados e em condições de uso?',
+  7: 'EPIs definidos na APR disponíveis, adequados, com CA válido quando aplicável?',
+  8: 'Condições de acesso, circulação, iluminação e organização adequadas?',
+  9: 'Condições meteorológicas permitem execução segura da atividade?',
+  10: 'Risco de queda de pessoas/objetos controlado quando aplicável?',
+  11: 'Risco de incêndio/explosão controlado; extintor adequado disponível quando aplicável?',
+  12: 'Atmosfera avaliada/monitorada quando aplicável (O₂, inflamáveis e tóxicos)?',
+  13: 'Escavações/taludes/escoramentos/acessos inspecionados quando aplicável?',
+  14: 'Plano de içamento e acessórios de movimentação verificados quando aplicável?',
+  15: 'Vigia, observador, sinaleiro ou trabalhador de apoio definido quando aplicável?',
+};
+
+export const RespostaVerificacaoPt = {
+  Conforme: 1,
+  NaoConforme: 2,
+  NaoAplicavel: 3,
+} as const;
+
+export const respostaVerificacaoPtLabel: Record<number, string> = {
+  1: 'Conforme',
+  2: 'Não Conforme',
+  3: 'Não Aplicável',
+};
+
+export const ItemEpiPt = {
+  Capacete: 1,
+  Oculos: 2,
+  ProtetorFacial: 3,
+  ProtetorAuditivo: 4,
+  Luvas: 5,
+  Calcado: 6,
+  Respirador: 7,
+  CinturaoTalabarte: 8,
+  VestimentaEspecifica: 9,
+} as const;
+
+export const itemEpiPtLabel: Record<number, string> = {
+  1: 'Capacete',
+  2: 'Óculos',
+  3: 'Protetor facial',
+  4: 'Protetor auditivo',
+  5: 'Luvas',
+  6: 'Calçado',
+  7: 'Respirador',
+  8: 'Cinturão/talabarte',
+  9: 'Vestimenta específica',
+};
+
+export const ItemEpcPt = {
+  IsolamentoBarreira: 1,
+  GuardaCorpo: 2,
+  LinhaDeVida: 3,
+  Extintor: 4,
+  ExaustaoVentilacao: 5,
+  DetectorGases: 6,
+  KitResgate: 7,
+  Iluminacao: 8,
+  Sinalizacao: 9,
+} as const;
+
+export const itemEpcPtLabel: Record<number, string> = {
+  1: 'Isolamento/barreira',
+  2: 'Guarda-corpo',
+  3: 'Linha de vida',
+  4: 'Extintor',
+  5: 'Exaustão/ventilação',
+  6: 'Detector de gases',
+  7: 'Kit de resgate',
+  8: 'Iluminação',
+  9: 'Sinalização',
 };
 
 export interface PermissaoTrabalho {
   id: string;
+  numeroPt?: string | null;
   atividadeId: string;
   atividadeNome: string;
+  obraNome?: string | null;
+  descricaoAtividade: string;
   local: string;
+  empresaExecutante?: string | null;
   equipeId?: string | null;
   equipeNome?: string | null;
   data: string;
   horarioInicio?: string | null;
   horarioFim?: string | null;
   validade?: string | null;
+  responsavelExecucaoUsuarioId?: string | null;
+  responsavelExecucaoUsuarioNome?: string | null;
+  responsavelAreaUsuarioId?: string | null;
+  responsavelAreaUsuarioNome?: string | null;
   status: number;
   autorizadoPorUsuarioId?: string | null;
   autorizadoPorUsuarioNome?: string | null;
   dataAutorizacao?: string | null;
+  dataAssinaturaExecucao?: string | null;
+  responsavelSstUsuarioId?: string | null;
+  responsavelSstUsuarioNome?: string | null;
+  dataAssinaturaSst?: string | null;
+  suspensaPorUsuarioId?: string | null;
+  suspensaPorUsuarioNome?: string | null;
+  dataSuspensao?: string | null;
+  motivoSuspensao?: string | null;
+  revalidadaPorUsuarioId?: string | null;
+  revalidadaPorUsuarioNome?: string | null;
+  dataRevalidacao?: string | null;
   encerradaPorUsuarioId?: string | null;
   encerradaPorUsuarioNome?: string | null;
   dataEncerramento?: string | null;
   observacoesEncerramento?: string | null;
+  outrosEpis?: string | null;
+  outrosEpcs?: string | null;
 }
 
 export interface NovaPermissaoTrabalho {
+  numeroPt?: string | null;
   atividadeId: string;
+  descricaoAtividade: string;
   local: string;
+  empresaExecutante?: string | null;
   equipeId?: string | null;
   data: string;
   horarioInicio?: string | null;
   horarioFim?: string | null;
   validade?: string | null;
-  perigosIds: string[];
+  responsavelExecucaoUsuarioId?: string | null;
+  responsavelAreaUsuarioId?: string | null;
   responsaveisIds: string[];
 }
 
-export interface AtualizarPermissaoTrabalhoPayload {
+export interface AtualizarPermissaoTrabalhoPayload extends NovaPermissaoTrabalho {
   id: string;
-  atividadeId: string;
-  local: string;
-  equipeId?: string | null;
-  data: string;
-  horarioInicio?: string | null;
-  horarioFim?: string | null;
-  validade?: string | null;
-  perigosIds: string[];
-  responsaveisIds: string[];
 }
 
-export interface PermissaoTrabalhoPerigo {
+export interface PermissaoTrabalhoPreRequisito {
   id: string;
   permissaoTrabalhoId: string;
-  perigoId: string;
-  perigoNome: string;
-}
-
-export interface PermissaoTrabalhoControle {
-  id: string;
-  permissaoTrabalhoId: string;
-  descricao: string;
-}
-
-export interface NovaPermissaoTrabalhoControle {
-  permissaoTrabalhoId: string;
-  descricao: string;
-}
-
-export interface PermissaoTrabalhoRequisito {
-  id: string;
-  permissaoTrabalhoId: string;
-  descricao: string;
+  item: number;
   atendido: boolean;
 }
 
-export interface NovaPermissaoTrabalhoRequisito {
+export interface PermissaoTrabalhoTipoTrabalho {
+  id: string;
   permissaoTrabalhoId: string;
-  descricao: string;
+  tipo: number;
+  descricaoOutro?: string | null;
+}
+
+export interface TipoTrabalhoPtInput {
+  tipo: number;
+  descricaoOutro?: string | null;
+}
+
+export interface PermissaoTrabalhoVerificacao {
+  id: string;
+  permissaoTrabalhoId: string;
+  item: number;
+  resposta?: number | null;
+}
+
+export interface PermissaoTrabalhoEpi {
+  id: string;
+  permissaoTrabalhoId: string;
+  item: number;
+  complemento?: string | null;
+}
+
+export interface EpiPtInput {
+  item: number;
+  complemento?: string | null;
+}
+
+export interface PermissaoTrabalhoEpc {
+  id: string;
+  permissaoTrabalhoId: string;
+  item: number;
+}
+
+export interface PermissaoTrabalhoRiscoCritico {
+  id: string;
+  permissaoTrabalhoId: string;
+  riscoCondicao: string;
+  controleComplementar?: string | null;
+  responsavelEvidencia?: string | null;
+}
+
+export interface NovaPermissaoTrabalhoRiscoCritico {
+  permissaoTrabalhoId: string;
+  riscoCondicao: string;
+  controleComplementar?: string | null;
+  responsavelEvidencia?: string | null;
 }
 
 export interface PermissaoTrabalhoResponsavel {
@@ -963,13 +1157,17 @@ export interface PermissaoTrabalhoResponsavel {
   permissaoTrabalhoId: string;
   trabalhadorId: string;
   trabalhadorNome: string;
+  trabalhadorFuncaoNome?: string | null;
 }
 
 export interface PermissaoTrabalhoDetalhe {
   permissaoTrabalho: PermissaoTrabalho;
-  perigos: PermissaoTrabalhoPerigo[];
-  controles: PermissaoTrabalhoControle[];
-  requisitos: PermissaoTrabalhoRequisito[];
+  preRequisitos: PermissaoTrabalhoPreRequisito[];
+  tiposTrabalho: PermissaoTrabalhoTipoTrabalho[];
+  verificacoes: PermissaoTrabalhoVerificacao[];
+  epis: PermissaoTrabalhoEpi[];
+  epcs: PermissaoTrabalhoEpc[];
+  riscosCriticos: PermissaoTrabalhoRiscoCritico[];
   responsaveis: PermissaoTrabalhoResponsavel[];
 }
 
@@ -2460,37 +2658,76 @@ export const api = {
     atualizar: (id: string, pt: AtualizarPermissaoTrabalhoPayload) =>
       request<void>(`/api/permissoesTrabalho/${id}`, { method: 'PUT', body: JSON.stringify(pt) }),
     excluir: (id: string) => request<void>(`/api/permissoesTrabalho/${id}`, { method: 'DELETE' }),
-    autorizar: (id: string, autorizadoPorUsuarioId: string) =>
+    autorizar: (id: string, autorizadoPorUsuarioId: string, responsavelSstUsuarioId?: string | null) =>
       request<void>(`/api/permissoesTrabalho/${id}/autorizar`, {
         method: 'POST',
-        body: JSON.stringify({ autorizadoPorUsuarioId }),
+        body: JSON.stringify({ autorizadoPorUsuarioId, responsavelSstUsuarioId: responsavelSstUsuarioId || null }),
+      }),
+    suspender: (id: string, motivo: string, suspensaPorUsuarioId: string) =>
+      request<void>(`/api/permissoesTrabalho/${id}/suspender`, {
+        method: 'POST',
+        body: JSON.stringify({ motivo, suspensaPorUsuarioId }),
+      }),
+    revalidar: (id: string, novaValidade: string, novoHorarioFim: string | null, revalidadaPorUsuarioId: string) =>
+      request<void>(`/api/permissoesTrabalho/${id}/revalidar`, {
+        method: 'POST',
+        body: JSON.stringify({ novaValidade, novoHorarioFim, revalidadaPorUsuarioId }),
       }),
     encerrar: (id: string, encerradaPorUsuarioId: string, observacoes?: string | null) =>
       request<void>(`/api/permissoesTrabalho/${id}/encerrar`, {
         method: 'POST',
         body: JSON.stringify({ encerradaPorUsuarioId, observacoes }),
       }),
-  },
-  permissaoTrabalhoControles: {
-    listar: (permissaoTrabalhoId: string) =>
-      request<PermissaoTrabalhoControle[]>(`/api/permissaoTrabalhoControles?permissaoTrabalhoId=${permissaoTrabalhoId}`),
-    criar: (controle: NovaPermissaoTrabalhoControle) =>
-      request<{ id: string }>('/api/permissaoTrabalhoControles', { method: 'POST', body: JSON.stringify(controle) }),
-    excluir: (id: string) => request<void>(`/api/permissaoTrabalhoControles/${id}`, { method: 'DELETE' }),
-  },
-  permissaoTrabalhoRequisitos: {
-    listar: (permissaoTrabalhoId: string) =>
-      request<PermissaoTrabalhoRequisito[]>(
-        `/api/permissaoTrabalhoRequisitos?permissaoTrabalhoId=${permissaoTrabalhoId}`,
-      ),
-    criar: (requisito: NovaPermissaoTrabalhoRequisito) =>
-      request<{ id: string }>('/api/permissaoTrabalhoRequisitos', { method: 'POST', body: JSON.stringify(requisito) }),
-    marcar: (id: string, atendido: boolean) =>
-      request<void>(`/api/permissaoTrabalhoRequisitos/${id}/marcar`, {
+    marcarPreRequisito: (id: string, itemId: string, atendido: boolean) =>
+      request<void>(`/api/permissoesTrabalho/${id}/pre-requisitos/${itemId}/marcar`, {
         method: 'POST',
         body: JSON.stringify({ atendido }),
       }),
-    excluir: (id: string) => request<void>(`/api/permissaoTrabalhoRequisitos/${id}`, { method: 'DELETE' }),
+    responderVerificacao: (id: string, itemId: string, resposta: number) =>
+      request<void>(`/api/permissoesTrabalho/${id}/verificacoes/${itemId}/responder`, {
+        method: 'POST',
+        body: JSON.stringify({ resposta }),
+      }),
+    definirTiposTrabalho: (id: string, tipos: TipoTrabalhoPtInput[]) =>
+      request<void>(`/api/permissoesTrabalho/${id}/tipos-trabalho`, {
+        method: 'PUT',
+        body: JSON.stringify({ tipos }),
+      }),
+    definirEpis: (id: string, itens: EpiPtInput[], outrosEpis?: string | null) =>
+      request<void>(`/api/permissoesTrabalho/${id}/epis`, {
+        method: 'PUT',
+        body: JSON.stringify({ itens, outrosEpis }),
+      }),
+    definirEpcs: (id: string, itens: number[], outrosEpcs?: string | null) =>
+      request<void>(`/api/permissoesTrabalho/${id}/epcs`, {
+        method: 'PUT',
+        body: JSON.stringify({ itens, outrosEpcs }),
+      }),
+    criarRiscoCritico: (risco: NovaPermissaoTrabalhoRiscoCritico) =>
+      request<{ id: string }>('/api/permissoesTrabalho/riscos-criticos', {
+        method: 'POST',
+        body: JSON.stringify(risco),
+      }),
+    atualizarRiscoCritico: (
+      riscoId: string,
+      payload: { riscoCondicao: string; controleComplementar?: string | null; responsavelEvidencia?: string | null },
+    ) =>
+      request<void>(`/api/permissoesTrabalho/riscos-criticos/${riscoId}`, {
+        method: 'PUT',
+        body: JSON.stringify(payload),
+      }),
+    excluirRiscoCritico: (riscoId: string) =>
+      request<void>(`/api/permissoesTrabalho/riscos-criticos/${riscoId}`, { method: 'DELETE' }),
+    exportarPdf: async (id: string) => {
+      const response = await fetch(`${API_BASE_URL}/api/permissoesTrabalho/${id}/pdf`, {
+        headers: await montarHeadersAuth(),
+      });
+      if (!response.ok) {
+        const corpo = await response.text().catch(() => '');
+        throw new Error(`${response.status} ${response.statusText}: ${corpo}`);
+      }
+      return response.blob();
+    },
   },
   usuarios: {
     listar: (status?: number) => request<Usuario[]>(`/api/usuarios${status ? `?status=${status}` : ''}`),
