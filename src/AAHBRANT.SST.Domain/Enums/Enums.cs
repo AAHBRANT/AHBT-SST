@@ -509,3 +509,33 @@ public enum TipoMovimentacaoEstoqueEpi
     DevolucaoEntrada = 2,
     AjusteManual = 3,
 }
+
+// Motor de Aplicabilidade Legal (requisito do usuário, 2026-08-29) — classifica o requisito legal
+// cadastrado por qual tipo de obrigação ele gera quando aplicável. Vocabulário próprio: a Base de
+// Conhecimento não define essa taxonomia, e o conteúdo jurídico real (quais normas, quais critérios)
+// não é gerado por este sistema — só o cadastro estruturado que QSMS/jurídico preenche e valida.
+public enum CategoriaRequisitoLegal
+{
+    Treinamento = 1,
+    Epi = 2,
+    Exame = 3,
+    Documento = 4,
+    Inspecao = 5
+}
+
+public enum StatusRequisitoLegal
+{
+    Ativo = 1,
+    Revogado = 2
+}
+
+// Um requisito legal pode ter vários critérios (qualquer um satisfeito já torna aplicável — lógica
+// OU, decisão própria de escopo): cada critério aponta para UM fator (Perigo do PGR, Função,
+// Equipamento por TipoAtivo, ou resposta de um item do questionário por obra).
+public enum TipoCriterioAplicabilidade
+{
+    Perigo = 1,
+    Funcao = 2,
+    Equipamento = 3,
+    ItemQuestionario = 4
+}

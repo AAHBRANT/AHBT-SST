@@ -93,5 +93,11 @@ public interface IAppDbContext
 
     DbSet<IdempotenciaRegistro> IdempotenciaRegistros { get; }
 
+    DbSet<RequisitoLegal> RequisitosLegais { get; }
+    DbSet<RequisitoLegalCriterio> RequisitoLegalCriterios { get; }
+    DbSet<ItemQuestionarioAplicabilidade> ItensQuestionarioAplicabilidade { get; }
+    DbSet<RespostaQuestionarioAplicabilidade> RespostasQuestionarioAplicabilidade { get; }
+    DbSet<MatrizTreinamentoFuncao> MatrizTreinamentoFuncoes { get; }
+
     Task<int> SaveChangesAsync(CancellationToken cancellationToken = default);
 }

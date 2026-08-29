@@ -23,6 +23,7 @@ import { ValidarDocumentoPage } from './pages/validacao/ValidarDocumentoPage';
 import { AtivosPage } from './pages/ativos/AtivosPage';
 import { AdministracaoPage } from './pages/administracao/AdministracaoPage';
 import { NaoConformidadesPage } from './pages/naoconformidades/NaoConformidadesPage';
+import { RequisitosLegaisPage } from './pages/requisitoslegais/RequisitosLegaisPage';
 import { NaoConformidadeDetalhePage } from './pages/naoconformidades/NaoConformidadeDetalhePage';
 import { AlertasPage } from './pages/alertas/AlertasPage';
 import { AcidentesPage } from './pages/acidentes/AcidentesPage';
@@ -139,6 +140,7 @@ function App() {
             <Route path="/nao-conformidades/:id" element={<NaoConformidadeDetalhePage />} />
             <Route path="/acidentes" element={<AcidentesPage />} />
             <Route path="/acidentes/:id" element={<AcidenteDetalhePage />} />
+            <Route path="/requisitos-legais" element={<RequisitosLegaisPage />} />
 
             <Route path="/epi" element={<EpiPage />} />
             <Route path="/epi/:id/assinar" element={<AssinarEntregaEpiPage />} />

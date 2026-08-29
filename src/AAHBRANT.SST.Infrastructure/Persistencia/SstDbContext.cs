@@ -100,6 +100,12 @@ public class SstDbContext : DbContext, IAppDbContext
 
     public DbSet<IdempotenciaRegistro> IdempotenciaRegistros => Set<IdempotenciaRegistro>();
 
+    public DbSet<RequisitoLegal> RequisitosLegais => Set<RequisitoLegal>();
+    public DbSet<RequisitoLegalCriterio> RequisitoLegalCriterios => Set<RequisitoLegalCriterio>();
+    public DbSet<ItemQuestionarioAplicabilidade> ItensQuestionarioAplicabilidade => Set<ItemQuestionarioAplicabilidade>();
+    public DbSet<RespostaQuestionarioAplicabilidade> RespostasQuestionarioAplicabilidade => Set<RespostaQuestionarioAplicabilidade>();
+    public DbSet<MatrizTreinamentoFuncao> MatrizTreinamentoFuncoes => Set<MatrizTreinamentoFuncao>();
+
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         modelBuilder.ApplyConfigurationsFromAssembly(typeof(SstDbContext).Assembly);

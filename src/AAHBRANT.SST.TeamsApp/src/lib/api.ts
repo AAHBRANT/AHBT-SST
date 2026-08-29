@@ -227,6 +227,98 @@ export interface Treinamento {
 
 export type NovoTreinamento = Omit<Treinamento, 'id'>;
 
+// Módulo de Requisitos Legais — Motor de Aplicabilidade Legal (requisito do usuário, 2026-08-29).
+// Fase 1 (fundação de dados): cadastro do requisito e seus critérios de aplicabilidade, catálogo do
+// questionário e matriz de obrigatoriedade de treinamento por função. O cruzamento de fato (o
+// "motor" que avalia cada obra) é uma fase seguinte, ainda não implementada.
+export const CategoriaRequisitoLegal = {
+  Treinamento: 1,
+  Epi: 2,
+  Exame: 3,
+  Documento: 4,
+  Inspecao: 5,
+} as const;
+
+export const categoriaRequisitoLegalLabel: Record<number, string> = {
+  1: 'Treinamento',
+  2: 'EPI',
+  3: 'Exame',
+  4: 'Documento',
+  5: 'Inspeção',
+};
+
+export const StatusRequisitoLegal = {
+  Ativo: 1,
+  Revogado: 2,
+} as const;
+
+export const statusRequisitoLegalLabel: Record<number, string> = {
+  1: 'Ativo',
+  2: 'Revogado',
+};
+
+export const TipoCriterioAplicabilidade = {
+  Perigo: 1,
+  Funcao: 2,
+  Equipamento: 3,
+  ItemQuestionario: 4,
+} as const;
+
+export const tipoCriterioAplicabilidadeLabel: Record<number, string> = {
+  1: 'Perigo (PGR)',
+  2: 'Função',
+  3: 'Equipamento',
+  4: 'Item do questionário',
+};
+
+export interface RequisitoLegal {
+  id: string;
+  norma: string;
+  artigo?: string | null;
+  titulo: string;
+  descricao: string;
+  categoria: number;
+  status: number;
+  fonte?: string | null;
+}
+
+export type NovoRequisitoLegal = Omit<RequisitoLegal, 'id' | 'status'>;
+export type AtualizarRequisitoLegalPayload = Omit<RequisitoLegal, 'id'>;
+
+export interface CriterioAplicabilidadeInput {
+  tipo: number;
+  perigoId?: string | null;
+  funcaoId?: string | null;
+  tipoEquipamento?: number | null;
+  itemQuestionarioAplicabilidadeId?: string | null;
+}
+
+export interface RequisitoLegalCriterio extends CriterioAplicabilidadeInput {
+  id: string;
+  perigoNome?: string | null;
+  funcaoNome?: string | null;
+  itemQuestionarioPergunta?: string | null;
+}
+
+export interface RequisitoLegalDetalhe {
+  requisito: RequisitoLegal;
+  criterios: RequisitoLegalCriterio[];
+}
+
+export interface ItemQuestionarioAplicabilidade {
+  id: string;
+  pergunta: string;
+  textoApoio?: string | null;
+}
+
+export interface RespostaQuestionarioObra {
+  itemId: string;
+  pergunta: string;
+  textoApoio?: string | null;
+  resposta: boolean | null;
+  observacao?: string | null;
+}
+
 export interface CatalogoEpi {
   id: string;
   nome: string;
@@ -2041,6 +2133,13 @@ export const api = {
         method: 'PUT',
         body: JSON.stringify({ catalogoEpiIds }),
       }),
+    listarTreinamentosObrigatorios: (funcaoId: string) =>
+      request<CursoTreinamento[]>(`/api/funcoes/${funcaoId}/treinamentos-obrigatorios`),
+    definirTreinamentosObrigatorios: (funcaoId: string, cursoTreinamentoIds: string[]) =>
+      request<void>(`/api/funcoes/${funcaoId}/treinamentos-obrigatorios`, {
+        method: 'PUT',
+        body: JSON.stringify({ cursoTreinamentoIds }),
+      }),
   },
   setores: {
     listar: (obraId?: string) => request<Setor[]>(`/api/setores${obraId ? `?obraId=${obraId}` : ''}`),
@@ -2111,6 +2210,44 @@ export const api = {
     criar: (treinamento: NovoTreinamento) =>
       request<{ id: string }>('/api/treinamentos', { method: 'POST', body: JSON.stringify(treinamento) }),
     excluir: (id: string) => request<void>(`/api/treinamentos/${id}`, { method: 'DELETE' }),
+  },
+  requisitosLegais: {
+    listar: (categoria?: number, status?: number) => {
+      const params = new URLSearchParams();
+      if (categoria) params.set('categoria', String(categoria));
+      if (status) params.set('status', String(status));
+      const qs = params.toString();
+      return request<RequisitoLegal[]>(`/api/requisitoslegais${qs ? `?${qs}` : ''}`);
+    },
+    obterDetalhe: (id: string) => request<RequisitoLegalDetalhe>(`/api/requisitoslegais/${id}`),
+    criar: (requisito: NovoRequisitoLegal) =>
+      request<{ id: string }>('/api/requisitoslegais', { method: 'POST', body: JSON.stringify(requisito) }),
+    atualizar: (id: string, requisito: AtualizarRequisitoLegalPayload) =>
+      request<void>(`/api/requisitoslegais/${id}`, { method: 'PUT', body: JSON.stringify({ ...requisito, id }) }),
+    excluir: (id: string) => request<void>(`/api/requisitoslegais/${id}`, { method: 'DELETE' }),
+    definirCriterios: (id: string, criterios: CriterioAplicabilidadeInput[]) =>
+      request<void>(`/api/requisitoslegais/${id}/criterios`, { method: 'PUT', body: JSON.stringify({ criterios }) }),
+  },
+  questionarioAplicabilidade: {
+    listarItens: () => request<ItemQuestionarioAplicabilidade[]>('/api/questionario-aplicabilidade/itens'),
+    criarItem: (pergunta: string, textoApoio?: string | null) =>
+      request<{ id: string }>('/api/questionario-aplicabilidade/itens', {
+        method: 'POST',
+        body: JSON.stringify({ pergunta, textoApoio }),
+      }),
+    atualizarItem: (id: string, pergunta: string, textoApoio?: string | null) =>
+      request<void>(`/api/questionario-aplicabilidade/itens/${id}`, {
+        method: 'PUT',
+        body: JSON.stringify({ pergunta, textoApoio }),
+      }),
+    excluirItem: (id: string) => request<void>(`/api/questionario-aplicabilidade/itens/${id}`, { method: 'DELETE' }),
+    obterQuestionarioObra: (obraId: string) =>
+      request<RespostaQuestionarioObra[]>(`/api/questionario-aplicabilidade/obras/${obraId}`),
+    responder: (obraId: string, itemId: string, resposta: boolean, observacao?: string | null) =>
+      request<void>(`/api/questionario-aplicabilidade/obras/${obraId}/itens/${itemId}`, {
+        method: 'PUT',
+        body: JSON.stringify({ resposta, observacao }),
+      }),
   },
   catalogosEpi: {
     listar: () => request<CatalogoEpi[]>('/api/catalogosepi'),

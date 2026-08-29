@@ -10,6 +10,7 @@ import {
   Settings24Regular,
   Alert24Regular,
   ShieldCheckmark24Regular,
+  DocumentCheckmark24Regular,
   DocumentError24Regular,
   BriefcaseMedical24Regular,
   People24Regular,
@@ -171,6 +172,8 @@ const secoesNavegacao: Array<{ pilar: string | null; itens: Array<{ rota: string
   { pilar: null, itens: [{ rota: '/operacao', rotulo: 'Operação', icone: BuildingBank24Regular }] },
   { pilar: null, itens: [{ rota: '/nao-conformidades', rotulo: 'Não Conformidades', icone: DocumentError24Regular }] },
   { pilar: null, itens: [{ rota: '/acidentes', rotulo: 'Acidentes & Incidentes', icone: BriefcaseMedical24Regular }] },
+  // Módulo de Requisitos Legais — Motor de Aplicabilidade Legal (requisito do usuário, 2026-08-29).
+  { pilar: null, itens: [{ rota: '/requisitos-legais', rotulo: 'Requisitos Legais', icone: DocumentCheckmark24Regular }] },
   // EPI ficou fora dos módulos-pilar (sidebar fixa própria) por decisão do usuário: catálogo/estoque
   // e entregas são dado operacional/compartilhado, não pessoal — não caberia como aba de um pilar.
   { pilar: null, itens: [{ rota: '/epi', rotulo: 'EPI', icone: ShieldCheckmark24Regular }] },
@@ -187,6 +190,7 @@ function tituloDaRota(pathname: string): string {
   if (pathname.startsWith('/pessoas')) return 'Pessoas';
   if (pathname.startsWith('/nao-conformidades')) return 'Não Conformidades';
   if (pathname.startsWith('/acidentes')) return 'Acidentes & Incidentes';
+  if (pathname.startsWith('/requisitos-legais')) return 'Requisitos Legais';
   if (pathname.startsWith('/epi')) return 'EPI';
   const item = itensNavegacaoFlat.find((i) => i.rota === pathname);
   return item?.rotulo ?? 'AAHBRANT SST';

@@ -181,6 +181,17 @@ public static class RbacSeeder
         ("regraalerta:criar", "RegraAlerta", "Criar", "Cadastrar limiar de antecedência/severidade por módulo"),
         ("regraalerta:editar", "RegraAlerta", "Editar", "Editar limiar de antecedência/severidade por módulo"),
         ("regraalerta:excluir", "RegraAlerta", "Excluir", "Excluir limiar de antecedência/severidade por módulo"),
+
+        // Motor de Aplicabilidade Legal (requisito do usuário, 2026-08-29) — cadastro restrito a
+        // quem tem competência para validar conteúdo jurídico (QSMS/Diretoria); "responder" o
+        // questionário de aplicabilidade por obra é uma ação mais operacional, por isso permissão
+        // própria em vez de reaproveitar requisitolegal:editar.
+        ("requisitolegal:ver", "RequisitoLegal", "Ver", "Ver requisitos legais e seus critérios de aplicabilidade"),
+        ("requisitolegal:criar", "RequisitoLegal", "Criar", "Cadastrar requisito legal e seus critérios de aplicabilidade"),
+        ("requisitolegal:editar", "RequisitoLegal", "Editar", "Editar requisito legal e seus critérios de aplicabilidade"),
+        ("requisitolegal:excluir", "RequisitoLegal", "Excluir", "Excluir requisito legal"),
+        ("questionarioaplicabilidade:gerenciar", "QuestionarioAplicabilidade", "Gerenciar", "Cadastrar/editar/excluir itens do questionário de aplicabilidade"),
+        ("questionarioaplicabilidade:responder", "QuestionarioAplicabilidade", "Responder", "Responder o questionário de aplicabilidade de uma obra"),
     };
 
     public static async Task ExecutarAsync(IServiceProvider services, CancellationToken ct = default)

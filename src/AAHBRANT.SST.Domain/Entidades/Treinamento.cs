@@ -28,3 +28,15 @@ public class Treinamento : AuditableEntity
 
     public ICollection<Evidencia> Evidencias { get; set; } = new List<Evidencia>();
 }
+
+// Matriz de obrigatoriedade de treinamento por função — mesmo princípio de MatrizEpiFuncao (Epi.cs):
+// define quais cursos são obrigatórios para cada função, distinto de Treinamento (que registra a
+// realização de fato por trabalhador). Base para o Motor de Aplicabilidade Legal gerar/gerenciar
+// treinamentos obrigatórios a partir de um RequisitoLegal aplicável.
+public class MatrizTreinamentoFuncao : AuditableEntity
+{
+    public Guid FuncaoId { get; set; }
+    public Funcao? Funcao { get; set; }
+    public Guid CursoTreinamentoId { get; set; }
+    public CursoTreinamento? CursoTreinamento { get; set; }
+}
