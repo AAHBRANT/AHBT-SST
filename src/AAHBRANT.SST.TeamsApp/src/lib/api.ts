@@ -2137,6 +2137,42 @@ export interface AtualizarAlertaPayload {
   dataLimiteTratamento?: string | null;
 }
 
+// "Quero o calendário dentro do aplicativo, tem que ser o Teams" (requisito do usuário,
+// 2026-08-29) — combina os eventos reais do Outlook/Teams do usuário logado (lidos via Microsoft
+// Graph) com os vencimentos que o Motor de Alertas já gera para ele. Só a própria agenda do
+// usuário logado (endpoint não recebe usuarioId — ver CalendarioController).
+export interface EventoGraphCalendario {
+  graphEventId: string;
+  assunto: string;
+  inicio: string;
+  fim: string;
+  diaInteiro: boolean;
+  local?: string | null;
+  organizadorNome?: string | null;
+  reuniaoOnline: boolean;
+  linkReuniaoOnline?: string | null;
+}
+
+export interface EventoSstCalendario {
+  alertaId: string;
+  titulo: string;
+  descricao?: string | null;
+  data: string;
+  tipo: number;
+  severidade: number;
+  status: number;
+  entidadeOrigemTipo: string;
+  entidadeOrigemId: string;
+}
+
+export interface Calendario {
+  usuarioIdentificado: boolean;
+  graphDisponivel: boolean;
+  mensagemErroGraph?: string | null;
+  eventosGraph: EventoGraphCalendario[];
+  eventosSst: EventoSstCalendario[];
+}
+
 // Motor Central de Alertas (requisito do usuário, 2026-08-25): tela de administração que permite
 // ajustar RegraAlerta.DiasAntecedencia/Severidade por módulo, hoje só editável direto no banco. O
 // AlertaEngineService escolhe a regra mais urgente cujo DiasAntecedencia cobre os dias restantes —
@@ -2648,6 +2684,12 @@ export const api = {
     listar: (aprId: string) => request<AprAssinatura[]>(`/api/aprAssinaturas?aprId=${aprId}`),
     criar: (assinatura: NovaAprAssinatura) =>
       request<{ id: string }>('/api/aprAssinaturas', { method: 'POST', body: JSON.stringify(assinatura) }),
+  },
+  calendario: {
+    obter: (inicio: Date, fim: Date) =>
+      request<Calendario>(
+        `/api/calendario?inicio=${encodeURIComponent(inicio.toISOString())}&fim=${encodeURIComponent(fim.toISOString())}`,
+      ),
   },
   permissoesTrabalho: {
     listar: (atividadeId?: string) =>

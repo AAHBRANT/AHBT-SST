@@ -26,6 +26,7 @@ import { NaoConformidadesPage } from './pages/naoconformidades/NaoConformidadesP
 import { RequisitosLegaisPage } from './pages/requisitoslegais/RequisitosLegaisPage';
 import { NaoConformidadeDetalhePage } from './pages/naoconformidades/NaoConformidadeDetalhePage';
 import { AlertasPage } from './pages/alertas/AlertasPage';
+import { CalendarioPage } from './pages/calendario/CalendarioPage';
 import { AcidentesPage } from './pages/acidentes/AcidentesPage';
 import { AcidenteDetalhePage } from './pages/acidentes/AcidenteDetalhePage';
 import { DdsPage } from './pages/dds/DdsPage';
@@ -128,6 +129,7 @@ function App() {
             </Route>
 
             <Route path="/alertas" element={<AlertasPage />} />
+            <Route path="/calendario" element={<CalendarioPage />} />
 
             {/* Riscos, Pessoas, Não Conformidades e Acidentes & Incidentes viraram itens de 1º
                 nível na sidebar (antes eram abas de Prevenção/Operação e de Melhoria Contínua,

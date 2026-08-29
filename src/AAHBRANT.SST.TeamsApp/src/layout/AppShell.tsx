@@ -14,6 +14,7 @@ import {
   DocumentError24Regular,
   BriefcaseMedical24Regular,
   People24Regular,
+  CalendarLtr24Regular,
   ChevronLeft24Regular,
   ChevronRight24Regular,
 } from '@fluentui/react-icons';
@@ -166,6 +167,9 @@ const useStyles = makeStyles({
 // internas próprias, mesmo padrão de EPI).
 const secoesNavegacao: Array<{ pilar: string | null; itens: Array<{ rota: string; rotulo: string; icone: typeof Grid24Regular }> }> = [
   { pilar: null, itens: [{ rota: '/', rotulo: 'Dashboard', icone: Grid24Regular }] },
+  // Calendário do Teams dentro do app (requisito do usuário, 2026-08-29) — agenda pessoal, por
+  // isso item de 1º nível próprio (não aba de nenhum pilar), logo depois do Dashboard.
+  { pilar: null, itens: [{ rota: '/calendario', rotulo: 'Calendário', icone: CalendarLtr24Regular }] },
   { pilar: null, itens: [{ rota: '/prevencao', rotulo: 'Procedimentos & Planos', icone: ShieldError24Regular }] },
   { pilar: null, itens: [{ rota: '/riscos', rotulo: 'Riscos', icone: Warning24Regular }] },
   { pilar: null, itens: [{ rota: '/pessoas', rotulo: 'Pessoas', icone: People24Regular }] },

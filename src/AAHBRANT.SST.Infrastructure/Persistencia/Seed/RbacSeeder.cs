@@ -182,6 +182,12 @@ public static class RbacSeeder
         ("regraalerta:editar", "RegraAlerta", "Editar", "Editar limiar de antecedência/severidade por módulo"),
         ("regraalerta:excluir", "RegraAlerta", "Excluir", "Excluir limiar de antecedência/severidade por módulo"),
 
+        // Calendário do Teams dentro do app (requisito do usuário, 2026-08-29) — combina os
+        // eventos reais do Outlook/Teams do usuário logado (Graph) com os vencimentos que o Motor
+        // de Alertas já gera para ele. Endpoint sempre pessoal (o próprio usuário logado, nunca
+        // terceiros), mas ainda assim exige permissão explícita, mesmo padrão de todo módulo aqui.
+        ("calendario:ver", "Calendario", "Ver", "Ver a própria agenda dentro do app (Outlook/Teams + vencimentos do SST)"),
+
         // Motor de Aplicabilidade Legal (requisito do usuário, 2026-08-29) — cadastro restrito a
         // quem tem competência para validar conteúdo jurídico (QSMS/Diretoria); "responder" o
         // questionário de aplicabilidade por obra é uma ação mais operacional, por isso permissão
