@@ -129,6 +129,7 @@ export function TrabalhadoresGaveta({
   const [carregou, setCarregou] = useState(false);
   const [erro, setErro] = useState<string | null>(null);
   const [busca, setBusca] = useState('');
+  const [fotoUrls, setFotoUrls] = useState<Record<string, string>>({});
 
   // Carrega sob demanda, só na primeira vez que a gaveta é aberta.
   useEffect(() => {
@@ -150,6 +151,36 @@ export function TrabalhadoresGaveta({
   useEffect(() => {
     if (aberta && buscaInicial) setBusca(buscaInicial);
   }, [aberta, buscaInicial]);
+
+  // Fotos reais são baixadas sob demanda (só para trabalhadores com temFoto) e mantidas como
+  // object URL enquanto a gaveta estiver aberta — mesmo padrão de miniatura de logo em
+  // ObrasPage.tsx. Sem temFoto, o Avatar cai automaticamente para as iniciais do nome.
+  useEffect(() => {
+    let cancelado = false;
+    (async () => {
+      for (const trabalhador of trabalhadores) {
+        if (!trabalhador.temFoto || fotoUrls[trabalhador.id]) continue;
+        try {
+          const blob = await api.trabalhadores.baixarFoto(trabalhador.id);
+          if (cancelado) return;
+          setFotoUrls((atual) => ({ ...atual, [trabalhador.id]: URL.createObjectURL(blob) }));
+        } catch {
+          // Falha ao carregar a foto não impede o uso da gaveta; o trabalhador fica com iniciais.
+        }
+      }
+    })();
+    return () => {
+      cancelado = true;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [trabalhadores]);
+
+  useEffect(() => {
+    return () => {
+      Object.values(fotoUrls).forEach((url) => URL.revokeObjectURL(url));
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const asoMaisRecentePorTrabalhador = useMemo(() => {
     const mapa = new Map<string, Aso>();
@@ -234,7 +265,12 @@ export function TrabalhadoresGaveta({
                 className={estilos.item}
                 onClick={() => aoSelecionarTrabalhador(trabalhador.id)}
               >
-                <Avatar name={trabalhador.nome} color="colorful" size={40} />
+                <Avatar
+                  name={trabalhador.nome}
+                  image={fotoUrls[trabalhador.id] ? { src: fotoUrls[trabalhador.id] } : undefined}
+                  color="colorful"
+                  size={40}
+                />
                 <div className={estilos.info}>
                   <div className={estilos.nome}>{trabalhador.nome}</div>
                   <div className={estilos.meta}>

@@ -95,6 +95,7 @@ public class TrabalhadorConfiguracao : IEntityTypeConfiguration<Trabalhador>
         builder.Property(t => t.PinHash).HasMaxLength(200);
 
         builder.Property(t => t.Turno).HasMaxLength(50);
+        builder.Property(t => t.FotoContentType).HasMaxLength(100);
 
         builder.HasOne(t => t.Obra).WithMany(o => o.Trabalhadores)
             .HasForeignKey(t => t.ObraId).OnDelete(DeleteBehavior.Restrict);
