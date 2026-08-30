@@ -36,14 +36,38 @@ namespace AAHBRANT.SST.Infrastructure.Persistencia.Migrations
                     N'documento:ver', N'documento:criar', N'documento:editar', N'documento:atualizar_status', N'documento:revisar'
                 );");
 
-            migrationBuilder.DropTable(
-                name: "DocumentoRevisoes");
+            // DropTable puro falha em ambientes (ex.: hml) onde o histórico de schema divergiu do
+            // modelo atual: descoberto em produção que (a) DocumentoRevisoes/DocumentosGestao nunca
+            // chegaram a existir de fato (módulo criado e removido no dev local antes de qualquer
+            // deploy intermediário aplicar a migration que as criava) e (b) RequisitosLegais ainda
+            // tinha uma FK órfã apontando pra ela vinda de uma tabela fora deste histórico de
+            // migrations. Cada bloco abaixo: (1) dropa qualquer FK que referencie a tabela, de
+            // qualquer tabela, achada dinamicamente (não assume só as FKs que o modelo atual
+            // conhece), e (2) só então dropa a tabela se ela existir. Idempotente em qualquer
+            // estado real de banco.
+            migrationBuilder.Sql(@"
+                DECLARE @sql nvarchar(max) = N'';
+                SELECT @sql += N'ALTER TABLE ' + QUOTENAME(OBJECT_SCHEMA_NAME(parent_object_id)) + N'.' + QUOTENAME(OBJECT_NAME(parent_object_id)) + N' DROP CONSTRAINT ' + QUOTENAME(name) + N';'
+                FROM sys.foreign_keys
+                WHERE referenced_object_id = OBJECT_ID(N'[DocumentoRevisoes]');
+                EXEC sp_executesql @sql;
+                IF OBJECT_ID(N'[DocumentoRevisoes]', N'U') IS NOT NULL DROP TABLE [DocumentoRevisoes];");
 
-            migrationBuilder.DropTable(
-                name: "DocumentosGestao");
+            migrationBuilder.Sql(@"
+                DECLARE @sql nvarchar(max) = N'';
+                SELECT @sql += N'ALTER TABLE ' + QUOTENAME(OBJECT_SCHEMA_NAME(parent_object_id)) + N'.' + QUOTENAME(OBJECT_NAME(parent_object_id)) + N' DROP CONSTRAINT ' + QUOTENAME(name) + N';'
+                FROM sys.foreign_keys
+                WHERE referenced_object_id = OBJECT_ID(N'[DocumentosGestao]');
+                EXEC sp_executesql @sql;
+                IF OBJECT_ID(N'[DocumentosGestao]', N'U') IS NOT NULL DROP TABLE [DocumentosGestao];");
 
-            migrationBuilder.DropTable(
-                name: "RequisitosLegais");
+            migrationBuilder.Sql(@"
+                DECLARE @sql nvarchar(max) = N'';
+                SELECT @sql += N'ALTER TABLE ' + QUOTENAME(OBJECT_SCHEMA_NAME(parent_object_id)) + N'.' + QUOTENAME(OBJECT_NAME(parent_object_id)) + N' DROP CONSTRAINT ' + QUOTENAME(name) + N';'
+                FROM sys.foreign_keys
+                WHERE referenced_object_id = OBJECT_ID(N'[RequisitosLegais]');
+                EXEC sp_executesql @sql;
+                IF OBJECT_ID(N'[RequisitosLegais]', N'U') IS NOT NULL DROP TABLE [RequisitosLegais];");
         }
 
         /// <inheritdoc />
