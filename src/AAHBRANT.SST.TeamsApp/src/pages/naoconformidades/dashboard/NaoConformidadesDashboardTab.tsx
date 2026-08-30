@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Field, Select, Text } from '@fluentui/react-components';
+import { DocumentError24Regular, Warning24Regular, ArrowSync24Regular, Alert24Regular } from '@fluentui/react-icons';
 import {
   api,
   origemNaoConformidadeLabel,
@@ -162,10 +163,25 @@ export function NaoConformidadesDashboardTab() {
 
       <div style={{ marginBottom: 16 }}>
         <CardGrid>
-          <KpiCard rotulo="Total de NCs" valor={naoConformidadesFiltradas.length} cor={designTokens.colorPrimary} />
-          <KpiCard rotulo="Abertas" valor={abertas} cor={designTokens.colorAlert} />
-          <KpiCard rotulo="Em tratamento" valor={emTratamento} cor={designTokens.colorWarning} />
-          <KpiCard rotulo="Com prazo vencido" valor={prazoVencido} cor={designTokens.colorAlert} />
+          <KpiCard
+            rotulo="Total de NCs"
+            valor={naoConformidadesFiltradas.length}
+            cor={designTokens.colorPrimary}
+            icone={<DocumentError24Regular />}
+          />
+          <KpiCard rotulo="Abertas" valor={abertas} cor={designTokens.colorAlert} icone={<Warning24Regular />} />
+          <KpiCard
+            rotulo="Em tratamento"
+            valor={emTratamento}
+            cor={designTokens.colorWarning}
+            icone={<ArrowSync24Regular />}
+          />
+          <KpiCard
+            rotulo="Com prazo vencido"
+            valor={prazoVencido}
+            cor={designTokens.colorAlert}
+            icone={<Alert24Regular />}
+          />
         </CardGrid>
       </div>
 

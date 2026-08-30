@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Field, Select, Text } from '@fluentui/react-components';
+import { ClipboardTaskListLtr24Regular, CheckmarkCircle24Regular, Clock24Regular, Warning24Regular } from '@fluentui/react-icons';
 import {
   api,
   StatusApr,
@@ -161,10 +162,30 @@ export function AprDashboardTab() {
 
       <div style={{ marginBottom: 16 }}>
         <CardGrid>
-          <KpiCard rotulo="Total de APRs" valor={aprsFiltradas.length} cor={designTokens.colorPrimary} />
-          <KpiCard rotulo="Aprovadas" valor={aprovadas} cor={designTokens.colorSuccess} />
-          <KpiCard rotulo="Aguardando aprovação" valor={aguardandoAprovacao} cor={designTokens.colorWarning} />
-          <KpiCard rotulo="Com validade vencida" valor={vencidas} cor={designTokens.colorAlert} />
+          <KpiCard
+            rotulo="Total de APRs"
+            valor={aprsFiltradas.length}
+            cor={designTokens.colorPrimary}
+            icone={<ClipboardTaskListLtr24Regular />}
+          />
+          <KpiCard
+            rotulo="Aprovadas"
+            valor={aprovadas}
+            cor={designTokens.colorSuccess}
+            icone={<CheckmarkCircle24Regular />}
+          />
+          <KpiCard
+            rotulo="Aguardando aprovação"
+            valor={aguardandoAprovacao}
+            cor={designTokens.colorWarning}
+            icone={<Clock24Regular />}
+          />
+          <KpiCard
+            rotulo="Com validade vencida"
+            valor={vencidas}
+            cor={designTokens.colorAlert}
+            icone={<Warning24Regular />}
+          />
         </CardGrid>
       </div>
 

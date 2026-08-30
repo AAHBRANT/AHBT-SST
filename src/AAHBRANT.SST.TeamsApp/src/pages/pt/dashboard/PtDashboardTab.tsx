@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Field, Select, Text } from '@fluentui/react-components';
+import { DocumentLock24Regular, CheckmarkCircle24Regular, Edit24Regular, Warning24Regular } from '@fluentui/react-icons';
 import {
   api,
   StatusPt,
@@ -153,10 +154,30 @@ export function PtDashboardTab() {
 
       <div style={{ marginBottom: 16 }}>
         <CardGrid>
-          <KpiCard rotulo="Total de PTs" valor={permissoesFiltradas.length} cor={designTokens.colorPrimary} />
-          <KpiCard rotulo="Autorizadas" valor={autorizadas} cor={designTokens.colorSuccess} />
-          <KpiCard rotulo="Em elaboração" valor={emElaboracao} cor={designTokens.colorWarning} />
-          <KpiCard rotulo="Com validade vencida" valor={vencidas} cor={designTokens.colorAlert} />
+          <KpiCard
+            rotulo="Total de PTs"
+            valor={permissoesFiltradas.length}
+            cor={designTokens.colorPrimary}
+            icone={<DocumentLock24Regular />}
+          />
+          <KpiCard
+            rotulo="Autorizadas"
+            valor={autorizadas}
+            cor={designTokens.colorSuccess}
+            icone={<CheckmarkCircle24Regular />}
+          />
+          <KpiCard
+            rotulo="Em elaboração"
+            valor={emElaboracao}
+            cor={designTokens.colorWarning}
+            icone={<Edit24Regular />}
+          />
+          <KpiCard
+            rotulo="Com validade vencida"
+            valor={vencidas}
+            cor={designTokens.colorAlert}
+            icone={<Warning24Regular />}
+          />
         </CardGrid>
       </div>
 

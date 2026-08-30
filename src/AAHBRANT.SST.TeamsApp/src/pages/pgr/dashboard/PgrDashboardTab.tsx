@@ -1,6 +1,12 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Field, Select, Text } from '@fluentui/react-components';
 import {
+  ShieldCheckmark24Regular,
+  CheckmarkCircle24Regular,
+  Warning24Regular,
+  ClipboardTaskListLtr24Regular,
+} from '@fluentui/react-icons';
+import {
   api,
   StatusControleRisco,
   StatusPgr,
@@ -160,10 +166,30 @@ export function PgrDashboardTab() {
 
       <div style={{ marginBottom: 16 }}>
         <CardGrid>
-          <KpiCard rotulo="Total de PGRs" valor={pgrsFiltrados.length} cor={designTokens.colorPrimary} />
-          <KpiCard rotulo="Vigentes" valor={vigentes} cor={designTokens.colorSuccess} />
-          <KpiCard rotulo="Com revisão vencida" valor={comRevisaoVencida} cor={designTokens.colorAlert} />
-          <KpiCard rotulo="Ações do plano em aberto" valor={acoesEmAberto} cor={designTokens.colorWarning} />
+          <KpiCard
+            rotulo="Total de PGRs"
+            valor={pgrsFiltrados.length}
+            cor={designTokens.colorPrimary}
+            icone={<ShieldCheckmark24Regular />}
+          />
+          <KpiCard
+            rotulo="Vigentes"
+            valor={vigentes}
+            cor={designTokens.colorSuccess}
+            icone={<CheckmarkCircle24Regular />}
+          />
+          <KpiCard
+            rotulo="Com revisão vencida"
+            valor={comRevisaoVencida}
+            cor={designTokens.colorAlert}
+            icone={<Warning24Regular />}
+          />
+          <KpiCard
+            rotulo="Ações do plano em aberto"
+            valor={acoesEmAberto}
+            cor={designTokens.colorWarning}
+            icone={<ClipboardTaskListLtr24Regular />}
+          />
         </CardGrid>
       </div>
 

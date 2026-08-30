@@ -1,6 +1,13 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Badge, Button, Field, Select, Text } from '@fluentui/react-components';
-import { CheckmarkCircle24Regular, DismissCircle24Regular, PlayCircle24Regular } from '@fluentui/react-icons';
+import {
+  CheckmarkCircle24Regular,
+  DismissCircle24Regular,
+  PlayCircle24Regular,
+  Alert24Regular,
+  ArrowUpload24Regular,
+  EyeOff24Regular,
+} from '@fluentui/react-icons';
 import {
   api,
   categoriaAlertaRotulo,
@@ -168,11 +175,26 @@ export function AlertasDashboardTab() {
 
       <div style={{ marginBottom: 16 }}>
         <CardGrid>
-          <KpiCard rotulo="Abertos" valor={abertos} cor={designTokens.colorAlert} />
-          <KpiCard rotulo="Em tratamento" valor={emTratamento} cor={designTokens.colorWarning} />
-          <KpiCard rotulo="Escalonados" valor={escalonados} cor={designTokens.colorPrimary} />
-          <KpiCard rotulo="Resolvidos" valor={resolvidos} cor={designTokens.colorSuccess} />
-          <KpiCard rotulo="Ignorados" valor={ignorados} cor={designTokens.colorInfo} />
+          <KpiCard rotulo="Abertos" valor={abertos} cor={designTokens.colorAlert} icone={<Alert24Regular />} />
+          <KpiCard
+            rotulo="Em tratamento"
+            valor={emTratamento}
+            cor={designTokens.colorWarning}
+            icone={<PlayCircle24Regular />}
+          />
+          <KpiCard
+            rotulo="Escalonados"
+            valor={escalonados}
+            cor={designTokens.colorPrimary}
+            icone={<ArrowUpload24Regular />}
+          />
+          <KpiCard
+            rotulo="Resolvidos"
+            valor={resolvidos}
+            cor={designTokens.colorSuccess}
+            icone={<CheckmarkCircle24Regular />}
+          />
+          <KpiCard rotulo="Ignorados" valor={ignorados} cor={designTokens.colorInfo} icone={<EyeOff24Regular />} />
         </CardGrid>
       </div>
 

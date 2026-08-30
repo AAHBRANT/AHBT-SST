@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Field, Select, Text } from '@fluentui/react-components';
+import { ClipboardTaskListLtr24Regular, ArrowSync24Regular, CheckmarkCircle24Regular, Warning24Regular } from '@fluentui/react-icons';
 import {
   api,
   StatusInspecao,
@@ -131,10 +132,30 @@ export function InspecoesDashboardTab() {
 
       <div style={{ marginBottom: 16 }}>
         <CardGrid>
-          <KpiCard rotulo="Total de inspeções" valor={inspecoesFiltradas.length} cor={designTokens.colorPrimary} />
-          <KpiCard rotulo="Em andamento" valor={emAndamento} cor={designTokens.colorInfo} />
-          <KpiCard rotulo="Concluídas" valor={concluidas} cor={designTokens.colorSuccess} />
-          <KpiCard rotulo="Itens não conformes" valor={itensNaoConformesTotal} cor={designTokens.colorAlert} />
+          <KpiCard
+            rotulo="Total de inspeções"
+            valor={inspecoesFiltradas.length}
+            cor={designTokens.colorPrimary}
+            icone={<ClipboardTaskListLtr24Regular />}
+          />
+          <KpiCard
+            rotulo="Em andamento"
+            valor={emAndamento}
+            cor={designTokens.colorInfo}
+            icone={<ArrowSync24Regular />}
+          />
+          <KpiCard
+            rotulo="Concluídas"
+            valor={concluidas}
+            cor={designTokens.colorSuccess}
+            icone={<CheckmarkCircle24Regular />}
+          />
+          <KpiCard
+            rotulo="Itens não conformes"
+            valor={itensNaoConformesTotal}
+            cor={designTokens.colorAlert}
+            icone={<Warning24Regular />}
+          />
         </CardGrid>
       </div>
 
