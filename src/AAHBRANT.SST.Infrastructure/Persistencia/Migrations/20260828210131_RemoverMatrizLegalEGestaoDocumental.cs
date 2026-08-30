@@ -36,14 +36,15 @@ namespace AAHBRANT.SST.Infrastructure.Persistencia.Migrations
                     N'documento:ver', N'documento:criar', N'documento:editar', N'documento:atualizar_status', N'documento:revisar'
                 );");
 
-            migrationBuilder.DropTable(
-                name: "DocumentoRevisoes");
+            // DropTable puro falha em ambientes (ex.: hml) onde essas tabelas nunca chegaram a
+            // existir de fato — o módulo foi criado e removido no dev local antes de qualquer
+            // deploy intermediário aplicar a migration que as criava. Guarda por existência para
+            // a migration ser idempotente em qualquer estado real de banco.
+            migrationBuilder.Sql("IF OBJECT_ID(N'[DocumentoRevisoes]', N'U') IS NOT NULL DROP TABLE [DocumentoRevisoes];");
 
-            migrationBuilder.DropTable(
-                name: "DocumentosGestao");
+            migrationBuilder.Sql("IF OBJECT_ID(N'[DocumentosGestao]', N'U') IS NOT NULL DROP TABLE [DocumentosGestao];");
 
-            migrationBuilder.DropTable(
-                name: "RequisitosLegais");
+            migrationBuilder.Sql("IF OBJECT_ID(N'[RequisitosLegais]', N'U') IS NOT NULL DROP TABLE [RequisitosLegais];");
         }
 
         /// <inheritdoc />
