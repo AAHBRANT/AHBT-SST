@@ -31,7 +31,8 @@ public class ObterTrabalhadorPorIdQueryHandler : IRequestHandler<ObterTrabalhado
                 DataDemissao = t.DataDemissao,
                 Turno = t.Turno,
                 TelegramVinculado = t.TelegramChatId != null,
-                TelegramCodigoVinculo = t.TelegramCodigoVinculo
+                TelegramCodigoVinculo = t.TelegramCodigoVinculo,
+                TemFoto = t.FotoConteudo != null
             })
             .FirstOrDefaultAsync(ct);
     }

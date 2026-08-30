@@ -53,6 +53,13 @@ public class Trabalhador : AuditableEntity
     // PIN nunca deve transitar por uma propriedade rastreada pelo EF Core, mesmo que efêmera.
     public string? PinHash { get; set; }
 
+    // Foto real do trabalhador (substitui o avatar de iniciais no cadastro) — mesmo padrão de
+    // Obra.LogoConteudo/LogoContentType: binário guardado direto na linha, servido por endpoint
+    // dedicado (nunca embutido no DTO de listagem), TemFoto exposto no DTO como projeção
+    // (FotoConteudo != null) para o frontend decidir se baixa a miniatura sob demanda.
+    public byte[]? FotoConteudo { get; set; }
+    public string? FotoContentType { get; set; }
+
     // Validade jurídica e LGPD (docs/Motor-Assinatura-Eletronica.md §4) — dois consentimentos
     // distintos e obrigatórios antes do trabalhador poder assinar por este motor:
     // TermoAceiteAssinaturaEletronicaEm = aceite geral do método eletrônico (MP 2.200-2/2001,

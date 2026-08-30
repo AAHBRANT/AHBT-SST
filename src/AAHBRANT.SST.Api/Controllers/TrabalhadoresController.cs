@@ -73,6 +73,27 @@ public class TrabalhadoresController : ControllerBase
         return NoContent();
     }
 
+    [Authorize(Policy = "trabalhador:editar")]
+    [HttpPost("{id:guid}/foto")]
+    [RequestSizeLimit(6_000_000)]
+    public async Task<IActionResult> AnexarFoto(Guid id, [FromForm] AnexarFotoTrabalhadorRequestBody body, CancellationToken ct)
+    {
+        await using var stream = new MemoryStream();
+        await body.Foto.CopyToAsync(stream, ct);
+
+        var command = new AnexarFotoTrabalhadorCommand(id, stream.ToArray(), body.Foto.ContentType);
+        await _mediator.Send(command, ct);
+        return NoContent();
+    }
+
+    [Authorize(Policy = "trabalhador:ver")]
+    [HttpGet("{id:guid}/foto")]
+    public async Task<IActionResult> ObterFoto(Guid id, CancellationToken ct)
+    {
+        var foto = await _mediator.Send(new ObterFotoTrabalhadorQuery(id), ct);
+        return foto is null ? NotFound() : File(foto.Conteudo, foto.ContentType, foto.NomeArquivo);
+    }
+
     [Authorize(Policy = "trabalhador:telegram")]
     [HttpPost("{id:guid}/telegram/vinculo")]
     public async Task<IActionResult> GerarVinculoTelegram(Guid id, CancellationToken ct)
@@ -131,3 +152,8 @@ public class TrabalhadoresController : ControllerBase
 }
 
 public record ConfirmarCadastroWebAuthnRequestBody(TipoAutenticadorWebAuthn Tipo, string OpcoesJson, string RespostaJson);
+
+public class AnexarFotoTrabalhadorRequestBody
+{
+    public IFormFile Foto { get; set; } = null!;
+}
