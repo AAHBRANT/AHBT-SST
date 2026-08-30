@@ -24,6 +24,7 @@ export const aahbrantTheme: Theme = {
   ...createLightTheme(aahbrantBrandRamp),
   colorNeutralBackground1: '#FFFFFF',
   colorNeutralBackground2: '#F5F5F7',
+  fontFamilyBase: "'Montserrat', -apple-system, BlinkMacSystemFont, sans-serif",
 };
 
 export const designTokens = {
@@ -42,4 +43,13 @@ export const designTokens = {
   colorRailBorder: 'rgba(15,131,73,0.28)',
   colorRailInk: '#0F5132',
   colorRailInkMuted: 'rgba(15,81,50,0.55)',
+  colorRailActiveBackground: '#16A34A',
+  colorRailActiveInk: '#FFFFFF',
+  // Sistema de cartões/KPIs (Hub Gênesis SST — design decidido em sessão anterior).
+  colorCardBorder: '#E7E4DA',
+  cardShadow: '0 1px 2px rgba(20,17,15,0.04), 0 6px 20px rgba(20,17,15,0.06)',
+  colorSuccessWash: '#EAF7EE',
+  colorWarningWash: '#FDF3E3',
+  colorAlertWash: '#FCEAEA',
+  colorInfoWash: '#EAF1FE',
 };

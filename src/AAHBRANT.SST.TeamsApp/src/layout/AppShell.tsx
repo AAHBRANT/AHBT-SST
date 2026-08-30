@@ -1,7 +1,7 @@
 import type { ReactNode } from 'react';
 import { useEffect, useState } from 'react';
 import { NavLink, useLocation, useNavigate } from 'react-router-dom';
-import { makeStyles, mergeClasses, tokens, Text, Badge, Button } from '@fluentui/react-components';
+import { makeStyles, mergeClasses, Text, Badge, Button, Tooltip } from '@fluentui/react-components';
 import {
   Grid24Regular,
   ShieldError24Regular,
@@ -15,8 +15,6 @@ import {
   BriefcaseMedical24Regular,
   People24Regular,
   CalendarLtr24Regular,
-  ChevronLeft24Regular,
-  ChevronRight24Regular,
 } from '@fluentui/react-icons';
 import { designTokens } from '../theme';
 import { useTeamsContext } from '../teams/useTeamsContext';
@@ -24,21 +22,20 @@ import { api, StatusAlerta } from '../lib/api';
 import logoSst from '../assets/logo-sst.png';
 import { SyncStatusBadge } from '../components/SyncStatusBadge';
 
+// Rail de navegação (Hub Gênesis SST — design decidido em sessão anterior): faixa fina só com
+// ícones + tooltip ao passar o mouse/focar, no lugar do menu largo com texto. Mesma faixa em
+// desktop e mobile — sem estado de expandir/recolher.
+const LARGURA_RAIL = '66px';
+
 const useStyles = makeStyles({
   root: {
     display: 'grid',
+    gridTemplateColumns: `${LARGURA_RAIL} 1fr`,
     gridTemplateRows: '64px 1fr',
     height: '100vh',
     width: '100%',
-    transition: 'grid-template-columns 0.15s ease',
   },
-  rootExpandido: {
-    gridTemplateColumns: '240px 1fr',
-  },
-  rootColapsado: {
-    gridTemplateColumns: '64px 1fr',
-  },
-  sidebar: {
+  rail: {
     gridRow: '1 / span 2',
     gridColumn: '1',
     background: designTokens.colorRailBackground,
@@ -47,87 +44,50 @@ const useStyles = makeStyles({
     color: designTokens.colorRailInk,
     display: 'flex',
     flexDirection: 'column',
-    padding: '20px 12px',
-    gap: '4px',
+    alignItems: 'center',
+    padding: '18px 0',
+    gap: '6px',
+    overflowY: 'auto',
     overflowX: 'hidden',
   },
-  sidebarColapsada: {
-    padding: '20px 8px',
-    alignItems: 'center',
-  },
-  sidebarFlutuanteMobile: {
-    position: 'fixed',
-    top: 0,
-    left: 0,
-    height: '100vh',
-    zIndex: 1000,
-    transition: 'width 0.2s ease',
-  },
-  sidebarFlutuanteRecolhida: {
-    width: '64px',
-  },
-  sidebarFlutuanteAberta: {
-    width: '240px',
-    boxShadow: '2px 0 16px rgba(0,0,0,0.35)',
-  },
-  panoDeFundo: {
-    position: 'fixed',
-    top: 0,
-    left: 0,
-    right: 0,
-    bottom: 0,
-    backgroundColor: 'rgba(0,0,0,0.4)',
-    zIndex: 999,
-  },
-  brand: {
-    padding: '0 8px 24px 8px',
-    display: 'flex',
-    alignItems: 'flex-start',
-    justifyContent: 'space-between',
-    gap: '8px',
-  },
-  brandColapsada: {
-    flexDirection: 'column',
-    alignItems: 'center',
-    padding: '0 0 24px 0',
-  },
-  botaoRecolher: {
-    color: designTokens.colorRailInkMuted,
-    minWidth: 'auto',
+  marca: {
+    width: '34px',
+    height: '34px',
+    borderRadius: '8px',
+    marginBottom: '14px',
     flexShrink: 0,
   },
   navItem: {
+    position: 'relative',
+    width: '42px',
+    height: '42px',
+    borderRadius: '10px',
+    color: designTokens.colorRailInkMuted,
     display: 'flex',
     alignItems: 'center',
-    gap: '10px',
-    padding: '10px 12px',
-    borderRadius: '6px',
-    color: designTokens.colorRailInk,
-    textDecoration: 'none',
-    fontSize: '14px',
-    fontWeight: 500,
-    whiteSpace: 'nowrap',
-  },
-  navItemColapsado: {
     justifyContent: 'center',
-    padding: '10px',
-    width: '40px',
+    textDecoration: 'none',
+    transition: 'background-color 0.15s ease, color 0.15s ease',
+    flexShrink: 0,
+  },
+  navItemHover: {
+    ':hover': {
+      color: designTokens.colorRailInk,
+      backgroundColor: 'rgba(16,163,90,0.14)',
+    },
   },
   navItemActive: {
-    backgroundColor: designTokens.colorSuccess,
-    color: designTokens.colorWhite,
-  },
-  navSecaoTitulo: {
-    color: designTokens.colorRailInkMuted,
-    textTransform: 'uppercase',
-    letterSpacing: '0.06em',
-    fontSize: '11px',
-    fontWeight: 600,
-    padding: '14px 12px 4px 12px',
+    color: designTokens.colorRailActiveInk,
+    backgroundColor: designTokens.colorRailActiveBackground,
   },
   navSeparador: {
+    width: '28px',
     borderTop: `1px solid ${designTokens.colorRailBorder}`,
-    margin: '8px 12px',
+    margin: '6px 0',
+    flexShrink: 0,
+  },
+  railRodape: {
+    marginTop: 'auto',
   },
   sinoAlertas: {
     position: 'relative',
@@ -141,7 +101,7 @@ const useStyles = makeStyles({
     gridRow: '1',
     gridColumn: '2',
     backgroundColor: designTokens.colorWhite,
-    borderBottom: `1px solid ${tokens.colorNeutralStroke2}`,
+    borderBottom: `1px solid ${designTokens.colorCardBorder}`,
     display: 'flex',
     alignItems: 'center',
     justifyContent: 'space-between',
@@ -183,10 +143,12 @@ const secoesNavegacao: Array<{ pilar: string | null; itens: Array<{ rota: string
   // EPI ficou fora dos módulos-pilar (sidebar fixa própria) por decisão do usuário: catálogo/estoque
   // e entregas são dado operacional/compartilhado, não pessoal — não caberia como aba de um pilar.
   { pilar: null, itens: [{ rota: '/epi', rotulo: 'EPI', icone: ShieldCheckmark24Regular }] },
-  { pilar: null, itens: [{ rota: '/administracao', rotulo: 'Administração', icone: Settings24Regular }] },
 ];
 
-const itensNavegacaoFlat = secoesNavegacao.flatMap((secao) => secao.itens);
+// Administração fica fixa no rodapé do rail (mesmo padrão do mockup Hub Gênesis SST).
+const itemAdministracao = { rota: '/administracao', rotulo: 'Administração', icone: Settings24Regular };
+
+const itensNavegacaoFlat = [...secoesNavegacao.flatMap((secao) => secao.itens), itemAdministracao];
 
 function tituloDaRota(pathname: string): string {
   if (pathname === '/alertas') return 'Alertas';
@@ -202,8 +164,23 @@ function tituloDaRota(pathname: string): string {
   return item?.rotulo ?? 'AAHBRANT SST';
 }
 
-const CHAVE_SIDEBAR_COLAPSADA = 'sst.sidebarColapsada';
-const LARGURA_MOBILE = 768;
+function ItemRail({ rota, rotulo, icone: Icone }: { rota: string; rotulo: string; icone: typeof Grid24Regular }) {
+  const estilos = useStyles();
+  return (
+    <Tooltip content={rotulo} relationship="label" positioning="after">
+      <NavLink
+        to={rota}
+        end={rota === '/'}
+        aria-label={rotulo}
+        className={({ isActive }) =>
+          mergeClasses(estilos.navItem, !isActive && estilos.navItemHover, isActive && estilos.navItemActive)
+        }
+      >
+        <Icone />
+      </NavLink>
+    </Tooltip>
+  );
+}
 
 export function AppShell({ children }: { children: ReactNode }) {
   const estilos = useStyles();
@@ -211,38 +188,6 @@ export function AppShell({ children }: { children: ReactNode }) {
   const navigate = useNavigate();
   const { carregando, dentroDoTeams } = useTeamsContext();
   const [alertasAbertos, setAlertasAbertos] = useState<number | null>(null);
-  const [ehMobile, setEhMobile] = useState<boolean>(() => window.innerWidth < LARGURA_MOBILE);
-  // Desktop: preferência persistida que empurra o layout (240px <-> 64px).
-  const [sidebarColapsada, setSidebarColapsada] = useState<boolean>(
-    () => localStorage.getItem(CHAVE_SIDEBAR_COLAPSADA) === '1',
-  );
-  // Mobile: a sidebar fica sempre como faixa fina fixa; abrir "flutua" por cima do
-  // conteúdo (com pano de fundo) em vez de empurrar o layout, sem alterar a largura reservada.
-  const [overlayAberto, setOverlayAberto] = useState(false);
-
-  useEffect(() => {
-    const aoRedimensionar = () => setEhMobile(window.innerWidth < LARGURA_MOBILE);
-    window.addEventListener('resize', aoRedimensionar);
-    return () => window.removeEventListener('resize', aoRedimensionar);
-  }, []);
-
-  useEffect(() => {
-    localStorage.setItem(CHAVE_SIDEBAR_COLAPSADA, sidebarColapsada ? '1' : '0');
-  }, [sidebarColapsada]);
-
-  const sidebarExpandidaVisualmente = ehMobile ? overlayAberto : !sidebarColapsada;
-
-  function alternarSidebar() {
-    if (ehMobile) {
-      setOverlayAberto((atual) => !atual);
-    } else {
-      setSidebarColapsada((atual) => !atual);
-    }
-  }
-
-  function aoNavegarPeloMenu() {
-    if (ehMobile) setOverlayAberto(false);
-  }
 
   useEffect(() => {
     let cancelado = false;
@@ -259,68 +204,22 @@ export function AppShell({ children }: { children: ReactNode }) {
     };
   }, [location.pathname]);
 
-  const sidebarRecolhidaVisualmente = !sidebarExpandidaVisualmente;
-  const larguraReservada = ehMobile || sidebarColapsada ? estilos.rootColapsado : estilos.rootExpandido;
-
   return (
-    <div className={mergeClasses(estilos.root, larguraReservada)}>
-      {ehMobile && overlayAberto && <div className={estilos.panoDeFundo} onClick={() => setOverlayAberto(false)} />}
-      <aside
-        className={mergeClasses(
-          estilos.sidebar,
-          sidebarRecolhidaVisualmente && estilos.sidebarColapsada,
-          ehMobile && estilos.sidebarFlutuanteMobile,
-          ehMobile && (overlayAberto ? estilos.sidebarFlutuanteAberta : estilos.sidebarFlutuanteRecolhida),
-        )}
-      >
-        <div className={mergeClasses(estilos.brand, sidebarRecolhidaVisualmente && estilos.brandColapsada)}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-            <img
-              src={logoSst}
-              alt="AAHBRANT SST"
-              style={{ width: '32px', height: '32px', borderRadius: '6px', flexShrink: 0 }}
-            />
-            {sidebarExpandidaVisualmente && (
-              <Text size={200} style={{ color: designTokens.colorRailInkMuted }}>
-                Segurança e Saúde no Trabalho
-              </Text>
-            )}
-          </div>
-          <Button
-            appearance="subtle"
-            className={estilos.botaoRecolher}
-            icon={sidebarRecolhidaVisualmente ? <ChevronRight24Regular /> : <ChevronLeft24Regular />}
-            aria-label={sidebarRecolhidaVisualmente ? 'Mostrar menu' : 'Esconder menu'}
-            title={sidebarRecolhidaVisualmente ? 'Mostrar menu' : 'Esconder menu'}
-            onClick={alternarSidebar}
-          />
-        </div>
+    <div className={estilos.root}>
+      <nav className={estilos.rail} aria-label="Navegação principal">
+        <img src={logoSst} alt="AAHBRANT SST" className={estilos.marca} />
         {secoesNavegacao.map((secao, indice) => (
-          <div key={secao.pilar ?? `sem-pilar-${indice}`}>
+          <div key={secao.pilar ?? `sem-pilar-${indice}`} style={{ display: 'contents' }}>
             {indice > 0 && secao.pilar === null && <div className={estilos.navSeparador} />}
-            {secao.pilar && sidebarExpandidaVisualmente && <div className={estilos.navSecaoTitulo}>{secao.pilar}</div>}
-            {secao.itens.map(({ rota, rotulo, icone: Icone }) => (
-              <NavLink
-                key={rota}
-                to={rota}
-                end={rota === '/'}
-                title={sidebarRecolhidaVisualmente ? rotulo : undefined}
-                onClick={aoNavegarPeloMenu}
-                className={({ isActive }) =>
-                  mergeClasses(
-                    estilos.navItem,
-                    sidebarRecolhidaVisualmente && estilos.navItemColapsado,
-                    isActive && estilos.navItemActive,
-                  )
-                }
-              >
-                <Icone />
-                {sidebarExpandidaVisualmente && rotulo}
-              </NavLink>
+            {secao.itens.map((item) => (
+              <ItemRail key={item.rota} {...item} />
             ))}
           </div>
         ))}
-      </aside>
+        <div className={estilos.railRodape}>
+          <ItemRail {...itemAdministracao} />
+        </div>
+      </nav>
 
       <header className={estilos.header}>
         <Text className="brand-title" size={500} weight="semibold">

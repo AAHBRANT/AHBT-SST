@@ -1,5 +1,5 @@
 import { useEffect, useState, type ReactElement } from 'react';
-import { Text, Title3 } from '@fluentui/react-components';
+import { mergeClasses, Text } from '@fluentui/react-components';
 import {
   BuildingBank24Regular,
   Person24Regular,
@@ -8,9 +8,7 @@ import {
   ClipboardTaskListLtr24Regular,
 } from '@fluentui/react-icons';
 import { api, StatusApr, StatusPt, type Acidente, type RegistroHhtMensal } from '../lib/api';
-import { CardGrid } from '../layout/AppShell';
-import { usePageStyles } from './pageStyles';
-import { designTokens } from '../theme';
+import { usePageStyles, useKpiStyles } from './pageStyles';
 import { TaxaGravidadeCard } from '../components/dashboard/TaxaGravidadeCard';
 
 interface Kpi {
@@ -30,6 +28,7 @@ const kpisIniciais: Kpi[] = [
 
 export function DashboardPage() {
   const estilos = usePageStyles();
+  const kpiEstilos = useKpiStyles();
   const [kpis, setKpis] = useState<Kpi[]>(kpisIniciais);
   const [acidentes, setAcidentes] = useState<Acidente[]>([]);
   const [registrosHht, setRegistrosHht] = useState<RegistroHhtMensal[]>([]);
@@ -74,16 +73,16 @@ export function DashboardPage() {
           Não foi possível conectar à API ({erro}). Verifique se o backend está rodando localmente.
         </Text>
       )}
-      <CardGrid>
+      <div className={kpiEstilos.linha}>
         {kpis.map((kpi) => (
-          <div key={kpi.rotulo} className={estilos.card} style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-            <div style={{ color: designTokens.colorPrimary }}>{kpi.icone}</div>
-            <Title3>{kpi.valor ?? '—'}</Title3>
-            <Text style={{ color: designTokens.colorNeutralMedium }}>{kpi.rotulo}</Text>
+          <div key={kpi.rotulo} className={mergeClasses(estilos.card, kpiEstilos.cartao)}>
+            <div className={kpiEstilos.icone}>{kpi.icone}</div>
+            <div className={kpiEstilos.valor}>{kpi.valor ?? '—'}</div>
+            <Text className={kpiEstilos.rotulo}>{kpi.rotulo}</Text>
           </div>
         ))}
-        <TaxaGravidadeCard acidentes={acidentes} registrosHht={registrosHht} />
-      </CardGrid>
+      </div>
+      <TaxaGravidadeCard acidentes={acidentes} registrosHht={registrosHht} />
     </div>
   );
 }
