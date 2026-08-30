@@ -13,7 +13,7 @@ import {
   TableRow,
   Text,
 } from '@fluentui/react-components';
-import { Add24Regular, ChevronRight24Regular, Delete24Regular } from '@fluentui/react-icons';
+import { Add24Regular, ChevronRight24Regular, Delete24Regular, PeopleList24Regular } from '@fluentui/react-icons';
 import {
   api,
   tipoVinculoLabel,
@@ -25,6 +25,7 @@ import {
 } from '../../lib/api';
 import { formatarCpf } from '../../lib/cpf';
 import { usePageStyles } from '../pageStyles';
+import { TrabalhadoresGaveta } from './TrabalhadoresGaveta';
 
 const trabalhadorVazio: NovoTrabalhador = {
   obraId: '',
@@ -48,6 +49,7 @@ export function TrabalhadoresTab() {
   const [novoTrabalhador, setNovoTrabalhador] = useState<NovoTrabalhador>(trabalhadorVazio);
   const [erro, setErro] = useState<string | null>(null);
   const [carregando, setCarregando] = useState(false);
+  const [gavetaAberta, setGavetaAberta] = useState(false);
 
   async function carregar() {
     try {
@@ -105,7 +107,16 @@ export function TrabalhadoresTab() {
     <div className={estilos.card}>
       <div className={estilos.toolbar}>
         <Text weight="semibold">Trabalhadores cadastrados</Text>
+        <Button appearance="secondary" icon={<PeopleList24Regular />} onClick={() => setGavetaAberta(true)}>
+          Ver com fotos
+        </Button>
       </div>
+
+      <TrabalhadoresGaveta
+        aberta={gavetaAberta}
+        aoFechar={() => setGavetaAberta(false)}
+        trabalhadores={trabalhadores}
+      />
 
       {erro && <Text className={estilos.erro}>{erro}</Text>}
 

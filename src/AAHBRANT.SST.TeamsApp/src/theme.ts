@@ -1,23 +1,23 @@
 import { createLightTheme, type BrandVariants, type Theme } from '@fluentui/react-components';
 
-// Rampa de marca gerada a partir do #7B1E2B (Design System AAHBRANT — DESING SYSTEM AAHBRANT.md).
+// Rampa de marca gerada a partir do vinho oficial AAHBRANT #670000.
 const aahbrantBrandRamp: BrandVariants = {
-  10: '#050203',
-  20: '#210608',
-  30: '#38090D',
-  40: '#4C0C11',
-  50: '#611016',
-  60: '#76141B',
-  70: '#7B1E2B', // color-primary
-  80: '#8F2530',
-  90: '#9E2A37', // color-secondary
-  100: '#AD343F',
-  110: '#BC4048',
-  120: '#CB4D51',
-  130: '#D95C5A',
-  140: '#E66D64',
-  150: '#F2806F',
-  160: '#FC957B',
+  10: '#040000',
+  20: '#1F0000',
+  30: '#330000',
+  40: '#460000',
+  50: '#590000',
+  60: '#630000',
+  70: '#670000', // color-primary
+  80: '#7A0101',
+  90: '#8C1414',
+  100: '#9E2626',
+  110: '#B03838',
+  120: '#C24A4A',
+  130: '#D25C5C',
+  140: '#E06F6F',
+  150: '#EC8484',
+  160: '#F59A9A',
 };
 
 export const aahbrantTheme: Theme = {
@@ -27,8 +27,8 @@ export const aahbrantTheme: Theme = {
 };
 
 export const designTokens = {
-  colorPrimary: '#7B1E2B',
-  colorSecondary: '#9E2A37',
+  colorPrimary: '#670000',
+  colorSecondary: '#7A0101',
   colorNeutralDark: '#1F1F1F',
   colorNeutralMedium: '#6D6D6D',
   colorNeutralLight: '#F5F5F7',
@@ -37,4 +37,9 @@ export const designTokens = {
   colorWarning: '#F59E0B',
   colorAlert: '#EF4444',
   colorInfo: '#3B82F6',
+  // Rail de navegação — verde translúcido representando SST/segurança.
+  colorRailBackground: 'linear-gradient(180deg, rgba(16,163,90,0.16), rgba(16,163,90,0.05))',
+  colorRailBorder: 'rgba(15,131,73,0.28)',
+  colorRailInk: '#0F5132',
+  colorRailInkMuted: 'rgba(15,81,50,0.55)',
 };

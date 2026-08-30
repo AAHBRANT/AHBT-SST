@@ -41,8 +41,10 @@ const useStyles = makeStyles({
   sidebar: {
     gridRow: '1 / span 2',
     gridColumn: '1',
-    backgroundColor: designTokens.colorNeutralDark,
-    color: designTokens.colorWhite,
+    background: designTokens.colorRailBackground,
+    backdropFilter: 'blur(6px)',
+    borderRight: `1px solid ${designTokens.colorRailBorder}`,
+    color: designTokens.colorRailInk,
     display: 'flex',
     flexDirection: 'column',
     padding: '20px 12px',
@@ -90,7 +92,7 @@ const useStyles = makeStyles({
     padding: '0 0 24px 0',
   },
   botaoRecolher: {
-    color: 'rgba(255,255,255,0.82)',
+    color: designTokens.colorRailInkMuted,
     minWidth: 'auto',
     flexShrink: 0,
   },
@@ -100,7 +102,7 @@ const useStyles = makeStyles({
     gap: '10px',
     padding: '10px 12px',
     borderRadius: '6px',
-    color: 'rgba(255,255,255,0.82)',
+    color: designTokens.colorRailInk,
     textDecoration: 'none',
     fontSize: '14px',
     fontWeight: 500,
@@ -112,11 +114,11 @@ const useStyles = makeStyles({
     width: '40px',
   },
   navItemActive: {
-    backgroundColor: designTokens.colorPrimary,
+    backgroundColor: designTokens.colorSuccess,
     color: designTokens.colorWhite,
   },
   navSecaoTitulo: {
-    color: 'rgba(255,255,255,0.45)',
+    color: designTokens.colorRailInkMuted,
     textTransform: 'uppercase',
     letterSpacing: '0.06em',
     fontSize: '11px',
@@ -124,7 +126,7 @@ const useStyles = makeStyles({
     padding: '14px 12px 4px 12px',
   },
   navSeparador: {
-    borderTop: '1px solid rgba(255,255,255,0.12)',
+    borderTop: `1px solid ${designTokens.colorRailBorder}`,
     margin: '8px 12px',
   },
   sinoAlertas: {
@@ -279,7 +281,7 @@ export function AppShell({ children }: { children: ReactNode }) {
               style={{ width: '32px', height: '32px', borderRadius: '6px', flexShrink: 0 }}
             />
             {sidebarExpandidaVisualmente && (
-              <Text size={200} style={{ color: 'rgba(255,255,255,0.6)' }}>
+              <Text size={200} style={{ color: designTokens.colorRailInkMuted }}>
                 Segurança e Saúde no Trabalho
               </Text>
             )}
