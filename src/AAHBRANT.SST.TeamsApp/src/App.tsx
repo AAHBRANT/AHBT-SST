@@ -29,7 +29,8 @@ import { AlertasPage } from './pages/alertas/AlertasPage';
 import { CalendarioPage } from './pages/calendario/CalendarioPage';
 import { AcidentesPage } from './pages/acidentes/AcidentesPage';
 import { AcidenteDetalhePage } from './pages/acidentes/AcidenteDetalhePage';
-import { DdsPage } from './pages/dds/DdsPage';
+import { DdsSemanalPage } from './pages/dds/DdsSemanalPage';
+import { DdsSemanalDetalhePage } from './pages/dds/DdsSemanalDetalhePage';
 import { DdsDetalhePage } from './pages/dds/DdsDetalhePage';
 import { AssinarDdsPage } from './pages/dds/AssinarDdsPage';
 import { EpiPage } from './pages/epi/EpiPage';
@@ -87,9 +88,10 @@ function App() {
               <Route path="pgr/:id" element={<PgrDetalhePage />} />
               <Route path="inspecoes" element={<InspecoesPage />} />
               <Route path="inspecoes/:id" element={<InspecaoDetalhePage />} />
-              <Route path="dds" element={<DdsPage />} />
-              <Route path="dds/:id" element={<DdsDetalhePage />} />
-              <Route path="dds/:id/assinar" element={<AssinarDdsPage />} />
+              <Route path="dds" element={<DdsSemanalPage />} />
+              <Route path="dds/semana/:id" element={<DdsSemanalDetalhePage />} />
+              <Route path="dds/dia/:id" element={<DdsDetalhePage />} />
+              <Route path="dds/dia/:id/assinar" element={<AssinarDdsPage />} />
             </Route>
             {/* Legado: /prevencao/pcmso apontava pro PCMSO antigo (descontinuado em 28/08 —
                 ver ONBOARDING.md) — redireciona pro módulo Saúde Ocupacional atual. */}
@@ -161,7 +163,7 @@ function App() {
               element={<RedirecionarComId para={(id) => `/prevencao/inspecoes/${id}`} />}
             />
             <Route path="/dds" element={<Navigate to="/prevencao/dds" replace />} />
-            <Route path="/dds/:id" element={<RedirecionarComId para={(id) => `/prevencao/dds/${id}`} />} />
+            <Route path="/dds/:id" element={<RedirecionarComId para={(id) => `/prevencao/dds/dia/${id}`} />} />
 
             <Route path="/obras" element={<Navigate to="/operacao/obras" replace />} />
             {/* Legado: Pessoas era aba de Operação (até 28/08), virou item de 1º nível. */}

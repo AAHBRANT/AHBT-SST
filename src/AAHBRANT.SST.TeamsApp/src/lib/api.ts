@@ -1455,26 +1455,45 @@ export const statusDdsLabel: Record<number, string> = {
   2: 'Concluído',
 };
 
+// Reformulação 31/08 — DDS passou a ser um registro DIÁRIO dentro de uma DdsSemanal (ver abaixo). O
+// "Tema do DDS" tem 3 origens possíveis (ver OrigemTemaDds), em vez de texto livre digitado na hora.
+export const OrigemTemaDds = {
+  AutomaticoAtividade1: 1,
+  AutomaticoAtividade2: 2,
+  Livre: 3,
+} as const;
+
+export const origemTemaDdsLabel: Record<number, string> = {
+  1: 'Automático — 1ª atividade do dia',
+  2: 'Automático — 2ª atividade do dia',
+  3: 'Livre (catálogo)',
+};
+
 export interface Dds {
   id: string;
   obraId: string;
   obraNome: string;
+  ddsSemanalId?: string | null;
   data: string;
   responsavelUsuarioId: string;
   responsavelUsuarioNome: string;
   topicoPrincipal: string;
+  origemTema: number;
+  catalogoTemaDdsId?: string | null;
   status: number;
   atividadesNomes: string[];
   totalItensChecklist: number;
   itensVerificados: number;
   totalParticipantes: number;
+  totalFotosEvidencia: number;
 }
 
 export interface NovaDds {
-  obraId: string;
+  ddsSemanalId: string;
   atividadesIds: string[];
   data: string;
-  responsavelUsuarioId: string;
+  origemTema: number;
+  catalogoTemaDdsId?: string | null;
 }
 
 export interface DdsItemChecklist {
@@ -1504,16 +1523,96 @@ export interface DdsParticipante {
   telegramConfirmadoEm?: string | null;
 }
 
+export interface DdsFotoEvidencia {
+  id: string;
+  ordem: number;
+}
+
 export interface DdsDetalhe {
   dds: Dds;
   itensChecklist: DdsItemChecklist[];
   participantes: DdsParticipante[];
+  fotosEvidencia: DdsFotoEvidencia[];
 }
 
 export interface EnviarDdsTelegramResultado {
   totalParticipantes: number;
   enviados: number;
   semVinculo: number;
+}
+
+// DDS Semanal (31/08) — contêiner que agrupa os 5 registros diários (Seg-Sex) de uma semana, seguindo
+// o modelo em papel "Registro Semanal de DDS - Empregados Próprios/Terceirizados". O DDS de cada dia
+// continua sendo feito e assinado todo dia (ver Dds acima); só é "realmente finalizado" aqui.
+export const TipoDdsSemanal = {
+  Proprios: 1,
+  Terceirizados: 2,
+} as const;
+
+export const tipoDdsSemanalLabel: Record<number, string> = {
+  1: 'Empregados Próprios',
+  2: 'Empregados Terceirizados',
+};
+
+export const StatusDdsSemanal = {
+  EmAndamento: 1,
+  Concluida: 2,
+} as const;
+
+export const statusDdsSemanalLabel: Record<number, string> = {
+  1: 'Em andamento',
+  2: 'Concluída',
+};
+
+export interface DdsSemanal {
+  id: string;
+  obraId: string;
+  obraNome: string;
+  tipo: number;
+  empresaTerceirizada?: string | null;
+  numeroDocumento?: string | null;
+  localFrenteServico?: string | null;
+  responsavelUsuarioId: string;
+  responsavelUsuarioNome: string;
+  dataInicioSemana: string;
+  dataFimSemana: string;
+  status: number;
+  responsavelObraSstNome?: string | null;
+  responsavelEmpresaTerceirizadaNome?: string | null;
+  responsavelEmpresaTerceirizadaFuncao?: string | null;
+  encerradaEm?: string | null;
+  totalDiasRegistrados: number;
+  totalDiasConcluidos: number;
+}
+
+export interface NovaDdsSemanal {
+  obraId: string;
+  tipo: number;
+  empresaTerceirizada?: string | null;
+  numeroDocumento?: string | null;
+  localFrenteServico?: string | null;
+  dataInicioSemana: string;
+}
+
+export interface DdsSemanalDia {
+  diaSemana: number;
+  data: string;
+  ddsId?: string | null;
+  topicoPrincipal?: string | null;
+  status?: number | null;
+  totalFotosEvidencia: number;
+  totalParticipantes: number;
+}
+
+export interface DdsSemanalDetalhe {
+  semanal: DdsSemanal;
+  dias: DdsSemanalDia[];
+}
+
+export interface CatalogoTemaDds {
+  id: string;
+  nome: string;
+  descricao?: string | null;
 }
 
 // Motor de Assinatura Eletrônica (docs/Motor-Assinatura-Eletronica.md §3/§5, etapa 6) — genérico,
@@ -2973,6 +3072,39 @@ export const api = {
     },
     enviarTelegram: (id: string) =>
       request<EnviarDdsTelegramResultado>(`/api/dds/${id}/telegram/enviar`, { method: 'POST' }),
+    // Evidências fotográficas do registro diário (3 obrigatórias para encerrar, ver EncerrarDdsCommand).
+    anexarFotoEvidencia: async (ddsId: string, foto: File) => {
+      const formData = new FormData();
+      formData.append('foto', foto);
+      const authHeaders = await montarHeadersAuth();
+      return syncMutateMultipart<{ id: string }>(`/api/dds/${ddsId}/fotos-evidencia`, formData, authHeaders);
+    },
+    baixarFotoEvidencia: async (fotoId: string) => {
+      const authHeaders = await montarHeadersAuth();
+      return syncFetchBlob(`/api/dds/fotos-evidencia/${fotoId}`, authHeaders);
+    },
+  },
+  ddsSemanal: {
+    listar: (obraId?: string) => request<DdsSemanal[]>(`/api/ddssemanal${obraId ? `?obraId=${obraId}` : ''}`),
+    obterDetalhe: (id: string) => request<DdsSemanalDetalhe>(`/api/ddssemanal/${id}`),
+    criar: (semanal: NovaDdsSemanal) =>
+      request<{ id: string }>('/api/ddssemanal', { method: 'POST', body: JSON.stringify(semanal) }),
+    encerrar: (id: string, body?: { responsavelEmpresaTerceirizadaNome?: string | null; responsavelEmpresaTerceirizadaFuncao?: string | null }) =>
+      request<void>(`/api/ddssemanal/${id}/encerrar`, { method: 'POST', body: JSON.stringify(body ?? {}) }),
+    baixarPdf: async (id: string) => {
+      const response = await fetch(`${API_BASE_URL}/api/ddssemanal/${id}/pdf`, { headers: await montarHeadersAuth() });
+      if (!response.ok) {
+        const corpo = await response.text().catch(() => '');
+        throw new Error(`${response.status} ${response.statusText}: ${corpo}`);
+      }
+      return response.blob();
+    },
+  },
+  catalogoTemasDds: {
+    listar: () => request<CatalogoTemaDds[]>('/api/catalogotemasdds'),
+    criar: (nome: string, descricao?: string | null) =>
+      request<{ id: string }>('/api/catalogotemasdds', { method: 'POST', body: JSON.stringify({ nome, descricao }) }),
+    excluir: (id: string) => request<void>(`/api/catalogotemasdds/${id}`, { method: 'DELETE' }),
   },
   assinatura: {
     obter: async (entidadeTipo: string, entidadeId: string) => {

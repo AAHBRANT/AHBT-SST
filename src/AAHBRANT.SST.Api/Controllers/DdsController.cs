@@ -73,6 +73,29 @@ public class DdsController : ControllerBase
         return NoContent();
     }
 
+    // Evidências fotográficas obrigatórias do registro diário (31/08, pedido do usuário: "3 fotos
+    // por registro de DDS para liberação do encerramento") — mesmo padrão de
+    // InspecoesController.AnexarFoto/ObterFoto.
+    [Authorize(Policy = "dds:conduzir")]
+    [HttpPost("{id:guid}/fotos-evidencia")]
+    [RequestSizeLimit(6_000_000)]
+    public async Task<IActionResult> AnexarFotoEvidencia(Guid id, [FromForm] AnexarFotoEvidenciaDdsRequestBody body, CancellationToken ct)
+    {
+        await using var stream = new MemoryStream();
+        await body.Foto.CopyToAsync(stream, ct);
+
+        var fotoId = await _mediator.Send(new AnexarFotoEvidenciaDdsCommand(id, stream.ToArray(), body.Foto.ContentType), ct);
+        return Ok(new { id = fotoId });
+    }
+
+    [Authorize(Policy = "dds:ver")]
+    [HttpGet("fotos-evidencia/{fotoId:guid}")]
+    public async Task<IActionResult> ObterFotoEvidencia(Guid fotoId, CancellationToken ct)
+    {
+        var foto = await _mediator.Send(new ObterFotoEvidenciaDdsQuery(fotoId), ct);
+        return foto is null ? NotFound() : File(foto.Conteudo, foto.ContentType, foto.NomeArquivo);
+    }
+
     [Authorize(Policy = "dds:exportar")]
     [HttpGet("{id:guid}/pdf")]
     public async Task<IActionResult> ExportarPdf(Guid id, CancellationToken ct)
@@ -93,5 +116,10 @@ public class RegistrarParticipanteRequestBody
 {
     public Guid TrabalhadorId { get; set; }
     public TipoFotoParticipante FotoTipo { get; set; }
+    public IFormFile Foto { get; set; } = null!;
+}
+
+public class AnexarFotoEvidenciaDdsRequestBody
+{
     public IFormFile Foto { get; set; } = null!;
 }

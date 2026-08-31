@@ -86,6 +86,9 @@ public class SstDbContext : DbContext, IAppDbContext
     public DbSet<DdsItemChecklist> DdsItensChecklist => Set<DdsItemChecklist>();
     public DbSet<DdsParticipante> DdsParticipantes => Set<DdsParticipante>();
     public DbSet<DdsTelegramEnvio> DdsTelegramEnvios => Set<DdsTelegramEnvio>();
+    public DbSet<DdsSemanal> DdsSemanais => Set<DdsSemanal>();
+    public DbSet<CatalogoTemaDds> CatalogosTemaDds => Set<CatalogoTemaDds>();
+    public DbSet<DdsFotoEvidencia> DdsFotosEvidencia => Set<DdsFotoEvidencia>();
 
     public DbSet<NaoConformidade> NaoConformidades => Set<NaoConformidade>();
     public DbSet<AcaoPlano> AcoesPlano => Set<AcaoPlano>();

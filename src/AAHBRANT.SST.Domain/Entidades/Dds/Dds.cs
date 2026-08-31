@@ -13,14 +13,23 @@ public class Dds : AuditableEntity
     public Guid ObraId { get; set; }
     public Obra? Obra { get; set; }
 
+    // Registro diário dentro de uma semana (31/08) — nullable só para não quebrar linhas já
+    // existentes antes da reformulação; todo DDS criado dali em diante é sempre vinculado a uma
+    // DdsSemanal (validado em CriarDdsCommand, não aqui no domínio).
+    public Guid? DdsSemanalId { get; set; }
+    public DdsSemanal? DdsSemanal { get; set; }
+
     public DateTime Data { get; set; }
 
     public Guid ResponsavelUsuarioId { get; set; }
     public Usuario? ResponsavelUsuario { get; set; }
 
-    // Snapshot gerado na criação a partir do Perigo de maior NivelRisco entre os Riscos das
-    // atividades selecionadas — se o Risco for editado depois, o DDS já gerado não muda.
+    // Snapshot gerado na criação — se o Risco for editado depois, o DDS já gerado não muda. A
+    // origem (OrigemTema) registra COMO esse texto foi obtido; ver disclosure em OrigemTemaDds.
     public string TopicoPrincipal { get; set; } = string.Empty;
+    public OrigemTemaDds OrigemTema { get; set; } = OrigemTemaDds.Livre;
+    public Guid? CatalogoTemaDdsId { get; set; }
+    public CatalogoTemaDds? CatalogoTemaDds { get; set; }
 
     // Documento não lista vocabulário literal de status para este módulo (mesma lacuna já
     // registrada em StatusApr/StatusPgr/StatusPt/StatusInspecao) — proposta própria.
@@ -29,10 +38,14 @@ public class Dds : AuditableEntity
     public ICollection<DdsAtividade> Atividades { get; set; } = new List<DdsAtividade>();
     public ICollection<DdsItemChecklist> ItensChecklist { get; set; } = new List<DdsItemChecklist>();
     public ICollection<DdsParticipante> Participantes { get; set; } = new List<DdsParticipante>();
+    public ICollection<DdsFotoEvidencia> FotosEvidencia { get; set; } = new List<DdsFotoEvidencia>();
 }
 
 // Atividades do dia selecionadas pelo gestor para este DDS — vínculo N:N materializado (mesmo
-// padrão de RiscoTrabalhadorExposto).
+// padrão de RiscoTrabalhadorExposto). Ordem (31/08) é a posição em que o gestor selecionou cada
+// atividade na tela — a 1ª e a 2ª viram, respectivamente, a fonte de OrigemTemaDds.
+// AutomaticoAtividade1/AutomaticoAtividade2 (cruzamento com o Perigo de maior risco de CADA
+// atividade isoladamente, não do conjunto todo como o checklist).
 public class DdsAtividade : AuditableEntity
 {
     public Guid DdsId { get; set; }
@@ -40,6 +53,31 @@ public class DdsAtividade : AuditableEntity
 
     public Guid AtividadeId { get; set; }
     public Atividade? Atividade { get; set; }
+
+    public int Ordem { get; set; }
+}
+
+// Catálogo pré-cadastrado de temas de DDS (31/08) — usado quando OrigemTemaDds = Livre. Cadastro
+// simples (nome + ativo), mesmo espírito de CatalogoEpi: sem versionamento, edição in-place.
+public class CatalogoTemaDds : AuditableEntity
+{
+    public string Nome { get; set; } = string.Empty;
+    public string? Descricao { get; set; }
+}
+
+// Evidência fotográfica do registro diário (31/08, pedido do usuário: "obrigatoriedade de 3 fotos
+// por registro de DDS para liberação do encerramento") — distinta da foto de presença por
+// participante (DdsParticipante.FotoConteudo, que comprova QUEM esteve no DDS); esta é a evidência
+// do DDS em si (ex.: fotos da equipe reunida, do local, do quadro/registro do tema do dia). Ordem
+// (1 a 3) só identifica qual das 3 fotos obrigatórias é essa — sem significado além de UI.
+public class DdsFotoEvidencia : AuditableEntity
+{
+    public Guid DdsId { get; set; }
+    public Dds? Dds { get; set; }
+
+    public int Ordem { get; set; }
+    public byte[] FotoConteudo { get; set; } = Array.Empty<byte>();
+    public string FotoContentType { get; set; } = string.Empty;
 }
 
 // Um item de checklist por linha de controle dos Riscos vinculados às atividades selecionadas —

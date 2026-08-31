@@ -35,6 +35,8 @@ import {
 import { SeletorFotoCamera } from '../../components/SeletorFotoCamera';
 import { usePageStyles } from '../pageStyles';
 
+const TOTAL_FOTOS_EVIDENCIA_OBRIGATORIAS = 3;
+
 export function DdsDetalhePage() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
@@ -45,6 +47,8 @@ export function DdsDetalhePage() {
   const [fotoTipo, setFotoTipo] = useState<number>(TipoFotoParticipante.Pessoa);
   const [fotoArquivo, setFotoArquivo] = useState<File | null>(null);
   const [fotoPreviewUrl, setFotoPreviewUrl] = useState<string | null>(null);
+  const [fotosEvidenciaPreview, setFotosEvidenciaPreview] = useState<Record<string, string>>({});
+  const [anexandoFotoEvidencia, setAnexandoFotoEvidencia] = useState(false);
   const [erro, setErro] = useState<string | null>(null);
   const [processando, setProcessando] = useState(false);
   const [baixandoPdf, setBaixandoPdf] = useState(false);
@@ -60,8 +64,34 @@ export function DdsDetalhePage() {
       setDetalhe(det);
       const listaTrabalhadores = await api.trabalhadores.listar(det.dds.obraId);
       setTrabalhadores(listaTrabalhadores);
+
+      const previews = await Promise.all(
+        det.fotosEvidencia.map(async (foto) => {
+          try {
+            const blob = await api.dds.baixarFotoEvidencia(foto.id);
+            return [foto.id, URL.createObjectURL(blob)] as const;
+          } catch {
+            return null;
+          }
+        }),
+      );
+      setFotosEvidenciaPreview(Object.fromEntries(previews.filter((p): p is [string, string] => p !== null)));
     } catch (e) {
       setErro(e instanceof Error ? e.message : 'Falha ao carregar DDS.');
+    }
+  }
+
+  async function anexarFotoEvidencia(arquivo: File) {
+    if (!id) return;
+    try {
+      setAnexandoFotoEvidencia(true);
+      setErro(null);
+      await api.dds.anexarFotoEvidencia(id, arquivo);
+      await carregar();
+    } catch (e) {
+      setErro(e instanceof Error ? e.message : 'Falha ao anexar foto de evidência.');
+    } finally {
+      setAnexandoFotoEvidencia(false);
     }
   }
 
@@ -181,11 +211,18 @@ export function DdsDetalhePage() {
   const somenteLeitura = dds?.status !== StatusDds.EmAndamento;
   const participantesRegistrados = new Set(detalhe?.participantes.map((p) => p.trabalhadorId));
   const trabalhadoresDisponiveis = trabalhadores.filter((t) => !participantesRegistrados.has(t.id));
+  const totalFotosEvidencia = detalhe?.fotosEvidencia.length ?? 0;
+  const faltamFotosEvidencia = Math.max(0, TOTAL_FOTOS_EVIDENCIA_OBRIGATORIAS - totalFotosEvidencia);
 
   return (
     <div>
-      <Button appearance="subtle" icon={<ArrowLeft24Regular />} onClick={() => navigate('/prevencao/dds')} style={{ marginBottom: 12 }}>
-        Voltar para DDS
+      <Button
+        appearance="subtle"
+        icon={<ArrowLeft24Regular />}
+        onClick={() => navigate(dds?.ddsSemanalId ? `/prevencao/dds/semana/${dds.ddsSemanalId}` : '/prevencao/dds')}
+        style={{ marginBottom: 12 }}
+      >
+        Voltar para a semana
       </Button>
 
       {erro && <Text className={estilos.erro}>{erro}</Text>}
@@ -214,11 +251,17 @@ export function DdsDetalhePage() {
 
             <div className={estilos.formActions} style={{ marginTop: 16 }}>
               {!somenteLeitura && (
-                <Button appearance="primary" icon={<LockClosed24Regular />} onClick={encerrar} disabled={processando}>
+                <Button
+                  appearance="primary"
+                  icon={<LockClosed24Regular />}
+                  onClick={encerrar}
+                  disabled={processando || faltamFotosEvidencia > 0}
+                  title={faltamFotosEvidencia > 0 ? `Faltam ${faltamFotosEvidencia} foto(s) de evidência.` : undefined}
+                >
                   Encerrar DDS
                 </Button>
               )}
-              <Button icon={<Signature24Regular />} onClick={() => navigate(`/prevencao/dds/${id}/assinar`)}>
+              <Button icon={<Signature24Regular />} onClick={() => navigate(`/prevencao/dds/dia/${id}/assinar`)}>
                 Assinar DDS
               </Button>
               <Button icon={<ArrowDownload24Regular />} onClick={baixarPdf} disabled={baixandoPdf}>
@@ -257,6 +300,39 @@ export function DdsDetalhePage() {
             ))}
           </div>
         )}
+      </div>
+
+      <div className={estilos.card} style={{ marginBottom: 16 }}>
+        <div className={estilos.toolbar}>
+          <Text weight="semibold">
+            Evidências fotográficas ({totalFotosEvidencia}/{TOTAL_FOTOS_EVIDENCIA_OBRIGATORIAS})
+          </Text>
+        </div>
+
+        <Text size={200} style={{ display: 'block', marginBottom: 8 }}>
+          {TOTAL_FOTOS_EVIDENCIA_OBRIGATORIAS} fotos são obrigatórias para liberar o encerramento deste registro diário.
+        </Text>
+
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 12, alignItems: 'center' }}>
+          {detalhe?.fotosEvidencia
+            .slice()
+            .sort((a, b) => a.ordem - b.ordem)
+            .map((foto) => (
+              <img
+                key={foto.id}
+                src={fotosEvidenciaPreview[foto.id]}
+                alt={`Evidência ${foto.ordem}`}
+                style={{ height: 96, width: 96, objectFit: 'cover', borderRadius: 4 }}
+              />
+            ))}
+          {!somenteLeitura && totalFotosEvidencia < TOTAL_FOTOS_EVIDENCIA_OBRIGATORIAS && (
+            <SeletorFotoCamera
+              rotulo="Tirar foto de evidência"
+              desabilitado={anexandoFotoEvidencia}
+              aoSelecionarArquivo={anexarFotoEvidencia}
+            />
+          )}
+        </div>
       </div>
 
       <div className={estilos.card}>
