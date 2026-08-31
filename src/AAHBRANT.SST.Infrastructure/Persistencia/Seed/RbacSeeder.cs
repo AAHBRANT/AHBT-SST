@@ -198,6 +198,14 @@ public static class RbacSeeder
         ("requisitolegal:excluir", "RequisitoLegal", "Excluir", "Excluir requisito legal"),
         ("questionarioaplicabilidade:gerenciar", "QuestionarioAplicabilidade", "Gerenciar", "Cadastrar/editar/excluir itens do questionário de aplicabilidade"),
         ("questionarioaplicabilidade:responder", "QuestionarioAplicabilidade", "Responder", "Responder o questionário de aplicabilidade de uma obra"),
+
+        // Módulo CIPA (NR-5, requisito do usuário, 2026-08-31) — dimensionamento, processo eleitoral,
+        // membros/treinamentos, reuniões, inspeções e SIPAT cobertos por só 2 ações (mesmo espírito
+        // de questionarioaplicabilidade:gerenciar) para não pulverizar o catálogo em uma permissão
+        // por sub-recurso; exportar (atas em PDF) fica separado por já ser o padrão de outros módulos.
+        ("cipa:ver", "Cipa", "Ver", "Ver dimensionamento, processo eleitoral, membros, reuniões, inspeções e SIPAT da CIPA"),
+        ("cipa:gerenciar", "Cipa", "Gerenciar", "Cadastrar/editar/excluir dimensionamento, conduzir processo eleitoral, gerenciar membros/treinamentos, reuniões, inspeções e SIPAT da CIPA"),
+        ("cipa:exportar", "Cipa", "Exportar", "Exportar atas de eleição e de reunião da CIPA em PDF"),
     };
 
     public static async Task ExecutarAsync(IServiceProvider services, CancellationToken ct = default)

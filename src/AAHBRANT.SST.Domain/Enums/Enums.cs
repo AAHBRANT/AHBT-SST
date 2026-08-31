@@ -670,3 +670,52 @@ public enum TipoCriterioAplicabilidade
     Equipamento = 3,
     ItemQuestionario = 4
 }
+
+// Módulo CIPA (NR-5, requisito do usuário, 2026-08-31) — ver disclosure em Domain/Entidades/Cipa/Cipa.cs.
+public enum StatusProcessoEleitoralCipa
+{
+    Convocado = 1,
+    InscricoesAbertas = 2,
+    InscricoesEncerradas = 3,
+    VotacaoRealizada = 4,
+    Apurado = 5,
+    Encerrado = 6
+}
+
+public enum StatusCandidatoCipa
+{
+    Inscrito = 1,
+    Deferido = 2,
+    Indeferido = 3,
+    Eleito = 4,
+    Suplente = 5,
+    NaoEleito = 6
+}
+
+public enum OrigemMembroCipa
+{
+    Empregador = 1,
+    Empregado = 2
+}
+
+public enum CargoMembroCipa
+{
+    Titular = 1,
+    Suplente = 2,
+    Presidente = 3,
+    VicePresidente = 4,
+    Secretario = 5
+}
+
+public enum TipoReuniaoCipa
+{
+    Ordinaria = 1,
+    Extraordinaria = 2
+}
+
+public enum StatusReuniaoCipa
+{
+    Agendada = 1,
+    Realizada = 2,
+    AtaRegistrada = 3
+}
