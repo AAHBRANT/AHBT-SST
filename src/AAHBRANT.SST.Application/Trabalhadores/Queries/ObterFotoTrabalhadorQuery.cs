@@ -4,6 +4,8 @@ using Microsoft.EntityFrameworkCore;
 
 namespace AAHBRANT.SST.Application.Trabalhadores.Queries;
 
+// Mesmo padrão de ObterLogoObraQuery (Obras/Queries) — serve o binário da foto por endpoint
+// dedicado, nunca embutido no DTO de listagem/perfil.
 public record ObterFotoTrabalhadorQuery(Guid TrabalhadorId) : IRequest<FotoTrabalhadorResultado?>;
 
 public class FotoTrabalhadorResultado

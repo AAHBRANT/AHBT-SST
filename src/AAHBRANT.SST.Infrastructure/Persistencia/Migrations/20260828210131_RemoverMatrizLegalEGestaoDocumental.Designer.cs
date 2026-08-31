@@ -12,8 +12,8 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace AAHBRANT.SST.Infrastructure.Persistencia.Migrations
 {
     [DbContext(typeof(SstDbContext))]
-    [Migration("20260830142040_AdicionarFotoTrabalhador")]
-    partial class AdicionarFotoTrabalhador
+    [Migration("20260828210131_RemoverMatrizLegalEGestaoDocumental")]
+    partial class RemoverMatrizLegalEGestaoDocumental
     {
         /// <inheritdoc />
         protected override void BuildTargetModel(ModelBuilder modelBuilder)
@@ -3427,13 +3427,6 @@ namespace AAHBRANT.SST.Infrastructure.Persistencia.Migrations
 
                     b.Property<Guid?>("EquipeId")
                         .HasColumnType("uniqueidentifier");
-
-                    b.Property<string>("FotoContentType")
-                        .HasMaxLength(100)
-                        .HasColumnType("nvarchar(100)");
-
-                    b.Property<byte[]>("FotoConteudo")
-                        .HasColumnType("varbinary(max)");
 
                     b.Property<Guid>("FuncaoId")
                         .HasColumnType("uniqueidentifier");

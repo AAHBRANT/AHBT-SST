@@ -5,6 +5,8 @@ using Microsoft.EntityFrameworkCore;
 
 namespace AAHBRANT.SST.Application.Trabalhadores.Commands;
 
+// Foto real do trabalhador, substituindo o avatar de iniciais no cadastro — mesmo padrão de
+// AnexarLogoObraCommand (Obras/Commands): binário guardado direto na linha do Trabalhador.
 public record AnexarFotoTrabalhadorCommand(
     Guid TrabalhadorId,
     byte[] FotoConteudo,

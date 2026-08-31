@@ -1,0 +1,98 @@
+name: Deploy (Azure Container Apps)
+
+# Builda as 3 imagens (api, worker, web) direto no Azure Container Registry
+# e atualiza os Container Apps de homologação, reproduzindo o fluxo manual
+# documentado em docs/Motor-Assinatura-Eletronica.md (az acr build + az containerapp update).
+#
+# Pré-requisitos (configurar em Settings > Secrets and variables > Actions do repositório):
+#   Secrets:
+#     AZURE_CLIENT_ID, AZURE_TENANT_ID, AZURE_SUBSCRIPTION_ID
+#       -> de um App Registration com federated credential (OIDC) para este repo,
+#          com role "Contributor" (ou role custom mínima) no Resource Group abaixo.
+#   Variables:
+#     AZURE_RESOURCE_GROUP   -> ex.: rg-sst-hml
+#     AZURE_ACR_NAME         -> nome do Azure Container Registry (sem .azurecr.io)
+#     CONTAINERAPP_API       -> nome do Container App da API
+#     CONTAINERAPP_WORKER    -> nome do Container App do Worker
+#     CONTAINERAPP_WEB       -> nome do Container App do frontend (ex.: sst-web-hml)
+#     VITE_API_BASE_URL      -> URL pública da API, usada no build do frontend
+
+on:
+  push:
+    branches: [master]
+    paths:
+      - 'src/**'
+      - 'Dockerfile.*'
+      - 'nginx.conf'
+      - '.github/workflows/deploy.yml'
+  workflow_dispatch: {}
+
+concurrency:
+  group: deploy-hml
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    permissions:
+      id-token: write
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Login no Azure (OIDC)
+        uses: azure/login@v2
+        with:
+          client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+
+      - name: Build & push imagem da API
+        run: |
+          az acr build \
+            --registry "${{ vars.AZURE_ACR_NAME }}" \
+            --image "sst-api:${{ github.sha }}" \
+            --image "sst-api:latest" \
+            --file Dockerfile.api \
+            .
+
+      - name: Build & push imagem do Worker
+        run: |
+          az acr build \
+            --registry "${{ vars.AZURE_ACR_NAME }}" \
+            --image "sst-worker:${{ github.sha }}" \
+            --image "sst-worker:latest" \
+            --file Dockerfile.worker \
+            .
+
+      - name: Build & push imagem do Web (CACHEBUST obrigatório, ver docs/Motor-Assinatura-Eletronica.md)
+        run: |
+          az acr build \
+            --registry "${{ vars.AZURE_ACR_NAME }}" \
+            --image "sst-web:${{ github.sha }}" \
+            --image "sst-web:latest" \
+            --file Dockerfile.web \
+            --build-arg VITE_API_BASE_URL="${{ vars.VITE_API_BASE_URL }}" \
+            --build-arg CACHEBUST="${{ github.sha }}" \
+            .
+
+      - name: Atualizar Container App da API
+        run: |
+          az containerapp update \
+            --name "${{ vars.CONTAINERAPP_API }}" \
+            --resource-group "${{ vars.AZURE_RESOURCE_GROUP }}" \
+            --image "${{ vars.AZURE_ACR_NAME }}.azurecr.io/sst-api:${{ github.sha }}"
+
+      - name: Atualizar Container App do Worker
+        run: |
+          az containerapp update \
+            --name "${{ vars.CONTAINERAPP_WORKER }}" \
+            --resource-group "${{ vars.AZURE_RESOURCE_GROUP }}" \
+            --image "${{ vars.AZURE_ACR_NAME }}.azurecr.io/sst-worker:${{ github.sha }}"
+
+      - name: Atualizar Container App do Web
+        run: |
+          az containerapp update \
+            --name "${{ vars.CONTAINERAPP_WEB }}" \
+            --resource-group "${{ vars.AZURE_RESOURCE_GROUP }}" \
+            --image "${{ vars.AZURE_ACR_NAME }}.azurecr.io/sst-web:${{ github.sha }}"
