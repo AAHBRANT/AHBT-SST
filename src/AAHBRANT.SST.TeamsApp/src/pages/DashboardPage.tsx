@@ -35,6 +35,7 @@ import { Card, FeedbackInline, KpiCard, Legenda, StatusChip, StatusDonutChart, T
 import { useDashboardStyles } from '../components/dashboard/dashboardStyles';
 import { TaxaGravidadeCard } from '../components/dashboard/TaxaGravidadeCard';
 import { MiniCalendarCard, type DiaComPrazo } from '../components/dashboard/MiniCalendarCard';
+import { MiniCalendarioCard } from '../components/dashboard/MiniCalendarioCard';
 
 interface KpiDelta {
   texto: string;
@@ -404,18 +405,21 @@ export function DashboardPage() {
         </FeedbackInline>
       )}
 
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(185px, 1fr))', gap: 16, marginBottom: 16 }}>
-        {kpis.map((kpi, indice) => (
-          <KpiCard
-            key={kpi.rotulo}
-            rotulo={kpi.rotulo}
-            valor={kpi.valor}
-            tom={kpi.tom}
-            icone={kpi.icone}
-            deltas={kpi.deltas}
-            indice={indice}
-          />
-        ))}
+      <div style={{ display: 'flex', gap: 16, alignItems: 'flex-start', marginBottom: 16 }}>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(185px, 1fr))', gap: 16, flex: 1 }}>
+          {kpis.map((kpi, indice) => (
+            <KpiCard
+              key={kpi.rotulo}
+              rotulo={kpi.rotulo}
+              valor={kpi.valor}
+              tom={kpi.tom}
+              icone={kpi.icone}
+              deltas={kpi.deltas}
+              indice={indice}
+            />
+          ))}
+        </div>
+        <MiniCalendarioCard />
       </div>
 
       <div style={{ marginBottom: 16 }}>
