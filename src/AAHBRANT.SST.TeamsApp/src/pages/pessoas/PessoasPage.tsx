@@ -28,22 +28,22 @@ export function PessoasPage() {
         onTabSelect={(_: SelectTabEvent, data: SelectTabData) => setAba(data.value as AbaPessoas)}
         className={estilosAba.lista}
       >
-        <Tab value="dashboard">Dashboard</Tab>
         <Tab value="trabalhadores">Trabalhadores</Tab>
         <Tab value="funcoes">Funções</Tab>
         <Tab value="setores">Setores</Tab>
         <Tab value="equipes">Equipes</Tab>
         <Tab value="cursos">Cursos de treinamento</Tab>
         <Tab value="matrizTreinamento">Matriz de Treinamento por Função</Tab>
+        <Tab value="dashboard">Dashboard</Tab>
       </TabList>
 
-      {aba === 'dashboard' && <PessoasDashboardTab />}
       {aba === 'trabalhadores' && <TrabalhadoresTab />}
       {aba === 'funcoes' && <FuncoesTab />}
       {aba === 'setores' && <SetoresTab />}
       {aba === 'equipes' && <EquipesTab />}
       {aba === 'cursos' && <CursosTreinamentoTab />}
       {aba === 'matrizTreinamento' && <MatrizTreinamentoTab />}
+      {aba === 'dashboard' && <PessoasDashboardTab />}
     </div>
   );
 }
