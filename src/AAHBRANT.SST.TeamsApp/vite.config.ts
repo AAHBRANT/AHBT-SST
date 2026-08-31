@@ -36,6 +36,14 @@ export default defineConfig({
         // disponível offline é o motor de sincronização (src/lib/offline), que sabe distinguir
         // GET cacheável de mutação enfileirada. O SW aqui só garante que o app abre.
         navigateFallbackDenylist: [/^\/api\//],
+        // Sem isso, um service worker novo fica "waiting" até TODAS as abas desse domínio
+        // fecharem antes de assumir — numa aba do Teams que fica aberta o dia todo, isso nunca
+        // acontece, e o usuário continua preso no bundle antigo (com a URL da API errada,
+        // "Unexpected token '<'") mesmo depois de recarregar a página (31/08, bug em produção).
+        // skipWaiting+clientsClaim fazem o SW novo assumir imediatamente em todas as abas
+        // abertas assim que termina de instalar, sem depender de fechar nada.
+        skipWaiting: true,
+        clientsClaim: true,
       },
     }),
   ],

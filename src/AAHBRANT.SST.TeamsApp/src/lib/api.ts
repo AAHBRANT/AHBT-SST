@@ -1507,11 +1507,13 @@ export interface DdsItemChecklist {
 export const TipoFotoParticipante = {
   Pessoa: 1,
   DocumentoAssinado: 2,
+  Biometria: 3,
 } as const;
 
 export const tipoFotoParticipanteLabel: Record<number, string> = {
   1: 'Foto da pessoa',
   2: 'Documento assinado',
+  3: 'Biometria Validada',
 };
 
 export interface DdsParticipante {
@@ -1519,6 +1521,7 @@ export interface DdsParticipante {
   trabalhadorId: string;
   trabalhadorNome: string;
   fotoTipo: number;
+  scoreConfianca?: number | null;
   telegramEnviadoEm?: string | null;
   telegramConfirmadoEm?: string | null;
 }
@@ -3332,14 +3335,14 @@ export const api = {
     criar: (dds: NovaDds) => request<{ id: string }>('/api/dds', { method: 'POST', body: JSON.stringify(dds) }),
     marcarItem: (itemId: string, verificado: boolean) =>
       request<void>(`/api/dds/itens/${itemId}/marcar`, { method: 'POST', body: JSON.stringify({ verificado }) }),
-    registrarParticipante: async (ddsId: string, trabalhadorId: string, fotoTipo: number, foto: File) => {
-      const formData = new FormData();
-      formData.append('trabalhadorId', trabalhadorId);
-      formData.append('fotoTipo', String(fotoTipo));
-      formData.append('foto', foto);
-      const authHeaders = await montarHeadersAuth();
-      return syncMutateMultipart<{ id: string }>(`/api/dds/${ddsId}/participantes`, formData, authHeaders);
-    },
+    // Presença exclusivamente por biometria (2026-08-31, pedido do usuário) — dispositivoId/
+    // segredoDispositivo vêm do agente local (fetch a /api/dispositivo), nunca de localStorage;
+    // score é o resultado do match 1:N já feito pelo agente (ver capturarDigitalLocal).
+    registrarParticipante: (ddsId: string, trabalhadorId: string, dispositivoId: string, segredoDispositivo: string, score: number) =>
+      request<{ id: string }>(`/api/dds/${ddsId}/participantes`, {
+        method: 'POST',
+        body: JSON.stringify({ trabalhadorId, dispositivoId, segredoDispositivo, score }),
+      }),
     encerrar: (id: string) => request<void>(`/api/dds/${id}/encerrar`, { method: 'POST' }),
     // PDF gerado sob demanda no servidor a partir do estado atual — não faz sentido cachear para
     // uso offline (ficaria sempre desatualizado assim que o DDS mudasse). Segue fetch direto.
