@@ -12,7 +12,7 @@ import { MatrizTreinamentoTab } from './MatrizTreinamentoTab';
 type AbaPessoas = 'dashboard' | 'trabalhadores' | 'funcoes' | 'setores' | 'equipes' | 'cursos' | 'matrizTreinamento';
 
 export function PessoasPage() {
-  const [aba, setAba] = useState<AbaPessoas>('dashboard');
+  const [aba, setAba] = useState<AbaPessoas>('trabalhadores');
   const estilosAba = usePillTabStyles();
 
   return (
