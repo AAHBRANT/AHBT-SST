@@ -2390,6 +2390,24 @@ function ehRotaOffline(path: string): boolean {
   return PREFIXOS_OFFLINE.some((prefixo) => path.startsWith(prefixo));
 }
 
+// O backend só deveria responder JSON, mas em falhas de infraestrutura (proxy/ingress
+// devolvendo a página estática do próprio front em vez da API, por exemplo) um 200 pode chegar
+// com corpo HTML. `JSON.parse`/`response.json()` cru nesse caso lança um SyntaxError críptico
+// ("Unexpected token '<', <!doctype... is not valid JSON") direto pro usuário — aqui a gente
+// troca por uma mensagem que já diz o status HTTP recebido, pra dar pra diagnosticar de verdade.
+function parsearJsonSeguro<T>(texto: string, response: Response): T {
+  if (!texto) {
+    return undefined as T;
+  }
+  try {
+    return JSON.parse(texto) as T;
+  } catch {
+    throw new Error(
+      `Resposta inesperada do servidor (HTTP ${response.status} ${response.statusText}): esperava JSON e recebeu outro tipo de conteúdo.`,
+    );
+  }
+}
+
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
   const authHeaders = await montarHeadersAuth();
   const metodo = (init?.method ?? 'GET').toUpperCase();
@@ -2420,7 +2438,8 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
     return undefined as T;
   }
 
-  return (await response.json()) as T;
+  const texto = await response.text();
+  return parsearJsonSeguro<T>(texto, response);
 }
 
 // Módulo CIPA (NR-5, requisito do usuário, 2026-08-31) — dentro do pilar Operação. Ver disclosure
