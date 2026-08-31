@@ -42,10 +42,10 @@ function extrairMensagemErro(e: unknown, fallback: string): string {
 // só marcado como "Digital pendente" na lista (ver TrabalhadoresTab) até completar depois.
 //
 // O backend exige Termo de Aceite (MP 2.200-2/2001) e consentimento LGPD de biometria já
-// registrados antes de aceitar o template (ver CadastrarTemplateBiometricoCommand) — e nenhuma
-// tela do sistema ainda pergunta isso ao operador (mesma observação já registrada em
-// AssinaturaTab.tsx). O texto abaixo é PROVISÓRIO até o jurídico revisar a redação oficial —
-// sinalizado visualmente para não ser confundido com um termo já validado.
+// registrados antes de aceitar o template (ver CadastrarTemplateBiometricoCommand). Por decisão
+// do usuário (combinada com o jurídico, 31/08), esses dois termos são coletados em papel, FORA do
+// sistema — esta tela não exibe nenhum texto de consentimento, só uma confirmação administrativa
+// de que o físico já foi assinado, antes de registrar as duas datas no backend.
 export function CadastroDigitalDialog({
   trabalhadorId,
   trabalhadorNome,
@@ -53,8 +53,7 @@ export function CadastroDigitalDialog({
   aoConcluir,
 }: CadastroDigitalDialogProps) {
   const estilos = usePageStyles();
-  const [aceiteTermo, setAceiteTermo] = useState(false);
-  const [aceiteBiometria, setAceiteBiometria] = useState(false);
+  const [termoFisicoConfirmado, setTermoFisicoConfirmado] = useState(false);
   const [consentimentosSalvos, setConsentimentosSalvos] = useState(false);
   const [salvandoConsentimentos, setSalvandoConsentimentos] = useState(false);
 
@@ -67,8 +66,7 @@ export function CadastroDigitalDialog({
 
   useEffect(() => {
     if (!aberto) return;
-    setAceiteTermo(false);
-    setAceiteBiometria(false);
+    setTermoFisicoConfirmado(false);
     setConsentimentosSalvos(false);
     setAgenteDisponivel(null);
     setCapturando(false);
@@ -122,19 +120,14 @@ export function CadastroDigitalDialog({
 
             {!consentimentosSalvos ? (
               <>
-                <Text style={{ display: 'block', color: 'var(--colorPaletteYellowForeground1, #9a6b04)' }}>
-                  ⚠️ Texto provisório, pendente de validação jurídica — ainda não existe uma tela oficial
-                  para estas confirmações no sistema.
+                <Text>
+                  O Termo de Aceite de Assinatura Eletrônica e o Termo de Consentimento LGPD (uso de dado
+                  biométrico) são assinados em papel, fora do sistema.
                 </Text>
                 <Checkbox
-                  checked={aceiteTermo}
-                  onChange={(_, d) => setAceiteTermo(!!d.checked)}
-                  label="Confirmo que o trabalhador foi informado e aceita o uso de assinatura eletrônica (MP 2.200-2/2001)."
-                />
-                <Checkbox
-                  checked={aceiteBiometria}
-                  onChange={(_, d) => setAceiteBiometria(!!d.checked)}
-                  label="Confirmo que o trabalhador consentiu com o uso de dado biométrico (digital), conforme LGPD."
+                  checked={termoFisicoConfirmado}
+                  onChange={(_, d) => setTermoFisicoConfirmado(!!d.checked)}
+                  label="Confirmo que os termos físicos já foram assinados pelo trabalhador."
                 />
               </>
             ) : (
@@ -161,7 +154,7 @@ export function CadastroDigitalDialog({
               <Button
                 appearance="primary"
                 onClick={confirmarConsentimentos}
-                disabled={!aceiteTermo || !aceiteBiometria || salvandoConsentimentos}
+                disabled={!termoFisicoConfirmado || salvandoConsentimentos}
               >
                 Continuar
               </Button>
