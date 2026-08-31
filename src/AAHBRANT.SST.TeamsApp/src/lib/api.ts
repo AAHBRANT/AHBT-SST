@@ -2423,6 +2423,291 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
   return (await response.json()) as T;
 }
 
+// Módulo CIPA (NR-5, requisito do usuário, 2026-08-31) — dentro do pilar Operação. Ver disclosure
+// completo em Domain/Entidades/Cipa/Cipa.cs (backend): dimensionamento é sempre informado
+// manualmente (o sistema não calcula o Quadro I da NR-5); apuração da eleição é manual (sem urna
+// digital); plano de ações das reuniões reaproveita api.acoesPlano (OrigemTipo="ReuniaoCipa").
+export const StatusProcessoEleitoralCipa = {
+  Convocado: 1,
+  InscricoesAbertas: 2,
+  InscricoesEncerradas: 3,
+  VotacaoRealizada: 4,
+  Apurado: 5,
+  Encerrado: 6,
+} as const;
+
+export const statusProcessoEleitoralCipaLabel: Record<number, string> = {
+  1: 'Convocado',
+  2: 'Inscrições abertas',
+  3: 'Inscrições encerradas',
+  4: 'Votação realizada',
+  5: 'Apurado',
+  6: 'Encerrado',
+};
+
+export const StatusCandidatoCipa = {
+  Inscrito: 1,
+  Deferido: 2,
+  Indeferido: 3,
+  Eleito: 4,
+  Suplente: 5,
+  NaoEleito: 6,
+} as const;
+
+export const statusCandidatoCipaLabel: Record<number, string> = {
+  1: 'Inscrito',
+  2: 'Deferido',
+  3: 'Indeferido',
+  4: 'Eleito (titular)',
+  5: 'Eleito (suplente)',
+  6: 'Não eleito',
+};
+
+export const OrigemMembroCipa = {
+  Empregador: 1,
+  Empregado: 2,
+} as const;
+
+export const origemMembroCipaLabel: Record<number, string> = {
+  1: 'Indicado pelo empregador',
+  2: 'Eleito pelos empregados',
+};
+
+export const CargoMembroCipa = {
+  Titular: 1,
+  Suplente: 2,
+  Presidente: 3,
+  VicePresidente: 4,
+  Secretario: 5,
+} as const;
+
+export const cargoMembroCipaLabel: Record<number, string> = {
+  1: 'Titular',
+  2: 'Suplente',
+  3: 'Presidente',
+  4: 'Vice-Presidente',
+  5: 'Secretário',
+};
+
+export const TipoReuniaoCipa = {
+  Ordinaria: 1,
+  Extraordinaria: 2,
+} as const;
+
+export const tipoReuniaoCipaLabel: Record<number, string> = {
+  1: 'Ordinária',
+  2: 'Extraordinária',
+};
+
+export const StatusReuniaoCipa = {
+  Agendada: 1,
+  Realizada: 2,
+  AtaRegistrada: 3,
+} as const;
+
+export const statusReuniaoCipaLabel: Record<number, string> = {
+  1: 'Agendada',
+  2: 'Realizada',
+  3: 'Ata registrada',
+};
+
+export interface DimensionamentoCipa {
+  id: string;
+  obraId: string;
+  obraNome: string;
+  cnae: string;
+  grauRisco: number;
+  numeroFuncionarios: number;
+  numeroTitulares: number;
+  numeroSuplentes: number;
+  dataCalculo: string;
+  observacoes?: string | null;
+}
+
+export interface NovoDimensionamentoCipa {
+  obraId: string;
+  cnae: string;
+  grauRisco: number;
+  numeroFuncionarios: number;
+  numeroTitulares: number;
+  numeroSuplentes: number;
+  observacoes?: string | null;
+}
+
+export interface CandidatoCipa {
+  id: string;
+  processoEleitoralId: string;
+  trabalhadorId: string;
+  trabalhadorNome: string;
+  trabalhadorMatricula: string;
+  dataInscricao: string;
+  status: number;
+  motivoIndeferimento?: string | null;
+  votosRecebidos: number;
+}
+
+export interface ProcessoEleitoralCipa {
+  id: string;
+  obraId: string;
+  obraNome: string;
+  numeroDocumento?: string | null;
+  dataConvocacao: string;
+  dataInicioInscricoes: string;
+  dataFimInscricoes: string;
+  dataVotacao: string;
+  dataApuracao?: string | null;
+  status: number;
+  totalCandidatos: number;
+}
+
+export interface NovoProcessoEleitoralCipa {
+  obraId: string;
+  numeroDocumento?: string | null;
+  dataConvocacao: string;
+  dataInicioInscricoes: string;
+  dataFimInscricoes: string;
+  dataVotacao: string;
+}
+
+export interface ProcessoEleitoralCipaDetalhe {
+  processo: ProcessoEleitoralCipa;
+  candidatos: CandidatoCipa[];
+}
+
+export interface VotoApuradoCipa {
+  candidatoId: string;
+  votos: number;
+}
+
+export interface TreinamentoCipa {
+  id: string;
+  membroCipaId: string;
+  cargaHoraria: number;
+  conteudoProgramatico?: string | null;
+  dataRealizacao: string;
+  dataValidade?: string | null;
+  instituicaoInstrutor?: string | null;
+  temCertificado: boolean;
+  temListaPresenca: boolean;
+}
+
+export interface MembroCipa {
+  id: string;
+  obraId: string;
+  obraNome: string;
+  trabalhadorId: string;
+  trabalhadorNome: string;
+  trabalhadorMatricula: string;
+  origemMembro: number;
+  cargo: number;
+  dataInicioMandato: string;
+  dataFimMandato: string;
+  mandatoAtivo: boolean;
+  totalTreinamentos: number;
+}
+
+export interface NovoMembroCipa {
+  obraId: string;
+  trabalhadorId: string;
+  origemMembro: number;
+  cargo: number;
+  dataInicioMandato: string;
+  dataFimMandato: string;
+}
+
+export interface MembroCipaDetalhe {
+  membro: MembroCipa;
+  treinamentos: TreinamentoCipa[];
+}
+
+export interface ParticipanteReuniaoCipa {
+  id: string;
+  trabalhadorId: string;
+  trabalhadorNome: string;
+  presente: boolean;
+}
+
+export interface ReuniaoCipa {
+  id: string;
+  obraId: string;
+  obraNome: string;
+  tipo: number;
+  dataReuniao: string;
+  pauta?: string | null;
+  deliberacoes?: string | null;
+  status: number;
+  totalParticipantes: number;
+  totalPresentes: number;
+}
+
+export interface NovaReuniaoCipa {
+  obraId: string;
+  tipo: number;
+  dataReuniao: string;
+  pauta?: string | null;
+}
+
+export interface ReuniaoCipaDetalhe {
+  reuniao: ReuniaoCipa;
+  participantes: ParticipanteReuniaoCipa[];
+}
+
+export interface InspecaoCipa {
+  id: string;
+  obraId: string;
+  obraNome: string;
+  membroCipaId?: string | null;
+  membroCipaNome?: string | null;
+  data: string;
+  local: string;
+  riscoIdentificado: string;
+  grauRisco?: number | null;
+  naoConformidadeId?: string | null;
+}
+
+export interface NovaInspecaoCipa {
+  obraId: string;
+  membroCipaId?: string | null;
+  data: string;
+  local: string;
+  riscoIdentificado: string;
+  grauRisco?: number | null;
+}
+
+export interface AtividadeSipat {
+  id: string;
+  data: string;
+  horario?: string | null;
+  temaPalestra: string;
+  palestrante?: string | null;
+}
+
+export interface EventoSipat {
+  id: string;
+  obraId: string;
+  obraNome: string;
+  anoReferencia: number;
+  dataInicio: string;
+  dataFim: string;
+  tema?: string | null;
+  programacao?: string | null;
+  totalAtividades: number;
+}
+
+export interface NovoEventoSipat {
+  obraId: string;
+  anoReferencia: number;
+  dataInicio: string;
+  dataFim: string;
+  tema?: string | null;
+  programacao?: string | null;
+}
+
+export interface EventoSipatDetalhe {
+  evento: EventoSipat;
+  atividades: AtividadeSipat[];
+}
+
 export const api = {
   obras: {
     listar: () => request<Obra[]>('/api/obras'),
@@ -3314,5 +3599,164 @@ export const api = {
         method: 'POST',
         body: JSON.stringify({ obraId, nome }),
       }),
+  },
+  cipa: {
+    dimensionamento: {
+      listar: (obraId?: string) =>
+        request<DimensionamentoCipa[]>(`/api/dimensionamentocipa${obraId ? `?obraId=${obraId}` : ''}`),
+      criar: (dados: NovoDimensionamentoCipa) =>
+        request<{ id: string }>('/api/dimensionamentocipa', { method: 'POST', body: JSON.stringify(dados) }),
+      excluir: (id: string) => request<void>(`/api/dimensionamentocipa/${id}`, { method: 'DELETE' }),
+    },
+    processosEleitorais: {
+      listar: (obraId?: string) =>
+        request<ProcessoEleitoralCipa[]>(`/api/processoseleitoraiscipa${obraId ? `?obraId=${obraId}` : ''}`),
+      obterDetalhe: (id: string) => request<ProcessoEleitoralCipaDetalhe>(`/api/processoseleitoraiscipa/${id}`),
+      criar: (dados: NovoProcessoEleitoralCipa) =>
+        request<{ id: string }>('/api/processoseleitoraiscipa', { method: 'POST', body: JSON.stringify(dados) }),
+      excluir: (id: string) => request<void>(`/api/processoseleitoraiscipa/${id}`, { method: 'DELETE' }),
+      inscreverCandidato: (id: string, trabalhadorId: string) =>
+        request<{ id: string }>(`/api/processoseleitoraiscipa/${id}/candidatos`, {
+          method: 'POST',
+          body: JSON.stringify({ trabalhadorId }),
+        }),
+      avaliarInscricao: (candidatoId: string, deferido: boolean, motivoIndeferimento?: string | null) =>
+        request<void>(`/api/processoseleitoraiscipa/candidatos/${candidatoId}/avaliar`, {
+          method: 'POST',
+          body: JSON.stringify({ deferido, motivoIndeferimento }),
+        }),
+      apurar: (id: string, votos: VotoApuradoCipa[], dataInicioMandato: string, dataFimMandato: string) =>
+        request<{ membrosIds: string[] }>(`/api/processoseleitoraiscipa/${id}/apuracao`, {
+          method: 'POST',
+          body: JSON.stringify({ votos, dataInicioMandato, dataFimMandato }),
+        }),
+      baixarAtaPdf: async (id: string) => {
+        const response = await fetch(`${API_BASE_URL}/api/processoseleitoraiscipa/${id}/ata-pdf`, {
+          headers: await montarHeadersAuth(),
+        });
+        if (!response.ok) {
+          const corpo = await response.text().catch(() => '');
+          throw new Error(`${response.status} ${response.statusText}: ${corpo}`);
+        }
+        return response.blob();
+      },
+    },
+    membros: {
+      listar: (obraId?: string, somenteMandatoAtivo?: boolean) => {
+        const params = new URLSearchParams();
+        if (obraId) params.set('obraId', obraId);
+        if (somenteMandatoAtivo) params.set('somenteMandatoAtivo', 'true');
+        const qs = params.toString();
+        return request<MembroCipa[]>(`/api/membroscipa${qs ? `?${qs}` : ''}`);
+      },
+      obterDetalhe: (id: string) => request<MembroCipaDetalhe>(`/api/membroscipa/${id}`),
+      criar: (dados: NovoMembroCipa) =>
+        request<{ id: string }>('/api/membroscipa', { method: 'POST', body: JSON.stringify(dados) }),
+      definirCargo: (id: string, cargo: number) =>
+        request<void>(`/api/membroscipa/${id}/cargo`, { method: 'PUT', body: JSON.stringify({ cargo }) }),
+      encerrarMandato: (id: string) => request<void>(`/api/membroscipa/${id}`, { method: 'DELETE' }),
+      criarTreinamento: (
+        membroId: string,
+        cargaHoraria: number,
+        conteudoProgramatico: string | null,
+        dataRealizacao: string,
+        dataValidade: string | null,
+        instituicaoInstrutor: string | null,
+      ) =>
+        request<{ id: string }>(`/api/membroscipa/${membroId}/treinamentos`, {
+          method: 'POST',
+          body: JSON.stringify({ cargaHoraria, conteudoProgramatico, dataRealizacao, dataValidade, instituicaoInstrutor }),
+        }),
+      anexarCertificado: async (treinamentoId: string, arquivo: File) => {
+        const formData = new FormData();
+        formData.append('Arquivo', arquivo);
+        const response = await fetch(`${API_BASE_URL}/api/membroscipa/treinamentos/${treinamentoId}/certificado`, {
+          method: 'POST',
+          headers: await montarHeadersAuth(),
+          body: formData,
+        });
+        if (!response.ok) {
+          const corpo = await response.text().catch(() => '');
+          throw new Error(`${response.status} ${response.statusText}: ${corpo}`);
+        }
+      },
+      baixarCertificado: async (treinamentoId: string) => {
+        const response = await fetch(`${API_BASE_URL}/api/membroscipa/treinamentos/${treinamentoId}/certificado`, {
+          headers: await montarHeadersAuth(),
+        });
+        if (!response.ok) {
+          const corpo = await response.text().catch(() => '');
+          throw new Error(`${response.status} ${response.statusText}: ${corpo}`);
+        }
+        return response.blob();
+      },
+      anexarListaPresenca: async (treinamentoId: string, arquivo: File) => {
+        const formData = new FormData();
+        formData.append('Arquivo', arquivo);
+        const response = await fetch(`${API_BASE_URL}/api/membroscipa/treinamentos/${treinamentoId}/lista-presenca`, {
+          method: 'POST',
+          headers: await montarHeadersAuth(),
+          body: formData,
+        });
+        if (!response.ok) {
+          const corpo = await response.text().catch(() => '');
+          throw new Error(`${response.status} ${response.statusText}: ${corpo}`);
+        }
+      },
+      baixarListaPresenca: async (treinamentoId: string) => {
+        const response = await fetch(`${API_BASE_URL}/api/membroscipa/treinamentos/${treinamentoId}/lista-presenca`, {
+          headers: await montarHeadersAuth(),
+        });
+        if (!response.ok) {
+          const corpo = await response.text().catch(() => '');
+          throw new Error(`${response.status} ${response.statusText}: ${corpo}`);
+        }
+        return response.blob();
+      },
+    },
+    reunioes: {
+      listar: (obraId?: string) => request<ReuniaoCipa[]>(`/api/reunioescipa${obraId ? `?obraId=${obraId}` : ''}`),
+      obterDetalhe: (id: string) => request<ReuniaoCipaDetalhe>(`/api/reunioescipa/${id}`),
+      criar: (dados: NovaReuniaoCipa) =>
+        request<{ id: string }>('/api/reunioescipa', { method: 'POST', body: JSON.stringify(dados) }),
+      excluir: (id: string) => request<void>(`/api/reunioescipa/${id}`, { method: 'DELETE' }),
+      registrarParticipantes: (id: string, participantes: { trabalhadorId: string; presente: boolean }[]) =>
+        request<void>(`/api/reunioescipa/${id}/participantes`, { method: 'PUT', body: JSON.stringify(participantes) }),
+      encerrar: (id: string, deliberacoes: string) =>
+        request<void>(`/api/reunioescipa/${id}/encerrar`, { method: 'POST', body: JSON.stringify({ deliberacoes }) }),
+      baixarAtaPdf: async (id: string) => {
+        const response = await fetch(`${API_BASE_URL}/api/reunioescipa/${id}/ata-pdf`, {
+          headers: await montarHeadersAuth(),
+        });
+        if (!response.ok) {
+          const corpo = await response.text().catch(() => '');
+          throw new Error(`${response.status} ${response.statusText}: ${corpo}`);
+        }
+        return response.blob();
+      },
+    },
+    inspecoes: {
+      listar: (obraId?: string) => request<InspecaoCipa[]>(`/api/inspecoescipa${obraId ? `?obraId=${obraId}` : ''}`),
+      criar: (dados: NovaInspecaoCipa) =>
+        request<{ id: string }>('/api/inspecoescipa', { method: 'POST', body: JSON.stringify(dados) }),
+      excluir: (id: string) => request<void>(`/api/inspecoescipa/${id}`, { method: 'DELETE' }),
+      gerarNaoConformidade: (id: string, responsavelUsuarioId?: string | null, prazo?: string | null) =>
+        request<{ id: string }>(`/api/inspecoescipa/${id}/gerar-nao-conformidade`, {
+          method: 'POST',
+          body: JSON.stringify({ responsavelUsuarioId, prazo }),
+        }),
+    },
+    eventosSipat: {
+      listar: (obraId?: string) => request<EventoSipat[]>(`/api/eventossipat${obraId ? `?obraId=${obraId}` : ''}`),
+      obterDetalhe: (id: string) => request<EventoSipatDetalhe>(`/api/eventossipat/${id}`),
+      criar: (dados: NovoEventoSipat) =>
+        request<{ id: string }>('/api/eventossipat', { method: 'POST', body: JSON.stringify(dados) }),
+      excluir: (id: string) => request<void>(`/api/eventossipat/${id}`, { method: 'DELETE' }),
+      criarAtividade: (id: string, data: string, horario: string | null, temaPalestra: string, palestrante: string | null) =>
+        request<{ id: string }>(`/api/eventossipat/${id}/atividades`, {
+          method: 'POST',
+          body: JSON.stringify({ data, horario, temaPalestra, palestrante }),
+        }),
+    },
   },
 };

@@ -111,6 +111,17 @@ public class SstDbContext : DbContext, IAppDbContext
     public DbSet<RespostaQuestionarioAplicabilidade> RespostasQuestionarioAplicabilidade => Set<RespostaQuestionarioAplicabilidade>();
     public DbSet<MatrizTreinamentoFuncao> MatrizTreinamentoFuncoes => Set<MatrizTreinamentoFuncao>();
 
+    public DbSet<DimensionamentoCipa> DimensionamentosCipa => Set<DimensionamentoCipa>();
+    public DbSet<ProcessoEleitoralCipa> ProcessosEleitoraisCipa => Set<ProcessoEleitoralCipa>();
+    public DbSet<CandidatoCipa> CandidatosCipa => Set<CandidatoCipa>();
+    public DbSet<MembroCipa> MembrosCipa => Set<MembroCipa>();
+    public DbSet<TreinamentoCipa> TreinamentosCipa => Set<TreinamentoCipa>();
+    public DbSet<ReuniaoCipa> ReunioesCipa => Set<ReuniaoCipa>();
+    public DbSet<ParticipanteReuniaoCipa> ParticipantesReuniaoCipa => Set<ParticipanteReuniaoCipa>();
+    public DbSet<InspecaoCipa> InspecoesCipa => Set<InspecaoCipa>();
+    public DbSet<EventoSipat> EventosSipat => Set<EventoSipat>();
+    public DbSet<AtividadeSipat> AtividadesSipat => Set<AtividadeSipat>();
+
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         modelBuilder.ApplyConfigurationsFromAssembly(typeof(SstDbContext).Assembly);

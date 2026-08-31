@@ -104,5 +104,16 @@ public interface IAppDbContext
     DbSet<RespostaQuestionarioAplicabilidade> RespostasQuestionarioAplicabilidade { get; }
     DbSet<MatrizTreinamentoFuncao> MatrizTreinamentoFuncoes { get; }
 
+    DbSet<DimensionamentoCipa> DimensionamentosCipa { get; }
+    DbSet<ProcessoEleitoralCipa> ProcessosEleitoraisCipa { get; }
+    DbSet<CandidatoCipa> CandidatosCipa { get; }
+    DbSet<MembroCipa> MembrosCipa { get; }
+    DbSet<TreinamentoCipa> TreinamentosCipa { get; }
+    DbSet<ReuniaoCipa> ReunioesCipa { get; }
+    DbSet<ParticipanteReuniaoCipa> ParticipantesReuniaoCipa { get; }
+    DbSet<InspecaoCipa> InspecoesCipa { get; }
+    DbSet<EventoSipat> EventosSipat { get; }
+    DbSet<AtividadeSipat> AtividadesSipat { get; }
+
     Task<int> SaveChangesAsync(CancellationToken cancellationToken = default);
 }

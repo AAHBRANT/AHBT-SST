@@ -37,6 +37,11 @@ import { EpiPage } from './pages/epi/EpiPage';
 import { AssinarEntregaEpiPage } from './pages/epi/AssinarEntregaEpiPage';
 import { SaudeOcupacionalPage } from './pages/saude-ocupacional/SaudeOcupacionalPage';
 import { PcmsoDetalhePage } from './pages/saude-ocupacional/PcmsoDetalhePage';
+import { CipaPage } from './pages/cipa/CipaPage';
+import { ProcessoEleitoralCipaDetalhePage } from './pages/cipa/ProcessoEleitoralCipaDetalhePage';
+import { MembroCipaDetalhePage } from './pages/cipa/MembroCipaDetalhePage';
+import { ReuniaoCipaDetalhePage } from './pages/cipa/ReuniaoCipaDetalhePage';
+import { EventoSipatDetalhePage } from './pages/cipa/EventoSipatDetalhePage';
 
 // Envolve as rotas internas do app com o AppShell (sidebar/header do Teams). As rotas públicas
 // /p/:codigoOuUid e /validar/:token ficam de fora dessa camada — ver AreaPublicaPage/ValidarDocumentoPage.
@@ -113,6 +118,7 @@ function App() {
                     { valor: 'identificacao', rotulo: 'Identificação & Acesso' },
                     { valor: 'ativos', rotulo: 'Ativos (Extintores & Equipamentos)' },
                     { valor: 'saude-ocupacional', rotulo: 'Saúde Ocupacional' },
+                    { valor: 'cipa', rotulo: 'CIPA' },
                   ]}
                 />
               }
@@ -128,6 +134,11 @@ function App() {
               <Route path="ativos" element={<AtivosPage />} />
               <Route path="saude-ocupacional" element={<SaudeOcupacionalPage />} />
               <Route path="saude-ocupacional/pcmso/:id" element={<PcmsoDetalhePage />} />
+              <Route path="cipa" element={<CipaPage />} />
+              <Route path="cipa/eleicao/:id" element={<ProcessoEleitoralCipaDetalhePage />} />
+              <Route path="cipa/membro/:id" element={<MembroCipaDetalhePage />} />
+              <Route path="cipa/reuniao/:id" element={<ReuniaoCipaDetalhePage />} />
+              <Route path="cipa/sipat/:id" element={<EventoSipatDetalhePage />} />
             </Route>
 
             <Route path="/alertas" element={<AlertasPage />} />

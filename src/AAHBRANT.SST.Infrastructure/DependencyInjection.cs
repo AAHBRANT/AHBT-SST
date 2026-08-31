@@ -1,5 +1,6 @@
 using AAHBRANT.SST.Application.Aprs;
 using AAHBRANT.SST.Application.Assinatura;
+using AAHBRANT.SST.Application.Cipa;
 using AAHBRANT.SST.Application.Common.Interfaces;
 using AAHBRANT.SST.Application.Dds;
 using AAHBRANT.SST.Application.EntregasEpi;
@@ -80,6 +81,7 @@ public static class DependencyInjection
 
         services.AddScoped<IDdsPdfService, DdsPdfService>();
         services.AddScoped<IDdsSemanalPdfService, DdsSemanalPdfService>();
+        services.AddScoped<ICipaPdfService, CipaPdfService>();
         services.AddScoped<IAprPdfService, AprPdfService>();
         services.AddScoped<IFichaEpiPdfService, EntregaEpiPdfService>();
         services.AddScoped<IPtPdfService, PtPdfService>();
