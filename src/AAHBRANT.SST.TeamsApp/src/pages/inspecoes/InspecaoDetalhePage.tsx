@@ -1,18 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import {
-  Badge,
-  Button,
-  Input,
-  Select,
-  Table,
-  TableBody,
-  TableCell,
-  TableHeader,
-  TableHeaderCell,
-  TableRow,
-  Text,
-} from '@fluentui/react-components';
+import { Badge, Button, Input, Select, Text, Textarea } from '@fluentui/react-components';
 import {
   ArrowDownload24Regular,
   ArrowLeft24Regular,
@@ -34,14 +22,26 @@ import {
 import { usePageStyles } from '../pageStyles';
 
 interface EdicaoResposta {
+  descricao: string;
   statusItem: string;
   observacao: string;
+  local: string;
+  planoDeAcao: string;
   responsavelUsuarioId: string;
   prazo: string;
 }
 
 function edicaoInicial(): EdicaoResposta {
-  return { statusItem: '', observacao: '', responsavelUsuarioId: '', prazo: '' };
+  return { descricao: '', statusItem: '', observacao: '', local: '', planoDeAcao: '', responsavelUsuarioId: '', prazo: '' };
+}
+
+// Cor do status do achado — mesmo esquema verde/amarelo da planilha "Patrulha de Segurança do
+// Trabalho" (pendente = ainda não conforme, resolvido = já corrigido e reavaliado como conforme).
+function corStatusItem(statusItem?: number | null): 'success' | 'warning' | 'informative' | undefined {
+  if (statusItem === StatusItemChecklist.Conforme) return 'success';
+  if (statusItem === StatusItemChecklist.NaoConforme) return 'warning';
+  if (statusItem === StatusItemChecklist.NaoAplicavel) return 'informative';
+  return undefined;
 }
 
 export function InspecaoDetalhePage() {
@@ -52,11 +52,15 @@ export function InspecaoDetalhePage() {
   const [usuarios, setUsuarios] = useState<Usuario[]>([]);
   const [edicoes, setEdicoes] = useState<Record<string, EdicaoResposta>>({});
   const [fotosSelecionadas, setFotosSelecionadas] = useState<Record<string, File | null>>({});
+  const [fotosDepoisSelecionadas, setFotosDepoisSelecionadas] = useState<Record<string, File | null>>({});
   const [erro, setErro] = useState<string | null>(null);
   const [processando, setProcessando] = useState(false);
   const [enviandoFotoId, setEnviandoFotoId] = useState<string | null>(null);
   const [baixandoFotoId, setBaixandoFotoId] = useState<string | null>(null);
+  const [enviandoFotoDepoisId, setEnviandoFotoDepoisId] = useState<string | null>(null);
+  const [baixandoFotoDepoisId, setBaixandoFotoDepoisId] = useState<string | null>(null);
   const [gerandoOcorrenciaId, setGerandoOcorrenciaId] = useState<string | null>(null);
+  const [baixandoPdf, setBaixandoPdf] = useState(false);
 
   async function carregar() {
     if (!id) return;
@@ -69,8 +73,11 @@ export function InspecaoDetalhePage() {
         const novo: Record<string, EdicaoResposta> = {};
         for (const resposta of det.respostas) {
           novo[resposta.id] = atual[resposta.id] ?? {
+            descricao: resposta.descricao,
             statusItem: resposta.statusItem != null ? String(resposta.statusItem) : '',
             observacao: resposta.observacao ?? '',
+            local: resposta.local ?? '',
+            planoDeAcao: resposta.planoDeAcao ?? '',
             responsavelUsuarioId: resposta.responsavelUsuarioId ?? '',
             prazo: resposta.prazo?.slice(0, 10) ?? '',
           };
@@ -94,10 +101,10 @@ export function InspecaoDetalhePage() {
     }));
   }
 
-  async function salvarResposta(respostaId: string) {
+  async function salvarResposta(respostaId: string, descricaoOriginal: string) {
     const edicao = edicoes[respostaId];
     if (!edicao?.statusItem) {
-      setErro('Selecione o status do item antes de salvar.');
+      setErro('Selecione o status do achado antes de salvar.');
       return;
     }
     try {
@@ -109,17 +116,16 @@ export function InspecaoDetalhePage() {
         edicao.observacao || null,
         edicao.responsavelUsuarioId || null,
         edicao.prazo || null,
+        edicao.descricao !== descricaoOriginal ? edicao.descricao || null : undefined,
+        edicao.local || null,
+        edicao.planoDeAcao || null,
       );
       await carregar();
     } catch (e) {
-      setErro(e instanceof Error ? e.message : 'Falha ao salvar resposta do item.');
+      setErro(e instanceof Error ? e.message : 'Falha ao salvar o achado.');
     } finally {
       setProcessando(false);
     }
-  }
-
-  function selecionarFoto(respostaId: string, arquivo: File | null) {
-    setFotosSelecionadas((atual) => ({ ...atual, [respostaId]: arquivo }));
   }
 
   async function enviarFoto(respostaId: string) {
@@ -129,10 +135,10 @@ export function InspecaoDetalhePage() {
       setEnviandoFotoId(respostaId);
       setErro(null);
       await api.inspecoes.anexarFoto(respostaId, arquivo);
-      selecionarFoto(respostaId, null);
+      setFotosSelecionadas((atual) => ({ ...atual, [respostaId]: null }));
       await carregar();
     } catch (e) {
-      setErro(e instanceof Error ? e.message : 'Falha ao enviar a foto do item.');
+      setErro(e instanceof Error ? e.message : 'Falha ao enviar a evidência anterior.');
     } finally {
       setEnviandoFotoId(null);
     }
@@ -146,13 +152,47 @@ export function InspecaoDetalhePage() {
       const url = URL.createObjectURL(blob);
       const link = document.createElement('a');
       link.href = url;
-      link.download = `inspecao-item-${respostaId}`;
+      link.download = `inspecao-item-${respostaId}-antes`;
       link.click();
       URL.revokeObjectURL(url);
     } catch (e) {
-      setErro(e instanceof Error ? e.message : 'Falha ao baixar a foto do item.');
+      setErro(e instanceof Error ? e.message : 'Falha ao baixar a evidência anterior.');
     } finally {
       setBaixandoFotoId(null);
+    }
+  }
+
+  async function enviarFotoDepois(respostaId: string) {
+    const arquivo = fotosDepoisSelecionadas[respostaId];
+    if (!arquivo) return;
+    try {
+      setEnviandoFotoDepoisId(respostaId);
+      setErro(null);
+      await api.inspecoes.anexarFotoDepois(respostaId, arquivo);
+      setFotosDepoisSelecionadas((atual) => ({ ...atual, [respostaId]: null }));
+      await carregar();
+    } catch (e) {
+      setErro(e instanceof Error ? e.message : 'Falha ao enviar a evidência posterior.');
+    } finally {
+      setEnviandoFotoDepoisId(null);
+    }
+  }
+
+  async function baixarFotoDepois(respostaId: string) {
+    try {
+      setBaixandoFotoDepoisId(respostaId);
+      setErro(null);
+      const blob = await api.inspecoes.baixarFotoDepois(respostaId);
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = `inspecao-item-${respostaId}-depois`;
+      link.click();
+      URL.revokeObjectURL(url);
+    } catch (e) {
+      setErro(e instanceof Error ? e.message : 'Falha ao baixar a evidência posterior.');
+    } finally {
+      setBaixandoFotoDepoisId(null);
     }
   }
 
@@ -181,6 +221,25 @@ export function InspecaoDetalhePage() {
       setErro(e instanceof Error ? e.message : 'Falha ao encerrar inspeção. Confira se todos os itens foram respondidos.');
     } finally {
       setProcessando(false);
+    }
+  }
+
+  async function baixarPdf() {
+    if (!id || !detalhe) return;
+    try {
+      setBaixandoPdf(true);
+      setErro(null);
+      const blob = await api.inspecoes.baixarPdf(id);
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = `inspecao-${detalhe.inspecao.data?.slice(0, 10)}.pdf`;
+      link.click();
+      URL.revokeObjectURL(url);
+    } catch (e) {
+      setErro(e instanceof Error ? e.message : 'Falha ao gerar o PDF da inspeção.');
+    } finally {
+      setBaixandoPdf(false);
     }
   }
 
@@ -219,192 +278,245 @@ export function InspecaoDetalhePage() {
             </div>
             <div style={{ display: 'flex', gap: 16, marginTop: 8, alignItems: 'center' }}>
               <Text>
-                Itens respondidos: {inspecao.itensRespondidos}/{inspecao.totalItens}
+                Achados respondidos: {inspecao.itensRespondidos}/{inspecao.totalItens}
               </Text>
               {inspecao.itensNaoConformes > 0 && (
-                <Badge color="danger" appearance="tint">
-                  {inspecao.itensNaoConformes} não conforme(s)
+                <Badge color="warning" appearance="tint">
+                  {inspecao.itensNaoConformes} pendente(s)
                 </Badge>
               )}
             </div>
 
-            {inspecao.status === StatusInspecao.EmAndamento && (
-              <div className={estilos.formActions} style={{ marginTop: 16 }}>
-                <Button
-                  appearance="primary"
-                  icon={<LockClosed24Regular />}
-                  onClick={encerrar}
-                  disabled={processando}
-                >
+            <div className={estilos.formActions} style={{ marginTop: 16 }}>
+              <Button appearance="secondary" icon={<ArrowDownload24Regular />} onClick={baixarPdf} disabled={baixandoPdf}>
+                Baixar PDF
+              </Button>
+              {inspecao.status === StatusInspecao.EmAndamento && (
+                <Button appearance="primary" icon={<LockClosed24Regular />} onClick={encerrar} disabled={processando}>
                   Encerrar inspeção
                 </Button>
-              </div>
-            )}
+              )}
+            </div>
           </>
         ) : (
           <Text>Carregando...</Text>
         )}
       </div>
 
-      <div className={estilos.card}>
-        <div className={estilos.toolbar}>
-          <Text weight="semibold">Itens do checklist</Text>
-        </div>
+      <Text weight="semibold" style={{ display: 'block', marginBottom: 8 }}>
+        Achados
+      </Text>
 
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHeaderCell>#</TableHeaderCell>
-              <TableHeaderCell>Descrição</TableHeaderCell>
-              <TableHeaderCell>Status</TableHeaderCell>
-              <TableHeaderCell>Observação</TableHeaderCell>
-              <TableHeaderCell>Responsável</TableHeaderCell>
-              <TableHeaderCell>Prazo</TableHeaderCell>
-              <TableHeaderCell>Foto</TableHeaderCell>
-              <TableHeaderCell>Ocorrência</TableHeaderCell>
-              <TableHeaderCell></TableHeaderCell>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {detalhe?.respostas.map((resposta) => {
-              const edicao = edicoes[resposta.id] ?? edicaoInicial();
-              const somenteLeitura = inspecao?.status !== StatusInspecao.EmAndamento;
-              return (
-                <TableRow key={resposta.id}>
-                  <TableCell>{resposta.ordem}</TableCell>
-                  <TableCell>
-                    {resposta.descricao}
-                    {resposta.exigeFotografia && (
-                      <Badge appearance="tint" style={{ marginLeft: 6 }}>
-                        Foto
-                      </Badge>
-                    )}
-                  </TableCell>
-                  <TableCell>
-                    <Select
-                      value={edicao.statusItem}
-                      onChange={(_, d) => atualizarEdicao(resposta.id, { statusItem: d.value })}
-                      disabled={somenteLeitura}
-                    >
-                      <option value="">Selecione</option>
-                      {Object.entries(statusItemChecklistLabel).map(([valor, rotulo]) => (
-                        <option key={valor} value={valor}>
-                          {rotulo}
-                        </option>
-                      ))}
-                    </Select>
-                  </TableCell>
-                  <TableCell>
-                    <Input
-                      value={edicao.observacao}
-                      onChange={(_, d) => atualizarEdicao(resposta.id, { observacao: d.value })}
-                      disabled={somenteLeitura}
-                    />
-                  </TableCell>
-                  <TableCell>
-                    {resposta.exigeResponsavel ? (
-                      <Select
-                        value={edicao.responsavelUsuarioId}
-                        onChange={(_, d) => atualizarEdicao(resposta.id, { responsavelUsuarioId: d.value })}
-                        disabled={somenteLeitura}
-                      >
-                        <option value="">Selecione</option>
-                        {usuarios.map((usuario) => (
-                          <option key={usuario.id} value={usuario.id}>
-                            {usuario.nome}
-                          </option>
-                        ))}
-                      </Select>
-                    ) : (
-                      '—'
-                    )}
-                  </TableCell>
-                  <TableCell>
-                    {resposta.exigePrazo ? (
-                      <Input
-                        type="date"
-                        value={edicao.prazo}
-                        onChange={(_, d) => atualizarEdicao(resposta.id, { prazo: d.value })}
-                        disabled={somenteLeitura}
-                      />
-                    ) : (
-                      '—'
-                    )}
-                  </TableCell>
-                  <TableCell>
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: 4, alignItems: 'flex-start' }}>
-                      {!somenteLeitura && (
-                        <>
-                          <input
-                            type="file"
-                            accept="image/*"
-                            capture="environment"
-                            onChange={(e) => selecionarFoto(resposta.id, e.target.files?.[0] ?? null)}
-                            style={{ maxWidth: 140 }}
-                          />
-                          <Button
-                            appearance="subtle"
-                            size="small"
-                            icon={<ArrowUpload24Regular />}
-                            onClick={() => enviarFoto(resposta.id)}
-                            disabled={!fotosSelecionadas[resposta.id] || enviandoFotoId === resposta.id}
-                          >
-                            Enviar
-                          </Button>
-                        </>
-                      )}
-                      {resposta.temFoto && (
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+        {detalhe?.respostas.map((resposta) => {
+          const edicao = edicoes[resposta.id] ?? edicaoInicial();
+          const somenteLeitura = inspecao?.status !== StatusInspecao.EmAndamento;
+          return (
+            <div key={resposta.id} className={estilos.card}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 12, flexWrap: 'wrap' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8, flex: 1, minWidth: 260 }}>
+                  <Text weight="semibold">{resposta.ordem}.</Text>
+                  <Input
+                    value={edicao.descricao}
+                    onChange={(_, d) => atualizarEdicao(resposta.id, { descricao: d.value })}
+                    disabled={somenteLeitura}
+                    style={{ flex: 1 }}
+                    placeholder="Descrição do achado / irregularidade encontrada"
+                  />
+                </div>
+                <Select
+                  value={edicao.statusItem}
+                  onChange={(_, d) => atualizarEdicao(resposta.id, { statusItem: d.value })}
+                  disabled={somenteLeitura}
+                  style={{ minWidth: 160 }}
+                >
+                  <option value="">Selecione o status</option>
+                  {Object.entries(statusItemChecklistLabel).map(([valor, rotulo]) => (
+                    <option key={valor} value={valor}>
+                      {rotulo}
+                    </option>
+                  ))}
+                </Select>
+                {resposta.statusItem != null && (
+                  <Badge color={corStatusItem(resposta.statusItem)} appearance="tint">
+                    {statusItemChecklistLabel[resposta.statusItem]}
+                  </Badge>
+                )}
+              </div>
+
+              <div style={{ display: 'flex', gap: 12, marginTop: 12, flexWrap: 'wrap' }}>
+                <div style={{ flex: 1, minWidth: 200 }}>
+                  <Text size={200} block style={{ marginBottom: 2 }}>Local</Text>
+                  <Input
+                    value={edicao.local}
+                    onChange={(_, d) => atualizarEdicao(resposta.id, { local: d.value })}
+                    disabled={somenteLeitura}
+                    style={{ width: '100%' }}
+                  />
+                </div>
+                <div style={{ flex: 1, minWidth: 200 }}>
+                  <Text size={200} block style={{ marginBottom: 2 }}>Responsável</Text>
+                  <Select
+                    value={edicao.responsavelUsuarioId}
+                    onChange={(_, d) => atualizarEdicao(resposta.id, { responsavelUsuarioId: d.value })}
+                    disabled={somenteLeitura}
+                    style={{ width: '100%' }}
+                  >
+                    <option value="">Selecione</option>
+                    {usuarios.map((usuario) => (
+                      <option key={usuario.id} value={usuario.id}>
+                        {usuario.nome}
+                      </option>
+                    ))}
+                  </Select>
+                </div>
+                <div style={{ minWidth: 160 }}>
+                  <Text size={200} block style={{ marginBottom: 2 }}>Prazo</Text>
+                  <Input
+                    type="date"
+                    value={edicao.prazo}
+                    onChange={(_, d) => atualizarEdicao(resposta.id, { prazo: d.value })}
+                    disabled={somenteLeitura}
+                  />
+                </div>
+              </div>
+
+              <div style={{ marginTop: 12 }}>
+                <Text size={200} block style={{ marginBottom: 2 }}>Plano de ação</Text>
+                <Textarea
+                  value={edicao.planoDeAcao}
+                  onChange={(_, d) => atualizarEdicao(resposta.id, { planoDeAcao: d.value })}
+                  disabled={somenteLeitura}
+                  resize="vertical"
+                  style={{ width: '100%' }}
+                />
+              </div>
+
+              <div style={{ marginTop: 12 }}>
+                <Text size={200} block style={{ marginBottom: 2 }}>OBS</Text>
+                <Textarea
+                  value={edicao.observacao}
+                  onChange={(_, d) => atualizarEdicao(resposta.id, { observacao: d.value })}
+                  disabled={somenteLeitura}
+                  resize="vertical"
+                  style={{ width: '100%' }}
+                />
+              </div>
+
+              <div style={{ display: 'flex', gap: 24, marginTop: 12, flexWrap: 'wrap' }}>
+                <div>
+                  <Text size={200} block weight="semibold" style={{ marginBottom: 4 }}>Evidência anterior</Text>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 4, alignItems: 'flex-start' }}>
+                    {!somenteLeitura && (
+                      <>
+                        <input
+                          type="file"
+                          accept="image/*"
+                          capture="environment"
+                          onChange={(e) =>
+                            setFotosSelecionadas((atual) => ({ ...atual, [resposta.id]: e.target.files?.[0] ?? null }))
+                          }
+                          style={{ maxWidth: 200 }}
+                        />
                         <Button
                           appearance="subtle"
                           size="small"
-                          icon={<ArrowDownload24Regular />}
-                          onClick={() => baixarFoto(resposta.id)}
-                          disabled={baixandoFotoId === resposta.id}
+                          icon={<ArrowUpload24Regular />}
+                          onClick={() => enviarFoto(resposta.id)}
+                          disabled={!fotosSelecionadas[resposta.id] || enviandoFotoId === resposta.id}
                         >
-                          Ver foto
+                          Enviar
                         </Button>
-                      )}
-                    </div>
-                  </TableCell>
-                  <TableCell>
-                    {resposta.naoConformidadeId ? (
+                      </>
+                    )}
+                    {resposta.temFoto && (
                       <Button
                         appearance="subtle"
                         size="small"
-                        onClick={() => navigate(`/nao-conformidades/${resposta.naoConformidadeId}`)}
+                        icon={<ArrowDownload24Regular />}
+                        onClick={() => baixarFoto(resposta.id)}
+                        disabled={baixandoFotoId === resposta.id}
                       >
-                        Ver ocorrência
+                        Ver foto
                       </Button>
-                    ) : (
-                      resposta.statusItem === StatusItemChecklist.NaoConforme && (
+                    )}
+                  </div>
+                </div>
+
+                <div>
+                  <Text size={200} block weight="semibold" style={{ marginBottom: 4 }}>Evidência posterior</Text>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 4, alignItems: 'flex-start' }}>
+                    {!somenteLeitura && (
+                      <>
+                        <input
+                          type="file"
+                          accept="image/*"
+                          capture="environment"
+                          onChange={(e) =>
+                            setFotosDepoisSelecionadas((atual) => ({ ...atual, [resposta.id]: e.target.files?.[0] ?? null }))
+                          }
+                          style={{ maxWidth: 200 }}
+                        />
                         <Button
                           appearance="subtle"
                           size="small"
-                          icon={<Warning24Regular />}
-                          onClick={() => gerarOcorrencia(resposta.id)}
-                          disabled={gerandoOcorrenciaId === resposta.id}
+                          icon={<ArrowUpload24Regular />}
+                          onClick={() => enviarFotoDepois(resposta.id)}
+                          disabled={!fotosDepoisSelecionadas[resposta.id] || enviandoFotoDepoisId === resposta.id}
                         >
-                          Gerar ocorrência
+                          Enviar
                         </Button>
-                      )
+                      </>
                     )}
-                  </TableCell>
-                  <TableCell>
-                    {!somenteLeitura && (
+                    {resposta.temFotoDepois && (
                       <Button
                         appearance="subtle"
-                        icon={<Save24Regular />}
-                        onClick={() => salvarResposta(resposta.id)}
-                        disabled={processando}
-                        aria-label="Salvar item"
-                      />
+                        size="small"
+                        icon={<ArrowDownload24Regular />}
+                        onClick={() => baixarFotoDepois(resposta.id)}
+                        disabled={baixandoFotoDepoisId === resposta.id}
+                      >
+                        Ver foto
+                      </Button>
                     )}
-                  </TableCell>
-                </TableRow>
-              );
-            })}
-          </TableBody>
-        </Table>
+                  </div>
+                </div>
+              </div>
+
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 12 }}>
+                <div>
+                  {resposta.naoConformidadeId ? (
+                    <Button appearance="subtle" size="small" onClick={() => navigate(`/nao-conformidades/${resposta.naoConformidadeId}`)}>
+                      Ver ocorrência
+                    </Button>
+                  ) : (
+                    resposta.statusItem === StatusItemChecklist.NaoConforme && (
+                      <Button
+                        appearance="subtle"
+                        size="small"
+                        icon={<Warning24Regular />}
+                        onClick={() => gerarOcorrencia(resposta.id)}
+                        disabled={gerandoOcorrenciaId === resposta.id}
+                      >
+                        Gerar ocorrência
+                      </Button>
+                    )
+                  )}
+                </div>
+                {!somenteLeitura && (
+                  <Button
+                    appearance="primary"
+                    icon={<Save24Regular />}
+                    onClick={() => salvarResposta(resposta.id, resposta.descricao)}
+                    disabled={processando}
+                  >
+                    Salvar achado
+                  </Button>
+                )}
+              </div>
+            </div>
+          );
+        })}
       </div>
     </div>
   );

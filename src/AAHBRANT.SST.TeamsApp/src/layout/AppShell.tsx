@@ -15,6 +15,8 @@ import {
   BriefcaseMedical24Regular,
   People24Regular,
   CalendarLtr24Regular,
+  ChevronLeft24Regular,
+  ChevronRight24Regular,
 } from '@fluentui/react-icons';
 import { designTokens } from '../theme';
 import { useTeamsContext } from '../teams/useTeamsContext';
@@ -23,17 +25,27 @@ import logoSst from '../assets/logo-sst.png';
 import { SyncStatusBadge } from '../components/SyncStatusBadge';
 
 // Rail de navegação (Hub Gênesis SST — design decidido em sessão anterior): faixa fina só com
-// ícones + tooltip ao passar o mouse/focar, no lugar do menu largo com texto. Mesma faixa em
-// desktop e mobile — sem estado de expandir/recolher.
-const LARGURA_RAIL = '66px';
+// ícones + tooltip ao passar o mouse/focar, no lugar do menu largo com texto. O botão de
+// expandir/recolher (removido na reformulação Hub Gênesis, pedido de volta pelo usuário em 31/08)
+// alterna entre essa faixa fina e uma versão larga com rótulos visíveis, sem o overlay flutuante
+// de mobile da versão antiga (app roda majoritariamente dentro do Teams desktop/browser).
+const LARGURA_RAIL_COLAPSADO = '66px';
+const LARGURA_RAIL_EXPANDIDO = '220px';
+const CHAVE_RAIL_EXPANDIDO = 'sst.railExpandido';
 
 const useStyles = makeStyles({
   root: {
     display: 'grid',
-    gridTemplateColumns: `${LARGURA_RAIL} 1fr`,
     gridTemplateRows: '64px 1fr',
     height: '100vh',
     width: '100%',
+    transition: 'grid-template-columns 0.15s ease',
+  },
+  rootColapsado: {
+    gridTemplateColumns: `${LARGURA_RAIL_COLAPSADO} 1fr`,
+  },
+  rootExpandido: {
+    gridTemplateColumns: `${LARGURA_RAIL_EXPANDIDO} 1fr`,
   },
   rail: {
     gridRow: '1 / span 2',
@@ -44,23 +56,40 @@ const useStyles = makeStyles({
     color: designTokens.colorRailInk,
     display: 'flex',
     flexDirection: 'column',
-    alignItems: 'center',
+    alignItems: 'stretch',
     padding: '18px 0',
     gap: '6px',
     overflowY: 'auto',
     overflowX: 'hidden',
   },
+  cabecalhoRail: {
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    padding: '0 12px',
+    marginBottom: '14px',
+  },
+  cabecalhoRailColapsado: {
+    flexDirection: 'column',
+    gap: '10px',
+    padding: '0 12px',
+  },
   marca: {
     width: '34px',
     height: '34px',
     borderRadius: '8px',
-    marginBottom: '14px',
+    flexShrink: 0,
+  },
+  botaoAlternarRail: {
+    color: designTokens.colorRailInkMuted,
+    minWidth: 'auto',
     flexShrink: 0,
   },
   navItem: {
     position: 'relative',
     width: '42px',
     height: '42px',
+    marginLeft: '12px',
     borderRadius: '10px',
     color: designTokens.colorRailInkMuted,
     display: 'flex',
@@ -69,6 +98,13 @@ const useStyles = makeStyles({
     textDecoration: 'none',
     transition: 'background-color 0.15s ease, color 0.15s ease',
     flexShrink: 0,
+  },
+  navItemExpandido: {
+    width: 'calc(100% - 24px)',
+    justifyContent: 'flex-start',
+    gap: '10px',
+    padding: '0 12px',
+    whiteSpace: 'nowrap',
   },
   navItemHover: {
     ':hover': {
@@ -80,11 +116,18 @@ const useStyles = makeStyles({
     color: designTokens.colorRailActiveInk,
     backgroundColor: designTokens.colorRailActiveBackground,
   },
+  navRotulo: {
+    fontSize: '14px',
+    fontWeight: 500,
+  },
   navSeparador: {
     width: '28px',
     borderTop: `1px solid ${designTokens.colorRailBorder}`,
-    margin: '6px 0',
+    margin: '6px 0 6px 12px',
     flexShrink: 0,
+  },
+  navSeparadorExpandido: {
+    width: 'calc(100% - 24px)',
   },
   railRodape: {
     marginTop: 'auto',
@@ -164,20 +207,40 @@ function tituloDaRota(pathname: string): string {
   return item?.rotulo ?? 'AAHBRANT SST';
 }
 
-function ItemRail({ rota, rotulo, icone: Icone }: { rota: string; rotulo: string; icone: typeof Grid24Regular }) {
+function ItemRail({
+  rota,
+  rotulo,
+  icone: Icone,
+  expandido,
+}: {
+  rota: string;
+  rotulo: string;
+  icone: typeof Grid24Regular;
+  expandido: boolean;
+}) {
   const estilos = useStyles();
-  return (
+  const link = (
+    <NavLink
+      to={rota}
+      end={rota === '/'}
+      aria-label={rotulo}
+      className={({ isActive }) =>
+        mergeClasses(
+          estilos.navItem,
+          expandido && estilos.navItemExpandido,
+          !isActive && estilos.navItemHover,
+          isActive && estilos.navItemActive,
+        )
+      }
+    >
+      <Icone />
+      {expandido && <span className={estilos.navRotulo}>{rotulo}</span>}
+    </NavLink>
+  );
+  // Tooltip só é útil quando colapsado (ícone sem rótulo visível) — expandido já mostra o texto.
+  return expandido ? link : (
     <Tooltip content={rotulo} relationship="label" positioning="after">
-      <NavLink
-        to={rota}
-        end={rota === '/'}
-        aria-label={rotulo}
-        className={({ isActive }) =>
-          mergeClasses(estilos.navItem, !isActive && estilos.navItemHover, isActive && estilos.navItemActive)
-        }
-      >
-        <Icone />
-      </NavLink>
+      {link}
     </Tooltip>
   );
 }
@@ -188,6 +251,13 @@ export function AppShell({ children }: { children: ReactNode }) {
   const navigate = useNavigate();
   const { carregando, dentroDoTeams } = useTeamsContext();
   const [alertasAbertos, setAlertasAbertos] = useState<number | null>(null);
+  const [railExpandido, setRailExpandido] = useState<boolean>(
+    () => localStorage.getItem(CHAVE_RAIL_EXPANDIDO) === '1',
+  );
+
+  useEffect(() => {
+    localStorage.setItem(CHAVE_RAIL_EXPANDIDO, railExpandido ? '1' : '0');
+  }, [railExpandido]);
 
   useEffect(() => {
     let cancelado = false;
@@ -205,19 +275,31 @@ export function AppShell({ children }: { children: ReactNode }) {
   }, [location.pathname]);
 
   return (
-    <div className={estilos.root}>
+    <div className={mergeClasses(estilos.root, railExpandido ? estilos.rootExpandido : estilos.rootColapsado)}>
       <nav className={estilos.rail} aria-label="Navegação principal">
-        <img src={logoSst} alt="AAHBRANT SST" className={estilos.marca} />
+        <div className={mergeClasses(estilos.cabecalhoRail, !railExpandido && estilos.cabecalhoRailColapsado)}>
+          <img src={logoSst} alt="AAHBRANT SST" className={estilos.marca} />
+          <Button
+            appearance="subtle"
+            className={estilos.botaoAlternarRail}
+            icon={railExpandido ? <ChevronLeft24Regular /> : <ChevronRight24Regular />}
+            aria-label={railExpandido ? 'Recolher menu' : 'Expandir menu'}
+            title={railExpandido ? 'Recolher menu' : 'Expandir menu'}
+            onClick={() => setRailExpandido((atual) => !atual)}
+          />
+        </div>
         {secoesNavegacao.map((secao, indice) => (
           <div key={secao.pilar ?? `sem-pilar-${indice}`} style={{ display: 'contents' }}>
-            {indice > 0 && secao.pilar === null && <div className={estilos.navSeparador} />}
+            {indice > 0 && secao.pilar === null && (
+              <div className={mergeClasses(estilos.navSeparador, railExpandido && estilos.navSeparadorExpandido)} />
+            )}
             {secao.itens.map((item) => (
-              <ItemRail key={item.rota} {...item} />
+              <ItemRail key={item.rota} {...item} expandido={railExpandido} />
             ))}
           </div>
         ))}
         <div className={estilos.railRodape}>
-          <ItemRail {...itemAdministracao} />
+          <ItemRail {...itemAdministracao} expandido={railExpandido} />
         </div>
       </nav>
 

@@ -59,6 +59,17 @@ public class InspecaoItemResposta : AuditableEntity
     public StatusItemChecklist? StatusItem { get; set; }
     public string? Observacao { get; set; }
 
+    // Campos adicionados para o formato "Patrulha de Segurança do Trabalho" (planilha do usuário,
+    // 31/08) — decisão do usuário: reaproveitar o checklist existente em vez de criar um modelo de
+    // achados livres, liberando a descrição do item para edição na própria execução. Quando
+    // preenchida, DescricaoPersonalizada sobrescreve ChecklistModeloItem.Descricao só nesta
+    // resposta (o item do template, compartilhado entre execuções, não é alterado). Local e
+    // PlanoDeAcao não existiam no modelo (só apareciam ao gerar uma Não Conformidade a partir do
+    // item, ver CriarNaoConformidadeDeItemCommand) — aqui ficam registrados desde a execução.
+    public string? DescricaoPersonalizada { get; set; }
+    public string? Local { get; set; }
+    public string? PlanoDeAcao { get; set; }
+
     public Guid? ResponsavelUsuarioId { get; set; }
     public Usuario? ResponsavelUsuario { get; set; }
     public DateTime? Prazo { get; set; }
@@ -66,7 +77,12 @@ public class InspecaoItemResposta : AuditableEntity
     // Campo próprio em vez da Evidencia genérica citada acima: decisão tomada em 2026-08-25
     // (confirmada com o usuário) para reaproveitar o mesmo padrão já em produção em
     // Dds.FotoConteudo, já que a entidade Evidencia (BlobUrl) nunca chegou a ser implementada
-    // (sem controller/command/blob storage por trás).
+    // (sem controller/command/blob storage por trás). Representa a evidência ANTES (a irregularidade
+    // encontrada); FotoDepois* (abaixo, 31/08) é a evidência DEPOIS, registrada quando o achado é
+    // resolvido — mesmo par "Evidência Anterior/Evidência posterior" da planilha de patrulha.
     public byte[] FotoConteudo { get; set; } = Array.Empty<byte>();
     public string FotoContentType { get; set; } = string.Empty;
+
+    public byte[]? FotoDepoisConteudo { get; set; }
+    public string? FotoDepoisContentType { get; set; }
 }

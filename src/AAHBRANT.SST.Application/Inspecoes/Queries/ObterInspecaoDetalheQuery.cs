@@ -63,16 +63,19 @@ public class ObterInspecaoDetalheQueryHandler : IRequestHandler<ObterInspecaoDet
                 InspecaoId = r.InspecaoId,
                 ChecklistModeloItemId = r.ChecklistModeloItemId,
                 Ordem = r.ChecklistModeloItem?.Ordem ?? 0,
-                Descricao = r.ChecklistModeloItem?.Descricao ?? string.Empty,
+                Descricao = r.DescricaoPersonalizada ?? r.ChecklistModeloItem?.Descricao ?? string.Empty,
                 ExigeFotografia = r.ChecklistModeloItem?.ExigeFotografia ?? false,
                 ExigeResponsavel = r.ChecklistModeloItem?.ExigeResponsavel ?? false,
                 ExigePrazo = r.ChecklistModeloItem?.ExigePrazo ?? false,
                 StatusItem = r.StatusItem,
                 Observacao = r.Observacao,
+                Local = r.Local,
+                PlanoDeAcao = r.PlanoDeAcao,
                 ResponsavelUsuarioId = r.ResponsavelUsuarioId,
                 ResponsavelUsuarioNome = r.ResponsavelUsuario?.Nome,
                 Prazo = r.Prazo,
                 TemFoto = r.FotoConteudo.Length > 0,
+                TemFotoDepois = r.FotoDepoisConteudo != null && r.FotoDepoisConteudo.Length > 0,
                 NaoConformidadeId = ncPorResposta.GetValueOrDefault(r.Id)
             }).ToList()
         };

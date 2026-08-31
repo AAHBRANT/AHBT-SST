@@ -42,7 +42,8 @@ public class InspecoesController : ControllerBase
     public async Task<IActionResult> ResponderItem(Guid respostaId, ResponderItemInspecaoRequestBody body, CancellationToken ct)
     {
         await _mediator.Send(new ResponderItemInspecaoCommand(
-            respostaId, body.StatusItem, body.Observacao, body.ResponsavelUsuarioId, body.Prazo), ct);
+            respostaId, body.StatusItem, body.Observacao, body.ResponsavelUsuarioId, body.Prazo,
+            body.DescricaoPersonalizada, body.Local, body.PlanoDeAcao), ct);
         return NoContent();
     }
 
@@ -66,12 +67,42 @@ public class InspecoesController : ControllerBase
         return foto is null ? NotFound() : File(foto.Conteudo, foto.ContentType, foto.NomeArquivo);
     }
 
+    // Evidência posterior ("depois de resolvido") — par dos dois endpoints acima, pedido "Patrulha
+    // de Segurança do Trabalho" (planilha do usuário, 31/08).
+    [Authorize(Policy = "inspecao:responder")]
+    [HttpPost("respostas/{respostaId:guid}/foto-depois")]
+    [RequestSizeLimit(6_000_000)]
+    public async Task<IActionResult> AnexarFotoDepois(Guid respostaId, [FromForm] AnexarFotoItemInspecaoRequestBody body, CancellationToken ct)
+    {
+        await using var stream = new MemoryStream();
+        await body.Foto.CopyToAsync(stream, ct);
+
+        await _mediator.Send(new AnexarFotoDepoisItemInspecaoCommand(respostaId, stream.ToArray(), body.Foto.ContentType), ct);
+        return NoContent();
+    }
+
+    [Authorize(Policy = "inspecao:ver")]
+    [HttpGet("respostas/{respostaId:guid}/foto-depois")]
+    public async Task<IActionResult> ObterFotoDepois(Guid respostaId, CancellationToken ct)
+    {
+        var foto = await _mediator.Send(new ObterFotoDepoisItemInspecaoQuery(respostaId), ct);
+        return foto is null ? NotFound() : File(foto.Conteudo, foto.ContentType, foto.NomeArquivo);
+    }
+
     [Authorize(Policy = "inspecao:encerrar")]
     [HttpPost("{id:guid}/encerrar")]
     public async Task<IActionResult> Encerrar(Guid id, CancellationToken ct)
     {
         await _mediator.Send(new EncerrarInspecaoCommand(id), ct);
         return NoContent();
+    }
+
+    [Authorize(Policy = "inspecao:ver")]
+    [HttpGet("{id:guid}/pdf")]
+    public async Task<IActionResult> ExportarPdf(Guid id, CancellationToken ct)
+    {
+        var pdf = await _mediator.Send(new ExportarInspecaoPdfQuery(id), ct);
+        return pdf is null ? NotFound() : File(pdf, "application/pdf", $"inspecao-{id}.pdf");
     }
 
     // Procedimento de Inspeção Técnica de Campo (§6.2) — gerar ocorrência a partir de um item do
@@ -92,7 +123,10 @@ public record ResponderItemInspecaoRequestBody(
     StatusItemChecklist StatusItem,
     string? Observacao,
     Guid? ResponsavelUsuarioId,
-    DateTime? Prazo);
+    DateTime? Prazo,
+    string? DescricaoPersonalizada,
+    string? Local,
+    string? PlanoDeAcao);
 
 public record GerarOcorrenciaRequestBody(
     string? RequisitoRelacionado,

@@ -1430,10 +1430,13 @@ export interface InspecaoItemResposta {
   exigePrazo: boolean;
   statusItem?: number | null;
   observacao?: string | null;
+  local?: string | null;
+  planoDeAcao?: string | null;
   responsavelUsuarioId?: string | null;
   responsavelUsuarioNome?: string | null;
   prazo?: string | null;
   temFoto: boolean;
+  temFotoDepois: boolean;
   naoConformidadeId?: string | null;
 }
 
@@ -2884,10 +2887,21 @@ export const api = {
       observacao?: string | null,
       responsavelUsuarioId?: string | null,
       prazo?: string | null,
+      descricaoPersonalizada?: string | null,
+      local?: string | null,
+      planoDeAcao?: string | null,
     ) =>
       request<void>(`/api/inspecoes/respostas/${respostaId}`, {
         method: 'POST',
-        body: JSON.stringify({ statusItem, observacao, responsavelUsuarioId, prazo }),
+        body: JSON.stringify({
+          statusItem,
+          observacao,
+          responsavelUsuarioId,
+          prazo,
+          descricaoPersonalizada,
+          local,
+          planoDeAcao,
+        }),
       }),
     anexarFoto: async (respostaId: string, foto: File) => {
       const formData = new FormData();
@@ -2912,7 +2926,40 @@ export const api = {
       }
       return response.blob();
     },
+    // Evidência posterior (depois de resolvido o achado) — par dos dois métodos acima, pedido
+    // "Patrulha de Segurança do Trabalho" (planilha do usuário, 31/08).
+    anexarFotoDepois: async (respostaId: string, foto: File) => {
+      const formData = new FormData();
+      formData.append('foto', foto);
+      const response = await fetch(`${API_BASE_URL}/api/inspecoes/respostas/${respostaId}/foto-depois`, {
+        method: 'POST',
+        headers: await montarHeadersAuth(),
+        body: formData,
+      });
+      if (!response.ok) {
+        const corpo = await response.text().catch(() => '');
+        throw new Error(`${response.status} ${response.statusText}: ${corpo}`);
+      }
+    },
+    baixarFotoDepois: async (respostaId: string) => {
+      const response = await fetch(`${API_BASE_URL}/api/inspecoes/respostas/${respostaId}/foto-depois`, {
+        headers: await montarHeadersAuth(),
+      });
+      if (!response.ok) {
+        const corpo = await response.text().catch(() => '');
+        throw new Error(`${response.status} ${response.statusText}: ${corpo}`);
+      }
+      return response.blob();
+    },
     encerrar: (id: string) => request<void>(`/api/inspecoes/${id}/encerrar`, { method: 'POST' }),
+    baixarPdf: async (id: string) => {
+      const response = await fetch(`${API_BASE_URL}/api/inspecoes/${id}/pdf`, { headers: await montarHeadersAuth() });
+      if (!response.ok) {
+        const corpo = await response.text().catch(() => '');
+        throw new Error(`${response.status} ${response.statusText}: ${corpo}`);
+      }
+      return response.blob();
+    },
     gerarOcorrencia: (respostaId: string, body: {
       requisitoRelacionado?: string | null;
       local?: string | null;

@@ -3,6 +3,7 @@ using AAHBRANT.SST.Application.Assinatura;
 using AAHBRANT.SST.Application.Common.Interfaces;
 using AAHBRANT.SST.Application.Dds;
 using AAHBRANT.SST.Application.EntregasEpi;
+using AAHBRANT.SST.Application.Inspecoes;
 using AAHBRANT.SST.Application.PermissoesTrabalho;
 using AAHBRANT.SST.Application.Trabalhadores;
 using AAHBRANT.SST.Infrastructure.Assinatura;
@@ -83,6 +84,7 @@ public static class DependencyInjection
         services.AddScoped<IFichaEpiPdfService, EntregaEpiPdfService>();
         services.AddScoped<IPtPdfService, PtPdfService>();
         services.AddScoped<IRelatorioFiscalizacaoPdfService, RelatorioFiscalizacaoPdfService>();
+        services.AddScoped<IInspecaoPdfService, InspecaoPdfService>();
 
         // Motor de Assinatura Eletrônica (docs/Motor-Assinatura-Eletronica.md §5, etapa 4) — crachá/QR
         // + PIN é o método de reserva e roda como principal temporário até o leitor biométrico FIDO2
