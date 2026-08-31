@@ -66,11 +66,12 @@ export interface Trabalhador {
   telegramCodigoVinculo?: string | null;
   turno?: string | null;
   temFoto: boolean;
+  temBiometria: boolean;
 }
 
 export type NovoTrabalhador = Omit<
   Trabalhador,
-  'id' | 'dataDemissao' | 'telegramVinculado' | 'telegramCodigoVinculo' | 'temFoto'
+  'id' | 'dataDemissao' | 'telegramVinculado' | 'telegramCodigoVinculo' | 'temFoto' | 'temBiometria'
 >;
 
 export interface GerarVinculoTelegramResultado {
@@ -2280,6 +2281,7 @@ export interface PerfilCompletoTrabalhador {
   vinculo: number;
   dataAdmissao: string;
   temFoto: boolean;
+  temBiometria: boolean;
   statusAptidao: string;
   asos: Aso[];
   episAtivos: EntregaEpi[];
@@ -2396,6 +2398,10 @@ export const api = {
         method: 'POST',
         body: JSON.stringify({ trabalhadorId: id, pin, confirmarPin }),
       }),
+    registrarTermoAceiteAssinatura: (id: string) =>
+      request<void>(`/api/trabalhadores/${id}/assinatura/termo-aceite`, { method: 'POST' }),
+    registrarConsentimentoBiometria: (id: string) =>
+      request<void>(`/api/trabalhadores/${id}/assinatura/consentimento-biometria`, { method: 'POST' }),
     // Cadastro de credencial WebAuthn/FIDO2 (etapa 13) — cerimônia em duas chamadas; a conversão
     // JSON<->ArrayBuffer com o navegador fica em lib/webauthn.ts (criarCredencialWebAuthn).
     iniciarCadastroWebAuthn: (id: string, tipo: number) =>

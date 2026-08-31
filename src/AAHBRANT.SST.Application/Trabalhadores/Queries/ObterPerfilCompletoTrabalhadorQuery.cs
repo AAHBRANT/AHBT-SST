@@ -27,6 +27,7 @@ public record PerfilCompletoTrabalhadorDto(
     TipoVinculo Vinculo,
     DateTime DataAdmissao,
     bool TemFoto,
+    bool TemBiometria,
     string StatusAptidao,
     List<AsoDto> Asos,
     List<EntregaEpiDto> EpisAtivos,
@@ -99,6 +100,7 @@ public class ObterPerfilCompletoTrabalhadorQueryHandler : IRequestHandler<ObterP
                 t.Vinculo,
                 t.DataAdmissao,
                 TemFoto = t.FotoConteudo != null,
+                TemBiometria = _db.TemplatesBiometricoFutronic.Any(tb => tb.TrabalhadorId == t.Id),
                 ObraNome = t.Obra!.Nome,
                 FuncaoNome = t.Funcao!.Nome,
             })
@@ -256,6 +258,7 @@ public class ObterPerfilCompletoTrabalhadorQueryHandler : IRequestHandler<ObterP
             trabalhador.Vinculo,
             trabalhador.DataAdmissao,
             trabalhador.TemFoto,
+            trabalhador.TemBiometria,
             statusAptidao,
             asos,
             episAtivos,

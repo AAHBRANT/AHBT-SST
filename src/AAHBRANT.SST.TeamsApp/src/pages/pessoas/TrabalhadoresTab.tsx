@@ -6,6 +6,7 @@ import {
   ArrowUpload24Regular,
   ChevronRight24Regular,
   Delete24Regular,
+  Fingerprint24Regular,
   Search24Regular,
 } from '@fluentui/react-icons';
 import {
@@ -22,6 +23,7 @@ import {
 } from '../../lib/api';
 import { formatarCpf } from '../../lib/cpf';
 import { usePageStyles } from '../pageStyles';
+import { CadastroDigitalDialog } from './CadastroDigitalDialog';
 
 function corBadgeAso(status: number | undefined): 'success' | 'warning' | 'danger' | 'informative' {
   switch (status) {
@@ -70,6 +72,9 @@ export function TrabalhadoresTab() {
   const [enviandoFotoId, setEnviandoFotoId] = useState<string | null>(null);
   const inputFotoRef = useRef<HTMLInputElement>(null);
   const trabalhadorAlvoFotoRef = useRef<string | null>(null);
+  const [trabalhadorDigitalAlvo, setTrabalhadorDigitalAlvo] = useState<{ id: string; nome: string } | null>(
+    null,
+  );
 
   async function carregar() {
     try {
@@ -169,7 +174,8 @@ export function TrabalhadoresTab() {
     try {
       setCarregando(true);
       setErro(null);
-      await api.trabalhadores.criar(novoTrabalhador);
+      const { id } = await api.trabalhadores.criar(novoTrabalhador);
+      setTrabalhadorDigitalAlvo({ id, nome: novoTrabalhador.nome });
       setNovoTrabalhador(trabalhadorVazio);
       await carregar();
     } catch (e) {
@@ -309,7 +315,22 @@ export function TrabalhadoresTab() {
                   {resultadoAsoLabel[aso.resultadoStatus]}
                 </Badge>
               )}
+              {!trabalhador.temBiometria && (
+                <Badge color="warning" appearance="tint">
+                  Digital pendente
+                </Badge>
+              )}
               <div style={{ display: 'flex', gap: 4 }}>
+                <Button
+                  appearance="subtle"
+                  icon={<Fingerprint24Regular />}
+                  onClick={(evento) => {
+                    evento.stopPropagation();
+                    setTrabalhadorDigitalAlvo({ id: trabalhador.id, nome: trabalhador.nome });
+                  }}
+                  aria-label="Cadastrar digital"
+                  title="Cadastrar digital"
+                />
                 <Button
                   appearance="subtle"
                   icon={<ArrowUpload24Regular />}
@@ -349,6 +370,13 @@ export function TrabalhadoresTab() {
           enviarFoto(e.target.files?.[0] ?? null);
           e.target.value = '';
         }}
+      />
+
+      <CadastroDigitalDialog
+        trabalhadorId={trabalhadorDigitalAlvo?.id ?? null}
+        trabalhadorNome={trabalhadorDigitalAlvo?.nome}
+        aoFechar={() => setTrabalhadorDigitalAlvo(null)}
+        aoConcluir={carregar}
       />
     </div>
   );

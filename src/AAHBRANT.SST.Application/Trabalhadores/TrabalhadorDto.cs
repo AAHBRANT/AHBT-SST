@@ -19,4 +19,5 @@ public class TrabalhadorDto
     public bool TelegramVinculado { get; set; }
     public string? TelegramCodigoVinculo { get; set; }
     public bool TemFoto { get; set; }
+    public bool TemBiometria { get; set; }
 }
