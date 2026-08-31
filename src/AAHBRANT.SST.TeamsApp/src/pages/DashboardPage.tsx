@@ -35,6 +35,7 @@ import {
 import { usePageStyles, useKpiStyles } from './pageStyles';
 import { useDashboardStyles } from '../components/dashboard/dashboardStyles';
 import { TaxaGravidadeCard } from '../components/dashboard/TaxaGravidadeCard';
+import { MiniCalendarioCard } from '../components/dashboard/MiniCalendarioCard';
 import { StatusDonutChart, type FatiaDonut } from '../components/dashboard/charts/StatusDonutChart';
 import { RankingBarChart, type ItemRanking } from '../components/dashboard/charts/RankingBarChart';
 import { TrendLineChart, type PontoTendencia } from '../components/dashboard/charts/TrendLineChart';
@@ -386,26 +387,29 @@ export function DashboardPage() {
         </Text>
       )}
 
-      <div className={kpiEstilos.linha}>
-        {kpis.map((kpi) => (
-          <div key={kpi.rotulo} className={mergeClasses(estilos.card, kpiEstilos.cartao)}>
-            <div className={kpiEstilos.icone}>{kpi.icone}</div>
-            <div className={kpiEstilos.valor}>{kpi.valor}</div>
-            <Text className={kpiEstilos.rotulo}>{kpi.rotulo}</Text>
-            {kpi.delta && (
-              <span
-                className={mergeClasses(
-                  kpiEstilos.variacao,
-                  kpi.corDelta === 'boa' && kpiEstilos.variacaoBoa,
-                  kpi.corDelta === 'atencao' && kpiEstilos.variacaoAtencao,
-                  (!kpi.corDelta || kpi.corDelta === 'neutra') && kpiEstilos.variacaoNeutra,
-                )}
-              >
-                {kpi.delta}
-              </span>
-            )}
-          </div>
-        ))}
+      <div style={{ display: 'flex', gap: 16, alignItems: 'flex-start', marginBottom: 16 }}>
+        <div className={kpiEstilos.linha} style={{ flex: 1, marginBottom: 0 }}>
+          {kpis.map((kpi) => (
+            <div key={kpi.rotulo} className={mergeClasses(estilos.card, kpiEstilos.cartao)}>
+              <div className={kpiEstilos.icone}>{kpi.icone}</div>
+              <div className={kpiEstilos.valor}>{kpi.valor}</div>
+              <Text className={kpiEstilos.rotulo}>{kpi.rotulo}</Text>
+              {kpi.delta && (
+                <span
+                  className={mergeClasses(
+                    kpiEstilos.variacao,
+                    kpi.corDelta === 'boa' && kpiEstilos.variacaoBoa,
+                    kpi.corDelta === 'atencao' && kpiEstilos.variacaoAtencao,
+                    (!kpi.corDelta || kpi.corDelta === 'neutra') && kpiEstilos.variacaoNeutra,
+                  )}
+                >
+                  {kpi.delta}
+                </span>
+              )}
+            </div>
+          ))}
+        </div>
+        <MiniCalendarioCard />
       </div>
 
       <div style={{ marginBottom: 16 }}>
