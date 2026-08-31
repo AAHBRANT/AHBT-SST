@@ -38,7 +38,8 @@ public class ListarTrabalhadoresQueryHandler : IRequestHandler<ListarTrabalhador
                 DataDemissao = t.DataDemissao,
                 Turno = t.Turno,
                 TelegramVinculado = t.TelegramChatId != null,
-                TelegramCodigoVinculo = t.TelegramCodigoVinculo
+                TelegramCodigoVinculo = t.TelegramCodigoVinculo,
+                TemFoto = t.FotoConteudo != null
             })
             .ToListAsync(ct);
     }

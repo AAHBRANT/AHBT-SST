@@ -47,6 +47,7 @@ export function TrabalhadorDetalhePage() {
   const [perfil, setPerfil] = useState<PerfilCompletoTrabalhador | null>(null);
   const [erro, setErro] = useState<string | null>(null);
   const [baixandoRelatorio, setBaixandoRelatorio] = useState(false);
+  const [fotoUrl, setFotoUrl] = useState<string | null>(null);
 
   async function carregar() {
     if (!id) return;
@@ -62,6 +63,28 @@ export function TrabalhadorDetalhePage() {
     carregar();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id]);
+
+  // Foto real do trabalhador — baixada sob demanda quando temFoto=true, mesmo padrão de
+  // TrabalhadoresTab.tsx/ObrasPage.tsx. Sem foto, o Avatar cai para as iniciais do nome.
+  useEffect(() => {
+    if (!perfil?.temFoto) return;
+    let cancelado = false;
+    let urlCriada: string | null = null;
+    (async () => {
+      try {
+        const blob = await api.trabalhadores.baixarFoto(perfil.id);
+        if (cancelado) return;
+        urlCriada = URL.createObjectURL(blob);
+        setFotoUrl(urlCriada);
+      } catch {
+        // Falha ao carregar a foto não impede o uso da página; o trabalhador fica com iniciais.
+      }
+    })();
+    return () => {
+      cancelado = true;
+      if (urlCriada) URL.revokeObjectURL(urlCriada);
+    };
+  }, [perfil?.id, perfil?.temFoto]);
 
   async function baixarRelatorio() {
     if (!id) return;
@@ -120,6 +143,7 @@ export function TrabalhadorDetalhePage() {
               <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
                 <Avatar
                   name={perfil.nome}
+                  image={fotoUrl ? { src: fotoUrl } : undefined}
                   color="brand"
                   size={64}
                   badge={{ status: badgeAptidao[perfil.statusAptidao] ?? 'unknown' }}

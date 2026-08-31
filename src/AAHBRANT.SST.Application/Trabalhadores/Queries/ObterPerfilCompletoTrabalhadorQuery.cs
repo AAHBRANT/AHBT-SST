@@ -26,6 +26,7 @@ public record PerfilCompletoTrabalhadorDto(
     string FuncaoNome,
     TipoVinculo Vinculo,
     DateTime DataAdmissao,
+    bool TemFoto,
     string StatusAptidao,
     List<AsoDto> Asos,
     List<EntregaEpiDto> EpisAtivos,
@@ -97,6 +98,7 @@ public class ObterPerfilCompletoTrabalhadorQueryHandler : IRequestHandler<ObterP
                 t.FuncaoId,
                 t.Vinculo,
                 t.DataAdmissao,
+                TemFoto = t.FotoConteudo != null,
                 ObraNome = t.Obra!.Nome,
                 FuncaoNome = t.Funcao!.Nome,
             })
@@ -253,6 +255,7 @@ public class ObterPerfilCompletoTrabalhadorQueryHandler : IRequestHandler<ObterP
             trabalhador.FuncaoNome,
             trabalhador.Vinculo,
             trabalhador.DataAdmissao,
+            trabalhador.TemFoto,
             statusAptidao,
             asos,
             episAtivos,

@@ -38,6 +38,11 @@ public class Trabalhador : AuditableEntity
     // turnos, então nenhuma lista fixa é assumida).
     public string? Turno { get; set; }
 
+    // Foto de perfil — mesmo padrão de Obra.LogoConteudo/LogoContentType (armazenada direto no SQL
+    // Server, sem depender de um serviço de blob storage externo).
+    public byte[]? FotoConteudo { get; set; }
+    public string? FotoContentType { get; set; }
+
     // Integração com Telegram (DDS Fase 3): ChatId só é preenchido depois que o trabalhador
     // manda /start <codigo> para o bot — bots não podem iniciar a conversa. CodigoVinculo é o
     // código temporário exibido no perfil para o trabalhador usar nesse /start.

@@ -65,11 +65,12 @@ export interface Trabalhador {
   telegramVinculado: boolean;
   telegramCodigoVinculo?: string | null;
   turno?: string | null;
+  temFoto: boolean;
 }
 
 export type NovoTrabalhador = Omit<
   Trabalhador,
-  'id' | 'dataDemissao' | 'telegramVinculado' | 'telegramCodigoVinculo'
+  'id' | 'dataDemissao' | 'telegramVinculado' | 'telegramCodigoVinculo' | 'temFoto'
 >;
 
 export interface GerarVinculoTelegramResultado {
@@ -2278,6 +2279,7 @@ export interface PerfilCompletoTrabalhador {
   funcaoNome: string;
   vinculo: number;
   dataAdmissao: string;
+  temFoto: boolean;
   statusAptidao: string;
   asos: Aso[];
   episAtivos: EntregaEpi[];
@@ -2364,6 +2366,29 @@ export const api = {
     criar: (trabalhador: NovoTrabalhador) =>
       request<{ id: string }>('/api/trabalhadores', { method: 'POST', body: JSON.stringify(trabalhador) }),
     excluir: (id: string) => request<void>(`/api/trabalhadores/${id}`, { method: 'DELETE' }),
+    enviarFoto: async (id: string, arquivo: File) => {
+      const formData = new FormData();
+      formData.append('Foto', arquivo);
+      const response = await fetch(`${API_BASE_URL}/api/trabalhadores/${id}/foto`, {
+        method: 'POST',
+        headers: await montarHeadersAuth(),
+        body: formData,
+      });
+      if (!response.ok) {
+        const corpo = await response.text().catch(() => '');
+        throw new Error(`${response.status} ${response.statusText}: ${corpo}`);
+      }
+    },
+    baixarFoto: async (id: string) => {
+      const response = await fetch(`${API_BASE_URL}/api/trabalhadores/${id}/foto`, {
+        headers: await montarHeadersAuth(),
+      });
+      if (!response.ok) {
+        const corpo = await response.text().catch(() => '');
+        throw new Error(`${response.status} ${response.statusText}: ${corpo}`);
+      }
+      return response.blob();
+    },
     gerarVinculoTelegram: (id: string) =>
       request<GerarVinculoTelegramResultado>(`/api/trabalhadores/${id}/telegram/vinculo`, { method: 'POST' }),
     definirPinAssinatura: (id: string, pin: string, confirmarPin: string) =>

@@ -1,7 +1,13 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Avatar, Badge, Button, Field, Input, Select, Text } from '@fluentui/react-components';
-import { Add24Regular, ChevronRight24Regular, Delete24Regular, Search24Regular } from '@fluentui/react-icons';
+import {
+  Add24Regular,
+  ArrowUpload24Regular,
+  ChevronRight24Regular,
+  Delete24Regular,
+  Search24Regular,
+} from '@fluentui/react-icons';
 import {
   api,
   resultadoAsoLabel,
@@ -60,6 +66,10 @@ export function TrabalhadoresTab() {
   const [novoTrabalhador, setNovoTrabalhador] = useState<NovoTrabalhador>(trabalhadorVazio);
   const [erro, setErro] = useState<string | null>(null);
   const [carregando, setCarregando] = useState(false);
+  const [fotoUrls, setFotoUrls] = useState<Record<string, string>>({});
+  const [enviandoFotoId, setEnviandoFotoId] = useState<string | null>(null);
+  const inputFotoRef = useRef<HTMLInputElement>(null);
+  const trabalhadorAlvoFotoRef = useRef<string | null>(null);
 
   async function carregar() {
     try {
@@ -82,6 +92,62 @@ export function TrabalhadoresTab() {
   useEffect(() => {
     carregar();
   }, []);
+
+  // Miniaturas da foto são baixadas sob demanda (só para trabalhadores com temFoto) e mantidas como
+  // object URL até a página ser desmontada — mesmo padrão de ObrasPage.baixarLogo.
+  useEffect(() => {
+    let cancelado = false;
+    (async () => {
+      for (const trabalhador of trabalhadores) {
+        if (!trabalhador.temFoto || fotoUrls[trabalhador.id]) continue;
+        try {
+          const blob = await api.trabalhadores.baixarFoto(trabalhador.id);
+          if (cancelado) return;
+          setFotoUrls((atual) => ({ ...atual, [trabalhador.id]: URL.createObjectURL(blob) }));
+        } catch {
+          // Falha ao carregar miniatura não impede o uso da página; o trabalhador fica sem foto.
+        }
+      }
+    })();
+    return () => {
+      cancelado = true;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [trabalhadores]);
+
+  useEffect(() => {
+    return () => {
+      Object.values(fotoUrls).forEach((url) => URL.revokeObjectURL(url));
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  function abrirSeletorFoto(trabalhadorId: string, evento: React.MouseEvent) {
+    evento.stopPropagation();
+    trabalhadorAlvoFotoRef.current = trabalhadorId;
+    inputFotoRef.current?.click();
+  }
+
+  async function enviarFoto(arquivo: File | null) {
+    const trabalhadorId = trabalhadorAlvoFotoRef.current;
+    if (!arquivo || !trabalhadorId) return;
+    try {
+      setEnviandoFotoId(trabalhadorId);
+      setErro(null);
+      await api.trabalhadores.enviarFoto(trabalhadorId, arquivo);
+      setFotoUrls((atual) => {
+        const anterior = atual[trabalhadorId];
+        if (anterior) URL.revokeObjectURL(anterior);
+        const { [trabalhadorId]: _removido, ...resto } = atual;
+        return resto;
+      });
+      await carregar();
+    } catch (e) {
+      setErro(e instanceof Error ? e.message : 'Falha ao enviar a foto.');
+    } finally {
+      setEnviandoFotoId(null);
+    }
+  }
 
   function nomeObra(id: string) {
     return obras.find((o) => o.id === id)?.nome ?? id;
@@ -230,7 +296,11 @@ export function TrabalhadoresTab() {
                 cursor: 'pointer',
               }}
             >
-              <Avatar name={trabalhador.nome} color="colorful" size={40} />
+              {fotoUrls[trabalhador.id] ? (
+                <Avatar image={{ src: fotoUrls[trabalhador.id] }} size={40} name={trabalhador.nome} />
+              ) : (
+                <Avatar name={trabalhador.nome} color="colorful" size={40} />
+              )}
               <div style={{ flexGrow: 1, minWidth: 0 }}>
                 <Text weight="semibold" block truncate>
                   {trabalhador.nome}
@@ -246,6 +316,14 @@ export function TrabalhadoresTab() {
                 </Badge>
               )}
               <div style={{ display: 'flex', gap: 4 }}>
+                <Button
+                  appearance="subtle"
+                  icon={<ArrowUpload24Regular />}
+                  onClick={(evento) => abrirSeletorFoto(trabalhador.id, evento)}
+                  disabled={enviandoFotoId === trabalhador.id}
+                  aria-label="Enviar foto"
+                  title="Enviar foto"
+                />
                 <Button
                   appearance="subtle"
                   icon={<ChevronRight24Regular />}
@@ -267,6 +345,17 @@ export function TrabalhadoresTab() {
         })}
         {trabalhadoresFiltrados.length === 0 && <Text>Nenhum trabalhador encontrado.</Text>}
       </div>
+
+      <input
+        type="file"
+        accept="image/png,image/jpeg"
+        ref={inputFotoRef}
+        style={{ display: 'none' }}
+        onChange={(e) => {
+          enviarFoto(e.target.files?.[0] ?? null);
+          e.target.value = '';
+        }}
+      />
     </div>
   );
 }
