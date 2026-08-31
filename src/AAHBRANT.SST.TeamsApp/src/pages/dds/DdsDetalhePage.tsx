@@ -4,8 +4,6 @@ import {
   Badge,
   Button,
   Checkbox,
-  Radio,
-  RadioGroup,
   Select,
   Table,
   TableBody,
@@ -18,6 +16,8 @@ import {
 import {
   ArrowDownload24Regular,
   ArrowLeft24Regular,
+  Checkmark24Filled,
+  Fingerprint24Regular,
   LockClosed24Regular,
   PersonAdd24Regular,
   Send24Regular,
@@ -32,6 +32,7 @@ import {
   type DdsDetalhe,
   type Trabalhador,
 } from '../../lib/api';
+import { capturarDigitalLocal, estaAgenteLocalDisponivel, obterDispositivoLocal } from '../../lib/agenteBiometricoLocal';
 import { SeletorFotoCamera } from '../../components/SeletorFotoCamera';
 import { usePageStyles } from '../pageStyles';
 
@@ -44,9 +45,10 @@ export function DdsDetalhePage() {
   const [detalhe, setDetalhe] = useState<DdsDetalhe | null>(null);
   const [trabalhadores, setTrabalhadores] = useState<Trabalhador[]>([]);
   const [participanteSelecionado, setParticipanteSelecionado] = useState('');
-  const [fotoTipo, setFotoTipo] = useState<number>(TipoFotoParticipante.Pessoa);
-  const [fotoArquivo, setFotoArquivo] = useState<File | null>(null);
-  const [fotoPreviewUrl, setFotoPreviewUrl] = useState<string | null>(null);
+  const [agenteDisponivel, setAgenteDisponivel] = useState<boolean | null>(null);
+  const [dispositivoLocal, setDispositivoLocal] = useState<{ dispositivoId: string; segredoDispositivo: string } | null>(null);
+  const [validandoBiometria, setValidandoBiometria] = useState(false);
+  const [biometriaValidada, setBiometriaValidada] = useState<{ trabalhadorId: string; score: number } | null>(null);
   const [fotosEvidenciaPreview, setFotosEvidenciaPreview] = useState<Record<string, string>>({});
   const [anexandoFotoEvidencia, setAnexandoFotoEvidencia] = useState(false);
   const [erro, setErro] = useState<string | null>(null);
@@ -100,6 +102,22 @@ export function DdsDetalhePage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id]);
 
+  useEffect(() => {
+    estaAgenteLocalDisponivel().then(async (disponivel) => {
+      setAgenteDisponivel(disponivel);
+      if (disponivel) {
+        const dispositivo = await obterDispositivoLocal();
+        setDispositivoLocal(dispositivo);
+      }
+    });
+  }, []);
+
+  // A validação biométrica é por participante selecionado — trocar a seleção invalida a
+  // captura anterior, evitando registrar a presença de outra pessoa por engano.
+  useEffect(() => {
+    setBiometriaValidada(null);
+  }, [participanteSelecionado]);
+
   async function marcarItem(itemId: string, verificado: boolean) {
     try {
       setErro(null);
@@ -110,22 +128,40 @@ export function DdsDetalhePage() {
     }
   }
 
-  function selecionarFoto(arquivo: File | null) {
-    setFotoArquivo(arquivo);
-    setFotoPreviewUrl((urlAnterior) => {
-      if (urlAnterior) URL.revokeObjectURL(urlAnterior);
-      return arquivo ? URL.createObjectURL(arquivo) : null;
-    });
+  async function validarBiometria() {
+    if (!participanteSelecionado) return;
+    try {
+      setValidandoBiometria(true);
+      setErro(null);
+      const captura = await capturarDigitalLocal();
+      if (captura.trabalhadorId !== participanteSelecionado) {
+        setBiometriaValidada(null);
+        setErro('A digital capturada não corresponde ao participante selecionado.');
+        return;
+      }
+      setBiometriaValidada({ trabalhadorId: captura.trabalhadorId, score: captura.score });
+    } catch (e) {
+      setErro(e instanceof Error ? e.message : 'Falha na validação biométrica.');
+    } finally {
+      setValidandoBiometria(false);
+    }
   }
 
   async function registrarParticipante() {
-    if (!id || !participanteSelecionado || !fotoArquivo) return;
+    if (!id || !participanteSelecionado || !dispositivoLocal) return;
+    if (!biometriaValidada || biometriaValidada.trabalhadorId !== participanteSelecionado) return;
     try {
       setProcessando(true);
       setErro(null);
-      await api.dds.registrarParticipante(id, participanteSelecionado, fotoTipo, fotoArquivo);
+      await api.dds.registrarParticipante(
+        id,
+        participanteSelecionado,
+        dispositivoLocal.dispositivoId,
+        dispositivoLocal.segredoDispositivo,
+        biometriaValidada.score,
+      );
       setParticipanteSelecionado('');
-      selecionarFoto(null);
+      setBiometriaValidada(null);
       await carregar();
     } catch (e) {
       setErro(e instanceof Error ? e.message : 'Falha ao registrar participante.');
@@ -213,6 +249,7 @@ export function DdsDetalhePage() {
   const trabalhadoresDisponiveis = trabalhadores.filter((t) => !participantesRegistrados.has(t.id));
   const totalFotosEvidencia = detalhe?.fotosEvidencia.length ?? 0;
   const faltamFotosEvidencia = Math.max(0, TOTAL_FOTOS_EVIDENCIA_OBRIGATORIAS - totalFotosEvidencia);
+  const biometriaConfirmada = !!biometriaValidada && biometriaValidada.trabalhadorId === participanteSelecionado;
 
   return (
     <div>
@@ -355,34 +392,39 @@ export function DdsDetalhePage() {
                   </option>
                 ))}
               </Select>
-              <RadioGroup
-                layout="horizontal"
-                value={String(fotoTipo)}
-                onChange={(_, d) => setFotoTipo(Number(d.value))}
-              >
-                <Radio value={String(TipoFotoParticipante.Pessoa)} label="Foto da pessoa" />
-                <Radio value={String(TipoFotoParticipante.DocumentoAssinado)} label="Documento assinado" />
-              </RadioGroup>
             </div>
+            {agenteDisponivel === false && (
+              <Text style={{ display: 'block', color: 'var(--colorPaletteRedForeground1)' }}>
+                Leitor Futronic não encontrado nesta máquina. Verifique se o leitor está conectado e se o
+                Agente Biométrico está em execução, depois recarregue esta página.
+              </Text>
+            )}
             <div className={estilos.formActions} style={{ alignItems: 'center' }}>
-              <SeletorFotoCamera rotulo="Tirar foto" aoSelecionarArquivo={(arquivo) => selecionarFoto(arquivo)} />
-              {fotoPreviewUrl && (
-                <img
-                  src={fotoPreviewUrl}
-                  alt="Pré-visualização da foto"
-                  style={{ height: 48, width: 48, objectFit: 'cover', borderRadius: 4 }}
-                />
+              <Button
+                appearance="primary"
+                icon={<Fingerprint24Regular />}
+                onClick={validarBiometria}
+                disabled={!agenteDisponivel || !dispositivoLocal || !participanteSelecionado || validandoBiometria}
+              >
+                {validandoBiometria ? 'Validando biometria...' : 'Validar Biometria'}
+              </Button>
+              {biometriaConfirmada && (
+                <Badge color="success" appearance="tint" icon={<Checkmark24Filled />}>
+                  Biometria validada
+                </Badge>
               )}
               <Button
                 appearance="primary"
                 icon={<PersonAdd24Regular />}
                 onClick={registrarParticipante}
-                disabled={processando || !participanteSelecionado || !fotoArquivo}
+                disabled={processando || !participanteSelecionado || !biometriaConfirmada}
               >
                 Registrar presença
               </Button>
             </div>
-            <Text size={200}>A foto (da pessoa presente ou do documento assinado) é obrigatória para registrar a presença.</Text>
+            <Text size={200}>
+              A validação biométrica do participante selecionado é obrigatória para registrar a presença.
+            </Text>
           </div>
         )}
 
@@ -416,15 +458,17 @@ export function DdsDetalhePage() {
                   )}
                 </TableCell>
                 <TableCell>
-                  <Button
-                    appearance="subtle"
-                    size="small"
-                    icon={<ArrowDownload24Regular />}
-                    onClick={() => baixarFotoParticipante(participante.id, participante.trabalhadorNome)}
-                    disabled={baixandoFotoId === participante.id}
-                  >
-                    Baixar foto
-                  </Button>
+                  {participante.fotoTipo !== TipoFotoParticipante.Biometria && (
+                    <Button
+                      appearance="subtle"
+                      size="small"
+                      icon={<ArrowDownload24Regular />}
+                      onClick={() => baixarFotoParticipante(participante.id, participante.trabalhadorNome)}
+                      disabled={baixandoFotoId === participante.id}
+                    >
+                      Baixar foto
+                    </Button>
+                  )}
                 </TableCell>
               </TableRow>
             ))}

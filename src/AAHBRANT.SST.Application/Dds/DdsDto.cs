@@ -37,6 +37,7 @@ public class DdsParticipanteDto
     public Guid TrabalhadorId { get; set; }
     public string TrabalhadorNome { get; set; } = string.Empty;
     public TipoFotoParticipante FotoTipo { get; set; }
+    public double? ScoreConfianca { get; set; }
     public DateTime? TelegramEnviadoEm { get; set; }
     public DateTime? TelegramConfirmadoEm { get; set; }
 }

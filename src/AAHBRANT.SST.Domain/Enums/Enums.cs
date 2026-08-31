@@ -535,12 +535,15 @@ public enum StatusDds
 
 // Evidência de presença no DDS — a Fase 1 (2026-08-24) previa "assinatura/foto fora do escopo"
 // (ver comentário original em DdsParticipante); trazido para o escopo a pedido do usuário no mesmo
-// dia. Vocabulário próprio, sem seção literal da Base de Conhecimento: quem conduz o DDS escolhe
-// bater foto da pessoa presente OU do documento (lista de presença) assinado por ela.
+// dia. Pessoa/DocumentoAssinado preservados só para exibir o histórico de registros anteriores a
+// 2026-08-31 — a partir dessa data a evidência de presença passou a ser exclusivamente Biometria
+// (pedido do usuário), reaproveitando o leitor Futronic FS80H já usado no Motor de Assinatura
+// Eletrônica (ver IAutenticacaoBiometriaLocalService).
 public enum TipoFotoParticipante
 {
     Pessoa = 1,
-    DocumentoAssinado = 2
+    DocumentoAssinado = 2,
+    Biometria = 3
 }
 
 // DDS Semanal (31/08) — reformulação para seguir o modelo "Registro Semanal de DDS" do usuário
