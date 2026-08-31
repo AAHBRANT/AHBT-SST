@@ -51,14 +51,6 @@ public class AssinaturaController : ControllerBase
         return Ok(new { id });
     }
 
-    [Authorize(Policy = "assinatura:assinar")]
-    [HttpPost("{id:guid}/assinar")]
-    public async Task<IActionResult> Assinar(Guid id, AssinarRequestBody body, CancellationToken ct)
-    {
-        var signatario = await _mediator.Send(new RegistrarAssinaturaCommand(id, body.Uid, body.Pin, ObterIpCliente()), ct);
-        return Ok(signatario);
-    }
-
     // Assinatura em um clique do usuário logado (ex.: entregador de EPI assinando com a própria
     // sessão, sem crachá/PIN) — sem corpo de requisição, o TrabalhadorId é resolvido no handler a
     // partir do claim "oid" (mesmo padrão de VinculoAzureAdMiddleware/PermissaoAuthorizationHandler;
@@ -69,23 +61,6 @@ public class AssinaturaController : ControllerBase
     {
         var azureAdObjectId = User.FindFirst("oid")?.Value ?? User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
         var signatario = await _mediator.Send(new RegistrarAssinaturaSessaoLogadaCommand(id, azureAdObjectId), ct);
-        return Ok(signatario);
-    }
-
-    // Assinatura biométrica WebAuthn/FIDO2 (etapa 13) — cerimônia em duas chamadas, espelhando o
-    // cadastro em TrabalhadoresController: iniciar devolve o desafio (trabalhadorId nulo = leitor
-    // compartilhado da obra, que só sabe quem assinou depois da resposta); confirmar autentica e
-    // registra a assinatura via o mesmo IRegistradorAssinaturaService usado pelo fluxo crachá+PIN.
-    [Authorize(Policy = "assinatura:assinar")]
-    [HttpPost("assinar/webauthn/iniciar")]
-    public async Task<IActionResult> IniciarAssinaturaWebAuthn([FromQuery] Guid? trabalhadorId, CancellationToken ct)
-        => Ok(await _mediator.Send(new IniciarAssinaturaWebAuthnCommand(trabalhadorId), ct));
-
-    [Authorize(Policy = "assinatura:assinar")]
-    [HttpPost("{id:guid}/assinar/webauthn/confirmar")]
-    public async Task<IActionResult> ConfirmarAssinaturaWebAuthn(Guid id, ConfirmarAssinaturaWebAuthnRequestBody body, CancellationToken ct)
-    {
-        var signatario = await _mediator.Send(new ConfirmarAutenticacaoWebAuthnCommand(id, body.OpcoesJson, body.RespostaJson, ObterIpCliente()), ct);
         return Ok(signatario);
     }
 
@@ -138,5 +113,3 @@ public class AssinaturaController : ControllerBase
     }
 }
 
-public record AssinarRequestBody(string Uid, string Pin);
-public record ConfirmarAssinaturaWebAuthnRequestBody(string OpcoesJson, string RespostaJson);

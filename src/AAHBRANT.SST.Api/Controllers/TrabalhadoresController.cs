@@ -100,15 +100,6 @@ public class TrabalhadoresController : ControllerBase
         => Ok(await _mediator.Send(new GerarVinculoTelegramCommand(id), ct));
 
     [Authorize(Policy = "trabalhador:assinatura")]
-    [HttpPost("{id:guid}/assinatura/pin")]
-    public async Task<IActionResult> DefinirPinAssinatura(Guid id, DefinirPinAssinaturaCommand command, CancellationToken ct)
-    {
-        if (id != command.TrabalhadorId) return BadRequest("Id da rota difere do corpo da requisição.");
-        await _mediator.Send(command, ct);
-        return NoContent();
-    }
-
-    [Authorize(Policy = "trabalhador:assinatura")]
     [HttpPost("{id:guid}/assinatura/termo-aceite")]
     public async Task<IActionResult> RegistrarTermoAceiteAssinatura(Guid id, CancellationToken ct)
     {
@@ -124,22 +115,6 @@ public class TrabalhadoresController : ControllerBase
         return NoContent();
     }
 
-    // Cadastro de credencial WebAuthn/FIDO2 (etapa 13) — cerimônia em duas chamadas: iniciar devolve o
-    // desafio para o navegador repassar a navigator.credentials.create(); confirmar recebe a resposta
-    // do autenticador e persiste a CredencialWebAuthn.
-    [Authorize(Policy = "trabalhador:assinatura")]
-    [HttpPost("{id:guid}/assinatura/webauthn/cadastro/iniciar")]
-    public async Task<IActionResult> IniciarCadastroWebAuthn(Guid id, [FromQuery] TipoAutenticadorWebAuthn tipo, CancellationToken ct)
-        => Ok(await _mediator.Send(new IniciarCadastroWebAuthnCommand(id, tipo), ct));
-
-    [Authorize(Policy = "trabalhador:assinatura")]
-    [HttpPost("{id:guid}/assinatura/webauthn/cadastro/confirmar")]
-    public async Task<IActionResult> ConfirmarCadastroWebAuthn(Guid id, ConfirmarCadastroWebAuthnRequestBody body, CancellationToken ct)
-    {
-        await _mediator.Send(new ConfirmarCadastroWebAuthnCommand(id, body.Tipo, body.OpcoesJson, body.RespostaJson), ct);
-        return NoContent();
-    }
-
     public record CadastrarBiometriaLocalRequestBody(byte[] TemplateBruto);
 
     [Authorize(Policy = "trabalhador:assinatura")]
@@ -150,8 +125,6 @@ public class TrabalhadoresController : ControllerBase
         return NoContent();
     }
 }
-
-public record ConfirmarCadastroWebAuthnRequestBody(TipoAutenticadorWebAuthn Tipo, string OpcoesJson, string RespostaJson);
 
 public class AnexarFotoTrabalhadorRequestBody
 {

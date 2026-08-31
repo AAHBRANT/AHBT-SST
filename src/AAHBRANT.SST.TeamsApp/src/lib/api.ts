@@ -1518,6 +1518,9 @@ export interface EnviarDdsTelegramResultado {
 
 // Motor de Assinatura Eletrônica (docs/Motor-Assinatura-Eletronica.md §3/§5, etapa 6) — genérico,
 // identificado por EntidadeTipo/EntidadeId (ex.: "Dds" + ddsId). Primeiro consumidor: AssinarDdsPage.
+// PIN/crachá-QR e WebAuthn/FIDO2 foram removidos do sistema em 31/08 (decisão do usuário: único
+// método de assinatura é a digital via leitor Futronic FS80H) — os valores 2/3/4 ficam reservados
+// (nenhum código novo os produz) só para exibir corretamente assinaturas já registradas no passado.
 export const MetodoAutenticacaoAssinatura = {
   Biometria: 1,
   CrachaPin: 2,
@@ -1539,18 +1542,6 @@ export const StatusDocumentoAssinatura = {
   Finalizado: 2,
   Cancelado: 3,
 } as const;
-
-// Etapa 13 — leitor biométrico fixo da obra (credencial "discoverable", vários trabalhadores) vs.
-// celular próprio do trabalhador (credencial vinculada a um único TrabalhadorId).
-export const TipoAutenticadorWebAuthn = {
-  LeitorObra: 1,
-  CelularProprio: 2,
-} as const;
-
-export const tipoAutenticadorWebAuthnLabel: Record<number, string> = {
-  1: 'Leitor biométrico da obra',
-  2: 'Celular próprio',
-};
 
 export const statusDocumentoAssinaturaLabel: Record<number, string> = {
   1: 'Em andamento',
@@ -2422,26 +2413,10 @@ export const api = {
     },
     gerarVinculoTelegram: (id: string) =>
       request<GerarVinculoTelegramResultado>(`/api/trabalhadores/${id}/telegram/vinculo`, { method: 'POST' }),
-    definirPinAssinatura: (id: string, pin: string, confirmarPin: string) =>
-      request<void>(`/api/trabalhadores/${id}/assinatura/pin`, {
-        method: 'POST',
-        body: JSON.stringify({ trabalhadorId: id, pin, confirmarPin }),
-      }),
     registrarTermoAceiteAssinatura: (id: string) =>
       request<void>(`/api/trabalhadores/${id}/assinatura/termo-aceite`, { method: 'POST' }),
     registrarConsentimentoBiometria: (id: string) =>
       request<void>(`/api/trabalhadores/${id}/assinatura/consentimento-biometria`, { method: 'POST' }),
-    // Cadastro de credencial WebAuthn/FIDO2 (etapa 13) — cerimônia em duas chamadas; a conversão
-    // JSON<->ArrayBuffer com o navegador fica em lib/webauthn.ts (criarCredencialWebAuthn).
-    iniciarCadastroWebAuthn: (id: string, tipo: number) =>
-      request<string>(`/api/trabalhadores/${id}/assinatura/webauthn/cadastro/iniciar?tipo=${tipo}`, {
-        method: 'POST',
-      }),
-    confirmarCadastroWebAuthn: (id: string, tipo: number, opcoesJson: string, respostaJson: string) =>
-      request<void>(`/api/trabalhadores/${id}/assinatura/webauthn/cadastro/confirmar`, {
-        method: 'POST',
-        body: JSON.stringify({ tipo, opcoesJson, respostaJson }),
-      }),
     obterPerfilCompleto: (id: string) =>
       request<PerfilCompletoTrabalhador>(`/api/trabalhadores/${id}/perfil-completo`),
     baixarRelatorioFiscalizacao: async (id: string) => {
@@ -3022,26 +2997,10 @@ export const api = {
         method: 'POST',
         body: JSON.stringify({ entidadeTipo, entidadeId }),
       }),
-    assinar: (documentoId: string, uid: string, pin: string) =>
-      request<DocumentoSignatario>(`/api/documentos/${documentoId}/assinar`, {
-        method: 'POST',
-        body: JSON.stringify({ uid, pin }),
-      }),
     // Assinatura em um clique do usuário logado (entregador) — sem uid/pin, o backend resolve o
     // trabalhador a partir da sessão autenticada (claim "oid" do Entra ID).
     assinarComSessao: (documentoId: string) =>
       request<DocumentoSignatario>(`/api/documentos/${documentoId}/assinar/sessao`, { method: 'POST' }),
-    // Assinatura biométrica WebAuthn/FIDO2 (etapa 13) — cerimônia em duas chamadas; ver
-    // lib/webauthn.ts (obterAssercaoWebAuthn) para a conversão JSON<->ArrayBuffer com o navegador.
-    iniciarAssinaturaWebAuthn: (trabalhadorId?: string) =>
-      request<string>(`/api/documentos/assinar/webauthn/iniciar${trabalhadorId ? `?trabalhadorId=${trabalhadorId}` : ''}`, {
-        method: 'POST',
-      }),
-    confirmarAssinaturaWebAuthn: (documentoId: string, opcoesJson: string, respostaJson: string) =>
-      request<DocumentoSignatario>(`/api/documentos/${documentoId}/assinar/webauthn/confirmar`, {
-        method: 'POST',
-        body: JSON.stringify({ opcoesJson, respostaJson }),
-      }),
     // Autenticação via biometria digital local (Futronic FS80H) — dispositivoId/segredoDispositivo
     // vêm do agente local (fetch a /api/dispositivo), nunca de localStorage.
     autenticarBiometriaLocal: (documentoId: string, dispositivoId: string, segredoDispositivo: string, trabalhadorId: string, score: number) =>

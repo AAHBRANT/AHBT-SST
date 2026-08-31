@@ -16,7 +16,6 @@ using AAHBRANT.SST.Infrastructure.Persistencia;
 using AAHBRANT.SST.Infrastructure.Seguranca;
 using AAHBRANT.SST.Infrastructure.Trabalhadores;
 using Azure.Messaging.ServiceBus;
-using Fido2NetLib;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
@@ -86,12 +85,14 @@ public static class DependencyInjection
         services.AddScoped<IRelatorioFiscalizacaoPdfService, RelatorioFiscalizacaoPdfService>();
         services.AddScoped<IInspecaoPdfService, InspecaoPdfService>();
 
-        // Motor de Assinatura Eletrônica (docs/Motor-Assinatura-Eletronica.md §5, etapa 4) — crachá/QR
-        // + PIN é o método de reserva e roda como principal temporário até o leitor biométrico FIDO2
-        // ser confirmado; a estratégia biométrica (Fido2AutenticacaoStrategy) troca este registro
-        // quando implementada, sem exigir mudança no restante da aplicação (depende só da abstração).
-        services.AddScoped<IAutenticacaoAssinaturaService, CrachaPinAutenticacaoStrategy>();
-        services.AddScoped<IPinHasher, PinHasherService>();
+        // Motor de Assinatura Eletrônica (docs/Motor-Assinatura-Eletronica.md §5) — PIN/crachá-QR
+        // (CrachaPinAutenticacaoStrategy) e WebAuthn/FIDO2 (Fido2AutenticacaoStrategy) foram removidos
+        // do sistema em 31/08 (decisão do usuário: único método de assinatura é a digital via leitor
+        // Futronic FS80H, "para não dar conflitos" com métodos alternativos). Os valores de enum
+        // correspondentes (MetodoAutenticacaoAssinatura.CrachaPin/QrCodePin/WebAuthnCelular) e as
+        // colunas/tabela de dados (Trabalhador.PinHash, CredenciaisWebAuthn) foram mantidos no schema
+        // só para preservar a leitura de assinaturas já registradas no passado — nenhum código novo os
+        // produz.
         services.AddScoped<ISegredoDispositivoHasher, SegredoDispositivoHasherService>();
         services.AddScoped<ITemplateBiometricoCriptografia, TemplateBiometricoCriptografiaService>();
         services.AddScoped<IDispositivoAgenteAutenticador, DispositivoAgenteAutenticador>();
@@ -101,19 +102,6 @@ public static class DependencyInjection
         services.Configure<AssinaturaOptions>(configuration.GetSection("Assinatura"));
         services.AddScoped<IQrCodeDocumentoService, QrCodeDocumentoService>();
         services.AddScoped<IRegistradorAssinaturaService, RegistradorAssinaturaService>();
-
-        // Estratégia biométrica (etapa 13) — ServerDomain/Origins ficam vazios até o domínio de
-        // produção (e o leitor FIDO2 da obra) serem confirmados; Fido2AutenticacaoStrategy só falha
-        // quando efetivamente usada, mesmo padrão de tolerância de GraphOptions/TelegramOptions.
-        var fido2Options = configuration.GetSection("Fido2").Get<Fido2Options>() ?? new Fido2Options();
-        services.Configure<Fido2Options>(configuration.GetSection("Fido2"));
-        services.AddSingleton<IFido2>(sp => new Fido2NetLib.Fido2(new Fido2Configuration
-        {
-            ServerDomain = fido2Options.ServerDomain,
-            ServerName = fido2Options.ServerName,
-            Origins = fido2Options.Origins.ToHashSet(),
-        }));
-        services.AddScoped<IAutenticacaoWebAuthnService, Fido2AutenticacaoStrategy>();
 
         // Motor Central de Alertas, Etapa 4 — notificação de "sino" do Teams (Activity Feed) via
         // Microsoft Graph (POST /users/{aadObjectId}/teamwork/sendActivityNotification), sem Bot

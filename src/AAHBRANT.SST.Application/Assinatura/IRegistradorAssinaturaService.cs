@@ -6,12 +6,15 @@ using Microsoft.EntityFrameworkCore;
 
 namespace AAHBRANT.SST.Application.Assinatura;
 
+// Movido de IAutenticacaoAssinaturaService.cs (31/08) quando PIN/crachá-QR e WebAuthn/FIDO2 foram
+// removidos do sistema (decisão do usuário: único método de assinatura é o Futronic FS80H) — o
+// record continua compartilhado pelas estratégias que restaram (Futronic, sessão logada).
+public record ResultadoAutenticacaoAssinatura(Guid TrabalhadorId, MetodoAutenticacaoAssinatura Metodo);
+
 // Extraído de RegistrarAssinaturaCommandHandler na etapa 13: gravar o DocumentoSignatario + trilha de
-// auditoria é idêntico não importa qual estratégia autenticou o trabalhador (crachá/QR+PIN ou
-// WebAuthn), só muda como o ResultadoAutenticacaoAssinatura foi obtido — cada estratégia tem sua
-// própria cerimônia (uma chamada vs. desafio/resposta em duas), mas o que acontece depois de
-// autenticado é sempre o mesmo. Sem essa extração, ConfirmarAutenticacaoWebAuthnCommand duplicaria
-// esta lógica inteira.
+// auditoria é idêntico não importa qual estratégia autenticou o trabalhador, só muda como o
+// ResultadoAutenticacaoAssinatura foi obtido — cada estratégia tem sua própria cerimônia, mas o que
+// acontece depois de autenticado é sempre o mesmo.
 public interface IRegistradorAssinaturaService
 {
     Task<DocumentoSignatarioDto> RegistrarAsync(Guid documentoAssinaturaId, ResultadoAutenticacaoAssinatura resultado, string? ipAddress, CancellationToken ct);
