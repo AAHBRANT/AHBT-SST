@@ -90,4 +90,68 @@ export const useDashboardStyles = makeStyles({
   motorLinhaApta: {
     borderLeft: `3px solid ${tokens.colorPaletteGreenForeground1}`,
   },
+  feed: {
+    display: 'flex',
+    flexDirection: 'column',
+  },
+  feedItem: {
+    display: 'flex',
+    alignItems: 'flex-start',
+    gap: '12px',
+    padding: '12px 4px',
+    borderBottom: `1px solid ${designTokens.colorCardBorder}`,
+    ':last-child': {
+      borderBottom: 'none',
+    },
+  },
+  feedIcone: {
+    width: '34px',
+    height: '34px',
+    borderRadius: '9px',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    flexShrink: 0,
+    backgroundColor: designTokens.colorNeutralLight,
+    color: designTokens.colorNeutralMedium,
+  },
+  feedIconeAlerta: {
+    backgroundColor: designTokens.colorAlertWash,
+    color: designTokens.colorAlert,
+  },
+  feedIconeAtencao: {
+    backgroundColor: designTokens.colorWarningWash,
+    color: '#9A6B04',
+  },
+  feedIconeBom: {
+    backgroundColor: designTokens.colorSuccessWash,
+    color: designTokens.colorSuccess,
+  },
+  feedIconeInfo: {
+    backgroundColor: designTokens.colorInfoWash,
+    color: designTokens.colorInfo,
+  },
+  feedCorpo: {
+    flex: 1,
+    minWidth: 0,
+  },
+  feedTitulo: {
+    fontSize: '13px',
+    fontWeight: 700,
+    color: designTokens.colorNeutralDark,
+  },
+  feedMeta: {
+    fontSize: '11.5px',
+    color: designTokens.colorNeutralMedium,
+    fontWeight: 500,
+    marginTop: '1px',
+  },
+  feedHora: {
+    fontSize: '11px',
+    color: designTokens.colorNeutralMedium,
+    fontWeight: 600,
+    flexShrink: 0,
+    whiteSpace: 'nowrap',
+    paddingTop: '2px',
+  },
 });
