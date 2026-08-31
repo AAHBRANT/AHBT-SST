@@ -263,12 +263,6 @@ export function TrabalhadoresTab() {
             onChange={(_, d) => setNovoTrabalhador({ ...novoTrabalhador, dataAdmissao: d.value })}
           />
         </Field>
-        <Field label="Turno">
-          <Input
-            value={novoTrabalhador.turno ?? ''}
-            onChange={(_, d) => setNovoTrabalhador({ ...novoTrabalhador, turno: d.value })}
-          />
-        </Field>
       </div>
       <div className={estilos.formActions}>
         <Button appearance="primary" icon={<Add24Regular />} onClick={criar} disabled={carregando}>
