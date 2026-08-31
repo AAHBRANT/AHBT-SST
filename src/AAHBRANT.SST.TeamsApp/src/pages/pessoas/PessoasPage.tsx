@@ -4,12 +4,13 @@ import { usePillTabStyles } from '../pageStyles';
 import { PessoasDashboardTab } from './dashboard/PessoasDashboardTab';
 import { TrabalhadoresTab } from './TrabalhadoresTab';
 import { FuncoesTab } from './FuncoesTab';
-import { SetoresTab } from './SetoresTab';
-import { EquipesTab } from './EquipesTab';
 import { CursosTreinamentoTab } from './CursosTreinamentoTab';
 import { MatrizTreinamentoTab } from './MatrizTreinamentoTab';
 
-type AbaPessoas = 'dashboard' | 'trabalhadores' | 'funcoes' | 'setores' | 'equipes' | 'cursos' | 'matrizTreinamento';
+// Setores e Equipes removidos da navegação por pedido do usuário (30/08) — não são necessários por
+// enquanto. Os componentes (SetoresTab/EquipesTab) e os dados continuam existindo, só a aba de
+// gestão saiu da UI.
+type AbaPessoas = 'dashboard' | 'trabalhadores' | 'funcoes' | 'cursos' | 'matrizTreinamento';
 
 export function PessoasPage() {
   const [aba, setAba] = useState<AbaPessoas>('trabalhadores');
@@ -30,8 +31,6 @@ export function PessoasPage() {
       >
         <Tab value="trabalhadores">Trabalhadores</Tab>
         <Tab value="funcoes">Funções</Tab>
-        <Tab value="setores">Setores</Tab>
-        <Tab value="equipes">Equipes</Tab>
         <Tab value="cursos">Cursos de treinamento</Tab>
         <Tab value="matrizTreinamento">Matriz de Treinamento por Função</Tab>
         <Tab value="dashboard">Dashboard</Tab>
@@ -39,8 +38,6 @@ export function PessoasPage() {
 
       {aba === 'trabalhadores' && <TrabalhadoresTab />}
       {aba === 'funcoes' && <FuncoesTab />}
-      {aba === 'setores' && <SetoresTab />}
-      {aba === 'equipes' && <EquipesTab />}
       {aba === 'cursos' && <CursosTreinamentoTab />}
       {aba === 'matrizTreinamento' && <MatrizTreinamentoTab />}
       {aba === 'dashboard' && <PessoasDashboardTab />}
