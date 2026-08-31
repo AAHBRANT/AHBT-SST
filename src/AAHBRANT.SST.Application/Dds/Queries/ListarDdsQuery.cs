@@ -20,6 +20,7 @@ public class ListarDdsQueryHandler : IRequestHandler<ListarDdsQuery, List<DdsDto
             .Include(d => d.Atividades).ThenInclude(a => a.Atividade)
             .Include(d => d.ItensChecklist)
             .Include(d => d.Participantes)
+            .Include(d => d.FotosEvidencia)
             .AsQueryable();
 
         if (request.ObraId.HasValue)
@@ -38,15 +39,19 @@ public class ListarDdsQueryHandler : IRequestHandler<ListarDdsQuery, List<DdsDto
             Id = dds.Id,
             ObraId = dds.ObraId,
             ObraNome = dds.Obra?.Nome ?? string.Empty,
+            DdsSemanalId = dds.DdsSemanalId,
             Data = dds.Data,
             ResponsavelUsuarioId = dds.ResponsavelUsuarioId,
             ResponsavelUsuarioNome = dds.ResponsavelUsuario?.Nome ?? string.Empty,
             TopicoPrincipal = dds.TopicoPrincipal,
+            OrigemTema = dds.OrigemTema,
+            CatalogoTemaDdsId = dds.CatalogoTemaDdsId,
             Status = dds.Status,
-            AtividadesNomes = dds.Atividades.Where(a => a.Ativo).Select(a => a.Atividade?.Nome ?? string.Empty).ToList(),
+            AtividadesNomes = dds.Atividades.Where(a => a.Ativo).OrderBy(a => a.Ordem).Select(a => a.Atividade?.Nome ?? string.Empty).ToList(),
             TotalItensChecklist = itensAtivos.Count,
             ItensVerificados = itensAtivos.Count(i => i.Verificado),
             TotalParticipantes = dds.Participantes.Count(p => p.Ativo),
+            TotalFotosEvidencia = dds.FotosEvidencia.Count(f => f.Ativo),
         };
     }
 }

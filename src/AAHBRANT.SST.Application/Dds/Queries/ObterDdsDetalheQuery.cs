@@ -30,6 +30,11 @@ public class ObterDdsDetalheQueryHandler : IRequestHandler<ObterDdsDetalheQuery,
             .Include(p => p.Trabalhador)
             .ToListAsync(ct);
 
+        var fotosEvidencia = await _db.DdsFotosEvidencia
+            .Where(f => f.DdsId == dds.Id && f.Ativo)
+            .OrderBy(f => f.Ordem)
+            .ToListAsync(ct);
+
         // Envio mais recente por trabalhador (reenvios substituem o status anterior na tela).
         var enviosPorTrabalhador = await _db.DdsTelegramEnvios
             .Where(e => e.DdsId == dds.Id && e.Ativo)
@@ -39,6 +44,7 @@ public class ObterDdsDetalheQueryHandler : IRequestHandler<ObterDdsDetalheQuery,
 
         dds.ItensChecklist = itens;
         dds.Participantes = participantes;
+        dds.FotosEvidencia = fotosEvidencia;
 
         return new DdsDetalheDto
         {
@@ -64,6 +70,7 @@ public class ObterDdsDetalheQueryHandler : IRequestHandler<ObterDdsDetalheQuery,
                     TelegramConfirmadoEm = envio?.ConfirmadoEm,
                 };
             }).ToList(),
+            FotosEvidencia = fotosEvidencia.Select(f => new DdsFotoEvidenciaDto { Id = f.Id, Ordem = f.Ordem }).ToList(),
         };
     }
 }

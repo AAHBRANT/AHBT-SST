@@ -23,6 +23,9 @@
 
   <ItemGroup>
     <ProjectReference Include="..\..\src\AAHBRANT.SST.Application\AAHBRANT.SST.Application.csproj" />
+    <!-- Referência à Infrastructure só para reaproveitar o SstDbContext real (via InMemory
+         provider) como dublê de IAppDbContext nos testes — ver TestSupport/DbContextFactory.cs.
+         Evita reimplementar à mão as ~50 propriedades DbSet de IAppDbContext num fake. -->
     <ProjectReference Include="..\..\src\AAHBRANT.SST.Infrastructure\AAHBRANT.SST.Infrastructure.csproj" />
   </ItemGroup>
 

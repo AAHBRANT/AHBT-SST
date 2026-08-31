@@ -5,6 +5,7 @@ using AAHBRANT.SST.Domain.Enums;
 using AAHBRANT.SST.Domain.Interfaces;
 using AAHBRANT.SST.Infrastructure.Integracao.Bot;
 using AAHBRANT.SST.Infrastructure.Persistencia;
+using AAHBRANT.SST.Infrastructure.Seguranca;
 using Microsoft.EntityFrameworkCore;
 
 namespace AAHBRANT.SST.Application.Tests.Alertas;
@@ -18,7 +19,7 @@ namespace AAHBRANT.SST.Application.Tests.Alertas;
 public class AlertaEngineServiceCalendarioIdempotenciaTests
 {
     private static IAppDbContext CriarDb(string nomeBanco) =>
-        new SstDbContext(new DbContextOptionsBuilder<SstDbContext>().UseInMemoryDatabase(nomeBanco).Options);
+        new SstDbContext(new DbContextOptionsBuilder<SstDbContext>().UseInMemoryDatabase(nomeBanco).Options, new CurrentUserService());
 
     [Fact]
     public async Task ProcessarAsync_ChamadoDuasVezesParaMesmoItem_NaoDuplicaEventoDeCalendario()

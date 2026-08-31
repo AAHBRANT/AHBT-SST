@@ -59,6 +59,6 @@ public class AtualizarTrabalhadorCommandHandler : IRequestHandler<AtualizarTraba
         trabalhador.DataDemissao = request.DataDemissao;
         trabalhador.Turno = request.Turno;
 
-        await _db.SaveChangesAsync(ct);
+        await TratamentoCpfDuplicado.SalvarAsync(_db, ct);
     }
 }

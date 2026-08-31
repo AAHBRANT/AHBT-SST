@@ -1,4 +1,5 @@
 using AAHBRANT.SST.Application.Common.Interfaces;
+using AAHBRANT.SST.Application.Obras;
 using FluentValidation;
 using MediatR;
 using Microsoft.EntityFrameworkCore;
@@ -12,17 +13,14 @@ public record AnexarLogoObraCommand(
 
 public class AnexarLogoObraCommandValidator : AbstractValidator<AnexarLogoObraCommand>
 {
-    private static readonly string[] TiposPermitidos = { "image/jpeg", "image/png" };
-    private const int TamanhoMaximoBytes = 5 * 1024 * 1024;
-
     public AnexarLogoObraCommandValidator()
     {
         RuleFor(x => x.ObraId).NotEmpty();
         RuleFor(x => x.LogoConteudo)
             .NotEmpty().WithMessage("O logo é obrigatório.")
-            .Must(f => f.Length <= TamanhoMaximoBytes).WithMessage("O logo deve ter no máximo 5 MB.");
+            .Must(f => f.Length <= ValidacaoLogoObra.TamanhoMaximoBytes).WithMessage("O logo deve ter no máximo 5 MB.");
         RuleFor(x => x.LogoContentType)
-            .Must(t => TiposPermitidos.Contains(t)).WithMessage("O logo deve ser um arquivo JPEG ou PNG.");
+            .Must(t => ValidacaoLogoObra.TiposPermitidos.Contains(t)).WithMessage("O logo deve ser um arquivo JPEG ou PNG.");
     }
 }
 

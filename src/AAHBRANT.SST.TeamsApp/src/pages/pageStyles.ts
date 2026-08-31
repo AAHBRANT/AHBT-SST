@@ -1,11 +1,13 @@
 import { makeStyles, shorthands, tokens } from '@fluentui/react-components';
+import { designTokens } from '../theme';
 
 export const usePageStyles = makeStyles({
   card: {
     backgroundColor: '#FFFFFF',
-    borderRadius: '8px',
-    boxShadow: '0 1px 3px rgba(0, 0, 0, 0.05)',
-    padding: '20px',
+    borderRadius: '12px',
+    border: `1px solid ${designTokens.colorCardBorder}`,
+    boxShadow: designTokens.cardShadow,
+    padding: '18px 20px',
   },
   toolbar: {
     display: 'flex',
@@ -28,6 +30,103 @@ export const usePageStyles = makeStyles({
   erro: {
     color: tokens.colorPaletteRedForeground1,
     marginBottom: '12px',
+  },
+});
+
+// KPI (cartão de indicador — Hub Gênesis SST): ícone em caixa, valor grande, rótulo e uma pílula
+// de variação opcional (neutra/positiva/atenção).
+export const useKpiStyles = makeStyles({
+  linha: {
+    display: 'grid',
+    gridTemplateColumns: 'repeat(auto-fit, minmax(185px, 1fr))',
+    gap: '16px',
+    marginBottom: '16px',
+  },
+  cartao: {
+    display: 'flex',
+    flexDirection: 'column',
+    gap: '10px',
+  },
+  icone: {
+    width: '34px',
+    height: '34px',
+    borderRadius: '9px',
+    backgroundColor: designTokens.colorNeutralLight,
+    color: designTokens.colorPrimary,
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  valor: {
+    fontSize: '28px',
+    fontWeight: 800,
+    letterSpacing: '-0.01em',
+    fontVariantNumeric: 'tabular-nums',
+  },
+  rotulo: {
+    fontSize: '12.5px',
+    color: designTokens.colorNeutralMedium,
+    fontWeight: 600,
+  },
+  variacao: {
+    display: 'inline-flex',
+    alignItems: 'center',
+    gap: '5px',
+    fontSize: '11.5px',
+    fontWeight: 700,
+    width: 'fit-content',
+    padding: '3px 8px',
+    borderRadius: '20px',
+  },
+  variacaoNeutra: {
+    color: designTokens.colorNeutralMedium,
+    backgroundColor: designTokens.colorNeutralLight,
+  },
+  variacaoBoa: {
+    color: designTokens.colorSuccess,
+    backgroundColor: designTokens.colorSuccessWash,
+  },
+  variacaoAtencao: {
+    color: '#9A6B04',
+    backgroundColor: designTokens.colorWarningWash,
+  },
+  variacaoAlerta: {
+    color: designTokens.colorAlert,
+    backgroundColor: designTokens.colorAlertWash,
+  },
+});
+
+// Chip de status (Hub Gênesis SST): mesma pílula usada em ASO, EPI, treinamentos, PT/APR etc.
+export const useStatusChipStyles = makeStyles({
+  chip: {
+    display: 'inline-flex',
+    alignItems: 'center',
+    gap: '5px',
+    fontSize: '10.5px',
+    fontWeight: 700,
+    padding: '3px 8px',
+    borderRadius: '20px',
+    whiteSpace: 'nowrap',
+  },
+  ok: {
+    color: designTokens.colorSuccess,
+    backgroundColor: designTokens.colorSuccessWash,
+  },
+  pendente: {
+    color: '#9A6B04',
+    backgroundColor: designTokens.colorWarningWash,
+  },
+  vencido: {
+    color: designTokens.colorAlert,
+    backgroundColor: designTokens.colorAlertWash,
+  },
+  neutro: {
+    color: designTokens.colorNeutralMedium,
+    backgroundColor: designTokens.colorNeutralLight,
+  },
+  info: {
+    color: designTokens.colorInfo,
+    backgroundColor: designTokens.colorInfoWash,
   },
 });
 

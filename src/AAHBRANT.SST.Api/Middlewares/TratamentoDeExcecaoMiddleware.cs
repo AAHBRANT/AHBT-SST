@@ -1,6 +1,7 @@
 using System.Net;
 using System.Text.Json;
 using FluentValidation;
+using Microsoft.EntityFrameworkCore;
 
 namespace AAHBRANT.SST.Api.Middlewares;
 
@@ -37,6 +38,14 @@ public class TratamentoDeExcecaoMiddleware
         {
             await EscreverRespostaAsync(contexto, HttpStatusCode.BadRequest, ex.Message);
         }
+        catch (DbUpdateConcurrencyException ex)
+        {
+            // Sincronização offline: o registro que o app de campo editou sem conexão foi alterado
+            // por outra pessoa no servidor nesse meio tempo. Política acordada: o servidor sempre
+            // vence (evita corrupção silenciosa), mas o cliente precisa do dado atual para avisar o
+            // usuário do que foi descartado (ver SyncStatusBadge/conflitos no frontend).
+            await EscreverConflitoAsync(contexto, ex);
+        }
         catch (Exception ex)
         {
             _logger.LogError(ex, "Erro não tratado em {Metodo} {Caminho}", contexto.Request.Method, contexto.Request.Path);
@@ -56,5 +65,39 @@ public class TratamentoDeExcecaoMiddleware
         contexto.Response.StatusCode = (int)status;
         contexto.Response.ContentType = "application/json";
         await contexto.Response.WriteAsync(JsonSerializer.Serialize(new { erro = mensagem }));
+    }
+
+    private static async Task EscreverConflitoAsync(HttpContext contexto, DbUpdateConcurrencyException ex)
+    {
+        if (contexto.Response.HasStarted)
+        {
+            return;
+        }
+
+        var dadosAtuais = new Dictionary<string, object?>();
+        foreach (var entry in ex.Entries)
+        {
+            var valoresAtuais = await entry.GetDatabaseValuesAsync();
+            if (valoresAtuais is null)
+            {
+                dadosAtuais["_excluido"] = true;
+                continue;
+            }
+
+            foreach (var propriedade in valoresAtuais.Properties)
+            {
+                dadosAtuais[propriedade.Name] = valoresAtuais[propriedade];
+            }
+        }
+
+        contexto.Response.Clear();
+        contexto.Response.StatusCode = (int)HttpStatusCode.Conflict;
+        contexto.Response.ContentType = "application/json";
+        await contexto.Response.WriteAsync(JsonSerializer.Serialize(new
+        {
+            conflito = true,
+            mensagem = "Este registro foi alterado por outra pessoa enquanto você estava offline. A versão do servidor foi mantida.",
+            dadosAtuais,
+        }));
     }
 }

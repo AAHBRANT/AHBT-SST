@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Field, Select, Text } from '@fluentui/react-components';
+import { Location24Regular, LockClosed24Regular, ScanObject24Regular, Search24Regular } from '@fluentui/react-icons';
 import {
   api,
   statusAreaLabel,
@@ -186,10 +187,30 @@ export function IdentificacaoDashboardTab() {
 
       <div style={{ marginBottom: 16 }}>
         <CardGrid>
-          <KpiCard rotulo="Total de áreas" valor={areasFiltradas.length} cor={designTokens.colorPrimary} />
-          <KpiCard rotulo="Áreas bloqueadas" valor={areasBloqueadas} cor={designTokens.colorAlert} />
-          <KpiCard rotulo="Total de tags" valor={tagsFiltradas.length} cor={designTokens.colorPrimary} />
-          <KpiCard rotulo="Tags perdidas" valor={tagsPerdidas.length} cor={designTokens.colorAlert} />
+          <KpiCard
+            rotulo="Total de áreas"
+            valor={areasFiltradas.length}
+            cor={designTokens.colorPrimary}
+            icone={<Location24Regular />}
+          />
+          <KpiCard
+            rotulo="Áreas bloqueadas"
+            valor={areasBloqueadas}
+            cor={designTokens.colorAlert}
+            icone={<LockClosed24Regular />}
+          />
+          <KpiCard
+            rotulo="Total de tags"
+            valor={tagsFiltradas.length}
+            cor={designTokens.colorPrimary}
+            icone={<ScanObject24Regular />}
+          />
+          <KpiCard
+            rotulo="Tags perdidas"
+            valor={tagsPerdidas.length}
+            cor={designTokens.colorAlert}
+            icone={<Search24Regular />}
+          />
         </CardGrid>
       </div>
 

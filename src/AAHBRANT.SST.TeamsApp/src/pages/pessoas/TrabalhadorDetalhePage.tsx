@@ -65,7 +65,7 @@ export function TrabalhadorDetalhePage() {
   }, [id]);
 
   // Foto real do trabalhador — baixada sob demanda quando temFoto=true, mesmo padrão de
-  // TrabalhadoresGaveta.tsx/ObrasPage.tsx. Sem foto, o Avatar cai para as iniciais do nome.
+  // TrabalhadoresTab.tsx/ObrasPage.tsx. Sem foto, o Avatar cai para as iniciais do nome.
   useEffect(() => {
     if (!perfil?.temFoto) return;
     let cancelado = false;

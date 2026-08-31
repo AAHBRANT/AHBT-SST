@@ -3,11 +3,9 @@ import { Tab, TabList, Text, type SelectTabData, type SelectTabEvent } from '@fl
 import { usePillTabStyles } from '../pageStyles';
 import { RiscosDashboardTab } from './dashboard/RiscosDashboardTab';
 import { AtividadesTab } from './AtividadesTab';
-import { PerigosTab } from './PerigosTab';
 import { MatrizRiscoTab } from './MatrizRiscoTab';
-import { RiscosTab } from './RiscosTab';
 
-type AbaRiscos = 'dashboard' | 'matriz' | 'perigos' | 'atividades' | 'avaliacoes';
+type AbaRiscos = 'dashboard' | 'matriz' | 'atividades';
 
 export function RiscosPage() {
   const [aba, setAba] = useState<AbaRiscos>('dashboard');
@@ -28,16 +26,12 @@ export function RiscosPage() {
       >
         <Tab value="dashboard">Dashboard</Tab>
         <Tab value="matriz">Matriz de Risco</Tab>
-        <Tab value="perigos">Perigos</Tab>
         <Tab value="atividades">Atividades</Tab>
-        <Tab value="avaliacoes">Avaliações de Risco</Tab>
       </TabList>
 
       {aba === 'dashboard' && <RiscosDashboardTab />}
       {aba === 'matriz' && <MatrizRiscoTab />}
-      {aba === 'perigos' && <PerigosTab />}
       {aba === 'atividades' && <AtividadesTab />}
-      {aba === 'avaliacoes' && <RiscosTab />}
     </div>
   );
 }

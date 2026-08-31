@@ -1,3 +1,4 @@
+import type { ReactElement } from 'react';
 import { motion } from 'framer-motion';
 import { usePageStyles } from '../../pages/pageStyles';
 import { useDashboardStyles } from './dashboardStyles';
@@ -6,9 +7,10 @@ interface KpiCardProps {
   rotulo: string;
   valor: number | string;
   cor: string;
+  icone?: ReactElement;
 }
 
-export function KpiCard({ rotulo, valor, cor }: KpiCardProps) {
+export function KpiCard({ rotulo, valor, cor, icone }: KpiCardProps) {
   const estilosPagina = usePageStyles();
   const estilos = useDashboardStyles();
   return (
@@ -18,6 +20,11 @@ export function KpiCard({ rotulo, valor, cor }: KpiCardProps) {
       transition={{ duration: 0.3 }}
       className={estilosPagina.card}
     >
+      {icone && (
+        <div className={estilos.kpiIcone} style={{ color: cor }}>
+          {icone}
+        </div>
+      )}
       <div className={estilos.kpiValor} style={{ color: cor }}>
         {valor}
       </div>

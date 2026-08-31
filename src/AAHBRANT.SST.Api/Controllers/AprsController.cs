@@ -67,6 +67,15 @@ public class AprsController : ControllerBase
         await _mediator.Send(new ReprovarAprCommand(id, body.Motivo), ct);
         return NoContent();
     }
+
+    [Authorize(Policy = "apr:ver")]
+    [HttpGet("{id:guid}/pdf")]
+    public async Task<IActionResult> ExportarPdf(Guid id, CancellationToken ct)
+    {
+        var pdf = await _mediator.Send(new ExportarAprPdfQuery(id), ct);
+        if (pdf is null) return NotFound();
+        return File(pdf, "application/pdf", $"apr-{id}.pdf");
+    }
 }
 
 public record AprovarAprRequestBody(Guid AprovadoPorUsuarioId);

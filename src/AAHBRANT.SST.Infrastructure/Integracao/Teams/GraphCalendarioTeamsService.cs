@@ -1,5 +1,7 @@
 using System.Net.Http.Headers;
 using System.Net.Http.Json;
+using System.Text.Json.Serialization;
+using AAHBRANT.SST.Application.Calendario;
 using AAHBRANT.SST.Application.Common.Interfaces;
 using Azure.Core;
 using Azure.Identity;
@@ -77,6 +79,45 @@ public class GraphCalendarioTeamsService : ICalendarioTeamsService
         await GarantirSucessoAsync(resposta, organizadorUsuarioId, ct);
     }
 
+    // GET /users/{aadObjectId}/calendarView — lê os eventos reais do Outlook/Teams do usuário no
+    // intervalo (requisito do usuário, 2026-08-29: "quero o calendário do Teams dentro do
+    // aplicativo"). Reaproveita a mesma permissão de aplicativo (Calendars.ReadWrite) e o mesmo
+    // App Registration já usados por CriarEventoAsync/AtualizarEventoAsync/CancelarEventoAsync
+    // acima — não é preciso nenhuma permissão nova nem fluxo delegado (on-behalf-of).
+    public async Task<IReadOnlyList<EventoGraphDto>> ListarEventosAsync(
+        Guid usuarioId, DateTime inicio, DateTime fim, CancellationToken ct = default)
+    {
+        var (httpClient, aadObjectId) = await PrepararRequisicaoAsync(usuarioId, ct);
+
+        var inicioStr = Uri.EscapeDataString(inicio.ToString("yyyy-MM-ddTHH:mm:ss"));
+        var fimStr = Uri.EscapeDataString(fim.ToString("yyyy-MM-ddTHH:mm:ss"));
+        using var requisicao = new HttpRequestMessage(
+            HttpMethod.Get,
+            $"https://graph.microsoft.com/v1.0/users/{aadObjectId}/calendarView" +
+            $"?startDateTime={inicioStr}&endDateTime={fimStr}&$orderby=start/dateTime&$top=250");
+        requisicao.Headers.Add("Prefer", "outlook.timezone=\"America/Sao_Paulo\"");
+
+        var resposta = await httpClient.SendAsync(requisicao, ct);
+        await GarantirSucessoAsync(resposta, usuarioId, ct);
+
+        var corpoResposta = await resposta.Content.ReadFromJsonAsync<GraphCalendarViewResposta>(cancellationToken: ct);
+        return corpoResposta?.Value?.Select(MapearEvento).ToList() ?? new List<EventoGraphDto>();
+    }
+
+    private static EventoGraphDto MapearEvento(GraphEventoView evento) => new(
+        evento.Id ?? string.Empty,
+        evento.Subject ?? "(sem assunto)",
+        ParseDataHora(evento.Start),
+        ParseDataHora(evento.End),
+        evento.IsAllDay,
+        evento.Location?.DisplayName,
+        evento.Organizer?.EmailAddress?.Name,
+        evento.IsOnlineMeeting,
+        evento.OnlineMeeting?.JoinUrl);
+
+    private static DateTime ParseDataHora(GraphDataHora? dataHora) =>
+        dataHora is not null && DateTime.TryParse(dataHora.DateTime, out var valor) ? valor : default;
+
     private async Task<(HttpClient httpClient, string aadObjectId)> PrepararRequisicaoAsync(
         Guid organizadorUsuarioId, CancellationToken ct)
     {
@@ -131,5 +172,50 @@ public class GraphCalendarioTeamsService : ICalendarioTeamsService
     private class GraphEventoResposta
     {
         public string? Id { get; set; }
+    }
+
+    private class GraphCalendarViewResposta
+    {
+        [JsonPropertyName("value")]
+        public List<GraphEventoView>? Value { get; set; }
+    }
+
+    private class GraphEventoView
+    {
+        public string? Id { get; set; }
+        public string? Subject { get; set; }
+        public GraphDataHora? Start { get; set; }
+        public GraphDataHora? End { get; set; }
+        public bool IsAllDay { get; set; }
+        public bool IsOnlineMeeting { get; set; }
+        public GraphLocal? Location { get; set; }
+        public GraphOrganizador? Organizer { get; set; }
+        public GraphOnlineMeeting? OnlineMeeting { get; set; }
+    }
+
+    private class GraphDataHora
+    {
+        public string? DateTime { get; set; }
+        public string? TimeZone { get; set; }
+    }
+
+    private class GraphLocal
+    {
+        public string? DisplayName { get; set; }
+    }
+
+    private class GraphOrganizador
+    {
+        public GraphEmailAddress? EmailAddress { get; set; }
+    }
+
+    private class GraphEmailAddress
+    {
+        public string? Name { get; set; }
+    }
+
+    private class GraphOnlineMeeting
+    {
+        public string? JoinUrl { get; set; }
     }
 }

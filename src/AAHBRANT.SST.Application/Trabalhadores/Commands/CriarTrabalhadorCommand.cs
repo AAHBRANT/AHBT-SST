@@ -56,7 +56,7 @@ public class CriarTrabalhadorCommandHandler : IRequestHandler<CriarTrabalhadorCo
         };
 
         _db.Trabalhadores.Add(trabalhador);
-        await _db.SaveChangesAsync(ct);
+        await TratamentoCpfDuplicado.SalvarAsync(_db, ct);
         return trabalhador.Id;
     }
 }

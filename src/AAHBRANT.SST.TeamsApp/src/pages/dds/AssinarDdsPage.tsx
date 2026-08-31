@@ -34,7 +34,7 @@ export function AssinarDdsPage() {
       <Button
         appearance="subtle"
         icon={<ArrowLeft24Regular />}
-        onClick={() => navigate(`/prevencao/dds/${id}`)}
+        onClick={() => navigate(`/prevencao/dds/dia/${id}`)}
         style={{ marginBottom: 12 }}
       >
         Voltar para o DDS

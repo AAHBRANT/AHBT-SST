@@ -1,3 +1,4 @@
+using AAHBRANT.SST.Application.Calendario;
 using AAHBRANT.SST.Application.Common.Interfaces;
 using AAHBRANT.SST.Domain.Enums;
 using AAHBRANT.SST.Domain.Interfaces;
@@ -38,6 +39,12 @@ public class CalendarioTeamsServiceFalso : ICalendarioTeamsService
         EventosCancelados.Add((organizadorUsuarioId, graphEventId));
         return Task.CompletedTask;
     }
+
+    public List<EventoGraphDto> EventosARetornar { get; set; } = new();
+
+    public Task<IReadOnlyList<EventoGraphDto>> ListarEventosAsync(
+        Guid usuarioId, DateTime inicio, DateTime fim, CancellationToken ct = default) =>
+        Task.FromResult<IReadOnlyList<EventoGraphDto>>(EventosARetornar);
 }
 
 public class FilaCalendarioTeamsFalsa : IFilaCalendarioTeams

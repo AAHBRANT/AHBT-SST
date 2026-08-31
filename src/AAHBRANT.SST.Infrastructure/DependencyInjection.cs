@@ -1,7 +1,10 @@
+using AAHBRANT.SST.Application.Aprs;
 using AAHBRANT.SST.Application.Assinatura;
 using AAHBRANT.SST.Application.Common.Interfaces;
 using AAHBRANT.SST.Application.Dds;
 using AAHBRANT.SST.Application.EntregasEpi;
+using AAHBRANT.SST.Application.Inspecoes;
+using AAHBRANT.SST.Application.PermissoesTrabalho;
 using AAHBRANT.SST.Application.Trabalhadores;
 using AAHBRANT.SST.Infrastructure.Assinatura;
 using AAHBRANT.SST.Infrastructure.Auditoria;
@@ -13,7 +16,6 @@ using AAHBRANT.SST.Infrastructure.Persistencia;
 using AAHBRANT.SST.Infrastructure.Seguranca;
 using AAHBRANT.SST.Infrastructure.Trabalhadores;
 using Azure.Messaging.ServiceBus;
-using Fido2NetLib;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
@@ -33,6 +35,11 @@ public static class DependencyInjection
 
         services.AddDbContext<SstDbContext>(options => options.UseSqlServer(connectionString));
         services.AddScoped<IAppDbContext>(sp => sp.GetRequiredService<SstDbContext>());
+
+        // Precisa estar registrado aqui (não só na Api) — todo composition root que usa
+        // SstDbContext depende disso, incluindo o Worker (sem HttpContext/usuário logado; ver
+        // CurrentUserService sobre por que o padrão "acesso global" é o correto lá).
+        services.AddScoped<ICurrentUserService, CurrentUserService>();
 
         // Chaves de criptografia/hash do CPF (LGPD) — carregadas uma única vez aqui porque o
         // ValueConverter e a IEntityTypeConfiguration são instanciados por reflection pelo EF Core,
@@ -56,7 +63,11 @@ public static class DependencyInjection
 
         // Integração Telegram (DDS Fase 3) — token/username ficam vazios até o usuário criar o
         // bot via @BotFather e preencher appsettings; ver disclosures em TelegramBotService/
-        // TelegramUpdatesPollingService sobre o comportamento com a configuração vazia.
+        // TelegramUpdatesPollingService sobre o comportamento com a configuração vazia. Enviar
+        // mensagem (ITelegramService) é seguro em qualquer processo; só o LONG POLLING de updates
+        // (AddPollingDeAtualizacoesTelegram, abaixo) não pode rodar em mais de um processo ao mesmo
+        // tempo — por isso ficou separado, para o Worker de alertas poder usar AddInfrastructure
+        // sem também herdar o polling que já roda na Api.
         services.Configure<TelegramOptions>(configuration.GetSection("Telegram"));
         services.AddHttpClient();
         services.AddScoped<ITelegramService, TelegramBotService>();
@@ -68,15 +79,21 @@ public static class DependencyInjection
             services.AddHostedService<TelegramUpdatesPollingService>();
 
         services.AddScoped<IDdsPdfService, DdsPdfService>();
+        services.AddScoped<IDdsSemanalPdfService, DdsSemanalPdfService>();
+        services.AddScoped<IAprPdfService, AprPdfService>();
         services.AddScoped<IFichaEpiPdfService, EntregaEpiPdfService>();
+        services.AddScoped<IPtPdfService, PtPdfService>();
         services.AddScoped<IRelatorioFiscalizacaoPdfService, RelatorioFiscalizacaoPdfService>();
+        services.AddScoped<IInspecaoPdfService, InspecaoPdfService>();
 
-        // Motor de Assinatura Eletrônica (docs/Motor-Assinatura-Eletronica.md §5, etapa 4) — crachá/QR
-        // + PIN é o método de reserva e roda como principal temporário até o leitor biométrico FIDO2
-        // ser confirmado; a estratégia biométrica (Fido2AutenticacaoStrategy) troca este registro
-        // quando implementada, sem exigir mudança no restante da aplicação (depende só da abstração).
-        services.AddScoped<IAutenticacaoAssinaturaService, CrachaPinAutenticacaoStrategy>();
-        services.AddScoped<IPinHasher, PinHasherService>();
+        // Motor de Assinatura Eletrônica (docs/Motor-Assinatura-Eletronica.md §5) — PIN/crachá-QR
+        // (CrachaPinAutenticacaoStrategy) e WebAuthn/FIDO2 (Fido2AutenticacaoStrategy) foram removidos
+        // do sistema em 31/08 (decisão do usuário: único método de assinatura é a digital via leitor
+        // Futronic FS80H, "para não dar conflitos" com métodos alternativos). Ainda em fase de testes
+        // (sem nenhuma assinatura real registrada por PIN/WebAuthn), a remoção foi completa: os
+        // valores de enum (MetodoAutenticacaoAssinatura.CrachaPin/QrCodePin/WebAuthnCelular,
+        // MetodoAutenticacaoObra.CrachaPin/QrCodePin/WebAuthnCelular) e as colunas/tabela de dados
+        // (Trabalhador.PinHash, CredenciaisWebAuthn) também foram removidos do schema.
         services.AddScoped<ISegredoDispositivoHasher, SegredoDispositivoHasherService>();
         services.AddScoped<ITemplateBiometricoCriptografia, TemplateBiometricoCriptografiaService>();
         services.AddScoped<IDispositivoAgenteAutenticador, DispositivoAgenteAutenticador>();
@@ -86,19 +103,6 @@ public static class DependencyInjection
         services.Configure<AssinaturaOptions>(configuration.GetSection("Assinatura"));
         services.AddScoped<IQrCodeDocumentoService, QrCodeDocumentoService>();
         services.AddScoped<IRegistradorAssinaturaService, RegistradorAssinaturaService>();
-
-        // Estratégia biométrica (etapa 13) — ServerDomain/Origins ficam vazios até o domínio de
-        // produção (e o leitor FIDO2 da obra) serem confirmados; Fido2AutenticacaoStrategy só falha
-        // quando efetivamente usada, mesmo padrão de tolerância de GraphOptions/TelegramOptions.
-        var fido2Options = configuration.GetSection("Fido2").Get<Fido2Options>() ?? new Fido2Options();
-        services.Configure<Fido2Options>(configuration.GetSection("Fido2"));
-        services.AddSingleton<IFido2>(sp => new Fido2NetLib.Fido2(new Fido2Configuration
-        {
-            ServerDomain = fido2Options.ServerDomain,
-            ServerName = fido2Options.ServerName,
-            Origins = fido2Options.Origins.ToHashSet(),
-        }));
-        services.AddScoped<IAutenticacaoWebAuthnService, Fido2AutenticacaoStrategy>();
 
         // Motor Central de Alertas, Etapa 4 — notificação de "sino" do Teams (Activity Feed) via
         // Microsoft Graph (POST /users/{aadObjectId}/teamwork/sendActivityNotification), sem Bot
@@ -137,6 +141,15 @@ public static class DependencyInjection
             services.AddHostedService<InMemoryCalendarioTeamsProcessor>();
         }
 
+        return services;
+    }
+
+    // Long polling do Telegram (getUpdates) — só pode rodar em UM processo por vez (rodar em dois
+    // ao mesmo tempo causa 409/updates perdidos na API do Telegram). Chamado só pela Api; o Worker
+    // de alertas automáticos (AAHBRANT.SST.Worker) usa AddInfrastructure sem isto.
+    public static IServiceCollection AddPollingDeAtualizacoesTelegram(this IServiceCollection services)
+    {
+        services.AddHostedService<TelegramUpdatesPollingService>();
         return services;
     }
 }

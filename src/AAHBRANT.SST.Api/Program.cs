@@ -15,6 +15,7 @@ var builder = WebApplication.CreateBuilder(args);
 
 builder.Services.AddApplication();
 builder.Services.AddInfrastructure(builder.Configuration);
+builder.Services.AddPollingDeAtualizacoesTelegram();
 
 // Autenticação Entra ID: só é ativada se a seção "AzureAd" estiver configurada com um
 // App Registration real (TenantId/ClientId). Provisionamento desse recurso no Azure
@@ -48,6 +49,7 @@ if (autenticacaoEntraIdHabilitada)
 builder.Services.AddAuthorization();
 builder.Services.AddSingleton<IAuthorizationPolicyProvider, PermissaoAuthorizationPolicyProvider>();
 builder.Services.AddScoped<IAuthorizationHandler, PermissaoAuthorizationHandler>();
+// ICurrentUserService (camada 3 do RBAC) é registrado em AddInfrastructure — ver EscopoPorObraMiddleware.
 
 builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();
@@ -100,6 +102,17 @@ if (autenticacaoEntraIdHabilitada)
     app.UseMiddleware<VinculoAzureAdMiddleware>();
     app.UseAuthorization();
 }
+
+// Depois da autenticação, antes de qualquer controller: resolve o escopo por obra do usuário da
+// requisição (camada 3 do RBAC — ver SstDbContext) para que o filtro global já esteja pronto
+// quando o primeiro DbSet for consultado.
+app.UseMiddleware<EscopoPorObraMiddleware>();
+
+// Depois da autenticação de propósito: a chave de idempotência (sincronização offline) só deve
+// devolver uma resposta em cache para quem já passou pelo crivo de auth da requisição original —
+// caso contrário um Idempotency-Key adivinhado (improvável, é um GUID, mas por princípio) poderia
+// vazar a resposta de outro usuário sem autenticação nenhuma.
+app.UseMiddleware<IdempotenciaMiddleware>();
 
 // Aplica migrations pendentes automaticamente no start — antes não existia isso no código
 // (schema do banco de homologação era atualizado manualmente a cada nova migration).

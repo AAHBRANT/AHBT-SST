@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Field, Select, Text } from '@fluentui/react-components';
+import { People24Regular, CheckmarkCircle24Regular, DismissCircle24Regular, Warning24Regular } from '@fluentui/react-icons';
 import {
   api,
   ResultadoAso,
@@ -203,10 +204,30 @@ export function PessoasDashboardTab() {
 
       <div style={{ marginBottom: 16 }}>
         <CardGrid>
-          <KpiCard rotulo="Total na força de trabalho" valor={trabalhadoresFiltrados.length} cor={designTokens.colorPrimary} />
-          <KpiCard rotulo="Aptos" valor={statusGeral.aptos} cor={designTokens.colorSuccess} />
-          <KpiCard rotulo="Bloqueados" valor={bloqueados} cor={designTokens.colorAlert} />
-          <KpiCard rotulo="ASOs vencendo em 30 dias" valor={asosVencendo30Dias} cor={designTokens.colorWarning} />
+          <KpiCard
+            rotulo="Total na força de trabalho"
+            valor={trabalhadoresFiltrados.length}
+            cor={designTokens.colorPrimary}
+            icone={<People24Regular />}
+          />
+          <KpiCard
+            rotulo="Aptos"
+            valor={statusGeral.aptos}
+            cor={designTokens.colorSuccess}
+            icone={<CheckmarkCircle24Regular />}
+          />
+          <KpiCard
+            rotulo="Bloqueados"
+            valor={bloqueados}
+            cor={designTokens.colorAlert}
+            icone={<DismissCircle24Regular />}
+          />
+          <KpiCard
+            rotulo="ASOs vencendo em 30 dias"
+            valor={asosVencendo30Dias}
+            cor={designTokens.colorWarning}
+            icone={<Warning24Regular />}
+          />
         </CardGrid>
       </div>
 

@@ -23,15 +23,20 @@ import { ValidarDocumentoPage } from './pages/validacao/ValidarDocumentoPage';
 import { AtivosPage } from './pages/ativos/AtivosPage';
 import { AdministracaoPage } from './pages/administracao/AdministracaoPage';
 import { NaoConformidadesPage } from './pages/naoconformidades/NaoConformidadesPage';
+import { RequisitosLegaisPage } from './pages/requisitoslegais/RequisitosLegaisPage';
 import { NaoConformidadeDetalhePage } from './pages/naoconformidades/NaoConformidadeDetalhePage';
 import { AlertasPage } from './pages/alertas/AlertasPage';
+import { CalendarioPage } from './pages/calendario/CalendarioPage';
 import { AcidentesPage } from './pages/acidentes/AcidentesPage';
 import { AcidenteDetalhePage } from './pages/acidentes/AcidenteDetalhePage';
-import { DdsPage } from './pages/dds/DdsPage';
+import { DdsSemanalPage } from './pages/dds/DdsSemanalPage';
+import { DdsSemanalDetalhePage } from './pages/dds/DdsSemanalDetalhePage';
 import { DdsDetalhePage } from './pages/dds/DdsDetalhePage';
 import { AssinarDdsPage } from './pages/dds/AssinarDdsPage';
 import { EpiPage } from './pages/epi/EpiPage';
 import { AssinarEntregaEpiPage } from './pages/epi/AssinarEntregaEpiPage';
+import { SaudeOcupacionalPage } from './pages/saude-ocupacional/SaudeOcupacionalPage';
+import { PcmsoDetalhePage } from './pages/saude-ocupacional/PcmsoDetalhePage';
 
 // Envolve as rotas internas do app com o AppShell (sidebar/header do Teams). As rotas públicas
 // /p/:codigoOuUid e /validar/:token ficam de fora dessa camada — ver AreaPublicaPage/ValidarDocumentoPage.
@@ -61,12 +66,14 @@ function App() {
           <Route element={<LayoutComTeams />}>
             <Route path="/" element={<DashboardPage />} />
 
-            {/* Módulo Prevenção: PGR, Inspeções, DDS (Riscos virou item de 1º nível — ver /riscos) */}
+            {/* Módulo Procedimentos & Planos (ex-Prevenção): PGR, Inspeções, DDS (Riscos virou
+                item de 1º nível — ver /riscos; PCMSO faz parte de Saúde Ocupacional, aba de
+                Operação — ver /operacao/saude-ocupacional) */}
             <Route
               path="/prevencao"
               element={
                 <PillarLayout
-                  titulo="Prevenção"
+                  titulo="Procedimentos & Planos"
                   prefixo="prevencao"
                   abas={[
                     { valor: 'pgr', rotulo: 'PGR' },
@@ -81,12 +88,18 @@ function App() {
               <Route path="pgr/:id" element={<PgrDetalhePage />} />
               <Route path="inspecoes" element={<InspecoesPage />} />
               <Route path="inspecoes/:id" element={<InspecaoDetalhePage />} />
-              <Route path="dds" element={<DdsPage />} />
-              <Route path="dds/:id" element={<DdsDetalhePage />} />
-              <Route path="dds/:id/assinar" element={<AssinarDdsPage />} />
+              <Route path="dds" element={<DdsSemanalPage />} />
+              <Route path="dds/semana/:id" element={<DdsSemanalDetalhePage />} />
+              <Route path="dds/dia/:id" element={<DdsDetalhePage />} />
+              <Route path="dds/dia/:id/assinar" element={<AssinarDdsPage />} />
             </Route>
+            {/* Legado: /prevencao/pcmso apontava pro PCMSO antigo (descontinuado em 28/08 —
+                ver ONBOARDING.md) — redireciona pro módulo Saúde Ocupacional atual. */}
+            <Route path="/prevencao/pcmso" element={<Navigate to="/operacao/saude-ocupacional" replace />} />
+            <Route path="/prevencao/pcmso/:id" element={<RedirecionarComId para={(id) => `/operacao/saude-ocupacional/pcmso/${id}`} />} />
 
-            {/* Módulo Operação: Obras, Pessoas, APR, PT, Identificação & Acesso */}
+            {/* Módulo Operação: Obras, APR, PT, Identificação & Acesso, Saúde Ocupacional (Pessoas
+                virou item de 1º nível na sidebar — ver abaixo) */}
             <Route
               path="/operacao"
               element={
@@ -95,19 +108,17 @@ function App() {
                   prefixo="operacao"
                   abas={[
                     { valor: 'obras', rotulo: 'Obras' },
-                    { valor: 'pessoas', rotulo: 'Pessoas' },
                     { valor: 'apr', rotulo: 'APR' },
                     { valor: 'pt', rotulo: 'PT (Permissão de Trabalho)' },
                     { valor: 'identificacao', rotulo: 'Identificação & Acesso' },
                     { valor: 'ativos', rotulo: 'Ativos (Extintores & Equipamentos)' },
+                    { valor: 'saude-ocupacional', rotulo: 'Saúde Ocupacional' },
                   ]}
                 />
               }
             >
               <Route index element={<Navigate to="obras" replace />} />
               <Route path="obras" element={<ObrasPage />} />
-              <Route path="pessoas" element={<PessoasPage />} />
-              <Route path="pessoas/:id" element={<TrabalhadorDetalhePage />} />
               <Route path="apr" element={<AprsPage />} />
               <Route path="apr/:id" element={<AprDetalhePage />} />
               <Route path="pt" element={<PermissoesTrabalhoPage />} />
@@ -115,19 +126,25 @@ function App() {
               <Route path="pt/:id/assinar" element={<AssinarPtPage />} />
               <Route path="identificacao" element={<IdentificacaoPage />} />
               <Route path="ativos" element={<AtivosPage />} />
+              <Route path="saude-ocupacional" element={<SaudeOcupacionalPage />} />
+              <Route path="saude-ocupacional/pcmso/:id" element={<PcmsoDetalhePage />} />
             </Route>
 
             <Route path="/alertas" element={<AlertasPage />} />
+            <Route path="/calendario" element={<CalendarioPage />} />
 
-            {/* Riscos, Não Conformidades e Acidentes & Incidentes viraram itens de 1º nível na
-                sidebar (antes eram abas de Prevenção e de Melhoria Contínua, respectivamente —
-                Melhoria Contínua foi removida). Cada página já é autossuficiente (título + abas
-                internas próprias), mesmo padrão já usado por EpiPage. */}
+            {/* Riscos, Pessoas, Não Conformidades e Acidentes & Incidentes viraram itens de 1º
+                nível na sidebar (antes eram abas de Prevenção/Operação e de Melhoria Contínua,
+                respectivamente — Melhoria Contínua foi removida). Cada página já é autossuficiente
+                (título + abas internas próprias), mesmo padrão já usado por EpiPage. */}
+            <Route path="/pessoas" element={<PessoasPage />} />
+            <Route path="/pessoas/:id" element={<TrabalhadorDetalhePage />} />
             <Route path="/riscos" element={<RiscosPage />} />
             <Route path="/nao-conformidades" element={<NaoConformidadesPage />} />
             <Route path="/nao-conformidades/:id" element={<NaoConformidadeDetalhePage />} />
             <Route path="/acidentes" element={<AcidentesPage />} />
             <Route path="/acidentes/:id" element={<AcidenteDetalhePage />} />
+            <Route path="/requisitos-legais" element={<RequisitosLegaisPage />} />
 
             <Route path="/epi" element={<EpiPage />} />
             <Route path="/epi/:id/assinar" element={<AssinarEntregaEpiPage />} />
@@ -138,22 +155,32 @@ function App() {
             <Route path="/prevencao/riscos" element={<Navigate to="/riscos" replace />} />
             <Route path="/pgr" element={<Navigate to="/prevencao/pgr" replace />} />
             <Route path="/pgr/:id" element={<RedirecionarComId para={(id) => `/prevencao/pgr/${id}`} />} />
+            <Route path="/pcmso" element={<Navigate to="/operacao/saude-ocupacional" replace />} />
+            <Route path="/pcmso/:id" element={<RedirecionarComId para={(id) => `/operacao/saude-ocupacional/pcmso/${id}`} />} />
             <Route path="/inspecoes" element={<Navigate to="/prevencao/inspecoes" replace />} />
             <Route
               path="/inspecoes/:id"
               element={<RedirecionarComId para={(id) => `/prevencao/inspecoes/${id}`} />}
             />
             <Route path="/dds" element={<Navigate to="/prevencao/dds" replace />} />
-            <Route path="/dds/:id" element={<RedirecionarComId para={(id) => `/prevencao/dds/${id}`} />} />
+            <Route path="/dds/:id" element={<RedirecionarComId para={(id) => `/prevencao/dds/dia/${id}`} />} />
 
             <Route path="/obras" element={<Navigate to="/operacao/obras" replace />} />
-            <Route path="/pessoas" element={<Navigate to="/operacao/pessoas" replace />} />
-            <Route path="/pessoas/:id" element={<RedirecionarComId para={(id) => `/operacao/pessoas/${id}`} />} />
+            {/* Legado: Pessoas era aba de Operação (até 28/08), virou item de 1º nível. */}
+            <Route path="/operacao/pessoas" element={<Navigate to="/pessoas" replace />} />
+            <Route path="/operacao/pessoas/:id" element={<RedirecionarComId para={(id) => `/pessoas/${id}`} />} />
             <Route path="/apr" element={<Navigate to="/operacao/apr" replace />} />
             <Route path="/apr/:id" element={<RedirecionarComId para={(id) => `/operacao/apr/${id}`} />} />
             <Route path="/pt" element={<Navigate to="/operacao/pt" replace />} />
             <Route path="/pt/:id" element={<RedirecionarComId para={(id) => `/operacao/pt/${id}`} />} />
             <Route path="/identificacao" element={<Navigate to="/operacao/identificacao" replace />} />
+            {/* Legado: Saúde Ocupacional era item de 1º nível na sidebar (até 28/08), virou aba
+                de Operação. */}
+            <Route path="/saude-ocupacional" element={<Navigate to="/operacao/saude-ocupacional" replace />} />
+            <Route
+              path="/saude-ocupacional/pcmso/:id"
+              element={<RedirecionarComId para={(id) => `/operacao/saude-ocupacional/pcmso/${id}`} />}
+            />
 
             <Route path="/naoconformidades" element={<Navigate to="/nao-conformidades" replace />} />
             <Route

@@ -1,4 +1,5 @@
 import { makeStyles, tokens } from '@fluentui/react-components';
+import { designTokens } from '../../theme';
 
 export const useDashboardStyles = makeStyles({
   filtros: {
@@ -7,14 +8,27 @@ export const useDashboardStyles = makeStyles({
     gap: '12px',
     marginBottom: '20px',
   },
+  kpiIcone: {
+    width: '34px',
+    height: '34px',
+    borderRadius: '9px',
+    backgroundColor: designTokens.colorNeutralLight,
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: '2px',
+  },
   kpiValor: {
     fontSize: '28px',
-    fontWeight: 700,
+    fontWeight: 800,
+    letterSpacing: '-0.01em',
+    fontVariantNumeric: 'tabular-nums',
     lineHeight: '32px',
   },
   kpiRotulo: {
-    color: tokens.colorNeutralForeground3,
-    fontSize: '13px',
+    color: designTokens.colorNeutralMedium,
+    fontSize: '12.5px',
+    fontWeight: 600,
   },
   chartRow: {
     display: 'grid',
@@ -24,13 +38,14 @@ export const useDashboardStyles = makeStyles({
   },
   chartCard: {
     backgroundColor: '#FFFFFF',
-    borderRadius: '8px',
-    boxShadow: '0 1px 3px rgba(0, 0, 0, 0.05)',
-    padding: '20px',
+    borderRadius: '12px',
+    border: `1px solid ${designTokens.colorCardBorder}`,
+    boxShadow: designTokens.cardShadow,
+    padding: '18px 20px',
   },
   chartTitulo: {
-    fontSize: '15px',
-    fontWeight: 600,
+    fontSize: '14px',
+    fontWeight: 700,
     marginBottom: '4px',
   },
   chartSubtitulo: {
@@ -40,9 +55,10 @@ export const useDashboardStyles = makeStyles({
   },
   motorPainel: {
     backgroundColor: '#FFFFFF',
-    borderRadius: '8px',
-    boxShadow: '0 1px 3px rgba(0, 0, 0, 0.05)',
-    padding: '20px',
+    borderRadius: '12px',
+    border: `1px solid ${designTokens.colorCardBorder}`,
+    boxShadow: designTokens.cardShadow,
+    padding: '18px 20px',
   },
   motorCabecalho: {
     display: 'flex',
@@ -73,5 +89,69 @@ export const useDashboardStyles = makeStyles({
   },
   motorLinhaApta: {
     borderLeft: `3px solid ${tokens.colorPaletteGreenForeground1}`,
+  },
+  feed: {
+    display: 'flex',
+    flexDirection: 'column',
+  },
+  feedItem: {
+    display: 'flex',
+    alignItems: 'flex-start',
+    gap: '12px',
+    padding: '12px 4px',
+    borderBottom: `1px solid ${designTokens.colorCardBorder}`,
+    ':last-child': {
+      borderBottom: 'none',
+    },
+  },
+  feedIcone: {
+    width: '34px',
+    height: '34px',
+    borderRadius: '9px',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    flexShrink: 0,
+    backgroundColor: designTokens.colorNeutralLight,
+    color: designTokens.colorNeutralMedium,
+  },
+  feedIconeAlerta: {
+    backgroundColor: designTokens.colorAlertWash,
+    color: designTokens.colorAlert,
+  },
+  feedIconeAtencao: {
+    backgroundColor: designTokens.colorWarningWash,
+    color: '#9A6B04',
+  },
+  feedIconeBom: {
+    backgroundColor: designTokens.colorSuccessWash,
+    color: designTokens.colorSuccess,
+  },
+  feedIconeInfo: {
+    backgroundColor: designTokens.colorInfoWash,
+    color: designTokens.colorInfo,
+  },
+  feedCorpo: {
+    flex: 1,
+    minWidth: 0,
+  },
+  feedTitulo: {
+    fontSize: '13px',
+    fontWeight: 700,
+    color: designTokens.colorNeutralDark,
+  },
+  feedMeta: {
+    fontSize: '11.5px',
+    color: designTokens.colorNeutralMedium,
+    fontWeight: 500,
+    marginTop: '1px',
+  },
+  feedHora: {
+    fontSize: '11px',
+    color: designTokens.colorNeutralMedium,
+    fontWeight: 600,
+    flexShrink: 0,
+    whiteSpace: 'nowrap',
+    paddingTop: '2px',
   },
 });

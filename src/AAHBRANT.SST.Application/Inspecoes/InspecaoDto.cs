@@ -34,10 +34,16 @@ public class InspecaoItemRespostaDto
     public bool ExigePrazo { get; set; }
     public StatusItemChecklist? StatusItem { get; set; }
     public string? Observacao { get; set; }
+    // Achado tipo "Patrulha de Segurança" (planilha do usuário, 31/08) — ver disclosure em
+    // InspecaoItemResposta.cs sobre reaproveitar o checklist com descrição editável por execução.
+    public string? Local { get; set; }
+    public string? PlanoDeAcao { get; set; }
     public Guid? ResponsavelUsuarioId { get; set; }
     public string? ResponsavelUsuarioNome { get; set; }
     public DateTime? Prazo { get; set; }
     public bool TemFoto { get; set; }
+    public bool TemFotoDepois { get; set; }
+    public Guid? NaoConformidadeId { get; set; }
 }
 
 // Composição por query, não por tabela nova — mesmo princípio já usado em PermissaoTrabalhoDetalheDto.

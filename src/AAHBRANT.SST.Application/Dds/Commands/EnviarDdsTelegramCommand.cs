@@ -44,7 +44,8 @@ public class EnviarDdsTelegramCommandHandler : IRequestHandler<EnviarDdsTelegram
             .Select(t => new { t.Id, ChatId = t.TelegramChatId!.Value })
             .ToListAsync(ct);
 
-        var pdfBytes = _pdf.Gerar(ExportarDdsPdfQueryHandler.MontarModelo(detalhe));
+        var logoConteudo = await _db.Obras.Where(o => o.Id == detalhe.Dds.ObraId).Select(o => o.LogoConteudo).FirstOrDefaultAsync(ct);
+        var pdfBytes = _pdf.Gerar(ExportarDdsPdfQueryHandler.MontarModelo(detalhe, logoConteudo));
         var nomeArquivo = $"DDS_{detalhe.Dds.Data:yyyy-MM-dd}.pdf";
         var legenda = $"DDS — {detalhe.Dds.TopicoPrincipal} ({detalhe.Dds.ObraNome}, {detalhe.Dds.Data:dd/MM/yyyy})";
 

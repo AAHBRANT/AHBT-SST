@@ -1,31 +1,6 @@
-import { authentication } from '@microsoft/teams-js';
-import { aguardarInicializacaoTeams } from '../teams/teamsInit';
-
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL ?? 'https://localhost:7095';
-
-// Espera a mesma promise de app.initialize() usada por useTeamsContext antes de tentar obter o
-// token: chamar getAuthToken() antes do SDK terminar de assentar falha rápido ("library not
-// initialized"), derrubando a chamada para 401 mesmo com o usuário autenticado/autorizado no
-// Teams (ver AAHBRANT.SST.TeamsApp/src/teams/teamsInit.ts). Importante: NÃO condicionamos a
-// tentativa ao resultado (dentroDoTeams) — em alguns hosts reais do Teams (ex.: cliente web)
-// app.initialize()/getContext() podem falhar mesmo com getAuthToken() funcionando normalmente
-// depois, então só usamos a promise para esperar o SDK assentar, não para decidir se tentamos.
-async function obterTokenAutenticacaoTeams(): Promise<string | null> {
-  await aguardarInicializacaoTeams();
-  try {
-    return await Promise.race([
-      authentication.getAuthToken(),
-      new Promise<null>((resolve) => setTimeout(() => resolve(null), 3000)),
-    ]);
-  } catch {
-    return null;
-  }
-}
-
-async function montarHeadersAuth(): Promise<Record<string, string>> {
-  const token = await obterTokenAutenticacaoTeams();
-  return token ? { Authorization: `Bearer ${token}` } : {};
-}
+import { API_BASE_URL } from './apiBase';
+import { montarHeadersAuth } from './authHeaders';
+import { syncFetchBlob, syncFetchJson, syncMutateJson, syncMutateMultipart } from './offline/syncEngine';
 
 export const StatusObra = {
   Planejada: 1,
@@ -91,11 +66,12 @@ export interface Trabalhador {
   telegramCodigoVinculo?: string | null;
   turno?: string | null;
   temFoto: boolean;
+  temBiometria: boolean;
 }
 
 export type NovoTrabalhador = Omit<
   Trabalhador,
-  'id' | 'dataDemissao' | 'telegramVinculado' | 'telegramCodigoVinculo' | 'temFoto'
+  'id' | 'dataDemissao' | 'telegramVinculado' | 'telegramCodigoVinculo' | 'temFoto' | 'temBiometria'
 >;
 
 export interface GerarVinculoTelegramResultado {
@@ -146,6 +122,57 @@ export interface Aso {
 }
 
 export type NovoAso = Omit<Aso, 'id'>;
+
+// PR-SST-003 — exames complementares do PCMSO (audiometria, acuidade visual etc.), vinculados
+// opcionalmente a um ASO.
+export const TipoExameComplementar = {
+  Audiometria: 1,
+  AcuidadeVisual: 2,
+  Espirometria: 3,
+  Laboratoriais: 4,
+  AvaliacaoClinica: 5,
+  ExameEspecifico: 6,
+} as const;
+
+export const tipoExameComplementarLabel: Record<number, string> = {
+  1: 'Audiometria',
+  2: 'Acuidade visual',
+  3: 'Espirometria',
+  4: 'Laboratoriais',
+  5: 'Avaliação clínica',
+  6: 'Exame específico',
+};
+
+export interface ExameComplementar {
+  id: string;
+  trabalhadorId: string;
+  asoId?: string | null;
+  tipo: number;
+  dataRealizacao: string;
+  dataValidade: string;
+  resultado: string;
+  observacoes?: string | null;
+  responsavelTecnico?: string | null;
+}
+
+export type NovoExameComplementar = Omit<ExameComplementar, 'id'>;
+export type AtualizarExameComplementarPayload = ExameComplementar;
+
+// PR-SST-003 — aptidão para atividade crítica (ex.: trabalho em altura, espaço confinado),
+// distinta do ASO geral: reaproveita ResultadoAso (Apto/Apto com restrição/Inapto/Pendente).
+export interface Aptidao {
+  id: string;
+  trabalhadorId: string;
+  atividadeCritica: string;
+  aptidao: number;
+  dataAvaliacao: string;
+  dataValidade?: string | null;
+  medicoResponsavel?: string | null;
+  observacoes?: string | null;
+}
+
+export type NovaAptidao = Omit<Aptidao, 'id'>;
+export type AtualizarAptidaoPayload = Aptidao;
 
 export interface Funcao {
   id: string;
@@ -201,6 +228,98 @@ export interface Treinamento {
 }
 
 export type NovoTreinamento = Omit<Treinamento, 'id'>;
+
+// Módulo de Requisitos Legais — Motor de Aplicabilidade Legal (requisito do usuário, 2026-08-29).
+// Fase 1 (fundação de dados): cadastro do requisito e seus critérios de aplicabilidade, catálogo do
+// questionário e matriz de obrigatoriedade de treinamento por função. O cruzamento de fato (o
+// "motor" que avalia cada obra) é uma fase seguinte, ainda não implementada.
+export const CategoriaRequisitoLegal = {
+  Treinamento: 1,
+  Epi: 2,
+  Exame: 3,
+  Documento: 4,
+  Inspecao: 5,
+} as const;
+
+export const categoriaRequisitoLegalLabel: Record<number, string> = {
+  1: 'Treinamento',
+  2: 'EPI',
+  3: 'Exame',
+  4: 'Documento',
+  5: 'Inspeção',
+};
+
+export const StatusRequisitoLegal = {
+  Ativo: 1,
+  Revogado: 2,
+} as const;
+
+export const statusRequisitoLegalLabel: Record<number, string> = {
+  1: 'Ativo',
+  2: 'Revogado',
+};
+
+export const TipoCriterioAplicabilidade = {
+  Perigo: 1,
+  Funcao: 2,
+  Equipamento: 3,
+  ItemQuestionario: 4,
+} as const;
+
+export const tipoCriterioAplicabilidadeLabel: Record<number, string> = {
+  1: 'Perigo (PGR)',
+  2: 'Função',
+  3: 'Equipamento',
+  4: 'Item do questionário',
+};
+
+export interface RequisitoLegal {
+  id: string;
+  norma: string;
+  artigo?: string | null;
+  titulo: string;
+  descricao: string;
+  categoria: number;
+  status: number;
+  fonte?: string | null;
+}
+
+export type NovoRequisitoLegal = Omit<RequisitoLegal, 'id' | 'status'>;
+export type AtualizarRequisitoLegalPayload = Omit<RequisitoLegal, 'id'>;
+
+export interface CriterioAplicabilidadeInput {
+  tipo: number;
+  perigoId?: string | null;
+  funcaoId?: string | null;
+  tipoEquipamento?: number | null;
+  itemQuestionarioAplicabilidadeId?: string | null;
+}
+
+export interface RequisitoLegalCriterio extends CriterioAplicabilidadeInput {
+  id: string;
+  perigoNome?: string | null;
+  funcaoNome?: string | null;
+  itemQuestionarioPergunta?: string | null;
+}
+
+export interface RequisitoLegalDetalhe {
+  requisito: RequisitoLegal;
+  criterios: RequisitoLegalCriterio[];
+}
+
+export interface ItemQuestionarioAplicabilidade {
+  id: string;
+  pergunta: string;
+  textoApoio?: string | null;
+}
+
+export interface RespostaQuestionarioObra {
+  itemId: string;
+  pergunta: string;
+  textoApoio?: string | null;
+  resposta: boolean | null;
+  observacao?: string | null;
+}
 
 export interface CatalogoEpi {
   id: string;
@@ -477,6 +596,20 @@ export interface PgrDetalhe {
   revisoes: PgrRevisao[];
 }
 
+export const StatusPcmso = {
+  EmElaboracao: 1,
+  Vigente: 2,
+  EmRevisao: 3,
+  Encerrado: 4,
+} as const;
+
+export const statusPcmsoLabel: Record<number, string> = {
+  1: 'Em elaboração',
+  2: 'Vigente',
+  3: 'Em revisão',
+  4: 'Encerrado',
+};
+
 export const TipoArea = {
   AreaDeTrabalho: 1,
   ZonaDeRisco: 2,
@@ -602,23 +735,55 @@ export const statusAprLabel: Record<number, string> = {
   5: 'Encerrada',
 };
 
+// Renomeado para bater com os 3 papéis literais do formulário "APR REV.02" (planilha do usuário,
+// 2026-08-29): Envolvido é a linha de "Ass./Visto" da equipe exposta; Elaboração e Supervisão são os
+// dois blocos formais do rodapé do documento.
 export const PapelAssinaturaApr = {
-  Elaborador: 1,
-  Executante: 2,
-  Aprovador: 3,
+  Envolvido: 1,
+  Elaboracao: 2,
+  Supervisao: 3,
 } as const;
 
 export const papelAssinaturaAprLabel: Record<number, string> = {
-  1: 'Elaborador',
-  2: 'Executante',
-  3: 'Aprovador',
+  1: 'Envolvido',
+  2: 'Elaboração / SST / Responsável Técnico',
+  3: 'Supervisão / Encarregado / Engenharia',
+};
+
+// Matriz de critérios própria da APR (aba "Matriz de Risco" da planilha) — fórmula fixa
+// (1-4 Baixo, 5-9 Moderado, 10-15 Alto, 16-25 Crítico), distinta da matriz configurável genérica
+// do módulo Riscos (NivelRisco).
+export const NivelRiscoApr = {
+  Baixo: 1,
+  Moderado: 2,
+  Alto: 3,
+  Critico: 4,
+} as const;
+
+export const nivelRiscoAprLabel: Record<number, string> = {
+  1: 'BAIXO',
+  2: 'MODERADO',
+  3: 'ALTO',
+  4: 'CRÍTICO',
+};
+
+// Cores idênticas à formatação condicional da planilha original.
+export const nivelRiscoAprCor: Record<number, string> = {
+  1: '#A9D18E',
+  2: '#FFD966',
+  3: '#F4B183',
+  4: '#C00000',
 };
 
 export interface Apr {
   id: string;
+  numeroApr?: string | null;
   atividadeId: string;
   atividadeNome: string;
+  obraNome?: string | null;
   local: string;
+  maquinasEquipamentos?: string | null;
+  pgrReferencia?: string | null;
   equipeId?: string | null;
   equipeNome?: string | null;
   data: string;
@@ -631,39 +796,50 @@ export interface Apr {
 }
 
 export interface NovaApr {
+  numeroApr?: string | null;
   atividadeId: string;
   local: string;
+  maquinasEquipamentos?: string | null;
+  pgrReferencia?: string | null;
   equipeId?: string | null;
   data: string;
   validade?: string | null;
   responsaveisIds: string[];
 }
 
-export interface AtualizarAprPayload {
+export type AtualizarAprPayload = NovaApr & { id: string };
+
+export interface AprEtapaRisco {
   id: string;
-  atividadeId: string;
-  local: string;
-  equipeId?: string | null;
-  data: string;
-  validade?: string | null;
-  responsaveisIds: string[];
+  aprEtapaId: string;
+  perigoEventoPerigoso: string;
+  fonteCircunstancia?: string | null;
+  possiveisLesoes?: string | null;
+  trabalhadoresExpostos?: string | null;
+  probabilidadeInicial: number;
+  severidadeInicial: number;
+  nivelRiscoInicial: number;
+  medidasPrevencao?: string | null;
+  responsavel?: string | null;
+  probabilidadeResidual: number;
+  severidadeResidual: number;
+  nivelRiscoResidual: number;
 }
+
+export type NovoAprEtapaRisco = Omit<AprEtapaRisco, 'id' | 'nivelRiscoInicial' | 'nivelRiscoResidual'>;
 
 export interface AprEtapa {
   id: string;
   aprId: string;
   ordem: number;
   descricao: string;
-  medidasPreventivas?: string | null;
-  riscosIds: string[];
+  riscos: AprEtapaRisco[];
 }
 
 export interface NovaAprEtapa {
   aprId: string;
   ordem: number;
   descricao: string;
-  medidasPreventivas?: string | null;
-  riscosIds: string[];
 }
 
 export interface AprResponsavel {
@@ -671,6 +847,7 @@ export interface AprResponsavel {
   aprId: string;
   trabalhadorId: string;
   trabalhadorNome: string;
+  trabalhadorFuncaoNome?: string | null;
 }
 
 export interface AprAssinatura {
@@ -695,92 +872,286 @@ export interface AprDetalhe {
   assinaturas: AprAssinatura[];
 }
 
+// PT REV.01 — reformulação literal do formulário "PT – PERMISSÃO DE TRABALHO" (planilha do
+// usuário, 2026-08-29). Mesmo princípio da APR REV.02: os catálogos fixos do documento (§2 a §5)
+// viram enums no backend (não catálogos editáveis), refletidos aqui como const objects + labels.
 export const StatusPt = {
   EmElaboracao: 1,
   Autorizada: 2,
-  Encerrada: 3,
+  Suspensa: 3,
+  Encerrada: 4,
 } as const;
 
 export const statusPtLabel: Record<number, string> = {
   1: 'Em elaboração',
   2: 'Autorizada',
-  3: 'Encerrada',
+  3: 'Suspensa',
+  4: 'Encerrada',
+};
+
+export const ItemPreRequisitoPt = {
+  AprEspecificaRevisadaDisponivel: 1,
+  PgrInventarioRiscosCompativel: 2,
+  InspecoesChecklistsEquipamentosValidos: 3,
+  ProcedimentoInstrucaoTrabalhoAplicavelDisponivel: 4,
+  TrabalhadoresCapacitadosAutorizadosAptos: 5,
+  PlanoEmergenciaMeiosComunicacaoConhecidos: 6,
+} as const;
+
+export const itemPreRequisitoPtLabel: Record<number, string> = {
+  1: 'APR específica da atividade revisada e disponível',
+  2: 'PGR / Inventário de Riscos compatível com a atividade',
+  3: 'Inspeções / checklists dos equipamentos válidos',
+  4: 'Procedimento / instrução de trabalho aplicável disponível',
+  5: 'Trabalhadores capacitados, autorizados e aptos quando aplicável',
+  6: 'Plano de emergência e meios de comunicação conhecidos pela equipe',
+};
+
+export const TipoTrabalhoEspecialPt = {
+  TrabalhoEmAltura: 1,
+  TrabalhoAQuenteFonteIgnicao: 2,
+  BloqueioEnergiasPerigosas: 3,
+  DemolicaoCortePerfuracao: 4,
+  EspacoConfinado: 5,
+  EscavacaoValaFundacao: 6,
+  TrabalhoProximoTrafegoVias: 7,
+  MaquinasEquipamentos: 8,
+  EletricidadeIntervencaoEletrica: 9,
+  MovimentacaoIcamentoCargas: 10,
+  ProdutosQuimicosInflamaveis: 11,
+  Outro: 12,
+} as const;
+
+export const tipoTrabalhoEspecialPtLabel: Record<number, string> = {
+  1: 'Trabalho em altura – NR-35',
+  2: 'Trabalho a quente / fonte de ignição',
+  3: 'Bloqueio de energias perigosas (LOTO)',
+  4: 'Demolição / corte / perfuração',
+  5: 'Espaço confinado – NR-33',
+  6: 'Escavação / vala / fundação',
+  7: 'Trabalho próximo a tráfego / vias',
+  8: 'Máquinas e equipamentos',
+  9: 'Eletricidade / intervenção elétrica – NR-10',
+  10: 'Movimentação e içamento de cargas',
+  11: 'Produtos químicos / inflamáveis',
+  12: 'Outro',
+};
+
+export const ItemVerificacaoPt = {
+  AreaIsoladaSinalizadaAcessoControlado: 1,
+  AprDiscutidaComEquipeAntesDoInicio: 2,
+  InterferenciasExistentesIdentificadas: 3,
+  FontesEnergiaIdentificadasBloqueadasTestadas: 4,
+  MaquinasFerramentasAcessoriosInspecionados: 5,
+  EpcsInstaladosCondicoesUso: 6,
+  EpisDisponiveisAdequadosCaValido: 7,
+  CondicoesAcessoCirculacaoIluminacaoOrganizacao: 8,
+  CondicoesMeteorologicasPermitemExecucaoSegura: 9,
+  RiscoQuedaPessoasObjetosControlado: 10,
+  RiscoIncendioExplosaoControladoExtintorDisponivel: 11,
+  AtmosferaAvaliadaMonitorada: 12,
+  EscavacoesTaludesEscoramentosAcessosInspecionados: 13,
+  PlanoIcamentoAcessoriosMovimentacaoVerificados: 14,
+  VigiaObservadorSinaleiroApoioDefinido: 15,
+} as const;
+
+export const itemVerificacaoPtLabel: Record<number, string> = {
+  1: 'Área isolada, sinalizada e com acesso controlado?',
+  2: 'APR discutida com toda a equipe antes do início?',
+  3: 'Interferências existentes identificadas (redes, tubulações, energia, tráfego etc.)?',
+  4: 'Fontes de energia identificadas, bloqueadas e testadas quando aplicável?',
+  5: 'Máquinas, ferramentas, acessórios e dispositivos inspecionados e adequados?',
+  6: 'EPCs instalados e em condições de uso?',
+  7: 'EPIs definidos na APR disponíveis, adequados, com CA válido quando aplicável?',
+  8: 'Condições de acesso, circulação, iluminação e organização adequadas?',
+  9: 'Condições meteorológicas permitem execução segura da atividade?',
+  10: 'Risco de queda de pessoas/objetos controlado quando aplicável?',
+  11: 'Risco de incêndio/explosão controlado; extintor adequado disponível quando aplicável?',
+  12: 'Atmosfera avaliada/monitorada quando aplicável (O₂, inflamáveis e tóxicos)?',
+  13: 'Escavações/taludes/escoramentos/acessos inspecionados quando aplicável?',
+  14: 'Plano de içamento e acessórios de movimentação verificados quando aplicável?',
+  15: 'Vigia, observador, sinaleiro ou trabalhador de apoio definido quando aplicável?',
+};
+
+export const RespostaVerificacaoPt = {
+  Conforme: 1,
+  NaoConforme: 2,
+  NaoAplicavel: 3,
+} as const;
+
+export const respostaVerificacaoPtLabel: Record<number, string> = {
+  1: 'Conforme',
+  2: 'Não Conforme',
+  3: 'Não Aplicável',
+};
+
+export const ItemEpiPt = {
+  Capacete: 1,
+  Oculos: 2,
+  ProtetorFacial: 3,
+  ProtetorAuditivo: 4,
+  Luvas: 5,
+  Calcado: 6,
+  Respirador: 7,
+  CinturaoTalabarte: 8,
+  VestimentaEspecifica: 9,
+} as const;
+
+export const itemEpiPtLabel: Record<number, string> = {
+  1: 'Capacete',
+  2: 'Óculos',
+  3: 'Protetor facial',
+  4: 'Protetor auditivo',
+  5: 'Luvas',
+  6: 'Calçado',
+  7: 'Respirador',
+  8: 'Cinturão/talabarte',
+  9: 'Vestimenta específica',
+};
+
+export const ItemEpcPt = {
+  IsolamentoBarreira: 1,
+  GuardaCorpo: 2,
+  LinhaDeVida: 3,
+  Extintor: 4,
+  ExaustaoVentilacao: 5,
+  DetectorGases: 6,
+  KitResgate: 7,
+  Iluminacao: 8,
+  Sinalizacao: 9,
+} as const;
+
+export const itemEpcPtLabel: Record<number, string> = {
+  1: 'Isolamento/barreira',
+  2: 'Guarda-corpo',
+  3: 'Linha de vida',
+  4: 'Extintor',
+  5: 'Exaustão/ventilação',
+  6: 'Detector de gases',
+  7: 'Kit de resgate',
+  8: 'Iluminação',
+  9: 'Sinalização',
 };
 
 export interface PermissaoTrabalho {
   id: string;
+  numeroPt?: string | null;
   atividadeId: string;
   atividadeNome: string;
+  obraNome?: string | null;
+  descricaoAtividade: string;
   local: string;
+  empresaExecutante?: string | null;
   equipeId?: string | null;
   equipeNome?: string | null;
   data: string;
   horarioInicio?: string | null;
   horarioFim?: string | null;
   validade?: string | null;
+  responsavelExecucaoUsuarioId?: string | null;
+  responsavelExecucaoUsuarioNome?: string | null;
+  responsavelAreaUsuarioId?: string | null;
+  responsavelAreaUsuarioNome?: string | null;
   status: number;
   autorizadoPorUsuarioId?: string | null;
   autorizadoPorUsuarioNome?: string | null;
   dataAutorizacao?: string | null;
+  dataAssinaturaExecucao?: string | null;
+  responsavelSstUsuarioId?: string | null;
+  responsavelSstUsuarioNome?: string | null;
+  dataAssinaturaSst?: string | null;
+  suspensaPorUsuarioId?: string | null;
+  suspensaPorUsuarioNome?: string | null;
+  dataSuspensao?: string | null;
+  motivoSuspensao?: string | null;
+  revalidadaPorUsuarioId?: string | null;
+  revalidadaPorUsuarioNome?: string | null;
+  dataRevalidacao?: string | null;
   encerradaPorUsuarioId?: string | null;
   encerradaPorUsuarioNome?: string | null;
   dataEncerramento?: string | null;
   observacoesEncerramento?: string | null;
+  outrosEpis?: string | null;
+  outrosEpcs?: string | null;
 }
 
 export interface NovaPermissaoTrabalho {
+  numeroPt?: string | null;
   atividadeId: string;
+  descricaoAtividade: string;
   local: string;
+  empresaExecutante?: string | null;
   equipeId?: string | null;
   data: string;
   horarioInicio?: string | null;
   horarioFim?: string | null;
   validade?: string | null;
-  perigosIds: string[];
+  responsavelExecucaoUsuarioId?: string | null;
+  responsavelAreaUsuarioId?: string | null;
   responsaveisIds: string[];
 }
 
-export interface AtualizarPermissaoTrabalhoPayload {
+export interface AtualizarPermissaoTrabalhoPayload extends NovaPermissaoTrabalho {
   id: string;
-  atividadeId: string;
-  local: string;
-  equipeId?: string | null;
-  data: string;
-  horarioInicio?: string | null;
-  horarioFim?: string | null;
-  validade?: string | null;
-  perigosIds: string[];
-  responsaveisIds: string[];
 }
 
-export interface PermissaoTrabalhoPerigo {
+export interface PermissaoTrabalhoPreRequisito {
   id: string;
   permissaoTrabalhoId: string;
-  perigoId: string;
-  perigoNome: string;
-}
-
-export interface PermissaoTrabalhoControle {
-  id: string;
-  permissaoTrabalhoId: string;
-  descricao: string;
-}
-
-export interface NovaPermissaoTrabalhoControle {
-  permissaoTrabalhoId: string;
-  descricao: string;
-}
-
-export interface PermissaoTrabalhoRequisito {
-  id: string;
-  permissaoTrabalhoId: string;
-  descricao: string;
+  item: number;
   atendido: boolean;
 }
 
-export interface NovaPermissaoTrabalhoRequisito {
+export interface PermissaoTrabalhoTipoTrabalho {
+  id: string;
   permissaoTrabalhoId: string;
-  descricao: string;
+  tipo: number;
+  descricaoOutro?: string | null;
+}
+
+export interface TipoTrabalhoPtInput {
+  tipo: number;
+  descricaoOutro?: string | null;
+}
+
+export interface PermissaoTrabalhoVerificacao {
+  id: string;
+  permissaoTrabalhoId: string;
+  item: number;
+  resposta?: number | null;
+}
+
+export interface PermissaoTrabalhoEpi {
+  id: string;
+  permissaoTrabalhoId: string;
+  item: number;
+  complemento?: string | null;
+}
+
+export interface EpiPtInput {
+  item: number;
+  complemento?: string | null;
+}
+
+export interface PermissaoTrabalhoEpc {
+  id: string;
+  permissaoTrabalhoId: string;
+  item: number;
+}
+
+export interface PermissaoTrabalhoRiscoCritico {
+  id: string;
+  permissaoTrabalhoId: string;
+  riscoCondicao: string;
+  controleComplementar?: string | null;
+  responsavelEvidencia?: string | null;
+}
+
+export interface NovaPermissaoTrabalhoRiscoCritico {
+  permissaoTrabalhoId: string;
+  riscoCondicao: string;
+  controleComplementar?: string | null;
+  responsavelEvidencia?: string | null;
 }
 
 export interface PermissaoTrabalhoResponsavel {
@@ -788,13 +1159,17 @@ export interface PermissaoTrabalhoResponsavel {
   permissaoTrabalhoId: string;
   trabalhadorId: string;
   trabalhadorNome: string;
+  trabalhadorFuncaoNome?: string | null;
 }
 
 export interface PermissaoTrabalhoDetalhe {
   permissaoTrabalho: PermissaoTrabalho;
-  perigos: PermissaoTrabalhoPerigo[];
-  controles: PermissaoTrabalhoControle[];
-  requisitos: PermissaoTrabalhoRequisito[];
+  preRequisitos: PermissaoTrabalhoPreRequisito[];
+  tiposTrabalho: PermissaoTrabalhoTipoTrabalho[];
+  verificacoes: PermissaoTrabalhoVerificacao[];
+  epis: PermissaoTrabalhoEpi[];
+  epcs: PermissaoTrabalhoEpc[];
+  riscosCriticos: PermissaoTrabalhoRiscoCritico[];
   responsaveis: PermissaoTrabalhoResponsavel[];
 }
 
@@ -1055,10 +1430,14 @@ export interface InspecaoItemResposta {
   exigePrazo: boolean;
   statusItem?: number | null;
   observacao?: string | null;
+  local?: string | null;
+  planoDeAcao?: string | null;
   responsavelUsuarioId?: string | null;
   responsavelUsuarioNome?: string | null;
   prazo?: string | null;
   temFoto: boolean;
+  temFotoDepois: boolean;
+  naoConformidadeId?: string | null;
 }
 
 export interface InspecaoDetalhe {
@@ -1076,26 +1455,45 @@ export const statusDdsLabel: Record<number, string> = {
   2: 'Concluído',
 };
 
+// Reformulação 31/08 — DDS passou a ser um registro DIÁRIO dentro de uma DdsSemanal (ver abaixo). O
+// "Tema do DDS" tem 3 origens possíveis (ver OrigemTemaDds), em vez de texto livre digitado na hora.
+export const OrigemTemaDds = {
+  AutomaticoAtividade1: 1,
+  AutomaticoAtividade2: 2,
+  Livre: 3,
+} as const;
+
+export const origemTemaDdsLabel: Record<number, string> = {
+  1: 'Automático — 1ª atividade do dia',
+  2: 'Automático — 2ª atividade do dia',
+  3: 'Livre (catálogo)',
+};
+
 export interface Dds {
   id: string;
   obraId: string;
   obraNome: string;
+  ddsSemanalId?: string | null;
   data: string;
   responsavelUsuarioId: string;
   responsavelUsuarioNome: string;
   topicoPrincipal: string;
+  origemTema: number;
+  catalogoTemaDdsId?: string | null;
   status: number;
   atividadesNomes: string[];
   totalItensChecklist: number;
   itensVerificados: number;
   totalParticipantes: number;
+  totalFotosEvidencia: number;
 }
 
 export interface NovaDds {
-  obraId: string;
+  ddsSemanalId: string;
   atividadesIds: string[];
   data: string;
-  responsavelUsuarioId: string;
+  origemTema: number;
+  catalogoTemaDdsId?: string | null;
 }
 
 export interface DdsItemChecklist {
@@ -1125,10 +1523,16 @@ export interface DdsParticipante {
   telegramConfirmadoEm?: string | null;
 }
 
+export interface DdsFotoEvidencia {
+  id: string;
+  ordem: number;
+}
+
 export interface DdsDetalhe {
   dds: Dds;
   itensChecklist: DdsItemChecklist[];
   participantes: DdsParticipante[];
+  fotosEvidencia: DdsFotoEvidencia[];
 }
 
 export interface EnviarDdsTelegramResultado {
@@ -1137,21 +1541,93 @@ export interface EnviarDdsTelegramResultado {
   semVinculo: number;
 }
 
+// DDS Semanal (31/08) — contêiner que agrupa os 5 registros diários (Seg-Sex) de uma semana, seguindo
+// o modelo em papel "Registro Semanal de DDS - Empregados Próprios/Terceirizados". O DDS de cada dia
+// continua sendo feito e assinado todo dia (ver Dds acima); só é "realmente finalizado" aqui.
+export const TipoDdsSemanal = {
+  Proprios: 1,
+  Terceirizados: 2,
+} as const;
+
+export const tipoDdsSemanalLabel: Record<number, string> = {
+  1: 'Empregados Próprios',
+  2: 'Empregados Terceirizados',
+};
+
+export const StatusDdsSemanal = {
+  EmAndamento: 1,
+  Concluida: 2,
+} as const;
+
+export const statusDdsSemanalLabel: Record<number, string> = {
+  1: 'Em andamento',
+  2: 'Concluída',
+};
+
+export interface DdsSemanal {
+  id: string;
+  obraId: string;
+  obraNome: string;
+  tipo: number;
+  empresaTerceirizada?: string | null;
+  numeroDocumento?: string | null;
+  localFrenteServico?: string | null;
+  responsavelUsuarioId: string;
+  responsavelUsuarioNome: string;
+  dataInicioSemana: string;
+  dataFimSemana: string;
+  status: number;
+  responsavelObraSstNome?: string | null;
+  responsavelEmpresaTerceirizadaNome?: string | null;
+  responsavelEmpresaTerceirizadaFuncao?: string | null;
+  encerradaEm?: string | null;
+  totalDiasRegistrados: number;
+  totalDiasConcluidos: number;
+}
+
+export interface NovaDdsSemanal {
+  obraId: string;
+  tipo: number;
+  empresaTerceirizada?: string | null;
+  numeroDocumento?: string | null;
+  localFrenteServico?: string | null;
+  dataInicioSemana: string;
+}
+
+export interface DdsSemanalDia {
+  diaSemana: number;
+  data: string;
+  ddsId?: string | null;
+  topicoPrincipal?: string | null;
+  status?: number | null;
+  totalFotosEvidencia: number;
+  totalParticipantes: number;
+}
+
+export interface DdsSemanalDetalhe {
+  semanal: DdsSemanal;
+  dias: DdsSemanalDia[];
+}
+
+export interface CatalogoTemaDds {
+  id: string;
+  nome: string;
+  descricao?: string | null;
+}
+
 // Motor de Assinatura Eletrônica (docs/Motor-Assinatura-Eletronica.md §3/§5, etapa 6) — genérico,
 // identificado por EntidadeTipo/EntidadeId (ex.: "Dds" + ddsId). Primeiro consumidor: AssinarDdsPage.
+// PIN/crachá-QR e WebAuthn/FIDO2 foram removidos do sistema em 31/08 (decisão do usuário: único
+// método de assinatura é a digital via leitor Futronic FS80H) — como o sistema ainda está em fase de
+// testes (sem nenhuma assinatura real registrada por esses métodos), os valores 2/3/4 do enum
+// também foram removidos, não só deixados de fora da UI.
 export const MetodoAutenticacaoAssinatura = {
   Biometria: 1,
-  CrachaPin: 2,
-  QrCodePin: 3,
-  WebAuthnCelular: 4,
   SessaoLogada: 5,
 } as const;
 
 export const metodoAutenticacaoAssinaturaLabel: Record<number, string> = {
-  1: 'Biometria',
-  2: 'Crachá + PIN',
-  3: 'QR Code + PIN',
-  4: 'Celular (WebAuthn)',
+  1: 'Digital (Futronic FS80H)',
   5: 'Sessão logada',
 };
 
@@ -1160,18 +1636,6 @@ export const StatusDocumentoAssinatura = {
   Finalizado: 2,
   Cancelado: 3,
 } as const;
-
-// Etapa 13 — leitor biométrico fixo da obra (credencial "discoverable", vários trabalhadores) vs.
-// celular próprio do trabalhador (credencial vinculada a um único TrabalhadorId).
-export const TipoAutenticadorWebAuthn = {
-  LeitorObra: 1,
-  CelularProprio: 2,
-} as const;
-
-export const tipoAutenticadorWebAuthnLabel: Record<number, string> = {
-  1: 'Leitor biométrico da obra',
-  2: 'Celular próprio',
-};
 
 export const statusDocumentoAssinaturaLabel: Record<number, string> = {
   1: 'Em andamento',
@@ -1281,16 +1745,22 @@ export const origemNaoConformidadeLabel: Record<number, string> = {
 
 export const StatusNaoConformidade = {
   Aberta: 1,
-  EmTratamento: 2,
+  EmAndamento: 2,
   AguardandoValidacao: 3,
   Encerrada: 4,
+  Enviada: 5,
+  EmAnalise: 6,
+  Devolvida: 7,
 } as const;
 
 export const statusNaoConformidadeLabel: Record<number, string> = {
   1: 'Aberta',
-  2: 'Em tratamento',
+  2: 'Em andamento',
   3: 'Aguardando validação',
   4: 'Encerrada',
+  5: 'Enviada',
+  6: 'Em análise',
+  7: 'Devolvida',
 };
 
 export const PrioridadeAcao = {
@@ -1350,6 +1820,8 @@ export interface NaoConformidade {
   status: number;
   dataConclusao?: string | null;
   observacoesEncerramento?: string | null;
+  motivoDevolucao?: string | null;
+  inspecaoItemRespostaId?: string | null;
 }
 
 export interface NovaNaoConformidade {
@@ -1546,6 +2018,77 @@ export type NovoRegistroHhtMensal = Omit<RegistroHhtMensal, 'id' | 'obraNome'>;
 
 export type AtualizarRegistroHhtMensalPayload = NovoRegistroHhtMensal;
 
+// PR-SST-003 — PCMSO reaproveitava DocumentoGestao (Tipo="PCMSO") como documento controlado +
+// PcmsoDetalhe com os campos clínicos específicos. Id abaixo é o Id do próprio PcmsoDetalhe;
+// documentoGestaoId aponta para o DocumentoGestao vinculado (edição/exclusão usam este último).
+export interface Pcmso {
+  id: string;
+  documentoGestaoId: string;
+  nome: string;
+  versao?: string | null;
+  validade?: string | null;
+  dataEmissao: string;
+  responsavelUsuarioId?: string | null;
+  responsavelUsuarioNome?: string | null;
+  obraId?: string | null;
+  setorId?: string | null;
+  arquivo?: string | null;
+  status: number;
+  medicoResponsavelNome?: string | null;
+  medicoResponsavelCrm?: string | null;
+  funcoesContempladas?: string | null;
+  riscosConsiderados?: string | null;
+  examesPrevistos?: string | null;
+  periodicidades?: string | null;
+  unidadesObrasAbrangidas?: string | null;
+}
+
+export interface NovoPcmso {
+  nome: string;
+  versao?: string | null;
+  validade?: string | null;
+  dataEmissao: string;
+  responsavelUsuarioId?: string | null;
+  obraId?: string | null;
+  setorId?: string | null;
+  arquivo?: string | null;
+  medicoResponsavelNome?: string | null;
+  medicoResponsavelCrm?: string | null;
+  funcoesContempladas?: string | null;
+  riscosConsiderados?: string | null;
+  examesPrevistos?: string | null;
+  periodicidades?: string | null;
+  unidadesObrasAbrangidas?: string | null;
+}
+
+export type AtualizarPcmsoPayload = NovoPcmso;
+
+// Vocabulário de status que este PCMSO (PR-SST-003, reaproveitando DocumentoGestao) usava emprestado
+// de StatusDocumentoGestao (removido junto com Gestão Documental/Conformidade em 2026-08-28) —
+// mantido aqui, escopado só a este PCMSO, para as telas não perderem o rótulo/cor de status enquanto
+// o backend não é reformulado (ver PENDENTE acima e em Pcmsos/* no backend). Nome diferente de
+// StatusPcmso (acima) de propósito: aquele é do PCMSO v1 antigo, vocabulário numérico incompatível.
+export const StatusPcmsoDocumento = {
+  Rascunho: 1,
+  EmAprovacao: 2,
+  Vigente: 3,
+  Obsoleto: 4,
+  Cancelado: 5,
+} as const;
+
+export const statusPcmsoDocumentoLabel: Record<number, string> = {
+  1: 'Rascunho',
+  2: 'Em aprovação',
+  3: 'Vigente',
+  4: 'Obsoleto',
+  5: 'Cancelado',
+};
+
+// PENDENTE: DocumentoGestao (e o backend de src/AAHBRANT.SST.Application/Pcmsos) foi removido
+// junto com o módulo de Conformidade (Matriz Legal + Gestão Documental) em 2026-08-28. O PCMSO
+// fica sem armazenamento de documento até ser reformulado para não depender mais dele — ver
+// AAHBRANT.SST.Application/Pcmsos/* e DocumentoAlertaProvider.cs no backend.
+
 export const TipoAlerta = {
   AsoVencendo: 1,
   AsoVencido: 2,
@@ -1630,6 +2173,8 @@ export const categoriaAlertaLabel: Record<string, string> = {
   Treinamento: 'Treinamentos',
   ItemHigienizacao: 'Higienização',
   AtivoSst: 'Ativos (Extintores/Equipamentos)',
+  NaoConformidade: 'Ocorrências de inspeção',
+  AcaoPlano: 'Ações do plano',
 };
 
 export function categoriaAlertaRotulo(entidadeOrigemTipo: string): string {
@@ -1680,6 +2225,42 @@ export interface AtualizarAlertaPayload {
   obraId?: string | null;
   destinatarioUsuarioId?: string | null;
   dataLimiteTratamento?: string | null;
+}
+
+// "Quero o calendário dentro do aplicativo, tem que ser o Teams" (requisito do usuário,
+// 2026-08-29) — combina os eventos reais do Outlook/Teams do usuário logado (lidos via Microsoft
+// Graph) com os vencimentos que o Motor de Alertas já gera para ele. Só a própria agenda do
+// usuário logado (endpoint não recebe usuarioId — ver CalendarioController).
+export interface EventoGraphCalendario {
+  graphEventId: string;
+  assunto: string;
+  inicio: string;
+  fim: string;
+  diaInteiro: boolean;
+  local?: string | null;
+  organizadorNome?: string | null;
+  reuniaoOnline: boolean;
+  linkReuniaoOnline?: string | null;
+}
+
+export interface EventoSstCalendario {
+  alertaId: string;
+  titulo: string;
+  descricao?: string | null;
+  data: string;
+  tipo: number;
+  severidade: number;
+  status: number;
+  entidadeOrigemTipo: string;
+  entidadeOrigemId: string;
+}
+
+export interface Calendario {
+  usuarioIdentificado: boolean;
+  graphDisponivel: boolean;
+  mensagemErroGraph?: string | null;
+  eventosGraph: EventoGraphCalendario[];
+  eventosSst: EventoSstCalendario[];
 }
 
 // Motor Central de Alertas (requisito do usuário, 2026-08-25): tela de administração que permite
@@ -1788,6 +2369,7 @@ export interface PerfilCompletoTrabalhador {
   vinculo: number;
   dataAdmissao: string;
   temFoto: boolean;
+  temBiometria: boolean;
   statusAptidao: string;
   asos: Aso[];
   episAtivos: EntregaEpi[];
@@ -1799,8 +2381,27 @@ export interface PerfilCompletoTrabalhador {
   assinaturas: AssinaturaPerfil[];
 }
 
+// Módulos com suporte a uso offline (piloto acordado com o usuário em 24/08: módulos de campo,
+// onde falta de sinal é mais comum — obra/canteiro). Os demais ~25 módulos seguem com fetch
+// direto, sem fila local nem cache — extensão do piloto é trabalho futuro, módulo a módulo.
+const PREFIXOS_OFFLINE = ['/api/dds', '/api/inspecoes', '/api/checklistmodelos', '/api/aprs', '/api/aprEtapas', '/api/aprAssinaturas'];
+
+function ehRotaOffline(path: string): boolean {
+  return PREFIXOS_OFFLINE.some((prefixo) => path.startsWith(prefixo));
+}
+
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
   const authHeaders = await montarHeadersAuth();
+  const metodo = (init?.method ?? 'GET').toUpperCase();
+
+  if (ehRotaOffline(path)) {
+    if (metodo === 'GET') {
+      return syncFetchJson<T>(path, init, authHeaders);
+    }
+    const corpo = init?.body ? JSON.parse(init.body as string) : undefined;
+    return syncMutateJson<T>(path, metodo as 'POST' | 'PUT' | 'DELETE', corpo, authHeaders);
+  }
+
   const response = await fetch(`${API_BASE_URL}${path}`, {
     ...init,
     headers: {
@@ -1825,7 +2426,33 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
 export const api = {
   obras: {
     listar: () => request<Obra[]>('/api/obras'),
-    criar: (obra: NovaObra) => request<{ id: string }>('/api/obras', { method: 'POST', body: JSON.stringify(obra) }),
+    // Logomarca obrigatória no cadastro (decisão do usuário, 31/08) — a criação passa a ser
+    // multipart/form-data (como o anexarLogo abaixo) em vez de JSON, para enviar obra + logo numa
+    // única chamada, já que o backend agora exige o arquivo para finalizar o cadastro da obra.
+    criar: async (obra: NovaObra, logo: File) => {
+      const formData = new FormData();
+      formData.append('Codigo', obra.codigo);
+      formData.append('Nome', obra.nome);
+      if (obra.cliente) formData.append('Cliente', obra.cliente);
+      formData.append('Status', String(obra.status));
+      if (obra.dataInicio) formData.append('DataInicio', obra.dataInicio);
+      if (obra.dataPrevisaoTermino) formData.append('DataPrevisaoTermino', obra.dataPrevisaoTermino);
+      if (obra.endereco) formData.append('Endereco', obra.endereco);
+      if (obra.cidade) formData.append('Cidade', obra.cidade);
+      if (obra.uf) formData.append('Uf', obra.uf);
+      if (obra.cnpj) formData.append('Cnpj', obra.cnpj);
+      formData.append('Logo', logo);
+      const response = await fetch(`${API_BASE_URL}/api/obras`, {
+        method: 'POST',
+        headers: await montarHeadersAuth(),
+        body: formData,
+      });
+      if (!response.ok) {
+        const corpo = await response.text().catch(() => '');
+        throw new Error(`${response.status} ${response.statusText}: ${corpo}`);
+      }
+      return response.json() as Promise<{ id: string }>;
+    },
     excluir: (id: string) => request<void>(`/api/obras/${id}`, { method: 'DELETE' }),
     anexarLogo: async (id: string, arquivo: File) => {
       const formData = new FormData();
@@ -1869,7 +2496,9 @@ export const api = {
       }
     },
     baixarFoto: async (id: string) => {
-      const response = await fetch(`${API_BASE_URL}/api/trabalhadores/${id}/foto`, { headers: await montarHeadersAuth() });
+      const response = await fetch(`${API_BASE_URL}/api/trabalhadores/${id}/foto`, {
+        headers: await montarHeadersAuth(),
+      });
       if (!response.ok) {
         const corpo = await response.text().catch(() => '');
         throw new Error(`${response.status} ${response.statusText}: ${corpo}`);
@@ -1878,22 +2507,10 @@ export const api = {
     },
     gerarVinculoTelegram: (id: string) =>
       request<GerarVinculoTelegramResultado>(`/api/trabalhadores/${id}/telegram/vinculo`, { method: 'POST' }),
-    definirPinAssinatura: (id: string, pin: string, confirmarPin: string) =>
-      request<void>(`/api/trabalhadores/${id}/assinatura/pin`, {
-        method: 'POST',
-        body: JSON.stringify({ trabalhadorId: id, pin, confirmarPin }),
-      }),
-    // Cadastro de credencial WebAuthn/FIDO2 (etapa 13) — cerimônia em duas chamadas; a conversão
-    // JSON<->ArrayBuffer com o navegador fica em lib/webauthn.ts (criarCredencialWebAuthn).
-    iniciarCadastroWebAuthn: (id: string, tipo: number) =>
-      request<string>(`/api/trabalhadores/${id}/assinatura/webauthn/cadastro/iniciar?tipo=${tipo}`, {
-        method: 'POST',
-      }),
-    confirmarCadastroWebAuthn: (id: string, tipo: number, opcoesJson: string, respostaJson: string) =>
-      request<void>(`/api/trabalhadores/${id}/assinatura/webauthn/cadastro/confirmar`, {
-        method: 'POST',
-        body: JSON.stringify({ tipo, opcoesJson, respostaJson }),
-      }),
+    registrarTermoAceiteAssinatura: (id: string) =>
+      request<void>(`/api/trabalhadores/${id}/assinatura/termo-aceite`, { method: 'POST' }),
+    registrarConsentimentoBiometria: (id: string) =>
+      request<void>(`/api/trabalhadores/${id}/assinatura/consentimento-biometria`, { method: 'POST' }),
     obterPerfilCompleto: (id: string) =>
       request<PerfilCompletoTrabalhador>(`/api/trabalhadores/${id}/perfil-completo`),
     baixarRelatorioFiscalizacao: async (id: string) => {
@@ -1923,6 +2540,13 @@ export const api = {
         method: 'PUT',
         body: JSON.stringify({ catalogoEpiIds }),
       }),
+    listarTreinamentosObrigatorios: (funcaoId: string) =>
+      request<CursoTreinamento[]>(`/api/funcoes/${funcaoId}/treinamentos-obrigatorios`),
+    definirTreinamentosObrigatorios: (funcaoId: string, cursoTreinamentoIds: string[]) =>
+      request<void>(`/api/funcoes/${funcaoId}/treinamentos-obrigatorios`, {
+        method: 'PUT',
+        body: JSON.stringify({ cursoTreinamentoIds }),
+      }),
   },
   setores: {
     listar: (obraId?: string) => request<Setor[]>(`/api/setores${obraId ? `?obraId=${obraId}` : ''}`),
@@ -1945,8 +2569,41 @@ export const api = {
   asos: {
     listar: (trabalhadorId?: string) =>
       request<Aso[]>(`/api/asos${trabalhadorId ? `?trabalhadorId=${trabalhadorId}` : ''}`),
+    obterPorId: (id: string) => request<Aso>(`/api/asos/${id}`),
     criar: (aso: NovoAso) => request<{ id: string }>('/api/asos', { method: 'POST', body: JSON.stringify(aso) }),
+    atualizar: (aso: Aso) => request<void>(`/api/asos/${aso.id}`, { method: 'PUT', body: JSON.stringify(aso) }),
     excluir: (id: string) => request<void>(`/api/asos/${id}`, { method: 'DELETE' }),
+  },
+  examesComplementares: {
+    listar: (trabalhadorId?: string) =>
+      request<ExameComplementar[]>(`/api/examescomplementares${trabalhadorId ? `?trabalhadorId=${trabalhadorId}` : ''}`),
+    obterPorId: (id: string) => request<ExameComplementar>(`/api/examescomplementares/${id}`),
+    criar: (exame: NovoExameComplementar) =>
+      request<{ id: string }>('/api/examescomplementares', { method: 'POST', body: JSON.stringify(exame) }),
+    atualizar: (exame: AtualizarExameComplementarPayload) =>
+      request<void>(`/api/examescomplementares/${exame.id}`, { method: 'PUT', body: JSON.stringify(exame) }),
+    excluir: (id: string) => request<void>(`/api/examescomplementares/${id}`, { method: 'DELETE' }),
+  },
+  aptidoes: {
+    listar: (trabalhadorId?: string) =>
+      request<Aptidao[]>(`/api/aptidoes${trabalhadorId ? `?trabalhadorId=${trabalhadorId}` : ''}`),
+    obterPorId: (id: string) => request<Aptidao>(`/api/aptidoes/${id}`),
+    criar: (aptidao: NovaAptidao) =>
+      request<{ id: string }>('/api/aptidoes', { method: 'POST', body: JSON.stringify(aptidao) }),
+    atualizar: (aptidao: AtualizarAptidaoPayload) =>
+      request<void>(`/api/aptidoes/${aptidao.id}`, { method: 'PUT', body: JSON.stringify(aptidao) }),
+    excluir: (id: string) => request<void>(`/api/aptidoes/${id}`, { method: 'DELETE' }),
+  },
+  pcmsos: {
+    listar: (obraId?: string) => request<Pcmso[]>(`/api/pcmsos${obraId ? `?obraId=${obraId}` : ''}`),
+    obterPorId: (id: string) => request<Pcmso>(`/api/pcmsos/${id}`),
+    criar: (pcmso: NovoPcmso) => request<{ id: string }>('/api/pcmsos', { method: 'POST', body: JSON.stringify(pcmso) }),
+    atualizar: (id: string, pcmso: AtualizarPcmsoPayload) =>
+      // ...pcmso primeiro: pcmso é o Pcmso DTO (que tem seu próprio "id" = PcmsoDetalhe.Id) espalhado
+      // em cima do NovoPcmso; "id" precisa vir por último para sempre prevalecer como o
+      // documentoGestaoId esperado pela rota (PcmsoDetalhePage navega/edita por documentoGestaoId).
+      request<void>(`/api/pcmsos/${id}`, { method: 'PUT', body: JSON.stringify({ ...pcmso, id }) }),
+    excluir: (id: string) => request<void>(`/api/pcmsos/${id}`, { method: 'DELETE' }),
   },
   cursosTreinamento: {
     listar: () => request<CursoTreinamento[]>('/api/cursostreinamento'),
@@ -1960,6 +2617,44 @@ export const api = {
     criar: (treinamento: NovoTreinamento) =>
       request<{ id: string }>('/api/treinamentos', { method: 'POST', body: JSON.stringify(treinamento) }),
     excluir: (id: string) => request<void>(`/api/treinamentos/${id}`, { method: 'DELETE' }),
+  },
+  requisitosLegais: {
+    listar: (categoria?: number, status?: number) => {
+      const params = new URLSearchParams();
+      if (categoria) params.set('categoria', String(categoria));
+      if (status) params.set('status', String(status));
+      const qs = params.toString();
+      return request<RequisitoLegal[]>(`/api/requisitoslegais${qs ? `?${qs}` : ''}`);
+    },
+    obterDetalhe: (id: string) => request<RequisitoLegalDetalhe>(`/api/requisitoslegais/${id}`),
+    criar: (requisito: NovoRequisitoLegal) =>
+      request<{ id: string }>('/api/requisitoslegais', { method: 'POST', body: JSON.stringify(requisito) }),
+    atualizar: (id: string, requisito: AtualizarRequisitoLegalPayload) =>
+      request<void>(`/api/requisitoslegais/${id}`, { method: 'PUT', body: JSON.stringify({ ...requisito, id }) }),
+    excluir: (id: string) => request<void>(`/api/requisitoslegais/${id}`, { method: 'DELETE' }),
+    definirCriterios: (id: string, criterios: CriterioAplicabilidadeInput[]) =>
+      request<void>(`/api/requisitoslegais/${id}/criterios`, { method: 'PUT', body: JSON.stringify({ criterios }) }),
+  },
+  questionarioAplicabilidade: {
+    listarItens: () => request<ItemQuestionarioAplicabilidade[]>('/api/questionario-aplicabilidade/itens'),
+    criarItem: (pergunta: string, textoApoio?: string | null) =>
+      request<{ id: string }>('/api/questionario-aplicabilidade/itens', {
+        method: 'POST',
+        body: JSON.stringify({ pergunta, textoApoio }),
+      }),
+    atualizarItem: (id: string, pergunta: string, textoApoio?: string | null) =>
+      request<void>(`/api/questionario-aplicabilidade/itens/${id}`, {
+        method: 'PUT',
+        body: JSON.stringify({ pergunta, textoApoio }),
+      }),
+    excluirItem: (id: string) => request<void>(`/api/questionario-aplicabilidade/itens/${id}`, { method: 'DELETE' }),
+    obterQuestionarioObra: (obraId: string) =>
+      request<RespostaQuestionarioObra[]>(`/api/questionario-aplicabilidade/obras/${obraId}`),
+    responder: (obraId: string, itemId: string, resposta: boolean, observacao?: string | null) =>
+      request<void>(`/api/questionario-aplicabilidade/obras/${obraId}/itens/${itemId}`, {
+        method: 'PUT',
+        body: JSON.stringify({ resposta, observacao }),
+      }),
   },
   catalogosEpi: {
     listar: () => request<CatalogoEpi[]>('/api/catalogosepi'),
@@ -2092,17 +2787,38 @@ export const api = {
       request<void>(`/api/aprs/${id}/aprovar`, { method: 'POST', body: JSON.stringify({ aprovadoPorUsuarioId }) }),
     reprovar: (id: string, motivo: string) =>
       request<void>(`/api/aprs/${id}/reprovar`, { method: 'POST', body: JSON.stringify({ motivo }) }),
+    exportarPdf: async (id: string) => {
+      const response = await fetch(`${API_BASE_URL}/api/aprs/${id}/pdf`, {
+        headers: await montarHeadersAuth(),
+      });
+      if (!response.ok) {
+        const corpo = await response.text().catch(() => '');
+        throw new Error(`${response.status} ${response.statusText}: ${corpo}`);
+      }
+      return response.blob();
+    },
   },
   aprEtapas: {
     listar: (aprId: string) => request<AprEtapa[]>(`/api/aprEtapas?aprId=${aprId}`),
     criar: (etapa: NovaAprEtapa) =>
       request<{ id: string }>('/api/aprEtapas', { method: 'POST', body: JSON.stringify(etapa) }),
     excluir: (id: string) => request<void>(`/api/aprEtapas/${id}`, { method: 'DELETE' }),
+    criarRisco: (risco: NovoAprEtapaRisco) =>
+      request<{ id: string }>('/api/aprEtapas/riscos', { method: 'POST', body: JSON.stringify(risco) }),
+    atualizarRisco: (id: string, risco: Omit<NovoAprEtapaRisco, 'aprEtapaId'>) =>
+      request<void>(`/api/aprEtapas/riscos/${id}`, { method: 'PUT', body: JSON.stringify(risco) }),
+    excluirRisco: (id: string) => request<void>(`/api/aprEtapas/riscos/${id}`, { method: 'DELETE' }),
   },
   aprAssinaturas: {
     listar: (aprId: string) => request<AprAssinatura[]>(`/api/aprAssinaturas?aprId=${aprId}`),
     criar: (assinatura: NovaAprAssinatura) =>
       request<{ id: string }>('/api/aprAssinaturas', { method: 'POST', body: JSON.stringify(assinatura) }),
+  },
+  calendario: {
+    obter: (inicio: Date, fim: Date) =>
+      request<Calendario>(
+        `/api/calendario?inicio=${encodeURIComponent(inicio.toISOString())}&fim=${encodeURIComponent(fim.toISOString())}`,
+      ),
   },
   permissoesTrabalho: {
     listar: (atividadeId?: string) =>
@@ -2113,37 +2829,76 @@ export const api = {
     atualizar: (id: string, pt: AtualizarPermissaoTrabalhoPayload) =>
       request<void>(`/api/permissoesTrabalho/${id}`, { method: 'PUT', body: JSON.stringify(pt) }),
     excluir: (id: string) => request<void>(`/api/permissoesTrabalho/${id}`, { method: 'DELETE' }),
-    autorizar: (id: string, autorizadoPorUsuarioId: string) =>
+    autorizar: (id: string, autorizadoPorUsuarioId: string, responsavelSstUsuarioId?: string | null) =>
       request<void>(`/api/permissoesTrabalho/${id}/autorizar`, {
         method: 'POST',
-        body: JSON.stringify({ autorizadoPorUsuarioId }),
+        body: JSON.stringify({ autorizadoPorUsuarioId, responsavelSstUsuarioId: responsavelSstUsuarioId || null }),
+      }),
+    suspender: (id: string, motivo: string, suspensaPorUsuarioId: string) =>
+      request<void>(`/api/permissoesTrabalho/${id}/suspender`, {
+        method: 'POST',
+        body: JSON.stringify({ motivo, suspensaPorUsuarioId }),
+      }),
+    revalidar: (id: string, novaValidade: string, novoHorarioFim: string | null, revalidadaPorUsuarioId: string) =>
+      request<void>(`/api/permissoesTrabalho/${id}/revalidar`, {
+        method: 'POST',
+        body: JSON.stringify({ novaValidade, novoHorarioFim, revalidadaPorUsuarioId }),
       }),
     encerrar: (id: string, encerradaPorUsuarioId: string, observacoes?: string | null) =>
       request<void>(`/api/permissoesTrabalho/${id}/encerrar`, {
         method: 'POST',
         body: JSON.stringify({ encerradaPorUsuarioId, observacoes }),
       }),
-  },
-  permissaoTrabalhoControles: {
-    listar: (permissaoTrabalhoId: string) =>
-      request<PermissaoTrabalhoControle[]>(`/api/permissaoTrabalhoControles?permissaoTrabalhoId=${permissaoTrabalhoId}`),
-    criar: (controle: NovaPermissaoTrabalhoControle) =>
-      request<{ id: string }>('/api/permissaoTrabalhoControles', { method: 'POST', body: JSON.stringify(controle) }),
-    excluir: (id: string) => request<void>(`/api/permissaoTrabalhoControles/${id}`, { method: 'DELETE' }),
-  },
-  permissaoTrabalhoRequisitos: {
-    listar: (permissaoTrabalhoId: string) =>
-      request<PermissaoTrabalhoRequisito[]>(
-        `/api/permissaoTrabalhoRequisitos?permissaoTrabalhoId=${permissaoTrabalhoId}`,
-      ),
-    criar: (requisito: NovaPermissaoTrabalhoRequisito) =>
-      request<{ id: string }>('/api/permissaoTrabalhoRequisitos', { method: 'POST', body: JSON.stringify(requisito) }),
-    marcar: (id: string, atendido: boolean) =>
-      request<void>(`/api/permissaoTrabalhoRequisitos/${id}/marcar`, {
+    marcarPreRequisito: (id: string, itemId: string, atendido: boolean) =>
+      request<void>(`/api/permissoesTrabalho/${id}/pre-requisitos/${itemId}/marcar`, {
         method: 'POST',
         body: JSON.stringify({ atendido }),
       }),
-    excluir: (id: string) => request<void>(`/api/permissaoTrabalhoRequisitos/${id}`, { method: 'DELETE' }),
+    responderVerificacao: (id: string, itemId: string, resposta: number) =>
+      request<void>(`/api/permissoesTrabalho/${id}/verificacoes/${itemId}/responder`, {
+        method: 'POST',
+        body: JSON.stringify({ resposta }),
+      }),
+    definirTiposTrabalho: (id: string, tipos: TipoTrabalhoPtInput[]) =>
+      request<void>(`/api/permissoesTrabalho/${id}/tipos-trabalho`, {
+        method: 'PUT',
+        body: JSON.stringify({ tipos }),
+      }),
+    definirEpis: (id: string, itens: EpiPtInput[], outrosEpis?: string | null) =>
+      request<void>(`/api/permissoesTrabalho/${id}/epis`, {
+        method: 'PUT',
+        body: JSON.stringify({ itens, outrosEpis }),
+      }),
+    definirEpcs: (id: string, itens: number[], outrosEpcs?: string | null) =>
+      request<void>(`/api/permissoesTrabalho/${id}/epcs`, {
+        method: 'PUT',
+        body: JSON.stringify({ itens, outrosEpcs }),
+      }),
+    criarRiscoCritico: (risco: NovaPermissaoTrabalhoRiscoCritico) =>
+      request<{ id: string }>('/api/permissoesTrabalho/riscos-criticos', {
+        method: 'POST',
+        body: JSON.stringify(risco),
+      }),
+    atualizarRiscoCritico: (
+      riscoId: string,
+      payload: { riscoCondicao: string; controleComplementar?: string | null; responsavelEvidencia?: string | null },
+    ) =>
+      request<void>(`/api/permissoesTrabalho/riscos-criticos/${riscoId}`, {
+        method: 'PUT',
+        body: JSON.stringify(payload),
+      }),
+    excluirRiscoCritico: (riscoId: string) =>
+      request<void>(`/api/permissoesTrabalho/riscos-criticos/${riscoId}`, { method: 'DELETE' }),
+    exportarPdf: async (id: string) => {
+      const response = await fetch(`${API_BASE_URL}/api/permissoesTrabalho/${id}/pdf`, {
+        headers: await montarHeadersAuth(),
+      });
+      if (!response.ok) {
+        const corpo = await response.text().catch(() => '');
+        throw new Error(`${response.status} ${response.statusText}: ${corpo}`);
+      }
+      return response.blob();
+    },
   },
   usuarios: {
     listar: (status?: number) => request<Usuario[]>(`/api/usuarios${status ? `?status=${status}` : ''}`),
@@ -2201,10 +2956,21 @@ export const api = {
       observacao?: string | null,
       responsavelUsuarioId?: string | null,
       prazo?: string | null,
+      descricaoPersonalizada?: string | null,
+      local?: string | null,
+      planoDeAcao?: string | null,
     ) =>
       request<void>(`/api/inspecoes/respostas/${respostaId}`, {
         method: 'POST',
-        body: JSON.stringify({ statusItem, observacao, responsavelUsuarioId, prazo }),
+        body: JSON.stringify({
+          statusItem,
+          observacao,
+          responsavelUsuarioId,
+          prazo,
+          descricaoPersonalizada,
+          local,
+          planoDeAcao,
+        }),
       }),
     anexarFoto: async (respostaId: string, foto: File) => {
       const formData = new FormData();
@@ -2229,7 +2995,51 @@ export const api = {
       }
       return response.blob();
     },
+    // Evidência posterior (depois de resolvido o achado) — par dos dois métodos acima, pedido
+    // "Patrulha de Segurança do Trabalho" (planilha do usuário, 31/08).
+    anexarFotoDepois: async (respostaId: string, foto: File) => {
+      const formData = new FormData();
+      formData.append('foto', foto);
+      const response = await fetch(`${API_BASE_URL}/api/inspecoes/respostas/${respostaId}/foto-depois`, {
+        method: 'POST',
+        headers: await montarHeadersAuth(),
+        body: formData,
+      });
+      if (!response.ok) {
+        const corpo = await response.text().catch(() => '');
+        throw new Error(`${response.status} ${response.statusText}: ${corpo}`);
+      }
+    },
+    baixarFotoDepois: async (respostaId: string) => {
+      const response = await fetch(`${API_BASE_URL}/api/inspecoes/respostas/${respostaId}/foto-depois`, {
+        headers: await montarHeadersAuth(),
+      });
+      if (!response.ok) {
+        const corpo = await response.text().catch(() => '');
+        throw new Error(`${response.status} ${response.statusText}: ${corpo}`);
+      }
+      return response.blob();
+    },
     encerrar: (id: string) => request<void>(`/api/inspecoes/${id}/encerrar`, { method: 'POST' }),
+    baixarPdf: async (id: string) => {
+      const response = await fetch(`${API_BASE_URL}/api/inspecoes/${id}/pdf`, { headers: await montarHeadersAuth() });
+      if (!response.ok) {
+        const corpo = await response.text().catch(() => '');
+        throw new Error(`${response.status} ${response.statusText}: ${corpo}`);
+      }
+      return response.blob();
+    },
+    gerarOcorrencia: (respostaId: string, body: {
+      requisitoRelacionado?: string | null;
+      local?: string | null;
+      riscoId?: string | null;
+      responsavelUsuarioId?: string | null;
+      prazo?: string | null;
+    }) =>
+      request<{ id: string }>(`/api/inspecoes/respostas/${respostaId}/gerar-ocorrencia`, {
+        method: 'POST',
+        body: JSON.stringify(body),
+      }),
   },
   dds: {
     listar: (obraId?: string) => request<Dds[]>(`/api/dds${obraId ? `?obraId=${obraId}` : ''}`),
@@ -2242,18 +3052,12 @@ export const api = {
       formData.append('trabalhadorId', trabalhadorId);
       formData.append('fotoTipo', String(fotoTipo));
       formData.append('foto', foto);
-      const response = await fetch(`${API_BASE_URL}/api/dds/${ddsId}/participantes`, {
-        method: 'POST',
-        headers: await montarHeadersAuth(),
-        body: formData,
-      });
-      if (!response.ok) {
-        const corpo = await response.text().catch(() => '');
-        throw new Error(`${response.status} ${response.statusText}: ${corpo}`);
-      }
-      return (await response.json()) as { id: string };
+      const authHeaders = await montarHeadersAuth();
+      return syncMutateMultipart<{ id: string }>(`/api/dds/${ddsId}/participantes`, formData, authHeaders);
     },
     encerrar: (id: string) => request<void>(`/api/dds/${id}/encerrar`, { method: 'POST' }),
+    // PDF gerado sob demanda no servidor a partir do estado atual — não faz sentido cachear para
+    // uso offline (ficaria sempre desatualizado assim que o DDS mudasse). Segue fetch direto.
     baixarPdf: async (id: string) => {
       const response = await fetch(`${API_BASE_URL}/api/dds/${id}/pdf`, { headers: await montarHeadersAuth() });
       if (!response.ok) {
@@ -2263,17 +3067,44 @@ export const api = {
       return response.blob();
     },
     baixarFotoParticipante: async (participanteId: string) => {
-      const response = await fetch(`${API_BASE_URL}/api/dds/participantes/${participanteId}/foto`, {
-        headers: await montarHeadersAuth(),
-      });
+      const authHeaders = await montarHeadersAuth();
+      return syncFetchBlob(`/api/dds/participantes/${participanteId}/foto`, authHeaders);
+    },
+    enviarTelegram: (id: string) =>
+      request<EnviarDdsTelegramResultado>(`/api/dds/${id}/telegram/enviar`, { method: 'POST' }),
+    // Evidências fotográficas do registro diário (3 obrigatórias para encerrar, ver EncerrarDdsCommand).
+    anexarFotoEvidencia: async (ddsId: string, foto: File) => {
+      const formData = new FormData();
+      formData.append('foto', foto);
+      const authHeaders = await montarHeadersAuth();
+      return syncMutateMultipart<{ id: string }>(`/api/dds/${ddsId}/fotos-evidencia`, formData, authHeaders);
+    },
+    baixarFotoEvidencia: async (fotoId: string) => {
+      const authHeaders = await montarHeadersAuth();
+      return syncFetchBlob(`/api/dds/fotos-evidencia/${fotoId}`, authHeaders);
+    },
+  },
+  ddsSemanal: {
+    listar: (obraId?: string) => request<DdsSemanal[]>(`/api/ddssemanal${obraId ? `?obraId=${obraId}` : ''}`),
+    obterDetalhe: (id: string) => request<DdsSemanalDetalhe>(`/api/ddssemanal/${id}`),
+    criar: (semanal: NovaDdsSemanal) =>
+      request<{ id: string }>('/api/ddssemanal', { method: 'POST', body: JSON.stringify(semanal) }),
+    encerrar: (id: string, body?: { responsavelEmpresaTerceirizadaNome?: string | null; responsavelEmpresaTerceirizadaFuncao?: string | null }) =>
+      request<void>(`/api/ddssemanal/${id}/encerrar`, { method: 'POST', body: JSON.stringify(body ?? {}) }),
+    baixarPdf: async (id: string) => {
+      const response = await fetch(`${API_BASE_URL}/api/ddssemanal/${id}/pdf`, { headers: await montarHeadersAuth() });
       if (!response.ok) {
         const corpo = await response.text().catch(() => '');
         throw new Error(`${response.status} ${response.statusText}: ${corpo}`);
       }
       return response.blob();
     },
-    enviarTelegram: (id: string) =>
-      request<EnviarDdsTelegramResultado>(`/api/dds/${id}/telegram/enviar`, { method: 'POST' }),
+  },
+  catalogoTemasDds: {
+    listar: () => request<CatalogoTemaDds[]>('/api/catalogotemasdds'),
+    criar: (nome: string, descricao?: string | null) =>
+      request<{ id: string }>('/api/catalogotemasdds', { method: 'POST', body: JSON.stringify({ nome, descricao }) }),
+    excluir: (id: string) => request<void>(`/api/catalogotemasdds/${id}`, { method: 'DELETE' }),
   },
   assinatura: {
     obter: async (entidadeTipo: string, entidadeId: string) => {
@@ -2293,26 +3124,10 @@ export const api = {
         method: 'POST',
         body: JSON.stringify({ entidadeTipo, entidadeId }),
       }),
-    assinar: (documentoId: string, uid: string, pin: string) =>
-      request<DocumentoSignatario>(`/api/documentos/${documentoId}/assinar`, {
-        method: 'POST',
-        body: JSON.stringify({ uid, pin }),
-      }),
     // Assinatura em um clique do usuário logado (entregador) — sem uid/pin, o backend resolve o
     // trabalhador a partir da sessão autenticada (claim "oid" do Entra ID).
     assinarComSessao: (documentoId: string) =>
       request<DocumentoSignatario>(`/api/documentos/${documentoId}/assinar/sessao`, { method: 'POST' }),
-    // Assinatura biométrica WebAuthn/FIDO2 (etapa 13) — cerimônia em duas chamadas; ver
-    // lib/webauthn.ts (obterAssercaoWebAuthn) para a conversão JSON<->ArrayBuffer com o navegador.
-    iniciarAssinaturaWebAuthn: (trabalhadorId?: string) =>
-      request<string>(`/api/documentos/assinar/webauthn/iniciar${trabalhadorId ? `?trabalhadorId=${trabalhadorId}` : ''}`, {
-        method: 'POST',
-      }),
-    confirmarAssinaturaWebAuthn: (documentoId: string, opcoesJson: string, respostaJson: string) =>
-      request<DocumentoSignatario>(`/api/documentos/${documentoId}/assinar/webauthn/confirmar`, {
-        method: 'POST',
-        body: JSON.stringify({ opcoesJson, respostaJson }),
-      }),
     // Autenticação via biometria digital local (Futronic FS80H) — dispositivoId/segredoDispositivo
     // vêm do agente local (fetch a /api/dispositivo), nunca de localStorage.
     autenticarBiometriaLocal: (documentoId: string, dispositivoId: string, segredoDispositivo: string, trabalhadorId: string, score: number) =>
@@ -2362,8 +3177,34 @@ export const api = {
     atualizar: (id: string, nc: AtualizarNaoConformidadePayload) =>
       request<void>(`/api/naoconformidades/${id}`, { method: 'PUT', body: JSON.stringify(nc) }),
     excluir: (id: string) => request<void>(`/api/naoconformidades/${id}`, { method: 'DELETE' }),
-    avancarStatus: (id: string) =>
-      request<void>(`/api/naoconformidades/${id}/avancar-status`, { method: 'POST' }),
+    enviar: (id: string) =>
+      request<void>(`/api/naoconformidades/${id}/enviar`, { method: 'POST' }),
+    responder: (id: string, body: {
+      descricaoAcao: string;
+      responsavelExecucaoId?: string | null;
+      prioridade: number;
+      prazo?: string | null;
+      justificativaPrazo?: string | null;
+    }) =>
+      request<{ acaoId: string }>(`/api/naoconformidades/${id}/responder`, {
+        method: 'POST',
+        body: JSON.stringify(body),
+      }),
+    registrarConclusao: (id: string, descricaoConclusao?: string | null) =>
+      request<void>(`/api/naoconformidades/${id}/registrar-conclusao`, {
+        method: 'POST',
+        body: JSON.stringify({ descricaoConclusao }),
+      }),
+    devolver: (id: string, motivo: string) =>
+      request<void>(`/api/naoconformidades/${id}/devolver`, {
+        method: 'POST',
+        body: JSON.stringify({ motivo }),
+      }),
+    encerrar: (id: string, validadoPorUsuarioId: string, observacoesEncerramento?: string | null) =>
+      request<void>(`/api/naoconformidades/${id}/encerrar`, {
+        method: 'POST',
+        body: JSON.stringify({ validadoPorUsuarioId, observacoesEncerramento }),
+      }),
   },
   acoesPlano: {
     listar: (origemTipo: string, origemId: string) =>

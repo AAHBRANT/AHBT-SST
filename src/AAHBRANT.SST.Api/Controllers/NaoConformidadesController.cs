@@ -51,11 +51,44 @@ public class NaoConformidadesController : ControllerBase
         return NoContent();
     }
 
-    [Authorize(Policy = "nc:avancar_status")]
-    [HttpPost("{id:guid}/avancar-status")]
-    public async Task<IActionResult> AvancarStatus(Guid id, CancellationToken ct)
+    [Authorize(Policy = "nc:enviar")]
+    [HttpPost("{id:guid}/enviar")]
+    public async Task<IActionResult> Enviar(Guid id, CancellationToken ct)
     {
-        await _mediator.Send(new AvancarStatusNaoConformidadeCommand(id), ct);
+        await _mediator.Send(new EnviarNaoConformidadeCommand(id), ct);
+        return NoContent();
+    }
+
+    [Authorize(Policy = "nc:responder")]
+    [HttpPost("{id:guid}/responder")]
+    public async Task<IActionResult> Responder(Guid id, ResponderNaoConformidadeRequestBody body, CancellationToken ct)
+    {
+        var acaoId = await _mediator.Send(new ResponderNaoConformidadeCommand(
+            id, body.DescricaoAcao, body.ResponsavelExecucaoId, body.Prioridade, body.Prazo, body.JustificativaPrazo), ct);
+        return Ok(new { acaoId });
+    }
+
+    [Authorize(Policy = "nc:responder")]
+    [HttpPost("{id:guid}/registrar-conclusao")]
+    public async Task<IActionResult> RegistrarConclusao(Guid id, RegistrarConclusaoNaoConformidadeRequestBody body, CancellationToken ct)
+    {
+        await _mediator.Send(new RegistrarConclusaoNaoConformidadeCommand(id, body.DescricaoConclusao), ct);
+        return NoContent();
+    }
+
+    [Authorize(Policy = "nc:encerrar")]
+    [HttpPost("{id:guid}/devolver")]
+    public async Task<IActionResult> Devolver(Guid id, DevolverNaoConformidadeRequestBody body, CancellationToken ct)
+    {
+        await _mediator.Send(new DevolverNaoConformidadeCommand(id, body.Motivo), ct);
+        return NoContent();
+    }
+
+    [Authorize(Policy = "nc:encerrar")]
+    [HttpPost("{id:guid}/encerrar")]
+    public async Task<IActionResult> Encerrar(Guid id, EncerrarNaoConformidadeRequestBody body, CancellationToken ct)
+    {
+        await _mediator.Send(new EncerrarNaoConformidadeCommand(id, body.ValidadoPorUsuarioId, body.ObservacoesEncerramento), ct);
         return NoContent();
     }
 }
@@ -69,3 +102,16 @@ public record AtualizarNaoConformidadeRequestBody(
     Guid? RiscoId,
     Guid? ResponsavelUsuarioId,
     DateTime? Prazo);
+
+public record ResponderNaoConformidadeRequestBody(
+    string DescricaoAcao,
+    Guid? ResponsavelExecucaoId,
+    PrioridadeAcao Prioridade,
+    DateTime? Prazo,
+    string? JustificativaPrazo);
+
+public record RegistrarConclusaoNaoConformidadeRequestBody(string? DescricaoConclusao);
+
+public record DevolverNaoConformidadeRequestBody(string Motivo);
+
+public record EncerrarNaoConformidadeRequestBody(Guid ValidadoPorUsuarioId, string? ObservacoesEncerramento);

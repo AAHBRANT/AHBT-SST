@@ -15,7 +15,7 @@ public class ListarPermissoesTrabalhoQueryHandler : IRequestHandler<ListarPermis
     public async Task<List<PermissaoTrabalhoDto>> Handle(ListarPermissoesTrabalhoQuery request, CancellationToken ct)
     {
         var query = _db.PermissoesTrabalho
-            .Include(p => p.Atividade)
+            .Include(p => p.Atividade!).ThenInclude(a => a.Obra)
             .Include(p => p.Equipe)
             .Include(p => p.AutorizadoPorUsuario)
             .Include(p => p.EncerradaPorUsuario)
@@ -29,9 +29,13 @@ public class ListarPermissoesTrabalhoQueryHandler : IRequestHandler<ListarPermis
         return permissoes.Select(p => new PermissaoTrabalhoDto
         {
             Id = p.Id,
+            NumeroPt = p.NumeroPt,
             AtividadeId = p.AtividadeId,
             AtividadeNome = p.Atividade?.Nome ?? string.Empty,
+            ObraNome = p.Atividade?.Obra?.Nome,
+            DescricaoAtividade = p.DescricaoAtividade,
             Local = p.Local,
+            EmpresaExecutante = p.EmpresaExecutante,
             EquipeId = p.EquipeId,
             EquipeNome = p.Equipe?.Nome,
             Data = p.Data,

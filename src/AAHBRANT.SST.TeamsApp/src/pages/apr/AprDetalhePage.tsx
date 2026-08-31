@@ -12,7 +12,7 @@ import {
   type SelectTabData,
   type SelectTabEvent,
 } from '@fluentui/react-components';
-import { ArrowLeft24Regular, Checkmark24Regular, Dismiss24Regular } from '@fluentui/react-icons';
+import { ArrowLeft24Regular, ArrowDownload24Regular, Checkmark24Regular, Dismiss24Regular } from '@fluentui/react-icons';
 import { api, StatusApr, statusAprLabel, type AprDetalhe } from '../../lib/api';
 import { usePageStyles, usePillTabStyles } from '../pageStyles';
 import { AprEtapasTab } from './AprEtapasTab';
@@ -31,6 +31,7 @@ export function AprDetalhePage() {
   const [aprovadoPorUsuarioId, setAprovadoPorUsuarioId] = useState('');
   const [motivoReprovacao, setMotivoReprovacao] = useState('');
   const [processando, setProcessando] = useState(false);
+  const [exportando, setExportando] = useState(false);
 
   async function carregar() {
     if (!id) return;
@@ -76,6 +77,25 @@ export function AprDetalhePage() {
     }
   }
 
+  async function exportarPdf() {
+    if (!id) return;
+    try {
+      setExportando(true);
+      setErro(null);
+      const blob = await api.aprs.exportarPdf(id);
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = `apr-${id}.pdf`;
+      link.click();
+      URL.revokeObjectURL(url);
+    } catch (e) {
+      setErro(e instanceof Error ? e.message : 'Falha ao exportar PDF da APR.');
+    } finally {
+      setExportando(false);
+    }
+  }
+
   if (!id) {
     return <Text>APR não encontrada.</Text>;
   }
@@ -84,14 +104,14 @@ export function AprDetalhePage() {
 
   return (
     <div>
-      <Button
-        appearance="subtle"
-        icon={<ArrowLeft24Regular />}
-        onClick={() => navigate('/operacao/apr')}
-        style={{ marginBottom: 12 }}
-      >
-        Voltar para APR
-      </Button>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
+        <Button appearance="subtle" icon={<ArrowLeft24Regular />} onClick={() => navigate('/operacao/apr')}>
+          Voltar para APR
+        </Button>
+        <Button appearance="secondary" icon={<ArrowDownload24Regular />} onClick={exportarPdf} disabled={exportando}>
+          Exportar PDF
+        </Button>
+      </div>
 
       {erro && <Text className={estilos.erro}>{erro}</Text>}
 
@@ -99,13 +119,19 @@ export function AprDetalhePage() {
         {detalhe ? (
           <>
             <Text size={500} weight="semibold">
+              {detalhe.apr.numeroApr ? `${detalhe.apr.numeroApr} — ` : ''}
               {detalhe.apr.atividadeNome}
             </Text>
             <div style={{ display: 'flex', gap: 16, marginTop: 8, flexWrap: 'wrap', alignItems: 'center' }}>
+              {detalhe.apr.obraNome && <Text>Obra: {detalhe.apr.obraNome}</Text>}
               <Text>Local: {detalhe.apr.local}</Text>
               <Text>Data: {detalhe.apr.data?.slice(0, 10)}</Text>
               {detalhe.apr.validade && <Text>Validade: {detalhe.apr.validade.slice(0, 10)}</Text>}
               <Badge appearance="tint">{statusAprLabel[detalhe.apr.status]}</Badge>
+            </div>
+            <div style={{ display: 'flex', gap: 16, marginTop: 8, flexWrap: 'wrap', alignItems: 'center' }}>
+              {detalhe.apr.maquinasEquipamentos && <Text>Máquinas/Equip.: {detalhe.apr.maquinasEquipamentos}</Text>}
+              {detalhe.apr.pgrReferencia && <Text>PGR/Procedimento ref.: {detalhe.apr.pgrReferencia}</Text>}
             </div>
             {detalhe.apr.status === StatusApr.Aprovada && (
               <Text style={{ marginTop: 8 }}>

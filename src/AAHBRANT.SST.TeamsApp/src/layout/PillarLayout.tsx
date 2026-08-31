@@ -13,7 +13,7 @@ interface PillarLayoutProps {
   abas: AbaPillar[];
 }
 
-// Layout compartilhado pelos módulos-pilar com abas internas (Conformidade/Prevenção/Operação):
+// Layout compartilhado pelos módulos-pilar com abas internas (Procedimentos & Planos/Operação):
 // título do módulo + abas superiores que navegam entre sub-rotas (ver App.tsx e memória
 // project_sst_gsst_ia_aprovada). A aba ativa é derivada do 2º segmento da URL, então rotas de
 // detalhe (ex: /prevencao/pgr/:id) mantêm a aba correta destacada.

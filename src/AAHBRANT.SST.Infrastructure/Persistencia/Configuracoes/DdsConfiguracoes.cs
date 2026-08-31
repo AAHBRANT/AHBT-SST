@@ -20,8 +20,76 @@ public class DdsConfiguracao : IEntityTypeConfiguration<Dds>
             .HasForeignKey(d => d.ResponsavelUsuarioId)
             .OnDelete(DeleteBehavior.Restrict);
 
+        builder.HasOne(d => d.DdsSemanal)
+            .WithMany(s => s.RegistrosDiarios)
+            .HasForeignKey(d => d.DdsSemanalId)
+            .OnDelete(DeleteBehavior.Restrict);
+
+        builder.HasOne(d => d.CatalogoTemaDds)
+            .WithMany()
+            .HasForeignKey(d => d.CatalogoTemaDdsId)
+            .OnDelete(DeleteBehavior.Restrict);
+
         builder.HasIndex(d => d.ObraId);
+        builder.HasIndex(d => d.DdsSemanalId);
         builder.HasQueryFilter(d => d.Ativo);
+    }
+}
+
+public class DdsSemanalConfiguracao : IEntityTypeConfiguration<DdsSemanal>
+{
+    public void Configure(EntityTypeBuilder<DdsSemanal> builder)
+    {
+        builder.Property(s => s.EmpresaTerceirizada).HasMaxLength(200);
+        builder.Property(s => s.NumeroDocumento).HasMaxLength(50);
+        builder.Property(s => s.LocalFrenteServico).HasMaxLength(200);
+        builder.Property(s => s.ResponsavelEmpresaTerceirizadaNome).HasMaxLength(200);
+        builder.Property(s => s.ResponsavelEmpresaTerceirizadaFuncao).HasMaxLength(150);
+
+        builder.HasOne(s => s.Obra)
+            .WithMany()
+            .HasForeignKey(s => s.ObraId)
+            .OnDelete(DeleteBehavior.Restrict);
+
+        builder.HasOne(s => s.ResponsavelUsuario)
+            .WithMany()
+            .HasForeignKey(s => s.ResponsavelUsuarioId)
+            .OnDelete(DeleteBehavior.Restrict);
+
+        builder.HasOne(s => s.ResponsavelObraSstUsuario)
+            .WithMany()
+            .HasForeignKey(s => s.ResponsavelObraSstUsuarioId)
+            .OnDelete(DeleteBehavior.Restrict);
+
+        builder.HasIndex(s => new { s.ObraId, s.Tipo, s.DataInicioSemana });
+        builder.HasQueryFilter(s => s.Ativo);
+    }
+}
+
+public class CatalogoTemaDdsConfiguracao : IEntityTypeConfiguration<CatalogoTemaDds>
+{
+    public void Configure(EntityTypeBuilder<CatalogoTemaDds> builder)
+    {
+        builder.Property(c => c.Nome).IsRequired().HasMaxLength(200);
+        builder.Property(c => c.Descricao).HasMaxLength(500);
+
+        builder.HasQueryFilter(c => c.Ativo);
+    }
+}
+
+public class DdsFotoEvidenciaConfiguracao : IEntityTypeConfiguration<DdsFotoEvidencia>
+{
+    public void Configure(EntityTypeBuilder<DdsFotoEvidencia> builder)
+    {
+        builder.Property(f => f.FotoContentType).HasMaxLength(100);
+
+        builder.HasOne(f => f.Dds)
+            .WithMany(d => d.FotosEvidencia)
+            .HasForeignKey(f => f.DdsId)
+            .OnDelete(DeleteBehavior.Cascade);
+
+        builder.HasIndex(f => f.DdsId);
+        builder.HasQueryFilter(f => f.Ativo);
     }
 }
 

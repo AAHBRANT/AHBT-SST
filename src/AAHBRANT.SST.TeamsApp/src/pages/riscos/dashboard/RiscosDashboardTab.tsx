@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Field, Select, Text } from '@fluentui/react-components';
+import { ShieldCheckmark24Regular, Warning24Regular, ClipboardTaskListLtr24Regular, Alert24Regular } from '@fluentui/react-icons';
 import {
   api,
   nivelRiscoLabel,
@@ -168,10 +169,30 @@ export function RiscosDashboardTab() {
 
       <div style={{ marginBottom: 16 }}>
         <CardGrid>
-          <KpiCard rotulo="Riscos avaliados" valor={riscosFiltrados.length} cor={designTokens.colorPrimary} />
-          <KpiCard rotulo="Alto/Crítico" valor={criticosAltos} cor={designTokens.colorAlert} />
-          <KpiCard rotulo="Controle pendente" valor={controlePendente} cor={designTokens.colorWarning} />
-          <KpiCard rotulo="Com prazo vencido" valor={prazoVencido} cor={designTokens.colorAlert} />
+          <KpiCard
+            rotulo="Riscos avaliados"
+            valor={riscosFiltrados.length}
+            cor={designTokens.colorPrimary}
+            icone={<ShieldCheckmark24Regular />}
+          />
+          <KpiCard
+            rotulo="Alto/Crítico"
+            valor={criticosAltos}
+            cor={designTokens.colorAlert}
+            icone={<Warning24Regular />}
+          />
+          <KpiCard
+            rotulo="Controle pendente"
+            valor={controlePendente}
+            cor={designTokens.colorWarning}
+            icone={<ClipboardTaskListLtr24Regular />}
+          />
+          <KpiCard
+            rotulo="Com prazo vencido"
+            valor={prazoVencido}
+            cor={designTokens.colorAlert}
+            icone={<Alert24Regular />}
+          />
         </CardGrid>
       </div>
 

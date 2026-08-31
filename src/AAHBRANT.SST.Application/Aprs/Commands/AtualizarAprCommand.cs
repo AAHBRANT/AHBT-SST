@@ -6,12 +6,15 @@ using Microsoft.EntityFrameworkCore;
 
 namespace AAHBRANT.SST.Application.Aprs.Commands;
 
-// Edição de dados de cadastro (local/equipe/datas/responsáveis) — não altera Status/aprovação,
-// que passam por AprovarAprCommand/ReprovarAprCommand.
+// Edição de dados de cadastro (cabeçalho/responsáveis) — não altera Status/aprovação, que passam
+// por AprovarAprCommand/ReprovarAprCommand.
 public record AtualizarAprCommand(
     Guid Id,
+    string? NumeroApr,
     Guid AtividadeId,
     string Local,
+    string? MaquinasEquipamentos,
+    string? PgrReferencia,
     Guid? EquipeId,
     DateTime Data,
     DateTime? Validade,
@@ -22,8 +25,11 @@ public class AtualizarAprCommandValidator : AbstractValidator<AtualizarAprComman
     public AtualizarAprCommandValidator()
     {
         RuleFor(x => x.Id).NotEmpty();
+        RuleFor(x => x.NumeroApr).MaximumLength(60);
         RuleFor(x => x.AtividadeId).NotEmpty();
         RuleFor(x => x.Local).NotEmpty().MaximumLength(200);
+        RuleFor(x => x.MaquinasEquipamentos).MaximumLength(500);
+        RuleFor(x => x.PgrReferencia).MaximumLength(300);
     }
 }
 
@@ -40,8 +46,11 @@ public class AtualizarAprCommandHandler : IRequestHandler<AtualizarAprCommand>
             .FirstOrDefaultAsync(a => a.Id == request.Id, ct)
             ?? throw new KeyNotFoundException($"APR {request.Id} não encontrada.");
 
+        apr.NumeroApr = request.NumeroApr;
         apr.AtividadeId = request.AtividadeId;
         apr.Local = request.Local;
+        apr.MaquinasEquipamentos = request.MaquinasEquipamentos;
+        apr.PgrReferencia = request.PgrReferencia;
         apr.EquipeId = request.EquipeId;
         apr.Data = request.Data;
         apr.Validade = request.Validade;

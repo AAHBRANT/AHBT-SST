@@ -27,8 +27,23 @@ public class ListarAprEtapasQueryHandler : IRequestHandler<ListarAprEtapasQuery,
             AprId = e.AprId,
             Ordem = e.Ordem,
             Descricao = e.Descricao,
-            MedidasPreventivas = e.MedidasPreventivas,
-            RiscosIds = e.Riscos.Select(r => r.RiscoId).ToList()
+            Riscos = e.Riscos.Select(r => new AprEtapaRiscoDto
+            {
+                Id = r.Id,
+                AprEtapaId = r.AprEtapaId,
+                PerigoEventoPerigoso = r.PerigoEventoPerigoso,
+                FonteCircunstancia = r.FonteCircunstancia,
+                PossiveisLesoes = r.PossiveisLesoes,
+                TrabalhadoresExpostos = r.TrabalhadoresExpostos,
+                ProbabilidadeInicial = r.ProbabilidadeInicial,
+                SeveridadeInicial = r.SeveridadeInicial,
+                NivelRiscoInicial = r.NivelRiscoInicial,
+                MedidasPrevencao = r.MedidasPrevencao,
+                Responsavel = r.Responsavel,
+                ProbabilidadeResidual = r.ProbabilidadeResidual,
+                SeveridadeResidual = r.SeveridadeResidual,
+                NivelRiscoResidual = r.NivelRiscoResidual,
+            }).ToList()
         }).ToList();
     }
 }

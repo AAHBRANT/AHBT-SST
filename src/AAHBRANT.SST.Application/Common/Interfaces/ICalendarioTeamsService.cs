@@ -1,3 +1,5 @@
+using AAHBRANT.SST.Application.Calendario;
+
 namespace AAHBRANT.SST.Application.Common.Interfaces;
 
 // Fala com o Microsoft Graph (/users/{aadObjectId}/events) para sincronizar vencimentos do Motor de
@@ -18,4 +20,11 @@ public interface ICalendarioTeamsService
         CancellationToken ct = default);
 
     Task CancelarEventoAsync(Guid organizadorUsuarioId, string graphEventId, CancellationToken ct = default);
+
+    // Leitura (requisito do usuário, 2026-08-29: "quero o calendário do Teams dentro do
+    // aplicativo") — GET /users/{aadObjectId}/calendarView, mesma permissão de aplicativo
+    // (Calendars.ReadWrite já cobre leitura) e mesmo App Registration usado para criar/atualizar/
+    // cancelar acima. Consumida por ObterCalendarioQuery.
+    Task<IReadOnlyList<EventoGraphDto>> ListarEventosAsync(
+        Guid usuarioId, DateTime inicio, DateTime fim, CancellationToken ct = default);
 }

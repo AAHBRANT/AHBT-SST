@@ -12,6 +12,7 @@ public class NaoConformidadeConfiguracao : IEntityTypeConfiguration<NaoConformid
         builder.Property(n => n.RequisitoRelacionado).HasMaxLength(300);
         builder.Property(n => n.Local).HasMaxLength(200);
         builder.Property(n => n.ObservacoesEncerramento).HasMaxLength(1000);
+        builder.Property(n => n.MotivoDevolucao).HasMaxLength(1000);
 
         builder.HasOne(n => n.Atividade).WithMany()
             .HasForeignKey(n => n.AtividadeId).OnDelete(DeleteBehavior.Restrict);
@@ -19,6 +20,11 @@ public class NaoConformidadeConfiguracao : IEntityTypeConfiguration<NaoConformid
             .HasForeignKey(n => n.RiscoId).OnDelete(DeleteBehavior.Restrict);
         builder.HasOne(n => n.ResponsavelUsuario).WithMany()
             .HasForeignKey(n => n.ResponsavelUsuarioId).OnDelete(DeleteBehavior.Restrict);
+        // Um item de inspeção gera no máximo uma NC (índice único) — idempotência de
+        // CriarNaoConformidadeDeItemCommand, mesmo padrão de CriarDocumentoAssinaturaCommand.
+        builder.HasOne(n => n.InspecaoItemResposta).WithMany()
+            .HasForeignKey(n => n.InspecaoItemRespostaId).OnDelete(DeleteBehavior.Restrict);
+        builder.HasIndex(n => n.InspecaoItemRespostaId).IsUnique().HasFilter("[InspecaoItemRespostaId] IS NOT NULL");
 
         builder.HasIndex(n => n.Status);
         builder.HasQueryFilter(n => n.Ativo);

@@ -38,27 +38,17 @@ public class Trabalhador : AuditableEntity
     // turnos, então nenhuma lista fixa é assumida).
     public string? Turno { get; set; }
 
+    // Foto de perfil — mesmo padrão de Obra.LogoConteudo/LogoContentType (armazenada direto no SQL
+    // Server, sem depender de um serviço de blob storage externo).
+    public byte[]? FotoConteudo { get; set; }
+    public string? FotoContentType { get; set; }
+
     // Integração com Telegram (DDS Fase 3): ChatId só é preenchido depois que o trabalhador
     // manda /start <codigo> para o bot — bots não podem iniciar a conversa. CodigoVinculo é o
     // código temporário exibido no perfil para o trabalhador usar nesse /start.
     public long? TelegramChatId { get; set; }
     public string? TelegramCodigoVinculo { get; set; }
     public DateTime? TelegramVinculadoEm { get; set; }
-
-    // Motor de Assinatura Eletrônica (docs/Motor-Assinatura-Eletronica.md §2/§3) — PIN é o método de
-    // reserva (crachá/QR + PIN) quando o leitor biométrico da obra falha ou está indisponível.
-    // PinHash é calculado explicitamente pelo handler que define/troca o PIN (via
-    // Infrastructure.Seguranca.PinHasher.GerarHash) — ao contrário de CpfHash, não existe um campo
-    // de PIN em texto plano nesta entidade para recalcular automaticamente em AplicarAuditoria: o
-    // PIN nunca deve transitar por uma propriedade rastreada pelo EF Core, mesmo que efêmera.
-    public string? PinHash { get; set; }
-
-    // Foto real do trabalhador (substitui o avatar de iniciais no cadastro) — mesmo padrão de
-    // Obra.LogoConteudo/LogoContentType: binário guardado direto na linha, servido por endpoint
-    // dedicado (nunca embutido no DTO de listagem), TemFoto exposto no DTO como projeção
-    // (FotoConteudo != null) para o frontend decidir se baixa a miniatura sob demanda.
-    public byte[]? FotoConteudo { get; set; }
-    public string? FotoContentType { get; set; }
 
     // Validade jurídica e LGPD (docs/Motor-Assinatura-Eletronica.md §4) — dois consentimentos
     // distintos e obrigatórios antes do trabalhador poder assinar por este motor:
@@ -72,4 +62,6 @@ public class Trabalhador : AuditableEntity
     public ICollection<Treinamento> Treinamentos { get; set; } = new List<Treinamento>();
     public ICollection<EntregaEpi> EntregasEpi { get; set; } = new List<EntregaEpi>();
     public ICollection<RiscoTrabalhadorExposto> RiscosExpostos { get; set; } = new List<RiscoTrabalhadorExposto>();
+    public ICollection<ExameComplementar> ExamesComplementares { get; set; } = new List<ExameComplementar>();
+    public ICollection<AptidaoAtividadeEspecifica> AptidoesAtividadeEspecifica { get; set; } = new List<AptidaoAtividadeEspecifica>();
 }

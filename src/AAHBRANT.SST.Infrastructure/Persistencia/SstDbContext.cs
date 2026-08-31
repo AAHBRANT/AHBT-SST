@@ -8,8 +8,11 @@ namespace AAHBRANT.SST.Infrastructure.Persistencia;
 
 public class SstDbContext : DbContext, IAppDbContext
 {
-    public SstDbContext(DbContextOptions<SstDbContext> options) : base(options)
+    private readonly ICurrentUserService _usuarioAtual;
+
+    public SstDbContext(DbContextOptions<SstDbContext> options, ICurrentUserService usuarioAtual) : base(options)
     {
+        _usuarioAtual = usuarioAtual;
     }
 
     public DbSet<Obra> Obras => Set<Obra>();
@@ -26,6 +29,9 @@ public class SstDbContext : DbContext, IAppDbContext
 
     public DbSet<Aso> Asos => Set<Aso>();
     public DbSet<AsoRestricao> AsoRestricoes => Set<AsoRestricao>();
+    public DbSet<ExameComplementar> ExamesComplementares => Set<ExameComplementar>();
+    public DbSet<AptidaoAtividadeEspecifica> AptidoesAtividadeEspecifica => Set<AptidaoAtividadeEspecifica>();
+    public DbSet<PcmsoDetalhe> PcmsoDetalhes => Set<PcmsoDetalhe>();
     public DbSet<CursoTreinamento> CursosTreinamento => Set<CursoTreinamento>();
     public DbSet<Treinamento> Treinamentos => Set<Treinamento>();
     public DbSet<CatalogoEpi> CatalogoEpis => Set<CatalogoEpi>();
@@ -62,9 +68,12 @@ public class SstDbContext : DbContext, IAppDbContext
     public DbSet<AprAssinatura> AprAssinaturas => Set<AprAssinatura>();
 
     public DbSet<PermissaoTrabalho> PermissoesTrabalho => Set<PermissaoTrabalho>();
-    public DbSet<PermissaoTrabalhoPerigo> PermissaoTrabalhoPerigos => Set<PermissaoTrabalhoPerigo>();
-    public DbSet<PermissaoTrabalhoControle> PermissaoTrabalhoControles => Set<PermissaoTrabalhoControle>();
-    public DbSet<PermissaoTrabalhoRequisito> PermissaoTrabalhoRequisitos => Set<PermissaoTrabalhoRequisito>();
+    public DbSet<PermissaoTrabalhoPreRequisito> PermissaoTrabalhoPreRequisitos => Set<PermissaoTrabalhoPreRequisito>();
+    public DbSet<PermissaoTrabalhoTipoTrabalho> PermissaoTrabalhoTiposTrabalho => Set<PermissaoTrabalhoTipoTrabalho>();
+    public DbSet<PermissaoTrabalhoVerificacao> PermissaoTrabalhoVerificacoes => Set<PermissaoTrabalhoVerificacao>();
+    public DbSet<PermissaoTrabalhoEpi> PermissaoTrabalhoEpis => Set<PermissaoTrabalhoEpi>();
+    public DbSet<PermissaoTrabalhoEpc> PermissaoTrabalhoEpcs => Set<PermissaoTrabalhoEpc>();
+    public DbSet<PermissaoTrabalhoRiscoCritico> PermissaoTrabalhoRiscosCriticos => Set<PermissaoTrabalhoRiscoCritico>();
     public DbSet<PermissaoTrabalhoResponsavel> PermissaoTrabalhoResponsaveis => Set<PermissaoTrabalhoResponsavel>();
 
     public DbSet<ChecklistModelo> ChecklistModelos => Set<ChecklistModelo>();
@@ -77,6 +86,9 @@ public class SstDbContext : DbContext, IAppDbContext
     public DbSet<DdsItemChecklist> DdsItensChecklist => Set<DdsItemChecklist>();
     public DbSet<DdsParticipante> DdsParticipantes => Set<DdsParticipante>();
     public DbSet<DdsTelegramEnvio> DdsTelegramEnvios => Set<DdsTelegramEnvio>();
+    public DbSet<DdsSemanal> DdsSemanais => Set<DdsSemanal>();
+    public DbSet<CatalogoTemaDds> CatalogosTemaDds => Set<CatalogoTemaDds>();
+    public DbSet<DdsFotoEvidencia> DdsFotosEvidencia => Set<DdsFotoEvidencia>();
 
     public DbSet<NaoConformidade> NaoConformidades => Set<NaoConformidade>();
     public DbSet<AcaoPlano> AcoesPlano => Set<AcaoPlano>();
@@ -88,13 +100,65 @@ public class SstDbContext : DbContext, IAppDbContext
 
     public DbSet<DocumentoAssinatura> DocumentosAssinatura => Set<DocumentoAssinatura>();
     public DbSet<DocumentoSignatario> DocumentoSignatarios => Set<DocumentoSignatario>();
-    public DbSet<CredencialWebAuthn> CredenciaisWebAuthn => Set<CredencialWebAuthn>();
     public DbSet<DispositivoAgenteBiometrico> DispositivosAgenteBiometrico => Set<DispositivoAgenteBiometrico>();
     public DbSet<TemplateBiometricoFutronic> TemplatesBiometricoFutronic => Set<TemplateBiometricoFutronic>();
+
+    public DbSet<IdempotenciaRegistro> IdempotenciaRegistros => Set<IdempotenciaRegistro>();
+
+    public DbSet<RequisitoLegal> RequisitosLegais => Set<RequisitoLegal>();
+    public DbSet<RequisitoLegalCriterio> RequisitoLegalCriterios => Set<RequisitoLegalCriterio>();
+    public DbSet<ItemQuestionarioAplicabilidade> ItensQuestionarioAplicabilidade => Set<ItemQuestionarioAplicabilidade>();
+    public DbSet<RespostaQuestionarioAplicabilidade> RespostasQuestionarioAplicabilidade => Set<RespostaQuestionarioAplicabilidade>();
+    public DbSet<MatrizTreinamentoFuncao> MatrizTreinamentoFuncoes => Set<MatrizTreinamentoFuncao>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         modelBuilder.ApplyConfigurationsFromAssembly(typeof(SstDbContext).Assembly);
+
+        // Sincronização offline: RowVersion (já existente em AuditableEntity para todas as
+        // entidades, mas até aqui nunca configurado) passa a ser o token de concorrência otimista.
+        // Necessário para o app de campo detectar quando um registro editado offline mudou no
+        // servidor nesse meio tempo (ver docs/RBAC-Matrix.md e o middleware de conflito em
+        // TratamentoDeExcecaoMiddleware). Exige migration (ALTER COLUMN para "rowversion") antes de
+        // ter efeito real no banco — ver instruções no PR.
+        foreach (var entityType in modelBuilder.Model.GetEntityTypes())
+        {
+            if (typeof(AuditableEntity).IsAssignableFrom(entityType.ClrType))
+            {
+                modelBuilder.Entity(entityType.ClrType).Property(nameof(AuditableEntity.RowVersion)).IsRowVersion();
+            }
+        }
+
+        // Camada 3 do RBAC (docs/RBAC-Matrix.md §4, "Global Query Filter... mitiga BOLA"): as 9
+        // entidades abaixo têm ObraId direto na própria tabela — são o alvo do filtro. Cada uma
+        // SUBSTITUI (não acumula com) o HasQueryFilter(x => x.Ativo) já registrado por sua própria
+        // Configuracao logo acima (EF Core só guarda um filtro por entidade) — por isso a condição
+        // Ativo é repetida aqui explicitamente, senão o soft-delete deixaria de funcionar para
+        // estas 8 entidades. Sem efeito hoje (TemAcessoGlobal fica true enquanto a autenticação
+        // Entra ID não estiver configurada — ver EscopoPorObraMiddleware): a consulta gerada é
+        // idêntica à de antes até a autenticação real entrar em vigor.
+        modelBuilder.Entity<Dds>().HasQueryFilter(d =>
+            d.Ativo && (_usuarioAtual.TemAcessoGlobal || _usuarioAtual.ObrasPermitidas.Contains(d.ObraId)));
+        modelBuilder.Entity<Inspecao>().HasQueryFilter(i =>
+            i.Ativo && (_usuarioAtual.TemAcessoGlobal || _usuarioAtual.ObrasPermitidas.Contains(i.ObraId)));
+        modelBuilder.Entity<Acidente>().HasQueryFilter(a =>
+            a.Ativo && (_usuarioAtual.TemAcessoGlobal || _usuarioAtual.ObrasPermitidas.Contains(a.ObraId)));
+        modelBuilder.Entity<Pgr>().HasQueryFilter(p =>
+            p.Ativo && (_usuarioAtual.TemAcessoGlobal || _usuarioAtual.ObrasPermitidas.Contains(p.ObraId)));
+        modelBuilder.Entity<Atividade>().HasQueryFilter(a =>
+            a.Ativo && (_usuarioAtual.TemAcessoGlobal || _usuarioAtual.ObrasPermitidas.Contains(a.ObraId)));
+        modelBuilder.Entity<Setor>().HasQueryFilter(s =>
+            s.Ativo && (_usuarioAtual.TemAcessoGlobal || _usuarioAtual.ObrasPermitidas.Contains(s.ObraId)));
+        modelBuilder.Entity<Trabalhador>().HasQueryFilter(t =>
+            t.Ativo && (_usuarioAtual.TemAcessoGlobal || _usuarioAtual.ObrasPermitidas.Contains(t.ObraId)));
+        modelBuilder.Entity<AreaSst>().HasQueryFilter(a =>
+            a.Ativo && (_usuarioAtual.TemAcessoGlobal || _usuarioAtual.ObrasPermitidas.Contains(a.ObraId)));
+
+        // PcmsoDetalhe/ExameComplementar/AptidaoAtividadeEspecifica (Saúde Ocupacional, PR-SST-003)
+        // ainda NÃO têm filtro de escopo por obra (Camada 3) — PcmsoDetalhe não tem ObraId direto
+        // (herda de DocumentoGestao via DocumentoGestaoId) e os outros dois são por Trabalhador, não
+        // por Obra. Pendência a avaliar antes de confiar no RBAC Camada 2/3 para esses três.
+
         base.OnModelCreating(modelBuilder);
     }
 

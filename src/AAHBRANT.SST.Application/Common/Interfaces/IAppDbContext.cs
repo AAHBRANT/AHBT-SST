@@ -21,6 +21,9 @@ public interface IAppDbContext
     DbSet<TrilhaAuditoria> TrilhaAuditoria { get; }
 
     DbSet<Aso> Asos { get; }
+    DbSet<ExameComplementar> ExamesComplementares { get; }
+    DbSet<AptidaoAtividadeEspecifica> AptidoesAtividadeEspecifica { get; }
+    DbSet<PcmsoDetalhe> PcmsoDetalhes { get; }
     DbSet<CursoTreinamento> CursosTreinamento { get; }
     DbSet<Treinamento> Treinamentos { get; }
     DbSet<CatalogoEpi> CatalogoEpis { get; }
@@ -55,9 +58,12 @@ public interface IAppDbContext
     DbSet<AprAssinatura> AprAssinaturas { get; }
 
     DbSet<PermissaoTrabalho> PermissoesTrabalho { get; }
-    DbSet<PermissaoTrabalhoPerigo> PermissaoTrabalhoPerigos { get; }
-    DbSet<PermissaoTrabalhoControle> PermissaoTrabalhoControles { get; }
-    DbSet<PermissaoTrabalhoRequisito> PermissaoTrabalhoRequisitos { get; }
+    DbSet<PermissaoTrabalhoPreRequisito> PermissaoTrabalhoPreRequisitos { get; }
+    DbSet<PermissaoTrabalhoTipoTrabalho> PermissaoTrabalhoTiposTrabalho { get; }
+    DbSet<PermissaoTrabalhoVerificacao> PermissaoTrabalhoVerificacoes { get; }
+    DbSet<PermissaoTrabalhoEpi> PermissaoTrabalhoEpis { get; }
+    DbSet<PermissaoTrabalhoEpc> PermissaoTrabalhoEpcs { get; }
+    DbSet<PermissaoTrabalhoRiscoCritico> PermissaoTrabalhoRiscosCriticos { get; }
     DbSet<PermissaoTrabalhoResponsavel> PermissaoTrabalhoResponsaveis { get; }
 
     DbSet<ChecklistModelo> ChecklistModelos { get; }
@@ -73,6 +79,9 @@ public interface IAppDbContext
     DbSet<DdsItemChecklist> DdsItensChecklist { get; }
     DbSet<DdsParticipante> DdsParticipantes { get; }
     DbSet<DdsTelegramEnvio> DdsTelegramEnvios { get; }
+    DbSet<DdsSemanal> DdsSemanais { get; }
+    DbSet<CatalogoTemaDds> CatalogosTemaDds { get; }
+    DbSet<DdsFotoEvidencia> DdsFotosEvidencia { get; }
 
     DbSet<NaoConformidade> NaoConformidades { get; }
     DbSet<AcaoPlano> AcoesPlano { get; }
@@ -84,9 +93,16 @@ public interface IAppDbContext
 
     DbSet<DocumentoAssinatura> DocumentosAssinatura { get; }
     DbSet<DocumentoSignatario> DocumentoSignatarios { get; }
-    DbSet<CredencialWebAuthn> CredenciaisWebAuthn { get; }
     DbSet<DispositivoAgenteBiometrico> DispositivosAgenteBiometrico { get; }
     DbSet<TemplateBiometricoFutronic> TemplatesBiometricoFutronic { get; }
+
+    DbSet<IdempotenciaRegistro> IdempotenciaRegistros { get; }
+
+    DbSet<RequisitoLegal> RequisitosLegais { get; }
+    DbSet<RequisitoLegalCriterio> RequisitoLegalCriterios { get; }
+    DbSet<ItemQuestionarioAplicabilidade> ItensQuestionarioAplicabilidade { get; }
+    DbSet<RespostaQuestionarioAplicabilidade> RespostasQuestionarioAplicabilidade { get; }
+    DbSet<MatrizTreinamentoFuncao> MatrizTreinamentoFuncoes { get; }
 
     Task<int> SaveChangesAsync(CancellationToken cancellationToken = default);
 }

@@ -37,7 +37,7 @@ public class ExportarFichaEpiTrabalhadorQueryHandlerTests
         var options = new DbContextOptionsBuilder<SstDbContext>()
             .UseInMemoryDatabase(nomeBanco)
             .Options;
-        return new SstDbContext(options);
+        return new SstDbContext(options, new CurrentUserService());
     }
 
     [Fact]
@@ -99,11 +99,11 @@ public class ExportarFichaEpiTrabalhadorQueryHandlerTests
         await db.SaveChangesAsync();
 
         var docEntrega = new DocumentoAssinatura { EntidadeTipo = "EntregaEpi", EntidadeId = entregaComDevolucao.Id };
-        docEntrega.Signatarios.Add(new DocumentoSignatario { TrabalhadorId = trabalhador.Id, MetodoAutenticacao = MetodoAutenticacaoAssinatura.CrachaPin, AssinadoEm = DateTime.UtcNow });
+        docEntrega.Signatarios.Add(new DocumentoSignatario { TrabalhadorId = trabalhador.Id, MetodoAutenticacao = MetodoAutenticacaoAssinatura.Biometria, AssinadoEm = DateTime.UtcNow });
         docEntrega.Signatarios.Add(new DocumentoSignatario { TrabalhadorId = Guid.NewGuid(), MetodoAutenticacao = MetodoAutenticacaoAssinatura.SessaoLogada, AssinadoEm = DateTime.UtcNow });
 
         var docDevolucao = new DocumentoAssinatura { EntidadeTipo = "DevolucaoEpi", EntidadeId = entregaComDevolucao.Id };
-        docDevolucao.Signatarios.Add(new DocumentoSignatario { TrabalhadorId = trabalhador.Id, MetodoAutenticacao = MetodoAutenticacaoAssinatura.CrachaPin, AssinadoEm = DateTime.UtcNow });
+        docDevolucao.Signatarios.Add(new DocumentoSignatario { TrabalhadorId = trabalhador.Id, MetodoAutenticacao = MetodoAutenticacaoAssinatura.Biometria, AssinadoEm = DateTime.UtcNow });
 
         db.DocumentosAssinatura.AddRange(docEntrega, docDevolucao);
         await db.SaveChangesAsync();

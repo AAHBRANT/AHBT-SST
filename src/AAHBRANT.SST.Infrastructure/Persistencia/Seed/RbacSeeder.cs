@@ -58,6 +58,20 @@ public static class RbacSeeder
         ("aso:editar", "Aso", "Editar", "Editar ASO"),
         ("aso:homologar", "Aso", "Homologar", "Homologar resultado clínico do ASO"),
 
+        // PR-SST-003 — Saúde Ocupacional: PCMSO (documento + campos específicos), exames
+        // complementares e aptidões para atividade crítica, além do ASO já existente acima.
+        ("pcmso:ver", "Pcmso", "Ver", "Ver PCMSO"),
+        ("pcmso:criar", "Pcmso", "Criar", "Criar PCMSO"),
+        ("pcmso:editar", "Pcmso", "Editar", "Editar PCMSO"),
+
+        ("examecomplementar:ver", "ExameComplementar", "Ver", "Ver exames complementares (audiometria, acuidade visual etc.)"),
+        ("examecomplementar:criar", "ExameComplementar", "Criar", "Registrar exame complementar"),
+        ("examecomplementar:editar", "ExameComplementar", "Editar", "Editar exame complementar"),
+
+        ("aptidao:ver", "Aptidao", "Ver", "Ver aptidões para atividade crítica"),
+        ("aptidao:criar", "Aptidao", "Criar", "Registrar aptidão para atividade crítica"),
+        ("aptidao:editar", "Aptidao", "Editar", "Editar aptidão para atividade crítica"),
+
         ("treinamento:ver", "Treinamento", "Ver", "Ver treinamentos"),
         ("treinamento:criar", "Treinamento", "Criar", "Criar treinamento/curso"),
         ("treinamento:editar", "Treinamento", "Editar", "Editar treinamento/curso"),
@@ -104,7 +118,7 @@ public static class RbacSeeder
         // original (PT, Inspeções, NC, Acidentes, Matriz Legal, Gestão Documental, Alertas).
         ("pt:ver", "PermissaoTrabalho", "Ver", "Ver Permissão de Trabalho"),
         ("pt:criar", "PermissaoTrabalho", "Criar", "Elaborar Permissão de Trabalho"),
-        ("pt:editar", "PermissaoTrabalho", "Editar", "Editar perigos/controles/requisitos da PT"),
+        ("pt:editar", "PermissaoTrabalho", "Editar", "Editar cabeçalho, pré-requisitos, tipos de trabalho, verificações, EPI/EPC e riscos críticos da PT"),
         ("pt:autorizar", "PermissaoTrabalho", "Autorizar", "Autorizar/liberar a Permissão de Trabalho"),
         ("pt:encerrar", "PermissaoTrabalho", "Encerrar", "Encerrar a Permissão de Trabalho"),
 
@@ -119,7 +133,9 @@ public static class RbacSeeder
         ("nc:ver", "NaoConformidade", "Ver", "Ver não conformidades"),
         ("nc:criar", "NaoConformidade", "Criar", "Registrar não conformidade"),
         ("nc:editar", "NaoConformidade", "Editar", "Editar não conformidade"),
-        ("nc:avancar_status", "NaoConformidade", "AvancarStatus", "Avançar status da não conformidade"),
+        ("nc:enviar", "NaoConformidade", "Enviar", "Encaminhar formalmente a ocorrência ao responsável"),
+        ("nc:responder", "NaoConformidade", "Responder", "Responder a ocorrência e registrar/concluir a ação corretiva"),
+        ("nc:encerrar", "NaoConformidade", "Encerrar", "Validar, devolver ou encerrar a ocorrência"),
 
         ("acidente:ver", "Acidente", "Ver", "Ver acidentes/incidentes"),
         ("acidente:criar", "Acidente", "Criar", "Registrar acidente/incidente"),
@@ -165,6 +181,23 @@ public static class RbacSeeder
         ("regraalerta:criar", "RegraAlerta", "Criar", "Cadastrar limiar de antecedência/severidade por módulo"),
         ("regraalerta:editar", "RegraAlerta", "Editar", "Editar limiar de antecedência/severidade por módulo"),
         ("regraalerta:excluir", "RegraAlerta", "Excluir", "Excluir limiar de antecedência/severidade por módulo"),
+
+        // Calendário do Teams dentro do app (requisito do usuário, 2026-08-29) — combina os
+        // eventos reais do Outlook/Teams do usuário logado (Graph) com os vencimentos que o Motor
+        // de Alertas já gera para ele. Endpoint sempre pessoal (o próprio usuário logado, nunca
+        // terceiros), mas ainda assim exige permissão explícita, mesmo padrão de todo módulo aqui.
+        ("calendario:ver", "Calendario", "Ver", "Ver a própria agenda dentro do app (Outlook/Teams + vencimentos do SST)"),
+
+        // Motor de Aplicabilidade Legal (requisito do usuário, 2026-08-29) — cadastro restrito a
+        // quem tem competência para validar conteúdo jurídico (QSMS/Diretoria); "responder" o
+        // questionário de aplicabilidade por obra é uma ação mais operacional, por isso permissão
+        // própria em vez de reaproveitar requisitolegal:editar.
+        ("requisitolegal:ver", "RequisitoLegal", "Ver", "Ver requisitos legais e seus critérios de aplicabilidade"),
+        ("requisitolegal:criar", "RequisitoLegal", "Criar", "Cadastrar requisito legal e seus critérios de aplicabilidade"),
+        ("requisitolegal:editar", "RequisitoLegal", "Editar", "Editar requisito legal e seus critérios de aplicabilidade"),
+        ("requisitolegal:excluir", "RequisitoLegal", "Excluir", "Excluir requisito legal"),
+        ("questionarioaplicabilidade:gerenciar", "QuestionarioAplicabilidade", "Gerenciar", "Cadastrar/editar/excluir itens do questionário de aplicabilidade"),
+        ("questionarioaplicabilidade:responder", "QuestionarioAplicabilidade", "Responder", "Responder o questionário de aplicabilidade de uma obra"),
     };
 
     public static async Task ExecutarAsync(IServiceProvider services, CancellationToken ct = default)

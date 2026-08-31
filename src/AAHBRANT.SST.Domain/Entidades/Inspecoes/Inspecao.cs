@@ -5,8 +5,8 @@ namespace AAHBRANT.SST.Domain.Entidades;
 
 // Inspeção (§23/§46): execução de um ChecklistModelo vigente. "Cada inspeção deverá gerar
 // evidência e, quando necessário, uma não conformidade" (§23) — evidência é por item
-// (InspecaoItemResposta, via Evidencia genérica); NC é tratada como decisão de escopo à parte
-// (ver disclosure em InspecaoItemResposta.StatusItem), pois o módulo de NC (§25) ainda não existe.
+// (InspecaoItemResposta, via Evidencia genérica); geração de NC a partir de um item não conforme
+// está implementada — ver disclosure em InspecaoItemResposta.
 public class Inspecao : AuditableEntity
 {
     public TipoInspecao TipoInspecao { get; set; }
@@ -39,11 +39,11 @@ public class Inspecao : AuditableEntity
 // Evidencia (EntidadeTipo="InspecaoItemResposta"), mesmo padrão de ASO/Treinamento/EPI/APR/PT —
 // não cria campo de anexo próprio.
 //
-// Geração de Não Conformidade a partir de StatusItem=NaoConforme: decisão de escopo — o módulo
-// de NC (§25, item 16 do MVP) ainda não existe nesta fatia. Por ora este status apenas registra
-// o desvio no item; não há vínculo/geração automática de NaoConformidade. Quando o módulo de NC
-// for implementado, ele lerá os itens com StatusItem=NaoConforme para oferecer "gerar NC a partir
-// deste item" — avisar o usuário se quiser um campo de vínculo já reservado agora.
+// Geração de Não Conformidade a partir de StatusItem=NaoConforme: implementado em 2026-08-29
+// conforme o Procedimento de Inspeção Técnica de Campo (§6.2) — CriarNaoConformidadeDeItemCommand
+// oferece "gerar NC a partir deste item" para itens com StatusItem=NaoConforme, gravando o vínculo
+// em NaoConformidade.InspecaoItemRespostaId (não o inverso: um item pode, em tese, já existir sem
+// NC gerada — a FK fica do lado da NC, que é sempre opcional/posterior ao item).
 public class InspecaoItemResposta : AuditableEntity
 {
     public Guid InspecaoId { get; set; }
@@ -59,6 +59,17 @@ public class InspecaoItemResposta : AuditableEntity
     public StatusItemChecklist? StatusItem { get; set; }
     public string? Observacao { get; set; }
 
+    // Campos adicionados para o formato "Patrulha de Segurança do Trabalho" (planilha do usuário,
+    // 31/08) — decisão do usuário: reaproveitar o checklist existente em vez de criar um modelo de
+    // achados livres, liberando a descrição do item para edição na própria execução. Quando
+    // preenchida, DescricaoPersonalizada sobrescreve ChecklistModeloItem.Descricao só nesta
+    // resposta (o item do template, compartilhado entre execuções, não é alterado). Local e
+    // PlanoDeAcao não existiam no modelo (só apareciam ao gerar uma Não Conformidade a partir do
+    // item, ver CriarNaoConformidadeDeItemCommand) — aqui ficam registrados desde a execução.
+    public string? DescricaoPersonalizada { get; set; }
+    public string? Local { get; set; }
+    public string? PlanoDeAcao { get; set; }
+
     public Guid? ResponsavelUsuarioId { get; set; }
     public Usuario? ResponsavelUsuario { get; set; }
     public DateTime? Prazo { get; set; }
@@ -66,7 +77,12 @@ public class InspecaoItemResposta : AuditableEntity
     // Campo próprio em vez da Evidencia genérica citada acima: decisão tomada em 2026-08-25
     // (confirmada com o usuário) para reaproveitar o mesmo padrão já em produção em
     // Dds.FotoConteudo, já que a entidade Evidencia (BlobUrl) nunca chegou a ser implementada
-    // (sem controller/command/blob storage por trás).
+    // (sem controller/command/blob storage por trás). Representa a evidência ANTES (a irregularidade
+    // encontrada); FotoDepois* (abaixo, 31/08) é a evidência DEPOIS, registrada quando o achado é
+    // resolvido — mesmo par "Evidência Anterior/Evidência posterior" da planilha de patrulha.
     public byte[] FotoConteudo { get; set; } = Array.Empty<byte>();
     public string FotoContentType { get; set; } = string.Empty;
+
+    public byte[]? FotoDepoisConteudo { get; set; }
+    public string? FotoDepoisContentType { get; set; }
 }

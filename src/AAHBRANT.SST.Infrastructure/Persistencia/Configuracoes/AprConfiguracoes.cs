@@ -8,7 +8,10 @@ public class AprConfiguracao : IEntityTypeConfiguration<Apr>
 {
     public void Configure(EntityTypeBuilder<Apr> builder)
     {
+        builder.Property(a => a.NumeroApr).HasMaxLength(60);
         builder.Property(a => a.Local).IsRequired().HasMaxLength(200);
+        builder.Property(a => a.MaquinasEquipamentos).HasMaxLength(500);
+        builder.Property(a => a.PgrReferencia).HasMaxLength(300);
         builder.Property(a => a.MotivoReprovacao).HasMaxLength(500);
         builder.HasOne(a => a.Atividade).WithMany()
             .HasForeignKey(a => a.AtividadeId).OnDelete(DeleteBehavior.Restrict);
@@ -37,11 +40,15 @@ public class AprEtapaRiscoConfiguracao : IEntityTypeConfiguration<AprEtapaRisco>
 {
     public void Configure(EntityTypeBuilder<AprEtapaRisco> builder)
     {
+        builder.Property(er => er.PerigoEventoPerigoso).IsRequired().HasMaxLength(300);
+        builder.Property(er => er.FonteCircunstancia).HasMaxLength(500);
+        builder.Property(er => er.PossiveisLesoes).HasMaxLength(500);
+        builder.Property(er => er.TrabalhadoresExpostos).HasMaxLength(300);
+        builder.Property(er => er.MedidasPrevencao).HasMaxLength(1000);
+        builder.Property(er => er.Responsavel).HasMaxLength(200);
         builder.HasOne(er => er.AprEtapa).WithMany(e => e.Riscos)
             .HasForeignKey(er => er.AprEtapaId).OnDelete(DeleteBehavior.Cascade);
-        builder.HasOne(er => er.Risco).WithMany()
-            .HasForeignKey(er => er.RiscoId).OnDelete(DeleteBehavior.Restrict);
-        builder.HasIndex(er => new { er.AprEtapaId, er.RiscoId });
+        builder.HasIndex(er => er.AprEtapaId);
         builder.HasQueryFilter(er => er.Ativo);
     }
 }

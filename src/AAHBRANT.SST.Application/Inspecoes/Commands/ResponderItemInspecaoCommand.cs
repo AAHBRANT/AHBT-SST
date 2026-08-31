@@ -11,7 +11,10 @@ public record ResponderItemInspecaoCommand(
     StatusItemChecklist StatusItem,
     string? Observacao,
     Guid? ResponsavelUsuarioId,
-    DateTime? Prazo) : IRequest;
+    DateTime? Prazo,
+    string? DescricaoPersonalizada,
+    string? Local,
+    string? PlanoDeAcao) : IRequest;
 
 public class ResponderItemInspecaoCommandValidator : AbstractValidator<ResponderItemInspecaoCommand>
 {
@@ -19,6 +22,9 @@ public class ResponderItemInspecaoCommandValidator : AbstractValidator<Responder
     {
         RuleFor(x => x.RespostaId).NotEmpty();
         RuleFor(x => x.Observacao).MaximumLength(1000);
+        RuleFor(x => x.DescricaoPersonalizada).MaximumLength(500);
+        RuleFor(x => x.Local).MaximumLength(200);
+        RuleFor(x => x.PlanoDeAcao).MaximumLength(1000);
     }
 }
 
@@ -44,6 +50,9 @@ public class ResponderItemInspecaoCommandHandler : IRequestHandler<ResponderItem
         resposta.Observacao = request.Observacao;
         resposta.ResponsavelUsuarioId = request.ResponsavelUsuarioId;
         resposta.Prazo = request.Prazo;
+        resposta.DescricaoPersonalizada = request.DescricaoPersonalizada;
+        resposta.Local = request.Local;
+        resposta.PlanoDeAcao = request.PlanoDeAcao;
 
         await _db.SaveChangesAsync(ct);
     }

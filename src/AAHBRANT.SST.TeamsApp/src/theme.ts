@@ -1,34 +1,30 @@
 import { createLightTheme, type BrandVariants, type Theme } from '@fluentui/react-components';
 
-// Rampa de marca gerada a partir do vinho/marsala oficial da AAHBRANT (#670000, hover #7A0101 —
-// tokens confirmados no ADOS/identidade-aahbrant). Os dois valores nos degraus 70 e 90 são os
-// hex oficiais; os demais degraus são interpolados a partir deles (preto -> vinho -> rosa claro,
-// sempre no mesmo matiz vermelho, sem derivar para laranja) só para dar suporte visual ao Fluent UI
-// — não são cores oficiais novas. Substitui a rampa anterior baseada em #7B1E2B, que não confere
-// com o manual de marca (ver DESING SYSTEM AAHBRANT.md, pendente de atualização).
+// Rampa de marca gerada a partir do vinho oficial AAHBRANT #670000.
 const aahbrantBrandRamp: BrandVariants = {
-  10: '#0F0000',
-  20: '#1D0000',
-  30: '#2C0000',
-  40: '#3B0000',
-  50: '#4A0000',
-  60: '#580000',
-  70: '#670000', // color-primary (vinho/marsala oficial)
-  80: '#710101',
-  90: '#7A0101', // color-secondary (vinho claro / hover oficial)
-  100: '#8A1D1D',
-  110: '#9B3939',
-  120: '#AB5555',
-  130: '#BB7070',
-  140: '#CB8C8C',
-  150: '#DCA8A8',
-  160: '#ECC4C4',
+  10: '#040000',
+  20: '#1F0000',
+  30: '#330000',
+  40: '#460000',
+  50: '#590000',
+  60: '#630000',
+  70: '#670000', // color-primary
+  80: '#7A0101',
+  90: '#8C1414',
+  100: '#9E2626',
+  110: '#B03838',
+  120: '#C24A4A',
+  130: '#D25C5C',
+  140: '#E06F6F',
+  150: '#EC8484',
+  160: '#F59A9A',
 };
 
 export const aahbrantTheme: Theme = {
   ...createLightTheme(aahbrantBrandRamp),
   colorNeutralBackground1: '#FFFFFF',
   colorNeutralBackground2: '#F5F5F7',
+  fontFamilyBase: "'Montserrat', -apple-system, BlinkMacSystemFont, sans-serif",
 };
 
 export const designTokens = {
@@ -42,10 +38,18 @@ export const designTokens = {
   colorWarning: '#F59E0B',
   colorAlert: '#EF4444',
   colorInfo: '#3B82F6',
-  // Sidebar (rail) de navegação: verde translúcido, remetendo a segurança e saúde do
-  // trabalho — pedido do usuário em 30/08, substitui a sidebar sólida em colorNeutralDark.
+  // Rail de navegação — verde translúcido representando SST/segurança.
   colorRailBackground: 'linear-gradient(180deg, rgba(16,163,90,0.16), rgba(16,163,90,0.05))',
   colorRailBorder: 'rgba(15,131,73,0.28)',
   colorRailInk: '#0F5132',
   colorRailInkMuted: 'rgba(15,81,50,0.55)',
+  colorRailActiveBackground: '#16A34A',
+  colorRailActiveInk: '#FFFFFF',
+  // Sistema de cartões/KPIs (Hub Gênesis SST — design decidido em sessão anterior).
+  colorCardBorder: '#E7E4DA',
+  cardShadow: '0 1px 2px rgba(20,17,15,0.04), 0 6px 20px rgba(20,17,15,0.06)',
+  colorSuccessWash: '#EAF7EE',
+  colorWarningWash: '#FDF3E3',
+  colorAlertWash: '#FCEAEA',
+  colorInfoWash: '#EAF1FE',
 };

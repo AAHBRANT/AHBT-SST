@@ -8,8 +8,18 @@ automática, e WebAuthn por celular próprio como método opcional por obra) e
 trilha de evidências —, que entra primeiro no módulo DDS e depois é
 reaproveitado por Treinamento, EPI, APR, PT, Inspeções etc.
 
-Status: **FASE 1 (diagnóstico) e FASE 2 (modelo de dados) concluídas. Demais
-fases da implementação ainda não iniciadas.**
+Status (atualizado 2026-08-28 — ver ONBOARDING.md §0/§9 para o estado
+consolidado do projeto): **itens 1 a 12 e 14 da seção 5 concluídos**
+(modelo de dados, `CrachaPinAutenticacaoStrategy`, integração com DDS e PT,
+auditoria, hash/PDF/QR Code, página pública de validação, painel
+administrativo, extração do componente reutilizável `AssinaturaQuiosque`).
+**Item 13 (`Fido2AutenticacaoStrategy`)**: implementado e testado sem
+hardware FIDO2 físico. **`FutronicAutenticacaoStrategy` (biometria digital,
+decisão de 2026-08-26 — ver nota logo abaixo) também já implementada e
+integrada à Entrega/Devolução de EPI, mas ainda roda com leitor/matcher
+simulados** (`AAHBRANT.SST.AgenteBiometria` aguarda o SDK real —
+ScanAPI/ftrapi — e o hardware físico). **Ainda fora do escopo**: Treinamento,
+Inspeções e APR (motivos inalterados, ver item 14).
 
 > **Revisão 2026-08-25 (v2)**: decisão final do cliente é **biometria digital
 > (impressão digital) como método principal**, via leitor físico compartilhado
@@ -866,8 +876,27 @@ redação jurídica em si.
     registrada a rota em `App.tsx`. Nenhuma mudança de backend — o motor já era
     genérico. `tsc --noEmit` verificado (0 erros). Sem verificação end-to-end no
     navegador (mesma limitação de Teams SSO + dado provisionado já registrada
-    acima). Treinamento, EPI, Inspeções e APR seguem fora do escopo pelos
+    acima). Treinamento, Inspeções e APR seguem fora do escopo pelos
     mesmos motivos já documentados.
+
+    **Atualização 2026-08-27 — EPI integrado, `FutronicAutenticacaoStrategy`
+    implementada.** `AssinaturaQuiosque` plugado em Entrega de EPI (Fase 2 da
+    reformulação do módulo, `docs/superpowers/specs/2026-08-27-ficha-epi-
+    reformulada-design.md`) e, com estrutura análoga, em Devolução de EPI
+    (`entidadeTipo="DevolucaoEpi"`) — terceiro e quarto pontos de integração
+    depois de DDS e PT. Também implementada `FutronicAutenticacaoStrategy`
+    (`Infrastructure/Assinatura/`), a estratégia biométrica decidida em
+    2026-08-26 (nota da seção 1.6) como substituta prática do FIDO2 puro —
+    consulta o agente local (`AAHBRANT.SST.AgenteBiometria`) para o matching
+    1:N. **Ressalva importante**: o agente ainda registra
+    `SimuladoFingerprintReader`/`SimuladoFingerprintMatcher` no lugar dos
+    componentes reais do SDK Futronic (comentário explícito no `Program.cs`
+    do agente: sem o SDK real não há hardware para capturar) — não tratar
+    como validado para uso com leitor físico até essa troca. EPI foi o
+    primeiro módulo escolhido para a estratégia biométrica porque a entrega
+    acontece fisicamente no almoxarifado/quiosque da obra, mesmo contexto de
+    uso do leitor compartilhado. Treinamento, Inspeções e APR seguem fora do
+    escopo pelos motivos já documentados no item 14.
 
 ## 6. Referências
 

@@ -51,6 +51,10 @@ public class InspecaoItemRespostaConfiguracao : IEntityTypeConfiguration<Inspeca
     public void Configure(EntityTypeBuilder<InspecaoItemResposta> builder)
     {
         builder.Property(r => r.Observacao).HasMaxLength(1000);
+        builder.Property(r => r.DescricaoPersonalizada).HasMaxLength(500);
+        builder.Property(r => r.Local).HasMaxLength(200);
+        builder.Property(r => r.PlanoDeAcao).HasMaxLength(1000);
+        builder.Property(r => r.FotoDepoisContentType).HasMaxLength(100);
         builder.HasOne(r => r.Inspecao).WithMany(i => i.Respostas)
             .HasForeignKey(r => r.InspecaoId).OnDelete(DeleteBehavior.Cascade);
         builder.HasOne(r => r.ChecklistModeloItem).WithMany()

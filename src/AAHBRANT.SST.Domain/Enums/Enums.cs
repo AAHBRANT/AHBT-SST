@@ -71,6 +71,18 @@ public enum TipoExameAso
     Demissional = 5
 }
 
+// PR-SST-003 — exames complementares do PCMSO (audiometria, acuidade visual etc.), vinculados
+// opcionalmente a um ASO.
+public enum TipoExameComplementar
+{
+    Audiometria = 1,
+    AcuidadeVisual = 2,
+    Espirometria = 3,
+    Laboratoriais = 4,
+    AvaliacaoClinica = 5,
+    ExameEspecifico = 6
+}
+
 // Seção 34 da Base de Conhecimento — tipos de alerta. "PT vencida" é item literal próprio
 // (linha 869), distinto de "autorização vencida" (linha 871) — adicionado agora que o módulo
 // PT existe; os demais 13 itens já estavam mapeados desde o módulo de Riscos/Alertas.
@@ -182,6 +194,16 @@ public enum StatusPgr
     Encerrado = 4
 }
 
+// Não há vocabulário literal para o "status" do PCMSO — mesmo desenho de StatusPgr (proposta
+// própria; avisar o usuário se ele quiser outro fluxo).
+public enum StatusPcmso
+{
+    EmElaboracao = 1,
+    Vigente = 2,
+    EmRevisao = 3,
+    Encerrado = 4
+}
+
 // NTAG.md §2 — identification_tags.type: CHECK (type IN ('NTAG215', 'NTAG213', 'QR_CODE', 'RFID')).
 // Valores literais do documento; a numeração 1-4 é atribuição própria (o documento usa VARCHAR/CHECK,
 // não enum numérico), mesmo padrão já aplicado a NivelRisco/StatusObra.
@@ -238,20 +260,134 @@ public enum StatusApr
 }
 
 // "Assinatura" (§17) não especifica papéis — proposta própria para diferenciar quem assina a APR.
+// Renomeado para bater com os 3 papéis literais do formulário APR REV.02 (planilha do usuário,
+// 2026-08-29): "envolvido" é qualquer trabalhador da equipe exposta (Ass./Visto), e os dois blocos
+// formais do rodapé do documento são "Elaboração / SST / Responsável Técnico" e "Supervisão /
+// Encarregado / Engenharia". Substitui os valores antigos (Elaborador/Executante/Aprovador), que
+// não correspondiam a nenhum desses três papéis do documento — sem dados existentes a migrar.
 public enum PapelAssinaturaApr
 {
-    Elaborador = 1,
-    Executante = 2,
-    Aprovador = 3
+    Envolvido = 1,
+    Elaboracao = 2,
+    Supervisao = 3
 }
 
-// "Autorização" e "encerramento" (§18) — documento não lista vocabulário literal de status para
-// a PT (mesma lacuna já registrada em StatusApr/StatusPgr/StatusControleRisco) — proposta própria.
+// Matriz de critérios própria da APR (planilha "APR REV.02", aba "Matriz de Risco", 2026-08-29) —
+// fórmula fixa e literal do documento (P × S: 1-4 Baixo, 5-9 Moderado, 10-15 Alto, 16-25 Crítico),
+// distinta da matriz configurável genérica do módulo Riscos (MatrizRiscoConfig/NivelRisco, que tem
+// 5 níveis e é parametrizável por célula). Usar o NivelRisco genérico aqui misturaria duas matrizes
+// com propósitos diferentes — a da APR é a fórmula literal do formulário, não configurável.
+public enum NivelRiscoApr
+{
+    Baixo = 1,
+    Moderado = 2,
+    Alto = 3,
+    Critico = 4
+}
+
+// Formulário "PT – PERMISSÃO DE TRABALHO REV.01" (planilha do usuário, 2026-08-29), §8: a PT tem
+// um estado "Suspensa" próprio (mudança de condição/escopo/emergência etc.), distinto de Encerrada
+// — adicionado ao vocabulário que antes só tinha EmElaboracao/Autorizada/Encerrada.
 public enum StatusPt
 {
     EmElaboracao = 1,
     Autorizada = 2,
-    Encerrada = 3
+    Suspensa = 3,
+    Encerrada = 4
+}
+
+// §2 do formulário — 6 itens fixos de "Documentos e pré-requisitos", cada PT nasce com os 6 (ver
+// CriarPermissaoTrabalhoCommand), cada um marcado Atendido/pendente. Substitui o antigo
+// PermissaoTrabalhoRequisito (checklist de texto livre criado pelo usuário) — o documento define uma
+// lista fixa e literal, não um catálogo configurável.
+public enum ItemPreRequisitoPt
+{
+    AprEspecificaRevisadaDisponivel = 1,
+    PgrInventarioRiscosCompativel = 2,
+    InspecoesChecklistsEquipamentosValidos = 3,
+    ProcedimentoInstrucaoTrabalhoAplicavelDisponivel = 4,
+    TrabalhadoresCapacitadosAutorizadosAptos = 5,
+    PlanoEmergenciaMeiosComunicacaoConhecidos = 6
+}
+
+// §3 do formulário — 12 opções fixas de "Tipo de trabalho / permissões específicas" (multi-select:
+// só os tipos marcados viram linha em PermissaoTrabalhoTipoTrabalho). "Outro" carrega texto livre
+// complementar (PermissaoTrabalhoTipoTrabalho.DescricaoOutro).
+public enum TipoTrabalhoEspecialPt
+{
+    TrabalhoEmAltura = 1, // NR-35
+    TrabalhoAQuenteFonteIgnicao = 2,
+    BloqueioEnergiasPerigosas = 3, // LOTO
+    DemolicaoCortePerfuracao = 4,
+    EspacoConfinado = 5, // NR-33
+    EscavacaoValaFundacao = 6,
+    TrabalhoProximoTrafegoVias = 7,
+    MaquinasEquipamentos = 8,
+    EletricidadeIntervencaoEletrica = 9, // NR-10
+    MovimentacaoIcamentoCargas = 10,
+    ProdutosQuimicosInflamaveis = 11,
+    Outro = 12
+}
+
+// §4 do formulário — 15 itens fixos de "Verificações obrigatórias antes da liberação", cada PT
+// nasce com os 15 (ver CriarPermissaoTrabalhoCommand), cada um respondido C/NC/NA (ver
+// RespostaVerificacaoPt) ou ainda não respondido (null). Um 16º item da planilha ("Rota de fuga,
+// resgate, primeiros socorros...", linha 34) é só texto informativo, sem caixa C/NC/NA — não vira
+// item aqui, fica só como texto fixo na tela/PDF (mesmo tratamento das RECOMENDAÇÕES da APR).
+public enum ItemVerificacaoPt
+{
+    AreaIsoladaSinalizadaAcessoControlado = 1,
+    AprDiscutidaComEquipeAntesDoInicio = 2,
+    InterferenciasExistentesIdentificadas = 3,
+    FontesEnergiaIdentificadasBloqueadasTestadas = 4,
+    MaquinasFerramentasAcessoriosInspecionados = 5,
+    EpcsInstaladosCondicoesUso = 6,
+    EpisDisponiveisAdequadosCaValido = 7,
+    CondicoesAcessoCirculacaoIluminacaoOrganizacao = 8,
+    CondicoesMeteorologicasPermitemExecucaoSegura = 9,
+    RiscoQuedaPessoasObjetosControlado = 10,
+    RiscoIncendioExplosaoControladoExtintorDisponivel = 11,
+    AtmosferaAvaliadaMonitorada = 12,
+    EscavacoesTaludesEscoramentosAcessosInspecionados = 13,
+    PlanoIcamentoAcessoriosMovimentacaoVerificados = 14,
+    VigiaObservadorSinaleiroApoioDefinido = 15
+}
+
+public enum RespostaVerificacaoPt
+{
+    Conforme = 1,
+    NaoConforme = 2,
+    NaoAplicavel = 3
+}
+
+// §5 do formulário, coluna "EPIs aplicáveis" — algumas opções têm complemento de texto livre
+// embutido no próprio formulário (Luvas/Respirador/Cinturão-talabarte: "____"), guardado em
+// PermissaoTrabalhoEpi.Complemento quando aplicável.
+public enum ItemEpiPt
+{
+    Capacete = 1,
+    Oculos = 2,
+    ProtetorFacial = 3,
+    ProtetorAuditivo = 4,
+    Luvas = 5,
+    Calcado = 6,
+    Respirador = 7,
+    CinturaoTalabarte = 8,
+    VestimentaEspecifica = 9
+}
+
+// §5 do formulário, coluna "EPCs / recursos aplicáveis".
+public enum ItemEpcPt
+{
+    IsolamentoBarreira = 1,
+    GuardaCorpo = 2,
+    LinhaDeVida = 3,
+    Extintor = 4,
+    ExaustaoVentilacao = 5,
+    DetectorGases = 6,
+    KitResgate = 7,
+    Iluminacao = 8,
+    Sinalizacao = 9
 }
 
 // Seção 23 da Base de Conhecimento (linhas 581-595) — 13 tipos literais de inspeção.
@@ -302,13 +438,22 @@ public enum OrigemNaoConformidade
 }
 
 // Seção 25 da Base de Conhecimento (linha 641) — vocabulário literal do fluxo de status da NC:
-// "Aberta → Em tratamento → Aguardando validação → Encerrada".
+// "Aberta → Em tratamento → Aguardando validação → Encerrada". Ampliado em 2026-08-29 conforme o
+// Procedimento de Inspeção Técnica de Campo (§9): Enviada/EmAnalise/Devolvida entram como valores
+// NOVOS (5/6/7, não reaproveitam números existentes); EmTratamento foi apenas RENOMEADO para
+// EmAndamento (mesmo valor 2, vocabulário do documento) — renomear um nome de enum não afeta dados
+// já gravados, só reatribuir o número afetaria. "Atrasada" (§9) não vira valor de status: é
+// calculada pelo motor de alertas (ver NaoConformidadeAlertaProvider), mesmo padrão já usado por
+// Aso/Treinamento/etc., em vez de duplicar o conceito de vencimento como estado gravado.
 public enum StatusNaoConformidade
 {
     Aberta = 1,
-    EmTratamento = 2,
+    EmAndamento = 2,
     AguardandoValidacao = 3,
-    Encerrada = 4
+    Encerrada = 4,
+    Enviada = 5,
+    EmAnalise = 6,
+    Devolvida = 7,
 }
 
 // Seção 26 da Base de Conhecimento (linha 660) — vocabulário literal de prioridade do plano de ação:
@@ -398,6 +543,35 @@ public enum TipoFotoParticipante
     DocumentoAssinado = 2
 }
 
+// DDS Semanal (31/08) — reformulação para seguir o modelo "Registro Semanal de DDS" do usuário
+// (documento em papel, 2 layouts): cada semana de uma obra tem um registro para empregados próprios
+// e, quando aplicável, outro para terceirizados — nunca misturados no mesmo documento (o papel já
+// separa por página/formulário inteiro, com bloco de assinatura da empresa terceirizada só na
+// segunda versão).
+public enum TipoDdsSemanal
+{
+    Proprios = 1,
+    Terceirizados = 2
+}
+
+public enum StatusDdsSemanal
+{
+    EmAndamento = 1,
+    Concluida = 2
+}
+
+// Origem do "Tema do DDS" do dia (documento do usuário tem 1 tema por dia, não 3 — o pedido de
+// "Tema 1/2/3" são 3 formas de PREENCHER esse único tema): as duas primeiras cruzam automaticamente
+// com a 1ª/2ª atividade selecionada para o dia (mesma lógica de "Perigo de maior risco" já usada
+// para TopicoPrincipal, agora escopada a uma atividade só); a terceira é escolha livre do técnico
+// num catálogo pré-cadastrado (CatalogoTemaDds).
+public enum OrigemTemaDds
+{
+    AutomaticoAtividade1 = 1,
+    AutomaticoAtividade2 = 2,
+    Livre = 3
+}
+
 // Motor Central de Alertas + Cadastro de Ativos (requisito do usuário, 2026-08-25): entidade única
 // AtivoSst (ver Domain/Entidades/AtivoSst.cs) com este campo discriminador — em vez de duas tabelas
 // separadas (Extintor/Equipamento) — para permitir adicionar novos tipos de ativo no futuro sem
@@ -422,39 +596,27 @@ public enum StatusDocumentoAssinatura
 
 // Método efetivamente usado por UM signatário em UMA assinatura — distinto de
 // MetodoAutenticacaoObra (que é o cardápio de métodos habilitados na obra como um todo).
+// CrachaPin/QrCodePin/WebAuthnCelular removidos do sistema em 31/08 (decisão do usuário: único
+// método de assinatura é a digital via leitor Futronic FS80H). Ainda em fase de testes, sem nenhuma
+// assinatura real registrada por esses métodos — removidos por completo (não reservados), ao
+// contrário do que se faria se já houvesse dado histórico a preservar.
 public enum MetodoAutenticacaoAssinatura
 {
     Biometria = 1,
-    CrachaPin = 2,
-    QrCodePin = 3,
-    WebAuthnCelular = 4,
     // Assinatura em um clique do usuário logado (ex.: entregador de EPI assinando com a própria
     // sessão) — não é um método do "cardápio" por obra (MetodoAutenticacaoObra), pois não depende
     // de hardware/kiosque: está sempre disponível para quem já está autenticado no app.
     SessaoLogada = 5
 }
 
-// [Flags] em Obra.MetodosAutenticacaoHabilitados: cada obra decide quais métodos aceita (ex.: obra
-// sem leitor biométrico ainda comprado opera só com CrachaPin até o hardware chegar — ver §3 do doc,
-// "usar como principal temporário até o hardware ser confirmado").
+// [Flags] em Obra.MetodosAutenticacaoHabilitados: cada obra decide se aceita assinatura (Biometria,
+// via Futronic) ou não (Nenhum). CrachaPin/QrCodePin/WebAuthnCelular removidos em 31/08 junto com os
+// métodos correspondentes (ver MetodoAutenticacaoAssinatura acima).
 [Flags]
 public enum MetodoAutenticacaoObra
 {
     Nenhum = 0,
-    Biometria = 1,
-    CrachaPin = 2,
-    QrCodePin = 4,
-    WebAuthnCelular = 8
-}
-
-// Etapa 13 do Motor de Assinatura Eletrônica — CredencialWebAuthn.Tipo. LeitorObra e CelularProprio
-// usam a mesma cerimônia FIDO2/WebAuthn (Fido2AutenticacaoStrategy); só o autenticador físico muda:
-// leitor biométrico compartilhado da obra (credencial "discoverable", vários trabalhadores por
-// dispositivo) vs. celular do próprio trabalhador (credencial de um único dono).
-public enum TipoAutenticadorWebAuthn
-{
-    LeitorObra = 1,
-    CelularProprio = 2
+    Biometria = 1
 }
 
 // Ficha de EPI reformulada (docs/superpowers/specs/2026-08-27-ficha-epi-reformulada-design.md) —
@@ -477,4 +639,34 @@ public enum TipoMovimentacaoEstoqueEpi
     SaidaEntrega = 1,
     DevolucaoEntrada = 2,
     AjusteManual = 3,
+}
+
+// Motor de Aplicabilidade Legal (requisito do usuário, 2026-08-29) — classifica o requisito legal
+// cadastrado por qual tipo de obrigação ele gera quando aplicável. Vocabulário próprio: a Base de
+// Conhecimento não define essa taxonomia, e o conteúdo jurídico real (quais normas, quais critérios)
+// não é gerado por este sistema — só o cadastro estruturado que QSMS/jurídico preenche e valida.
+public enum CategoriaRequisitoLegal
+{
+    Treinamento = 1,
+    Epi = 2,
+    Exame = 3,
+    Documento = 4,
+    Inspecao = 5
+}
+
+public enum StatusRequisitoLegal
+{
+    Ativo = 1,
+    Revogado = 2
+}
+
+// Um requisito legal pode ter vários critérios (qualquer um satisfeito já torna aplicável — lógica
+// OU, decisão própria de escopo): cada critério aponta para UM fator (Perigo do PGR, Função,
+// Equipamento por TipoAtivo, ou resposta de um item do questionário por obra).
+public enum TipoCriterioAplicabilidade
+{
+    Perigo = 1,
+    Funcao = 2,
+    Equipamento = 3,
+    ItemQuestionario = 4
 }
