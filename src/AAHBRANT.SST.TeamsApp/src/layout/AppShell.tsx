@@ -1,22 +1,20 @@
 import type { ReactNode } from 'react';
 import { useEffect, useState } from 'react';
-import { NavLink, useLocation, useNavigate } from 'react-router-dom';
+import { Link, NavLink, useLocation, useNavigate } from 'react-router-dom';
 import { makeStyles, mergeClasses, Text, Badge, Button, Tooltip } from '@fluentui/react-components';
 import {
   Grid24Regular,
   ShieldError24Regular,
   BuildingBank24Regular,
-  Warning24Regular,
   Settings24Regular,
   Alert24Regular,
-  ShieldCheckmark24Regular,
-  DocumentCheckmark24Regular,
-  DocumentError24Regular,
   BriefcaseMedical24Regular,
   People24Regular,
   CalendarLtr24Regular,
   ChevronLeft24Regular,
   ChevronRight24Regular,
+  ChevronDown16Regular,
+  ChevronUp16Regular,
 } from '@fluentui/react-icons';
 import { designTokens } from '../theme';
 import { useTeamsContext } from '../teams/useTeamsContext';
@@ -119,6 +117,35 @@ const useStyles = makeStyles({
   navRotulo: {
     fontSize: '14px',
     fontWeight: 500,
+    flex: 1,
+  },
+  grupoCabecalho: {
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    width: '100%',
+    background: 'none',
+    border: 'none',
+    cursor: 'pointer',
+    fontFamily: 'inherit',
+  },
+  grupoChevron: {
+    flexShrink: 0,
+    opacity: 0.7,
+  },
+  grupoFilhos: {
+    display: 'flex',
+    flexDirection: 'column',
+    gap: '2px',
+    marginTop: '2px',
+  },
+  // Só usado com o rail expandido (filhos ficam ocultos quando colapsado) — por isso já define
+  // largura junto com o recuo, sem precisar compor com navItemExpandido.
+  navItemFilho: {
+    marginLeft: '30px',
+    width: 'calc(100% - 42px)',
+    height: '36px',
+    fontSize: '13px',
   },
   navSeparador: {
     width: '28px',
@@ -164,47 +191,140 @@ const useStyles = makeStyles({
   },
 });
 
-// Navegação consolidada (pedido do usuário em 24/08, revisada em 26 e 28/08): Dashboard + módulos-
-// pilar (Procedimentos & Planos [ex-Prevenção]/Operação, cada um com abas internas — ver
-// PillarLayout) + itens de 1º nível próprios. Riscos e Pessoas (antes abas de Prevenção/Operação)
-// e Não Conformidades/Acidentes & Incidentes (antes abas do extinto módulo Melhoria Contínua)
-// viraram itens de 1º nível na sidebar, cada um abrindo direto sua tela (que já tem título + abas
-// internas próprias, mesmo padrão de EPI).
-const secoesNavegacao: Array<{ pilar: string | null; itens: Array<{ rota: string; rotulo: string; icone: typeof Grid24Regular }> }> = [
-  { pilar: null, itens: [{ rota: '/', rotulo: 'Dashboard', icone: Grid24Regular }] },
-  // Calendário do Teams dentro do app (requisito do usuário, 2026-08-29) — agenda pessoal, por
-  // isso item de 1º nível próprio (não aba de nenhum pilar), logo depois do Dashboard.
-  { pilar: null, itens: [{ rota: '/calendario', rotulo: 'Calendário', icone: CalendarLtr24Regular }] },
-  { pilar: null, itens: [{ rota: '/prevencao', rotulo: 'Procedimentos & Planos', icone: ShieldError24Regular }] },
-  { pilar: null, itens: [{ rota: '/riscos', rotulo: 'Riscos', icone: Warning24Regular }] },
-  { pilar: null, itens: [{ rota: '/pessoas', rotulo: 'Pessoas', icone: People24Regular }] },
-  { pilar: null, itens: [{ rota: '/operacao', rotulo: 'Operação', icone: BuildingBank24Regular }] },
-  { pilar: null, itens: [{ rota: '/nao-conformidades', rotulo: 'Não Conformidades', icone: DocumentError24Regular }] },
-  { pilar: null, itens: [{ rota: '/acidentes', rotulo: 'Acidentes & Incidentes', icone: BriefcaseMedical24Regular }] },
-  // Módulo de Requisitos Legais — Motor de Aplicabilidade Legal (requisito do usuário, 2026-08-29).
-  { pilar: null, itens: [{ rota: '/requisitos-legais', rotulo: 'Requisitos Legais', icone: DocumentCheckmark24Regular }] },
-  // EPI ficou fora dos módulos-pilar (sidebar fixa própria) por decisão do usuário: catálogo/estoque
-  // e entregas são dado operacional/compartilhado, não pessoal — não caberia como aba de um pilar.
-  { pilar: null, itens: [{ rota: '/epi', rotulo: 'EPI', icone: ShieldCheckmark24Regular }] },
+interface ItemNav {
+  rota: string;
+  rotulo: string;
+}
+
+interface GrupoNav {
+  chave: string;
+  titulo: string;
+  icone: typeof Grid24Regular;
+  itens: ItemNav[];
+}
+
+// Itens soltos no topo, fora de qualquer grupo — Dashboard e Calendário (agenda pessoal do Teams,
+// requisito do usuário em 2026-08-29) não pertencem a nenhum módulo temático.
+const itensAvulsos: Array<ItemNav & { icone: typeof Grid24Regular }> = [
+  { rota: '/', rotulo: 'Dashboard', icone: Grid24Regular },
+  { rota: '/calendario', rotulo: 'Calendário', icone: CalendarLtr24Regular },
 ];
 
-// Administração fica fixa no rodapé do rail (mesmo padrão do mockup Hub Gênesis SST).
-const itemAdministracao = { rota: '/administracao', rotulo: 'Administração', icone: Settings24Regular };
+// Reorganização de sidebar em grupos temáticos (pedido do usuário, 2026-08-31) — substitui a lista
+// achatada por módulo-pilar da consolidação de 24/08-28/08.
+//
+// Decisões não-literais assumidas (o pedido do usuário não cobria estes pontos):
+// - "Riscos" não estava na lista ditada pelo usuário; mantido dentro de Gestão de SST (ao lado de
+//   PGR/GRO, que consome a matriz de risco) pra não esconder uma tela já existente e em uso.
+// - PCMSO / "ASO & Exames" apontam pra SaudeOcupacionalPage (que já tem essas abas internamente),
+//   usando ?aba= pra abrir direto na aba certa — não duplicamos a tela.
+// - Acidentes / Incidentes / Quase-acidentes apontam pra AcidentesPage (que já tem filtro por
+//   tipo), usando ?tipo= (ver TipoOcorrencia em lib/api.ts) — mesma lógica.
+// - "Trabalhadores" e "Histórico" (Pessoas) apontam pra mesma rota /pessoas — não existe uma
+//   listagem de histórico separada da lista de trabalhadores hoje.
+// - "Usuários" e "Permissões" (Administração) apontam pra mesma rota /administracao (aba Controle
+//   de Acesso) — o sistema não distingue essas duas telas hoje.
+// - Treinamentos, Documentos & Procedimentos e Configurações não têm tela própria no sistema —
+//   apontam pra EmConstrucaoPage (ver App.tsx) em vez de inventar uma funcionalidade que não existe.
+const gruposNavegacao: GrupoNav[] = [
+  {
+    chave: 'gestao-sst',
+    titulo: 'Gestão de SST',
+    icone: ShieldError24Regular,
+    itens: [
+      { rota: '/prevencao/pgr', rotulo: 'PGR / GRO' },
+      { rota: '/riscos', rotulo: 'Riscos' },
+      { rota: '/operacao/saude-ocupacional?aba=pcmso', rotulo: 'PCMSO' },
+      { rota: '/gestao-sst/treinamentos', rotulo: 'Treinamentos' },
+      { rota: '/epi', rotulo: 'EPI / EPC' },
+      { rota: '/operacao/cipa', rotulo: 'CIPA' },
+      { rota: '/prevencao/dds', rotulo: 'DDS' },
+      { rota: '/gestao-sst/documentos', rotulo: 'Documentos & Procedimentos' },
+      { rota: '/requisitos-legais', rotulo: 'Requisitos Legais' },
+    ],
+  },
+  {
+    chave: 'operacao',
+    titulo: 'Operação',
+    icone: BuildingBank24Regular,
+    itens: [
+      { rota: '/operacao/apr', rotulo: 'APR' },
+      { rota: '/operacao/pt', rotulo: 'PT' },
+      { rota: '/prevencao/inspecoes', rotulo: 'Inspeções' },
+      { rota: '/operacao/identificacao', rotulo: 'Outros controles operacionais' },
+    ],
+  },
+  {
+    chave: 'pessoas',
+    titulo: 'Pessoas',
+    icone: People24Regular,
+    itens: [
+      { rota: '/pessoas', rotulo: 'Trabalhadores' },
+      { rota: '/operacao/saude-ocupacional?aba=aso', rotulo: 'ASO & Exames' },
+      { rota: '/pessoas', rotulo: 'Histórico' },
+    ],
+  },
+  {
+    chave: 'ocorrencias',
+    titulo: 'Ocorrências',
+    icone: BriefcaseMedical24Regular,
+    itens: [
+      { rota: '/acidentes?tipo=1', rotulo: 'Acidentes' },
+      { rota: '/acidentes?tipo=2', rotulo: 'Incidentes' },
+      { rota: '/acidentes?tipo=3', rotulo: 'Quase-acidentes' },
+      { rota: '/nao-conformidades', rotulo: 'Não conformidades' },
+    ],
+  },
+];
 
-const itensNavegacaoFlat = [...secoesNavegacao.flatMap((secao) => secao.itens), itemAdministracao];
+// Administração fica fixa no rodapé do rail (mesmo padrão do mockup Hub Gênesis SST) — agora
+// também é um grupo (Obras saiu da aba Operação e entrou aqui, a pedido do usuário).
+const grupoAdministracao: GrupoNav = {
+  chave: 'administracao',
+  titulo: 'Administração',
+  icone: Settings24Regular,
+  itens: [
+    { rota: '/operacao/obras', rotulo: 'Obras' },
+    { rota: '/administracao', rotulo: 'Usuários' },
+    { rota: '/administracao', rotulo: 'Permissões' },
+    { rota: '/administracao/configuracoes', rotulo: 'Configurações' },
+  ],
+};
 
-function tituloDaRota(pathname: string): string {
+const todosGrupos = [...gruposNavegacao, grupoAdministracao];
+const CHAVE_GRUPOS_ABERTOS = 'sst.gruposNavAbertos';
+
+// Compara rota-alvo com a localização atual. Itens com querystring (?aba=/?tipo=) exigem
+// correspondência exata (senão "PCMSO" e "ASO & Exames" ficariam ativos ao mesmo tempo); itens só
+// de caminho aceitam sub-rotas (ex.: /pessoas/:id mantém "Trabalhadores" ativo).
+function estaAtivo(rota: string, pathname: string, search: string): boolean {
+  if (rota.includes('?')) {
+    return `${pathname}${search}` === rota;
+  }
+  if (rota === '/') return pathname === '/';
+  return pathname === rota || pathname.startsWith(`${rota}/`);
+}
+
+function tituloDaRota(pathname: string, search: string): string {
+  const localizacaoCompleta = `${pathname}${search}`;
+  for (const item of itensAvulsos) {
+    if (item.rota === pathname) return item.rotulo;
+  }
+  for (const grupo of todosGrupos) {
+    for (const item of grupo.itens) {
+      if (item.rota === localizacaoCompleta || (!item.rota.includes('?') && item.rota === pathname)) {
+        return item.rotulo;
+      }
+    }
+  }
   if (pathname === '/alertas') return 'Alertas';
-  if (pathname.startsWith('/prevencao')) return 'Procedimentos & Planos';
+  if (pathname.startsWith('/prevencao')) return 'Gestão de SST';
   if (pathname.startsWith('/operacao')) return 'Operação';
-  if (pathname.startsWith('/riscos')) return 'Riscos';
   if (pathname.startsWith('/pessoas')) return 'Pessoas';
-  if (pathname.startsWith('/nao-conformidades')) return 'Não Conformidades';
-  if (pathname.startsWith('/acidentes')) return 'Acidentes & Incidentes';
-  if (pathname.startsWith('/requisitos-legais')) return 'Requisitos Legais';
-  if (pathname.startsWith('/epi')) return 'EPI';
-  const item = itensNavegacaoFlat.find((i) => i.rota === pathname);
-  return item?.rotulo ?? 'AAHBRANT SST';
+  if (pathname.startsWith('/acidentes')) return 'Ocorrências';
+  if (pathname.startsWith('/nao-conformidades')) return 'Ocorrências';
+  if (pathname.startsWith('/administracao')) return 'Administração';
+  return 'AAHBRANT SST';
 }
 
 function ItemRail({
@@ -245,6 +365,82 @@ function ItemRail({
   );
 }
 
+function GrupoRail({
+  grupo,
+  expandido,
+  aberto,
+  aoAlternarAberto,
+  pathname,
+  search,
+}: {
+  grupo: GrupoNav;
+  expandido: boolean;
+  aberto: boolean;
+  aoAlternarAberto: () => void;
+  pathname: string;
+  search: string;
+}) {
+  const estilos = useStyles();
+  const Icone = grupo.icone;
+  const algumFilhoAtivo = grupo.itens.some((item) => estaAtivo(item.rota, pathname, search));
+  const destacarCabecalho = algumFilhoAtivo && (!expandido || !aberto);
+
+  const cabecalho = (
+    <button
+      type="button"
+      aria-label={grupo.titulo}
+      aria-expanded={aberto}
+      onClick={aoAlternarAberto}
+      className={mergeClasses(
+        estilos.navItem,
+        estilos.grupoCabecalho,
+        expandido && estilos.navItemExpandido,
+        !destacarCabecalho && estilos.navItemHover,
+        destacarCabecalho && estilos.navItemActive,
+      )}
+    >
+      <Icone />
+      {expandido && (
+        <>
+          <span className={estilos.navRotulo}>{grupo.titulo}</span>
+          {aberto ? <ChevronUp16Regular className={estilos.grupoChevron} /> : <ChevronDown16Regular className={estilos.grupoChevron} />}
+        </>
+      )}
+    </button>
+  );
+
+  return (
+    <div style={{ display: 'contents' }}>
+      {expandido ? (
+        cabecalho
+      ) : (
+        <Tooltip content={grupo.titulo} relationship="label" positioning="after">
+          {cabecalho}
+        </Tooltip>
+      )}
+      {expandido && aberto && (
+        <div className={estilos.grupoFilhos}>
+          {grupo.itens.map((item, indice) => (
+            <Link
+              key={`${item.rota}-${indice}`}
+              to={item.rota}
+              className={mergeClasses(
+                estilos.navItem,
+                estilos.navItemExpandido,
+                estilos.navItemFilho,
+                estilos.navItemHover,
+                estaAtivo(item.rota, pathname, search) && estilos.navItemActive,
+              )}
+            >
+              <span className={estilos.navRotulo}>{item.rotulo}</span>
+            </Link>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
 export function AppShell({ children }: { children: ReactNode }) {
   const estilos = useStyles();
   const location = useLocation();
@@ -254,10 +450,44 @@ export function AppShell({ children }: { children: ReactNode }) {
   const [railExpandido, setRailExpandido] = useState<boolean>(
     () => localStorage.getItem(CHAVE_RAIL_EXPANDIDO) === '1',
   );
+  // Todos os grupos abrem por padrão (reorganização pedida em 31/08) — usuário pode fechar os que
+  // não usa, preferência persistida como as demais do rail.
+  const [gruposAbertos, setGruposAbertos] = useState<Set<string>>(() => {
+    try {
+      const salvo = localStorage.getItem(CHAVE_GRUPOS_ABERTOS);
+      if (salvo) return new Set(JSON.parse(salvo) as string[]);
+    } catch {
+      // JSON inválido no localStorage — cai no default abaixo
+    }
+    return new Set(todosGrupos.map((g) => g.chave));
+  });
 
   useEffect(() => {
     localStorage.setItem(CHAVE_RAIL_EXPANDIDO, railExpandido ? '1' : '0');
   }, [railExpandido]);
+
+  useEffect(() => {
+    localStorage.setItem(CHAVE_GRUPOS_ABERTOS, JSON.stringify([...gruposAbertos]));
+  }, [gruposAbertos]);
+
+  // Colapsado, clicar num grupo expande o rail inteiro e já abre esse grupo (não faz sentido
+  // "abrir" um grupo sem espaço pra mostrar os filhos).
+  function alternarGrupo(chave: string) {
+    if (!railExpandido) {
+      setRailExpandido(true);
+      setGruposAbertos((atual) => new Set(atual).add(chave));
+      return;
+    }
+    setGruposAbertos((atual) => {
+      const novo = new Set(atual);
+      if (novo.has(chave)) {
+        novo.delete(chave);
+      } else {
+        novo.add(chave);
+      }
+      return novo;
+    });
+  }
 
   useEffect(() => {
     let cancelado = false;
@@ -288,24 +518,36 @@ export function AppShell({ children }: { children: ReactNode }) {
             onClick={() => setRailExpandido((atual) => !atual)}
           />
         </div>
-        {secoesNavegacao.map((secao, indice) => (
-          <div key={secao.pilar ?? `sem-pilar-${indice}`} style={{ display: 'contents' }}>
-            {indice > 0 && secao.pilar === null && (
-              <div className={mergeClasses(estilos.navSeparador, railExpandido && estilos.navSeparadorExpandido)} />
-            )}
-            {secao.itens.map((item) => (
-              <ItemRail key={item.rota} {...item} expandido={railExpandido} />
-            ))}
-          </div>
+        {itensAvulsos.map((item) => (
+          <ItemRail key={item.rota} {...item} expandido={railExpandido} />
+        ))}
+        <div className={mergeClasses(estilos.navSeparador, railExpandido && estilos.navSeparadorExpandido)} />
+        {gruposNavegacao.map((grupo) => (
+          <GrupoRail
+            key={grupo.chave}
+            grupo={grupo}
+            expandido={railExpandido}
+            aberto={gruposAbertos.has(grupo.chave)}
+            aoAlternarAberto={() => alternarGrupo(grupo.chave)}
+            pathname={location.pathname}
+            search={location.search}
+          />
         ))}
         <div className={estilos.railRodape}>
-          <ItemRail {...itemAdministracao} expandido={railExpandido} />
+          <GrupoRail
+            grupo={grupoAdministracao}
+            expandido={railExpandido}
+            aberto={gruposAbertos.has(grupoAdministracao.chave)}
+            aoAlternarAberto={() => alternarGrupo(grupoAdministracao.chave)}
+            pathname={location.pathname}
+            search={location.search}
+          />
         </div>
       </nav>
 
       <header className={estilos.header}>
         <Text className="brand-title" size={500} weight="semibold">
-          {tituloDaRota(location.pathname)}
+          {tituloDaRota(location.pathname, location.search)}
         </Text>
         <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
           <SyncStatusBadge />

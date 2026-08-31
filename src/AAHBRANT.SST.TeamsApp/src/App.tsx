@@ -37,6 +37,7 @@ import { EpiPage } from './pages/epi/EpiPage';
 import { AssinarEntregaEpiPage } from './pages/epi/AssinarEntregaEpiPage';
 import { SaudeOcupacionalPage } from './pages/saude-ocupacional/SaudeOcupacionalPage';
 import { PcmsoDetalhePage } from './pages/saude-ocupacional/PcmsoDetalhePage';
+import { EmConstrucaoPage } from './pages/EmConstrucaoPage';
 import { CipaPage } from './pages/cipa/CipaPage';
 import { ProcessoEleitoralCipaDetalhePage } from './pages/cipa/ProcessoEleitoralCipaDetalhePage';
 import { MembroCipaDetalhePage } from './pages/cipa/MembroCipaDetalhePage';
@@ -160,6 +161,36 @@ function App() {
             <Route path="/epi" element={<EpiPage />} />
             <Route path="/epi/:id/assinar" element={<AssinarEntregaEpiPage />} />
             <Route path="/administracao" element={<AdministracaoPage />} />
+
+            {/* Reorganização de sidebar em grupos (2026-08-31, pedido do usuário) — 3 itens que
+                ganharam lugar fixo no menu mas ainda não têm tela/dado próprio no sistema. */}
+            <Route
+              path="/gestao-sst/treinamentos"
+              element={
+                <EmConstrucaoPage
+                  titulo="Treinamentos"
+                  descricao="Ainda não existe uma tela dedicada de gestão de treinamentos — hoje o indicador de Treinamentos vencidos no Dashboard usa o cadastro de Treinamento por trabalhador (ver perfil de cada trabalhador em Pessoas)."
+                />
+              }
+            />
+            <Route
+              path="/gestao-sst/documentos"
+              element={
+                <EmConstrucaoPage
+                  titulo="Documentos & Procedimentos"
+                  descricao="O módulo de Gestão Documental foi removido do sistema em 28/08 (junto com a Matriz Legal antiga). Esse item está reservado no menu, mas precisa ser reconstruído do zero."
+                />
+              }
+            />
+            <Route
+              path="/administracao/configuracoes"
+              element={
+                <EmConstrucaoPage
+                  titulo="Configurações"
+                  descricao="Ainda não existe uma tela de configurações gerais do sistema — hoje Administração cobre Controle de Acesso, Trilha de Auditoria e Assinaturas."
+                />
+              }
+            />
 
             {/* Redirecionamentos legados: caminhos antigos (pré-consolidação de 24/08) apontando
                 para as novas sub-rotas dentro dos módulos-pilar — preserva links/favoritos antigos. */}

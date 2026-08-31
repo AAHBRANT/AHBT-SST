@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import {
   Badge,
   Button,
@@ -66,8 +66,11 @@ export function AcidentesPage() {
   const [trabalhadores, setTrabalhadores] = useState<Trabalhador[]>([]);
   const [atividades, setAtividades] = useState<Atividade[]>([]);
   const [nova, setNova] = useState<NovoAcidente>(novaInicial());
+  // Suporta abrir a tela já filtrada por tipo via URL (?tipo=3) — usado pelos itens "Acidentes",
+  // "Incidentes" e "Quase-acidentes" do menu lateral, que apontam pra essa mesma tela.
+  const [searchParams] = useSearchParams();
   const [filtroStatus, setFiltroStatus] = useState<string>('');
-  const [filtroTipo, setFiltroTipo] = useState<string>('');
+  const [filtroTipo, setFiltroTipo] = useState<string>(searchParams.get('tipo') ?? '');
   const [erro, setErro] = useState<string | null>(null);
   const [carregando, setCarregando] = useState(false);
   const [aba, setAba] = useState<'ocorrencias' | 'hht'>('ocorrencias');
