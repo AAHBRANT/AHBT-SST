@@ -1,6 +1,5 @@
 using AAHBRANT.SST.Application.Dds.Commands;
 using AAHBRANT.SST.Application.Dds.Queries;
-using AAHBRANT.SST.Domain.Enums;
 using MediatR;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -46,13 +45,9 @@ public class DdsController : ControllerBase
 
     [Authorize(Policy = "dds:conduzir")]
     [HttpPost("{id:guid}/participantes")]
-    [RequestSizeLimit(6_000_000)]
-    public async Task<IActionResult> RegistrarParticipante(Guid id, [FromForm] RegistrarParticipanteRequestBody body, CancellationToken ct)
+    public async Task<IActionResult> RegistrarParticipante(Guid id, RegistrarParticipanteRequestBody body, CancellationToken ct)
     {
-        await using var stream = new MemoryStream();
-        await body.Foto.CopyToAsync(stream, ct);
-
-        var command = new RegistrarParticipanteCommand(id, body.TrabalhadorId, body.FotoTipo, stream.ToArray(), body.Foto.ContentType);
+        var command = new RegistrarParticipanteCommand(id, body.TrabalhadorId, body.DispositivoId, body.SegredoDispositivo, body.Score);
         var participanteId = await _mediator.Send(command, ct);
         return Ok(new { id = participanteId });
     }
@@ -115,8 +110,9 @@ public record MarcarItemChecklistRequestBody(bool Verificado);
 public class RegistrarParticipanteRequestBody
 {
     public Guid TrabalhadorId { get; set; }
-    public TipoFotoParticipante FotoTipo { get; set; }
-    public IFormFile Foto { get; set; } = null!;
+    public Guid DispositivoId { get; set; }
+    public string SegredoDispositivo { get; set; } = string.Empty;
+    public double Score { get; set; }
 }
 
 public class AnexarFotoEvidenciaDdsRequestBody

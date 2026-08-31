@@ -66,6 +66,7 @@ public class ObterDdsDetalheQueryHandler : IRequestHandler<ObterDdsDetalheQuery,
                     TrabalhadorId = p.TrabalhadorId,
                     TrabalhadorNome = p.Trabalhador?.Nome ?? string.Empty,
                     FotoTipo = p.FotoTipo,
+                    ScoreConfianca = p.ScoreConfianca,
                     TelegramEnviadoEm = envio?.EnviadoEm,
                     TelegramConfirmadoEm = envio?.ConfirmadoEm,
                 };

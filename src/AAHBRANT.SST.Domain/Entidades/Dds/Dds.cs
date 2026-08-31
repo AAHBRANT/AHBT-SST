@@ -103,9 +103,13 @@ public class DdsItemChecklist : AuditableEntity
 }
 
 // Registro de presença. Evidência obrigatória (2026-08-24, trazida para o escopo a pedido do
-// usuário — a Fase 1 original deixava isso de fora): foto da pessoa presente OU do documento
-// (lista de presença) assinado por ela, à escolha de quem conduz o DDS. Guardada como binário no
-// próprio banco (sem storage externo), pedido explícito do usuário.
+// usuário — a Fase 1 original deixava isso de fora): originalmente foto da pessoa presente OU do
+// documento (lista de presença) assinado por ela. A partir de 2026-08-31 (pedido do usuário) a
+// evidência passou a ser exclusivamente a validação biométrica (leitor Futronic FS80H) do
+// participante selecionado — FotoTipo passa a ser sempre Biometria e ScoreConfianca guarda o score
+// do match retornado por IAutenticacaoBiometriaLocalService.AutenticarPorMatchLocalAsync.
+// FotoConteudo/FotoContentType continuam presentes só para preservar o histórico de registros
+// anteriores a essa mudança (nunca mais preenchidos em novos registros).
 public class DdsParticipante : AuditableEntity
 {
     public Guid DdsId { get; set; }
@@ -117,6 +121,7 @@ public class DdsParticipante : AuditableEntity
     public TipoFotoParticipante FotoTipo { get; set; }
     public byte[] FotoConteudo { get; set; } = Array.Empty<byte>();
     public string FotoContentType { get; set; } = string.Empty;
+    public double? ScoreConfianca { get; set; }
 }
 
 // Um envio de Telegram por trabalhador — dobra como log de envio e como registro de confirmação de
