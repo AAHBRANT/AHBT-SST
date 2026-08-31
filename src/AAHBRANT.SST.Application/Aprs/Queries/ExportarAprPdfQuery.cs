@@ -1,5 +1,7 @@
+using AAHBRANT.SST.Application.Common.Interfaces;
 using AAHBRANT.SST.Domain.Enums;
 using MediatR;
+using Microsoft.EntityFrameworkCore;
 
 namespace AAHBRANT.SST.Application.Aprs.Queries;
 
@@ -8,11 +10,13 @@ public record ExportarAprPdfQuery(Guid Id) : IRequest<byte[]?>;
 public class ExportarAprPdfQueryHandler : IRequestHandler<ExportarAprPdfQuery, byte[]?>
 {
     private readonly IMediator _mediator;
+    private readonly IAppDbContext _db;
     private readonly IAprPdfService _pdf;
 
-    public ExportarAprPdfQueryHandler(IMediator mediator, IAprPdfService pdf)
+    public ExportarAprPdfQueryHandler(IMediator mediator, IAppDbContext db, IAprPdfService pdf)
     {
         _mediator = mediator;
+        _db = db;
         _pdf = pdf;
     }
 
@@ -21,10 +25,14 @@ public class ExportarAprPdfQueryHandler : IRequestHandler<ExportarAprPdfQuery, b
         var detalhe = await _mediator.Send(new ObterAprDetalheQuery(request.Id), ct);
         if (detalhe is null) return null;
 
-        return _pdf.Gerar(MontarModelo(detalhe));
+        byte[]? logoConteudo = detalhe.Apr.ObraId is { } obraId
+            ? await _db.Obras.Where(o => o.Id == obraId).Select(o => o.LogoConteudo).FirstOrDefaultAsync(ct)
+            : null;
+
+        return _pdf.Gerar(MontarModelo(detalhe, logoConteudo));
     }
 
-    public static AprPdfModelo MontarModelo(AprDetalheDto detalhe)
+    public static AprPdfModelo MontarModelo(AprDetalheDto detalhe, byte[]? obraLogoConteudo = null)
     {
         var assinaturasPorTrabalhador = detalhe.Assinaturas
             .Where(a => a.Papel == PapelAssinaturaApr.Envolvido)
@@ -60,6 +68,7 @@ public class ExportarAprPdfQueryHandler : IRequestHandler<ExportarAprPdfQuery, b
         return new AprPdfModelo(
             detalhe.Apr.NumeroApr,
             detalhe.Apr.ObraNome,
+            obraLogoConteudo,
             detalhe.Apr.AtividadeNome,
             detalhe.Apr.Local,
             detalhe.Apr.MaquinasEquipamentos,

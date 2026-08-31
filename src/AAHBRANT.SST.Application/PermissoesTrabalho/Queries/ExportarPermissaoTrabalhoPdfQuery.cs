@@ -33,7 +33,11 @@ public class ExportarPermissaoTrabalhoPdfQueryHandler : IRequestHandler<Exportar
             .FirstOrDefaultAsync(d => d.EntidadeTipo == nameof(PermissaoTrabalho) && d.EntidadeId == request.Id, ct);
         var assinaram = documento?.Signatarios.Select(s => s.TrabalhadorId).ToHashSet() ?? new HashSet<Guid>();
 
-        return _pdf.Gerar(MontarModelo(detalhe, assinaram));
+        byte[]? logoConteudo = detalhe.PermissaoTrabalho.ObraId is { } obraId
+            ? await _db.Obras.Where(o => o.Id == obraId).Select(o => o.LogoConteudo).FirstOrDefaultAsync(ct)
+            : null;
+
+        return _pdf.Gerar(MontarModelo(detalhe, assinaram, logoConteudo));
     }
 
     private static readonly Dictionary<ItemPreRequisitoPt, string> RotulosPreRequisito = new()
@@ -107,12 +111,13 @@ public class ExportarPermissaoTrabalhoPdfQueryHandler : IRequestHandler<Exportar
         [ItemEpcPt.Sinalizacao] = "Sinalização",
     };
 
-    private static PtPdfModelo MontarModelo(PermissaoTrabalhoDetalheDto detalhe, HashSet<Guid> assinaram)
+    private static PtPdfModelo MontarModelo(PermissaoTrabalhoDetalheDto detalhe, HashSet<Guid> assinaram, byte[]? obraLogoConteudo)
     {
         var pt = detalhe.PermissaoTrabalho;
         return new PtPdfModelo(
             pt.NumeroPt,
             pt.ObraNome,
+            obraLogoConteudo,
             pt.DescricaoAtividade,
             pt.Local,
             pt.EmpresaExecutante,

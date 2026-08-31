@@ -34,10 +34,7 @@ public class PtPdfService : IPtPdfService
                 pagina.DefaultTextStyle(estilo => estilo.FontSize(8));
 
                 pagina.Header().Column(coluna =>
-                {
-                    coluna.Item().Text("PT – PERMISSÃO DE TRABALHO | REV.01").FontSize(15).Bold().FontColor(CorMarca);
-                    coluna.Item().PaddingTop(4).LineHorizontal(2).LineColor(CorMarca);
-                });
+                    CabecalhoDocumentoPadrao.Desenhar(coluna, "PT – PERMISSÃO DE TRABALHO | REV.01", modelo.ObraNome, modelo.ObraLogoConteudo));
 
                 pagina.Content().PaddingVertical(10).Column(coluna =>
                 {

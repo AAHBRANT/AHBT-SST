@@ -26,6 +26,7 @@ public record AprPdfAssinatura(string? Nome, string? Funcao, DateTime? Data);
 public record AprPdfModelo(
     string? NumeroApr,
     string? ObraNome,
+    byte[]? ObraLogoConteudo,
     string AtividadeNome,
     string Local,
     string? MaquinasEquipamentos,

@@ -1,4 +1,6 @@
+using AAHBRANT.SST.Application.Common.Interfaces;
 using MediatR;
+using Microsoft.EntityFrameworkCore;
 
 namespace AAHBRANT.SST.Application.Dds.Queries;
 
@@ -7,11 +9,13 @@ public record ExportarDdsPdfQuery(Guid Id) : IRequest<byte[]?>;
 public class ExportarDdsPdfQueryHandler : IRequestHandler<ExportarDdsPdfQuery, byte[]?>
 {
     private readonly IMediator _mediator;
+    private readonly IAppDbContext _db;
     private readonly IDdsPdfService _pdf;
 
-    public ExportarDdsPdfQueryHandler(IMediator mediator, IDdsPdfService pdf)
+    public ExportarDdsPdfQueryHandler(IMediator mediator, IAppDbContext db, IDdsPdfService pdf)
     {
         _mediator = mediator;
+        _db = db;
         _pdf = pdf;
     }
 
@@ -20,12 +24,15 @@ public class ExportarDdsPdfQueryHandler : IRequestHandler<ExportarDdsPdfQuery, b
         var detalhe = await _mediator.Send(new ObterDdsDetalheQuery(request.Id), ct);
         if (detalhe is null) return null;
 
-        return _pdf.Gerar(MontarModelo(detalhe));
+        var logoConteudo = await _db.Obras.Where(o => o.Id == detalhe.Dds.ObraId).Select(o => o.LogoConteudo).FirstOrDefaultAsync(ct);
+
+        return _pdf.Gerar(MontarModelo(detalhe, logoConteudo));
     }
 
     // Reaproveitado por EnviarDdsTelegramCommandHandler para não duplicar a montagem do modelo do PDF.
-    public static DdsPdfModelo MontarModelo(DdsDetalheDto detalhe) => new(
+    public static DdsPdfModelo MontarModelo(DdsDetalheDto detalhe, byte[]? obraLogoConteudo = null) => new(
         detalhe.Dds.ObraNome,
+        obraLogoConteudo,
         detalhe.Dds.Data,
         detalhe.Dds.ResponsavelUsuarioNome,
         detalhe.Dds.TopicoPrincipal,

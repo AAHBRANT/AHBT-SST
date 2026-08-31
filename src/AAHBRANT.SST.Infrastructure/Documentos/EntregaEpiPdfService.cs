@@ -24,20 +24,7 @@ public class EntregaEpiPdfService : IFichaEpiPdfService
                 pagina.DefaultTextStyle(estilo => estilo.FontSize(9));
 
                 pagina.Header().Column(coluna =>
-                {
-                    coluna.Item().Row(linha =>
-                    {
-                        if (modelo.ObraLogoConteudo is not null && modelo.ObraLogoContentType is not null)
-                            linha.ConstantItem(60).Height(60).Image(modelo.ObraLogoConteudo).FitArea();
-
-                        linha.RelativeItem().Column(sub =>
-                        {
-                            sub.Item().Text(modelo.ObraNome).FontSize(16).Bold().FontColor(CorMarca);
-                            sub.Item().Text("Ficha de Controle e Entrega de EPI").FontSize(12).SemiBold();
-                        });
-                    });
-                    coluna.Item().PaddingTop(4).LineHorizontal(2).LineColor(CorMarca);
-                });
+                    CabecalhoDocumentoPadrao.Desenhar(coluna, "Ficha de Controle e Entrega de EPI", modelo.ObraNome, modelo.ObraLogoConteudo));
 
                 pagina.Content().PaddingVertical(10).Column(coluna =>
                 {

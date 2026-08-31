@@ -2338,7 +2338,33 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
 export const api = {
   obras: {
     listar: () => request<Obra[]>('/api/obras'),
-    criar: (obra: NovaObra) => request<{ id: string }>('/api/obras', { method: 'POST', body: JSON.stringify(obra) }),
+    // Logomarca obrigatória no cadastro (decisão do usuário, 31/08) — a criação passa a ser
+    // multipart/form-data (como o anexarLogo abaixo) em vez de JSON, para enviar obra + logo numa
+    // única chamada, já que o backend agora exige o arquivo para finalizar o cadastro da obra.
+    criar: async (obra: NovaObra, logo: File) => {
+      const formData = new FormData();
+      formData.append('Codigo', obra.codigo);
+      formData.append('Nome', obra.nome);
+      if (obra.cliente) formData.append('Cliente', obra.cliente);
+      formData.append('Status', String(obra.status));
+      if (obra.dataInicio) formData.append('DataInicio', obra.dataInicio);
+      if (obra.dataPrevisaoTermino) formData.append('DataPrevisaoTermino', obra.dataPrevisaoTermino);
+      if (obra.endereco) formData.append('Endereco', obra.endereco);
+      if (obra.cidade) formData.append('Cidade', obra.cidade);
+      if (obra.uf) formData.append('Uf', obra.uf);
+      if (obra.cnpj) formData.append('Cnpj', obra.cnpj);
+      formData.append('Logo', logo);
+      const response = await fetch(`${API_BASE_URL}/api/obras`, {
+        method: 'POST',
+        headers: await montarHeadersAuth(),
+        body: formData,
+      });
+      if (!response.ok) {
+        const corpo = await response.text().catch(() => '');
+        throw new Error(`${response.status} ${response.statusText}: ${corpo}`);
+      }
+      return response.json() as Promise<{ id: string }>;
+    },
     excluir: (id: string) => request<void>(`/api/obras/${id}`, { method: 'DELETE' }),
     anexarLogo: async (id: string, arquivo: File) => {
       const formData = new FormData();

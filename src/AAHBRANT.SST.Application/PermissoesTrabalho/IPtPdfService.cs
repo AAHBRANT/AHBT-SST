@@ -15,6 +15,7 @@ public record PtPdfEncerramento(string? Nome, DateTime? Data, string? Observacoe
 public record PtPdfModelo(
     string? NumeroPt,
     string? ObraNome,
+    byte[]? ObraLogoConteudo,
     string DescricaoAtividade,
     string Local,
     string? EmpresaExecutante,

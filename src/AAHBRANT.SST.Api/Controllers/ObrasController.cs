@@ -1,5 +1,6 @@
 using AAHBRANT.SST.Application.Obras.Commands;
 using AAHBRANT.SST.Application.Obras.Queries;
+using AAHBRANT.SST.Domain.Enums;
 using MediatR;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -27,10 +28,31 @@ public class ObrasController : ControllerBase
         return obra is null ? NotFound() : Ok(obra);
     }
 
+    // Logomarca obrigatória no cadastro (decisão do usuário, 31/08) — o corpo passa a ser
+    // multipart/form-data (como o endpoint de anexar logo) em vez de JSON, para poder exigir o
+    // arquivo já na criação da obra em vez de um segundo passo opcional.
     [Authorize(Policy = "organizacional:criar")]
     [HttpPost]
-    public async Task<IActionResult> Criar(CriarObraCommand command, CancellationToken ct)
+    [RequestSizeLimit(6_000_000)]
+    public async Task<IActionResult> Criar([FromForm] CriarObraRequestBody body, CancellationToken ct)
     {
+        await using var stream = new MemoryStream();
+        await body.Logo.CopyToAsync(stream, ct);
+
+        var command = new CriarObraCommand(
+            body.Codigo,
+            body.Nome,
+            body.Cliente,
+            body.Status,
+            body.DataInicio,
+            body.DataPrevisaoTermino,
+            body.Endereco,
+            body.Cidade,
+            body.Uf,
+            body.Cnpj,
+            stream.ToArray(),
+            body.Logo.ContentType);
+
         var id = await _mediator.Send(command, ct);
         return CreatedAtAction(nameof(ObterPorId), new { id }, new { id });
     }
@@ -76,5 +98,20 @@ public class ObrasController : ControllerBase
 
 public class AnexarLogoObraRequestBody
 {
+    public IFormFile Logo { get; set; } = null!;
+}
+
+public class CriarObraRequestBody
+{
+    public string Codigo { get; set; } = string.Empty;
+    public string Nome { get; set; } = string.Empty;
+    public string? Cliente { get; set; }
+    public StatusObra Status { get; set; }
+    public DateTime? DataInicio { get; set; }
+    public DateTime? DataPrevisaoTermino { get; set; }
+    public string? Endereco { get; set; }
+    public string? Cidade { get; set; }
+    public string? Uf { get; set; }
+    public string? Cnpj { get; set; }
     public IFormFile Logo { get; set; } = null!;
 }

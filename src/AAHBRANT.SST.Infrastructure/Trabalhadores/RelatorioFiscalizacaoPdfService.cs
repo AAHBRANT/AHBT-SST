@@ -2,6 +2,7 @@ using System.Security.Cryptography;
 using AAHBRANT.SST.Application.Trabalhadores;
 using AAHBRANT.SST.Application.Trabalhadores.Queries;
 using AAHBRANT.SST.Domain.Enums;
+using AAHBRANT.SST.Infrastructure.Documentos;
 using QuestPDF.Fluent;
 using QuestPDF.Helpers;
 using QuestPDF.Infrastructure;
@@ -34,11 +35,7 @@ public class RelatorioFiscalizacaoPdfService : IRelatorioFiscalizacaoPdfService
                 pagina.DefaultTextStyle(estilo => estilo.FontSize(11));
 
                 pagina.Header().Column(coluna =>
-                {
-                    coluna.Item().Text("AAHBRANT").FontSize(18).Bold().FontColor(CorMarca);
-                    coluna.Item().Text("Relatório de Fiscalização — Perfil de Vida do Trabalhador").FontSize(14).SemiBold();
-                    coluna.Item().PaddingTop(4).LineHorizontal(2).LineColor(CorMarca);
-                });
+                    CabecalhoDocumentoPadrao.Desenhar(coluna, "Relatório de Fiscalização — Perfil de Vida do Trabalhador", perfil.ObraNome, perfil.ObraLogoConteudo));
 
                 pagina.Content().PaddingVertical(12).Column(coluna =>
                 {

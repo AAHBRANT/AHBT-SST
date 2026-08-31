@@ -52,6 +52,7 @@ public class ObterPermissaoTrabalhoDetalheQueryHandler : IRequestHandler<ObterPe
                 NumeroPt = pt.NumeroPt,
                 AtividadeId = pt.AtividadeId,
                 AtividadeNome = pt.Atividade?.Nome ?? string.Empty,
+                ObraId = pt.Atividade?.Obra?.Id,
                 ObraNome = pt.Atividade?.Obra?.Nome,
                 DescricaoAtividade = pt.DescricaoAtividade,
                 Local = pt.Local,

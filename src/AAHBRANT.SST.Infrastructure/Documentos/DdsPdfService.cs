@@ -20,11 +20,7 @@ public class DdsPdfService : IDdsPdfService
                 pagina.DefaultTextStyle(estilo => estilo.FontSize(11));
 
                 pagina.Header().Column(coluna =>
-                {
-                    coluna.Item().Text("AAHBRANT").FontSize(18).Bold().FontColor(CorMarca);
-                    coluna.Item().Text("DDS — Diálogo Diário de Segurança").FontSize(14).SemiBold();
-                    coluna.Item().PaddingTop(4).LineHorizontal(2).LineColor(CorMarca);
-                });
+                    CabecalhoDocumentoPadrao.Desenhar(coluna, "DDS — Diálogo Diário de Segurança", modelo.ObraNome, modelo.ObraLogoConteudo));
 
                 pagina.Content().PaddingVertical(12).Column(coluna =>
                 {

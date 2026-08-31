@@ -1,17 +1,17 @@
 using AAHBRANT.SST.Application.Assinatura;
 using AAHBRANT.SST.Domain.Enums;
+using AAHBRANT.SST.Infrastructure.Documentos;
 using QuestPDF.Fluent;
 using QuestPDF.Helpers;
 using QuestPDF.Infrastructure;
 
 namespace AAHBRANT.SST.Infrastructure.Assinatura;
 
-// Mesmo padrão visual de DdsPdfService (branding AAHBRANT #670000) — mas layout próprio, porque este
-// é um comprovante de assinatura genérico (aplicável a qualquer módulo), não uma reprodução do DDS.
+// Mesmo padrão visual dos demais documentos (CabecalhoDocumentoPadrao, branding AAHBRANT #670000)
+// — mas sem a logomarca da obra: este comprovante é do Motor de Assinatura Eletrônica, decoupled de
+// cada módulo (só conhece EntidadeTipo/EntidadeId, não a obra de origem — ver comentário no modelo).
 public class DocumentoAssinaturaPdfService : IDocumentoAssinaturaPdfService
 {
-    private const string CorMarca = "#670000";
-
     public byte[] Gerar(DocumentoAssinaturaPdfModelo modelo)
     {
         var documento = Document.Create(container =>
@@ -23,11 +23,7 @@ public class DocumentoAssinaturaPdfService : IDocumentoAssinaturaPdfService
                 pagina.DefaultTextStyle(estilo => estilo.FontSize(11));
 
                 pagina.Header().Column(coluna =>
-                {
-                    coluna.Item().Text("AAHBRANT").FontSize(18).Bold().FontColor(CorMarca);
-                    coluna.Item().Text("Comprovante de Assinatura Eletrônica").FontSize(14).SemiBold();
-                    coluna.Item().PaddingTop(4).LineHorizontal(2).LineColor(CorMarca);
-                });
+                    CabecalhoDocumentoPadrao.Desenhar(coluna, "Comprovante de Assinatura Eletrônica", obraNome: null, logoConteudo: null));
 
                 pagina.Content().PaddingVertical(12).Column(coluna =>
                 {

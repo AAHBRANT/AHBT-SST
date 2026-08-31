@@ -33,6 +33,7 @@ export function ObrasPage() {
   const estilos = usePageStyles();
   const [obras, setObras] = useState<Obra[]>([]);
   const [novaObra, setNovaObra] = useState<NovaObra>(obraVazia);
+  const [logoNovaObra, setLogoNovaObra] = useState<File | null>(null);
   const [erro, setErro] = useState<string | null>(null);
   const [carregando, setCarregando] = useState(false);
   const [logoUrls, setLogoUrls] = useState<Record<string, string>>({});
@@ -111,15 +112,23 @@ export function ObrasPage() {
   }
 
   async function criar() {
+    if (!logoNovaObra) {
+      setErro('A logomarca da obra é obrigatória para finalizar o cadastro.');
+      return;
+    }
     try {
       setCarregando(true);
       setErro(null);
-      await api.obras.criar({
-        ...novaObra,
-        dataInicio: novaObra.dataInicio || null,
-        dataPrevisaoTermino: novaObra.dataPrevisaoTermino || null,
-      });
+      await api.obras.criar(
+        {
+          ...novaObra,
+          dataInicio: novaObra.dataInicio || null,
+          dataPrevisaoTermino: novaObra.dataPrevisaoTermino || null,
+        },
+        logoNovaObra,
+      );
       setNovaObra(obraVazia);
+      setLogoNovaObra(null);
       await carregar();
     } catch (e) {
       setErro(e instanceof Error ? e.message : 'Falha ao criar obra.');
@@ -207,9 +216,20 @@ export function ObrasPage() {
             onChange={(_, d) => setNovaObra({ ...novaObra, cnpj: d.value })}
           />
         </Field>
+        <Field label="Logomarca da obra" required>
+          <input
+            type="file"
+            accept="image/jpeg,image/png"
+            onChange={(e) => setLogoNovaObra(e.target.files?.[0] ?? null)}
+          />
+        </Field>
       </div>
+      <Text size={200}>
+        A logomarca é obrigatória: ela será usada no cabeçalho dos documentos gerados e assinados
+        para esta obra (APR, PT, DDS, Ficha de EPI, Relatório de Fiscalização).
+      </Text>
       <div className={estilos.formActions}>
-        <Button appearance="primary" icon={<Add24Regular />} onClick={criar} disabled={carregando}>
+        <Button appearance="primary" icon={<Add24Regular />} onClick={criar} disabled={carregando || !logoNovaObra}>
           Adicionar obra
         </Button>
       </div>

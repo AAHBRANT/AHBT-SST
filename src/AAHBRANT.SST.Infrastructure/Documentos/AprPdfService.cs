@@ -40,10 +40,7 @@ public class AprPdfService : IAprPdfService
                 pagina.DefaultTextStyle(estilo => estilo.FontSize(8));
 
                 pagina.Header().Column(coluna =>
-                {
-                    coluna.Item().Text("APR – ANÁLISE PRELIMINAR DE RISCO | REV.02").FontSize(15).Bold().FontColor(CorMarca);
-                    coluna.Item().PaddingTop(4).LineHorizontal(2).LineColor(CorMarca);
-                });
+                    CabecalhoDocumentoPadrao.Desenhar(coluna, "APR – ANÁLISE PRELIMINAR DE RISCO | REV.02", modelo.ObraNome, modelo.ObraLogoConteudo));
 
                 pagina.Content().PaddingVertical(10).Column(coluna =>
                 {

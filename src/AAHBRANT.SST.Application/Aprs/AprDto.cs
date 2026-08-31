@@ -8,6 +8,7 @@ public class AprDto
     public string? NumeroApr { get; set; }
     public Guid AtividadeId { get; set; }
     public string AtividadeNome { get; set; } = string.Empty;
+    public Guid? ObraId { get; set; }
     public string? ObraNome { get; set; }
     public string Local { get; set; } = string.Empty;
     public string? MaquinasEquipamentos { get; set; }

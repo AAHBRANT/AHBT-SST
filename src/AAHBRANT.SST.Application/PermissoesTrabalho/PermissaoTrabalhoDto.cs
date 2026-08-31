@@ -8,6 +8,7 @@ public class PermissaoTrabalhoDto
     public string? NumeroPt { get; set; }
     public Guid AtividadeId { get; set; }
     public string AtividadeNome { get; set; } = string.Empty;
+    public Guid? ObraId { get; set; }
     public string? ObraNome { get; set; }
     public string DescricaoAtividade { get; set; } = string.Empty;
     public string Local { get; set; } = string.Empty;
