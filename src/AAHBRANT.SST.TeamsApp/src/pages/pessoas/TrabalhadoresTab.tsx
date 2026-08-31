@@ -1,14 +1,8 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Avatar, Badge, Button, Field, Input, Select, Text } from '@fluentui/react-components';
-import {
-  Add24Regular,
-  ArrowUpload24Regular,
-  ChevronRight24Regular,
-  Delete24Regular,
-  Fingerprint24Regular,
-  Search24Regular,
-} from '@fluentui/react-icons';
+import { Add24Regular, ChevronRight24Regular, Delete24Regular, Fingerprint24Regular, Search24Regular } from '@fluentui/react-icons';
+import { SeletorFotoCamera } from '../../components/SeletorFotoCamera';
 import {
   api,
   resultadoAsoLabel,
@@ -69,9 +63,6 @@ export function TrabalhadoresTab() {
   const [erro, setErro] = useState<string | null>(null);
   const [carregando, setCarregando] = useState(false);
   const [fotoUrls, setFotoUrls] = useState<Record<string, string>>({});
-  const [enviandoFotoId, setEnviandoFotoId] = useState<string | null>(null);
-  const inputFotoRef = useRef<HTMLInputElement>(null);
-  const trabalhadorAlvoFotoRef = useRef<string | null>(null);
   const [trabalhadorDigitalAlvo, setTrabalhadorDigitalAlvo] = useState<{ id: string; nome: string } | null>(
     null,
   );
@@ -127,17 +118,8 @@ export function TrabalhadoresTab() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  function abrirSeletorFoto(trabalhadorId: string, evento: React.MouseEvent) {
-    evento.stopPropagation();
-    trabalhadorAlvoFotoRef.current = trabalhadorId;
-    inputFotoRef.current?.click();
-  }
-
-  async function enviarFoto(arquivo: File | null) {
-    const trabalhadorId = trabalhadorAlvoFotoRef.current;
-    if (!arquivo || !trabalhadorId) return;
+  async function enviarFoto(trabalhadorId: string, arquivo: File) {
     try {
-      setEnviandoFotoId(trabalhadorId);
       setErro(null);
       await api.trabalhadores.enviarFoto(trabalhadorId, arquivo);
       setFotoUrls((atual) => {
@@ -149,8 +131,6 @@ export function TrabalhadoresTab() {
       await carregar();
     } catch (e) {
       setErro(e instanceof Error ? e.message : 'Falha ao enviar a foto.');
-    } finally {
-      setEnviandoFotoId(null);
     }
   }
 
@@ -331,14 +311,14 @@ export function TrabalhadoresTab() {
                   aria-label="Cadastrar digital"
                   title="Cadastrar digital"
                 />
-                <Button
-                  appearance="subtle"
-                  icon={<ArrowUpload24Regular />}
-                  onClick={(evento) => abrirSeletorFoto(trabalhador.id, evento)}
-                  disabled={enviandoFotoId === trabalhador.id}
-                  aria-label="Enviar foto"
-                  title="Enviar foto"
-                />
+                <span onClick={(evento) => evento.stopPropagation()}>
+                  <SeletorFotoCamera
+                    rotulo="Enviar foto"
+                    apenasIcone
+                    tiposAceitos="image/png,image/jpeg"
+                    aoSelecionarArquivo={(arquivo) => enviarFoto(trabalhador.id, arquivo)}
+                  />
+                </span>
                 <Button
                   appearance="subtle"
                   icon={<ChevronRight24Regular />}
@@ -360,17 +340,6 @@ export function TrabalhadoresTab() {
         })}
         {trabalhadoresFiltrados.length === 0 && <Text>Nenhum trabalhador encontrado.</Text>}
       </div>
-
-      <input
-        type="file"
-        accept="image/png,image/jpeg"
-        ref={inputFotoRef}
-        style={{ display: 'none' }}
-        onChange={(e) => {
-          enviarFoto(e.target.files?.[0] ?? null);
-          e.target.value = '';
-        }}
-      />
 
       <CadastroDigitalDialog
         trabalhadorId={trabalhadorDigitalAlvo?.id ?? null}

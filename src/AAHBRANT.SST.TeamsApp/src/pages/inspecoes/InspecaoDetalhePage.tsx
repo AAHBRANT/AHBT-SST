@@ -1,14 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { Badge, Button, Input, Select, Text, Textarea } from '@fluentui/react-components';
-import {
-  ArrowDownload24Regular,
-  ArrowLeft24Regular,
-  ArrowUpload24Regular,
-  LockClosed24Regular,
-  Save24Regular,
-  Warning24Regular,
-} from '@fluentui/react-icons';
+import { ArrowDownload24Regular, ArrowLeft24Regular, LockClosed24Regular, Save24Regular, Warning24Regular } from '@fluentui/react-icons';
 import {
   api,
   StatusInspecao,
@@ -19,6 +12,7 @@ import {
   type InspecaoDetalhe,
   type Usuario,
 } from '../../lib/api';
+import { SeletorFotoCamera } from '../../components/SeletorFotoCamera';
 import { usePageStyles } from '../pageStyles';
 
 interface EdicaoResposta {
@@ -51,13 +45,9 @@ export function InspecaoDetalhePage() {
   const [detalhe, setDetalhe] = useState<InspecaoDetalhe | null>(null);
   const [usuarios, setUsuarios] = useState<Usuario[]>([]);
   const [edicoes, setEdicoes] = useState<Record<string, EdicaoResposta>>({});
-  const [fotosSelecionadas, setFotosSelecionadas] = useState<Record<string, File | null>>({});
-  const [fotosDepoisSelecionadas, setFotosDepoisSelecionadas] = useState<Record<string, File | null>>({});
   const [erro, setErro] = useState<string | null>(null);
   const [processando, setProcessando] = useState(false);
-  const [enviandoFotoId, setEnviandoFotoId] = useState<string | null>(null);
   const [baixandoFotoId, setBaixandoFotoId] = useState<string | null>(null);
-  const [enviandoFotoDepoisId, setEnviandoFotoDepoisId] = useState<string | null>(null);
   const [baixandoFotoDepoisId, setBaixandoFotoDepoisId] = useState<string | null>(null);
   const [gerandoOcorrenciaId, setGerandoOcorrenciaId] = useState<string | null>(null);
   const [baixandoPdf, setBaixandoPdf] = useState(false);
@@ -128,19 +118,13 @@ export function InspecaoDetalhePage() {
     }
   }
 
-  async function enviarFoto(respostaId: string) {
-    const arquivo = fotosSelecionadas[respostaId];
-    if (!arquivo) return;
+  async function enviarFoto(respostaId: string, arquivo: File) {
     try {
-      setEnviandoFotoId(respostaId);
       setErro(null);
       await api.inspecoes.anexarFoto(respostaId, arquivo);
-      setFotosSelecionadas((atual) => ({ ...atual, [respostaId]: null }));
       await carregar();
     } catch (e) {
       setErro(e instanceof Error ? e.message : 'Falha ao enviar a evidência anterior.');
-    } finally {
-      setEnviandoFotoId(null);
     }
   }
 
@@ -162,19 +146,13 @@ export function InspecaoDetalhePage() {
     }
   }
 
-  async function enviarFotoDepois(respostaId: string) {
-    const arquivo = fotosDepoisSelecionadas[respostaId];
-    if (!arquivo) return;
+  async function enviarFotoDepois(respostaId: string, arquivo: File) {
     try {
-      setEnviandoFotoDepoisId(respostaId);
       setErro(null);
       await api.inspecoes.anexarFotoDepois(respostaId, arquivo);
-      setFotosDepoisSelecionadas((atual) => ({ ...atual, [respostaId]: null }));
       await carregar();
     } catch (e) {
       setErro(e instanceof Error ? e.message : 'Falha ao enviar a evidência posterior.');
-    } finally {
-      setEnviandoFotoDepoisId(null);
     }
   }
 
@@ -408,26 +386,10 @@ export function InspecaoDetalhePage() {
                   <Text size={200} block weight="semibold" style={{ marginBottom: 4 }}>Evidência anterior</Text>
                   <div style={{ display: 'flex', flexDirection: 'column', gap: 4, alignItems: 'flex-start' }}>
                     {!somenteLeitura && (
-                      <>
-                        <input
-                          type="file"
-                          accept="image/*"
-                          capture="environment"
-                          onChange={(e) =>
-                            setFotosSelecionadas((atual) => ({ ...atual, [resposta.id]: e.target.files?.[0] ?? null }))
-                          }
-                          style={{ maxWidth: 200 }}
-                        />
-                        <Button
-                          appearance="subtle"
-                          size="small"
-                          icon={<ArrowUpload24Regular />}
-                          onClick={() => enviarFoto(resposta.id)}
-                          disabled={!fotosSelecionadas[resposta.id] || enviandoFotoId === resposta.id}
-                        >
-                          Enviar
-                        </Button>
-                      </>
+                      <SeletorFotoCamera
+                        rotulo="Tirar foto"
+                        aoSelecionarArquivo={(arquivo) => enviarFoto(resposta.id, arquivo)}
+                      />
                     )}
                     {resposta.temFoto && (
                       <Button
@@ -447,26 +409,10 @@ export function InspecaoDetalhePage() {
                   <Text size={200} block weight="semibold" style={{ marginBottom: 4 }}>Evidência posterior</Text>
                   <div style={{ display: 'flex', flexDirection: 'column', gap: 4, alignItems: 'flex-start' }}>
                     {!somenteLeitura && (
-                      <>
-                        <input
-                          type="file"
-                          accept="image/*"
-                          capture="environment"
-                          onChange={(e) =>
-                            setFotosDepoisSelecionadas((atual) => ({ ...atual, [resposta.id]: e.target.files?.[0] ?? null }))
-                          }
-                          style={{ maxWidth: 200 }}
-                        />
-                        <Button
-                          appearance="subtle"
-                          size="small"
-                          icon={<ArrowUpload24Regular />}
-                          onClick={() => enviarFotoDepois(resposta.id)}
-                          disabled={!fotosDepoisSelecionadas[resposta.id] || enviandoFotoDepoisId === resposta.id}
-                        >
-                          Enviar
-                        </Button>
-                      </>
+                      <SeletorFotoCamera
+                        rotulo="Tirar foto"
+                        aoSelecionarArquivo={(arquivo) => enviarFotoDepois(resposta.id, arquivo)}
+                      />
                     )}
                     {resposta.temFotoDepois && (
                       <Button

@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import {
   Badge,
@@ -32,6 +32,7 @@ import {
   type DdsDetalhe,
   type Trabalhador,
 } from '../../lib/api';
+import { SeletorFotoCamera } from '../../components/SeletorFotoCamera';
 import { usePageStyles } from '../pageStyles';
 
 export function DdsDetalhePage() {
@@ -50,7 +51,6 @@ export function DdsDetalhePage() {
   const [baixandoFotoId, setBaixandoFotoId] = useState<string | null>(null);
   const [enviandoTelegram, setEnviandoTelegram] = useState(false);
   const [resultadoTelegram, setResultadoTelegram] = useState<string | null>(null);
-  const inputFotoRef = useRef<HTMLInputElement>(null);
 
   async function carregar() {
     if (!id) return;
@@ -96,7 +96,6 @@ export function DdsDetalhePage() {
       await api.dds.registrarParticipante(id, participanteSelecionado, fotoTipo, fotoArquivo);
       setParticipanteSelecionado('');
       selecionarFoto(null);
-      if (inputFotoRef.current) inputFotoRef.current.value = '';
       await carregar();
     } catch (e) {
       setErro(e instanceof Error ? e.message : 'Falha ao registrar participante.');
@@ -290,13 +289,7 @@ export function DdsDetalhePage() {
               </RadioGroup>
             </div>
             <div className={estilos.formActions} style={{ alignItems: 'center' }}>
-              <input
-                ref={inputFotoRef}
-                type="file"
-                accept="image/*"
-                capture="environment"
-                onChange={(e) => selecionarFoto(e.target.files?.[0] ?? null)}
-              />
+              <SeletorFotoCamera rotulo="Tirar foto" aoSelecionarArquivo={(arquivo) => selecionarFoto(arquivo)} />
               {fotoPreviewUrl && (
                 <img
                   src={fotoPreviewUrl}

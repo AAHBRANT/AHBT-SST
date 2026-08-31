@@ -87,6 +87,12 @@ public class ObterPerfilCompletoTrabalhadorQueryHandler : IRequestHandler<ObterP
 
     public async Task<PerfilCompletoTrabalhadorDto?> Handle(ObterPerfilCompletoTrabalhadorQuery request, CancellationToken ct)
     {
+        // Obra e Funcao têm HasQueryFilter(Ativo) — projetar t.Obra!.Nome/t.Funcao!.Nome direto
+        // dentro do Select do Trabalhador aplica esses filtros ao join implícito e, se a obra ou a
+        // função do trabalhador tiver sido desativada, a linha inteira some do resultado (o
+        // trabalhador em si continua ativo, mas a query volta null → 404 no perfil). Corrigido
+        // (31/08) buscando Obra/Funcao à parte, com IgnoreQueryFilters(): o perfil de um
+        // trabalhador precisa abrir mesmo que a obra/função dele tenha sido desativada depois.
         var trabalhador = await _db.Trabalhadores
             .Where(t => t.Id == request.Id)
             .Select(t => new
@@ -102,14 +108,20 @@ public class ObterPerfilCompletoTrabalhadorQueryHandler : IRequestHandler<ObterP
                 t.DataAdmissao,
                 TemFoto = t.FotoConteudo != null,
                 TemBiometria = _db.TemplatesBiometricoFutronic.Any(tb => tb.TrabalhadorId == t.Id),
-                ObraLogoConteudo = t.Obra!.LogoConteudo,
-                ObraNome = t.Obra!.Nome,
-                FuncaoNome = t.Funcao!.Nome,
             })
             .FirstOrDefaultAsync(ct);
 
         if (trabalhador is null)
             return null;
+
+        var obra = await _db.Obras.IgnoreQueryFilters()
+            .Where(o => o.Id == trabalhador.ObraId)
+            .Select(o => new { o.Nome, o.LogoConteudo })
+            .FirstOrDefaultAsync(ct);
+        var funcaoNome = await _db.Funcoes.IgnoreQueryFilters()
+            .Where(f => f.Id == trabalhador.FuncaoId)
+            .Select(f => f.Nome)
+            .FirstOrDefaultAsync(ct);
 
         var asos = await _db.Asos
             .Where(a => a.TrabalhadorId == request.Id)
@@ -254,14 +266,14 @@ public class ObterPerfilCompletoTrabalhadorQueryHandler : IRequestHandler<ObterP
             trabalhador.Cpf,
             trabalhador.Rg,
             trabalhador.ObraId,
-            trabalhador.ObraNome,
+            obra?.Nome ?? string.Empty,
             trabalhador.FuncaoId,
-            trabalhador.FuncaoNome,
+            funcaoNome ?? string.Empty,
             trabalhador.Vinculo,
             trabalhador.DataAdmissao,
             trabalhador.TemFoto,
             trabalhador.TemBiometria,
-            trabalhador.ObraLogoConteudo,
+            obra?.LogoConteudo,
             statusAptidao,
             asos,
             episAtivos,

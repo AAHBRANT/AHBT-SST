@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useState } from 'react';
 import {
   Button,
   Field,
@@ -12,8 +12,9 @@ import {
   TableRow,
   Text,
 } from '@fluentui/react-components';
-import { Add24Regular, ArrowUpload24Regular, Delete24Regular } from '@fluentui/react-icons';
+import { Add24Regular, Delete24Regular } from '@fluentui/react-icons';
 import { api, statusObraLabel, StatusObra, type NovaObra, type Obra } from '../lib/api';
+import { SeletorFotoCamera } from '../components/SeletorFotoCamera';
 import { usePageStyles } from './pageStyles';
 
 const obraVazia: NovaObra = {
@@ -37,9 +38,6 @@ export function ObrasPage() {
   const [erro, setErro] = useState<string | null>(null);
   const [carregando, setCarregando] = useState(false);
   const [logoUrls, setLogoUrls] = useState<Record<string, string>>({});
-  const [enviandoLogoId, setEnviandoLogoId] = useState<string | null>(null);
-  const inputLogoRef = useRef<HTMLInputElement>(null);
-  const obraAlvoLogoRef = useRef<string | null>(null);
 
   async function carregar() {
     try {
@@ -85,16 +83,8 @@ export function ObrasPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  function abrirSeletorLogo(obraId: string) {
-    obraAlvoLogoRef.current = obraId;
-    inputLogoRef.current?.click();
-  }
-
-  async function enviarLogo(arquivo: File | null) {
-    const obraId = obraAlvoLogoRef.current;
-    if (!arquivo || !obraId) return;
+  async function enviarLogo(obraId: string, arquivo: File) {
     try {
-      setEnviandoLogoId(obraId);
       setErro(null);
       await api.obras.anexarLogo(obraId, arquivo);
       setLogoUrls((atual) => {
@@ -106,8 +96,6 @@ export function ObrasPage() {
       await carregar();
     } catch (e) {
       setErro(e instanceof Error ? e.message : 'Falha ao enviar o logo.');
-    } finally {
-      setEnviandoLogoId(null);
     }
   }
 
@@ -217,11 +205,13 @@ export function ObrasPage() {
           />
         </Field>
         <Field label="Logomarca da obra" required>
-          <input
-            type="file"
-            accept="image/jpeg,image/png"
-            onChange={(e) => setLogoNovaObra(e.target.files?.[0] ?? null)}
-          />
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            <SeletorFotoCamera
+              rotulo={logoNovaObra ? logoNovaObra.name : 'Tirar foto ou escolher arquivo'}
+              tiposAceitos="image/jpeg,image/png"
+              aoSelecionarArquivo={(arquivo) => setLogoNovaObra(arquivo)}
+            />
+          </div>
         </Field>
       </div>
       <Text size={200}>
@@ -233,17 +223,6 @@ export function ObrasPage() {
           Adicionar obra
         </Button>
       </div>
-
-      <input
-        ref={inputLogoRef}
-        type="file"
-        accept="image/*"
-        style={{ display: 'none' }}
-        onChange={(e) => {
-          enviarLogo(e.target.files?.[0] ?? null);
-          e.target.value = '';
-        }}
-      />
 
       <Table>
         <TableHeader>
@@ -279,12 +258,10 @@ export function ObrasPage() {
                       style={{ height: 32, width: 32, objectFit: 'contain', borderRadius: 4 }}
                     />
                   )}
-                  <Button
-                    appearance="subtle"
-                    icon={<ArrowUpload24Regular />}
-                    onClick={() => abrirSeletorLogo(obra.id)}
-                    disabled={enviandoLogoId === obra.id}
-                    aria-label="Enviar logo"
+                  <SeletorFotoCamera
+                    rotulo="Trocar logo"
+                    apenasIcone
+                    aoSelecionarArquivo={(arquivo) => enviarLogo(obra.id, arquivo)}
                   />
                 </div>
               </TableCell>
