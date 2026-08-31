@@ -1519,21 +1519,16 @@ export interface EnviarDdsTelegramResultado {
 // Motor de Assinatura Eletrônica (docs/Motor-Assinatura-Eletronica.md §3/§5, etapa 6) — genérico,
 // identificado por EntidadeTipo/EntidadeId (ex.: "Dds" + ddsId). Primeiro consumidor: AssinarDdsPage.
 // PIN/crachá-QR e WebAuthn/FIDO2 foram removidos do sistema em 31/08 (decisão do usuário: único
-// método de assinatura é a digital via leitor Futronic FS80H) — os valores 2/3/4 ficam reservados
-// (nenhum código novo os produz) só para exibir corretamente assinaturas já registradas no passado.
+// método de assinatura é a digital via leitor Futronic FS80H) — como o sistema ainda está em fase de
+// testes (sem nenhuma assinatura real registrada por esses métodos), os valores 2/3/4 do enum
+// também foram removidos, não só deixados de fora da UI.
 export const MetodoAutenticacaoAssinatura = {
   Biometria: 1,
-  CrachaPin: 2,
-  QrCodePin: 3,
-  WebAuthnCelular: 4,
   SessaoLogada: 5,
 } as const;
 
 export const metodoAutenticacaoAssinaturaLabel: Record<number, string> = {
-  1: 'Biometria',
-  2: 'Crachá + PIN',
-  3: 'QR Code + PIN',
-  4: 'Celular (WebAuthn)',
+  1: 'Digital (Futronic FS80H)',
   5: 'Sessão logada',
 };
 

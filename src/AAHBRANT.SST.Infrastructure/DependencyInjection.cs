@@ -88,11 +88,11 @@ public static class DependencyInjection
         // Motor de Assinatura Eletrônica (docs/Motor-Assinatura-Eletronica.md §5) — PIN/crachá-QR
         // (CrachaPinAutenticacaoStrategy) e WebAuthn/FIDO2 (Fido2AutenticacaoStrategy) foram removidos
         // do sistema em 31/08 (decisão do usuário: único método de assinatura é a digital via leitor
-        // Futronic FS80H, "para não dar conflitos" com métodos alternativos). Os valores de enum
-        // correspondentes (MetodoAutenticacaoAssinatura.CrachaPin/QrCodePin/WebAuthnCelular) e as
-        // colunas/tabela de dados (Trabalhador.PinHash, CredenciaisWebAuthn) foram mantidos no schema
-        // só para preservar a leitura de assinaturas já registradas no passado — nenhum código novo os
-        // produz.
+        // Futronic FS80H, "para não dar conflitos" com métodos alternativos). Ainda em fase de testes
+        // (sem nenhuma assinatura real registrada por PIN/WebAuthn), a remoção foi completa: os
+        // valores de enum (MetodoAutenticacaoAssinatura.CrachaPin/QrCodePin/WebAuthnCelular,
+        // MetodoAutenticacaoObra.CrachaPin/QrCodePin/WebAuthnCelular) e as colunas/tabela de dados
+        // (Trabalhador.PinHash, CredenciaisWebAuthn) também foram removidos do schema.
         services.AddScoped<ISegredoDispositivoHasher, SegredoDispositivoHasherService>();
         services.AddScoped<ITemplateBiometricoCriptografia, TemplateBiometricoCriptografiaService>();
         services.AddScoped<IDispositivoAgenteAutenticador, DispositivoAgenteAutenticador>();

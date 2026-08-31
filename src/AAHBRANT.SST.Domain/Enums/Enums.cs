@@ -567,39 +567,27 @@ public enum StatusDocumentoAssinatura
 
 // Método efetivamente usado por UM signatário em UMA assinatura — distinto de
 // MetodoAutenticacaoObra (que é o cardápio de métodos habilitados na obra como um todo).
+// CrachaPin/QrCodePin/WebAuthnCelular removidos do sistema em 31/08 (decisão do usuário: único
+// método de assinatura é a digital via leitor Futronic FS80H). Ainda em fase de testes, sem nenhuma
+// assinatura real registrada por esses métodos — removidos por completo (não reservados), ao
+// contrário do que se faria se já houvesse dado histórico a preservar.
 public enum MetodoAutenticacaoAssinatura
 {
     Biometria = 1,
-    CrachaPin = 2,
-    QrCodePin = 3,
-    WebAuthnCelular = 4,
     // Assinatura em um clique do usuário logado (ex.: entregador de EPI assinando com a própria
     // sessão) — não é um método do "cardápio" por obra (MetodoAutenticacaoObra), pois não depende
     // de hardware/kiosque: está sempre disponível para quem já está autenticado no app.
     SessaoLogada = 5
 }
 
-// [Flags] em Obra.MetodosAutenticacaoHabilitados: cada obra decide quais métodos aceita (ex.: obra
-// sem leitor biométrico ainda comprado opera só com CrachaPin até o hardware chegar — ver §3 do doc,
-// "usar como principal temporário até o hardware ser confirmado").
+// [Flags] em Obra.MetodosAutenticacaoHabilitados: cada obra decide se aceita assinatura (Biometria,
+// via Futronic) ou não (Nenhum). CrachaPin/QrCodePin/WebAuthnCelular removidos em 31/08 junto com os
+// métodos correspondentes (ver MetodoAutenticacaoAssinatura acima).
 [Flags]
 public enum MetodoAutenticacaoObra
 {
     Nenhum = 0,
-    Biometria = 1,
-    CrachaPin = 2,
-    QrCodePin = 4,
-    WebAuthnCelular = 8
-}
-
-// Etapa 13 do Motor de Assinatura Eletrônica — CredencialWebAuthn.Tipo. LeitorObra e CelularProprio
-// usam a mesma cerimônia FIDO2/WebAuthn (Fido2AutenticacaoStrategy); só o autenticador físico muda:
-// leitor biométrico compartilhado da obra (credencial "discoverable", vários trabalhadores por
-// dispositivo) vs. celular do próprio trabalhador (credencial de um único dono).
-public enum TipoAutenticadorWebAuthn
-{
-    LeitorObra = 1,
-    CelularProprio = 2
+    Biometria = 1
 }
 
 // Ficha de EPI reformulada (docs/superpowers/specs/2026-08-27-ficha-epi-reformulada-design.md) —

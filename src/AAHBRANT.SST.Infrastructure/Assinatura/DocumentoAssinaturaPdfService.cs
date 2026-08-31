@@ -83,10 +83,8 @@ public class DocumentoAssinaturaPdfService : IDocumentoAssinaturaPdfService
 
     private static string DescreverMetodo(MetodoAutenticacaoAssinatura metodo) => metodo switch
     {
-        MetodoAutenticacaoAssinatura.Biometria => "Biometria (leitor da obra)",
-        MetodoAutenticacaoAssinatura.CrachaPin => "Crachá + PIN",
-        MetodoAutenticacaoAssinatura.QrCodePin => "QR Code + PIN",
-        MetodoAutenticacaoAssinatura.WebAuthnCelular => "Biometria (celular)",
+        MetodoAutenticacaoAssinatura.Biometria => "Digital (leitor Futronic FS80H)",
+        MetodoAutenticacaoAssinatura.SessaoLogada => "Sessão logada",
         _ => metodo.ToString(),
     };
 }

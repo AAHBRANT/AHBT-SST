@@ -50,14 +50,6 @@ public class Trabalhador : AuditableEntity
     public string? TelegramCodigoVinculo { get; set; }
     public DateTime? TelegramVinculadoEm { get; set; }
 
-    // Motor de Assinatura Eletrônica (docs/Motor-Assinatura-Eletronica.md §2/§3) — PIN é o método de
-    // reserva (crachá/QR + PIN) quando o leitor biométrico da obra falha ou está indisponível.
-    // PinHash é calculado explicitamente pelo handler que define/troca o PIN (via
-    // Infrastructure.Seguranca.PinHasher.GerarHash) — ao contrário de CpfHash, não existe um campo
-    // de PIN em texto plano nesta entidade para recalcular automaticamente em AplicarAuditoria: o
-    // PIN nunca deve transitar por uma propriedade rastreada pelo EF Core, mesmo que efêmera.
-    public string? PinHash { get; set; }
-
     // Validade jurídica e LGPD (docs/Motor-Assinatura-Eletronica.md §4) — dois consentimentos
     // distintos e obrigatórios antes do trabalhador poder assinar por este motor:
     // TermoAceiteAssinaturaEletronicaEm = aceite geral do método eletrônico (MP 2.200-2/2001,

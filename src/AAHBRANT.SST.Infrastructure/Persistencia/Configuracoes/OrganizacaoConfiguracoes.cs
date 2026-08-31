@@ -89,11 +89,6 @@ public class TrabalhadorConfiguracao : IEntityTypeConfiguration<Trabalhador>
         builder.HasIndex(t => t.CpfHash).IsUnique().HasFilter("[CpfHash] IS NOT NULL");
         builder.HasIndex(t => new { t.ObraId, t.Matricula }).IsUnique();
 
-        // Motor de Assinatura Eletrônica — PinHash é auto-contido (algoritmo+iterações+salt+hash em
-        // uma string, ver PinHasher), por isso o tamanho generoso; não é indexado (nunca é buscado
-        // por valor, só verificado contra o Id do trabalhador já conhecido).
-        builder.Property(t => t.PinHash).HasMaxLength(200);
-
         builder.Property(t => t.Turno).HasMaxLength(50);
         builder.Property(t => t.FotoContentType).HasMaxLength(100);
 

@@ -38,23 +38,6 @@ public class DocumentoSignatarioConfiguracao : IEntityTypeConfiguration<Document
     }
 }
 
-public class CredencialWebAuthnConfiguracao : IEntityTypeConfiguration<CredencialWebAuthn>
-{
-    public void Configure(EntityTypeBuilder<CredencialWebAuthn> builder)
-    {
-        builder.HasOne(c => c.Trabalhador).WithMany()
-            .HasForeignKey(c => c.TrabalhadorId).OnDelete(DeleteBehavior.Cascade);
-
-        // CredentialId é o identificador que o leitor/celular devolve a cada assinatura — precisa ser
-        // único globalmente (o mesmo autenticador nunca gera dois IDs iguais para credenciais
-        // diferentes) para localizar a credencial certa antes de verificar a assinatura.
-        builder.HasIndex(c => c.CredentialId).IsUnique();
-        builder.HasIndex(c => c.TrabalhadorId);
-
-        builder.HasQueryFilter(c => c.Ativo);
-    }
-}
-
 public class DispositivoAgenteBiometricoConfiguracao : IEntityTypeConfiguration<DispositivoAgenteBiometrico>
 {
     public void Configure(EntityTypeBuilder<DispositivoAgenteBiometrico> builder)
