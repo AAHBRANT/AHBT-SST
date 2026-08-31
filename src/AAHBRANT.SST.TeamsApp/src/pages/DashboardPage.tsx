@@ -38,6 +38,7 @@ import { TaxaGravidadeCard } from '../components/dashboard/TaxaGravidadeCard';
 import { StatusDonutChart, type FatiaDonut } from '../components/dashboard/charts/StatusDonutChart';
 import { RankingBarChart, type ItemRanking } from '../components/dashboard/charts/RankingBarChart';
 import { TrendLineChart, type PontoTendencia } from '../components/dashboard/charts/TrendLineChart';
+import { MiniCalendarCard, type DiaComPrazo } from '../components/dashboard/MiniCalendarCard';
 import { designTokens } from '../theme';
 
 interface Kpi {
@@ -308,6 +309,17 @@ export function DashboardPage() {
     [alertasAbertos],
   );
 
+  const prazosDoCalendario: DiaComPrazo[] = useMemo(
+    () =>
+      alertasAbertos
+        .filter((alerta): alerta is Alerta & { dataLimiteTratamento: string } => !!alerta.dataLimiteTratamento)
+        .map((alerta) => ({
+          dataISO: alerta.dataLimiteTratamento.slice(0, 10),
+          vencido: alerta.dataLimiteTratamento < hojeISO,
+        })),
+    [alertasAbertos, hojeISO],
+  );
+
   // ---------- Atividade recente (montada a partir dos módulos existentes) ----------
 
   const atividadeRecente: ItemFeed[] = useMemo(() => {
@@ -423,6 +435,7 @@ export function DashboardPage() {
           <div className={dashEstilos.chartSubtitulo}>Registros classificados como quase-acidente, todas as obras</div>
           <TrendLineChart dados={tendenciaQuaseAcidentes} />
         </div>
+        <MiniCalendarCard prazos={prazosDoCalendario} />
       </div>
 
       <div style={{ marginBottom: 16 }} className={dashEstilos.chartCard}>
