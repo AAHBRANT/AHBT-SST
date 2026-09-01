@@ -26,6 +26,7 @@ public interface IAppDbContext
     DbSet<PcmsoDetalhe> PcmsoDetalhes { get; }
     DbSet<CursoTreinamento> CursosTreinamento { get; }
     DbSet<Treinamento> Treinamentos { get; }
+    DbSet<MatrizTreinamentoFuncao> MatrizTreinamentoFuncoes { get; }
     DbSet<CatalogoEpi> CatalogoEpis { get; }
     DbSet<EntregaEpi> EntregasEpi { get; }
     DbSet<MatrizEpiFuncao> MatrizEpiFuncoes { get; }
@@ -102,7 +103,6 @@ public interface IAppDbContext
     DbSet<RequisitoLegalCriterio> RequisitoLegalCriterios { get; }
     DbSet<ItemQuestionarioAplicabilidade> ItensQuestionarioAplicabilidade { get; }
     DbSet<RespostaQuestionarioAplicabilidade> RespostasQuestionarioAplicabilidade { get; }
-    DbSet<MatrizTreinamentoFuncao> MatrizTreinamentoFuncoes { get; }
 
     DbSet<DimensionamentoCipa> DimensionamentosCipa { get; }
     DbSet<ProcessoEleitoralCipa> ProcessosEleitoraisCipa { get; }

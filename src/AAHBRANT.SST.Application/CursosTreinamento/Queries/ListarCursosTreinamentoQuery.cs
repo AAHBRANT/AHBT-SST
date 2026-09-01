@@ -14,6 +14,6 @@ public class ListarCursosTreinamentoQueryHandler : IRequestHandler<ListarCursosT
     public async Task<List<CursoTreinamentoDto>> Handle(ListarCursosTreinamentoQuery request, CancellationToken ct)
         => await _db.CursosTreinamento
             .OrderBy(x => x.Nome)
-            .Select(x => new CursoTreinamentoDto(x.Id, x.Nome, x.NormaReferencia, x.CargaHorariaMinima, x.ValidadeEmMeses))
+            .Select(x => new CursoTreinamentoDto(x.Id, x.Nome, x.NormaReferencia, x.CargaHorariaMinima, x.ValidadeEmMeses, x.ConteudoProgramatico))
             .ToListAsync(ct);
 }

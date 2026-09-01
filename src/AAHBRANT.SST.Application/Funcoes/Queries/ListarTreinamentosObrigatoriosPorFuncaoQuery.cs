@@ -22,6 +22,7 @@ public class ListarTreinamentosObrigatoriosPorFuncaoQueryHandler
                 m.CursoTreinamento!.Nome,
                 m.CursoTreinamento!.NormaReferencia,
                 m.CursoTreinamento!.CargaHorariaMinima,
-                m.CursoTreinamento!.ValidadeEmMeses))
+                m.CursoTreinamento!.ValidadeEmMeses,
+                m.CursoTreinamento!.ConteudoProgramatico))
             .ToListAsync(ct);
 }

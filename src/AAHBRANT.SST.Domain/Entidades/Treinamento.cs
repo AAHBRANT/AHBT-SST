@@ -9,6 +9,11 @@ public class CursoTreinamento : AuditableEntity
     public int CargaHorariaMinima { get; set; }
     public int ValidadeEmMeses { get; set; }
 
+    // Verso do certificado (modelo AAHBRANT em PLANILHA -MODELO RISCOS-FUNÇOES-NRS-CERTIFICADOS.XLSX,
+    // abas "CERTIFICADO DE NR XX"): lista de tópicos do curso, um por linha. Opcional — cursos sem
+    // conteúdo cadastrado simplesmente não geram a página de conteúdo programático no certificado.
+    public string? ConteudoProgramatico { get; set; }
+
     public ICollection<Treinamento> Realizacoes { get; set; } = new List<Treinamento>();
 }
 

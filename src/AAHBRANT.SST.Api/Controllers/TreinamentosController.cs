@@ -51,4 +51,12 @@ public class TreinamentosController : ControllerBase
         await _mediator.Send(new ExcluirTreinamentoCommand(id), ct);
         return NoContent();
     }
+
+    [Authorize(Policy = "treinamento:ver")]
+    [HttpGet("{id:guid}/certificado/pdf")]
+    public async Task<IActionResult> ExportarCertificado(Guid id, CancellationToken ct)
+    {
+        var pdf = await _mediator.Send(new ExportarCertificadoTreinamentoQuery(id), ct);
+        return pdf is null ? NotFound() : File(pdf, "application/pdf", $"certificado-treinamento-{id}.pdf");
+    }
 }

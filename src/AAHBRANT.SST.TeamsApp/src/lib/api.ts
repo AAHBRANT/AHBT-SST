@@ -212,6 +212,7 @@ export interface CursoTreinamento {
   normaReferencia?: string | null;
   cargaHorariaMinima: number;
   validadeEmMeses: number;
+  conteudoProgramatico?: string | null;
 }
 
 export type NovoCursoTreinamento = Omit<CursoTreinamento, 'id'>;
@@ -228,6 +229,7 @@ export interface Treinamento {
 }
 
 export type NovoTreinamento = Omit<Treinamento, 'id'>;
+export type AtualizarTreinamento = Treinamento;
 
 // Módulo de Requisitos Legais — Motor de Aplicabilidade Legal (requisito do usuário, 2026-08-29).
 // Fase 1 (fundação de dados): cadastro do requisito e seus critérios de aplicabilidade, catálogo do
@@ -2933,14 +2935,29 @@ export const api = {
     listar: () => request<CursoTreinamento[]>('/api/cursostreinamento'),
     criar: (curso: NovoCursoTreinamento) =>
       request<{ id: string }>('/api/cursostreinamento', { method: 'POST', body: JSON.stringify(curso) }),
+    atualizar: (id: string, curso: CursoTreinamento) =>
+      request<void>(`/api/cursostreinamento/${id}`, { method: 'PUT', body: JSON.stringify(curso) }),
     excluir: (id: string) => request<void>(`/api/cursostreinamento/${id}`, { method: 'DELETE' }),
   },
   treinamentos: {
     listar: (trabalhadorId?: string) =>
       request<Treinamento[]>(`/api/treinamentos${trabalhadorId ? `?trabalhadorId=${trabalhadorId}` : ''}`),
+    obterPorId: (id: string) => request<Treinamento>(`/api/treinamentos/${id}`),
     criar: (treinamento: NovoTreinamento) =>
       request<{ id: string }>('/api/treinamentos', { method: 'POST', body: JSON.stringify(treinamento) }),
+    atualizar: (treinamento: AtualizarTreinamento) =>
+      request<void>(`/api/treinamentos/${treinamento.id}`, { method: 'PUT', body: JSON.stringify(treinamento) }),
     excluir: (id: string) => request<void>(`/api/treinamentos/${id}`, { method: 'DELETE' }),
+    baixarCertificado: async (id: string) => {
+      const response = await fetch(`${API_BASE_URL}/api/treinamentos/${id}/certificado/pdf`, {
+        headers: await montarHeadersAuth(),
+      });
+      if (!response.ok) {
+        const corpo = await response.text().catch(() => '');
+        throw new Error(`${response.status} ${response.statusText}: ${corpo}`);
+      }
+      return response.blob();
+    },
   },
   requisitosLegais: {
     listar: (categoria?: number, status?: number) => {

@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { Tab, TabList, Text, type SelectTabData, type SelectTabEvent } from '@fluentui/react-components';
 import { usePillTabStyles } from '../pageStyles';
 import { PessoasDashboardTab } from './dashboard/PessoasDashboardTab';
@@ -12,8 +13,17 @@ import { MatrizTreinamentoTab } from './MatrizTreinamentoTab';
 // gestão saiu da UI.
 type AbaPessoas = 'dashboard' | 'trabalhadores' | 'funcoes' | 'cursos' | 'matrizTreinamento';
 
+const ABAS_VALIDAS: AbaPessoas[] = ['dashboard', 'trabalhadores', 'funcoes', 'cursos', 'matrizTreinamento'];
+
 export function PessoasPage() {
-  const [aba, setAba] = useState<AbaPessoas>('trabalhadores');
+  // Suporta abrir já numa aba específica via URL (?aba=cursos) — usado pelo item "Treinamentos" da
+  // gaveta Gestão de SST (ver AppShell.tsx): catálogo de cursos e matriz por função já são abas
+  // daqui, não uma tela própria de Treinamentos.
+  const [searchParams] = useSearchParams();
+  const abaInicial = searchParams.get('aba');
+  const [aba, setAba] = useState<AbaPessoas>(
+    ABAS_VALIDAS.includes(abaInicial as AbaPessoas) ? (abaInicial as AbaPessoas) : 'trabalhadores',
+  );
   const estilosAba = usePillTabStyles();
 
   return (

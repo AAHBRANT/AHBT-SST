@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import {
   Badge,
   Button,
@@ -13,13 +14,26 @@ import {
   TableRow,
   Text,
 } from '@fluentui/react-components';
-import { Add24Regular, Delete24Regular } from '@fluentui/react-icons';
+import { Add24Regular, ArrowDownload24Regular, Delete24Regular, Signature24Regular } from '@fluentui/react-icons';
 import { api, type CursoTreinamento, type NovoTreinamento, type Treinamento } from '../../lib/api';
 import { usePageStyles } from '../pageStyles';
 import { useConfirmarExclusao } from '../../hooks/useConfirmarExclusao';
 import { useSucessoToast } from '../../hooks/useSucessoToast';
 import { EstadoVazio } from '../../components/EstadoVazio';
 import { ListaCarregando } from '../../components/ListaCarregando';
+
+// Situação calculada no cliente a partir de dataValidade (não há coluna persistida) — mesmo
+// limiar de 30 dias usado em AtivosPage/PessoasDashboardTab para "a vencer".
+const DIAS_LIMIAR_A_VENCER = 30;
+
+function situacaoTreinamento(dataValidade: string): { texto: string; cor: 'success' | 'warning' | 'danger' } {
+  const hoje = new Date(new Date().toDateString());
+  const validade = new Date(dataValidade);
+  const diasRestantes = (validade.getTime() - hoje.getTime()) / (1000 * 60 * 60 * 24);
+  if (diasRestantes < 0) return { texto: 'Vencido', cor: 'danger' };
+  if (diasRestantes <= DIAS_LIMIAR_A_VENCER) return { texto: 'A Vencer', cor: 'warning' };
+  return { texto: 'Válido', cor: 'success' };
+}
 
 function treinamentoVazio(trabalhadorId: string): NovoTreinamento {
   return {
@@ -35,6 +49,7 @@ function treinamentoVazio(trabalhadorId: string): NovoTreinamento {
 
 export function TreinamentosTab({ trabalhadorId }: { trabalhadorId: string }) {
   const estilos = usePageStyles();
+  const navigate = useNavigate();
   const [treinamentos, setTreinamentos] = useState<Treinamento[]>([]);
   const [cursos, setCursos] = useState<CursoTreinamento[]>([]);
   const [novoTreinamento, setNovoTreinamento] = useState<NovoTreinamento>(() => treinamentoVazio(trabalhadorId));
@@ -43,6 +58,7 @@ export function TreinamentosTab({ trabalhadorId }: { trabalhadorId: string }) {
   const [carregandoLista, setCarregandoLista] = useState(true);
   const { confirmar, dialogElement } = useConfirmarExclusao();
   const sucessoToast = useSucessoToast();
+  const [baixandoId, setBaixandoId] = useState<string | null>(null);
 
   async function carregar() {
     try {
@@ -64,8 +80,21 @@ export function TreinamentosTab({ trabalhadorId }: { trabalhadorId: string }) {
     return cursos.find((c) => c.id === id)?.nome ?? id;
   }
 
-  function vencido(dataValidade: string) {
-    return new Date(dataValidade) < new Date(new Date().toDateString());
+  async function baixarCertificado(id: string) {
+    try {
+      setBaixandoId(id);
+      const blob = await api.treinamentos.baixarCertificado(id);
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = `certificado-treinamento-${id}.pdf`;
+      link.click();
+      URL.revokeObjectURL(url);
+    } catch (e) {
+      setErro(e instanceof Error ? e.message : 'Falha ao baixar o certificado em PDF.');
+    } finally {
+      setBaixandoId(null);
+    }
   }
 
   useEffect(() => {
@@ -179,29 +208,47 @@ export function TreinamentosTab({ trabalhadorId }: { trabalhadorId: string }) {
           </TableRow>
         </TableHeader>
         <TableBody>
-          {treinamentos.map((treinamento) => (
-            <TableRow key={treinamento.id}>
-              <TableCell>{nomeCurso(treinamento.cursoTreinamentoId)}</TableCell>
-              <TableCell>{treinamento.dataRealizacao?.slice(0, 10)}</TableCell>
-              <TableCell>
-                {treinamento.dataValidade?.slice(0, 10)}
-                {vencido(treinamento.dataValidade) && (
-                  <Badge color="danger" appearance="tint" style={{ marginLeft: 8 }}>
-                    Vencido
+          {treinamentos.map((treinamento) => {
+            const situacao = situacaoTreinamento(treinamento.dataValidade);
+            return (
+              <TableRow key={treinamento.id}>
+                <TableCell>{nomeCurso(treinamento.cursoTreinamentoId)}</TableCell>
+                <TableCell>{treinamento.dataRealizacao?.slice(0, 10)}</TableCell>
+                <TableCell>
+                  {treinamento.dataValidade?.slice(0, 10)}
+                  <Badge color={situacao.cor} appearance="tint" style={{ marginLeft: 8 }}>
+                    {situacao.texto}
                   </Badge>
-                )}
-              </TableCell>
-              <TableCell>{treinamento.numeroCertificado}</TableCell>
-              <TableCell>
-                <Button
-                  appearance="subtle"
-                  icon={<Delete24Regular />}
-                  onClick={() => excluir(treinamento.id)}
-                  aria-label="Excluir"
-                />
-              </TableCell>
-            </TableRow>
-          ))}
+                </TableCell>
+                <TableCell>{treinamento.numeroCertificado}</TableCell>
+                <TableCell>
+                  <div style={{ display: 'flex', gap: 4 }}>
+                    <Button
+                      appearance="subtle"
+                      icon={<Signature24Regular />}
+                      onClick={() => navigate(`/treinamentos/${treinamento.id}/assinar`)}
+                      aria-label="Assinar certificado"
+                      title="Assinar certificado"
+                    />
+                    <Button
+                      appearance="subtle"
+                      icon={<ArrowDownload24Regular />}
+                      onClick={() => baixarCertificado(treinamento.id)}
+                      disabled={baixandoId === treinamento.id}
+                      aria-label="Baixar certificado"
+                      title="Baixar certificado em PDF"
+                    />
+                    <Button
+                      appearance="subtle"
+                      icon={<Delete24Regular />}
+                      onClick={() => excluir(treinamento.id)}
+                      aria-label="Excluir"
+                    />
+                  </div>
+                </TableCell>
+              </TableRow>
+            );
+          })}
         </TableBody>
       </Table>
       )}

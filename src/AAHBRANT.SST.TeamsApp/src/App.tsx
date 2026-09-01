@@ -42,6 +42,7 @@ import { ProcessoEleitoralCipaDetalhePage } from './pages/cipa/ProcessoEleitoral
 import { MembroCipaDetalhePage } from './pages/cipa/MembroCipaDetalhePage';
 import { ReuniaoCipaDetalhePage } from './pages/cipa/ReuniaoCipaDetalhePage';
 import { EventoSipatDetalhePage } from './pages/cipa/EventoSipatDetalhePage';
+import { AssinarTreinamentoPage } from './pages/treinamentos/AssinarTreinamentoPage';
 
 // Envolve as rotas internas do app com o AppShell (sidebar/header do Teams). As rotas públicas
 // /p/:codigoOuUid e /validar/:token ficam de fora dessa camada — ver AreaPublicaPage/ValidarDocumentoPage.
@@ -158,19 +159,18 @@ function App() {
 
             <Route path="/epi" element={<EpiPage />} />
             <Route path="/epi/:id/assinar" element={<AssinarEntregaEpiPage />} />
+            {/* Não existe página agregada de Treinamentos — catálogo de cursos e matriz por função já
+                são abas de Pessoas (ver PessoasPage); só a assinatura do certificado tem rota própria,
+                aberta a partir do botão "Assinar certificado" na aba de Treinamentos do trabalhador. */}
+            <Route path="/treinamentos/:id/assinar" element={<AssinarTreinamentoPage />} />
             <Route path="/administracao" element={<AdministracaoPage />} />
 
-            {/* Reorganização de sidebar em grupos (2026-08-31, pedido do usuário) — 3 itens que
-                ganharam lugar fixo no menu mas ainda não têm tela/dado próprio no sistema. */}
-            <Route
-              path="/gestao-sst/treinamentos"
-              element={
-                <EmConstrucaoPage
-                  titulo="Treinamentos"
-                  descricao="Ainda não existe uma tela dedicada de gestão de treinamentos — hoje o indicador de Treinamentos vencidos no Dashboard usa o cadastro de Treinamento por trabalhador (ver perfil de cada trabalhador em Pessoas)."
-                />
-              }
-            />
+            {/* Legado: "Treinamentos" era placeholder (EmConstrucaoPage) na reorganização de
+                sidebar de 31/08 — catálogo de cursos e matriz por função (PR-SST-002, 01/09) já são
+                abas de Pessoas, não uma tela própria (ver comentário em AppShell.tsx). */}
+            <Route path="/gestao-sst/treinamentos" element={<Navigate to="/pessoas?aba=cursos" replace />} />
+            {/* Reorganização de sidebar em grupos (2026-08-31, pedido do usuário) — item que
+                ganhou lugar fixo no menu mas ainda não tem tela/dado próprio no sistema. */}
             <Route
               path="/gestao-sst/documentos"
               element={

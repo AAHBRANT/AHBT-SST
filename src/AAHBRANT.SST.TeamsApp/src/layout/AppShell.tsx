@@ -225,8 +225,11 @@ const itensAvulsos: Array<ItemNav & { icone: typeof Grid24Regular }> = [
 //   listagem de histórico separada da lista de trabalhadores hoje.
 // - "Usuários" e "Permissões" (Administração) apontam pra mesma rota /administracao (aba Controle
 //   de Acesso) — o sistema não distingue essas duas telas hoje.
-// - Treinamentos, Documentos & Procedimentos e Configurações não têm tela própria no sistema —
-//   apontam pra EmConstrucaoPage (ver App.tsx) em vez de inventar uma funcionalidade que não existe.
+// - Documentos & Procedimentos e Configurações não têm tela própria no sistema — apontam pra
+//   EmConstrucaoPage (ver App.tsx) em vez de inventar uma funcionalidade que não existe. Treinamentos
+//   (PR-SST-002, 01/09) não ganhou página agregada própria — catálogo de cursos e matriz por função
+//   já eram abas de Pessoas (adicionadas em 30/08 pelo Motor de Aplicabilidade Legal); o item aqui
+//   aponta direto pra lá (?aba=cursos) em vez de duplicar a tela.
 const gruposNavegacao: GrupoNav[] = [
   {
     chave: 'gestao-sst',
@@ -236,7 +239,7 @@ const gruposNavegacao: GrupoNav[] = [
       { rota: '/prevencao/pgr', rotulo: 'PGR / GRO' },
       { rota: '/riscos', rotulo: 'Riscos' },
       { rota: '/operacao/saude-ocupacional?aba=pcmso', rotulo: 'PCMSO' },
-      { rota: '/gestao-sst/treinamentos', rotulo: 'Treinamentos' },
+      { rota: '/pessoas?aba=cursos', rotulo: 'Treinamentos' },
       { rota: '/epi', rotulo: 'EPI / EPC' },
       { rota: '/operacao/cipa', rotulo: 'CIPA' },
       { rota: '/prevencao/dds', rotulo: 'DDS' },
@@ -299,7 +302,9 @@ function estaAtivo(rota: string, pathname: string, search: string): boolean {
     return `${pathname}${search}` === rota;
   }
   if (rota === '/') return pathname === '/';
-  return pathname === rota || pathname.startsWith(`${rota}/`);
+  // search === '' evita que um item sem querystring (ex.: "Trabalhadores" em /pessoas) fique ativo
+  // junto com outro item da MESMA rota-base que usa ?aba= (ex.: "Treinamentos" em /pessoas?aba=cursos).
+  return (pathname === rota && search === '') || pathname.startsWith(`${rota}/`);
 }
 
 function tituloDaRota(pathname: string, search: string): string {
