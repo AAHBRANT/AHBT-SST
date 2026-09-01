@@ -1,3 +1,4 @@
+using AAHBRANT.SST.Application.Common;
 using AAHBRANT.SST.Application.Common.Interfaces;
 using AAHBRANT.SST.Application.Obras;
 using AAHBRANT.SST.Domain.Entidades;
@@ -35,7 +36,9 @@ public class CriarObraCommandValidator : AbstractValidator<CriarObraCommand>
         RuleFor(x => x.Cnpj).MaximumLength(18);
         RuleFor(x => x.LogoConteudo)
             .NotEmpty().WithMessage("A logomarca da obra é obrigatória.")
-            .Must(f => f.Length <= ValidacaoLogoObra.TamanhoMaximoBytes).WithMessage("A logomarca deve ter no máximo 5 MB.");
+            .Must(f => f.Length <= ValidacaoLogoObra.TamanhoMaximoBytes).WithMessage("A logomarca deve ter no máximo 5 MB.")
+            .Must((comando, conteudo) => ValidadorAssinaturaArquivo.AssinaturaConfere(conteudo, comando.LogoContentType))
+                .WithMessage("O conteúdo do arquivo não corresponde ao tipo declarado.");
         RuleFor(x => x.LogoContentType)
             .Must(t => ValidacaoLogoObra.TiposPermitidos.Contains(t)).WithMessage("A logomarca deve ser um arquivo JPEG ou PNG.");
     }
