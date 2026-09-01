@@ -25,6 +25,9 @@ import {
 } from '../../lib/api';
 import { SeletorFotoCamera } from '../../components/SeletorFotoCamera';
 import { usePageStyles } from '../pageStyles';
+import { useConfirmarExclusao } from '../../hooks/useConfirmarExclusao';
+import { useSucessoToast } from '../../hooks/useSucessoToast';
+import { EstadoVazio } from '../../components/EstadoVazio';
 
 function treinamentoVazio() {
   return { cargaHoraria: 4, conteudoProgramatico: '', dataRealizacao: '', dataValidade: '', instituicaoInstrutor: '' };
@@ -38,6 +41,8 @@ export function MembroCipaDetalhePage() {
   const [novoTreinamento, setNovoTreinamento] = useState(treinamentoVazio());
   const [erro, setErro] = useState<string | null>(null);
   const [salvando, setSalvando] = useState(false);
+  const { confirmar, dialogElement } = useConfirmarExclusao();
+  const sucessoToast = useSucessoToast();
 
   async function carregar() {
     if (!id) return;
@@ -61,6 +66,7 @@ export function MembroCipaDetalhePage() {
       setErro(null);
       await api.cipa.membros.definirCargo(id, cargo);
       await carregar();
+      sucessoToast('Cargo atualizado com sucesso.');
     } catch (e) {
       setErro(e instanceof Error ? e.message : 'Falha ao alterar cargo.');
     } finally {
@@ -70,11 +76,12 @@ export function MembroCipaDetalhePage() {
 
   async function encerrarMandato() {
     if (!id) return;
-    if (!window.confirm('Encerrar o mandato deste membro?')) return;
+    if (!(await confirmar('Encerrar o mandato deste membro? Essa ação não pode ser desfeita.'))) return;
     try {
       setSalvando(true);
       setErro(null);
       await api.cipa.membros.encerrarMandato(id);
+      sucessoToast('Mandato encerrado com sucesso.');
       navigate('/operacao/cipa');
     } catch (e) {
       setErro(e instanceof Error ? e.message : 'Falha ao encerrar mandato.');
@@ -101,6 +108,7 @@ export function MembroCipaDetalhePage() {
       );
       setNovoTreinamento(treinamentoVazio());
       await carregar();
+      sucessoToast('Treinamento registrado com sucesso.');
     } catch (e) {
       setErro(e instanceof Error ? e.message : 'Falha ao registrar treinamento.');
     } finally {
@@ -113,6 +121,7 @@ export function MembroCipaDetalhePage() {
       setErro(null);
       await api.cipa.membros.anexarCertificado(treinamentoId, arquivo);
       await carregar();
+      sucessoToast('Certificado anexado com sucesso.');
     } catch (e) {
       setErro(e instanceof Error ? e.message : 'Falha ao anexar certificado.');
     }
@@ -123,6 +132,7 @@ export function MembroCipaDetalhePage() {
       setErro(null);
       await api.cipa.membros.anexarListaPresenca(treinamentoId, arquivo);
       await carregar();
+      sucessoToast('Lista de presença anexada com sucesso.');
     } catch (e) {
       setErro(e instanceof Error ? e.message : 'Falha ao anexar lista de presença.');
     }
@@ -150,6 +160,7 @@ export function MembroCipaDetalhePage() {
 
   return (
     <div>
+      {dialogElement}
       <Button appearance="subtle" icon={<ArrowLeft24Regular />} onClick={() => navigate('/operacao/cipa')} style={{ marginBottom: 12 }}>
         Voltar para CIPA
       </Button>
@@ -245,6 +256,9 @@ export function MembroCipaDetalhePage() {
             <div className={estilos.toolbar}>
               <Text weight="semibold">Treinamentos</Text>
             </div>
+            {detalhe.treinamentos.length === 0 ? (
+              <EstadoVazio mensagem="Nenhum treinamento registrado ainda." />
+            ) : (
             <Table>
               <TableHeader>
                 <TableRow>
@@ -274,7 +288,9 @@ export function MembroCipaDetalhePage() {
                             rotulo="Anexar"
                             tamanho="small"
                             tiposAceitos="application/pdf,image/*"
+                            tamanhoMaximoMb={8}
                             aoSelecionarArquivo={(arquivo) => anexarCertificado(t.id, arquivo)}
+                            aoErroValidacao={setErro}
                           />
                         )}
                       </div>
@@ -290,7 +306,9 @@ export function MembroCipaDetalhePage() {
                             rotulo="Anexar"
                             tamanho="small"
                             tiposAceitos="application/pdf,image/*"
+                            tamanhoMaximoMb={8}
                             aoSelecionarArquivo={(arquivo) => anexarListaPresenca(t.id, arquivo)}
+                            aoErroValidacao={setErro}
                           />
                         )}
                       </div>
@@ -299,6 +317,7 @@ export function MembroCipaDetalhePage() {
                 ))}
               </TableBody>
             </Table>
+            )}
           </div>
         </>
       )}

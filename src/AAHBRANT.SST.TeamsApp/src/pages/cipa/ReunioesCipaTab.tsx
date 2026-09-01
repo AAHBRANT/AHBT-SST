@@ -26,6 +26,10 @@ import {
   type ReuniaoCipa,
 } from '../../lib/api';
 import { usePageStyles } from '../pageStyles';
+import { useConfirmarExclusao } from '../../hooks/useConfirmarExclusao';
+import { useSucessoToast } from '../../hooks/useSucessoToast';
+import { EstadoVazio } from '../../components/EstadoVazio';
+import { ListaCarregando } from '../../components/ListaCarregando';
 
 function vazio(): NovaReuniaoCipa {
   return { obraId: '', tipo: TipoReuniaoCipa.Ordinaria, dataReuniao: '', pauta: '' };
@@ -39,6 +43,9 @@ export function ReunioesCipaTab() {
   const [novo, setNovo] = useState<NovaReuniaoCipa>(vazio());
   const [erro, setErro] = useState<string | null>(null);
   const [carregando, setCarregando] = useState(false);
+  const [carregandoLista, setCarregandoLista] = useState(true);
+  const { confirmar, dialogElement } = useConfirmarExclusao();
+  const sucessoToast = useSucessoToast();
 
   async function carregar() {
     try {
@@ -48,6 +55,8 @@ export function ReunioesCipaTab() {
       setObras(listaObras);
     } catch (e) {
       setErro(e instanceof Error ? e.message : 'Falha ao carregar reuniões da CIPA.');
+    } finally {
+      setCarregandoLista(false);
     }
   }
 
@@ -70,6 +79,7 @@ export function ReunioesCipaTab() {
       await api.cipa.reunioes.criar({ ...novo, pauta: novo.pauta || null });
       setNovo(vazio());
       await carregar();
+      sucessoToast('Reunião agendada com sucesso.');
     } catch (e) {
       setErro(e instanceof Error ? e.message : 'Falha ao criar reunião.');
     } finally {
@@ -79,9 +89,11 @@ export function ReunioesCipaTab() {
 
   async function excluir(id: string, evento: React.MouseEvent) {
     evento.stopPropagation();
+    if (!(await confirmar('Excluir esta reunião da CIPA? Essa ação não pode ser desfeita.'))) return;
     try {
       await api.cipa.reunioes.excluir(id);
       await carregar();
+      sucessoToast('Reunião excluída com sucesso.');
     } catch (e) {
       setErro(e instanceof Error ? e.message : 'Falha ao excluir reunião.');
     }
@@ -89,6 +101,7 @@ export function ReunioesCipaTab() {
 
   return (
     <div>
+      {dialogElement}
       <div className={estilos.card} style={{ marginBottom: 16 }}>
         <div className={estilos.toolbar}>
           <Text weight="semibold">Agendar reunião</Text>
@@ -136,6 +149,11 @@ export function ReunioesCipaTab() {
         <div className={estilos.toolbar}>
           <Text weight="semibold">Reuniões</Text>
         </div>
+        {carregandoLista ? (
+          <ListaCarregando />
+        ) : lista.length === 0 ? (
+          <EstadoVazio mensagem="Nenhuma reunião da CIPA cadastrada ainda." />
+        ) : (
         <Table>
           <TableHeader>
             <TableRow>
@@ -174,6 +192,7 @@ export function ReunioesCipaTab() {
             ))}
           </TableBody>
         </Table>
+        )}
       </div>
     </div>
   );

@@ -15,6 +15,10 @@ import {
 import { Add24Regular, Delete24Regular } from '@fluentui/react-icons';
 import { api, nivelRiscoLabel, NivelRisco, type MatrizRiscoConfig } from '../../lib/api';
 import { usePageStyles } from '../pageStyles';
+import { useConfirmarExclusao } from '../../hooks/useConfirmarExclusao';
+import { useSucessoToast } from '../../hooks/useSucessoToast';
+import { EstadoVazio } from '../../components/EstadoVazio';
+import { ListaCarregando } from '../../components/ListaCarregando';
 
 const coresNivel: Record<number, string> = {
   1: '#DFF6DD',
@@ -38,6 +42,9 @@ export function MatrizRiscoTab() {
   const [configs, setConfigs] = useState<MatrizRiscoConfig[]>([]);
   const [erro, setErro] = useState<string | null>(null);
   const [carregando, setCarregando] = useState(false);
+  const [carregandoLista, setCarregandoLista] = useState(true);
+  const { confirmar, dialogElement } = useConfirmarExclusao();
+  const sucessoToast = useSucessoToast();
 
   const [nome, setNome] = useState('Matriz de risco padrão');
   const [numP, setNumP] = useState(5);
@@ -65,6 +72,8 @@ export function MatrizRiscoTab() {
       setConfigs(await api.matrizRisco.listar());
     } catch (e) {
       setErro(e instanceof Error ? e.message : 'Falha ao carregar matrizes de risco.');
+    } finally {
+      setCarregandoLista(false);
     }
   }
 
@@ -87,6 +96,7 @@ export function MatrizRiscoTab() {
       });
       setCelulas({});
       await carregar();
+      sucessoToast('Matriz de risco criada com sucesso.');
     } catch (e) {
       setErro(e instanceof Error ? e.message : 'Falha ao salvar matriz de risco.');
     } finally {
@@ -95,9 +105,11 @@ export function MatrizRiscoTab() {
   }
 
   async function excluir(id: string) {
+    if (!(await confirmar('Excluir esta matriz de risco? Essa ação não pode ser desfeita.'))) return;
     try {
       await api.matrizRisco.excluir(id);
       await carregar();
+      sucessoToast('Matriz de risco excluída com sucesso.');
     } catch (e) {
       setErro(e instanceof Error ? e.message : 'Falha ao excluir matriz de risco.');
     }
@@ -105,6 +117,7 @@ export function MatrizRiscoTab() {
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+      {dialogElement}
       <div className={estilos.card}>
         <div className={estilos.toolbar}>
           <Text weight="semibold">Nova matriz de risco (Probabilidade × Severidade)</Text>
@@ -189,6 +202,11 @@ export function MatrizRiscoTab() {
         <div className={estilos.toolbar}>
           <Text weight="semibold">Matrizes cadastradas</Text>
         </div>
+        {carregandoLista ? (
+          <ListaCarregando />
+        ) : configs.length === 0 ? (
+          <EstadoVazio mensagem="Nenhuma matriz de risco cadastrada ainda." />
+        ) : (
         <Table>
           <TableHeader>
             <TableRow>
@@ -216,6 +234,7 @@ export function MatrizRiscoTab() {
             ))}
           </TableBody>
         </Table>
+        )}
       </div>
     </div>
   );

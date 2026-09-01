@@ -16,6 +16,10 @@ import {
 import { Add24Regular, ChevronRight24Regular, Delete24Regular } from '@fluentui/react-icons';
 import { api, statusPgrLabel, StatusPgr, type NovoPgr, type Obra, type Pgr } from '../../lib/api';
 import { usePageStyles } from '../pageStyles';
+import { useConfirmarExclusao } from '../../hooks/useConfirmarExclusao';
+import { useSucessoToast } from '../../hooks/useSucessoToast';
+import { EstadoVazio } from '../../components/EstadoVazio';
+import { ListaCarregando } from '../../components/ListaCarregando';
 
 const pgrVazio: NovoPgr = {
   obraId: '',
@@ -35,6 +39,9 @@ export function PgrsTab() {
   const [novoPgr, setNovoPgr] = useState<NovoPgr>(pgrVazio);
   const [erro, setErro] = useState<string | null>(null);
   const [carregando, setCarregando] = useState(false);
+  const [carregandoLista, setCarregandoLista] = useState(true);
+  const { confirmar, dialogElement } = useConfirmarExclusao();
+  const sucessoToast = useSucessoToast();
 
   async function carregar() {
     try {
@@ -44,6 +51,8 @@ export function PgrsTab() {
       setObras(obrs);
     } catch (e) {
       setErro(e instanceof Error ? e.message : 'Falha ao carregar PGRs.');
+    } finally {
+      setCarregandoLista(false);
     }
   }
 
@@ -65,6 +74,7 @@ export function PgrsTab() {
       });
       setNovoPgr(pgrVazio);
       await carregar();
+      sucessoToast('PGR criado com sucesso.');
     } catch (e) {
       setErro(e instanceof Error ? e.message : 'Falha ao criar PGR.');
     } finally {
@@ -74,9 +84,11 @@ export function PgrsTab() {
 
   async function excluir(id: string, evento: React.MouseEvent) {
     evento.stopPropagation();
+    if (!(await confirmar('Excluir este PGR? Essa ação não pode ser desfeita.'))) return;
     try {
       await api.pgrs.excluir(id);
       await carregar();
+      sucessoToast('PGR excluído com sucesso.');
     } catch (e) {
       setErro(e instanceof Error ? e.message : 'Falha ao excluir PGR.');
     }
@@ -84,6 +96,7 @@ export function PgrsTab() {
 
   return (
     <div className={estilos.card}>
+      {dialogElement}
       <div className={estilos.toolbar}>
         <Text weight="semibold">Programas de Gerenciamento de Riscos (PGR)</Text>
       </div>
@@ -143,6 +156,11 @@ export function PgrsTab() {
         </Button>
       </div>
 
+      {carregandoLista ? (
+        <ListaCarregando />
+      ) : pgrs.length === 0 ? (
+        <EstadoVazio mensagem="Nenhum PGR cadastrado ainda." />
+      ) : (
       <Table>
         <TableHeader>
           <TableRow>
@@ -182,6 +200,7 @@ export function PgrsTab() {
           ))}
         </TableBody>
       </Table>
+      )}
     </div>
   );
 }

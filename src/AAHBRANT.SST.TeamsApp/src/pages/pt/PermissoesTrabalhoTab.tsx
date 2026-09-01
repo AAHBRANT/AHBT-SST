@@ -27,6 +27,10 @@ import {
   type Usuario,
 } from '../../lib/api';
 import { usePageStyles } from '../pageStyles';
+import { useConfirmarExclusao } from '../../hooks/useConfirmarExclusao';
+import { useSucessoToast } from '../../hooks/useSucessoToast';
+import { EstadoVazio } from '../../components/EstadoVazio';
+import { ListaCarregando } from '../../components/ListaCarregando';
 
 const ptVazia: NovaPermissaoTrabalho = {
   numeroPt: '',
@@ -62,6 +66,9 @@ export function PermissoesTrabalhoTab() {
   const [novaPt, setNovaPt] = useState<NovaPermissaoTrabalho>(ptVazia);
   const [erro, setErro] = useState<string | null>(null);
   const [carregando, setCarregando] = useState(false);
+  const [carregandoLista, setCarregandoLista] = useState(true);
+  const { confirmar, dialogElement } = useConfirmarExclusao();
+  const sucessoToast = useSucessoToast();
 
   async function carregar() {
     try {
@@ -80,6 +87,8 @@ export function PermissoesTrabalhoTab() {
       setUsuarios(usrs);
     } catch (e) {
       setErro(e instanceof Error ? e.message : 'Falha ao carregar Permissões de Trabalho.');
+    } finally {
+      setCarregandoLista(false);
     }
   }
 
@@ -116,6 +125,7 @@ export function PermissoesTrabalhoTab() {
       });
       setNovaPt(ptVazia);
       await carregar();
+      sucessoToast('Permissão de Trabalho criada com sucesso.');
     } catch (e) {
       setErro(e instanceof Error ? e.message : 'Falha ao criar Permissão de Trabalho.');
     } finally {
@@ -125,9 +135,11 @@ export function PermissoesTrabalhoTab() {
 
   async function excluir(id: string, evento: React.MouseEvent) {
     evento.stopPropagation();
+    if (!(await confirmar('Excluir esta Permissão de Trabalho? Essa ação não pode ser desfeita.'))) return;
     try {
       await api.permissoesTrabalho.excluir(id);
       await carregar();
+      sucessoToast('Permissão de Trabalho excluída com sucesso.');
     } catch (e) {
       setErro(e instanceof Error ? e.message : 'Falha ao excluir Permissão de Trabalho.');
     }
@@ -135,6 +147,7 @@ export function PermissoesTrabalhoTab() {
 
   return (
     <div className={estilos.card}>
+      {dialogElement}
       <div className={estilos.toolbar}>
         <Text weight="semibold">Permissão de Trabalho (PT)</Text>
       </div>
@@ -259,6 +272,11 @@ export function PermissoesTrabalhoTab() {
         </Button>
       </div>
 
+      {carregandoLista ? (
+        <ListaCarregando />
+      ) : permissoes.length === 0 ? (
+        <EstadoVazio mensagem="Nenhuma Permissão de Trabalho cadastrada ainda." />
+      ) : (
       <Table>
         <TableHeader>
           <TableRow>
@@ -304,6 +322,7 @@ export function PermissoesTrabalhoTab() {
           ))}
         </TableBody>
       </Table>
+      )}
     </div>
   );
 }

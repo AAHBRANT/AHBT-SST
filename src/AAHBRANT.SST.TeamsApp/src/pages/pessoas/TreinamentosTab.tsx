@@ -16,6 +16,10 @@ import {
 import { Add24Regular, Delete24Regular } from '@fluentui/react-icons';
 import { api, type CursoTreinamento, type NovoTreinamento, type Treinamento } from '../../lib/api';
 import { usePageStyles } from '../pageStyles';
+import { useConfirmarExclusao } from '../../hooks/useConfirmarExclusao';
+import { useSucessoToast } from '../../hooks/useSucessoToast';
+import { EstadoVazio } from '../../components/EstadoVazio';
+import { ListaCarregando } from '../../components/ListaCarregando';
 
 function treinamentoVazio(trabalhadorId: string): NovoTreinamento {
   return {
@@ -36,6 +40,9 @@ export function TreinamentosTab({ trabalhadorId }: { trabalhadorId: string }) {
   const [novoTreinamento, setNovoTreinamento] = useState<NovoTreinamento>(() => treinamentoVazio(trabalhadorId));
   const [erro, setErro] = useState<string | null>(null);
   const [carregando, setCarregando] = useState(false);
+  const [carregandoLista, setCarregandoLista] = useState(true);
+  const { confirmar, dialogElement } = useConfirmarExclusao();
+  const sucessoToast = useSucessoToast();
 
   async function carregar() {
     try {
@@ -48,6 +55,8 @@ export function TreinamentosTab({ trabalhadorId }: { trabalhadorId: string }) {
       setCursos(listaCursos);
     } catch (e) {
       setErro(e instanceof Error ? e.message : 'Falha ao carregar treinamentos.');
+    } finally {
+      setCarregandoLista(false);
     }
   }
 
@@ -72,6 +81,7 @@ export function TreinamentosTab({ trabalhadorId }: { trabalhadorId: string }) {
       await api.treinamentos.criar(novoTreinamento);
       setNovoTreinamento(treinamentoVazio(trabalhadorId));
       await carregar();
+      sucessoToast('Treinamento criado com sucesso.');
     } catch (e) {
       setErro(e instanceof Error ? e.message : 'Falha ao criar treinamento.');
     } finally {
@@ -80,9 +90,11 @@ export function TreinamentosTab({ trabalhadorId }: { trabalhadorId: string }) {
   }
 
   async function excluir(id: string) {
+    if (!(await confirmar('Excluir este treinamento? Essa ação não pode ser desfeita.'))) return;
     try {
       await api.treinamentos.excluir(id);
       await carregar();
+      sucessoToast('Treinamento excluído com sucesso.');
     } catch (e) {
       setErro(e instanceof Error ? e.message : 'Falha ao excluir treinamento.');
     }
@@ -90,6 +102,7 @@ export function TreinamentosTab({ trabalhadorId }: { trabalhadorId: string }) {
 
   return (
     <div className={estilos.card}>
+      {dialogElement}
       <div className={estilos.toolbar}>
         <Text weight="semibold">Treinamentos do trabalhador</Text>
       </div>
@@ -150,6 +163,11 @@ export function TreinamentosTab({ trabalhadorId }: { trabalhadorId: string }) {
         </Button>
       </div>
 
+      {carregandoLista ? (
+        <ListaCarregando />
+      ) : treinamentos.length === 0 ? (
+        <EstadoVazio mensagem="Nenhum treinamento cadastrado ainda." />
+      ) : (
       <Table>
         <TableHeader>
           <TableRow>
@@ -186,6 +204,7 @@ export function TreinamentosTab({ trabalhadorId }: { trabalhadorId: string }) {
           ))}
         </TableBody>
       </Table>
+      )}
     </div>
   );
 }

@@ -14,6 +14,10 @@ import {
 import { Add24Regular, Delete24Regular } from '@fluentui/react-icons';
 import { api, type CursoTreinamento, type NovoCursoTreinamento } from '../../lib/api';
 import { usePageStyles } from '../pageStyles';
+import { useConfirmarExclusao } from '../../hooks/useConfirmarExclusao';
+import { useSucessoToast } from '../../hooks/useSucessoToast';
+import { EstadoVazio } from '../../components/EstadoVazio';
+import { ListaCarregando } from '../../components/ListaCarregando';
 
 const cursoVazio: NovoCursoTreinamento = {
   nome: '',
@@ -28,6 +32,9 @@ export function CursosTreinamentoTab() {
   const [novoCurso, setNovoCurso] = useState<NovoCursoTreinamento>(cursoVazio);
   const [erro, setErro] = useState<string | null>(null);
   const [carregando, setCarregando] = useState(false);
+  const [carregandoLista, setCarregandoLista] = useState(true);
+  const { confirmar, dialogElement } = useConfirmarExclusao();
+  const sucessoToast = useSucessoToast();
 
   async function carregar() {
     try {
@@ -35,6 +42,8 @@ export function CursosTreinamentoTab() {
       setCursos(await api.cursosTreinamento.listar());
     } catch (e) {
       setErro(e instanceof Error ? e.message : 'Falha ao carregar cursos de treinamento.');
+    } finally {
+      setCarregandoLista(false);
     }
   }
 
@@ -49,6 +58,7 @@ export function CursosTreinamentoTab() {
       await api.cursosTreinamento.criar(novoCurso);
       setNovoCurso(cursoVazio);
       await carregar();
+      sucessoToast('Curso de treinamento criado com sucesso.');
     } catch (e) {
       setErro(e instanceof Error ? e.message : 'Falha ao criar curso de treinamento.');
     } finally {
@@ -57,9 +67,11 @@ export function CursosTreinamentoTab() {
   }
 
   async function excluir(id: string) {
+    if (!(await confirmar('Excluir este curso de treinamento? Essa ação não pode ser desfeita.'))) return;
     try {
       await api.cursosTreinamento.excluir(id);
       await carregar();
+      sucessoToast('Curso de treinamento excluído com sucesso.');
     } catch (e) {
       setErro(e instanceof Error ? e.message : 'Falha ao excluir curso de treinamento.');
     }
@@ -67,6 +79,7 @@ export function CursosTreinamentoTab() {
 
   return (
     <div className={estilos.card}>
+      {dialogElement}
       <div className={estilos.toolbar}>
         <Text weight="semibold">Cursos de treinamento (catálogo)</Text>
       </div>
@@ -104,6 +117,11 @@ export function CursosTreinamentoTab() {
         </Button>
       </div>
 
+      {carregandoLista ? (
+        <ListaCarregando />
+      ) : cursos.length === 0 ? (
+        <EstadoVazio mensagem="Nenhum curso de treinamento cadastrado ainda." />
+      ) : (
       <Table>
         <TableHeader>
           <TableRow>
@@ -133,6 +151,7 @@ export function CursosTreinamentoTab() {
           ))}
         </TableBody>
       </Table>
+      )}
     </div>
   );
 }

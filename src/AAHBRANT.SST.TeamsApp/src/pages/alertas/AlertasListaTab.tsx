@@ -28,6 +28,10 @@ import {
   type Usuario,
 } from '../../lib/api';
 import { usePageStyles } from '../pageStyles';
+import { useConfirmarExclusao } from '../../hooks/useConfirmarExclusao';
+import { useSucessoToast } from '../../hooks/useSucessoToast';
+import { EstadoVazio } from '../../components/EstadoVazio';
+import { ListaCarregando } from '../../components/ListaCarregando';
 
 function novaInicial(): NovoAlerta {
   return {
@@ -61,6 +65,9 @@ export function AlertasListaTab() {
   const [novo, setNovo] = useState<NovoAlerta>(novaInicial());
   const [erro, setErro] = useState<string | null>(null);
   const [carregando, setCarregando] = useState(false);
+  const [carregandoLista, setCarregandoLista] = useState(true);
+  const { confirmar, dialogElement } = useConfirmarExclusao();
+  const sucessoToast = useSucessoToast();
 
   async function carregar() {
     try {
@@ -80,6 +87,8 @@ export function AlertasListaTab() {
       setUsuarios(listaUsuarios);
     } catch (e) {
       setErro(e instanceof Error ? e.message : 'Falha ao carregar alertas.');
+    } finally {
+      setCarregandoLista(false);
     }
   }
 
@@ -106,6 +115,7 @@ export function AlertasListaTab() {
       });
       setNovo(novaInicial());
       await carregar();
+      sucessoToast('Alerta criado com sucesso.');
     } catch (e) {
       setErro(e instanceof Error ? e.message : 'Falha ao criar alerta.');
     } finally {
@@ -113,22 +123,30 @@ export function AlertasListaTab() {
     }
   }
 
-  async function executar(acao: (id: string) => Promise<void>, id: string, mensagemErro: string) {
+  async function executar(
+    acao: (id: string) => Promise<void>,
+    id: string,
+    mensagemErro: string,
+    mensagemSucesso: string,
+  ) {
     try {
       setErro(null);
       await acao(id);
       await carregar();
+      sucessoToast(mensagemSucesso);
     } catch (e) {
       setErro(e instanceof Error ? e.message : mensagemErro);
     }
   }
 
   async function excluir(id: string) {
-    await executar((alertaId) => api.alertas.excluir(alertaId), id, 'Falha ao excluir alerta.');
+    if (!(await confirmar('Excluir este alerta? Essa ação não pode ser desfeita.'))) return;
+    await executar((alertaId) => api.alertas.excluir(alertaId), id, 'Falha ao excluir alerta.', 'Alerta excluído com sucesso.');
   }
 
   return (
     <div>
+      {dialogElement}
       {erro && <Text className={estilos.erro}>{erro}</Text>}
 
       <div className={estilos.card} style={{ marginBottom: 16 }}>
@@ -248,6 +266,11 @@ export function AlertasListaTab() {
             </Select>
           </div>
         </div>
+        {carregandoLista ? (
+          <ListaCarregando />
+        ) : alertas.length === 0 ? (
+          <EstadoVazio mensagem="Nenhum alerta encontrado." />
+        ) : (
         <Table>
           <TableHeader>
             <TableRow>
@@ -284,7 +307,14 @@ export function AlertasListaTab() {
                         appearance="subtle"
                         icon={<PlayCircle24Regular />}
                         title="Iniciar tratamento"
-                        onClick={() => executar(api.alertas.iniciarTratamento, alerta.id, 'Falha ao iniciar tratamento.')}
+                        onClick={() =>
+                          executar(
+                            api.alertas.iniciarTratamento,
+                            alerta.id,
+                            'Falha ao iniciar tratamento.',
+                            'Tratamento do alerta iniciado com sucesso.',
+                          )
+                        }
                       />
                     )}
                     {(alerta.status === StatusAlerta.Aberto || alerta.status === StatusAlerta.EmTratamento) && (
@@ -292,7 +322,9 @@ export function AlertasListaTab() {
                         appearance="subtle"
                         icon={<CheckmarkCircle24Regular />}
                         title="Resolver"
-                        onClick={() => executar(api.alertas.resolver, alerta.id, 'Falha ao resolver alerta.')}
+                        onClick={() =>
+                          executar(api.alertas.resolver, alerta.id, 'Falha ao resolver alerta.', 'Alerta resolvido com sucesso.')
+                        }
                       />
                     )}
                     {(alerta.status === StatusAlerta.Aberto || alerta.status === StatusAlerta.EmTratamento) && (
@@ -300,7 +332,9 @@ export function AlertasListaTab() {
                         appearance="subtle"
                         icon={<DismissCircle24Regular />}
                         title="Ignorar"
-                        onClick={() => executar(api.alertas.ignorar, alerta.id, 'Falha ao ignorar alerta.')}
+                        onClick={() =>
+                          executar(api.alertas.ignorar, alerta.id, 'Falha ao ignorar alerta.', 'Alerta ignorado com sucesso.')
+                        }
                       />
                     )}
                     <Button
@@ -315,6 +349,7 @@ export function AlertasListaTab() {
             ))}
           </TableBody>
         </Table>
+        )}
       </div>
     </div>
   );

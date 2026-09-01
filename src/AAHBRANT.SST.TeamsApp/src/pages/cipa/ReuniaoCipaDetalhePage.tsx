@@ -32,6 +32,9 @@ import {
   type Usuario,
 } from '../../lib/api';
 import { usePageStyles } from '../pageStyles';
+import { useConfirmarExclusao } from '../../hooks/useConfirmarExclusao';
+import { useSucessoToast } from '../../hooks/useSucessoToast';
+import { EstadoVazio } from '../../components/EstadoVazio';
 
 function novaAcaoInicial(): Omit<NovaAcaoPlano, 'origemTipo' | 'origemId'> {
   return { tipo: 1, descricao: '', responsavelUsuarioId: '', prioridade: 3, prazo: '' };
@@ -55,6 +58,8 @@ export function ReuniaoCipaDetalhePage() {
   const [erro, setErro] = useState<string | null>(null);
   const [salvando, setSalvando] = useState(false);
   const [baixandoPdf, setBaixandoPdf] = useState(false);
+  const { confirmar, dialogElement } = useConfirmarExclusao();
+  const sucessoToast = useSucessoToast();
 
   async function carregar() {
     if (!id) return;
@@ -96,6 +101,7 @@ export function ReuniaoCipaDetalhePage() {
       setErro(null);
       await api.cipa.reunioes.registrarParticipantes(id, participantes);
       await carregar();
+      sucessoToast('Presença salva com sucesso.');
     } catch (e) {
       setErro(e instanceof Error ? e.message : 'Falha ao salvar presença.');
     } finally {
@@ -114,6 +120,7 @@ export function ReuniaoCipaDetalhePage() {
       setErro(null);
       await api.cipa.reunioes.encerrar(id, deliberacoes);
       await carregar();
+      sucessoToast('Reunião encerrada com sucesso.');
     } catch (e) {
       setErro(e instanceof Error ? e.message : 'Falha ao encerrar reunião.');
     } finally {
@@ -158,6 +165,7 @@ export function ReuniaoCipaDetalhePage() {
       });
       setNovaAcao(novaAcaoInicial());
       await carregar();
+      sucessoToast('Ação adicionada com sucesso.');
     } catch (e) {
       setErro(e instanceof Error ? e.message : 'Falha ao criar ação do plano.');
     } finally {
@@ -175,6 +183,7 @@ export function ReuniaoCipaDetalhePage() {
       setErro(null);
       await api.acoesPlano.validar(acaoId, usuarioValidador);
       await carregar();
+      sucessoToast('Ação validada com sucesso.');
     } catch (e) {
       setErro(e instanceof Error ? e.message : 'Falha ao validar ação.');
     } finally {
@@ -183,9 +192,11 @@ export function ReuniaoCipaDetalhePage() {
   }
 
   async function excluirAcao(acaoId: string) {
+    if (!(await confirmar('Excluir esta ação do plano? Essa ação não pode ser desfeita.'))) return;
     try {
       await api.acoesPlano.excluir(acaoId);
       await carregar();
+      sucessoToast('Ação excluída com sucesso.');
     } catch (e) {
       setErro(e instanceof Error ? e.message : 'Falha ao excluir ação.');
     }
@@ -197,6 +208,7 @@ export function ReuniaoCipaDetalhePage() {
 
   return (
     <div>
+      {dialogElement}
       <Button appearance="subtle" icon={<ArrowLeft24Regular />} onClick={() => navigate('/operacao/cipa')} style={{ marginBottom: 12 }}>
         Voltar para CIPA
       </Button>
@@ -226,6 +238,9 @@ export function ReuniaoCipaDetalhePage() {
             <div className={estilos.toolbar}>
               <Text weight="semibold">Lista de presença</Text>
             </div>
+            {trabalhadores.length === 0 ? (
+              <EstadoVazio mensagem="Nenhum trabalhador cadastrado nesta obra ainda." />
+            ) : (
             <Table>
               <TableHeader>
                 <TableRow>
@@ -262,6 +277,7 @@ export function ReuniaoCipaDetalhePage() {
                 ))}
               </TableBody>
             </Table>
+            )}
             {!encerrada && (
               <div className={estilos.formActions}>
                 <Button appearance="primary" onClick={salvarPresenca} disabled={salvando}>
@@ -362,6 +378,9 @@ export function ReuniaoCipaDetalhePage() {
                 </Select>
               </Field>
             </div>
+            {acoesPlano.length === 0 ? (
+              <EstadoVazio mensagem="Nenhuma ação registrada no plano ainda." />
+            ) : (
             <Table>
               <TableHeader>
                 <TableRow>
@@ -397,6 +416,7 @@ export function ReuniaoCipaDetalhePage() {
                 ))}
               </TableBody>
             </Table>
+            )}
           </div>
         </>
       )}

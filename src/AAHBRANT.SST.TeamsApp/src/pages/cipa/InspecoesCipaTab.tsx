@@ -25,6 +25,10 @@ import {
   type Usuario,
 } from '../../lib/api';
 import { usePageStyles } from '../pageStyles';
+import { useConfirmarExclusao } from '../../hooks/useConfirmarExclusao';
+import { useSucessoToast } from '../../hooks/useSucessoToast';
+import { EstadoVazio } from '../../components/EstadoVazio';
+import { ListaCarregando } from '../../components/ListaCarregando';
 
 function vazio(): NovaInspecaoCipa {
   return { obraId: '', membroCipaId: null, data: '', local: '', riscoIdentificado: '', grauRisco: null };
@@ -45,6 +49,9 @@ export function InspecoesCipaTab() {
   const [prazoNc, setPrazoNc] = useState('');
   const [erro, setErro] = useState<string | null>(null);
   const [carregando, setCarregando] = useState(false);
+  const [carregandoLista, setCarregandoLista] = useState(true);
+  const { confirmar, dialogElement } = useConfirmarExclusao();
+  const sucessoToast = useSucessoToast();
 
   async function carregar() {
     try {
@@ -59,6 +66,8 @@ export function InspecoesCipaTab() {
       setUsuarios(listaUsuarios);
     } catch (e) {
       setErro(e instanceof Error ? e.message : 'Falha ao carregar inspeções da CIPA.');
+    } finally {
+      setCarregandoLista(false);
     }
   }
 
@@ -87,6 +96,7 @@ export function InspecoesCipaTab() {
       setNovo(vazio());
       setMembros([]);
       await carregar();
+      sucessoToast('Inspeção registrada com sucesso.');
     } catch (e) {
       setErro(e instanceof Error ? e.message : 'Falha ao registrar inspeção.');
     } finally {
@@ -95,9 +105,11 @@ export function InspecoesCipaTab() {
   }
 
   async function excluir(id: string) {
+    if (!(await confirmar('Excluir esta inspeção? Essa ação não pode ser desfeita.'))) return;
     try {
       await api.cipa.inspecoes.excluir(id);
       await carregar();
+      sucessoToast('Inspeção excluída com sucesso.');
     } catch (e) {
       setErro(e instanceof Error ? e.message : 'Falha ao excluir inspeção.');
     }
@@ -113,6 +125,7 @@ export function InspecoesCipaTab() {
       setResponsavelNc('');
       setPrazoNc('');
       await carregar();
+      sucessoToast('Não conformidade gerada com sucesso.');
     } catch (e) {
       setErro(e instanceof Error ? e.message : 'Falha ao gerar não conformidade.');
     } finally {
@@ -122,6 +135,7 @@ export function InspecoesCipaTab() {
 
   return (
     <div>
+      {dialogElement}
       <div className={estilos.card} style={{ marginBottom: 16 }}>
         <div className={estilos.toolbar}>
           <Text weight="semibold">Nova inspeção</Text>
@@ -217,6 +231,11 @@ export function InspecoesCipaTab() {
         <div className={estilos.toolbar}>
           <Text weight="semibold">Inspeções registradas</Text>
         </div>
+        {carregandoLista ? (
+          <ListaCarregando />
+        ) : lista.length === 0 ? (
+          <EstadoVazio mensagem="Nenhuma inspeção registrada ainda." />
+        ) : (
         <Table>
           <TableHeader>
             <TableRow>
@@ -259,6 +278,7 @@ export function InspecoesCipaTab() {
             ))}
           </TableBody>
         </Table>
+        )}
       </div>
     </div>
   );

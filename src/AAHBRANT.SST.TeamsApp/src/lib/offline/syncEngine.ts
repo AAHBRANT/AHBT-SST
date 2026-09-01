@@ -89,6 +89,22 @@ async function lerCorpoErro(response: Response): Promise<string> {
   return response.text().catch(() => '');
 }
 
+// Mesma correção aplicada em lib/api.ts: o backend responde erro como {"erro": "mensagem"} (ou
+// {"title": "..."} num 404 de rota que nem chega a controller) — sem isso, o usuário via
+// "400 Bad Request: {...}" cru em vez da mensagem limpa.
+function extrairMensagemErro(corpo: string, status: number, statusText: string): string {
+  if (corpo) {
+    try {
+      const json = JSON.parse(corpo) as { erro?: string; title?: string };
+      if (typeof json.erro === 'string' && json.erro) return json.erro;
+      if (typeof json.title === 'string' && json.title) return json.title;
+    } catch {
+      // corpo não era JSON — cai no texto bruto abaixo
+    }
+  }
+  return corpo ? `${statusText} (${status}): ${corpo}` : `${statusText} (${status})`;
+}
+
 // Mesma proteção contra corpo não-JSON usada em lib/api.ts: um 200 com HTML (ex.: proxy/ingress
 // devolvendo a página estática do front em vez da API) lançaria um SyntaxError críptico ao passar
 // direto por JSON.parse — aqui vira um Error com o status HTTP, diagnosticável e não confundido
@@ -147,7 +163,7 @@ export async function syncFetchJson<T>(
 
     if (!response.ok) {
       const corpo = await lerCorpoErro(response);
-      throw new Error(`${response.status} ${response.statusText}: ${corpo}`);
+      throw new Error(extrairMensagemErro(corpo, response.status, response.statusText));
     }
 
     if (response.status === 204) {
@@ -180,7 +196,7 @@ export async function syncFetchBlob(path: string, authHeaders?: Record<string, s
     marcarOnline(true);
     if (!response.ok) {
       const corpo = await lerCorpoErro(response);
-      throw new Error(`${response.status} ${response.statusText}: ${corpo}`);
+      throw new Error(extrairMensagemErro(corpo, response.status, response.statusText));
     }
     const blob = await response.blob();
     await offlineDb.cacheBlob.put({ url: path, blob, atualizadoEm: Date.now() });
@@ -224,7 +240,7 @@ export async function syncMutateJson<T>(
 
       if (!response.ok) {
         const texto = await lerCorpoErro(response);
-        throw new Error(`${response.status} ${response.statusText}: ${texto}`);
+        throw new Error(extrairMensagemErro(texto, response.status, response.statusText));
       }
 
       if (response.status === 204) {
@@ -279,7 +295,7 @@ export async function syncMutateMultipart<T>(
 
       if (!response.ok) {
         const texto = await lerCorpoErro(response);
-        throw new Error(`${response.status} ${response.statusText}: ${texto}`);
+        throw new Error(extrairMensagemErro(texto, response.status, response.statusText));
       }
       const texto = await response.text();
       return parsearJsonSeguro<T>(texto, response);

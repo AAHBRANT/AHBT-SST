@@ -28,6 +28,10 @@ import {
 } from '../../lib/api';
 import { usePageStyles } from '../pageStyles';
 import { ResolverTagResultado } from './ResolverTagResultado';
+import { useConfirmarExclusao } from '../../hooks/useConfirmarExclusao';
+import { useSucessoToast } from '../../hooks/useSucessoToast';
+import { EstadoVazio } from '../../components/EstadoVazio';
+import { ListaCarregando } from '../../components/ListaCarregando';
 
 const tagVazia: NovaTagIdentificacao = { uid: '', tipo: TipoTag.QrCode };
 
@@ -39,6 +43,9 @@ export function TagsIdentificacaoTab() {
   const [novaTag, setNovaTag] = useState<NovaTagIdentificacao>(tagVazia);
   const [erro, setErro] = useState<string | null>(null);
   const [carregando, setCarregando] = useState(false);
+  const [carregandoLista, setCarregandoLista] = useState(true);
+  const { confirmar, dialogElement } = useConfirmarExclusao();
+  const sucessoToast = useSucessoToast();
 
   const [vinculandoId, setVinculandoId] = useState<string | null>(null);
   const [tipoVinculo, setTipoVinculo] = useState<number>(TipoEntidadeVinculada.Area);
@@ -64,6 +71,8 @@ export function TagsIdentificacaoTab() {
       setTrabalhadores(trbs);
     } catch (e) {
       setErro(e instanceof Error ? e.message : 'Falha ao carregar tags de identificação.');
+    } finally {
+      setCarregandoLista(false);
     }
   }
 
@@ -89,6 +98,7 @@ export function TagsIdentificacaoTab() {
       await api.tagsIdentificacao.criar(novaTag);
       setNovaTag(tagVazia);
       await carregar();
+      sucessoToast('Tag cadastrada com sucesso.');
     } catch (e) {
       setErro(e instanceof Error ? e.message : 'Falha ao criar tag.');
     } finally {
@@ -97,9 +107,11 @@ export function TagsIdentificacaoTab() {
   }
 
   async function excluir(id: string) {
+    if (!(await confirmar('Excluir esta tag de identificação? Essa ação não pode ser desfeita.'))) return;
     try {
       await api.tagsIdentificacao.excluir(id);
       await carregar();
+      sucessoToast('Tag excluída com sucesso.');
     } catch (e) {
       setErro(e instanceof Error ? e.message : 'Falha ao excluir tag.');
     }
@@ -118,6 +130,7 @@ export function TagsIdentificacaoTab() {
       await api.tagsIdentificacao.vincular(vinculandoId, tipoVinculo, entidadeVinculoId);
       setVinculandoId(null);
       await carregar();
+      sucessoToast('Tag vinculada com sucesso.');
     } catch (e) {
       setErro(e instanceof Error ? e.message : 'Falha ao vincular tag.');
     }
@@ -128,6 +141,7 @@ export function TagsIdentificacaoTab() {
       setErro(null);
       await api.tagsIdentificacao.desvincular(id);
       await carregar();
+      sucessoToast('Tag desvinculada com sucesso.');
     } catch (e) {
       setErro(e instanceof Error ? e.message : 'Falha ao desvincular tag.');
     }
@@ -152,6 +166,7 @@ export function TagsIdentificacaoTab() {
       await api.tagsIdentificacao.vincularPorUid(resultadoBusca.uid, tipoVinculoBusca, entidadeVinculoIdBusca);
       await resolverUid();
       await carregar();
+      sucessoToast('Tag vinculada com sucesso.');
     } catch (e) {
       setErroBusca(e instanceof Error ? e.message : 'Falha ao vincular tag.');
     }
@@ -159,6 +174,7 @@ export function TagsIdentificacaoTab() {
 
   return (
     <>
+      {dialogElement}
       <div className={estilos.card} style={{ marginBottom: 20 }}>
         <div className={estilos.toolbar}>
           <Text weight="semibold">Resolver tag por UID (leitura de NFC/QR)</Text>
@@ -273,6 +289,11 @@ export function TagsIdentificacaoTab() {
           </div>
         )}
 
+        {carregandoLista ? (
+          <ListaCarregando />
+        ) : tags.length === 0 ? (
+          <EstadoVazio mensagem="Nenhuma tag de identificação cadastrada ainda." />
+        ) : (
         <Table>
           <TableHeader>
             <TableRow>
@@ -318,6 +339,7 @@ export function TagsIdentificacaoTab() {
             ))}
           </TableBody>
         </Table>
+        )}
       </div>
     </>
   );

@@ -34,6 +34,9 @@ import {
 } from '../../lib/api';
 import { BadgeVencimento } from '../../components/badges/BadgeVencimento';
 import { usePageStyles } from '../pageStyles';
+import { useConfirmarExclusao } from '../../hooks/useConfirmarExclusao';
+import { useSucessoToast } from '../../hooks/useSucessoToast';
+import { EstadoVazio } from '../../components/EstadoVazio';
 
 function novaAcaoInicial(): Omit<NovaAcaoPlano, 'origemTipo' | 'origemId'> {
   return { tipo: 1, descricao: '', responsavelUsuarioId: '', prioridade: 3, prazo: '' };
@@ -56,6 +59,8 @@ export function PcmsoDetalhePage() {
   const [usuarioValidador, setUsuarioValidador] = useState('');
   const [erro, setErro] = useState<string | null>(null);
   const [salvando, setSalvando] = useState(false);
+  const { confirmar, dialogElement } = useConfirmarExclusao();
+  const sucessoToast = useSucessoToast();
 
   async function carregar() {
     if (!id) return;
@@ -100,6 +105,7 @@ export function PcmsoDetalhePage() {
       setErro(null);
       await api.pcmsos.atualizar(id, edicao);
       await carregar();
+      sucessoToast('PCMSO atualizado com sucesso.');
     } catch (e) {
       setErro(e instanceof Error ? e.message : 'Falha ao salvar PCMSO.');
     } finally {
@@ -125,6 +131,7 @@ export function PcmsoDetalhePage() {
       });
       setNovaAcao(novaAcaoInicial());
       await carregar();
+      sucessoToast('Ação do plano criada com sucesso.');
     } catch (e) {
       setErro(e instanceof Error ? e.message : 'Falha ao criar ação do plano.');
     } finally {
@@ -142,6 +149,7 @@ export function PcmsoDetalhePage() {
       setErro(null);
       await api.acoesPlano.validar(acaoId, usuarioValidador);
       await carregar();
+      sucessoToast('Ação do plano validada com sucesso.');
     } catch (e) {
       setErro(e instanceof Error ? e.message : 'Falha ao validar ação do plano.');
     } finally {
@@ -150,9 +158,11 @@ export function PcmsoDetalhePage() {
   }
 
   async function excluirAcao(acaoId: string) {
+    if (!(await confirmar('Excluir esta ação do plano? Essa ação não pode ser desfeita.'))) return;
     try {
       await api.acoesPlano.excluir(acaoId);
       await carregar();
+      sucessoToast('Ação do plano excluída com sucesso.');
     } catch (e) {
       setErro(e instanceof Error ? e.message : 'Falha ao excluir ação do plano.');
     }
@@ -164,6 +174,7 @@ export function PcmsoDetalhePage() {
 
   return (
     <div>
+      {dialogElement}
       <Button
         appearance="subtle"
         icon={<ArrowLeft24Regular />}
@@ -395,6 +406,9 @@ export function PcmsoDetalhePage() {
                 </Select>
               </Field>
             </div>
+            {acoesPlano.length === 0 ? (
+              <EstadoVazio mensagem="Nenhuma ação do plano cadastrada ainda." />
+            ) : (
             <Table>
               <TableHeader>
                 <TableRow>
@@ -437,6 +451,7 @@ export function PcmsoDetalhePage() {
                 ))}
               </TableBody>
             </Table>
+            )}
           </div>
         </>
       )}

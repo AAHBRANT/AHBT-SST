@@ -25,6 +25,10 @@ import {
 } from '../../lib/api';
 import { BadgeVencimento } from '../../components/badges/BadgeVencimento';
 import { usePageStyles } from '../pageStyles';
+import { useConfirmarExclusao } from '../../hooks/useConfirmarExclusao';
+import { useSucessoToast } from '../../hooks/useSucessoToast';
+import { EstadoVazio } from '../../components/EstadoVazio';
+import { ListaCarregando } from '../../components/ListaCarregando';
 
 function pcmsoVazio(): NovoPcmso {
   return {
@@ -57,6 +61,9 @@ export function PcmsoTab() {
   const [novoPcmso, setNovoPcmso] = useState<NovoPcmso>(pcmsoVazio());
   const [erro, setErro] = useState<string | null>(null);
   const [carregando, setCarregando] = useState(false);
+  const [carregandoLista, setCarregandoLista] = useState(true);
+  const { confirmar, dialogElement } = useConfirmarExclusao();
+  const sucessoToast = useSucessoToast();
 
   async function carregar() {
     try {
@@ -66,6 +73,8 @@ export function PcmsoTab() {
       setObras(listaObras);
     } catch (e) {
       setErro(e instanceof Error ? e.message : 'Falha ao carregar PCMSOs.');
+    } finally {
+      setCarregandoLista(false);
     }
   }
 
@@ -96,6 +105,7 @@ export function PcmsoTab() {
       });
       setNovoPcmso(pcmsoVazio());
       await carregar();
+      sucessoToast('PCMSO criado com sucesso.');
     } catch (e) {
       setErro(e instanceof Error ? e.message : 'Falha ao criar PCMSO.');
     } finally {
@@ -105,9 +115,11 @@ export function PcmsoTab() {
 
   async function excluir(id: string, evento: React.MouseEvent) {
     evento.stopPropagation();
+    if (!(await confirmar('Excluir este PCMSO? Essa ação não pode ser desfeita.'))) return;
     try {
       await api.pcmsos.excluir(id);
       await carregar();
+      sucessoToast('PCMSO excluído com sucesso.');
     } catch (e) {
       setErro(e instanceof Error ? e.message : 'Falha ao excluir PCMSO.');
     }
@@ -115,6 +127,7 @@ export function PcmsoTab() {
 
   return (
     <div>
+      {dialogElement}
       <div className={estilos.card} style={{ marginBottom: 16 }}>
         <div className={estilos.toolbar}>
           <Text weight="semibold">Novo PCMSO</Text>
@@ -182,6 +195,11 @@ export function PcmsoTab() {
           <Text weight="semibold">PCMSOs cadastrados</Text>
         </div>
 
+        {carregandoLista ? (
+          <ListaCarregando />
+        ) : pcmsos.length === 0 ? (
+          <EstadoVazio mensagem="Nenhum PCMSO cadastrado ainda." />
+        ) : (
         <Table>
           <TableHeader>
             <TableRow>
@@ -235,6 +253,7 @@ export function PcmsoTab() {
             ))}
           </TableBody>
         </Table>
+        )}
       </div>
     </div>
   );

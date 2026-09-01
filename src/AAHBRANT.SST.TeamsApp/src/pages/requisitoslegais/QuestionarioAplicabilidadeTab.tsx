@@ -17,6 +17,10 @@ import {
 import { AddCircle24Regular, Delete24Regular } from '@fluentui/react-icons';
 import { api, type ItemQuestionarioAplicabilidade, type Obra, type RespostaQuestionarioObra } from '../../lib/api';
 import { usePageStyles } from '../pageStyles';
+import { useConfirmarExclusao } from '../../hooks/useConfirmarExclusao';
+import { useSucessoToast } from '../../hooks/useSucessoToast';
+import { EstadoVazio } from '../../components/EstadoVazio';
+import { ListaCarregando } from '../../components/ListaCarregando';
 
 export function QuestionarioAplicabilidadeTab() {
   const estilos = usePageStyles();
@@ -29,6 +33,9 @@ export function QuestionarioAplicabilidadeTab() {
   const [observacoesEdicao, setObservacoesEdicao] = useState<Record<string, string>>({});
   const [erro, setErro] = useState<string | null>(null);
   const [processando, setProcessando] = useState(false);
+  const [carregandoLista, setCarregandoLista] = useState(true);
+  const { confirmar, dialogElement } = useConfirmarExclusao();
+  const sucessoToast = useSucessoToast();
 
   async function carregarCatalogoEObras() {
     try {
@@ -38,6 +45,8 @@ export function QuestionarioAplicabilidadeTab() {
       setObras(listaObras);
     } catch (e) {
       setErro(e instanceof Error ? e.message : 'Falha ao carregar questionário de aplicabilidade.');
+    } finally {
+      setCarregandoLista(false);
     }
   }
 
@@ -72,6 +81,7 @@ export function QuestionarioAplicabilidadeTab() {
       setNovaPergunta('');
       setNovoTextoApoio('');
       await carregarCatalogoEObras();
+      sucessoToast('Pergunta adicionada ao questionário com sucesso.');
     } catch (e) {
       setErro(e instanceof Error ? e.message : 'Falha ao criar item do questionário.');
     } finally {
@@ -80,10 +90,12 @@ export function QuestionarioAplicabilidadeTab() {
   }
 
   async function excluirItem(id: string) {
+    if (!(await confirmar('Excluir esta pergunta do questionário de aplicabilidade? Essa ação não pode ser desfeita.'))) return;
     try {
       setErro(null);
       await api.questionarioAplicabilidade.excluirItem(id);
       await carregarCatalogoEObras();
+      sucessoToast('Pergunta excluída com sucesso.');
     } catch (e) {
       setErro(e instanceof Error ? e.message : 'Falha ao excluir item do questionário.');
     }
@@ -95,6 +107,7 @@ export function QuestionarioAplicabilidadeTab() {
       setErro(null);
       await api.questionarioAplicabilidade.responder(obraSelecionadaId, itemId, resposta, observacoesEdicao[itemId] || null);
       await carregarRespostasDaObra(obraSelecionadaId);
+      sucessoToast('Resposta registrada com sucesso.');
     } catch (e) {
       setErro(e instanceof Error ? e.message : 'Falha ao registrar resposta.');
     } finally {
@@ -104,6 +117,7 @@ export function QuestionarioAplicabilidadeTab() {
 
   return (
     <div>
+      {dialogElement}
       {erro && <Text className={estilos.erro}>{erro}</Text>}
 
       <div className={estilos.card} style={{ marginBottom: 16 }}>
@@ -129,6 +143,11 @@ export function QuestionarioAplicabilidadeTab() {
           </Button>
         </div>
 
+        {carregandoLista ? (
+          <ListaCarregando />
+        ) : itens.length === 0 ? (
+          <EstadoVazio mensagem="Nenhuma pergunta cadastrada ainda." />
+        ) : (
         <Table style={{ marginTop: 12 }}>
           <TableHeader>
             <TableRow>
@@ -149,6 +168,7 @@ export function QuestionarioAplicabilidadeTab() {
             ))}
           </TableBody>
         </Table>
+        )}
       </div>
 
       <div className={estilos.card}>

@@ -23,6 +23,10 @@ import {
 } from '../../lib/api';
 import { BadgeVencimento } from '../../components/badges/BadgeVencimento';
 import { usePageStyles } from '../pageStyles';
+import { useConfirmarExclusao } from '../../hooks/useConfirmarExclusao';
+import { useSucessoToast } from '../../hooks/useSucessoToast';
+import { EstadoVazio } from '../../components/EstadoVazio';
+import { ListaCarregando } from '../../components/ListaCarregando';
 
 function exameVazio(): NovoExameComplementar {
   return {
@@ -47,6 +51,9 @@ export function ExamesComplementaresTab() {
   const [edicao, setEdicao] = useState<ExameComplementar | null>(null);
   const [erro, setErro] = useState<string | null>(null);
   const [carregando, setCarregando] = useState(false);
+  const [carregandoLista, setCarregandoLista] = useState(true);
+  const { confirmar, dialogElement } = useConfirmarExclusao();
+  const sucessoToast = useSucessoToast();
 
   async function carregar() {
     try {
@@ -61,6 +68,8 @@ export function ExamesComplementaresTab() {
       setAsos(listaAsos);
     } catch (e) {
       setErro(e instanceof Error ? e.message : 'Falha ao carregar exames complementares.');
+    } finally {
+      setCarregandoLista(false);
     }
   }
 
@@ -85,6 +94,7 @@ export function ExamesComplementaresTab() {
       await api.examesComplementares.criar({ ...novoExame, asoId: novoExame.asoId || null });
       setNovoExame(exameVazio());
       await carregar();
+      sucessoToast('Exame complementar registrado com sucesso.');
     } catch (e) {
       setErro(e instanceof Error ? e.message : 'Falha ao criar exame complementar.');
     } finally {
@@ -106,6 +116,7 @@ export function ExamesComplementaresTab() {
       setEdicaoId(null);
       setEdicao(null);
       await carregar();
+      sucessoToast('Exame complementar atualizado com sucesso.');
     } catch (e) {
       setErro(e instanceof Error ? e.message : 'Falha ao atualizar exame complementar.');
     } finally {
@@ -114,9 +125,11 @@ export function ExamesComplementaresTab() {
   }
 
   async function excluir(id: string) {
+    if (!(await confirmar('Excluir este exame complementar? Essa ação não pode ser desfeita.'))) return;
     try {
       await api.examesComplementares.excluir(id);
       await carregar();
+      sucessoToast('Exame complementar excluído com sucesso.');
     } catch (e) {
       setErro(e instanceof Error ? e.message : 'Falha ao excluir exame complementar.');
     }
@@ -124,6 +137,7 @@ export function ExamesComplementaresTab() {
 
   return (
     <div>
+      {dialogElement}
       <div className={estilos.card} style={{ marginBottom: 16 }}>
         <div className={estilos.toolbar}>
           <Text weight="semibold">Novo exame complementar</Text>
@@ -213,6 +227,11 @@ export function ExamesComplementaresTab() {
           <Text weight="semibold">Exames complementares registrados</Text>
         </div>
 
+        {carregandoLista ? (
+          <ListaCarregando />
+        ) : exames.length === 0 ? (
+          <EstadoVazio mensagem="Nenhum exame complementar cadastrado ainda." />
+        ) : (
         <Table>
           <TableHeader>
             <TableRow>
@@ -294,6 +313,7 @@ export function ExamesComplementaresTab() {
             )}
           </TableBody>
         </Table>
+        )}
         <Text size={200} style={{ display: 'block', marginTop: 8 }}>
           Clique em uma linha para editar o exame complementar.
         </Text>

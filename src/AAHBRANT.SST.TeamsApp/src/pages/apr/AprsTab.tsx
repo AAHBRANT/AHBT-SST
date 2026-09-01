@@ -18,6 +18,10 @@ import {
 import { Add24Regular, ChevronRight24Regular, Delete24Regular } from '@fluentui/react-icons';
 import { api, statusAprLabel, type Apr, type Atividade, type Equipe, type NovaApr, type Trabalhador } from '../../lib/api';
 import { usePageStyles } from '../pageStyles';
+import { useConfirmarExclusao } from '../../hooks/useConfirmarExclusao';
+import { useSucessoToast } from '../../hooks/useSucessoToast';
+import { EstadoVazio } from '../../components/EstadoVazio';
+import { ListaCarregando } from '../../components/ListaCarregando';
 
 const aprVazia: NovaApr = {
   numeroApr: '',
@@ -49,6 +53,9 @@ export function AprsTab() {
   const [novaApr, setNovaApr] = useState<NovaApr>(aprVazia);
   const [erro, setErro] = useState<string | null>(null);
   const [carregando, setCarregando] = useState(false);
+  const [carregandoLista, setCarregandoLista] = useState(true);
+  const { confirmar, dialogElement } = useConfirmarExclusao();
+  const sucessoToast = useSucessoToast();
 
   async function carregar() {
     try {
@@ -65,6 +72,8 @@ export function AprsTab() {
       setEquipes(equips);
     } catch (e) {
       setErro(e instanceof Error ? e.message : 'Falha ao carregar APRs.');
+    } finally {
+      setCarregandoLista(false);
     }
   }
 
@@ -96,6 +105,7 @@ export function AprsTab() {
       });
       setNovaApr(aprVazia);
       await carregar();
+      sucessoToast('APR criada com sucesso.');
     } catch (e) {
       setErro(e instanceof Error ? e.message : 'Falha ao criar APR.');
     } finally {
@@ -105,9 +115,11 @@ export function AprsTab() {
 
   async function excluir(id: string, evento: React.MouseEvent) {
     evento.stopPropagation();
+    if (!(await confirmar('Excluir esta APR? Essa ação não pode ser desfeita.'))) return;
     try {
       await api.aprs.excluir(id);
       await carregar();
+      sucessoToast('APR excluída com sucesso.');
     } catch (e) {
       setErro(e instanceof Error ? e.message : 'Falha ao excluir APR.');
     }
@@ -115,6 +127,7 @@ export function AprsTab() {
 
   return (
     <div className={estilos.card}>
+      {dialogElement}
       <div className={estilos.toolbar}>
         <Text weight="semibold">Análise Preliminar de Risco (APR)</Text>
       </div>
@@ -201,6 +214,11 @@ export function AprsTab() {
         </Button>
       </div>
 
+      {carregandoLista ? (
+        <ListaCarregando />
+      ) : aprs.length === 0 ? (
+        <EstadoVazio mensagem="Nenhuma APR cadastrada ainda." />
+      ) : (
       <Table>
         <TableHeader>
           <TableRow>
@@ -246,6 +264,7 @@ export function AprsTab() {
           ))}
         </TableBody>
       </Table>
+      )}
     </div>
   );
 }

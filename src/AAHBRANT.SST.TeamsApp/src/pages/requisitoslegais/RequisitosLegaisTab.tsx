@@ -31,6 +31,10 @@ import {
   type RequisitoLegalCriterio,
 } from '../../lib/api';
 import { usePageStyles } from '../pageStyles';
+import { useConfirmarExclusao } from '../../hooks/useConfirmarExclusao';
+import { useSucessoToast } from '../../hooks/useSucessoToast';
+import { EstadoVazio } from '../../components/EstadoVazio';
+import { ListaCarregando } from '../../components/ListaCarregando';
 
 function novoInicial(): NovoRequisitoLegal {
   return { norma: '', artigo: '', titulo: '', descricao: '', categoria: 1, fonte: '' };
@@ -52,6 +56,9 @@ export function RequisitosLegaisTab() {
   const [novoCriterio, setNovoCriterio] = useState<CriterioAplicabilidadeInput>(novoCriterioInicial());
   const [erro, setErro] = useState<string | null>(null);
   const [processando, setProcessando] = useState(false);
+  const [carregandoLista, setCarregandoLista] = useState(true);
+  const { confirmar, dialogElement } = useConfirmarExclusao();
+  const sucessoToast = useSucessoToast();
 
   async function carregar() {
     try {
@@ -68,6 +75,8 @@ export function RequisitosLegaisTab() {
       setItensQuestionario(listaItens);
     } catch (e) {
       setErro(e instanceof Error ? e.message : 'Falha ao carregar requisitos legais.');
+    } finally {
+      setCarregandoLista(false);
     }
   }
 
@@ -90,6 +99,7 @@ export function RequisitosLegaisTab() {
       });
       setNovo(novoInicial());
       await carregar();
+      sucessoToast('Requisito legal criado com sucesso.');
     } catch (e) {
       setErro(e instanceof Error ? e.message : 'Falha ao criar requisito legal.');
     } finally {
@@ -98,10 +108,12 @@ export function RequisitosLegaisTab() {
   }
 
   async function excluir(id: string) {
+    if (!(await confirmar('Excluir este requisito legal? Essa ação não pode ser desfeita.'))) return;
     try {
       setErro(null);
       await api.requisitosLegais.excluir(id);
       await carregar();
+      sucessoToast('Requisito legal excluído com sucesso.');
     } catch (e) {
       setErro(e instanceof Error ? e.message : 'Falha ao excluir requisito legal.');
     }
@@ -149,6 +161,7 @@ export function RequisitosLegaisTab() {
         })),
       );
       setExpandidoId(null);
+      sucessoToast('Critérios de aplicabilidade salvos com sucesso.');
     } catch (e) {
       setErro(e instanceof Error ? e.message : 'Falha ao salvar critérios de aplicabilidade.');
     } finally {
@@ -173,6 +186,7 @@ export function RequisitosLegaisTab() {
 
   return (
     <div>
+      {dialogElement}
       {erro && <Text className={estilos.erro}>{erro}</Text>}
 
       <Text size={200} style={{ display: 'block', marginBottom: 12 }}>
@@ -218,6 +232,11 @@ export function RequisitosLegaisTab() {
         </div>
       </div>
 
+      {carregandoLista ? (
+        <ListaCarregando />
+      ) : requisitos.length === 0 ? (
+        <EstadoVazio mensagem="Nenhum requisito legal cadastrado ainda." />
+      ) : (
       <Table>
         <TableHeader>
           <TableRow>
@@ -378,6 +397,7 @@ export function RequisitosLegaisTab() {
           ))}
         </TableBody>
       </Table>
+      )}
     </div>
   );
 }

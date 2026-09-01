@@ -14,6 +14,9 @@ import {
 import { Add24Regular, Delete24Regular } from '@fluentui/react-icons';
 import { api, type NovaPermissaoTrabalhoRiscoCritico, type PermissaoTrabalhoRiscoCritico } from '../../lib/api';
 import { usePageStyles } from '../pageStyles';
+import { useConfirmarExclusao } from '../../hooks/useConfirmarExclusao';
+import { useSucessoToast } from '../../hooks/useSucessoToast';
+import { EstadoVazio } from '../../components/EstadoVazio';
 
 function riscoVazio(permissaoTrabalhoId: string): NovaPermissaoTrabalhoRiscoCritico {
   return { permissaoTrabalhoId, riscoCondicao: '', controleComplementar: '', responsavelEvidencia: '' };
@@ -35,6 +38,8 @@ export function RiscosCriticosPtTab({
   );
   const [erro, setErro] = useState<string | null>(null);
   const [carregando, setCarregando] = useState(false);
+  const { confirmar, dialogElement } = useConfirmarExclusao();
+  const sucessoToast = useSucessoToast();
 
   async function criar() {
     if (!novoRisco.riscoCondicao.trim()) return;
@@ -48,6 +53,7 @@ export function RiscosCriticosPtTab({
       });
       setNovoRisco(riscoVazio(permissaoTrabalhoId));
       await aoAtualizar();
+      sucessoToast('Risco crítico adicionado com sucesso.');
     } catch (e) {
       setErro(e instanceof Error ? e.message : 'Falha ao adicionar risco crítico.');
     } finally {
@@ -56,10 +62,12 @@ export function RiscosCriticosPtTab({
   }
 
   async function excluir(id: string) {
+    if (!(await confirmar('Excluir este risco crítico? Essa ação não pode ser desfeita.'))) return;
     try {
       setErro(null);
       await api.permissoesTrabalho.excluirRiscoCritico(id);
       await aoAtualizar();
+      sucessoToast('Risco crítico excluído com sucesso.');
     } catch (e) {
       setErro(e instanceof Error ? e.message : 'Falha ao excluir risco crítico.');
     }
@@ -67,6 +75,7 @@ export function RiscosCriticosPtTab({
 
   return (
     <div className={estilos.card}>
+      {dialogElement}
       <div className={estilos.toolbar}>
         <Text weight="semibold">Riscos críticos / controles complementares</Text>
       </div>
@@ -100,6 +109,9 @@ export function RiscosCriticosPtTab({
         </Button>
       </div>
 
+      {itens.length === 0 ? (
+        <EstadoVazio mensagem="Nenhum risco crítico cadastrado ainda." />
+      ) : (
       <Table>
         <TableHeader>
           <TableRow>
@@ -127,6 +139,7 @@ export function RiscosCriticosPtTab({
           ))}
         </TableBody>
       </Table>
+      )}
     </div>
   );
 }

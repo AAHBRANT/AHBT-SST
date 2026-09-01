@@ -14,6 +14,10 @@ import {
 import { Add24Regular, Delete24Regular, Save24Regular } from '@fluentui/react-icons';
 import { api, type CatalogoEpi, type NovoCatalogoEpi } from '../../lib/api';
 import { usePageStyles } from '../pageStyles';
+import { useConfirmarExclusao } from '../../hooks/useConfirmarExclusao';
+import { useSucessoToast } from '../../hooks/useSucessoToast';
+import { EstadoVazio } from '../../components/EstadoVazio';
+import { ListaCarregando } from '../../components/ListaCarregando';
 
 const epiVazio: NovoCatalogoEpi = {
   nome: '',
@@ -35,6 +39,9 @@ export function CatalogoTab() {
   const [edicao, setEdicao] = useState<CatalogoEpi | null>(null);
   const [erro, setErro] = useState<string | null>(null);
   const [carregando, setCarregando] = useState(false);
+  const [carregandoLista, setCarregandoLista] = useState(true);
+  const { confirmar, dialogElement } = useConfirmarExclusao();
+  const sucessoToast = useSucessoToast();
 
   async function carregar() {
     try {
@@ -42,6 +49,8 @@ export function CatalogoTab() {
       setEpis(await api.catalogosEpi.listar());
     } catch (e) {
       setErro(e instanceof Error ? e.message : 'Falha ao carregar catálogo de EPI.');
+    } finally {
+      setCarregandoLista(false);
     }
   }
 
@@ -56,6 +65,7 @@ export function CatalogoTab() {
       await api.catalogosEpi.criar(novoEpi);
       setNovoEpi(epiVazio);
       await carregar();
+      sucessoToast('EPI cadastrado com sucesso.');
     } catch (e) {
       setErro(e instanceof Error ? e.message : 'Falha ao criar EPI de catálogo.');
     } finally {
@@ -77,6 +87,7 @@ export function CatalogoTab() {
       setEdicaoId(null);
       setEdicao(null);
       await carregar();
+      sucessoToast('EPI atualizado com sucesso.');
     } catch (e) {
       setErro(e instanceof Error ? e.message : 'Falha ao atualizar EPI de catálogo.');
     } finally {
@@ -85,9 +96,11 @@ export function CatalogoTab() {
   }
 
   async function excluir(id: string) {
+    if (!(await confirmar('Excluir este item do catálogo de EPI? Essa ação não pode ser desfeita.'))) return;
     try {
       await api.catalogosEpi.excluir(id);
       await carregar();
+      sucessoToast('EPI excluído com sucesso.');
     } catch (e) {
       setErro(e instanceof Error ? e.message : 'Falha ao excluir EPI de catálogo.');
     }
@@ -95,6 +108,7 @@ export function CatalogoTab() {
 
   return (
     <div className={estilos.card}>
+      {dialogElement}
       <div className={estilos.toolbar}>
         <Text weight="semibold">Catálogo de EPIs</Text>
       </div>
@@ -138,6 +152,11 @@ export function CatalogoTab() {
         </Button>
       </div>
 
+      {carregandoLista ? (
+        <ListaCarregando />
+      ) : epis.length === 0 ? (
+        <EstadoVazio mensagem="Nenhum EPI cadastrado no catálogo ainda." />
+      ) : (
       <Table>
         <TableHeader>
           <TableRow>
@@ -218,6 +237,7 @@ export function CatalogoTab() {
           )}
         </TableBody>
       </Table>
+      )}
       <Text size={200} style={{ display: 'block', marginTop: 8 }}>
         Clique em uma linha para editar os dados do EPI. O estoque é controlado por Obra na aba
         Estoque.

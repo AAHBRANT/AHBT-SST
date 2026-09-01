@@ -15,6 +15,10 @@ import {
 import { AddCircle24Regular, Delete24Regular } from '@fluentui/react-icons';
 import { api, type NovoRegistroHhtMensal, type Obra, type RegistroHhtMensal } from '../../lib/api';
 import { usePageStyles } from '../pageStyles';
+import { useConfirmarExclusao } from '../../hooks/useConfirmarExclusao';
+import { useSucessoToast } from '../../hooks/useSucessoToast';
+import { EstadoVazio } from '../../components/EstadoVazio';
+import { ListaCarregando } from '../../components/ListaCarregando';
 
 const nomesMes = [
   'Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho',
@@ -32,6 +36,9 @@ export function HhtMensalTab({ obras }: { obras: Obra[] }) {
   const [novo, setNovo] = useState<NovoRegistroHhtMensal>(novoInicial());
   const [erro, setErro] = useState<string | null>(null);
   const [carregando, setCarregando] = useState(false);
+  const [carregandoLista, setCarregandoLista] = useState(true);
+  const { confirmar, dialogElement } = useConfirmarExclusao();
+  const sucessoToast = useSucessoToast();
 
   async function carregar() {
     try {
@@ -39,6 +46,8 @@ export function HhtMensalTab({ obras }: { obras: Obra[] }) {
       setRegistros(await api.registrosHht.listar());
     } catch (e) {
       setErro(e instanceof Error ? e.message : 'Falha ao carregar registros de HHT.');
+    } finally {
+      setCarregandoLista(false);
     }
   }
 
@@ -57,6 +66,7 @@ export function HhtMensalTab({ obras }: { obras: Obra[] }) {
       await api.registrosHht.criar(novo);
       setNovo(novoInicial());
       await carregar();
+      sucessoToast('HHT lançado com sucesso.');
     } catch (e) {
       setErro(e instanceof Error ? e.message : 'Falha ao registrar HHT.');
     } finally {
@@ -65,10 +75,12 @@ export function HhtMensalTab({ obras }: { obras: Obra[] }) {
   }
 
   async function excluir(id: string) {
+    if (!(await confirmar('Excluir este registro de HHT? Essa ação não pode ser desfeita.'))) return;
     try {
       setErro(null);
       await api.registrosHht.excluir(id);
       await carregar();
+      sucessoToast('Registro de HHT excluído com sucesso.');
     } catch (e) {
       setErro(e instanceof Error ? e.message : 'Falha ao excluir registro.');
     }
@@ -76,6 +88,7 @@ export function HhtMensalTab({ obras }: { obras: Obra[] }) {
 
   return (
     <div>
+      {dialogElement}
       {erro && <Text className={estilos.erro}>{erro}</Text>}
 
       <div className={estilos.card} style={{ marginBottom: 16 }}>
@@ -129,6 +142,11 @@ export function HhtMensalTab({ obras }: { obras: Obra[] }) {
         <div className={estilos.toolbar}>
           <Text weight="semibold">Histórico de HHT por obra</Text>
         </div>
+        {carregandoLista ? (
+          <ListaCarregando />
+        ) : registros.length === 0 ? (
+          <EstadoVazio mensagem="Nenhum registro de HHT cadastrado ainda." />
+        ) : (
         <Table>
           <TableHeader>
             <TableRow>
@@ -158,6 +176,7 @@ export function HhtMensalTab({ obras }: { obras: Obra[] }) {
             ))}
           </TableBody>
         </Table>
+        )}
       </div>
     </div>
   );

@@ -14,6 +14,10 @@ import {
 import { Add24Regular, Delete24Regular } from '@fluentui/react-icons';
 import { api, type Funcao, type NovaFuncao } from '../../lib/api';
 import { usePageStyles } from '../pageStyles';
+import { useConfirmarExclusao } from '../../hooks/useConfirmarExclusao';
+import { useSucessoToast } from '../../hooks/useSucessoToast';
+import { EstadoVazio } from '../../components/EstadoVazio';
+import { ListaCarregando } from '../../components/ListaCarregando';
 
 const funcaoVazia: NovaFuncao = { nome: '', cboCodigo: '', descricao: '' };
 
@@ -25,6 +29,9 @@ export function FuncoesTab() {
   const [novaFuncao, setNovaFuncao] = useState<NovaFuncao>(funcaoVazia);
   const [erro, setErro] = useState<string | null>(null);
   const [carregando, setCarregando] = useState(false);
+  const [carregandoLista, setCarregandoLista] = useState(true);
+  const { confirmar, dialogElement } = useConfirmarExclusao();
+  const sucessoToast = useSucessoToast();
 
   async function carregar() {
     try {
@@ -33,6 +40,8 @@ export function FuncoesTab() {
       setFuncoes(listaFuncoes);
     } catch (e) {
       setErro(e instanceof Error ? e.message : 'Falha ao carregar funções.');
+    } finally {
+      setCarregandoLista(false);
     }
   }
 
@@ -47,6 +56,7 @@ export function FuncoesTab() {
       await api.funcoes.criar(novaFuncao);
       setNovaFuncao(funcaoVazia);
       await carregar();
+      sucessoToast('Função criada com sucesso.');
     } catch (e) {
       setErro(e instanceof Error ? e.message : 'Falha ao criar função.');
     } finally {
@@ -55,9 +65,11 @@ export function FuncoesTab() {
   }
 
   async function excluir(id: string) {
+    if (!(await confirmar('Excluir esta função? Essa ação não pode ser desfeita.'))) return;
     try {
       await api.funcoes.excluir(id);
       await carregar();
+      sucessoToast('Função excluída com sucesso.');
     } catch (e) {
       setErro(e instanceof Error ? e.message : 'Falha ao excluir função.');
     }
@@ -65,6 +77,7 @@ export function FuncoesTab() {
 
   return (
     <div className={estilos.card}>
+      {dialogElement}
       <div className={estilos.toolbar}>
         <Text weight="semibold">Funções cadastradas</Text>
       </div>
@@ -96,6 +109,11 @@ export function FuncoesTab() {
 
       <Text size={200}>A matriz de EPI de cada função é definida em EPI → Matriz de EPI por Função.</Text>
 
+      {carregandoLista ? (
+        <ListaCarregando />
+      ) : funcoes.length === 0 ? (
+        <EstadoVazio mensagem="Nenhuma função cadastrada ainda." />
+      ) : (
       <Table>
         <TableHeader>
           <TableRow>
@@ -123,6 +141,7 @@ export function FuncoesTab() {
           ))}
         </TableBody>
       </Table>
+      )}
     </div>
   );
 }

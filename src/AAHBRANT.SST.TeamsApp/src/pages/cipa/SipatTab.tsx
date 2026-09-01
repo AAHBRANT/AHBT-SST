@@ -17,6 +17,10 @@ import {
 import { Add24Regular, ChevronRight24Regular, Delete24Regular } from '@fluentui/react-icons';
 import { api, type EventoSipat, type NovoEventoSipat, type Obra } from '../../lib/api';
 import { usePageStyles } from '../pageStyles';
+import { useConfirmarExclusao } from '../../hooks/useConfirmarExclusao';
+import { useSucessoToast } from '../../hooks/useSucessoToast';
+import { EstadoVazio } from '../../components/EstadoVazio';
+import { ListaCarregando } from '../../components/ListaCarregando';
 
 function vazio(): NovoEventoSipat {
   return { obraId: '', anoReferencia: new Date().getFullYear(), dataInicio: '', dataFim: '', tema: '', programacao: '' };
@@ -30,6 +34,9 @@ export function SipatTab() {
   const [novo, setNovo] = useState<NovoEventoSipat>(vazio());
   const [erro, setErro] = useState<string | null>(null);
   const [carregando, setCarregando] = useState(false);
+  const [carregandoLista, setCarregandoLista] = useState(true);
+  const { confirmar, dialogElement } = useConfirmarExclusao();
+  const sucessoToast = useSucessoToast();
 
   async function carregar() {
     try {
@@ -39,6 +46,8 @@ export function SipatTab() {
       setObras(listaObras);
     } catch (e) {
       setErro(e instanceof Error ? e.message : 'Falha ao carregar eventos SIPAT.');
+    } finally {
+      setCarregandoLista(false);
     }
   }
 
@@ -61,6 +70,7 @@ export function SipatTab() {
       await api.cipa.eventosSipat.criar({ ...novo, tema: novo.tema || null, programacao: novo.programacao || null });
       setNovo(vazio());
       await carregar();
+      sucessoToast('Evento SIPAT criado com sucesso.');
     } catch (e) {
       setErro(e instanceof Error ? e.message : 'Falha ao criar evento SIPAT.');
     } finally {
@@ -70,9 +80,11 @@ export function SipatTab() {
 
   async function excluir(id: string, evento: React.MouseEvent) {
     evento.stopPropagation();
+    if (!(await confirmar('Excluir este evento SIPAT? Essa ação não pode ser desfeita.'))) return;
     try {
       await api.cipa.eventosSipat.excluir(id);
       await carregar();
+      sucessoToast('Evento SIPAT excluído com sucesso.');
     } catch (e) {
       setErro(e instanceof Error ? e.message : 'Falha ao excluir evento SIPAT.');
     }
@@ -80,6 +92,7 @@ export function SipatTab() {
 
   return (
     <div>
+      {dialogElement}
       <div className={estilos.card} style={{ marginBottom: 16 }}>
         <div className={estilos.toolbar}>
           <Text weight="semibold">Novo evento SIPAT</Text>
@@ -127,6 +140,11 @@ export function SipatTab() {
         <div className={estilos.toolbar}>
           <Text weight="semibold">Eventos SIPAT</Text>
         </div>
+        {carregandoLista ? (
+          <ListaCarregando />
+        ) : lista.length === 0 ? (
+          <EstadoVazio mensagem="Nenhum evento SIPAT cadastrado ainda." />
+        ) : (
         <Table>
           <TableHeader>
             <TableRow>
@@ -163,6 +181,7 @@ export function SipatTab() {
             ))}
           </TableBody>
         </Table>
+        )}
       </div>
     </div>
   );

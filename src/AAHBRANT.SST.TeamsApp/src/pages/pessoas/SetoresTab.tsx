@@ -15,6 +15,10 @@ import {
 import { Add24Regular, Delete24Regular } from '@fluentui/react-icons';
 import { api, type NovoSetor, type Obra, type Setor } from '../../lib/api';
 import { usePageStyles } from '../pageStyles';
+import { useConfirmarExclusao } from '../../hooks/useConfirmarExclusao';
+import { useSucessoToast } from '../../hooks/useSucessoToast';
+import { EstadoVazio } from '../../components/EstadoVazio';
+import { ListaCarregando } from '../../components/ListaCarregando';
 
 export function SetoresTab() {
   const estilos = usePageStyles();
@@ -23,6 +27,9 @@ export function SetoresTab() {
   const [novoSetor, setNovoSetor] = useState<NovoSetor>({ obraId: '', nome: '' });
   const [erro, setErro] = useState<string | null>(null);
   const [carregando, setCarregando] = useState(false);
+  const [carregandoLista, setCarregandoLista] = useState(true);
+  const { confirmar, dialogElement } = useConfirmarExclusao();
+  const sucessoToast = useSucessoToast();
 
   async function carregar() {
     try {
@@ -32,6 +39,8 @@ export function SetoresTab() {
       setSetores(setoresResp);
     } catch (e) {
       setErro(e instanceof Error ? e.message : 'Falha ao carregar setores.');
+    } finally {
+      setCarregandoLista(false);
     }
   }
 
@@ -50,6 +59,7 @@ export function SetoresTab() {
       await api.setores.criar(novoSetor);
       setNovoSetor({ obraId: '', nome: '' });
       await carregar();
+      sucessoToast('Setor criado com sucesso.');
     } catch (e) {
       setErro(e instanceof Error ? e.message : 'Falha ao criar setor.');
     } finally {
@@ -58,9 +68,11 @@ export function SetoresTab() {
   }
 
   async function excluir(id: string) {
+    if (!(await confirmar('Excluir este setor? Essa ação não pode ser desfeita.'))) return;
     try {
       await api.setores.excluir(id);
       await carregar();
+      sucessoToast('Setor excluído com sucesso.');
     } catch (e) {
       setErro(e instanceof Error ? e.message : 'Falha ao excluir setor.');
     }
@@ -68,6 +80,7 @@ export function SetoresTab() {
 
   return (
     <div className={estilos.card}>
+      {dialogElement}
       <div className={estilos.toolbar}>
         <Text weight="semibold">Setores cadastrados</Text>
       </div>
@@ -95,6 +108,11 @@ export function SetoresTab() {
         </Button>
       </div>
 
+      {carregandoLista ? (
+        <ListaCarregando />
+      ) : setores.length === 0 ? (
+        <EstadoVazio mensagem="Nenhum setor cadastrado ainda." />
+      ) : (
       <Table>
         <TableHeader>
           <TableRow>
@@ -120,6 +138,7 @@ export function SetoresTab() {
           ))}
         </TableBody>
       </Table>
+      )}
     </div>
   );
 }

@@ -4,6 +4,11 @@ import { Camera24Regular } from '@fluentui/react-icons';
 
 interface SeletorFotoCameraProps {
   aoSelecionarArquivo: (arquivo: File) => void | Promise<void>;
+  // Sem isso, o usuário só descobria que o arquivo era grande demais depois do upload ir e voltar
+  // do servidor com erro — o limite de negócio (5 MB pra foto, mais pra PDF/certificado) já existe
+  // no backend, mas nunca era checado antes de gastar a requisição inteira.
+  aoErroValidacao?: (mensagem: string) => void;
+  tamanhoMaximoMb?: number;
   desabilitado?: boolean;
   rotulo?: string;
   tamanho?: 'small' | 'medium';
@@ -19,6 +24,8 @@ interface SeletorFotoCameraProps {
 // (upload direto) ou instantâneo (seleção que só alimenta estado do formulário pai).
 export function SeletorFotoCamera({
   aoSelecionarArquivo,
+  aoErroValidacao,
+  tamanhoMaximoMb = 5,
   desabilitado,
   rotulo = 'Foto',
   tamanho = 'small',
@@ -31,6 +38,15 @@ export function SeletorFotoCamera({
 
   async function tratarArquivo(arquivo: File | undefined) {
     if (!arquivo) return;
+
+    const tamanhoMb = arquivo.size / (1024 * 1024);
+    if (tamanhoMb > tamanhoMaximoMb) {
+      aoErroValidacao?.(
+        `O arquivo tem ${tamanhoMb.toFixed(1)} MB — o máximo permitido é ${tamanhoMaximoMb} MB. Tente uma foto com qualidade menor.`,
+      );
+      return;
+    }
+
     try {
       setProcessando(true);
       await aoSelecionarArquivo(arquivo);

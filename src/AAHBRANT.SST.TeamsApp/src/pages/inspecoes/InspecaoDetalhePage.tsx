@@ -389,6 +389,7 @@ export function InspecaoDetalhePage() {
                       <SeletorFotoCamera
                         rotulo="Tirar foto"
                         aoSelecionarArquivo={(arquivo) => enviarFoto(resposta.id, arquivo)}
+                        aoErroValidacao={setErro}
                       />
                     )}
                     {resposta.temFoto && (
@@ -412,6 +413,7 @@ export function InspecaoDetalhePage() {
                       <SeletorFotoCamera
                         rotulo="Tirar foto"
                         aoSelecionarArquivo={(arquivo) => enviarFotoDepois(resposta.id, arquivo)}
+                        aoErroValidacao={setErro}
                       />
                     )}
                     {resposta.temFotoDepois && (

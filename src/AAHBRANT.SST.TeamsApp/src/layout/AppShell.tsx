@@ -1,7 +1,7 @@
 import type { ReactNode } from 'react';
 import { useEffect, useState } from 'react';
 import { Link, NavLink, useLocation, useNavigate } from 'react-router-dom';
-import { makeStyles, mergeClasses, Text, Badge, Button, Tooltip } from '@fluentui/react-components';
+import { makeStyles, mergeClasses, Text, Badge, Button, Toaster, Tooltip } from '@fluentui/react-components';
 import {
   Grid24Regular,
   ShieldError24Regular,
@@ -21,6 +21,7 @@ import { useTeamsContext } from '../teams/useTeamsContext';
 import { api, StatusAlerta } from '../lib/api';
 import logoSst from '../assets/logo-sst.png';
 import { SyncStatusBadge } from '../components/SyncStatusBadge';
+import { ID_TOASTER_GLOBAL } from '../lib/toaster';
 
 // Rail de navegação (Hub Gênesis SST — design decidido em sessão anterior): faixa fina só com
 // ícones + tooltip ao passar o mouse/focar, no lugar do menu largo com texto. O botão de
@@ -574,6 +575,7 @@ export function AppShell({ children }: { children: ReactNode }) {
       </header>
 
       <main className={estilos.content}>{children}</main>
+      <Toaster toasterId={ID_TOASTER_GLOBAL} />
     </div>
   );
 }

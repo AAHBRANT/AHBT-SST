@@ -2398,6 +2398,23 @@ function ehRotaOffline(path: string): boolean {
 // com corpo HTML. `JSON.parse`/`response.json()` cru nesse caso lança um SyntaxError críptico
 // ("Unexpected token '<', <!doctype... is not valid JSON") direto pro usuário — aqui a gente
 // troca por uma mensagem que já diz o status HTTP recebido, pra dar pra diagnosticar de verdade.
+// O backend (TratamentoDeExcecaoMiddleware) sempre responde erro como {"erro": "mensagem"}; um 404
+// de rota que nem chega a um controller (ex.: endpoint que não existe) vem no formato padrão do
+// ASP.NET Core, {"title": "Not Found", ...}. Sem isso, o usuário via literalmente
+// "400 Bad Request: {\"erro\":\"O campo Local é obrigatório.\"}" na tela em vez da mensagem limpa.
+function extrairMensagemErro(corpo: string, status: number, statusText: string): string {
+  if (corpo) {
+    try {
+      const json = JSON.parse(corpo) as { erro?: string; title?: string };
+      if (typeof json.erro === 'string' && json.erro) return json.erro;
+      if (typeof json.title === 'string' && json.title) return json.title;
+    } catch {
+      // corpo não era JSON — cai no texto bruto abaixo
+    }
+  }
+  return corpo ? `${statusText} (${status}): ${corpo}` : `${statusText} (${status})`;
+}
+
 function parsearJsonSeguro<T>(texto: string, response: Response): T {
   if (!texto) {
     return undefined as T;
@@ -2434,7 +2451,7 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
 
   if (!response.ok) {
     const corpo = await response.text().catch(() => '');
-    throw new Error(`${response.status} ${response.statusText}: ${corpo}`);
+    throw new Error(extrairMensagemErro(corpo, response.status, response.statusText));
   }
 
   if (response.status === 204) {
@@ -2756,7 +2773,7 @@ export const api = {
       });
       if (!response.ok) {
         const corpo = await response.text().catch(() => '');
-        throw new Error(`${response.status} ${response.statusText}: ${corpo}`);
+        throw new Error(extrairMensagemErro(corpo, response.status, response.statusText));
       }
       return response.json() as Promise<{ id: string }>;
     },
@@ -2771,14 +2788,14 @@ export const api = {
       });
       if (!response.ok) {
         const corpo = await response.text().catch(() => '');
-        throw new Error(`${response.status} ${response.statusText}: ${corpo}`);
+        throw new Error(extrairMensagemErro(corpo, response.status, response.statusText));
       }
     },
     baixarLogo: async (id: string) => {
       const response = await fetch(`${API_BASE_URL}/api/obras/${id}/logo`, { headers: await montarHeadersAuth() });
       if (!response.ok) {
         const corpo = await response.text().catch(() => '');
-        throw new Error(`${response.status} ${response.statusText}: ${corpo}`);
+        throw new Error(extrairMensagemErro(corpo, response.status, response.statusText));
       }
       return response.blob();
     },
@@ -2799,7 +2816,7 @@ export const api = {
       });
       if (!response.ok) {
         const corpo = await response.text().catch(() => '');
-        throw new Error(`${response.status} ${response.statusText}: ${corpo}`);
+        throw new Error(extrairMensagemErro(corpo, response.status, response.statusText));
       }
     },
     baixarFoto: async (id: string) => {
@@ -2808,7 +2825,7 @@ export const api = {
       });
       if (!response.ok) {
         const corpo = await response.text().catch(() => '');
-        throw new Error(`${response.status} ${response.statusText}: ${corpo}`);
+        throw new Error(extrairMensagemErro(corpo, response.status, response.statusText));
       }
       return response.blob();
     },
@@ -2824,7 +2841,7 @@ export const api = {
       const response = await fetch(`${API_BASE_URL}/api/trabalhadores/${id}/relatorio-pdf`, { headers: await montarHeadersAuth() });
       if (!response.ok) {
         const corpo = await response.text().catch(() => '');
-        throw new Error(`${response.status} ${response.statusText}: ${corpo}`);
+        throw new Error(extrairMensagemErro(corpo, response.status, response.statusText));
       }
       return response.blob();
     },
@@ -2995,7 +3012,7 @@ export const api = {
       });
       if (!response.ok) {
         const corpo = await response.text().catch(() => '');
-        throw new Error(`${response.status} ${response.statusText}: ${corpo}`);
+        throw new Error(extrairMensagemErro(corpo, response.status, response.statusText));
       }
       return response.blob();
     },
@@ -3100,7 +3117,7 @@ export const api = {
       });
       if (!response.ok) {
         const corpo = await response.text().catch(() => '');
-        throw new Error(`${response.status} ${response.statusText}: ${corpo}`);
+        throw new Error(extrairMensagemErro(corpo, response.status, response.statusText));
       }
       return response.blob();
     },
@@ -3202,7 +3219,7 @@ export const api = {
       });
       if (!response.ok) {
         const corpo = await response.text().catch(() => '');
-        throw new Error(`${response.status} ${response.statusText}: ${corpo}`);
+        throw new Error(extrairMensagemErro(corpo, response.status, response.statusText));
       }
       return response.blob();
     },
@@ -3289,7 +3306,7 @@ export const api = {
       });
       if (!response.ok) {
         const corpo = await response.text().catch(() => '');
-        throw new Error(`${response.status} ${response.statusText}: ${corpo}`);
+        throw new Error(extrairMensagemErro(corpo, response.status, response.statusText));
       }
     },
     baixarFoto: async (respostaId: string) => {
@@ -3298,7 +3315,7 @@ export const api = {
       });
       if (!response.ok) {
         const corpo = await response.text().catch(() => '');
-        throw new Error(`${response.status} ${response.statusText}: ${corpo}`);
+        throw new Error(extrairMensagemErro(corpo, response.status, response.statusText));
       }
       return response.blob();
     },
@@ -3314,7 +3331,7 @@ export const api = {
       });
       if (!response.ok) {
         const corpo = await response.text().catch(() => '');
-        throw new Error(`${response.status} ${response.statusText}: ${corpo}`);
+        throw new Error(extrairMensagemErro(corpo, response.status, response.statusText));
       }
     },
     baixarFotoDepois: async (respostaId: string) => {
@@ -3323,7 +3340,7 @@ export const api = {
       });
       if (!response.ok) {
         const corpo = await response.text().catch(() => '');
-        throw new Error(`${response.status} ${response.statusText}: ${corpo}`);
+        throw new Error(extrairMensagemErro(corpo, response.status, response.statusText));
       }
       return response.blob();
     },
@@ -3332,7 +3349,7 @@ export const api = {
       const response = await fetch(`${API_BASE_URL}/api/inspecoes/${id}/pdf`, { headers: await montarHeadersAuth() });
       if (!response.ok) {
         const corpo = await response.text().catch(() => '');
-        throw new Error(`${response.status} ${response.statusText}: ${corpo}`);
+        throw new Error(extrairMensagemErro(corpo, response.status, response.statusText));
       }
       return response.blob();
     },
@@ -3369,7 +3386,7 @@ export const api = {
       const response = await fetch(`${API_BASE_URL}/api/dds/${id}/pdf`, { headers: await montarHeadersAuth() });
       if (!response.ok) {
         const corpo = await response.text().catch(() => '');
-        throw new Error(`${response.status} ${response.statusText}: ${corpo}`);
+        throw new Error(extrairMensagemErro(corpo, response.status, response.statusText));
       }
       return response.blob();
     },
@@ -3402,7 +3419,7 @@ export const api = {
       const response = await fetch(`${API_BASE_URL}/api/ddssemanal/${id}/pdf`, { headers: await montarHeadersAuth() });
       if (!response.ok) {
         const corpo = await response.text().catch(() => '');
-        throw new Error(`${response.status} ${response.statusText}: ${corpo}`);
+        throw new Error(extrairMensagemErro(corpo, response.status, response.statusText));
       }
       return response.blob();
     },
@@ -3422,7 +3439,7 @@ export const api = {
       if (response.status === 404) return null;
       if (!response.ok) {
         const corpo = await response.text().catch(() => '');
-        throw new Error(`${response.status} ${response.statusText}: ${corpo}`);
+        throw new Error(extrairMensagemErro(corpo, response.status, response.statusText));
       }
       return (await response.json()) as DocumentoAssinatura;
     },
@@ -3455,7 +3472,7 @@ export const api = {
       const response = await fetch(`${API_BASE_URL}/api/documentos/${id}/pdf`, { headers: await montarHeadersAuth() });
       if (!response.ok) {
         const corpo = await response.text().catch(() => '');
-        throw new Error(`${response.status} ${response.statusText}: ${corpo}`);
+        throw new Error(extrairMensagemErro(corpo, response.status, response.statusText));
       }
       return response.blob();
     },
@@ -3658,7 +3675,7 @@ export const api = {
         });
         if (!response.ok) {
           const corpo = await response.text().catch(() => '');
-          throw new Error(`${response.status} ${response.statusText}: ${corpo}`);
+          throw new Error(extrairMensagemErro(corpo, response.status, response.statusText));
         }
         return response.blob();
       },
@@ -3699,7 +3716,7 @@ export const api = {
         });
         if (!response.ok) {
           const corpo = await response.text().catch(() => '');
-          throw new Error(`${response.status} ${response.statusText}: ${corpo}`);
+          throw new Error(extrairMensagemErro(corpo, response.status, response.statusText));
         }
       },
       baixarCertificado: async (treinamentoId: string) => {
@@ -3708,7 +3725,7 @@ export const api = {
         });
         if (!response.ok) {
           const corpo = await response.text().catch(() => '');
-          throw new Error(`${response.status} ${response.statusText}: ${corpo}`);
+          throw new Error(extrairMensagemErro(corpo, response.status, response.statusText));
         }
         return response.blob();
       },
@@ -3722,7 +3739,7 @@ export const api = {
         });
         if (!response.ok) {
           const corpo = await response.text().catch(() => '');
-          throw new Error(`${response.status} ${response.statusText}: ${corpo}`);
+          throw new Error(extrairMensagemErro(corpo, response.status, response.statusText));
         }
       },
       baixarListaPresenca: async (treinamentoId: string) => {
@@ -3731,7 +3748,7 @@ export const api = {
         });
         if (!response.ok) {
           const corpo = await response.text().catch(() => '');
-          throw new Error(`${response.status} ${response.statusText}: ${corpo}`);
+          throw new Error(extrairMensagemErro(corpo, response.status, response.statusText));
         }
         return response.blob();
       },
@@ -3752,7 +3769,7 @@ export const api = {
         });
         if (!response.ok) {
           const corpo = await response.text().catch(() => '');
-          throw new Error(`${response.status} ${response.statusText}: ${corpo}`);
+          throw new Error(extrairMensagemErro(corpo, response.status, response.statusText));
         }
         return response.blob();
       },

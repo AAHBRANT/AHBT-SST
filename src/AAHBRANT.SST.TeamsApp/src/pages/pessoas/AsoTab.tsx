@@ -25,6 +25,10 @@ import {
   type NovoAso,
 } from '../../lib/api';
 import { usePageStyles } from '../pageStyles';
+import { useConfirmarExclusao } from '../../hooks/useConfirmarExclusao';
+import { useSucessoToast } from '../../hooks/useSucessoToast';
+import { EstadoVazio } from '../../components/EstadoVazio';
+import { ListaCarregando } from '../../components/ListaCarregando';
 
 function asoVazio(trabalhadorId: string): NovoAso {
   return {
@@ -52,6 +56,9 @@ export function AsoTab({ trabalhadorId }: { trabalhadorId: string }) {
   const [novoAso, setNovoAso] = useState<NovoAso>(() => asoVazio(trabalhadorId));
   const [erro, setErro] = useState<string | null>(null);
   const [carregando, setCarregando] = useState(false);
+  const [carregandoLista, setCarregandoLista] = useState(true);
+  const { confirmar, dialogElement } = useConfirmarExclusao();
+  const sucessoToast = useSucessoToast();
 
   async function carregar() {
     try {
@@ -59,6 +66,8 @@ export function AsoTab({ trabalhadorId }: { trabalhadorId: string }) {
       setAsos(await api.asos.listar(trabalhadorId));
     } catch (e) {
       setErro(e instanceof Error ? e.message : 'Falha ao carregar ASOs.');
+    } finally {
+      setCarregandoLista(false);
     }
   }
 
@@ -79,6 +88,7 @@ export function AsoTab({ trabalhadorId }: { trabalhadorId: string }) {
       await api.asos.criar(novoAso);
       setNovoAso(asoVazio(trabalhadorId));
       await carregar();
+      sucessoToast('ASO criado com sucesso.');
     } catch (e) {
       setErro(e instanceof Error ? e.message : 'Falha ao criar ASO.');
     } finally {
@@ -87,9 +97,11 @@ export function AsoTab({ trabalhadorId }: { trabalhadorId: string }) {
   }
 
   async function excluir(id: string) {
+    if (!(await confirmar('Excluir este ASO? Essa ação não pode ser desfeita.'))) return;
     try {
       await api.asos.excluir(id);
       await carregar();
+      sucessoToast('ASO excluído com sucesso.');
     } catch (e) {
       setErro(e instanceof Error ? e.message : 'Falha ao excluir ASO.');
     }
@@ -97,6 +109,7 @@ export function AsoTab({ trabalhadorId }: { trabalhadorId: string }) {
 
   return (
     <div className={estilos.card}>
+      {dialogElement}
       <div className={estilos.toolbar}>
         <Text weight="semibold">ASOs do trabalhador</Text>
       </div>
@@ -164,6 +177,11 @@ export function AsoTab({ trabalhadorId }: { trabalhadorId: string }) {
         </Button>
       </div>
 
+      {carregandoLista ? (
+        <ListaCarregando />
+      ) : asos.length === 0 ? (
+        <EstadoVazio mensagem="Nenhum ASO cadastrado ainda." />
+      ) : (
       <Table>
         <TableHeader>
           <TableRow>
@@ -204,6 +222,7 @@ export function AsoTab({ trabalhadorId }: { trabalhadorId: string }) {
           ))}
         </TableBody>
       </Table>
+      )}
     </div>
   );
 }

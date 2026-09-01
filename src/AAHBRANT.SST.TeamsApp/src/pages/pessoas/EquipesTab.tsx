@@ -15,6 +15,10 @@ import {
 import { Add24Regular, Delete24Regular } from '@fluentui/react-icons';
 import { api, type Equipe, type NovaEquipe, type Setor, type Trabalhador } from '../../lib/api';
 import { usePageStyles } from '../pageStyles';
+import { useConfirmarExclusao } from '../../hooks/useConfirmarExclusao';
+import { useSucessoToast } from '../../hooks/useSucessoToast';
+import { EstadoVazio } from '../../components/EstadoVazio';
+import { ListaCarregando } from '../../components/ListaCarregando';
 
 const equipeVazia: NovaEquipe = { setorId: '', nome: '', encarregadoId: null };
 
@@ -26,6 +30,9 @@ export function EquipesTab() {
   const [novaEquipe, setNovaEquipe] = useState<NovaEquipe>(equipeVazia);
   const [erro, setErro] = useState<string | null>(null);
   const [carregando, setCarregando] = useState(false);
+  const [carregandoLista, setCarregandoLista] = useState(true);
+  const { confirmar, dialogElement } = useConfirmarExclusao();
+  const sucessoToast = useSucessoToast();
 
   async function carregar() {
     try {
@@ -40,6 +47,8 @@ export function EquipesTab() {
       setEquipes(equipesResp);
     } catch (e) {
       setErro(e instanceof Error ? e.message : 'Falha ao carregar equipes.');
+    } finally {
+      setCarregandoLista(false);
     }
   }
 
@@ -58,6 +67,7 @@ export function EquipesTab() {
       await api.equipes.criar(novaEquipe);
       setNovaEquipe(equipeVazia);
       await carregar();
+      sucessoToast('Equipe criada com sucesso.');
     } catch (e) {
       setErro(e instanceof Error ? e.message : 'Falha ao criar equipe.');
     } finally {
@@ -66,9 +76,11 @@ export function EquipesTab() {
   }
 
   async function excluir(id: string) {
+    if (!(await confirmar('Excluir esta equipe? Essa ação não pode ser desfeita.'))) return;
     try {
       await api.equipes.excluir(id);
       await carregar();
+      sucessoToast('Equipe excluída com sucesso.');
     } catch (e) {
       setErro(e instanceof Error ? e.message : 'Falha ao excluir equipe.');
     }
@@ -76,6 +88,7 @@ export function EquipesTab() {
 
   return (
     <div className={estilos.card}>
+      {dialogElement}
       <div className={estilos.toolbar}>
         <Text weight="semibold">Equipes cadastradas</Text>
       </div>
@@ -119,6 +132,11 @@ export function EquipesTab() {
         </Button>
       </div>
 
+      {carregandoLista ? (
+        <ListaCarregando />
+      ) : equipes.length === 0 ? (
+        <EstadoVazio mensagem="Nenhuma equipe cadastrada ainda." />
+      ) : (
       <Table>
         <TableHeader>
           <TableRow>
@@ -150,6 +168,7 @@ export function EquipesTab() {
           ))}
         </TableBody>
       </Table>
+      )}
     </div>
   );
 }

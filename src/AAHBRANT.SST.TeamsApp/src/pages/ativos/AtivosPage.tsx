@@ -24,6 +24,10 @@ import {
   type Obra,
 } from '../../lib/api';
 import { usePageStyles } from '../pageStyles';
+import { useConfirmarExclusao } from '../../hooks/useConfirmarExclusao';
+import { useSucessoToast } from '../../hooks/useSucessoToast';
+import { EstadoVazio } from '../../components/EstadoVazio';
+import { ListaCarregando } from '../../components/ListaCarregando';
 
 function ativoVazio(): NovoAtivoSst {
   return {
@@ -62,6 +66,9 @@ export function AtivosPage() {
   const [filtroTipo, setFiltroTipo] = useState<string>('');
   const [erro, setErro] = useState<string | null>(null);
   const [carregando, setCarregando] = useState(false);
+  const [carregandoLista, setCarregandoLista] = useState(true);
+  const { confirmar, dialogElement } = useConfirmarExclusao();
+  const sucessoToast = useSucessoToast();
 
   async function carregar() {
     try {
@@ -71,6 +78,8 @@ export function AtivosPage() {
       setObras(listaObras);
     } catch (e) {
       setErro(e instanceof Error ? e.message : 'Falha ao carregar ativos.');
+    } finally {
+      setCarregandoLista(false);
     }
   }
 
@@ -105,6 +114,7 @@ export function AtivosPage() {
       setErro('Preencha obra, identificação, descrição e data de validade.');
       return;
     }
+    const eraEdicao = !!editandoId;
     try {
       setCarregando(true);
       setErro(null);
@@ -115,6 +125,7 @@ export function AtivosPage() {
       }
       cancelarEdicao();
       await carregar();
+      sucessoToast(eraEdicao ? 'Ativo atualizado com sucesso.' : 'Ativo cadastrado com sucesso.');
     } catch (e) {
       setErro(e instanceof Error ? e.message : 'Falha ao salvar ativo.');
     } finally {
@@ -123,11 +134,13 @@ export function AtivosPage() {
   }
 
   async function excluir(id: string) {
+    if (!(await confirmar('Excluir este ativo? Essa ação não pode ser desfeita.'))) return;
     try {
       setErro(null);
       await api.ativos.excluir(id);
       if (editandoId === id) cancelarEdicao();
       await carregar();
+      sucessoToast('Ativo excluído com sucesso.');
     } catch (e) {
       setErro(e instanceof Error ? e.message : 'Falha ao excluir ativo.');
     }
@@ -137,6 +150,7 @@ export function AtivosPage() {
 
   return (
     <div>
+      {dialogElement}
       <div style={{ marginBottom: 16 }}>
         <Text size={500} weight="semibold">
           Ativos de SST (Extintores &amp; Equipamentos)
@@ -235,6 +249,11 @@ export function AtivosPage() {
           </Field>
         </div>
 
+        {carregandoLista ? (
+          <ListaCarregando />
+        ) : ativosFiltrados.length === 0 ? (
+          <EstadoVazio mensagem="Nenhum ativo encontrado." />
+        ) : (
         <Table>
           <TableHeader>
             <TableRow>
@@ -281,6 +300,7 @@ export function AtivosPage() {
             })}
           </TableBody>
         </Table>
+        )}
       </div>
     </div>
   );

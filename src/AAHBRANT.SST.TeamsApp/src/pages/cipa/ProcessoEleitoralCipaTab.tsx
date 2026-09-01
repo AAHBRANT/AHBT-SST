@@ -23,6 +23,10 @@ import {
   type ProcessoEleitoralCipa,
 } from '../../lib/api';
 import { usePageStyles } from '../pageStyles';
+import { useConfirmarExclusao } from '../../hooks/useConfirmarExclusao';
+import { useSucessoToast } from '../../hooks/useSucessoToast';
+import { EstadoVazio } from '../../components/EstadoVazio';
+import { ListaCarregando } from '../../components/ListaCarregando';
 
 function vazio(): NovoProcessoEleitoralCipa {
   return { obraId: '', numeroDocumento: '', dataConvocacao: '', dataInicioInscricoes: '', dataFimInscricoes: '', dataVotacao: '' };
@@ -36,6 +40,9 @@ export function ProcessoEleitoralCipaTab() {
   const [novo, setNovo] = useState<NovoProcessoEleitoralCipa>(vazio());
   const [erro, setErro] = useState<string | null>(null);
   const [carregando, setCarregando] = useState(false);
+  const [carregandoLista, setCarregandoLista] = useState(true);
+  const { confirmar, dialogElement } = useConfirmarExclusao();
+  const sucessoToast = useSucessoToast();
 
   async function carregar() {
     try {
@@ -45,6 +52,8 @@ export function ProcessoEleitoralCipaTab() {
       setObras(listaObras);
     } catch (e) {
       setErro(e instanceof Error ? e.message : 'Falha ao carregar processos eleitorais.');
+    } finally {
+      setCarregandoLista(false);
     }
   }
 
@@ -67,6 +76,7 @@ export function ProcessoEleitoralCipaTab() {
       await api.cipa.processosEleitorais.criar({ ...novo, numeroDocumento: novo.numeroDocumento || null });
       setNovo(vazio());
       await carregar();
+      sucessoToast('Processo eleitoral criado com sucesso.');
     } catch (e) {
       setErro(e instanceof Error ? e.message : 'Falha ao criar processo eleitoral.');
     } finally {
@@ -76,9 +86,11 @@ export function ProcessoEleitoralCipaTab() {
 
   async function excluir(id: string, evento: React.MouseEvent) {
     evento.stopPropagation();
+    if (!(await confirmar('Excluir este processo eleitoral? Essa ação não pode ser desfeita.'))) return;
     try {
       await api.cipa.processosEleitorais.excluir(id);
       await carregar();
+      sucessoToast('Processo eleitoral excluído com sucesso.');
     } catch (e) {
       setErro(e instanceof Error ? e.message : 'Falha ao excluir processo eleitoral.');
     }
@@ -86,6 +98,7 @@ export function ProcessoEleitoralCipaTab() {
 
   return (
     <div>
+      {dialogElement}
       <div className={estilos.card} style={{ marginBottom: 16 }}>
         <div className={estilos.toolbar}>
           <Text weight="semibold">Nova convocação de eleição</Text>
@@ -144,6 +157,11 @@ export function ProcessoEleitoralCipaTab() {
         <div className={estilos.toolbar}>
           <Text weight="semibold">Processos eleitorais</Text>
         </div>
+        {carregandoLista ? (
+          <ListaCarregando />
+        ) : lista.length === 0 ? (
+          <EstadoVazio mensagem="Nenhum processo eleitoral cadastrado ainda." />
+        ) : (
         <Table>
           <TableHeader>
             <TableRow>
@@ -180,6 +198,7 @@ export function ProcessoEleitoralCipaTab() {
             ))}
           </TableBody>
         </Table>
+        )}
       </div>
     </div>
   );

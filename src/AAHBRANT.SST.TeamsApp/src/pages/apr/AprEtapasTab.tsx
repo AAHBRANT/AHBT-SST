@@ -25,6 +25,10 @@ import {
   type NovoAprEtapaRisco,
 } from '../../lib/api';
 import { usePageStyles } from '../pageStyles';
+import { useConfirmarExclusao } from '../../hooks/useConfirmarExclusao';
+import { useSucessoToast } from '../../hooks/useSucessoToast';
+import { EstadoVazio } from '../../components/EstadoVazio';
+import { ListaCarregando } from '../../components/ListaCarregando';
 
 function etapaVazia(aprId: string, proximaOrdem: number): NovaAprEtapa {
   return { aprId, ordem: proximaOrdem, descricao: '' };
@@ -66,6 +70,9 @@ export function AprEtapasTab({ aprId }: { aprId: string }) {
   const [riscoEditandoId, setRiscoEditandoId] = useState<string | null>(null);
   const [erro, setErro] = useState<string | null>(null);
   const [carregando, setCarregando] = useState(false);
+  const [carregandoLista, setCarregandoLista] = useState(true);
+  const { confirmar, dialogElement } = useConfirmarExclusao();
+  const sucessoToast = useSucessoToast();
 
   async function carregar() {
     try {
@@ -75,6 +82,8 @@ export function AprEtapasTab({ aprId }: { aprId: string }) {
       setNovaEtapa(etapaVazia(aprId, etps.length + 1));
     } catch (e) {
       setErro(e instanceof Error ? e.message : 'Falha ao carregar etapas.');
+    } finally {
+      setCarregandoLista(false);
     }
   }
 
@@ -93,6 +102,7 @@ export function AprEtapasTab({ aprId }: { aprId: string }) {
       setErro(null);
       await api.aprEtapas.criar(novaEtapa);
       await carregar();
+      sucessoToast('Etapa criada com sucesso.');
     } catch (e) {
       setErro(e instanceof Error ? e.message : 'Falha ao criar etapa.');
     } finally {
@@ -101,10 +111,12 @@ export function AprEtapasTab({ aprId }: { aprId: string }) {
   }
 
   async function excluirEtapa(id: string) {
+    if (!(await confirmar('Excluir esta etapa? Essa ação não pode ser desfeita.'))) return;
     try {
       setErro(null);
       await api.aprEtapas.excluir(id);
       await carregar();
+      sucessoToast('Etapa excluída com sucesso.');
     } catch (e) {
       setErro(e instanceof Error ? e.message : 'Falha ao excluir etapa.');
     }
@@ -145,6 +157,7 @@ export function AprEtapasTab({ aprId }: { aprId: string }) {
       setErro('Informe o perigo/evento perigoso.');
       return;
     }
+    const eraEdicao = !!riscoEditandoId;
     try {
       setCarregando(true);
       setErro(null);
@@ -157,6 +170,7 @@ export function AprEtapasTab({ aprId }: { aprId: string }) {
       setNovoRisco(riscoVazio(novoRisco.aprEtapaId));
       setRiscoEditandoId(null);
       await carregar();
+      sucessoToast(eraEdicao ? 'Risco atualizado com sucesso.' : 'Risco adicionado com sucesso.');
     } catch (e) {
       setErro(e instanceof Error ? e.message : 'Falha ao salvar risco.');
     } finally {
@@ -165,6 +179,7 @@ export function AprEtapasTab({ aprId }: { aprId: string }) {
   }
 
   async function excluirRisco(id: string, aprEtapaId: string) {
+    if (!(await confirmar('Excluir este risco? Essa ação não pode ser desfeita.'))) return;
     try {
       setErro(null);
       await api.aprEtapas.excluirRisco(id);
@@ -173,6 +188,7 @@ export function AprEtapasTab({ aprId }: { aprId: string }) {
         setNovoRisco(riscoVazio(aprEtapaId));
       }
       await carregar();
+      sucessoToast('Risco excluído com sucesso.');
     } catch (e) {
       setErro(e instanceof Error ? e.message : 'Falha ao excluir risco.');
     }
@@ -180,6 +196,7 @@ export function AprEtapasTab({ aprId }: { aprId: string }) {
 
   return (
     <div className={estilos.card}>
+      {dialogElement}
       <div className={estilos.toolbar}>
         <Text weight="semibold">Etapas da atividade</Text>
       </div>
@@ -205,6 +222,11 @@ export function AprEtapasTab({ aprId }: { aprId: string }) {
         </Button>
       </div>
 
+      {carregandoLista ? (
+        <ListaCarregando />
+      ) : etapas.length === 0 ? (
+        <EstadoVazio mensagem="Nenhuma etapa cadastrada ainda." />
+      ) : (
       <Table>
         <TableHeader>
           <TableRow>
@@ -411,6 +433,7 @@ export function AprEtapasTab({ aprId }: { aprId: string }) {
           ))}
         </TableBody>
       </Table>
+      )}
     </div>
   );
 }

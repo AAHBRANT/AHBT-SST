@@ -18,6 +18,10 @@ import {
 import { formatarCpf } from '../../lib/cpf';
 import { usePageStyles } from '../pageStyles';
 import { CadastroDigitalDialog } from './CadastroDigitalDialog';
+import { useConfirmarExclusao } from '../../hooks/useConfirmarExclusao';
+import { useSucessoToast } from '../../hooks/useSucessoToast';
+import { EstadoVazio } from '../../components/EstadoVazio';
+import { ListaCarregando } from '../../components/ListaCarregando';
 
 function corBadgeAso(status: number | undefined): 'success' | 'warning' | 'danger' | 'informative' {
   switch (status) {
@@ -62,10 +66,13 @@ export function TrabalhadoresTab() {
   const [novoTrabalhador, setNovoTrabalhador] = useState<NovoTrabalhador>(trabalhadorVazio);
   const [erro, setErro] = useState<string | null>(null);
   const [carregando, setCarregando] = useState(false);
+  const [carregandoLista, setCarregandoLista] = useState(true);
   const [fotoUrls, setFotoUrls] = useState<Record<string, string>>({});
   const [trabalhadorDigitalAlvo, setTrabalhadorDigitalAlvo] = useState<{ id: string; nome: string } | null>(
     null,
   );
+  const { confirmar, dialogElement } = useConfirmarExclusao();
+  const sucessoToast = useSucessoToast();
 
   async function carregar() {
     try {
@@ -82,6 +89,8 @@ export function TrabalhadoresTab() {
       setAsos(asosResp);
     } catch (e) {
       setErro(e instanceof Error ? e.message : 'Falha ao carregar trabalhadores.');
+    } finally {
+      setCarregandoLista(false);
     }
   }
 
@@ -129,6 +138,7 @@ export function TrabalhadoresTab() {
         return resto;
       });
       await carregar();
+      sucessoToast('Foto enviada com sucesso.');
     } catch (e) {
       setErro(e instanceof Error ? e.message : 'Falha ao enviar a foto.');
     }
@@ -158,6 +168,7 @@ export function TrabalhadoresTab() {
       setTrabalhadorDigitalAlvo({ id, nome: novoTrabalhador.nome });
       setNovoTrabalhador(trabalhadorVazio);
       await carregar();
+      sucessoToast('Trabalhador criado com sucesso.');
     } catch (e) {
       setErro(e instanceof Error ? e.message : 'Falha ao criar trabalhador.');
     } finally {
@@ -167,9 +178,16 @@ export function TrabalhadoresTab() {
 
   async function excluir(id: string, evento: React.MouseEvent) {
     evento.stopPropagation();
+    if (
+      !(await confirmar(
+        'Excluir este trabalhador? Todo o histórico associado (ASO, treinamentos, EPI) fica desvinculado. Essa ação não pode ser desfeita.',
+      ))
+    )
+      return;
     try {
       await api.trabalhadores.excluir(id);
       await carregar();
+      sucessoToast('Trabalhador excluído com sucesso.');
     } catch (e) {
       setErro(e instanceof Error ? e.message : 'Falha ao excluir trabalhador.');
     }
@@ -177,6 +195,7 @@ export function TrabalhadoresTab() {
 
   return (
     <div className={estilos.card}>
+      {dialogElement}
       <div className={estilos.toolbar}>
         <Text weight="semibold">Trabalhadores cadastrados</Text>
       </div>
@@ -260,6 +279,11 @@ export function TrabalhadoresTab() {
         <Input contentBefore={<Search24Regular />} value={busca} onChange={(_, d) => setBusca(d.value)} />
       </Field>
 
+      {carregandoLista ? (
+        <ListaCarregando />
+      ) : trabalhadores.length === 0 ? (
+        <EstadoVazio mensagem="Nenhum trabalhador cadastrado ainda." />
+      ) : (
       <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
         {trabalhadoresFiltrados.map((trabalhador) => {
           const aso = ultimoAso(asos, trabalhador.id);
@@ -317,6 +341,7 @@ export function TrabalhadoresTab() {
                     apenasIcone
                     tiposAceitos="image/png,image/jpeg"
                     aoSelecionarArquivo={(arquivo) => enviarFoto(trabalhador.id, arquivo)}
+                    aoErroValidacao={setErro}
                   />
                 </span>
                 <Button
@@ -340,6 +365,7 @@ export function TrabalhadoresTab() {
         })}
         {trabalhadoresFiltrados.length === 0 && <Text>Nenhum trabalhador encontrado.</Text>}
       </div>
+      )}
 
       <CadastroDigitalDialog
         trabalhadorId={trabalhadorDigitalAlvo?.id ?? null}

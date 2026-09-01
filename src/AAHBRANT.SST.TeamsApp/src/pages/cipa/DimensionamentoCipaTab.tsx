@@ -16,6 +16,10 @@ import {
 import { Add24Regular, Delete24Regular } from '@fluentui/react-icons';
 import { api, nivelRiscoLabel, type DimensionamentoCipa, type NovoDimensionamentoCipa, type Obra } from '../../lib/api';
 import { usePageStyles } from '../pageStyles';
+import { useConfirmarExclusao } from '../../hooks/useConfirmarExclusao';
+import { useSucessoToast } from '../../hooks/useSucessoToast';
+import { EstadoVazio } from '../../components/EstadoVazio';
+import { ListaCarregando } from '../../components/ListaCarregando';
 
 function vazio(): NovoDimensionamentoCipa {
   return { obraId: '', cnae: '', grauRisco: 1, numeroFuncionarios: 0, numeroTitulares: 0, numeroSuplentes: 0, observacoes: '' };
@@ -31,6 +35,9 @@ export function DimensionamentoCipaTab() {
   const [novo, setNovo] = useState<NovoDimensionamentoCipa>(vazio());
   const [erro, setErro] = useState<string | null>(null);
   const [carregando, setCarregando] = useState(false);
+  const [carregandoLista, setCarregandoLista] = useState(true);
+  const { confirmar, dialogElement } = useConfirmarExclusao();
+  const sucessoToast = useSucessoToast();
 
   async function carregar() {
     try {
@@ -40,6 +47,8 @@ export function DimensionamentoCipaTab() {
       setObras(listaObras);
     } catch (e) {
       setErro(e instanceof Error ? e.message : 'Falha ao carregar dimensionamentos.');
+    } finally {
+      setCarregandoLista(false);
     }
   }
 
@@ -62,6 +71,7 @@ export function DimensionamentoCipaTab() {
       await api.cipa.dimensionamento.criar({ ...novo, observacoes: novo.observacoes || null });
       setNovo(vazio());
       await carregar();
+      sucessoToast('Dimensionamento criado com sucesso.');
     } catch (e) {
       setErro(e instanceof Error ? e.message : 'Falha ao criar dimensionamento.');
     } finally {
@@ -70,9 +80,11 @@ export function DimensionamentoCipaTab() {
   }
 
   async function excluir(id: string) {
+    if (!(await confirmar('Excluir este dimensionamento? Essa ação não pode ser desfeita.'))) return;
     try {
       await api.cipa.dimensionamento.excluir(id);
       await carregar();
+      sucessoToast('Dimensionamento excluído com sucesso.');
     } catch (e) {
       setErro(e instanceof Error ? e.message : 'Falha ao excluir dimensionamento.');
     }
@@ -80,6 +92,7 @@ export function DimensionamentoCipaTab() {
 
   return (
     <div>
+      {dialogElement}
       <div className={estilos.card} style={{ marginBottom: 16 }}>
         <div className={estilos.toolbar}>
           <Text weight="semibold">Novo dimensionamento</Text>
@@ -149,6 +162,11 @@ export function DimensionamentoCipaTab() {
         <div className={estilos.toolbar}>
           <Text weight="semibold">Dimensionamentos cadastrados</Text>
         </div>
+        {carregandoLista ? (
+          <ListaCarregando />
+        ) : lista.length === 0 ? (
+          <EstadoVazio mensagem="Nenhum dimensionamento cadastrado ainda." />
+        ) : (
         <Table>
           <TableHeader>
             <TableRow>
@@ -179,6 +197,7 @@ export function DimensionamentoCipaTab() {
             ))}
           </TableBody>
         </Table>
+        )}
       </div>
     </div>
   );

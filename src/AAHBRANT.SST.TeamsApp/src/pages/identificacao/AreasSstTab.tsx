@@ -23,6 +23,10 @@ import {
   type Obra,
 } from '../../lib/api';
 import { usePageStyles } from '../pageStyles';
+import { useConfirmarExclusao } from '../../hooks/useConfirmarExclusao';
+import { useSucessoToast } from '../../hooks/useSucessoToast';
+import { EstadoVazio } from '../../components/EstadoVazio';
+import { ListaCarregando } from '../../components/ListaCarregando';
 
 const areaVazia: NovaAreaSst = {
   codigo: '',
@@ -44,6 +48,9 @@ export function AreasSstTab() {
   const [requisitosTexto, setRequisitosTexto] = useState('');
   const [erro, setErro] = useState<string | null>(null);
   const [carregando, setCarregando] = useState(false);
+  const [carregandoLista, setCarregandoLista] = useState(true);
+  const { confirmar, dialogElement } = useConfirmarExclusao();
+  const sucessoToast = useSucessoToast();
 
   async function carregar() {
     try {
@@ -53,6 +60,8 @@ export function AreasSstTab() {
       setObras(obrs);
     } catch (e) {
       setErro(e instanceof Error ? e.message : 'Falha ao carregar áreas.');
+    } finally {
+      setCarregandoLista(false);
     }
   }
 
@@ -84,6 +93,7 @@ export function AreasSstTab() {
       setRiscosTexto('');
       setRequisitosTexto('');
       await carregar();
+      sucessoToast('Área criada com sucesso.');
     } catch (e) {
       setErro(e instanceof Error ? e.message : 'Falha ao criar área.');
     } finally {
@@ -92,9 +102,11 @@ export function AreasSstTab() {
   }
 
   async function excluir(id: string) {
+    if (!(await confirmar('Excluir esta área? Essa ação não pode ser desfeita.'))) return;
     try {
       await api.areasSst.excluir(id);
       await carregar();
+      sucessoToast('Área excluída com sucesso.');
     } catch (e) {
       setErro(e instanceof Error ? e.message : 'Falha ao excluir área.');
     }
@@ -102,6 +114,7 @@ export function AreasSstTab() {
 
   return (
     <div className={estilos.card}>
+      {dialogElement}
       <div className={estilos.toolbar}>
         <Text weight="semibold">Áreas de SST cadastradas</Text>
       </div>
@@ -156,6 +169,11 @@ export function AreasSstTab() {
         </Button>
       </div>
 
+      {carregandoLista ? (
+        <ListaCarregando />
+      ) : areas.length === 0 ? (
+        <EstadoVazio mensagem="Nenhuma área cadastrada ainda." />
+      ) : (
       <Table>
         <TableHeader>
           <TableRow>
@@ -189,6 +207,7 @@ export function AreasSstTab() {
           ))}
         </TableBody>
       </Table>
+      )}
     </div>
   );
 }

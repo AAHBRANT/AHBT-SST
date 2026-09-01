@@ -23,6 +23,10 @@ import {
   type RiscoClassificado,
 } from '../../lib/api';
 import { usePageStyles } from '../pageStyles';
+import { useConfirmarExclusao } from '../../hooks/useConfirmarExclusao';
+import { useSucessoToast } from '../../hooks/useSucessoToast';
+import { EstadoVazio } from '../../components/EstadoVazio';
+import { ListaCarregando } from '../../components/ListaCarregando';
 
 function itemVazio(pgrId: string): NovoPlanoAcaoItem {
   return {
@@ -47,6 +51,9 @@ export function PlanoAcaoTab({ pgrId, riscosDisponiveis }: { pgrId: string; risc
   const [novoItem, setNovoItem] = useState<NovoPlanoAcaoItem>(() => itemVazio(pgrId));
   const [erro, setErro] = useState<string | null>(null);
   const [carregando, setCarregando] = useState(false);
+  const [carregandoLista, setCarregandoLista] = useState(true);
+  const { confirmar, dialogElement } = useConfirmarExclusao();
+  const sucessoToast = useSucessoToast();
 
   async function carregar() {
     try {
@@ -54,6 +61,8 @@ export function PlanoAcaoTab({ pgrId, riscosDisponiveis }: { pgrId: string; risc
       setItens(await api.planoAcao.listar(pgrId));
     } catch (e) {
       setErro(e instanceof Error ? e.message : 'Falha ao carregar plano de ação.');
+    } finally {
+      setCarregandoLista(false);
     }
   }
 
@@ -75,6 +84,7 @@ export function PlanoAcaoTab({ pgrId, riscosDisponiveis }: { pgrId: string; risc
       await api.planoAcao.criar(novoItem);
       setNovoItem(itemVazio(pgrId));
       await carregar();
+      sucessoToast('Item do plano de ação criado com sucesso.');
     } catch (e) {
       setErro(e instanceof Error ? e.message : 'Falha ao criar item do plano de ação.');
     } finally {
@@ -83,9 +93,11 @@ export function PlanoAcaoTab({ pgrId, riscosDisponiveis }: { pgrId: string; risc
   }
 
   async function excluir(id: string) {
+    if (!(await confirmar('Excluir este item do plano de ação? Essa ação não pode ser desfeita.'))) return;
     try {
       await api.planoAcao.excluir(id);
       await carregar();
+      sucessoToast('Item do plano de ação excluído com sucesso.');
     } catch (e) {
       setErro(e instanceof Error ? e.message : 'Falha ao excluir item do plano de ação.');
     }
@@ -93,6 +105,7 @@ export function PlanoAcaoTab({ pgrId, riscosDisponiveis }: { pgrId: string; risc
 
   return (
     <div className={estilos.card}>
+      {dialogElement}
       <div className={estilos.toolbar}>
         <Text weight="semibold">Plano de ação</Text>
       </div>
@@ -145,6 +158,11 @@ export function PlanoAcaoTab({ pgrId, riscosDisponiveis }: { pgrId: string; risc
         </Button>
       </div>
 
+      {carregandoLista ? (
+        <ListaCarregando />
+      ) : itens.length === 0 ? (
+        <EstadoVazio mensagem="Nenhum item cadastrado no plano de ação ainda." />
+      ) : (
       <Table>
         <TableHeader>
           <TableRow>
@@ -178,6 +196,7 @@ export function PlanoAcaoTab({ pgrId, riscosDisponiveis }: { pgrId: string; risc
           ))}
         </TableBody>
       </Table>
+      )}
     </div>
   );
 }

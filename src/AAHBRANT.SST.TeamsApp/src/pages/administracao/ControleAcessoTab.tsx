@@ -31,6 +31,10 @@ import {
   type Usuario,
 } from '../../lib/api';
 import { usePageStyles } from '../pageStyles';
+import { useConfirmarExclusao } from '../../hooks/useConfirmarExclusao';
+import { useSucessoToast } from '../../hooks/useSucessoToast';
+import { EstadoVazio } from '../../components/EstadoVazio';
+import { ListaCarregando } from '../../components/ListaCarregando';
 
 const usuarioVazio: NovoUsuario = { email: '', nome: '', trabalhadorId: '' };
 const perfilVazio: NovoPerfilAcesso = { nome: '', descricao: '' };
@@ -68,6 +72,9 @@ export function ControleAcessoTab() {
 
   const [erro, setErro] = useState<string | null>(null);
   const [carregando, setCarregando] = useState(false);
+  const [carregandoLista, setCarregandoLista] = useState(true);
+  const { confirmar, dialogElement } = useConfirmarExclusao();
+  const sucessoToast = useSucessoToast();
 
   async function carregar() {
     try {
@@ -86,6 +93,8 @@ export function ControleAcessoTab() {
       setPermissoes(perm);
     } catch (e) {
       setErro(e instanceof Error ? e.message : 'Falha ao carregar controle de acesso.');
+    } finally {
+      setCarregandoLista(false);
     }
   }
 
@@ -126,6 +135,7 @@ export function ControleAcessoTab() {
       await api.usuarios.criar({ ...novoUsuario, trabalhadorId: novoUsuario.trabalhadorId || null });
       setNovoUsuario(usuarioVazio);
       await carregar();
+      sucessoToast('Usuário criado com sucesso.');
     } catch (e) {
       setErro(e instanceof Error ? e.message : 'Falha ao criar usuário.');
     } finally {
@@ -134,10 +144,12 @@ export function ControleAcessoTab() {
   }
 
   async function excluirUsuario(id: string) {
+    if (!(await confirmar('Excluir este usuário? Essa ação não pode ser desfeita.'))) return;
     try {
       await api.usuarios.excluir(id);
       if (usuarioSelecionadoId === id) setUsuarioSelecionadoId(null);
       await carregar();
+      sucessoToast('Usuário excluído com sucesso.');
     } catch (e) {
       setErro(e instanceof Error ? e.message : 'Falha ao excluir usuário.');
     }
@@ -154,6 +166,7 @@ export function ControleAcessoTab() {
         trabalhadorId: usuarioSelecionado.trabalhadorId,
       });
       await carregar();
+      sucessoToast('Usuário atualizado com sucesso.');
     } catch (e) {
       setErro(e instanceof Error ? e.message : 'Falha ao atualizar usuário.');
     }
@@ -167,16 +180,19 @@ export function ControleAcessoTab() {
       setPerfilParaAtribuir('');
       setObraParaAtribuir('');
       await carregar();
+      sucessoToast('Perfil atribuído com sucesso.');
     } catch (e) {
       setErro(e instanceof Error ? e.message : 'Falha ao atribuir perfil.');
     }
   }
 
   async function removerPerfilObra(id: string) {
+    if (!(await confirmar('Remover este perfil do usuário? Essa ação não pode ser desfeita.'))) return;
     try {
       setErro(null);
       await api.usuarios.removerPerfilObra(id);
       await carregar();
+      sucessoToast('Perfil removido com sucesso.');
     } catch (e) {
       setErro(e instanceof Error ? e.message : 'Falha ao remover perfil.');
     }
@@ -210,6 +226,7 @@ export function ControleAcessoTab() {
       await api.perfisAcesso.criar(novoPerfil);
       setNovoPerfil(perfilVazio);
       await carregar();
+      sucessoToast('Perfil criado com sucesso.');
     } catch (e) {
       setErro(e instanceof Error ? e.message : 'Falha ao criar perfil.');
     } finally {
@@ -218,10 +235,12 @@ export function ControleAcessoTab() {
   }
 
   async function excluirPerfil(id: string) {
+    if (!(await confirmar('Excluir este perfil de acesso? Essa ação não pode ser desfeita.'))) return;
     try {
       await api.perfisAcesso.excluir(id);
       if (perfilSelecionadoId === id) setPerfilSelecionadoId(null);
       await carregar();
+      sucessoToast('Perfil excluído com sucesso.');
     } catch (e) {
       setErro(e instanceof Error ? e.message : 'Falha ao excluir perfil.');
     }
@@ -237,6 +256,7 @@ export function ControleAcessoTab() {
       });
       await api.perfisAcesso.definirPermissoes(perfilSelecionado.id, itens);
       await carregar();
+      sucessoToast('Permissões salvas com sucesso.');
     } catch (e) {
       setErro(e instanceof Error ? e.message : 'Falha ao salvar permissões.');
     }
@@ -244,6 +264,7 @@ export function ControleAcessoTab() {
 
   return (
     <div>
+      {dialogElement}
       {erro && (
         <Text className={estilos.erro} style={{ display: 'block', marginBottom: 16 }}>
           {erro}
@@ -294,6 +315,11 @@ export function ControleAcessoTab() {
             </Button>
           </div>
 
+          {carregandoLista ? (
+            <ListaCarregando />
+          ) : usuarios.length === 0 ? (
+            <EstadoVazio mensagem="Nenhum usuário cadastrado ainda." />
+          ) : (
           <Table>
             <TableHeader>
               <TableRow>
@@ -342,6 +368,7 @@ export function ControleAcessoTab() {
               ))}
             </TableBody>
           </Table>
+          )}
         </div>
 
         <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
@@ -466,6 +493,11 @@ export function ControleAcessoTab() {
               </Button>
             </div>
 
+            {carregandoLista ? (
+              <ListaCarregando />
+            ) : perfis.length === 0 ? (
+              <EstadoVazio mensagem="Nenhum perfil de acesso cadastrado ainda." />
+            ) : (
             <Table>
               <TableHeader>
                 <TableRow>
@@ -506,6 +538,7 @@ export function ControleAcessoTab() {
                 ))}
               </TableBody>
             </Table>
+            )}
           </div>
 
           {perfilSelecionado && (

@@ -367,6 +367,7 @@ export function DdsDetalhePage() {
               rotulo="Tirar foto de evidência"
               desabilitado={anexandoFotoEvidencia}
               aoSelecionarArquivo={anexarFotoEvidencia}
+              aoErroValidacao={setErro}
             />
           )}
         </div>

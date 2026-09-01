@@ -25,6 +25,10 @@ import {
 } from '../../lib/api';
 import { BadgeVencimento } from '../../components/badges/BadgeVencimento';
 import { usePageStyles } from '../pageStyles';
+import { useConfirmarExclusao } from '../../hooks/useConfirmarExclusao';
+import { useSucessoToast } from '../../hooks/useSucessoToast';
+import { EstadoVazio } from '../../components/EstadoVazio';
+import { ListaCarregando } from '../../components/ListaCarregando';
 
 function aptidaoVazia(): NovaAptidao {
   return {
@@ -56,6 +60,9 @@ export function AptidoesTab() {
   const [edicao, setEdicao] = useState<Aptidao | null>(null);
   const [erro, setErro] = useState<string | null>(null);
   const [carregando, setCarregando] = useState(false);
+  const [carregandoLista, setCarregandoLista] = useState(true);
+  const { confirmar, dialogElement } = useConfirmarExclusao();
+  const sucessoToast = useSucessoToast();
 
   async function carregar() {
     try {
@@ -65,6 +72,8 @@ export function AptidoesTab() {
       setTrabalhadores(listaTrabalhadores);
     } catch (e) {
       setErro(e instanceof Error ? e.message : 'Falha ao carregar aptidões.');
+    } finally {
+      setCarregandoLista(false);
     }
   }
 
@@ -87,6 +96,7 @@ export function AptidoesTab() {
       await api.aptidoes.criar({ ...novaAptidao, dataValidade: novaAptidao.dataValidade || null });
       setNovaAptidao(aptidaoVazia());
       await carregar();
+      sucessoToast('Aptidão registrada com sucesso.');
     } catch (e) {
       setErro(e instanceof Error ? e.message : 'Falha ao criar aptidão.');
     } finally {
@@ -108,6 +118,7 @@ export function AptidoesTab() {
       setEdicaoId(null);
       setEdicao(null);
       await carregar();
+      sucessoToast('Aptidão atualizada com sucesso.');
     } catch (e) {
       setErro(e instanceof Error ? e.message : 'Falha ao atualizar aptidão.');
     } finally {
@@ -116,9 +127,11 @@ export function AptidoesTab() {
   }
 
   async function excluir(id: string) {
+    if (!(await confirmar('Excluir esta aptidão? Essa ação não pode ser desfeita.'))) return;
     try {
       await api.aptidoes.excluir(id);
       await carregar();
+      sucessoToast('Aptidão excluída com sucesso.');
     } catch (e) {
       setErro(e instanceof Error ? e.message : 'Falha ao excluir aptidão.');
     }
@@ -126,6 +139,7 @@ export function AptidoesTab() {
 
   return (
     <div>
+      {dialogElement}
       <div className={estilos.card} style={{ marginBottom: 16 }}>
         <div className={estilos.toolbar}>
           <Text weight="semibold">Nova aptidão para atividade crítica</Text>
@@ -205,6 +219,11 @@ export function AptidoesTab() {
           <Text weight="semibold">Aptidões registradas</Text>
         </div>
 
+        {carregandoLista ? (
+          <ListaCarregando />
+        ) : aptidoes.length === 0 ? (
+          <EstadoVazio mensagem="Nenhuma aptidão cadastrada ainda." />
+        ) : (
         <Table>
           <TableHeader>
             <TableRow>
@@ -293,6 +312,7 @@ export function AptidoesTab() {
             )}
           </TableBody>
         </Table>
+        )}
         <Text size={200} style={{ display: 'block', marginTop: 8 }}>
           Clique em uma linha para editar a aptidão.
         </Text>
