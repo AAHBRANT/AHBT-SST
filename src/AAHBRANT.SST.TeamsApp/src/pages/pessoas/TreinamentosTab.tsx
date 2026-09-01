@@ -21,6 +21,7 @@ import { useConfirmarExclusao } from '../../hooks/useConfirmarExclusao';
 import { useSucessoToast } from '../../hooks/useSucessoToast';
 import { EstadoVazio } from '../../components/EstadoVazio';
 import { ListaCarregando } from '../../components/ListaCarregando';
+import { AssinaturaCertificadoTreinamentoDialog } from '../../components/assinatura/AssinaturaCertificadoTreinamentoDialog';
 
 // Situação calculada no cliente a partir de dataValidade (não há coluna persistida) — mesmo
 // limiar de 30 dias usado em AtivosPage/PessoasDashboardTab para "a vencer".
@@ -59,6 +60,12 @@ export function TreinamentosTab({ trabalhadorId }: { trabalhadorId: string }) {
   const { confirmar, dialogElement } = useConfirmarExclusao();
   const sucessoToast = useSucessoToast();
   const [baixandoId, setBaixandoId] = useState<string | null>(null);
+  const [assinaturaAberta, setAssinaturaAberta] = useState<{
+    treinamentoId: string;
+    cursoNome: string;
+    dataRealizacao: string;
+    cargaHorariaRealizada: number;
+  } | null>(null);
 
   async function carregar() {
     try {
@@ -107,7 +114,13 @@ export function TreinamentosTab({ trabalhadorId }: { trabalhadorId: string }) {
     try {
       setCarregando(true);
       setErro(null);
-      await api.treinamentos.criar(novoTreinamento);
+      const { id } = await api.treinamentos.criar(novoTreinamento);
+      setAssinaturaAberta({
+        treinamentoId: id,
+        cursoNome: nomeCurso(novoTreinamento.cursoTreinamentoId),
+        dataRealizacao: novoTreinamento.dataRealizacao,
+        cargaHorariaRealizada: novoTreinamento.cargaHorariaRealizada,
+      });
       setNovoTreinamento(treinamentoVazio(trabalhadorId));
       await carregar();
       sucessoToast('Treinamento criado com sucesso.');
@@ -251,6 +264,17 @@ export function TreinamentosTab({ trabalhadorId }: { trabalhadorId: string }) {
           })}
         </TableBody>
       </Table>
+      )}
+
+      {assinaturaAberta && (
+        <AssinaturaCertificadoTreinamentoDialog
+          open
+          onClose={() => setAssinaturaAberta(null)}
+          treinamentoId={assinaturaAberta.treinamentoId}
+          cursoNome={assinaturaAberta.cursoNome}
+          dataRealizacao={assinaturaAberta.dataRealizacao}
+          cargaHorariaRealizada={assinaturaAberta.cargaHorariaRealizada}
+        />
       )}
     </div>
   );

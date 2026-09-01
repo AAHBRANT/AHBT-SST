@@ -85,7 +85,7 @@ export function MatrizTreinamentoTab() {
 
       <Text size={200}>
         Clique numa função para editar quais cursos são obrigatórios para ela. Novas funções são cadastradas na
-        aba Funções; novos cursos, na aba Cursos de treinamento.
+        aba Funções; novos cursos, na aba Treinamentos.
       </Text>
 
       <Table>

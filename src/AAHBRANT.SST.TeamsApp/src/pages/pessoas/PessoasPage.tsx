@@ -41,7 +41,7 @@ export function PessoasPage() {
       >
         <Tab value="trabalhadores">Trabalhadores</Tab>
         <Tab value="funcoes">Funções</Tab>
-        <Tab value="cursos">Cursos de treinamento</Tab>
+        <Tab value="cursos">Treinamentos</Tab>
         <Tab value="matrizTreinamento">Matriz de Treinamento por Função</Tab>
         <Tab value="dashboard">Dashboard</Tab>
       </TabList>
