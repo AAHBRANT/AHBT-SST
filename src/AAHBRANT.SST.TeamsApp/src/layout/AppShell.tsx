@@ -10,7 +10,6 @@ import {
   Alert24Regular,
   BriefcaseMedical24Regular,
   People24Regular,
-  CalendarLtr24Regular,
   ChevronLeft24Regular,
   ChevronRight24Regular,
   ChevronDown16Regular,
@@ -204,11 +203,11 @@ interface GrupoNav {
   itens: ItemNav[];
 }
 
-// Itens soltos no topo, fora de qualquer grupo — Dashboard e Calendário (agenda pessoal do Teams,
-// requisito do usuário em 2026-08-29) não pertencem a nenhum módulo temático.
+// Item solto no topo, fora de qualquer grupo — Dashboard não pertence a nenhum módulo temático.
+// Calendário saiu da sidebar (pedido do usuário, 01/09): virou redundante com o card de mini
+// calendário no Dashboard, que já leva pra /calendario ao clicar — a rota continua existindo.
 const itensAvulsos: Array<ItemNav & { icone: typeof Grid24Regular }> = [
   { rota: '/', rotulo: 'Dashboard', icone: Grid24Regular },
-  { rota: '/calendario', rotulo: 'Calendário', icone: CalendarLtr24Regular },
 ];
 
 // Reorganização de sidebar em grupos temáticos (pedido do usuário, 2026-08-31) — substitui a lista
