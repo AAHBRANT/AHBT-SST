@@ -1,3 +1,5 @@
+using System.Globalization;
+using System.Text;
 using AAHBRANT.SST.Application.Assinatura.Queries;
 using AAHBRANT.SST.Application.Common.Interfaces;
 using AAHBRANT.SST.Domain.Entidades;
@@ -44,7 +46,22 @@ public class RegistradorAssinaturaService : IRegistradorAssinaturaService
         if (jaAssinou)
             throw new InvalidOperationException("Este trabalhador já assinou este documento.");
 
-        var trabalhador = await _db.Trabalhadores.FirstAsync(t => t.Id == resultado.TrabalhadorId, ct);
+        var trabalhador = await _db.Trabalhadores.Include(t => t.Funcao).FirstAsync(t => t.Id == resultado.TrabalhadorId, ct);
+
+        // Regras específicas de Inspeção/Patrulha de Segurança (pedido do usuário, 01/09) — o Motor
+        // de Assinatura é genérico (qualquer trabalhador assina DDS/PT/EPI), então essas duas
+        // restrições só valem quando a origem é uma Inspecao: (1) assinatura única — a primeira
+        // assinatura já fecha o documento pra novas assinaturas; (2) só Técnico ou Engenheiro de
+        // Segurança podem ser o signatário, verificado pela Função cadastrada do trabalhador.
+        if (documento.EntidadeTipo == nameof(Inspecao))
+        {
+            var jaTemAssinatura = await _db.DocumentoSignatarios.AnyAsync(s => s.DocumentoAssinaturaId == documento.Id, ct);
+            if (jaTemAssinatura)
+                throw new InvalidOperationException("Esta inspeção já foi assinada — a Patrulha de Segurança aceita apenas uma assinatura.");
+
+            if (!FuncaoPodeAssinarInspecao(trabalhador.Funcao?.Nome))
+                throw new InvalidOperationException("Apenas Técnico de Segurança ou Engenheiro de Segurança podem assinar inspeções.");
+        }
 
         var signatario = new DocumentoSignatario
         {
@@ -68,5 +85,35 @@ public class RegistradorAssinaturaService : IRegistradorAssinaturaService
         await _db.SaveChangesAsync(ct);
 
         return new DocumentoSignatarioDto(trabalhador.Id, trabalhador.Nome, signatario.MetodoAutenticacao, signatario.AssinadoEm, signatario.IpAddress);
+    }
+
+    // Nome da Função é texto livre no cadastro (não existe um "tipo de função" fechado no sistema —
+    // ver Funcao.cs) — comparação por prefixo normalizado (sem acento/caixa) pra tolerar variações
+    // como "Técnico de Segurança do Trabalho" ou "Engenheiro de Segurança Sênior", sem depender de
+    // um nome cadastrado byte a byte igual. Lista fechada às duas funções indicadas pelo usuário
+    // (01/09); qualquer outra função (mesmo "de segurança") fica de fora até ele pedir para incluir.
+    private static readonly string[] FuncoesHabilitadasAssinarInspecao =
+    {
+        "tecnico de seguranca",
+        "engenheiro de seguranca",
+    };
+
+    private static bool FuncaoPodeAssinarInspecao(string? nomeFuncao)
+    {
+        if (string.IsNullOrWhiteSpace(nomeFuncao)) return false;
+        var normalizado = RemoverAcentos(nomeFuncao.Trim().ToLowerInvariant());
+        return FuncoesHabilitadasAssinarInspecao.Any(f => normalizado.StartsWith(f, StringComparison.Ordinal));
+    }
+
+    private static string RemoverAcentos(string texto)
+    {
+        var decomposto = texto.Normalize(NormalizationForm.FormD);
+        var semAcento = new StringBuilder();
+        foreach (var c in decomposto)
+        {
+            if (CharUnicodeInfo.GetUnicodeCategory(c) != UnicodeCategory.NonSpacingMark)
+                semAcento.Append(c);
+        }
+        return semAcento.ToString().Normalize(NormalizationForm.FormC);
     }
 }

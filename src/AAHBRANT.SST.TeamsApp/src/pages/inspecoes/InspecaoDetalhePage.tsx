@@ -1,7 +1,14 @@
 import { useEffect, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { Badge, Button, Input, Select, Text, Textarea } from '@fluentui/react-components';
-import { ArrowDownload24Regular, ArrowLeft24Regular, LockClosed24Regular, Save24Regular, Warning24Regular } from '@fluentui/react-icons';
+import {
+  ArrowDownload24Regular,
+  ArrowLeft24Regular,
+  LockClosed24Regular,
+  Save24Regular,
+  Signature24Regular,
+  Warning24Regular,
+} from '@fluentui/react-icons';
 import {
   api,
   StatusInspecao,
@@ -272,6 +279,15 @@ export function InspecaoDetalhePage() {
               {inspecao.status === StatusInspecao.EmAndamento && (
                 <Button appearance="primary" icon={<LockClosed24Regular />} onClick={encerrar} disabled={processando}>
                   Encerrar inspeção
+                </Button>
+              )}
+              {inspecao.status === StatusInspecao.Concluida && (
+                <Button
+                  appearance="primary"
+                  icon={<Signature24Regular />}
+                  onClick={() => navigate(`/prevencao/inspecoes/${id}/assinar`)}
+                >
+                  Assinar inspeção
                 </Button>
               )}
             </div>

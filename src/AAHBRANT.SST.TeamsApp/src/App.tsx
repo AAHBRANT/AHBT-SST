@@ -16,6 +16,7 @@ import { PermissaoTrabalhoDetalhePage } from './pages/pt/PermissaoTrabalhoDetalh
 import { AssinarPtPage } from './pages/pt/AssinarPtPage';
 import { InspecoesPage } from './pages/inspecoes/InspecoesPage';
 import { InspecaoDetalhePage } from './pages/inspecoes/InspecaoDetalhePage';
+import { AssinarInspecaoPage } from './pages/inspecoes/AssinarInspecaoPage';
 import { IdentificacaoPage } from './pages/identificacao/IdentificacaoPage';
 import { AreaPublicaPage } from './pages/identificacao/AreaPublicaPage';
 import { ValidarDocumentoPage } from './pages/validacao/ValidarDocumentoPage';
@@ -94,6 +95,7 @@ function App() {
               <Route path="pgr/:id" element={<PgrDetalhePage />} />
               <Route path="inspecoes" element={<InspecoesPage />} />
               <Route path="inspecoes/:id" element={<InspecaoDetalhePage />} />
+              <Route path="inspecoes/:id/assinar" element={<AssinarInspecaoPage />} />
               <Route path="dds" element={<DdsSemanalPage />} />
               <Route path="dds/semana/:id" element={<DdsSemanalDetalhePage />} />
               <Route path="dds/dia/:id" element={<DdsDetalhePage />} />

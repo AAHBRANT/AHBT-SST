@@ -3,8 +3,9 @@ using AAHBRANT.SST.Domain.Enums;
 namespace AAHBRANT.SST.Application.Inspecoes;
 
 // Layout inspirado na planilha "Patrulha de Segurança do Trabalho" do usuário (31/08): um bloco por
-// achado, com evidência anterior/posterior lado a lado — mesmo espírito do modelo original, mas no
-// layout padrão de documentos do sistema (CabecalhoDocumentoPadrao, com a logo da obra).
+// achado, com evidência anterior/posterior lado a lado. Cabeçalho próprio (não usa
+// CabecalhoDocumentoPadrao — decisão do usuário, 01/09): slot de logo sempre em branco neste
+// documento, ver InspecaoPdfService.CabecalhoInspecao.
 public record InspecaoPdfItemModelo(
     int Ordem,
     string Descricao,
@@ -19,7 +20,6 @@ public record InspecaoPdfItemModelo(
 
 public record InspecaoPdfModelo(
     string? ObraNome,
-    byte[]? ObraLogoConteudo,
     string TipoInspecao,
     string ChecklistNome,
     int ChecklistVersao,

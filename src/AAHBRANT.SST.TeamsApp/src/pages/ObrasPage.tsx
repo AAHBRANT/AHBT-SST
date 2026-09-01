@@ -24,7 +24,6 @@ import { ListaCarregando } from '../components/ListaCarregando';
 const obraVazia: NovaObra = {
   codigo: '',
   nome: '',
-  cliente: '',
   status: StatusObra.Planejada,
   dataInicio: '',
   dataPrevisaoTermino: '',
@@ -162,12 +161,6 @@ export function ObrasPage() {
         </Field>
         <Field label="Nome">
           <Input value={novaObra.nome} onChange={(_, d) => setNovaObra({ ...novaObra, nome: d.value })} />
-        </Field>
-        <Field label="Cliente">
-          <Input
-            value={novaObra.cliente ?? ''}
-            onChange={(_, d) => setNovaObra({ ...novaObra, cliente: d.value })}
-          />
         </Field>
         <Field label="Status">
           <Select

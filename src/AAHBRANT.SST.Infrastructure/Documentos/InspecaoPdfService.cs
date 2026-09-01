@@ -3,6 +3,9 @@ using AAHBRANT.SST.Domain.Enums;
 using QuestPDF.Fluent;
 using QuestPDF.Helpers;
 using QuestPDF.Infrastructure;
+using SixLabors.ImageSharp;
+using SixLabors.ImageSharp.Formats.Jpeg;
+using SixLabors.ImageSharp.Processing;
 
 namespace AAHBRANT.SST.Infrastructure.Documentos;
 
@@ -26,8 +29,7 @@ public class InspecaoPdfService : IInspecaoPdfService
                 pagina.Margin(1.5f, Unit.Centimetre);
                 pagina.DefaultTextStyle(estilo => estilo.FontSize(9));
 
-                pagina.Header().Column(coluna =>
-                    CabecalhoDocumentoPadrao.Desenhar(coluna, $"Inspeção — {modelo.TipoInspecao}", modelo.ObraNome, modelo.ObraLogoConteudo));
+                pagina.Header().Column(coluna => CabecalhoInspecao(coluna, $"Inspeção — {modelo.TipoInspecao}", modelo));
 
                 pagina.Content().PaddingVertical(10).Column(coluna =>
                 {
@@ -48,6 +50,23 @@ public class InspecaoPdfService : IInspecaoPdfService
         });
 
         return documento.GeneratePdf();
+    }
+
+    // Cabeçalho próprio da Inspeção/Patrulha de Segurança — não usa CabecalhoDocumentoPadrao (que
+    // fixa a logo da AAHBRANT pros demais documentos). Decisão do usuário (01/09): o slot de logo
+    // fica sempre em branco neste documento (assunto resolvido — sem lógica condicional por tipo de
+    // execução da obra).
+    private static void CabecalhoInspecao(ColumnDescriptor coluna, string tituloDocumento, InspecaoPdfModelo modelo)
+    {
+        coluna.Item().Row(linha =>
+        {
+            linha.RelativeItem().Column(sub =>
+            {
+                sub.Item().Text(modelo.ObraNome ?? "Inspeção").FontSize(16).Bold().FontColor(CorMarca);
+                sub.Item().Text(tituloDocumento).FontSize(12).SemiBold();
+            });
+        });
+        coluna.Item().PaddingTop(4).LineHorizontal(2).LineColor(CorMarca);
     }
 
     private static void SecaoCabecalho(IContainer container, InspecaoPdfModelo modelo)
@@ -108,11 +127,35 @@ public class InspecaoPdfService : IInspecaoPdfService
         {
             coluna.Item().Text(titulo).FontSize(8).SemiBold();
             if (foto is not null)
-                coluna.Item().Height(140).Border(1).BorderColor(Colors.Grey.Lighten2).Padding(2).Image(foto).FitArea();
+                coluna.Item().Height(140).Border(1).BorderColor(Colors.Grey.Lighten2).Padding(2).Image(RecortarParaPreencherSlot(foto)).FitArea();
             else
                 coluna.Item().Height(140).Border(1).BorderColor(Colors.Grey.Lighten2).Background(Colors.Grey.Lighten4)
                     .AlignCenter().AlignMiddle().Text("Sem foto").FontSize(8).FontColor(Colors.Grey.Darken1);
         });
+    }
+
+    // Proporção aproximada do slot de evidência (largura da coluna ÷ Height(140) acima) — fotos de
+    // celular vêm em proporções variadas e o antigo Image(foto).FitArea() só "contém" a imagem
+    // (letterbox), deixando faixas vazias quando a proporção não bate com a do slot. Recorta pelo
+    // centro na proporção do slot ANTES de desenhar, pra imagem preencher o quadro inteiro (mesmo
+    // princípio de object-fit: cover), sem depender de um modo "cover" nativo do QuestPDF (não existe
+    // nesta versão — só FitWidth/FitHeight/FitArea/FitUnproportionally). Usa SixLabors.ImageSharp
+    // (100% gerenciado, sem binário nativo) em vez de SkiaSharp puro — QuestPDF não expõe a
+    // SkiaSharp pública pro net8.0 (embute seu próprio wrapper interno), e adicionar SkiaSharp como
+    // dependência própria puxaria pacote de binário nativo por RID (Linux no container do Azure),
+    // risco maior do que o necessário só pra recortar uma foto.
+    private static byte[] RecortarParaPreencherSlot(byte[] foto)
+    {
+        using var imagem = SixLabors.ImageSharp.Image.Load(foto);
+        imagem.Mutate(x => x.Resize(new ResizeOptions
+        {
+            Size = new SixLabors.ImageSharp.Size(800, 450), // ~16:9, próximo da proporção real do slot
+            Mode = ResizeMode.Crop,
+        }));
+
+        using var saida = new MemoryStream();
+        imagem.Save(saida, new JpegEncoder { Quality = 85 });
+        return saida.ToArray();
     }
 
     private static Func<IContainer, IContainer> CelulaStatus(StatusItemChecklist? status)
