@@ -180,10 +180,6 @@ function App() {
                 />
               }
             />
-            {/* Legado: Configurações era rota própria (31/08) — virou aba de Administração
-                (pedido do usuário, 01/09), junto com Obras. */}
-            <Route path="/administracao/configuracoes" element={<Navigate to="/administracao" replace />} />
-
             {/* Redirecionamentos legados: caminhos antigos (pré-consolidação de 24/08) apontando
                 para as novas sub-rotas dentro dos módulos-pilar — preserva links/favoritos antigos. */}
             <Route path="/prevencao/riscos" element={<Navigate to="/riscos" replace />} />

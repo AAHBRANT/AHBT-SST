@@ -6,18 +6,17 @@ import { ObrasPage } from '../ObrasPage';
 import { ControleAcessoTab } from './ControleAcessoTab';
 import { TrilhaAuditoriaTab } from './TrilhaAuditoriaTab';
 import { PainelAssinaturasTab } from './PainelAssinaturasTab';
-import { EmConstrucaoPage } from '../EmConstrucaoPage';
 
-type AbaAdministracao = 'obras' | 'acesso' | 'config' | 'auditoria' | 'assinaturas';
+type AbaAdministracao = 'obras' | 'acesso' | 'auditoria' | 'assinaturas';
 
-const ABAS_VALIDAS: AbaAdministracao[] = ['obras', 'acesso', 'config', 'auditoria', 'assinaturas'];
+const ABAS_VALIDAS: AbaAdministracao[] = ['obras', 'acesso', 'auditoria', 'assinaturas'];
 
-// Obras e Configurações viraram abas daqui (pedido do usuário, 01/09) — antes Obras era aba de
-// Operação e Configurações era rota própria só com EmConstrucaoPage (ver App.tsx pros
-// redirecionamentos legados dos dois). Administração deixou de ser grupo expansível na sidebar
-// (ver AppShell.tsx) e virou item único, então essa página concentra tudo — mesmo padrão de
+// Obras virou aba daqui (pedido do usuário, 01/09) — antes era aba de Operação (ver App.tsx pro
+// redirecionamento legado). Administração deixou de ser grupo expansível na sidebar (ver
+// AppShell.tsx) e virou item único, então essa página concentra tudo — mesmo padrão de
 // PillarLayout, só que com abas controladas por estado local em vez de sub-rotas, já que nenhuma
-// dessas telas precisa de URL própria.
+// dessas telas precisa de URL própria. "Configurações" chegou a existir como aba/rota própria mas
+// foi removida (pedido do usuário, 01/09) por não ter conteúdo real ainda — sem gaveta vazia.
 export function AdministracaoPage() {
   // Suporta abrir já numa aba específica via URL (?aba=obras) — usado pelos redirecionamentos
   // legados de /operacao/obras e /obras (ver App.tsx).
@@ -43,19 +42,12 @@ export function AdministracaoPage() {
       >
         <Tab value="obras">Obras</Tab>
         <Tab value="acesso">Controle de Acesso</Tab>
-        <Tab value="config">Configurações</Tab>
         <Tab value="auditoria">Trilha de Auditoria</Tab>
         <Tab value="assinaturas">Assinaturas</Tab>
       </TabList>
 
       {aba === 'obras' && <ObrasPage />}
       {aba === 'acesso' && <ControleAcessoTab />}
-      {aba === 'config' && (
-        <EmConstrucaoPage
-          titulo="Configurações"
-          descricao="Ainda não existe uma tela de configurações gerais do sistema — hoje Administração cobre Obras, Controle de Acesso, Trilha de Auditoria e Assinaturas."
-        />
-      )}
       {aba === 'auditoria' && <TrilhaAuditoriaTab />}
       {aba === 'assinaturas' && <PainelAssinaturasTab />}
     </div>
