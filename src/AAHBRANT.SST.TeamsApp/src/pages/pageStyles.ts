@@ -33,8 +33,8 @@ export const usePageStyles = makeStyles({
   },
 });
 
-// KPI (cartão de indicador — Hub Gênesis SST): ícone em caixa, valor grande, rótulo e uma pílula
-// de variação opcional (neutra/positiva/atenção).
+// KPI (cartão de indicador — Dashboard principal): valor grande + rótulo à esquerda, ícone em
+// círculo à direita, com pílulas de variação opcionais (neutra/positiva/atenção/alerta).
 export const useKpiStyles = makeStyles({
   linha: {
     display: 'grid',
@@ -44,21 +44,44 @@ export const useKpiStyles = makeStyles({
   },
   cartao: {
     display: 'flex',
-    flexDirection: 'column',
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    justifyContent: 'space-between',
     gap: '10px',
   },
+  textos: {
+    display: 'flex',
+    flexDirection: 'column',
+    gap: '6px',
+    minWidth: 0,
+  },
   icone: {
-    width: '34px',
-    height: '34px',
-    borderRadius: '9px',
-    backgroundColor: designTokens.colorNeutralLight,
-    color: designTokens.colorPrimary,
+    width: '42px',
+    height: '42px',
+    borderRadius: '50%',
     display: 'flex',
     alignItems: 'center',
     justifyContent: 'center',
+    flexShrink: 0,
+  },
+  iconeInfo: {
+    backgroundColor: designTokens.colorInfoWash,
+    color: designTokens.colorInfo,
+  },
+  iconeSucesso: {
+    backgroundColor: designTokens.colorSuccessWash,
+    color: designTokens.colorSuccess,
+  },
+  iconeAtencao: {
+    backgroundColor: designTokens.colorWarningWash,
+    color: '#9A6B04',
+  },
+  iconeAlerta: {
+    backgroundColor: designTokens.colorAlertWash,
+    color: designTokens.colorAlert,
   },
   valor: {
-    fontSize: '28px',
+    fontSize: '26px',
     fontWeight: 800,
     letterSpacing: '-0.01em',
     fontVariantNumeric: 'tabular-nums',
@@ -67,6 +90,11 @@ export const useKpiStyles = makeStyles({
     fontSize: '12.5px',
     color: designTokens.colorNeutralMedium,
     fontWeight: 600,
+  },
+  deltasGrupo: {
+    display: 'flex',
+    flexWrap: 'wrap',
+    gap: '6px',
   },
   variacao: {
     display: 'inline-flex',
