@@ -15,6 +15,20 @@ public class CertificadoTreinamentoPdfService : ICertificadoTreinamentoPdfServic
     private const string CorBege = "#ebe9ad";
     private const string CorTexto = "#1a1a1a";
 
+    // Logo padrão da empresa (não confundir com o logo por Obra usado em EntregaEpiPdfService) —
+    // embutida como recurso do assembly para não depender de layout de arquivos em runtime/Docker.
+    private static readonly byte[] LogoAahbrant = CarregarLogoAahbrant();
+
+    private static byte[] CarregarLogoAahbrant()
+    {
+        var assembly = typeof(CertificadoTreinamentoPdfService).Assembly;
+        using var stream = assembly.GetManifestResourceStream("AAHBRANT.SST.Infrastructure.Documentos.Assets.logo-aahbrant.png")
+            ?? throw new InvalidOperationException("Logo padrão da AAHBRANT não encontrada como recurso embutido.");
+        using var memoria = new MemoryStream();
+        stream.CopyTo(memoria);
+        return memoria.ToArray();
+    }
+
     public byte[] Gerar(CertificadoTreinamentoPdfModelo modelo)
     {
         var temVerso = !string.IsNullOrWhiteSpace(modelo.ConteudoProgramatico);
@@ -75,11 +89,7 @@ public class CertificadoTreinamentoPdfService : ICertificadoTreinamentoPdfServic
     {
         container.Row(linha =>
         {
-            linha.ConstantItem(170).Column(logo =>
-            {
-                logo.Item().Text("AAHBRANT").FontSize(18).Bold().FontColor(CorMarca);
-                logo.Item().Text("ENGENHARIA & CONSTRUÇÕES").FontSize(7).FontColor(CorTexto);
-            });
+            linha.ConstantItem(170).Height(45).AlignMiddle().Image(LogoAahbrant).FitArea();
 
             linha.RelativeItem().AlignCenter().AlignMiddle().Text(titulo).FontSize(20).Bold().FontColor(CorMarca);
 
