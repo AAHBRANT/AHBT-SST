@@ -4,7 +4,6 @@ import { aahbrantTheme } from './theme';
 import { AppShell } from './layout/AppShell';
 import { PillarLayout } from './layout/PillarLayout';
 import { DashboardPage } from './pages/DashboardPage';
-import { ObrasPage } from './pages/ObrasPage';
 import { PessoasPage } from './pages/pessoas/PessoasPage';
 import { TrabalhadorDetalhePage } from './pages/pessoas/TrabalhadorDetalhePage';
 import { RiscosPage } from './pages/riscos/RiscosPage';
@@ -104,8 +103,9 @@ function App() {
             <Route path="/prevencao/pcmso" element={<Navigate to="/operacao/saude-ocupacional" replace />} />
             <Route path="/prevencao/pcmso/:id" element={<RedirecionarComId para={(id) => `/operacao/saude-ocupacional/pcmso/${id}`} />} />
 
-            {/* Módulo Operação: Obras, APR, PT, Identificação & Acesso, Saúde Ocupacional (Pessoas
-                virou item de 1º nível na sidebar — ver abaixo) */}
+            {/* Módulo Operação: APR, PT, Identificação & Acesso, Saúde Ocupacional (Pessoas virou
+                item de 1º nível na sidebar — ver abaixo; Obras saiu daqui e virou aba de
+                Administração — pedido do usuário, 01/09) */}
             <Route
               path="/operacao"
               element={
@@ -113,7 +113,6 @@ function App() {
                   titulo="Operação"
                   prefixo="operacao"
                   abas={[
-                    { valor: 'obras', rotulo: 'Obras' },
                     { valor: 'apr', rotulo: 'APR' },
                     { valor: 'pt', rotulo: 'PT (Permissão de Trabalho)' },
                     { valor: 'identificacao', rotulo: 'Identificação & Acesso' },
@@ -124,8 +123,7 @@ function App() {
                 />
               }
             >
-              <Route index element={<Navigate to="obras" replace />} />
-              <Route path="obras" element={<ObrasPage />} />
+              <Route index element={<Navigate to="apr" replace />} />
               <Route path="apr" element={<AprsPage />} />
               <Route path="apr/:id" element={<AprDetalhePage />} />
               <Route path="pt" element={<PermissoesTrabalhoPage />} />
@@ -182,15 +180,9 @@ function App() {
                 />
               }
             />
-            <Route
-              path="/administracao/configuracoes"
-              element={
-                <EmConstrucaoPage
-                  titulo="Configurações"
-                  descricao="Ainda não existe uma tela de configurações gerais do sistema — hoje Administração cobre Controle de Acesso, Trilha de Auditoria e Assinaturas."
-                />
-              }
-            />
+            {/* Legado: Configurações era rota própria (31/08) — virou aba de Administração
+                (pedido do usuário, 01/09), junto com Obras. */}
+            <Route path="/administracao/configuracoes" element={<Navigate to="/administracao" replace />} />
 
             {/* Redirecionamentos legados: caminhos antigos (pré-consolidação de 24/08) apontando
                 para as novas sub-rotas dentro dos módulos-pilar — preserva links/favoritos antigos. */}
@@ -207,7 +199,9 @@ function App() {
             <Route path="/dds" element={<Navigate to="/prevencao/dds" replace />} />
             <Route path="/dds/:id" element={<RedirecionarComId para={(id) => `/prevencao/dds/dia/${id}`} />} />
 
-            <Route path="/obras" element={<Navigate to="/operacao/obras" replace />} />
+            <Route path="/obras" element={<Navigate to="/administracao" replace />} />
+            {/* Legado: Obras era aba de Operação (até 01/09), virou aba de Administração. */}
+            <Route path="/operacao/obras" element={<Navigate to="/administracao" replace />} />
             {/* Legado: Pessoas era aba de Operação (até 28/08), virou item de 1º nível. */}
             <Route path="/operacao/pessoas" element={<Navigate to="/pessoas" replace />} />
             <Route path="/operacao/pessoas/:id" element={<RedirecionarComId para={(id) => `/pessoas/${id}`} />} />

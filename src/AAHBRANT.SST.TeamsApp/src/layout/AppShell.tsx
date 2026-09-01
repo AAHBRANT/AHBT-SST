@@ -278,21 +278,17 @@ const gruposNavegacao: GrupoNav[] = [
   },
 ];
 
-// Administração fica fixa no rodapé do rail (mesmo padrão do mockup Hub Gênesis SST) — agora
-// também é um grupo (Obras saiu da aba Operação e entrou aqui, a pedido do usuário).
-const grupoAdministracao: GrupoNav = {
-  chave: 'administracao',
-  titulo: 'Administração',
+// Administração fica fixa no rodapé do rail (mesmo padrão do mockup Hub Gênesis SST) — item único,
+// não grupo: Obras/Controle de Acesso/Configurações/Trilha de Auditoria/Assinaturas viraram abas
+// internas de AdministracaoPage em vez de destinos separados na sidebar (pedido do usuário, 01/09 —
+// reverte a versão em grupo de 31/08, que tinha 4 sub-itens aqui).
+const itemAdministracao: ItemNav & { icone: typeof Grid24Regular } = {
+  rota: '/administracao',
+  rotulo: 'Administração',
   icone: Settings24Regular,
-  itens: [
-    { rota: '/operacao/obras', rotulo: 'Obras' },
-    { rota: '/administracao', rotulo: 'Usuários' },
-    { rota: '/administracao', rotulo: 'Permissões' },
-    { rota: '/administracao/configuracoes', rotulo: 'Configurações' },
-  ],
 };
 
-const todosGrupos = [...gruposNavegacao, grupoAdministracao];
+const todosGrupos = gruposNavegacao;
 const CHAVE_GRUPOS_ABERTOS = 'sst.gruposNavAbertos';
 
 // Compara rota-alvo com a localização atual. Itens com querystring (?aba=/?tipo=) exigem
@@ -535,14 +531,7 @@ export function AppShell({ children }: { children: ReactNode }) {
           />
         ))}
         <div className={estilos.railRodape}>
-          <GrupoRail
-            grupo={grupoAdministracao}
-            expandido={railExpandido}
-            aberto={gruposAbertos.has(grupoAdministracao.chave)}
-            aoAlternarAberto={() => alternarGrupo(grupoAdministracao.chave)}
-            pathname={location.pathname}
-            search={location.search}
-          />
+          <ItemRail {...itemAdministracao} expandido={railExpandido} />
         </div>
       </nav>
 
