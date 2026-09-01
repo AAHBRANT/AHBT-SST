@@ -9,7 +9,7 @@ import { LeitorNfcTab } from './LeitorNfcTab';
 type AbaIdentificacao = 'dashboard' | 'areas' | 'tags' | 'leitor';
 
 export function IdentificacaoPage() {
-  const [aba, setAba] = useState<AbaIdentificacao>('dashboard');
+  const [aba, setAba] = useState<AbaIdentificacao>('areas');
   const estilosAba = usePillTabStyles();
 
   return (
@@ -25,16 +25,16 @@ export function IdentificacaoPage() {
         onTabSelect={(_: SelectTabEvent, data: SelectTabData) => setAba(data.value as AbaIdentificacao)}
         className={estilosAba.lista}
       >
-        <Tab value="dashboard">Dashboard</Tab>
         <Tab value="areas">Áreas</Tab>
         <Tab value="tags">Tags (NFC/QR)</Tab>
         <Tab value="leitor">Leitor / Teste NFC</Tab>
+        <Tab value="dashboard">Dashboard</Tab>
       </TabList>
 
-      {aba === 'dashboard' && <IdentificacaoDashboardTab />}
       {aba === 'areas' && <AreasSstTab />}
       {aba === 'tags' && <TagsIdentificacaoTab />}
       {aba === 'leitor' && <LeitorNfcTab />}
+      {aba === 'dashboard' && <IdentificacaoDashboardTab />}
     </div>
   );
 }

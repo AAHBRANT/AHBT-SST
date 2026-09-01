@@ -8,7 +8,7 @@ import { InspecoesTab } from './InspecoesTab';
 type AbaInspecoes = 'dashboard' | 'execucoes' | 'checklists';
 
 export function InspecoesPage() {
-  const [aba, setAba] = useState<AbaInspecoes>('dashboard');
+  const [aba, setAba] = useState<AbaInspecoes>('execucoes');
   const estilosAba = usePillTabStyles();
 
   return (
@@ -24,14 +24,14 @@ export function InspecoesPage() {
         onTabSelect={(_: SelectTabEvent, data: SelectTabData) => setAba(data.value as AbaInspecoes)}
         className={estilosAba.lista}
       >
-        <Tab value="dashboard">Dashboard</Tab>
         <Tab value="execucoes">Execuções</Tab>
         <Tab value="checklists">Checklists</Tab>
+        <Tab value="dashboard">Dashboard</Tab>
       </TabList>
 
-      {aba === 'dashboard' && <InspecoesDashboardTab />}
       {aba === 'execucoes' && <InspecoesTab />}
       {aba === 'checklists' && <ChecklistModelosTab />}
+      {aba === 'dashboard' && <InspecoesDashboardTab />}
     </div>
   );
 }

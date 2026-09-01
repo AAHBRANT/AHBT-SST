@@ -7,7 +7,7 @@ import { PermissoesTrabalhoTab } from './PermissoesTrabalhoTab';
 type AbaPt = 'dashboard' | 'registros';
 
 export function PermissoesTrabalhoPage() {
-  const [aba, setAba] = useState<AbaPt>('dashboard');
+  const [aba, setAba] = useState<AbaPt>('registros');
   const estilosAba = usePillTabStyles();
 
   return (
@@ -23,12 +23,12 @@ export function PermissoesTrabalhoPage() {
         onTabSelect={(_: SelectTabEvent, data: SelectTabData) => setAba(data.value as AbaPt)}
         className={estilosAba.lista}
       >
-        <Tab value="dashboard">Dashboard</Tab>
         <Tab value="registros">PTs</Tab>
+        <Tab value="dashboard">Dashboard</Tab>
       </TabList>
 
-      {aba === 'dashboard' && <PtDashboardTab />}
       {aba === 'registros' && <PermissoesTrabalhoTab />}
+      {aba === 'dashboard' && <PtDashboardTab />}
     </div>
   );
 }

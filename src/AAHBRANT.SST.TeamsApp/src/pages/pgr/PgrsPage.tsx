@@ -7,7 +7,7 @@ import { PgrsTab } from './PgrsTab';
 type AbaPgrs = 'dashboard' | 'registros';
 
 export function PgrsPage() {
-  const [aba, setAba] = useState<AbaPgrs>('dashboard');
+  const [aba, setAba] = useState<AbaPgrs>('registros');
   const estilosAba = usePillTabStyles();
 
   return (
@@ -23,12 +23,12 @@ export function PgrsPage() {
         onTabSelect={(_: SelectTabEvent, data: SelectTabData) => setAba(data.value as AbaPgrs)}
         className={estilosAba.lista}
       >
-        <Tab value="dashboard">Dashboard</Tab>
         <Tab value="registros">PGRs</Tab>
+        <Tab value="dashboard">Dashboard</Tab>
       </TabList>
 
-      {aba === 'dashboard' && <PgrDashboardTab />}
       {aba === 'registros' && <PgrsTab />}
+      {aba === 'dashboard' && <PgrDashboardTab />}
     </div>
   );
 }

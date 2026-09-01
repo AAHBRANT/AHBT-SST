@@ -7,7 +7,7 @@ import { AprsTab } from './AprsTab';
 type AbaAprs = 'dashboard' | 'registros';
 
 export function AprsPage() {
-  const [aba, setAba] = useState<AbaAprs>('dashboard');
+  const [aba, setAba] = useState<AbaAprs>('registros');
   const estilosAba = usePillTabStyles();
 
   return (
@@ -23,12 +23,12 @@ export function AprsPage() {
         onTabSelect={(_: SelectTabEvent, data: SelectTabData) => setAba(data.value as AbaAprs)}
         className={estilosAba.lista}
       >
-        <Tab value="dashboard">Dashboard</Tab>
         <Tab value="registros">APRs</Tab>
+        <Tab value="dashboard">Dashboard</Tab>
       </TabList>
 
-      {aba === 'dashboard' && <AprDashboardTab />}
       {aba === 'registros' && <AprsTab />}
+      {aba === 'dashboard' && <AprDashboardTab />}
     </div>
   );
 }

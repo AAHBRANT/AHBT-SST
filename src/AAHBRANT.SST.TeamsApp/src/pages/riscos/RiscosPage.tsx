@@ -8,7 +8,7 @@ import { MatrizRiscoTab } from './MatrizRiscoTab';
 type AbaRiscos = 'dashboard' | 'matriz' | 'atividades';
 
 export function RiscosPage() {
-  const [aba, setAba] = useState<AbaRiscos>('dashboard');
+  const [aba, setAba] = useState<AbaRiscos>('matriz');
   const estilosAba = usePillTabStyles();
 
   return (
@@ -24,14 +24,14 @@ export function RiscosPage() {
         onTabSelect={(_: SelectTabEvent, data: SelectTabData) => setAba(data.value as AbaRiscos)}
         className={estilosAba.lista}
       >
-        <Tab value="dashboard">Dashboard</Tab>
         <Tab value="matriz">Matriz de Risco</Tab>
         <Tab value="atividades">Atividades</Tab>
+        <Tab value="dashboard">Dashboard</Tab>
       </TabList>
 
-      {aba === 'dashboard' && <RiscosDashboardTab />}
       {aba === 'matriz' && <MatrizRiscoTab />}
       {aba === 'atividades' && <AtividadesTab />}
+      {aba === 'dashboard' && <RiscosDashboardTab />}
     </div>
   );
 }

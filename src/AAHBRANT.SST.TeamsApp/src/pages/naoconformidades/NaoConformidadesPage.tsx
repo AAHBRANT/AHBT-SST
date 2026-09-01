@@ -7,7 +7,7 @@ import { NaoConformidadesTab } from './NaoConformidadesTab';
 type AbaNaoConformidades = 'dashboard' | 'registros';
 
 export function NaoConformidadesPage() {
-  const [aba, setAba] = useState<AbaNaoConformidades>('dashboard');
+  const [aba, setAba] = useState<AbaNaoConformidades>('registros');
   const estilosAba = usePillTabStyles();
 
   return (
@@ -23,12 +23,12 @@ export function NaoConformidadesPage() {
         onTabSelect={(_: SelectTabEvent, data: SelectTabData) => setAba(data.value as AbaNaoConformidades)}
         className={estilosAba.lista}
       >
-        <Tab value="dashboard">Dashboard</Tab>
         <Tab value="registros">Não Conformidades</Tab>
+        <Tab value="dashboard">Dashboard</Tab>
       </TabList>
 
-      {aba === 'dashboard' && <NaoConformidadesDashboardTab />}
       {aba === 'registros' && <NaoConformidadesTab />}
+      {aba === 'dashboard' && <NaoConformidadesDashboardTab />}
     </div>
   );
 }
