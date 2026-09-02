@@ -525,6 +525,26 @@ export interface Risco {
 
 export type NovoRisco = Omit<Risco, 'id' | 'nivelRisco'>;
 
+export interface RiscoLoteItem {
+  nomeAtividade: string;
+  descricaoAtividade?: string | null;
+  nomePerigo: string;
+  agentePerigo?: string | null;
+  ambiente?: string | null;
+  exposicao?: string | null;
+  consequencia?: string | null;
+  probabilidade: number;
+  severidade: number;
+  controlesExistentes?: string | null;
+  controlesAdicionais?: string | null;
+}
+
+export interface ImportarRiscosLoteResultado {
+  atividadesCriadas: number;
+  perigosCriados: number;
+  riscosCriados: number;
+}
+
 export const StatusPgr = {
   EmElaboracao: 1,
   Vigente: 2,
@@ -3055,6 +3075,11 @@ export const api = {
     listar: (atividadeId?: string) => request<Risco[]>(`/api/riscos${atividadeId ? `?atividadeId=${atividadeId}` : ''}`),
     criar: (risco: NovoRisco) => request<{ id: string }>('/api/riscos', { method: 'POST', body: JSON.stringify(risco) }),
     excluir: (id: string) => request<void>(`/api/riscos/${id}`, { method: 'DELETE' }),
+    importarLote: (obraId: string, itens: RiscoLoteItem[]) =>
+      request<ImportarRiscosLoteResultado>('/api/riscos/importar-lote', {
+        method: 'POST',
+        body: JSON.stringify({ obraId, itens }),
+      }),
   },
   pgrs: {
     listar: (obraId?: string) => request<Pgr[]>(`/api/pgrs${obraId ? `?obraId=${obraId}` : ''}`),

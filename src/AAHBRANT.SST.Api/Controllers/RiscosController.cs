@@ -51,4 +51,9 @@ public class RiscosController : ControllerBase
         await _mediator.Send(new ExcluirRiscoCommand(id), ct);
         return NoContent();
     }
+
+    [Authorize(Policy = "risco:criar")]
+    [HttpPost("importar-lote")]
+    public async Task<IActionResult> ImportarLote(ImportarRiscosLoteCommand command, CancellationToken ct)
+        => Ok(await _mediator.Send(command, ct));
 }

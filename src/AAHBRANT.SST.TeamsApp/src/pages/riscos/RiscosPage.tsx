@@ -4,8 +4,9 @@ import { usePillTabStyles } from '../pageStyles';
 import { RiscosDashboardTab } from './dashboard/RiscosDashboardTab';
 import { AtividadesTab } from './AtividadesTab';
 import { MatrizRiscoTab } from './MatrizRiscoTab';
+import { ImportarLoteTab } from './ImportarLoteTab';
 
-type AbaRiscos = 'dashboard' | 'matriz' | 'atividades';
+type AbaRiscos = 'dashboard' | 'matriz' | 'atividades' | 'importar';
 
 export function RiscosPage() {
   const [aba, setAba] = useState<AbaRiscos>('matriz');
@@ -26,11 +27,13 @@ export function RiscosPage() {
       >
         <Tab value="matriz">Matriz de Risco</Tab>
         <Tab value="atividades">Atividades</Tab>
+        <Tab value="importar">Importar em Lote</Tab>
         <Tab value="dashboard">Dashboard</Tab>
       </TabList>
 
       {aba === 'matriz' && <MatrizRiscoTab />}
       {aba === 'atividades' && <AtividadesTab />}
+      {aba === 'importar' && <ImportarLoteTab />}
       {aba === 'dashboard' && <RiscosDashboardTab />}
     </div>
   );
