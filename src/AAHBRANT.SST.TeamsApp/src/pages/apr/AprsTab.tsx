@@ -15,6 +15,7 @@ import {
   TableRow,
   Text,
 } from '@fluentui/react-components';
+import { CampoData } from '../../components/CampoData';
 import { Add24Regular, ChevronRight24Regular, Delete24Regular } from '@fluentui/react-icons';
 import { api, statusAprLabel, type Apr, type Atividade, type Equipe, type NovaApr, type Trabalhador } from '../../lib/api';
 import { usePageStyles, useCheckboxChipStyles } from '../pageStyles';
@@ -181,15 +182,13 @@ export function AprsTab() {
           </Select>
         </Field>
         <Field label="Data">
-          <Input
-            type="date"
+          <CampoData
             value={novaApr.data}
             onChange={(_, d) => setNovaApr({ ...novaApr, data: d.value })}
           />
         </Field>
         <Field label="Validade">
-          <Input
-            type="date"
+          <CampoData
             value={novaApr.validade ?? ''}
             onChange={(_, d) => setNovaApr({ ...novaApr, validade: d.value || null })}
           />

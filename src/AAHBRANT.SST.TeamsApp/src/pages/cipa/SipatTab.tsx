@@ -14,6 +14,7 @@ import {
   Text,
   Textarea,
 } from '@fluentui/react-components';
+import { CampoData } from '../../components/CampoData';
 import { Add24Regular, ChevronRight24Regular, Delete24Regular } from '@fluentui/react-icons';
 import { api, type EventoSipat, type NovoEventoSipat, type Obra } from '../../lib/api';
 import { usePageStyles } from '../pageStyles';
@@ -117,10 +118,10 @@ export function SipatTab() {
             />
           </Field>
           <Field label="Início" required>
-            <Input type="date" value={novo.dataInicio} onChange={(_, d) => setNovo({ ...novo, dataInicio: d.value })} />
+            <CampoData value={novo.dataInicio} onChange={(_, d) => setNovo({ ...novo, dataInicio: d.value })} />
           </Field>
           <Field label="Fim" required>
-            <Input type="date" value={novo.dataFim} onChange={(_, d) => setNovo({ ...novo, dataFim: d.value })} />
+            <CampoData value={novo.dataFim} onChange={(_, d) => setNovo({ ...novo, dataFim: d.value })} />
           </Field>
           <Field label="Tema">
             <Input value={novo.tema ?? ''} onChange={(_, d) => setNovo({ ...novo, tema: d.value })} />

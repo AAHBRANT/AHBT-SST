@@ -13,6 +13,7 @@ import {
   TableRow,
   Text,
 } from '@fluentui/react-components';
+import { CampoData } from '../../components/CampoData';
 import { Add24Regular, ChevronRight24Regular, Delete24Regular } from '@fluentui/react-icons';
 import { api, statusPgrLabel, StatusPgr, type NovoPgr, type Obra, type Pgr } from '../../lib/api';
 import { usePageStyles } from '../pageStyles';
@@ -126,22 +127,19 @@ export function PgrsTab() {
           />
         </Field>
         <Field label="Data de elaboração">
-          <Input
-            type="date"
+          <CampoData
             value={novoPgr.dataElaboracao}
             onChange={(_, d) => setNovoPgr({ ...novoPgr, dataElaboracao: d.value })}
           />
         </Field>
         <Field label="Próxima revisão">
-          <Input
-            type="date"
+          <CampoData
             value={novoPgr.dataProximaRevisao ?? ''}
             onChange={(_, d) => setNovoPgr({ ...novoPgr, dataProximaRevisao: d.value || null })}
           />
         </Field>
         <Field label="Término da vigência">
-          <Input
-            type="date"
+          <CampoData
             value={novoPgr.dataTermino ?? ''}
             onChange={(_, d) => setNovoPgr({ ...novoPgr, dataTermino: d.value || null })}
           />

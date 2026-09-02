@@ -4,7 +4,6 @@ import {
   Badge,
   Button,
   Field,
-  Input,
   Select,
   Table,
   TableBody,
@@ -14,6 +13,7 @@ import {
   TableRow,
   Text,
 } from '@fluentui/react-components';
+import { CampoData } from '../../components/CampoData';
 import { Add24Regular, ChevronRight24Regular } from '@fluentui/react-icons';
 import {
   api,
@@ -150,8 +150,7 @@ export function InspecoesTab() {
           </Select>
         </Field>
         <Field label="Data">
-          <Input
-            type="date"
+          <CampoData
             value={novaInspecao.data}
             onChange={(_, d) => setNovaInspecao({ ...novaInspecao, data: d.value })}
           />

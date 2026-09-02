@@ -19,6 +19,7 @@ import {
   type SelectTabData,
   type SelectTabEvent,
 } from '@fluentui/react-components';
+import { CampoData } from '../../components/CampoData';
 import { AddCircle24Regular, ChevronRight24Regular } from '@fluentui/react-icons';
 import {
   api,
@@ -214,7 +215,7 @@ export function AcidentesPage() {
             <Input value={nova.local} onChange={(_, d) => setNova({ ...nova, local: d.value })} />
           </Field>
           <Field label="Data" required>
-            <Input type="date" value={nova.data} onChange={(_, d) => setNova({ ...nova, data: d.value })} />
+            <CampoData value={nova.data} onChange={(_, d) => setNova({ ...nova, data: d.value })} />
           </Field>
           <Field label="Hora">
             <Input type="time" value={nova.hora ?? ''} onChange={(_, d) => setNova({ ...nova, hora: d.value })} />

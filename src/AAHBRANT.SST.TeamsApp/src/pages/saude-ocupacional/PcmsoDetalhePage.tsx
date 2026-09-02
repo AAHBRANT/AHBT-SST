@@ -15,6 +15,7 @@ import {
   Text,
   Textarea,
 } from '@fluentui/react-components';
+import { CampoData } from '../../components/CampoData';
 import { ArrowLeft24Regular, Delete24Regular, Save24Regular } from '@fluentui/react-icons';
 import {
   api,
@@ -236,15 +237,13 @@ export function PcmsoDetalhePage() {
                 </Select>
               </Field>
               <Field label="Data de emissão" required>
-                <Input
-                  type="date"
+                <CampoData
                   value={edicao.dataEmissao?.slice(0, 10) ?? ''}
                   onChange={(_, d) => setEdicao({ ...edicao, dataEmissao: d.value })}
                 />
               </Field>
               <Field label="Validade">
-                <Input
-                  type="date"
+                <CampoData
                   value={edicao.validade?.slice(0, 10) ?? ''}
                   onChange={(_, d) => setEdicao({ ...edicao, validade: d.value })}
                 />
@@ -378,8 +377,7 @@ export function PcmsoDetalhePage() {
                 </Select>
               </Field>
               <Field label="Prazo">
-                <Input
-                  type="date"
+                <CampoData
                   value={novaAcao.prazo ?? ''}
                   onChange={(_, d) => setNovaAcao({ ...novaAcao, prazo: d.value })}
                 />

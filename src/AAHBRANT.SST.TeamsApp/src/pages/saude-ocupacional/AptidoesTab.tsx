@@ -14,6 +14,7 @@ import {
   Text,
   Textarea,
 } from '@fluentui/react-components';
+import { CampoData } from '../../components/CampoData';
 import { Add24Regular, Delete24Regular, Save24Regular } from '@fluentui/react-icons';
 import {
   api,
@@ -169,15 +170,13 @@ export function AptidoesTab() {
             />
           </Field>
           <Field label="Data da avaliação">
-            <Input
-              type="date"
+            <CampoData
               value={novaAptidao.dataAvaliacao}
               onChange={(_, d) => setNovaAptidao({ ...novaAptidao, dataAvaliacao: d.value })}
             />
           </Field>
           <Field label="Validade (opcional)">
-            <Input
-              type="date"
+            <CampoData
               value={novaAptidao.dataValidade ?? ''}
               onChange={(_, d) => setNovaAptidao({ ...novaAptidao, dataValidade: d.value })}
             />
@@ -247,15 +246,13 @@ export function AptidoesTab() {
                     />
                   </TableCell>
                   <TableCell>
-                    <Input
-                      type="date"
+                    <CampoData
                       value={edicao.dataAvaliacao?.slice(0, 10)}
                       onChange={(_, d) => setEdicao({ ...edicao, dataAvaliacao: d.value })}
                     />
                   </TableCell>
                   <TableCell>
-                    <Input
-                      type="date"
+                    <CampoData
                       value={edicao.dataValidade?.slice(0, 10) ?? ''}
                       onChange={(_, d) => setEdicao({ ...edicao, dataValidade: d.value })}
                     />

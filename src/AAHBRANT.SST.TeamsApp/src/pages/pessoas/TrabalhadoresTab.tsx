@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Avatar, Badge, Button, Field, Input, Select, Text } from '@fluentui/react-components';
+import { CampoData } from '../../components/CampoData';
 import { Add24Regular, ChevronRight24Regular, Delete24Regular, Fingerprint24Regular, Search24Regular } from '@fluentui/react-icons';
 import { SeletorFotoCamera } from '../../components/SeletorFotoCamera';
 import {
@@ -268,8 +269,7 @@ export function TrabalhadoresTab() {
           </Select>
         </Field>
         <Field label="Data de admissão">
-          <Input
-            type="date"
+          <CampoData
             value={novoTrabalhador.dataAdmissao}
             onChange={(_, d) => setNovoTrabalhador({ ...novoTrabalhador, dataAdmissao: d.value })}
           />

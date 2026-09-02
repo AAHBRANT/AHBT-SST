@@ -15,6 +15,7 @@ import {
   TableRow,
   Text,
 } from '@fluentui/react-components';
+import { CampoData } from '../../components/CampoData';
 import { Add24Regular, ChevronRight24Regular, Delete24Regular } from '@fluentui/react-icons';
 import {
   api,
@@ -198,7 +199,7 @@ export function PermissoesTrabalhoTab() {
           </Select>
         </Field>
         <Field label="Data">
-          <Input type="date" value={novaPt.data} onChange={(_, d) => setNovaPt({ ...novaPt, data: d.value })} />
+          <CampoData value={novaPt.data} onChange={(_, d) => setNovaPt({ ...novaPt, data: d.value })} />
         </Field>
         <Field label="Horário início">
           <Input
@@ -215,8 +216,7 @@ export function PermissoesTrabalhoTab() {
           />
         </Field>
         <Field label="Validade">
-          <Input
-            type="date"
+          <CampoData
             value={novaPt.validade ?? ''}
             onChange={(_, d) => setNovaPt({ ...novaPt, validade: d.value || null })}
           />

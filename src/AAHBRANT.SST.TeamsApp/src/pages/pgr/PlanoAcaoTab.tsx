@@ -13,6 +13,7 @@ import {
   TableRow,
   Text,
 } from '@fluentui/react-components';
+import { CampoData } from '../../components/CampoData';
 import { Add24Regular, Delete24Regular } from '@fluentui/react-icons';
 import {
   api,
@@ -133,8 +134,7 @@ export function PlanoAcaoTab({ pgrId, riscosDisponiveis }: { pgrId: string; risc
           />
         </Field>
         <Field label="Prazo">
-          <Input
-            type="date"
+          <CampoData
             value={novoItem.prazo ?? ''}
             onChange={(_, d) => setNovoItem({ ...novoItem, prazo: d.value || null })}
           />

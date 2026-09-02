@@ -14,6 +14,7 @@ import {
   Text,
   Textarea,
 } from '@fluentui/react-components';
+import { CampoData } from '../../components/CampoData';
 import { Add24Regular, Delete24Regular } from '@fluentui/react-icons';
 import {
   api,
@@ -127,15 +128,13 @@ export function AsoTab({ trabalhadorId }: { trabalhadorId: string }) {
           </Select>
         </Field>
         <Field label="Data do exame">
-          <Input
-            type="date"
+          <CampoData
             value={novoAso.dataExame}
             onChange={(_, d) => setNovoAso({ ...novoAso, dataExame: d.value })}
           />
         </Field>
         <Field label="Validade">
-          <Input
-            type="date"
+          <CampoData
             value={novoAso.dataValidade}
             onChange={(_, d) => setNovoAso({ ...novoAso, dataValidade: d.value })}
           />

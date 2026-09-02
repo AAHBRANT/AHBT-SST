@@ -14,6 +14,7 @@ import {
   Text,
   Textarea,
 } from '@fluentui/react-components';
+import { CampoData } from '../../components/CampoData';
 import { Add24Regular, Delete24Regular, Save24Regular } from '@fluentui/react-icons';
 import {
   api,
@@ -173,15 +174,13 @@ export function AsosTab() {
             </Select>
           </Field>
           <Field label="Data do exame">
-            <Input
-              type="date"
+            <CampoData
               value={novoAso.dataExame}
               onChange={(_, d) => setNovoAso({ ...novoAso, dataExame: d.value })}
             />
           </Field>
           <Field label="Validade">
-            <Input
-              type="date"
+            <CampoData
               value={novoAso.dataValidade}
               onChange={(_, d) => setNovoAso({ ...novoAso, dataValidade: d.value })}
             />
@@ -260,15 +259,13 @@ export function AsosTab() {
                     </Select>
                   </TableCell>
                   <TableCell>
-                    <Input
-                      type="date"
+                    <CampoData
                       value={edicao.dataExame?.slice(0, 10)}
                       onChange={(_, d) => setEdicao({ ...edicao, dataExame: d.value })}
                     />
                   </TableCell>
                   <TableCell>
-                    <Input
-                      type="date"
+                    <CampoData
                       value={edicao.dataValidade?.slice(0, 10)}
                       onChange={(_, d) => setEdicao({ ...edicao, dataValidade: d.value })}
                     />

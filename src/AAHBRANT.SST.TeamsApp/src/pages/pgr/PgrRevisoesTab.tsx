@@ -11,6 +11,7 @@ import {
   TableRow,
   Text,
 } from '@fluentui/react-components';
+import { CampoData } from '../../components/CampoData';
 import { Add24Regular } from '@fluentui/react-icons';
 import { api, type NovaPgrRevisao, type PgrRevisao } from '../../lib/api';
 import { usePageStyles } from '../pageStyles';
@@ -66,8 +67,7 @@ export function PgrRevisoesTab({ pgrId }: { pgrId: string }) {
 
       <div className={estilos.form}>
         <Field label="Data da revisão">
-          <Input
-            type="date"
+          <CampoData
             value={novaRevisao.dataRevisao}
             onChange={(_, d) => setNovaRevisao({ ...novaRevisao, dataRevisao: d.value })}
           />

@@ -15,6 +15,7 @@ import {
   Text,
   Textarea,
 } from '@fluentui/react-components';
+import { CampoData } from '../../components/CampoData';
 import { ArrowLeft24Regular, CheckmarkCircle24Regular } from '@fluentui/react-icons';
 import {
   api,
@@ -300,8 +301,7 @@ export function NaoConformidadeDetalhePage() {
                     </Select>
                   </Field>
                   <Field label="Prazo (opcional — sugerido pela prioridade se em branco)">
-                    <Input
-                      type="date"
+                    <CampoData
                       value={resposta.prazo}
                       onChange={(_, d) => setResposta({ ...resposta, prazo: d.value })}
                     />
@@ -426,8 +426,7 @@ export function NaoConformidadeDetalhePage() {
             </Select>
           </Field>
           <Field label="Prazo">
-            <Input
-              type="date"
+            <CampoData
               value={novaAcao.prazo ?? ''}
               onChange={(_, d) => setNovaAcao({ ...novaAcao, prazo: d.value })}
             />

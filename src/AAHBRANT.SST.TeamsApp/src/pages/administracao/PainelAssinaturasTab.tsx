@@ -12,6 +12,7 @@ import {
   TableRow,
   Text,
 } from '@fluentui/react-components';
+import { CampoData } from '../../components/CampoData';
 import { ArrowDownload24Regular, Filter24Regular, Link24Regular } from '@fluentui/react-icons';
 import { api, statusDocumentoAssinaturaLabel, type DocumentoAssinaturaResumo } from '../../lib/api';
 import { usePageStyles } from '../pageStyles';
@@ -92,10 +93,10 @@ export function PainelAssinaturasTab() {
             <Input value={entidadeTipo} onChange={(_, d) => setEntidadeTipo(d.value)} placeholder="Ex.: Dds" />
           </Field>
           <Field label="Data início">
-            <Input type="date" value={dataInicio} onChange={(_, d) => setDataInicio(d.value)} />
+            <CampoData value={dataInicio} onChange={(_, d) => setDataInicio(d.value)} />
           </Field>
           <Field label="Data fim">
-            <Input type="date" value={dataFim} onChange={(_, d) => setDataFim(d.value)} />
+            <CampoData value={dataFim} onChange={(_, d) => setDataFim(d.value)} />
           </Field>
         </div>
         <div className={estilos.formActions}>

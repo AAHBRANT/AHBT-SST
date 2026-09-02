@@ -4,7 +4,6 @@ import {
   Badge,
   Button,
   Field,
-  Input,
   Select,
   Table,
   TableBody,
@@ -15,6 +14,7 @@ import {
   Text,
   Textarea,
 } from '@fluentui/react-components';
+import { CampoData } from '../../components/CampoData';
 import { Add24Regular, ChevronRight24Regular, Delete24Regular } from '@fluentui/react-icons';
 import {
   api,
@@ -128,7 +128,7 @@ export function ReunioesCipaTab() {
             </Select>
           </Field>
           <Field label="Data da reunião" required>
-            <Input type="date" value={novo.dataReuniao} onChange={(_, d) => setNovo({ ...novo, dataReuniao: d.value })} />
+            <CampoData value={novo.dataReuniao} onChange={(_, d) => setNovo({ ...novo, dataReuniao: d.value })} />
           </Field>
           <Field label="Pauta">
             <Textarea value={novo.pauta ?? ''} onChange={(_, d) => setNovo({ ...novo, pauta: d.value })} />

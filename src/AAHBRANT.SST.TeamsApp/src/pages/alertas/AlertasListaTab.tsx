@@ -13,6 +13,7 @@ import {
   TableRow,
   Text,
 } from '@fluentui/react-components';
+import { CampoData } from '../../components/CampoData';
 import { AddCircle24Regular, CheckmarkCircle24Regular, Delete24Regular, DismissCircle24Regular, PlayCircle24Regular } from '@fluentui/react-icons';
 import {
   api,
@@ -230,8 +231,7 @@ export function AlertasListaTab() {
             </Select>
           </Field>
           <Field label="Prazo para tratamento">
-            <Input
-              type="date"
+            <CampoData
               value={novo.dataLimiteTratamento ?? ''}
               onChange={(_, d) => setNovo({ ...novo, dataLimiteTratamento: d.value })}
             />

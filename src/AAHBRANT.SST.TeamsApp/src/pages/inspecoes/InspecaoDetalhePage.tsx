@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { Badge, Button, Input, Select, Text, Textarea } from '@fluentui/react-components';
+import { CampoData } from '../../components/CampoData';
 import {
   ArrowDownload24Regular,
   ArrowLeft24Regular,
@@ -366,8 +367,7 @@ export function InspecaoDetalhePage() {
                 </div>
                 <div style={{ minWidth: 160 }}>
                   <Text size={200} block style={{ marginBottom: 2 }}>Prazo</Text>
-                  <Input
-                    type="date"
+                  <CampoData
                     value={edicao.prazo}
                     onChange={(_, d) => atualizarEdicao(resposta.id, { prazo: d.value })}
                     disabled={somenteLeitura}

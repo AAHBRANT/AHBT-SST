@@ -14,6 +14,7 @@ import {
   TableRow,
   Text,
 } from '@fluentui/react-components';
+import { CampoData } from '../../components/CampoData';
 import { ArrowLeft24Regular, DocumentPdf24Regular } from '@fluentui/react-icons';
 import {
   api,
@@ -261,10 +262,10 @@ export function ProcessoEleitoralCipaDetalhePage() {
               </Text>
               <div className={estilos.form}>
                 <Field label="Início do mandato" required>
-                  <Input type="date" value={dataInicioMandato} onChange={(_, d) => setDataInicioMandato(d.value)} />
+                  <CampoData value={dataInicioMandato} onChange={(_, d) => setDataInicioMandato(d.value)} />
                 </Field>
                 <Field label="Fim do mandato" required>
-                  <Input type="date" value={dataFimMandato} onChange={(_, d) => setDataFimMandato(d.value)} />
+                  <CampoData value={dataFimMandato} onChange={(_, d) => setDataFimMandato(d.value)} />
                 </Field>
               </div>
               <Table>

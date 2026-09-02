@@ -16,6 +16,7 @@ import {
   Text,
   Textarea,
 } from '@fluentui/react-components';
+import { CampoData } from '../../components/CampoData';
 import { ArrowLeft24Regular, Delete24Regular, DocumentPdf24Regular } from '@fluentui/react-icons';
 import {
   api,
@@ -354,7 +355,7 @@ export function ReuniaoCipaDetalhePage() {
                 </Select>
               </Field>
               <Field label="Prazo">
-                <Input type="date" value={novaAcao.prazo ?? ''} onChange={(_, d) => setNovaAcao({ ...novaAcao, prazo: d.value })} />
+                <CampoData value={novaAcao.prazo ?? ''} onChange={(_, d) => setNovaAcao({ ...novaAcao, prazo: d.value })} />
               </Field>
             </div>
             <div className={estilos.formActions}>

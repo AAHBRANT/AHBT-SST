@@ -14,6 +14,7 @@ import {
   TableRow,
   Text,
 } from '@fluentui/react-components';
+import { CampoData } from '../../components/CampoData';
 import { Add24Regular, ChevronRight24Regular } from '@fluentui/react-icons';
 import {
   api,
@@ -115,8 +116,7 @@ export function DdsSemanalPage() {
             </Select>
           </Field>
           <Field label="Início da semana">
-            <Input
-              type="date"
+            <CampoData
               value={nova.dataInicioSemana}
               onChange={(_, d) => setNova({ ...nova, dataInicioSemana: d.value })}
             />

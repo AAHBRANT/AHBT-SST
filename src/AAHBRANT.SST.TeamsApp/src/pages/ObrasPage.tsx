@@ -12,6 +12,7 @@ import {
   TableRow,
   Text,
 } from '@fluentui/react-components';
+import { CampoData } from '../components/CampoData';
 import { Add24Regular, Delete24Regular } from '@fluentui/react-icons';
 import { api, statusObraLabel, StatusObra, type NovaObra, type Obra } from '../lib/api';
 import { SeletorFotoCamera } from '../components/SeletorFotoCamera';
@@ -175,15 +176,13 @@ export function ObrasPage() {
           </Select>
         </Field>
         <Field label="Data de início">
-          <Input
-            type="date"
+          <CampoData
             value={novaObra.dataInicio ?? ''}
             onChange={(_, d) => setNovaObra({ ...novaObra, dataInicio: d.value })}
           />
         </Field>
         <Field label="Previsão de término">
-          <Input
-            type="date"
+          <CampoData
             value={novaObra.dataPrevisaoTermino ?? ''}
             onChange={(_, d) => setNovaObra({ ...novaObra, dataPrevisaoTermino: d.value })}
           />

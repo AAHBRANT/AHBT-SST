@@ -12,6 +12,7 @@ import {
   TableRow,
   Text,
 } from '@fluentui/react-components';
+import { CampoData } from '../../components/CampoData';
 import { ArrowLeft24Regular } from '@fluentui/react-icons';
 import { api, type EventoSipatDetalhe } from '../../lib/api';
 import { usePageStyles } from '../pageStyles';
@@ -104,7 +105,7 @@ export function EventoSipatDetalhePage() {
             </div>
             <div className={estilos.form}>
               <Field label="Data" required>
-                <Input type="date" value={novaAtividade.data} onChange={(_, d) => setNovaAtividade({ ...novaAtividade, data: d.value })} />
+                <CampoData value={novaAtividade.data} onChange={(_, d) => setNovaAtividade({ ...novaAtividade, data: d.value })} />
               </Field>
               <Field label="Horário">
                 <Input value={novaAtividade.horario} onChange={(_, d) => setNovaAtividade({ ...novaAtividade, horario: d.value })} />

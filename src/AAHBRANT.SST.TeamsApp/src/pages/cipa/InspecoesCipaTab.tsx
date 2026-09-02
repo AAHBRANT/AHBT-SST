@@ -14,6 +14,7 @@ import {
   Text,
   Textarea,
 } from '@fluentui/react-components';
+import { CampoData } from '../../components/CampoData';
 import { Add24Regular, Delete24Regular, Warning24Regular } from '@fluentui/react-icons';
 import {
   api,
@@ -167,7 +168,7 @@ export function InspecoesCipaTab() {
             </Select>
           </Field>
           <Field label="Data" required>
-            <Input type="date" value={novo.data} onChange={(_, d) => setNovo({ ...novo, data: d.value })} />
+            <CampoData value={novo.data} onChange={(_, d) => setNovo({ ...novo, data: d.value })} />
           </Field>
           <Field label="Local" required>
             <Input value={novo.local} onChange={(_, d) => setNovo({ ...novo, local: d.value })} />
@@ -213,7 +214,7 @@ export function InspecoesCipaTab() {
               </Select>
             </Field>
             <Field label="Prazo">
-              <Input type="date" value={prazoNc} onChange={(_, d) => setPrazoNc(d.value)} />
+              <CampoData value={prazoNc} onChange={(_, d) => setPrazoNc(d.value)} />
             </Field>
           </div>
           <div className={estilos.formActions}>

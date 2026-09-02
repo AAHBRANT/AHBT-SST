@@ -14,6 +14,7 @@ import {
   TableRow,
   Text,
 } from '@fluentui/react-components';
+import { CampoData } from '../../components/CampoData';
 import { Add24Regular, ChevronRight24Regular, Delete24Regular } from '@fluentui/react-icons';
 import {
   api,
@@ -122,24 +123,22 @@ export function ProcessoEleitoralCipaTab() {
             />
           </Field>
           <Field label="Data da convocação" required>
-            <Input type="date" value={novo.dataConvocacao} onChange={(_, d) => setNovo({ ...novo, dataConvocacao: d.value })} />
+            <CampoData value={novo.dataConvocacao} onChange={(_, d) => setNovo({ ...novo, dataConvocacao: d.value })} />
           </Field>
           <Field label="Início das inscrições" required>
-            <Input
-              type="date"
+            <CampoData
               value={novo.dataInicioInscricoes}
               onChange={(_, d) => setNovo({ ...novo, dataInicioInscricoes: d.value })}
             />
           </Field>
           <Field label="Fim das inscrições" required>
-            <Input
-              type="date"
+            <CampoData
               value={novo.dataFimInscricoes}
               onChange={(_, d) => setNovo({ ...novo, dataFimInscricoes: d.value })}
             />
           </Field>
           <Field label="Data da votação" required>
-            <Input type="date" value={novo.dataVotacao} onChange={(_, d) => setNovo({ ...novo, dataVotacao: d.value })} />
+            <CampoData value={novo.dataVotacao} onChange={(_, d) => setNovo({ ...novo, dataVotacao: d.value })} />
           </Field>
         </div>
         <div className={estilos.formActions}>

@@ -15,6 +15,7 @@ import {
   Text,
   Textarea,
 } from '@fluentui/react-components';
+import { CampoData } from '../../components/CampoData';
 import { ArrowLeft24Regular, Delete24Regular } from '@fluentui/react-icons';
 import {
   api,
@@ -219,15 +220,13 @@ export function MembroCipaDetalhePage() {
                 />
               </Field>
               <Field label="Data de realização" required>
-                <Input
-                  type="date"
+                <CampoData
                   value={novoTreinamento.dataRealizacao}
                   onChange={(_, d) => setNovoTreinamento({ ...novoTreinamento, dataRealizacao: d.value })}
                 />
               </Field>
               <Field label="Validade">
-                <Input
-                  type="date"
+                <CampoData
                   value={novoTreinamento.dataValidade}
                   onChange={(_, d) => setNovoTreinamento({ ...novoTreinamento, dataValidade: d.value })}
                 />

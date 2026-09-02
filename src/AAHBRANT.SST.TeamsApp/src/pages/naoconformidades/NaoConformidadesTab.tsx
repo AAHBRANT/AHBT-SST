@@ -14,6 +14,7 @@ import {
   TableRow,
   Text,
 } from '@fluentui/react-components';
+import { CampoData } from '../../components/CampoData';
 import { AddCircle24Regular, ChevronRight24Regular } from '@fluentui/react-icons';
 import {
   api,
@@ -169,7 +170,7 @@ export function NaoConformidadesTab() {
             </Select>
           </Field>
           <Field label="Prazo">
-            <Input type="date" value={nova.prazo ?? ''} onChange={(_, d) => setNova({ ...nova, prazo: d.value })} />
+            <CampoData value={nova.prazo ?? ''} onChange={(_, d) => setNova({ ...nova, prazo: d.value })} />
           </Field>
         </div>
         <div className={estilos.formActions}>

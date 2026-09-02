@@ -5,7 +5,6 @@ import {
   Button,
   Checkbox,
   Field,
-  Input,
   Select,
   Table,
   TableBody,
@@ -15,6 +14,7 @@ import {
   TableRow,
   Text,
 } from '@fluentui/react-components';
+import { CampoData } from '../../components/CampoData';
 import { Add24Regular, ChevronRight24Regular } from '@fluentui/react-icons';
 import {
   api,
@@ -148,10 +148,10 @@ export function MembrosCipaTab() {
             </Select>
           </Field>
           <Field label="Início do mandato" required>
-            <Input type="date" value={novo.dataInicioMandato} onChange={(_, d) => setNovo({ ...novo, dataInicioMandato: d.value })} />
+            <CampoData value={novo.dataInicioMandato} onChange={(_, d) => setNovo({ ...novo, dataInicioMandato: d.value })} />
           </Field>
           <Field label="Fim do mandato" required>
-            <Input type="date" value={novo.dataFimMandato} onChange={(_, d) => setNovo({ ...novo, dataFimMandato: d.value })} />
+            <CampoData value={novo.dataFimMandato} onChange={(_, d) => setNovo({ ...novo, dataFimMandato: d.value })} />
           </Field>
         </div>
         <div className={estilos.formActions}>

@@ -14,6 +14,7 @@ import {
   TableRow,
   Text,
 } from '@fluentui/react-components';
+import { CampoData } from '../../components/CampoData';
 import { Add24Regular, ChevronRight24Regular, Delete24Regular } from '@fluentui/react-icons';
 import {
   api,
@@ -159,15 +160,13 @@ export function PcmsoTab() {
             </Select>
           </Field>
           <Field label="Data de emissão" required>
-            <Input
-              type="date"
+            <CampoData
               value={novoPcmso.dataEmissao}
               onChange={(_, d) => setNovoPcmso({ ...novoPcmso, dataEmissao: d.value })}
             />
           </Field>
           <Field label="Validade">
-            <Input
-              type="date"
+            <CampoData
               value={novoPcmso.validade ?? ''}
               onChange={(_, d) => setNovoPcmso({ ...novoPcmso, validade: d.value })}
             />

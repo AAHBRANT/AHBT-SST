@@ -11,6 +11,7 @@ import {
   TableRow,
   Text,
 } from '@fluentui/react-components';
+import { CampoData } from '../../components/CampoData';
 import { Add24Regular, Delete24Regular, Save24Regular } from '@fluentui/react-icons';
 import { api, type CatalogoEpi, type NovoCatalogoEpi } from '../../lib/api';
 import { usePageStyles } from '../pageStyles';
@@ -132,8 +133,7 @@ export function CatalogoTab() {
           />
         </Field>
         <Field label="Validade do CA">
-          <Input
-            type="date"
+          <CampoData
             value={novoEpi.certificadoAprovacaoValidade ?? ''}
             onChange={(_, d) => setNovoEpi({ ...novoEpi, certificadoAprovacaoValidade: d.value })}
           />
@@ -189,8 +189,7 @@ export function CatalogoTab() {
                   />
                 </TableCell>
                 <TableCell>
-                  <Input
-                    type="date"
+                  <CampoData
                     value={edicao.certificadoAprovacaoValidade?.slice(0, 10) ?? ''}
                     onChange={(_, d) => setEdicao({ ...edicao, certificadoAprovacaoValidade: d.value })}
                   />

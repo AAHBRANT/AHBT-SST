@@ -14,6 +14,7 @@ import {
   TableRow,
   Text,
 } from '@fluentui/react-components';
+import { CampoData } from '../../components/CampoData';
 import { Add24Regular, ArrowDownload24Regular, Signature24Regular } from '@fluentui/react-icons';
 import {
   api,
@@ -250,15 +251,13 @@ export function EntregasTab({ aoNavegarParaMatriz }: EntregasTabProps) {
             />
           </Field>
           <Field label="Data de entrega">
-            <Input
-              type="date"
+            <CampoData
               value={novaEntrega.dataEntrega}
               onChange={(_, d) => setNovaEntrega({ ...novaEntrega, dataEntrega: d.value })}
             />
           </Field>
           <Field label="Validade">
-            <Input
-              type="date"
+            <CampoData
               value={novaEntrega.dataValidade ?? ''}
               onChange={(_, d) => setNovaEntrega({ ...novaEntrega, dataValidade: d.value })}
             />
@@ -282,8 +281,7 @@ export function EntregasTab({ aoNavegarParaMatriz }: EntregasTabProps) {
             />
           </Field>
           <Field label="Data do treinamento (NR-6)">
-            <Input
-              type="date"
+            <CampoData
               value={novaEntrega.dataTreinamentoNr6 ?? ''}
               onChange={(_, d) => setNovaEntrega({ ...novaEntrega, dataTreinamentoNr6: d.value })}
             />
@@ -349,8 +347,7 @@ export function EntregasTab({ aoNavegarParaMatriz }: EntregasTabProps) {
                 <TableCell>
                   {devolucaoId === entrega.id ? (
                     <div style={{ display: 'flex', gap: 4, alignItems: 'center' }}>
-                      <Input
-                        type="date"
+                      <CampoData
                         value={devolucaoData}
                         onChange={(_, d) => setDevolucaoData(d.value)}
                         style={{ width: 130 }}

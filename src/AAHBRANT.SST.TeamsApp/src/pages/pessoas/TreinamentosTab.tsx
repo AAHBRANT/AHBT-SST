@@ -14,6 +14,7 @@ import {
   TableRow,
   Text,
 } from '@fluentui/react-components';
+import { CampoData } from '../../components/CampoData';
 import { Add24Regular, ArrowDownload24Regular, Delete24Regular, Signature24Regular } from '@fluentui/react-icons';
 import { api, type CursoTreinamento, type NovoTreinamento, type Treinamento } from '../../lib/api';
 import { usePageStyles } from '../pageStyles';
@@ -166,15 +167,13 @@ export function TreinamentosTab({ trabalhadorId }: { trabalhadorId: string }) {
           </Select>
         </Field>
         <Field label="Data de realização">
-          <Input
-            type="date"
+          <CampoData
             value={novoTreinamento.dataRealizacao}
             onChange={(_, d) => setNovoTreinamento({ ...novoTreinamento, dataRealizacao: d.value })}
           />
         </Field>
         <Field label="Validade">
-          <Input
-            type="date"
+          <CampoData
             value={novoTreinamento.dataValidade}
             onChange={(_, d) => setNovoTreinamento({ ...novoTreinamento, dataValidade: d.value })}
           />

@@ -12,6 +12,7 @@ import {
   TableRow,
   Text,
 } from '@fluentui/react-components';
+import { CampoData } from '../../components/CampoData';
 import { Add24Regular, Delete24Regular, Save24Regular } from '@fluentui/react-icons';
 import {
   api,
@@ -183,15 +184,13 @@ export function ExamesComplementaresTab() {
             </Select>
           </Field>
           <Field label="Data de realização">
-            <Input
-              type="date"
+            <CampoData
               value={novoExame.dataRealizacao}
               onChange={(_, d) => setNovoExame({ ...novoExame, dataRealizacao: d.value })}
             />
           </Field>
           <Field label="Validade">
-            <Input
-              type="date"
+            <CampoData
               value={novoExame.dataValidade}
               onChange={(_, d) => setNovoExame({ ...novoExame, dataValidade: d.value })}
             />
@@ -258,15 +257,13 @@ export function ExamesComplementaresTab() {
                     </Select>
                   </TableCell>
                   <TableCell>
-                    <Input
-                      type="date"
+                    <CampoData
                       value={edicao.dataRealizacao?.slice(0, 10)}
                       onChange={(_, d) => setEdicao({ ...edicao, dataRealizacao: d.value })}
                     />
                   </TableCell>
                   <TableCell>
-                    <Input
-                      type="date"
+                    <CampoData
                       value={edicao.dataValidade?.slice(0, 10)}
                       onChange={(_, d) => setEdicao({ ...edicao, dataValidade: d.value })}
                     />
