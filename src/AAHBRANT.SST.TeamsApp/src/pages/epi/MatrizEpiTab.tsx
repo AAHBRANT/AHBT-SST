@@ -11,13 +11,14 @@ import {
   Text,
 } from '@fluentui/react-components';
 import { api, type CatalogoEpi, type Funcao } from '../../lib/api';
-import { usePageStyles } from '../pageStyles';
+import { usePageStyles, useCheckboxChipStyles } from '../pageStyles';
 
 // Matriz de EPI por função: define quais EPIs são obrigatórios para cada função (usado para
 // filtrar o select de EPI em Entregas). O cadastro da função em si (nome/CBO/descrição) fica em
 // Operação → Pessoas → Funções; aqui só listamos as funções já cadastradas para editar a matriz.
 export function MatrizEpiTab() {
   const estilos = usePageStyles();
+  const estilosChip = useCheckboxChipStyles();
   const [funcoes, setFuncoes] = useState<Funcao[]>([]);
   const [episCatalogo, setEpisCatalogo] = useState<CatalogoEpi[]>([]);
   const [erro, setErro] = useState<string | null>(null);
@@ -114,6 +115,7 @@ export function MatrizEpiTab() {
                         episCatalogo.map((epi) => (
                           <Checkbox
                             key={epi.id}
+                            className={estilosChip.chip}
                             label={epi.fabricante ? `${epi.nome} (${epi.fabricante})` : epi.nome}
                             checked={vinculosSelecionados.includes(epi.id)}
                             onChange={(_, d) => alternarEpi(epi.id, !!d.checked)}

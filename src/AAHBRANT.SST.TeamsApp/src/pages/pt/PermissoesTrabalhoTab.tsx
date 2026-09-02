@@ -26,7 +26,7 @@ import {
   type Trabalhador,
   type Usuario,
 } from '../../lib/api';
-import { usePageStyles } from '../pageStyles';
+import { usePageStyles, useCheckboxChipStyles } from '../pageStyles';
 import { useConfirmarExclusao } from '../../hooks/useConfirmarExclusao';
 import { useSucessoToast } from '../../hooks/useSucessoToast';
 import { EstadoVazio } from '../../components/EstadoVazio';
@@ -57,6 +57,7 @@ const corBadgeStatus: Record<number, 'informative' | 'warning' | 'success' | 'da
 
 export function PermissoesTrabalhoTab() {
   const estilos = usePageStyles();
+  const estilosChip = useCheckboxChipStyles();
   const navigate = useNavigate();
   const [permissoes, setPermissoes] = useState<PermissaoTrabalho[]>([]);
   const [atividades, setAtividades] = useState<Atividade[]>([]);
@@ -253,6 +254,7 @@ export function PermissoesTrabalhoTab() {
           {trabalhadores.map((trabalhador) => (
             <Checkbox
               key={trabalhador.id}
+              className={estilosChip.chip}
               label={trabalhador.nome}
               checked={novaPt.responsaveisIds.includes(trabalhador.id)}
               onChange={(_, d) => alternarResponsavel(trabalhador.id, !!d.checked)}

@@ -17,7 +17,7 @@ import {
 } from '@fluentui/react-components';
 import { Add24Regular, ChevronRight24Regular, Delete24Regular } from '@fluentui/react-icons';
 import { api, statusAprLabel, type Apr, type Atividade, type Equipe, type NovaApr, type Trabalhador } from '../../lib/api';
-import { usePageStyles } from '../pageStyles';
+import { usePageStyles, useCheckboxChipStyles } from '../pageStyles';
 import { useConfirmarExclusao } from '../../hooks/useConfirmarExclusao';
 import { useSucessoToast } from '../../hooks/useSucessoToast';
 import { EstadoVazio } from '../../components/EstadoVazio';
@@ -45,6 +45,7 @@ const corBadgeStatus: Record<number, 'informative' | 'warning' | 'success' | 'da
 
 export function AprsTab() {
   const estilos = usePageStyles();
+  const estilosChip = useCheckboxChipStyles();
   const navigate = useNavigate();
   const [aprs, setAprs] = useState<Apr[]>([]);
   const [atividades, setAtividades] = useState<Atividade[]>([]);
@@ -200,6 +201,7 @@ export function AprsTab() {
           {trabalhadores.map((trabalhador) => (
             <Checkbox
               key={trabalhador.id}
+              className={estilosChip.chip}
               label={trabalhador.nome}
               checked={novaApr.responsaveisIds.includes(trabalhador.id)}
               onChange={(_, d) => alternarResponsavel(trabalhador.id, !!d.checked)}

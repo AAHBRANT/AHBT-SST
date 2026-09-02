@@ -10,7 +10,7 @@ import {
   type PermissaoTrabalhoEpc,
   type PermissaoTrabalhoEpi,
 } from '../../lib/api';
-import { usePageStyles } from '../pageStyles';
+import { usePageStyles, useCheckboxChipStyles } from '../pageStyles';
 
 // §5 do formulário — EPIs/EPCs aplicáveis à atividade; algumas opções de EPI têm complemento de
 // texto livre embutido no próprio formulário (ver disclosure em ItemEpiPt no backend).
@@ -28,6 +28,7 @@ export function EpiEpcPtTab({
   aoAtualizar: () => Promise<void>;
 }) {
   const estilos = usePageStyles();
+  const estilosChip = useCheckboxChipStyles();
   const [episSelecionados, setEpisSelecionados] = useState<Map<number, string>>(new Map());
   const [epcsSelecionados, setEpcsSelecionados] = useState<Set<number>>(new Set());
   const [outrosEpis, setOutrosEpis] = useState('');
@@ -94,6 +95,7 @@ export function EpiEpcPtTab({
             {Object.entries(itemEpiPtLabel).map(([valor, rotulo]) => (
               <div key={valor} style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                 <Checkbox
+                  className={estilosChip.chip}
                   label={rotulo}
                   checked={episSelecionados.has(Number(valor))}
                   onChange={(_, d) => alternarEpi(Number(valor), !!d.checked)}
@@ -124,6 +126,7 @@ export function EpiEpcPtTab({
             {Object.entries(itemEpcPtLabel).map(([valor, rotulo]) => (
               <Checkbox
                 key={valor}
+                className={estilosChip.chip}
                 label={rotulo}
                 checked={epcsSelecionados.has(Number(valor))}
                 onChange={(_, d) => alternarEpc(Number(valor), !!d.checked)}

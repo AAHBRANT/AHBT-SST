@@ -28,7 +28,7 @@ import {
   type CatalogoTemaDds,
   type DdsSemanalDetalhe,
 } from '../../lib/api';
-import { usePageStyles } from '../pageStyles';
+import { usePageStyles, useCheckboxChipStyles } from '../pageStyles';
 
 const NOMES_DIAS = ['Segunda-feira', 'Terça-feira', 'Quarta-feira', 'Quinta-feira', 'Sexta-feira'];
 
@@ -44,6 +44,7 @@ export function DdsSemanalDetalhePage() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const estilos = usePageStyles();
+  const estilosChip = useCheckboxChipStyles();
   const [detalhe, setDetalhe] = useState<DdsSemanalDetalhe | null>(null);
   const [atividades, setAtividades] = useState<Atividade[]>([]);
   const [catalogoTemas, setCatalogoTemas] = useState<CatalogoTemaDds[]>([]);
@@ -264,6 +265,7 @@ export function DdsSemanalDetalhePage() {
                       {atividadesDaObra.map((atividade) => (
                         <Checkbox
                           key={atividade.id}
+                          className={estilosChip.chip}
                           label={atividade.nome}
                           checked={novoDia.atividadesIds.includes(atividade.id)}
                           onChange={(_, d) => alternarAtividade(atividade.id, !!d.checked)}

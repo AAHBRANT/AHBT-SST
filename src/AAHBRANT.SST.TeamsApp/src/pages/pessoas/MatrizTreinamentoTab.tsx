@@ -11,7 +11,7 @@ import {
   Text,
 } from '@fluentui/react-components';
 import { api, type CursoTreinamento, type Funcao } from '../../lib/api';
-import { usePageStyles } from '../pageStyles';
+import { usePageStyles, useCheckboxChipStyles } from '../pageStyles';
 
 // Matriz de obrigatoriedade de treinamento por função — mesmo princípio de MatrizEpiTab.tsx
 // (EpiPage), aqui em Pessoas por não existir um módulo próprio de Treinamento equivalente ao de EPI.
@@ -19,6 +19,7 @@ import { usePageStyles } from '../pageStyles';
 // RequisitoLegal aplicável, mas também editável manualmente, igual à matriz de EPI.
 export function MatrizTreinamentoTab() {
   const estilos = usePageStyles();
+  const estilosChip = useCheckboxChipStyles();
   const [funcoes, setFuncoes] = useState<Funcao[]>([]);
   const [cursosCatalogo, setCursosCatalogo] = useState<CursoTreinamento[]>([]);
   const [erro, setErro] = useState<string | null>(null);
@@ -115,6 +116,7 @@ export function MatrizTreinamentoTab() {
                         cursosCatalogo.map((curso) => (
                           <Checkbox
                             key={curso.id}
+                            className={estilosChip.chip}
                             label={curso.normaReferencia ? `${curso.nome} (${curso.normaReferencia})` : curso.nome}
                             checked={vinculosSelecionados.includes(curso.id)}
                             onChange={(_, d) => alternarCurso(curso.id, !!d.checked)}

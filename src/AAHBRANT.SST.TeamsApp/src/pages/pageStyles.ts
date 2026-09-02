@@ -124,6 +124,29 @@ export const useKpiStyles = makeStyles({
   },
 });
 
+// Checkbox em formato de chip (pedido do usuário, 02/09): listas de seleção múltipla (Responsáveis,
+// Equipe, matriz de EPI/treinamento por função, tipos de trabalho especial etc.) só tinham a
+// caixinha em si como alvo de clique óbvio — o nome do lado não parecia clicável, mesmo já
+// funcionando (o <label> do Fluent já ativa o Checkbox). Envolve cada opção num fundo destacado
+// pra deixar claro que a opção inteira é clicável, não só o quadradinho.
+export const useCheckboxChipStyles = makeStyles({
+  chip: {
+    display: 'inline-flex',
+    alignItems: 'center',
+    backgroundColor: designTokens.colorNeutralLight,
+    ...shorthands.borderRadius('999px'),
+    ...shorthands.border('1px', 'solid', designTokens.colorCardBorder),
+    ...shorthands.padding('6px', '14px', '6px', '10px'),
+    cursor: 'pointer',
+    transitionProperty: 'background-color, border-color',
+    transitionDuration: '120ms',
+    ':hover': {
+      backgroundColor: tokens.colorNeutralBackground1Hover,
+      ...shorthands.borderColor(designTokens.colorPrimary),
+    },
+  },
+});
+
 // Chip de status (Hub Gênesis SST): mesma pílula usada em ASO, EPI, treinamentos, PT/APR etc.
 export const useStatusChipStyles = makeStyles({
   chip: {

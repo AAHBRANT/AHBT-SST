@@ -8,7 +8,7 @@ import {
   type PermissaoTrabalhoTipoTrabalho,
   type TipoTrabalhoPtInput,
 } from '../../lib/api';
-import { usePageStyles } from '../pageStyles';
+import { usePageStyles, useCheckboxChipStyles } from '../pageStyles';
 
 // §3 do formulário — 12 opções fixas, multi-select: só os tipos marcados viram linha (ver
 // disclosure em DefinirTiposTrabalhoPtCommand.cs). "Outro" carrega texto livre complementar.
@@ -22,6 +22,7 @@ export function TiposTrabalhoPtTab({
   aoAtualizar: () => Promise<void>;
 }) {
   const estilos = usePageStyles();
+  const estilosChip = useCheckboxChipStyles();
   const [selecionados, setSelecionados] = useState<Map<number, string>>(new Map());
   const [erro, setErro] = useState<string | null>(null);
   const [salvando, setSalvando] = useState(false);
@@ -72,6 +73,7 @@ export function TiposTrabalhoPtTab({
         {Object.entries(tipoTrabalhoEspecialPtLabel).map(([valor, rotulo]) => (
           <Checkbox
             key={valor}
+            className={estilosChip.chip}
             label={rotulo}
             checked={selecionados.has(Number(valor))}
             onChange={(_, d) => alternar(Number(valor), !!d.checked)}
