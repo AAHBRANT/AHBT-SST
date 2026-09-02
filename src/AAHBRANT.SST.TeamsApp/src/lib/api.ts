@@ -1457,19 +1457,17 @@ export const statusDdsLabel: Record<number, string> = {
   2: 'Concluído',
 };
 
-// Reformulação 31/08 — DDS passou a ser um registro DIÁRIO dentro de uma DdsSemanal (ver abaixo). O
-// "Tema do DDS" tem 3 origens possíveis (ver OrigemTemaDds), em vez de texto livre digitado na hora.
-export const OrigemTemaDds = {
-  AutomaticoAtividade1: 1,
-  AutomaticoAtividade2: 2,
-  Livre: 3,
-} as const;
+// Reformulação 31/08 — DDS passou a ser um registro DIÁRIO dentro de uma DdsSemanal (ver abaixo).
 
-export const origemTemaDdsLabel: Record<number, string> = {
-  1: 'Automático — 1ª atividade do dia',
-  2: 'Automático — 2ª atividade do dia',
-  3: 'Livre (catálogo)',
-};
+export interface DdsTemaAtividade {
+  atividadeId: string;
+  atividadeNome: string;
+  perigoNome?: string | null;
+  perigoDescricao?: string | null;
+  consequencia?: string | null;
+  controlesExistentes?: string | null;
+  controlesAdicionais?: string | null;
+}
 
 export interface Dds {
   id: string;
@@ -1479,10 +1477,11 @@ export interface Dds {
   data: string;
   responsavelUsuarioId: string;
   responsavelUsuarioNome: string;
-  topicoPrincipal: string;
-  origemTema: number;
   catalogoTemaDdsId?: string | null;
+  temaLivreNome?: string | null;
+  temaLivreDescricao?: string | null;
   status: number;
+  temasAtividades: DdsTemaAtividade[];
   atividadesNomes: string[];
   totalItensChecklist: number;
   itensVerificados: number;
@@ -1494,7 +1493,6 @@ export interface NovaDds {
   ddsSemanalId: string;
   atividadesIds: string[];
   data: string;
-  origemTema: number;
   catalogoTemaDdsId?: string | null;
 }
 
@@ -1603,7 +1601,8 @@ export interface DdsSemanalDia {
   diaSemana: number;
   data: string;
   ddsId?: string | null;
-  topicoPrincipal?: string | null;
+  atividadesNomes: string[];
+  temaLivreNome?: string | null;
   status?: number | null;
   totalFotosEvidencia: number;
   totalParticipantes: number;
@@ -3445,6 +3444,8 @@ export const api = {
     listar: () => request<CatalogoTemaDds[]>('/api/catalogotemasdds'),
     criar: (nome: string, descricao?: string | null) =>
       request<{ id: string }>('/api/catalogotemasdds', { method: 'POST', body: JSON.stringify({ nome, descricao }) }),
+    atualizar: (id: string, nome: string, descricao?: string | null) =>
+      request<void>(`/api/catalogotemasdds/${id}`, { method: 'PUT', body: JSON.stringify({ nome, descricao }) }),
     excluir: (id: string) => request<void>(`/api/catalogotemasdds/${id}`, { method: 'DELETE' }),
   },
   assinatura: {
