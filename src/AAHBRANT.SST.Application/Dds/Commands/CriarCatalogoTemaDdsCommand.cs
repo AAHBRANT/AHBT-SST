@@ -5,9 +5,9 @@ using MediatR;
 
 namespace AAHBRANT.SST.Application.Dds.Commands;
 
-// Catálogo pré-cadastrado de temas de DDS (31/08) — usado quando o técnico escolhe o "Tema 3
-// (Livre)" em vez dos dois automáticos (cruzados com a 1ª/2ª atividade do dia). Cadastro simples,
-// sem versionamento — mesmo espírito de CatalogoEpi.
+// Catálogo pré-cadastrado de temas de DDS (31/08) — tema livre opcional, somado aos temas
+// automáticos das atividades do dia (01/09), nunca os substitui. Cadastro simples, sem
+// versionamento — mesmo espírito de CatalogoEpi.
 public record CriarCatalogoTemaDdsCommand(string Nome, string? Descricao) : IRequest<Guid>;
 
 public class CriarCatalogoTemaDdsCommandValidator : AbstractValidator<CriarCatalogoTemaDdsCommand>
