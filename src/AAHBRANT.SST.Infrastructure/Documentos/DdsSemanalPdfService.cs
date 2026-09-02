@@ -118,7 +118,7 @@ public class DdsSemanalPdfService : IDdsSemanalPdfService
                     c.Item().AlignCenter().Text(nomeDia).FontSize(7.5f).Bold().FontColor(CorMarca);
                     c.Item().AlignCenter().Text(dia is not null ? dia.Data.ToString("dd/MM") : "-").FontSize(8);
                     c.Item().PaddingTop(4).Text("Tema do DDS:").FontSize(7).SemiBold();
-                    c.Item().PaddingTop(2).MinHeight(24).Text(dia?.Tema ?? "—").FontSize(8);
+                    c.Item().PaddingTop(2).MinHeight(24).Text(TextoResumoTema(dia)).FontSize(8);
                 });
             }
         });
@@ -185,6 +185,15 @@ public class DdsSemanalPdfService : IDdsSemanalPdfService
     {
         tabela.Cell().Border(0.5f).BorderColor(Colors.Grey.Lighten1).Padding(3).MinHeight(16)
             .Text(texto).FontSize(8);
+    }
+
+    private static string TextoResumoTema(DdsSemanalPdfDiaModelo? dia)
+    {
+        if (dia is null) return "—";
+        var partes = new List<string>(dia.AtividadesNomes);
+        if (!string.IsNullOrWhiteSpace(dia.TemaLivreNome))
+            partes.Add(dia.TemaLivreNome);
+        return partes.Count > 0 ? string.Join(", ", partes) : "—";
     }
 
     private static void DesenharAssinaturas(IContainer container, DdsSemanalPdfModelo modelo, bool terceirizados)

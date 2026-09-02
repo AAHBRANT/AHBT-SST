@@ -31,7 +31,7 @@ public class ExportarDdsSemanalPdfQueryHandler : IRequestHandler<ExportarDdsSema
             .FirstOrDefaultAsync(ct);
 
         var dias = detalhe.Dias
-            .Select(d => new DdsSemanalPdfDiaModelo(d.DiaSemana, d.Data, d.TopicoPrincipal))
+            .Select(d => new DdsSemanalPdfDiaModelo(d.DiaSemana, d.Data, d.AtividadesNomes, d.TemaLivreNome))
             .ToList();
 
         // Presença: união de todos os trabalhadores que participaram de QUALQUER dia da semana,
