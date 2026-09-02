@@ -87,6 +87,7 @@ public class CriarDdsCommandHandler : IRequestHandler<CriarDdsCommand, Guid>
             {
                 AtividadeId = atividade.Id,
                 Ordem = indice + 1,
+                AtividadeNome = atividade.Nome,
                 PerigoNome = maiorRisco?.Perigo?.Nome,
                 PerigoDescricao = maiorRisco?.Perigo?.Descricao,
                 Consequencia = maiorRisco?.Consequencia,

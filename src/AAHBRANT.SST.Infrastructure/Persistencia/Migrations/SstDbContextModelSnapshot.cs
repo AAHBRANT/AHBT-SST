@@ -1504,6 +1504,10 @@ namespace AAHBRANT.SST.Infrastructure.Persistencia.Migrations
                     b.Property<Guid>("AtividadeId")
                         .HasColumnType("uniqueidentifier");
 
+                    b.Property<string>("AtividadeNome")
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)");
+
                     b.Property<bool>("Ativo")
                         .HasColumnType("bit");
 

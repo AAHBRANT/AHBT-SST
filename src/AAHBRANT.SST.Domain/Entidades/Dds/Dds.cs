@@ -56,6 +56,12 @@ public class DdsAtividade : AuditableEntity
 
     public int Ordem { get; set; }
 
+    // Snapshot do nome da própria Atividade, copiado na criação do Dds — mesmo princípio dos
+    // campos de Perigo/Risco abaixo (cópia, não referência viva): Atividade tem exclusão lógica e
+    // pode ser renomeada depois, e este DDS precisa continuar mostrando o nome de quando foi
+    // registrado.
+    public string? AtividadeNome { get; set; }
+
     // Snapshot do Risco de maior NivelRisco desta atividade, copiado na criação do Dds — mesmo
     // princípio de DdsItemChecklist (cópia, não referência viva). Tudo nullable: a atividade pode
     // não ter nenhum Risco cadastrado ainda.

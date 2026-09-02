@@ -50,14 +50,14 @@ public class ListarDdsQueryHandler : IRequestHandler<ListarDdsQuery, List<DdsDto
             TemasAtividades = dds.Atividades.Where(a => a.Ativo).OrderBy(a => a.Ordem).Select(a => new DdsTemaAtividadeDto
             {
                 AtividadeId = a.AtividadeId,
-                AtividadeNome = a.Atividade?.Nome ?? string.Empty,
+                AtividadeNome = a.AtividadeNome ?? a.Atividade?.Nome ?? string.Empty,
                 PerigoNome = a.PerigoNome,
                 PerigoDescricao = a.PerigoDescricao,
                 Consequencia = a.Consequencia,
                 ControlesExistentes = a.ControlesExistentes,
                 ControlesAdicionais = a.ControlesAdicionais,
             }).ToList(),
-            AtividadesNomes = dds.Atividades.Where(a => a.Ativo).OrderBy(a => a.Ordem).Select(a => a.Atividade?.Nome ?? string.Empty).ToList(),
+            AtividadesNomes = dds.Atividades.Where(a => a.Ativo).OrderBy(a => a.Ordem).Select(a => a.AtividadeNome ?? a.Atividade?.Nome ?? string.Empty).ToList(),
             TotalItensChecklist = itensAtivos.Count,
             ItensVerificados = itensAtivos.Count(i => i.Verificado),
             TotalParticipantes = dds.Participantes.Count(p => p.Ativo),

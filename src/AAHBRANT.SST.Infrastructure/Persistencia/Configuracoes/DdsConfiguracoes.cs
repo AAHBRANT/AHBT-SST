@@ -108,6 +108,7 @@ public class DdsAtividadeConfiguracao : IEntityTypeConfiguration<DdsAtividade>
             .HasForeignKey(a => a.AtividadeId)
             .OnDelete(DeleteBehavior.Restrict);
 
+        builder.Property(a => a.AtividadeNome).HasMaxLength(200);
         builder.Property(a => a.PerigoNome).HasMaxLength(200);
 
         builder.HasIndex(a => a.DdsId);

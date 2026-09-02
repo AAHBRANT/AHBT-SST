@@ -222,11 +222,16 @@ array `abas` de `PillarLayout` em `App.tsx` (prefixo `prevencao`), rota
   ("Nenhum risco cadastrado para esta atividade — revisar Matriz de
   Riscos"), mesmo texto de fallback que `ResolverTemaAutomaticoAsync` já usa
   hoje.
-- Excluir um `CatalogoTemaDds` que já foi usado em algum `Dds`: permitido
-  (o snapshot em `Dds.TemaLivreNome/Descricao` preserva o histórico) — a FK
-  `CatalogoTemaDdsId` usa `ON DELETE SET NULL` (mesmo padrão de FK opcional
-  já usado no restante do schema), então o registro antigo não quebra nem
-  fica travando a exclusão do tema.
+- Excluir um `CatalogoTemaDds` que já foi usado em algum `Dds`: permitido na
+  prática, mas não por causa do comportamento da FK — `CatalogoTemaDdsId`
+  usa `DeleteBehavior.Restrict` (inalterado por esta feature; ver
+  `DdsConfiguracao.Configure` em `DdsConfiguracoes.cs`), que bloquearia um
+  `DELETE` SQL real caso ele chegasse a acontecer. A segurança vem do
+  padrão de exclusão lógica já usado em todo o sistema: `ExcluirCatalogoTemaDdsCommand`
+  (como todo `Excluir...Command`) apenas marca `Ativo = false`, nunca emite
+  um `DELETE`, então a constraint da FK nunca chega a ser acionada. O
+  snapshot em `Dds.TemaLivreNome/Descricao` preserva o histórico de
+  qualquer forma, independentemente do comportamento da FK.
 
 ## 9. Testes
 

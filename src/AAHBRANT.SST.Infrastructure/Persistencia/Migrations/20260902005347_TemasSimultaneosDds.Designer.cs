@@ -12,7 +12,7 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace AAHBRANT.SST.Infrastructure.Persistencia.Migrations
 {
     [DbContext(typeof(SstDbContext))]
-    [Migration("20260901235801_TemasSimultaneosDds")]
+    [Migration("20260902005347_TemasSimultaneosDds")]
     partial class TemasSimultaneosDds
     {
         /// <inheritdoc />
@@ -1506,6 +1506,10 @@ namespace AAHBRANT.SST.Infrastructure.Persistencia.Migrations
 
                     b.Property<Guid>("AtividadeId")
                         .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("AtividadeNome")
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)");
 
                     b.Property<bool>("Ativo")
                         .HasColumnType("bit");

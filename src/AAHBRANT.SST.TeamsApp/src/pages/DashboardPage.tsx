@@ -335,7 +335,7 @@ export function DashboardPage() {
         id: `dds-${registro.id}`,
         icone: <ClipboardTaskListLtr24Regular />,
         variante: 'info',
-        titulo: `DDS registrado — ${registro.atividadesNomes.join(', ')}`,
+        titulo: `DDS registrado — ${registro.atividadesNomes.join(', ') || 'DDS do dia'}`,
         meta: registro.obraNome,
         dataISO: registro.data,
       });

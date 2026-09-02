@@ -44,7 +44,7 @@ public class ObterDdsSemanalDetalheQueryHandler : IRequestHandler<ObterDdsSemana
                 DiaSemana = data.DayOfWeek,
                 Data = data,
                 DdsId = registroDoDia?.Id,
-                AtividadesNomes = registroDoDia?.Atividades.Where(a => a.Ativo).OrderBy(a => a.Ordem).Select(a => a.Atividade?.Nome ?? string.Empty).ToList() ?? new(),
+                AtividadesNomes = registroDoDia?.Atividades.Where(a => a.Ativo).OrderBy(a => a.Ordem).Select(a => a.AtividadeNome ?? a.Atividade?.Nome ?? string.Empty).ToList() ?? new(),
                 TemaLivreNome = registroDoDia?.TemaLivreNome,
                 Status = registroDoDia?.Status,
                 TotalFotosEvidencia = registroDoDia is null ? 0 : fotosPorDia.GetValueOrDefault(registroDoDia.Id),

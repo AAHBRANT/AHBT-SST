@@ -46,30 +46,33 @@ public class DdsPdfService : IDdsPdfService
                         t.Span(modelo.ResponsavelNome);
                     });
 
-                    coluna.Item().PaddingTop(8).Text("Temas do dia").FontSize(13).Bold();
-                    foreach (var tema in modelo.Temas)
+                    if (modelo.Temas.Count > 0)
                     {
-                        coluna.Item().Border(1).BorderColor(Colors.Grey.Lighten2).Padding(6).Column(bloco =>
+                        coluna.Item().PaddingTop(8).Text("Temas do dia").FontSize(13).Bold();
+                        foreach (var tema in modelo.Temas)
                         {
-                            bloco.Spacing(2);
-                            bloco.Item().Text(tema.AtividadeNome).Bold().FontColor(CorMarca);
-                            if (tema.PerigoNome is null)
+                            coluna.Item().Border(1).BorderColor(Colors.Grey.Lighten2).Padding(6).Column(bloco =>
                             {
-                                bloco.Item().Text("Nenhum risco cadastrado para esta atividade — revisar Matriz de Riscos.");
-                            }
-                            else
-                            {
-                                bloco.Item().Text(t => { t.Span("Perigo: ").SemiBold(); t.Span(tema.PerigoNome); });
-                                if (!string.IsNullOrWhiteSpace(tema.PerigoDescricao))
-                                    bloco.Item().Text(t => { t.Span("Descrição: ").SemiBold(); t.Span(tema.PerigoDescricao); });
-                                if (!string.IsNullOrWhiteSpace(tema.Consequencia))
-                                    bloco.Item().Text(t => { t.Span("Consequência: ").SemiBold(); t.Span(tema.Consequencia); });
-                                if (!string.IsNullOrWhiteSpace(tema.ControlesExistentes))
-                                    bloco.Item().Text(t => { t.Span("Controles existentes: ").SemiBold(); t.Span(tema.ControlesExistentes); });
-                                if (!string.IsNullOrWhiteSpace(tema.ControlesAdicionais))
-                                    bloco.Item().Text(t => { t.Span("Controles adicionais: ").SemiBold(); t.Span(tema.ControlesAdicionais); });
-                            }
-                        });
+                                bloco.Spacing(2);
+                                bloco.Item().Text(tema.AtividadeNome).Bold().FontColor(CorMarca);
+                                if (tema.PerigoNome is null)
+                                {
+                                    bloco.Item().Text("Nenhum risco cadastrado para esta atividade — revisar Matriz de Riscos.");
+                                }
+                                else
+                                {
+                                    bloco.Item().Text(t => { t.Span("Perigo: ").SemiBold(); t.Span(tema.PerigoNome); });
+                                    if (!string.IsNullOrWhiteSpace(tema.PerigoDescricao))
+                                        bloco.Item().Text(t => { t.Span("Descrição: ").SemiBold(); t.Span(tema.PerigoDescricao); });
+                                    if (!string.IsNullOrWhiteSpace(tema.Consequencia))
+                                        bloco.Item().Text(t => { t.Span("Consequência: ").SemiBold(); t.Span(tema.Consequencia); });
+                                    if (!string.IsNullOrWhiteSpace(tema.ControlesExistentes))
+                                        bloco.Item().Text(t => { t.Span("Controles existentes: ").SemiBold(); t.Span(tema.ControlesExistentes); });
+                                    if (!string.IsNullOrWhiteSpace(tema.ControlesAdicionais))
+                                        bloco.Item().Text(t => { t.Span("Controles adicionais: ").SemiBold(); t.Span(tema.ControlesAdicionais); });
+                                }
+                            });
+                        }
                     }
 
                     if (modelo.TemaLivreNome is not null)
