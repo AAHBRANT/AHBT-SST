@@ -268,7 +268,13 @@ export function DdsDetalhePage() {
         {dds ? (
           <>
             <Text size={500} weight="semibold">
-              {dds.topicoPrincipal}
+              {dds.temasAtividades.map((tema) => (
+                <Text key={tema.atividadeId} style={{ display: 'block' }}>
+                  {tema.atividadeNome}
+                  {tema.perigoNome ? ` — ${tema.perigoNome}` : ''}
+                </Text>
+              ))}
+              {dds.temaLivreNome && <Text style={{ display: 'block' }}>Tema livre: {dds.temaLivreNome}</Text>}
             </Text>
             <div style={{ display: 'flex', gap: 16, marginTop: 8, flexWrap: 'wrap', alignItems: 'center' }}>
               <Text>Obra: {dds.obraNome}</Text>
