@@ -72,7 +72,7 @@ public class CatalogoTemaDdsConfiguracao : IEntityTypeConfiguration<CatalogoTema
     public void Configure(EntityTypeBuilder<CatalogoTemaDds> builder)
     {
         builder.Property(c => c.Nome).IsRequired().HasMaxLength(200);
-        builder.Property(c => c.Descricao).HasMaxLength(500);
+        builder.Property(c => c.Descricao).HasMaxLength(1000);
 
         builder.HasQueryFilter(c => c.Ativo);
     }

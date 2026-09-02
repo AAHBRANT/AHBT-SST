@@ -13,7 +13,7 @@ public class AtualizarCatalogoTemaDdsCommandValidator : AbstractValidator<Atuali
     {
         RuleFor(x => x.Id).NotEmpty();
         RuleFor(x => x.Nome).NotEmpty().MaximumLength(200);
-        RuleFor(x => x.Descricao).MaximumLength(500);
+        RuleFor(x => x.Descricao).MaximumLength(1000);
     }
 }
 

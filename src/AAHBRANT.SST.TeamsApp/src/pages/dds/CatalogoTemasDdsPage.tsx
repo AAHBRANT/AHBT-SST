@@ -114,8 +114,14 @@ export function CatalogoTemasDdsPage() {
         <Field label="Nome">
           <Input value={nome} onChange={(_, d) => setNome(d.value)} />
         </Field>
-        <Field label="Descrição">
-          <Textarea value={descricao} onChange={(_, d) => setDescricao(d.value)} resize="vertical" />
+        <Field label="Descrição" style={{ flex: 1 }}>
+          <Textarea
+            value={descricao}
+            onChange={(_, d) => setDescricao(d.value)}
+            resize="vertical"
+            rows={10}
+            style={{ width: '100%' }}
+          />
         </Field>
       </div>
 
