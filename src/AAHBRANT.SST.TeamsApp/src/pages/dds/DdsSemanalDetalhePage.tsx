@@ -6,8 +6,6 @@ import {
   Checkbox,
   Field,
   Input,
-  Radio,
-  RadioGroup,
   Select,
   Text,
 } from '@fluentui/react-components';
@@ -20,8 +18,6 @@ import {
 } from '@fluentui/react-icons';
 import {
   api,
-  origemTemaDdsLabel,
-  OrigemTemaDds,
   StatusDds,
   statusDdsLabel,
   StatusDdsSemanal,
@@ -37,7 +33,7 @@ import { usePageStyles } from '../pageStyles';
 const NOMES_DIAS = ['Segunda-feira', 'Terça-feira', 'Quarta-feira', 'Quinta-feira', 'Sexta-feira'];
 
 function novoDiaVazio() {
-  return { atividadesIds: [] as string[], origemTema: OrigemTemaDds.AutomaticoAtividade1 as number, catalogoTemaDdsId: '' };
+  return { atividadesIds: [] as string[], catalogoTemaDdsId: '' };
 }
 
 // Semana (contêiner) do DDS reformulado (31/08) — cada um dos 5 dias úteis é um registro diário
@@ -53,7 +49,6 @@ export function DdsSemanalDetalhePage() {
   const [catalogoTemas, setCatalogoTemas] = useState<CatalogoTemaDds[]>([]);
   const [diaEmCriacao, setDiaEmCriacao] = useState<string | null>(null);
   const [novoDia, setNovoDia] = useState(novoDiaVazio());
-  const [novoTemaNome, setNovoTemaNome] = useState('');
   const [responsavelTerceirizadaNome, setResponsavelTerceirizadaNome] = useState('');
   const [responsavelTerceirizadaFuncao, setResponsavelTerceirizadaFuncao] = useState('');
   const [erro, setErro] = useState<string | null>(null);
@@ -85,7 +80,6 @@ export function DdsSemanalDetalhePage() {
   function abrirCriacaoDia(data: string) {
     setDiaEmCriacao(data);
     setNovoDia(novoDiaVazio());
-    setNovoTemaNome('');
   }
 
   function alternarAtividade(atividadeId: string, marcado: boolean) {
@@ -95,30 +89,9 @@ export function DdsSemanalDetalhePage() {
     }));
   }
 
-  async function adicionarTemaAoCatalogo() {
-    if (!novoTemaNome.trim()) return;
-    try {
-      setProcessando(true);
-      setErro(null);
-      const resultado = await api.catalogoTemasDds.criar(novoTemaNome.trim());
-      setNovoTemaNome('');
-      const listaTemas = await api.catalogoTemasDds.listar();
-      setCatalogoTemas(listaTemas);
-      setNovoDia((atual) => ({ ...atual, catalogoTemaDdsId: resultado.id }));
-    } catch (e) {
-      setErro(e instanceof Error ? e.message : 'Falha ao adicionar tema ao catálogo.');
-    } finally {
-      setProcessando(false);
-    }
-  }
-
   async function criarRegistroDia() {
     if (!id || !diaEmCriacao || novoDia.atividadesIds.length === 0) {
       setErro('Selecione ao menos uma atividade do dia.');
-      return;
-    }
-    if (novoDia.origemTema === OrigemTemaDds.Livre && !novoDia.catalogoTemaDdsId) {
-      setErro('Selecione um tema do catálogo.');
       return;
     }
     try {
@@ -128,8 +101,7 @@ export function DdsSemanalDetalhePage() {
         ddsSemanalId: id,
         atividadesIds: novoDia.atividadesIds,
         data: diaEmCriacao,
-        origemTema: novoDia.origemTema,
-        catalogoTemaDdsId: novoDia.origemTema === OrigemTemaDds.Livre ? novoDia.catalogoTemaDdsId : null,
+        catalogoTemaDdsId: novoDia.catalogoTemaDdsId || null,
       });
       setDiaEmCriacao(null);
       await carregar();
@@ -261,7 +233,10 @@ export function DdsSemanalDetalhePage() {
 
             {dia.ddsId ? (
               <>
-                <Text style={{ display: 'block', marginBottom: 4 }}>{dia.topicoPrincipal}</Text>
+                <Text style={{ display: 'block', marginBottom: 4 }}>
+                  {dia.atividadesNomes.join(', ')}
+                  {dia.temaLivreNome ? ` + ${dia.temaLivreNome}` : ''}
+                </Text>
                 <div style={{ display: 'flex', gap: 8, alignItems: 'center', marginBottom: 8, flexWrap: 'wrap' }}>
                   {dia.status !== undefined && dia.status !== null && (
                     <Badge appearance="tint">{statusDdsLabel[dia.status]}</Badge>
@@ -298,42 +273,24 @@ export function DdsSemanalDetalhePage() {
                   )}
                 </Field>
 
-                <Field label="Origem do tema">
-                  <RadioGroup
-                    value={String(novoDia.origemTema)}
-                    onChange={(_, d) => setNovoDia((atual) => ({ ...atual, origemTema: Number(d.value) }))}
-                  >
-                    <Radio value={String(OrigemTemaDds.AutomaticoAtividade1)} label={origemTemaDdsLabel[OrigemTemaDds.AutomaticoAtividade1]} />
-                    <Radio value={String(OrigemTemaDds.AutomaticoAtividade2)} label={origemTemaDdsLabel[OrigemTemaDds.AutomaticoAtividade2]} />
-                    <Radio value={String(OrigemTemaDds.Livre)} label={origemTemaDdsLabel[OrigemTemaDds.Livre]} />
-                  </RadioGroup>
-                </Field>
+                <Text size={200} style={{ display: 'block' }}>
+                  Cada atividade marcada acima entra automaticamente como um tema do dia
+                  (perigo, consequência e controles já cadastrados na Matriz de Riscos dela).
+                </Text>
 
-                {novoDia.origemTema === OrigemTemaDds.Livre && (
-                  <Field label="Tema do catálogo">
-                    <Select
-                      value={novoDia.catalogoTemaDdsId}
-                      onChange={(_, d) => setNovoDia((atual) => ({ ...atual, catalogoTemaDdsId: d.value }))}
-                    >
-                      <option value="">Selecione</option>
-                      {catalogoTemas.map((tema) => (
-                        <option key={tema.id} value={tema.id}>
-                          {tema.nome}
-                        </option>
-                      ))}
-                    </Select>
-                    <div style={{ display: 'flex', gap: 4, marginTop: 4 }}>
-                      <Input
-                        placeholder="Novo tema..."
-                        value={novoTemaNome}
-                        onChange={(_, d) => setNovoTemaNome(d.value)}
-                      />
-                      <Button size="small" onClick={adicionarTemaAoCatalogo} disabled={processando || !novoTemaNome.trim()}>
-                        Adicionar
-                      </Button>
-                    </div>
-                  </Field>
-                )}
+                <Field label="Tema livre (opcional)">
+                  <Select
+                    value={novoDia.catalogoTemaDdsId}
+                    onChange={(_, d) => setNovoDia((atual) => ({ ...atual, catalogoTemaDdsId: d.value }))}
+                  >
+                    <option value="">Nenhum</option>
+                    {catalogoTemas.map((tema) => (
+                      <option key={tema.id} value={tema.id}>
+                        {tema.nome}
+                      </option>
+                    ))}
+                  </Select>
+                </Field>
 
                 <div className={estilos.formActions}>
                   <Button appearance="subtle" onClick={() => setDiaEmCriacao(null)}>
