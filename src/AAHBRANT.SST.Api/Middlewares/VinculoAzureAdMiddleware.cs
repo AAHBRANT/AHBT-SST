@@ -33,29 +33,39 @@ public class VinculoAzureAdMiddleware
 
                 if (!string.IsNullOrWhiteSpace(oid) && Guid.TryParse(oid, out _))
                 {
-                    var usuario = await db.Usuarios
-                        .FirstOrDefaultAsync(u => u.AzureAdObjectId == oid, contexto.RequestAborted);
+                    // ExecuteUpdateAsync (sem tracking, sem checar RowVersion) em vez de carregar a
+                    // entidade e chamar SaveChangesAsync: este middleware roda em TODA request
+                    // autenticada, inclusive rajadas de chamadas paralelas do mesmo usuário (ex.: o
+                    // Promise.all de 11 chamadas do Dashboard) — descoberto ao vivo que essas rajadas
+                    // colidiam entre si no token de concorrência (RowVersion) do Usuario, cada
+                    // request perdendo pra outra com DbUpdateConcurrencyException. Um timestamp de
+                    // "último login" pode perder uma escrita concorrente sem problema nenhum.
+                    var jaVinculado = await db.Usuarios
+                        .AnyAsync(u => u.AzureAdObjectId == oid, contexto.RequestAborted);
 
-                    if (usuario is null)
+                    if (jaVinculado)
+                    {
+                        await db.Usuarios
+                            .Where(u => u.AzureAdObjectId == oid)
+                            .ExecuteUpdateAsync(
+                                s => s.SetProperty(u => u.UltimoLoginUtc, DateTime.UtcNow),
+                                contexto.RequestAborted);
+                    }
+                    else
                     {
                         var email = contexto.User.FindFirst("preferred_username")?.Value
                             ?? contexto.User.FindFirst(ClaimTypes.Email)?.Value;
 
                         if (!string.IsNullOrWhiteSpace(email))
                         {
-                            usuario = await db.Usuarios.FirstOrDefaultAsync(
-                                u => u.AzureAdObjectId == null && u.Email == email, contexto.RequestAborted);
-                            if (usuario is not null)
-                            {
-                                usuario.AzureAdObjectId = oid;
-                            }
+                            await db.Usuarios
+                                .Where(u => u.AzureAdObjectId == null && u.Email == email)
+                                .ExecuteUpdateAsync(
+                                    s => s
+                                        .SetProperty(u => u.AzureAdObjectId, oid)
+                                        .SetProperty(u => u.UltimoLoginUtc, DateTime.UtcNow),
+                                    contexto.RequestAborted);
                         }
-                    }
-
-                    if (usuario is not null)
-                    {
-                        usuario.UltimoLoginUtc = DateTime.UtcNow;
-                        await db.SaveChangesAsync(contexto.RequestAborted);
                     }
                 }
             }
