@@ -4,27 +4,33 @@ import { Tab, TabList, Text, type SelectTabData, type SelectTabEvent } from '@fl
 import { usePillTabStyles } from '../pageStyles';
 import { PgrsTab } from './PgrsTab';
 import { PgrDashboardTab } from './dashboard/PgrDashboardTab';
-import { RiscosPage } from '../riscos/RiscosPage';
+import { MatrizRiscoTab } from '../riscos/MatrizRiscoTab';
+import { AtividadesTab } from '../riscos/AtividadesTab';
+import { ImportarLoteTab } from '../riscos/ImportarLoteTab';
+import { RiscosDashboardTab } from '../riscos/dashboard/RiscosDashboardTab';
 
 // Item "PGR / GRO" da sidebar (02/09): PGR e Riscos juntos porque fazem sentido juntos de verdade
 // (Riscos é a matriz de risco que o PGR consome — pedido explícito do usuário), não porque é
-// tecnicamente conveniente. Cada item que só "cabia" aqui por conveniência (Inspeções, DDS) saiu —
-// cada um já tem link próprio na sidebar (ver App.tsx/AppShell.tsx). Suporta abrir direto na aba
-// Riscos via ?aba=riscos — usado pelo redirecionamento do antigo item "Riscos" da sidebar.
+// tecnicamente conveniente.
 //
-// Flatteneado pra uma única linha de abas (pedido do usuário, 02/09, via protótipo comentável): a
-// versão anterior tinha duas camadas — abas "PGR"/"Riscos" e, dentro de "PGR", outras abas
-// "PGRs"/"Dashboard" — com a palavra "PGR" duplicada (título de PgrsPage repetindo o nome da aba
-// pai). Dashboard sempre por último, mesmo padrão adotado nos outros módulos.
-type AbaPgrGro = 'pgrs' | 'riscos' | 'dashboard';
+// Flatteneado pra uma única linha de abas (pedido do usuário, 02/09, via protótipo comentável):
+// tanto o lado PGR (PgrsPage) quanto o lado Riscos (RiscosPage) tinham título próprio duplicando o
+// nome da aba pai ("PGR"/"Riscos" repetidos) e uma segunda barra de abas por baixo — as duas telas
+// foram dissolvidas aqui dentro. "Dashboard PGR" e "Dashboard Riscos" ficam por último (mesmo padrão
+// adotado nos outros módulos), com nomes distintos porque são dashboards diferentes.
+//
+// ?aba=riscos continua funcionando (usado pelo redirecionamento do antigo item "Riscos" da
+// sidebar) — mapeado para "matriz", que era a aba inicial de RiscosPage.
+type AbaPgrGro = 'pgrs' | 'matriz' | 'atividades' | 'importar' | 'dashboardPgr' | 'dashboardRiscos';
 
-const ABAS_VALIDAS: AbaPgrGro[] = ['pgrs', 'riscos', 'dashboard'];
+const ABAS_VALIDAS: AbaPgrGro[] = ['pgrs', 'matriz', 'atividades', 'importar', 'dashboardPgr', 'dashboardRiscos'];
 
 export function PgrRiscosPage() {
   const [searchParams] = useSearchParams();
   const abaInicial = searchParams.get('aba');
+  const abaResolvida = abaInicial === 'riscos' ? 'matriz' : abaInicial;
   const [aba, setAba] = useState<AbaPgrGro>(
-    ABAS_VALIDAS.includes(abaInicial as AbaPgrGro) ? (abaInicial as AbaPgrGro) : 'pgrs',
+    ABAS_VALIDAS.includes(abaResolvida as AbaPgrGro) ? (abaResolvida as AbaPgrGro) : 'pgrs',
   );
   const estilosAba = usePillTabStyles();
 
@@ -42,13 +48,19 @@ export function PgrRiscosPage() {
         className={estilosAba.lista}
       >
         <Tab value="pgrs">PGRs</Tab>
-        <Tab value="riscos">Riscos</Tab>
-        <Tab value="dashboard">Dashboard</Tab>
+        <Tab value="matriz">Matriz de Risco</Tab>
+        <Tab value="atividades">Atividades</Tab>
+        <Tab value="importar">Importar em Lote</Tab>
+        <Tab value="dashboardPgr">Dashboard PGR</Tab>
+        <Tab value="dashboardRiscos">Dashboard Riscos</Tab>
       </TabList>
 
       {aba === 'pgrs' && <PgrsTab />}
-      {aba === 'riscos' && <RiscosPage />}
-      {aba === 'dashboard' && <PgrDashboardTab />}
+      {aba === 'matriz' && <MatrizRiscoTab />}
+      {aba === 'atividades' && <AtividadesTab />}
+      {aba === 'importar' && <ImportarLoteTab />}
+      {aba === 'dashboardPgr' && <PgrDashboardTab />}
+      {aba === 'dashboardRiscos' && <RiscosDashboardTab />}
     </div>
   );
 }
