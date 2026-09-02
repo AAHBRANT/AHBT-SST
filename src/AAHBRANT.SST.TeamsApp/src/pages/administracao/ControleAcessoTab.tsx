@@ -633,11 +633,12 @@ export function ControleAcessoTab() {
                     )}
                     {permissoesPorModuloFiltradas.map(([modulo, lista]) => {
                       const aberto = !!termoBusca || modulosAbertos.has(modulo);
-                      const marcadosNoModulo = lista.reduce(
-                        (acc, p) => acc + escopos.filter((e) => marcados.has(chave(p.id, e))).length,
-                        0,
-                      );
-                      const totalDoModulo = lista.length * escopos.length;
+                      // Contagem por AÇÃO concedida (pelo menos um escopo marcado), não por célula
+                      // da tabela — "3/12" (3 ações x 4 escopos) confundia o usuário, que pensava
+                      // em "12 opções" quando as únicas 3 ações do módulo já estavam concedidas.
+                      const acoesConcedidasNoModulo = lista.filter((p) =>
+                        escopos.some((e) => marcados.has(chave(p.id, e))),
+                      ).length;
                       return (
                         <Fragment key={`modulo-${modulo}`}>
                           <TableRow style={{ backgroundColor: 'rgba(0,0,0,0.02)' }}>
@@ -651,7 +652,7 @@ export function ControleAcessoTab() {
                               >
                                 <Text weight="semibold">{modulo}</Text>
                                 <Text size={200} style={{ marginLeft: 8 }}>
-                                  ({marcadosNoModulo}/{totalDoModulo})
+                                  ({acoesConcedidasNoModulo}/{lista.length} ações concedidas)
                                 </Text>
                               </Button>
                             </TableCell>
