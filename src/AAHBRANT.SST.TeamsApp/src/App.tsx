@@ -33,6 +33,7 @@ import { DdsSemanalPage } from './pages/dds/DdsSemanalPage';
 import { DdsSemanalDetalhePage } from './pages/dds/DdsSemanalDetalhePage';
 import { DdsDetalhePage } from './pages/dds/DdsDetalhePage';
 import { AssinarDdsPage } from './pages/dds/AssinarDdsPage';
+import { CatalogoTemasDdsPage } from './pages/dds/CatalogoTemasDdsPage';
 import { EpiPage } from './pages/epi/EpiPage';
 import { AssinarEntregaEpiPage } from './pages/epi/AssinarEntregaEpiPage';
 import { SaudeOcupacionalPage } from './pages/saude-ocupacional/SaudeOcupacionalPage';
@@ -86,6 +87,7 @@ function App() {
                     { valor: 'pgr', rotulo: 'PGR' },
                     { valor: 'inspecoes', rotulo: 'Inspeções' },
                     { valor: 'dds', rotulo: 'DDS' },
+                    { valor: 'temas-dds', rotulo: 'Temas de DDS' },
                   ]}
                 />
               }
@@ -100,6 +102,7 @@ function App() {
               <Route path="dds/semana/:id" element={<DdsSemanalDetalhePage />} />
               <Route path="dds/dia/:id" element={<DdsDetalhePage />} />
               <Route path="dds/dia/:id/assinar" element={<AssinarDdsPage />} />
+              <Route path="temas-dds" element={<CatalogoTemasDdsPage />} />
             </Route>
             {/* Legado: /prevencao/pcmso apontava pro PCMSO antigo (descontinuado em 28/08 —
                 ver ONBOARDING.md) — redireciona pro módulo Saúde Ocupacional atual. */}
