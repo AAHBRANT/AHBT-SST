@@ -268,6 +268,9 @@ export function DdsDetalhePage() {
         {dds ? (
           <>
             <Text size={500} weight="semibold">
+              {dds.temasAtividades.length === 0 && !dds.temaLivreNome && (
+                <Text style={{ display: 'block' }}>DDS do dia</Text>
+              )}
               {dds.temasAtividades.map((tema) => (
                 <Text key={tema.atividadeId} style={{ display: 'block' }}>
                   {tema.atividadeNome}
@@ -283,7 +286,7 @@ export function DdsDetalhePage() {
               <Badge appearance="tint">{statusDdsLabel[dds.status]}</Badge>
             </div>
             <div style={{ marginTop: 8 }}>
-              <Text>Atividades do dia: {dds.atividadesNomes.join(', ')}</Text>
+              <Text>Atividades do dia: {dds.atividadesNomes.join(', ') || 'DDS do dia'}</Text>
             </div>
             <div style={{ display: 'flex', gap: 16, marginTop: 8, alignItems: 'center' }}>
               <Text>

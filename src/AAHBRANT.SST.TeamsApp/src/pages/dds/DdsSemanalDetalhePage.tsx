@@ -234,7 +234,7 @@ export function DdsSemanalDetalhePage() {
             {dia.ddsId ? (
               <>
                 <Text style={{ display: 'block', marginBottom: 4 }}>
-                  {dia.atividadesNomes.join(', ')}
+                  {dia.atividadesNomes.join(', ') || (dia.temaLivreNome ? '' : 'DDS do dia')}
                   {dia.temaLivreNome ? ` + ${dia.temaLivreNome}` : ''}
                 </Text>
                 <div style={{ display: 'flex', gap: 8, alignItems: 'center', marginBottom: 8, flexWrap: 'wrap' }}>
