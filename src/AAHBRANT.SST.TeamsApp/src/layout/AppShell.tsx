@@ -14,6 +14,7 @@ import {
   ChevronRight24Regular,
   ChevronDown16Regular,
   ChevronUp16Regular,
+  Person24Regular,
 } from '@fluentui/react-icons';
 import { designTokens } from '../theme';
 import { useTeamsContext } from '../teams/useTeamsContext';
@@ -167,6 +168,42 @@ const useStyles = makeStyles({
     top: '-4px',
     right: '-4px',
   },
+  divisorTopbar: {
+    width: '1px',
+    height: '26px',
+    backgroundColor: designTokens.colorCardBorder,
+  },
+  usuarioChip: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: '8px',
+    backgroundColor: 'transparent',
+    border: 'none',
+    padding: '4px 6px 4px 4px',
+    borderRadius: '10px',
+    cursor: 'pointer',
+    ':hover': {
+      backgroundColor: designTokens.colorNeutralLight,
+    },
+  },
+  usuarioNome: {
+    fontSize: '13px',
+    fontWeight: 600,
+    color: designTokens.colorNeutralDark,
+    whiteSpace: 'nowrap',
+  },
+  usuarioAvatar: {
+    width: '32px',
+    height: '32px',
+    borderRadius: '50%',
+    flexShrink: 0,
+    backgroundColor: designTokens.colorNeutralLight,
+    border: `1.5px dashed ${designTokens.colorCardBorder}`,
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    color: designTokens.colorNeutralMedium,
+  },
   header: {
     gridRow: '1',
     gridColumn: '2',
@@ -305,28 +342,6 @@ function estaAtivo(rota: string, pathname: string, search: string): boolean {
   return (pathname === rota && search === '') || pathname.startsWith(`${rota}/`);
 }
 
-function tituloDaRota(pathname: string, search: string): string {
-  const localizacaoCompleta = `${pathname}${search}`;
-  for (const item of itensAvulsos) {
-    if (item.rota === pathname) return item.rotulo;
-  }
-  for (const grupo of todosGrupos) {
-    for (const item of grupo.itens) {
-      if (item.rota === localizacaoCompleta || (!item.rota.includes('?') && item.rota === pathname)) {
-        return item.rotulo;
-      }
-    }
-  }
-  if (pathname === '/alertas') return 'Alertas';
-  if (pathname.startsWith('/prevencao')) return 'Gestão de SST';
-  if (pathname.startsWith('/operacao')) return 'Operação';
-  if (pathname.startsWith('/pessoas')) return 'Pessoas';
-  if (pathname.startsWith('/acidentes')) return 'Ocorrências';
-  if (pathname.startsWith('/nao-conformidades')) return 'Ocorrências';
-  if (pathname.startsWith('/administracao')) return 'Administração';
-  return 'AAHBRANT SST';
-}
-
 function ItemRail({
   rota,
   rotulo,
@@ -445,7 +460,8 @@ export function AppShell({ children }: { children: ReactNode }) {
   const estilos = useStyles();
   const location = useLocation();
   const navigate = useNavigate();
-  const { carregando, dentroDoTeams } = useTeamsContext();
+  const { carregando, dentroDoTeams, contexto } = useTeamsContext();
+  const nomeUsuario = contexto?.user?.displayName ?? 'Usuário';
   const [alertasAbertos, setAlertasAbertos] = useState<number | null>(null);
   const [railExpandido, setRailExpandido] = useState<boolean>(
     () => localStorage.getItem(CHAVE_RAIL_EXPANDIDO) === '1',
@@ -539,9 +555,7 @@ export function AppShell({ children }: { children: ReactNode }) {
       </nav>
 
       <header className={estilos.header}>
-        <Text className="brand-title" size={500} weight="semibold">
-          {tituloDaRota(location.pathname, location.search)}
-        </Text>
+        <div />
         <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
           <SyncStatusBadge />
           {!carregando && (
@@ -563,6 +577,13 @@ export function AppShell({ children }: { children: ReactNode }) {
               </Badge>
             )}
           </div>
+          <div className={estilos.divisorTopbar} />
+          <button className={estilos.usuarioChip} title={nomeUsuario}>
+            <Text className={estilos.usuarioNome}>{nomeUsuario}</Text>
+            <div className={estilos.usuarioAvatar} title="Foto de perfil (em breve)">
+              <Person24Regular fontSize={17} />
+            </div>
+          </button>
         </div>
       </header>
 

@@ -158,26 +158,32 @@ export const useStatusChipStyles = makeStyles({
   },
 });
 
-// Abas em formato de pílula (padrão visual aprovado para todas as abas do sistema): sobrescreve as
-// classes estáveis do Fluent (fui-Tab / fui-Tab__icon / fui-Tab__content) em vez de substituir o
-// componente Tab/TabList, então continua funcionando com toda a lógica de seleção/acessibilidade nativa.
+// Abas em formato quadrado grudado no painel abaixo (padrão visual aprovado para todas as abas do
+// sistema, 02/09) — substitui o formato de pílula flutuante anterior. Sobrescreve as classes
+// estáveis do Fluent (fui-Tab / fui-Tab__icon / fui-Tab__content) em vez de substituir o componente
+// Tab/TabList, então continua funcionando com toda a lógica de seleção/acessibilidade nativa.
 export const usePillTabStyles = makeStyles({
   lista: {
     display: 'flex',
     flexWrap: 'wrap',
-    columnGap: '8px',
-    rowGap: '8px',
-    marginBottom: '16px',
+    columnGap: '2px',
+    rowGap: '0',
+    marginBottom: '0',
+    ...shorthands.borderBottom('1px', 'solid', designTokens.colorCardBorder),
+    paddingLeft: '2px',
     '& .fui-Tab': {
-      backgroundColor: tokens.colorNeutralBackground1,
-      ...shorthands.border('1px', 'solid', tokens.colorNeutralStroke2),
-      ...shorthands.borderRadius('10px'),
-      color: tokens.colorNeutralForeground3,
+      backgroundColor: designTokens.colorNeutralLight,
+      ...shorthands.border('1px', 'solid', designTokens.colorCardBorder),
+      borderBottom: 'none',
+      borderRadius: '8px 8px 0 0',
+      color: designTokens.colorNeutralMedium,
       fontWeight: 600,
       fontSize: '13px',
-      ...shorthands.padding('10px', '18px'),
+      ...shorthands.padding('10px', '20px'),
       minHeight: 'auto',
       whiteSpace: 'nowrap',
+      position: 'relative',
+      top: '1px',
     },
     '& .fui-Tab::before': {
       display: 'none',
@@ -194,18 +200,22 @@ export const usePillTabStyles = makeStyles({
       color: 'inherit',
     },
     '& .fui-Tab:hover': {
-      backgroundColor: tokens.colorNeutralBackground1Hover,
-      color: tokens.colorBrandForeground1,
+      backgroundColor: designTokens.colorWhite,
+      color: designTokens.colorPrimary,
     },
+    // A aba ativa usa o mesmo branco do painel abaixo (se funde visualmente com ele) em vez de um
+    // preenchimento sólido — só o traço superior na cor da marca indica a seleção.
     '& .fui-Tab[aria-selected="true"]': {
-      backgroundColor: tokens.colorBrandBackground,
-      ...shorthands.borderColor(tokens.colorBrandBackground),
-      color: tokens.colorNeutralForegroundOnBrand,
-      boxShadow: '0 4px 12px rgba(123, 30, 43, 0.25)',
+      backgroundColor: designTokens.colorWhite,
+      ...shorthands.borderColor(designTokens.colorCardBorder),
+      borderTop: `2px solid ${designTokens.colorPrimary}`,
+      paddingTop: '9px',
+      color: designTokens.colorPrimary,
+      fontWeight: 700,
     },
     '& .fui-Tab[aria-selected="true"]:hover': {
-      backgroundColor: tokens.colorBrandBackgroundHover,
-      color: tokens.colorNeutralForegroundOnBrand,
+      backgroundColor: designTokens.colorWhite,
+      color: designTokens.colorPrimary,
     },
   },
 });
