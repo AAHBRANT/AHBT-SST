@@ -18,6 +18,7 @@ import {
 import { formatarCpf } from '../../lib/cpf';
 import { usePageStyles } from '../pageStyles';
 import { CadastroDigitalDialog } from './CadastroDigitalDialog';
+import { RequisitosFuncaoDialog } from './RequisitosFuncaoDialog';
 import { useConfirmarExclusao } from '../../hooks/useConfirmarExclusao';
 import { useSucessoToast } from '../../hooks/useSucessoToast';
 import { EstadoVazio } from '../../components/EstadoVazio';
@@ -71,6 +72,11 @@ export function TrabalhadoresTab() {
   const [trabalhadorDigitalAlvo, setTrabalhadorDigitalAlvo] = useState<{ id: string; nome: string } | null>(
     null,
   );
+  const [trabalhadorRequisitosAlvo, setTrabalhadorRequisitosAlvo] = useState<{
+    id: string;
+    nome: string;
+    funcaoId: string;
+  } | null>(null);
   const { confirmar, dialogElement } = useConfirmarExclusao();
   const sucessoToast = useSucessoToast();
 
@@ -165,7 +171,7 @@ export function TrabalhadoresTab() {
       setCarregando(true);
       setErro(null);
       const { id } = await api.trabalhadores.criar(novoTrabalhador);
-      setTrabalhadorDigitalAlvo({ id, nome: novoTrabalhador.nome });
+      setTrabalhadorRequisitosAlvo({ id, nome: novoTrabalhador.nome, funcaoId: novoTrabalhador.funcaoId });
       setNovoTrabalhador(trabalhadorVazio);
       await carregar();
       sucessoToast('Trabalhador criado com sucesso.');
@@ -366,6 +372,17 @@ export function TrabalhadoresTab() {
         {trabalhadoresFiltrados.length === 0 && <Text>Nenhum trabalhador encontrado.</Text>}
       </div>
       )}
+
+      <RequisitosFuncaoDialog
+        funcaoId={trabalhadorRequisitosAlvo?.funcaoId ?? null}
+        trabalhadorNome={trabalhadorRequisitosAlvo?.nome}
+        funcaoNome={trabalhadorRequisitosAlvo ? nomeFuncao(trabalhadorRequisitosAlvo.funcaoId) : undefined}
+        aoFechar={() => {
+          const alvo = trabalhadorRequisitosAlvo;
+          setTrabalhadorRequisitosAlvo(null);
+          if (alvo) setTrabalhadorDigitalAlvo({ id: alvo.id, nome: alvo.nome });
+        }}
+      />
 
       <CadastroDigitalDialog
         trabalhadorId={trabalhadorDigitalAlvo?.id ?? null}
