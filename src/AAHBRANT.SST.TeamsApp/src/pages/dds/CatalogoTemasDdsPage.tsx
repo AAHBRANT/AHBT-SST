@@ -111,10 +111,10 @@ export function CatalogoTemasDdsPage() {
       {erro && <Text className={estilos.erro}>{erro}</Text>}
 
       <div className={estilos.form}>
-        <Field label="Nome">
+        <Field label="Nome" style={{ alignSelf: 'start' }}>
           <Input value={nome} onChange={(_, d) => setNome(d.value)} />
         </Field>
-        <Field label="Descrição" style={{ flex: 1 }}>
+        <Field label="Descrição">
           <Textarea
             value={descricao}
             onChange={(_, d) => setDescricao(d.value)}
