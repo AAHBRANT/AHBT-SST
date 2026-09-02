@@ -24,12 +24,14 @@ public class Dds : AuditableEntity
     public Guid ResponsavelUsuarioId { get; set; }
     public Usuario? ResponsavelUsuario { get; set; }
 
-    // Snapshot gerado na criação — se o Risco for editado depois, o DDS já gerado não muda. A
-    // origem (OrigemTema) registra COMO esse texto foi obtido; ver disclosure em OrigemTemaDds.
-    public string TopicoPrincipal { get; set; } = string.Empty;
-    public OrigemTemaDds OrigemTema { get; set; } = OrigemTemaDds.Livre;
+    // Tema livre (opcional, aditivo — não substitui os temas das atividades abaixo). Nome/
+    // descrição são uma cópia do CatalogoTemaDds no momento da criação (mesmo princípio de
+    // snapshot já usado nos itens de checklist): se o item do catálogo for editado ou excluído
+    // depois, este DDS continua mostrando o que foi realmente apresentado naquele dia.
     public Guid? CatalogoTemaDdsId { get; set; }
     public CatalogoTemaDds? CatalogoTemaDds { get; set; }
+    public string? TemaLivreNome { get; set; }
+    public string? TemaLivreDescricao { get; set; }
 
     // Documento não lista vocabulário literal de status para este módulo (mesma lacuna já
     // registrada em StatusApr/StatusPgr/StatusPt/StatusInspecao) — proposta própria.
@@ -42,10 +44,8 @@ public class Dds : AuditableEntity
 }
 
 // Atividades do dia selecionadas pelo gestor para este DDS — vínculo N:N materializado (mesmo
-// padrão de RiscoTrabalhadorExposto). Ordem (31/08) é a posição em que o gestor selecionou cada
-// atividade na tela — a 1ª e a 2ª viram, respectivamente, a fonte de OrigemTemaDds.
-// AutomaticoAtividade1/AutomaticoAtividade2 (cruzamento com o Perigo de maior risco de CADA
-// atividade isoladamente, não do conjunto todo como o checklist).
+// padrão de RiscoTrabalhadorExposto). Cada atividade marcada contribui com seu próprio bloco de
+// tema (snapshot do Risco de maior nível, ver campos abaixo) — não é mais só a 1ª/2ª da lista.
 public class DdsAtividade : AuditableEntity
 {
     public Guid DdsId { get; set; }
@@ -55,10 +55,20 @@ public class DdsAtividade : AuditableEntity
     public Atividade? Atividade { get; set; }
 
     public int Ordem { get; set; }
+
+    // Snapshot do Risco de maior NivelRisco desta atividade, copiado na criação do Dds — mesmo
+    // princípio de DdsItemChecklist (cópia, não referência viva). Tudo nullable: a atividade pode
+    // não ter nenhum Risco cadastrado ainda.
+    public string? PerigoNome { get; set; }
+    public string? PerigoDescricao { get; set; }
+    public string? Consequencia { get; set; }
+    public string? ControlesExistentes { get; set; }
+    public string? ControlesAdicionais { get; set; }
 }
 
-// Catálogo pré-cadastrado de temas de DDS (31/08) — usado quando OrigemTemaDds = Livre. Cadastro
-// simples (nome + ativo), mesmo espírito de CatalogoEpi: sem versionamento, edição in-place.
+// Catálogo pré-cadastrado de temas de DDS (31/08) — tema livre opcional, adicionado por cima dos
+// temas automáticos das atividades (ver Dds.TemaLivreNome). Cadastro simples (nome + descrição),
+// mesmo espírito de CatalogoEpi: sem versionamento, edição in-place.
 public class CatalogoTemaDds : AuditableEntity
 {
     public string Nome { get; set; } = string.Empty;

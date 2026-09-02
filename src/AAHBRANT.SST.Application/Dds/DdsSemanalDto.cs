@@ -31,7 +31,8 @@ public class DdsSemanalDiaDto
     public DayOfWeek DiaSemana { get; set; }
     public DateTime Data { get; set; }
     public Guid? DdsId { get; set; }
-    public string? TopicoPrincipal { get; set; }
+    public List<string> AtividadesNomes { get; set; } = new();
+    public string? TemaLivreNome { get; set; }
     public StatusDds? Status { get; set; }
     public int TotalFotosEvidencia { get; set; }
     public int TotalParticipantes { get; set; }

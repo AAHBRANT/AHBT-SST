@@ -563,18 +563,6 @@ public enum StatusDdsSemanal
     Concluida = 2
 }
 
-// Origem do "Tema do DDS" do dia (documento do usuário tem 1 tema por dia, não 3 — o pedido de
-// "Tema 1/2/3" são 3 formas de PREENCHER esse único tema): as duas primeiras cruzam automaticamente
-// com a 1ª/2ª atividade selecionada para o dia (mesma lógica de "Perigo de maior risco" já usada
-// para TopicoPrincipal, agora escopada a uma atividade só); a terceira é escolha livre do técnico
-// num catálogo pré-cadastrado (CatalogoTemaDds).
-public enum OrigemTemaDds
-{
-    AutomaticoAtividade1 = 1,
-    AutomaticoAtividade2 = 2,
-    Livre = 3
-}
-
 // Motor Central de Alertas + Cadastro de Ativos (requisito do usuário, 2026-08-25): entidade única
 // AtivoSst (ver Domain/Entidades/AtivoSst.cs) com este campo discriminador — em vez de duas tabelas
 // separadas (Extintor/Equipamento) — para permitir adicionar novos tipos de ativo no futuro sem

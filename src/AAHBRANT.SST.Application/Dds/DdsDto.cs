@@ -2,6 +2,17 @@ using AAHBRANT.SST.Domain.Enums;
 
 namespace AAHBRANT.SST.Application.Dds;
 
+public class DdsTemaAtividadeDto
+{
+    public Guid AtividadeId { get; set; }
+    public string AtividadeNome { get; set; } = string.Empty;
+    public string? PerigoNome { get; set; }
+    public string? PerigoDescricao { get; set; }
+    public string? Consequencia { get; set; }
+    public string? ControlesExistentes { get; set; }
+    public string? ControlesAdicionais { get; set; }
+}
+
 public class DdsDto
 {
     public Guid Id { get; set; }
@@ -11,10 +22,13 @@ public class DdsDto
     public DateTime Data { get; set; }
     public Guid ResponsavelUsuarioId { get; set; }
     public string ResponsavelUsuarioNome { get; set; } = string.Empty;
-    public string TopicoPrincipal { get; set; } = string.Empty;
-    public OrigemTemaDds OrigemTema { get; set; }
     public Guid? CatalogoTemaDdsId { get; set; }
+    public string? TemaLivreNome { get; set; }
+    public string? TemaLivreDescricao { get; set; }
     public StatusDds Status { get; set; }
+    public List<DdsTemaAtividadeDto> TemasAtividades { get; set; } = new();
+    // Conveniência derivada de TemasAtividades (mesmo dado, só os nomes) — usada onde só o nome
+    // da atividade importa (ex.: DdsDetalhePage.tsx), sem repetir o objeto inteiro.
     public List<string> AtividadesNomes { get; set; } = new();
     public int TotalItensChecklist { get; set; }
     public int ItensVerificados { get; set; }
