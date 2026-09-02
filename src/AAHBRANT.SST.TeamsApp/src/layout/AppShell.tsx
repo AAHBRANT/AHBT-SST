@@ -50,7 +50,6 @@ const useStyles = makeStyles({
     gridRow: '1 / span 2',
     gridColumn: '1',
     background: designTokens.colorRailBackground,
-    backdropFilter: 'blur(6px)',
     borderRight: `1px solid ${designTokens.colorRailBorder}`,
     color: designTokens.colorRailInk,
     display: 'flex',
@@ -108,7 +107,7 @@ const useStyles = makeStyles({
   navItemHover: {
     ':hover': {
       color: designTokens.colorRailInk,
-      backgroundColor: 'rgba(16,163,90,0.14)',
+      backgroundColor: '#D4EDDA',
     },
   },
   navItemActive: {
@@ -116,8 +115,8 @@ const useStyles = makeStyles({
     backgroundColor: designTokens.colorRailActiveBackground,
   },
   navRotulo: {
-    fontSize: '14px',
-    fontWeight: 500,
+    fontSize: '15px',
+    fontWeight: 700,
     flex: 1,
   },
   grupoCabecalho: {
@@ -159,6 +158,20 @@ const useStyles = makeStyles({
   },
   railRodape: {
     marginTop: 'auto',
+  },
+  // Administração vem como botão sólido no rodapé, não mais um item de lista igual aos outros —
+  // pedido do usuário (02/09) pra destacar como ação, não como mais um destino de navegação.
+  itemAdministracaoBotao: {
+    width: '100%',
+    height: '48px',
+    borderRadius: '12px',
+    backgroundColor: designTokens.colorRailActiveBackground,
+    color: designTokens.colorRailActiveInk,
+    boxShadow: '0 4px 6px rgba(0,0,0,0.1)',
+    ':hover': {
+      backgroundColor: '#178A3F',
+      color: designTokens.colorRailActiveInk,
+    },
   },
   sinoAlertas: {
     position: 'relative',
@@ -347,11 +360,13 @@ function ItemRail({
   rotulo,
   icone: Icone,
   expandido,
+  destaque,
 }: {
   rota: string;
   rotulo: string;
   icone: typeof Grid24Regular;
   expandido: boolean;
+  destaque?: boolean;
 }) {
   const estilos = useStyles();
   const link = (
@@ -364,7 +379,8 @@ function ItemRail({
           estilos.navItem,
           expandido && estilos.navItemExpandido,
           !isActive && estilos.navItemHover,
-          isActive && estilos.navItemActive,
+          isActive && !destaque && estilos.navItemActive,
+          destaque && estilos.itemAdministracaoBotao,
         )
       }
     >
@@ -550,7 +566,7 @@ export function AppShell({ children }: { children: ReactNode }) {
           />
         ))}
         <div className={estilos.railRodape}>
-          <ItemRail {...itemAdministracao} expandido={railExpandido} />
+          <ItemRail {...itemAdministracao} expandido={railExpandido} destaque />
         </div>
       </nav>
 

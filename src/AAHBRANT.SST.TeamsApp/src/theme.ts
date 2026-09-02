@@ -38,12 +38,14 @@ export const designTokens = {
   colorWarning: '#F59E0B',
   colorAlert: '#EF4444',
   colorInfo: '#3B82F6',
-  // Rail de navegação — verde translúcido representando SST/segurança.
-  colorRailBackground: 'linear-gradient(180deg, rgba(16,163,90,0.16), rgba(16,163,90,0.05))',
-  colorRailBorder: 'rgba(15,131,73,0.28)',
-  colorRailInk: '#0F5132',
-  colorRailInkMuted: 'rgba(15,81,50,0.55)',
-  colorRailActiveBackground: '#16A34A',
+  // Rail de navegação — verde claro e sólido, texto em negrito de alto contraste (pedido do
+  // usuário, 02/09, a partir de referência visual): sem gradiente translúcido nem rótulo
+  // "esmaecido" no item não-selecionado — todo item já vem legível de cara.
+  colorRailBackground: '#E8F5E9',
+  colorRailBorder: '#C8E6C9',
+  colorRailInk: '#15625C',
+  colorRailInkMuted: '#15625C',
+  colorRailActiveBackground: '#1B9B48',
   colorRailActiveInk: '#FFFFFF',
   // Sistema de cartões/KPIs (Hub Gênesis SST — design decidido em sessão anterior).
   colorCardBorder: '#E7E4DA',
