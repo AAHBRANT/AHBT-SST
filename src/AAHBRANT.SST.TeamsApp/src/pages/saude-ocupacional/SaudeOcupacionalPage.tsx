@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
-import { Tab, TabList, type SelectTabData, type SelectTabEvent } from '@fluentui/react-components';
+import { Tab, TabList, Text, type SelectTabData, type SelectTabEvent } from '@fluentui/react-components';
 import { usePillTabStyles } from '../pageStyles';
 import { AsosTab } from './AsosTab';
 import { PcmsoTab } from './PcmsoTab';
@@ -11,10 +11,11 @@ type AbaSaudeOcupacional = 'aso' | 'pcmso' | 'exames' | 'aptidoes';
 
 const ABAS_VALIDAS: AbaSaudeOcupacional[] = ['aso', 'pcmso', 'exames', 'aptidoes'];
 
-// Aba "Saúde Ocupacional" (PR-SST-003) do pilar Operação (movida pra cá em 28/08 — antes era item
-// de 1º nível na sidebar, mesmo padrão de EpiPage.tsx). ASO/Exames Complementares/Aptidões têm
-// abas próprias aqui dentro porque são dado operacional/cross-worker; a versão somente-leitura por
-// trabalhador continua em PerfilGeralTab.tsx (aba "Geral & ASO").
+// Módulo "Saúde Ocupacional" (PR-SST-003), item de 1º nível próprio na sidebar (saiu do pilar
+// Operação em 02/09 — cada item da sidebar deve abrir só o que é dele, ver AppShell.tsx). ASO/
+// Exames Complementares/Aptidões têm abas próprias aqui dentro porque são dado operacional/
+// cross-worker; a versão somente-leitura por trabalhador continua em PerfilGeralTab.tsx (aba
+// "Geral & ASO").
 //
 // Suporta abrir já numa aba específica via URL (?aba=pcmso) — usado pelos itens "PCMSO" (grupo
 // Gestão de SST) e "ASO & Exames" (grupo Pessoas) do menu lateral, que apontam pra essa mesma tela.
@@ -28,6 +29,12 @@ export function SaudeOcupacionalPage() {
 
   return (
     <div>
+      <div style={{ marginBottom: 16 }}>
+        <Text size={500} weight="semibold">
+          Saúde Ocupacional
+        </Text>
+      </div>
+
       <TabList
         selectedValue={aba}
         onTabSelect={(_: SelectTabEvent, data: SelectTabData) => setAba(data.value as AbaSaudeOcupacional)}

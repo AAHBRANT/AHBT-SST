@@ -214,8 +214,6 @@ const itensAvulsos: Array<ItemNav & { icone: typeof Grid24Regular }> = [
 // achatada por módulo-pilar da consolidação de 24/08-28/08.
 //
 // Decisões não-literais assumidas (o pedido do usuário não cobria estes pontos):
-// - "Riscos" não estava na lista ditada pelo usuário; mantido dentro de Gestão de SST (ao lado de
-//   PGR/GRO, que consome a matriz de risco) pra não esconder uma tela já existente e em uso.
 // - PCMSO / "ASO & Exames" apontam pra SaudeOcupacionalPage (que já tem essas abas internamente),
 //   usando ?aba= pra abrir direto na aba certa — não duplicamos a tela.
 // - Acidentes / Incidentes / Quase-acidentes apontam pra AcidentesPage (que já tem filtro por
@@ -225,10 +223,12 @@ const itensAvulsos: Array<ItemNav & { icone: typeof Grid24Regular }> = [
 // - "Usuários" e "Permissões" (Administração) apontam pra mesma rota /administracao (aba Controle
 //   de Acesso) — o sistema não distingue essas duas telas hoje.
 // - Documentos & Procedimentos e Configurações não têm tela própria no sistema — apontam pra
-//   EmConstrucaoPage (ver App.tsx) em vez de inventar uma funcionalidade que não existe. Treinamentos
-//   (PR-SST-002, 01/09) não ganhou página agregada própria — catálogo de cursos e matriz por função
-//   já eram abas de Pessoas (adicionadas em 30/08 pelo Motor de Aplicabilidade Legal); o item aqui
-//   aponta direto pra lá (?aba=cursos) em vez de duplicar a tela.
+//   EmConstrucaoPage (ver App.tsx) em vez de inventar uma funcionalidade que não existe.
+//
+// Reestruturação de navegação (02/09, pedido do usuário): "Riscos" deixou de ser item próprio —
+// virou aba de PGR/GRO (Riscos é a matriz que o PGR consome, ver PgrRiscosPage). "Treinamentos"
+// deixou de apontar pra dentro de Pessoas (?aba=cursos) e ganhou módulo próprio (/treinamentos,
+// ver TreinamentosPage) — cada item da sidebar deve abrir só o que é dele.
 const gruposNavegacao: GrupoNav[] = [
   {
     chave: 'gestao-sst',
@@ -236,9 +236,8 @@ const gruposNavegacao: GrupoNav[] = [
     icone: ShieldError24Regular,
     itens: [
       { rota: '/prevencao/pgr', rotulo: 'PGR / GRO' },
-      { rota: '/riscos', rotulo: 'Riscos' },
       { rota: '/operacao/saude-ocupacional?aba=pcmso', rotulo: 'PCMSO' },
-      { rota: '/pessoas?aba=cursos', rotulo: 'Treinamentos' },
+      { rota: '/treinamentos', rotulo: 'Treinamentos' },
       { rota: '/epi', rotulo: 'EPI / EPC' },
       { rota: '/operacao/cipa', rotulo: 'CIPA' },
       { rota: '/prevencao/dds', rotulo: 'DDS' },
