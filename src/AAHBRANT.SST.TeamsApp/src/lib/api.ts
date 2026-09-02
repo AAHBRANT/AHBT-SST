@@ -566,6 +566,7 @@ export interface Pgr {
   descricao?: string | null;
   dataElaboracao: string;
   dataProximaRevisao?: string | null;
+  dataTermino?: string | null;
   responsavelUsuarioId?: string | null;
   status: number;
 }

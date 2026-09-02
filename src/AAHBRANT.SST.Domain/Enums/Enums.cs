@@ -107,7 +107,13 @@ public enum TipoAlerta
     ExtintorVencendo = 17,
     ExtintorVencido = 18,
     EquipamentoVencendo = 19,
-    EquipamentoVencido = 20
+    EquipamentoVencido = 20,
+    // Pedido do usuário, 02/09: "Vigência do Programa" (Início/Revisão Sugerida/Término) do PGR
+    // ganha alerta próprio — Término vira PgrVencendo/Vencido, Revisão Sugerida vira os dois abaixo.
+    PgrVencendo = 21,
+    PgrVencido = 22,
+    PgrRevisaoVencendo = 23,
+    PgrRevisaoVencida = 24
 }
 
 public enum SeveridadeAlerta
@@ -135,7 +141,8 @@ public enum TipoModuloAlerta
     Equipamento = 8,
     Dds = 9,
     PlanoAcao = 10,
-    Outro = 11
+    Outro = 11,
+    Pgr = 12
 }
 
 public enum StatusAlerta

@@ -27,6 +27,7 @@ const pgrVazio: NovoPgr = {
   descricao: '',
   dataElaboracao: '',
   dataProximaRevisao: null,
+  dataTermino: null,
   responsavelUsuarioId: null,
   status: StatusPgr.EmElaboracao,
 };
@@ -71,6 +72,7 @@ export function PgrsTab() {
       await api.pgrs.criar({
         ...novoPgr,
         dataProximaRevisao: novoPgr.dataProximaRevisao || null,
+        dataTermino: novoPgr.dataTermino || null,
       });
       setNovoPgr(pgrVazio);
       await carregar();
@@ -137,6 +139,13 @@ export function PgrsTab() {
             onChange={(_, d) => setNovoPgr({ ...novoPgr, dataProximaRevisao: d.value || null })}
           />
         </Field>
+        <Field label="Término da vigência">
+          <Input
+            type="date"
+            value={novoPgr.dataTermino ?? ''}
+            onChange={(_, d) => setNovoPgr({ ...novoPgr, dataTermino: d.value || null })}
+          />
+        </Field>
         <Field label="Status">
           <Select
             value={novoPgr.status}
@@ -168,6 +177,7 @@ export function PgrsTab() {
             <TableHeaderCell>Obra</TableHeaderCell>
             <TableHeaderCell>Elaboração</TableHeaderCell>
             <TableHeaderCell>Próxima revisão</TableHeaderCell>
+            <TableHeaderCell>Término</TableHeaderCell>
             <TableHeaderCell>Status</TableHeaderCell>
             <TableHeaderCell></TableHeaderCell>
           </TableRow>
@@ -179,6 +189,7 @@ export function PgrsTab() {
               <TableCell>{nomeObra(pgr.obraId)}</TableCell>
               <TableCell>{pgr.dataElaboracao?.slice(0, 10)}</TableCell>
               <TableCell>{pgr.dataProximaRevisao?.slice(0, 10)}</TableCell>
+              <TableCell>{pgr.dataTermino?.slice(0, 10)}</TableCell>
               <TableCell>{statusPgrLabel[pgr.status]}</TableCell>
               <TableCell>
                 <div style={{ display: 'flex', gap: 4 }}>

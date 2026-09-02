@@ -70,6 +70,7 @@ export function PgrDetalhePage() {
               {detalhe.pgr.dataProximaRevisao && (
                 <Text>Próxima revisão: {detalhe.pgr.dataProximaRevisao.slice(0, 10)}</Text>
               )}
+              {detalhe.pgr.dataTermino && <Text>Término: {detalhe.pgr.dataTermino.slice(0, 10)}</Text>}
               <Badge appearance="tint">{statusPgrLabel[detalhe.pgr.status]}</Badge>
             </div>
           </>

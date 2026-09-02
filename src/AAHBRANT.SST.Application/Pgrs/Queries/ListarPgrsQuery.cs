@@ -29,6 +29,7 @@ public class ListarPgrsQueryHandler : IRequestHandler<ListarPgrsQuery, List<PgrD
             Descricao = p.Descricao,
             DataElaboracao = p.DataElaboracao,
             DataProximaRevisao = p.DataProximaRevisao,
+            DataTermino = p.DataTermino,
             ResponsavelUsuarioId = p.ResponsavelUsuarioId,
             Status = p.Status
         }).ToList();

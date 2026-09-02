@@ -46,6 +46,7 @@ public class ObterPgrDetalheQueryHandler : IRequestHandler<ObterPgrDetalheQuery,
                 Descricao = pgr.Descricao,
                 DataElaboracao = pgr.DataElaboracao,
                 DataProximaRevisao = pgr.DataProximaRevisao,
+                DataTermino = pgr.DataTermino,
                 ResponsavelUsuarioId = pgr.ResponsavelUsuarioId,
                 Status = pgr.Status
             },

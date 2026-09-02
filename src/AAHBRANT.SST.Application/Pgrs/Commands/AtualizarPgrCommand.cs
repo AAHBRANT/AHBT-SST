@@ -13,6 +13,7 @@ public record AtualizarPgrCommand(
     string? Descricao,
     DateTime DataElaboracao,
     DateTime? DataProximaRevisao,
+    DateTime? DataTermino,
     Guid? ResponsavelUsuarioId,
     StatusPgr Status) : IRequest;
 
@@ -42,6 +43,7 @@ public class AtualizarPgrCommandHandler : IRequestHandler<AtualizarPgrCommand>
         pgr.Descricao = request.Descricao;
         pgr.DataElaboracao = request.DataElaboracao;
         pgr.DataProximaRevisao = request.DataProximaRevisao;
+        pgr.DataTermino = request.DataTermino;
         pgr.ResponsavelUsuarioId = request.ResponsavelUsuarioId;
         pgr.Status = request.Status;
 

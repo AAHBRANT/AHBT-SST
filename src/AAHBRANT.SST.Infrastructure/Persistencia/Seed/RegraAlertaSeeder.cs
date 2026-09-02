@@ -19,6 +19,7 @@ public static class RegraAlertaSeeder
         TipoModuloAlerta.Extintor,
         TipoModuloAlerta.Equipamento,
         TipoModuloAlerta.Epi,
+        TipoModuloAlerta.Pgr,
     };
 
     public static async Task ExecutarAsync(IServiceProvider services, CancellationToken ct = default)
