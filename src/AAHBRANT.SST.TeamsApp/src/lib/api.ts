@@ -3080,6 +3080,8 @@ export const api = {
         method: 'POST',
         body: JSON.stringify({ obraId, itens }),
       }),
+    limparPorObra: (obraId: string) =>
+      request<{ riscosRemovidos: number }>(`/api/riscos/obra/${obraId}`, { method: 'DELETE' }),
   },
   pgrs: {
     listar: (obraId?: string) => request<Pgr[]>(`/api/pgrs${obraId ? `?obraId=${obraId}` : ''}`),

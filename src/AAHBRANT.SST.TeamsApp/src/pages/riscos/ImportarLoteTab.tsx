@@ -1,9 +1,10 @@
 import { useEffect, useState } from 'react';
 import { Button, Field, Select, Text, Textarea } from '@fluentui/react-components';
-import { CloudArrowUp24Regular } from '@fluentui/react-icons';
+import { CloudArrowUp24Regular, Delete24Regular } from '@fluentui/react-icons';
 import { api, type ImportarRiscosLoteResultado, type Obra, type RiscoLoteItem } from '../../lib/api';
 import { usePageStyles } from '../pageStyles';
 import { useSucessoToast } from '../../hooks/useSucessoToast';
+import { useConfirmarExclusao } from '../../hooks/useConfirmarExclusao';
 
 const EXEMPLO = `[
   {
@@ -33,7 +34,9 @@ export function ImportarLoteTab() {
   const [carregando, setCarregando] = useState(false);
   const [erro, setErro] = useState<string | null>(null);
   const [resultado, setResultado] = useState<ImportarRiscosLoteResultado | null>(null);
+  const [limpando, setLimpando] = useState(false);
   const sucessoToast = useSucessoToast();
+  const { confirmar, dialogElement } = useConfirmarExclusao();
 
   useEffect(() => {
     api.obras.listar().then(setObras).catch(() => setErro('Falha ao carregar obras.'));
@@ -66,8 +69,34 @@ export function ImportarLoteTab() {
     }
   }
 
+  async function limparRiscosDaObra() {
+    if (!obraId) {
+      setErro('Selecione a obra.');
+      return;
+    }
+    const nomeObra = obras.find((o) => o.id === obraId)?.nome ?? obraId;
+    const confirmou = await confirmar({
+      titulo: 'Limpar riscos da obra',
+      mensagem: `Isso vai apagar TODAS as avaliações de risco já cadastradas para "${nomeObra}" (ex.: após uma importação duplicada por engano). Atividades e Perigos cadastrados não são afetados. Essa ação não pode ser desfeita. Confirma?`,
+      rotuloConfirmar: 'Apagar todos os riscos',
+    });
+    if (!confirmou) return;
+    try {
+      setLimpando(true);
+      setErro(null);
+      const res = await api.riscos.limparPorObra(obraId);
+      setResultado(null);
+      sucessoToast(`${res.riscosRemovidos} risco(s) removido(s) de "${nomeObra}".`);
+    } catch (e) {
+      setErro(e instanceof Error ? e.message : 'Falha ao limpar riscos da obra.');
+    } finally {
+      setLimpando(false);
+    }
+  }
+
   return (
     <div className={estilos.card}>
+      {dialogElement}
       <Text weight="semibold">Importar riscos em lote</Text>
       <Text size={200} style={{ display: 'block', marginTop: 4, marginBottom: 12 }}>
         Cole um array JSON de riscos (ex.: transcrito de um PGR). Atividade e Perigo são criados
@@ -101,6 +130,14 @@ export function ImportarLoteTab() {
       <div className={estilos.formActions} style={{ marginTop: 12 }}>
         <Button appearance="primary" icon={<CloudArrowUp24Regular />} onClick={importar} disabled={carregando}>
           Importar lote
+        </Button>
+        <Button
+          appearance="outline"
+          icon={<Delete24Regular />}
+          onClick={limparRiscosDaObra}
+          disabled={limpando || !obraId}
+        >
+          Limpar riscos desta obra
         </Button>
       </div>
 
