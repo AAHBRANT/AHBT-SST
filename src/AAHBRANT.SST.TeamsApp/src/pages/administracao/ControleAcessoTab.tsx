@@ -14,7 +14,14 @@ import {
   Text,
   Textarea,
 } from '@fluentui/react-components';
-import { Add24Regular, Delete24Regular, Save24Regular } from '@fluentui/react-icons';
+import {
+  Add24Regular,
+  ChevronDown20Regular,
+  ChevronRight20Regular,
+  Delete24Regular,
+  Save24Regular,
+  Search24Regular,
+} from '@fluentui/react-icons';
 import {
   api,
   statusUsuarioLabel,
@@ -69,6 +76,8 @@ export function ControleAcessoTab() {
   const [novoPerfil, setNovoPerfil] = useState<NovoPerfilAcesso>(perfilVazio);
   const [perfilSelecionadoId, setPerfilSelecionadoId] = useState<string | null>(null);
   const [marcados, setMarcados] = useState<Set<string>>(new Set());
+  const [modulosAbertos, setModulosAbertos] = useState<Set<string>>(new Set());
+  const [filtroPermissao, setFiltroPermissao] = useState('');
 
   const [erro, setErro] = useState<string | null>(null);
   const [carregando, setCarregando] = useState(false);
@@ -114,6 +123,47 @@ export function ControleAcessoTab() {
     }
     return Array.from(grupos.entries()).sort((a, b) => a[0].localeCompare(b[0]));
   }, [permissoes]);
+
+  // Com ~90 permissões x 4 escopos, a matriz virava uma tabela de centenas de linhas expandida de
+  // uma vez — cada módulo passa a vir fechado por padrão (contador de quantas já estão marcadas
+  // mesmo fechado), com busca por módulo/ação/código e um "marcar/desmarcar coluna inteira do
+  // módulo" por escopo, pra não precisar clicar item por item (pedido do usuário, 02/09).
+  const termoBusca = filtroPermissao.trim().toLowerCase();
+  const permissoesPorModuloFiltradas = useMemo(() => {
+    if (!termoBusca) return permissoesPorModulo;
+    return permissoesPorModulo
+      .map(([modulo, lista]): [string, Permissao[]] => [
+        modulo,
+        lista.filter(
+          (p) =>
+            modulo.toLowerCase().includes(termoBusca) ||
+            p.acao.toLowerCase().includes(termoBusca) ||
+            p.codigo.toLowerCase().includes(termoBusca),
+        ),
+      ])
+      .filter(([, lista]) => lista.length > 0);
+  }, [permissoesPorModulo, termoBusca]);
+
+  function alternarModuloAberto(modulo: string) {
+    setModulosAbertos((atual) => {
+      const proximo = new Set(atual);
+      if (proximo.has(modulo)) proximo.delete(modulo);
+      else proximo.add(modulo);
+      return proximo;
+    });
+  }
+
+  function alternarColunaModulo(lista: Permissao[], escopo: number, marcarTudo: boolean) {
+    setMarcados((atual) => {
+      const proximo = new Set(atual);
+      for (const p of lista) {
+        const k = chave(p.id, escopo);
+        if (marcarTudo) proximo.add(k);
+        else proximo.delete(k);
+      }
+      return proximo;
+    });
+  }
 
   function nomeTrabalhador(id?: string | null) {
     if (!id) return '—';
@@ -201,6 +251,8 @@ export function ControleAcessoTab() {
   async function selecionarPerfil(perfil: PerfilAcesso) {
     setPerfilSelecionadoId(perfil.id);
     setErro(null);
+    setModulosAbertos(new Set());
+    setFiltroPermissao('');
     try {
       const atuais = await api.perfisAcesso.listarPermissoes(perfil.id);
       setMarcados(new Set(atuais.filter((a) => a.permitido).map((a) => chave(a.permissaoId, a.escopo))));
@@ -550,42 +602,93 @@ export function ControleAcessoTab() {
                 </Button>
               </div>
 
+              <Field style={{ marginBottom: 12 }}>
+                <Input
+                  contentBefore={<Search24Regular />}
+                  placeholder="Buscar por módulo, ação ou código (ex.: obra, ver, organizacional:ver)"
+                  value={filtroPermissao}
+                  onChange={(_, d) => setFiltroPermissao(d.value)}
+                />
+              </Field>
+
               <div style={{ overflowX: 'auto' }}>
                 <Table>
                   <TableHeader>
                     <TableRow>
-                      <TableHeaderCell>Permissão</TableHeaderCell>
+                      <TableHeaderCell style={{ width: '40%' }}>Módulo / permissão</TableHeaderCell>
                       {escopos.map((escopo) => (
-                        <TableHeaderCell key={escopo}>{escopoAcessoLabel[escopo]}</TableHeaderCell>
+                        <TableHeaderCell key={escopo} style={{ width: '15%' }}>
+                          {escopoAcessoLabel[escopo]}
+                        </TableHeaderCell>
                       ))}
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {permissoesPorModulo.map(([modulo, lista]) => (
-                      <Fragment key={`modulo-${modulo}`}>
-                        <TableRow>
-                          <TableCell colSpan={escopos.length + 1}>
-                            <Text weight="semibold">{modulo}</Text>
-                          </TableCell>
-                        </TableRow>
-                        {lista.map((permissao) => (
-                          <TableRow key={permissao.id}>
+                    {permissoesPorModuloFiltradas.length === 0 && (
+                      <TableRow>
+                        <TableCell colSpan={escopos.length + 1}>
+                          <Text>Nenhuma permissão encontrada para "{filtroPermissao}".</Text>
+                        </TableCell>
+                      </TableRow>
+                    )}
+                    {permissoesPorModuloFiltradas.map(([modulo, lista]) => {
+                      const aberto = !!termoBusca || modulosAbertos.has(modulo);
+                      const marcadosNoModulo = lista.reduce(
+                        (acc, p) => acc + escopos.filter((e) => marcados.has(chave(p.id, e))).length,
+                        0,
+                      );
+                      const totalDoModulo = lista.length * escopos.length;
+                      return (
+                        <Fragment key={`modulo-${modulo}`}>
+                          <TableRow style={{ backgroundColor: 'rgba(0,0,0,0.02)' }}>
                             <TableCell>
-                              {permissao.acao} <Text size={200}>({permissao.codigo})</Text>
+                              <Button
+                                appearance="subtle"
+                                size="small"
+                                icon={aberto ? <ChevronDown20Regular /> : <ChevronRight20Regular />}
+                                onClick={() => alternarModuloAberto(modulo)}
+                                style={{ height: 'auto', whiteSpace: 'normal', textAlign: 'left' }}
+                              >
+                                <Text weight="semibold">{modulo}</Text>
+                                <Text size={200} style={{ marginLeft: 8 }}>
+                                  ({marcadosNoModulo}/{totalDoModulo})
+                                </Text>
+                              </Button>
                             </TableCell>
-                            {escopos.map((escopo) => (
-                              <TableCell key={escopo}>
-                                <input
-                                  type="checkbox"
-                                  checked={marcados.has(chave(permissao.id, escopo))}
-                                  onChange={() => alternarPermissao(permissao.id, escopo)}
-                                />
-                              </TableCell>
-                            ))}
+                            {escopos.map((escopo) => {
+                              const todosMarcadosNoEscopo = lista.every((p) => marcados.has(chave(p.id, escopo)));
+                              return (
+                                <TableCell key={escopo}>
+                                  <input
+                                    type="checkbox"
+                                    checked={todosMarcadosNoEscopo}
+                                    onChange={() => alternarColunaModulo(lista, escopo, !todosMarcadosNoEscopo)}
+                                    title={`Marcar/desmarcar toda a coluna "${escopoAcessoLabel[escopo]}" deste módulo`}
+                                  />
+                                </TableCell>
+                              );
+                            })}
                           </TableRow>
-                        ))}
-                      </Fragment>
-                    ))}
+                          {aberto &&
+                            lista.map((permissao) => (
+                              <TableRow key={permissao.id}>
+                                <TableCell style={{ paddingLeft: 32 }}>
+                                  {permissao.acao} <Text size={200}>({permissao.codigo})</Text>
+                                </TableCell>
+                                {escopos.map((escopo) => (
+                                  <TableCell key={escopo}>
+                                    <input
+                                      type="checkbox"
+                                      checked={marcados.has(chave(permissao.id, escopo))}
+                                      onChange={() => alternarPermissao(permissao.id, escopo)}
+                                    />
+                                  </TableCell>
+                                ))}
+                              </TableRow>
+                            ))}
+                        </Fragment>
+                      );
+                    })}
                   </TableBody>
                 </Table>
               </div>
