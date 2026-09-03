@@ -137,7 +137,7 @@ export function AssinaturaEntregaEpiDialog({
               <div style={{ display: 'flex', gap: 16, alignItems: 'flex-start' }}>
                 <FotoCatalogoEpi catalogoEpiId={catalogoEpiId} temFoto={epiTemFoto} tamanho={96} />
                 <div>
-                  <Text style={{ display: 'block' }}>Trabalhador: {trabalhadorNome}</Text>
+                  <Text style={{ display: 'block' }}>Funcionário: {trabalhadorNome}</Text>
                   <Text style={{ display: 'block' }}>EPI: {epiNome}</Text>
                   <Text style={{ display: 'block' }}>Quantidade: {quantidade}</Text>
                   <Text style={{ display: 'block' }}>

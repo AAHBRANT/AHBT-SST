@@ -76,7 +76,7 @@ export function AprAssinaturasTab({ aprId }: { aprId: string }) {
       {erro && <Text className={estilos.erro}>{erro}</Text>}
 
       <div className={estilos.form}>
-        <Field label="Trabalhador">
+        <Field label="Funcionário">
           <Select
             value={novaAssinatura.trabalhadorId}
             onChange={(_, d) => setNovaAssinatura({ ...novaAssinatura, trabalhadorId: d.value })}
@@ -111,7 +111,7 @@ export function AprAssinaturasTab({ aprId }: { aprId: string }) {
       <Table noNativeElements>
         <TableHeader>
           <TableRow>
-            <TableHeaderCell>Trabalhador</TableHeaderCell>
+            <TableHeaderCell>Funcionário</TableHeaderCell>
             <TableHeaderCell>Papel</TableHeaderCell>
             <TableHeaderCell>Data</TableHeaderCell>
           </TableRow>

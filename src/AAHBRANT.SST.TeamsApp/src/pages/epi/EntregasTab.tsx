@@ -133,7 +133,7 @@ export function EntregasTab({ aoNavegarParaMatriz }: EntregasTabProps) {
 
   async function criar() {
     if (!novaEntrega.trabalhadorId || !novaEntrega.catalogoEpiId || !novaEntrega.dataEntrega || novaEntrega.quantidade < 1) {
-      setErro('Preencha trabalhador, EPI, data de entrega e quantidade.');
+      setErro('Preencha funcionário, EPI, data de entrega e quantidade.');
       return;
     }
     try {
@@ -213,7 +213,7 @@ export function EntregasTab({ aoNavegarParaMatriz }: EntregasTabProps) {
         {erro && <Text className={estilos.erro}>{erro}</Text>}
 
         <div className={estilos.form}>
-          <Field label="Trabalhador">
+          <Field label="Funcionário">
             <Select
               value={novaEntrega.trabalhadorId}
               onChange={(_, d) => setNovaEntrega({ ...novaEntrega, trabalhadorId: d.value, catalogoEpiId: '' })}
@@ -325,7 +325,7 @@ export function EntregasTab({ aoNavegarParaMatriz }: EntregasTabProps) {
         <Table noNativeElements>
           <TableHeader>
             <TableRow>
-              <TableHeaderCell>Trabalhador</TableHeaderCell>
+              <TableHeaderCell>Funcionário</TableHeaderCell>
               <TableHeaderCell>EPI</TableHeaderCell>
               <TableHeaderCell>Qtd.</TableHeaderCell>
               <TableHeaderCell>Entrega</TableHeaderCell>
@@ -398,8 +398,8 @@ export function EntregasTab({ aoNavegarParaMatriz }: EntregasTabProps) {
                       icon={<ArrowDownload24Regular />}
                       onClick={() => baixarFicha(entrega.trabalhadorId)}
                       disabled={baixandoId === entrega.trabalhadorId}
-                      aria-label="Baixar ficha do trabalhador"
-                      title="Baixar ficha de EPI do trabalhador em PDF"
+                      aria-label="Baixar ficha do funcionário"
+                      title="Baixar ficha de EPI do funcionário em PDF"
                     />
                   </div>
                 </TableCell>

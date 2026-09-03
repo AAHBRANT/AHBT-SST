@@ -112,7 +112,7 @@ export function AsoTab({ trabalhadorId }: { trabalhadorId: string }) {
     <div className={estilos.card}>
       {dialogElement}
       <div className={estilos.toolbar}>
-        <Text weight="semibold">ASOs do trabalhador</Text>
+        <Text weight="semibold">ASOs do funcionário</Text>
       </div>
 
       {erro && <Text className={estilos.erro}>{erro}</Text>}

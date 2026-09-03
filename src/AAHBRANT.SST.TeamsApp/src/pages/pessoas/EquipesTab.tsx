@@ -144,7 +144,7 @@ export function EquipesTab() {
             <TableHeaderCell>Setor</TableHeaderCell>
             <TableHeaderCell>Equipe</TableHeaderCell>
             <TableHeaderCell>Encarregado</TableHeaderCell>
-            <TableHeaderCell>Trabalhadores</TableHeaderCell>
+            <TableHeaderCell>Funcionários</TableHeaderCell>
             <TableHeaderCell></TableHeaderCell>
           </TableRow>
         </TableHeader>

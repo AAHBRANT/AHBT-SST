@@ -90,7 +90,7 @@ export function AsosTab() {
 
   async function criar() {
     if (!novoAso.trabalhadorId || !novoAso.dataExame || !novoAso.dataValidade) {
-      setErro('Preencha trabalhador, data do exame e validade.');
+      setErro('Preencha funcionário, data do exame e validade.');
       return;
     }
     try {
@@ -151,7 +151,7 @@ export function AsosTab() {
         {erro && <Text className={estilos.erro}>{erro}</Text>}
 
         <div className={estilos.form}>
-          <Field label="Trabalhador">
+          <Field label="Funcionário">
             <Select
               value={novoAso.trabalhadorId}
               onChange={(_, d) => setNovoAso({ ...novoAso, trabalhadorId: d.value })}
@@ -236,7 +236,7 @@ export function AsosTab() {
         <Table noNativeElements>
           <TableHeader>
             <TableRow>
-              <TableHeaderCell>Trabalhador</TableHeaderCell>
+              <TableHeaderCell>Funcionário</TableHeaderCell>
               <TableHeaderCell>Tipo</TableHeaderCell>
               <TableHeaderCell>Exame</TableHeaderCell>
               <TableHeaderCell>Validade</TableHeaderCell>

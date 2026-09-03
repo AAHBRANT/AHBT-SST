@@ -347,7 +347,7 @@ export function ControleAcessoTab() {
                 onChange={(_, d) => setNovoUsuario({ ...novoUsuario, email: d.value })}
               />
             </Field>
-            <Field label="Trabalhador vinculado (opcional)">
+            <Field label="Funcionário vinculado (opcional)">
               <Select
                 value={novoUsuario.trabalhadorId ?? ''}
                 onChange={(_, d) => setNovoUsuario({ ...novoUsuario, trabalhadorId: d.value })}
@@ -379,7 +379,7 @@ export function ControleAcessoTab() {
                 <TableHeaderCell>E-mail</TableHeaderCell>
                 <TableHeaderCell>Status</TableHeaderCell>
                 <TableHeaderCell>Acesso Teams</TableHeaderCell>
-                <TableHeaderCell>Trabalhador</TableHeaderCell>
+                <TableHeaderCell>Funcionário</TableHeaderCell>
                 <TableHeaderCell>Perfis</TableHeaderCell>
                 <TableHeaderCell></TableHeaderCell>
               </TableRow>

@@ -234,8 +234,8 @@ export function PessoasDashboardTab() {
       <div className={estilos.chartRow}>
         <div className={estilos.chartCard}>
           <Text className={estilos.chartTitulo}>Status geral da força de trabalho</Text>
-          <div className={estilos.chartSubtitulo}>Situação clínica do ASO mais recente de cada trabalhador</div>
-          <StatusDonutChart dados={statusGeralDados} legendaCentral="trabalhadores" />
+          <div className={estilos.chartSubtitulo}>Situação clínica do ASO mais recente de cada funcionário</div>
+          <StatusDonutChart dados={statusGeralDados} legendaCentral="funcionários" />
         </div>
         <div className={estilos.chartCard}>
           <Text className={estilos.chartTitulo}>Cobertura de treinamentos por NR</Text>
@@ -244,7 +244,7 @@ export function PessoasDashboardTab() {
         </div>
         <div className={estilos.chartCard}>
           <Text className={estilos.chartTitulo}>Vencimento de ASOs</Text>
-          <div className={estilos.chartSubtitulo}>Considera apenas trabalhadores com ASO cadastrado</div>
+          <div className={estilos.chartSubtitulo}>Considera apenas funcionários com ASO cadastrado</div>
           <StatusDonutChart dados={vencimentoAsoDados} legendaCentral="ASOs" />
         </div>
       </div>
@@ -253,7 +253,7 @@ export function PessoasDashboardTab() {
 
       {!carregando && trabalhadoresFiltrados.length === 0 && (
         <div className={estilosPagina.card} style={{ marginTop: 16 }}>
-          <Text>Nenhum trabalhador encontrado para os filtros selecionados.</Text>
+          <Text>Nenhum funcionário encontrado para os filtros selecionados.</Text>
         </div>
       )}
     </div>

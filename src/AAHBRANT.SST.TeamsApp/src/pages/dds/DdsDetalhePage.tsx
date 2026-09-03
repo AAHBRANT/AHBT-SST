@@ -395,7 +395,7 @@ export function DdsDetalhePage() {
                 onChange={(_, d) => setParticipanteSelecionado(d.value)}
                 style={{ minWidth: 240 }}
               >
-                <option value="">Selecione um trabalhador</option>
+                <option value="">Selecione um funcionário</option>
                 {trabalhadoresDisponiveis.map((trabalhador) => (
                   <option key={trabalhador.id} value={trabalhador.id}>
                     {trabalhador.nome} ({trabalhador.matricula})

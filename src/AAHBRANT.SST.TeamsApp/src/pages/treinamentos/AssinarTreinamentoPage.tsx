@@ -54,7 +54,7 @@ export function AssinarTreinamentoPage() {
         </Text>
         {treinamento && (
           <Text style={{ display: 'block', marginTop: 4 }}>
-            Trabalhador: {trabalhador?.nome ?? treinamento.trabalhadorId} · Realização:{' '}
+            Funcionário: {trabalhador?.nome ?? treinamento.trabalhadorId} · Realização:{' '}
             {treinamento.dataRealizacao?.slice(0, 10)}
           </Text>
         )}

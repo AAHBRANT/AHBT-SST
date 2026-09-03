@@ -95,7 +95,7 @@ export function TrabalhadoresTab() {
       setFuncoes(funcs);
       setAsos(asosResp);
     } catch (e) {
-      setErro(e instanceof Error ? e.message : 'Falha ao carregar trabalhadores.');
+      setErro(e instanceof Error ? e.message : 'Falha ao carregar funcionários.');
     } finally {
       setCarregandoLista(false);
     }
@@ -175,9 +175,9 @@ export function TrabalhadoresTab() {
       setTrabalhadorRequisitosAlvo({ id, nome: novoTrabalhador.nome, funcaoId: novoTrabalhador.funcaoId });
       setNovoTrabalhador(trabalhadorVazio);
       await carregar();
-      sucessoToast('Trabalhador criado com sucesso.');
+      sucessoToast('Funcionário criado com sucesso.');
     } catch (e) {
-      setErro(e instanceof Error ? e.message : 'Falha ao criar trabalhador.');
+      setErro(e instanceof Error ? e.message : 'Falha ao criar funcionário.');
     } finally {
       setCarregando(false);
     }
@@ -187,16 +187,16 @@ export function TrabalhadoresTab() {
     evento.stopPropagation();
     if (
       !(await confirmar(
-        'Excluir este trabalhador? Todo o histórico associado (ASO, treinamentos, EPI) fica desvinculado. Essa ação não pode ser desfeita.',
+        'Excluir este funcionário? Todo o histórico associado (ASO, treinamentos, EPI) fica desvinculado. Essa ação não pode ser desfeita.',
       ))
     )
       return;
     try {
       await api.trabalhadores.excluir(id);
       await carregar();
-      sucessoToast('Trabalhador excluído com sucesso.');
+      sucessoToast('Funcionário excluído com sucesso.');
     } catch (e) {
-      setErro(e instanceof Error ? e.message : 'Falha ao excluir trabalhador.');
+      setErro(e instanceof Error ? e.message : 'Falha ao excluir funcionário.');
     }
   }
 
@@ -204,7 +204,7 @@ export function TrabalhadoresTab() {
     <div className={estilos.card}>
       {dialogElement}
       <div className={estilos.toolbar}>
-        <Text weight="semibold">Trabalhadores cadastrados</Text>
+        <Text weight="semibold">Funcionários cadastrados</Text>
       </div>
 
       {erro && <Text className={estilos.erro}>{erro}</Text>}
@@ -277,7 +277,7 @@ export function TrabalhadoresTab() {
       </div>
       <div className={estilos.formActions}>
         <Button appearance="primary" icon={<Add24Regular />} onClick={criar} disabled={carregando}>
-          Adicionar trabalhador
+          Adicionar funcionário
         </Button>
       </div>
 
@@ -288,7 +288,7 @@ export function TrabalhadoresTab() {
       {carregandoLista ? (
         <ListaCarregando />
       ) : trabalhadores.length === 0 ? (
-        <EstadoVazio mensagem="Nenhum trabalhador cadastrado ainda." />
+        <EstadoVazio mensagem="Nenhum funcionário cadastrado ainda." />
       ) : (
       <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
         {trabalhadoresFiltrados.map((trabalhador) => {
@@ -369,7 +369,7 @@ export function TrabalhadoresTab() {
             </div>
           );
         })}
-        {trabalhadoresFiltrados.length === 0 && <Text>Nenhum trabalhador encontrado.</Text>}
+        {trabalhadoresFiltrados.length === 0 && <Text>Nenhum funcionário encontrado.</Text>}
       </div>
       )}
 

@@ -55,7 +55,7 @@ export function TrabalhadorDetalhePage() {
       setErro(null);
       setPerfil(await api.trabalhadores.obterPerfilCompleto(id));
     } catch (e) {
-      setErro(e instanceof Error ? e.message : 'Falha ao carregar perfil do trabalhador.');
+      setErro(e instanceof Error ? e.message : 'Falha ao carregar perfil do funcionário.');
     }
   }
 
@@ -106,7 +106,7 @@ export function TrabalhadorDetalhePage() {
   }
 
   if (!id) {
-    return <Text>Trabalhador não encontrado.</Text>;
+    return <Text>Funcionário não encontrado.</Text>;
   }
 
   const dadosFrequenciaEpi: ItemRanking[] =

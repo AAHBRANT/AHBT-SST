@@ -64,7 +64,7 @@ export function ProcessoEleitoralCipaDetalhePage() {
 
   async function inscrever() {
     if (!id || !trabalhadorSelecionado) {
-      setErro('Selecione um trabalhador para inscrever.');
+      setErro('Selecione um funcionário para inscrever.');
       return;
     }
     try {
@@ -182,7 +182,7 @@ export function ProcessoEleitoralCipaDetalhePage() {
                 <Text weight="semibold">Inscrever candidato</Text>
               </div>
               <div className={estilos.form}>
-                <Field label="Trabalhador">
+                <Field label="Funcionário">
                   <Select value={trabalhadorSelecionado} onChange={(_, d) => setTrabalhadorSelecionado(d.value)}>
                     <option value="">Selecione</option>
                     {trabalhadores.map((t) => (

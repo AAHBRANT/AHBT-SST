@@ -86,7 +86,7 @@ export function ExamesComplementaresTab() {
 
   async function criar() {
     if (!novoExame.trabalhadorId || !novoExame.dataRealizacao || !novoExame.dataValidade || !novoExame.resultado.trim()) {
-      setErro('Preencha trabalhador, datas e resultado.');
+      setErro('Preencha funcionário, datas e resultado.');
       return;
     }
     try {
@@ -147,7 +147,7 @@ export function ExamesComplementaresTab() {
         {erro && <Text className={estilos.erro}>{erro}</Text>}
 
         <div className={estilos.form}>
-          <Field label="Trabalhador">
+          <Field label="Funcionário">
             <Select
               value={novoExame.trabalhadorId}
               onChange={(_, d) => setNovoExame({ ...novoExame, trabalhadorId: d.value, asoId: '' })}
@@ -234,7 +234,7 @@ export function ExamesComplementaresTab() {
         <Table noNativeElements>
           <TableHeader>
             <TableRow>
-              <TableHeaderCell>Trabalhador</TableHeaderCell>
+              <TableHeaderCell>Funcionário</TableHeaderCell>
               <TableHeaderCell>Tipo</TableHeaderCell>
               <TableHeaderCell>Realização</TableHeaderCell>
               <TableHeaderCell>Validade</TableHeaderCell>

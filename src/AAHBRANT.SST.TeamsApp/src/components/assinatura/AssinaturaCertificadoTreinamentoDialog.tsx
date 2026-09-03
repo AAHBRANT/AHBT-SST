@@ -109,7 +109,7 @@ export function AssinaturaCertificadoTreinamentoDialog({
               <Text style={{ display: 'block' }}>Carga horária realizada: {cargaHorariaRealizada}h</Text>
               <Text size={200} style={{ display: 'block', marginTop: 4 }}>
                 O certificado só fica completo com as duas assinaturas abaixo: quem ministrou/registrou o
-                treinamento e o trabalhador que participou.
+                treinamento e o funcionário que participou.
               </Text>
             </div>
 
@@ -136,7 +136,7 @@ export function AssinaturaCertificadoTreinamentoDialog({
             </div>
 
             <Text weight="semibold" style={{ display: 'block', marginBottom: 12 }}>
-              Assinatura do trabalhador
+              Assinatura do funcionário
             </Text>
             <AssinaturaQuiosque entidadeTipo="Treinamento" entidadeId={treinamentoId} />
           </DialogContent>

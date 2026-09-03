@@ -240,12 +240,12 @@ export function ReuniaoCipaDetalhePage() {
               <Text weight="semibold">Lista de presença</Text>
             </div>
             {trabalhadores.length === 0 ? (
-              <EstadoVazio mensagem="Nenhum trabalhador cadastrado nesta obra ainda." />
+              <EstadoVazio mensagem="Nenhum funcionário cadastrado nesta obra ainda." />
             ) : (
             <Table noNativeElements>
               <TableHeader>
                 <TableRow>
-                  <TableHeaderCell>Trabalhador</TableHeaderCell>
+                  <TableHeaderCell>Funcionário</TableHeaderCell>
                   <TableHeaderCell>Convocado</TableHeaderCell>
                   <TableHeaderCell>Presente</TableHeaderCell>
                 </TableRow>

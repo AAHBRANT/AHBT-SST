@@ -60,7 +60,7 @@ export function RequisitosFuncaoDialog({
         <DialogBody>
           <DialogTitle style={{ display: 'flex', alignItems: 'center', gap: 10, color: designTokens.colorAlert }}>
             <Warning24Filled />
-            Itens obrigatórios de {trabalhadorNome ?? 'trabalhador'}
+            Itens obrigatórios de {trabalhadorNome ?? 'funcionário'}
           </DialogTitle>
           <DialogContent style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
             {erro && <Text className={estilos.erro}>{erro}</Text>}
@@ -68,7 +68,7 @@ export function RequisitosFuncaoDialog({
             {!carregando && !erro && (
               <>
                 <Text>
-                  Antes de liberar {trabalhadorNome ?? 'o trabalhador'} para o trabalho, providencie os itens
+                  Antes de liberar {trabalhadorNome ?? 'o funcionário'} para o trabalho, providencie os itens
                   obrigatórios da função{funcaoNome ? ` "${funcaoNome}"` : ''} abaixo.
                 </Text>
 

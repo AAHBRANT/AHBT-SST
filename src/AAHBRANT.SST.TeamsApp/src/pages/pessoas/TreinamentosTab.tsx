@@ -147,7 +147,7 @@ export function TreinamentosTab({ trabalhadorId }: { trabalhadorId: string }) {
     <div className={estilos.card}>
       {dialogElement}
       <div className={estilos.toolbar}>
-        <Text weight="semibold">Treinamentos do trabalhador</Text>
+        <Text weight="semibold">Treinamentos do funcionário</Text>
       </div>
 
       {erro && <Text className={estilos.erro}>{erro}</Text>}

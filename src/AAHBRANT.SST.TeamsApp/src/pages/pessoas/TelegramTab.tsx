@@ -55,8 +55,8 @@ export function TelegramTab({ trabalhadorId, telegramVinculado, telegramCodigoVi
       {!telegramVinculado && (
         <>
           <Text style={{ display: 'block', marginBottom: 12 }}>
-            Gere um código de vínculo e peça para o trabalhador abrir o link no Telegram e enviar a mensagem
-            inicial. O bot não pode iniciar a conversa — o trabalhador precisa mandar a primeira mensagem.
+            Gere um código de vínculo e peça para o funcionário abrir o link no Telegram e enviar a mensagem
+            inicial. O bot não pode iniciar a conversa — o funcionário precisa mandar a primeira mensagem.
           </Text>
           <div className={estilos.formActions} style={{ marginBottom: 12 }}>
             <Button appearance="primary" icon={<Link24Regular />} onClick={gerarVinculo} disabled={gerando}>

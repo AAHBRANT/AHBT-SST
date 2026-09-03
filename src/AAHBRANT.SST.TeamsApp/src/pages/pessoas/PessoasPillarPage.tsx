@@ -28,7 +28,7 @@ export function PessoasPillarPage() {
         onTabSelect={(_: SelectTabEvent, data: SelectTabData) => setSecao(data.value as SecaoPessoas)}
         className={estilosAba.lista}
       >
-        <Tab value="trabalhadores">Trabalhadores</Tab>
+        <Tab value="trabalhadores">Funcionários</Tab>
         <Tab value="aso">ASO & Exames</Tab>
       </TabList>
 

@@ -52,7 +52,7 @@ export function PessoasPage({ mostrarTitulo = true }: { mostrarTitulo?: boolean 
         onTabSelect={(_: SelectTabEvent, data: SelectTabData) => setAba(data.value as AbaPessoas)}
         className={estilosAba.lista}
       >
-        <Tab value="trabalhadores">Trabalhadores</Tab>
+        <Tab value="trabalhadores">Funcionários</Tab>
         <Tab value="funcoes">Funções</Tab>
         <Tab value="dashboard">Dashboard</Tab>
       </TabList>

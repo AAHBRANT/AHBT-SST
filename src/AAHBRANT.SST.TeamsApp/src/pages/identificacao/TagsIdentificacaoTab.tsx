@@ -197,7 +197,7 @@ export function TagsIdentificacaoTab() {
             <Field label="Vincular a">
               <Select value={String(tipoVinculoBusca)} onChange={(_, d) => setTipoVinculoBusca(Number(d.value))}>
                 <option value={TipoEntidadeVinculada.Area}>Área</option>
-                <option value={TipoEntidadeVinculada.Trabalhador}>Trabalhador</option>
+                <option value={TipoEntidadeVinculada.Trabalhador}>Funcionário</option>
               </Select>
             </Field>
             <Field label="Entidade">
@@ -258,7 +258,7 @@ export function TagsIdentificacaoTab() {
             <Field label="Vincular a">
               <Select value={String(tipoVinculo)} onChange={(_, d) => setTipoVinculo(Number(d.value))}>
                 <option value={TipoEntidadeVinculada.Area}>Área</option>
-                <option value={TipoEntidadeVinculada.Trabalhador}>Trabalhador</option>
+                <option value={TipoEntidadeVinculada.Trabalhador}>Funcionário</option>
               </Select>
             </Field>
             <Field label="Entidade">

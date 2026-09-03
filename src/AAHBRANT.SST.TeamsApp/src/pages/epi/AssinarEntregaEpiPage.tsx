@@ -53,7 +53,7 @@ export function AssinarEntregaEpiPage() {
             </Text>
             {entrega && (
               <Text style={{ display: 'block', marginTop: 4 }}>
-                Trabalhador: {trabalhador?.nome ?? entrega.trabalhadorId} · Entrega: {entrega.dataEntrega?.slice(0, 10)}
+                Funcionário: {trabalhador?.nome ?? entrega.trabalhadorId} · Entrega: {entrega.dataEntrega?.slice(0, 10)}
               </Text>
             )}
           </div>

@@ -127,7 +127,7 @@ export function CadastroDigitalDialog({
                 <Checkbox
                   checked={termoFisicoConfirmado}
                   onChange={(_, d) => setTermoFisicoConfirmado(!!d.checked)}
-                  label="Confirmo que os termos físicos já foram assinados pelo trabalhador."
+                  label="Confirmo que os termos físicos já foram assinados pelo funcionário."
                 />
               </>
             ) : (
@@ -140,7 +140,7 @@ export function CadastroDigitalDialog({
                   </Text>
                 )}
                 {agenteDisponivel && !cadastrada && (
-                  <Text>Posicione o dedo do trabalhador no leitor e clique em "Capturar digital".</Text>
+                  <Text>Posicione o dedo do funcionário no leitor e clique em "Capturar digital".</Text>
                 )}
                 {cadastrada && <Text>Digital cadastrada com sucesso.</Text>}
               </>

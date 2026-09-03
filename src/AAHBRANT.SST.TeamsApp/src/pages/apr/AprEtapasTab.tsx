@@ -339,7 +339,7 @@ export function AprEtapasTab({ aprId }: { aprId: string }) {
                                 onChange={(_, d) => setNovoRisco({ ...novoRisco, possiveisLesoes: d.value })}
                               />
                             </Field>
-                            <Field label="Trabalhadores expostos">
+                            <Field label="Funcionários expostos">
                               <Input
                                 value={novoRisco.trabalhadoresExpostos ?? ''}
                                 onChange={(_, d) => setNovoRisco({ ...novoRisco, trabalhadoresExpostos: d.value })}

@@ -88,7 +88,7 @@ export function AptidoesTab() {
 
   async function criar() {
     if (!novaAptidao.trabalhadorId || !novaAptidao.atividadeCritica.trim() || !novaAptidao.dataAvaliacao) {
-      setErro('Preencha trabalhador, atividade crítica e data da avaliação.');
+      setErro('Preencha funcionário, atividade crítica e data da avaliação.');
       return;
     }
     try {
@@ -149,7 +149,7 @@ export function AptidoesTab() {
         {erro && <Text className={estilos.erro}>{erro}</Text>}
 
         <div className={estilos.form}>
-          <Field label="Trabalhador">
+          <Field label="Funcionário">
             <Select
               value={novaAptidao.trabalhadorId}
               onChange={(_, d) => setNovaAptidao({ ...novaAptidao, trabalhadorId: d.value })}
@@ -226,7 +226,7 @@ export function AptidoesTab() {
         <Table noNativeElements>
           <TableHeader>
             <TableRow>
-              <TableHeaderCell>Trabalhador</TableHeaderCell>
+              <TableHeaderCell>Funcionário</TableHeaderCell>
               <TableHeaderCell>Atividade crítica</TableHeaderCell>
               <TableHeaderCell>Avaliação</TableHeaderCell>
               <TableHeaderCell>Validade</TableHeaderCell>

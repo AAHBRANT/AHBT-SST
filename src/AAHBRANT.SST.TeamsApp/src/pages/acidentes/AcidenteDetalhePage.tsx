@@ -193,7 +193,7 @@ export function AcidenteDetalhePage() {
             </Text>
             <div style={{ display: 'flex', gap: 16, marginTop: 8, flexWrap: 'wrap', alignItems: 'center' }}>
               <Text>Obra: {a.obraNome ?? '—'}</Text>
-              {a.trabalhadorNome && <Text>Trabalhador: {a.trabalhadorNome}</Text>}
+              {a.trabalhadorNome && <Text>Funcionário: {a.trabalhadorNome}</Text>}
               {a.atividadeNome && <Text>Atividade: {a.atividadeNome}</Text>}
               <Text>Data: {a.data?.slice(0, 10)}</Text>
               <Badge appearance="tint">{statusAcidenteLabel[a.status]}</Badge>

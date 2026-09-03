@@ -211,7 +211,7 @@ export function DashboardPage() {
       deltas: [{ texto: `${obrasEmAndamento} em andamento`, cor: 'neutra' }],
     },
     {
-      rotulo: 'Trabalhadores ativos',
+      rotulo: 'Funcionários ativos',
       valor: String(trabalhadoresAtivos.length),
       icone: <People24Regular />,
       corIcone: 'info',
@@ -367,7 +367,7 @@ export function DashboardPage() {
         id: `trabalhador-${trabalhador.id}`,
         icone: <PersonAdd24Regular />,
         variante: 'info',
-        titulo: `Novo trabalhador admitido: ${trabalhador.nome}`,
+        titulo: `Novo funcionário admitido: ${trabalhador.nome}`,
         meta: nomeObra(trabalhador.obraId),
         dataISO: trabalhador.dataAdmissao,
       });
@@ -450,8 +450,8 @@ export function DashboardPage() {
       <div className={dashEstilos.chartRow}>
         <div className={dashEstilos.chartCard}>
           <Text className={dashEstilos.chartTitulo}>Status de aptidão ocupacional (ASO)</Text>
-          <div className={dashEstilos.chartSubtitulo}>Situação clínica do ASO mais recente de cada trabalhador</div>
-          <StatusDonutChart dados={statusAsoDados} legendaCentral="trabalhadores" />
+          <div className={dashEstilos.chartSubtitulo}>Situação clínica do ASO mais recente de cada funcionário</div>
+          <StatusDonutChart dados={statusAsoDados} legendaCentral="funcionários" />
         </div>
         <div className={dashEstilos.chartCard}>
           <Text className={dashEstilos.chartTitulo}>Quase-acidentes — últimos 6 meses</Text>

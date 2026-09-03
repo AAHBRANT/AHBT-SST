@@ -191,7 +191,7 @@ export function AcidentesPage({ tipoFixo }: { tipoFixo?: number } = {}) {
               ))}
             </Select>
           </Field>
-          <Field label="Trabalhador">
+          <Field label="Funcionário">
             <Select
               value={nova.trabalhadorId ?? ''}
               onChange={(_, d) => setNova({ ...nova, trabalhadorId: d.value })}
@@ -335,7 +335,7 @@ export function AcidentesPage({ tipoFixo }: { tipoFixo?: number } = {}) {
             <TableRow>
               <TableHeaderCell>Tipo</TableHeaderCell>
               <TableHeaderCell>Obra</TableHeaderCell>
-              <TableHeaderCell>Trabalhador</TableHeaderCell>
+              <TableHeaderCell>Funcionário</TableHeaderCell>
               <TableHeaderCell>Data</TableHeaderCell>
               <TableHeaderCell>Local</TableHeaderCell>
               <TableHeaderCell>Status</TableHeaderCell>

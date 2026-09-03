@@ -80,7 +80,7 @@ export function MembrosCipaTab() {
 
   async function criar() {
     if (!novo.obraId || !novo.trabalhadorId || !novo.dataInicioMandato || !novo.dataFimMandato) {
-      setErro('Preencha obra, trabalhador e o período do mandato.');
+      setErro('Preencha obra, funcionário e o período do mandato.');
       return;
     }
     try {
@@ -115,7 +115,7 @@ export function MembrosCipaTab() {
               ))}
             </Select>
           </Field>
-          <Field label="Trabalhador" required>
+          <Field label="Funcionário" required>
             <Select
               value={novo.trabalhadorId}
               onChange={(_, d) => setNovo({ ...novo, trabalhadorId: d.value })}

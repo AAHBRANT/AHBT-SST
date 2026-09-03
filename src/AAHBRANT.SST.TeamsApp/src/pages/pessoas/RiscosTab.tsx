@@ -33,7 +33,7 @@ export function RiscosTab({ riscos }: { riscos: RiscoExpostoPerfil[] }) {
       </div>
 
       {riscos.length === 0 ? (
-        <Text>Nenhum risco vinculado a este trabalhador.</Text>
+        <Text>Nenhum risco vinculado a este funcionário.</Text>
       ) : (
         <Table noNativeElements>
           <TableHeader>

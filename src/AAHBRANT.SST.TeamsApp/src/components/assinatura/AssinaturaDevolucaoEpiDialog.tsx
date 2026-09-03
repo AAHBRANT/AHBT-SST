@@ -105,7 +105,7 @@ export function AssinaturaDevolucaoEpiDialog({
               <Text weight="semibold" style={{ display: 'block', marginBottom: 8 }}>
                 Itens devolvidos
               </Text>
-              <Text style={{ display: 'block' }}>Trabalhador: {trabalhadorNome}</Text>
+              <Text style={{ display: 'block' }}>Funcionário: {trabalhadorNome}</Text>
               <Text style={{ display: 'block' }}>EPI: {epiNome}</Text>
               <Text style={{ display: 'block' }}>Quantidade devolvida: {quantidadeDevolucao}</Text>
               <Text style={{ display: 'block' }}>
@@ -139,7 +139,7 @@ export function AssinaturaDevolucaoEpiDialog({
             </div>
 
             <Text weight="semibold" style={{ display: 'block', marginBottom: 12 }}>
-              Assinatura do trabalhador (devolução)
+              Assinatura do funcionário (devolução)
             </Text>
             <AssinaturaQuiosque entidadeTipo="DevolucaoEpi" entidadeId={entregaId} />
           </DialogContent>

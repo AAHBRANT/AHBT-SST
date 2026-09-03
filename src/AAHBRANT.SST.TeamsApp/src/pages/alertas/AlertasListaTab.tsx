@@ -204,7 +204,7 @@ export function AlertasListaTab() {
               ))}
             </Select>
           </Field>
-          <Field label="Trabalhador">
+          <Field label="Funcionário">
             <Select
               value={novo.trabalhadorId ?? ''}
               onChange={(_, d) => setNovo({ ...novo, trabalhadorId: d.value })}

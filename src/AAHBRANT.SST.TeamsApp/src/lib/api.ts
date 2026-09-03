@@ -711,7 +711,7 @@ export const TipoEntidadeVinculada = {
 export const tipoEntidadeVinculadaLabel: Record<number, string> = {
   1: 'Área',
   2: 'Ativo',
-  3: 'Trabalhador',
+  3: 'Funcionário',
 };
 
 export interface TagIdentificacao {
@@ -929,7 +929,7 @@ export const itemPreRequisitoPtLabel: Record<number, string> = {
   2: 'PGR / Inventário de Riscos compatível com a atividade',
   3: 'Inspeções / checklists dos equipamentos válidos',
   4: 'Procedimento / instrução de trabalho aplicável disponível',
-  5: 'Trabalhadores capacitados, autorizados e aptos quando aplicável',
+  5: 'Funcionários capacitados, autorizados e aptos quando aplicável',
   6: 'Plano de emergência e meios de comunicação conhecidos pela equipe',
 };
 
@@ -996,7 +996,7 @@ export const itemVerificacaoPtLabel: Record<number, string> = {
   12: 'Atmosfera avaliada/monitorada quando aplicável (O₂, inflamáveis e tóxicos)?',
   13: 'Escavações/taludes/escoramentos/acessos inspecionados quando aplicável?',
   14: 'Plano de içamento e acessórios de movimentação verificados quando aplicável?',
-  15: 'Vigia, observador, sinaleiro ou trabalhador de apoio definido quando aplicável?',
+  15: 'Vigia, observador, sinaleiro ou funcionário de apoio definido quando aplicável?',
 };
 
 export const RespostaVerificacaoPt = {
@@ -1236,7 +1236,7 @@ export const tipoPerfilAcessoLabel: Record<number, string> = {
   7: 'RH',
   8: 'Gestor de Obra',
   9: 'Encarregado',
-  10: 'Trabalhador',
+  10: 'Funcionário',
   11: 'Auditor',
   12: 'Terceiro',
 };
@@ -2051,7 +2051,6 @@ export type AtualizarRegistroHhtMensalPayload = NovoRegistroHhtMensal;
 // documentoGestaoId aponta para o DocumentoGestao vinculado (edição/exclusão usam este último).
 export interface Pcmso {
   id: string;
-  documentoGestaoId: string;
   nome: string;
   versao?: string | null;
   validade?: string | null;
@@ -2091,11 +2090,11 @@ export interface NovoPcmso {
 
 export type AtualizarPcmsoPayload = NovoPcmso;
 
-// Vocabulário de status que este PCMSO (PR-SST-003, reaproveitando DocumentoGestao) usava emprestado
-// de StatusDocumentoGestao (removido junto com Gestão Documental/Conformidade em 2026-08-28) —
-// mantido aqui, escopado só a este PCMSO, para as telas não perderem o rótulo/cor de status enquanto
-// o backend não é reformulado (ver PENDENTE acima e em Pcmsos/* no backend). Nome diferente de
-// StatusPcmso (acima) de propósito: aquele é do PCMSO v1 antigo, vocabulário numérico incompatível.
+// Vocabulário de status do PCMSO (PR-SST-003) — espelha o enum StatusPcmsoDocumento do backend
+// (Domain/Enums/Enums.cs), reintroduzido em 2026-09-03 com os mesmos valores do antigo
+// StatusDocumentoGestao (Gestão Documental/Conformidade, removido em 2026-08-28). Nome diferente de
+// StatusPcmso (Domain) de propósito: aquele é do PCMSO v1 antigo, descontinuado, vocabulário
+// numérico incompatível.
 export const StatusPcmsoDocumento = {
   Rascunho: 1,
   EmAprovacao: 2,
@@ -2112,10 +2111,9 @@ export const statusPcmsoDocumentoLabel: Record<number, string> = {
   5: 'Cancelado',
 };
 
-// PENDENTE: DocumentoGestao (e o backend de src/AAHBRANT.SST.Application/Pcmsos) foi removido
-// junto com o módulo de Conformidade (Matriz Legal + Gestão Documental) em 2026-08-28. O PCMSO
-// fica sem armazenamento de documento até ser reformulado para não depender mais dele — ver
-// AAHBRANT.SST.Application/Pcmsos/* e DocumentoAlertaProvider.cs no backend.
+// PENDENTE: DocumentoAlertaProvider.cs (Alertas/Motor) ainda não gera alerta de "PCMSO vencendo/
+// vencido" a partir de PcmsoDetalhe.Validade — retorna lista vazia deliberadamente. Não bloqueia o
+// cadastro/edição de PCMSO (já reformulados em 2026-09-03), só o alerta automático de vencimento.
 
 export const TipoAlerta = {
   AsoVencendo: 1,
@@ -2948,9 +2946,6 @@ export const api = {
     obterPorId: (id: string) => request<Pcmso>(`/api/pcmsos/${id}`),
     criar: (pcmso: NovoPcmso) => request<{ id: string }>('/api/pcmsos', { method: 'POST', body: JSON.stringify(pcmso) }),
     atualizar: (id: string, pcmso: AtualizarPcmsoPayload) =>
-      // ...pcmso primeiro: pcmso é o Pcmso DTO (que tem seu próprio "id" = PcmsoDetalhe.Id) espalhado
-      // em cima do NovoPcmso; "id" precisa vir por último para sempre prevalecer como o
-      // documentoGestaoId esperado pela rota (PcmsoDetalhePage navega/edita por documentoGestaoId).
       request<void>(`/api/pcmsos/${id}`, { method: 'PUT', body: JSON.stringify({ ...pcmso, id }) }),
     excluir: (id: string) => request<void>(`/api/pcmsos/${id}`, { method: 'DELETE' }),
   },
