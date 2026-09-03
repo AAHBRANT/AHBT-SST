@@ -15,7 +15,7 @@ import { PermissaoTrabalhoDetalhePage } from './pages/pt/PermissaoTrabalhoDetalh
 import { AssinarPtPage } from './pages/pt/AssinarPtPage';
 import { InspecaoDetalhePage } from './pages/inspecoes/InspecaoDetalhePage';
 import { AssinarInspecaoPage } from './pages/inspecoes/AssinarInspecaoPage';
-import { AreaPublicaPage } from './pages/identificacao/AreaPublicaPage';
+import { IdentificacaoPublicaPage } from './pages/identificacao/IdentificacaoPublicaPage';
 import { ValidarDocumentoPage } from './pages/validacao/ValidarDocumentoPage';
 import { AdministracaoPage } from './pages/administracao/AdministracaoPage';
 import { NaoConformidadeDetalhePage } from './pages/naoconformidades/NaoConformidadeDetalhePage';
@@ -35,7 +35,7 @@ import { EventoSipatDetalhePage } from './pages/cipa/EventoSipatDetalhePage';
 import { AssinarTreinamentoPage } from './pages/treinamentos/AssinarTreinamentoPage';
 
 // Envolve as rotas internas do app com o AppShell (sidebar/header do Teams). As rotas públicas
-// /p/:codigoOuUid e /validar/:token ficam de fora dessa camada — ver AreaPublicaPage/ValidarDocumentoPage.
+// /p/:codigoOuUid e /validar/:token ficam de fora dessa camada — ver IdentificacaoPublicaPage/ValidarDocumentoPage.
 function LayoutComTeams() {
   return (
     <AppShell>
@@ -85,7 +85,7 @@ function AppRoteado() {
             path="/p/:codigoOuUid"
             element={
               <FluentProvider theme={aahbrantLightTheme}>
-                <AreaPublicaPage />
+                <IdentificacaoPublicaPage />
               </FluentProvider>
             }
           />

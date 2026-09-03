@@ -736,6 +736,7 @@ export interface ResolverTagDto {
 }
 
 export interface AreaPublicaDto {
+  tipoRecurso: 'area';
   codigo: string;
   nome: string;
   tipo: number;
@@ -744,6 +745,33 @@ export interface AreaPublicaDto {
   requisitos: string[];
   detalhesLocalizacao?: string | null;
 }
+
+export interface EpiAtivoPublico {
+  catalogoEpiNome: string;
+  dataValidade?: string | null;
+}
+
+export interface TreinamentoPublico {
+  cursoNome: string;
+  dataValidade: string;
+}
+
+// Crachá digital público de um trabalhador (NTAG215/QR do capacete) — mesma rota de AreaPublicaDto,
+// distinguido pelo campo tipoRecurso. Ver ResolverTrabalhadorPublicoQuery.cs: nunca inclui CPF/RG/
+// admissão/ocorrências — só o suficiente pra um fiscal em campo checar aptidão/EPI/treinamento.
+export interface TrabalhadorPublicoDto {
+  tipoRecurso: 'trabalhador';
+  nome: string;
+  matricula: string;
+  funcaoNome: string;
+  obraNome: string;
+  temFoto: boolean;
+  statusAptidao: string;
+  episAtivos: EpiAtivoPublico[];
+  treinamentos: TreinamentoPublico[];
+}
+
+export type RecursoPublico = AreaPublicaDto | TrabalhadorPublicoDto;
 
 export const StatusApr = {
   EmElaboracao: 1,
@@ -3170,7 +3198,16 @@ export const api = {
     excluir: (id: string) => request<void>(`/api/tagsidentificacao/${id}`, { method: 'DELETE' }),
   },
   identificacaoPublica: {
-    resolver: (codigoOuUid: string) => request<AreaPublicaDto>(`/sst/p/${encodeURIComponent(codigoOuUid)}`),
+    resolver: (codigoOuUid: string) => request<RecursoPublico>(`/sst/p/${encodeURIComponent(codigoOuUid)}`),
+    // Sem auth de propósito — rota [AllowAnonymous], só acessível pra quem já tem o Uid da tag.
+    baixarFotoTrabalhador: async (uid: string) => {
+      const response = await fetch(`${API_BASE_URL}/sst/p/${encodeURIComponent(uid)}/foto`);
+      if (!response.ok) {
+        const corpo = await response.text().catch(() => '');
+        throw new Error(extrairMensagemErro(corpo, response.status, response.statusText));
+      }
+      return response.blob();
+    },
   },
   validacaoPublica: {
     resolver: (token: string) => request<DocumentoPublico>(`/sst/validar/${encodeURIComponent(token)}`),

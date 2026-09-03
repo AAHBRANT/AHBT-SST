@@ -12,7 +12,14 @@ import {
   TableRow,
   Text,
 } from '@fluentui/react-components';
-import { Add24Regular, Delete24Regular, Link24Regular, LinkDismiss24Regular, Search24Regular } from '@fluentui/react-icons';
+import {
+  Add24Regular,
+  Delete24Regular,
+  Link24Regular,
+  LinkDismiss24Regular,
+  QrCode24Regular,
+  Search24Regular,
+} from '@fluentui/react-icons';
 import {
   api,
   TipoTag,
@@ -343,12 +350,21 @@ export function TagsIdentificacaoTab() {
                     />
                   )}
                   {tag.status === StatusTag.Vinculada && (
-                    <Button
-                      appearance="subtle"
-                      icon={<LinkDismiss24Regular />}
-                      onClick={() => desvincular(tag.id)}
-                      aria-label="Desvincular"
-                    />
+                    <>
+                      <Button
+                        appearance="subtle"
+                        icon={<QrCode24Regular />}
+                        onClick={() => window.open(`${window.location.origin}${window.location.pathname}#/p/${tag.uid}`, '_blank')}
+                        aria-label="Abrir crachá/card público desta tag"
+                        title="Abrir crachá/card público (o link para gravar na NTAG215 ou gerar o QR Code)"
+                      />
+                      <Button
+                        appearance="subtle"
+                        icon={<LinkDismiss24Regular />}
+                        onClick={() => desvincular(tag.id)}
+                        aria-label="Desvincular"
+                      />
+                    </>
                   )}
                   <Button
                     appearance="subtle"
