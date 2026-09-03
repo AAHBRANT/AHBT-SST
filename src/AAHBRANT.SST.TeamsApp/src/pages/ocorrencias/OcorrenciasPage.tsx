@@ -4,10 +4,17 @@ import { Tab, TabList, type SelectTabData, type SelectTabEvent } from '@fluentui
 import { usePillTabStyles } from '../pageStyles';
 import { AcidentesPage } from '../acidentes/AcidentesPage';
 import { NaoConformidadesPage } from '../naoconformidades/NaoConformidadesPage';
+import { OcorrenciasDashboardTab } from './dashboard/OcorrenciasDashboardTab';
 
-type SecaoOcorrencias = 'acidentes' | 'incidentes' | 'quase-acidentes' | 'nao-conformidades';
+type SecaoOcorrencias = 'acidentes' | 'incidentes' | 'quase-acidentes' | 'nao-conformidades' | 'dashboard';
 
-const SECOES_VALIDAS: SecaoOcorrencias[] = ['acidentes', 'incidentes', 'quase-acidentes', 'nao-conformidades'];
+const SECOES_VALIDAS: SecaoOcorrencias[] = [
+  'acidentes',
+  'incidentes',
+  'quase-acidentes',
+  'nao-conformidades',
+  'dashboard',
+];
 
 // Ver TipoOcorrencia em lib/api.ts (1=Acidente, 2=Incidente, 3=Quase acidente).
 const TIPO_POR_SECAO: Record<'acidentes' | 'incidentes' | 'quase-acidentes', number> = {
@@ -40,10 +47,14 @@ export function OcorrenciasPage() {
         <Tab value="incidentes">Incidentes</Tab>
         <Tab value="quase-acidentes">Quase-acidentes</Tab>
         <Tab value="nao-conformidades">Não conformidades</Tab>
+        <Tab value="dashboard">Dashboard</Tab>
       </TabList>
 
-      {secao !== 'nao-conformidades' && <AcidentesPage key={secao} tipoFixo={TIPO_POR_SECAO[secao]} />}
+      {(secao === 'acidentes' || secao === 'incidentes' || secao === 'quase-acidentes') && (
+        <AcidentesPage key={secao} tipoFixo={TIPO_POR_SECAO[secao]} />
+      )}
       {secao === 'nao-conformidades' && <NaoConformidadesPage mostrarTitulo={false} />}
+      {secao === 'dashboard' && <OcorrenciasDashboardTab />}
     </div>
   );
 }
