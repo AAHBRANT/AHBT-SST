@@ -22,17 +22,20 @@ import {
 import { Add24Regular, Delete24Regular } from '@fluentui/react-icons';
 import { api, StatusApr, statusAprLabel, type Apr, type Atividade, type Equipe, type NovaApr, type Trabalhador } from '../../lib/api';
 import { useSucessoToast } from '../../hooks/useSucessoToast';
+import { hojeIso } from '../../lib/datas';
 
-const aprVazia: NovaApr = {
-  atividadeId: '',
-  local: '',
-  maquinasEquipamentos: '',
-  pgrReferencia: '',
-  equipeId: null,
-  data: '',
-  validade: null,
-  responsaveisIds: [],
-};
+function aprVazia(): NovaApr {
+  return {
+    atividadeId: '',
+    local: '',
+    maquinasEquipamentos: '',
+    pgrReferencia: '',
+    equipeId: null,
+    data: hojeIso(),
+    validade: null,
+    responsaveisIds: [],
+  };
+}
 
 // Mapeamento 1:1 pelo nome semântico do Fluent (Guia de conversão item 5), preservando as mesmas
 // cores da versão anterior (Badge color=): informative→info, warning→atencao, success→ok,

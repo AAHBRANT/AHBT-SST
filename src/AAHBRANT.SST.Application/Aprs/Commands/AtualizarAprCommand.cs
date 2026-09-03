@@ -7,7 +7,8 @@ using Microsoft.EntityFrameworkCore;
 namespace AAHBRANT.SST.Application.Aprs.Commands;
 
 // Edição de dados de cadastro (cabeçalho/responsáveis) — não altera Status/aprovação, que passam
-// por AprovarAprCommand/ReprovarAprCommand.
+// por AprovarAprCommand/ReprovarAprCommand. NumeroApr não é editável (gerado uma única vez na
+// criação, ver CriarAprCommand) — permanece intocado aqui.
 public record AtualizarAprCommand(
     Guid Id,
     Guid AtividadeId,

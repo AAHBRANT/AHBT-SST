@@ -29,9 +29,10 @@ import {
   type NovaDdsSemanal,
   type Obra,
 } from '../../lib/api';
+import { segundaFeiraAtualIso } from '../../lib/datas';
 
 function semanalVazia(): NovaDdsSemanal {
-  return { obraId: '', tipo: TipoDdsSemanal.Proprios, dataInicioSemana: '' };
+  return { obraId: '', tipo: TipoDdsSemanal.Proprios, dataInicioSemana: segundaFeiraAtualIso() };
 }
 
 const tomStatusSemanal: Record<number, Tom> = {

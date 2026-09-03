@@ -7,7 +7,9 @@ using Microsoft.EntityFrameworkCore;
 namespace AAHBRANT.SST.Application.PermissoesTrabalho.Commands;
 
 // Edição de dados de cadastro (cabeçalho/responsáveis) — não altera Status/autorização/suspensão/
-// revalidação/encerramento, que passam por seus próprios comandos dedicados.
+// revalidação/encerramento, que passam por seus próprios comandos dedicados. NumeroPt não é
+// editável (gerado uma única vez na criação, ver CriarPermissaoTrabalhoCommand) — permanece
+// intocado aqui.
 public record AtualizarPermissaoTrabalhoCommand(
     Guid Id,
     Guid AtividadeId,

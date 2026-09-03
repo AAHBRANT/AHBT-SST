@@ -31,21 +31,24 @@ import {
   type Usuario,
 } from '../../lib/api';
 import { useSucessoToast } from '../../hooks/useSucessoToast';
+import { hojeIso } from '../../lib/datas';
 
-const ptVazia: NovaPermissaoTrabalho = {
-  atividadeId: '',
-  descricaoAtividade: '',
-  local: '',
-  empresaExecutante: '',
-  equipeId: null,
-  data: '',
-  horarioInicio: null,
-  horarioFim: null,
-  validade: null,
-  responsavelExecucaoUsuarioId: null,
-  responsavelAreaUsuarioId: null,
-  responsaveisIds: [],
-};
+function ptVazia(): NovaPermissaoTrabalho {
+  return {
+    atividadeId: '',
+    descricaoAtividade: '',
+    local: '',
+    empresaExecutante: '',
+    equipeId: null,
+    data: hojeIso(),
+    horarioInicio: null,
+    horarioFim: null,
+    validade: null,
+    responsavelExecucaoUsuarioId: null,
+    responsavelAreaUsuarioId: null,
+    responsaveisIds: [],
+  };
+}
 
 // Mapeamento 1:1 pelo nome semântico do Fluent (Guia de conversão item 5), preservando as mesmas
 // cores da versão anterior (Badge color=): subtle→neutro, success→ok, warning→atencao, informative→info.
