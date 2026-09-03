@@ -7,7 +7,7 @@ import { DashboardPage } from './pages/DashboardPage';
 import { GestaoSstPage } from './pages/gestao-sst/GestaoSstPage';
 import { OperacaoPage } from './pages/operacao/OperacaoPage';
 import { OcorrenciasPage } from './pages/ocorrencias/OcorrenciasPage';
-import { PessoasPillarPage } from './pages/pessoas/PessoasPillarPage';
+import { PessoasPage } from './pages/pessoas/PessoasPage';
 import { TrabalhadorDetalhePage } from './pages/pessoas/TrabalhadorDetalhePage';
 import { PgrDetalhePage } from './pages/pgr/PgrDetalhePage';
 import { AprDetalhePage } from './pages/apr/AprDetalhePage';
@@ -159,9 +159,11 @@ function AppRoteado() {
             <Route path="/alertas" element={<AlertasPage />} />
             <Route path="/calendario" element={<CalendarioPage />} />
 
-            {/* Item "Pessoas" da sidebar: Trabalhadores/Funções/Dashboard (já eram abas de
-                PessoasPage) e ASO & Exames viraram abas de PessoasPillarPage. */}
-            <Route path="/pessoas" element={<PessoasPillarPage />} />
+            {/* Item "Pessoas" da sidebar: Funcionários/Funções/Dashboard são abas de PessoasPage.
+                "ASO & Exames" chegou a ser uma 2ª aba aqui (via PessoasPillarPage, réplica de
+                mockup de 02/09), reaproveitando SaudeOcupacionalPage — removida em 03/09 (pedido
+                do usuário) por duplicar a mesma tela já acessível em Gestão de SST → PCMSO. */}
+            <Route path="/pessoas" element={<PessoasPage />} />
             <Route path="/pessoas/:id" element={<TrabalhadorDetalhePage />} />
 
             {/* Item "Ocorrências" da sidebar: Acidentes/Incidentes/Quase-acidentes (já eram a mesma
