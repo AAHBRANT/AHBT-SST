@@ -6,28 +6,17 @@ import { AcidentesPage } from '../acidentes/AcidentesPage';
 import { NaoConformidadesPage } from '../naoconformidades/NaoConformidadesPage';
 import { OcorrenciasDashboardTab } from './dashboard/OcorrenciasDashboardTab';
 
-type SecaoOcorrencias = 'acidentes' | 'incidentes' | 'quase-acidentes' | 'nao-conformidades' | 'dashboard';
+type SecaoOcorrencias = 'acidentes' | 'nao-conformidades' | 'dashboard';
 
-const SECOES_VALIDAS: SecaoOcorrencias[] = [
-  'acidentes',
-  'incidentes',
-  'quase-acidentes',
-  'nao-conformidades',
-  'dashboard',
-];
+const SECOES_VALIDAS: SecaoOcorrencias[] = ['acidentes', 'nao-conformidades', 'dashboard'];
 
-// Ver TipoOcorrencia em lib/api.ts (1=Acidente, 2=Incidente, 3=Quase acidente).
-const TIPO_POR_SECAO: Record<'acidentes' | 'incidentes' | 'quase-acidentes', number> = {
-  acidentes: 1,
-  incidentes: 2,
-  'quase-acidentes': 3,
-};
-
-// Item "Ocorrências" da sidebar (pedido do usuário, 02/09, réplica de mockup): a gaveta virou uma
-// única entrada de menu — Acidentes/Incidentes/Quase-acidentes (que já eram a mesma tela filtrada
-// por tipo via ?tipo=) e Não Conformidades viraram abas aqui. tipoFixo trava o filtro de tipo em
-// AcidentesPage (a escolha de tipo agora é a própria aba, não um seletor dentro da tela); o `key`
-// força remontar o componente ao trocar de aba, já que o filtro nasce de state interno, não de URL.
+// Item "Ocorrências" da sidebar (pedido do usuário, 02/09, réplica de mockup, com fusão pedida em
+// 03/09): Acidentes/Incidentes/Quase-acidentes eram 3 abas separadas apontando pra mesma tela
+// (AcidentesPage, filtrada por Tipo) — o usuário achou confuso ter 3 abas idênticas e pediu pra
+// juntar numa aba só. AcidentesPage já suporta isso nativamente: sem `tipoFixo`, ela mostra um
+// filtro de Tipo e a coluna Tipo na tabela (era o comportamento de antes de 02/09, quando só existia
+// essa aba única). O valor da seção continua "acidentes" (não "ocorrencias") pra não quebrar os
+// redirecionamentos legados /acidentes e /melhoria/acidentes em App.tsx.
 export function OcorrenciasPage() {
   const [searchParams] = useSearchParams();
   const secaoInicial = searchParams.get('secao');
@@ -43,16 +32,12 @@ export function OcorrenciasPage() {
         onTabSelect={(_: SelectTabEvent, data: SelectTabData) => setSecao(data.value as SecaoOcorrencias)}
         className={estilosAba.lista}
       >
-        <Tab value="acidentes">Acidentes</Tab>
-        <Tab value="incidentes">Incidentes</Tab>
-        <Tab value="quase-acidentes">Quase-acidentes</Tab>
+        <Tab value="acidentes">Acidentes / Incidentes / Quase-acidentes</Tab>
         <Tab value="nao-conformidades">Não conformidades</Tab>
         <Tab value="dashboard">Dashboard</Tab>
       </TabList>
 
-      {(secao === 'acidentes' || secao === 'incidentes' || secao === 'quase-acidentes') && (
-        <AcidentesPage key={secao} tipoFixo={TIPO_POR_SECAO[secao]} />
-      )}
+      {secao === 'acidentes' && <AcidentesPage />}
       {secao === 'nao-conformidades' && <NaoConformidadesPage mostrarTitulo={false} />}
       {secao === 'dashboard' && <OcorrenciasDashboardTab />}
     </div>
