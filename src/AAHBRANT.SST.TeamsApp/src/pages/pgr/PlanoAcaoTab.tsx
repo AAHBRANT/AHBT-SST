@@ -1,6 +1,5 @@
 import { useEffect, useState } from 'react';
 import {
-  Badge,
   Button,
   Field,
   Input,
@@ -39,12 +38,6 @@ function itemVazio(pgrId: string): NovoPlanoAcaoItem {
     status: StatusControleRisco.Pendente,
   };
 }
-
-const corBadgeStatus: Record<number, 'informative' | 'warning' | 'success'> = {
-  1: 'informative',
-  2: 'warning',
-  3: 'success',
-};
 
 export function PlanoAcaoTab({ pgrId, riscosDisponiveis }: { pgrId: string; riscosDisponiveis: RiscoClassificado[] }) {
   const estilos = usePageStyles();
@@ -90,6 +83,16 @@ export function PlanoAcaoTab({ pgrId, riscosDisponiveis }: { pgrId: string; risc
       setErro(e instanceof Error ? e.message : 'Falha ao criar item do plano de ação.');
     } finally {
       setCarregando(false);
+    }
+  }
+
+  async function mudarStatus(item: PlanoAcaoItem, status: number) {
+    try {
+      setErro(null);
+      await api.planoAcao.atualizar(item.id, { ...item, status });
+      await carregar();
+    } catch (e) {
+      setErro(e instanceof Error ? e.message : 'Falha ao atualizar status do item.');
     }
   }
 
@@ -189,9 +192,17 @@ export function PlanoAcaoTab({ pgrId, riscosDisponiveis }: { pgrId: string; risc
               <TableCell>{nomePerigo(item.riscoId)}</TableCell>
               <TableCell>{item.prazo?.slice(0, 10)}</TableCell>
               <TableCell>
-                <Badge color={corBadgeStatus[item.status]} appearance="tint">
-                  {statusControleRiscoLabel[item.status]}
-                </Badge>
+                <Select
+                  value={item.status}
+                  onChange={(_, d) => mudarStatus(item, Number(d.value))}
+                  style={{ minWidth: 140 }}
+                >
+                  {Object.entries(statusControleRiscoLabel).map(([valor, rotulo]) => (
+                    <option key={valor} value={valor}>
+                      {rotulo}
+                    </option>
+                  ))}
+                </Select>
               </TableCell>
               <TableCell>
                 <Button
