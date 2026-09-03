@@ -100,7 +100,9 @@ h3,
   background-color: var(--sst-color-surface);
   border: 1px solid var(--sst-color-card-border);
   border-radius: 12px;
-  margin-bottom: 12px;
+  margin-bottom: 16px;
+  padding-top: 6px;
+  padding-bottom: 6px;
   transition: transform 0.15s ease, box-shadow 0.15s ease;
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
 }
