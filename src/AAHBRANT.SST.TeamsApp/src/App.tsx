@@ -116,13 +116,13 @@ function AppRoteado() {
             />
             <Route path="/prevencao/inspecoes/:id" element={<InspecaoDetalhePage />} />
             <Route path="/prevencao/inspecoes/:id/assinar" element={<AssinarInspecaoPage />} />
-            <Route path="/prevencao/dds" element={<RedirecionarParaPilar pilar="/gestao-sst" secao="dds" />} />
+            <Route path="/prevencao/dds" element={<RedirecionarParaPilar pilar="/operacao" secao="dds" />} />
             <Route path="/prevencao/dds/semana/:id" element={<DdsSemanalDetalhePage />} />
             <Route path="/prevencao/dds/dia/:id" element={<DdsDetalhePage />} />
             <Route path="/prevencao/dds/dia/:id/assinar" element={<AssinarDdsPage />} />
             {/* Legado: Temas de DDS tinha sub-rota própria dentro do pilar (até 02/09) — virou aba
                 de DdsPage, dentro da aba "DDS" de Gestão de SST. */}
-            <Route path="/prevencao/temas-dds" element={<Navigate to="/gestao-sst?secao=dds&aba=temas-dds" replace />} />
+            <Route path="/prevencao/temas-dds" element={<Navigate to="/operacao?secao=dds&aba=temas-dds" replace />} />
             {/* Legado: /prevencao/pcmso apontava pro PCMSO antigo (descontinuado em 28/08 —
                 ver ONBOARDING.md) — redireciona pro módulo Saúde Ocupacional atual. Rota
                 /operacao/saude-ocupacional continua existindo sem o wrapper de pilar (link direto,
@@ -130,12 +130,13 @@ function AppRoteado() {
             <Route path="/prevencao/pcmso" element={<Navigate to="/operacao/saude-ocupacional" replace />} />
             <Route path="/prevencao/pcmso/:id" element={<RedirecionarComId para={(id) => `/operacao/saude-ocupacional/pcmso/${id}`} />} />
             <Route path="/treinamentos" element={<RedirecionarParaPilar pilar="/gestao-sst" secao="treinamentos" />} />
-            <Route path="/epi" element={<RedirecionarParaPilar pilar="/gestao-sst" secao="epi" />} />
+            <Route path="/epi" element={<RedirecionarParaPilar pilar="/operacao" secao="epi" />} />
             <Route path="/requisitos-legais" element={<RedirecionarParaPilar pilar="/gestao-sst" secao="requisitos-legais" />} />
             <Route path="/gestao-sst/documentos" element={<Navigate to="/gestao-sst?secao=documentos" replace />} />
 
-            {/* Item "Operação" da sidebar: APR, PT, Inspeções e Identificação (rotulada "Outros
-                controles operacionais") viraram abas de OperacaoPage. Pessoas virou item de 1º nível
+            {/* Item "Operação" da sidebar: APR, PT, Inspeções, CIPA, EPI/EPC, DDS e Identificação
+                (rotulada "Outros controles operacionais") viraram abas de OperacaoPage — CIPA/EPI/DDS
+                vieram de Gestão de SST em 03/09 (pedido do usuário). Pessoas virou item de 1º nível
                 próprio (ver PessoasPillarPage); Obras virou aba de Administração (01/09); Ativos foi
                 removido do sistema (02/09, pedido explícito — "não vamos usar"). */}
             <Route path="/operacao" element={<OperacaoPage />} />
@@ -150,7 +151,7 @@ function AppRoteado() {
             />
             <Route path="/operacao/saude-ocupacional" element={<SaudeOcupacionalPage />} />
             <Route path="/operacao/saude-ocupacional/pcmso/:id" element={<PcmsoDetalhePage />} />
-            <Route path="/operacao/cipa" element={<RedirecionarParaPilar pilar="/gestao-sst" secao="cipa" />} />
+            <Route path="/operacao/cipa" element={<RedirecionarParaPilar pilar="/operacao" secao="cipa" />} />
             <Route path="/operacao/cipa/eleicao/:id" element={<ProcessoEleitoralCipaDetalhePage />} />
             <Route path="/operacao/cipa/membro/:id" element={<MembroCipaDetalhePage />} />
             <Route path="/operacao/cipa/reuniao/:id" element={<ReuniaoCipaDetalhePage />} />
@@ -192,7 +193,7 @@ function AppRoteado() {
               path="/inspecoes/:id"
               element={<RedirecionarComId para={(id) => `/prevencao/inspecoes/${id}`} />}
             />
-            <Route path="/dds" element={<Navigate to="/gestao-sst?secao=dds" replace />} />
+            <Route path="/dds" element={<Navigate to="/operacao?secao=dds" replace />} />
             <Route path="/dds/:id" element={<RedirecionarComId para={(id) => `/prevencao/dds/dia/${id}`} />} />
 
             <Route path="/obras" element={<Navigate to="/administracao" replace />} />
