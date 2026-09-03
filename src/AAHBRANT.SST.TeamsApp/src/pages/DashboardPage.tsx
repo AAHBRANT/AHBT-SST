@@ -36,16 +36,21 @@ import { usePageStyles, useKpiStyles } from './pageStyles';
 import { useDashboardStyles } from '../components/dashboard/dashboardStyles';
 import { TaxaGravidadeCard } from '../components/dashboard/TaxaGravidadeCard';
 import { StatusDonutChart, type FatiaDonut } from '../components/dashboard/charts/StatusDonutChart';
-import { RankingBarChart, type ItemRanking } from '../components/dashboard/charts/RankingBarChart';
-import { TrendLineChart, type PontoTendencia } from '../components/dashboard/charts/TrendLineChart';
+import { TrendBarChart, type PontoTendencia } from '../components/dashboard/charts/TrendBarChart';
+import { MiniCalendarCard, type DiaComPrazo } from '../components/dashboard/MiniCalendarCard';
 import { designTokens } from '../theme';
+
+interface KpiDelta {
+  texto: string;
+  cor: 'neutra' | 'boa' | 'atencao' | 'alerta';
+}
 
 interface Kpi {
   rotulo: string;
   valor: string;
   icone: ReactElement;
-  delta?: string;
-  corDelta?: 'neutra' | 'boa' | 'atencao';
+  corIcone: 'info' | 'sucesso' | 'atencao' | 'alerta';
+  deltas: KpiDelta[];
 }
 
 interface ItemFeed {
@@ -173,6 +178,12 @@ export function DashboardPage() {
 
   // Treinamentos em dia: fórmula provisória — % dos registros de treinamento com validade não vencida.
   const treinamentosVencidos = treinamentos.filter((t) => t.dataValidade < hojeISO);
+  // Mesmo limiar de 30 dias usado em TreinamentosTab.tsx para considerar um treinamento "a vencer".
+  const treinamentosAVencer = treinamentos.filter((t) => {
+    if (t.dataValidade < hojeISO) return false;
+    const diasRestantes = (new Date(t.dataValidade).getTime() - new Date(hojeISO).getTime()) / 86_400_000;
+    return diasRestantes <= 30;
+  });
   const treinamentosEmDiaPct =
     treinamentos.length > 0
       ? Math.round(((treinamentos.length - treinamentosVencidos.length) / treinamentos.length) * 100)
@@ -196,43 +207,50 @@ export function DashboardPage() {
       rotulo: 'Obras ativas',
       valor: String(obrasAtivas.length),
       icone: <BuildingBank24Regular />,
-      delta: `${obrasEmAndamento} em andamento`,
-      corDelta: 'neutra',
+      corIcone: 'info',
+      deltas: [{ texto: `${obrasEmAndamento} em andamento`, cor: 'neutra' }],
     },
     {
-      rotulo: 'Trabalhadores ativos',
+      rotulo: 'Funcionários ativos',
       valor: String(trabalhadoresAtivos.length),
       icone: <People24Regular />,
-      delta: admitidosEsteMes > 0 ? `+${admitidosEsteMes} este mês` : undefined,
-      corDelta: 'neutra',
+      corIcone: 'info',
+      deltas: admitidosEsteMes > 0 ? [{ texto: `+${admitidosEsteMes} este mês`, cor: 'neutra' }] : [],
     },
     {
       rotulo: 'Conformidade de EPI',
       valor: conformidadeEpiPct !== null ? `${conformidadeEpiPct}%` : '—',
       icone: <ShieldCheckmark24Regular />,
-      delta: entregasEpiAtivas.length > 0 ? `${entregasEpiAtivas.length} entregas ativas` : undefined,
-      corDelta: 'neutra',
+      corIcone: 'sucesso',
+      deltas: entregasEpiAtivas.length > 0 ? [{ texto: `${entregasEpiAtivas.length} entregas ativas`, cor: 'neutra' }] : [],
     },
     {
       rotulo: 'Treinamentos em dia',
       valor: treinamentosEmDiaPct !== null ? `${treinamentosEmDiaPct}%` : '—',
       icone: <DocumentCheckmark24Regular />,
-      delta: treinamentosVencidos.length > 0 ? `${treinamentosVencidos.length} vencidos` : undefined,
-      corDelta: treinamentosVencidos.length > 0 ? 'atencao' : 'neutra',
+      corIcone: 'atencao',
+      deltas: [
+        ...(treinamentosAVencer.length > 0
+          ? [{ texto: `${treinamentosAVencer.length} a vencer`, cor: 'atencao' as const }]
+          : []),
+        ...(treinamentosVencidos.length > 0
+          ? [{ texto: `${treinamentosVencidos.length} vencidos`, cor: 'alerta' as const }]
+          : []),
+      ],
     },
     {
       rotulo: 'Quase-acidentes (mês)',
       valor: String(quaseAcidentesMes.length),
       icone: <Warning24Regular />,
-      delta: quaseAcidentesMes.length > 0 ? 'Acompanhar' : undefined,
-      corDelta: 'atencao',
+      corIcone: 'atencao',
+      deltas: quaseAcidentesMes.length > 0 ? [{ texto: 'Acompanhar', cor: 'atencao' }] : [],
     },
     {
       rotulo: 'Não conformidades abertas',
       valor: String(naoConformidadesAbertas.length),
       icone: <DocumentError24Regular />,
-      delta: naoConformidadesEmTratamento > 0 ? `${naoConformidadesEmTratamento} em tratamento` : undefined,
-      corDelta: 'atencao',
+      corIcone: 'alerta',
+      deltas: naoConformidadesEmTratamento > 0 ? [{ texto: `${naoConformidadesEmTratamento} em tratamento`, cor: 'alerta' }] : [],
     },
   ];
 
@@ -286,18 +304,6 @@ export function DashboardPage() {
     [quaseAcidentes],
   );
 
-  const quaseAcidentesPorObraDados: ItemRanking[] = useMemo(() => {
-    const contagem = new Map<string, number>();
-    for (const acidente of quaseAcidentesMes) {
-      const nome = acidente.obraNome ?? nomeObra(acidente.obraId);
-      contagem.set(nome, (contagem.get(nome) ?? 0) + 1);
-    }
-    return [...contagem.entries()]
-      .map(([rotulo, valor]) => ({ rotulo, valor, cor: designTokens.colorWarning }))
-      .sort((a, b) => b.valor - a.valor)
-      .slice(0, 6);
-  }, [quaseAcidentesMes, obras]);
-
   // ---------- Próximos vencimentos (alertas em aberto) ----------
 
   const proximosVencimentos = useMemo(
@@ -306,6 +312,17 @@ export function DashboardPage() {
         .sort((a, b) => (a.dataLimiteTratamento ?? '').localeCompare(b.dataLimiteTratamento ?? ''))
         .slice(0, 6),
     [alertasAbertos],
+  );
+
+  const prazosDoCalendario: DiaComPrazo[] = useMemo(
+    () =>
+      alertasAbertos
+        .filter((alerta): alerta is Alerta & { dataLimiteTratamento: string } => !!alerta.dataLimiteTratamento)
+        .map((alerta) => ({
+          dataISO: alerta.dataLimiteTratamento.slice(0, 10),
+          vencido: alerta.dataLimiteTratamento < hojeISO,
+        })),
+    [alertasAbertos, hojeISO],
   );
 
   // ---------- Atividade recente (montada a partir dos módulos existentes) ----------
@@ -318,7 +335,7 @@ export function DashboardPage() {
         id: `dds-${registro.id}`,
         icone: <ClipboardTaskListLtr24Regular />,
         variante: 'info',
-        titulo: `DDS registrado — ${registro.topicoPrincipal}`,
+        titulo: `DDS registrado — ${registro.atividadesNomes.join(', ') || 'DDS do dia'}`,
         meta: registro.obraNome,
         dataISO: registro.data,
       });
@@ -350,7 +367,7 @@ export function DashboardPage() {
         id: `trabalhador-${trabalhador.id}`,
         icone: <PersonAdd24Regular />,
         variante: 'info',
-        titulo: `Novo trabalhador admitido: ${trabalhador.nome}`,
+        titulo: `Novo funcionário admitido: ${trabalhador.nome}`,
         meta: nomeObra(trabalhador.obraId),
         dataISO: trabalhador.dataAdmissao,
       });
@@ -375,7 +392,7 @@ export function DashboardPage() {
     const dias = Math.round(
       (new Date(alerta.dataLimiteTratamento).getTime() - new Date(hojeISO).getTime()) / 86_400_000,
     );
-    return <span style={{ color: '#9A6B04', fontWeight: 700, fontSize: 11 }}>{dias} dia(s)</span>;
+    return <span style={{ color: designTokens.colorWarning, fontWeight: 700, fontSize: 11 }}>{dias} dia(s)</span>;
   }
 
   return (
@@ -389,21 +406,39 @@ export function DashboardPage() {
       <div className={kpiEstilos.linha}>
         {kpis.map((kpi) => (
           <div key={kpi.rotulo} className={mergeClasses(estilos.card, kpiEstilos.cartao)}>
-            <div className={kpiEstilos.icone}>{kpi.icone}</div>
-            <div className={kpiEstilos.valor}>{kpi.valor}</div>
-            <Text className={kpiEstilos.rotulo}>{kpi.rotulo}</Text>
-            {kpi.delta && (
-              <span
-                className={mergeClasses(
-                  kpiEstilos.variacao,
-                  kpi.corDelta === 'boa' && kpiEstilos.variacaoBoa,
-                  kpi.corDelta === 'atencao' && kpiEstilos.variacaoAtencao,
-                  (!kpi.corDelta || kpi.corDelta === 'neutra') && kpiEstilos.variacaoNeutra,
-                )}
-              >
-                {kpi.delta}
-              </span>
-            )}
+            <div className={kpiEstilos.textos}>
+              <div className={kpiEstilos.valor}>{kpi.valor}</div>
+              <Text className={kpiEstilos.rotulo}>{kpi.rotulo}</Text>
+              {kpi.deltas.length > 0 && (
+                <div className={kpiEstilos.deltasGrupo}>
+                  {kpi.deltas.map((delta) => (
+                    <span
+                      key={delta.texto}
+                      className={mergeClasses(
+                        kpiEstilos.variacao,
+                        delta.cor === 'boa' && kpiEstilos.variacaoBoa,
+                        delta.cor === 'atencao' && kpiEstilos.variacaoAtencao,
+                        delta.cor === 'alerta' && kpiEstilos.variacaoAlerta,
+                        delta.cor === 'neutra' && kpiEstilos.variacaoNeutra,
+                      )}
+                    >
+                      {delta.texto}
+                    </span>
+                  ))}
+                </div>
+              )}
+            </div>
+            <div
+              className={mergeClasses(
+                kpiEstilos.icone,
+                kpi.corIcone === 'info' && kpiEstilos.iconeInfo,
+                kpi.corIcone === 'sucesso' && kpiEstilos.iconeSucesso,
+                kpi.corIcone === 'atencao' && kpiEstilos.iconeAtencao,
+                kpi.corIcone === 'alerta' && kpiEstilos.iconeAlerta,
+              )}
+            >
+              {kpi.icone}
+            </div>
           </div>
         ))}
       </div>
@@ -415,24 +450,15 @@ export function DashboardPage() {
       <div className={dashEstilos.chartRow}>
         <div className={dashEstilos.chartCard}>
           <Text className={dashEstilos.chartTitulo}>Status de aptidão ocupacional (ASO)</Text>
-          <div className={dashEstilos.chartSubtitulo}>Situação clínica do ASO mais recente de cada trabalhador</div>
-          <StatusDonutChart dados={statusAsoDados} legendaCentral="trabalhadores" />
+          <div className={dashEstilos.chartSubtitulo}>Situação clínica do ASO mais recente de cada funcionário</div>
+          <StatusDonutChart dados={statusAsoDados} legendaCentral="funcionários" />
         </div>
         <div className={dashEstilos.chartCard}>
           <Text className={dashEstilos.chartTitulo}>Quase-acidentes — últimos 6 meses</Text>
           <div className={dashEstilos.chartSubtitulo}>Registros classificados como quase-acidente, todas as obras</div>
-          <TrendLineChart dados={tendenciaQuaseAcidentes} />
+          <TrendBarChart dados={tendenciaQuaseAcidentes} />
         </div>
-      </div>
-
-      <div style={{ marginBottom: 16 }} className={dashEstilos.chartCard}>
-        <Text className={dashEstilos.chartTitulo}>Quase-acidentes por obra — mês atual</Text>
-        <div className={dashEstilos.chartSubtitulo}>Distribuição do mês corrente entre as obras</div>
-        {quaseAcidentesPorObraDados.length > 0 ? (
-          <RankingBarChart dados={quaseAcidentesPorObraDados} corPadrao={designTokens.colorWarning} />
-        ) : (
-          <Text style={{ color: designTokens.colorNeutralMedium }}>Nenhum quase-acidente registrado no mês.</Text>
-        )}
+        <MiniCalendarCard prazos={prazosDoCalendario} />
       </div>
 
       <div className={dashEstilos.chartRow}>

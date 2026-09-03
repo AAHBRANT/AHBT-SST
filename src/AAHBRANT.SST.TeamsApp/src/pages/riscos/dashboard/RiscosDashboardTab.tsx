@@ -19,6 +19,7 @@ import { KpiCard } from '../../../components/dashboard/KpiCard';
 import { StatusDonutChart, type FatiaDonut } from '../../../components/dashboard/charts/StatusDonutChart';
 import { RankingBarChart, type ItemRanking } from '../../../components/dashboard/charts/RankingBarChart';
 import { RiscosCriticosPanel } from './RiscosCriticosPanel';
+import { ListaRiscosPanel } from './ListaRiscosPanel';
 
 const hojeISO = new Date().toISOString().slice(0, 10);
 
@@ -47,26 +48,28 @@ export function RiscosDashboardTab() {
   const [nivelFiltro, setNivelFiltro] = useState('');
   const [statusFiltro, setStatusFiltro] = useState('');
 
+  async function carregar() {
+    try {
+      setErro(null);
+      const [obrasResp, atividadesResp, perigosResp, riscosResp] = await Promise.all([
+        api.obras.listar(),
+        api.atividades.listar(),
+        api.perigos.listar(),
+        api.riscos.listar(),
+      ]);
+      setObras(obrasResp);
+      setAtividades(atividadesResp);
+      setPerigos(perigosResp);
+      setRiscos(riscosResp);
+    } catch (e) {
+      setErro(e instanceof Error ? e.message : 'Falha ao carregar dados do dashboard de riscos.');
+    } finally {
+      setCarregando(false);
+    }
+  }
+
   useEffect(() => {
-    (async () => {
-      try {
-        setErro(null);
-        const [obrasResp, atividadesResp, perigosResp, riscosResp] = await Promise.all([
-          api.obras.listar(),
-          api.atividades.listar(),
-          api.perigos.listar(),
-          api.riscos.listar(),
-        ]);
-        setObras(obrasResp);
-        setAtividades(atividadesResp);
-        setPerigos(perigosResp);
-        setRiscos(riscosResp);
-      } catch (e) {
-        setErro(e instanceof Error ? e.message : 'Falha ao carregar dados do dashboard de riscos.');
-      } finally {
-        setCarregando(false);
-      }
-    })();
+    carregar();
   }, []);
 
   const atividadesDaObra = useMemo(
@@ -215,6 +218,13 @@ export function RiscosDashboardTab() {
       </div>
 
       <RiscosCriticosPanel riscos={riscosFiltrados} atividades={atividades} perigos={perigos} />
+
+      <ListaRiscosPanel
+        riscos={riscosFiltrados}
+        atividades={atividades}
+        perigos={perigos}
+        aoExcluir={carregar}
+      />
 
       {!carregando && riscosFiltrados.length === 0 && (
         <div className={estilosPagina.card} style={{ marginTop: 16 }}>

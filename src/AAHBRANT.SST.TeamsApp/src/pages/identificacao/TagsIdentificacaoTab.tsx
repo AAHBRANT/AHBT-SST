@@ -12,7 +12,14 @@ import {
   TableRow,
   Text,
 } from '@fluentui/react-components';
-import { Add24Regular, Delete24Regular, Link24Regular, LinkDismiss24Regular, Search24Regular } from '@fluentui/react-icons';
+import {
+  Add24Regular,
+  Delete24Regular,
+  Link24Regular,
+  LinkDismiss24Regular,
+  QrCode24Regular,
+  Search24Regular,
+} from '@fluentui/react-icons';
 import {
   api,
   TipoTag,
@@ -28,6 +35,10 @@ import {
 } from '../../lib/api';
 import { usePageStyles } from '../pageStyles';
 import { ResolverTagResultado } from './ResolverTagResultado';
+import { useConfirmarExclusao } from '../../hooks/useConfirmarExclusao';
+import { useSucessoToast } from '../../hooks/useSucessoToast';
+import { EstadoVazio } from '../../components/EstadoVazio';
+import { ListaCarregando } from '../../components/ListaCarregando';
 
 const tagVazia: NovaTagIdentificacao = { uid: '', tipo: TipoTag.QrCode };
 
@@ -39,6 +50,9 @@ export function TagsIdentificacaoTab() {
   const [novaTag, setNovaTag] = useState<NovaTagIdentificacao>(tagVazia);
   const [erro, setErro] = useState<string | null>(null);
   const [carregando, setCarregando] = useState(false);
+  const [carregandoLista, setCarregandoLista] = useState(true);
+  const { confirmar, dialogElement } = useConfirmarExclusao();
+  const sucessoToast = useSucessoToast();
 
   const [vinculandoId, setVinculandoId] = useState<string | null>(null);
   const [tipoVinculo, setTipoVinculo] = useState<number>(TipoEntidadeVinculada.Area);
@@ -64,6 +78,8 @@ export function TagsIdentificacaoTab() {
       setTrabalhadores(trbs);
     } catch (e) {
       setErro(e instanceof Error ? e.message : 'Falha ao carregar tags de identificação.');
+    } finally {
+      setCarregandoLista(false);
     }
   }
 
@@ -89,6 +105,7 @@ export function TagsIdentificacaoTab() {
       await api.tagsIdentificacao.criar(novaTag);
       setNovaTag(tagVazia);
       await carregar();
+      sucessoToast('Tag cadastrada com sucesso.');
     } catch (e) {
       setErro(e instanceof Error ? e.message : 'Falha ao criar tag.');
     } finally {
@@ -97,9 +114,11 @@ export function TagsIdentificacaoTab() {
   }
 
   async function excluir(id: string) {
+    if (!(await confirmar('Excluir esta tag de identificação? Essa ação não pode ser desfeita.'))) return;
     try {
       await api.tagsIdentificacao.excluir(id);
       await carregar();
+      sucessoToast('Tag excluída com sucesso.');
     } catch (e) {
       setErro(e instanceof Error ? e.message : 'Falha ao excluir tag.');
     }
@@ -118,6 +137,7 @@ export function TagsIdentificacaoTab() {
       await api.tagsIdentificacao.vincular(vinculandoId, tipoVinculo, entidadeVinculoId);
       setVinculandoId(null);
       await carregar();
+      sucessoToast('Tag vinculada com sucesso.');
     } catch (e) {
       setErro(e instanceof Error ? e.message : 'Falha ao vincular tag.');
     }
@@ -128,6 +148,7 @@ export function TagsIdentificacaoTab() {
       setErro(null);
       await api.tagsIdentificacao.desvincular(id);
       await carregar();
+      sucessoToast('Tag desvinculada com sucesso.');
     } catch (e) {
       setErro(e instanceof Error ? e.message : 'Falha ao desvincular tag.');
     }
@@ -152,6 +173,7 @@ export function TagsIdentificacaoTab() {
       await api.tagsIdentificacao.vincularPorUid(resultadoBusca.uid, tipoVinculoBusca, entidadeVinculoIdBusca);
       await resolverUid();
       await carregar();
+      sucessoToast('Tag vinculada com sucesso.');
     } catch (e) {
       setErroBusca(e instanceof Error ? e.message : 'Falha ao vincular tag.');
     }
@@ -159,14 +181,18 @@ export function TagsIdentificacaoTab() {
 
   return (
     <>
+      {dialogElement}
       <div className={estilos.card} style={{ marginBottom: 20 }}>
         <div className={estilos.toolbar}>
           <Text weight="semibold">Resolver tag por UID (leitura de NFC/QR)</Text>
         </div>
-        <div className={estilos.form}>
-          <Field label="UID lido">
-            <Input value={uidBusca} onChange={(_, d) => setUidBusca(d.value)} />
-          </Field>
+        <div className={`${estilos.sectionTitle} ${estilos.sectionTitleFirst}`}>Buscar por UID</div>
+        <div className={estilos.formGrid}>
+          <div className={estilos.col4}>
+            <Field label="UID lido">
+              <Input value={uidBusca} onChange={(_, d) => setUidBusca(d.value)} />
+            </Field>
+          </div>
         </div>
         <div className={estilos.formActions}>
           <Button appearance="primary" icon={<Search24Regular />} onClick={resolverUid} disabled={!uidBusca}>
@@ -177,36 +203,43 @@ export function TagsIdentificacaoTab() {
         {resultadoBusca && <ResolverTagResultado resultado={resultadoBusca} />}
 
         {resultadoBusca && resultadoBusca.status === StatusTag.Disponivel && (
-          <div className={estilos.form} style={{ marginTop: 12 }}>
-            <Field label="Vincular a">
-              <Select value={String(tipoVinculoBusca)} onChange={(_, d) => setTipoVinculoBusca(Number(d.value))}>
-                <option value={TipoEntidadeVinculada.Area}>Área</option>
-                <option value={TipoEntidadeVinculada.Trabalhador}>Trabalhador</option>
-              </Select>
-            </Field>
-            <Field label="Entidade">
-              <Select value={entidadeVinculoIdBusca} onChange={(_, d) => setEntidadeVinculoIdBusca(d.value)}>
-                <option value="">Selecione</option>
-                {tipoVinculoBusca === TipoEntidadeVinculada.Area &&
-                  areas.map((a) => (
-                    <option key={a.id} value={a.id}>
-                      {a.nome}
-                    </option>
-                  ))}
-                {tipoVinculoBusca === TipoEntidadeVinculada.Trabalhador &&
-                  trabalhadores.map((t) => (
-                    <option key={t.id} value={t.id}>
-                      {t.nome}
-                    </option>
-                  ))}
-              </Select>
-            </Field>
+          <>
+            <div className={estilos.sectionTitle}>Vincular Tag Encontrada</div>
+            <div className={estilos.formGrid}>
+              <div className={estilos.col3}>
+                <Field label="Vincular a">
+                  <Select value={String(tipoVinculoBusca)} onChange={(_, d) => setTipoVinculoBusca(Number(d.value))}>
+                    <option value={TipoEntidadeVinculada.Area}>Área</option>
+                    <option value={TipoEntidadeVinculada.Trabalhador}>Funcionário</option>
+                  </Select>
+                </Field>
+              </div>
+              <div className={estilos.col3}>
+                <Field label="Entidade">
+                  <Select value={entidadeVinculoIdBusca} onChange={(_, d) => setEntidadeVinculoIdBusca(d.value)}>
+                    <option value="">Selecione</option>
+                    {tipoVinculoBusca === TipoEntidadeVinculada.Area &&
+                      areas.map((a) => (
+                        <option key={a.id} value={a.id}>
+                          {a.nome}
+                        </option>
+                      ))}
+                    {tipoVinculoBusca === TipoEntidadeVinculada.Trabalhador &&
+                      trabalhadores.map((t) => (
+                        <option key={t.id} value={t.id}>
+                          {t.nome}
+                        </option>
+                      ))}
+                  </Select>
+                </Field>
+              </div>
+            </div>
             <div className={estilos.formActions}>
               <Button appearance="primary" icon={<Link24Regular />} onClick={vincularPorUid} disabled={!entidadeVinculoIdBusca}>
                 Vincular esta tag
               </Button>
             </div>
-          </div>
+          </>
         )}
       </div>
 
@@ -217,19 +250,24 @@ export function TagsIdentificacaoTab() {
 
         {erro && <Text className={estilos.erro}>{erro}</Text>}
 
-        <div className={estilos.form}>
-          <Field label="UID da tag">
-            <Input value={novaTag.uid} onChange={(_, d) => setNovaTag({ ...novaTag, uid: d.value })} />
-          </Field>
-          <Field label="Tipo">
-            <Select value={String(novaTag.tipo)} onChange={(_, d) => setNovaTag({ ...novaTag, tipo: Number(d.value) })}>
-              {Object.entries(tipoTagLabel).map(([valor, rotulo]) => (
-                <option key={valor} value={valor}>
-                  {rotulo}
-                </option>
-              ))}
-            </Select>
-          </Field>
+        <div className={`${estilos.sectionTitle} ${estilos.sectionTitleFirst}`}>Nova Tag</div>
+        <div className={estilos.formGrid}>
+          <div className={estilos.col4}>
+            <Field label="UID da tag">
+              <Input value={novaTag.uid} onChange={(_, d) => setNovaTag({ ...novaTag, uid: d.value })} />
+            </Field>
+          </div>
+          <div className={estilos.col3}>
+            <Field label="Tipo">
+              <Select value={String(novaTag.tipo)} onChange={(_, d) => setNovaTag({ ...novaTag, tipo: Number(d.value) })}>
+                {Object.entries(tipoTagLabel).map(([valor, rotulo]) => (
+                  <option key={valor} value={valor}>
+                    {rotulo}
+                  </option>
+                ))}
+              </Select>
+            </Field>
+          </div>
         </div>
         <div className={estilos.formActions}>
           <Button appearance="primary" icon={<Add24Regular />} onClick={criar} disabled={carregando || !novaTag.uid}>
@@ -238,30 +276,37 @@ export function TagsIdentificacaoTab() {
         </div>
 
         {vinculandoId && (
-          <div className={estilos.form} style={{ marginTop: 12 }}>
-            <Field label="Vincular a">
-              <Select value={String(tipoVinculo)} onChange={(_, d) => setTipoVinculo(Number(d.value))}>
-                <option value={TipoEntidadeVinculada.Area}>Área</option>
-                <option value={TipoEntidadeVinculada.Trabalhador}>Trabalhador</option>
-              </Select>
-            </Field>
-            <Field label="Entidade">
-              <Select value={entidadeVinculoId} onChange={(_, d) => setEntidadeVinculoId(d.value)}>
-                <option value="">Selecione</option>
-                {tipoVinculo === TipoEntidadeVinculada.Area &&
-                  areas.map((a) => (
-                    <option key={a.id} value={a.id}>
-                      {a.nome}
-                    </option>
-                  ))}
-                {tipoVinculo === TipoEntidadeVinculada.Trabalhador &&
-                  trabalhadores.map((t) => (
-                    <option key={t.id} value={t.id}>
-                      {t.nome}
-                    </option>
-                  ))}
-              </Select>
-            </Field>
+          <>
+            <div className={estilos.sectionTitle}>Vincular Tag</div>
+            <div className={estilos.formGrid}>
+              <div className={estilos.col3}>
+                <Field label="Vincular a">
+                  <Select value={String(tipoVinculo)} onChange={(_, d) => setTipoVinculo(Number(d.value))}>
+                    <option value={TipoEntidadeVinculada.Area}>Área</option>
+                    <option value={TipoEntidadeVinculada.Trabalhador}>Funcionário</option>
+                  </Select>
+                </Field>
+              </div>
+              <div className={estilos.col3}>
+                <Field label="Entidade">
+                  <Select value={entidadeVinculoId} onChange={(_, d) => setEntidadeVinculoId(d.value)}>
+                    <option value="">Selecione</option>
+                    {tipoVinculo === TipoEntidadeVinculada.Area &&
+                      areas.map((a) => (
+                        <option key={a.id} value={a.id}>
+                          {a.nome}
+                        </option>
+                      ))}
+                    {tipoVinculo === TipoEntidadeVinculada.Trabalhador &&
+                      trabalhadores.map((t) => (
+                        <option key={t.id} value={t.id}>
+                          {t.nome}
+                        </option>
+                      ))}
+                  </Select>
+                </Field>
+              </div>
+            </div>
             <div className={estilos.formActions}>
               <Button appearance="primary" onClick={confirmarVinculo} disabled={!entidadeVinculoId}>
                 Confirmar vínculo
@@ -270,10 +315,15 @@ export function TagsIdentificacaoTab() {
                 Cancelar
               </Button>
             </div>
-          </div>
+          </>
         )}
 
-        <Table>
+        {carregandoLista ? (
+          <ListaCarregando />
+        ) : tags.length === 0 ? (
+          <EstadoVazio mensagem="Nenhuma tag de identificação cadastrada ainda." />
+        ) : (
+        <Table noNativeElements>
           <TableHeader>
             <TableRow>
               <TableHeaderCell>UID</TableHeaderCell>
@@ -300,12 +350,21 @@ export function TagsIdentificacaoTab() {
                     />
                   )}
                   {tag.status === StatusTag.Vinculada && (
-                    <Button
-                      appearance="subtle"
-                      icon={<LinkDismiss24Regular />}
-                      onClick={() => desvincular(tag.id)}
-                      aria-label="Desvincular"
-                    />
+                    <>
+                      <Button
+                        appearance="subtle"
+                        icon={<QrCode24Regular />}
+                        onClick={() => window.open(`${window.location.origin}${window.location.pathname}#/p/${tag.uid}`, '_blank')}
+                        aria-label="Abrir crachá/card público desta tag"
+                        title="Abrir crachá/card público (o link para gravar na NTAG215 ou gerar o QR Code)"
+                      />
+                      <Button
+                        appearance="subtle"
+                        icon={<LinkDismiss24Regular />}
+                        onClick={() => desvincular(tag.id)}
+                        aria-label="Desvincular"
+                      />
+                    </>
                   )}
                   <Button
                     appearance="subtle"
@@ -318,6 +377,7 @@ export function TagsIdentificacaoTab() {
             ))}
           </TableBody>
         </Table>
+        )}
       </div>
     </>
   );

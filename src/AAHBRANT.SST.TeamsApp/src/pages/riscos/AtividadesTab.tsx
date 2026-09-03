@@ -15,6 +15,10 @@ import {
 import { Add24Regular, Delete24Regular } from '@fluentui/react-icons';
 import { api, type Atividade, type NovaAtividade, type Obra } from '../../lib/api';
 import { usePageStyles } from '../pageStyles';
+import { useConfirmarExclusao } from '../../hooks/useConfirmarExclusao';
+import { useSucessoToast } from '../../hooks/useSucessoToast';
+import { EstadoVazio } from '../../components/EstadoVazio';
+import { ListaCarregando } from '../../components/ListaCarregando';
 
 const atividadeVazia: NovaAtividade = { obraId: '', nome: '', descricao: '' };
 
@@ -25,6 +29,9 @@ export function AtividadesTab() {
   const [novaAtividade, setNovaAtividade] = useState<NovaAtividade>(atividadeVazia);
   const [erro, setErro] = useState<string | null>(null);
   const [carregando, setCarregando] = useState(false);
+  const [carregandoLista, setCarregandoLista] = useState(true);
+  const { confirmar, dialogElement } = useConfirmarExclusao();
+  const sucessoToast = useSucessoToast();
 
   async function carregar() {
     try {
@@ -34,6 +41,8 @@ export function AtividadesTab() {
       setObras(obrs);
     } catch (e) {
       setErro(e instanceof Error ? e.message : 'Falha ao carregar atividades.');
+    } finally {
+      setCarregandoLista(false);
     }
   }
 
@@ -52,6 +61,7 @@ export function AtividadesTab() {
       await api.atividades.criar(novaAtividade);
       setNovaAtividade(atividadeVazia);
       await carregar();
+      sucessoToast('Atividade criada com sucesso.');
     } catch (e) {
       setErro(e instanceof Error ? e.message : 'Falha ao criar atividade.');
     } finally {
@@ -60,9 +70,11 @@ export function AtividadesTab() {
   }
 
   async function excluir(id: string) {
+    if (!(await confirmar('Excluir esta atividade? Essa ação não pode ser desfeita.'))) return;
     try {
       await api.atividades.excluir(id);
       await carregar();
+      sucessoToast('Atividade excluída com sucesso.');
     } catch (e) {
       setErro(e instanceof Error ? e.message : 'Falha ao excluir atividade.');
     }
@@ -70,38 +82,46 @@ export function AtividadesTab() {
 
   return (
     <div className={estilos.card}>
+      {dialogElement}
       <div className={estilos.toolbar}>
         <Text weight="semibold">Atividades cadastradas</Text>
       </div>
 
       {erro && <Text className={estilos.erro}>{erro}</Text>}
 
-      <div className={estilos.form}>
-        <Field label="Obra">
-          <Select
-            value={novaAtividade.obraId}
-            onChange={(_, d) => setNovaAtividade({ ...novaAtividade, obraId: d.value })}
-          >
-            <option value="">Selecione</option>
-            {obras.map((obra) => (
-              <option key={obra.id} value={obra.id}>
-                {obra.nome}
-              </option>
-            ))}
-          </Select>
-        </Field>
-        <Field label="Nome da atividade">
-          <Input
-            value={novaAtividade.nome}
-            onChange={(_, d) => setNovaAtividade({ ...novaAtividade, nome: d.value })}
-          />
-        </Field>
-        <Field label="Descrição">
-          <Input
-            value={novaAtividade.descricao ?? ''}
-            onChange={(_, d) => setNovaAtividade({ ...novaAtividade, descricao: d.value })}
-          />
-        </Field>
+      <div className={`${estilos.sectionTitle} ${estilos.sectionTitleFirst}`}>Dados da Atividade</div>
+      <div className={estilos.formGrid}>
+        <div className={estilos.col3}>
+          <Field label="Obra">
+            <Select
+              value={novaAtividade.obraId}
+              onChange={(_, d) => setNovaAtividade({ ...novaAtividade, obraId: d.value })}
+            >
+              <option value="">Selecione</option>
+              {obras.map((obra) => (
+                <option key={obra.id} value={obra.id}>
+                  {obra.nome}
+                </option>
+              ))}
+            </Select>
+          </Field>
+        </div>
+        <div className={estilos.col4}>
+          <Field label="Nome da atividade">
+            <Input
+              value={novaAtividade.nome}
+              onChange={(_, d) => setNovaAtividade({ ...novaAtividade, nome: d.value })}
+            />
+          </Field>
+        </div>
+        <div className={estilos.col5}>
+          <Field label="Descrição">
+            <Input
+              value={novaAtividade.descricao ?? ''}
+              onChange={(_, d) => setNovaAtividade({ ...novaAtividade, descricao: d.value })}
+            />
+          </Field>
+        </div>
       </div>
       <div className={estilos.formActions}>
         <Button appearance="primary" icon={<Add24Regular />} onClick={criar} disabled={carregando}>
@@ -109,7 +129,12 @@ export function AtividadesTab() {
         </Button>
       </div>
 
-      <Table>
+      {carregandoLista ? (
+        <ListaCarregando />
+      ) : atividades.length === 0 ? (
+        <EstadoVazio mensagem="Nenhuma atividade cadastrada ainda." />
+      ) : (
+      <Table noNativeElements>
         <TableHeader>
           <TableRow>
             <TableHeaderCell>Nome</TableHeaderCell>
@@ -136,6 +161,7 @@ export function AtividadesTab() {
           ))}
         </TableBody>
       </Table>
+      )}
     </div>
   );
 }

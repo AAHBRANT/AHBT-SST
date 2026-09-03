@@ -1,6 +1,7 @@
 import { motion } from 'framer-motion';
 import { Cell, Legend, Pie, PieChart, ResponsiveContainer, Tooltip } from 'recharts';
 import { Text } from '@fluentui/react-components';
+import { designTokens } from '../../../theme';
 
 export interface FatiaDonut {
   rotulo: string;
@@ -37,7 +38,7 @@ export function StatusDonutChart({ dados, legendaCentral }: StatusDonutChartProp
             animationDuration={700}
           >
             {dados.map((fatia) => (
-              <Cell key={fatia.rotulo} fill={fatia.cor} stroke="#FFFFFF" strokeWidth={2} />
+              <Cell key={fatia.rotulo} fill={fatia.cor} stroke={designTokens.colorSurface} strokeWidth={2} />
             ))}
           </Pie>
           <Tooltip
@@ -62,7 +63,7 @@ export function StatusDonutChart({ dados, legendaCentral }: StatusDonutChartProp
       >
         <div style={{ fontSize: 26, fontWeight: 700, lineHeight: '28px' }}>{total}</div>
         {legendaCentral && (
-          <Text size={200} style={{ color: 'var(--colorNeutralForeground3, #6D6D6D)' }}>
+          <Text size={200} style={{ color: designTokens.colorNeutralMedium }}>
             {legendaCentral}
           </Text>
         )}

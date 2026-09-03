@@ -4,7 +4,6 @@ import {
   Badge,
   Button,
   Field,
-  Input,
   Select,
   Table,
   TableBody,
@@ -15,6 +14,7 @@ import {
   Text,
   Textarea,
 } from '@fluentui/react-components';
+import { CampoData } from '../../components/CampoData';
 import { Add24Regular, ChevronRight24Regular, Delete24Regular } from '@fluentui/react-icons';
 import {
   api,
@@ -26,6 +26,10 @@ import {
   type ReuniaoCipa,
 } from '../../lib/api';
 import { usePageStyles } from '../pageStyles';
+import { useConfirmarExclusao } from '../../hooks/useConfirmarExclusao';
+import { useSucessoToast } from '../../hooks/useSucessoToast';
+import { EstadoVazio } from '../../components/EstadoVazio';
+import { ListaCarregando } from '../../components/ListaCarregando';
 
 function vazio(): NovaReuniaoCipa {
   return { obraId: '', tipo: TipoReuniaoCipa.Ordinaria, dataReuniao: '', pauta: '' };
@@ -39,6 +43,9 @@ export function ReunioesCipaTab() {
   const [novo, setNovo] = useState<NovaReuniaoCipa>(vazio());
   const [erro, setErro] = useState<string | null>(null);
   const [carregando, setCarregando] = useState(false);
+  const [carregandoLista, setCarregandoLista] = useState(true);
+  const { confirmar, dialogElement } = useConfirmarExclusao();
+  const sucessoToast = useSucessoToast();
 
   async function carregar() {
     try {
@@ -48,6 +55,8 @@ export function ReunioesCipaTab() {
       setObras(listaObras);
     } catch (e) {
       setErro(e instanceof Error ? e.message : 'Falha ao carregar reuniões da CIPA.');
+    } finally {
+      setCarregandoLista(false);
     }
   }
 
@@ -70,6 +79,7 @@ export function ReunioesCipaTab() {
       await api.cipa.reunioes.criar({ ...novo, pauta: novo.pauta || null });
       setNovo(vazio());
       await carregar();
+      sucessoToast('Reunião agendada com sucesso.');
     } catch (e) {
       setErro(e instanceof Error ? e.message : 'Falha ao criar reunião.');
     } finally {
@@ -79,9 +89,11 @@ export function ReunioesCipaTab() {
 
   async function excluir(id: string, evento: React.MouseEvent) {
     evento.stopPropagation();
+    if (!(await confirmar('Excluir esta reunião da CIPA? Essa ação não pode ser desfeita.'))) return;
     try {
       await api.cipa.reunioes.excluir(id);
       await carregar();
+      sucessoToast('Reunião excluída com sucesso.');
     } catch (e) {
       setErro(e instanceof Error ? e.message : 'Falha ao excluir reunião.');
     }
@@ -89,54 +101,69 @@ export function ReunioesCipaTab() {
 
   return (
     <div>
+      {dialogElement}
       <div className={estilos.card} style={{ marginBottom: 16 }}>
         <div className={estilos.toolbar}>
           <Text weight="semibold">Agendar reunião</Text>
         </div>
         {erro && <Text className={estilos.erro}>{erro}</Text>}
-        <div className={estilos.form}>
-          <Field label="Obra" required>
-            <Select value={novo.obraId} onChange={(_, d) => setNovo({ ...novo, obraId: d.value })}>
-              <option value="">Selecione</option>
-              {obras.map((obra) => (
-                <option key={obra.id} value={obra.id}>
-                  {obra.nome}
-                </option>
-              ))}
-            </Select>
-          </Field>
-          <Field label="Tipo">
-            <Select value={String(novo.tipo)} onChange={(_, d) => setNovo({ ...novo, tipo: Number(d.value) })}>
-              {Object.entries(tipoReuniaoCipaLabel).map(([valor, rotulo]) => (
-                <option key={valor} value={valor}>
-                  {rotulo}
-                </option>
-              ))}
-            </Select>
-          </Field>
-          <Field label="Data da reunião" required>
-            <Input type="date" value={novo.dataReuniao} onChange={(_, d) => setNovo({ ...novo, dataReuniao: d.value })} />
-          </Field>
-          <Field label="Pauta">
-            <Textarea value={novo.pauta ?? ''} onChange={(_, d) => setNovo({ ...novo, pauta: d.value })} />
-          </Field>
+        <div className={`${estilos.sectionTitle} ${estilos.sectionTitleFirst}`}>Dados da Reunião</div>
+        <div className={estilos.formGrid}>
+          <div className={estilos.col4}>
+            <Field label="Obra" required>
+              <Select value={novo.obraId} onChange={(_, d) => setNovo({ ...novo, obraId: d.value })}>
+                <option value="">Selecione</option>
+                {obras.map((obra) => (
+                  <option key={obra.id} value={obra.id}>
+                    {obra.nome}
+                  </option>
+                ))}
+              </Select>
+            </Field>
+          </div>
+          <div className={estilos.col3}>
+            <Field label="Tipo">
+              <Select value={String(novo.tipo)} onChange={(_, d) => setNovo({ ...novo, tipo: Number(d.value) })}>
+                {Object.entries(tipoReuniaoCipaLabel).map(([valor, rotulo]) => (
+                  <option key={valor} value={valor}>
+                    {rotulo}
+                  </option>
+                ))}
+              </Select>
+            </Field>
+          </div>
+          <div className={estilos.col3}>
+            <Field label="Data da reunião" required>
+              <CampoData value={novo.dataReuniao} onChange={(_, d) => setNovo({ ...novo, dataReuniao: d.value })} />
+            </Field>
+          </div>
+          <div className={estilos.col12}>
+            <Field label="Pauta">
+              <Textarea value={novo.pauta ?? ''} onChange={(_, d) => setNovo({ ...novo, pauta: d.value })} />
+            </Field>
+          </div>
         </div>
-        <div className={estilos.formActions}>
+        <div className={estilos.footer}>
+          <Text className={estilos.footerInfo}>
+            Lista de presença, deliberações e o plano de ações (matriz 5W2H) da reunião são registrados
+            na tela de detalhe.
+          </Text>
           <Button appearance="primary" icon={<Add24Regular />} onClick={criar} disabled={carregando}>
             Agendar reunião
           </Button>
         </div>
-        <Text size={200} style={{ display: 'block', marginTop: 8 }}>
-          Lista de presença, deliberações e o plano de ações (matriz 5W2H) da reunião são registrados
-          na tela de detalhe.
-        </Text>
       </div>
 
       <div className={estilos.card}>
         <div className={estilos.toolbar}>
           <Text weight="semibold">Reuniões</Text>
         </div>
-        <Table>
+        {carregandoLista ? (
+          <ListaCarregando />
+        ) : lista.length === 0 ? (
+          <EstadoVazio mensagem="Nenhuma reunião da CIPA cadastrada ainda." />
+        ) : (
+        <Table noNativeElements>
           <TableHeader>
             <TableRow>
               <TableHeaderCell>Obra</TableHeaderCell>
@@ -174,6 +201,7 @@ export function ReunioesCipaTab() {
             ))}
           </TableBody>
         </Table>
+        )}
       </div>
     </div>
   );

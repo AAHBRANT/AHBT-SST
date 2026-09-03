@@ -268,7 +268,16 @@ export function DdsDetalhePage() {
         {dds ? (
           <>
             <Text size={500} weight="semibold">
-              {dds.topicoPrincipal}
+              {dds.temasAtividades.length === 0 && !dds.temaLivreNome && (
+                <Text style={{ display: 'block' }}>DDS do dia</Text>
+              )}
+              {dds.temasAtividades.map((tema) => (
+                <Text key={tema.atividadeId} style={{ display: 'block' }}>
+                  {tema.atividadeNome}
+                  {tema.perigoNome ? ` — ${tema.perigoNome}` : ''}
+                </Text>
+              ))}
+              {dds.temaLivreNome && <Text style={{ display: 'block' }}>Tema livre: {dds.temaLivreNome}</Text>}
             </Text>
             <div style={{ display: 'flex', gap: 16, marginTop: 8, flexWrap: 'wrap', alignItems: 'center' }}>
               <Text>Obra: {dds.obraNome}</Text>
@@ -277,7 +286,7 @@ export function DdsDetalhePage() {
               <Badge appearance="tint">{statusDdsLabel[dds.status]}</Badge>
             </div>
             <div style={{ marginTop: 8 }}>
-              <Text>Atividades do dia: {dds.atividadesNomes.join(', ')}</Text>
+              <Text>Atividades do dia: {dds.atividadesNomes.join(', ') || 'DDS do dia'}</Text>
             </div>
             <div style={{ display: 'flex', gap: 16, marginTop: 8, alignItems: 'center' }}>
               <Text>
@@ -367,6 +376,7 @@ export function DdsDetalhePage() {
               rotulo="Tirar foto de evidência"
               desabilitado={anexandoFotoEvidencia}
               aoSelecionarArquivo={anexarFotoEvidencia}
+              aoErroValidacao={setErro}
             />
           )}
         </div>
@@ -385,7 +395,7 @@ export function DdsDetalhePage() {
                 onChange={(_, d) => setParticipanteSelecionado(d.value)}
                 style={{ minWidth: 240 }}
               >
-                <option value="">Selecione um trabalhador</option>
+                <option value="">Selecione um funcionário</option>
                 {trabalhadoresDisponiveis.map((trabalhador) => (
                   <option key={trabalhador.id} value={trabalhador.id}>
                     {trabalhador.nome} ({trabalhador.matricula})
@@ -428,7 +438,7 @@ export function DdsDetalhePage() {
           </div>
         )}
 
-        <Table>
+        <Table noNativeElements>
           <TableHeader>
             <TableRow>
               <TableHeaderCell>Nome</TableHeaderCell>

@@ -1,3 +1,4 @@
+using AAHBRANT.SST.Application.Common;
 using AAHBRANT.SST.Application.Common.Interfaces;
 using FluentValidation;
 using MediatR;
@@ -25,7 +26,9 @@ public class AnexarArquivoTreinamentoCipaCommandValidator : AbstractValidator<An
         RuleFor(x => x.TreinamentoId).NotEmpty();
         RuleFor(x => x.Conteudo)
             .NotEmpty().WithMessage("O arquivo é obrigatório.")
-            .Must(f => f.Length <= TamanhoMaximoBytes).WithMessage("O arquivo deve ter no máximo 8 MB.");
+            .Must(f => f.Length <= TamanhoMaximoBytes).WithMessage("O arquivo deve ter no máximo 8 MB.")
+            .Must((comando, conteudo) => ValidadorAssinaturaArquivo.AssinaturaConfere(conteudo, comando.ContentType))
+                .WithMessage("O conteúdo do arquivo não corresponde ao tipo declarado.");
         RuleFor(x => x.ContentType)
             .Must(t => TiposPermitidos.Contains(t)).WithMessage("O arquivo deve ser JPEG, PNG ou PDF.");
     }

@@ -47,7 +47,11 @@ public class EnviarDdsTelegramCommandHandler : IRequestHandler<EnviarDdsTelegram
         var logoConteudo = await _db.Obras.Where(o => o.Id == detalhe.Dds.ObraId).Select(o => o.LogoConteudo).FirstOrDefaultAsync(ct);
         var pdfBytes = _pdf.Gerar(ExportarDdsPdfQueryHandler.MontarModelo(detalhe, logoConteudo));
         var nomeArquivo = $"DDS_{detalhe.Dds.Data:yyyy-MM-dd}.pdf";
-        var legenda = $"DDS — {detalhe.Dds.TopicoPrincipal} ({detalhe.Dds.ObraNome}, {detalhe.Dds.Data:dd/MM/yyyy})";
+        var nomesAtividades = string.Join(", ", detalhe.Dds.AtividadesNomes);
+        var topico = nomesAtividades.Length > 0 ? nomesAtividades : "DDS do dia";
+        if (!string.IsNullOrWhiteSpace(detalhe.Dds.TemaLivreNome))
+            topico += $" + {detalhe.Dds.TemaLivreNome}";
+        var legenda = $"DDS — {topico} ({detalhe.Dds.ObraNome}, {detalhe.Dds.Data:dd/MM/yyyy})";
 
         foreach (var vinculo in vinculados)
         {

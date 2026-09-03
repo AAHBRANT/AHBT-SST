@@ -16,6 +16,7 @@ import {
   Text,
   Textarea,
 } from '@fluentui/react-components';
+import { CampoData } from '../../components/CampoData';
 import { ArrowLeft24Regular, Delete24Regular, DocumentPdf24Regular } from '@fluentui/react-icons';
 import {
   api,
@@ -32,6 +33,9 @@ import {
   type Usuario,
 } from '../../lib/api';
 import { usePageStyles } from '../pageStyles';
+import { useConfirmarExclusao } from '../../hooks/useConfirmarExclusao';
+import { useSucessoToast } from '../../hooks/useSucessoToast';
+import { EstadoVazio } from '../../components/EstadoVazio';
 
 function novaAcaoInicial(): Omit<NovaAcaoPlano, 'origemTipo' | 'origemId'> {
   return { tipo: 1, descricao: '', responsavelUsuarioId: '', prioridade: 3, prazo: '' };
@@ -55,6 +59,8 @@ export function ReuniaoCipaDetalhePage() {
   const [erro, setErro] = useState<string | null>(null);
   const [salvando, setSalvando] = useState(false);
   const [baixandoPdf, setBaixandoPdf] = useState(false);
+  const { confirmar, dialogElement } = useConfirmarExclusao();
+  const sucessoToast = useSucessoToast();
 
   async function carregar() {
     if (!id) return;
@@ -96,6 +102,7 @@ export function ReuniaoCipaDetalhePage() {
       setErro(null);
       await api.cipa.reunioes.registrarParticipantes(id, participantes);
       await carregar();
+      sucessoToast('Presença salva com sucesso.');
     } catch (e) {
       setErro(e instanceof Error ? e.message : 'Falha ao salvar presença.');
     } finally {
@@ -114,6 +121,7 @@ export function ReuniaoCipaDetalhePage() {
       setErro(null);
       await api.cipa.reunioes.encerrar(id, deliberacoes);
       await carregar();
+      sucessoToast('Reunião encerrada com sucesso.');
     } catch (e) {
       setErro(e instanceof Error ? e.message : 'Falha ao encerrar reunião.');
     } finally {
@@ -158,6 +166,7 @@ export function ReuniaoCipaDetalhePage() {
       });
       setNovaAcao(novaAcaoInicial());
       await carregar();
+      sucessoToast('Ação adicionada com sucesso.');
     } catch (e) {
       setErro(e instanceof Error ? e.message : 'Falha ao criar ação do plano.');
     } finally {
@@ -175,6 +184,7 @@ export function ReuniaoCipaDetalhePage() {
       setErro(null);
       await api.acoesPlano.validar(acaoId, usuarioValidador);
       await carregar();
+      sucessoToast('Ação validada com sucesso.');
     } catch (e) {
       setErro(e instanceof Error ? e.message : 'Falha ao validar ação.');
     } finally {
@@ -183,9 +193,11 @@ export function ReuniaoCipaDetalhePage() {
   }
 
   async function excluirAcao(acaoId: string) {
+    if (!(await confirmar('Excluir esta ação do plano? Essa ação não pode ser desfeita.'))) return;
     try {
       await api.acoesPlano.excluir(acaoId);
       await carregar();
+      sucessoToast('Ação excluída com sucesso.');
     } catch (e) {
       setErro(e instanceof Error ? e.message : 'Falha ao excluir ação.');
     }
@@ -197,6 +209,7 @@ export function ReuniaoCipaDetalhePage() {
 
   return (
     <div>
+      {dialogElement}
       <Button appearance="subtle" icon={<ArrowLeft24Regular />} onClick={() => navigate('/operacao/cipa')} style={{ marginBottom: 12 }}>
         Voltar para CIPA
       </Button>
@@ -226,10 +239,13 @@ export function ReuniaoCipaDetalhePage() {
             <div className={estilos.toolbar}>
               <Text weight="semibold">Lista de presença</Text>
             </div>
-            <Table>
+            {trabalhadores.length === 0 ? (
+              <EstadoVazio mensagem="Nenhum funcionário cadastrado nesta obra ainda." />
+            ) : (
+            <Table noNativeElements>
               <TableHeader>
                 <TableRow>
-                  <TableHeaderCell>Trabalhador</TableHeaderCell>
+                  <TableHeaderCell>Funcionário</TableHeaderCell>
                   <TableHeaderCell>Convocado</TableHeaderCell>
                   <TableHeaderCell>Presente</TableHeaderCell>
                 </TableRow>
@@ -262,6 +278,7 @@ export function ReuniaoCipaDetalhePage() {
                 ))}
               </TableBody>
             </Table>
+            )}
             {!encerrada && (
               <div className={estilos.formActions}>
                 <Button appearance="primary" onClick={salvarPresenca} disabled={salvando}>
@@ -299,47 +316,58 @@ export function ReuniaoCipaDetalhePage() {
             <div className={estilos.toolbar}>
               <Text weight="semibold">Novo item do plano de ações (5W2H)</Text>
             </div>
-            <div className={estilos.form}>
-              <Field label="Tipo">
-                <Select value={String(novaAcao.tipo)} onChange={(_, d) => setNovaAcao({ ...novaAcao, tipo: Number(d.value) })}>
-                  {Object.entries(tipoAcaoPlanoLabel).map(([valor, rotulo]) => (
-                    <option key={valor} value={valor}>
-                      {rotulo}
-                    </option>
-                  ))}
-                </Select>
-              </Field>
-              <Field label="Tema/problema" required>
-                <Input value={novaAcao.descricao} onChange={(_, d) => setNovaAcao({ ...novaAcao, descricao: d.value })} />
-              </Field>
-              <Field label="Responsável">
-                <Select
-                  value={novaAcao.responsavelUsuarioId ?? ''}
-                  onChange={(_, d) => setNovaAcao({ ...novaAcao, responsavelUsuarioId: d.value })}
-                >
-                  <option value="">Nenhum</option>
-                  {usuarios.map((usuario) => (
-                    <option key={usuario.id} value={usuario.id}>
-                      {usuario.nome}
-                    </option>
-                  ))}
-                </Select>
-              </Field>
-              <Field label="Prioridade">
-                <Select
-                  value={String(novaAcao.prioridade)}
-                  onChange={(_, d) => setNovaAcao({ ...novaAcao, prioridade: Number(d.value) })}
-                >
-                  {Object.entries(prioridadeAcaoLabel).map(([valor, rotulo]) => (
-                    <option key={valor} value={valor}>
-                      {rotulo}
-                    </option>
-                  ))}
-                </Select>
-              </Field>
-              <Field label="Prazo">
-                <Input type="date" value={novaAcao.prazo ?? ''} onChange={(_, d) => setNovaAcao({ ...novaAcao, prazo: d.value })} />
-              </Field>
+            <div className={`${estilos.sectionTitle} ${estilos.sectionTitleFirst}`}>Novo Item do Plano</div>
+            <div className={estilos.formGrid}>
+              <div className={estilos.col2}>
+                <Field label="Tipo">
+                  <Select value={String(novaAcao.tipo)} onChange={(_, d) => setNovaAcao({ ...novaAcao, tipo: Number(d.value) })}>
+                    {Object.entries(tipoAcaoPlanoLabel).map(([valor, rotulo]) => (
+                      <option key={valor} value={valor}>
+                        {rotulo}
+                      </option>
+                    ))}
+                  </Select>
+                </Field>
+              </div>
+              <div className={estilos.col3}>
+                <Field label="Tema/problema" required>
+                  <Input value={novaAcao.descricao} onChange={(_, d) => setNovaAcao({ ...novaAcao, descricao: d.value })} />
+                </Field>
+              </div>
+              <div className={estilos.col3}>
+                <Field label="Responsável">
+                  <Select
+                    value={novaAcao.responsavelUsuarioId ?? ''}
+                    onChange={(_, d) => setNovaAcao({ ...novaAcao, responsavelUsuarioId: d.value })}
+                  >
+                    <option value="">Nenhum</option>
+                    {usuarios.map((usuario) => (
+                      <option key={usuario.id} value={usuario.id}>
+                        {usuario.nome}
+                      </option>
+                    ))}
+                  </Select>
+                </Field>
+              </div>
+              <div className={estilos.col2}>
+                <Field label="Prioridade">
+                  <Select
+                    value={String(novaAcao.prioridade)}
+                    onChange={(_, d) => setNovaAcao({ ...novaAcao, prioridade: Number(d.value) })}
+                  >
+                    {Object.entries(prioridadeAcaoLabel).map(([valor, rotulo]) => (
+                      <option key={valor} value={valor}>
+                        {rotulo}
+                      </option>
+                    ))}
+                  </Select>
+                </Field>
+              </div>
+              <div className={estilos.col2}>
+                <Field label="Prazo">
+                  <CampoData value={novaAcao.prazo ?? ''} onChange={(_, d) => setNovaAcao({ ...novaAcao, prazo: d.value })} />
+                </Field>
+              </div>
             </div>
             <div className={estilos.formActions}>
               <Button appearance="primary" onClick={criarAcao} disabled={salvando}>
@@ -362,7 +390,10 @@ export function ReuniaoCipaDetalhePage() {
                 </Select>
               </Field>
             </div>
-            <Table>
+            {acoesPlano.length === 0 ? (
+              <EstadoVazio mensagem="Nenhuma ação registrada no plano ainda." />
+            ) : (
+            <Table noNativeElements>
               <TableHeader>
                 <TableRow>
                   <TableHeaderCell>Tema/problema</TableHeaderCell>
@@ -397,6 +428,7 @@ export function ReuniaoCipaDetalhePage() {
                 ))}
               </TableBody>
             </Table>
+            )}
           </div>
         </>
       )}

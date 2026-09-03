@@ -24,6 +24,9 @@ import {
   type Usuario,
 } from '../../lib/api';
 import { usePageStyles } from '../pageStyles';
+import { useConfirmarExclusao } from '../../hooks/useConfirmarExclusao';
+import { useSucessoToast } from '../../hooks/useSucessoToast';
+import { ListaCarregando } from '../../components/ListaCarregando';
 
 // Tela de administração do Motor Central de Alertas (requisito do usuário, 2026-08-25): antes só
 // dava para ajustar RegraAlerta.DiasAntecedencia/Severidade direto no banco. Um card por módulo
@@ -51,6 +54,9 @@ export function AlertasConfiguracaoTab() {
   const [rascunhos, setRascunhos] = useState<Record<number, NovaRegraAlerta>>({});
   const [erro, setErro] = useState<string | null>(null);
   const [carregando, setCarregando] = useState(false);
+  const [carregandoLista, setCarregandoLista] = useState(true);
+  const { confirmar, dialogElement } = useConfirmarExclusao();
+  const sucessoToast = useSucessoToast();
 
   async function carregar() {
     try {
@@ -63,6 +69,8 @@ export function AlertasConfiguracaoTab() {
       setUsuarios(usuariosCarregados);
     } catch (e) {
       setErro(e instanceof Error ? e.message : 'Falha ao carregar regras de alerta.');
+    } finally {
+      setCarregandoLista(false);
     }
   }
 
@@ -87,6 +95,7 @@ export function AlertasConfiguracaoTab() {
         responsavelUsuarioId: regra.responsavelUsuarioId || null,
       });
       await carregar();
+      sucessoToast('Regra de alerta atualizada com sucesso.');
     } catch (e) {
       setErro(e instanceof Error ? e.message : 'Falha ao salvar regra de alerta.');
     } finally {
@@ -95,11 +104,13 @@ export function AlertasConfiguracaoTab() {
   }
 
   async function excluir(id: string) {
+    if (!(await confirmar('Excluir esta regra de alerta? Essa ação não pode ser desfeita.'))) return;
     try {
       setCarregando(true);
       setErro(null);
       await api.regrasAlerta.excluir(id);
       await carregar();
+      sucessoToast('Regra de alerta excluída com sucesso.');
     } catch (e) {
       setErro(e instanceof Error ? e.message : 'Falha ao excluir regra de alerta.');
     } finally {
@@ -118,6 +129,7 @@ export function AlertasConfiguracaoTab() {
       });
       setRascunhos((atual) => ({ ...atual, [modulo]: rascunhoInicial(modulo) }));
       await carregar();
+      sucessoToast('Regra de alerta adicionada com sucesso.');
     } catch (e) {
       setErro(e instanceof Error ? e.message : 'Falha ao adicionar regra de alerta.');
     } finally {
@@ -142,6 +154,7 @@ export function AlertasConfiguracaoTab() {
 
   return (
     <div>
+      {dialogElement}
       {erro && <Text className={estilos.erro}>{erro}</Text>}
 
       <Text as="p">
@@ -151,7 +164,10 @@ export function AlertasConfiguracaoTab() {
         mesmo sem regra cadastrada.
       </Text>
 
-      {modulosOrdenados.map((modulo) => {
+      {carregandoLista ? (
+        <ListaCarregando />
+      ) : (
+      modulosOrdenados.map((modulo) => {
         const regrasDoModulo = regras
           .filter((r) => r.modulo === modulo)
           .sort((a, b) => b.diasAntecedencia - a.diasAntecedencia);
@@ -163,7 +179,7 @@ export function AlertasConfiguracaoTab() {
               <Text weight="semibold">{moduloAlertaLabel[modulo] ?? modulo}</Text>
             </div>
 
-            <Table>
+            <Table noNativeElements>
               <TableHeader>
                 <TableRow>
                   <TableHeaderCell>Dias de antecedência</TableHeaderCell>
@@ -287,7 +303,8 @@ export function AlertasConfiguracaoTab() {
             </Table>
           </div>
         );
-      })}
+      })
+      )}
     </div>
   );
 }

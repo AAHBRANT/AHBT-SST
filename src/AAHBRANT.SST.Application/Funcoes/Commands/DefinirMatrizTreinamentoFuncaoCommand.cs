@@ -33,6 +33,9 @@ public class DefinirMatrizTreinamentoFuncaoCommandHandler : IRequestHandler<Defi
         if (!funcaoExiste)
             throw new KeyNotFoundException($"Função {request.FuncaoId} não encontrada.");
 
+        // IgnoreQueryFilters: precisa enxergar também vínculos previamente desativados (Ativo=false)
+        // para reativá-los em vez de tentar inserir duplicata e violar o índice único
+        // (FuncaoId, CursoTreinamentoId).
         var vinculosAtuais = await _db.MatrizTreinamentoFuncoes.IgnoreQueryFilters()
             .Where(m => m.FuncaoId == request.FuncaoId)
             .ToListAsync(ct);

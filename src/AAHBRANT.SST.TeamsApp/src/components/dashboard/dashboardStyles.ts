@@ -37,7 +37,7 @@ export const useDashboardStyles = makeStyles({
     marginBottom: '16px',
   },
   chartCard: {
-    backgroundColor: '#FFFFFF',
+    backgroundColor: designTokens.colorSurface,
     borderRadius: '12px',
     border: `1px solid ${designTokens.colorCardBorder}`,
     boxShadow: designTokens.cardShadow,
@@ -54,7 +54,7 @@ export const useDashboardStyles = makeStyles({
     marginBottom: '12px',
   },
   motorPainel: {
-    backgroundColor: '#FFFFFF',
+    backgroundColor: designTokens.colorSurface,
     borderRadius: '12px',
     border: `1px solid ${designTokens.colorCardBorder}`,
     boxShadow: designTokens.cardShadow,
@@ -121,7 +121,7 @@ export const useDashboardStyles = makeStyles({
   },
   feedIconeAtencao: {
     backgroundColor: designTokens.colorWarningWash,
-    color: '#9A6B04',
+    color: designTokens.colorWarning,
   },
   feedIconeBom: {
     backgroundColor: designTokens.colorSuccessWash,

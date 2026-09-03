@@ -212,6 +212,7 @@ export interface CursoTreinamento {
   normaReferencia?: string | null;
   cargaHorariaMinima: number;
   validadeEmMeses: number;
+  conteudoProgramatico?: string | null;
 }
 
 export type NovoCursoTreinamento = Omit<CursoTreinamento, 'id'>;
@@ -228,6 +229,7 @@ export interface Treinamento {
 }
 
 export type NovoTreinamento = Omit<Treinamento, 'id'>;
+export type AtualizarTreinamento = Treinamento;
 
 // Módulo de Requisitos Legais — Motor de Aplicabilidade Legal (requisito do usuário, 2026-08-29).
 // Fase 1 (fundação de dados): cadastro do requisito e seus critérios de aplicabilidade, catálogo do
@@ -331,10 +333,13 @@ export interface CatalogoEpi {
   // Soma do estoque do EPI em todas as Obras (Fase 3) — somente leitura; não editável via
   // catálogo. Ver api.estoquesEpi para o estoque segmentado por Obra.
   saldoTotal: number;
+  // Foto real do item (pedido do usuário, 03/09) — nunca vem embutida aqui (só o flag); o binário é
+  // baixado sob demanda via api.catalogosEpi.baixarFoto, mesmo padrão de Obra.temLogo/Trabalhador.temFoto.
+  temFoto: boolean;
 }
 
-export type NovoCatalogoEpi = Omit<CatalogoEpi, 'id' | 'saldoTotal'>;
-export type AtualizarCatalogoEpi = Omit<CatalogoEpi, 'saldoTotal'>;
+export type NovoCatalogoEpi = Omit<CatalogoEpi, 'id' | 'saldoTotal' | 'temFoto'>;
+export type AtualizarCatalogoEpi = Omit<CatalogoEpi, 'saldoTotal' | 'temFoto'>;
 
 // Fase 3 — estoque de EPI segmentado por Obra (substitui o antigo saldo único global).
 export const TipoMovimentacaoEstoqueEpi = {
@@ -523,6 +528,26 @@ export interface Risco {
 
 export type NovoRisco = Omit<Risco, 'id' | 'nivelRisco'>;
 
+export interface RiscoLoteItem {
+  nomeAtividade: string;
+  descricaoAtividade?: string | null;
+  nomePerigo: string;
+  agentePerigo?: string | null;
+  ambiente?: string | null;
+  exposicao?: string | null;
+  consequencia?: string | null;
+  probabilidade: number;
+  severidade: number;
+  controlesExistentes?: string | null;
+  controlesAdicionais?: string | null;
+}
+
+export interface ImportarRiscosLoteResultado {
+  atividadesCriadas: number;
+  perigosCriados: number;
+  riscosCriados: number;
+}
+
 export const StatusPgr = {
   EmElaboracao: 1,
   Vigente: 2,
@@ -544,6 +569,7 @@ export interface Pgr {
   descricao?: string | null;
   dataElaboracao: string;
   dataProximaRevisao?: string | null;
+  dataTermino?: string | null;
   responsavelUsuarioId?: string | null;
   status: number;
 }
@@ -685,7 +711,7 @@ export const TipoEntidadeVinculada = {
 export const tipoEntidadeVinculadaLabel: Record<number, string> = {
   1: 'Área',
   2: 'Ativo',
-  3: 'Trabalhador',
+  3: 'Funcionário',
 };
 
 export interface TagIdentificacao {
@@ -710,6 +736,7 @@ export interface ResolverTagDto {
 }
 
 export interface AreaPublicaDto {
+  tipoRecurso: 'area';
   codigo: string;
   nome: string;
   tipo: number;
@@ -718,6 +745,33 @@ export interface AreaPublicaDto {
   requisitos: string[];
   detalhesLocalizacao?: string | null;
 }
+
+export interface EpiAtivoPublico {
+  catalogoEpiNome: string;
+  dataValidade?: string | null;
+}
+
+export interface TreinamentoPublico {
+  cursoNome: string;
+  dataValidade: string;
+}
+
+// Crachá digital público de um trabalhador (NTAG215/QR do capacete) — mesma rota de AreaPublicaDto,
+// distinguido pelo campo tipoRecurso. Ver ResolverTrabalhadorPublicoQuery.cs: nunca inclui CPF/RG/
+// admissão/ocorrências — só o suficiente pra um fiscal em campo checar aptidão/EPI/treinamento.
+export interface TrabalhadorPublicoDto {
+  tipoRecurso: 'trabalhador';
+  nome: string;
+  matricula: string;
+  funcaoNome: string;
+  obraNome: string;
+  temFoto: boolean;
+  statusAptidao: string;
+  episAtivos: EpiAtivoPublico[];
+  treinamentos: TreinamentoPublico[];
+}
+
+export type RecursoPublico = AreaPublicaDto | TrabalhadorPublicoDto;
 
 export const StatusApr = {
   EmElaboracao: 1,
@@ -903,7 +957,7 @@ export const itemPreRequisitoPtLabel: Record<number, string> = {
   2: 'PGR / Inventário de Riscos compatível com a atividade',
   3: 'Inspeções / checklists dos equipamentos válidos',
   4: 'Procedimento / instrução de trabalho aplicável disponível',
-  5: 'Trabalhadores capacitados, autorizados e aptos quando aplicável',
+  5: 'Funcionários capacitados, autorizados e aptos quando aplicável',
   6: 'Plano de emergência e meios de comunicação conhecidos pela equipe',
 };
 
@@ -970,7 +1024,7 @@ export const itemVerificacaoPtLabel: Record<number, string> = {
   12: 'Atmosfera avaliada/monitorada quando aplicável (O₂, inflamáveis e tóxicos)?',
   13: 'Escavações/taludes/escoramentos/acessos inspecionados quando aplicável?',
   14: 'Plano de içamento e acessórios de movimentação verificados quando aplicável?',
-  15: 'Vigia, observador, sinaleiro ou trabalhador de apoio definido quando aplicável?',
+  15: 'Vigia, observador, sinaleiro ou funcionário de apoio definido quando aplicável?',
 };
 
 export const RespostaVerificacaoPt = {
@@ -1210,7 +1264,7 @@ export const tipoPerfilAcessoLabel: Record<number, string> = {
   7: 'RH',
   8: 'Gestor de Obra',
   9: 'Encarregado',
-  10: 'Trabalhador',
+  10: 'Funcionário',
   11: 'Auditor',
   12: 'Terceiro',
 };
@@ -1455,19 +1509,17 @@ export const statusDdsLabel: Record<number, string> = {
   2: 'Concluído',
 };
 
-// Reformulação 31/08 — DDS passou a ser um registro DIÁRIO dentro de uma DdsSemanal (ver abaixo). O
-// "Tema do DDS" tem 3 origens possíveis (ver OrigemTemaDds), em vez de texto livre digitado na hora.
-export const OrigemTemaDds = {
-  AutomaticoAtividade1: 1,
-  AutomaticoAtividade2: 2,
-  Livre: 3,
-} as const;
+// Reformulação 31/08 — DDS passou a ser um registro DIÁRIO dentro de uma DdsSemanal (ver abaixo).
 
-export const origemTemaDdsLabel: Record<number, string> = {
-  1: 'Automático — 1ª atividade do dia',
-  2: 'Automático — 2ª atividade do dia',
-  3: 'Livre (catálogo)',
-};
+export interface DdsTemaAtividade {
+  atividadeId: string;
+  atividadeNome: string;
+  perigoNome?: string | null;
+  perigoDescricao?: string | null;
+  consequencia?: string | null;
+  controlesExistentes?: string | null;
+  controlesAdicionais?: string | null;
+}
 
 export interface Dds {
   id: string;
@@ -1477,10 +1529,11 @@ export interface Dds {
   data: string;
   responsavelUsuarioId: string;
   responsavelUsuarioNome: string;
-  topicoPrincipal: string;
-  origemTema: number;
   catalogoTemaDdsId?: string | null;
+  temaLivreNome?: string | null;
+  temaLivreDescricao?: string | null;
   status: number;
+  temasAtividades: DdsTemaAtividade[];
   atividadesNomes: string[];
   totalItensChecklist: number;
   itensVerificados: number;
@@ -1492,7 +1545,6 @@ export interface NovaDds {
   ddsSemanalId: string;
   atividadesIds: string[];
   data: string;
-  origemTema: number;
   catalogoTemaDdsId?: string | null;
 }
 
@@ -1601,7 +1653,8 @@ export interface DdsSemanalDia {
   diaSemana: number;
   data: string;
   ddsId?: string | null;
-  topicoPrincipal?: string | null;
+  atividadesNomes: string[];
+  temaLivreNome?: string | null;
   status?: number | null;
   totalFotosEvidencia: number;
   totalParticipantes: number;
@@ -2026,7 +2079,6 @@ export type AtualizarRegistroHhtMensalPayload = NovoRegistroHhtMensal;
 // documentoGestaoId aponta para o DocumentoGestao vinculado (edição/exclusão usam este último).
 export interface Pcmso {
   id: string;
-  documentoGestaoId: string;
   nome: string;
   versao?: string | null;
   validade?: string | null;
@@ -2066,11 +2118,11 @@ export interface NovoPcmso {
 
 export type AtualizarPcmsoPayload = NovoPcmso;
 
-// Vocabulário de status que este PCMSO (PR-SST-003, reaproveitando DocumentoGestao) usava emprestado
-// de StatusDocumentoGestao (removido junto com Gestão Documental/Conformidade em 2026-08-28) —
-// mantido aqui, escopado só a este PCMSO, para as telas não perderem o rótulo/cor de status enquanto
-// o backend não é reformulado (ver PENDENTE acima e em Pcmsos/* no backend). Nome diferente de
-// StatusPcmso (acima) de propósito: aquele é do PCMSO v1 antigo, vocabulário numérico incompatível.
+// Vocabulário de status do PCMSO (PR-SST-003) — espelha o enum StatusPcmsoDocumento do backend
+// (Domain/Enums/Enums.cs), reintroduzido em 2026-09-03 com os mesmos valores do antigo
+// StatusDocumentoGestao (Gestão Documental/Conformidade, removido em 2026-08-28). Nome diferente de
+// StatusPcmso (Domain) de propósito: aquele é do PCMSO v1 antigo, descontinuado, vocabulário
+// numérico incompatível.
 export const StatusPcmsoDocumento = {
   Rascunho: 1,
   EmAprovacao: 2,
@@ -2087,10 +2139,9 @@ export const statusPcmsoDocumentoLabel: Record<number, string> = {
   5: 'Cancelado',
 };
 
-// PENDENTE: DocumentoGestao (e o backend de src/AAHBRANT.SST.Application/Pcmsos) foi removido
-// junto com o módulo de Conformidade (Matriz Legal + Gestão Documental) em 2026-08-28. O PCMSO
-// fica sem armazenamento de documento até ser reformulado para não depender mais dele — ver
-// AAHBRANT.SST.Application/Pcmsos/* e DocumentoAlertaProvider.cs no backend.
+// PENDENTE: DocumentoAlertaProvider.cs (Alertas/Motor) ainda não gera alerta de "PCMSO vencendo/
+// vencido" a partir de PcmsoDetalhe.Validade — retorna lista vazia deliberadamente. Não bloqueia o
+// cadastro/edição de PCMSO (já reformulados em 2026-09-03), só o alerta automático de vencimento.
 
 export const TipoAlerta = {
   AsoVencendo: 1,
@@ -2322,6 +2373,14 @@ export interface AssiduidadeDds {
   totalParticipados: number;
 }
 
+// Dashboard do Trabalhador (03/09) — "troca" é entrega com motivoTipo diferente de Inicial
+// (reposição por dano/extravio/vencimento/troca de função), no ano corrente. Não confundir com
+// FrequenciaTrocaEpi, que conta todas as entregas por item de catálogo (incluindo a inicial).
+export interface MotivoTrocaEpi {
+  motivo: number;
+  quantidade: number;
+}
+
 export interface RiscoExpostoPerfil {
   riscoId: string;
   perigoNome: string;
@@ -2382,6 +2441,8 @@ export interface PerfilCompletoTrabalhador {
   riscos: RiscoExpostoPerfil[];
   ocorrencias: OcorrenciaPerfil[];
   assinaturas: AssinaturaPerfil[];
+  trocasNoAno: number;
+  motivosTroca: MotivoTrocaEpi[];
 }
 
 // Módulos com suporte a uso offline (piloto acordado com o usuário em 24/08: módulos de campo,
@@ -2391,6 +2452,41 @@ const PREFIXOS_OFFLINE = ['/api/dds', '/api/inspecoes', '/api/checklistmodelos',
 
 function ehRotaOffline(path: string): boolean {
   return PREFIXOS_OFFLINE.some((prefixo) => path.startsWith(prefixo));
+}
+
+// O backend só deveria responder JSON, mas em falhas de infraestrutura (proxy/ingress
+// devolvendo a página estática do próprio front em vez da API, por exemplo) um 200 pode chegar
+// com corpo HTML. `JSON.parse`/`response.json()` cru nesse caso lança um SyntaxError críptico
+// ("Unexpected token '<', <!doctype... is not valid JSON") direto pro usuário — aqui a gente
+// troca por uma mensagem que já diz o status HTTP recebido, pra dar pra diagnosticar de verdade.
+// O backend (TratamentoDeExcecaoMiddleware) sempre responde erro como {"erro": "mensagem"}; um 404
+// de rota que nem chega a um controller (ex.: endpoint que não existe) vem no formato padrão do
+// ASP.NET Core, {"title": "Not Found", ...}. Sem isso, o usuário via literalmente
+// "400 Bad Request: {\"erro\":\"O campo Local é obrigatório.\"}" na tela em vez da mensagem limpa.
+function extrairMensagemErro(corpo: string, status: number, statusText: string): string {
+  if (corpo) {
+    try {
+      const json = JSON.parse(corpo) as { erro?: string; title?: string };
+      if (typeof json.erro === 'string' && json.erro) return json.erro;
+      if (typeof json.title === 'string' && json.title) return json.title;
+    } catch {
+      // corpo não era JSON — cai no texto bruto abaixo
+    }
+  }
+  return corpo ? `${statusText} (${status}): ${corpo}` : `${statusText} (${status})`;
+}
+
+function parsearJsonSeguro<T>(texto: string, response: Response): T {
+  if (!texto) {
+    return undefined as T;
+  }
+  try {
+    return JSON.parse(texto) as T;
+  } catch {
+    throw new Error(
+      `Resposta inesperada do servidor (HTTP ${response.status} ${response.statusText}): esperava JSON e recebeu outro tipo de conteúdo.`,
+    );
+  }
 }
 
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
@@ -2416,14 +2512,15 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
 
   if (!response.ok) {
     const corpo = await response.text().catch(() => '');
-    throw new Error(`${response.status} ${response.statusText}: ${corpo}`);
+    throw new Error(extrairMensagemErro(corpo, response.status, response.statusText));
   }
 
   if (response.status === 204) {
     return undefined as T;
   }
 
-  return (await response.json()) as T;
+  const texto = await response.text();
+  return parsearJsonSeguro<T>(texto, response);
 }
 
 // Módulo CIPA (NR-5, requisito do usuário, 2026-08-31) — dentro do pilar Operação. Ver disclosure
@@ -2737,7 +2834,7 @@ export const api = {
       });
       if (!response.ok) {
         const corpo = await response.text().catch(() => '');
-        throw new Error(`${response.status} ${response.statusText}: ${corpo}`);
+        throw new Error(extrairMensagemErro(corpo, response.status, response.statusText));
       }
       return response.json() as Promise<{ id: string }>;
     },
@@ -2752,14 +2849,14 @@ export const api = {
       });
       if (!response.ok) {
         const corpo = await response.text().catch(() => '');
-        throw new Error(`${response.status} ${response.statusText}: ${corpo}`);
+        throw new Error(extrairMensagemErro(corpo, response.status, response.statusText));
       }
     },
     baixarLogo: async (id: string) => {
       const response = await fetch(`${API_BASE_URL}/api/obras/${id}/logo`, { headers: await montarHeadersAuth() });
       if (!response.ok) {
         const corpo = await response.text().catch(() => '');
-        throw new Error(`${response.status} ${response.statusText}: ${corpo}`);
+        throw new Error(extrairMensagemErro(corpo, response.status, response.statusText));
       }
       return response.blob();
     },
@@ -2780,7 +2877,7 @@ export const api = {
       });
       if (!response.ok) {
         const corpo = await response.text().catch(() => '');
-        throw new Error(`${response.status} ${response.statusText}: ${corpo}`);
+        throw new Error(extrairMensagemErro(corpo, response.status, response.statusText));
       }
     },
     baixarFoto: async (id: string) => {
@@ -2789,7 +2886,7 @@ export const api = {
       });
       if (!response.ok) {
         const corpo = await response.text().catch(() => '');
-        throw new Error(`${response.status} ${response.statusText}: ${corpo}`);
+        throw new Error(extrairMensagemErro(corpo, response.status, response.statusText));
       }
       return response.blob();
     },
@@ -2805,7 +2902,7 @@ export const api = {
       const response = await fetch(`${API_BASE_URL}/api/trabalhadores/${id}/relatorio-pdf`, { headers: await montarHeadersAuth() });
       if (!response.ok) {
         const corpo = await response.text().catch(() => '');
-        throw new Error(`${response.status} ${response.statusText}: ${corpo}`);
+        throw new Error(extrairMensagemErro(corpo, response.status, response.statusText));
       }
       return response.blob();
     },
@@ -2887,9 +2984,6 @@ export const api = {
     obterPorId: (id: string) => request<Pcmso>(`/api/pcmsos/${id}`),
     criar: (pcmso: NovoPcmso) => request<{ id: string }>('/api/pcmsos', { method: 'POST', body: JSON.stringify(pcmso) }),
     atualizar: (id: string, pcmso: AtualizarPcmsoPayload) =>
-      // ...pcmso primeiro: pcmso é o Pcmso DTO (que tem seu próprio "id" = PcmsoDetalhe.Id) espalhado
-      // em cima do NovoPcmso; "id" precisa vir por último para sempre prevalecer como o
-      // documentoGestaoId esperado pela rota (PcmsoDetalhePage navega/edita por documentoGestaoId).
       request<void>(`/api/pcmsos/${id}`, { method: 'PUT', body: JSON.stringify({ ...pcmso, id }) }),
     excluir: (id: string) => request<void>(`/api/pcmsos/${id}`, { method: 'DELETE' }),
   },
@@ -2897,14 +2991,29 @@ export const api = {
     listar: () => request<CursoTreinamento[]>('/api/cursostreinamento'),
     criar: (curso: NovoCursoTreinamento) =>
       request<{ id: string }>('/api/cursostreinamento', { method: 'POST', body: JSON.stringify(curso) }),
+    atualizar: (id: string, curso: CursoTreinamento) =>
+      request<void>(`/api/cursostreinamento/${id}`, { method: 'PUT', body: JSON.stringify(curso) }),
     excluir: (id: string) => request<void>(`/api/cursostreinamento/${id}`, { method: 'DELETE' }),
   },
   treinamentos: {
     listar: (trabalhadorId?: string) =>
       request<Treinamento[]>(`/api/treinamentos${trabalhadorId ? `?trabalhadorId=${trabalhadorId}` : ''}`),
+    obterPorId: (id: string) => request<Treinamento>(`/api/treinamentos/${id}`),
     criar: (treinamento: NovoTreinamento) =>
       request<{ id: string }>('/api/treinamentos', { method: 'POST', body: JSON.stringify(treinamento) }),
+    atualizar: (treinamento: AtualizarTreinamento) =>
+      request<void>(`/api/treinamentos/${treinamento.id}`, { method: 'PUT', body: JSON.stringify(treinamento) }),
     excluir: (id: string) => request<void>(`/api/treinamentos/${id}`, { method: 'DELETE' }),
+    baixarCertificado: async (id: string) => {
+      const response = await fetch(`${API_BASE_URL}/api/treinamentos/${id}/certificado/pdf`, {
+        headers: await montarHeadersAuth(),
+      });
+      if (!response.ok) {
+        const corpo = await response.text().catch(() => '');
+        throw new Error(`${response.status} ${response.statusText}: ${corpo}`);
+      }
+      return response.blob();
+    },
   },
   requisitosLegais: {
     listar: (categoria?: number, status?: number) => {
@@ -2951,6 +3060,29 @@ export const api = {
     atualizar: (epi: AtualizarCatalogoEpi) =>
       request<void>(`/api/catalogosepi/${epi.id}`, { method: 'PUT', body: JSON.stringify(epi) }),
     excluir: (id: string) => request<void>(`/api/catalogosepi/${id}`, { method: 'DELETE' }),
+    anexarFoto: async (id: string, arquivo: File) => {
+      const formData = new FormData();
+      formData.append('Foto', arquivo);
+      const response = await fetch(`${API_BASE_URL}/api/catalogosepi/${id}/foto`, {
+        method: 'POST',
+        headers: await montarHeadersAuth(),
+        body: formData,
+      });
+      if (!response.ok) {
+        const corpo = await response.text().catch(() => '');
+        throw new Error(extrairMensagemErro(corpo, response.status, response.statusText));
+      }
+    },
+    baixarFoto: async (id: string) => {
+      const response = await fetch(`${API_BASE_URL}/api/catalogosepi/${id}/foto`, {
+        headers: await montarHeadersAuth(),
+      });
+      if (!response.ok) {
+        const corpo = await response.text().catch(() => '');
+        throw new Error(extrairMensagemErro(corpo, response.status, response.statusText));
+      }
+      return response.blob();
+    },
   },
   estoquesEpi: {
     listarPorObra: (obraId: string) => request<EstoqueEpiPorObra[]>(`/api/estoquesepi/obra/${obraId}`),
@@ -2976,7 +3108,7 @@ export const api = {
       });
       if (!response.ok) {
         const corpo = await response.text().catch(() => '');
-        throw new Error(`${response.status} ${response.statusText}: ${corpo}`);
+        throw new Error(extrairMensagemErro(corpo, response.status, response.statusText));
       }
       return response.blob();
     },
@@ -3003,6 +3135,13 @@ export const api = {
     listar: (atividadeId?: string) => request<Risco[]>(`/api/riscos${atividadeId ? `?atividadeId=${atividadeId}` : ''}`),
     criar: (risco: NovoRisco) => request<{ id: string }>('/api/riscos', { method: 'POST', body: JSON.stringify(risco) }),
     excluir: (id: string) => request<void>(`/api/riscos/${id}`, { method: 'DELETE' }),
+    importarLote: (obraId: string, itens: RiscoLoteItem[]) =>
+      request<ImportarRiscosLoteResultado>('/api/riscos/importar-lote', {
+        method: 'POST',
+        body: JSON.stringify({ obraId, itens }),
+      }),
+    limparPorObra: (obraId: string) =>
+      request<{ riscosRemovidos: number }>(`/api/riscos/obra/${obraId}`, { method: 'DELETE' }),
   },
   pgrs: {
     listar: (obraId?: string) => request<Pgr[]>(`/api/pgrs${obraId ? `?obraId=${obraId}` : ''}`),
@@ -3059,7 +3198,16 @@ export const api = {
     excluir: (id: string) => request<void>(`/api/tagsidentificacao/${id}`, { method: 'DELETE' }),
   },
   identificacaoPublica: {
-    resolver: (codigoOuUid: string) => request<AreaPublicaDto>(`/sst/p/${encodeURIComponent(codigoOuUid)}`),
+    resolver: (codigoOuUid: string) => request<RecursoPublico>(`/sst/p/${encodeURIComponent(codigoOuUid)}`),
+    // Sem auth de propósito — rota [AllowAnonymous], só acessível pra quem já tem o Uid da tag.
+    baixarFotoTrabalhador: async (uid: string) => {
+      const response = await fetch(`${API_BASE_URL}/sst/p/${encodeURIComponent(uid)}/foto`);
+      if (!response.ok) {
+        const corpo = await response.text().catch(() => '');
+        throw new Error(extrairMensagemErro(corpo, response.status, response.statusText));
+      }
+      return response.blob();
+    },
   },
   validacaoPublica: {
     resolver: (token: string) => request<DocumentoPublico>(`/sst/validar/${encodeURIComponent(token)}`),
@@ -3081,7 +3229,7 @@ export const api = {
       });
       if (!response.ok) {
         const corpo = await response.text().catch(() => '');
-        throw new Error(`${response.status} ${response.statusText}: ${corpo}`);
+        throw new Error(extrairMensagemErro(corpo, response.status, response.statusText));
       }
       return response.blob();
     },
@@ -3183,7 +3331,7 @@ export const api = {
       });
       if (!response.ok) {
         const corpo = await response.text().catch(() => '');
-        throw new Error(`${response.status} ${response.statusText}: ${corpo}`);
+        throw new Error(extrairMensagemErro(corpo, response.status, response.statusText));
       }
       return response.blob();
     },
@@ -3270,7 +3418,7 @@ export const api = {
       });
       if (!response.ok) {
         const corpo = await response.text().catch(() => '');
-        throw new Error(`${response.status} ${response.statusText}: ${corpo}`);
+        throw new Error(extrairMensagemErro(corpo, response.status, response.statusText));
       }
     },
     baixarFoto: async (respostaId: string) => {
@@ -3279,7 +3427,7 @@ export const api = {
       });
       if (!response.ok) {
         const corpo = await response.text().catch(() => '');
-        throw new Error(`${response.status} ${response.statusText}: ${corpo}`);
+        throw new Error(extrairMensagemErro(corpo, response.status, response.statusText));
       }
       return response.blob();
     },
@@ -3295,7 +3443,7 @@ export const api = {
       });
       if (!response.ok) {
         const corpo = await response.text().catch(() => '');
-        throw new Error(`${response.status} ${response.statusText}: ${corpo}`);
+        throw new Error(extrairMensagemErro(corpo, response.status, response.statusText));
       }
     },
     baixarFotoDepois: async (respostaId: string) => {
@@ -3304,7 +3452,7 @@ export const api = {
       });
       if (!response.ok) {
         const corpo = await response.text().catch(() => '');
-        throw new Error(`${response.status} ${response.statusText}: ${corpo}`);
+        throw new Error(extrairMensagemErro(corpo, response.status, response.statusText));
       }
       return response.blob();
     },
@@ -3313,7 +3461,7 @@ export const api = {
       const response = await fetch(`${API_BASE_URL}/api/inspecoes/${id}/pdf`, { headers: await montarHeadersAuth() });
       if (!response.ok) {
         const corpo = await response.text().catch(() => '');
-        throw new Error(`${response.status} ${response.statusText}: ${corpo}`);
+        throw new Error(extrairMensagemErro(corpo, response.status, response.statusText));
       }
       return response.blob();
     },
@@ -3350,7 +3498,7 @@ export const api = {
       const response = await fetch(`${API_BASE_URL}/api/dds/${id}/pdf`, { headers: await montarHeadersAuth() });
       if (!response.ok) {
         const corpo = await response.text().catch(() => '');
-        throw new Error(`${response.status} ${response.statusText}: ${corpo}`);
+        throw new Error(extrairMensagemErro(corpo, response.status, response.statusText));
       }
       return response.blob();
     },
@@ -3383,7 +3531,7 @@ export const api = {
       const response = await fetch(`${API_BASE_URL}/api/ddssemanal/${id}/pdf`, { headers: await montarHeadersAuth() });
       if (!response.ok) {
         const corpo = await response.text().catch(() => '');
-        throw new Error(`${response.status} ${response.statusText}: ${corpo}`);
+        throw new Error(extrairMensagemErro(corpo, response.status, response.statusText));
       }
       return response.blob();
     },
@@ -3392,6 +3540,8 @@ export const api = {
     listar: () => request<CatalogoTemaDds[]>('/api/catalogotemasdds'),
     criar: (nome: string, descricao?: string | null) =>
       request<{ id: string }>('/api/catalogotemasdds', { method: 'POST', body: JSON.stringify({ nome, descricao }) }),
+    atualizar: (id: string, nome: string, descricao?: string | null) =>
+      request<void>(`/api/catalogotemasdds/${id}`, { method: 'PUT', body: JSON.stringify({ nome, descricao }) }),
     excluir: (id: string) => request<void>(`/api/catalogotemasdds/${id}`, { method: 'DELETE' }),
   },
   assinatura: {
@@ -3403,7 +3553,7 @@ export const api = {
       if (response.status === 404) return null;
       if (!response.ok) {
         const corpo = await response.text().catch(() => '');
-        throw new Error(`${response.status} ${response.statusText}: ${corpo}`);
+        throw new Error(extrairMensagemErro(corpo, response.status, response.statusText));
       }
       return (await response.json()) as DocumentoAssinatura;
     },
@@ -3436,7 +3586,7 @@ export const api = {
       const response = await fetch(`${API_BASE_URL}/api/documentos/${id}/pdf`, { headers: await montarHeadersAuth() });
       if (!response.ok) {
         const corpo = await response.text().catch(() => '');
-        throw new Error(`${response.status} ${response.statusText}: ${corpo}`);
+        throw new Error(extrairMensagemErro(corpo, response.status, response.statusText));
       }
       return response.blob();
     },
@@ -3639,7 +3789,7 @@ export const api = {
         });
         if (!response.ok) {
           const corpo = await response.text().catch(() => '');
-          throw new Error(`${response.status} ${response.statusText}: ${corpo}`);
+          throw new Error(extrairMensagemErro(corpo, response.status, response.statusText));
         }
         return response.blob();
       },
@@ -3680,7 +3830,7 @@ export const api = {
         });
         if (!response.ok) {
           const corpo = await response.text().catch(() => '');
-          throw new Error(`${response.status} ${response.statusText}: ${corpo}`);
+          throw new Error(extrairMensagemErro(corpo, response.status, response.statusText));
         }
       },
       baixarCertificado: async (treinamentoId: string) => {
@@ -3689,7 +3839,7 @@ export const api = {
         });
         if (!response.ok) {
           const corpo = await response.text().catch(() => '');
-          throw new Error(`${response.status} ${response.statusText}: ${corpo}`);
+          throw new Error(extrairMensagemErro(corpo, response.status, response.statusText));
         }
         return response.blob();
       },
@@ -3703,7 +3853,7 @@ export const api = {
         });
         if (!response.ok) {
           const corpo = await response.text().catch(() => '');
-          throw new Error(`${response.status} ${response.statusText}: ${corpo}`);
+          throw new Error(extrairMensagemErro(corpo, response.status, response.statusText));
         }
       },
       baixarListaPresenca: async (treinamentoId: string) => {
@@ -3712,7 +3862,7 @@ export const api = {
         });
         if (!response.ok) {
           const corpo = await response.text().catch(() => '');
-          throw new Error(`${response.status} ${response.statusText}: ${corpo}`);
+          throw new Error(extrairMensagemErro(corpo, response.status, response.statusText));
         }
         return response.blob();
       },
@@ -3733,7 +3883,7 @@ export const api = {
         });
         if (!response.ok) {
           const corpo = await response.text().catch(() => '');
-          throw new Error(`${response.status} ${response.statusText}: ${corpo}`);
+          throw new Error(extrairMensagemErro(corpo, response.status, response.statusText));
         }
         return response.blob();
       },

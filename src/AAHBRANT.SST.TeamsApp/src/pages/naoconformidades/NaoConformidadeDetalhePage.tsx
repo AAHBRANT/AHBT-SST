@@ -15,6 +15,7 @@ import {
   Text,
   Textarea,
 } from '@fluentui/react-components';
+import { CampoData } from '../../components/CampoData';
 import { ArrowLeft24Regular, CheckmarkCircle24Regular } from '@fluentui/react-icons';
 import {
   api,
@@ -225,7 +226,7 @@ export function NaoConformidadeDetalhePage() {
       <Button
         appearance="subtle"
         icon={<ArrowLeft24Regular />}
-        onClick={() => navigate('/nao-conformidades')}
+        onClick={() => navigate('/ocorrencias?secao=nao-conformidades')}
         style={{ marginBottom: 12 }}
       >
         Voltar para Não Conformidades
@@ -266,52 +267,61 @@ export function NaoConformidadeDetalhePage() {
                     Motivo da devolução: {nc.motivoDevolucao}
                   </Text>
                 )}
-                <Text weight="semibold">Responder ocorrência</Text>
-                <div className={estilos.form}>
-                  <Field label="Ação a ser realizada" required>
-                    <Input
-                      value={resposta.descricaoAcao}
-                      onChange={(_, d) => setResposta({ ...resposta, descricaoAcao: d.value })}
-                    />
-                  </Field>
-                  <Field label="Executor">
-                    <Select
-                      value={resposta.responsavelExecucaoId}
-                      onChange={(_, d) => setResposta({ ...resposta, responsavelExecucaoId: d.value })}
-                    >
-                      <option value="">Manter responsável atual</option>
-                      {usuarios.map((usuario) => (
-                        <option key={usuario.id} value={usuario.id}>
-                          {usuario.nome}
-                        </option>
-                      ))}
-                    </Select>
-                  </Field>
-                  <Field label="Prioridade">
-                    <Select
-                      value={String(resposta.prioridade)}
-                      onChange={(_, d) => setResposta({ ...resposta, prioridade: Number(d.value) })}
-                    >
-                      {Object.entries(prioridadeAcaoLabel).map(([valor, rotulo]) => (
-                        <option key={valor} value={valor}>
-                          {rotulo}
-                        </option>
-                      ))}
-                    </Select>
-                  </Field>
-                  <Field label="Prazo (opcional — sugerido pela prioridade se em branco)">
-                    <Input
-                      type="date"
-                      value={resposta.prazo}
-                      onChange={(_, d) => setResposta({ ...resposta, prazo: d.value })}
-                    />
-                  </Field>
-                  <Field label="Justificativa do prazo (opcional)">
-                    <Input
-                      value={resposta.justificativaPrazo}
-                      onChange={(_, d) => setResposta({ ...resposta, justificativaPrazo: d.value })}
-                    />
-                  </Field>
+                <div className={`${estilos.sectionTitle} ${estilos.sectionTitleFirst}`}>Responder ocorrência</div>
+                <div className={estilos.formGrid}>
+                  <div className={estilos.col5}>
+                    <Field label="Ação a ser realizada" required>
+                      <Input
+                        value={resposta.descricaoAcao}
+                        onChange={(_, d) => setResposta({ ...resposta, descricaoAcao: d.value })}
+                      />
+                    </Field>
+                  </div>
+                  <div className={estilos.col3}>
+                    <Field label="Executor">
+                      <Select
+                        value={resposta.responsavelExecucaoId}
+                        onChange={(_, d) => setResposta({ ...resposta, responsavelExecucaoId: d.value })}
+                      >
+                        <option value="">Manter responsável atual</option>
+                        {usuarios.map((usuario) => (
+                          <option key={usuario.id} value={usuario.id}>
+                            {usuario.nome}
+                          </option>
+                        ))}
+                      </Select>
+                    </Field>
+                  </div>
+                  <div className={estilos.col2}>
+                    <Field label="Prioridade">
+                      <Select
+                        value={String(resposta.prioridade)}
+                        onChange={(_, d) => setResposta({ ...resposta, prioridade: Number(d.value) })}
+                      >
+                        {Object.entries(prioridadeAcaoLabel).map(([valor, rotulo]) => (
+                          <option key={valor} value={valor}>
+                            {rotulo}
+                          </option>
+                        ))}
+                      </Select>
+                    </Field>
+                  </div>
+                  <div className={estilos.col2}>
+                    <Field label="Prazo (opcional — sugerido pela prioridade se em branco)">
+                      <CampoData
+                        value={resposta.prazo}
+                        onChange={(_, d) => setResposta({ ...resposta, prazo: d.value })}
+                      />
+                    </Field>
+                  </div>
+                  <div className={estilos.col6}>
+                    <Field label="Justificativa do prazo (opcional)">
+                      <Input
+                        value={resposta.justificativaPrazo}
+                        onChange={(_, d) => setResposta({ ...resposta, justificativaPrazo: d.value })}
+                      />
+                    </Field>
+                  </div>
                 </div>
                 <div className={estilos.formActions}>
                   <Button appearance="primary" onClick={responder} disabled={processando}>
@@ -323,14 +333,18 @@ export function NaoConformidadeDetalhePage() {
 
             {nc.status === StatusNaoConformidade.EmAndamento && (
               <div style={{ marginTop: 16 }}>
-                <Text weight="semibold">Registrar conclusão da execução</Text>
-                <div className={estilos.form}>
-                  <Field label="Descrição da conclusão (opcional)">
-                    <Textarea
-                      value={descricaoConclusao}
-                      onChange={(_, d) => setDescricaoConclusao(d.value)}
-                    />
-                  </Field>
+                <div className={`${estilos.sectionTitle} ${estilos.sectionTitleFirst}`}>
+                  Registrar conclusão da execução
+                </div>
+                <div className={estilos.formGrid}>
+                  <div className={estilos.col12}>
+                    <Field label="Descrição da conclusão (opcional)">
+                      <Textarea
+                        value={descricaoConclusao}
+                        onChange={(_, d) => setDescricaoConclusao(d.value)}
+                      />
+                    </Field>
+                  </div>
                 </div>
                 <div className={estilos.formActions}>
                   <Button appearance="primary" onClick={registrarConclusao} disabled={processando}>
@@ -342,27 +356,33 @@ export function NaoConformidadeDetalhePage() {
 
             {nc.status === StatusNaoConformidade.AguardandoValidacao && (
               <div style={{ marginTop: 16 }}>
-                <Text weight="semibold">Validação do inspetor</Text>
-                <div className={estilos.form}>
-                  <Field label="Validar como">
-                    <Select value={usuarioValidador} onChange={(_, d) => setUsuarioValidador(d.value)}>
-                      <option value="">Selecione um usuário</option>
-                      {usuarios.map((usuario) => (
-                        <option key={usuario.id} value={usuario.id}>
-                          {usuario.nome}
-                        </option>
-                      ))}
-                    </Select>
-                  </Field>
-                  <Field label="Observações de encerramento (opcional)">
-                    <Input
-                      value={observacoesEncerramento}
-                      onChange={(_, d) => setObservacoesEncerramento(d.value)}
-                    />
-                  </Field>
-                  <Field label="Motivo da devolução (se for devolver)">
-                    <Input value={motivoDevolucao} onChange={(_, d) => setMotivoDevolucao(d.value)} />
-                  </Field>
+                <div className={`${estilos.sectionTitle} ${estilos.sectionTitleFirst}`}>Validação do inspetor</div>
+                <div className={estilos.formGrid}>
+                  <div className={estilos.col3}>
+                    <Field label="Validar como">
+                      <Select value={usuarioValidador} onChange={(_, d) => setUsuarioValidador(d.value)}>
+                        <option value="">Selecione um usuário</option>
+                        {usuarios.map((usuario) => (
+                          <option key={usuario.id} value={usuario.id}>
+                            {usuario.nome}
+                          </option>
+                        ))}
+                      </Select>
+                    </Field>
+                  </div>
+                  <div className={estilos.col5}>
+                    <Field label="Observações de encerramento (opcional)">
+                      <Input
+                        value={observacoesEncerramento}
+                        onChange={(_, d) => setObservacoesEncerramento(d.value)}
+                      />
+                    </Field>
+                  </div>
+                  <div className={estilos.col4}>
+                    <Field label="Motivo da devolução (se for devolver)">
+                      <Input value={motivoDevolucao} onChange={(_, d) => setMotivoDevolucao(d.value)} />
+                    </Field>
+                  </div>
                 </div>
                 <div className={estilos.formActions}>
                   <Button appearance="primary" icon={<CheckmarkCircle24Regular />} onClick={encerrar} disabled={processando}>
@@ -384,54 +404,64 @@ export function NaoConformidadeDetalhePage() {
         <div className={estilos.toolbar}>
           <Text weight="semibold">Nova ação do plano</Text>
         </div>
-        <div className={estilos.form}>
-          <Field label="Tipo">
-            <Select
-              value={String(novaAcao.tipo)}
-              onChange={(_, d) => setNovaAcao({ ...novaAcao, tipo: Number(d.value) })}
-            >
-              {Object.entries(tipoAcaoPlanoLabel).map(([valor, rotulo]) => (
-                <option key={valor} value={valor}>
-                  {rotulo}
-                </option>
-              ))}
-            </Select>
-          </Field>
-          <Field label="Descrição" required>
-            <Input value={novaAcao.descricao} onChange={(_, d) => setNovaAcao({ ...novaAcao, descricao: d.value })} />
-          </Field>
-          <Field label="Responsável">
-            <Select
-              value={novaAcao.responsavelUsuarioId ?? ''}
-              onChange={(_, d) => setNovaAcao({ ...novaAcao, responsavelUsuarioId: d.value })}
-            >
-              <option value="">Nenhum</option>
-              {usuarios.map((usuario) => (
-                <option key={usuario.id} value={usuario.id}>
-                  {usuario.nome}
-                </option>
-              ))}
-            </Select>
-          </Field>
-          <Field label="Prioridade">
-            <Select
-              value={String(novaAcao.prioridade)}
-              onChange={(_, d) => setNovaAcao({ ...novaAcao, prioridade: Number(d.value) })}
-            >
-              {Object.entries(prioridadeAcaoLabel).map(([valor, rotulo]) => (
-                <option key={valor} value={valor}>
-                  {rotulo}
-                </option>
-              ))}
-            </Select>
-          </Field>
-          <Field label="Prazo">
-            <Input
-              type="date"
-              value={novaAcao.prazo ?? ''}
-              onChange={(_, d) => setNovaAcao({ ...novaAcao, prazo: d.value })}
-            />
-          </Field>
+        <div className={`${estilos.sectionTitle} ${estilos.sectionTitleFirst}`}>Dados da Ação</div>
+        <div className={estilos.formGrid}>
+          <div className={estilos.col2}>
+            <Field label="Tipo">
+              <Select
+                value={String(novaAcao.tipo)}
+                onChange={(_, d) => setNovaAcao({ ...novaAcao, tipo: Number(d.value) })}
+              >
+                {Object.entries(tipoAcaoPlanoLabel).map(([valor, rotulo]) => (
+                  <option key={valor} value={valor}>
+                    {rotulo}
+                  </option>
+                ))}
+              </Select>
+            </Field>
+          </div>
+          <div className={estilos.col3}>
+            <Field label="Descrição" required>
+              <Input value={novaAcao.descricao} onChange={(_, d) => setNovaAcao({ ...novaAcao, descricao: d.value })} />
+            </Field>
+          </div>
+          <div className={estilos.col3}>
+            <Field label="Responsável">
+              <Select
+                value={novaAcao.responsavelUsuarioId ?? ''}
+                onChange={(_, d) => setNovaAcao({ ...novaAcao, responsavelUsuarioId: d.value })}
+              >
+                <option value="">Nenhum</option>
+                {usuarios.map((usuario) => (
+                  <option key={usuario.id} value={usuario.id}>
+                    {usuario.nome}
+                  </option>
+                ))}
+              </Select>
+            </Field>
+          </div>
+          <div className={estilos.col2}>
+            <Field label="Prioridade">
+              <Select
+                value={String(novaAcao.prioridade)}
+                onChange={(_, d) => setNovaAcao({ ...novaAcao, prioridade: Number(d.value) })}
+              >
+                {Object.entries(prioridadeAcaoLabel).map(([valor, rotulo]) => (
+                  <option key={valor} value={valor}>
+                    {rotulo}
+                  </option>
+                ))}
+              </Select>
+            </Field>
+          </div>
+          <div className={estilos.col2}>
+            <Field label="Prazo">
+              <CampoData
+                value={novaAcao.prazo ?? ''}
+                onChange={(_, d) => setNovaAcao({ ...novaAcao, prazo: d.value })}
+              />
+            </Field>
+          </div>
         </div>
         <div className={estilos.formActions}>
           <Button appearance="primary" onClick={criarAcao} disabled={processando}>
@@ -454,7 +484,7 @@ export function NaoConformidadeDetalhePage() {
             </Select>
           </Field>
         </div>
-        <Table>
+        <Table noNativeElements>
           <TableHeader>
             <TableRow>
               <TableHeaderCell>Tipo</TableHeaderCell>

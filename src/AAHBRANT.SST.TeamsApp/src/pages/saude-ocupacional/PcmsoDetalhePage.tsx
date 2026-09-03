@@ -15,6 +15,8 @@ import {
   Text,
   Textarea,
 } from '@fluentui/react-components';
+import { CampoData } from '../../components/CampoData';
+import { ChipsField } from '../../components/ChipsField';
 import { ArrowLeft24Regular, Delete24Regular, Save24Regular } from '@fluentui/react-icons';
 import {
   api,
@@ -34,14 +36,17 @@ import {
 } from '../../lib/api';
 import { BadgeVencimento } from '../../components/badges/BadgeVencimento';
 import { usePageStyles } from '../pageStyles';
+import { useConfirmarExclusao } from '../../hooks/useConfirmarExclusao';
+import { useSucessoToast } from '../../hooks/useSucessoToast';
+import { EstadoVazio } from '../../components/EstadoVazio';
 
 function novaAcaoInicial(): Omit<NovaAcaoPlano, 'origemTipo' | 'origemId'> {
   return { tipo: 1, descricao: '', responsavelUsuarioId: '', prioridade: 3, prazo: '' };
 }
 
 // Detalhe do PCMSO: edição completa dos campos clínicos (a criação em PcmsoTab.tsx só pede o
-// essencial) + Plano de Ação vinculado via api.acoesPlano (origemTipo="Pcmso", origemId =
-// documentoGestaoId — mesmo mecanismo genérico usado por NaoConformidadeDetalhePage.tsx).
+// essencial) + Plano de Ação vinculado via api.acoesPlano (origemTipo="Pcmso", origemId = id do
+// PCMSO — mesmo mecanismo genérico usado por NaoConformidadeDetalhePage.tsx).
 export function PcmsoDetalhePage() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
@@ -56,6 +61,8 @@ export function PcmsoDetalhePage() {
   const [usuarioValidador, setUsuarioValidador] = useState('');
   const [erro, setErro] = useState<string | null>(null);
   const [salvando, setSalvando] = useState(false);
+  const { confirmar, dialogElement } = useConfirmarExclusao();
+  const sucessoToast = useSucessoToast();
 
   async function carregar() {
     if (!id) return;
@@ -100,6 +107,7 @@ export function PcmsoDetalhePage() {
       setErro(null);
       await api.pcmsos.atualizar(id, edicao);
       await carregar();
+      sucessoToast('PCMSO atualizado com sucesso.');
     } catch (e) {
       setErro(e instanceof Error ? e.message : 'Falha ao salvar PCMSO.');
     } finally {
@@ -125,6 +133,7 @@ export function PcmsoDetalhePage() {
       });
       setNovaAcao(novaAcaoInicial());
       await carregar();
+      sucessoToast('Ação do plano criada com sucesso.');
     } catch (e) {
       setErro(e instanceof Error ? e.message : 'Falha ao criar ação do plano.');
     } finally {
@@ -142,6 +151,7 @@ export function PcmsoDetalhePage() {
       setErro(null);
       await api.acoesPlano.validar(acaoId, usuarioValidador);
       await carregar();
+      sucessoToast('Ação do plano validada com sucesso.');
     } catch (e) {
       setErro(e instanceof Error ? e.message : 'Falha ao validar ação do plano.');
     } finally {
@@ -150,9 +160,11 @@ export function PcmsoDetalhePage() {
   }
 
   async function excluirAcao(acaoId: string) {
+    if (!(await confirmar('Excluir esta ação do plano? Essa ação não pode ser desfeita.'))) return;
     try {
       await api.acoesPlano.excluir(acaoId);
       await carregar();
+      sucessoToast('Ação do plano excluída com sucesso.');
     } catch (e) {
       setErro(e instanceof Error ? e.message : 'Falha ao excluir ação do plano.');
     }
@@ -164,6 +176,7 @@ export function PcmsoDetalhePage() {
 
   return (
     <div>
+      {dialogElement}
       <Button
         appearance="subtle"
         icon={<ArrowLeft24Regular />}
@@ -190,189 +203,219 @@ export function PcmsoDetalhePage() {
               <BadgeVencimento dataValidade={pcmso.validade} />
             </div>
 
-            <div className={estilos.form}>
-              <Field label="Nome" required>
-                <Input value={edicao.nome} onChange={(_, d) => setEdicao({ ...edicao, nome: d.value })} />
-              </Field>
-              <Field label="Versão">
-                <Input
-                  value={edicao.versao ?? ''}
-                  onChange={(_, d) => setEdicao({ ...edicao, versao: d.value })}
-                />
-              </Field>
-              <Field label="Obra">
-                <Select value={edicao.obraId ?? ''} onChange={(_, d) => trocarObra(d.value)}>
-                  <option value="">Nenhuma</option>
-                  {obras.map((obra) => (
-                    <option key={obra.id} value={obra.id}>
-                      {obra.nome}
-                    </option>
-                  ))}
-                </Select>
-              </Field>
-              <Field label="Setor">
-                <Select
-                  value={edicao.setorId ?? ''}
-                  onChange={(_, d) => setEdicao({ ...edicao, setorId: d.value || null })}
-                  disabled={!edicao.obraId}
-                >
-                  <option value="">Nenhum</option>
-                  {setores.map((setor) => (
-                    <option key={setor.id} value={setor.id}>
-                      {setor.nome}
-                    </option>
-                  ))}
-                </Select>
-              </Field>
-              <Field label="Data de emissão" required>
-                <Input
-                  type="date"
-                  value={edicao.dataEmissao?.slice(0, 10) ?? ''}
-                  onChange={(_, d) => setEdicao({ ...edicao, dataEmissao: d.value })}
-                />
-              </Field>
-              <Field label="Validade">
-                <Input
-                  type="date"
-                  value={edicao.validade?.slice(0, 10) ?? ''}
-                  onChange={(_, d) => setEdicao({ ...edicao, validade: d.value })}
-                />
-              </Field>
-              <Field label="Responsável">
-                <Select
-                  value={edicao.responsavelUsuarioId ?? ''}
-                  onChange={(_, d) => setEdicao({ ...edicao, responsavelUsuarioId: d.value || null })}
-                >
-                  <option value="">Nenhum</option>
-                  {usuarios.map((usuario) => (
-                    <option key={usuario.id} value={usuario.id}>
-                      {usuario.nome}
-                    </option>
-                  ))}
-                </Select>
-              </Field>
-              <Field label="Status">
-                <Select
-                  value={pcmso.status}
-                  disabled
-                >
-                  {Object.entries(statusPcmsoDocumentoLabel).map(([valor, rotulo]) => (
-                    <option key={valor} value={valor}>
-                      {rotulo}
-                    </option>
-                  ))}
-                </Select>
-              </Field>
-              <Field label="Médico responsável">
-                <Input
-                  value={edicao.medicoResponsavelNome ?? ''}
-                  onChange={(_, d) => setEdicao({ ...edicao, medicoResponsavelNome: d.value })}
-                />
-              </Field>
-              <Field label="CRM">
-                <Input
-                  value={edicao.medicoResponsavelCrm ?? ''}
-                  onChange={(_, d) => setEdicao({ ...edicao, medicoResponsavelCrm: d.value })}
-                />
-              </Field>
-              <Field label="Funções contempladas">
-                <Textarea
-                  value={edicao.funcoesContempladas ?? ''}
-                  onChange={(_, d) => setEdicao({ ...edicao, funcoesContempladas: d.value })}
-                />
-              </Field>
-              <Field label="Riscos considerados">
-                <Textarea
-                  value={edicao.riscosConsiderados ?? ''}
-                  onChange={(_, d) => setEdicao({ ...edicao, riscosConsiderados: d.value })}
-                />
-              </Field>
-              <Field label="Exames previstos">
-                <Textarea
-                  value={edicao.examesPrevistos ?? ''}
-                  onChange={(_, d) => setEdicao({ ...edicao, examesPrevistos: d.value })}
-                />
-              </Field>
-              <Field label="Periodicidades">
-                <Textarea
-                  value={edicao.periodicidades ?? ''}
-                  onChange={(_, d) => setEdicao({ ...edicao, periodicidades: d.value })}
-                />
-              </Field>
-              <Field label="Unidades/obras abrangidas">
-                <Textarea
-                  value={edicao.unidadesObrasAbrangidas ?? ''}
-                  onChange={(_, d) => setEdicao({ ...edicao, unidadesObrasAbrangidas: d.value })}
-                />
-              </Field>
+            <div className={`${estilos.sectionTitle} ${estilos.sectionTitleFirst}`}>1. Dados gerais do documento</div>
+            <div className={estilos.formGrid}>
+              <div className={estilos.col4}>
+                <Field label="Nome do Documento" required>
+                  <Input value={edicao.nome} onChange={(_, d) => setEdicao({ ...edicao, nome: d.value })} />
+                </Field>
+              </div>
+              <div className={estilos.col2}>
+                <Field label="Versão">
+                  <Input
+                    value={edicao.versao ?? ''}
+                    onChange={(_, d) => setEdicao({ ...edicao, versao: d.value })}
+                  />
+                </Field>
+              </div>
+              <div className={estilos.col3}>
+                <Field label="Obra">
+                  <Select value={edicao.obraId ?? ''} onChange={(_, d) => trocarObra(d.value)}>
+                    <option value="">Nenhuma</option>
+                    {obras.map((obra) => (
+                      <option key={obra.id} value={obra.id}>
+                        {obra.nome}
+                      </option>
+                    ))}
+                  </Select>
+                </Field>
+              </div>
+              <div className={estilos.col3}>
+                <Field label="Setor">
+                  <Select
+                    value={edicao.setorId ?? ''}
+                    onChange={(_, d) => setEdicao({ ...edicao, setorId: d.value || null })}
+                    disabled={!edicao.obraId}
+                  >
+                    <option value="">Nenhum</option>
+                    {setores.map((setor) => (
+                      <option key={setor.id} value={setor.id}>
+                        {setor.nome}
+                      </option>
+                    ))}
+                  </Select>
+                </Field>
+              </div>
+              <div className={estilos.col3}>
+                <Field label="Data de emissão" required>
+                  <CampoData
+                    value={edicao.dataEmissao?.slice(0, 10) ?? ''}
+                    onChange={(_, d) => setEdicao({ ...edicao, dataEmissao: d.value })}
+                  />
+                </Field>
+              </div>
+              <div className={estilos.col3}>
+                <Field label="Validade">
+                  <CampoData
+                    value={edicao.validade?.slice(0, 10) ?? ''}
+                    onChange={(_, d) => setEdicao({ ...edicao, validade: d.value })}
+                  />
+                </Field>
+              </div>
+              <div className={estilos.col3}>
+                <Field label="Médico responsável">
+                  <Input
+                    value={edicao.medicoResponsavelNome ?? ''}
+                    onChange={(_, d) => setEdicao({ ...edicao, medicoResponsavelNome: d.value })}
+                  />
+                </Field>
+              </div>
+              <div className={estilos.col3}>
+                <Field label="CRM">
+                  <Input
+                    value={edicao.medicoResponsavelCrm ?? ''}
+                    onChange={(_, d) => setEdicao({ ...edicao, medicoResponsavelCrm: d.value })}
+                  />
+                </Field>
+              </div>
+              <div className={estilos.col4}>
+                <Field label="Responsável">
+                  <Select
+                    value={edicao.responsavelUsuarioId ?? ''}
+                    onChange={(_, d) => setEdicao({ ...edicao, responsavelUsuarioId: d.value || null })}
+                  >
+                    <option value="">Nenhum</option>
+                    {usuarios.map((usuario) => (
+                      <option key={usuario.id} value={usuario.id}>
+                        {usuario.nome}
+                      </option>
+                    ))}
+                  </Select>
+                </Field>
+              </div>
             </div>
-            <div className={estilos.formActions}>
+
+            <div className={estilos.sectionTitle}>2. Abrangência, riscos e exames</div>
+            <div className={estilos.formGrid}>
+              <div className={estilos.col6}>
+                <Field label="Unidades/Obras abrangidas">
+                  <ChipsField
+                    value={edicao.unidadesObrasAbrangidas ?? ''}
+                    onChange={(v) => setEdicao({ ...edicao, unidadesObrasAbrangidas: v })}
+                    placeholder="Digite e pressione Enter"
+                  />
+                </Field>
+              </div>
+              <div className={estilos.col6}>
+                <Field label="Funções contempladas">
+                  <Textarea
+                    value={edicao.funcoesContempladas ?? ''}
+                    onChange={(_, d) => setEdicao({ ...edicao, funcoesContempladas: d.value })}
+                  />
+                </Field>
+              </div>
+              <div className={estilos.col4}>
+                <Field label="Riscos considerados">
+                  <Textarea
+                    value={edicao.riscosConsiderados ?? ''}
+                    onChange={(_, d) => setEdicao({ ...edicao, riscosConsiderados: d.value })}
+                  />
+                </Field>
+              </div>
+              <div className={estilos.col4}>
+                <Field label="Exames previstos">
+                  <Textarea
+                    value={edicao.examesPrevistos ?? ''}
+                    onChange={(_, d) => setEdicao({ ...edicao, examesPrevistos: d.value })}
+                  />
+                </Field>
+              </div>
+              <div className={estilos.col4}>
+                <Field label="Periodicidades">
+                  <Textarea
+                    value={edicao.periodicidades ?? ''}
+                    onChange={(_, d) => setEdicao({ ...edicao, periodicidades: d.value })}
+                  />
+                </Field>
+              </div>
+            </div>
+
+            <div className={estilos.footer}>
+              <Text className={estilos.footerInfo}>
+                O status segue o fluxo documental padrão (Rascunho → Em aprovação → Vigente → Obsoleto →
+                Cancelado) e é alterado pelo mesmo fluxo de Gestão Documental usado pelos demais
+                documentos controlados — não editável diretamente aqui.
+              </Text>
               <Button appearance="primary" icon={<Save24Regular />} onClick={salvar} disabled={salvando}>
                 Salvar alterações
               </Button>
             </div>
-            <Text size={200} style={{ display: 'block', marginTop: 8 }}>
-              O status segue o fluxo documental padrão (Rascunho → Em aprovação → Vigente → Obsoleto →
-              Cancelado) e é alterado pelo mesmo fluxo de Gestão Documental usado pelos demais
-              documentos controlados — não editável diretamente aqui.
-            </Text>
           </div>
 
           <div className={estilos.card} style={{ marginBottom: 16 }}>
             <div className={estilos.toolbar}>
               <Text weight="semibold">Nova ação do plano</Text>
             </div>
-            <div className={estilos.form}>
-              <Field label="Tipo">
-                <Select
-                  value={String(novaAcao.tipo)}
-                  onChange={(_, d) => setNovaAcao({ ...novaAcao, tipo: Number(d.value) })}
-                >
-                  {Object.entries(tipoAcaoPlanoLabel).map(([valor, rotulo]) => (
-                    <option key={valor} value={valor}>
-                      {rotulo}
-                    </option>
-                  ))}
-                </Select>
-              </Field>
-              <Field label="Descrição" required>
-                <Input
-                  value={novaAcao.descricao}
-                  onChange={(_, d) => setNovaAcao({ ...novaAcao, descricao: d.value })}
-                />
-              </Field>
-              <Field label="Responsável">
-                <Select
-                  value={novaAcao.responsavelUsuarioId ?? ''}
-                  onChange={(_, d) => setNovaAcao({ ...novaAcao, responsavelUsuarioId: d.value })}
-                >
-                  <option value="">Nenhum</option>
-                  {usuarios.map((usuario) => (
-                    <option key={usuario.id} value={usuario.id}>
-                      {usuario.nome}
-                    </option>
-                  ))}
-                </Select>
-              </Field>
-              <Field label="Prioridade">
-                <Select
-                  value={String(novaAcao.prioridade)}
-                  onChange={(_, d) => setNovaAcao({ ...novaAcao, prioridade: Number(d.value) })}
-                >
-                  {Object.entries(prioridadeAcaoLabel).map(([valor, rotulo]) => (
-                    <option key={valor} value={valor}>
-                      {rotulo}
-                    </option>
-                  ))}
-                </Select>
-              </Field>
-              <Field label="Prazo">
-                <Input
-                  type="date"
-                  value={novaAcao.prazo ?? ''}
-                  onChange={(_, d) => setNovaAcao({ ...novaAcao, prazo: d.value })}
-                />
-              </Field>
+            <div className={estilos.formGrid}>
+              <div className={estilos.col2}>
+                <Field label="Tipo">
+                  <Select
+                    value={String(novaAcao.tipo)}
+                    onChange={(_, d) => setNovaAcao({ ...novaAcao, tipo: Number(d.value) })}
+                  >
+                    {Object.entries(tipoAcaoPlanoLabel).map(([valor, rotulo]) => (
+                      <option key={valor} value={valor}>
+                        {rotulo}
+                      </option>
+                    ))}
+                  </Select>
+                </Field>
+              </div>
+              <div className={estilos.col4}>
+                <Field label="Descrição" required>
+                  <Input
+                    value={novaAcao.descricao}
+                    onChange={(_, d) => setNovaAcao({ ...novaAcao, descricao: d.value })}
+                  />
+                </Field>
+              </div>
+              <div className={estilos.col3}>
+                <Field label="Responsável">
+                  <Select
+                    value={novaAcao.responsavelUsuarioId ?? ''}
+                    onChange={(_, d) => setNovaAcao({ ...novaAcao, responsavelUsuarioId: d.value })}
+                  >
+                    <option value="">Nenhum</option>
+                    {usuarios.map((usuario) => (
+                      <option key={usuario.id} value={usuario.id}>
+                        {usuario.nome}
+                      </option>
+                    ))}
+                  </Select>
+                </Field>
+              </div>
+              <div className={estilos.col2}>
+                <Field label="Prioridade">
+                  <Select
+                    value={String(novaAcao.prioridade)}
+                    onChange={(_, d) => setNovaAcao({ ...novaAcao, prioridade: Number(d.value) })}
+                  >
+                    {Object.entries(prioridadeAcaoLabel).map(([valor, rotulo]) => (
+                      <option key={valor} value={valor}>
+                        {rotulo}
+                      </option>
+                    ))}
+                  </Select>
+                </Field>
+              </div>
+              <div className={estilos.col2}>
+                <Field label="Prazo">
+                  <CampoData
+                    value={novaAcao.prazo ?? ''}
+                    onChange={(_, d) => setNovaAcao({ ...novaAcao, prazo: d.value })}
+                  />
+                </Field>
+              </div>
             </div>
             <div className={estilos.formActions}>
               <Button appearance="primary" onClick={criarAcao} disabled={salvando}>
@@ -395,7 +438,10 @@ export function PcmsoDetalhePage() {
                 </Select>
               </Field>
             </div>
-            <Table>
+            {acoesPlano.length === 0 ? (
+              <EstadoVazio mensagem="Nenhuma ação do plano cadastrada ainda." />
+            ) : (
+            <Table noNativeElements>
               <TableHeader>
                 <TableRow>
                   <TableHeaderCell>Tipo</TableHeaderCell>
@@ -437,6 +483,7 @@ export function PcmsoDetalhePage() {
                 ))}
               </TableBody>
             </Table>
+            )}
           </div>
         </>
       )}

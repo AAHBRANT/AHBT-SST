@@ -49,6 +49,7 @@ public static partial class MockObraSeeder
         db.EstoquesEpi.AddRange(estoquesEpi);
         db.EntregasEpi.AddRange(entregasEpi);
         db.MatrizEpiFuncoes.AddRange(ConstruirMatrizEpiFuncao(funcoes, catalogosEpi));
+        db.MatrizTreinamentoFuncoes.AddRange(ConstruirMatrizTreinamentoFuncao(funcoes, cursos));
 
         // Equipe.EncarregadoId e Trabalhador.EquipeId formam uma dependência circular entre duas
         // entidades novas ([Added] <-> [Added]) que o EF Core não consegue linearizar num único

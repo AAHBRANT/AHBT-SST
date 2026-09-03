@@ -8,7 +8,7 @@ import { AlertasConfiguracaoTab } from './AlertasConfiguracaoTab';
 type AbaAlertas = 'dashboard' | 'lista' | 'configuracao';
 
 export function AlertasPage() {
-  const [aba, setAba] = useState<AbaAlertas>('dashboard');
+  const [aba, setAba] = useState<AbaAlertas>('lista');
   const estilosAba = usePillTabStyles();
 
   return (
@@ -24,14 +24,14 @@ export function AlertasPage() {
         onTabSelect={(_: SelectTabEvent, data: SelectTabData) => setAba(data.value as AbaAlertas)}
         className={estilosAba.lista}
       >
-        <Tab value="dashboard">Dashboard</Tab>
         <Tab value="lista">Lista</Tab>
         <Tab value="configuracao">Configurações</Tab>
+        <Tab value="dashboard">Dashboard</Tab>
       </TabList>
 
-      {aba === 'dashboard' && <AlertasDashboardTab />}
       {aba === 'lista' && <AlertasListaTab />}
       {aba === 'configuracao' && <AlertasConfiguracaoTab />}
+      {aba === 'dashboard' && <AlertasDashboardTab />}
     </div>
   );
 }

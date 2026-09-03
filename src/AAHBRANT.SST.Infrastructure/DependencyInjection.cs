@@ -7,6 +7,7 @@ using AAHBRANT.SST.Application.EntregasEpi;
 using AAHBRANT.SST.Application.Inspecoes;
 using AAHBRANT.SST.Application.PermissoesTrabalho;
 using AAHBRANT.SST.Application.Trabalhadores;
+using AAHBRANT.SST.Application.Treinamentos;
 using AAHBRANT.SST.Infrastructure.Assinatura;
 using AAHBRANT.SST.Infrastructure.Auditoria;
 using AAHBRANT.SST.Infrastructure.Documentos;
@@ -85,6 +86,7 @@ public static class DependencyInjection
         services.AddScoped<IAprPdfService, AprPdfService>();
         services.AddScoped<IFichaEpiPdfService, EntregaEpiPdfService>();
         services.AddScoped<IPtPdfService, PtPdfService>();
+        services.AddScoped<ICertificadoTreinamentoPdfService, CertificadoTreinamentoPdfService>();
         services.AddScoped<IRelatorioFiscalizacaoPdfService, RelatorioFiscalizacaoPdfService>();
         services.AddScoped<IInspecaoPdfService, InspecaoPdfService>();
 

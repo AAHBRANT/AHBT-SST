@@ -15,6 +15,7 @@ import {
   Text,
   Textarea,
 } from '@fluentui/react-components';
+import { CampoData } from '../../components/CampoData';
 import { ArrowLeft24Regular, Delete24Regular } from '@fluentui/react-icons';
 import {
   api,
@@ -25,6 +26,9 @@ import {
 } from '../../lib/api';
 import { SeletorFotoCamera } from '../../components/SeletorFotoCamera';
 import { usePageStyles } from '../pageStyles';
+import { useConfirmarExclusao } from '../../hooks/useConfirmarExclusao';
+import { useSucessoToast } from '../../hooks/useSucessoToast';
+import { EstadoVazio } from '../../components/EstadoVazio';
 
 function treinamentoVazio() {
   return { cargaHoraria: 4, conteudoProgramatico: '', dataRealizacao: '', dataValidade: '', instituicaoInstrutor: '' };
@@ -38,6 +42,8 @@ export function MembroCipaDetalhePage() {
   const [novoTreinamento, setNovoTreinamento] = useState(treinamentoVazio());
   const [erro, setErro] = useState<string | null>(null);
   const [salvando, setSalvando] = useState(false);
+  const { confirmar, dialogElement } = useConfirmarExclusao();
+  const sucessoToast = useSucessoToast();
 
   async function carregar() {
     if (!id) return;
@@ -61,6 +67,7 @@ export function MembroCipaDetalhePage() {
       setErro(null);
       await api.cipa.membros.definirCargo(id, cargo);
       await carregar();
+      sucessoToast('Cargo atualizado com sucesso.');
     } catch (e) {
       setErro(e instanceof Error ? e.message : 'Falha ao alterar cargo.');
     } finally {
@@ -70,11 +77,12 @@ export function MembroCipaDetalhePage() {
 
   async function encerrarMandato() {
     if (!id) return;
-    if (!window.confirm('Encerrar o mandato deste membro?')) return;
+    if (!(await confirmar('Encerrar o mandato deste membro? Essa ação não pode ser desfeita.'))) return;
     try {
       setSalvando(true);
       setErro(null);
       await api.cipa.membros.encerrarMandato(id);
+      sucessoToast('Mandato encerrado com sucesso.');
       navigate('/operacao/cipa');
     } catch (e) {
       setErro(e instanceof Error ? e.message : 'Falha ao encerrar mandato.');
@@ -101,6 +109,7 @@ export function MembroCipaDetalhePage() {
       );
       setNovoTreinamento(treinamentoVazio());
       await carregar();
+      sucessoToast('Treinamento registrado com sucesso.');
     } catch (e) {
       setErro(e instanceof Error ? e.message : 'Falha ao registrar treinamento.');
     } finally {
@@ -113,6 +122,7 @@ export function MembroCipaDetalhePage() {
       setErro(null);
       await api.cipa.membros.anexarCertificado(treinamentoId, arquivo);
       await carregar();
+      sucessoToast('Certificado anexado com sucesso.');
     } catch (e) {
       setErro(e instanceof Error ? e.message : 'Falha ao anexar certificado.');
     }
@@ -123,6 +133,7 @@ export function MembroCipaDetalhePage() {
       setErro(null);
       await api.cipa.membros.anexarListaPresenca(treinamentoId, arquivo);
       await carregar();
+      sucessoToast('Lista de presença anexada com sucesso.');
     } catch (e) {
       setErro(e instanceof Error ? e.message : 'Falha ao anexar lista de presença.');
     }
@@ -150,6 +161,7 @@ export function MembroCipaDetalhePage() {
 
   return (
     <div>
+      {dialogElement}
       <Button appearance="subtle" icon={<ArrowLeft24Regular />} onClick={() => navigate('/operacao/cipa')} style={{ marginBottom: 12 }}>
         Voltar para CIPA
       </Button>
@@ -175,16 +187,19 @@ export function MembroCipaDetalhePage() {
               {detalhe.membro.obraNome} · {origemMembroCipaLabel[detalhe.membro.origemMembro]} · Mandato:{' '}
               {detalhe.membro.dataInicioMandato?.slice(0, 10)} a {detalhe.membro.dataFimMandato?.slice(0, 10)}
             </Text>
-            <div className={estilos.form}>
-              <Field label="Cargo">
-                <Select value={String(detalhe.membro.cargo)} onChange={(_, d) => definirCargo(Number(d.value))} disabled={salvando}>
-                  {Object.entries(cargoMembroCipaLabel).map(([valor, rotulo]) => (
-                    <option key={valor} value={valor}>
-                      {rotulo}
-                    </option>
-                  ))}
-                </Select>
-              </Field>
+            <div className={`${estilos.sectionTitle} ${estilos.sectionTitleFirst}`}>Cargo do Membro</div>
+            <div className={estilos.formGrid}>
+              <div className={estilos.col4}>
+                <Field label="Cargo">
+                  <Select value={String(detalhe.membro.cargo)} onChange={(_, d) => definirCargo(Number(d.value))} disabled={salvando}>
+                    {Object.entries(cargoMembroCipaLabel).map(([valor, rotulo]) => (
+                      <option key={valor} value={valor}>
+                        {rotulo}
+                      </option>
+                    ))}
+                  </Select>
+                </Field>
+              </div>
             </div>
             {detalhe.membro.cargo !== CargoMembroCipa.Presidente && (
               <div className={estilos.formActions}>
@@ -199,40 +214,49 @@ export function MembroCipaDetalhePage() {
             <div className={estilos.toolbar}>
               <Text weight="semibold">Novo treinamento</Text>
             </div>
-            <div className={estilos.form}>
-              <Field label="Carga horária (h)" required>
-                <Input
-                  type="number"
-                  value={String(novoTreinamento.cargaHoraria)}
-                  onChange={(_, d) => setNovoTreinamento({ ...novoTreinamento, cargaHoraria: Number(d.value) })}
-                />
-              </Field>
-              <Field label="Data de realização" required>
-                <Input
-                  type="date"
-                  value={novoTreinamento.dataRealizacao}
-                  onChange={(_, d) => setNovoTreinamento({ ...novoTreinamento, dataRealizacao: d.value })}
-                />
-              </Field>
-              <Field label="Validade">
-                <Input
-                  type="date"
-                  value={novoTreinamento.dataValidade}
-                  onChange={(_, d) => setNovoTreinamento({ ...novoTreinamento, dataValidade: d.value })}
-                />
-              </Field>
-              <Field label="Instituição/instrutor">
-                <Input
-                  value={novoTreinamento.instituicaoInstrutor}
-                  onChange={(_, d) => setNovoTreinamento({ ...novoTreinamento, instituicaoInstrutor: d.value })}
-                />
-              </Field>
-              <Field label="Conteúdo programático">
-                <Textarea
-                  value={novoTreinamento.conteudoProgramatico}
-                  onChange={(_, d) => setNovoTreinamento({ ...novoTreinamento, conteudoProgramatico: d.value })}
-                />
-              </Field>
+            <div className={`${estilos.sectionTitle} ${estilos.sectionTitleFirst}`}>Dados do Treinamento</div>
+            <div className={estilos.formGrid}>
+              <div className={estilos.col2}>
+                <Field label="Carga horária (h)" required>
+                  <Input
+                    type="number"
+                    value={String(novoTreinamento.cargaHoraria)}
+                    onChange={(_, d) => setNovoTreinamento({ ...novoTreinamento, cargaHoraria: Number(d.value) })}
+                  />
+                </Field>
+              </div>
+              <div className={estilos.col3}>
+                <Field label="Data de realização" required>
+                  <CampoData
+                    value={novoTreinamento.dataRealizacao}
+                    onChange={(_, d) => setNovoTreinamento({ ...novoTreinamento, dataRealizacao: d.value })}
+                  />
+                </Field>
+              </div>
+              <div className={estilos.col3}>
+                <Field label="Validade">
+                  <CampoData
+                    value={novoTreinamento.dataValidade}
+                    onChange={(_, d) => setNovoTreinamento({ ...novoTreinamento, dataValidade: d.value })}
+                  />
+                </Field>
+              </div>
+              <div className={estilos.col4}>
+                <Field label="Instituição/instrutor">
+                  <Input
+                    value={novoTreinamento.instituicaoInstrutor}
+                    onChange={(_, d) => setNovoTreinamento({ ...novoTreinamento, instituicaoInstrutor: d.value })}
+                  />
+                </Field>
+              </div>
+              <div className={estilos.col12}>
+                <Field label="Conteúdo programático">
+                  <Textarea
+                    value={novoTreinamento.conteudoProgramatico}
+                    onChange={(_, d) => setNovoTreinamento({ ...novoTreinamento, conteudoProgramatico: d.value })}
+                  />
+                </Field>
+              </div>
             </div>
             <div className={estilos.formActions}>
               <Button appearance="primary" onClick={criarTreinamento} disabled={salvando}>
@@ -245,7 +269,10 @@ export function MembroCipaDetalhePage() {
             <div className={estilos.toolbar}>
               <Text weight="semibold">Treinamentos</Text>
             </div>
-            <Table>
+            {detalhe.treinamentos.length === 0 ? (
+              <EstadoVazio mensagem="Nenhum treinamento registrado ainda." />
+            ) : (
+            <Table noNativeElements>
               <TableHeader>
                 <TableRow>
                   <TableHeaderCell>Realização</TableHeaderCell>
@@ -274,7 +301,9 @@ export function MembroCipaDetalhePage() {
                             rotulo="Anexar"
                             tamanho="small"
                             tiposAceitos="application/pdf,image/*"
+                            tamanhoMaximoMb={8}
                             aoSelecionarArquivo={(arquivo) => anexarCertificado(t.id, arquivo)}
+                            aoErroValidacao={setErro}
                           />
                         )}
                       </div>
@@ -290,7 +319,9 @@ export function MembroCipaDetalhePage() {
                             rotulo="Anexar"
                             tamanho="small"
                             tiposAceitos="application/pdf,image/*"
+                            tamanhoMaximoMb={8}
                             aoSelecionarArquivo={(arquivo) => anexarListaPresenca(t.id, arquivo)}
+                            aoErroValidacao={setErro}
                           />
                         )}
                       </div>
@@ -299,6 +330,7 @@ export function MembroCipaDetalhePage() {
                 ))}
               </TableBody>
             </Table>
+            )}
           </div>
         </>
       )}

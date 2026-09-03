@@ -26,8 +26,6 @@ public class DdsPdfService : IDdsPdfService
                 {
                     coluna.Spacing(8);
 
-                    coluna.Item().Text(modelo.TopicoPrincipal).FontSize(16).Bold();
-
                     coluna.Item().Row(linha =>
                     {
                         linha.RelativeItem().Text(t =>
@@ -48,11 +46,44 @@ public class DdsPdfService : IDdsPdfService
                         t.Span(modelo.ResponsavelNome);
                     });
 
-                    coluna.Item().Text(t =>
+                    if (modelo.Temas.Count > 0)
                     {
-                        t.Span("Atividades do dia: ").SemiBold();
-                        t.Span(string.Join(", ", modelo.AtividadesNomes));
-                    });
+                        coluna.Item().PaddingTop(8).Text("Temas do dia").FontSize(13).Bold();
+                        foreach (var tema in modelo.Temas)
+                        {
+                            coluna.Item().Border(1).BorderColor(Colors.Grey.Lighten2).Padding(6).Column(bloco =>
+                            {
+                                bloco.Spacing(2);
+                                bloco.Item().Text(tema.AtividadeNome).Bold().FontColor(CorMarca);
+                                if (tema.PerigoNome is null)
+                                {
+                                    bloco.Item().Text("Nenhum risco cadastrado para esta atividade — revisar Matriz de Riscos.");
+                                }
+                                else
+                                {
+                                    bloco.Item().Text(t => { t.Span("Perigo: ").SemiBold(); t.Span(tema.PerigoNome); });
+                                    if (!string.IsNullOrWhiteSpace(tema.PerigoDescricao))
+                                        bloco.Item().Text(t => { t.Span("Descrição: ").SemiBold(); t.Span(tema.PerigoDescricao); });
+                                    if (!string.IsNullOrWhiteSpace(tema.Consequencia))
+                                        bloco.Item().Text(t => { t.Span("Consequência: ").SemiBold(); t.Span(tema.Consequencia); });
+                                    if (!string.IsNullOrWhiteSpace(tema.ControlesExistentes))
+                                        bloco.Item().Text(t => { t.Span("Controles existentes: ").SemiBold(); t.Span(tema.ControlesExistentes); });
+                                    if (!string.IsNullOrWhiteSpace(tema.ControlesAdicionais))
+                                        bloco.Item().Text(t => { t.Span("Controles adicionais: ").SemiBold(); t.Span(tema.ControlesAdicionais); });
+                                }
+                            });
+                        }
+                    }
+
+                    if (modelo.TemaLivreNome is not null)
+                    {
+                        coluna.Item().PaddingTop(4).Border(1).BorderColor(Colors.Grey.Lighten2).Padding(6).Column(bloco =>
+                        {
+                            bloco.Item().Text(t => { t.Span("Tema livre: ").SemiBold().FontColor(CorMarca); t.Span(modelo.TemaLivreNome); });
+                            if (!string.IsNullOrWhiteSpace(modelo.TemaLivreDescricao))
+                                bloco.Item().Text(modelo.TemaLivreDescricao);
+                        });
+                    }
 
                     coluna.Item().PaddingTop(8).Text("Checklist de verificação").FontSize(13).Bold();
                     foreach (var item in modelo.ItensChecklist)

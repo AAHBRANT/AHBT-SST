@@ -12,6 +12,7 @@ import {
   type SelectTabData,
   type SelectTabEvent,
 } from '@fluentui/react-components';
+import { CampoData } from '../../components/CampoData';
 import {
   ArrowClockwise24Regular,
   ArrowDownload24Regular,
@@ -267,7 +268,7 @@ export function PermissaoTrabalhoDetalhePage() {
                   <Input value={revalidadaPorUsuarioId} onChange={(_, d) => setRevalidadaPorUsuarioId(d.value)} />
                 </Field>
                 <Field label="Nova validade">
-                  <Input type="date" value={novaValidade} onChange={(_, d) => setNovaValidade(d.value)} />
+                  <CampoData value={novaValidade} onChange={(_, d) => setNovaValidade(d.value)} />
                 </Field>
                 <Button
                   appearance="secondary"

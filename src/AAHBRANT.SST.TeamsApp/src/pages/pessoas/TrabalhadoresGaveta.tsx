@@ -144,7 +144,7 @@ export function TrabalhadoresGaveta({
         setAsos(listaAsos);
         setCarregou(true);
       })
-      .catch((e) => setErro(e instanceof Error ? e.message : 'Falha ao carregar trabalhadores.'))
+      .catch((e) => setErro(e instanceof Error ? e.message : 'Falha ao carregar funcionários.'))
       .finally(() => setCarregando(false));
   }, [aberta, carregou]);
 
@@ -209,7 +209,7 @@ export function TrabalhadoresGaveta({
 
   function aoSelecionarTrabalhador(id: string) {
     aoFechar();
-    navigate(`/operacao/pessoas/${id}`);
+    navigate(`/pessoas/${id}`);
   }
 
   return (
@@ -227,7 +227,7 @@ export function TrabalhadoresGaveta({
             <Button appearance="subtle" icon={<Dismiss24Regular />} onClick={aoFechar} aria-label="Fechar" />
           }
         >
-          Trabalhadores
+          Funcionários
         </DrawerHeaderTitle>
         {carregou && (
           <Text size={200} className={estilos.contador}>
@@ -250,9 +250,9 @@ export function TrabalhadoresGaveta({
         />
 
         {erro && <Text style={{ color: tokens.colorPaletteRedForeground1 }}>{erro}</Text>}
-        {carregando && <Spinner label="Carregando trabalhadores..." />}
+        {carregando && <Spinner label="Carregando funcionários..." />}
         {!carregando && !erro && filtrados.length === 0 && (
-          <div className={estilos.vazio}>Nenhum trabalhador encontrado.</div>
+          <div className={estilos.vazio}>Nenhum funcionário encontrado.</div>
         )}
 
         <div className={estilos.lista}>

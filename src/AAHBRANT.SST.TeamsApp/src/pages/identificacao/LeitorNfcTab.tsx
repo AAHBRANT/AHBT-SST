@@ -73,10 +73,13 @@ export function LeitorNfcTab() {
         </Text>
       )}
 
-      <div className={estilos.form} style={{ marginTop: 12 }}>
-        <Field label="UID manual (ou lido via QR Code)">
-          <Input value={uidManual} onChange={(_, d) => setUidManual(d.value)} />
-        </Field>
+      <div className={estilos.sectionTitle}>Leitura Manual</div>
+      <div className={estilos.formGrid}>
+        <div className={estilos.col4}>
+          <Field label="UID manual (ou lido via QR Code)">
+            <Input value={uidManual} onChange={(_, d) => setUidManual(d.value)} />
+          </Field>
+        </div>
       </div>
       <div className={estilos.formActions}>
         <Button appearance="secondary" onClick={() => resolver(uidManual)} disabled={!uidManual}>

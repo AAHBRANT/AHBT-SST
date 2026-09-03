@@ -10,7 +10,8 @@ public record AtualizarCursoTreinamentoCommand(
     string Nome,
     string? NormaReferencia,
     int CargaHorariaMinima,
-    int ValidadeEmMeses) : IRequest;
+    int ValidadeEmMeses,
+    string? ConteudoProgramatico = null) : IRequest;
 
 public class AtualizarCursoTreinamentoCommandValidator : AbstractValidator<AtualizarCursoTreinamentoCommand>
 {
@@ -37,6 +38,7 @@ public class AtualizarCursoTreinamentoCommandHandler : IRequestHandler<Atualizar
         curso.NormaReferencia = request.NormaReferencia;
         curso.CargaHorariaMinima = request.CargaHorariaMinima;
         curso.ValidadeEmMeses = request.ValidadeEmMeses;
+        curso.ConteudoProgramatico = request.ConteudoProgramatico;
 
         await _db.SaveChangesAsync(ct);
     }

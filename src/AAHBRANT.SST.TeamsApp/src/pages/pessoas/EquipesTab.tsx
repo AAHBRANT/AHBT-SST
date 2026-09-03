@@ -15,6 +15,10 @@ import {
 import { Add24Regular, Delete24Regular } from '@fluentui/react-icons';
 import { api, type Equipe, type NovaEquipe, type Setor, type Trabalhador } from '../../lib/api';
 import { usePageStyles } from '../pageStyles';
+import { useConfirmarExclusao } from '../../hooks/useConfirmarExclusao';
+import { useSucessoToast } from '../../hooks/useSucessoToast';
+import { EstadoVazio } from '../../components/EstadoVazio';
+import { ListaCarregando } from '../../components/ListaCarregando';
 
 const equipeVazia: NovaEquipe = { setorId: '', nome: '', encarregadoId: null };
 
@@ -26,6 +30,9 @@ export function EquipesTab() {
   const [novaEquipe, setNovaEquipe] = useState<NovaEquipe>(equipeVazia);
   const [erro, setErro] = useState<string | null>(null);
   const [carregando, setCarregando] = useState(false);
+  const [carregandoLista, setCarregandoLista] = useState(true);
+  const { confirmar, dialogElement } = useConfirmarExclusao();
+  const sucessoToast = useSucessoToast();
 
   async function carregar() {
     try {
@@ -40,6 +47,8 @@ export function EquipesTab() {
       setEquipes(equipesResp);
     } catch (e) {
       setErro(e instanceof Error ? e.message : 'Falha ao carregar equipes.');
+    } finally {
+      setCarregandoLista(false);
     }
   }
 
@@ -58,6 +67,7 @@ export function EquipesTab() {
       await api.equipes.criar(novaEquipe);
       setNovaEquipe(equipeVazia);
       await carregar();
+      sucessoToast('Equipe criada com sucesso.');
     } catch (e) {
       setErro(e instanceof Error ? e.message : 'Falha ao criar equipe.');
     } finally {
@@ -66,9 +76,11 @@ export function EquipesTab() {
   }
 
   async function excluir(id: string) {
+    if (!(await confirmar('Excluir esta equipe? Essa ação não pode ser desfeita.'))) return;
     try {
       await api.equipes.excluir(id);
       await carregar();
+      sucessoToast('Equipe excluída com sucesso.');
     } catch (e) {
       setErro(e instanceof Error ? e.message : 'Falha ao excluir equipe.');
     }
@@ -76,42 +88,50 @@ export function EquipesTab() {
 
   return (
     <div className={estilos.card}>
+      {dialogElement}
       <div className={estilos.toolbar}>
         <Text weight="semibold">Equipes cadastradas</Text>
       </div>
 
       {erro && <Text className={estilos.erro}>{erro}</Text>}
 
-      <div className={estilos.form}>
-        <Field label="Setor">
-          <Select
-            value={novaEquipe.setorId}
-            onChange={(_, d) => setNovaEquipe({ ...novaEquipe, setorId: d.value })}
-          >
-            <option value="">Selecione o setor</option>
-            {setores.map((s) => (
-              <option key={s.id} value={s.id}>
-                {s.obraNome} · {s.nome}
-              </option>
-            ))}
-          </Select>
-        </Field>
-        <Field label="Nome da equipe">
-          <Input value={novaEquipe.nome} onChange={(_, d) => setNovaEquipe({ ...novaEquipe, nome: d.value })} />
-        </Field>
-        <Field label="Encarregado (opcional)">
-          <Select
-            value={novaEquipe.encarregadoId ?? ''}
-            onChange={(_, d) => setNovaEquipe({ ...novaEquipe, encarregadoId: d.value || null })}
-          >
-            <option value="">Sem encarregado definido</option>
-            {trabalhadores.map((t) => (
-              <option key={t.id} value={t.id}>
-                {t.nome}
-              </option>
-            ))}
-          </Select>
-        </Field>
+      <div className={`${estilos.sectionTitle} ${estilos.sectionTitleFirst}`}>Dados da Equipe</div>
+      <div className={estilos.formGrid}>
+        <div className={estilos.col5}>
+          <Field label="Setor">
+            <Select
+              value={novaEquipe.setorId}
+              onChange={(_, d) => setNovaEquipe({ ...novaEquipe, setorId: d.value })}
+            >
+              <option value="">Selecione o setor</option>
+              {setores.map((s) => (
+                <option key={s.id} value={s.id}>
+                  {s.obraNome} · {s.nome}
+                </option>
+              ))}
+            </Select>
+          </Field>
+        </div>
+        <div className={estilos.col4}>
+          <Field label="Nome da equipe">
+            <Input value={novaEquipe.nome} onChange={(_, d) => setNovaEquipe({ ...novaEquipe, nome: d.value })} />
+          </Field>
+        </div>
+        <div className={estilos.col3}>
+          <Field label="Encarregado (opcional)">
+            <Select
+              value={novaEquipe.encarregadoId ?? ''}
+              onChange={(_, d) => setNovaEquipe({ ...novaEquipe, encarregadoId: d.value || null })}
+            >
+              <option value="">Sem encarregado definido</option>
+              {trabalhadores.map((t) => (
+                <option key={t.id} value={t.id}>
+                  {t.nome}
+                </option>
+              ))}
+            </Select>
+          </Field>
+        </div>
       </div>
       <div className={estilos.formActions}>
         <Button appearance="primary" icon={<Add24Regular />} onClick={criar} disabled={carregando}>
@@ -119,14 +139,19 @@ export function EquipesTab() {
         </Button>
       </div>
 
-      <Table>
+      {carregandoLista ? (
+        <ListaCarregando />
+      ) : equipes.length === 0 ? (
+        <EstadoVazio mensagem="Nenhuma equipe cadastrada ainda." />
+      ) : (
+      <Table noNativeElements>
         <TableHeader>
           <TableRow>
             <TableHeaderCell>Obra</TableHeaderCell>
             <TableHeaderCell>Setor</TableHeaderCell>
             <TableHeaderCell>Equipe</TableHeaderCell>
             <TableHeaderCell>Encarregado</TableHeaderCell>
-            <TableHeaderCell>Trabalhadores</TableHeaderCell>
+            <TableHeaderCell>Funcionários</TableHeaderCell>
             <TableHeaderCell></TableHeaderCell>
           </TableRow>
         </TableHeader>
@@ -150,6 +175,7 @@ export function EquipesTab() {
           ))}
         </TableBody>
       </Table>
+      )}
     </div>
   );
 }

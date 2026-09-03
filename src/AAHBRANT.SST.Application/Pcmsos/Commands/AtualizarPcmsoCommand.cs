@@ -1,6 +1,7 @@
 using AAHBRANT.SST.Application.Common.Interfaces;
 using FluentValidation;
 using MediatR;
+using Microsoft.EntityFrameworkCore;
 
 namespace AAHBRANT.SST.Application.Pcmsos.Commands;
 
@@ -42,11 +43,27 @@ public class AtualizarPcmsoCommandHandler : IRequestHandler<AtualizarPcmsoComman
 
     public AtualizarPcmsoCommandHandler(IAppDbContext db) => _db = db;
 
-    public Task Handle(AtualizarPcmsoCommand request, CancellationToken ct)
+    public async Task Handle(AtualizarPcmsoCommand request, CancellationToken ct)
     {
-        // PENDENTE: dependia de DocumentoGestao, removido junto com Gestão Documental (Conformidade)
-        // em 2026-08-28 — ver nota em PcmsoDetalhe (Domain/Entidades/SaudeOcupacional/SaudeOcupacional.cs).
-        throw new NotSupportedException(
-            "Atualização de PCMSO está temporariamente indisponível: dependia de DocumentoGestao, removido junto com o módulo de Conformidade.");
+        var pcmso = await _db.PcmsoDetalhes.FirstOrDefaultAsync(p => p.Id == request.Id, ct)
+            ?? throw new KeyNotFoundException($"PCMSO {request.Id} não encontrado.");
+
+        pcmso.Nome = request.Nome;
+        pcmso.Versao = request.Versao;
+        pcmso.Validade = request.Validade;
+        pcmso.DataEmissao = request.DataEmissao;
+        pcmso.ResponsavelUsuarioId = request.ResponsavelUsuarioId;
+        pcmso.ObraId = request.ObraId;
+        pcmso.SetorId = request.SetorId;
+        pcmso.Arquivo = request.Arquivo;
+        pcmso.MedicoResponsavelNome = request.MedicoResponsavelNome;
+        pcmso.MedicoResponsavelCrm = request.MedicoResponsavelCrm;
+        pcmso.FuncoesContempladas = request.FuncoesContempladas;
+        pcmso.RiscosConsiderados = request.RiscosConsiderados;
+        pcmso.ExamesPrevistos = request.ExamesPrevistos;
+        pcmso.Periodicidades = request.Periodicidades;
+        pcmso.UnidadesObrasAbrangidas = request.UnidadesObrasAbrangidas;
+
+        await _db.SaveChangesAsync(ct);
     }
 }

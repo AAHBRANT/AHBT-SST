@@ -5,7 +5,6 @@ import {
   Button,
   Checkbox,
   Field,
-  Input,
   Select,
   Table,
   TableBody,
@@ -15,6 +14,7 @@ import {
   TableRow,
   Text,
 } from '@fluentui/react-components';
+import { CampoData } from '../../components/CampoData';
 import { Add24Regular, ChevronRight24Regular } from '@fluentui/react-icons';
 import {
   api,
@@ -80,7 +80,7 @@ export function MembrosCipaTab() {
 
   async function criar() {
     if (!novo.obraId || !novo.trabalhadorId || !novo.dataInicioMandato || !novo.dataFimMandato) {
-      setErro('Preencha obra, trabalhador e o período do mandato.');
+      setErro('Preencha obra, funcionário e o período do mandato.');
       return;
     }
     try {
@@ -104,55 +104,68 @@ export function MembrosCipaTab() {
           <Text weight="semibold">Indicar membro (empregador)</Text>
         </div>
         {erro && <Text className={estilos.erro}>{erro}</Text>}
-        <div className={estilos.form}>
-          <Field label="Obra" required>
-            <Select value={novo.obraId} onChange={(_, d) => trocarObra(d.value)}>
-              <option value="">Selecione</option>
-              {obras.map((obra) => (
-                <option key={obra.id} value={obra.id}>
-                  {obra.nome}
-                </option>
-              ))}
-            </Select>
-          </Field>
-          <Field label="Trabalhador" required>
-            <Select
-              value={novo.trabalhadorId}
-              onChange={(_, d) => setNovo({ ...novo, trabalhadorId: d.value })}
-              disabled={!novo.obraId}
-            >
-              <option value="">Selecione</option>
-              {trabalhadores.map((t) => (
-                <option key={t.id} value={t.id}>
-                  {t.nome} ({t.matricula})
-                </option>
-              ))}
-            </Select>
-          </Field>
-          <Field label="Origem">
-            <Select value={String(novo.origemMembro)} onChange={(_, d) => setNovo({ ...novo, origemMembro: Number(d.value) })}>
-              {Object.entries(origemMembroCipaLabel).map(([valor, rotulo]) => (
-                <option key={valor} value={valor}>
-                  {rotulo}
-                </option>
-              ))}
-            </Select>
-          </Field>
-          <Field label="Cargo">
-            <Select value={String(novo.cargo)} onChange={(_, d) => setNovo({ ...novo, cargo: Number(d.value) })}>
-              {Object.entries(cargoMembroCipaLabel).map(([valor, rotulo]) => (
-                <option key={valor} value={valor}>
-                  {rotulo}
-                </option>
-              ))}
-            </Select>
-          </Field>
-          <Field label="Início do mandato" required>
-            <Input type="date" value={novo.dataInicioMandato} onChange={(_, d) => setNovo({ ...novo, dataInicioMandato: d.value })} />
-          </Field>
-          <Field label="Fim do mandato" required>
-            <Input type="date" value={novo.dataFimMandato} onChange={(_, d) => setNovo({ ...novo, dataFimMandato: d.value })} />
-          </Field>
+        <div className={`${estilos.sectionTitle} ${estilos.sectionTitleFirst}`}>Dados do Membro</div>
+        <div className={estilos.formGrid}>
+          <div className={estilos.col3}>
+            <Field label="Obra" required>
+              <Select value={novo.obraId} onChange={(_, d) => trocarObra(d.value)}>
+                <option value="">Selecione</option>
+                {obras.map((obra) => (
+                  <option key={obra.id} value={obra.id}>
+                    {obra.nome}
+                  </option>
+                ))}
+              </Select>
+            </Field>
+          </div>
+          <div className={estilos.col3}>
+            <Field label="Funcionário" required>
+              <Select
+                value={novo.trabalhadorId}
+                onChange={(_, d) => setNovo({ ...novo, trabalhadorId: d.value })}
+                disabled={!novo.obraId}
+              >
+                <option value="">Selecione</option>
+                {trabalhadores.map((t) => (
+                  <option key={t.id} value={t.id}>
+                    {t.nome} ({t.matricula})
+                  </option>
+                ))}
+              </Select>
+            </Field>
+          </div>
+          <div className={estilos.col3}>
+            <Field label="Origem">
+              <Select value={String(novo.origemMembro)} onChange={(_, d) => setNovo({ ...novo, origemMembro: Number(d.value) })}>
+                {Object.entries(origemMembroCipaLabel).map(([valor, rotulo]) => (
+                  <option key={valor} value={valor}>
+                    {rotulo}
+                  </option>
+                ))}
+              </Select>
+            </Field>
+          </div>
+          <div className={estilos.col3}>
+            <Field label="Cargo">
+              <Select value={String(novo.cargo)} onChange={(_, d) => setNovo({ ...novo, cargo: Number(d.value) })}>
+                {Object.entries(cargoMembroCipaLabel).map(([valor, rotulo]) => (
+                  <option key={valor} value={valor}>
+                    {rotulo}
+                  </option>
+                ))}
+              </Select>
+            </Field>
+          </div>
+          <div className={estilos.col3}>
+            <Field label="Início do mandato" required>
+              <CampoData value={novo.dataInicioMandato} onChange={(_, d) => setNovo({ ...novo, dataInicioMandato: d.value })} />
+            </Field>
+          </div>
+          <div className={estilos.col3}>
+            <Field label="Fim do mandato" required>
+              <CampoData value={novo.dataFimMandato} onChange={(_, d) => setNovo({ ...novo, dataFimMandato: d.value })} />
+            </Field>
+          </div>
         </div>
         <div className={estilos.formActions}>
           <Button appearance="primary" icon={<Add24Regular />} onClick={criar} disabled={carregando}>
@@ -170,7 +183,7 @@ export function MembrosCipaTab() {
             onChange={(_, d) => setSomenteMandatoAtivo(!!d.checked)}
           />
         </div>
-        <Table>
+        <Table noNativeElements>
           <TableHeader>
             <TableRow>
               <TableHeaderCell>Nome</TableHeaderCell>

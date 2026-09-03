@@ -15,6 +15,7 @@ import {
   TableRow,
   Text,
 } from '@fluentui/react-components';
+import { CampoData } from '../../components/CampoData';
 import { Add24Regular, ChevronRight24Regular, Delete24Regular } from '@fluentui/react-icons';
 import {
   api,
@@ -26,7 +27,11 @@ import {
   type Trabalhador,
   type Usuario,
 } from '../../lib/api';
-import { usePageStyles } from '../pageStyles';
+import { usePageStyles, useCheckboxChipStyles } from '../pageStyles';
+import { useConfirmarExclusao } from '../../hooks/useConfirmarExclusao';
+import { useSucessoToast } from '../../hooks/useSucessoToast';
+import { EstadoVazio } from '../../components/EstadoVazio';
+import { ListaCarregando } from '../../components/ListaCarregando';
 
 const ptVazia: NovaPermissaoTrabalho = {
   numeroPt: '',
@@ -53,6 +58,7 @@ const corBadgeStatus: Record<number, 'informative' | 'warning' | 'success' | 'da
 
 export function PermissoesTrabalhoTab() {
   const estilos = usePageStyles();
+  const estilosChip = useCheckboxChipStyles();
   const navigate = useNavigate();
   const [permissoes, setPermissoes] = useState<PermissaoTrabalho[]>([]);
   const [atividades, setAtividades] = useState<Atividade[]>([]);
@@ -62,6 +68,9 @@ export function PermissoesTrabalhoTab() {
   const [novaPt, setNovaPt] = useState<NovaPermissaoTrabalho>(ptVazia);
   const [erro, setErro] = useState<string | null>(null);
   const [carregando, setCarregando] = useState(false);
+  const [carregandoLista, setCarregandoLista] = useState(true);
+  const { confirmar, dialogElement } = useConfirmarExclusao();
+  const sucessoToast = useSucessoToast();
 
   async function carregar() {
     try {
@@ -80,6 +89,8 @@ export function PermissoesTrabalhoTab() {
       setUsuarios(usrs);
     } catch (e) {
       setErro(e instanceof Error ? e.message : 'Falha ao carregar Permissões de Trabalho.');
+    } finally {
+      setCarregandoLista(false);
     }
   }
 
@@ -116,6 +127,7 @@ export function PermissoesTrabalhoTab() {
       });
       setNovaPt(ptVazia);
       await carregar();
+      sucessoToast('Permissão de Trabalho criada com sucesso.');
     } catch (e) {
       setErro(e instanceof Error ? e.message : 'Falha ao criar Permissão de Trabalho.');
     } finally {
@@ -125,9 +137,11 @@ export function PermissoesTrabalhoTab() {
 
   async function excluir(id: string, evento: React.MouseEvent) {
     evento.stopPropagation();
+    if (!(await confirmar('Excluir esta Permissão de Trabalho? Essa ação não pode ser desfeita.'))) return;
     try {
       await api.permissoesTrabalho.excluir(id);
       await carregar();
+      sucessoToast('Permissão de Trabalho excluída com sucesso.');
     } catch (e) {
       setErro(e instanceof Error ? e.message : 'Falha ao excluir Permissão de Trabalho.');
     }
@@ -135,104 +149,133 @@ export function PermissoesTrabalhoTab() {
 
   return (
     <div className={estilos.card}>
+      {dialogElement}
       <div className={estilos.toolbar}>
         <Text weight="semibold">Permissão de Trabalho (PT)</Text>
       </div>
 
       {erro && <Text className={estilos.erro}>{erro}</Text>}
 
-      <div className={estilos.form}>
-        <Field label="Nº PT">
-          <Input value={novaPt.numeroPt ?? ''} onChange={(_, d) => setNovaPt({ ...novaPt, numeroPt: d.value })} />
-        </Field>
-        <Field label="Atividade">
-          <Select value={novaPt.atividadeId} onChange={(_, d) => setNovaPt({ ...novaPt, atividadeId: d.value })}>
-            <option value="">Selecione</option>
-            {atividades.map((atividade) => (
-              <option key={atividade.id} value={atividade.id}>
-                {atividade.nome}
-              </option>
-            ))}
-          </Select>
-        </Field>
-        <Field label="Descrição da atividade">
-          <Input
-            value={novaPt.descricaoAtividade}
-            onChange={(_, d) => setNovaPt({ ...novaPt, descricaoAtividade: d.value })}
-          />
-        </Field>
-        <Field label="Local">
-          <Input value={novaPt.local} onChange={(_, d) => setNovaPt({ ...novaPt, local: d.value })} />
-        </Field>
-        <Field label="Empresa executante">
-          <Input
-            value={novaPt.empresaExecutante ?? ''}
-            onChange={(_, d) => setNovaPt({ ...novaPt, empresaExecutante: d.value })}
-          />
-        </Field>
-        <Field label="Equipe">
-          <Select
-            value={novaPt.equipeId ?? ''}
-            onChange={(_, d) => setNovaPt({ ...novaPt, equipeId: d.value || null })}
-          >
-            <option value="">Nenhuma</option>
-            {equipesDaObra.map((equipe) => (
-              <option key={equipe.id} value={equipe.id}>
-                {equipe.nome}
-              </option>
-            ))}
-          </Select>
-        </Field>
-        <Field label="Data">
-          <Input type="date" value={novaPt.data} onChange={(_, d) => setNovaPt({ ...novaPt, data: d.value })} />
-        </Field>
-        <Field label="Horário início">
-          <Input
-            type="time"
-            value={novaPt.horarioInicio ?? ''}
-            onChange={(_, d) => setNovaPt({ ...novaPt, horarioInicio: d.value || null })}
-          />
-        </Field>
-        <Field label="Horário fim">
-          <Input
-            type="time"
-            value={novaPt.horarioFim ?? ''}
-            onChange={(_, d) => setNovaPt({ ...novaPt, horarioFim: d.value || null })}
-          />
-        </Field>
-        <Field label="Validade">
-          <Input
-            type="date"
-            value={novaPt.validade ?? ''}
-            onChange={(_, d) => setNovaPt({ ...novaPt, validade: d.value || null })}
-          />
-        </Field>
-        <Field label="Responsável pela execução">
-          <Select
-            value={novaPt.responsavelExecucaoUsuarioId ?? ''}
-            onChange={(_, d) => setNovaPt({ ...novaPt, responsavelExecucaoUsuarioId: d.value || null })}
-          >
-            <option value="">Não definido</option>
-            {usuarios.map((usuario) => (
-              <option key={usuario.id} value={usuario.id}>
-                {usuario.nome}
-              </option>
-            ))}
-          </Select>
-        </Field>
-        <Field label="Responsável pela área">
-          <Select
-            value={novaPt.responsavelAreaUsuarioId ?? ''}
-            onChange={(_, d) => setNovaPt({ ...novaPt, responsavelAreaUsuarioId: d.value || null })}
-          >
-            <option value="">Não definido</option>
-            {usuarios.map((usuario) => (
-              <option key={usuario.id} value={usuario.id}>
-                {usuario.nome}
-              </option>
-            ))}
-          </Select>
-        </Field>
+      <div className={`${estilos.sectionTitle} ${estilos.sectionTitleFirst}`}>Dados Gerais</div>
+      <div className={estilos.formGrid}>
+        <div className={estilos.col2}>
+          <Field label="Nº PT">
+            <Input value={novaPt.numeroPt ?? ''} onChange={(_, d) => setNovaPt({ ...novaPt, numeroPt: d.value })} />
+          </Field>
+        </div>
+        <div className={estilos.col3}>
+          <Field label="Atividade">
+            <Select value={novaPt.atividadeId} onChange={(_, d) => setNovaPt({ ...novaPt, atividadeId: d.value })}>
+              <option value="">Selecione</option>
+              {atividades.map((atividade) => (
+                <option key={atividade.id} value={atividade.id}>
+                  {atividade.nome}
+                </option>
+              ))}
+            </Select>
+          </Field>
+        </div>
+        <div className={estilos.col4}>
+          <Field label="Descrição da atividade">
+            <Input
+              value={novaPt.descricaoAtividade}
+              onChange={(_, d) => setNovaPt({ ...novaPt, descricaoAtividade: d.value })}
+            />
+          </Field>
+        </div>
+        <div className={estilos.col3}>
+          <Field label="Local">
+            <Input value={novaPt.local} onChange={(_, d) => setNovaPt({ ...novaPt, local: d.value })} />
+          </Field>
+        </div>
+        <div className={estilos.col3}>
+          <Field label="Empresa executante">
+            <Input
+              value={novaPt.empresaExecutante ?? ''}
+              onChange={(_, d) => setNovaPt({ ...novaPt, empresaExecutante: d.value })}
+            />
+          </Field>
+        </div>
+        <div className={estilos.col3}>
+          <Field label="Equipe">
+            <Select
+              value={novaPt.equipeId ?? ''}
+              onChange={(_, d) => setNovaPt({ ...novaPt, equipeId: d.value || null })}
+            >
+              <option value="">Nenhuma</option>
+              {equipesDaObra.map((equipe) => (
+                <option key={equipe.id} value={equipe.id}>
+                  {equipe.nome}
+                </option>
+              ))}
+            </Select>
+          </Field>
+        </div>
+      </div>
+
+      <div className={estilos.sectionTitle}>Prazos e Responsáveis</div>
+      <div className={estilos.formGrid}>
+        <div className={estilos.col2}>
+          <Field label="Data">
+            <CampoData value={novaPt.data} onChange={(_, d) => setNovaPt({ ...novaPt, data: d.value })} />
+          </Field>
+        </div>
+        <div className={estilos.col2}>
+          <Field label="Horário início">
+            <Input
+              type="time"
+              value={novaPt.horarioInicio ?? ''}
+              onChange={(_, d) => setNovaPt({ ...novaPt, horarioInicio: d.value || null })}
+            />
+          </Field>
+        </div>
+        <div className={estilos.col2}>
+          <Field label="Horário fim">
+            <Input
+              type="time"
+              value={novaPt.horarioFim ?? ''}
+              onChange={(_, d) => setNovaPt({ ...novaPt, horarioFim: d.value || null })}
+            />
+          </Field>
+        </div>
+        <div className={estilos.col2}>
+          <Field label="Validade">
+            <CampoData
+              value={novaPt.validade ?? ''}
+              onChange={(_, d) => setNovaPt({ ...novaPt, validade: d.value || null })}
+            />
+          </Field>
+        </div>
+        <div className={estilos.col2}>
+          <Field label="Responsável pela execução">
+            <Select
+              value={novaPt.responsavelExecucaoUsuarioId ?? ''}
+              onChange={(_, d) => setNovaPt({ ...novaPt, responsavelExecucaoUsuarioId: d.value || null })}
+            >
+              <option value="">Não definido</option>
+              {usuarios.map((usuario) => (
+                <option key={usuario.id} value={usuario.id}>
+                  {usuario.nome}
+                </option>
+              ))}
+            </Select>
+          </Field>
+        </div>
+        <div className={estilos.col2}>
+          <Field label="Responsável pela área">
+            <Select
+              value={novaPt.responsavelAreaUsuarioId ?? ''}
+              onChange={(_, d) => setNovaPt({ ...novaPt, responsavelAreaUsuarioId: d.value || null })}
+            >
+              <option value="">Não definido</option>
+              {usuarios.map((usuario) => (
+                <option key={usuario.id} value={usuario.id}>
+                  {usuario.nome}
+                </option>
+              ))}
+            </Select>
+          </Field>
+        </div>
       </div>
 
       <Field label="Equipe executante (responsáveis)" style={{ marginBottom: 16 }}>
@@ -240,6 +283,7 @@ export function PermissoesTrabalhoTab() {
           {trabalhadores.map((trabalhador) => (
             <Checkbox
               key={trabalhador.id}
+              className={estilosChip.chip}
               label={trabalhador.nome}
               checked={novaPt.responsaveisIds.includes(trabalhador.id)}
               onChange={(_, d) => alternarResponsavel(trabalhador.id, !!d.checked)}
@@ -259,7 +303,12 @@ export function PermissoesTrabalhoTab() {
         </Button>
       </div>
 
-      <Table>
+      {carregandoLista ? (
+        <ListaCarregando />
+      ) : permissoes.length === 0 ? (
+        <EstadoVazio mensagem="Nenhuma Permissão de Trabalho cadastrada ainda." />
+      ) : (
+      <Table noNativeElements>
         <TableHeader>
           <TableRow>
             <TableHeaderCell>Nº PT</TableHeaderCell>
@@ -304,6 +353,7 @@ export function PermissoesTrabalhoTab() {
           ))}
         </TableBody>
       </Table>
+      )}
     </div>
   );
 }

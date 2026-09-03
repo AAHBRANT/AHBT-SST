@@ -991,7 +991,6 @@ namespace AAHBRANT.SST.Infrastructure.Persistencia.Migrations
 
                     b.HasIndex("EventoSipatId");
 
-
                     b.ToTable("AtividadesSipat");
                 });
 
@@ -1166,10 +1165,9 @@ namespace AAHBRANT.SST.Infrastructure.Persistencia.Migrations
 
                     b.HasIndex("ProcessoEleitoralId");
 
-                    b.HasIndex("ProcessoEleitoralId", "TrabalhadorId");
-
                     b.HasIndex("TrabalhadorId");
 
+                    b.HasIndex("ProcessoEleitoralId", "TrabalhadorId");
 
                     b.ToTable("CandidatosCipa");
                 });
@@ -1199,6 +1197,12 @@ namespace AAHBRANT.SST.Infrastructure.Persistencia.Migrations
                     b.Property<string>("Fabricante")
                         .HasMaxLength(150)
                         .HasColumnType("nvarchar(150)");
+
+                    b.Property<string>("FotoContentType")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<byte[]>("FotoConteudo")
+                        .HasColumnType("varbinary(max)");
 
                     b.Property<string>("Nome")
                         .IsRequired()
@@ -1243,8 +1247,8 @@ namespace AAHBRANT.SST.Infrastructure.Persistencia.Migrations
                         .HasColumnType("uniqueidentifier");
 
                     b.Property<string>("Descricao")
-                        .HasMaxLength(500)
-                        .HasColumnType("nvarchar(500)");
+                        .HasMaxLength(1000)
+                        .HasColumnType("nvarchar(1000)");
 
                     b.Property<string>("Nome")
                         .IsRequired()
@@ -1390,6 +1394,9 @@ namespace AAHBRANT.SST.Infrastructure.Persistencia.Migrations
                     b.Property<int>("CargaHorariaMinima")
                         .HasColumnType("int");
 
+                    b.Property<string>("ConteudoProgramatico")
+                        .HasColumnType("nvarchar(max)");
+
                     b.Property<DateTime>("CreatedAtUtc")
                         .HasColumnType("datetime2");
 
@@ -1456,9 +1463,6 @@ namespace AAHBRANT.SST.Infrastructure.Persistencia.Migrations
                     b.Property<int>("Origem")
                         .HasColumnType("int");
 
-                    b.Property<int>("OrigemTema")
-                        .HasColumnType("int");
-
                     b.Property<Guid>("ResponsavelUsuarioId")
                         .HasColumnType("uniqueidentifier");
 
@@ -1470,8 +1474,11 @@ namespace AAHBRANT.SST.Infrastructure.Persistencia.Migrations
                     b.Property<int>("Status")
                         .HasColumnType("int");
 
-                    b.Property<string>("TopicoPrincipal")
-                        .IsRequired()
+                    b.Property<string>("TemaLivreDescricao")
+                        .HasMaxLength(500)
+                        .HasColumnType("nvarchar(500)");
+
+                    b.Property<string>("TemaLivreNome")
                         .HasMaxLength(200)
                         .HasColumnType("nvarchar(200)");
 
@@ -1503,8 +1510,21 @@ namespace AAHBRANT.SST.Infrastructure.Persistencia.Migrations
                     b.Property<Guid>("AtividadeId")
                         .HasColumnType("uniqueidentifier");
 
+                    b.Property<string>("AtividadeNome")
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)");
+
                     b.Property<bool>("Ativo")
                         .HasColumnType("bit");
+
+                    b.Property<string>("Consequencia")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("ControlesAdicionais")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("ControlesExistentes")
+                        .HasColumnType("nvarchar(max)");
 
                     b.Property<DateTime>("CreatedAtUtc")
                         .HasColumnType("datetime2");
@@ -1520,6 +1540,13 @@ namespace AAHBRANT.SST.Infrastructure.Persistencia.Migrations
 
                     b.Property<int>("Origem")
                         .HasColumnType("int");
+
+                    b.Property<string>("PerigoDescricao")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("PerigoNome")
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)");
 
                     b.Property<byte[]>("RowVersion")
                         .IsConcurrencyToken()
@@ -1777,8 +1804,6 @@ namespace AAHBRANT.SST.Infrastructure.Persistencia.Migrations
 
                     b.HasKey("Id");
 
-                    b.HasIndex("ObraId");
-
                     b.HasIndex("ResponsavelObraSstUsuarioId");
 
                     b.HasIndex("ResponsavelUsuarioId");
@@ -1903,7 +1928,6 @@ namespace AAHBRANT.SST.Infrastructure.Persistencia.Migrations
                     b.HasKey("Id");
 
                     b.HasIndex("ObraId");
-
 
                     b.ToTable("DimensionamentosCipa");
                 });
@@ -2309,7 +2333,6 @@ namespace AAHBRANT.SST.Infrastructure.Persistencia.Migrations
 
                     b.HasIndex("ObraId");
 
-
                     b.ToTable("EventosSipat");
                 });
 
@@ -2691,7 +2714,6 @@ namespace AAHBRANT.SST.Infrastructure.Persistencia.Migrations
 
                     b.HasIndex("ObraId");
 
-
                     b.ToTable("InspecoesCipa");
                 });
 
@@ -3071,7 +3093,6 @@ namespace AAHBRANT.SST.Infrastructure.Persistencia.Migrations
 
                     b.HasIndex("TrabalhadorId");
 
-
                     b.ToTable("MembrosCipa");
                 });
 
@@ -3348,10 +3369,9 @@ namespace AAHBRANT.SST.Infrastructure.Persistencia.Migrations
 
                     b.HasKey("Id");
 
-                    b.HasIndex("ReuniaoCipaId", "TrabalhadorId");
-
                     b.HasIndex("TrabalhadorId");
 
+                    b.HasIndex("ReuniaoCipaId", "TrabalhadorId");
 
                     b.ToTable("ParticipantesReuniaoCipa");
                 });
@@ -3362,6 +3382,10 @@ namespace AAHBRANT.SST.Infrastructure.Persistencia.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("uniqueidentifier");
 
+                    b.Property<string>("Arquivo")
+                        .HasMaxLength(500)
+                        .HasColumnType("nvarchar(500)");
+
                     b.Property<bool>("Ativo")
                         .HasColumnType("bit");
 
@@ -3371,8 +3395,8 @@ namespace AAHBRANT.SST.Infrastructure.Persistencia.Migrations
                     b.Property<Guid?>("CreatedBy")
                         .HasColumnType("uniqueidentifier");
 
-                    b.Property<Guid>("DocumentoGestaoId")
-                        .HasColumnType("uniqueidentifier");
+                    b.Property<DateTime>("DataEmissao")
+                        .HasColumnType("datetime2");
 
                     b.Property<string>("ExamesPrevistos")
                         .HasColumnType("nvarchar(max)");
@@ -3388,11 +3412,22 @@ namespace AAHBRANT.SST.Infrastructure.Persistencia.Migrations
                         .HasMaxLength(150)
                         .HasColumnType("nvarchar(150)");
 
+                    b.Property<string>("Nome")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)");
+
+                    b.Property<Guid?>("ObraId")
+                        .HasColumnType("uniqueidentifier");
+
                     b.Property<int>("Origem")
                         .HasColumnType("int");
 
                     b.Property<string>("Periodicidades")
                         .HasColumnType("nvarchar(max)");
+
+                    b.Property<Guid?>("ResponsavelUsuarioId")
+                        .HasColumnType("uniqueidentifier");
 
                     b.Property<string>("RiscosConsiderados")
                         .HasColumnType("nvarchar(max)");
@@ -3401,6 +3436,12 @@ namespace AAHBRANT.SST.Infrastructure.Persistencia.Migrations
                         .IsConcurrencyToken()
                         .ValueGeneratedOnAddOrUpdate()
                         .HasColumnType("rowversion");
+
+                    b.Property<Guid?>("SetorId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<int>("Status")
+                        .HasColumnType("int");
 
                     b.Property<string>("UnidadesObrasAbrangidas")
                         .HasColumnType("nvarchar(max)");
@@ -3411,10 +3452,20 @@ namespace AAHBRANT.SST.Infrastructure.Persistencia.Migrations
                     b.Property<Guid?>("UpdatedBy")
                         .HasColumnType("uniqueidentifier");
 
+                    b.Property<DateTime?>("Validade")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("Versao")
+                        .HasMaxLength(50)
+                        .HasColumnType("nvarchar(50)");
+
                     b.HasKey("Id");
 
-                    b.HasIndex("DocumentoGestaoId")
-                        .IsUnique();
+                    b.HasIndex("ObraId");
+
+                    b.HasIndex("ResponsavelUsuarioId");
+
+                    b.HasIndex("SetorId");
 
                     b.ToTable("PcmsoDetalhes");
                 });
@@ -4119,6 +4170,9 @@ namespace AAHBRANT.SST.Infrastructure.Persistencia.Migrations
                     b.Property<DateTime?>("DataProximaRevisao")
                         .HasColumnType("datetime2");
 
+                    b.Property<DateTime?>("DataTermino")
+                        .HasColumnType("datetime2");
+
                     b.Property<string>("Descricao")
                         .HasColumnType("nvarchar(max)");
 
@@ -4335,7 +4389,6 @@ namespace AAHBRANT.SST.Infrastructure.Persistencia.Migrations
                     b.HasKey("Id");
 
                     b.HasIndex("ObraId");
-
 
                     b.ToTable("ProcessosEleitoraisCipa");
                 });
@@ -4668,7 +4721,6 @@ namespace AAHBRANT.SST.Infrastructure.Persistencia.Migrations
                     b.HasKey("Id");
 
                     b.HasIndex("ObraId");
-
 
                     b.ToTable("ReunioesCipa");
                 });
@@ -5186,7 +5238,6 @@ namespace AAHBRANT.SST.Infrastructure.Persistencia.Migrations
 
                     b.HasIndex("MembroCipaId");
 
-
                     b.ToTable("TreinamentosCipa");
                 });
 
@@ -5611,6 +5662,17 @@ namespace AAHBRANT.SST.Infrastructure.Persistencia.Migrations
                     b.Navigation("Obra");
                 });
 
+            modelBuilder.Entity("AAHBRANT.SST.Domain.Entidades.AtividadeSipat", b =>
+                {
+                    b.HasOne("AAHBRANT.SST.Domain.Entidades.EventoSipat", "EventoSipat")
+                        .WithMany("Atividades")
+                        .HasForeignKey("EventoSipatId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("EventoSipat");
+                });
+
             modelBuilder.Entity("AAHBRANT.SST.Domain.Entidades.AtivoSst", b =>
                 {
                     b.HasOne("AAHBRANT.SST.Domain.Entidades.Obra", "Obra")
@@ -5631,6 +5693,25 @@ namespace AAHBRANT.SST.Infrastructure.Persistencia.Migrations
                         .IsRequired();
 
                     b.Navigation("OrganizadorUsuario");
+                });
+
+            modelBuilder.Entity("AAHBRANT.SST.Domain.Entidades.CandidatoCipa", b =>
+                {
+                    b.HasOne("AAHBRANT.SST.Domain.Entidades.ProcessoEleitoralCipa", "ProcessoEleitoral")
+                        .WithMany("Candidatos")
+                        .HasForeignKey("ProcessoEleitoralId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("AAHBRANT.SST.Domain.Entidades.Trabalhador", "Trabalhador")
+                        .WithMany()
+                        .HasForeignKey("TrabalhadorId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("ProcessoEleitoral");
+
+                    b.Navigation("Trabalhador");
                 });
 
             modelBuilder.Entity("AAHBRANT.SST.Domain.Entidades.ChecklistModelo", b =>
@@ -5799,6 +5880,17 @@ namespace AAHBRANT.SST.Infrastructure.Persistencia.Migrations
                     b.Navigation("Trabalhador");
                 });
 
+            modelBuilder.Entity("AAHBRANT.SST.Domain.Entidades.DimensionamentoCipa", b =>
+                {
+                    b.HasOne("AAHBRANT.SST.Domain.Entidades.Obra", "Obra")
+                        .WithMany()
+                        .HasForeignKey("ObraId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("Obra");
+                });
+
             modelBuilder.Entity("AAHBRANT.SST.Domain.Entidades.DispositivoAgenteBiometrico", b =>
                 {
                     b.HasOne("AAHBRANT.SST.Domain.Entidades.Obra", "Obra")
@@ -5885,6 +5977,17 @@ namespace AAHBRANT.SST.Infrastructure.Persistencia.Migrations
                     b.Navigation("Obra");
                 });
 
+            modelBuilder.Entity("AAHBRANT.SST.Domain.Entidades.EventoSipat", b =>
+                {
+                    b.HasOne("AAHBRANT.SST.Domain.Entidades.Obra", "Obra")
+                        .WithMany()
+                        .HasForeignKey("ObraId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("Obra");
+                });
+
             modelBuilder.Entity("AAHBRANT.SST.Domain.Entidades.Evidencia", b =>
                 {
                     b.HasOne("AAHBRANT.SST.Domain.Entidades.Aso", null)
@@ -5958,6 +6061,31 @@ namespace AAHBRANT.SST.Infrastructure.Persistencia.Migrations
                     b.Navigation("Obra");
 
                     b.Navigation("ResponsavelUsuario");
+                });
+
+            modelBuilder.Entity("AAHBRANT.SST.Domain.Entidades.InspecaoCipa", b =>
+                {
+                    b.HasOne("AAHBRANT.SST.Domain.Entidades.MembroCipa", "MembroCipa")
+                        .WithMany()
+                        .HasForeignKey("MembroCipaId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.HasOne("AAHBRANT.SST.Domain.Entidades.NaoConformidade", "NaoConformidade")
+                        .WithMany()
+                        .HasForeignKey("NaoConformidadeId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.HasOne("AAHBRANT.SST.Domain.Entidades.Obra", "Obra")
+                        .WithMany()
+                        .HasForeignKey("ObraId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("MembroCipa");
+
+                    b.Navigation("NaoConformidade");
+
+                    b.Navigation("Obra");
                 });
 
             modelBuilder.Entity("AAHBRANT.SST.Domain.Entidades.InspecaoItemResposta", b =>
@@ -6035,6 +6163,39 @@ namespace AAHBRANT.SST.Infrastructure.Persistencia.Migrations
                     b.Navigation("Funcao");
                 });
 
+            modelBuilder.Entity("AAHBRANT.SST.Domain.Entidades.MembroCipa", b =>
+                {
+                    b.HasOne("AAHBRANT.SST.Domain.Entidades.CandidatoCipa", "CandidatoCipa")
+                        .WithMany()
+                        .HasForeignKey("CandidatoCipaId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.HasOne("AAHBRANT.SST.Domain.Entidades.Obra", "Obra")
+                        .WithMany()
+                        .HasForeignKey("ObraId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("AAHBRANT.SST.Domain.Entidades.ProcessoEleitoralCipa", "ProcessoEleitoral")
+                        .WithMany()
+                        .HasForeignKey("ProcessoEleitoralId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.HasOne("AAHBRANT.SST.Domain.Entidades.Trabalhador", "Trabalhador")
+                        .WithMany()
+                        .HasForeignKey("TrabalhadorId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("CandidatoCipa");
+
+                    b.Navigation("Obra");
+
+                    b.Navigation("ProcessoEleitoral");
+
+                    b.Navigation("Trabalhador");
+                });
+
             modelBuilder.Entity("AAHBRANT.SST.Domain.Entidades.MovimentacaoEstoqueEpi", b =>
                 {
                     b.HasOne("AAHBRANT.SST.Domain.Entidades.EntregaEpi", "EntregaEpi")
@@ -6082,6 +6243,49 @@ namespace AAHBRANT.SST.Infrastructure.Persistencia.Migrations
                     b.Navigation("ResponsavelUsuario");
 
                     b.Navigation("Risco");
+                });
+
+            modelBuilder.Entity("AAHBRANT.SST.Domain.Entidades.ParticipanteReuniaoCipa", b =>
+                {
+                    b.HasOne("AAHBRANT.SST.Domain.Entidades.ReuniaoCipa", "ReuniaoCipa")
+                        .WithMany("Participantes")
+                        .HasForeignKey("ReuniaoCipaId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("AAHBRANT.SST.Domain.Entidades.Trabalhador", "Trabalhador")
+                        .WithMany()
+                        .HasForeignKey("TrabalhadorId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("ReuniaoCipa");
+
+                    b.Navigation("Trabalhador");
+                });
+
+            modelBuilder.Entity("AAHBRANT.SST.Domain.Entidades.PcmsoDetalhe", b =>
+                {
+                    b.HasOne("AAHBRANT.SST.Domain.Entidades.Obra", "Obra")
+                        .WithMany()
+                        .HasForeignKey("ObraId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.HasOne("AAHBRANT.SST.Domain.Entidades.Usuario", "ResponsavelUsuario")
+                        .WithMany()
+                        .HasForeignKey("ResponsavelUsuarioId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.HasOne("AAHBRANT.SST.Domain.Entidades.Setor", "Setor")
+                        .WithMany()
+                        .HasForeignKey("SetorId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.Navigation("Obra");
+
+                    b.Navigation("ResponsavelUsuario");
+
+                    b.Navigation("Setor");
                 });
 
             modelBuilder.Entity("AAHBRANT.SST.Domain.Entidades.PerfilAcessoPermissao", b =>
@@ -6316,6 +6520,17 @@ namespace AAHBRANT.SST.Infrastructure.Persistencia.Migrations
                     b.Navigation("Risco");
                 });
 
+            modelBuilder.Entity("AAHBRANT.SST.Domain.Entidades.ProcessoEleitoralCipa", b =>
+                {
+                    b.HasOne("AAHBRANT.SST.Domain.Entidades.Obra", "Obra")
+                        .WithMany()
+                        .HasForeignKey("ObraId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("Obra");
+                });
+
             modelBuilder.Entity("AAHBRANT.SST.Domain.Entidades.RegistroHhtMensal", b =>
                 {
                     b.HasOne("AAHBRANT.SST.Domain.Entidades.Obra", "Obra")
@@ -6384,6 +6599,17 @@ namespace AAHBRANT.SST.Infrastructure.Persistencia.Migrations
                         .IsRequired();
 
                     b.Navigation("Item");
+
+                    b.Navigation("Obra");
+                });
+
+            modelBuilder.Entity("AAHBRANT.SST.Domain.Entidades.ReuniaoCipa", b =>
+                {
+                    b.HasOne("AAHBRANT.SST.Domain.Entidades.Obra", "Obra")
+                        .WithMany()
+                        .HasForeignKey("ObraId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
 
                     b.Navigation("Obra");
                 });
@@ -6507,6 +6733,17 @@ namespace AAHBRANT.SST.Infrastructure.Persistencia.Migrations
                     b.Navigation("Trabalhador");
                 });
 
+            modelBuilder.Entity("AAHBRANT.SST.Domain.Entidades.TreinamentoCipa", b =>
+                {
+                    b.HasOne("AAHBRANT.SST.Domain.Entidades.MembroCipa", "MembroCipa")
+                        .WithMany("Treinamentos")
+                        .HasForeignKey("MembroCipaId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("MembroCipa");
+                });
+
             modelBuilder.Entity("AAHBRANT.SST.Domain.Entidades.TrilhaAuditoria", b =>
                 {
                     b.HasOne("AAHBRANT.SST.Domain.Entidades.Trabalhador", "Trabalhador")
@@ -6558,168 +6795,6 @@ namespace AAHBRANT.SST.Infrastructure.Persistencia.Migrations
                     b.Navigation("PerfilAcesso");
 
                     b.Navigation("Usuario");
-                });
-
-            modelBuilder.Entity("AAHBRANT.SST.Domain.Entidades.DimensionamentoCipa", b =>
-                {
-                    b.HasOne("AAHBRANT.SST.Domain.Entidades.Obra", "Obra")
-                        .WithMany()
-                        .HasForeignKey("ObraId")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired();
-
-                    b.Navigation("Obra");
-                });
-
-            modelBuilder.Entity("AAHBRANT.SST.Domain.Entidades.ProcessoEleitoralCipa", b =>
-                {
-                    b.HasOne("AAHBRANT.SST.Domain.Entidades.Obra", "Obra")
-                        .WithMany()
-                        .HasForeignKey("ObraId")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired();
-
-                    b.Navigation("Obra");
-                });
-
-            modelBuilder.Entity("AAHBRANT.SST.Domain.Entidades.CandidatoCipa", b =>
-                {
-                    b.HasOne("AAHBRANT.SST.Domain.Entidades.ProcessoEleitoralCipa", "ProcessoEleitoral")
-                        .WithMany("Candidatos")
-                        .HasForeignKey("ProcessoEleitoralId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.HasOne("AAHBRANT.SST.Domain.Entidades.Trabalhador", "Trabalhador")
-                        .WithMany()
-                        .HasForeignKey("TrabalhadorId")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired();
-
-                    b.Navigation("ProcessoEleitoral");
-
-                    b.Navigation("Trabalhador");
-                });
-
-            modelBuilder.Entity("AAHBRANT.SST.Domain.Entidades.MembroCipa", b =>
-                {
-                    b.HasOne("AAHBRANT.SST.Domain.Entidades.Obra", "Obra")
-                        .WithMany()
-                        .HasForeignKey("ObraId")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired();
-
-                    b.HasOne("AAHBRANT.SST.Domain.Entidades.Trabalhador", "Trabalhador")
-                        .WithMany()
-                        .HasForeignKey("TrabalhadorId")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired();
-
-                    b.HasOne("AAHBRANT.SST.Domain.Entidades.ProcessoEleitoralCipa", "ProcessoEleitoral")
-                        .WithMany()
-                        .HasForeignKey("ProcessoEleitoralId")
-                        .OnDelete(DeleteBehavior.Restrict);
-
-                    b.HasOne("AAHBRANT.SST.Domain.Entidades.CandidatoCipa", "CandidatoCipa")
-                        .WithMany()
-                        .HasForeignKey("CandidatoCipaId")
-                        .OnDelete(DeleteBehavior.Restrict);
-
-                    b.Navigation("CandidatoCipa");
-
-                    b.Navigation("Obra");
-
-                    b.Navigation("ProcessoEleitoral");
-
-                    b.Navigation("Trabalhador");
-                });
-
-            modelBuilder.Entity("AAHBRANT.SST.Domain.Entidades.TreinamentoCipa", b =>
-                {
-                    b.HasOne("AAHBRANT.SST.Domain.Entidades.MembroCipa", "MembroCipa")
-                        .WithMany("Treinamentos")
-                        .HasForeignKey("MembroCipaId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.Navigation("MembroCipa");
-                });
-
-            modelBuilder.Entity("AAHBRANT.SST.Domain.Entidades.ReuniaoCipa", b =>
-                {
-                    b.HasOne("AAHBRANT.SST.Domain.Entidades.Obra", "Obra")
-                        .WithMany()
-                        .HasForeignKey("ObraId")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired();
-
-                    b.Navigation("Obra");
-                });
-
-            modelBuilder.Entity("AAHBRANT.SST.Domain.Entidades.ParticipanteReuniaoCipa", b =>
-                {
-                    b.HasOne("AAHBRANT.SST.Domain.Entidades.ReuniaoCipa", "ReuniaoCipa")
-                        .WithMany("Participantes")
-                        .HasForeignKey("ReuniaoCipaId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.HasOne("AAHBRANT.SST.Domain.Entidades.Trabalhador", "Trabalhador")
-                        .WithMany()
-                        .HasForeignKey("TrabalhadorId")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired();
-
-                    b.Navigation("ReuniaoCipa");
-
-                    b.Navigation("Trabalhador");
-                });
-
-            modelBuilder.Entity("AAHBRANT.SST.Domain.Entidades.InspecaoCipa", b =>
-                {
-                    b.HasOne("AAHBRANT.SST.Domain.Entidades.Obra", "Obra")
-                        .WithMany()
-                        .HasForeignKey("ObraId")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired();
-
-                    b.HasOne("AAHBRANT.SST.Domain.Entidades.MembroCipa", "MembroCipa")
-                        .WithMany()
-                        .HasForeignKey("MembroCipaId")
-                        .OnDelete(DeleteBehavior.Restrict);
-
-                    b.HasOne("AAHBRANT.SST.Domain.Entidades.NaoConformidade", "NaoConformidade")
-                        .WithMany()
-                        .HasForeignKey("NaoConformidadeId")
-                        .OnDelete(DeleteBehavior.Restrict);
-
-                    b.Navigation("MembroCipa");
-
-                    b.Navigation("NaoConformidade");
-
-                    b.Navigation("Obra");
-                });
-
-            modelBuilder.Entity("AAHBRANT.SST.Domain.Entidades.EventoSipat", b =>
-                {
-                    b.HasOne("AAHBRANT.SST.Domain.Entidades.Obra", "Obra")
-                        .WithMany()
-                        .HasForeignKey("ObraId")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired();
-
-                    b.Navigation("Obra");
-                });
-
-            modelBuilder.Entity("AAHBRANT.SST.Domain.Entidades.AtividadeSipat", b =>
-                {
-                    b.HasOne("AAHBRANT.SST.Domain.Entidades.EventoSipat", "EventoSipat")
-                        .WithMany("Atividades")
-                        .HasForeignKey("EventoSipatId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.Navigation("EventoSipat");
                 });
 
             modelBuilder.Entity("AAHBRANT.SST.Domain.Entidades.Alerta", b =>
@@ -6806,6 +6881,11 @@ namespace AAHBRANT.SST.Infrastructure.Persistencia.Migrations
                     b.Navigation("Movimentacoes");
                 });
 
+            modelBuilder.Entity("AAHBRANT.SST.Domain.Entidades.EventoSipat", b =>
+                {
+                    b.Navigation("Atividades");
+                });
+
             modelBuilder.Entity("AAHBRANT.SST.Domain.Entidades.Funcao", b =>
                 {
                     b.Navigation("Trabalhadores");
@@ -6819,6 +6899,11 @@ namespace AAHBRANT.SST.Infrastructure.Persistencia.Migrations
             modelBuilder.Entity("AAHBRANT.SST.Domain.Entidades.MatrizRiscoConfig", b =>
                 {
                     b.Navigation("Celulas");
+                });
+
+            modelBuilder.Entity("AAHBRANT.SST.Domain.Entidades.MembroCipa", b =>
+                {
+                    b.Navigation("Treinamentos");
                 });
 
             modelBuilder.Entity("AAHBRANT.SST.Domain.Entidades.Obra", b =>
@@ -6864,9 +6949,19 @@ namespace AAHBRANT.SST.Infrastructure.Persistencia.Migrations
                     b.Navigation("Revisoes");
                 });
 
+            modelBuilder.Entity("AAHBRANT.SST.Domain.Entidades.ProcessoEleitoralCipa", b =>
+                {
+                    b.Navigation("Candidatos");
+                });
+
             modelBuilder.Entity("AAHBRANT.SST.Domain.Entidades.RequisitoLegal", b =>
                 {
                     b.Navigation("Criterios");
+                });
+
+            modelBuilder.Entity("AAHBRANT.SST.Domain.Entidades.ReuniaoCipa", b =>
+                {
+                    b.Navigation("Participantes");
                 });
 
             modelBuilder.Entity("AAHBRANT.SST.Domain.Entidades.Risco", b =>
@@ -6903,26 +6998,6 @@ namespace AAHBRANT.SST.Infrastructure.Persistencia.Migrations
                 {
                     b.Navigation("PerfisPorObra");
                 });
-            modelBuilder.Entity("AAHBRANT.SST.Domain.Entidades.ProcessoEleitoralCipa", b =>
-                {
-                    b.Navigation("Candidatos");
-                });
-
-            modelBuilder.Entity("AAHBRANT.SST.Domain.Entidades.MembroCipa", b =>
-                {
-                    b.Navigation("Treinamentos");
-                });
-
-            modelBuilder.Entity("AAHBRANT.SST.Domain.Entidades.ReuniaoCipa", b =>
-                {
-                    b.Navigation("Participantes");
-                });
-
-            modelBuilder.Entity("AAHBRANT.SST.Domain.Entidades.EventoSipat", b =>
-                {
-                    b.Navigation("Atividades");
-                });
-
 #pragma warning restore 612, 618
         }
     }

@@ -7,4 +7,5 @@ public record CatalogoEpiDto(
     string? CertificadoAprovacaoNumero,
     DateTime? CertificadoAprovacaoValidade,
     int VidaUtilEmMeses,
-    int SaldoTotal);
+    int SaldoTotal,
+    bool TemFoto);

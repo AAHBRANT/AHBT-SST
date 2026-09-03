@@ -51,4 +51,30 @@ public class CatalogosEpiController : ControllerBase
         await _mediator.Send(new ExcluirCatalogoEpiCommand(id), ct);
         return NoContent();
     }
+
+    [Authorize(Policy = "epi:editar")]
+    [HttpPost("{id:guid}/foto")]
+    [RequestSizeLimit(6_000_000)]
+    public async Task<IActionResult> AnexarFoto(Guid id, [FromForm] AnexarFotoCatalogoEpiRequestBody body, CancellationToken ct)
+    {
+        await using var stream = new MemoryStream();
+        await body.Foto.CopyToAsync(stream, ct);
+
+        var command = new AnexarFotoCatalogoEpiCommand(id, stream.ToArray(), body.Foto.ContentType);
+        await _mediator.Send(command, ct);
+        return NoContent();
+    }
+
+    [Authorize(Policy = "epi:ver")]
+    [HttpGet("{id:guid}/foto")]
+    public async Task<IActionResult> ObterFoto(Guid id, CancellationToken ct)
+    {
+        var foto = await _mediator.Send(new ObterFotoCatalogoEpiQuery(id), ct);
+        return foto is null ? NotFound() : File(foto.Conteudo, foto.ContentType, foto.NomeArquivo);
+    }
+}
+
+public class AnexarFotoCatalogoEpiRequestBody
+{
+    public IFormFile Foto { get; set; } = null!;
 }

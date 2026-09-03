@@ -6,6 +6,9 @@ namespace AAHBRANT.SST.Application.AreasSst;
 // suficientes para orientar quem escaneou a NFC/QR em campo, sem expor Id interno/ObraId.
 public class AreaPublicaDto
 {
+    // Discriminador pro frontend distinguir os dois tipos de recurso que a mesma rota pública
+    // (/sst/p/{codigoOuUid}) pode resolver — ver TrabalhadorPublicoDto.TipoRecurso.
+    public string TipoRecurso => "area";
     public string Codigo { get; set; } = string.Empty;
     public string Nome { get; set; } = string.Empty;
     public TipoArea Tipo { get; set; }

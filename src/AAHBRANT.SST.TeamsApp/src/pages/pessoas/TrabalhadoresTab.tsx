@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Avatar, Badge, Button, Field, Input, Select, Text } from '@fluentui/react-components';
+import { CampoData } from '../../components/CampoData';
 import { Add24Regular, ChevronRight24Regular, Delete24Regular, Fingerprint24Regular, Search24Regular } from '@fluentui/react-icons';
 import { SeletorFotoCamera } from '../../components/SeletorFotoCamera';
 import {
@@ -18,6 +19,11 @@ import {
 import { formatarCpf } from '../../lib/cpf';
 import { usePageStyles } from '../pageStyles';
 import { CadastroDigitalDialog } from './CadastroDigitalDialog';
+import { RequisitosFuncaoDialog } from './RequisitosFuncaoDialog';
+import { useConfirmarExclusao } from '../../hooks/useConfirmarExclusao';
+import { useSucessoToast } from '../../hooks/useSucessoToast';
+import { EstadoVazio } from '../../components/EstadoVazio';
+import { ListaCarregando } from '../../components/ListaCarregando';
 
 function corBadgeAso(status: number | undefined): 'success' | 'warning' | 'danger' | 'informative' {
   switch (status) {
@@ -62,10 +68,18 @@ export function TrabalhadoresTab() {
   const [novoTrabalhador, setNovoTrabalhador] = useState<NovoTrabalhador>(trabalhadorVazio);
   const [erro, setErro] = useState<string | null>(null);
   const [carregando, setCarregando] = useState(false);
+  const [carregandoLista, setCarregandoLista] = useState(true);
   const [fotoUrls, setFotoUrls] = useState<Record<string, string>>({});
   const [trabalhadorDigitalAlvo, setTrabalhadorDigitalAlvo] = useState<{ id: string; nome: string } | null>(
     null,
   );
+  const [trabalhadorRequisitosAlvo, setTrabalhadorRequisitosAlvo] = useState<{
+    id: string;
+    nome: string;
+    funcaoId: string;
+  } | null>(null);
+  const { confirmar, dialogElement } = useConfirmarExclusao();
+  const sucessoToast = useSucessoToast();
 
   async function carregar() {
     try {
@@ -81,7 +95,9 @@ export function TrabalhadoresTab() {
       setFuncoes(funcs);
       setAsos(asosResp);
     } catch (e) {
-      setErro(e instanceof Error ? e.message : 'Falha ao carregar trabalhadores.');
+      setErro(e instanceof Error ? e.message : 'Falha ao carregar funcionários.');
+    } finally {
+      setCarregandoLista(false);
     }
   }
 
@@ -129,6 +145,7 @@ export function TrabalhadoresTab() {
         return resto;
       });
       await carregar();
+      sucessoToast('Foto enviada com sucesso.');
     } catch (e) {
       setErro(e instanceof Error ? e.message : 'Falha ao enviar a foto.');
     }
@@ -155,11 +172,12 @@ export function TrabalhadoresTab() {
       setCarregando(true);
       setErro(null);
       const { id } = await api.trabalhadores.criar(novoTrabalhador);
-      setTrabalhadorDigitalAlvo({ id, nome: novoTrabalhador.nome });
+      setTrabalhadorRequisitosAlvo({ id, nome: novoTrabalhador.nome, funcaoId: novoTrabalhador.funcaoId });
       setNovoTrabalhador(trabalhadorVazio);
       await carregar();
+      sucessoToast('Funcionário criado com sucesso.');
     } catch (e) {
-      setErro(e instanceof Error ? e.message : 'Falha ao criar trabalhador.');
+      setErro(e instanceof Error ? e.message : 'Falha ao criar funcionário.');
     } finally {
       setCarregando(false);
     }
@@ -167,92 +185,114 @@ export function TrabalhadoresTab() {
 
   async function excluir(id: string, evento: React.MouseEvent) {
     evento.stopPropagation();
+    if (
+      !(await confirmar(
+        'Excluir este funcionário? Todo o histórico associado (ASO, treinamentos, EPI) fica desvinculado. Essa ação não pode ser desfeita.',
+      ))
+    )
+      return;
     try {
       await api.trabalhadores.excluir(id);
       await carregar();
+      sucessoToast('Funcionário excluído com sucesso.');
     } catch (e) {
-      setErro(e instanceof Error ? e.message : 'Falha ao excluir trabalhador.');
+      setErro(e instanceof Error ? e.message : 'Falha ao excluir funcionário.');
     }
   }
 
   return (
     <div className={estilos.card}>
+      {dialogElement}
       <div className={estilos.toolbar}>
-        <Text weight="semibold">Trabalhadores cadastrados</Text>
+        <Text weight="semibold">Funcionários cadastrados</Text>
       </div>
 
       {erro && <Text className={estilos.erro}>{erro}</Text>}
 
-      <div className={estilos.form}>
-        <Field label="Obra">
-          <Select
-            value={novoTrabalhador.obraId}
-            onChange={(_, d) => setNovoTrabalhador({ ...novoTrabalhador, obraId: d.value })}
-          >
-            <option value="">Selecione</option>
-            {obras.map((obra) => (
-              <option key={obra.id} value={obra.id}>
-                {obra.nome}
-              </option>
-            ))}
-          </Select>
-        </Field>
-        <Field label="Função">
-          <Select
-            value={novoTrabalhador.funcaoId}
-            onChange={(_, d) => setNovoTrabalhador({ ...novoTrabalhador, funcaoId: d.value })}
-          >
-            <option value="">Selecione</option>
-            {funcoes.map((funcao) => (
-              <option key={funcao.id} value={funcao.id}>
-                {funcao.nome}
-              </option>
-            ))}
-          </Select>
-        </Field>
-        <Field label="Nome">
-          <Input
-            value={novoTrabalhador.nome}
-            onChange={(_, d) => setNovoTrabalhador({ ...novoTrabalhador, nome: d.value })}
-          />
-        </Field>
-        <Field label="Matrícula">
-          <Input
-            value={novoTrabalhador.matricula}
-            onChange={(_, d) => setNovoTrabalhador({ ...novoTrabalhador, matricula: d.value })}
-          />
-        </Field>
-        <Field label="CPF (11 dígitos)">
-          <Input
-            value={formatarCpf(novoTrabalhador.cpf)}
-            onChange={(_, d) =>
-              setNovoTrabalhador({ ...novoTrabalhador, cpf: d.value.replace(/\D/g, '').slice(0, 11) })
-            }
-          />
-        </Field>
-        <Field label="Vínculo">
-          <Select
-            value={novoTrabalhador.vinculo}
-            onChange={(_, d) => setNovoTrabalhador({ ...novoTrabalhador, vinculo: Number(d.value) })}
-          >
-            {Object.entries(tipoVinculoLabel).map(([valor, rotulo]) => (
-              <option key={valor} value={valor}>
-                {rotulo}
-              </option>
-            ))}
-          </Select>
-        </Field>
-        <Field label="Data de admissão">
-          <Input
-            type="date"
-            value={novoTrabalhador.dataAdmissao}
-            onChange={(_, d) => setNovoTrabalhador({ ...novoTrabalhador, dataAdmissao: d.value })}
-          />
-        </Field>
+      <div className={`${estilos.sectionTitle} ${estilos.sectionTitleFirst}`}>Dados do Funcionário</div>
+      <div className={estilos.formGrid}>
+        <div className={estilos.col3}>
+          <Field label="Obra">
+            <Select
+              value={novoTrabalhador.obraId}
+              onChange={(_, d) => setNovoTrabalhador({ ...novoTrabalhador, obraId: d.value })}
+            >
+              <option value="">Selecione</option>
+              {obras.map((obra) => (
+                <option key={obra.id} value={obra.id}>
+                  {obra.nome}
+                </option>
+              ))}
+            </Select>
+          </Field>
+        </div>
+        <div className={estilos.col3}>
+          <Field label="Função">
+            <Select
+              value={novoTrabalhador.funcaoId}
+              onChange={(_, d) => setNovoTrabalhador({ ...novoTrabalhador, funcaoId: d.value })}
+            >
+              <option value="">Selecione</option>
+              {funcoes.map((funcao) => (
+                <option key={funcao.id} value={funcao.id}>
+                  {funcao.nome}
+                </option>
+              ))}
+            </Select>
+          </Field>
+        </div>
+        <div className={estilos.col4}>
+          <Field label="Nome">
+            <Input
+              value={novoTrabalhador.nome}
+              onChange={(_, d) => setNovoTrabalhador({ ...novoTrabalhador, nome: d.value })}
+            />
+          </Field>
+        </div>
+        <div className={estilos.col2}>
+          <Field label="Matrícula">
+            <Input
+              value={novoTrabalhador.matricula}
+              onChange={(_, d) => setNovoTrabalhador({ ...novoTrabalhador, matricula: d.value })}
+            />
+          </Field>
+        </div>
+        <div className={estilos.col3}>
+          <Field label="CPF (11 dígitos)">
+            <Input
+              value={formatarCpf(novoTrabalhador.cpf)}
+              onChange={(_, d) =>
+                setNovoTrabalhador({ ...novoTrabalhador, cpf: d.value.replace(/\D/g, '').slice(0, 11) })
+              }
+            />
+          </Field>
+        </div>
+        <div className={estilos.col3}>
+          <Field label="Vínculo">
+            <Select
+              value={novoTrabalhador.vinculo}
+              onChange={(_, d) => setNovoTrabalhador({ ...novoTrabalhador, vinculo: Number(d.value) })}
+            >
+              {Object.entries(tipoVinculoLabel).map(([valor, rotulo]) => (
+                <option key={valor} value={valor}>
+                  {rotulo}
+                </option>
+              ))}
+            </Select>
+          </Field>
+        </div>
+        <div className={estilos.col3}>
+          <Field label="Data de admissão">
+            <CampoData
+              value={novoTrabalhador.dataAdmissao}
+              onChange={(_, d) => setNovoTrabalhador({ ...novoTrabalhador, dataAdmissao: d.value })}
+            />
+          </Field>
+        </div>
       </div>
       <div className={estilos.formActions}>
         <Button appearance="primary" icon={<Add24Regular />} onClick={criar} disabled={carregando}>
-          Adicionar trabalhador
+          Adicionar funcionário
         </Button>
       </div>
 
@@ -260,6 +300,11 @@ export function TrabalhadoresTab() {
         <Input contentBefore={<Search24Regular />} value={busca} onChange={(_, d) => setBusca(d.value)} />
       </Field>
 
+      {carregandoLista ? (
+        <ListaCarregando />
+      ) : trabalhadores.length === 0 ? (
+        <EstadoVazio mensagem="Nenhum funcionário cadastrado ainda." />
+      ) : (
       <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
         {trabalhadoresFiltrados.map((trabalhador) => {
           const aso = ultimoAso(asos, trabalhador.id);
@@ -317,6 +362,7 @@ export function TrabalhadoresTab() {
                     apenasIcone
                     tiposAceitos="image/png,image/jpeg"
                     aoSelecionarArquivo={(arquivo) => enviarFoto(trabalhador.id, arquivo)}
+                    aoErroValidacao={setErro}
                   />
                 </span>
                 <Button
@@ -338,8 +384,20 @@ export function TrabalhadoresTab() {
             </div>
           );
         })}
-        {trabalhadoresFiltrados.length === 0 && <Text>Nenhum trabalhador encontrado.</Text>}
+        {trabalhadoresFiltrados.length === 0 && <Text>Nenhum funcionário encontrado.</Text>}
       </div>
+      )}
+
+      <RequisitosFuncaoDialog
+        funcaoId={trabalhadorRequisitosAlvo?.funcaoId ?? null}
+        trabalhadorNome={trabalhadorRequisitosAlvo?.nome}
+        funcaoNome={trabalhadorRequisitosAlvo ? nomeFuncao(trabalhadorRequisitosAlvo.funcaoId) : undefined}
+        aoFechar={() => {
+          const alvo = trabalhadorRequisitosAlvo;
+          setTrabalhadorRequisitosAlvo(null);
+          if (alvo) setTrabalhadorDigitalAlvo({ id: alvo.id, nome: alvo.nome });
+        }}
+      />
 
       <CadastroDigitalDialog
         trabalhadorId={trabalhadorDigitalAlvo?.id ?? null}

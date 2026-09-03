@@ -4,7 +4,6 @@ import {
   Badge,
   Button,
   Field,
-  Input,
   Select,
   Table,
   TableBody,
@@ -14,6 +13,7 @@ import {
   TableRow,
   Text,
 } from '@fluentui/react-components';
+import { CampoData } from '../../components/CampoData';
 import { Add24Regular, ChevronRight24Regular } from '@fluentui/react-icons';
 import {
   api,
@@ -108,67 +108,77 @@ export function InspecoesTab() {
 
       {erro && <Text className={estilos.erro}>{erro}</Text>}
 
-      <div className={estilos.form}>
-        <Field label="Checklist">
-          <Select
-            value={novaInspecao.checklistModeloId}
-            onChange={(_, d) => setNovaInspecao({ ...novaInspecao, checklistModeloId: d.value })}
-          >
-            <option value="">Selecione</option>
-            {checklists.map((c) => (
-              <option key={c.id} value={c.id}>
-                {c.nome} (v{c.versao} — {tipoInspecaoLabel[c.tipoInspecao]})
-              </option>
-            ))}
-          </Select>
-        </Field>
-        <Field label="Obra">
-          <Select
-            value={novaInspecao.obraId}
-            onChange={(_, d) => setNovaInspecao({ ...novaInspecao, obraId: d.value, atividadeId: null })}
-          >
-            <option value="">Selecione</option>
-            {obras.map((obra) => (
-              <option key={obra.id} value={obra.id}>
-                {obra.nome}
-              </option>
-            ))}
-          </Select>
-        </Field>
-        <Field label="Atividade (opcional)">
-          <Select
-            value={novaInspecao.atividadeId ?? ''}
-            onChange={(_, d) => setNovaInspecao({ ...novaInspecao, atividadeId: d.value || null })}
-            disabled={!novaInspecao.obraId}
-          >
-            <option value="">Nenhuma</option>
-            {atividadesDaObra.map((atividade) => (
-              <option key={atividade.id} value={atividade.id}>
-                {atividade.nome}
-              </option>
-            ))}
-          </Select>
-        </Field>
-        <Field label="Data">
-          <Input
-            type="date"
-            value={novaInspecao.data}
-            onChange={(_, d) => setNovaInspecao({ ...novaInspecao, data: d.value })}
-          />
-        </Field>
-        <Field label="Responsável">
-          <Select
-            value={novaInspecao.responsavelUsuarioId}
-            onChange={(_, d) => setNovaInspecao({ ...novaInspecao, responsavelUsuarioId: d.value })}
-          >
-            <option value="">Selecione</option>
-            {usuarios.map((usuario) => (
-              <option key={usuario.id} value={usuario.id}>
-                {usuario.nome}
-              </option>
-            ))}
-          </Select>
-        </Field>
+      <div className={`${estilos.sectionTitle} ${estilos.sectionTitleFirst}`}>Nova Inspeção</div>
+      <div className={estilos.formGrid}>
+        <div className={estilos.col4}>
+          <Field label="Checklist">
+            <Select
+              value={novaInspecao.checklistModeloId}
+              onChange={(_, d) => setNovaInspecao({ ...novaInspecao, checklistModeloId: d.value })}
+            >
+              <option value="">Selecione</option>
+              {checklists.map((c) => (
+                <option key={c.id} value={c.id}>
+                  {c.nome} (v{c.versao} — {tipoInspecaoLabel[c.tipoInspecao]})
+                </option>
+              ))}
+            </Select>
+          </Field>
+        </div>
+        <div className={estilos.col3}>
+          <Field label="Obra">
+            <Select
+              value={novaInspecao.obraId}
+              onChange={(_, d) => setNovaInspecao({ ...novaInspecao, obraId: d.value, atividadeId: null })}
+            >
+              <option value="">Selecione</option>
+              {obras.map((obra) => (
+                <option key={obra.id} value={obra.id}>
+                  {obra.nome}
+                </option>
+              ))}
+            </Select>
+          </Field>
+        </div>
+        <div className={estilos.col3}>
+          <Field label="Atividade (opcional)">
+            <Select
+              value={novaInspecao.atividadeId ?? ''}
+              onChange={(_, d) => setNovaInspecao({ ...novaInspecao, atividadeId: d.value || null })}
+              disabled={!novaInspecao.obraId}
+            >
+              <option value="">Nenhuma</option>
+              {atividadesDaObra.map((atividade) => (
+                <option key={atividade.id} value={atividade.id}>
+                  {atividade.nome}
+                </option>
+              ))}
+            </Select>
+          </Field>
+        </div>
+        <div className={estilos.col2}>
+          <Field label="Data">
+            <CampoData
+              value={novaInspecao.data}
+              onChange={(_, d) => setNovaInspecao({ ...novaInspecao, data: d.value })}
+            />
+          </Field>
+        </div>
+        <div className={estilos.col3}>
+          <Field label="Responsável">
+            <Select
+              value={novaInspecao.responsavelUsuarioId}
+              onChange={(_, d) => setNovaInspecao({ ...novaInspecao, responsavelUsuarioId: d.value })}
+            >
+              <option value="">Selecione</option>
+              {usuarios.map((usuario) => (
+                <option key={usuario.id} value={usuario.id}>
+                  {usuario.nome}
+                </option>
+              ))}
+            </Select>
+          </Field>
+        </div>
       </div>
 
       <div className={estilos.formActions}>
@@ -177,7 +187,7 @@ export function InspecoesTab() {
         </Button>
       </div>
 
-      <Table>
+      <Table noNativeElements>
         <TableHeader>
           <TableRow>
             <TableHeaderCell>Tipo</TableHeaderCell>

@@ -1,3 +1,4 @@
+using AAHBRANT.SST.Application.Common;
 using AAHBRANT.SST.Application.Common.Interfaces;
 using AAHBRANT.SST.Domain.Entidades;
 using FluentValidation;
@@ -23,7 +24,9 @@ public class AnexarFotoEvidenciaDdsCommandValidator : AbstractValidator<AnexarFo
         RuleFor(x => x.DdsId).NotEmpty();
         RuleFor(x => x.FotoConteudo)
             .NotEmpty().WithMessage("A foto é obrigatória.")
-            .Must(f => f.Length <= TamanhoMaximoBytes).WithMessage("A foto deve ter no máximo 5 MB.");
+            .Must(f => f.Length <= TamanhoMaximoBytes).WithMessage("A foto deve ter no máximo 5 MB.")
+            .Must((comando, conteudo) => ValidadorAssinaturaArquivo.AssinaturaConfere(conteudo, comando.FotoContentType))
+                .WithMessage("O conteúdo do arquivo não corresponde ao tipo declarado.");
         RuleFor(x => x.FotoContentType)
             .Must(t => TiposPermitidos.Contains(t)).WithMessage("A foto deve ser um arquivo JPEG ou PNG.");
     }

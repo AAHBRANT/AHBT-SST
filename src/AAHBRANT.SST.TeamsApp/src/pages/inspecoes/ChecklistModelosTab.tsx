@@ -22,6 +22,10 @@ import {
   type NovoChecklistModeloItem,
 } from '../../lib/api';
 import { usePageStyles } from '../pageStyles';
+import { useConfirmarExclusao } from '../../hooks/useConfirmarExclusao';
+import { useSucessoToast } from '../../hooks/useSucessoToast';
+import { EstadoVazio } from '../../components/EstadoVazio';
+import { ListaCarregando } from '../../components/ListaCarregando';
 
 const itemVazio: NovoChecklistModeloItem = {
   descricao: '',
@@ -40,6 +44,9 @@ export function ChecklistModelosTab() {
   const [versionandoId, setVersionandoId] = useState<string | null>(null);
   const [erro, setErro] = useState<string | null>(null);
   const [carregando, setCarregando] = useState(false);
+  const [carregandoLista, setCarregandoLista] = useState(true);
+  const { confirmar, dialogElement } = useConfirmarExclusao();
+  const sucessoToast = useSucessoToast();
 
   async function carregar() {
     try {
@@ -47,6 +54,8 @@ export function ChecklistModelosTab() {
       setChecklists(await api.checklistModelos.listar());
     } catch (e) {
       setErro(e instanceof Error ? e.message : 'Falha ao carregar checklists.');
+    } finally {
+      setCarregandoLista(false);
     }
   }
 
@@ -102,6 +111,9 @@ export function ChecklistModelosTab() {
       setErro(null);
       if (versionandoId) {
         await api.checklistModelos.novaVersao(versionandoId, itens);
+        limparFormulario();
+        await carregar();
+        sucessoToast('Nova versão do checklist criada com sucesso.');
       } else {
         if (!nome.trim()) {
           setErro('Informe o nome do checklist.');
@@ -109,9 +121,10 @@ export function ChecklistModelosTab() {
           return;
         }
         await api.checklistModelos.criar({ nome, tipoInspecao, itens });
+        limparFormulario();
+        await carregar();
+        sucessoToast('Checklist criado com sucesso.');
       }
-      limparFormulario();
-      await carregar();
     } catch (e) {
       setErro(e instanceof Error ? e.message : 'Falha ao salvar checklist.');
     } finally {
@@ -121,9 +134,11 @@ export function ChecklistModelosTab() {
 
   async function excluir(id: string, evento: React.MouseEvent) {
     evento.stopPropagation();
+    if (!(await confirmar('Excluir este modelo de checklist? Essa ação não pode ser desfeita.'))) return;
     try {
       await api.checklistModelos.excluir(id);
       await carregar();
+      sucessoToast('Checklist excluído com sucesso.');
     } catch (e) {
       setErro(e instanceof Error ? e.message : 'Falha ao excluir checklist.');
     }
@@ -131,6 +146,7 @@ export function ChecklistModelosTab() {
 
   return (
     <div className={estilos.card}>
+      {dialogElement}
       <div className={estilos.toolbar}>
         <Text weight="semibold">
           {versionandoId ? `Nova versão de "${nome}"` : 'Novo checklist'}
@@ -144,51 +160,61 @@ export function ChecklistModelosTab() {
 
       {erro && <Text className={estilos.erro}>{erro}</Text>}
 
-      <div className={estilos.form}>
-        <Field label="Nome do checklist">
-          <Input value={nome} onChange={(_, d) => setNome(d.value)} disabled={!!versionandoId} />
-        </Field>
-        <Field label="Tipo de inspeção">
-          <Select
-            value={String(tipoInspecao)}
-            onChange={(_, d) => setTipoInspecao(Number(d.value))}
-            disabled={!!versionandoId}
-          >
-            {Object.entries(tipoInspecaoLabel).map(([valor, rotulo]) => (
-              <option key={valor} value={valor}>
-                {rotulo}
-              </option>
-            ))}
-          </Select>
-        </Field>
+      <div className={`${estilos.sectionTitle} ${estilos.sectionTitleFirst}`}>Dados do Checklist</div>
+      <div className={estilos.formGrid}>
+        <div className={estilos.col6}>
+          <Field label="Nome do checklist">
+            <Input value={nome} onChange={(_, d) => setNome(d.value)} disabled={!!versionandoId} />
+          </Field>
+        </div>
+        <div className={estilos.col6}>
+          <Field label="Tipo de inspeção">
+            <Select
+              value={String(tipoInspecao)}
+              onChange={(_, d) => setTipoInspecao(Number(d.value))}
+              disabled={!!versionandoId}
+            >
+              {Object.entries(tipoInspecaoLabel).map(([valor, rotulo]) => (
+                <option key={valor} value={valor}>
+                  {rotulo}
+                </option>
+              ))}
+            </Select>
+          </Field>
+        </div>
       </div>
 
-      <Text weight="semibold" style={{ marginBottom: 8, display: 'block' }}>
-        Itens do checklist
-      </Text>
-
-      <div className={estilos.form}>
-        <Field label="Descrição do item">
-          <Input
-            value={itemAtual.descricao}
-            onChange={(_, d) => setItemAtual({ ...itemAtual, descricao: d.value })}
+      <div className={estilos.sectionTitle}>Itens do Checklist</div>
+      <div className={estilos.formGrid}>
+        <div className={estilos.col6}>
+          <Field label="Descrição do item">
+            <Input
+              value={itemAtual.descricao}
+              onChange={(_, d) => setItemAtual({ ...itemAtual, descricao: d.value })}
+            />
+          </Field>
+        </div>
+        <div className={estilos.col2}>
+          <Checkbox
+            label="Exige fotografia"
+            checked={itemAtual.exigeFotografia}
+            onChange={(_, d) => setItemAtual({ ...itemAtual, exigeFotografia: !!d.checked })}
           />
-        </Field>
-        <Checkbox
-          label="Exige fotografia"
-          checked={itemAtual.exigeFotografia}
-          onChange={(_, d) => setItemAtual({ ...itemAtual, exigeFotografia: !!d.checked })}
-        />
-        <Checkbox
-          label="Exige responsável"
-          checked={itemAtual.exigeResponsavel}
-          onChange={(_, d) => setItemAtual({ ...itemAtual, exigeResponsavel: !!d.checked })}
-        />
-        <Checkbox
-          label="Exige prazo"
-          checked={itemAtual.exigePrazo}
-          onChange={(_, d) => setItemAtual({ ...itemAtual, exigePrazo: !!d.checked })}
-        />
+        </div>
+        <div className={estilos.col2}>
+          <Checkbox
+            label="Exige responsável"
+            checked={itemAtual.exigeResponsavel}
+            onChange={(_, d) => setItemAtual({ ...itemAtual, exigeResponsavel: !!d.checked })}
+          />
+        </div>
+        <div className={estilos.col2}>
+          <Checkbox
+            label="Exige prazo"
+            checked={itemAtual.exigePrazo}
+            onChange={(_, d) => setItemAtual({ ...itemAtual, exigePrazo: !!d.checked })}
+          />
+        </div>
       </div>
 
       <div className={estilos.formActions}>
@@ -197,7 +223,7 @@ export function ChecklistModelosTab() {
         </Button>
       </div>
 
-      <Table style={{ marginBottom: 16 }}>
+      <Table noNativeElements style={{ marginBottom: 16 }}>
         <TableHeader>
           <TableRow>
             <TableHeaderCell>Descrição</TableHeaderCell>
@@ -233,7 +259,12 @@ export function ChecklistModelosTab() {
         </Button>
       </div>
 
-      <Table>
+      {carregandoLista ? (
+        <ListaCarregando />
+      ) : checklists.length === 0 ? (
+        <EstadoVazio mensagem="Nenhum checklist cadastrado ainda." />
+      ) : (
+      <Table noNativeElements>
         <TableHeader>
           <TableRow>
             <TableHeaderCell>Nome</TableHeaderCell>
@@ -272,6 +303,7 @@ export function ChecklistModelosTab() {
           ))}
         </TableBody>
       </Table>
+      )}
     </div>
   );
 }

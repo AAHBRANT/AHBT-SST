@@ -11,6 +11,7 @@ import {
   TableRow,
   Text,
 } from '@fluentui/react-components';
+import { CampoData } from '../../components/CampoData';
 import { Add24Regular } from '@fluentui/react-icons';
 import { api, type NovaPgrRevisao, type PgrRevisao } from '../../lib/api';
 import { usePageStyles } from '../pageStyles';
@@ -64,20 +65,24 @@ export function PgrRevisoesTab({ pgrId }: { pgrId: string }) {
 
       {erro && <Text className={estilos.erro}>{erro}</Text>}
 
-      <div className={estilos.form}>
-        <Field label="Data da revisão">
-          <Input
-            type="date"
-            value={novaRevisao.dataRevisao}
-            onChange={(_, d) => setNovaRevisao({ ...novaRevisao, dataRevisao: d.value })}
-          />
-        </Field>
-        <Field label="Motivo">
-          <Input
-            value={novaRevisao.motivo}
-            onChange={(_, d) => setNovaRevisao({ ...novaRevisao, motivo: d.value })}
-          />
-        </Field>
+      <div className={`${estilos.sectionTitle} ${estilos.sectionTitleFirst}`}>Dados da Revisão</div>
+      <div className={estilos.formGrid}>
+        <div className={estilos.col3}>
+          <Field label="Data da revisão">
+            <CampoData
+              value={novaRevisao.dataRevisao}
+              onChange={(_, d) => setNovaRevisao({ ...novaRevisao, dataRevisao: d.value })}
+            />
+          </Field>
+        </div>
+        <div className={estilos.col6}>
+          <Field label="Motivo">
+            <Input
+              value={novaRevisao.motivo}
+              onChange={(_, d) => setNovaRevisao({ ...novaRevisao, motivo: d.value })}
+            />
+          </Field>
+        </div>
       </div>
       <div className={estilos.formActions}>
         <Button appearance="primary" icon={<Add24Regular />} onClick={criar} disabled={carregando}>
@@ -85,7 +90,7 @@ export function PgrRevisoesTab({ pgrId }: { pgrId: string }) {
         </Button>
       </div>
 
-      <Table>
+      <Table noNativeElements>
         <TableHeader>
           <TableRow>
             <TableHeaderCell>Nº</TableHeaderCell>

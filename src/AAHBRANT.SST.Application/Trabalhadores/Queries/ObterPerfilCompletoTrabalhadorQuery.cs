@@ -37,9 +37,16 @@ public record PerfilCompletoTrabalhadorDto(
     AssiduidadeDdsDto AssiduidadeDds,
     List<RiscoExpostoDto> Riscos,
     List<OcorrenciaDto> Ocorrencias,
-    List<AssinaturaPerfilDto> Assinaturas);
+    List<AssinaturaPerfilDto> Assinaturas,
+    int TrocasNoAno,
+    List<MotivoTrocaEpiDto> MotivosTroca);
 
 public record FrequenciaTrocaEpiDto(Guid CatalogoEpiId, string CatalogoEpiNome, int QuantidadeTrocas);
+
+// Dashboard do Trabalhador (pedido do usuário, 03/09) — "troca" é entrega com MotivoTipo diferente
+// de Inicial (reposição por dano/extravio/vencimento/troca de função), no ano corrente. Não usa
+// FrequenciaTrocaEpi (que conta TODAS as entregas por item de catálogo, incluindo a inicial).
+public record MotivoTrocaEpiDto(MotivoEntregaEpi Motivo, int Quantidade);
 
 public record AssiduidadeDdsDto(int TotalRealizados, int TotalParticipados);
 
@@ -193,6 +200,18 @@ public class ObterPerfilCompletoTrabalhadorQueryHandler : IRequestHandler<ObterP
             .OrderByDescending(f => f.QuantidadeTrocas)
             .ToList();
 
+        // Dashboard do Trabalhador — trocas no ano corrente, agrupadas por motivo (Dano/Extravio/
+        // Vencimento/TrocaDeFuncao), a partir do histórico completo de entregas (não só as ativas).
+        var anoAtual = DateTime.UtcNow.Year;
+        var trocasDoAno = entregasEpi
+            .Where(e => e.MotivoTipo != null && e.MotivoTipo != MotivoEntregaEpi.Inicial && e.DataEntrega.Year == anoAtual)
+            .ToList();
+        var motivosTroca = trocasDoAno
+            .GroupBy(e => e.MotivoTipo!.Value)
+            .Select(g => new MotivoTrocaEpiDto(g.Key, g.Count()))
+            .OrderByDescending(m => m.Quantidade)
+            .ToList();
+
         var treinamentos = await _db.Treinamentos
             .Where(x => x.TrabalhadorId == request.Id)
             .OrderByDescending(x => x.DataValidade)
@@ -282,6 +301,8 @@ public class ObterPerfilCompletoTrabalhadorQueryHandler : IRequestHandler<ObterP
             new AssiduidadeDdsDto(totalDdsRealizados, totalDdsParticipados),
             riscos,
             ocorrencias,
-            assinaturas);
+            assinaturas,
+            trocasDoAno.Count,
+            motivosTroca);
     }
 }

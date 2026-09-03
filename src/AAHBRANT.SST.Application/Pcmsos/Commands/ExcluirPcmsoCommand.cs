@@ -1,6 +1,7 @@
 using AAHBRANT.SST.Application.Common.Interfaces;
 using FluentValidation;
 using MediatR;
+using Microsoft.EntityFrameworkCore;
 
 namespace AAHBRANT.SST.Application.Pcmsos.Commands;
 
@@ -20,11 +21,12 @@ public class ExcluirPcmsoCommandHandler : IRequestHandler<ExcluirPcmsoCommand>
 
     public ExcluirPcmsoCommandHandler(IAppDbContext db) => _db = db;
 
-    public Task Handle(ExcluirPcmsoCommand request, CancellationToken ct)
+    public async Task Handle(ExcluirPcmsoCommand request, CancellationToken ct)
     {
-        // PENDENTE: dependia de DocumentoGestao, removido junto com Gestão Documental (Conformidade)
-        // em 2026-08-28 — ver nota em PcmsoDetalhe (Domain/Entidades/SaudeOcupacional/SaudeOcupacional.cs).
-        throw new NotSupportedException(
-            "Exclusão de PCMSO está temporariamente indisponível: dependia de DocumentoGestao, removido junto com o módulo de Conformidade.");
+        var pcmso = await _db.PcmsoDetalhes.FirstOrDefaultAsync(p => p.Id == request.Id, ct)
+            ?? throw new KeyNotFoundException($"PCMSO {request.Id} não encontrado.");
+
+        _db.PcmsoDetalhes.Remove(pcmso);
+        await _db.SaveChangesAsync(ct);
     }
 }

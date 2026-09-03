@@ -11,6 +11,12 @@ public class CatalogoEpi : AuditableEntity
     public DateTime? CertificadoAprovacaoValidade { get; set; }
     public int VidaUtilEmMeses { get; set; }
 
+    // Foto do item cadastrado (pedido do usuário, 03/09) — pra o trabalhador reconhecer visualmente
+    // o que está recebendo na hora de assinar a ficha de entrega. Mesmo padrão de Obra.LogoConteudo/
+    // Trabalhador.FotoConteudo: binário direto na coluna, sem storage próprio.
+    public byte[]? FotoConteudo { get; set; }
+    public string? FotoContentType { get; set; }
+
     public ICollection<EntregaEpi> Entregas { get; set; } = new List<EntregaEpi>();
 
     // Fase 3 (estoque segmentado por Obra) — substitui o antigo campo SaldoEstoque único e global.

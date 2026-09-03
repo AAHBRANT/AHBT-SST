@@ -7,7 +7,7 @@ import { designTokens } from '../../theme';
 
 // Motor de Assinatura Eletrônica (docs/Motor-Assinatura-Eletronica.md §5, etapa 11) — página pública
 // aberta ao escanear o QR do comprovante. Fica fora do AppShell (sem sidebar/header do Teams), mesmo
-// padrão de AreaPublicaPage (módulo NTAG/Identificação), porque quem escaneia pode não estar logado
+// padrão de IdentificacaoPublicaPage (módulo NTAG/Identificação), porque quem escaneia pode não estar logado
 // nem no Teams.
 const useStyles = makeStyles({
   root: {

@@ -161,27 +161,34 @@ export function EstoqueTab() {
             <div className={estilos.toolbar}>
               <Text weight="semibold">Entrada manual (reposição)</Text>
             </div>
-            <div className={estilos.form}>
-              <Field label="EPI">
-                <Select value={entradaCatalogoEpiId} onChange={(_, d) => setEntradaCatalogoEpiId(d.value)}>
-                  <option value="">Selecione</option>
-                  {epis.map((e) => (
-                    <option key={e.id} value={e.id}>
-                      {e.nome}
-                    </option>
-                  ))}
-                </Select>
-              </Field>
-              <Field label="Quantidade">
-                <Input
-                  type="number"
-                  value={entradaQuantidade}
-                  onChange={(_, d) => setEntradaQuantidade(d.value)}
-                />
-              </Field>
-              <Field label="Observação (opcional)">
-                <Input value={entradaObservacao} onChange={(_, d) => setEntradaObservacao(d.value)} />
-              </Field>
+            <div className={`${estilos.sectionTitle} ${estilos.sectionTitleFirst}`}>Dados da Entrada</div>
+            <div className={estilos.formGrid}>
+              <div className={estilos.col5}>
+                <Field label="EPI">
+                  <Select value={entradaCatalogoEpiId} onChange={(_, d) => setEntradaCatalogoEpiId(d.value)}>
+                    <option value="">Selecione</option>
+                    {epis.map((e) => (
+                      <option key={e.id} value={e.id}>
+                        {e.nome}
+                      </option>
+                    ))}
+                  </Select>
+                </Field>
+              </div>
+              <div className={estilos.col3}>
+                <Field label="Quantidade">
+                  <Input
+                    type="number"
+                    value={entradaQuantidade}
+                    onChange={(_, d) => setEntradaQuantidade(d.value)}
+                  />
+                </Field>
+              </div>
+              <div className={estilos.col4}>
+                <Field label="Observação (opcional)">
+                  <Input value={entradaObservacao} onChange={(_, d) => setEntradaObservacao(d.value)} />
+                </Field>
+              </div>
             </div>
             <div className={estilos.formActions}>
               <Button
@@ -198,23 +205,30 @@ export function EstoqueTab() {
             <div className={estilos.toolbar}>
               <Text weight="semibold">Ajuste de saldo (correção de inventário)</Text>
             </div>
-            <div className={estilos.form}>
-              <Field label="EPI">
-                <Select value={ajusteCatalogoEpiId} onChange={(_, d) => setAjusteCatalogoEpiId(d.value)}>
-                  <option value="">Selecione</option>
-                  {epis.map((e) => (
-                    <option key={e.id} value={e.id}>
-                      {e.nome}
-                    </option>
-                  ))}
-                </Select>
-              </Field>
-              <Field label="Novo saldo">
-                <Input type="number" value={ajusteNovoSaldo} onChange={(_, d) => setAjusteNovoSaldo(d.value)} />
-              </Field>
-              <Field label="Observação (obrigatória)">
-                <Textarea value={ajusteObservacao} onChange={(_, d) => setAjusteObservacao(d.value)} />
-              </Field>
+            <div className={`${estilos.sectionTitle} ${estilos.sectionTitleFirst}`}>Dados do Ajuste</div>
+            <div className={estilos.formGrid}>
+              <div className={estilos.col5}>
+                <Field label="EPI">
+                  <Select value={ajusteCatalogoEpiId} onChange={(_, d) => setAjusteCatalogoEpiId(d.value)}>
+                    <option value="">Selecione</option>
+                    {epis.map((e) => (
+                      <option key={e.id} value={e.id}>
+                        {e.nome}
+                      </option>
+                    ))}
+                  </Select>
+                </Field>
+              </div>
+              <div className={estilos.col3}>
+                <Field label="Novo saldo">
+                  <Input type="number" value={ajusteNovoSaldo} onChange={(_, d) => setAjusteNovoSaldo(d.value)} />
+                </Field>
+              </div>
+              <div className={estilos.col4}>
+                <Field label="Observação (obrigatória)">
+                  <Textarea value={ajusteObservacao} onChange={(_, d) => setAjusteObservacao(d.value)} />
+                </Field>
+              </div>
             </div>
             <div className={estilos.formActions}>
               <Button
@@ -231,7 +245,7 @@ export function EstoqueTab() {
             <div className={estilos.toolbar}>
               <Text weight="semibold">Saldo atual</Text>
             </div>
-            <Table>
+            <Table noNativeElements>
               <TableHeader>
                 <TableRow>
                   <TableHeaderCell>Nome</TableHeaderCell>
@@ -261,7 +275,7 @@ export function EstoqueTab() {
                                 Nenhuma movimentação registrada.
                               </Text>
                             ) : (
-                              <Table>
+                              <Table noNativeElements>
                                 <TableHeader>
                                   <TableRow>
                                     <TableHeaderCell>Data</TableHeaderCell>

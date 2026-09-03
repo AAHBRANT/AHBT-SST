@@ -25,11 +25,6 @@ public class ExportarInspecaoPdfQueryHandler : IRequestHandler<ExportarInspecaoP
         var detalhe = await _mediator.Send(new ObterInspecaoDetalheQuery(request.Id), ct);
         if (detalhe is null) return null;
 
-        var logoConteudo = await _db.Obras
-            .Where(o => o.Id == detalhe.Inspecao.ObraId)
-            .Select(o => o.LogoConteudo)
-            .FirstOrDefaultAsync(ct);
-
         // O DTO de detalhe só carrega TemFoto/TemFotoDepois (booleans) — os bytes das fotos são
         // buscados à parte aqui, só para o PDF, mesmo raciocínio de ExportarFichaEpiTrabalhadorQuery.
         var fotosPorResposta = await _db.InspecaoItemRespostas
@@ -55,7 +50,6 @@ public class ExportarInspecaoPdfQueryHandler : IRequestHandler<ExportarInspecaoP
 
         var modelo = new InspecaoPdfModelo(
             detalhe.Inspecao.ObraNome,
-            logoConteudo,
             DescreverTipoInspecao(detalhe.Inspecao.TipoInspecao),
             detalhe.Inspecao.ChecklistModeloNome,
             detalhe.Inspecao.ChecklistModeloVersao,
