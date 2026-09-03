@@ -209,7 +209,7 @@ export function TrabalhadoresGaveta({
 
   function aoSelecionarTrabalhador(id: string) {
     aoFechar();
-    navigate(`/operacao/pessoas/${id}`);
+    navigate(`/pessoas/${id}`);
   }
 
   return (
