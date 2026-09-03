@@ -84,3 +84,33 @@ h3,
 .brand-title {
   font-family: 'Montserrat', sans-serif;
 }
+
+/* Lista em cartões (pedido do usuário, 03/09, réplica de mockup): cada linha de QUALQUER tabela do
+   sistema (PGRs, trabalhadores, treinamentos, EPI, entregas etc.) vira um cartão arredondado e
+   flutuante, com respiro entre os itens e leve elevação ao passar o mouse. Alvo é a classe estável
+   do Fluent (fui-TableRow), não uma classe própria do app — assim fica idêntico em toda a base sem
+   precisar editar cada tela que já usa <Table>/<TableRow>. Só as linhas do CORPO (dentro de
+   fui-TableBody) viram cartão; o cabeçalho (fui-TableHeader) mantém o visual padrão do Fluent (linha
+   simples com risco embaixo), igual ao "table-header" do mockup.
+   A classe repetida (.fui-TableRow.fui-TableRow) é de propósito, não erro de digitação: o Fluent
+   injeta o próprio CSS (incluindo um :hover com fundo diferente) via JS depois deste arquivo já
+   carregado, então em empate de especificidade a regra dele venceria por ordem de inserção — dobrar
+   a classe aumenta nossa especificidade o suficiente pra vencer sempre, sem precisar de !important. */
+.fui-TableBody .fui-TableRow.fui-TableRow {
+  background-color: var(--sst-color-surface);
+  border: 1px solid var(--sst-color-card-border);
+  border-radius: 12px;
+  margin-bottom: 12px;
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+}
+
+.fui-TableBody .fui-TableRow.fui-TableRow:last-child {
+  margin-bottom: 0;
+}
+
+.fui-TableBody .fui-TableRow.fui-TableRow:hover {
+  background-color: var(--sst-color-surface);
+  transform: translateY(-2px);
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.16);
+}
