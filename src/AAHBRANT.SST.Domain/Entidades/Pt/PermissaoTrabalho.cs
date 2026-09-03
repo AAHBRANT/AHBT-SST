@@ -10,7 +10,9 @@ namespace AAHBRANT.SST.Domain.Entidades;
 // seeder para migrar.
 public class PermissaoTrabalho : AuditableEntity
 {
-    // "Nº PT:" do cabeçalho — texto livre, sem numeração automática (documento não define regra).
+    // "Nº PT:" do cabeçalho — gerado automaticamente pelo sistema na criação (formato
+    // "PT-{ano}-{sequencial}", ver GeradorNumeroDocumento; pedido do usuário, 03/09), não editável
+    // depois. O documento original não definia uma regra de numeração — decisão própria.
     public string? NumeroPt { get; set; }
 
     public Guid AtividadeId { get; set; }

@@ -9,8 +9,9 @@ namespace AAHBRANT.SST.Domain.Entidades;
 // residual e sem os campos de texto do formulário). Sem dado real cadastrado no seeder para migrar.
 public class Apr : AuditableEntity
 {
-    // Campo "Nº APR:" do cabeçalho — texto livre preenchido manualmente, sem numeração automática
-    // (o documento não define uma regra de numeração).
+    // Campo "Nº APR:" do cabeçalho — gerado automaticamente pelo sistema na criação (formato
+    // "APR-{ano}-{sequencial}", ver GeradorNumeroDocumento; pedido do usuário, 03/09), não editável
+    // depois. O documento original não definia uma regra de numeração — decisão própria.
     public string? NumeroApr { get; set; }
 
     public Guid AtividadeId { get; set; }
