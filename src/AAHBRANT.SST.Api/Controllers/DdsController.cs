@@ -35,6 +35,14 @@ public class DdsController : ControllerBase
         return CreatedAtAction(nameof(ObterDetalhe), new { id }, new { id });
     }
 
+    [Authorize(Policy = "dds:criar")]
+    [HttpPost("sem-expediente")]
+    public async Task<IActionResult> RegistrarSemExpediente(RegistrarDiaSemExpedienteCommand command, CancellationToken ct)
+    {
+        var id = await _mediator.Send(command, ct);
+        return CreatedAtAction(nameof(ObterDetalhe), new { id }, new { id });
+    }
+
     [Authorize(Policy = "dds:conduzir")]
     [HttpPost("itens/{itemId:guid}/marcar")]
     public async Task<IActionResult> MarcarItem(Guid itemId, MarcarItemChecklistRequestBody body, CancellationToken ct)

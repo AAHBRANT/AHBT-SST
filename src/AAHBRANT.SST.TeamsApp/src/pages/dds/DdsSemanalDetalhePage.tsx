@@ -16,9 +16,16 @@ import {
   Campo,
   FormRodape,
   ChipCheckboxGroup,
+  Textarea,
   type Tom,
 } from '@ui';
-import { Add24Regular, ArrowDownload24Regular, ChevronRight24Regular, LockClosed24Regular } from '@fluentui/react-icons';
+import {
+  Add24Regular,
+  ArrowDownload24Regular,
+  CalendarCancel24Regular,
+  ChevronRight24Regular,
+  LockClosed24Regular,
+} from '@fluentui/react-icons';
 import {
   api,
   StatusDds,
@@ -67,6 +74,8 @@ export function DdsSemanalDetalhePage() {
   const [catalogoTemas, setCatalogoTemas] = useState<CatalogoTemaDds[]>([]);
   const [diaEmCriacao, setDiaEmCriacao] = useState<string | null>(null);
   const [novoDia, setNovoDia] = useState(novoDiaVazio());
+  const [diaMarcandoSemExpediente, setDiaMarcandoSemExpediente] = useState<string | null>(null);
+  const [motivoSemExpediente, setMotivoSemExpediente] = useState('');
   const [responsavelTerceirizadaNome, setResponsavelTerceirizadaNome] = useState('');
   const [responsavelTerceirizadaFuncao, setResponsavelTerceirizadaFuncao] = useState('');
   const [erro, setErro] = useState<string | null>(null);
@@ -97,7 +106,33 @@ export function DdsSemanalDetalhePage() {
 
   function abrirCriacaoDia(data: string) {
     setDiaEmCriacao(data);
+    setDiaMarcandoSemExpediente(null);
     setNovoDia(novoDiaVazio());
+  }
+
+  function abrirSemExpediente(data: string) {
+    setDiaEmCriacao(null);
+    setDiaMarcandoSemExpediente(data);
+    setMotivoSemExpediente('');
+  }
+
+  async function confirmarSemExpediente() {
+    if (!id || !diaMarcandoSemExpediente || !motivoSemExpediente.trim()) {
+      setErro('Informe o motivo (feriado, folga, obra parada etc.).');
+      return;
+    }
+    try {
+      setProcessando(true);
+      setErro(null);
+      await api.dds.registrarSemExpediente(id, diaMarcandoSemExpediente, motivoSemExpediente.trim());
+      setDiaMarcandoSemExpediente(null);
+      setMotivoSemExpediente('');
+      await carregar();
+    } catch (e) {
+      setErro(e instanceof Error ? e.message : 'Falha ao registrar o dia sem expediente.');
+    } finally {
+      setProcessando(false);
+    }
   }
 
   async function criarRegistroDia() {
@@ -241,7 +276,16 @@ export function DdsSemanalDetalhePage() {
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))', gap: 16 }}>
         {detalhe.dias.map((dia, indice) => (
           <Card key={dia.data} densidade="compacta" titulo={NOMES_DIAS[indice]} subtitulo={dia.data?.slice(0, 10)}>
-            {dia.ddsId ? (
+            {dia.ddsId && dia.semExpediente ? (
+              <>
+                <div style={{ marginBottom: 8 }}>
+                  <StatusChip tom="info" icone={<CalendarCancel24Regular />}>
+                    Sem expediente
+                  </StatusChip>
+                </div>
+                <Legenda>{dia.motivoSemExpediente}</Legenda>
+              </>
+            ) : dia.ddsId ? (
               <>
                 <div style={{ marginBottom: 8 }}>
                   {dia.atividadesNomes.join(', ') || (dia.temaLivreNome ? '' : 'DDS do dia')}
@@ -260,6 +304,27 @@ export function DdsSemanalDetalhePage() {
               </>
             ) : somenteLeitura ? (
               <Legenda>Nenhum registro criado para este dia.</Legenda>
+            ) : diaMarcandoSemExpediente === dia.data ? (
+              <FormSection titulo="Dia sem expediente" primeira>
+                <FormGrid>
+                  <Campo span={12}>
+                    <Field label="Motivo (feriado, folga, obra parada etc.)">
+                      <Textarea
+                        value={motivoSemExpediente}
+                        onChange={(_, d) => setMotivoSemExpediente(d.value)}
+                      />
+                    </Field>
+                  </Campo>
+                </FormGrid>
+                <FormRodape>
+                  <Button appearance="subtle" onClick={() => setDiaMarcandoSemExpediente(null)}>
+                    Cancelar
+                  </Button>
+                  <Button appearance="primary" icon={<CalendarCancel24Regular />} onClick={confirmarSemExpediente} disabled={processando}>
+                    Confirmar
+                  </Button>
+                </FormRodape>
+              </FormSection>
             ) : diaEmCriacao === dia.data ? (
               <FormSection titulo="Registro do dia" primeira>
                 <FormGrid>
@@ -309,9 +374,14 @@ export function DdsSemanalDetalhePage() {
                 </FormRodape>
               </FormSection>
             ) : (
-              <Button icon={<Add24Regular />} onClick={() => abrirCriacaoDia(dia.data)}>
-                Criar registro do dia
-              </Button>
+              <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                <Button icon={<Add24Regular />} onClick={() => abrirCriacaoDia(dia.data)}>
+                  Criar registro do dia
+                </Button>
+                <Button icon={<CalendarCancel24Regular />} onClick={() => abrirSemExpediente(dia.data)}>
+                  Marcar sem expediente
+                </Button>
+              </div>
             )}
           </Card>
         ))}
