@@ -105,17 +105,20 @@ export function ImportarLoteTab() {
 
       {erro && <Text className={estilos.erro}>{erro}</Text>}
 
-      <div className={estilos.form}>
-        <Field label="Obra">
-          <Select value={obraId} onChange={(_, d) => setObraId(d.value)}>
-            <option value="">Selecione</option>
-            {obras.map((obra) => (
-              <option key={obra.id} value={obra.id}>
-                {obra.nome}
-              </option>
-            ))}
-          </Select>
-        </Field>
+      <div className={`${estilos.sectionTitle} ${estilos.sectionTitleFirst}`}>Seleção da Obra</div>
+      <div className={estilos.formGrid}>
+        <div className={estilos.col4}>
+          <Field label="Obra">
+            <Select value={obraId} onChange={(_, d) => setObraId(d.value)}>
+              <option value="">Selecione</option>
+              {obras.map((obra) => (
+                <option key={obra.id} value={obra.id}>
+                  {obra.nome}
+                </option>
+              ))}
+            </Select>
+          </Field>
+        </div>
       </div>
 
       <Field label="Itens (JSON)" style={{ marginTop: 12 }}>

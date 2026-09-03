@@ -107,42 +107,51 @@ export function ReunioesCipaTab() {
           <Text weight="semibold">Agendar reunião</Text>
         </div>
         {erro && <Text className={estilos.erro}>{erro}</Text>}
-        <div className={estilos.form}>
-          <Field label="Obra" required>
-            <Select value={novo.obraId} onChange={(_, d) => setNovo({ ...novo, obraId: d.value })}>
-              <option value="">Selecione</option>
-              {obras.map((obra) => (
-                <option key={obra.id} value={obra.id}>
-                  {obra.nome}
-                </option>
-              ))}
-            </Select>
-          </Field>
-          <Field label="Tipo">
-            <Select value={String(novo.tipo)} onChange={(_, d) => setNovo({ ...novo, tipo: Number(d.value) })}>
-              {Object.entries(tipoReuniaoCipaLabel).map(([valor, rotulo]) => (
-                <option key={valor} value={valor}>
-                  {rotulo}
-                </option>
-              ))}
-            </Select>
-          </Field>
-          <Field label="Data da reunião" required>
-            <CampoData value={novo.dataReuniao} onChange={(_, d) => setNovo({ ...novo, dataReuniao: d.value })} />
-          </Field>
-          <Field label="Pauta">
-            <Textarea value={novo.pauta ?? ''} onChange={(_, d) => setNovo({ ...novo, pauta: d.value })} />
-          </Field>
+        <div className={`${estilos.sectionTitle} ${estilos.sectionTitleFirst}`}>Dados da Reunião</div>
+        <div className={estilos.formGrid}>
+          <div className={estilos.col4}>
+            <Field label="Obra" required>
+              <Select value={novo.obraId} onChange={(_, d) => setNovo({ ...novo, obraId: d.value })}>
+                <option value="">Selecione</option>
+                {obras.map((obra) => (
+                  <option key={obra.id} value={obra.id}>
+                    {obra.nome}
+                  </option>
+                ))}
+              </Select>
+            </Field>
+          </div>
+          <div className={estilos.col3}>
+            <Field label="Tipo">
+              <Select value={String(novo.tipo)} onChange={(_, d) => setNovo({ ...novo, tipo: Number(d.value) })}>
+                {Object.entries(tipoReuniaoCipaLabel).map(([valor, rotulo]) => (
+                  <option key={valor} value={valor}>
+                    {rotulo}
+                  </option>
+                ))}
+              </Select>
+            </Field>
+          </div>
+          <div className={estilos.col3}>
+            <Field label="Data da reunião" required>
+              <CampoData value={novo.dataReuniao} onChange={(_, d) => setNovo({ ...novo, dataReuniao: d.value })} />
+            </Field>
+          </div>
+          <div className={estilos.col12}>
+            <Field label="Pauta">
+              <Textarea value={novo.pauta ?? ''} onChange={(_, d) => setNovo({ ...novo, pauta: d.value })} />
+            </Field>
+          </div>
         </div>
-        <div className={estilos.formActions}>
+        <div className={estilos.footer}>
+          <Text className={estilos.footerInfo}>
+            Lista de presença, deliberações e o plano de ações (matriz 5W2H) da reunião são registrados
+            na tela de detalhe.
+          </Text>
           <Button appearance="primary" icon={<Add24Regular />} onClick={criar} disabled={carregando}>
             Agendar reunião
           </Button>
         </div>
-        <Text size={200} style={{ display: 'block', marginTop: 8 }}>
-          Lista de presença, deliberações e o plano de ações (matriz 5W2H) da reunião são registrados
-          na tela de detalhe.
-        </Text>
       </div>
 
       <div className={estilos.card}>

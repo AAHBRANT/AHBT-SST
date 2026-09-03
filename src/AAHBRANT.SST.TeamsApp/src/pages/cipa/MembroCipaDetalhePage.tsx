@@ -187,16 +187,19 @@ export function MembroCipaDetalhePage() {
               {detalhe.membro.obraNome} · {origemMembroCipaLabel[detalhe.membro.origemMembro]} · Mandato:{' '}
               {detalhe.membro.dataInicioMandato?.slice(0, 10)} a {detalhe.membro.dataFimMandato?.slice(0, 10)}
             </Text>
-            <div className={estilos.form}>
-              <Field label="Cargo">
-                <Select value={String(detalhe.membro.cargo)} onChange={(_, d) => definirCargo(Number(d.value))} disabled={salvando}>
-                  {Object.entries(cargoMembroCipaLabel).map(([valor, rotulo]) => (
-                    <option key={valor} value={valor}>
-                      {rotulo}
-                    </option>
-                  ))}
-                </Select>
-              </Field>
+            <div className={`${estilos.sectionTitle} ${estilos.sectionTitleFirst}`}>Cargo do Membro</div>
+            <div className={estilos.formGrid}>
+              <div className={estilos.col4}>
+                <Field label="Cargo">
+                  <Select value={String(detalhe.membro.cargo)} onChange={(_, d) => definirCargo(Number(d.value))} disabled={salvando}>
+                    {Object.entries(cargoMembroCipaLabel).map(([valor, rotulo]) => (
+                      <option key={valor} value={valor}>
+                        {rotulo}
+                      </option>
+                    ))}
+                  </Select>
+                </Field>
+              </div>
             </div>
             {detalhe.membro.cargo !== CargoMembroCipa.Presidente && (
               <div className={estilos.formActions}>
@@ -211,38 +214,49 @@ export function MembroCipaDetalhePage() {
             <div className={estilos.toolbar}>
               <Text weight="semibold">Novo treinamento</Text>
             </div>
-            <div className={estilos.form}>
-              <Field label="Carga horária (h)" required>
-                <Input
-                  type="number"
-                  value={String(novoTreinamento.cargaHoraria)}
-                  onChange={(_, d) => setNovoTreinamento({ ...novoTreinamento, cargaHoraria: Number(d.value) })}
-                />
-              </Field>
-              <Field label="Data de realização" required>
-                <CampoData
-                  value={novoTreinamento.dataRealizacao}
-                  onChange={(_, d) => setNovoTreinamento({ ...novoTreinamento, dataRealizacao: d.value })}
-                />
-              </Field>
-              <Field label="Validade">
-                <CampoData
-                  value={novoTreinamento.dataValidade}
-                  onChange={(_, d) => setNovoTreinamento({ ...novoTreinamento, dataValidade: d.value })}
-                />
-              </Field>
-              <Field label="Instituição/instrutor">
-                <Input
-                  value={novoTreinamento.instituicaoInstrutor}
-                  onChange={(_, d) => setNovoTreinamento({ ...novoTreinamento, instituicaoInstrutor: d.value })}
-                />
-              </Field>
-              <Field label="Conteúdo programático">
-                <Textarea
-                  value={novoTreinamento.conteudoProgramatico}
-                  onChange={(_, d) => setNovoTreinamento({ ...novoTreinamento, conteudoProgramatico: d.value })}
-                />
-              </Field>
+            <div className={`${estilos.sectionTitle} ${estilos.sectionTitleFirst}`}>Dados do Treinamento</div>
+            <div className={estilos.formGrid}>
+              <div className={estilos.col2}>
+                <Field label="Carga horária (h)" required>
+                  <Input
+                    type="number"
+                    value={String(novoTreinamento.cargaHoraria)}
+                    onChange={(_, d) => setNovoTreinamento({ ...novoTreinamento, cargaHoraria: Number(d.value) })}
+                  />
+                </Field>
+              </div>
+              <div className={estilos.col3}>
+                <Field label="Data de realização" required>
+                  <CampoData
+                    value={novoTreinamento.dataRealizacao}
+                    onChange={(_, d) => setNovoTreinamento({ ...novoTreinamento, dataRealizacao: d.value })}
+                  />
+                </Field>
+              </div>
+              <div className={estilos.col3}>
+                <Field label="Validade">
+                  <CampoData
+                    value={novoTreinamento.dataValidade}
+                    onChange={(_, d) => setNovoTreinamento({ ...novoTreinamento, dataValidade: d.value })}
+                  />
+                </Field>
+              </div>
+              <div className={estilos.col4}>
+                <Field label="Instituição/instrutor">
+                  <Input
+                    value={novoTreinamento.instituicaoInstrutor}
+                    onChange={(_, d) => setNovoTreinamento({ ...novoTreinamento, instituicaoInstrutor: d.value })}
+                  />
+                </Field>
+              </div>
+              <div className={estilos.col12}>
+                <Field label="Conteúdo programático">
+                  <Textarea
+                    value={novoTreinamento.conteudoProgramatico}
+                    onChange={(_, d) => setNovoTreinamento({ ...novoTreinamento, conteudoProgramatico: d.value })}
+                  />
+                </Field>
+              </div>
             </div>
             <div className={estilos.formActions}>
               <Button appearance="primary" onClick={criarTreinamento} disabled={salvando}>

@@ -129,13 +129,18 @@ export function QuestionarioAplicabilidadeTab() {
           já cadastrados (ex.: "a obra realiza trabalho em espaço confinado?"). A mesma pergunta vale para todas as
           obras — só a resposta é por obra.
         </Text>
-        <div className={estilos.form}>
-          <Field label="Pergunta" required>
-            <Input value={novaPergunta} onChange={(_, d) => setNovaPergunta(d.value)} />
-          </Field>
-          <Field label="Texto de apoio">
-            <Input value={novoTextoApoio} onChange={(_, d) => setNovoTextoApoio(d.value)} />
-          </Field>
+        <div className={`${estilos.sectionTitle} ${estilos.sectionTitleFirst}`}>Dados da Pergunta</div>
+        <div className={estilos.formGrid}>
+          <div className={estilos.col6}>
+            <Field label="Pergunta" required>
+              <Input value={novaPergunta} onChange={(_, d) => setNovaPergunta(d.value)} />
+            </Field>
+          </div>
+          <div className={estilos.col6}>
+            <Field label="Texto de apoio">
+              <Input value={novoTextoApoio} onChange={(_, d) => setNovoTextoApoio(d.value)} />
+            </Field>
+          </div>
         </div>
         <div className={estilos.formActions}>
           <Button appearance="primary" icon={<AddCircle24Regular />} onClick={criarItem} disabled={processando}>

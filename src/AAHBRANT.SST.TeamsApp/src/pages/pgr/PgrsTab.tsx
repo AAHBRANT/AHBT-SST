@@ -106,56 +106,71 @@ export function PgrsTab() {
 
       {erro && <Text className={estilos.erro}>{erro}</Text>}
 
-      <div className={estilos.form}>
-        <Field label="Obra">
-          <Select value={novoPgr.obraId} onChange={(_, d) => setNovoPgr({ ...novoPgr, obraId: d.value })}>
-            <option value="">Selecione</option>
-            {obras.map((obra) => (
-              <option key={obra.id} value={obra.id}>
-                {obra.nome}
-              </option>
-            ))}
-          </Select>
-        </Field>
-        <Field label="Nome do PGR">
-          <Input value={novoPgr.nome} onChange={(_, d) => setNovoPgr({ ...novoPgr, nome: d.value })} />
-        </Field>
-        <Field label="Descrição">
-          <Input
-            value={novoPgr.descricao ?? ''}
-            onChange={(_, d) => setNovoPgr({ ...novoPgr, descricao: d.value })}
-          />
-        </Field>
-        <Field label="Data de elaboração">
-          <CampoData
-            value={novoPgr.dataElaboracao}
-            onChange={(_, d) => setNovoPgr({ ...novoPgr, dataElaboracao: d.value })}
-          />
-        </Field>
-        <Field label="Próxima revisão">
-          <CampoData
-            value={novoPgr.dataProximaRevisao ?? ''}
-            onChange={(_, d) => setNovoPgr({ ...novoPgr, dataProximaRevisao: d.value || null })}
-          />
-        </Field>
-        <Field label="Término da vigência">
-          <CampoData
-            value={novoPgr.dataTermino ?? ''}
-            onChange={(_, d) => setNovoPgr({ ...novoPgr, dataTermino: d.value || null })}
-          />
-        </Field>
-        <Field label="Status">
-          <Select
-            value={novoPgr.status}
-            onChange={(_, d) => setNovoPgr({ ...novoPgr, status: Number(d.value) })}
-          >
-            {Object.entries(statusPgrLabel).map(([valor, rotulo]) => (
-              <option key={valor} value={valor}>
-                {rotulo}
-              </option>
-            ))}
-          </Select>
-        </Field>
+      <div className={`${estilos.sectionTitle} ${estilos.sectionTitleFirst}`}>Dados do PGR</div>
+      <div className={estilos.formGrid}>
+        <div className={estilos.col3}>
+          <Field label="Obra">
+            <Select value={novoPgr.obraId} onChange={(_, d) => setNovoPgr({ ...novoPgr, obraId: d.value })}>
+              <option value="">Selecione</option>
+              {obras.map((obra) => (
+                <option key={obra.id} value={obra.id}>
+                  {obra.nome}
+                </option>
+              ))}
+            </Select>
+          </Field>
+        </div>
+        <div className={estilos.col4}>
+          <Field label="Nome do PGR">
+            <Input value={novoPgr.nome} onChange={(_, d) => setNovoPgr({ ...novoPgr, nome: d.value })} />
+          </Field>
+        </div>
+        <div className={estilos.col5}>
+          <Field label="Descrição">
+            <Input
+              value={novoPgr.descricao ?? ''}
+              onChange={(_, d) => setNovoPgr({ ...novoPgr, descricao: d.value })}
+            />
+          </Field>
+        </div>
+        <div className={estilos.col3}>
+          <Field label="Data de elaboração">
+            <CampoData
+              value={novoPgr.dataElaboracao}
+              onChange={(_, d) => setNovoPgr({ ...novoPgr, dataElaboracao: d.value })}
+            />
+          </Field>
+        </div>
+        <div className={estilos.col3}>
+          <Field label="Próxima revisão">
+            <CampoData
+              value={novoPgr.dataProximaRevisao ?? ''}
+              onChange={(_, d) => setNovoPgr({ ...novoPgr, dataProximaRevisao: d.value || null })}
+            />
+          </Field>
+        </div>
+        <div className={estilos.col3}>
+          <Field label="Término da vigência">
+            <CampoData
+              value={novoPgr.dataTermino ?? ''}
+              onChange={(_, d) => setNovoPgr({ ...novoPgr, dataTermino: d.value || null })}
+            />
+          </Field>
+        </div>
+        <div className={estilos.col3}>
+          <Field label="Status">
+            <Select
+              value={novoPgr.status}
+              onChange={(_, d) => setNovoPgr({ ...novoPgr, status: Number(d.value) })}
+            >
+              {Object.entries(statusPgrLabel).map(([valor, rotulo]) => (
+                <option key={valor} value={valor}>
+                  {rotulo}
+                </option>
+              ))}
+            </Select>
+          </Field>
+        </div>
       </div>
       <div className={estilos.formActions}>
         <Button appearance="primary" icon={<Add24Regular />} onClick={criar} disabled={carregando}>

@@ -148,63 +148,78 @@ export function AptidoesTab() {
 
         {erro && <Text className={estilos.erro}>{erro}</Text>}
 
-        <div className={estilos.form}>
-          <Field label="Funcionário">
-            <Select
-              value={novaAptidao.trabalhadorId}
-              onChange={(_, d) => setNovaAptidao({ ...novaAptidao, trabalhadorId: d.value })}
-            >
-              <option value="">Selecione</option>
-              {trabalhadores.map((t) => (
-                <option key={t.id} value={t.id}>
-                  {t.nome} ({t.matricula})
-                </option>
-              ))}
-            </Select>
-          </Field>
-          <Field label="Atividade crítica">
-            <Input
-              placeholder="Ex.: Trabalho em altura, Espaço confinado"
-              value={novaAptidao.atividadeCritica}
-              onChange={(_, d) => setNovaAptidao({ ...novaAptidao, atividadeCritica: d.value })}
-            />
-          </Field>
-          <Field label="Data da avaliação">
-            <CampoData
-              value={novaAptidao.dataAvaliacao}
-              onChange={(_, d) => setNovaAptidao({ ...novaAptidao, dataAvaliacao: d.value })}
-            />
-          </Field>
-          <Field label="Validade (opcional)">
-            <CampoData
-              value={novaAptidao.dataValidade ?? ''}
-              onChange={(_, d) => setNovaAptidao({ ...novaAptidao, dataValidade: d.value })}
-            />
-          </Field>
-          <Field label="Resultado">
-            <Select
-              value={novaAptidao.aptidao}
-              onChange={(_, d) => setNovaAptidao({ ...novaAptidao, aptidao: Number(d.value) })}
-            >
-              {Object.entries(resultadoAsoLabel).map(([valor, rotulo]) => (
-                <option key={valor} value={valor}>
-                  {rotulo}
-                </option>
-              ))}
-            </Select>
-          </Field>
-          <Field label="Médico responsável">
-            <Input
-              value={novaAptidao.medicoResponsavel ?? ''}
-              onChange={(_, d) => setNovaAptidao({ ...novaAptidao, medicoResponsavel: d.value })}
-            />
-          </Field>
-          <Field label="Observações">
-            <Textarea
-              value={novaAptidao.observacoes ?? ''}
-              onChange={(_, d) => setNovaAptidao({ ...novaAptidao, observacoes: d.value })}
-            />
-          </Field>
+        <div className={`${estilos.sectionTitle} ${estilos.sectionTitleFirst}`}>Dados da Aptidão</div>
+        <div className={estilos.formGrid}>
+          <div className={estilos.col4}>
+            <Field label="Funcionário">
+              <Select
+                value={novaAptidao.trabalhadorId}
+                onChange={(_, d) => setNovaAptidao({ ...novaAptidao, trabalhadorId: d.value })}
+              >
+                <option value="">Selecione</option>
+                {trabalhadores.map((t) => (
+                  <option key={t.id} value={t.id}>
+                    {t.nome} ({t.matricula})
+                  </option>
+                ))}
+              </Select>
+            </Field>
+          </div>
+          <div className={estilos.col4}>
+            <Field label="Atividade crítica">
+              <Input
+                placeholder="Ex.: Trabalho em altura, Espaço confinado"
+                value={novaAptidao.atividadeCritica}
+                onChange={(_, d) => setNovaAptidao({ ...novaAptidao, atividadeCritica: d.value })}
+              />
+            </Field>
+          </div>
+          <div className={estilos.col2}>
+            <Field label="Data da avaliação">
+              <CampoData
+                value={novaAptidao.dataAvaliacao}
+                onChange={(_, d) => setNovaAptidao({ ...novaAptidao, dataAvaliacao: d.value })}
+              />
+            </Field>
+          </div>
+          <div className={estilos.col2}>
+            <Field label="Validade (opcional)">
+              <CampoData
+                value={novaAptidao.dataValidade ?? ''}
+                onChange={(_, d) => setNovaAptidao({ ...novaAptidao, dataValidade: d.value })}
+              />
+            </Field>
+          </div>
+          <div className={estilos.col3}>
+            <Field label="Resultado">
+              <Select
+                value={novaAptidao.aptidao}
+                onChange={(_, d) => setNovaAptidao({ ...novaAptidao, aptidao: Number(d.value) })}
+              >
+                {Object.entries(resultadoAsoLabel).map(([valor, rotulo]) => (
+                  <option key={valor} value={valor}>
+                    {rotulo}
+                  </option>
+                ))}
+              </Select>
+            </Field>
+          </div>
+          <div className={estilos.col3}>
+            <Field label="Médico responsável">
+              <Input
+                value={novaAptidao.medicoResponsavel ?? ''}
+                onChange={(_, d) => setNovaAptidao({ ...novaAptidao, medicoResponsavel: d.value })}
+              />
+            </Field>
+          </div>
+          <div className={estilos.col6}>
+            <Field label="Observações">
+              <Textarea
+                value={novaAptidao.observacoes ?? ''}
+                onChange={(_, d) => setNovaAptidao({ ...novaAptidao, observacoes: d.value })}
+              />
+            </Field>
+          </div>
         </div>
         <div className={estilos.formActions}>
           <Button appearance="primary" icon={<Add24Regular />} onClick={criar} disabled={carregando}>

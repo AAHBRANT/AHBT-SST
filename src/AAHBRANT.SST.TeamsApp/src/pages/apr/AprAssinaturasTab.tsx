@@ -75,32 +75,37 @@ export function AprAssinaturasTab({ aprId }: { aprId: string }) {
 
       {erro && <Text className={estilos.erro}>{erro}</Text>}
 
-      <div className={estilos.form}>
-        <Field label="Funcionário">
-          <Select
-            value={novaAssinatura.trabalhadorId}
-            onChange={(_, d) => setNovaAssinatura({ ...novaAssinatura, trabalhadorId: d.value })}
-          >
-            <option value="">Selecione</option>
-            {trabalhadores.map((trabalhador) => (
-              <option key={trabalhador.id} value={trabalhador.id}>
-                {trabalhador.nome}
-              </option>
-            ))}
-          </Select>
-        </Field>
-        <Field label="Papel">
-          <Select
-            value={novaAssinatura.papel}
-            onChange={(_, d) => setNovaAssinatura({ ...novaAssinatura, papel: Number(d.value) })}
-          >
-            {Object.entries(papelAssinaturaAprLabel).map(([valor, rotulo]) => (
-              <option key={valor} value={valor}>
-                {rotulo}
-              </option>
-            ))}
-          </Select>
-        </Field>
+      <div className={`${estilos.sectionTitle} ${estilos.sectionTitleFirst}`}>Nova Assinatura</div>
+      <div className={estilos.formGrid}>
+        <div className={estilos.col4}>
+          <Field label="Funcionário">
+            <Select
+              value={novaAssinatura.trabalhadorId}
+              onChange={(_, d) => setNovaAssinatura({ ...novaAssinatura, trabalhadorId: d.value })}
+            >
+              <option value="">Selecione</option>
+              {trabalhadores.map((trabalhador) => (
+                <option key={trabalhador.id} value={trabalhador.id}>
+                  {trabalhador.nome}
+                </option>
+              ))}
+            </Select>
+          </Field>
+        </div>
+        <div className={estilos.col3}>
+          <Field label="Papel">
+            <Select
+              value={novaAssinatura.papel}
+              onChange={(_, d) => setNovaAssinatura({ ...novaAssinatura, papel: Number(d.value) })}
+            >
+              {Object.entries(papelAssinaturaAprLabel).map(([valor, rotulo]) => (
+                <option key={valor} value={valor}>
+                  {rotulo}
+                </option>
+              ))}
+            </Select>
+          </Field>
+        </div>
       </div>
       <div className={estilos.formActions}>
         <Button appearance="primary" icon={<Add24Regular />} onClick={criar} disabled={carregando}>

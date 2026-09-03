@@ -203,18 +203,23 @@ export function AprEtapasTab({ aprId }: { aprId: string }) {
 
       {erro && <Text className={estilos.erro}>{erro}</Text>}
 
-      <div className={estilos.form}>
-        <Field label="Ordem">
-          <Input
-            type="number"
-            min={1}
-            value={String(novaEtapa.ordem)}
-            onChange={(_, d) => setNovaEtapa({ ...novaEtapa, ordem: Math.max(1, Number(d.value) || 1) })}
-          />
-        </Field>
-        <Field label="Descrição da etapa">
-          <Input value={novaEtapa.descricao} onChange={(_, d) => setNovaEtapa({ ...novaEtapa, descricao: d.value })} />
-        </Field>
+      <div className={`${estilos.sectionTitle} ${estilos.sectionTitleFirst}`}>Nova Etapa</div>
+      <div className={estilos.formGrid}>
+        <div className={estilos.col2}>
+          <Field label="Ordem">
+            <Input
+              type="number"
+              min={1}
+              value={String(novaEtapa.ordem)}
+              onChange={(_, d) => setNovaEtapa({ ...novaEtapa, ordem: Math.max(1, Number(d.value) || 1) })}
+            />
+          </Field>
+        </div>
+        <div className={estilos.col6}>
+          <Field label="Descrição da etapa">
+            <Input value={novaEtapa.descricao} onChange={(_, d) => setNovaEtapa({ ...novaEtapa, descricao: d.value })} />
+          </Field>
+        </div>
       </div>
       <div className={estilos.formActions}>
         <Button appearance="primary" icon={<Add24Regular />} onClick={criarEtapa} disabled={carregando}>
@@ -317,95 +322,115 @@ export function AprEtapasTab({ aprId }: { aprId: string }) {
 
                       {novoRisco && (
                         <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-                          <Text weight="semibold" size={200}>
+                          <div className={`${estilos.sectionTitle} ${estilos.sectionTitleFirst}`}>
                             {riscoEditandoId ? 'Editar risco' : 'Novo perigo / risco'}
-                          </Text>
-                          <div className={estilos.form}>
-                            <Field label="Perigo / evento perigoso" required>
-                              <Input
-                                value={novoRisco.perigoEventoPerigoso}
-                                onChange={(_, d) => setNovoRisco({ ...novoRisco, perigoEventoPerigoso: d.value })}
-                              />
-                            </Field>
-                            <Field label="Fonte / circunstância">
-                              <Input
-                                value={novoRisco.fonteCircunstancia ?? ''}
-                                onChange={(_, d) => setNovoRisco({ ...novoRisco, fonteCircunstancia: d.value })}
-                              />
-                            </Field>
-                            <Field label="Possíveis lesões / agravos / danos">
-                              <Input
-                                value={novoRisco.possiveisLesoes ?? ''}
-                                onChange={(_, d) => setNovoRisco({ ...novoRisco, possiveisLesoes: d.value })}
-                              />
-                            </Field>
-                            <Field label="Funcionários expostos">
-                              <Input
-                                value={novoRisco.trabalhadoresExpostos ?? ''}
-                                onChange={(_, d) => setNovoRisco({ ...novoRisco, trabalhadoresExpostos: d.value })}
-                              />
-                            </Field>
-                            <Field label="P (probabilidade inicial)">
-                              <Select
-                                value={String(novoRisco.probabilidadeInicial)}
-                                onChange={(_, d) => setNovoRisco({ ...novoRisco, probabilidadeInicial: Number(d.value) })}
-                              >
-                                {[1, 2, 3, 4, 5].map((v) => (
-                                  <option key={v} value={v}>
-                                    {v}
-                                  </option>
-                                ))}
-                              </Select>
-                            </Field>
-                            <Field label="S (severidade inicial)">
-                              <Select
-                                value={String(novoRisco.severidadeInicial)}
-                                onChange={(_, d) => setNovoRisco({ ...novoRisco, severidadeInicial: Number(d.value) })}
-                              >
-                                {[1, 2, 3, 4, 5].map((v) => (
-                                  <option key={v} value={v}>
-                                    {v}
-                                  </option>
-                                ))}
-                              </Select>
-                            </Field>
-                            <Field label="Responsável">
-                              <Input
-                                value={novoRisco.responsavel ?? ''}
-                                onChange={(_, d) => setNovoRisco({ ...novoRisco, responsavel: d.value })}
-                                placeholder="ex.: Encarregado / Operador"
-                              />
-                            </Field>
-                            <Field label="P res. (probabilidade residual)">
-                              <Select
-                                value={String(novoRisco.probabilidadeResidual)}
-                                onChange={(_, d) => setNovoRisco({ ...novoRisco, probabilidadeResidual: Number(d.value) })}
-                              >
-                                {[1, 2, 3, 4, 5].map((v) => (
-                                  <option key={v} value={v}>
-                                    {v}
-                                  </option>
-                                ))}
-                              </Select>
-                            </Field>
-                            <Field label="S res. (severidade residual)">
-                              <Select
-                                value={String(novoRisco.severidadeResidual)}
-                                onChange={(_, d) => setNovoRisco({ ...novoRisco, severidadeResidual: Number(d.value) })}
-                              >
-                                {[1, 2, 3, 4, 5].map((v) => (
-                                  <option key={v} value={v}>
-                                    {v}
-                                  </option>
-                                ))}
-                              </Select>
-                            </Field>
-                            <Field label="Medidas de prevenção / controle" style={{ gridColumn: '1 / -1' }}>
-                              <Textarea
-                                value={novoRisco.medidasPrevencao ?? ''}
-                                onChange={(_, d) => setNovoRisco({ ...novoRisco, medidasPrevencao: d.value })}
-                              />
-                            </Field>
+                          </div>
+                          <div className={estilos.formGrid}>
+                            <div className={estilos.col6}>
+                              <Field label="Perigo / evento perigoso" required>
+                                <Input
+                                  value={novoRisco.perigoEventoPerigoso}
+                                  onChange={(_, d) => setNovoRisco({ ...novoRisco, perigoEventoPerigoso: d.value })}
+                                />
+                              </Field>
+                            </div>
+                            <div className={estilos.col6}>
+                              <Field label="Fonte / circunstância">
+                                <Input
+                                  value={novoRisco.fonteCircunstancia ?? ''}
+                                  onChange={(_, d) => setNovoRisco({ ...novoRisco, fonteCircunstancia: d.value })}
+                                />
+                              </Field>
+                            </div>
+                            <div className={estilos.col6}>
+                              <Field label="Possíveis lesões / agravos / danos">
+                                <Input
+                                  value={novoRisco.possiveisLesoes ?? ''}
+                                  onChange={(_, d) => setNovoRisco({ ...novoRisco, possiveisLesoes: d.value })}
+                                />
+                              </Field>
+                            </div>
+                            <div className={estilos.col6}>
+                              <Field label="Funcionários expostos">
+                                <Input
+                                  value={novoRisco.trabalhadoresExpostos ?? ''}
+                                  onChange={(_, d) => setNovoRisco({ ...novoRisco, trabalhadoresExpostos: d.value })}
+                                />
+                              </Field>
+                            </div>
+                            <div className={estilos.col2}>
+                              <Field label="P (probabilidade inicial)">
+                                <Select
+                                  value={String(novoRisco.probabilidadeInicial)}
+                                  onChange={(_, d) => setNovoRisco({ ...novoRisco, probabilidadeInicial: Number(d.value) })}
+                                >
+                                  {[1, 2, 3, 4, 5].map((v) => (
+                                    <option key={v} value={v}>
+                                      {v}
+                                    </option>
+                                  ))}
+                                </Select>
+                              </Field>
+                            </div>
+                            <div className={estilos.col2}>
+                              <Field label="S (severidade inicial)">
+                                <Select
+                                  value={String(novoRisco.severidadeInicial)}
+                                  onChange={(_, d) => setNovoRisco({ ...novoRisco, severidadeInicial: Number(d.value) })}
+                                >
+                                  {[1, 2, 3, 4, 5].map((v) => (
+                                    <option key={v} value={v}>
+                                      {v}
+                                    </option>
+                                  ))}
+                                </Select>
+                              </Field>
+                            </div>
+                            <div className={estilos.col4}>
+                              <Field label="Responsável">
+                                <Input
+                                  value={novoRisco.responsavel ?? ''}
+                                  onChange={(_, d) => setNovoRisco({ ...novoRisco, responsavel: d.value })}
+                                  placeholder="ex.: Encarregado / Operador"
+                                />
+                              </Field>
+                            </div>
+                            <div className={estilos.col2}>
+                              <Field label="P res. (probabilidade residual)">
+                                <Select
+                                  value={String(novoRisco.probabilidadeResidual)}
+                                  onChange={(_, d) => setNovoRisco({ ...novoRisco, probabilidadeResidual: Number(d.value) })}
+                                >
+                                  {[1, 2, 3, 4, 5].map((v) => (
+                                    <option key={v} value={v}>
+                                      {v}
+                                    </option>
+                                  ))}
+                                </Select>
+                              </Field>
+                            </div>
+                            <div className={estilos.col2}>
+                              <Field label="S res. (severidade residual)">
+                                <Select
+                                  value={String(novoRisco.severidadeResidual)}
+                                  onChange={(_, d) => setNovoRisco({ ...novoRisco, severidadeResidual: Number(d.value) })}
+                                >
+                                  {[1, 2, 3, 4, 5].map((v) => (
+                                    <option key={v} value={v}>
+                                      {v}
+                                    </option>
+                                  ))}
+                                </Select>
+                              </Field>
+                            </div>
+                            <div className={estilos.col12}>
+                              <Field label="Medidas de prevenção / controle">
+                                <Textarea
+                                  value={novoRisco.medidasPrevencao ?? ''}
+                                  onChange={(_, d) => setNovoRisco({ ...novoRisco, medidasPrevencao: d.value })}
+                                />
+                              </Field>
+                            </div>
                           </div>
                           <div className={estilos.formActions}>
                             <Button appearance="primary" onClick={salvarRisco} disabled={carregando}>

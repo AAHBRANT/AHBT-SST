@@ -84,30 +84,38 @@ export function FuncoesTab() {
 
       {erro && <Text className={estilos.erro}>{erro}</Text>}
 
-      <div className={estilos.form}>
-        <Field label="Nome">
-          <Input value={novaFuncao.nome} onChange={(_, d) => setNovaFuncao({ ...novaFuncao, nome: d.value })} />
-        </Field>
-        <Field label="Código CBO">
-          <Input
-            value={novaFuncao.cboCodigo ?? ''}
-            onChange={(_, d) => setNovaFuncao({ ...novaFuncao, cboCodigo: d.value })}
-          />
-        </Field>
-        <Field label="Descrição">
-          <Input
-            value={novaFuncao.descricao ?? ''}
-            onChange={(_, d) => setNovaFuncao({ ...novaFuncao, descricao: d.value })}
-          />
-        </Field>
+      <div className={`${estilos.sectionTitle} ${estilos.sectionTitleFirst}`}>Dados da Função</div>
+      <div className={estilos.formGrid}>
+        <div className={estilos.col4}>
+          <Field label="Nome">
+            <Input value={novaFuncao.nome} onChange={(_, d) => setNovaFuncao({ ...novaFuncao, nome: d.value })} />
+          </Field>
+        </div>
+        <div className={estilos.col3}>
+          <Field label="Código CBO">
+            <Input
+              value={novaFuncao.cboCodigo ?? ''}
+              onChange={(_, d) => setNovaFuncao({ ...novaFuncao, cboCodigo: d.value })}
+            />
+          </Field>
+        </div>
+        <div className={estilos.col5}>
+          <Field label="Descrição">
+            <Input
+              value={novaFuncao.descricao ?? ''}
+              onChange={(_, d) => setNovaFuncao({ ...novaFuncao, descricao: d.value })}
+            />
+          </Field>
+        </div>
       </div>
-      <div className={estilos.formActions}>
+      <div className={estilos.footer}>
+        <Text className={estilos.footerInfo}>
+          A matriz de EPI de cada função é definida em EPI → Matriz de EPI por Função.
+        </Text>
         <Button appearance="primary" icon={<Add24Regular />} onClick={criar} disabled={carregando}>
           Adicionar função
         </Button>
       </div>
-
-      <Text size={200}>A matriz de EPI de cada função é definida em EPI → Matriz de EPI por Função.</Text>
 
       {carregandoLista ? (
         <ListaCarregando />

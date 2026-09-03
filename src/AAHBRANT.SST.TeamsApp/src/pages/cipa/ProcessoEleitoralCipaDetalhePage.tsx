@@ -181,17 +181,20 @@ export function ProcessoEleitoralCipaDetalhePage() {
               <div className={estilos.toolbar}>
                 <Text weight="semibold">Inscrever candidato</Text>
               </div>
-              <div className={estilos.form}>
-                <Field label="Funcionário">
-                  <Select value={trabalhadorSelecionado} onChange={(_, d) => setTrabalhadorSelecionado(d.value)}>
-                    <option value="">Selecione</option>
-                    {trabalhadores.map((t) => (
-                      <option key={t.id} value={t.id}>
-                        {t.nome} ({t.matricula})
-                      </option>
-                    ))}
-                  </Select>
-                </Field>
+              <div className={`${estilos.sectionTitle} ${estilos.sectionTitleFirst}`}>Dados do Candidato</div>
+              <div className={estilos.formGrid}>
+                <div className={estilos.col4}>
+                  <Field label="Funcionário">
+                    <Select value={trabalhadorSelecionado} onChange={(_, d) => setTrabalhadorSelecionado(d.value)}>
+                      <option value="">Selecione</option>
+                      {trabalhadores.map((t) => (
+                        <option key={t.id} value={t.id}>
+                          {t.nome} ({t.matricula})
+                        </option>
+                      ))}
+                    </Select>
+                  </Field>
+                </div>
               </div>
               <div className={estilos.formActions}>
                 <Button appearance="primary" onClick={inscrever} disabled={processando}>
@@ -260,13 +263,18 @@ export function ProcessoEleitoralCipaDetalhePage() {
                 confirmar, o sistema classifica automaticamente titulares/suplentes conforme o
                 Dimensionamento cadastrado para a obra e já cria os respectivos membros da CIPA.
               </Text>
-              <div className={estilos.form}>
-                <Field label="Início do mandato" required>
-                  <CampoData value={dataInicioMandato} onChange={(_, d) => setDataInicioMandato(d.value)} />
-                </Field>
-                <Field label="Fim do mandato" required>
-                  <CampoData value={dataFimMandato} onChange={(_, d) => setDataFimMandato(d.value)} />
-                </Field>
+              <div className={`${estilos.sectionTitle} ${estilos.sectionTitleFirst}`}>Período do Mandato</div>
+              <div className={estilos.formGrid}>
+                <div className={estilos.col3}>
+                  <Field label="Início do mandato" required>
+                    <CampoData value={dataInicioMandato} onChange={(_, d) => setDataInicioMandato(d.value)} />
+                  </Field>
+                </div>
+                <div className={estilos.col3}>
+                  <Field label="Fim do mandato" required>
+                    <CampoData value={dataFimMandato} onChange={(_, d) => setDataFimMandato(d.value)} />
+                  </Field>
+                </div>
               </div>
               <Table noNativeElements>
                 <TableHeader>

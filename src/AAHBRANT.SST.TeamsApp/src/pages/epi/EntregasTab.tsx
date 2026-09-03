@@ -212,103 +212,130 @@ export function EntregasTab({ aoNavegarParaMatriz }: EntregasTabProps) {
 
         {erro && <Text className={estilos.erro}>{erro}</Text>}
 
-        <div className={estilos.form}>
-          <Field label="Funcionário">
-            <Select
-              value={novaEntrega.trabalhadorId}
-              onChange={(_, d) => setNovaEntrega({ ...novaEntrega, trabalhadorId: d.value, catalogoEpiId: '' })}
-            >
-              <option value="">Selecione</option>
-              {trabalhadores.map((t) => (
-                <option key={t.id} value={t.id}>
-                  {t.nome} ({t.matricula})
-                </option>
-              ))}
-            </Select>
-          </Field>
-          <Field label="EPI">
-            <Select
-              value={novaEntrega.catalogoEpiId}
-              onChange={(_, d) => setNovaEntrega({ ...novaEntrega, catalogoEpiId: d.value })}
-              disabled={!novaEntrega.trabalhadorId || episPermitidos.length === 0}
-            >
-              <option value="">Selecione</option>
-              {episPermitidos.map((e) => (
-                <option key={e.id} value={e.id}>
-                  {e.nome} (estoque total: {e.saldoTotal})
-                </option>
-              ))}
-            </Select>
-            {novaEntrega.trabalhadorId && episPermitidos.length === 0 && (
-              <Text size={200}>
-                Esta função não tem EPIs cadastrados na matriz.{' '}
-                <Button appearance="transparent" size="small" onClick={aoNavegarParaMatriz}>
-                  Cadastrar em Matriz de EPI por Função
-                </Button>
-              </Text>
-            )}
-          </Field>
-          <Field label="Quantidade">
-            <Input
-              type="number"
-              value={String(novaEntrega.quantidade)}
-              onChange={(_, d) => setNovaEntrega({ ...novaEntrega, quantidade: Number(d.value) })}
-            />
-          </Field>
-          <Field label="Data de entrega">
-            <CampoData
-              value={novaEntrega.dataEntrega}
-              onChange={(_, d) => setNovaEntrega({ ...novaEntrega, dataEntrega: d.value })}
-            />
-          </Field>
-          <Field label="Validade">
-            <CampoData
-              value={novaEntrega.dataValidade ?? ''}
-              onChange={(_, d) => setNovaEntrega({ ...novaEntrega, dataValidade: d.value })}
-            />
-          </Field>
-          <Field label="Motivo">
-            <Select
-              value={novaEntrega.motivoTipo}
-              onChange={(_, d) => setNovaEntrega({ ...novaEntrega, motivoTipo: Number(d.value) })}
-            >
-              {Object.entries(motivoEntregaEpiLabel).map(([valor, rotulo]) => (
-                <option key={valor} value={valor}>
-                  {rotulo}
-                </option>
-              ))}
-            </Select>
-          </Field>
-          <Field label="Nº lista de presença (NR-6)">
-            <Input
-              value={novaEntrega.numeroListaPresencaNr6 ?? ''}
-              onChange={(_, d) => setNovaEntrega({ ...novaEntrega, numeroListaPresencaNr6: d.value })}
-            />
-          </Field>
-          <Field label="Data do treinamento (NR-6)">
-            <CampoData
-              value={novaEntrega.dataTreinamentoNr6 ?? ''}
-              onChange={(_, d) => setNovaEntrega({ ...novaEntrega, dataTreinamentoNr6: d.value })}
-            />
-          </Field>
-          <Field label="Visto do consórcio/responsável">
-            <Input
-              value={novaEntrega.vistoConsorcioResponsavel ?? ''}
-              onChange={(_, d) => setNovaEntrega({ ...novaEntrega, vistoConsorcioResponsavel: d.value })}
-            />
-          </Field>
-          <Field label="Observação do motivo (opcional)">
-            <Input
-              value={novaEntrega.motivo ?? ''}
-              onChange={(_, d) => setNovaEntrega({ ...novaEntrega, motivo: d.value })}
-            />
-          </Field>
-          <Field label="Observações">
-            <Input
-              value={novaEntrega.observacoes ?? ''}
-              onChange={(_, d) => setNovaEntrega({ ...novaEntrega, observacoes: d.value })}
-            />
-          </Field>
+        <div className={`${estilos.sectionTitle} ${estilos.sectionTitleFirst}`}>Dados da Entrega</div>
+        <div className={estilos.formGrid}>
+          <div className={estilos.col4}>
+            <Field label="Funcionário">
+              <Select
+                value={novaEntrega.trabalhadorId}
+                onChange={(_, d) => setNovaEntrega({ ...novaEntrega, trabalhadorId: d.value, catalogoEpiId: '' })}
+              >
+                <option value="">Selecione</option>
+                {trabalhadores.map((t) => (
+                  <option key={t.id} value={t.id}>
+                    {t.nome} ({t.matricula})
+                  </option>
+                ))}
+              </Select>
+            </Field>
+          </div>
+          <div className={estilos.col4}>
+            <Field label="EPI">
+              <Select
+                value={novaEntrega.catalogoEpiId}
+                onChange={(_, d) => setNovaEntrega({ ...novaEntrega, catalogoEpiId: d.value })}
+                disabled={!novaEntrega.trabalhadorId || episPermitidos.length === 0}
+              >
+                <option value="">Selecione</option>
+                {episPermitidos.map((e) => (
+                  <option key={e.id} value={e.id}>
+                    {e.nome} (estoque total: {e.saldoTotal})
+                  </option>
+                ))}
+              </Select>
+              {novaEntrega.trabalhadorId && episPermitidos.length === 0 && (
+                <Text size={200}>
+                  Esta função não tem EPIs cadastrados na matriz.{' '}
+                  <Button appearance="transparent" size="small" onClick={aoNavegarParaMatriz}>
+                    Cadastrar em Matriz de EPI por Função
+                  </Button>
+                </Text>
+              )}
+            </Field>
+          </div>
+          <div className={estilos.col2}>
+            <Field label="Quantidade">
+              <Input
+                type="number"
+                value={String(novaEntrega.quantidade)}
+                onChange={(_, d) => setNovaEntrega({ ...novaEntrega, quantidade: Number(d.value) })}
+              />
+            </Field>
+          </div>
+          <div className={estilos.col2}>
+            <Field label="Data de entrega">
+              <CampoData
+                value={novaEntrega.dataEntrega}
+                onChange={(_, d) => setNovaEntrega({ ...novaEntrega, dataEntrega: d.value })}
+              />
+            </Field>
+          </div>
+          <div className={estilos.col3}>
+            <Field label="Validade">
+              <CampoData
+                value={novaEntrega.dataValidade ?? ''}
+                onChange={(_, d) => setNovaEntrega({ ...novaEntrega, dataValidade: d.value })}
+              />
+            </Field>
+          </div>
+          <div className={estilos.col3}>
+            <Field label="Motivo">
+              <Select
+                value={novaEntrega.motivoTipo}
+                onChange={(_, d) => setNovaEntrega({ ...novaEntrega, motivoTipo: Number(d.value) })}
+              >
+                {Object.entries(motivoEntregaEpiLabel).map(([valor, rotulo]) => (
+                  <option key={valor} value={valor}>
+                    {rotulo}
+                  </option>
+                ))}
+              </Select>
+            </Field>
+          </div>
+        </div>
+
+        <div className={estilos.sectionTitle}>Documentação (NR-6) e Observações</div>
+        <div className={estilos.formGrid}>
+          <div className={estilos.col3}>
+            <Field label="Nº lista de presença (NR-6)">
+              <Input
+                value={novaEntrega.numeroListaPresencaNr6 ?? ''}
+                onChange={(_, d) => setNovaEntrega({ ...novaEntrega, numeroListaPresencaNr6: d.value })}
+              />
+            </Field>
+          </div>
+          <div className={estilos.col3}>
+            <Field label="Data do treinamento (NR-6)">
+              <CampoData
+                value={novaEntrega.dataTreinamentoNr6 ?? ''}
+                onChange={(_, d) => setNovaEntrega({ ...novaEntrega, dataTreinamentoNr6: d.value })}
+              />
+            </Field>
+          </div>
+          <div className={estilos.col3}>
+            <Field label="Visto do consórcio/responsável">
+              <Input
+                value={novaEntrega.vistoConsorcioResponsavel ?? ''}
+                onChange={(_, d) => setNovaEntrega({ ...novaEntrega, vistoConsorcioResponsavel: d.value })}
+              />
+            </Field>
+          </div>
+          <div className={estilos.col6}>
+            <Field label="Observação do motivo (opcional)">
+              <Input
+                value={novaEntrega.motivo ?? ''}
+                onChange={(_, d) => setNovaEntrega({ ...novaEntrega, motivo: d.value })}
+              />
+            </Field>
+          </div>
+          <div className={estilos.col6}>
+            <Field label="Observações">
+              <Input
+                value={novaEntrega.observacoes ?? ''}
+                onChange={(_, d) => setNovaEntrega({ ...novaEntrega, observacoes: d.value })}
+              />
+            </Field>
+          </div>
         </div>
         <div className={estilos.formActions}>
           <Button appearance="primary" icon={<Add24Regular />} onClick={criar} disabled={carregando}>

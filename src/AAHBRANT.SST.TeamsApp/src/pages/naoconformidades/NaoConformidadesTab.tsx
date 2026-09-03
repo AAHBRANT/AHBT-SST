@@ -108,70 +108,87 @@ export function NaoConformidadesTab() {
         <div className={estilos.toolbar}>
           <Text weight="semibold">Nova não conformidade</Text>
         </div>
-        <div className={estilos.form}>
-          <Field label="Origem">
-            <Select
-              value={String(nova.origemDeteccao)}
-              onChange={(_, d) => setNova({ ...nova, origemDeteccao: Number(d.value) })}
-            >
-              {Object.entries(origemNaoConformidadeLabel).map(([valor, rotulo]) => (
-                <option key={valor} value={valor}>
-                  {rotulo}
-                </option>
-              ))}
-            </Select>
-          </Field>
-          <Field label="Requisito relacionado">
-            <Input
-              value={nova.requisitoRelacionado ?? ''}
-              onChange={(_, d) => setNova({ ...nova, requisitoRelacionado: d.value })}
-            />
-          </Field>
-          <Field label="Descrição" required>
-            <Input value={nova.descricao} onChange={(_, d) => setNova({ ...nova, descricao: d.value })} />
-          </Field>
-          <Field label="Local">
-            <Input value={nova.local ?? ''} onChange={(_, d) => setNova({ ...nova, local: d.value })} />
-          </Field>
-          <Field label="Atividade">
-            <Select
-              value={nova.atividadeId ?? ''}
-              onChange={(_, d) => setNova({ ...nova, atividadeId: d.value })}
-            >
-              <option value="">Nenhuma</option>
-              {atividades.map((atividade) => (
-                <option key={atividade.id} value={atividade.id}>
-                  {atividade.nome}
-                </option>
-              ))}
-            </Select>
-          </Field>
-          <Field label="Risco associado">
-            <Select value={nova.riscoId ?? ''} onChange={(_, d) => setNova({ ...nova, riscoId: d.value })}>
-              <option value="">Nenhum</option>
-              {riscos.map((risco) => (
-                <option key={risco.id} value={risco.id}>
-                  {risco.ambiente || risco.id}
-                </option>
-              ))}
-            </Select>
-          </Field>
-          <Field label="Responsável">
-            <Select
-              value={nova.responsavelUsuarioId ?? ''}
-              onChange={(_, d) => setNova({ ...nova, responsavelUsuarioId: d.value })}
-            >
-              <option value="">Nenhum</option>
-              {usuarios.map((usuario) => (
-                <option key={usuario.id} value={usuario.id}>
-                  {usuario.nome}
-                </option>
-              ))}
-            </Select>
-          </Field>
-          <Field label="Prazo">
-            <CampoData value={nova.prazo ?? ''} onChange={(_, d) => setNova({ ...nova, prazo: d.value })} />
-          </Field>
+        <div className={`${estilos.sectionTitle} ${estilos.sectionTitleFirst}`}>Dados da Não Conformidade</div>
+        <div className={estilos.formGrid}>
+          <div className={estilos.col3}>
+            <Field label="Origem">
+              <Select
+                value={String(nova.origemDeteccao)}
+                onChange={(_, d) => setNova({ ...nova, origemDeteccao: Number(d.value) })}
+              >
+                {Object.entries(origemNaoConformidadeLabel).map(([valor, rotulo]) => (
+                  <option key={valor} value={valor}>
+                    {rotulo}
+                  </option>
+                ))}
+              </Select>
+            </Field>
+          </div>
+          <div className={estilos.col4}>
+            <Field label="Requisito relacionado">
+              <Input
+                value={nova.requisitoRelacionado ?? ''}
+                onChange={(_, d) => setNova({ ...nova, requisitoRelacionado: d.value })}
+              />
+            </Field>
+          </div>
+          <div className={estilos.col5}>
+            <Field label="Descrição" required>
+              <Input value={nova.descricao} onChange={(_, d) => setNova({ ...nova, descricao: d.value })} />
+            </Field>
+          </div>
+          <div className={estilos.col2}>
+            <Field label="Local">
+              <Input value={nova.local ?? ''} onChange={(_, d) => setNova({ ...nova, local: d.value })} />
+            </Field>
+          </div>
+          <div className={estilos.col3}>
+            <Field label="Atividade">
+              <Select
+                value={nova.atividadeId ?? ''}
+                onChange={(_, d) => setNova({ ...nova, atividadeId: d.value })}
+              >
+                <option value="">Nenhuma</option>
+                {atividades.map((atividade) => (
+                  <option key={atividade.id} value={atividade.id}>
+                    {atividade.nome}
+                  </option>
+                ))}
+              </Select>
+            </Field>
+          </div>
+          <div className={estilos.col3}>
+            <Field label="Risco associado">
+              <Select value={nova.riscoId ?? ''} onChange={(_, d) => setNova({ ...nova, riscoId: d.value })}>
+                <option value="">Nenhum</option>
+                {riscos.map((risco) => (
+                  <option key={risco.id} value={risco.id}>
+                    {risco.ambiente || risco.id}
+                  </option>
+                ))}
+              </Select>
+            </Field>
+          </div>
+          <div className={estilos.col2}>
+            <Field label="Responsável">
+              <Select
+                value={nova.responsavelUsuarioId ?? ''}
+                onChange={(_, d) => setNova({ ...nova, responsavelUsuarioId: d.value })}
+              >
+                <option value="">Nenhum</option>
+                {usuarios.map((usuario) => (
+                  <option key={usuario.id} value={usuario.id}>
+                    {usuario.nome}
+                  </option>
+                ))}
+              </Select>
+            </Field>
+          </div>
+          <div className={estilos.col2}>
+            <Field label="Prazo">
+              <CampoData value={nova.prazo ?? ''} onChange={(_, d) => setNova({ ...nova, prazo: d.value })} />
+            </Field>
+          </div>
         </div>
         <div className={estilos.formActions}>
           <Button appearance="primary" icon={<AddCircle24Regular />} onClick={criar} disabled={carregando}>

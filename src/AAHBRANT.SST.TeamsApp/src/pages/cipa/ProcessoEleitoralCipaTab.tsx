@@ -105,51 +105,64 @@ export function ProcessoEleitoralCipaTab() {
           <Text weight="semibold">Nova convocação de eleição</Text>
         </div>
         {erro && <Text className={estilos.erro}>{erro}</Text>}
-        <div className={estilos.form}>
-          <Field label="Obra" required>
-            <Select value={novo.obraId} onChange={(_, d) => setNovo({ ...novo, obraId: d.value })}>
-              <option value="">Selecione</option>
-              {obras.map((obra) => (
-                <option key={obra.id} value={obra.id}>
-                  {obra.nome}
-                </option>
-              ))}
-            </Select>
-          </Field>
-          <Field label="Nº do edital">
-            <Input
-              value={novo.numeroDocumento ?? ''}
-              onChange={(_, d) => setNovo({ ...novo, numeroDocumento: d.value })}
-            />
-          </Field>
-          <Field label="Data da convocação" required>
-            <CampoData value={novo.dataConvocacao} onChange={(_, d) => setNovo({ ...novo, dataConvocacao: d.value })} />
-          </Field>
-          <Field label="Início das inscrições" required>
-            <CampoData
-              value={novo.dataInicioInscricoes}
-              onChange={(_, d) => setNovo({ ...novo, dataInicioInscricoes: d.value })}
-            />
-          </Field>
-          <Field label="Fim das inscrições" required>
-            <CampoData
-              value={novo.dataFimInscricoes}
-              onChange={(_, d) => setNovo({ ...novo, dataFimInscricoes: d.value })}
-            />
-          </Field>
-          <Field label="Data da votação" required>
-            <CampoData value={novo.dataVotacao} onChange={(_, d) => setNovo({ ...novo, dataVotacao: d.value })} />
-          </Field>
+        <div className={`${estilos.sectionTitle} ${estilos.sectionTitleFirst}`}>Dados do Processo Eleitoral</div>
+        <div className={estilos.formGrid}>
+          <div className={estilos.col4}>
+            <Field label="Obra" required>
+              <Select value={novo.obraId} onChange={(_, d) => setNovo({ ...novo, obraId: d.value })}>
+                <option value="">Selecione</option>
+                {obras.map((obra) => (
+                  <option key={obra.id} value={obra.id}>
+                    {obra.nome}
+                  </option>
+                ))}
+              </Select>
+            </Field>
+          </div>
+          <div className={estilos.col3}>
+            <Field label="Nº do edital">
+              <Input
+                value={novo.numeroDocumento ?? ''}
+                onChange={(_, d) => setNovo({ ...novo, numeroDocumento: d.value })}
+              />
+            </Field>
+          </div>
+          <div className={estilos.col3}>
+            <Field label="Data da convocação" required>
+              <CampoData value={novo.dataConvocacao} onChange={(_, d) => setNovo({ ...novo, dataConvocacao: d.value })} />
+            </Field>
+          </div>
+          <div className={estilos.col2}>
+            <Field label="Início das inscrições" required>
+              <CampoData
+                value={novo.dataInicioInscricoes}
+                onChange={(_, d) => setNovo({ ...novo, dataInicioInscricoes: d.value })}
+              />
+            </Field>
+          </div>
+          <div className={estilos.col2}>
+            <Field label="Fim das inscrições" required>
+              <CampoData
+                value={novo.dataFimInscricoes}
+                onChange={(_, d) => setNovo({ ...novo, dataFimInscricoes: d.value })}
+              />
+            </Field>
+          </div>
+          <div className={estilos.col2}>
+            <Field label="Data da votação" required>
+              <CampoData value={novo.dataVotacao} onChange={(_, d) => setNovo({ ...novo, dataVotacao: d.value })} />
+            </Field>
+          </div>
         </div>
-        <div className={estilos.formActions}>
+        <div className={estilos.footer}>
+          <Text className={estilos.footerInfo}>
+            Inscrição de candidatos, avaliação, apuração (manual, sem urna digital) e geração da ata em
+            PDF são feitas na tela de detalhe do processo.
+          </Text>
           <Button appearance="primary" icon={<Add24Regular />} onClick={criar} disabled={carregando}>
             Convocar eleição
           </Button>
         </div>
-        <Text size={200} style={{ display: 'block', marginTop: 8 }}>
-          Inscrição de candidatos, avaliação, apuração (manual, sem urna digital) e geração da ata em
-          PDF são feitas na tela de detalhe do processo.
-        </Text>
       </div>
 
       <div className={estilos.card}>

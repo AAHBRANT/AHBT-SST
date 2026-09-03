@@ -103,53 +103,68 @@ export function DimensionamentoCipaTab() {
           I da NR-5 para o CNAE e grau de risco informados. Recomenda-se validação por técnico ou
           engenheiro de segurança do trabalho habilitado.
         </Text>
-        <div className={estilos.form}>
-          <Field label="Obra" required>
-            <Select value={novo.obraId} onChange={(_, d) => setNovo({ ...novo, obraId: d.value })}>
-              <option value="">Selecione</option>
-              {obras.map((obra) => (
-                <option key={obra.id} value={obra.id}>
-                  {obra.nome}
-                </option>
-              ))}
-            </Select>
-          </Field>
-          <Field label="CNAE" required>
-            <Input value={novo.cnae} onChange={(_, d) => setNovo({ ...novo, cnae: d.value })} />
-          </Field>
-          <Field label="Grau de risco">
-            <Select value={String(novo.grauRisco)} onChange={(_, d) => setNovo({ ...novo, grauRisco: Number(d.value) })}>
-              {Object.entries(nivelRiscoLabel).map(([valor, rotulo]) => (
-                <option key={valor} value={valor}>
-                  {rotulo}
-                </option>
-              ))}
-            </Select>
-          </Field>
-          <Field label="Número de funcionários" required>
-            <Input
-              type="number"
-              value={String(novo.numeroFuncionarios)}
-              onChange={(_, d) => setNovo({ ...novo, numeroFuncionarios: Number(d.value) })}
-            />
-          </Field>
-          <Field label="Titulares" required>
-            <Input
-              type="number"
-              value={String(novo.numeroTitulares)}
-              onChange={(_, d) => setNovo({ ...novo, numeroTitulares: Number(d.value) })}
-            />
-          </Field>
-          <Field label="Suplentes" required>
-            <Input
-              type="number"
-              value={String(novo.numeroSuplentes)}
-              onChange={(_, d) => setNovo({ ...novo, numeroSuplentes: Number(d.value) })}
-            />
-          </Field>
-          <Field label="Observações">
-            <Textarea value={novo.observacoes ?? ''} onChange={(_, d) => setNovo({ ...novo, observacoes: d.value })} />
-          </Field>
+        <div className={`${estilos.sectionTitle} ${estilos.sectionTitleFirst}`}>Dados do Dimensionamento</div>
+        <div className={estilos.formGrid}>
+          <div className={estilos.col4}>
+            <Field label="Obra" required>
+              <Select value={novo.obraId} onChange={(_, d) => setNovo({ ...novo, obraId: d.value })}>
+                <option value="">Selecione</option>
+                {obras.map((obra) => (
+                  <option key={obra.id} value={obra.id}>
+                    {obra.nome}
+                  </option>
+                ))}
+              </Select>
+            </Field>
+          </div>
+          <div className={estilos.col2}>
+            <Field label="CNAE" required>
+              <Input value={novo.cnae} onChange={(_, d) => setNovo({ ...novo, cnae: d.value })} />
+            </Field>
+          </div>
+          <div className={estilos.col3}>
+            <Field label="Grau de risco">
+              <Select value={String(novo.grauRisco)} onChange={(_, d) => setNovo({ ...novo, grauRisco: Number(d.value) })}>
+                {Object.entries(nivelRiscoLabel).map(([valor, rotulo]) => (
+                  <option key={valor} value={valor}>
+                    {rotulo}
+                  </option>
+                ))}
+              </Select>
+            </Field>
+          </div>
+          <div className={estilos.col3}>
+            <Field label="Número de funcionários" required>
+              <Input
+                type="number"
+                value={String(novo.numeroFuncionarios)}
+                onChange={(_, d) => setNovo({ ...novo, numeroFuncionarios: Number(d.value) })}
+              />
+            </Field>
+          </div>
+          <div className={estilos.col2}>
+            <Field label="Titulares" required>
+              <Input
+                type="number"
+                value={String(novo.numeroTitulares)}
+                onChange={(_, d) => setNovo({ ...novo, numeroTitulares: Number(d.value) })}
+              />
+            </Field>
+          </div>
+          <div className={estilos.col2}>
+            <Field label="Suplentes" required>
+              <Input
+                type="number"
+                value={String(novo.numeroSuplentes)}
+                onChange={(_, d) => setNovo({ ...novo, numeroSuplentes: Number(d.value) })}
+              />
+            </Field>
+          </div>
+          <div className={estilos.col12}>
+            <Field label="Observações">
+              <Textarea value={novo.observacoes ?? ''} onChange={(_, d) => setNovo({ ...novo, observacoes: d.value })} />
+            </Field>
+          </div>
         </div>
         <div className={estilos.formActions}>
           <Button appearance="primary" icon={<Add24Regular />} onClick={criar} disabled={carregando}>

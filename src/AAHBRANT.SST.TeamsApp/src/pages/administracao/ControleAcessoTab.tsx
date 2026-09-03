@@ -336,30 +336,37 @@ export function ControleAcessoTab() {
             <Text weight="semibold">Usuários cadastrados</Text>
           </div>
 
-          <div className={estilos.form}>
-            <Field label="Nome">
-              <Input value={novoUsuario.nome} onChange={(_, d) => setNovoUsuario({ ...novoUsuario, nome: d.value })} />
-            </Field>
-            <Field label="E-mail">
-              <Input
-                type="email"
-                value={novoUsuario.email}
-                onChange={(_, d) => setNovoUsuario({ ...novoUsuario, email: d.value })}
-              />
-            </Field>
-            <Field label="Funcionário vinculado (opcional)">
-              <Select
-                value={novoUsuario.trabalhadorId ?? ''}
-                onChange={(_, d) => setNovoUsuario({ ...novoUsuario, trabalhadorId: d.value })}
-              >
-                <option value="">Nenhum</option>
-                {trabalhadores.map((t) => (
-                  <option key={t.id} value={t.id}>
-                    {t.nome}
-                  </option>
-                ))}
-              </Select>
-            </Field>
+          <div className={`${estilos.sectionTitle} ${estilos.sectionTitleFirst}`}>Novo Usuário</div>
+          <div className={estilos.formGrid}>
+            <div className={estilos.col4}>
+              <Field label="Nome">
+                <Input value={novoUsuario.nome} onChange={(_, d) => setNovoUsuario({ ...novoUsuario, nome: d.value })} />
+              </Field>
+            </div>
+            <div className={estilos.col4}>
+              <Field label="E-mail">
+                <Input
+                  type="email"
+                  value={novoUsuario.email}
+                  onChange={(_, d) => setNovoUsuario({ ...novoUsuario, email: d.value })}
+                />
+              </Field>
+            </div>
+            <div className={estilos.col4}>
+              <Field label="Funcionário vinculado (opcional)">
+                <Select
+                  value={novoUsuario.trabalhadorId ?? ''}
+                  onChange={(_, d) => setNovoUsuario({ ...novoUsuario, trabalhadorId: d.value })}
+                >
+                  <option value="">Nenhum</option>
+                  {trabalhadores.map((t) => (
+                    <option key={t.id} value={t.id}>
+                      {t.nome}
+                    </option>
+                  ))}
+                </Select>
+              </Field>
+            </div>
           </div>
           <div className={estilos.formActions}>
             <Button appearance="primary" icon={<Add24Regular />} onClick={criarUsuario} disabled={carregando}>
@@ -430,19 +437,24 @@ export function ControleAcessoTab() {
                 <Text weight="semibold">Acessos de {usuarioSelecionado.nome}</Text>
               </div>
 
-              <div className={estilos.form}>
-                <Field label="Nome">
-                  <Input value={nomeEdicao} onChange={(_, d) => setNomeEdicao(d.value)} />
-                </Field>
-                <Field label="Status">
-                  <Select value={statusEdicao} onChange={(_, d) => setStatusEdicao(Number(d.value))}>
-                    {Object.entries(statusUsuarioLabel).map(([valor, rotulo]) => (
-                      <option key={valor} value={valor}>
-                        {rotulo}
-                      </option>
-                    ))}
-                  </Select>
-                </Field>
+              <div className={`${estilos.sectionTitle} ${estilos.sectionTitleFirst}`}>Editar Usuário</div>
+              <div className={estilos.formGrid}>
+                <div className={estilos.col6}>
+                  <Field label="Nome">
+                    <Input value={nomeEdicao} onChange={(_, d) => setNomeEdicao(d.value)} />
+                  </Field>
+                </div>
+                <div className={estilos.col3}>
+                  <Field label="Status">
+                    <Select value={statusEdicao} onChange={(_, d) => setStatusEdicao(Number(d.value))}>
+                      {Object.entries(statusUsuarioLabel).map(([valor, rotulo]) => (
+                        <option key={valor} value={valor}>
+                          {rotulo}
+                        </option>
+                      ))}
+                    </Select>
+                  </Field>
+                </div>
               </div>
               <div className={estilos.formActions}>
                 <Button appearance="primary" icon={<Save24Regular />} onClick={salvarEdicaoUsuario}>
@@ -479,27 +491,32 @@ export function ControleAcessoTab() {
                 </TableBody>
               </Table>
 
-              <div className={estilos.form} style={{ marginTop: 12 }}>
-                <Field label="Perfil">
-                  <Select value={perfilParaAtribuir} onChange={(_, d) => setPerfilParaAtribuir(d.value)}>
-                    <option value="">Selecione</option>
-                    {perfis.map((p) => (
-                      <option key={p.id} value={p.id}>
-                        {p.nome}
-                      </option>
-                    ))}
-                  </Select>
-                </Field>
-                <Field label="Obra (vazio = escopo global/unidade)">
-                  <Select value={obraParaAtribuir} onChange={(_, d) => setObraParaAtribuir(d.value)}>
-                    <option value="">Todas as obras (global)</option>
-                    {obras.map((o) => (
-                      <option key={o.id} value={o.id}>
-                        {o.nome}
-                      </option>
-                    ))}
-                  </Select>
-                </Field>
+              <div className={estilos.sectionTitle}>Atribuir Perfil</div>
+              <div className={estilos.formGrid}>
+                <div className={estilos.col4}>
+                  <Field label="Perfil">
+                    <Select value={perfilParaAtribuir} onChange={(_, d) => setPerfilParaAtribuir(d.value)}>
+                      <option value="">Selecione</option>
+                      {perfis.map((p) => (
+                        <option key={p.id} value={p.id}>
+                          {p.nome}
+                        </option>
+                      ))}
+                    </Select>
+                  </Field>
+                </div>
+                <div className={estilos.col5}>
+                  <Field label="Obra (vazio = escopo global/unidade)">
+                    <Select value={obraParaAtribuir} onChange={(_, d) => setObraParaAtribuir(d.value)}>
+                      <option value="">Todas as obras (global)</option>
+                      {obras.map((o) => (
+                        <option key={o.id} value={o.id}>
+                          {o.nome}
+                        </option>
+                      ))}
+                    </Select>
+                  </Field>
+                </div>
               </div>
               <div className={estilos.formActions}>
                 <Button
@@ -523,16 +540,21 @@ export function ControleAcessoTab() {
               <Text weight="semibold">Perfis de acesso</Text>
             </div>
 
-            <div className={estilos.form}>
-              <Field label="Nome do perfil personalizado">
-                <Input value={novoPerfil.nome} onChange={(_, d) => setNovoPerfil({ ...novoPerfil, nome: d.value })} />
-              </Field>
-              <Field label="Descrição">
-                <Textarea
-                  value={novoPerfil.descricao ?? ''}
-                  onChange={(_, d) => setNovoPerfil({ ...novoPerfil, descricao: d.value })}
-                />
-              </Field>
+            <div className={`${estilos.sectionTitle} ${estilos.sectionTitleFirst}`}>Novo Perfil</div>
+            <div className={estilos.formGrid}>
+              <div className={estilos.col4}>
+                <Field label="Nome do perfil personalizado">
+                  <Input value={novoPerfil.nome} onChange={(_, d) => setNovoPerfil({ ...novoPerfil, nome: d.value })} />
+                </Field>
+              </div>
+              <div className={estilos.col12}>
+                <Field label="Descrição">
+                  <Textarea
+                    value={novoPerfil.descricao ?? ''}
+                    onChange={(_, d) => setNovoPerfil({ ...novoPerfil, descricao: d.value })}
+                  />
+                </Field>
+              </div>
             </div>
             <div className={estilos.formActions}>
               <Button

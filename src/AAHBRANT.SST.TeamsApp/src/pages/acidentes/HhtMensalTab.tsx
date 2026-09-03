@@ -95,41 +95,50 @@ export function HhtMensalTab({ obras }: { obras: Obra[] }) {
         <div className={estilos.toolbar}>
           <Text weight="semibold">Lançar HHT do mês</Text>
         </div>
-        <div className={estilos.form}>
-          <Field label="Obra" required>
-            <Select value={novo.obraId} onChange={(_, d) => setNovo({ ...novo, obraId: d.value })}>
-              <option value="">Selecione</option>
-              {obras.map((obra) => (
-                <option key={obra.id} value={obra.id}>
-                  {obra.nome}
-                </option>
-              ))}
-            </Select>
-          </Field>
-          <Field label="Ano" required>
-            <Input
-              type="number"
-              value={String(novo.ano)}
-              onChange={(_, d) => setNovo({ ...novo, ano: Number(d.value) || novo.ano })}
-            />
-          </Field>
-          <Field label="Mês" required>
-            <Select value={String(novo.mes)} onChange={(_, d) => setNovo({ ...novo, mes: Number(d.value) })}>
-              {nomesMes.map((nome, indice) => (
-                <option key={nome} value={indice + 1}>
-                  {nome}
-                </option>
-              ))}
-            </Select>
-          </Field>
-          <Field label="Horas-Homem Trabalhadas (HHT)" required>
-            <Input
-              type="number"
-              min={0}
-              value={String(novo.horasHomemTrabalhadas)}
-              onChange={(_, d) => setNovo({ ...novo, horasHomemTrabalhadas: Number(d.value) || 0 })}
-            />
-          </Field>
+        <div className={`${estilos.sectionTitle} ${estilos.sectionTitleFirst}`}>Dados do Lançamento</div>
+        <div className={estilos.formGrid}>
+          <div className={estilos.col4}>
+            <Field label="Obra" required>
+              <Select value={novo.obraId} onChange={(_, d) => setNovo({ ...novo, obraId: d.value })}>
+                <option value="">Selecione</option>
+                {obras.map((obra) => (
+                  <option key={obra.id} value={obra.id}>
+                    {obra.nome}
+                  </option>
+                ))}
+              </Select>
+            </Field>
+          </div>
+          <div className={estilos.col2}>
+            <Field label="Ano" required>
+              <Input
+                type="number"
+                value={String(novo.ano)}
+                onChange={(_, d) => setNovo({ ...novo, ano: Number(d.value) || novo.ano })}
+              />
+            </Field>
+          </div>
+          <div className={estilos.col3}>
+            <Field label="Mês" required>
+              <Select value={String(novo.mes)} onChange={(_, d) => setNovo({ ...novo, mes: Number(d.value) })}>
+                {nomesMes.map((nome, indice) => (
+                  <option key={nome} value={indice + 1}>
+                    {nome}
+                  </option>
+                ))}
+              </Select>
+            </Field>
+          </div>
+          <div className={estilos.col3}>
+            <Field label="Horas-Homem Trabalhadas (HHT)" required>
+              <Input
+                type="number"
+                min={0}
+                value={String(novo.horasHomemTrabalhadas)}
+                onChange={(_, d) => setNovo({ ...novo, horasHomemTrabalhadas: Number(d.value) || 0 })}
+              />
+            </Field>
+          </div>
         </div>
         <div className={estilos.formActions}>
           <Button appearance="primary" icon={<AddCircle24Regular />} onClick={criar} disabled={carregando}>

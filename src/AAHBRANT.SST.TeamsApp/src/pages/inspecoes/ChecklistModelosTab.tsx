@@ -160,51 +160,61 @@ export function ChecklistModelosTab() {
 
       {erro && <Text className={estilos.erro}>{erro}</Text>}
 
-      <div className={estilos.form}>
-        <Field label="Nome do checklist">
-          <Input value={nome} onChange={(_, d) => setNome(d.value)} disabled={!!versionandoId} />
-        </Field>
-        <Field label="Tipo de inspeção">
-          <Select
-            value={String(tipoInspecao)}
-            onChange={(_, d) => setTipoInspecao(Number(d.value))}
-            disabled={!!versionandoId}
-          >
-            {Object.entries(tipoInspecaoLabel).map(([valor, rotulo]) => (
-              <option key={valor} value={valor}>
-                {rotulo}
-              </option>
-            ))}
-          </Select>
-        </Field>
+      <div className={`${estilos.sectionTitle} ${estilos.sectionTitleFirst}`}>Dados do Checklist</div>
+      <div className={estilos.formGrid}>
+        <div className={estilos.col6}>
+          <Field label="Nome do checklist">
+            <Input value={nome} onChange={(_, d) => setNome(d.value)} disabled={!!versionandoId} />
+          </Field>
+        </div>
+        <div className={estilos.col6}>
+          <Field label="Tipo de inspeção">
+            <Select
+              value={String(tipoInspecao)}
+              onChange={(_, d) => setTipoInspecao(Number(d.value))}
+              disabled={!!versionandoId}
+            >
+              {Object.entries(tipoInspecaoLabel).map(([valor, rotulo]) => (
+                <option key={valor} value={valor}>
+                  {rotulo}
+                </option>
+              ))}
+            </Select>
+          </Field>
+        </div>
       </div>
 
-      <Text weight="semibold" style={{ marginBottom: 8, display: 'block' }}>
-        Itens do checklist
-      </Text>
-
-      <div className={estilos.form}>
-        <Field label="Descrição do item">
-          <Input
-            value={itemAtual.descricao}
-            onChange={(_, d) => setItemAtual({ ...itemAtual, descricao: d.value })}
+      <div className={estilos.sectionTitle}>Itens do Checklist</div>
+      <div className={estilos.formGrid}>
+        <div className={estilos.col6}>
+          <Field label="Descrição do item">
+            <Input
+              value={itemAtual.descricao}
+              onChange={(_, d) => setItemAtual({ ...itemAtual, descricao: d.value })}
+            />
+          </Field>
+        </div>
+        <div className={estilos.col2}>
+          <Checkbox
+            label="Exige fotografia"
+            checked={itemAtual.exigeFotografia}
+            onChange={(_, d) => setItemAtual({ ...itemAtual, exigeFotografia: !!d.checked })}
           />
-        </Field>
-        <Checkbox
-          label="Exige fotografia"
-          checked={itemAtual.exigeFotografia}
-          onChange={(_, d) => setItemAtual({ ...itemAtual, exigeFotografia: !!d.checked })}
-        />
-        <Checkbox
-          label="Exige responsável"
-          checked={itemAtual.exigeResponsavel}
-          onChange={(_, d) => setItemAtual({ ...itemAtual, exigeResponsavel: !!d.checked })}
-        />
-        <Checkbox
-          label="Exige prazo"
-          checked={itemAtual.exigePrazo}
-          onChange={(_, d) => setItemAtual({ ...itemAtual, exigePrazo: !!d.checked })}
-        />
+        </div>
+        <div className={estilos.col2}>
+          <Checkbox
+            label="Exige responsável"
+            checked={itemAtual.exigeResponsavel}
+            onChange={(_, d) => setItemAtual({ ...itemAtual, exigeResponsavel: !!d.checked })}
+          />
+        </div>
+        <div className={estilos.col2}>
+          <Checkbox
+            label="Exige prazo"
+            checked={itemAtual.exigePrazo}
+            onChange={(_, d) => setItemAtual({ ...itemAtual, exigePrazo: !!d.checked })}
+          />
+        </div>
       </div>
 
       <div className={estilos.formActions}>

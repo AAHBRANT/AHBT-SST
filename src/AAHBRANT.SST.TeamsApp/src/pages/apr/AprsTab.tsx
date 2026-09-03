@@ -136,63 +136,80 @@ export function AprsTab() {
 
       {erro && <Text className={estilos.erro}>{erro}</Text>}
 
-      <div className={estilos.form}>
-        <Field label="Nº APR">
-          <Input value={novaApr.numeroApr ?? ''} onChange={(_, d) => setNovaApr({ ...novaApr, numeroApr: d.value })} />
-        </Field>
-        <Field label="Atividade">
-          <Select
-            value={novaApr.atividadeId}
-            onChange={(_, d) => setNovaApr({ ...novaApr, atividadeId: d.value })}
-          >
-            <option value="">Selecione</option>
-            {atividades.map((atividade) => (
-              <option key={atividade.id} value={atividade.id}>
-                {atividade.nome}
-              </option>
-            ))}
-          </Select>
-        </Field>
-        <Field label="Local / Frente">
-          <Input value={novaApr.local} onChange={(_, d) => setNovaApr({ ...novaApr, local: d.value })} />
-        </Field>
-        <Field label="Máquinas / Equip.">
-          <Input
-            value={novaApr.maquinasEquipamentos ?? ''}
-            onChange={(_, d) => setNovaApr({ ...novaApr, maquinasEquipamentos: d.value })}
-          />
-        </Field>
-        <Field label="PGR / Procedimento ref.">
-          <Input
-            value={novaApr.pgrReferencia ?? ''}
-            onChange={(_, d) => setNovaApr({ ...novaApr, pgrReferencia: d.value })}
-          />
-        </Field>
-        <Field label="Equipe">
-          <Select
-            value={novaApr.equipeId ?? ''}
-            onChange={(_, d) => setNovaApr({ ...novaApr, equipeId: d.value || null })}
-          >
-            <option value="">Nenhuma</option>
-            {equipesDaObra.map((equipe) => (
-              <option key={equipe.id} value={equipe.id}>
-                {equipe.nome}
-              </option>
-            ))}
-          </Select>
-        </Field>
-        <Field label="Data">
-          <CampoData
-            value={novaApr.data}
-            onChange={(_, d) => setNovaApr({ ...novaApr, data: d.value })}
-          />
-        </Field>
-        <Field label="Validade">
-          <CampoData
-            value={novaApr.validade ?? ''}
-            onChange={(_, d) => setNovaApr({ ...novaApr, validade: d.value || null })}
-          />
-        </Field>
+      <div className={`${estilos.sectionTitle} ${estilos.sectionTitleFirst}`}>Dados da APR</div>
+      <div className={estilos.formGrid}>
+        <div className={estilos.col2}>
+          <Field label="Nº APR">
+            <Input value={novaApr.numeroApr ?? ''} onChange={(_, d) => setNovaApr({ ...novaApr, numeroApr: d.value })} />
+          </Field>
+        </div>
+        <div className={estilos.col4}>
+          <Field label="Atividade">
+            <Select
+              value={novaApr.atividadeId}
+              onChange={(_, d) => setNovaApr({ ...novaApr, atividadeId: d.value })}
+            >
+              <option value="">Selecione</option>
+              {atividades.map((atividade) => (
+                <option key={atividade.id} value={atividade.id}>
+                  {atividade.nome}
+                </option>
+              ))}
+            </Select>
+          </Field>
+        </div>
+        <div className={estilos.col3}>
+          <Field label="Local / Frente">
+            <Input value={novaApr.local} onChange={(_, d) => setNovaApr({ ...novaApr, local: d.value })} />
+          </Field>
+        </div>
+        <div className={estilos.col3}>
+          <Field label="Máquinas / Equip.">
+            <Input
+              value={novaApr.maquinasEquipamentos ?? ''}
+              onChange={(_, d) => setNovaApr({ ...novaApr, maquinasEquipamentos: d.value })}
+            />
+          </Field>
+        </div>
+        <div className={estilos.col3}>
+          <Field label="PGR / Procedimento ref.">
+            <Input
+              value={novaApr.pgrReferencia ?? ''}
+              onChange={(_, d) => setNovaApr({ ...novaApr, pgrReferencia: d.value })}
+            />
+          </Field>
+        </div>
+        <div className={estilos.col3}>
+          <Field label="Equipe">
+            <Select
+              value={novaApr.equipeId ?? ''}
+              onChange={(_, d) => setNovaApr({ ...novaApr, equipeId: d.value || null })}
+            >
+              <option value="">Nenhuma</option>
+              {equipesDaObra.map((equipe) => (
+                <option key={equipe.id} value={equipe.id}>
+                  {equipe.nome}
+                </option>
+              ))}
+            </Select>
+          </Field>
+        </div>
+        <div className={estilos.col3}>
+          <Field label="Data">
+            <CampoData
+              value={novaApr.data}
+              onChange={(_, d) => setNovaApr({ ...novaApr, data: d.value })}
+            />
+          </Field>
+        </div>
+        <div className={estilos.col3}>
+          <Field label="Validade">
+            <CampoData
+              value={novaApr.validade ?? ''}
+              onChange={(_, d) => setNovaApr({ ...novaApr, validade: d.value || null })}
+            />
+          </Field>
+        </div>
       </div>
 
       <Field label="Responsáveis" style={{ marginBottom: 16 }}>

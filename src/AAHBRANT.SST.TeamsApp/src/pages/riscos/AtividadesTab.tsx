@@ -89,32 +89,39 @@ export function AtividadesTab() {
 
       {erro && <Text className={estilos.erro}>{erro}</Text>}
 
-      <div className={estilos.form}>
-        <Field label="Obra">
-          <Select
-            value={novaAtividade.obraId}
-            onChange={(_, d) => setNovaAtividade({ ...novaAtividade, obraId: d.value })}
-          >
-            <option value="">Selecione</option>
-            {obras.map((obra) => (
-              <option key={obra.id} value={obra.id}>
-                {obra.nome}
-              </option>
-            ))}
-          </Select>
-        </Field>
-        <Field label="Nome da atividade">
-          <Input
-            value={novaAtividade.nome}
-            onChange={(_, d) => setNovaAtividade({ ...novaAtividade, nome: d.value })}
-          />
-        </Field>
-        <Field label="Descrição">
-          <Input
-            value={novaAtividade.descricao ?? ''}
-            onChange={(_, d) => setNovaAtividade({ ...novaAtividade, descricao: d.value })}
-          />
-        </Field>
+      <div className={`${estilos.sectionTitle} ${estilos.sectionTitleFirst}`}>Dados da Atividade</div>
+      <div className={estilos.formGrid}>
+        <div className={estilos.col3}>
+          <Field label="Obra">
+            <Select
+              value={novaAtividade.obraId}
+              onChange={(_, d) => setNovaAtividade({ ...novaAtividade, obraId: d.value })}
+            >
+              <option value="">Selecione</option>
+              {obras.map((obra) => (
+                <option key={obra.id} value={obra.id}>
+                  {obra.nome}
+                </option>
+              ))}
+            </Select>
+          </Field>
+        </div>
+        <div className={estilos.col4}>
+          <Field label="Nome da atividade">
+            <Input
+              value={novaAtividade.nome}
+              onChange={(_, d) => setNovaAtividade({ ...novaAtividade, nome: d.value })}
+            />
+          </Field>
+        </div>
+        <div className={estilos.col5}>
+          <Field label="Descrição">
+            <Input
+              value={novaAtividade.descricao ?? ''}
+              onChange={(_, d) => setNovaAtividade({ ...novaAtividade, descricao: d.value })}
+            />
+          </Field>
+        </div>
       </div>
       <div className={estilos.formActions}>
         <Button appearance="primary" icon={<Add24Regular />} onClick={criar} disabled={carregando}>

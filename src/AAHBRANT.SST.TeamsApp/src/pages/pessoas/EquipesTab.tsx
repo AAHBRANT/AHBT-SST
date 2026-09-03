@@ -95,36 +95,43 @@ export function EquipesTab() {
 
       {erro && <Text className={estilos.erro}>{erro}</Text>}
 
-      <div className={estilos.form}>
-        <Field label="Setor">
-          <Select
-            value={novaEquipe.setorId}
-            onChange={(_, d) => setNovaEquipe({ ...novaEquipe, setorId: d.value })}
-          >
-            <option value="">Selecione o setor</option>
-            {setores.map((s) => (
-              <option key={s.id} value={s.id}>
-                {s.obraNome} · {s.nome}
-              </option>
-            ))}
-          </Select>
-        </Field>
-        <Field label="Nome da equipe">
-          <Input value={novaEquipe.nome} onChange={(_, d) => setNovaEquipe({ ...novaEquipe, nome: d.value })} />
-        </Field>
-        <Field label="Encarregado (opcional)">
-          <Select
-            value={novaEquipe.encarregadoId ?? ''}
-            onChange={(_, d) => setNovaEquipe({ ...novaEquipe, encarregadoId: d.value || null })}
-          >
-            <option value="">Sem encarregado definido</option>
-            {trabalhadores.map((t) => (
-              <option key={t.id} value={t.id}>
-                {t.nome}
-              </option>
-            ))}
-          </Select>
-        </Field>
+      <div className={`${estilos.sectionTitle} ${estilos.sectionTitleFirst}`}>Dados da Equipe</div>
+      <div className={estilos.formGrid}>
+        <div className={estilos.col5}>
+          <Field label="Setor">
+            <Select
+              value={novaEquipe.setorId}
+              onChange={(_, d) => setNovaEquipe({ ...novaEquipe, setorId: d.value })}
+            >
+              <option value="">Selecione o setor</option>
+              {setores.map((s) => (
+                <option key={s.id} value={s.id}>
+                  {s.obraNome} · {s.nome}
+                </option>
+              ))}
+            </Select>
+          </Field>
+        </div>
+        <div className={estilos.col4}>
+          <Field label="Nome da equipe">
+            <Input value={novaEquipe.nome} onChange={(_, d) => setNovaEquipe({ ...novaEquipe, nome: d.value })} />
+          </Field>
+        </div>
+        <div className={estilos.col3}>
+          <Field label="Encarregado (opcional)">
+            <Select
+              value={novaEquipe.encarregadoId ?? ''}
+              onChange={(_, d) => setNovaEquipe({ ...novaEquipe, encarregadoId: d.value || null })}
+            >
+              <option value="">Sem encarregado definido</option>
+              {trabalhadores.map((t) => (
+                <option key={t.id} value={t.id}>
+                  {t.nome}
+                </option>
+              ))}
+            </Select>
+          </Field>
+        </div>
       </div>
       <div className={estilos.formActions}>
         <Button appearance="primary" icon={<Add24Regular />} onClick={criar} disabled={carregando}>

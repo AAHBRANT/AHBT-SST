@@ -82,25 +82,32 @@ export function RiscosCriticosPtTab({
 
       {erro && <Text className={estilos.erro}>{erro}</Text>}
 
-      <div className={estilos.form}>
-        <Field label="Risco / condição">
-          <Input
-            value={novoRisco.riscoCondicao}
-            onChange={(_, d) => setNovoRisco({ ...novoRisco, riscoCondicao: d.value })}
-          />
-        </Field>
-        <Field label="Controle complementar">
-          <Input
-            value={novoRisco.controleComplementar ?? ''}
-            onChange={(_, d) => setNovoRisco({ ...novoRisco, controleComplementar: d.value })}
-          />
-        </Field>
-        <Field label="Responsável / evidência">
-          <Input
-            value={novoRisco.responsavelEvidencia ?? ''}
-            onChange={(_, d) => setNovoRisco({ ...novoRisco, responsavelEvidencia: d.value })}
-          />
-        </Field>
+      <div className={`${estilos.sectionTitle} ${estilos.sectionTitleFirst}`}>Dados do Risco Crítico</div>
+      <div className={estilos.formGrid}>
+        <div className={estilos.col4}>
+          <Field label="Risco / condição">
+            <Input
+              value={novoRisco.riscoCondicao}
+              onChange={(_, d) => setNovoRisco({ ...novoRisco, riscoCondicao: d.value })}
+            />
+          </Field>
+        </div>
+        <div className={estilos.col4}>
+          <Field label="Controle complementar">
+            <Input
+              value={novoRisco.controleComplementar ?? ''}
+              onChange={(_, d) => setNovoRisco({ ...novoRisco, controleComplementar: d.value })}
+            />
+          </Field>
+        </div>
+        <div className={estilos.col4}>
+          <Field label="Responsável / evidência">
+            <Input
+              value={novoRisco.responsavelEvidencia ?? ''}
+              onChange={(_, d) => setNovoRisco({ ...novoRisco, responsavelEvidencia: d.value })}
+            />
+          </Field>
+        </div>
       </div>
 
       <div className={estilos.formActions}>

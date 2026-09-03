@@ -86,30 +86,39 @@ export function CursosTreinamentoTab() {
 
       {erro && <Text className={estilos.erro}>{erro}</Text>}
 
-      <div className={estilos.form}>
-        <Field label="Nome">
-          <Input value={novoCurso.nome} onChange={(_, d) => setNovoCurso({ ...novoCurso, nome: d.value })} />
-        </Field>
-        <Field label="Norma de referência">
-          <Input
-            value={novoCurso.normaReferencia ?? ''}
-            onChange={(_, d) => setNovoCurso({ ...novoCurso, normaReferencia: d.value })}
-          />
-        </Field>
-        <Field label="Carga horária mínima (h)">
-          <Input
-            type="number"
-            value={String(novoCurso.cargaHorariaMinima)}
-            onChange={(_, d) => setNovoCurso({ ...novoCurso, cargaHorariaMinima: Number(d.value) })}
-          />
-        </Field>
-        <Field label="Validade (meses)">
-          <Input
-            type="number"
-            value={String(novoCurso.validadeEmMeses)}
-            onChange={(_, d) => setNovoCurso({ ...novoCurso, validadeEmMeses: Number(d.value) })}
-          />
-        </Field>
+      <div className={`${estilos.sectionTitle} ${estilos.sectionTitleFirst}`}>Dados do Curso</div>
+      <div className={estilos.formGrid}>
+        <div className={estilos.col5}>
+          <Field label="Nome">
+            <Input value={novoCurso.nome} onChange={(_, d) => setNovoCurso({ ...novoCurso, nome: d.value })} />
+          </Field>
+        </div>
+        <div className={estilos.col3}>
+          <Field label="Norma de referência">
+            <Input
+              value={novoCurso.normaReferencia ?? ''}
+              onChange={(_, d) => setNovoCurso({ ...novoCurso, normaReferencia: d.value })}
+            />
+          </Field>
+        </div>
+        <div className={estilos.col2}>
+          <Field label="Carga horária mínima (h)">
+            <Input
+              type="number"
+              value={String(novoCurso.cargaHorariaMinima)}
+              onChange={(_, d) => setNovoCurso({ ...novoCurso, cargaHorariaMinima: Number(d.value) })}
+            />
+          </Field>
+        </div>
+        <div className={estilos.col2}>
+          <Field label="Validade (meses)">
+            <Input
+              type="number"
+              value={String(novoCurso.validadeEmMeses)}
+              onChange={(_, d) => setNovoCurso({ ...novoCurso, validadeEmMeses: Number(d.value) })}
+            />
+          </Field>
+        </div>
       </div>
       <div className={estilos.formActions}>
         <Button appearance="primary" icon={<Add24Regular />} onClick={criar} disabled={carregando}>

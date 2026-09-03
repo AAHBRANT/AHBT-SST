@@ -152,51 +152,64 @@ export function TreinamentosTab({ trabalhadorId }: { trabalhadorId: string }) {
 
       {erro && <Text className={estilos.erro}>{erro}</Text>}
 
-      <div className={estilos.form}>
-        <Field label="Curso">
-          <Select
-            value={novoTreinamento.cursoTreinamentoId}
-            onChange={(_, d) => setNovoTreinamento({ ...novoTreinamento, cursoTreinamentoId: d.value })}
-          >
-            <option value="">Selecione</option>
-            {cursos.map((c) => (
-              <option key={c.id} value={c.id}>
-                {c.nome}
-              </option>
-            ))}
-          </Select>
-        </Field>
-        <Field label="Data de realização">
-          <CampoData
-            value={novoTreinamento.dataRealizacao}
-            onChange={(_, d) => setNovoTreinamento({ ...novoTreinamento, dataRealizacao: d.value })}
-          />
-        </Field>
-        <Field label="Validade">
-          <CampoData
-            value={novoTreinamento.dataValidade}
-            onChange={(_, d) => setNovoTreinamento({ ...novoTreinamento, dataValidade: d.value })}
-          />
-        </Field>
-        <Field label="Carga horária realizada (h)">
-          <Input
-            type="number"
-            value={String(novoTreinamento.cargaHorariaRealizada)}
-            onChange={(_, d) => setNovoTreinamento({ ...novoTreinamento, cargaHorariaRealizada: Number(d.value) })}
-          />
-        </Field>
-        <Field label="Instituição / instrutor">
-          <Input
-            value={novoTreinamento.instituicaoInstrutor ?? ''}
-            onChange={(_, d) => setNovoTreinamento({ ...novoTreinamento, instituicaoInstrutor: d.value })}
-          />
-        </Field>
-        <Field label="Número do certificado">
-          <Input
-            value={novoTreinamento.numeroCertificado ?? ''}
-            onChange={(_, d) => setNovoTreinamento({ ...novoTreinamento, numeroCertificado: d.value })}
-          />
-        </Field>
+      <div className={`${estilos.sectionTitle} ${estilos.sectionTitleFirst}`}>Dados do Treinamento</div>
+      <div className={estilos.formGrid}>
+        <div className={estilos.col4}>
+          <Field label="Curso">
+            <Select
+              value={novoTreinamento.cursoTreinamentoId}
+              onChange={(_, d) => setNovoTreinamento({ ...novoTreinamento, cursoTreinamentoId: d.value })}
+            >
+              <option value="">Selecione</option>
+              {cursos.map((c) => (
+                <option key={c.id} value={c.id}>
+                  {c.nome}
+                </option>
+              ))}
+            </Select>
+          </Field>
+        </div>
+        <div className={estilos.col3}>
+          <Field label="Data de realização">
+            <CampoData
+              value={novoTreinamento.dataRealizacao}
+              onChange={(_, d) => setNovoTreinamento({ ...novoTreinamento, dataRealizacao: d.value })}
+            />
+          </Field>
+        </div>
+        <div className={estilos.col3}>
+          <Field label="Validade">
+            <CampoData
+              value={novoTreinamento.dataValidade}
+              onChange={(_, d) => setNovoTreinamento({ ...novoTreinamento, dataValidade: d.value })}
+            />
+          </Field>
+        </div>
+        <div className={estilos.col2}>
+          <Field label="Carga horária realizada (h)">
+            <Input
+              type="number"
+              value={String(novoTreinamento.cargaHorariaRealizada)}
+              onChange={(_, d) => setNovoTreinamento({ ...novoTreinamento, cargaHorariaRealizada: Number(d.value) })}
+            />
+          </Field>
+        </div>
+        <div className={estilos.col6}>
+          <Field label="Instituição / instrutor">
+            <Input
+              value={novoTreinamento.instituicaoInstrutor ?? ''}
+              onChange={(_, d) => setNovoTreinamento({ ...novoTreinamento, instituicaoInstrutor: d.value })}
+            />
+          </Field>
+        </div>
+        <div className={estilos.col6}>
+          <Field label="Número do certificado">
+            <Input
+              value={novoTreinamento.numeroCertificado ?? ''}
+              onChange={(_, d) => setNovoTreinamento({ ...novoTreinamento, numeroCertificado: d.value })}
+            />
+          </Field>
+        </div>
       </div>
       <div className={estilos.formActions}>
         <Button appearance="primary" icon={<Add24Regular />} onClick={criar} disabled={carregando}>

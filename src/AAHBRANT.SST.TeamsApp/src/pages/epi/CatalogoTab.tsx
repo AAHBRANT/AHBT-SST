@@ -134,43 +134,56 @@ export function CatalogoTab() {
 
       {erro && <Text className={estilos.erro}>{erro}</Text>}
 
-      <div className={estilos.form}>
-        <Field label="Nome">
-          <Input value={novoEpi.nome} onChange={(_, d) => setNovoEpi({ ...novoEpi, nome: d.value })} />
-        </Field>
-        <Field label="Fabricante">
-          <Input
-            value={novoEpi.fabricante ?? ''}
-            onChange={(_, d) => setNovoEpi({ ...novoEpi, fabricante: d.value })}
-          />
-        </Field>
-        <Field label="Nº do CA">
-          <Input
-            value={novoEpi.certificadoAprovacaoNumero ?? ''}
-            onChange={(_, d) => setNovoEpi({ ...novoEpi, certificadoAprovacaoNumero: d.value })}
-          />
-        </Field>
-        <Field label="Validade do CA">
-          <CampoData
-            value={novoEpi.certificadoAprovacaoValidade ?? ''}
-            onChange={(_, d) => setNovoEpi({ ...novoEpi, certificadoAprovacaoValidade: d.value })}
-          />
-        </Field>
-        <Field label="Vida útil (meses)">
-          <Input
-            type="number"
-            value={String(novoEpi.vidaUtilEmMeses)}
-            onChange={(_, d) => setNovoEpi({ ...novoEpi, vidaUtilEmMeses: Number(d.value) })}
-          />
-        </Field>
-        <Field label="Foto do EPI">
-          <SeletorFotoCamera
-            rotulo={fotoNovoEpi ? fotoNovoEpi.name : 'Tirar foto ou escolher arquivo'}
-            tiposAceitos="image/jpeg,image/png"
-            aoSelecionarArquivo={(arquivo) => setFotoNovoEpi(arquivo)}
-            aoErroValidacao={setErro}
-          />
-        </Field>
+      <div className={`${estilos.sectionTitle} ${estilos.sectionTitleFirst}`}>Dados do EPI</div>
+      <div className={estilos.formGrid}>
+        <div className={estilos.col4}>
+          <Field label="Nome">
+            <Input value={novoEpi.nome} onChange={(_, d) => setNovoEpi({ ...novoEpi, nome: d.value })} />
+          </Field>
+        </div>
+        <div className={estilos.col4}>
+          <Field label="Fabricante">
+            <Input
+              value={novoEpi.fabricante ?? ''}
+              onChange={(_, d) => setNovoEpi({ ...novoEpi, fabricante: d.value })}
+            />
+          </Field>
+        </div>
+        <div className={estilos.col4}>
+          <Field label="Nº do CA">
+            <Input
+              value={novoEpi.certificadoAprovacaoNumero ?? ''}
+              onChange={(_, d) => setNovoEpi({ ...novoEpi, certificadoAprovacaoNumero: d.value })}
+            />
+          </Field>
+        </div>
+        <div className={estilos.col3}>
+          <Field label="Validade do CA">
+            <CampoData
+              value={novoEpi.certificadoAprovacaoValidade ?? ''}
+              onChange={(_, d) => setNovoEpi({ ...novoEpi, certificadoAprovacaoValidade: d.value })}
+            />
+          </Field>
+        </div>
+        <div className={estilos.col3}>
+          <Field label="Vida útil (meses)">
+            <Input
+              type="number"
+              value={String(novoEpi.vidaUtilEmMeses)}
+              onChange={(_, d) => setNovoEpi({ ...novoEpi, vidaUtilEmMeses: Number(d.value) })}
+            />
+          </Field>
+        </div>
+        <div className={estilos.col6}>
+          <Field label="Foto do EPI">
+            <SeletorFotoCamera
+              rotulo={fotoNovoEpi ? fotoNovoEpi.name : 'Tirar foto ou escolher arquivo'}
+              tiposAceitos="image/jpeg,image/png"
+              aoSelecionarArquivo={(arquivo) => setFotoNovoEpi(arquivo)}
+              aoErroValidacao={setErro}
+            />
+          </Field>
+        </div>
       </div>
       <div className={estilos.formActions}>
         <Button appearance="primary" icon={<Add24Regular />} onClick={criar} disabled={carregando}>

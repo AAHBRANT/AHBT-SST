@@ -229,20 +229,25 @@ export function AcidenteDetalhePage() {
         <div className={estilos.toolbar}>
           <Text weight="semibold">Investigação (Seção 28 — análise de causas)</Text>
         </div>
-        <div className={estilos.form}>
-          <Field label="Metodologia de investigação">
-            <Select value={metodologia} onChange={(_, d) => setMetodologia(d.value)}>
-              <option value="">Não definida</option>
-              {Object.entries(metodologiaInvestigacaoLabel).map(([valor, rotulo]) => (
-                <option key={valor} value={valor}>
-                  {rotulo}
-                </option>
-              ))}
-            </Select>
-          </Field>
-          <Field label="Causas identificadas">
-            <Textarea value={causas} onChange={(_, d) => setCausas(d.value)} />
-          </Field>
+        <div className={`${estilos.sectionTitle} ${estilos.sectionTitleFirst}`}>Dados da Investigação</div>
+        <div className={estilos.formGrid}>
+          <div className={estilos.col4}>
+            <Field label="Metodologia de investigação">
+              <Select value={metodologia} onChange={(_, d) => setMetodologia(d.value)}>
+                <option value="">Não definida</option>
+                {Object.entries(metodologiaInvestigacaoLabel).map(([valor, rotulo]) => (
+                  <option key={valor} value={valor}>
+                    {rotulo}
+                  </option>
+                ))}
+              </Select>
+            </Field>
+          </div>
+          <div className={estilos.col6}>
+            <Field label="Causas identificadas">
+              <Textarea value={causas} onChange={(_, d) => setCausas(d.value)} />
+            </Field>
+          </div>
         </div>
         <div className={estilos.formActions}>
           <Button appearance="primary" icon={<Save24Regular />} onClick={salvarInvestigacao} disabled={processando}>
@@ -255,53 +260,64 @@ export function AcidenteDetalhePage() {
         <div className={estilos.toolbar}>
           <Text weight="semibold">Nova ação do plano</Text>
         </div>
-        <div className={estilos.form}>
-          <Field label="Tipo">
-            <Select
-              value={String(novaAcao.tipo)}
-              onChange={(_, d) => setNovaAcao({ ...novaAcao, tipo: Number(d.value) })}
-            >
-              {Object.entries(tipoAcaoPlanoLabel).map(([valor, rotulo]) => (
-                <option key={valor} value={valor}>
-                  {rotulo}
-                </option>
-              ))}
-            </Select>
-          </Field>
-          <Field label="Descrição" required>
-            <Input value={novaAcao.descricao} onChange={(_, d) => setNovaAcao({ ...novaAcao, descricao: d.value })} />
-          </Field>
-          <Field label="Responsável">
-            <Select
-              value={novaAcao.responsavelUsuarioId ?? ''}
-              onChange={(_, d) => setNovaAcao({ ...novaAcao, responsavelUsuarioId: d.value })}
-            >
-              <option value="">Nenhum</option>
-              {usuarios.map((usuario) => (
-                <option key={usuario.id} value={usuario.id}>
-                  {usuario.nome}
-                </option>
-              ))}
-            </Select>
-          </Field>
-          <Field label="Prioridade">
-            <Select
-              value={String(novaAcao.prioridade)}
-              onChange={(_, d) => setNovaAcao({ ...novaAcao, prioridade: Number(d.value) })}
-            >
-              {Object.entries(prioridadeAcaoLabel).map(([valor, rotulo]) => (
-                <option key={valor} value={valor}>
-                  {rotulo}
-                </option>
-              ))}
-            </Select>
-          </Field>
-          <Field label="Prazo">
-            <CampoData
-              value={novaAcao.prazo ?? ''}
-              onChange={(_, d) => setNovaAcao({ ...novaAcao, prazo: d.value })}
-            />
-          </Field>
+        <div className={`${estilos.sectionTitle} ${estilos.sectionTitleFirst}`}>Nova Ação do Plano</div>
+        <div className={estilos.formGrid}>
+          <div className={estilos.col2}>
+            <Field label="Tipo">
+              <Select
+                value={String(novaAcao.tipo)}
+                onChange={(_, d) => setNovaAcao({ ...novaAcao, tipo: Number(d.value) })}
+              >
+                {Object.entries(tipoAcaoPlanoLabel).map(([valor, rotulo]) => (
+                  <option key={valor} value={valor}>
+                    {rotulo}
+                  </option>
+                ))}
+              </Select>
+            </Field>
+          </div>
+          <div className={estilos.col3}>
+            <Field label="Descrição" required>
+              <Input value={novaAcao.descricao} onChange={(_, d) => setNovaAcao({ ...novaAcao, descricao: d.value })} />
+            </Field>
+          </div>
+          <div className={estilos.col3}>
+            <Field label="Responsável">
+              <Select
+                value={novaAcao.responsavelUsuarioId ?? ''}
+                onChange={(_, d) => setNovaAcao({ ...novaAcao, responsavelUsuarioId: d.value })}
+              >
+                <option value="">Nenhum</option>
+                {usuarios.map((usuario) => (
+                  <option key={usuario.id} value={usuario.id}>
+                    {usuario.nome}
+                  </option>
+                ))}
+              </Select>
+            </Field>
+          </div>
+          <div className={estilos.col2}>
+            <Field label="Prioridade">
+              <Select
+                value={String(novaAcao.prioridade)}
+                onChange={(_, d) => setNovaAcao({ ...novaAcao, prioridade: Number(d.value) })}
+              >
+                {Object.entries(prioridadeAcaoLabel).map(([valor, rotulo]) => (
+                  <option key={valor} value={valor}>
+                    {rotulo}
+                  </option>
+                ))}
+              </Select>
+            </Field>
+          </div>
+          <div className={estilos.col2}>
+            <Field label="Prazo">
+              <CampoData
+                value={novaAcao.prazo ?? ''}
+                onChange={(_, d) => setNovaAcao({ ...novaAcao, prazo: d.value })}
+              />
+            </Field>
+          </div>
         </div>
         <div className={estilos.formActions}>
           <Button appearance="primary" onClick={criarAcao} disabled={processando}>

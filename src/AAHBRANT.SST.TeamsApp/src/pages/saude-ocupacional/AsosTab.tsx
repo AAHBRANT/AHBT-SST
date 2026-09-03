@@ -150,71 +150,88 @@ export function AsosTab() {
 
         {erro && <Text className={estilos.erro}>{erro}</Text>}
 
-        <div className={estilos.form}>
-          <Field label="Funcionário">
-            <Select
-              value={novoAso.trabalhadorId}
-              onChange={(_, d) => setNovoAso({ ...novoAso, trabalhadorId: d.value })}
-            >
-              <option value="">Selecione</option>
-              {trabalhadores.map((t) => (
-                <option key={t.id} value={t.id}>
-                  {t.nome} ({t.matricula})
-                </option>
-              ))}
-            </Select>
-          </Field>
-          <Field label="Tipo de exame">
-            <Select value={novoAso.tipo} onChange={(_, d) => setNovoAso({ ...novoAso, tipo: Number(d.value) })}>
-              {Object.entries(tipoExameAsoLabel).map(([valor, rotulo]) => (
-                <option key={valor} value={valor}>
-                  {rotulo}
-                </option>
-              ))}
-            </Select>
-          </Field>
-          <Field label="Data do exame">
-            <CampoData
-              value={novoAso.dataExame}
-              onChange={(_, d) => setNovoAso({ ...novoAso, dataExame: d.value })}
-            />
-          </Field>
-          <Field label="Validade">
-            <CampoData
-              value={novoAso.dataValidade}
-              onChange={(_, d) => setNovoAso({ ...novoAso, dataValidade: d.value })}
-            />
-          </Field>
-          <Field label="Resultado">
-            <Select
-              value={novoAso.resultadoStatus}
-              onChange={(_, d) => setNovoAso({ ...novoAso, resultadoStatus: Number(d.value) })}
-            >
-              {Object.entries(resultadoAsoLabel).map(([valor, rotulo]) => (
-                <option key={valor} value={valor}>
-                  {rotulo}
-                </option>
-              ))}
-            </Select>
-          </Field>
-          <Field label="Médico">
-            <Input
-              value={novoAso.medicoNome ?? ''}
-              onChange={(_, d) => setNovoAso({ ...novoAso, medicoNome: d.value })}
-            />
-          </Field>
-          <Field label="CRM">
-            <Input
-              value={novoAso.medicoCrm ?? ''}
-              onChange={(_, d) => setNovoAso({ ...novoAso, medicoCrm: d.value })}
-            />
-          </Field>
-          <Field label="Observações clínicas">
-            <Textarea
-              value={novoAso.observacoesClinicas ?? ''}
-              onChange={(_, d) => setNovoAso({ ...novoAso, observacoesClinicas: d.value })}
-            />
-          </Field>
+        <div className={`${estilos.sectionTitle} ${estilos.sectionTitleFirst}`}>Dados do Exame</div>
+        <div className={estilos.formGrid}>
+          <div className={estilos.col4}>
+            <Field label="Funcionário">
+              <Select
+                value={novoAso.trabalhadorId}
+                onChange={(_, d) => setNovoAso({ ...novoAso, trabalhadorId: d.value })}
+              >
+                <option value="">Selecione</option>
+                {trabalhadores.map((t) => (
+                  <option key={t.id} value={t.id}>
+                    {t.nome} ({t.matricula})
+                  </option>
+                ))}
+              </Select>
+            </Field>
+          </div>
+          <div className={estilos.col3}>
+            <Field label="Tipo de exame">
+              <Select value={novoAso.tipo} onChange={(_, d) => setNovoAso({ ...novoAso, tipo: Number(d.value) })}>
+                {Object.entries(tipoExameAsoLabel).map(([valor, rotulo]) => (
+                  <option key={valor} value={valor}>
+                    {rotulo}
+                  </option>
+                ))}
+              </Select>
+            </Field>
+          </div>
+          <div className={estilos.col2}>
+            <Field label="Data do exame">
+              <CampoData
+                value={novoAso.dataExame}
+                onChange={(_, d) => setNovoAso({ ...novoAso, dataExame: d.value })}
+              />
+            </Field>
+          </div>
+          <div className={estilos.col2}>
+            <Field label="Validade">
+              <CampoData
+                value={novoAso.dataValidade}
+                onChange={(_, d) => setNovoAso({ ...novoAso, dataValidade: d.value })}
+              />
+            </Field>
+          </div>
+          <div className={estilos.col3}>
+            <Field label="Resultado">
+              <Select
+                value={novoAso.resultadoStatus}
+                onChange={(_, d) => setNovoAso({ ...novoAso, resultadoStatus: Number(d.value) })}
+              >
+                {Object.entries(resultadoAsoLabel).map(([valor, rotulo]) => (
+                  <option key={valor} value={valor}>
+                    {rotulo}
+                  </option>
+                ))}
+              </Select>
+            </Field>
+          </div>
+          <div className={estilos.col3}>
+            <Field label="Médico">
+              <Input
+                value={novoAso.medicoNome ?? ''}
+                onChange={(_, d) => setNovoAso({ ...novoAso, medicoNome: d.value })}
+              />
+            </Field>
+          </div>
+          <div className={estilos.col2}>
+            <Field label="CRM">
+              <Input
+                value={novoAso.medicoCrm ?? ''}
+                onChange={(_, d) => setNovoAso({ ...novoAso, medicoCrm: d.value })}
+              />
+            </Field>
+          </div>
+          <div className={estilos.col4}>
+            <Field label="Observações clínicas">
+              <Textarea
+                value={novoAso.observacoesClinicas ?? ''}
+                onChange={(_, d) => setNovoAso({ ...novoAso, observacoesClinicas: d.value })}
+              />
+            </Field>
+          </div>
         </div>
         <div className={estilos.formActions}>
           <Button appearance="primary" icon={<Add24Regular />} onClick={criar} disabled={carregando}>

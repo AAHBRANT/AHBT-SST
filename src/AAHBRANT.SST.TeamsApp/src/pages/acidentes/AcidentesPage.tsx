@@ -171,131 +171,170 @@ export function AcidentesPage({ tipoFixo }: { tipoFixo?: number } = {}) {
         <div className={estilos.toolbar}>
           <Text weight="semibold">Registrar acidente / incidente</Text>
         </div>
-        <div className={estilos.form}>
-          <Field label="Tipo" required>
-            <Select value={String(nova.tipo)} onChange={(_, d) => setNova({ ...nova, tipo: Number(d.value) })}>
-              {Object.entries(tipoOcorrenciaLabel).map(([valor, rotulo]) => (
-                <option key={valor} value={valor}>
-                  {rotulo}
-                </option>
-              ))}
-            </Select>
-          </Field>
-          <Field label="Obra" required>
-            <Select value={nova.obraId} onChange={(_, d) => setNova({ ...nova, obraId: d.value })}>
-              <option value="">Selecione</option>
-              {obras.map((obra) => (
-                <option key={obra.id} value={obra.id}>
-                  {obra.nome}
-                </option>
-              ))}
-            </Select>
-          </Field>
-          <Field label="Funcionário">
-            <Select
-              value={nova.trabalhadorId ?? ''}
-              onChange={(_, d) => setNova({ ...nova, trabalhadorId: d.value })}
-            >
-              <option value="">Nenhum</option>
-              {trabalhadores.map((trabalhador) => (
-                <option key={trabalhador.id} value={trabalhador.id}>
-                  {trabalhador.nome}
-                </option>
-              ))}
-            </Select>
-          </Field>
-          <Field label="Atividade">
-            <Select
-              value={nova.atividadeId ?? ''}
-              onChange={(_, d) => setNova({ ...nova, atividadeId: d.value })}
-            >
-              <option value="">Nenhuma</option>
-              {atividades.map((atividade) => (
-                <option key={atividade.id} value={atividade.id}>
-                  {atividade.nome}
-                </option>
-              ))}
-            </Select>
-          </Field>
-          <Field label="Local" required>
-            <Input value={nova.local} onChange={(_, d) => setNova({ ...nova, local: d.value })} />
-          </Field>
-          <Field label="Data" required>
-            <CampoData value={nova.data} onChange={(_, d) => setNova({ ...nova, data: d.value })} />
-          </Field>
-          <Field label="Hora">
-            <Input type="time" value={nova.hora ?? ''} onChange={(_, d) => setNova({ ...nova, hora: d.value })} />
-          </Field>
-          <Field label="Descrição" required>
-            <Textarea value={nova.descricao} onChange={(_, d) => setNova({ ...nova, descricao: d.value })} />
-          </Field>
-          <Field label="Lesão">
-            <Input value={nova.lesao ?? ''} onChange={(_, d) => setNova({ ...nova, lesao: d.value })} />
-          </Field>
-          <Field label="Consequência">
-            <Input value={nova.consequencia ?? ''} onChange={(_, d) => setNova({ ...nova, consequencia: d.value })} />
-          </Field>
-          <Field label="Atendimento prestado">
-            <Input value={nova.atendimento ?? ''} onChange={(_, d) => setNova({ ...nova, atendimento: d.value })} />
-          </Field>
-          <Field label="Houve afastamento?">
-            <Select
-              value={nova.houveAfastamento ? '1' : '0'}
-              onChange={(_, d) => setNova({ ...nova, houveAfastamento: d.value === '1' })}
-            >
-              <option value="0">Não</option>
-              <option value="1">Sim</option>
-            </Select>
-          </Field>
+        <div className={`${estilos.sectionTitle} ${estilos.sectionTitleFirst}`}>Dados Gerais da Ocorrência</div>
+        <div className={estilos.formGrid}>
+          <div className={estilos.col2}>
+            <Field label="Tipo" required>
+              <Select value={String(nova.tipo)} onChange={(_, d) => setNova({ ...nova, tipo: Number(d.value) })}>
+                {Object.entries(tipoOcorrenciaLabel).map(([valor, rotulo]) => (
+                  <option key={valor} value={valor}>
+                    {rotulo}
+                  </option>
+                ))}
+              </Select>
+            </Field>
+          </div>
+          <div className={estilos.col3}>
+            <Field label="Obra" required>
+              <Select value={nova.obraId} onChange={(_, d) => setNova({ ...nova, obraId: d.value })}>
+                <option value="">Selecione</option>
+                {obras.map((obra) => (
+                  <option key={obra.id} value={obra.id}>
+                    {obra.nome}
+                  </option>
+                ))}
+              </Select>
+            </Field>
+          </div>
+          <div className={estilos.col3}>
+            <Field label="Funcionário">
+              <Select
+                value={nova.trabalhadorId ?? ''}
+                onChange={(_, d) => setNova({ ...nova, trabalhadorId: d.value })}
+              >
+                <option value="">Nenhum</option>
+                {trabalhadores.map((trabalhador) => (
+                  <option key={trabalhador.id} value={trabalhador.id}>
+                    {trabalhador.nome}
+                  </option>
+                ))}
+              </Select>
+            </Field>
+          </div>
+          <div className={estilos.col4}>
+            <Field label="Atividade">
+              <Select
+                value={nova.atividadeId ?? ''}
+                onChange={(_, d) => setNova({ ...nova, atividadeId: d.value })}
+              >
+                <option value="">Nenhuma</option>
+                {atividades.map((atividade) => (
+                  <option key={atividade.id} value={atividade.id}>
+                    {atividade.nome}
+                  </option>
+                ))}
+              </Select>
+            </Field>
+          </div>
+          <div className={estilos.col4}>
+            <Field label="Local" required>
+              <Input value={nova.local} onChange={(_, d) => setNova({ ...nova, local: d.value })} />
+            </Field>
+          </div>
+          <div className={estilos.col2}>
+            <Field label="Data" required>
+              <CampoData value={nova.data} onChange={(_, d) => setNova({ ...nova, data: d.value })} />
+            </Field>
+          </div>
+          <div className={estilos.col2}>
+            <Field label="Hora">
+              <Input type="time" value={nova.hora ?? ''} onChange={(_, d) => setNova({ ...nova, hora: d.value })} />
+            </Field>
+          </div>
+        </div>
+
+        <div className={estilos.sectionTitle}>Lesão, Gravidade e Consequências</div>
+        <div className={estilos.formGrid}>
+          <div className={estilos.col12}>
+            <Field label="Descrição" required>
+              <Textarea value={nova.descricao} onChange={(_, d) => setNova({ ...nova, descricao: d.value })} />
+            </Field>
+          </div>
+          <div className={estilos.col4}>
+            <Field label="Lesão">
+              <Input value={nova.lesao ?? ''} onChange={(_, d) => setNova({ ...nova, lesao: d.value })} />
+            </Field>
+          </div>
+          <div className={estilos.col4}>
+            <Field label="Consequência">
+              <Input value={nova.consequencia ?? ''} onChange={(_, d) => setNova({ ...nova, consequencia: d.value })} />
+            </Field>
+          </div>
+          <div className={estilos.col4}>
+            <Field label="Atendimento prestado">
+              <Input value={nova.atendimento ?? ''} onChange={(_, d) => setNova({ ...nova, atendimento: d.value })} />
+            </Field>
+          </div>
+          <div className={estilos.col3}>
+            <Field label="Houve afastamento?">
+              <Select
+                value={nova.houveAfastamento ? '1' : '0'}
+                onChange={(_, d) => setNova({ ...nova, houveAfastamento: d.value === '1' })}
+              >
+                <option value="0">Não</option>
+                <option value="1">Sim</option>
+              </Select>
+            </Field>
+          </div>
           {nova.houveAfastamento && (
-            <Field label="Dias de afastamento">
-              <Input
-                type="number"
-                min={0}
-                value={nova.diasAfastamento?.toString() ?? ''}
-                onChange={(_, d) => setNova({ ...nova, diasAfastamento: d.value ? Number(d.value) : undefined })}
-              />
-            </Field>
+            <div className={estilos.col3}>
+              <Field label="Dias de afastamento">
+                <Input
+                  type="number"
+                  min={0}
+                  value={nova.diasAfastamento?.toString() ?? ''}
+                  onChange={(_, d) => setNova({ ...nova, diasAfastamento: d.value ? Number(d.value) : undefined })}
+                />
+              </Field>
+            </div>
           )}
-          <Field label="Gravidade" required>
-            <Select
-              value={String(nova.gravidade)}
-              onChange={(_, d) =>
-                setNova({ ...nova, gravidade: Number(d.value), diasDebitadosInformados: undefined })
-              }
-            >
-              {Object.entries(gravidadeAcidenteLabel).map(([valor, rotulo]) => (
-                <option key={valor} value={valor}>
-                  {rotulo}
-                </option>
-              ))}
-            </Select>
-          </Field>
-          {nova.gravidade === GravidadeAcidente.IncapacidadePermanenteParcial && (
-            <Field
-              label="Dias Debitados (consultar Quadro III da NBR 14280)"
-              required
-              hint="Valor não calculado automaticamente pelo sistema — consulte a tabela oficial de Dias Debitados por lesão/parte do corpo."
-            >
-              <Input
-                type="number"
-                min={1}
-                value={nova.diasDebitadosInformados?.toString() ?? ''}
+          <div className={estilos.col3}>
+            <Field label="Gravidade" required>
+              <Select
+                value={String(nova.gravidade)}
                 onChange={(_, d) =>
-                  setNova({ ...nova, diasDebitadosInformados: d.value ? Number(d.value) : undefined })
+                  setNova({ ...nova, gravidade: Number(d.value), diasDebitadosInformados: undefined })
                 }
-              />
+              >
+                {Object.entries(gravidadeAcidenteLabel).map(([valor, rotulo]) => (
+                  <option key={valor} value={valor}>
+                    {rotulo}
+                  </option>
+                ))}
+              </Select>
             </Field>
+          </div>
+          {nova.gravidade === GravidadeAcidente.IncapacidadePermanenteParcial && (
+            <div className={estilos.col6}>
+              <Field
+                label="Dias Debitados (consultar Quadro III da NBR 14280)"
+                required
+                hint="Valor não calculado automaticamente pelo sistema — consulte a tabela oficial de Dias Debitados por lesão/parte do corpo."
+              >
+                <Input
+                  type="number"
+                  min={1}
+                  value={nova.diasDebitadosInformados?.toString() ?? ''}
+                  onChange={(_, d) =>
+                    setNova({ ...nova, diasDebitadosInformados: d.value ? Number(d.value) : undefined })
+                  }
+                />
+              </Field>
+            </div>
           )}
           {(nova.gravidade === GravidadeAcidente.Obito ||
             nova.gravidade === GravidadeAcidente.IncapacidadePermanenteTotal) && (
-            <Field label="Dias Debitados">
-              <Text>6.000 dias (fixo, calculado automaticamente)</Text>
-            </Field>
+            <div className={estilos.col3}>
+              <Field label="Dias Debitados">
+                <Text>6.000 dias (fixo, calculado automaticamente)</Text>
+              </Field>
+            </div>
           )}
-          <Field label="Número da CAT">
-            <Input value={nova.numeroCat ?? ''} onChange={(_, d) => setNova({ ...nova, numeroCat: d.value })} />
-          </Field>
+          <div className={estilos.col3}>
+            <Field label="Número da CAT">
+              <Input value={nova.numeroCat ?? ''} onChange={(_, d) => setNova({ ...nova, numeroCat: d.value })} />
+            </Field>
+          </div>
         </div>
         <div className={estilos.formActions}>
           <Button appearance="primary" icon={<AddCircle24Regular />} onClick={criar} disabled={carregando}>

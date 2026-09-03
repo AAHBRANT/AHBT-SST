@@ -113,44 +113,53 @@ export function PlanoAcaoTab({ pgrId, riscosDisponiveis }: { pgrId: string; risc
 
       {erro && <Text className={estilos.erro}>{erro}</Text>}
 
-      <div className={estilos.form}>
-        <Field label="Risco relacionado">
-          <Select
-            value={novoItem.riscoId ?? ''}
-            onChange={(_, d) => setNovoItem({ ...novoItem, riscoId: d.value || null })}
-          >
-            <option value="">Nenhum</option>
-            {riscosDisponiveis.map((risco) => (
-              <option key={risco.riscoId} value={risco.riscoId}>
-                {risco.perigoNome}
-              </option>
-            ))}
-          </Select>
-        </Field>
-        <Field label="Descrição da ação">
-          <Input
-            value={novoItem.descricao}
-            onChange={(_, d) => setNovoItem({ ...novoItem, descricao: d.value })}
-          />
-        </Field>
-        <Field label="Prazo">
-          <CampoData
-            value={novoItem.prazo ?? ''}
-            onChange={(_, d) => setNovoItem({ ...novoItem, prazo: d.value || null })}
-          />
-        </Field>
-        <Field label="Status">
-          <Select
-            value={novoItem.status}
-            onChange={(_, d) => setNovoItem({ ...novoItem, status: Number(d.value) })}
-          >
-            {Object.entries(statusControleRiscoLabel).map(([valor, rotulo]) => (
-              <option key={valor} value={valor}>
-                {rotulo}
-              </option>
-            ))}
-          </Select>
-        </Field>
+      <div className={`${estilos.sectionTitle} ${estilos.sectionTitleFirst}`}>Dados do Item do Plano de Ação</div>
+      <div className={estilos.formGrid}>
+        <div className={estilos.col4}>
+          <Field label="Risco relacionado">
+            <Select
+              value={novoItem.riscoId ?? ''}
+              onChange={(_, d) => setNovoItem({ ...novoItem, riscoId: d.value || null })}
+            >
+              <option value="">Nenhum</option>
+              {riscosDisponiveis.map((risco) => (
+                <option key={risco.riscoId} value={risco.riscoId}>
+                  {risco.perigoNome}
+                </option>
+              ))}
+            </Select>
+          </Field>
+        </div>
+        <div className={estilos.col4}>
+          <Field label="Descrição da ação">
+            <Input
+              value={novoItem.descricao}
+              onChange={(_, d) => setNovoItem({ ...novoItem, descricao: d.value })}
+            />
+          </Field>
+        </div>
+        <div className={estilos.col2}>
+          <Field label="Prazo">
+            <CampoData
+              value={novoItem.prazo ?? ''}
+              onChange={(_, d) => setNovoItem({ ...novoItem, prazo: d.value || null })}
+            />
+          </Field>
+        </div>
+        <div className={estilos.col2}>
+          <Field label="Status">
+            <Select
+              value={novoItem.status}
+              onChange={(_, d) => setNovoItem({ ...novoItem, status: Number(d.value) })}
+            >
+              {Object.entries(statusControleRiscoLabel).map(([valor, rotulo]) => (
+                <option key={valor} value={valor}>
+                  {rotulo}
+                </option>
+              ))}
+            </Select>
+          </Field>
+        </div>
       </div>
       <div className={estilos.formActions}>
         <Button appearance="primary" icon={<Add24Regular />} onClick={criar} disabled={carregando}>

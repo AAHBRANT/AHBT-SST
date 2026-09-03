@@ -209,71 +209,86 @@ export function TrabalhadoresTab() {
 
       {erro && <Text className={estilos.erro}>{erro}</Text>}
 
-      <div className={estilos.form}>
-        <Field label="Obra">
-          <Select
-            value={novoTrabalhador.obraId}
-            onChange={(_, d) => setNovoTrabalhador({ ...novoTrabalhador, obraId: d.value })}
-          >
-            <option value="">Selecione</option>
-            {obras.map((obra) => (
-              <option key={obra.id} value={obra.id}>
-                {obra.nome}
-              </option>
-            ))}
-          </Select>
-        </Field>
-        <Field label="Função">
-          <Select
-            value={novoTrabalhador.funcaoId}
-            onChange={(_, d) => setNovoTrabalhador({ ...novoTrabalhador, funcaoId: d.value })}
-          >
-            <option value="">Selecione</option>
-            {funcoes.map((funcao) => (
-              <option key={funcao.id} value={funcao.id}>
-                {funcao.nome}
-              </option>
-            ))}
-          </Select>
-        </Field>
-        <Field label="Nome">
-          <Input
-            value={novoTrabalhador.nome}
-            onChange={(_, d) => setNovoTrabalhador({ ...novoTrabalhador, nome: d.value })}
-          />
-        </Field>
-        <Field label="Matrícula">
-          <Input
-            value={novoTrabalhador.matricula}
-            onChange={(_, d) => setNovoTrabalhador({ ...novoTrabalhador, matricula: d.value })}
-          />
-        </Field>
-        <Field label="CPF (11 dígitos)">
-          <Input
-            value={formatarCpf(novoTrabalhador.cpf)}
-            onChange={(_, d) =>
-              setNovoTrabalhador({ ...novoTrabalhador, cpf: d.value.replace(/\D/g, '').slice(0, 11) })
-            }
-          />
-        </Field>
-        <Field label="Vínculo">
-          <Select
-            value={novoTrabalhador.vinculo}
-            onChange={(_, d) => setNovoTrabalhador({ ...novoTrabalhador, vinculo: Number(d.value) })}
-          >
-            {Object.entries(tipoVinculoLabel).map(([valor, rotulo]) => (
-              <option key={valor} value={valor}>
-                {rotulo}
-              </option>
-            ))}
-          </Select>
-        </Field>
-        <Field label="Data de admissão">
-          <CampoData
-            value={novoTrabalhador.dataAdmissao}
-            onChange={(_, d) => setNovoTrabalhador({ ...novoTrabalhador, dataAdmissao: d.value })}
-          />
-        </Field>
+      <div className={`${estilos.sectionTitle} ${estilos.sectionTitleFirst}`}>Dados do Funcionário</div>
+      <div className={estilos.formGrid}>
+        <div className={estilos.col3}>
+          <Field label="Obra">
+            <Select
+              value={novoTrabalhador.obraId}
+              onChange={(_, d) => setNovoTrabalhador({ ...novoTrabalhador, obraId: d.value })}
+            >
+              <option value="">Selecione</option>
+              {obras.map((obra) => (
+                <option key={obra.id} value={obra.id}>
+                  {obra.nome}
+                </option>
+              ))}
+            </Select>
+          </Field>
+        </div>
+        <div className={estilos.col3}>
+          <Field label="Função">
+            <Select
+              value={novoTrabalhador.funcaoId}
+              onChange={(_, d) => setNovoTrabalhador({ ...novoTrabalhador, funcaoId: d.value })}
+            >
+              <option value="">Selecione</option>
+              {funcoes.map((funcao) => (
+                <option key={funcao.id} value={funcao.id}>
+                  {funcao.nome}
+                </option>
+              ))}
+            </Select>
+          </Field>
+        </div>
+        <div className={estilos.col4}>
+          <Field label="Nome">
+            <Input
+              value={novoTrabalhador.nome}
+              onChange={(_, d) => setNovoTrabalhador({ ...novoTrabalhador, nome: d.value })}
+            />
+          </Field>
+        </div>
+        <div className={estilos.col2}>
+          <Field label="Matrícula">
+            <Input
+              value={novoTrabalhador.matricula}
+              onChange={(_, d) => setNovoTrabalhador({ ...novoTrabalhador, matricula: d.value })}
+            />
+          </Field>
+        </div>
+        <div className={estilos.col3}>
+          <Field label="CPF (11 dígitos)">
+            <Input
+              value={formatarCpf(novoTrabalhador.cpf)}
+              onChange={(_, d) =>
+                setNovoTrabalhador({ ...novoTrabalhador, cpf: d.value.replace(/\D/g, '').slice(0, 11) })
+              }
+            />
+          </Field>
+        </div>
+        <div className={estilos.col3}>
+          <Field label="Vínculo">
+            <Select
+              value={novoTrabalhador.vinculo}
+              onChange={(_, d) => setNovoTrabalhador({ ...novoTrabalhador, vinculo: Number(d.value) })}
+            >
+              {Object.entries(tipoVinculoLabel).map(([valor, rotulo]) => (
+                <option key={valor} value={valor}>
+                  {rotulo}
+                </option>
+              ))}
+            </Select>
+          </Field>
+        </div>
+        <div className={estilos.col3}>
+          <Field label="Data de admissão">
+            <CampoData
+              value={novoTrabalhador.dataAdmissao}
+              onChange={(_, d) => setNovoTrabalhador({ ...novoTrabalhador, dataAdmissao: d.value })}
+            />
+          </Field>
+        </div>
       </div>
       <div className={estilos.formActions}>
         <Button appearance="primary" icon={<Add24Regular />} onClick={criar} disabled={carregando}>

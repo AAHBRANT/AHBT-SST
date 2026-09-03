@@ -179,10 +179,13 @@ export function TagsIdentificacaoTab() {
         <div className={estilos.toolbar}>
           <Text weight="semibold">Resolver tag por UID (leitura de NFC/QR)</Text>
         </div>
-        <div className={estilos.form}>
-          <Field label="UID lido">
-            <Input value={uidBusca} onChange={(_, d) => setUidBusca(d.value)} />
-          </Field>
+        <div className={`${estilos.sectionTitle} ${estilos.sectionTitleFirst}`}>Buscar por UID</div>
+        <div className={estilos.formGrid}>
+          <div className={estilos.col4}>
+            <Field label="UID lido">
+              <Input value={uidBusca} onChange={(_, d) => setUidBusca(d.value)} />
+            </Field>
+          </div>
         </div>
         <div className={estilos.formActions}>
           <Button appearance="primary" icon={<Search24Regular />} onClick={resolverUid} disabled={!uidBusca}>
@@ -193,36 +196,43 @@ export function TagsIdentificacaoTab() {
         {resultadoBusca && <ResolverTagResultado resultado={resultadoBusca} />}
 
         {resultadoBusca && resultadoBusca.status === StatusTag.Disponivel && (
-          <div className={estilos.form} style={{ marginTop: 12 }}>
-            <Field label="Vincular a">
-              <Select value={String(tipoVinculoBusca)} onChange={(_, d) => setTipoVinculoBusca(Number(d.value))}>
-                <option value={TipoEntidadeVinculada.Area}>Área</option>
-                <option value={TipoEntidadeVinculada.Trabalhador}>Funcionário</option>
-              </Select>
-            </Field>
-            <Field label="Entidade">
-              <Select value={entidadeVinculoIdBusca} onChange={(_, d) => setEntidadeVinculoIdBusca(d.value)}>
-                <option value="">Selecione</option>
-                {tipoVinculoBusca === TipoEntidadeVinculada.Area &&
-                  areas.map((a) => (
-                    <option key={a.id} value={a.id}>
-                      {a.nome}
-                    </option>
-                  ))}
-                {tipoVinculoBusca === TipoEntidadeVinculada.Trabalhador &&
-                  trabalhadores.map((t) => (
-                    <option key={t.id} value={t.id}>
-                      {t.nome}
-                    </option>
-                  ))}
-              </Select>
-            </Field>
+          <>
+            <div className={estilos.sectionTitle}>Vincular Tag Encontrada</div>
+            <div className={estilos.formGrid}>
+              <div className={estilos.col3}>
+                <Field label="Vincular a">
+                  <Select value={String(tipoVinculoBusca)} onChange={(_, d) => setTipoVinculoBusca(Number(d.value))}>
+                    <option value={TipoEntidadeVinculada.Area}>Área</option>
+                    <option value={TipoEntidadeVinculada.Trabalhador}>Funcionário</option>
+                  </Select>
+                </Field>
+              </div>
+              <div className={estilos.col3}>
+                <Field label="Entidade">
+                  <Select value={entidadeVinculoIdBusca} onChange={(_, d) => setEntidadeVinculoIdBusca(d.value)}>
+                    <option value="">Selecione</option>
+                    {tipoVinculoBusca === TipoEntidadeVinculada.Area &&
+                      areas.map((a) => (
+                        <option key={a.id} value={a.id}>
+                          {a.nome}
+                        </option>
+                      ))}
+                    {tipoVinculoBusca === TipoEntidadeVinculada.Trabalhador &&
+                      trabalhadores.map((t) => (
+                        <option key={t.id} value={t.id}>
+                          {t.nome}
+                        </option>
+                      ))}
+                  </Select>
+                </Field>
+              </div>
+            </div>
             <div className={estilos.formActions}>
               <Button appearance="primary" icon={<Link24Regular />} onClick={vincularPorUid} disabled={!entidadeVinculoIdBusca}>
                 Vincular esta tag
               </Button>
             </div>
-          </div>
+          </>
         )}
       </div>
 
@@ -233,19 +243,24 @@ export function TagsIdentificacaoTab() {
 
         {erro && <Text className={estilos.erro}>{erro}</Text>}
 
-        <div className={estilos.form}>
-          <Field label="UID da tag">
-            <Input value={novaTag.uid} onChange={(_, d) => setNovaTag({ ...novaTag, uid: d.value })} />
-          </Field>
-          <Field label="Tipo">
-            <Select value={String(novaTag.tipo)} onChange={(_, d) => setNovaTag({ ...novaTag, tipo: Number(d.value) })}>
-              {Object.entries(tipoTagLabel).map(([valor, rotulo]) => (
-                <option key={valor} value={valor}>
-                  {rotulo}
-                </option>
-              ))}
-            </Select>
-          </Field>
+        <div className={`${estilos.sectionTitle} ${estilos.sectionTitleFirst}`}>Nova Tag</div>
+        <div className={estilos.formGrid}>
+          <div className={estilos.col4}>
+            <Field label="UID da tag">
+              <Input value={novaTag.uid} onChange={(_, d) => setNovaTag({ ...novaTag, uid: d.value })} />
+            </Field>
+          </div>
+          <div className={estilos.col3}>
+            <Field label="Tipo">
+              <Select value={String(novaTag.tipo)} onChange={(_, d) => setNovaTag({ ...novaTag, tipo: Number(d.value) })}>
+                {Object.entries(tipoTagLabel).map(([valor, rotulo]) => (
+                  <option key={valor} value={valor}>
+                    {rotulo}
+                  </option>
+                ))}
+              </Select>
+            </Field>
+          </div>
         </div>
         <div className={estilos.formActions}>
           <Button appearance="primary" icon={<Add24Regular />} onClick={criar} disabled={carregando || !novaTag.uid}>
@@ -254,30 +269,37 @@ export function TagsIdentificacaoTab() {
         </div>
 
         {vinculandoId && (
-          <div className={estilos.form} style={{ marginTop: 12 }}>
-            <Field label="Vincular a">
-              <Select value={String(tipoVinculo)} onChange={(_, d) => setTipoVinculo(Number(d.value))}>
-                <option value={TipoEntidadeVinculada.Area}>Área</option>
-                <option value={TipoEntidadeVinculada.Trabalhador}>Funcionário</option>
-              </Select>
-            </Field>
-            <Field label="Entidade">
-              <Select value={entidadeVinculoId} onChange={(_, d) => setEntidadeVinculoId(d.value)}>
-                <option value="">Selecione</option>
-                {tipoVinculo === TipoEntidadeVinculada.Area &&
-                  areas.map((a) => (
-                    <option key={a.id} value={a.id}>
-                      {a.nome}
-                    </option>
-                  ))}
-                {tipoVinculo === TipoEntidadeVinculada.Trabalhador &&
-                  trabalhadores.map((t) => (
-                    <option key={t.id} value={t.id}>
-                      {t.nome}
-                    </option>
-                  ))}
-              </Select>
-            </Field>
+          <>
+            <div className={estilos.sectionTitle}>Vincular Tag</div>
+            <div className={estilos.formGrid}>
+              <div className={estilos.col3}>
+                <Field label="Vincular a">
+                  <Select value={String(tipoVinculo)} onChange={(_, d) => setTipoVinculo(Number(d.value))}>
+                    <option value={TipoEntidadeVinculada.Area}>Área</option>
+                    <option value={TipoEntidadeVinculada.Trabalhador}>Funcionário</option>
+                  </Select>
+                </Field>
+              </div>
+              <div className={estilos.col3}>
+                <Field label="Entidade">
+                  <Select value={entidadeVinculoId} onChange={(_, d) => setEntidadeVinculoId(d.value)}>
+                    <option value="">Selecione</option>
+                    {tipoVinculo === TipoEntidadeVinculada.Area &&
+                      areas.map((a) => (
+                        <option key={a.id} value={a.id}>
+                          {a.nome}
+                        </option>
+                      ))}
+                    {tipoVinculo === TipoEntidadeVinculada.Trabalhador &&
+                      trabalhadores.map((t) => (
+                        <option key={t.id} value={t.id}>
+                          {t.nome}
+                        </option>
+                      ))}
+                  </Select>
+                </Field>
+              </div>
+            </div>
             <div className={estilos.formActions}>
               <Button appearance="primary" onClick={confirmarVinculo} disabled={!entidadeVinculoId}>
                 Confirmar vínculo
@@ -286,7 +308,7 @@ export function TagsIdentificacaoTab() {
                 Cancelar
               </Button>
             </div>
-          </div>
+          </>
         )}
 
         {carregandoLista ? (

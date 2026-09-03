@@ -131,28 +131,35 @@ export function MatrizRiscoTab() {
           conforme a política de risco da empresa antes de salvar.
         </Text>
 
-        <div className={estilos.form}>
-          <Field label="Nome da matriz">
-            <Input value={nome} onChange={(_, d) => setNome(d.value)} />
-          </Field>
-          <Field label="Níveis de probabilidade">
-            <Input
-              type="number"
-              min={1}
-              max={10}
-              value={String(numP)}
-              onChange={(_, d) => setNumP(Math.max(1, Number(d.value) || 1))}
-            />
-          </Field>
-          <Field label="Níveis de severidade">
-            <Input
-              type="number"
-              min={1}
-              max={10}
-              value={String(numS)}
-              onChange={(_, d) => setNumS(Math.max(1, Number(d.value) || 1))}
-            />
-          </Field>
+        <div className={`${estilos.sectionTitle} ${estilos.sectionTitleFirst}`}>Dados da Matriz de Risco</div>
+        <div className={estilos.formGrid}>
+          <div className={estilos.col6}>
+            <Field label="Nome da matriz">
+              <Input value={nome} onChange={(_, d) => setNome(d.value)} />
+            </Field>
+          </div>
+          <div className={estilos.col3}>
+            <Field label="Níveis de probabilidade">
+              <Input
+                type="number"
+                min={1}
+                max={10}
+                value={String(numP)}
+                onChange={(_, d) => setNumP(Math.max(1, Number(d.value) || 1))}
+              />
+            </Field>
+          </div>
+          <div className={estilos.col3}>
+            <Field label="Níveis de severidade">
+              <Input
+                type="number"
+                min={1}
+                max={10}
+                value={String(numS)}
+                onChange={(_, d) => setNumS(Math.max(1, Number(d.value) || 1))}
+              />
+            </Field>
+          </div>
         </div>
 
         <div style={{ overflowX: 'auto' }}>

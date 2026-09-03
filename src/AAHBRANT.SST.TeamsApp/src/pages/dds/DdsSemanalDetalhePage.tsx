@@ -199,14 +199,21 @@ export function DdsSemanalDetalhePage() {
                   Encerramento da semana
                 </Text>
                 {semanal.tipo === TipoDdsSemanal.Terceirizados && (
-                  <div className={estilos.form}>
-                    <Field label="Nome do responsável da empresa terceirizada">
-                      <Input value={responsavelTerceirizadaNome} onChange={(_, d) => setResponsavelTerceirizadaNome(d.value)} />
-                    </Field>
-                    <Field label="Função do responsável da empresa terceirizada">
-                      <Input value={responsavelTerceirizadaFuncao} onChange={(_, d) => setResponsavelTerceirizadaFuncao(d.value)} />
-                    </Field>
-                  </div>
+                  <>
+                    <div className={estilos.sectionTitle}>Responsável da Empresa Terceirizada</div>
+                    <div className={estilos.formGrid}>
+                      <div className={estilos.col6}>
+                        <Field label="Nome do responsável da empresa terceirizada">
+                          <Input value={responsavelTerceirizadaNome} onChange={(_, d) => setResponsavelTerceirizadaNome(d.value)} />
+                        </Field>
+                      </div>
+                      <div className={estilos.col6}>
+                        <Field label="Função do responsável da empresa terceirizada">
+                          <Input value={responsavelTerceirizadaFuncao} onChange={(_, d) => setResponsavelTerceirizadaFuncao(d.value)} />
+                        </Field>
+                      </div>
+                    </div>
+                  </>
                 )}
                 <Text size={200} style={{ display: 'block', marginBottom: 8 }}>
                   Só é possível encerrar quando os 5 dias úteis estiverem registrados e concluídos.

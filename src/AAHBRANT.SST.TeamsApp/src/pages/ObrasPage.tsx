@@ -156,76 +156,101 @@ export function ObrasPage() {
 
       {erro && <Text className={estilos.erro}>{erro}</Text>}
 
-      <div className={estilos.form}>
-        <Field label="Código">
-          <Input value={novaObra.codigo} onChange={(_, d) => setNovaObra({ ...novaObra, codigo: d.value })} />
-        </Field>
-        <Field label="Nome">
-          <Input value={novaObra.nome} onChange={(_, d) => setNovaObra({ ...novaObra, nome: d.value })} />
-        </Field>
-        <Field label="Status">
-          <Select
-            value={novaObra.status}
-            onChange={(_, d) => setNovaObra({ ...novaObra, status: Number(d.value) })}
-          >
-            {Object.entries(statusObraLabel).map(([valor, rotulo]) => (
-              <option key={valor} value={valor}>
-                {rotulo}
-              </option>
-            ))}
-          </Select>
-        </Field>
-        <Field label="Data de início">
-          <CampoData
-            value={novaObra.dataInicio ?? ''}
-            onChange={(_, d) => setNovaObra({ ...novaObra, dataInicio: d.value })}
-          />
-        </Field>
-        <Field label="Previsão de término">
-          <CampoData
-            value={novaObra.dataPrevisaoTermino ?? ''}
-            onChange={(_, d) => setNovaObra({ ...novaObra, dataPrevisaoTermino: d.value })}
-          />
-        </Field>
-        <Field label="Endereço">
-          <Input
-            value={novaObra.endereco ?? ''}
-            onChange={(_, d) => setNovaObra({ ...novaObra, endereco: d.value })}
-          />
-        </Field>
-        <Field label="Cidade">
-          <Input value={novaObra.cidade ?? ''} onChange={(_, d) => setNovaObra({ ...novaObra, cidade: d.value })} />
-        </Field>
-        <Field label="UF">
-          <Input
-            value={novaObra.uf ?? ''}
-            maxLength={2}
-            onChange={(_, d) => setNovaObra({ ...novaObra, uf: d.value.toUpperCase() })}
-          />
-        </Field>
-        <Field label="CNPJ">
-          <Input
-            value={novaObra.cnpj ?? ''}
-            maxLength={18}
-            onChange={(_, d) => setNovaObra({ ...novaObra, cnpj: d.value })}
-          />
-        </Field>
-        <Field label="Logomarca da obra" required>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-            <SeletorFotoCamera
-              rotulo={logoNovaObra ? logoNovaObra.name : 'Tirar foto ou escolher arquivo'}
-              tiposAceitos="image/jpeg,image/png"
-              aoSelecionarArquivo={(arquivo) => setLogoNovaObra(arquivo)}
-              aoErroValidacao={setErro}
+      <div className={`${estilos.sectionTitle} ${estilos.sectionTitleFirst}`}>Dados Gerais da Obra</div>
+      <div className={estilos.formGrid}>
+        <div className={estilos.col2}>
+          <Field label="Código">
+            <Input value={novaObra.codigo} onChange={(_, d) => setNovaObra({ ...novaObra, codigo: d.value })} />
+          </Field>
+        </div>
+        <div className={estilos.col3}>
+          <Field label="Nome">
+            <Input value={novaObra.nome} onChange={(_, d) => setNovaObra({ ...novaObra, nome: d.value })} />
+          </Field>
+        </div>
+        <div className={estilos.col2}>
+          <Field label="Status">
+            <Select
+              value={novaObra.status}
+              onChange={(_, d) => setNovaObra({ ...novaObra, status: Number(d.value) })}
+            >
+              {Object.entries(statusObraLabel).map(([valor, rotulo]) => (
+                <option key={valor} value={valor}>
+                  {rotulo}
+                </option>
+              ))}
+            </Select>
+          </Field>
+        </div>
+        <div className={estilos.col2}>
+          <Field label="Data de início">
+            <CampoData
+              value={novaObra.dataInicio ?? ''}
+              onChange={(_, d) => setNovaObra({ ...novaObra, dataInicio: d.value })}
             />
-          </div>
-        </Field>
+          </Field>
+        </div>
+        <div className={estilos.col3}>
+          <Field label="Previsão de término">
+            <CampoData
+              value={novaObra.dataPrevisaoTermino ?? ''}
+              onChange={(_, d) => setNovaObra({ ...novaObra, dataPrevisaoTermino: d.value })}
+            />
+          </Field>
+        </div>
       </div>
-      <Text size={200}>
-        A logomarca é obrigatória: ela será usada no cabeçalho dos documentos gerados e assinados
-        para esta obra (APR, PT, DDS, Ficha de EPI, Relatório de Fiscalização).
-      </Text>
-      <div className={estilos.formActions}>
+
+      <div className={estilos.sectionTitle}>Endereço e Documentos</div>
+      <div className={estilos.formGrid}>
+        <div className={estilos.col4}>
+          <Field label="Endereço">
+            <Input
+              value={novaObra.endereco ?? ''}
+              onChange={(_, d) => setNovaObra({ ...novaObra, endereco: d.value })}
+            />
+          </Field>
+        </div>
+        <div className={estilos.col3}>
+          <Field label="Cidade">
+            <Input value={novaObra.cidade ?? ''} onChange={(_, d) => setNovaObra({ ...novaObra, cidade: d.value })} />
+          </Field>
+        </div>
+        <div className={estilos.col2}>
+          <Field label="UF">
+            <Input
+              value={novaObra.uf ?? ''}
+              maxLength={2}
+              onChange={(_, d) => setNovaObra({ ...novaObra, uf: d.value.toUpperCase() })}
+            />
+          </Field>
+        </div>
+        <div className={estilos.col3}>
+          <Field label="CNPJ">
+            <Input
+              value={novaObra.cnpj ?? ''}
+              maxLength={18}
+              onChange={(_, d) => setNovaObra({ ...novaObra, cnpj: d.value })}
+            />
+          </Field>
+        </div>
+        <div className={estilos.col6}>
+          <Field label="Logomarca da obra" required>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+              <SeletorFotoCamera
+                rotulo={logoNovaObra ? logoNovaObra.name : 'Tirar foto ou escolher arquivo'}
+                tiposAceitos="image/jpeg,image/png"
+                aoSelecionarArquivo={(arquivo) => setLogoNovaObra(arquivo)}
+                aoErroValidacao={setErro}
+              />
+            </div>
+          </Field>
+        </div>
+      </div>
+      <div className={estilos.footer}>
+        <Text className={estilos.footerInfo}>
+          A logomarca é obrigatória: ela será usada no cabeçalho dos documentos gerados e assinados
+          para esta obra (APR, PT, DDS, Ficha de EPI, Relatório de Fiscalização).
+        </Text>
         <Button appearance="primary" icon={<Add24Regular />} onClick={criar} disabled={carregando || !logoNovaObra}>
           Adicionar obra
         </Button>

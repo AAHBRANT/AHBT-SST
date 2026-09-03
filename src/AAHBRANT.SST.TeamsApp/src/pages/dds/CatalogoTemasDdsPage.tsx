@@ -110,19 +110,24 @@ export function CatalogoTemasDdsPage() {
 
       {erro && <Text className={estilos.erro}>{erro}</Text>}
 
-      <div className={estilos.form}>
-        <Field label="Nome" style={{ alignSelf: 'start' }}>
-          <Input value={nome} onChange={(_, d) => setNome(d.value)} />
-        </Field>
-        <Field label="Descrição">
-          <Textarea
-            value={descricao}
-            onChange={(_, d) => setDescricao(d.value)}
-            resize="vertical"
-            rows={10}
-            style={{ width: '100%' }}
-          />
-        </Field>
+      <div className={`${estilos.sectionTitle} ${estilos.sectionTitleFirst}`}>Dados do Tema</div>
+      <div className={estilos.formGrid}>
+        <div className={estilos.col4}>
+          <Field label="Nome" style={{ alignSelf: 'start' }}>
+            <Input value={nome} onChange={(_, d) => setNome(d.value)} />
+          </Field>
+        </div>
+        <div className={estilos.col12}>
+          <Field label="Descrição">
+            <Textarea
+              value={descricao}
+              onChange={(_, d) => setDescricao(d.value)}
+              resize="vertical"
+              rows={10}
+              style={{ width: '100%' }}
+            />
+          </Field>
+        </div>
       </div>
 
       <div className={estilos.formActions}>

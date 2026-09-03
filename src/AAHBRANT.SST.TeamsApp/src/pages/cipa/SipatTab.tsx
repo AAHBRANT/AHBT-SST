@@ -99,36 +99,49 @@ export function SipatTab() {
           <Text weight="semibold">Novo evento SIPAT</Text>
         </div>
         {erro && <Text className={estilos.erro}>{erro}</Text>}
-        <div className={estilos.form}>
-          <Field label="Obra" required>
-            <Select value={novo.obraId} onChange={(_, d) => setNovo({ ...novo, obraId: d.value })}>
-              <option value="">Selecione</option>
-              {obras.map((obra) => (
-                <option key={obra.id} value={obra.id}>
-                  {obra.nome}
-                </option>
-              ))}
-            </Select>
-          </Field>
-          <Field label="Ano de referência" required>
-            <Input
-              type="number"
-              value={String(novo.anoReferencia)}
-              onChange={(_, d) => setNovo({ ...novo, anoReferencia: Number(d.value) })}
-            />
-          </Field>
-          <Field label="Início" required>
-            <CampoData value={novo.dataInicio} onChange={(_, d) => setNovo({ ...novo, dataInicio: d.value })} />
-          </Field>
-          <Field label="Fim" required>
-            <CampoData value={novo.dataFim} onChange={(_, d) => setNovo({ ...novo, dataFim: d.value })} />
-          </Field>
-          <Field label="Tema">
-            <Input value={novo.tema ?? ''} onChange={(_, d) => setNovo({ ...novo, tema: d.value })} />
-          </Field>
-          <Field label="Programação">
-            <Textarea value={novo.programacao ?? ''} onChange={(_, d) => setNovo({ ...novo, programacao: d.value })} />
-          </Field>
+        <div className={`${estilos.sectionTitle} ${estilos.sectionTitleFirst}`}>Dados do Evento</div>
+        <div className={estilos.formGrid}>
+          <div className={estilos.col4}>
+            <Field label="Obra" required>
+              <Select value={novo.obraId} onChange={(_, d) => setNovo({ ...novo, obraId: d.value })}>
+                <option value="">Selecione</option>
+                {obras.map((obra) => (
+                  <option key={obra.id} value={obra.id}>
+                    {obra.nome}
+                  </option>
+                ))}
+              </Select>
+            </Field>
+          </div>
+          <div className={estilos.col2}>
+            <Field label="Ano de referência" required>
+              <Input
+                type="number"
+                value={String(novo.anoReferencia)}
+                onChange={(_, d) => setNovo({ ...novo, anoReferencia: Number(d.value) })}
+              />
+            </Field>
+          </div>
+          <div className={estilos.col3}>
+            <Field label="Início" required>
+              <CampoData value={novo.dataInicio} onChange={(_, d) => setNovo({ ...novo, dataInicio: d.value })} />
+            </Field>
+          </div>
+          <div className={estilos.col3}>
+            <Field label="Fim" required>
+              <CampoData value={novo.dataFim} onChange={(_, d) => setNovo({ ...novo, dataFim: d.value })} />
+            </Field>
+          </div>
+          <div className={estilos.col4}>
+            <Field label="Tema">
+              <Input value={novo.tema ?? ''} onChange={(_, d) => setNovo({ ...novo, tema: d.value })} />
+            </Field>
+          </div>
+          <div className={estilos.col12}>
+            <Field label="Programação">
+              <Textarea value={novo.programacao ?? ''} onChange={(_, d) => setNovo({ ...novo, programacao: d.value })} />
+            </Field>
+          </div>
         </div>
         <div className={estilos.formActions}>
           <Button appearance="primary" icon={<Add24Regular />} onClick={criar} disabled={carregando}>

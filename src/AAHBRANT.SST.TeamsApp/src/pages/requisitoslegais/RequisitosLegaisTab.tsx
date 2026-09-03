@@ -199,31 +199,44 @@ export function RequisitosLegaisTab() {
         <div className={estilos.toolbar}>
           <Text weight="semibold">Novo requisito legal</Text>
         </div>
-        <div className={estilos.form}>
-          <Field label="Norma" required>
-            <Input value={novo.norma} onChange={(_, d) => setNovo({ ...novo, norma: d.value })} placeholder="ex.: NR-35" />
-          </Field>
-          <Field label="Artigo">
-            <Input value={novo.artigo ?? ''} onChange={(_, d) => setNovo({ ...novo, artigo: d.value })} placeholder="ex.: 35.4" />
-          </Field>
-          <Field label="Categoria">
-            <Select value={String(novo.categoria)} onChange={(_, d) => setNovo({ ...novo, categoria: Number(d.value) })}>
-              {Object.entries(categoriaRequisitoLegalLabel).map(([valor, rotulo]) => (
-                <option key={valor} value={valor}>
-                  {rotulo}
-                </option>
-              ))}
-            </Select>
-          </Field>
-          <Field label="Título" required>
-            <Input value={novo.titulo} onChange={(_, d) => setNovo({ ...novo, titulo: d.value })} />
-          </Field>
-          <Field label="Fonte">
-            <Input value={novo.fonte ?? ''} onChange={(_, d) => setNovo({ ...novo, fonte: d.value })} placeholder="link/referência" />
-          </Field>
-          <Field label="Descrição" required style={{ gridColumn: '1 / -1' }}>
-            <Textarea value={novo.descricao} onChange={(_, d) => setNovo({ ...novo, descricao: d.value })} />
-          </Field>
+        <div className={`${estilos.sectionTitle} ${estilos.sectionTitleFirst}`}>Dados do Requisito Legal</div>
+        <div className={estilos.formGrid}>
+          <div className={estilos.col2}>
+            <Field label="Norma" required>
+              <Input value={novo.norma} onChange={(_, d) => setNovo({ ...novo, norma: d.value })} placeholder="ex.: NR-35" />
+            </Field>
+          </div>
+          <div className={estilos.col2}>
+            <Field label="Artigo">
+              <Input value={novo.artigo ?? ''} onChange={(_, d) => setNovo({ ...novo, artigo: d.value })} placeholder="ex.: 35.4" />
+            </Field>
+          </div>
+          <div className={estilos.col3}>
+            <Field label="Categoria">
+              <Select value={String(novo.categoria)} onChange={(_, d) => setNovo({ ...novo, categoria: Number(d.value) })}>
+                {Object.entries(categoriaRequisitoLegalLabel).map(([valor, rotulo]) => (
+                  <option key={valor} value={valor}>
+                    {rotulo}
+                  </option>
+                ))}
+              </Select>
+            </Field>
+          </div>
+          <div className={estilos.col5}>
+            <Field label="Título" required>
+              <Input value={novo.titulo} onChange={(_, d) => setNovo({ ...novo, titulo: d.value })} />
+            </Field>
+          </div>
+          <div className={estilos.col6}>
+            <Field label="Fonte">
+              <Input value={novo.fonte ?? ''} onChange={(_, d) => setNovo({ ...novo, fonte: d.value })} placeholder="link/referência" />
+            </Field>
+          </div>
+          <div className={estilos.col12}>
+            <Field label="Descrição" required>
+              <Textarea value={novo.descricao} onChange={(_, d) => setNovo({ ...novo, descricao: d.value })} />
+            </Field>
+          </div>
         </div>
         <div className={estilos.formActions}>
           <Button appearance="primary" icon={<AddCircle24Regular />} onClick={criar} disabled={processando}>

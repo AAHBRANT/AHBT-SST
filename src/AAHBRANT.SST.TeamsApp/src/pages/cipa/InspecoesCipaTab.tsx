@@ -142,53 +142,66 @@ export function InspecoesCipaTab() {
           <Text weight="semibold">Nova inspeção</Text>
         </div>
         {erro && <Text className={estilos.erro}>{erro}</Text>}
-        <div className={estilos.form}>
-          <Field label="Obra" required>
-            <Select value={novo.obraId} onChange={(_, d) => trocarObra(d.value)}>
-              <option value="">Selecione</option>
-              {obras.map((obra) => (
-                <option key={obra.id} value={obra.id}>
-                  {obra.nome}
-                </option>
-              ))}
-            </Select>
-          </Field>
-          <Field label="Membro que inspecionou">
-            <Select
-              value={novo.membroCipaId ?? ''}
-              onChange={(_, d) => setNovo({ ...novo, membroCipaId: d.value || null })}
-              disabled={!novo.obraId}
-            >
-              <option value="">Não informado</option>
-              {membros.map((m) => (
-                <option key={m.id} value={m.id}>
-                  {m.trabalhadorNome}
-                </option>
-              ))}
-            </Select>
-          </Field>
-          <Field label="Data" required>
-            <CampoData value={novo.data} onChange={(_, d) => setNovo({ ...novo, data: d.value })} />
-          </Field>
-          <Field label="Local" required>
-            <Input value={novo.local} onChange={(_, d) => setNovo({ ...novo, local: d.value })} />
-          </Field>
-          <Field label="Grau de risco">
-            <Select
-              value={novo.grauRisco != null ? String(novo.grauRisco) : ''}
-              onChange={(_, d) => setNovo({ ...novo, grauRisco: d.value ? Number(d.value) : null })}
-            >
-              <option value="">Não informado</option>
-              {Object.entries(nivelRiscoLabel).map(([valor, rotulo]) => (
-                <option key={valor} value={valor}>
-                  {rotulo}
-                </option>
-              ))}
-            </Select>
-          </Field>
-          <Field label="Risco identificado" required>
-            <Textarea value={novo.riscoIdentificado} onChange={(_, d) => setNovo({ ...novo, riscoIdentificado: d.value })} />
-          </Field>
+        <div className={`${estilos.sectionTitle} ${estilos.sectionTitleFirst}`}>Dados da Inspeção</div>
+        <div className={estilos.formGrid}>
+          <div className={estilos.col3}>
+            <Field label="Obra" required>
+              <Select value={novo.obraId} onChange={(_, d) => trocarObra(d.value)}>
+                <option value="">Selecione</option>
+                {obras.map((obra) => (
+                  <option key={obra.id} value={obra.id}>
+                    {obra.nome}
+                  </option>
+                ))}
+              </Select>
+            </Field>
+          </div>
+          <div className={estilos.col3}>
+            <Field label="Membro que inspecionou">
+              <Select
+                value={novo.membroCipaId ?? ''}
+                onChange={(_, d) => setNovo({ ...novo, membroCipaId: d.value || null })}
+                disabled={!novo.obraId}
+              >
+                <option value="">Não informado</option>
+                {membros.map((m) => (
+                  <option key={m.id} value={m.id}>
+                    {m.trabalhadorNome}
+                  </option>
+                ))}
+              </Select>
+            </Field>
+          </div>
+          <div className={estilos.col2}>
+            <Field label="Data" required>
+              <CampoData value={novo.data} onChange={(_, d) => setNovo({ ...novo, data: d.value })} />
+            </Field>
+          </div>
+          <div className={estilos.col4}>
+            <Field label="Local" required>
+              <Input value={novo.local} onChange={(_, d) => setNovo({ ...novo, local: d.value })} />
+            </Field>
+          </div>
+          <div className={estilos.col3}>
+            <Field label="Grau de risco">
+              <Select
+                value={novo.grauRisco != null ? String(novo.grauRisco) : ''}
+                onChange={(_, d) => setNovo({ ...novo, grauRisco: d.value ? Number(d.value) : null })}
+              >
+                <option value="">Não informado</option>
+                {Object.entries(nivelRiscoLabel).map(([valor, rotulo]) => (
+                  <option key={valor} value={valor}>
+                    {rotulo}
+                  </option>
+                ))}
+              </Select>
+            </Field>
+          </div>
+          <div className={estilos.col12}>
+            <Field label="Risco identificado" required>
+              <Textarea value={novo.riscoIdentificado} onChange={(_, d) => setNovo({ ...novo, riscoIdentificado: d.value })} />
+            </Field>
+          </div>
         </div>
         <div className={estilos.formActions}>
           <Button appearance="primary" icon={<Add24Regular />} onClick={criar} disabled={carregando}>
@@ -202,20 +215,25 @@ export function InspecoesCipaTab() {
           <div className={estilos.toolbar}>
             <Text weight="semibold">Gerar não conformidade</Text>
           </div>
-          <div className={estilos.form}>
-            <Field label="Responsável">
-              <Select value={responsavelNc} onChange={(_, d) => setResponsavelNc(d.value)}>
-                <option value="">Nenhum</option>
-                {usuarios.map((usuario) => (
-                  <option key={usuario.id} value={usuario.id}>
-                    {usuario.nome}
-                  </option>
-                ))}
-              </Select>
-            </Field>
-            <Field label="Prazo">
-              <CampoData value={prazoNc} onChange={(_, d) => setPrazoNc(d.value)} />
-            </Field>
+          <div className={`${estilos.sectionTitle} ${estilos.sectionTitleFirst}`}>Dados da Não Conformidade</div>
+          <div className={estilos.formGrid}>
+            <div className={estilos.col6}>
+              <Field label="Responsável">
+                <Select value={responsavelNc} onChange={(_, d) => setResponsavelNc(d.value)}>
+                  <option value="">Nenhum</option>
+                  {usuarios.map((usuario) => (
+                    <option key={usuario.id} value={usuario.id}>
+                      {usuario.nome}
+                    </option>
+                  ))}
+                </Select>
+              </Field>
+            </div>
+            <div className={estilos.col6}>
+              <Field label="Prazo">
+                <CampoData value={prazoNc} onChange={(_, d) => setPrazoNc(d.value)} />
+              </Field>
+            </div>
           </div>
           <div className={estilos.formActions}>
             <Button appearance="secondary" onClick={() => setGerandoNcPara(null)}>

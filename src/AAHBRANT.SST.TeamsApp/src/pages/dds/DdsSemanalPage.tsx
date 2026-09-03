@@ -98,46 +98,59 @@ export function DdsSemanalPage() {
 
         {erro && <Text className={estilos.erro}>{erro}</Text>}
 
-        <div className={estilos.form}>
-          <Field label="Obra">
-            <Select value={nova.obraId} onChange={(_, d) => setNova({ ...nova, obraId: d.value })}>
-              <option value="">Selecione</option>
-              {obras.map((obra) => (
-                <option key={obra.id} value={obra.id}>
-                  {obra.nome}
-                </option>
-              ))}
-            </Select>
-          </Field>
-          <Field label="Tipo">
-            <Select value={String(nova.tipo)} onChange={(_, d) => setNova({ ...nova, tipo: Number(d.value) })}>
-              <option value={String(TipoDdsSemanal.Proprios)}>{tipoDdsSemanalLabel[TipoDdsSemanal.Proprios]}</option>
-              <option value={String(TipoDdsSemanal.Terceirizados)}>{tipoDdsSemanalLabel[TipoDdsSemanal.Terceirizados]}</option>
-            </Select>
-          </Field>
-          <Field label="Início da semana">
-            <CampoData
-              value={nova.dataInicioSemana}
-              onChange={(_, d) => setNova({ ...nova, dataInicioSemana: d.value })}
-            />
-          </Field>
-          {nova.tipo === TipoDdsSemanal.Terceirizados && (
-            <Field label="Empresa terceirizada">
-              <Input
-                value={nova.empresaTerceirizada ?? ''}
-                onChange={(_, d) => setNova({ ...nova, empresaTerceirizada: d.value })}
+        <div className={`${estilos.sectionTitle} ${estilos.sectionTitleFirst}`}>Dados da Semana</div>
+        <div className={estilos.formGrid}>
+          <div className={estilos.col4}>
+            <Field label="Obra">
+              <Select value={nova.obraId} onChange={(_, d) => setNova({ ...nova, obraId: d.value })}>
+                <option value="">Selecione</option>
+                {obras.map((obra) => (
+                  <option key={obra.id} value={obra.id}>
+                    {obra.nome}
+                  </option>
+                ))}
+              </Select>
+            </Field>
+          </div>
+          <div className={estilos.col3}>
+            <Field label="Tipo">
+              <Select value={String(nova.tipo)} onChange={(_, d) => setNova({ ...nova, tipo: Number(d.value) })}>
+                <option value={String(TipoDdsSemanal.Proprios)}>{tipoDdsSemanalLabel[TipoDdsSemanal.Proprios]}</option>
+                <option value={String(TipoDdsSemanal.Terceirizados)}>{tipoDdsSemanalLabel[TipoDdsSemanal.Terceirizados]}</option>
+              </Select>
+            </Field>
+          </div>
+          <div className={estilos.col3}>
+            <Field label="Início da semana">
+              <CampoData
+                value={nova.dataInicioSemana}
+                onChange={(_, d) => setNova({ ...nova, dataInicioSemana: d.value })}
               />
             </Field>
+          </div>
+          {nova.tipo === TipoDdsSemanal.Terceirizados && (
+            <div className={estilos.col4}>
+              <Field label="Empresa terceirizada">
+                <Input
+                  value={nova.empresaTerceirizada ?? ''}
+                  onChange={(_, d) => setNova({ ...nova, empresaTerceirizada: d.value })}
+                />
+              </Field>
+            </div>
           )}
-          <Field label="Nº do documento">
-            <Input value={nova.numeroDocumento ?? ''} onChange={(_, d) => setNova({ ...nova, numeroDocumento: d.value })} />
-          </Field>
-          <Field label="Local / Frente de serviço">
-            <Input
-              value={nova.localFrenteServico ?? ''}
-              onChange={(_, d) => setNova({ ...nova, localFrenteServico: d.value })}
-            />
-          </Field>
+          <div className={estilos.col3}>
+            <Field label="Nº do documento">
+              <Input value={nova.numeroDocumento ?? ''} onChange={(_, d) => setNova({ ...nova, numeroDocumento: d.value })} />
+            </Field>
+          </div>
+          <div className={estilos.col5}>
+            <Field label="Local / Frente de serviço">
+              <Input
+                value={nova.localFrenteServico ?? ''}
+                onChange={(_, d) => setNova({ ...nova, localFrenteServico: d.value })}
+              />
+            </Field>
+          </div>
         </div>
 
         <div className={estilos.formActions}>

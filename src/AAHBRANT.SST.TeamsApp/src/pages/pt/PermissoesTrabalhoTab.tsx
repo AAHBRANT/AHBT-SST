@@ -156,97 +156,126 @@ export function PermissoesTrabalhoTab() {
 
       {erro && <Text className={estilos.erro}>{erro}</Text>}
 
-      <div className={estilos.form}>
-        <Field label="Nº PT">
-          <Input value={novaPt.numeroPt ?? ''} onChange={(_, d) => setNovaPt({ ...novaPt, numeroPt: d.value })} />
-        </Field>
-        <Field label="Atividade">
-          <Select value={novaPt.atividadeId} onChange={(_, d) => setNovaPt({ ...novaPt, atividadeId: d.value })}>
-            <option value="">Selecione</option>
-            {atividades.map((atividade) => (
-              <option key={atividade.id} value={atividade.id}>
-                {atividade.nome}
-              </option>
-            ))}
-          </Select>
-        </Field>
-        <Field label="Descrição da atividade">
-          <Input
-            value={novaPt.descricaoAtividade}
-            onChange={(_, d) => setNovaPt({ ...novaPt, descricaoAtividade: d.value })}
-          />
-        </Field>
-        <Field label="Local">
-          <Input value={novaPt.local} onChange={(_, d) => setNovaPt({ ...novaPt, local: d.value })} />
-        </Field>
-        <Field label="Empresa executante">
-          <Input
-            value={novaPt.empresaExecutante ?? ''}
-            onChange={(_, d) => setNovaPt({ ...novaPt, empresaExecutante: d.value })}
-          />
-        </Field>
-        <Field label="Equipe">
-          <Select
-            value={novaPt.equipeId ?? ''}
-            onChange={(_, d) => setNovaPt({ ...novaPt, equipeId: d.value || null })}
-          >
-            <option value="">Nenhuma</option>
-            {equipesDaObra.map((equipe) => (
-              <option key={equipe.id} value={equipe.id}>
-                {equipe.nome}
-              </option>
-            ))}
-          </Select>
-        </Field>
-        <Field label="Data">
-          <CampoData value={novaPt.data} onChange={(_, d) => setNovaPt({ ...novaPt, data: d.value })} />
-        </Field>
-        <Field label="Horário início">
-          <Input
-            type="time"
-            value={novaPt.horarioInicio ?? ''}
-            onChange={(_, d) => setNovaPt({ ...novaPt, horarioInicio: d.value || null })}
-          />
-        </Field>
-        <Field label="Horário fim">
-          <Input
-            type="time"
-            value={novaPt.horarioFim ?? ''}
-            onChange={(_, d) => setNovaPt({ ...novaPt, horarioFim: d.value || null })}
-          />
-        </Field>
-        <Field label="Validade">
-          <CampoData
-            value={novaPt.validade ?? ''}
-            onChange={(_, d) => setNovaPt({ ...novaPt, validade: d.value || null })}
-          />
-        </Field>
-        <Field label="Responsável pela execução">
-          <Select
-            value={novaPt.responsavelExecucaoUsuarioId ?? ''}
-            onChange={(_, d) => setNovaPt({ ...novaPt, responsavelExecucaoUsuarioId: d.value || null })}
-          >
-            <option value="">Não definido</option>
-            {usuarios.map((usuario) => (
-              <option key={usuario.id} value={usuario.id}>
-                {usuario.nome}
-              </option>
-            ))}
-          </Select>
-        </Field>
-        <Field label="Responsável pela área">
-          <Select
-            value={novaPt.responsavelAreaUsuarioId ?? ''}
-            onChange={(_, d) => setNovaPt({ ...novaPt, responsavelAreaUsuarioId: d.value || null })}
-          >
-            <option value="">Não definido</option>
-            {usuarios.map((usuario) => (
-              <option key={usuario.id} value={usuario.id}>
-                {usuario.nome}
-              </option>
-            ))}
-          </Select>
-        </Field>
+      <div className={`${estilos.sectionTitle} ${estilos.sectionTitleFirst}`}>Dados Gerais</div>
+      <div className={estilos.formGrid}>
+        <div className={estilos.col2}>
+          <Field label="Nº PT">
+            <Input value={novaPt.numeroPt ?? ''} onChange={(_, d) => setNovaPt({ ...novaPt, numeroPt: d.value })} />
+          </Field>
+        </div>
+        <div className={estilos.col3}>
+          <Field label="Atividade">
+            <Select value={novaPt.atividadeId} onChange={(_, d) => setNovaPt({ ...novaPt, atividadeId: d.value })}>
+              <option value="">Selecione</option>
+              {atividades.map((atividade) => (
+                <option key={atividade.id} value={atividade.id}>
+                  {atividade.nome}
+                </option>
+              ))}
+            </Select>
+          </Field>
+        </div>
+        <div className={estilos.col4}>
+          <Field label="Descrição da atividade">
+            <Input
+              value={novaPt.descricaoAtividade}
+              onChange={(_, d) => setNovaPt({ ...novaPt, descricaoAtividade: d.value })}
+            />
+          </Field>
+        </div>
+        <div className={estilos.col3}>
+          <Field label="Local">
+            <Input value={novaPt.local} onChange={(_, d) => setNovaPt({ ...novaPt, local: d.value })} />
+          </Field>
+        </div>
+        <div className={estilos.col3}>
+          <Field label="Empresa executante">
+            <Input
+              value={novaPt.empresaExecutante ?? ''}
+              onChange={(_, d) => setNovaPt({ ...novaPt, empresaExecutante: d.value })}
+            />
+          </Field>
+        </div>
+        <div className={estilos.col3}>
+          <Field label="Equipe">
+            <Select
+              value={novaPt.equipeId ?? ''}
+              onChange={(_, d) => setNovaPt({ ...novaPt, equipeId: d.value || null })}
+            >
+              <option value="">Nenhuma</option>
+              {equipesDaObra.map((equipe) => (
+                <option key={equipe.id} value={equipe.id}>
+                  {equipe.nome}
+                </option>
+              ))}
+            </Select>
+          </Field>
+        </div>
+      </div>
+
+      <div className={estilos.sectionTitle}>Prazos e Responsáveis</div>
+      <div className={estilos.formGrid}>
+        <div className={estilos.col2}>
+          <Field label="Data">
+            <CampoData value={novaPt.data} onChange={(_, d) => setNovaPt({ ...novaPt, data: d.value })} />
+          </Field>
+        </div>
+        <div className={estilos.col2}>
+          <Field label="Horário início">
+            <Input
+              type="time"
+              value={novaPt.horarioInicio ?? ''}
+              onChange={(_, d) => setNovaPt({ ...novaPt, horarioInicio: d.value || null })}
+            />
+          </Field>
+        </div>
+        <div className={estilos.col2}>
+          <Field label="Horário fim">
+            <Input
+              type="time"
+              value={novaPt.horarioFim ?? ''}
+              onChange={(_, d) => setNovaPt({ ...novaPt, horarioFim: d.value || null })}
+            />
+          </Field>
+        </div>
+        <div className={estilos.col2}>
+          <Field label="Validade">
+            <CampoData
+              value={novaPt.validade ?? ''}
+              onChange={(_, d) => setNovaPt({ ...novaPt, validade: d.value || null })}
+            />
+          </Field>
+        </div>
+        <div className={estilos.col2}>
+          <Field label="Responsável pela execução">
+            <Select
+              value={novaPt.responsavelExecucaoUsuarioId ?? ''}
+              onChange={(_, d) => setNovaPt({ ...novaPt, responsavelExecucaoUsuarioId: d.value || null })}
+            >
+              <option value="">Não definido</option>
+              {usuarios.map((usuario) => (
+                <option key={usuario.id} value={usuario.id}>
+                  {usuario.nome}
+                </option>
+              ))}
+            </Select>
+          </Field>
+        </div>
+        <div className={estilos.col2}>
+          <Field label="Responsável pela área">
+            <Select
+              value={novaPt.responsavelAreaUsuarioId ?? ''}
+              onChange={(_, d) => setNovaPt({ ...novaPt, responsavelAreaUsuarioId: d.value || null })}
+            >
+              <option value="">Não definido</option>
+              {usuarios.map((usuario) => (
+                <option key={usuario.id} value={usuario.id}>
+                  {usuario.nome}
+                </option>
+              ))}
+            </Select>
+          </Field>
+        </div>
       </div>
 
       <Field label="Equipe executante (responsáveis)" style={{ marginBottom: 16 }}>

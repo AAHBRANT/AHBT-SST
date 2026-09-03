@@ -146,73 +146,90 @@ export function ExamesComplementaresTab() {
 
         {erro && <Text className={estilos.erro}>{erro}</Text>}
 
-        <div className={estilos.form}>
-          <Field label="Funcionário">
-            <Select
-              value={novoExame.trabalhadorId}
-              onChange={(_, d) => setNovoExame({ ...novoExame, trabalhadorId: d.value, asoId: '' })}
-            >
-              <option value="">Selecione</option>
-              {trabalhadores.map((t) => (
-                <option key={t.id} value={t.id}>
-                  {t.nome} ({t.matricula})
-                </option>
-              ))}
-            </Select>
-          </Field>
-          <Field label="ASO vinculado (opcional)">
-            <Select
-              value={novoExame.asoId ?? ''}
-              onChange={(_, d) => setNovoExame({ ...novoExame, asoId: d.value })}
-              disabled={!novoExame.trabalhadorId}
-            >
-              <option value="">Nenhum</option>
-              {asosDoTrabalhadorSelecionado.map((a) => (
-                <option key={a.id} value={a.id}>
-                  {a.dataExame?.slice(0, 10)}
-                </option>
-              ))}
-            </Select>
-          </Field>
-          <Field label="Tipo de exame">
-            <Select value={novoExame.tipo} onChange={(_, d) => setNovoExame({ ...novoExame, tipo: Number(d.value) })}>
-              {Object.entries(tipoExameComplementarLabel).map(([valor, rotulo]) => (
-                <option key={valor} value={valor}>
-                  {rotulo}
-                </option>
-              ))}
-            </Select>
-          </Field>
-          <Field label="Data de realização">
-            <CampoData
-              value={novoExame.dataRealizacao}
-              onChange={(_, d) => setNovoExame({ ...novoExame, dataRealizacao: d.value })}
-            />
-          </Field>
-          <Field label="Validade">
-            <CampoData
-              value={novoExame.dataValidade}
-              onChange={(_, d) => setNovoExame({ ...novoExame, dataValidade: d.value })}
-            />
-          </Field>
-          <Field label="Resultado">
-            <Input
-              value={novoExame.resultado}
-              onChange={(_, d) => setNovoExame({ ...novoExame, resultado: d.value })}
-            />
-          </Field>
-          <Field label="Responsável técnico">
-            <Input
-              value={novoExame.responsavelTecnico ?? ''}
-              onChange={(_, d) => setNovoExame({ ...novoExame, responsavelTecnico: d.value })}
-            />
-          </Field>
-          <Field label="Observações">
-            <Input
-              value={novoExame.observacoes ?? ''}
-              onChange={(_, d) => setNovoExame({ ...novoExame, observacoes: d.value })}
-            />
-          </Field>
+        <div className={`${estilos.sectionTitle} ${estilos.sectionTitleFirst}`}>Dados do Exame</div>
+        <div className={estilos.formGrid}>
+          <div className={estilos.col3}>
+            <Field label="Funcionário">
+              <Select
+                value={novoExame.trabalhadorId}
+                onChange={(_, d) => setNovoExame({ ...novoExame, trabalhadorId: d.value, asoId: '' })}
+              >
+                <option value="">Selecione</option>
+                {trabalhadores.map((t) => (
+                  <option key={t.id} value={t.id}>
+                    {t.nome} ({t.matricula})
+                  </option>
+                ))}
+              </Select>
+            </Field>
+          </div>
+          <div className={estilos.col3}>
+            <Field label="ASO vinculado (opcional)">
+              <Select
+                value={novoExame.asoId ?? ''}
+                onChange={(_, d) => setNovoExame({ ...novoExame, asoId: d.value })}
+                disabled={!novoExame.trabalhadorId}
+              >
+                <option value="">Nenhum</option>
+                {asosDoTrabalhadorSelecionado.map((a) => (
+                  <option key={a.id} value={a.id}>
+                    {a.dataExame?.slice(0, 10)}
+                  </option>
+                ))}
+              </Select>
+            </Field>
+          </div>
+          <div className={estilos.col3}>
+            <Field label="Tipo de exame">
+              <Select value={novoExame.tipo} onChange={(_, d) => setNovoExame({ ...novoExame, tipo: Number(d.value) })}>
+                {Object.entries(tipoExameComplementarLabel).map(([valor, rotulo]) => (
+                  <option key={valor} value={valor}>
+                    {rotulo}
+                  </option>
+                ))}
+              </Select>
+            </Field>
+          </div>
+          <div className={estilos.col2}>
+            <Field label="Data de realização">
+              <CampoData
+                value={novoExame.dataRealizacao}
+                onChange={(_, d) => setNovoExame({ ...novoExame, dataRealizacao: d.value })}
+              />
+            </Field>
+          </div>
+          <div className={estilos.col2}>
+            <Field label="Validade">
+              <CampoData
+                value={novoExame.dataValidade}
+                onChange={(_, d) => setNovoExame({ ...novoExame, dataValidade: d.value })}
+              />
+            </Field>
+          </div>
+          <div className={estilos.col4}>
+            <Field label="Resultado">
+              <Input
+                value={novoExame.resultado}
+                onChange={(_, d) => setNovoExame({ ...novoExame, resultado: d.value })}
+              />
+            </Field>
+          </div>
+          <div className={estilos.col4}>
+            <Field label="Responsável técnico">
+              <Input
+                value={novoExame.responsavelTecnico ?? ''}
+                onChange={(_, d) => setNovoExame({ ...novoExame, responsavelTecnico: d.value })}
+              />
+            </Field>
+          </div>
+          <div className={estilos.col4}>
+            <Field label="Observações">
+              <Input
+                value={novoExame.observacoes ?? ''}
+                onChange={(_, d) => setNovoExame({ ...novoExame, observacoes: d.value })}
+              />
+            </Field>
+          </div>
         </div>
         <div className={estilos.formActions}>
           <Button appearance="primary" icon={<Add24Regular />} onClick={criar} disabled={carregando}>

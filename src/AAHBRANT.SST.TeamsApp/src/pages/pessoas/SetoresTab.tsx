@@ -87,20 +87,25 @@ export function SetoresTab() {
 
       {erro && <Text className={estilos.erro}>{erro}</Text>}
 
-      <div className={estilos.form}>
-        <Field label="Obra">
-          <Select value={novoSetor.obraId} onChange={(_, d) => setNovoSetor({ ...novoSetor, obraId: d.value })}>
-            <option value="">Selecione a obra</option>
-            {obras.map((o) => (
-              <option key={o.id} value={o.id}>
-                {o.nome}
-              </option>
-            ))}
-          </Select>
-        </Field>
-        <Field label="Nome do setor">
-          <Input value={novoSetor.nome} onChange={(_, d) => setNovoSetor({ ...novoSetor, nome: d.value })} />
-        </Field>
+      <div className={`${estilos.sectionTitle} ${estilos.sectionTitleFirst}`}>Dados do Setor</div>
+      <div className={estilos.formGrid}>
+        <div className={estilos.col4}>
+          <Field label="Obra">
+            <Select value={novoSetor.obraId} onChange={(_, d) => setNovoSetor({ ...novoSetor, obraId: d.value })}>
+              <option value="">Selecione a obra</option>
+              {obras.map((o) => (
+                <option key={o.id} value={o.id}>
+                  {o.nome}
+                </option>
+              ))}
+            </Select>
+          </Field>
+        </div>
+        <div className={estilos.col6}>
+          <Field label="Nome do setor">
+            <Input value={novoSetor.nome} onChange={(_, d) => setNovoSetor({ ...novoSetor, nome: d.value })} />
+          </Field>
+        </div>
       </div>
       <div className={estilos.formActions}>
         <Button appearance="primary" icon={<Add24Regular />} onClick={criar} disabled={carregando}>
