@@ -1539,6 +1539,8 @@ export interface Dds {
   itensVerificados: number;
   totalParticipantes: number;
   totalFotosEvidencia: number;
+  semExpediente: boolean;
+  motivoSemExpediente?: string | null;
 }
 
 export interface NovaDds {
@@ -1658,6 +1660,8 @@ export interface DdsSemanalDia {
   status?: number | null;
   totalFotosEvidencia: number;
   totalParticipantes: number;
+  semExpediente: boolean;
+  motivoSemExpediente?: string | null;
 }
 
 export interface DdsSemanalDetalhe {
@@ -3481,6 +3485,13 @@ export const api = {
     listar: (obraId?: string) => request<Dds[]>(`/api/dds${obraId ? `?obraId=${obraId}` : ''}`),
     obterDetalhe: (id: string) => request<DdsDetalhe>(`/api/dds/${id}`),
     criar: (dds: NovaDds) => request<{ id: string }>('/api/dds', { method: 'POST', body: JSON.stringify(dds) }),
+    // Dia sem expediente — feriado, folga, obra parada (pedido do usuário, 03/09): registra o dia
+    // com a justificativa do responsável em vez de forçar um DDS ou deixar o dia em branco.
+    registrarSemExpediente: (ddsSemanalId: string, data: string, motivo: string) =>
+      request<{ id: string }>('/api/dds/sem-expediente', {
+        method: 'POST',
+        body: JSON.stringify({ ddsSemanalId, data, motivo }),
+      }),
     marcarItem: (itemId: string, verificado: boolean) =>
       request<void>(`/api/dds/itens/${itemId}/marcar`, { method: 'POST', body: JSON.stringify({ verificado }) }),
     // Presença exclusivamente por biometria (2026-08-31, pedido do usuário) — dispositivoId/

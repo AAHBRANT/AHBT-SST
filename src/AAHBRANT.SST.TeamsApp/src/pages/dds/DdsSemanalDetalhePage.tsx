@@ -8,11 +8,13 @@ import {
   Input,
   Select,
   Text,
+  Textarea,
 } from '@fluentui/react-components';
 import {
   Add24Regular,
   ArrowDownload24Regular,
   ArrowLeft24Regular,
+  CalendarCancel24Regular,
   ChevronRight24Regular,
   LockClosed24Regular,
 } from '@fluentui/react-icons';
@@ -50,6 +52,8 @@ export function DdsSemanalDetalhePage() {
   const [catalogoTemas, setCatalogoTemas] = useState<CatalogoTemaDds[]>([]);
   const [diaEmCriacao, setDiaEmCriacao] = useState<string | null>(null);
   const [novoDia, setNovoDia] = useState(novoDiaVazio());
+  const [diaMarcandoSemExpediente, setDiaMarcandoSemExpediente] = useState<string | null>(null);
+  const [motivoSemExpediente, setMotivoSemExpediente] = useState('');
   const [responsavelTerceirizadaNome, setResponsavelTerceirizadaNome] = useState('');
   const [responsavelTerceirizadaFuncao, setResponsavelTerceirizadaFuncao] = useState('');
   const [erro, setErro] = useState<string | null>(null);
@@ -81,6 +85,30 @@ export function DdsSemanalDetalhePage() {
   function abrirCriacaoDia(data: string) {
     setDiaEmCriacao(data);
     setNovoDia(novoDiaVazio());
+  }
+
+  function abrirSemExpediente(data: string) {
+    setDiaMarcandoSemExpediente(data);
+    setMotivoSemExpediente('');
+  }
+
+  async function confirmarSemExpediente() {
+    if (!id || !diaMarcandoSemExpediente || !motivoSemExpediente.trim()) {
+      setErro('Informe o motivo (feriado, folga, obra parada etc.).');
+      return;
+    }
+    try {
+      setProcessando(true);
+      setErro(null);
+      await api.dds.registrarSemExpediente(id, diaMarcandoSemExpediente, motivoSemExpediente.trim());
+      setDiaMarcandoSemExpediente(null);
+      setMotivoSemExpediente('');
+      await carregar();
+    } catch (e) {
+      setErro(e instanceof Error ? e.message : 'Falha ao registrar o dia sem expediente.');
+    } finally {
+      setProcessando(false);
+    }
   }
 
   function alternarAtividade(atividadeId: string, marcado: boolean) {
@@ -239,7 +267,16 @@ export function DdsSemanalDetalhePage() {
               {dia.data?.slice(0, 10)}
             </Text>
 
-            {dia.ddsId ? (
+            {dia.ddsId && dia.semExpediente ? (
+              <>
+                <Badge appearance="tint" color="informative" icon={<CalendarCancel24Regular />} style={{ marginBottom: 8 }}>
+                  Sem expediente
+                </Badge>
+                <Text size={200} style={{ display: 'block' }}>
+                  {dia.motivoSemExpediente}
+                </Text>
+              </>
+            ) : dia.ddsId ? (
               <>
                 <Text style={{ display: 'block', marginBottom: 4 }}>
                   {dia.atividadesNomes.join(', ') || (dia.temaLivreNome ? '' : 'DDS do dia')}
@@ -262,6 +299,20 @@ export function DdsSemanalDetalhePage() {
               </>
             ) : somenteLeitura ? (
               <Text size={200}>Nenhum registro criado para este dia.</Text>
+            ) : diaMarcandoSemExpediente === dia.data ? (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                <Field label="Motivo (feriado, folga, obra parada etc.)">
+                  <Textarea value={motivoSemExpediente} onChange={(_, d) => setMotivoSemExpediente(d.value)} />
+                </Field>
+                <div className={estilos.formActions}>
+                  <Button appearance="subtle" onClick={() => setDiaMarcandoSemExpediente(null)}>
+                    Cancelar
+                  </Button>
+                  <Button appearance="primary" icon={<CalendarCancel24Regular />} onClick={confirmarSemExpediente} disabled={processando}>
+                    Confirmar
+                  </Button>
+                </div>
+              </div>
             ) : diaEmCriacao === dia.data ? (
               <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
                 <Field label="Atividades do dia">
@@ -311,9 +362,14 @@ export function DdsSemanalDetalhePage() {
                 </div>
               </div>
             ) : (
-              <Button icon={<Add24Regular />} onClick={() => abrirCriacaoDia(dia.data)}>
-                Criar registro do dia
-              </Button>
+              <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                <Button icon={<Add24Regular />} onClick={() => abrirCriacaoDia(dia.data)}>
+                  Criar registro do dia
+                </Button>
+                <Button icon={<CalendarCancel24Regular />} onClick={() => abrirSemExpediente(dia.data)}>
+                  Marcar sem expediente
+                </Button>
+              </div>
             )}
           </div>
         ))}
