@@ -135,57 +135,69 @@ export function PcmsoTab() {
 
         {erro && <Text className={estilos.erro}>{erro}</Text>}
 
-        <div className={estilos.form}>
-          <Field label="Nome" required>
-            <Input value={novoPcmso.nome} onChange={(_, d) => setNovoPcmso({ ...novoPcmso, nome: d.value })} />
-          </Field>
-          <Field label="Versão">
-            <Input
-              value={novoPcmso.versao ?? ''}
-              onChange={(_, d) => setNovoPcmso({ ...novoPcmso, versao: d.value })}
-            />
-          </Field>
-          <Field label="Obra">
-            <Select
-              value={novoPcmso.obraId ?? ''}
-              onChange={(_, d) => setNovoPcmso({ ...novoPcmso, obraId: d.value, setorId: '' })}
-            >
-              <option value="">Nenhuma</option>
-              {obras.map((obra) => (
-                <option key={obra.id} value={obra.id}>
-                  {obra.nome}
-                </option>
-              ))}
-            </Select>
-          </Field>
-          <Field label="Data de emissão" required>
-            <CampoData
-              value={novoPcmso.dataEmissao}
-              onChange={(_, d) => setNovoPcmso({ ...novoPcmso, dataEmissao: d.value })}
-            />
-          </Field>
-          <Field label="Validade">
-            <CampoData
-              value={novoPcmso.validade ?? ''}
-              onChange={(_, d) => setNovoPcmso({ ...novoPcmso, validade: d.value })}
-            />
-          </Field>
-          <Field label="Médico responsável">
-            <Input
-              value={novoPcmso.medicoResponsavelNome ?? ''}
-              onChange={(_, d) => setNovoPcmso({ ...novoPcmso, medicoResponsavelNome: d.value })}
-            />
-          </Field>
+        <div className={estilos.formGrid}>
+          <div className={estilos.col4}>
+            <Field label="Nome do Documento" required>
+              <Input value={novoPcmso.nome} onChange={(_, d) => setNovoPcmso({ ...novoPcmso, nome: d.value })} />
+            </Field>
+          </div>
+          <div className={estilos.col2}>
+            <Field label="Versão">
+              <Input
+                value={novoPcmso.versao ?? ''}
+                onChange={(_, d) => setNovoPcmso({ ...novoPcmso, versao: d.value })}
+              />
+            </Field>
+          </div>
+          <div className={estilos.col3}>
+            <Field label="Obra">
+              <Select
+                value={novoPcmso.obraId ?? ''}
+                onChange={(_, d) => setNovoPcmso({ ...novoPcmso, obraId: d.value, setorId: '' })}
+              >
+                <option value="">Nenhuma</option>
+                {obras.map((obra) => (
+                  <option key={obra.id} value={obra.id}>
+                    {obra.nome}
+                  </option>
+                ))}
+              </Select>
+            </Field>
+          </div>
+          <div className={estilos.col3}>
+            <Field label="Data de emissão" required>
+              <CampoData
+                value={novoPcmso.dataEmissao}
+                onChange={(_, d) => setNovoPcmso({ ...novoPcmso, dataEmissao: d.value })}
+              />
+            </Field>
+          </div>
+          <div className={estilos.col3}>
+            <Field label="Validade">
+              <CampoData
+                value={novoPcmso.validade ?? ''}
+                onChange={(_, d) => setNovoPcmso({ ...novoPcmso, validade: d.value })}
+              />
+            </Field>
+          </div>
+          <div className={estilos.col5}>
+            <Field label="Médico responsável">
+              <Input
+                value={novoPcmso.medicoResponsavelNome ?? ''}
+                onChange={(_, d) => setNovoPcmso({ ...novoPcmso, medicoResponsavelNome: d.value })}
+              />
+            </Field>
+          </div>
         </div>
-        <div className={estilos.formActions}>
+        <div className={estilos.footer}>
+          <Text className={estilos.footerInfo}>
+            Os demais campos (CRM, funções/riscos/exames contemplados, periodicidades, unidades
+            abrangidas, status e Plano de Ação) são preenchidos na tela de detalhe, após criar o registro.
+          </Text>
           <Button appearance="primary" icon={<Add24Regular />} onClick={criar} disabled={carregando}>
             Adicionar PCMSO
           </Button>
         </div>
-        <Text size={200} style={{ display: 'block', marginTop: 8 }}>
-          Os demais campos (CRM, funções/riscos/exames contemplados, periodicidades, unidades
-          abrangidas, status e Plano de Ação) são preenchidos na tela de detalhe, após criar o registro.
-        </Text>
       </div>
 
       <div className={estilos.card}>

@@ -16,6 +16,7 @@ import {
   Textarea,
 } from '@fluentui/react-components';
 import { CampoData } from '../../components/CampoData';
+import { ChipsField } from '../../components/ChipsField';
 import { ArrowLeft24Regular, Delete24Regular, Save24Regular } from '@fluentui/react-icons';
 import {
   api,
@@ -202,130 +203,153 @@ export function PcmsoDetalhePage() {
               <BadgeVencimento dataValidade={pcmso.validade} />
             </div>
 
-            <div className={estilos.form}>
-              <Field label="Nome" required>
-                <Input value={edicao.nome} onChange={(_, d) => setEdicao({ ...edicao, nome: d.value })} />
-              </Field>
-              <Field label="Versão">
-                <Input
-                  value={edicao.versao ?? ''}
-                  onChange={(_, d) => setEdicao({ ...edicao, versao: d.value })}
-                />
-              </Field>
-              <Field label="Obra">
-                <Select value={edicao.obraId ?? ''} onChange={(_, d) => trocarObra(d.value)}>
-                  <option value="">Nenhuma</option>
-                  {obras.map((obra) => (
-                    <option key={obra.id} value={obra.id}>
-                      {obra.nome}
-                    </option>
-                  ))}
-                </Select>
-              </Field>
-              <Field label="Setor">
-                <Select
-                  value={edicao.setorId ?? ''}
-                  onChange={(_, d) => setEdicao({ ...edicao, setorId: d.value || null })}
-                  disabled={!edicao.obraId}
-                >
-                  <option value="">Nenhum</option>
-                  {setores.map((setor) => (
-                    <option key={setor.id} value={setor.id}>
-                      {setor.nome}
-                    </option>
-                  ))}
-                </Select>
-              </Field>
-              <Field label="Data de emissão" required>
-                <CampoData
-                  value={edicao.dataEmissao?.slice(0, 10) ?? ''}
-                  onChange={(_, d) => setEdicao({ ...edicao, dataEmissao: d.value })}
-                />
-              </Field>
-              <Field label="Validade">
-                <CampoData
-                  value={edicao.validade?.slice(0, 10) ?? ''}
-                  onChange={(_, d) => setEdicao({ ...edicao, validade: d.value })}
-                />
-              </Field>
-              <Field label="Responsável">
-                <Select
-                  value={edicao.responsavelUsuarioId ?? ''}
-                  onChange={(_, d) => setEdicao({ ...edicao, responsavelUsuarioId: d.value || null })}
-                >
-                  <option value="">Nenhum</option>
-                  {usuarios.map((usuario) => (
-                    <option key={usuario.id} value={usuario.id}>
-                      {usuario.nome}
-                    </option>
-                  ))}
-                </Select>
-              </Field>
-              <Field label="Status">
-                <Select
-                  value={pcmso.status}
-                  disabled
-                >
-                  {Object.entries(statusPcmsoDocumentoLabel).map(([valor, rotulo]) => (
-                    <option key={valor} value={valor}>
-                      {rotulo}
-                    </option>
-                  ))}
-                </Select>
-              </Field>
-              <Field label="Médico responsável">
-                <Input
-                  value={edicao.medicoResponsavelNome ?? ''}
-                  onChange={(_, d) => setEdicao({ ...edicao, medicoResponsavelNome: d.value })}
-                />
-              </Field>
-              <Field label="CRM">
-                <Input
-                  value={edicao.medicoResponsavelCrm ?? ''}
-                  onChange={(_, d) => setEdicao({ ...edicao, medicoResponsavelCrm: d.value })}
-                />
-              </Field>
-              <Field label="Funções contempladas">
-                <Textarea
-                  value={edicao.funcoesContempladas ?? ''}
-                  onChange={(_, d) => setEdicao({ ...edicao, funcoesContempladas: d.value })}
-                />
-              </Field>
-              <Field label="Riscos considerados">
-                <Textarea
-                  value={edicao.riscosConsiderados ?? ''}
-                  onChange={(_, d) => setEdicao({ ...edicao, riscosConsiderados: d.value })}
-                />
-              </Field>
-              <Field label="Exames previstos">
-                <Textarea
-                  value={edicao.examesPrevistos ?? ''}
-                  onChange={(_, d) => setEdicao({ ...edicao, examesPrevistos: d.value })}
-                />
-              </Field>
-              <Field label="Periodicidades">
-                <Textarea
-                  value={edicao.periodicidades ?? ''}
-                  onChange={(_, d) => setEdicao({ ...edicao, periodicidades: d.value })}
-                />
-              </Field>
-              <Field label="Unidades/obras abrangidas">
-                <Textarea
-                  value={edicao.unidadesObrasAbrangidas ?? ''}
-                  onChange={(_, d) => setEdicao({ ...edicao, unidadesObrasAbrangidas: d.value })}
-                />
-              </Field>
+            <div className={`${estilos.sectionTitle} ${estilos.sectionTitleFirst}`}>1. Dados gerais do documento</div>
+            <div className={estilos.formGrid}>
+              <div className={estilos.col4}>
+                <Field label="Nome do Documento" required>
+                  <Input value={edicao.nome} onChange={(_, d) => setEdicao({ ...edicao, nome: d.value })} />
+                </Field>
+              </div>
+              <div className={estilos.col2}>
+                <Field label="Versão">
+                  <Input
+                    value={edicao.versao ?? ''}
+                    onChange={(_, d) => setEdicao({ ...edicao, versao: d.value })}
+                  />
+                </Field>
+              </div>
+              <div className={estilos.col3}>
+                <Field label="Obra">
+                  <Select value={edicao.obraId ?? ''} onChange={(_, d) => trocarObra(d.value)}>
+                    <option value="">Nenhuma</option>
+                    {obras.map((obra) => (
+                      <option key={obra.id} value={obra.id}>
+                        {obra.nome}
+                      </option>
+                    ))}
+                  </Select>
+                </Field>
+              </div>
+              <div className={estilos.col3}>
+                <Field label="Setor">
+                  <Select
+                    value={edicao.setorId ?? ''}
+                    onChange={(_, d) => setEdicao({ ...edicao, setorId: d.value || null })}
+                    disabled={!edicao.obraId}
+                  >
+                    <option value="">Nenhum</option>
+                    {setores.map((setor) => (
+                      <option key={setor.id} value={setor.id}>
+                        {setor.nome}
+                      </option>
+                    ))}
+                  </Select>
+                </Field>
+              </div>
+              <div className={estilos.col3}>
+                <Field label="Data de emissão" required>
+                  <CampoData
+                    value={edicao.dataEmissao?.slice(0, 10) ?? ''}
+                    onChange={(_, d) => setEdicao({ ...edicao, dataEmissao: d.value })}
+                  />
+                </Field>
+              </div>
+              <div className={estilos.col3}>
+                <Field label="Validade">
+                  <CampoData
+                    value={edicao.validade?.slice(0, 10) ?? ''}
+                    onChange={(_, d) => setEdicao({ ...edicao, validade: d.value })}
+                  />
+                </Field>
+              </div>
+              <div className={estilos.col3}>
+                <Field label="Médico responsável">
+                  <Input
+                    value={edicao.medicoResponsavelNome ?? ''}
+                    onChange={(_, d) => setEdicao({ ...edicao, medicoResponsavelNome: d.value })}
+                  />
+                </Field>
+              </div>
+              <div className={estilos.col3}>
+                <Field label="CRM">
+                  <Input
+                    value={edicao.medicoResponsavelCrm ?? ''}
+                    onChange={(_, d) => setEdicao({ ...edicao, medicoResponsavelCrm: d.value })}
+                  />
+                </Field>
+              </div>
+              <div className={estilos.col4}>
+                <Field label="Responsável">
+                  <Select
+                    value={edicao.responsavelUsuarioId ?? ''}
+                    onChange={(_, d) => setEdicao({ ...edicao, responsavelUsuarioId: d.value || null })}
+                  >
+                    <option value="">Nenhum</option>
+                    {usuarios.map((usuario) => (
+                      <option key={usuario.id} value={usuario.id}>
+                        {usuario.nome}
+                      </option>
+                    ))}
+                  </Select>
+                </Field>
+              </div>
             </div>
-            <div className={estilos.formActions}>
+
+            <div className={estilos.sectionTitle}>2. Abrangência, riscos e exames</div>
+            <div className={estilos.formGrid}>
+              <div className={estilos.col6}>
+                <Field label="Unidades/Obras abrangidas">
+                  <ChipsField
+                    value={edicao.unidadesObrasAbrangidas ?? ''}
+                    onChange={(v) => setEdicao({ ...edicao, unidadesObrasAbrangidas: v })}
+                    placeholder="Digite e pressione Enter"
+                  />
+                </Field>
+              </div>
+              <div className={estilos.col6}>
+                <Field label="Funções contempladas">
+                  <Textarea
+                    value={edicao.funcoesContempladas ?? ''}
+                    onChange={(_, d) => setEdicao({ ...edicao, funcoesContempladas: d.value })}
+                  />
+                </Field>
+              </div>
+              <div className={estilos.col4}>
+                <Field label="Riscos considerados">
+                  <Textarea
+                    value={edicao.riscosConsiderados ?? ''}
+                    onChange={(_, d) => setEdicao({ ...edicao, riscosConsiderados: d.value })}
+                  />
+                </Field>
+              </div>
+              <div className={estilos.col4}>
+                <Field label="Exames previstos">
+                  <Textarea
+                    value={edicao.examesPrevistos ?? ''}
+                    onChange={(_, d) => setEdicao({ ...edicao, examesPrevistos: d.value })}
+                  />
+                </Field>
+              </div>
+              <div className={estilos.col4}>
+                <Field label="Periodicidades">
+                  <Textarea
+                    value={edicao.periodicidades ?? ''}
+                    onChange={(_, d) => setEdicao({ ...edicao, periodicidades: d.value })}
+                  />
+                </Field>
+              </div>
+            </div>
+
+            <div className={estilos.footer}>
+              <Text className={estilos.footerInfo}>
+                O status segue o fluxo documental padrão (Rascunho → Em aprovação → Vigente → Obsoleto →
+                Cancelado) e é alterado pelo mesmo fluxo de Gestão Documental usado pelos demais
+                documentos controlados — não editável diretamente aqui.
+              </Text>
               <Button appearance="primary" icon={<Save24Regular />} onClick={salvar} disabled={salvando}>
                 Salvar alterações
               </Button>
             </div>
-            <Text size={200} style={{ display: 'block', marginTop: 8 }}>
-              O status segue o fluxo documental padrão (Rascunho → Em aprovação → Vigente → Obsoleto →
-              Cancelado) e é alterado pelo mesmo fluxo de Gestão Documental usado pelos demais
-              documentos controlados — não editável diretamente aqui.
-            </Text>
           </div>
 
           <div className={estilos.card} style={{ marginBottom: 16 }}>
