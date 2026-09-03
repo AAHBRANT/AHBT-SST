@@ -62,6 +62,8 @@ public class ListarDdsQueryHandler : IRequestHandler<ListarDdsQuery, List<DdsDto
             ItensVerificados = itensAtivos.Count(i => i.Verificado),
             TotalParticipantes = dds.Participantes.Count(p => p.Ativo),
             TotalFotosEvidencia = dds.FotosEvidencia.Count(f => f.Ativo),
+            SemExpediente = dds.SemExpediente,
+            MotivoSemExpediente = dds.MotivoSemExpediente,
         };
     }
 }

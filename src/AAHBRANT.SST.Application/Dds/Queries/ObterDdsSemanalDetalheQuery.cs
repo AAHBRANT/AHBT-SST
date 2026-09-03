@@ -49,6 +49,8 @@ public class ObterDdsSemanalDetalheQueryHandler : IRequestHandler<ObterDdsSemana
                 Status = registroDoDia?.Status,
                 TotalFotosEvidencia = registroDoDia is null ? 0 : fotosPorDia.GetValueOrDefault(registroDoDia.Id),
                 TotalParticipantes = registroDoDia is null ? 0 : participantesPorDia.GetValueOrDefault(registroDoDia.Id),
+                SemExpediente = registroDoDia?.SemExpediente ?? false,
+                MotivoSemExpediente = registroDoDia?.MotivoSemExpediente,
             });
         }
 

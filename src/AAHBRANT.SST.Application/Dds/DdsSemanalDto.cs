@@ -36,6 +36,8 @@ public class DdsSemanalDiaDto
     public StatusDds? Status { get; set; }
     public int TotalFotosEvidencia { get; set; }
     public int TotalParticipantes { get; set; }
+    public bool SemExpediente { get; set; }
+    public string? MotivoSemExpediente { get; set; }
 }
 
 public class DdsSemanalDetalheDto

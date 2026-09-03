@@ -4,7 +4,13 @@ namespace AAHBRANT.SST.Application.Dds;
 // - DDS", 31/08): cabeçalho com dados da semana, grade Seg-Sex com tema+data de cada dia, tabela
 // única de presença (um trabalhador por linha, uma coluna de rubrica por dia) e assinaturas de
 // encerramento no rodapé.
-public record DdsSemanalPdfDiaModelo(DayOfWeek DiaSemana, DateTime Data, IReadOnlyList<string> AtividadesNomes, string? TemaLivreNome);
+public record DdsSemanalPdfDiaModelo(
+    DayOfWeek DiaSemana,
+    DateTime Data,
+    IReadOnlyList<string> AtividadesNomes,
+    string? TemaLivreNome,
+    bool SemExpediente,
+    string? MotivoSemExpediente);
 
 public record DdsSemanalPdfLinhaPresenca(
     string Nome,

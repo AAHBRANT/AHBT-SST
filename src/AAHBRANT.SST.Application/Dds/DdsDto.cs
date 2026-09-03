@@ -34,6 +34,8 @@ public class DdsDto
     public int ItensVerificados { get; set; }
     public int TotalParticipantes { get; set; }
     public int TotalFotosEvidencia { get; set; }
+    public bool SemExpediente { get; set; }
+    public string? MotivoSemExpediente { get; set; }
 }
 
 public class DdsItemChecklistDto
