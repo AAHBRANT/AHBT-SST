@@ -29,6 +29,7 @@ import {
 import { AssinaturaEntregaEpiDialog } from '../../components/assinatura/AssinaturaEntregaEpiDialog';
 import { AssinaturaDevolucaoEpiDialog } from '../../components/assinatura/AssinaturaDevolucaoEpiDialog';
 import { usePageStyles } from '../pageStyles';
+import { FotoCatalogoEpi } from './FotoCatalogoEpi';
 
 function entregaVazia(): NovaEntregaEpi {
   return {
@@ -115,6 +116,10 @@ export function EntregasTab({ aoNavegarParaMatriz }: EntregasTabProps) {
 
   function nomeEpi(id: string) {
     return epis.find((e) => e.id === id)?.nome ?? id;
+  }
+
+  function epiTemFoto(id: string) {
+    return epis.find((e) => e.id === id)?.temFoto ?? false;
   }
 
   function nomeTrabalhador(id: string) {
@@ -333,7 +338,16 @@ export function EntregasTab({ aoNavegarParaMatriz }: EntregasTabProps) {
             {entregas.map((entrega) => (
               <TableRow key={entrega.id}>
                 <TableCell>{nomeTrabalhador(entrega.trabalhadorId)}</TableCell>
-                <TableCell>{nomeEpi(entrega.catalogoEpiId)}</TableCell>
+                <TableCell>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                    <FotoCatalogoEpi
+                      catalogoEpiId={entrega.catalogoEpiId}
+                      temFoto={epiTemFoto(entrega.catalogoEpiId)}
+                      tamanho={28}
+                    />
+                    {nomeEpi(entrega.catalogoEpiId)}
+                  </div>
+                </TableCell>
                 <TableCell>{entrega.quantidade}</TableCell>
                 <TableCell>{entrega.dataEntrega?.slice(0, 10)}</TableCell>
                 <TableCell>
@@ -402,6 +416,8 @@ export function EntregasTab({ aoNavegarParaMatriz }: EntregasTabProps) {
           entregaId={entregaParaAssinar.id}
           trabalhadorNome={nomeTrabalhador(entregaParaAssinar.trabalhadorId)}
           epiNome={nomeEpi(entregaParaAssinar.catalogoEpiId)}
+          catalogoEpiId={entregaParaAssinar.catalogoEpiId}
+          epiTemFoto={epiTemFoto(entregaParaAssinar.catalogoEpiId)}
           quantidade={entregaParaAssinar.quantidade}
           dataEntrega={entregaParaAssinar.dataEntrega}
           numeroListaPresencaNr6={entregaParaAssinar.numeroListaPresencaNr6}

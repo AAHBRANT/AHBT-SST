@@ -19,6 +19,8 @@ import { useConfirmarExclusao } from '../../hooks/useConfirmarExclusao';
 import { useSucessoToast } from '../../hooks/useSucessoToast';
 import { EstadoVazio } from '../../components/EstadoVazio';
 import { ListaCarregando } from '../../components/ListaCarregando';
+import { SeletorFotoCamera } from '../../components/SeletorFotoCamera';
+import { FotoCatalogoEpi } from './FotoCatalogoEpi';
 
 const epiVazio: NovoCatalogoEpi = {
   nome: '',
@@ -36,6 +38,7 @@ export function CatalogoTab() {
   const estilos = usePageStyles();
   const [epis, setEpis] = useState<CatalogoEpi[]>([]);
   const [novoEpi, setNovoEpi] = useState<NovoCatalogoEpi>(epiVazio);
+  const [fotoNovoEpi, setFotoNovoEpi] = useState<File | null>(null);
   const [edicaoId, setEdicaoId] = useState<string | null>(null);
   const [edicao, setEdicao] = useState<CatalogoEpi | null>(null);
   const [erro, setErro] = useState<string | null>(null);
@@ -63,14 +66,29 @@ export function CatalogoTab() {
     try {
       setCarregando(true);
       setErro(null);
-      await api.catalogosEpi.criar(novoEpi);
+      const { id } = await api.catalogosEpi.criar(novoEpi);
+      if (fotoNovoEpi) {
+        await api.catalogosEpi.anexarFoto(id, fotoNovoEpi);
+      }
       setNovoEpi(epiVazio);
+      setFotoNovoEpi(null);
       await carregar();
       sucessoToast('EPI cadastrado com sucesso.');
     } catch (e) {
       setErro(e instanceof Error ? e.message : 'Falha ao criar EPI de catálogo.');
     } finally {
       setCarregando(false);
+    }
+  }
+
+  async function trocarFoto(epiId: string, arquivo: File) {
+    try {
+      setErro(null);
+      await api.catalogosEpi.anexarFoto(epiId, arquivo);
+      await carregar();
+      sucessoToast('Foto do EPI atualizada.');
+    } catch (e) {
+      setErro(e instanceof Error ? e.message : 'Falha ao enviar a foto do EPI.');
     }
   }
 
@@ -145,6 +163,14 @@ export function CatalogoTab() {
             onChange={(_, d) => setNovoEpi({ ...novoEpi, vidaUtilEmMeses: Number(d.value) })}
           />
         </Field>
+        <Field label="Foto do EPI">
+          <SeletorFotoCamera
+            rotulo={fotoNovoEpi ? fotoNovoEpi.name : 'Tirar foto ou escolher arquivo'}
+            tiposAceitos="image/jpeg,image/png"
+            aoSelecionarArquivo={(arquivo) => setFotoNovoEpi(arquivo)}
+            aoErroValidacao={setErro}
+          />
+        </Field>
       </div>
       <div className={estilos.formActions}>
         <Button appearance="primary" icon={<Add24Regular />} onClick={criar} disabled={carregando}>
@@ -160,6 +186,7 @@ export function CatalogoTab() {
       <Table>
         <TableHeader>
           <TableRow>
+            <TableHeaderCell>Foto</TableHeaderCell>
             <TableHeaderCell>Nome</TableHeaderCell>
             <TableHeaderCell>Fabricante</TableHeaderCell>
             <TableHeaderCell>Nº do CA</TableHeaderCell>
@@ -173,6 +200,19 @@ export function CatalogoTab() {
           {epis.map((epi) =>
             edicaoId === epi.id && edicao ? (
               <TableRow key={epi.id}>
+                <TableCell>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                    <FotoCatalogoEpi catalogoEpiId={epi.id} temFoto={epi.temFoto} tamanho={36} />
+                    <SeletorFotoCamera
+                      apenasIcone
+                      tamanho="small"
+                      rotulo="Trocar foto"
+                      tiposAceitos="image/jpeg,image/png"
+                      aoSelecionarArquivo={(arquivo) => trocarFoto(epi.id, arquivo)}
+                      aoErroValidacao={setErro}
+                    />
+                  </div>
+                </TableCell>
                 <TableCell>
                   <Input value={edicao.nome} onChange={(_, d) => setEdicao({ ...edicao, nome: d.value })} />
                 </TableCell>
@@ -214,6 +254,9 @@ export function CatalogoTab() {
               </TableRow>
             ) : (
               <TableRow key={epi.id} onClick={() => iniciarEdicao(epi)} style={{ cursor: 'pointer' }}>
+                <TableCell>
+                  <FotoCatalogoEpi catalogoEpiId={epi.id} temFoto={epi.temFoto} tamanho={36} />
+                </TableCell>
                 <TableCell>{epi.nome}</TableCell>
                 <TableCell>{epi.fabricante}</TableCell>
                 <TableCell>{epi.certificadoAprovacaoNumero}</TableCell>

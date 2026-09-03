@@ -333,10 +333,13 @@ export interface CatalogoEpi {
   // Soma do estoque do EPI em todas as Obras (Fase 3) — somente leitura; não editável via
   // catálogo. Ver api.estoquesEpi para o estoque segmentado por Obra.
   saldoTotal: number;
+  // Foto real do item (pedido do usuário, 03/09) — nunca vem embutida aqui (só o flag); o binário é
+  // baixado sob demanda via api.catalogosEpi.baixarFoto, mesmo padrão de Obra.temLogo/Trabalhador.temFoto.
+  temFoto: boolean;
 }
 
-export type NovoCatalogoEpi = Omit<CatalogoEpi, 'id' | 'saldoTotal'>;
-export type AtualizarCatalogoEpi = Omit<CatalogoEpi, 'saldoTotal'>;
+export type NovoCatalogoEpi = Omit<CatalogoEpi, 'id' | 'saldoTotal' | 'temFoto'>;
+export type AtualizarCatalogoEpi = Omit<CatalogoEpi, 'saldoTotal' | 'temFoto'>;
 
 // Fase 3 — estoque de EPI segmentado por Obra (substitui o antigo saldo único global).
 export const TipoMovimentacaoEstoqueEpi = {
@@ -3024,6 +3027,29 @@ export const api = {
     atualizar: (epi: AtualizarCatalogoEpi) =>
       request<void>(`/api/catalogosepi/${epi.id}`, { method: 'PUT', body: JSON.stringify(epi) }),
     excluir: (id: string) => request<void>(`/api/catalogosepi/${id}`, { method: 'DELETE' }),
+    anexarFoto: async (id: string, arquivo: File) => {
+      const formData = new FormData();
+      formData.append('Foto', arquivo);
+      const response = await fetch(`${API_BASE_URL}/api/catalogosepi/${id}/foto`, {
+        method: 'POST',
+        headers: await montarHeadersAuth(),
+        body: formData,
+      });
+      if (!response.ok) {
+        const corpo = await response.text().catch(() => '');
+        throw new Error(extrairMensagemErro(corpo, response.status, response.statusText));
+      }
+    },
+    baixarFoto: async (id: string) => {
+      const response = await fetch(`${API_BASE_URL}/api/catalogosepi/${id}/foto`, {
+        headers: await montarHeadersAuth(),
+      });
+      if (!response.ok) {
+        const corpo = await response.text().catch(() => '');
+        throw new Error(extrairMensagemErro(corpo, response.status, response.statusText));
+      }
+      return response.blob();
+    },
   },
   estoquesEpi: {
     listarPorObra: (obraId: string) => request<EstoqueEpiPorObra[]>(`/api/estoquesepi/obra/${obraId}`),
