@@ -6,21 +6,24 @@ import { designTokens } from '../theme';
 interface EmConstrucaoPageProps {
   titulo: string;
   descricao: string;
+  mostrarTitulo?: boolean;
 }
 
 // Placeholder para itens que já ganharam lugar fixo na navegação (reorganização de sidebar,
 // 2026-08-31) mas ainda não têm tela/dado próprio no sistema — evita esconder a decisão de
 // onde cada coisa vai ficar, sem fingir que a funcionalidade já existe.
-export function EmConstrucaoPage({ titulo, descricao }: EmConstrucaoPageProps) {
+export function EmConstrucaoPage({ titulo, descricao, mostrarTitulo = true }: EmConstrucaoPageProps) {
   const estilos = usePageStyles();
 
   return (
     <div>
-      <div style={{ marginBottom: 16 }}>
-        <Text size={500} weight="semibold">
-          {titulo}
-        </Text>
-      </div>
+      {mostrarTitulo && (
+        <div style={{ marginBottom: 16 }}>
+          <Text size={500} weight="semibold">
+            {titulo}
+          </Text>
+        </div>
+      )}
       <div
         className={estilos.card}
         style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 12, padding: '48px 24px' }}

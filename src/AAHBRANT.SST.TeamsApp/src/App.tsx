@@ -1,42 +1,33 @@
 import { FluentProvider } from '@fluentui/react-components';
-import { HashRouter, Navigate, Outlet, Route, Routes, useParams } from 'react-router-dom';
-import { aahbrantTheme } from './theme';
+import { HashRouter, Navigate, Outlet, Route, Routes, useLocation, useParams } from 'react-router-dom';
+import { aahbrantTheme, aahbrantLightTheme } from './theme';
+import { ThemeModeProvider, useThemeMode } from './theme/ThemeModeContext';
 import { AppShell } from './layout/AppShell';
 import { DashboardPage } from './pages/DashboardPage';
-import { PessoasPage } from './pages/pessoas/PessoasPage';
+import { GestaoSstPage } from './pages/gestao-sst/GestaoSstPage';
+import { OperacaoPage } from './pages/operacao/OperacaoPage';
+import { OcorrenciasPage } from './pages/ocorrencias/OcorrenciasPage';
+import { PessoasPillarPage } from './pages/pessoas/PessoasPillarPage';
 import { TrabalhadorDetalhePage } from './pages/pessoas/TrabalhadorDetalhePage';
-import { TreinamentosPage } from './pages/treinamentos/TreinamentosPage';
-import { PgrRiscosPage } from './pages/pgr/PgrRiscosPage';
 import { PgrDetalhePage } from './pages/pgr/PgrDetalhePage';
-import { AprsPage } from './pages/apr/AprsPage';
 import { AprDetalhePage } from './pages/apr/AprDetalhePage';
-import { PermissoesTrabalhoPage } from './pages/pt/PermissoesTrabalhoPage';
 import { PermissaoTrabalhoDetalhePage } from './pages/pt/PermissaoTrabalhoDetalhePage';
 import { AssinarPtPage } from './pages/pt/AssinarPtPage';
-import { InspecoesPage } from './pages/inspecoes/InspecoesPage';
 import { InspecaoDetalhePage } from './pages/inspecoes/InspecaoDetalhePage';
 import { AssinarInspecaoPage } from './pages/inspecoes/AssinarInspecaoPage';
-import { IdentificacaoPage } from './pages/identificacao/IdentificacaoPage';
 import { AreaPublicaPage } from './pages/identificacao/AreaPublicaPage';
 import { ValidarDocumentoPage } from './pages/validacao/ValidarDocumentoPage';
 import { AdministracaoPage } from './pages/administracao/AdministracaoPage';
-import { NaoConformidadesPage } from './pages/naoconformidades/NaoConformidadesPage';
-import { RequisitosLegaisPage } from './pages/requisitoslegais/RequisitosLegaisPage';
 import { NaoConformidadeDetalhePage } from './pages/naoconformidades/NaoConformidadeDetalhePage';
 import { AlertasPage } from './pages/alertas/AlertasPage';
 import { CalendarioPage } from './pages/calendario/CalendarioPage';
-import { AcidentesPage } from './pages/acidentes/AcidentesPage';
 import { AcidenteDetalhePage } from './pages/acidentes/AcidenteDetalhePage';
-import { DdsPage } from './pages/dds/DdsPage';
 import { DdsSemanalDetalhePage } from './pages/dds/DdsSemanalDetalhePage';
 import { DdsDetalhePage } from './pages/dds/DdsDetalhePage';
 import { AssinarDdsPage } from './pages/dds/AssinarDdsPage';
-import { EpiPage } from './pages/epi/EpiPage';
 import { AssinarEntregaEpiPage } from './pages/epi/AssinarEntregaEpiPage';
 import { SaudeOcupacionalPage } from './pages/saude-ocupacional/SaudeOcupacionalPage';
 import { PcmsoDetalhePage } from './pages/saude-ocupacional/PcmsoDetalhePage';
-import { EmConstrucaoPage } from './pages/EmConstrucaoPage';
-import { CipaPage } from './pages/cipa/CipaPage';
 import { ProcessoEleitoralCipaDetalhePage } from './pages/cipa/ProcessoEleitoralCipaDetalhePage';
 import { MembroCipaDetalhePage } from './pages/cipa/MembroCipaDetalhePage';
 import { ReuniaoCipaDetalhePage } from './pages/cipa/ReuniaoCipaDetalhePage';
@@ -60,55 +51,106 @@ function RedirecionarComId({ para }: { para: (id: string) => string }) {
   return <Navigate to={id ? para(id) : '/'} replace />;
 }
 
+// Redireciona uma rota antiga (item que tinha link próprio na sidebar, antes da reformulação de
+// 02/09) para a página-pilar equivalente, preservando qualquer querystring que a rota antiga já
+// suportasse (ex.: ?aba=riscos) — só adiciona/sobrescreve o parâmetro "secao".
+function RedirecionarParaPilar({ pilar, secao }: { pilar: string; secao: string }) {
+  const location = useLocation();
+  const params = new URLSearchParams(location.search);
+  params.set('secao', secao);
+  return <Navigate to={`${pilar}?${params.toString()}`} replace />;
+}
+
 // HashRouter evita depender de configuração de rota no servidor durante o sideload no Teams.
 function App() {
   return (
-    <FluentProvider theme={aahbrantTheme}>
+    <ThemeModeProvider>
+      <AppRoteado />
+    </ThemeModeProvider>
+  );
+}
+
+// Separado de App só pra poder usar useThemeMode (o hook precisa estar dentro do Provider) e
+// escolher o tema do Fluent (claro/escuro) que o botão de dark/light mode alterna — ver
+// ThemeModeContext.tsx e o botão em AppShell.tsx.
+function AppRoteado() {
+  const { modo } = useThemeMode();
+  return (
+    <FluentProvider theme={modo === 'dark' ? aahbrantTheme : aahbrantLightTheme}>
       <HashRouter>
         <Routes>
-          <Route path="/p/:codigoOuUid" element={<AreaPublicaPage />} />
-          <Route path="/validar/:token" element={<ValidarDocumentoPage />} />
+          {/* Páginas públicas (abertas via QR code, sem sidebar/header do Teams) ficam no tema claro
+              original — não fazem parte do app interno e não devem escurecer junto com ele (02/09). */}
+          <Route
+            path="/p/:codigoOuUid"
+            element={
+              <FluentProvider theme={aahbrantLightTheme}>
+                <AreaPublicaPage />
+              </FluentProvider>
+            }
+          />
+          <Route
+            path="/validar/:token"
+            element={
+              <FluentProvider theme={aahbrantLightTheme}>
+                <ValidarDocumentoPage />
+              </FluentProvider>
+            }
+          />
           <Route element={<LayoutComTeams />}>
             <Route path="/" element={<DashboardPage />} />
 
-            {/* Cada item da sidebar abre só o que é dele (pedido do usuário, 02/09 — reverte os
-                módulos-pilar "Procedimentos & Planos"/"Operação" de 24/08, que empilhavam abas de
-                itens que já tinham link próprio, ex.: clicar em "CIPA" mostrava CIPA + APR + PT +
-                Identificação + Ativos + Saúde Ocupacional juntos). Só ficam agrupados os pares que
-                fazem sentido de verdade: PGR+Riscos (ver PgrRiscosPage) e DDS+Temas de DDS (ver
-                DdsPage) — nos dois casos, o segundo item nunca teve link próprio na sidebar. */}
-            <Route path="/prevencao" element={<Navigate to="/prevencao/pgr" replace />} />
-            <Route path="/prevencao/pgr" element={<PgrRiscosPage />} />
+            {/* Reformulação de navegação (pedido do usuário, 02/09, réplica de mockup): os itens que
+                antes abriam cada um a própria tela (PGR/GRO, PCMSO, Treinamentos, EPI/EPC, CIPA,
+                DDS, Documentos & Procedimentos, Requisitos Legais) viraram abas de GestaoSstPage —
+                a sidebar mostra só o item "Gestão de SST". As rotas antigas continuam existindo
+                como redirecionamento (preservam links/favoritos antigos e qualquer querystring que
+                já suportassem, ex.: ?aba=riscos), e as rotas de detalhe (:id) não mudam de lugar. */}
+            <Route path="/gestao-sst" element={<GestaoSstPage />} />
+            <Route path="/prevencao" element={<Navigate to="/gestao-sst?secao=pgr" replace />} />
+            <Route path="/prevencao/pgr" element={<RedirecionarParaPilar pilar="/gestao-sst" secao="pgr" />} />
             <Route path="/prevencao/pgr/:id" element={<PgrDetalhePage />} />
-            <Route path="/prevencao/inspecoes" element={<InspecoesPage />} />
+            <Route
+              path="/prevencao/inspecoes"
+              element={<RedirecionarParaPilar pilar="/operacao" secao="inspecoes" />}
+            />
             <Route path="/prevencao/inspecoes/:id" element={<InspecaoDetalhePage />} />
             <Route path="/prevencao/inspecoes/:id/assinar" element={<AssinarInspecaoPage />} />
-            <Route path="/prevencao/dds" element={<DdsPage />} />
+            <Route path="/prevencao/dds" element={<RedirecionarParaPilar pilar="/gestao-sst" secao="dds" />} />
             <Route path="/prevencao/dds/semana/:id" element={<DdsSemanalDetalhePage />} />
             <Route path="/prevencao/dds/dia/:id" element={<DdsDetalhePage />} />
             <Route path="/prevencao/dds/dia/:id/assinar" element={<AssinarDdsPage />} />
             {/* Legado: Temas de DDS tinha sub-rota própria dentro do pilar (até 02/09) — virou aba
-                de DdsPage. */}
-            <Route path="/prevencao/temas-dds" element={<Navigate to="/prevencao/dds?aba=temas-dds" replace />} />
+                de DdsPage, dentro da aba "DDS" de Gestão de SST. */}
+            <Route path="/prevencao/temas-dds" element={<Navigate to="/gestao-sst?secao=dds&aba=temas-dds" replace />} />
             {/* Legado: /prevencao/pcmso apontava pro PCMSO antigo (descontinuado em 28/08 —
-                ver ONBOARDING.md) — redireciona pro módulo Saúde Ocupacional atual. */}
+                ver ONBOARDING.md) — redireciona pro módulo Saúde Ocupacional atual. Rota
+                /operacao/saude-ocupacional continua existindo sem o wrapper de pilar (link direto,
+                não tem mais item próprio na sidebar). */}
             <Route path="/prevencao/pcmso" element={<Navigate to="/operacao/saude-ocupacional" replace />} />
             <Route path="/prevencao/pcmso/:id" element={<RedirecionarComId para={(id) => `/operacao/saude-ocupacional/pcmso/${id}`} />} />
+            <Route path="/treinamentos" element={<RedirecionarParaPilar pilar="/gestao-sst" secao="treinamentos" />} />
+            <Route path="/epi" element={<RedirecionarParaPilar pilar="/gestao-sst" secao="epi" />} />
+            <Route path="/requisitos-legais" element={<RedirecionarParaPilar pilar="/gestao-sst" secao="requisitos-legais" />} />
+            <Route path="/gestao-sst/documentos" element={<Navigate to="/gestao-sst?secao=documentos" replace />} />
 
-            {/* Ex-pilar Operação — cada rota abaixo é independente agora (Pessoas virou item de 1º
-                nível na sidebar; Obras saiu daqui e virou aba de Administração, pedido do usuário,
-                01/09; Ativos/Extintores & Equipamentos foi removido do sistema em 02/09, pedido
-                explícito do usuário — "não vamos usar"). */}
-            <Route path="/operacao" element={<Navigate to="/operacao/apr" replace />} />
-            <Route path="/operacao/apr" element={<AprsPage />} />
+            {/* Item "Operação" da sidebar: APR, PT, Inspeções e Identificação (rotulada "Outros
+                controles operacionais") viraram abas de OperacaoPage. Pessoas virou item de 1º nível
+                próprio (ver PessoasPillarPage); Obras virou aba de Administração (01/09); Ativos foi
+                removido do sistema (02/09, pedido explícito — "não vamos usar"). */}
+            <Route path="/operacao" element={<OperacaoPage />} />
+            <Route path="/operacao/apr" element={<RedirecionarParaPilar pilar="/operacao" secao="apr" />} />
             <Route path="/operacao/apr/:id" element={<AprDetalhePage />} />
-            <Route path="/operacao/pt" element={<PermissoesTrabalhoPage />} />
+            <Route path="/operacao/pt" element={<RedirecionarParaPilar pilar="/operacao" secao="pt" />} />
             <Route path="/operacao/pt/:id" element={<PermissaoTrabalhoDetalhePage />} />
             <Route path="/operacao/pt/:id/assinar" element={<AssinarPtPage />} />
-            <Route path="/operacao/identificacao" element={<IdentificacaoPage />} />
+            <Route
+              path="/operacao/identificacao"
+              element={<RedirecionarParaPilar pilar="/operacao" secao="identificacao" />}
+            />
             <Route path="/operacao/saude-ocupacional" element={<SaudeOcupacionalPage />} />
             <Route path="/operacao/saude-ocupacional/pcmso/:id" element={<PcmsoDetalhePage />} />
-            <Route path="/operacao/cipa" element={<CipaPage />} />
+            <Route path="/operacao/cipa" element={<RedirecionarParaPilar pilar="/gestao-sst" secao="cipa" />} />
             <Route path="/operacao/cipa/eleicao/:id" element={<ProcessoEleitoralCipaDetalhePage />} />
             <Route path="/operacao/cipa/membro/:id" element={<MembroCipaDetalhePage />} />
             <Route path="/operacao/cipa/reuniao/:id" element={<ReuniaoCipaDetalhePage />} />
@@ -117,54 +159,38 @@ function App() {
             <Route path="/alertas" element={<AlertasPage />} />
             <Route path="/calendario" element={<CalendarioPage />} />
 
-            {/* Pessoas, Não Conformidades e Acidentes & Incidentes são itens de 1º nível na sidebar
-                (antes eram abas de Prevenção/Operação e de Melhoria Contínua, respectivamente —
-                Melhoria Contínua foi removida). Cada página já é autossuficiente (título + abas
-                internas próprias), mesmo padrão já usado por EpiPage. Riscos deixou de ser item
-                próprio em 02/09 e virou aba de PgrRiscosPage — ver /prevencao/pgr. */}
-            <Route path="/pessoas" element={<PessoasPage />} />
+            {/* Item "Pessoas" da sidebar: Trabalhadores/Funções/Dashboard (já eram abas de
+                PessoasPage) e ASO & Exames viraram abas de PessoasPillarPage. */}
+            <Route path="/pessoas" element={<PessoasPillarPage />} />
             <Route path="/pessoas/:id" element={<TrabalhadorDetalhePage />} />
-            <Route path="/treinamentos" element={<TreinamentosPage />} />
-            {/* Legado: Riscos era item de 1º nível na sidebar (até 02/09), virou aba de PGR/GRO. */}
-            <Route path="/riscos" element={<Navigate to="/prevencao/pgr?aba=riscos" replace />} />
-            <Route path="/nao-conformidades" element={<NaoConformidadesPage />} />
-            <Route path="/nao-conformidades/:id" element={<NaoConformidadeDetalhePage />} />
-            <Route path="/acidentes" element={<AcidentesPage />} />
-            <Route path="/acidentes/:id" element={<AcidenteDetalhePage />} />
-            <Route path="/requisitos-legais" element={<RequisitosLegaisPage />} />
 
-            <Route path="/epi" element={<EpiPage />} />
+            {/* Item "Ocorrências" da sidebar: Acidentes/Incidentes/Quase-acidentes (já eram a mesma
+                tela filtrada por tipo) e Não Conformidades viraram abas de OcorrenciasPage. */}
+            <Route path="/ocorrencias" element={<OcorrenciasPage />} />
+            <Route path="/nao-conformidades" element={<Navigate to="/ocorrencias?secao=nao-conformidades" replace />} />
+            <Route path="/nao-conformidades/:id" element={<NaoConformidadeDetalhePage />} />
+            <Route path="/acidentes" element={<Navigate to="/ocorrencias?secao=acidentes" replace />} />
+            <Route path="/acidentes/:id" element={<AcidenteDetalhePage />} />
+
             <Route path="/epi/:id/assinar" element={<AssinarEntregaEpiPage />} />
             <Route path="/treinamentos/:id/assinar" element={<AssinarTreinamentoPage />} />
             <Route path="/administracao" element={<AdministracaoPage />} />
 
-            {/* Legado: "Treinamentos" era placeholder (EmConstrucaoPage) na reorganização de
-                sidebar de 31/08 — Treinamentos virou módulo próprio em 02/09 (ver TreinamentosPage). */}
-            <Route path="/gestao-sst/treinamentos" element={<Navigate to="/treinamentos" replace />} />
-            {/* Reorganização de sidebar em grupos (2026-08-31, pedido do usuário) — item que
-                ganhou lugar fixo no menu mas ainda não tem tela/dado próprio no sistema. */}
-            <Route
-              path="/gestao-sst/documentos"
-              element={
-                <EmConstrucaoPage
-                  titulo="Documentos & Procedimentos"
-                  descricao="O módulo de Gestão Documental foi removido do sistema em 28/08 (junto com a Matriz Legal antiga). Esse item está reservado no menu, mas precisa ser reconstruído do zero."
-                />
-              }
-            />
-            {/* Redirecionamentos legados: caminhos antigos (pré-consolidação de 24/08) apontando
-                para as novas sub-rotas dentro dos módulos-pilar — preserva links/favoritos antigos. */}
-            <Route path="/prevencao/riscos" element={<Navigate to="/prevencao/pgr?aba=riscos" replace />} />
-            <Route path="/pgr" element={<Navigate to="/prevencao/pgr" replace />} />
+            {/* Redirecionamentos legados: caminhos antigos (pré-consolidação de 24/08 e pré-reforma
+                de 02/09) apontando pras páginas-pilar atuais — preserva links/favoritos antigos. */}
+            <Route path="/gestao-sst/treinamentos" element={<Navigate to="/gestao-sst?secao=treinamentos" replace />} />
+            <Route path="/prevencao/riscos" element={<Navigate to="/gestao-sst?secao=pgr&aba=riscos" replace />} />
+            <Route path="/riscos" element={<Navigate to="/gestao-sst?secao=pgr&aba=riscos" replace />} />
+            <Route path="/pgr" element={<Navigate to="/gestao-sst?secao=pgr" replace />} />
             <Route path="/pgr/:id" element={<RedirecionarComId para={(id) => `/prevencao/pgr/${id}`} />} />
             <Route path="/pcmso" element={<Navigate to="/operacao/saude-ocupacional" replace />} />
             <Route path="/pcmso/:id" element={<RedirecionarComId para={(id) => `/operacao/saude-ocupacional/pcmso/${id}`} />} />
-            <Route path="/inspecoes" element={<Navigate to="/prevencao/inspecoes" replace />} />
+            <Route path="/inspecoes" element={<Navigate to="/operacao?secao=inspecoes" replace />} />
             <Route
               path="/inspecoes/:id"
               element={<RedirecionarComId para={(id) => `/prevencao/inspecoes/${id}`} />}
             />
-            <Route path="/dds" element={<Navigate to="/prevencao/dds" replace />} />
+            <Route path="/dds" element={<Navigate to="/gestao-sst?secao=dds" replace />} />
             <Route path="/dds/:id" element={<RedirecionarComId para={(id) => `/prevencao/dds/dia/${id}`} />} />
 
             <Route path="/obras" element={<Navigate to="/administracao" replace />} />
@@ -173,11 +199,11 @@ function App() {
             {/* Legado: Pessoas era aba de Operação (até 28/08), virou item de 1º nível. */}
             <Route path="/operacao/pessoas" element={<Navigate to="/pessoas" replace />} />
             <Route path="/operacao/pessoas/:id" element={<RedirecionarComId para={(id) => `/pessoas/${id}`} />} />
-            <Route path="/apr" element={<Navigate to="/operacao/apr" replace />} />
+            <Route path="/apr" element={<Navigate to="/operacao?secao=apr" replace />} />
             <Route path="/apr/:id" element={<RedirecionarComId para={(id) => `/operacao/apr/${id}`} />} />
-            <Route path="/pt" element={<Navigate to="/operacao/pt" replace />} />
+            <Route path="/pt" element={<Navigate to="/operacao?secao=pt" replace />} />
             <Route path="/pt/:id" element={<RedirecionarComId para={(id) => `/operacao/pt/${id}`} />} />
-            <Route path="/identificacao" element={<Navigate to="/operacao/identificacao" replace />} />
+            <Route path="/identificacao" element={<Navigate to="/operacao?secao=identificacao" replace />} />
             {/* Legado: Saúde Ocupacional era item de 1º nível na sidebar (até 28/08), virou aba
                 de Operação. */}
             <Route path="/saude-ocupacional" element={<Navigate to="/operacao/saude-ocupacional" replace />} />
@@ -186,21 +212,21 @@ function App() {
               element={<RedirecionarComId para={(id) => `/operacao/saude-ocupacional/pcmso/${id}`} />}
             />
 
-            <Route path="/naoconformidades" element={<Navigate to="/nao-conformidades" replace />} />
+            <Route path="/naoconformidades" element={<Navigate to="/ocorrencias?secao=nao-conformidades" replace />} />
             <Route
               path="/naoconformidades/:id"
               element={<RedirecionarComId para={(id) => `/nao-conformidades/${id}`} />}
             />
 
             {/* Módulo Melhoria Contínua removido (24/26/08) — Não Conformidades e Acidentes &
-                Incidentes viraram itens de 1º nível. Redirecionamentos preservam links antigos. */}
-            <Route path="/melhoria" element={<Navigate to="/nao-conformidades" replace />} />
-            <Route path="/melhoria/nao-conformidades" element={<Navigate to="/nao-conformidades" replace />} />
+                Incidentes viraram abas de Ocorrências. Redirecionamentos preservam links antigos. */}
+            <Route path="/melhoria" element={<Navigate to="/ocorrencias?secao=nao-conformidades" replace />} />
+            <Route path="/melhoria/nao-conformidades" element={<Navigate to="/ocorrencias?secao=nao-conformidades" replace />} />
             <Route
               path="/melhoria/nao-conformidades/:id"
               element={<RedirecionarComId para={(id) => `/nao-conformidades/${id}`} />}
             />
-            <Route path="/melhoria/acidentes" element={<Navigate to="/acidentes" replace />} />
+            <Route path="/melhoria/acidentes" element={<Navigate to="/ocorrencias?secao=acidentes" replace />} />
             <Route
               path="/melhoria/acidentes/:id"
               element={<RedirecionarComId para={(id) => `/acidentes/${id}`} />}

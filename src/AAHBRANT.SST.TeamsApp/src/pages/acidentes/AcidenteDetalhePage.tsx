@@ -167,16 +167,20 @@ export function AcidenteDetalhePage() {
   }
 
   const a = detalhe?.acidente;
+  // Acidentes/Incidentes/Quase-acidentes viraram abas de OcorrenciasPage (02/09) — volta pra aba
+  // que corresponde ao tipo do registro aberto, não sempre pra "Acidentes".
+  const secaoOcorrencia =
+    a?.tipo === 2 ? 'incidentes' : a?.tipo === 3 ? 'quase-acidentes' : 'acidentes';
 
   return (
     <div>
       <Button
         appearance="subtle"
         icon={<ArrowLeft24Regular />}
-        onClick={() => navigate('/acidentes')}
+        onClick={() => navigate(`/ocorrencias?secao=${secaoOcorrencia}`)}
         style={{ marginBottom: 12 }}
       >
-        Voltar para Acidentes
+        Voltar para Ocorrências
       </Button>
 
       {erro && <Text className={estilos.erro}>{erro}</Text>}

@@ -33,7 +33,7 @@ import {
   type Obra,
   type Trabalhador,
 } from '../../lib/api';
-import { usePageStyles, usePillTabStyles } from '../pageStyles';
+import { usePageStyles, useSubTabStyles } from '../pageStyles';
 import { HhtMensalTab } from './HhtMensalTab';
 
 function novaInicial(): NovoAcidente {
@@ -58,20 +58,26 @@ function novaInicial(): NovoAcidente {
   };
 }
 
-export function AcidentesPage() {
+export function AcidentesPage({ tipoFixo }: { tipoFixo?: number } = {}) {
   const navigate = useNavigate();
   const estilos = usePageStyles();
-  const estilosAba = usePillTabStyles();
+  // Sempre aninhado dentro da aba de OcorrenciasPage hoje (Acidentes/Incidentes/Quase-acidentes) —
+  // usa direto o estilo de sub-aba, sem precisar de mostrarTitulo (esta página nunca teve título
+  // próprio pra começo de conversa).
+  const estilosAba = useSubTabStyles();
   const [acidentes, setAcidentes] = useState<Acidente[]>([]);
   const [obras, setObras] = useState<Obra[]>([]);
   const [trabalhadores, setTrabalhadores] = useState<Trabalhador[]>([]);
   const [atividades, setAtividades] = useState<Atividade[]>([]);
   const [nova, setNova] = useState<NovoAcidente>(novaInicial());
-  // Suporta abrir a tela já filtrada por tipo via URL (?tipo=3) — usado pelos itens "Acidentes",
-  // "Incidentes" e "Quase-acidentes" do menu lateral, que apontam pra essa mesma tela.
+  // Suporta abrir a tela já filtrada por tipo via URL (?tipo=3) — legado, de quando "Acidentes",
+  // "Incidentes" e "Quase-acidentes" eram itens de menu apontando pra essa mesma tela. Hoje viraram
+  // abas de OcorrenciasPage, que passa tipoFixo diretamente (sem depender de querystring).
   const [searchParams] = useSearchParams();
   const [filtroStatus, setFiltroStatus] = useState<string>('');
-  const [filtroTipo, setFiltroTipo] = useState<string>(searchParams.get('tipo') ?? '');
+  const [filtroTipo, setFiltroTipo] = useState<string>(
+    tipoFixo != null ? String(tipoFixo) : searchParams.get('tipo') ?? '',
+  );
   const [erro, setErro] = useState<string | null>(null);
   const [carregando, setCarregando] = useState(false);
   const [aba, setAba] = useState<'ocorrencias' | 'hht'>('ocorrencias');
@@ -301,16 +307,18 @@ export function AcidentesPage() {
       <div className={estilos.card}>
         <div className={estilos.toolbar}>
           <Text weight="semibold">Acidentes e incidentes</Text>
-          <Field label="Tipo">
-            <Select value={filtroTipo} onChange={(_, d) => setFiltroTipo(d.value)}>
-              <option value="">Todos</option>
-              {Object.entries(tipoOcorrenciaLabel).map(([valor, rotulo]) => (
-                <option key={valor} value={valor}>
-                  {rotulo}
-                </option>
-              ))}
-            </Select>
-          </Field>
+          {tipoFixo == null && (
+            <Field label="Tipo">
+              <Select value={filtroTipo} onChange={(_, d) => setFiltroTipo(d.value)}>
+                <option value="">Todos</option>
+                {Object.entries(tipoOcorrenciaLabel).map(([valor, rotulo]) => (
+                  <option key={valor} value={valor}>
+                    {rotulo}
+                  </option>
+                ))}
+              </Select>
+            </Field>
+          )}
           <Field label="Status">
             <Select value={filtroStatus} onChange={(_, d) => setFiltroStatus(d.value)}>
               <option value="">Todos</option>

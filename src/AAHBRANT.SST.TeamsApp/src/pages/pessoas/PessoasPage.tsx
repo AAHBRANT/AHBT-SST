@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { Tab, TabList, Text, type SelectTabData, type SelectTabEvent } from '@fluentui/react-components';
-import { usePillTabStyles } from '../pageStyles';
+import { usePillTabStyles, useSubTabStyles } from '../pageStyles';
 import { PessoasDashboardTab } from './dashboard/PessoasDashboardTab';
 import { TrabalhadoresTab } from './TrabalhadoresTab';
 import { FuncoesTab } from './FuncoesTab';
@@ -18,14 +18,16 @@ type AbaPessoas = 'dashboard' | 'trabalhadores' | 'funcoes';
 const ABAS_VALIDAS: AbaPessoas[] = ['dashboard', 'trabalhadores', 'funcoes'];
 const ABAS_MOVIDAS_PARA_TREINAMENTOS = ['cursos', 'matrizTreinamento'];
 
-export function PessoasPage() {
+export function PessoasPage({ mostrarTitulo = true }: { mostrarTitulo?: boolean } = {}) {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const abaInicial = searchParams.get('aba');
   const [aba, setAba] = useState<AbaPessoas>(
     ABAS_VALIDAS.includes(abaInicial as AbaPessoas) ? (abaInicial as AbaPessoas) : 'trabalhadores',
   );
-  const estilosAba = usePillTabStyles();
+  const estilosPillTab = usePillTabStyles();
+  const estilosSubTab = useSubTabStyles();
+  const estilosAba = mostrarTitulo ? estilosPillTab : estilosSubTab;
 
   // Link antigo (?aba=cursos / ?aba=matrizTreinamento) — redireciona pro módulo próprio novo em vez
   // de simplesmente ignorar o parâmetro e cair em "Trabalhadores" sem explicação.
@@ -37,11 +39,13 @@ export function PessoasPage() {
 
   return (
     <div>
-      <div style={{ marginBottom: 16 }}>
-        <Text size={500} weight="semibold">
-          Pessoas
-        </Text>
-      </div>
+      {mostrarTitulo && (
+        <div style={{ marginBottom: 16 }}>
+          <Text size={500} weight="semibold">
+            Pessoas
+          </Text>
+        </div>
+      )}
 
       <TabList
         selectedValue={aba}

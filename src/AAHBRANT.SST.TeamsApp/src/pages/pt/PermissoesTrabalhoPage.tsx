@@ -1,22 +1,26 @@
 import { useState } from 'react';
 import { Tab, TabList, Text, type SelectTabData, type SelectTabEvent } from '@fluentui/react-components';
-import { usePillTabStyles } from '../pageStyles';
+import { usePillTabStyles, useSubTabStyles } from '../pageStyles';
 import { PtDashboardTab } from './dashboard/PtDashboardTab';
 import { PermissoesTrabalhoTab } from './PermissoesTrabalhoTab';
 
 type AbaPt = 'dashboard' | 'registros';
 
-export function PermissoesTrabalhoPage() {
+export function PermissoesTrabalhoPage({ mostrarTitulo = true }: { mostrarTitulo?: boolean } = {}) {
   const [aba, setAba] = useState<AbaPt>('registros');
-  const estilosAba = usePillTabStyles();
+  const estilosPillTab = usePillTabStyles();
+  const estilosSubTab = useSubTabStyles();
+  const estilosAba = mostrarTitulo ? estilosPillTab : estilosSubTab;
 
   return (
     <div>
-      <div style={{ marginBottom: 16 }}>
-        <Text size={500} weight="semibold">
-          Permissão de Trabalho
-        </Text>
-      </div>
+      {mostrarTitulo && (
+        <div style={{ marginBottom: 16 }}>
+          <Text size={500} weight="semibold">
+            Permissão de Trabalho
+          </Text>
+        </div>
+      )}
 
       <TabList
         selectedValue={aba}

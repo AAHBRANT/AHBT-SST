@@ -3,7 +3,7 @@ import { designTokens } from '../theme';
 
 export const usePageStyles = makeStyles({
   card: {
-    backgroundColor: '#FFFFFF',
+    backgroundColor: designTokens.colorSurface,
     borderRadius: '12px',
     border: `1px solid ${designTokens.colorCardBorder}`,
     boxShadow: designTokens.cardShadow,
@@ -74,7 +74,7 @@ export const useKpiStyles = makeStyles({
   },
   iconeAtencao: {
     backgroundColor: designTokens.colorWarningWash,
-    color: '#9A6B04',
+    color: designTokens.colorWarning,
   },
   iconeAlerta: {
     backgroundColor: designTokens.colorAlertWash,
@@ -115,7 +115,7 @@ export const useKpiStyles = makeStyles({
     backgroundColor: designTokens.colorSuccessWash,
   },
   variacaoAtencao: {
-    color: '#9A6B04',
+    color: designTokens.colorWarning,
     backgroundColor: designTokens.colorWarningWash,
   },
   variacaoAlerta: {
@@ -164,7 +164,7 @@ export const useStatusChipStyles = makeStyles({
     backgroundColor: designTokens.colorSuccessWash,
   },
   pendente: {
-    color: '#9A6B04',
+    color: designTokens.colorWarning,
     backgroundColor: designTokens.colorWarningWash,
   },
   vencido: {
@@ -207,6 +207,8 @@ export const usePillTabStyles = makeStyles({
       whiteSpace: 'nowrap',
       position: 'relative',
       top: '1px',
+      transitionProperty: 'background-color, color, border-color',
+      transitionDuration: '150ms',
     },
     '& .fui-Tab::before': {
       display: 'none',
@@ -222,14 +224,17 @@ export const usePillTabStyles = makeStyles({
     '& .fui-Tab__icon': {
       color: 'inherit',
     },
+    // Verde (não a cor escura do painel) — pedido do usuário (02/09): o hover das abas estava
+    // usando colorSurface, mais escuro que o fundo padrão da aba no modo escuro, o que lia como
+    // "fica preto" em vez de destacar.
     '& .fui-Tab:hover': {
-      backgroundColor: designTokens.colorWhite,
-      color: designTokens.colorPrimary,
+      backgroundColor: designTokens.colorSuccessWash,
+      color: designTokens.colorSuccess,
     },
     // A aba ativa usa o mesmo branco do painel abaixo (se funde visualmente com ele) em vez de um
     // preenchimento sólido — só o traço superior na cor da marca indica a seleção.
     '& .fui-Tab[aria-selected="true"]': {
-      backgroundColor: designTokens.colorWhite,
+      backgroundColor: designTokens.colorSurface,
       ...shorthands.borderColor(designTokens.colorCardBorder),
       borderTop: `2px solid ${designTokens.colorPrimary}`,
       paddingTop: '9px',
@@ -237,8 +242,70 @@ export const usePillTabStyles = makeStyles({
       fontWeight: 700,
     },
     '& .fui-Tab[aria-selected="true"]:hover': {
-      backgroundColor: designTokens.colorWhite,
+      backgroundColor: designTokens.colorSurface,
       color: designTokens.colorPrimary,
+    },
+  },
+});
+
+// Sub-abas (pedido do usuário, 02/09): quando um item que antes tinha link próprio na sidebar vira
+// aba de um pilar (ver GestaoSstPage/OperacaoPage/PessoasPillarPage/OcorrenciasPage), as abas que
+// esse item já tinha (ex.: PGR/GRO tem PGRs | Matriz de Risco | ...) precisam parecer subordinadas
+// à aba do pilar acima, não uma segunda fileira de abas iguais — usePillTabStyles nas duas fileiras
+// ficava tudo parecendo uma aba só. Pílula pequena e discreta em vez do quadrado grudado.
+export const useSubTabStyles = makeStyles({
+  // Faixa própria (fundo + espaçamento acima e abaixo), não só uma segunda linha de abas grudada —
+  // pedido do usuário (02/09) pra isolar mais claramente a sub-navegação da aba do pilar acima.
+  lista: {
+    display: 'flex',
+    flexWrap: 'wrap',
+    gap: '6px',
+    marginTop: '18px',
+    marginBottom: '20px',
+    ...shorthands.padding('8px', '10px'),
+    borderRadius: '10px',
+    backgroundColor: designTokens.colorNeutralLight,
+    '& .fui-Tab': {
+      backgroundColor: 'transparent',
+      ...shorthands.border('1px', 'solid', 'transparent'),
+      borderRadius: '999px',
+      color: designTokens.colorNeutralMedium,
+      fontWeight: 600,
+      fontSize: '12px',
+      ...shorthands.padding('6px', '14px'),
+      minHeight: 'auto',
+      whiteSpace: 'nowrap',
+      transitionProperty: 'background-color, color',
+      transitionDuration: '150ms',
+    },
+    '& .fui-Tab::before': {
+      display: 'none',
+    },
+    '& .fui-Tab::after': {
+      display: 'none',
+    },
+    '& .fui-Tab__content': {
+      color: 'inherit',
+    },
+    '& .fui-Tab__icon': {
+      color: 'inherit',
+    },
+    // Verde (não a cor escura do painel) — mesmo ajuste do usePillTabStyles acima: colorSurface
+    // era mais escuro que o fundo da faixa de sub-abas no modo escuro, lia como "fica preto".
+    '& .fui-Tab:hover': {
+      backgroundColor: designTokens.colorSuccessWash,
+      color: designTokens.colorSuccess,
+    },
+    // Verde (pedido do usuário, 03/09) — não vinho: a sub-aba selecionada não segue a mesma cor de
+    // marca da aba do pilar acima, usa o verde já adotado no resto do app (rail, hover das abas).
+    '& .fui-Tab[aria-selected="true"]': {
+      backgroundColor: designTokens.colorSuccess,
+      color: designTokens.colorWhite,
+      fontWeight: 700,
+    },
+    '& .fui-Tab[aria-selected="true"]:hover': {
+      backgroundColor: designTokens.colorSuccess,
+      color: designTokens.colorWhite,
     },
   },
 });

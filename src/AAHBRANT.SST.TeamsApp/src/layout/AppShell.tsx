@@ -1,6 +1,6 @@
 import type { ReactNode } from 'react';
 import { useEffect, useState } from 'react';
-import { Link, NavLink, useLocation, useNavigate } from 'react-router-dom';
+import { NavLink, useLocation, useNavigate } from 'react-router-dom';
 import { makeStyles, mergeClasses, Text, Badge, Button, Toaster, Tooltip } from '@fluentui/react-components';
 import {
   Grid24Regular,
@@ -12,11 +12,12 @@ import {
   People24Regular,
   ChevronLeft24Regular,
   ChevronRight24Regular,
-  ChevronDown16Regular,
-  ChevronUp16Regular,
   Person24Regular,
+  WeatherSunny24Regular,
+  WeatherMoon24Regular,
 } from '@fluentui/react-icons';
 import { designTokens } from '../theme';
+import { useThemeMode } from '../theme/ThemeModeContext';
 import { useTeamsContext } from '../teams/useTeamsContext';
 import { api, StatusAlerta } from '../lib/api';
 import logoSst from '../assets/logo-sst.png';
@@ -106,8 +107,8 @@ const useStyles = makeStyles({
   },
   navItemHover: {
     ':hover': {
-      color: designTokens.colorRailInk,
-      backgroundColor: '#D4EDDA',
+      color: designTokens.colorNeutralDark,
+      backgroundColor: designTokens.colorNeutralLight,
     },
   },
   navItemActive: {
@@ -118,34 +119,6 @@ const useStyles = makeStyles({
     fontSize: '15px',
     fontWeight: 700,
     flex: 1,
-  },
-  grupoCabecalho: {
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    width: '100%',
-    background: 'none',
-    border: 'none',
-    cursor: 'pointer',
-    fontFamily: 'inherit',
-  },
-  grupoChevron: {
-    flexShrink: 0,
-    opacity: 0.7,
-  },
-  grupoFilhos: {
-    display: 'flex',
-    flexDirection: 'column',
-    gap: '2px',
-    marginTop: '2px',
-  },
-  // Só usado com o rail expandido (filhos ficam ocultos quando colapsado) — por isso já define
-  // largura junto com o recuo, sem precisar compor com navItemExpandido.
-  navItemFilho: {
-    marginLeft: '30px',
-    width: 'calc(100% - 42px)',
-    height: '36px',
-    fontSize: '13px',
   },
   navSeparador: {
     width: '28px',
@@ -165,12 +138,12 @@ const useStyles = makeStyles({
     width: '100%',
     height: '48px',
     borderRadius: '12px',
-    backgroundColor: designTokens.colorRailActiveBackground,
-    color: designTokens.colorRailActiveInk,
-    boxShadow: '0 4px 6px rgba(0,0,0,0.1)',
+    backgroundColor: designTokens.colorAdminButtonBackground,
+    color: designTokens.colorAdminButtonInk,
+    boxShadow: '0 4px 6px rgba(0,0,0,0.3)',
     ':hover': {
-      backgroundColor: '#178A3F',
-      color: designTokens.colorRailActiveInk,
+      backgroundColor: designTokens.colorAdminButtonBackgroundHover,
+      color: designTokens.colorAdminButtonInk,
     },
   },
   sinoAlertas: {
@@ -220,7 +193,7 @@ const useStyles = makeStyles({
   header: {
     gridRow: '1',
     gridColumn: '2',
-    backgroundColor: designTokens.colorWhite,
+    backgroundColor: designTokens.colorSurface,
     borderBottom: `1px solid ${designTokens.colorCardBorder}`,
     display: 'flex',
     alignItems: 'center',
@@ -230,7 +203,7 @@ const useStyles = makeStyles({
   content: {
     gridRow: '2',
     gridColumn: '2',
-    backgroundColor: designTokens.colorNeutralLight,
+    backgroundColor: designTokens.colorPageBackground,
     overflowY: 'auto',
     padding: '24px',
   },
@@ -246,114 +219,34 @@ interface ItemNav {
   rotulo: string;
 }
 
-interface GrupoNav {
-  chave: string;
-  titulo: string;
-  icone: typeof Grid24Regular;
-  itens: ItemNav[];
-}
-
-// Item solto no topo, fora de qualquer grupo — Dashboard não pertence a nenhum módulo temático.
-// Calendário saiu da sidebar (pedido do usuário, 01/09): virou redundante com o card de mini
-// calendário no Dashboard, que já leva pra /calendario ao clicar — a rota continua existindo.
+// Item solto no topo, fora de qualquer módulo — Dashboard não pertence a nenhum pilar. Calendário
+// saiu da sidebar (pedido do usuário, 01/09): virou redundante com o card de mini calendário no
+// Dashboard, que já leva pra /calendario ao clicar — a rota continua existindo.
 const itensAvulsos: Array<ItemNav & { icone: typeof Grid24Regular }> = [
   { rota: '/', rotulo: 'Dashboard', icone: Grid24Regular },
 ];
 
-// Reorganização de sidebar em grupos temáticos (pedido do usuário, 2026-08-31) — substitui a lista
-// achatada por módulo-pilar da consolidação de 24/08-28/08.
-//
-// Decisões não-literais assumidas (o pedido do usuário não cobria estes pontos):
-// - PCMSO / "ASO & Exames" apontam pra SaudeOcupacionalPage (que já tem essas abas internamente),
-//   usando ?aba= pra abrir direto na aba certa — não duplicamos a tela.
-// - Acidentes / Incidentes / Quase-acidentes apontam pra AcidentesPage (que já tem filtro por
-//   tipo), usando ?tipo= (ver TipoOcorrencia em lib/api.ts) — mesma lógica.
-// - "Trabalhadores" e "Histórico" (Pessoas) apontam pra mesma rota /pessoas — não existe uma
-//   listagem de histórico separada da lista de trabalhadores hoje.
-// - "Usuários" e "Permissões" (Administração) apontam pra mesma rota /administracao (aba Controle
-//   de Acesso) — o sistema não distingue essas duas telas hoje.
-// - Documentos & Procedimentos e Configurações não têm tela própria no sistema — apontam pra
-//   EmConstrucaoPage (ver App.tsx) em vez de inventar uma funcionalidade que não existe.
-//
-// Reestruturação de navegação (02/09, pedido do usuário): "Riscos" deixou de ser item próprio —
-// virou aba de PGR/GRO (Riscos é a matriz que o PGR consome, ver PgrRiscosPage). "Treinamentos"
-// deixou de apontar pra dentro de Pessoas (?aba=cursos) e ganhou módulo próprio (/treinamentos,
-// ver TreinamentosPage) — cada item da sidebar deve abrir só o que é dele.
-const gruposNavegacao: GrupoNav[] = [
-  {
-    chave: 'gestao-sst',
-    titulo: 'Gestão de SST',
-    icone: ShieldError24Regular,
-    itens: [
-      { rota: '/prevencao/pgr', rotulo: 'PGR / GRO' },
-      { rota: '/operacao/saude-ocupacional?aba=pcmso', rotulo: 'PCMSO' },
-      { rota: '/treinamentos', rotulo: 'Treinamentos' },
-      { rota: '/epi', rotulo: 'EPI / EPC' },
-      { rota: '/operacao/cipa', rotulo: 'CIPA' },
-      { rota: '/prevencao/dds', rotulo: 'DDS' },
-      { rota: '/gestao-sst/documentos', rotulo: 'Documentos & Procedimentos' },
-      { rota: '/requisitos-legais', rotulo: 'Requisitos Legais' },
-    ],
-  },
-  {
-    chave: 'operacao',
-    titulo: 'Operação',
-    icone: BuildingBank24Regular,
-    itens: [
-      { rota: '/operacao/apr', rotulo: 'APR' },
-      { rota: '/operacao/pt', rotulo: 'PT' },
-      { rota: '/prevencao/inspecoes', rotulo: 'Inspeções' },
-      { rota: '/operacao/identificacao', rotulo: 'Outros controles operacionais' },
-    ],
-  },
-  {
-    chave: 'pessoas',
-    titulo: 'Pessoas',
-    icone: People24Regular,
-    itens: [
-      { rota: '/pessoas', rotulo: 'Trabalhadores' },
-      { rota: '/operacao/saude-ocupacional?aba=aso', rotulo: 'ASO & Exames' },
-      { rota: '/pessoas', rotulo: 'Histórico' },
-    ],
-  },
-  {
-    chave: 'ocorrencias',
-    titulo: 'Ocorrências',
-    icone: BriefcaseMedical24Regular,
-    itens: [
-      { rota: '/acidentes?tipo=1', rotulo: 'Acidentes' },
-      { rota: '/acidentes?tipo=2', rotulo: 'Incidentes' },
-      { rota: '/acidentes?tipo=3', rotulo: 'Quase-acidentes' },
-      { rota: '/nao-conformidades', rotulo: 'Não conformidades' },
-    ],
-  },
+// Reformulação de navegação (pedido do usuário, 02/09, réplica de mockup dark-mode): a gaveta
+// expansível de cada módulo (Gestão de SST/Operação/Pessoas/Ocorrências) virou um item único e
+// direto — os itens que antes ficavam dentro da gaveta viraram abas da página de destino (ver
+// GestaoSstPage/OperacaoPage/PessoasPillarPage/OcorrenciasPage), e as abas que essas páginas de
+// destino já tinham viram sub-abas. A sidebar fica só com os 5 módulos (4 pilares + Administração,
+// fixa no rodapé) e o Dashboard solto no topo.
+const itensPilares: Array<ItemNav & { icone: typeof Grid24Regular }> = [
+  { rota: '/gestao-sst', rotulo: 'Gestão de SST', icone: ShieldError24Regular },
+  { rota: '/operacao', rotulo: 'Operação', icone: BuildingBank24Regular },
+  { rota: '/pessoas', rotulo: 'Pessoas', icone: People24Regular },
+  { rota: '/ocorrencias', rotulo: 'Ocorrências', icone: BriefcaseMedical24Regular },
 ];
 
 // Administração fica fixa no rodapé do rail (mesmo padrão do mockup Hub Gênesis SST) — item único,
-// não grupo: Obras/Controle de Acesso/Configurações/Trilha de Auditoria/Assinaturas viraram abas
-// internas de AdministracaoPage em vez de destinos separados na sidebar (pedido do usuário, 01/09 —
-// reverte a versão em grupo de 31/08, que tinha 4 sub-itens aqui).
+// não módulo: Obras/Controle de Acesso/Configurações/Trilha de Auditoria/Assinaturas são abas
+// internas de AdministracaoPage em vez de destinos separados na sidebar (pedido do usuário, 01/09).
 const itemAdministracao: ItemNav & { icone: typeof Grid24Regular } = {
   rota: '/administracao',
   rotulo: 'Administração',
   icone: Settings24Regular,
 };
-
-const todosGrupos = gruposNavegacao;
-const CHAVE_GRUPOS_ABERTOS = 'sst.gruposNavAbertos';
-
-// Compara rota-alvo com a localização atual. Itens com querystring (?aba=/?tipo=) exigem
-// correspondência exata (senão "PCMSO" e "ASO & Exames" ficariam ativos ao mesmo tempo); itens só
-// de caminho aceitam sub-rotas (ex.: /pessoas/:id mantém "Trabalhadores" ativo).
-function estaAtivo(rota: string, pathname: string, search: string): boolean {
-  if (rota.includes('?')) {
-    return `${pathname}${search}` === rota;
-  }
-  if (rota === '/') return pathname === '/';
-  // search === '' evita que um item sem querystring (ex.: "Trabalhadores" em /pessoas) fique ativo
-  // junto com outro item da MESMA rota-base que usa ?aba= (ex.: "Treinamentos" em /pessoas?aba=cursos).
-  return (pathname === rota && search === '') || pathname.startsWith(`${rota}/`);
-}
 
 function ItemRail({
   rota,
@@ -396,130 +289,21 @@ function ItemRail({
   );
 }
 
-function GrupoRail({
-  grupo,
-  expandido,
-  aberto,
-  aoAlternarAberto,
-  pathname,
-  search,
-}: {
-  grupo: GrupoNav;
-  expandido: boolean;
-  aberto: boolean;
-  aoAlternarAberto: () => void;
-  pathname: string;
-  search: string;
-}) {
-  const estilos = useStyles();
-  const Icone = grupo.icone;
-  const algumFilhoAtivo = grupo.itens.some((item) => estaAtivo(item.rota, pathname, search));
-  const destacarCabecalho = algumFilhoAtivo && (!expandido || !aberto);
-
-  const cabecalho = (
-    <button
-      type="button"
-      aria-label={grupo.titulo}
-      aria-expanded={aberto}
-      onClick={aoAlternarAberto}
-      className={mergeClasses(
-        estilos.navItem,
-        estilos.grupoCabecalho,
-        expandido && estilos.navItemExpandido,
-        !destacarCabecalho && estilos.navItemHover,
-        destacarCabecalho && estilos.navItemActive,
-      )}
-    >
-      <Icone />
-      {expandido && (
-        <>
-          <span className={estilos.navRotulo}>{grupo.titulo}</span>
-          {aberto ? <ChevronUp16Regular className={estilos.grupoChevron} /> : <ChevronDown16Regular className={estilos.grupoChevron} />}
-        </>
-      )}
-    </button>
-  );
-
-  return (
-    <div style={{ display: 'contents' }}>
-      {expandido ? (
-        cabecalho
-      ) : (
-        <Tooltip content={grupo.titulo} relationship="label" positioning="after">
-          {cabecalho}
-        </Tooltip>
-      )}
-      {expandido && aberto && (
-        <div className={estilos.grupoFilhos}>
-          {grupo.itens.map((item, indice) => (
-            <Link
-              key={`${item.rota}-${indice}`}
-              to={item.rota}
-              className={mergeClasses(
-                estilos.navItem,
-                estilos.navItemExpandido,
-                estilos.navItemFilho,
-                estilos.navItemHover,
-                estaAtivo(item.rota, pathname, search) && estilos.navItemActive,
-              )}
-            >
-              <span className={estilos.navRotulo}>{item.rotulo}</span>
-            </Link>
-          ))}
-        </div>
-      )}
-    </div>
-  );
-}
-
 export function AppShell({ children }: { children: ReactNode }) {
   const estilos = useStyles();
   const location = useLocation();
   const navigate = useNavigate();
   const { carregando, dentroDoTeams, contexto } = useTeamsContext();
+  const { modo, alternarModo } = useThemeMode();
   const nomeUsuario = contexto?.user?.displayName ?? 'Usuário';
   const [alertasAbertos, setAlertasAbertos] = useState<number | null>(null);
   const [railExpandido, setRailExpandido] = useState<boolean>(
     () => localStorage.getItem(CHAVE_RAIL_EXPANDIDO) === '1',
   );
-  // Todos os grupos abrem por padrão (reorganização pedida em 31/08) — usuário pode fechar os que
-  // não usa, preferência persistida como as demais do rail.
-  const [gruposAbertos, setGruposAbertos] = useState<Set<string>>(() => {
-    try {
-      const salvo = localStorage.getItem(CHAVE_GRUPOS_ABERTOS);
-      if (salvo) return new Set(JSON.parse(salvo) as string[]);
-    } catch {
-      // JSON inválido no localStorage — cai no default abaixo
-    }
-    return new Set(todosGrupos.map((g) => g.chave));
-  });
 
   useEffect(() => {
     localStorage.setItem(CHAVE_RAIL_EXPANDIDO, railExpandido ? '1' : '0');
   }, [railExpandido]);
-
-  useEffect(() => {
-    localStorage.setItem(CHAVE_GRUPOS_ABERTOS, JSON.stringify([...gruposAbertos]));
-  }, [gruposAbertos]);
-
-  // Colapsado, clicar num grupo expande o rail inteiro e já abre esse grupo (não faz sentido
-  // "abrir" um grupo sem espaço pra mostrar os filhos).
-  function alternarGrupo(chave: string) {
-    if (!railExpandido) {
-      setRailExpandido(true);
-      setGruposAbertos((atual) => new Set(atual).add(chave));
-      return;
-    }
-    setGruposAbertos((atual) => {
-      const novo = new Set(atual);
-      if (novo.has(chave)) {
-        novo.delete(chave);
-      } else {
-        novo.add(chave);
-      }
-      return novo;
-    });
-  }
 
   useEffect(() => {
     let cancelado = false;
@@ -554,16 +338,8 @@ export function AppShell({ children }: { children: ReactNode }) {
           <ItemRail key={item.rota} {...item} expandido={railExpandido} />
         ))}
         <div className={mergeClasses(estilos.navSeparador, railExpandido && estilos.navSeparadorExpandido)} />
-        {gruposNavegacao.map((grupo) => (
-          <GrupoRail
-            key={grupo.chave}
-            grupo={grupo}
-            expandido={railExpandido}
-            aberto={gruposAbertos.has(grupo.chave)}
-            aoAlternarAberto={() => alternarGrupo(grupo.chave)}
-            pathname={location.pathname}
-            search={location.search}
-          />
+        {itensPilares.map((item) => (
+          <ItemRail key={item.rota} {...item} expandido={railExpandido} />
         ))}
         <div className={estilos.railRodape}>
           <ItemRail {...itemAdministracao} expandido={railExpandido} destaque />
@@ -579,6 +355,13 @@ export function AppShell({ children }: { children: ReactNode }) {
               {dentroDoTeams ? 'Executando no Teams' : 'Modo standalone (dev)'}
             </Badge>
           )}
+          <Button
+            appearance="subtle"
+            icon={modo === 'dark' ? <WeatherSunny24Regular /> : <WeatherMoon24Regular />}
+            aria-label={modo === 'dark' ? 'Mudar para modo claro' : 'Mudar para modo escuro'}
+            title={modo === 'dark' ? 'Modo claro' : 'Modo escuro'}
+            onClick={alternarModo}
+          />
           <div className={estilos.sinoAlertas}>
             <Button
               appearance="subtle"

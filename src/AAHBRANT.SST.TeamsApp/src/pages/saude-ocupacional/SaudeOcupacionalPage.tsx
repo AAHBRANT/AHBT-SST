@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { Tab, TabList, Text, type SelectTabData, type SelectTabEvent } from '@fluentui/react-components';
-import { usePillTabStyles } from '../pageStyles';
+import { usePillTabStyles, useSubTabStyles } from '../pageStyles';
 import { AsosTab } from './AsosTab';
 import { PcmsoTab } from './PcmsoTab';
 import { ExamesComplementaresTab } from './ExamesComplementaresTab';
@@ -19,35 +19,42 @@ const ABAS_VALIDAS: AbaSaudeOcupacional[] = ['aso', 'pcmso', 'exames', 'aptidoes
 //
 // Suporta abrir já numa aba específica via URL (?aba=pcmso) — usado pelos itens "PCMSO" (grupo
 // Gestão de SST) e "ASO & Exames" (grupo Pessoas) do menu lateral, que apontam pra essa mesma tela.
-export function SaudeOcupacionalPage() {
+export function SaudeOcupacionalPage({
+  abaInicial: abaInicialProp,
+  mostrarTitulo = true,
+}: { abaInicial?: AbaSaudeOcupacional; mostrarTitulo?: boolean } = {}) {
   const [searchParams] = useSearchParams();
-  const abaInicial = searchParams.get('aba');
-  const [aba, setAba] = useState<AbaSaudeOcupacional>(
-    ABAS_VALIDAS.includes(abaInicial as AbaSaudeOcupacional) ? (abaInicial as AbaSaudeOcupacional) : 'aso',
-  );
-  const estilosAba = usePillTabStyles();
+  const abaDaUrl = searchParams.get('aba');
+  const abaPadrao =
+    abaInicialProp ?? (ABAS_VALIDAS.includes(abaDaUrl as AbaSaudeOcupacional) ? (abaDaUrl as AbaSaudeOcupacional) : 'aso');
+  const [aba, setAba] = useState<AbaSaudeOcupacional>(abaPadrao);
+  const estilosPillTab = usePillTabStyles();
+  const estilosSubTab = useSubTabStyles();
+  const estilosAba = mostrarTitulo ? estilosPillTab : estilosSubTab;
 
   return (
     <div>
-      <div style={{ marginBottom: 16 }}>
-        <Text size={500} weight="semibold">
-          Saúde Ocupacional
-        </Text>
-      </div>
+      {mostrarTitulo && (
+        <div style={{ marginBottom: 16 }}>
+          <Text size={500} weight="semibold">
+            Saúde Ocupacional
+          </Text>
+        </div>
+      )}
 
       <TabList
         selectedValue={aba}
         onTabSelect={(_: SelectTabEvent, data: SelectTabData) => setAba(data.value as AbaSaudeOcupacional)}
         className={estilosAba.lista}
       >
-        <Tab value="aso">ASO</Tab>
         <Tab value="pcmso">PCMSO</Tab>
+        <Tab value="aso">ASO</Tab>
         <Tab value="exames">Exames Complementares</Tab>
         <Tab value="aptidoes">Aptidões</Tab>
       </TabList>
 
-      {aba === 'aso' && <AsosTab />}
       {aba === 'pcmso' && <PcmsoTab />}
+      {aba === 'aso' && <AsosTab />}
       {aba === 'exames' && <ExamesComplementaresTab />}
       {aba === 'aptidoes' && <AptidoesTab />}
     </div>

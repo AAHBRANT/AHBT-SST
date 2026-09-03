@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { Tab, TabList, Text, type SelectTabData, type SelectTabEvent } from '@fluentui/react-components';
-import { usePillTabStyles } from '../pageStyles';
+import { usePillTabStyles, useSubTabStyles } from '../pageStyles';
 import { PgrsTab } from './PgrsTab';
 import { PgrDashboardTab } from './dashboard/PgrDashboardTab';
 import { MatrizRiscoTab } from '../riscos/MatrizRiscoTab';
@@ -25,22 +25,26 @@ type AbaPgrGro = 'pgrs' | 'matriz' | 'atividades' | 'importar' | 'dashboardPgr' 
 
 const ABAS_VALIDAS: AbaPgrGro[] = ['pgrs', 'matriz', 'atividades', 'importar', 'dashboardPgr', 'dashboardRiscos'];
 
-export function PgrRiscosPage() {
+export function PgrRiscosPage({ mostrarTitulo = true }: { mostrarTitulo?: boolean } = {}) {
   const [searchParams] = useSearchParams();
   const abaInicial = searchParams.get('aba');
   const abaResolvida = abaInicial === 'riscos' ? 'matriz' : abaInicial;
   const [aba, setAba] = useState<AbaPgrGro>(
     ABAS_VALIDAS.includes(abaResolvida as AbaPgrGro) ? (abaResolvida as AbaPgrGro) : 'pgrs',
   );
-  const estilosAba = usePillTabStyles();
+  const estilosPillTab = usePillTabStyles();
+  const estilosSubTab = useSubTabStyles();
+  const estilosAba = mostrarTitulo ? estilosPillTab : estilosSubTab;
 
   return (
     <div>
-      <div style={{ marginBottom: 16 }}>
-        <Text size={500} weight="semibold">
-          PGR / GRO
-        </Text>
-      </div>
+      {mostrarTitulo && (
+        <div style={{ marginBottom: 16 }}>
+          <Text size={500} weight="semibold">
+            PGR / GRO
+          </Text>
+        </div>
+      )}
 
       <TabList
         selectedValue={aba}

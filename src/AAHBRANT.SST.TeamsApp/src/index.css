@@ -9,10 +9,72 @@ body,
   margin: 0;
 }
 
+/* Tokens de cor por tema (claro/escuro, botão na topbar — ver ThemeModeContext.tsx). Ficam em CSS
+   custom properties (não direto no objeto designTokens do theme.ts) porque os estilos do app usam
+   Griffel makeStyles, que gera as classes CSS uma única vez — variáveis de cor aqui permitem trocar
+   de tema sem precisar recriar nenhuma classe, só trocando o atributo data-theme na raiz. Tokens que
+   não mudam entre os dois temas (marca, cores semânticas de status) ficam fixos no :root. */
+:root {
+  --sst-color-primary: #670000;
+  --sst-color-secondary: #7a0101;
+  --sst-color-white: #ffffff;
+  --sst-color-success: #16a34a;
+  --sst-color-warning: #f59e0b;
+  --sst-color-alert: #ef4444;
+  --sst-color-info: #3b82f6;
+}
+
+:root,
+[data-theme='light'] {
+  --sst-color-neutral-dark: #1f1f1f;
+  --sst-color-neutral-medium: #6d6d6d;
+  --sst-color-neutral-light: #f5f5f7;
+  --sst-color-rail-background: #e8f5e9;
+  --sst-color-rail-border: #c8e6c9;
+  --sst-color-rail-ink: #15625c;
+  --sst-color-rail-ink-muted: #15625c;
+  --sst-color-rail-active-background: #1b9b48;
+  --sst-color-rail-active-ink: #ffffff;
+  --sst-color-admin-button-background: #1b9b48;
+  --sst-color-admin-button-ink: #ffffff;
+  --sst-color-admin-button-background-hover: #178a3f;
+  --sst-color-card-border: #e7e4da;
+  --sst-card-shadow: 0 1px 2px rgba(20, 17, 15, 0.04), 0 6px 20px rgba(20, 17, 15, 0.06);
+  --sst-color-success-wash: #eaf7ee;
+  --sst-color-warning-wash: #fdf3e3;
+  --sst-color-alert-wash: #fceaea;
+  --sst-color-info-wash: #eaf1fe;
+  --sst-color-surface: #ffffff;
+  --sst-color-page-background: #f5f5f7;
+}
+
+[data-theme='dark'] {
+  --sst-color-neutral-dark: #f3f4f6;
+  --sst-color-neutral-medium: #9ca3af;
+  --sst-color-neutral-light: #28394f;
+  --sst-color-rail-background: #1e293b;
+  --sst-color-rail-border: #334155;
+  --sst-color-rail-ink: #9ca3af;
+  --sst-color-rail-ink-muted: #9ca3af;
+  --sst-color-rail-active-background: #064e3b;
+  --sst-color-rail-active-ink: #10b981;
+  --sst-color-admin-button-background: #10b981;
+  --sst-color-admin-button-ink: #0f172a;
+  --sst-color-admin-button-background-hover: #0da271;
+  --sst-color-card-border: #334155;
+  --sst-card-shadow: 0 1px 2px rgba(0, 0, 0, 0.3), 0 6px 20px rgba(0, 0, 0, 0.35);
+  --sst-color-success-wash: rgba(22, 163, 74, 0.16);
+  --sst-color-warning-wash: rgba(245, 158, 11, 0.16);
+  --sst-color-alert-wash: rgba(239, 68, 68, 0.16);
+  --sst-color-info-wash: rgba(59, 130, 246, 0.16);
+  --sst-color-surface: #1e293b;
+  --sst-color-page-background: #0f172a;
+}
+
 body {
   font-family: 'Montserrat', -apple-system, BlinkMacSystemFont, sans-serif;
-  color: #1f1f1f;
-  background-color: #f5f5f7;
+  color: var(--sst-color-neutral-dark);
+  background-color: var(--sst-color-page-background);
   -webkit-font-smoothing: antialiased;
 }
 

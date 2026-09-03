@@ -392,7 +392,7 @@ export function DashboardPage() {
     const dias = Math.round(
       (new Date(alerta.dataLimiteTratamento).getTime() - new Date(hojeISO).getTime()) / 86_400_000,
     );
-    return <span style={{ color: '#9A6B04', fontWeight: 700, fontSize: 11 }}>{dias} dia(s)</span>;
+    return <span style={{ color: designTokens.colorWarning, fontWeight: 700, fontSize: 11 }}>{dias} dia(s)</span>;
   }
 
   return (

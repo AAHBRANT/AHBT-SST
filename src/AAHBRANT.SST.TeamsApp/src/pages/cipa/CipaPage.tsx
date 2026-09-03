@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Tab, TabList, Text, type SelectTabData, type SelectTabEvent } from '@fluentui/react-components';
-import { usePillTabStyles } from '../pageStyles';
+import { usePillTabStyles, useSubTabStyles } from '../pageStyles';
 import { DimensionamentoCipaTab } from './DimensionamentoCipaTab';
 import { ProcessoEleitoralCipaTab } from './ProcessoEleitoralCipaTab';
 import { MembrosCipaTab } from './MembrosCipaTab';
@@ -14,17 +14,21 @@ type AbaCipa = 'dimensionamento' | 'eleicao' | 'membros' | 'reunioes' | 'inspeco
 // do pilar Operação em 02/09 — cada item da sidebar deve abrir só o que é dele, ver AppShell.tsx).
 // Disclosure completo (dimensionamento sempre manual, apuração manual sem urna digital, PGR/GRO
 // integrado via botão "Gerar Não Conformidade" e não automaticamente) em Domain/Entidades/Cipa/Cipa.cs.
-export function CipaPage() {
+export function CipaPage({ mostrarTitulo = true }: { mostrarTitulo?: boolean } = {}) {
   const [aba, setAba] = useState<AbaCipa>('dimensionamento');
-  const estilosAba = usePillTabStyles();
+  const estilosPillTab = usePillTabStyles();
+  const estilosSubTab = useSubTabStyles();
+  const estilosAba = mostrarTitulo ? estilosPillTab : estilosSubTab;
 
   return (
     <div>
-      <div style={{ marginBottom: 16 }}>
-        <Text size={500} weight="semibold">
-          CIPA
-        </Text>
-      </div>
+      {mostrarTitulo && (
+        <div style={{ marginBottom: 16 }}>
+          <Text size={500} weight="semibold">
+            CIPA
+          </Text>
+        </div>
+      )}
 
       <TabList
         selectedValue={aba}
