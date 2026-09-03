@@ -23,18 +23,20 @@ import { useConfirmarExclusao } from '../../hooks/useConfirmarExclusao';
 import { useSucessoToast } from '../../hooks/useSucessoToast';
 import { EstadoVazio } from '../../components/EstadoVazio';
 import { ListaCarregando } from '../../components/ListaCarregando';
+import { hojeIso } from '../../lib/datas';
 
-const aprVazia: NovaApr = {
-  numeroApr: '',
-  atividadeId: '',
-  local: '',
-  maquinasEquipamentos: '',
-  pgrReferencia: '',
-  equipeId: null,
-  data: '',
-  validade: null,
-  responsaveisIds: [],
-};
+function aprVazia(): NovaApr {
+  return {
+    atividadeId: '',
+    local: '',
+    maquinasEquipamentos: '',
+    pgrReferencia: '',
+    equipeId: null,
+    data: hojeIso(),
+    validade: null,
+    responsaveisIds: [],
+  };
+}
 
 const corBadgeStatus: Record<number, 'informative' | 'warning' | 'success' | 'danger' | 'subtle'> = {
   1: 'subtle',
@@ -52,7 +54,7 @@ export function AprsTab() {
   const [atividades, setAtividades] = useState<Atividade[]>([]);
   const [trabalhadores, setTrabalhadores] = useState<Trabalhador[]>([]);
   const [equipes, setEquipes] = useState<Equipe[]>([]);
-  const [novaApr, setNovaApr] = useState<NovaApr>(aprVazia);
+  const [novaApr, setNovaApr] = useState<NovaApr>(aprVazia());
   const [erro, setErro] = useState<string | null>(null);
   const [carregando, setCarregando] = useState(false);
   const [carregandoLista, setCarregandoLista] = useState(true);
@@ -105,7 +107,7 @@ export function AprsTab() {
         ...novaApr,
         validade: novaApr.validade || null,
       });
-      setNovaApr(aprVazia);
+      setNovaApr(aprVazia());
       await carregar();
       sucessoToast('APR criada com sucesso.');
     } catch (e) {
@@ -138,11 +140,6 @@ export function AprsTab() {
 
       <div className={`${estilos.sectionTitle} ${estilos.sectionTitleFirst}`}>Dados da APR</div>
       <div className={estilos.formGrid}>
-        <div className={estilos.col2}>
-          <Field label="Nº APR">
-            <Input value={novaApr.numeroApr ?? ''} onChange={(_, d) => setNovaApr({ ...novaApr, numeroApr: d.value })} />
-          </Field>
-        </div>
         <div className={estilos.col4}>
           <Field label="Atividade">
             <Select

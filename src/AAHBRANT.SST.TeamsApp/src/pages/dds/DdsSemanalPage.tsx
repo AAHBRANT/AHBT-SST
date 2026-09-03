@@ -27,9 +27,10 @@ import {
   type Obra,
 } from '../../lib/api';
 import { usePageStyles } from '../pageStyles';
+import { segundaFeiraAtualIso } from '../../lib/datas';
 
 function semanalVazia(): NovaDdsSemanal {
-  return { obraId: '', tipo: TipoDdsSemanal.Proprios, dataInicioSemana: '' };
+  return { obraId: '', tipo: TipoDdsSemanal.Proprios, dataInicioSemana: segundaFeiraAtualIso() };
 }
 
 const corBadgeStatus: Record<number, 'informative' | 'success'> = {
