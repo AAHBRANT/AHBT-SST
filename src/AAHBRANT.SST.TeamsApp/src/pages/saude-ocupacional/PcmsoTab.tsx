@@ -51,9 +51,8 @@ function pcmsoVazio(): NovoPcmso {
   };
 }
 
-// PCMSO reaproveita DocumentoGestao (Tipo="PCMSO") — ver PcmsoDto.cs/api.ts. Edição completa dos
-// campos clínicos e o Plano de Ação vinculado ficam em PcmsoDetalhePage.tsx (mesmo padrão de
-// navegação lista→detalhe usado por PgrsTab.tsx e NaoConformidadesTab.tsx).
+// Edição completa dos campos clínicos e o Plano de Ação vinculado ficam em PcmsoDetalhePage.tsx
+// (mesmo padrão de navegação lista→detalhe usado por PgrsTab.tsx e NaoConformidadesTab.tsx).
 export function PcmsoTab() {
   const estilos = usePageStyles();
   const navigate = useNavigate();
@@ -213,8 +212,8 @@ export function PcmsoTab() {
           <TableBody>
             {pcmsos.map((pcmso) => (
               <TableRow
-                key={pcmso.documentoGestaoId}
-                onClick={() => navigate(`/saude-ocupacional/pcmso/${pcmso.documentoGestaoId}`)}
+                key={pcmso.id}
+                onClick={() => navigate(`/saude-ocupacional/pcmso/${pcmso.id}`)}
                 style={{ cursor: 'pointer' }}
               >
                 <TableCell>{pcmso.nome}</TableCell>
@@ -237,13 +236,13 @@ export function PcmsoTab() {
                     <Button
                       appearance="subtle"
                       icon={<ChevronRight24Regular />}
-                      onClick={() => navigate(`/saude-ocupacional/pcmso/${pcmso.documentoGestaoId}`)}
+                      onClick={() => navigate(`/saude-ocupacional/pcmso/${pcmso.id}`)}
                       aria-label="Ver PCMSO"
                     />
                     <Button
                       appearance="subtle"
                       icon={<Delete24Regular />}
-                      onClick={(evento) => excluir(pcmso.documentoGestaoId, evento)}
+                      onClick={(evento) => excluir(pcmso.id, evento)}
                       aria-label="Excluir"
                     />
                   </div>

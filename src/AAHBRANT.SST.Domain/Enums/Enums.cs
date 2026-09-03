@@ -203,12 +203,28 @@ public enum StatusPgr
 
 // Não há vocabulário literal para o "status" do PCMSO — mesmo desenho de StatusPgr (proposta
 // própria; avisar o usuário se ele quiser outro fluxo).
+// PENDENTE: StatusPcmso era do PCMSO v1, descontinuado (ver commit "integra Saúde Ocupacional de
+// produção, descontinua PCMSO v1") — não é usado por PcmsoDetalhe. Mantido para não quebrar
+// referências antigas; usar StatusPcmsoDocumento abaixo para o PCMSO atual.
 public enum StatusPcmso
 {
     EmElaboracao = 1,
     Vigente = 2,
     EmRevisao = 3,
     Encerrado = 4
+}
+
+// Reintroduzido escopado ao PCMSO em 2026-09-03 (ver nota em PcmsoDetalhe) — era StatusDocumentoGestao,
+// compartilhado por todo o módulo de Gestão Documental removido em 2026-08-28; mesmos valores/rótulos,
+// porque o frontend (TeamsApp/src/lib/api.ts, StatusPcmsoDocumento) já foi escrito esperando este
+// vocabulário e não pode ser adivinhado de outra forma sem quebrar as telas de PCMSO existentes.
+public enum StatusPcmsoDocumento
+{
+    Rascunho = 1,
+    EmAprovacao = 2,
+    Vigente = 3,
+    Obsoleto = 4,
+    Cancelado = 5
 }
 
 // NTAG.md §2 — identification_tags.type: CHECK (type IN ('NTAG215', 'NTAG213', 'QR_CODE', 'RFID')).

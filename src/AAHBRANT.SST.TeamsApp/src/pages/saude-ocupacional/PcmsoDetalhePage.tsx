@@ -44,8 +44,8 @@ function novaAcaoInicial(): Omit<NovaAcaoPlano, 'origemTipo' | 'origemId'> {
 }
 
 // Detalhe do PCMSO: edição completa dos campos clínicos (a criação em PcmsoTab.tsx só pede o
-// essencial) + Plano de Ação vinculado via api.acoesPlano (origemTipo="Pcmso", origemId =
-// documentoGestaoId — mesmo mecanismo genérico usado por NaoConformidadeDetalhePage.tsx).
+// essencial) + Plano de Ação vinculado via api.acoesPlano (origemTipo="Pcmso", origemId = id do
+// PCMSO — mesmo mecanismo genérico usado por NaoConformidadeDetalhePage.tsx).
 export function PcmsoDetalhePage() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
