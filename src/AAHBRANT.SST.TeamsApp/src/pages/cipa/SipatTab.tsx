@@ -146,7 +146,7 @@ export function SipatTab() {
         ) : lista.length === 0 ? (
           <EstadoVazio mensagem="Nenhum evento SIPAT cadastrado ainda." />
         ) : (
-        <Table>
+        <Table noNativeElements>
           <TableHeader>
             <TableRow>
               <TableHeaderCell>Obra</TableHeaderCell>

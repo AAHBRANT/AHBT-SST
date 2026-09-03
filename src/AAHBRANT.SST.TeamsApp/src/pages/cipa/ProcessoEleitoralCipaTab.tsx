@@ -161,7 +161,7 @@ export function ProcessoEleitoralCipaTab() {
         ) : lista.length === 0 ? (
           <EstadoVazio mensagem="Nenhum processo eleitoral cadastrado ainda." />
         ) : (
-        <Table>
+        <Table noNativeElements>
           <TableHeader>
             <TableRow>
               <TableHeaderCell>Obra</TableHeaderCell>

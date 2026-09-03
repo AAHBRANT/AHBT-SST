@@ -148,7 +148,7 @@ export function QuestionarioAplicabilidadeTab() {
         ) : itens.length === 0 ? (
           <EstadoVazio mensagem="Nenhuma pergunta cadastrada ainda." />
         ) : (
-        <Table style={{ marginTop: 12 }}>
+        <Table noNativeElements style={{ marginTop: 12 }}>
           <TableHeader>
             <TableRow>
               <TableHeaderCell>Pergunta</TableHeaderCell>
@@ -193,7 +193,7 @@ export function QuestionarioAplicabilidadeTab() {
         </Field>
 
         {obraSelecionadaId && (
-          <Table style={{ marginTop: 12 }}>
+          <Table noNativeElements style={{ marginTop: 12 }}>
             <TableHeader>
               <TableRow>
                 <TableHeaderCell>Pergunta</TableHeaderCell>

@@ -168,7 +168,7 @@ export function PgrsTab() {
       ) : pgrs.length === 0 ? (
         <EstadoVazio mensagem="Nenhum PGR cadastrado ainda." />
       ) : (
-      <Table>
+      <Table noNativeElements>
         <TableHeader>
           <TableRow>
             <TableHeaderCell>Nome</TableHeaderCell>

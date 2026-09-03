@@ -34,7 +34,7 @@ export function PerfilGeralTab({ asos }: { asos: Aso[] }) {
       {asos.length === 0 ? (
         <Text>Nenhum ASO registrado.</Text>
       ) : (
-        <Table>
+        <Table noNativeElements>
           <TableHeader>
             <TableRow>
               <TableHeaderCell>Tipo</TableHeaderCell>

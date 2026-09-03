@@ -170,7 +170,7 @@ export function MembrosCipaTab() {
             onChange={(_, d) => setSomenteMandatoAtivo(!!d.checked)}
           />
         </div>
-        <Table>
+        <Table noNativeElements>
           <TableHeader>
             <TableRow>
               <TableHeaderCell>Nome</TableHeaderCell>

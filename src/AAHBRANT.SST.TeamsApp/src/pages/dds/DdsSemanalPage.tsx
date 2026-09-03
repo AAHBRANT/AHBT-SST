@@ -152,7 +152,7 @@ export function DdsSemanalPage() {
           <Text weight="semibold">Semanas registradas</Text>
         </div>
 
-        <Table>
+        <Table noNativeElements>
           <TableHeader>
             <TableRow>
               <TableHeaderCell>Obra</TableHeaderCell>

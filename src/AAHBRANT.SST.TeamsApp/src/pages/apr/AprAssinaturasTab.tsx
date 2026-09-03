@@ -108,7 +108,7 @@ export function AprAssinaturasTab({ aprId }: { aprId: string }) {
         </Button>
       </div>
 
-      <Table>
+      <Table noNativeElements>
         <TableHeader>
           <TableRow>
             <TableHeaderCell>Trabalhador</TableHeaderCell>

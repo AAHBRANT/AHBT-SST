@@ -174,7 +174,7 @@ export function AreasSstTab() {
       ) : areas.length === 0 ? (
         <EstadoVazio mensagem="Nenhuma área cadastrada ainda." />
       ) : (
-      <Table>
+      <Table noNativeElements>
         <TableHeader>
           <TableRow>
             <TableHeaderCell>Código</TableHeaderCell>

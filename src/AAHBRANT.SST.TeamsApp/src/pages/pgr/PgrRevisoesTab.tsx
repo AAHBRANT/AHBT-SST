@@ -85,7 +85,7 @@ export function PgrRevisoesTab({ pgrId }: { pgrId: string }) {
         </Button>
       </div>
 
-      <Table>
+      <Table noNativeElements>
         <TableHeader>
           <TableRow>
             <TableHeaderCell>Nº</TableHeaderCell>

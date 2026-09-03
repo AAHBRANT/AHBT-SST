@@ -237,7 +237,7 @@ export function InspecoesCipaTab() {
         ) : lista.length === 0 ? (
           <EstadoVazio mensagem="Nenhuma inspeção registrada ainda." />
         ) : (
-        <Table>
+        <Table noNativeElements>
           <TableHeader>
             <TableRow>
               <TableHeaderCell>Obra</TableHeaderCell>

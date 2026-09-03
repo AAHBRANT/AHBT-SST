@@ -231,7 +231,7 @@ export function EstoqueTab() {
             <div className={estilos.toolbar}>
               <Text weight="semibold">Saldo atual</Text>
             </div>
-            <Table>
+            <Table noNativeElements>
               <TableHeader>
                 <TableRow>
                   <TableHeaderCell>Nome</TableHeaderCell>
@@ -261,7 +261,7 @@ export function EstoqueTab() {
                                 Nenhuma movimentação registrada.
                               </Text>
                             ) : (
-                              <Table>
+                              <Table noNativeElements>
                                 <TableHeader>
                                   <TableRow>
                                     <TableHeaderCell>Data</TableHeaderCell>

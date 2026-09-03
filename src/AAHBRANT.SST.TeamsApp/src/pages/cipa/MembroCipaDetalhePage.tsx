@@ -258,7 +258,7 @@ export function MembroCipaDetalhePage() {
             {detalhe.treinamentos.length === 0 ? (
               <EstadoVazio mensagem="Nenhum treinamento registrado ainda." />
             ) : (
-            <Table>
+            <Table noNativeElements>
               <TableHeader>
                 <TableRow>
                   <TableHeaderCell>Realização</TableHeaderCell>

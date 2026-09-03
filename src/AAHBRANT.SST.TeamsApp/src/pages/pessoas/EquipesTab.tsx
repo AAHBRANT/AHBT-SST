@@ -137,7 +137,7 @@ export function EquipesTab() {
       ) : equipes.length === 0 ? (
         <EstadoVazio mensagem="Nenhuma equipe cadastrada ainda." />
       ) : (
-      <Table>
+      <Table noNativeElements>
         <TableHeader>
           <TableRow>
             <TableHeaderCell>Obra</TableHeaderCell>

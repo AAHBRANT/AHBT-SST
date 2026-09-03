@@ -88,7 +88,7 @@ export function MatrizEpiTab() {
         Operação → Pessoas → Funções.
       </Text>
 
-      <Table>
+      <Table noNativeElements>
         <TableHeader>
           <TableRow>
             <TableHeaderCell>Nome</TableHeaderCell>

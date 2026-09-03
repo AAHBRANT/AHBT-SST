@@ -112,7 +112,7 @@ export function RiscosCriticosPtTab({
       {itens.length === 0 ? (
         <EstadoVazio mensagem="Nenhum risco crítico cadastrado ainda." />
       ) : (
-      <Table>
+      <Table noNativeElements>
         <TableHeader>
           <TableRow>
             <TableHeaderCell>Risco / condição</TableHeaderCell>

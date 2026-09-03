@@ -179,7 +179,7 @@ export function AlertasConfiguracaoTab() {
               <Text weight="semibold">{moduloAlertaLabel[modulo] ?? modulo}</Text>
             </div>
 
-            <Table>
+            <Table noNativeElements>
               <TableHeader>
                 <TableRow>
                   <TableHeaderCell>Dias de antecedência</TableHeaderCell>

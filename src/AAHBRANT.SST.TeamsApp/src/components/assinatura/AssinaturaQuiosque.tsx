@@ -159,7 +159,7 @@ export function AssinaturaQuiosque({ entidadeTipo, entidadeId }: AssinaturaQuios
         <div className={estilos.toolbar}>
           <Text weight="semibold">Assinaturas registradas ({documento?.signatarios.length ?? 0})</Text>
         </div>
-        <Table>
+        <Table noNativeElements>
           <TableHeader>
             <TableRow>
               <TableHeaderCell>Nome</TableHeaderCell>

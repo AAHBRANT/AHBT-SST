@@ -407,7 +407,7 @@ export function PcmsoDetalhePage() {
             {acoesPlano.length === 0 ? (
               <EstadoVazio mensagem="Nenhuma ação do plano cadastrada ainda." />
             ) : (
-            <Table>
+            <Table noNativeElements>
               <TableHeader>
                 <TableRow>
                   <TableHeaderCell>Tipo</TableHeaderCell>

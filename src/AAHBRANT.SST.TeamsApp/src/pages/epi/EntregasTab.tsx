@@ -322,7 +322,7 @@ export function EntregasTab({ aoNavegarParaMatriz }: EntregasTabProps) {
           <Text weight="semibold">Entregas registradas</Text>
         </div>
 
-        <Table>
+        <Table noNativeElements>
           <TableHeader>
             <TableRow>
               <TableHeaderCell>Trabalhador</TableHeaderCell>

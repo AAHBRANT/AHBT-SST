@@ -147,7 +147,7 @@ export function HhtMensalTab({ obras }: { obras: Obra[] }) {
         ) : registros.length === 0 ? (
           <EstadoVazio mensagem="Nenhum registro de HHT cadastrado ainda." />
         ) : (
-        <Table>
+        <Table noNativeElements>
           <TableHeader>
             <TableRow>
               <TableHeaderCell>Obra</TableHeaderCell>

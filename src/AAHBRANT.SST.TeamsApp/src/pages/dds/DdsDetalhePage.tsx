@@ -438,7 +438,7 @@ export function DdsDetalhePage() {
           </div>
         )}
 
-        <Table>
+        <Table noNativeElements>
           <TableHeader>
             <TableRow>
               <TableHeaderCell>Nome</TableHeaderCell>

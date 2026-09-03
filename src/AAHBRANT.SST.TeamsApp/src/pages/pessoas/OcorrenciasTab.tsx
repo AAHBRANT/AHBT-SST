@@ -36,7 +36,7 @@ export function OcorrenciasTab({ ocorrencias }: { ocorrencias: OcorrenciaPerfil[
       {ocorrencias.length === 0 ? (
         <Text>Nenhuma ocorrência registrada para este trabalhador.</Text>
       ) : (
-        <Table>
+        <Table noNativeElements>
           <TableHeader>
             <TableRow>
               <TableHeaderCell>Tipo</TableHeaderCell>

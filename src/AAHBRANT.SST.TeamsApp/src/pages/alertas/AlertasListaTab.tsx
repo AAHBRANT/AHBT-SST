@@ -271,7 +271,7 @@ export function AlertasListaTab() {
         ) : alertas.length === 0 ? (
           <EstadoVazio mensagem="Nenhum alerta encontrado." />
         ) : (
-        <Table>
+        <Table noNativeElements>
           <TableHeader>
             <TableRow>
               <TableHeaderCell>Categoria</TableHeaderCell>

@@ -227,7 +227,7 @@ export function AprEtapasTab({ aprId }: { aprId: string }) {
       ) : etapas.length === 0 ? (
         <EstadoVazio mensagem="Nenhuma etapa cadastrada ainda." />
       ) : (
-      <Table>
+      <Table noNativeElements>
         <TableHeader>
           <TableRow>
             <TableHeaderCell>Ordem</TableHeaderCell>
@@ -262,7 +262,7 @@ export function AprEtapasTab({ aprId }: { aprId: string }) {
                       <Text weight="semibold">Perigos / riscos — {etapa.descricao}</Text>
 
                       {etapa.riscos.length > 0 && (
-                        <Table>
+                        <Table noNativeElements>
                           <TableHeader>
                             <TableRow>
                               <TableHeaderCell>Perigo / evento perigoso</TableHeaderCell>

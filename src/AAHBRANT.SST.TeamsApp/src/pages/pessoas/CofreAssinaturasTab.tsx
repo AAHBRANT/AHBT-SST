@@ -54,7 +54,7 @@ export function CofreAssinaturasTab({ trabalhadorId, assinaturas }: CofreAssinat
         {assinaturas.length === 0 ? (
           <Text>Nenhuma assinatura registrada para este trabalhador.</Text>
         ) : (
-          <Table>
+          <Table noNativeElements>
             <TableHeader>
               <TableRow>
                 <TableHeaderCell>Documento</TableHeaderCell>

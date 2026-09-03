@@ -279,7 +279,7 @@ export function PermissoesTrabalhoTab() {
       ) : permissoes.length === 0 ? (
         <EstadoVazio mensagem="Nenhuma Permissão de Trabalho cadastrada ainda." />
       ) : (
-      <Table>
+      <Table noNativeElements>
         <TableHeader>
           <TableRow>
             <TableHeaderCell>Nº PT</TableHeaderCell>

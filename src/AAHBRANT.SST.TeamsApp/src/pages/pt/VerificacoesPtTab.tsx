@@ -62,7 +62,7 @@ export function VerificacoesPtTab({
 
       {erro && <Text className={estilos.erro}>{erro}</Text>}
 
-      <Table>
+      <Table noNativeElements>
         <TableHeader>
           <TableRow>
             <TableHeaderCell>Item</TableHeaderCell>

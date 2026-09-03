@@ -237,7 +237,7 @@ export function RequisitosLegaisTab() {
       ) : requisitos.length === 0 ? (
         <EstadoVazio mensagem="Nenhum requisito legal cadastrado ainda." />
       ) : (
-      <Table>
+      <Table noNativeElements>
         <TableHeader>
           <TableRow>
             <TableHeaderCell>Norma/Artigo</TableHeaderCell>

@@ -131,7 +131,7 @@ export function EventoSipatDetalhePage() {
             <div className={estilos.toolbar}>
               <Text weight="semibold">Programação</Text>
             </div>
-            <Table>
+            <Table noNativeElements>
               <TableHeader>
                 <TableRow>
                   <TableHeaderCell>Data</TableHeaderCell>

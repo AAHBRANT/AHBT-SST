@@ -56,7 +56,7 @@ export function ListaRiscosPanel({ riscos, atividades, perigos, aoExcluir }: Lis
         {ordenados.length === 0 ? (
           <EstadoVazio mensagem="Nenhum risco avaliado para os filtros selecionados." />
         ) : (
-          <Table>
+          <Table noNativeElements>
             <TableHeader>
               <TableRow>
                 <TableHeaderCell>Atividade</TableHeaderCell>

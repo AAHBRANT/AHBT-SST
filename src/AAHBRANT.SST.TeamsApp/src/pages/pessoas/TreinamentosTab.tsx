@@ -209,7 +209,7 @@ export function TreinamentosTab({ trabalhadorId }: { trabalhadorId: string }) {
       ) : treinamentos.length === 0 ? (
         <EstadoVazio mensagem="Nenhum treinamento cadastrado ainda." />
       ) : (
-      <Table>
+      <Table noNativeElements>
         <TableHeader>
           <TableRow>
             <TableHeaderCell>Curso</TableHeaderCell>

@@ -183,7 +183,7 @@ export function CatalogoTab() {
       ) : epis.length === 0 ? (
         <EstadoVazio mensagem="Nenhum EPI cadastrado no catálogo ainda." />
       ) : (
-      <Table>
+      <Table noNativeElements>
         <TableHeader>
           <TableRow>
             <TableHeaderCell>Foto</TableHeaderCell>

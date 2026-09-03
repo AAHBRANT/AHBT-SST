@@ -114,7 +114,7 @@ export function FuncoesTab() {
       ) : funcoes.length === 0 ? (
         <EstadoVazio mensagem="Nenhuma função cadastrada ainda." />
       ) : (
-      <Table>
+      <Table noNativeElements>
         <TableHeader>
           <TableRow>
             <TableHeaderCell>Nome</TableHeaderCell>

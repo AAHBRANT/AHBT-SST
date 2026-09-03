@@ -75,7 +75,7 @@ export function TrilhaAuditoriaTab() {
           </Button>
         </div>
 
-        <Table>
+        <Table noNativeElements>
           <TableHeader>
             <TableRow>
               <TableHeaderCell>Data/Hora</TableHeaderCell>

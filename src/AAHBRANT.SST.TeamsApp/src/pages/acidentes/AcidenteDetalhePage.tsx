@@ -324,7 +324,7 @@ export function AcidenteDetalhePage() {
             </Select>
           </Field>
         </div>
-        <Table>
+        <Table noNativeElements>
           <TableHeader>
             <TableRow>
               <TableHeaderCell>Tipo</TableHeaderCell>

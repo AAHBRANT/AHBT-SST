@@ -92,7 +92,7 @@ export function EntregasEpiTab({ trabalhadorId }: { trabalhadorId: string }) {
 
       {erro && <Text className={estilos.erro}>{erro}</Text>}
 
-      <Table>
+      <Table noNativeElements>
         <TableHeader>
           <TableRow>
             <TableHeaderCell>EPI</TableHeaderCell>

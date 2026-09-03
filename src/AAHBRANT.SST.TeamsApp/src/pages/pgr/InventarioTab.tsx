@@ -39,7 +39,7 @@ export function InventarioTab({ atividades }: { atividades: AtividadeCaracteriza
           <div className={estilos.toolbar}>
             <Text weight="semibold">{atividade.atividadeNome}</Text>
           </div>
-          <Table>
+          <Table noNativeElements>
             <TableHeader>
               <TableRow>
                 <TableHeaderCell>Perigo</TableHeaderCell>

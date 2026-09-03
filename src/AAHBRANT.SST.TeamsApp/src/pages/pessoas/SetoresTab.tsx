@@ -113,7 +113,7 @@ export function SetoresTab() {
       ) : setores.length === 0 ? (
         <EstadoVazio mensagem="Nenhum setor cadastrado ainda." />
       ) : (
-      <Table>
+      <Table noNativeElements>
         <TableHeader>
           <TableRow>
             <TableHeaderCell>Obra</TableHeaderCell>

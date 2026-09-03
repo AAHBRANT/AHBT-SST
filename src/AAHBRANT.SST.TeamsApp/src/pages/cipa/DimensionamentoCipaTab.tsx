@@ -167,7 +167,7 @@ export function DimensionamentoCipaTab() {
         ) : lista.length === 0 ? (
           <EstadoVazio mensagem="Nenhum dimensionamento cadastrado ainda." />
         ) : (
-        <Table>
+        <Table noNativeElements>
           <TableHeader>
             <TableRow>
               <TableHeaderCell>Obra</TableHeaderCell>

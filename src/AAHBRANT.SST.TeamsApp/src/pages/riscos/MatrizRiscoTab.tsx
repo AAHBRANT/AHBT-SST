@@ -156,7 +156,7 @@ export function MatrizRiscoTab() {
         </div>
 
         <div style={{ overflowX: 'auto' }}>
-          <Table>
+          <Table noNativeElements>
             <TableHeader>
               <TableRow>
                 <TableHeaderCell>Probabilidade \ Severidade</TableHeaderCell>
@@ -207,7 +207,7 @@ export function MatrizRiscoTab() {
         ) : configs.length === 0 ? (
           <EstadoVazio mensagem="Nenhuma matriz de risco cadastrada ainda." />
         ) : (
-        <Table>
+        <Table noNativeElements>
           <TableHeader>
             <TableRow>
               <TableHeaderCell>Nome</TableHeaderCell>

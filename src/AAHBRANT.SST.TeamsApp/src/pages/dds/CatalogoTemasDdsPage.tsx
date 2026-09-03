@@ -136,7 +136,7 @@ export function CatalogoTemasDdsPage() {
       ) : temas.length === 0 ? (
         <EstadoVazio mensagem="Nenhum tema de DDS cadastrado ainda." />
       ) : (
-        <Table>
+        <Table noNativeElements>
           <TableHeader>
             <TableRow>
               <TableHeaderCell>Nome</TableHeaderCell>

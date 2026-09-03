@@ -127,7 +127,7 @@ export function AtividadesTab() {
       ) : atividades.length === 0 ? (
         <EstadoVazio mensagem="Nenhuma atividade cadastrada ainda." />
       ) : (
-      <Table>
+      <Table noNativeElements>
         <TableHeader>
           <TableRow>
             <TableHeaderCell>Nome</TableHeaderCell>

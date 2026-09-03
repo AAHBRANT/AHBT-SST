@@ -184,7 +184,7 @@ export function NaoConformidadesTab() {
         <div className={estilos.toolbar}>
           <Text weight="semibold">Não conformidades</Text>
         </div>
-        <Table>
+        <Table noNativeElements>
           <TableHeader>
             <TableRow>
               <TableHeaderCell>Origem</TableHeaderCell>

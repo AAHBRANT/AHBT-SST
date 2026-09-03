@@ -213,7 +213,7 @@ export function ChecklistModelosTab() {
         </Button>
       </div>
 
-      <Table style={{ marginBottom: 16 }}>
+      <Table noNativeElements style={{ marginBottom: 16 }}>
         <TableHeader>
           <TableRow>
             <TableHeaderCell>Descrição</TableHeaderCell>
@@ -254,7 +254,7 @@ export function ChecklistModelosTab() {
       ) : checklists.length === 0 ? (
         <EstadoVazio mensagem="Nenhum checklist cadastrado ainda." />
       ) : (
-      <Table>
+      <Table noNativeElements>
         <TableHeader>
           <TableRow>
             <TableHeaderCell>Nome</TableHeaderCell>

@@ -223,7 +223,7 @@ export function AptidoesTab() {
         ) : aptidoes.length === 0 ? (
           <EstadoVazio mensagem="Nenhuma aptidão cadastrada ainda." />
         ) : (
-        <Table>
+        <Table noNativeElements>
           <TableHeader>
             <TableRow>
               <TableHeaderCell>Trabalhador</TableHeaderCell>

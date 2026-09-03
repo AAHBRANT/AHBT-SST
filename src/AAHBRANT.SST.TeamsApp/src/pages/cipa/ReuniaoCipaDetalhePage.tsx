@@ -242,7 +242,7 @@ export function ReuniaoCipaDetalhePage() {
             {trabalhadores.length === 0 ? (
               <EstadoVazio mensagem="Nenhum trabalhador cadastrado nesta obra ainda." />
             ) : (
-            <Table>
+            <Table noNativeElements>
               <TableHeader>
                 <TableRow>
                   <TableHeaderCell>Trabalhador</TableHeaderCell>
@@ -382,7 +382,7 @@ export function ReuniaoCipaDetalhePage() {
             {acoesPlano.length === 0 ? (
               <EstadoVazio mensagem="Nenhuma ação registrada no plano ainda." />
             ) : (
-            <Table>
+            <Table noNativeElements>
               <TableHeader>
                 <TableRow>
                   <TableHeaderCell>Tema/problema</TableHeaderCell>

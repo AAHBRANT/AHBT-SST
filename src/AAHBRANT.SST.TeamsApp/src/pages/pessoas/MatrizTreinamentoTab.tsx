@@ -89,7 +89,7 @@ export function MatrizTreinamentoTab() {
         aba Funções; novos cursos, na aba Treinamentos.
       </Text>
 
-      <Table>
+      <Table noNativeElements>
         <TableHeader>
           <TableRow>
             <TableHeaderCell>Nome</TableHeaderCell>

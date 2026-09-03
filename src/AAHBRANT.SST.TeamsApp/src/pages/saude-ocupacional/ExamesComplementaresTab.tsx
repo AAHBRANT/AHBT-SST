@@ -231,7 +231,7 @@ export function ExamesComplementaresTab() {
         ) : exames.length === 0 ? (
           <EstadoVazio mensagem="Nenhum exame complementar cadastrado ainda." />
         ) : (
-        <Table>
+        <Table noNativeElements>
           <TableHeader>
             <TableRow>
               <TableHeaderCell>Trabalhador</TableHeaderCell>

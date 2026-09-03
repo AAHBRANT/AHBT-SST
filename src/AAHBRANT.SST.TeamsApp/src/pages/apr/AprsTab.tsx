@@ -220,7 +220,7 @@ export function AprsTab() {
       ) : aprs.length === 0 ? (
         <EstadoVazio mensagem="Nenhuma APR cadastrada ainda." />
       ) : (
-      <Table>
+      <Table noNativeElements>
         <TableHeader>
           <TableRow>
             <TableHeaderCell>Nº APR</TableHeaderCell>

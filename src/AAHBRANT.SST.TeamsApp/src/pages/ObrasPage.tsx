@@ -236,7 +236,7 @@ export function ObrasPage() {
       ) : obras.length === 0 ? (
         <EstadoVazio mensagem="Nenhuma obra cadastrada ainda." />
       ) : (
-      <Table>
+      <Table noNativeElements>
         <TableHeader>
           <TableRow>
             <TableHeaderCell>Código</TableHeaderCell>

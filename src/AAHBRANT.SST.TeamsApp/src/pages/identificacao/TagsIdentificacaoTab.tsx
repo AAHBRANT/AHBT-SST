@@ -294,7 +294,7 @@ export function TagsIdentificacaoTab() {
         ) : tags.length === 0 ? (
           <EstadoVazio mensagem="Nenhuma tag de identificação cadastrada ainda." />
         ) : (
-        <Table>
+        <Table noNativeElements>
           <TableHeader>
             <TableRow>
               <TableHeaderCell>UID</TableHeaderCell>

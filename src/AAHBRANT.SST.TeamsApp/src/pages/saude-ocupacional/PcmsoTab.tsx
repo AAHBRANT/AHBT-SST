@@ -199,7 +199,7 @@ export function PcmsoTab() {
         ) : pcmsos.length === 0 ? (
           <EstadoVazio mensagem="Nenhum PCMSO cadastrado ainda." />
         ) : (
-        <Table>
+        <Table noNativeElements>
           <TableHeader>
             <TableRow>
               <TableHeaderCell>Nome</TableHeaderCell>

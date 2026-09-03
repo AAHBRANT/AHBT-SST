@@ -176,7 +176,7 @@ export function InspecoesTab() {
         </Button>
       </div>
 
-      <Table>
+      <Table noNativeElements>
         <TableHeader>
           <TableRow>
             <TableHeaderCell>Tipo</TableHeaderCell>

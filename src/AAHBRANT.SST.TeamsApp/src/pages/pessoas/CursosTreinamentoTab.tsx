@@ -122,7 +122,7 @@ export function CursosTreinamentoTab() {
       ) : cursos.length === 0 ? (
         <EstadoVazio mensagem="Nenhum curso de treinamento cadastrado ainda." />
       ) : (
-      <Table>
+      <Table noNativeElements>
         <TableHeader>
           <TableRow>
             <TableHeaderCell>Nome</TableHeaderCell>

@@ -233,7 +233,7 @@ export function AsosTab() {
         ) : asos.length === 0 ? (
           <EstadoVazio mensagem="Nenhum ASO cadastrado ainda." />
         ) : (
-        <Table>
+        <Table noNativeElements>
           <TableHeader>
             <TableRow>
               <TableHeaderCell>Trabalhador</TableHeaderCell>

@@ -154,7 +154,7 @@ export function ReunioesCipaTab() {
         ) : lista.length === 0 ? (
           <EstadoVazio mensagem="Nenhuma reunião da CIPA cadastrada ainda." />
         ) : (
-        <Table>
+        <Table noNativeElements>
           <TableHeader>
             <TableRow>
               <TableHeaderCell>Obra</TableHeaderCell>

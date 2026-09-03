@@ -330,7 +330,7 @@ export function AcidentesPage({ tipoFixo }: { tipoFixo?: number } = {}) {
             </Select>
           </Field>
         </div>
-        <Table>
+        <Table noNativeElements>
           <TableHeader>
             <TableRow>
               <TableHeaderCell>Tipo</TableHeaderCell>

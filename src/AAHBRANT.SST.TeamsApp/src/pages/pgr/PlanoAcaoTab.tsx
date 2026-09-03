@@ -163,7 +163,7 @@ export function PlanoAcaoTab({ pgrId, riscosDisponiveis }: { pgrId: string; risc
       ) : itens.length === 0 ? (
         <EstadoVazio mensagem="Nenhum item cadastrado no plano de ação ainda." />
       ) : (
-      <Table>
+      <Table noNativeElements>
         <TableHeader>
           <TableRow>
             <TableHeaderCell>Descrição</TableHeaderCell>

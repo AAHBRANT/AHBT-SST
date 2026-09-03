@@ -205,7 +205,7 @@ export function ProcessoEleitoralCipaDetalhePage() {
             <div className={estilos.toolbar}>
               <Text weight="semibold">Candidatos</Text>
             </div>
-            <Table>
+            <Table noNativeElements>
               <TableHeader>
                 <TableRow>
                   <TableHeaderCell>Nome</TableHeaderCell>
@@ -268,7 +268,7 @@ export function ProcessoEleitoralCipaDetalhePage() {
                   <CampoData value={dataFimMandato} onChange={(_, d) => setDataFimMandato(d.value)} />
                 </Field>
               </div>
-              <Table>
+              <Table noNativeElements>
                 <TableHeader>
                   <TableRow>
                     <TableHeaderCell>Candidato</TableHeaderCell>

@@ -372,7 +372,7 @@ export function ControleAcessoTab() {
           ) : usuarios.length === 0 ? (
             <EstadoVazio mensagem="Nenhum usuário cadastrado ainda." />
           ) : (
-          <Table>
+          <Table noNativeElements>
             <TableHeader>
               <TableRow>
                 <TableHeaderCell>Nome</TableHeaderCell>
@@ -453,7 +453,7 @@ export function ControleAcessoTab() {
               <Text weight="semibold" style={{ display: 'block', margin: '16px 0 8px' }}>
                 Perfis por obra
               </Text>
-              <Table>
+              <Table noNativeElements>
                 <TableHeader>
                   <TableRow>
                     <TableHeaderCell>Perfil</TableHeaderCell>
@@ -550,7 +550,7 @@ export function ControleAcessoTab() {
             ) : perfis.length === 0 ? (
               <EstadoVazio mensagem="Nenhum perfil de acesso cadastrado ainda." />
             ) : (
-            <Table>
+            <Table noNativeElements>
               <TableHeader>
                 <TableRow>
                   <TableHeaderCell>Nome</TableHeaderCell>
@@ -612,7 +612,7 @@ export function ControleAcessoTab() {
               </Field>
 
               <div style={{ overflowX: 'auto' }}>
-                <Table>
+                <Table noNativeElements>
                   <TableHeader>
                     <TableRow>
                       <TableHeaderCell style={{ width: '40%' }}>Módulo / permissão</TableHeaderCell>
