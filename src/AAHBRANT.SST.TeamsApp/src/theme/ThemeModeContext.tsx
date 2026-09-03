@@ -11,14 +11,13 @@ interface ThemeModeContextValue {
 
 const ThemeModeContext = createContext<ThemeModeContextValue | null>(null);
 
-// Botão de dark/light mode (pedido do usuário, 02/09) — modo escuro é o padrão do app desde a
-// reformulação de navegação/tema desta mesma data, mas o usuário pode alternar pro claro (usado
-// antes, ver histórico de theme.ts) e a escolha persiste entre sessões, mesmo padrão das outras
-// preferências do rail (ver CHAVE_RAIL_EXPANDIDO em AppShell.tsx).
+// Botão de dark/light mode (pedido do usuário, 02/09). Modo claro é o padrão do app (pedido do
+// usuário, 03/09) — o usuário pode alternar pro escuro e a escolha persiste entre sessões, mesmo
+// padrão das outras preferências do rail (ver CHAVE_RAIL_EXPANDIDO em AppShell.tsx).
 export function ThemeModeProvider({ children }: { children: ReactNode }) {
   const [modo, setModo] = useState<ModoTema>(() => {
     const salvo = localStorage.getItem(CHAVE_MODO_TEMA);
-    const inicial = salvo === 'light' ? 'light' : 'dark';
+    const inicial = salvo === 'dark' ? 'dark' : 'light';
     // Aplica já no initializer (antes da 1ª pintura), não só no useEffect abaixo — senão a página
     // pisca no tema claro (default do CSS) por um instante antes do React montar.
     document.documentElement.setAttribute('data-theme', inicial);
