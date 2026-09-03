@@ -205,7 +205,7 @@ export function TrabalhadorDetalhePage() {
         <Text>Carregando...</Text>
       ) : (
         <>
-          {aba === 'geral' && <PerfilGeralTab asos={perfil.asos} />}
+          {aba === 'geral' && <PerfilGeralTab perfil={perfil} />}
           {aba === 'epi' && (
             <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
               <div className={estilos.card}>

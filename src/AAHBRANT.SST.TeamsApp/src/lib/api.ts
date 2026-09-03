@@ -2345,6 +2345,14 @@ export interface AssiduidadeDds {
   totalParticipados: number;
 }
 
+// Dashboard do Trabalhador (03/09) — "troca" é entrega com motivoTipo diferente de Inicial
+// (reposição por dano/extravio/vencimento/troca de função), no ano corrente. Não confundir com
+// FrequenciaTrocaEpi, que conta todas as entregas por item de catálogo (incluindo a inicial).
+export interface MotivoTrocaEpi {
+  motivo: number;
+  quantidade: number;
+}
+
 export interface RiscoExpostoPerfil {
   riscoId: string;
   perigoNome: string;
@@ -2405,6 +2413,8 @@ export interface PerfilCompletoTrabalhador {
   riscos: RiscoExpostoPerfil[];
   ocorrencias: OcorrenciaPerfil[];
   assinaturas: AssinaturaPerfil[];
+  trocasNoAno: number;
+  motivosTroca: MotivoTrocaEpi[];
 }
 
 // Módulos com suporte a uso offline (piloto acordado com o usuário em 24/08: módulos de campo,
