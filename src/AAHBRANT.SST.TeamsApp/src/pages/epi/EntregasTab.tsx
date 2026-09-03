@@ -22,6 +22,7 @@ import {
   MotivoEntregaEpi,
   type AtualizarEntregaEpi,
   type CatalogoEpi,
+  type CursoTreinamento,
   type EntregaEpi,
   type NovaEntregaEpi,
   type Trabalhador,
@@ -52,6 +53,12 @@ function entregaVazia(): NovaEntregaEpi {
 // ficha em PDF e atalho para a assinatura eletrônica (AssinarEntregaEpiPage). O bloqueio de
 // estoque insuficiente / CA vencido acontece no backend (CriarEntregaEpiCommand); o erro retornado
 // é exibido como veio, mesmo padrão já usado em todo o resto do frontend (ver api.ts request()).
+// "NR-06"/"NR-6"/"NR 06" etc. — compara só o número, não o formato exato do texto cadastrado no
+// curso (ver CursoTreinamento.normaReferencia, campo livre).
+function ehNormaNr6(normaReferencia?: string | null): boolean {
+  return (normaReferencia ?? '').replace(/\D/g, '') === '6';
+}
+
 interface EntregasTabProps {
   aoNavegarParaMatriz: () => void;
 }
@@ -63,6 +70,7 @@ export function EntregasTab({ aoNavegarParaMatriz }: EntregasTabProps) {
   const [epis, setEpis] = useState<CatalogoEpi[]>([]);
   const [episPermitidos, setEpisPermitidos] = useState<CatalogoEpi[]>([]);
   const [trabalhadores, setTrabalhadores] = useState<Trabalhador[]>([]);
+  const [cursos, setCursos] = useState<CursoTreinamento[]>([]);
   const [novaEntrega, setNovaEntrega] = useState<NovaEntregaEpi>(entregaVazia());
   const [erro, setErro] = useState<string | null>(null);
   const [carregando, setCarregando] = useState(false);
@@ -91,7 +99,42 @@ export function EntregasTab({ aoNavegarParaMatriz }: EntregasTabProps) {
 
   useEffect(() => {
     carregar();
+    api.cursosTreinamento.listar().then(setCursos).catch(() => setCursos([]));
   }, []);
+
+  // Pedido do usuário (03/09): não faz sentido digitar manualmente o nº da lista de presença e a
+  // data do treinamento de NR-06 se o funcionário já tem esse treinamento cadastrado no módulo de
+  // Treinamentos — busca automaticamente o mais recente ao trocar de funcionário (o usuário ainda
+  // pode sobrescrever os campos à mão, ex.: quando o treinamento ainda não foi cadastrado no sistema).
+  useEffect(() => {
+    let cancelado = false;
+    async function preencherDadosNr6() {
+      if (!novaEntrega.trabalhadorId) return;
+      try {
+        const treinamentosTrabalhador = await api.treinamentos.listar(novaEntrega.trabalhadorId);
+        if (cancelado) return;
+        const treinamentoNr6 = treinamentosTrabalhador
+          .filter((t) => ehNormaNr6(cursos.find((c) => c.id === t.cursoTreinamentoId)?.normaReferencia))
+          .sort((a, b) => b.dataRealizacao.localeCompare(a.dataRealizacao))[0];
+        if (!treinamentoNr6) return;
+        setNovaEntrega((atual) =>
+          atual.trabalhadorId === treinamentoNr6.trabalhadorId
+            ? {
+                ...atual,
+                numeroListaPresencaNr6: treinamentoNr6.numeroCertificado ?? '',
+                dataTreinamentoNr6: treinamentoNr6.dataRealizacao.slice(0, 10),
+              }
+            : atual,
+        );
+      } catch {
+        // Falha ao buscar o treinamento não impede o preenchimento manual dos campos.
+      }
+    }
+    preencherDadosNr6();
+    return () => {
+      cancelado = true;
+    };
+  }, [novaEntrega.trabalhadorId, cursos]);
 
   useEffect(() => {
     let cancelado = false;
@@ -218,7 +261,15 @@ export function EntregasTab({ aoNavegarParaMatriz }: EntregasTabProps) {
             <Field label="Funcionário">
               <Select
                 value={novaEntrega.trabalhadorId}
-                onChange={(_, d) => setNovaEntrega({ ...novaEntrega, trabalhadorId: d.value, catalogoEpiId: '' })}
+                onChange={(_, d) =>
+                  setNovaEntrega({
+                    ...novaEntrega,
+                    trabalhadorId: d.value,
+                    catalogoEpiId: '',
+                    numeroListaPresencaNr6: '',
+                    dataTreinamentoNr6: '',
+                  })
+                }
               >
                 <option value="">Selecione</option>
                 {trabalhadores.map((t) => (
@@ -297,7 +348,7 @@ export function EntregasTab({ aoNavegarParaMatriz }: EntregasTabProps) {
         <div className={estilos.sectionTitle}>Documentação (NR-6) e Observações</div>
         <div className={estilos.formGrid}>
           <div className={estilos.col3}>
-            <Field label="Nº lista de presença (NR-6)">
+            <Field label="Nº lista de presença (NR-6)" hint="Preenchido automaticamente do treinamento de NR-06 cadastrado, se houver — pode editar.">
               <Input
                 value={novaEntrega.numeroListaPresencaNr6 ?? ''}
                 onChange={(_, d) => setNovaEntrega({ ...novaEntrega, numeroListaPresencaNr6: d.value })}
