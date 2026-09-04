@@ -8,6 +8,7 @@ public record CertificadoTreinamentoPdfSignatarioModelo(string TrabalhadorNome, 
 // padrão visual AAHBRANT (#670000) usado em EntregaEpiPdfService/DdsPdfService.
 public record CertificadoTreinamentoPdfModelo(
     string ObraNome,
+    byte[]? ObraLogoConteudo,
     string? ObraCnpj,
     string? ObraEndereco,
     string? ObraCidade,

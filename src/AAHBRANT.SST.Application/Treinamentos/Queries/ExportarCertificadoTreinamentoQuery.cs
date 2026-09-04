@@ -67,6 +67,7 @@ public class ExportarCertificadoTreinamentoQueryHandler : IRequestHandler<Export
 
         var modelo = new CertificadoTreinamentoPdfModelo(
             treinamento.Trabalhador.Obra?.Nome ?? string.Empty,
+            treinamento.Trabalhador.Obra?.LogoConteudo,
             treinamento.Trabalhador.Obra?.Cnpj,
             treinamento.Trabalhador.Obra?.Endereco,
             treinamento.Trabalhador.Obra?.Cidade,
