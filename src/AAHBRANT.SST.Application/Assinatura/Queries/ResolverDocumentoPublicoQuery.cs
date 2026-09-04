@@ -46,11 +46,19 @@ public class ResolverDocumentoPublicoQueryHandler : IRequestHandler<ResolverDocu
         if (documento is null)
             return null;
 
+        // IgnoreQueryFilters() no lado de Trabalhadores: essa página é pública (sem usuário logado),
+        // então o filtro global de RBAC por obra (Trabalhador.ObraId ∈ ObrasPermitidas do usuário
+        // atual) não tem como ser avaliado — e o EF falha ao tentar traduzir a query (erro só visível
+        // em produção com autenticação real; em dev, com Entra ID desligado, o filtro degenera para
+        // uma constante e mascara o problema). Ativo é reaplicado manualmente para preservar o
+        // soft-delete. OrderBy antes do Select (não depois) evita depender de ordenar pelo DTO já
+        // construído, mais uma fonte comum de falha de tradução do EF.
         var signatarios = await _db.DocumentoSignatarios
             .Where(s => s.DocumentoAssinaturaId == documento.Id)
-            .Join(_db.Trabalhadores, s => s.TrabalhadorId, t => t.Id,
-                (s, t) => new DocumentoPublicoSignatarioDto(t.Nome, s.MetodoAutenticacao, s.AssinadoEm))
-            .OrderBy(s => s.AssinadoEm)
+            .Join(_db.Trabalhadores.IgnoreQueryFilters().Where(t => t.Ativo), s => s.TrabalhadorId, t => t.Id,
+                (s, t) => new { t.Nome, s.MetodoAutenticacao, s.AssinadoEm })
+            .OrderBy(x => x.AssinadoEm)
+            .Select(x => new DocumentoPublicoSignatarioDto(x.Nome, x.MetodoAutenticacao, x.AssinadoEm))
             .ToListAsync(ct);
 
         var emitidoEm = documento.FinalizadoEm ?? documento.RastreadoEm ?? documento.CreatedAtUtc;
