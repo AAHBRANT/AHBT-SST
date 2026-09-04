@@ -35,7 +35,7 @@ public class CertificadoTreinamentoPdfService : ICertificadoTreinamentoPdfServic
                     coluna.Item().PaddingBottom(4).LineHorizontal(2).LineColor(CorMarca);
                     coluna.Item().Element(c => Frente(c, modelo));
                 });
-                Rodape(pagina);
+                Rodape(pagina, modelo);
             });
 
             if (temVerso)
@@ -50,7 +50,7 @@ public class CertificadoTreinamentoPdfService : ICertificadoTreinamentoPdfServic
                         coluna.Item().PaddingBottom(4).LineHorizontal(2).LineColor(CorMarca);
                         coluna.Item().Element(c => Verso(c, modelo));
                     });
-                    Rodape(pagina);
+                    Rodape(pagina, modelo);
                 });
             }
         });
@@ -66,13 +66,10 @@ public class CertificadoTreinamentoPdfService : ICertificadoTreinamentoPdfServic
         pagina.Background().Border(2).BorderColor(CorMarca);
     }
 
-    private static void Rodape(PageDescriptor pagina)
+    private static void Rodape(PageDescriptor pagina, CertificadoTreinamentoPdfModelo modelo)
     {
-        pagina.Footer().AlignCenter().Text(t =>
-        {
-            t.Span("Gerado em ").FontSize(7).FontColor(Colors.Grey.Darken1);
-            t.Span(DateTime.Now.ToString("dd/MM/yyyy HH:mm")).FontSize(7).FontColor(Colors.Grey.Darken1);
-        });
+        pagina.Footer().Column(coluna => RodapeDocumentoPadrao.Desenhar(
+            coluna, "Certificado", modelo.NumeroCertificado, null, modelo.ConteudoHash, modelo.UrlValidacaoPublica, modelo.QrCodePng, modelo.TemAssinatura));
     }
 
     private static void Cabecalho(IContainer container, CertificadoTreinamentoPdfModelo modelo, string titulo)

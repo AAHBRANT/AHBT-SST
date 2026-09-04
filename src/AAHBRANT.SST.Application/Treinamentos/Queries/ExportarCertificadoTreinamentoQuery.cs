@@ -12,13 +12,13 @@ public class ExportarCertificadoTreinamentoQueryHandler : IRequestHandler<Export
 {
     private readonly IAppDbContext _db;
     private readonly ICertificadoTreinamentoPdfService _pdf;
-    private readonly IQrCodeDocumentoService _qrCode;
+    private readonly IRegistradorRastreabilidadeService _rastreabilidade;
 
-    public ExportarCertificadoTreinamentoQueryHandler(IAppDbContext db, ICertificadoTreinamentoPdfService pdf, IQrCodeDocumentoService qrCode)
+    public ExportarCertificadoTreinamentoQueryHandler(IAppDbContext db, ICertificadoTreinamentoPdfService pdf, IRegistradorRastreabilidadeService rastreabilidade)
     {
         _db = db;
         _pdf = pdf;
-        _qrCode = qrCode;
+        _rastreabilidade = rastreabilidade;
     }
 
     public async Task<byte[]?> Handle(ExportarCertificadoTreinamentoQuery request, CancellationToken ct)
@@ -33,7 +33,8 @@ public class ExportarCertificadoTreinamentoQueryHandler : IRequestHandler<Export
         if (treinamento is null || treinamento.Trabalhador is null || treinamento.CursoTreinamento is null) return null;
 
         // Um DocumentoAssinatura por treinamento (EntidadeTipo="Treinamento", EntidadeId=Treinamento.Id) —
-        // ver docs/Motor-Assinatura-Eletronica.md, mesmo padrão de ExportarFichaEpiTrabalhadorQuery.
+        // ver docs/Motor-Assinatura-Eletronica.md. Signatários vêm direto da tabela (não do resultado
+        // de GarantirAsync) para exibir nome+método+data no corpo do certificado.
         var documento = await _db.DocumentosAssinatura
             .Include(d => d.Signatarios)
                 .ThenInclude(s => s.Trabalhador)
@@ -45,12 +46,10 @@ public class ExportarCertificadoTreinamentoQueryHandler : IRequestHandler<Export
             .Select(s => new CertificadoTreinamentoPdfSignatarioModelo(s.Trabalhador?.Nome ?? string.Empty, s.AssinadoEm))
             .ToList() ?? new List<CertificadoTreinamentoPdfSignatarioModelo>();
 
-        // QR de verificação (item 6 da proposta do usuário, 04/09) — mesmo token público já usado no
-        // comprovante genérico de assinatura (DocumentoAssinaturaPdfService); só é gerado se o
-        // documento já tiver sido finalizado (token só existe a partir daí).
-        var qrCodePng = !string.IsNullOrEmpty(documento?.TokenValidacaoPublica)
-            ? _qrCode.Gerar(documento.TokenValidacaoPublica).Png
-            : null;
+        // Rastreabilidade sempre disponível a partir do primeiro export (Motor de Assinatura Task 2) —
+        // antes disto, o QR só existia depois de uma finalização que, para Treinamento, nada nunca dispara.
+        var rastreio = await _rastreabilidade.GarantirAsync("Treinamento", request.TreinamentoId, ct);
+        var qrCodePng = rastreio.QrCodePng;
 
         // Foto da turma (item 6 da proposta) — só existe quando este Treinamento foi gerado pelo
         // encerramento de uma SessaoTreinamento (fluxo antigo, criado manualmente por trabalhador,
@@ -87,7 +86,11 @@ public class ExportarCertificadoTreinamentoQueryHandler : IRequestHandler<Export
             treinamento.CursoTreinamento.ConteudoProgramatico,
             signatarios,
             qrCodePng,
-            fotoTurma);
+            fotoTurma,
+            rastreio.ConteudoHash,
+            rastreio.UrlValidacaoPublica,
+            rastreio.QrCodePng,
+            rastreio.TemAssinatura);
 
         return _pdf.Gerar(modelo);
     }
