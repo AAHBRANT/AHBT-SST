@@ -190,7 +190,12 @@ export function AssinaturaQuiosque({ entidadeTipo, entidadeId, obraId }: Assinat
               Sem internet — a foto foi salva neste dispositivo e será verificada assim que a conexão voltar.
             </Text>
           )}
-          <SeletorFotoCamera aoSelecionarArquivo={assinarComFacial} rotulo="Assinar com reconhecimento facial" desabilitado={!documento} />
+          <SeletorFotoCamera
+            aoSelecionarArquivo={assinarComFacial}
+            rotulo="Assinar com reconhecimento facial"
+            desabilitado={!documento}
+            modoCamera="user"
+          />
         </div>
       )}
 

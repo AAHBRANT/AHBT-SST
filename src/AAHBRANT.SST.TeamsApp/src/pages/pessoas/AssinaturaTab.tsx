@@ -103,7 +103,7 @@ export function AssinaturaTab({ trabalhadorId }: AssinaturaTabProps) {
         </Text>
         {erroFacial && <Text className={estilos.erro}>{erroFacial}</Text>}
         {facialCadastrada && <Text style={{ display: 'block', marginBottom: 8 }}>Face cadastrada com sucesso.</Text>}
-        <SeletorFotoCamera aoSelecionarArquivo={cadastrarFacial} rotulo="Capturar foto do rosto" />
+        <SeletorFotoCamera aoSelecionarArquivo={cadastrarFacial} rotulo="Capturar foto do rosto" modoCamera="user" />
       </div>
     </div>
   );
