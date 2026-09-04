@@ -60,7 +60,9 @@ internal static class RodapeDocumentoPadrao
                 });
             });
 
-            linha.ConstantItem(28).AlignRight().Image(qrCodePng).FitArea();
+            // 70pt (~2,5cm) — abaixo disso a câmera do celular não consegue focar/resolver os módulos
+            // do QR numa URL longa como a nossa (~115 caracteres), mesmo impresso em boa qualidade.
+            linha.ConstantItem(70).AlignRight().Image(qrCodePng).FitArea();
         });
     }
 }
