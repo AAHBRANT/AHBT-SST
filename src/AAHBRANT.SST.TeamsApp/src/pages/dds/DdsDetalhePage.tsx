@@ -3,7 +3,6 @@ import { useNavigate, useParams } from 'react-router-dom';
 import {
   Badge,
   Button,
-  Checkbox,
   Select,
   Table,
   TableBody,
@@ -123,16 +122,6 @@ export function DdsDetalhePage() {
   useEffect(() => {
     setBiometriaValidada(null);
   }, [participanteSelecionado]);
-
-  async function marcarItem(itemId: string, verificado: boolean) {
-    try {
-      setErro(null);
-      await api.dds.marcarItem(itemId, verificado);
-      await carregar();
-    } catch (e) {
-      setErro(e instanceof Error ? e.message : 'Falha ao marcar item do checklist.');
-    }
-  }
 
   async function validarBiometria() {
     if (!participanteSelecionado) return;
@@ -295,9 +284,6 @@ export function DdsDetalhePage() {
               <Text>Atividades do dia: {dds.atividadesNomes.join(', ') || 'DDS do dia'}</Text>
             </div>
             <div style={{ display: 'flex', gap: 16, marginTop: 8, alignItems: 'center' }}>
-              <Text>
-                Checklist verificado: {dds.itensVerificados}/{dds.totalItensChecklist}
-              </Text>
               <Text>Participantes: {dds.totalParticipantes}</Text>
             </div>
 
@@ -329,28 +315,6 @@ export function DdsDetalhePage() {
           </>
         ) : (
           <Text>Carregando...</Text>
-        )}
-      </div>
-
-      <div className={estilos.card} style={{ marginBottom: 16 }}>
-        <div className={estilos.toolbar}>
-          <Text weight="semibold">Checklist de verificação</Text>
-        </div>
-
-        {detalhe?.itensChecklist.length === 0 ? (
-          <Text>Nenhum item de checklist gerado — revise a Matriz de Riscos das atividades selecionadas.</Text>
-        ) : (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-            {detalhe?.itensChecklist.map((item) => (
-              <Checkbox
-                key={item.id}
-                label={item.descricao}
-                checked={item.verificado}
-                disabled={somenteLeitura}
-                onChange={(_, d) => marcarItem(item.id, !!d.checked)}
-              />
-            ))}
-          </div>
         )}
       </div>
 
