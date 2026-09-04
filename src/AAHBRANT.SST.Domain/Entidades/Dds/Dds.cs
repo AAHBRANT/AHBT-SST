@@ -24,6 +24,10 @@ public class Dds : AuditableEntity
     public Guid ResponsavelUsuarioId { get; set; }
     public Usuario? ResponsavelUsuario { get; set; }
 
+    // Protocolo automático (prefixo "DDS-D" — "DDS" já pertence ao DdsSemanal), gerado uma única vez
+    // na criação (CriarDdsCommand), mesmo padrão de DdsSemanal/Cipa/Pcmso/Certificado.
+    public string? NumeroDocumento { get; set; }
+
     // Tema livre (opcional, aditivo — não substitui os temas das atividades abaixo). Nome/
     // descrição são uma cópia do CatalogoTemaDds no momento da criação (mesmo princípio de
     // snapshot já usado nos itens de checklist): se o item do catálogo for editado ou excluído

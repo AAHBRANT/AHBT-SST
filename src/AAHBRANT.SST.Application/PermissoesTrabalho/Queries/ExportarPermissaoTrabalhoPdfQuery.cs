@@ -1,3 +1,4 @@
+using AAHBRANT.SST.Application.Assinatura;
 using AAHBRANT.SST.Application.Common.Interfaces;
 using AAHBRANT.SST.Domain.Entidades;
 using AAHBRANT.SST.Domain.Enums;
@@ -13,12 +14,14 @@ public class ExportarPermissaoTrabalhoPdfQueryHandler : IRequestHandler<Exportar
     private readonly IMediator _mediator;
     private readonly IAppDbContext _db;
     private readonly IPtPdfService _pdf;
+    private readonly IRegistradorRastreabilidadeService _rastreabilidade;
 
-    public ExportarPermissaoTrabalhoPdfQueryHandler(IMediator mediator, IAppDbContext db, IPtPdfService pdf)
+    public ExportarPermissaoTrabalhoPdfQueryHandler(IMediator mediator, IAppDbContext db, IPtPdfService pdf, IRegistradorRastreabilidadeService rastreabilidade)
     {
         _mediator = mediator;
         _db = db;
         _pdf = pdf;
+        _rastreabilidade = rastreabilidade;
     }
 
     public async Task<byte[]?> Handle(ExportarPermissaoTrabalhoPdfQuery request, CancellationToken ct)
@@ -37,7 +40,9 @@ public class ExportarPermissaoTrabalhoPdfQueryHandler : IRequestHandler<Exportar
             ? await _db.Obras.Where(o => o.Id == obraId).Select(o => o.LogoConteudo).FirstOrDefaultAsync(ct)
             : null;
 
-        return _pdf.Gerar(MontarModelo(detalhe, assinaram, logoConteudo));
+        var rastreio = await _rastreabilidade.GarantirAsync(nameof(PermissaoTrabalho), request.Id, ct);
+
+        return _pdf.Gerar(MontarModelo(detalhe, assinaram, logoConteudo, rastreio));
     }
 
     private static readonly Dictionary<ItemPreRequisitoPt, string> RotulosPreRequisito = new()
@@ -111,7 +116,7 @@ public class ExportarPermissaoTrabalhoPdfQueryHandler : IRequestHandler<Exportar
         [ItemEpcPt.Sinalizacao] = "Sinalização",
     };
 
-    private static PtPdfModelo MontarModelo(PermissaoTrabalhoDetalheDto detalhe, HashSet<Guid> assinaram, byte[]? obraLogoConteudo)
+    private static PtPdfModelo MontarModelo(PermissaoTrabalhoDetalheDto detalhe, HashSet<Guid> assinaram, byte[]? obraLogoConteudo, RastreabilidadeDocumentoResultado rastreio)
     {
         var pt = detalhe.PermissaoTrabalho;
         return new PtPdfModelo(
@@ -140,6 +145,10 @@ public class ExportarPermissaoTrabalhoPdfQueryHandler : IRequestHandler<Exportar
             pt.ResponsavelSstUsuarioId.HasValue ? new PtPdfAssinatura(pt.ResponsavelSstUsuarioNome, pt.DataAssinaturaSst) : null,
             pt.SuspensaPorUsuarioId.HasValue ? new PtPdfSuspensao(pt.SuspensaPorUsuarioNome, pt.DataSuspensao, pt.MotivoSuspensao) : null,
             pt.EncerradaPorUsuarioId.HasValue ? new PtPdfEncerramento(pt.EncerradaPorUsuarioNome, pt.DataEncerramento, pt.ObservacoesEncerramento) : null,
-            detalhe.Responsaveis.Select(r => new PtPdfEnvolvido(r.TrabalhadorNome, r.TrabalhadorFuncaoNome, assinaram.Contains(r.TrabalhadorId))).ToList());
+            detalhe.Responsaveis.Select(r => new PtPdfEnvolvido(r.TrabalhadorNome, r.TrabalhadorFuncaoNome, assinaram.Contains(r.TrabalhadorId))).ToList(),
+            rastreio.ConteudoHash,
+            rastreio.UrlValidacaoPublica,
+            rastreio.QrCodePng,
+            rastreio.TemAssinatura);
     }
 }

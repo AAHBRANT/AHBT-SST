@@ -19,7 +19,10 @@ public record AtaSessaoTreinamentoPdfModelo(
     string? NumeroCertificado,
     DateTime? DataEncerramento,
     IReadOnlyList<AtaSessaoTreinamentoPdfParticipanteModelo> Participantes,
-    IReadOnlyList<byte[]> Fotos);
+    IReadOnlyList<byte[]> Fotos,
+    string ConteudoHash,
+    string UrlValidacaoPublica,
+    byte[] QrCodePng);
 
 public interface IAtaSessaoTreinamentoPdfService
 {

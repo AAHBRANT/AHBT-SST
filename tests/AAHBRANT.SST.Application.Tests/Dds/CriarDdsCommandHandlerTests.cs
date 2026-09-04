@@ -2,6 +2,7 @@ using AAHBRANT.SST.Application.Common.Interfaces;
 using AAHBRANT.SST.Application.Dds.Commands;
 using AAHBRANT.SST.Domain.Entidades;
 using AAHBRANT.SST.Domain.Enums;
+using AAHBRANT.SST.Infrastructure.Documentos;
 using AAHBRANT.SST.Infrastructure.Persistencia;
 using AAHBRANT.SST.Infrastructure.Seguranca;
 using Microsoft.EntityFrameworkCore;
@@ -64,7 +65,7 @@ public class CriarDdsCommandHandlerTests
     {
         var db = CriarDb(nameof(Handle_AtividadeComRisco_GravaSnapshotDoMaiorRiscoNaDdsAtividade));
         var (_, _, semanal, atividadeComRisco, _) = await SemearAsync(db);
-        var handler = new CriarDdsCommandHandler(db);
+        var handler = new CriarDdsCommandHandler(db, new GeradorNumeroDocumentoService(db));
 
         var id = await handler.Handle(new CriarDdsCommand(semanal.Id, new List<Guid> { atividadeComRisco.Id }, semanal.DataInicioSemana, null), default);
 
@@ -81,7 +82,7 @@ public class CriarDdsCommandHandlerTests
     {
         var db = CriarDb(nameof(Handle_AtividadeSemRisco_GravaSnapshotNuloSemQuebrar));
         var (_, _, semanal, _, atividadeSemRisco) = await SemearAsync(db);
-        var handler = new CriarDdsCommandHandler(db);
+        var handler = new CriarDdsCommandHandler(db, new GeradorNumeroDocumentoService(db));
 
         var id = await handler.Handle(new CriarDdsCommand(semanal.Id, new List<Guid> { atividadeSemRisco.Id }, semanal.DataInicioSemana, null), default);
 
@@ -94,7 +95,7 @@ public class CriarDdsCommandHandlerTests
     {
         var db = CriarDb(nameof(Handle_DuasAtividades_GravaUmaDdsAtividadePorAtividadeMarcada));
         var (_, _, semanal, atividadeComRisco, atividadeSemRisco) = await SemearAsync(db);
-        var handler = new CriarDdsCommandHandler(db);
+        var handler = new CriarDdsCommandHandler(db, new GeradorNumeroDocumentoService(db));
 
         var id = await handler.Handle(new CriarDdsCommand(semanal.Id, new List<Guid> { atividadeComRisco.Id, atividadeSemRisco.Id }, semanal.DataInicioSemana, null), default);
 
@@ -110,7 +111,7 @@ public class CriarDdsCommandHandlerTests
         var tema = new CatalogoTemaDds { Nome = "Outubro Amarelo", Descricao = "Prevenção ao suicídio" };
         db.CatalogosTemaDds.Add(tema);
         await db.SaveChangesAsync();
-        var handler = new CriarDdsCommandHandler(db);
+        var handler = new CriarDdsCommandHandler(db, new GeradorNumeroDocumentoService(db));
 
         var id = await handler.Handle(new CriarDdsCommand(semanal.Id, new List<Guid> { atividadeComRisco.Id }, semanal.DataInicioSemana, tema.Id), default);
 
@@ -125,7 +126,7 @@ public class CriarDdsCommandHandlerTests
     {
         var db = CriarDb(nameof(Handle_SemTemaLivre_CriaDdsComTemaLivreNulo));
         var (_, _, semanal, atividadeComRisco, _) = await SemearAsync(db);
-        var handler = new CriarDdsCommandHandler(db);
+        var handler = new CriarDdsCommandHandler(db, new GeradorNumeroDocumentoService(db));
 
         var id = await handler.Handle(new CriarDdsCommand(semanal.Id, new List<Guid> { atividadeComRisco.Id }, semanal.DataInicioSemana, null), default);
 
@@ -139,9 +140,22 @@ public class CriarDdsCommandHandlerTests
     {
         var db = CriarDb(nameof(Handle_CatalogoTemaDdsInexistente_LancaKeyNotFoundException));
         var (_, _, semanal, atividadeComRisco, _) = await SemearAsync(db);
-        var handler = new CriarDdsCommandHandler(db);
+        var handler = new CriarDdsCommandHandler(db, new GeradorNumeroDocumentoService(db));
 
         await Assert.ThrowsAsync<KeyNotFoundException>(() =>
             handler.Handle(new CriarDdsCommand(semanal.Id, new List<Guid> { atividadeComRisco.Id }, semanal.DataInicioSemana, Guid.NewGuid()), default));
+    }
+
+    [Fact]
+    public async Task Handle_CriaDds_GeraNumeroDocumentoComPrefixoDDS_D()
+    {
+        var db = CriarDb(nameof(Handle_CriaDds_GeraNumeroDocumentoComPrefixoDDS_D));
+        var (_, _, semanal, atividadeComRisco, _) = await SemearAsync(db);
+        var handler = new CriarDdsCommandHandler(db, new GeradorNumeroDocumentoService(db));
+
+        var id = await handler.Handle(new CriarDdsCommand(semanal.Id, new List<Guid> { atividadeComRisco.Id }, semanal.DataInicioSemana, null), default);
+
+        var dds = await db.Dds.FirstAsync(d => d.Id == id);
+        Assert.StartsWith("DDS-D-", dds.NumeroDocumento);
     }
 }

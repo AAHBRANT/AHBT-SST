@@ -111,6 +111,7 @@ public static class DependencyInjection
         services.Configure<AssinaturaOptions>(configuration.GetSection("Assinatura"));
         services.AddScoped<IQrCodeDocumentoService, QrCodeDocumentoService>();
         services.AddScoped<IRegistradorAssinaturaService, RegistradorAssinaturaService>();
+        services.AddScoped<IRegistradorRastreabilidadeService, RegistradorRastreabilidadeService>();
 
         // Motor Central de Alertas, Etapa 4 — notificação de "sino" do Teams (Activity Feed) via
         // Microsoft Graph (POST /users/{aadObjectId}/teamwork/sendActivityNotification), sem Bot

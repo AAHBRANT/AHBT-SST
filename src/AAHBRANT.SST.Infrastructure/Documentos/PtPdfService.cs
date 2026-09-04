@@ -52,11 +52,8 @@ public class PtPdfService : IPtPdfService
                     coluna.Item().Element(c => SecaoEnvolvidos(c, modelo));
                 });
 
-                pagina.Footer().AlignCenter().Text(t =>
-                {
-                    t.Span("Gerado em ").FontSize(7);
-                    t.Span(DateTime.Now.ToString("dd/MM/yyyy HH:mm")).FontSize(7);
-                });
+                pagina.Footer().Column(coluna => RodapeDocumentoPadrao.Desenhar(
+                    coluna, "PT", modelo.NumeroPt, null, modelo.ConteudoHash, modelo.UrlValidacaoPublica, modelo.QrCodePng, modelo.TemAssinatura));
             });
         });
 

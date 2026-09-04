@@ -37,11 +37,8 @@ public class AtaSessaoTreinamentoPdfService : IAtaSessaoTreinamentoPdfService
                         coluna.Item().Element(c => GradeDeFotos(c, modelo.Fotos));
                 });
 
-                pagina.Footer().AlignCenter().Text(t =>
-                {
-                    t.Span("Gerado em ").FontSize(8).FontColor(Colors.Grey.Darken1);
-                    t.Span(DateTime.Now.ToString("dd/MM/yyyy HH:mm")).FontSize(8).FontColor(Colors.Grey.Darken1);
-                });
+                pagina.Footer().Column(coluna => RodapeDocumentoPadrao.Desenhar(
+                    coluna, "Ata de Sessão de Treinamento", modelo.NumeroCertificado, null, modelo.ConteudoHash, modelo.UrlValidacaoPublica, modelo.QrCodePng, temAssinatura: false));
             });
         });
 

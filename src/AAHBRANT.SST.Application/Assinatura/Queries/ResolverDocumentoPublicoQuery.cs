@@ -8,14 +8,15 @@ namespace AAHBRANT.SST.Application.Assinatura.Queries;
 
 public record DocumentoPublicoSignatarioDto(string TrabalhadorNome, MetodoAutenticacaoAssinatura MetodoAutenticacao, DateTime AssinadoEm);
 
-// DTO da página pública de validação (/#/validar/{token} — docs/Motor-Assinatura-Eletronica.md §5,
-// etapa 11). Deliberadamente sem DocumentoAssinaturaId/EntidadeId (ver comentário em
-// DocumentoAssinatura.cs: "Nunca expor Id/EntidadeId/dado pessoal na página pública") — só o que o
-// próprio token já revela: tipo do documento, quando foi finalizado, hash de integridade e quem assinou.
+// DTO da página pública de validação (/#/validar/{token}). Deliberadamente sem DocumentoAssinaturaId/
+// EntidadeId (ver comentário em DocumentoAssinatura.cs: "Nunca expor Id/EntidadeId/dado pessoal na
+// página pública") — só o que o próprio token já revela: tipo do documento, quando foi emitido, hash
+// de integridade, se tem assinatura registrada e quem assinou (se houver).
 public record DocumentoPublicoDto(
     string EntidadeTipo,
-    DateTime FinalizadoEm,
+    DateTime EmitidoEm,
     string ConteudoHash,
+    bool Assinado,
     List<DocumentoPublicoSignatarioDto> Signatarios);
 
 public record ResolverDocumentoPublicoQuery(string Token) : IRequest<DocumentoPublicoDto?>;
@@ -36,11 +37,11 @@ public class ResolverDocumentoPublicoQueryHandler : IRequestHandler<ResolverDocu
 
     public async Task<DocumentoPublicoDto?> Handle(ResolverDocumentoPublicoQuery request, CancellationToken ct)
     {
-        // Só documentos finalizados resolvem — ConteudoHash/FinalizadoEm só existem a partir da
-        // finalização (FinalizarDocumentoCommand), mas o filtro explícito por Status deixa a regra
-        // clara mesmo se algum dia esses campos virarem opcionais por outro motivo.
+        // Resolve por token, independente de Status: rastreabilidade (Task 2) gera token/hash sem
+        // exigir finalização, então um documento ainda EmAndamento (ou que nunca finaliza — CIPA,
+        // DDS Semanal) também precisa ser validável publicamente.
         var documento = await _db.DocumentosAssinatura
-            .Where(d => d.TokenValidacaoPublica == request.Token && d.Status == StatusDocumentoAssinatura.Finalizado)
+            .Where(d => d.TokenValidacaoPublica == request.Token)
             .FirstOrDefaultAsync(ct);
         if (documento is null)
             return null;
@@ -52,6 +53,7 @@ public class ResolverDocumentoPublicoQueryHandler : IRequestHandler<ResolverDocu
             .OrderBy(s => s.AssinadoEm)
             .ToListAsync(ct);
 
-        return new DocumentoPublicoDto(documento.EntidadeTipo, documento.FinalizadoEm!.Value, documento.ConteudoHash!, signatarios);
+        var emitidoEm = documento.FinalizadoEm ?? documento.RastreadoEm ?? documento.CreatedAtUtc;
+        return new DocumentoPublicoDto(documento.EntidadeTipo, emitidoEm, documento.ConteudoHash!, signatarios.Count > 0, signatarios);
     }
 }
