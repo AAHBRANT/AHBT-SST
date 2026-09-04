@@ -1,3 +1,4 @@
+using AAHBRANT.SST.Application.Assinatura;
 using AAHBRANT.SST.Application.Common;
 using AAHBRANT.SST.Application.Common.Interfaces;
 using AAHBRANT.SST.Domain.Enums;
@@ -12,11 +13,13 @@ public class ExportarFichaEpiTrabalhadorQueryHandler : IRequestHandler<ExportarF
 {
     private readonly IAppDbContext _db;
     private readonly IFichaEpiPdfService _pdf;
+    private readonly IRegistradorRastreabilidadeService _rastreabilidade;
 
-    public ExportarFichaEpiTrabalhadorQueryHandler(IAppDbContext db, IFichaEpiPdfService pdf)
+    public ExportarFichaEpiTrabalhadorQueryHandler(IAppDbContext db, IFichaEpiPdfService pdf, IRegistradorRastreabilidadeService rastreabilidade)
     {
         _db = db;
         _pdf = pdf;
+        _rastreabilidade = rastreabilidade;
     }
 
     public async Task<byte[]?> Handle(ExportarFichaEpiTrabalhadorQuery request, CancellationToken ct)
@@ -96,6 +99,11 @@ public class ExportarFichaEpiTrabalhadorQueryHandler : IRequestHandler<ExportarF
                 entrega.VistoConsorcioResponsavel));
         }
 
+        // Chave sintética "FichaEpiTrabalhador"/TrabalhadorId: a Ficha agrega N entregas, cada uma já
+        // individualmente rastreável (DocumentoAssinatura por entrega, acima) — ninguém assina a Ficha
+        // em si, esta rastreabilidade é só pra atestar integridade do PDF impresso como um todo.
+        var rastreio = await _rastreabilidade.GarantirAsync("FichaEpiTrabalhador", request.TrabalhadorId, ct);
+
         var modelo = new FichaEpiPdfModelo(
             trabalhador.Obra?.Nome ?? string.Empty,
             trabalhador.Obra?.Cliente,
@@ -109,7 +117,10 @@ public class ExportarFichaEpiTrabalhadorQueryHandler : IRequestHandler<ExportarF
             trabalhador.Turno,
             trabalhador.DataAdmissao,
             linhasEntrega,
-            linhasDevolucao);
+            linhasDevolucao,
+            rastreio.ConteudoHash,
+            rastreio.UrlValidacaoPublica,
+            rastreio.QrCodePng);
 
         return _pdf.Gerar(modelo);
     }
