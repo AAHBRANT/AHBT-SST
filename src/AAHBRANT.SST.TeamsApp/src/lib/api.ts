@@ -1038,6 +1038,7 @@ export interface PermissaoTrabalho {
   numeroPt?: string | null;
   atividadeId: string;
   atividadeNome: string;
+  obraId?: string | null;
   obraNome?: string | null;
   descricaoAtividade: string;
   local: string;
@@ -3439,6 +3440,17 @@ export const api = {
         method: 'POST',
         body: JSON.stringify({ dispositivoId, segredoDispositivo, trabalhadorId, score }),
       }),
+    // Assinatura via reconhecimento facial (Azure Face API) — multipart e offline-aware, mesmo
+    // padrão de anexarFotoEvidencia (DDS): syncMutateMultipart enfileira sozinho se faltar conexão.
+    autenticarFacial: async (documentoAssinaturaId: string, obraId: string, foto: File) => {
+      const formData = new FormData();
+      formData.append('obraId', obraId);
+      formData.append('foto', foto);
+      const authHeaders = await montarHeadersAuth();
+      return syncMutateMultipart<DocumentoSignatario>(
+        `/api/documentos/${documentoAssinaturaId}/autenticacao/facial`, formData, authHeaders,
+      );
+    },
     listar: (filtros?: { entidadeTipo?: string; status?: number; dataInicio?: string; dataFim?: string }) => {
       const query = new URLSearchParams();
       if (filtros?.entidadeTipo) query.set('entidadeTipo', filtros.entidadeTipo);
