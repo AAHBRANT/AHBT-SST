@@ -3191,9 +3191,11 @@ export const api = {
         body: JSON.stringify({ trabalhadorId, dispositivoId, segredoDispositivo, score }),
       }),
     encerrar: (id: string) => request<void>(`/api/sessoestreinamento/${id}/encerrar`, { method: 'POST' }),
-    anexarFotoEvidencia: async (sessaoId: string, foto: File) => {
+    // Slot fixo por ordem (04/09) — reanexar no mesmo quadro substitui a foto existente.
+    anexarFotoEvidencia: async (sessaoId: string, ordem: number, foto: File) => {
       const formData = new FormData();
       formData.append('foto', foto);
+      formData.append('ordem', String(ordem));
       const authHeaders = await montarHeadersAuth();
       return syncMutateMultipart<{ id: string }>(`/api/sessoestreinamento/${sessaoId}/fotos-evidencia`, formData, authHeaders);
     },
@@ -3201,6 +3203,8 @@ export const api = {
       const authHeaders = await montarHeadersAuth();
       return syncFetchBlob(`/api/sessoestreinamento/fotos-evidencia/${fotoId}`, authHeaders);
     },
+    removerFotoEvidencia: (fotoId: string) =>
+      request<void>(`/api/sessoestreinamento/fotos-evidencia/${fotoId}`, { method: 'DELETE' }),
     baixarAta: async (id: string) => {
       const response = await fetch(`${API_BASE_URL}/api/sessoestreinamento/${id}/ata/pdf`, {
         headers: await montarHeadersAuth(),
@@ -3758,9 +3762,11 @@ export const api = {
     enviarTelegram: (id: string) =>
       request<EnviarDdsTelegramResultado>(`/api/dds/${id}/telegram/enviar`, { method: 'POST' }),
     // Evidências fotográficas do registro diário (3 obrigatórias para encerrar, ver EncerrarDdsCommand).
-    anexarFotoEvidencia: async (ddsId: string, foto: File) => {
+    // Slot fixo por ordem (04/09) — reanexar no mesmo quadro substitui a foto existente.
+    anexarFotoEvidencia: async (ddsId: string, ordem: number, foto: File) => {
       const formData = new FormData();
       formData.append('foto', foto);
+      formData.append('ordem', String(ordem));
       const authHeaders = await montarHeadersAuth();
       return syncMutateMultipart<{ id: string }>(`/api/dds/${ddsId}/fotos-evidencia`, formData, authHeaders);
     },
@@ -3768,6 +3774,7 @@ export const api = {
       const authHeaders = await montarHeadersAuth();
       return syncFetchBlob(`/api/dds/fotos-evidencia/${fotoId}`, authHeaders);
     },
+    removerFotoEvidencia: (fotoId: string) => request<void>(`/api/dds/fotos-evidencia/${fotoId}`, { method: 'DELETE' }),
   },
   ddsSemanal: {
     listar: (obraId?: string) => request<DdsSemanal[]>(`/api/ddssemanal${obraId ? `?obraId=${obraId}` : ''}`),

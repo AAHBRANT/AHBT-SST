@@ -56,7 +56,7 @@ public class SessoesTreinamentoController : ControllerBase
         await using var stream = new MemoryStream();
         await body.Foto.CopyToAsync(stream, ct);
 
-        var fotoId = await _mediator.Send(new AnexarFotoEvidenciaSessaoTreinamentoCommand(id, stream.ToArray(), body.Foto.ContentType), ct);
+        var fotoId = await _mediator.Send(new AnexarFotoEvidenciaSessaoTreinamentoCommand(id, body.Ordem, stream.ToArray(), body.Foto.ContentType), ct);
         return Ok(new { id = fotoId });
     }
 
@@ -66,6 +66,14 @@ public class SessoesTreinamentoController : ControllerBase
     {
         var foto = await _mediator.Send(new ObterFotoEvidenciaSessaoTreinamentoQuery(fotoId), ct);
         return foto is null ? NotFound() : File(foto.Conteudo, foto.ContentType, foto.NomeArquivo);
+    }
+
+    [Authorize(Policy = "treinamento:criar")]
+    [HttpDelete("fotos-evidencia/{fotoId:guid}")]
+    public async Task<IActionResult> RemoverFotoEvidencia(Guid fotoId, CancellationToken ct)
+    {
+        await _mediator.Send(new RemoverFotoEvidenciaSessaoTreinamentoCommand(fotoId), ct);
+        return NoContent();
     }
 
     [Authorize(Policy = "treinamento:editar")]
@@ -96,4 +104,5 @@ public class RegistrarPresencaSessaoTreinamentoRequestBody
 public class AnexarFotoEvidenciaSessaoTreinamentoRequestBody
 {
     public IFormFile Foto { get; set; } = null!;
+    public int Ordem { get; set; }
 }

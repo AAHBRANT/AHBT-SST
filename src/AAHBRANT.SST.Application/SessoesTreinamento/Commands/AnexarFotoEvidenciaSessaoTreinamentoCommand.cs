@@ -9,8 +9,12 @@ namespace AAHBRANT.SST.Application.SessoesTreinamento.Commands;
 
 // Evidência fotográfica da turma (pedido do usuário: mínimo 3 fotos) — mesmo padrão de
 // AnexarFotoEvidenciaDdsCommand, obrigatórias para encerrar (ver EncerrarSessaoTreinamentoCommand).
+//
+// Slot fixo por Ordem (04/09, pedido do usuário — grade de 3 quadros individuais, cada um
+// substituível): reanexar no mesmo quadro SUBSTITUI o conteúdo em vez de criar um novo registro.
 public record AnexarFotoEvidenciaSessaoTreinamentoCommand(
     Guid SessaoTreinamentoId,
+    int Ordem,
     byte[] FotoConteudo,
     string FotoContentType) : IRequest<Guid>;
 
@@ -18,10 +22,12 @@ public class AnexarFotoEvidenciaSessaoTreinamentoCommandValidator : AbstractVali
 {
     private static readonly string[] TiposPermitidos = { "image/jpeg", "image/png" };
     private const int TamanhoMaximoBytes = 5 * 1024 * 1024;
+    private const int TotalFotosMaximo = 3;
 
     public AnexarFotoEvidenciaSessaoTreinamentoCommandValidator()
     {
         RuleFor(x => x.SessaoTreinamentoId).NotEmpty();
+        RuleFor(x => x.Ordem).InclusiveBetween(1, TotalFotosMaximo);
         RuleFor(x => x.FotoConteudo)
             .NotEmpty().WithMessage("A foto é obrigatória.")
             .Must(f => f.Length <= TamanhoMaximoBytes).WithMessage("A foto deve ter no máximo 5 MB.")
@@ -34,7 +40,6 @@ public class AnexarFotoEvidenciaSessaoTreinamentoCommandValidator : AbstractVali
 
 public class AnexarFotoEvidenciaSessaoTreinamentoCommandHandler : IRequestHandler<AnexarFotoEvidenciaSessaoTreinamentoCommand, Guid>
 {
-    private const int TotalFotosMaximo = 3;
     private readonly IAppDbContext _db;
 
     public AnexarFotoEvidenciaSessaoTreinamentoCommandHandler(IAppDbContext db) => _db = db;
@@ -45,14 +50,21 @@ public class AnexarFotoEvidenciaSessaoTreinamentoCommandHandler : IRequestHandle
         if (!sessaoExiste)
             throw new KeyNotFoundException($"Turma de treinamento {request.SessaoTreinamentoId} não encontrada.");
 
-        var totalAtual = await _db.FotosEvidenciaSessaoTreinamento.CountAsync(f => f.SessaoTreinamentoId == request.SessaoTreinamentoId && f.Ativo, ct);
-        if (totalAtual >= TotalFotosMaximo)
-            throw new InvalidOperationException($"Esta turma já tem as {TotalFotosMaximo} fotos de evidência obrigatórias.");
+        var fotoExistente = await _db.FotosEvidenciaSessaoTreinamento
+            .FirstOrDefaultAsync(f => f.SessaoTreinamentoId == request.SessaoTreinamentoId && f.Ordem == request.Ordem && f.Ativo, ct);
+
+        if (fotoExistente is not null)
+        {
+            fotoExistente.FotoConteudo = request.FotoConteudo;
+            fotoExistente.FotoContentType = request.FotoContentType;
+            await _db.SaveChangesAsync(ct);
+            return fotoExistente.Id;
+        }
 
         var foto = new FotoEvidenciaSessaoTreinamento
         {
             SessaoTreinamentoId = request.SessaoTreinamentoId,
-            Ordem = totalAtual + 1,
+            Ordem = request.Ordem,
             FotoConteudo = request.FotoConteudo,
             FotoContentType = request.FotoContentType,
         };

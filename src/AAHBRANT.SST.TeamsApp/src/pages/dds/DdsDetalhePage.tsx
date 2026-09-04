@@ -33,7 +33,7 @@ import {
   type Trabalhador,
 } from '../../lib/api';
 import { capturarDigitalLocal, estaAgenteLocalDisponivel, obterDispositivoLocal } from '../../lib/agenteBiometricoLocal';
-import { SeletorFotoCamera } from '../../components/SeletorFotoCamera';
+import { GradeFotosEvidencia } from '../../components/GradeFotosEvidencia';
 import { usePageStyles } from '../pageStyles';
 
 const TOTAL_FOTOS_EVIDENCIA_OBRIGATORIAS = 3;
@@ -50,7 +50,6 @@ export function DdsDetalhePage() {
   const [validandoBiometria, setValidandoBiometria] = useState(false);
   const [biometriaValidada, setBiometriaValidada] = useState<{ trabalhadorId: string; score: number } | null>(null);
   const [fotosEvidenciaPreview, setFotosEvidenciaPreview] = useState<Record<string, string>>({});
-  const [anexandoFotoEvidencia, setAnexandoFotoEvidencia] = useState(false);
   const [erro, setErro] = useState<string | null>(null);
   const [processando, setProcessando] = useState(false);
   const [baixandoPdf, setBaixandoPdf] = useState(false);
@@ -83,17 +82,24 @@ export function DdsDetalhePage() {
     }
   }
 
-  async function anexarFotoEvidencia(arquivo: File) {
+  async function anexarFotoEvidencia(ordem: number, arquivo: File) {
     if (!id) return;
     try {
-      setAnexandoFotoEvidencia(true);
       setErro(null);
-      await api.dds.anexarFotoEvidencia(id, arquivo);
+      await api.dds.anexarFotoEvidencia(id, ordem, arquivo);
       await carregar();
     } catch (e) {
       setErro(e instanceof Error ? e.message : 'Falha ao anexar foto de evidência.');
-    } finally {
-      setAnexandoFotoEvidencia(false);
+    }
+  }
+
+  async function removerFotoEvidencia(fotoId: string) {
+    try {
+      setErro(null);
+      await api.dds.removerFotoEvidencia(fotoId);
+      await carregar();
+    } catch (e) {
+      setErro(e instanceof Error ? e.message : 'Falha ao remover foto de evidência.');
     }
   }
 
@@ -349,37 +355,20 @@ export function DdsDetalhePage() {
       </div>
 
       <div className={estilos.card} style={{ marginBottom: 16 }}>
-        <div className={estilos.toolbar}>
-          <Text weight="semibold">
-            Evidências fotográficas ({totalFotosEvidencia}/{TOTAL_FOTOS_EVIDENCIA_OBRIGATORIAS})
-          </Text>
-        </div>
-
-        <Text size={200} style={{ display: 'block', marginBottom: 8 }}>
-          {TOTAL_FOTOS_EVIDENCIA_OBRIGATORIAS} fotos são obrigatórias para liberar o encerramento deste registro diário.
-        </Text>
-
-        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 12, alignItems: 'center' }}>
-          {detalhe?.fotosEvidencia
-            .slice()
-            .sort((a, b) => a.ordem - b.ordem)
-            .map((foto) => (
-              <img
-                key={foto.id}
-                src={fotosEvidenciaPreview[foto.id]}
-                alt={`Evidência ${foto.ordem}`}
-                style={{ height: 96, width: 96, objectFit: 'cover', borderRadius: 4 }}
-              />
-            ))}
-          {!somenteLeitura && totalFotosEvidencia < TOTAL_FOTOS_EVIDENCIA_OBRIGATORIAS && (
-            <SeletorFotoCamera
-              rotulo="Tirar foto de evidência"
-              desabilitado={anexandoFotoEvidencia}
-              aoSelecionarArquivo={anexarFotoEvidencia}
-              aoErroValidacao={setErro}
-            />
-          )}
-        </div>
+        <GradeFotosEvidencia
+          titulo="Evidências fotográficas"
+          subtitulo={`${TOTAL_FOTOS_EVIDENCIA_OBRIGATORIAS} fotos são obrigatórias para liberar o encerramento deste registro diário.`}
+          total={TOTAL_FOTOS_EVIDENCIA_OBRIGATORIAS}
+          fotos={
+            detalhe?.fotosEvidencia
+              .filter((f) => fotosEvidenciaPreview[f.id])
+              .map((f) => ({ ordem: f.ordem, id: f.id, url: fotosEvidenciaPreview[f.id] })) ?? []
+          }
+          somenteLeitura={somenteLeitura}
+          onSelecionarFoto={anexarFotoEvidencia}
+          onRemoverFoto={removerFotoEvidencia}
+          onErroValidacao={setErro}
+        />
       </div>
 
       <div className={estilos.card}>
