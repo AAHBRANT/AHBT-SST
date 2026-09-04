@@ -1894,8 +1894,9 @@ export interface DocumentoPublicoSignatario {
 
 export interface DocumentoPublico {
   entidadeTipo: string;
-  finalizadoEm: string;
+  emitidoEm: string;
   conteudoHash: string;
+  assinado: boolean;
   signatarios: DocumentoPublicoSignatario[];
 }
 

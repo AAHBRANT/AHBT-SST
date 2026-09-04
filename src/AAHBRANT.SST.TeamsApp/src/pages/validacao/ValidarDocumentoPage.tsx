@@ -96,12 +96,12 @@ export function ValidarDocumentoPage() {
               <CheckmarkCircle24Regular color={tokens.colorPaletteGreenForeground1} />
               <div>
                 <Text size={600} weight="semibold">
-                  Documento válido
+                  {documento.assinado ? 'Documento válido' : 'Documento rastreável'}
                 </Text>
                 <div>
                   <Text size={200}>
-                    {documento.entidadeTipo} · finalizado em{' '}
-                    {new Date(documento.finalizadoEm).toLocaleString('pt-BR')}
+                    {documento.entidadeTipo} · emitido em{' '}
+                    {new Date(documento.emitidoEm).toLocaleString('pt-BR')}
                   </Text>
                 </div>
               </div>
@@ -109,19 +109,23 @@ export function ValidarDocumentoPage() {
 
             <div className={estilos.secao}>
               <Text weight="semibold">Assinaturas registradas</Text>
-              <ul className={estilos.listaSimples}>
-                {documento.signatarios.map((s, i) => (
-                  <li key={i}>
-                    <Text>
-                      {s.trabalhadorNome} —{' '}
-                      <Badge appearance="tint" size="small">
-                        {metodoAutenticacaoAssinaturaLabel[s.metodoAutenticacao] ?? 'Método desconhecido'}
-                      </Badge>{' '}
-                      em {new Date(s.assinadoEm).toLocaleString('pt-BR')}
-                    </Text>
-                  </li>
-                ))}
-              </ul>
+              {documento.signatarios.length === 0 ? (
+                <Text as="p">Nenhuma assinatura eletrônica registrada até o momento.</Text>
+              ) : (
+                <ul className={estilos.listaSimples}>
+                  {documento.signatarios.map((s, i) => (
+                    <li key={i}>
+                      <Text>
+                        {s.trabalhadorNome} —{' '}
+                        <Badge appearance="tint" size="small">
+                          {metodoAutenticacaoAssinaturaLabel[s.metodoAutenticacao] ?? 'Método desconhecido'}
+                        </Badge>{' '}
+                        em {new Date(s.assinadoEm).toLocaleString('pt-BR')}
+                      </Text>
+                    </li>
+                  ))}
+                </ul>
+              )}
             </div>
 
             <div className={estilos.secao}>
