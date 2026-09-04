@@ -49,7 +49,7 @@ function treinamentoVazio(trabalhadorId: string): NovoTreinamento {
   };
 }
 
-export function TreinamentosTab({ trabalhadorId }: { trabalhadorId: string }) {
+export function TreinamentosTab({ trabalhadorId, obraId }: { trabalhadorId: string; obraId: string }) {
   const estilos = usePageStyles();
   const navigate = useNavigate();
   const [treinamentos, setTreinamentos] = useState<Treinamento[]>([]);
@@ -286,6 +286,7 @@ export function TreinamentosTab({ trabalhadorId }: { trabalhadorId: string }) {
           cursoNome={assinaturaAberta.cursoNome}
           dataRealizacao={assinaturaAberta.dataRealizacao}
           cargaHorariaRealizada={assinaturaAberta.cargaHorariaRealizada}
+          obraId={obraId}
         />
       )}
     </div>

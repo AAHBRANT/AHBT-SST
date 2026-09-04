@@ -232,7 +232,7 @@ export function TrabalhadorDetalhePage() {
                   <StatusDonutChart dados={dadosAssiduidadeDds} legendaCentral="DDS realizados" />
                 )}
               </div>
-              <TreinamentosTab trabalhadorId={id} />
+              <TreinamentosTab trabalhadorId={id} obraId={perfil.obraId} />
             </div>
           )}
           {aba === 'riscos' && <RiscosTab riscos={perfil.riscos} />}

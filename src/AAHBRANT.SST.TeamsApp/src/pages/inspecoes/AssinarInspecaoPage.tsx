@@ -55,7 +55,7 @@ export function AssinarInspecaoPage() {
         )}
       </div>
 
-      <AssinaturaQuiosque entidadeTipo="Inspecao" entidadeId={id} />
+      <AssinaturaQuiosque entidadeTipo="Inspecao" entidadeId={id} obraId={inspecao?.obraId ?? ''} />
     </div>
   );
 }
