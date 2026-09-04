@@ -28,6 +28,7 @@ const epiVazio: NovoCatalogoEpi = {
   certificadoAprovacaoNumero: '',
   certificadoAprovacaoValidade: '',
   vidaUtilEmMeses: 12,
+  codigoBarras: '',
 };
 
 // Catálogo de EPI (item + estoque) do módulo dedicado /epi — antes vivia como aba dentro de
@@ -66,7 +67,10 @@ export function CatalogoTab() {
     try {
       setCarregando(true);
       setErro(null);
-      const { id } = await api.catalogosEpi.criar(novoEpi);
+      const { id } = await api.catalogosEpi.criar({
+        ...novoEpi,
+        certificadoAprovacaoValidade: novoEpi.certificadoAprovacaoValidade || null,
+      });
       if (fotoNovoEpi) {
         await api.catalogosEpi.anexarFoto(id, fotoNovoEpi);
       }
@@ -102,7 +106,10 @@ export function CatalogoTab() {
     try {
       setCarregando(true);
       setErro(null);
-      await api.catalogosEpi.atualizar(edicao);
+      await api.catalogosEpi.atualizar({
+        ...edicao,
+        certificadoAprovacaoValidade: edicao.certificadoAprovacaoValidade || null,
+      });
       setEdicaoId(null);
       setEdicao(null);
       await carregar();
@@ -174,6 +181,14 @@ export function CatalogoTab() {
             />
           </Field>
         </div>
+        <div className={estilos.col3}>
+          <Field label="Código de barras" hint="Da embalagem do fabricante — usado na Entrega Rápida">
+            <Input
+              value={novoEpi.codigoBarras ?? ''}
+              onChange={(_, d) => setNovoEpi({ ...novoEpi, codigoBarras: d.value })}
+            />
+          </Field>
+        </div>
         <div className={estilos.col6}>
           <Field label="Foto do EPI">
             <SeletorFotoCamera
@@ -203,6 +218,7 @@ export function CatalogoTab() {
             <TableHeaderCell>Nome</TableHeaderCell>
             <TableHeaderCell>Fabricante</TableHeaderCell>
             <TableHeaderCell>Nº do CA</TableHeaderCell>
+            <TableHeaderCell>Código de barras</TableHeaderCell>
             <TableHeaderCell>Validade do CA</TableHeaderCell>
             <TableHeaderCell>Vida útil (meses)</TableHeaderCell>
             <TableHeaderCell>Estoque total</TableHeaderCell>
@@ -242,6 +258,12 @@ export function CatalogoTab() {
                   />
                 </TableCell>
                 <TableCell>
+                  <Input
+                    value={edicao.codigoBarras ?? ''}
+                    onChange={(_, d) => setEdicao({ ...edicao, codigoBarras: d.value })}
+                  />
+                </TableCell>
+                <TableCell>
                   <CampoData
                     value={edicao.certificadoAprovacaoValidade?.slice(0, 10) ?? ''}
                     onChange={(_, d) => setEdicao({ ...edicao, certificadoAprovacaoValidade: d.value })}
@@ -273,6 +295,7 @@ export function CatalogoTab() {
                 <TableCell>{epi.nome}</TableCell>
                 <TableCell>{epi.fabricante}</TableCell>
                 <TableCell>{epi.certificadoAprovacaoNumero}</TableCell>
+                <TableCell>{epi.codigoBarras ?? '-'}</TableCell>
                 <TableCell>{epi.certificadoAprovacaoValidade?.slice(0, 10)}</TableCell>
                 <TableCell>{epi.vidaUtilEmMeses}</TableCell>
                 <TableCell>{epi.saldoTotal}</TableCell>

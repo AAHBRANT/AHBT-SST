@@ -11,6 +11,12 @@ public class CatalogoEpi : AuditableEntity
     public DateTime? CertificadoAprovacaoValidade { get; set; }
     public int VidaUtilEmMeses { get; set; }
 
+    // Código de barras/EAN impresso na embalagem do fabricante (pedido do usuário, 04/09, tela de
+    // Entrega Rápida) — digitado uma vez no cadastro do item; a partir daí um leitor de código de
+    // barras USB (que só "digita" o valor + Enter em qualquer campo focado) resolve o item na hora
+    // de montar o lote de entrega. Opcional: itens sem código continuam pesquisáveis por nome.
+    public string? CodigoBarras { get; set; }
+
     // Foto do item cadastrado (pedido do usuário, 03/09) — pra o trabalhador reconhecer visualmente
     // o que está recebendo na hora de assinar a ficha de entrega. Mesmo padrão de Obra.LogoConteudo/
     // Trabalhador.FotoConteudo: binário direto na coluna, sem storage próprio.
