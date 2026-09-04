@@ -79,7 +79,7 @@ public class DdsController : ControllerBase
         await using var stream = new MemoryStream();
         await body.Foto.CopyToAsync(stream, ct);
 
-        var fotoId = await _mediator.Send(new AnexarFotoEvidenciaDdsCommand(id, stream.ToArray(), body.Foto.ContentType), ct);
+        var fotoId = await _mediator.Send(new AnexarFotoEvidenciaDdsCommand(id, body.Ordem, stream.ToArray(), body.Foto.ContentType), ct);
         return Ok(new { id = fotoId });
     }
 
@@ -89,6 +89,14 @@ public class DdsController : ControllerBase
     {
         var foto = await _mediator.Send(new ObterFotoEvidenciaDdsQuery(fotoId), ct);
         return foto is null ? NotFound() : File(foto.Conteudo, foto.ContentType, foto.NomeArquivo);
+    }
+
+    [Authorize(Policy = "dds:conduzir")]
+    [HttpDelete("fotos-evidencia/{fotoId:guid}")]
+    public async Task<IActionResult> RemoverFotoEvidencia(Guid fotoId, CancellationToken ct)
+    {
+        await _mediator.Send(new RemoverFotoEvidenciaDdsCommand(fotoId), ct);
+        return NoContent();
     }
 
     [Authorize(Policy = "dds:exportar")]
@@ -118,4 +126,5 @@ public class RegistrarParticipanteRequestBody
 public class AnexarFotoEvidenciaDdsRequestBody
 {
     public IFormFile Foto { get; set; } = null!;
+    public int Ordem { get; set; }
 }

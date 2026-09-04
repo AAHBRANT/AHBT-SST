@@ -15,6 +15,7 @@ import {
   Text,
   Textarea,
 } from '@fluentui/react-components';
+import { CampoData } from '../../components/CampoData';
 import { ArrowLeft24Regular, CheckmarkCircle24Regular, Save24Regular } from '@fluentui/react-icons';
 import {
   api,
@@ -166,16 +167,20 @@ export function AcidenteDetalhePage() {
   }
 
   const a = detalhe?.acidente;
+  // Acidentes/Incidentes/Quase-acidentes viraram abas de OcorrenciasPage (02/09) — volta pra aba
+  // que corresponde ao tipo do registro aberto, não sempre pra "Acidentes".
+  const secaoOcorrencia =
+    a?.tipo === 2 ? 'incidentes' : a?.tipo === 3 ? 'quase-acidentes' : 'acidentes';
 
   return (
     <div>
       <Button
         appearance="subtle"
         icon={<ArrowLeft24Regular />}
-        onClick={() => navigate('/acidentes')}
+        onClick={() => navigate(`/ocorrencias?secao=${secaoOcorrencia}`)}
         style={{ marginBottom: 12 }}
       >
-        Voltar para Acidentes
+        Voltar para Ocorrências
       </Button>
 
       {erro && <Text className={estilos.erro}>{erro}</Text>}
@@ -188,7 +193,7 @@ export function AcidenteDetalhePage() {
             </Text>
             <div style={{ display: 'flex', gap: 16, marginTop: 8, flexWrap: 'wrap', alignItems: 'center' }}>
               <Text>Obra: {a.obraNome ?? '—'}</Text>
-              {a.trabalhadorNome && <Text>Trabalhador: {a.trabalhadorNome}</Text>}
+              {a.trabalhadorNome && <Text>Funcionário: {a.trabalhadorNome}</Text>}
               {a.atividadeNome && <Text>Atividade: {a.atividadeNome}</Text>}
               <Text>Data: {a.data?.slice(0, 10)}</Text>
               <Badge appearance="tint">{statusAcidenteLabel[a.status]}</Badge>
@@ -224,20 +229,25 @@ export function AcidenteDetalhePage() {
         <div className={estilos.toolbar}>
           <Text weight="semibold">Investigação (Seção 28 — análise de causas)</Text>
         </div>
-        <div className={estilos.form}>
-          <Field label="Metodologia de investigação">
-            <Select value={metodologia} onChange={(_, d) => setMetodologia(d.value)}>
-              <option value="">Não definida</option>
-              {Object.entries(metodologiaInvestigacaoLabel).map(([valor, rotulo]) => (
-                <option key={valor} value={valor}>
-                  {rotulo}
-                </option>
-              ))}
-            </Select>
-          </Field>
-          <Field label="Causas identificadas">
-            <Textarea value={causas} onChange={(_, d) => setCausas(d.value)} />
-          </Field>
+        <div className={`${estilos.sectionTitle} ${estilos.sectionTitleFirst}`}>Dados da Investigação</div>
+        <div className={estilos.formGrid}>
+          <div className={estilos.col4}>
+            <Field label="Metodologia de investigação">
+              <Select value={metodologia} onChange={(_, d) => setMetodologia(d.value)}>
+                <option value="">Não definida</option>
+                {Object.entries(metodologiaInvestigacaoLabel).map(([valor, rotulo]) => (
+                  <option key={valor} value={valor}>
+                    {rotulo}
+                  </option>
+                ))}
+              </Select>
+            </Field>
+          </div>
+          <div className={estilos.col6}>
+            <Field label="Causas identificadas">
+              <Textarea value={causas} onChange={(_, d) => setCausas(d.value)} />
+            </Field>
+          </div>
         </div>
         <div className={estilos.formActions}>
           <Button appearance="primary" icon={<Save24Regular />} onClick={salvarInvestigacao} disabled={processando}>
@@ -250,54 +260,64 @@ export function AcidenteDetalhePage() {
         <div className={estilos.toolbar}>
           <Text weight="semibold">Nova ação do plano</Text>
         </div>
-        <div className={estilos.form}>
-          <Field label="Tipo">
-            <Select
-              value={String(novaAcao.tipo)}
-              onChange={(_, d) => setNovaAcao({ ...novaAcao, tipo: Number(d.value) })}
-            >
-              {Object.entries(tipoAcaoPlanoLabel).map(([valor, rotulo]) => (
-                <option key={valor} value={valor}>
-                  {rotulo}
-                </option>
-              ))}
-            </Select>
-          </Field>
-          <Field label="Descrição" required>
-            <Input value={novaAcao.descricao} onChange={(_, d) => setNovaAcao({ ...novaAcao, descricao: d.value })} />
-          </Field>
-          <Field label="Responsável">
-            <Select
-              value={novaAcao.responsavelUsuarioId ?? ''}
-              onChange={(_, d) => setNovaAcao({ ...novaAcao, responsavelUsuarioId: d.value })}
-            >
-              <option value="">Nenhum</option>
-              {usuarios.map((usuario) => (
-                <option key={usuario.id} value={usuario.id}>
-                  {usuario.nome}
-                </option>
-              ))}
-            </Select>
-          </Field>
-          <Field label="Prioridade">
-            <Select
-              value={String(novaAcao.prioridade)}
-              onChange={(_, d) => setNovaAcao({ ...novaAcao, prioridade: Number(d.value) })}
-            >
-              {Object.entries(prioridadeAcaoLabel).map(([valor, rotulo]) => (
-                <option key={valor} value={valor}>
-                  {rotulo}
-                </option>
-              ))}
-            </Select>
-          </Field>
-          <Field label="Prazo">
-            <Input
-              type="date"
-              value={novaAcao.prazo ?? ''}
-              onChange={(_, d) => setNovaAcao({ ...novaAcao, prazo: d.value })}
-            />
-          </Field>
+        <div className={`${estilos.sectionTitle} ${estilos.sectionTitleFirst}`}>Nova Ação do Plano</div>
+        <div className={estilos.formGrid}>
+          <div className={estilos.col2}>
+            <Field label="Tipo">
+              <Select
+                value={String(novaAcao.tipo)}
+                onChange={(_, d) => setNovaAcao({ ...novaAcao, tipo: Number(d.value) })}
+              >
+                {Object.entries(tipoAcaoPlanoLabel).map(([valor, rotulo]) => (
+                  <option key={valor} value={valor}>
+                    {rotulo}
+                  </option>
+                ))}
+              </Select>
+            </Field>
+          </div>
+          <div className={estilos.col3}>
+            <Field label="Descrição" required>
+              <Input value={novaAcao.descricao} onChange={(_, d) => setNovaAcao({ ...novaAcao, descricao: d.value })} />
+            </Field>
+          </div>
+          <div className={estilos.col3}>
+            <Field label="Responsável">
+              <Select
+                value={novaAcao.responsavelUsuarioId ?? ''}
+                onChange={(_, d) => setNovaAcao({ ...novaAcao, responsavelUsuarioId: d.value })}
+              >
+                <option value="">Nenhum</option>
+                {usuarios.map((usuario) => (
+                  <option key={usuario.id} value={usuario.id}>
+                    {usuario.nome}
+                  </option>
+                ))}
+              </Select>
+            </Field>
+          </div>
+          <div className={estilos.col2}>
+            <Field label="Prioridade">
+              <Select
+                value={String(novaAcao.prioridade)}
+                onChange={(_, d) => setNovaAcao({ ...novaAcao, prioridade: Number(d.value) })}
+              >
+                {Object.entries(prioridadeAcaoLabel).map(([valor, rotulo]) => (
+                  <option key={valor} value={valor}>
+                    {rotulo}
+                  </option>
+                ))}
+              </Select>
+            </Field>
+          </div>
+          <div className={estilos.col2}>
+            <Field label="Prazo">
+              <CampoData
+                value={novaAcao.prazo ?? ''}
+                onChange={(_, d) => setNovaAcao({ ...novaAcao, prazo: d.value })}
+              />
+            </Field>
+          </div>
         </div>
         <div className={estilos.formActions}>
           <Button appearance="primary" onClick={criarAcao} disabled={processando}>
@@ -320,7 +340,7 @@ export function AcidenteDetalhePage() {
             </Select>
           </Field>
         </div>
-        <Table>
+        <Table noNativeElements>
           <TableHeader>
             <TableRow>
               <TableHeaderCell>Tipo</TableHeaderCell>

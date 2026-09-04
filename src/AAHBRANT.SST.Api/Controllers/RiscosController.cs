@@ -51,4 +51,17 @@ public class RiscosController : ControllerBase
         await _mediator.Send(new ExcluirRiscoCommand(id), ct);
         return NoContent();
     }
+
+    [Authorize(Policy = "risco:criar")]
+    [HttpPost("importar-lote")]
+    public async Task<IActionResult> ImportarLote(ImportarRiscosLoteCommand command, CancellationToken ct)
+        => Ok(await _mediator.Send(command, ct));
+
+    [Authorize(Policy = "risco:editar")]
+    [HttpDelete("obra/{obraId:guid}")]
+    public async Task<IActionResult> LimparPorObra(Guid obraId, CancellationToken ct)
+    {
+        var quantidade = await _mediator.Send(new LimparRiscosObraCommand(obraId), ct);
+        return Ok(new { riscosRemovidos = quantidade });
+    }
 }

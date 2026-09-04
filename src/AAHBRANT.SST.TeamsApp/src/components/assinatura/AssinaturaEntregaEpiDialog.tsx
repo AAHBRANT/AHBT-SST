@@ -14,6 +14,7 @@ import { Checkmark24Filled, PersonBoard24Regular } from '@fluentui/react-icons';
 import { api, MetodoAutenticacaoAssinatura, type DocumentoAssinatura } from '../../lib/api';
 import { usePageStyles } from '../../pages/pageStyles';
 import { AssinaturaQuiosque } from './AssinaturaQuiosque';
+import { FotoCatalogoEpi } from '../../pages/epi/FotoCatalogoEpi';
 
 function extrairMensagemErro(e: unknown, fallback: string): string {
   if (!(e instanceof Error)) return fallback;
@@ -36,6 +37,8 @@ export interface AssinaturaEntregaEpiDialogProps {
   obraId: string;
   trabalhadorNome: string;
   epiNome: string;
+  catalogoEpiId: string;
+  epiTemFoto: boolean;
   quantidade: number;
   dataEntrega: string;
   numeroListaPresencaNr6?: string | null;
@@ -73,6 +76,8 @@ export function AssinaturaEntregaEpiDialog({
   obraId,
   trabalhadorNome,
   epiNome,
+  catalogoEpiId,
+  epiTemFoto,
   quantidade,
   dataEntrega,
   numeroListaPresencaNr6,
@@ -129,13 +134,22 @@ export function AssinaturaEntregaEpiDialog({
               <Text weight="semibold" style={{ display: 'block', marginBottom: 8 }}>
                 Itens entregues
               </Text>
-              <Text style={{ display: 'block' }}>Trabalhador: {trabalhadorNome}</Text>
-              <Text style={{ display: 'block' }}>EPI: {epiNome}</Text>
-              <Text style={{ display: 'block' }}>Quantidade: {quantidade}</Text>
-              <Text style={{ display: 'block' }}>Data de entrega: {dataEntrega.slice(0, 10).split('-').reverse().join('/')}</Text>
-              <Text size={200} style={{ display: 'block', marginTop: 4 }}>
-                O horário de cada assinatura fica registrado abaixo, na tabela de assinaturas registradas.
-              </Text>
+              {/* Foto do EPI em destaque (pedido do usuário, 03/09) — o trabalhador reconhece
+                  visualmente o que está recebendo antes de assinar, não só o nome. */}
+              <div style={{ display: 'flex', gap: 16, alignItems: 'flex-start' }}>
+                <FotoCatalogoEpi catalogoEpiId={catalogoEpiId} temFoto={epiTemFoto} tamanho={96} />
+                <div>
+                  <Text style={{ display: 'block' }}>Funcionário: {trabalhadorNome}</Text>
+                  <Text style={{ display: 'block' }}>EPI: {epiNome}</Text>
+                  <Text style={{ display: 'block' }}>Quantidade: {quantidade}</Text>
+                  <Text style={{ display: 'block' }}>
+                    Data de entrega: {dataEntrega.slice(0, 10).split('-').reverse().join('/')}
+                  </Text>
+                  <Text size={200} style={{ display: 'block', marginTop: 4 }}>
+                    O horário de cada assinatura fica registrado abaixo, na tabela de assinaturas registradas.
+                  </Text>
+                </div>
+              </div>
             </div>
 
             <div className={estilos.card} style={{ marginBottom: 16, maxWidth: 480 }}>

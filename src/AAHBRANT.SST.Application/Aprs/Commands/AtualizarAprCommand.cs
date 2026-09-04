@@ -10,7 +10,6 @@ namespace AAHBRANT.SST.Application.Aprs.Commands;
 // por AprovarAprCommand/ReprovarAprCommand.
 public record AtualizarAprCommand(
     Guid Id,
-    string? NumeroApr,
     Guid AtividadeId,
     string Local,
     string? MaquinasEquipamentos,
@@ -25,7 +24,6 @@ public class AtualizarAprCommandValidator : AbstractValidator<AtualizarAprComman
     public AtualizarAprCommandValidator()
     {
         RuleFor(x => x.Id).NotEmpty();
-        RuleFor(x => x.NumeroApr).MaximumLength(60);
         RuleFor(x => x.AtividadeId).NotEmpty();
         RuleFor(x => x.Local).NotEmpty().MaximumLength(200);
         RuleFor(x => x.MaquinasEquipamentos).MaximumLength(500);
@@ -46,7 +44,6 @@ public class AtualizarAprCommandHandler : IRequestHandler<AtualizarAprCommand>
             .FirstOrDefaultAsync(a => a.Id == request.Id, ct)
             ?? throw new KeyNotFoundException($"APR {request.Id} não encontrada.");
 
-        apr.NumeroApr = request.NumeroApr;
         apr.AtividadeId = request.AtividadeId;
         apr.Local = request.Local;
         apr.MaquinasEquipamentos = request.MaquinasEquipamentos;

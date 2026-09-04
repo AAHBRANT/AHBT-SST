@@ -3,7 +3,6 @@ import { useNavigate, useParams } from 'react-router-dom';
 import {
   Badge,
   Button,
-  Checkbox,
   Select,
   Table,
   TableBody,
@@ -33,7 +32,7 @@ import {
   type Trabalhador,
 } from '../../lib/api';
 import { capturarDigitalLocal, estaAgenteLocalDisponivel, obterDispositivoLocal } from '../../lib/agenteBiometricoLocal';
-import { SeletorFotoCamera } from '../../components/SeletorFotoCamera';
+import { GradeFotosEvidencia } from '../../components/GradeFotosEvidencia';
 import { usePageStyles } from '../pageStyles';
 
 const TOTAL_FOTOS_EVIDENCIA_OBRIGATORIAS = 3;
@@ -50,7 +49,6 @@ export function DdsDetalhePage() {
   const [validandoBiometria, setValidandoBiometria] = useState(false);
   const [biometriaValidada, setBiometriaValidada] = useState<{ trabalhadorId: string; score: number } | null>(null);
   const [fotosEvidenciaPreview, setFotosEvidenciaPreview] = useState<Record<string, string>>({});
-  const [anexandoFotoEvidencia, setAnexandoFotoEvidencia] = useState(false);
   const [erro, setErro] = useState<string | null>(null);
   const [processando, setProcessando] = useState(false);
   const [baixandoPdf, setBaixandoPdf] = useState(false);
@@ -83,17 +81,24 @@ export function DdsDetalhePage() {
     }
   }
 
-  async function anexarFotoEvidencia(arquivo: File) {
+  async function anexarFotoEvidencia(ordem: number, arquivo: File) {
     if (!id) return;
     try {
-      setAnexandoFotoEvidencia(true);
       setErro(null);
-      await api.dds.anexarFotoEvidencia(id, arquivo);
+      await api.dds.anexarFotoEvidencia(id, ordem, arquivo);
       await carregar();
     } catch (e) {
       setErro(e instanceof Error ? e.message : 'Falha ao anexar foto de evidência.');
-    } finally {
-      setAnexandoFotoEvidencia(false);
+    }
+  }
+
+  async function removerFotoEvidencia(fotoId: string) {
+    try {
+      setErro(null);
+      await api.dds.removerFotoEvidencia(fotoId);
+      await carregar();
+    } catch (e) {
+      setErro(e instanceof Error ? e.message : 'Falha ao remover foto de evidência.');
     }
   }
 
@@ -117,16 +122,6 @@ export function DdsDetalhePage() {
   useEffect(() => {
     setBiometriaValidada(null);
   }, [participanteSelecionado]);
-
-  async function marcarItem(itemId: string, verificado: boolean) {
-    try {
-      setErro(null);
-      await api.dds.marcarItem(itemId, verificado);
-      await carregar();
-    } catch (e) {
-      setErro(e instanceof Error ? e.message : 'Falha ao marcar item do checklist.');
-    }
-  }
 
   async function validarBiometria() {
     if (!participanteSelecionado) return;
@@ -268,7 +263,16 @@ export function DdsDetalhePage() {
         {dds ? (
           <>
             <Text size={500} weight="semibold">
-              {dds.topicoPrincipal}
+              {dds.temasAtividades.length === 0 && !dds.temaLivreNome && (
+                <Text style={{ display: 'block' }}>DDS do dia</Text>
+              )}
+              {dds.temasAtividades.map((tema) => (
+                <Text key={tema.atividadeId} style={{ display: 'block' }}>
+                  {tema.atividadeNome}
+                  {tema.perigoNome ? ` — ${tema.perigoNome}` : ''}
+                </Text>
+              ))}
+              {dds.temaLivreNome && <Text style={{ display: 'block' }}>Tema livre: {dds.temaLivreNome}</Text>}
             </Text>
             <div style={{ display: 'flex', gap: 16, marginTop: 8, flexWrap: 'wrap', alignItems: 'center' }}>
               <Text>Obra: {dds.obraNome}</Text>
@@ -277,12 +281,9 @@ export function DdsDetalhePage() {
               <Badge appearance="tint">{statusDdsLabel[dds.status]}</Badge>
             </div>
             <div style={{ marginTop: 8 }}>
-              <Text>Atividades do dia: {dds.atividadesNomes.join(', ')}</Text>
+              <Text>Atividades do dia: {dds.atividadesNomes.join(', ') || 'DDS do dia'}</Text>
             </div>
             <div style={{ display: 'flex', gap: 16, marginTop: 8, alignItems: 'center' }}>
-              <Text>
-                Checklist verificado: {dds.itensVerificados}/{dds.totalItensChecklist}
-              </Text>
               <Text>Participantes: {dds.totalParticipantes}</Text>
             </div>
 
@@ -318,58 +319,20 @@ export function DdsDetalhePage() {
       </div>
 
       <div className={estilos.card} style={{ marginBottom: 16 }}>
-        <div className={estilos.toolbar}>
-          <Text weight="semibold">Checklist de verificação</Text>
-        </div>
-
-        {detalhe?.itensChecklist.length === 0 ? (
-          <Text>Nenhum item de checklist gerado — revise a Matriz de Riscos das atividades selecionadas.</Text>
-        ) : (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-            {detalhe?.itensChecklist.map((item) => (
-              <Checkbox
-                key={item.id}
-                label={item.descricao}
-                checked={item.verificado}
-                disabled={somenteLeitura}
-                onChange={(_, d) => marcarItem(item.id, !!d.checked)}
-              />
-            ))}
-          </div>
-        )}
-      </div>
-
-      <div className={estilos.card} style={{ marginBottom: 16 }}>
-        <div className={estilos.toolbar}>
-          <Text weight="semibold">
-            Evidências fotográficas ({totalFotosEvidencia}/{TOTAL_FOTOS_EVIDENCIA_OBRIGATORIAS})
-          </Text>
-        </div>
-
-        <Text size={200} style={{ display: 'block', marginBottom: 8 }}>
-          {TOTAL_FOTOS_EVIDENCIA_OBRIGATORIAS} fotos são obrigatórias para liberar o encerramento deste registro diário.
-        </Text>
-
-        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 12, alignItems: 'center' }}>
-          {detalhe?.fotosEvidencia
-            .slice()
-            .sort((a, b) => a.ordem - b.ordem)
-            .map((foto) => (
-              <img
-                key={foto.id}
-                src={fotosEvidenciaPreview[foto.id]}
-                alt={`Evidência ${foto.ordem}`}
-                style={{ height: 96, width: 96, objectFit: 'cover', borderRadius: 4 }}
-              />
-            ))}
-          {!somenteLeitura && totalFotosEvidencia < TOTAL_FOTOS_EVIDENCIA_OBRIGATORIAS && (
-            <SeletorFotoCamera
-              rotulo="Tirar foto de evidência"
-              desabilitado={anexandoFotoEvidencia}
-              aoSelecionarArquivo={anexarFotoEvidencia}
-            />
-          )}
-        </div>
+        <GradeFotosEvidencia
+          titulo="Evidências fotográficas"
+          subtitulo={`${TOTAL_FOTOS_EVIDENCIA_OBRIGATORIAS} fotos são obrigatórias para liberar o encerramento deste registro diário.`}
+          total={TOTAL_FOTOS_EVIDENCIA_OBRIGATORIAS}
+          fotos={
+            detalhe?.fotosEvidencia
+              .filter((f) => fotosEvidenciaPreview[f.id])
+              .map((f) => ({ ordem: f.ordem, id: f.id, url: fotosEvidenciaPreview[f.id] })) ?? []
+          }
+          somenteLeitura={somenteLeitura}
+          onSelecionarFoto={anexarFotoEvidencia}
+          onRemoverFoto={removerFotoEvidencia}
+          onErroValidacao={setErro}
+        />
       </div>
 
       <div className={estilos.card}>
@@ -385,7 +348,7 @@ export function DdsDetalhePage() {
                 onChange={(_, d) => setParticipanteSelecionado(d.value)}
                 style={{ minWidth: 240 }}
               >
-                <option value="">Selecione um trabalhador</option>
+                <option value="">Selecione um funcionário</option>
                 {trabalhadoresDisponiveis.map((trabalhador) => (
                   <option key={trabalhador.id} value={trabalhador.id}>
                     {trabalhador.nome} ({trabalhador.matricula})
@@ -428,11 +391,12 @@ export function DdsDetalhePage() {
           </div>
         )}
 
-        <Table>
+        <Table noNativeElements>
           <TableHeader>
             <TableRow>
               <TableHeaderCell>Nome</TableHeaderCell>
               <TableHeaderCell>Evidência</TableHeaderCell>
+              <TableHeaderCell>Assinatura</TableHeaderCell>
               <TableHeaderCell>Telegram</TableHeaderCell>
               <TableHeaderCell />
             </TableRow>
@@ -442,6 +406,17 @@ export function DdsDetalhePage() {
               <TableRow key={participante.id}>
                 <TableCell>{participante.trabalhadorNome}</TableCell>
                 <TableCell>{tipoFotoParticipanteLabel[participante.fotoTipo]}</TableCell>
+                <TableCell>
+                  {participante.assinadoEm ? (
+                    <Badge color="success" appearance="tint" icon={<Checkmark24Filled />}>
+                      Assinado às {new Date(participante.assinadoEm).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}
+                    </Badge>
+                  ) : (
+                    <Badge color="informative" appearance="tint">
+                      Pendente
+                    </Badge>
+                  )}
+                </TableCell>
                 <TableCell>
                   {participante.telegramConfirmadoEm ? (
                     <Badge color="success" appearance="tint">

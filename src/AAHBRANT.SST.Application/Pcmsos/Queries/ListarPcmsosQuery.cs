@@ -1,4 +1,6 @@
+using AAHBRANT.SST.Application.Common.Interfaces;
 using MediatR;
+using Microsoft.EntityFrameworkCore;
 
 namespace AAHBRANT.SST.Application.Pcmsos.Queries;
 
@@ -6,10 +8,40 @@ public record ListarPcmsosQuery(Guid? ObraId = null) : IRequest<List<PcmsoDto>>;
 
 public class ListarPcmsosQueryHandler : IRequestHandler<ListarPcmsosQuery, List<PcmsoDto>>
 {
-    // PENDENTE: esta query fazia join de PcmsoDetalhe com DocumentoGestao (removido junto com
-    // Gestão Documental/Conformidade em 2026-08-28) — ver nota em PcmsoDetalhe
-    // (Domain/Entidades/SaudeOcupacional/SaudeOcupacional.cs). Retorna lista vazia até ser
-    // reformulada, em vez de derrubar a tela de Saúde Ocupacional com erro.
-    public Task<List<PcmsoDto>> Handle(ListarPcmsosQuery request, CancellationToken ct) =>
-        Task.FromResult(new List<PcmsoDto>());
+    private readonly IAppDbContext _db;
+
+    public ListarPcmsosQueryHandler(IAppDbContext db) => _db = db;
+
+    public async Task<List<PcmsoDto>> Handle(ListarPcmsosQuery request, CancellationToken ct)
+    {
+        var query = _db.PcmsoDetalhes.Include(p => p.ResponsavelUsuario).AsQueryable();
+
+        if (request.ObraId.HasValue)
+            query = query.Where(p => p.ObraId == request.ObraId.Value);
+
+        var pcmsos = await query.OrderByDescending(p => p.CreatedAtUtc).ToListAsync(ct);
+
+        return pcmsos.Select(p => new PcmsoDto
+        {
+            Id = p.Id,
+            NumeroDocumento = p.NumeroDocumento,
+            Nome = p.Nome,
+            Versao = p.Versao,
+            Validade = p.Validade,
+            DataEmissao = p.DataEmissao,
+            ResponsavelUsuarioId = p.ResponsavelUsuarioId,
+            ResponsavelUsuarioNome = p.ResponsavelUsuario?.Nome,
+            ObraId = p.ObraId,
+            SetorId = p.SetorId,
+            Arquivo = p.Arquivo,
+            Status = p.Status,
+            MedicoResponsavelNome = p.MedicoResponsavelNome,
+            MedicoResponsavelCrm = p.MedicoResponsavelCrm,
+            FuncoesContempladas = p.FuncoesContempladas,
+            RiscosConsiderados = p.RiscosConsiderados,
+            ExamesPrevistos = p.ExamesPrevistos,
+            Periodicidades = p.Periodicidades,
+            UnidadesObrasAbrangidas = p.UnidadesObrasAbrangidas
+        }).ToList();
+    }
 }

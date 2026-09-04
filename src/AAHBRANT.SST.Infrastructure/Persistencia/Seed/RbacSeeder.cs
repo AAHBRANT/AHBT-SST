@@ -80,6 +80,10 @@ public static class RbacSeeder
         ("epi:criar", "Epi", "Criar", "Criar catálogo/entrega de EPI"),
         ("epi:editar", "Epi", "Editar", "Editar catálogo/entrega de EPI"),
 
+        ("epc:ver", "Epc", "Ver", "Ver catálogo/instalações de EPC"),
+        ("epc:criar", "Epc", "Criar", "Criar catálogo/instalação de EPC"),
+        ("epc:editar", "Epc", "Editar", "Editar catálogo/instalação de EPC"),
+
         ("risco:ver", "Risco", "Ver", "Ver atividades/perigos/riscos"),
         ("risco:criar", "Risco", "Criar", "Criar atividade/perigo/risco"),
         ("risco:editar", "Risco", "Editar", "Editar atividade/perigo/risco"),

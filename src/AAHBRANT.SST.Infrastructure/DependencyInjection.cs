@@ -6,7 +6,9 @@ using AAHBRANT.SST.Application.Dds;
 using AAHBRANT.SST.Application.EntregasEpi;
 using AAHBRANT.SST.Application.Inspecoes;
 using AAHBRANT.SST.Application.PermissoesTrabalho;
+using AAHBRANT.SST.Application.SessoesTreinamento;
 using AAHBRANT.SST.Application.Trabalhadores;
+using AAHBRANT.SST.Application.Treinamentos;
 using AAHBRANT.SST.Infrastructure.Assinatura;
 using AAHBRANT.SST.Infrastructure.Auditoria;
 using AAHBRANT.SST.Infrastructure.Documentos;
@@ -85,8 +87,11 @@ public static class DependencyInjection
         services.AddScoped<IAprPdfService, AprPdfService>();
         services.AddScoped<IFichaEpiPdfService, EntregaEpiPdfService>();
         services.AddScoped<IPtPdfService, PtPdfService>();
+        services.AddScoped<ICertificadoTreinamentoPdfService, CertificadoTreinamentoPdfService>();
+        services.AddScoped<IAtaSessaoTreinamentoPdfService, AtaSessaoTreinamentoPdfService>();
         services.AddScoped<IRelatorioFiscalizacaoPdfService, RelatorioFiscalizacaoPdfService>();
         services.AddScoped<IInspecaoPdfService, InspecaoPdfService>();
+        services.AddScoped<IGeradorNumeroDocumentoService, GeradorNumeroDocumentoService>();
 
         // Motor de Assinatura Eletrônica (docs/Motor-Assinatura-Eletronica.md §5) — PIN/crachá-QR
         // (CrachaPinAutenticacaoStrategy) e WebAuthn/FIDO2 (Fido2AutenticacaoStrategy) foram removidos

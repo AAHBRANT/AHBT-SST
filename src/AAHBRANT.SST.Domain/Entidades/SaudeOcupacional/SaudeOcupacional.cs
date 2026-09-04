@@ -37,14 +37,35 @@ public class AptidaoAtividadeEspecifica : AuditableEntity
     public string? Observacoes { get; set; }
 }
 
-// PR-SST-003 — dados específicos do PCMSO, originalmente em cima de um DocumentoGestao
-// (Tipo="PCMSO") para nome/versão/validade/status/histórico de revisões. PENDENTE: DocumentoGestao
-// foi removido junto com o módulo de Conformidade (2026-08-28) — DocumentoGestaoId ficou sem
-// entidade correspondente (nenhuma FK real no banco) até o PCMSO ser reformulado para não depender
-// mais dele.
+// PR-SST-003 — dados do PCMSO. Reformulado em 2026-09-03: originalmente reaproveitava um
+// DocumentoGestao genérico (Tipo="PCMSO") para nome/versão/validade/status/arquivo; DocumentoGestao
+// foi removido junto com o módulo de Conformidade (2026-08-28) e deixou os 5 handlers de
+// Application/Pcmsos/* (Criar/Atualizar/Excluir/Listar/ObterPorId) inertes (lançando
+// NotSupportedException ou retornando vazio). Estes campos "genéricos" agora vivem direto aqui —
+// mesmo padrão já usado por Pgr (Domain/Entidades/Pgr/Pgr.cs), que nunca dependeu de DocumentoGestao.
 public class PcmsoDetalhe : AuditableEntity
 {
-    public Guid DocumentoGestaoId { get; set; }
+    // Gerado automaticamente na criação (GeradorNumeroDocumentoService, prefixo "PCMSO") — Nome
+    // continua sendo digitado à mão, é o título descritivo do documento (ex.: "PCMSO Obra X 2026").
+    public string? NumeroDocumento { get; set; }
+    public string Nome { get; set; } = string.Empty;
+    public string? Versao { get; set; }
+    public DateTime? Validade { get; set; }
+    public DateTime DataEmissao { get; set; }
+
+    public Guid? ResponsavelUsuarioId { get; set; }
+    public Usuario? ResponsavelUsuario { get; set; }
+
+    // Nulável de propósito (não Guid obrigatório como em Pgr.ObraId): a tela de criação permite
+    // "Obra: Nenhuma" (PcmsoTab.tsx) — decisão de UX já existente, mantida aqui.
+    public Guid? ObraId { get; set; }
+    public Obra? Obra { get; set; }
+
+    public Guid? SetorId { get; set; }
+    public Setor? Setor { get; set; }
+
+    public string? Arquivo { get; set; }
+    public StatusPcmsoDocumento Status { get; set; } = StatusPcmsoDocumento.Rascunho;
 
     public string? MedicoResponsavelNome { get; set; }
     public string? MedicoResponsavelCrm { get; set; }

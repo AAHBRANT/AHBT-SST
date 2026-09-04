@@ -6,8 +6,9 @@ using Microsoft.AspNetCore.Mvc;
 
 namespace AAHBRANT.SST.Api.Controllers;
 
-// Catálogo pré-cadastrado de temas de DDS (31/08) — usado quando OrigemTemaDds = Livre. Reaproveita
-// as policies do próprio módulo DDS (sem RBAC novo) para minimizar escopo.
+// Catálogo pré-cadastrado de temas de DDS (31/08) — tema livre opcional, somado aos temas
+// automáticos das atividades do dia (01/09). Reaproveita as policies do próprio módulo DDS (sem
+// RBAC novo) para minimizar escopo.
 [ApiController]
 [Route("api/[controller]")]
 public class CatalogoTemasDdsController : ControllerBase
@@ -30,6 +31,14 @@ public class CatalogoTemasDdsController : ControllerBase
     }
 
     [Authorize(Policy = "dds:criar")]
+    [HttpPut("{id:guid}")]
+    public async Task<IActionResult> Atualizar(Guid id, AtualizarCatalogoTemaDdsRequestBody body, CancellationToken ct)
+    {
+        await _mediator.Send(new AtualizarCatalogoTemaDdsCommand(id, body.Nome, body.Descricao), ct);
+        return NoContent();
+    }
+
+    [Authorize(Policy = "dds:criar")]
     [HttpDelete("{id:guid}")]
     public async Task<IActionResult> Excluir(Guid id, CancellationToken ct)
     {
@@ -37,3 +46,5 @@ public class CatalogoTemasDdsController : ControllerBase
         return NoContent();
     }
 }
+
+public record AtualizarCatalogoTemaDdsRequestBody(string Nome, string? Descricao);

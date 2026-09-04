@@ -34,11 +34,19 @@ public class SstDbContext : DbContext, IAppDbContext
     public DbSet<PcmsoDetalhe> PcmsoDetalhes => Set<PcmsoDetalhe>();
     public DbSet<CursoTreinamento> CursosTreinamento => Set<CursoTreinamento>();
     public DbSet<Treinamento> Treinamentos => Set<Treinamento>();
+    public DbSet<MatrizTreinamentoFuncao> MatrizTreinamentoFuncoes => Set<MatrizTreinamentoFuncao>();
+    public DbSet<SessaoTreinamento> SessoesTreinamento => Set<SessaoTreinamento>();
+    public DbSet<ParticipanteSessaoTreinamento> ParticipantesSessaoTreinamento => Set<ParticipanteSessaoTreinamento>();
+    public DbSet<FotoEvidenciaSessaoTreinamento> FotosEvidenciaSessaoTreinamento => Set<FotoEvidenciaSessaoTreinamento>();
     public DbSet<CatalogoEpi> CatalogoEpis => Set<CatalogoEpi>();
     public DbSet<EntregaEpi> EntregasEpi => Set<EntregaEpi>();
     public DbSet<MatrizEpiFuncao> MatrizEpiFuncoes => Set<MatrizEpiFuncao>();
     public DbSet<EstoqueEpi> EstoquesEpi => Set<EstoqueEpi>();
     public DbSet<MovimentacaoEstoqueEpi> MovimentacoesEstoqueEpi => Set<MovimentacaoEstoqueEpi>();
+    public DbSet<CatalogoEpc> CatalogoEpcs => Set<CatalogoEpc>();
+    public DbSet<InstalacaoEpc> InstalacoesEpc => Set<InstalacaoEpc>();
+    public DbSet<EstoqueEpc> EstoquesEpc => Set<EstoqueEpc>();
+    public DbSet<MovimentacaoEstoqueEpc> MovimentacoesEstoqueEpc => Set<MovimentacaoEstoqueEpc>();
 
     public DbSet<Alerta> Alertas => Set<Alerta>();
     public DbSet<AlertaHistoricoEnvio> AlertaHistoricoEnvios => Set<AlertaHistoricoEnvio>();
@@ -109,7 +117,6 @@ public class SstDbContext : DbContext, IAppDbContext
     public DbSet<RequisitoLegalCriterio> RequisitoLegalCriterios => Set<RequisitoLegalCriterio>();
     public DbSet<ItemQuestionarioAplicabilidade> ItensQuestionarioAplicabilidade => Set<ItemQuestionarioAplicabilidade>();
     public DbSet<RespostaQuestionarioAplicabilidade> RespostasQuestionarioAplicabilidade => Set<RespostaQuestionarioAplicabilidade>();
-    public DbSet<MatrizTreinamentoFuncao> MatrizTreinamentoFuncoes => Set<MatrizTreinamentoFuncao>();
 
     public DbSet<DimensionamentoCipa> DimensionamentosCipa => Set<DimensionamentoCipa>();
     public DbSet<ProcessoEleitoralCipa> ProcessosEleitoraisCipa => Set<ProcessoEleitoralCipa>();
@@ -121,6 +128,8 @@ public class SstDbContext : DbContext, IAppDbContext
     public DbSet<InspecaoCipa> InspecoesCipa => Set<InspecaoCipa>();
     public DbSet<EventoSipat> EventosSipat => Set<EventoSipat>();
     public DbSet<AtividadeSipat> AtividadesSipat => Set<AtividadeSipat>();
+
+    public DbSet<ContadorDocumento> ContadoresDocumento => Set<ContadorDocumento>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {

@@ -41,7 +41,7 @@ export function PreRequisitosPtTab({
 
       {erro && <Text className={estilos.erro}>{erro}</Text>}
 
-      <Table>
+      <Table noNativeElements>
         <TableHeader>
           <TableRow>
             <TableHeaderCell>Atendido</TableHeaderCell>

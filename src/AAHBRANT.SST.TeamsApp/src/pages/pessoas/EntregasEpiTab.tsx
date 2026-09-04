@@ -74,7 +74,7 @@ export function EntregasEpiTab({ trabalhadorId }: { trabalhadorId: string }) {
   return (
     <div className={estilos.card}>
       <div className={estilos.toolbar}>
-        <Text weight="semibold">Entregas de EPI do trabalhador</Text>
+        <Text weight="semibold">Entregas de EPI do funcionário</Text>
         <div style={{ display: 'flex', gap: 8 }}>
           <Button
             appearance="subtle"
@@ -92,7 +92,7 @@ export function EntregasEpiTab({ trabalhadorId }: { trabalhadorId: string }) {
 
       {erro && <Text className={estilos.erro}>{erro}</Text>}
 
-      <Table>
+      <Table noNativeElements>
         <TableHeader>
           <TableRow>
             <TableHeaderCell>EPI</TableHeaderCell>

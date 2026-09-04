@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import {
   Badge,
   Button,
@@ -13,9 +14,28 @@ import {
   TableRow,
   Text,
 } from '@fluentui/react-components';
-import { Add24Regular, Delete24Regular } from '@fluentui/react-icons';
+import { CampoData } from '../../components/CampoData';
+import { Add24Regular, ArrowDownload24Regular, Delete24Regular, Signature24Regular } from '@fluentui/react-icons';
 import { api, type CursoTreinamento, type NovoTreinamento, type Treinamento } from '../../lib/api';
 import { usePageStyles } from '../pageStyles';
+import { useConfirmarExclusao } from '../../hooks/useConfirmarExclusao';
+import { useSucessoToast } from '../../hooks/useSucessoToast';
+import { EstadoVazio } from '../../components/EstadoVazio';
+import { ListaCarregando } from '../../components/ListaCarregando';
+import { AssinaturaCertificadoTreinamentoDialog } from '../../components/assinatura/AssinaturaCertificadoTreinamentoDialog';
+
+// Situação calculada no cliente a partir de dataValidade (não há coluna persistida) — mesmo
+// limiar de 30 dias usado em AtivosPage/PessoasDashboardTab para "a vencer".
+const DIAS_LIMIAR_A_VENCER = 30;
+
+function situacaoTreinamento(dataValidade: string): { texto: string; cor: 'success' | 'warning' | 'danger' } {
+  const hoje = new Date(new Date().toDateString());
+  const validade = new Date(dataValidade);
+  const diasRestantes = (validade.getTime() - hoje.getTime()) / (1000 * 60 * 60 * 24);
+  if (diasRestantes < 0) return { texto: 'Vencido', cor: 'danger' };
+  if (diasRestantes <= DIAS_LIMIAR_A_VENCER) return { texto: 'A Vencer', cor: 'warning' };
+  return { texto: 'Válido', cor: 'success' };
+}
 
 function treinamentoVazio(trabalhadorId: string): NovoTreinamento {
   return {
@@ -31,11 +51,22 @@ function treinamentoVazio(trabalhadorId: string): NovoTreinamento {
 
 export function TreinamentosTab({ trabalhadorId }: { trabalhadorId: string }) {
   const estilos = usePageStyles();
+  const navigate = useNavigate();
   const [treinamentos, setTreinamentos] = useState<Treinamento[]>([]);
   const [cursos, setCursos] = useState<CursoTreinamento[]>([]);
   const [novoTreinamento, setNovoTreinamento] = useState<NovoTreinamento>(() => treinamentoVazio(trabalhadorId));
   const [erro, setErro] = useState<string | null>(null);
   const [carregando, setCarregando] = useState(false);
+  const [carregandoLista, setCarregandoLista] = useState(true);
+  const { confirmar, dialogElement } = useConfirmarExclusao();
+  const sucessoToast = useSucessoToast();
+  const [baixandoId, setBaixandoId] = useState<string | null>(null);
+  const [assinaturaAberta, setAssinaturaAberta] = useState<{
+    treinamentoId: string;
+    cursoNome: string;
+    dataRealizacao: string;
+    cargaHorariaRealizada: number;
+  } | null>(null);
 
   async function carregar() {
     try {
@@ -48,6 +79,8 @@ export function TreinamentosTab({ trabalhadorId }: { trabalhadorId: string }) {
       setCursos(listaCursos);
     } catch (e) {
       setErro(e instanceof Error ? e.message : 'Falha ao carregar treinamentos.');
+    } finally {
+      setCarregandoLista(false);
     }
   }
 
@@ -55,8 +88,21 @@ export function TreinamentosTab({ trabalhadorId }: { trabalhadorId: string }) {
     return cursos.find((c) => c.id === id)?.nome ?? id;
   }
 
-  function vencido(dataValidade: string) {
-    return new Date(dataValidade) < new Date(new Date().toDateString());
+  async function baixarCertificado(id: string) {
+    try {
+      setBaixandoId(id);
+      const blob = await api.treinamentos.baixarCertificado(id);
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = `certificado-treinamento-${id}.pdf`;
+      link.click();
+      URL.revokeObjectURL(url);
+    } catch (e) {
+      setErro(e instanceof Error ? e.message : 'Falha ao baixar o certificado em PDF.');
+    } finally {
+      setBaixandoId(null);
+    }
   }
 
   useEffect(() => {
@@ -69,9 +115,16 @@ export function TreinamentosTab({ trabalhadorId }: { trabalhadorId: string }) {
     try {
       setCarregando(true);
       setErro(null);
-      await api.treinamentos.criar(novoTreinamento);
+      const { id } = await api.treinamentos.criar(novoTreinamento);
+      setAssinaturaAberta({
+        treinamentoId: id,
+        cursoNome: nomeCurso(novoTreinamento.cursoTreinamentoId),
+        dataRealizacao: novoTreinamento.dataRealizacao,
+        cargaHorariaRealizada: novoTreinamento.cargaHorariaRealizada,
+      });
       setNovoTreinamento(treinamentoVazio(trabalhadorId));
       await carregar();
+      sucessoToast('Treinamento criado com sucesso.');
     } catch (e) {
       setErro(e instanceof Error ? e.message : 'Falha ao criar treinamento.');
     } finally {
@@ -80,9 +133,11 @@ export function TreinamentosTab({ trabalhadorId }: { trabalhadorId: string }) {
   }
 
   async function excluir(id: string) {
+    if (!(await confirmar('Excluir este treinamento? Essa ação não pode ser desfeita.'))) return;
     try {
       await api.treinamentos.excluir(id);
       await carregar();
+      sucessoToast('Treinamento excluído com sucesso.');
     } catch (e) {
       setErro(e instanceof Error ? e.message : 'Falha ao excluir treinamento.');
     }
@@ -90,59 +145,71 @@ export function TreinamentosTab({ trabalhadorId }: { trabalhadorId: string }) {
 
   return (
     <div className={estilos.card}>
+      {dialogElement}
       <div className={estilos.toolbar}>
-        <Text weight="semibold">Treinamentos do trabalhador</Text>
+        <Text weight="semibold">Treinamentos do funcionário</Text>
       </div>
 
       {erro && <Text className={estilos.erro}>{erro}</Text>}
 
-      <div className={estilos.form}>
-        <Field label="Curso">
-          <Select
-            value={novoTreinamento.cursoTreinamentoId}
-            onChange={(_, d) => setNovoTreinamento({ ...novoTreinamento, cursoTreinamentoId: d.value })}
-          >
-            <option value="">Selecione</option>
-            {cursos.map((c) => (
-              <option key={c.id} value={c.id}>
-                {c.nome}
-              </option>
-            ))}
-          </Select>
-        </Field>
-        <Field label="Data de realização">
-          <Input
-            type="date"
-            value={novoTreinamento.dataRealizacao}
-            onChange={(_, d) => setNovoTreinamento({ ...novoTreinamento, dataRealizacao: d.value })}
-          />
-        </Field>
-        <Field label="Validade">
-          <Input
-            type="date"
-            value={novoTreinamento.dataValidade}
-            onChange={(_, d) => setNovoTreinamento({ ...novoTreinamento, dataValidade: d.value })}
-          />
-        </Field>
-        <Field label="Carga horária realizada (h)">
-          <Input
-            type="number"
-            value={String(novoTreinamento.cargaHorariaRealizada)}
-            onChange={(_, d) => setNovoTreinamento({ ...novoTreinamento, cargaHorariaRealizada: Number(d.value) })}
-          />
-        </Field>
-        <Field label="Instituição / instrutor">
-          <Input
-            value={novoTreinamento.instituicaoInstrutor ?? ''}
-            onChange={(_, d) => setNovoTreinamento({ ...novoTreinamento, instituicaoInstrutor: d.value })}
-          />
-        </Field>
-        <Field label="Número do certificado">
-          <Input
-            value={novoTreinamento.numeroCertificado ?? ''}
-            onChange={(_, d) => setNovoTreinamento({ ...novoTreinamento, numeroCertificado: d.value })}
-          />
-        </Field>
+      <div className={`${estilos.sectionTitle} ${estilos.sectionTitleFirst}`}>Dados do Treinamento</div>
+      <div className={estilos.formGrid}>
+        <div className={estilos.col4}>
+          <Field label="Curso">
+            <Select
+              value={novoTreinamento.cursoTreinamentoId}
+              onChange={(_, d) => setNovoTreinamento({ ...novoTreinamento, cursoTreinamentoId: d.value })}
+            >
+              <option value="">Selecione</option>
+              {cursos.map((c) => (
+                <option key={c.id} value={c.id}>
+                  {c.nome}
+                </option>
+              ))}
+            </Select>
+          </Field>
+        </div>
+        <div className={estilos.col3}>
+          <Field label="Data de realização">
+            <CampoData
+              value={novoTreinamento.dataRealizacao}
+              onChange={(_, d) => setNovoTreinamento({ ...novoTreinamento, dataRealizacao: d.value })}
+            />
+          </Field>
+        </div>
+        <div className={estilos.col3}>
+          <Field label="Validade">
+            <CampoData
+              value={novoTreinamento.dataValidade}
+              onChange={(_, d) => setNovoTreinamento({ ...novoTreinamento, dataValidade: d.value })}
+            />
+          </Field>
+        </div>
+        <div className={estilos.col2}>
+          <Field label="Carga horária realizada (h)">
+            <Input
+              type="number"
+              value={String(novoTreinamento.cargaHorariaRealizada)}
+              onChange={(_, d) => setNovoTreinamento({ ...novoTreinamento, cargaHorariaRealizada: Number(d.value) })}
+            />
+          </Field>
+        </div>
+        <div className={estilos.col6}>
+          <Field label="Instituição / instrutor">
+            <Input
+              value={novoTreinamento.instituicaoInstrutor ?? ''}
+              onChange={(_, d) => setNovoTreinamento({ ...novoTreinamento, instituicaoInstrutor: d.value })}
+            />
+          </Field>
+        </div>
+        <div className={estilos.col6}>
+          <Field label="Número do certificado">
+            <Input
+              value={novoTreinamento.numeroCertificado ?? ''}
+              onChange={(_, d) => setNovoTreinamento({ ...novoTreinamento, numeroCertificado: d.value })}
+            />
+          </Field>
+        </div>
       </div>
       <div className={estilos.formActions}>
         <Button appearance="primary" icon={<Add24Regular />} onClick={criar} disabled={carregando}>
@@ -150,7 +217,12 @@ export function TreinamentosTab({ trabalhadorId }: { trabalhadorId: string }) {
         </Button>
       </div>
 
-      <Table>
+      {carregandoLista ? (
+        <ListaCarregando />
+      ) : treinamentos.length === 0 ? (
+        <EstadoVazio mensagem="Nenhum treinamento cadastrado ainda." />
+      ) : (
+      <Table noNativeElements>
         <TableHeader>
           <TableRow>
             <TableHeaderCell>Curso</TableHeaderCell>
@@ -161,31 +233,61 @@ export function TreinamentosTab({ trabalhadorId }: { trabalhadorId: string }) {
           </TableRow>
         </TableHeader>
         <TableBody>
-          {treinamentos.map((treinamento) => (
-            <TableRow key={treinamento.id}>
-              <TableCell>{nomeCurso(treinamento.cursoTreinamentoId)}</TableCell>
-              <TableCell>{treinamento.dataRealizacao?.slice(0, 10)}</TableCell>
-              <TableCell>
-                {treinamento.dataValidade?.slice(0, 10)}
-                {vencido(treinamento.dataValidade) && (
-                  <Badge color="danger" appearance="tint" style={{ marginLeft: 8 }}>
-                    Vencido
+          {treinamentos.map((treinamento) => {
+            const situacao = situacaoTreinamento(treinamento.dataValidade);
+            return (
+              <TableRow key={treinamento.id}>
+                <TableCell>{nomeCurso(treinamento.cursoTreinamentoId)}</TableCell>
+                <TableCell>{treinamento.dataRealizacao?.slice(0, 10)}</TableCell>
+                <TableCell>
+                  {treinamento.dataValidade?.slice(0, 10)}
+                  <Badge color={situacao.cor} appearance="tint" style={{ marginLeft: 8 }}>
+                    {situacao.texto}
                   </Badge>
-                )}
-              </TableCell>
-              <TableCell>{treinamento.numeroCertificado}</TableCell>
-              <TableCell>
-                <Button
-                  appearance="subtle"
-                  icon={<Delete24Regular />}
-                  onClick={() => excluir(treinamento.id)}
-                  aria-label="Excluir"
-                />
-              </TableCell>
-            </TableRow>
-          ))}
+                </TableCell>
+                <TableCell>{treinamento.numeroCertificado}</TableCell>
+                <TableCell>
+                  <div style={{ display: 'flex', gap: 4 }}>
+                    <Button
+                      appearance="subtle"
+                      icon={<Signature24Regular />}
+                      onClick={() => navigate(`/treinamentos/${treinamento.id}/assinar`)}
+                      aria-label="Assinar certificado"
+                      title="Assinar certificado"
+                    />
+                    <Button
+                      appearance="subtle"
+                      icon={<ArrowDownload24Regular />}
+                      onClick={() => baixarCertificado(treinamento.id)}
+                      disabled={baixandoId === treinamento.id}
+                      aria-label="Baixar certificado"
+                      title="Baixar certificado em PDF"
+                    />
+                    <Button
+                      appearance="subtle"
+                      icon={<Delete24Regular />}
+                      onClick={() => excluir(treinamento.id)}
+                      aria-label="Excluir"
+                    />
+                  </div>
+                </TableCell>
+              </TableRow>
+            );
+          })}
         </TableBody>
       </Table>
+      )}
+
+      {assinaturaAberta && (
+        <AssinaturaCertificadoTreinamentoDialog
+          open
+          onClose={() => setAssinaturaAberta(null)}
+          treinamentoId={assinaturaAberta.treinamentoId}
+          cursoNome={assinaturaAberta.cursoNome}
+          dataRealizacao={assinaturaAberta.dataRealizacao}
+          cargaHorariaRealizada={assinaturaAberta.cargaHorariaRealizada}
+        />
+      )}
     </div>
   );
 }

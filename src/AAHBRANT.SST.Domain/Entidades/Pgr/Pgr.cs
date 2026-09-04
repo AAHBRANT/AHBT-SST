@@ -23,6 +23,11 @@ public class Pgr : AuditableEntity
     public DateTime DataElaboracao { get; set; }
     public DateTime? DataProximaRevisao { get; set; }
 
+    // Fim da vigência do programa (tabela "Vigência do Programa" do documento: Início / Revisão
+    // Sugerida / Término) — distinto de DataProximaRevisao: gera o alerta "PGR vencido", enquanto
+    // DataProximaRevisao gera o alerta separado "Revisão do PGR sugerida" (pedido do usuário, 02/09).
+    public DateTime? DataTermino { get; set; }
+
     // Guid? (não Guid): a tabela Usuarios ainda não tem provisionamento real (Entra ID/SSO
     // pendente, Fase A) — mesmo motivo pelo qual Risco.ResponsavelUsuarioId (§14) já é nulável.
     public Guid? ResponsavelUsuarioId { get; set; }

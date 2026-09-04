@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Tab, TabList, Text, type SelectTabData, type SelectTabEvent } from '@fluentui/react-components';
-import { usePillTabStyles } from '../pageStyles';
+import { usePillTabStyles, useSubTabStyles } from '../pageStyles';
 import { CatalogoTab } from './CatalogoTab';
 import { EntregasTab } from './EntregasTab';
 import { EstoqueTab } from './EstoqueTab';
@@ -13,17 +13,21 @@ type AbaEpi = 'catalogo' | 'entregas' | 'estoque' | 'matriz';
 // não pessoal, então não seguem a convenção "vira aba no perfil da pessoa" (ver EntregasEpiTab.tsx em
 // Pessoas, que ficou só como histórico somente-leitura apontando para cá). A matriz de EPI por função
 // fica aqui (não em Operação → Pessoas → Funções) por ser conceitualmente parte do módulo EPI.
-export function EpiPage() {
+export function EpiPage({ mostrarTitulo = true }: { mostrarTitulo?: boolean } = {}) {
   const [aba, setAba] = useState<AbaEpi>('entregas');
-  const estilosAba = usePillTabStyles();
+  const estilosPillTab = usePillTabStyles();
+  const estilosSubTab = useSubTabStyles();
+  const estilosAba = mostrarTitulo ? estilosPillTab : estilosSubTab;
 
   return (
     <div>
-      <div style={{ marginBottom: 16 }}>
-        <Text size={500} weight="semibold">
-          EPI — Equipamentos de Proteção Individual
-        </Text>
-      </div>
+      {mostrarTitulo && (
+        <div style={{ marginBottom: 16 }}>
+          <Text size={500} weight="semibold">
+            EPI — Equipamentos de Proteção Individual
+          </Text>
+        </div>
+      )}
 
       <TabList
         selectedValue={aba}

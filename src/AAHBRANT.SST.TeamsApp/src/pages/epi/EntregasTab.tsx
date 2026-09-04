@@ -14,6 +14,7 @@ import {
   TableRow,
   Text,
 } from '@fluentui/react-components';
+import { CampoData } from '../../components/CampoData';
 import { Add24Regular, ArrowDownload24Regular, Signature24Regular } from '@fluentui/react-icons';
 import {
   api,
@@ -21,6 +22,7 @@ import {
   MotivoEntregaEpi,
   type AtualizarEntregaEpi,
   type CatalogoEpi,
+  type CursoTreinamento,
   type EntregaEpi,
   type NovaEntregaEpi,
   type Trabalhador,
@@ -28,6 +30,7 @@ import {
 import { AssinaturaEntregaEpiDialog } from '../../components/assinatura/AssinaturaEntregaEpiDialog';
 import { AssinaturaDevolucaoEpiDialog } from '../../components/assinatura/AssinaturaDevolucaoEpiDialog';
 import { usePageStyles } from '../pageStyles';
+import { FotoCatalogoEpi } from './FotoCatalogoEpi';
 
 function entregaVazia(): NovaEntregaEpi {
   return {
@@ -50,6 +53,12 @@ function entregaVazia(): NovaEntregaEpi {
 // ficha em PDF e atalho para a assinatura eletrônica (AssinarEntregaEpiPage). O bloqueio de
 // estoque insuficiente / CA vencido acontece no backend (CriarEntregaEpiCommand); o erro retornado
 // é exibido como veio, mesmo padrão já usado em todo o resto do frontend (ver api.ts request()).
+// "NR-06"/"NR-6"/"NR 06" etc. — compara só o número, não o formato exato do texto cadastrado no
+// curso (ver CursoTreinamento.normaReferencia, campo livre).
+function ehNormaNr6(normaReferencia?: string | null): boolean {
+  return (normaReferencia ?? '').replace(/\D/g, '') === '6';
+}
+
 interface EntregasTabProps {
   aoNavegarParaMatriz: () => void;
 }
@@ -61,6 +70,7 @@ export function EntregasTab({ aoNavegarParaMatriz }: EntregasTabProps) {
   const [epis, setEpis] = useState<CatalogoEpi[]>([]);
   const [episPermitidos, setEpisPermitidos] = useState<CatalogoEpi[]>([]);
   const [trabalhadores, setTrabalhadores] = useState<Trabalhador[]>([]);
+  const [cursos, setCursos] = useState<CursoTreinamento[]>([]);
   const [novaEntrega, setNovaEntrega] = useState<NovaEntregaEpi>(entregaVazia());
   const [erro, setErro] = useState<string | null>(null);
   const [carregando, setCarregando] = useState(false);
@@ -89,7 +99,42 @@ export function EntregasTab({ aoNavegarParaMatriz }: EntregasTabProps) {
 
   useEffect(() => {
     carregar();
+    api.cursosTreinamento.listar().then(setCursos).catch(() => setCursos([]));
   }, []);
+
+  // Pedido do usuário (03/09): não faz sentido digitar manualmente o nº da lista de presença e a
+  // data do treinamento de NR-06 se o funcionário já tem esse treinamento cadastrado no módulo de
+  // Treinamentos — busca automaticamente o mais recente ao trocar de funcionário (o usuário ainda
+  // pode sobrescrever os campos à mão, ex.: quando o treinamento ainda não foi cadastrado no sistema).
+  useEffect(() => {
+    let cancelado = false;
+    async function preencherDadosNr6() {
+      if (!novaEntrega.trabalhadorId) return;
+      try {
+        const treinamentosTrabalhador = await api.treinamentos.listar(novaEntrega.trabalhadorId);
+        if (cancelado) return;
+        const treinamentoNr6 = treinamentosTrabalhador
+          .filter((t) => ehNormaNr6(cursos.find((c) => c.id === t.cursoTreinamentoId)?.normaReferencia))
+          .sort((a, b) => b.dataRealizacao.localeCompare(a.dataRealizacao))[0];
+        if (!treinamentoNr6) return;
+        setNovaEntrega((atual) =>
+          atual.trabalhadorId === treinamentoNr6.trabalhadorId
+            ? {
+                ...atual,
+                numeroListaPresencaNr6: treinamentoNr6.numeroCertificado ?? '',
+                dataTreinamentoNr6: treinamentoNr6.dataRealizacao.slice(0, 10),
+              }
+            : atual,
+        );
+      } catch {
+        // Falha ao buscar o treinamento não impede o preenchimento manual dos campos.
+      }
+    }
+    preencherDadosNr6();
+    return () => {
+      cancelado = true;
+    };
+  }, [novaEntrega.trabalhadorId, cursos]);
 
   useEffect(() => {
     let cancelado = false;
@@ -116,6 +161,10 @@ export function EntregasTab({ aoNavegarParaMatriz }: EntregasTabProps) {
     return epis.find((e) => e.id === id)?.nome ?? id;
   }
 
+  function epiTemFoto(id: string) {
+    return epis.find((e) => e.id === id)?.temFoto ?? false;
+  }
+
   function nomeTrabalhador(id: string) {
     return trabalhadores.find((t) => t.id === id)?.nome ?? id;
   }
@@ -131,7 +180,7 @@ export function EntregasTab({ aoNavegarParaMatriz }: EntregasTabProps) {
 
   async function criar() {
     if (!novaEntrega.trabalhadorId || !novaEntrega.catalogoEpiId || !novaEntrega.dataEntrega || novaEntrega.quantidade < 1) {
-      setErro('Preencha trabalhador, EPI, data de entrega e quantidade.');
+      setErro('Preencha funcionário, EPI, data de entrega e quantidade.');
       return;
     }
     try {
@@ -210,106 +259,138 @@ export function EntregasTab({ aoNavegarParaMatriz }: EntregasTabProps) {
 
         {erro && <Text className={estilos.erro}>{erro}</Text>}
 
-        <div className={estilos.form}>
-          <Field label="Trabalhador">
-            <Select
-              value={novaEntrega.trabalhadorId}
-              onChange={(_, d) => setNovaEntrega({ ...novaEntrega, trabalhadorId: d.value, catalogoEpiId: '' })}
-            >
-              <option value="">Selecione</option>
-              {trabalhadores.map((t) => (
-                <option key={t.id} value={t.id}>
-                  {t.nome} ({t.matricula})
-                </option>
-              ))}
-            </Select>
-          </Field>
-          <Field label="EPI">
-            <Select
-              value={novaEntrega.catalogoEpiId}
-              onChange={(_, d) => setNovaEntrega({ ...novaEntrega, catalogoEpiId: d.value })}
-              disabled={!novaEntrega.trabalhadorId || episPermitidos.length === 0}
-            >
-              <option value="">Selecione</option>
-              {episPermitidos.map((e) => (
-                <option key={e.id} value={e.id}>
-                  {e.nome} (estoque total: {e.saldoTotal})
-                </option>
-              ))}
-            </Select>
-            {novaEntrega.trabalhadorId && episPermitidos.length === 0 && (
-              <Text size={200}>
-                Esta função não tem EPIs cadastrados na matriz.{' '}
-                <Button appearance="transparent" size="small" onClick={aoNavegarParaMatriz}>
-                  Cadastrar em Matriz de EPI por Função
-                </Button>
-              </Text>
-            )}
-          </Field>
-          <Field label="Quantidade">
-            <Input
-              type="number"
-              value={String(novaEntrega.quantidade)}
-              onChange={(_, d) => setNovaEntrega({ ...novaEntrega, quantidade: Number(d.value) })}
-            />
-          </Field>
-          <Field label="Data de entrega">
-            <Input
-              type="date"
-              value={novaEntrega.dataEntrega}
-              onChange={(_, d) => setNovaEntrega({ ...novaEntrega, dataEntrega: d.value })}
-            />
-          </Field>
-          <Field label="Validade">
-            <Input
-              type="date"
-              value={novaEntrega.dataValidade ?? ''}
-              onChange={(_, d) => setNovaEntrega({ ...novaEntrega, dataValidade: d.value })}
-            />
-          </Field>
-          <Field label="Motivo">
-            <Select
-              value={novaEntrega.motivoTipo}
-              onChange={(_, d) => setNovaEntrega({ ...novaEntrega, motivoTipo: Number(d.value) })}
-            >
-              {Object.entries(motivoEntregaEpiLabel).map(([valor, rotulo]) => (
-                <option key={valor} value={valor}>
-                  {rotulo}
-                </option>
-              ))}
-            </Select>
-          </Field>
-          <Field label="Nº lista de presença (NR-6)">
-            <Input
-              value={novaEntrega.numeroListaPresencaNr6 ?? ''}
-              onChange={(_, d) => setNovaEntrega({ ...novaEntrega, numeroListaPresencaNr6: d.value })}
-            />
-          </Field>
-          <Field label="Data do treinamento (NR-6)">
-            <Input
-              type="date"
-              value={novaEntrega.dataTreinamentoNr6 ?? ''}
-              onChange={(_, d) => setNovaEntrega({ ...novaEntrega, dataTreinamentoNr6: d.value })}
-            />
-          </Field>
-          <Field label="Visto do consórcio/responsável">
-            <Input
-              value={novaEntrega.vistoConsorcioResponsavel ?? ''}
-              onChange={(_, d) => setNovaEntrega({ ...novaEntrega, vistoConsorcioResponsavel: d.value })}
-            />
-          </Field>
-          <Field label="Observação do motivo (opcional)">
-            <Input
-              value={novaEntrega.motivo ?? ''}
-              onChange={(_, d) => setNovaEntrega({ ...novaEntrega, motivo: d.value })}
-            />
-          </Field>
-          <Field label="Observações">
-            <Input
-              value={novaEntrega.observacoes ?? ''}
-              onChange={(_, d) => setNovaEntrega({ ...novaEntrega, observacoes: d.value })}
-            />
-          </Field>
+        <div className={`${estilos.sectionTitle} ${estilos.sectionTitleFirst}`}>Dados da Entrega</div>
+        <div className={estilos.formGrid}>
+          <div className={estilos.col4}>
+            <Field label="Funcionário">
+              <Select
+                value={novaEntrega.trabalhadorId}
+                onChange={(_, d) =>
+                  setNovaEntrega({
+                    ...novaEntrega,
+                    trabalhadorId: d.value,
+                    catalogoEpiId: '',
+                    numeroListaPresencaNr6: '',
+                    dataTreinamentoNr6: '',
+                  })
+                }
+              >
+                <option value="">Selecione</option>
+                {trabalhadores.map((t) => (
+                  <option key={t.id} value={t.id}>
+                    {t.nome} ({t.matricula})
+                  </option>
+                ))}
+              </Select>
+            </Field>
+          </div>
+          <div className={estilos.col4}>
+            <Field label="EPI">
+              <Select
+                value={novaEntrega.catalogoEpiId}
+                onChange={(_, d) => setNovaEntrega({ ...novaEntrega, catalogoEpiId: d.value })}
+                disabled={!novaEntrega.trabalhadorId || episPermitidos.length === 0}
+              >
+                <option value="">Selecione</option>
+                {episPermitidos.map((e) => (
+                  <option key={e.id} value={e.id}>
+                    {e.nome} (estoque total: {e.saldoTotal})
+                  </option>
+                ))}
+              </Select>
+              {novaEntrega.trabalhadorId && episPermitidos.length === 0 && (
+                <Text size={200}>
+                  Esta função não tem EPIs cadastrados na matriz.{' '}
+                  <Button appearance="transparent" size="small" onClick={aoNavegarParaMatriz}>
+                    Cadastrar em Matriz de EPI por Função
+                  </Button>
+                </Text>
+              )}
+            </Field>
+          </div>
+          <div className={estilos.col2}>
+            <Field label="Quantidade">
+              <Input
+                type="number"
+                value={String(novaEntrega.quantidade)}
+                onChange={(_, d) => setNovaEntrega({ ...novaEntrega, quantidade: Number(d.value) })}
+              />
+            </Field>
+          </div>
+          <div className={estilos.col2}>
+            <Field label="Data de entrega">
+              <CampoData
+                value={novaEntrega.dataEntrega}
+                onChange={(_, d) => setNovaEntrega({ ...novaEntrega, dataEntrega: d.value })}
+              />
+            </Field>
+          </div>
+          <div className={estilos.col3}>
+            <Field label="Validade">
+              <CampoData
+                value={novaEntrega.dataValidade ?? ''}
+                onChange={(_, d) => setNovaEntrega({ ...novaEntrega, dataValidade: d.value })}
+              />
+            </Field>
+          </div>
+          <div className={estilos.col3}>
+            <Field label="Motivo">
+              <Select
+                value={novaEntrega.motivoTipo}
+                onChange={(_, d) => setNovaEntrega({ ...novaEntrega, motivoTipo: Number(d.value) })}
+              >
+                {Object.entries(motivoEntregaEpiLabel).map(([valor, rotulo]) => (
+                  <option key={valor} value={valor}>
+                    {rotulo}
+                  </option>
+                ))}
+              </Select>
+            </Field>
+          </div>
+        </div>
+
+        <div className={estilos.sectionTitle}>Documentação (NR-6) e Observações</div>
+        <div className={estilos.formGrid}>
+          <div className={estilos.col3}>
+            <Field label="Nº lista de presença (NR-6)" hint="Preenchido automaticamente do treinamento de NR-06 cadastrado, se houver — pode editar.">
+              <Input
+                value={novaEntrega.numeroListaPresencaNr6 ?? ''}
+                onChange={(_, d) => setNovaEntrega({ ...novaEntrega, numeroListaPresencaNr6: d.value })}
+              />
+            </Field>
+          </div>
+          <div className={estilos.col3}>
+            <Field label="Data do treinamento (NR-6)">
+              <CampoData
+                value={novaEntrega.dataTreinamentoNr6 ?? ''}
+                onChange={(_, d) => setNovaEntrega({ ...novaEntrega, dataTreinamentoNr6: d.value })}
+              />
+            </Field>
+          </div>
+          <div className={estilos.col3}>
+            <Field label="Visto do consórcio/responsável">
+              <Input
+                value={novaEntrega.vistoConsorcioResponsavel ?? ''}
+                onChange={(_, d) => setNovaEntrega({ ...novaEntrega, vistoConsorcioResponsavel: d.value })}
+              />
+            </Field>
+          </div>
+          <div className={estilos.col6}>
+            <Field label="Observação do motivo (opcional)">
+              <Input
+                value={novaEntrega.motivo ?? ''}
+                onChange={(_, d) => setNovaEntrega({ ...novaEntrega, motivo: d.value })}
+              />
+            </Field>
+          </div>
+          <div className={estilos.col6}>
+            <Field label="Observações">
+              <Input
+                value={novaEntrega.observacoes ?? ''}
+                onChange={(_, d) => setNovaEntrega({ ...novaEntrega, observacoes: d.value })}
+              />
+            </Field>
+          </div>
         </div>
         <div className={estilos.formActions}>
           <Button appearance="primary" icon={<Add24Regular />} onClick={criar} disabled={carregando}>
@@ -323,10 +404,10 @@ export function EntregasTab({ aoNavegarParaMatriz }: EntregasTabProps) {
           <Text weight="semibold">Entregas registradas</Text>
         </div>
 
-        <Table>
+        <Table noNativeElements>
           <TableHeader>
             <TableRow>
-              <TableHeaderCell>Trabalhador</TableHeaderCell>
+              <TableHeaderCell>Funcionário</TableHeaderCell>
               <TableHeaderCell>EPI</TableHeaderCell>
               <TableHeaderCell>Qtd.</TableHeaderCell>
               <TableHeaderCell>Entrega</TableHeaderCell>
@@ -339,7 +420,16 @@ export function EntregasTab({ aoNavegarParaMatriz }: EntregasTabProps) {
             {entregas.map((entrega) => (
               <TableRow key={entrega.id}>
                 <TableCell>{nomeTrabalhador(entrega.trabalhadorId)}</TableCell>
-                <TableCell>{nomeEpi(entrega.catalogoEpiId)}</TableCell>
+                <TableCell>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                    <FotoCatalogoEpi
+                      catalogoEpiId={entrega.catalogoEpiId}
+                      temFoto={epiTemFoto(entrega.catalogoEpiId)}
+                      tamanho={28}
+                    />
+                    {nomeEpi(entrega.catalogoEpiId)}
+                  </div>
+                </TableCell>
                 <TableCell>{entrega.quantidade}</TableCell>
                 <TableCell>{entrega.dataEntrega?.slice(0, 10)}</TableCell>
                 <TableCell>
@@ -353,8 +443,7 @@ export function EntregasTab({ aoNavegarParaMatriz }: EntregasTabProps) {
                 <TableCell>
                   {devolucaoId === entrega.id ? (
                     <div style={{ display: 'flex', gap: 4, alignItems: 'center' }}>
-                      <Input
-                        type="date"
+                      <CampoData
                         value={devolucaoData}
                         onChange={(_, d) => setDevolucaoData(d.value)}
                         style={{ width: 130 }}
@@ -391,8 +480,8 @@ export function EntregasTab({ aoNavegarParaMatriz }: EntregasTabProps) {
                       icon={<ArrowDownload24Regular />}
                       onClick={() => baixarFicha(entrega.trabalhadorId)}
                       disabled={baixandoId === entrega.trabalhadorId}
-                      aria-label="Baixar ficha do trabalhador"
-                      title="Baixar ficha de EPI do trabalhador em PDF"
+                      aria-label="Baixar ficha do funcionário"
+                      title="Baixar ficha de EPI do funcionário em PDF"
                     />
                   </div>
                 </TableCell>
@@ -410,6 +499,8 @@ export function EntregasTab({ aoNavegarParaMatriz }: EntregasTabProps) {
           obraId={obraIdTrabalhador(entregaParaAssinar.trabalhadorId)}
           trabalhadorNome={nomeTrabalhador(entregaParaAssinar.trabalhadorId)}
           epiNome={nomeEpi(entregaParaAssinar.catalogoEpiId)}
+          catalogoEpiId={entregaParaAssinar.catalogoEpiId}
+          epiTemFoto={epiTemFoto(entregaParaAssinar.catalogoEpiId)}
           quantidade={entregaParaAssinar.quantidade}
           dataEntrega={entregaParaAssinar.dataEntrega}
           numeroListaPresencaNr6={entregaParaAssinar.numeroListaPresencaNr6}

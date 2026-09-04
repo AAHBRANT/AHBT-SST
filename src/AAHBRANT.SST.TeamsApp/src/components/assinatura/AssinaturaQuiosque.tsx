@@ -108,6 +108,11 @@ export function AssinaturaQuiosque({ entidadeTipo, entidadeId, obraId }: Assinat
     }
   }
 
+  // Pedido do usuário (01/09): Patrulha de Segurança/Inspeção aceita só 1 assinatura (o backend já
+  // rejeita uma segunda em IRegistradorAssinaturaService — isso aqui é só a UI não deixar tentar de
+  // novo). Outros documentos (DDS, PT, EPI) continuam com quantas assinaturas forem necessárias.
+  const assinaturaUnicaConcluida = entidadeTipo === 'Inspecao' && (documento?.signatarios.length ?? 0) > 0;
+
   async function assinarComFacial(arquivo: File) {
     if (!documento) return;
     try {
@@ -131,7 +136,17 @@ export function AssinaturaQuiosque({ entidadeTipo, entidadeId, obraId }: Assinat
     <div>
       {erro && <Text className={estilos.erro}>{erro}</Text>}
 
-      {agenteLocalDisponivel && dispositivoLocal ? (
+      {assinaturaUnicaConcluida ? (
+        <div className={estilos.card} style={{ marginBottom: 16, maxWidth: 480 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            <Checkmark24Filled style={{ color: tokens.colorPaletteGreenForeground1 }} />
+            <Text weight="semibold">Inspeção assinada</Text>
+          </div>
+          <Text style={{ display: 'block', marginTop: 8 }}>
+            A Patrulha de Segurança aceita apenas uma assinatura, já registrada abaixo.
+          </Text>
+        </div>
+      ) : agenteLocalDisponivel && dispositivoLocal ? (
         <div className={estilos.card} style={{ marginBottom: 16, maxWidth: 480 }}>
           <Text weight="semibold" style={{ display: 'block', marginBottom: 12 }}>
             Digital (leitor local — Futronic FS80H)
@@ -165,23 +180,25 @@ export function AssinaturaQuiosque({ entidadeTipo, entidadeId, obraId }: Assinat
         </div>
       )}
 
-      <div className={estilos.card} style={{ marginBottom: 16, maxWidth: 480 }}>
-        <Text weight="semibold" style={{ display: 'block', marginBottom: 12 }}>
-          Reconhecimento Facial (Azure)
-        </Text>
-        {pendenteFacial && (
-          <Text style={{ display: 'block', marginBottom: 8 }}>
-            Sem internet — a foto foi salva neste dispositivo e será verificada assim que a conexão voltar.
+      {!assinaturaUnicaConcluida && (
+        <div className={estilos.card} style={{ marginBottom: 16, maxWidth: 480 }}>
+          <Text weight="semibold" style={{ display: 'block', marginBottom: 12 }}>
+            Reconhecimento Facial (Azure)
           </Text>
-        )}
-        <SeletorFotoCamera aoSelecionarArquivo={assinarComFacial} rotulo="Assinar com reconhecimento facial" desabilitado={!documento} />
-      </div>
+          {pendenteFacial && (
+            <Text style={{ display: 'block', marginBottom: 8 }}>
+              Sem internet — a foto foi salva neste dispositivo e será verificada assim que a conexão voltar.
+            </Text>
+          )}
+          <SeletorFotoCamera aoSelecionarArquivo={assinarComFacial} rotulo="Assinar com reconhecimento facial" desabilitado={!documento} />
+        </div>
+      )}
 
       <div className={estilos.card}>
         <div className={estilos.toolbar}>
           <Text weight="semibold">Assinaturas registradas ({documento?.signatarios.length ?? 0})</Text>
         </div>
-        <Table>
+        <Table noNativeElements>
           <TableHeader>
             <TableRow>
               <TableHeaderCell>Nome</TableHeaderCell>

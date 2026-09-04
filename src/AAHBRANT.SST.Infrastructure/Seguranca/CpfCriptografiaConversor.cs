@@ -66,15 +66,27 @@ public class CpfCriptografiaConversor : ValueConverter<string, string>
         if (chave.Length == 0)
             throw new InvalidOperationException("Chave de criptografia do CPF não configurada (Lgpd:ChaveCriptografiaCpfBase64).");
 
-        var bytes = Convert.FromBase64String(cpfCifrado);
-        var nonce = bytes[..TamanhoNonce];
-        var tag = bytes[^TamanhoTag..];
-        var cifrado = bytes[TamanhoNonce..^TamanhoTag];
-        var textoPlano = new byte[cifrado.Length];
+        try
+        {
+            var bytes = Convert.FromBase64String(cpfCifrado);
+            var nonce = bytes[..TamanhoNonce];
+            var tag = bytes[^TamanhoTag..];
+            var cifrado = bytes[TamanhoNonce..^TamanhoTag];
+            var textoPlano = new byte[cifrado.Length];
 
-        using var aesGcm = new AesGcm(chave, TamanhoTag);
-        aesGcm.Decrypt(nonce, cifrado, tag, textoPlano);
-        return Encoding.UTF8.GetString(textoPlano);
+            using var aesGcm = new AesGcm(chave, TamanhoTag);
+            aesGcm.Decrypt(nonce, cifrado, tag, textoPlano);
+            return Encoding.UTF8.GetString(textoPlano);
+        }
+        catch (Exception ex) when (ex is CryptographicException or FormatException or ArgumentException)
+        {
+            // Registro cifrado com uma chave diferente da atualmente configurada (ex.: dado de teste
+            // anterior a uma rotação de chave) não pode ser recuperado — sem isso, uma única linha
+            // corrompida derrubaria com 500 qualquer listagem de Trabalhadores da aplicação inteira.
+            Console.Error.WriteLine(
+                $"[LGPD] Falha ao descriptografar CPF (chave divergente ou dado corrompido): {ex.GetType().Name}");
+            return string.Empty;
+        }
     }
 
     // HMAC-SHA256 determinístico (mesmo CPF → mesmo hash sempre), usado só para preservar a unicidade

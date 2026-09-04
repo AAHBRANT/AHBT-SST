@@ -32,9 +32,13 @@ public class ObterInspecaoDetalheQueryHandler : IRequestHandler<ObterInspecaoDet
         var respostasOrdenadas = respostas.OrderBy(r => r.ChecklistModeloItem?.Ordem ?? 0).ToList();
 
         var idsRespostas = respostasOrdenadas.Select(r => r.Id).ToList();
+        // Dictionary<Guid, Guid?> (não Dictionary<Guid, Guid>) é proposital: GetValueOrDefault abaixo
+        // precisa devolver null pra quem não tem Não Conformidade gerada — com Guid não-nullable ele
+        // devolveria Guid.Empty, uma string de GUID zerada só que "verdadeira" no front (o botão
+        // "Ver ocorrência" aparecia em vez de "Gerar ocorrência", apontando pra um Id inexistente).
         var ncPorResposta = await _db.NaoConformidades
             .Where(n => n.InspecaoItemRespostaId != null && idsRespostas.Contains(n.InspecaoItemRespostaId!.Value))
-            .ToDictionaryAsync(n => n.InspecaoItemRespostaId!.Value, n => n.Id, ct);
+            .ToDictionaryAsync(n => n.InspecaoItemRespostaId!.Value, n => (Guid?)n.Id, ct);
 
         return new InspecaoDetalheDto
         {

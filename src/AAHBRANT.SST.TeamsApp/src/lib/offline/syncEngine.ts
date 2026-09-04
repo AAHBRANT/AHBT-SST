@@ -89,6 +89,39 @@ async function lerCorpoErro(response: Response): Promise<string> {
   return response.text().catch(() => '');
 }
 
+// Mesma correção aplicada em lib/api.ts: o backend responde erro como {"erro": "mensagem"} (ou
+// {"title": "..."} num 404 de rota que nem chega a controller) — sem isso, o usuário via
+// "400 Bad Request: {...}" cru em vez da mensagem limpa.
+function extrairMensagemErro(corpo: string, status: number, statusText: string): string {
+  if (corpo) {
+    try {
+      const json = JSON.parse(corpo) as { erro?: string; title?: string };
+      if (typeof json.erro === 'string' && json.erro) return json.erro;
+      if (typeof json.title === 'string' && json.title) return json.title;
+    } catch {
+      // corpo não era JSON — cai no texto bruto abaixo
+    }
+  }
+  return corpo ? `${statusText} (${status}): ${corpo}` : `${statusText} (${status})`;
+}
+
+// Mesma proteção contra corpo não-JSON usada em lib/api.ts: um 200 com HTML (ex.: proxy/ingress
+// devolvendo a página estática do front em vez da API) lançaria um SyntaxError críptico ao passar
+// direto por JSON.parse — aqui vira um Error com o status HTTP, diagnosticável e não confundido
+// com falha de rede por ehErroDeRede.
+function parsearJsonSeguro<T>(texto: string, response: Response): T {
+  if (!texto) {
+    return undefined as T;
+  }
+  try {
+    return JSON.parse(texto) as T;
+  } catch {
+    throw new Error(
+      `Resposta inesperada do servidor (HTTP ${response.status} ${response.statusText}): esperava JSON e recebeu outro tipo de conteúdo.`,
+    );
+  }
+}
+
 async function registrarConflito(url: string, metodo: string, corpoRequisicao: unknown, response: Response) {
   const corpo = await lerCorpoErro(response);
   let mensagem = 'Este registro foi alterado por outra pessoa enquanto você estava offline.';
@@ -130,7 +163,7 @@ export async function syncFetchJson<T>(
 
     if (!response.ok) {
       const corpo = await lerCorpoErro(response);
-      throw new Error(`${response.status} ${response.statusText}: ${corpo}`);
+      throw new Error(extrairMensagemErro(corpo, response.status, response.statusText));
     }
 
     if (response.status === 204) {
@@ -138,8 +171,12 @@ export async function syncFetchJson<T>(
     }
 
     const texto = await response.text();
+    const resultado = parsearJsonSeguro<T>(texto, response);
+    // Só grava no cache depois de validar que é JSON de verdade — cachear um corpo inválido
+    // (ex.: HTML de um proxy com defeito) deixaria essa rota offline quebrada permanentemente,
+    // já que toda leitura offline futura reproduziria o mesmo erro a partir do cache envenenado.
     await offlineDb.cacheJson.put({ url: path, corpoJson: texto, atualizadoEm: Date.now() });
-    return texto ? (JSON.parse(texto) as T) : (undefined as T);
+    return resultado;
   } catch (erro) {
     if (!ehErroDeRede(erro)) {
       throw erro;
@@ -159,7 +196,7 @@ export async function syncFetchBlob(path: string, authHeaders?: Record<string, s
     marcarOnline(true);
     if (!response.ok) {
       const corpo = await lerCorpoErro(response);
-      throw new Error(`${response.status} ${response.statusText}: ${corpo}`);
+      throw new Error(extrairMensagemErro(corpo, response.status, response.statusText));
     }
     const blob = await response.blob();
     await offlineDb.cacheBlob.put({ url: path, blob, atualizadoEm: Date.now() });
@@ -203,14 +240,14 @@ export async function syncMutateJson<T>(
 
       if (!response.ok) {
         const texto = await lerCorpoErro(response);
-        throw new Error(`${response.status} ${response.statusText}: ${texto}`);
+        throw new Error(extrairMensagemErro(texto, response.status, response.statusText));
       }
 
       if (response.status === 204) {
         return undefined as T;
       }
       const texto = await response.text();
-      return texto ? (JSON.parse(texto) as T) : (undefined as T);
+      return parsearJsonSeguro<T>(texto, response);
     } catch (erro) {
       if (!ehErroDeRede(erro)) {
         throw erro;
@@ -258,9 +295,10 @@ export async function syncMutateMultipart<T>(
 
       if (!response.ok) {
         const texto = await lerCorpoErro(response);
-        throw new Error(`${response.status} ${response.statusText}: ${texto}`);
+        throw new Error(extrairMensagemErro(texto, response.status, response.statusText));
       }
-      return (await response.json()) as T;
+      const texto = await response.text();
+      return parsearJsonSeguro<T>(texto, response);
     } catch (erro) {
       if (!ehErroDeRede(erro)) {
         throw erro;

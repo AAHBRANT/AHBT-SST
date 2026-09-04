@@ -26,11 +26,19 @@ public interface IAppDbContext
     DbSet<PcmsoDetalhe> PcmsoDetalhes { get; }
     DbSet<CursoTreinamento> CursosTreinamento { get; }
     DbSet<Treinamento> Treinamentos { get; }
+    DbSet<MatrizTreinamentoFuncao> MatrizTreinamentoFuncoes { get; }
+    DbSet<SessaoTreinamento> SessoesTreinamento { get; }
+    DbSet<ParticipanteSessaoTreinamento> ParticipantesSessaoTreinamento { get; }
+    DbSet<FotoEvidenciaSessaoTreinamento> FotosEvidenciaSessaoTreinamento { get; }
     DbSet<CatalogoEpi> CatalogoEpis { get; }
     DbSet<EntregaEpi> EntregasEpi { get; }
     DbSet<MatrizEpiFuncao> MatrizEpiFuncoes { get; }
     DbSet<EstoqueEpi> EstoquesEpi { get; }
     DbSet<MovimentacaoEstoqueEpi> MovimentacoesEstoqueEpi { get; }
+    DbSet<CatalogoEpc> CatalogoEpcs { get; }
+    DbSet<InstalacaoEpc> InstalacoesEpc { get; }
+    DbSet<EstoqueEpc> EstoquesEpc { get; }
+    DbSet<MovimentacaoEstoqueEpc> MovimentacoesEstoqueEpc { get; }
     DbSet<Alerta> Alertas { get; }
     DbSet<AlertaHistoricoEnvio> AlertaHistoricoEnvios { get; }
     DbSet<RegraAlerta> RegrasAlerta { get; }
@@ -102,7 +110,6 @@ public interface IAppDbContext
     DbSet<RequisitoLegalCriterio> RequisitoLegalCriterios { get; }
     DbSet<ItemQuestionarioAplicabilidade> ItensQuestionarioAplicabilidade { get; }
     DbSet<RespostaQuestionarioAplicabilidade> RespostasQuestionarioAplicabilidade { get; }
-    DbSet<MatrizTreinamentoFuncao> MatrizTreinamentoFuncoes { get; }
 
     DbSet<DimensionamentoCipa> DimensionamentosCipa { get; }
     DbSet<ProcessoEleitoralCipa> ProcessosEleitoraisCipa { get; }
@@ -114,6 +121,8 @@ public interface IAppDbContext
     DbSet<InspecaoCipa> InspecoesCipa { get; }
     DbSet<EventoSipat> EventosSipat { get; }
     DbSet<AtividadeSipat> AtividadesSipat { get; }
+
+    DbSet<ContadorDocumento> ContadoresDocumento { get; }
 
     Task<int> SaveChangesAsync(CancellationToken cancellationToken = default);
 }

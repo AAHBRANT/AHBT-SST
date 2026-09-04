@@ -1,28 +1,30 @@
 import type { ReactNode } from 'react';
 import { useEffect, useState } from 'react';
 import { NavLink, useLocation, useNavigate } from 'react-router-dom';
-import { makeStyles, mergeClasses, Text, Badge, Button, Tooltip } from '@fluentui/react-components';
+import { makeStyles, mergeClasses, Text, Badge, Button, Toaster, Tooltip } from '@fluentui/react-components';
 import {
   Grid24Regular,
   ShieldError24Regular,
   BuildingBank24Regular,
-  Warning24Regular,
   Settings24Regular,
   Alert24Regular,
-  ShieldCheckmark24Regular,
-  DocumentCheckmark24Regular,
-  DocumentError24Regular,
   BriefcaseMedical24Regular,
   People24Regular,
-  CalendarLtr24Regular,
   ChevronLeft24Regular,
   ChevronRight24Regular,
+  Person24Regular,
+  WeatherSunny24Regular,
+  WeatherMoon24Regular,
+  Search24Regular,
 } from '@fluentui/react-icons';
 import { designTokens } from '../theme';
+import { useThemeMode } from '../theme/ThemeModeContext';
 import { useTeamsContext } from '../teams/useTeamsContext';
 import { api, StatusAlerta } from '../lib/api';
 import logoSst from '../assets/logo-sst.png';
 import { SyncStatusBadge } from '../components/SyncStatusBadge';
+import { ID_TOASTER_GLOBAL } from '../lib/toaster';
+import { TrabalhadoresGaveta } from '../pages/pessoas/TrabalhadoresGaveta';
 
 // Rail de navegação (Hub Gênesis SST — design decidido em sessão anterior): faixa fina só com
 // ícones + tooltip ao passar o mouse/focar, no lugar do menu largo com texto. O botão de
@@ -51,7 +53,6 @@ const useStyles = makeStyles({
     gridRow: '1 / span 2',
     gridColumn: '1',
     background: designTokens.colorRailBackground,
-    backdropFilter: 'blur(6px)',
     borderRight: `1px solid ${designTokens.colorRailBorder}`,
     color: designTokens.colorRailInk,
     display: 'flex',
@@ -108,8 +109,8 @@ const useStyles = makeStyles({
   },
   navItemHover: {
     ':hover': {
-      color: designTokens.colorRailInk,
-      backgroundColor: 'rgba(16,163,90,0.14)',
+      color: designTokens.colorNeutralDark,
+      backgroundColor: designTokens.colorNeutralLight,
     },
   },
   navItemActive: {
@@ -117,8 +118,9 @@ const useStyles = makeStyles({
     backgroundColor: designTokens.colorRailActiveBackground,
   },
   navRotulo: {
-    fontSize: '14px',
-    fontWeight: 500,
+    fontSize: '15px',
+    fontWeight: 700,
+    flex: 1,
   },
   navSeparador: {
     width: '28px',
@@ -132,6 +134,20 @@ const useStyles = makeStyles({
   railRodape: {
     marginTop: 'auto',
   },
+  // Administração vem como botão sólido no rodapé, não mais um item de lista igual aos outros —
+  // pedido do usuário (02/09) pra destacar como ação, não como mais um destino de navegação.
+  itemAdministracaoBotao: {
+    width: '100%',
+    height: '48px',
+    borderRadius: '12px',
+    backgroundColor: designTokens.colorAdminButtonBackground,
+    color: designTokens.colorAdminButtonInk,
+    boxShadow: '0 4px 6px rgba(0,0,0,0.3)',
+    ':hover': {
+      backgroundColor: designTokens.colorAdminButtonBackgroundHover,
+      color: designTokens.colorAdminButtonInk,
+    },
+  },
   sinoAlertas: {
     position: 'relative',
   },
@@ -140,10 +156,46 @@ const useStyles = makeStyles({
     top: '-4px',
     right: '-4px',
   },
+  divisorTopbar: {
+    width: '1px',
+    height: '26px',
+    backgroundColor: designTokens.colorCardBorder,
+  },
+  usuarioChip: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: '8px',
+    backgroundColor: 'transparent',
+    border: 'none',
+    padding: '4px 6px 4px 4px',
+    borderRadius: '10px',
+    cursor: 'pointer',
+    ':hover': {
+      backgroundColor: designTokens.colorNeutralLight,
+    },
+  },
+  usuarioNome: {
+    fontSize: '13px',
+    fontWeight: 600,
+    color: designTokens.colorNeutralDark,
+    whiteSpace: 'nowrap',
+  },
+  usuarioAvatar: {
+    width: '32px',
+    height: '32px',
+    borderRadius: '50%',
+    flexShrink: 0,
+    backgroundColor: designTokens.colorNeutralLight,
+    border: `1.5px dashed ${designTokens.colorCardBorder}`,
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    color: designTokens.colorNeutralMedium,
+  },
   header: {
     gridRow: '1',
     gridColumn: '2',
-    backgroundColor: designTokens.colorWhite,
+    backgroundColor: designTokens.colorSurface,
     borderBottom: `1px solid ${designTokens.colorCardBorder}`,
     display: 'flex',
     alignItems: 'center',
@@ -153,7 +205,7 @@ const useStyles = makeStyles({
   content: {
     gridRow: '2',
     gridColumn: '2',
-    backgroundColor: designTokens.colorNeutralLight,
+    backgroundColor: designTokens.colorPageBackground,
     overflowY: 'auto',
     padding: '24px',
   },
@@ -164,59 +216,52 @@ const useStyles = makeStyles({
   },
 });
 
-// Navegação consolidada (pedido do usuário em 24/08, revisada em 26 e 28/08): Dashboard + módulos-
-// pilar (Procedimentos & Planos [ex-Prevenção]/Operação, cada um com abas internas — ver
-// PillarLayout) + itens de 1º nível próprios. Riscos e Pessoas (antes abas de Prevenção/Operação)
-// e Não Conformidades/Acidentes & Incidentes (antes abas do extinto módulo Melhoria Contínua)
-// viraram itens de 1º nível na sidebar, cada um abrindo direto sua tela (que já tem título + abas
-// internas próprias, mesmo padrão de EPI).
-const secoesNavegacao: Array<{ pilar: string | null; itens: Array<{ rota: string; rotulo: string; icone: typeof Grid24Regular }> }> = [
-  { pilar: null, itens: [{ rota: '/', rotulo: 'Dashboard', icone: Grid24Regular }] },
-  // Calendário do Teams dentro do app (requisito do usuário, 2026-08-29) — agenda pessoal, por
-  // isso item de 1º nível próprio (não aba de nenhum pilar), logo depois do Dashboard.
-  { pilar: null, itens: [{ rota: '/calendario', rotulo: 'Calendário', icone: CalendarLtr24Regular }] },
-  { pilar: null, itens: [{ rota: '/prevencao', rotulo: 'Procedimentos & Planos', icone: ShieldError24Regular }] },
-  { pilar: null, itens: [{ rota: '/riscos', rotulo: 'Riscos', icone: Warning24Regular }] },
-  { pilar: null, itens: [{ rota: '/pessoas', rotulo: 'Pessoas', icone: People24Regular }] },
-  { pilar: null, itens: [{ rota: '/operacao', rotulo: 'Operação', icone: BuildingBank24Regular }] },
-  { pilar: null, itens: [{ rota: '/nao-conformidades', rotulo: 'Não Conformidades', icone: DocumentError24Regular }] },
-  { pilar: null, itens: [{ rota: '/acidentes', rotulo: 'Acidentes & Incidentes', icone: BriefcaseMedical24Regular }] },
-  // Módulo de Requisitos Legais — Motor de Aplicabilidade Legal (requisito do usuário, 2026-08-29).
-  { pilar: null, itens: [{ rota: '/requisitos-legais', rotulo: 'Requisitos Legais', icone: DocumentCheckmark24Regular }] },
-  // EPI ficou fora dos módulos-pilar (sidebar fixa própria) por decisão do usuário: catálogo/estoque
-  // e entregas são dado operacional/compartilhado, não pessoal — não caberia como aba de um pilar.
-  { pilar: null, itens: [{ rota: '/epi', rotulo: 'EPI', icone: ShieldCheckmark24Regular }] },
+interface ItemNav {
+  rota: string;
+  rotulo: string;
+}
+
+// Item solto no topo, fora de qualquer módulo — Dashboard não pertence a nenhum pilar. Calendário
+// saiu da sidebar (pedido do usuário, 01/09): virou redundante com o card de mini calendário no
+// Dashboard, que já leva pra /calendario ao clicar — a rota continua existindo.
+const itensAvulsos: Array<ItemNav & { icone: typeof Grid24Regular }> = [
+  { rota: '/', rotulo: 'Dashboard', icone: Grid24Regular },
 ];
 
-// Administração fica fixa no rodapé do rail (mesmo padrão do mockup Hub Gênesis SST).
-const itemAdministracao = { rota: '/administracao', rotulo: 'Administração', icone: Settings24Regular };
+// Reformulação de navegação (pedido do usuário, 02/09, réplica de mockup dark-mode): a gaveta
+// expansível de cada módulo (Gestão de SST/Operação/Pessoas/Ocorrências) virou um item único e
+// direto — os itens que antes ficavam dentro da gaveta viraram abas da página de destino (ver
+// GestaoSstPage/OperacaoPage/PessoasPillarPage/OcorrenciasPage), e as abas que essas páginas de
+// destino já tinham viram sub-abas. A sidebar fica só com os 5 módulos (4 pilares + Administração,
+// fixa no rodapé) e o Dashboard solto no topo.
+const itensPilares: Array<ItemNav & { icone: typeof Grid24Regular }> = [
+  { rota: '/gestao-sst', rotulo: 'Gestão de SST', icone: ShieldError24Regular },
+  { rota: '/operacao', rotulo: 'Operação', icone: BuildingBank24Regular },
+  { rota: '/pessoas', rotulo: 'Pessoas', icone: People24Regular },
+  { rota: '/ocorrencias', rotulo: 'Ocorrências', icone: BriefcaseMedical24Regular },
+];
 
-const itensNavegacaoFlat = [...secoesNavegacao.flatMap((secao) => secao.itens), itemAdministracao];
-
-function tituloDaRota(pathname: string): string {
-  if (pathname === '/alertas') return 'Alertas';
-  if (pathname.startsWith('/prevencao')) return 'Procedimentos & Planos';
-  if (pathname.startsWith('/operacao')) return 'Operação';
-  if (pathname.startsWith('/riscos')) return 'Riscos';
-  if (pathname.startsWith('/pessoas')) return 'Pessoas';
-  if (pathname.startsWith('/nao-conformidades')) return 'Não Conformidades';
-  if (pathname.startsWith('/acidentes')) return 'Acidentes & Incidentes';
-  if (pathname.startsWith('/requisitos-legais')) return 'Requisitos Legais';
-  if (pathname.startsWith('/epi')) return 'EPI';
-  const item = itensNavegacaoFlat.find((i) => i.rota === pathname);
-  return item?.rotulo ?? 'AAHBRANT SST';
-}
+// Administração fica fixa no rodapé do rail (mesmo padrão do mockup Hub Gênesis SST) — item único,
+// não módulo: Obras/Controle de Acesso/Configurações/Trilha de Auditoria/Assinaturas são abas
+// internas de AdministracaoPage em vez de destinos separados na sidebar (pedido do usuário, 01/09).
+const itemAdministracao: ItemNav & { icone: typeof Grid24Regular } = {
+  rota: '/administracao',
+  rotulo: 'Administração',
+  icone: Settings24Regular,
+};
 
 function ItemRail({
   rota,
   rotulo,
   icone: Icone,
   expandido,
+  destaque,
 }: {
   rota: string;
   rotulo: string;
   icone: typeof Grid24Regular;
   expandido: boolean;
+  destaque?: boolean;
 }) {
   const estilos = useStyles();
   const link = (
@@ -229,7 +274,8 @@ function ItemRail({
           estilos.navItem,
           expandido && estilos.navItemExpandido,
           !isActive && estilos.navItemHover,
-          isActive && estilos.navItemActive,
+          isActive && !destaque && estilos.navItemActive,
+          destaque && estilos.itemAdministracaoBotao,
         )
       }
     >
@@ -249,8 +295,14 @@ export function AppShell({ children }: { children: ReactNode }) {
   const estilos = useStyles();
   const location = useLocation();
   const navigate = useNavigate();
-  const { carregando, dentroDoTeams } = useTeamsContext();
+  const { carregando, dentroDoTeams, contexto } = useTeamsContext();
+  const { modo, alternarModo } = useThemeMode();
+  const nomeUsuario = contexto?.user?.displayName ?? 'Usuário';
   const [alertasAbertos, setAlertasAbertos] = useState<number | null>(null);
+  // Busca rápida de funcionários (pedido do usuário, 03/09) — reconecta TrabalhadoresGaveta, que
+  // já existia pronta (busca por nome/função/obra, foto, status do ASO) mas tinha ficado sem
+  // nenhum ponto de entrada na interface. Fica na topbar pra abrir de qualquer tela do app.
+  const [gavetaFuncionariosAberta, setGavetaFuncionariosAberta] = useState(false);
   const [railExpandido, setRailExpandido] = useState<boolean>(
     () => localStorage.getItem(CHAVE_RAIL_EXPANDIDO) === '1',
   );
@@ -288,25 +340,20 @@ export function AppShell({ children }: { children: ReactNode }) {
             onClick={() => setRailExpandido((atual) => !atual)}
           />
         </div>
-        {secoesNavegacao.map((secao, indice) => (
-          <div key={secao.pilar ?? `sem-pilar-${indice}`} style={{ display: 'contents' }}>
-            {indice > 0 && secao.pilar === null && (
-              <div className={mergeClasses(estilos.navSeparador, railExpandido && estilos.navSeparadorExpandido)} />
-            )}
-            {secao.itens.map((item) => (
-              <ItemRail key={item.rota} {...item} expandido={railExpandido} />
-            ))}
-          </div>
+        {itensAvulsos.map((item) => (
+          <ItemRail key={item.rota} {...item} expandido={railExpandido} />
+        ))}
+        <div className={mergeClasses(estilos.navSeparador, railExpandido && estilos.navSeparadorExpandido)} />
+        {itensPilares.map((item) => (
+          <ItemRail key={item.rota} {...item} expandido={railExpandido} />
         ))}
         <div className={estilos.railRodape}>
-          <ItemRail {...itemAdministracao} expandido={railExpandido} />
+          <ItemRail {...itemAdministracao} expandido={railExpandido} destaque />
         </div>
       </nav>
 
       <header className={estilos.header}>
-        <Text className="brand-title" size={500} weight="semibold">
-          {tituloDaRota(location.pathname)}
-        </Text>
+        <div />
         <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
           <SyncStatusBadge />
           {!carregando && (
@@ -314,6 +361,20 @@ export function AppShell({ children }: { children: ReactNode }) {
               {dentroDoTeams ? 'Executando no Teams' : 'Modo standalone (dev)'}
             </Badge>
           )}
+          <Button
+            appearance="subtle"
+            icon={<Search24Regular />}
+            aria-label="Buscar funcionário"
+            title="Buscar funcionário"
+            onClick={() => setGavetaFuncionariosAberta(true)}
+          />
+          <Button
+            appearance="subtle"
+            icon={modo === 'dark' ? <WeatherSunny24Regular /> : <WeatherMoon24Regular />}
+            aria-label={modo === 'dark' ? 'Mudar para modo claro' : 'Mudar para modo escuro'}
+            title={modo === 'dark' ? 'Modo claro' : 'Modo escuro'}
+            onClick={alternarModo}
+          />
           <div className={estilos.sinoAlertas}>
             <Button
               appearance="subtle"
@@ -328,10 +389,22 @@ export function AppShell({ children }: { children: ReactNode }) {
               </Badge>
             )}
           </div>
+          <div className={estilos.divisorTopbar} />
+          <button className={estilos.usuarioChip} title={nomeUsuario}>
+            <Text className={estilos.usuarioNome}>{nomeUsuario}</Text>
+            <div className={estilos.usuarioAvatar} title="Foto de perfil (em breve)">
+              <Person24Regular fontSize={17} />
+            </div>
+          </button>
         </div>
       </header>
 
       <main className={estilos.content}>{children}</main>
+      <TrabalhadoresGaveta
+        aberta={gavetaFuncionariosAberta}
+        aoFechar={() => setGavetaFuncionariosAberta(false)}
+      />
+      <Toaster toasterId={ID_TOASTER_GLOBAL} />
     </div>
   );
 }

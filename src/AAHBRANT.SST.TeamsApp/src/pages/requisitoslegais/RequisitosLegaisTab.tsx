@@ -31,6 +31,10 @@ import {
   type RequisitoLegalCriterio,
 } from '../../lib/api';
 import { usePageStyles } from '../pageStyles';
+import { useConfirmarExclusao } from '../../hooks/useConfirmarExclusao';
+import { useSucessoToast } from '../../hooks/useSucessoToast';
+import { EstadoVazio } from '../../components/EstadoVazio';
+import { ListaCarregando } from '../../components/ListaCarregando';
 
 function novoInicial(): NovoRequisitoLegal {
   return { norma: '', artigo: '', titulo: '', descricao: '', categoria: 1, fonte: '' };
@@ -52,6 +56,9 @@ export function RequisitosLegaisTab() {
   const [novoCriterio, setNovoCriterio] = useState<CriterioAplicabilidadeInput>(novoCriterioInicial());
   const [erro, setErro] = useState<string | null>(null);
   const [processando, setProcessando] = useState(false);
+  const [carregandoLista, setCarregandoLista] = useState(true);
+  const { confirmar, dialogElement } = useConfirmarExclusao();
+  const sucessoToast = useSucessoToast();
 
   async function carregar() {
     try {
@@ -68,6 +75,8 @@ export function RequisitosLegaisTab() {
       setItensQuestionario(listaItens);
     } catch (e) {
       setErro(e instanceof Error ? e.message : 'Falha ao carregar requisitos legais.');
+    } finally {
+      setCarregandoLista(false);
     }
   }
 
@@ -90,6 +99,7 @@ export function RequisitosLegaisTab() {
       });
       setNovo(novoInicial());
       await carregar();
+      sucessoToast('Requisito legal criado com sucesso.');
     } catch (e) {
       setErro(e instanceof Error ? e.message : 'Falha ao criar requisito legal.');
     } finally {
@@ -98,10 +108,12 @@ export function RequisitosLegaisTab() {
   }
 
   async function excluir(id: string) {
+    if (!(await confirmar('Excluir este requisito legal? Essa ação não pode ser desfeita.'))) return;
     try {
       setErro(null);
       await api.requisitosLegais.excluir(id);
       await carregar();
+      sucessoToast('Requisito legal excluído com sucesso.');
     } catch (e) {
       setErro(e instanceof Error ? e.message : 'Falha ao excluir requisito legal.');
     }
@@ -149,6 +161,7 @@ export function RequisitosLegaisTab() {
         })),
       );
       setExpandidoId(null);
+      sucessoToast('Critérios de aplicabilidade salvos com sucesso.');
     } catch (e) {
       setErro(e instanceof Error ? e.message : 'Falha ao salvar critérios de aplicabilidade.');
     } finally {
@@ -173,6 +186,7 @@ export function RequisitosLegaisTab() {
 
   return (
     <div>
+      {dialogElement}
       {erro && <Text className={estilos.erro}>{erro}</Text>}
 
       <Text size={200} style={{ display: 'block', marginBottom: 12 }}>
@@ -185,31 +199,44 @@ export function RequisitosLegaisTab() {
         <div className={estilos.toolbar}>
           <Text weight="semibold">Novo requisito legal</Text>
         </div>
-        <div className={estilos.form}>
-          <Field label="Norma" required>
-            <Input value={novo.norma} onChange={(_, d) => setNovo({ ...novo, norma: d.value })} placeholder="ex.: NR-35" />
-          </Field>
-          <Field label="Artigo">
-            <Input value={novo.artigo ?? ''} onChange={(_, d) => setNovo({ ...novo, artigo: d.value })} placeholder="ex.: 35.4" />
-          </Field>
-          <Field label="Categoria">
-            <Select value={String(novo.categoria)} onChange={(_, d) => setNovo({ ...novo, categoria: Number(d.value) })}>
-              {Object.entries(categoriaRequisitoLegalLabel).map(([valor, rotulo]) => (
-                <option key={valor} value={valor}>
-                  {rotulo}
-                </option>
-              ))}
-            </Select>
-          </Field>
-          <Field label="Título" required>
-            <Input value={novo.titulo} onChange={(_, d) => setNovo({ ...novo, titulo: d.value })} />
-          </Field>
-          <Field label="Fonte">
-            <Input value={novo.fonte ?? ''} onChange={(_, d) => setNovo({ ...novo, fonte: d.value })} placeholder="link/referência" />
-          </Field>
-          <Field label="Descrição" required style={{ gridColumn: '1 / -1' }}>
-            <Textarea value={novo.descricao} onChange={(_, d) => setNovo({ ...novo, descricao: d.value })} />
-          </Field>
+        <div className={`${estilos.sectionTitle} ${estilos.sectionTitleFirst}`}>Dados do Requisito Legal</div>
+        <div className={estilos.formGrid}>
+          <div className={estilos.col2}>
+            <Field label="Norma" required>
+              <Input value={novo.norma} onChange={(_, d) => setNovo({ ...novo, norma: d.value })} placeholder="ex.: NR-35" />
+            </Field>
+          </div>
+          <div className={estilos.col2}>
+            <Field label="Artigo">
+              <Input value={novo.artigo ?? ''} onChange={(_, d) => setNovo({ ...novo, artigo: d.value })} placeholder="ex.: 35.4" />
+            </Field>
+          </div>
+          <div className={estilos.col3}>
+            <Field label="Categoria">
+              <Select value={String(novo.categoria)} onChange={(_, d) => setNovo({ ...novo, categoria: Number(d.value) })}>
+                {Object.entries(categoriaRequisitoLegalLabel).map(([valor, rotulo]) => (
+                  <option key={valor} value={valor}>
+                    {rotulo}
+                  </option>
+                ))}
+              </Select>
+            </Field>
+          </div>
+          <div className={estilos.col5}>
+            <Field label="Título" required>
+              <Input value={novo.titulo} onChange={(_, d) => setNovo({ ...novo, titulo: d.value })} />
+            </Field>
+          </div>
+          <div className={estilos.col6}>
+            <Field label="Fonte">
+              <Input value={novo.fonte ?? ''} onChange={(_, d) => setNovo({ ...novo, fonte: d.value })} placeholder="link/referência" />
+            </Field>
+          </div>
+          <div className={estilos.col12}>
+            <Field label="Descrição" required>
+              <Textarea value={novo.descricao} onChange={(_, d) => setNovo({ ...novo, descricao: d.value })} />
+            </Field>
+          </div>
         </div>
         <div className={estilos.formActions}>
           <Button appearance="primary" icon={<AddCircle24Regular />} onClick={criar} disabled={processando}>
@@ -218,7 +245,12 @@ export function RequisitosLegaisTab() {
         </div>
       </div>
 
-      <Table>
+      {carregandoLista ? (
+        <ListaCarregando />
+      ) : requisitos.length === 0 ? (
+        <EstadoVazio mensagem="Nenhum requisito legal cadastrado ainda." />
+      ) : (
+      <Table noNativeElements>
         <TableHeader>
           <TableRow>
             <TableHeaderCell>Norma/Artigo</TableHeaderCell>
@@ -378,6 +410,7 @@ export function RequisitosLegaisTab() {
           ))}
         </TableBody>
       </Table>
+      )}
     </div>
   );
 }

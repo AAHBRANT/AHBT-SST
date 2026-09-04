@@ -1,7 +1,15 @@
 import { useEffect, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { Badge, Button, Input, Select, Text, Textarea } from '@fluentui/react-components';
-import { ArrowDownload24Regular, ArrowLeft24Regular, LockClosed24Regular, Save24Regular, Warning24Regular } from '@fluentui/react-icons';
+import { CampoData } from '../../components/CampoData';
+import {
+  ArrowDownload24Regular,
+  ArrowLeft24Regular,
+  LockClosed24Regular,
+  Save24Regular,
+  Signature24Regular,
+  Warning24Regular,
+} from '@fluentui/react-icons';
 import {
   api,
   StatusInspecao,
@@ -274,6 +282,15 @@ export function InspecaoDetalhePage() {
                   Encerrar inspeção
                 </Button>
               )}
+              {inspecao.status === StatusInspecao.Concluida && (
+                <Button
+                  appearance="primary"
+                  icon={<Signature24Regular />}
+                  onClick={() => navigate(`/prevencao/inspecoes/${id}/assinar`)}
+                >
+                  Assinar inspeção
+                </Button>
+              )}
             </div>
           </>
         ) : (
@@ -350,8 +367,7 @@ export function InspecaoDetalhePage() {
                 </div>
                 <div style={{ minWidth: 160 }}>
                   <Text size={200} block style={{ marginBottom: 2 }}>Prazo</Text>
-                  <Input
-                    type="date"
+                  <CampoData
                     value={edicao.prazo}
                     onChange={(_, d) => atualizarEdicao(resposta.id, { prazo: d.value })}
                     disabled={somenteLeitura}
@@ -389,6 +405,7 @@ export function InspecaoDetalhePage() {
                       <SeletorFotoCamera
                         rotulo="Tirar foto"
                         aoSelecionarArquivo={(arquivo) => enviarFoto(resposta.id, arquivo)}
+                        aoErroValidacao={setErro}
                       />
                     )}
                     {resposta.temFoto && (
@@ -412,6 +429,7 @@ export function InspecaoDetalhePage() {
                       <SeletorFotoCamera
                         rotulo="Tirar foto"
                         aoSelecionarArquivo={(arquivo) => enviarFotoDepois(resposta.id, arquivo)}
+                        aoErroValidacao={setErro}
                       />
                     )}
                     {resposta.temFotoDepois && (

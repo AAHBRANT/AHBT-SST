@@ -12,6 +12,7 @@ import {
   TableRow,
   Text,
 } from '@fluentui/react-components';
+import { CampoData } from '../../components/CampoData';
 import { ArrowLeft24Regular } from '@fluentui/react-icons';
 import { api, type EventoSipatDetalhe } from '../../lib/api';
 import { usePageStyles } from '../pageStyles';
@@ -102,22 +103,31 @@ export function EventoSipatDetalhePage() {
             <div className={estilos.toolbar}>
               <Text weight="semibold">Nova atividade/palestra</Text>
             </div>
-            <div className={estilos.form}>
-              <Field label="Data" required>
-                <Input type="date" value={novaAtividade.data} onChange={(_, d) => setNovaAtividade({ ...novaAtividade, data: d.value })} />
-              </Field>
-              <Field label="Horário">
-                <Input value={novaAtividade.horario} onChange={(_, d) => setNovaAtividade({ ...novaAtividade, horario: d.value })} />
-              </Field>
-              <Field label="Tema da palestra" required>
-                <Input
-                  value={novaAtividade.temaPalestra}
-                  onChange={(_, d) => setNovaAtividade({ ...novaAtividade, temaPalestra: d.value })}
-                />
-              </Field>
-              <Field label="Palestrante">
-                <Input value={novaAtividade.palestrante} onChange={(_, d) => setNovaAtividade({ ...novaAtividade, palestrante: d.value })} />
-              </Field>
+            <div className={`${estilos.sectionTitle} ${estilos.sectionTitleFirst}`}>Dados da Atividade</div>
+            <div className={estilos.formGrid}>
+              <div className={estilos.col2}>
+                <Field label="Data" required>
+                  <CampoData value={novaAtividade.data} onChange={(_, d) => setNovaAtividade({ ...novaAtividade, data: d.value })} />
+                </Field>
+              </div>
+              <div className={estilos.col2}>
+                <Field label="Horário">
+                  <Input value={novaAtividade.horario} onChange={(_, d) => setNovaAtividade({ ...novaAtividade, horario: d.value })} />
+                </Field>
+              </div>
+              <div className={estilos.col4}>
+                <Field label="Tema da palestra" required>
+                  <Input
+                    value={novaAtividade.temaPalestra}
+                    onChange={(_, d) => setNovaAtividade({ ...novaAtividade, temaPalestra: d.value })}
+                  />
+                </Field>
+              </div>
+              <div className={estilos.col4}>
+                <Field label="Palestrante">
+                  <Input value={novaAtividade.palestrante} onChange={(_, d) => setNovaAtividade({ ...novaAtividade, palestrante: d.value })} />
+                </Field>
+              </div>
             </div>
             <div className={estilos.formActions}>
               <Button appearance="primary" onClick={criarAtividade} disabled={salvando}>
@@ -130,7 +140,7 @@ export function EventoSipatDetalhePage() {
             <div className={estilos.toolbar}>
               <Text weight="semibold">Programação</Text>
             </div>
-            <Table>
+            <Table noNativeElements>
               <TableHeader>
                 <TableRow>
                   <TableHeaderCell>Data</TableHeaderCell>

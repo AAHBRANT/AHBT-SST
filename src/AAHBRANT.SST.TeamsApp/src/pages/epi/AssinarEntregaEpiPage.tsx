@@ -5,6 +5,7 @@ import { ArrowLeft24Regular } from '@fluentui/react-icons';
 import { api, type CatalogoEpi, type EntregaEpi, type Trabalhador } from '../../lib/api';
 import { usePageStyles } from '../pageStyles';
 import { AssinaturaQuiosque } from '../../components/assinatura/AssinaturaQuiosque';
+import { FotoCatalogoEpi } from './FotoCatalogoEpi';
 
 // Tela de quiosque para a ficha de entrega de EPI, mesmo padrão de AssinarDdsPage.tsx (etapa 14 do
 // Motor de Assinatura Eletrônica): só resolve cabeçalho e navegação; o quiosque em si é o
@@ -44,14 +45,19 @@ export function AssinarEntregaEpiPage() {
       {erro && <Text className={estilos.erro}>{erro}</Text>}
 
       <div className={estilos.card} style={{ marginBottom: 16 }}>
-        <Text size={500} weight="semibold">
-          Assinatura eletrônica — {epi?.nome ?? 'Carregando...'}
-        </Text>
-        {entrega && (
-          <Text style={{ display: 'block', marginTop: 4 }}>
-            Trabalhador: {trabalhador?.nome ?? entrega.trabalhadorId} · Entrega: {entrega.dataEntrega?.slice(0, 10)}
-          </Text>
-        )}
+        <div style={{ display: 'flex', gap: 16, alignItems: 'flex-start' }}>
+          {epi && <FotoCatalogoEpi catalogoEpiId={epi.id} temFoto={epi.temFoto} tamanho={96} />}
+          <div>
+            <Text size={500} weight="semibold">
+              Assinatura eletrônica — {epi?.nome ?? 'Carregando...'}
+            </Text>
+            {entrega && (
+              <Text style={{ display: 'block', marginTop: 4 }}>
+                Funcionário: {trabalhador?.nome ?? entrega.trabalhadorId} · Entrega: {entrega.dataEntrega?.slice(0, 10)}
+              </Text>
+            )}
+          </div>
+        </div>
       </div>
 
       <AssinaturaQuiosque entidadeTipo="EntregaEpi" entidadeId={id} obraId={trabalhador?.obraId ?? ''} />

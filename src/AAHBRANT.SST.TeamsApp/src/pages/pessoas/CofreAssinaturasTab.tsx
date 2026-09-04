@@ -52,9 +52,9 @@ export function CofreAssinaturasTab({ trabalhadorId, assinaturas }: CofreAssinat
         {erro && <Text className={estilos.erro}>{erro}</Text>}
 
         {assinaturas.length === 0 ? (
-          <Text>Nenhuma assinatura registrada para este trabalhador.</Text>
+          <Text>Nenhuma assinatura registrada para este funcionário.</Text>
         ) : (
-          <Table>
+          <Table noNativeElements>
             <TableHeader>
               <TableRow>
                 <TableHeaderCell>Documento</TableHeaderCell>

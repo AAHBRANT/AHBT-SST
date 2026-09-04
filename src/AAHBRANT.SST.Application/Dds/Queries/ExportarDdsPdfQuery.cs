@@ -35,8 +35,10 @@ public class ExportarDdsPdfQueryHandler : IRequestHandler<ExportarDdsPdfQuery, b
         obraLogoConteudo,
         detalhe.Dds.Data,
         detalhe.Dds.ResponsavelUsuarioNome,
-        detalhe.Dds.TopicoPrincipal,
-        detalhe.Dds.AtividadesNomes,
+        detalhe.Dds.TemasAtividades.Select(t => new DdsPdfTemaModelo(
+            t.AtividadeNome, t.PerigoNome, t.PerigoDescricao, t.Consequencia, t.ControlesExistentes, t.ControlesAdicionais)).ToList(),
+        detalhe.Dds.TemaLivreNome,
+        detalhe.Dds.TemaLivreDescricao,
         detalhe.ItensChecklist.Select(i => (i.Descricao, i.Verificado)).ToList(),
         detalhe.Participantes.Select(p => p.TrabalhadorNome).ToList());
 }

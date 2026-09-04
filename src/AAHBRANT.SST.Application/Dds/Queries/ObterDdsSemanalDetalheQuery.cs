@@ -18,7 +18,7 @@ public class ObterDdsSemanalDetalheQueryHandler : IRequestHandler<ObterDdsSemana
             .Include(s => s.Obra)
             .Include(s => s.ResponsavelUsuario)
             .Include(s => s.ResponsavelObraSstUsuario)
-            .Include(s => s.RegistrosDiarios)
+            .Include(s => s.RegistrosDiarios).ThenInclude(d => d.Atividades).ThenInclude(a => a.Atividade)
             .FirstOrDefaultAsync(s => s.Id == request.Id, ct);
         if (semanal is null) return null;
 
@@ -44,7 +44,8 @@ public class ObterDdsSemanalDetalheQueryHandler : IRequestHandler<ObterDdsSemana
                 DiaSemana = data.DayOfWeek,
                 Data = data,
                 DdsId = registroDoDia?.Id,
-                TopicoPrincipal = registroDoDia?.TopicoPrincipal,
+                AtividadesNomes = registroDoDia?.Atividades.Where(a => a.Ativo).OrderBy(a => a.Ordem).Select(a => a.AtividadeNome ?? a.Atividade?.Nome ?? string.Empty).ToList() ?? new(),
+                TemaLivreNome = registroDoDia?.TemaLivreNome,
                 Status = registroDoDia?.Status,
                 TotalFotosEvidencia = registroDoDia is null ? 0 : fotosPorDia.GetValueOrDefault(registroDoDia.Id),
                 TotalParticipantes = registroDoDia is null ? 0 : participantesPorDia.GetValueOrDefault(registroDoDia.Id),

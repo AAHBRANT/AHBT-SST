@@ -287,7 +287,7 @@ export function CalendarioPage() {
             atualizados normalmente.
           </Text>
           {calendario.mensagemErroGraph && (
-            <Text size={200} style={{ color: 'var(--colorNeutralForeground3, #6D6D6D)', display: 'block', marginTop: 4 }}>
+            <Text size={200} style={{ color: designTokens.colorNeutralMedium, display: 'block', marginTop: 4 }}>
               Detalhe técnico: {calendario.mensagemErroGraph}
             </Text>
           )}
@@ -356,7 +356,7 @@ export function CalendarioPage() {
         </Text>
 
         {!carregando && eventosDoDiaSelecionado.length === 0 && (
-          <Text style={{ display: 'block', marginTop: 8, color: 'var(--colorNeutralForeground3, #6D6D6D)' }}>
+          <Text style={{ display: 'block', marginTop: 8, color: designTokens.colorNeutralMedium }}>
             Nenhum evento ou vencimento neste dia.
           </Text>
         )}

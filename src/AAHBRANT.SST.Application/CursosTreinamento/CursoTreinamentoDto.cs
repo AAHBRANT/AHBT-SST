@@ -5,4 +5,5 @@ public record CursoTreinamentoDto(
     string Nome,
     string? NormaReferencia,
     int CargaHorariaMinima,
-    int ValidadeEmMeses);
+    int ValidadeEmMeses,
+    string? ConteudoProgramatico);

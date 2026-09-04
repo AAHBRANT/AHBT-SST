@@ -107,7 +107,13 @@ public enum TipoAlerta
     ExtintorVencendo = 17,
     ExtintorVencido = 18,
     EquipamentoVencendo = 19,
-    EquipamentoVencido = 20
+    EquipamentoVencido = 20,
+    // Pedido do usuário, 02/09: "Vigência do Programa" (Início/Revisão Sugerida/Término) do PGR
+    // ganha alerta próprio — Término vira PgrVencendo/Vencido, Revisão Sugerida vira os dois abaixo.
+    PgrVencendo = 21,
+    PgrVencido = 22,
+    PgrRevisaoVencendo = 23,
+    PgrRevisaoVencida = 24
 }
 
 public enum SeveridadeAlerta
@@ -135,7 +141,8 @@ public enum TipoModuloAlerta
     Equipamento = 8,
     Dds = 9,
     PlanoAcao = 10,
-    Outro = 11
+    Outro = 11,
+    Pgr = 12
 }
 
 public enum StatusAlerta
@@ -196,12 +203,28 @@ public enum StatusPgr
 
 // Não há vocabulário literal para o "status" do PCMSO — mesmo desenho de StatusPgr (proposta
 // própria; avisar o usuário se ele quiser outro fluxo).
+// PENDENTE: StatusPcmso era do PCMSO v1, descontinuado (ver commit "integra Saúde Ocupacional de
+// produção, descontinua PCMSO v1") — não é usado por PcmsoDetalhe. Mantido para não quebrar
+// referências antigas; usar StatusPcmsoDocumento abaixo para o PCMSO atual.
 public enum StatusPcmso
 {
     EmElaboracao = 1,
     Vigente = 2,
     EmRevisao = 3,
     Encerrado = 4
+}
+
+// Reintroduzido escopado ao PCMSO em 2026-09-03 (ver nota em PcmsoDetalhe) — era StatusDocumentoGestao,
+// compartilhado por todo o módulo de Gestão Documental removido em 2026-08-28; mesmos valores/rótulos,
+// porque o frontend (TeamsApp/src/lib/api.ts, StatusPcmsoDocumento) já foi escrito esperando este
+// vocabulário e não pode ser adivinhado de outra forma sem quebrar as telas de PCMSO existentes.
+public enum StatusPcmsoDocumento
+{
+    Rascunho = 1,
+    EmAprovacao = 2,
+    Vigente = 3,
+    Obsoleto = 4,
+    Cancelado = 5
 }
 
 // NTAG.md §2 — identification_tags.type: CHECK (type IN ('NTAG215', 'NTAG213', 'QR_CODE', 'RFID')).
@@ -533,6 +556,13 @@ public enum StatusDds
     Concluido = 2
 }
 
+// Sessão/Turma de Treinamento (04/09) — mesmo vocabulário de StatusDds.
+public enum StatusSessaoTreinamento
+{
+    EmAndamento = 1,
+    Concluida = 2
+}
+
 // Evidência de presença no DDS — a Fase 1 (2026-08-24) previa "assinatura/foto fora do escopo"
 // (ver comentário original em DdsParticipante); trazido para o escopo a pedido do usuário no mesmo
 // dia. Pessoa/DocumentoAssinado preservados só para exibir o histórico de registros anteriores a
@@ -561,18 +591,6 @@ public enum StatusDdsSemanal
 {
     EmAndamento = 1,
     Concluida = 2
-}
-
-// Origem do "Tema do DDS" do dia (documento do usuário tem 1 tema por dia, não 3 — o pedido de
-// "Tema 1/2/3" são 3 formas de PREENCHER esse único tema): as duas primeiras cruzam automaticamente
-// com a 1ª/2ª atividade selecionada para o dia (mesma lógica de "Perigo de maior risco" já usada
-// para TopicoPrincipal, agora escopada a uma atividade só); a terceira é escolha livre do técnico
-// num catálogo pré-cadastrado (CatalogoTemaDds).
-public enum OrigemTemaDds
-{
-    AutomaticoAtividade1 = 1,
-    AutomaticoAtividade2 = 2,
-    Livre = 3
 }
 
 // Motor Central de Alertas + Cadastro de Ativos (requisito do usuário, 2026-08-25): entidade única
@@ -648,6 +666,23 @@ public enum TipoMovimentacaoEstoqueEpi
     SaidaEntrega = 1,
     DevolucaoEntrada = 2,
     AjusteManual = 3,
+}
+
+// EPC (pedido do usuário, 04/09) — mesmo vocabulário de TipoMovimentacaoEstoqueEpi, só que
+// "SaidaInstalacao"/"RetornoRemocao" em vez de "SaidaEntrega"/"DevolucaoEntrada", já que o EPC não é
+// entregue a um funcionário — é instalado/removido de uma Obra.
+public enum TipoMovimentacaoEstoqueEpc
+{
+    EntradaManual = 0,
+    SaidaInstalacao = 1,
+    RetornoRemocao = 2,
+    AjusteManual = 3,
+}
+
+public enum StatusInspecaoEpc
+{
+    Conforme = 1,
+    NaoConforme = 2,
 }
 
 // Motor de Aplicabilidade Legal (requisito do usuário, 2026-08-29) — classifica o requisito legal

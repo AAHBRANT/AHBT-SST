@@ -14,6 +14,7 @@ import {
   Text,
   Textarea,
 } from '@fluentui/react-components';
+import { CampoData } from '../../components/CampoData';
 import { Add24Regular, Delete24Regular, Save24Regular } from '@fluentui/react-icons';
 import {
   api,
@@ -26,6 +27,10 @@ import {
 } from '../../lib/api';
 import { BadgeVencimento } from '../../components/badges/BadgeVencimento';
 import { usePageStyles } from '../pageStyles';
+import { useConfirmarExclusao } from '../../hooks/useConfirmarExclusao';
+import { useSucessoToast } from '../../hooks/useSucessoToast';
+import { EstadoVazio } from '../../components/EstadoVazio';
+import { ListaCarregando } from '../../components/ListaCarregando';
 
 function asoVazio(): NovoAso {
   return {
@@ -58,6 +63,9 @@ export function AsosTab() {
   const [edicao, setEdicao] = useState<Aso | null>(null);
   const [erro, setErro] = useState<string | null>(null);
   const [carregando, setCarregando] = useState(false);
+  const [carregandoLista, setCarregandoLista] = useState(true);
+  const { confirmar, dialogElement } = useConfirmarExclusao();
+  const sucessoToast = useSucessoToast();
 
   async function carregar() {
     try {
@@ -67,6 +75,8 @@ export function AsosTab() {
       setTrabalhadores(listaTrabalhadores);
     } catch (e) {
       setErro(e instanceof Error ? e.message : 'Falha ao carregar ASOs.');
+    } finally {
+      setCarregandoLista(false);
     }
   }
 
@@ -80,7 +90,7 @@ export function AsosTab() {
 
   async function criar() {
     if (!novoAso.trabalhadorId || !novoAso.dataExame || !novoAso.dataValidade) {
-      setErro('Preencha trabalhador, data do exame e validade.');
+      setErro('Preencha funcionário, data do exame e validade.');
       return;
     }
     try {
@@ -89,6 +99,7 @@ export function AsosTab() {
       await api.asos.criar(novoAso);
       setNovoAso(asoVazio());
       await carregar();
+      sucessoToast('ASO registrado com sucesso.');
     } catch (e) {
       setErro(e instanceof Error ? e.message : 'Falha ao criar ASO.');
     } finally {
@@ -110,6 +121,7 @@ export function AsosTab() {
       setEdicaoId(null);
       setEdicao(null);
       await carregar();
+      sucessoToast('ASO atualizado com sucesso.');
     } catch (e) {
       setErro(e instanceof Error ? e.message : 'Falha ao atualizar ASO.');
     } finally {
@@ -118,9 +130,11 @@ export function AsosTab() {
   }
 
   async function excluir(id: string) {
+    if (!(await confirmar('Excluir este ASO? Essa ação não pode ser desfeita.'))) return;
     try {
       await api.asos.excluir(id);
       await carregar();
+      sucessoToast('ASO excluído com sucesso.');
     } catch (e) {
       setErro(e instanceof Error ? e.message : 'Falha ao excluir ASO.');
     }
@@ -128,6 +142,7 @@ export function AsosTab() {
 
   return (
     <div>
+      {dialogElement}
       <div className={estilos.card} style={{ marginBottom: 16 }}>
         <div className={estilos.toolbar}>
           <Text weight="semibold">Novo ASO</Text>
@@ -135,73 +150,88 @@ export function AsosTab() {
 
         {erro && <Text className={estilos.erro}>{erro}</Text>}
 
-        <div className={estilos.form}>
-          <Field label="Trabalhador">
-            <Select
-              value={novoAso.trabalhadorId}
-              onChange={(_, d) => setNovoAso({ ...novoAso, trabalhadorId: d.value })}
-            >
-              <option value="">Selecione</option>
-              {trabalhadores.map((t) => (
-                <option key={t.id} value={t.id}>
-                  {t.nome} ({t.matricula})
-                </option>
-              ))}
-            </Select>
-          </Field>
-          <Field label="Tipo de exame">
-            <Select value={novoAso.tipo} onChange={(_, d) => setNovoAso({ ...novoAso, tipo: Number(d.value) })}>
-              {Object.entries(tipoExameAsoLabel).map(([valor, rotulo]) => (
-                <option key={valor} value={valor}>
-                  {rotulo}
-                </option>
-              ))}
-            </Select>
-          </Field>
-          <Field label="Data do exame">
-            <Input
-              type="date"
-              value={novoAso.dataExame}
-              onChange={(_, d) => setNovoAso({ ...novoAso, dataExame: d.value })}
-            />
-          </Field>
-          <Field label="Validade">
-            <Input
-              type="date"
-              value={novoAso.dataValidade}
-              onChange={(_, d) => setNovoAso({ ...novoAso, dataValidade: d.value })}
-            />
-          </Field>
-          <Field label="Resultado">
-            <Select
-              value={novoAso.resultadoStatus}
-              onChange={(_, d) => setNovoAso({ ...novoAso, resultadoStatus: Number(d.value) })}
-            >
-              {Object.entries(resultadoAsoLabel).map(([valor, rotulo]) => (
-                <option key={valor} value={valor}>
-                  {rotulo}
-                </option>
-              ))}
-            </Select>
-          </Field>
-          <Field label="Médico">
-            <Input
-              value={novoAso.medicoNome ?? ''}
-              onChange={(_, d) => setNovoAso({ ...novoAso, medicoNome: d.value })}
-            />
-          </Field>
-          <Field label="CRM">
-            <Input
-              value={novoAso.medicoCrm ?? ''}
-              onChange={(_, d) => setNovoAso({ ...novoAso, medicoCrm: d.value })}
-            />
-          </Field>
-          <Field label="Observações clínicas">
-            <Textarea
-              value={novoAso.observacoesClinicas ?? ''}
-              onChange={(_, d) => setNovoAso({ ...novoAso, observacoesClinicas: d.value })}
-            />
-          </Field>
+        <div className={`${estilos.sectionTitle} ${estilos.sectionTitleFirst}`}>Dados do Exame</div>
+        <div className={estilos.formGrid}>
+          <div className={estilos.col4}>
+            <Field label="Funcionário">
+              <Select
+                value={novoAso.trabalhadorId}
+                onChange={(_, d) => setNovoAso({ ...novoAso, trabalhadorId: d.value })}
+              >
+                <option value="">Selecione</option>
+                {trabalhadores.map((t) => (
+                  <option key={t.id} value={t.id}>
+                    {t.nome} ({t.matricula})
+                  </option>
+                ))}
+              </Select>
+            </Field>
+          </div>
+          <div className={estilos.col3}>
+            <Field label="Tipo de exame">
+              <Select value={novoAso.tipo} onChange={(_, d) => setNovoAso({ ...novoAso, tipo: Number(d.value) })}>
+                {Object.entries(tipoExameAsoLabel).map(([valor, rotulo]) => (
+                  <option key={valor} value={valor}>
+                    {rotulo}
+                  </option>
+                ))}
+              </Select>
+            </Field>
+          </div>
+          <div className={estilos.col2}>
+            <Field label="Data do exame">
+              <CampoData
+                value={novoAso.dataExame}
+                onChange={(_, d) => setNovoAso({ ...novoAso, dataExame: d.value })}
+              />
+            </Field>
+          </div>
+          <div className={estilos.col2}>
+            <Field label="Validade">
+              <CampoData
+                value={novoAso.dataValidade}
+                onChange={(_, d) => setNovoAso({ ...novoAso, dataValidade: d.value })}
+              />
+            </Field>
+          </div>
+          <div className={estilos.col3}>
+            <Field label="Resultado">
+              <Select
+                value={novoAso.resultadoStatus}
+                onChange={(_, d) => setNovoAso({ ...novoAso, resultadoStatus: Number(d.value) })}
+              >
+                {Object.entries(resultadoAsoLabel).map(([valor, rotulo]) => (
+                  <option key={valor} value={valor}>
+                    {rotulo}
+                  </option>
+                ))}
+              </Select>
+            </Field>
+          </div>
+          <div className={estilos.col3}>
+            <Field label="Médico">
+              <Input
+                value={novoAso.medicoNome ?? ''}
+                onChange={(_, d) => setNovoAso({ ...novoAso, medicoNome: d.value })}
+              />
+            </Field>
+          </div>
+          <div className={estilos.col2}>
+            <Field label="CRM">
+              <Input
+                value={novoAso.medicoCrm ?? ''}
+                onChange={(_, d) => setNovoAso({ ...novoAso, medicoCrm: d.value })}
+              />
+            </Field>
+          </div>
+          <div className={estilos.col4}>
+            <Field label="Observações clínicas">
+              <Textarea
+                value={novoAso.observacoesClinicas ?? ''}
+                onChange={(_, d) => setNovoAso({ ...novoAso, observacoesClinicas: d.value })}
+              />
+            </Field>
+          </div>
         </div>
         <div className={estilos.formActions}>
           <Button appearance="primary" icon={<Add24Regular />} onClick={criar} disabled={carregando}>
@@ -215,10 +245,15 @@ export function AsosTab() {
           <Text weight="semibold">ASOs registrados</Text>
         </div>
 
-        <Table>
+        {carregandoLista ? (
+          <ListaCarregando />
+        ) : asos.length === 0 ? (
+          <EstadoVazio mensagem="Nenhum ASO cadastrado ainda." />
+        ) : (
+        <Table noNativeElements>
           <TableHeader>
             <TableRow>
-              <TableHeaderCell>Trabalhador</TableHeaderCell>
+              <TableHeaderCell>Funcionário</TableHeaderCell>
               <TableHeaderCell>Tipo</TableHeaderCell>
               <TableHeaderCell>Exame</TableHeaderCell>
               <TableHeaderCell>Validade</TableHeaderCell>
@@ -241,15 +276,13 @@ export function AsosTab() {
                     </Select>
                   </TableCell>
                   <TableCell>
-                    <Input
-                      type="date"
+                    <CampoData
                       value={edicao.dataExame?.slice(0, 10)}
                       onChange={(_, d) => setEdicao({ ...edicao, dataExame: d.value })}
                     />
                   </TableCell>
                   <TableCell>
-                    <Input
-                      type="date"
+                    <CampoData
                       value={edicao.dataValidade?.slice(0, 10)}
                       onChange={(_, d) => setEdicao({ ...edicao, dataValidade: d.value })}
                     />
@@ -306,6 +339,7 @@ export function AsosTab() {
             )}
           </TableBody>
         </Table>
+        )}
         <Text size={200} style={{ display: 'block', marginTop: 8 }}>
           Clique em uma linha para editar o ASO.
         </Text>

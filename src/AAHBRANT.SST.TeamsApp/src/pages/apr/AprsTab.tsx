@@ -15,12 +15,16 @@ import {
   TableRow,
   Text,
 } from '@fluentui/react-components';
+import { CampoData } from '../../components/CampoData';
 import { Add24Regular, ChevronRight24Regular, Delete24Regular } from '@fluentui/react-icons';
 import { api, statusAprLabel, type Apr, type Atividade, type Equipe, type NovaApr, type Trabalhador } from '../../lib/api';
-import { usePageStyles } from '../pageStyles';
+import { usePageStyles, useCheckboxChipStyles } from '../pageStyles';
+import { useConfirmarExclusao } from '../../hooks/useConfirmarExclusao';
+import { useSucessoToast } from '../../hooks/useSucessoToast';
+import { EstadoVazio } from '../../components/EstadoVazio';
+import { ListaCarregando } from '../../components/ListaCarregando';
 
 const aprVazia: NovaApr = {
-  numeroApr: '',
   atividadeId: '',
   local: '',
   maquinasEquipamentos: '',
@@ -41,6 +45,7 @@ const corBadgeStatus: Record<number, 'informative' | 'warning' | 'success' | 'da
 
 export function AprsTab() {
   const estilos = usePageStyles();
+  const estilosChip = useCheckboxChipStyles();
   const navigate = useNavigate();
   const [aprs, setAprs] = useState<Apr[]>([]);
   const [atividades, setAtividades] = useState<Atividade[]>([]);
@@ -49,6 +54,9 @@ export function AprsTab() {
   const [novaApr, setNovaApr] = useState<NovaApr>(aprVazia);
   const [erro, setErro] = useState<string | null>(null);
   const [carregando, setCarregando] = useState(false);
+  const [carregandoLista, setCarregandoLista] = useState(true);
+  const { confirmar, dialogElement } = useConfirmarExclusao();
+  const sucessoToast = useSucessoToast();
 
   async function carregar() {
     try {
@@ -65,6 +73,8 @@ export function AprsTab() {
       setEquipes(equips);
     } catch (e) {
       setErro(e instanceof Error ? e.message : 'Falha ao carregar APRs.');
+    } finally {
+      setCarregandoLista(false);
     }
   }
 
@@ -96,6 +106,7 @@ export function AprsTab() {
       });
       setNovaApr(aprVazia);
       await carregar();
+      sucessoToast('APR criada com sucesso.');
     } catch (e) {
       setErro(e instanceof Error ? e.message : 'Falha ao criar APR.');
     } finally {
@@ -105,9 +116,11 @@ export function AprsTab() {
 
   async function excluir(id: string, evento: React.MouseEvent) {
     evento.stopPropagation();
+    if (!(await confirmar('Excluir esta APR? Essa ação não pode ser desfeita.'))) return;
     try {
       await api.aprs.excluir(id);
       await carregar();
+      sucessoToast('APR excluída com sucesso.');
     } catch (e) {
       setErro(e instanceof Error ? e.message : 'Falha ao excluir APR.');
     }
@@ -115,71 +128,82 @@ export function AprsTab() {
 
   return (
     <div className={estilos.card}>
+      {dialogElement}
       <div className={estilos.toolbar}>
         <Text weight="semibold">Análise Preliminar de Risco (APR)</Text>
       </div>
 
       {erro && <Text className={estilos.erro}>{erro}</Text>}
 
-      <div className={estilos.form}>
-        <Field label="Nº APR">
-          <Input value={novaApr.numeroApr ?? ''} onChange={(_, d) => setNovaApr({ ...novaApr, numeroApr: d.value })} />
-        </Field>
-        <Field label="Atividade">
-          <Select
-            value={novaApr.atividadeId}
-            onChange={(_, d) => setNovaApr({ ...novaApr, atividadeId: d.value })}
-          >
-            <option value="">Selecione</option>
-            {atividades.map((atividade) => (
-              <option key={atividade.id} value={atividade.id}>
-                {atividade.nome}
-              </option>
-            ))}
-          </Select>
-        </Field>
-        <Field label="Local / Frente">
-          <Input value={novaApr.local} onChange={(_, d) => setNovaApr({ ...novaApr, local: d.value })} />
-        </Field>
-        <Field label="Máquinas / Equip.">
-          <Input
-            value={novaApr.maquinasEquipamentos ?? ''}
-            onChange={(_, d) => setNovaApr({ ...novaApr, maquinasEquipamentos: d.value })}
-          />
-        </Field>
-        <Field label="PGR / Procedimento ref.">
-          <Input
-            value={novaApr.pgrReferencia ?? ''}
-            onChange={(_, d) => setNovaApr({ ...novaApr, pgrReferencia: d.value })}
-          />
-        </Field>
-        <Field label="Equipe">
-          <Select
-            value={novaApr.equipeId ?? ''}
-            onChange={(_, d) => setNovaApr({ ...novaApr, equipeId: d.value || null })}
-          >
-            <option value="">Nenhuma</option>
-            {equipesDaObra.map((equipe) => (
-              <option key={equipe.id} value={equipe.id}>
-                {equipe.nome}
-              </option>
-            ))}
-          </Select>
-        </Field>
-        <Field label="Data">
-          <Input
-            type="date"
-            value={novaApr.data}
-            onChange={(_, d) => setNovaApr({ ...novaApr, data: d.value })}
-          />
-        </Field>
-        <Field label="Validade">
-          <Input
-            type="date"
-            value={novaApr.validade ?? ''}
-            onChange={(_, d) => setNovaApr({ ...novaApr, validade: d.value || null })}
-          />
-        </Field>
+      <div className={`${estilos.sectionTitle} ${estilos.sectionTitleFirst}`}>Dados da APR</div>
+      <div className={estilos.formGrid}>
+        <div className={estilos.col4}>
+          <Field label="Atividade">
+            <Select
+              value={novaApr.atividadeId}
+              onChange={(_, d) => setNovaApr({ ...novaApr, atividadeId: d.value })}
+            >
+              <option value="">Selecione</option>
+              {atividades.map((atividade) => (
+                <option key={atividade.id} value={atividade.id}>
+                  {atividade.nome}
+                </option>
+              ))}
+            </Select>
+          </Field>
+        </div>
+        <div className={estilos.col3}>
+          <Field label="Local / Frente">
+            <Input value={novaApr.local} onChange={(_, d) => setNovaApr({ ...novaApr, local: d.value })} />
+          </Field>
+        </div>
+        <div className={estilos.col3}>
+          <Field label="Máquinas / Equip.">
+            <Input
+              value={novaApr.maquinasEquipamentos ?? ''}
+              onChange={(_, d) => setNovaApr({ ...novaApr, maquinasEquipamentos: d.value })}
+            />
+          </Field>
+        </div>
+        <div className={estilos.col3}>
+          <Field label="PGR / Procedimento ref.">
+            <Input
+              value={novaApr.pgrReferencia ?? ''}
+              onChange={(_, d) => setNovaApr({ ...novaApr, pgrReferencia: d.value })}
+            />
+          </Field>
+        </div>
+        <div className={estilos.col3}>
+          <Field label="Equipe">
+            <Select
+              value={novaApr.equipeId ?? ''}
+              onChange={(_, d) => setNovaApr({ ...novaApr, equipeId: d.value || null })}
+            >
+              <option value="">Nenhuma</option>
+              {equipesDaObra.map((equipe) => (
+                <option key={equipe.id} value={equipe.id}>
+                  {equipe.nome}
+                </option>
+              ))}
+            </Select>
+          </Field>
+        </div>
+        <div className={estilos.col3}>
+          <Field label="Data">
+            <CampoData
+              value={novaApr.data}
+              onChange={(_, d) => setNovaApr({ ...novaApr, data: d.value })}
+            />
+          </Field>
+        </div>
+        <div className={estilos.col3}>
+          <Field label="Validade">
+            <CampoData
+              value={novaApr.validade ?? ''}
+              onChange={(_, d) => setNovaApr({ ...novaApr, validade: d.value || null })}
+            />
+          </Field>
+        </div>
       </div>
 
       <Field label="Responsáveis" style={{ marginBottom: 16 }}>
@@ -187,6 +211,7 @@ export function AprsTab() {
           {trabalhadores.map((trabalhador) => (
             <Checkbox
               key={trabalhador.id}
+              className={estilosChip.chip}
               label={trabalhador.nome}
               checked={novaApr.responsaveisIds.includes(trabalhador.id)}
               onChange={(_, d) => alternarResponsavel(trabalhador.id, !!d.checked)}
@@ -201,7 +226,12 @@ export function AprsTab() {
         </Button>
       </div>
 
-      <Table>
+      {carregandoLista ? (
+        <ListaCarregando />
+      ) : aprs.length === 0 ? (
+        <EstadoVazio mensagem="Nenhuma APR cadastrada ainda." />
+      ) : (
+      <Table noNativeElements>
         <TableHeader>
           <TableRow>
             <TableHeaderCell>Nº APR</TableHeaderCell>
@@ -246,6 +276,7 @@ export function AprsTab() {
           ))}
         </TableBody>
       </Table>
+      )}
     </div>
   );
 }

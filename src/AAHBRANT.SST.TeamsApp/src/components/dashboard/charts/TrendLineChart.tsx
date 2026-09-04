@@ -39,7 +39,7 @@ export function TrendLineChart({ dados, cor = designTokens.colorPrimary }: Trend
             fill="url(#tendenciaGradiente)"
             isAnimationActive
             animationDuration={700}
-            dot={{ r: 3.2, fill: '#FFFFFF', stroke: cor, strokeWidth: 2 }}
+            dot={{ r: 3.2, fill: designTokens.colorSurface, stroke: cor, strokeWidth: 2 }}
             activeDot={{ r: 4, fill: cor }}
           />
         </AreaChart>

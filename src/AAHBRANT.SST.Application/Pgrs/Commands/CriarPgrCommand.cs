@@ -12,6 +12,7 @@ public record CriarPgrCommand(
     string? Descricao,
     DateTime DataElaboracao,
     DateTime? DataProximaRevisao,
+    DateTime? DataTermino,
     Guid? ResponsavelUsuarioId,
     StatusPgr Status) : IRequest<Guid>;
 
@@ -39,6 +40,7 @@ public class CriarPgrCommandHandler : IRequestHandler<CriarPgrCommand, Guid>
             Descricao = request.Descricao,
             DataElaboracao = request.DataElaboracao,
             DataProximaRevisao = request.DataProximaRevisao,
+            DataTermino = request.DataTermino,
             ResponsavelUsuarioId = request.ResponsavelUsuarioId,
             Status = request.Status
         };

@@ -8,7 +8,8 @@ public class DdsConfiguracao : IEntityTypeConfiguration<Dds>
 {
     public void Configure(EntityTypeBuilder<Dds> builder)
     {
-        builder.Property(d => d.TopicoPrincipal).IsRequired().HasMaxLength(200);
+        builder.Property(d => d.TemaLivreNome).HasMaxLength(200);
+        builder.Property(d => d.TemaLivreDescricao).HasMaxLength(500);
 
         builder.HasOne(d => d.Obra)
             .WithMany()
@@ -71,7 +72,7 @@ public class CatalogoTemaDdsConfiguracao : IEntityTypeConfiguration<CatalogoTema
     public void Configure(EntityTypeBuilder<CatalogoTemaDds> builder)
     {
         builder.Property(c => c.Nome).IsRequired().HasMaxLength(200);
-        builder.Property(c => c.Descricao).HasMaxLength(500);
+        builder.Property(c => c.Descricao).HasMaxLength(1000);
 
         builder.HasQueryFilter(c => c.Ativo);
     }
@@ -106,6 +107,9 @@ public class DdsAtividadeConfiguracao : IEntityTypeConfiguration<DdsAtividade>
             .WithMany()
             .HasForeignKey(a => a.AtividadeId)
             .OnDelete(DeleteBehavior.Restrict);
+
+        builder.Property(a => a.AtividadeNome).HasMaxLength(200);
+        builder.Property(a => a.PerigoNome).HasMaxLength(200);
 
         builder.HasIndex(a => a.DdsId);
         builder.HasQueryFilter(a => a.Ativo);

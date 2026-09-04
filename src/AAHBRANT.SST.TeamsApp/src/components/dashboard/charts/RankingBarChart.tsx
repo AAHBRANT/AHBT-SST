@@ -1,5 +1,6 @@
 import { motion } from 'framer-motion';
 import { Bar, BarChart, Cell, LabelList, ReferenceLine, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
+import { designTokens } from '../../../theme';
 
 export interface ItemRanking {
   rotulo: string;
@@ -35,7 +36,7 @@ export function RankingBarChart({
           <XAxis type="number" domain={dominio} hide />
           <YAxis type="category" dataKey="rotulo" width={100} tickLine={false} axisLine={false} fontSize={12} />
           {valorReferencia !== undefined && (
-            <ReferenceLine x={valorReferencia} stroke="var(--colorNeutralStroke2, #D1D1D1)" strokeDasharray="4 4" />
+            <ReferenceLine x={valorReferencia} stroke={designTokens.colorCardBorder} strokeDasharray="4 4" />
           )}
           <Tooltip
             formatter={(_valor: unknown, _nome: unknown, item: { payload?: ItemRanking }) => {

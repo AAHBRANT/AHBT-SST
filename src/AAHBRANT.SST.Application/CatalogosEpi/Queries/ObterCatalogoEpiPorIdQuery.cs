@@ -14,6 +14,6 @@ public class ObterCatalogoEpiPorIdQueryHandler : IRequestHandler<ObterCatalogoEp
     public async Task<CatalogoEpiDto?> Handle(ObterCatalogoEpiPorIdQuery request, CancellationToken ct)
         => await _db.CatalogoEpis
             .Where(x => x.Id == request.Id)
-            .Select(x => new CatalogoEpiDto(x.Id, x.Nome, x.Fabricante, x.CertificadoAprovacaoNumero, x.CertificadoAprovacaoValidade, x.VidaUtilEmMeses, x.Estoques.Sum(e => (int?)e.Saldo) ?? 0))
+            .Select(x => new CatalogoEpiDto(x.Id, x.Nome, x.Fabricante, x.CertificadoAprovacaoNumero, x.CertificadoAprovacaoValidade, x.VidaUtilEmMeses, x.Estoques.Sum(e => (int?)e.Saldo) ?? 0, x.FotoConteudo != null))
             .FirstOrDefaultAsync(ct);
 }

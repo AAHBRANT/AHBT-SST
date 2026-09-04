@@ -1,4 +1,6 @@
 using AAHBRANT.SST.Application.Common.Interfaces;
+using AAHBRANT.SST.Domain.Entidades;
+using AAHBRANT.SST.Domain.Enums;
 using FluentValidation;
 using MediatR;
 
@@ -37,16 +39,39 @@ public class CriarPcmsoCommandValidator : AbstractValidator<CriarPcmsoCommand>
 public class CriarPcmsoCommandHandler : IRequestHandler<CriarPcmsoCommand, Guid>
 {
     private readonly IAppDbContext _db;
+    private readonly IGeradorNumeroDocumentoService _geradorNumero;
 
-    public CriarPcmsoCommandHandler(IAppDbContext db) => _db = db;
-
-    public Task<Guid> Handle(CriarPcmsoCommand request, CancellationToken ct)
+    public CriarPcmsoCommandHandler(IAppDbContext db, IGeradorNumeroDocumentoService geradorNumero)
     {
-        // PENDENTE: este handler criava um DocumentoGestao (Tipo="PCMSO") para guardar
-        // nome/versão/validade/status/arquivo — DocumentoGestao foi removido junto com Gestão
-        // Documental (Conformidade) em 2026-08-28. Precisa ser reformulado para não depender mais
-        // dele antes de voltar a funcionar (ver PcmsoDetalhe).
-        throw new NotSupportedException(
-            "Criação de PCMSO está temporariamente indisponível: dependia de DocumentoGestao, removido junto com o módulo de Conformidade.");
+        _db = db;
+        _geradorNumero = geradorNumero;
+    }
+
+    public async Task<Guid> Handle(CriarPcmsoCommand request, CancellationToken ct)
+    {
+        var pcmso = new PcmsoDetalhe
+        {
+            NumeroDocumento = await _geradorNumero.GerarAsync("PCMSO", ct),
+            Nome = request.Nome,
+            Versao = request.Versao,
+            Validade = request.Validade,
+            DataEmissao = request.DataEmissao,
+            ResponsavelUsuarioId = request.ResponsavelUsuarioId,
+            ObraId = request.ObraId,
+            SetorId = request.SetorId,
+            Arquivo = request.Arquivo,
+            Status = StatusPcmsoDocumento.Rascunho,
+            MedicoResponsavelNome = request.MedicoResponsavelNome,
+            MedicoResponsavelCrm = request.MedicoResponsavelCrm,
+            FuncoesContempladas = request.FuncoesContempladas,
+            RiscosConsiderados = request.RiscosConsiderados,
+            ExamesPrevistos = request.ExamesPrevistos,
+            Periodicidades = request.Periodicidades,
+            UnidadesObrasAbrangidas = request.UnidadesObrasAbrangidas
+        };
+
+        _db.PcmsoDetalhes.Add(pcmso);
+        await _db.SaveChangesAsync(ct);
+        return pcmso.Id;
     }
 }

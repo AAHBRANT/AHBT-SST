@@ -14,6 +14,6 @@ public class ObterCursoTreinamentoPorIdQueryHandler : IRequestHandler<ObterCurso
     public async Task<CursoTreinamentoDto?> Handle(ObterCursoTreinamentoPorIdQuery request, CancellationToken ct)
         => await _db.CursosTreinamento
             .Where(x => x.Id == request.Id)
-            .Select(x => new CursoTreinamentoDto(x.Id, x.Nome, x.NormaReferencia, x.CargaHorariaMinima, x.ValidadeEmMeses))
+            .Select(x => new CursoTreinamentoDto(x.Id, x.Nome, x.NormaReferencia, x.CargaHorariaMinima, x.ValidadeEmMeses, x.ConteudoProgramatico))
             .FirstOrDefaultAsync(ct);
 }

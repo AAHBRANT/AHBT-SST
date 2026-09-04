@@ -4,7 +4,6 @@ import {
   Badge,
   Button,
   Field,
-  Input,
   Select,
   Table,
   TableBody,
@@ -14,6 +13,7 @@ import {
   TableRow,
   Text,
 } from '@fluentui/react-components';
+import { CampoData } from '../../components/CampoData';
 import { Add24Regular, ChevronRight24Regular, Delete24Regular } from '@fluentui/react-icons';
 import {
   api,
@@ -23,9 +23,13 @@ import {
   type ProcessoEleitoralCipa,
 } from '../../lib/api';
 import { usePageStyles } from '../pageStyles';
+import { useConfirmarExclusao } from '../../hooks/useConfirmarExclusao';
+import { useSucessoToast } from '../../hooks/useSucessoToast';
+import { EstadoVazio } from '../../components/EstadoVazio';
+import { ListaCarregando } from '../../components/ListaCarregando';
 
 function vazio(): NovoProcessoEleitoralCipa {
-  return { obraId: '', numeroDocumento: '', dataConvocacao: '', dataInicioInscricoes: '', dataFimInscricoes: '', dataVotacao: '' };
+  return { obraId: '', dataConvocacao: '', dataInicioInscricoes: '', dataFimInscricoes: '', dataVotacao: '' };
 }
 
 export function ProcessoEleitoralCipaTab() {
@@ -36,6 +40,9 @@ export function ProcessoEleitoralCipaTab() {
   const [novo, setNovo] = useState<NovoProcessoEleitoralCipa>(vazio());
   const [erro, setErro] = useState<string | null>(null);
   const [carregando, setCarregando] = useState(false);
+  const [carregandoLista, setCarregandoLista] = useState(true);
+  const { confirmar, dialogElement } = useConfirmarExclusao();
+  const sucessoToast = useSucessoToast();
 
   async function carregar() {
     try {
@@ -45,6 +52,8 @@ export function ProcessoEleitoralCipaTab() {
       setObras(listaObras);
     } catch (e) {
       setErro(e instanceof Error ? e.message : 'Falha ao carregar processos eleitorais.');
+    } finally {
+      setCarregandoLista(false);
     }
   }
 
@@ -64,9 +73,10 @@ export function ProcessoEleitoralCipaTab() {
     try {
       setCarregando(true);
       setErro(null);
-      await api.cipa.processosEleitorais.criar({ ...novo, numeroDocumento: novo.numeroDocumento || null });
+      await api.cipa.processosEleitorais.criar(novo);
       setNovo(vazio());
       await carregar();
+      sucessoToast('Processo eleitoral criado com sucesso.');
     } catch (e) {
       setErro(e instanceof Error ? e.message : 'Falha ao criar processo eleitoral.');
     } finally {
@@ -76,9 +86,11 @@ export function ProcessoEleitoralCipaTab() {
 
   async function excluir(id: string, evento: React.MouseEvent) {
     evento.stopPropagation();
+    if (!(await confirmar('Excluir este processo eleitoral? Essa ação não pode ser desfeita.'))) return;
     try {
       await api.cipa.processosEleitorais.excluir(id);
       await carregar();
+      sucessoToast('Processo eleitoral excluído com sucesso.');
     } catch (e) {
       setErro(e instanceof Error ? e.message : 'Falha ao excluir processo eleitoral.');
     }
@@ -86,65 +98,74 @@ export function ProcessoEleitoralCipaTab() {
 
   return (
     <div>
+      {dialogElement}
       <div className={estilos.card} style={{ marginBottom: 16 }}>
         <div className={estilos.toolbar}>
           <Text weight="semibold">Nova convocação de eleição</Text>
         </div>
         {erro && <Text className={estilos.erro}>{erro}</Text>}
-        <div className={estilos.form}>
-          <Field label="Obra" required>
-            <Select value={novo.obraId} onChange={(_, d) => setNovo({ ...novo, obraId: d.value })}>
-              <option value="">Selecione</option>
-              {obras.map((obra) => (
-                <option key={obra.id} value={obra.id}>
-                  {obra.nome}
-                </option>
-              ))}
-            </Select>
-          </Field>
-          <Field label="Nº do edital">
-            <Input
-              value={novo.numeroDocumento ?? ''}
-              onChange={(_, d) => setNovo({ ...novo, numeroDocumento: d.value })}
-            />
-          </Field>
-          <Field label="Data da convocação" required>
-            <Input type="date" value={novo.dataConvocacao} onChange={(_, d) => setNovo({ ...novo, dataConvocacao: d.value })} />
-          </Field>
-          <Field label="Início das inscrições" required>
-            <Input
-              type="date"
-              value={novo.dataInicioInscricoes}
-              onChange={(_, d) => setNovo({ ...novo, dataInicioInscricoes: d.value })}
-            />
-          </Field>
-          <Field label="Fim das inscrições" required>
-            <Input
-              type="date"
-              value={novo.dataFimInscricoes}
-              onChange={(_, d) => setNovo({ ...novo, dataFimInscricoes: d.value })}
-            />
-          </Field>
-          <Field label="Data da votação" required>
-            <Input type="date" value={novo.dataVotacao} onChange={(_, d) => setNovo({ ...novo, dataVotacao: d.value })} />
-          </Field>
+        <div className={`${estilos.sectionTitle} ${estilos.sectionTitleFirst}`}>Dados do Processo Eleitoral</div>
+        <div className={estilos.formGrid}>
+          <div className={estilos.col4}>
+            <Field label="Obra" required>
+              <Select value={novo.obraId} onChange={(_, d) => setNovo({ ...novo, obraId: d.value })}>
+                <option value="">Selecione</option>
+                {obras.map((obra) => (
+                  <option key={obra.id} value={obra.id}>
+                    {obra.nome}
+                  </option>
+                ))}
+              </Select>
+            </Field>
+          </div>
+          <div className={estilos.col3}>
+            <Field label="Data da convocação" required>
+              <CampoData value={novo.dataConvocacao} onChange={(_, d) => setNovo({ ...novo, dataConvocacao: d.value })} />
+            </Field>
+          </div>
+          <div className={estilos.col2}>
+            <Field label="Início das inscrições" required>
+              <CampoData
+                value={novo.dataInicioInscricoes}
+                onChange={(_, d) => setNovo({ ...novo, dataInicioInscricoes: d.value })}
+              />
+            </Field>
+          </div>
+          <div className={estilos.col2}>
+            <Field label="Fim das inscrições" required>
+              <CampoData
+                value={novo.dataFimInscricoes}
+                onChange={(_, d) => setNovo({ ...novo, dataFimInscricoes: d.value })}
+              />
+            </Field>
+          </div>
+          <div className={estilos.col2}>
+            <Field label="Data da votação" required>
+              <CampoData value={novo.dataVotacao} onChange={(_, d) => setNovo({ ...novo, dataVotacao: d.value })} />
+            </Field>
+          </div>
         </div>
-        <div className={estilos.formActions}>
+        <div className={estilos.footer}>
+          <Text className={estilos.footerInfo}>
+            Inscrição de candidatos, avaliação, apuração (manual, sem urna digital) e geração da ata em
+            PDF são feitas na tela de detalhe do processo.
+          </Text>
           <Button appearance="primary" icon={<Add24Regular />} onClick={criar} disabled={carregando}>
             Convocar eleição
           </Button>
         </div>
-        <Text size={200} style={{ display: 'block', marginTop: 8 }}>
-          Inscrição de candidatos, avaliação, apuração (manual, sem urna digital) e geração da ata em
-          PDF são feitas na tela de detalhe do processo.
-        </Text>
       </div>
 
       <div className={estilos.card}>
         <div className={estilos.toolbar}>
           <Text weight="semibold">Processos eleitorais</Text>
         </div>
-        <Table>
+        {carregandoLista ? (
+          <ListaCarregando />
+        ) : lista.length === 0 ? (
+          <EstadoVazio mensagem="Nenhum processo eleitoral cadastrado ainda." />
+        ) : (
+        <Table noNativeElements>
           <TableHeader>
             <TableRow>
               <TableHeaderCell>Obra</TableHeaderCell>
@@ -180,6 +201,7 @@ export function ProcessoEleitoralCipaTab() {
             ))}
           </TableBody>
         </Table>
+        )}
       </div>
     </div>
   );

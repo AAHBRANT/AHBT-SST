@@ -78,7 +78,7 @@ export function AssinaturaTab({ trabalhadorId }: AssinaturaTabProps) {
           Digital (leitor local — Futronic FS80H)
         </Text>
         <Text style={{ display: 'block', marginBottom: 12, color: 'var(--colorNeutralForeground3)' }}>
-          Exige Termo de Aceite e consentimento de uso de biometria já registrados para este trabalhador.
+          Exige Termo de Aceite e consentimento de uso de biometria já registrados para este funcionário.
         </Text>
         {erroBiometriaLocal && <Text className={estilos.erro}>{erroBiometriaLocal}</Text>}
         {biometriaLocalCadastrada && (

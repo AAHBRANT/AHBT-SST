@@ -44,7 +44,7 @@ export function AssinarDdsPage() {
 
       <div className={estilos.card} style={{ marginBottom: 16 }}>
         <Text size={500} weight="semibold">
-          Assinatura eletrônica — {dds?.topicoPrincipal ?? 'Carregando...'}
+          Assinatura eletrônica — {dds ? (dds.atividadesNomes.join(', ') || 'DDS do dia') : 'Carregando...'}
         </Text>
         {dds && (
           <Text style={{ display: 'block', marginTop: 4 }}>

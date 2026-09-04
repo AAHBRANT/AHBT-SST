@@ -10,6 +10,7 @@ public class PgrDto
     public string? Descricao { get; set; }
     public DateTime DataElaboracao { get; set; }
     public DateTime? DataProximaRevisao { get; set; }
+    public DateTime? DataTermino { get; set; }
     public Guid? ResponsavelUsuarioId { get; set; }
     public StatusPgr Status { get; set; }
 }

@@ -23,6 +23,10 @@ import {
   type Obra,
 } from '../../lib/api';
 import { usePageStyles } from '../pageStyles';
+import { useConfirmarExclusao } from '../../hooks/useConfirmarExclusao';
+import { useSucessoToast } from '../../hooks/useSucessoToast';
+import { EstadoVazio } from '../../components/EstadoVazio';
+import { ListaCarregando } from '../../components/ListaCarregando';
 
 const areaVazia: NovaAreaSst = {
   codigo: '',
@@ -44,6 +48,9 @@ export function AreasSstTab() {
   const [requisitosTexto, setRequisitosTexto] = useState('');
   const [erro, setErro] = useState<string | null>(null);
   const [carregando, setCarregando] = useState(false);
+  const [carregandoLista, setCarregandoLista] = useState(true);
+  const { confirmar, dialogElement } = useConfirmarExclusao();
+  const sucessoToast = useSucessoToast();
 
   async function carregar() {
     try {
@@ -53,6 +60,8 @@ export function AreasSstTab() {
       setObras(obrs);
     } catch (e) {
       setErro(e instanceof Error ? e.message : 'Falha ao carregar áreas.');
+    } finally {
+      setCarregandoLista(false);
     }
   }
 
@@ -84,6 +93,7 @@ export function AreasSstTab() {
       setRiscosTexto('');
       setRequisitosTexto('');
       await carregar();
+      sucessoToast('Área criada com sucesso.');
     } catch (e) {
       setErro(e instanceof Error ? e.message : 'Falha ao criar área.');
     } finally {
@@ -92,9 +102,11 @@ export function AreasSstTab() {
   }
 
   async function excluir(id: string) {
+    if (!(await confirmar('Excluir esta área? Essa ação não pode ser desfeita.'))) return;
     try {
       await api.areasSst.excluir(id);
       await carregar();
+      sucessoToast('Área excluída com sucesso.');
     } catch (e) {
       setErro(e instanceof Error ? e.message : 'Falha ao excluir área.');
     }
@@ -102,53 +114,69 @@ export function AreasSstTab() {
 
   return (
     <div className={estilos.card}>
+      {dialogElement}
       <div className={estilos.toolbar}>
         <Text weight="semibold">Áreas de SST cadastradas</Text>
       </div>
 
       {erro && <Text className={estilos.erro}>{erro}</Text>}
 
-      <div className={estilos.form}>
-        <Field label="Código">
-          <Input value={novaArea.codigo} onChange={(_, d) => setNovaArea({ ...novaArea, codigo: d.value })} />
-        </Field>
-        <Field label="Nome">
-          <Input value={novaArea.nome} onChange={(_, d) => setNovaArea({ ...novaArea, nome: d.value })} />
-        </Field>
-        <Field label="Tipo">
-          <Select
-            value={String(novaArea.tipo)}
-            onChange={(_, d) => setNovaArea({ ...novaArea, tipo: Number(d.value) })}
-          >
-            {Object.entries(tipoAreaLabel).map(([valor, rotulo]) => (
-              <option key={valor} value={valor}>
-                {rotulo}
-              </option>
-            ))}
-          </Select>
-        </Field>
-        <Field label="Obra">
-          <Select value={novaArea.obraId} onChange={(_, d) => setNovaArea({ ...novaArea, obraId: d.value })}>
-            <option value="">Selecione</option>
-            {obras.map((obra) => (
-              <option key={obra.id} value={obra.id}>
-                {obra.nome}
-              </option>
-            ))}
-          </Select>
-        </Field>
-        <Field label="Detalhes da localização">
-          <Input
-            value={novaArea.detalhesLocalizacao ?? ''}
-            onChange={(_, d) => setNovaArea({ ...novaArea, detalhesLocalizacao: d.value })}
-          />
-        </Field>
-        <Field label="Riscos (separados por vírgula)">
-          <Input value={riscosTexto} onChange={(_, d) => setRiscosTexto(d.value)} />
-        </Field>
-        <Field label="Requisitos (separados por vírgula)">
-          <Input value={requisitosTexto} onChange={(_, d) => setRequisitosTexto(d.value)} />
-        </Field>
+      <div className={`${estilos.sectionTitle} ${estilos.sectionTitleFirst}`}>Dados da Área</div>
+      <div className={estilos.formGrid}>
+        <div className={estilos.col2}>
+          <Field label="Código">
+            <Input value={novaArea.codigo} onChange={(_, d) => setNovaArea({ ...novaArea, codigo: d.value })} />
+          </Field>
+        </div>
+        <div className={estilos.col4}>
+          <Field label="Nome">
+            <Input value={novaArea.nome} onChange={(_, d) => setNovaArea({ ...novaArea, nome: d.value })} />
+          </Field>
+        </div>
+        <div className={estilos.col3}>
+          <Field label="Tipo">
+            <Select
+              value={String(novaArea.tipo)}
+              onChange={(_, d) => setNovaArea({ ...novaArea, tipo: Number(d.value) })}
+            >
+              {Object.entries(tipoAreaLabel).map(([valor, rotulo]) => (
+                <option key={valor} value={valor}>
+                  {rotulo}
+                </option>
+              ))}
+            </Select>
+          </Field>
+        </div>
+        <div className={estilos.col3}>
+          <Field label="Obra">
+            <Select value={novaArea.obraId} onChange={(_, d) => setNovaArea({ ...novaArea, obraId: d.value })}>
+              <option value="">Selecione</option>
+              {obras.map((obra) => (
+                <option key={obra.id} value={obra.id}>
+                  {obra.nome}
+                </option>
+              ))}
+            </Select>
+          </Field>
+        </div>
+        <div className={estilos.col4}>
+          <Field label="Detalhes da localização">
+            <Input
+              value={novaArea.detalhesLocalizacao ?? ''}
+              onChange={(_, d) => setNovaArea({ ...novaArea, detalhesLocalizacao: d.value })}
+            />
+          </Field>
+        </div>
+        <div className={estilos.col4}>
+          <Field label="Riscos (separados por vírgula)">
+            <Input value={riscosTexto} onChange={(_, d) => setRiscosTexto(d.value)} />
+          </Field>
+        </div>
+        <div className={estilos.col4}>
+          <Field label="Requisitos (separados por vírgula)">
+            <Input value={requisitosTexto} onChange={(_, d) => setRequisitosTexto(d.value)} />
+          </Field>
+        </div>
       </div>
       <div className={estilos.formActions}>
         <Button appearance="primary" icon={<Add24Regular />} onClick={criar} disabled={carregando}>
@@ -156,7 +184,12 @@ export function AreasSstTab() {
         </Button>
       </div>
 
-      <Table>
+      {carregandoLista ? (
+        <ListaCarregando />
+      ) : areas.length === 0 ? (
+        <EstadoVazio mensagem="Nenhuma área cadastrada ainda." />
+      ) : (
+      <Table noNativeElements>
         <TableHeader>
           <TableRow>
             <TableHeaderCell>Código</TableHeaderCell>
@@ -189,6 +222,7 @@ export function AreasSstTab() {
           ))}
         </TableBody>
       </Table>
+      )}
     </div>
   );
 }
