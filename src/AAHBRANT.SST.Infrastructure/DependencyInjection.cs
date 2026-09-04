@@ -100,6 +100,7 @@ public static class DependencyInjection
         services.AddScoped<ITemplateBiometricoCriptografia, TemplateBiometricoCriptografiaService>();
         services.AddScoped<IDispositivoAgenteAutenticador, DispositivoAgenteAutenticador>();
         services.AddScoped<IAutenticacaoBiometriaLocalService, FutronicAutenticacaoStrategy>();
+        services.AddScoped<IAutenticacaoFacialService, AzureFaceAutenticacaoStrategy>();
         services.AddScoped<IAuditoriaService, AuditoriaService>();
         services.AddScoped<IDocumentoAssinaturaPdfService, DocumentoAssinaturaPdfService>();
         services.Configure<AssinaturaOptions>(configuration.GetSection("Assinatura"));
