@@ -169,6 +169,10 @@ export function EntregasTab({ aoNavegarParaMatriz }: EntregasTabProps) {
     return trabalhadores.find((t) => t.id === id)?.nome ?? id;
   }
 
+  function obraIdTrabalhador(id: string) {
+    return trabalhadores.find((t) => t.id === id)?.obraId ?? '';
+  }
+
   function vencido(dataValidade?: string | null) {
     if (!dataValidade) return false;
     return new Date(dataValidade) < new Date(new Date().toDateString());
@@ -492,6 +496,7 @@ export function EntregasTab({ aoNavegarParaMatriz }: EntregasTabProps) {
           open={!!entregaParaAssinar}
           onClose={() => setEntregaParaAssinar(null)}
           entregaId={entregaParaAssinar.id}
+          obraId={obraIdTrabalhador(entregaParaAssinar.trabalhadorId)}
           trabalhadorNome={nomeTrabalhador(entregaParaAssinar.trabalhadorId)}
           epiNome={nomeEpi(entregaParaAssinar.catalogoEpiId)}
           catalogoEpiId={entregaParaAssinar.catalogoEpiId}
@@ -508,6 +513,7 @@ export function EntregasTab({ aoNavegarParaMatriz }: EntregasTabProps) {
           open={!!devolucaoParaAssinar}
           onClose={() => setDevolucaoParaAssinar(null)}
           entregaId={devolucaoParaAssinar.id}
+          obraId={obraIdTrabalhador(devolucaoParaAssinar.trabalhadorId)}
           trabalhadorNome={nomeTrabalhador(devolucaoParaAssinar.trabalhadorId)}
           epiNome={nomeEpi(devolucaoParaAssinar.catalogoEpiId)}
           quantidadeDevolucao={devolucaoParaAssinar.quantidadeDevolucao ?? devolucaoParaAssinar.quantidade}

@@ -1261,6 +1261,7 @@ export interface PermissaoTrabalho {
   numeroPt?: string | null;
   atividadeId: string;
   atividadeNome: string;
+  obraId?: string | null;
   obraNome?: string | null;
   descricaoAtividade: string;
   local: string;
@@ -3084,6 +3085,22 @@ export const api = {
         method: 'POST',
         body: JSON.stringify({ templateBruto: templateBrutoBase64 }),
       }),
+    // Cadastro de reconhecimento facial (Azure Face API) — multipart, não passa por request<T>
+    // (que sempre força Content-Type: application/json, incompatível com FormData) nem pelo motor
+    // de sincronização offline (cadastro é ação administrativa, sempre com internet).
+    cadastrarFacial: async (id: string, foto: File): Promise<void> => {
+      const formData = new FormData();
+      formData.append('foto', foto);
+      const response = await fetch(`${API_BASE_URL}/api/trabalhadores/${id}/assinatura/facial/cadastro`, {
+        method: 'POST',
+        headers: await montarHeadersAuth(),
+        body: formData,
+      });
+      if (!response.ok) {
+        const corpo = await response.text().catch(() => '');
+        throw new Error(`${response.status} ${response.statusText}: ${corpo}`);
+      }
+    },
   },
   funcoes: {
     listar: () => request<Funcao[]>('/api/funcoes'),
@@ -3838,6 +3855,17 @@ export const api = {
         method: 'POST',
         body: JSON.stringify({ dispositivoId, segredoDispositivo, trabalhadorId, score }),
       }),
+    // Assinatura via reconhecimento facial (Azure Face API) — multipart e offline-aware, mesmo
+    // padrão de anexarFotoEvidencia (DDS): syncMutateMultipart enfileira sozinho se faltar conexão.
+    autenticarFacial: async (documentoAssinaturaId: string, obraId: string, foto: File) => {
+      const formData = new FormData();
+      formData.append('obraId', obraId);
+      formData.append('foto', foto);
+      const authHeaders = await montarHeadersAuth();
+      return syncMutateMultipart<DocumentoSignatario>(
+        `/api/documentos/${documentoAssinaturaId}/autenticacao/facial`, formData, authHeaders,
+      );
+    },
     listar: (filtros?: { entidadeTipo?: string; status?: number; dataInicio?: string; dataFim?: string }) => {
       const query = new URLSearchParams();
       if (filtros?.entidadeTipo) query.set('entidadeTipo', filtros.entidadeTipo);

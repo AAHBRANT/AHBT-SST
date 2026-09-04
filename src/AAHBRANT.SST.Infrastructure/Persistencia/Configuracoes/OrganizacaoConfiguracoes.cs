@@ -17,6 +17,7 @@ public class ObraConfiguracao : IEntityTypeConfiguration<Obra>
 
         builder.Property(o => o.Cnpj).HasMaxLength(18);
         builder.Property(o => o.LogoContentType).HasMaxLength(100);
+        builder.Property(o => o.AzureFacePersonGroupId).HasMaxLength(64);
 
         // Mesmo bug já corrigido para Acidentes (ver migration CorrigirRowVersionAcidentes): sem
         // IsRowVersion() o EF tenta INSERT com valor explícito na coluna RowVersion, e o SQL Server
@@ -91,6 +92,7 @@ public class TrabalhadorConfiguracao : IEntityTypeConfiguration<Trabalhador>
 
         builder.Property(t => t.Turno).HasMaxLength(50);
         builder.Property(t => t.FotoContentType).HasMaxLength(100);
+        builder.Property(t => t.AzureFacePersonId).HasMaxLength(64);
 
         builder.HasOne(t => t.Obra).WithMany(o => o.Trabalhadores)
             .HasForeignKey(t => t.ObraId).OnDelete(DeleteBehavior.Restrict);

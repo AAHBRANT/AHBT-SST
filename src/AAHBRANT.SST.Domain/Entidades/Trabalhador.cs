@@ -58,6 +58,11 @@ public class Trabalhador : AuditableEntity
     public DateTime? TermoAceiteAssinaturaEletronicaEm { get; set; }
     public DateTime? ConsentimentoBiometriaEm { get; set; }
 
+    // Id do Person no Azure Face API (PersonGroup da obra) — gerado no cadastro facial. Reaproveita
+    // ConsentimentoBiometriaEm acima como consentimento LGPD (mesma categoria de dado biométrico
+    // sensível — LGPD art. 5º II — não é um consentimento separado para "digital" vs. "facial").
+    public string? AzureFacePersonId { get; set; }
+
     public ICollection<Aso> Asos { get; set; } = new List<Aso>();
     public ICollection<Treinamento> Treinamentos { get; set; } = new List<Treinamento>();
     public ICollection<EntregaEpi> EntregasEpi { get; set; } = new List<EntregaEpi>();

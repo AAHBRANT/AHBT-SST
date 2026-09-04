@@ -33,6 +33,7 @@ export interface AssinaturaDevolucaoEpiDialogProps {
   open: boolean;
   onClose: () => void;
   entregaId: string;
+  obraId: string;
   trabalhadorNome: string;
   epiNome: string;
   quantidadeDevolucao: number;
@@ -49,6 +50,7 @@ export function AssinaturaDevolucaoEpiDialog({
   open,
   onClose,
   entregaId,
+  obraId,
   trabalhadorNome,
   epiNome,
   quantidadeDevolucao,
@@ -141,7 +143,7 @@ export function AssinaturaDevolucaoEpiDialog({
             <Text weight="semibold" style={{ display: 'block', marginBottom: 12 }}>
               Assinatura do funcionário (devolução)
             </Text>
-            <AssinaturaQuiosque entidadeTipo="DevolucaoEpi" entidadeId={entregaId} />
+            <AssinaturaQuiosque entidadeTipo="DevolucaoEpi" entidadeId={entregaId} obraId={obraId} />
           </DialogContent>
           <DialogActions>
             <Button appearance="secondary" onClick={onClose}>

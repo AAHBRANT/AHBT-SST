@@ -124,6 +124,22 @@ public class TrabalhadoresController : ControllerBase
         await _mediator.Send(new CadastrarTemplateBiometricoCommand(id, body.TemplateBruto), ct);
         return NoContent();
     }
+
+    public class CadastrarFacialRequestBody
+    {
+        public IFormFile Foto { get; set; } = null!;
+    }
+
+    [Authorize(Policy = "trabalhador:assinatura")]
+    [HttpPost("{id:guid}/assinatura/facial/cadastro")]
+    [RequestSizeLimit(6_000_000)]
+    public async Task<IActionResult> CadastrarFacial(Guid id, [FromForm] CadastrarFacialRequestBody body, CancellationToken ct)
+    {
+        await using var stream = new MemoryStream();
+        await body.Foto.CopyToAsync(stream, ct);
+        await _mediator.Send(new CadastrarFacialCommand(id, stream.ToArray()), ct);
+        return NoContent();
+    }
 }
 
 public class AnexarFotoTrabalhadorRequestBody

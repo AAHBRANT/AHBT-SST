@@ -53,7 +53,7 @@ export function AssinarPtPage() {
         )}
       </div>
 
-      <AssinaturaQuiosque entidadeTipo="PermissaoTrabalho" entidadeId={id} />
+      <AssinaturaQuiosque entidadeTipo="PermissaoTrabalho" entidadeId={id} obraId={pt?.obraId ?? ''} />
     </div>
   );
 }

@@ -60,7 +60,7 @@ export function AssinarEntregaEpiPage() {
         </div>
       </div>
 
-      <AssinaturaQuiosque entidadeTipo="EntregaEpi" entidadeId={id} />
+      <AssinaturaQuiosque entidadeTipo="EntregaEpi" entidadeId={id} obraId={trabalhador?.obraId ?? ''} />
     </div>
   );
 }
