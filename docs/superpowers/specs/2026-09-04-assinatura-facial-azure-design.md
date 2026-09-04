@@ -43,10 +43,12 @@ Nova seção/botão na aba de perfil do trabalhador (não um item de menu novo �
 
 Já existe um motor de sincronização offline (`src/lib/offline`, `syncEngine.ts`) piloto em DDS/Inspeções/Checklists/APRs: leituras em cache, mutações em fila local (IndexedDB), reenviadas quando a internet volta. Azure Face API é serviço de nuvem — não dá pra verificar rosto sem internet no instante da assinatura. Decisão do usuário: a foto fica **pendente de verificação**, não finge sucesso.
 
-1. Offline: captura o frame, grava na fila local com status "pendente de verificação facial" (mesmo padrão de mutação enfileirada já usado no projeto).
-2. UI mostra o documento como "assinatura pendente" — não como assinado.
-3. Quando a internet volta, o motor de sincronização dispara `IdentificarAsync` de verdade contra o Azure.
-4. Só então o `DocumentoSignatario` é de fato criado (com o score real do Azure) via `IRegistradorAssinaturaService.RegistrarAsync` — ou a tentativa é marcada como rejeitada, se o score não bater.
+**Achado que simplifica bastante:** já existe `syncMutateMultipart(path, formData, authHeaders)` em `syncEngine.ts` — POST multipart genérico que, se falhar por falta de rede, enfileira sozinho no IndexedDB (`filaSaida`, que já suporta `Blob` em `arquivosFormData`) e reenvia automaticamente quando a internet volta, com idempotency key e retry (até 5 tentativas, depois vira "conflito" pro usuário resolver). **Não precisa de estrutura nova nenhuma** — a assinatura facial só chama esse mesmo helper genérico com a foto num `FormData`, exatamente como qualquer outra mutação com upload de foto já faz no projeto.
+
+1. Frontend chama `syncMutateMultipart('/sst/.../assinar-facial', formData, authHeaders)` com a foto capturada.
+2. Online: o backend recebe a foto, chama `IAutenticacaoFacialService.IdentificarAsync` de verdade contra o Azure, e ou grava o `DocumentoSignatario` (via `IRegistradorAssinaturaService.RegistrarAsync`) ou devolve erro de negócio (rosto não reconhecido/confiança baixa).
+3. Offline: o `syncMutateMultipart` já enfileira sozinho — nenhuma lógica nova no frontend além de chamar esse helper. A UI usa o `contarPendentes()`/`assinarMudancasSync` já existentes pra mostrar "assinatura pendente de sincronização" enquanto o item está na fila.
+4. Quando a internet volta, o motor de sincronização já existente reenvia a foto sozinho — o backend roda o mesmo fluxo do passo 2, dessa vez de verdade.
 
 **Teams e o "modo campo":** o cliente Teams não abre a aba sem internet (carrega tudo via iframe do zero). Como o app já é um PWA instalável (`VitePWA` já configurado, service worker cacheia o app shell), a solução é: **uso em campo sem sinal acontece pelo PWA instalado direto no navegador do dispositivo** (fora do cliente Teams), não pela aba dentro do Teams. Teams continua sendo o ponto de entrada normal com internet.
 
@@ -56,7 +58,7 @@ Já existe um motor de sincronização offline (`src/lib/offline`, `syncEngine.t
 - `Obra.AzureFacePersonGroupId` (`string?`, novo campo) — um `PersonGroup` por obra (Azure recomenda escopo por grupo para reduzir custo/tempo de `Identify` e evitar falsos positivos entre obras diferentes).
 - `MetodoAutenticacaoAssinatura` ganha `ReconhecimentoFacial = 6` (próximo valor livre; `2`/`3`/`4` foram removidos por decisão anterior de PIN/crachá-QR/WebAuthn).
 - Reaproveita a `TrilhaAuditoria` genérica já existente para registrar tentativas (sucesso e falha) — sem tabela nova de auditoria.
-- Fila offline de fotos pendentes: reaproveita `offlineDb` (IndexedDB) já existente no frontend — nova store `fotosFaciaisPendentes` (foto + entidade alvo + timestamp de captura).
+- Fila offline: reaproveita `syncMutateMultipart`/`filaSaida` (IndexedDB) genéricos já existentes no frontend — nenhuma store nova (ver seção 5).
 
 ## 7. Configuração/custo (Azure Face API, tier F0)
 
@@ -77,4 +79,4 @@ Já existe um motor de sincronização offline (`src/lib/offline`, `syncEngine.t
 - Unitário: `IAutenticacaoFacialService` com fake do cliente Azure — thresholds (aceita ≥85%, rejeita 60-85% com mensagem específica, rejeita <60%/sem rosto, bloqueia múltiplos rostos).
 - Unitário: fluxo de enrollment — cria `Person`, associa foto, dispara `Train`, persiste `AzureFacePersonId`.
 - Unitário: resolução de erro de rede cai no caminho de fila offline, não no caminho de "rosto não reconhecido".
-- Frontend: fila de fotos pendentes (IndexedDB) grava offline e sincroniza quando volta a conexão — mesmo padrão de teste já usado pelo motor de sincronização existente.
+- Frontend: nenhum teste novo de fila offline necessário — `syncMutateMultipart`/`filaSaida` são reaproveitados tal como já usados (e já testados) em outros uploads de foto do projeto.
