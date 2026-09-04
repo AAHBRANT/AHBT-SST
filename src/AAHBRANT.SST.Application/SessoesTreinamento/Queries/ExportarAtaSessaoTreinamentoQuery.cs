@@ -1,3 +1,4 @@
+using AAHBRANT.SST.Application.Assinatura;
 using AAHBRANT.SST.Application.Common.Interfaces;
 using MediatR;
 using Microsoft.EntityFrameworkCore;
@@ -10,11 +11,13 @@ public class ExportarAtaSessaoTreinamentoQueryHandler : IRequestHandler<Exportar
 {
     private readonly IAppDbContext _db;
     private readonly IAtaSessaoTreinamentoPdfService _pdf;
+    private readonly IRegistradorRastreabilidadeService _rastreabilidade;
 
-    public ExportarAtaSessaoTreinamentoQueryHandler(IAppDbContext db, IAtaSessaoTreinamentoPdfService pdf)
+    public ExportarAtaSessaoTreinamentoQueryHandler(IAppDbContext db, IAtaSessaoTreinamentoPdfService pdf, IRegistradorRastreabilidadeService rastreabilidade)
     {
         _db = db;
         _pdf = pdf;
+        _rastreabilidade = rastreabilidade;
     }
 
     public async Task<byte[]?> Handle(ExportarAtaSessaoTreinamentoQuery request, CancellationToken ct)
@@ -39,6 +42,12 @@ public class ExportarAtaSessaoTreinamentoQueryHandler : IRequestHandler<Exportar
             .Select(f => f.FotoConteudo)
             .ToListAsync(ct);
 
+        // Chave sintética "SessaoTreinamento"/SessaoTreinamentoId: a Ata agrega N participantes, cada
+        // um já individualmente assinado via seu próprio DocumentoAssinatura("Treinamento", Id) —
+        // ninguém assina a Ata em si, então TemAssinatura nunca é usado aqui (RodapeDocumentoPadrao
+        // recebe temAssinatura: false diretamente no PdfService).
+        var rastreio = await _rastreabilidade.GarantirAsync("SessaoTreinamento", sessao.Id, ct);
+
         var modelo = new AtaSessaoTreinamentoPdfModelo(
             sessao.Obra.Nome,
             sessao.Obra.LogoConteudo,
@@ -50,7 +59,10 @@ public class ExportarAtaSessaoTreinamentoQueryHandler : IRequestHandler<Exportar
             sessao.NumeroCertificado,
             sessao.DataEncerramento,
             participantes,
-            fotos);
+            fotos,
+            rastreio.ConteudoHash,
+            rastreio.UrlValidacaoPublica,
+            rastreio.QrCodePng);
 
         return _pdf.Gerar(modelo);
     }
