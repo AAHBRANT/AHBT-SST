@@ -708,6 +708,7 @@ git commit -m "feat: adicionar RodapeDocumentoPadrao compartilhado (protocolo+ha
 - Modify: `src/AAHBRANT.SST.Application/Dds/IDdsPdfService.cs`
 - Modify: `src/AAHBRANT.SST.Application/Dds/Queries/ExportarDdsPdfQuery.cs`
 - Modify: `src/AAHBRANT.SST.Infrastructure/Documentos/DdsPdfService.cs`
+- Modify: `src/AAHBRANT.SST.Application/Dds/Commands/EnviarDdsTelegramCommand.cs` (secondary caller of `ExportarDdsPdfQueryHandler.MontarModelo` — see Step 10)
 - Modify: `tests/AAHBRANT.SST.Application.Tests/Dds/CriarDdsCommandHandlerTests.cs` (existing 6 tests need the new constructor arg)
 - Test: add one new test to the same file
 
@@ -1036,7 +1037,7 @@ Expected: no errors. Pay attention to the Telegram handler from Step 10 — it's
 - [ ] **Step 13: Commit**
 
 ```bash
-git add src/AAHBRANT.SST.Domain/Entidades/Dds/Dds.cs src/AAHBRANT.SST.Infrastructure/Persistencia/Configuracoes/DdsConfiguracoes.cs src/AAHBRANT.SST.Application/Dds/Commands/CriarDdsCommand.cs src/AAHBRANT.SST.Application/Dds/IDdsPdfService.cs src/AAHBRANT.SST.Application/Dds/Queries/ExportarDdsPdfQuery.cs src/AAHBRANT.SST.Infrastructure/Documentos/DdsPdfService.cs src/AAHBRANT.SST.Infrastructure/Persistencia/Migrations/ tests/AAHBRANT.SST.Application.Tests/Dds/CriarDdsCommandHandlerTests.cs
+git add src/AAHBRANT.SST.Domain/Entidades/Dds/Dds.cs src/AAHBRANT.SST.Infrastructure/Persistencia/Configuracoes/DdsConfiguracoes.cs src/AAHBRANT.SST.Application/Dds/Commands/CriarDdsCommand.cs src/AAHBRANT.SST.Application/Dds/Commands/EnviarDdsTelegramCommand.cs src/AAHBRANT.SST.Application/Dds/IDdsPdfService.cs src/AAHBRANT.SST.Application/Dds/Queries/ExportarDdsPdfQuery.cs src/AAHBRANT.SST.Infrastructure/Documentos/DdsPdfService.cs src/AAHBRANT.SST.Infrastructure/Persistencia/Migrations/ tests/AAHBRANT.SST.Application.Tests/Dds/CriarDdsCommandHandlerTests.cs
 git commit -m "feat: numeração automática + rodapé de rastreabilidade no PDF do DDS diário"
 ```
 
