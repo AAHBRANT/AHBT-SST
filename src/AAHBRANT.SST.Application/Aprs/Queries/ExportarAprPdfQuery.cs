@@ -1,3 +1,4 @@
+using AAHBRANT.SST.Application.Assinatura;
 using AAHBRANT.SST.Application.Common.Interfaces;
 using AAHBRANT.SST.Domain.Enums;
 using MediatR;
@@ -12,12 +13,14 @@ public class ExportarAprPdfQueryHandler : IRequestHandler<ExportarAprPdfQuery, b
     private readonly IMediator _mediator;
     private readonly IAppDbContext _db;
     private readonly IAprPdfService _pdf;
+    private readonly IRegistradorRastreabilidadeService _rastreabilidade;
 
-    public ExportarAprPdfQueryHandler(IMediator mediator, IAppDbContext db, IAprPdfService pdf)
+    public ExportarAprPdfQueryHandler(IMediator mediator, IAppDbContext db, IAprPdfService pdf, IRegistradorRastreabilidadeService rastreabilidade)
     {
         _mediator = mediator;
         _db = db;
         _pdf = pdf;
+        _rastreabilidade = rastreabilidade;
     }
 
     public async Task<byte[]?> Handle(ExportarAprPdfQuery request, CancellationToken ct)
@@ -29,10 +32,12 @@ public class ExportarAprPdfQueryHandler : IRequestHandler<ExportarAprPdfQuery, b
             ? await _db.Obras.Where(o => o.Id == obraId).Select(o => o.LogoConteudo).FirstOrDefaultAsync(ct)
             : null;
 
-        return _pdf.Gerar(MontarModelo(detalhe, logoConteudo));
+        var rastreio = await _rastreabilidade.GarantirAsync(nameof(Domain.Entidades.Apr), request.Id, ct);
+
+        return _pdf.Gerar(MontarModelo(detalhe, logoConteudo, rastreio));
     }
 
-    public static AprPdfModelo MontarModelo(AprDetalheDto detalhe, byte[]? obraLogoConteudo = null)
+    public static AprPdfModelo MontarModelo(AprDetalheDto detalhe, byte[]? obraLogoConteudo, RastreabilidadeDocumentoResultado rastreio)
     {
         var assinaturasPorTrabalhador = detalhe.Assinaturas
             .Where(a => a.Papel == PapelAssinaturaApr.Envolvido)
@@ -77,6 +82,12 @@ public class ExportarAprPdfQueryHandler : IRequestHandler<ExportarAprPdfQuery, b
             envolvidos,
             riscos,
             new AprPdfAssinatura(elaboracao?.TrabalhadorNome, null, elaboracao?.DataAssinatura),
-            new AprPdfAssinatura(supervisao?.TrabalhadorNome, null, supervisao?.DataAssinatura));
+            new AprPdfAssinatura(supervisao?.TrabalhadorNome, null, supervisao?.DataAssinatura),
+            rastreio.ConteudoHash,
+            rastreio.UrlValidacaoPublica,
+            rastreio.QrCodePng,
+            // TemAssinatura vem da tabela própria AprAssinatura (Motor de Assinatura Eletrônica não é
+            // usado pela APR) — rastreio.TemAssinatura é deliberadamente ignorado aqui.
+            detalhe.Assinaturas.Count > 0);
     }
 }

@@ -55,11 +55,8 @@ public class AprPdfService : IAprPdfService
                     coluna.Item().Element(SecaoMatrizCriterios);
                 });
 
-                pagina.Footer().AlignCenter().Text(t =>
-                {
-                    t.Span("Gerado em ").FontSize(7);
-                    t.Span(DateTime.Now.ToString("dd/MM/yyyy HH:mm")).FontSize(7);
-                });
+                pagina.Footer().Column(coluna => RodapeDocumentoPadrao.Desenhar(
+                    coluna, "APR", modelo.NumeroApr, null, modelo.ConteudoHash, modelo.UrlValidacaoPublica, modelo.QrCodePng, modelo.TemAssinatura));
             });
         });
 
