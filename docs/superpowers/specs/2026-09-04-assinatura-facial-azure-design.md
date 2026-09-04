@@ -33,6 +33,12 @@ Nova seção/botão na aba de perfil do trabalhador (não um item de menu novo �
 
 `Trabalhador.FotoConteudo` (já existe no projeto) é só uma prévia visual — não é reaproveitado como foto de treino do Azure (a API exige controle próprio sobre a imagem enviada ao `Person`).
 
+**Captura de foto (cadastro e assinatura):** o projeto não tem nenhum componente de webcam ao vivo (`getUserMedia`) hoje — o padrão já estabelecido é `SeletorFotoCamera.tsx` (captura única via `<input type="file" capture>`, usado em DDS/Inspeções/Obras). Decisão do usuário: reaproveitar esse mesmo padrão de captura única tanto no cadastro quanto na assinatura, em vez de construir um componente novo de vídeo ao vivo — a Azure Face API só precisa de uma foto por verificação, não de stream de vídeo.
+
+**Consentimento LGPD:** reaproveita `Trabalhador.ConsentimentoBiometriaEm` (já existe, genérico para "dado biométrico sensível") — não cria um campo de consentimento específico para facial, já que é a mesma categoria de dado sob a LGPD (art. 5º II) que a digital do Futronic.
+
+**Habilitação por obra:** `MetodoAutenticacaoObra` (enum `[Flags]` que hoje só tem `Nenhum=0`/`Biometria=1`) ganha `ReconhecimentoFacial = 2` — cada obra decide se habilita reconhecimento facial, mesmo padrão já usado pro Futronic (`Obra.MetodosAutenticacaoHabilitados`).
+
 ## 5. Fluxo offline
 
 Já existe um motor de sincronização offline (`src/lib/offline`, `syncEngine.ts`) piloto em DDS/Inspeções/Checklists/APRs: leituras em cache, mutações em fila local (IndexedDB), reenviadas quando a internet volta. Azure Face API é serviço de nuvem — não dá pra verificar rosto sem internet no instante da assinatura. Decisão do usuário: a foto fica **pendente de verificação**, não finge sucesso.
