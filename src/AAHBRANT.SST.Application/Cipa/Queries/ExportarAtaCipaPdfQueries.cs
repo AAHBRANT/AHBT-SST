@@ -1,4 +1,6 @@
+using AAHBRANT.SST.Application.Assinatura;
 using AAHBRANT.SST.Application.Common.Interfaces;
+using AAHBRANT.SST.Domain.Entidades;
 using AAHBRANT.SST.Domain.Enums;
 using MediatR;
 using Microsoft.EntityFrameworkCore;
@@ -12,12 +14,14 @@ public class ExportarAtaEleicaoCipaPdfQueryHandler : IRequestHandler<ExportarAta
     private readonly IMediator _mediator;
     private readonly IAppDbContext _db;
     private readonly ICipaPdfService _pdf;
+    private readonly IRegistradorRastreabilidadeService _rastreabilidade;
 
-    public ExportarAtaEleicaoCipaPdfQueryHandler(IMediator mediator, IAppDbContext db, ICipaPdfService pdf)
+    public ExportarAtaEleicaoCipaPdfQueryHandler(IMediator mediator, IAppDbContext db, ICipaPdfService pdf, IRegistradorRastreabilidadeService rastreabilidade)
     {
         _mediator = mediator;
         _db = db;
         _pdf = pdf;
+        _rastreabilidade = rastreabilidade;
     }
 
     public async Task<byte[]?> Handle(ExportarAtaEleicaoCipaPdfQuery request, CancellationToken ct)
@@ -44,6 +48,8 @@ public class ExportarAtaEleicaoCipaPdfQueryHandler : IRequestHandler<ExportarAta
             .Select(c => new AtaEleicaoCipaCandidatoModelo(c.TrabalhadorNome, c.TrabalhadorMatricula, c.VotosRecebidos, statusLabel[c.Status]))
             .ToList();
 
+        var rastreio = await _rastreabilidade.GarantirAsync(nameof(ProcessoEleitoralCipa), request.ProcessoEleitoralId, ct);
+
         var modelo = new AtaEleicaoCipaPdfModelo(
             detalhe.Processo.ObraNome,
             logoConteudo,
@@ -51,7 +57,10 @@ public class ExportarAtaEleicaoCipaPdfQueryHandler : IRequestHandler<ExportarAta
             detalhe.Processo.DataConvocacao,
             detalhe.Processo.DataVotacao,
             detalhe.Processo.DataApuracao,
-            candidatos);
+            candidatos,
+            rastreio.ConteudoHash,
+            rastreio.UrlValidacaoPublica,
+            rastreio.QrCodePng);
 
         return _pdf.GerarAtaEleicao(modelo);
     }
@@ -64,12 +73,14 @@ public class ExportarAtaReuniaoCipaPdfQueryHandler : IRequestHandler<ExportarAta
     private readonly IMediator _mediator;
     private readonly IAppDbContext _db;
     private readonly ICipaPdfService _pdf;
+    private readonly IRegistradorRastreabilidadeService _rastreabilidade;
 
-    public ExportarAtaReuniaoCipaPdfQueryHandler(IMediator mediator, IAppDbContext db, ICipaPdfService pdf)
+    public ExportarAtaReuniaoCipaPdfQueryHandler(IMediator mediator, IAppDbContext db, ICipaPdfService pdf, IRegistradorRastreabilidadeService rastreabilidade)
     {
         _mediator = mediator;
         _db = db;
         _pdf = pdf;
+        _rastreabilidade = rastreabilidade;
     }
 
     public async Task<byte[]?> Handle(ExportarAtaReuniaoCipaPdfQuery request, CancellationToken ct)
@@ -86,6 +97,8 @@ public class ExportarAtaReuniaoCipaPdfQueryHandler : IRequestHandler<ExportarAta
             .Select(p => new AtaReuniaoCipaParticipanteModelo(p.TrabalhadorNome, p.Presente))
             .ToList();
 
+        var rastreio = await _rastreabilidade.GarantirAsync(nameof(ReuniaoCipa), request.ReuniaoId, ct);
+
         var modelo = new AtaReuniaoCipaPdfModelo(
             detalhe.Reuniao.ObraNome,
             logoConteudo,
@@ -93,7 +106,10 @@ public class ExportarAtaReuniaoCipaPdfQueryHandler : IRequestHandler<ExportarAta
             detalhe.Reuniao.DataReuniao,
             detalhe.Reuniao.Pauta,
             detalhe.Reuniao.Deliberacoes,
-            participantes);
+            participantes,
+            rastreio.ConteudoHash,
+            rastreio.UrlValidacaoPublica,
+            rastreio.QrCodePng);
 
         return _pdf.GerarAtaReuniao(modelo);
     }
