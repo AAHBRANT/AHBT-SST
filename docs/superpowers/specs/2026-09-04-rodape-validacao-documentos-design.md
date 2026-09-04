@@ -8,6 +8,8 @@
 
 Padronizar o rodapé de todo PDF gerado pelo sistema (DDS, DDS Semanal, APR, PT, CIPA, Inspeção/Patrulha, Entrega/Ficha de EPI, Certificado de Treinamento, Ata de Sessão de Treinamento) com:
 
+**PGR está fora do escopo**: não tem `PgrPdfService`/`ExportarPgrPdfQuery` nenhum hoje — construir essa exportação do zero seria um recurso separado. CIPA e DDS Semanal seguem como exemplos reais de documento sem assinatura digital (linha em branco para assinatura física), então o caso "zero signatários" continua coberto sem o PGR.
+
 - Código de autenticidade (hash) e QR/link para validação pública do documento.
 - Nota de assinatura digital (MP nº 2.200-2/2001 e Lei nº 14.063/2020), quando o documento de fato tem signatário registrado.
 - Nome do sistema emissor, número do documento/protocolo.
@@ -24,16 +26,16 @@ Aplica-se a **todos os documentos operacionais** listados acima — não só aos
 
 **Versão original desta seção (revisada):** a primeira versão deste design propunha relaxar `FinalizarDocumentoCommand` para aceitar zero signatários e virar idempotente, reaproveitando-o para todo documento. **Isso foi corrigido** ao ler `RegistradorAssinaturaService.cs`: `FinalizarDocumentoCommand` não só gera hash — ele também fecha o documento para novas assinaturas (`Status = Finalizado`), e `RegistradorAssinaturaService` bloqueia qualquer assinatura nova assim que `Status != EmAndamento`. Chamar isso no primeiro export de PDF travaria, por exemplo, um DDS exportado no meio do dia (antes de todos assinarem a presença biométrica) — ninguém mais conseguiria assinar depois. Regressão real na funcionalidade "assinatura automática pela presença" implementada nesta mesma branch.
 
-**Decisão corrigida:** rastreabilidade (hash+token+QR) e finalização (fechar o ciclo de assinatura) são conceitos **separados**, cada um com seu próprio disparador:
+**Decisão corrigida:** rastreabilidade (hash+token+QR) e finalização (fechar o ciclo de assinatura) são conceitos **separados**, cada um com seu próprio disparador. O caso "documento sem nenhum signatário" não é uma exceção rara — é o estado normal de qualquer documento exportado antes (ou sem nunca ter) fluxo de assinatura completo (ex.: um APR exportado antes da liberação ser assinada; CIPA e DDS Semanal, que nunca assinam digitalmente):
 
 - **`FinalizarDocumentoCommand` não muda em nada** — continua exigindo ≥1 signatário, continua fechando o documento e gerando o comprovante, disparado só pelas ações de negócio que já o chamam hoje (ex.: `EncerrarSessaoTreinamentoCommand`).
 - **Novo `IRegistradorRastreabilidadeService.GarantirAsync(entidadeTipo, entidadeId, ct)`** (mesmo padrão de arquivo/DI de `IRegistradorAssinaturaService.cs`: interface + implementação no mesmo arquivo, injeta `IAppDbContext` direto, sem passar por `IMediator`): find-or-create de `DocumentoAssinatura`; gera `TokenValidacaoPublica` uma única vez (se ainda não existir); recalcula `ConteudoHash` a cada chamada **enquanto `Status == EmAndamento`** (reflete os signatários até agora, inclusive zero); **não mexe em `Status` nem em `FinalizadoEm`**. Se o documento já está `Finalizado`, apenas devolve o hash/token já congelados por `FinalizarDocumentoCommand` (sem recalcular).
-- Novo campo `DocumentoAssinatura.RastreadoEm` (`DateTime?`): timestamp de quando o token foi gerado pela primeira vez — usado como "emitido em" nos documentos que nunca chegam a ser finalizados (ex.: PGR, que não tem fluxo de assinatura).
+- Novo campo `DocumentoAssinatura.RastreadoEm` (`DateTime?`): timestamp de quando o token foi gerado pela primeira vez — usado como "emitido em" nos documentos que nunca chegam a ser finalizados (ex.: CIPA e DDS Semanal, que não têm fluxo de assinatura digital).
 - A nota de assinatura digital (MP 2.200-2/Lei 14.063) só aparece no rodapé/página pública quando `Signatarios.Count > 0`; sem signatário, mostra-se apenas o hash/QR de integridade, sem alegar assinatura.
 
 ## 4. Página pública de validação — ajuste necessário
 
-`ResolverDocumentoPublicoQueryHandler` hoje só resolve `Status == Finalizado` e usa `documento.FinalizadoEm!.Value` (null-forgiving). Documentos que nunca finalizam (PGR) ou que ainda estão `EmAndamento` no momento em que alguém escaneia o QR (DDS no meio do dia) resultariam em 404 ou `NullReferenceException`. Ajuste:
+`ResolverDocumentoPublicoQueryHandler` hoje só resolve `Status == Finalizado` e usa `documento.FinalizadoEm!.Value` (null-forgiving). Documentos que nunca finalizam (CIPA, DDS Semanal) ou que ainda estão `EmAndamento` no momento em que alguém escaneia o QR (DDS/APR/PT no meio do fluxo) resultariam em 404 ou `NullReferenceException`. Ajuste:
 
 - Filtro passa a ser só `TokenValidacaoPublica == token` (sem exigir `Status == Finalizado`).
 - `DocumentoPublicoDto` troca `FinalizadoEm` (não-nulo) por `EmitidoEm` (`FinalizadoEm ?? RastreadoEm ?? Ativo em`, sempre terá um dos dois preenchido nesse ponto) e ganha `Assinado` (bool, `Signatarios.Count > 0`) para a página distinguir "documento rastreável, ainda sem assinatura" de "documento assinado digitalmente".
@@ -57,7 +59,6 @@ Falta adicionar (novo campo `NumeroDocumento` nullable + chamada de `GerarAsync`
 | Documento | Entidade/campo novo | Prefixo |
 |---|---|---|
 | DDS (diário) | `Dds.NumeroDocumento` | `DDS-D` (prefixo `DDS` já pertence ao DDS Semanal) |
-| PGR | `Pgr.NumeroDocumento` | `PGR` |
 | Inspeção/Patrulha | `Inspecao.NumeroDocumento` | `INSP` |
 | Entrega/Ficha de EPI | `EntregaEpi.NumeroDocumento` | `EPI` |
 
@@ -67,7 +68,7 @@ Ata de Sessão de Treinamento reaproveita `SessaoTreinamento.NumeroCertificado`,
 
 ## 7. Revisão/Versão
 
-Só exibida quando o domínio já tem esse conceito — hoje, só PGR (`PgrRevisao.NumeroRevisao`). Nos demais tipos (documentos de evento único: DDS, APR, PT, CIPA, Inspeção, Entrega de EPI, Certificado), a linha de revisão simplesmente não aparece no rodapé.
+Nenhum dos 8 tipos em escopo tem conceito de revisão hoje (todos são documentos de evento único: DDS, DDS Semanal, APR, PT, CIPA, Inspeção, Entrega de EPI, Certificado/Ata). O campo `Revisao` (int?) fica no `Modelo` do PDF e no `RodapeDocumentoPadrao` para o caso geral, mas nunca é preenchido nesta rodada — a linha correspondente simplesmente não aparece. Fica pronto para o dia em que o PGR ganhar seu próprio PDF (fora deste escopo) e reaproveitar `PgrRevisao.NumeroRevisao`.
 
 ## 8. Componente de rodapé compartilhado
 
@@ -87,7 +88,7 @@ Página 1 de 3
 - **Página X de Y**: nativo do QuestPDF (`text.CurrentPageNumber()`/`text.TotalPages()`).
 - **Nome do sistema emissor**: fixo, `"AAHBRANT SST"`.
 
-Parâmetros do `Modelo` de cada PDF ganham: `Protocolo` (string?), `ConteudoHash` (string), `TokenValidacaoPublica` (string), `TemAssinatura` (bool), `Revisao` (int?, só PGR preenche).
+Parâmetros do `Modelo` de cada PDF ganham: `Protocolo` (string?), `ConteudoHash` (string), `TokenValidacaoPublica` (string), `TemAssinatura` (bool), `Revisao` (int?, nenhum tipo em escopo preenche por ora — ver seção 7).
 
 ## 9. Fluxo por serviço de PDF
 
