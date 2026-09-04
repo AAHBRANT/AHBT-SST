@@ -1,3 +1,4 @@
+using AAHBRANT.SST.Application.Assinatura;
 using AAHBRANT.SST.Application.Common.Interfaces;
 using AAHBRANT.SST.Domain.Enums;
 using MediatR;
@@ -12,12 +13,14 @@ public class ExportarDdsSemanalPdfQueryHandler : IRequestHandler<ExportarDdsSema
     private readonly IMediator _mediator;
     private readonly IAppDbContext _db;
     private readonly IDdsSemanalPdfService _pdf;
+    private readonly IRegistradorRastreabilidadeService _rastreabilidade;
 
-    public ExportarDdsSemanalPdfQueryHandler(IMediator mediator, IAppDbContext db, IDdsSemanalPdfService pdf)
+    public ExportarDdsSemanalPdfQueryHandler(IMediator mediator, IAppDbContext db, IDdsSemanalPdfService pdf, IRegistradorRastreabilidadeService rastreabilidade)
     {
         _mediator = mediator;
         _db = db;
         _pdf = pdf;
+        _rastreabilidade = rastreabilidade;
     }
 
     public async Task<byte[]?> Handle(ExportarDdsSemanalPdfQuery request, CancellationToken ct)
@@ -61,6 +64,8 @@ public class ExportarDdsSemanalPdfQueryHandler : IRequestHandler<ExportarDdsSema
             .OrderBy(p => p.Nome)
             .ToList();
 
+        var rastreio = await _rastreabilidade.GarantirAsync(nameof(Domain.Entidades.DdsSemanal), request.Id, ct);
+
         var modelo = new DdsSemanalPdfModelo(
             detalhe.Semanal.ObraNome,
             logoConteudo,
@@ -75,7 +80,11 @@ public class ExportarDdsSemanalPdfQueryHandler : IRequestHandler<ExportarDdsSema
             presencas,
             detalhe.Semanal.ResponsavelObraSstNome,
             detalhe.Semanal.ResponsavelEmpresaTerceirizadaNome,
-            detalhe.Semanal.ResponsavelEmpresaTerceirizadaFuncao);
+            detalhe.Semanal.ResponsavelEmpresaTerceirizadaFuncao,
+            rastreio.ConteudoHash,
+            rastreio.UrlValidacaoPublica,
+            rastreio.QrCodePng,
+            rastreio.TemAssinatura);
 
         return _pdf.Gerar(modelo);
     }

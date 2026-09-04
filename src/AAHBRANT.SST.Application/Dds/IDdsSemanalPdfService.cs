@@ -27,7 +27,11 @@ public record DdsSemanalPdfModelo(
     IReadOnlyList<DdsSemanalPdfLinhaPresenca> Presencas,
     string? ResponsavelObraSstNome,
     string? ResponsavelEmpresaTerceirizadaNome,
-    string? ResponsavelEmpresaTerceirizadaFuncao);
+    string? ResponsavelEmpresaTerceirizadaFuncao,
+    string ConteudoHash,
+    string UrlValidacaoPublica,
+    byte[] QrCodePng,
+    bool TemAssinatura);
 
 public interface IDdsSemanalPdfService
 {
