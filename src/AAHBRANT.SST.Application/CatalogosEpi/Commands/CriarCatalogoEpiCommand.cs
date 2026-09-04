@@ -9,8 +9,7 @@ public record CriarCatalogoEpiCommand(
     string? Fabricante,
     string? CertificadoAprovacaoNumero,
     DateTime? CertificadoAprovacaoValidade,
-    int VidaUtilEmMeses,
-    string? CodigoBarras) : IRequest<Guid>;
+    int VidaUtilEmMeses) : IRequest<Guid>;
 
 public class CriarCatalogoEpiCommandValidator : AbstractValidator<CriarCatalogoEpiCommand>
 {
@@ -35,7 +34,6 @@ public class CriarCatalogoEpiCommandHandler : IRequestHandler<CriarCatalogoEpiCo
             CertificadoAprovacaoNumero = request.CertificadoAprovacaoNumero,
             CertificadoAprovacaoValidade = request.CertificadoAprovacaoValidade,
             VidaUtilEmMeses = request.VidaUtilEmMeses,
-            CodigoBarras = request.CodigoBarras,
         };
         _db.CatalogoEpis.Add(epi);
         await _db.SaveChangesAsync(ct);

@@ -336,9 +336,6 @@ export interface CatalogoEpi {
   // Foto real do item (pedido do usuário, 03/09) — nunca vem embutida aqui (só o flag); o binário é
   // baixado sob demanda via api.catalogosEpi.baixarFoto, mesmo padrão de Obra.temLogo/Trabalhador.temFoto.
   temFoto: boolean;
-  // Código de barras/EAN da embalagem do fabricante (pedido do usuário, 04/09) — usado pela tela de
-  // Entrega Rápida pra resolver o item ao ler com um leitor de código de barras USB.
-  codigoBarras?: string | null;
 }
 
 export type NovoCatalogoEpi = Omit<CatalogoEpi, 'id' | 'saldoTotal' | 'temFoto'>;

@@ -11,8 +11,7 @@ public record AtualizarCatalogoEpiCommand(
     string? Fabricante,
     string? CertificadoAprovacaoNumero,
     DateTime? CertificadoAprovacaoValidade,
-    int VidaUtilEmMeses,
-    string? CodigoBarras) : IRequest;
+    int VidaUtilEmMeses) : IRequest;
 
 public class AtualizarCatalogoEpiCommandValidator : AbstractValidator<AtualizarCatalogoEpiCommand>
 {
@@ -39,7 +38,6 @@ public class AtualizarCatalogoEpiCommandHandler : IRequestHandler<AtualizarCatal
         epi.CertificadoAprovacaoNumero = request.CertificadoAprovacaoNumero;
         epi.CertificadoAprovacaoValidade = request.CertificadoAprovacaoValidade;
         epi.VidaUtilEmMeses = request.VidaUtilEmMeses;
-        epi.CodigoBarras = request.CodigoBarras;
 
         await _db.SaveChangesAsync(ct);
     }

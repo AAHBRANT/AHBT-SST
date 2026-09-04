@@ -1188,9 +1188,6 @@ namespace AAHBRANT.SST.Infrastructure.Persistencia.Migrations
                     b.Property<DateTime?>("CertificadoAprovacaoValidade")
                         .HasColumnType("datetime2");
 
-                    b.Property<string>("CodigoBarras")
-                        .HasColumnType("nvarchar(max)");
-
                     b.Property<DateTime>("CreatedAtUtc")
                         .HasColumnType("datetime2");
 
