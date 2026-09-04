@@ -41,8 +41,12 @@ internal static class RodapeDocumentoPadrao
                         .FontSize(6.5f).Italic();
                 }
 
-                textoColuna.Item().AlignCenter().Text(t =>
+                // Alinhado à direita e justificado (pedido do usuário, 04/09): fica colado na lateral
+                // esquerda do QR (que está logo depois, à direita) em vez de centralizado no meio do
+                // rodapé — o código de validação/link visualmente "junto" do QR que ele descreve.
+                textoColuna.Item().AlignRight().Text(t =>
                 {
+                    t.Justify();
                     // Chave curta: atalho visual (8 primeiros caracteres do hash SHA-256, maiúsculos,
                     // formatado XXXX-XXXX) — a conferência de fato acontece pelo QR/link, que carrega
                     // o token completo, não pelo hash em si.
@@ -51,7 +55,7 @@ internal static class RodapeDocumentoPadrao
                     t.Span(DateTime.Now.ToString("dd/MM/yyyy HH:mm")).FontSize(6.5f);
                 });
 
-                textoColuna.Item().AlignCenter().Text(t =>
+                textoColuna.Item().AlignRight().Text(t =>
                 {
                     t.Span("Página ").FontSize(6.5f);
                     t.CurrentPageNumber().FontSize(6.5f);

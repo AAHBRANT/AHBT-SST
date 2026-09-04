@@ -18,16 +18,24 @@ internal static class CabecalhoDocumentoPadrao
 
     public static void Desenhar(ColumnDescriptor coluna, string tituloDocumento, string? obraNome, byte[]? logoConteudo)
     {
+        // Logo à esquerda e um espaço reservado do mesmo tamanho à direita (mesmo sem logo) — assim
+        // o bloco de título fica centralizado de verdade em relação à página inteira, não só ao
+        // espaço sobrando depois da logo (pedido do usuário, 04/09: título centralizado em todos os
+        // documentos).
         coluna.Item().Row(linha =>
         {
-            if (logoConteudo is not null)
-                linha.ConstantItem(50).Height(50).Image(logoConteudo).FitArea();
-
-            linha.RelativeItem().PaddingLeft(logoConteudo is not null ? 8 : 0).Column(sub =>
+            linha.ConstantItem(50).Height(50).Element(c =>
             {
-                sub.Item().Text(obraNome ?? "Obra não identificada").FontSize(16).Bold().FontColor(CorMarca);
-                sub.Item().Text(tituloDocumento).FontSize(12).SemiBold();
+                if (logoConteudo is not null) c.Image(logoConteudo).FitArea();
             });
+
+            linha.RelativeItem().AlignCenter().Column(sub =>
+            {
+                sub.Item().AlignCenter().Text(obraNome ?? "Obra não identificada").FontSize(16).Bold().FontColor(CorMarca);
+                sub.Item().AlignCenter().Text(tituloDocumento).FontSize(12).SemiBold();
+            });
+
+            linha.ConstantItem(50);
         });
         coluna.Item().PaddingTop(4).LineHorizontal(2).LineColor(CorMarca);
     }
