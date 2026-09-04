@@ -66,7 +66,10 @@ export function CatalogoTab() {
     try {
       setCarregando(true);
       setErro(null);
-      const { id } = await api.catalogosEpi.criar(novoEpi);
+      const { id } = await api.catalogosEpi.criar({
+        ...novoEpi,
+        certificadoAprovacaoValidade: novoEpi.certificadoAprovacaoValidade || null,
+      });
       if (fotoNovoEpi) {
         await api.catalogosEpi.anexarFoto(id, fotoNovoEpi);
       }
@@ -102,7 +105,10 @@ export function CatalogoTab() {
     try {
       setCarregando(true);
       setErro(null);
-      await api.catalogosEpi.atualizar(edicao);
+      await api.catalogosEpi.atualizar({
+        ...edicao,
+        certificadoAprovacaoValidade: edicao.certificadoAprovacaoValidade || null,
+      });
       setEdicaoId(null);
       setEdicao(null);
       await carregar();
