@@ -102,11 +102,8 @@ public class DdsPdfService : IDdsPdfService
                     }
                 });
 
-                pagina.Footer().AlignCenter().Text(t =>
-                {
-                    t.Span("Gerado em ").FontSize(9);
-                    t.Span(DateTime.Now.ToString("dd/MM/yyyy HH:mm")).FontSize(9);
-                });
+                pagina.Footer().Column(coluna => RodapeDocumentoPadrao.Desenhar(
+                    coluna, "DDS", modelo.Protocolo, null, modelo.ConteudoHash, modelo.UrlValidacaoPublica, modelo.QrCodePng, modelo.TemAssinatura));
             });
         });
 

@@ -32,8 +32,13 @@ public class CriarDdsCommandValidator : AbstractValidator<CriarDdsCommand>
 public class CriarDdsCommandHandler : IRequestHandler<CriarDdsCommand, Guid>
 {
     private readonly IAppDbContext _db;
+    private readonly IGeradorNumeroDocumentoService _geradorNumero;
 
-    public CriarDdsCommandHandler(IAppDbContext db) => _db = db;
+    public CriarDdsCommandHandler(IAppDbContext db, IGeradorNumeroDocumentoService geradorNumero)
+    {
+        _db = db;
+        _geradorNumero = geradorNumero;
+    }
 
     public async Task<Guid> Handle(CriarDdsCommand request, CancellationToken ct)
     {
@@ -69,6 +74,7 @@ public class CriarDdsCommandHandler : IRequestHandler<CriarDdsCommand, Guid>
             DdsSemanalId = semanal.Id,
             Data = request.Data.Date,
             ResponsavelUsuarioId = semanal.ResponsavelUsuarioId,
+            NumeroDocumento = await _geradorNumero.GerarAsync("DDS-D", ct),
         };
 
         if (request.CatalogoTemaDdsId.HasValue)

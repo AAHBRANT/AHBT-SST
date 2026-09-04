@@ -1,3 +1,4 @@
+using AAHBRANT.SST.Application.Assinatura;
 using AAHBRANT.SST.Application.Dds;
 using AAHBRANT.SST.Application.Dds.Queries;
 using AAHBRANT.SST.Domain.Enums;
@@ -6,6 +7,8 @@ namespace AAHBRANT.SST.Application.Tests.Dds;
 
 public class ExportarDdsPdfQueryMontarModeloTests
 {
+    private static readonly RastreabilidadeDocumentoResultado RastreioFake = new("hash", "https://validar.teste", Array.Empty<byte>(), false);
+
     private static DdsDetalheDto CriarDetalhe(List<DdsTemaAtividadeDto> temas, string? temaLivreNome, string? temaLivreDescricao)
     {
         return new DdsDetalheDto
@@ -40,7 +43,7 @@ public class ExportarDdsPdfQueryMontarModeloTests
         };
         var detalhe = CriarDetalhe(temas, null, null);
 
-        var modelo = ExportarDdsPdfQueryHandler.MontarModelo(detalhe);
+        var modelo = ExportarDdsPdfQueryHandler.MontarModelo(detalhe, null, null, RastreioFake);
 
         var tema = Assert.Single(modelo.Temas);
         Assert.Equal("Montagem de andaime", tema.AtividadeNome);
@@ -61,7 +64,7 @@ public class ExportarDdsPdfQueryMontarModeloTests
         };
         var detalhe = CriarDetalhe(temas, null, null);
 
-        var modelo = ExportarDdsPdfQueryHandler.MontarModelo(detalhe);
+        var modelo = ExportarDdsPdfQueryHandler.MontarModelo(detalhe, null, null, RastreioFake);
 
         var tema = Assert.Single(modelo.Temas);
         Assert.Equal("Limpeza do canteiro", tema.AtividadeNome);
@@ -73,7 +76,7 @@ public class ExportarDdsPdfQueryMontarModeloTests
     {
         var detalhe = CriarDetalhe(new List<DdsTemaAtividadeDto>(), "Outubro Amarelo", "Prevenção ao suicídio");
 
-        var modelo = ExportarDdsPdfQueryHandler.MontarModelo(detalhe);
+        var modelo = ExportarDdsPdfQueryHandler.MontarModelo(detalhe, null, null, RastreioFake);
 
         Assert.Equal("Outubro Amarelo", modelo.TemaLivreNome);
         Assert.Equal("Prevenção ao suicídio", modelo.TemaLivreDescricao);
