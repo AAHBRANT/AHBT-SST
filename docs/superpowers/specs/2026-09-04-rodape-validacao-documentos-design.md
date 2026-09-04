@@ -20,28 +20,35 @@ Origem: pedido do usuário trazendo um checklist de campos de rodapé + exemplo 
 
 Aplica-se a **todos os documentos operacionais** listados acima — não só aos que já passam pelo Motor de Assinatura Eletrônica. O comprovante de assinatura (`DocumentoAssinaturaPdfService`) já tem hash/QR próprios e não entra neste escopo (mantido como está).
 
-## 3. Decisão central: reaproveitar o Motor de Assinatura para todos os documentos
+## 3. Decisão central: rastreabilidade separada de finalização (correção pós-leitura de código)
 
-Hoje `FinalizarDocumentoCommand` (que gera hash SHA-256 + token + QR e fecha o ciclo de assinatura) **exige pelo menos um signatário** e **não é idempotente** (lança erro se chamado de novo sobre um documento já finalizado). Isso inviabiliza reaproveitá-lo tal como está para documentos sem nenhum fluxo de assinatura (ex.: PGR).
+**Versão original desta seção (revisada):** a primeira versão deste design propunha relaxar `FinalizarDocumentoCommand` para aceitar zero signatários e virar idempotente, reaproveitando-o para todo documento. **Isso foi corrigido** ao ler `RegistradorAssinaturaService.cs`: `FinalizarDocumentoCommand` não só gera hash — ele também fecha o documento para novas assinaturas (`Status = Finalizado`), e `RegistradorAssinaturaService` bloqueia qualquer assinatura nova assim que `Status != EmAndamento`. Chamar isso no primeiro export de PDF travaria, por exemplo, um DDS exportado no meio do dia (antes de todos assinarem a presença biométrica) — ninguém mais conseguiria assinar depois. Regressão real na funcionalidade "assinatura automática pela presença" implementada nesta mesma branch.
 
-**Decisão (Abordagem 1, escolhida sobre criar uma trilha paralela):** relaxar esse fluxo em vez de duplicá-lo.
+**Decisão corrigida:** rastreabilidade (hash+token+QR) e finalização (fechar o ciclo de assinatura) são conceitos **separados**, cada um com seu próprio disparador:
 
-- `FinalizarDocumentoCommand` passa a aceitar zero signatários — o hash nesse caso é calculado só a partir de `EntidadeTipo`/`EntidadeId` (sem dados de assinatura).
-- Passa a ser **idempotente**: se o documento já está `Finalizado`, retorna o hash/token já existentes em vez de lançar `InvalidOperationException`.
-- Um único conceito no sistema — "documento rastreável" — do qual "documento assinado" é um caso particular (quando `Signatarios.Count > 0`).
-- A nota de assinatura digital (MP 2.200-2/Lei 14.063) só aparece no rodapé/página pública quando há signatário; sem signatário, mostra-se apenas o hash/QR de integridade, sem alegar assinatura.
-- `ResolverDocumentoPublicoQuery`/`ValidacaoPublicaController` continuam funcionando sem alteração de contrato — já retornam `Signatarios` (lista vazia é um caso válido).
+- **`FinalizarDocumentoCommand` não muda em nada** — continua exigindo ≥1 signatário, continua fechando o documento e gerando o comprovante, disparado só pelas ações de negócio que já o chamam hoje (ex.: `EncerrarSessaoTreinamentoCommand`).
+- **Novo `IRegistradorRastreabilidadeService.GarantirAsync(entidadeTipo, entidadeId, ct)`** (mesmo padrão de arquivo/DI de `IRegistradorAssinaturaService.cs`: interface + implementação no mesmo arquivo, injeta `IAppDbContext` direto, sem passar por `IMediator`): find-or-create de `DocumentoAssinatura`; gera `TokenValidacaoPublica` uma única vez (se ainda não existir); recalcula `ConteudoHash` a cada chamada **enquanto `Status == EmAndamento`** (reflete os signatários até agora, inclusive zero); **não mexe em `Status` nem em `FinalizadoEm`**. Se o documento já está `Finalizado`, apenas devolve o hash/token já congelados por `FinalizarDocumentoCommand` (sem recalcular).
+- Novo campo `DocumentoAssinatura.RastreadoEm` (`DateTime?`): timestamp de quando o token foi gerado pela primeira vez — usado como "emitido em" nos documentos que nunca chegam a ser finalizados (ex.: PGR, que não tem fluxo de assinatura).
+- A nota de assinatura digital (MP 2.200-2/Lei 14.063) só aparece no rodapé/página pública quando `Signatarios.Count > 0`; sem signatário, mostra-se apenas o hash/QR de integridade, sem alegar assinatura.
 
-## 4. Quando gerar cada coisa
+## 4. Página pública de validação — ajuste necessário
+
+`ResolverDocumentoPublicoQueryHandler` hoje só resolve `Status == Finalizado` e usa `documento.FinalizadoEm!.Value` (null-forgiving). Documentos que nunca finalizam (PGR) ou que ainda estão `EmAndamento` no momento em que alguém escaneia o QR (DDS no meio do dia) resultariam em 404 ou `NullReferenceException`. Ajuste:
+
+- Filtro passa a ser só `TokenValidacaoPublica == token` (sem exigir `Status == Finalizado`).
+- `DocumentoPublicoDto` troca `FinalizadoEm` (não-nulo) por `EmitidoEm` (`FinalizadoEm ?? RastreadoEm ?? Ativo em`, sempre terá um dos dois preenchido nesse ponto) e ganha `Assinado` (bool, `Signatarios.Count > 0`) para a página distinguir "documento rastreável, ainda sem assinatura" de "documento assinado digitalmente".
+
+## 5. Quando gerar cada coisa
 
 | O quê | Quando | Idempotência |
 |---|---|---|
 | **Protocolo/número do documento** | Na criação do registro (`Criar...Command`), mesmo padrão já usado por APR/PT/DDS Semanal/CIPA/PCMSO/Certificado | Gerado uma única vez, persistido na entidade |
-| **Hash + token + QR de rastreabilidade** | Sob demanda, no primeiro export do PDF (`Exportar...PdfQuery`) | `IRegistradorRastreabilidadeService.GarantirAsync` — reaproveita se já existir |
+| **Token de validação pública** | Sob demanda, no primeiro export do PDF (`Exportar...PdfQuery`) | Gerado uma única vez, persistido em `DocumentoAssinatura.TokenValidacaoPublica` |
+| **Hash de integridade** | Recalculado a cada export enquanto `EmAndamento`; congelado quando `Finalizado` (por `FinalizarDocumentoCommand`, inalterado) | N/A — sempre reflete os signatários atuais até finalizar |
 
-Justificativa de gerar hash/token sob demanda (não na criação): evita rastreabilidade para registros que nunca chegam a virar PDF (rascunhos, DDS nunca baixado). Protocolo continua na criação porque já é referenciado em listagens/UI antes de qualquer export.
+Justificativa de gerar rastreabilidade sob demanda (não na criação): evita gerar token para registros que nunca chegam a virar PDF (rascunhos, DDS nunca baixado). Protocolo continua na criação porque já é referenciado em listagens/UI antes de qualquer export.
 
-## 5. Numeração automática — o que falta
+## 6. Numeração automática — o que falta
 
 Infra já existe e funciona (`IGeradorNumeroDocumentoService`/`GeradorNumeroDocumentoService`/`ContadorDocumento`, contador por prefixo+ano, formato `PREFIXO-ANO-NNNN`). Já plugada em: APR (`APR`), PT (`PT`), DDS Semanal (`DDS`), CIPA/Edital (`CIPA-EDITAL`), PCMSO (`PCMSO`), Certificado de Treinamento (`CERT`).
 
@@ -58,11 +65,11 @@ Nota: `EntregaEpi.NumeroListaPresencaNr6` é um campo **manual, digitado pelo us
 
 Ata de Sessão de Treinamento reaproveita `SessaoTreinamento.NumeroCertificado`, já existente.
 
-## 6. Revisão/Versão
+## 7. Revisão/Versão
 
 Só exibida quando o domínio já tem esse conceito — hoje, só PGR (`PgrRevisao.NumeroRevisao`). Nos demais tipos (documentos de evento único: DDS, APR, PT, CIPA, Inspeção, Entrega de EPI, Certificado), a linha de revisão simplesmente não aparece no rodapé.
 
-## 7. Componente de rodapé compartilhado
+## 8. Componente de rodapé compartilhado
 
 Novo `RodapeDocumentoPadrao.Desenhar(...)`, ao lado de `CabecalhoDocumentoPadrao.cs` (`src/AAHBRANT.SST.Infrastructure/Documentos/`), usado por todos os serviços de PDF no lugar do atual `pagina.Footer().AlignCenter().Text("Gerado em ...")`.
 
@@ -82,23 +89,25 @@ Página 1 de 3
 
 Parâmetros do `Modelo` de cada PDF ganham: `Protocolo` (string?), `ConteudoHash` (string), `TokenValidacaoPublica` (string), `TemAssinatura` (bool), `Revisao` (int?, só PGR preenche).
 
-## 8. Fluxo por serviço de PDF
+## 9. Fluxo por serviço de PDF
 
 Cada `Exportar...PdfQuery` (Dds, DdsSemanal, Apr, Pt, Cipa, Inspecao, EntregaEpi, e no worktree de Treinamentos: Certificado, Ata Sessão) passa a:
 
-1. Chamar `IRegistradorRastreabilidadeService.GarantirAsync(entidadeTipo, entidadeId, ct)` — find-or-create de `DocumentoAssinatura` (reaproveita `CriarDocumentoAssinaturaCommand`) + gera/reaproveita hash+token+QR via a versão relaxada de `FinalizarDocumentoCommand`.
+1. Chamar `IRegistradorRastreabilidadeService.GarantirAsync(entidadeTipo, entidadeId, ct)` — find-or-create de `DocumentoAssinatura` (mesma lógica de `CriarDocumentoAssinaturaCommand`, sem status change) + garante token (gera se ainda não existir) + recalcula/reaproveita hash conforme a seção 3 + gera o PNG do QR via `IQrCodeDocumentoService.Gerar(token)`.
 2. Montar o `Modelo` do PDF com os novos campos.
 3. O `...PdfService.cs` correspondente troca o footer atual pela chamada a `RodapeDocumentoPadrao.Desenhar(...)`.
 
-## 9. Testes
+## 10. Testes
 
-- Unitário: `GarantirAsync` chamado duas vezes no mesmo documento retorna o mesmo hash/token (idempotência).
-- Unitário: `FinalizarDocumentoCommand` com zero signatários não lança mais `InvalidOperationException` e gera hash válido.
+- Unitário: `GarantirAsync` chamado duas vezes seguidas sobre um documento `EmAndamento` sem signatários devolve o mesmo token, mas recalcula o hash (comportamento esperado, não é bug).
+- Unitário: `GarantirAsync` sobre um documento já `Finalizado` devolve o hash/token exatamente como `FinalizarDocumentoCommand` os deixou, sem alterá-los.
+- Unitário: `FinalizarDocumentoCommand` continua exigindo ≥1 signatário e continua lançando erro se chamado de novo (comportamento **inalterado** — não é mais tocado por esta feature).
+- Unitário: `ResolverDocumentoPublicoQueryHandler` resolve um documento `EmAndamento` (sem `FinalizadoEm`) usando `RastreadoEm` como `EmitidoEm`, e um documento `Finalizado` continua funcionando como antes.
 - Unitário: `GeradorNumeroDocumentoService` respeita contador por prefixo+ano (dois documentos seguidos do mesmo prefixo/ano incrementam; ano diferente reinicia).
 - Verificação visual: exportar um PDF de cada tipo (os 4 novos tipos com numeração + pelo menos 1 tipo que já tinha) e conferir rodapé via extração de texto (pypdf — não há Poppler no ambiente, técnica já usada antes nesta sessão/projeto).
 
-## 10. Fora de escopo (não mexer)
+## 11. Fora de escopo (não mexer)
 
 - `DocumentoAssinaturaPdfService` (comprovante de assinatura em si) — já tem hash/QR próprios, não é tocado.
-- Fluxo de assinatura biométrica/sessão logada — inalterado, só a guarda de "zero signatários" em `FinalizarDocumentoCommand` muda.
+- `FinalizarDocumentoCommand` e todo o fluxo de assinatura biométrica/sessão logada — **inalterados**; a correção da seção 3 eliminou a necessidade de mexer neles.
 - Qualquer trabalho do repositório raiz (`master`) — fora desta branch/worktree.
