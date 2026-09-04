@@ -2,6 +2,8 @@ using AAHBRANT.SST.Application.Treinamentos;
 using QuestPDF.Fluent;
 using QuestPDF.Helpers;
 using QuestPDF.Infrastructure;
+using SixLabors.ImageSharp.Formats.Jpeg;
+using SixLabors.ImageSharp.Processing;
 
 namespace AAHBRANT.SST.Infrastructure.Documentos;
 
@@ -31,7 +33,9 @@ public class CertificadoTreinamentoPdfService : ICertificadoTreinamentoPdfServic
 
     public byte[] Gerar(CertificadoTreinamentoPdfModelo modelo)
     {
-        var temVerso = !string.IsNullOrWhiteSpace(modelo.ConteudoProgramatico);
+        // Verso passa a existir também só para mostrar QR de verificação/foto da turma (item 6 da
+        // proposta do usuário, 04/09), mesmo quando o curso não tem conteúdo programático cadastrado.
+        var temVerso = !string.IsNullOrWhiteSpace(modelo.ConteudoProgramatico) || modelo.QrCodeValidacaoPng is not null || modelo.FotoTurma is not null;
 
         var documento = Document.Create(container =>
         {
@@ -190,27 +194,83 @@ public class CertificadoTreinamentoPdfService : ICertificadoTreinamentoPdfServic
         {
             coluna.Spacing(4);
 
-            var topicos = (modelo.ConteudoProgramatico ?? string.Empty)
-                .Split('\n', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
-
-            coluna.Item().PaddingTop(4).Column(lista =>
+            if (!string.IsNullOrWhiteSpace(modelo.ConteudoProgramatico))
             {
-                lista.Spacing(3);
-                foreach (var topico in topicos)
-                {
-                    lista.Item().Text(t =>
-                    {
-                        t.DefaultTextStyle(x => x.FontSize(10));
-                        t.Span("• ").Bold();
-                        t.Span(topico);
-                    });
-                }
-            });
+                var topicos = modelo.ConteudoProgramatico
+                    .Split('\n', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
 
-            DescricaoCarga(coluna.Item(), modelo);
+                coluna.Item().PaddingTop(4).Column(lista =>
+                {
+                    lista.Spacing(3);
+                    foreach (var topico in topicos)
+                    {
+                        lista.Item().Text(t =>
+                        {
+                            t.DefaultTextStyle(x => x.FontSize(10));
+                            t.Span("• ").Bold();
+                            t.Span(topico);
+                        });
+                    }
+                });
+
+                DescricaoCarga(coluna.Item(), modelo);
+            }
+
+            if (modelo.FotoTurma is not null || modelo.QrCodeValidacaoPng is not null)
+            {
+                coluna.Item().PaddingTop(10).Element(c => EvidenciaEVerificacao(c, modelo));
+            }
 
             coluna.Item().PaddingTop(20).Element(c => Assinaturas(c, modelo));
         });
+    }
+
+    // Foto da turma (evidência do treinamento em grupo, ver SessaoTreinamento) + QR de verificação
+    // pública do certificado — item 6 da proposta do usuário (04/09). Layout lado a lado quando os
+    // dois existem; cada bloco só aparece se o dado correspondente estiver disponível.
+    private static void EvidenciaEVerificacao(IContainer container, CertificadoTreinamentoPdfModelo modelo)
+    {
+        container.Row(linha =>
+        {
+            if (modelo.FotoTurma is not null)
+            {
+                linha.RelativeItem().Column(bloco =>
+                {
+                    bloco.Item().AlignCenter().Text("Evidência da turma").FontSize(8).SemiBold().FontColor(Colors.Grey.Darken2);
+                    bloco.Item().PaddingTop(4).AlignCenter().Height(150).Width(220)
+                        .Border(1).BorderColor(Colors.Grey.Lighten2)
+                        .Image(RecortarFotoTurma(modelo.FotoTurma)).FitArea();
+                });
+            }
+
+            if (modelo.FotoTurma is not null && modelo.QrCodeValidacaoPng is not null)
+            {
+                linha.ConstantItem(24);
+            }
+
+            if (modelo.QrCodeValidacaoPng is not null)
+            {
+                linha.ConstantItem(110).Column(bloco =>
+                {
+                    bloco.Item().AlignCenter().Text("Verificação").FontSize(8).SemiBold().FontColor(Colors.Grey.Darken2);
+                    bloco.Item().PaddingTop(4).AlignCenter().Height(90).Width(90).Image(modelo.QrCodeValidacaoPng).FitArea();
+                });
+            }
+        });
+    }
+
+    private static byte[] RecortarFotoTurma(byte[] foto)
+    {
+        using var imagem = SixLabors.ImageSharp.Image.Load(foto);
+        imagem.Mutate(x => x.Resize(new ResizeOptions
+        {
+            Size = new SixLabors.ImageSharp.Size(440, 300),
+            Mode = ResizeMode.Crop,
+        }));
+
+        using var saida = new MemoryStream();
+        imagem.Save(saida, new JpegEncoder { Quality = 85 });
+        return saida.ToArray();
     }
 
     private static void DescricaoCarga(IContainer container, CertificadoTreinamentoPdfModelo modelo)

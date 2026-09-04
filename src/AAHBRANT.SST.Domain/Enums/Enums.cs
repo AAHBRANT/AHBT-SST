@@ -556,6 +556,13 @@ public enum StatusDds
     Concluido = 2
 }
 
+// Sessão/Turma de Treinamento (04/09) — mesmo vocabulário de StatusDds.
+public enum StatusSessaoTreinamento
+{
+    EmAndamento = 1,
+    Concluida = 2
+}
+
 // Evidência de presença no DDS — a Fase 1 (2026-08-24) previa "assinatura/foto fora do escopo"
 // (ver comentário original em DdsParticipante); trazido para o escopo a pedido do usuário no mesmo
 // dia. Pessoa/DocumentoAssinado preservados só para exibir o histórico de registros anteriores a

@@ -231,6 +231,68 @@ export interface Treinamento {
 export type NovoTreinamento = Omit<Treinamento, 'id'>;
 export type AtualizarTreinamento = Treinamento;
 
+// Sessão/Turma de Treinamento (pedido do usuário, 04/09) — reformulação do fluxo: o responsável
+// abre a turma já com os participantes selecionados, registra presença de cada um por biometria
+// durante a aula, anexa as 3 fotos obrigatórias e encerra — o encerramento gera 1 Treinamento (e
+// certificado, com dupla assinatura já existente) por participante que confirmou presença.
+export const StatusSessaoTreinamento = {
+  EmAndamento: 1,
+  Concluida: 2,
+} as const;
+
+export const statusSessaoTreinamentoLabel: Record<number, string> = {
+  1: 'Em andamento',
+  2: 'Concluída',
+};
+
+export interface SessaoTreinamento {
+  id: string;
+  obraId: string;
+  obraNome: string;
+  cursoTreinamentoId: string;
+  cursoTreinamentoNome: string;
+  dataRealizacao: string;
+  cargaHorariaRealizada: number;
+  instituicaoInstrutor?: string | null;
+  numeroCertificado?: string | null;
+  status: number;
+  dataEncerramento?: string | null;
+  totalParticipantes: number;
+  totalPresencasConfirmadas: number;
+  totalFotosEvidencia: number;
+}
+
+export interface NovaSessaoTreinamento {
+  obraId: string;
+  cursoTreinamentoId: string;
+  dataRealizacao: string;
+  cargaHorariaRealizada: number;
+  instituicaoInstrutor?: string | null;
+  numeroCertificado?: string | null;
+  trabalhadoresIds: string[];
+}
+
+export interface ParticipanteSessaoTreinamento {
+  id: string;
+  trabalhadorId: string;
+  trabalhadorNome: string;
+  trabalhadorMatricula?: string | null;
+  presencaConfirmadaEm?: string | null;
+  scoreConfianca?: number | null;
+  treinamentoGeradoId?: string | null;
+}
+
+export interface FotoEvidenciaSessaoTreinamento {
+  id: string;
+  ordem: number;
+}
+
+export interface SessaoTreinamentoDetalhe {
+  sessao: SessaoTreinamento;
+  participantes: ParticipanteSessaoTreinamento[];
+  fotosEvidencia: FotoEvidenciaSessaoTreinamento[];
+}
+
 // Módulo de Requisitos Legais — Motor de Aplicabilidade Legal (requisito do usuário, 2026-08-29).
 // Fase 1 (fundação de dados): cadastro do requisito e seus critérios de aplicabilidade, catálogo do
 // questionário e matriz de obrigatoriedade de treinamento por função. O cruzamento de fato (o
@@ -3112,6 +3174,41 @@ export const api = {
       if (!response.ok) {
         const corpo = await response.text().catch(() => '');
         throw new Error(`${response.status} ${response.statusText}: ${corpo}`);
+      }
+      return response.blob();
+    },
+  },
+  sessoesTreinamento: {
+    listar: (obraId?: string) => request<SessaoTreinamento[]>(`/api/sessoestreinamento${obraId ? `?obraId=${obraId}` : ''}`),
+    obterDetalhe: (id: string) => request<SessaoTreinamentoDetalhe>(`/api/sessoestreinamento/${id}`),
+    criar: (sessao: NovaSessaoTreinamento) =>
+      request<{ id: string }>('/api/sessoestreinamento', { method: 'POST', body: JSON.stringify(sessao) }),
+    // Presença exclusivamente por biometria (mesmo padrão de api.dds.registrarParticipante) —
+    // dispositivoId/segredoDispositivo vêm do agente local, score é o resultado do match 1:N já
+    // feito por ele (ver capturarDigitalLocal).
+    registrarPresenca: (sessaoId: string, trabalhadorId: string, dispositivoId: string, segredoDispositivo: string, score: number) =>
+      request<void>(`/api/sessoestreinamento/${sessaoId}/presenca`, {
+        method: 'POST',
+        body: JSON.stringify({ trabalhadorId, dispositivoId, segredoDispositivo, score }),
+      }),
+    encerrar: (id: string) => request<void>(`/api/sessoestreinamento/${id}/encerrar`, { method: 'POST' }),
+    anexarFotoEvidencia: async (sessaoId: string, foto: File) => {
+      const formData = new FormData();
+      formData.append('foto', foto);
+      const authHeaders = await montarHeadersAuth();
+      return syncMutateMultipart<{ id: string }>(`/api/sessoestreinamento/${sessaoId}/fotos-evidencia`, formData, authHeaders);
+    },
+    baixarFotoEvidencia: async (fotoId: string) => {
+      const authHeaders = await montarHeadersAuth();
+      return syncFetchBlob(`/api/sessoestreinamento/fotos-evidencia/${fotoId}`, authHeaders);
+    },
+    baixarAta: async (id: string) => {
+      const response = await fetch(`${API_BASE_URL}/api/sessoestreinamento/${id}/ata/pdf`, {
+        headers: await montarHeadersAuth(),
+      });
+      if (!response.ok) {
+        const corpo = await response.text().catch(() => '');
+        throw new Error(extrairMensagemErro(corpo, response.status, response.statusText));
       }
       return response.blob();
     },

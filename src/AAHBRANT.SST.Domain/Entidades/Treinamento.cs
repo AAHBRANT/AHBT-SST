@@ -31,6 +31,13 @@ public class Treinamento : AuditableEntity
     public string? InstituicaoInstrutor { get; set; }
     public string? NumeroCertificado { get; set; }
 
+    // Preenchido só quando este Treinamento foi gerado pelo encerramento de uma turma (04/09) —
+    // nulo para registros criados manualmente por trabalhador (fluxo antigo, que continua existindo).
+    // Usado para o certificado individual buscar as fotos/evidências da turma (ver
+    // ExportarCertificadoTreinamentoQuery).
+    public Guid? SessaoTreinamentoId { get; set; }
+    public SessaoTreinamento? SessaoTreinamento { get; set; }
+
     public ICollection<Evidencia> Evidencias { get; set; } = new List<Evidencia>();
 }
 

@@ -33,6 +33,7 @@ import { MembroCipaDetalhePage } from './pages/cipa/MembroCipaDetalhePage';
 import { ReuniaoCipaDetalhePage } from './pages/cipa/ReuniaoCipaDetalhePage';
 import { EventoSipatDetalhePage } from './pages/cipa/EventoSipatDetalhePage';
 import { AssinarTreinamentoPage } from './pages/treinamentos/AssinarTreinamentoPage';
+import { SessaoTreinamentoDetalhePage } from './pages/treinamentos/SessaoTreinamentoDetalhePage';
 
 // Envolve as rotas internas do app com o AppShell (sidebar/header do Teams). As rotas públicas
 // /p/:codigoOuUid e /validar/:token ficam de fora dessa camada — ver IdentificacaoPublicaPage/ValidarDocumentoPage.
@@ -130,6 +131,7 @@ function AppRoteado() {
             <Route path="/prevencao/pcmso" element={<Navigate to="/operacao/saude-ocupacional" replace />} />
             <Route path="/prevencao/pcmso/:id" element={<RedirecionarComId para={(id) => `/operacao/saude-ocupacional/pcmso/${id}`} />} />
             <Route path="/treinamentos" element={<RedirecionarParaPilar pilar="/gestao-sst" secao="treinamentos" />} />
+            <Route path="/treinamentos/turma/:id" element={<SessaoTreinamentoDetalhePage />} />
             <Route path="/epi" element={<RedirecionarParaPilar pilar="/operacao" secao="epi" />} />
             <Route path="/requisitos-legais" element={<RedirecionarParaPilar pilar="/gestao-sst" secao="requisitos-legais" />} />
             <Route path="/gestao-sst/documentos" element={<Navigate to="/gestao-sst?secao=documentos" replace />} />

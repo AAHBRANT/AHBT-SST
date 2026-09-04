@@ -27,6 +27,9 @@ public interface IAppDbContext
     DbSet<CursoTreinamento> CursosTreinamento { get; }
     DbSet<Treinamento> Treinamentos { get; }
     DbSet<MatrizTreinamentoFuncao> MatrizTreinamentoFuncoes { get; }
+    DbSet<SessaoTreinamento> SessoesTreinamento { get; }
+    DbSet<ParticipanteSessaoTreinamento> ParticipantesSessaoTreinamento { get; }
+    DbSet<FotoEvidenciaSessaoTreinamento> FotosEvidenciaSessaoTreinamento { get; }
     DbSet<CatalogoEpi> CatalogoEpis { get; }
     DbSet<EntregaEpi> EntregasEpi { get; }
     DbSet<MatrizEpiFuncao> MatrizEpiFuncoes { get; }

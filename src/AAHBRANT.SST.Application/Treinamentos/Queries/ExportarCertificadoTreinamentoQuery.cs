@@ -1,3 +1,4 @@
+using AAHBRANT.SST.Application.Assinatura;
 using AAHBRANT.SST.Application.Common;
 using AAHBRANT.SST.Application.Common.Interfaces;
 using MediatR;
@@ -11,11 +12,13 @@ public class ExportarCertificadoTreinamentoQueryHandler : IRequestHandler<Export
 {
     private readonly IAppDbContext _db;
     private readonly ICertificadoTreinamentoPdfService _pdf;
+    private readonly IQrCodeDocumentoService _qrCode;
 
-    public ExportarCertificadoTreinamentoQueryHandler(IAppDbContext db, ICertificadoTreinamentoPdfService pdf)
+    public ExportarCertificadoTreinamentoQueryHandler(IAppDbContext db, ICertificadoTreinamentoPdfService pdf, IQrCodeDocumentoService qrCode)
     {
         _db = db;
         _pdf = pdf;
+        _qrCode = qrCode;
     }
 
     public async Task<byte[]?> Handle(ExportarCertificadoTreinamentoQuery request, CancellationToken ct)
@@ -42,6 +45,26 @@ public class ExportarCertificadoTreinamentoQueryHandler : IRequestHandler<Export
             .Select(s => new CertificadoTreinamentoPdfSignatarioModelo(s.Trabalhador?.Nome ?? string.Empty, s.AssinadoEm))
             .ToList() ?? new List<CertificadoTreinamentoPdfSignatarioModelo>();
 
+        // QR de verificação (item 6 da proposta do usuário, 04/09) — mesmo token público já usado no
+        // comprovante genérico de assinatura (DocumentoAssinaturaPdfService); só é gerado se o
+        // documento já tiver sido finalizado (token só existe a partir daí).
+        var qrCodePng = !string.IsNullOrEmpty(documento?.TokenValidacaoPublica)
+            ? _qrCode.Gerar(documento.TokenValidacaoPublica).Png
+            : null;
+
+        // Foto da turma (item 6 da proposta) — só existe quando este Treinamento foi gerado pelo
+        // encerramento de uma SessaoTreinamento (fluxo antigo, criado manualmente por trabalhador,
+        // continua sem foto). Usa a primeira das 3 fotos obrigatórias (Ordem = 1) como representativa.
+        byte[]? fotoTurma = null;
+        if (treinamento.SessaoTreinamentoId is not null)
+        {
+            fotoTurma = await _db.FotosEvidenciaSessaoTreinamento
+                .Where(f => f.SessaoTreinamentoId == treinamento.SessaoTreinamentoId && f.Ativo)
+                .OrderBy(f => f.Ordem)
+                .Select(f => f.FotoConteudo)
+                .FirstOrDefaultAsync(ct);
+        }
+
         var modelo = new CertificadoTreinamentoPdfModelo(
             treinamento.Trabalhador.Obra?.Nome ?? string.Empty,
             treinamento.Trabalhador.Obra?.Cnpj,
@@ -61,7 +84,9 @@ public class ExportarCertificadoTreinamentoQueryHandler : IRequestHandler<Export
             treinamento.InstituicaoInstrutor,
             treinamento.NumeroCertificado,
             treinamento.CursoTreinamento.ConteudoProgramatico,
-            signatarios);
+            signatarios,
+            qrCodePng,
+            fotoTurma);
 
         return _pdf.Gerar(modelo);
     }

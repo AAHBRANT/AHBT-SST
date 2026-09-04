@@ -25,7 +25,9 @@ public record CertificadoTreinamentoPdfModelo(
     string? InstituicaoInstrutor,
     string? NumeroCertificado,
     string? ConteudoProgramatico,
-    IReadOnlyList<CertificadoTreinamentoPdfSignatarioModelo> Signatarios);
+    IReadOnlyList<CertificadoTreinamentoPdfSignatarioModelo> Signatarios,
+    byte[]? QrCodeValidacaoPng,
+    byte[]? FotoTurma);
 
 public interface ICertificadoTreinamentoPdfService
 {
