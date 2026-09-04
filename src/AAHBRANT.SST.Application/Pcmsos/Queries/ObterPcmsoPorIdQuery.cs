@@ -22,6 +22,7 @@ public class ObterPcmsoPorIdQueryHandler : IRequestHandler<ObterPcmsoPorIdQuery,
         return new PcmsoDto
         {
             Id = p.Id,
+            NumeroDocumento = p.NumeroDocumento,
             Nome = p.Nome,
             Versao = p.Versao,
             Validade = p.Validade,

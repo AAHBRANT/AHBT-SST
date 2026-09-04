@@ -175,6 +175,7 @@ export function DdsSemanalDetalhePage() {
         {semanal ? (
           <>
             <Text size={500} weight="semibold">
+              {semanal.numeroDocumento ? `${semanal.numeroDocumento} — ` : ''}
               {tipoDdsSemanalLabel[semanal.tipo]} — {semanal.obraNome}
             </Text>
             <div style={{ display: 'flex', gap: 16, marginTop: 8, flexWrap: 'wrap', alignItems: 'center' }}>

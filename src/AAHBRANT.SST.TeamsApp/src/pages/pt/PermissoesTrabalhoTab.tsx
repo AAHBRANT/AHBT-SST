@@ -34,7 +34,6 @@ import { EstadoVazio } from '../../components/EstadoVazio';
 import { ListaCarregando } from '../../components/ListaCarregando';
 
 const ptVazia: NovaPermissaoTrabalho = {
-  numeroPt: '',
   atividadeId: '',
   descricaoAtividade: '',
   local: '',
@@ -116,7 +115,6 @@ export function PermissoesTrabalhoTab() {
       setErro(null);
       await api.permissoesTrabalho.criar({
         ...novaPt,
-        numeroPt: novaPt.numeroPt || null,
         empresaExecutante: novaPt.empresaExecutante || null,
         equipeId: novaPt.equipeId || null,
         horarioInicio: novaPt.horarioInicio ? `${novaPt.horarioInicio}:00` : null,
@@ -158,11 +156,6 @@ export function PermissoesTrabalhoTab() {
 
       <div className={`${estilos.sectionTitle} ${estilos.sectionTitleFirst}`}>Dados Gerais</div>
       <div className={estilos.formGrid}>
-        <div className={estilos.col2}>
-          <Field label="Nº PT">
-            <Input value={novaPt.numeroPt ?? ''} onChange={(_, d) => setNovaPt({ ...novaPt, numeroPt: d.value })} />
-          </Field>
-        </div>
         <div className={estilos.col3}>
           <Field label="Atividade">
             <Select value={novaPt.atividadeId} onChange={(_, d) => setNovaPt({ ...novaPt, atividadeId: d.value })}>

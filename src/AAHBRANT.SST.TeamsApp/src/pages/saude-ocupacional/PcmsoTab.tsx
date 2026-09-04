@@ -213,6 +213,7 @@ export function PcmsoTab() {
         <Table noNativeElements>
           <TableHeader>
             <TableRow>
+              <TableHeaderCell>Nº do documento</TableHeaderCell>
               <TableHeaderCell>Nome</TableHeaderCell>
               <TableHeaderCell>Obra</TableHeaderCell>
               <TableHeaderCell>Emissão</TableHeaderCell>
@@ -228,6 +229,7 @@ export function PcmsoTab() {
                 onClick={() => navigate(`/saude-ocupacional/pcmso/${pcmso.id}`)}
                 style={{ cursor: 'pointer' }}
               >
+                <TableCell>{pcmso.numeroDocumento ?? '-'}</TableCell>
                 <TableCell>{pcmso.nome}</TableCell>
                 <TableCell>{nomeObra(pcmso.obraId)}</TableCell>
                 <TableCell>{pcmso.dataEmissao?.slice(0, 10)}</TableCell>

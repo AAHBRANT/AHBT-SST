@@ -89,6 +89,7 @@ public static class DependencyInjection
         services.AddScoped<ICertificadoTreinamentoPdfService, CertificadoTreinamentoPdfService>();
         services.AddScoped<IRelatorioFiscalizacaoPdfService, RelatorioFiscalizacaoPdfService>();
         services.AddScoped<IInspecaoPdfService, InspecaoPdfService>();
+        services.AddScoped<IGeradorNumeroDocumentoService, GeradorNumeroDocumentoService>();
 
         // Motor de Assinatura Eletrônica (docs/Motor-Assinatura-Eletronica.md §5) — PIN/crachá-QR
         // (CrachaPinAutenticacaoStrategy) e WebAuthn/FIDO2 (Fido2AutenticacaoStrategy) foram removidos

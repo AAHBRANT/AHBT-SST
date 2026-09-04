@@ -122,6 +122,8 @@ public class SstDbContext : DbContext, IAppDbContext
     public DbSet<EventoSipat> EventosSipat => Set<EventoSipat>();
     public DbSet<AtividadeSipat> AtividadesSipat => Set<AtividadeSipat>();
 
+    public DbSet<ContadorDocumento> ContadoresDocumento => Set<ContadorDocumento>();
+
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         modelBuilder.ApplyConfigurationsFromAssembly(typeof(SstDbContext).Assembly);

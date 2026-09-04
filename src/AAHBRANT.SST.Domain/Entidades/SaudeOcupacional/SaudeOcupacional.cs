@@ -45,6 +45,9 @@ public class AptidaoAtividadeEspecifica : AuditableEntity
 // mesmo padrão já usado por Pgr (Domain/Entidades/Pgr/Pgr.cs), que nunca dependeu de DocumentoGestao.
 public class PcmsoDetalhe : AuditableEntity
 {
+    // Gerado automaticamente na criação (GeradorNumeroDocumentoService, prefixo "PCMSO") — Nome
+    // continua sendo digitado à mão, é o título descritivo do documento (ex.: "PCMSO Obra X 2026").
+    public string? NumeroDocumento { get; set; }
     public string Nome { get; set; } = string.Empty;
     public string? Versao { get; set; }
     public DateTime? Validade { get; set; }

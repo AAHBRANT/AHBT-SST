@@ -25,7 +25,6 @@ import { EstadoVazio } from '../../components/EstadoVazio';
 import { ListaCarregando } from '../../components/ListaCarregando';
 
 const aprVazia: NovaApr = {
-  numeroApr: '',
   atividadeId: '',
   local: '',
   maquinasEquipamentos: '',
@@ -138,11 +137,6 @@ export function AprsTab() {
 
       <div className={`${estilos.sectionTitle} ${estilos.sectionTitleFirst}`}>Dados da APR</div>
       <div className={estilos.formGrid}>
-        <div className={estilos.col2}>
-          <Field label="Nº APR">
-            <Input value={novaApr.numeroApr ?? ''} onChange={(_, d) => setNovaApr({ ...novaApr, numeroApr: d.value })} />
-          </Field>
-        </div>
         <div className={estilos.col4}>
           <Field label="Atividade">
             <Select

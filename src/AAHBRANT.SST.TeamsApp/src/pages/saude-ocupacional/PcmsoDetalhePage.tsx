@@ -195,6 +195,7 @@ export function PcmsoDetalhePage() {
           <div className={estilos.card} style={{ marginBottom: 16 }}>
             <div style={{ display: 'flex', gap: 16, alignItems: 'center', marginBottom: 8 }}>
               <Text size={500} weight="semibold">
+                {pcmso.numeroDocumento ? `${pcmso.numeroDocumento} — ` : ''}
                 {pcmso.nome}
               </Text>
               <Badge appearance="tint" color={pcmso.status === StatusPcmsoDocumento.Vigente ? 'success' : 'informative'}>

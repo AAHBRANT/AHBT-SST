@@ -850,7 +850,6 @@ export interface Apr {
 }
 
 export interface NovaApr {
-  numeroApr?: string | null;
   atividadeId: string;
   local: string;
   maquinasEquipamentos?: string | null;
@@ -1130,7 +1129,6 @@ export interface PermissaoTrabalho {
 }
 
 export interface NovaPermissaoTrabalho {
-  numeroPt?: string | null;
   atividadeId: string;
   descricaoAtividade: string;
   local: string;
@@ -1644,7 +1642,6 @@ export interface NovaDdsSemanal {
   obraId: string;
   tipo: number;
   empresaTerceirizada?: string | null;
-  numeroDocumento?: string | null;
   localFrenteServico?: string | null;
   dataInicioSemana: string;
 }
@@ -2079,6 +2076,7 @@ export type AtualizarRegistroHhtMensalPayload = NovoRegistroHhtMensal;
 // documentoGestaoId aponta para o DocumentoGestao vinculado (edição/exclusão usam este último).
 export interface Pcmso {
   id: string;
+  numeroDocumento?: string | null;
   nome: string;
   versao?: string | null;
   validade?: string | null;
@@ -2662,7 +2660,6 @@ export interface ProcessoEleitoralCipa {
 
 export interface NovoProcessoEleitoralCipa {
   obraId: string;
-  numeroDocumento?: string | null;
   dataConvocacao: string;
   dataInicioInscricoes: string;
   dataFimInscricoes: string;

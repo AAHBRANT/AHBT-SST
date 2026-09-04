@@ -138,11 +138,6 @@ export function DdsSemanalPage() {
               </Field>
             </div>
           )}
-          <div className={estilos.col3}>
-            <Field label="Nº do documento">
-              <Input value={nova.numeroDocumento ?? ''} onChange={(_, d) => setNova({ ...nova, numeroDocumento: d.value })} />
-            </Field>
-          </div>
           <div className={estilos.col5}>
             <Field label="Local / Frente de serviço">
               <Input
@@ -168,6 +163,7 @@ export function DdsSemanalPage() {
         <Table noNativeElements>
           <TableHeader>
             <TableRow>
+              <TableHeaderCell>Nº do documento</TableHeaderCell>
               <TableHeaderCell>Obra</TableHeaderCell>
               <TableHeaderCell>Tipo</TableHeaderCell>
               <TableHeaderCell>Semana</TableHeaderCell>
@@ -184,6 +180,7 @@ export function DdsSemanalPage() {
                 onClick={() => navigate(`/prevencao/dds/semana/${semanal.id}`)}
                 style={{ cursor: 'pointer' }}
               >
+                <TableCell>{semanal.numeroDocumento ?? '-'}</TableCell>
                 <TableCell>{semanal.obraNome}</TableCell>
                 <TableCell>{tipoDdsSemanalLabel[semanal.tipo]}</TableCell>
                 <TableCell>
