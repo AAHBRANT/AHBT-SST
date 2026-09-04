@@ -3,6 +3,7 @@ import { Button, Text } from '@fluentui/react-components';
 import { Fingerprint24Regular } from '@fluentui/react-icons';
 import { api } from '../../lib/api';
 import { capturarDigitalBrutaLocal } from '../../lib/agenteBiometricoLocal';
+import { SeletorFotoCamera } from '../../components/SeletorFotoCamera';
 import { usePageStyles } from '../pageStyles';
 
 interface AssinaturaTabProps {
@@ -41,6 +42,20 @@ export function AssinaturaTab({ trabalhadorId }: AssinaturaTabProps) {
   const [erroBiometriaLocal, setErroBiometriaLocal] = useState<string | null>(null);
   const [biometriaLocalCadastrada, setBiometriaLocalCadastrada] = useState(false);
 
+  const [erroFacial, setErroFacial] = useState<string | null>(null);
+  const [facialCadastrada, setFacialCadastrada] = useState(false);
+
+  async function cadastrarFacial(arquivo: File) {
+    try {
+      setErroFacial(null);
+      setFacialCadastrada(false);
+      await api.trabalhadores.cadastrarFacial(trabalhadorId, arquivo);
+      setFacialCadastrada(true);
+    } catch (e) {
+      setErroFacial(extrairMensagemErro(e, 'Falha ao cadastrar a face.'));
+    }
+  }
+
   async function cadastrarBiometriaLocal() {
     try {
       setCadastrandoBiometriaLocal(true);
@@ -76,6 +91,19 @@ export function AssinaturaTab({ trabalhadorId }: AssinaturaTabProps) {
         >
           Capturar digital
         </Button>
+      </div>
+
+      <div className={estilos.card} style={{ maxWidth: 480 }}>
+        <Text weight="semibold" style={{ display: 'block', marginBottom: 4 }}>
+          Reconhecimento Facial (Azure)
+        </Text>
+        <Text style={{ display: 'block', marginBottom: 12, color: 'var(--colorNeutralForeground3)' }}>
+          Método adicional ao leitor de digital — exige Termo de Aceite e consentimento de biometria já
+          registrados para este trabalhador.
+        </Text>
+        {erroFacial && <Text className={estilos.erro}>{erroFacial}</Text>}
+        {facialCadastrada && <Text style={{ display: 'block', marginBottom: 8 }}>Face cadastrada com sucesso.</Text>}
+        <SeletorFotoCamera aoSelecionarArquivo={cadastrarFacial} rotulo="Capturar foto do rosto" />
       </div>
     </div>
   );
