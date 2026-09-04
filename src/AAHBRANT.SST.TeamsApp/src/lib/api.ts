@@ -268,7 +268,6 @@ export interface NovaSessaoTreinamento {
   dataRealizacao: string;
   cargaHorariaRealizada: number;
   instituicaoInstrutor?: string | null;
-  numeroCertificado?: string | null;
   trabalhadoresIds: string[];
 }
 

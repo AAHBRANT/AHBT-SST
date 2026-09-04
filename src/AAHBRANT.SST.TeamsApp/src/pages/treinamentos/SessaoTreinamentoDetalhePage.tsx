@@ -28,7 +28,8 @@ export function SessaoTreinamentoDetalhePage() {
   const [detalhe, setDetalhe] = useState<SessaoTreinamentoDetalhe | null>(null);
   const [agenteDisponivel, setAgenteDisponivel] = useState<boolean | null>(null);
   const [dispositivoLocal, setDispositivoLocal] = useState<{ dispositivoId: string; segredoDispositivo: string } | null>(null);
-  const [confirmandoId, setConfirmandoId] = useState<string | null>(null);
+  const [lendoDigital, setLendoDigital] = useState(false);
+  const [mensagemPresenca, setMensagemPresenca] = useState<{ tipo: 'success' | 'info' | 'erro'; texto: string } | null>(null);
   const [fotosEvidenciaPreview, setFotosEvidenciaPreview] = useState<Record<string, string>>({});
   const [anexandoFotoEvidencia, setAnexandoFotoEvidencia] = useState(false);
   const [erro, setErro] = useState<string | null>(null);
@@ -88,28 +89,41 @@ export function SessaoTreinamentoDetalhePage() {
     }
   }
 
-  async function confirmarPresenca(trabalhadorId: string) {
+  // Fluxo em fila (pedido do usuário, 04/09): um único leitor compartilhado — cada participante
+  // simplesmente encosta o dedo, sem precisar ser selecionado antes. O agente local já faz o match
+  // 1:N (contra todo mundo cadastrado) e devolve QUEM ele reconheceu; aqui só se confere se essa
+  // pessoa está inscrita nesta turma e ainda não confirmou presença, e se registra.
+  async function lerProximaDigital() {
     if (!id || !dispositivoLocal) return;
     try {
-      setConfirmandoId(trabalhadorId);
+      setLendoDigital(true);
       setErro(null);
+      setMensagemPresenca(null);
       const captura = await capturarDigitalLocal();
-      if (captura.trabalhadorId !== trabalhadorId) {
-        setErro('A digital capturada não corresponde a este participante.');
+
+      const participante = detalhe?.participantes.find((p) => p.trabalhadorId === captura.trabalhadorId);
+      if (!participante) {
+        setMensagemPresenca({ tipo: 'erro', texto: 'Esta pessoa não está inscrita nesta turma.' });
         return;
       }
+      if (participante.presencaConfirmadaEm) {
+        setMensagemPresenca({ tipo: 'info', texto: `Presença de ${participante.trabalhadorNome} já havia sido confirmada.` });
+        return;
+      }
+
       await api.sessoesTreinamento.registrarPresenca(
         id,
-        trabalhadorId,
+        captura.trabalhadorId,
         dispositivoLocal.dispositivoId,
         dispositivoLocal.segredoDispositivo,
         captura.score,
       );
+      setMensagemPresenca({ tipo: 'success', texto: `Presença de ${participante.trabalhadorNome} confirmada.` });
       await carregar();
     } catch (e) {
       setErro(e instanceof Error ? e.message : 'Falha na validação biométrica.');
     } finally {
-      setConfirmandoId(null);
+      setLendoDigital(false);
     }
   }
 
@@ -184,6 +198,9 @@ export function SessaoTreinamentoDetalhePage() {
           <>
             <Text size={500} weight="semibold">
               {sessao.cursoTreinamentoNome}
+            </Text>
+            <Text size={200} style={{ display: 'block' }}>
+              Nº certificado: {sessao.numeroCertificado}
             </Text>
             <div style={{ display: 'flex', gap: 16, marginTop: 8, flexWrap: 'wrap', alignItems: 'center' }}>
               <Text>Obra: {sessao.obraNome}</Text>
@@ -267,6 +284,39 @@ export function SessaoTreinamentoDetalhePage() {
           </Text>
         )}
 
+        {!somenteLeitura && (
+          <div style={{ marginBottom: 16 }}>
+            <Text size={200} style={{ display: 'block', marginBottom: 8 }}>
+              Um leitor só, em fila: cada participante encosta o dedo e o sistema reconhece quem é —
+              não precisa selecionar ninguém antes.
+            </Text>
+            <Button
+              appearance="primary"
+              icon={<Fingerprint24Regular />}
+              onClick={lerProximaDigital}
+              disabled={!agenteDisponivel || !dispositivoLocal || lendoDigital}
+            >
+              {lendoDigital ? 'Lendo digital...' : 'Ler digital do próximo participante'}
+            </Button>
+            {mensagemPresenca && (
+              <Text
+                style={{
+                  display: 'block',
+                  marginTop: 8,
+                  color:
+                    mensagemPresenca.tipo === 'success'
+                      ? 'var(--colorPaletteGreenForeground1)'
+                      : mensagemPresenca.tipo === 'erro'
+                        ? 'var(--colorPaletteRedForeground1)'
+                        : undefined,
+                }}
+              >
+                {mensagemPresenca.texto}
+              </Text>
+            )}
+          </div>
+        )}
+
         <Table noNativeElements>
           <TableHeader>
             <TableRow>
@@ -291,15 +341,9 @@ export function SessaoTreinamentoDetalhePage() {
                       Ausente
                     </Badge>
                   ) : (
-                    <Button
-                      appearance="primary"
-                      size="small"
-                      icon={<Fingerprint24Regular />}
-                      onClick={() => confirmarPresenca(participante.trabalhadorId)}
-                      disabled={!agenteDisponivel || !dispositivoLocal || confirmandoId !== null}
-                    >
-                      {confirmandoId === participante.trabalhadorId ? 'Validando...' : 'Confirmar presença'}
-                    </Button>
+                    <Badge color="warning" appearance="tint">
+                      Aguardando
+                    </Badge>
                   )}
                 </TableCell>
                 <TableCell>

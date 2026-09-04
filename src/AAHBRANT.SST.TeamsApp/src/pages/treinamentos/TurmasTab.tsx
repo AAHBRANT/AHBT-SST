@@ -38,7 +38,6 @@ function turmaVazia(): NovaSessaoTreinamento {
     dataRealizacao: '',
     cargaHorariaRealizada: 0,
     instituicaoInstrutor: '',
-    numeroCertificado: '',
     trabalhadoresIds: [],
   };
 }
@@ -184,7 +183,7 @@ export function TurmasTab() {
               />
             </Field>
           </div>
-          <div className={estilos.col6}>
+          <div className={estilos.col12}>
             <Field label="Instituição / instrutor">
               <Input
                 value={novaTurma.instituicaoInstrutor ?? ''}
@@ -192,15 +191,10 @@ export function TurmasTab() {
               />
             </Field>
           </div>
-          <div className={estilos.col6}>
-            <Field label="Número do certificado (opcional — vale para a turma toda)">
-              <Input
-                value={novaTurma.numeroCertificado ?? ''}
-                onChange={(_, d) => setNovaTurma({ ...novaTurma, numeroCertificado: d.value })}
-              />
-            </Field>
-          </div>
         </div>
+        <Text size={200} style={{ display: 'block' }}>
+          O número do certificado é gerado automaticamente ao criar a turma.
+        </Text>
 
         <div className={`${estilos.sectionTitle}`}>
           Participantes {novaTurma.obraId && `(${novaTurma.trabalhadoresIds.length} selecionado(s))`}
@@ -242,6 +236,7 @@ export function TurmasTab() {
           <Table noNativeElements>
             <TableHeader>
               <TableRow>
+                <TableHeaderCell>Nº certificado</TableHeaderCell>
                 <TableHeaderCell>Curso</TableHeaderCell>
                 <TableHeaderCell>Obra</TableHeaderCell>
                 <TableHeaderCell>Data</TableHeaderCell>
@@ -254,6 +249,7 @@ export function TurmasTab() {
             <TableBody>
               {turmas.map((t) => (
                 <TableRow key={t.id} onClick={() => navigate(`/treinamentos/turma/${t.id}`)} style={{ cursor: 'pointer' }}>
+                  <TableCell>{t.numeroCertificado}</TableCell>
                   <TableCell>{t.cursoTreinamentoNome || nomeCurso(t.cursoTreinamentoId)}</TableCell>
                   <TableCell>{t.obraNome}</TableCell>
                   <TableCell>{t.dataRealizacao?.slice(0, 10)}</TableCell>

@@ -10,13 +10,19 @@ namespace AAHBRANT.SST.Application.SessoesTreinamento.Commands;
 // seleciona os participantes (diferente do DDS, onde o participante só aparece quando a biometria
 // confirma presença). A lista de trabalhadores disponíveis para seleção é filtrada por Obra no
 // frontend (mesmo princípio de DdsDetalhePage.tsx) — não reforçado aqui no backend.
+//
+// Número do certificado (04/09, pedido do usuário): passou a ser gerado automaticamente aqui
+// (mesmo padrão "PREFIXO-ANO-0001" de APR/DDS/PT/PCMSO — ver GeradorNumeroDocumentoService), não
+// mais digitado manualmente. Isso é uma exceção deliberada ao princípio geral de
+// IGeradorNumeroDocumentoService de não numerar automaticamente números que vêm de fora do sistema
+// (CAT, CA de EPI): o usuário confirmou explicitamente que este número é um controle interno da
+// empresa, não um número emitido por terceiro.
 public record CriarSessaoTreinamentoCommand(
     Guid ObraId,
     Guid CursoTreinamentoId,
     DateTime DataRealizacao,
     int CargaHorariaRealizada,
     string? InstituicaoInstrutor,
-    string? NumeroCertificado,
     List<Guid> TrabalhadoresIds) : IRequest<Guid>;
 
 public class CriarSessaoTreinamentoCommandValidator : AbstractValidator<CriarSessaoTreinamentoCommand>
@@ -34,7 +40,13 @@ public class CriarSessaoTreinamentoCommandValidator : AbstractValidator<CriarSes
 public class CriarSessaoTreinamentoCommandHandler : IRequestHandler<CriarSessaoTreinamentoCommand, Guid>
 {
     private readonly IAppDbContext _db;
-    public CriarSessaoTreinamentoCommandHandler(IAppDbContext db) => _db = db;
+    private readonly IGeradorNumeroDocumentoService _geradorNumero;
+
+    public CriarSessaoTreinamentoCommandHandler(IAppDbContext db, IGeradorNumeroDocumentoService geradorNumero)
+    {
+        _db = db;
+        _geradorNumero = geradorNumero;
+    }
 
     public async Task<Guid> Handle(CriarSessaoTreinamentoCommand request, CancellationToken ct)
     {
@@ -51,7 +63,7 @@ public class CriarSessaoTreinamentoCommandHandler : IRequestHandler<CriarSessaoT
             DataRealizacao = request.DataRealizacao,
             CargaHorariaRealizada = request.CargaHorariaRealizada,
             InstituicaoInstrutor = request.InstituicaoInstrutor,
-            NumeroCertificado = request.NumeroCertificado,
+            NumeroCertificado = await _geradorNumero.GerarAsync("CERT", ct),
         };
 
         foreach (var trabalhadorId in request.TrabalhadoresIds.Distinct())
