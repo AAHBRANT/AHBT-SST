@@ -655,6 +655,23 @@ public enum TipoMovimentacaoEstoqueEpi
     AjusteManual = 3,
 }
 
+// EPC (pedido do usuário, 04/09) — mesmo vocabulário de TipoMovimentacaoEstoqueEpi, só que
+// "SaidaInstalacao"/"RetornoRemocao" em vez de "SaidaEntrega"/"DevolucaoEntrada", já que o EPC não é
+// entregue a um funcionário — é instalado/removido de uma Obra.
+public enum TipoMovimentacaoEstoqueEpc
+{
+    EntradaManual = 0,
+    SaidaInstalacao = 1,
+    RetornoRemocao = 2,
+    AjusteManual = 3,
+}
+
+public enum StatusInspecaoEpc
+{
+    Conforme = 1,
+    NaoConforme = 2,
+}
+
 // Motor de Aplicabilidade Legal (requisito do usuário, 2026-08-29) — classifica o requisito legal
 // cadastrado por qual tipo de obrigação ele gera quando aplicável. Vocabulário próprio: a Base de
 // Conhecimento não define essa taxonomia, e o conteúdo jurídico real (quais normas, quais critérios)

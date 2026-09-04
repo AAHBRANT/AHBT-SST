@@ -423,6 +423,110 @@ export interface EntregaEpi {
 export type NovaEntregaEpi = Omit<EntregaEpi, 'id'> & { motivoTipo: number };
 export type AtualizarEntregaEpi = EntregaEpi & { motivoTipo: number };
 
+// EPC — Equipamento de Proteção Coletiva (aba própria, separada de EPI, pedido do usuário 04/09).
+// Diferente do EPI: não é entregue/assinado por um trabalhador, e sim instalado numa Obra, com
+// validade e inspeções periódicas. Não existe Matriz de EPC (decisão confirmada: só catálogo e
+// estoque).
+export interface CatalogoEpc {
+  id: string;
+  nome: string;
+  fabricante?: string | null;
+  certificadoAprovacaoNumero?: string | null;
+  certificadoAprovacaoValidade?: string | null;
+  vidaUtilEmMeses: number;
+  saldoTotal: number;
+  temFoto: boolean;
+}
+
+export type NovoCatalogoEpc = Omit<CatalogoEpc, 'id' | 'saldoTotal' | 'temFoto'>;
+export type AtualizarCatalogoEpc = Omit<CatalogoEpc, 'saldoTotal' | 'temFoto'>;
+
+export const TipoMovimentacaoEstoqueEpc = {
+  EntradaManual: 0,
+  SaidaInstalacao: 1,
+  RetornoRemocao: 2,
+  AjusteManual: 3,
+} as const;
+
+export const tipoMovimentacaoEstoqueEpcLabel: Record<number, string> = {
+  0: 'Entrada manual',
+  1: 'Saída (instalação)',
+  2: 'Retorno (remoção)',
+  3: 'Ajuste manual',
+};
+
+export interface EstoqueEpcPorObra {
+  catalogoEpcId: string;
+  catalogoEpcNome: string;
+  fabricante?: string | null;
+  saldo: number;
+}
+
+export interface MovimentacaoEstoqueEpc {
+  id: string;
+  tipo: number;
+  quantidade: number;
+  saldoResultante: number;
+  createdAtUtc: string;
+  observacao?: string | null;
+  instalacaoEpcId?: string | null;
+}
+
+export interface RegistrarEntradaEstoqueEpc {
+  catalogoEpcId: string;
+  obraId: string;
+  quantidade: number;
+  observacao?: string | null;
+}
+
+export interface AjustarEstoqueEpc {
+  catalogoEpcId: string;
+  obraId: string;
+  novoSaldo: number;
+  observacao: string;
+}
+
+export const StatusInspecaoEpc = {
+  Conforme: 1,
+  NaoConforme: 2,
+} as const;
+
+export const statusInspecaoEpcLabel: Record<number, string> = {
+  1: 'Conforme',
+  2: 'Não conforme',
+};
+
+export interface InstalacaoEpc {
+  id: string;
+  catalogoEpcId: string;
+  obraId: string;
+  localInstalacao?: string | null;
+  quantidade: number;
+  dataInstalacao: string;
+  dataValidade?: string | null;
+  dataUltimaInspecao?: string | null;
+  statusUltimaInspecao?: number | null;
+  observacoesInspecao?: string | null;
+  dataRemocao?: string | null;
+  observacoes?: string | null;
+}
+
+export type NovaInstalacaoEpc = Omit<
+  InstalacaoEpc,
+  'id' | 'dataUltimaInspecao' | 'statusUltimaInspecao' | 'observacoesInspecao' | 'dataRemocao' | 'observacoes'
+>;
+
+export interface RegistrarInspecaoEpc {
+  dataInspecao: string;
+  status: number;
+  observacoes?: string | null;
+}
+
+export interface RegistrarRemocaoEpc {
+  dataRemocao: string;
+  observacoes?: string | null;
+}
+
 export interface Atividade {
   id: string;
   obraId: string;
@@ -3109,6 +3213,58 @@ export const api = {
       }
       return response.blob();
     },
+  },
+  catalogosEpc: {
+    listar: () => request<CatalogoEpc[]>('/api/catalogosepc'),
+    criar: (epc: NovoCatalogoEpc) =>
+      request<{ id: string }>('/api/catalogosepc', { method: 'POST', body: JSON.stringify(epc) }),
+    atualizar: (epc: AtualizarCatalogoEpc) =>
+      request<void>(`/api/catalogosepc/${epc.id}`, { method: 'PUT', body: JSON.stringify(epc) }),
+    excluir: (id: string) => request<void>(`/api/catalogosepc/${id}`, { method: 'DELETE' }),
+    anexarFoto: async (id: string, arquivo: File) => {
+      const formData = new FormData();
+      formData.append('Foto', arquivo);
+      const response = await fetch(`${API_BASE_URL}/api/catalogosepc/${id}/foto`, {
+        method: 'POST',
+        headers: await montarHeadersAuth(),
+        body: formData,
+      });
+      if (!response.ok) {
+        const corpo = await response.text().catch(() => '');
+        throw new Error(extrairMensagemErro(corpo, response.status, response.statusText));
+      }
+    },
+    baixarFoto: async (id: string) => {
+      const response = await fetch(`${API_BASE_URL}/api/catalogosepc/${id}/foto`, {
+        headers: await montarHeadersAuth(),
+      });
+      if (!response.ok) {
+        const corpo = await response.text().catch(() => '');
+        throw new Error(extrairMensagemErro(corpo, response.status, response.statusText));
+      }
+      return response.blob();
+    },
+  },
+  estoquesEpc: {
+    listarPorObra: (obraId: string) => request<EstoqueEpcPorObra[]>(`/api/estoquesepc/obra/${obraId}`),
+    listarMovimentacoes: (obraId: string, catalogoEpcId: string) =>
+      request<MovimentacaoEstoqueEpc[]>(`/api/estoquesepc/obra/${obraId}/epc/${catalogoEpcId}/movimentacoes`),
+    registrarEntrada: (dados: RegistrarEntradaEstoqueEpc) =>
+      request<void>('/api/estoquesepc/entrada', { method: 'POST', body: JSON.stringify(dados) }),
+    ajustar: (dados: AjustarEstoqueEpc) =>
+      request<void>('/api/estoquesepc/ajuste', { method: 'POST', body: JSON.stringify(dados) }),
+  },
+  instalacoesEpc: {
+    listar: (obraId?: string) =>
+      request<InstalacaoEpc[]>(`/api/instalacoesepc${obraId ? `?obraId=${obraId}` : ''}`),
+    obterPorId: (id: string) => request<InstalacaoEpc>(`/api/instalacoesepc/${id}`),
+    criar: (instalacao: NovaInstalacaoEpc) =>
+      request<{ id: string }>('/api/instalacoesepc', { method: 'POST', body: JSON.stringify(instalacao) }),
+    registrarInspecao: (id: string, dados: RegistrarInspecaoEpc) =>
+      request<void>(`/api/instalacoesepc/${id}/inspecao`, { method: 'POST', body: JSON.stringify(dados) }),
+    registrarRemocao: (id: string, dados: RegistrarRemocaoEpc) =>
+      request<void>(`/api/instalacoesepc/${id}/remocao`, { method: 'POST', body: JSON.stringify(dados) }),
+    excluir: (id: string) => request<void>(`/api/instalacoesepc/${id}`, { method: 'DELETE' }),
   },
   atividades: {
     listar: (obraId?: string) => request<Atividade[]>(`/api/atividades${obraId ? `?obraId=${obraId}` : ''}`),
