@@ -609,17 +609,23 @@ public enum MetodoAutenticacaoAssinatura
     // Assinatura em um clique do usuário logado (ex.: entregador de EPI assinando com a própria
     // sessão) — não é um método do "cardápio" por obra (MetodoAutenticacaoObra), pois não depende
     // de hardware/kiosque: está sempre disponível para quem já está autenticado no app.
-    SessaoLogada = 5
+    SessaoLogada = 5,
+    // Reconhecimento facial via Azure Face API (docs/superpowers/specs/2026-09-04-assinatura-facial-
+    // azure-design.md) — método adicional ao Futronic, não o substitui. Diferente da Biometria (match
+    // local no dispositivo), o match aqui acontece na nuvem (Face - Identify).
+    ReconhecimentoFacial = 6
 }
 
 // [Flags] em Obra.MetodosAutenticacaoHabilitados: cada obra decide se aceita assinatura (Biometria,
-// via Futronic) ou não (Nenhum). CrachaPin/QrCodePin/WebAuthnCelular removidos em 31/08 junto com os
-// métodos correspondentes (ver MetodoAutenticacaoAssinatura acima).
+// via Futronic; ReconhecimentoFacial, via Azure Face API) ou não (Nenhum). CrachaPin/QrCodePin/
+// WebAuthnCelular removidos em 31/08 junto com os métodos correspondentes (ver
+// MetodoAutenticacaoAssinatura acima).
 [Flags]
 public enum MetodoAutenticacaoObra
 {
     Nenhum = 0,
-    Biometria = 1
+    Biometria = 1,
+    ReconhecimentoFacial = 2
 }
 
 // Ficha de EPI reformulada (docs/superpowers/specs/2026-08-27-ficha-epi-reformulada-design.md) —
