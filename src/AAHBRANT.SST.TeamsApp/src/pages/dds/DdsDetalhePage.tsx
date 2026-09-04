@@ -432,6 +432,7 @@ export function DdsDetalhePage() {
             <TableRow>
               <TableHeaderCell>Nome</TableHeaderCell>
               <TableHeaderCell>Evidência</TableHeaderCell>
+              <TableHeaderCell>Assinatura</TableHeaderCell>
               <TableHeaderCell>Telegram</TableHeaderCell>
               <TableHeaderCell />
             </TableRow>
@@ -441,6 +442,17 @@ export function DdsDetalhePage() {
               <TableRow key={participante.id}>
                 <TableCell>{participante.trabalhadorNome}</TableCell>
                 <TableCell>{tipoFotoParticipanteLabel[participante.fotoTipo]}</TableCell>
+                <TableCell>
+                  {participante.assinadoEm ? (
+                    <Badge color="success" appearance="tint" icon={<Checkmark24Filled />}>
+                      Assinado às {new Date(participante.assinadoEm).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}
+                    </Badge>
+                  ) : (
+                    <Badge color="informative" appearance="tint">
+                      Pendente
+                    </Badge>
+                  )}
+                </TableCell>
                 <TableCell>
                   {participante.telegramConfirmadoEm ? (
                     <Badge color="success" appearance="tint">

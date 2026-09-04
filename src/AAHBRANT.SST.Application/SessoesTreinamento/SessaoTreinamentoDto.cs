@@ -29,6 +29,13 @@ public class ParticipanteSessaoTreinamentoDto
     public DateTime? PresencaConfirmadaEm { get; set; }
     public double? ScoreConfianca { get; set; }
     public Guid? TreinamentoGeradoId { get; set; }
+    // Assinaturas do certificado gerado para este participante (04/09) — a presença já vale como
+    // assinatura do trabalhador (ver EncerrarSessaoTreinamentoCommand); a do instrutor é automática
+    // quando quem encerrou a turma está vinculado a um Trabalhador. Nulos até o encerramento (não há
+    // certificado/documento antes disso) ou se a assinatura automática falhou por algum motivo — a
+    // tela de detalhe continua oferecendo o botão "Assinar" manual como reforço nesse caso.
+    public DateTime? CertificadoAssinadoPeloTrabalhadorEm { get; set; }
+    public DateTime? CertificadoAssinadoPeloInstrutorEm { get; set; }
 }
 
 public class FotoEvidenciaSessaoTreinamentoDto

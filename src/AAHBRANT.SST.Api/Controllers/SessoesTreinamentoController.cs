@@ -1,3 +1,4 @@
+using System.Security.Claims;
 using AAHBRANT.SST.Application.SessoesTreinamento.Commands;
 using AAHBRANT.SST.Application.SessoesTreinamento.Queries;
 using MediatR;
@@ -76,11 +77,16 @@ public class SessoesTreinamentoController : ControllerBase
         return NoContent();
     }
 
+    // AzureAdObjectId (claim "oid") identifica o instrutor/responsável que está encerrando a turma —
+    // usado para assinar o certificado automaticamente em nome dele (mesmo padrão de
+    // AssinaturaController.AssinarComSessaoLogada). Nulo em dev com Entra ID desligado: a assinatura
+    // do instrutor fica pendente e continua disponível manualmente na tela de detalhe da turma.
     [Authorize(Policy = "treinamento:editar")]
     [HttpPost("{id:guid}/encerrar")]
     public async Task<IActionResult> Encerrar(Guid id, CancellationToken ct)
     {
-        await _mediator.Send(new EncerrarSessaoTreinamentoCommand(id), ct);
+        var azureAdObjectId = User.FindFirst("oid")?.Value ?? User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+        await _mediator.Send(new EncerrarSessaoTreinamentoCommand(id, azureAdObjectId), ct);
         return NoContent();
     }
 

@@ -54,6 +54,10 @@ public class DdsParticipanteDto
     public double? ScoreConfianca { get; set; }
     public DateTime? TelegramEnviadoEm { get; set; }
     public DateTime? TelegramConfirmadoEm { get; set; }
+    // Preenchido quando a presença já valeu como assinatura eletrônica deste DDS (04/09) — a mesma
+    // digital da presença é reaproveitada pelo Motor de Assinatura (ver RegistrarParticipanteCommand),
+    // sem exigir uma segunda leitura na tela "Assinar DDS".
+    public DateTime? AssinadoEm { get; set; }
 }
 
 public class DdsFotoEvidenciaDto

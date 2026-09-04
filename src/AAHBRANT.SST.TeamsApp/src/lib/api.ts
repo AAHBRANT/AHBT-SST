@@ -279,6 +279,11 @@ export interface ParticipanteSessaoTreinamento {
   presencaConfirmadaEm?: string | null;
   scoreConfianca?: number | null;
   treinamentoGeradoId?: string | null;
+  // Assinatura do certificado (04/09) — a mesma digital da presença já vale como assinatura do
+  // trabalhador; a do instrutor é automática ao encerrar. Nulos até o encerramento ou se a
+  // assinatura automática falhou (a tela oferece "Assinar" manual como reforço nesse caso).
+  certificadoAssinadoPeloTrabalhadorEm?: string | null;
+  certificadoAssinadoPeloInstrutorEm?: string | null;
 }
 
 export interface FotoEvidenciaSessaoTreinamento {
@@ -1739,6 +1744,9 @@ export interface DdsParticipante {
   scoreConfianca?: number | null;
   telegramEnviadoEm?: string | null;
   telegramConfirmadoEm?: string | null;
+  // Assinatura do DDS (04/09) — a mesma digital da presença já vale como assinatura eletrônica,
+  // sem precisar ler de novo na tela "Assinar DDS".
+  assinadoEm?: string | null;
 }
 
 export interface DdsFotoEvidencia {

@@ -337,24 +337,41 @@ export function SessaoTreinamentoDetalhePage() {
                 </TableCell>
                 <TableCell>
                   {participante.treinamentoGeradoId && (
-                    <div style={{ display: 'flex', gap: 4 }}>
-                      <Button
-                        appearance="subtle"
-                        size="small"
-                        icon={<Signature24Regular />}
-                        onClick={() => navigate(`/treinamentos/${participante.treinamentoGeradoId}/assinar`)}
-                      >
-                        Assinar
-                      </Button>
-                      <Button
-                        appearance="subtle"
-                        size="small"
-                        icon={<ArrowDownload24Regular />}
-                        onClick={() => baixarCertificado(participante.treinamentoGeradoId!)}
-                        disabled={baixandoId === participante.treinamentoGeradoId}
-                      >
-                        Baixar
-                      </Button>
+                    <div>
+                      {participante.certificadoAssinadoPeloTrabalhadorEm && participante.certificadoAssinadoPeloInstrutorEm ? (
+                        <Badge color="success" appearance="tint" icon={<Checkmark24Filled />} style={{ marginBottom: 4 }}>
+                          Assinado (trabalhador e instrutor)
+                        </Badge>
+                      ) : participante.certificadoAssinadoPeloTrabalhadorEm || participante.certificadoAssinadoPeloInstrutorEm ? (
+                        <Badge color="warning" appearance="tint" style={{ marginBottom: 4 }}>
+                          Assinatura parcial
+                        </Badge>
+                      ) : (
+                        <Badge color="informative" appearance="tint" style={{ marginBottom: 4 }}>
+                          Assinatura pendente
+                        </Badge>
+                      )}
+                      <div style={{ display: 'flex', gap: 4 }}>
+                        {!(participante.certificadoAssinadoPeloTrabalhadorEm && participante.certificadoAssinadoPeloInstrutorEm) && (
+                          <Button
+                            appearance="subtle"
+                            size="small"
+                            icon={<Signature24Regular />}
+                            onClick={() => navigate(`/treinamentos/${participante.treinamentoGeradoId}/assinar`)}
+                          >
+                            Assinar
+                          </Button>
+                        )}
+                        <Button
+                          appearance="subtle"
+                          size="small"
+                          icon={<ArrowDownload24Regular />}
+                          onClick={() => baixarCertificado(participante.treinamentoGeradoId!)}
+                          disabled={baixandoId === participante.treinamentoGeradoId}
+                        >
+                          Baixar
+                        </Button>
+                      </div>
                     </div>
                   )}
                 </TableCell>
