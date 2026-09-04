@@ -99,7 +99,7 @@ export function AssinaturaTab({ trabalhadorId }: AssinaturaTabProps) {
         </Text>
         <Text style={{ display: 'block', marginBottom: 12, color: 'var(--colorNeutralForeground3)' }}>
           Método adicional ao leitor de digital — exige Termo de Aceite e consentimento de biometria já
-          registrados para este trabalhador.
+          registrados para este funcionário.
         </Text>
         {erroFacial && <Text className={estilos.erro}>{erroFacial}</Text>}
         {facialCadastrada && <Text style={{ display: 'block', marginBottom: 8 }}>Face cadastrada com sucesso.</Text>}
