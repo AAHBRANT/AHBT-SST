@@ -36,17 +36,17 @@ public class AprPdfService : IAprPdfService
             container.Page(pagina =>
             {
                 pagina.Size(PageSizes.A4.Landscape());
-                pagina.Margin(1.2f, Unit.Centimetre);
+                pagina.Margin(1.1f, Unit.Centimetre);
                 pagina.DefaultTextStyle(estilo => estilo.FontSize(8));
 
                 pagina.Header().Column(coluna =>
-                    CabecalhoDocumentoPadrao.Desenhar(coluna, "APR – ANÁLISE PRELIMINAR DE RISCO | REV.02", modelo.ObraNome, modelo.ObraLogoConteudo));
+                    CabecalhoDocumentoPadrao.Desenhar(coluna, "APR – ANÁLISE PRELIMINAR DE RISCO | REV.02", modelo.ObraNome, modelo.ObraLogoConteudo,
+                        MontarLinhasCabecalhoDireita(modelo), MontarLinhasCabecalhoEsquerda(modelo)));
 
                 pagina.Content().PaddingVertical(10).Column(coluna =>
                 {
-                    coluna.Spacing(8);
+                    coluna.Spacing(7);
 
-                    coluna.Item().Element(c => SecaoCabecalho(c, modelo));
                     coluna.Item().Element(c => SecaoEnvolvidos(c, modelo));
                     coluna.Item().Element(c => SecaoRiscos(c, modelo));
                     coluna.Item().Text(TextoRecomendacoes).FontSize(7);
@@ -63,27 +63,25 @@ public class AprPdfService : IAprPdfService
         return documento.GeneratePdf();
     }
 
-    private static void SecaoCabecalho(IContainer container, AprPdfModelo modelo)
+    // OBRA/CONTRATO, ATIVIDADE, MÁQUINAS/EQUIP. (esquerda) e Nº APR, DATA ELAB., LOCAL/FRENTE,
+    // PGR/PROCEDIMENTO REF. (direita) saíram do corpo do documento e subiram pro cabeçalho
+    // (CabecalhoDocumentoPadrao) — pedido do usuário, 04/09. O corpo agora começa direto em
+    // ENVOLVIDOS NA ATIVIDADE.
+    private static IReadOnlyList<string> MontarLinhasCabecalhoEsquerda(AprPdfModelo modelo) => new[]
     {
-        container.Column(coluna =>
-        {
-            coluna.Item().Row(linha =>
-            {
-                linha.RelativeItem(2).Text(t => { t.Span("OBRA / CONTRATO: ").SemiBold(); t.Span(modelo.ObraNome ?? "não informado"); });
-                linha.RelativeItem().Text(t => { t.Span("Nº APR: ").SemiBold(); t.Span(modelo.NumeroApr ?? "-"); });
-                linha.RelativeItem().Text(t => { t.Span("DATA ELAB.: ").SemiBold(); t.Span(modelo.Data.ToString("dd/MM/yyyy")); });
-            });
-            coluna.Item().Row(linha =>
-            {
-                linha.RelativeItem(2).Text(t => { t.Span("ATIVIDADE: ").SemiBold(); t.Span(modelo.AtividadeNome); });
-                linha.RelativeItem().Text(t => { t.Span("LOCAL / FRENTE: ").SemiBold(); t.Span(modelo.Local); });
-            });
-            coluna.Item().Row(linha =>
-            {
-                linha.RelativeItem(2).Text(t => { t.Span("MÁQUINAS / EQUIP.: ").SemiBold(); t.Span(modelo.MaquinasEquipamentos ?? "-"); });
-                linha.RelativeItem().Text(t => { t.Span("PGR / PROCEDIMENTO REF.: ").SemiBold(); t.Span(modelo.PgrReferencia ?? "-"); });
-            });
-        });
+        $"Obra / Contrato: {modelo.ObraNome ?? "não informado"}",
+        $"Atividade: {modelo.AtividadeNome}",
+        $"Máquinas / Equip.: {modelo.MaquinasEquipamentos ?? "-"}",
+    };
+
+    private static IReadOnlyList<string> MontarLinhasCabecalhoDireita(AprPdfModelo modelo)
+    {
+        var linhas = new List<string>();
+        if (modelo.NumeroApr is not null) linhas.Add($"Nº APR: {modelo.NumeroApr}");
+        linhas.Add($"Data Elab.: {modelo.Data:dd/MM/yyyy}");
+        linhas.Add($"Local / Frente: {modelo.Local}");
+        linhas.Add($"PGR / Procedimento Ref.: {modelo.PgrReferencia ?? "-"}");
+        return linhas;
     }
 
     private static void SecaoEnvolvidos(IContainer container, AprPdfModelo modelo)
@@ -207,80 +205,29 @@ public class AprPdfService : IAprPdfService
         });
     }
 
+    // As 3 tabelas de legenda (Probabilidade, Severidade, P×S/Classificação/Ação) foram substituídas
+    // por uma nota curta de referência — mesmo depois de encolhida ao limite de legibilidade (5pt),
+    // a legenda completa ainda não cabia numa APR com várias etapas de risco (pedido do usuário,
+    // 05/09: mover pra uma referência curta em vez de continuar reduzindo fonte).
     private static void SecaoMatrizCriterios(IContainer container)
     {
         container.Column(coluna =>
         {
-            coluna.Item().PaddingTop(6).Background(CorMarca).Padding(3)
-                .Text("CRITÉRIOS DA MATRIZ DE RISCO – APR REV.02").FontColor(Colors.White).Bold().FontSize(9);
+            coluna.Item().PaddingTop(1).Background(CorMarca).Padding(2)
+                .Text("CRITÉRIOS DA MATRIZ DE RISCO – APR REV.02").FontColor(Colors.White).Bold().FontSize(8);
 
-            coluna.Item().Row(linha =>
+            coluna.Item().PaddingTop(2).Text(t =>
             {
-                linha.RelativeItem().Table(table =>
-                {
-                    table.ColumnsDefinition(columns => { columns.ConstantColumn(80); columns.RelativeColumn(); });
-                    table.Header(header =>
-                    {
-                        header.Cell().Element(CabecalhoCelula).Text("PROBABILIDADE (P)");
-                        header.Cell().Element(CabecalhoCelula).Text("CRITÉRIO");
-                    });
-                    foreach (var (valor, criterio) in new[]
-                    {
-                        (1, "Rara"), (2, "Improvável"), (3, "Possível"), (4, "Provável"), (5, "Muito provável"),
-                    })
-                    {
-                        table.Cell().Element(Celula).AlignCenter().Text(valor.ToString());
-                        table.Cell().Element(Celula).Text(criterio);
-                    }
-                });
-
-                linha.ConstantItem(16);
-
-                linha.RelativeItem().Table(table =>
-                {
-                    table.ColumnsDefinition(columns => { columns.ConstantColumn(80); columns.RelativeColumn(); });
-                    table.Header(header =>
-                    {
-                        header.Cell().Element(CabecalhoCelula).Text("SEVERIDADE (S)");
-                        header.Cell().Element(CabecalhoCelula).Text("CRITÉRIO");
-                    });
-                    foreach (var (valor, criterio) in new[]
-                    {
-                        (1, "Insignificante"), (2, "Leve"), (3, "Moderada"), (4, "Grave"), (5, "Catastrófica / fatalidade"),
-                    })
-                    {
-                        table.Cell().Element(Celula).AlignCenter().Text(valor.ToString());
-                        table.Cell().Element(Celula).Text(criterio);
-                    }
-                });
-            });
-
-            coluna.Item().PaddingTop(4).Table(table =>
-            {
-                table.ColumnsDefinition(columns =>
-                {
-                    columns.ConstantColumn(70);
-                    columns.ConstantColumn(80);
-                    columns.RelativeColumn();
-                });
-                table.Header(header =>
-                {
-                    header.Cell().Element(CabecalhoCelula).Text("P × S");
-                    header.Cell().Element(CabecalhoCelula).Text("CLASSIFICAÇÃO");
-                    header.Cell().Element(CabecalhoCelula).Text("AÇÃO");
-                });
-                foreach (var (faixa, nivel, acao) in new[]
-                {
-                    ("1 a 4", NivelRiscoApr.Baixo, "Manter controles"),
-                    ("5 a 9", NivelRiscoApr.Moderado, "Confirmar controles antes/durante"),
-                    ("10 a 15", NivelRiscoApr.Alto, "Não iniciar sem controles adicionais"),
-                    ("16 a 25", NivelRiscoApr.Critico, "Não iniciar/continuar até redução"),
-                })
-                {
-                    table.Cell().Element(Celula).Text(faixa);
-                    table.Cell().Element(CelulaNivelRisco(nivel)).AlignCenter().Text(RotuloNivelRisco(nivel)).Bold();
-                    table.Cell().Element(Celula).Text(acao);
-                }
+                t.DefaultTextStyle(x => x.FontSize(7));
+                t.Span("Risco = Probabilidade (1 a 5, de Rara a Muito provável) × Severidade (1 a 5, de Insignificante a Catastrófica/fatalidade). Faixas: ");
+                t.Span("1-4 Baixo").SemiBold();
+                t.Span(" (manter controles) · ");
+                t.Span("5-9 Moderado").SemiBold();
+                t.Span(" (confirmar controles antes/durante) · ");
+                t.Span("10-15 Alto").SemiBold();
+                t.Span(" (não iniciar sem controles adicionais) · ");
+                t.Span("16-25 Crítico").FontColor(CorCritico).SemiBold();
+                t.Span(" (não iniciar/continuar até redução). Critérios detalhados de P e S conforme matriz padrão AAHBRANT REV.02.");
             });
         });
     }

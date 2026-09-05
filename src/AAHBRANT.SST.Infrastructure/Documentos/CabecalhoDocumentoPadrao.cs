@@ -16,17 +16,41 @@ internal static class CabecalhoDocumentoPadrao
 {
     private const string CorMarca = "#670000";
 
-    public static void Desenhar(ColumnDescriptor coluna, string tituloDocumento, string? obraNome, byte[]? logoConteudo)
+    // Largura do bloco lateral (logo à esquerda / nº do documento à direita) — as duas laterais usam
+    // a mesma largura pra o bloco de título ficar centralizado de verdade em relação à página inteira
+    // (pedido do usuário, 04/09), mesmo com texto real ocupando o lado direito agora.
+    private const float LarguraLateral = 200;
+
+    public static void Desenhar(ColumnDescriptor coluna, string tituloDocumento, string? obraNome, byte[]? logoConteudo,
+        IReadOnlyList<string>? linhasCabecalhoDireita = null, IReadOnlyList<string>? linhasCabecalhoEsquerda = null)
     {
-        // Logo à esquerda e um espaço reservado do mesmo tamanho à direita (mesmo sem logo) — assim
-        // o bloco de título fica centralizado de verdade em relação à página inteira, não só ao
-        // espaço sobrando depois da logo (pedido do usuário, 04/09: título centralizado em todos os
-        // documentos).
         coluna.Item().Row(linha =>
         {
-            linha.ConstantItem(50).Height(50).Element(c =>
+            linha.ConstantItem(LarguraLateral).Row(ladoEsquerdo =>
             {
-                if (logoConteudo is not null) c.Image(logoConteudo).FitArea();
+                ladoEsquerdo.ConstantItem(50).Height(50).Element(c =>
+                {
+                    if (logoConteudo is not null) c.Image(logoConteudo).FitArea();
+                });
+
+                if (linhasCabecalhoEsquerda is { Count: > 0 })
+                {
+                    ladoEsquerdo.RelativeItem().PaddingLeft(4).Column(esquerda =>
+                    {
+                        foreach (var texto in linhasCabecalhoEsquerda)
+                        {
+                            esquerda.Item().Text(t =>
+                            {
+                                t.Justify();
+                                t.Span(texto).FontSize(8).SemiBold();
+                            });
+                        }
+                    });
+                }
+                else
+                {
+                    ladoEsquerdo.ConstantItem(LarguraLateral - 50);
+                }
             });
 
             linha.RelativeItem().AlignCenter().Column(sub =>
@@ -35,7 +59,29 @@ internal static class CabecalhoDocumentoPadrao
                 sub.Item().AlignCenter().Text(tituloDocumento).FontSize(12).SemiBold();
             });
 
-            linha.ConstantItem(50);
+            // Metadados de identificação do documento (nº, data, local, referência) sobem pro
+            // cabeçalho, lado direito, empilhados e justificados (pedido do usuário, 04/09 — saíam do
+            // corpo do documento, misturados com OBRA/CONTRATO, ATIVIDADE e MÁQUINAS/EQUIP.). Sem
+            // metadados (documentos que não usam este recurso), o slot fica em branco, mesmo princípio
+            // do slot da logo.
+            if (linhasCabecalhoDireita is { Count: > 0 })
+            {
+                linha.ConstantItem(LarguraLateral).Column(direita =>
+                {
+                    foreach (var texto in linhasCabecalhoDireita)
+                    {
+                        direita.Item().AlignRight().Text(t =>
+                        {
+                            t.Justify();
+                            t.Span(texto).FontSize(8).SemiBold();
+                        });
+                    }
+                });
+            }
+            else
+            {
+                linha.ConstantItem(LarguraLateral);
+            }
         });
         coluna.Item().PaddingTop(4).LineHorizontal(2).LineColor(CorMarca);
     }

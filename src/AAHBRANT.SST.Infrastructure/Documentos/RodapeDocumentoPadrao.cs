@@ -28,8 +28,14 @@ internal static class RodapeDocumentoPadrao
                 textoColuna.Item().AlignCenter().Text(t =>
                 {
                     t.Span("AAHBRANT SST").FontSize(7).SemiBold();
+                    // O protocolo já embute o prefixo do tipo de documento (ex.: "APR-2026-0001",
+                    // "DDS-D-2026-0007") — mostrar "{tituloDocumento} nº {protocolo}" ficava redundante
+                    // ("APR nº APR-2026-0001"). Sem protocolo (documentos com chave sintética, sem
+                    // numeração automática), tituloDocumento sozinho ainda identifica o tipo.
                     if (!string.IsNullOrEmpty(protocolo))
-                        t.Span($" | {tituloDocumento} nº {protocolo}").FontSize(7);
+                        t.Span($" | {protocolo}").FontSize(7);
+                    else
+                        t.Span($" | {tituloDocumento}").FontSize(7);
                     if (revisao is not null)
                         t.Span($" — Revisão {revisao}").FontSize(7);
                 });
@@ -41,12 +47,11 @@ internal static class RodapeDocumentoPadrao
                         .FontSize(6.5f).Italic();
                 }
 
-                // Alinhado à direita e justificado (pedido do usuário, 04/09): fica colado na lateral
-                // esquerda do QR (que está logo depois, à direita) em vez de centralizado no meio do
-                // rodapé — o código de validação/link visualmente "junto" do QR que ele descreve.
-                textoColuna.Item().AlignRight().Text(t =>
+                // Centralizado (revertido a pedido do usuário, 04/09 — a tentativa de alinhar à
+                // direita/justificado "colado" no QR não ficou boa e ele pediu de volta o centralizado
+                // original).
+                textoColuna.Item().AlignCenter().Text(t =>
                 {
-                    t.Justify();
                     // Chave curta: atalho visual (8 primeiros caracteres do hash SHA-256, maiúsculos,
                     // formatado XXXX-XXXX) — a conferência de fato acontece pelo QR/link, que carrega
                     // o token completo, não pelo hash em si.
@@ -55,7 +60,7 @@ internal static class RodapeDocumentoPadrao
                     t.Span(DateTime.Now.ToString("dd/MM/yyyy HH:mm")).FontSize(6.5f);
                 });
 
-                textoColuna.Item().AlignRight().Text(t =>
+                textoColuna.Item().AlignCenter().Text(t =>
                 {
                     t.Span("Página ").FontSize(6.5f);
                     t.CurrentPageNumber().FontSize(6.5f);
@@ -64,9 +69,11 @@ internal static class RodapeDocumentoPadrao
                 });
             });
 
-            // 70pt (~2,5cm) — abaixo disso a câmera do celular não consegue focar/resolver os módulos
-            // do QR numa URL longa como a nossa (~115 caracteres), mesmo impresso em boa qualidade.
-            linha.ConstantItem(70).AlignRight().Image(qrCodePng).FitArea();
+            // 55pt (~1,9cm) — reduzido de 70pt (pedido do usuário, 04/09) porque o rodapé mais alto
+            // estava sobrando pouco espaço de conteúdo em documentos mais longos (ex.: APR foi pra 2
+            // páginas). Ainda bem acima do 28pt original (ilegível) — verificado com decodificação
+            // real (OpenCV) a 144 DPI antes de aplicar.
+            linha.ConstantItem(55).AlignRight().Image(qrCodePng).FitArea();
         });
     }
 }
