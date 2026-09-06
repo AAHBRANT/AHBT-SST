@@ -16,6 +16,9 @@ public class CertificadoTreinamentoPdfService : ICertificadoTreinamentoPdfServic
     private const string CorMarca = "#670000";
     private const string CorBege = "#ebe9ad";
     private const string CorTexto = "#1a1a1a";
+    // Azul de destaque do selo de norma (NR-XX) — pedido do usuário, 06/09: cor de ênfase
+    // distinta do vinho institucional para o badge da norma no cabeçalho.
+    private const string CorSeloNorma = "#2A34AF";
 
     public byte[] Gerar(CertificadoTreinamentoPdfModelo modelo)
     {
@@ -100,7 +103,7 @@ public class CertificadoTreinamentoPdfService : ICertificadoTreinamentoPdfServic
 
         // Sem rótulo "NORMA" acima do valor (pedido do usuário, 06/09) — "NR" já significa Norma
         // Regulamentadora, escrever os dois juntos é redundante.
-        container.Background(CorMarca).Padding(8).AlignCenter().Text(normaReferencia).FontSize(15).Bold().FontColor(Colors.White);
+        container.Background(CorSeloNorma).Padding(8).AlignCenter().Text(normaReferencia).FontSize(15).Bold().FontColor(Colors.White);
     }
 
     private static void Frente(IContainer container, CertificadoTreinamentoPdfModelo modelo)
