@@ -34,8 +34,9 @@ public class CertificadoTreinamentoPdfService : ICertificadoTreinamentoPdfServic
                 pagina.Content().Padding(14).Column(coluna =>
                 {
                     coluna.Spacing(6);
-                    coluna.Item().Element(c => Cabecalho(c, modelo, "CERTIFICADO"));
+                    coluna.Item().Element(c => Cabecalho(c, modelo));
                     coluna.Item().PaddingBottom(4).LineHorizontal(2).LineColor(CorMarca);
+                    coluna.Item().Element(c => TituloDocumento(c, "CERTIFICADO DE TREINAMENTO"));
                     coluna.Item().Element(c => Frente(c, modelo));
                 });
                 Rodape(pagina, modelo);
@@ -49,8 +50,9 @@ public class CertificadoTreinamentoPdfService : ICertificadoTreinamentoPdfServic
                     pagina.Content().Padding(14).Column(coluna =>
                     {
                         coluna.Spacing(6);
-                        coluna.Item().Element(c => Cabecalho(c, modelo, "CONTEÚDO PROGRAMÁTICO"));
+                        coluna.Item().Element(c => Cabecalho(c, modelo));
                         coluna.Item().PaddingBottom(4).LineHorizontal(2).LineColor(CorMarca);
+                        coluna.Item().Element(c => TituloDocumento(c, "CONTEÚDO PROGRAMÁTICO DO TREINAMENTO"));
                         coluna.Item().Element(c => Verso(c, modelo));
                     });
                     Rodape(pagina, modelo);
@@ -75,7 +77,7 @@ public class CertificadoTreinamentoPdfService : ICertificadoTreinamentoPdfServic
             coluna, "Certificado", modelo.NumeroCertificado, null, modelo.ConteudoHash, modelo.UrlValidacaoPublica, modelo.QrCodePng, modelo.TemAssinatura));
     }
 
-    private static void Cabecalho(IContainer container, CertificadoTreinamentoPdfModelo modelo, string titulo)
+    private static void Cabecalho(IContainer container, CertificadoTreinamentoPdfModelo modelo)
     {
         container.Row(linha =>
         {
@@ -88,10 +90,19 @@ public class CertificadoTreinamentoPdfService : ICertificadoTreinamentoPdfServic
             else
                 linha.ConstantItem(170);
 
-            linha.RelativeItem().AlignCenter().AlignMiddle().Text(titulo).FontSize(20).Bold().FontColor(CorMarca);
+            // Cabeçalho mostra o nome da Obra (não um rótulo genérico de documento) — é o layout
+            // "padrão de cada obra" pedido pelo usuário: o que muda de certificado pra certificado
+            // é a obra, então é ela quem tem destaque; o título do documento vira uma linha própria
+            // abaixo do cabeçalho (TituloDocumento).
+            linha.RelativeItem().AlignCenter().AlignMiddle().Text(modelo.ObraNome.ToUpperInvariant()).FontSize(18).Bold().FontColor(CorMarca);
 
             linha.ConstantItem(90).AlignRight().Element(c => Selo(c, modelo.NormaReferencia));
         });
+    }
+
+    private static void TituloDocumento(IContainer container, string titulo)
+    {
+        container.PaddingBottom(2).AlignCenter().Text(titulo).FontSize(16).Bold().FontColor(CorMarca);
     }
 
     private static void Selo(IContainer container, string? normaReferencia)
