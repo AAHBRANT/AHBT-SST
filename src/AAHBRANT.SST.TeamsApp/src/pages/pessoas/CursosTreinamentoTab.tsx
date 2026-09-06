@@ -10,6 +10,7 @@ import {
   TableHeaderCell,
   TableRow,
   Text,
+  Textarea,
 } from '@fluentui/react-components';
 import { Add24Regular, Delete24Regular } from '@fluentui/react-icons';
 import { api, type CursoTreinamento, type NovoCursoTreinamento } from '../../lib/api';
@@ -24,6 +25,7 @@ const cursoVazio: NovoCursoTreinamento = {
   normaReferencia: '',
   cargaHorariaMinima: 0,
   validadeEmMeses: 12,
+  conteudoProgramatico: '',
 };
 
 export function CursosTreinamentoTab() {
@@ -116,6 +118,15 @@ export function CursosTreinamentoTab() {
               type="number"
               value={String(novoCurso.validadeEmMeses)}
               onChange={(_, d) => setNovoCurso({ ...novoCurso, validadeEmMeses: Number(d.value) })}
+            />
+          </Field>
+        </div>
+        <div className={estilos.col12}>
+          <Field label="Conteúdo programático (um tópico por linha — vira o verso do certificado)">
+            <Textarea
+              rows={6}
+              value={novoCurso.conteudoProgramatico ?? ''}
+              onChange={(_, d) => setNovoCurso({ ...novoCurso, conteudoProgramatico: d.value })}
             />
           </Field>
         </div>

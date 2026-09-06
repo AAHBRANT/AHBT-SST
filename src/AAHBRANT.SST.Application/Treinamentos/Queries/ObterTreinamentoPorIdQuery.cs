@@ -22,6 +22,8 @@ public class ObterTreinamentoPorIdQueryHandler : IRequestHandler<ObterTreinament
                 x.DataValidade,
                 x.CargaHorariaRealizada,
                 x.InstituicaoInstrutor,
-                x.NumeroCertificado))
+                x.NumeroCertificado,
+                x.Local,
+                x.InstrutorRegistroProfissional))
             .FirstOrDefaultAsync(ct);
 }

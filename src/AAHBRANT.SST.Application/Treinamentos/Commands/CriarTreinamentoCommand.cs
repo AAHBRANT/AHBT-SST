@@ -12,7 +12,9 @@ public record CriarTreinamentoCommand(
     DateTime DataValidade,
     int CargaHorariaRealizada,
     string? InstituicaoInstrutor,
-    string? NumeroCertificado) : IRequest<Guid>;
+    string? NumeroCertificado,
+    string? Local,
+    string? InstrutorRegistroProfissional) : IRequest<Guid>;
 
 public class CriarTreinamentoCommandValidator : AbstractValidator<CriarTreinamentoCommand>
 {
@@ -41,6 +43,8 @@ public class CriarTreinamentoCommandHandler : IRequestHandler<CriarTreinamentoCo
             CargaHorariaRealizada = request.CargaHorariaRealizada,
             InstituicaoInstrutor = request.InstituicaoInstrutor,
             NumeroCertificado = request.NumeroCertificado,
+            Local = request.Local,
+            InstrutorRegistroProfissional = request.InstrutorRegistroProfissional,
         };
         _db.Treinamentos.Add(treinamento);
         await _db.SaveChangesAsync(ct);

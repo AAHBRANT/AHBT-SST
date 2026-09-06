@@ -46,6 +46,8 @@ function treinamentoVazio(trabalhadorId: string): NovoTreinamento {
     cargaHorariaRealizada: 0,
     instituicaoInstrutor: '',
     numeroCertificado: '',
+    local: '',
+    instrutorRegistroProfissional: '',
   };
 }
 
@@ -195,10 +197,18 @@ export function TreinamentosTab({ trabalhadorId, obraId }: { trabalhadorId: stri
           </Field>
         </div>
         <div className={estilos.col6}>
-          <Field label="Instituição / instrutor">
+          <Field label="Técnico de Segurança do Trabalho (Instrutor/Resp. Técnico)">
             <Input
               value={novoTreinamento.instituicaoInstrutor ?? ''}
               onChange={(_, d) => setNovoTreinamento({ ...novoTreinamento, instituicaoInstrutor: d.value })}
+            />
+          </Field>
+        </div>
+        <div className={estilos.col6}>
+          <Field label="Registro profissional do instrutor (CREA/MTE)">
+            <Input
+              value={novoTreinamento.instrutorRegistroProfissional ?? ''}
+              onChange={(_, d) => setNovoTreinamento({ ...novoTreinamento, instrutorRegistroProfissional: d.value })}
             />
           </Field>
         </div>
@@ -207,6 +217,14 @@ export function TreinamentosTab({ trabalhadorId, obraId }: { trabalhadorId: stri
             <Input
               value={novoTreinamento.numeroCertificado ?? ''}
               onChange={(_, d) => setNovoTreinamento({ ...novoTreinamento, numeroCertificado: d.value })}
+            />
+          </Field>
+        </div>
+        <div className={estilos.col6}>
+          <Field label="Local / Instalações (opcional — sem preencher, usa a Obra)">
+            <Input
+              value={novoTreinamento.local ?? ''}
+              onChange={(_, d) => setNovoTreinamento({ ...novoTreinamento, local: d.value })}
             />
           </Field>
         </div>

@@ -226,6 +226,10 @@ export interface Treinamento {
   cargaHorariaRealizada: number;
   instituicaoInstrutor?: string | null;
   numeroCertificado?: string | null;
+  // Local/instalações e registro profissional do instrutor (CREA/MTE) no certificado (pedido do
+  // usuário, 06/09). Sem preencher Local, o certificado usa o nome da Obra do trabalhador.
+  local?: string | null;
+  instrutorRegistroProfissional?: string | null;
 }
 
 export type NovoTreinamento = Omit<Treinamento, 'id'>;

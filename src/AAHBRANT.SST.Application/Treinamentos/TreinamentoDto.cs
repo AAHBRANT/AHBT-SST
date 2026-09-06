@@ -8,4 +8,6 @@ public record TreinamentoDto(
     DateTime DataValidade,
     int CargaHorariaRealizada,
     string? InstituicaoInstrutor,
-    string? NumeroCertificado);
+    string? NumeroCertificado,
+    string? Local,
+    string? InstrutorRegistroProfissional);

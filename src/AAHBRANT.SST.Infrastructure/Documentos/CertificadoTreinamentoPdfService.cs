@@ -98,11 +98,9 @@ public class CertificadoTreinamentoPdfService : ICertificadoTreinamentoPdfServic
             return;
         }
 
-        container.Background(CorMarca).Padding(6).Column(selo =>
-        {
-            selo.Item().AlignCenter().Text("NORMA").FontSize(7).FontColor(Colors.White);
-            selo.Item().AlignCenter().Text(normaReferencia).FontSize(12).Bold().FontColor(Colors.White);
-        });
+        // Sem rótulo "NORMA" acima do valor (pedido do usuário, 06/09) — "NR" já significa Norma
+        // Regulamentadora, escrever os dois juntos é redundante.
+        container.Background(CorMarca).Padding(8).AlignCenter().Text(normaReferencia).FontSize(15).Bold().FontColor(Colors.White);
     }
 
     private static void Frente(IContainer container, CertificadoTreinamentoPdfModelo modelo)
@@ -120,7 +118,9 @@ public class CertificadoTreinamentoPdfService : ICertificadoTreinamentoPdfServic
                 {
                     t.Span($", portador(a) do RG {modelo.TrabalhadorRg},");
                 }
-                t.Span(" participou do curso de ");
+                t.Span(" registrado(a) sob a Matrícula nº ");
+                t.Span(modelo.TrabalhadorMatricula).Bold();
+                t.Span(", participou do curso de ");
                 t.Span(modelo.CursoNome).Bold();
                 if (!string.IsNullOrWhiteSpace(modelo.NormaReferencia))
                 {
@@ -149,7 +149,13 @@ public class CertificadoTreinamentoPdfService : ICertificadoTreinamentoPdfServic
                 coluna.Item().Text(modelo.ObraEndereco).FontSize(9);
             }
 
+            // Local/Instalações (pedido do usuário, 06/09): sem preenchimento próprio, usa o nome da
+            // Obra do trabalhador como sempre fez.
             coluna.Item().PaddingTop(2).Text($"Obra: {modelo.ObraNome}").FontSize(9).SemiBold();
+            if (!string.IsNullOrWhiteSpace(modelo.Local))
+            {
+                coluna.Item().Text($"Local/Instalações: {modelo.Local}").FontSize(9);
+            }
 
             coluna.Item().PaddingTop(2).Text(
                 string.IsNullOrWhiteSpace(modelo.ObraCidade)
@@ -279,7 +285,14 @@ public class CertificadoTreinamentoPdfService : ICertificadoTreinamentoPdfServic
                 {
                     bloco.Item().PaddingBottom(2).LineHorizontal(1).LineColor(CorTexto);
                     bloco.Item().AlignCenter().Text(modelo.InstituicaoInstrutor ?? "Instrutor responsável").FontSize(9).SemiBold();
-                    bloco.Item().AlignCenter().Text("Instrutor").FontSize(8).Italic();
+                    // O instrutor é sempre o Técnico de Segurança do Trabalho responsável, que também
+                    // assina como Responsável Técnico — uma assinatura só, não três (pedido do
+                    // usuário, 06/09).
+                    bloco.Item().AlignCenter().Text("Técnico de Segurança do Trabalho — Instrutor/Resp. Técnico").FontSize(8).Italic();
+                    if (!string.IsNullOrWhiteSpace(modelo.InstrutorRegistroProfissional))
+                    {
+                        bloco.Item().AlignCenter().Text($"Registro: {modelo.InstrutorRegistroProfissional}").FontSize(7.5f).FontColor(Colors.Grey.Darken2);
+                    }
                 });
 
                 linha.ConstantItem(24);
