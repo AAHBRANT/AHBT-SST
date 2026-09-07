@@ -71,7 +71,7 @@ export function DataTable<T>({ colunas, linhas, chaveLinha, carregando, vazio, d
                     </td>
                   ))}
                   {acoesLinha && (
-                    <td className={mergeClasses(e.td, compacta && e.tdCompacta, e.tdUltima, e.direita)} onClick={(ev) => ev.stopPropagation()}>
+                    <td className={mergeClasses(e.td, compacta && e.tdCompacta, e.tdUltima, e.direita)} onClick={(ev) => ev.stopPropagation()} onKeyDown={(ev) => ev.stopPropagation()}>
                       <div className={e.acoes}>{acoesLinha(linha)}</div>
                     </td>
                   )}
