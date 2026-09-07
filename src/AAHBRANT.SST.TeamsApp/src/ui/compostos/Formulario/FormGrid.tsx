@@ -6,11 +6,23 @@ const useStyles = makeStyles({
   grid: { display: 'grid', gridTemplateColumns: 'repeat(12, 1fr)', gap: tokensUi.espaco.lg, marginBottom: '20px',
     // Único breakpoint do app hoje (pageStyles.formGrid) — fica aqui dentro.
     '@media (max-width: 900px)': { gridTemplateColumns: 'repeat(1, 1fr)' } },
-  s1: { gridColumn: 'span 1' }, s2: { gridColumn: 'span 2' }, s3: { gridColumn: 'span 3' }, s4: { gridColumn: 'span 4' }, s5: { gridColumn: 'span 5' }, s6: { gridColumn: 'span 6' }, s8: { gridColumn: 'span 8' }, s12: { gridColumn: 'span 12' },
+  // Sem isso, `gridColumn: span N` força a criação de colunas implícitas mesmo com uma única
+  // coluna explícita (repeat(1, 1fr) acima), e os campos continuariam lado a lado abaixo de
+  // 900px. Cada classe sN colapsa para span 1 dentro do mesmo breakpoint para garantir o
+  // empilhamento.
+  s1: { gridColumn: 'span 1', '@media (max-width: 900px)': { gridColumn: 'span 1' } },
+  s2: { gridColumn: 'span 2', '@media (max-width: 900px)': { gridColumn: 'span 1' } },
+  s3: { gridColumn: 'span 3', '@media (max-width: 900px)': { gridColumn: 'span 1' } },
+  s4: { gridColumn: 'span 4', '@media (max-width: 900px)': { gridColumn: 'span 1' } },
+  s5: { gridColumn: 'span 5', '@media (max-width: 900px)': { gridColumn: 'span 1' } },
+  s6: { gridColumn: 'span 6', '@media (max-width: 900px)': { gridColumn: 'span 1' } },
+  s8: { gridColumn: 'span 8', '@media (max-width: 900px)': { gridColumn: 'span 1' } },
+  s12: { gridColumn: 'span 12', '@media (max-width: 900px)': { gridColumn: 'span 1' } },
 });
 
 // Grade de 12 colunas para formulários com larguras deliberadas (spec §3). Formaliza
-// usePageStyles.formGrid + col2..col12. Abaixo de 900px tudo vira uma coluna.
+// usePageStyles.formGrid + col2..col12. Abaixo de 900px, cada Campo ocupa a única coluna
+// disponível (empilhamento total, independentemente do span original).
 export function FormGrid({ children }: { children: ReactNode }) {
   const e = useStyles();
   return <div className={e.grid}>{children}</div>;
