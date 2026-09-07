@@ -7,6 +7,8 @@ obj/
 # Node / Vite
 node_modules/
 dist/
+src/AAHBRANT.SST.TeamsApp/test-results/
+src/AAHBRANT.SST.TeamsApp/playwright-report/
 
 # Segredos e configuração local — NUNCA commitar
 CREDENCIAIS.txt
