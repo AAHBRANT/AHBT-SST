@@ -124,9 +124,24 @@ public class TrabalhadoresController : ControllerBase
         await _mediator.Send(new CadastrarTemplateBiometricoCommand(id, body.TemplateBruto), ct);
         return NoContent();
     }
+
+    [Authorize(Policy = "trabalhador:ver")]
+    [HttpGet("{id:guid}/uniformes")]
+    public async Task<IActionResult> ListarTamanhosUniforme(Guid id, CancellationToken ct)
+        => Ok(await _mediator.Send(new ListarTamanhosUniformeTrabalhadorQuery(id), ct));
+
+    [Authorize(Policy = "trabalhador:editar")]
+    [HttpPut("{id:guid}/uniformes")]
+    public async Task<IActionResult> DefinirTamanhosUniforme(Guid id, DefinirTamanhosUniformeRequest request, CancellationToken ct)
+    {
+        await _mediator.Send(new DefinirTamanhosUniformeTrabalhadorCommand(id, request.Itens), ct);
+        return NoContent();
+    }
 }
 
 public class AnexarFotoTrabalhadorRequestBody
 {
     public IFormFile Foto { get; set; } = null!;
 }
+
+public record DefinirTamanhosUniformeRequest(List<ItemTamanhoUniforme> Itens);
