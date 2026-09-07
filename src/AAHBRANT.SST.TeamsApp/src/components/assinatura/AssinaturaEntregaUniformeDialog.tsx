@@ -42,9 +42,25 @@ export interface AssinaturaEntregaUniformeDialogProps {
 
 // Popup de assinatura disparado logo após "Registrar entrega" em EntregaUniformeTab.tsx — mesma
 // estrutura de AssinaturaEntregaEpiDialog.tsx (assinatura do entregador em 1 clique via sessão
-// logada; assinatura do receptor via AssinaturaQuiosque, crachá/PIN ou biometria). Termo de
-// Recebimento é um rascunho próprio (ver aviso jurídico no topo da Task 11 do plano de
-// implementação) — não uma transcrição de modelo oficial como o do EPI.
+// logada; assinatura do receptor via AssinaturaQuiosque, crachá/PIN ou biometria).
+//
+// Termo de Recebimento adaptado do modelo institucional oficial do EPI (decisão do usuário,
+// 2026-09-07: reaproveitar o mesmo termo) — mantém as cláusulas de compromisso de uso, devolução
+// e sanção disciplinar (Art. 158 da CLT) na mesma redação do EPI. Duas cláusulas do EPI foram
+// OMITIDAS por não se aplicarem a uniforme: a de Certificado de Aprovação (CA) — uniforme não tem
+// CA — e a de vínculo com a Lista de Presença de Treinamento NR-6 — a entrega de uniforme não
+// exige treinamento NR-6. Por ter alterado a redação institucional (mesmo que a partir de um
+// modelo já aprovado), recomenda-se uma checagem rápida do time jurídico/QSMS antes do uso real
+// em produção, apesar de a estrutura já ser a validada para o EPI.
+function clausulasTermoRecebimento(): string[] {
+  return [
+    'Declaro ter recebido do Consórcio Ponte Rio Cuiá a(s) peça(s) de uniforme relacionada(s) nesta ficha, nas datas e quantidades ali indicadas, todas em perfeitas condições de uso e no tamanho informado.',
+    'Comprometo-me a utilizar o(s) uniforme(s) exclusivamente para a finalidade a que se destina(m), durante toda a execução das minhas atividades laborais, conforme o padrão estabelecido pela obra/empresa, zelando por sua guarda, conservação e higienização adequadas, e a comunicar imediatamente ao Setor de Segurança do Trabalho qualquer dano, extravio ou alteração que o(s) torne impróprio(s) para uso.',
+    'Comprometo-me a devolver o(s) uniforme(s) sempre que solicitado, inclusive nos casos de substituição, troca de função, mudança de atividade ou rescisão do meu contrato de trabalho.',
+    'Estou ciente de que o descumprimento das obrigações aqui assumidas constitui falta funcional, passível de sanções disciplinares que poderão variar, a critério do empregador, de advertência por escrito até a rescisão contratual por justa causa, sem prejuízo de demais medidas legais cabíveis, conforme disposto no Art. 158 da CLT.',
+  ];
+}
+
 export function AssinaturaEntregaUniformeDialog({
   open,
   onClose,
@@ -140,28 +156,14 @@ export function AssinaturaEntregaUniformeDialog({
 
             <div className={estilos.card} style={{ marginBottom: 16 }}>
               <Text weight="semibold" style={{ display: 'block', marginBottom: 8 }}>
-                Termo de Recebimento de Uniforme
+                Termo de Recebimento e Compromisso de Uso
               </Text>
               <ol style={{ margin: 0, paddingLeft: 20 }}>
-                <li style={{ marginBottom: 6 }}>
-                  <Text size={200}>
-                    Declaro ter recebido a(s) peça(s) de uniforme relacionada(s) nesta ficha, na quantidade e
-                    tamanho indicados, em condições adequadas de uso.
-                  </Text>
-                </li>
-                <li style={{ marginBottom: 6 }}>
-                  <Text size={200}>
-                    Comprometo-me a utilizar o uniforme conforme o padrão da obra/empresa durante o horário de
-                    trabalho, zelando por sua guarda, conservação e higienização adequadas.
-                  </Text>
-                </li>
-                <li style={{ marginBottom: 6 }}>
-                  <Text size={200}>
-                    Comprometo-me a comunicar imediatamente ao responsável qualquer dano ou extravio que torne a
-                    peça imprópria para uso, e a devolvê-la sempre que solicitado, inclusive em caso de
-                    desligamento.
-                  </Text>
-                </li>
+                {clausulasTermoRecebimento().map((clausula, indice) => (
+                  <li key={indice} style={{ marginBottom: 6 }}>
+                    <Text size={200}>{clausula}</Text>
+                  </li>
+                ))}
               </ol>
             </div>
 
