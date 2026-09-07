@@ -79,6 +79,19 @@ public class FuncoesController : ControllerBase
     }
 
     [Authorize(Policy = "organizacional:ver")]
+    [HttpGet("{id:guid}/epcs")]
+    public async Task<IActionResult> ListarEpcs(Guid id, CancellationToken ct)
+        => Ok(await _mediator.Send(new ListarEpcsPorFuncaoQuery(id), ct));
+
+    [Authorize(Policy = "organizacional:editar")]
+    [HttpPut("{id:guid}/epcs")]
+    public async Task<IActionResult> DefinirEpcs(Guid id, DefinirEpcsRequest request, CancellationToken ct)
+    {
+        await _mediator.Send(new DefinirMatrizEpcFuncaoCommand(id, request.CatalogoEpcIds), ct);
+        return NoContent();
+    }
+
+    [Authorize(Policy = "organizacional:ver")]
     [HttpGet("{id:guid}/treinamentos-obrigatorios")]
     public async Task<IActionResult> ListarTreinamentosObrigatorios(Guid id, CancellationToken ct)
         => Ok(await _mediator.Send(new ListarTreinamentosObrigatoriosPorFuncaoQuery(id), ct));
@@ -95,3 +108,4 @@ public class FuncoesController : ControllerBase
 public record DefinirEpisRequest(List<Guid> CatalogoEpiIds);
 public record DefinirTreinamentosObrigatoriosRequest(List<Guid> CursoTreinamentoIds);
 public record DefinirUniformesRequest(List<Guid> CatalogoUniformeIds);
+public record DefinirEpcsRequest(List<Guid> CatalogoEpcIds);

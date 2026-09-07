@@ -500,6 +500,70 @@ export interface ItemTamanhoUniforme {
   tamanho: string;
 }
 
+export interface CatalogoEpc {
+  id: string;
+  nome: string;
+  categoria?: string | null;
+  temFoto: boolean;
+}
+
+export type NovoCatalogoEpc = Omit<CatalogoEpc, 'id' | 'temFoto'>;
+export type AtualizarCatalogoEpc = Omit<CatalogoEpc, 'temFoto'>;
+
+export const MotivoEntregaEpc = {
+  Inicial: 0,
+  Desgaste: 1,
+  Extravio: 2,
+  TrocaDeFuncao: 3,
+} as const;
+
+export const motivoEntregaEpcLabel: Record<number, string> = {
+  0: 'Entrega inicial',
+  1: 'Desgaste',
+  2: 'Extravio',
+  3: 'Troca de função',
+};
+
+export interface EntregaEpc {
+  id: string;
+  trabalhadorId: string;
+  catalogoEpcId: string;
+  quantidade: number;
+  dataEntrega: string;
+  motivoTipo: number;
+  observacoes?: string | null;
+}
+
+export type NovaEntregaEpc = Omit<EntregaEpc, 'id'>;
+
+export const TipoMovimentacaoEstoqueEpc = {
+  EntradaManual: 0,
+  SaidaEntrega: 1,
+  AjusteManual: 2,
+} as const;
+
+export const tipoMovimentacaoEstoqueEpcLabel: Record<number, string> = {
+  0: 'Entrada manual',
+  1: 'Saída (entrega)',
+  2: 'Ajuste manual',
+};
+
+export interface EstoqueEpcPorObra {
+  catalogoEpcId: string;
+  catalogoEpcNome: string;
+  saldo: number;
+}
+
+export interface MovimentacaoEstoqueEpc {
+  id: string;
+  tipo: number;
+  quantidade: number;
+  saldoResultante: number;
+  createdAtUtc: string;
+  observacao?: string | null;
+  entregaEpcId?: string | null;
+}
+
 export interface Atividade {
   id: string;
   obraId: string;
@@ -3018,6 +3082,12 @@ export const api = {
         method: 'PUT',
         body: JSON.stringify({ catalogoUniformeIds }),
       }),
+    listarEpcs: (funcaoId: string) => request<CatalogoEpc[]>(`/api/funcoes/${funcaoId}/epcs`),
+    definirEpcs: (funcaoId: string, catalogoEpcIds: string[]) =>
+      request<void>(`/api/funcoes/${funcaoId}/epcs`, {
+        method: 'PUT',
+        body: JSON.stringify({ catalogoEpcIds }),
+      }),
   },
   setores: {
     listar: (obraId?: string) => request<Setor[]>(`/api/setores${obraId ? `?obraId=${obraId}` : ''}`),
@@ -3207,6 +3277,53 @@ export const api = {
     obterPorId: (id: string) => request<EntregaUniforme>(`/api/entregasuniforme/${id}`),
     criar: (dados: NovaEntregaUniforme) =>
       request<{ id: string }>('/api/entregasuniforme', { method: 'POST', body: JSON.stringify(dados) }),
+  },
+  catalogosEpc: {
+    listar: () => request<CatalogoEpc[]>('/api/catalogosepc'),
+    criar: (item: NovoCatalogoEpc) =>
+      request<{ id: string }>('/api/catalogosepc', { method: 'POST', body: JSON.stringify(item) }),
+    atualizar: (item: AtualizarCatalogoEpc) =>
+      request<void>(`/api/catalogosepc/${item.id}`, { method: 'PUT', body: JSON.stringify(item) }),
+    excluir: (id: string) => request<void>(`/api/catalogosepc/${id}`, { method: 'DELETE' }),
+    anexarFoto: async (id: string, arquivo: File) => {
+      const formData = new FormData();
+      formData.append('Foto', arquivo);
+      const response = await fetch(`${API_BASE_URL}/api/catalogosepc/${id}/foto`, {
+        method: 'POST',
+        headers: await montarHeadersAuth(),
+        body: formData,
+      });
+      if (!response.ok) {
+        const corpo = await response.text().catch(() => '');
+        throw new Error(extrairMensagemErro(corpo, response.status, response.statusText));
+      }
+    },
+    baixarFoto: async (id: string) => {
+      const response = await fetch(`${API_BASE_URL}/api/catalogosepc/${id}/foto`, {
+        headers: await montarHeadersAuth(),
+      });
+      if (!response.ok) {
+        const corpo = await response.text().catch(() => '');
+        throw new Error(extrairMensagemErro(corpo, response.status, response.statusText));
+      }
+      return response.blob();
+    },
+  },
+  entregasEpc: {
+    listar: (trabalhadorId?: string) =>
+      request<EntregaEpc[]>(`/api/entregasepc${trabalhadorId ? `?trabalhadorId=${trabalhadorId}` : ''}`),
+    obterPorId: (id: string) => request<EntregaEpc>(`/api/entregasepc/${id}`),
+    criar: (dados: NovaEntregaEpc) =>
+      request<{ id: string }>('/api/entregasepc', { method: 'POST', body: JSON.stringify(dados) }),
+  },
+  estoquesEpc: {
+    listarPorObra: (obraId: string) => request<EstoqueEpcPorObra[]>(`/api/estoquesepc/obra/${obraId}`),
+    listarMovimentacoes: (obraId: string, catalogoEpcId: string) =>
+      request<MovimentacaoEstoqueEpc[]>(`/api/estoquesepc/obra/${obraId}/item/${catalogoEpcId}/movimentacoes`),
+    registrarEntrada: (dados: { catalogoEpcId: string; obraId: string; quantidade: number; observacao?: string | null }) =>
+      request<void>('/api/estoquesepc/entrada', { method: 'POST', body: JSON.stringify(dados) }),
+    ajustar: (dados: { catalogoEpcId: string; obraId: string; novoSaldo: number; observacao: string }) =>
+      request<void>('/api/estoquesepc/ajuste', { method: 'POST', body: JSON.stringify(dados) }),
   },
   estoquesEpi: {
     listarPorObra: (obraId: string) => request<EstoqueEpiPorObra[]>(`/api/estoquesepi/obra/${obraId}`),

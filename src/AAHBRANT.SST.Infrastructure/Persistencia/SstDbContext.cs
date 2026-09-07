@@ -46,6 +46,11 @@ public class SstDbContext : DbContext, IAppDbContext
     public DbSet<MatrizUniformeFuncao> MatrizUniformeFuncoes => Set<MatrizUniformeFuncao>();
     public DbSet<TrabalhadorTamanhoUniforme> TrabalhadorTamanhosUniforme => Set<TrabalhadorTamanhoUniforme>();
     public DbSet<EntregaUniforme> EntregasUniforme => Set<EntregaUniforme>();
+    public DbSet<CatalogoEpc> CatalogoEpcs => Set<CatalogoEpc>();
+    public DbSet<EstoqueEpc> EstoquesEpc => Set<EstoqueEpc>();
+    public DbSet<MovimentacaoEstoqueEpc> MovimentacoesEstoqueEpc => Set<MovimentacaoEstoqueEpc>();
+    public DbSet<MatrizEpcFuncao> MatrizEpcFuncoes => Set<MatrizEpcFuncao>();
+    public DbSet<EntregaEpc> EntregasEpc => Set<EntregaEpc>();
 
     public DbSet<Alerta> Alertas => Set<Alerta>();
     public DbSet<AlertaHistoricoEnvio> AlertaHistoricoEnvios => Set<AlertaHistoricoEnvio>();

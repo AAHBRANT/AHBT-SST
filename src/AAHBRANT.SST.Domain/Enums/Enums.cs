@@ -753,3 +753,23 @@ public enum TipoMovimentacaoEstoqueUniforme
     SaidaEntrega = 1,
     AjusteManual = 2,
 }
+
+// Módulo EPC (Equipamento de Proteção Coletiva, decisão do usuário 2026-09-07: catálogo próprio,
+// "bem parecido" com EPI/Uniforme) — motivos da entrega, mesmo vocabulário reduzido de
+// MotivoEntregaUniforme (sem "Vencimento": EPC não tem CA/validade certificada como EPI).
+public enum MotivoEntregaEpc
+{
+    Inicial = 0,
+    Desgaste = 1,
+    Extravio = 2,
+    TrocaDeFuncao = 3,
+}
+
+// Classifica cada linha do ledger MovimentacaoEstoqueEpc. Sem DevolucaoEntrada, mesmo padrão
+// reduzido de TipoMovimentacaoEstoqueUniforme.
+public enum TipoMovimentacaoEstoqueEpc
+{
+    EntradaManual = 0,
+    SaidaEntrega = 1,
+    AjusteManual = 2,
+}
