@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { makeStyles } from '@fluentui/react-components';
 import { useTipografia } from '../tokens/tipografia';
-import { Card, PageHeader, Button, Input, StatusChip, nivelVencimento, tomDeVencimento, rotuloDeVencimento, EstadoVazio, Carregando, FeedbackInline, Abas, useAbaNaUrl, DataTable, FormSection, FormGrid, Campo, FormRodape, ChipCheckboxGroup, Field, Textarea, CampoData } from '../index';
+import { Card, PageHeader, Button, Input, StatusChip, nivelVencimento, tomDeVencimento, rotuloDeVencimento, EstadoVazio, Carregando, FeedbackInline, Abas, useAbaNaUrl, DataTable, FormSection, FormGrid, Campo, FormRodape, ChipCheckboxGroup, Field, Textarea, CampoData, SeletorPesquisavel, useConfirmar } from '../index';
 import { Secao } from './Secao';
 
 // Calculado uma vez no carregamento do módulo (não a cada render) para não disparar o alerta de
@@ -29,6 +29,9 @@ export function GaleriaPage() {
   const [abaDemo, setAbaDemo] = useAbaNaUrl('demo', ['x', 'y', 'z'] as const, 'x');
   const [abertaDemo, setAbertaDemo] = useState<string | null>(null);
   const [chipsDemo, setChipsDemo] = useState<string[]>(['a']);
+  const [funcDemo, setFuncDemo] = useState('');
+  const { confirmar, dialogElement } = useConfirmar();
+  const [ultimaConfirmacao, setUltimaConfirmacao] = useState<string | null>(null);
   return (
     <div>
       <h1 className={`${tipo.titulo} ${g.titulo}`}>Galeria da camada ui/</h1>
@@ -141,8 +144,22 @@ export function GaleriaPage() {
       <Secao titulo="ChipCheckboxGroup">
         <ChipCheckboxGroup aria-label="EPIs" opcoes={[{ id: 'a', rotulo: 'Capacete' }, { id: 'b', rotulo: 'Botina' }, { id: 'c', rotulo: 'Luva' }, { id: 'd', rotulo: 'Óculos' }]} selecionados={chipsDemo} aoMudar={setChipsDemo} />
       </Secao>
+      <Secao titulo="SeletorPesquisavel (digite 'jo')">
+        <div className={g.largura360}>
+          <Field label="Funcionário">
+            <SeletorPesquisavel aria-label="Funcionário" placeholder="Buscar entre 312 funcionários" valor={funcDemo} aoMudar={setFuncDemo}
+              opcoes={[{ id: '1', rotulo: 'João da Silva', descricao: 'Pedreiro, Ponte Rio Cuiá' }, { id: '2', rotulo: 'Joana Martins', descricao: 'Carpinteira, Vila Nova' }, { id: '3', rotulo: 'José Almeida', descricao: 'Operador de guindaste' }, { id: '4', rotulo: 'Ana Carolina Reis', descricao: 'Eletricista' }]} />
+          </Field>
+        </div>
+      </Secao>
+      <Secao titulo="ConfirmDialog">
+        <Button onClick={async () => { const ok = await confirmar('Excluir a entrega de João da Silva? Esta ação não pode ser desfeita.'); setUltimaConfirmacao(ok ? 'confirmou' : 'cancelou'); }}>Abrir destrutivo</Button>
+        <Button onClick={async () => { const ok = await confirmar({ titulo: 'Enviar ao responsável', mensagem: 'A ocorrência será enviada a Carlos Mendes.', rotuloConfirmar: 'Enviar', tom: 'neutro' }); setUltimaConfirmacao(ok ? 'confirmou' : 'cancelou'); }}>Abrir neutro</Button>
+        <span className={tipo.legenda}>Última resposta: {ultimaConfirmacao ?? '—'}</span>
+        {dialogElement}
+      </Secao>
       {/* As tarefas seguintes acrescentam uma <Secao> por peça, nesta ordem:
-          SeletorPesquisavel, ConfirmDialog, PainelLateral, KpiCard, DetailPageLayout,
+          PainelLateral, KpiCard, DetailPageLayout,
           WorkflowActions, Gráficos. */}
     </div>
   );
