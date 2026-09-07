@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { makeStyles } from '@fluentui/react-components';
 import { BuildingBank24Regular, ShieldCheckmark24Regular, DocumentCheckmark24Regular, DocumentError24Regular } from '@fluentui/react-icons';
 import { useTipografia } from '../tokens/tipografia';
-import { Card, PageHeader, Button, Input, StatusChip, nivelVencimento, tomDeVencimento, rotuloDeVencimento, EstadoVazio, Carregando, FeedbackInline, Abas, useAbaNaUrl, DataTable, FormSection, FormGrid, Campo, FormRodape, ChipCheckboxGroup, Field, Textarea, CampoData, SeletorPesquisavel, useConfirmar, PainelLateral, KpiCard } from '../index';
+import { Card, PageHeader, Button, Input, StatusChip, nivelVencimento, tomDeVencimento, rotuloDeVencimento, EstadoVazio, Carregando, FeedbackInline, Abas, useAbaNaUrl, DataTable, FormSection, FormGrid, Campo, FormRodape, ChipCheckboxGroup, Field, Textarea, CampoData, SeletorPesquisavel, useConfirmar, PainelLateral, KpiCard, DetailPageLayout, WorkflowActions } from '../index';
 import { Secao } from './Secao';
 
 // Calculado uma vez no carregamento do módulo (não a cada render) para não disparar o alerta de
@@ -35,6 +35,7 @@ export function GaleriaPage() {
   const { confirmar, dialogElement } = useConfirmar();
   const [ultimaConfirmacao, setUltimaConfirmacao] = useState<string | null>(null);
   const [painelAberto, setPainelAberto] = useState(false);
+  const [ultimaAcao, setUltimaAcao] = useState<string | null>(null);
   return (
     <div>
       <h1 className={`${tipo.titulo} ${g.titulo}`}>Galeria da camada ui/</h1>
@@ -176,8 +177,29 @@ export function GaleriaPage() {
           <KpiCard indice={4} tom="info" rotulo="Carregando" valor="" carregando />
         </div>
       </Secao>
+      <Secao titulo="DetailPageLayout + WorkflowActions">
+        <div className={g.larguraTotal}>
+          <DetailPageLayout
+            cabecalho={{ titulo: 'NC-2026-0042', subtitulo: 'Andaime sem guarda-corpo no pavimento 3.', status: <StatusChip tom="info">Em tratamento</StatusChip>, voltarPara: '/ui-galeria', rotuloVoltar: 'Não conformidades', acoes: <Button appearance="primary">Salvar</Button> }}
+            lateral={<>
+              <Card densidade="compacta" titulo="Resumo"><span className={tipo.corpo}>Ponte Rio Cuiá, pavimento 3</span></Card>
+              <Card densidade="compacta" titulo="Ações disponíveis">
+                <WorkflowActions acoes={[
+                  { chave: 'concluir', rotulo: 'Concluir tratamento', descricao: 'Registra a evidência e envia para validação', tom: 'primario', formulario: <Field label="O que foi feito"><Textarea /></Field>, aoExecutar: () => setUltimaAcao('concluiu'), rotuloExecutar: 'Concluir e enviar' },
+                  { chave: 'prazo', rotulo: 'Pedir mais prazo', descricao: 'Justifique e proponha nova data', formulario: <Field label="Nova data"><CampoData value="" onChange={() => {}} /></Field>, aoExecutar: () => setUltimaAcao('pediu prazo') },
+                  { chave: 'devolver', rotulo: 'Devolver ao emitente', tom: 'destrutivo', formulario: <Field label="Motivo"><Textarea /></Field>, aoExecutar: () => setUltimaAcao('devolveu') },
+                  { chave: 'encerrar', rotulo: 'Encerrar', descricao: 'Só após validação', habilitada: false, aoExecutar: () => {} },
+                ]} />
+                <span className={tipo.legenda}>Última ação: {ultimaAcao ?? '—'}</span>
+              </Card>
+            </>}
+          >
+            <Card><FormSection titulo="Registro" numero={1} primeira><FormGrid><Campo span={6}><Field label="Origem"><Input value="Inspeção de rotina" readOnly /></Field></Campo><Campo span={6}><Field label="Prioridade"><Input value="Alta" readOnly /></Field></Campo></FormGrid></FormSection></Card>
+          </DetailPageLayout>
+        </div>
+      </Secao>
       {/* As tarefas seguintes acrescentam uma <Secao> por peça, nesta ordem:
-          DetailPageLayout, WorkflowActions, Gráficos. */}
+          Gráficos. */}
     </div>
   );
 }
