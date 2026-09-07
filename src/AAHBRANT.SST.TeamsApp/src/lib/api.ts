@@ -427,10 +427,11 @@ export interface CatalogoUniforme {
   id: string;
   nome: string;
   categoria?: string | null;
+  temFoto: boolean;
 }
 
-export type NovoCatalogoUniforme = Omit<CatalogoUniforme, 'id'>;
-export type AtualizarCatalogoUniforme = CatalogoUniforme;
+export type NovoCatalogoUniforme = Omit<CatalogoUniforme, 'id' | 'temFoto'>;
+export type AtualizarCatalogoUniforme = Omit<CatalogoUniforme, 'temFoto'>;
 
 export const MotivoEntregaUniforme = {
   Inicial: 0,
@@ -3176,6 +3177,29 @@ export const api = {
     atualizar: (item: AtualizarCatalogoUniforme) =>
       request<void>(`/api/catalogosuniforme/${item.id}`, { method: 'PUT', body: JSON.stringify(item) }),
     excluir: (id: string) => request<void>(`/api/catalogosuniforme/${id}`, { method: 'DELETE' }),
+    anexarFoto: async (id: string, arquivo: File) => {
+      const formData = new FormData();
+      formData.append('Foto', arquivo);
+      const response = await fetch(`${API_BASE_URL}/api/catalogosuniforme/${id}/foto`, {
+        method: 'POST',
+        headers: await montarHeadersAuth(),
+        body: formData,
+      });
+      if (!response.ok) {
+        const corpo = await response.text().catch(() => '');
+        throw new Error(extrairMensagemErro(corpo, response.status, response.statusText));
+      }
+    },
+    baixarFoto: async (id: string) => {
+      const response = await fetch(`${API_BASE_URL}/api/catalogosuniforme/${id}/foto`, {
+        headers: await montarHeadersAuth(),
+      });
+      if (!response.ok) {
+        const corpo = await response.text().catch(() => '');
+        throw new Error(extrairMensagemErro(corpo, response.status, response.statusText));
+      }
+      return response.blob();
+    },
   },
   entregasUniforme: {
     listar: (trabalhadorId?: string) =>

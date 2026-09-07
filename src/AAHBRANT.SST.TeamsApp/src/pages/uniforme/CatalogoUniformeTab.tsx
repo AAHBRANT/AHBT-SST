@@ -18,16 +18,19 @@ import { useConfirmarExclusao } from '../../hooks/useConfirmarExclusao';
 import { useSucessoToast } from '../../hooks/useSucessoToast';
 import { EstadoVazio } from '../../components/EstadoVazio';
 import { ListaCarregando } from '../../components/ListaCarregando';
+import { SeletorFotoCamera } from '../../components/SeletorFotoCamera';
+import { FotoCatalogoUniforme } from './FotoCatalogoUniforme';
 
 const itemVazio: NovoCatalogoUniforme = { nome: '', categoria: '' };
 
 // Catálogo de Uniforme (peça em si, sem tamanho embutido — o tamanho é uma dimensão do estoque e
 // do cadastro do trabalhador, ver EstoqueUniformeTab.tsx e pages/pessoas/TamanhosUniformeSecao.tsx).
-// Mesmo padrão de CatalogoTab.tsx (EPI), sem foto de item (não pedido para uniforme).
+// Mesmo padrão de CatalogoTab.tsx (EPI), incluindo foto do item (decisão do usuário, 2026-09-07).
 export function CatalogoUniformeTab() {
   const estilos = usePageStyles();
   const [itens, setItens] = useState<CatalogoUniforme[]>([]);
   const [novoItem, setNovoItem] = useState<NovoCatalogoUniforme>(itemVazio);
+  const [fotoNovoItem, setFotoNovoItem] = useState<File | null>(null);
   const [edicaoId, setEdicaoId] = useState<string | null>(null);
   const [edicao, setEdicao] = useState<CatalogoUniforme | null>(null);
   const [erro, setErro] = useState<string | null>(null);
@@ -55,14 +58,29 @@ export function CatalogoUniformeTab() {
     try {
       setCarregando(true);
       setErro(null);
-      await api.catalogosUniforme.criar(novoItem);
+      const { id } = await api.catalogosUniforme.criar(novoItem);
+      if (fotoNovoItem) {
+        await api.catalogosUniforme.anexarFoto(id, fotoNovoItem);
+      }
       setNovoItem(itemVazio);
+      setFotoNovoItem(null);
       await carregar();
       sucessoToast('Peça de uniforme cadastrada com sucesso.');
     } catch (e) {
       setErro(e instanceof Error ? e.message : 'Falha ao criar peça de uniforme.');
     } finally {
       setCarregando(false);
+    }
+  }
+
+  async function trocarFoto(itemId: string, arquivo: File) {
+    try {
+      setErro(null);
+      await api.catalogosUniforme.anexarFoto(itemId, arquivo);
+      await carregar();
+      sucessoToast('Foto da peça atualizada.');
+    } catch (e) {
+      setErro(e instanceof Error ? e.message : 'Falha ao enviar a foto da peça.');
     }
   }
 
@@ -123,6 +141,16 @@ export function CatalogoUniformeTab() {
             />
           </Field>
         </div>
+        <div className={estilos.col6}>
+          <Field label="Foto da peça">
+            <SeletorFotoCamera
+              rotulo={fotoNovoItem ? fotoNovoItem.name : 'Tirar foto ou escolher arquivo'}
+              tiposAceitos="image/jpeg,image/png"
+              aoSelecionarArquivo={(arquivo) => setFotoNovoItem(arquivo)}
+              aoErroValidacao={setErro}
+            />
+          </Field>
+        </div>
       </div>
       <div className={estilos.formActions}>
         <Button appearance="primary" icon={<Add24Regular />} onClick={criar} disabled={carregando || !novoItem.nome.trim()}>
@@ -138,6 +166,7 @@ export function CatalogoUniformeTab() {
       <Table noNativeElements>
         <TableHeader>
           <TableRow>
+            <TableHeaderCell>Foto</TableHeaderCell>
             <TableHeaderCell>Nome</TableHeaderCell>
             <TableHeaderCell>Categoria</TableHeaderCell>
             <TableHeaderCell></TableHeaderCell>
@@ -147,6 +176,19 @@ export function CatalogoUniformeTab() {
           {itens.map((item) =>
             edicaoId === item.id && edicao ? (
               <TableRow key={item.id}>
+                <TableCell>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                    <FotoCatalogoUniforme catalogoUniformeId={item.id} temFoto={item.temFoto} tamanho={36} />
+                    <SeletorFotoCamera
+                      apenasIcone
+                      tamanho="small"
+                      rotulo="Trocar foto"
+                      tiposAceitos="image/jpeg,image/png"
+                      aoSelecionarArquivo={(arquivo) => trocarFoto(item.id, arquivo)}
+                      aoErroValidacao={setErro}
+                    />
+                  </div>
+                </TableCell>
                 <TableCell>
                   <Input value={edicao.nome} onChange={(_, d) => setEdicao({ ...edicao, nome: d.value })} />
                 </TableCell>
@@ -162,6 +204,9 @@ export function CatalogoUniformeTab() {
               </TableRow>
             ) : (
               <TableRow key={item.id} onClick={() => iniciarEdicao(item)} style={{ cursor: 'pointer' }}>
+                <TableCell>
+                  <FotoCatalogoUniforme catalogoUniformeId={item.id} temFoto={item.temFoto} tamanho={36} />
+                </TableCell>
                 <TableCell>{item.nome}</TableCell>
                 <TableCell>{item.categoria}</TableCell>
                 <TableCell>

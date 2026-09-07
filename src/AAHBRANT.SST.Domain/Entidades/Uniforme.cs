@@ -13,6 +13,11 @@ public class CatalogoUniforme : AuditableEntity
     public string Nome { get; set; } = string.Empty;
     public string? Categoria { get; set; }
 
+    // Foto do item cadastrado (decisão do usuário, 2026-09-07: mesmo padrão de
+    // CatalogoEpi.FotoConteudo/FotoContentType) — binário direto na coluna, sem storage próprio.
+    public byte[]? FotoConteudo { get; set; }
+    public string? FotoContentType { get; set; }
+
     public ICollection<EstoqueUniforme> Estoques { get; set; } = new List<EstoqueUniforme>();
     public ICollection<EntregaUniforme> Entregas { get; set; } = new List<EntregaUniforme>();
 }

@@ -27,6 +27,7 @@ import {
 } from '../../lib/api';
 import { AssinaturaEntregaUniformeDialog } from '../../components/assinatura/AssinaturaEntregaUniformeDialog';
 import { usePageStyles } from '../pageStyles';
+import { FotoCatalogoUniforme } from './FotoCatalogoUniforme';
 
 function entregaVazia(): NovaEntregaUniforme {
   return {
@@ -115,6 +116,10 @@ export function EntregaUniformeTab({ aoNavegarParaMatriz }: EntregaUniformeTabPr
 
   function nomeItem(id: string) {
     return itensCatalogo.find((i) => i.id === id)?.nome ?? id;
+  }
+
+  function itemTemFoto(id: string) {
+    return itensCatalogo.find((i) => i.id === id)?.temFoto ?? false;
   }
 
   function nomeTrabalhador(id: string) {
@@ -279,7 +284,16 @@ export function EntregaUniformeTab({ aoNavegarParaMatriz }: EntregaUniformeTabPr
             {entregas.map((entrega) => (
               <TableRow key={entrega.id}>
                 <TableCell>{nomeTrabalhador(entrega.trabalhadorId)}</TableCell>
-                <TableCell>{nomeItem(entrega.catalogoUniformeId)}</TableCell>
+                <TableCell>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                    <FotoCatalogoUniforme
+                      catalogoUniformeId={entrega.catalogoUniformeId}
+                      temFoto={itemTemFoto(entrega.catalogoUniformeId)}
+                      tamanho={28}
+                    />
+                    {nomeItem(entrega.catalogoUniformeId)}
+                  </div>
+                </TableCell>
                 <TableCell>{entrega.tamanho}</TableCell>
                 <TableCell>{entrega.quantidade}</TableCell>
                 <TableCell>{entrega.dataEntrega?.slice(0, 10)}</TableCell>
@@ -297,6 +311,8 @@ export function EntregaUniformeTab({ aoNavegarParaMatriz }: EntregaUniformeTabPr
           entregaId={entregaParaAssinar.id}
           trabalhadorNome={nomeTrabalhador(entregaParaAssinar.trabalhadorId)}
           pecaNome={nomeItem(entregaParaAssinar.catalogoUniformeId)}
+          catalogoUniformeId={entregaParaAssinar.catalogoUniformeId}
+          itemTemFoto={itemTemFoto(entregaParaAssinar.catalogoUniformeId)}
           tamanho={entregaParaAssinar.tamanho}
           quantidade={entregaParaAssinar.quantidade}
           dataEntrega={entregaParaAssinar.dataEntrega}

@@ -14,6 +14,7 @@ import { Checkmark24Filled, PersonBoard24Regular } from '@fluentui/react-icons';
 import { api, MetodoAutenticacaoAssinatura, type DocumentoAssinatura } from '../../lib/api';
 import { usePageStyles } from '../../pages/pageStyles';
 import { AssinaturaQuiosque } from './AssinaturaQuiosque';
+import { FotoCatalogoUniforme } from '../../pages/uniforme/FotoCatalogoUniforme';
 
 function extrairMensagemErro(e: unknown, fallback: string): string {
   if (!(e instanceof Error)) return fallback;
@@ -35,6 +36,8 @@ export interface AssinaturaEntregaUniformeDialogProps {
   entregaId: string;
   trabalhadorNome: string;
   pecaNome: string;
+  catalogoUniformeId: string;
+  itemTemFoto: boolean;
   tamanho: string;
   quantidade: number;
   dataEntrega: string;
@@ -67,6 +70,8 @@ export function AssinaturaEntregaUniformeDialog({
   entregaId,
   trabalhadorNome,
   pecaNome,
+  catalogoUniformeId,
+  itemTemFoto,
   tamanho,
   quantidade,
   dataEntrega,
@@ -122,14 +127,19 @@ export function AssinaturaEntregaUniformeDialog({
               <Text weight="semibold" style={{ display: 'block', marginBottom: 8 }}>
                 Item entregue
               </Text>
-              <Text style={{ display: 'block' }}>Funcionário: {trabalhadorNome}</Text>
-              <Text style={{ display: 'block' }}>
-                Peça: {pecaNome} — tamanho {tamanho}
-              </Text>
-              <Text style={{ display: 'block' }}>Quantidade: {quantidade}</Text>
-              <Text style={{ display: 'block' }}>
-                Data de entrega: {dataEntrega.slice(0, 10).split('-').reverse().join('/')}
-              </Text>
+              <div style={{ display: 'flex', gap: 16, alignItems: 'flex-start' }}>
+                <FotoCatalogoUniforme catalogoUniformeId={catalogoUniformeId} temFoto={itemTemFoto} tamanho={96} />
+                <div>
+                  <Text style={{ display: 'block' }}>Funcionário: {trabalhadorNome}</Text>
+                  <Text style={{ display: 'block' }}>
+                    Peça: {pecaNome} — tamanho {tamanho}
+                  </Text>
+                  <Text style={{ display: 'block' }}>Quantidade: {quantidade}</Text>
+                  <Text style={{ display: 'block' }}>
+                    Data de entrega: {dataEntrega.slice(0, 10).split('-').reverse().join('/')}
+                  </Text>
+                </div>
+              </div>
             </div>
 
             <div className={estilos.card} style={{ marginBottom: 16, maxWidth: 480 }}>

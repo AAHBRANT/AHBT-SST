@@ -14,6 +14,6 @@ public class ObterCatalogoUniformePorIdQueryHandler : IRequestHandler<ObterCatal
     public async Task<CatalogoUniformeDto?> Handle(ObterCatalogoUniformePorIdQuery request, CancellationToken ct)
         => await _db.CatalogoUniformes
             .Where(x => x.Id == request.Id)
-            .Select(x => new CatalogoUniformeDto(x.Id, x.Nome, x.Categoria))
+            .Select(x => new CatalogoUniformeDto(x.Id, x.Nome, x.Categoria, x.FotoConteudo != null))
             .FirstOrDefaultAsync(ct);
 }

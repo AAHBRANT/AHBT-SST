@@ -16,6 +16,6 @@ public class ListarUniformesPorFuncaoQueryHandler : IRequestHandler<ListarUnifor
         => await _db.MatrizUniformeFuncoes
             .Where(m => m.FuncaoId == request.FuncaoId)
             .OrderBy(m => m.CatalogoUniforme!.Nome)
-            .Select(m => new CatalogoUniformeDto(m.CatalogoUniforme!.Id, m.CatalogoUniforme!.Nome, m.CatalogoUniforme!.Categoria))
+            .Select(m => new CatalogoUniformeDto(m.CatalogoUniforme!.Id, m.CatalogoUniforme!.Nome, m.CatalogoUniforme!.Categoria, m.CatalogoUniforme!.FotoConteudo != null))
             .ToListAsync(ct);
 }

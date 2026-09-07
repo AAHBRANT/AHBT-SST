@@ -50,4 +50,30 @@ public class CatalogosUniformeController : ControllerBase
         await _mediator.Send(new ExcluirCatalogoUniformeCommand(id), ct);
         return NoContent();
     }
+
+    [Authorize(Policy = "uniforme:editar")]
+    [HttpPost("{id:guid}/foto")]
+    [RequestSizeLimit(6_000_000)]
+    public async Task<IActionResult> AnexarFoto(Guid id, [FromForm] AnexarFotoCatalogoUniformeRequestBody body, CancellationToken ct)
+    {
+        await using var stream = new MemoryStream();
+        await body.Foto.CopyToAsync(stream, ct);
+
+        var command = new AnexarFotoCatalogoUniformeCommand(id, stream.ToArray(), body.Foto.ContentType);
+        await _mediator.Send(command, ct);
+        return NoContent();
+    }
+
+    [Authorize(Policy = "uniforme:ver")]
+    [HttpGet("{id:guid}/foto")]
+    public async Task<IActionResult> ObterFoto(Guid id, CancellationToken ct)
+    {
+        var foto = await _mediator.Send(new ObterFotoCatalogoUniformeQuery(id), ct);
+        return foto is null ? NotFound() : File(foto.Conteudo, foto.ContentType, foto.NomeArquivo);
+    }
+}
+
+public class AnexarFotoCatalogoUniformeRequestBody
+{
+    public IFormFile Foto { get; set; } = null!;
 }
