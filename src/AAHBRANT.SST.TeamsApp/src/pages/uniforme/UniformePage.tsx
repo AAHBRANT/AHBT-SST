@@ -2,10 +2,11 @@ import { useState } from 'react';
 import { Tab, TabList, Text, type SelectTabData, type SelectTabEvent } from '@fluentui/react-components';
 import { usePillTabStyles, useSubTabStyles } from '../pageStyles';
 import { CatalogoUniformeTab } from './CatalogoUniformeTab';
+import { EstoqueUniformeTab } from './EstoqueUniformeTab';
 import { MatrizUniformeTab } from './MatrizUniformeTab';
 import { TamanhosUniformeTab } from './TamanhosUniformeTab';
 
-type AbaUniforme = 'catalogo' | 'matriz' | 'tamanhos';
+type AbaUniforme = 'catalogo' | 'estoque' | 'matriz' | 'tamanhos';
 
 // Módulo Uniforme — mesmo padrão arquitetural do EPI (docs/superpowers/specs/2026-09-07-modulo-
 // uniforme-design.md). Vive como aba dentro de Operação, ao lado de EPI/EPC (não item de 1º nível
@@ -32,11 +33,13 @@ export function UniformePage({ mostrarTitulo = true }: { mostrarTitulo?: boolean
         className={estilosAba.lista}
       >
         <Tab value="catalogo">Catálogo</Tab>
+        <Tab value="estoque">Estoque</Tab>
         <Tab value="matriz">Matriz por Função</Tab>
         <Tab value="tamanhos">Tamanhos</Tab>
       </TabList>
 
       {aba === 'catalogo' && <CatalogoUniformeTab />}
+      {aba === 'estoque' && <EstoqueUniformeTab />}
       {aba === 'matriz' && <MatrizUniformeTab />}
       {aba === 'tamanhos' && <TamanhosUniformeTab />}
     </div>
