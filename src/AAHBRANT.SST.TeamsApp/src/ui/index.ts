@@ -18,3 +18,7 @@ export * from './primitivos/StatusChip/vencimento';
 
 export { Card, type CardProps } from './compostos/Card/Card';
 export { PageHeader, type PageHeaderProps } from './compostos/PageHeader/PageHeader';
+
+export { EstadoVazio, type EstadoVazioProps } from './primitivos/EstadoVazio/EstadoVazio';
+export { Carregando, type CarregandoProps } from './primitivos/Carregando/Carregando';
+export { FeedbackInline, type FeedbackInlineProps } from './primitivos/FeedbackInline/FeedbackInline';

@@ -1,6 +1,6 @@
 import { makeStyles } from '@fluentui/react-components';
 import { useTipografia } from '../tokens/tipografia';
-import { Card, PageHeader, Button, Input, StatusChip, nivelVencimento, tomDeVencimento, rotuloDeVencimento } from '../index';
+import { Card, PageHeader, Button, Input, StatusChip, nivelVencimento, tomDeVencimento, rotuloDeVencimento, EstadoVazio, Carregando, FeedbackInline } from '../index';
 import { Secao } from './Secao';
 
 const useGaleriaStyles = makeStyles({
@@ -49,8 +49,24 @@ export function GaleriaPage() {
           <PageHeader titulo="Entregas de EPI" subtitulo="287 entregas ativas em 7 obras." status={<StatusChip tom="info">Em tratamento</StatusChip>} filtros={<Input placeholder="Buscar" />} acoes={<Button appearance="primary">Nova entrega</Button>} voltarPara="/ui-galeria" rotuloVoltar="Não conformidades" />
         </div>
       </Secao>
-      {/* As tarefas seguintes acrescentam uma <Secao> por peça, nesta ordem: EstadoVazio, Carregando,
-          FeedbackInline, Abas, DataTable, FormSection/FormGrid, ChipCheckboxGroup, SeletorPesquisavel,
+      <Secao titulo="EstadoVazio">
+        <Card className={g.largura360}><EstadoVazio titulo="Nenhuma entrega registrada" descricao="Registre a primeira entrega para começar o controle de EPI desta obra." acao={{ rotulo: 'Registrar entrega', aoClicar: () => {} }} /></Card>
+        <Card className={g.largura360}><EstadoVazio variante="sem-resultado" titulo="Nenhum resultado" descricao="Tente outro termo." acao={{ rotulo: 'Limpar busca', aoClicar: () => {} }} /></Card>
+        <Card className={g.largura360}><EstadoVazio variante="em-construcao" titulo="Documentos e Procedimentos" descricao="Módulo reservado no menu, ainda não construído." /></Card>
+      </Secao>
+      <Secao titulo="Carregando">
+        <Card className={g.largura360}><Carregando variante="lista" /></Card>
+        <div className={g.larguraTotal}><Carregando variante="kpi" /></div>
+      </Secao>
+      <Secao titulo="FeedbackInline">
+        <div className={g.larguraTotal}>
+          <FeedbackInline tom="erro" aoFechar={() => {}}>Não foi possível salvar. Defina o responsável antes de enviar.</FeedbackInline>
+          <FeedbackInline tom="info" acao={{ rotulo: 'Ver treinamento', aoClicar: () => {} }}>Campos de NR-06 preenchidos a partir do último treinamento.</FeedbackInline>
+          <FeedbackInline tom="sucesso">Entrega registrada.</FeedbackInline>
+        </div>
+      </Secao>
+      {/* As tarefas seguintes acrescentam uma <Secao> por peça, nesta ordem: Abas, DataTable,
+          FormSection/FormGrid, ChipCheckboxGroup, SeletorPesquisavel,
           ConfirmDialog, PainelLateral, KpiCard, DetailPageLayout, WorkflowActions, Gráficos. */}
     </div>
   );
