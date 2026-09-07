@@ -8,16 +8,18 @@ import { InspecoesPage } from '../inspecoes/InspecoesPage';
 import { IdentificacaoPage } from '../identificacao/IdentificacaoPage';
 import { CipaPage } from '../cipa/CipaPage';
 import { EpiPage } from '../epi/EpiPage';
+import { UniformePage } from '../uniforme/UniformePage';
 import { DdsPage } from '../dds/DdsPage';
 
-type SecaoOperacao = 'apr' | 'pt' | 'inspecoes' | 'cipa' | 'epi' | 'dds' | 'identificacao';
+type SecaoOperacao = 'apr' | 'pt' | 'inspecoes' | 'cipa' | 'epi' | 'uniforme' | 'dds' | 'identificacao';
 
-const SECOES_VALIDAS: SecaoOperacao[] = ['apr', 'pt', 'inspecoes', 'cipa', 'epi', 'dds', 'identificacao'];
+const SECOES_VALIDAS: SecaoOperacao[] = ['apr', 'pt', 'inspecoes', 'cipa', 'epi', 'uniforme', 'dds', 'identificacao'];
 
 // Item "Operação" da sidebar (pedido do usuário, 02/09, réplica de mockup): a gaveta virou uma
 // única entrada de menu — APR, PT, Inspeções e Identificação (rotulada "Outros controles
 // operacionais", mesmo nome já usado na sidebar) viraram abas aqui. CIPA, EPI/EPC e DDS entraram
-// aqui em 03/09 (pedido do usuário) — saíram de Gestão de SST, ver GestaoSstPage.tsx.
+// aqui em 03/09 (pedido do usuário) — saíram de Gestão de SST, ver GestaoSstPage.tsx. Uniforme
+// entrou em 2026-09-07 (módulo novo, mesmo padrão do EPI) como aba própria ao lado de EPI/EPC.
 export function OperacaoPage() {
   const [searchParams] = useSearchParams();
   const secaoInicial = searchParams.get('secao');
@@ -38,6 +40,7 @@ export function OperacaoPage() {
         <Tab value="inspecoes">Inspeções</Tab>
         <Tab value="cipa">CIPA</Tab>
         <Tab value="epi">EPI / EPC</Tab>
+        <Tab value="uniforme">Uniforme</Tab>
         <Tab value="dds">DDS</Tab>
         <Tab value="identificacao">Outros controles operacionais</Tab>
       </TabList>
@@ -47,6 +50,7 @@ export function OperacaoPage() {
       {secao === 'inspecoes' && <InspecoesPage mostrarTitulo={false} />}
       {secao === 'cipa' && <CipaPage mostrarTitulo={false} />}
       {secao === 'epi' && <EpiPage mostrarTitulo={false} />}
+      {secao === 'uniforme' && <UniformePage mostrarTitulo={false} />}
       {secao === 'dds' && <DdsPage mostrarTitulo={false} />}
       {secao === 'identificacao' && <IdentificacaoPage mostrarTitulo={false} />}
     </div>
