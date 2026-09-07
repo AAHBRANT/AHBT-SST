@@ -15,3 +15,6 @@ export { ChipsField } from '../components/ChipsField';
 
 export { StatusChip, type StatusChipProps } from './primitivos/StatusChip/StatusChip';
 export * from './primitivos/StatusChip/vencimento';
+
+export { Card, type CardProps } from './compostos/Card/Card';
+export { PageHeader, type PageHeaderProps } from './compostos/PageHeader/PageHeader';

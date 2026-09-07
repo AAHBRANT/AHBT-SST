@@ -1,6 +1,6 @@
 import { makeStyles } from '@fluentui/react-components';
 import { useTipografia } from '../tokens/tipografia';
-import { StatusChip, nivelVencimento, tomDeVencimento, rotuloDeVencimento } from '../index';
+import { Card, PageHeader, Button, Input, StatusChip, nivelVencimento, tomDeVencimento, rotuloDeVencimento } from '../index';
 import { Secao } from './Secao';
 
 const useGaleriaStyles = makeStyles({
@@ -40,10 +40,18 @@ export function GaleriaPage() {
         <StatusChip tom="alerta" pulsar="rapido">Vencido (pulsa)</StatusChip>
         <StatusChip tom="atencao" pulsar="leve">Vence em 8 dias (pulsa leve)</StatusChip>
       </Secao>
-      {/* As tarefas seguintes acrescentam uma <Secao> por peça, nesta ordem: Card,
-          PageHeader, EstadoVazio, Carregando, FeedbackInline, Abas, DataTable, FormSection/FormGrid,
-          ChipCheckboxGroup, SeletorPesquisavel, ConfirmDialog, PainelLateral, KpiCard,
-          DetailPageLayout, WorkflowActions, Gráficos. */}
+      <Secao titulo="Card">
+        <Card className={g.largura280} titulo="Confortável" subtitulo="Padding xl">Conteúdo</Card>
+        <Card densidade="compacta" titulo="Compacto" acoes={<Button size="small">Ação</Button>}>Conteúdo</Card>
+      </Secao>
+      <Secao titulo="PageHeader">
+        <div className={g.larguraTotal}>
+          <PageHeader titulo="Entregas de EPI" subtitulo="287 entregas ativas em 7 obras." status={<StatusChip tom="info">Em tratamento</StatusChip>} filtros={<Input placeholder="Buscar" />} acoes={<Button appearance="primary">Nova entrega</Button>} voltarPara="/ui-galeria" rotuloVoltar="Não conformidades" />
+        </div>
+      </Secao>
+      {/* As tarefas seguintes acrescentam uma <Secao> por peça, nesta ordem: EstadoVazio, Carregando,
+          FeedbackInline, Abas, DataTable, FormSection/FormGrid, ChipCheckboxGroup, SeletorPesquisavel,
+          ConfirmDialog, PainelLateral, KpiCard, DetailPageLayout, WorkflowActions, Gráficos. */}
     </div>
   );
 }
