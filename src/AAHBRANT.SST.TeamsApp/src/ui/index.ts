@@ -25,3 +25,5 @@ export { FeedbackInline, type FeedbackInlineProps } from './primitivos/FeedbackI
 
 export { Abas, type AbasProps, type AbaItem } from './compostos/Abas/Abas';
 export { useAbaNaUrl } from './compostos/Abas/useAbaNaUrl';
+
+export { DataTable, type DataTableProps, type Coluna } from './compostos/DataTable/DataTable';

@@ -1,8 +1,12 @@
 import { useState } from 'react';
 import { makeStyles } from '@fluentui/react-components';
 import { useTipografia } from '../tokens/tipografia';
-import { Card, PageHeader, Button, Input, StatusChip, nivelVencimento, tomDeVencimento, rotuloDeVencimento, EstadoVazio, Carregando, FeedbackInline, Abas, useAbaNaUrl } from '../index';
+import { Card, PageHeader, Button, Input, StatusChip, nivelVencimento, tomDeVencimento, rotuloDeVencimento, EstadoVazio, Carregando, FeedbackInline, Abas, useAbaNaUrl, DataTable } from '../index';
 import { Secao } from './Secao';
+
+// Calculado uma vez no carregamento do módulo (não a cada render) para não disparar o alerta de
+// pureza do oxlint sobre chamar Date.now() durante a renderização.
+const validadeExemploVenceEmBreve = new Date(Date.now() + 8 * 86_400_000).toISOString().slice(0, 10);
 
 const useGaleriaStyles = makeStyles({
   largura280: { width: '280px' },
@@ -21,6 +25,7 @@ export function GaleriaPage() {
   const [abaPilar, setAbaPilar] = useState<'a' | 'b' | 'c'>('a');
   const [abaInterna, setAbaInterna] = useState<'p' | 'q'>('p');
   const [abaDemo, setAbaDemo] = useAbaNaUrl('demo', ['x', 'y', 'z'] as const, 'x');
+  const [abertaDemo, setAbertaDemo] = useState<string | null>(null);
   return (
     <div>
       <h1 className={`${tipo.titulo} ${g.titulo}`}>Galeria da camada ui/</h1>
@@ -76,7 +81,32 @@ export function GaleriaPage() {
           <Abas nivel="interno" abas={[{ valor: 'p', rotulo: 'Por obra' }, { valor: 'q', rotulo: 'Por função' }]} valor={abaInterna} aoMudar={setAbaInterna} />
         </div>
       </Secao>
-      {/* As tarefas seguintes acrescentam uma <Secao> por peça, nesta ordem: DataTable,
+      <Secao titulo="DataTable">
+        <div className={g.larguraTotal}>
+          <Card densidade="compacta">
+            <DataTable
+              aria-label="Entregas de exemplo"
+              colunas={[
+                { chave: 'nome', rotulo: 'Funcionário' },
+                { chave: 'epi', rotulo: 'EPI' },
+                { chave: 'validade', rotulo: 'Validade', render: (l) => { const n = nivelVencimento(l.validade); return n ? <StatusChip tom={tomDeVencimento(n)}>{rotuloDeVencimento(n)}</StatusChip> : '—'; } },
+              ]}
+              linhas={[
+                { id: '1', nome: 'João da Silva', epi: 'Capacete classe B', validade: '2099-03-12' },
+                { id: '2', nome: 'Ana Carolina Reis', epi: 'Luva isolante', validade: validadeExemploVenceEmBreve },
+                { id: '3', nome: 'Roberto Pereira', epi: 'Cinto paraquedista', validade: '2020-02-02' },
+              ]}
+              chaveLinha={(l) => l.id}
+              acoesLinha={() => <Button size="small" appearance="subtle">Assinar</Button>}
+              expansivel={{ aberta: (l) => l.id === abertaDemo, render: (l) => <span>Detalhe de {l.nome}</span> }}
+              aoClicarLinha={(l) => setAbertaDemo((a) => (a === l.id ? null : l.id))}
+            />
+          </Card>
+          <Card densidade="compacta" className={g.margemTopo}><DataTable colunas={[{ chave: 'a', rotulo: 'A' }]} linhas={[]} chaveLinha={() => ''} vazio={{ titulo: 'Nenhuma entrega', descricao: 'Registre a primeira.', acao: { rotulo: 'Registrar', aoClicar: () => {} } }} /></Card>
+          <Card densidade="compacta" className={g.margemTopo}><DataTable colunas={[{ chave: 'a', rotulo: 'A' }]} linhas={[]} chaveLinha={() => ''} carregando /></Card>
+        </div>
+      </Secao>
+      {/* As tarefas seguintes acrescentam uma <Secao> por peça, nesta ordem:
           FormSection/FormGrid, ChipCheckboxGroup, SeletorPesquisavel,
           ConfirmDialog, PainelLateral, KpiCard, DetailPageLayout, WorkflowActions, Gráficos. */}
     </div>
