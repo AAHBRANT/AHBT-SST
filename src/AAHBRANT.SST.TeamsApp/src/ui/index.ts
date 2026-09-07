@@ -27,3 +27,7 @@ export { Abas, type AbasProps, type AbaItem } from './compostos/Abas/Abas';
 export { useAbaNaUrl } from './compostos/Abas/useAbaNaUrl';
 
 export { DataTable, type DataTableProps, type Coluna } from './compostos/DataTable/DataTable';
+
+export { FormSection, FormRodape } from './compostos/Formulario/FormSection';
+export { FormGrid, Campo } from './compostos/Formulario/FormGrid';
+export { ChipCheckboxGroup, type ChipCheckboxGroupProps } from './primitivos/ChipCheckboxGroup/ChipCheckboxGroup';

@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { makeStyles } from '@fluentui/react-components';
 import { useTipografia } from '../tokens/tipografia';
-import { Card, PageHeader, Button, Input, StatusChip, nivelVencimento, tomDeVencimento, rotuloDeVencimento, EstadoVazio, Carregando, FeedbackInline, Abas, useAbaNaUrl, DataTable } from '../index';
+import { Card, PageHeader, Button, Input, StatusChip, nivelVencimento, tomDeVencimento, rotuloDeVencimento, EstadoVazio, Carregando, FeedbackInline, Abas, useAbaNaUrl, DataTable, FormSection, FormGrid, Campo, FormRodape, ChipCheckboxGroup, Field, Textarea, CampoData } from '../index';
 import { Secao } from './Secao';
 
 // Calculado uma vez no carregamento do módulo (não a cada render) para não disparar o alerta de
@@ -28,6 +28,7 @@ export function GaleriaPage() {
   const [abaInterna, setAbaInterna] = useState<'p' | 'q'>('p');
   const [abaDemo, setAbaDemo] = useAbaNaUrl('demo', ['x', 'y', 'z'] as const, 'x');
   const [abertaDemo, setAbertaDemo] = useState<string | null>(null);
+  const [chipsDemo, setChipsDemo] = useState<string[]>(['a']);
   return (
     <div>
       <h1 className={`${tipo.titulo} ${g.titulo}`}>Galeria da camada ui/</h1>
@@ -122,9 +123,27 @@ export function GaleriaPage() {
           </Card>
         </div>
       </Secao>
+      <Secao titulo="FormSection + FormGrid + FormRodape">
+        <Card className={g.larguraTotal}>
+          <FormSection titulo="Dados da entrega" numero={1} primeira>
+            <FormGrid>
+              <Campo span={6}><Field label="Funcionário"><Input /></Field></Campo>
+              <Campo span={3}><Field label="Quantidade"><Input type="number" defaultValue="1" /></Field></Campo>
+              <Campo span={3}><Field label="Entrega"><CampoData value="2026-09-07" onChange={() => {}} /></Field></Campo>
+            </FormGrid>
+          </FormSection>
+          <FormSection titulo="Observações" numero={2}>
+            <FormGrid><Campo><Field label="Texto"><Textarea /></Field></Campo></FormGrid>
+          </FormSection>
+          <FormRodape info="Ações concluídas exigem evidência fotográfica antes do encerramento."><Button>Cancelar</Button><Button appearance="primary">Salvar</Button></FormRodape>
+        </Card>
+      </Secao>
+      <Secao titulo="ChipCheckboxGroup">
+        <ChipCheckboxGroup aria-label="EPIs" opcoes={[{ id: 'a', rotulo: 'Capacete' }, { id: 'b', rotulo: 'Botina' }, { id: 'c', rotulo: 'Luva' }, { id: 'd', rotulo: 'Óculos' }]} selecionados={chipsDemo} aoMudar={setChipsDemo} />
+      </Secao>
       {/* As tarefas seguintes acrescentam uma <Secao> por peça, nesta ordem:
-          FormSection/FormGrid, ChipCheckboxGroup, SeletorPesquisavel,
-          ConfirmDialog, PainelLateral, KpiCard, DetailPageLayout, WorkflowActions, Gráficos. */}
+          SeletorPesquisavel, ConfirmDialog, PainelLateral, KpiCard, DetailPageLayout,
+          WorkflowActions, Gráficos. */}
     </div>
   );
 }
