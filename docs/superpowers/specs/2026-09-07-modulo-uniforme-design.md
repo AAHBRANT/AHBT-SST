@@ -122,3 +122,12 @@ EPI) — nenhuma regra de permissão nova.
 - Fotos de evidência do uniforme entregue — não mencionado (EPI moderno tem esse fluxo de
   confirmação por foto na Entrega Rápida; não foi pedido aqui, mas pode ser avaliado depois caso o
   usuário queira paridade total com o fluxo mais recente de EPI).
+- **Manual de Uniforme** (sub-aba com um PDF por Função, ligado à Matriz) — discutido em
+  brainstorming (2026-09-07), chegou a ser desenhado (entidade `ManualUniformeFuncao`, PDF por
+  `FuncaoId`), mas o usuário decidiu deixar de fora por enquanto ("deixa sem manual por
+  enquanto"). Referência mencionada pelo usuário para quando isso for retomado: arquivo antigo
+  `Manual de Epi's.pptx` (pasta "02.Obsoleto" do SGI/SST no OneDrive do Junior Peixoto).
+- **Acervo geral de documentos PDF** (aba própria, ex.: placas de sinalização, outros documentos de
+  referência) — ideia do usuário para um módulo futuro, maior que Uniforme e não ligado
+  especificamente a ele. Explicitamente adiado ("fica pra depois desse"), não faz parte deste
+  design.
