@@ -34,3 +34,6 @@ export { ChipCheckboxGroup, type ChipCheckboxGroupProps } from './primitivos/Chi
 
 export { SeletorPesquisavel, type SeletorPesquisavelProps, type OpcaoSeletor } from './primitivos/SeletorPesquisavel/SeletorPesquisavel';
 export { useConfirmar, type OpcoesConfirmacao } from './primitivos/ConfirmDialog/useConfirmar';
+
+export { PainelLateral, type PainelLateralProps } from './compostos/PainelLateral/PainelLateral';
+export { KpiCard, type KpiCardProps } from './compostos/KpiCard/KpiCard';

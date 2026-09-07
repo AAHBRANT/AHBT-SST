@@ -1,0 +1,72 @@
+import type { ReactElement, ReactNode } from 'react';
+import { motion } from 'framer-motion';
+import { makeStyles, mergeClasses } from '@fluentui/react-components';
+import { designTokens, tokensUi, type Tom } from '../../tokens/tokens';
+import { useTipografia } from '../../tokens/tipografia';
+import { escalonado } from '../../tokens/movimento';
+import { Carregando } from '../../primitivos/Carregando/Carregando';
+
+const useStyles = makeStyles({
+  root: { backgroundColor: designTokens.colorSurface, border: `1px solid ${designTokens.colorCardBorder}`, borderRadius: tokensUi.raio.lg, boxShadow: designTokens.cardShadow, padding: tokensUi.espaco.xl, display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '10px' },
+  textos: { display: 'flex', flexDirection: 'column', gap: '6px', minWidth: 0 },
+  rotulo: { color: designTokens.colorNeutralMedium },
+  icone: { width: '42px', height: '42px', borderRadius: '50%', display: 'grid', placeItems: 'center', flexShrink: 0 },
+  deltas: { display: 'flex', flexWrap: 'wrap', gap: '6px' },
+  delta: { fontSize: '11px', lineHeight: '14px', fontWeight: 700, padding: '3px 8px', borderRadius: tokensUi.raio.full },
+  ok: { color: tokensUi.status.ok.tinta, backgroundColor: tokensUi.status.ok.fundo },
+  atencao: { color: tokensUi.status.atencao.tinta, backgroundColor: tokensUi.status.atencao.fundo },
+  alerta: { color: tokensUi.status.alerta.tinta, backgroundColor: tokensUi.status.alerta.fundo },
+  info: { color: tokensUi.status.info.tinta, backgroundColor: tokensUi.status.info.fundo },
+  neutro: { color: tokensUi.status.neutro.tinta, backgroundColor: tokensUi.status.neutro.fundo },
+  pulsaRapido: {
+    animationName: {
+      '0%': { boxShadow: '0 0 0 0 currentColor' },
+      '50%': { boxShadow: '0 0 0 5px transparent' },
+      '100%': { boxShadow: '0 0 0 0 currentColor' },
+    },
+    animationDuration: '0.9s',
+    animationTimingFunction: 'cubic-bezier(0.2, 0, 0, 1)',
+    animationIterationCount: 'infinite',
+  },
+  pulsaLeve: {
+    animationName: {
+      '0%': { opacity: 1 },
+      '50%': { opacity: 0.62 },
+      '100%': { opacity: 1 },
+    },
+    animationDuration: '2.4s',
+    animationTimingFunction: 'ease-in-out',
+    animationIterationCount: 'infinite',
+  },
+});
+
+export interface KpiCardProps {
+  rotulo: ReactNode;
+  valor: ReactNode;
+  tom: Tom;
+  icone?: ReactElement;
+  deltas?: { texto: string; tom: Tom; pulsar?: 'rapido' | 'leve' }[];
+  indice?: number;
+  carregando?: boolean;
+}
+
+// Cartão de indicador (spec §3): valor grande + rótulo à esquerda, ícone em círculo lavado à direita,
+// pílulas de variação. Promove components/dashboard/KpiCard.tsx trocando `cor: string` por `tom` —
+// é o que elimina os 41 hex soltos dos painéis. Entrada escalonada pelo `indice`. Deltas de
+// vencimento podem pulsar (`pulsar`): vencido rápido, a vencer leve — pedido do usuário, 07/09.
+export function KpiCard({ rotulo, valor, tom, icone, deltas, indice = 0, carregando }: KpiCardProps) {
+  const e = useStyles(); const tipo = useTipografia();
+  if (carregando) return <Carregando variante="kpi" linhas={1} />;
+  return (
+    <motion.div className={e.root} variants={escalonado(indice)} initial="inicial" animate="visivel">
+      <div className={e.textos}>
+        <span className={tipo.display}>{valor}</span>
+        <span className={mergeClasses(tipo.legenda, e.rotulo)}>{rotulo}</span>
+        {deltas && deltas.length > 0 && (
+          <div className={e.deltas}>{deltas.map((d) => <span key={d.texto} className={mergeClasses(e.delta, e[d.tom], d.pulsar === 'rapido' && e.pulsaRapido, d.pulsar === 'leve' && e.pulsaLeve)}>{d.texto}</span>)}</div>
+        )}
+      </div>
+      {icone && <div className={mergeClasses(e.icone, e[tom])}>{icone}</div>}
+    </motion.div>
+  );
+}

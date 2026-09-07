@@ -1,7 +1,8 @@
 import { useState } from 'react';
 import { makeStyles } from '@fluentui/react-components';
+import { BuildingBank24Regular, ShieldCheckmark24Regular, DocumentCheckmark24Regular, DocumentError24Regular } from '@fluentui/react-icons';
 import { useTipografia } from '../tokens/tipografia';
-import { Card, PageHeader, Button, Input, StatusChip, nivelVencimento, tomDeVencimento, rotuloDeVencimento, EstadoVazio, Carregando, FeedbackInline, Abas, useAbaNaUrl, DataTable, FormSection, FormGrid, Campo, FormRodape, ChipCheckboxGroup, Field, Textarea, CampoData, SeletorPesquisavel, useConfirmar } from '../index';
+import { Card, PageHeader, Button, Input, StatusChip, nivelVencimento, tomDeVencimento, rotuloDeVencimento, EstadoVazio, Carregando, FeedbackInline, Abas, useAbaNaUrl, DataTable, FormSection, FormGrid, Campo, FormRodape, ChipCheckboxGroup, Field, Textarea, CampoData, SeletorPesquisavel, useConfirmar, PainelLateral, KpiCard } from '../index';
 import { Secao } from './Secao';
 
 // Calculado uma vez no carregamento do módulo (não a cada render) para não disparar o alerta de
@@ -17,6 +18,7 @@ const useGaleriaStyles = makeStyles({
   margemTopo: { marginTop: '16px' },
   coluna: { display: 'flex', flexDirection: 'column', gap: '10px' },
   titulo: { marginBottom: '24px' },
+  gradeKpi: { display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(185px, 1fr))', gap: '16px', width: '100%' },
 });
 
 // Galeria viva da camada ui/ (spec §6): cada peça em todos os estados, nos dois temas (use o botão
@@ -32,6 +34,7 @@ export function GaleriaPage() {
   const [funcDemo, setFuncDemo] = useState('');
   const { confirmar, dialogElement } = useConfirmar();
   const [ultimaConfirmacao, setUltimaConfirmacao] = useState<string | null>(null);
+  const [painelAberto, setPainelAberto] = useState(false);
   return (
     <div>
       <h1 className={`${tipo.titulo} ${g.titulo}`}>Galeria da camada ui/</h1>
@@ -158,9 +161,23 @@ export function GaleriaPage() {
         <span className={tipo.legenda}>Última resposta: {ultimaConfirmacao ?? '—'}</span>
         {dialogElement}
       </Secao>
+      <Secao titulo="PainelLateral">
+        <Button appearance="primary" onClick={() => setPainelAberto(true)}>Abrir painel</Button>
+        <PainelLateral aberto={painelAberto} aoFechar={() => setPainelAberto(false)} titulo="Nova entrega de EPI" subtitulo="A lista continua visível atrás." rodape={<><Button onClick={() => setPainelAberto(false)}>Cancelar</Button><Button appearance="primary" onClick={() => setPainelAberto(false)}>Registrar</Button></>}>
+          <FormSection titulo="Quem recebe" numero={1} primeira><FormGrid><Campo><Field label="Funcionário"><Input /></Field></Campo></FormGrid></FormSection>
+        </PainelLateral>
+      </Secao>
+      <Secao titulo="KpiCard (entrada escalonada — recarregue a página)">
+        <div className={g.gradeKpi}>
+          <KpiCard indice={0} tom="info" rotulo="Obras ativas" valor="7" deltas={[{ texto: '5 em andamento', tom: 'neutro' }]} icone={<BuildingBank24Regular />} />
+          <KpiCard indice={1} tom="ok" rotulo="Conformidade de EPI" valor="94%" deltas={[{ texto: '287 entregas ativas', tom: 'neutro' }]} icone={<ShieldCheckmark24Regular />} />
+          <KpiCard indice={2} tom="atencao" rotulo="Treinamentos em dia" valor="87%" deltas={[{ texto: '14 a vencer', tom: 'atencao', pulsar: 'leve' }, { texto: '6 vencidos', tom: 'alerta', pulsar: 'rapido' }]} icone={<DocumentCheckmark24Regular />} />
+          <KpiCard indice={3} tom="alerta" rotulo="Não conformidades abertas" valor="12" deltas={[{ texto: '4 em tratamento', tom: 'alerta' }]} icone={<DocumentError24Regular />} />
+          <KpiCard indice={4} tom="info" rotulo="Carregando" valor="" carregando />
+        </div>
+      </Secao>
       {/* As tarefas seguintes acrescentam uma <Secao> por peça, nesta ordem:
-          PainelLateral, KpiCard, DetailPageLayout,
-          WorkflowActions, Gráficos. */}
+          DetailPageLayout, WorkflowActions, Gráficos. */}
     </div>
   );
 }
