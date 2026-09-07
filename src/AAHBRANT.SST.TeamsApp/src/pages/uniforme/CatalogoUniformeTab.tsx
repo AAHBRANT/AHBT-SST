@@ -22,8 +22,8 @@ import { ListaCarregando } from '../../components/ListaCarregando';
 const itemVazio: NovoCatalogoUniforme = { nome: '', categoria: '' };
 
 // Catálogo de Uniforme (peça em si, sem tamanho embutido — o tamanho é uma dimensão do estoque e
-// do cadastro do trabalhador, ver EstoqueUniformeTab.tsx e TamanhosUniformeTab.tsx). Mesmo padrão
-// de CatalogoTab.tsx (EPI), sem foto de item (não pedido para uniforme).
+// do cadastro do trabalhador, ver EstoqueUniformeTab.tsx e pages/pessoas/TamanhosUniformeSecao.tsx).
+// Mesmo padrão de CatalogoTab.tsx (EPI), sem foto de item (não pedido para uniforme).
 export function CatalogoUniformeTab() {
   const estilos = usePageStyles();
   const [itens, setItens] = useState<CatalogoUniforme[]>([]);

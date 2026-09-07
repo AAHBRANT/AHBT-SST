@@ -41,17 +41,19 @@ public class RegistrarEntradaEstoqueUniformeCommandHandler : IRequestHandler<Reg
         if (!await _db.Obras.AnyAsync(o => o.Id == request.ObraId, ct))
             throw new KeyNotFoundException($"Obra {request.ObraId} não encontrada.");
 
+        var tamanho = request.Tamanho.Trim().ToUpperInvariant();
+
         var estoque = await _db.EstoquesUniforme
             .FirstOrDefaultAsync(x => x.CatalogoUniformeId == request.CatalogoUniformeId
                 && x.ObraId == request.ObraId
-                && x.Tamanho == request.Tamanho, ct);
+                && x.Tamanho == tamanho, ct);
         if (estoque is null)
         {
             estoque = new EstoqueUniforme
             {
                 CatalogoUniformeId = request.CatalogoUniformeId,
                 ObraId = request.ObraId,
-                Tamanho = request.Tamanho,
+                Tamanho = tamanho,
                 Saldo = 0,
             };
             _db.EstoquesUniforme.Add(estoque);

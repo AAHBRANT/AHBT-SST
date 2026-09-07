@@ -1,31 +1,13 @@
-using System.Security.Cryptography;
 using AAHBRANT.SST.Application.Common.Interfaces;
+using AAHBRANT.SST.Application.Tests.TestSupport;
 using AAHBRANT.SST.Application.Trabalhadores.Commands;
 using AAHBRANT.SST.Domain.Entidades;
-using AAHBRANT.SST.Infrastructure.Persistencia;
-using AAHBRANT.SST.Infrastructure.Seguranca;
 using Microsoft.EntityFrameworkCore;
 
 namespace AAHBRANT.SST.Application.Tests.Trabalhadores;
 
 public class DefinirTamanhosUniformeTrabalhadorCommandHandlerTests
 {
-    // O conversor de criptografia do CPF (Trabalhador.Cpf) exige chaves configuradas em
-    // CpfCriptografiaContexto — normalmente feito por DependencyInjection.AddInfrastructure a partir
-    // de appsettings, que este projeto de testes não executa. Configura uma chave só para o processo
-    // de teste, igual ao que qualquer outro teste que grave um Trabalhador precisaria fazer.
-    static DefinirTamanhosUniformeTrabalhadorCommandHandlerTests()
-    {
-        CpfCriptografiaContexto.Configurar(RandomNumberGenerator.GetBytes(32), RandomNumberGenerator.GetBytes(32));
-    }
-    private static IAppDbContext CriarDb(string nomeBanco)
-    {
-        var options = new DbContextOptionsBuilder<SstDbContext>()
-            .UseInMemoryDatabase(nomeBanco)
-            .Options;
-        return new SstDbContext(options, new CurrentUserService());
-    }
-
     private static async Task<(Trabalhador Trabalhador, CatalogoUniforme Camisa, CatalogoUniforme Calca)> SemearAsync(IAppDbContext db)
     {
         var obra = new Obra { Nome = "Obra Teste" };
@@ -54,7 +36,7 @@ public class DefinirTamanhosUniformeTrabalhadorCommandHandlerTests
     [Fact]
     public async Task Handle_TrabalhadorSemTamanhos_AdicionaTodosOsItensInformados()
     {
-        var db = CriarDb(nameof(Handle_TrabalhadorSemTamanhos_AdicionaTodosOsItensInformados));
+        var db = DbContextFactory.Criar();
         var (trabalhador, camisa, calca) = await SemearAsync(db);
         var handler = new DefinirTamanhosUniformeTrabalhadorCommandHandler(db);
 
@@ -73,7 +55,7 @@ public class DefinirTamanhosUniformeTrabalhadorCommandHandlerTests
     [Fact]
     public async Task Handle_ReenviaMesmaPecaComTamanhoDiferente_AtualizaOTamanhoDoVinculoExistente()
     {
-        var db = CriarDb(nameof(Handle_ReenviaMesmaPecaComTamanhoDiferente_AtualizaOTamanhoDoVinculoExistente));
+        var db = DbContextFactory.Criar();
         var (trabalhador, camisa, _) = await SemearAsync(db);
         var handler = new DefinirTamanhosUniformeTrabalhadorCommandHandler(db);
         await handler.Handle(new DefinirTamanhosUniformeTrabalhadorCommand(trabalhador.Id, new List<ItemTamanhoUniforme> { new(camisa.Id, "M") }), default);
@@ -88,7 +70,7 @@ public class DefinirTamanhosUniformeTrabalhadorCommandHandlerTests
     [Fact]
     public async Task Handle_RemovePecaDaLista_DesativaVinculoExistente()
     {
-        var db = CriarDb(nameof(Handle_RemovePecaDaLista_DesativaVinculoExistente));
+        var db = DbContextFactory.Criar();
         var (trabalhador, camisa, calca) = await SemearAsync(db);
         var handler = new DefinirTamanhosUniformeTrabalhadorCommandHandler(db);
         await handler.Handle(new DefinirTamanhosUniformeTrabalhadorCommand(trabalhador.Id, new List<ItemTamanhoUniforme>
@@ -108,7 +90,7 @@ public class DefinirTamanhosUniformeTrabalhadorCommandHandlerTests
     [Fact]
     public async Task Handle_TrabalhadorInexistente_LancaKeyNotFoundException()
     {
-        var db = CriarDb(nameof(Handle_TrabalhadorInexistente_LancaKeyNotFoundException));
+        var db = DbContextFactory.Criar();
         var handler = new DefinirTamanhosUniformeTrabalhadorCommandHandler(db);
 
         await Assert.ThrowsAsync<KeyNotFoundException>(() =>

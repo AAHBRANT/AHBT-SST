@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import {
   Button,
   Field,
@@ -40,7 +41,6 @@ function entregaVazia(): NovaEntregaUniforme {
 
 interface EntregaUniformeTabProps {
   aoNavegarParaMatriz: () => void;
-  aoNavegarParaTamanhos: () => void;
 }
 
 // Entrega de Uniforme — travada pela matriz da função (mesmo princípio de bloqueio via dropdown
@@ -49,7 +49,8 @@ interface EntregaUniformeTabProps {
 // nem escolhido manualmente). O backend (CriarEntregaUniformeCommand) revalida tudo de novo e
 // bloqueia sem válvula de escape se algo estiver faltando; os erros retornados são exibidos como
 // vieram, mesmo padrão do resto do frontend.
-export function EntregaUniformeTab({ aoNavegarParaMatriz, aoNavegarParaTamanhos }: EntregaUniformeTabProps) {
+export function EntregaUniformeTab({ aoNavegarParaMatriz }: EntregaUniformeTabProps) {
+  const navigate = useNavigate();
   const estilos = usePageStyles();
   const [entregas, setEntregas] = useState<EntregaUniforme[]>([]);
   const [itensCatalogo, setItensCatalogo] = useState<CatalogoUniforme[]>([]);
@@ -132,7 +133,8 @@ export function EntregaUniformeTab({ aoNavegarParaMatriz, aoNavegarParaTamanhos 
       setCarregando(true);
       setErro(null);
       const { id } = await api.entregasUniforme.criar(novaEntrega);
-      setEntregaParaAssinar({ ...novaEntrega, id, tamanho: tamanhoResolvido ?? '' });
+      const entregaCriada = await api.entregasUniforme.obterPorId(id);
+      setEntregaParaAssinar(entregaCriada);
       setNovaEntrega(entregaVazia());
       await carregar();
     } catch (e) {
@@ -198,7 +200,7 @@ export function EntregaUniformeTab({ aoNavegarParaMatriz, aoNavegarParaTamanhos 
               {pecaSelecionadaSemTamanho && (
                 <Text size={200} className={estilos.erro}>
                   Trabalhador sem tamanho cadastrado para esta peça.{' '}
-                  <Button appearance="transparent" size="small" onClick={aoNavegarParaTamanhos}>
+                  <Button appearance="transparent" size="small" onClick={() => navigate(`/pessoas/${novaEntrega.trabalhadorId}`)}>
                     Cadastrar em Tamanhos
                   </Button>
                 </Text>

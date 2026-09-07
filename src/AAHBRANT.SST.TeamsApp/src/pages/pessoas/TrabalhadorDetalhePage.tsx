@@ -18,6 +18,7 @@ import { usePageStyles, usePillTabStyles } from '../pageStyles';
 import { RankingBarChart, type ItemRanking } from '../../components/dashboard/charts/RankingBarChart';
 import { StatusDonutChart, type FatiaDonut } from '../../components/dashboard/charts/StatusDonutChart';
 import { PerfilGeralTab } from './PerfilGeralTab';
+import { TamanhosUniformeSecao } from './TamanhosUniformeSecao';
 import { TreinamentosTab } from './TreinamentosTab';
 import { RiscosTab } from './RiscosTab';
 import { OcorrenciasTab } from './OcorrenciasTab';
@@ -205,7 +206,12 @@ export function TrabalhadorDetalhePage() {
         <Text>Carregando...</Text>
       ) : (
         <>
-          {aba === 'geral' && <PerfilGeralTab perfil={perfil} />}
+          {aba === 'geral' && (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+              <PerfilGeralTab perfil={perfil} />
+              <TamanhosUniformeSecao trabalhadorId={id} />
+            </div>
+          )}
           {aba === 'epi' && (
             <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
               <div className={estilos.card}>

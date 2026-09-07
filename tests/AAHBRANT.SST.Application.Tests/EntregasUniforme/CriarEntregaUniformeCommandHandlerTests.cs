@@ -1,34 +1,15 @@
-using System.Security.Cryptography;
 using AAHBRANT.SST.Application.Common.Interfaces;
 using AAHBRANT.SST.Application.EntregasUniforme.Commands;
 using AAHBRANT.SST.Application.EstoquesUniforme.Commands;
+using AAHBRANT.SST.Application.Tests.TestSupport;
 using AAHBRANT.SST.Domain.Entidades;
 using AAHBRANT.SST.Domain.Enums;
-using AAHBRANT.SST.Infrastructure.Persistencia;
-using AAHBRANT.SST.Infrastructure.Seguranca;
 using Microsoft.EntityFrameworkCore;
 
 namespace AAHBRANT.SST.Application.Tests.EntregasUniforme;
 
 public class CriarEntregaUniformeCommandHandlerTests
 {
-    // O conversor de criptografia do CPF (Trabalhador.Cpf) exige chaves configuradas em
-    // CpfCriptografiaContexto — normalmente feito por DependencyInjection.AddInfrastructure a partir
-    // de appsettings, que este projeto de testes não executa. Mesmo padrão usado em
-    // DefinirTamanhosUniformeTrabalhadorCommandHandlerTests (Task 6).
-    static CriarEntregaUniformeCommandHandlerTests()
-    {
-        CpfCriptografiaContexto.Configurar(RandomNumberGenerator.GetBytes(32), RandomNumberGenerator.GetBytes(32));
-    }
-
-    private static IAppDbContext CriarDb(string nomeBanco)
-    {
-        var options = new DbContextOptionsBuilder<SstDbContext>()
-            .UseInMemoryDatabase(nomeBanco)
-            .Options;
-        return new SstDbContext(options, new CurrentUserService());
-    }
-
     private static async Task<(Trabalhador Trabalhador, CatalogoUniforme Camisa, Obra Obra, Funcao Funcao)> SemearBaseAsync(IAppDbContext db)
     {
         var obra = new Obra { Nome = "Obra Teste" };
@@ -56,7 +37,7 @@ public class CriarEntregaUniformeCommandHandlerTests
     [Fact]
     public async Task Handle_MatrizDaFuncaoVazia_LancaInvalidOperationException()
     {
-        var db = CriarDb(nameof(Handle_MatrizDaFuncaoVazia_LancaInvalidOperationException));
+        var db = DbContextFactory.Criar();
         var (trabalhador, camisa, _, _) = await SemearBaseAsync(db);
         var handler = new CriarEntregaUniformeCommandHandler(db);
 
@@ -68,7 +49,7 @@ public class CriarEntregaUniformeCommandHandlerTests
     [Fact]
     public async Task Handle_PecaForaDaMatrizDaFuncao_LancaInvalidOperationException()
     {
-        var db = CriarDb(nameof(Handle_PecaForaDaMatrizDaFuncao_LancaInvalidOperationException));
+        var db = DbContextFactory.Criar();
         var (trabalhador, camisa, _, funcao) = await SemearBaseAsync(db);
         var calca = new CatalogoUniforme { Nome = "Calça" };
         db.CatalogoUniformes.Add(calca);
@@ -84,7 +65,7 @@ public class CriarEntregaUniformeCommandHandlerTests
     [Fact]
     public async Task Handle_TrabalhadorSemTamanhoCadastrado_LancaInvalidOperationException()
     {
-        var db = CriarDb(nameof(Handle_TrabalhadorSemTamanhoCadastrado_LancaInvalidOperationException));
+        var db = DbContextFactory.Criar();
         var (trabalhador, camisa, _, funcao) = await SemearBaseAsync(db);
         db.MatrizUniformeFuncoes.Add(new MatrizUniformeFuncao { FuncaoId = funcao.Id, CatalogoUniformeId = camisa.Id });
         await db.SaveChangesAsync();
@@ -98,7 +79,7 @@ public class CriarEntregaUniformeCommandHandlerTests
     [Fact]
     public async Task Handle_EstoqueInsuficienteNoTamanhoResolvido_LancaInvalidOperationException()
     {
-        var db = CriarDb(nameof(Handle_EstoqueInsuficienteNoTamanhoResolvido_LancaInvalidOperationException));
+        var db = DbContextFactory.Criar();
         var (trabalhador, camisa, obra, funcao) = await SemearBaseAsync(db);
         db.MatrizUniformeFuncoes.Add(new MatrizUniformeFuncao { FuncaoId = funcao.Id, CatalogoUniformeId = camisa.Id });
         db.TrabalhadorTamanhosUniforme.Add(new TrabalhadorTamanhoUniforme { TrabalhadorId = trabalhador.Id, CatalogoUniformeId = camisa.Id, Tamanho = "M" });
@@ -116,7 +97,7 @@ public class CriarEntregaUniformeCommandHandlerTests
     [Fact]
     public async Task Handle_TudoAutorizadoComEstoque_RegistraEntregaEBaixaEstoqueDoTamanhoCorreto()
     {
-        var db = CriarDb(nameof(Handle_TudoAutorizadoComEstoque_RegistraEntregaEBaixaEstoqueDoTamanhoCorreto));
+        var db = DbContextFactory.Criar();
         var (trabalhador, camisa, obra, funcao) = await SemearBaseAsync(db);
         db.MatrizUniformeFuncoes.Add(new MatrizUniformeFuncao { FuncaoId = funcao.Id, CatalogoUniformeId = camisa.Id });
         db.TrabalhadorTamanhosUniforme.Add(new TrabalhadorTamanhoUniforme { TrabalhadorId = trabalhador.Id, CatalogoUniformeId = camisa.Id, Tamanho = "M" });

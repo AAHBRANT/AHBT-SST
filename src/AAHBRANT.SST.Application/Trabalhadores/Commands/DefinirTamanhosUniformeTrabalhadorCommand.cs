@@ -43,7 +43,7 @@ public class DefinirTamanhosUniformeTrabalhadorCommandHandler : IRequestHandler<
             .Where(t => t.TrabalhadorId == request.TrabalhadorId)
             .ToListAsync(ct);
 
-        var desejados = request.Itens.ToDictionary(i => i.CatalogoUniformeId, i => i.Tamanho);
+        var desejados = request.Itens.ToDictionary(i => i.CatalogoUniformeId, i => i.Tamanho.Trim().ToUpperInvariant());
 
         foreach (var vinculo in vinculosAtuais)
         {
@@ -65,7 +65,7 @@ public class DefinirTamanhosUniformeTrabalhadorCommandHandler : IRequestHandler<
             {
                 TrabalhadorId = request.TrabalhadorId,
                 CatalogoUniformeId = item.CatalogoUniformeId,
-                Tamanho = item.Tamanho,
+                Tamanho = desejados[item.CatalogoUniformeId],
             });
         }
 

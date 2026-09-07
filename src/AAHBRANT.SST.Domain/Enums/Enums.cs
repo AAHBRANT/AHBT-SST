@@ -739,10 +739,10 @@ public enum StatusReuniaoCipa
 // certificada) e com "Desgaste" no lugar de "Dano" (linguagem mais natural para uniforme).
 public enum MotivoEntregaUniforme
 {
-    Inicial,
-    Desgaste,
-    Extravio,
-    TrocaDeFuncao,
+    Inicial = 0,
+    Desgaste = 1,
+    Extravio = 2,
+    TrocaDeFuncao = 3,
 }
 
 // Classifica cada linha do ledger MovimentacaoEstoqueUniforme. Sem DevolucaoEntrada (sem fluxo de
