@@ -33,6 +33,7 @@ import { MembroCipaDetalhePage } from './pages/cipa/MembroCipaDetalhePage';
 import { ReuniaoCipaDetalhePage } from './pages/cipa/ReuniaoCipaDetalhePage';
 import { EventoSipatDetalhePage } from './pages/cipa/EventoSipatDetalhePage';
 import { AssinarTreinamentoPage } from './pages/treinamentos/AssinarTreinamentoPage';
+import { GaleriaPage } from './ui/galeria/GaleriaPage';
 
 // Envolve as rotas internas do app com o AppShell (sidebar/header do Teams). As rotas públicas
 // /p/:codigoOuUid e /validar/:token ficam de fora dessa camada — ver IdentificacaoPublicaPage/ValidarDocumentoPage.
@@ -99,6 +100,9 @@ function AppRoteado() {
           />
           <Route element={<LayoutComTeams />}>
             <Route path="/" element={<DashboardPage />} />
+
+            {/* Galeria da camada ui/ (spec 2026-09-07 §6) — só em desenvolvimento. */}
+            {import.meta.env.DEV && <Route path="/ui-galeria" element={<GaleriaPage />} />}
 
             {/* Reformulação de navegação (pedido do usuário, 02/09, réplica de mockup): os itens que
                 antes abriam cada um a própria tela (PGR/GRO, PCMSO, Treinamentos, EPI/EPC, CIPA,
