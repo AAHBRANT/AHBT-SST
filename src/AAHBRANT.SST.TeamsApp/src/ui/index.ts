@@ -23,4 +23,5 @@ export { EstadoVazio, type EstadoVazioProps } from './primitivos/EstadoVazio/Est
 export { Carregando, type CarregandoProps } from './primitivos/Carregando/Carregando';
 export { FeedbackInline, type FeedbackInlineProps } from './primitivos/FeedbackInline/FeedbackInline';
 
-export { Abas, useAbaNaUrl, type AbasProps, type AbaItem } from './compostos/Abas/Abas';
+export { Abas, type AbasProps, type AbaItem } from './compostos/Abas/Abas';
+export { useAbaNaUrl } from './compostos/Abas/useAbaNaUrl';
