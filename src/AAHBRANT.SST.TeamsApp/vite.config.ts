@@ -49,10 +49,10 @@ export default defineConfig({
     }),
   ],
   resolve: {
-    alias: {
-      '@ui': path.resolve(__dirname, 'src/ui/index.ts'),
-      '@ui/': path.resolve(__dirname, 'src/ui') + '/',
-    },
+    alias: [
+      { find: /^@ui$/, replacement: path.resolve(__dirname, 'src/ui/index.ts') },
+      { find: /^@ui\//, replacement: path.resolve(__dirname, 'src/ui') + '/' },
+    ],
   },
   server: {
     port: process.env.PORT ? Number(process.env.PORT) : 5173,
