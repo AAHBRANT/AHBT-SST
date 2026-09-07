@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { makeStyles } from '@fluentui/react-components';
 import { BuildingBank24Regular, ShieldCheckmark24Regular, DocumentCheckmark24Regular, DocumentError24Regular } from '@fluentui/react-icons';
 import { useTipografia } from '../tokens/tipografia';
-import { Card, PageHeader, Button, Input, StatusChip, nivelVencimento, tomDeVencimento, rotuloDeVencimento, EstadoVazio, Carregando, FeedbackInline, Abas, useAbaNaUrl, DataTable, FormSection, FormGrid, Campo, FormRodape, ChipCheckboxGroup, Field, Textarea, CampoData, SeletorPesquisavel, useConfirmar, PainelLateral, KpiCard, DetailPageLayout, WorkflowActions } from '../index';
+import { Card, PageHeader, Button, Input, StatusChip, nivelVencimento, tomDeVencimento, rotuloDeVencimento, EstadoVazio, Carregando, FeedbackInline, Abas, useAbaNaUrl, DataTable, FormSection, FormGrid, Campo, FormRodape, ChipCheckboxGroup, Field, Textarea, CampoData, SeletorPesquisavel, useConfirmar, PainelLateral, KpiCard, DetailPageLayout, WorkflowActions, usePaletaGraficos, StatusDonutChart } from '../index';
 import { Secao } from './Secao';
 
 // Calculado uma vez no carregamento do módulo (não a cada render) para não disparar o alerta de
@@ -19,6 +19,9 @@ const useGaleriaStyles = makeStyles({
   coluna: { display: 'flex', flexDirection: 'column', gap: '10px' },
   titulo: { marginBottom: '24px' },
   gradeKpi: { display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(185px, 1fr))', gap: '16px', width: '100%' },
+  linhaSwatches: { display: 'flex', gap: '8px', flexWrap: 'wrap' },
+  swatch: { textAlign: 'center' },
+  amostra: { width: '56px', height: '36px', borderRadius: '6px' },
 });
 
 // Galeria viva da camada ui/ (spec §6): cada peça em todos os estados, nos dois temas (use o botão
@@ -26,6 +29,7 @@ const useGaleriaStyles = makeStyles({
 export function GaleriaPage() {
   const tipo = useTipografia();
   const g = useGaleriaStyles();
+  const paleta = usePaletaGraficos();
   const [abaPilar, setAbaPilar] = useState<'a' | 'b' | 'c'>('a');
   const [abaInterna, setAbaInterna] = useState<'p' | 'q'>('p');
   const [abaDemo, setAbaDemo] = useAbaNaUrl('demo', ['x', 'y', 'z'] as const, 'x');
@@ -198,8 +202,26 @@ export function GaleriaPage() {
           </DetailPageLayout>
         </div>
       </Secao>
-      {/* As tarefas seguintes acrescentam uma <Secao> por peça, nesta ordem:
-          Gráficos. */}
+      <Secao titulo="Paleta de gráficos (segue o tema)">
+        <div className={g.linhaSwatches}>
+          {Object.entries(paleta).filter(([chave]) => chave !== 'serie').map(([chave, valor]) => (
+            <div key={chave} className={g.swatch}>
+              <div className={g.amostra} style={{ background: valor as string }} />
+              <span className={tipo.micro}>{chave}</span>
+            </div>
+          ))}
+        </div>
+        <Card className={g.largura360} titulo="Aptidão ocupacional">
+          <StatusDonutChart
+            dados={[
+              { rotulo: 'Aptos', valor: 256, cor: paleta.ok },
+              { rotulo: 'Restrição', valor: 24, cor: paleta.atencao },
+              { rotulo: 'Inaptos', valor: 7, cor: paleta.alerta },
+            ]}
+            legendaCentral="funcionários"
+          />
+        </Card>
+      </Secao>
     </div>
   );
 }

@@ -40,3 +40,5 @@ export { KpiCard, type KpiCardProps } from './compostos/KpiCard/KpiCard';
 
 export { DetailPageLayout, type DetailPageLayoutProps } from './layout/DetailPageLayout/DetailPageLayout';
 export { WorkflowActions, type WorkflowActionsProps, type AcaoWorkflow } from './layout/WorkflowActions/WorkflowActions';
+
+export * from './graficos';
