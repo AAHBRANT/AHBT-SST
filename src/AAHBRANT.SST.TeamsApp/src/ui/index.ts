@@ -12,3 +12,6 @@ export {
 // Peças já existentes, ainda no lugar antigo até a Onda 3.
 export { CampoData } from '../components/CampoData';
 export { ChipsField } from '../components/ChipsField';
+
+export { StatusChip, type StatusChipProps } from './primitivos/StatusChip/StatusChip';
+export * from './primitivos/StatusChip/vencimento';

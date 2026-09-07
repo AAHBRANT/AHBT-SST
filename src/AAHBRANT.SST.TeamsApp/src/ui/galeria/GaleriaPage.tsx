@@ -1,5 +1,6 @@
 import { makeStyles } from '@fluentui/react-components';
 import { useTipografia } from '../tokens/tipografia';
+import { StatusChip, nivelVencimento, tomDeVencimento, rotuloDeVencimento } from '../index';
 import { Secao } from './Secao';
 
 const useGaleriaStyles = makeStyles({
@@ -29,7 +30,17 @@ export function GaleriaPage() {
           <span className={tipo.micro}>Vence em breve</span>
         </div>
       </Secao>
-      {/* As tarefas seguintes acrescentam uma <Secao> por peça, nesta ordem: StatusChip, Card,
+      <Secao titulo="StatusChip">
+        <StatusChip tom="ok">Vigente</StatusChip>
+        <StatusChip tom="atencao">Vence em 8 dias</StatusChip>
+        <StatusChip tom="alerta">Vencido</StatusChip>
+        <StatusChip tom="info">Aguardando assinatura</StatusChip>
+        <StatusChip tom="neutro">Prevista</StatusChip>
+        {(() => { const n = nivelVencimento('2099-01-01')!; return <StatusChip tom={tomDeVencimento(n)}>{rotuloDeVencimento(n)} (helper)</StatusChip>; })()}
+        <StatusChip tom="alerta" pulsar="rapido">Vencido (pulsa)</StatusChip>
+        <StatusChip tom="atencao" pulsar="leve">Vence em 8 dias (pulsa leve)</StatusChip>
+      </Secao>
+      {/* As tarefas seguintes acrescentam uma <Secao> por peça, nesta ordem: Card,
           PageHeader, EstadoVazio, Carregando, FeedbackInline, Abas, DataTable, FormSection/FormGrid,
           ChipCheckboxGroup, SeletorPesquisavel, ConfirmDialog, PainelLateral, KpiCard,
           DetailPageLayout, WorkflowActions, Gráficos. */}
