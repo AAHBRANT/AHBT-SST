@@ -62,7 +62,7 @@ public class CriarEntregaUniformeCommandHandlerTests
 
         var ex = await Assert.ThrowsAsync<InvalidOperationException>(() =>
             handler.Handle(new CriarEntregaUniformeCommand(trabalhador.Id, camisa.Id, 1, DateTime.UtcNow, MotivoEntregaUniforme.Inicial, null), default));
-        Assert.Contains("matriz de uniforme da função", ex.Message);
+        Assert.Contains("ainda não foi cadastrada", ex.Message);
     }
 
     [Fact]
