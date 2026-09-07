@@ -1,6 +1,7 @@
+import { useState } from 'react';
 import { makeStyles } from '@fluentui/react-components';
 import { useTipografia } from '../tokens/tipografia';
-import { Card, PageHeader, Button, Input, StatusChip, nivelVencimento, tomDeVencimento, rotuloDeVencimento, EstadoVazio, Carregando, FeedbackInline } from '../index';
+import { Card, PageHeader, Button, Input, StatusChip, nivelVencimento, tomDeVencimento, rotuloDeVencimento, EstadoVazio, Carregando, FeedbackInline, Abas, useAbaNaUrl } from '../index';
 import { Secao } from './Secao';
 
 const useGaleriaStyles = makeStyles({
@@ -17,6 +18,9 @@ const useGaleriaStyles = makeStyles({
 export function GaleriaPage() {
   const tipo = useTipografia();
   const g = useGaleriaStyles();
+  const [abaPilar, setAbaPilar] = useState<'a' | 'b' | 'c'>('a');
+  const [abaInterna, setAbaInterna] = useState<'p' | 'q'>('p');
+  const [abaDemo, setAbaDemo] = useAbaNaUrl('demo', ['x', 'y', 'z'] as const, 'x');
   return (
     <div>
       <h1 className={`${tipo.titulo} ${g.titulo}`}>Galeria da camada ui/</h1>
@@ -65,7 +69,14 @@ export function GaleriaPage() {
           <FeedbackInline tom="sucesso">Entrega registrada.</FeedbackInline>
         </div>
       </Secao>
-      {/* As tarefas seguintes acrescentam uma <Secao> por peça, nesta ordem: Abas, DataTable,
+      <Secao titulo="Abas (a de módulo sincroniza com ?demo= na URL — troque e aperte F5)">
+        <div className={g.larguraTotal}>
+          <Abas nivel="pilar" abas={[{ valor: 'a', rotulo: 'PGR e GRO' }, { valor: 'b', rotulo: 'PCMSO' }, { valor: 'c', rotulo: 'Treinamentos', contador: 14 }]} valor={abaPilar} aoMudar={setAbaPilar} />
+          <Abas nivel="modulo" abas={[{ valor: 'x', rotulo: 'Entregas' }, { valor: 'y', rotulo: 'Estoque' }, { valor: 'z', rotulo: 'Catálogo' }]} valor={abaDemo} aoMudar={setAbaDemo} />
+          <Abas nivel="interno" abas={[{ valor: 'p', rotulo: 'Por obra' }, { valor: 'q', rotulo: 'Por função' }]} valor={abaInterna} aoMudar={setAbaInterna} />
+        </div>
+      </Secao>
+      {/* As tarefas seguintes acrescentam uma <Secao> por peça, nesta ordem: DataTable,
           FormSection/FormGrid, ChipCheckboxGroup, SeletorPesquisavel,
           ConfirmDialog, PainelLateral, KpiCard, DetailPageLayout, WorkflowActions, Gráficos. */}
     </div>

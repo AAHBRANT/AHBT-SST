@@ -22,3 +22,5 @@ export { PageHeader, type PageHeaderProps } from './compostos/PageHeader/PageHea
 export { EstadoVazio, type EstadoVazioProps } from './primitivos/EstadoVazio/EstadoVazio';
 export { Carregando, type CarregandoProps } from './primitivos/Carregando/Carregando';
 export { FeedbackInline, type FeedbackInlineProps } from './primitivos/FeedbackInline/FeedbackInline';
+
+export { Abas, useAbaNaUrl, type AbasProps, type AbaItem } from './compostos/Abas/Abas';
