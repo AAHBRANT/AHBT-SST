@@ -423,6 +423,82 @@ export interface EntregaEpi {
 export type NovaEntregaEpi = Omit<EntregaEpi, 'id'> & { motivoTipo: number };
 export type AtualizarEntregaEpi = EntregaEpi & { motivoTipo: number };
 
+export interface CatalogoUniforme {
+  id: string;
+  nome: string;
+  categoria?: string | null;
+}
+
+export type NovoCatalogoUniforme = Omit<CatalogoUniforme, 'id'>;
+export type AtualizarCatalogoUniforme = CatalogoUniforme;
+
+export const MotivoEntregaUniforme = {
+  Inicial: 0,
+  Desgaste: 1,
+  Extravio: 2,
+  TrocaDeFuncao: 3,
+} as const;
+
+export const motivoEntregaUniformeLabel: Record<number, string> = {
+  0: 'Entrega inicial',
+  1: 'Desgaste',
+  2: 'Extravio',
+  3: 'Troca de função',
+};
+
+export interface EntregaUniforme {
+  id: string;
+  trabalhadorId: string;
+  catalogoUniformeId: string;
+  tamanho: string;
+  quantidade: number;
+  dataEntrega: string;
+  motivoTipo: number;
+  observacoes?: string | null;
+}
+
+export type NovaEntregaUniforme = Omit<EntregaUniforme, 'id' | 'tamanho'>;
+
+export const TipoMovimentacaoEstoqueUniforme = {
+  EntradaManual: 0,
+  SaidaEntrega: 1,
+  AjusteManual: 2,
+} as const;
+
+export const tipoMovimentacaoEstoqueUniformeLabel: Record<number, string> = {
+  0: 'Entrada manual',
+  1: 'Saída (entrega)',
+  2: 'Ajuste manual',
+};
+
+export interface EstoqueUniformePorObra {
+  catalogoUniformeId: string;
+  catalogoUniformeNome: string;
+  tamanho: string;
+  saldo: number;
+}
+
+export interface MovimentacaoEstoqueUniforme {
+  id: string;
+  tipo: number;
+  quantidade: number;
+  saldoResultante: number;
+  createdAtUtc: string;
+  observacao?: string | null;
+  entregaUniformeId?: string | null;
+}
+
+export interface TamanhoUniformeTrabalhador {
+  catalogoUniformeId: string;
+  catalogoUniformeNome: string;
+  tamanho: string;
+}
+
+export interface ItemTamanhoUniforme {
+  catalogoUniformeId: string;
+  tamanho: string;
+}
+
 export interface Atividade {
   id: string;
   obraId: string;
@@ -2913,6 +2989,9 @@ export const api = {
         method: 'POST',
         body: JSON.stringify({ templateBruto: templateBrutoBase64 }),
       }),
+    listarTamanhosUniforme: (id: string) => request<TamanhoUniformeTrabalhador[]>(`/api/trabalhadores/${id}/uniformes`),
+    definirTamanhosUniforme: (id: string, itens: ItemTamanhoUniforme[]) =>
+      request<void>(`/api/trabalhadores/${id}/uniformes`, { method: 'PUT', body: JSON.stringify({ itens }) }),
   },
   funcoes: {
     listar: () => request<Funcao[]>('/api/funcoes'),
@@ -2931,6 +3010,12 @@ export const api = {
       request<void>(`/api/funcoes/${funcaoId}/treinamentos-obrigatorios`, {
         method: 'PUT',
         body: JSON.stringify({ cursoTreinamentoIds }),
+      }),
+    listarUniformes: (funcaoId: string) => request<CatalogoUniforme[]>(`/api/funcoes/${funcaoId}/uniformes`),
+    definirUniformes: (funcaoId: string, catalogoUniformeIds: string[]) =>
+      request<void>(`/api/funcoes/${funcaoId}/uniformes`, {
+        method: 'PUT',
+        body: JSON.stringify({ catalogoUniformeIds }),
       }),
   },
   setores: {
@@ -3084,6 +3169,21 @@ export const api = {
       return response.blob();
     },
   },
+  catalogosUniforme: {
+    listar: () => request<CatalogoUniforme[]>('/api/catalogosuniforme'),
+    criar: (item: NovoCatalogoUniforme) =>
+      request<{ id: string }>('/api/catalogosuniforme', { method: 'POST', body: JSON.stringify(item) }),
+    atualizar: (item: AtualizarCatalogoUniforme) =>
+      request<void>(`/api/catalogosuniforme/${item.id}`, { method: 'PUT', body: JSON.stringify(item) }),
+    excluir: (id: string) => request<void>(`/api/catalogosuniforme/${id}`, { method: 'DELETE' }),
+  },
+  entregasUniforme: {
+    listar: (trabalhadorId?: string) =>
+      request<EntregaUniforme[]>(`/api/entregasuniforme${trabalhadorId ? `?trabalhadorId=${trabalhadorId}` : ''}`),
+    obterPorId: (id: string) => request<EntregaUniforme>(`/api/entregasuniforme/${id}`),
+    criar: (dados: NovaEntregaUniforme) =>
+      request<{ id: string }>('/api/entregasuniforme', { method: 'POST', body: JSON.stringify(dados) }),
+  },
   estoquesEpi: {
     listarPorObra: (obraId: string) => request<EstoqueEpiPorObra[]>(`/api/estoquesepi/obra/${obraId}`),
     listarMovimentacoes: (obraId: string, catalogoEpiId: string) =>
@@ -3092,6 +3192,17 @@ export const api = {
       request<void>('/api/estoquesepi/entrada', { method: 'POST', body: JSON.stringify(dados) }),
     ajustar: (dados: AjustarEstoqueEpi) =>
       request<void>('/api/estoquesepi/ajuste', { method: 'POST', body: JSON.stringify(dados) }),
+  },
+  estoquesUniforme: {
+    listarPorObra: (obraId: string) => request<EstoqueUniformePorObra[]>(`/api/estoquesuniforme/obra/${obraId}`),
+    listarMovimentacoes: (obraId: string, catalogoUniformeId: string, tamanho: string) =>
+      request<MovimentacaoEstoqueUniforme[]>(
+        `/api/estoquesuniforme/obra/${obraId}/peca/${catalogoUniformeId}/tamanho/${encodeURIComponent(tamanho)}/movimentacoes`,
+      ),
+    registrarEntrada: (dados: { catalogoUniformeId: string; obraId: string; tamanho: string; quantidade: number; observacao?: string | null }) =>
+      request<void>('/api/estoquesuniforme/entrada', { method: 'POST', body: JSON.stringify(dados) }),
+    ajustar: (dados: { catalogoUniformeId: string; obraId: string; tamanho: string; novoSaldo: number; observacao: string }) =>
+      request<void>('/api/estoquesuniforme/ajuste', { method: 'POST', body: JSON.stringify(dados) }),
   },
   entregasEpi: {
     listar: (trabalhadorId?: string) =>
