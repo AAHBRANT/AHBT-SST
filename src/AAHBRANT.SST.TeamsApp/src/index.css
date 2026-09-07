@@ -46,6 +46,21 @@ body,
   --sst-color-info-wash: #eaf1fe;
   --sst-color-surface: #ffffff;
   --sst-color-page-background: #f5f5f7;
+
+  /* Famílias novas (spec 2026-09-07 §1.1). Convivem com --sst-color-rail-* até a Onda 3. */
+  --sst-chrome-fundo: #e8f5e9;
+  --sst-chrome-borda: #c8e6c9;
+  --sst-chrome-tinta: #15625c;
+  --sst-chrome-ativo-fundo: #1b9b48;
+  --sst-chrome-ativo-tinta: #ffffff;
+  --sst-status-ok-tinta: #16a34a;      --sst-status-ok-fundo: #eaf7ee;
+  --sst-status-atencao-tinta: #d97706; --sst-status-atencao-fundo: #fdf3e3;
+  --sst-status-alerta-tinta: #dc2626;  --sst-status-alerta-fundo: #fceaea;
+  --sst-status-info-tinta: #2563eb;    --sst-status-info-fundo: #eaf1fe;
+  --sst-status-neutro-tinta: #6d6d6d;  --sst-status-neutro-fundo: #f0f0f2;
+  --sst-border-soft: #efede6;
+  --sst-row-shadow: 0 1px 2px rgba(20, 17, 15, 0.05);
+  --sst-row-shadow-hover: 0 4px 12px rgba(20, 17, 15, 0.10);
 }
 
 [data-theme='dark'] {
@@ -69,6 +84,20 @@ body,
   --sst-color-info-wash: rgba(59, 130, 246, 0.16);
   --sst-color-surface: #1e293b;
   --sst-color-page-background: #0f172a;
+
+  --sst-chrome-fundo: #1e293b;
+  --sst-chrome-borda: #334155;
+  --sst-chrome-tinta: #9ca3af;
+  --sst-chrome-ativo-fundo: #064e3b;
+  --sst-chrome-ativo-tinta: #10b981;
+  --sst-status-ok-tinta: #16a34a;      --sst-status-ok-fundo: rgba(22, 163, 74, 0.16);
+  --sst-status-atencao-tinta: #f59e0b; --sst-status-atencao-fundo: rgba(245, 158, 11, 0.16);
+  --sst-status-alerta-tinta: #ef4444;  --sst-status-alerta-fundo: rgba(239, 68, 68, 0.16);
+  --sst-status-info-tinta: #3b82f6;    --sst-status-info-fundo: rgba(59, 130, 246, 0.16);
+  --sst-status-neutro-tinta: #9ca3af;  --sst-status-neutro-fundo: #28394f;
+  --sst-border-soft: #2a3a52;
+  --sst-row-shadow: 0 1px 2px rgba(0, 0, 0, 0.25);
+  --sst-row-shadow-hover: 0 6px 16px rgba(0, 0, 0, 0.4);
 }
 
 body {
@@ -115,4 +144,13 @@ h3,
   background-color: var(--sst-color-surface);
   transform: translateY(-2px);
   box-shadow: 0 6px 18px rgba(0, 0, 0, 0.16);
+}
+
+/* Movimento: com "reduzir movimento" no sistema operacional, tudo é instantâneo (spec §1.5). */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0s !important;
+    animation-delay: 0s !important;
+    transition-duration: 0s !important;
+  }
 }
