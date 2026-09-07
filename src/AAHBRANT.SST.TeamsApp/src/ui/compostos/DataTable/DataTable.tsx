@@ -43,7 +43,7 @@ export function DataTable<T>({ colunas, linhas, chaveLinha, carregando, vazio, d
   }
 
   return (
-    <div className={e.wrap}>
+    <div className={mergeClasses(e.wrap, cabecalhoFixo && e.wrapCabecalhoFixo)}>
       <table className={mergeClasses(e.tabela, compacta && e.compacta, cabecalhoFixo && e.cabecalhoFixo)} aria-label={ariaLabel}>
         <thead>
           <tr>
@@ -58,7 +58,13 @@ export function DataTable<T>({ colunas, linhas, chaveLinha, carregando, vazio, d
             const clicavel = !!aoClicarLinha;
             return (
               <Fragment key={chave}>
-                <tr className={mergeClasses(e.tr, clicavel && e.trClicavel)} onClick={clicavel ? () => aoClicarLinha(linha) : undefined} aria-expanded={expansivel ? aberta : undefined}>
+                <tr
+                  className={mergeClasses(e.tr, clicavel && e.trClicavel)}
+                  onClick={clicavel ? () => aoClicarLinha(linha) : undefined}
+                  aria-expanded={expansivel ? aberta : undefined}
+                  tabIndex={clicavel ? 0 : undefined}
+                  onKeyDown={clicavel ? (ev) => { if (ev.key === 'Enter' || ev.key === ' ') { ev.preventDefault(); aoClicarLinha(linha); } } : undefined}
+                >
                   {colunas.map((c, i) => (
                     <td key={c.chave} className={mergeClasses(e.td, compacta && e.tdCompacta, i === 0 && e.tdPrimeira, i === colunas.length - 1 && !acoesLinha && e.tdUltima, c.alinhar === 'direita' && e.direita, c.alinhar === 'centro' && e.centro)}>
                       {celula(linha, c)}

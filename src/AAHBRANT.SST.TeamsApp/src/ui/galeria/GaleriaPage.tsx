@@ -7,6 +7,8 @@ import { Secao } from './Secao';
 // Calculado uma vez no carregamento do módulo (não a cada render) para não disparar o alerta de
 // pureza do oxlint sobre chamar Date.now() durante a renderização.
 const validadeExemploVenceEmBreve = new Date(Date.now() + 8 * 86_400_000).toISOString().slice(0, 10);
+// Massa de dados para exercitar densidade compacta + cabeçalho fixo + alinhamento de coluna.
+const LINHAS_COMPACTAS = Array.from({ length: 25 }, (_, i) => ({ id: String(i + 1), funcao: `Função ${i + 1}`, cbo: `7${String(i).padStart(3, '0')}-05`, epis: (i * 7) % 13 }));
 
 const useGaleriaStyles = makeStyles({
   largura280: { width: '280px' },
@@ -104,6 +106,20 @@ export function GaleriaPage() {
           </Card>
           <Card densidade="compacta" className={g.margemTopo}><DataTable colunas={[{ chave: 'a', rotulo: 'A' }]} linhas={[]} chaveLinha={() => ''} vazio={{ titulo: 'Nenhuma entrega', descricao: 'Registre a primeira.', acao: { rotulo: 'Registrar', aoClicar: () => {} } }} /></Card>
           <Card densidade="compacta" className={g.margemTopo}><DataTable colunas={[{ chave: 'a', rotulo: 'A' }]} linhas={[]} chaveLinha={() => ''} carregando /></Card>
+          <Card densidade="compacta" className={g.margemTopo}>
+            <DataTable
+              aria-label="Tabela compacta com cabeçalho fixo"
+              densidade="compacta"
+              cabecalhoFixo
+              colunas={[
+                { chave: 'funcao', rotulo: 'Função' },
+                { chave: 'cbo', rotulo: 'CBO', largura: '110px' },
+                { chave: 'epis', rotulo: 'EPIs', alinhar: 'direita', largura: '80px' },
+              ]}
+              linhas={LINHAS_COMPACTAS}
+              chaveLinha={(l) => l.id}
+            />
+          </Card>
         </div>
       </Secao>
       {/* As tarefas seguintes acrescentam uma <Secao> por peça, nesta ordem:
