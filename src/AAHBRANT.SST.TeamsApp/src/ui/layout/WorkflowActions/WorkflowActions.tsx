@@ -27,6 +27,7 @@ export interface AcaoWorkflow {
   tom?: 'primario' | 'neutro' | 'destrutivo';
   habilitada?: boolean;
   formulario?: ReactNode;
+  /** Deve tratar e exibir os próprios erros; se lançar, o formulário permanece aberto. */
   aoExecutar: () => void | Promise<void>;
   rotuloExecutar?: string;
 }
@@ -39,6 +40,18 @@ export interface WorkflowActionsProps { acoes: AcaoWorkflow[]; processando?: boo
 export function WorkflowActions({ acoes, processando }: WorkflowActionsProps) {
   const e = useStyles(); const tipo = useTipografia();
   const [aberta, setAberta] = useState<string | null>(null);
+
+  // Contrato: aoExecutar trata e exibe o próprio erro (ex.: FeedbackInline na página). Se ainda
+  // assim lançar, o formulário permanece aberto para nova tentativa em vez de travar em silêncio.
+  async function executar(a: AcaoWorkflow, fecharAposSucesso: boolean) {
+    try {
+      await a.aoExecutar();
+      if (fecharAposSucesso) setAberta(null);
+    } catch (erro) {
+      if (import.meta.env.DEV) console.error('WorkflowActions: aoExecutar lançou erro', erro);
+    }
+  }
+
   return (
     <div className={e.lista}>
       {acoes.map((a) => {
@@ -48,12 +61,12 @@ export function WorkflowActions({ acoes, processando }: WorkflowActionsProps) {
           <div key={a.chave} className={e.acao}>
             <button type="button" className={mergeClasses(e.botao, a.tom === 'destrutivo' && e.destrutivo, a.tom === 'primario' && e.primario)} disabled={!habilitada || processando}
               aria-expanded={a.formulario ? estaAberta : undefined}
-              onClick={() => { if (a.formulario) setAberta(estaAberta ? null : a.chave); else void a.aoExecutar(); }}>
+              onClick={() => { if (a.formulario) setAberta(estaAberta ? null : a.chave); else void executar(a, false); }}>
               <span>
                 <span className={mergeClasses(tipo.corpo, e.rotulo)}>{a.rotulo}</span>
                 {a.descricao && <span className={mergeClasses(tipo.legenda, e.descricao)}>{a.descricao}</span>}
               </span>
-              {a.formulario && <ChevronDown16Regular className={mergeClasses(e.seta, estaAberta && e.setaAberta)} />}
+              {a.formulario && <ChevronDown16Regular aria-hidden="true" className={mergeClasses(e.seta, estaAberta && e.setaAberta)} />}
             </button>
             <AnimatePresence initial={false}>
               {a.formulario && estaAberta && (
@@ -61,7 +74,7 @@ export function WorkflowActions({ acoes, processando }: WorkflowActionsProps) {
                   <div className={e.formulario}>
                     {a.formulario}
                     <Button appearance={a.tom === 'destrutivo' ? 'secondary' : 'primary'} className={a.tom === 'destrutivo' ? e.botaoDestrutivo : undefined} disabled={processando}
-                      onClick={async () => { await a.aoExecutar(); setAberta(null); }}>
+                      onClick={() => void executar(a, true)}>
                       {a.rotuloExecutar ?? a.rotulo}
                     </Button>
                   </div>
