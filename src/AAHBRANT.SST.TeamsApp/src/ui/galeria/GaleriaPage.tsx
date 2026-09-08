@@ -1,8 +1,9 @@
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { makeStyles } from '@fluentui/react-components';
 import { BuildingBank24Regular, ShieldCheckmark24Regular, DocumentCheckmark24Regular, DocumentError24Regular } from '@fluentui/react-icons';
 import { useTipografia } from '../tokens/tipografia';
-import { Card, PageHeader, Button, Input, StatusChip, nivelVencimento, tomDeVencimento, rotuloDeVencimento, EstadoVazio, Carregando, FeedbackInline, Abas, useAbaNaUrl, DataTable, FormSection, FormGrid, Campo, FormRodape, ChipCheckboxGroup, Field, Textarea, CampoData, SeletorPesquisavel, useConfirmar, PainelLateral, KpiCard, DetailPageLayout, WorkflowActions, usePaletaGraficos, StatusDonutChart } from '../index';
+import { Card, PageHeader, Button, Input, StatusChip, nivelVencimento, tomDeVencimento, rotuloDeVencimento, EstadoVazio, Carregando, FeedbackInline, Abas, useAbaNaUrl, DataTable, FormSection, FormGrid, Campo, FormRodape, ChipCheckboxGroup, Field, Textarea, CampoData, SeletorPesquisavel, useConfirmar, PainelLateral, KpiCard, DetailPageLayout, WorkflowActions, usePaletaGraficos, StatusDonutChart, RankingBarChart, TrendBarChart, TrendLineChart, ChipsField } from '../index';
 import { Secao } from './Secao';
 
 // Calculado uma vez no carregamento do módulo (não a cada render) para não disparar o alerta de
@@ -10,6 +11,18 @@ import { Secao } from './Secao';
 const validadeExemploVenceEmBreve = new Date(Date.now() + 8 * 86_400_000).toISOString().slice(0, 10);
 // Massa de dados para exercitar densidade compacta + cabeçalho fixo + alinhamento de coluna.
 const LINHAS_COMPACTAS = Array.from({ length: 25 }, (_, i) => ({ id: String(i + 1), funcao: `Função ${i + 1}`, cbo: `7${String(i).padStart(3, '0')}-05`, epis: (i * 7) % 13 }));
+// Dados fixos e pequenos para os três gráficos da galeria — nada de aleatório, senão o snapshot
+// visual muda a cada execução.
+const RANKING_EXEMPLO = [
+  { rotulo: 'Ponte Rio Cuiá', valor: 12, detalhe: '4 em tratamento' },
+  { rotulo: 'Vila Nova', valor: 8 },
+  { rotulo: 'Terminal Sul', valor: 5 },
+  { rotulo: 'Anel Viário', valor: 3 },
+];
+const TENDENCIA_EXEMPLO = [
+  { rotulo: 'Abr', valor: 6 }, { rotulo: 'Mai', valor: 9 }, { rotulo: 'Jun', valor: 4 },
+  { rotulo: 'Jul', valor: 11 }, { rotulo: 'Ago', valor: 7 }, { rotulo: 'Set', valor: 5 },
+];
 
 const useGaleriaStyles = makeStyles({
   largura280: { width: '280px' },
@@ -38,12 +51,24 @@ export function GaleriaPage() {
   const [funcDemo, setFuncDemo] = useState('');
   const { confirmar, dialogElement } = useConfirmar();
   const [ultimaConfirmacao, setUltimaConfirmacao] = useState<string | null>(null);
-  const [painelAberto, setPainelAberto] = useState(false);
+  // Só para os snapshots do Playwright — peças que só existem abertas.
+  const [parametros] = useSearchParams();
+  const abrir = parametros.get('abrir');
+  const [painelAberto, setPainelAberto] = useState(abrir === 'painel');
+  const [chipsTexto, setChipsTexto] = useState('Ponte Rio Cuiá; Vila Nova');
+  const dialogoJaAberto = useRef(false);
+
   const [ultimaAcao, setUltimaAcao] = useState<string | null>(null);
+  // Montagem única: o useRef segura a dupla invocação do StrictMode em desenvolvimento.
+  useEffect(() => {
+    if (abrir !== 'dialogo' || dialogoJaAberto.current) return;
+    dialogoJaAberto.current = true;
+    void confirmar('Excluir a entrega de João da Silva?');
+  }, [abrir, confirmar]);
   return (
     <div>
       <h1 className={`${tipo.titulo} ${g.titulo}`}>Galeria da camada ui/</h1>
-      <Secao titulo="Tipografia">
+      <Secao id="tipografia" titulo="Tipografia">
         <div className={`${g.coluna} ${g.larguraTotal}`}>
           <span className={tipo.display}>1.248</span>
           <span className={tipo.titulo}>Entregas de EPI</span>
@@ -53,7 +78,7 @@ export function GaleriaPage() {
           <span className={tipo.micro}>Vence em breve</span>
         </div>
       </Secao>
-      <Secao titulo="StatusChip">
+      <Secao id="status-chip" titulo="StatusChip">
         <StatusChip tom="ok">Vigente</StatusChip>
         <StatusChip tom="atencao">Vence em 8 dias</StatusChip>
         <StatusChip tom="alerta">Vencido</StatusChip>
@@ -63,39 +88,39 @@ export function GaleriaPage() {
         <StatusChip tom="alerta" pulsar="rapido">Vencido (pulsa)</StatusChip>
         <StatusChip tom="atencao" pulsar="leve">Vence em 8 dias (pulsa leve)</StatusChip>
       </Secao>
-      <Secao titulo="Card">
+      <Secao id="card" titulo="Card">
         <Card className={g.largura280} titulo="Confortável" subtitulo="Padding xl">Conteúdo</Card>
         <Card densidade="compacta" titulo="Compacto" acoes={<Button size="small">Ação</Button>}>Conteúdo</Card>
       </Secao>
-      <Secao titulo="PageHeader">
+      <Secao id="page-header" titulo="PageHeader">
         <div className={g.larguraTotal}>
           <PageHeader titulo="Entregas de EPI" subtitulo="287 entregas ativas em 7 obras." status={<StatusChip tom="info">Em tratamento</StatusChip>} filtros={<Input placeholder="Buscar" />} acoes={<Button appearance="primary">Nova entrega</Button>} voltarPara="/ui-galeria" rotuloVoltar="Não conformidades" />
         </div>
       </Secao>
-      <Secao titulo="EstadoVazio">
+      <Secao id="estado-vazio" titulo="EstadoVazio">
         <Card className={g.largura360}><EstadoVazio titulo="Nenhuma entrega registrada" descricao="Registre a primeira entrega para começar o controle de EPI desta obra." acao={{ rotulo: 'Registrar entrega', aoClicar: () => {} }} /></Card>
         <Card className={g.largura360}><EstadoVazio variante="sem-resultado" titulo="Nenhum resultado" descricao="Tente outro termo." acao={{ rotulo: 'Limpar busca', aoClicar: () => {} }} /></Card>
         <Card className={g.largura360}><EstadoVazio variante="em-construcao" titulo="Documentos e Procedimentos" descricao="Módulo reservado no menu, ainda não construído." /></Card>
       </Secao>
-      <Secao titulo="Carregando">
+      <Secao id="carregando" titulo="Carregando">
         <Card className={g.largura360}><Carregando variante="lista" /></Card>
         <div className={g.larguraTotal}><Carregando variante="kpi" /></div>
       </Secao>
-      <Secao titulo="FeedbackInline">
+      <Secao id="feedback-inline" titulo="FeedbackInline">
         <div className={g.larguraTotal}>
           <FeedbackInline tom="erro" aoFechar={() => {}}>Não foi possível salvar. Defina o responsável antes de enviar.</FeedbackInline>
           <FeedbackInline tom="info" acao={{ rotulo: 'Ver treinamento', aoClicar: () => {} }}>Campos de NR-06 preenchidos a partir do último treinamento.</FeedbackInline>
           <FeedbackInline tom="sucesso">Entrega registrada.</FeedbackInline>
         </div>
       </Secao>
-      <Secao titulo="Abas (a de módulo sincroniza com ?demo= na URL — troque e aperte F5)">
+      <Secao id="abas" titulo="Abas (a de módulo sincroniza com ?demo= na URL — troque e aperte F5)">
         <div className={g.larguraTotal}>
           <Abas nivel="pilar" abas={[{ valor: 'a', rotulo: 'PGR e GRO' }, { valor: 'b', rotulo: 'PCMSO' }, { valor: 'c', rotulo: 'Treinamentos', contador: 14 }]} valor={abaPilar} aoMudar={setAbaPilar} />
           <Abas nivel="modulo" abas={[{ valor: 'x', rotulo: 'Entregas' }, { valor: 'y', rotulo: 'Estoque' }, { valor: 'z', rotulo: 'Catálogo' }]} valor={abaDemo} aoMudar={setAbaDemo} />
           <Abas nivel="interno" abas={[{ valor: 'p', rotulo: 'Por obra' }, { valor: 'q', rotulo: 'Por função' }]} valor={abaInterna} aoMudar={setAbaInterna} />
         </div>
       </Secao>
-      <Secao titulo="DataTable">
+      <Secao id="data-table" titulo="DataTable">
         <div className={g.larguraTotal}>
           <Card densidade="compacta">
             <DataTable
@@ -134,7 +159,7 @@ export function GaleriaPage() {
           </Card>
         </div>
       </Secao>
-      <Secao titulo="FormSection + FormGrid + FormRodape">
+      <Secao id="formulario" titulo="FormSection + FormGrid + FormRodape">
         <Card className={g.larguraTotal}>
           <FormSection titulo="Dados da entrega" numero={1} primeira>
             <FormGrid>
@@ -149,10 +174,10 @@ export function GaleriaPage() {
           <FormRodape info="Ações concluídas exigem evidência fotográfica antes do encerramento."><Button>Cancelar</Button><Button appearance="primary">Salvar</Button></FormRodape>
         </Card>
       </Secao>
-      <Secao titulo="ChipCheckboxGroup">
+      <Secao id="chip-checkbox-group" titulo="ChipCheckboxGroup">
         <ChipCheckboxGroup aria-label="EPIs" opcoes={[{ id: 'a', rotulo: 'Capacete' }, { id: 'b', rotulo: 'Botina' }, { id: 'c', rotulo: 'Luva' }, { id: 'd', rotulo: 'Óculos' }]} selecionados={chipsDemo} aoMudar={setChipsDemo} />
       </Secao>
-      <Secao titulo="SeletorPesquisavel (digite 'jo')">
+      <Secao id="seletor-pesquisavel" titulo="SeletorPesquisavel (digite 'jo')">
         <div className={g.largura360}>
           <Field label="Funcionário">
             <SeletorPesquisavel aria-label="Funcionário" placeholder="Buscar entre 312 funcionários" valor={funcDemo} aoMudar={setFuncDemo}
@@ -160,19 +185,19 @@ export function GaleriaPage() {
           </Field>
         </div>
       </Secao>
-      <Secao titulo="ConfirmDialog">
+      <Secao id="confirm-dialog" titulo="ConfirmDialog">
         <Button onClick={async () => { const ok = await confirmar('Excluir a entrega de João da Silva? Esta ação não pode ser desfeita.'); setUltimaConfirmacao(ok ? 'confirmou' : 'cancelou'); }}>Abrir destrutivo</Button>
         <Button onClick={async () => { const ok = await confirmar({ titulo: 'Enviar ao responsável', mensagem: 'A ocorrência será enviada a Carlos Mendes.', rotuloConfirmar: 'Enviar', tom: 'neutro' }); setUltimaConfirmacao(ok ? 'confirmou' : 'cancelou'); }}>Abrir neutro</Button>
         <span className={tipo.legenda}>Última resposta: {ultimaConfirmacao ?? '—'}</span>
         {dialogElement}
       </Secao>
-      <Secao titulo="PainelLateral">
+      <Secao id="painel-lateral" titulo="PainelLateral">
         <Button appearance="primary" onClick={() => setPainelAberto(true)}>Abrir painel</Button>
         <PainelLateral aberto={painelAberto} aoFechar={() => setPainelAberto(false)} titulo="Nova entrega de EPI" subtitulo="A lista continua visível atrás." rodape={<><Button onClick={() => setPainelAberto(false)}>Cancelar</Button><Button appearance="primary" onClick={() => setPainelAberto(false)}>Registrar</Button></>}>
           <FormSection titulo="Quem recebe" numero={1} primeira><FormGrid><Campo><Field label="Funcionário"><Input /></Field></Campo></FormGrid></FormSection>
         </PainelLateral>
       </Secao>
-      <Secao titulo="KpiCard (entrada escalonada — recarregue a página)">
+      <Secao id="kpi-card" titulo="KpiCard (entrada escalonada — recarregue a página)">
         <div className={g.gradeKpi}>
           <KpiCard indice={0} tom="info" rotulo="Obras ativas" valor="7" deltas={[{ texto: '5 em andamento', tom: 'neutro' }]} icone={<BuildingBank24Regular />} />
           <KpiCard indice={1} tom="ok" rotulo="Conformidade de EPI" valor="94%" deltas={[{ texto: '287 entregas ativas', tom: 'neutro' }]} icone={<ShieldCheckmark24Regular />} />
@@ -181,7 +206,7 @@ export function GaleriaPage() {
           <KpiCard indice={4} tom="info" rotulo="Carregando" valor="" carregando />
         </div>
       </Secao>
-      <Secao titulo="DetailPageLayout + WorkflowActions">
+      <Secao id="detail-page-layout" titulo="DetailPageLayout + WorkflowActions">
         <div className={g.larguraTotal}>
           <DetailPageLayout
             cabecalho={{ titulo: 'NC-2026-0042', subtitulo: 'Andaime sem guarda-corpo no pavimento 3.', status: <StatusChip tom="info">Em tratamento</StatusChip>, voltarPara: '/ui-galeria', rotuloVoltar: 'Não conformidades', acoes: <Button appearance="primary">Salvar</Button> }}
@@ -202,7 +227,7 @@ export function GaleriaPage() {
           </DetailPageLayout>
         </div>
       </Secao>
-      <Secao titulo="Paleta de gráficos (segue o tema)">
+      <Secao id="paleta-graficos" titulo="Paleta de gráficos (segue o tema)">
         <div className={g.linhaSwatches}>
           {Object.entries(paleta).filter(([chave]) => chave !== 'serie').map(([chave, valor]) => (
             <div key={chave} className={g.swatch}>
@@ -221,6 +246,24 @@ export function GaleriaPage() {
             legendaCentral="funcionários"
           />
         </Card>
+      </Secao>
+      <Secao id="graficos" titulo="Gráficos de ranking e tendência (cores da paleta)">
+        <Card className={g.largura360} titulo="Obras com mais não conformidades">
+          <RankingBarChart dados={RANKING_EXEMPLO} corPadrao={paleta.chrome} valorReferencia={8} />
+        </Card>
+        <Card className={g.largura360} titulo="Ocorrências por mês (barras)">
+          <TrendBarChart dados={TENDENCIA_EXEMPLO} cor={paleta.atencao} />
+        </Card>
+        <Card className={g.largura360} titulo="Ocorrências por mês (área)">
+          <TrendLineChart dados={TENDENCIA_EXEMPLO} cor={paleta.marca} />
+        </Card>
+      </Secao>
+      <Secao id="chips-field" titulo="ChipsField (Enter, vírgula ou sair do campo confirma)">
+        <div className={g.largura360}>
+          <Field label="Unidades/obras abrangidas">
+            <ChipsField value={chipsTexto} onChange={setChipsTexto} placeholder="Digite e aperte Enter" />
+          </Field>
+        </div>
       </Secao>
     </div>
   );
