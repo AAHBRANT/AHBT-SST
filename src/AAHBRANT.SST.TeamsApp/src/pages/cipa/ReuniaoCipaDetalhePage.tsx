@@ -1,23 +1,29 @@
 import { useEffect, useState } from 'react';
-import { useNavigate, useParams } from 'react-router-dom';
+import { useParams } from 'react-router-dom';
 import {
-  Badge,
   Button,
+  Campo,
+  CampoData,
+  Card,
+  Carregando,
   Checkbox,
+  DataTable,
   Field,
+  FeedbackInline,
+  FormGrid,
+  FormRodape,
+  FormSection,
   Input,
+  PageHeader,
   Select,
-  Table,
-  TableBody,
-  TableCell,
-  TableHeader,
-  TableHeaderCell,
-  TableRow,
+  StatusChip,
   Text,
   Textarea,
-} from '@fluentui/react-components';
-import { CampoData } from '../../components/CampoData';
-import { ArrowLeft24Regular, Delete24Regular, DocumentPdf24Regular } from '@fluentui/react-icons';
+  useConfirmar,
+  type Coluna,
+  type Tom,
+} from '@ui';
+import { Delete24Regular, DocumentPdf24Regular } from '@fluentui/react-icons';
 import {
   api,
   prioridadeAcaoLabel,
@@ -25,6 +31,7 @@ import {
   statusReuniaoCipaLabel,
   tipoAcaoPlanoLabel,
   tipoReuniaoCipaLabel,
+  StatusAcaoPlano,
   StatusReuniaoCipa,
   type AcaoPlano,
   type NovaAcaoPlano,
@@ -32,22 +39,33 @@ import {
   type Trabalhador,
   type Usuario,
 } from '../../lib/api';
-import { usePageStyles } from '../pageStyles';
-import { useConfirmarExclusao } from '../../hooks/useConfirmarExclusao';
 import { useSucessoToast } from '../../hooks/useSucessoToast';
-import { EstadoVazio } from '../../components/EstadoVazio';
 
 function novaAcaoInicial(): Omit<NovaAcaoPlano, 'origemTipo' | 'origemId'> {
   return { tipo: 1, descricao: '', responsavelUsuarioId: '', prioridade: 3, prazo: '' };
 }
+
+// Mesmo mapeamento de NaoConformidadeDetalhePage.tsx (piloto 2) — mesmo tipo AcaoPlano, mesmos tons
+// entre os módulos que o reaproveitam (ruling da Onda 2: consistência de StatusChip por tipo de dado,
+// não só por tela).
+const tomAcaoPlano: Record<number, Tom> = {
+  [StatusAcaoPlano.Pendente]: 'atencao',
+  [StatusAcaoPlano.EmAndamento]: 'atencao',
+  [StatusAcaoPlano.Concluido]: 'ok',
+  [StatusAcaoPlano.Vencido]: 'alerta',
+};
+
+const tomReuniao: Record<number, Tom> = {
+  [StatusReuniaoCipa.Agendada]: 'neutro',
+  [StatusReuniaoCipa.Realizada]: 'atencao',
+  [StatusReuniaoCipa.AtaRegistrada]: 'ok',
+};
 
 // Presença: lista os trabalhadores da obra; marcar "Convocado" inclui na ata, e "Presente" registra
 // se compareceu. Plano de Ações da reunião (matriz 5W2H pedida pelo usuário) reaproveita o mecanismo
 // genérico api.acoesPlano (origemTipo="ReuniaoCipa") — mesmo padrão de PcmsoDetalhePage.tsx.
 export function ReuniaoCipaDetalhePage() {
   const { id } = useParams<{ id: string }>();
-  const navigate = useNavigate();
-  const estilos = usePageStyles();
   const [detalhe, setDetalhe] = useState<ReuniaoCipaDetalhe | null>(null);
   const [trabalhadores, setTrabalhadores] = useState<Trabalhador[]>([]);
   const [usuarios, setUsuarios] = useState<Usuario[]>([]);
@@ -59,7 +77,7 @@ export function ReuniaoCipaDetalhePage() {
   const [erro, setErro] = useState<string | null>(null);
   const [salvando, setSalvando] = useState(false);
   const [baixandoPdf, setBaixandoPdf] = useState(false);
-  const { confirmar, dialogElement } = useConfirmarExclusao();
+  const { confirmar, dialogElement } = useConfirmar();
   const sucessoToast = useSucessoToast();
 
   async function carregar() {
@@ -203,182 +221,183 @@ export function ReuniaoCipaDetalhePage() {
     }
   }
 
-  if (!id) return <Text>Reunião não encontrada.</Text>;
+  if (!id) return <FeedbackInline tom="erro">Reunião não encontrada.</FeedbackInline>;
 
   const encerrada = detalhe?.reuniao.status === StatusReuniaoCipa.AtaRegistrada;
+
+  const colunasAcoes: Coluna<AcaoPlano>[] = [
+    { chave: 'descricao', rotulo: 'Tema/problema' },
+    { chave: 'acao', rotulo: 'Ação & responsável', render: (a) => `${tipoAcaoPlanoLabel[a.tipo]} — ${a.responsavelUsuarioNome ?? '—'}` },
+    { chave: 'prazo', rotulo: 'Prazo', render: (a) => a.prazo?.slice(0, 10) ?? '—' },
+    {
+      chave: 'status',
+      rotulo: 'Status',
+      render: (a) => <StatusChip tom={tomAcaoPlano[a.status] ?? 'neutro'}>{statusAcaoPlanoLabel[a.status]}</StatusChip>,
+    },
+  ];
 
   return (
     <div>
       {dialogElement}
-      <Button appearance="subtle" icon={<ArrowLeft24Regular />} onClick={() => navigate('/operacao/cipa')} style={{ marginBottom: 12 }}>
-        Voltar para CIPA
-      </Button>
+      <PageHeader titulo="Reunião da CIPA" voltarPara="/operacao/cipa" rotuloVoltar="Voltar para CIPA" />
 
-      {erro && <Text className={estilos.erro}>{erro}</Text>}
+      {erro && (
+        <FeedbackInline tom="erro" aoFechar={() => setErro(null)}>
+          {erro}
+        </FeedbackInline>
+      )}
 
       {!detalhe ? (
-        <Text>Carregando...</Text>
+        <Carregando variante="detalhe" linhas={8} />
       ) : (
-        <>
-          <div className={estilos.card} style={{ marginBottom: 16 }}>
-            <div style={{ display: 'flex', gap: 16, alignItems: 'center', marginBottom: 8 }}>
-              <Text size={500} weight="semibold">
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+          <Card
+            densidade="compacta"
+            titulo={
+              <div style={{ display: 'flex', gap: 12, alignItems: 'center' }}>
                 Reunião {tipoReuniaoCipaLabel[detalhe.reuniao.tipo]} — {detalhe.reuniao.dataReuniao?.slice(0, 10)}
-              </Text>
-              <Badge appearance="tint">{statusReuniaoCipaLabel[detalhe.reuniao.status]}</Badge>
-            </div>
-            {detalhe.reuniao.pauta && <Text size={200}>Pauta: {detalhe.reuniao.pauta}</Text>}
-            <div className={estilos.formActions}>
+                <StatusChip tom={tomReuniao[detalhe.reuniao.status] ?? 'neutro'}>
+                  {statusReuniaoCipaLabel[detalhe.reuniao.status]}
+                </StatusChip>
+              </div>
+            }
+            subtitulo={detalhe.reuniao.pauta ? `Pauta: ${detalhe.reuniao.pauta}` : undefined}
+          >
+            <FormRodape>
               <Button appearance="primary" icon={<DocumentPdf24Regular />} onClick={baixarAta} disabled={baixandoPdf}>
                 Baixar ata em PDF
               </Button>
-            </div>
-          </div>
+            </FormRodape>
+          </Card>
 
-          <div className={estilos.card} style={{ marginBottom: 16 }}>
-            <div className={estilos.toolbar}>
-              <Text weight="semibold">Lista de presença</Text>
-            </div>
-            {trabalhadores.length === 0 ? (
-              <EstadoVazio mensagem="Nenhum funcionário cadastrado nesta obra ainda." />
-            ) : (
-            <Table noNativeElements>
-              <TableHeader>
-                <TableRow>
-                  <TableHeaderCell>Funcionário</TableHeaderCell>
-                  <TableHeaderCell>Convocado</TableHeaderCell>
-                  <TableHeaderCell>Presente</TableHeaderCell>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {trabalhadores.map((t) => (
-                  <TableRow key={t.id}>
-                    <TableCell>
-                      {t.nome} ({t.matricula})
-                    </TableCell>
-                    <TableCell>
-                      <Checkbox
-                        checked={presenca[t.id]?.incluido ?? false}
-                        disabled={encerrada}
-                        onChange={(_, d) =>
-                          setPresenca({ ...presenca, [t.id]: { incluido: !!d.checked, presente: presenca[t.id]?.presente ?? false } })
-                        }
-                      />
-                    </TableCell>
-                    <TableCell>
-                      <Checkbox
-                        checked={presenca[t.id]?.presente ?? false}
-                        disabled={encerrada || !presenca[t.id]?.incluido}
-                        onChange={(_, d) =>
-                          setPresenca({ ...presenca, [t.id]: { incluido: presenca[t.id]?.incluido ?? false, presente: !!d.checked } })
-                        }
-                      />
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-            )}
+          <Card titulo="Lista de presença">
+            <DataTable
+              aria-label="Lista de presença"
+              colunas={[
+                { chave: 'nome', rotulo: 'Funcionário', render: (t: Trabalhador) => `${t.nome} (${t.matricula})` },
+                {
+                  chave: 'convocado',
+                  rotulo: 'Convocado',
+                  render: (t: Trabalhador) => (
+                    <Checkbox
+                      checked={presenca[t.id]?.incluido ?? false}
+                      disabled={encerrada}
+                      onChange={(_, d) =>
+                        setPresenca({ ...presenca, [t.id]: { incluido: !!d.checked, presente: presenca[t.id]?.presente ?? false } })
+                      }
+                    />
+                  ),
+                },
+                {
+                  chave: 'presente',
+                  rotulo: 'Presente',
+                  render: (t: Trabalhador) => (
+                    <Checkbox
+                      checked={presenca[t.id]?.presente ?? false}
+                      disabled={encerrada || !presenca[t.id]?.incluido}
+                      onChange={(_, d) =>
+                        setPresenca({ ...presenca, [t.id]: { incluido: presenca[t.id]?.incluido ?? false, presente: !!d.checked } })
+                      }
+                    />
+                  ),
+                },
+              ]}
+              linhas={trabalhadores}
+              chaveLinha={(t) => t.id}
+              vazio={{ titulo: 'Nenhum funcionário cadastrado nesta obra ainda.' }}
+            />
             {!encerrada && (
-              <div className={estilos.formActions}>
+              <FormRodape>
                 <Button appearance="primary" onClick={salvarPresenca} disabled={salvando}>
                   Salvar presença
                 </Button>
-              </div>
+              </FormRodape>
             )}
-          </div>
+          </Card>
 
           {!encerrada && (
-            <div className={estilos.card} style={{ marginBottom: 16 }}>
-              <div className={estilos.toolbar}>
-                <Text weight="semibold">Encerrar reunião</Text>
-              </div>
+            <Card titulo="Encerrar reunião">
               <Field label="Deliberações" required>
                 <Textarea value={deliberacoes} onChange={(_, d) => setDeliberacoes(d.value)} />
               </Field>
-              <div className={estilos.formActions}>
+              <FormRodape>
                 <Button appearance="primary" onClick={encerrar} disabled={salvando}>
                   Registrar ata e encerrar
                 </Button>
-              </div>
-            </div>
+              </FormRodape>
+            </Card>
           )}
           {encerrada && detalhe.reuniao.deliberacoes && (
-            <div className={estilos.card} style={{ marginBottom: 16 }}>
-              <div className={estilos.toolbar}>
-                <Text weight="semibold">Deliberações</Text>
-              </div>
+            <Card titulo="Deliberações">
               <Text>{detalhe.reuniao.deliberacoes}</Text>
-            </div>
+            </Card>
           )}
 
-          <div className={estilos.card} style={{ marginBottom: 16 }}>
-            <div className={estilos.toolbar}>
-              <Text weight="semibold">Novo item do plano de ações (5W2H)</Text>
-            </div>
-            <div className={`${estilos.sectionTitle} ${estilos.sectionTitleFirst}`}>Novo Item do Plano</div>
-            <div className={estilos.formGrid}>
-              <div className={estilos.col2}>
-                <Field label="Tipo">
-                  <Select value={String(novaAcao.tipo)} onChange={(_, d) => setNovaAcao({ ...novaAcao, tipo: Number(d.value) })}>
-                    {Object.entries(tipoAcaoPlanoLabel).map(([valor, rotulo]) => (
-                      <option key={valor} value={valor}>
-                        {rotulo}
-                      </option>
-                    ))}
-                  </Select>
-                </Field>
-              </div>
-              <div className={estilos.col3}>
-                <Field label="Tema/problema" required>
-                  <Input value={novaAcao.descricao} onChange={(_, d) => setNovaAcao({ ...novaAcao, descricao: d.value })} />
-                </Field>
-              </div>
-              <div className={estilos.col3}>
-                <Field label="Responsável">
-                  <Select
-                    value={novaAcao.responsavelUsuarioId ?? ''}
-                    onChange={(_, d) => setNovaAcao({ ...novaAcao, responsavelUsuarioId: d.value })}
-                  >
-                    <option value="">Nenhum</option>
-                    {usuarios.map((usuario) => (
-                      <option key={usuario.id} value={usuario.id}>
-                        {usuario.nome}
-                      </option>
-                    ))}
-                  </Select>
-                </Field>
-              </div>
-              <div className={estilos.col2}>
-                <Field label="Prioridade">
-                  <Select
-                    value={String(novaAcao.prioridade)}
-                    onChange={(_, d) => setNovaAcao({ ...novaAcao, prioridade: Number(d.value) })}
-                  >
-                    {Object.entries(prioridadeAcaoLabel).map(([valor, rotulo]) => (
-                      <option key={valor} value={valor}>
-                        {rotulo}
-                      </option>
-                    ))}
-                  </Select>
-                </Field>
-              </div>
-              <div className={estilos.col2}>
-                <Field label="Prazo">
-                  <CampoData value={novaAcao.prazo ?? ''} onChange={(_, d) => setNovaAcao({ ...novaAcao, prazo: d.value })} />
-                </Field>
-              </div>
-            </div>
-            <div className={estilos.formActions}>
-              <Button appearance="primary" onClick={criarAcao} disabled={salvando}>
-                Adicionar ação
-              </Button>
-            </div>
-          </div>
+          <Card titulo="Novo item do plano de ações (5W2H)">
+            <FormSection titulo="Novo Item do Plano" primeira>
+              <FormGrid>
+                <Campo span={2}>
+                  <Field label="Tipo">
+                    <Select value={String(novaAcao.tipo)} onChange={(_, d) => setNovaAcao({ ...novaAcao, tipo: Number(d.value) })}>
+                      {Object.entries(tipoAcaoPlanoLabel).map(([valor, rotulo]) => (
+                        <option key={valor} value={valor}>
+                          {rotulo}
+                        </option>
+                      ))}
+                    </Select>
+                  </Field>
+                </Campo>
+                <Campo span={3}>
+                  <Field label="Tema/problema" required>
+                    <Input value={novaAcao.descricao} onChange={(_, d) => setNovaAcao({ ...novaAcao, descricao: d.value })} />
+                  </Field>
+                </Campo>
+                <Campo span={3}>
+                  <Field label="Responsável">
+                    <Select
+                      value={novaAcao.responsavelUsuarioId ?? ''}
+                      onChange={(_, d) => setNovaAcao({ ...novaAcao, responsavelUsuarioId: d.value })}
+                    >
+                      <option value="">Nenhum</option>
+                      {usuarios.map((usuario) => (
+                        <option key={usuario.id} value={usuario.id}>
+                          {usuario.nome}
+                        </option>
+                      ))}
+                    </Select>
+                  </Field>
+                </Campo>
+                <Campo span={2}>
+                  <Field label="Prioridade">
+                    <Select
+                      value={String(novaAcao.prioridade)}
+                      onChange={(_, d) => setNovaAcao({ ...novaAcao, prioridade: Number(d.value) })}
+                    >
+                      {Object.entries(prioridadeAcaoLabel).map(([valor, rotulo]) => (
+                        <option key={valor} value={valor}>
+                          {rotulo}
+                        </option>
+                      ))}
+                    </Select>
+                  </Field>
+                </Campo>
+                <Campo span={2}>
+                  <Field label="Prazo">
+                    <CampoData value={novaAcao.prazo ?? ''} onChange={(_, d) => setNovaAcao({ ...novaAcao, prazo: d.value })} />
+                  </Field>
+                </Campo>
+              </FormGrid>
+              <FormRodape>
+                <Button appearance="primary" onClick={criarAcao} disabled={salvando}>
+                  Adicionar ação
+                </Button>
+              </FormRodape>
+            </FormSection>
+          </Card>
 
-          <div className={estilos.card}>
-            <div className={estilos.toolbar}>
-              <Text weight="semibold">Plano de ações e pendências</Text>
+          <Card
+            titulo="Plano de ações e pendências"
+            acoes={
               <Field label="Validar como">
                 <Select value={usuarioValidador} onChange={(_, d) => setUsuarioValidador(d.value)}>
                   <option value="">Selecione um usuário</option>
@@ -389,48 +408,27 @@ export function ReuniaoCipaDetalhePage() {
                   ))}
                 </Select>
               </Field>
-            </div>
-            {acoesPlano.length === 0 ? (
-              <EstadoVazio mensagem="Nenhuma ação registrada no plano ainda." />
-            ) : (
-            <Table noNativeElements>
-              <TableHeader>
-                <TableRow>
-                  <TableHeaderCell>Tema/problema</TableHeaderCell>
-                  <TableHeaderCell>Ação & responsável</TableHeaderCell>
-                  <TableHeaderCell>Prazo</TableHeaderCell>
-                  <TableHeaderCell>Status</TableHeaderCell>
-                  <TableHeaderCell></TableHeaderCell>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {acoesPlano.map((acao) => (
-                  <TableRow key={acao.id}>
-                    <TableCell>{acao.descricao}</TableCell>
-                    <TableCell>
-                      {tipoAcaoPlanoLabel[acao.tipo]} — {acao.responsavelUsuarioNome ?? '—'}
-                    </TableCell>
-                    <TableCell>{acao.prazo?.slice(0, 10) ?? '—'}</TableCell>
-                    <TableCell>
-                      <Badge appearance="tint">{statusAcaoPlanoLabel[acao.status]}</Badge>
-                    </TableCell>
-                    <TableCell>
-                      <div style={{ display: 'flex', gap: 4 }}>
-                        {!acao.dataValidacao && (
-                          <Button appearance="subtle" onClick={() => validarAcao(acao.id)} disabled={salvando}>
-                            Validar
-                          </Button>
-                        )}
-                        <Button appearance="subtle" icon={<Delete24Regular />} onClick={() => excluirAcao(acao.id)} aria-label="Excluir" />
-                      </div>
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-            )}
-          </div>
-        </>
+            }
+          >
+            <DataTable
+              aria-label="Plano de ações da reunião"
+              colunas={colunasAcoes}
+              linhas={acoesPlano}
+              chaveLinha={(a) => a.id}
+              vazio={{ titulo: 'Nenhuma ação registrada no plano ainda.' }}
+              acoesLinha={(acao) => (
+                <div style={{ display: 'flex', gap: 4 }}>
+                  {!acao.dataValidacao && (
+                    <Button appearance="subtle" onClick={() => validarAcao(acao.id)} disabled={salvando}>
+                      Validar
+                    </Button>
+                  )}
+                  <Button appearance="subtle" icon={<Delete24Regular />} onClick={() => excluirAcao(acao.id)} aria-label="Excluir" />
+                </div>
+              )}
+            />
+          </Card>
+        </div>
       )}
     </div>
   );
