@@ -137,7 +137,7 @@ export function GaleriaPage() {
               ]}
               chaveLinha={(l) => l.id}
               acoesLinha={() => <Button size="small" appearance="subtle">Assinar</Button>}
-              expansivel={{ aberta: (l) => l.id === abertaDemo, render: (l) => <span>Detalhe de {l.nome}</span> }}
+              expansivel={{ aberta: (l) => l.id === abertaDemo, render: (l) => <><strong>Detalhe de {l.nome}</strong><span>EPIs obrigatórios: capacete classe B, luva isolante, botina.</span></> }}
               aoClicarLinha={(l) => setAbertaDemo((a) => (a === l.id ? null : l.id))}
             />
           </Card>
