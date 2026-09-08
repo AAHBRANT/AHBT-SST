@@ -3,7 +3,7 @@ import { useSearchParams } from 'react-router-dom';
 import { makeStyles } from '@fluentui/react-components';
 import { BuildingBank24Regular, ShieldCheckmark24Regular, DocumentCheckmark24Regular, DocumentError24Regular } from '@fluentui/react-icons';
 import { useTipografia } from '../tokens/tipografia';
-import { Card, PageHeader, Button, Input, StatusChip, nivelVencimento, tomDeVencimento, rotuloDeVencimento, EstadoVazio, Carregando, FeedbackInline, Abas, useAbaNaUrl, DataTable, FormSection, FormGrid, Campo, FormRodape, ChipCheckboxGroup, Field, Select, Textarea, CampoData, SeletorPesquisavel, useConfirmar, PainelLateral, KpiCard, DetailPageLayout, WorkflowActions, usePaletaGraficos, StatusDonutChart, RankingBarChart, TrendBarChart, TrendLineChart, ChipsField } from '../index';
+import { Card, PageHeader, Button, Input, Text, StatusChip, nivelVencimento, tomDeVencimento, rotuloDeVencimento, EstadoVazio, Carregando, FeedbackInline, Legenda, BarraProgresso, Abas, useAbaNaUrl, DataTable, FormSection, FormGrid, Campo, FormRodape, ChipCheckboxGroup, Field, Select, Textarea, CampoData, SeletorPesquisavel, useConfirmar, PainelLateral, KpiCard, DetailPageLayout, WorkflowActions, usePaletaGraficos, StatusDonutChart, RankingBarChart, TrendBarChart, TrendLineChart, ChipsField } from '../index';
 import { Secao } from './Secao';
 
 // Calculado uma vez no carregamento do módulo (não a cada render) para não disparar o alerta de
@@ -114,6 +114,32 @@ export function GaleriaPage() {
           <FeedbackInline tom="info" acao={{ rotulo: 'Ver treinamento', aoClicar: () => {} }}>Campos de NR-06 preenchidos a partir do último treinamento.</FeedbackInline>
           <FeedbackInline tom="sucesso">Entrega registrada.</FeedbackInline>
         </div>
+      </Secao>
+      <Secao id="legenda" titulo="Legenda">
+        <Card className={g.largura360}>
+          <Text weight="semibold">Curso de NR-35 — Trabalho em Altura</Text>
+          <Legenda>Válido até 12/03/2027</Legenda>
+        </Card>
+      </Secao>
+      <Secao id="barra-progresso" titulo="BarraProgresso">
+        <Card className={g.largura360}>
+          <div className={g.coluna}>
+            <div>
+              <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4 }}>
+                <Text size={200}>Capacete danificado</Text>
+                <Legenda>62% (18)</Legenda>
+              </div>
+              <BarraProgresso percentual={62} tom="atencao" aria-label="Capacete danificado, 62%" />
+            </div>
+            <div>
+              <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4 }}>
+                <Text size={200}>Troca programada</Text>
+                <Legenda>38% (11)</Legenda>
+              </div>
+              <BarraProgresso percentual={38} aria-label="Troca programada, 38%" />
+            </div>
+          </div>
+        </Card>
       </Secao>
       <Secao id="abas" titulo="Abas (a de módulo sincroniza com ?demo= na URL — troque e aperte F5)">
         <div className={g.larguraTotal}>

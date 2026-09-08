@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Button, Card, Text, FeedbackInline, designTokens } from '@ui';
+import { Button, Card, FeedbackInline, Legenda } from '@ui';
 import { Fingerprint24Regular } from '@fluentui/react-icons';
 import { api } from '../../lib/api';
 import { capturarDigitalBrutaLocal } from '../../lib/agenteBiometricoLocal';
@@ -56,9 +56,9 @@ export function AssinaturaTab({ trabalhadorId }: AssinaturaTabProps) {
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
       <Card densidade="compacta" titulo="Digital (leitor local — Futronic FS80H)">
-        <Text style={{ display: 'block', marginBottom: 12, color: designTokens.colorNeutralMedium }}>
-          Exige Termo de Aceite e consentimento de uso de biometria já registrados para este funcionário.
-        </Text>
+        <div style={{ marginBottom: 12 }}>
+          <Legenda>Exige Termo de Aceite e consentimento de uso de biometria já registrados para este funcionário.</Legenda>
+        </div>
         {erroBiometriaLocal && (
           <FeedbackInline tom="erro" aoFechar={() => setErroBiometriaLocal(null)}>
             {erroBiometriaLocal}

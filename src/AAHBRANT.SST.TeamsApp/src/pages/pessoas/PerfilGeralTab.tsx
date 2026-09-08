@@ -4,7 +4,8 @@ import {
   KpiCard,
   StatusChip,
   Text,
-  designTokens,
+  Legenda,
+  BarraProgresso,
   usePaletaGraficos,
   StatusDonutChart,
   type FatiaDonut,
@@ -159,15 +160,13 @@ export function PerfilGeralTab({ perfil }: { perfil: PerfilCompletoTrabalhador }
                   const pct = totalMotivos > 0 ? Math.round((m.quantidade / totalMotivos) * 100) : 0;
                   return (
                     <div key={m.motivo}>
-                      <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 13, fontWeight: 600, marginBottom: 4 }}>
-                        <span>{motivoEntregaEpiLabel[m.motivo]}</span>
-                        <span>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4 }}>
+                        <Text size={200} weight="semibold">{motivoEntregaEpiLabel[m.motivo]}</Text>
+                        <Legenda>
                           {pct}% ({m.quantidade})
-                        </span>
+                        </Legenda>
                       </div>
-                      <div style={{ height: 6, borderRadius: 999, backgroundColor: designTokens.colorNeutralLight, overflow: 'hidden' }}>
-                        <div style={{ width: `${pct}%`, height: '100%', borderRadius: 999, backgroundColor: designTokens.colorPrimary }} />
-                      </div>
+                      <BarraProgresso percentual={pct} aria-label={`${motivoEntregaEpiLabel[m.motivo]}, ${pct}%`} />
                     </div>
                   );
                 })}
@@ -186,29 +185,19 @@ export function PerfilGeralTab({ perfil }: { perfil: PerfilCompletoTrabalhador }
                   const curso = cursoPorId.get(t.cursoTreinamentoId);
                   const valido = diasAte(t.dataValidade) >= 0;
                   return (
-                    <div
-                      key={t.id}
-                      style={{
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'space-between',
-                        gap: 8,
-                        padding: 12,
-                        borderRadius: 8,
-                        border: `1px solid ${designTokens.colorCardBorder}`,
-                        backgroundColor: designTokens.colorNeutralLight,
-                      }}
-                    >
-                      <div style={{ minWidth: 0 }}>
-                        <Text weight="semibold" size={200} style={{ display: 'block' }}>
-                          {curso?.nome ?? 'Curso não encontrado'}
-                        </Text>
-                        <Text size={200} style={{ color: designTokens.colorNeutralMedium }}>
-                          {valido ? 'Válido até' : 'Vencido em'} {t.dataValidade.slice(0, 10)}
-                        </Text>
+                    <Card key={t.id} densidade="compacta">
+                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
+                        <div style={{ minWidth: 0 }}>
+                          <Text weight="semibold" size={200} style={{ display: 'block' }}>
+                            {curso?.nome ?? 'Curso não encontrado'}
+                          </Text>
+                          <Legenda>
+                            {valido ? 'Válido até' : 'Vencido em'} {t.dataValidade.slice(0, 10)}
+                          </Legenda>
+                        </div>
+                        <StatusChip tom={valido ? 'ok' : 'alerta'}>{valido ? 'APTO' : 'BLOQUEADO'}</StatusChip>
                       </div>
-                      <StatusChip tom={valido ? 'ok' : 'alerta'}>{valido ? 'APTO' : 'BLOQUEADO'}</StatusChip>
-                    </div>
+                    </Card>
                   );
                 })}
               </div>
@@ -232,10 +221,10 @@ export function PerfilGeralTab({ perfil }: { perfil: PerfilCompletoTrabalhador }
                 <StatusChip tom={tomResultadoAso[asoAtivo.resultadoStatus] ?? 'info'}>
                   {resultadoAsoLabel[asoAtivo.resultadoStatus]}
                 </StatusChip>
-                <Text size={200} style={{ color: designTokens.colorNeutralMedium }}>
+                <Legenda>
                   {asoAtivo.medicoNome ?? '—'}
                   {asoAtivo.medicoCrm ? ` (CRM ${asoAtivo.medicoCrm})` : ''}
-                </Text>
+                </Legenda>
               </div>
             )}
           </Card>
