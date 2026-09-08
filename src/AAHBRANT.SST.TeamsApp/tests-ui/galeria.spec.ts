@@ -11,7 +11,7 @@ for (const tema of ['light', 'dark'] as const) {
     await page.evaluate(async () => { await document.fonts.ready; });
     const secoes = page.locator('main section[data-secao]');
     const total = await secoes.count();
-    expect(total).toBe(19);
+    expect(total).toBe(21);
     for (let i = 0; i < total; i++) {
       const s = secoes.nth(i);
       const dataSecao = await s.getAttribute('data-secao');

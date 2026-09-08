@@ -23,6 +23,8 @@ export { PageHeader, type PageHeaderProps } from './compostos/PageHeader/PageHea
 export { EstadoVazio, type EstadoVazioProps } from './primitivos/EstadoVazio/EstadoVazio';
 export { Carregando, type CarregandoProps } from './primitivos/Carregando/Carregando';
 export { FeedbackInline, type FeedbackInlineProps } from './primitivos/FeedbackInline/FeedbackInline';
+export { Legenda, type LegendaProps } from './primitivos/Legenda/Legenda';
+export { BarraProgresso, type BarraProgressoProps } from './primitivos/BarraProgresso/BarraProgresso';
 
 export { Abas, type AbasProps, type AbaItem } from './compostos/Abas/Abas';
 export { useAbaNaUrl } from './compostos/Abas/useAbaNaUrl';
