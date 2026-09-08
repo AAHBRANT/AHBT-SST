@@ -1,20 +1,11 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
-  Badge,
-  Button,
-  Field,
-  Input,
-  Select,
-  Table,
-  TableBody,
-  TableCell,
-  TableHeader,
-  TableHeaderCell,
-  TableRow,
-  Text,
-} from '@fluentui/react-components';
-import { CampoData } from '../../components/CampoData';
+  Button, Field, Input, Select, CampoData,
+  Card, PageHeader, DataTable, StatusChip, nivelVencimento, tomDeVencimento, rotuloDeVencimento,
+  PainelLateral, FormSection, FormGrid, Campo, SeletorPesquisavel, FeedbackInline,
+  type Coluna,
+} from '@ui';
 import { Add24Regular, ArrowDownload24Regular, Signature24Regular } from '@fluentui/react-icons';
 import {
   api,
@@ -29,7 +20,6 @@ import {
 } from '../../lib/api';
 import { AssinaturaEntregaEpiDialog } from '../../components/assinatura/AssinaturaEntregaEpiDialog';
 import { AssinaturaDevolucaoEpiDialog } from '../../components/assinatura/AssinaturaDevolucaoEpiDialog';
-import { usePageStyles } from '../pageStyles';
 import { FotoCatalogoEpi } from './FotoCatalogoEpi';
 
 function entregaVazia(): NovaEntregaEpi {
@@ -50,7 +40,9 @@ function entregaVazia(): NovaEntregaEpi {
 }
 
 // Entregas de EPI do módulo dedicado /epi — registro, devolução (repõe estoque no backend),
-// ficha em PDF e atalho para a assinatura eletrônica (AssinarEntregaEpiPage). O bloqueio de
+// ficha em PDF e atalho para a assinatura eletrônica (AssinarEntregaEpiPage). Primeira página na
+// camada ui/ (piloto 1 da Onda 1, spec §5.1): nada de Fluent cru nem de pageStyles aqui — lista em
+// DataTable com chips de vencimento e o formulário de criação em PainelLateral. O bloqueio de
 // estoque insuficiente / CA vencido acontece no backend (CriarEntregaEpiCommand); o erro retornado
 // é exibido como veio, mesmo padrão já usado em todo o resto do frontend (ver api.ts request()).
 // "NR-06"/"NR-6"/"NR 06" etc. — compara só o número, não o formato exato do texto cadastrado no
@@ -64,7 +56,6 @@ interface EntregasTabProps {
 }
 
 export function EntregasTab({ aoNavegarParaMatriz }: EntregasTabProps) {
-  const estilos = usePageStyles();
   const navigate = useNavigate();
   const [entregas, setEntregas] = useState<EntregaEpi[]>([]);
   const [epis, setEpis] = useState<CatalogoEpi[]>([]);
@@ -74,6 +65,8 @@ export function EntregasTab({ aoNavegarParaMatriz }: EntregasTabProps) {
   const [novaEntrega, setNovaEntrega] = useState<NovaEntregaEpi>(entregaVazia());
   const [erro, setErro] = useState<string | null>(null);
   const [carregando, setCarregando] = useState(false);
+  const [carregandoLista, setCarregandoLista] = useState(true);
+  const [painelAberto, setPainelAberto] = useState(false);
   const [baixandoId, setBaixandoId] = useState<string | null>(null);
   const [devolucaoId, setDevolucaoId] = useState<string | null>(null);
   const [devolucaoData, setDevolucaoData] = useState('');
@@ -83,6 +76,7 @@ export function EntregasTab({ aoNavegarParaMatriz }: EntregasTabProps) {
 
   async function carregar() {
     try {
+      setCarregandoLista(true);
       setErro(null);
       const [lista, listaEpis, listaTrabalhadores] = await Promise.all([
         api.entregasEpi.listar(),
@@ -94,6 +88,8 @@ export function EntregasTab({ aoNavegarParaMatriz }: EntregasTabProps) {
       setTrabalhadores(listaTrabalhadores);
     } catch (e) {
       setErro(e instanceof Error ? e.message : 'Falha ao carregar entregas de EPI.');
+    } finally {
+      setCarregandoLista(false);
     }
   }
 
@@ -157,6 +153,12 @@ export function EntregasTab({ aoNavegarParaMatriz }: EntregasTabProps) {
     };
   }, [novaEntrega.trabalhadorId, trabalhadores]);
 
+  // SeletorPesquisavel pede a lista memoizada (a de trabalhadores é a maior do app).
+  const opcoesTrabalhadores = useMemo(
+    () => trabalhadores.map((t) => ({ id: t.id, rotulo: t.nome, descricao: t.matricula })),
+    [trabalhadores],
+  );
+
   function nomeEpi(id: string) {
     return epis.find((e) => e.id === id)?.nome ?? id;
   }
@@ -167,11 +169,6 @@ export function EntregasTab({ aoNavegarParaMatriz }: EntregasTabProps) {
 
   function nomeTrabalhador(id: string) {
     return trabalhadores.find((t) => t.id === id)?.nome ?? id;
-  }
-
-  function vencido(dataValidade?: string | null) {
-    if (!dataValidade) return false;
-    return new Date(dataValidade) < new Date(new Date().toDateString());
   }
 
   async function criar() {
@@ -193,6 +190,7 @@ export function EntregasTab({ aoNavegarParaMatriz }: EntregasTabProps) {
       setEntregaParaAssinar({ ...payload, id });
       setNovaEntrega(entregaVazia());
       await carregar();
+      setPainelAberto(false);
     } catch (e) {
       setErro(e instanceof Error ? e.message : 'Falha ao criar entrega de EPI.');
     } finally {
@@ -246,246 +244,262 @@ export function EntregasTab({ aoNavegarParaMatriz }: EntregasTabProps) {
     }
   }
 
+  // Coluna de devolução com edição na própria linha: o DataTable não tem edição inline embutida
+  // (e não deveria — é caso desta página), então o estado de devolução entra pelo `render`.
+  const colunas: Coluna<EntregaEpi>[] = [
+    { chave: 'trabalhador', rotulo: 'Funcionário', render: (e) => nomeTrabalhador(e.trabalhadorId) },
+    {
+      chave: 'epi',
+      rotulo: 'EPI',
+      render: (e) => (
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+          <FotoCatalogoEpi catalogoEpiId={e.catalogoEpiId} temFoto={epiTemFoto(e.catalogoEpiId)} tamanho={28} />
+          {nomeEpi(e.catalogoEpiId)}
+        </div>
+      ),
+    },
+    { chave: 'quantidade', rotulo: 'Qtd.', alinhar: 'direita', largura: '64px' },
+    { chave: 'dataEntrega', rotulo: 'Entrega', render: (e) => e.dataEntrega?.slice(0, 10) },
+    {
+      chave: 'validade',
+      rotulo: 'Validade',
+      render: (e) => {
+        if (e.dataDevolucao) return <StatusChip tom="neutro">Devolvido {e.dataDevolucao.slice(0, 10)}</StatusChip>;
+        const nivel = nivelVencimento(e.dataValidade);
+        return nivel ? <StatusChip tom={tomDeVencimento(nivel)}>{rotuloDeVencimento(nivel)}</StatusChip> : '—';
+      },
+    },
+    {
+      chave: 'devolucao',
+      rotulo: 'Devolução',
+      render: (e) =>
+        devolucaoId === e.id ? (
+          <div style={{ display: 'flex', gap: 4, alignItems: 'center' }}>
+            <CampoData value={devolucaoData} onChange={(_, d) => setDevolucaoData(d.value)} style={{ width: 130 }} />
+            <Input type="number" value={devolucaoQtd} onChange={(_, d) => setDevolucaoQtd(d.value)} style={{ width: 60 }} />
+            <Button size="small" appearance="primary" onClick={() => confirmarDevolucao(e)} disabled={carregando}>
+              Confirmar
+            </Button>
+          </div>
+        ) : e.dataDevolucao ? null : (
+          <Button size="small" appearance="subtle" onClick={() => iniciarDevolucao(e)}>
+            Registrar devolução
+          </Button>
+        ),
+    },
+  ];
+
   return (
     <div>
-      <div className={estilos.card} style={{ marginBottom: 16 }}>
-        <div className={estilos.toolbar}>
-          <Text weight="semibold">Nova entrega de EPI</Text>
-        </div>
-
-        {erro && <Text className={estilos.erro}>{erro}</Text>}
-
-        <div className={`${estilos.sectionTitle} ${estilos.sectionTitleFirst}`}>Dados da Entrega</div>
-        <div className={estilos.formGrid}>
-          <div className={estilos.col4}>
-            <Field label="Funcionário">
-              <Select
-                value={novaEntrega.trabalhadorId}
-                onChange={(_, d) =>
-                  setNovaEntrega({
-                    ...novaEntrega,
-                    trabalhadorId: d.value,
-                    catalogoEpiId: '',
-                    numeroListaPresencaNr6: '',
-                    dataTreinamentoNr6: '',
-                  })
-                }
-              >
-                <option value="">Selecione</option>
-                {trabalhadores.map((t) => (
-                  <option key={t.id} value={t.id}>
-                    {t.nome} ({t.matricula})
-                  </option>
-                ))}
-              </Select>
-            </Field>
-          </div>
-          <div className={estilos.col4}>
-            <Field label="EPI">
-              <Select
-                value={novaEntrega.catalogoEpiId}
-                onChange={(_, d) => setNovaEntrega({ ...novaEntrega, catalogoEpiId: d.value })}
-                disabled={!novaEntrega.trabalhadorId || episPermitidos.length === 0}
-              >
-                <option value="">Selecione</option>
-                {episPermitidos.map((e) => (
-                  <option key={e.id} value={e.id}>
-                    {e.nome} (estoque total: {e.saldoTotal})
-                  </option>
-                ))}
-              </Select>
-              {novaEntrega.trabalhadorId && episPermitidos.length === 0 && (
-                <Text size={200}>
-                  Esta função não tem EPIs cadastrados na matriz.{' '}
-                  <Button appearance="transparent" size="small" onClick={aoNavegarParaMatriz}>
-                    Cadastrar em Matriz de EPI por Função
-                  </Button>
-                </Text>
-              )}
-            </Field>
-          </div>
-          <div className={estilos.col2}>
-            <Field label="Quantidade">
-              <Input
-                type="number"
-                value={String(novaEntrega.quantidade)}
-                onChange={(_, d) => setNovaEntrega({ ...novaEntrega, quantidade: Number(d.value) })}
-              />
-            </Field>
-          </div>
-          <div className={estilos.col2}>
-            <Field label="Data de entrega">
-              <CampoData
-                value={novaEntrega.dataEntrega}
-                onChange={(_, d) => setNovaEntrega({ ...novaEntrega, dataEntrega: d.value })}
-              />
-            </Field>
-          </div>
-          <div className={estilos.col3}>
-            <Field label="Validade">
-              <CampoData
-                value={novaEntrega.dataValidade ?? ''}
-                onChange={(_, d) => setNovaEntrega({ ...novaEntrega, dataValidade: d.value })}
-              />
-            </Field>
-          </div>
-          <div className={estilos.col3}>
-            <Field label="Motivo">
-              <Select
-                value={novaEntrega.motivoTipo}
-                onChange={(_, d) => setNovaEntrega({ ...novaEntrega, motivoTipo: Number(d.value) })}
-              >
-                {Object.entries(motivoEntregaEpiLabel).map(([valor, rotulo]) => (
-                  <option key={valor} value={valor}>
-                    {rotulo}
-                  </option>
-                ))}
-              </Select>
-            </Field>
-          </div>
-        </div>
-
-        <div className={estilos.sectionTitle}>Documentação (NR-6) e Observações</div>
-        <div className={estilos.formGrid}>
-          <div className={estilos.col3}>
-            <Field label="Nº lista de presença (NR-6)" hint="Preenchido automaticamente do treinamento de NR-06 cadastrado, se houver — pode editar.">
-              <Input
-                value={novaEntrega.numeroListaPresencaNr6 ?? ''}
-                onChange={(_, d) => setNovaEntrega({ ...novaEntrega, numeroListaPresencaNr6: d.value })}
-              />
-            </Field>
-          </div>
-          <div className={estilos.col3}>
-            <Field label="Data do treinamento (NR-6)">
-              <CampoData
-                value={novaEntrega.dataTreinamentoNr6 ?? ''}
-                onChange={(_, d) => setNovaEntrega({ ...novaEntrega, dataTreinamentoNr6: d.value })}
-              />
-            </Field>
-          </div>
-          <div className={estilos.col3}>
-            <Field label="Visto do consórcio/responsável">
-              <Input
-                value={novaEntrega.vistoConsorcioResponsavel ?? ''}
-                onChange={(_, d) => setNovaEntrega({ ...novaEntrega, vistoConsorcioResponsavel: d.value })}
-              />
-            </Field>
-          </div>
-          <div className={estilos.col6}>
-            <Field label="Observação do motivo (opcional)">
-              <Input
-                value={novaEntrega.motivo ?? ''}
-                onChange={(_, d) => setNovaEntrega({ ...novaEntrega, motivo: d.value })}
-              />
-            </Field>
-          </div>
-          <div className={estilos.col6}>
-            <Field label="Observações">
-              <Input
-                value={novaEntrega.observacoes ?? ''}
-                onChange={(_, d) => setNovaEntrega({ ...novaEntrega, observacoes: d.value })}
-              />
-            </Field>
-          </div>
-        </div>
-        <div className={estilos.formActions}>
-          <Button appearance="primary" icon={<Add24Regular />} onClick={criar} disabled={carregando}>
-            Registrar entrega
+      <PageHeader
+        titulo="Entregas de EPI"
+        subtitulo={`${entregas.filter((e) => !e.dataDevolucao).length} entregas ativas`}
+        acoes={
+          <Button appearance="primary" icon={<Add24Regular />} onClick={() => setPainelAberto(true)}>
+            Nova entrega
           </Button>
-        </div>
-      </div>
+        }
+      />
 
-      <div className={estilos.card}>
-        <div className={estilos.toolbar}>
-          <Text weight="semibold">Entregas registradas</Text>
-        </div>
+      {erro && (
+        <FeedbackInline tom="erro" aoFechar={() => setErro(null)}>
+          {erro}
+        </FeedbackInline>
+      )}
 
-        <Table noNativeElements>
-          <TableHeader>
-            <TableRow>
-              <TableHeaderCell>Funcionário</TableHeaderCell>
-              <TableHeaderCell>EPI</TableHeaderCell>
-              <TableHeaderCell>Qtd.</TableHeaderCell>
-              <TableHeaderCell>Entrega</TableHeaderCell>
-              <TableHeaderCell>Validade</TableHeaderCell>
-              <TableHeaderCell>Devolução</TableHeaderCell>
-              <TableHeaderCell></TableHeaderCell>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {entregas.map((entrega) => (
-              <TableRow key={entrega.id}>
-                <TableCell>{nomeTrabalhador(entrega.trabalhadorId)}</TableCell>
-                <TableCell>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                    <FotoCatalogoEpi
-                      catalogoEpiId={entrega.catalogoEpiId}
-                      temFoto={epiTemFoto(entrega.catalogoEpiId)}
-                      tamanho={28}
-                    />
-                    {nomeEpi(entrega.catalogoEpiId)}
-                  </div>
-                </TableCell>
-                <TableCell>{entrega.quantidade}</TableCell>
-                <TableCell>{entrega.dataEntrega?.slice(0, 10)}</TableCell>
-                <TableCell>
-                  {entrega.dataValidade?.slice(0, 10)}
-                  {vencido(entrega.dataValidade) && !entrega.dataDevolucao && (
-                    <Badge color="danger" appearance="tint" style={{ marginLeft: 8 }}>
-                      Vencido
-                    </Badge>
-                  )}
-                </TableCell>
-                <TableCell>
-                  {devolucaoId === entrega.id ? (
-                    <div style={{ display: 'flex', gap: 4, alignItems: 'center' }}>
-                      <CampoData
-                        value={devolucaoData}
-                        onChange={(_, d) => setDevolucaoData(d.value)}
-                        style={{ width: 130 }}
-                      />
-                      <Input
-                        type="number"
-                        value={devolucaoQtd}
-                        onChange={(_, d) => setDevolucaoQtd(d.value)}
-                        style={{ width: 60 }}
-                      />
-                      <Button size="small" appearance="primary" onClick={() => confirmarDevolucao(entrega)} disabled={carregando}>
-                        Confirmar
-                      </Button>
-                    </div>
-                  ) : entrega.dataDevolucao ? (
-                    entrega.dataDevolucao.slice(0, 10)
-                  ) : (
-                    <Button size="small" appearance="subtle" onClick={() => iniciarDevolucao(entrega)}>
-                      Registrar devolução
-                    </Button>
-                  )}
-                </TableCell>
-                <TableCell>
-                  <div style={{ display: 'flex', gap: 4 }}>
-                    <Button
-                      appearance="subtle"
-                      icon={<Signature24Regular />}
-                      onClick={() => navigate(`/epi/${entrega.id}/assinar`)}
-                      aria-label="Assinar ficha"
-                      title="Assinar ficha"
-                    />
-                    <Button
-                      appearance="subtle"
-                      icon={<ArrowDownload24Regular />}
-                      onClick={() => baixarFicha(entrega.trabalhadorId)}
-                      disabled={baixandoId === entrega.trabalhadorId}
-                      aria-label="Baixar ficha do funcionário"
-                      title="Baixar ficha de EPI do funcionário em PDF"
-                    />
-                  </div>
-                </TableCell>
-              </TableRow>
-            ))}
-          </TableBody>
-        </Table>
-      </div>
+      <Card densidade="compacta">
+        <DataTable
+          aria-label="Entregas de EPI"
+          colunas={colunas}
+          linhas={entregas}
+          chaveLinha={(e) => e.id}
+          carregando={carregandoLista}
+          vazio={{
+            titulo: 'Nenhuma entrega registrada',
+            descricao: 'Registre a primeira entrega para começar o controle de EPI.',
+            acao: { rotulo: 'Nova entrega', aoClicar: () => setPainelAberto(true) },
+          }}
+          acoesLinha={(e) => (
+            <>
+              <Button
+                appearance="subtle"
+                size="small"
+                icon={<Signature24Regular />}
+                onClick={() => navigate(`/epi/${e.id}/assinar`)}
+                aria-label="Assinar ficha"
+                title="Assinar ficha"
+              />
+              <Button
+                appearance="subtle"
+                size="small"
+                icon={<ArrowDownload24Regular />}
+                onClick={() => baixarFicha(e.trabalhadorId)}
+                disabled={baixandoId === e.trabalhadorId}
+                aria-label="Baixar ficha do funcionário"
+                title="Baixar ficha de EPI do funcionário em PDF"
+              />
+            </>
+          )}
+        />
+      </Card>
+
+      <PainelLateral
+        aberto={painelAberto}
+        aoFechar={() => setPainelAberto(false)}
+        titulo="Nova entrega de EPI"
+        subtitulo="Nada é salvo até você registrar."
+        largura="lg"
+        rodape={
+          <>
+            <Button onClick={() => setPainelAberto(false)}>Cancelar</Button>
+            <Button appearance="primary" onClick={criar} disabled={carregando}>
+              Registrar entrega
+            </Button>
+          </>
+        }
+      >
+        <FormSection titulo="Quem recebe" numero={1} primeira>
+          <FormGrid>
+            <Campo>
+              <Field label="Funcionário" required>
+                <SeletorPesquisavel
+                  placeholder={`Buscar entre ${trabalhadores.length} funcionários`}
+                  opcoes={opcoesTrabalhadores}
+                  valor={novaEntrega.trabalhadorId}
+                  aoMudar={(id) =>
+                    setNovaEntrega({
+                      ...novaEntrega,
+                      trabalhadorId: id,
+                      catalogoEpiId: '',
+                      numeroListaPresencaNr6: '',
+                      dataTreinamentoNr6: '',
+                    })
+                  }
+                />
+              </Field>
+            </Campo>
+          </FormGrid>
+        </FormSection>
+
+        <FormSection titulo="O que é entregue" numero={2}>
+          <FormGrid>
+            <Campo>
+              <Field label="EPI" required>
+                <Select
+                  value={novaEntrega.catalogoEpiId}
+                  onChange={(_, d) => setNovaEntrega({ ...novaEntrega, catalogoEpiId: d.value })}
+                  disabled={!novaEntrega.trabalhadorId || episPermitidos.length === 0}
+                >
+                  <option value="">Selecione</option>
+                  {episPermitidos.map((e) => (
+                    <option key={e.id} value={e.id}>
+                      {e.nome} (estoque total: {e.saldoTotal})
+                    </option>
+                  ))}
+                </Select>
+              </Field>
+              {novaEntrega.trabalhadorId && episPermitidos.length === 0 && (
+                <FeedbackInline
+                  tom="aviso"
+                  acao={{
+                    rotulo: 'Cadastrar na matriz',
+                    aoClicar: () => {
+                      setPainelAberto(false);
+                      aoNavegarParaMatriz();
+                    },
+                  }}
+                >
+                  Esta função não tem EPIs cadastrados na matriz.
+                </FeedbackInline>
+              )}
+            </Campo>
+            <Campo span={4}>
+              <Field label="Quantidade">
+                <Input
+                  type="number"
+                  value={String(novaEntrega.quantidade)}
+                  onChange={(_, d) => setNovaEntrega({ ...novaEntrega, quantidade: Number(d.value) })}
+                />
+              </Field>
+            </Campo>
+            <Campo span={4}>
+              <Field label="Data de entrega">
+                <CampoData
+                  value={novaEntrega.dataEntrega}
+                  onChange={(_, d) => setNovaEntrega({ ...novaEntrega, dataEntrega: d.value })}
+                />
+              </Field>
+            </Campo>
+            <Campo span={4}>
+              <Field label="Validade">
+                <CampoData
+                  value={novaEntrega.dataValidade ?? ''}
+                  onChange={(_, d) => setNovaEntrega({ ...novaEntrega, dataValidade: d.value })}
+                />
+              </Field>
+            </Campo>
+            <Campo span={6}>
+              <Field label="Motivo">
+                <Select
+                  value={novaEntrega.motivoTipo}
+                  onChange={(_, d) => setNovaEntrega({ ...novaEntrega, motivoTipo: Number(d.value) })}
+                >
+                  {Object.entries(motivoEntregaEpiLabel).map(([valor, rotulo]) => (
+                    <option key={valor} value={valor}>
+                      {rotulo}
+                    </option>
+                  ))}
+                </Select>
+              </Field>
+            </Campo>
+            <Campo span={6}>
+              <Field label="Observação do motivo">
+                <Input
+                  value={novaEntrega.motivo ?? ''}
+                  onChange={(_, d) => setNovaEntrega({ ...novaEntrega, motivo: d.value })}
+                />
+              </Field>
+            </Campo>
+          </FormGrid>
+        </FormSection>
+
+        <FormSection titulo="Documentação NR-6" numero={3}>
+          <FormGrid>
+            <Campo span={6}>
+              <Field label="Nº lista de presença" hint="Preenchido do treinamento de NR-06 cadastrado, se houver.">
+                <Input
+                  value={novaEntrega.numeroListaPresencaNr6 ?? ''}
+                  onChange={(_, d) => setNovaEntrega({ ...novaEntrega, numeroListaPresencaNr6: d.value })}
+                />
+              </Field>
+            </Campo>
+            <Campo span={6}>
+              <Field label="Data do treinamento">
+                <CampoData
+                  value={novaEntrega.dataTreinamentoNr6 ?? ''}
+                  onChange={(_, d) => setNovaEntrega({ ...novaEntrega, dataTreinamentoNr6: d.value })}
+                />
+              </Field>
+            </Campo>
+            <Campo span={6}>
+              <Field label="Visto do consórcio/responsável">
+                <Input
+                  value={novaEntrega.vistoConsorcioResponsavel ?? ''}
+                  onChange={(_, d) => setNovaEntrega({ ...novaEntrega, vistoConsorcioResponsavel: d.value })}
+                />
+              </Field>
+            </Campo>
+            <Campo span={6}>
+              <Field label="Observações">
+                <Input
+                  value={novaEntrega.observacoes ?? ''}
+                  onChange={(_, d) => setNovaEntrega({ ...novaEntrega, observacoes: d.value })}
+                />
+              </Field>
+            </Campo>
+          </FormGrid>
+        </FormSection>
+      </PainelLateral>
 
       {entregaParaAssinar && (
         <AssinaturaEntregaEpiDialog
