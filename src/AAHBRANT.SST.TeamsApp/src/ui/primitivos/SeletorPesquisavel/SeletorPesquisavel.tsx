@@ -10,12 +10,17 @@ const useStyles = makeStyles({
 export interface OpcaoSeletor { id: string; rotulo: string; descricao?: string }
 
 export interface SeletorPesquisavelProps {
+  /** Memoize em listas grandes (ex.: `useMemo` sobre trabalhadores). */
   opcoes: OpcaoSeletor[];
   valor: string;
   aoMudar: (id: string) => void;
   placeholder?: string;
   vazio?: string;
   disabled?: boolean;
+  /**
+   * Use só quando o seletor NÃO estiver dentro de um `<Field label>`; com Field, o rótulo já vem
+   * do contexto.
+   */
   'aria-label'?: string;
 }
 

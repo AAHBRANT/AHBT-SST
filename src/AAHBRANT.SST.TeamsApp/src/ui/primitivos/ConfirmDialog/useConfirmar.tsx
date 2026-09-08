@@ -24,6 +24,9 @@ export function useConfirmar() {
   const resolverRef = useRef<((v: boolean) => void) | null>(null);
 
   const confirmar = useCallback((entrada: OpcoesConfirmacao | string) => {
+    // Chamada nova antes de responder à anterior: a promise superada resolve como "cancelou" para
+    // ninguém ficar esperando para sempre.
+    resolverRef.current?.(false);
     setOpcoes(typeof entrada === 'string' ? { mensagem: entrada, tom: 'destrutivo' } : { tom: 'destrutivo', ...entrada });
     setAberto(true);
     return new Promise<boolean>((resolve) => { resolverRef.current = resolve; });

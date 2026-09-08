@@ -21,6 +21,7 @@ const useStyles = makeStyles({
 });
 
 export interface AcaoWorkflow {
+  /** Única dentro da lista — é a chave React e o identificador do formulário aberto. */
   chave: string;
   rotulo: string;
   descricao?: string;

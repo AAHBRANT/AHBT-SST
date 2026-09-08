@@ -47,7 +47,7 @@ export function DataTable<T>({ colunas, linhas, chaveLinha, carregando, vazio, d
       <table className={mergeClasses(e.tabela, compacta && e.compacta, cabecalhoFixo && e.cabecalhoFixo)} aria-label={ariaLabel}>
         <thead>
           <tr>
-            {colunas.map((c) => <th key={c.chave} className={mergeClasses(e.th, c.alinhar === 'direita' && e.direita, c.alinhar === 'centro' && e.centro)} style={c.largura ? { width: c.largura } : undefined}>{c.rotulo}</th>)}
+            {colunas.map((c, i) => <th key={`${i}-${c.chave}`} className={mergeClasses(e.th, c.alinhar === 'direita' && e.direita, c.alinhar === 'centro' && e.centro)} style={c.largura ? { width: c.largura } : undefined}>{c.rotulo}</th>)}
             {acoesLinha && <th className={e.th} aria-label="Ações" />}
           </tr>
         </thead>
@@ -66,7 +66,7 @@ export function DataTable<T>({ colunas, linhas, chaveLinha, carregando, vazio, d
                   onKeyDown={clicavel ? (ev) => { if (ev.key === 'Enter' || ev.key === ' ') { ev.preventDefault(); aoClicarLinha(linha); } } : undefined}
                 >
                   {colunas.map((c, i) => (
-                    <td key={c.chave} className={mergeClasses(e.td, compacta && e.tdCompacta, i === 0 && e.tdPrimeira, i === colunas.length - 1 && !acoesLinha && e.tdUltima, c.alinhar === 'direita' && e.direita, c.alinhar === 'centro' && e.centro)}>
+                    <td key={`${i}-${c.chave}`} className={mergeClasses(e.td, compacta && e.tdCompacta, i === 0 && e.tdPrimeira, i === colunas.length - 1 && !acoesLinha && e.tdUltima, c.alinhar === 'direita' && e.direita, c.alinhar === 'centro' && e.centro)}>
                       {celula(linha, c)}
                     </td>
                   ))}

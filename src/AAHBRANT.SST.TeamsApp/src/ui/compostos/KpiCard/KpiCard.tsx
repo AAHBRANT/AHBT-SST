@@ -39,7 +39,7 @@ export function KpiCard({ rotulo, valor, tom, icone, deltas, indice = 0, carrega
         <span className={tipo.display}>{valor}</span>
         <span className={mergeClasses(tipo.legenda, e.rotulo)}>{rotulo}</span>
         {deltas && deltas.length > 0 && (
-          <div className={e.deltas}>{deltas.map((d) => <span key={d.texto} className={mergeClasses(e.delta, tons[d.tom], d.pulsar === 'rapido' && pulsos.rapido, d.pulsar === 'leve' && pulsos.leve)}>{d.texto}</span>)}</div>
+          <div className={e.deltas}>{deltas.map((d, i) => <span key={`${i}-${d.texto}`} className={mergeClasses(e.delta, tons[d.tom], d.pulsar === 'rapido' && pulsos.rapido, d.pulsar === 'leve' && pulsos.leve)}>{d.texto}</span>)}</div>
         )}
       </div>
       {icone && <div className={mergeClasses(e.icone, tons[tom])}>{icone}</div>}

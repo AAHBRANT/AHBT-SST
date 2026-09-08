@@ -1,3 +1,4 @@
+// Estilos das três escalas de aba (pilar, módulo, interno) da peça Abas — spec §1.1, §3.
 import { makeStyles, shorthands } from '@fluentui/react-components';
 import { designTokens, tokensUi } from '../../tokens/tokens';
 
@@ -14,7 +15,7 @@ export const useAbasStyles = makeStyles({
     ...shorthands.borderBottom('1px', 'solid', designTokens.colorCardBorder),
     '& .fui-Tab': {
       backgroundColor: designTokens.colorNeutralLight, ...shorthands.border('1px', 'solid', designTokens.colorCardBorder), borderBottom: 'none',
-      borderRadius: `${tokensUi.raio.sm} ${tokensUi.raio.sm} 0 0`, color: designTokens.colorNeutralMedium, fontWeight: 600, fontSize: '13px',
+      borderRadius: `${tokensUi.raio.sm} ${tokensUi.raio.sm} 0 0`, color: designTokens.colorNeutralMedium, fontWeight: 600, fontSize: '14px',
       ...shorthands.padding('10px', '20px'), minHeight: 'auto', whiteSpace: 'nowrap', position: 'relative', top: '1px',
       transitionProperty: 'background-color, color', transitionDuration: tokensUi.duracao.rapido,
     },

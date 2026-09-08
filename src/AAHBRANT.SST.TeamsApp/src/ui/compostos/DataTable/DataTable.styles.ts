@@ -1,3 +1,4 @@
+// Estilos da peça DataTable: linha-como-cartão, densidades, cabeçalho fixo e linha expansível (spec §3).
 import { makeStyles } from '@fluentui/react-components';
 import { designTokens, tokensUi } from '../../tokens/tokens';
 
