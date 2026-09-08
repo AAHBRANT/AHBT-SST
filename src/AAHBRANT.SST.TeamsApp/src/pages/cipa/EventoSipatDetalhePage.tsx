@@ -1,21 +1,22 @@
 import { useEffect, useState } from 'react';
-import { useNavigate, useParams } from 'react-router-dom';
+import { useParams } from 'react-router-dom';
 import {
   Button,
+  Campo,
+  CampoData,
+  Card,
+  Carregando,
+  DataTable,
   Field,
+  FeedbackInline,
+  FormGrid,
+  FormRodape,
+  FormSection,
   Input,
-  Table,
-  TableBody,
-  TableCell,
-  TableHeader,
-  TableHeaderCell,
-  TableRow,
-  Text,
-} from '@fluentui/react-components';
-import { CampoData } from '../../components/CampoData';
-import { ArrowLeft24Regular } from '@fluentui/react-icons';
-import { api, type EventoSipatDetalhe } from '../../lib/api';
-import { usePageStyles } from '../pageStyles';
+  PageHeader,
+  type Coluna,
+} from '@ui';
+import { api, type AtividadeSipat, type EventoSipatDetalhe } from '../../lib/api';
 
 function atividadeVazia() {
   return { data: '', horario: '', temaPalestra: '', palestrante: '' };
@@ -23,8 +24,6 @@ function atividadeVazia() {
 
 export function EventoSipatDetalhePage() {
   const { id } = useParams<{ id: string }>();
-  const navigate = useNavigate();
-  const estilos = usePageStyles();
   const [detalhe, setDetalhe] = useState<EventoSipatDetalhe | null>(null);
   const [novaAtividade, setNovaAtividade] = useState(atividadeVazia());
   const [erro, setErro] = useState<string | null>(null);
@@ -70,98 +69,87 @@ export function EventoSipatDetalhePage() {
     }
   }
 
-  if (!id) return <Text>Evento SIPAT não encontrado.</Text>;
+  if (!id) return <FeedbackInline tom="erro">Evento SIPAT não encontrado.</FeedbackInline>;
+
+  const colunasAtividades: Coluna<AtividadeSipat>[] = [
+    { chave: 'data', rotulo: 'Data', render: (a) => a.data?.slice(0, 10) ?? '' },
+    { chave: 'horario', rotulo: 'Horário', render: (a) => a.horario ?? '—' },
+    { chave: 'temaPalestra', rotulo: 'Tema' },
+    { chave: 'palestrante', rotulo: 'Palestrante', render: (a) => a.palestrante ?? '—' },
+  ];
 
   return (
     <div>
-      <Button appearance="subtle" icon={<ArrowLeft24Regular />} onClick={() => navigate('/operacao/cipa')} style={{ marginBottom: 12 }}>
-        Voltar para CIPA
-      </Button>
+      <PageHeader titulo="Evento SIPAT" voltarPara="/operacao/cipa" rotuloVoltar="Voltar para CIPA" />
 
-      {erro && <Text className={estilos.erro}>{erro}</Text>}
+      {erro && (
+        <FeedbackInline tom="erro" aoFechar={() => setErro(null)}>
+          {erro}
+        </FeedbackInline>
+      )}
 
       {!detalhe ? (
-        <Text>Carregando...</Text>
+        <Carregando variante="detalhe" linhas={8} />
       ) : (
-        <>
-          <div className={estilos.card} style={{ marginBottom: 16 }}>
-            <Text size={500} weight="semibold" style={{ display: 'block', marginBottom: 8 }}>
-              SIPAT {detalhe.evento.anoReferencia} — {detalhe.evento.obraNome}
-            </Text>
-            <Text size={200}>
-              {detalhe.evento.dataInicio?.slice(0, 10)} a {detalhe.evento.dataFim?.slice(0, 10)}
-              {detalhe.evento.tema ? ` · ${detalhe.evento.tema}` : ''}
-            </Text>
-            {detalhe.evento.programacao && (
-              <Text size={200} style={{ display: 'block', marginTop: 8 }}>
-                {detalhe.evento.programacao}
-              </Text>
-            )}
-          </div>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+          <Card
+            densidade="compacta"
+            titulo={`SIPAT ${detalhe.evento.anoReferencia} — ${detalhe.evento.obraNome}`}
+            subtitulo={
+              <>
+                {detalhe.evento.dataInicio?.slice(0, 10)} a {detalhe.evento.dataFim?.slice(0, 10)}
+                {detalhe.evento.tema ? ` · ${detalhe.evento.tema}` : ''}
+              </>
+            }
+          >
+            {detalhe.evento.programacao && <div>{detalhe.evento.programacao}</div>}
+          </Card>
 
-          <div className={estilos.card} style={{ marginBottom: 16 }}>
-            <div className={estilos.toolbar}>
-              <Text weight="semibold">Nova atividade/palestra</Text>
-            </div>
-            <div className={`${estilos.sectionTitle} ${estilos.sectionTitleFirst}`}>Dados da Atividade</div>
-            <div className={estilos.formGrid}>
-              <div className={estilos.col2}>
-                <Field label="Data" required>
-                  <CampoData value={novaAtividade.data} onChange={(_, d) => setNovaAtividade({ ...novaAtividade, data: d.value })} />
-                </Field>
-              </div>
-              <div className={estilos.col2}>
-                <Field label="Horário">
-                  <Input value={novaAtividade.horario} onChange={(_, d) => setNovaAtividade({ ...novaAtividade, horario: d.value })} />
-                </Field>
-              </div>
-              <div className={estilos.col4}>
-                <Field label="Tema da palestra" required>
-                  <Input
-                    value={novaAtividade.temaPalestra}
-                    onChange={(_, d) => setNovaAtividade({ ...novaAtividade, temaPalestra: d.value })}
-                  />
-                </Field>
-              </div>
-              <div className={estilos.col4}>
-                <Field label="Palestrante">
-                  <Input value={novaAtividade.palestrante} onChange={(_, d) => setNovaAtividade({ ...novaAtividade, palestrante: d.value })} />
-                </Field>
-              </div>
-            </div>
-            <div className={estilos.formActions}>
-              <Button appearance="primary" onClick={criarAtividade} disabled={salvando}>
-                Adicionar atividade
-              </Button>
-            </div>
-          </div>
+          <Card titulo="Nova atividade/palestra">
+            <FormSection titulo="Dados da Atividade" primeira>
+              <FormGrid>
+                <Campo span={2}>
+                  <Field label="Data" required>
+                    <CampoData value={novaAtividade.data} onChange={(_, d) => setNovaAtividade({ ...novaAtividade, data: d.value })} />
+                  </Field>
+                </Campo>
+                <Campo span={2}>
+                  <Field label="Horário">
+                    <Input value={novaAtividade.horario} onChange={(_, d) => setNovaAtividade({ ...novaAtividade, horario: d.value })} />
+                  </Field>
+                </Campo>
+                <Campo span={4}>
+                  <Field label="Tema da palestra" required>
+                    <Input
+                      value={novaAtividade.temaPalestra}
+                      onChange={(_, d) => setNovaAtividade({ ...novaAtividade, temaPalestra: d.value })}
+                    />
+                  </Field>
+                </Campo>
+                <Campo span={4}>
+                  <Field label="Palestrante">
+                    <Input value={novaAtividade.palestrante} onChange={(_, d) => setNovaAtividade({ ...novaAtividade, palestrante: d.value })} />
+                  </Field>
+                </Campo>
+              </FormGrid>
+              <FormRodape>
+                <Button appearance="primary" onClick={criarAtividade} disabled={salvando}>
+                  Adicionar atividade
+                </Button>
+              </FormRodape>
+            </FormSection>
+          </Card>
 
-          <div className={estilos.card}>
-            <div className={estilos.toolbar}>
-              <Text weight="semibold">Programação</Text>
-            </div>
-            <Table noNativeElements>
-              <TableHeader>
-                <TableRow>
-                  <TableHeaderCell>Data</TableHeaderCell>
-                  <TableHeaderCell>Horário</TableHeaderCell>
-                  <TableHeaderCell>Tema</TableHeaderCell>
-                  <TableHeaderCell>Palestrante</TableHeaderCell>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {detalhe.atividades.map((a) => (
-                  <TableRow key={a.id}>
-                    <TableCell>{a.data?.slice(0, 10)}</TableCell>
-                    <TableCell>{a.horario ?? '—'}</TableCell>
-                    <TableCell>{a.temaPalestra}</TableCell>
-                    <TableCell>{a.palestrante ?? '—'}</TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          </div>
-        </>
+          <Card titulo="Programação">
+            <DataTable
+              aria-label="Programação do evento SIPAT"
+              colunas={colunasAtividades}
+              linhas={detalhe.atividades}
+              chaveLinha={(a) => a.id}
+              vazio={{ titulo: 'Nenhuma atividade cadastrada ainda.' }}
+            />
+          </Card>
+        </div>
       )}
     </div>
   );
