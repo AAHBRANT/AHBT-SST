@@ -1,22 +1,11 @@
-import { useEffect, useState } from 'react';
-import { useNavigate, useParams } from 'react-router-dom';
+import { useEffect, useMemo, useState } from 'react';
+import { useParams } from 'react-router-dom';
 import {
-  Badge,
-  Button,
-  Field,
-  Input,
-  Select,
-  Table,
-  TableBody,
-  TableCell,
-  TableHeader,
-  TableHeaderCell,
-  TableRow,
-  Text,
-  Textarea,
-} from '@fluentui/react-components';
-import { CampoData } from '../../components/CampoData';
-import { ArrowLeft24Regular, CheckmarkCircle24Regular } from '@fluentui/react-icons';
+  Button, Field, Input, Select, Textarea, CampoData,
+  DetailPageLayout, WorkflowActions, Card, StatusChip, FormSection, FormGrid, Campo, FormRodape,
+  DataTable, FeedbackInline, SeletorPesquisavel, Carregando,
+  type AcaoWorkflow, type Coluna, type Tom,
+} from '@ui';
 import {
   api,
   origemNaoConformidadeLabel,
@@ -26,11 +15,11 @@ import {
   tipoAcaoPlanoLabel,
   StatusNaoConformidade,
   StatusAcaoPlano,
+  type AcaoPlano,
   type NaoConformidadeDetalhe,
   type NovaAcaoPlano,
   type Usuario,
 } from '../../lib/api';
-import { usePageStyles } from '../pageStyles';
 
 function novaAcaoInicial(): Omit<NovaAcaoPlano, 'origemTipo' | 'origemId'> {
   return { tipo: 1, descricao: '', responsavelUsuarioId: '', prioridade: 3, prazo: '' };
@@ -40,10 +29,33 @@ function respostaInicial() {
   return { descricaoAcao: '', responsavelExecucaoId: '', prioridade: 3, prazo: '', justificativaPrazo: '' };
 }
 
+// Tom do chip por estado do fluxo. EmAnalise (6) não está aqui de propósito: o fluxo atual do
+// backend não emite esse estado, então cai no 'neutro' do fallback em vez de ganhar cor própria.
+const tomStatus: Record<number, Tom> = {
+  [StatusNaoConformidade.Aberta]: 'neutro',
+  [StatusNaoConformidade.Enviada]: 'info',
+  [StatusNaoConformidade.Devolvida]: 'alerta',
+  [StatusNaoConformidade.EmAndamento]: 'atencao',
+  [StatusNaoConformidade.AguardandoValidacao]: 'info',
+  [StatusNaoConformidade.Encerrada]: 'ok',
+};
+
+const tomAcaoPlano: Record<number, Tom> = {
+  [StatusAcaoPlano.Pendente]: 'atencao',
+  [StatusAcaoPlano.EmAndamento]: 'atencao',
+  [StatusAcaoPlano.Concluido]: 'ok',
+  [StatusAcaoPlano.Vencido]: 'alerta',
+};
+
+// Detalhe e tratativa de uma não conformidade — o fluxo mais completo do app: Aberta → Enviada →
+// EmAndamento → AguardandoValidacao → Encerrada, com Devolvida como desvio em dois pontos. Segunda
+// página na camada ui/ (piloto 2 da Onda 1, spec §5.1): nada de Fluent cru nem de pageStyles aqui —
+// DetailPageLayout com resumo e ações do fluxo na lateral, cada transição em WorkflowActions com o
+// próprio formulário inline, plano de ação em DataTable. A página só monta as ações permitidas no
+// estado atual; toda a validação de transição continua no backend e o erro devolvido é exibido como
+// veio, no FeedbackInline único acima do conteúdo (ver api.ts request()).
 export function NaoConformidadeDetalhePage() {
   const { id } = useParams<{ id: string }>();
-  const navigate = useNavigate();
-  const estilos = usePageStyles();
   const [detalhe, setDetalhe] = useState<NaoConformidadeDetalhe | null>(null);
   const [usuarios, setUsuarios] = useState<Usuario[]>([]);
   const [novaAcao, setNovaAcao] = useState(novaAcaoInicial());
@@ -215,310 +227,289 @@ export function NaoConformidadeDetalhePage() {
     }
   }
 
-  if (!id) {
-    return <Text>Não conformidade não encontrada.</Text>;
-  }
+  const opcoesUsuarios = useMemo(() => usuarios.map((u) => ({ id: u.id, rotulo: u.nome })), [usuarios]);
 
+  // Antes de qualquer retorno antecipado: as ações do fluxo e as colunas abaixo dependem de `nc`.
   const nc = detalhe?.naoConformidade;
 
-  return (
-    <div>
-      <Button
-        appearance="subtle"
-        icon={<ArrowLeft24Regular />}
-        onClick={() => navigate('/ocorrencias?secao=nao-conformidades')}
-        style={{ marginBottom: 12 }}
-      >
-        Voltar para Não Conformidades
-      </Button>
-
-      {erro && <Text className={estilos.erro}>{erro}</Text>}
-
-      <div className={estilos.card} style={{ marginBottom: 16 }}>
-        {nc ? (
-          <>
-            <Text size={500} weight="semibold">
-              {nc.descricao}
-            </Text>
-            <div style={{ display: 'flex', gap: 16, marginTop: 8, flexWrap: 'wrap', alignItems: 'center' }}>
-              <Text>Origem: {origemNaoConformidadeLabel[nc.origemDeteccao]}</Text>
-              {nc.requisitoRelacionado && <Text>Requisito: {nc.requisitoRelacionado}</Text>}
-              {nc.local && <Text>Local: {nc.local}</Text>}
-              <Badge appearance="tint">{statusNaoConformidadeLabel[nc.status]}</Badge>
-            </div>
-            <div style={{ display: 'flex', gap: 16, marginTop: 8, flexWrap: 'wrap', alignItems: 'center' }}>
-              {nc.atividadeNome && <Text>Atividade: {nc.atividadeNome}</Text>}
-              {nc.responsavelUsuarioNome && <Text>Responsável: {nc.responsavelUsuarioNome}</Text>}
-              {nc.prazo && <Text>Prazo: {nc.prazo.slice(0, 10)}</Text>}
-            </div>
-
-            {nc.status === StatusNaoConformidade.Aberta && (
-              <div className={estilos.formActions} style={{ marginTop: 16 }}>
-                <Button appearance="primary" icon={<CheckmarkCircle24Regular />} onClick={enviar} disabled={processando}>
-                  Enviar ao responsável
-                </Button>
-              </div>
-            )}
-
-            {(nc.status === StatusNaoConformidade.Enviada || nc.status === StatusNaoConformidade.Devolvida) && (
-              <div style={{ marginTop: 16 }}>
-                {nc.status === StatusNaoConformidade.Devolvida && nc.motivoDevolucao && (
-                  <Text className={estilos.erro} style={{ display: 'block', marginBottom: 8 }}>
-                    Motivo da devolução: {nc.motivoDevolucao}
-                  </Text>
-                )}
-                <div className={`${estilos.sectionTitle} ${estilos.sectionTitleFirst}`}>Responder ocorrência</div>
-                <div className={estilos.formGrid}>
-                  <div className={estilos.col5}>
-                    <Field label="Ação a ser realizada" required>
-                      <Input
-                        value={resposta.descricaoAcao}
-                        onChange={(_, d) => setResposta({ ...resposta, descricaoAcao: d.value })}
-                      />
-                    </Field>
-                  </div>
-                  <div className={estilos.col3}>
-                    <Field label="Executor">
-                      <Select
-                        value={resposta.responsavelExecucaoId}
-                        onChange={(_, d) => setResposta({ ...resposta, responsavelExecucaoId: d.value })}
-                      >
-                        <option value="">Manter responsável atual</option>
-                        {usuarios.map((usuario) => (
-                          <option key={usuario.id} value={usuario.id}>
-                            {usuario.nome}
-                          </option>
-                        ))}
-                      </Select>
-                    </Field>
-                  </div>
-                  <div className={estilos.col2}>
-                    <Field label="Prioridade">
-                      <Select
-                        value={String(resposta.prioridade)}
-                        onChange={(_, d) => setResposta({ ...resposta, prioridade: Number(d.value) })}
-                      >
-                        {Object.entries(prioridadeAcaoLabel).map(([valor, rotulo]) => (
-                          <option key={valor} value={valor}>
-                            {rotulo}
-                          </option>
-                        ))}
-                      </Select>
-                    </Field>
-                  </div>
-                  <div className={estilos.col2}>
-                    <Field label="Prazo (opcional — sugerido pela prioridade se em branco)">
-                      <CampoData
-                        value={resposta.prazo}
-                        onChange={(_, d) => setResposta({ ...resposta, prazo: d.value })}
-                      />
-                    </Field>
-                  </div>
-                  <div className={estilos.col6}>
-                    <Field label="Justificativa do prazo (opcional)">
-                      <Input
-                        value={resposta.justificativaPrazo}
-                        onChange={(_, d) => setResposta({ ...resposta, justificativaPrazo: d.value })}
-                      />
-                    </Field>
-                  </div>
-                </div>
-                <div className={estilos.formActions}>
-                  <Button appearance="primary" onClick={responder} disabled={processando}>
-                    Responder
-                  </Button>
-                </div>
-              </div>
-            )}
-
-            {nc.status === StatusNaoConformidade.EmAndamento && (
-              <div style={{ marginTop: 16 }}>
-                <div className={`${estilos.sectionTitle} ${estilos.sectionTitleFirst}`}>
-                  Registrar conclusão da execução
-                </div>
-                <div className={estilos.formGrid}>
-                  <div className={estilos.col12}>
-                    <Field label="Descrição da conclusão (opcional)">
-                      <Textarea
-                        value={descricaoConclusao}
-                        onChange={(_, d) => setDescricaoConclusao(d.value)}
-                      />
-                    </Field>
-                  </div>
-                </div>
-                <div className={estilos.formActions}>
-                  <Button appearance="primary" onClick={registrarConclusao} disabled={processando}>
-                    Registrar conclusão
-                  </Button>
-                </div>
-              </div>
-            )}
-
-            {nc.status === StatusNaoConformidade.AguardandoValidacao && (
-              <div style={{ marginTop: 16 }}>
-                <div className={`${estilos.sectionTitle} ${estilos.sectionTitleFirst}`}>Validação do inspetor</div>
-                <div className={estilos.formGrid}>
-                  <div className={estilos.col3}>
-                    <Field label="Validar como">
-                      <Select value={usuarioValidador} onChange={(_, d) => setUsuarioValidador(d.value)}>
-                        <option value="">Selecione um usuário</option>
-                        {usuarios.map((usuario) => (
-                          <option key={usuario.id} value={usuario.id}>
-                            {usuario.nome}
-                          </option>
-                        ))}
-                      </Select>
-                    </Field>
-                  </div>
-                  <div className={estilos.col5}>
-                    <Field label="Observações de encerramento (opcional)">
-                      <Input
-                        value={observacoesEncerramento}
-                        onChange={(_, d) => setObservacoesEncerramento(d.value)}
-                      />
-                    </Field>
-                  </div>
-                  <div className={estilos.col4}>
-                    <Field label="Motivo da devolução (se for devolver)">
-                      <Input value={motivoDevolucao} onChange={(_, d) => setMotivoDevolucao(d.value)} />
-                    </Field>
-                  </div>
-                </div>
-                <div className={estilos.formActions}>
-                  <Button appearance="primary" icon={<CheckmarkCircle24Regular />} onClick={encerrar} disabled={processando}>
-                    Encerrar
-                  </Button>
-                  <Button appearance="secondary" onClick={devolver} disabled={processando}>
-                    Devolver
-                  </Button>
-                </div>
-              </div>
-            )}
-          </>
-        ) : (
-          <Text>Carregando...</Text>
-        )}
-      </div>
-
-      <div className={estilos.card} style={{ marginBottom: 16 }}>
-        <div className={estilos.toolbar}>
-          <Text weight="semibold">Nova ação do plano</Text>
-        </div>
-        <div className={`${estilos.sectionTitle} ${estilos.sectionTitleFirst}`}>Dados da Ação</div>
-        <div className={estilos.formGrid}>
-          <div className={estilos.col2}>
-            <Field label="Tipo">
-              <Select
-                value={String(novaAcao.tipo)}
-                onChange={(_, d) => setNovaAcao({ ...novaAcao, tipo: Number(d.value) })}
-              >
-                {Object.entries(tipoAcaoPlanoLabel).map(([valor, rotulo]) => (
-                  <option key={valor} value={valor}>
-                    {rotulo}
-                  </option>
-                ))}
-              </Select>
-            </Field>
-          </div>
-          <div className={estilos.col3}>
-            <Field label="Descrição" required>
-              <Input value={novaAcao.descricao} onChange={(_, d) => setNovaAcao({ ...novaAcao, descricao: d.value })} />
-            </Field>
-          </div>
-          <div className={estilos.col3}>
-            <Field label="Responsável">
-              <Select
-                value={novaAcao.responsavelUsuarioId ?? ''}
-                onChange={(_, d) => setNovaAcao({ ...novaAcao, responsavelUsuarioId: d.value })}
-              >
-                <option value="">Nenhum</option>
-                {usuarios.map((usuario) => (
-                  <option key={usuario.id} value={usuario.id}>
-                    {usuario.nome}
-                  </option>
-                ))}
-              </Select>
-            </Field>
-          </div>
-          <div className={estilos.col2}>
-            <Field label="Prioridade">
-              <Select
-                value={String(novaAcao.prioridade)}
-                onChange={(_, d) => setNovaAcao({ ...novaAcao, prioridade: Number(d.value) })}
-              >
-                {Object.entries(prioridadeAcaoLabel).map(([valor, rotulo]) => (
-                  <option key={valor} value={valor}>
-                    {rotulo}
-                  </option>
-                ))}
-              </Select>
-            </Field>
-          </div>
-          <div className={estilos.col2}>
-            <Field label="Prazo">
-              <CampoData
-                value={novaAcao.prazo ?? ''}
-                onChange={(_, d) => setNovaAcao({ ...novaAcao, prazo: d.value })}
-              />
-            </Field>
-          </div>
-        </div>
-        <div className={estilos.formActions}>
-          <Button appearance="primary" onClick={criarAcao} disabled={processando}>
-            Adicionar ação
-          </Button>
-        </div>
-      </div>
-
-      <div className={estilos.card}>
-        <div className={estilos.toolbar}>
-          <Text weight="semibold">Ações do plano</Text>
-          <Field label="Validar como">
-            <Select value={usuarioValidador} onChange={(_, d) => setUsuarioValidador(d.value)}>
-              <option value="">Selecione um usuário</option>
-              {usuarios.map((usuario) => (
-                <option key={usuario.id} value={usuario.id}>
-                  {usuario.nome}
-                </option>
+  // Só as transições permitidas no estado atual chegam à lateral — quem decide o que é permitido
+  // continua sendo o backend; aqui é só o espelho do estado para não oferecer o impossível.
+  const acoes: AcaoWorkflow[] = [];
+  if (nc?.status === StatusNaoConformidade.Aberta) {
+    acoes.push({
+      chave: 'enviar',
+      rotulo: 'Enviar ao responsável',
+      descricao: 'Inicia a tratativa',
+      tom: 'primario',
+      aoExecutar: enviar,
+    });
+  }
+  if (nc?.status === StatusNaoConformidade.Enviada || nc?.status === StatusNaoConformidade.Devolvida) {
+    acoes.push({
+      chave: 'responder',
+      rotulo: 'Responder ocorrência',
+      descricao: 'Defina a ação, o executor e o prazo',
+      tom: 'primario',
+      rotuloExecutar: 'Responder',
+      aoExecutar: responder,
+      formulario: (
+        <>
+          <Field label="Ação a ser realizada" required>
+            <Input
+              value={resposta.descricaoAcao}
+              onChange={(_, d) => setResposta({ ...resposta, descricaoAcao: d.value })}
+            />
+          </Field>
+          <Field label="Executor">
+            <SeletorPesquisavel
+              placeholder="Manter responsável atual"
+              opcoes={opcoesUsuarios}
+              valor={resposta.responsavelExecucaoId}
+              aoMudar={(usuarioId) => setResposta({ ...resposta, responsavelExecucaoId: usuarioId })}
+            />
+          </Field>
+          <Field label="Prioridade">
+            <Select
+              value={String(resposta.prioridade)}
+              onChange={(_, d) => setResposta({ ...resposta, prioridade: Number(d.value) })}
+            >
+              {Object.entries(prioridadeAcaoLabel).map(([valor, rotulo]) => (
+                <option key={valor} value={valor}>{rotulo}</option>
               ))}
             </Select>
           </Field>
-        </div>
-        <Table noNativeElements>
-          <TableHeader>
-            <TableRow>
-              <TableHeaderCell>Tipo</TableHeaderCell>
-              <TableHeaderCell>Descrição</TableHeaderCell>
-              <TableHeaderCell>Responsável</TableHeaderCell>
-              <TableHeaderCell>Prioridade</TableHeaderCell>
-              <TableHeaderCell>Prazo</TableHeaderCell>
-              <TableHeaderCell>Status</TableHeaderCell>
-              <TableHeaderCell></TableHeaderCell>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {detalhe?.acoesPlano.map((acao) => (
-              <TableRow key={acao.id}>
-                <TableCell>{tipoAcaoPlanoLabel[acao.tipo]}</TableCell>
-                <TableCell>{acao.descricao}</TableCell>
-                <TableCell>{acao.responsavelUsuarioNome ?? '—'}</TableCell>
-                <TableCell>{prioridadeAcaoLabel[acao.prioridade]}</TableCell>
-                <TableCell>{acao.prazo?.slice(0, 10) ?? '—'}</TableCell>
-                <TableCell>
-                  <Badge appearance="tint">{statusAcaoPlanoLabel[acao.status]}</Badge>
-                </TableCell>
-                <TableCell>
-                  {acao.status !== StatusAcaoPlano.Concluido && !acao.dataValidacao && (
-                    <Button appearance="subtle" onClick={() => validarAcao(acao.id)} disabled={processando}>
-                      Validar
-                    </Button>
-                  )}
-                </TableCell>
-              </TableRow>
-            ))}
-          </TableBody>
-        </Table>
-      </div>
-    </div>
+          <Field label="Prazo" hint="Sugerido pela prioridade se em branco">
+            <CampoData value={resposta.prazo} onChange={(_, d) => setResposta({ ...resposta, prazo: d.value })} />
+          </Field>
+          <Field label="Justificativa do prazo" hint="Opcional">
+            <Input
+              value={resposta.justificativaPrazo}
+              onChange={(_, d) => setResposta({ ...resposta, justificativaPrazo: d.value })}
+            />
+          </Field>
+        </>
+      ),
+    });
+  }
+  if (nc?.status === StatusNaoConformidade.EmAndamento) {
+    acoes.push({
+      chave: 'concluir',
+      rotulo: 'Registrar conclusão',
+      descricao: 'Envia para validação do inspetor',
+      tom: 'primario',
+      rotuloExecutar: 'Registrar conclusão',
+      aoExecutar: registrarConclusao,
+      formulario: (
+        <Field label="Descrição da conclusão" hint="Opcional">
+          <Textarea value={descricaoConclusao} onChange={(_, d) => setDescricaoConclusao(d.value)} />
+        </Field>
+      ),
+    });
+  }
+  if (nc?.status === StatusNaoConformidade.AguardandoValidacao) {
+    acoes.push({
+      chave: 'encerrar',
+      rotulo: 'Encerrar',
+      descricao: 'Valida e encerra a não conformidade',
+      tom: 'primario',
+      aoExecutar: encerrar,
+      formulario: (
+        <>
+          <Field label="Validar como" required>
+            <SeletorPesquisavel
+              placeholder="Selecione um usuário"
+              opcoes={opcoesUsuarios}
+              valor={usuarioValidador}
+              aoMudar={setUsuarioValidador}
+            />
+          </Field>
+          <Field label="Observações de encerramento" hint="Opcional">
+            <Input
+              value={observacoesEncerramento}
+              onChange={(_, d) => setObservacoesEncerramento(d.value)}
+            />
+          </Field>
+        </>
+      ),
+    });
+    acoes.push({
+      chave: 'devolver',
+      rotulo: 'Devolver ao emitente',
+      descricao: 'A ocorrência volta para quem registrou',
+      tom: 'destrutivo',
+      rotuloExecutar: 'Devolver',
+      aoExecutar: devolver,
+      formulario: (
+        <Field label="Motivo da devolução" required>
+          <Textarea value={motivoDevolucao} onChange={(_, d) => setMotivoDevolucao(d.value)} />
+        </Field>
+      ),
+    });
+  }
+
+  const colunasAcoes: Coluna<AcaoPlano>[] = [
+    { chave: 'tipo', rotulo: 'Tipo', render: (a) => tipoAcaoPlanoLabel[a.tipo] },
+    { chave: 'descricao', rotulo: 'Descrição' },
+    { chave: 'responsavel', rotulo: 'Responsável', render: (a) => a.responsavelUsuarioNome ?? '—' },
+    { chave: 'prioridade', rotulo: 'Prioridade', render: (a) => prioridadeAcaoLabel[a.prioridade] },
+    // Largura fixa: sem ela a data ISO quebra em duas linhas quando a descrição é longa.
+    { chave: 'prazo', rotulo: 'Prazo', largura: '108px', render: (a) => a.prazo?.slice(0, 10) ?? '—' },
+    {
+      chave: 'status',
+      rotulo: 'Situação',
+      render: (a) => (
+        <StatusChip tom={tomAcaoPlano[a.status] ?? 'neutro'}>{statusAcaoPlanoLabel[a.status]}</StatusChip>
+      ),
+    },
+  ];
+
+  if (!id) return <FeedbackInline tom="erro">Não conformidade não encontrada.</FeedbackInline>;
+  // Erro na carga inicial precisa aparecer aqui: sem isso o skeleton ficaria para sempre e a falha
+  // (API fora, id inexistente) não teria onde ser lida — era o que o <Text className={erro}> acima
+  // do card fazia na versão anterior desta página.
+  if (!detalhe || !nc) {
+    return erro ? (
+      <FeedbackInline tom="erro" acao={{ rotulo: 'Tentar de novo', aoClicar: () => void carregar() }}>
+        {erro}
+      </FeedbackInline>
+    ) : (
+      <Carregando variante="detalhe" linhas={8} />
+    );
+  }
+
+  return (
+    <DetailPageLayout
+      cabecalho={{
+        titulo: nc.descricao,
+        subtitulo: [origemNaoConformidadeLabel[nc.origemDeteccao], nc.local, nc.atividadeNome]
+          .filter(Boolean)
+          .join(' · '),
+        status: <StatusChip tom={tomStatus[nc.status] ?? 'neutro'}>{statusNaoConformidadeLabel[nc.status]}</StatusChip>,
+        voltarPara: '/ocorrencias?secao=nao-conformidades',
+        rotuloVoltar: 'Não conformidades',
+      }}
+      lateral={
+        <>
+          <Card densidade="compacta" titulo="Resumo">
+            <FormGrid>
+              {nc.requisitoRelacionado && (
+                <Campo span={12}>
+                  <Field label="Requisito"><Input value={nc.requisitoRelacionado} readOnly /></Field>
+                </Campo>
+              )}
+              <Campo span={12}>
+                <Field label="Responsável"><Input value={nc.responsavelUsuarioNome ?? '—'} readOnly /></Field>
+              </Campo>
+              <Campo span={12}>
+                <Field label="Prazo"><Input value={nc.prazo?.slice(0, 10) ?? '—'} readOnly /></Field>
+              </Campo>
+            </FormGrid>
+          </Card>
+          {nc.status === StatusNaoConformidade.Devolvida && nc.motivoDevolucao && (
+            <FeedbackInline tom="aviso">Motivo da devolução: {nc.motivoDevolucao}</FeedbackInline>
+          )}
+          {acoes.length > 0 && (
+            <Card densidade="compacta" titulo="Ações disponíveis">
+              <WorkflowActions acoes={acoes} processando={processando} />
+            </Card>
+          )}
+        </>
+      }
+    >
+      {erro && <FeedbackInline tom="erro" aoFechar={() => setErro(null)}>{erro}</FeedbackInline>}
+
+      <Card
+        titulo="Plano de ação"
+        subtitulo={`${detalhe.acoesPlano.length} ${detalhe.acoesPlano.length === 1 ? 'ação' : 'ações'}`}
+        acoes={
+          <Field label="Validar como">
+            <SeletorPesquisavel
+              placeholder="Selecione um usuário"
+              opcoes={opcoesUsuarios}
+              valor={usuarioValidador}
+              aoMudar={setUsuarioValidador}
+            />
+          </Field>
+        }
+      >
+        <DataTable
+          aria-label="Ações do plano"
+          densidade="compacta"
+          colunas={colunasAcoes}
+          linhas={detalhe.acoesPlano}
+          chaveLinha={(a) => a.id}
+          vazio={{ titulo: 'Nenhuma ação no plano', descricao: 'Adicione a primeira ação abaixo.' }}
+          acoesLinha={(a) =>
+            a.status !== StatusAcaoPlano.Concluido && !a.dataValidacao ? (
+              <Button size="small" appearance="subtle" onClick={() => validarAcao(a.id)} disabled={processando}>
+                Validar
+              </Button>
+            ) : null
+          }
+        />
+        <FormSection titulo="Nova ação" numero={1}>
+          <FormGrid>
+            <Campo span={2}>
+              <Field label="Tipo">
+                <Select
+                  value={String(novaAcao.tipo)}
+                  onChange={(_, d) => setNovaAcao({ ...novaAcao, tipo: Number(d.value) })}
+                >
+                  {Object.entries(tipoAcaoPlanoLabel).map(([valor, rotulo]) => (
+                    <option key={valor} value={valor}>{rotulo}</option>
+                  ))}
+                </Select>
+              </Field>
+            </Campo>
+            <Campo span={3}>
+              <Field label="Descrição" required>
+                <Input
+                  value={novaAcao.descricao}
+                  onChange={(_, d) => setNovaAcao({ ...novaAcao, descricao: d.value })}
+                />
+              </Field>
+            </Campo>
+            <Campo span={3}>
+              <Field label="Responsável">
+                <SeletorPesquisavel
+                  placeholder="Nenhum"
+                  opcoes={opcoesUsuarios}
+                  valor={novaAcao.responsavelUsuarioId ?? ''}
+                  aoMudar={(usuarioId) => setNovaAcao({ ...novaAcao, responsavelUsuarioId: usuarioId })}
+                />
+              </Field>
+            </Campo>
+            <Campo span={2}>
+              <Field label="Prioridade">
+                <Select
+                  value={String(novaAcao.prioridade)}
+                  onChange={(_, d) => setNovaAcao({ ...novaAcao, prioridade: Number(d.value) })}
+                >
+                  {Object.entries(prioridadeAcaoLabel).map(([valor, rotulo]) => (
+                    <option key={valor} value={valor}>{rotulo}</option>
+                  ))}
+                </Select>
+              </Field>
+            </Campo>
+            {/* Spans preservados do layout anterior (2+3+3+2+2=12). O brief pedia span 1 aqui, mas
+                1/12 do conteúdo dá ~68px — menos que a largura intrínseca de um campo dd/mm/aaaa,
+                e o campo passaria a empurrar os vizinhos em vez de respeitar o span declarado. */}
+            <Campo span={2}>
+              <Field label="Prazo">
+                <CampoData
+                  value={novaAcao.prazo ?? ''}
+                  onChange={(_, d) => setNovaAcao({ ...novaAcao, prazo: d.value })}
+                />
+              </Field>
+            </Campo>
+          </FormGrid>
+          <FormRodape info="Ações concluídas exigem validação antes do encerramento da não conformidade.">
+            <Button appearance="primary" onClick={criarAcao} disabled={processando}>
+              Adicionar ação
+            </Button>
+          </FormRodape>
+        </FormSection>
+      </Card>
+    </DetailPageLayout>
   );
 }

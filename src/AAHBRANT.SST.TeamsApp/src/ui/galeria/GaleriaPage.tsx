@@ -3,7 +3,7 @@ import { useSearchParams } from 'react-router-dom';
 import { makeStyles } from '@fluentui/react-components';
 import { BuildingBank24Regular, ShieldCheckmark24Regular, DocumentCheckmark24Regular, DocumentError24Regular } from '@fluentui/react-icons';
 import { useTipografia } from '../tokens/tipografia';
-import { Card, PageHeader, Button, Input, StatusChip, nivelVencimento, tomDeVencimento, rotuloDeVencimento, EstadoVazio, Carregando, FeedbackInline, Abas, useAbaNaUrl, DataTable, FormSection, FormGrid, Campo, FormRodape, ChipCheckboxGroup, Field, Textarea, CampoData, SeletorPesquisavel, useConfirmar, PainelLateral, KpiCard, DetailPageLayout, WorkflowActions, usePaletaGraficos, StatusDonutChart, RankingBarChart, TrendBarChart, TrendLineChart, ChipsField } from '../index';
+import { Card, PageHeader, Button, Input, StatusChip, nivelVencimento, tomDeVencimento, rotuloDeVencimento, EstadoVazio, Carregando, FeedbackInline, Abas, useAbaNaUrl, DataTable, FormSection, FormGrid, Campo, FormRodape, ChipCheckboxGroup, Field, Select, Textarea, CampoData, SeletorPesquisavel, useConfirmar, PainelLateral, KpiCard, DetailPageLayout, WorkflowActions, usePaletaGraficos, StatusDonutChart, RankingBarChart, TrendBarChart, TrendLineChart, ChipsField } from '../index';
 import { Secao } from './Secao';
 
 // Calculado uma vez no carregamento do módulo (não a cada render) para não disparar o alerta de
@@ -168,7 +168,20 @@ export function GaleriaPage() {
               <Campo span={3}><Field label="Entrega"><CampoData value="2026-09-07" onChange={() => {}} /></Field></Campo>
             </FormGrid>
           </FormSection>
-          <FormSection titulo="Observações" numero={2}>
+          {/* Faixas estreitas com controles crus do Fluent: cada Campo tem de respeitar o span
+              declarado (2+3+3+2+2=12) em vez de o controle vazar por cima do vizinho — a largura
+              intrínseca de Input/Select/Combobox passa de 190px, muito acima do span 2 (~112px).
+              Caso real que motivou o minmax(0, 1fr) do FormGrid (piloto 2, NC). */}
+          <FormSection titulo="Faixas estreitas" numero={2}>
+            <FormGrid>
+              <Campo span={2}><Field label="Tipo"><Select><option>Corretiva</option></Select></Field></Campo>
+              <Campo span={3}><Field label="Descrição"><Input /></Field></Campo>
+              <Campo span={3}><Field label="Responsável"><SeletorPesquisavel opcoes={[{ id: 'u1', rotulo: 'Ana Ribeiro' }]} valor="" aoMudar={() => {}} placeholder="Nenhum" /></Field></Campo>
+              <Campo span={2}><Field label="Prioridade"><Select><option>Média</option></Select></Field></Campo>
+              <Campo span={2}><Field label="Prazo"><CampoData value="" onChange={() => {}} /></Field></Campo>
+            </FormGrid>
+          </FormSection>
+          <FormSection titulo="Observações" numero={3}>
             <FormGrid><Campo><Field label="Texto"><Textarea /></Field></Campo></FormGrid>
           </FormSection>
           <FormRodape info="Ações concluídas exigem evidência fotográfica antes do encerramento."><Button>Cancelar</Button><Button appearance="primary">Salvar</Button></FormRodape>

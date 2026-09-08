@@ -3,7 +3,11 @@ import { Combobox, Option, makeStyles } from '@fluentui/react-components';
 import { designTokens } from '../../tokens/tokens';
 
 const useStyles = makeStyles({
-  root: { width: '100%', minWidth: 0 },
+  // minWidth 0 na raiz não basta: o <input> interno do Combobox tem largura intrínseca própria
+  // (~191px) e, numa faixa mais estreita que ela, empurrava a seta de expandir para fora do campo —
+  // visível na coluna "Responsável" (span 3) da NaoConformidadeDetalhePage, piloto 2.
+  root: { width: '100%', minWidth: 0,
+    '& .fui-Combobox__input': { minWidth: 0, width: '100%' } },
   descricao: { display: 'block', color: designTokens.colorNeutralMedium, fontSize: '11px', lineHeight: '14px', fontWeight: 600 },
 });
 
