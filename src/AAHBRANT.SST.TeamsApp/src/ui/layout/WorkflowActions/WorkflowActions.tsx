@@ -28,8 +28,12 @@ export interface AcaoWorkflow {
   tom?: 'primario' | 'neutro' | 'destrutivo';
   habilitada?: boolean;
   formulario?: ReactNode;
-  /** Deve tratar e exibir os próprios erros; se lançar, o formulário permanece aberto. */
-  aoExecutar: () => void | Promise<void>;
+  /**
+   * Deve tratar e exibir os próprios erros. Retornar `false` (ou lançar) mantém o formulário
+   * aberto — use para validação local que não deve fechar o formulário sem sucesso real. Retorno
+   * vazio (`void`/`undefined`) fecha normalmente após `fecharAposSucesso`.
+   */
+  aoExecutar: () => void | boolean | Promise<void | boolean>;
   rotuloExecutar?: string;
 }
 
@@ -43,11 +47,13 @@ export function WorkflowActions({ acoes, processando }: WorkflowActionsProps) {
   const [aberta, setAberta] = useState<string | null>(null);
 
   // Contrato: aoExecutar trata e exibe o próprio erro (ex.: FeedbackInline na página). Se ainda
-  // assim lançar, o formulário permanece aberto para nova tentativa em vez de travar em silêncio.
+  // assim lançar — ou devolver false, o caso da validação local que só define o erro e retorna —
+  // o formulário permanece aberto para nova tentativa em vez de fechar e levar a mensagem para
+  // fora da vista do usuário.
   async function executar(a: AcaoWorkflow, fecharAposSucesso: boolean) {
     try {
-      await a.aoExecutar();
-      if (fecharAposSucesso) setAberta(null);
+      const resultado = await a.aoExecutar();
+      if (fecharAposSucesso && resultado !== false) setAberta(null);
     } catch (erro) {
       if (import.meta.env.DEV) console.error('WorkflowActions: aoExecutar lançou erro', erro);
     }

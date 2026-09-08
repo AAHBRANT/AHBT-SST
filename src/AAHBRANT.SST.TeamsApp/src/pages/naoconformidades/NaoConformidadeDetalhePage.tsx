@@ -87,6 +87,10 @@ export function NaoConformidadeDetalhePage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id]);
 
+  // As cinco transições abaixo entram no WorkflowActions e seguem o contrato dele: `false` mantém o
+  // formulário aberto, retorno vazio fecha. Por isso todo caminho que só define `erro` (validação
+  // local ou falha da API) devolve `false` — senão o acordeão fecharia e a mensagem apareceria
+  // acima do conteúdo, longe do campo que o usuário estava preenchendo.
   async function enviar() {
     if (!id) return;
     try {
@@ -98,6 +102,7 @@ export function NaoConformidadeDetalhePage() {
       setErro(
         e instanceof Error ? e.message : 'Falha ao enviar. Defina o responsável pela tratativa antes.',
       );
+      return false;
     } finally {
       setProcessando(false);
     }
@@ -107,7 +112,7 @@ export function NaoConformidadeDetalhePage() {
     if (!id) return;
     if (!resposta.descricaoAcao.trim()) {
       setErro('Informe a ação que será realizada.');
-      return;
+      return false;
     }
     try {
       setProcessando(true);
@@ -123,6 +128,7 @@ export function NaoConformidadeDetalhePage() {
       await carregar();
     } catch (e) {
       setErro(e instanceof Error ? e.message : 'Falha ao responder a ocorrência.');
+      return false;
     } finally {
       setProcessando(false);
     }
@@ -138,6 +144,7 @@ export function NaoConformidadeDetalhePage() {
       await carregar();
     } catch (e) {
       setErro(e instanceof Error ? e.message : 'Falha ao registrar conclusão.');
+      return false;
     } finally {
       setProcessando(false);
     }
@@ -147,7 +154,7 @@ export function NaoConformidadeDetalhePage() {
     if (!id) return;
     if (!motivoDevolucao.trim()) {
       setErro('Informe o motivo da devolução.');
-      return;
+      return false;
     }
     try {
       setProcessando(true);
@@ -157,6 +164,7 @@ export function NaoConformidadeDetalhePage() {
       await carregar();
     } catch (e) {
       setErro(e instanceof Error ? e.message : 'Falha ao devolver a ocorrência.');
+      return false;
     } finally {
       setProcessando(false);
     }
@@ -166,7 +174,7 @@ export function NaoConformidadeDetalhePage() {
     if (!id) return;
     if (!usuarioValidador) {
       setErro('Selecione o usuário responsável pela validação.');
-      return;
+      return false;
     }
     try {
       setProcessando(true);
@@ -180,6 +188,7 @@ export function NaoConformidadeDetalhePage() {
           ? e.message
           : 'Falha ao encerrar. Confira se todas as ações do plano já foram concluídas.',
       );
+      return false;
     } finally {
       setProcessando(false);
     }
@@ -263,6 +272,7 @@ export function NaoConformidadeDetalhePage() {
           <Field label="Executor">
             <SeletorPesquisavel
               placeholder="Manter responsável atual"
+              opcaoVazia="Manter responsável atual"
               opcoes={opcoesUsuarios}
               valor={resposta.responsavelExecucaoId}
               aoMudar={(usuarioId) => setResposta({ ...resposta, responsavelExecucaoId: usuarioId })}
@@ -318,6 +328,7 @@ export function NaoConformidadeDetalhePage() {
           <Field label="Validar como" required>
             <SeletorPesquisavel
               placeholder="Selecione um usuário"
+              opcaoVazia="Selecione um usuário"
               opcoes={opcoesUsuarios}
               valor={usuarioValidador}
               aoMudar={setUsuarioValidador}
@@ -425,6 +436,7 @@ export function NaoConformidadeDetalhePage() {
           <Field label="Validar como">
             <SeletorPesquisavel
               placeholder="Selecione um usuário"
+              opcaoVazia="Selecione um usuário"
               opcoes={opcoesUsuarios}
               valor={usuarioValidador}
               aoMudar={setUsuarioValidador}
@@ -473,6 +485,7 @@ export function NaoConformidadeDetalhePage() {
               <Field label="Responsável">
                 <SeletorPesquisavel
                   placeholder="Nenhum"
+                  opcaoVazia="Nenhum"
                   opcoes={opcoesUsuarios}
                   valor={novaAcao.responsavelUsuarioId ?? ''}
                   aoMudar={(usuarioId) => setNovaAcao({ ...novaAcao, responsavelUsuarioId: usuarioId })}

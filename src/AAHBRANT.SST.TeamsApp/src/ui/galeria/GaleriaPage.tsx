@@ -193,7 +193,9 @@ export function GaleriaPage() {
       <Secao id="seletor-pesquisavel" titulo="SeletorPesquisavel (digite 'jo')">
         <div className={g.largura360}>
           <Field label="Funcionário">
-            <SeletorPesquisavel aria-label="Funcionário" placeholder="Buscar entre 312 funcionários" valor={funcDemo} aoMudar={setFuncDemo}
+            {/* opcaoVazia fica fixa no topo da lista: sem ela não há como voltar ao vazio depois de
+                escolher alguém (achado do piloto 2). */}
+            <SeletorPesquisavel aria-label="Funcionário" placeholder="Buscar entre 312 funcionários" opcaoVazia="Nenhum" valor={funcDemo} aoMudar={setFuncDemo}
               opcoes={[{ id: '1', rotulo: 'João da Silva', descricao: 'Pedreiro, Ponte Rio Cuiá' }, { id: '2', rotulo: 'Joana Martins', descricao: 'Carpinteira, Vila Nova' }, { id: '3', rotulo: 'José Almeida', descricao: 'Operador de guindaste' }, { id: '4', rotulo: 'Ana Carolina Reis', descricao: 'Eletricista' }]} />
           </Field>
         </div>
