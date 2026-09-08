@@ -454,3 +454,104 @@ Registradas para honestidade do histórico:
 - `Checkbox` **está** em uso (15 arquivos); o grep ancorado em JSX de linha única subestimou.
 - O código já usa `#670000` como `colorPrimary`; o único `#7B1E2B` restante é um hex solto em
   `TrabalhadorDetalhePage.tsx:218`. O item do `ONBOARDING.md` §6 está desatualizado.
+- A seção 5.1 previa que `components/`, `hooks/` e `theme.ts` "migram para dentro de `ui/`" já na
+  Onda 0. O levantamento pré-plano mostrou 28/83/40 arquivos importando esses caminhos — mover
+  quebraria a promessa aditiva da onda. O plano de implementação **re-exportou em vez de mover**; a
+  mudança de lugar física fica para a Onda 3, junto com a remoção do legado (§5.1).
+
+## Aprendizados dos pilotos (Onda 1)
+
+Os três pilotos (T16 `EntregasTab`, T17 `NaoConformidadeDetalhePage`, T18 `MatrizEpiTab`) validaram a
+regra do §5.1 — "se uma peça não serviu, ajusta-se a peça, não o piloto" — na prática: **todo defeito
+de componente encontrado foi corrigido dentro de `src/ui/`, nunca contornado na página**. Nenhum piloto
+precisou de um caso de "a peça genuinamente não serve" (workaround permanente na página); os casos
+abaixo são todos ajustes reais de peça, com galeria e snapshot atualizados junto.
+
+### Ajustes de peça
+
+**`FormGrid`** (piloto 1, reconfirmado de forma independente pelo piloto 2) — `gridTemplateColumns:
+repeat(12, 1fr)` vazava horizontalmente em faixas estreitas: `1fr` é `minmax(auto, 1fr)`, então a
+largura intrínseca de um `<Input>`/`<Select>` (ou de um `.fui-Field`) nunca deixava a coluna encolher
+abaixo dela. Apareceu primeiro no piloto 1 (`PainelLateral` de 560px) e, de forma independente, no
+piloto 2 (linha "Nova ação" de `NaoConformidadeDetalhePage`) — duas branches irmãs corrigiram o mesmo
+defeito ao mesmo tempo; a reconciliação adotou a versão mais completa (piloto 1), que cobre a cadeia
+inteira: `minmax(0, 1fr)` no grid + `minWidth: 0` em `.fui-Field`, nos wrappers do Fluent
+(`.fui-Input/.fui-Select/.fui-Combobox/.fui-Textarea/.fui-Dropdown`) e nos elementos nativos.
+**Duas branches corrigindo o mesmo defeito de peça ao mesmo tempo é sinal de que o defeito é da peça,
+não do caso de uso** — motivo a mais para a regra do §5.1.
+
+**`DetailPageLayout`** (piloto 2) — a media query de 1100px resetava só `order`/`position`; `maxHeight`
+e `overflowY` continuavam valendo, e a lateral virava uma caixa de rolagem de altura cheia acima do
+conteúdo em telas estreitas. Corrigido resetando os dois eixos juntos (`maxHeight: none`, `overflowY:
+visible`) — **regra geral, não só deste componente: com um eixo em `hidden`, o outro `visible` computa
+como `auto`**, então um reset parcial não é reset nenhum. `overflowX: hidden` fixado na classe base
+(o eixo X estava computando `auto` e criava uma barra de rolagem parasita sob a sombra dos cards).
+
+**`SeletorPesquisavel`** (piloto 2) — ganhou `opcaoVazia?: string`. O `Combobox` do Fluent não tem
+equivalente ao `<option value="">` de um `<select>` nativo: sem essa prop, substituir um select que
+tinha uma opção vazia semanticamente relevante ("Manter responsável atual", "Nenhum") tirava do usuário
+o caminho de volta ao vazio. **Regra de uso**: todo `<select>` com `<option value="">` que vira
+`SeletorPesquisavel` precisa declarar `opcaoVazia`, nunca perder essa opção silenciosamente.
+
+**`WorkflowActions`** (piloto 2) — `aoExecutar` passou a aceitar devolver `false` (além de `void` ou
+lançar) para manter o formulário de uma ação aberto. Sem isso, uma validação puramente local (que só
+faz `setErro` + `return`, sem chamar a API) fechava o acordeão como se tivesse tido sucesso, e a
+mensagem de erro ficava fora da vista, apontando para um campo que já não estava mais na tela.
+
+**`DataTable`** (piloto 3, dois ajustes + um achado pós-merge em revisão independente):
+1. A área da linha expansível (`expandida`) não tinha `display: flex`/`gap` — funcionava por acaso
+   porque nenhum consumidor anterior (só a galeria, com um exemplo de um filho só) passava mais de um
+   nó para `expansivel.render()`. `MatrizEpiTab` foi o primeiro caso real com dois filhos (um título de
+   contexto + um `ChipCheckboxGroup`) e eles colavam sem espaço. Corrigido com `flexDirection: column`
+   + `gap`; `align-items: stretch` (padrão de uma coluna flex) trocado por `flex-start` no mesmo commit
+   — sem isso, um `<Button>` passado direto por um consumidor futuro viraria full-width sem pedir.
+2. Uma revisão independente, já com o piloto mesclado, achou que `DataTable expansivel` não tinha
+   nenhum indicador visual de disclosure — a spec §4.5 desenha `▸`/`▾`, o componente só tinha
+   `cursor: pointer`. Corrigido com `ChevronRight16Regular` na primeira coluna (só quando `expansivel`
+   está presente), rotacionando 90° quando a linha abre — mesmo padrão já usado em `WorkflowActions`.
+   **Este é justamente o componente que o piloto existe para validar; vale reforçar no checklist de
+   revisão de qualquer piloto futuro que exercite disclosure**: conferir a afordância visual, não só a
+   funcional (`aria-expanded` já estava correto — o gap era só visual).
+
+### Aprendizados de processo e verificação (não são ajuste de peça, mas mudam como pilotos futuros devem verificar)
+
+- **Erro de formulário dentro de um painel/modal precisa de estado PRÓPRIO**, renderizado como o
+  primeiro filho do painel — nunca reaproveitar o `erro` de nível de página, que fica atrás do backdrop
+  modal e nunca é visto (piloto 1). Fechar o painel deve limpar esse estado em **todos** os caminhos de
+  fechamento (X, Cancelar, atalho de navegação), não só no "concluir com sucesso".
+- **`StatusChip` nunca substitui sozinho um valor de auditoria** (data, número, contagem) que já
+  existia na UI antes da migração — mostrar o valor cru ao lado do chip, não só o chip (piloto 1).
+- **Um "nenhum snapshot mudou" só é evidência de correção se o teste efetivamente alcança o estado que
+  a correção afeta.** A galeria tinha `?abrir=painel|dialogo` para fotografar estados que só existem
+  abertos, mas faltava o equivalente para uma linha expansível: o `DataTable` de exemplo sempre
+  iniciava fechado, então o fix do `gap` (item acima) nunca entrou em nenhum PNG — a "prova" de que o
+  fix funcionava era, na origem, só a leitura do CSS. Corrigido com `?abrir=expandida`, mesmo padrão
+  dos outros dois (piloto 3, achado em revisão pós-merge).
+- **Screenshot de uma seção inteira da galeria, em vez de um elemento isolado, pode produzir um PNG
+  corrompido** quando a seção é mais alta que a viewport de teste (900px) e contém algo em
+  `position: sticky`: o Playwright faz scroll-e-stitch para cobrir a altura toda, e o elemento sticky
+  "vaza" congelado no meio da imagem final. Mitigação usada: isolar com `data-testid` só o card do
+  exemplo de interesse, em vez de `section[data-secao=...]` inteira, quando a seção mistura múltiplos
+  exemplos e algum deles usa `cabecalhoFixo` (piloto 3).
+- **Uma decisão de UX que muda ONDE uma ação vive pode criar um risco de perda de dado que não existia
+  antes**, mesmo sem tocar a lógica de salvar em si. Mover "Salvar" de dentro de uma linha expansível
+  para o `PageHeader` (spec §4.5) tira o botão de perto do que ele salva — o piloto 3 avaliou esse
+  efeito colateral deliberadamente e adicionou confirmação de descarte só quando há edição pendente
+  (não intrusiva no caminho de leitura, que é o dominante).
+
+### Itens levantados nos pilotos e deliberadamente deferidos para a Onda 2 ou depois
+
+- Escape hatches sem confirmação de descarte na Matriz de EPI (trocar de aba do Fluent, F5, navegação
+  pela sidebar) — nenhum piloto tem `beforeunload`/route-guard; decidir na Onda 2 se isso entra na spec
+  como regra de template ou fica como limitação aceita.
+- `[buscar]` no `PageHeader` e contagem de itens por linha ("12 EPIs") do template §4.5 — não
+  implementados no piloto 3; a contagem exigiria N chamadas extras de API ou um endpoint agregado
+  novo. A Onda 2 replica este template em `MatrizTreinamentoTab`/`MatrizRiscoTab`; decidir os dois
+  juntos antes de repetir o padrão pela terceira vez.
+- Erro de carga e `EstadoVazio` aparecendo juntos quando uma lista fica vazia por causa de uma falha de
+  rede (ex.: "Failed to fetch" + "Nenhuma função cadastrada" ao mesmo tempo) — padrão herdado do
+  piloto 1 e repetido no piloto 3; candidato a virar regra de template (`vazio` só quando
+  `erro === null`) na Onda 2.
+- Botões de ação de linha em `size="small"` (~24px, só ícone) no piloto 1 — alvo de toque fraco;
+  território da frente de campo/mobile, não desta.
+- `FormGrid` acopla ao seletor interno `.fui-Field` do Fluent — revisitar num upgrade de versão.
