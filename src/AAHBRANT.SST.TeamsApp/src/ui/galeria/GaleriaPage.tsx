@@ -46,7 +46,6 @@ export function GaleriaPage() {
   const [abaPilar, setAbaPilar] = useState<'a' | 'b' | 'c'>('a');
   const [abaInterna, setAbaInterna] = useState<'p' | 'q'>('p');
   const [abaDemo, setAbaDemo] = useAbaNaUrl('demo', ['x', 'y', 'z'] as const, 'x');
-  const [abertaDemo, setAbertaDemo] = useState<string | null>(null);
   const [chipsDemo, setChipsDemo] = useState<string[]>(['a']);
   const [funcDemo, setFuncDemo] = useState('');
   const { confirmar, dialogElement } = useConfirmar();
@@ -55,6 +54,9 @@ export function GaleriaPage() {
   const [parametros] = useSearchParams();
   const abrir = parametros.get('abrir');
   const [painelAberto, setPainelAberto] = useState(abrir === 'painel');
+  // ?abrir=expandida abre a 1ª linha do DataTable de exemplo — sem isto o snapshot da seção fecha
+  // sempre a linha e nunca fotografa os 2 filhos empilhados (chevron + título + chips).
+  const [abertaDemo, setAbertaDemo] = useState<string | null>(abrir === 'expandida' ? '1' : null);
   const [chipsTexto, setChipsTexto] = useState('Ponte Rio Cuiá; Vila Nova');
   const dialogoJaAberto = useRef(false);
 
@@ -122,25 +124,31 @@ export function GaleriaPage() {
       </Secao>
       <Secao id="data-table" titulo="DataTable">
         <div className={g.larguraTotal}>
-          <Card densidade="compacta">
-            <DataTable
-              aria-label="Entregas de exemplo"
-              colunas={[
-                { chave: 'nome', rotulo: 'Funcionário' },
-                { chave: 'epi', rotulo: 'EPI' },
-                { chave: 'validade', rotulo: 'Validade', render: (l) => { const n = nivelVencimento(l.validade); return n ? <StatusChip tom={tomDeVencimento(n)}>{rotuloDeVencimento(n)}</StatusChip> : '—'; } },
-              ]}
-              linhas={[
-                { id: '1', nome: 'João da Silva', epi: 'Capacete classe B', validade: '2099-03-12' },
-                { id: '2', nome: 'Ana Carolina Reis', epi: 'Luva isolante', validade: validadeExemploVenceEmBreve },
-                { id: '3', nome: 'Roberto Pereira', epi: 'Cinto paraquedista', validade: '2020-02-02' },
-              ]}
-              chaveLinha={(l) => l.id}
-              acoesLinha={() => <Button size="small" appearance="subtle">Assinar</Button>}
-              expansivel={{ aberta: (l) => l.id === abertaDemo, render: (l) => <><strong>Detalhe de {l.nome}</strong><span>EPIs obrigatórios: capacete classe B, luva isolante, botina.</span></> }}
-              aoClicarLinha={(l) => setAbertaDemo((a) => (a === l.id ? null : l.id))}
-            />
-          </Card>
+          {/* data-testid isolado: esta seção é mais alta que a viewport de teste (900px) e um
+              screenshot da <Secao> inteira dispara um bug conhecido do Playwright ao empilhar
+              capturas de elemento com cabeçalho sticky (o header fixo da app "vaza" para o meio
+              da imagem). Screenshot deste card isolado evita o problema. */}
+          <div data-testid="data-table-expansivel">
+            <Card densidade="compacta">
+              <DataTable
+                aria-label="Entregas de exemplo"
+                colunas={[
+                  { chave: 'nome', rotulo: 'Funcionário' },
+                  { chave: 'epi', rotulo: 'EPI' },
+                  { chave: 'validade', rotulo: 'Validade', render: (l) => { const n = nivelVencimento(l.validade); return n ? <StatusChip tom={tomDeVencimento(n)}>{rotuloDeVencimento(n)}</StatusChip> : '—'; } },
+                ]}
+                linhas={[
+                  { id: '1', nome: 'João da Silva', epi: 'Capacete classe B', validade: '2099-03-12' },
+                  { id: '2', nome: 'Ana Carolina Reis', epi: 'Luva isolante', validade: validadeExemploVenceEmBreve },
+                  { id: '3', nome: 'Roberto Pereira', epi: 'Cinto paraquedista', validade: '2020-02-02' },
+                ]}
+                chaveLinha={(l) => l.id}
+                acoesLinha={() => <Button size="small" appearance="subtle">Assinar</Button>}
+                expansivel={{ aberta: (l) => l.id === abertaDemo, render: (l) => <><strong>Detalhe de {l.nome}</strong><span>EPIs obrigatórios: capacete classe B, luva isolante, botina.</span></> }}
+                aoClicarLinha={(l) => setAbertaDemo((a) => (a === l.id ? null : l.id))}
+              />
+            </Card>
+          </div>
           <Card densidade="compacta" className={g.margemTopo}><DataTable colunas={[{ chave: 'a', rotulo: 'A' }]} linhas={[]} chaveLinha={() => ''} vazio={{ titulo: 'Nenhuma entrega', descricao: 'Registre a primeira.', acao: { rotulo: 'Registrar', aoClicar: () => {} } }} /></Card>
           <Card densidade="compacta" className={g.margemTopo}><DataTable colunas={[{ chave: 'a', rotulo: 'A' }]} linhas={[]} chaveLinha={() => ''} carregando /></Card>
           <Card densidade="compacta" className={g.margemTopo}>

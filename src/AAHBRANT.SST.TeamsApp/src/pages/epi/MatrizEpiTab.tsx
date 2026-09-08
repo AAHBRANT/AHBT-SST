@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import {
   Button,
   Card,
@@ -13,11 +14,12 @@ import {
 import { api, type CatalogoEpi, type Funcao } from '../../lib/api';
 
 // Matriz de EPI por função: define quais EPIs são obrigatórios para cada função (filtra o seletor de
-// EPI em Entregas). Piloto 3 da camada ui/ (spec §5.1): mantém expandir-linha, que o usuário conhece,
-// com salvar único no header em vez de um botão por linha. Como o salvar deixa de ficar dentro da
-// linha, sair de uma função com edição pendente passa a pedir confirmação — antes o descarte era
-// silencioso, mas o botão estava à vista logo abaixo dos chips.
+// EPI em Entregas). Piloto 3 da camada ui/ (spec §5.1, template §4.5): mantém expandir-linha, que o
+// usuário conhece, com salvar único no header em vez de um botão por linha. Como o salvar deixa de
+// ficar dentro da linha, sair de uma função com edição pendente passa a pedir confirmação — antes o
+// descarte era silencioso, mas o botão estava à vista logo abaixo dos chips.
 export function MatrizEpiTab() {
+  const navigate = useNavigate();
   const { confirmar, dialogElement } = useConfirmar();
   const [funcoes, setFuncoes] = useState<Funcao[]>([]);
   const [episCatalogo, setEpisCatalogo] = useState<CatalogoEpi[]>([]);
@@ -52,15 +54,19 @@ export function MatrizEpiTab() {
       vinculosSelecionados.some((id) => !vinculosOriginais.includes(id)));
 
   async function alternarExpansao(funcao: Funcao) {
-    if (
-      alterado &&
-      !(await confirmar({
+    if (alterado) {
+      const descartou = await confirmar({
         titulo: 'Descartar alterações?',
         mensagem: 'Os EPIs marcados nesta função ainda não foram salvos. Sair agora descarta as alterações.',
         rotuloConfirmar: 'Descartar',
-      }))
-    ) {
-      return;
+        tom: 'destrutivo',
+      });
+      if (!descartou) return;
+      // Descarte confirmado: fecha a linha atual antes de buscar a próxima. Se o carregamento
+      // seguinte falhar, a linha antiga não fica aberta com o rascunho que o usuário já mandou
+      // jogar fora — senão "Salvar alterações" continuaria habilitado gravando justamente o que
+      // foi descartado.
+      setExpandidoId(null);
     }
     if (expandidoId === funcao.id) {
       setExpandidoId(null);
@@ -103,7 +109,7 @@ export function MatrizEpiTab() {
     <div>
       <PageHeader
         titulo="Matriz de EPI por função"
-        subtitulo="Clique numa função para editar os EPIs obrigatórios. Funções são cadastradas em Operação → Pessoas → Funções."
+        subtitulo="Clique numa função para editar os EPIs obrigatórios. Funções são cadastradas em Pessoas → Funções."
         acoes={
           <Button appearance="primary" onClick={salvar} disabled={!alterado || salvando}>
             {salvando ? 'Salvando…' : 'Salvar alterações'}
@@ -125,7 +131,8 @@ export function MatrizEpiTab() {
           carregando={carregando}
           vazio={{
             titulo: 'Nenhuma função cadastrada',
-            descricao: 'Cadastre funções em Operação → Pessoas → Funções para montar a matriz.',
+            descricao: 'Cadastre funções em Pessoas → Funções para montar a matriz.',
+            acao: { rotulo: 'Gerenciar funções', aoClicar: () => navigate('/pessoas?aba=funcoes') },
           }}
           aoClicarLinha={alternarExpansao}
           expansivel={{
