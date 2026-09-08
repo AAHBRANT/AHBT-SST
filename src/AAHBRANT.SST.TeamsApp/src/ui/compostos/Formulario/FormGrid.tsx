@@ -10,10 +10,13 @@ const useStyles = makeStyles({
   grid: { display: 'grid', gridTemplateColumns: 'repeat(12, minmax(0, 1fr))', gap: tokensUi.espaco.lg, marginBottom: '20px',
     // Único breakpoint do app hoje (pageStyles.formGrid) — fica aqui dentro.
     '@media (max-width: 900px)': { gridTemplateColumns: 'repeat(1, minmax(0, 1fr))' },
-    // O <input> nativo tem largura intrínseca de ~200px (o `size=20` do HTML) e é ela que segura o
-    // controle do Fluent: em faixa mais estreita que isso — Campo span={4} dentro do PainelLateral
-    // de 560px — o campo vazava para fora da grade. Com minWidth 0 ele encolhe junto com a faixa.
+    // O <input> nativo tem largura intrínseca de ~200px (o `size=20` do HTML) e ela sobe pela
+    // cadeia: como Field é grid e a raiz do controle do Fluent é item de grid com `min-width: auto`
+    // (= min-content), em faixa mais estreita que isso — Campo span={4} dentro do PainelLateral de
+    // 560px — o campo vazava para fora da grade. Precisa de minWidth 0 em toda a cadeia (Field,
+    // raiz do controle e o elemento nativo), não só no elemento nativo.
     '& .fui-Field': { minWidth: 0 },
+    '& .fui-Input, & .fui-Select, & .fui-Combobox, & .fui-Textarea, & .fui-Dropdown': { minWidth: 0 },
     '& input, & select, & textarea': { minWidth: 0 } },
   // Sem isso, `gridColumn: span N` força a criação de colunas implícitas mesmo com uma única
   // coluna explícita (repeat(1, …) acima), e os campos continuariam lado a lado abaixo de

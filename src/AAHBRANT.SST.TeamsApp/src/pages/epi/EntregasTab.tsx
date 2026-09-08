@@ -64,6 +64,11 @@ export function EntregasTab({ aoNavegarParaMatriz }: EntregasTabProps) {
   const [cursos, setCursos] = useState<CursoTreinamento[]>([]);
   const [novaEntrega, setNovaEntrega] = useState<NovaEntregaEpi>(entregaVazia());
   const [erro, setErro] = useState<string | null>(null);
+  // Erro do formulário de criação fica separado do erro da lista: o PainelLateral é um drawer modal
+  // com backdrop, então uma mensagem no nível da página apareceria atrás dele, fora do foco do
+  // usuário e com o botão de fechar inalcançável — justo no caminho de erro principal desta tela
+  // (estoque insuficiente, CA vencido, campos obrigatórios).
+  const [erroPainel, setErroPainel] = useState<string | null>(null);
   const [carregando, setCarregando] = useState(false);
   const [carregandoLista, setCarregandoLista] = useState(true);
   const [painelAberto, setPainelAberto] = useState(false);
@@ -173,12 +178,12 @@ export function EntregasTab({ aoNavegarParaMatriz }: EntregasTabProps) {
 
   async function criar() {
     if (!novaEntrega.trabalhadorId || !novaEntrega.catalogoEpiId || !novaEntrega.dataEntrega || novaEntrega.quantidade < 1) {
-      setErro('Preencha funcionário, EPI, data de entrega e quantidade.');
+      setErroPainel('Preencha funcionário, EPI, data de entrega e quantidade.');
       return;
     }
     try {
       setCarregando(true);
-      setErro(null);
+      setErroPainel(null);
       const payload: NovaEntregaEpi = {
         ...novaEntrega,
         dataDevolucao: novaEntrega.dataDevolucao || null,
@@ -190,12 +195,18 @@ export function EntregasTab({ aoNavegarParaMatriz }: EntregasTabProps) {
       setEntregaParaAssinar({ ...payload, id });
       setNovaEntrega(entregaVazia());
       await carregar();
-      setPainelAberto(false);
+      fecharPainel();
     } catch (e) {
-      setErro(e instanceof Error ? e.message : 'Falha ao criar entrega de EPI.');
+      setErroPainel(e instanceof Error ? e.message : 'Falha ao criar entrega de EPI.');
     } finally {
       setCarregando(false);
     }
+  }
+
+  // Todo caminho de fechar o painel limpa o erro do formulário — senão reabrir mostra mensagem velha.
+  function fecharPainel() {
+    setPainelAberto(false);
+    setErroPainel(null);
   }
 
   function iniciarDevolucao(entrega: EntregaEpi) {
@@ -263,10 +274,17 @@ export function EntregasTab({ aoNavegarParaMatriz }: EntregasTabProps) {
     {
       chave: 'validade',
       rotulo: 'Validade',
+      // Data crua + chip juntos: o rótulo do chip diz o nível, não *quando* vence nem *há quanto*
+      // está vencido, e isso é dado de fiscalização (NR-6) que a tela antiga mostrava.
       render: (e) => {
         if (e.dataDevolucao) return <StatusChip tom="neutro">Devolvido {e.dataDevolucao.slice(0, 10)}</StatusChip>;
         const nivel = nivelVencimento(e.dataValidade);
-        return nivel ? <StatusChip tom={tomDeVencimento(nivel)}>{rotuloDeVencimento(nivel)}</StatusChip> : '—';
+        return (
+          <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+            <span>{e.dataValidade?.slice(0, 10) ?? '—'}</span>
+            {nivel && <StatusChip tom={tomDeVencimento(nivel)}>{rotuloDeVencimento(nivel)}</StatusChip>}
+          </div>
+        );
       },
     },
     {
@@ -345,19 +363,25 @@ export function EntregasTab({ aoNavegarParaMatriz }: EntregasTabProps) {
 
       <PainelLateral
         aberto={painelAberto}
-        aoFechar={() => setPainelAberto(false)}
+        aoFechar={fecharPainel}
         titulo="Nova entrega de EPI"
         subtitulo="Nada é salvo até você registrar."
         largura="lg"
         rodape={
           <>
-            <Button onClick={() => setPainelAberto(false)}>Cancelar</Button>
+            <Button onClick={fecharPainel}>Cancelar</Button>
             <Button appearance="primary" onClick={criar} disabled={carregando}>
               Registrar entrega
             </Button>
           </>
         }
       >
+        {erroPainel && (
+          <FeedbackInline tom="erro" aoFechar={() => setErroPainel(null)}>
+            {erroPainel}
+          </FeedbackInline>
+        )}
+
         <FormSection titulo="Quem recebe" numero={1} primeira>
           <FormGrid>
             <Campo>
@@ -404,7 +428,7 @@ export function EntregasTab({ aoNavegarParaMatriz }: EntregasTabProps) {
                   acao={{
                     rotulo: 'Cadastrar na matriz',
                     aoClicar: () => {
-                      setPainelAberto(false);
+                      fecharPainel();
                       aoNavegarParaMatriz();
                     },
                   }}
