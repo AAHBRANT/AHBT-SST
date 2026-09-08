@@ -1,17 +1,7 @@
 import { useState } from 'react';
-import {
-  Button,
-  Table,
-  TableBody,
-  TableCell,
-  TableHeader,
-  TableHeaderCell,
-  TableRow,
-  Text,
-} from '@fluentui/react-components';
+import { Button, Card, DataTable, FeedbackInline, type Coluna } from '@ui';
 import { ArrowDownload24Regular } from '@fluentui/react-icons';
 import { api, metodoAutenticacaoAssinaturaLabel, type AssinaturaPerfil } from '../../lib/api';
-import { usePageStyles } from '../pageStyles';
 import { AssinaturaTab } from './AssinaturaTab';
 
 interface CofreAssinaturasTabProps {
@@ -20,7 +10,6 @@ interface CofreAssinaturasTabProps {
 }
 
 export function CofreAssinaturasTab({ trabalhadorId, assinaturas }: CofreAssinaturasTabProps) {
-  const estilos = usePageStyles();
   const [erro, setErro] = useState<string | null>(null);
   const [baixandoId, setBaixandoId] = useState<string | null>(null);
 
@@ -42,51 +31,36 @@ export function CofreAssinaturasTab({ trabalhadorId, assinaturas }: CofreAssinat
     }
   }
 
+  const colunas: Coluna<AssinaturaPerfil>[] = [
+    { chave: 'documento', rotulo: 'Documento', render: (a) => a.entidadeTipo },
+    { chave: 'metodo', rotulo: 'Método', render: (a) => metodoAutenticacaoAssinaturaLabel[a.metodo] },
+    { chave: 'dataHora', rotulo: 'Data/Hora', render: (a) => new Date(a.assinadoEm).toLocaleString('pt-BR') },
+    { chave: 'ip', rotulo: 'IP', render: (a) => a.ipAddress ?? 'Não registrado' },
+  ];
+
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-      <div className={estilos.card}>
-        <div className={estilos.toolbar}>
-          <Text weight="semibold">Cofre de assinaturas</Text>
-        </div>
+      <Card titulo="Cofre de assinaturas">
+        {erro && <FeedbackInline tom="erro" aoFechar={() => setErro(null)}>{erro}</FeedbackInline>}
 
-        {erro && <Text className={estilos.erro}>{erro}</Text>}
-
-        {assinaturas.length === 0 ? (
-          <Text>Nenhuma assinatura registrada para este funcionário.</Text>
-        ) : (
-          <Table noNativeElements>
-            <TableHeader>
-              <TableRow>
-                <TableHeaderCell>Documento</TableHeaderCell>
-                <TableHeaderCell>Método</TableHeaderCell>
-                <TableHeaderCell>Data/Hora</TableHeaderCell>
-                <TableHeaderCell>IP</TableHeaderCell>
-                <TableHeaderCell></TableHeaderCell>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {assinaturas.map((assinatura) => (
-                <TableRow key={assinatura.documentoAssinaturaId}>
-                  <TableCell>{assinatura.entidadeTipo}</TableCell>
-                  <TableCell>{metodoAutenticacaoAssinaturaLabel[assinatura.metodo]}</TableCell>
-                  <TableCell>{new Date(assinatura.assinadoEm).toLocaleString('pt-BR')}</TableCell>
-                  <TableCell>{assinatura.ipAddress ?? 'Não registrado'}</TableCell>
-                  <TableCell>
-                    <Button
-                      appearance="subtle"
-                      icon={<ArrowDownload24Regular />}
-                      onClick={() => baixarComprovante(assinatura.documentoAssinaturaId)}
-                      disabled={!assinatura.temPdf || baixandoId === assinatura.documentoAssinaturaId}
-                      aria-label="Baixar comprovante"
-                      title={assinatura.temPdf ? 'Baixar comprovante em PDF' : 'PDF ainda não disponível'}
-                    />
-                  </TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
-        )}
-      </div>
+        <DataTable
+          aria-label="Cofre de assinaturas"
+          colunas={colunas}
+          linhas={assinaturas}
+          chaveLinha={(a) => a.documentoAssinaturaId}
+          vazio={{ titulo: 'Nenhuma assinatura registrada para este funcionário.' }}
+          acoesLinha={(a) => (
+            <Button
+              appearance="subtle"
+              icon={<ArrowDownload24Regular />}
+              onClick={() => baixarComprovante(a.documentoAssinaturaId)}
+              disabled={!a.temPdf || baixandoId === a.documentoAssinaturaId}
+              aria-label="Baixar comprovante"
+              title={a.temPdf ? 'Baixar comprovante em PDF' : 'PDF ainda não disponível'}
+            />
+          )}
+        />
+      </Card>
 
       <AssinaturaTab trabalhadorId={trabalhadorId} />
     </div>

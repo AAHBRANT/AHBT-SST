@@ -1,19 +1,16 @@
 import { useEffect, useState } from 'react';
 import {
-  Button,
-  Checkbox,
   Dialog,
   DialogActions,
   DialogBody,
   DialogContent,
   DialogSurface,
   DialogTitle,
-  Text,
 } from '@fluentui/react-components';
+import { Button, Checkbox, Text, FeedbackInline } from '@ui';
 import { Fingerprint24Regular } from '@fluentui/react-icons';
 import { api } from '../../lib/api';
 import { capturarDigitalBrutaLocal, estaAgenteLocalDisponivel } from '../../lib/agenteBiometricoLocal';
-import { usePageStyles } from '../pageStyles';
 
 interface CadastroDigitalDialogProps {
   trabalhadorId: string | null;
@@ -46,13 +43,16 @@ function extrairMensagemErro(e: unknown, fallback: string): string {
 // do usuário (combinada com o jurídico, 31/08), esses dois termos são coletados em papel, FORA do
 // sistema — esta tela não exibe nenhum texto de consentimento, só uma confirmação administrativa
 // de que o físico já foi assinado, antes de registrar as duas datas no backend.
+//
+// Vive em components/ (não em pages/), mesmo padrão de components/assinatura/ e de
+// RequisitosFuncaoDialog.tsx nesta mesma pasta: Dialog modal bespoke sem equivalente em ui/ (spec §3
+// só padroniza ConfirmDialog/useConfirmar e PainelLateral). Conteúdo interno migrado para @ui.
 export function CadastroDigitalDialog({
   trabalhadorId,
   trabalhadorNome,
   aoFechar,
   aoConcluir,
 }: CadastroDigitalDialogProps) {
-  const estilos = usePageStyles();
   const [termoFisicoConfirmado, setTermoFisicoConfirmado] = useState(false);
   const [consentimentosSalvos, setConsentimentosSalvos] = useState(false);
   const [salvandoConsentimentos, setSalvandoConsentimentos] = useState(false);
@@ -64,6 +64,9 @@ export function CadastroDigitalDialog({
 
   const aberto = trabalhadorId !== null;
 
+  // Todo caminho de fechar/reabrir este diálogo limpa o estado do fluxo anterior — inclusive quando
+  // reaberto para outro trabalhador (chave trabalhadorId), senão o passo/erro de uma tentativa
+  // anterior vazaria para o próximo cadastro.
   useEffect(() => {
     if (!aberto) return;
     setTermoFisicoConfirmado(false);
@@ -116,7 +119,7 @@ export function CadastroDigitalDialog({
         <DialogBody>
           <DialogTitle>Cadastrar digital{trabalhadorNome ? ` — ${trabalhadorNome}` : ''}</DialogTitle>
           <DialogContent style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-            {erro && <Text className={estilos.erro}>{erro}</Text>}
+            {erro && <FeedbackInline tom="erro" aoFechar={() => setErro(null)}>{erro}</FeedbackInline>}
 
             {!consentimentosSalvos ? (
               <>
@@ -134,15 +137,17 @@ export function CadastroDigitalDialog({
               <>
                 {agenteDisponivel === null && <Text>Verificando o leitor local…</Text>}
                 {agenteDisponivel === false && (
-                  <Text style={{ display: 'block', color: 'var(--colorPaletteRedForeground1)' }}>
+                  <FeedbackInline tom="erro">
                     Leitor Futronic não encontrado nesta máquina. Verifique se o leitor está conectado e se
                     o Agente Biométrico está em execução, depois tente novamente.
-                  </Text>
+                  </FeedbackInline>
                 )}
                 {agenteDisponivel && !cadastrada && (
                   <Text>Posicione o dedo do funcionário no leitor e clique em "Capturar digital".</Text>
                 )}
-                {cadastrada && <Text>Digital cadastrada com sucesso.</Text>}
+                {cadastrada && (
+                  <FeedbackInline tom="sucesso">Digital cadastrada com sucesso.</FeedbackInline>
+                )}
               </>
             )}
           </DialogContent>
