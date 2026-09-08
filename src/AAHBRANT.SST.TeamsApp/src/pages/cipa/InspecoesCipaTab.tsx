@@ -1,20 +1,22 @@
 import { useEffect, useState } from 'react';
 import {
-  Badge,
   Button,
+  Campo,
+  CampoData,
+  Card,
+  DataTable,
   Field,
+  FeedbackInline,
+  FormGrid,
   Input,
+  PageHeader,
+  PainelLateral,
   Select,
-  Table,
-  TableBody,
-  TableCell,
-  TableHeader,
-  TableHeaderCell,
-  TableRow,
-  Text,
+  StatusChip,
   Textarea,
-} from '@fluentui/react-components';
-import { CampoData } from '../../components/CampoData';
+  useConfirmar,
+  type Coluna,
+} from '@ui';
 import { Add24Regular, Delete24Regular, Warning24Regular } from '@fluentui/react-icons';
 import {
   api,
@@ -25,11 +27,7 @@ import {
   type Obra,
   type Usuario,
 } from '../../lib/api';
-import { usePageStyles } from '../pageStyles';
-import { useConfirmarExclusao } from '../../hooks/useConfirmarExclusao';
 import { useSucessoToast } from '../../hooks/useSucessoToast';
-import { EstadoVazio } from '../../components/EstadoVazio';
-import { ListaCarregando } from '../../components/ListaCarregando';
 
 function vazio(): NovaInspecaoCipa {
   return { obraId: '', membroCipaId: null, data: '', local: '', riscoIdentificado: '', grauRisco: null };
@@ -38,8 +36,10 @@ function vazio(): NovaInspecaoCipa {
 // Integração com PGR/GRO: este sistema NÃO envia alertas automáticos ao inventário de riscos do
 // GRO. O botão "Gerar Não Conformidade" cria manualmente uma Não Conformidade (mesmo mecanismo de
 // NaoConformidadesTab.tsx) a partir do risco identificado na inspeção — ver disclosure em Cipa.cs.
+// Camada ui/ (Onda 2, Task 4): formulário de registro saiu de cima da tabela para um PainelLateral
+// (Guia §2); o mini-formulário de "gerar NC" fica como Card contextual acima da lista, por ser
+// disparado por linha e de vida curta (não é o formulário principal da tela).
 export function InspecoesCipaTab() {
-  const estilos = usePageStyles();
   const [lista, setLista] = useState<InspecaoCipa[]>([]);
   const [obras, setObras] = useState<Obra[]>([]);
   const [membros, setMembros] = useState<MembroCipa[]>([]);
@@ -49,9 +49,11 @@ export function InspecoesCipaTab() {
   const [responsavelNc, setResponsavelNc] = useState('');
   const [prazoNc, setPrazoNc] = useState('');
   const [erro, setErro] = useState<string | null>(null);
+  const [erroPainel, setErroPainel] = useState<string | null>(null);
   const [carregando, setCarregando] = useState(false);
   const [carregandoLista, setCarregandoLista] = useState(true);
-  const { confirmar, dialogElement } = useConfirmarExclusao();
+  const [painelAberto, setPainelAberto] = useState(false);
+  const { confirmar, dialogElement } = useConfirmar();
   const sucessoToast = useSucessoToast();
 
   async function carregar() {
@@ -85,21 +87,27 @@ export function InspecoesCipaTab() {
     setMembros(obraId ? await api.cipa.membros.listar(obraId, true) : []);
   }
 
+  function fecharPainel() {
+    setPainelAberto(false);
+    setErroPainel(null);
+  }
+
   async function criar() {
     if (!novo.obraId || !novo.data || !novo.local.trim() || !novo.riscoIdentificado.trim()) {
-      setErro('Preencha obra, data, local e o risco identificado.');
+      setErroPainel('Preencha obra, data, local e o risco identificado.');
       return;
     }
     try {
       setCarregando(true);
-      setErro(null);
+      setErroPainel(null);
       await api.cipa.inspecoes.criar(novo);
       setNovo(vazio());
       setMembros([]);
       await carregar();
       sucessoToast('Inspeção registrada com sucesso.');
+      fecharPainel();
     } catch (e) {
-      setErro(e instanceof Error ? e.message : 'Falha ao registrar inspeção.');
+      setErroPainel(e instanceof Error ? e.message : 'Falha ao registrar inspeção.');
     } finally {
       setCarregando(false);
     }
@@ -134,17 +142,116 @@ export function InspecoesCipaTab() {
     }
   }
 
+  const colunas: Coluna<InspecaoCipa>[] = [
+    { chave: 'obra', rotulo: 'Obra', render: (i) => nomeObra(i.obraId) },
+    { chave: 'data', rotulo: 'Data', render: (i) => i.data?.slice(0, 10) ?? '' },
+    { chave: 'local', rotulo: 'Local' },
+    { chave: 'riscoIdentificado', rotulo: 'Risco identificado' },
+    { chave: 'grauRisco', rotulo: 'Grau', render: (i) => (i.grauRisco != null ? nivelRiscoLabel[i.grauRisco] : '—') },
+  ];
+
   return (
     <div>
       {dialogElement}
-      <div className={estilos.card} style={{ marginBottom: 16 }}>
-        <div className={estilos.toolbar}>
-          <Text weight="semibold">Nova inspeção</Text>
+      <PageHeader
+        titulo="Inspeções CIPA"
+        acoes={
+          <Button appearance="primary" icon={<Add24Regular />} onClick={() => setPainelAberto(true)}>
+            Registrar inspeção
+          </Button>
+        }
+      />
+      {erro && (
+        <FeedbackInline tom="erro" aoFechar={() => setErro(null)}>
+          {erro}
+        </FeedbackInline>
+      )}
+
+      {gerandoNcPara && (
+        <div style={{ marginBottom: 16 }}>
+        <Card titulo="Gerar não conformidade">
+          <FormGrid>
+            <Campo span={6}>
+              <Field label="Responsável">
+                <Select value={responsavelNc} onChange={(_, d) => setResponsavelNc(d.value)}>
+                  <option value="">Nenhum</option>
+                  {usuarios.map((usuario) => (
+                    <option key={usuario.id} value={usuario.id}>
+                      {usuario.nome}
+                    </option>
+                  ))}
+                </Select>
+              </Field>
+            </Campo>
+            <Campo span={6}>
+              <Field label="Prazo">
+                <CampoData value={prazoNc} onChange={(_, d) => setPrazoNc(d.value)} />
+              </Field>
+            </Campo>
+          </FormGrid>
+          <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8 }}>
+            <Button appearance="secondary" onClick={() => setGerandoNcPara(null)}>
+              Cancelar
+            </Button>
+            <Button appearance="primary" onClick={confirmarGerarNc} disabled={carregando}>
+              Confirmar
+            </Button>
+          </div>
+        </Card>
         </div>
-        {erro && <Text className={estilos.erro}>{erro}</Text>}
-        <div className={`${estilos.sectionTitle} ${estilos.sectionTitleFirst}`}>Dados da Inspeção</div>
-        <div className={estilos.formGrid}>
-          <div className={estilos.col3}>
+      )}
+
+      <Card>
+        <DataTable
+          aria-label="Inspeções registradas"
+          colunas={colunas}
+          linhas={lista}
+          chaveLinha={(i) => i.id}
+          carregando={carregandoLista}
+          vazio={{
+            titulo: 'Nenhuma inspeção registrada ainda',
+            acao: { rotulo: 'Registrar inspeção', aoClicar: () => setPainelAberto(true) },
+          }}
+          acoesLinha={(i) => (
+            <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+              {i.naoConformidadeId ? (
+                <StatusChip tom="atencao">NC gerada</StatusChip>
+              ) : (
+                <Button
+                  appearance="subtle"
+                  icon={<Warning24Regular />}
+                  onClick={() => setGerandoNcPara(i.id)}
+                  aria-label="Gerar não conformidade"
+                >
+                  Gerar NC
+                </Button>
+              )}
+              <Button appearance="subtle" icon={<Delete24Regular />} onClick={() => excluir(i.id)} aria-label="Excluir" />
+            </div>
+          )}
+        />
+      </Card>
+
+      <PainelLateral
+        aberto={painelAberto}
+        aoFechar={fecharPainel}
+        titulo="Nova inspeção"
+        rodape={
+          <>
+            <Button onClick={fecharPainel}>Cancelar</Button>
+            <Button appearance="primary" onClick={criar} disabled={carregando}>
+              Registrar inspeção
+            </Button>
+          </>
+        }
+      >
+        {erroPainel && (
+          <FeedbackInline tom="erro" aoFechar={() => setErroPainel(null)}>
+            {erroPainel}
+          </FeedbackInline>
+        )}
+        <FormGrid>
+          <Campo span={3}>
             <Field label="Obra" required>
               <Select value={novo.obraId} onChange={(_, d) => trocarObra(d.value)}>
                 <option value="">Selecione</option>
@@ -155,8 +262,8 @@ export function InspecoesCipaTab() {
                 ))}
               </Select>
             </Field>
-          </div>
-          <div className={estilos.col3}>
+          </Campo>
+          <Campo span={3}>
             <Field label="Membro que inspecionou">
               <Select
                 value={novo.membroCipaId ?? ''}
@@ -171,18 +278,18 @@ export function InspecoesCipaTab() {
                 ))}
               </Select>
             </Field>
-          </div>
-          <div className={estilos.col2}>
+          </Campo>
+          <Campo span={2}>
             <Field label="Data" required>
               <CampoData value={novo.data} onChange={(_, d) => setNovo({ ...novo, data: d.value })} />
             </Field>
-          </div>
-          <div className={estilos.col4}>
+          </Campo>
+          <Campo span={4}>
             <Field label="Local" required>
               <Input value={novo.local} onChange={(_, d) => setNovo({ ...novo, local: d.value })} />
             </Field>
-          </div>
-          <div className={estilos.col3}>
+          </Campo>
+          <Campo span={3}>
             <Field label="Grau de risco">
               <Select
                 value={novo.grauRisco != null ? String(novo.grauRisco) : ''}
@@ -196,109 +303,14 @@ export function InspecoesCipaTab() {
                 ))}
               </Select>
             </Field>
-          </div>
-          <div className={estilos.col12}>
+          </Campo>
+          <Campo span={12}>
             <Field label="Risco identificado" required>
               <Textarea value={novo.riscoIdentificado} onChange={(_, d) => setNovo({ ...novo, riscoIdentificado: d.value })} />
             </Field>
-          </div>
-        </div>
-        <div className={estilos.formActions}>
-          <Button appearance="primary" icon={<Add24Regular />} onClick={criar} disabled={carregando}>
-            Registrar inspeção
-          </Button>
-        </div>
-      </div>
-
-      {gerandoNcPara && (
-        <div className={estilos.card} style={{ marginBottom: 16 }}>
-          <div className={estilos.toolbar}>
-            <Text weight="semibold">Gerar não conformidade</Text>
-          </div>
-          <div className={`${estilos.sectionTitle} ${estilos.sectionTitleFirst}`}>Dados da Não Conformidade</div>
-          <div className={estilos.formGrid}>
-            <div className={estilos.col6}>
-              <Field label="Responsável">
-                <Select value={responsavelNc} onChange={(_, d) => setResponsavelNc(d.value)}>
-                  <option value="">Nenhum</option>
-                  {usuarios.map((usuario) => (
-                    <option key={usuario.id} value={usuario.id}>
-                      {usuario.nome}
-                    </option>
-                  ))}
-                </Select>
-              </Field>
-            </div>
-            <div className={estilos.col6}>
-              <Field label="Prazo">
-                <CampoData value={prazoNc} onChange={(_, d) => setPrazoNc(d.value)} />
-              </Field>
-            </div>
-          </div>
-          <div className={estilos.formActions}>
-            <Button appearance="secondary" onClick={() => setGerandoNcPara(null)}>
-              Cancelar
-            </Button>
-            <Button appearance="primary" onClick={confirmarGerarNc} disabled={carregando}>
-              Confirmar
-            </Button>
-          </div>
-        </div>
-      )}
-
-      <div className={estilos.card}>
-        <div className={estilos.toolbar}>
-          <Text weight="semibold">Inspeções registradas</Text>
-        </div>
-        {carregandoLista ? (
-          <ListaCarregando />
-        ) : lista.length === 0 ? (
-          <EstadoVazio mensagem="Nenhuma inspeção registrada ainda." />
-        ) : (
-        <Table noNativeElements>
-          <TableHeader>
-            <TableRow>
-              <TableHeaderCell>Obra</TableHeaderCell>
-              <TableHeaderCell>Data</TableHeaderCell>
-              <TableHeaderCell>Local</TableHeaderCell>
-              <TableHeaderCell>Risco identificado</TableHeaderCell>
-              <TableHeaderCell>Grau</TableHeaderCell>
-              <TableHeaderCell></TableHeaderCell>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {lista.map((i) => (
-              <TableRow key={i.id}>
-                <TableCell>{nomeObra(i.obraId)}</TableCell>
-                <TableCell>{i.data?.slice(0, 10)}</TableCell>
-                <TableCell>{i.local}</TableCell>
-                <TableCell>{i.riscoIdentificado}</TableCell>
-                <TableCell>{i.grauRisco != null ? nivelRiscoLabel[i.grauRisco] : '—'}</TableCell>
-                <TableCell>
-                  <div style={{ display: 'flex', gap: 4 }}>
-                    {i.naoConformidadeId ? (
-                      <Badge appearance="tint" color="warning">
-                        NC gerada
-                      </Badge>
-                    ) : (
-                      <Button
-                        appearance="subtle"
-                        icon={<Warning24Regular />}
-                        onClick={() => setGerandoNcPara(i.id)}
-                        aria-label="Gerar não conformidade"
-                      >
-                        Gerar NC
-                      </Button>
-                    )}
-                    <Button appearance="subtle" icon={<Delete24Regular />} onClick={() => excluir(i.id)} aria-label="Excluir" />
-                  </div>
-                </TableCell>
-              </TableRow>
-            ))}
-          </TableBody>
-        </Table>
-        )}
-      </div>
+          </Campo>
+        </FormGrid>
+      </PainelLateral>
     </div>
   );
 }
