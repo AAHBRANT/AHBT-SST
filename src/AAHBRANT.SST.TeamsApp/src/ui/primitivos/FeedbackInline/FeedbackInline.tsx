@@ -19,7 +19,11 @@ const intentPorTom = { erro: 'error', aviso: 'warning', sucesso: 'success', info
 export function FeedbackInline({ tom, children, acao, aoFechar }: FeedbackInlineProps) {
   const estilos = useStyles();
   return (
-    <MessageBar intent={intentPorTom[tom]} className={estilos.root}>
+    <MessageBar
+      intent={intentPorTom[tom]}
+      className={estilos.root}
+      role={tom === 'erro' || tom === 'aviso' ? 'alert' : 'status'}
+    >
       <MessageBarBody>{children}</MessageBarBody>
       {(acao || aoFechar) && (
         <MessageBarActions containerAction={aoFechar && <Button appearance="transparent" icon={<DismissRegular />} aria-label="Fechar" onClick={aoFechar} />}>

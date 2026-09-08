@@ -6,7 +6,11 @@ import { PageHeader, type PageHeaderProps } from '../../compostos/PageHeader/Pag
 const useStyles = makeStyles({
   grid: { display: 'grid', gridTemplateColumns: '1fr 320px', gap: tokensUi.espaco.lg, alignItems: 'start',
     '@media (max-width: 1100px)': { gridTemplateColumns: '1fr' } },
+  // Lateral mais alta que a viewport (ações com formulário aberto) rola dentro de si; sem isso o
+  // sticky prendia o topo e o rodapé ficava inalcançável. 112px = 64px do header + 24px×2 de
+  // padding do conteúdo.
   lateral: { display: 'flex', flexDirection: 'column', gap: tokensUi.espaco.lg, position: 'sticky', top: 0,
+    maxHeight: 'calc(100vh - 112px)', overflowY: 'auto',
     '@media (max-width: 1100px)': { order: -1, position: 'static' } },
   principal: { display: 'flex', flexDirection: 'column', gap: tokensUi.espaco.lg, minWidth: 0 },
 });
