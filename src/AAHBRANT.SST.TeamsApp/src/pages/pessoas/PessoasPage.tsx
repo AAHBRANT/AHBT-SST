@@ -1,7 +1,6 @@
-import { useEffect, useState } from 'react';
+import { useEffect } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
-import { Tab, TabList, Text, type SelectTabData, type SelectTabEvent } from '@fluentui/react-components';
-import { usePillTabStyles, useSubTabStyles } from '../pageStyles';
+import { Abas, PageHeader, useAbaNaUrl } from '@ui';
 import { PessoasDashboardTab } from './dashboard/PessoasDashboardTab';
 import { TrabalhadoresTab } from './TrabalhadoresTab';
 import { FuncoesTab } from './FuncoesTab';
@@ -13,49 +12,45 @@ import { FuncoesTab } from './FuncoesTab';
 // Treinamentos e Matriz de Treinamento por Função saíram daqui em 02/09 e viraram o módulo próprio
 // TreinamentosPage (/treinamentos) — cada item da sidebar deve abrir só o que é dele; Trabalhadores
 // e Treinamentos não têm nada a ver entre si, só compartilhavam esta tela por conveniência técnica.
-type AbaPessoas = 'dashboard' | 'trabalhadores' | 'funcoes';
+//
+// Onda 2 Task 3 (camada ui/): página-pilar sem aninhamento (só um nível de abas, igual EpiPage) —
+// `Abas` + `useAbaNaUrl('aba', ...)` sincroniza a aba com a URL nos dois sentidos (spec §3), mesmo
+// param que a página já lia (`?aba=`) antes da migração, preservando os links antigos.
+const ABAS = ['trabalhadores', 'funcoes', 'dashboard'] as const;
+type AbaPessoas = (typeof ABAS)[number];
 
-const ABAS_VALIDAS: AbaPessoas[] = ['dashboard', 'trabalhadores', 'funcoes'];
 const ABAS_MOVIDAS_PARA_TREINAMENTOS = ['cursos', 'matrizTreinamento'];
 
 export function PessoasPage({ mostrarTitulo = true }: { mostrarTitulo?: boolean } = {}) {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
-  const abaInicial = searchParams.get('aba');
-  const [aba, setAba] = useState<AbaPessoas>(
-    ABAS_VALIDAS.includes(abaInicial as AbaPessoas) ? (abaInicial as AbaPessoas) : 'trabalhadores',
-  );
-  const estilosPillTab = usePillTabStyles();
-  const estilosSubTab = useSubTabStyles();
-  const estilosAba = mostrarTitulo ? estilosPillTab : estilosSubTab;
+  const abaBruta = searchParams.get('aba');
 
   // Link antigo (?aba=cursos / ?aba=matrizTreinamento) — redireciona pro módulo próprio novo em vez
   // de simplesmente ignorar o parâmetro e cair em "Trabalhadores" sem explicação.
   useEffect(() => {
-    if (abaInicial && ABAS_MOVIDAS_PARA_TREINAMENTOS.includes(abaInicial)) {
+    if (abaBruta && ABAS_MOVIDAS_PARA_TREINAMENTOS.includes(abaBruta)) {
       navigate('/treinamentos', { replace: true });
     }
-  }, [abaInicial, navigate]);
+  }, [abaBruta, navigate]);
+
+  const [aba, setAba] = useAbaNaUrl<AbaPessoas>('aba', ABAS, 'trabalhadores');
 
   return (
     <div>
-      {mostrarTitulo && (
-        <div style={{ marginBottom: 16 }}>
-          <Text size={500} weight="semibold">
-            Pessoas
-          </Text>
-        </div>
-      )}
+      {mostrarTitulo && <PageHeader titulo="Pessoas" />}
 
-      <TabList
-        selectedValue={aba}
-        onTabSelect={(_: SelectTabEvent, data: SelectTabData) => setAba(data.value as AbaPessoas)}
-        className={estilosAba.lista}
-      >
-        <Tab value="trabalhadores">Funcionários</Tab>
-        <Tab value="funcoes">Funções</Tab>
-        <Tab value="dashboard">Dashboard</Tab>
-      </TabList>
+      <Abas
+        nivel={mostrarTitulo ? 'pilar' : 'modulo'}
+        valor={aba}
+        aoMudar={setAba}
+        aria-label="Seções de Pessoas"
+        abas={[
+          { valor: 'trabalhadores', rotulo: 'Funcionários' },
+          { valor: 'funcoes', rotulo: 'Funções' },
+          { valor: 'dashboard', rotulo: 'Dashboard' },
+        ]}
+      />
 
       {aba === 'trabalhadores' && <TrabalhadoresTab />}
       {aba === 'funcoes' && <FuncoesTab />}
