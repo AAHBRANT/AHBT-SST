@@ -1,22 +1,21 @@
 import { useState } from 'react';
 import {
   Button,
+  Campo,
+  Card,
+  DataTable,
   Field,
+  FeedbackInline,
+  FormGrid,
+  FormRodape,
+  FormSection,
   Input,
-  Table,
-  TableBody,
-  TableCell,
-  TableHeader,
-  TableHeaderCell,
-  TableRow,
-  Text,
-} from '@fluentui/react-components';
+  useConfirmar,
+  type Coluna,
+} from '@ui';
 import { Add24Regular, Delete24Regular } from '@fluentui/react-icons';
 import { api, type NovaPermissaoTrabalhoRiscoCritico, type PermissaoTrabalhoRiscoCritico } from '../../lib/api';
-import { usePageStyles } from '../pageStyles';
-import { useConfirmarExclusao } from '../../hooks/useConfirmarExclusao';
 import { useSucessoToast } from '../../hooks/useSucessoToast';
-import { EstadoVazio } from '../../components/EstadoVazio';
 
 function riscoVazio(permissaoTrabalhoId: string): NovaPermissaoTrabalhoRiscoCritico {
   return { permissaoTrabalhoId, riscoCondicao: '', controleComplementar: '', responsavelEvidencia: '' };
@@ -32,13 +31,12 @@ export function RiscosCriticosPtTab({
   itens: PermissaoTrabalhoRiscoCritico[];
   aoAtualizar: () => Promise<void>;
 }) {
-  const estilos = usePageStyles();
   const [novoRisco, setNovoRisco] = useState<NovaPermissaoTrabalhoRiscoCritico>(() =>
     riscoVazio(permissaoTrabalhoId),
   );
   const [erro, setErro] = useState<string | null>(null);
   const [carregando, setCarregando] = useState(false);
-  const { confirmar, dialogElement } = useConfirmarExclusao();
+  const { confirmar, dialogElement } = useConfirmar();
   const sucessoToast = useSucessoToast();
 
   async function criar() {
@@ -73,80 +71,67 @@ export function RiscosCriticosPtTab({
     }
   }
 
+  const colunas: Coluna<PermissaoTrabalhoRiscoCritico>[] = [
+    { chave: 'riscoCondicao', rotulo: 'Risco / condição' },
+    { chave: 'controleComplementar', rotulo: 'Controle complementar', render: (item) => item.controleComplementar ?? '-' },
+    { chave: 'responsavelEvidencia', rotulo: 'Responsável / evidência', render: (item) => item.responsavelEvidencia ?? '-' },
+  ];
+
   return (
-    <div className={estilos.card}>
-      {dialogElement}
-      <div className={estilos.toolbar}>
-        <Text weight="semibold">Riscos críticos / controles complementares</Text>
-      </div>
+    <>
+      <Card titulo="Riscos críticos / controles complementares">
+        {erro && (
+          <FeedbackInline tom="erro" aoFechar={() => setErro(null)}>
+            {erro}
+          </FeedbackInline>
+        )}
 
-      {erro && <Text className={estilos.erro}>{erro}</Text>}
-
-      <div className={`${estilos.sectionTitle} ${estilos.sectionTitleFirst}`}>Dados do Risco Crítico</div>
-      <div className={estilos.formGrid}>
-        <div className={estilos.col4}>
-          <Field label="Risco / condição">
-            <Input
-              value={novoRisco.riscoCondicao}
-              onChange={(_, d) => setNovoRisco({ ...novoRisco, riscoCondicao: d.value })}
-            />
-          </Field>
-        </div>
-        <div className={estilos.col4}>
-          <Field label="Controle complementar">
-            <Input
-              value={novoRisco.controleComplementar ?? ''}
-              onChange={(_, d) => setNovoRisco({ ...novoRisco, controleComplementar: d.value })}
-            />
-          </Field>
-        </div>
-        <div className={estilos.col4}>
-          <Field label="Responsável / evidência">
-            <Input
-              value={novoRisco.responsavelEvidencia ?? ''}
-              onChange={(_, d) => setNovoRisco({ ...novoRisco, responsavelEvidencia: d.value })}
-            />
-          </Field>
-        </div>
-      </div>
-
-      <div className={estilos.formActions}>
-        <Button appearance="primary" icon={<Add24Regular />} onClick={criar} disabled={carregando}>
-          Adicionar risco crítico
-        </Button>
-      </div>
-
-      {itens.length === 0 ? (
-        <EstadoVazio mensagem="Nenhum risco crítico cadastrado ainda." />
-      ) : (
-      <Table noNativeElements>
-        <TableHeader>
-          <TableRow>
-            <TableHeaderCell>Risco / condição</TableHeaderCell>
-            <TableHeaderCell>Controle complementar</TableHeaderCell>
-            <TableHeaderCell>Responsável / evidência</TableHeaderCell>
-            <TableHeaderCell></TableHeaderCell>
-          </TableRow>
-        </TableHeader>
-        <TableBody>
-          {itens.map((item) => (
-            <TableRow key={item.id}>
-              <TableCell>{item.riscoCondicao}</TableCell>
-              <TableCell>{item.controleComplementar ?? '-'}</TableCell>
-              <TableCell>{item.responsavelEvidencia ?? '-'}</TableCell>
-              <TableCell>
-                <Button
-                  appearance="subtle"
-                  icon={<Delete24Regular />}
-                  onClick={() => excluir(item.id)}
-                  aria-label="Excluir"
+        <FormSection titulo="Dados do Risco Crítico" numero={1} primeira>
+          <FormGrid>
+            <Campo span={4}>
+              <Field label="Risco / condição">
+                <Input
+                  value={novoRisco.riscoCondicao}
+                  onChange={(_, d) => setNovoRisco({ ...novoRisco, riscoCondicao: d.value })}
                 />
-              </TableCell>
-            </TableRow>
-          ))}
-        </TableBody>
-      </Table>
-      )}
-    </div>
+              </Field>
+            </Campo>
+            <Campo span={4}>
+              <Field label="Controle complementar">
+                <Input
+                  value={novoRisco.controleComplementar ?? ''}
+                  onChange={(_, d) => setNovoRisco({ ...novoRisco, controleComplementar: d.value })}
+                />
+              </Field>
+            </Campo>
+            <Campo span={4}>
+              <Field label="Responsável / evidência">
+                <Input
+                  value={novoRisco.responsavelEvidencia ?? ''}
+                  onChange={(_, d) => setNovoRisco({ ...novoRisco, responsavelEvidencia: d.value })}
+                />
+              </Field>
+            </Campo>
+          </FormGrid>
+          <FormRodape>
+            <Button appearance="primary" icon={<Add24Regular />} onClick={criar} disabled={carregando}>
+              Adicionar risco crítico
+            </Button>
+          </FormRodape>
+        </FormSection>
+
+        <DataTable
+          aria-label="Riscos críticos cadastrados"
+          colunas={colunas}
+          linhas={itens}
+          chaveLinha={(item) => item.id}
+          vazio={{ titulo: 'Nenhum risco crítico cadastrado ainda.' }}
+          acoesLinha={(item) => (
+            <Button appearance="subtle" icon={<Delete24Regular />} onClick={() => excluir(item.id)} aria-label="Excluir" />
+          )}
+        />
+      </Card>
+      {dialogElement}
+    </>
   );
 }
