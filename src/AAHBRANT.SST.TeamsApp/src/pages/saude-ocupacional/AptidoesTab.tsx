@@ -1,20 +1,28 @@
 import { useEffect, useState } from 'react';
 import {
-  Badge,
   Button,
+  Campo,
+  Card,
+  CampoData,
+  DataTable,
   Field,
+  FeedbackInline,
+  FormGrid,
+  FormRodape,
+  FormSection,
   Input,
   Select,
-  Table,
-  TableBody,
-  TableCell,
-  TableHeader,
-  TableHeaderCell,
-  TableRow,
+  StatusChip,
   Text,
   Textarea,
-} from '@fluentui/react-components';
-import { CampoData } from '../../components/CampoData';
+  designTokens,
+  nivelVencimento,
+  rotuloDeVencimento,
+  tomDeVencimento,
+  useConfirmar,
+  type Coluna,
+  type Tom,
+} from '@ui';
 import { Add24Regular, Delete24Regular, Save24Regular } from '@fluentui/react-icons';
 import {
   api,
@@ -24,12 +32,7 @@ import {
   type NovaAptidao,
   type Trabalhador,
 } from '../../lib/api';
-import { BadgeVencimento } from '../../components/badges/BadgeVencimento';
-import { usePageStyles } from '../pageStyles';
-import { useConfirmarExclusao } from '../../hooks/useConfirmarExclusao';
 import { useSucessoToast } from '../../hooks/useSucessoToast';
-import { EstadoVazio } from '../../components/EstadoVazio';
-import { ListaCarregando } from '../../components/ListaCarregando';
 
 function aptidaoVazia(): NovaAptidao {
   return {
@@ -43,17 +46,19 @@ function aptidaoVazia(): NovaAptidao {
   };
 }
 
-const corResultado: Record<number, 'success' | 'warning' | 'danger' | 'informative'> = {
-  1: 'success',
-  2: 'warning',
-  3: 'danger',
-  4: 'informative',
-};
+// ResultadoAso: Apto=1, AptoComRestricao=2, Inapto=3, Pendente=4 — mesmo enum reaproveitado por
+// AsosTab.tsx, mesma tabela de tons.
+const tomPorResultadoAso: Record<number, Tom> = { 1: 'ok', 2: 'atencao', 3: 'alerta', 4: 'info' };
 
-// Aptidão para atividade crítica (ex.: trabalho em altura, espaço confinado) — distinta do ASO
-// geral, embora reaproveite o mesmo enum de resultado (Apto/Apto com restrição/Inapto/Pendente).
+function chipVencimento(data?: string | null) {
+  const nivel = nivelVencimento(data);
+  return nivel ? <StatusChip tom={tomDeVencimento(nivel)}>{rotuloDeVencimento(nivel)}</StatusChip> : null;
+}
+
+// Onda 2 Task 12 (camada ui/): aptidão para atividade crítica (ex.: trabalho em altura, espaço
+// confinado) — distinta do ASO geral, embora reaproveite o mesmo enum de resultado (Apto/Apto com
+// restrição/Inapto/Pendente). Edição inline por linha, mesmo padrão de AsosTab.tsx.
 export function AptidoesTab() {
-  const estilos = usePageStyles();
   const [aptidoes, setAptidoes] = useState<Aptidao[]>([]);
   const [trabalhadores, setTrabalhadores] = useState<Trabalhador[]>([]);
   const [novaAptidao, setNovaAptidao] = useState<NovaAptidao>(aptidaoVazia());
@@ -62,7 +67,7 @@ export function AptidoesTab() {
   const [erro, setErro] = useState<string | null>(null);
   const [carregando, setCarregando] = useState(false);
   const [carregandoLista, setCarregandoLista] = useState(true);
-  const { confirmar, dialogElement } = useConfirmarExclusao();
+  const { confirmar, dialogElement } = useConfirmar();
   const sucessoToast = useSucessoToast();
 
   async function carregar() {
@@ -138,197 +143,185 @@ export function AptidoesTab() {
     }
   }
 
-  return (
-    <div>
-      {dialogElement}
-      <div className={estilos.card} style={{ marginBottom: 16 }}>
-        <div className={estilos.toolbar}>
-          <Text weight="semibold">Nova aptidão para atividade crítica</Text>
-        </div>
-
-        {erro && <Text className={estilos.erro}>{erro}</Text>}
-
-        <div className={`${estilos.sectionTitle} ${estilos.sectionTitleFirst}`}>Dados da Aptidão</div>
-        <div className={estilos.formGrid}>
-          <div className={estilos.col4}>
-            <Field label="Funcionário">
-              <Select
-                value={novaAptidao.trabalhadorId}
-                onChange={(_, d) => setNovaAptidao({ ...novaAptidao, trabalhadorId: d.value })}
-              >
-                <option value="">Selecione</option>
-                {trabalhadores.map((t) => (
-                  <option key={t.id} value={t.id}>
-                    {t.nome} ({t.matricula})
-                  </option>
-                ))}
-              </Select>
-            </Field>
-          </div>
-          <div className={estilos.col4}>
-            <Field label="Atividade crítica">
-              <Input
-                placeholder="Ex.: Trabalho em altura, Espaço confinado"
-                value={novaAptidao.atividadeCritica}
-                onChange={(_, d) => setNovaAptidao({ ...novaAptidao, atividadeCritica: d.value })}
-              />
-            </Field>
-          </div>
-          <div className={estilos.col2}>
-            <Field label="Data da avaliação">
-              <CampoData
-                value={novaAptidao.dataAvaliacao}
-                onChange={(_, d) => setNovaAptidao({ ...novaAptidao, dataAvaliacao: d.value })}
-              />
-            </Field>
-          </div>
-          <div className={estilos.col2}>
-            <Field label="Validade (opcional)">
-              <CampoData
-                value={novaAptidao.dataValidade ?? ''}
-                onChange={(_, d) => setNovaAptidao({ ...novaAptidao, dataValidade: d.value })}
-              />
-            </Field>
-          </div>
-          <div className={estilos.col3}>
-            <Field label="Resultado">
-              <Select
-                value={novaAptidao.aptidao}
-                onChange={(_, d) => setNovaAptidao({ ...novaAptidao, aptidao: Number(d.value) })}
-              >
-                {Object.entries(resultadoAsoLabel).map(([valor, rotulo]) => (
-                  <option key={valor} value={valor}>
-                    {rotulo}
-                  </option>
-                ))}
-              </Select>
-            </Field>
-          </div>
-          <div className={estilos.col3}>
-            <Field label="Médico responsável">
-              <Input
-                value={novaAptidao.medicoResponsavel ?? ''}
-                onChange={(_, d) => setNovaAptidao({ ...novaAptidao, medicoResponsavel: d.value })}
-              />
-            </Field>
-          </div>
-          <div className={estilos.col6}>
-            <Field label="Observações">
-              <Textarea
-                value={novaAptidao.observacoes ?? ''}
-                onChange={(_, d) => setNovaAptidao({ ...novaAptidao, observacoes: d.value })}
-              />
-            </Field>
-          </div>
-        </div>
-        <div className={estilos.formActions}>
-          <Button appearance="primary" icon={<Add24Regular />} onClick={criar} disabled={carregando}>
-            Registrar aptidão
-          </Button>
-        </div>
-      </div>
-
-      <div className={estilos.card}>
-        <div className={estilos.toolbar}>
-          <Text weight="semibold">Aptidões registradas</Text>
-        </div>
-
-        {carregandoLista ? (
-          <ListaCarregando />
-        ) : aptidoes.length === 0 ? (
-          <EstadoVazio mensagem="Nenhuma aptidão cadastrada ainda." />
+  const colunas: Coluna<Aptidao>[] = [
+    { chave: 'trabalhador', rotulo: 'Funcionário', render: (a) => nomeTrabalhador(a.trabalhadorId) },
+    {
+      chave: 'atividadeCritica',
+      rotulo: 'Atividade crítica',
+      render: (a) =>
+        edicaoId === a.id && edicao ? (
+          <Input
+            value={edicao.atividadeCritica}
+            onChange={(_, d) => setEdicao({ ...edicao, atividadeCritica: d.value })}
+          />
         ) : (
-        <Table noNativeElements>
-          <TableHeader>
-            <TableRow>
-              <TableHeaderCell>Funcionário</TableHeaderCell>
-              <TableHeaderCell>Atividade crítica</TableHeaderCell>
-              <TableHeaderCell>Avaliação</TableHeaderCell>
-              <TableHeaderCell>Validade</TableHeaderCell>
-              <TableHeaderCell>Resultado</TableHeaderCell>
-              <TableHeaderCell></TableHeaderCell>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {aptidoes.map((aptidao) =>
-              edicaoId === aptidao.id && edicao ? (
-                <TableRow key={aptidao.id}>
-                  <TableCell>{nomeTrabalhador(aptidao.trabalhadorId)}</TableCell>
-                  <TableCell>
-                    <Input
-                      value={edicao.atividadeCritica}
-                      onChange={(_, d) => setEdicao({ ...edicao, atividadeCritica: d.value })}
-                    />
-                  </TableCell>
-                  <TableCell>
-                    <CampoData
-                      value={edicao.dataAvaliacao?.slice(0, 10)}
-                      onChange={(_, d) => setEdicao({ ...edicao, dataAvaliacao: d.value })}
-                    />
-                  </TableCell>
-                  <TableCell>
-                    <CampoData
-                      value={edicao.dataValidade?.slice(0, 10) ?? ''}
-                      onChange={(_, d) => setEdicao({ ...edicao, dataValidade: d.value })}
-                    />
-                  </TableCell>
-                  <TableCell>
-                    <Select
-                      value={edicao.aptidao}
-                      onChange={(_, d) => setEdicao({ ...edicao, aptidao: Number(d.value) })}
-                    >
-                      {Object.entries(resultadoAsoLabel).map(([valor, rotulo]) => (
-                        <option key={valor} value={valor}>
-                          {rotulo}
-                        </option>
-                      ))}
-                    </Select>
-                  </TableCell>
-                  <TableCell>
-                    <Button
-                      appearance="subtle"
-                      icon={<Save24Regular />}
-                      onClick={salvarEdicao}
-                      disabled={carregando}
-                      aria-label="Salvar"
-                    />
-                  </TableCell>
-                </TableRow>
-              ) : (
-                <TableRow key={aptidao.id} onClick={() => iniciarEdicao(aptidao)} style={{ cursor: 'pointer' }}>
-                  <TableCell>{nomeTrabalhador(aptidao.trabalhadorId)}</TableCell>
-                  <TableCell>{aptidao.atividadeCritica}</TableCell>
-                  <TableCell>{aptidao.dataAvaliacao?.slice(0, 10)}</TableCell>
-                  <TableCell>
-                    {aptidao.dataValidade?.slice(0, 10)}
-                    <BadgeVencimento dataValidade={aptidao.dataValidade} />
-                  </TableCell>
-                  <TableCell>
-                    <Badge color={corResultado[aptidao.aptidao]} appearance="tint">
-                      {resultadoAsoLabel[aptidao.aptidao]}
-                    </Badge>
-                  </TableCell>
-                  <TableCell>
-                    <Button
-                      appearance="subtle"
-                      icon={<Delete24Regular />}
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        excluir(aptidao.id);
-                      }}
-                      aria-label="Excluir"
-                    />
-                  </TableCell>
-                </TableRow>
-              ),
-            )}
-          </TableBody>
-        </Table>
-        )}
-        <Text size={200} style={{ display: 'block', marginTop: 8 }}>
+          a.atividadeCritica
+        ),
+    },
+    {
+      chave: 'avaliacao',
+      rotulo: 'Avaliação',
+      render: (a) =>
+        edicaoId === a.id && edicao ? (
+          <CampoData
+            value={edicao.dataAvaliacao?.slice(0, 10)}
+            onChange={(_, d) => setEdicao({ ...edicao, dataAvaliacao: d.value })}
+          />
+        ) : (
+          a.dataAvaliacao?.slice(0, 10)
+        ),
+    },
+    {
+      chave: 'validade',
+      rotulo: 'Validade',
+      render: (a) =>
+        edicaoId === a.id && edicao ? (
+          <CampoData
+            value={edicao.dataValidade?.slice(0, 10) ?? ''}
+            onChange={(_, d) => setEdicao({ ...edicao, dataValidade: d.value })}
+          />
+        ) : (
+          <>
+            {a.dataValidade?.slice(0, 10)} {chipVencimento(a.dataValidade)}
+          </>
+        ),
+    },
+    {
+      chave: 'resultado',
+      rotulo: 'Resultado',
+      render: (a) =>
+        edicaoId === a.id && edicao ? (
+          <Select value={edicao.aptidao} onChange={(_, d) => setEdicao({ ...edicao, aptidao: Number(d.value) })}>
+            {Object.entries(resultadoAsoLabel).map(([valor, rotulo]) => (
+              <option key={valor} value={valor}>
+                {rotulo}
+              </option>
+            ))}
+          </Select>
+        ) : (
+          <StatusChip tom={tomPorResultadoAso[a.aptidao] ?? 'neutro'}>{resultadoAsoLabel[a.aptidao]}</StatusChip>
+        ),
+    },
+  ];
+
+  return (
+    <>
+      {erro && (
+        <FeedbackInline tom="erro" aoFechar={() => setErro(null)}>
+          {erro}
+        </FeedbackInline>
+      )}
+
+      <Card titulo="Aptidões">
+        <FormSection titulo="Nova aptidão para atividade crítica" numero={1} primeira>
+          <FormGrid>
+            <Campo span={4}>
+              <Field label="Funcionário">
+                <Select
+                  value={novaAptidao.trabalhadorId}
+                  onChange={(_, d) => setNovaAptidao({ ...novaAptidao, trabalhadorId: d.value })}
+                >
+                  <option value="">Selecione</option>
+                  {trabalhadores.map((t) => (
+                    <option key={t.id} value={t.id}>
+                      {t.nome} ({t.matricula})
+                    </option>
+                  ))}
+                </Select>
+              </Field>
+            </Campo>
+            <Campo span={4}>
+              <Field label="Atividade crítica">
+                <Input
+                  placeholder="Ex.: Trabalho em altura, Espaço confinado"
+                  value={novaAptidao.atividadeCritica}
+                  onChange={(_, d) => setNovaAptidao({ ...novaAptidao, atividadeCritica: d.value })}
+                />
+              </Field>
+            </Campo>
+            <Campo span={2}>
+              <Field label="Data da avaliação">
+                <CampoData
+                  value={novaAptidao.dataAvaliacao}
+                  onChange={(_, d) => setNovaAptidao({ ...novaAptidao, dataAvaliacao: d.value })}
+                />
+              </Field>
+            </Campo>
+            <Campo span={2}>
+              <Field label="Validade (opcional)">
+                <CampoData
+                  value={novaAptidao.dataValidade ?? ''}
+                  onChange={(_, d) => setNovaAptidao({ ...novaAptidao, dataValidade: d.value })}
+                />
+              </Field>
+            </Campo>
+            <Campo span={3}>
+              <Field label="Resultado">
+                <Select
+                  value={novaAptidao.aptidao}
+                  onChange={(_, d) => setNovaAptidao({ ...novaAptidao, aptidao: Number(d.value) })}
+                >
+                  {Object.entries(resultadoAsoLabel).map(([valor, rotulo]) => (
+                    <option key={valor} value={valor}>
+                      {rotulo}
+                    </option>
+                  ))}
+                </Select>
+              </Field>
+            </Campo>
+            <Campo span={3}>
+              <Field label="Médico responsável">
+                <Input
+                  value={novaAptidao.medicoResponsavel ?? ''}
+                  onChange={(_, d) => setNovaAptidao({ ...novaAptidao, medicoResponsavel: d.value })}
+                />
+              </Field>
+            </Campo>
+            <Campo span={6}>
+              <Field label="Observações">
+                <Textarea
+                  value={novaAptidao.observacoes ?? ''}
+                  onChange={(_, d) => setNovaAptidao({ ...novaAptidao, observacoes: d.value })}
+                />
+              </Field>
+            </Campo>
+          </FormGrid>
+          <FormRodape>
+            <Button appearance="primary" icon={<Add24Regular />} onClick={criar} disabled={carregando}>
+              Registrar aptidão
+            </Button>
+          </FormRodape>
+        </FormSection>
+
+        <DataTable
+          aria-label="Aptidões registradas"
+          colunas={colunas}
+          linhas={aptidoes}
+          chaveLinha={(a) => a.id}
+          carregando={carregandoLista}
+          vazio={{ titulo: 'Nenhuma aptidão cadastrada ainda.' }}
+          aoClicarLinha={(a) => {
+            if (edicaoId !== a.id) iniciarEdicao(a);
+          }}
+          acoesLinha={(a) =>
+            edicaoId === a.id ? (
+              <Button
+                appearance="subtle"
+                icon={<Save24Regular />}
+                onClick={salvarEdicao}
+                disabled={carregando}
+                aria-label="Salvar"
+              />
+            ) : (
+              <Button appearance="subtle" icon={<Delete24Regular />} onClick={() => excluir(a.id)} aria-label="Excluir" />
+            )
+          }
+        />
+        <Text size={200} style={{ color: designTokens.colorNeutralMedium, display: 'block', marginTop: 8 }}>
           Clique em uma linha para editar a aptidão.
         </Text>
-      </div>
-    </div>
+      </Card>
+      {dialogElement}
+    </>
   );
 }
