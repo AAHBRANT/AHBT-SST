@@ -1,34 +1,25 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import {
-  Badge,
-  Button,
-  Table,
-  TableBody,
-  TableCell,
-  TableHeader,
-  TableHeaderCell,
-  TableRow,
-  Text,
-} from '@fluentui/react-components';
+import { Button, Card, DataTable, StatusChip, FeedbackInline, type Coluna } from '@ui';
 import { ArrowDownload24Regular, Open24Regular } from '@fluentui/react-icons';
 import { api, type CatalogoEpi, type EntregaEpi } from '../../lib/api';
-import { usePageStyles } from '../pageStyles';
 
 // Histórico somente-leitura das entregas de EPI deste trabalhador. O registro de novas entregas,
 // devoluções e a assinatura da ficha passaram a viver no módulo dedicado /epi (sidebar fixa "EPI",
-// decisão confirmada com o usuário) — aqui fica só a consulta, com atalho para lá.
+// decisão confirmada com o usuário) — aqui fica só a consulta, com atalho para lá. A matriz de EPI por
+// função (o que É obrigatório para cada função) é editada em MatrizEpiTab, não aqui.
 export function EntregasEpiTab({ trabalhadorId }: { trabalhadorId: string }) {
-  const estilos = usePageStyles();
   const navigate = useNavigate();
   const [entregas, setEntregas] = useState<EntregaEpi[]>([]);
   const [epis, setEpis] = useState<CatalogoEpi[]>([]);
   const [erro, setErro] = useState<string | null>(null);
+  const [carregando, setCarregando] = useState(true);
   const [baixando, setBaixando] = useState(false);
 
   async function carregar() {
     try {
       setErro(null);
+      setCarregando(true);
       const [lista, listaEpis] = await Promise.all([
         api.entregasEpi.listar(trabalhadorId),
         api.catalogosEpi.listar(),
@@ -37,6 +28,8 @@ export function EntregasEpiTab({ trabalhadorId }: { trabalhadorId: string }) {
       setEpis(listaEpis);
     } catch (e) {
       setErro(e instanceof Error ? e.message : 'Falha ao carregar entregas de EPI.');
+    } finally {
+      setCarregando(false);
     }
   }
 
@@ -71,10 +64,27 @@ export function EntregasEpiTab({ trabalhadorId }: { trabalhadorId: string }) {
     }
   }
 
+  const colunas: Coluna<EntregaEpi>[] = [
+    { chave: 'epi', rotulo: 'EPI', render: (e) => nomeEpi(e.catalogoEpiId) },
+    { chave: 'quantidade', rotulo: 'Qtd.', alinhar: 'direita', largura: '64px' },
+    { chave: 'entrega', rotulo: 'Entrega', render: (e) => e.dataEntrega?.slice(0, 10) },
+    {
+      chave: 'validade',
+      rotulo: 'Validade',
+      render: (e) => (
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+          <span>{e.dataValidade?.slice(0, 10) ?? '—'}</span>
+          {vencido(e.dataValidade) && !e.dataDevolucao && <StatusChip tom="alerta">Vencido</StatusChip>}
+        </div>
+      ),
+    },
+    { chave: 'devolucao', rotulo: 'Devolução', render: (e) => e.dataDevolucao?.slice(0, 10) ?? '—' },
+  ];
+
   return (
-    <div className={estilos.card}>
-      <div className={estilos.toolbar}>
-        <Text weight="semibold">Entregas de EPI do funcionário</Text>
+    <Card
+      titulo="Entregas de EPI do funcionário"
+      acoes={
         <div style={{ display: 'flex', gap: 8 }}>
           <Button
             appearance="subtle"
@@ -88,40 +98,22 @@ export function EntregasEpiTab({ trabalhadorId }: { trabalhadorId: string }) {
             Registrar nova entrega
           </Button>
         </div>
-      </div>
+      }
+    >
+      {erro && <FeedbackInline tom="erro" aoFechar={() => setErro(null)}>{erro}</FeedbackInline>}
 
-      {erro && <Text className={estilos.erro}>{erro}</Text>}
-
-      <Table noNativeElements>
-        <TableHeader>
-          <TableRow>
-            <TableHeaderCell>EPI</TableHeaderCell>
-            <TableHeaderCell>Qtd.</TableHeaderCell>
-            <TableHeaderCell>Entrega</TableHeaderCell>
-            <TableHeaderCell>Validade</TableHeaderCell>
-            <TableHeaderCell>Devolução</TableHeaderCell>
-          </TableRow>
-        </TableHeader>
-        <TableBody>
-          {entregas.map((entrega) => (
-            <TableRow key={entrega.id}>
-              <TableCell>{nomeEpi(entrega.catalogoEpiId)}</TableCell>
-              <TableCell>{entrega.quantidade}</TableCell>
-              <TableCell>{entrega.dataEntrega?.slice(0, 10)}</TableCell>
-              <TableCell>
-                {entrega.dataValidade?.slice(0, 10)}
-                {vencido(entrega.dataValidade) && !entrega.dataDevolucao && (
-                  <Badge color="danger" appearance="tint" style={{ marginLeft: 8 }}>
-                    Vencido
-                  </Badge>
-                )}
-              </TableCell>
-              <TableCell>{entrega.dataDevolucao?.slice(0, 10)}</TableCell>
-            </TableRow>
-          ))}
-        </TableBody>
-      </Table>
-      {entregas.length === 0 && <Text style={{ display: 'block', marginTop: 8 }}>Nenhuma entrega de EPI registrada.</Text>}
-    </div>
+      <DataTable
+        aria-label="Entregas de EPI do funcionário"
+        colunas={colunas}
+        linhas={entregas}
+        chaveLinha={(e) => e.id}
+        carregando={carregando}
+        vazio={{
+          titulo: 'Nenhuma entrega de EPI registrada',
+          descricao: 'Registre a entrega no módulo EPI.',
+          acao: { rotulo: 'Ir para EPI', aoClicar: () => navigate('/epi') },
+        }}
+      />
+    </Card>
   );
 }
