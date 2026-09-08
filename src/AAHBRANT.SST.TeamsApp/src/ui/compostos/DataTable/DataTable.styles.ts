@@ -23,5 +23,6 @@ export const useDataTableStyles = makeStyles({
   direita: { textAlign: 'right' },
   centro: { textAlign: 'center' },
   acoes: { display: 'inline-flex', gap: '4px', justifyContent: 'flex-end' },
-  expandida: { backgroundColor: designTokens.colorNeutralLight, borderRadius: `0 0 ${tokensUi.raio.md} ${tokensUi.raio.md}`, padding: `${tokensUi.espaco.md} ${tokensUi.espaco.lg}` },
+  // Área expansível empilha o que o consumidor passar: sem isto, título e conteúdo colam.
+  expandida: { display: 'flex', flexDirection: 'column', gap: tokensUi.espaco.sm, backgroundColor: designTokens.colorNeutralLight, borderRadius: `0 0 ${tokensUi.raio.md} ${tokensUi.raio.md}`, padding: `${tokensUi.espaco.md} ${tokensUi.espaco.lg}` },
 });
