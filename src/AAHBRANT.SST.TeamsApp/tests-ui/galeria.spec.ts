@@ -39,4 +39,20 @@ for (const tema of ['light', 'dark'] as const) {
     await expect(dialogo).toBeVisible();
     await expect(dialogo).toHaveScreenshot(`${tema}-confirm-dialog-aberto.png`);
   });
+
+  // A seção fechada só mostra o chevron; a linha expansível com 2 filhos empilhados (título + chips)
+  // só entra em algum snapshot com ?abrir=expandida (mesma razão do painel/diálogo acima). Alvo é o
+  // card isolado (data-testid), não a <Secao> inteira: ela é mais alta que a viewport de teste
+  // (900px) e mistura outros dois exemplos de DataTable, um deles com cabeçalho sticky — capturar a
+  // seção inteira dispara um bug conhecido do Playwright de stitching de elemento alto com posição
+  // sticky (o header fixo da app aparece "vazando" no meio da imagem).
+  test(`data-table expandida em tema ${tema}`, async ({ page }) => {
+    await page.addInitScript((t) => localStorage.setItem('sst.modoTema', t), tema);
+    await page.goto('/#/ui-galeria?abrir=expandida');
+    await page.waitForSelector('main section[data-secao]');
+    await page.evaluate(async () => { await document.fonts.ready; });
+    const card = page.locator('[data-testid="data-table-expansivel"]');
+    await card.scrollIntoViewIfNeeded();
+    await expect(card).toHaveScreenshot(`${tema}-data-table-expandida.png`);
+  });
 }
