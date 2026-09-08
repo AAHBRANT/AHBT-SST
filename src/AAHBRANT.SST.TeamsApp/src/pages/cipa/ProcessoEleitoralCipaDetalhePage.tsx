@@ -1,40 +1,61 @@
 import { useEffect, useState } from 'react';
-import { useNavigate, useParams } from 'react-router-dom';
+import { useParams } from 'react-router-dom';
 import {
-  Badge,
   Button,
+  Campo,
+  CampoData,
+  Card,
+  Carregando,
+  DataTable,
   Field,
+  FeedbackInline,
+  FormGrid,
+  FormRodape,
+  FormSection,
   Input,
+  PageHeader,
   Select,
-  Table,
-  TableBody,
-  TableCell,
-  TableHeader,
-  TableHeaderCell,
-  TableRow,
+  StatusChip,
   Text,
-} from '@fluentui/react-components';
-import { CampoData } from '../../components/CampoData';
-import { ArrowLeft24Regular, DocumentPdf24Regular } from '@fluentui/react-icons';
+  type Coluna,
+  type Tom,
+} from '@ui';
+import { DocumentPdf24Regular } from '@fluentui/react-icons';
 import {
   api,
   statusCandidatoCipaLabel,
   statusProcessoEleitoralCipaLabel,
   StatusCandidatoCipa,
   StatusProcessoEleitoralCipa,
+  type CandidatoCipa,
   type ProcessoEleitoralCipaDetalhe,
   type Trabalhador,
   type VotoApuradoCipa,
 } from '../../lib/api';
-import { usePageStyles } from '../pageStyles';
+
+const tomPorStatusProcesso: Record<number, Tom> = {
+  [StatusProcessoEleitoralCipa.Convocado]: 'neutro',
+  [StatusProcessoEleitoralCipa.InscricoesAbertas]: 'info',
+  [StatusProcessoEleitoralCipa.InscricoesEncerradas]: 'atencao',
+  [StatusProcessoEleitoralCipa.VotacaoRealizada]: 'atencao',
+  [StatusProcessoEleitoralCipa.Apurado]: 'ok',
+  [StatusProcessoEleitoralCipa.Encerrado]: 'neutro',
+};
+
+const tomPorStatusCandidato: Record<number, Tom> = {
+  [StatusCandidatoCipa.Inscrito]: 'neutro',
+  [StatusCandidatoCipa.Deferido]: 'info',
+  [StatusCandidatoCipa.Indeferido]: 'alerta',
+  [StatusCandidatoCipa.Eleito]: 'ok',
+  [StatusCandidatoCipa.Suplente]: 'ok',
+  [StatusCandidatoCipa.NaoEleito]: 'neutro',
+};
 
 // Apuração é sempre manual (sem urna digital) — quem apura digita os votos recebidos por cada
 // candidato deferido; o sistema classifica titulares/suplentes usando o Dimensionamento mais
 // recente da obra. Ver disclosure completo em RegistrarApuracaoProcessoEleitoralCipaCommand.cs.
 export function ProcessoEleitoralCipaDetalhePage() {
   const { id } = useParams<{ id: string }>();
-  const navigate = useNavigate();
-  const estilos = usePageStyles();
   const [detalhe, setDetalhe] = useState<ProcessoEleitoralCipaDetalhe | null>(null);
   const [trabalhadores, setTrabalhadores] = useState<Trabalhador[]>([]);
   const [trabalhadorSelecionado, setTrabalhadorSelecionado] = useState('');
@@ -137,177 +158,175 @@ export function ProcessoEleitoralCipaDetalhePage() {
     }
   }
 
-  if (!id) return <Text>Processo eleitoral não encontrado.</Text>;
+  if (!id) return <FeedbackInline tom="erro">Processo eleitoral não encontrado.</FeedbackInline>;
 
   const jaApurado =
     detalhe?.processo.status === StatusProcessoEleitoralCipa.Apurado ||
     detalhe?.processo.status === StatusProcessoEleitoralCipa.Encerrado;
 
+  const colunasCandidatos: Coluna<CandidatoCipa>[] = [
+    { chave: 'nome', rotulo: 'Nome', render: (c) => c.trabalhadorNome },
+    { chave: 'matricula', rotulo: 'Matrícula', render: (c) => c.trabalhadorMatricula },
+    { chave: 'inscricao', rotulo: 'Inscrição', render: (c) => c.dataInscricao?.slice(0, 10) ?? '' },
+    {
+      chave: 'status',
+      rotulo: 'Status',
+      render: (c) => (
+        <>
+          <StatusChip tom={tomPorStatusCandidato[c.status] ?? 'neutro'}>{statusCandidatoCipaLabel[c.status]}</StatusChip>
+          {c.motivoIndeferimento && (
+            <Text size={200} style={{ display: 'block' }}>
+              {c.motivoIndeferimento}
+            </Text>
+          )}
+        </>
+      ),
+    },
+    jaApurado
+      ? { chave: 'votos', rotulo: 'Votos', render: (c) => c.votosRecebidos }
+      : {
+          chave: 'acoes',
+          rotulo: '',
+          render: (c) =>
+            c.status === StatusCandidatoCipa.Inscrito ? (
+              <div style={{ display: 'flex', gap: 4 }}>
+                <Button appearance="subtle" onClick={() => avaliar(c.id, true)} disabled={processando}>
+                  Deferir
+                </Button>
+                <Button appearance="subtle" onClick={() => avaliar(c.id, false)} disabled={processando}>
+                  Indeferir
+                </Button>
+              </div>
+            ) : null,
+        },
+  ];
+
   return (
     <div>
-      <Button appearance="subtle" icon={<ArrowLeft24Regular />} onClick={() => navigate('/operacao/cipa')} style={{ marginBottom: 12 }}>
-        Voltar para CIPA
-      </Button>
+      <PageHeader titulo="Processo eleitoral" voltarPara="/operacao/cipa" rotuloVoltar="Voltar para CIPA" />
 
-      {erro && <Text className={estilos.erro}>{erro}</Text>}
+      {erro && (
+        <FeedbackInline tom="erro" aoFechar={() => setErro(null)}>
+          {erro}
+        </FeedbackInline>
+      )}
 
       {!detalhe ? (
-        <Text>Carregando...</Text>
+        <Carregando variante="detalhe" linhas={8} />
       ) : (
-        <>
-          <div className={estilos.card} style={{ marginBottom: 16 }}>
-            <div style={{ display: 'flex', gap: 16, alignItems: 'center', marginBottom: 8 }}>
-              <Text size={500} weight="semibold">
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+          <Card
+            densidade="compacta"
+            titulo={
+              <div style={{ display: 'flex', gap: 12, alignItems: 'center' }}>
                 Processo eleitoral {detalhe.processo.numeroDocumento ?? ''}
-              </Text>
-              <Badge appearance="tint">{statusProcessoEleitoralCipaLabel[detalhe.processo.status]}</Badge>
-            </div>
-            <Text size={200}>
-              Convocação: {detalhe.processo.dataConvocacao?.slice(0, 10)} · Inscrições:{' '}
-              {detalhe.processo.dataInicioInscricoes?.slice(0, 10)} a {detalhe.processo.dataFimInscricoes?.slice(0, 10)} · Votação:{' '}
-              {detalhe.processo.dataVotacao?.slice(0, 10)}
-            </Text>
+                <StatusChip tom={tomPorStatusProcesso[detalhe.processo.status] ?? 'neutro'}>
+                  {statusProcessoEleitoralCipaLabel[detalhe.processo.status]}
+                </StatusChip>
+              </div>
+            }
+            subtitulo={
+              <>
+                Convocação: {detalhe.processo.dataConvocacao?.slice(0, 10)} · Inscrições:{' '}
+                {detalhe.processo.dataInicioInscricoes?.slice(0, 10)} a {detalhe.processo.dataFimInscricoes?.slice(0, 10)} · Votação:{' '}
+                {detalhe.processo.dataVotacao?.slice(0, 10)}
+              </>
+            }
+          >
             {jaApurado && (
-              <div className={estilos.formActions} style={{ marginTop: 12 }}>
+              <FormRodape>
                 <Button appearance="primary" icon={<DocumentPdf24Regular />} onClick={baixarAta} disabled={baixandoPdf}>
                   Baixar ata em PDF
                 </Button>
-              </div>
+              </FormRodape>
             )}
-          </div>
+          </Card>
 
           {!jaApurado && (
-            <div className={estilos.card} style={{ marginBottom: 16 }}>
-              <div className={estilos.toolbar}>
-                <Text weight="semibold">Inscrever candidato</Text>
-              </div>
-              <div className={`${estilos.sectionTitle} ${estilos.sectionTitleFirst}`}>Dados do Candidato</div>
-              <div className={estilos.formGrid}>
-                <div className={estilos.col4}>
-                  <Field label="Funcionário">
-                    <Select value={trabalhadorSelecionado} onChange={(_, d) => setTrabalhadorSelecionado(d.value)}>
-                      <option value="">Selecione</option>
-                      {trabalhadores.map((t) => (
-                        <option key={t.id} value={t.id}>
-                          {t.nome} ({t.matricula})
-                        </option>
-                      ))}
-                    </Select>
-                  </Field>
-                </div>
-              </div>
-              <div className={estilos.formActions}>
-                <Button appearance="primary" onClick={inscrever} disabled={processando}>
-                  Inscrever
-                </Button>
-              </div>
-            </div>
+            <Card titulo="Inscrever candidato">
+              <FormSection titulo="Dados do Candidato" primeira>
+                <FormGrid>
+                  <Campo span={4}>
+                    <Field label="Funcionário">
+                      <Select value={trabalhadorSelecionado} onChange={(_, d) => setTrabalhadorSelecionado(d.value)}>
+                        <option value="">Selecione</option>
+                        {trabalhadores.map((t) => (
+                          <option key={t.id} value={t.id}>
+                            {t.nome} ({t.matricula})
+                          </option>
+                        ))}
+                      </Select>
+                    </Field>
+                  </Campo>
+                </FormGrid>
+                <FormRodape>
+                  <Button appearance="primary" onClick={inscrever} disabled={processando}>
+                    Inscrever
+                  </Button>
+                </FormRodape>
+              </FormSection>
+            </Card>
           )}
 
-          <div className={estilos.card} style={{ marginBottom: 16 }}>
-            <div className={estilos.toolbar}>
-              <Text weight="semibold">Candidatos</Text>
-            </div>
-            <Table noNativeElements>
-              <TableHeader>
-                <TableRow>
-                  <TableHeaderCell>Nome</TableHeaderCell>
-                  <TableHeaderCell>Matrícula</TableHeaderCell>
-                  <TableHeaderCell>Inscrição</TableHeaderCell>
-                  <TableHeaderCell>Status</TableHeaderCell>
-                  {!jaApurado && <TableHeaderCell></TableHeaderCell>}
-                  {jaApurado && <TableHeaderCell>Votos</TableHeaderCell>}
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {detalhe.candidatos.map((c) => (
-                  <TableRow key={c.id}>
-                    <TableCell>{c.trabalhadorNome}</TableCell>
-                    <TableCell>{c.trabalhadorMatricula}</TableCell>
-                    <TableCell>{c.dataInscricao?.slice(0, 10)}</TableCell>
-                    <TableCell>
-                      <Badge appearance="tint">{statusCandidatoCipaLabel[c.status]}</Badge>
-                      {c.motivoIndeferimento && (
-                        <Text size={200} style={{ display: 'block' }}>
-                          {c.motivoIndeferimento}
-                        </Text>
-                      )}
-                    </TableCell>
-                    {!jaApurado && c.status === StatusCandidatoCipa.Inscrito && (
-                      <TableCell>
-                        <div style={{ display: 'flex', gap: 4 }}>
-                          <Button appearance="subtle" onClick={() => avaliar(c.id, true)} disabled={processando}>
-                            Deferir
-                          </Button>
-                          <Button appearance="subtle" onClick={() => avaliar(c.id, false)} disabled={processando}>
-                            Indeferir
-                          </Button>
-                        </div>
-                      </TableCell>
-                    )}
-                    {!jaApurado && c.status !== StatusCandidatoCipa.Inscrito && <TableCell></TableCell>}
-                    {jaApurado && <TableCell>{c.votosRecebidos}</TableCell>}
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          </div>
+          <Card titulo="Candidatos">
+            <DataTable
+              aria-label="Candidatos do processo eleitoral"
+              colunas={colunasCandidatos}
+              linhas={detalhe.candidatos}
+              chaveLinha={(c) => c.id}
+              vazio={{ titulo: 'Nenhum candidato inscrito ainda.' }}
+            />
+          </Card>
 
           {!jaApurado && (
-            <div className={estilos.card}>
-              <div className={estilos.toolbar}>
-                <Text weight="semibold">Apuração (manual)</Text>
-              </div>
+            <Card titulo="Apuração (manual)">
               <Text size={200} style={{ display: 'block', marginBottom: 12 }}>
                 Informe os votos recebidos por cada candidato deferido e o período do mandato. Ao
                 confirmar, o sistema classifica automaticamente titulares/suplentes conforme o
                 Dimensionamento cadastrado para a obra e já cria os respectivos membros da CIPA.
               </Text>
-              <div className={`${estilos.sectionTitle} ${estilos.sectionTitleFirst}`}>Período do Mandato</div>
-              <div className={estilos.formGrid}>
-                <div className={estilos.col3}>
-                  <Field label="Início do mandato" required>
-                    <CampoData value={dataInicioMandato} onChange={(_, d) => setDataInicioMandato(d.value)} />
-                  </Field>
-                </div>
-                <div className={estilos.col3}>
-                  <Field label="Fim do mandato" required>
-                    <CampoData value={dataFimMandato} onChange={(_, d) => setDataFimMandato(d.value)} />
-                  </Field>
-                </div>
-              </div>
-              <Table noNativeElements>
-                <TableHeader>
-                  <TableRow>
-                    <TableHeaderCell>Candidato</TableHeaderCell>
-                    <TableHeaderCell>Votos</TableHeaderCell>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {detalhe.candidatos
-                    .filter((c) => c.status === StatusCandidatoCipa.Deferido)
-                    .map((c) => (
-                      <TableRow key={c.id}>
-                        <TableCell>{c.trabalhadorNome}</TableCell>
-                        <TableCell>
-                          <Input
-                            type="number"
-                            value={String(votos[c.id] ?? 0)}
-                            onChange={(_, d) => setVotos({ ...votos, [c.id]: Number(d.value) })}
-                          />
-                        </TableCell>
-                      </TableRow>
-                    ))}
-                </TableBody>
-              </Table>
-              <div className={estilos.formActions}>
+              <FormSection titulo="Período do Mandato" primeira>
+                <FormGrid>
+                  <Campo span={3}>
+                    <Field label="Início do mandato" required>
+                      <CampoData value={dataInicioMandato} onChange={(_, d) => setDataInicioMandato(d.value)} />
+                    </Field>
+                  </Campo>
+                  <Campo span={3}>
+                    <Field label="Fim do mandato" required>
+                      <CampoData value={dataFimMandato} onChange={(_, d) => setDataFimMandato(d.value)} />
+                    </Field>
+                  </Campo>
+                </FormGrid>
+              </FormSection>
+              <DataTable
+                aria-label="Votos por candidato deferido"
+                colunas={[
+                  { chave: 'candidato', rotulo: 'Candidato', render: (c: CandidatoCipa) => c.trabalhadorNome },
+                  {
+                    chave: 'votos',
+                    rotulo: 'Votos',
+                    render: (c: CandidatoCipa) => (
+                      <Input
+                        type="number"
+                        value={String(votos[c.id] ?? 0)}
+                        onChange={(_, d) => setVotos({ ...votos, [c.id]: Number(d.value) })}
+                      />
+                    ),
+                  },
+                ]}
+                linhas={detalhe.candidatos.filter((c) => c.status === StatusCandidatoCipa.Deferido)}
+                chaveLinha={(c) => c.id}
+                vazio={{ titulo: 'Nenhum candidato deferido ainda.' }}
+              />
+              <FormRodape>
                 <Button appearance="primary" onClick={apurar} disabled={processando}>
                   Registrar apuração
                 </Button>
-              </div>
-            </div>
+              </FormRodape>
+            </Card>
           )}
-        </>
+        </div>
       )}
     </div>
   );
