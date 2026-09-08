@@ -1,41 +1,28 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
-  Badge,
   Button,
   Field,
   Input,
-  Select,
-  Table,
-  TableBody,
-  TableCell,
-  TableHeader,
-  TableHeaderCell,
-  TableRow,
-  Text,
-} from '@fluentui/react-components';
-import { CampoData } from '../../components/CampoData';
+  CampoData,
+  Card,
+  DataTable,
+  PainelLateral,
+  FormGrid,
+  Campo,
+  FeedbackInline,
+  SeletorPesquisavel,
+  StatusChip,
+  nivelVencimento,
+  tomDeVencimento,
+  rotuloDeVencimento,
+  useConfirmar,
+  type Coluna,
+} from '@ui';
 import { Add24Regular, ArrowDownload24Regular, Delete24Regular, Signature24Regular } from '@fluentui/react-icons';
 import { api, type CursoTreinamento, type NovoTreinamento, type Treinamento } from '../../lib/api';
-import { usePageStyles } from '../pageStyles';
-import { useConfirmarExclusao } from '../../hooks/useConfirmarExclusao';
 import { useSucessoToast } from '../../hooks/useSucessoToast';
-import { EstadoVazio } from '../../components/EstadoVazio';
-import { ListaCarregando } from '../../components/ListaCarregando';
 import { AssinaturaCertificadoTreinamentoDialog } from '../../components/assinatura/AssinaturaCertificadoTreinamentoDialog';
-
-// Situação calculada no cliente a partir de dataValidade (não há coluna persistida) — mesmo
-// limiar de 30 dias usado em AtivosPage/PessoasDashboardTab para "a vencer".
-const DIAS_LIMIAR_A_VENCER = 30;
-
-function situacaoTreinamento(dataValidade: string): { texto: string; cor: 'success' | 'warning' | 'danger' } {
-  const hoje = new Date(new Date().toDateString());
-  const validade = new Date(dataValidade);
-  const diasRestantes = (validade.getTime() - hoje.getTime()) / (1000 * 60 * 60 * 24);
-  if (diasRestantes < 0) return { texto: 'Vencido', cor: 'danger' };
-  if (diasRestantes <= DIAS_LIMIAR_A_VENCER) return { texto: 'A Vencer', cor: 'warning' };
-  return { texto: 'Válido', cor: 'success' };
-}
 
 function treinamentoVazio(trabalhadorId: string): NovoTreinamento {
   return {
@@ -49,16 +36,24 @@ function treinamentoVazio(trabalhadorId: string): NovoTreinamento {
   };
 }
 
+// Sub-aba de TrabalhadorDetalhePage (aba "Treinamentos & DDS"). Camada ui/ (Onda 2, Task 1): Card com
+// título de seção + botão "Adicionar treinamento" no `acoes` do Card (não PageHeader — conteúdo
+// aninhado); formulário de criação foi para PainelLateral. A situação de vencimento (antes calculada
+// à mão em situacaoTreinamento(), mesma regra de 30 dias) passa a usar os helpers
+// nivelVencimento/tomDeVencimento/rotuloDeVencimento de @ui (guia de conversão, "Badge→StatusChip"),
+// mantendo a data crua ao lado do chip (aprendizado do piloto 1: chip nunca substitui sozinho um
+// valor de auditoria).
 export function TreinamentosTab({ trabalhadorId }: { trabalhadorId: string }) {
-  const estilos = usePageStyles();
   const navigate = useNavigate();
   const [treinamentos, setTreinamentos] = useState<Treinamento[]>([]);
   const [cursos, setCursos] = useState<CursoTreinamento[]>([]);
   const [novoTreinamento, setNovoTreinamento] = useState<NovoTreinamento>(() => treinamentoVazio(trabalhadorId));
   const [erro, setErro] = useState<string | null>(null);
+  const [erroPainel, setErroPainel] = useState<string | null>(null);
   const [carregando, setCarregando] = useState(false);
   const [carregandoLista, setCarregandoLista] = useState(true);
-  const { confirmar, dialogElement } = useConfirmarExclusao();
+  const [painelAberto, setPainelAberto] = useState(false);
+  const { confirmar, dialogElement } = useConfirmar();
   const sucessoToast = useSucessoToast();
   const [baixandoId, setBaixandoId] = useState<string | null>(null);
   const [assinaturaAberta, setAssinaturaAberta] = useState<{
@@ -111,10 +106,15 @@ export function TreinamentosTab({ trabalhadorId }: { trabalhadorId: string }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [trabalhadorId]);
 
+  function fecharPainel() {
+    setPainelAberto(false);
+    setErroPainel(null);
+  }
+
   async function criar() {
     try {
       setCarregando(true);
-      setErro(null);
+      setErroPainel(null);
       const { id } = await api.treinamentos.criar(novoTreinamento);
       setAssinaturaAberta({
         treinamentoId: id,
@@ -125,8 +125,9 @@ export function TreinamentosTab({ trabalhadorId }: { trabalhadorId: string }) {
       setNovoTreinamento(treinamentoVazio(trabalhadorId));
       await carregar();
       sucessoToast('Treinamento criado com sucesso.');
+      fecharPainel();
     } catch (e) {
-      setErro(e instanceof Error ? e.message : 'Falha ao criar treinamento.');
+      setErroPainel(e instanceof Error ? e.message : 'Falha ao criar treinamento.');
     } finally {
       setCarregando(false);
     }
@@ -143,140 +144,157 @@ export function TreinamentosTab({ trabalhadorId }: { trabalhadorId: string }) {
     }
   }
 
+  const opcoesCursos = cursos.map((c) => ({ id: c.id, rotulo: c.nome }));
+
+  const colunas: Coluna<Treinamento>[] = [
+    { chave: 'curso', rotulo: 'Curso', render: (t) => nomeCurso(t.cursoTreinamentoId) },
+    { chave: 'realizacao', rotulo: 'Realização', render: (t) => t.dataRealizacao?.slice(0, 10) },
+    {
+      chave: 'validade',
+      rotulo: 'Validade',
+      render: (t) => {
+        const nivel = nivelVencimento(t.dataValidade);
+        return (
+          <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+            <span>{t.dataValidade?.slice(0, 10) ?? '—'}</span>
+            {nivel && <StatusChip tom={tomDeVencimento(nivel)}>{rotuloDeVencimento(nivel)}</StatusChip>}
+          </div>
+        );
+      },
+    },
+    { chave: 'certificado', rotulo: 'Certificado', render: (t) => t.numeroCertificado },
+  ];
+
   return (
-    <div className={estilos.card}>
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
       {dialogElement}
-      <div className={estilos.toolbar}>
-        <Text weight="semibold">Treinamentos do funcionário</Text>
-      </div>
+      <Card
+        titulo="Treinamentos do funcionário"
+        acoes={
+          <Button appearance="primary" icon={<Add24Regular />} onClick={() => setPainelAberto(true)}>
+            Adicionar treinamento
+          </Button>
+        }
+      >
+        {erro && (
+          <FeedbackInline tom="erro" aoFechar={() => setErro(null)}>
+            {erro}
+          </FeedbackInline>
+        )}
+        <DataTable
+          aria-label="Treinamentos do funcionário"
+          colunas={colunas}
+          linhas={treinamentos}
+          chaveLinha={(t) => t.id}
+          carregando={carregandoLista}
+          vazio={{
+            titulo: 'Nenhum treinamento cadastrado ainda',
+            acao: { rotulo: 'Adicionar treinamento', aoClicar: () => setPainelAberto(true) },
+          }}
+          acoesLinha={(t) => (
+            <>
+              <Button
+                appearance="subtle"
+                size="small"
+                icon={<Signature24Regular />}
+                onClick={() => navigate(`/treinamentos/${t.id}/assinar`)}
+                aria-label="Assinar certificado"
+                title="Assinar certificado"
+              />
+              <Button
+                appearance="subtle"
+                size="small"
+                icon={<ArrowDownload24Regular />}
+                onClick={() => baixarCertificado(t.id)}
+                disabled={baixandoId === t.id}
+                aria-label="Baixar certificado"
+                title="Baixar certificado em PDF"
+              />
+              <Button
+                appearance="subtle"
+                size="small"
+                icon={<Delete24Regular />}
+                onClick={() => excluir(t.id)}
+                aria-label="Excluir"
+              />
+            </>
+          )}
+        />
+      </Card>
 
-      {erro && <Text className={estilos.erro}>{erro}</Text>}
-
-      <div className={`${estilos.sectionTitle} ${estilos.sectionTitleFirst}`}>Dados do Treinamento</div>
-      <div className={estilos.formGrid}>
-        <div className={estilos.col4}>
-          <Field label="Curso">
-            <Select
-              value={novoTreinamento.cursoTreinamentoId}
-              onChange={(_, d) => setNovoTreinamento({ ...novoTreinamento, cursoTreinamentoId: d.value })}
-            >
-              <option value="">Selecione</option>
-              {cursos.map((c) => (
-                <option key={c.id} value={c.id}>
-                  {c.nome}
-                </option>
-              ))}
-            </Select>
-          </Field>
-        </div>
-        <div className={estilos.col3}>
-          <Field label="Data de realização">
-            <CampoData
-              value={novoTreinamento.dataRealizacao}
-              onChange={(_, d) => setNovoTreinamento({ ...novoTreinamento, dataRealizacao: d.value })}
-            />
-          </Field>
-        </div>
-        <div className={estilos.col3}>
-          <Field label="Validade">
-            <CampoData
-              value={novoTreinamento.dataValidade}
-              onChange={(_, d) => setNovoTreinamento({ ...novoTreinamento, dataValidade: d.value })}
-            />
-          </Field>
-        </div>
-        <div className={estilos.col2}>
-          <Field label="Carga horária realizada (h)">
-            <Input
-              type="number"
-              value={String(novoTreinamento.cargaHorariaRealizada)}
-              onChange={(_, d) => setNovoTreinamento({ ...novoTreinamento, cargaHorariaRealizada: Number(d.value) })}
-            />
-          </Field>
-        </div>
-        <div className={estilos.col6}>
-          <Field label="Instituição / instrutor">
-            <Input
-              value={novoTreinamento.instituicaoInstrutor ?? ''}
-              onChange={(_, d) => setNovoTreinamento({ ...novoTreinamento, instituicaoInstrutor: d.value })}
-            />
-          </Field>
-        </div>
-        <div className={estilos.col6}>
-          <Field label="Número do certificado">
-            <Input
-              value={novoTreinamento.numeroCertificado ?? ''}
-              onChange={(_, d) => setNovoTreinamento({ ...novoTreinamento, numeroCertificado: d.value })}
-            />
-          </Field>
-        </div>
-      </div>
-      <div className={estilos.formActions}>
-        <Button appearance="primary" icon={<Add24Regular />} onClick={criar} disabled={carregando}>
-          Adicionar treinamento
-        </Button>
-      </div>
-
-      {carregandoLista ? (
-        <ListaCarregando />
-      ) : treinamentos.length === 0 ? (
-        <EstadoVazio mensagem="Nenhum treinamento cadastrado ainda." />
-      ) : (
-      <Table noNativeElements>
-        <TableHeader>
-          <TableRow>
-            <TableHeaderCell>Curso</TableHeaderCell>
-            <TableHeaderCell>Realização</TableHeaderCell>
-            <TableHeaderCell>Validade</TableHeaderCell>
-            <TableHeaderCell>Certificado</TableHeaderCell>
-            <TableHeaderCell></TableHeaderCell>
-          </TableRow>
-        </TableHeader>
-        <TableBody>
-          {treinamentos.map((treinamento) => {
-            const situacao = situacaoTreinamento(treinamento.dataValidade);
-            return (
-              <TableRow key={treinamento.id}>
-                <TableCell>{nomeCurso(treinamento.cursoTreinamentoId)}</TableCell>
-                <TableCell>{treinamento.dataRealizacao?.slice(0, 10)}</TableCell>
-                <TableCell>
-                  {treinamento.dataValidade?.slice(0, 10)}
-                  <Badge color={situacao.cor} appearance="tint" style={{ marginLeft: 8 }}>
-                    {situacao.texto}
-                  </Badge>
-                </TableCell>
-                <TableCell>{treinamento.numeroCertificado}</TableCell>
-                <TableCell>
-                  <div style={{ display: 'flex', gap: 4 }}>
-                    <Button
-                      appearance="subtle"
-                      icon={<Signature24Regular />}
-                      onClick={() => navigate(`/treinamentos/${treinamento.id}/assinar`)}
-                      aria-label="Assinar certificado"
-                      title="Assinar certificado"
-                    />
-                    <Button
-                      appearance="subtle"
-                      icon={<ArrowDownload24Regular />}
-                      onClick={() => baixarCertificado(treinamento.id)}
-                      disabled={baixandoId === treinamento.id}
-                      aria-label="Baixar certificado"
-                      title="Baixar certificado em PDF"
-                    />
-                    <Button
-                      appearance="subtle"
-                      icon={<Delete24Regular />}
-                      onClick={() => excluir(treinamento.id)}
-                      aria-label="Excluir"
-                    />
-                  </div>
-                </TableCell>
-              </TableRow>
-            );
-          })}
-        </TableBody>
-      </Table>
-      )}
+      <PainelLateral
+        aberto={painelAberto}
+        aoFechar={fecharPainel}
+        titulo="Novo treinamento"
+        rodape={
+          <>
+            <Button onClick={fecharPainel}>Cancelar</Button>
+            <Button appearance="primary" onClick={criar} disabled={carregando}>
+              Adicionar treinamento
+            </Button>
+          </>
+        }
+      >
+        {erroPainel && (
+          <FeedbackInline tom="erro" aoFechar={() => setErroPainel(null)}>
+            {erroPainel}
+          </FeedbackInline>
+        )}
+        <FormGrid>
+          <Campo span={12}>
+            <Field label="Curso">
+              <SeletorPesquisavel
+                placeholder="Selecione um curso"
+                opcaoVazia="Selecione um curso"
+                opcoes={opcoesCursos}
+                valor={novoTreinamento.cursoTreinamentoId}
+                aoMudar={(id) => setNovoTreinamento({ ...novoTreinamento, cursoTreinamentoId: id })}
+              />
+            </Field>
+          </Campo>
+          <Campo span={6}>
+            <Field label="Data de realização">
+              <CampoData
+                value={novoTreinamento.dataRealizacao}
+                onChange={(_, d) => setNovoTreinamento({ ...novoTreinamento, dataRealizacao: d.value })}
+              />
+            </Field>
+          </Campo>
+          <Campo span={6}>
+            <Field label="Validade">
+              <CampoData
+                value={novoTreinamento.dataValidade}
+                onChange={(_, d) => setNovoTreinamento({ ...novoTreinamento, dataValidade: d.value })}
+              />
+            </Field>
+          </Campo>
+          <Campo span={6}>
+            <Field label="Carga horária realizada (h)">
+              <Input
+                type="number"
+                value={String(novoTreinamento.cargaHorariaRealizada)}
+                onChange={(_, d) => setNovoTreinamento({ ...novoTreinamento, cargaHorariaRealizada: Number(d.value) })}
+              />
+            </Field>
+          </Campo>
+          <Campo span={6}>
+            <Field label="Número do certificado">
+              <Input
+                value={novoTreinamento.numeroCertificado ?? ''}
+                onChange={(_, d) => setNovoTreinamento({ ...novoTreinamento, numeroCertificado: d.value })}
+              />
+            </Field>
+          </Campo>
+          <Campo span={12}>
+            <Field label="Instituição / instrutor">
+              <Input
+                value={novoTreinamento.instituicaoInstrutor ?? ''}
+                onChange={(_, d) => setNovoTreinamento({ ...novoTreinamento, instituicaoInstrutor: d.value })}
+              />
+            </Field>
+          </Campo>
+        </FormGrid>
+      </PainelLateral>
 
       {assinaturaAberta && (
         <AssinaturaCertificadoTreinamentoDialog
