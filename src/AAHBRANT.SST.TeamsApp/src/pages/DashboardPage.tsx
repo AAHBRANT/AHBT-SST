@@ -399,7 +399,8 @@ export function DashboardPage() {
     <div>
       {erro && (
         <Text className={estilos.erro}>
-          Não foi possível conectar à API ({erro}). Verifique se o backend está rodando localmente.
+          Não foi possível conectar à API ({erro}). Tente novamente em instantes; se persistir, avise o
+          suporte.
         </Text>
       )}
 

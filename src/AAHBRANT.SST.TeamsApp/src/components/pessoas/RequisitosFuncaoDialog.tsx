@@ -1,6 +1,5 @@
 import { useEffect, useState } from 'react';
 import {
-  Button,
   Dialog,
   DialogActions,
   DialogBody,
@@ -8,12 +7,10 @@ import {
   DialogSurface,
   DialogTitle,
   Spinner,
-  Text,
 } from '@fluentui/react-components';
+import { Button, Text, FeedbackInline, designTokens } from '@ui';
 import { Warning24Filled } from '@fluentui/react-icons';
 import { api, type CatalogoEpi, type CursoTreinamento } from '../../lib/api';
-import { usePageStyles } from '../pageStyles';
-import { designTokens } from '../../theme';
 
 interface RequisitosFuncaoDialogProps {
   funcaoId: string | null;
@@ -28,13 +25,18 @@ interface RequisitosFuncaoDialogProps {
 // treinamento JÁ entregue/realizado — ver AlertaEngineService). Em vez de um alerta em segundo
 // plano (que pode passar despercebido numa lista), a matriz da função é mostrada na hora, num
 // diálogo modalType="alert" (sem fechar clicando fora/Esc, só pelo botão) — rígido de propósito.
+//
+// Vive em components/ (não em pages/), mesmo padrão já usado pelos diálogos de assinatura em
+// components/assinatura/: é um Dialog modal bespoke, forma que a camada ui/ não padroniza (só
+// ConfirmDialog/useConfirmar para confirmação simples e PainelLateral para painel lateral) — spec §3
+// não lista um "Dialog" genérico no inventário. Migrar o conteúdo interno para @ui (Text, Button,
+// FeedbackInline) mesmo assim, só a casca do Dialog do Fluent continua direta.
 export function RequisitosFuncaoDialog({
   funcaoId,
   trabalhadorNome,
   funcaoNome,
   aoFechar,
 }: RequisitosFuncaoDialogProps) {
-  const estilos = usePageStyles();
   const aberto = funcaoId !== null;
   const [carregando, setCarregando] = useState(false);
   const [epis, setEpis] = useState<CatalogoEpi[]>([]);
@@ -63,7 +65,7 @@ export function RequisitosFuncaoDialog({
             Itens obrigatórios de {trabalhadorNome ?? 'funcionário'}
           </DialogTitle>
           <DialogContent style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-            {erro && <Text className={estilos.erro}>{erro}</Text>}
+            {erro && <FeedbackInline tom="erro" aoFechar={() => setErro(null)}>{erro}</FeedbackInline>}
             {carregando && <Spinner label="Carregando requisitos da função..." />}
             {!carregando && !erro && (
               <>

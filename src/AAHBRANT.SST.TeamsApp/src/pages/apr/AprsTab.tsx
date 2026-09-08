@@ -1,28 +1,27 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
-  Badge,
   Button,
-  Checkbox,
+  Campo,
+  Card,
+  CampoData,
+  ChipCheckboxGroup,
+  DataTable,
   Field,
+  FeedbackInline,
+  FormGrid,
+  FormRodape,
+  FormSection,
   Input,
   Select,
-  Table,
-  TableBody,
-  TableCell,
-  TableHeader,
-  TableHeaderCell,
-  TableRow,
-  Text,
-} from '@fluentui/react-components';
-import { CampoData } from '../../components/CampoData';
-import { Add24Regular, ChevronRight24Regular, Delete24Regular } from '@fluentui/react-icons';
-import { api, statusAprLabel, type Apr, type Atividade, type Equipe, type NovaApr, type Trabalhador } from '../../lib/api';
-import { usePageStyles, useCheckboxChipStyles } from '../pageStyles';
-import { useConfirmarExclusao } from '../../hooks/useConfirmarExclusao';
+  StatusChip,
+  useConfirmar,
+  type Coluna,
+  type Tom,
+} from '@ui';
+import { Add24Regular, Delete24Regular } from '@fluentui/react-icons';
+import { api, StatusApr, statusAprLabel, type Apr, type Atividade, type Equipe, type NovaApr, type Trabalhador } from '../../lib/api';
 import { useSucessoToast } from '../../hooks/useSucessoToast';
-import { EstadoVazio } from '../../components/EstadoVazio';
-import { ListaCarregando } from '../../components/ListaCarregando';
 import { hojeIso } from '../../lib/datas';
 
 function aprVazia(): NovaApr {
@@ -38,17 +37,21 @@ function aprVazia(): NovaApr {
   };
 }
 
-const corBadgeStatus: Record<number, 'informative' | 'warning' | 'success' | 'danger' | 'subtle'> = {
-  1: 'subtle',
-  2: 'warning',
-  3: 'success',
-  4: 'danger',
-  5: 'informative',
+// Mapeamento 1:1 pelo nome semântico do Fluent (Guia de conversão item 5), preservando as mesmas
+// cores da versão anterior (Badge color=): informative→info, warning→atencao, success→ok,
+// danger→alerta, subtle→neutro. Reutilizado em AprDetalhePage.tsx para lista e detalhe ficarem
+// visualmente coerentes.
+const tomPorStatusApr: Record<number, Tom> = {
+  [StatusApr.EmElaboracao]: 'neutro',
+  [StatusApr.AguardandoAprovacao]: 'atencao',
+  [StatusApr.Aprovada]: 'ok',
+  [StatusApr.Reprovada]: 'alerta',
+  [StatusApr.Encerrada]: 'info',
 };
 
+// Onda 2 Task 11 (camada ui/): lista + formulário de criação de APR. Nada de Fluent cru nem de
+// pageStyles aqui — lista em DataTable, seleção de responsáveis em ChipCheckboxGroup.
 export function AprsTab() {
-  const estilos = usePageStyles();
-  const estilosChip = useCheckboxChipStyles();
   const navigate = useNavigate();
   const [aprs, setAprs] = useState<Apr[]>([]);
   const [atividades, setAtividades] = useState<Atividade[]>([]);
@@ -58,7 +61,7 @@ export function AprsTab() {
   const [erro, setErro] = useState<string | null>(null);
   const [carregando, setCarregando] = useState(false);
   const [carregandoLista, setCarregandoLista] = useState(true);
-  const { confirmar, dialogElement } = useConfirmarExclusao();
+  const { confirmar, dialogElement } = useConfirmar();
   const sucessoToast = useSucessoToast();
 
   async function carregar() {
@@ -90,15 +93,6 @@ export function AprsTab() {
     carregar();
   }, []);
 
-  function alternarResponsavel(id: string, marcado: boolean) {
-    setNovaApr((atual) => ({
-      ...atual,
-      responsaveisIds: marcado
-        ? [...atual.responsaveisIds, id]
-        : atual.responsaveisIds.filter((r) => r !== id),
-    }));
-  }
-
   async function criar() {
     try {
       setCarregando(true);
@@ -117,8 +111,7 @@ export function AprsTab() {
     }
   }
 
-  async function excluir(id: string, evento: React.MouseEvent) {
-    evento.stopPropagation();
+  async function excluir(id: string) {
     if (!(await confirmar('Excluir esta APR? Essa ação não pode ser desfeita.'))) return;
     try {
       await api.aprs.excluir(id);
@@ -129,157 +122,126 @@ export function AprsTab() {
     }
   }
 
+  const colunas: Coluna<Apr>[] = [
+    { chave: 'numeroApr', rotulo: 'Nº APR', render: (a) => a.numeroApr ?? '-' },
+    { chave: 'atividadeNome', rotulo: 'Atividade' },
+    { chave: 'local', rotulo: 'Local' },
+    { chave: 'data', rotulo: 'Data', render: (a) => a.data?.slice(0, 10) ?? '' },
+    { chave: 'validade', rotulo: 'Validade', render: (a) => a.validade?.slice(0, 10) ?? '' },
+    {
+      chave: 'status',
+      rotulo: 'Status',
+      render: (a) => <StatusChip tom={tomPorStatusApr[a.status] ?? 'neutro'}>{statusAprLabel[a.status]}</StatusChip>,
+    },
+  ];
+
   return (
-    <div className={estilos.card}>
-      {dialogElement}
-      <div className={estilos.toolbar}>
-        <Text weight="semibold">Análise Preliminar de Risco (APR)</Text>
-      </div>
-
-      {erro && <Text className={estilos.erro}>{erro}</Text>}
-
-      <div className={`${estilos.sectionTitle} ${estilos.sectionTitleFirst}`}>Dados da APR</div>
-      <div className={estilos.formGrid}>
-        <div className={estilos.col4}>
-          <Field label="Atividade">
-            <Select
-              value={novaApr.atividadeId}
-              onChange={(_, d) => setNovaApr({ ...novaApr, atividadeId: d.value })}
-            >
-              <option value="">Selecione</option>
-              {atividades.map((atividade) => (
-                <option key={atividade.id} value={atividade.id}>
-                  {atividade.nome}
-                </option>
-              ))}
-            </Select>
-          </Field>
-        </div>
-        <div className={estilos.col3}>
-          <Field label="Local / Frente">
-            <Input value={novaApr.local} onChange={(_, d) => setNovaApr({ ...novaApr, local: d.value })} />
-          </Field>
-        </div>
-        <div className={estilos.col3}>
-          <Field label="Máquinas / Equip.">
-            <Input
-              value={novaApr.maquinasEquipamentos ?? ''}
-              onChange={(_, d) => setNovaApr({ ...novaApr, maquinasEquipamentos: d.value })}
-            />
-          </Field>
-        </div>
-        <div className={estilos.col3}>
-          <Field label="PGR / Procedimento ref.">
-            <Input
-              value={novaApr.pgrReferencia ?? ''}
-              onChange={(_, d) => setNovaApr({ ...novaApr, pgrReferencia: d.value })}
-            />
-          </Field>
-        </div>
-        <div className={estilos.col3}>
-          <Field label="Equipe">
-            <Select
-              value={novaApr.equipeId ?? ''}
-              onChange={(_, d) => setNovaApr({ ...novaApr, equipeId: d.value || null })}
-            >
-              <option value="">Nenhuma</option>
-              {equipesDaObra.map((equipe) => (
-                <option key={equipe.id} value={equipe.id}>
-                  {equipe.nome}
-                </option>
-              ))}
-            </Select>
-          </Field>
-        </div>
-        <div className={estilos.col3}>
-          <Field label="Data">
-            <CampoData
-              value={novaApr.data}
-              onChange={(_, d) => setNovaApr({ ...novaApr, data: d.value })}
-            />
-          </Field>
-        </div>
-        <div className={estilos.col3}>
-          <Field label="Validade">
-            <CampoData
-              value={novaApr.validade ?? ''}
-              onChange={(_, d) => setNovaApr({ ...novaApr, validade: d.value || null })}
-            />
-          </Field>
-        </div>
-      </div>
-
-      <Field label="Responsáveis" style={{ marginBottom: 16 }}>
-        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
-          {trabalhadores.map((trabalhador) => (
-            <Checkbox
-              key={trabalhador.id}
-              className={estilosChip.chip}
-              label={trabalhador.nome}
-              checked={novaApr.responsaveisIds.includes(trabalhador.id)}
-              onChange={(_, d) => alternarResponsavel(trabalhador.id, !!d.checked)}
-            />
-          ))}
-        </div>
-      </Field>
-
-      <div className={estilos.formActions}>
-        <Button appearance="primary" icon={<Add24Regular />} onClick={criar} disabled={carregando}>
-          Adicionar APR
-        </Button>
-      </div>
-
-      {carregandoLista ? (
-        <ListaCarregando />
-      ) : aprs.length === 0 ? (
-        <EstadoVazio mensagem="Nenhuma APR cadastrada ainda." />
-      ) : (
-      <Table noNativeElements>
-        <TableHeader>
-          <TableRow>
-            <TableHeaderCell>Nº APR</TableHeaderCell>
-            <TableHeaderCell>Atividade</TableHeaderCell>
-            <TableHeaderCell>Local</TableHeaderCell>
-            <TableHeaderCell>Data</TableHeaderCell>
-            <TableHeaderCell>Validade</TableHeaderCell>
-            <TableHeaderCell>Status</TableHeaderCell>
-            <TableHeaderCell></TableHeaderCell>
-          </TableRow>
-        </TableHeader>
-        <TableBody>
-          {aprs.map((apr) => (
-            <TableRow key={apr.id} onClick={() => navigate(`/operacao/apr/${apr.id}`)} style={{ cursor: 'pointer' }}>
-              <TableCell>{apr.numeroApr ?? '-'}</TableCell>
-              <TableCell>{apr.atividadeNome}</TableCell>
-              <TableCell>{apr.local}</TableCell>
-              <TableCell>{apr.data?.slice(0, 10)}</TableCell>
-              <TableCell>{apr.validade?.slice(0, 10)}</TableCell>
-              <TableCell>
-                <Badge color={corBadgeStatus[apr.status]} appearance="tint">
-                  {statusAprLabel[apr.status]}
-                </Badge>
-              </TableCell>
-              <TableCell>
-                <div style={{ display: 'flex', gap: 4 }}>
-                  <Button
-                    appearance="subtle"
-                    icon={<ChevronRight24Regular />}
-                    onClick={() => navigate(`/operacao/apr/${apr.id}`)}
-                    aria-label="Ver APR"
-                  />
-                  <Button
-                    appearance="subtle"
-                    icon={<Delete24Regular />}
-                    onClick={(evento) => excluir(apr.id, evento)}
-                    aria-label="Excluir"
-                  />
-                </div>
-              </TableCell>
-            </TableRow>
-          ))}
-        </TableBody>
-      </Table>
+    <>
+      {erro && (
+        <FeedbackInline tom="erro" aoFechar={() => setErro(null)}>
+          {erro}
+        </FeedbackInline>
       )}
-    </div>
+
+      <Card titulo="Análise Preliminar de Risco (APR)">
+        <FormSection titulo="Dados da APR" numero={1} primeira>
+          <FormGrid>
+            <Campo span={6}>
+              <Field label="Atividade">
+                <Select
+                  value={novaApr.atividadeId}
+                  onChange={(_, d) => setNovaApr({ ...novaApr, atividadeId: d.value })}
+                >
+                  <option value="">Selecione</option>
+                  {atividades.map((atividade) => (
+                    <option key={atividade.id} value={atividade.id}>
+                      {atividade.nome}
+                    </option>
+                  ))}
+                </Select>
+              </Field>
+            </Campo>
+            <Campo span={3}>
+              <Field label="Local / Frente">
+                <Input value={novaApr.local} onChange={(_, d) => setNovaApr({ ...novaApr, local: d.value })} />
+              </Field>
+            </Campo>
+            <Campo span={3}>
+              <Field label="Máquinas / Equip.">
+                <Input
+                  value={novaApr.maquinasEquipamentos ?? ''}
+                  onChange={(_, d) => setNovaApr({ ...novaApr, maquinasEquipamentos: d.value })}
+                />
+              </Field>
+            </Campo>
+            <Campo span={3}>
+              <Field label="PGR / Procedimento ref.">
+                <Input
+                  value={novaApr.pgrReferencia ?? ''}
+                  onChange={(_, d) => setNovaApr({ ...novaApr, pgrReferencia: d.value })}
+                />
+              </Field>
+            </Campo>
+            <Campo span={3}>
+              <Field label="Equipe">
+                <Select
+                  value={novaApr.equipeId ?? ''}
+                  onChange={(_, d) => setNovaApr({ ...novaApr, equipeId: d.value || null })}
+                >
+                  <option value="">Nenhuma</option>
+                  {equipesDaObra.map((equipe) => (
+                    <option key={equipe.id} value={equipe.id}>
+                      {equipe.nome}
+                    </option>
+                  ))}
+                </Select>
+              </Field>
+            </Campo>
+            <Campo span={3}>
+              <Field label="Data">
+                <CampoData value={novaApr.data} onChange={(_, d) => setNovaApr({ ...novaApr, data: d.value })} />
+              </Field>
+            </Campo>
+            <Campo span={3}>
+              <Field label="Validade">
+                <CampoData
+                  value={novaApr.validade ?? ''}
+                  onChange={(_, d) => setNovaApr({ ...novaApr, validade: d.value || null })}
+                />
+              </Field>
+            </Campo>
+            <Campo span={12}>
+              <Field label="Responsáveis">
+                <ChipCheckboxGroup
+                  aria-label="Responsáveis"
+                  opcoes={trabalhadores.map((t) => ({ id: t.id, rotulo: t.nome }))}
+                  selecionados={novaApr.responsaveisIds}
+                  aoMudar={(ids) => setNovaApr({ ...novaApr, responsaveisIds: ids })}
+                />
+              </Field>
+            </Campo>
+          </FormGrid>
+          <FormRodape>
+            <Button appearance="primary" icon={<Add24Regular />} onClick={criar} disabled={carregando}>
+              Adicionar APR
+            </Button>
+          </FormRodape>
+        </FormSection>
+
+        <DataTable
+          aria-label="APRs cadastradas"
+          colunas={colunas}
+          linhas={aprs}
+          chaveLinha={(a) => a.id}
+          carregando={carregandoLista}
+          vazio={{ titulo: 'Nenhuma APR cadastrada ainda.' }}
+          aoClicarLinha={(a) => navigate(`/operacao/apr/${a.id}`)}
+          acoesLinha={(a) => (
+            <Button appearance="subtle" icon={<Delete24Regular />} onClick={() => excluir(a.id)} aria-label="Excluir" />
+          )}
+        />
+      </Card>
+      {dialogElement}
+    </>
   );
 }

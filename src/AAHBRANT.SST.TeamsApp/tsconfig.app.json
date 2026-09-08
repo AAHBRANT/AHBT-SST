@@ -15,6 +15,10 @@
     "moduleDetection": "force",
     "noEmit": true,
     "jsx": "react-jsx",
+    "paths": {
+      "@ui": ["./src/ui/index.ts"],
+      "@ui/*": ["./src/ui/*"]
+    },
 
     /* Linting */
     "noUnusedLocals": true,

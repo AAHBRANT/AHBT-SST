@@ -3,6 +3,11 @@ WORKDIR /app
 COPY src/AAHBRANT.SST.TeamsApp/package*.json ./
 RUN npm ci
 COPY src/AAHBRANT.SST.TeamsApp/ ./
+# ATENÇÃO ao buildar manualmente (az acr build) fora do deploy.yml: este ARG não tem valor padrão —
+# se você esquecer --build-arg VITE_API_BASE_URL=https://<fqdn-do-sst-api-hml>, o build "funciona"
+# silenciosamente (sem erro), mas o app final chama a API com caminho relativo, cai no fallback de
+# SPA do nginx.conf (serve index.html) e todo fetch de API quebra com "esperava JSON e recebeu outro
+# tipo de conteúdo" — bug real que já foi pra produção (03/09) por builds manuais sem este parâmetro.
 ARG VITE_API_BASE_URL
 ENV VITE_API_BASE_URL=$VITE_API_BASE_URL
 ARG CACHEBUST=1
