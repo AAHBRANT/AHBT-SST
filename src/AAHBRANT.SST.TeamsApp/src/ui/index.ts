@@ -1,5 +1,6 @@
 // Porta única da camada ui/ (spec 2026-09-07 §2). Páginas importam daqui, nunca do Fluent direto.
 export * from './tokens/tokens';
+export * from './tokens/tons';
 export * from './tokens/tipografia';
 export * from './tokens/movimento';
 

@@ -1,4 +1,4 @@
-import { Checkbox, makeStyles, shorthands, tokens } from '@fluentui/react-components';
+import { Checkbox, makeStyles, shorthands } from '@fluentui/react-components';
 import { designTokens, tokensUi } from '../../tokens/tokens';
 
 const useStyles = makeStyles({
@@ -7,8 +7,8 @@ const useStyles = makeStyles({
     display: 'inline-flex', alignItems: 'center', backgroundColor: designTokens.colorNeutralLight,
     ...shorthands.borderRadius(tokensUi.raio.full), ...shorthands.border('1px', 'solid', designTokens.colorCardBorder),
     ...shorthands.padding('6px', '14px', '6px', '10px'), cursor: 'pointer',
-    transitionProperty: 'background-color, border-color', transitionDuration: '120ms',
-    ':hover': { backgroundColor: tokens.colorNeutralBackground1Hover, ...shorthands.borderColor(tokensUi.chrome.ativoFundo) },
+    transitionProperty: 'background-color, border-color', transitionDuration: tokensUi.duracao.rapido,
+    ':hover': { backgroundColor: designTokens.colorSurface, ...shorthands.borderColor(tokensUi.chrome.ativoFundo) },
   },
 });
 

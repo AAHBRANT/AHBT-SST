@@ -1,10 +1,10 @@
 import { useCallback, useRef, useState } from 'react';
 import { Button, Dialog, DialogActions, DialogBody, DialogContent, DialogSurface, DialogTitle, makeStyles } from '@fluentui/react-components';
-import { tokensUi } from '../../tokens/tokens';
+import { designTokens, tokensUi } from '../../tokens/tokens';
 
 const useStyles = makeStyles({
   // Destrutivo é ação, não estado — única exceção declarada à regra "status nunca sólido" (spec §3).
-  destrutivo: { backgroundColor: tokensUi.status.alerta.tinta, color: '#ffffff', ':hover': { backgroundColor: tokensUi.status.alerta.tinta, color: '#ffffff', filter: 'brightness(0.92)' } },
+  destrutivo: { backgroundColor: tokensUi.status.alerta.tinta, color: designTokens.colorWhite, ':hover': { backgroundColor: tokensUi.status.alerta.tinta, color: designTokens.colorWhite, filter: 'brightness(0.92)' } },
 });
 
 export interface OpcoesConfirmacao {

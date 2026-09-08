@@ -16,7 +16,7 @@ export const useAbasStyles = makeStyles({
       backgroundColor: designTokens.colorNeutralLight, ...shorthands.border('1px', 'solid', designTokens.colorCardBorder), borderBottom: 'none',
       borderRadius: `${tokensUi.raio.sm} ${tokensUi.raio.sm} 0 0`, color: designTokens.colorNeutralMedium, fontWeight: 600, fontSize: '13px',
       ...shorthands.padding('10px', '20px'), minHeight: 'auto', whiteSpace: 'nowrap', position: 'relative', top: '1px',
-      transitionProperty: 'background-color, color', transitionDuration: '120ms',
+      transitionProperty: 'background-color, color', transitionDuration: tokensUi.duracao.rapido,
     },
     '& .fui-Tab:hover': { backgroundColor: tokensUi.status.ok.fundo, color: tokensUi.status.ok.tinta },
     // Traço vinho no topo: único lugar em que a marca sela seleção (spec §1.1, aprovado 02/09).
@@ -30,7 +30,7 @@ export const useAbasStyles = makeStyles({
     '& .fui-Tab': {
       backgroundColor: 'transparent', ...shorthands.border('1px', 'solid', 'transparent'), borderRadius: tokensUi.raio.full,
       color: designTokens.colorNeutralMedium, fontWeight: 600, fontSize: '12px', ...shorthands.padding('6px', '14px'), minHeight: 'auto', whiteSpace: 'nowrap',
-      transitionProperty: 'background-color, color', transitionDuration: '200ms',
+      transitionProperty: 'background-color, color', transitionDuration: tokensUi.duracao.normal,
     },
     '& .fui-Tab:hover': { backgroundColor: tokensUi.status.ok.fundo, color: tokensUi.status.ok.tinta },
     // Seleção = chrome (spec §1.1): sólido, família chrome, não colorSuccess.

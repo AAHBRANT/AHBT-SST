@@ -11,12 +11,12 @@ const useStyles = makeStyles({
   acao: { border: `1px solid ${designTokens.colorCardBorder}`, borderRadius: tokensUi.raio.md, overflow: 'hidden', backgroundColor: designTokens.colorSurface },
   botao: { width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '10px', padding: '10px 12px', border: 0, background: 'transparent', textAlign: 'left', cursor: 'pointer', font: 'inherit', color: 'inherit', ':hover': { backgroundColor: designTokens.colorNeutralLight }, ':disabled': { opacity: 0.5, cursor: 'default' } },
   descricao: { display: 'block', color: designTokens.colorNeutralMedium, marginTop: '2px' },
-  seta: { color: designTokens.colorNeutralMedium, flexShrink: 0, transitionProperty: 'transform', transitionDuration: '200ms' },
+  seta: { color: designTokens.colorNeutralMedium, flexShrink: 0, transitionProperty: 'transform', transitionDuration: tokensUi.duracao.normal },
   setaAberta: { transform: 'rotate(180deg)' },
   destrutivo: { color: tokensUi.status.alerta.tinta },
   primario: { color: designTokens.colorPrimary },
   formulario: { padding: tokensUi.espaco.md, borderTop: `1px solid ${tokensUi.bordaSuave}`, backgroundColor: designTokens.colorNeutralLight, display: 'flex', flexDirection: 'column', gap: '10px' },
-  botaoDestrutivo: { backgroundColor: tokensUi.status.alerta.tinta, color: '#ffffff', ':hover': { backgroundColor: tokensUi.status.alerta.tinta, color: '#ffffff', filter: 'brightness(0.92)' } },
+  botaoDestrutivo: { backgroundColor: tokensUi.status.alerta.tinta, color: designTokens.colorWhite, ':hover': { backgroundColor: tokensUi.status.alerta.tinta, color: designTokens.colorWhite, filter: 'brightness(0.92)' } },
   rotulo: { fontWeight: 700 },
 });
 
