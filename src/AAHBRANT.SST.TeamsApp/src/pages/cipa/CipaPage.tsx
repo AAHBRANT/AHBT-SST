@@ -1,6 +1,4 @@
-import { useState } from 'react';
-import { Tab, TabList, Text, type SelectTabData, type SelectTabEvent } from '@fluentui/react-components';
-import { usePillTabStyles, useSubTabStyles } from '../pageStyles';
+import { Abas, PageHeader, useAbaNaUrl } from '@ui';
 import { DimensionamentoCipaTab } from './DimensionamentoCipaTab';
 import { ProcessoEleitoralCipaTab } from './ProcessoEleitoralCipaTab';
 import { MembrosCipaTab } from './MembrosCipaTab';
@@ -8,40 +6,38 @@ import { ReunioesCipaTab } from './ReunioesCipaTab';
 import { InspecoesCipaTab } from './InspecoesCipaTab';
 import { SipatTab } from './SipatTab';
 
-type AbaCipa = 'dimensionamento' | 'eleicao' | 'membros' | 'reunioes' | 'inspecoes' | 'sipat';
+const ABAS_CIPA = ['dimensionamento', 'eleicao', 'membros', 'reunioes', 'inspecoes', 'sipat'] as const;
+type AbaCipa = (typeof ABAS_CIPA)[number];
 
 // Módulo CIPA (NR-5, requisito do usuário, 31/08/2026), item de 1º nível próprio na sidebar (saiu
 // do pilar Operação em 02/09 — cada item da sidebar deve abrir só o que é dele, ver AppShell.tsx).
 // Disclosure completo (dimensionamento sempre manual, apuração manual sem urna digital, PGR/GRO
 // integrado via botão "Gerar Não Conformidade" e não automaticamente) em Domain/Entidades/Cipa/Cipa.cs.
+// Onda 2 Task 5 (camada ui/): mesmo padrão de EpiPage.tsx (piloto 1) — a aba vive na URL (?aba=), então
+// voltar e F5 preservam a aba; nivel muda entre pilar/modulo conforme a página é aberta com título
+// próprio (mostrarTitulo) ou embutida como seção de outra página-pilar (hoje só o segundo caso, dentro
+// de OperacaoPage — ver comentário acima sobre a saída do pilar Operação ainda não refletida no roteiro).
 export function CipaPage({ mostrarTitulo = true }: { mostrarTitulo?: boolean } = {}) {
-  const [aba, setAba] = useState<AbaCipa>('dimensionamento');
-  const estilosPillTab = usePillTabStyles();
-  const estilosSubTab = useSubTabStyles();
-  const estilosAba = mostrarTitulo ? estilosPillTab : estilosSubTab;
+  const [aba, setAba] = useAbaNaUrl<AbaCipa>('aba', ABAS_CIPA, 'dimensionamento');
 
   return (
     <div>
-      {mostrarTitulo && (
-        <div style={{ marginBottom: 16 }}>
-          <Text size={500} weight="semibold">
-            CIPA
-          </Text>
-        </div>
-      )}
+      {mostrarTitulo && <PageHeader titulo="CIPA" />}
 
-      <TabList
-        selectedValue={aba}
-        onTabSelect={(_: SelectTabEvent, data: SelectTabData) => setAba(data.value as AbaCipa)}
-        className={estilosAba.lista}
-      >
-        <Tab value="dimensionamento">Dimensionamento</Tab>
-        <Tab value="eleicao">Processo Eleitoral</Tab>
-        <Tab value="membros">Membros</Tab>
-        <Tab value="reunioes">Reuniões</Tab>
-        <Tab value="inspecoes">Inspeções</Tab>
-        <Tab value="sipat">SIPAT</Tab>
-      </TabList>
+      <Abas
+        nivel={mostrarTitulo ? 'pilar' : 'modulo'}
+        valor={aba}
+        aoMudar={setAba}
+        aria-label="Seções da CIPA"
+        abas={[
+          { valor: 'dimensionamento', rotulo: 'Dimensionamento' },
+          { valor: 'eleicao', rotulo: 'Processo Eleitoral' },
+          { valor: 'membros', rotulo: 'Membros' },
+          { valor: 'reunioes', rotulo: 'Reuniões' },
+          { valor: 'inspecoes', rotulo: 'Inspeções' },
+          { valor: 'sipat', rotulo: 'SIPAT' },
+        ]}
+      />
 
       {aba === 'dimensionamento' && <DimensionamentoCipaTab />}
       {aba === 'eleicao' && <ProcessoEleitoralCipaTab />}
