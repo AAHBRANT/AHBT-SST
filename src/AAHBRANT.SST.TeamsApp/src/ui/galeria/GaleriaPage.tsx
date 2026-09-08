@@ -195,6 +195,12 @@ export function GaleriaPage() {
         <Button appearance="primary" onClick={() => setPainelAberto(true)}>Abrir painel</Button>
         <PainelLateral aberto={painelAberto} aoFechar={() => setPainelAberto(false)} titulo="Nova entrega de EPI" subtitulo="A lista continua visível atrás." rodape={<><Button onClick={() => setPainelAberto(false)}>Cancelar</Button><Button appearance="primary" onClick={() => setPainelAberto(false)}>Registrar</Button></>}>
           <FormSection titulo="Quem recebe" numero={1} primeira><FormGrid><Campo><Field label="Funcionário"><Input /></Field></Campo></FormGrid></FormSection>
+          {/* Faixas estreitas dentro de painel estreito — o caso que fazia o FormGrid vazar na horizontal (piloto 1). */}
+          <FormSection titulo="O que é entregue" numero={2}><FormGrid>
+            <Campo span={4}><Field label="Qtd."><Input type="number" defaultValue="1" /></Field></Campo>
+            <Campo span={4}><Field label="Entrega"><CampoData value="2026-09-07" onChange={() => {}} /></Field></Campo>
+            <Campo span={4}><Field label="Validade"><CampoData value="" onChange={() => {}} /></Field></Campo>
+          </FormGrid></FormSection>
         </PainelLateral>
       </Secao>
       <Secao id="kpi-card" titulo="KpiCard (entrada escalonada — recarregue a página)">
