@@ -5,16 +5,17 @@ import { tokensUi } from '../../tokens/tokens';
 const useStyles = makeStyles({
   // minmax(0, 1fr) e não 1fr: com `1fr` o mínimo da faixa é `auto` (min-content), então rótulo
   // longo ou largura mínima de <Input> empurram as 12 faixas para além do container e o formulário
-  // ganha barra de rolagem horizontal. Apareceu no piloto 1, dentro do PainelLateral de 560px
-  // (spec §5.1: o componente é que se ajusta, não a página).
+  // ganha barra de rolagem horizontal. Apareceu no piloto 1, dentro do PainelLateral de 560px, e de
+  // novo no piloto 2, na linha "Nova ação" da NaoConformidadeDetalhePage (spec §5.1: o componente é
+  // que se ajusta, não a página).
   grid: { display: 'grid', gridTemplateColumns: 'repeat(12, minmax(0, 1fr))', gap: tokensUi.espaco.lg, marginBottom: '20px',
     // Único breakpoint do app hoje (pageStyles.formGrid) — fica aqui dentro.
     '@media (max-width: 900px)': { gridTemplateColumns: 'repeat(1, minmax(0, 1fr))' },
     // O <input> nativo tem largura intrínseca de ~200px (o `size=20` do HTML) e ela sobe pela
     // cadeia: como Field é grid e a raiz do controle do Fluent é item de grid com `min-width: auto`
-    // (= min-content), em faixa mais estreita que isso — Campo span={4} dentro do PainelLateral de
-    // 560px — o campo vazava para fora da grade. Precisa de minWidth 0 em toda a cadeia (Field,
-    // raiz do controle e o elemento nativo), não só no elemento nativo.
+    // (= min-content), em faixa mais estreita que isso o campo vazava para fora da grade — sobre o
+    // vizinho, no caso do piloto 2. Precisa de minWidth 0 em toda a cadeia (Field, raiz do
+    // controle e o elemento nativo), não só no elemento nativo.
     '& .fui-Field': { minWidth: 0 },
     '& .fui-Input, & .fui-Select, & .fui-Combobox, & .fui-Textarea, & .fui-Dropdown': { minWidth: 0 },
     '& input, & select, & textarea': { minWidth: 0 } },
