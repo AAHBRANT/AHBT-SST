@@ -1,22 +1,25 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
-  Badge,
   Button,
-  Checkbox,
+  Campo,
+  Card,
+  CampoData,
+  ChipCheckboxGroup,
+  DataTable,
   Field,
+  FeedbackInline,
+  FormGrid,
+  FormRodape,
+  FormSection,
   Input,
   Select,
-  Table,
-  TableBody,
-  TableCell,
-  TableHeader,
-  TableHeaderCell,
-  TableRow,
-  Text,
-} from '@fluentui/react-components';
-import { CampoData } from '../../components/CampoData';
-import { Add24Regular, ChevronRight24Regular, Delete24Regular } from '@fluentui/react-icons';
+  StatusChip,
+  useConfirmar,
+  type Coluna,
+  type Tom,
+} from '@ui';
+import { Add24Regular, Delete24Regular } from '@fluentui/react-icons';
 import {
   api,
   statusPtLabel,
@@ -27,11 +30,7 @@ import {
   type Trabalhador,
   type Usuario,
 } from '../../lib/api';
-import { usePageStyles, useCheckboxChipStyles } from '../pageStyles';
-import { useConfirmarExclusao } from '../../hooks/useConfirmarExclusao';
 import { useSucessoToast } from '../../hooks/useSucessoToast';
-import { EstadoVazio } from '../../components/EstadoVazio';
-import { ListaCarregando } from '../../components/ListaCarregando';
 import { hojeIso } from '../../lib/datas';
 
 function ptVazia(): NovaPermissaoTrabalho {
@@ -51,16 +50,18 @@ function ptVazia(): NovaPermissaoTrabalho {
   };
 }
 
-const corBadgeStatus: Record<number, 'informative' | 'warning' | 'success' | 'danger' | 'subtle'> = {
-  1: 'subtle',
-  2: 'success',
-  3: 'warning',
-  4: 'informative',
+// Mapeamento 1:1 pelo nome semântico do Fluent (Guia de conversão item 5), preservando as mesmas
+// cores da versão anterior (Badge color=): subtle→neutro, success→ok, warning→atencao, informative→info.
+const tomPorStatusPt: Record<number, Tom> = {
+  1: 'neutro',
+  2: 'ok',
+  3: 'atencao',
+  4: 'info',
 };
 
+// Onda 2 Task 6 (camada ui/): lista + formulário de criação de Permissão de Trabalho. Mesmo padrão
+// de AprsTab.tsx (Task 11) — Card + FormSection + DataTable, seleção de responsáveis em ChipCheckboxGroup.
 export function PermissoesTrabalhoTab() {
-  const estilos = usePageStyles();
-  const estilosChip = useCheckboxChipStyles();
   const navigate = useNavigate();
   const [permissoes, setPermissoes] = useState<PermissaoTrabalho[]>([]);
   const [atividades, setAtividades] = useState<Atividade[]>([]);
@@ -71,7 +72,7 @@ export function PermissoesTrabalhoTab() {
   const [erro, setErro] = useState<string | null>(null);
   const [carregando, setCarregando] = useState(false);
   const [carregandoLista, setCarregandoLista] = useState(true);
-  const { confirmar, dialogElement } = useConfirmarExclusao();
+  const { confirmar, dialogElement } = useConfirmar();
   const sucessoToast = useSucessoToast();
 
   async function carregar() {
@@ -105,13 +106,6 @@ export function PermissoesTrabalhoTab() {
     carregar();
   }, []);
 
-  function alternarResponsavel(id: string, marcado: boolean) {
-    setNovaPt((atual) => ({
-      ...atual,
-      responsaveisIds: marcado ? [...atual.responsaveisIds, id] : atual.responsaveisIds.filter((r) => r !== id),
-    }));
-  }
-
   async function criar() {
     try {
       setCarregando(true);
@@ -136,8 +130,7 @@ export function PermissoesTrabalhoTab() {
     }
   }
 
-  async function excluir(id: string, evento: React.MouseEvent) {
-    evento.stopPropagation();
+  async function excluir(id: string) {
     if (!(await confirmar('Excluir esta Permissão de Trabalho? Essa ação não pode ser desfeita.'))) return;
     try {
       await api.permissoesTrabalho.excluir(id);
@@ -148,208 +141,181 @@ export function PermissoesTrabalhoTab() {
     }
   }
 
+  const colunas: Coluna<PermissaoTrabalho>[] = [
+    { chave: 'numeroPt', rotulo: 'Nº PT', render: (pt) => pt.numeroPt ?? '-' },
+    { chave: 'atividadeNome', rotulo: 'Atividade' },
+    { chave: 'local', rotulo: 'Local' },
+    { chave: 'data', rotulo: 'Data', render: (pt) => pt.data?.slice(0, 10) ?? '' },
+    { chave: 'validade', rotulo: 'Validade', render: (pt) => pt.validade?.slice(0, 10) ?? '' },
+    {
+      chave: 'status',
+      rotulo: 'Status',
+      render: (pt) => <StatusChip tom={tomPorStatusPt[pt.status] ?? 'neutro'}>{statusPtLabel[pt.status]}</StatusChip>,
+    },
+  ];
+
   return (
-    <div className={estilos.card}>
-      {dialogElement}
-      <div className={estilos.toolbar}>
-        <Text weight="semibold">Permissão de Trabalho (PT)</Text>
-      </div>
-
-      {erro && <Text className={estilos.erro}>{erro}</Text>}
-
-      <div className={`${estilos.sectionTitle} ${estilos.sectionTitleFirst}`}>Dados Gerais</div>
-      <div className={estilos.formGrid}>
-        <div className={estilos.col3}>
-          <Field label="Atividade">
-            <Select value={novaPt.atividadeId} onChange={(_, d) => setNovaPt({ ...novaPt, atividadeId: d.value })}>
-              <option value="">Selecione</option>
-              {atividades.map((atividade) => (
-                <option key={atividade.id} value={atividade.id}>
-                  {atividade.nome}
-                </option>
-              ))}
-            </Select>
-          </Field>
-        </div>
-        <div className={estilos.col4}>
-          <Field label="Descrição da atividade">
-            <Input
-              value={novaPt.descricaoAtividade}
-              onChange={(_, d) => setNovaPt({ ...novaPt, descricaoAtividade: d.value })}
-            />
-          </Field>
-        </div>
-        <div className={estilos.col3}>
-          <Field label="Local">
-            <Input value={novaPt.local} onChange={(_, d) => setNovaPt({ ...novaPt, local: d.value })} />
-          </Field>
-        </div>
-        <div className={estilos.col3}>
-          <Field label="Empresa executante">
-            <Input
-              value={novaPt.empresaExecutante ?? ''}
-              onChange={(_, d) => setNovaPt({ ...novaPt, empresaExecutante: d.value })}
-            />
-          </Field>
-        </div>
-        <div className={estilos.col3}>
-          <Field label="Equipe">
-            <Select
-              value={novaPt.equipeId ?? ''}
-              onChange={(_, d) => setNovaPt({ ...novaPt, equipeId: d.value || null })}
-            >
-              <option value="">Nenhuma</option>
-              {equipesDaObra.map((equipe) => (
-                <option key={equipe.id} value={equipe.id}>
-                  {equipe.nome}
-                </option>
-              ))}
-            </Select>
-          </Field>
-        </div>
-      </div>
-
-      <div className={estilos.sectionTitle}>Prazos e Responsáveis</div>
-      <div className={estilos.formGrid}>
-        <div className={estilos.col2}>
-          <Field label="Data">
-            <CampoData value={novaPt.data} onChange={(_, d) => setNovaPt({ ...novaPt, data: d.value })} />
-          </Field>
-        </div>
-        <div className={estilos.col2}>
-          <Field label="Horário início">
-            <Input
-              type="time"
-              value={novaPt.horarioInicio ?? ''}
-              onChange={(_, d) => setNovaPt({ ...novaPt, horarioInicio: d.value || null })}
-            />
-          </Field>
-        </div>
-        <div className={estilos.col2}>
-          <Field label="Horário fim">
-            <Input
-              type="time"
-              value={novaPt.horarioFim ?? ''}
-              onChange={(_, d) => setNovaPt({ ...novaPt, horarioFim: d.value || null })}
-            />
-          </Field>
-        </div>
-        <div className={estilos.col2}>
-          <Field label="Validade">
-            <CampoData
-              value={novaPt.validade ?? ''}
-              onChange={(_, d) => setNovaPt({ ...novaPt, validade: d.value || null })}
-            />
-          </Field>
-        </div>
-        <div className={estilos.col2}>
-          <Field label="Responsável pela execução">
-            <Select
-              value={novaPt.responsavelExecucaoUsuarioId ?? ''}
-              onChange={(_, d) => setNovaPt({ ...novaPt, responsavelExecucaoUsuarioId: d.value || null })}
-            >
-              <option value="">Não definido</option>
-              {usuarios.map((usuario) => (
-                <option key={usuario.id} value={usuario.id}>
-                  {usuario.nome}
-                </option>
-              ))}
-            </Select>
-          </Field>
-        </div>
-        <div className={estilos.col2}>
-          <Field label="Responsável pela área">
-            <Select
-              value={novaPt.responsavelAreaUsuarioId ?? ''}
-              onChange={(_, d) => setNovaPt({ ...novaPt, responsavelAreaUsuarioId: d.value || null })}
-            >
-              <option value="">Não definido</option>
-              {usuarios.map((usuario) => (
-                <option key={usuario.id} value={usuario.id}>
-                  {usuario.nome}
-                </option>
-              ))}
-            </Select>
-          </Field>
-        </div>
-      </div>
-
-      <Field label="Equipe executante (responsáveis)" style={{ marginBottom: 16 }}>
-        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
-          {trabalhadores.map((trabalhador) => (
-            <Checkbox
-              key={trabalhador.id}
-              className={estilosChip.chip}
-              label={trabalhador.nome}
-              checked={novaPt.responsaveisIds.includes(trabalhador.id)}
-              onChange={(_, d) => alternarResponsavel(trabalhador.id, !!d.checked)}
-            />
-          ))}
-        </div>
-      </Field>
-
-      <div className={estilos.formActions}>
-        <Button
-          appearance="primary"
-          icon={<Add24Regular />}
-          onClick={criar}
-          disabled={carregando || !novaPt.atividadeId || !novaPt.descricaoAtividade || !novaPt.local || !novaPt.data}
-        >
-          Adicionar PT
-        </Button>
-      </div>
-
-      {carregandoLista ? (
-        <ListaCarregando />
-      ) : permissoes.length === 0 ? (
-        <EstadoVazio mensagem="Nenhuma Permissão de Trabalho cadastrada ainda." />
-      ) : (
-      <Table noNativeElements>
-        <TableHeader>
-          <TableRow>
-            <TableHeaderCell>Nº PT</TableHeaderCell>
-            <TableHeaderCell>Atividade</TableHeaderCell>
-            <TableHeaderCell>Local</TableHeaderCell>
-            <TableHeaderCell>Data</TableHeaderCell>
-            <TableHeaderCell>Validade</TableHeaderCell>
-            <TableHeaderCell>Status</TableHeaderCell>
-            <TableHeaderCell></TableHeaderCell>
-          </TableRow>
-        </TableHeader>
-        <TableBody>
-          {permissoes.map((pt) => (
-            <TableRow key={pt.id} onClick={() => navigate(`/operacao/pt/${pt.id}`)} style={{ cursor: 'pointer' }}>
-              <TableCell>{pt.numeroPt ?? '-'}</TableCell>
-              <TableCell>{pt.atividadeNome}</TableCell>
-              <TableCell>{pt.local}</TableCell>
-              <TableCell>{pt.data?.slice(0, 10)}</TableCell>
-              <TableCell>{pt.validade?.slice(0, 10)}</TableCell>
-              <TableCell>
-                <Badge color={corBadgeStatus[pt.status]} appearance="tint">
-                  {statusPtLabel[pt.status]}
-                </Badge>
-              </TableCell>
-              <TableCell>
-                <div style={{ display: 'flex', gap: 4 }}>
-                  <Button
-                    appearance="subtle"
-                    icon={<ChevronRight24Regular />}
-                    onClick={() => navigate(`/operacao/pt/${pt.id}`)}
-                    aria-label="Ver PT"
-                  />
-                  <Button
-                    appearance="subtle"
-                    icon={<Delete24Regular />}
-                    onClick={(evento) => excluir(pt.id, evento)}
-                    aria-label="Excluir"
-                  />
-                </div>
-              </TableCell>
-            </TableRow>
-          ))}
-        </TableBody>
-      </Table>
+    <>
+      {erro && (
+        <FeedbackInline tom="erro" aoFechar={() => setErro(null)}>
+          {erro}
+        </FeedbackInline>
       )}
-    </div>
+
+      <Card titulo="Permissão de Trabalho (PT)">
+        <FormSection titulo="Dados Gerais" numero={1} primeira>
+          <FormGrid>
+            <Campo span={5}>
+              <Field label="Atividade">
+                <Select value={novaPt.atividadeId} onChange={(_, d) => setNovaPt({ ...novaPt, atividadeId: d.value })}>
+                  <option value="">Selecione</option>
+                  {atividades.map((atividade) => (
+                    <option key={atividade.id} value={atividade.id}>
+                      {atividade.nome}
+                    </option>
+                  ))}
+                </Select>
+              </Field>
+            </Campo>
+            <Campo span={4}>
+              <Field label="Descrição da atividade">
+                <Input
+                  value={novaPt.descricaoAtividade}
+                  onChange={(_, d) => setNovaPt({ ...novaPt, descricaoAtividade: d.value })}
+                />
+              </Field>
+            </Campo>
+            <Campo span={3}>
+              <Field label="Local">
+                <Input value={novaPt.local} onChange={(_, d) => setNovaPt({ ...novaPt, local: d.value })} />
+              </Field>
+            </Campo>
+            <Campo span={4}>
+              <Field label="Empresa executante">
+                <Input
+                  value={novaPt.empresaExecutante ?? ''}
+                  onChange={(_, d) => setNovaPt({ ...novaPt, empresaExecutante: d.value })}
+                />
+              </Field>
+            </Campo>
+            <Campo span={4}>
+              <Field label="Equipe">
+                <Select
+                  value={novaPt.equipeId ?? ''}
+                  onChange={(_, d) => setNovaPt({ ...novaPt, equipeId: d.value || null })}
+                >
+                  <option value="">Nenhuma</option>
+                  {equipesDaObra.map((equipe) => (
+                    <option key={equipe.id} value={equipe.id}>
+                      {equipe.nome}
+                    </option>
+                  ))}
+                </Select>
+              </Field>
+            </Campo>
+          </FormGrid>
+        </FormSection>
+
+        <FormSection titulo="Prazos e Responsáveis" numero={2}>
+          <FormGrid>
+            <Campo span={2}>
+              <Field label="Data">
+                <CampoData value={novaPt.data} onChange={(_, d) => setNovaPt({ ...novaPt, data: d.value })} />
+              </Field>
+            </Campo>
+            <Campo span={2}>
+              <Field label="Horário início">
+                <Input
+                  type="time"
+                  value={novaPt.horarioInicio ?? ''}
+                  onChange={(_, d) => setNovaPt({ ...novaPt, horarioInicio: d.value || null })}
+                />
+              </Field>
+            </Campo>
+            <Campo span={2}>
+              <Field label="Horário fim">
+                <Input
+                  type="time"
+                  value={novaPt.horarioFim ?? ''}
+                  onChange={(_, d) => setNovaPt({ ...novaPt, horarioFim: d.value || null })}
+                />
+              </Field>
+            </Campo>
+            <Campo span={2}>
+              <Field label="Validade">
+                <CampoData
+                  value={novaPt.validade ?? ''}
+                  onChange={(_, d) => setNovaPt({ ...novaPt, validade: d.value || null })}
+                />
+              </Field>
+            </Campo>
+            <Campo span={2}>
+              <Field label="Responsável pela execução">
+                <Select
+                  value={novaPt.responsavelExecucaoUsuarioId ?? ''}
+                  onChange={(_, d) => setNovaPt({ ...novaPt, responsavelExecucaoUsuarioId: d.value || null })}
+                >
+                  <option value="">Não definido</option>
+                  {usuarios.map((usuario) => (
+                    <option key={usuario.id} value={usuario.id}>
+                      {usuario.nome}
+                    </option>
+                  ))}
+                </Select>
+              </Field>
+            </Campo>
+            <Campo span={2}>
+              <Field label="Responsável pela área">
+                <Select
+                  value={novaPt.responsavelAreaUsuarioId ?? ''}
+                  onChange={(_, d) => setNovaPt({ ...novaPt, responsavelAreaUsuarioId: d.value || null })}
+                >
+                  <option value="">Não definido</option>
+                  {usuarios.map((usuario) => (
+                    <option key={usuario.id} value={usuario.id}>
+                      {usuario.nome}
+                    </option>
+                  ))}
+                </Select>
+              </Field>
+            </Campo>
+            <Campo span={12}>
+              <Field label="Equipe executante (responsáveis)">
+                <ChipCheckboxGroup
+                  aria-label="Equipe executante (responsáveis)"
+                  opcoes={trabalhadores.map((t) => ({ id: t.id, rotulo: t.nome }))}
+                  selecionados={novaPt.responsaveisIds}
+                  aoMudar={(ids) => setNovaPt({ ...novaPt, responsaveisIds: ids })}
+                />
+              </Field>
+            </Campo>
+          </FormGrid>
+          <FormRodape>
+            <Button
+              appearance="primary"
+              icon={<Add24Regular />}
+              onClick={criar}
+              disabled={carregando || !novaPt.atividadeId || !novaPt.descricaoAtividade || !novaPt.local || !novaPt.data}
+            >
+              Adicionar PT
+            </Button>
+          </FormRodape>
+        </FormSection>
+
+        <DataTable
+          aria-label="Permissões de Trabalho cadastradas"
+          colunas={colunas}
+          linhas={permissoes}
+          chaveLinha={(pt) => pt.id}
+          carregando={carregandoLista}
+          vazio={{ titulo: 'Nenhuma Permissão de Trabalho cadastrada ainda.' }}
+          aoClicarLinha={(pt) => navigate(`/operacao/pt/${pt.id}`)}
+          acoesLinha={(pt) => (
+            <Button appearance="subtle" icon={<Delete24Regular />} onClick={() => excluir(pt.id)} aria-label="Excluir" />
+          )}
+        />
+      </Card>
+      {dialogElement}
+    </>
   );
 }

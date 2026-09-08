@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Button, Checkbox, Field, Input, Text, Textarea } from '@fluentui/react-components';
+import { Button, Checkbox, Field, FeedbackInline, Input, Text, Textarea } from '@ui';
 import { Save24Regular } from '@fluentui/react-icons';
 import {
   api,
@@ -87,7 +87,11 @@ export function EpiEpcPtTab({
         <Text weight="semibold">EPIs / EPCs aplicáveis</Text>
       </div>
 
-      {erro && <Text className={estilos.erro}>{erro}</Text>}
+      {erro && (
+        <FeedbackInline tom="erro" aoFechar={() => setErro(null)}>
+          {erro}
+        </FeedbackInline>
+      )}
 
       <div style={{ display: 'flex', gap: 32, flexWrap: 'wrap' }}>
         <Field label="EPIs" style={{ flex: 1, minWidth: 280 }}>

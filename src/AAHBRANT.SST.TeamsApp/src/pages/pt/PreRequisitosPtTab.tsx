@@ -1,7 +1,6 @@
 import { useEffect, useState } from 'react';
-import { Checkbox, Table, TableBody, TableCell, TableHeader, TableHeaderCell, TableRow, Text } from '@fluentui/react-components';
+import { Card, Checkbox, DataTable, FeedbackInline, type Coluna } from '@ui';
 import { api, itemPreRequisitoPtLabel, type PermissaoTrabalhoPreRequisito } from '../../lib/api';
-import { usePageStyles } from '../pageStyles';
 
 // §2 do formulário — 6 itens fixos, já semeados na criação da PT (ver disclosure em
 // CriarPermissaoTrabalhoCommand.cs). Este comando só alterna Atendido, não cria/exclui linha.
@@ -14,7 +13,6 @@ export function PreRequisitosPtTab({
   itens: PermissaoTrabalhoPreRequisito[];
   aoAtualizar: () => Promise<void>;
 }) {
-  const estilos = usePageStyles();
   const [erro, setErro] = useState<string | null>(null);
   const [processandoId, setProcessandoId] = useState<string | null>(null);
 
@@ -33,36 +31,36 @@ export function PreRequisitosPtTab({
     }
   }
 
+  const colunas: Coluna<PermissaoTrabalhoPreRequisito>[] = [
+    {
+      chave: 'atendido',
+      rotulo: 'Atendido',
+      render: (item) => (
+        <Checkbox
+          checked={item.atendido}
+          disabled={processandoId === item.id}
+          onChange={(_, d) => alternar(item, !!d.checked)}
+        />
+      ),
+    },
+    { chave: 'item', rotulo: 'Item', render: (item) => itemPreRequisitoPtLabel[item.item] },
+  ];
+
   return (
-    <div className={estilos.card}>
-      <div className={estilos.toolbar}>
-        <Text weight="semibold">Pré-requisitos para liberação</Text>
-      </div>
+    <Card titulo="Pré-requisitos para liberação">
+      {erro && (
+        <FeedbackInline tom="erro" aoFechar={() => setErro(null)}>
+          {erro}
+        </FeedbackInline>
+      )}
 
-      {erro && <Text className={estilos.erro}>{erro}</Text>}
-
-      <Table noNativeElements>
-        <TableHeader>
-          <TableRow>
-            <TableHeaderCell>Atendido</TableHeaderCell>
-            <TableHeaderCell>Item</TableHeaderCell>
-          </TableRow>
-        </TableHeader>
-        <TableBody>
-          {itens.map((item) => (
-            <TableRow key={item.id}>
-              <TableCell>
-                <Checkbox
-                  checked={item.atendido}
-                  disabled={processandoId === item.id}
-                  onChange={(_, d) => alternar(item, !!d.checked)}
-                />
-              </TableCell>
-              <TableCell>{itemPreRequisitoPtLabel[item.item]}</TableCell>
-            </TableRow>
-          ))}
-        </TableBody>
-      </Table>
-    </div>
+      <DataTable
+        aria-label="Pré-requisitos para liberação"
+        colunas={colunas}
+        linhas={itens}
+        chaveLinha={(item) => item.id}
+        vazio={{ titulo: 'Nenhum pré-requisito cadastrado.' }}
+      />
+    </Card>
   );
 }
