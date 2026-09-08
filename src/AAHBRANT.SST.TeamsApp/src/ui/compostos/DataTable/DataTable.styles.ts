@@ -23,5 +23,13 @@ export const useDataTableStyles = makeStyles({
   direita: { textAlign: 'right' },
   centro: { textAlign: 'center' },
   acoes: { display: 'inline-flex', gap: '4px', justifyContent: 'flex-end' },
-  expandida: { backgroundColor: designTokens.colorNeutralLight, borderRadius: `0 0 ${tokensUi.raio.md} ${tokensUi.raio.md}`, padding: `${tokensUi.espaco.md} ${tokensUi.espaco.lg}` },
+  // Área expansível empilha o que o consumidor passar: sem isto, título e conteúdo colam.
+  // alignItems: flex-start (em vez do stretch padrão de uma coluna flex) evita que um filho sem
+  // largura própria (ex.: um <Button> passado direto) vire full-width sem o consumidor pedir.
+  expandida: { display: 'flex', flexDirection: 'column', alignItems: 'flex-start', gap: tokensUi.espaco.sm, backgroundColor: designTokens.colorNeutralLight, borderRadius: `0 0 ${tokensUi.raio.md} ${tokensUi.raio.md}`, padding: `${tokensUi.espaco.md} ${tokensUi.espaco.lg}` },
+  // Afordância de disclosure (spec §4.5: "▸ Função A" / "▾ Função B") na primeira coluna quando a
+  // tabela é expansível — sem isto a única pista de que a linha abre é o cursor de ponteiro.
+  celulaComSeta: { display: 'flex', alignItems: 'center', gap: tokensUi.espaco.xs },
+  seta: { color: designTokens.colorNeutralMedium, flexShrink: 0, transitionProperty: 'transform', transitionDuration: tokensUi.duracao.rapido },
+  setaAberta: { transform: 'rotate(90deg)' },
 });

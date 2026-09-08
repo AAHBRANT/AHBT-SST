@@ -1,5 +1,6 @@
 import { Fragment, type ReactNode } from 'react';
 import { mergeClasses } from '@fluentui/react-components';
+import { ChevronRight16Regular } from '@fluentui/react-icons';
 import { EstadoVazio, type EstadoVazioProps } from '../../primitivos/EstadoVazio/EstadoVazio';
 import { Carregando } from '../../primitivos/Carregando/Carregando';
 import { useDataTableStyles } from './DataTable.styles';
@@ -27,7 +28,8 @@ export interface DataTableProps<T> {
 }
 
 // Tabela do sistema (spec §3): linhas-como-cartão, estados de carregando/vazio embutidos, densidade,
-// ações por linha, linha expansível. Substitui os 63 usos de <Table> cru do Fluent.
+// ações por linha, linha expansível (com chevron ▸/▾ na primeira coluna, spec §4.5 — a única outra
+// pista de que a linha abre era o cursor de ponteiro). Substitui os 63 usos de <Table> cru do Fluent.
 export function DataTable<T>({ colunas, linhas, chaveLinha, carregando, vazio, densidade = 'confortavel', aoClicarLinha, acoesLinha, expansivel, cabecalhoFixo, 'aria-label': ariaLabel }: DataTableProps<T>) {
   const e = useDataTableStyles();
   const compacta = densidade === 'compacta';
@@ -67,7 +69,14 @@ export function DataTable<T>({ colunas, linhas, chaveLinha, carregando, vazio, d
                 >
                   {colunas.map((c, i) => (
                     <td key={`${i}-${c.chave}`} className={mergeClasses(e.td, compacta && e.tdCompacta, i === 0 && e.tdPrimeira, i === colunas.length - 1 && !acoesLinha && e.tdUltima, c.alinhar === 'direita' && e.direita, c.alinhar === 'centro' && e.centro)}>
-                      {celula(linha, c)}
+                      {i === 0 && expansivel ? (
+                        <span className={e.celulaComSeta}>
+                          <ChevronRight16Regular aria-hidden="true" className={mergeClasses(e.seta, aberta && e.setaAberta)} />
+                          <span>{celula(linha, c)}</span>
+                        </span>
+                      ) : (
+                        celula(linha, c)
+                      )}
                     </td>
                   ))}
                   {acoesLinha && (
