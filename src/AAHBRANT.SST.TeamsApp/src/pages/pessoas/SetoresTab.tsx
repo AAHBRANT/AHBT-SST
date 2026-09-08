@@ -3,32 +3,34 @@ import {
   Button,
   Field,
   Input,
-  Select,
-  Table,
-  TableBody,
-  TableCell,
-  TableHeader,
-  TableHeaderCell,
-  TableRow,
-  Text,
-} from '@fluentui/react-components';
+  Card,
+  PageHeader,
+  DataTable,
+  PainelLateral,
+  FormGrid,
+  Campo,
+  FeedbackInline,
+  SeletorPesquisavel,
+  useConfirmar,
+  type Coluna,
+} from '@ui';
 import { Add24Regular, Delete24Regular } from '@fluentui/react-icons';
 import { api, type NovoSetor, type Obra, type Setor } from '../../lib/api';
-import { usePageStyles } from '../pageStyles';
-import { useConfirmarExclusao } from '../../hooks/useConfirmarExclusao';
 import { useSucessoToast } from '../../hooks/useSucessoToast';
-import { EstadoVazio } from '../../components/EstadoVazio';
-import { ListaCarregando } from '../../components/ListaCarregando';
 
+// Camada ui/ (Onda 2, Task 1): formulário de criação foi para um PainelLateral (mesmo padrão do
+// piloto 1); Obra vira SeletorPesquisavel (spec §3: lista de obras é candidata a busca em vez de
+// <select>), com `opcaoVazia` preservando o prompt "Selecione a obra" que o <select> tinha.
 export function SetoresTab() {
-  const estilos = usePageStyles();
   const [obras, setObras] = useState<Obra[]>([]);
   const [setores, setSetores] = useState<Setor[]>([]);
   const [novoSetor, setNovoSetor] = useState<NovoSetor>({ obraId: '', nome: '' });
   const [erro, setErro] = useState<string | null>(null);
+  const [erroPainel, setErroPainel] = useState<string | null>(null);
   const [carregando, setCarregando] = useState(false);
   const [carregandoLista, setCarregandoLista] = useState(true);
-  const { confirmar, dialogElement } = useConfirmarExclusao();
+  const [painelAberto, setPainelAberto] = useState(false);
+  const { confirmar, dialogElement } = useConfirmar();
   const sucessoToast = useSucessoToast();
 
   async function carregar() {
@@ -48,20 +50,26 @@ export function SetoresTab() {
     carregar();
   }, []);
 
+  function fecharPainel() {
+    setPainelAberto(false);
+    setErroPainel(null);
+  }
+
   async function criar() {
     if (!novoSetor.obraId) {
-      setErro('Selecione a obra do setor.');
+      setErroPainel('Selecione a obra do setor.');
       return;
     }
     try {
       setCarregando(true);
-      setErro(null);
+      setErroPainel(null);
       await api.setores.criar(novoSetor);
       setNovoSetor({ obraId: '', nome: '' });
       await carregar();
       sucessoToast('Setor criado com sucesso.');
+      fecharPainel();
     } catch (e) {
-      setErro(e instanceof Error ? e.message : 'Falha ao criar setor.');
+      setErroPainel(e instanceof Error ? e.message : 'Falha ao criar setor.');
     } finally {
       setCarregando(false);
     }
@@ -78,72 +86,82 @@ export function SetoresTab() {
     }
   }
 
+  const opcoesObras = obras.map((o) => ({ id: o.id, rotulo: o.nome }));
+
+  const colunas: Coluna<Setor>[] = [
+    { chave: 'obra', rotulo: 'Obra', render: (s) => s.obraNome },
+    { chave: 'nome', rotulo: 'Setor' },
+  ];
+
   return (
-    <div className={estilos.card}>
+    <div>
       {dialogElement}
-      <div className={estilos.toolbar}>
-        <Text weight="semibold">Setores cadastrados</Text>
-      </div>
-
-      {erro && <Text className={estilos.erro}>{erro}</Text>}
-
-      <div className={`${estilos.sectionTitle} ${estilos.sectionTitleFirst}`}>Dados do Setor</div>
-      <div className={estilos.formGrid}>
-        <div className={estilos.col4}>
-          <Field label="Obra">
-            <Select value={novoSetor.obraId} onChange={(_, d) => setNovoSetor({ ...novoSetor, obraId: d.value })}>
-              <option value="">Selecione a obra</option>
-              {obras.map((o) => (
-                <option key={o.id} value={o.id}>
-                  {o.nome}
-                </option>
-              ))}
-            </Select>
-          </Field>
-        </div>
-        <div className={estilos.col6}>
-          <Field label="Nome do setor">
-            <Input value={novoSetor.nome} onChange={(_, d) => setNovoSetor({ ...novoSetor, nome: d.value })} />
-          </Field>
-        </div>
-      </div>
-      <div className={estilos.formActions}>
-        <Button appearance="primary" icon={<Add24Regular />} onClick={criar} disabled={carregando}>
-          Adicionar setor
-        </Button>
-      </div>
-
-      {carregandoLista ? (
-        <ListaCarregando />
-      ) : setores.length === 0 ? (
-        <EstadoVazio mensagem="Nenhum setor cadastrado ainda." />
-      ) : (
-      <Table noNativeElements>
-        <TableHeader>
-          <TableRow>
-            <TableHeaderCell>Obra</TableHeaderCell>
-            <TableHeaderCell>Setor</TableHeaderCell>
-            <TableHeaderCell></TableHeaderCell>
-          </TableRow>
-        </TableHeader>
-        <TableBody>
-          {setores.map((setor) => (
-            <TableRow key={setor.id}>
-              <TableCell>{setor.obraNome}</TableCell>
-              <TableCell>{setor.nome}</TableCell>
-              <TableCell>
-                <Button
-                  appearance="subtle"
-                  icon={<Delete24Regular />}
-                  onClick={() => excluir(setor.id)}
-                  aria-label="Excluir"
-                />
-              </TableCell>
-            </TableRow>
-          ))}
-        </TableBody>
-      </Table>
+      <PageHeader
+        titulo="Setores cadastrados"
+        acoes={
+          <Button appearance="primary" icon={<Add24Regular />} onClick={() => setPainelAberto(true)}>
+            Adicionar setor
+          </Button>
+        }
+      />
+      {erro && (
+        <FeedbackInline tom="erro" aoFechar={() => setErro(null)}>
+          {erro}
+        </FeedbackInline>
       )}
+      <Card>
+        <DataTable
+          aria-label="Setores cadastrados"
+          colunas={colunas}
+          linhas={setores}
+          chaveLinha={(s) => s.id}
+          carregando={carregandoLista}
+          vazio={{
+            titulo: 'Nenhum setor cadastrado ainda',
+            acao: { rotulo: 'Adicionar setor', aoClicar: () => setPainelAberto(true) },
+          }}
+          acoesLinha={(s) => (
+            <Button appearance="subtle" icon={<Delete24Regular />} onClick={() => excluir(s.id)} aria-label="Excluir" />
+          )}
+        />
+      </Card>
+      <PainelLateral
+        aberto={painelAberto}
+        aoFechar={fecharPainel}
+        titulo="Novo setor"
+        rodape={
+          <>
+            <Button onClick={fecharPainel}>Cancelar</Button>
+            <Button appearance="primary" onClick={criar} disabled={carregando}>
+              Adicionar setor
+            </Button>
+          </>
+        }
+      >
+        {erroPainel && (
+          <FeedbackInline tom="erro" aoFechar={() => setErroPainel(null)}>
+            {erroPainel}
+          </FeedbackInline>
+        )}
+        <FormGrid>
+          <Campo span={6}>
+            <Field label="Obra" required>
+              <SeletorPesquisavel
+                placeholder="Selecione a obra"
+                opcaoVazia="Selecione a obra"
+                opcoes={opcoesObras}
+                valor={novoSetor.obraId}
+                aoMudar={(id) => setNovoSetor({ ...novoSetor, obraId: id })}
+              />
+            </Field>
+          </Campo>
+          <Campo span={6}>
+            <Field label="Nome do setor">
+              <Input value={novoSetor.nome} onChange={(_, d) => setNovoSetor({ ...novoSetor, nome: d.value })} />
+            </Field>
+          </Campo>
+        </FormGrid>
+      </PainelLateral>
     </div>
   );
 }
