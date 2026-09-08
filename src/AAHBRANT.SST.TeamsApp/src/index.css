@@ -13,10 +13,8 @@ body,
    custom properties (não direto no objeto designTokens do theme.ts) porque os estilos do app usam
    Griffel makeStyles, que gera as classes CSS uma única vez — variáveis de cor aqui permitem trocar
    de tema sem precisar recriar nenhuma classe, só trocando o atributo data-theme na raiz. Tokens que
-   não mudam entre os dois temas (marca, cores semânticas de status) ficam fixos no :root. */
+   não mudam entre os dois temas (cores semânticas de status) ficam fixos no :root. */
 :root {
-  --sst-color-primary: #670000;
-  --sst-color-secondary: #7a0101;
   --sst-color-white: #ffffff;
   --sst-color-success: #16a34a;
   --sst-color-warning: #f59e0b;
@@ -26,6 +24,10 @@ body,
 
 :root,
 [data-theme='light'] {
+  /* Vinho da marca por tema: #670000 sobre superfície escura reprova contraste (faixa/texto da aba
+     pilar), então o escuro usa os passos 110/120 da rampa da marca (theme.ts). */
+  --sst-color-primary: #670000;
+  --sst-color-secondary: #7a0101;
   --sst-color-neutral-dark: #1f1f1f;
   --sst-color-neutral-medium: #6d6d6d;
   --sst-color-neutral-light: #f5f5f7;
@@ -64,6 +66,8 @@ body,
 }
 
 [data-theme='dark'] {
+  --sst-color-primary: #b03838;
+  --sst-color-secondary: #c24a4a;
   --sst-color-neutral-dark: #f3f4f6;
   --sst-color-neutral-medium: #9ca3af;
   --sst-color-neutral-light: #28394f;
