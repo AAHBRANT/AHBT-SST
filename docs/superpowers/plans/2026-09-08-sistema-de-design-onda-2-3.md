@@ -258,20 +258,23 @@ const estilosAba = usePillTabStyles();
 
 **Depois:**
 ```tsx
-import { Abas } from '@ui';
+import { Abas, useAbaNaUrl } from '@ui';
+// ...
+const [secao, setSecao] = useAbaNaUrl<Secao>('secao', SECOES_VALIDAS, 'pgr');
 // ...
 <Abas
   nivel="pilar"
   abas={[{ valor: 'pgr', rotulo: 'PGR e GRO' }, { valor: 'pcmso', rotulo: 'PCMSO' }]}
   valor={secao}
   aoMudar={setSecao}
-  param="secao"
 />
 ```
 
-`param="secao"` (ou `"aba"` no nível `modulo`) é o que ativa a sincronização bidirecional com a URL —
-sem ele, `Abas` funciona como um `TabList` comum controlado por estado local (só usar assim se a página
-já tiver outro mecanismo de URL, o que não deve ser o caso em nenhuma das restantes).
+**Correção a este guia (achado ao migrar Task 11, 2026-09-08):** `Abas` NÃO tem prop `param` — a
+sincronização com a URL é feita pelo hook `useAbaNaUrl(param, valoresValidos, padrao)`, que devolve o
+par `[valor, aoMudar]` a passar para `Abas`. `param="secao"` direto no `<Abas>` não compila. Ver o uso
+real em `src/pages/epi/EpiPage.tsx` (piloto 1) — é a referência que este guia deveria ter citado.
+`param="aba"` no nível `modulo` vem do mesmo hook, só trocando a primeira string.
 
 ### 8. Dashboard (`KpiCard` + `Card` de gráfico)
 
