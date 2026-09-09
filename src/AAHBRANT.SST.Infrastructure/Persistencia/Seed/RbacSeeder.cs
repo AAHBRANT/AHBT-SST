@@ -130,6 +130,10 @@ public static class RbacSeeder
         ("checklist:ver", "Checklist", "Ver", "Ver modelos de checklist"),
         ("checklist:gerenciar", "Checklist", "Gerenciar", "Criar/versionar modelo de checklist"),
 
+        ("materialapoio:ver", "MaterialApoio", "Ver", "Ver materiais de apoio (sinalização, instruções técnicas)"),
+        ("materialapoio:criar", "MaterialApoio", "Criar", "Enviar novo material de apoio"),
+        ("materialapoio:excluir", "MaterialApoio", "Excluir", "Excluir material de apoio"),
+
         ("nc:ver", "NaoConformidade", "Ver", "Ver não conformidades"),
         ("nc:criar", "NaoConformidade", "Criar", "Registrar não conformidade"),
         ("nc:editar", "NaoConformidade", "Editar", "Editar não conformidade"),

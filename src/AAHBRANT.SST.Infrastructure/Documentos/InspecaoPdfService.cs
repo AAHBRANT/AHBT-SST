@@ -29,7 +29,8 @@ public class InspecaoPdfService : IInspecaoPdfService
                 pagina.Margin(1.5f, Unit.Centimetre);
                 pagina.DefaultTextStyle(estilo => estilo.FontSize(9));
 
-                pagina.Header().Column(coluna => CabecalhoInspecao(coluna, $"Inspeção — {modelo.TipoInspecao}", modelo));
+                pagina.Header().Column(coluna =>
+                    CabecalhoDocumentoPadrao.Desenhar(coluna, $"Inspeção — {modelo.TipoInspecao}", modelo.ObraNome, modelo.ObraLogoConteudo));
 
                 pagina.Content().PaddingVertical(10).Column(coluna =>
                 {
@@ -60,23 +61,6 @@ public class InspecaoPdfService : IInspecaoPdfService
         });
 
         return documento.GeneratePdf();
-    }
-
-    // Cabeçalho próprio da Inspeção/Patrulha de Segurança — não usa CabecalhoDocumentoPadrao (que
-    // fixa a logo da AAHBRANT pros demais documentos). Decisão do usuário (01/09): o slot de logo
-    // fica sempre em branco neste documento (assunto resolvido — sem lógica condicional por tipo de
-    // execução da obra).
-    private static void CabecalhoInspecao(ColumnDescriptor coluna, string tituloDocumento, InspecaoPdfModelo modelo)
-    {
-        coluna.Item().Row(linha =>
-        {
-            linha.RelativeItem().Column(sub =>
-            {
-                sub.Item().Text(modelo.ObraNome ?? "Inspeção").FontSize(16).Bold().FontColor(CorMarca);
-                sub.Item().Text(tituloDocumento).FontSize(12).SemiBold();
-            });
-        });
-        coluna.Item().PaddingTop(4).LineHorizontal(2).LineColor(CorMarca);
     }
 
     private static void SecaoCabecalho(IContainer container, InspecaoPdfModelo modelo)

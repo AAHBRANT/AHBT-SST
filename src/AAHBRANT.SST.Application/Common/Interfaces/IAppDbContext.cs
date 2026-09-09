@@ -115,5 +115,7 @@ public interface IAppDbContext
     DbSet<EventoSipat> EventosSipat { get; }
     DbSet<AtividadeSipat> AtividadesSipat { get; }
 
+    DbSet<MaterialApoio> MateriaisApoio { get; }
+
     Task<int> SaveChangesAsync(CancellationToken cancellationToken = default);
 }

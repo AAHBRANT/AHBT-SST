@@ -1506,6 +1506,18 @@ export interface InspecaoDetalhe {
   respostas: InspecaoItemResposta[];
 }
 
+// Catálogo global de materiais de apoio (pôsteres de sinalização, instruções técnicas) — aba
+// "Documentos & Procedimentos" de Gestão de SST, pedido do usuário em 2026-09-09.
+export interface MaterialApoio {
+  id: string;
+  nome: string;
+  categoria?: string | null;
+  nomeArquivo: string;
+  contentType: string;
+  tamanhoBytes: number;
+  createdAtUtc: string;
+}
+
 export const StatusDds = {
   EmAndamento: 1,
   Concluido: 2,
@@ -3483,6 +3495,40 @@ export const api = {
         method: 'POST',
         body: JSON.stringify(body),
       }),
+  },
+  materiaisApoio: {
+    listar: (categoria?: string) =>
+      request<MaterialApoio[]>(`/api/materiaisapoio${categoria ? `?categoria=${encodeURIComponent(categoria)}` : ''}`),
+    // Retorna o Blob (não uma URL direta): o endpoint exige autenticação, então uma tag <img src>
+    // apontando pra API não carregaria os headers — a página busca o blob via fetch autenticado e
+    // monta um object URL local pra pré-visualização/download (mesmo padrão de baixarFoto acima).
+    baixarConteudo: async (id: string) => {
+      const response = await fetch(`${API_BASE_URL}/api/materiaisapoio/${id}/conteudo`, {
+        headers: await montarHeadersAuth(),
+      });
+      if (!response.ok) {
+        const corpo = await response.text().catch(() => '');
+        throw new Error(extrairMensagemErro(corpo, response.status, response.statusText));
+      }
+      return response.blob();
+    },
+    criar: async (nome: string, categoria: string | null, arquivo: File) => {
+      const formData = new FormData();
+      formData.append('nome', nome);
+      if (categoria) formData.append('categoria', categoria);
+      formData.append('arquivo', arquivo);
+      const response = await fetch(`${API_BASE_URL}/api/materiaisapoio`, {
+        method: 'POST',
+        headers: await montarHeadersAuth(),
+        body: formData,
+      });
+      if (!response.ok) {
+        const corpo = await response.text().catch(() => '');
+        throw new Error(extrairMensagemErro(corpo, response.status, response.statusText));
+      }
+      return response.json() as Promise<{ id: string }>;
+    },
+    excluir: (id: string) => request<void>(`/api/materiaisapoio/${id}`, { method: 'DELETE' }),
   },
   dds: {
     listar: (obraId?: string) => request<Dds[]>(`/api/dds${obraId ? `?obraId=${obraId}` : ''}`),

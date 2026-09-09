@@ -32,6 +32,11 @@ public class ExportarInspecaoPdfQueryHandler : IRequestHandler<ExportarInspecaoP
             .Select(r => new { r.Id, r.FotoConteudo, r.FotoDepoisConteudo })
             .ToDictionaryAsync(r => r.Id, ct);
 
+        var obraLogoConteudo = await _db.Obras
+            .Where(o => o.Id == detalhe.Inspecao.ObraId)
+            .Select(o => o.LogoConteudo)
+            .FirstOrDefaultAsync(ct);
+
         var itens = detalhe.Respostas.Select(r =>
         {
             fotosPorResposta.TryGetValue(r.Id, out var fotos);
@@ -57,7 +62,8 @@ public class ExportarInspecaoPdfQueryHandler : IRequestHandler<ExportarInspecaoP
             detalhe.Inspecao.Data,
             detalhe.Inspecao.ResponsavelUsuarioNome,
             detalhe.Inspecao.Status == StatusInspecao.Concluida ? "Concluída" : "Em andamento",
-            itens);
+            itens,
+            obraLogoConteudo);
 
         return _pdf.Gerar(modelo);
     }

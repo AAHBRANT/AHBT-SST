@@ -8,6 +8,18 @@
     <EmbeddedResource Include="Documentos\Assets\logo-aahbrant.png">
       <LogicalName>AAHBRANT.SST.Infrastructure.Documentos.Assets.logo-aahbrant.png</LogicalName>
     </EmbeddedResource>
+    <EmbeddedResource Include="Persistencia\Seed\Assets\MateriaisApoio\regras-da-casa.jpeg">
+      <LogicalName>AAHBRANT.SST.Infrastructure.Persistencia.Seed.Assets.MateriaisApoio.regras-da-casa.jpeg</LogicalName>
+    </EmbeddedResource>
+    <EmbeddedResource Include="Persistencia\Seed\Assets\MateriaisApoio\higiene.jpeg">
+      <LogicalName>AAHBRANT.SST.Infrastructure.Persistencia.Seed.Assets.MateriaisApoio.higiene.jpeg</LogicalName>
+    </EmbeddedResource>
+    <EmbeddedResource Include="Persistencia\Seed\Assets\MateriaisApoio\instrucao-tecnica-alojamento.docx">
+      <LogicalName>AAHBRANT.SST.Infrastructure.Persistencia.Seed.Assets.MateriaisApoio.instrucao-tecnica-alojamento.docx</LogicalName>
+    </EmbeddedResource>
+    <EmbeddedResource Include="Persistencia\Seed\Assets\MateriaisApoio\regras-da-casa-a4.pdf">
+      <LogicalName>AAHBRANT.SST.Infrastructure.Persistencia.Seed.Assets.MateriaisApoio.regras-da-casa-a4.pdf</LogicalName>
+    </EmbeddedResource>
   </ItemGroup>
 
   <ItemGroup>
