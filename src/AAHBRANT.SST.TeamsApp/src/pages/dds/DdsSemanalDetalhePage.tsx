@@ -185,7 +185,7 @@ export function DdsSemanalDetalhePage() {
   return (
     <div>
       <PageHeader
-        titulo={`${tipoDdsSemanalLabel[semanal.tipo]} — ${semanal.obraNome}`}
+        titulo={`${semanal.numeroDocumento ? `${semanal.numeroDocumento} — ` : ''}${tipoDdsSemanalLabel[semanal.tipo]} — ${semanal.obraNome}`}
         subtitulo={[
           `Semana: ${semanal.dataInicioSemana?.slice(0, 10)} a ${semanal.dataFimSemana?.slice(0, 10)}`,
           `Responsável/Treinador: ${semanal.responsavelUsuarioNome}`,

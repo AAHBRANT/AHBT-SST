@@ -9,7 +9,6 @@ import {
   Field,
   FeedbackInline,
   FormGrid,
-  Input,
   PageHeader,
   PainelLateral,
   Select,
@@ -29,7 +28,7 @@ import {
 import { useSucessoToast } from '../../hooks/useSucessoToast';
 
 function vazio(): NovoProcessoEleitoralCipa {
-  return { obraId: '', numeroDocumento: '', dataConvocacao: '', dataInicioInscricoes: '', dataFimInscricoes: '', dataVotacao: '' };
+  return { obraId: '', dataConvocacao: '', dataInicioInscricoes: '', dataFimInscricoes: '', dataVotacao: '' };
 }
 
 // Status do processo (Convocado → InscricoesAbertas → InscricoesEncerradas → VotacaoRealizada →
@@ -94,7 +93,7 @@ export function ProcessoEleitoralCipaTab() {
     try {
       setCarregando(true);
       setErroPainel(null);
-      await api.cipa.processosEleitorais.criar({ ...novo, numeroDocumento: novo.numeroDocumento || null });
+      await api.cipa.processosEleitorais.criar(novo);
       setNovo(vazio());
       await carregar();
       sucessoToast('Processo eleitoral criado com sucesso.');
@@ -192,14 +191,6 @@ export function ProcessoEleitoralCipaTab() {
                   </option>
                 ))}
               </Select>
-            </Field>
-          </Campo>
-          <Campo span={3}>
-            <Field label="Nº do edital">
-              <Input
-                value={novo.numeroDocumento ?? ''}
-                onChange={(_, d) => setNovo({ ...novo, numeroDocumento: d.value })}
-              />
             </Field>
           </Campo>
           <Campo span={3}>

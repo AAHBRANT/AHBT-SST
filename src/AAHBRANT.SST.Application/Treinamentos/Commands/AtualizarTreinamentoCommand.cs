@@ -13,7 +13,9 @@ public record AtualizarTreinamentoCommand(
     DateTime DataValidade,
     int CargaHorariaRealizada,
     string? InstituicaoInstrutor,
-    string? NumeroCertificado) : IRequest;
+    string? NumeroCertificado,
+    string? Local,
+    string? InstrutorRegistroProfissional) : IRequest;
 
 public class AtualizarTreinamentoCommandValidator : AbstractValidator<AtualizarTreinamentoCommand>
 {
@@ -44,6 +46,8 @@ public class AtualizarTreinamentoCommandHandler : IRequestHandler<AtualizarTrein
         treinamento.CargaHorariaRealizada = request.CargaHorariaRealizada;
         treinamento.InstituicaoInstrutor = request.InstituicaoInstrutor;
         treinamento.NumeroCertificado = request.NumeroCertificado;
+        treinamento.Local = request.Local;
+        treinamento.InstrutorRegistroProfissional = request.InstrutorRegistroProfissional;
 
         await _db.SaveChangesAsync(ct);
     }

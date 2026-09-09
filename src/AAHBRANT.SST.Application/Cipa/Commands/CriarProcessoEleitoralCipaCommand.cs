@@ -9,7 +9,6 @@ namespace AAHBRANT.SST.Application.Cipa.Commands;
 
 public record CriarProcessoEleitoralCipaCommand(
     Guid ObraId,
-    string? NumeroDocumento,
     DateTime DataConvocacao,
     DateTime DataInicioInscricoes,
     DateTime DataFimInscricoes,
@@ -20,7 +19,6 @@ public class CriarProcessoEleitoralCipaCommandValidator : AbstractValidator<Cria
     public CriarProcessoEleitoralCipaCommandValidator()
     {
         RuleFor(x => x.ObraId).NotEmpty();
-        RuleFor(x => x.NumeroDocumento).MaximumLength(50);
         RuleFor(x => x.DataFimInscricoes).GreaterThanOrEqualTo(x => x.DataInicioInscricoes)
             .WithMessage("O fim das inscrições precisa ser depois do início.");
         RuleFor(x => x.DataVotacao).GreaterThanOrEqualTo(x => x.DataFimInscricoes)
@@ -31,8 +29,13 @@ public class CriarProcessoEleitoralCipaCommandValidator : AbstractValidator<Cria
 public class CriarProcessoEleitoralCipaCommandHandler : IRequestHandler<CriarProcessoEleitoralCipaCommand, Guid>
 {
     private readonly IAppDbContext _db;
+    private readonly IGeradorNumeroDocumentoService _geradorNumero;
 
-    public CriarProcessoEleitoralCipaCommandHandler(IAppDbContext db) => _db = db;
+    public CriarProcessoEleitoralCipaCommandHandler(IAppDbContext db, IGeradorNumeroDocumentoService geradorNumero)
+    {
+        _db = db;
+        _geradorNumero = geradorNumero;
+    }
 
     public async Task<Guid> Handle(CriarProcessoEleitoralCipaCommand request, CancellationToken ct)
     {
@@ -42,7 +45,7 @@ public class CriarProcessoEleitoralCipaCommandHandler : IRequestHandler<CriarPro
         var processo = new ProcessoEleitoralCipa
         {
             ObraId = request.ObraId,
-            NumeroDocumento = request.NumeroDocumento,
+            NumeroDocumento = await _geradorNumero.GerarAsync("CIPA-EDITAL", ct),
             DataConvocacao = request.DataConvocacao,
             DataInicioInscricoes = request.DataInicioInscricoes,
             DataFimInscricoes = request.DataFimInscricoes,

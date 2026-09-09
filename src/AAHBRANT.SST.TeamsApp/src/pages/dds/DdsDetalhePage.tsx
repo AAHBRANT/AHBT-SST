@@ -1,8 +1,7 @@
-import { useEffect, useState } from 'react';
+﻿import { useEffect, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import {
   Button,
-  Checkbox,
   Field,
   Select,
   Input,
@@ -39,7 +38,7 @@ import {
   type Trabalhador,
 } from '../../lib/api';
 import { capturarDigitalLocal, estaAgenteLocalDisponivel, obterDispositivoLocal } from '../../lib/agenteBiometricoLocal';
-import { SeletorFotoCamera } from '../../components/SeletorFotoCamera';
+import { GradeFotosEvidencia } from '../../components/GradeFotosEvidencia';
 
 const TOTAL_FOTOS_EVIDENCIA_OBRIGATORIAS = 3;
 
@@ -60,6 +59,17 @@ function rotuloTelegram(p: DdsParticipante): string {
   return 'Não enviado';
 }
 
+// A mesma digital da presença já vale como assinatura eletrônica do DDS (04/09) — sem precisar ler
+// de novo na tela "Assinar DDS". Coluna própria, separada de Telegram (são confirmações distintas).
+function tomAssinatura(p: DdsParticipante): Tom {
+  return p.assinadoEm ? 'ok' : 'info';
+}
+
+function rotuloAssinatura(p: DdsParticipante): string {
+  if (!p.assinadoEm) return 'Pendente';
+  return `Assinado às ${new Date(p.assinadoEm).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}`;
+}
+
 // Onda 2 (Task 14) — candidata a DetailPageLayout (conversões 1, 2, 3, 4, 5): cabeçalho com
 // voltar/título/status/ações utilitárias (assinar/baixar/telegram); lateral com o resumo e a única
 // transição de estado real (Encerrar DDS) em WorkflowActions — as demais ações (assinar, baixar,
@@ -76,7 +86,6 @@ export function DdsDetalhePage() {
   const [validandoBiometria, setValidandoBiometria] = useState(false);
   const [biometriaValidada, setBiometriaValidada] = useState<{ trabalhadorId: string; score: number } | null>(null);
   const [fotosEvidenciaPreview, setFotosEvidenciaPreview] = useState<Record<string, string>>({});
-  const [anexandoFotoEvidencia, setAnexandoFotoEvidencia] = useState(false);
   const [erro, setErro] = useState<string | null>(null);
   const [processando, setProcessando] = useState(false);
   const [baixandoPdf, setBaixandoPdf] = useState(false);
@@ -109,17 +118,24 @@ export function DdsDetalhePage() {
     }
   }
 
-  async function anexarFotoEvidencia(arquivo: File) {
+  async function anexarFotoEvidencia(ordem: number, arquivo: File) {
     if (!id) return;
     try {
-      setAnexandoFotoEvidencia(true);
       setErro(null);
-      await api.dds.anexarFotoEvidencia(id, arquivo);
+      await api.dds.anexarFotoEvidencia(id, ordem, arquivo);
       await carregar();
     } catch (e) {
       setErro(e instanceof Error ? e.message : 'Falha ao anexar foto de evidência.');
-    } finally {
-      setAnexandoFotoEvidencia(false);
+    }
+  }
+
+  async function removerFotoEvidencia(fotoId: string) {
+    try {
+      setErro(null);
+      await api.dds.removerFotoEvidencia(fotoId);
+      await carregar();
+    } catch (e) {
+      setErro(e instanceof Error ? e.message : 'Falha ao remover foto de evidência.');
     }
   }
 
@@ -143,16 +159,6 @@ export function DdsDetalhePage() {
   useEffect(() => {
     setBiometriaValidada(null);
   }, [participanteSelecionado]);
-
-  async function marcarItem(itemId: string, verificado: boolean) {
-    try {
-      setErro(null);
-      await api.dds.marcarItem(itemId, verificado);
-      await carregar();
-    } catch (e) {
-      setErro(e instanceof Error ? e.message : 'Falha ao marcar item do checklist.');
-    }
-  }
 
   async function validarBiometria() {
     if (!participanteSelecionado) return;
@@ -311,6 +317,15 @@ export function DdsDetalhePage() {
     { chave: 'nome', rotulo: 'Nome', render: (p) => p.trabalhadorNome },
     { chave: 'evidencia', rotulo: 'Evidência', render: (p) => tipoFotoParticipanteLabel[p.fotoTipo] },
     {
+      chave: 'assinatura',
+      rotulo: 'Assinatura',
+      render: (p) => (
+        <StatusChip tom={tomAssinatura(p)} icone={p.assinadoEm ? <Checkmark24Filled /> : undefined}>
+          {rotuloAssinatura(p)}
+        </StatusChip>
+      ),
+    },
+    {
       chave: 'telegram',
       rotulo: 'Telegram',
       render: (p) => <StatusChip tom={tomTelegram(p)}>{rotuloTelegram(p)}</StatusChip>,
@@ -347,9 +362,6 @@ export function DdsDetalhePage() {
                 <Field label="Atividades do dia"><Input value={dds.atividadesNomes.join(', ') || 'DDS do dia'} readOnly /></Field>
               </Campo>
               <Campo span={12}>
-                <Field label="Checklist verificado"><Input value={`${dds.itensVerificados}/${dds.totalItensChecklist}`} readOnly /></Field>
-              </Campo>
-              <Campo span={12}>
                 <Field label="Participantes"><Input value={String(dds.totalParticipantes)} readOnly /></Field>
               </Campo>
               <Campo span={12}>
@@ -372,49 +384,21 @@ export function DdsDetalhePage() {
       )}
       {resultadoTelegram && <FeedbackInline tom="sucesso">{resultadoTelegram}</FeedbackInline>}
 
-      <Card titulo="Checklist de verificação">
-        {detalhe.itensChecklist.length === 0 ? (
-          <Legenda>Nenhum item de checklist gerado — revise a Matriz de Riscos das atividades selecionadas.</Legenda>
-        ) : (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-            {detalhe.itensChecklist.map((item) => (
-              <Checkbox
-                key={item.id}
-                label={item.descricao}
-                checked={item.verificado}
-                disabled={somenteLeitura}
-                onChange={(_, d) => marcarItem(item.id, !!d.checked)}
-              />
-            ))}
-          </div>
-        )}
-      </Card>
-
-      <Card
-        titulo={`Evidências fotográficas (${totalFotosEvidencia}/${TOTAL_FOTOS_EVIDENCIA_OBRIGATORIAS})`}
-        subtitulo={`${TOTAL_FOTOS_EVIDENCIA_OBRIGATORIAS} fotos são obrigatórias para liberar o encerramento deste registro diário.`}
-      >
-        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 12, alignItems: 'center' }}>
-          {detalhe.fotosEvidencia
-            .slice()
-            .sort((a, b) => a.ordem - b.ordem)
-            .map((foto) => (
-              <img
-                key={foto.id}
-                src={fotosEvidenciaPreview[foto.id]}
-                alt={`Evidência ${foto.ordem}`}
-                style={{ height: 96, width: 96, objectFit: 'cover', borderRadius: 4 }}
-              />
-            ))}
-          {!somenteLeitura && totalFotosEvidencia < TOTAL_FOTOS_EVIDENCIA_OBRIGATORIAS && (
-            <SeletorFotoCamera
-              rotulo="Tirar foto de evidência"
-              desabilitado={anexandoFotoEvidencia}
-              aoSelecionarArquivo={anexarFotoEvidencia}
-              aoErroValidacao={setErro}
-            />
-          )}
-        </div>
+      <Card>
+        <GradeFotosEvidencia
+          titulo="Evidências fotográficas"
+          subtitulo={`${TOTAL_FOTOS_EVIDENCIA_OBRIGATORIAS} fotos são obrigatórias para liberar o encerramento deste registro diário.`}
+          total={TOTAL_FOTOS_EVIDENCIA_OBRIGATORIAS}
+          fotos={
+            detalhe.fotosEvidencia
+              .filter((f) => fotosEvidenciaPreview[f.id])
+              .map((f) => ({ ordem: f.ordem, id: f.id, url: fotosEvidenciaPreview[f.id] }))
+          }
+          somenteLeitura={somenteLeitura}
+          onSelecionarFoto={anexarFotoEvidencia}
+          onRemoverFoto={removerFotoEvidencia}
+          onErroValidacao={setErro}
+        />
       </Card>
 
       <Card titulo="Participantes">

@@ -39,7 +39,7 @@ public class DdsSemanalController : ControllerBase
     {
         var azureAdObjectId = ObterAzureAdObjectId();
         var command = new CriarDdsSemanalCommand(
-            body.ObraId, body.Tipo, body.EmpresaTerceirizada, body.NumeroDocumento, body.LocalFrenteServico,
+            body.ObraId, body.Tipo, body.EmpresaTerceirizada, body.LocalFrenteServico,
             body.DataInicioSemana, azureAdObjectId);
         var id = await _mediator.Send(command, ct);
         return CreatedAtAction(nameof(ObterDetalhe), new { id }, new { id });
@@ -71,7 +71,6 @@ public record CriarDdsSemanalRequestBody(
     Guid ObraId,
     TipoDdsSemanal Tipo,
     string? EmpresaTerceirizada,
-    string? NumeroDocumento,
     string? LocalFrenteServico,
     DateTime DataInicioSemana);
 

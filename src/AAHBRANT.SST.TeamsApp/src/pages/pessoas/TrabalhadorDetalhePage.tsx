@@ -211,7 +211,7 @@ export function TrabalhadorDetalhePage() {
                   <StatusDonutChart dados={dadosAssiduidadeDds} legendaCentral="DDS realizados" />
                 )}
               </Card>
-              <TreinamentosTab trabalhadorId={id} />
+              <TreinamentosTab trabalhadorId={id} obraId={perfil.obraId} />
             </div>
           )}
           {aba === 'riscos' && <RiscosTab riscos={perfil.riscos} />}

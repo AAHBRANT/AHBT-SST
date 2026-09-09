@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+﻿import { useEffect, useState } from 'react';
 import { useParams } from 'react-router-dom';
 import {
   Button,
@@ -222,7 +222,7 @@ export function PcmsoDetalhePage() {
   return (
     <DetailPageLayout
       cabecalho={{
-        titulo: pcmso.nome,
+        titulo: `${pcmso.numeroDocumento ? `${pcmso.numeroDocumento} — ` : ''}${pcmso.nome}`,
         status: (
           <>
             <StatusChip tom={tomPorStatusPcmso[pcmso.status] ?? 'neutro'}>

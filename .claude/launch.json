@@ -66,6 +66,30 @@
       "runtimeExecutable": "npm",
       "runtimeArgs": ["--prefix", "src/AAHBRANT.SST.TeamsApp", "run", "dev", "--", "--port", "5293"],
       "port": 5293
+    },
+    {
+      "name": "sst-api-merge-hml",
+      "runtimeExecutable": "dotnet",
+      "runtimeArgs": ["run", "--project", "src/AAHBRANT.SST.Api/AAHBRANT.SST.Api.csproj", "--urls", "http://localhost:5224"],
+      "port": 5224
+    },
+    {
+      "name": "sst-web-merge-hml",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": ["--prefix", "src/AAHBRANT.SST.TeamsApp", "run", "dev", "--", "--port", "5294"],
+      "port": 5294
+    },
+    {
+      "name": "sst-api-epc-turmas",
+      "runtimeExecutable": "dotnet",
+      "runtimeArgs": ["run", "--project", "src/AAHBRANT.SST.Api/AAHBRANT.SST.Api.csproj", "--urls", "http://localhost:5225"],
+      "port": 5225
+    },
+    {
+      "name": "sst-web-epc-turmas",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": ["--prefix", "src/AAHBRANT.SST.TeamsApp", "run", "dev", "--", "--port", "5295"],
+      "port": 5295
     }
   ]
 }

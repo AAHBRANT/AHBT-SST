@@ -12,7 +12,6 @@ namespace AAHBRANT.SST.Application.PermissoesTrabalho.Commands;
 // todos "em branco" (Atendido=false / Resposta=null) — mesmo princípio de CriarInspecaoCommand
 // gerando uma InspecaoItemResposta em branco por item do checklist.
 public record CriarPermissaoTrabalhoCommand(
-    string? NumeroPt,
     Guid AtividadeId,
     string DescricaoAtividade,
     string Local,
@@ -30,7 +29,6 @@ public class CriarPermissaoTrabalhoCommandValidator : AbstractValidator<CriarPer
 {
     public CriarPermissaoTrabalhoCommandValidator()
     {
-        RuleFor(x => x.NumeroPt).MaximumLength(60);
         RuleFor(x => x.AtividadeId).NotEmpty();
         RuleFor(x => x.DescricaoAtividade).NotEmpty().MaximumLength(500);
         RuleFor(x => x.Local).NotEmpty().MaximumLength(200);
@@ -41,8 +39,13 @@ public class CriarPermissaoTrabalhoCommandValidator : AbstractValidator<CriarPer
 public class CriarPermissaoTrabalhoCommandHandler : IRequestHandler<CriarPermissaoTrabalhoCommand, Guid>
 {
     private readonly IAppDbContext _db;
+    private readonly IGeradorNumeroDocumentoService _geradorNumero;
 
-    public CriarPermissaoTrabalhoCommandHandler(IAppDbContext db) => _db = db;
+    public CriarPermissaoTrabalhoCommandHandler(IAppDbContext db, IGeradorNumeroDocumentoService geradorNumero)
+    {
+        _db = db;
+        _geradorNumero = geradorNumero;
+    }
 
     public async Task<Guid> Handle(CriarPermissaoTrabalhoCommand request, CancellationToken ct)
     {
@@ -52,7 +55,7 @@ public class CriarPermissaoTrabalhoCommandHandler : IRequestHandler<CriarPermiss
 
         var pt = new PermissaoTrabalho
         {
-            NumeroPt = request.NumeroPt,
+            NumeroPt = await _geradorNumero.GerarAsync("PT", ct),
             AtividadeId = request.AtividadeId,
             DescricaoAtividade = request.DescricaoAtividade,
             Local = request.Local,

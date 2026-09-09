@@ -22,6 +22,7 @@ public record InspecaoPdfItemModelo(
 
 public record InspecaoPdfModelo(
     string? ObraNome,
+    byte[]? ObraLogoConteudo,
     string TipoInspecao,
     string ChecklistNome,
     int ChecklistVersao,
@@ -29,7 +30,11 @@ public record InspecaoPdfModelo(
     string ResponsavelNome,
     string Status,
     IReadOnlyList<InspecaoPdfItemModelo> Itens,
-    byte[]? ObraLogoConteudo = null);
+    string? Protocolo,
+    string ConteudoHash,
+    string UrlValidacaoPublica,
+    byte[] QrCodePng,
+    bool TemAssinatura);
 
 public interface IInspecaoPdfService
 {

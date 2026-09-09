@@ -33,6 +33,7 @@ public class InspecaoConfiguracao : IEntityTypeConfiguration<Inspecao>
 {
     public void Configure(EntityTypeBuilder<Inspecao> builder)
     {
+        builder.Property(i => i.NumeroDocumento).HasMaxLength(50);
         builder.HasOne(i => i.Obra).WithMany()
             .HasForeignKey(i => i.ObraId).OnDelete(DeleteBehavior.Restrict);
         builder.HasOne(i => i.Atividade).WithMany()

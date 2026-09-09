@@ -75,6 +75,31 @@ public class AssinaturaController : ControllerBase
         return Ok(resultado);
     }
 
+    public class AutenticarFacialRequestBody
+    {
+        public Guid ObraId { get; set; }
+        public IFormFile Foto { get; set; } = null!;
+    }
+
+    [Authorize(Policy = "assinatura:assinar")]
+    [HttpPost("{id:guid}/autenticacao/facial")]
+    [RequestSizeLimit(6_000_000)]
+    public async Task<ActionResult<DocumentoSignatarioDto>> AutenticarFacial(Guid id, [FromForm] AutenticarFacialRequestBody body, CancellationToken ct)
+    {
+        await using var stream = new MemoryStream();
+        await body.Foto.CopyToAsync(stream, ct);
+        try
+        {
+            var resultado = await _mediator.Send(
+                new RegistrarAssinaturaFacialCommand(id, body.ObraId, stream.ToArray(), ObterIpCliente()), ct);
+            return Ok(resultado);
+        }
+        catch (RejeicaoFacialException ex)
+        {
+            return BadRequest(new { erro = ex.Message, motivo = ex.Motivo.ToString() });
+        }
+    }
+
     // IP para o audit trail jurídico do Cofre de Assinaturas — nunca aceito do corpo da requisição
     // (evidência não pode ser controlada pelo cliente). Preferimos X-Forwarded-For porque a API roda
     // atrás de reverse proxy no Azure App Service; RemoteIpAddress é o fallback direto.

@@ -34,6 +34,7 @@ export interface AssinaturaEntregaEpiDialogProps {
   open: boolean;
   onClose: () => void;
   entregaId: string;
+  obraId: string;
   trabalhadorNome: string;
   epiNome: string;
   catalogoEpiId: string;
@@ -72,6 +73,7 @@ export function AssinaturaEntregaEpiDialog({
   open,
   onClose,
   entregaId,
+  obraId,
   trabalhadorNome,
   epiNome,
   catalogoEpiId,
@@ -188,7 +190,7 @@ export function AssinaturaEntregaEpiDialog({
             <Text weight="semibold" style={{ display: 'block', marginBottom: 12 }}>
               Assinatura do receptor
             </Text>
-            <AssinaturaQuiosque entidadeTipo="EntregaEpi" entidadeId={entregaId} />
+            <AssinaturaQuiosque entidadeTipo="EntregaEpi" entidadeId={entregaId} obraId={obraId} />
           </DialogContent>
           <DialogActions>
             <Button appearance="secondary" onClick={onClose}>

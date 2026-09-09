@@ -66,27 +66,31 @@ export function ValidarDocumentoPage() {
 
         {!carregando && documento && (
           <Card
-            titulo="Documento válido"
-            subtitulo={`${documento.entidadeTipo} · finalizado em ${new Date(documento.finalizadoEm).toLocaleString('pt-BR')}`}
+            titulo={documento.assinado ? 'Documento válido' : 'Documento rastreável'}
+            subtitulo={`${documento.entidadeTipo} · emitido em ${new Date(documento.emitidoEm).toLocaleString('pt-BR')}`}
             acoes={
-              <StatusChip tom="ok" icone={<CheckmarkCircle24Regular />}>
-                Válido
+              <StatusChip tom={documento.assinado ? 'ok' : 'info'} icone={<CheckmarkCircle24Regular />}>
+                {documento.assinado ? 'Válido' : 'Rastreável'}
               </StatusChip>
             }
           >
             <div style={{ marginTop: 16 }}>
               <Text weight="semibold">Assinaturas registradas</Text>
-              <ul style={{ margin: 0, paddingLeft: 20 }}>
-                {documento.signatarios.map((s, i) => (
-                  <li key={i} style={{ marginTop: 4 }}>
-                    <Text>{s.trabalhadorNome} — </Text>
-                    <StatusChip tom="neutro">
-                      {metodoAutenticacaoAssinaturaLabel[s.metodoAutenticacao] ?? 'Método desconhecido'}
-                    </StatusChip>
-                    <Text> em {new Date(s.assinadoEm).toLocaleString('pt-BR')}</Text>
-                  </li>
-                ))}
-              </ul>
+              {documento.signatarios.length === 0 ? (
+                <Text as="p">Nenhuma assinatura eletrônica registrada até o momento.</Text>
+              ) : (
+                <ul style={{ margin: 0, paddingLeft: 20 }}>
+                  {documento.signatarios.map((s, i) => (
+                    <li key={i} style={{ marginTop: 4 }}>
+                      <Text>{s.trabalhadorNome} — </Text>
+                      <StatusChip tom="neutro">
+                        {metodoAutenticacaoAssinaturaLabel[s.metodoAutenticacao] ?? 'Método desconhecido'}
+                      </StatusChip>
+                      <Text> em {new Date(s.assinadoEm).toLocaleString('pt-BR')}</Text>
+                    </li>
+                  ))}
+                </ul>
+              )}
             </div>
 
             <div style={{ marginTop: 16 }}>

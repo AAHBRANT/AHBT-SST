@@ -101,6 +101,7 @@ export function DdsSemanalPage() {
   }
 
   const colunas: Coluna<DdsSemanal>[] = [
+    { chave: 'numeroDocumento', rotulo: 'Nº do documento', render: (s) => s.numeroDocumento ?? '-' },
     { chave: 'obra', rotulo: 'Obra', render: (s) => s.obraNome },
     { chave: 'tipo', rotulo: 'Tipo', render: (s) => tipoDdsSemanalLabel[s.tipo] },
     {
@@ -212,11 +213,6 @@ export function DdsSemanalPage() {
                 </Field>
               </Campo>
             )}
-            <Campo span={3}>
-              <Field label="Nº do documento">
-                <Input value={nova.numeroDocumento ?? ''} onChange={(_, d) => setNova({ ...nova, numeroDocumento: d.value })} />
-              </Field>
-            </Campo>
             <Campo span={5}>
               <Field label="Local / Frente de serviço">
                 <Input
