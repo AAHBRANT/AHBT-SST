@@ -1,5 +1,21 @@
 import { useEffect, useMemo, useState } from 'react';
-import { Badge, Button, Field, Select, Text } from '@fluentui/react-components';
+import {
+  Button,
+  Card,
+  Field,
+  FeedbackInline,
+  KpiCard,
+  Legenda,
+  RankingBarChart,
+  Select,
+  StatusChip,
+  StatusDonutChart,
+  Text,
+  usePaletaGraficos,
+  type FatiaDonut,
+  type ItemRanking,
+  type Tom,
+} from '@ui';
 import {
   CheckmarkCircle24Regular,
   DismissCircle24Regular,
@@ -18,23 +34,25 @@ import {
   type Alerta,
   type Obra,
 } from '../../../lib/api';
-import { CardGrid } from '../../../layout/AppShell';
-import { designTokens } from '../../../theme';
-import { usePageStyles } from '../../pageStyles';
-import { useDashboardStyles } from '../../../components/dashboard/dashboardStyles';
-import { KpiCard } from '../../../components/dashboard/KpiCard';
-import { StatusDonutChart, type FatiaDonut } from '../../../components/dashboard/charts/StatusDonutChart';
-import { RankingBarChart, type ItemRanking } from '../../../components/dashboard/charts/RankingBarChart';
 
-function severidadeCor(severidade: number) {
-  if (severidade === SeveridadeAlerta.Critico) return designTokens.colorAlert;
-  if (severidade === SeveridadeAlerta.Atencao) return designTokens.colorWarning;
-  return designTokens.colorInfo;
-}
+// Mesmo mapa de tons de AlertasListaTab.tsx/AlertasConfiguracaoTab.tsx (Guia de conversão item 5) —
+// as três telas do módulo leem severidade igual (status não vira StatusChip nesta tela, só texto
+// em Legenda no painel "Alertas mais urgentes").
+const tomPorSeveridade: Record<number, Tom> = {
+  [SeveridadeAlerta.Info]: 'info',
+  [SeveridadeAlerta.Atencao]: 'atencao',
+  [SeveridadeAlerta.Critico]: 'alerta',
+};
 
+// Onda 2 Task 16 (camada ui/): mesmo formato de RiscosDashboardTab.tsx (Task 13)/AprDashboardTab.tsx
+// (Task 11) — KpiCard com tom, gráficos com cores de usePaletaGraficos, grade CSS Grid simples
+// (spec §4.4). "Escalonados" usava colorPrimary (vinho) no KPI original — remapeado para tom
+// "alerta" porque status nunca é vinho (spec §1.1: vinho é ação/marca, nunca estado); "Abertos"
+// desceu para "atencao" para não colidir com "Escalonados", que é o mais urgente dos dois (já
+// passou da régua normal de tratamento). O painel "Alertas mais urgentes" (motorPainel) vira Card +
+// StatusChip + Legenda, mesmo padrão de RiscosCriticosPanel.tsx/AprVencidaPanel.tsx.
 export function AlertasDashboardTab() {
-  const estilosPagina = usePageStyles();
-  const estilos = useDashboardStyles();
+  const paleta = usePaletaGraficos();
 
   const [obras, setObras] = useState<Obra[]>([]);
   const [alertas, setAlertas] = useState<Alerta[]>([]);
@@ -97,9 +115,9 @@ export function AlertasDashboardTab() {
   );
 
   const severidadeDados: FatiaDonut[] = [
-    { rotulo: 'Crítico', valor: alertasAtivos.filter((a) => a.severidade === SeveridadeAlerta.Critico).length, cor: designTokens.colorAlert },
-    { rotulo: 'Atenção', valor: alertasAtivos.filter((a) => a.severidade === SeveridadeAlerta.Atencao).length, cor: designTokens.colorWarning },
-    { rotulo: 'Informativo', valor: alertasAtivos.filter((a) => a.severidade === SeveridadeAlerta.Info).length, cor: designTokens.colorInfo },
+    { rotulo: 'Crítico', valor: alertasAtivos.filter((a) => a.severidade === SeveridadeAlerta.Critico).length, cor: paleta.alerta },
+    { rotulo: 'Atenção', valor: alertasAtivos.filter((a) => a.severidade === SeveridadeAlerta.Atencao).length, cor: paleta.atencao },
+    { rotulo: 'Informativo', valor: alertasAtivos.filter((a) => a.severidade === SeveridadeAlerta.Info).length, cor: paleta.info },
   ];
 
   const categoriaDados: ItemRanking[] = useMemo(() => {
@@ -108,9 +126,9 @@ export function AlertasDashboardTab() {
       contagem.set(alerta.entidadeOrigemTipo, (contagem.get(alerta.entidadeOrigemTipo) ?? 0) + 1);
     }
     return [...contagem.entries()]
-      .map(([tipo, valor]) => ({ rotulo: categoriaAlertaRotulo(tipo), valor, cor: designTokens.colorPrimary }))
+      .map(([tipo, valor]) => ({ rotulo: categoriaAlertaRotulo(tipo), valor, cor: paleta.marca }))
       .sort((a, b) => b.valor - a.valor);
-  }, [alertasAtivos]);
+  }, [alertasAtivos, paleta.marca]);
 
   const maisUrgentes = useMemo(
     () =>
@@ -138,7 +156,7 @@ export function AlertasDashboardTab() {
 
   return (
     <div>
-      <div className={estilos.filtros}>
+      <div style={{ display: 'flex', gap: 16, marginBottom: 16, flexWrap: 'wrap' }}>
         <Field label="Obra">
           <Select value={obraId} onChange={(_, data) => setObraId(data.value)}>
             <option value="">Todas as obras</option>
@@ -171,102 +189,88 @@ export function AlertasDashboardTab() {
         </Field>
       </div>
 
-      {erro && <Text className={estilosPagina.erro}>{erro}</Text>}
+      {erro && (
+        <FeedbackInline tom="erro" aoFechar={() => setErro(null)}>
+          {erro}
+        </FeedbackInline>
+      )}
 
-      <div style={{ marginBottom: 16 }}>
-        <CardGrid>
-          <KpiCard rotulo="Abertos" valor={abertos} cor={designTokens.colorAlert} icone={<Alert24Regular />} />
-          <KpiCard
-            rotulo="Em tratamento"
-            valor={emTratamento}
-            cor={designTokens.colorWarning}
-            icone={<PlayCircle24Regular />}
-          />
-          <KpiCard
-            rotulo="Escalonados"
-            valor={escalonados}
-            cor={designTokens.colorPrimary}
-            icone={<ArrowUpload24Regular />}
-          />
-          <KpiCard
-            rotulo="Resolvidos"
-            valor={resolvidos}
-            cor={designTokens.colorSuccess}
-            icone={<CheckmarkCircle24Regular />}
-          />
-          <KpiCard rotulo="Ignorados" valor={ignorados} cor={designTokens.colorInfo} icone={<EyeOff24Regular />} />
-        </CardGrid>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(185px, 1fr))', gap: 16, marginBottom: 16 }}>
+        <KpiCard rotulo="Abertos" valor={abertos} tom="atencao" indice={0} icone={<Alert24Regular />} />
+        <KpiCard rotulo="Em tratamento" valor={emTratamento} tom="info" indice={1} icone={<PlayCircle24Regular />} />
+        <KpiCard rotulo="Escalonados" valor={escalonados} tom="alerta" indice={2} icone={<ArrowUpload24Regular />} />
+        <KpiCard rotulo="Resolvidos" valor={resolvidos} tom="ok" indice={3} icone={<CheckmarkCircle24Regular />} />
+        <KpiCard rotulo="Ignorados" valor={ignorados} tom="neutro" indice={4} icone={<EyeOff24Regular />} />
       </div>
 
-      <div className={estilos.chartRow}>
-        <div className={estilos.chartCard}>
-          <Text className={estilos.chartTitulo}>Severidade dos alertas ativos</Text>
-          <div className={estilos.chartSubtitulo}>Abertos, em tratamento e escalonados</div>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(340px, 1fr))', gap: 16, marginBottom: 16 }}>
+        <Card titulo="Severidade dos alertas ativos" subtitulo="Abertos, em tratamento e escalonados">
           <StatusDonutChart dados={severidadeDados} legendaCentral="alertas" />
-        </div>
-        <div className={estilos.chartCard}>
-          <Text className={estilos.chartTitulo}>Alertas ativos por categoria</Text>
-          <div className={estilos.chartSubtitulo}>Distribuição dos alertas ativos por módulo de origem</div>
+        </Card>
+        <Card titulo="Alertas ativos por categoria" subtitulo="Distribuição dos alertas ativos por módulo de origem">
           <RankingBarChart dados={categoriaDados} />
-        </div>
+        </Card>
       </div>
 
-      <div className={estilosPagina.card} style={{ marginTop: 16 }}>
-        <Text weight="semibold">Alertas mais urgentes</Text>
-        {maisUrgentes.slice(0, 10).map((alerta) => (
-          <div
-            key={alerta.id}
-            style={{
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'space-between',
-              gap: 12,
-              padding: '8px 0',
-              borderBottom: '1px solid var(--colorNeutralStroke2)',
-            }}
-          >
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                <Badge appearance="tint" style={{ backgroundColor: severidadeCor(alerta.severidade) + '22', color: severidadeCor(alerta.severidade) }}>
-                  {severidadeAlertaLabel[alerta.severidade]}
-                </Badge>
-                <Text weight="semibold">{alerta.titulo}</Text>
+      <Card titulo="Alertas mais urgentes">
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginTop: 12 }}>
+          {maisUrgentes.slice(0, 10).map((alerta) => (
+            <div
+              key={alerta.id}
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                gap: 12,
+                padding: '10px 0',
+                borderBottom: '1px solid var(--colorNeutralStroke2)',
+              }}
+            >
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                  <StatusChip tom={tomPorSeveridade[alerta.severidade] ?? 'neutro'}>
+                    {severidadeAlertaLabel[alerta.severidade]}
+                  </StatusChip>
+                  <Text weight="semibold">{alerta.titulo}</Text>
+                </div>
+                <Legenda>
+                  {categoriaAlertaRotulo(alerta.entidadeOrigemTipo)} · {statusAlertaLabel[alerta.status]}
+                  {alerta.obraNome ? ` · ${alerta.obraNome}` : ''}
+                  {alerta.dataLimiteTratamento ? ` · prazo ${alerta.dataLimiteTratamento.slice(0, 10)}` : ''}
+                </Legenda>
               </div>
-              <Text size={200}>
-                {categoriaAlertaRotulo(alerta.entidadeOrigemTipo)} · {statusAlertaLabel[alerta.status]}
-                {alerta.obraNome ? ` · ${alerta.obraNome}` : ''}
-                {alerta.dataLimiteTratamento ? ` · prazo ${alerta.dataLimiteTratamento.slice(0, 10)}` : ''}
-              </Text>
-            </div>
-            <div style={{ display: 'flex', gap: 4 }}>
-              {alerta.status === StatusAlerta.Aberto && (
+              <div style={{ display: 'flex', gap: 4 }}>
+                {alerta.status === StatusAlerta.Aberto && (
+                  <Button
+                    appearance="subtle"
+                    icon={<PlayCircle24Regular />}
+                    title="Iniciar tratamento"
+                    disabled={processandoId === alerta.id}
+                    onClick={() => executar(api.alertas.iniciarTratamento, alerta.id, 'Falha ao iniciar tratamento.')}
+                  />
+                )}
                 <Button
                   appearance="subtle"
-                  icon={<PlayCircle24Regular />}
-                  title="Iniciar tratamento"
+                  icon={<CheckmarkCircle24Regular />}
+                  title="Resolver"
                   disabled={processandoId === alerta.id}
-                  onClick={() => executar(api.alertas.iniciarTratamento, alerta.id, 'Falha ao iniciar tratamento.')}
+                  onClick={() => executar(api.alertas.resolver, alerta.id, 'Falha ao resolver alerta.')}
                 />
-              )}
-              <Button
-                appearance="subtle"
-                icon={<CheckmarkCircle24Regular />}
-                title="Resolver"
-                disabled={processandoId === alerta.id}
-                onClick={() => executar(api.alertas.resolver, alerta.id, 'Falha ao resolver alerta.')}
-              />
-              <Button
-                appearance="subtle"
-                icon={<DismissCircle24Regular />}
-                title="Ignorar"
-                disabled={processandoId === alerta.id}
-                onClick={() => executar(api.alertas.ignorar, alerta.id, 'Falha ao ignorar alerta.')}
-              />
+                <Button
+                  appearance="subtle"
+                  icon={<DismissCircle24Regular />}
+                  title="Ignorar"
+                  disabled={processandoId === alerta.id}
+                  onClick={() => executar(api.alertas.ignorar, alerta.id, 'Falha ao ignorar alerta.')}
+                />
+              </div>
             </div>
-          </div>
-        ))}
-        {!carregando && maisUrgentes.length === 0 && <Text>Nenhum alerta ativo para os filtros selecionados.</Text>}
-      </div>
+          ))}
+          {!carregando && maisUrgentes.length === 0 && (
+            <Legenda>Nenhum alerta ativo para os filtros selecionados.</Legenda>
+          )}
+        </div>
+      </Card>
     </div>
   );
 }

@@ -1,19 +1,21 @@
 import { useEffect, useState } from 'react';
 import {
-  Badge,
   Button,
+  Campo,
+  Card,
+  CampoData,
+  DataTable,
   Field,
+  FeedbackInline,
+  FormGrid,
   Input,
+  PainelLateral,
   Select,
-  Table,
-  TableBody,
-  TableCell,
-  TableHeader,
-  TableHeaderCell,
-  TableRow,
-  Text,
-} from '@fluentui/react-components';
-import { CampoData } from '../../components/CampoData';
+  StatusChip,
+  useConfirmar,
+  type Coluna,
+  type Tom,
+} from '@ui';
 import { AddCircle24Regular, CheckmarkCircle24Regular, Delete24Regular, DismissCircle24Regular, PlayCircle24Regular } from '@fluentui/react-icons';
 import {
   api,
@@ -21,6 +23,7 @@ import {
   severidadeAlertaLabel,
   statusAlertaLabel,
   tipoAlertaLabel,
+  SeveridadeAlerta,
   StatusAlerta,
   type Alerta,
   type NovoAlerta,
@@ -28,11 +31,7 @@ import {
   type Trabalhador,
   type Usuario,
 } from '../../lib/api';
-import { usePageStyles } from '../pageStyles';
-import { useConfirmarExclusao } from '../../hooks/useConfirmarExclusao';
 import { useSucessoToast } from '../../hooks/useSucessoToast';
-import { EstadoVazio } from '../../components/EstadoVazio';
-import { ListaCarregando } from '../../components/ListaCarregando';
 
 function novaInicial(): NovoAlerta {
   return {
@@ -49,14 +48,30 @@ function novaInicial(): NovoAlerta {
   };
 }
 
-function severidadeCor(severidade: number): 'informative' | 'warning' | 'danger' {
-  if (severidade === 3) return 'danger';
-  if (severidade === 2) return 'warning';
-  return 'informative';
-}
+// Mapeamento 1:1 pelo nome semântico (Guia de conversão item 5): Info→info, Atenção→atencao,
+// Crítico→alerta. Mesmo mapa usado em AlertasConfiguracaoTab.tsx e no dashboard, para as três telas
+// do módulo lerem a severidade igual.
+const tomPorSeveridade: Record<number, Tom> = {
+  [SeveridadeAlerta.Info]: 'info',
+  [SeveridadeAlerta.Atencao]: 'atencao',
+  [SeveridadeAlerta.Critico]: 'alerta',
+};
+
+// Status não tem equivalente direto no Fluent (Badge sem `color=`, tint neutro) — julgamento de
+// conversão (Guia item 5, "mapear com julgamento por caso"): Aberto precisa de atenção mas ainda não
+// é o mais urgente; Em tratamento é andamento (info); Escalonado é o mais urgente (alerta, acima de
+// Aberto, pois já passou da régua normal); Resolvido é o estado bom (ok); Ignorado é neutro
+// (descartado deliberadamente, sem carga de urgência). Vinho (cor original de "Escalonados" no
+// dashboard, via colorPrimary) não é reaproveitado — spec §1.1: vinho é ação/marca, nunca estado.
+const tomPorStatus: Record<number, Tom> = {
+  [StatusAlerta.Aberto]: 'atencao',
+  [StatusAlerta.EmTratamento]: 'info',
+  [StatusAlerta.Escalonado]: 'alerta',
+  [StatusAlerta.Resolvido]: 'ok',
+  [StatusAlerta.Ignorado]: 'neutro',
+};
 
 export function AlertasListaTab() {
-  const estilos = usePageStyles();
   const [alertas, setAlertas] = useState<Alerta[]>([]);
   const [obras, setObras] = useState<Obra[]>([]);
   const [trabalhadores, setTrabalhadores] = useState<Trabalhador[]>([]);
@@ -65,9 +80,11 @@ export function AlertasListaTab() {
   const [filtroSeveridade, setFiltroSeveridade] = useState<string>('');
   const [novo, setNovo] = useState<NovoAlerta>(novaInicial());
   const [erro, setErro] = useState<string | null>(null);
+  const [erroPainel, setErroPainel] = useState<string | null>(null);
   const [carregando, setCarregando] = useState(false);
   const [carregandoLista, setCarregandoLista] = useState(true);
-  const { confirmar, dialogElement } = useConfirmarExclusao();
+  const [painelAberto, setPainelAberto] = useState(false);
+  const { confirmar, dialogElement } = useConfirmar();
   const sucessoToast = useSucessoToast();
 
   async function carregar() {
@@ -98,14 +115,25 @@ export function AlertasListaTab() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [filtroStatus, filtroSeveridade]);
 
+  function abrirPainel() {
+    setNovo(novaInicial());
+    setErroPainel(null);
+    setPainelAberto(true);
+  }
+
+  function fecharPainel() {
+    setPainelAberto(false);
+    setErroPainel(null);
+  }
+
   async function criar() {
     if (!novo.titulo.trim() || !novo.entidadeOrigemTipo.trim() || !novo.entidadeOrigemId.trim()) {
-      setErro('Informe título, tipo de origem e id de origem.');
+      setErroPainel('Informe título, tipo de origem e id de origem.');
       return;
     }
     try {
       setCarregando(true);
-      setErro(null);
+      setErroPainel(null);
       await api.alertas.criar({
         ...novo,
         descricao: novo.descricao || null,
@@ -114,11 +142,11 @@ export function AlertasListaTab() {
         destinatarioUsuarioId: novo.destinatarioUsuarioId || null,
         dataLimiteTratamento: novo.dataLimiteTratamento || null,
       });
-      setNovo(novaInicial());
       await carregar();
       sucessoToast('Alerta criado com sucesso.');
+      fecharPainel();
     } catch (e) {
-      setErro(e instanceof Error ? e.message : 'Falha ao criar alerta.');
+      setErroPainel(e instanceof Error ? e.message : 'Falha ao criar alerta.');
     } finally {
       setCarregando(false);
     }
@@ -145,130 +173,37 @@ export function AlertasListaTab() {
     await executar((alertaId) => api.alertas.excluir(alertaId), id, 'Falha ao excluir alerta.', 'Alerta excluído com sucesso.');
   }
 
+  const colunas: Coluna<Alerta>[] = [
+    { chave: 'categoria', rotulo: 'Categoria', render: (a) => categoriaAlertaRotulo(a.entidadeOrigemTipo) },
+    { chave: 'tipo', rotulo: 'Tipo', render: (a) => tipoAlertaLabel[a.tipo] },
+    { chave: 'titulo', rotulo: 'Título' },
+    {
+      chave: 'severidade',
+      rotulo: 'Severidade',
+      render: (a) => <StatusChip tom={tomPorSeveridade[a.severidade] ?? 'neutro'}>{severidadeAlertaLabel[a.severidade]}</StatusChip>,
+    },
+    {
+      chave: 'status',
+      rotulo: 'Status',
+      render: (a) => <StatusChip tom={tomPorStatus[a.status] ?? 'neutro'}>{statusAlertaLabel[a.status]}</StatusChip>,
+    },
+    { chave: 'destinatario', rotulo: 'Destinatário', render: (a) => a.destinatarioUsuarioNome ?? '—' },
+    { chave: 'prazo', rotulo: 'Prazo', render: (a) => a.dataLimiteTratamento?.slice(0, 10) ?? '—' },
+  ];
+
   return (
     <div>
       {dialogElement}
-      {erro && <Text className={estilos.erro}>{erro}</Text>}
+      {erro && (
+        <FeedbackInline tom="erro" aoFechar={() => setErro(null)}>
+          {erro}
+        </FeedbackInline>
+      )}
 
-      <div className={estilos.card} style={{ marginBottom: 16 }}>
-        <div className={estilos.toolbar}>
-          <Text weight="semibold">Novo alerta manual</Text>
-        </div>
-        <div className={`${estilos.sectionTitle} ${estilos.sectionTitleFirst}`}>Novo Alerta Manual</div>
-        <div className={estilos.formGrid}>
-          <div className={estilos.col2}>
-            <Field label="Tipo">
-              <Select value={String(novo.tipo)} onChange={(_, d) => setNovo({ ...novo, tipo: Number(d.value) })}>
-                {Object.entries(tipoAlertaLabel).map(([valor, rotulo]) => (
-                  <option key={valor} value={valor}>
-                    {rotulo}
-                  </option>
-                ))}
-              </Select>
-            </Field>
-          </div>
-          <div className={estilos.col2}>
-            <Field label="Severidade">
-              <Select
-                value={String(novo.severidade)}
-                onChange={(_, d) => setNovo({ ...novo, severidade: Number(d.value) })}
-              >
-                {Object.entries(severidadeAlertaLabel).map(([valor, rotulo]) => (
-                  <option key={valor} value={valor}>
-                    {rotulo}
-                  </option>
-                ))}
-              </Select>
-            </Field>
-          </div>
-          <div className={estilos.col4}>
-            <Field label="Título" required>
-              <Input value={novo.titulo} onChange={(_, d) => setNovo({ ...novo, titulo: d.value })} />
-            </Field>
-          </div>
-          <div className={estilos.col4}>
-            <Field label="Descrição">
-              <Input value={novo.descricao ?? ''} onChange={(_, d) => setNovo({ ...novo, descricao: d.value })} />
-            </Field>
-          </div>
-          <div className={estilos.col4}>
-            <Field label="Tipo da entidade de origem" required hint="Ex.: Aso, Treinamento, Epi, NaoConformidade">
-              <Input
-                value={novo.entidadeOrigemTipo}
-                onChange={(_, d) => setNovo({ ...novo, entidadeOrigemTipo: d.value })}
-              />
-            </Field>
-          </div>
-          <div className={estilos.col4}>
-            <Field label="Id da entidade de origem" required>
-              <Input
-                value={novo.entidadeOrigemId}
-                onChange={(_, d) => setNovo({ ...novo, entidadeOrigemId: d.value })}
-              />
-            </Field>
-          </div>
-          <div className={estilos.col4}>
-            <Field label="Obra">
-              <Select value={novo.obraId ?? ''} onChange={(_, d) => setNovo({ ...novo, obraId: d.value })}>
-                <option value="">Nenhuma</option>
-                {obras.map((obra) => (
-                  <option key={obra.id} value={obra.id}>
-                    {obra.nome}
-                  </option>
-                ))}
-              </Select>
-            </Field>
-          </div>
-          <div className={estilos.col4}>
-            <Field label="Funcionário">
-              <Select
-                value={novo.trabalhadorId ?? ''}
-                onChange={(_, d) => setNovo({ ...novo, trabalhadorId: d.value })}
-              >
-                <option value="">Nenhum</option>
-                {trabalhadores.map((trabalhador) => (
-                  <option key={trabalhador.id} value={trabalhador.id}>
-                    {trabalhador.nome}
-                  </option>
-                ))}
-              </Select>
-            </Field>
-          </div>
-          <div className={estilos.col4}>
-            <Field label="Destinatário">
-              <Select
-                value={novo.destinatarioUsuarioId ?? ''}
-                onChange={(_, d) => setNovo({ ...novo, destinatarioUsuarioId: d.value })}
-              >
-                <option value="">Nenhum</option>
-                {usuarios.map((usuario) => (
-                  <option key={usuario.id} value={usuario.id}>
-                    {usuario.nome}
-                  </option>
-                ))}
-              </Select>
-            </Field>
-          </div>
-          <div className={estilos.col4}>
-            <Field label="Prazo para tratamento">
-              <CampoData
-                value={novo.dataLimiteTratamento ?? ''}
-                onChange={(_, d) => setNovo({ ...novo, dataLimiteTratamento: d.value })}
-              />
-            </Field>
-          </div>
-        </div>
-        <div className={estilos.formActions}>
-          <Button appearance="primary" icon={<AddCircle24Regular />} onClick={criar} disabled={carregando}>
-            Registrar
-          </Button>
-        </div>
-      </div>
-
-      <div className={estilos.card}>
-        <div className={estilos.toolbar}>
-          <Text weight="semibold">Alertas</Text>
-          <div style={{ display: 'flex', gap: 8 }}>
+      <Card
+        titulo="Alertas"
+        acoes={
+          <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
             <Select value={filtroStatus} onChange={(_, d) => setFiltroStatus(d.value)}>
               <option value="">Todos os status</option>
               {Object.entries(statusAlertaLabel).map(([valor, rotulo]) => (
@@ -285,93 +220,188 @@ export function AlertasListaTab() {
                 </option>
               ))}
             </Select>
+            <Button appearance="primary" icon={<AddCircle24Regular />} onClick={abrirPainel}>
+              Novo alerta
+            </Button>
           </div>
-        </div>
-        {carregandoLista ? (
-          <ListaCarregando />
-        ) : alertas.length === 0 ? (
-          <EstadoVazio mensagem="Nenhum alerta encontrado." />
-        ) : (
-        <Table noNativeElements>
-          <TableHeader>
-            <TableRow>
-              <TableHeaderCell>Categoria</TableHeaderCell>
-              <TableHeaderCell>Tipo</TableHeaderCell>
-              <TableHeaderCell>Título</TableHeaderCell>
-              <TableHeaderCell>Severidade</TableHeaderCell>
-              <TableHeaderCell>Status</TableHeaderCell>
-              <TableHeaderCell>Destinatário</TableHeaderCell>
-              <TableHeaderCell>Prazo</TableHeaderCell>
-              <TableHeaderCell></TableHeaderCell>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {alertas.map((alerta) => (
-              <TableRow key={alerta.id}>
-                <TableCell>{categoriaAlertaRotulo(alerta.entidadeOrigemTipo)}</TableCell>
-                <TableCell>{tipoAlertaLabel[alerta.tipo]}</TableCell>
-                <TableCell>{alerta.titulo}</TableCell>
-                <TableCell>
-                  <Badge appearance="tint" color={severidadeCor(alerta.severidade)}>
-                    {severidadeAlertaLabel[alerta.severidade]}
-                  </Badge>
-                </TableCell>
-                <TableCell>
-                  <Badge appearance="tint">{statusAlertaLabel[alerta.status]}</Badge>
-                </TableCell>
-                <TableCell>{alerta.destinatarioUsuarioNome ?? '—'}</TableCell>
-                <TableCell>{alerta.dataLimiteTratamento?.slice(0, 10) ?? '—'}</TableCell>
-                <TableCell>
-                  <div style={{ display: 'flex', gap: 4 }}>
-                    {alerta.status === StatusAlerta.Aberto && (
-                      <Button
-                        appearance="subtle"
-                        icon={<PlayCircle24Regular />}
-                        title="Iniciar tratamento"
-                        onClick={() =>
-                          executar(
-                            api.alertas.iniciarTratamento,
-                            alerta.id,
-                            'Falha ao iniciar tratamento.',
-                            'Tratamento do alerta iniciado com sucesso.',
-                          )
-                        }
-                      />
-                    )}
-                    {(alerta.status === StatusAlerta.Aberto || alerta.status === StatusAlerta.EmTratamento) && (
-                      <Button
-                        appearance="subtle"
-                        icon={<CheckmarkCircle24Regular />}
-                        title="Resolver"
-                        onClick={() =>
-                          executar(api.alertas.resolver, alerta.id, 'Falha ao resolver alerta.', 'Alerta resolvido com sucesso.')
-                        }
-                      />
-                    )}
-                    {(alerta.status === StatusAlerta.Aberto || alerta.status === StatusAlerta.EmTratamento) && (
-                      <Button
-                        appearance="subtle"
-                        icon={<DismissCircle24Regular />}
-                        title="Ignorar"
-                        onClick={() =>
-                          executar(api.alertas.ignorar, alerta.id, 'Falha ao ignorar alerta.', 'Alerta ignorado com sucesso.')
-                        }
-                      />
-                    )}
-                    <Button
-                      appearance="subtle"
-                      icon={<Delete24Regular />}
-                      title="Excluir"
-                      onClick={() => excluir(alerta.id)}
-                    />
-                  </div>
-                </TableCell>
-              </TableRow>
-            ))}
-          </TableBody>
-        </Table>
+        }
+      >
+        <DataTable
+          aria-label="Alertas"
+          colunas={colunas}
+          linhas={alertas}
+          chaveLinha={(a) => a.id}
+          carregando={carregandoLista}
+          vazio={{
+            titulo: 'Nenhum alerta encontrado',
+            acao: { rotulo: 'Registrar alerta manual', aoClicar: abrirPainel },
+          }}
+          acoesLinha={(alerta) => (
+            <div style={{ display: 'flex', gap: 4 }}>
+              {alerta.status === StatusAlerta.Aberto && (
+                <Button
+                  appearance="subtle"
+                  icon={<PlayCircle24Regular />}
+                  title="Iniciar tratamento"
+                  onClick={() =>
+                    executar(
+                      api.alertas.iniciarTratamento,
+                      alerta.id,
+                      'Falha ao iniciar tratamento.',
+                      'Tratamento do alerta iniciado com sucesso.',
+                    )
+                  }
+                />
+              )}
+              {(alerta.status === StatusAlerta.Aberto || alerta.status === StatusAlerta.EmTratamento) && (
+                <Button
+                  appearance="subtle"
+                  icon={<CheckmarkCircle24Regular />}
+                  title="Resolver"
+                  onClick={() =>
+                    executar(api.alertas.resolver, alerta.id, 'Falha ao resolver alerta.', 'Alerta resolvido com sucesso.')
+                  }
+                />
+              )}
+              {(alerta.status === StatusAlerta.Aberto || alerta.status === StatusAlerta.EmTratamento) && (
+                <Button
+                  appearance="subtle"
+                  icon={<DismissCircle24Regular />}
+                  title="Ignorar"
+                  onClick={() =>
+                    executar(api.alertas.ignorar, alerta.id, 'Falha ao ignorar alerta.', 'Alerta ignorado com sucesso.')
+                  }
+                />
+              )}
+              <Button appearance="subtle" icon={<Delete24Regular />} title="Excluir" onClick={() => excluir(alerta.id)} />
+            </div>
+          )}
+        />
+      </Card>
+
+      <PainelLateral
+        aberto={painelAberto}
+        aoFechar={fecharPainel}
+        titulo="Novo alerta manual"
+        largura="lg"
+        rodape={
+          <>
+            <Button onClick={fecharPainel}>Cancelar</Button>
+            <Button appearance="primary" onClick={criar} disabled={carregando}>
+              Registrar
+            </Button>
+          </>
+        }
+      >
+        {erroPainel && (
+          <FeedbackInline tom="erro" aoFechar={() => setErroPainel(null)}>
+            {erroPainel}
+          </FeedbackInline>
         )}
-      </div>
+        <FormGrid>
+          <Campo span={2}>
+            <Field label="Tipo">
+              <Select value={String(novo.tipo)} onChange={(_, d) => setNovo({ ...novo, tipo: Number(d.value) })}>
+                {Object.entries(tipoAlertaLabel).map(([valor, rotulo]) => (
+                  <option key={valor} value={valor}>
+                    {rotulo}
+                  </option>
+                ))}
+              </Select>
+            </Field>
+          </Campo>
+          <Campo span={2}>
+            <Field label="Severidade">
+              <Select
+                value={String(novo.severidade)}
+                onChange={(_, d) => setNovo({ ...novo, severidade: Number(d.value) })}
+              >
+                {Object.entries(severidadeAlertaLabel).map(([valor, rotulo]) => (
+                  <option key={valor} value={valor}>
+                    {rotulo}
+                  </option>
+                ))}
+              </Select>
+            </Field>
+          </Campo>
+          <Campo span={4}>
+            <Field label="Título" required>
+              <Input value={novo.titulo} onChange={(_, d) => setNovo({ ...novo, titulo: d.value })} />
+            </Field>
+          </Campo>
+          <Campo span={4}>
+            <Field label="Descrição">
+              <Input value={novo.descricao ?? ''} onChange={(_, d) => setNovo({ ...novo, descricao: d.value })} />
+            </Field>
+          </Campo>
+          <Campo span={4}>
+            <Field label="Tipo da entidade de origem" required hint="Ex.: Aso, Treinamento, Epi, NaoConformidade">
+              <Input
+                value={novo.entidadeOrigemTipo}
+                onChange={(_, d) => setNovo({ ...novo, entidadeOrigemTipo: d.value })}
+              />
+            </Field>
+          </Campo>
+          <Campo span={4}>
+            <Field label="Id da entidade de origem" required>
+              <Input
+                value={novo.entidadeOrigemId}
+                onChange={(_, d) => setNovo({ ...novo, entidadeOrigemId: d.value })}
+              />
+            </Field>
+          </Campo>
+          <Campo span={4}>
+            <Field label="Obra">
+              <Select value={novo.obraId ?? ''} onChange={(_, d) => setNovo({ ...novo, obraId: d.value })}>
+                <option value="">Nenhuma</option>
+                {obras.map((obra) => (
+                  <option key={obra.id} value={obra.id}>
+                    {obra.nome}
+                  </option>
+                ))}
+              </Select>
+            </Field>
+          </Campo>
+          <Campo span={4}>
+            <Field label="Funcionário">
+              <Select
+                value={novo.trabalhadorId ?? ''}
+                onChange={(_, d) => setNovo({ ...novo, trabalhadorId: d.value })}
+              >
+                <option value="">Nenhum</option>
+                {trabalhadores.map((trabalhador) => (
+                  <option key={trabalhador.id} value={trabalhador.id}>
+                    {trabalhador.nome}
+                  </option>
+                ))}
+              </Select>
+            </Field>
+          </Campo>
+          <Campo span={4}>
+            <Field label="Destinatário">
+              <Select
+                value={novo.destinatarioUsuarioId ?? ''}
+                onChange={(_, d) => setNovo({ ...novo, destinatarioUsuarioId: d.value })}
+              >
+                <option value="">Nenhum</option>
+                {usuarios.map((usuario) => (
+                  <option key={usuario.id} value={usuario.id}>
+                    {usuario.nome}
+                  </option>
+                ))}
+              </Select>
+            </Field>
+          </Campo>
+          <Campo span={4}>
+            <Field label="Prazo para tratamento">
+              <CampoData
+                value={novo.dataLimiteTratamento ?? ''}
+                onChange={(_, d) => setNovo({ ...novo, dataLimiteTratamento: d.value })}
+              />
+            </Field>
+          </Campo>
+        </FormGrid>
+      </PainelLateral>
     </div>
   );
 }

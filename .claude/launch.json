@@ -30,6 +30,18 @@
       "runtimeExecutable": "npm",
       "runtimeArgs": ["--prefix", "C:/Projetos/SST-APP/.worktrees/reformulacao-saude-ocupacional/src/AAHBRANT.SST.TeamsApp", "run", "dev", "--", "--port", "5275"],
       "port": 5275
+    },
+    {
+      "name": "sst-api-task16",
+      "runtimeExecutable": "dotnet",
+      "runtimeArgs": ["run", "--project", "src/AAHBRANT.SST.Api/AAHBRANT.SST.Api.csproj", "--urls", "http://localhost:5216"],
+      "port": 5216
+    },
+    {
+      "name": "sst-web-task16",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": ["--prefix", "src/AAHBRANT.SST.TeamsApp", "run", "dev", "--", "--port", "5286"],
+      "port": 5286
     }
   ]
 }
