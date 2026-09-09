@@ -1,44 +1,35 @@
 import { AnimatePresence, motion } from 'framer-motion';
-import { Badge, Text } from '@fluentui/react-components';
+import { Card, Legenda, StatusChip } from '@ui';
 import { Warning24Filled } from '@fluentui/react-icons';
 import { StatusInspecao, statusInspecaoLabel, tipoInspecaoLabel, type Inspecao } from '../../../lib/api';
-import { useDashboardStyles } from '../../../components/dashboard/dashboardStyles';
 
 interface InspecoesNaoConformesPanelProps {
   inspecoes: Inspecao[];
 }
 
+// Onda 2 Task 10 (camada ui/): painel de inspeções com itens não conformes do dashboard — Card +
+// StatusChip, mesmo padrão de AprVencidaPanel.tsx (Task 11)/RiscosCriticosPanel.tsx. A animação de
+// entrada por linha (framer-motion) segue inline: não há componente @ui dedicado a esta forma de
+// lista. Texto secundário usa `Legenda` (primitivo de @ui, PR #33) em vez do hex de fallback cru que
+// os pilotos anteriores usavam como ponte antes desse primitivo existir.
 export function InspecoesNaoConformesPanel({ inspecoes }: InspecoesNaoConformesPanelProps) {
-  const estilos = useDashboardStyles();
-
   const comNaoConformidades = inspecoes
     .filter((i) => i.itensNaoConformes > 0)
     .sort((a, b) => b.itensNaoConformes - a.itensNaoConformes);
 
   return (
-    <div className={estilos.motorPainel}>
-      <div className={estilos.motorCabecalho}>
-        <div>
-          <Text weight="semibold" size={400}>
-            Inspeções com Itens Não Conformes
-          </Text>
-          <div>
-            <Text size={200} style={{ color: 'var(--colorNeutralForeground3, #6D6D6D)' }}>
-              Execuções de checklist com ao menos 1 item não conforme, ordenadas da mais crítica para a menos
-              crítica.
-            </Text>
-          </div>
-        </div>
-        <Badge appearance="tint" color={comNaoConformidades.length === 0 ? 'success' : 'danger'}>
+    <Card
+      titulo="Inspeções com Itens Não Conformes"
+      subtitulo="Execuções de checklist com ao menos 1 item não conforme, ordenadas da mais crítica para a menos crítica."
+      acoes={
+        <StatusChip tom={comNaoConformidades.length === 0 ? 'ok' : 'alerta'}>
           {comNaoConformidades.length} inspeção(ões) com item(ns) não conforme(s)
-        </Badge>
-      </div>
-
-      <div className={estilos.motorLista}>
+        </StatusChip>
+      }
+    >
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 8, maxHeight: 420, overflowY: 'auto' }}>
         {comNaoConformidades.length === 0 && (
-          <Text size={200} style={{ color: 'var(--colorNeutralForeground3, #6D6D6D)' }}>
-            Nenhuma inspeção com item não conforme para os filtros selecionados.
-          </Text>
+          <Legenda>Nenhuma inspeção com item não conforme para os filtros selecionados.</Legenda>
         )}
         <AnimatePresence initial={false}>
           {comNaoConformidades.map((inspecao, indice) => (
@@ -48,26 +39,30 @@ export function InspecoesNaoConformesPanel({ inspecoes }: InspecoesNaoConformesP
               initial={{ opacity: 0, x: -8 }}
               animate={{ opacity: 1, x: 0 }}
               transition={{ duration: 0.25, delay: Math.min(indice, 12) * 0.02 }}
-              className={`${estilos.motorLinha} ${estilos.motorLinhaBloqueada}`}
+              style={{
+                display: 'grid',
+                gridTemplateColumns: '1fr auto',
+                alignItems: 'center',
+                gap: 12,
+                padding: '10px 14px',
+              }}
             >
               <div>
-                <Text weight="semibold">
+                <div style={{ fontWeight: 600 }}>
                   {inspecao.obraNome} · {tipoInspecaoLabel[inspecao.tipoInspecao] ?? inspecao.tipoInspecao}
-                </Text>
-                <div>
-                  <Text size={200} style={{ color: 'var(--colorNeutralForeground3, #6D6D6D)' }}>
-                    {inspecao.checklistModeloNome} · {statusInspecaoLabel[inspecao.status]}
-                    {inspecao.status === StatusInspecao.EmAndamento ? ' · ainda em andamento' : ''}
-                  </Text>
                 </div>
+                <Legenda>
+                  {inspecao.checklistModeloNome} · {statusInspecaoLabel[inspecao.status]}
+                  {inspecao.status === StatusInspecao.EmAndamento ? ' · ainda em andamento' : ''}
+                </Legenda>
               </div>
-              <Badge appearance="tint" color="danger" icon={<Warning24Filled />}>
+              <StatusChip tom="alerta" icone={<Warning24Filled aria-hidden="true" />}>
                 {inspecao.itensNaoConformes} de {inspecao.totalItens} não conforme(s)
-              </Badge>
+              </StatusChip>
             </motion.div>
           ))}
         </AnimatePresence>
       </div>
-    </div>
+    </Card>
   );
 }
