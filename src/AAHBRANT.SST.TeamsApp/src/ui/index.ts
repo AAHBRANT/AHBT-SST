@@ -10,6 +10,14 @@ export {
   Avatar, Button, Checkbox, Field, Input, Select, Spinner, Text, Textarea, Tooltip,
 } from '@fluentui/react-components';
 
+// Exceção pontual (Onda 2 Task 13, spec §5.1): primitivos de tabela crus, só para grades que
+// genuinamente não são lista de dados — DataTable não serve (ver MatrizRiscoTab.tsx: heatmap
+// Probabilidade × Severidade onde cada célula é um <Select>, sem noção de "linha = item com colunas
+// fixas"). Continuam proibidos para qualquer caso de lista — esse é sempre DataTable.
+export {
+  Table, TableBody, TableCell, TableHeader, TableHeaderCell, TableRow,
+} from '@fluentui/react-components';
+
 // Peças já existentes, ainda no lugar antigo até a Onda 3.
 export { CampoData } from '../components/CampoData';
 export { ChipsField } from '../components/ChipsField';
