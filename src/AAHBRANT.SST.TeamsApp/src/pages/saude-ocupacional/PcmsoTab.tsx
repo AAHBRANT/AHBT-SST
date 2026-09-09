@@ -1,35 +1,35 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
-  Badge,
   Button,
+  Campo,
+  Card,
+  CampoData,
+  DataTable,
   Field,
+  FeedbackInline,
+  FormGrid,
+  FormRodape,
+  FormSection,
   Input,
   Select,
-  Table,
-  TableBody,
-  TableCell,
-  TableHeader,
-  TableHeaderCell,
-  TableRow,
-  Text,
-} from '@fluentui/react-components';
-import { CampoData } from '../../components/CampoData';
-import { Add24Regular, ChevronRight24Regular, Delete24Regular } from '@fluentui/react-icons';
+  StatusChip,
+  nivelVencimento,
+  rotuloDeVencimento,
+  tomDeVencimento,
+  useConfirmar,
+  type Coluna,
+  type Tom,
+} from '@ui';
+import { Add24Regular, Delete24Regular } from '@fluentui/react-icons';
 import {
   api,
   statusPcmsoDocumentoLabel,
-  StatusPcmsoDocumento,
   type NovoPcmso,
   type Obra,
   type Pcmso,
 } from '../../lib/api';
-import { BadgeVencimento } from '../../components/badges/BadgeVencimento';
-import { usePageStyles } from '../pageStyles';
-import { useConfirmarExclusao } from '../../hooks/useConfirmarExclusao';
 import { useSucessoToast } from '../../hooks/useSucessoToast';
-import { EstadoVazio } from '../../components/EstadoVazio';
-import { ListaCarregando } from '../../components/ListaCarregando';
 
 function pcmsoVazio(): NovoPcmso {
   return {
@@ -51,10 +51,18 @@ function pcmsoVazio(): NovoPcmso {
   };
 }
 
-// Edição completa dos campos clínicos e o Plano de Ação vinculado ficam em PcmsoDetalhePage.tsx
-// (mesmo padrão de navegação lista→detalhe usado por PgrsTab.tsx e NaoConformidadesTab.tsx).
+// StatusPcmsoDocumento: Rascunho=1, EmAprovacao=2, Vigente=3, Obsoleto=4, Cancelado=5.
+const tomPorStatusPcmso: Record<number, Tom> = { 1: 'neutro', 2: 'atencao', 3: 'ok', 4: 'neutro', 5: 'alerta' };
+
+function chipVencimento(data?: string | null) {
+  const nivel = nivelVencimento(data);
+  return nivel ? <StatusChip tom={tomDeVencimento(nivel)}>{rotuloDeVencimento(nivel)}</StatusChip> : null;
+}
+
+// Onda 2 Task 12 (camada ui/): edição completa dos campos clínicos e o Plano de Ação vinculado ficam
+// em PcmsoDetalhePage.tsx (mesmo padrão de navegação lista→detalhe usado por PgrsTab.tsx e
+// NaoConformidadesTab.tsx).
 export function PcmsoTab() {
-  const estilos = usePageStyles();
   const navigate = useNavigate();
   const [pcmsos, setPcmsos] = useState<Pcmso[]>([]);
   const [obras, setObras] = useState<Obra[]>([]);
@@ -62,7 +70,7 @@ export function PcmsoTab() {
   const [erro, setErro] = useState<string | null>(null);
   const [carregando, setCarregando] = useState(false);
   const [carregandoLista, setCarregandoLista] = useState(true);
-  const { confirmar, dialogElement } = useConfirmarExclusao();
+  const { confirmar, dialogElement } = useConfirmar();
   const sucessoToast = useSucessoToast();
 
   async function carregar() {
@@ -113,8 +121,7 @@ export function PcmsoTab() {
     }
   }
 
-  async function excluir(id: string, evento: React.MouseEvent) {
-    evento.stopPropagation();
+  async function excluir(id: string) {
     if (!(await confirmar('Excluir este PCMSO? Essa ação não pode ser desfeita.'))) return;
     try {
       await api.pcmsos.excluir(id);
@@ -125,146 +132,113 @@ export function PcmsoTab() {
     }
   }
 
+  const colunas: Coluna<Pcmso>[] = [
+    { chave: 'nome', rotulo: 'Nome' },
+    { chave: 'obra', rotulo: 'Obra', render: (p) => nomeObra(p.obraId) },
+    { chave: 'emissao', rotulo: 'Emissão', render: (p) => p.dataEmissao?.slice(0, 10) ?? '' },
+    {
+      chave: 'validade',
+      rotulo: 'Validade',
+      render: (p) => (
+        <>
+          {p.validade?.slice(0, 10) ?? '—'} {chipVencimento(p.validade)}
+        </>
+      ),
+    },
+    {
+      chave: 'status',
+      rotulo: 'Status',
+      render: (p) => (
+        <StatusChip tom={tomPorStatusPcmso[p.status] ?? 'neutro'}>{statusPcmsoDocumentoLabel[p.status]}</StatusChip>
+      ),
+    },
+  ];
+
   return (
-    <div>
+    <>
+      {erro && (
+        <FeedbackInline tom="erro" aoFechar={() => setErro(null)}>
+          {erro}
+        </FeedbackInline>
+      )}
+
+      <Card titulo="PCMSOs">
+        <FormSection titulo="Novo PCMSO" numero={1} primeira>
+          <FormGrid>
+            <Campo span={4}>
+              <Field label="Nome do Documento" required>
+                <Input value={novoPcmso.nome} onChange={(_, d) => setNovoPcmso({ ...novoPcmso, nome: d.value })} />
+              </Field>
+            </Campo>
+            <Campo span={2}>
+              <Field label="Versão">
+                <Input
+                  value={novoPcmso.versao ?? ''}
+                  onChange={(_, d) => setNovoPcmso({ ...novoPcmso, versao: d.value })}
+                />
+              </Field>
+            </Campo>
+            <Campo span={3}>
+              <Field label="Obra">
+                <Select
+                  value={novoPcmso.obraId ?? ''}
+                  onChange={(_, d) => setNovoPcmso({ ...novoPcmso, obraId: d.value, setorId: '' })}
+                >
+                  <option value="">Nenhuma</option>
+                  {obras.map((obra) => (
+                    <option key={obra.id} value={obra.id}>
+                      {obra.nome}
+                    </option>
+                  ))}
+                </Select>
+              </Field>
+            </Campo>
+            <Campo span={3}>
+              <Field label="Data de emissão" required>
+                <CampoData
+                  value={novoPcmso.dataEmissao}
+                  onChange={(_, d) => setNovoPcmso({ ...novoPcmso, dataEmissao: d.value })}
+                />
+              </Field>
+            </Campo>
+            <Campo span={3}>
+              <Field label="Validade">
+                <CampoData
+                  value={novoPcmso.validade ?? ''}
+                  onChange={(_, d) => setNovoPcmso({ ...novoPcmso, validade: d.value })}
+                />
+              </Field>
+            </Campo>
+            <Campo span={5}>
+              <Field label="Médico responsável">
+                <Input
+                  value={novoPcmso.medicoResponsavelNome ?? ''}
+                  onChange={(_, d) => setNovoPcmso({ ...novoPcmso, medicoResponsavelNome: d.value })}
+                />
+              </Field>
+            </Campo>
+          </FormGrid>
+          <FormRodape info="Os demais campos (CRM, funções/riscos/exames contemplados, periodicidades, unidades abrangidas, status e Plano de Ação) são preenchidos na tela de detalhe, após criar o registro.">
+            <Button appearance="primary" icon={<Add24Regular />} onClick={criar} disabled={carregando}>
+              Adicionar PCMSO
+            </Button>
+          </FormRodape>
+        </FormSection>
+
+        <DataTable
+          aria-label="PCMSOs cadastrados"
+          colunas={colunas}
+          linhas={pcmsos}
+          chaveLinha={(p) => p.id}
+          carregando={carregandoLista}
+          vazio={{ titulo: 'Nenhum PCMSO cadastrado ainda.' }}
+          aoClicarLinha={(p) => navigate(`/saude-ocupacional/pcmso/${p.id}`)}
+          acoesLinha={(p) => (
+            <Button appearance="subtle" icon={<Delete24Regular />} onClick={() => excluir(p.id)} aria-label="Excluir" />
+          )}
+        />
+      </Card>
       {dialogElement}
-      <div className={estilos.card} style={{ marginBottom: 16 }}>
-        <div className={estilos.toolbar}>
-          <Text weight="semibold">Novo PCMSO</Text>
-        </div>
-
-        {erro && <Text className={estilos.erro}>{erro}</Text>}
-
-        <div className={estilos.formGrid}>
-          <div className={estilos.col4}>
-            <Field label="Nome do Documento" required>
-              <Input value={novoPcmso.nome} onChange={(_, d) => setNovoPcmso({ ...novoPcmso, nome: d.value })} />
-            </Field>
-          </div>
-          <div className={estilos.col2}>
-            <Field label="Versão">
-              <Input
-                value={novoPcmso.versao ?? ''}
-                onChange={(_, d) => setNovoPcmso({ ...novoPcmso, versao: d.value })}
-              />
-            </Field>
-          </div>
-          <div className={estilos.col3}>
-            <Field label="Obra">
-              <Select
-                value={novoPcmso.obraId ?? ''}
-                onChange={(_, d) => setNovoPcmso({ ...novoPcmso, obraId: d.value, setorId: '' })}
-              >
-                <option value="">Nenhuma</option>
-                {obras.map((obra) => (
-                  <option key={obra.id} value={obra.id}>
-                    {obra.nome}
-                  </option>
-                ))}
-              </Select>
-            </Field>
-          </div>
-          <div className={estilos.col3}>
-            <Field label="Data de emissão" required>
-              <CampoData
-                value={novoPcmso.dataEmissao}
-                onChange={(_, d) => setNovoPcmso({ ...novoPcmso, dataEmissao: d.value })}
-              />
-            </Field>
-          </div>
-          <div className={estilos.col3}>
-            <Field label="Validade">
-              <CampoData
-                value={novoPcmso.validade ?? ''}
-                onChange={(_, d) => setNovoPcmso({ ...novoPcmso, validade: d.value })}
-              />
-            </Field>
-          </div>
-          <div className={estilos.col5}>
-            <Field label="Médico responsável">
-              <Input
-                value={novoPcmso.medicoResponsavelNome ?? ''}
-                onChange={(_, d) => setNovoPcmso({ ...novoPcmso, medicoResponsavelNome: d.value })}
-              />
-            </Field>
-          </div>
-        </div>
-        <div className={estilos.footer}>
-          <Text className={estilos.footerInfo}>
-            Os demais campos (CRM, funções/riscos/exames contemplados, periodicidades, unidades
-            abrangidas, status e Plano de Ação) são preenchidos na tela de detalhe, após criar o registro.
-          </Text>
-          <Button appearance="primary" icon={<Add24Regular />} onClick={criar} disabled={carregando}>
-            Adicionar PCMSO
-          </Button>
-        </div>
-      </div>
-
-      <div className={estilos.card}>
-        <div className={estilos.toolbar}>
-          <Text weight="semibold">PCMSOs cadastrados</Text>
-        </div>
-
-        {carregandoLista ? (
-          <ListaCarregando />
-        ) : pcmsos.length === 0 ? (
-          <EstadoVazio mensagem="Nenhum PCMSO cadastrado ainda." />
-        ) : (
-        <Table noNativeElements>
-          <TableHeader>
-            <TableRow>
-              <TableHeaderCell>Nome</TableHeaderCell>
-              <TableHeaderCell>Obra</TableHeaderCell>
-              <TableHeaderCell>Emissão</TableHeaderCell>
-              <TableHeaderCell>Validade</TableHeaderCell>
-              <TableHeaderCell>Status</TableHeaderCell>
-              <TableHeaderCell></TableHeaderCell>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {pcmsos.map((pcmso) => (
-              <TableRow
-                key={pcmso.id}
-                onClick={() => navigate(`/saude-ocupacional/pcmso/${pcmso.id}`)}
-                style={{ cursor: 'pointer' }}
-              >
-                <TableCell>{pcmso.nome}</TableCell>
-                <TableCell>{nomeObra(pcmso.obraId)}</TableCell>
-                <TableCell>{pcmso.dataEmissao?.slice(0, 10)}</TableCell>
-                <TableCell>
-                  {pcmso.validade?.slice(0, 10) ?? '—'}
-                  <BadgeVencimento dataValidade={pcmso.validade} />
-                </TableCell>
-                <TableCell>
-                  <Badge
-                    appearance="tint"
-                    color={pcmso.status === StatusPcmsoDocumento.Vigente ? 'success' : 'informative'}
-                  >
-                    {statusPcmsoDocumentoLabel[pcmso.status]}
-                  </Badge>
-                </TableCell>
-                <TableCell>
-                  <div style={{ display: 'flex', gap: 4 }}>
-                    <Button
-                      appearance="subtle"
-                      icon={<ChevronRight24Regular />}
-                      onClick={() => navigate(`/saude-ocupacional/pcmso/${pcmso.id}`)}
-                      aria-label="Ver PCMSO"
-                    />
-                    <Button
-                      appearance="subtle"
-                      icon={<Delete24Regular />}
-                      onClick={(evento) => excluir(pcmso.id, evento)}
-                      aria-label="Excluir"
-                    />
-                  </div>
-                </TableCell>
-              </TableRow>
-            ))}
-          </TableBody>
-        </Table>
-        )}
-      </div>
-    </div>
+    </>
   );
 }
