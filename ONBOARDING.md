@@ -76,7 +76,8 @@ Documentos-fonte — **fonte da verdade, seguir à risca**:
   de SST. **Toda entidade/enum novo precisa citar a seção/linha exata**, ou ser sinalizado
   explicitamente como decisão não-literal.
 - `PROJECT RULES.md` — arquitetura fixa (ver §2).
-- `DESING SYSTEM AAHBRANT.md` — tokens visuais (ver §2, item 6 — conflito de cor não resolvido).
+- `docs/design-system.md` — tokens visuais e inventário de `src/ui/` (ver §6 — a discrepância de
+  cor real é registrada ali como decisão consciente, não conflito não resolvido).
 - `docs/ERD.md`, `docs/RBAC-Matrix.md` — rascunhos técnicos (RBAC ainda **não validado** pela
   Diretoria/QSMS; matriz Perfil×Permissão continua deliberadamente vazia; `ERD.md` foi atualizado
   em 28/08 mas **ainda não reflete a reconciliação desta sessão** — revisar de novo).
@@ -107,11 +108,14 @@ Documentos-fonte — **fonte da verdade, seguir à risca**:
    documentadas: reformulação de EPI de 27/08 e foto de DDS de 24/08, verificadas só por
    log/teste automatizado; e agora também a reconciliação de 28/08, sem `dotnet build` disponível.)
 6. **Organização (AAHBRANT)**: responder sempre em português (Brasil), direto e prático;
-   identidade visual vinho/marsala — **conflito ainda aberto**: regra da organização diz
-   `#670000`, mas `DESING SYSTEM AAHBRANT.md` documenta `#7B1E2B` e é esse valor que está de fato
-   implementado em `theme.ts`/`manifest.json`/`DdsPdfService.cs`. Não alterar cor sem o usuário
-   decidir qual é a oficial. Nunca inventar dado — sinalizar incerteza; explicar antes de alterar
-   arquivo e evitar sobrescrever sem confirmação; documentos institucionais em linguagem formal.
+   identidade visual vinho/marsala `#670000` — já é o que está de fato implementado como
+   `colorPrimary` no app (o levantamento da spec de sistema de design, 2026-09-07, confirmou isso;
+   só restava um hex solto residual `#7B1E2B` em `TrabalhadorDetalhePage.tsx:218`, não um valor
+   sistêmico). A discrepância de cor real e ainda registrada não é `#670000` vs. outro vinho — é o
+   verde usado como cor de navegação/chrome, mantido deliberadamente contra a regra de marca da
+   organização (decisão do usuário, ver §6 e `docs/design-system.md` §1). Nunca inventar dado —
+   sinalizar incerteza; explicar antes de alterar arquivo e evitar sobrescrever sem confirmação;
+   documentos institucionais em linguagem formal.
 7. **Não resetar/reseedar o banco de dev local sem pedir permissão explícita** — mesmo para
    verificação visual rotineira.
 8. **Provisionamento de recursos Azure reais** só ocorre com confirmação explícita do usuário,
@@ -204,6 +208,22 @@ navegador" = clicado de verdade na UI (não só HTTP/Swagger), salvo nota em con
   (`YYYY-MM-DD`). `<input type="time">` devolve `"HH:mm"` mas `TimeSpan?` no backend exige
   `"HH:mm:ss"` — completar com `:00`.
 - Múltiplos worktrees/dev servers ao mesmo tempo colidem de porta.
+- **Sistema de design (`src/ui/`)** — ver `docs/design-system.md` para o inventário completo e a
+  spec `docs/superpowers/specs/2026-09-07-sistema-de-design-design.md` para o histórico da
+  decisão. Regra de dependência (spec §2.2): `pages/` importa só de `@ui`, `lib/` e React Router
+  — **nunca** `@fluentui/react-components` direto, nem `theme`/`designTokens` cru. Quem busca
+  dado é a página; componentes de `ui/` recebem tudo por props. Exceções declaradas: um conjunto
+  fixo de primitivos Fluent sem wrapper (`Avatar`, `Button`, `Checkbox`, `Field`, `Input`,
+  `Select`, `Spinner`, `Text`, `Textarea`, `Tooltip`, `Radio`, `RadioGroup`) e `Table`/`TableBody`/
+  `TableCell`/`TableHeader`/`TableHeaderCell`/`TableRow` crus só para matrizes que não são lista de
+  dados — ambos reexportados por `ui/index.ts`, importar de `@ui` mesmo assim.
+- **Gate de lint da regra acima**: `.oxlintrc.json`
+  (`src/AAHBRANT.SST.TeamsApp/.oxlintrc.json`) tem `no-restricted-imports` proibindo
+  `@fluentui/react-components` e `../theme` em `src/pages/**`. **Nível atual confirmado no
+  código: `"warn"`, não `"error"`** — a Task 23 do plano da Onda 3 (que sobe para `error`) ainda
+  não foi mesclada em `master` (`git log origin/master -- .oxlintrc.json` mostra só o commit que
+  introduziu a regra em `warn`). Não presumir que o lint já bloqueia o build até essa task ser
+  confirmada mesclada.
 
 ## 6. Gaps/pendências conhecidos
 
@@ -217,8 +237,14 @@ navegador" = clicado de verdade na UI (não só HTTP/Swagger), salvo nota em con
   iniciada.
 - **Biometria Futronic real** — SDK ainda simulado (`SimuladoFingerprintReader`/`Matcher`).
 - **Motor de assinatura não integrado a** Treinamento/Inspeções/APR.
-- **Discrepância de cor de marca**: `#670000` (regra da organização) vs. `#7B1E2B` (implementado
-  de fato) — não resolvida.
+- **Discrepância de cor — verde de chrome vs. regra de marca da organização**: `#670000` já é o
+  vinho implementado de fato como `colorPrimary` (o antigo item aqui, `#670000` vs. `#7B1E2B`,
+  estava desatualizado — ver spec de sistema de design, seção "Correções ao levantamento
+  inicial"). A discrepância que **de fato existe e permanece** é outra: a navegação/chrome do app
+  (rail, sub-aba selecionada, botão Administração) usa verde, não vinho/preto/branco/bege como a
+  regra de identidade visual da organização pede. Isso é uma **decisão consciente do usuário**,
+  registrada explicitamente na spec (`docs/superpowers/specs/2026-09-07-sistema-de-design-design.md`,
+  seção "Registro explícito") — não um esquecimento a corrigir. Ver `docs/design-system.md` §1.
 - **Ativos (Extintores & Equipamentos)**: sem registro de verificação recente — checar antes de
   assumir pronto.
 - **`Calendars.ReadWrite` de aplicativo** (permissão Graph) dá acesso a qualquer caixa do tenant —
