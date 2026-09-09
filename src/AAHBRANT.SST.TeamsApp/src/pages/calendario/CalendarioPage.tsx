@@ -87,7 +87,7 @@ const useStyles = makeStyles({
     height: '20px',
     borderRadius: '999px',
     backgroundColor: designTokens.colorPrimary,
-    color: '#FFFFFF',
+    color: tokens.colorNeutralForegroundStaticInverted,
   },
   chipEvento: {
     fontSize: '11px',
@@ -97,7 +97,7 @@ const useStyles = makeStyles({
     whiteSpace: 'nowrap',
     overflow: 'hidden',
     textOverflow: 'ellipsis',
-    color: '#FFFFFF',
+    color: tokens.colorNeutralForegroundStaticInverted,
   },
   maisEventos: {
     fontSize: '11px',
