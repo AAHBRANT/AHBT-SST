@@ -1,5 +1,5 @@
 import { makeStyles, shorthands, tokens } from '@fluentui/react-components';
-import { designTokens } from '../theme';
+import { designTokens } from '@ui';
 
 export const usePageStyles = makeStyles({
   card: {
@@ -62,9 +62,6 @@ export const usePageStyles = makeStyles({
       gridTemplateColumns: 'repeat(1, 1fr)',
     },
   },
-  col12: { gridColumn: 'span 12' },
-  col6: { gridColumn: 'span 6' },
-  col5: { gridColumn: 'span 5' },
   col4: { gridColumn: 'span 4' },
   col3: { gridColumn: 'span 3' },
   col2: { gridColumn: 'span 2' },
