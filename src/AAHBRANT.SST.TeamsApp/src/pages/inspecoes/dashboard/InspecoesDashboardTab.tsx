@@ -1,5 +1,17 @@
 import { useEffect, useMemo, useState } from 'react';
-import { Field, Select, Text } from '@fluentui/react-components';
+import {
+  Card,
+  EstadoVazio,
+  Field,
+  FeedbackInline,
+  KpiCard,
+  RankingBarChart,
+  Select,
+  StatusDonutChart,
+  usePaletaGraficos,
+  type FatiaDonut,
+  type ItemRanking,
+} from '@ui';
 import { ClipboardTaskListLtr24Regular, ArrowSync24Regular, CheckmarkCircle24Regular, Warning24Regular } from '@fluentui/react-icons';
 import {
   api,
@@ -9,18 +21,13 @@ import {
   type Inspecao,
   type Obra,
 } from '../../../lib/api';
-import { CardGrid } from '../../../layout/AppShell';
-import { designTokens } from '../../../theme';
-import { usePageStyles } from '../../pageStyles';
-import { useDashboardStyles } from '../../../components/dashboard/dashboardStyles';
-import { KpiCard } from '../../../components/dashboard/KpiCard';
-import { StatusDonutChart, type FatiaDonut } from '../../../components/dashboard/charts/StatusDonutChart';
-import { RankingBarChart, type ItemRanking } from '../../../components/dashboard/charts/RankingBarChart';
 import { InspecoesNaoConformesPanel } from './InspecoesNaoConformesPanel';
 
+// Onda 2 Task 10 (camada ui/): dashboard de Inspeções — KpiCard + gráficos com cores lidas de
+// usePaletaGraficos (paleta.ts, spec §1.6), grade CSS Grid simples (spec §4.4). A lógica de
+// agregação no cliente não muda nesta frente.
 export function InspecoesDashboardTab() {
-  const estilosPagina = usePageStyles();
-  const estilos = useDashboardStyles();
+  const paleta = usePaletaGraficos();
 
   const [obras, setObras] = useState<Obra[]>([]);
   const [inspecoes, setInspecoes] = useState<Inspecao[]>([]);
@@ -62,8 +69,8 @@ export function InspecoesDashboardTab() {
   const itensNaoConformesTotal = inspecoesFiltradas.reduce((soma, i) => soma + i.itensNaoConformes, 0);
 
   const statusDados: FatiaDonut[] = [
-    { rotulo: 'Em andamento', valor: emAndamento, cor: designTokens.colorInfo },
-    { rotulo: 'Concluída', valor: concluidas, cor: designTokens.colorSuccess },
+    { rotulo: 'Em andamento', valor: emAndamento, cor: paleta.info },
+    { rotulo: 'Concluída', valor: concluidas, cor: paleta.ok },
   ];
 
   const tipoDados: ItemRanking[] = useMemo(() => {
@@ -75,10 +82,10 @@ export function InspecoesDashboardTab() {
       .map(([tipo, valor]) => ({
         rotulo: tipoInspecaoLabel[tipo] ?? String(tipo),
         valor,
-        cor: designTokens.colorInfo,
+        cor: paleta.info,
       }))
       .sort((a, b) => b.valor - a.valor);
-  }, [inspecoesFiltradas]);
+  }, [inspecoesFiltradas, paleta.info]);
 
   const obrasNaoConformesDados: ItemRanking[] = useMemo(() => {
     const contagem = new Map<string, number>();
@@ -88,14 +95,14 @@ export function InspecoesDashboardTab() {
       }
     }
     return [...contagem.entries()]
-      .map(([rotulo, valor]) => ({ rotulo, valor, cor: designTokens.colorAlert }))
+      .map(([rotulo, valor]) => ({ rotulo, valor, cor: paleta.alerta }))
       .sort((a, b) => b.valor - a.valor)
       .slice(0, 5);
-  }, [inspecoesFiltradas]);
+  }, [inspecoesFiltradas, paleta.alerta]);
 
   return (
     <div>
-      <div className={estilos.filtros}>
+      <div style={{ display: 'flex', gap: 16, marginBottom: 16, flexWrap: 'wrap' }}>
         <Field label="Obra">
           <Select value={obraId} onChange={(_, data) => setObraId(data.value)}>
             <option value="">Todas as obras</option>
@@ -128,60 +135,39 @@ export function InspecoesDashboardTab() {
         </Field>
       </div>
 
-      {erro && <Text className={estilosPagina.erro}>{erro}</Text>}
+      {erro && (
+        <FeedbackInline tom="erro" aoFechar={() => setErro(null)}>
+          {erro}
+        </FeedbackInline>
+      )}
 
-      <div style={{ marginBottom: 16 }}>
-        <CardGrid>
-          <KpiCard
-            rotulo="Total de inspeções"
-            valor={inspecoesFiltradas.length}
-            cor={designTokens.colorPrimary}
-            icone={<ClipboardTaskListLtr24Regular />}
-          />
-          <KpiCard
-            rotulo="Em andamento"
-            valor={emAndamento}
-            cor={designTokens.colorInfo}
-            icone={<ArrowSync24Regular />}
-          />
-          <KpiCard
-            rotulo="Concluídas"
-            valor={concluidas}
-            cor={designTokens.colorSuccess}
-            icone={<CheckmarkCircle24Regular />}
-          />
-          <KpiCard
-            rotulo="Itens não conformes"
-            valor={itensNaoConformesTotal}
-            cor={designTokens.colorAlert}
-            icone={<Warning24Regular />}
-          />
-        </CardGrid>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(185px, 1fr))', gap: 16, marginBottom: 16 }}>
+        <KpiCard rotulo="Total de inspeções" valor={inspecoesFiltradas.length} tom="info" indice={0} icone={<ClipboardTaskListLtr24Regular />} />
+        <KpiCard rotulo="Em andamento" valor={emAndamento} tom="info" indice={1} icone={<ArrowSync24Regular />} />
+        <KpiCard rotulo="Concluídas" valor={concluidas} tom="ok" indice={2} icone={<CheckmarkCircle24Regular />} />
+        <KpiCard rotulo="Itens não conformes" valor={itensNaoConformesTotal} tom="alerta" indice={3} icone={<Warning24Regular />} />
       </div>
 
-      <div className={estilos.chartRow}>
-        <div className={estilos.chartCard}>
-          <Text className={estilos.chartTitulo}>Status das inspeções</Text>
-          <div className={estilos.chartSubtitulo}>Execuções em andamento vs. concluídas</div>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(340px, 1fr))', gap: 16, marginBottom: 16 }}>
+        <Card titulo="Status das inspeções" subtitulo="Execuções em andamento vs. concluídas">
           <StatusDonutChart dados={statusDados} legendaCentral="inspeções" />
-        </div>
-        <div className={estilos.chartCard}>
-          <Text className={estilos.chartTitulo}>Inspeções por tipo</Text>
-          <div className={estilos.chartSubtitulo}>Distribuição das execuções pelo tipo de inspeção</div>
+        </Card>
+        <Card titulo="Inspeções por tipo" subtitulo="Distribuição das execuções pelo tipo de inspeção">
           <RankingBarChart dados={tipoDados} />
-        </div>
-        <div className={estilos.chartCard}>
-          <Text className={estilos.chartTitulo}>Obras com mais itens não conformes</Text>
-          <div className={estilos.chartSubtitulo}>Top 5 obras por total de itens não conformes encontrados</div>
+        </Card>
+        <Card titulo="Obras com mais itens não conformes" subtitulo="Top 5 obras por total de itens não conformes encontrados">
           <RankingBarChart dados={obrasNaoConformesDados} />
-        </div>
+        </Card>
       </div>
 
       <InspecoesNaoConformesPanel inspecoes={inspecoesFiltradas} />
 
       {!carregando && inspecoesFiltradas.length === 0 && (
-        <div className={estilosPagina.card} style={{ marginTop: 16 }}>
-          <Text>Nenhuma inspeção encontrada para os filtros selecionados.</Text>
+        <div style={{ marginTop: 16 }}>
+          <EstadoVazio
+            titulo="Nenhuma inspeção encontrada"
+            descricao="Ajuste os filtros de obra, tipo ou status para ver resultados."
+          />
         </div>
       )}
     </div>
