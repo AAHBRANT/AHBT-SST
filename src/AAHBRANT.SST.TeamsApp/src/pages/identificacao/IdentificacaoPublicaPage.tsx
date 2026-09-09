@@ -95,7 +95,13 @@ export function IdentificacaoPublicaPage() {
   }, [codigoOuUid, recurso]);
 
   return (
-    <div style={raiz}>
+    // data-theme="light" no wrapper (não só no FluentProvider do App.tsx): os tokens --sst-* que
+    // Card/StatusChip/Legenda consomem (spec §1.6) são custom properties de index.css escopadas por
+    // [data-theme] em QUALQUER elemento, não só :root — sem isso, um dispositivo que já usou o app
+    // interno em modo escuro (ThemeModeContext, localStorage global) escurecia junto o crachá público,
+    // ficando ilegível (achado real ao migrar para Card, item 3 do Guia — corrigido aqui, na raiz da
+    // página, e não dentro de Card, porque só a página "Público" precisa deste forçamento).
+    <div style={raiz} data-theme="light">
       <div style={{ width: '100%', maxWidth: 480 }}>
         {carregando && (
           <Card>
