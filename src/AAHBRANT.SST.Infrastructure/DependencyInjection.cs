@@ -14,6 +14,7 @@ using AAHBRANT.SST.Infrastructure.Auditoria;
 using AAHBRANT.SST.Infrastructure.Documentos;
 using AAHBRANT.SST.Infrastructure.Integracao;
 using AAHBRANT.SST.Infrastructure.Integracao.Bot;
+using AAHBRANT.SST.Infrastructure.Integracao.Grh;
 using AAHBRANT.SST.Infrastructure.Integracao.Teams;
 using AAHBRANT.SST.Infrastructure.Persistencia;
 using AAHBRANT.SST.Infrastructure.Seguranca;
@@ -43,6 +44,7 @@ public static class DependencyInjection
         // SstDbContext depende disso, incluindo o Worker (sem HttpContext/usuário logado; ver
         // CurrentUserService sobre por que o padrão "acesso global" é o correto lá).
         services.AddScoped<ICurrentUserService, CurrentUserService>();
+        services.AddScoped<ICpfHashService, CpfHashService>();
 
         // Chaves de criptografia/hash do CPF (LGPD) — carregadas uma única vez aqui porque o
         // ValueConverter e a IEntityTypeConfiguration são instanciados por reflection pelo EF Core,
@@ -126,6 +128,13 @@ public static class DependencyInjection
         // Feed acima, faltando apenas a permissão de aplicativo Calendars.ReadWrite ser provisionada.
         services.AddScoped<ICalendarioTeamsService, GraphCalendarioTeamsService>();
 
+        // Integração G-RH — carga inicial do cadastro de colaboradores (contrato acordado em
+        // 2026-09-09, ver ColaboradorGrhClient). ClientSecret fica vazio até o segredo do App
+        // Registration ser gerado e provisionado; até lá, ImportarColaboradoresGrhCommand lança
+        // exceção graciosamente (mesmo padrão de GraphActivityNotificacaoTeamsService).
+        services.Configure<GrhOptions>(configuration.GetSection("Grh"));
+        services.AddScoped<IColaboradorGrhClient, ColaboradorGrhClient>();
+
         // Fila de retry para falhas de envio (PROJECT RULES.md §4). Usa Azure Service Bus quando
         // "ServiceBus:ConnectionString" estiver preenchida (recurso provisionado manualmente no
         // Azure); caso contrário, cai para um fallback local em memória — não bloqueia a aplicação
@@ -139,6 +148,11 @@ public static class DependencyInjection
             services.AddHostedService<ServiceBusNotificacaoTeamsProcessor>();
             services.AddSingleton<IFilaCalendarioTeams, ServiceBusFilaCalendarioTeams>();
             services.AddHostedService<ServiceBusCalendarioTeamsProcessor>();
+
+            // Integração G-RH (2026-09-09) — usa o mesmo namespace/connection string do Service Bus
+            // acima, só com filas dedicadas ("colaborador-grh"/"acidente-grh"; ver ServiceBusOptions).
+            services.AddSingleton<IPublicadorAcidenteGrh, ServiceBusPublicadorAcidenteGrh>();
+            services.AddHostedService<ServiceBusColaboradorGrhProcessor>();
         }
         else
         {
@@ -148,6 +162,11 @@ public static class DependencyInjection
             services.AddSingleton<InMemoryFilaCalendarioTeams>();
             services.AddSingleton<IFilaCalendarioTeams>(sp => sp.GetRequiredService<InMemoryFilaCalendarioTeams>());
             services.AddHostedService<InMemoryCalendarioTeamsProcessor>();
+
+            // Sem Service Bus real, não há fila "colaborador-grh" pra consumir (nenhum hosted service
+            // registrado) e a publicação de Acidente vira log (ver NoOpPublicadorAcidenteGrh) — evita
+            // travar dev local/CI, e evita fingir uma entrega que não aconteceu.
+            services.AddSingleton<IPublicadorAcidenteGrh, NoOpPublicadorAcidenteGrh>();
         }
 
         return services;

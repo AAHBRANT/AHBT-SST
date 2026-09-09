@@ -56,6 +56,14 @@ public class TrabalhadoresController : ControllerBase
         return CreatedAtAction(nameof(ObterPorId), new { id }, new { id });
     }
 
+    // Carga inicial única do cadastro vindo do G-RH (Integração G-RH) — chamado manualmente uma vez
+    // pela tela de Administração depois que "Grh:ClientSecret" estiver configurado. A atualização
+    // contínua depois disso é automática, via evento do Service Bus.
+    [Authorize(Policy = "trabalhador:criar")]
+    [HttpPost("importar-grh")]
+    public async Task<IActionResult> ImportarDoGrh(CancellationToken ct)
+        => Ok(await _mediator.Send(new ImportarColaboradoresGrhCommand(), ct));
+
     [Authorize(Policy = "trabalhador:editar")]
     [HttpPut("{id:guid}")]
     public async Task<IActionResult> Atualizar(Guid id, AtualizarTrabalhadorCommand command, CancellationToken ct)

@@ -113,7 +113,7 @@ public class ResolverTrabalhadorPublicoQueryHandler : IRequestHandler<ResolverTr
         return new TrabalhadorPublicoDto
         {
             Nome = trabalhador.Nome,
-            Matricula = trabalhador.Matricula,
+            Matricula = trabalhador.Matricula ?? string.Empty,
             FuncaoNome = funcaoNome ?? string.Empty,
             ObraNome = obraNome ?? string.Empty,
             TemFoto = trabalhador.TemFoto,

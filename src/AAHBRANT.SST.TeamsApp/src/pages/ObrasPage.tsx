@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Add24Regular, Delete24Regular } from '@fluentui/react-icons';
+import { Add24Regular, Delete24Regular, Edit24Regular } from '@fluentui/react-icons';
 import { api, statusObraLabel, StatusObra, type NovaObra, type Obra } from '../lib/api';
 import { SeletorFotoCamera } from '../components/SeletorFotoCamera';
 import { useSucessoToast } from '../hooks/useSucessoToast';
@@ -48,6 +48,9 @@ export function ObrasPage() {
   const [carregando, setCarregando] = useState(false);
   const [carregandoLista, setCarregandoLista] = useState(true);
   const [logoUrls, setLogoUrls] = useState<Record<string, string>>({});
+  const [obraEditando, setObraEditando] = useState<Obra | null>(null);
+  const [erroEdicao, setErroEdicao] = useState<string | null>(null);
+  const [salvandoEdicao, setSalvandoEdicao] = useState(false);
   const { confirmar, dialogElement } = useConfirmar();
   const sucessoToast = useSucessoToast();
 
@@ -147,6 +150,43 @@ export function ObrasPage() {
     }
   }
 
+  function abrirEdicao(obra: Obra) {
+    setObraEditando(obra);
+    setErroEdicao(null);
+  }
+
+  function fecharEdicao() {
+    setObraEditando(null);
+    setErroEdicao(null);
+  }
+
+  async function salvarEdicao() {
+    if (!obraEditando) return;
+    try {
+      setSalvandoEdicao(true);
+      setErroEdicao(null);
+      await api.obras.atualizar(obraEditando.id, {
+        codigo: obraEditando.codigo,
+        nome: obraEditando.nome,
+        cliente: obraEditando.cliente,
+        status: obraEditando.status,
+        dataInicio: obraEditando.dataInicio,
+        dataPrevisaoTermino: obraEditando.dataPrevisaoTermino,
+        dataTerminoReal: obraEditando.dataTerminoReal,
+        endereco: obraEditando.endereco,
+        cidade: obraEditando.cidade,
+        uf: obraEditando.uf,
+      });
+      await carregar();
+      sucessoToast('Obra atualizada com sucesso.');
+      fecharEdicao();
+    } catch (e) {
+      setErroEdicao(e instanceof Error ? e.message : 'Falha ao atualizar obra.');
+    } finally {
+      setSalvandoEdicao(false);
+    }
+  }
+
   async function excluir(id: string) {
     if (!(await confirmar('Excluir esta obra? Essa ação não pode ser desfeita.'))) return;
     try {
@@ -218,15 +258,26 @@ export function ObrasPage() {
             acao: { rotulo: 'Adicionar obra', aoClicar: () => setPainelAberto(true) },
           }}
           acoesLinha={(o) => (
-            <Button
-              appearance="subtle"
-              icon={<Delete24Regular />}
-              onClick={(evento) => {
-                evento.stopPropagation();
-                excluir(o.id);
-              }}
-              aria-label="Excluir"
-            />
+            <>
+              <Button
+                appearance="subtle"
+                icon={<Edit24Regular />}
+                onClick={(evento) => {
+                  evento.stopPropagation();
+                  abrirEdicao(o);
+                }}
+                aria-label="Editar"
+              />
+              <Button
+                appearance="subtle"
+                icon={<Delete24Regular />}
+                onClick={(evento) => {
+                  evento.stopPropagation();
+                  excluir(o.id);
+                }}
+                aria-label="Excluir"
+              />
+            </>
           )}
         />
       </Card>
@@ -345,6 +396,122 @@ export function ObrasPage() {
             </Campo>
           </FormGrid>
         </FormSection>
+      </PainelLateral>
+
+      <PainelLateral
+        aberto={obraEditando !== null}
+        aoFechar={fecharEdicao}
+        titulo="Editar obra"
+        largura="lg"
+        rodape={
+          <FormRodape>
+            <Button appearance="secondary" onClick={fecharEdicao}>
+              Cancelar
+            </Button>
+            <Button appearance="primary" onClick={salvarEdicao} disabled={salvandoEdicao}>
+              Salvar
+            </Button>
+          </FormRodape>
+        }
+      >
+        {erroEdicao && (
+          <FeedbackInline tom="erro" aoFechar={() => setErroEdicao(null)}>
+            {erroEdicao}
+          </FeedbackInline>
+        )}
+
+        {obraEditando && (
+          <>
+            <FormSection titulo="Dados Gerais da Obra" numero={1} primeira>
+              <FormGrid>
+                <Campo span={2}>
+                  <Field label="Código">
+                    <Input
+                      value={obraEditando.codigo}
+                      onChange={(_, d) => setObraEditando({ ...obraEditando, codigo: d.value })}
+                    />
+                  </Field>
+                </Campo>
+                <Campo span={3}>
+                  <Field label="Nome">
+                    <Input
+                      value={obraEditando.nome}
+                      onChange={(_, d) => setObraEditando({ ...obraEditando, nome: d.value })}
+                    />
+                  </Field>
+                </Campo>
+                <Campo span={2}>
+                  <Field label="Cliente">
+                    <Input
+                      value={obraEditando.cliente ?? ''}
+                      onChange={(_, d) => setObraEditando({ ...obraEditando, cliente: d.value })}
+                    />
+                  </Field>
+                </Campo>
+                <Campo span={2}>
+                  <Field label="Status">
+                    <Select
+                      value={obraEditando.status}
+                      onChange={(_, d) => setObraEditando({ ...obraEditando, status: Number(d.value) })}
+                    >
+                      {Object.entries(statusObraLabel).map(([valor, rotulo]) => (
+                        <option key={valor} value={valor}>
+                          {rotulo}
+                        </option>
+                      ))}
+                    </Select>
+                  </Field>
+                </Campo>
+                <Campo span={2}>
+                  <Field label="Data de início">
+                    <CampoData
+                      value={obraEditando.dataInicio ?? ''}
+                      onChange={(_, d) => setObraEditando({ ...obraEditando, dataInicio: d.value })}
+                    />
+                  </Field>
+                </Campo>
+                <Campo span={3}>
+                  <Field label="Previsão de término">
+                    <CampoData
+                      value={obraEditando.dataPrevisaoTermino ?? ''}
+                      onChange={(_, d) => setObraEditando({ ...obraEditando, dataPrevisaoTermino: d.value })}
+                    />
+                  </Field>
+                </Campo>
+              </FormGrid>
+            </FormSection>
+
+            <FormSection titulo="Endereço" numero={2}>
+              <FormGrid>
+                <Campo span={4}>
+                  <Field label="Endereço">
+                    <Input
+                      value={obraEditando.endereco ?? ''}
+                      onChange={(_, d) => setObraEditando({ ...obraEditando, endereco: d.value })}
+                    />
+                  </Field>
+                </Campo>
+                <Campo span={3}>
+                  <Field label="Cidade">
+                    <Input
+                      value={obraEditando.cidade ?? ''}
+                      onChange={(_, d) => setObraEditando({ ...obraEditando, cidade: d.value })}
+                    />
+                  </Field>
+                </Campo>
+                <Campo span={2}>
+                  <Field label="UF">
+                    <Input
+                      value={obraEditando.uf ?? ''}
+                      maxLength={2}
+                      onChange={(_, d) => setObraEditando({ ...obraEditando, uf: d.value.toUpperCase() })}
+                    />
+                  </Field>
+                </Campo>
+              </FormGrid>
+            </FormSection>
+          </>
+        )}
       </PainelLateral>
     </div>
   );

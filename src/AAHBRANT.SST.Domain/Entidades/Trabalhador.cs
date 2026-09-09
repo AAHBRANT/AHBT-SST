@@ -18,7 +18,12 @@ public class Trabalhador : AuditableEntity
     public Funcao? Funcao { get; set; }
 
     public string Nome { get; set; } = string.Empty;
-    public string Matricula { get; set; } = string.Empty;
+
+    // Opcional desde a Integração G-RH (2026-09-09) — o G-RH não rastreia matrícula (vem sempre nula
+    // na carga/nos eventos de colaborador), diferente da criação manual pela tela do SST, onde
+    // continua obrigatória (ver CriarTrabalhadorCommandValidator). O índice único
+    // (ObraId, Matricula) continua funcionando: SQL Server trata cada NULL como distinto.
+    public string? Matricula { get; set; }
     public string? Rg { get; set; }
 
     // LGPD: valor armazenado é sempre o CPF criptografado (AES-256-GCM via CpfCriptografiaConversor,
@@ -33,6 +38,27 @@ public class Trabalhador : AuditableEntity
     public TipoVinculo Vinculo { get; set; } = TipoVinculo.Clt;
     public DateTime DataAdmissao { get; set; }
     public DateTime? DataDemissao { get; set; }
+
+    // Campos sincronizados do G-RH (Integração G-RH, 2026-09-09) — G-RH é a fonte única de cadastro
+    // para estes dados; o SST só reflete o que chega via SincronizarColaboradorGrhCommand, nunca
+    // edita manualmente pela própria tela (ver disclosure no command). Pis não usa o mesmo
+    // ValueConverter de criptografia do Cpf — simplificação deliberada desta primeira versão,
+    // documentada como pendência LGPD a avaliar (mesma sensibilidade de dado pessoal do CPF).
+    public string? Pis { get; set; }
+    public string? Ctps { get; set; }
+    public DateTime? DataNascimento { get; set; }
+    public string? NomeMae { get; set; }
+    public string? Endereco { get; set; }
+    public string? Municipio { get; set; }
+    public string? Uf { get; set; }
+    public string? Cep { get; set; }
+    public decimal? Salario { get; set; }
+    public SituacaoTrabalhador Situacao { get; set; } = SituacaoTrabalhador.Ativo;
+    public DateTime? DataFimExperiencia1 { get; set; }
+    public DateTime? DataFimExperiencia2 { get; set; }
+    public string? TamanhoBlusaEpi { get; set; }
+    public string? TamanhoCalcaEpi { get; set; }
+    public string? TamanhoCalcadoEpi { get; set; }
 
     // Ficha de EPI reformulada — texto livre (o modelo oficial não define uma lista fechada de
     // turnos, então nenhuma lista fixa é assumida).

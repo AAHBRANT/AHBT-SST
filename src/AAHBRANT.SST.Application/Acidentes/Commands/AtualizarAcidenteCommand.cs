@@ -1,3 +1,4 @@
+using AAHBRANT.SST.Application.Acidentes;
 using AAHBRANT.SST.Application.Common.Interfaces;
 using AAHBRANT.SST.Domain.Entidades;
 using AAHBRANT.SST.Domain.Enums;
@@ -52,8 +53,13 @@ public class AtualizarAcidenteCommandValidator : AbstractValidator<AtualizarAcid
 public class AtualizarAcidenteCommandHandler : IRequestHandler<AtualizarAcidenteCommand>
 {
     private readonly IAppDbContext _db;
+    private readonly IPublicadorAcidenteGrh _publicadorGrh;
 
-    public AtualizarAcidenteCommandHandler(IAppDbContext db) => _db = db;
+    public AtualizarAcidenteCommandHandler(IAppDbContext db, IPublicadorAcidenteGrh publicadorGrh)
+    {
+        _db = db;
+        _publicadorGrh = publicadorGrh;
+    }
 
     public async Task Handle(AtualizarAcidenteCommand request, CancellationToken ct)
     {
@@ -91,5 +97,6 @@ public class AtualizarAcidenteCommandHandler : IRequestHandler<AtualizarAcidente
         acidente.DiasDebitados = TabelaDiasDebitados.Calcular(request.Gravidade, request.DiasDebitadosInformados);
 
         await _db.SaveChangesAsync(ct);
+        await _publicadorGrh.PublicarAsync(await AcidenteGrhEventoFactory.CriarAsync(_db, acidente, ct), ct);
     }
 }
