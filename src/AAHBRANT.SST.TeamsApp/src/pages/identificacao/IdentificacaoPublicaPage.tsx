@@ -230,6 +230,26 @@ export function IdentificacaoPublicaPage() {
                 })
               )}
             </div>
+
+            <div style={{ marginTop: 16 }}>
+              <Text weight="semibold">Histórico de DDS</Text>
+              {recurso.historicoDds.length === 0 ? (
+                <Legenda>Nenhuma participação em DDS registrada.</Legenda>
+              ) : (
+                recurso.historicoDds.map((d, indice) => (
+                  <div key={`${d.data}-${indice}`} style={linhaItem}>
+                    <div>
+                      <Text weight="semibold" size={200} style={{ display: 'block' }}>
+                        {d.tema ?? 'DDS do dia'}
+                      </Text>
+                      <Legenda>
+                        {d.data.slice(0, 10)} · {d.obraNome}
+                      </Legenda>
+                    </div>
+                  </div>
+                ))
+              )}
+            </div>
           </Card>
         )}
       </div>

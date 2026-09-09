@@ -18,8 +18,13 @@ public class TrabalhadorPublicoDto
     public string StatusAptidao { get; set; } = string.Empty;
     public List<EpiAtivoPublicoDto> EpisAtivos { get; set; } = new();
     public List<TreinamentoPublicoDto> Treinamentos { get; set; } = new();
+    public List<DdsPublicoDto> HistoricoDds { get; set; } = new();
 }
 
 public record EpiAtivoPublicoDto(string CatalogoEpiNome, DateTime? DataValidade);
 
 public record TreinamentoPublicoDto(string CursoNome, DateTime DataValidade);
+
+// Só Data/Obra/Tema — nunca a foto ou o ScoreConfianca da biometria do participante (evidência de
+// presença é dado sensível demais pra tela sem login, mesmo cuidado já tomado com CPF/assinaturas).
+public record DdsPublicoDto(DateTime Data, string ObraNome, string? Tema);
