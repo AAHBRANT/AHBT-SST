@@ -32,6 +32,18 @@
       "port": 5275
     },
     {
+      "name": "sst-api-task15",
+      "runtimeExecutable": "dotnet",
+      "runtimeArgs": ["run", "--project", "src/AAHBRANT.SST.Api/AAHBRANT.SST.Api.csproj", "--urls", "http://localhost:5215"],
+      "port": 5215
+    },
+    {
+      "name": "sst-web-task15",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": ["--prefix", "src/AAHBRANT.SST.TeamsApp", "run", "dev", "--", "--port", "5285"],
+      "port": 5285
+    },
+    {
       "name": "sst-api-task16",
       "runtimeExecutable": "dotnet",
       "runtimeArgs": ["run", "--project", "src/AAHBRANT.SST.Api/AAHBRANT.SST.Api.csproj", "--urls", "http://localhost:5216"],

@@ -14,20 +14,13 @@ export {
   Radio, RadioGroup,
 } from '@fluentui/react-components';
 
-// Exceção pontual (Onda 2 Task 13, spec §5.1): primitivos de tabela crus, só para grades que
-// genuinamente não são lista de dados — DataTable não serve (ver MatrizRiscoTab.tsx: heatmap
+// Exceção pontual (spec §5.1): primitivos de tabela crus, só para grades que genuinamente não são
+// lista de dados — DataTable não serve. Ex.: MatrizRiscoTab.tsx (Onda 2 Task 13) — heatmap
 // Probabilidade × Severidade onde cada célula é um <Select>, sem noção de "linha = item com colunas
-// fixas"). Continuam proibidos para qualquer caso de lista — esse é sempre DataTable.
-export {
-  Table, TableBody, TableCell, TableHeader, TableHeaderCell, TableRow,
-} from '@fluentui/react-components';
-
-// Table cru do Fluent, para as poucas grades genuínas que não são "lista + detalhe" e por isso não
-// cabem no contrato de `DataTable` (linha = item, `expansivel` = detalhe de UM item por vez) — ex.:
-// matriz módulo × escopo com bulk-toggle por coluna em `ControleAcessoTab.tsx` (Onda 2, Task 17),
-// onde a própria "linha" carrega controles interativos que colidiriam com o clique de
-// expandir/recolher de `DataTable`. Sem isso a página precisaria importar `@fluentui/react-components`
-// direto, violando §2.4. Não é wrapper — é o mesmo Table do Fluent, só reexportado por aqui.
+// fixas"; ControleAcessoTab.tsx (Onda 2 Task 17) — matriz módulo × escopo com bulk-toggle por
+// coluna, onde a própria "linha" carrega controles interativos que colidiriam com o clique de
+// expandir/recolher de `DataTable`. Continuam proibidos para qualquer caso de lista — esse é
+// sempre DataTable. Não é wrapper — é o mesmo Table do Fluent, só reexportado por aqui.
 export {
   Table, TableBody, TableCell, TableHeader, TableHeaderCell, TableRow,
 } from '@fluentui/react-components';

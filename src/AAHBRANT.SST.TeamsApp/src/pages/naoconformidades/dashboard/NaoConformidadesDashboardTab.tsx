@@ -1,5 +1,17 @@
 import { useEffect, useMemo, useState } from 'react';
-import { Field, Select, Text } from '@fluentui/react-components';
+import {
+  Card,
+  EstadoVazio,
+  Field,
+  FeedbackInline,
+  KpiCard,
+  RankingBarChart,
+  Select,
+  StatusDonutChart,
+  usePaletaGraficos,
+  type FatiaDonut,
+  type ItemRanking,
+} from '@ui';
 import { DocumentError24Regular, Warning24Regular, ArrowSync24Regular, Alert24Regular } from '@fluentui/react-icons';
 import {
   api,
@@ -10,20 +22,16 @@ import {
   type NaoConformidade,
   type Obra,
 } from '../../../lib/api';
-import { CardGrid } from '../../../layout/AppShell';
-import { designTokens } from '../../../theme';
-import { usePageStyles } from '../../pageStyles';
-import { useDashboardStyles } from '../../../components/dashboard/dashboardStyles';
-import { KpiCard } from '../../../components/dashboard/KpiCard';
-import { StatusDonutChart, type FatiaDonut } from '../../../components/dashboard/charts/StatusDonutChart';
-import { RankingBarChart, type ItemRanking } from '../../../components/dashboard/charts/RankingBarChart';
 import { NaoConformidadesCriticasPanel } from './NaoConformidadesCriticasPanel';
 
 const hojeISO = new Date().toISOString().slice(0, 10);
 
+// Onda 2 Task 15 (camada ui/): dashboard de Não Conformidades — mesmo padrão de AprDashboardTab.tsx
+// (Task 11)/PgrDashboardTab.tsx (Task 8): KpiCard (tom em vez de cor), gráficos com cor de
+// usePaletaGraficos() (spec §1.6) em vez de designTokens.colorX cru, grade CSS Grid simples (spec
+// §4.4, sem componente de grade próprio). A lógica de agregação no cliente não muda nesta frente.
 export function NaoConformidadesDashboardTab() {
-  const estilosPagina = usePageStyles();
-  const estilos = useDashboardStyles();
+  const paleta = usePaletaGraficos();
 
   const [obras, setObras] = useState<Obra[]>([]);
   const [atividades, setAtividades] = useState<Atividade[]>([]);
@@ -82,19 +90,19 @@ export function NaoConformidadesDashboardTab() {
   ).length;
 
   const statusDados: FatiaDonut[] = [
-    { rotulo: 'Aberta', valor: abertas, cor: designTokens.colorAlert },
+    { rotulo: 'Aberta', valor: abertas, cor: paleta.alerta },
     {
       rotulo: 'Em andamento',
       valor: naoConformidadesFiltradas.filter((nc) => nc.status === StatusNaoConformidade.EmAndamento).length,
-      cor: designTokens.colorWarning,
+      cor: paleta.atencao,
     },
     {
       rotulo: 'Aguardando validação',
       valor: naoConformidadesFiltradas.filter((nc) => nc.status === StatusNaoConformidade.AguardandoValidacao)
         .length,
-      cor: designTokens.colorInfo,
+      cor: paleta.info,
     },
-    { rotulo: 'Encerrada', valor: encerradas, cor: designTokens.colorSuccess },
+    { rotulo: 'Encerrada', valor: encerradas, cor: paleta.ok },
   ];
 
   const origemDados: ItemRanking[] = useMemo(() => {
@@ -106,10 +114,10 @@ export function NaoConformidadesDashboardTab() {
       .map(([origem, valor]) => ({
         rotulo: origemNaoConformidadeLabel[origem] ?? String(origem),
         valor,
-        cor: designTokens.colorInfo,
+        cor: paleta.info,
       }))
       .sort((a, b) => b.valor - a.valor);
-  }, [naoConformidadesFiltradas]);
+  }, [naoConformidadesFiltradas, paleta.info]);
 
   const responsaveisDados: ItemRanking[] = useMemo(() => {
     const contagem = new Map<string, number>();
@@ -119,14 +127,14 @@ export function NaoConformidadesDashboardTab() {
       contagem.set(nome, (contagem.get(nome) ?? 0) + 1);
     }
     return [...contagem.entries()]
-      .map(([rotulo, valor]) => ({ rotulo, valor, cor: designTokens.colorWarning }))
+      .map(([rotulo, valor]) => ({ rotulo, valor, cor: paleta.atencao }))
       .sort((a, b) => b.valor - a.valor)
       .slice(0, 5);
-  }, [naoConformidadesFiltradas]);
+  }, [naoConformidadesFiltradas, paleta.atencao]);
 
   return (
     <div>
-      <div className={estilos.filtros}>
+      <div style={{ display: 'flex', gap: 16, marginBottom: 16, flexWrap: 'wrap' }}>
         <Field label="Obra">
           <Select value={obraId} onChange={(_, data) => setObraId(data.value)}>
             <option value="">Todas as obras</option>
@@ -159,55 +167,39 @@ export function NaoConformidadesDashboardTab() {
         </Field>
       </div>
 
-      {erro && <Text className={estilosPagina.erro}>{erro}</Text>}
+      {erro && (
+        <FeedbackInline tom="erro" aoFechar={() => setErro(null)}>
+          {erro}
+        </FeedbackInline>
+      )}
 
-      <div style={{ marginBottom: 16 }}>
-        <CardGrid>
-          <KpiCard
-            rotulo="Total de NCs"
-            valor={naoConformidadesFiltradas.length}
-            cor={designTokens.colorPrimary}
-            icone={<DocumentError24Regular />}
-          />
-          <KpiCard rotulo="Abertas" valor={abertas} cor={designTokens.colorAlert} icone={<Warning24Regular />} />
-          <KpiCard
-            rotulo="Em tratamento"
-            valor={emTratamento}
-            cor={designTokens.colorWarning}
-            icone={<ArrowSync24Regular />}
-          />
-          <KpiCard
-            rotulo="Com prazo vencido"
-            valor={prazoVencido}
-            cor={designTokens.colorAlert}
-            icone={<Alert24Regular />}
-          />
-        </CardGrid>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(185px, 1fr))', gap: 16, marginBottom: 16 }}>
+        <KpiCard rotulo="Total de NCs" valor={naoConformidadesFiltradas.length} tom="info" indice={0} icone={<DocumentError24Regular />} />
+        <KpiCard rotulo="Abertas" valor={abertas} tom="alerta" indice={1} icone={<Warning24Regular />} />
+        <KpiCard rotulo="Em tratamento" valor={emTratamento} tom="atencao" indice={2} icone={<ArrowSync24Regular />} />
+        <KpiCard rotulo="Com prazo vencido" valor={prazoVencido} tom="alerta" indice={3} icone={<Alert24Regular />} />
       </div>
 
-      <div className={estilos.chartRow}>
-        <div className={estilos.chartCard}>
-          <Text className={estilos.chartTitulo}>Status das não conformidades</Text>
-          <div className={estilos.chartSubtitulo}>Situação atual do tratamento de cada NC</div>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(340px, 1fr))', gap: 16, marginBottom: 16 }}>
+        <Card titulo="Status das não conformidades" subtitulo="Situação atual do tratamento de cada NC">
           <StatusDonutChart dados={statusDados} legendaCentral="NCs" />
-        </div>
-        <div className={estilos.chartCard}>
-          <Text className={estilos.chartTitulo}>NCs por origem de detecção</Text>
-          <div className={estilos.chartSubtitulo}>Onde as não conformidades foram identificadas</div>
+        </Card>
+        <Card titulo="NCs por origem de detecção" subtitulo="Onde as não conformidades foram identificadas">
           <RankingBarChart dados={origemDados} />
-        </div>
-        <div className={estilos.chartCard}>
-          <Text className={estilos.chartTitulo}>Responsáveis com mais NCs em aberto</Text>
-          <div className={estilos.chartSubtitulo}>Top 5 responsáveis por NCs ainda não encerradas</div>
+        </Card>
+        <Card titulo="Responsáveis com mais NCs em aberto" subtitulo="Top 5 responsáveis por NCs ainda não encerradas">
           <RankingBarChart dados={responsaveisDados} />
-        </div>
+        </Card>
       </div>
 
       <NaoConformidadesCriticasPanel naoConformidades={naoConformidadesFiltradas} />
 
       {!carregando && naoConformidadesFiltradas.length === 0 && (
-        <div className={estilosPagina.card} style={{ marginTop: 16 }}>
-          <Text>Nenhuma não conformidade encontrada para os filtros selecionados.</Text>
+        <div style={{ marginTop: 16 }}>
+          <EstadoVazio
+            titulo="Nenhuma não conformidade encontrada"
+            descricao="Ajuste os filtros de obra, origem ou status para ver resultados."
+          />
         </div>
       )}
     </div>
