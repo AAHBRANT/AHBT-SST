@@ -26,8 +26,16 @@ public class ResolverTrabalhadorPublicoQueryHandler : IRequestHandler<ResolverTr
 
         var trabalhadorId = tag.EntidadeVinculadaId.Value;
 
+        // IgnoreQueryFilters() é necessário aqui: o filtro global Camada 3 (RBAC-Matrix.md §4) nega
+        // acesso por padrão pra requisição anônima sem usuário logado (EscopoPorObraMiddleware,
+        // TemAcessoGlobal=false + ObrasPermitidas=[] quando não há claim de identidade) — sem isso,
+        // ESTA rota pública nunca resolve nenhum trabalhador em produção (só não aparece em dev, sem
+        // Entra ID configurado). Reaplica t.Ativo manualmente: diferente de Obra/Função (linhas
+        // abaixo), aqui o soft-delete continua valendo — funcionário desativado não deve manter
+        // crachá público válido.
         var trabalhador = await _db.Trabalhadores
-            .Where(t => t.Id == trabalhadorId)
+            .IgnoreQueryFilters()
+            .Where(t => t.Id == trabalhadorId && t.Ativo)
             .Select(t => new { t.Nome, t.Matricula, t.ObraId, t.FuncaoId, TemFoto = t.FotoConteudo != null })
             .FirstOrDefaultAsync(ct);
         if (trabalhador is null) return null;
