@@ -1,4 +1,4 @@
-import { Text } from '@fluentui/react-components';
+import { Text } from '@ui';
 import { tipoTagLabel, statusTagLabel, tipoEntidadeVinculadaLabel, type ResolverTagDto } from '../../lib/api';
 
 export function ResolverTagResultado({ resultado }: { resultado: ResolverTagDto }) {
