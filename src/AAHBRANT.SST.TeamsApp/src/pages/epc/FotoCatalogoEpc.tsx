@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { ImageAdd24Regular } from '@fluentui/react-icons';
 import { api } from '../../lib/api';
-import { designTokens } from '../../theme';
+import { designTokens } from '@ui';
 
 interface FotoCatalogoEpcProps {
   catalogoEpcId: string;
@@ -9,6 +9,8 @@ interface FotoCatalogoEpcProps {
   tamanho?: number;
 }
 
+// Miniatura da foto do item de EPC — mesmo padrão de FotoCatalogoEpi.tsx: baixa sob demanda via
+// api.catalogosEpc.baixarFoto e mostra um placeholder quando não há foto ainda.
 export function FotoCatalogoEpc({ catalogoEpcId, temFoto, tamanho = 48 }: FotoCatalogoEpcProps) {
   const [url, setUrl] = useState<string | null>(null);
 

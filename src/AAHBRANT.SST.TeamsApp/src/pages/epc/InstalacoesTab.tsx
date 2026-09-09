@@ -1,19 +1,24 @@
 import { useEffect, useState } from 'react';
 import {
   Button,
+  Campo,
+  Card,
+  CampoData,
+  DataTable,
   Field,
+  FeedbackInline,
+  FormGrid,
+  FormRodape,
+  FormSection,
   Input,
+  PageHeader,
   Select,
-  Table,
-  TableBody,
-  TableCell,
-  TableHeader,
-  TableHeaderCell,
-  TableRow,
+  StatusChip,
   Text,
   Textarea,
-} from '@fluentui/react-components';
-import { CampoData } from '../../components/CampoData';
+  useConfirmar,
+  type Coluna,
+} from '@ui';
 import { Add24Regular, Delete24Regular, SearchInfo24Regular, ArrowExit24Regular } from '@fluentui/react-icons';
 import {
   api,
@@ -24,11 +29,7 @@ import {
   type NovaInstalacaoEpc,
   type Obra,
 } from '../../lib/api';
-import { usePageStyles } from '../pageStyles';
-import { useConfirmarExclusao } from '../../hooks/useConfirmarExclusao';
 import { useSucessoToast } from '../../hooks/useSucessoToast';
-import { EstadoVazio } from '../../components/EstadoVazio';
-import { ListaCarregando } from '../../components/ListaCarregando';
 
 const hoje = () => new Date().toISOString().slice(0, 10);
 
@@ -45,8 +46,12 @@ const instalacaoVazia = (obraId: string): NovaInstalacaoEpc => ({
 // aba Entregas do EPI, mas sem trabalhador nem assinatura: o EPC fica instalado numa Obra, com
 // inspeções periódicas registradas direto na linha (sem tela de agenda separada) e remoção que
 // repõe o estoque.
+// Onda 3 Task 22.5 (camada ui/): sem equivalente direto em EPI — mesmas conversões do Guia (1, 2, 4,
+// 6) aplicadas à lógica própria de instalação/inspeção/remoção. As duas ações por linha (inspeção OU
+// remoção) que a versão antiga simulava com uma TableRow extra viram o `expansivel` do DataTable
+// (mesmo mecanismo do histórico de movimentações em EstoqueTab.tsx/EstoqueEpcTab.tsx), só que o
+// conteúdo expandido é um formulário em vez de uma tabela aninhada.
 export function InstalacoesTab() {
-  const estilos = usePageStyles();
   const [obras, setObras] = useState<Obra[]>([]);
   const [obraId, setObraId] = useState('');
   const [epcs, setEpcs] = useState<CatalogoEpc[]>([]);
@@ -55,7 +60,7 @@ export function InstalacoesTab() {
   const [erro, setErro] = useState<string | null>(null);
   const [carregando, setCarregando] = useState(false);
   const [carregandoLista, setCarregandoLista] = useState(false);
-  const { confirmar, dialogElement } = useConfirmarExclusao();
+  const { confirmar, dialogElement } = useConfirmar();
   const sucessoToast = useSucessoToast();
 
   const [acaoAberta, setAcaoAberta] = useState<{ id: string; tipo: 'inspecao' | 'remocao' } | null>(null);
@@ -95,6 +100,7 @@ export function InstalacoesTab() {
     setNovaInstalacao(instalacaoVazia(obraId));
     setAcaoAberta(null);
     carregar();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [obraId]);
 
   function nomeEpc(catalogoEpcId: string) {
@@ -181,237 +187,230 @@ export function InstalacoesTab() {
     }
   }
 
+  const colunas: Coluna<InstalacaoEpc>[] = [
+    { chave: 'epc', rotulo: 'EPC', render: (inst) => nomeEpc(inst.catalogoEpcId) },
+    { chave: 'local', rotulo: 'Local', render: (inst) => inst.localInstalacao },
+    { chave: 'quantidade', rotulo: 'Qtd.', alinhar: 'direita', render: (inst) => inst.quantidade },
+    { chave: 'instalacao', rotulo: 'Instalação', render: (inst) => inst.dataInstalacao.slice(0, 10) },
+    { chave: 'validade', rotulo: 'Validade', render: (inst) => inst.dataValidade?.slice(0, 10) },
+    {
+      chave: 'ultimaInspecao',
+      rotulo: 'Última inspeção',
+      render: (inst) =>
+        inst.dataUltimaInspecao
+          ? `${inst.dataUltimaInspecao.slice(0, 10)} — ${statusInspecaoEpcLabel[inst.statusUltimaInspecao ?? 0] ?? ''}`
+          : 'Sem inspeção',
+    },
+    {
+      chave: 'situacao',
+      rotulo: 'Situação',
+      render: (inst) =>
+        inst.dataRemocao ? (
+          <StatusChip tom="neutro">Removida em {inst.dataRemocao.slice(0, 10)}</StatusChip>
+        ) : (
+          <StatusChip tom="ok">Instalada</StatusChip>
+        ),
+    },
+  ];
+
   return (
-    <div>
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
       {dialogElement}
-      <div className={estilos.card} style={{ marginBottom: 16 }}>
-        <div className={estilos.toolbar}>
-          <Text weight="semibold">Instalações de EPC</Text>
-        </div>
+      <PageHeader titulo="Instalações de EPC" />
 
-        {erro && <Text className={estilos.erro}>{erro}</Text>}
+      {erro && (
+        <FeedbackInline tom="erro" aoFechar={() => setErro(null)}>
+          {erro}
+        </FeedbackInline>
+      )}
 
-        <Field label="Obra">
-          <Select value={obraId} onChange={(_, d) => setObraId(d.value)}>
-            <option value="">Selecione</option>
-            {obras.map((o) => (
-              <option key={o.id} value={o.id}>
-                {o.nome}
-              </option>
-            ))}
-          </Select>
-        </Field>
-      </div>
+      <Card densidade="compacta">
+        <FormSection titulo="Obra" numero={1} primeira>
+          <FormGrid>
+            <Campo span={6}>
+              <Field label="Obra">
+                <Select value={obraId} onChange={(_, d) => setObraId(d.value)}>
+                  <option value="">Selecione</option>
+                  {obras.map((o) => (
+                    <option key={o.id} value={o.id}>
+                      {o.nome}
+                    </option>
+                  ))}
+                </Select>
+              </Field>
+            </Campo>
+          </FormGrid>
+        </FormSection>
+      </Card>
 
       {obraId && (
         <>
-          <div className={estilos.card} style={{ marginBottom: 16 }}>
-            <div className={estilos.toolbar}>
-              <Text weight="semibold">Nova instalação</Text>
-            </div>
-            <div className={`${estilos.sectionTitle} ${estilos.sectionTitleFirst}`}>Dados da Instalação</div>
-            <div className={estilos.formGrid}>
-              <div className={estilos.col4}>
-                <Field label="EPC">
-                  <Select
-                    value={novaInstalacao.catalogoEpcId}
-                    onChange={(_, d) => setNovaInstalacao({ ...novaInstalacao, catalogoEpcId: d.value })}
-                  >
-                    <option value="">Selecione</option>
-                    {epcs.map((e) => (
-                      <option key={e.id} value={e.id}>
-                        {e.nome}
-                      </option>
-                    ))}
-                  </Select>
-                </Field>
-              </div>
-              <div className={estilos.col4}>
-                <Field label="Local de instalação">
-                  <Input
-                    placeholder="Ex.: Torre 2, pavimento 8"
-                    value={novaInstalacao.localInstalacao ?? ''}
-                    onChange={(_, d) => setNovaInstalacao({ ...novaInstalacao, localInstalacao: d.value })}
-                  />
-                </Field>
-              </div>
-              <div className={estilos.col2}>
-                <Field label="Quantidade">
-                  <Input
-                    type="number"
-                    value={String(novaInstalacao.quantidade)}
-                    onChange={(_, d) => setNovaInstalacao({ ...novaInstalacao, quantidade: Number(d.value) })}
-                  />
-                </Field>
-              </div>
-              <div className={estilos.col3}>
-                <Field label="Data de instalação">
-                  <CampoData
-                    value={novaInstalacao.dataInstalacao}
-                    onChange={(_, d) => setNovaInstalacao({ ...novaInstalacao, dataInstalacao: d.value })}
-                  />
-                </Field>
-              </div>
-              <div className={estilos.col3}>
-                <Field label="Validade (se houver)">
-                  <CampoData
-                    value={novaInstalacao.dataValidade ?? ''}
-                    onChange={(_, d) => setNovaInstalacao({ ...novaInstalacao, dataValidade: d.value })}
-                  />
-                </Field>
-              </div>
-            </div>
-            <div className={estilos.formActions}>
-              <Button
-                appearance="primary"
-                icon={<Add24Regular />}
-                onClick={criar}
-                disabled={carregando || !novaInstalacao.catalogoEpcId || novaInstalacao.quantidade <= 0}
-              >
-                Registrar instalação
-              </Button>
-            </div>
-          </div>
+          <Card titulo="Nova instalação" densidade="compacta">
+            <FormSection titulo="Dados da instalação" numero={1} primeira>
+              <FormGrid>
+                <Campo span={4}>
+                  <Field label="EPC">
+                    <Select
+                      value={novaInstalacao.catalogoEpcId}
+                      onChange={(_, d) => setNovaInstalacao({ ...novaInstalacao, catalogoEpcId: d.value })}
+                    >
+                      <option value="">Selecione</option>
+                      {epcs.map((e) => (
+                        <option key={e.id} value={e.id}>
+                          {e.nome}
+                        </option>
+                      ))}
+                    </Select>
+                  </Field>
+                </Campo>
+                <Campo span={4}>
+                  <Field label="Local de instalação">
+                    <Input
+                      placeholder="Ex.: Torre 2, pavimento 8"
+                      value={novaInstalacao.localInstalacao ?? ''}
+                      onChange={(_, d) => setNovaInstalacao({ ...novaInstalacao, localInstalacao: d.value })}
+                    />
+                  </Field>
+                </Campo>
+                <Campo span={2}>
+                  <Field label="Quantidade">
+                    <Input
+                      type="number"
+                      value={String(novaInstalacao.quantidade)}
+                      onChange={(_, d) => setNovaInstalacao({ ...novaInstalacao, quantidade: Number(d.value) })}
+                    />
+                  </Field>
+                </Campo>
+                <Campo span={3}>
+                  <Field label="Data de instalação">
+                    <CampoData
+                      value={novaInstalacao.dataInstalacao}
+                      onChange={(_, d) => setNovaInstalacao({ ...novaInstalacao, dataInstalacao: d.value })}
+                    />
+                  </Field>
+                </Campo>
+                <Campo span={3}>
+                  <Field label="Validade (se houver)">
+                    <CampoData
+                      value={novaInstalacao.dataValidade ?? ''}
+                      onChange={(_, d) => setNovaInstalacao({ ...novaInstalacao, dataValidade: d.value })}
+                    />
+                  </Field>
+                </Campo>
+              </FormGrid>
+              <FormRodape>
+                <Button
+                  appearance="primary"
+                  icon={<Add24Regular />}
+                  onClick={criar}
+                  disabled={carregando || !novaInstalacao.catalogoEpcId || novaInstalacao.quantidade <= 0}
+                >
+                  Registrar instalação
+                </Button>
+              </FormRodape>
+            </FormSection>
+          </Card>
 
-          <div className={estilos.card}>
-            <div className={estilos.toolbar}>
-              <Text weight="semibold">Instalações registradas</Text>
-            </div>
-            {carregandoLista ? (
-              <ListaCarregando />
-            ) : instalacoes.length === 0 ? (
-              <EstadoVazio mensagem="Nenhuma instalação de EPC registrada nesta obra ainda." />
-            ) : (
-              <Table noNativeElements>
-                <TableHeader>
-                  <TableRow>
-                    <TableHeaderCell>EPC</TableHeaderCell>
-                    <TableHeaderCell>Local</TableHeaderCell>
-                    <TableHeaderCell>Qtd.</TableHeaderCell>
-                    <TableHeaderCell>Instalação</TableHeaderCell>
-                    <TableHeaderCell>Validade</TableHeaderCell>
-                    <TableHeaderCell>Última inspeção</TableHeaderCell>
-                    <TableHeaderCell>Situação</TableHeaderCell>
-                    <TableHeaderCell></TableHeaderCell>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {instalacoes.map((inst) => (
+          <Card titulo="Instalações registradas" densidade="compacta">
+            <DataTable
+              aria-label="Instalações de EPC registradas"
+              colunas={colunas}
+              linhas={instalacoes}
+              chaveLinha={(inst) => inst.id}
+              carregando={carregandoLista}
+              vazio={{ titulo: 'Nenhuma instalação de EPC registrada nesta obra ainda.' }}
+              acoesLinha={(inst) => (
+                <div style={{ display: 'flex', gap: 4 }}>
+                  {!inst.dataRemocao && (
                     <>
-                      <TableRow key={inst.id}>
-                        <TableCell>{nomeEpc(inst.catalogoEpcId)}</TableCell>
-                        <TableCell>{inst.localInstalacao}</TableCell>
-                        <TableCell>{inst.quantidade}</TableCell>
-                        <TableCell>{inst.dataInstalacao.slice(0, 10)}</TableCell>
-                        <TableCell>{inst.dataValidade?.slice(0, 10)}</TableCell>
-                        <TableCell>
-                          {inst.dataUltimaInspecao
-                            ? `${inst.dataUltimaInspecao.slice(0, 10)} — ${statusInspecaoEpcLabel[inst.statusUltimaInspecao ?? 0] ?? ''}`
-                            : 'Sem inspeção'}
-                        </TableCell>
-                        <TableCell>
-                          {inst.dataRemocao ? (
-                            <Text size={200}>Removida em {inst.dataRemocao.slice(0, 10)}</Text>
-                          ) : (
-                            <Text size={200}>Instalada</Text>
-                          )}
-                        </TableCell>
-                        <TableCell>
-                          <div style={{ display: 'flex', gap: 4 }}>
-                            {!inst.dataRemocao && (
-                              <>
-                                <Button
-                                  appearance="subtle"
-                                  icon={<SearchInfo24Regular />}
-                                  onClick={() => abrirInspecao(inst)}
-                                  aria-label="Registrar inspeção"
-                                />
-                                <Button
-                                  appearance="subtle"
-                                  icon={<ArrowExit24Regular />}
-                                  onClick={() => abrirRemocao(inst)}
-                                  aria-label="Registrar remoção"
-                                />
-                              </>
-                            )}
-                            <Button
-                              appearance="subtle"
-                              icon={<Delete24Regular />}
-                              onClick={() => excluir(inst.id)}
-                              aria-label="Excluir"
-                            />
-                          </div>
-                        </TableCell>
-                      </TableRow>
-                      {acaoAberta?.id === inst.id && acaoAberta.tipo === 'inspecao' && (
-                        <TableRow key={`${inst.id}-inspecao`}>
-                          <TableCell colSpan={8}>
-                            <div className={estilos.formGrid} style={{ padding: '8px 0' }}>
-                              <div className={estilos.col3}>
-                                <Field label="Data da inspeção">
-                                  <CampoData value={inspecaoData} onChange={(_, d) => setInspecaoData(d.value)} />
-                                </Field>
-                              </div>
-                              <div className={estilos.col3}>
-                                <Field label="Status">
-                                  <Select
-                                    value={String(inspecaoStatus)}
-                                    onChange={(_, d) => setInspecaoStatus(Number(d.value))}
-                                  >
-                                    <option value={String(StatusInspecaoEpc.Conforme)}>Conforme</option>
-                                    <option value={String(StatusInspecaoEpc.NaoConforme)}>Não conforme</option>
-                                  </Select>
-                                </Field>
-                              </div>
-                              <div className={estilos.col6}>
-                                <Field label="Observações">
-                                  <Textarea value={inspecaoObs} onChange={(_, d) => setInspecaoObs(d.value)} />
-                                </Field>
-                              </div>
-                              <div className={estilos.col12} style={{ display: 'flex', gap: 8 }}>
-                                <Button appearance="primary" onClick={() => salvarInspecao(inst.id)} disabled={carregando}>
-                                  Salvar inspeção
-                                </Button>
-                                <Button appearance="secondary" onClick={() => setAcaoAberta(null)}>
-                                  Cancelar
-                                </Button>
-                              </div>
-                            </div>
-                          </TableCell>
-                        </TableRow>
-                      )}
-                      {acaoAberta?.id === inst.id && acaoAberta.tipo === 'remocao' && (
-                        <TableRow key={`${inst.id}-remocao`}>
-                          <TableCell colSpan={8}>
-                            <div className={estilos.formGrid} style={{ padding: '8px 0' }}>
-                              <div className={estilos.col3}>
-                                <Field label="Data da remoção">
-                                  <CampoData value={remocaoData} onChange={(_, d) => setRemocaoData(d.value)} />
-                                </Field>
-                              </div>
-                              <div className={estilos.col6}>
-                                <Field label="Observações">
-                                  <Textarea value={remocaoObs} onChange={(_, d) => setRemocaoObs(d.value)} />
-                                </Field>
-                              </div>
-                              <div className={estilos.col12} style={{ display: 'flex', gap: 8 }}>
-                                <Button appearance="primary" onClick={() => salvarRemocao(inst.id)} disabled={carregando}>
-                                  Confirmar remoção (repõe estoque)
-                                </Button>
-                                <Button appearance="secondary" onClick={() => setAcaoAberta(null)}>
-                                  Cancelar
-                                </Button>
-                              </div>
-                            </div>
-                          </TableCell>
-                        </TableRow>
-                      )}
+                      <Button
+                        appearance="subtle"
+                        size="small"
+                        icon={<SearchInfo24Regular />}
+                        onClick={() => abrirInspecao(inst)}
+                        aria-label="Registrar inspeção"
+                      />
+                      <Button
+                        appearance="subtle"
+                        size="small"
+                        icon={<ArrowExit24Regular />}
+                        onClick={() => abrirRemocao(inst)}
+                        aria-label="Registrar remoção"
+                      />
                     </>
-                  ))}
-                </TableBody>
-              </Table>
-            )}
-          </div>
+                  )}
+                  <Button
+                    appearance="subtle"
+                    size="small"
+                    icon={<Delete24Regular />}
+                    onClick={() => excluir(inst.id)}
+                    aria-label="Excluir"
+                  />
+                </div>
+              )}
+              expansivel={{
+                aberta: (inst) => acaoAberta?.id === inst.id,
+                render: (inst) =>
+                  acaoAberta?.tipo === 'inspecao' ? (
+                    <FormGrid>
+                      <Campo span={3}>
+                        <Field label="Data da inspeção">
+                          <CampoData value={inspecaoData} onChange={(_, d) => setInspecaoData(d.value)} />
+                        </Field>
+                      </Campo>
+                      <Campo span={3}>
+                        <Field label="Status">
+                          <Select value={String(inspecaoStatus)} onChange={(_, d) => setInspecaoStatus(Number(d.value))}>
+                            <option value={String(StatusInspecaoEpc.Conforme)}>Conforme</option>
+                            <option value={String(StatusInspecaoEpc.NaoConforme)}>Não conforme</option>
+                          </Select>
+                        </Field>
+                      </Campo>
+                      <Campo span={6}>
+                        <Field label="Observações">
+                          <Textarea value={inspecaoObs} onChange={(_, d) => setInspecaoObs(d.value)} />
+                        </Field>
+                      </Campo>
+                      <Campo span={12}>
+                        <div style={{ display: 'flex', gap: 8 }}>
+                          <Button appearance="primary" onClick={() => salvarInspecao(inst.id)} disabled={carregando}>
+                            Salvar inspeção
+                          </Button>
+                          <Button appearance="secondary" onClick={() => setAcaoAberta(null)}>
+                            Cancelar
+                          </Button>
+                        </div>
+                      </Campo>
+                    </FormGrid>
+                  ) : acaoAberta?.tipo === 'remocao' ? (
+                    <FormGrid>
+                      <Campo span={3}>
+                        <Field label="Data da remoção">
+                          <CampoData value={remocaoData} onChange={(_, d) => setRemocaoData(d.value)} />
+                        </Field>
+                      </Campo>
+                      <Campo span={6}>
+                        <Field label="Observações">
+                          <Textarea value={remocaoObs} onChange={(_, d) => setRemocaoObs(d.value)} />
+                        </Field>
+                      </Campo>
+                      <Campo span={12}>
+                        <div style={{ display: 'flex', gap: 8 }}>
+                          <Button appearance="primary" onClick={() => salvarRemocao(inst.id)} disabled={carregando}>
+                            Confirmar remoção (repõe estoque)
+                          </Button>
+                          <Button appearance="secondary" onClick={() => setAcaoAberta(null)}>
+                            Cancelar
+                          </Button>
+                        </div>
+                      </Campo>
+                    </FormGrid>
+                  ) : (
+                    <Text>—</Text>
+                  ),
+              }}
+            />
+          </Card>
         </>
       )}
     </div>

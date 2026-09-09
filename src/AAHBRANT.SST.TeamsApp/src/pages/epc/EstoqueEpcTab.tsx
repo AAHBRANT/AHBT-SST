@@ -1,18 +1,22 @@
-import { Fragment, useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import {
   Button,
+  Campo,
+  Card,
+  DataTable,
   Field,
+  FeedbackInline,
+  FormGrid,
+  FormRodape,
+  FormSection,
   Input,
+  Legenda,
+  PageHeader,
   Select,
-  Table,
-  TableBody,
-  TableCell,
-  TableHeader,
-  TableHeaderCell,
-  TableRow,
   Text,
   Textarea,
-} from '@fluentui/react-components';
+  type Coluna,
+} from '@ui';
 import {
   api,
   tipoMovimentacaoEstoqueEpcLabel,
@@ -21,13 +25,14 @@ import {
   type MovimentacaoEstoqueEpc,
   type Obra,
 } from '../../lib/api';
-import { usePageStyles } from '../pageStyles';
 
 // Estoque de EPC segmentado por Obra — mesma estrutura do estoque de EPI (Fase 3). Entradas/saídas
 // por instalação e remoção são automáticas (ver CriarInstalacaoEpcCommand/RegistrarRemocaoEpcCommand
 // no backend); aqui só entrada manual (reposição) e ajuste (correção de inventário) precisam de tela.
+// Onda 3 Task 22.5 (camada ui/): mesmo padrão de EstoqueTab.tsx (EPI, Onda 2 Task 19) — saldo por EPC
+// vira DataTable expansível (expandir uma linha mostra o histórico de movimentações numa segunda
+// DataTable aninhada), substituindo a Table crua com Fragment que a versão antiga usava.
 export function EstoqueEpcTab() {
-  const estilos = usePageStyles();
   const [obras, setObras] = useState<Obra[]>([]);
   const [obraId, setObraId] = useState('');
   const [epcs, setEpcs] = useState<CatalogoEpc[]>([]);
@@ -73,17 +78,18 @@ export function EstoqueEpcTab() {
     carregarSaldos();
     setCatalogoEpcIdSelecionado(null);
     setMovimentacoes([]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [obraId]);
 
-  async function alternarHistorico(catalogoEpcId: string) {
-    if (catalogoEpcIdSelecionado === catalogoEpcId) {
+  async function alternarHistorico(saldo: EstoqueEpcPorObra) {
+    if (catalogoEpcIdSelecionado === saldo.catalogoEpcId) {
       setCatalogoEpcIdSelecionado(null);
       return;
     }
     try {
       setErro(null);
-      setMovimentacoes(await api.estoquesEpc.listarMovimentacoes(obraId, catalogoEpcId));
-      setCatalogoEpcIdSelecionado(catalogoEpcId);
+      setMovimentacoes(await api.estoquesEpc.listarMovimentacoes(obraId, saldo.catalogoEpcId));
+      setCatalogoEpcIdSelecionado(saldo.catalogoEpcId);
     } catch (e) {
       setErro(e instanceof Error ? e.message : 'Falha ao carregar histórico de movimentações.');
     }
@@ -133,179 +139,157 @@ export function EstoqueEpcTab() {
     }
   }
 
+  const colunasSaldo: Coluna<EstoqueEpcPorObra>[] = [
+    { chave: 'nome', rotulo: 'Nome', render: (s) => s.catalogoEpcNome },
+    { chave: 'fabricante', rotulo: 'Fabricante' },
+    { chave: 'saldo', rotulo: 'Saldo', alinhar: 'direita' },
+  ];
+
+  const colunasMovimentacoes: Coluna<MovimentacaoEstoqueEpc>[] = [
+    { chave: 'data', rotulo: 'Data', render: (m) => new Date(m.createdAtUtc).toLocaleString('pt-BR') },
+    { chave: 'tipo', rotulo: 'Tipo', render: (m) => tipoMovimentacaoEstoqueEpcLabel[m.tipo] },
+    { chave: 'quantidade', rotulo: 'Quantidade', alinhar: 'direita' },
+    { chave: 'saldoResultante', rotulo: 'Saldo resultante', alinhar: 'direita' },
+    { chave: 'observacao', rotulo: 'Observação' },
+  ];
+
   return (
-    <div>
-      <div className={estilos.card} style={{ marginBottom: 16 }}>
-        <div className={estilos.toolbar}>
-          <Text weight="semibold">Estoque de EPC por Obra</Text>
-        </div>
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+      <PageHeader titulo="Estoque de EPC por Obra" />
 
-        {erro && <Text className={estilos.erro}>{erro}</Text>}
+      {erro && (
+        <FeedbackInline tom="erro" aoFechar={() => setErro(null)}>
+          {erro}
+        </FeedbackInline>
+      )}
 
-        <Field label="Obra">
-          <Select value={obraId} onChange={(_, d) => setObraId(d.value)}>
-            <option value="">Selecione</option>
-            {obras.map((o) => (
-              <option key={o.id} value={o.id}>
-                {o.nome}
-              </option>
-            ))}
-          </Select>
-        </Field>
-      </div>
+      <Card densidade="compacta">
+        <FormSection titulo="Obra" numero={1} primeira>
+          <FormGrid>
+            <Campo span={6}>
+              <Field label="Obra">
+                <Select value={obraId} onChange={(_, d) => setObraId(d.value)}>
+                  <option value="">Selecione</option>
+                  {obras.map((o) => (
+                    <option key={o.id} value={o.id}>
+                      {o.nome}
+                    </option>
+                  ))}
+                </Select>
+              </Field>
+            </Campo>
+          </FormGrid>
+        </FormSection>
+      </Card>
 
       {obraId && (
         <>
-          <div className={estilos.card} style={{ marginBottom: 16 }}>
-            <div className={estilos.toolbar}>
-              <Text weight="semibold">Entrada manual (reposição)</Text>
-            </div>
-            <div className={`${estilos.sectionTitle} ${estilos.sectionTitleFirst}`}>Dados da Entrada</div>
-            <div className={estilos.formGrid}>
-              <div className={estilos.col5}>
-                <Field label="EPC">
-                  <Select value={entradaCatalogoEpcId} onChange={(_, d) => setEntradaCatalogoEpcId(d.value)}>
-                    <option value="">Selecione</option>
-                    {epcs.map((e) => (
-                      <option key={e.id} value={e.id}>
-                        {e.nome}
-                      </option>
-                    ))}
-                  </Select>
-                </Field>
-              </div>
-              <div className={estilos.col3}>
-                <Field label="Quantidade">
-                  <Input
-                    type="number"
-                    value={entradaQuantidade}
-                    onChange={(_, d) => setEntradaQuantidade(d.value)}
-                  />
-                </Field>
-              </div>
-              <div className={estilos.col4}>
-                <Field label="Observação (opcional)">
-                  <Input value={entradaObservacao} onChange={(_, d) => setEntradaObservacao(d.value)} />
-                </Field>
-              </div>
-            </div>
-            <div className={estilos.formActions}>
-              <Button
-                appearance="primary"
-                onClick={registrarEntrada}
-                disabled={carregando || !entradaCatalogoEpcId || Number(entradaQuantidade) <= 0}
-              >
-                Registrar entrada
-              </Button>
-            </div>
-          </div>
+          <Card titulo="Entrada manual (reposição)" densidade="compacta">
+            <FormSection titulo="Dados da entrada" numero={1} primeira>
+              <FormGrid>
+                <Campo span={5}>
+                  <Field label="EPC">
+                    <Select value={entradaCatalogoEpcId} onChange={(_, d) => setEntradaCatalogoEpcId(d.value)}>
+                      <option value="">Selecione</option>
+                      {epcs.map((e) => (
+                        <option key={e.id} value={e.id}>
+                          {e.nome}
+                        </option>
+                      ))}
+                    </Select>
+                  </Field>
+                </Campo>
+                <Campo span={3}>
+                  <Field label="Quantidade">
+                    <Input type="number" value={entradaQuantidade} onChange={(_, d) => setEntradaQuantidade(d.value)} />
+                  </Field>
+                </Campo>
+                <Campo span={4}>
+                  <Field label="Observação (opcional)">
+                    <Input value={entradaObservacao} onChange={(_, d) => setEntradaObservacao(d.value)} />
+                  </Field>
+                </Campo>
+              </FormGrid>
+              <FormRodape>
+                <Button
+                  appearance="primary"
+                  onClick={registrarEntrada}
+                  disabled={carregando || !entradaCatalogoEpcId || Number(entradaQuantidade) <= 0}
+                >
+                  Registrar entrada
+                </Button>
+              </FormRodape>
+            </FormSection>
+          </Card>
 
-          <div className={estilos.card} style={{ marginBottom: 16 }}>
-            <div className={estilos.toolbar}>
-              <Text weight="semibold">Ajuste de saldo (correção de inventário)</Text>
-            </div>
-            <div className={`${estilos.sectionTitle} ${estilos.sectionTitleFirst}`}>Dados do Ajuste</div>
-            <div className={estilos.formGrid}>
-              <div className={estilos.col5}>
-                <Field label="EPC">
-                  <Select value={ajusteCatalogoEpcId} onChange={(_, d) => setAjusteCatalogoEpcId(d.value)}>
-                    <option value="">Selecione</option>
-                    {epcs.map((e) => (
-                      <option key={e.id} value={e.id}>
-                        {e.nome}
-                      </option>
-                    ))}
-                  </Select>
-                </Field>
-              </div>
-              <div className={estilos.col3}>
-                <Field label="Novo saldo">
-                  <Input type="number" value={ajusteNovoSaldo} onChange={(_, d) => setAjusteNovoSaldo(d.value)} />
-                </Field>
-              </div>
-              <div className={estilos.col4}>
-                <Field label="Observação (obrigatória)">
-                  <Textarea value={ajusteObservacao} onChange={(_, d) => setAjusteObservacao(d.value)} />
-                </Field>
-              </div>
-            </div>
-            <div className={estilos.formActions}>
-              <Button
-                appearance="primary"
-                onClick={ajustarSaldo}
-                disabled={carregando || !ajusteCatalogoEpcId || !ajusteObservacao.trim() || Number(ajusteNovoSaldo) < 0}
-              >
-                Ajustar saldo
-              </Button>
-            </div>
-          </div>
+          <Card titulo="Ajuste de saldo (correção de inventário)" densidade="compacta">
+            <FormSection titulo="Dados do ajuste" numero={1} primeira>
+              <FormGrid>
+                <Campo span={5}>
+                  <Field label="EPC">
+                    <Select value={ajusteCatalogoEpcId} onChange={(_, d) => setAjusteCatalogoEpcId(d.value)}>
+                      <option value="">Selecione</option>
+                      {epcs.map((e) => (
+                        <option key={e.id} value={e.id}>
+                          {e.nome}
+                        </option>
+                      ))}
+                    </Select>
+                  </Field>
+                </Campo>
+                <Campo span={3}>
+                  <Field label="Novo saldo">
+                    <Input type="number" value={ajusteNovoSaldo} onChange={(_, d) => setAjusteNovoSaldo(d.value)} />
+                  </Field>
+                </Campo>
+                <Campo span={4}>
+                  <Field label="Observação (obrigatória)">
+                    <Textarea value={ajusteObservacao} onChange={(_, d) => setAjusteObservacao(d.value)} />
+                  </Field>
+                </Campo>
+              </FormGrid>
+              <FormRodape>
+                <Button
+                  appearance="primary"
+                  onClick={ajustarSaldo}
+                  disabled={carregando || !ajusteCatalogoEpcId || !ajusteObservacao.trim() || Number(ajusteNovoSaldo) < 0}
+                >
+                  Ajustar saldo
+                </Button>
+              </FormRodape>
+            </FormSection>
+          </Card>
 
-          <div className={estilos.card}>
-            <div className={estilos.toolbar}>
-              <Text weight="semibold">Saldo atual</Text>
-            </div>
-            <Table noNativeElements>
-              <TableHeader>
-                <TableRow>
-                  <TableHeaderCell>Nome</TableHeaderCell>
-                  <TableHeaderCell>Fabricante</TableHeaderCell>
-                  <TableHeaderCell>Saldo</TableHeaderCell>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {saldos.map((s) => (
-                  <Fragment key={s.catalogoEpcId}>
-                    <TableRow
-                      key={s.catalogoEpcId}
-                      onClick={() => alternarHistorico(s.catalogoEpcId)}
-                      style={{ cursor: 'pointer' }}
-                    >
-                      <TableCell>{s.catalogoEpcNome}</TableCell>
-                      <TableCell>{s.fabricante}</TableCell>
-                      <TableCell>{s.saldo}</TableCell>
-                    </TableRow>
-                    {catalogoEpcIdSelecionado === s.catalogoEpcId && (
-                      <TableRow key={`${s.catalogoEpcId}-historico`}>
-                        <TableCell colSpan={3}>
-                          <div style={{ padding: '8px 0' }}>
-                            <Text weight="semibold">Histórico de movimentações — {s.catalogoEpcNome}</Text>
-                            {movimentacoes.length === 0 ? (
-                              <Text as="p" size={200}>
-                                Nenhuma movimentação registrada.
-                              </Text>
-                            ) : (
-                              <Table noNativeElements>
-                                <TableHeader>
-                                  <TableRow>
-                                    <TableHeaderCell>Data</TableHeaderCell>
-                                    <TableHeaderCell>Tipo</TableHeaderCell>
-                                    <TableHeaderCell>Quantidade</TableHeaderCell>
-                                    <TableHeaderCell>Saldo resultante</TableHeaderCell>
-                                    <TableHeaderCell>Observação</TableHeaderCell>
-                                  </TableRow>
-                                </TableHeader>
-                                <TableBody>
-                                  {movimentacoes.map((m) => (
-                                    <TableRow key={m.id}>
-                                      <TableCell>{new Date(m.createdAtUtc).toLocaleString('pt-BR')}</TableCell>
-                                      <TableCell>{tipoMovimentacaoEstoqueEpcLabel[m.tipo]}</TableCell>
-                                      <TableCell>{m.quantidade}</TableCell>
-                                      <TableCell>{m.saldoResultante}</TableCell>
-                                      <TableCell>{m.observacao}</TableCell>
-                                    </TableRow>
-                                  ))}
-                                </TableBody>
-                              </Table>
-                            )}
-                          </div>
-                        </TableCell>
-                      </TableRow>
+          <Card titulo="Saldo atual" densidade="compacta">
+            <DataTable
+              aria-label="Saldo de EPC por obra"
+              densidade="compacta"
+              colunas={colunasSaldo}
+              linhas={saldos}
+              chaveLinha={(s) => s.catalogoEpcId}
+              vazio={{ titulo: 'Nenhum saldo registrado para esta obra.' }}
+              aoClicarLinha={alternarHistorico}
+              expansivel={{
+                aberta: (s) => s.catalogoEpcId === catalogoEpcIdSelecionado,
+                render: (s) => (
+                  <>
+                    <Text weight="semibold">Histórico de movimentações — {s.catalogoEpcNome}</Text>
+                    {movimentacoes.length === 0 ? (
+                      <Legenda>Nenhuma movimentação registrada.</Legenda>
+                    ) : (
+                      <DataTable
+                        aria-label={`Movimentações de ${s.catalogoEpcNome}`}
+                        densidade="compacta"
+                        colunas={colunasMovimentacoes}
+                        linhas={movimentacoes}
+                        chaveLinha={(m) => m.id}
+                      />
                     )}
-                  </Fragment>
-                ))}
-              </TableBody>
-            </Table>
-          </div>
+                  </>
+                ),
+              }}
+            />
+          </Card>
         </>
       )}
     </div>
