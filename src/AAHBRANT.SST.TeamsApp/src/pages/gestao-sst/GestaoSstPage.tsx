@@ -1,11 +1,7 @@
-import { useState } from 'react';
-import { useSearchParams } from 'react-router-dom';
-import { Tab, TabList, type SelectTabData, type SelectTabEvent } from '@fluentui/react-components';
-import { usePillTabStyles } from '../pageStyles';
+import { Abas, EstadoVazio, useAbaNaUrl } from '@ui';
 import { PgrRiscosPage } from '../pgr/PgrRiscosPage';
 import { SaudeOcupacionalPage } from '../saude-ocupacional/SaudeOcupacionalPage';
 import { TreinamentosPage } from '../treinamentos/TreinamentosPage';
-import { EmConstrucaoPage } from '../EmConstrucaoPage';
 import { RequisitosLegaisPage } from '../requisitoslegais/RequisitosLegaisPage';
 
 type SecaoGestaoSst = 'pgr' | 'pcmso' | 'treinamentos' | 'documentos' | 'requisitos-legais';
@@ -19,36 +15,36 @@ const SECOES_VALIDAS: SecaoGestaoSst[] = ['pgr', 'pcmso', 'treinamentos', 'docum
 // aba); as abas que cada um já tinha (ex.: PGR/GRO tem PGRs | Matriz de Risco | ...) continuam
 // aparecendo por baixo, como sub-abas. EPI/EPC, CIPA e DDS saíram daqui (pedido do usuário, 03/09) e
 // viraram abas de Operação — ver OperacaoPage.tsx.
+// Onda 2 Task 21 (camada ui/, conversão 7): TabList/usePillTabStyles → Abas nivel="pilar" +
+// useAbaNaUrl('secao', ...). EmConstrucaoPage (removido nesta mesma task) → EstadoVazio
+// variante="em-construcao", mesmo padrão já usado na galeria (ui/galeria/GaleriaPage.tsx).
 export function GestaoSstPage() {
-  const [searchParams] = useSearchParams();
-  const secaoInicial = searchParams.get('secao');
-  const [secao, setSecao] = useState<SecaoGestaoSst>(
-    SECOES_VALIDAS.includes(secaoInicial as SecaoGestaoSst) ? (secaoInicial as SecaoGestaoSst) : 'pgr',
-  );
-  const estilosAba = usePillTabStyles();
+  const [secao, setSecao] = useAbaNaUrl<SecaoGestaoSst>('secao', SECOES_VALIDAS, 'pgr');
 
   return (
     <div>
-      <TabList
-        selectedValue={secao}
-        onTabSelect={(_: SelectTabEvent, data: SelectTabData) => setSecao(data.value as SecaoGestaoSst)}
-        className={estilosAba.lista}
-      >
-        <Tab value="pgr">PGR / GRO</Tab>
-        <Tab value="pcmso">PCMSO</Tab>
-        <Tab value="treinamentos">Treinamentos</Tab>
-        <Tab value="documentos">Documentos & Procedimentos</Tab>
-        <Tab value="requisitos-legais">Requisitos Legais</Tab>
-      </TabList>
+      <Abas
+        nivel="pilar"
+        valor={secao}
+        aoMudar={setSecao}
+        aria-label="Seções de Gestão de SST"
+        abas={[
+          { valor: 'pgr', rotulo: 'PGR / GRO' },
+          { valor: 'pcmso', rotulo: 'PCMSO' },
+          { valor: 'treinamentos', rotulo: 'Treinamentos' },
+          { valor: 'documentos', rotulo: 'Documentos & Procedimentos' },
+          { valor: 'requisitos-legais', rotulo: 'Requisitos Legais' },
+        ]}
+      />
 
       {secao === 'pgr' && <PgrRiscosPage mostrarTitulo={false} />}
       {secao === 'pcmso' && <SaudeOcupacionalPage abaInicial="pcmso" mostrarTitulo={false} />}
       {secao === 'treinamentos' && <TreinamentosPage mostrarTitulo={false} />}
       {secao === 'documentos' && (
-        <EmConstrucaoPage
+        <EstadoVazio
+          variante="em-construcao"
           titulo="Documentos & Procedimentos"
           descricao="O módulo de Gestão Documental foi removido do sistema em 28/08 (junto com a Matriz Legal antiga). Esse item está reservado no menu, mas precisa ser reconstruído do zero."
-          mostrarTitulo={false}
         />
       )}
       {secao === 'requisitos-legais' && <RequisitosLegaisPage mostrarTitulo={false} />}
