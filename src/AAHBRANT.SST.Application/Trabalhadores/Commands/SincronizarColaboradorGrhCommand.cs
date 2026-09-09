@@ -42,7 +42,44 @@ public record SincronizarColaboradorGrhCommand(
     DateTime? DataFimExperiencia2,
     string? TamanhoBlusaEpi,
     string? TamanhoCalcaEpi,
-    string? TamanhoCalcadoEpi) : IRequest<Guid>;
+    string? TamanhoCalcadoEpi) : IRequest<Guid>
+{
+    // Fábrica compartilhada pelos dois pontos de entrada do G-RH: a carga inicial em lote
+    // (ImportarColaboradoresGrhCommandHandler) e o consumidor do evento contínuo
+    // (ServiceBusColaboradorGrhProcessor) — ambos recebem o mesmo ColaboradorGrhDto (contrato de fio
+    // único, ver ColaboradorGrhPayload.cs em Infrastructure) e devem aplicar a mesma regra de negócio
+    // ao converter pra este comando.
+    public static SincronizarColaboradorGrhCommand DoColaboradorGrh(ColaboradorGrhDto c)
+    {
+        if (string.IsNullOrWhiteSpace(c.CargoNome))
+            throw new InvalidOperationException("colaborador sem cargo definido no G-RH.");
+
+        return new SincronizarColaboradorGrhCommand(
+            c.Cpf,
+            c.Nome,
+            c.Pis,
+            c.Ctps,
+            c.DataNascimento,
+            c.NomeMae,
+            c.Endereco,
+            c.Municipio,
+            c.Uf,
+            c.Cep,
+            c.Matricula,
+            c.DataAdmissao,
+            c.DataDemissao,
+            c.CargoNome,
+            c.CargoCboCodigo,
+            c.Salario,
+            c.Situacao,
+            c.ObraNome,
+            c.DataFimExperiencia1,
+            c.DataFimExperiencia2,
+            c.TamanhoBlusaEpi,
+            c.TamanhoCalcaEpi,
+            c.TamanhoCalcadoEpi);
+    }
+}
 
 public class SincronizarColaboradorGrhCommandValidator : AbstractValidator<SincronizarColaboradorGrhCommand>
 {

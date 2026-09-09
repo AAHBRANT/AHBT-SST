@@ -1,5 +1,6 @@
 using System.Text.Json;
 using AAHBRANT.SST.Application.Trabalhadores.Commands;
+using AAHBRANT.SST.Infrastructure.Integracao.Grh;
 using Azure.Messaging.ServiceBus;
 using MediatR;
 using Microsoft.Extensions.DependencyInjection;
@@ -11,10 +12,10 @@ namespace AAHBRANT.SST.Infrastructure.Integracao.Bot;
 
 // Consumidor da fila de eventos de Colaborador publicados pelo G-RH (Integração G-RH — G-RH é fonte
 // única para o cadastro básico, ver SincronizarColaboradorGrhCommand). Contrato de fio: o corpo da
-// mensagem é o JSON do próprio SincronizarColaboradorGrhCommand — os nomes de propriedade batem 1:1 e
-// o record é desserializado direto pelo construtor posicional (suporte nativo do
-// System.Text.Json desde o .NET 5). Mesmo padrão de competing-consumers/retry de
-// ServiceBusNotificacaoTeamsProcessor.
+// mensagem é EXATAMENTE o mesmo JSON do endpoint de carga inicial (GET /api/integracoes/sst/
+// colaboradores, um item do array) — ver ColaboradorGrhPayload.cs. O G-RH reaproveita a serialização
+// que já usa lá, sem precisar manter um formato de evento à parte. Mesmo padrão de
+// competing-consumers/retry de ServiceBusNotificacaoTeamsProcessor.
 public class ServiceBusColaboradorGrhProcessor : BackgroundService
 {
     private readonly ServiceBusClient _cliente;
@@ -53,22 +54,24 @@ public class ServiceBusColaboradorGrhProcessor : BackgroundService
         }
     }
 
+    private static readonly JsonSerializerOptions OpcoesJson = new() { PropertyNameCaseInsensitive = true };
+
     private async Task ProcessarMensagemAsync(ProcessMessageEventArgs args)
     {
-        SincronizarColaboradorGrhCommand? comando;
+        SincronizarColaboradorGrhCommand comando;
         try
         {
-            comando = JsonSerializer.Deserialize<SincronizarColaboradorGrhCommand>(args.Message.Body.ToString());
+            var payload = JsonSerializer.Deserialize<ColaboradorGrhPayload>(args.Message.Body.ToString(), OpcoesJson);
+            if (payload is null)
+            {
+                await args.DeadLetterMessageAsync(args.Message, "corpo-invalido", cancellationToken: args.CancellationToken);
+                return;
+            }
+            comando = SincronizarColaboradorGrhCommand.DoColaboradorGrh(ColaboradorGrhPayloadMapper.Mapear(payload));
         }
-        catch (JsonException ex)
+        catch (Exception ex) when (ex is JsonException or InvalidOperationException)
         {
             _logger.LogError(ex, "Payload inválido na fila de colaboradores do G-RH.");
-            await args.DeadLetterMessageAsync(args.Message, "corpo-invalido", cancellationToken: args.CancellationToken);
-            return;
-        }
-
-        if (comando is null)
-        {
             await args.DeadLetterMessageAsync(args.Message, "corpo-invalido", cancellationToken: args.CancellationToken);
             return;
         }

@@ -37,35 +37,7 @@ public class ImportarColaboradoresGrhCommandHandler : IRequestHandler<ImportarCo
         {
             try
             {
-                if (string.IsNullOrWhiteSpace(c.CargoNome))
-                    throw new InvalidOperationException("colaborador sem cargo definido no G-RH.");
-
-                await _mediator.Send(
-                    new SincronizarColaboradorGrhCommand(
-                        c.Cpf,
-                        c.Nome,
-                        c.Pis,
-                        c.Ctps,
-                        c.DataNascimento,
-                        c.NomeMae,
-                        c.Endereco,
-                        c.Municipio,
-                        c.Uf,
-                        c.Cep,
-                        c.Matricula,
-                        c.DataAdmissao,
-                        c.DataDemissao,
-                        c.CargoNome,
-                        c.CargoCboCodigo,
-                        c.Salario,
-                        c.Situacao,
-                        c.ObraNome,
-                        c.DataFimExperiencia1,
-                        c.DataFimExperiencia2,
-                        c.TamanhoBlusaEpi,
-                        c.TamanhoCalcaEpi,
-                        c.TamanhoCalcadoEpi),
-                    ct);
+                await _mediator.Send(SincronizarColaboradorGrhCommand.DoColaboradorGrh(c), ct);
                 totalSincronizados++;
             }
             catch (Exception ex)
