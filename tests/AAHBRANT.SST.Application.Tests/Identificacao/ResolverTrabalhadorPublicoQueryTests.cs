@@ -109,4 +109,44 @@ public class ResolverTrabalhadorPublicoQueryTests
 
         Assert.Null(resultado);
     }
+
+    // Regressão específica do histórico de DDS (mesma classe de bug do RBAC acima, mas em Dds/
+    // DdsParticipante — Dds também tem o filtro global de Camada 3, sem IgnoreQueryFilters() a
+    // consulta voltaria vazia numa requisição anônima mesmo com participação real).
+    [Fact]
+    public async Task Handle_SemAcessoGlobalRBAC_AindaTraHistoricoDdsOrdenadoPorDataDesc()
+    {
+        var db = CriarDbSemAcessoGlobal(nameof(Handle_SemAcessoGlobalRBAC_AindaTraHistoricoDdsOrdenadoPorDataDesc));
+        var (obra, funcao, trabalhador, tag) = CriarCenario();
+
+        var usuarioResponsavel = new Usuario { Nome = "Encarregado", Email = "encarregado@exemplo.com" };
+
+        var ddsAntigo = new AAHBRANT.SST.Domain.Entidades.Dds { Obra = obra, ResponsavelUsuario = usuarioResponsavel, Data = new DateTime(2026, 9, 1), TemaLivreNome = "Uso de EPI" };
+        var ddsRecente = new AAHBRANT.SST.Domain.Entidades.Dds { Obra = obra, ResponsavelUsuario = usuarioResponsavel, Data = new DateTime(2026, 9, 8), TemaLivreNome = "Trabalho em altura" };
+        var ddsCancelado = new AAHBRANT.SST.Domain.Entidades.Dds { Obra = obra, ResponsavelUsuario = usuarioResponsavel, Data = new DateTime(2026, 9, 5), TemaLivreNome = "Não deve aparecer", Ativo = false };
+        var ddsSemParticipacao = new AAHBRANT.SST.Domain.Entidades.Dds { Obra = obra, ResponsavelUsuario = usuarioResponsavel, Data = new DateTime(2026, 9, 9), TemaLivreNome = "Outro trabalhador" };
+
+        db.Obras.Add(obra);
+        db.Funcoes.Add(funcao);
+        db.Trabalhadores.Add(trabalhador);
+        db.TagsIdentificacao.Add(tag);
+        db.Usuarios.Add(usuarioResponsavel);
+        db.Dds.AddRange(ddsAntigo, ddsRecente, ddsCancelado, ddsSemParticipacao);
+        await db.SaveChangesAsync();
+
+        db.DdsParticipantes.AddRange(
+            new DdsParticipante { Dds = ddsAntigo, TrabalhadorId = trabalhador.Id },
+            new DdsParticipante { Dds = ddsRecente, TrabalhadorId = trabalhador.Id },
+            new DdsParticipante { Dds = ddsCancelado, TrabalhadorId = trabalhador.Id });
+        await db.SaveChangesAsync();
+
+        var handler = new ResolverTrabalhadorPublicoQueryHandler(db);
+        var resultado = await handler.Handle(new ResolverTrabalhadorPublicoQuery(tag.Uid), default);
+
+        Assert.NotNull(resultado);
+        Assert.Equal(2, resultado!.HistoricoDds.Count);
+        Assert.Equal("Trabalho em altura", resultado.HistoricoDds[0].Tema);
+        Assert.Equal("Uso de EPI", resultado.HistoricoDds[1].Tema);
+        Assert.All(resultado.HistoricoDds, d => Assert.Equal("Obra Central", d.ObraNome));
+    }
 }

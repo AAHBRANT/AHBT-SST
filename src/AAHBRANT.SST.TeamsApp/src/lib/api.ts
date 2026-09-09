@@ -932,6 +932,12 @@ export interface TreinamentoPublico {
   dataValidade: string;
 }
 
+export interface DdsPublico {
+  data: string;
+  obraNome: string;
+  tema?: string | null;
+}
+
 // Crachá digital público de um trabalhador (NTAG215/QR do capacete) — mesma rota de AreaPublicaDto,
 // distinguido pelo campo tipoRecurso. Ver ResolverTrabalhadorPublicoQuery.cs: nunca inclui CPF/RG/
 // admissão/ocorrências — só o suficiente pra um fiscal em campo checar aptidão/EPI/treinamento.
@@ -945,6 +951,7 @@ export interface TrabalhadorPublicoDto {
   statusAptidao: string;
   episAtivos: EpiAtivoPublico[];
   treinamentos: TreinamentoPublico[];
+  historicoDds: DdsPublico[];
 }
 
 export type RecursoPublico = AreaPublicaDto | TrabalhadorPublicoDto;

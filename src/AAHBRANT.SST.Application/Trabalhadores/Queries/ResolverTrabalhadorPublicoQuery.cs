@@ -76,6 +76,40 @@ public class ResolverTrabalhadorPublicoQueryHandler : IRequestHandler<ResolverTr
             .Select(t => new TreinamentoPublicoDto(t.CursoTreinamento!.Nome, t.DataValidade))
             .ToListAsync(ct);
 
+        // Histórico de DDS (Diálogo Diário de Segurança) participado — pedido do usuário (09/09),
+        // "tudo que for necessário do funcionário deve aparecer" no crachá. Só Data/Obra/Tema, nunca
+        // a evidência de presença (foto/ScoreConfianca de DdsParticipante) — dado sensível demais
+        // pra tela sem login. Sem paginação em EpisAtivos/Treinamentos porque essas listas são
+        // naturalmente pequenas; DDS é diário e pode acumular anos de registros pra quem trabalha há
+        // muito tempo, então limita às 20 participações mais recentes.
+        //
+        // IgnoreQueryFilters() necessário nas 2 consultas abaixo (mesmo motivo do trabalhador acima):
+        // Dds tem o filtro RBAC de Camada 3 (nega tudo em requisição anônima); DdsParticipante tem só
+        // Ativo (sem RBAC, não tem ObraId direto), mas mantém pelo mesmo cuidado. Ativo reaplicado
+        // manualmente nas duas — DDS/participação cancelados (soft-delete) não devem aparecer.
+        var ddsIdsParticipados = await _db.DdsParticipantes
+            .IgnoreQueryFilters()
+            .Where(p => p.TrabalhadorId == trabalhadorId && p.Ativo)
+            .Select(p => p.DdsId)
+            .ToListAsync(ct);
+
+        var historicoDdsBruto = await _db.Dds
+            .IgnoreQueryFilters()
+            .Where(d => ddsIdsParticipados.Contains(d.Id) && d.Ativo)
+            .OrderByDescending(d => d.Data)
+            .Take(20)
+            .Select(d => new { d.Data, d.ObraId, d.TemaLivreNome })
+            .ToListAsync(ct);
+
+        var obraIdsDds = historicoDdsBruto.Select(d => d.ObraId).Distinct().ToList();
+        var nomesObrasDds = await _db.Obras.IgnoreQueryFilters()
+            .Where(o => obraIdsDds.Contains(o.Id))
+            .ToDictionaryAsync(o => o.Id, o => o.Nome, ct);
+
+        var historicoDds = historicoDdsBruto
+            .Select(d => new DdsPublicoDto(d.Data, nomesObrasDds.GetValueOrDefault(d.ObraId, string.Empty), d.TemaLivreNome))
+            .ToList();
+
         return new TrabalhadorPublicoDto
         {
             Nome = trabalhador.Nome,
@@ -86,6 +120,7 @@ public class ResolverTrabalhadorPublicoQueryHandler : IRequestHandler<ResolverTr
             StatusAptidao = statusAptidao,
             EpisAtivos = episAtivos,
             Treinamentos = treinamentos,
+            HistoricoDds = historicoDds,
         };
     }
 }
