@@ -640,12 +640,14 @@ export const TipoArea = {
   AreaDeTrabalho: 1,
   ZonaDeRisco: 2,
   Armazenamento: 3,
+  Alojamento: 4,
 } as const;
 
 export const tipoAreaLabel: Record<number, string> = {
   1: 'Área de trabalho',
   2: 'Zona de risco',
   3: 'Armazenamento',
+  4: 'Alojamento',
 };
 
 export const StatusArea = {
@@ -1369,6 +1371,7 @@ export const TipoInspecao = {
   EspacoConfinado: 11,
   Comportamental: 12,
   Terceiros: 13,
+  Alojamento: 14,
 } as const;
 
 export const tipoInspecaoLabel: Record<number, string> = {
@@ -1385,6 +1388,7 @@ export const tipoInspecaoLabel: Record<number, string> = {
   11: 'Espaço confinado',
   12: 'Comportamental',
   13: 'Terceiros',
+  14: 'Alojamento',
 };
 
 export const StatusItemChecklist = {
@@ -1423,6 +1427,7 @@ export interface ChecklistModeloItem {
   checklistModeloId: string;
   ordem: number;
   descricao: string;
+  secao?: string | null;
   exigeFotografia: boolean;
   exigeResponsavel: boolean;
   exigePrazo: boolean;
@@ -1430,6 +1435,7 @@ export interface ChecklistModeloItem {
 
 export interface NovoChecklistModeloItem {
   descricao: string;
+  secao?: string | null;
   exigeFotografia: boolean;
   exigeResponsavel: boolean;
   exigePrazo: boolean;
@@ -1479,6 +1485,7 @@ export interface InspecaoItemResposta {
   checklistModeloItemId: string;
   ordem: number;
   descricao: string;
+  secao?: string | null;
   exigeFotografia: boolean;
   exigeResponsavel: boolean;
   exigePrazo: boolean;

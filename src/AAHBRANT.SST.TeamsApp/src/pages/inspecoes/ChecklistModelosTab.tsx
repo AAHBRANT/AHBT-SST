@@ -28,6 +28,7 @@ import { useSucessoToast } from '../../hooks/useSucessoToast';
 
 const itemVazio: NovoChecklistModeloItem = {
   descricao: '',
+  secao: '',
   exigeFotografia: false,
   exigeResponsavel: false,
   exigePrazo: false,
@@ -69,7 +70,7 @@ export function ChecklistModelosTab() {
 
   function adicionarItem() {
     if (!itemAtual.descricao.trim()) return;
-    setItens((atual) => [...atual, itemAtual]);
+    setItens((atual) => [...atual, { ...itemAtual, secao: itemAtual.secao?.trim() || undefined }]);
     setItemAtual(itemVazio);
   }
 
@@ -99,6 +100,7 @@ export function ChecklistModelosTab() {
       setItens(
         detalhe.itens.map((i) => ({
           descricao: i.descricao,
+          secao: i.secao ?? '',
           exigeFotografia: i.exigeFotografia,
           exigeResponsavel: i.exigeResponsavel,
           exigePrazo: i.exigePrazo,
@@ -153,6 +155,7 @@ export function ChecklistModelosTab() {
   }
 
   const colunasItens: Coluna<NovoChecklistModeloItem & { indice: number }>[] = [
+    { chave: 'secao', rotulo: 'Seção', render: (i) => i.secao || '—' },
     { chave: 'descricao', rotulo: 'Descrição' },
     { chave: 'exigeFotografia', rotulo: 'Foto', render: (i) => (i.exigeFotografia ? 'Sim' : '—') },
     { chave: 'exigeResponsavel', rotulo: 'Responsável', render: (i) => (i.exigeResponsavel ? 'Sim' : '—') },
@@ -268,7 +271,16 @@ export function ChecklistModelosTab() {
 
         <FormSection titulo="Itens do checklist" numero={2}>
           <FormGrid>
-            <Campo span={6}>
+            <Campo span={4}>
+              <Field label="Seção (opcional)">
+                <Input
+                  value={itemAtual.secao ?? ''}
+                  onChange={(_, d) => setItemAtual({ ...itemAtual, secao: d.value })}
+                  placeholder="Ex.: Dormitórios"
+                />
+              </Field>
+            </Campo>
+            <Campo span={8}>
               <Field label="Descrição do item">
                 <Input
                   value={itemAtual.descricao}

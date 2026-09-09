@@ -39,6 +39,7 @@ public class ObterChecklistModeloDetalheQueryHandler : IRequestHandler<ObterChec
                 ChecklistModeloId = i.ChecklistModeloId,
                 Ordem = i.Ordem,
                 Descricao = i.Descricao,
+                Secao = i.Secao,
                 ExigeFotografia = i.ExigeFotografia,
                 ExigeResponsavel = i.ExigeResponsavel,
                 ExigePrazo = i.ExigePrazo

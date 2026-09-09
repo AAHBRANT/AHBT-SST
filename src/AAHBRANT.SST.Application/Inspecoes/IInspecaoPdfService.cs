@@ -9,6 +9,7 @@ namespace AAHBRANT.SST.Application.Inspecoes;
 public record InspecaoPdfItemModelo(
     int Ordem,
     string Descricao,
+    string? Secao,
     string? Local,
     StatusItemChecklist? StatusItem,
     string? Observacao,

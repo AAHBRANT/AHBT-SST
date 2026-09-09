@@ -125,6 +125,7 @@ using (var escopoMigracao = app.Services.CreateScope())
 await RbacSeeder.ExecutarAsync(app.Services);
 await CpfLgpdBackfillSeeder.ExecutarAsync(app.Services);
 await RegraAlertaSeeder.ExecutarAsync(app.Services);
+await ChecklistAlojamentoSeeder.ExecutarAsync(app.Services);
 
 if (app.Environment.IsDevelopment())
 {

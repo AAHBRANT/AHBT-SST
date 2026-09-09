@@ -48,6 +48,7 @@ public class CriarNovaVersaoChecklistModeloCommandHandler : IRequestHandler<Cria
             {
                 Ordem = ordem++,
                 Descricao = item.Descricao,
+                Secao = item.Secao,
                 ExigeFotografia = item.ExigeFotografia,
                 ExigeResponsavel = item.ExigeResponsavel,
                 ExigePrazo = item.ExigePrazo,

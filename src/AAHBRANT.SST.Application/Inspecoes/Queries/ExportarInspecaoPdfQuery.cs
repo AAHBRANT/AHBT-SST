@@ -38,6 +38,7 @@ public class ExportarInspecaoPdfQueryHandler : IRequestHandler<ExportarInspecaoP
             return new InspecaoPdfItemModelo(
                 r.Ordem,
                 r.Descricao,
+                r.Secao,
                 r.Local,
                 r.StatusItem,
                 r.Observacao,
@@ -76,6 +77,7 @@ public class ExportarInspecaoPdfQueryHandler : IRequestHandler<ExportarInspecaoP
         TipoInspecao.EspacoConfinado => "Espaço confinado",
         TipoInspecao.Comportamental => "Comportamental",
         TipoInspecao.Terceiros => "Terceiros",
+        TipoInspecao.Alojamento => "Alojamento",
         _ => tipo.ToString(),
     };
 }

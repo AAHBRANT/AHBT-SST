@@ -37,8 +37,18 @@ public class InspecaoPdfService : IInspecaoPdfService
 
                     coluna.Item().Element(c => SecaoCabecalho(c, modelo));
 
+                    // Cabeçalho de seção só na fronteira entre seções diferentes — checklists sem
+                    // Secao preenchida (todos os anteriores ao campo existir) seguem em lista
+                    // corrida, mesmo critério usado na tela de execução (InspecaoDetalhePage.tsx).
+                    string? secaoAnterior = null;
                     foreach (var item in modelo.Itens)
+                    {
+                        if (!string.IsNullOrWhiteSpace(item.Secao) && item.Secao != secaoAnterior)
+                            coluna.Item().Text(item.Secao).FontSize(11).Bold().FontColor(CorMarca);
+                        secaoAnterior = item.Secao;
+
                         coluna.Item().Element(c => SecaoItem(c, item));
+                    }
                 });
 
                 pagina.Footer().AlignCenter().Text(t =>
