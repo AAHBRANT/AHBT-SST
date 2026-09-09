@@ -1,7 +1,6 @@
-import { useState } from 'react';
+import { useEffect } from 'react';
 import { useSearchParams } from 'react-router-dom';
-import { Tab, TabList, Text, type SelectTabData, type SelectTabEvent } from '@fluentui/react-components';
-import { usePillTabStyles, useSubTabStyles } from '../pageStyles';
+import { Abas, PageHeader, useAbaNaUrl } from '@ui';
 import { PgrsTab } from './PgrsTab';
 import { PgrDashboardTab } from './dashboard/PgrDashboardTab';
 import { MatrizRiscoTab } from '../riscos/MatrizRiscoTab';
@@ -23,41 +22,52 @@ import { RiscosDashboardTab } from '../riscos/dashboard/RiscosDashboardTab';
 // sidebar) — mapeado para "matriz", que era a aba inicial de RiscosPage.
 type AbaPgrGro = 'pgrs' | 'matriz' | 'atividades' | 'importar' | 'dashboardPgr' | 'dashboardRiscos';
 
-const ABAS_VALIDAS: AbaPgrGro[] = ['pgrs', 'matriz', 'atividades', 'importar', 'dashboardPgr', 'dashboardRiscos'];
+const ABAS_VALIDAS: readonly AbaPgrGro[] = ['pgrs', 'matriz', 'atividades', 'importar', 'dashboardPgr', 'dashboardRiscos'];
 
+// Onda 2 Task 8 (camada ui/): só o título (guia item 3) está no escopo literal desta task — o
+// conteúdo das abas "matriz"/"atividades"/"importar"/"dashboardRiscos" pertence ao módulo `riscos`
+// (Task 13, ainda não migrado). A barra de abas em si, porém, precisa sair do `TabList`/`pageStyles`
+// crus (senão o arquivo continuaria importando `@fluentui/react-components` direto, quebrando o gate
+// de lint mesmo só tocando o título) — convertida para `Abas` seguindo exatamente o padrão já usado
+// em `EpiPage.tsx`/piloto 1. O remapeamento legado `?aba=riscos→matriz` não cabe em `useAbaNaUrl`
+// (ele só aceita valores já válidos), então é feito manualmente antes: se a URL ainda tiver o valor
+// antigo, reescreve para "matriz" e deixa o hook ler o valor corrigido.
 export function PgrRiscosPage({ mostrarTitulo = true }: { mostrarTitulo?: boolean } = {}) {
-  const [searchParams] = useSearchParams();
-  const abaInicial = searchParams.get('aba');
-  const abaResolvida = abaInicial === 'riscos' ? 'matriz' : abaInicial;
-  const [aba, setAba] = useState<AbaPgrGro>(
-    ABAS_VALIDAS.includes(abaResolvida as AbaPgrGro) ? (abaResolvida as AbaPgrGro) : 'pgrs',
-  );
-  const estilosPillTab = usePillTabStyles();
-  const estilosSubTab = useSubTabStyles();
-  const estilosAba = mostrarTitulo ? estilosPillTab : estilosSubTab;
+  const [searchParams, setSearchParams] = useSearchParams();
+
+  useEffect(() => {
+    if (searchParams.get('aba') === 'riscos') {
+      setSearchParams(
+        (p) => {
+          const novo = new URLSearchParams(p);
+          novo.set('aba', 'matriz');
+          return novo;
+        },
+        { replace: true },
+      );
+    }
+  }, [searchParams, setSearchParams]);
+
+  const [aba, setAba] = useAbaNaUrl<AbaPgrGro>('aba', ABAS_VALIDAS, 'pgrs');
 
   return (
     <div>
-      {mostrarTitulo && (
-        <div style={{ marginBottom: 16 }}>
-          <Text size={500} weight="semibold">
-            PGR / GRO
-          </Text>
-        </div>
-      )}
+      {mostrarTitulo && <PageHeader titulo="PGR / GRO" />}
 
-      <TabList
-        selectedValue={aba}
-        onTabSelect={(_: SelectTabEvent, data: SelectTabData) => setAba(data.value as AbaPgrGro)}
-        className={estilosAba.lista}
-      >
-        <Tab value="pgrs">PGRs</Tab>
-        <Tab value="matriz">Matriz de Risco</Tab>
-        <Tab value="atividades">Atividades</Tab>
-        <Tab value="importar">Importar em Lote</Tab>
-        <Tab value="dashboardPgr">Dashboard PGR</Tab>
-        <Tab value="dashboardRiscos">Dashboard Riscos</Tab>
-      </TabList>
+      <Abas
+        nivel={mostrarTitulo ? 'pilar' : 'modulo'}
+        aria-label="Seções de PGR e Riscos"
+        valor={aba}
+        aoMudar={setAba}
+        abas={[
+          { valor: 'pgrs', rotulo: 'PGRs' },
+          { valor: 'matriz', rotulo: 'Matriz de Risco' },
+          { valor: 'atividades', rotulo: 'Atividades' },
+          { valor: 'importar', rotulo: 'Importar em Lote' },
+          { valor: 'dashboardPgr', rotulo: 'Dashboard PGR' },
+          { valor: 'dashboardRiscos', rotulo: 'Dashboard Riscos' },
+        ]}
+      />
 
       {aba === 'pgrs' && <PgrsTab />}
       {aba === 'matriz' && <MatrizRiscoTab />}
