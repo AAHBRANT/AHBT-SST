@@ -31,22 +31,24 @@ import {
   type Usuario,
 } from '../../lib/api';
 import { useSucessoToast } from '../../hooks/useSucessoToast';
+import { hojeIso } from '../../lib/datas';
 
-const ptVazia: NovaPermissaoTrabalho = {
-  numeroPt: '',
-  atividadeId: '',
-  descricaoAtividade: '',
-  local: '',
-  empresaExecutante: '',
-  equipeId: null,
-  data: '',
-  horarioInicio: null,
-  horarioFim: null,
-  validade: null,
-  responsavelExecucaoUsuarioId: null,
-  responsavelAreaUsuarioId: null,
-  responsaveisIds: [],
-};
+function ptVazia(): NovaPermissaoTrabalho {
+  return {
+    atividadeId: '',
+    descricaoAtividade: '',
+    local: '',
+    empresaExecutante: '',
+    equipeId: null,
+    data: hojeIso(),
+    horarioInicio: null,
+    horarioFim: null,
+    validade: null,
+    responsavelExecucaoUsuarioId: null,
+    responsavelAreaUsuarioId: null,
+    responsaveisIds: [],
+  };
+}
 
 // Mapeamento 1:1 pelo nome semântico do Fluent (Guia de conversão item 5), preservando as mesmas
 // cores da versão anterior (Badge color=): subtle→neutro, success→ok, warning→atencao, informative→info.
@@ -66,7 +68,7 @@ export function PermissoesTrabalhoTab() {
   const [trabalhadores, setTrabalhadores] = useState<Trabalhador[]>([]);
   const [equipes, setEquipes] = useState<Equipe[]>([]);
   const [usuarios, setUsuarios] = useState<Usuario[]>([]);
-  const [novaPt, setNovaPt] = useState<NovaPermissaoTrabalho>(ptVazia);
+  const [novaPt, setNovaPt] = useState<NovaPermissaoTrabalho>(ptVazia());
   const [erro, setErro] = useState<string | null>(null);
   const [carregando, setCarregando] = useState(false);
   const [carregandoLista, setCarregandoLista] = useState(true);
@@ -110,7 +112,6 @@ export function PermissoesTrabalhoTab() {
       setErro(null);
       await api.permissoesTrabalho.criar({
         ...novaPt,
-        numeroPt: novaPt.numeroPt || null,
         empresaExecutante: novaPt.empresaExecutante || null,
         equipeId: novaPt.equipeId || null,
         horarioInicio: novaPt.horarioInicio ? `${novaPt.horarioInicio}:00` : null,
@@ -119,7 +120,7 @@ export function PermissoesTrabalhoTab() {
         responsavelExecucaoUsuarioId: novaPt.responsavelExecucaoUsuarioId || null,
         responsavelAreaUsuarioId: novaPt.responsavelAreaUsuarioId || null,
       });
-      setNovaPt(ptVazia);
+      setNovaPt(ptVazia());
       await carregar();
       sucessoToast('Permissão de Trabalho criada com sucesso.');
     } catch (e) {
@@ -164,12 +165,7 @@ export function PermissoesTrabalhoTab() {
       <Card titulo="Permissão de Trabalho (PT)">
         <FormSection titulo="Dados Gerais" numero={1} primeira>
           <FormGrid>
-            <Campo span={2}>
-              <Field label="Nº PT">
-                <Input value={novaPt.numeroPt ?? ''} onChange={(_, d) => setNovaPt({ ...novaPt, numeroPt: d.value })} />
-              </Field>
-            </Campo>
-            <Campo span={3}>
+            <Campo span={5}>
               <Field label="Atividade">
                 <Select value={novaPt.atividadeId} onChange={(_, d) => setNovaPt({ ...novaPt, atividadeId: d.value })}>
                   <option value="">Selecione</option>

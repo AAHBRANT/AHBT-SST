@@ -850,7 +850,6 @@ export interface Apr {
 }
 
 export interface NovaApr {
-  numeroApr?: string | null;
   atividadeId: string;
   local: string;
   maquinasEquipamentos?: string | null;
@@ -1130,7 +1129,6 @@ export interface PermissaoTrabalho {
 }
 
 export interface NovaPermissaoTrabalho {
-  numeroPt?: string | null;
   atividadeId: string;
   descricaoAtividade: string;
   local: string;

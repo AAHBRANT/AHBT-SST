@@ -34,7 +34,7 @@ public class PermissaoTrabalhoCommandsTests
     {
         var handler = new CriarPermissaoTrabalhoCommandHandler(db);
         return await handler.Handle(new CriarPermissaoTrabalhoCommand(
-            "PT-0001", atividadeId, "Solda em tubulação de gás", "Frente 2",
+            atividadeId, "Solda em tubulação de gás", "Frente 2",
             "Empresa Executante Ltda", null, DateTime.UtcNow, null, null, null,
             null, null, new List<Guid>()), default);
     }

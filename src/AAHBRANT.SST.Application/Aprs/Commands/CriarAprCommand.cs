@@ -1,3 +1,4 @@
+using AAHBRANT.SST.Application.Common;
 using AAHBRANT.SST.Application.Common.Interfaces;
 using AAHBRANT.SST.Domain.Entidades;
 using FluentValidation;
@@ -8,8 +9,9 @@ namespace AAHBRANT.SST.Application.Aprs.Commands;
 
 // A APR sempre nasce em elaboração ("aprovação" é uma etapa distinta do cadastro) — o campo
 // Status não é exposto aqui; a mudança de status passa por AprovarAprCommand/ReprovarAprCommand.
+// NumeroApr não é mais informado por quem cadastra (pedido do usuário, 03/09): o sistema gera
+// sozinho, ver GeradorNumeroDocumento.
 public record CriarAprCommand(
-    string? NumeroApr,
     Guid AtividadeId,
     string Local,
     string? MaquinasEquipamentos,
@@ -23,7 +25,6 @@ public class CriarAprCommandValidator : AbstractValidator<CriarAprCommand>
 {
     public CriarAprCommandValidator()
     {
-        RuleFor(x => x.NumeroApr).MaximumLength(60);
         RuleFor(x => x.AtividadeId).NotEmpty();
         RuleFor(x => x.Local).NotEmpty().MaximumLength(200);
         RuleFor(x => x.MaquinasEquipamentos).MaximumLength(500);
@@ -43,9 +44,12 @@ public class CriarAprCommandHandler : IRequestHandler<CriarAprCommand, Guid>
         if (!atividadeExiste)
             throw new KeyNotFoundException($"Atividade {request.AtividadeId} não encontrada.");
 
+        var numeroApr = await GeradorNumeroDocumento.GerarProximoAsync(
+            _db.Aprs.IgnoreQueryFilters().Select(a => a.NumeroApr), "APR", DateTime.UtcNow, ct);
+
         var apr = new Apr
         {
-            NumeroApr = request.NumeroApr,
+            NumeroApr = numeroApr,
             AtividadeId = request.AtividadeId,
             Local = request.Local,
             MaquinasEquipamentos = request.MaquinasEquipamentos,

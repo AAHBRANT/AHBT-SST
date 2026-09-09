@@ -22,18 +22,20 @@ import {
 import { Add24Regular, Delete24Regular } from '@fluentui/react-icons';
 import { api, StatusApr, statusAprLabel, type Apr, type Atividade, type Equipe, type NovaApr, type Trabalhador } from '../../lib/api';
 import { useSucessoToast } from '../../hooks/useSucessoToast';
+import { hojeIso } from '../../lib/datas';
 
-const aprVazia: NovaApr = {
-  numeroApr: '',
-  atividadeId: '',
-  local: '',
-  maquinasEquipamentos: '',
-  pgrReferencia: '',
-  equipeId: null,
-  data: '',
-  validade: null,
-  responsaveisIds: [],
-};
+function aprVazia(): NovaApr {
+  return {
+    atividadeId: '',
+    local: '',
+    maquinasEquipamentos: '',
+    pgrReferencia: '',
+    equipeId: null,
+    data: hojeIso(),
+    validade: null,
+    responsaveisIds: [],
+  };
+}
 
 // Mapeamento 1:1 pelo nome semântico do Fluent (Guia de conversão item 5), preservando as mesmas
 // cores da versão anterior (Badge color=): informative→info, warning→atencao, success→ok,
@@ -55,7 +57,7 @@ export function AprsTab() {
   const [atividades, setAtividades] = useState<Atividade[]>([]);
   const [trabalhadores, setTrabalhadores] = useState<Trabalhador[]>([]);
   const [equipes, setEquipes] = useState<Equipe[]>([]);
-  const [novaApr, setNovaApr] = useState<NovaApr>(aprVazia);
+  const [novaApr, setNovaApr] = useState<NovaApr>(aprVazia());
   const [erro, setErro] = useState<string | null>(null);
   const [carregando, setCarregando] = useState(false);
   const [carregandoLista, setCarregandoLista] = useState(true);
@@ -99,7 +101,7 @@ export function AprsTab() {
         ...novaApr,
         validade: novaApr.validade || null,
       });
-      setNovaApr(aprVazia);
+      setNovaApr(aprVazia());
       await carregar();
       sucessoToast('APR criada com sucesso.');
     } catch (e) {
@@ -144,12 +146,7 @@ export function AprsTab() {
       <Card titulo="Análise Preliminar de Risco (APR)">
         <FormSection titulo="Dados da APR" numero={1} primeira>
           <FormGrid>
-            <Campo span={2}>
-              <Field label="Nº APR">
-                <Input value={novaApr.numeroApr ?? ''} onChange={(_, d) => setNovaApr({ ...novaApr, numeroApr: d.value })} />
-              </Field>
-            </Campo>
-            <Campo span={4}>
+            <Campo span={6}>
               <Field label="Atividade">
                 <Select
                   value={novaApr.atividadeId}
