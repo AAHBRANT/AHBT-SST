@@ -8,6 +8,10 @@ export * from './tokens/movimento';
 // importar @fluentui/react-components.
 export {
   Avatar, Button, Checkbox, Field, Input, Select, Spinner, Text, Textarea, Tooltip,
+  // Radio/RadioGroup: mesmo espírito do resto da lista (a11y já correta, sem hex/estilo próprio) —
+  // faltava na lista original da spec §2.2 por não ter uso ainda; achado na Onda 2 Task 18
+  // (QuestionarioAplicabilidadeTab.tsx, único consumidor no app hoje).
+  Radio, RadioGroup,
 } from '@fluentui/react-components';
 
 // Peças já existentes, ainda no lugar antigo até a Onda 3.
