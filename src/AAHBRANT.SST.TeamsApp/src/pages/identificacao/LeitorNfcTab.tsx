@@ -1,9 +1,12 @@
 import { useState } from 'react';
-import { Button, Field, Input, Text } from '@fluentui/react-components';
+import { Button, Field, FeedbackInline, Input, Text } from '@ui';
 import { ScanObject24Regular } from '@fluentui/react-icons';
 import { api, type ResolverTagDto } from '../../lib/api';
 import { usePageStyles } from '../pageStyles';
 import { ResolverTagResultado } from './ResolverTagResultado';
+
+// Onda 2 Task 9 (camada ui/): leitor NFC — só o item 4 do Guia (erro→FeedbackInline) se aplica
+// aqui; o layout de estilos.card/formGrid de pageStyles não muda.
 
 // Web NFC (NDEFReader) só existe em Android Chrome/Edge sobre HTTPS. Em outros navegadores
 // (iOS, desktop) não há suporte nenhum, então a leitura manual do UID é o único caminho.
@@ -87,7 +90,11 @@ export function LeitorNfcTab() {
         </Button>
       </div>
 
-      {erro && <Text className={estilos.erro}>{erro}</Text>}
+      {erro && (
+        <FeedbackInline tom="erro" aoFechar={() => setErro(null)}>
+          {erro}
+        </FeedbackInline>
+      )}
       {resultado && <ResolverTagResultado resultado={resultado} />}
     </div>
   );
