@@ -1,7 +1,4 @@
-import { useState } from 'react';
-import { useSearchParams } from 'react-router-dom';
-import { Tab, TabList, type SelectTabData, type SelectTabEvent } from '@fluentui/react-components';
-import { usePillTabStyles } from '../pageStyles';
+import { Abas, useAbaNaUrl } from '@ui';
 import { AprsPage } from '../apr/AprsPage';
 import { PermissoesTrabalhoPage } from '../pt/PermissoesTrabalhoPage';
 import { InspecoesPage } from '../inspecoes/InspecoesPage';
@@ -18,29 +15,29 @@ const SECOES_VALIDAS: SecaoOperacao[] = ['apr', 'pt', 'inspecoes', 'cipa', 'epi'
 // única entrada de menu — APR, PT, Inspeções e Identificação (rotulada "Outros controles
 // operacionais", mesmo nome já usado na sidebar) viraram abas aqui. CIPA, EPI/EPC e DDS entraram
 // aqui em 03/09 (pedido do usuário) — saíram de Gestão de SST, ver GestaoSstPage.tsx.
+// Onda 2 Task 21 (camada ui/, conversão 7): TabList/usePillTabStyles → Abas nivel="pilar" +
+// useAbaNaUrl('secao', ...) — mesma casca já aplicada em GestaoSstPage.tsx; EpiPage/MatrizEpiTab já
+// migradas (piloto 1) como filhas, só a casca da própria página-pilar faltava.
 export function OperacaoPage() {
-  const [searchParams] = useSearchParams();
-  const secaoInicial = searchParams.get('secao');
-  const [secao, setSecao] = useState<SecaoOperacao>(
-    SECOES_VALIDAS.includes(secaoInicial as SecaoOperacao) ? (secaoInicial as SecaoOperacao) : 'apr',
-  );
-  const estilosAba = usePillTabStyles();
+  const [secao, setSecao] = useAbaNaUrl<SecaoOperacao>('secao', SECOES_VALIDAS, 'apr');
 
   return (
     <div>
-      <TabList
-        selectedValue={secao}
-        onTabSelect={(_: SelectTabEvent, data: SelectTabData) => setSecao(data.value as SecaoOperacao)}
-        className={estilosAba.lista}
-      >
-        <Tab value="apr">APR</Tab>
-        <Tab value="pt">PT</Tab>
-        <Tab value="inspecoes">Inspeções</Tab>
-        <Tab value="cipa">CIPA</Tab>
-        <Tab value="epi">EPI / EPC</Tab>
-        <Tab value="dds">DDS</Tab>
-        <Tab value="identificacao">Outros controles operacionais</Tab>
-      </TabList>
+      <Abas
+        nivel="pilar"
+        valor={secao}
+        aoMudar={setSecao}
+        aria-label="Seções de Operação"
+        abas={[
+          { valor: 'apr', rotulo: 'APR' },
+          { valor: 'pt', rotulo: 'PT' },
+          { valor: 'inspecoes', rotulo: 'Inspeções' },
+          { valor: 'cipa', rotulo: 'CIPA' },
+          { valor: 'epi', rotulo: 'EPI / EPC' },
+          { valor: 'dds', rotulo: 'DDS' },
+          { valor: 'identificacao', rotulo: 'Outros controles operacionais' },
+        ]}
+      />
 
       {secao === 'apr' && <AprsPage mostrarTitulo={false} />}
       {secao === 'pt' && <PermissoesTrabalhoPage mostrarTitulo={false} />}
