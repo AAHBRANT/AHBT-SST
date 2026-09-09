@@ -54,6 +54,18 @@
       "runtimeExecutable": "npm",
       "runtimeArgs": ["--prefix", "src/AAHBRANT.SST.TeamsApp", "run", "dev", "--", "--port", "5286"],
       "port": 5286
+    },
+    {
+      "name": "sst-api-pontas-soltas",
+      "runtimeExecutable": "dotnet",
+      "runtimeArgs": ["run", "--project", "src/AAHBRANT.SST.Api/AAHBRANT.SST.Api.csproj", "--urls", "http://localhost:5223"],
+      "port": 5223
+    },
+    {
+      "name": "sst-web-pontas-soltas",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": ["--prefix", "src/AAHBRANT.SST.TeamsApp", "run", "dev", "--", "--port", "5293"],
+      "port": 5293
     }
   ]
 }
