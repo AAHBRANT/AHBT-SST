@@ -190,6 +190,8 @@ public class DdsSemanalPdfService : IDdsSemanalPdfService
     private static string TextoResumoTema(DdsSemanalPdfDiaModelo? dia)
     {
         if (dia is null) return "—";
+        if (dia.SemExpediente)
+            return $"SEM EXPEDIENTE — {dia.MotivoSemExpediente}";
         var partes = new List<string>(dia.AtividadesNomes);
         if (!string.IsNullOrWhiteSpace(dia.TemaLivreNome))
             partes.Add(dia.TemaLivreNome);

@@ -37,6 +37,14 @@ public class Dds : AuditableEntity
     // registrada em StatusApr/StatusPgr/StatusPt/StatusInspecao) — proposta própria.
     public StatusDds Status { get; set; } = StatusDds.EmAndamento;
 
+    // Dia sem expediente — feriado, folga, obra parada (pedido do usuário, 03/09): em vez de deixar
+    // o dia da semana em branco/pendente sem explicação, o responsável registra o motivo. Este
+    // registro nasce direto com Status=Concluido (ver RegistrarDiaSemExpedienteCommand) — não passa
+    // pelo fluxo normal de encerramento (que exige 3 fotos de evidência do DDS; não há o que
+    // fotografar num dia sem DDS) — e não tem Atividades/ItensChecklist/Participantes/FotosEvidencia.
+    public bool SemExpediente { get; set; }
+    public string? MotivoSemExpediente { get; set; }
+
     public ICollection<DdsAtividade> Atividades { get; set; } = new List<DdsAtividade>();
     public ICollection<DdsItemChecklist> ItensChecklist { get; set; } = new List<DdsItemChecklist>();
     public ICollection<DdsParticipante> Participantes { get; set; } = new List<DdsParticipante>();
