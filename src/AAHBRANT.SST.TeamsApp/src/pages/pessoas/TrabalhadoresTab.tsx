@@ -1,8 +1,26 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Avatar, Badge, Button, Field, Input, Select, Text } from '@fluentui/react-components';
-import { CampoData } from '../../components/CampoData';
-import { Add24Regular, ChevronRight24Regular, Delete24Regular, Fingerprint24Regular, Search24Regular } from '@fluentui/react-icons';
+import {
+  Avatar,
+  Button,
+  Card,
+  PageHeader,
+  DataTable,
+  StatusChip,
+  FeedbackInline,
+  PainelLateral,
+  FormSection,
+  FormGrid,
+  Campo,
+  Field,
+  Input,
+  Select,
+  CampoData,
+  useConfirmar,
+  type Coluna,
+  type Tom,
+} from '@ui';
+import { Add24Regular, Fingerprint24Regular, Search24Regular } from '@fluentui/react-icons';
 import { SeletorFotoCamera } from '../../components/SeletorFotoCamera';
 import {
   api,
@@ -17,26 +35,15 @@ import {
   type Trabalhador,
 } from '../../lib/api';
 import { formatarCpf } from '../../lib/cpf';
-import { usePageStyles } from '../pageStyles';
-import { CadastroDigitalDialog } from './CadastroDigitalDialog';
-import { RequisitosFuncaoDialog } from './RequisitosFuncaoDialog';
-import { useConfirmarExclusao } from '../../hooks/useConfirmarExclusao';
+import { CadastroDigitalDialog } from '../../components/pessoas/CadastroDigitalDialog';
+import { RequisitosFuncaoDialog } from '../../components/pessoas/RequisitosFuncaoDialog';
 import { useSucessoToast } from '../../hooks/useSucessoToast';
-import { EstadoVazio } from '../../components/EstadoVazio';
-import { ListaCarregando } from '../../components/ListaCarregando';
 
-function corBadgeAso(status: number | undefined): 'success' | 'warning' | 'danger' | 'informative' {
-  switch (status) {
-    case ResultadoAso.Apto:
-      return 'success';
-    case ResultadoAso.AptoComRestricao:
-      return 'warning';
-    case ResultadoAso.Inapto:
-      return 'danger';
-    default:
-      return 'informative';
-  }
-}
+const tomAso: Record<number, Tom> = {
+  [ResultadoAso.Apto]: 'ok',
+  [ResultadoAso.AptoComRestricao]: 'atencao',
+  [ResultadoAso.Inapto]: 'alerta',
+};
 
 function ultimoAso(asos: Aso[], trabalhadorId: string): Aso | undefined {
   return asos
@@ -57,8 +64,11 @@ const trabalhadorVazio: NovoTrabalhador = {
   turno: '',
 };
 
+// Lista de funcionários — piloto 1 estabeleceu o padrão (spec §4.2): o formulário de cadastro sai da
+// lista (que hoje empurrava a tabela pra baixo) e vira um PainelLateral próprio, com erro isolado do
+// erro de carga da lista (regra dos 3 pilotos: erro de painel é estado PRÓPRIO). A lista em si já era
+// um cartão-por-linha construído à mão — vira DataTable, que formaliza exatamente esse visual.
 export function TrabalhadoresTab() {
-  const estilos = usePageStyles();
   const navigate = useNavigate();
   const [trabalhadores, setTrabalhadores] = useState<Trabalhador[]>([]);
   const [obras, setObras] = useState<Obra[]>([]);
@@ -67,8 +77,10 @@ export function TrabalhadoresTab() {
   const [busca, setBusca] = useState('');
   const [novoTrabalhador, setNovoTrabalhador] = useState<NovoTrabalhador>(trabalhadorVazio);
   const [erro, setErro] = useState<string | null>(null);
+  const [erroPainel, setErroPainel] = useState<string | null>(null);
   const [carregando, setCarregando] = useState(false);
   const [carregandoLista, setCarregandoLista] = useState(true);
+  const [painelAberto, setPainelAberto] = useState(false);
   const [fotoUrls, setFotoUrls] = useState<Record<string, string>>({});
   const [trabalhadorDigitalAlvo, setTrabalhadorDigitalAlvo] = useState<{ id: string; nome: string } | null>(
     null,
@@ -78,7 +90,7 @@ export function TrabalhadoresTab() {
     nome: string;
     funcaoId: string;
   } | null>(null);
-  const { confirmar, dialogElement } = useConfirmarExclusao();
+  const { confirmar, dialogElement } = useConfirmar();
   const sucessoToast = useSucessoToast();
 
   async function carregar() {
@@ -167,24 +179,32 @@ export function TrabalhadoresTab() {
     );
   }, [busca, trabalhadores]);
 
+  // Todo caminho de fechar o painel limpa o formulário e o erro dele — senão reabrir mostra rascunho
+  // e mensagem de uma tentativa anterior.
+  function fecharPainel() {
+    setPainelAberto(false);
+    setErroPainel(null);
+    setNovoTrabalhador(trabalhadorVazio);
+  }
+
   async function criar() {
     try {
       setCarregando(true);
-      setErro(null);
+      setErroPainel(null);
       const { id } = await api.trabalhadores.criar(novoTrabalhador);
       setTrabalhadorRequisitosAlvo({ id, nome: novoTrabalhador.nome, funcaoId: novoTrabalhador.funcaoId });
       setNovoTrabalhador(trabalhadorVazio);
+      setPainelAberto(false);
       await carregar();
       sucessoToast('Funcionário criado com sucesso.');
     } catch (e) {
-      setErro(e instanceof Error ? e.message : 'Falha ao criar funcionário.');
+      setErroPainel(e instanceof Error ? e.message : 'Falha ao criar funcionário.');
     } finally {
       setCarregando(false);
     }
   }
 
-  async function excluir(id: string, evento: React.MouseEvent) {
-    evento.stopPropagation();
+  async function excluir(id: string) {
     if (
       !(await confirmar(
         'Excluir este funcionário? Todo o histórico associado (ASO, treinamentos, EPI) fica desvinculado. Essa ação não pode ser desfeita.',
@@ -200,193 +220,210 @@ export function TrabalhadoresTab() {
     }
   }
 
-  return (
-    <div className={estilos.card}>
-      {dialogElement}
-      <div className={estilos.toolbar}>
-        <Text weight="semibold">Funcionários cadastrados</Text>
-      </div>
-
-      {erro && <Text className={estilos.erro}>{erro}</Text>}
-
-      <div className={`${estilos.sectionTitle} ${estilos.sectionTitleFirst}`}>Dados do Funcionário</div>
-      <div className={estilos.formGrid}>
-        <div className={estilos.col3}>
-          <Field label="Obra">
-            <Select
-              value={novoTrabalhador.obraId}
-              onChange={(_, d) => setNovoTrabalhador({ ...novoTrabalhador, obraId: d.value })}
-            >
-              <option value="">Selecione</option>
-              {obras.map((obra) => (
-                <option key={obra.id} value={obra.id}>
-                  {obra.nome}
-                </option>
-              ))}
-            </Select>
-          </Field>
-        </div>
-        <div className={estilos.col3}>
-          <Field label="Função">
-            <Select
-              value={novoTrabalhador.funcaoId}
-              onChange={(_, d) => setNovoTrabalhador({ ...novoTrabalhador, funcaoId: d.value })}
-            >
-              <option value="">Selecione</option>
-              {funcoes.map((funcao) => (
-                <option key={funcao.id} value={funcao.id}>
-                  {funcao.nome}
-                </option>
-              ))}
-            </Select>
-          </Field>
-        </div>
-        <div className={estilos.col4}>
-          <Field label="Nome">
-            <Input
-              value={novoTrabalhador.nome}
-              onChange={(_, d) => setNovoTrabalhador({ ...novoTrabalhador, nome: d.value })}
-            />
-          </Field>
-        </div>
-        <div className={estilos.col2}>
-          <Field label="Matrícula">
-            <Input
-              value={novoTrabalhador.matricula}
-              onChange={(_, d) => setNovoTrabalhador({ ...novoTrabalhador, matricula: d.value })}
-            />
-          </Field>
-        </div>
-        <div className={estilos.col3}>
-          <Field label="CPF (11 dígitos)">
-            <Input
-              value={formatarCpf(novoTrabalhador.cpf)}
-              onChange={(_, d) =>
-                setNovoTrabalhador({ ...novoTrabalhador, cpf: d.value.replace(/\D/g, '').slice(0, 11) })
-              }
-            />
-          </Field>
-        </div>
-        <div className={estilos.col3}>
-          <Field label="Vínculo">
-            <Select
-              value={novoTrabalhador.vinculo}
-              onChange={(_, d) => setNovoTrabalhador({ ...novoTrabalhador, vinculo: Number(d.value) })}
-            >
-              {Object.entries(tipoVinculoLabel).map(([valor, rotulo]) => (
-                <option key={valor} value={valor}>
-                  {rotulo}
-                </option>
-              ))}
-            </Select>
-          </Field>
-        </div>
-        <div className={estilos.col3}>
-          <Field label="Data de admissão">
-            <CampoData
-              value={novoTrabalhador.dataAdmissao}
-              onChange={(_, d) => setNovoTrabalhador({ ...novoTrabalhador, dataAdmissao: d.value })}
-            />
-          </Field>
-        </div>
-      </div>
-      <div className={estilos.formActions}>
-        <Button appearance="primary" icon={<Add24Regular />} onClick={criar} disabled={carregando}>
-          Adicionar funcionário
-        </Button>
-      </div>
-
-      <Field label="Buscar por nome ou matrícula" style={{ marginBottom: 12 }}>
-        <Input contentBefore={<Search24Regular />} value={busca} onChange={(_, d) => setBusca(d.value)} />
-      </Field>
-
-      {carregandoLista ? (
-        <ListaCarregando />
-      ) : trabalhadores.length === 0 ? (
-        <EstadoVazio mensagem="Nenhum funcionário cadastrado ainda." />
-      ) : (
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-        {trabalhadoresFiltrados.map((trabalhador) => {
-          const aso = ultimoAso(asos, trabalhador.id);
-          return (
-            <div
-              key={trabalhador.id}
-              onClick={() => navigate(`/pessoas/${trabalhador.id}`)}
-              style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: 12,
-                padding: '10px 8px',
-                borderRadius: 8,
-                cursor: 'pointer',
-              }}
-            >
-              {fotoUrls[trabalhador.id] ? (
-                <Avatar image={{ src: fotoUrls[trabalhador.id] }} size={40} name={trabalhador.nome} />
-              ) : (
-                <Avatar name={trabalhador.nome} color="colorful" size={40} />
-              )}
-              <div style={{ flexGrow: 1, minWidth: 0 }}>
-                <Text weight="semibold" block truncate>
-                  {trabalhador.nome}
-                </Text>
-                <Text size={200}>
-                  {trabalhador.matricula} · {nomeObra(trabalhador.obraId)} · {nomeFuncao(trabalhador.funcaoId)} ·{' '}
-                  {tipoVinculoLabel[trabalhador.vinculo]}
-                </Text>
-              </div>
-              {aso && (
-                <Badge color={corBadgeAso(aso.resultadoStatus)} appearance="tint">
-                  {resultadoAsoLabel[aso.resultadoStatus]}
-                </Badge>
-              )}
-              {!trabalhador.temBiometria && (
-                <Badge color="warning" appearance="tint">
-                  Digital pendente
-                </Badge>
-              )}
-              <div style={{ display: 'flex', gap: 4 }}>
-                <Button
-                  appearance="subtle"
-                  icon={<Fingerprint24Regular />}
-                  onClick={(evento) => {
-                    evento.stopPropagation();
-                    setTrabalhadorDigitalAlvo({ id: trabalhador.id, nome: trabalhador.nome });
-                  }}
-                  aria-label="Cadastrar digital"
-                  title="Cadastrar digital"
-                />
-                <span onClick={(evento) => evento.stopPropagation()}>
-                  <SeletorFotoCamera
-                    rotulo="Enviar foto"
-                    apenasIcone
-                    tiposAceitos="image/png,image/jpeg"
-                    aoSelecionarArquivo={(arquivo) => enviarFoto(trabalhador.id, arquivo)}
-                    aoErroValidacao={setErro}
-                  />
-                </span>
-                <Button
-                  appearance="subtle"
-                  icon={<ChevronRight24Regular />}
-                  onClick={(evento) => {
-                    evento.stopPropagation();
-                    navigate(`/pessoas/${trabalhador.id}`);
-                  }}
-                  aria-label="Ver perfil"
-                />
-                <Button
-                  appearance="subtle"
-                  icon={<Delete24Regular />}
-                  onClick={(evento) => excluir(trabalhador.id, evento)}
-                  aria-label="Excluir"
-                />
-              </div>
+  const colunas: Coluna<Trabalhador>[] = [
+    {
+      chave: 'nome',
+      rotulo: 'Funcionário',
+      render: (t) => (
+        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+          {fotoUrls[t.id] ? (
+            <Avatar image={{ src: fotoUrls[t.id] }} size={40} name={t.nome} />
+          ) : (
+            <Avatar name={t.nome} color="colorful" size={40} />
+          )}
+          <div style={{ minWidth: 0 }}>
+            <div style={{ fontWeight: 600 }}>{t.nome}</div>
+            <div style={{ fontSize: 12 }}>
+              {t.matricula} · {nomeObra(t.obraId)} · {nomeFuncao(t.funcaoId)} · {tipoVinculoLabel[t.vinculo]}
             </div>
-          );
-        })}
-        {trabalhadoresFiltrados.length === 0 && <Text>Nenhum funcionário encontrado.</Text>}
-      </div>
-      )}
+          </div>
+        </div>
+      ),
+    },
+    {
+      chave: 'situacao',
+      rotulo: 'Situação',
+      render: (t) => {
+        const aso = ultimoAso(asos, t.id);
+        return (
+          <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+            {aso && <StatusChip tom={tomAso[aso.resultadoStatus] ?? 'info'}>{resultadoAsoLabel[aso.resultadoStatus]}</StatusChip>}
+            {!t.temBiometria && <StatusChip tom="atencao">Digital pendente</StatusChip>}
+          </div>
+        );
+      },
+    },
+  ];
+
+  return (
+    <div>
+      {dialogElement}
+      <PageHeader
+        titulo="Funcionários cadastrados"
+        filtros={
+          <Field label="Buscar por nome ou matrícula">
+            <Input contentBefore={<Search24Regular />} value={busca} onChange={(_, d) => setBusca(d.value)} />
+          </Field>
+        }
+        acoes={
+          <Button appearance="primary" icon={<Add24Regular />} onClick={() => setPainelAberto(true)}>
+            Adicionar funcionário
+          </Button>
+        }
+      />
+
+      {erro && <FeedbackInline tom="erro" aoFechar={() => setErro(null)}>{erro}</FeedbackInline>}
+
+      <Card>
+        <DataTable
+          aria-label="Funcionários cadastrados"
+          colunas={colunas}
+          linhas={trabalhadoresFiltrados}
+          chaveLinha={(t) => t.id}
+          carregando={carregandoLista}
+          aoClicarLinha={(t) => navigate(`/pessoas/${t.id}`)}
+          vazio={
+            trabalhadores.length === 0
+              ? {
+                  titulo: 'Nenhum funcionário cadastrado ainda.',
+                  descricao: 'Cadastre o primeiro funcionário para começar.',
+                  acao: { rotulo: 'Adicionar funcionário', aoClicar: () => setPainelAberto(true) },
+                }
+              : { titulo: 'Nenhum funcionário encontrado.', descricao: 'Tente outro termo de busca.', variante: 'sem-resultado' }
+          }
+          acoesLinha={(t) => (
+            <div style={{ display: 'flex', gap: 4 }}>
+              <Button
+                appearance="subtle"
+                size="small"
+                icon={<Fingerprint24Regular />}
+                onClick={(evento) => {
+                  evento.stopPropagation();
+                  setTrabalhadorDigitalAlvo({ id: t.id, nome: t.nome });
+                }}
+                aria-label="Cadastrar digital"
+                title="Cadastrar digital"
+              />
+              <span onClick={(evento) => evento.stopPropagation()}>
+                <SeletorFotoCamera
+                  rotulo="Enviar foto"
+                  apenasIcone
+                  tiposAceitos="image/png,image/jpeg"
+                  aoSelecionarArquivo={(arquivo) => enviarFoto(t.id, arquivo)}
+                  aoErroValidacao={setErro}
+                />
+              </span>
+              <Button appearance="subtle" size="small" onClick={() => excluir(t.id)} aria-label="Excluir">
+                Excluir
+              </Button>
+            </div>
+          )}
+        />
+      </Card>
+
+      <PainelLateral
+        aberto={painelAberto}
+        aoFechar={fecharPainel}
+        titulo="Novo funcionário"
+        largura="lg"
+        rodape={
+          <>
+            <Button onClick={fecharPainel}>Cancelar</Button>
+            <Button appearance="primary" onClick={criar} disabled={carregando}>
+              Adicionar funcionário
+            </Button>
+          </>
+        }
+      >
+        {erroPainel && (
+          <FeedbackInline tom="erro" aoFechar={() => setErroPainel(null)}>
+            {erroPainel}
+          </FeedbackInline>
+        )}
+
+        <FormSection titulo="Dados do funcionário" numero={1} primeira>
+          <FormGrid>
+            <Campo span={6}>
+              <Field label="Obra">
+                <Select
+                  value={novoTrabalhador.obraId}
+                  onChange={(_, d) => setNovoTrabalhador({ ...novoTrabalhador, obraId: d.value })}
+                >
+                  <option value="">Selecione</option>
+                  {obras.map((obra) => (
+                    <option key={obra.id} value={obra.id}>
+                      {obra.nome}
+                    </option>
+                  ))}
+                </Select>
+              </Field>
+            </Campo>
+            <Campo span={6}>
+              <Field label="Função">
+                <Select
+                  value={novoTrabalhador.funcaoId}
+                  onChange={(_, d) => setNovoTrabalhador({ ...novoTrabalhador, funcaoId: d.value })}
+                >
+                  <option value="">Selecione</option>
+                  {funcoes.map((funcao) => (
+                    <option key={funcao.id} value={funcao.id}>
+                      {funcao.nome}
+                    </option>
+                  ))}
+                </Select>
+              </Field>
+            </Campo>
+            <Campo span={8}>
+              <Field label="Nome">
+                <Input
+                  value={novoTrabalhador.nome}
+                  onChange={(_, d) => setNovoTrabalhador({ ...novoTrabalhador, nome: d.value })}
+                />
+              </Field>
+            </Campo>
+            <Campo span={4}>
+              <Field label="Matrícula">
+                <Input
+                  value={novoTrabalhador.matricula}
+                  onChange={(_, d) => setNovoTrabalhador({ ...novoTrabalhador, matricula: d.value })}
+                />
+              </Field>
+            </Campo>
+            <Campo span={6}>
+              <Field label="CPF (11 dígitos)">
+                <Input
+                  value={formatarCpf(novoTrabalhador.cpf)}
+                  onChange={(_, d) =>
+                    setNovoTrabalhador({ ...novoTrabalhador, cpf: d.value.replace(/\D/g, '').slice(0, 11) })
+                  }
+                />
+              </Field>
+            </Campo>
+            <Campo span={3}>
+              <Field label="Vínculo">
+                <Select
+                  value={novoTrabalhador.vinculo}
+                  onChange={(_, d) => setNovoTrabalhador({ ...novoTrabalhador, vinculo: Number(d.value) })}
+                >
+                  {Object.entries(tipoVinculoLabel).map(([valor, rotulo]) => (
+                    <option key={valor} value={valor}>
+                      {rotulo}
+                    </option>
+                  ))}
+                </Select>
+              </Field>
+            </Campo>
+            <Campo span={3}>
+              <Field label="Data de admissão">
+                <CampoData
+                  value={novoTrabalhador.dataAdmissao}
+                  onChange={(_, d) => setNovoTrabalhador({ ...novoTrabalhador, dataAdmissao: d.value })}
+                />
+              </Field>
+            </Campo>
+          </FormGrid>
+        </FormSection>
+      </PainelLateral>
 
       <RequisitosFuncaoDialog
         funcaoId={trabalhadorRequisitosAlvo?.funcaoId ?? null}

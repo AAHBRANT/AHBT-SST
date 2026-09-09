@@ -1,34 +1,36 @@
 import { useEffect, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import {
-  Badge,
   Button,
+  Campo,
+  CampoData,
+  Card,
+  Carregando,
+  DataTable,
   Field,
+  FeedbackInline,
+  FormGrid,
+  FormRodape,
+  FormSection,
   Input,
+  PageHeader,
   Select,
-  Table,
-  TableBody,
-  TableCell,
-  TableHeader,
-  TableHeaderCell,
-  TableRow,
-  Text,
+  StatusChip,
   Textarea,
-} from '@fluentui/react-components';
-import { CampoData } from '../../components/CampoData';
-import { ArrowLeft24Regular, Delete24Regular } from '@fluentui/react-icons';
+  useConfirmar,
+  type Coluna,
+} from '@ui';
+import { Delete24Regular } from '@fluentui/react-icons';
 import {
   api,
   cargoMembroCipaLabel,
   origemMembroCipaLabel,
   CargoMembroCipa,
   type MembroCipaDetalhe,
+  type TreinamentoCipa,
 } from '../../lib/api';
 import { SeletorFotoCamera } from '../../components/SeletorFotoCamera';
-import { usePageStyles } from '../pageStyles';
-import { useConfirmarExclusao } from '../../hooks/useConfirmarExclusao';
 import { useSucessoToast } from '../../hooks/useSucessoToast';
-import { EstadoVazio } from '../../components/EstadoVazio';
 
 function treinamentoVazio() {
   return { cargaHoraria: 4, conteudoProgramatico: '', dataRealizacao: '', dataValidade: '', instituicaoInstrutor: '' };
@@ -37,12 +39,11 @@ function treinamentoVazio() {
 export function MembroCipaDetalhePage() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
-  const estilos = usePageStyles();
   const [detalhe, setDetalhe] = useState<MembroCipaDetalhe | null>(null);
   const [novoTreinamento, setNovoTreinamento] = useState(treinamentoVazio());
   const [erro, setErro] = useState<string | null>(null);
   const [salvando, setSalvando] = useState(false);
-  const { confirmar, dialogElement } = useConfirmarExclusao();
+  const { confirmar, dialogElement } = useConfirmar();
   const sucessoToast = useSucessoToast();
 
   async function carregar() {
@@ -157,182 +158,170 @@ export function MembroCipaDetalhePage() {
     }
   }
 
-  if (!id) return <Text>Membro não encontrado.</Text>;
+  if (!id) return <FeedbackInline tom="erro">Membro não encontrado.</FeedbackInline>;
+
+  const colunasTreinamentos: Coluna<TreinamentoCipa>[] = [
+    { chave: 'dataRealizacao', rotulo: 'Realização', render: (t) => t.dataRealizacao?.slice(0, 10) ?? '' },
+    { chave: 'dataValidade', rotulo: 'Validade', render: (t) => t.dataValidade?.slice(0, 10) ?? '—' },
+    { chave: 'cargaHoraria', rotulo: 'Carga horária', render: (t) => `${t.cargaHoraria}h` },
+    { chave: 'instituicaoInstrutor', rotulo: 'Instituição/instrutor', render: (t) => t.instituicaoInstrutor ?? '—' },
+    {
+      chave: 'certificado',
+      rotulo: 'Certificado',
+      render: (t) =>
+        t.temCertificado ? (
+          <Button appearance="subtle" onClick={() => baixarArquivo(t.id, 'certificado')}>
+            Baixar
+          </Button>
+        ) : (
+          <SeletorFotoCamera
+            rotulo="Anexar"
+            tamanho="small"
+            tiposAceitos="application/pdf,image/*"
+            tamanhoMaximoMb={8}
+            aoSelecionarArquivo={(arquivo) => anexarCertificado(t.id, arquivo)}
+            aoErroValidacao={setErro}
+          />
+        ),
+    },
+    {
+      chave: 'listaPresenca',
+      rotulo: 'Lista de presença',
+      render: (t) =>
+        t.temListaPresenca ? (
+          <Button appearance="subtle" onClick={() => baixarArquivo(t.id, 'lista-presenca')}>
+            Baixar
+          </Button>
+        ) : (
+          <SeletorFotoCamera
+            rotulo="Anexar"
+            tamanho="small"
+            tiposAceitos="application/pdf,image/*"
+            tamanhoMaximoMb={8}
+            aoSelecionarArquivo={(arquivo) => anexarListaPresenca(t.id, arquivo)}
+            aoErroValidacao={setErro}
+          />
+        ),
+    },
+  ];
 
   return (
     <div>
       {dialogElement}
-      <Button appearance="subtle" icon={<ArrowLeft24Regular />} onClick={() => navigate('/operacao/cipa')} style={{ marginBottom: 12 }}>
-        Voltar para CIPA
-      </Button>
+      <PageHeader titulo="Membro da CIPA" voltarPara="/operacao/cipa" rotuloVoltar="Voltar para CIPA" />
 
-      {erro && <Text className={estilos.erro}>{erro}</Text>}
+      {erro && (
+        <FeedbackInline tom="erro" aoFechar={() => setErro(null)}>
+          {erro}
+        </FeedbackInline>
+      )}
 
       {!detalhe ? (
-        <Text>Carregando...</Text>
+        <Carregando variante="detalhe" linhas={8} />
       ) : (
-        <>
-          <div className={estilos.card} style={{ marginBottom: 16 }}>
-            <div style={{ display: 'flex', gap: 16, alignItems: 'center', marginBottom: 8 }}>
-              <Text size={500} weight="semibold">
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+          <Card
+            densidade="compacta"
+            titulo={
+              <div style={{ display: 'flex', gap: 12, alignItems: 'center' }}>
                 {detalhe.membro.trabalhadorNome}
-              </Text>
-              {detalhe.membro.mandatoAtivo && (
-                <Badge appearance="tint" color="success">
-                  Mandato ativo
-                </Badge>
+                {detalhe.membro.mandatoAtivo && <StatusChip tom="ok">Mandato ativo</StatusChip>}
+              </div>
+            }
+            subtitulo={
+              <>
+                {detalhe.membro.obraNome} · {origemMembroCipaLabel[detalhe.membro.origemMembro]} · Mandato:{' '}
+                {detalhe.membro.dataInicioMandato?.slice(0, 10)} a {detalhe.membro.dataFimMandato?.slice(0, 10)}
+              </>
+            }
+          >
+            <FormSection titulo="Cargo do Membro" primeira>
+              <FormGrid>
+                <Campo span={4}>
+                  <Field label="Cargo">
+                    <Select value={String(detalhe.membro.cargo)} onChange={(_, d) => definirCargo(Number(d.value))} disabled={salvando}>
+                      {Object.entries(cargoMembroCipaLabel).map(([valor, rotulo]) => (
+                        <option key={valor} value={valor}>
+                          {rotulo}
+                        </option>
+                      ))}
+                    </Select>
+                  </Field>
+                </Campo>
+              </FormGrid>
+              {detalhe.membro.cargo !== CargoMembroCipa.Presidente && (
+                <FormRodape>
+                  <Button appearance="secondary" icon={<Delete24Regular />} onClick={encerrarMandato} disabled={salvando}>
+                    Encerrar mandato
+                  </Button>
+                </FormRodape>
               )}
-            </div>
-            <Text size={200} style={{ display: 'block', marginBottom: 12 }}>
-              {detalhe.membro.obraNome} · {origemMembroCipaLabel[detalhe.membro.origemMembro]} · Mandato:{' '}
-              {detalhe.membro.dataInicioMandato?.slice(0, 10)} a {detalhe.membro.dataFimMandato?.slice(0, 10)}
-            </Text>
-            <div className={`${estilos.sectionTitle} ${estilos.sectionTitleFirst}`}>Cargo do Membro</div>
-            <div className={estilos.formGrid}>
-              <div className={estilos.col4}>
-                <Field label="Cargo">
-                  <Select value={String(detalhe.membro.cargo)} onChange={(_, d) => definirCargo(Number(d.value))} disabled={salvando}>
-                    {Object.entries(cargoMembroCipaLabel).map(([valor, rotulo]) => (
-                      <option key={valor} value={valor}>
-                        {rotulo}
-                      </option>
-                    ))}
-                  </Select>
-                </Field>
-              </div>
-            </div>
-            {detalhe.membro.cargo !== CargoMembroCipa.Presidente && (
-              <div className={estilos.formActions}>
-                <Button appearance="secondary" icon={<Delete24Regular />} onClick={encerrarMandato} disabled={salvando}>
-                  Encerrar mandato
+            </FormSection>
+          </Card>
+
+          <Card titulo="Novo treinamento">
+            <FormSection titulo="Dados do Treinamento" primeira>
+              <FormGrid>
+                <Campo span={2}>
+                  <Field label="Carga horária (h)" required>
+                    <Input
+                      type="number"
+                      value={String(novoTreinamento.cargaHoraria)}
+                      onChange={(_, d) => setNovoTreinamento({ ...novoTreinamento, cargaHoraria: Number(d.value) })}
+                    />
+                  </Field>
+                </Campo>
+                <Campo span={3}>
+                  <Field label="Data de realização" required>
+                    <CampoData
+                      value={novoTreinamento.dataRealizacao}
+                      onChange={(_, d) => setNovoTreinamento({ ...novoTreinamento, dataRealizacao: d.value })}
+                    />
+                  </Field>
+                </Campo>
+                <Campo span={3}>
+                  <Field label="Validade">
+                    <CampoData
+                      value={novoTreinamento.dataValidade}
+                      onChange={(_, d) => setNovoTreinamento({ ...novoTreinamento, dataValidade: d.value })}
+                    />
+                  </Field>
+                </Campo>
+                <Campo span={4}>
+                  <Field label="Instituição/instrutor">
+                    <Input
+                      value={novoTreinamento.instituicaoInstrutor}
+                      onChange={(_, d) => setNovoTreinamento({ ...novoTreinamento, instituicaoInstrutor: d.value })}
+                    />
+                  </Field>
+                </Campo>
+                <Campo span={12}>
+                  <Field label="Conteúdo programático">
+                    <Textarea
+                      value={novoTreinamento.conteudoProgramatico}
+                      onChange={(_, d) => setNovoTreinamento({ ...novoTreinamento, conteudoProgramatico: d.value })}
+                    />
+                  </Field>
+                </Campo>
+              </FormGrid>
+              <FormRodape>
+                <Button appearance="primary" onClick={criarTreinamento} disabled={salvando}>
+                  Adicionar treinamento
                 </Button>
-              </div>
-            )}
-          </div>
+              </FormRodape>
+            </FormSection>
+          </Card>
 
-          <div className={estilos.card} style={{ marginBottom: 16 }}>
-            <div className={estilos.toolbar}>
-              <Text weight="semibold">Novo treinamento</Text>
-            </div>
-            <div className={`${estilos.sectionTitle} ${estilos.sectionTitleFirst}`}>Dados do Treinamento</div>
-            <div className={estilos.formGrid}>
-              <div className={estilos.col2}>
-                <Field label="Carga horária (h)" required>
-                  <Input
-                    type="number"
-                    value={String(novoTreinamento.cargaHoraria)}
-                    onChange={(_, d) => setNovoTreinamento({ ...novoTreinamento, cargaHoraria: Number(d.value) })}
-                  />
-                </Field>
-              </div>
-              <div className={estilos.col3}>
-                <Field label="Data de realização" required>
-                  <CampoData
-                    value={novoTreinamento.dataRealizacao}
-                    onChange={(_, d) => setNovoTreinamento({ ...novoTreinamento, dataRealizacao: d.value })}
-                  />
-                </Field>
-              </div>
-              <div className={estilos.col3}>
-                <Field label="Validade">
-                  <CampoData
-                    value={novoTreinamento.dataValidade}
-                    onChange={(_, d) => setNovoTreinamento({ ...novoTreinamento, dataValidade: d.value })}
-                  />
-                </Field>
-              </div>
-              <div className={estilos.col4}>
-                <Field label="Instituição/instrutor">
-                  <Input
-                    value={novoTreinamento.instituicaoInstrutor}
-                    onChange={(_, d) => setNovoTreinamento({ ...novoTreinamento, instituicaoInstrutor: d.value })}
-                  />
-                </Field>
-              </div>
-              <div className={estilos.col12}>
-                <Field label="Conteúdo programático">
-                  <Textarea
-                    value={novoTreinamento.conteudoProgramatico}
-                    onChange={(_, d) => setNovoTreinamento({ ...novoTreinamento, conteudoProgramatico: d.value })}
-                  />
-                </Field>
-              </div>
-            </div>
-            <div className={estilos.formActions}>
-              <Button appearance="primary" onClick={criarTreinamento} disabled={salvando}>
-                Adicionar treinamento
-              </Button>
-            </div>
-          </div>
-
-          <div className={estilos.card}>
-            <div className={estilos.toolbar}>
-              <Text weight="semibold">Treinamentos</Text>
-            </div>
-            {detalhe.treinamentos.length === 0 ? (
-              <EstadoVazio mensagem="Nenhum treinamento registrado ainda." />
-            ) : (
-            <Table noNativeElements>
-              <TableHeader>
-                <TableRow>
-                  <TableHeaderCell>Realização</TableHeaderCell>
-                  <TableHeaderCell>Validade</TableHeaderCell>
-                  <TableHeaderCell>Carga horária</TableHeaderCell>
-                  <TableHeaderCell>Instituição/instrutor</TableHeaderCell>
-                  <TableHeaderCell>Certificado</TableHeaderCell>
-                  <TableHeaderCell>Lista de presença</TableHeaderCell>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {detalhe.treinamentos.map((t) => (
-                  <TableRow key={t.id}>
-                    <TableCell>{t.dataRealizacao?.slice(0, 10)}</TableCell>
-                    <TableCell>{t.dataValidade?.slice(0, 10) ?? '—'}</TableCell>
-                    <TableCell>{t.cargaHoraria}h</TableCell>
-                    <TableCell>{t.instituicaoInstrutor ?? '—'}</TableCell>
-                    <TableCell>
-                      <div style={{ display: 'flex', gap: 4, alignItems: 'center' }}>
-                        {t.temCertificado ? (
-                          <Button appearance="subtle" onClick={() => baixarArquivo(t.id, 'certificado')}>
-                            Baixar
-                          </Button>
-                        ) : (
-                          <SeletorFotoCamera
-                            rotulo="Anexar"
-                            tamanho="small"
-                            tiposAceitos="application/pdf,image/*"
-                            tamanhoMaximoMb={8}
-                            aoSelecionarArquivo={(arquivo) => anexarCertificado(t.id, arquivo)}
-                            aoErroValidacao={setErro}
-                          />
-                        )}
-                      </div>
-                    </TableCell>
-                    <TableCell>
-                      <div style={{ display: 'flex', gap: 4, alignItems: 'center' }}>
-                        {t.temListaPresenca ? (
-                          <Button appearance="subtle" onClick={() => baixarArquivo(t.id, 'lista-presenca')}>
-                            Baixar
-                          </Button>
-                        ) : (
-                          <SeletorFotoCamera
-                            rotulo="Anexar"
-                            tamanho="small"
-                            tiposAceitos="application/pdf,image/*"
-                            tamanhoMaximoMb={8}
-                            aoSelecionarArquivo={(arquivo) => anexarListaPresenca(t.id, arquivo)}
-                            aoErroValidacao={setErro}
-                          />
-                        )}
-                      </div>
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-            )}
-          </div>
-        </>
+          <Card titulo="Treinamentos">
+            <DataTable
+              aria-label="Treinamentos do membro"
+              colunas={colunasTreinamentos}
+              linhas={detalhe.treinamentos}
+              chaveLinha={(t) => t.id}
+              vazio={{ titulo: 'Nenhum treinamento registrado ainda.' }}
+            />
+          </Card>
+        </div>
       )}
     </div>
   );

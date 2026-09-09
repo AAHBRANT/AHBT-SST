@@ -1,22 +1,28 @@
 import { useEffect, useState } from 'react';
-import { useNavigate, useParams } from 'react-router-dom';
+import { useParams } from 'react-router-dom';
 import {
-  Badge,
   Button,
+  Campo,
+  Card,
+  CampoData,
+  DataTable,
+  DetailPageLayout,
   Field,
+  FeedbackInline,
+  FormGrid,
+  FormRodape,
+  FormSection,
   Input,
   Select,
-  Table,
-  TableBody,
-  TableCell,
-  TableHeader,
-  TableHeaderCell,
-  TableRow,
+  StatusChip,
   Text,
   Textarea,
-} from '@fluentui/react-components';
-import { CampoData } from '../../components/CampoData';
-import { ArrowLeft24Regular, CheckmarkCircle24Regular, Save24Regular } from '@fluentui/react-icons';
+  WorkflowActions,
+  type AcaoWorkflow,
+  type Coluna,
+  type Tom,
+} from '@ui';
+import { Save24Regular } from '@fluentui/react-icons';
 import {
   api,
   metodologiaInvestigacaoLabel,
@@ -27,20 +33,42 @@ import {
   tipoOcorrenciaLabel,
   StatusAcaoPlano,
   StatusAcidente,
+  type AcaoPlano,
   type AcidenteDetalhe,
   type NovaAcaoPlano,
   type Usuario,
 } from '../../lib/api';
-import { usePageStyles } from '../pageStyles';
 
 function novaAcaoInicial(): Omit<NovaAcaoPlano, 'origemTipo' | 'origemId'> {
   return { tipo: 1, descricao: '', responsavelUsuarioId: '', prioridade: 3, prazo: '' };
 }
 
+// Registrado/EmInvestigacao/Concluido — mesmo padrão de progressão neutro→atencao→ok já usado em
+// StatusPcmsoDocumento (Task 12) e replicado em AcidentesPage.tsx (mesmo enum, mesma leitura).
+const tomPorStatusAcidente: Record<number, Tom> = {
+  [StatusAcidente.Registrado]: 'neutro',
+  [StatusAcidente.EmInvestigacao]: 'atencao',
+  [StatusAcidente.Concluido]: 'ok',
+};
+
+// AcaoPlano reaproveita o enum de StatusControleRisco (Pendente/EmAndamento/Concluido/Vencido, ver
+// disclosure em AcaoPlano.cs) — mesma leitura de severidade já usada nos painéis de vencido de
+// PGR/Riscos: pendente é neutro (ainda não começou), em andamento chama atenção, concluído é ok,
+// vencido é alerta (mesma família "vermelho" de prazo estourado usada em toda a frente).
+const tomPorStatusAcaoPlano: Record<number, Tom> = {
+  [StatusAcaoPlano.Pendente]: 'neutro',
+  [StatusAcaoPlano.EmAndamento]: 'atencao',
+  [StatusAcaoPlano.Concluido]: 'ok',
+  [StatusAcaoPlano.Vencido]: 'alerta',
+};
+
+// Onda 2 Task 20 (camada ui/): detalhe de um acidente/incidente/quase-acidente. DetailPageLayout com
+// resumo na lateral e a única ação de fluxo (avançar status) em WorkflowActions — mesmo critério já
+// usado em InspecaoDetalhePage.tsx (uma ação só, sem aprovar/reprovar). Retorno antecipado com OU erro
+// OU skeleton na carga inicial, nunca cabeçalho+skeleton+erro empilhados (padrão já revisado em
+// AprDetalhePage.tsx/PgrDetalhePage.tsx/InspecaoDetalhePage.tsx).
 export function AcidenteDetalhePage() {
   const { id } = useParams<{ id: string }>();
-  const navigate = useNavigate();
-  const estilos = usePageStyles();
   const [detalhe, setDetalhe] = useState<AcidenteDetalhe | null>(null);
   const [usuarios, setUsuarios] = useState<Usuario[]>([]);
   const [metodologia, setMetodologia] = useState<string>('');
@@ -102,8 +130,11 @@ export function AcidenteDetalhePage() {
     }
   }
 
+  // Entra em WorkflowActions: retornar `false` mantém o formulário aberto (aqui não há formulário —
+  // a ação executa direto — mas o contrato pede erro tratado sem lançar, mesmo padrão de
+  // InspecaoDetalhePage.tsx/AprDetalhePage.tsx).
   async function avancarStatus() {
-    if (!id) return;
+    if (!id) return false;
     try {
       setProcessando(true);
       setErro(null);
@@ -115,6 +146,7 @@ export function AcidenteDetalhePage() {
           ? e.message
           : 'Falha ao avançar status. Confira se todas as ações do plano já foram concluídas.',
       );
+      return false;
     } finally {
       setProcessando(false);
     }
@@ -162,173 +194,243 @@ export function AcidenteDetalhePage() {
     }
   }
 
-  if (!id) {
-    return <Text>Acidente não encontrado.</Text>;
+  if (!id) return <FeedbackInline tom="erro">Acidente não encontrado.</FeedbackInline>;
+
+  // Erro na carga inicial precisa aparecer aqui: sem isso o skeleton ficaria para sempre e a falha
+  // (API fora, id inexistente) não teria onde ser lida.
+  if (!detalhe) {
+    return erro ? (
+      <FeedbackInline tom="erro" acao={{ rotulo: 'Tentar de novo', aoClicar: () => void carregar() }}>
+        {erro}
+      </FeedbackInline>
+    ) : (
+      <Text>Carregando...</Text>
+    );
   }
 
-  const a = detalhe?.acidente;
+  const a = detalhe.acidente;
   // Acidentes/Incidentes/Quase-acidentes viraram abas de OcorrenciasPage (02/09) — volta pra aba
   // que corresponde ao tipo do registro aberto, não sempre pra "Acidentes".
-  const secaoOcorrencia =
-    a?.tipo === 2 ? 'incidentes' : a?.tipo === 3 ? 'quase-acidentes' : 'acidentes';
+  const secaoOcorrencia = a.tipo === 2 ? 'incidentes' : a.tipo === 3 ? 'quase-acidentes' : 'acidentes';
+
+  const acoes: AcaoWorkflow[] = [];
+  if (a.status !== StatusAcidente.Concluido) {
+    acoes.push({
+      chave: 'avancar-status',
+      rotulo: `Avançar status (${statusAcidenteLabel[a.status]} → ${statusAcidenteLabel[a.status + 1]})`,
+      descricao: 'Confira se as ações do plano em aberto já foram concluídas antes de avançar.',
+      tom: 'primario',
+      habilitada: true,
+      aoExecutar: avancarStatus,
+    });
+  }
+
+  const colunasAcoes: Coluna<AcaoPlano>[] = [
+    { chave: 'tipo', rotulo: 'Tipo', render: (acao) => tipoAcaoPlanoLabel[acao.tipo] },
+    { chave: 'descricao', rotulo: 'Descrição' },
+    { chave: 'responsavel', rotulo: 'Responsável', render: (acao) => acao.responsavelUsuarioNome ?? '—' },
+    { chave: 'prioridade', rotulo: 'Prioridade', render: (acao) => prioridadeAcaoLabel[acao.prioridade] },
+    { chave: 'prazo', rotulo: 'Prazo', render: (acao) => acao.prazo?.slice(0, 10) ?? '—' },
+    {
+      chave: 'status',
+      rotulo: 'Status',
+      render: (acao) => (
+        <StatusChip tom={tomPorStatusAcaoPlano[acao.status] ?? 'neutro'}>{statusAcaoPlanoLabel[acao.status]}</StatusChip>
+      ),
+    },
+  ];
 
   return (
-    <div>
-      <Button
-        appearance="subtle"
-        icon={<ArrowLeft24Regular />}
-        onClick={() => navigate(`/ocorrencias?secao=${secaoOcorrencia}`)}
-        style={{ marginBottom: 12 }}
-      >
-        Voltar para Ocorrências
-      </Button>
+    <DetailPageLayout
+      cabecalho={{
+        titulo: `${tipoOcorrenciaLabel[a.tipo]} — ${a.local}`,
+        status: (
+          <StatusChip tom={tomPorStatusAcidente[a.status] ?? 'neutro'}>{statusAcidenteLabel[a.status]}</StatusChip>
+        ),
+        voltarPara: `/ocorrencias?secao=${secaoOcorrencia}`,
+        rotuloVoltar: 'Voltar para Ocorrências',
+      }}
+      lateral={
+        <>
+          <Card densidade="compacta" titulo="Resumo">
+            <FormGrid>
+              <Campo span={12}>
+                <Field label="Obra">
+                  <Input value={a.obraNome ?? '—'} readOnly />
+                </Field>
+              </Campo>
+              {a.trabalhadorNome && (
+                <Campo span={12}>
+                  <Field label="Funcionário">
+                    <Input value={a.trabalhadorNome} readOnly />
+                  </Field>
+                </Campo>
+              )}
+              {a.atividadeNome && (
+                <Campo span={12}>
+                  <Field label="Atividade">
+                    <Input value={a.atividadeNome} readOnly />
+                  </Field>
+                </Campo>
+              )}
+              <Campo span={12}>
+                <Field label="Data">
+                  <Input value={a.data?.slice(0, 10) ?? ''} readOnly />
+                </Field>
+              </Campo>
+              {a.lesao && (
+                <Campo span={12}>
+                  <Field label="Lesão">
+                    <Input value={a.lesao} readOnly />
+                  </Field>
+                </Campo>
+              )}
+              {a.consequencia && (
+                <Campo span={12}>
+                  <Field label="Consequência">
+                    <Input value={a.consequencia} readOnly />
+                  </Field>
+                </Campo>
+              )}
+              {a.atendimento && (
+                <Campo span={12}>
+                  <Field label="Atendimento">
+                    <Input value={a.atendimento} readOnly />
+                  </Field>
+                </Campo>
+              )}
+              {a.houveAfastamento && (
+                <Campo span={12}>
+                  <Field label="Afastamento">
+                    <Input value={`${a.diasAfastamento ?? '—'} dia(s)`} readOnly />
+                  </Field>
+                </Campo>
+              )}
+              {a.numeroCat && (
+                <Campo span={12}>
+                  <Field label="CAT">
+                    <Input value={a.numeroCat} readOnly />
+                  </Field>
+                </Campo>
+              )}
+            </FormGrid>
+          </Card>
+          {acoes.length > 0 && (
+            <Card densidade="compacta" titulo="Ações disponíveis">
+              <WorkflowActions acoes={acoes} processando={processando} />
+            </Card>
+          )}
+        </>
+      }
+    >
+      {erro && (
+        <FeedbackInline tom="erro" aoFechar={() => setErro(null)}>
+          {erro}
+        </FeedbackInline>
+      )}
 
-      {erro && <Text className={estilos.erro}>{erro}</Text>}
+      <Text style={{ display: 'block' }}>{a.descricao}</Text>
 
-      <div className={estilos.card} style={{ marginBottom: 16 }}>
-        {a ? (
-          <>
-            <Text size={500} weight="semibold">
-              {tipoOcorrenciaLabel[a.tipo]} — {a.local}
-            </Text>
-            <div style={{ display: 'flex', gap: 16, marginTop: 8, flexWrap: 'wrap', alignItems: 'center' }}>
-              <Text>Obra: {a.obraNome ?? '—'}</Text>
-              {a.trabalhadorNome && <Text>Funcionário: {a.trabalhadorNome}</Text>}
-              {a.atividadeNome && <Text>Atividade: {a.atividadeNome}</Text>}
-              <Text>Data: {a.data?.slice(0, 10)}</Text>
-              <Badge appearance="tint">{statusAcidenteLabel[a.status]}</Badge>
-            </div>
-            <Text style={{ display: 'block', marginTop: 8 }}>{a.descricao}</Text>
-            <div style={{ display: 'flex', gap: 16, marginTop: 8, flexWrap: 'wrap', alignItems: 'center' }}>
-              {a.lesao && <Text>Lesão: {a.lesao}</Text>}
-              {a.consequencia && <Text>Consequência: {a.consequencia}</Text>}
-              {a.atendimento && <Text>Atendimento: {a.atendimento}</Text>}
-              {a.houveAfastamento && <Text>Afastamento: {a.diasAfastamento ?? '—'} dia(s)</Text>}
-              {a.numeroCat && <Text>CAT: {a.numeroCat}</Text>}
-            </div>
-
-            {a.status !== StatusAcidente.Concluido && (
-              <div className={estilos.formActions} style={{ marginTop: 16 }}>
-                <Button
-                  appearance="primary"
-                  icon={<CheckmarkCircle24Regular />}
-                  onClick={avancarStatus}
-                  disabled={processando}
-                >
-                  Avançar status ({statusAcidenteLabel[a.status]} → {statusAcidenteLabel[a.status + 1]})
-                </Button>
-              </div>
-            )}
-          </>
-        ) : (
-          <Text>Carregando...</Text>
-        )}
-      </div>
-
-      <div className={estilos.card} style={{ marginBottom: 16 }}>
-        <div className={estilos.toolbar}>
-          <Text weight="semibold">Investigação (Seção 28 — análise de causas)</Text>
-        </div>
-        <div className={`${estilos.sectionTitle} ${estilos.sectionTitleFirst}`}>Dados da Investigação</div>
-        <div className={estilos.formGrid}>
-          <div className={estilos.col4}>
-            <Field label="Metodologia de investigação">
-              <Select value={metodologia} onChange={(_, d) => setMetodologia(d.value)}>
-                <option value="">Não definida</option>
-                {Object.entries(metodologiaInvestigacaoLabel).map(([valor, rotulo]) => (
-                  <option key={valor} value={valor}>
-                    {rotulo}
-                  </option>
-                ))}
-              </Select>
-            </Field>
-          </div>
-          <div className={estilos.col6}>
-            <Field label="Causas identificadas">
-              <Textarea value={causas} onChange={(_, d) => setCausas(d.value)} />
-            </Field>
-          </div>
-        </div>
-        <div className={estilos.formActions}>
+      <Card titulo="Investigação (Seção 28 — análise de causas)">
+        <FormSection titulo="Dados da Investigação" numero={1} primeira>
+          <FormGrid>
+            <Campo span={4}>
+              <Field label="Metodologia de investigação">
+                <Select value={metodologia} onChange={(_, d) => setMetodologia(d.value)}>
+                  <option value="">Não definida</option>
+                  {Object.entries(metodologiaInvestigacaoLabel).map(([valor, rotulo]) => (
+                    <option key={valor} value={valor}>
+                      {rotulo}
+                    </option>
+                  ))}
+                </Select>
+              </Field>
+            </Campo>
+            <Campo span={6}>
+              <Field label="Causas identificadas">
+                <Textarea value={causas} onChange={(_, d) => setCausas(d.value)} />
+              </Field>
+            </Campo>
+          </FormGrid>
+        </FormSection>
+        <FormRodape>
           <Button appearance="primary" icon={<Save24Regular />} onClick={salvarInvestigacao} disabled={processando}>
             Salvar investigação
           </Button>
-        </div>
-      </div>
+        </FormRodape>
+      </Card>
 
-      <div className={estilos.card} style={{ marginBottom: 16 }}>
-        <div className={estilos.toolbar}>
-          <Text weight="semibold">Nova ação do plano</Text>
-        </div>
-        <div className={`${estilos.sectionTitle} ${estilos.sectionTitleFirst}`}>Nova Ação do Plano</div>
-        <div className={estilos.formGrid}>
-          <div className={estilos.col2}>
-            <Field label="Tipo">
-              <Select
-                value={String(novaAcao.tipo)}
-                onChange={(_, d) => setNovaAcao({ ...novaAcao, tipo: Number(d.value) })}
-              >
-                {Object.entries(tipoAcaoPlanoLabel).map(([valor, rotulo]) => (
-                  <option key={valor} value={valor}>
-                    {rotulo}
-                  </option>
-                ))}
-              </Select>
-            </Field>
-          </div>
-          <div className={estilos.col3}>
-            <Field label="Descrição" required>
-              <Input value={novaAcao.descricao} onChange={(_, d) => setNovaAcao({ ...novaAcao, descricao: d.value })} />
-            </Field>
-          </div>
-          <div className={estilos.col3}>
-            <Field label="Responsável">
-              <Select
-                value={novaAcao.responsavelUsuarioId ?? ''}
-                onChange={(_, d) => setNovaAcao({ ...novaAcao, responsavelUsuarioId: d.value })}
-              >
-                <option value="">Nenhum</option>
-                {usuarios.map((usuario) => (
-                  <option key={usuario.id} value={usuario.id}>
-                    {usuario.nome}
-                  </option>
-                ))}
-              </Select>
-            </Field>
-          </div>
-          <div className={estilos.col2}>
-            <Field label="Prioridade">
-              <Select
-                value={String(novaAcao.prioridade)}
-                onChange={(_, d) => setNovaAcao({ ...novaAcao, prioridade: Number(d.value) })}
-              >
-                {Object.entries(prioridadeAcaoLabel).map(([valor, rotulo]) => (
-                  <option key={valor} value={valor}>
-                    {rotulo}
-                  </option>
-                ))}
-              </Select>
-            </Field>
-          </div>
-          <div className={estilos.col2}>
-            <Field label="Prazo">
-              <CampoData
-                value={novaAcao.prazo ?? ''}
-                onChange={(_, d) => setNovaAcao({ ...novaAcao, prazo: d.value })}
-              />
-            </Field>
-          </div>
-        </div>
-        <div className={estilos.formActions}>
+      <Card titulo="Nova ação do plano">
+        <FormSection titulo="Nova Ação do Plano" numero={1} primeira>
+          <FormGrid>
+            <Campo span={2}>
+              <Field label="Tipo">
+                <Select
+                  value={String(novaAcao.tipo)}
+                  onChange={(_, d) => setNovaAcao({ ...novaAcao, tipo: Number(d.value) })}
+                >
+                  {Object.entries(tipoAcaoPlanoLabel).map(([valor, rotulo]) => (
+                    <option key={valor} value={valor}>
+                      {rotulo}
+                    </option>
+                  ))}
+                </Select>
+              </Field>
+            </Campo>
+            <Campo span={3}>
+              <Field label="Descrição" required>
+                <Input value={novaAcao.descricao} onChange={(_, d) => setNovaAcao({ ...novaAcao, descricao: d.value })} />
+              </Field>
+            </Campo>
+            <Campo span={3}>
+              <Field label="Responsável">
+                <Select
+                  value={novaAcao.responsavelUsuarioId ?? ''}
+                  onChange={(_, d) => setNovaAcao({ ...novaAcao, responsavelUsuarioId: d.value })}
+                >
+                  <option value="">Nenhum</option>
+                  {usuarios.map((usuario) => (
+                    <option key={usuario.id} value={usuario.id}>
+                      {usuario.nome}
+                    </option>
+                  ))}
+                </Select>
+              </Field>
+            </Campo>
+            <Campo span={2}>
+              <Field label="Prioridade">
+                <Select
+                  value={String(novaAcao.prioridade)}
+                  onChange={(_, d) => setNovaAcao({ ...novaAcao, prioridade: Number(d.value) })}
+                >
+                  {Object.entries(prioridadeAcaoLabel).map(([valor, rotulo]) => (
+                    <option key={valor} value={valor}>
+                      {rotulo}
+                    </option>
+                  ))}
+                </Select>
+              </Field>
+            </Campo>
+            <Campo span={2}>
+              <Field label="Prazo">
+                <CampoData
+                  value={novaAcao.prazo ?? ''}
+                  onChange={(_, d) => setNovaAcao({ ...novaAcao, prazo: d.value })}
+                />
+              </Field>
+            </Campo>
+          </FormGrid>
+        </FormSection>
+        <FormRodape>
           <Button appearance="primary" onClick={criarAcao} disabled={processando}>
             Adicionar ação
           </Button>
-        </div>
-      </div>
+        </FormRodape>
+      </Card>
 
-      <div className={estilos.card}>
-        <div className={estilos.toolbar}>
-          <Text weight="semibold">Ações do plano</Text>
+      <Card
+        titulo="Ações do plano"
+        acoes={
           <Field label="Validar como">
             <Select value={usuarioValidador} onChange={(_, d) => setUsuarioValidador(d.value)}>
               <option value="">Selecione um usuário</option>
@@ -339,42 +441,23 @@ export function AcidenteDetalhePage() {
               ))}
             </Select>
           </Field>
-        </div>
-        <Table noNativeElements>
-          <TableHeader>
-            <TableRow>
-              <TableHeaderCell>Tipo</TableHeaderCell>
-              <TableHeaderCell>Descrição</TableHeaderCell>
-              <TableHeaderCell>Responsável</TableHeaderCell>
-              <TableHeaderCell>Prioridade</TableHeaderCell>
-              <TableHeaderCell>Prazo</TableHeaderCell>
-              <TableHeaderCell>Status</TableHeaderCell>
-              <TableHeaderCell></TableHeaderCell>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {detalhe?.acoesPlano.map((acao) => (
-              <TableRow key={acao.id}>
-                <TableCell>{tipoAcaoPlanoLabel[acao.tipo]}</TableCell>
-                <TableCell>{acao.descricao}</TableCell>
-                <TableCell>{acao.responsavelUsuarioNome ?? '—'}</TableCell>
-                <TableCell>{prioridadeAcaoLabel[acao.prioridade]}</TableCell>
-                <TableCell>{acao.prazo?.slice(0, 10) ?? '—'}</TableCell>
-                <TableCell>
-                  <Badge appearance="tint">{statusAcaoPlanoLabel[acao.status]}</Badge>
-                </TableCell>
-                <TableCell>
-                  {acao.status !== StatusAcaoPlano.Concluido && !acao.dataValidacao && (
-                    <Button appearance="subtle" onClick={() => validarAcao(acao.id)} disabled={processando}>
-                      Validar
-                    </Button>
-                  )}
-                </TableCell>
-              </TableRow>
-            ))}
-          </TableBody>
-        </Table>
-      </div>
-    </div>
+        }
+      >
+        <DataTable
+          aria-label="Ações do plano"
+          colunas={colunasAcoes}
+          linhas={detalhe.acoesPlano}
+          chaveLinha={(acao) => acao.id}
+          vazio={{ titulo: 'Nenhuma ação do plano cadastrada ainda.' }}
+          acoesLinha={(acao) =>
+            acao.status !== StatusAcaoPlano.Concluido && !acao.dataValidacao ? (
+              <Button appearance="subtle" onClick={() => validarAcao(acao.id)} disabled={processando}>
+                Validar
+              </Button>
+            ) : null
+          }
+        />
+      </Card>
+    </DetailPageLayout>
   );
 }

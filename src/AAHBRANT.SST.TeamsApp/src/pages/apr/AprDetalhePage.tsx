@@ -1,30 +1,46 @@
 import { useEffect, useState } from 'react';
-import { useNavigate, useParams } from 'react-router-dom';
+import { useParams } from 'react-router-dom';
 import {
-  Badge,
+  Abas,
   Button,
+  Campo,
+  Card,
+  Carregando,
+  DetailPageLayout,
   Field,
+  FeedbackInline,
+  FormGrid,
   Input,
-  Tab,
-  TabList,
-  Text,
+  StatusChip,
   Textarea,
-  type SelectTabData,
-  type SelectTabEvent,
-} from '@fluentui/react-components';
-import { ArrowLeft24Regular, ArrowDownload24Regular, Checkmark24Regular, Dismiss24Regular } from '@fluentui/react-icons';
+  WorkflowActions,
+  type AcaoWorkflow,
+  type Tom,
+} from '@ui';
+import { ArrowDownload24Regular } from '@fluentui/react-icons';
 import { api, StatusApr, statusAprLabel, type AprDetalhe } from '../../lib/api';
-import { usePageStyles, usePillTabStyles } from '../pageStyles';
-import { AprEtapasTab } from './AprEtapasTab';
 import { AprAssinaturasTab } from './AprAssinaturasTab';
+import { AprEtapasTab } from './AprEtapasTab';
 
-type AbaApr = 'etapas' | 'assinaturas';
+const ABAS_APR = ['etapas', 'assinaturas'] as const;
+type AbaApr = (typeof ABAS_APR)[number];
 
+// Mesmo mapeamento de AprsTab.tsx, repetido aqui para lista e detalhe ficarem visualmente coerentes
+// (ruling da Onda 2: mesmos tons de StatusChip entre as duas telas do módulo).
+const tomPorStatusApr: Record<number, Tom> = {
+  [StatusApr.EmElaboracao]: 'neutro',
+  [StatusApr.AguardandoAprovacao]: 'atencao',
+  [StatusApr.Aprovada]: 'ok',
+  [StatusApr.Reprovada]: 'alerta',
+  [StatusApr.Encerrada]: 'info',
+};
+
+// Onda 2 Task 11 (camada ui/): detalhe e decisão (aprovar/reprovar) de uma APR. DetailPageLayout com
+// resumo e ações do fluxo na lateral (mesmo padrão de NaoConformidadeDetalhePage, piloto 2) — as
+// abas internas (Etapas/Assinaturas) usam estado local, sem useAbaNaUrl, porque já vivem dentro de
+// uma página endereçada por :id.
 export function AprDetalhePage() {
   const { id } = useParams<{ id: string }>();
-  const navigate = useNavigate();
-  const estilos = usePageStyles();
-  const estilosAba = usePillTabStyles();
   const [aba, setAba] = useState<AbaApr>('etapas');
   const [detalhe, setDetalhe] = useState<AprDetalhe | null>(null);
   const [erro, setErro] = useState<string | null>(null);
@@ -48,8 +64,11 @@ export function AprDetalhePage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id]);
 
+  // As duas ações abaixo entram no WorkflowActions e seguem o contrato dele (piloto 2, spec):
+  // `false` mantém o formulário aberto — tanto a guarda local (campo vazio) quanto a falha da API
+  // devolvem `false`, senão o acordeão fecharia e a mensagem de erro ficaria fora da vista.
   async function aprovar() {
-    if (!id || !aprovadoPorUsuarioId) return;
+    if (!id || !aprovadoPorUsuarioId) return false;
     try {
       setProcessando(true);
       setErro(null);
@@ -57,13 +76,14 @@ export function AprDetalhePage() {
       await carregar();
     } catch (e) {
       setErro(e instanceof Error ? e.message : 'Falha ao aprovar APR.');
+      return false;
     } finally {
       setProcessando(false);
     }
   }
 
   async function reprovar() {
-    if (!id || !motivoReprovacao) return;
+    if (!id || !motivoReprovacao) return false;
     try {
       setProcessando(true);
       setErro(null);
@@ -72,6 +92,7 @@ export function AprDetalhePage() {
       await carregar();
     } catch (e) {
       setErro(e instanceof Error ? e.message : 'Falha ao reprovar APR.');
+      return false;
     } finally {
       setProcessando(false);
     }
@@ -96,101 +117,163 @@ export function AprDetalhePage() {
     }
   }
 
-  if (!id) {
-    return <Text>APR não encontrada.</Text>;
+  if (!id) return <FeedbackInline tom="erro">APR não encontrada.</FeedbackInline>;
+
+  // Erro na carga inicial precisa aparecer aqui: sem isso o skeleton ficaria para sempre e a falha
+  // (API fora, id inexistente) não teria onde ser lida.
+  if (!detalhe) {
+    return erro ? (
+      <FeedbackInline tom="erro" acao={{ rotulo: 'Tentar de novo', aoClicar: () => void carregar() }}>
+        {erro}
+      </FeedbackInline>
+    ) : (
+      <Carregando variante="detalhe" linhas={8} />
+    );
   }
 
-  const podeDecidir = detalhe?.apr.status === StatusApr.AguardandoAprovacao || detalhe?.apr.status === StatusApr.EmElaboracao;
+  const podeDecidir =
+    detalhe.apr.status === StatusApr.AguardandoAprovacao || detalhe.apr.status === StatusApr.EmElaboracao;
+
+  const acoes: AcaoWorkflow[] = [];
+  if (podeDecidir) {
+    acoes.push({
+      chave: 'aprovar',
+      rotulo: 'Aprovar',
+      tom: 'primario',
+      habilitada: true,
+      aoExecutar: aprovar,
+      formulario: (
+        <Field label="ID do usuário aprovador (GUID)" required>
+          <Input value={aprovadoPorUsuarioId} onChange={(_, d) => setAprovadoPorUsuarioId(d.value)} />
+        </Field>
+      ),
+    });
+    acoes.push({
+      chave: 'reprovar',
+      rotulo: 'Reprovar',
+      tom: 'destrutivo',
+      habilitada: true,
+      aoExecutar: reprovar,
+      formulario: (
+        <Field label="Motivo da reprovação" required>
+          <Textarea value={motivoReprovacao} onChange={(_, d) => setMotivoReprovacao(d.value)} />
+        </Field>
+      ),
+    });
+  }
 
   return (
-    <div>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
-        <Button appearance="subtle" icon={<ArrowLeft24Regular />} onClick={() => navigate('/operacao/apr')}>
-          Voltar para APR
-        </Button>
-        <Button appearance="secondary" icon={<ArrowDownload24Regular />} onClick={exportarPdf} disabled={exportando}>
-          Exportar PDF
-        </Button>
-      </div>
-
-      {erro && <Text className={estilos.erro}>{erro}</Text>}
-
-      <div className={estilos.card} style={{ marginBottom: 16 }}>
-        {detalhe ? (
-          <>
-            <Text size={500} weight="semibold">
-              {detalhe.apr.numeroApr ? `${detalhe.apr.numeroApr} — ` : ''}
-              {detalhe.apr.atividadeNome}
-            </Text>
-            <div style={{ display: 'flex', gap: 16, marginTop: 8, flexWrap: 'wrap', alignItems: 'center' }}>
-              {detalhe.apr.obraNome && <Text>Obra: {detalhe.apr.obraNome}</Text>}
-              <Text>Local: {detalhe.apr.local}</Text>
-              <Text>Data: {detalhe.apr.data?.slice(0, 10)}</Text>
-              {detalhe.apr.validade && <Text>Validade: {detalhe.apr.validade.slice(0, 10)}</Text>}
-              <Badge appearance="tint">{statusAprLabel[detalhe.apr.status]}</Badge>
-            </div>
-            <div style={{ display: 'flex', gap: 16, marginTop: 8, flexWrap: 'wrap', alignItems: 'center' }}>
-              {detalhe.apr.maquinasEquipamentos && <Text>Máquinas/Equip.: {detalhe.apr.maquinasEquipamentos}</Text>}
-              {detalhe.apr.pgrReferencia && <Text>PGR/Procedimento ref.: {detalhe.apr.pgrReferencia}</Text>}
-            </div>
-            {detalhe.apr.status === StatusApr.Aprovada && (
-              <Text style={{ marginTop: 8 }}>
-                Aprovada por {detalhe.apr.aprovadoPorUsuarioNome ?? detalhe.apr.aprovadoPorUsuarioId} em{' '}
-                {detalhe.apr.dataAprovacao?.slice(0, 10)}
-              </Text>
-            )}
-            {detalhe.apr.status === StatusApr.Reprovada && detalhe.apr.motivoReprovacao && (
-              <Text style={{ marginTop: 8 }}>Motivo da reprovação: {detalhe.apr.motivoReprovacao}</Text>
-            )}
-            {detalhe.responsaveis.length > 0 && (
-              <Text style={{ marginTop: 8 }}>
-                Responsáveis: {detalhe.responsaveis.map((r) => r.trabalhadorNome).join(', ')}
-              </Text>
-            )}
-
-            {podeDecidir && (
-              <div style={{ display: 'flex', gap: 24, marginTop: 16, flexWrap: 'wrap', alignItems: 'flex-end' }}>
-                <Field label="ID do usuário aprovador (GUID)">
-                  <Input value={aprovadoPorUsuarioId} onChange={(_, d) => setAprovadoPorUsuarioId(d.value)} />
+    <DetailPageLayout
+      cabecalho={{
+        titulo: `${detalhe.apr.numeroApr ? detalhe.apr.numeroApr + ' — ' : ''}${detalhe.apr.atividadeNome}`,
+        status: (
+          <StatusChip tom={tomPorStatusApr[detalhe.apr.status] ?? 'neutro'}>
+            {statusAprLabel[detalhe.apr.status]}
+          </StatusChip>
+        ),
+        voltarPara: '/operacao/apr',
+        rotuloVoltar: 'Voltar para APR',
+        acoes: (
+          <Button appearance="secondary" icon={<ArrowDownload24Regular />} onClick={exportarPdf} disabled={exportando}>
+            Exportar PDF
+          </Button>
+        ),
+      }}
+      lateral={
+        <>
+          <Card densidade="compacta" titulo="Resumo">
+            <FormGrid>
+              {detalhe.apr.obraNome && (
+                <Campo span={12}>
+                  <Field label="Obra">
+                    <Input value={detalhe.apr.obraNome} readOnly />
+                  </Field>
+                </Campo>
+              )}
+              <Campo span={12}>
+                <Field label="Local">
+                  <Input value={detalhe.apr.local} readOnly />
                 </Field>
-                <Button
-                  appearance="primary"
-                  icon={<Checkmark24Regular />}
-                  onClick={aprovar}
-                  disabled={processando || !aprovadoPorUsuarioId}
-                >
-                  Aprovar
-                </Button>
-                <Field label="Motivo da reprovação">
-                  <Textarea value={motivoReprovacao} onChange={(_, d) => setMotivoReprovacao(d.value)} />
+              </Campo>
+              <Campo span={12}>
+                <Field label="Data">
+                  <Input value={detalhe.apr.data?.slice(0, 10) ?? ''} readOnly />
                 </Field>
-                <Button
-                  appearance="secondary"
-                  icon={<Dismiss24Regular />}
-                  onClick={reprovar}
-                  disabled={processando || !motivoReprovacao}
-                >
-                  Reprovar
-                </Button>
-              </div>
-            )}
-          </>
-        ) : (
-          <Text>Carregando...</Text>
-        )}
-      </div>
+              </Campo>
+              {detalhe.apr.validade && (
+                <Campo span={12}>
+                  <Field label="Validade">
+                    <Input value={detalhe.apr.validade.slice(0, 10)} readOnly />
+                  </Field>
+                </Campo>
+              )}
+              {detalhe.apr.maquinasEquipamentos && (
+                <Campo span={12}>
+                  <Field label="Máquinas / Equip.">
+                    <Input value={detalhe.apr.maquinasEquipamentos} readOnly />
+                  </Field>
+                </Campo>
+              )}
+              {detalhe.apr.pgrReferencia && (
+                <Campo span={12}>
+                  <Field label="PGR / Procedimento ref.">
+                    <Input value={detalhe.apr.pgrReferencia} readOnly />
+                  </Field>
+                </Campo>
+              )}
+              {detalhe.responsaveis.length > 0 && (
+                <Campo span={12}>
+                  <Field label="Responsáveis">
+                    <Input value={detalhe.responsaveis.map((r) => r.trabalhadorNome).join(', ')} readOnly />
+                  </Field>
+                </Campo>
+              )}
+              {detalhe.apr.status === StatusApr.Aprovada && (
+                <Campo span={12}>
+                  <Field label="Aprovação">
+                    <Input
+                      value={`Aprovada por ${detalhe.apr.aprovadoPorUsuarioNome ?? detalhe.apr.aprovadoPorUsuarioId} em ${detalhe.apr.dataAprovacao?.slice(0, 10) ?? ''}`}
+                      readOnly
+                    />
+                  </Field>
+                </Campo>
+              )}
+              {detalhe.apr.status === StatusApr.Reprovada && detalhe.apr.motivoReprovacao && (
+                <Campo span={12}>
+                  <Field label="Motivo da reprovação">
+                    <Input value={detalhe.apr.motivoReprovacao} readOnly />
+                  </Field>
+                </Campo>
+              )}
+            </FormGrid>
+          </Card>
+          {acoes.length > 0 && (
+            <Card densidade="compacta" titulo="Ações disponíveis">
+              <WorkflowActions acoes={acoes} processando={processando} />
+            </Card>
+          )}
+        </>
+      }
+    >
+      {erro && (
+        <FeedbackInline tom="erro" aoFechar={() => setErro(null)}>
+          {erro}
+        </FeedbackInline>
+      )}
 
-      <TabList
-        selectedValue={aba}
-        onTabSelect={(_: SelectTabEvent, data: SelectTabData) => setAba(data.value as AbaApr)}
-        className={estilosAba.lista}
-      >
-        <Tab value="etapas">Etapas</Tab>
-        <Tab value="assinaturas">Assinaturas</Tab>
-      </TabList>
+      <Abas
+        nivel="interno"
+        valor={aba}
+        aoMudar={setAba}
+        aria-label="Seções da APR"
+        abas={[
+          { valor: 'etapas', rotulo: 'Etapas' },
+          { valor: 'assinaturas', rotulo: 'Assinaturas' },
+        ]}
+      />
 
       {aba === 'etapas' && <AprEtapasTab aprId={id} />}
       {aba === 'assinaturas' && <AprAssinaturasTab aprId={id} />}
-    </div>
+    </DetailPageLayout>
   );
 }

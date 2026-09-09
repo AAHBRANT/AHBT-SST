@@ -1,4 +1,5 @@
 ﻿import fs from 'node:fs'
+import path from 'node:path'
 import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
 import { VitePWA } from 'vite-plugin-pwa'
@@ -47,6 +48,12 @@ export default defineConfig({
       },
     }),
   ],
+  resolve: {
+    alias: [
+      { find: /^@ui$/, replacement: path.resolve(__dirname, 'src/ui/index.ts') },
+      { find: /^@ui\//, replacement: path.resolve(__dirname, 'src/ui') + '/' },
+    ],
+  },
   server: {
     port: process.env.PORT ? Number(process.env.PORT) : 5173,
     https: certificadoDev,

@@ -1,5 +1,17 @@
 import { useEffect, useMemo, useState } from 'react';
-import { Field, Select, Text } from '@fluentui/react-components';
+import {
+  Card,
+  EstadoVazio,
+  Field,
+  FeedbackInline,
+  KpiCard,
+  RankingBarChart,
+  Select,
+  StatusDonutChart,
+  usePaletaGraficos,
+  type FatiaDonut,
+  type ItemRanking,
+} from '@ui';
 import { Location24Regular, LockClosed24Regular, ScanObject24Regular, Search24Regular } from '@fluentui/react-icons';
 import {
   api,
@@ -13,19 +25,15 @@ import {
   type Obra,
   type TagIdentificacao,
 } from '../../../lib/api';
-import { CardGrid } from '../../../layout/AppShell';
-import { designTokens } from '../../../theme';
-import { usePageStyles } from '../../pageStyles';
-import { useDashboardStyles } from '../../../components/dashboard/dashboardStyles';
-import { KpiCard } from '../../../components/dashboard/KpiCard';
-import { StatusDonutChart, type FatiaDonut } from '../../../components/dashboard/charts/StatusDonutChart';
-import { RankingBarChart, type ItemRanking } from '../../../components/dashboard/charts/RankingBarChart';
 import { AreasBloqueadasPanel, type AreaComContexto } from './AreasBloqueadasPanel';
 import { TagsPerdidasPanel } from './TagsPerdidasPanel';
 
+// Onda 2 Task 9 (camada ui/): dashboard de Identificação — KpiCard + gráficos com cores lidas de
+// usePaletaGraficos (paleta.ts, spec §1.6), grade CSS Grid simples (spec §4.4, sem componente de
+// grade próprio), mesmo padrão de AprDashboardTab.tsx (Task 11). A lógica de agregação no cliente
+// não muda nesta frente.
 export function IdentificacaoDashboardTab() {
-  const estilosPagina = usePageStyles();
-  const estilos = useDashboardStyles();
+  const paleta = usePaletaGraficos();
 
   const [obras, setObras] = useState<Obra[]>([]);
   const [areas, setAreas] = useState<AreaSst[]>([]);
@@ -85,17 +93,9 @@ export function IdentificacaoDashboardTab() {
   const tagsPerdidas = tagsFiltradas.filter((t) => t.status === StatusTag.Perdida);
 
   const statusAreaDados: FatiaDonut[] = [
-    {
-      rotulo: 'Ativa',
-      valor: areasFiltradas.filter((a) => a.status === StatusArea.Ativa).length,
-      cor: designTokens.colorSuccess,
-    },
-    {
-      rotulo: 'Inativa',
-      valor: areasFiltradas.filter((a) => a.status === StatusArea.Inativa).length,
-      cor: designTokens.colorInfo,
-    },
-    { rotulo: 'Bloqueada', valor: areasBloqueadas, cor: designTokens.colorAlert },
+    { rotulo: 'Ativa', valor: areasFiltradas.filter((a) => a.status === StatusArea.Ativa).length, cor: paleta.ok },
+    { rotulo: 'Inativa', valor: areasFiltradas.filter((a) => a.status === StatusArea.Inativa).length, cor: paleta.info },
+    { rotulo: 'Bloqueada', valor: areasBloqueadas, cor: paleta.alerta },
   ];
 
   const tipoAreaDados: ItemRanking[] = useMemo(() => {
@@ -104,9 +104,9 @@ export function IdentificacaoDashboardTab() {
       contagem.set(area.tipo, (contagem.get(area.tipo) ?? 0) + 1);
     }
     return [...contagem.entries()]
-      .map(([tipo, valor]) => ({ rotulo: tipoAreaLabel[tipo] ?? String(tipo), valor, cor: designTokens.colorPrimary }))
+      .map(([tipo, valor]) => ({ rotulo: tipoAreaLabel[tipo] ?? String(tipo), valor, cor: paleta.marca }))
       .sort((a, b) => b.valor - a.valor);
-  }, [areasFiltradas]);
+  }, [areasFiltradas, paleta.marca]);
 
   const obraAreaDados: ItemRanking[] = useMemo(() => {
     const contagem = new Map<string, number>();
@@ -114,28 +114,16 @@ export function IdentificacaoDashboardTab() {
       contagem.set(area.obraNome, (contagem.get(area.obraNome) ?? 0) + 1);
     }
     return [...contagem.entries()]
-      .map(([rotulo, valor]) => ({ rotulo, valor, cor: designTokens.colorPrimary }))
+      .map(([rotulo, valor]) => ({ rotulo, valor, cor: paleta.marca }))
       .sort((a, b) => b.valor - a.valor)
       .slice(0, 5);
-  }, [areasComContexto]);
+  }, [areasComContexto, paleta.marca]);
 
   const statusTagDados: FatiaDonut[] = [
-    {
-      rotulo: 'Disponível',
-      valor: tagsFiltradas.filter((t) => t.status === StatusTag.Disponivel).length,
-      cor: designTokens.colorSuccess,
-    },
-    {
-      rotulo: 'Vinculada',
-      valor: tagsFiltradas.filter((t) => t.status === StatusTag.Vinculada).length,
-      cor: designTokens.colorInfo,
-    },
-    {
-      rotulo: 'Desativada',
-      valor: tagsFiltradas.filter((t) => t.status === StatusTag.Desativada).length,
-      cor: designTokens.colorWarning,
-    },
-    { rotulo: 'Perdida', valor: tagsPerdidas.length, cor: designTokens.colorAlert },
+    { rotulo: 'Disponível', valor: tagsFiltradas.filter((t) => t.status === StatusTag.Disponivel).length, cor: paleta.ok },
+    { rotulo: 'Vinculada', valor: tagsFiltradas.filter((t) => t.status === StatusTag.Vinculada).length, cor: paleta.info },
+    { rotulo: 'Desativada', valor: tagsFiltradas.filter((t) => t.status === StatusTag.Desativada).length, cor: paleta.atencao },
+    { rotulo: 'Perdida', valor: tagsPerdidas.length, cor: paleta.alerta },
   ];
 
   const tipoTagDados: ItemRanking[] = useMemo(() => {
@@ -144,13 +132,13 @@ export function IdentificacaoDashboardTab() {
       contagem.set(tag.tipo, (contagem.get(tag.tipo) ?? 0) + 1);
     }
     return [...contagem.entries()]
-      .map(([tipo, valor]) => ({ rotulo: tipoTagLabel[tipo] ?? String(tipo), valor, cor: designTokens.colorInfo }))
+      .map(([tipo, valor]) => ({ rotulo: tipoTagLabel[tipo] ?? String(tipo), valor, cor: paleta.info }))
       .sort((a, b) => b.valor - a.valor);
-  }, [tagsFiltradas]);
+  }, [tagsFiltradas, paleta.info]);
 
   return (
     <div>
-      <div className={estilos.filtros}>
+      <div style={{ display: 'flex', gap: 16, marginBottom: 16, flexWrap: 'wrap' }}>
         <Field label="Obra (áreas)">
           <Select value={obraId} onChange={(_, data) => setObraId(data.value)}>
             <option value="">Todas as obras</option>
@@ -183,82 +171,51 @@ export function IdentificacaoDashboardTab() {
         </Field>
       </div>
 
-      {erro && <Text className={estilosPagina.erro}>{erro}</Text>}
+      {erro && (
+        <FeedbackInline tom="erro" aoFechar={() => setErro(null)}>
+          {erro}
+        </FeedbackInline>
+      )}
 
-      <div style={{ marginBottom: 16 }}>
-        <CardGrid>
-          <KpiCard
-            rotulo="Total de áreas"
-            valor={areasFiltradas.length}
-            cor={designTokens.colorPrimary}
-            icone={<Location24Regular />}
-          />
-          <KpiCard
-            rotulo="Áreas bloqueadas"
-            valor={areasBloqueadas}
-            cor={designTokens.colorAlert}
-            icone={<LockClosed24Regular />}
-          />
-          <KpiCard
-            rotulo="Total de tags"
-            valor={tagsFiltradas.length}
-            cor={designTokens.colorPrimary}
-            icone={<ScanObject24Regular />}
-          />
-          <KpiCard
-            rotulo="Tags perdidas"
-            valor={tagsPerdidas.length}
-            cor={designTokens.colorAlert}
-            icone={<Search24Regular />}
-          />
-        </CardGrid>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(185px, 1fr))', gap: 16, marginBottom: 16 }}>
+        <KpiCard rotulo="Total de áreas" valor={areasFiltradas.length} tom="info" indice={0} icone={<Location24Regular />} />
+        <KpiCard rotulo="Áreas bloqueadas" valor={areasBloqueadas} tom="alerta" indice={1} icone={<LockClosed24Regular />} />
+        <KpiCard rotulo="Total de tags" valor={tagsFiltradas.length} tom="info" indice={2} icone={<ScanObject24Regular />} />
+        <KpiCard rotulo="Tags perdidas" valor={tagsPerdidas.length} tom="alerta" indice={3} icone={<Search24Regular />} />
       </div>
 
-      <div style={{ marginBottom: 8 }}>
-        <Text weight="semibold">Áreas</Text>
-      </div>
-      <div className={estilos.chartRow}>
-        <div className={estilos.chartCard}>
-          <Text className={estilos.chartTitulo}>Status das áreas</Text>
-          <div className={estilos.chartSubtitulo}>Situação atual de cada área de SST cadastrada</div>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(340px, 1fr))', gap: 16, marginBottom: 16 }}>
+        <Card titulo="Status das áreas" subtitulo="Situação atual de cada área de SST cadastrada">
           <StatusDonutChart dados={statusAreaDados} legendaCentral="Áreas" />
-        </div>
-        <div className={estilos.chartCard}>
-          <Text className={estilos.chartTitulo}>Áreas por tipo</Text>
-          <div className={estilos.chartSubtitulo}>Distribuição entre área de trabalho, zona de risco e armazenamento</div>
+        </Card>
+        <Card titulo="Áreas por tipo" subtitulo="Distribuição entre área de trabalho, zona de risco e armazenamento">
           <RankingBarChart dados={tipoAreaDados} />
-        </div>
-        <div className={estilos.chartCard}>
-          <Text className={estilos.chartTitulo}>Áreas por obra</Text>
-          <div className={estilos.chartSubtitulo}>Top 5 obras com mais áreas cadastradas</div>
+        </Card>
+        <Card titulo="Áreas por obra" subtitulo="Top 5 obras com mais áreas cadastradas">
           <RankingBarChart dados={obraAreaDados} />
-        </div>
+        </Card>
       </div>
 
-      <div style={{ marginBottom: 8, marginTop: 16 }}>
-        <Text weight="semibold">Tags (NTAG/QR/RFID)</Text>
-      </div>
-      <div className={estilos.chartRow}>
-        <div className={estilos.chartCard}>
-          <Text className={estilos.chartTitulo}>Status das tags</Text>
-          <div className={estilos.chartSubtitulo}>Situação atual de cada tag de identificação cadastrada</div>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(340px, 1fr))', gap: 16, marginBottom: 16 }}>
+        <Card titulo="Status das tags" subtitulo="Situação atual de cada tag de identificação cadastrada">
           <StatusDonutChart dados={statusTagDados} legendaCentral="Tags" />
-        </div>
-        <div className={estilos.chartCard}>
-          <Text className={estilos.chartTitulo}>Tags por tipo</Text>
-          <div className={estilos.chartSubtitulo}>Distribuição entre NTAG215, NTAG213, QR Code e RFID</div>
+        </Card>
+        <Card titulo="Tags por tipo" subtitulo="Distribuição entre NTAG215, NTAG213, QR Code e RFID">
           <RankingBarChart dados={tipoTagDados} />
-        </div>
+        </Card>
       </div>
 
-      <AreasBloqueadasPanel areas={areasComContexto} />
-      <div style={{ marginTop: 16 }}>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+        <AreasBloqueadasPanel areas={areasComContexto} />
         <TagsPerdidasPanel tags={tagsPerdidas} />
       </div>
 
       {!carregando && areasFiltradas.length === 0 && tagsFiltradas.length === 0 && (
-        <div className={estilosPagina.card} style={{ marginTop: 16 }}>
-          <Text>Nenhuma área ou tag encontrada para os filtros selecionados.</Text>
+        <div style={{ marginTop: 16 }}>
+          <EstadoVazio
+            titulo="Nenhuma área ou tag encontrada"
+            descricao="Ajuste os filtros de obra ou status para ver resultados."
+          />
         </div>
       )}
     </div>

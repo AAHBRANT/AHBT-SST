@@ -1,28 +1,30 @@
 import { useEffect, useMemo, useState } from 'react';
-import { Field, Select, Text } from '@fluentui/react-components';
-import { DocumentLock24Regular, CheckmarkCircle24Regular, Edit24Regular, Warning24Regular } from '@fluentui/react-icons';
 import {
-  api,
-  StatusPt,
-  statusPtLabel,
-  type Atividade,
-  type Obra,
-  type PermissaoTrabalho,
-} from '../../../lib/api';
-import { CardGrid } from '../../../layout/AppShell';
-import { designTokens } from '../../../theme';
-import { usePageStyles } from '../../pageStyles';
-import { useDashboardStyles } from '../../../components/dashboard/dashboardStyles';
-import { KpiCard } from '../../../components/dashboard/KpiCard';
-import { StatusDonutChart, type FatiaDonut } from '../../../components/dashboard/charts/StatusDonutChart';
-import { RankingBarChart, type ItemRanking } from '../../../components/dashboard/charts/RankingBarChart';
+  Card,
+  EstadoVazio,
+  Field,
+  FeedbackInline,
+  KpiCard,
+  RankingBarChart,
+  Select,
+  StatusDonutChart,
+  usePaletaGraficos,
+  type FatiaDonut,
+  type ItemRanking,
+} from '@ui';
+import { DocumentLock24Regular, CheckmarkCircle24Regular, Edit24Regular, Warning24Regular } from '@fluentui/react-icons';
+import { api, StatusPt, statusPtLabel, type Atividade, type Obra, type PermissaoTrabalho } from '../../../lib/api';
 import { PtVencidaPanel, type PtComContexto } from './PtVencidaPanel';
 
 const hojeISO = new Date().toISOString().slice(0, 10);
 
+// Onda 2 Task 7 (camada ui/): dashboard de PT — mesmo padrão de AprDashboardTab.tsx (Task 11):
+// KpiCard + gráficos com cores de usePaletaGraficos, grade CSS Grid simples (spec §4.4). Tons do
+// donut seguem o mesmo mapeamento de tomPorStatusPt usado em PermissaoTrabalhoDetalhePage.tsx
+// (EmElaboracao=neutro, Autorizada=ok, Suspensa=atencao, Encerrada=info) para as duas telas ficarem
+// coerentes (ruling do Guia, item 5).
 export function PtDashboardTab() {
-  const estilosPagina = usePageStyles();
-  const estilos = useDashboardStyles();
+  const paleta = usePaletaGraficos();
 
   const [obras, setObras] = useState<Obra[]>([]);
   const [atividades, setAtividades] = useState<Atividade[]>([]);
@@ -93,13 +95,13 @@ export function PtDashboardTab() {
   ).length;
 
   const statusDados: FatiaDonut[] = [
-    { rotulo: 'Em elaboração', valor: emElaboracao, cor: designTokens.colorWarning },
-    { rotulo: 'Autorizada', valor: autorizadas, cor: designTokens.colorSuccess },
-    { rotulo: 'Suspensa', valor: suspensas, cor: designTokens.colorAlert },
+    { rotulo: 'Em elaboração', valor: emElaboracao, cor: paleta.neutro },
+    { rotulo: 'Autorizada', valor: autorizadas, cor: paleta.ok },
+    { rotulo: 'Suspensa', valor: suspensas, cor: paleta.atencao },
     {
       rotulo: 'Encerrada',
       valor: permissoesFiltradas.filter((p) => p.status === StatusPt.Encerrada).length,
-      cor: designTokens.colorInfo,
+      cor: paleta.info,
     },
   ];
 
@@ -109,10 +111,10 @@ export function PtDashboardTab() {
       contagem.set(pt.obraNome, (contagem.get(pt.obraNome) ?? 0) + 1);
     }
     return [...contagem.entries()]
-      .map(([rotulo, valor]) => ({ rotulo, valor, cor: designTokens.colorPrimary }))
+      .map(([rotulo, valor]) => ({ rotulo, valor, cor: paleta.marca }))
       .sort((a, b) => b.valor - a.valor)
       .slice(0, 5);
-  }, [permissoesComContexto]);
+  }, [permissoesComContexto, paleta.marca]);
 
   const atividadeDados: ItemRanking[] = useMemo(() => {
     const contagem = new Map<string, number>();
@@ -120,14 +122,14 @@ export function PtDashboardTab() {
       contagem.set(pt.atividadeNome, (contagem.get(pt.atividadeNome) ?? 0) + 1);
     }
     return [...contagem.entries()]
-      .map(([rotulo, valor]) => ({ rotulo, valor, cor: designTokens.colorInfo }))
+      .map(([rotulo, valor]) => ({ rotulo, valor, cor: paleta.info }))
       .sort((a, b) => b.valor - a.valor)
       .slice(0, 5);
-  }, [permissoesFiltradas]);
+  }, [permissoesFiltradas, paleta.info]);
 
   return (
     <div>
-      <div className={estilos.filtros}>
+      <div style={{ display: 'flex', gap: 16, marginBottom: 16, flexWrap: 'wrap' }}>
         <Field label="Obra">
           <Select value={obraId} onChange={(_, data) => setObraId(data.value)}>
             <option value="">Todas as obras</option>
@@ -150,60 +152,39 @@ export function PtDashboardTab() {
         </Field>
       </div>
 
-      {erro && <Text className={estilosPagina.erro}>{erro}</Text>}
+      {erro && (
+        <FeedbackInline tom="erro" aoFechar={() => setErro(null)}>
+          {erro}
+        </FeedbackInline>
+      )}
 
-      <div style={{ marginBottom: 16 }}>
-        <CardGrid>
-          <KpiCard
-            rotulo="Total de PTs"
-            valor={permissoesFiltradas.length}
-            cor={designTokens.colorPrimary}
-            icone={<DocumentLock24Regular />}
-          />
-          <KpiCard
-            rotulo="Autorizadas"
-            valor={autorizadas}
-            cor={designTokens.colorSuccess}
-            icone={<CheckmarkCircle24Regular />}
-          />
-          <KpiCard
-            rotulo="Em elaboração"
-            valor={emElaboracao}
-            cor={designTokens.colorWarning}
-            icone={<Edit24Regular />}
-          />
-          <KpiCard
-            rotulo="Com validade vencida"
-            valor={vencidas}
-            cor={designTokens.colorAlert}
-            icone={<Warning24Regular />}
-          />
-        </CardGrid>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(185px, 1fr))', gap: 16, marginBottom: 16 }}>
+        <KpiCard rotulo="Total de PTs" valor={permissoesFiltradas.length} tom="info" indice={0} icone={<DocumentLock24Regular />} />
+        <KpiCard rotulo="Autorizadas" valor={autorizadas} tom="ok" indice={1} icone={<CheckmarkCircle24Regular />} />
+        <KpiCard rotulo="Em elaboração" valor={emElaboracao} tom="neutro" indice={2} icone={<Edit24Regular />} />
+        <KpiCard rotulo="Com validade vencida" valor={vencidas} tom="alerta" indice={3} icone={<Warning24Regular />} />
       </div>
 
-      <div className={estilos.chartRow}>
-        <div className={estilos.chartCard}>
-          <Text className={estilos.chartTitulo}>Status das PTs</Text>
-          <div className={estilos.chartSubtitulo}>Situação atual de cada Permissão de Trabalho</div>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(340px, 1fr))', gap: 16, marginBottom: 16 }}>
+        <Card titulo="Status das PTs" subtitulo="Situação atual de cada Permissão de Trabalho">
           <StatusDonutChart dados={statusDados} legendaCentral="PTs" />
-        </div>
-        <div className={estilos.chartCard}>
-          <Text className={estilos.chartTitulo}>PTs por obra</Text>
-          <div className={estilos.chartSubtitulo}>Top 5 obras com mais PTs cadastradas</div>
+        </Card>
+        <Card titulo="PTs por obra" subtitulo="Top 5 obras com mais PTs cadastradas">
           <RankingBarChart dados={obraDados} />
-        </div>
-        <div className={estilos.chartCard}>
-          <Text className={estilos.chartTitulo}>PTs por atividade</Text>
-          <div className={estilos.chartSubtitulo}>Top 5 atividades com mais PTs cadastradas</div>
+        </Card>
+        <Card titulo="PTs por atividade" subtitulo="Top 5 atividades com mais PTs cadastradas">
           <RankingBarChart dados={atividadeDados} />
-        </div>
+        </Card>
       </div>
 
       <PtVencidaPanel permissoes={permissoesComContexto} />
 
       {!carregando && permissoesFiltradas.length === 0 && (
-        <div className={estilosPagina.card} style={{ marginTop: 16 }}>
-          <Text>Nenhuma PT encontrada para os filtros selecionados.</Text>
+        <div style={{ marginTop: 16 }}>
+          <EstadoVazio
+            titulo="Nenhuma PT encontrada"
+            descricao="Ajuste os filtros de obra ou status para ver resultados."
+          />
         </div>
       )}
     </div>

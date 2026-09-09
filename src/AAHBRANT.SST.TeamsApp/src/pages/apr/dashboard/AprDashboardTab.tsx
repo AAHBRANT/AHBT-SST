@@ -1,28 +1,28 @@
 import { useEffect, useMemo, useState } from 'react';
-import { Field, Select, Text } from '@fluentui/react-components';
-import { ClipboardTaskListLtr24Regular, CheckmarkCircle24Regular, Clock24Regular, Warning24Regular } from '@fluentui/react-icons';
 import {
-  api,
-  StatusApr,
-  statusAprLabel,
-  type Apr,
-  type Atividade,
-  type Obra,
-} from '../../../lib/api';
-import { CardGrid } from '../../../layout/AppShell';
-import { designTokens } from '../../../theme';
-import { usePageStyles } from '../../pageStyles';
-import { useDashboardStyles } from '../../../components/dashboard/dashboardStyles';
-import { KpiCard } from '../../../components/dashboard/KpiCard';
-import { StatusDonutChart, type FatiaDonut } from '../../../components/dashboard/charts/StatusDonutChart';
-import { RankingBarChart, type ItemRanking } from '../../../components/dashboard/charts/RankingBarChart';
+  Card,
+  EstadoVazio,
+  Field,
+  FeedbackInline,
+  KpiCard,
+  RankingBarChart,
+  Select,
+  StatusDonutChart,
+  usePaletaGraficos,
+  type FatiaDonut,
+  type ItemRanking,
+} from '@ui';
+import { ClipboardTaskListLtr24Regular, CheckmarkCircle24Regular, Clock24Regular, Warning24Regular } from '@fluentui/react-icons';
+import { api, StatusApr, statusAprLabel, type Apr, type Atividade, type Obra } from '../../../lib/api';
 import { AprVencidaPanel, type AprComContexto } from './AprVencidaPanel';
 
 const hojeISO = new Date().toISOString().slice(0, 10);
 
+// Onda 2 Task 11 (camada ui/): dashboard de APR — KpiCard + gráficos com cores lidas de
+// usePaletaGraficos (paleta.ts, spec §1.6), grade CSS Grid simples (spec §4.4, sem componente de
+// grade próprio). A lógica de agregação no cliente não muda nesta frente.
 export function AprDashboardTab() {
-  const estilosPagina = usePageStyles();
-  const estilos = useDashboardStyles();
+  const paleta = usePaletaGraficos();
 
   const [obras, setObras] = useState<Obra[]>([]);
   const [atividades, setAtividades] = useState<Atividade[]>([]);
@@ -92,23 +92,11 @@ export function AprDashboardTab() {
   ).length;
 
   const statusDados: FatiaDonut[] = [
-    {
-      rotulo: 'Em elaboração',
-      valor: aprsFiltradas.filter((a) => a.status === StatusApr.EmElaboracao).length,
-      cor: designTokens.colorInfo,
-    },
-    { rotulo: 'Aguardando aprovação', valor: aguardandoAprovacao, cor: designTokens.colorWarning },
-    { rotulo: 'Aprovada', valor: aprovadas, cor: designTokens.colorSuccess },
-    {
-      rotulo: 'Reprovada',
-      valor: aprsFiltradas.filter((a) => a.status === StatusApr.Reprovada).length,
-      cor: designTokens.colorAlert,
-    },
-    {
-      rotulo: 'Encerrada',
-      valor: aprsFiltradas.filter((a) => a.status === StatusApr.Encerrada).length,
-      cor: designTokens.colorPrimary,
-    },
+    { rotulo: 'Em elaboração', valor: aprsFiltradas.filter((a) => a.status === StatusApr.EmElaboracao).length, cor: paleta.info },
+    { rotulo: 'Aguardando aprovação', valor: aguardandoAprovacao, cor: paleta.atencao },
+    { rotulo: 'Aprovada', valor: aprovadas, cor: paleta.ok },
+    { rotulo: 'Reprovada', valor: aprsFiltradas.filter((a) => a.status === StatusApr.Reprovada).length, cor: paleta.alerta },
+    { rotulo: 'Encerrada', valor: aprsFiltradas.filter((a) => a.status === StatusApr.Encerrada).length, cor: paleta.neutro },
   ];
 
   const obraDados: ItemRanking[] = useMemo(() => {
@@ -117,10 +105,10 @@ export function AprDashboardTab() {
       contagem.set(apr.obraNome, (contagem.get(apr.obraNome) ?? 0) + 1);
     }
     return [...contagem.entries()]
-      .map(([rotulo, valor]) => ({ rotulo, valor, cor: designTokens.colorPrimary }))
+      .map(([rotulo, valor]) => ({ rotulo, valor, cor: paleta.marca }))
       .sort((a, b) => b.valor - a.valor)
       .slice(0, 5);
-  }, [aprsComContexto]);
+  }, [aprsComContexto, paleta.marca]);
 
   const atividadeDados: ItemRanking[] = useMemo(() => {
     const contagem = new Map<string, number>();
@@ -128,14 +116,14 @@ export function AprDashboardTab() {
       contagem.set(apr.atividadeNome, (contagem.get(apr.atividadeNome) ?? 0) + 1);
     }
     return [...contagem.entries()]
-      .map(([rotulo, valor]) => ({ rotulo, valor, cor: designTokens.colorInfo }))
+      .map(([rotulo, valor]) => ({ rotulo, valor, cor: paleta.info }))
       .sort((a, b) => b.valor - a.valor)
       .slice(0, 5);
-  }, [aprsFiltradas]);
+  }, [aprsFiltradas, paleta.info]);
 
   return (
     <div>
-      <div className={estilos.filtros}>
+      <div style={{ display: 'flex', gap: 16, marginBottom: 16, flexWrap: 'wrap' }}>
         <Field label="Obra">
           <Select value={obraId} onChange={(_, data) => setObraId(data.value)}>
             <option value="">Todas as obras</option>
@@ -158,60 +146,39 @@ export function AprDashboardTab() {
         </Field>
       </div>
 
-      {erro && <Text className={estilosPagina.erro}>{erro}</Text>}
+      {erro && (
+        <FeedbackInline tom="erro" aoFechar={() => setErro(null)}>
+          {erro}
+        </FeedbackInline>
+      )}
 
-      <div style={{ marginBottom: 16 }}>
-        <CardGrid>
-          <KpiCard
-            rotulo="Total de APRs"
-            valor={aprsFiltradas.length}
-            cor={designTokens.colorPrimary}
-            icone={<ClipboardTaskListLtr24Regular />}
-          />
-          <KpiCard
-            rotulo="Aprovadas"
-            valor={aprovadas}
-            cor={designTokens.colorSuccess}
-            icone={<CheckmarkCircle24Regular />}
-          />
-          <KpiCard
-            rotulo="Aguardando aprovação"
-            valor={aguardandoAprovacao}
-            cor={designTokens.colorWarning}
-            icone={<Clock24Regular />}
-          />
-          <KpiCard
-            rotulo="Com validade vencida"
-            valor={vencidas}
-            cor={designTokens.colorAlert}
-            icone={<Warning24Regular />}
-          />
-        </CardGrid>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(185px, 1fr))', gap: 16, marginBottom: 16 }}>
+        <KpiCard rotulo="Total de APRs" valor={aprsFiltradas.length} tom="info" indice={0} icone={<ClipboardTaskListLtr24Regular />} />
+        <KpiCard rotulo="Aprovadas" valor={aprovadas} tom="ok" indice={1} icone={<CheckmarkCircle24Regular />} />
+        <KpiCard rotulo="Aguardando aprovação" valor={aguardandoAprovacao} tom="atencao" indice={2} icone={<Clock24Regular />} />
+        <KpiCard rotulo="Com validade vencida" valor={vencidas} tom="alerta" indice={3} icone={<Warning24Regular />} />
       </div>
 
-      <div className={estilos.chartRow}>
-        <div className={estilos.chartCard}>
-          <Text className={estilos.chartTitulo}>Status das APRs</Text>
-          <div className={estilos.chartSubtitulo}>Situação atual de cada Análise Preliminar de Risco</div>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(340px, 1fr))', gap: 16, marginBottom: 16 }}>
+        <Card titulo="Status das APRs" subtitulo="Situação atual de cada Análise Preliminar de Risco">
           <StatusDonutChart dados={statusDados} legendaCentral="APRs" />
-        </div>
-        <div className={estilos.chartCard}>
-          <Text className={estilos.chartTitulo}>APRs por obra</Text>
-          <div className={estilos.chartSubtitulo}>Top 5 obras com mais APRs cadastradas</div>
+        </Card>
+        <Card titulo="APRs por obra" subtitulo="Top 5 obras com mais APRs cadastradas">
           <RankingBarChart dados={obraDados} />
-        </div>
-        <div className={estilos.chartCard}>
-          <Text className={estilos.chartTitulo}>APRs por atividade</Text>
-          <div className={estilos.chartSubtitulo}>Top 5 atividades com mais APRs cadastradas</div>
+        </Card>
+        <Card titulo="APRs por atividade" subtitulo="Top 5 atividades com mais APRs cadastradas">
           <RankingBarChart dados={atividadeDados} />
-        </div>
+        </Card>
       </div>
 
       <AprVencidaPanel aprs={aprsComContexto} />
 
       {!carregando && aprsFiltradas.length === 0 && (
-        <div className={estilosPagina.card} style={{ marginTop: 16 }}>
-          <Text>Nenhuma APR encontrada para os filtros selecionados.</Text>
+        <div style={{ marginTop: 16 }}>
+          <EstadoVazio
+            titulo="Nenhuma APR encontrada"
+            descricao="Ajuste os filtros de obra ou status para ver resultados."
+          />
         </div>
       )}
     </div>

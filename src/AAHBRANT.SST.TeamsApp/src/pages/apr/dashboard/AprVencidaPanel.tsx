@@ -1,8 +1,7 @@
 import { AnimatePresence, motion } from 'framer-motion';
-import { Badge, Text } from '@fluentui/react-components';
+import { Card, designTokens, StatusChip, Text } from '@ui';
 import { Warning24Filled } from '@fluentui/react-icons';
 import { StatusApr, statusAprLabel, type Apr } from '../../../lib/api';
-import { useDashboardStyles } from '../../../components/dashboard/dashboardStyles';
 
 export interface AprComContexto extends Apr {
   obraNome: string;
@@ -19,9 +18,11 @@ function diasVencido(validade: string): number {
   return Math.round(diffMs / (1000 * 60 * 60 * 24));
 }
 
+// Onda 2 Task 11 (camada ui/): painel de APRs vencidas do dashboard — Card + StatusChip. A animação
+// de entrada por linha (framer-motion) e o layout da linha seguem inline: não há componente @ui
+// dedicado a esta forma de lista, e `designTokens` (bridge sancionado, importado de `@ui`) cobre a
+// única cor que faltava (texto secundário, antes um hex de fallback cru).
 export function AprVencidaPanel({ aprs }: AprVencidaPanelProps) {
-  const estilos = useDashboardStyles();
-
   const vencidas = aprs
     .filter(
       (a) =>
@@ -33,27 +34,18 @@ export function AprVencidaPanel({ aprs }: AprVencidaPanelProps) {
     .sort((a, b) => diasVencido(b.validade!) - diasVencido(a.validade!));
 
   return (
-    <div className={estilos.motorPainel}>
-      <div className={estilos.motorCabecalho}>
-        <div>
-          <Text weight="semibold" size={400}>
-            APRs com Validade Vencida
-          </Text>
-          <div>
-            <Text size={200} style={{ color: 'var(--colorNeutralForeground3, #6D6D6D)' }}>
-              APRs ainda não encerradas ou reprovadas cuja validade já passou — a atividade pode estar sendo
-              executada sob uma análise de risco desatualizada, ordenadas da mais atrasada para a menos atrasada.
-            </Text>
-          </div>
-        </div>
-        <Badge appearance="tint" color={vencidas.length === 0 ? 'success' : 'danger'}>
+    <Card
+      titulo="APRs com Validade Vencida"
+      subtitulo="APRs ainda não encerradas ou reprovadas cuja validade já passou — a atividade pode estar sendo executada sob uma análise de risco desatualizada, ordenadas da mais atrasada para a menos atrasada."
+      acoes={
+        <StatusChip tom={vencidas.length === 0 ? 'ok' : 'alerta'}>
           {vencidas.length} APR(s) com validade vencida
-        </Badge>
-      </div>
-
-      <div className={estilos.motorLista}>
+        </StatusChip>
+      }
+    >
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 8, maxHeight: 420, overflowY: 'auto' }}>
         {vencidas.length === 0 && (
-          <Text size={200} style={{ color: 'var(--colorNeutralForeground3, #6D6D6D)' }}>
+          <Text size={200} style={{ color: designTokens.colorNeutralMedium }}>
             Nenhuma APR com validade vencida para os filtros selecionados.
           </Text>
         )}
@@ -65,24 +57,32 @@ export function AprVencidaPanel({ aprs }: AprVencidaPanelProps) {
               initial={{ opacity: 0, x: -8 }}
               animate={{ opacity: 1, x: 0 }}
               transition={{ duration: 0.25, delay: Math.min(indice, 12) * 0.02 }}
-              className={`${estilos.motorLinha} ${estilos.motorLinhaBloqueada}`}
+              style={{
+                display: 'grid',
+                gridTemplateColumns: '1fr auto',
+                alignItems: 'center',
+                gap: 12,
+                padding: '10px 14px',
+                borderRadius: 6,
+                backgroundColor: designTokens.colorNeutralLight,
+                borderLeft: `3px solid ${designTokens.colorAlert}`,
+              }}
             >
               <div>
                 <Text weight="semibold">{apr.atividadeNome}</Text>
                 <div>
-                  <Text size={200} style={{ color: 'var(--colorNeutralForeground3, #6D6D6D)' }}>
-                    {apr.obraNome} · {apr.local} · {statusAprLabel[apr.status]} · vencida há{' '}
-                    {diasVencido(apr.validade!)} dia(s)
+                  <Text size={200} style={{ color: designTokens.colorNeutralMedium }}>
+                    {apr.obraNome} · {apr.local} · {statusAprLabel[apr.status]} · vencida há {diasVencido(apr.validade!)} dia(s)
                   </Text>
                 </div>
               </div>
-              <Badge appearance="tint" color="danger" icon={<Warning24Filled />}>
+              <StatusChip tom="alerta" icone={<Warning24Filled aria-hidden="true" />}>
                 Validade: {apr.validade!.slice(0, 10)}
-              </Badge>
+              </StatusChip>
             </motion.div>
           ))}
         </AnimatePresence>
       </div>
-    </div>
+    </Card>
   );
 }

@@ -1,24 +1,29 @@
 import { useEffect, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import {
-  Badge,
   Button,
   Checkbox,
+  Field,
   Select,
-  Table,
-  TableBody,
-  TableCell,
-  TableHeader,
-  TableHeaderCell,
-  TableRow,
-  Text,
-} from '@fluentui/react-components';
+  Input,
+  Card,
+  DetailPageLayout,
+  WorkflowActions,
+  StatusChip,
+  FeedbackInline,
+  Carregando,
+  Legenda,
+  DataTable,
+  FormGrid,
+  Campo,
+  type AcaoWorkflow,
+  type Coluna,
+  type Tom,
+} from '@ui';
 import {
   ArrowDownload24Regular,
-  ArrowLeft24Regular,
   Checkmark24Filled,
   Fingerprint24Regular,
-  LockClosed24Regular,
   PersonAdd24Regular,
   Send24Regular,
   Signature24Regular,
@@ -30,18 +35,39 @@ import {
   TipoFotoParticipante,
   tipoFotoParticipanteLabel,
   type DdsDetalhe,
+  type DdsParticipante,
   type Trabalhador,
 } from '../../lib/api';
 import { capturarDigitalLocal, estaAgenteLocalDisponivel, obterDispositivoLocal } from '../../lib/agenteBiometricoLocal';
 import { SeletorFotoCamera } from '../../components/SeletorFotoCamera';
-import { usePageStyles } from '../pageStyles';
 
 const TOTAL_FOTOS_EVIDENCIA_OBRIGATORIAS = 3;
 
+const tomStatusDia: Record<number, Tom> = {
+  [StatusDds.EmAndamento]: 'atencao',
+  [StatusDds.Concluido]: 'ok',
+};
+
+function tomTelegram(p: DdsParticipante): Tom {
+  if (p.telegramConfirmadoEm) return 'ok';
+  if (p.telegramEnviadoEm) return 'atencao';
+  return 'info';
+}
+
+function rotuloTelegram(p: DdsParticipante): string {
+  if (p.telegramConfirmadoEm) return 'Ciência confirmada';
+  if (p.telegramEnviadoEm) return 'Enviado, aguardando confirmação';
+  return 'Não enviado';
+}
+
+// Onda 2 (Task 14) — candidata a DetailPageLayout (conversões 1, 2, 3, 4, 5): cabeçalho com
+// voltar/título/status/ações utilitárias (assinar/baixar/telegram); lateral com o resumo e a única
+// transição de estado real (Encerrar DDS) em WorkflowActions — as demais ações (assinar, baixar,
+// telegram) não são transição de estado, ficam no cabeçalho. Participantes é o único <Table> cru
+// do arquivo → DataTable; badges de status (geral + Telegram) → StatusChip.
 export function DdsDetalhePage() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
-  const estilos = usePageStyles();
   const [detalhe, setDetalhe] = useState<DdsDetalhe | null>(null);
   const [trabalhadores, setTrabalhadores] = useState<Trabalhador[]>([]);
   const [participanteSelecionado, setParticipanteSelecionado] = useState('');
@@ -197,13 +223,14 @@ export function DdsDetalhePage() {
       await carregar();
     } catch (e) {
       setErro(e instanceof Error ? e.message : 'Falha ao encerrar DDS.');
+      return false;
     } finally {
       setProcessando(false);
     }
   }
 
   async function baixarPdf() {
-    if (!id || !dds) return;
+    if (!id || !detalhe) return;
     try {
       setBaixandoPdf(true);
       setErro(null);
@@ -211,7 +238,7 @@ export function DdsDetalhePage() {
       const url = URL.createObjectURL(blob);
       const link = document.createElement('a');
       link.href = url;
-      link.download = `dds-${dds.data?.slice(0, 10)}.pdf`;
+      link.download = `dds-${detalhe.dds.data?.slice(0, 10)}.pdf`;
       link.click();
       URL.revokeObjectURL(url);
     } catch (e) {
@@ -239,103 +266,118 @@ export function DdsDetalhePage() {
     }
   }
 
-  if (!id) {
-    return <Text>DDS não encontrado.</Text>;
+  if (!id) return <FeedbackInline tom="erro">DDS não encontrado.</FeedbackInline>;
+
+  if (!detalhe) {
+    return erro ? (
+      <FeedbackInline tom="erro" acao={{ rotulo: 'Tentar de novo', aoClicar: () => void carregar() }}>
+        {erro}
+      </FeedbackInline>
+    ) : (
+      <Carregando variante="detalhe" linhas={8} />
+    );
   }
 
-  const dds = detalhe?.dds;
-  const somenteLeitura = dds?.status !== StatusDds.EmAndamento;
-  const participantesRegistrados = new Set(detalhe?.participantes.map((p) => p.trabalhadorId));
+  const dds = detalhe.dds;
+  const somenteLeitura = dds.status !== StatusDds.EmAndamento;
+  const participantesRegistrados = new Set(detalhe.participantes.map((p) => p.trabalhadorId));
   const trabalhadoresDisponiveis = trabalhadores.filter((t) => !participantesRegistrados.has(t.id));
-  const totalFotosEvidencia = detalhe?.fotosEvidencia.length ?? 0;
+  const totalFotosEvidencia = detalhe.fotosEvidencia.length;
   const faltamFotosEvidencia = Math.max(0, TOTAL_FOTOS_EVIDENCIA_OBRIGATORIAS - totalFotosEvidencia);
   const biometriaConfirmada = !!biometriaValidada && biometriaValidada.trabalhadorId === participanteSelecionado;
 
+  const tituloDds =
+    dds.temasAtividades.length > 0
+      ? dds.temasAtividades.map((t) => t.atividadeNome + (t.perigoNome ? ` — ${t.perigoNome}` : '')).join(' · ')
+      : dds.temaLivreNome
+        ? `Tema livre: ${dds.temaLivreNome}`
+        : 'DDS do dia';
+
+  // Só a transição de estado real (encerrar) entra em WorkflowActions — assinar/baixar/telegram
+  // são ações utilitárias sempre disponíveis, não mudam o status, então ficam no cabeçalho.
+  const acoesWorkflow: AcaoWorkflow[] = [];
+  if (!somenteLeitura) {
+    acoesWorkflow.push({
+      chave: 'encerrar',
+      rotulo: 'Encerrar DDS',
+      descricao: faltamFotosEvidencia > 0 ? `Faltam ${faltamFotosEvidencia} foto(s) de evidência.` : undefined,
+      tom: 'primario',
+      habilitada: faltamFotosEvidencia === 0,
+      aoExecutar: encerrar,
+    });
+  }
+
+  const colunasParticipantes: Coluna<DdsParticipante>[] = [
+    { chave: 'nome', rotulo: 'Nome', render: (p) => p.trabalhadorNome },
+    { chave: 'evidencia', rotulo: 'Evidência', render: (p) => tipoFotoParticipanteLabel[p.fotoTipo] },
+    {
+      chave: 'telegram',
+      rotulo: 'Telegram',
+      render: (p) => <StatusChip tom={tomTelegram(p)}>{rotuloTelegram(p)}</StatusChip>,
+    },
+  ];
+
   return (
-    <div>
-      <Button
-        appearance="subtle"
-        icon={<ArrowLeft24Regular />}
-        onClick={() => navigate(dds?.ddsSemanalId ? `/prevencao/dds/semana/${dds.ddsSemanalId}` : '/prevencao/dds')}
-        style={{ marginBottom: 12 }}
-      >
-        Voltar para a semana
-      </Button>
-
-      {erro && <Text className={estilos.erro}>{erro}</Text>}
-
-      <div className={estilos.card} style={{ marginBottom: 16 }}>
-        {dds ? (
+    <DetailPageLayout
+      cabecalho={{
+        titulo: tituloDds,
+        subtitulo: `Obra: ${dds.obraNome} · Data: ${dds.data?.slice(0, 10)} · Responsável: ${dds.responsavelUsuarioNome}`,
+        status: <StatusChip tom={tomStatusDia[dds.status] ?? 'neutro'}>{statusDdsLabel[dds.status]}</StatusChip>,
+        voltarPara: dds.ddsSemanalId ? `/prevencao/dds/semana/${dds.ddsSemanalId}` : '/prevencao/dds',
+        rotuloVoltar: 'Voltar para a semana',
+        acoes: (
           <>
-            <Text size={500} weight="semibold">
-              {dds.temasAtividades.length === 0 && !dds.temaLivreNome && (
-                <Text style={{ display: 'block' }}>DDS do dia</Text>
-              )}
-              {dds.temasAtividades.map((tema) => (
-                <Text key={tema.atividadeId} style={{ display: 'block' }}>
-                  {tema.atividadeNome}
-                  {tema.perigoNome ? ` — ${tema.perigoNome}` : ''}
-                </Text>
-              ))}
-              {dds.temaLivreNome && <Text style={{ display: 'block' }}>Tema livre: {dds.temaLivreNome}</Text>}
-            </Text>
-            <div style={{ display: 'flex', gap: 16, marginTop: 8, flexWrap: 'wrap', alignItems: 'center' }}>
-              <Text>Obra: {dds.obraNome}</Text>
-              <Text>Data: {dds.data?.slice(0, 10)}</Text>
-              <Text>Responsável: {dds.responsavelUsuarioNome}</Text>
-              <Badge appearance="tint">{statusDdsLabel[dds.status]}</Badge>
-            </div>
-            <div style={{ marginTop: 8 }}>
-              <Text>Atividades do dia: {dds.atividadesNomes.join(', ') || 'DDS do dia'}</Text>
-            </div>
-            <div style={{ display: 'flex', gap: 16, marginTop: 8, alignItems: 'center' }}>
-              <Text>
-                Checklist verificado: {dds.itensVerificados}/{dds.totalItensChecklist}
-              </Text>
-              <Text>Participantes: {dds.totalParticipantes}</Text>
-            </div>
-
-            <div className={estilos.formActions} style={{ marginTop: 16 }}>
-              {!somenteLeitura && (
-                <Button
-                  appearance="primary"
-                  icon={<LockClosed24Regular />}
-                  onClick={encerrar}
-                  disabled={processando || faltamFotosEvidencia > 0}
-                  title={faltamFotosEvidencia > 0 ? `Faltam ${faltamFotosEvidencia} foto(s) de evidência.` : undefined}
-                >
-                  Encerrar DDS
-                </Button>
-              )}
-              <Button icon={<Signature24Regular />} onClick={() => navigate(`/prevencao/dds/dia/${id}/assinar`)}>
-                Assinar DDS
-              </Button>
-              <Button icon={<ArrowDownload24Regular />} onClick={baixarPdf} disabled={baixandoPdf}>
-                Baixar PDF
-              </Button>
-              <Button icon={<Send24Regular />} onClick={enviarTelegram} disabled={enviandoTelegram}>
-                Enviar via Telegram
-              </Button>
-            </div>
-            {resultadoTelegram && (
-              <Text style={{ display: 'block', marginTop: 8 }}>{resultadoTelegram}</Text>
-            )}
+            <Button icon={<Signature24Regular />} onClick={() => navigate(`/prevencao/dds/dia/${id}/assinar`)}>
+              Assinar DDS
+            </Button>
+            <Button icon={<ArrowDownload24Regular />} onClick={baixarPdf} disabled={baixandoPdf}>
+              Baixar PDF
+            </Button>
+            <Button icon={<Send24Regular />} onClick={enviarTelegram} disabled={enviandoTelegram}>
+              Enviar via Telegram
+            </Button>
           </>
-        ) : (
-          <Text>Carregando...</Text>
-        )}
-      </div>
+        ),
+      }}
+      lateral={
+        <>
+          <Card densidade="compacta" titulo="Resumo">
+            <FormGrid>
+              <Campo span={12}>
+                <Field label="Atividades do dia"><Input value={dds.atividadesNomes.join(', ') || 'DDS do dia'} readOnly /></Field>
+              </Campo>
+              <Campo span={12}>
+                <Field label="Checklist verificado"><Input value={`${dds.itensVerificados}/${dds.totalItensChecklist}`} readOnly /></Field>
+              </Campo>
+              <Campo span={12}>
+                <Field label="Participantes"><Input value={String(dds.totalParticipantes)} readOnly /></Field>
+              </Campo>
+              <Campo span={12}>
+                <Field label="Evidências fotográficas"><Input value={`${totalFotosEvidencia}/${TOTAL_FOTOS_EVIDENCIA_OBRIGATORIAS}`} readOnly /></Field>
+              </Campo>
+            </FormGrid>
+          </Card>
+          {acoesWorkflow.length > 0 && (
+            <Card densidade="compacta" titulo="Ações disponíveis">
+              <WorkflowActions acoes={acoesWorkflow} processando={processando} />
+            </Card>
+          )}
+        </>
+      }
+    >
+      {erro && (
+        <FeedbackInline tom="erro" aoFechar={() => setErro(null)}>
+          {erro}
+        </FeedbackInline>
+      )}
+      {resultadoTelegram && <FeedbackInline tom="sucesso">{resultadoTelegram}</FeedbackInline>}
 
-      <div className={estilos.card} style={{ marginBottom: 16 }}>
-        <div className={estilos.toolbar}>
-          <Text weight="semibold">Checklist de verificação</Text>
-        </div>
-
-        {detalhe?.itensChecklist.length === 0 ? (
-          <Text>Nenhum item de checklist gerado — revise a Matriz de Riscos das atividades selecionadas.</Text>
+      <Card titulo="Checklist de verificação">
+        {detalhe.itensChecklist.length === 0 ? (
+          <Legenda>Nenhum item de checklist gerado — revise a Matriz de Riscos das atividades selecionadas.</Legenda>
         ) : (
           <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-            {detalhe?.itensChecklist.map((item) => (
+            {detalhe.itensChecklist.map((item) => (
               <Checkbox
                 key={item.id}
                 label={item.descricao}
@@ -346,21 +388,14 @@ export function DdsDetalhePage() {
             ))}
           </div>
         )}
-      </div>
+      </Card>
 
-      <div className={estilos.card} style={{ marginBottom: 16 }}>
-        <div className={estilos.toolbar}>
-          <Text weight="semibold">
-            Evidências fotográficas ({totalFotosEvidencia}/{TOTAL_FOTOS_EVIDENCIA_OBRIGATORIAS})
-          </Text>
-        </div>
-
-        <Text size={200} style={{ display: 'block', marginBottom: 8 }}>
-          {TOTAL_FOTOS_EVIDENCIA_OBRIGATORIAS} fotos são obrigatórias para liberar o encerramento deste registro diário.
-        </Text>
-
+      <Card
+        titulo={`Evidências fotográficas (${totalFotosEvidencia}/${TOTAL_FOTOS_EVIDENCIA_OBRIGATORIAS})`}
+        subtitulo={`${TOTAL_FOTOS_EVIDENCIA_OBRIGATORIAS} fotos são obrigatórias para liberar o encerramento deste registro diário.`}
+      >
         <div style={{ display: 'flex', flexWrap: 'wrap', gap: 12, alignItems: 'center' }}>
-          {detalhe?.fotosEvidencia
+          {detalhe.fotosEvidencia
             .slice()
             .sort((a, b) => a.ordem - b.ordem)
             .map((foto) => (
@@ -380,36 +415,35 @@ export function DdsDetalhePage() {
             />
           )}
         </div>
-      </div>
+      </Card>
 
-      <div className={estilos.card}>
-        <div className={estilos.toolbar}>
-          <Text weight="semibold">Participantes</Text>
-        </div>
-
+      <Card titulo="Participantes">
         {!somenteLeitura && (
           <div style={{ marginBottom: 12, display: 'flex', flexDirection: 'column', gap: 8 }}>
-            <div className={estilos.formActions}>
-              <Select
-                value={participanteSelecionado}
-                onChange={(_, d) => setParticipanteSelecionado(d.value)}
-                style={{ minWidth: 240 }}
-              >
-                <option value="">Selecione um funcionário</option>
-                {trabalhadoresDisponiveis.map((trabalhador) => (
-                  <option key={trabalhador.id} value={trabalhador.id}>
-                    {trabalhador.nome} ({trabalhador.matricula})
-                  </option>
-                ))}
-              </Select>
-            </div>
+            <FormGrid>
+              <Campo span={6}>
+                <Field label="Funcionário">
+                  <Select
+                    value={participanteSelecionado}
+                    onChange={(_, d) => setParticipanteSelecionado(d.value)}
+                  >
+                    <option value="">Selecione um funcionário</option>
+                    {trabalhadoresDisponiveis.map((trabalhador) => (
+                      <option key={trabalhador.id} value={trabalhador.id}>
+                        {trabalhador.nome} ({trabalhador.matricula})
+                      </option>
+                    ))}
+                  </Select>
+                </Field>
+              </Campo>
+            </FormGrid>
             {agenteDisponivel === false && (
-              <Text style={{ display: 'block', color: 'var(--colorPaletteRedForeground1)' }}>
+              <FeedbackInline tom="aviso">
                 Leitor Futronic não encontrado nesta máquina. Verifique se o leitor está conectado e se o
                 Agente Biométrico está em execução, depois recarregue esta página.
-              </Text>
+              </FeedbackInline>
             )}
-            <div className={estilos.formActions} style={{ alignItems: 'center' }}>
+            <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
               <Button
                 appearance="primary"
                 icon={<Fingerprint24Regular />}
@@ -419,9 +453,9 @@ export function DdsDetalhePage() {
                 {validandoBiometria ? 'Validando biometria...' : 'Validar Biometria'}
               </Button>
               {biometriaConfirmada && (
-                <Badge color="success" appearance="tint" icon={<Checkmark24Filled />}>
+                <StatusChip tom="ok" icone={<Checkmark24Filled />}>
                   Biometria validada
-                </Badge>
+                </StatusChip>
               )}
               <Button
                 appearance="primary"
@@ -432,59 +466,31 @@ export function DdsDetalhePage() {
                 Registrar presença
               </Button>
             </div>
-            <Text size={200}>
-              A validação biométrica do participante selecionado é obrigatória para registrar a presença.
-            </Text>
+            <Legenda>A validação biométrica do participante selecionado é obrigatória para registrar a presença.</Legenda>
           </div>
         )}
 
-        <Table noNativeElements>
-          <TableHeader>
-            <TableRow>
-              <TableHeaderCell>Nome</TableHeaderCell>
-              <TableHeaderCell>Evidência</TableHeaderCell>
-              <TableHeaderCell>Telegram</TableHeaderCell>
-              <TableHeaderCell />
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {detalhe?.participantes.map((participante) => (
-              <TableRow key={participante.id}>
-                <TableCell>{participante.trabalhadorNome}</TableCell>
-                <TableCell>{tipoFotoParticipanteLabel[participante.fotoTipo]}</TableCell>
-                <TableCell>
-                  {participante.telegramConfirmadoEm ? (
-                    <Badge color="success" appearance="tint">
-                      Ciência confirmada
-                    </Badge>
-                  ) : participante.telegramEnviadoEm ? (
-                    <Badge color="warning" appearance="tint">
-                      Enviado, aguardando confirmação
-                    </Badge>
-                  ) : (
-                    <Badge color="informative" appearance="tint">
-                      Não enviado
-                    </Badge>
-                  )}
-                </TableCell>
-                <TableCell>
-                  {participante.fotoTipo !== TipoFotoParticipante.Biometria && (
-                    <Button
-                      appearance="subtle"
-                      size="small"
-                      icon={<ArrowDownload24Regular />}
-                      onClick={() => baixarFotoParticipante(participante.id, participante.trabalhadorNome)}
-                      disabled={baixandoFotoId === participante.id}
-                    >
-                      Baixar foto
-                    </Button>
-                  )}
-                </TableCell>
-              </TableRow>
-            ))}
-          </TableBody>
-        </Table>
-      </div>
-    </div>
+        <DataTable
+          aria-label="Participantes do DDS"
+          colunas={colunasParticipantes}
+          linhas={detalhe.participantes}
+          chaveLinha={(p) => p.id}
+          vazio={{ titulo: 'Nenhum participante registrado ainda.' }}
+          acoesLinha={(p) =>
+            p.fotoTipo !== TipoFotoParticipante.Biometria ? (
+              <Button
+                appearance="subtle"
+                size="small"
+                icon={<ArrowDownload24Regular />}
+                onClick={() => baixarFotoParticipante(p.id, p.trabalhadorNome)}
+                disabled={baixandoFotoId === p.id}
+              >
+                Baixar foto
+              </Button>
+            ) : null
+          }
+        />
+      </Card>
+    </DetailPageLayout>
   );
 }

@@ -4,5 +4,31 @@
   "rules": {
     "react/rules-of-hooks": "error",
     "react/only-export-components": ["warn", { "allowConstantExport": true }]
-  }
+  },
+  "overrides": [
+    {
+      "files": ["src/pages/**"],
+      "rules": {
+        "no-restricted-imports": ["warn", {
+          "paths": [
+            { "name": "@fluentui/react-components", "message": "Em pages/, importe de @ui (spec 2026-09-07 §2.2)." }
+          ],
+          "patterns": [
+            { "group": ["**/theme", "**/theme.ts"], "message": "Tokens só via componentes de @ui." }
+          ]
+        }]
+      }
+    },
+    {
+      "files": ["src/ui/**"],
+      "rules": {
+        "no-restricted-imports": ["error", {
+          "patterns": [
+            { "group": ["**/lib/api", "**/lib/api.ts"], "message": "ui/ não busca dados; recebe por props." },
+            { "group": ["**/pages/**"], "message": "ui/ não conhece páginas." }
+          ]
+        }]
+      }
+    }
+  ]
 }

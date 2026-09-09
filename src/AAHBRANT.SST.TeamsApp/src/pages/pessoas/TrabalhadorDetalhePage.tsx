@@ -1,22 +1,25 @@
 import { useEffect, useState } from 'react';
-import { useNavigate, useParams } from 'react-router-dom';
+import { useParams } from 'react-router-dom';
 import {
   Avatar,
-  Badge,
   Button,
-  Tab,
-  TabList,
+  Card,
+  PageHeader,
+  Abas,
+  StatusChip,
+  FeedbackInline,
+  Carregando,
   Text,
-  type PresenceBadgeStatus,
-  type SelectTabData,
-  type SelectTabEvent,
-} from '@fluentui/react-components';
-import { ArrowDownload24Regular, ArrowLeft24Regular, Eye24Regular, EyeOff24Regular } from '@fluentui/react-icons';
+  usePaletaGraficos,
+  RankingBarChart,
+  StatusDonutChart,
+  type ItemRanking,
+  type FatiaDonut,
+  type Tom,
+} from '@ui';
+import { ArrowDownload24Regular, Eye24Regular, EyeOff24Regular } from '@fluentui/react-icons';
 import { api, tipoVinculoLabel, type PerfilCompletoTrabalhador } from '../../lib/api';
 import { formatarCpf, mascararCpf } from '../../lib/cpf';
-import { usePageStyles, usePillTabStyles } from '../pageStyles';
-import { RankingBarChart, type ItemRanking } from '../../components/dashboard/charts/RankingBarChart';
-import { StatusDonutChart, type FatiaDonut } from '../../components/dashboard/charts/StatusDonutChart';
 import { PerfilGeralTab } from './PerfilGeralTab';
 import { TreinamentosTab } from './TreinamentosTab';
 import { RiscosTab } from './RiscosTab';
@@ -25,29 +28,35 @@ import { CofreAssinaturasTab } from './CofreAssinaturasTab';
 
 type AbaPerfil = 'geral' | 'epi' | 'treinamentos' | 'riscos' | 'ocorrencias' | 'cofre';
 
-const corAptidao: Record<string, 'success' | 'warning' | 'danger' | 'informative'> = {
-  Apto: 'success',
-  'Apto com restrição': 'warning',
-  Inapto: 'danger',
+const ABAS_PERFIL = [
+  { valor: 'geral', rotulo: 'Geral & ASO' },
+  { valor: 'epi', rotulo: 'EPI & Matriz' },
+  { valor: 'treinamentos', rotulo: 'Treinamentos & DDS' },
+  { valor: 'riscos', rotulo: 'Riscos & OS' },
+  { valor: 'ocorrencias', rotulo: 'Ocorrências' },
+  { valor: 'cofre', rotulo: 'Cofre de Assinaturas' },
+] as const satisfies readonly { valor: AbaPerfil; rotulo: string }[];
+
+const tomAptidao: Record<string, Tom> = {
+  Apto: 'ok',
+  'Apto com restrição': 'atencao',
+  Inapto: 'alerta',
 };
 
-const badgeAptidao: Record<string, PresenceBadgeStatus> = {
-  Apto: 'available',
-  'Apto com restrição': 'away',
-  Inapto: 'busy',
-};
-
+// Ficha do trabalhador: cabeçalho fixo (foto, dados, aptidão) + seis abas de conteúdo. Sem fluxo de
+// estados/workflow (a aptidão é só leitura, calculada a partir do ASO mais recente) — por isso
+// PageHeader + Card empilhados em vez de DetailPageLayout, que existe para lateral fixa de ações de
+// fluxo (ver NaoConformidadeDetalhePage). As abas são navegação interna da página, não da URL — não
+// há `useAbaNaUrl` aqui de propósito, ela é reservada aos dois níveis da página-pilar (spec §4.1).
 export function TrabalhadorDetalhePage() {
   const { id } = useParams<{ id: string }>();
-  const navigate = useNavigate();
-  const estilos = usePageStyles();
-  const estilosAba = usePillTabStyles();
   const [aba, setAba] = useState<AbaPerfil>('geral');
   const [cpfVisivel, setCpfVisivel] = useState(false);
   const [perfil, setPerfil] = useState<PerfilCompletoTrabalhador | null>(null);
   const [erro, setErro] = useState<string | null>(null);
   const [baixandoRelatorio, setBaixandoRelatorio] = useState(false);
   const [fotoUrl, setFotoUrl] = useState<string | null>(null);
+  const paleta = usePaletaGraficos();
 
   async function carregar() {
     if (!id) return;
@@ -106,7 +115,7 @@ export function TrabalhadorDetalhePage() {
   }
 
   if (!id) {
-    return <Text>Funcionário não encontrado.</Text>;
+    return <FeedbackInline tom="erro">Funcionário não encontrado.</FeedbackInline>;
   }
 
   const dadosFrequenciaEpi: ItemRanking[] =
@@ -114,124 +123,94 @@ export function TrabalhadorDetalhePage() {
 
   const dadosAssiduidadeDds: FatiaDonut[] = perfil
     ? [
-        { rotulo: 'Participou', valor: perfil.assiduidadeDds.totalParticipados, cor: '#2E7D32' },
+        { rotulo: 'Participou', valor: perfil.assiduidadeDds.totalParticipados, cor: paleta.ok },
         {
           rotulo: 'Não participou',
           valor: Math.max(perfil.assiduidadeDds.totalRealizados - perfil.assiduidadeDds.totalParticipados, 0),
-          cor: '#C62828',
+          cor: paleta.alerta,
         },
       ]
     : [];
 
   return (
     <div>
-      <Button
-        appearance="subtle"
-        icon={<ArrowLeft24Regular />}
-        onClick={() => navigate('/operacao/pessoas')}
-        style={{ marginBottom: 12 }}
-      >
-        Voltar para Pessoas
-      </Button>
+      <PageHeader
+        voltarPara="/operacao/pessoas"
+        rotuloVoltar="Pessoas"
+        titulo={perfil?.nome ?? 'Carregando…'}
+        subtitulo={
+          perfil &&
+          `Matrícula ${perfil.matricula} · ${perfil.obraNome} · ${perfil.funcaoNome} · Admissão em ${perfil.dataAdmissao?.slice(0, 10)}`
+        }
+        status={perfil && <StatusChip tom={tomAptidao[perfil.statusAptidao] ?? 'neutro'}>{perfil.statusAptidao}</StatusChip>}
+        acoes={
+          <Button
+            appearance="primary"
+            icon={<ArrowDownload24Regular />}
+            onClick={baixarRelatorio}
+            disabled={baixandoRelatorio || !perfil}
+          >
+            Emitir relatório de fiscalização (PDF)
+          </Button>
+        }
+      />
 
-      {erro && <Text className={estilos.erro}>{erro}</Text>}
+      {erro && <FeedbackInline tom="erro" aoFechar={() => setErro(null)}>{erro}</FeedbackInline>}
 
-      <div className={estilos.card} style={{ marginBottom: 16 }}>
-        {perfil ? (
-          <>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: 8 }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+      {!perfil ? (
+        <Carregando variante="detalhe" linhas={6} />
+      ) : (
+        <>
+          <div style={{ marginBottom: 16 }}>
+            <Card densidade="compacta">
+              <div style={{ display: 'flex', alignItems: 'center', gap: 16, flexWrap: 'wrap' }}>
                 <Avatar
                   name={perfil.nome}
                   image={fotoUrl ? { src: fotoUrl } : undefined}
                   color="brand"
                   size={64}
-                  badge={{ status: badgeAptidao[perfil.statusAptidao] ?? 'unknown' }}
                 />
-                <Text size={500} weight="semibold">
-                  {perfil.nome}
-                </Text>
+                <div style={{ display: 'flex', gap: 16, flexWrap: 'wrap', alignItems: 'center' }}>
+                  <StatusChip tom="neutro">{tipoVinculoLabel[perfil.vinculo]}</StatusChip>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+                    <Text>CPF: {cpfVisivel ? formatarCpf(perfil.cpf) : mascararCpf(perfil.cpf)}</Text>
+                    <Button
+                      appearance="subtle"
+                      size="small"
+                      icon={cpfVisivel ? <EyeOff24Regular /> : <Eye24Regular />}
+                      onClick={() => setCpfVisivel((v) => !v)}
+                      aria-label={cpfVisivel ? 'Ocultar CPF' : 'Revelar CPF'}
+                    />
+                  </div>
+                  {perfil.rg && <Text>RG: {perfil.rg}</Text>}
+                </div>
               </div>
-              <Button
-                appearance="primary"
-                icon={<ArrowDownload24Regular />}
-                onClick={baixarRelatorio}
-                disabled={baixandoRelatorio}
-              >
-                Emitir relatório de fiscalização (PDF)
-              </Button>
-            </div>
-            <div style={{ display: 'flex', gap: 16, marginTop: 8, flexWrap: 'wrap', alignItems: 'center' }}>
-              <Text>Matrícula: {perfil.matricula}</Text>
-              <Text>Obra: {perfil.obraNome}</Text>
-              <Text>Função: {perfil.funcaoNome}</Text>
-              <Text>Admissão: {perfil.dataAdmissao?.slice(0, 10)}</Text>
-              <Badge appearance="tint">{tipoVinculoLabel[perfil.vinculo]}</Badge>
-              <Badge color={corAptidao[perfil.statusAptidao] ?? 'informative'} appearance="tint">
-                {perfil.statusAptidao}
-              </Badge>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
-                <Text>CPF: {cpfVisivel ? formatarCpf(perfil.cpf) : mascararCpf(perfil.cpf)}</Text>
-                <Button
-                  appearance="subtle"
-                  size="small"
-                  icon={cpfVisivel ? <EyeOff24Regular /> : <Eye24Regular />}
-                  onClick={() => setCpfVisivel((v) => !v)}
-                  aria-label={cpfVisivel ? 'Ocultar CPF' : 'Revelar CPF'}
-                />
-              </div>
-              {perfil.rg && <Text>RG: {perfil.rg}</Text>}
-            </div>
-          </>
-        ) : (
-          <Text>Carregando...</Text>
-        )}
-      </div>
+            </Card>
+          </div>
 
-      <TabList
-        selectedValue={aba}
-        onTabSelect={(_: SelectTabEvent, data: SelectTabData) => setAba(data.value as AbaPerfil)}
-        className={estilosAba.lista}
-      >
-        <Tab value="geral">Geral & ASO</Tab>
-        <Tab value="epi">EPI & Matriz</Tab>
-        <Tab value="treinamentos">Treinamentos & DDS</Tab>
-        <Tab value="riscos">Riscos & OS</Tab>
-        <Tab value="ocorrencias">Ocorrências</Tab>
-        <Tab value="cofre">Cofre de Assinaturas</Tab>
-      </TabList>
+          <div style={{ marginBottom: 16 }}>
+            <Abas nivel="modulo" aria-label="Seções do perfil" abas={ABAS_PERFIL} valor={aba} aoMudar={setAba} />
+          </div>
 
-      {!perfil ? (
-        <Text>Carregando...</Text>
-      ) : (
-        <>
           {aba === 'geral' && <PerfilGeralTab perfil={perfil} />}
           {aba === 'epi' && (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-              <div className={estilos.card}>
-                <div className={estilos.toolbar}>
-                  <Text weight="semibold">Frequência de trocas por EPI</Text>
-                </div>
-                {dadosFrequenciaEpi.length === 0 ? (
-                  <Text>Sem dados de troca de EPI para exibir.</Text>
-                ) : (
-                  <RankingBarChart dados={dadosFrequenciaEpi} corPadrao="#7B1E2B" sufixo=" trocas" />
-                )}
-              </div>
-            </div>
+            <Card titulo="Frequência de trocas por EPI">
+              {dadosFrequenciaEpi.length === 0 ? (
+                <Text>Sem dados de troca de EPI para exibir.</Text>
+              ) : (
+                <RankingBarChart dados={dadosFrequenciaEpi} corPadrao={paleta.marca} sufixo=" trocas" />
+              )}
+            </Card>
           )}
           {aba === 'treinamentos' && (
             <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-              <div className={estilos.card}>
-                <div className={estilos.toolbar}>
-                  <Text weight="semibold">Assiduidade em DDS</Text>
-                </div>
+              <Card titulo="Assiduidade em DDS">
                 {perfil.assiduidadeDds.totalRealizados === 0 ? (
                   <Text>Nenhum DDS realizado na obra desde a admissão.</Text>
                 ) : (
                   <StatusDonutChart dados={dadosAssiduidadeDds} legendaCentral="DDS realizados" />
                 )}
-              </div>
+              </Card>
               <TreinamentosTab trabalhadorId={id} />
             </div>
           )}

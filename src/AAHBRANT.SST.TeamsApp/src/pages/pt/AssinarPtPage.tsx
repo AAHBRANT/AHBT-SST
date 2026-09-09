@@ -1,17 +1,14 @@
 import { useEffect, useState } from 'react';
-import { useNavigate, useParams } from 'react-router-dom';
-import { Button, Text } from '@fluentui/react-components';
-import { ArrowLeft24Regular } from '@fluentui/react-icons';
+import { useParams } from 'react-router-dom';
+import { FeedbackInline, PageHeader } from '@ui';
 import { api, type PermissaoTrabalhoDetalhe } from '../../lib/api';
-import { usePageStyles } from '../pageStyles';
 import { AssinaturaQuiosque } from '../../components/assinatura/AssinaturaQuiosque';
 
 // Tela de quiosque (docs/Motor-Assinatura-Eletronica.md §5, etapa 14): mesmo padrão de AssinarDdsPage,
 // resolvendo só o cabeçalho e a navegação específicos da PT — o quiosque em si vem de AssinaturaQuiosque.
+// Onda 2 Task 7 (camada ui/): PageHeader substitui o card+toolbar manual; erro vira FeedbackInline.
 export function AssinarPtPage() {
   const { id } = useParams<{ id: string }>();
-  const navigate = useNavigate();
-  const estilos = usePageStyles();
   const [detalhe, setDetalhe] = useState<PermissaoTrabalhoDetalhe | null>(null);
   const [erro, setErro] = useState<string | null>(null);
 
@@ -24,34 +21,25 @@ export function AssinarPtPage() {
   }, [id]);
 
   if (!id) {
-    return <Text>Permissão de Trabalho não encontrada.</Text>;
+    return <FeedbackInline tom="erro">Permissão de Trabalho não encontrada.</FeedbackInline>;
   }
 
   const pt = detalhe?.permissaoTrabalho;
 
   return (
     <div>
-      <Button
-        appearance="subtle"
-        icon={<ArrowLeft24Regular />}
-        onClick={() => navigate(`/operacao/pt/${id}`)}
-        style={{ marginBottom: 12 }}
-      >
-        Voltar para a PT
-      </Button>
+      <PageHeader
+        titulo={`Assinatura eletrônica — ${pt?.atividadeNome ?? 'Carregando...'}`}
+        subtitulo={pt && `Local: ${pt.local} · Data: ${pt.data?.slice(0, 10)}`}
+        voltarPara={`/operacao/pt/${id}`}
+        rotuloVoltar="Voltar para a PT"
+      />
 
-      {erro && <Text className={estilos.erro}>{erro}</Text>}
-
-      <div className={estilos.card} style={{ marginBottom: 16 }}>
-        <Text size={500} weight="semibold">
-          Assinatura eletrônica — {pt?.atividadeNome ?? 'Carregando...'}
-        </Text>
-        {pt && (
-          <Text style={{ display: 'block', marginTop: 4 }}>
-            Local: {pt.local} · Data: {pt.data?.slice(0, 10)}
-          </Text>
-        )}
-      </div>
+      {erro && (
+        <FeedbackInline tom="erro" aoFechar={() => setErro(null)}>
+          {erro}
+        </FeedbackInline>
+      )}
 
       <AssinaturaQuiosque entidadeTipo="PermissaoTrabalho" entidadeId={id} />
     </div>

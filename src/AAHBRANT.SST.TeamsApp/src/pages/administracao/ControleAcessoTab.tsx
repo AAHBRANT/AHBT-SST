@@ -1,10 +1,18 @@
 import { Fragment, useEffect, useMemo, useState } from 'react';
 import {
-  Badge,
   Button,
+  Campo,
+  Card,
+  DataTable,
   Field,
+  FeedbackInline,
+  FormGrid,
+  FormRodape,
+  FormSection,
   Input,
+  PageHeader,
   Select,
+  StatusChip,
   Table,
   TableBody,
   TableCell,
@@ -13,7 +21,10 @@ import {
   TableRow,
   Text,
   Textarea,
-} from '@fluentui/react-components';
+  useConfirmar,
+  type Coluna,
+  type Tom,
+} from '@ui';
 import {
   Add24Regular,
   ChevronDown20Regular,
@@ -36,30 +47,35 @@ import {
   type Permissao,
   type Trabalhador,
   type Usuario,
+  type UsuarioPerfilObra,
 } from '../../lib/api';
-import { usePageStyles } from '../pageStyles';
-import { useConfirmarExclusao } from '../../hooks/useConfirmarExclusao';
 import { useSucessoToast } from '../../hooks/useSucessoToast';
-import { EstadoVazio } from '../../components/EstadoVazio';
-import { ListaCarregando } from '../../components/ListaCarregando';
 
 const usuarioVazio: NovoUsuario = { email: '', nome: '', trabalhadorId: '' };
 const perfilVazio: NovoPerfilAcesso = { nome: '', descricao: '' };
 const escopos = [EscopoAcesso.Global, EscopoAcesso.Unidade, EscopoAcesso.Obra, EscopoAcesso.Proprio];
 
-const corStatus: Record<number, 'success' | 'subtle' | 'danger'> = {
-  1: 'success',
-  2: 'subtle',
-  3: 'danger',
+const tomPorStatusUsuario: Record<number, Tom> = {
+  [StatusUsuario.Ativo]: 'ok',
+  [StatusUsuario.Inativo]: 'neutro',
+  [StatusUsuario.Bloqueado]: 'alerta',
 };
 
 function chave(permissaoId: string, escopo: number) {
   return `${permissaoId}|${escopo}`;
 }
 
+// Onda 2 Task 17 (camada ui/): a matriz de permissões (módulo → ação × escopo, com bulk-toggle por
+// coluna e vários módulos abertos ao mesmo tempo) é uma grade/árvore genuína, não um caso de
+// "lista + detalhe" — decisão registrada (ver comentário completo logo antes da matriz, mais abaixo)
+// de MANTER a árvore custom em vez de forçar `DataTable expansivel`. As outras duas tabelas da tela
+// (Usuários cadastrados, Perfis de acesso) e a mini-lista de Perfis por obra SÃO lista+ação simples
+// e viraram `DataTable` de verdade (conversão 1). `Badge` → `StatusChip` (5), `estilos.erro` →
+// `FeedbackInline` (4), `useConfirmarExclusao` → `useConfirmar` (6). Formulários de criação (Novo
+// Usuário / Novo Perfil) permaneceram inline, sem `PainelLateral`: esta tela já é o template de
+// dashboard de 2 colunas (não o template §4.2 "Lista"), e mover os dois formulários para gaveta
+// dobraria a complexidade de estado sem estar no escopo pedido — julgamento documentado, não omissão.
 export function ControleAcessoTab() {
-  const estilos = usePageStyles();
-
   const [usuarios, setUsuarios] = useState<Usuario[]>([]);
   const [trabalhadores, setTrabalhadores] = useState<Trabalhador[]>([]);
   const [obras, setObras] = useState<Obra[]>([]);
@@ -82,7 +98,7 @@ export function ControleAcessoTab() {
   const [erro, setErro] = useState<string | null>(null);
   const [carregando, setCarregando] = useState(false);
   const [carregandoLista, setCarregandoLista] = useState(true);
-  const { confirmar, dialogElement } = useConfirmarExclusao();
+  const { confirmar, dialogElement } = useConfirmar();
   const sucessoToast = useSucessoToast();
 
   async function carregar() {
@@ -109,6 +125,7 @@ export function ControleAcessoTab() {
 
   useEffect(() => {
     carregar();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const usuarioSelecionado = usuarios.find((u) => u.id === usuarioSelecionadoId) ?? null;
@@ -314,13 +331,50 @@ export function ControleAcessoTab() {
     }
   }
 
+  const colunasUsuarios: Coluna<Usuario>[] = [
+    { chave: 'nome', rotulo: 'Nome' },
+    { chave: 'email', rotulo: 'E-mail' },
+    {
+      chave: 'status',
+      rotulo: 'Status',
+      render: (u) => <StatusChip tom={tomPorStatusUsuario[u.status] ?? 'neutro'}>{statusUsuarioLabel[u.status]}</StatusChip>,
+    },
+    {
+      chave: 'acessoTeams',
+      rotulo: 'Acesso Teams',
+      render: (u) => (
+        <StatusChip tom={u.azureAdObjectId ? 'ok' : 'atencao'}>
+          {u.azureAdObjectId ? 'Vinculado' : 'Aguardando 1º login'}
+        </StatusChip>
+      ),
+    },
+    { chave: 'funcionario', rotulo: 'Funcionário', render: (u) => nomeTrabalhador(u.trabalhadorId) },
+    { chave: 'perfis', rotulo: 'Perfis', render: (u) => u.perfisPorObra.length },
+  ];
+
+  const colunasPerfisPorObra: Coluna<UsuarioPerfilObra>[] = [
+    { chave: 'perfil', rotulo: 'Perfil', render: (v) => v.perfilAcessoNome },
+    { chave: 'obra', rotulo: 'Obra', render: (v) => v.obraNome ?? 'Todas as obras (global)' },
+  ];
+
+  const colunasPerfis: Coluna<PerfilAcesso>[] = [
+    { chave: 'nome', rotulo: 'Nome' },
+    {
+      chave: 'origem',
+      rotulo: 'Origem',
+      render: (p) => <StatusChip tom={p.ehSistema ? 'info' : 'neutro'}>{p.ehSistema ? 'Sistema' : 'Personalizado'}</StatusChip>,
+    },
+    { chave: 'permissoes', rotulo: 'Permissões', render: (p) => p.quantidadePermissoes },
+  ];
+
   return (
     <div>
       {dialogElement}
+      <PageHeader titulo="Controle de acesso" />
       {erro && (
-        <Text className={estilos.erro} style={{ display: 'block', marginBottom: 16 }}>
+        <FeedbackInline tom="erro" aoFechar={() => setErro(null)}>
           {erro}
-        </Text>
+        </FeedbackInline>
       )}
 
       <div
@@ -331,299 +385,234 @@ export function ControleAcessoTab() {
           alignItems: 'start',
         }}
       >
-        <div className={estilos.card}>
-          <div className={estilos.toolbar}>
-            <Text weight="semibold">Usuários cadastrados</Text>
-          </div>
+        <Card titulo="Usuários cadastrados">
+          <FormSection titulo="Novo Usuário" primeira>
+            <FormGrid>
+              <Campo span={4}>
+                <Field label="Nome">
+                  <Input value={novoUsuario.nome} onChange={(_, d) => setNovoUsuario({ ...novoUsuario, nome: d.value })} />
+                </Field>
+              </Campo>
+              <Campo span={4}>
+                <Field label="E-mail">
+                  <Input
+                    type="email"
+                    value={novoUsuario.email}
+                    onChange={(_, d) => setNovoUsuario({ ...novoUsuario, email: d.value })}
+                  />
+                </Field>
+              </Campo>
+              <Campo span={4}>
+                <Field label="Funcionário vinculado (opcional)">
+                  <Select
+                    value={novoUsuario.trabalhadorId ?? ''}
+                    onChange={(_, d) => setNovoUsuario({ ...novoUsuario, trabalhadorId: d.value })}
+                  >
+                    <option value="">Nenhum</option>
+                    {trabalhadores.map((t) => (
+                      <option key={t.id} value={t.id}>
+                        {t.nome}
+                      </option>
+                    ))}
+                  </Select>
+                </Field>
+              </Campo>
+            </FormGrid>
+            <FormRodape>
+              <Button appearance="primary" icon={<Add24Regular />} onClick={criarUsuario} disabled={carregando}>
+                Adicionar usuário
+              </Button>
+            </FormRodape>
+          </FormSection>
 
-          <div className={`${estilos.sectionTitle} ${estilos.sectionTitleFirst}`}>Novo Usuário</div>
-          <div className={estilos.formGrid}>
-            <div className={estilos.col4}>
-              <Field label="Nome">
-                <Input value={novoUsuario.nome} onChange={(_, d) => setNovoUsuario({ ...novoUsuario, nome: d.value })} />
-              </Field>
-            </div>
-            <div className={estilos.col4}>
-              <Field label="E-mail">
-                <Input
-                  type="email"
-                  value={novoUsuario.email}
-                  onChange={(_, d) => setNovoUsuario({ ...novoUsuario, email: d.value })}
-                />
-              </Field>
-            </div>
-            <div className={estilos.col4}>
-              <Field label="Funcionário vinculado (opcional)">
-                <Select
-                  value={novoUsuario.trabalhadorId ?? ''}
-                  onChange={(_, d) => setNovoUsuario({ ...novoUsuario, trabalhadorId: d.value })}
-                >
-                  <option value="">Nenhum</option>
-                  {trabalhadores.map((t) => (
-                    <option key={t.id} value={t.id}>
-                      {t.nome}
-                    </option>
-                  ))}
-                </Select>
-              </Field>
-            </div>
-          </div>
-          <div className={estilos.formActions}>
-            <Button appearance="primary" icon={<Add24Regular />} onClick={criarUsuario} disabled={carregando}>
-              Adicionar usuário
-            </Button>
-          </div>
-
-          {carregandoLista ? (
-            <ListaCarregando />
-          ) : usuarios.length === 0 ? (
-            <EstadoVazio mensagem="Nenhum usuário cadastrado ainda." />
-          ) : (
-          <Table noNativeElements>
-            <TableHeader>
-              <TableRow>
-                <TableHeaderCell>Nome</TableHeaderCell>
-                <TableHeaderCell>E-mail</TableHeaderCell>
-                <TableHeaderCell>Status</TableHeaderCell>
-                <TableHeaderCell>Acesso Teams</TableHeaderCell>
-                <TableHeaderCell>Funcionário</TableHeaderCell>
-                <TableHeaderCell>Perfis</TableHeaderCell>
-                <TableHeaderCell></TableHeaderCell>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {usuarios.map((usuario) => (
-                <TableRow
-                  key={usuario.id}
-                  onClick={() => selecionarUsuario(usuario)}
-                  style={{ cursor: 'pointer', fontWeight: usuario.id === usuarioSelecionadoId ? 600 : 400 }}
-                >
-                  <TableCell>{usuario.nome}</TableCell>
-                  <TableCell>{usuario.email}</TableCell>
-                  <TableCell>
-                    <Badge color={corStatus[usuario.status]} appearance="tint">
-                      {statusUsuarioLabel[usuario.status]}
-                    </Badge>
-                  </TableCell>
-                  <TableCell>
-                    <Badge color={usuario.azureAdObjectId ? 'success' : 'warning'} appearance="tint">
-                      {usuario.azureAdObjectId ? 'Vinculado' : 'Aguardando 1º login'}
-                    </Badge>
-                  </TableCell>
-                  <TableCell>{nomeTrabalhador(usuario.trabalhadorId)}</TableCell>
-                  <TableCell>{usuario.perfisPorObra.length}</TableCell>
-                  <TableCell>
-                    <Button
-                      appearance="subtle"
-                      icon={<Delete24Regular />}
-                      onClick={(evento) => {
-                        evento.stopPropagation();
-                        excluirUsuario(usuario.id);
-                      }}
-                      aria-label="Excluir"
-                    />
-                  </TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
-          )}
-        </div>
+          <DataTable
+            aria-label="Usuários cadastrados"
+            colunas={colunasUsuarios}
+            linhas={usuarios}
+            chaveLinha={(u) => u.id}
+            carregando={carregandoLista}
+            vazio={{ titulo: 'Nenhum usuário cadastrado ainda.' }}
+            aoClicarLinha={selecionarUsuario}
+            acoesLinha={(usuario) => (
+              <Button
+                appearance="subtle"
+                icon={<Delete24Regular />}
+                onClick={() => excluirUsuario(usuario.id)}
+                aria-label="Excluir"
+              />
+            )}
+          />
+        </Card>
 
         <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
           {usuarioSelecionado ? (
-            <div className={estilos.card}>
-              <div className={estilos.toolbar}>
-                <Text weight="semibold">Acessos de {usuarioSelecionado.nome}</Text>
-              </div>
-
-              <div className={`${estilos.sectionTitle} ${estilos.sectionTitleFirst}`}>Editar Usuário</div>
-              <div className={estilos.formGrid}>
-                <div className={estilos.col6}>
-                  <Field label="Nome">
-                    <Input value={nomeEdicao} onChange={(_, d) => setNomeEdicao(d.value)} />
-                  </Field>
-                </div>
-                <div className={estilos.col3}>
-                  <Field label="Status">
-                    <Select value={statusEdicao} onChange={(_, d) => setStatusEdicao(Number(d.value))}>
-                      {Object.entries(statusUsuarioLabel).map(([valor, rotulo]) => (
-                        <option key={valor} value={valor}>
-                          {rotulo}
-                        </option>
-                      ))}
-                    </Select>
-                  </Field>
-                </div>
-              </div>
-              <div className={estilos.formActions}>
-                <Button appearance="primary" icon={<Save24Regular />} onClick={salvarEdicaoUsuario}>
-                  Salvar
-                </Button>
-              </div>
+            <Card titulo={`Acessos de ${usuarioSelecionado.nome}`}>
+              <FormSection titulo="Editar Usuário" primeira>
+                <FormGrid>
+                  <Campo span={6}>
+                    <Field label="Nome">
+                      <Input value={nomeEdicao} onChange={(_, d) => setNomeEdicao(d.value)} />
+                    </Field>
+                  </Campo>
+                  <Campo span={3}>
+                    <Field label="Status">
+                      <Select value={statusEdicao} onChange={(_, d) => setStatusEdicao(Number(d.value))}>
+                        {Object.entries(statusUsuarioLabel).map(([valor, rotulo]) => (
+                          <option key={valor} value={valor}>
+                            {rotulo}
+                          </option>
+                        ))}
+                      </Select>
+                    </Field>
+                  </Campo>
+                </FormGrid>
+                <FormRodape>
+                  <Button appearance="primary" icon={<Save24Regular />} onClick={salvarEdicaoUsuario}>
+                    Salvar
+                  </Button>
+                </FormRodape>
+              </FormSection>
 
               <Text weight="semibold" style={{ display: 'block', margin: '16px 0 8px' }}>
                 Perfis por obra
               </Text>
-              <Table noNativeElements>
-                <TableHeader>
-                  <TableRow>
-                    <TableHeaderCell>Perfil</TableHeaderCell>
-                    <TableHeaderCell>Obra</TableHeaderCell>
-                    <TableHeaderCell></TableHeaderCell>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {usuarioSelecionado.perfisPorObra.map((vinculo) => (
-                    <TableRow key={vinculo.id}>
-                      <TableCell>{vinculo.perfilAcessoNome}</TableCell>
-                      <TableCell>{vinculo.obraNome ?? 'Todas as obras (global)'}</TableCell>
-                      <TableCell>
-                        <Button
-                          appearance="subtle"
-                          icon={<Delete24Regular />}
-                          onClick={() => removerPerfilObra(vinculo.id)}
-                          aria-label="Remover"
-                        />
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
+              <DataTable
+                aria-label="Perfis por obra do usuário"
+                colunas={colunasPerfisPorObra}
+                linhas={usuarioSelecionado.perfisPorObra}
+                chaveLinha={(v) => v.id}
+                vazio={{ titulo: 'Nenhum perfil atribuído ainda.' }}
+                acoesLinha={(vinculo) => (
+                  <Button
+                    appearance="subtle"
+                    icon={<Delete24Regular />}
+                    onClick={() => removerPerfilObra(vinculo.id)}
+                    aria-label="Remover"
+                  />
+                )}
+              />
 
-              <div className={estilos.sectionTitle}>Atribuir Perfil</div>
-              <div className={estilos.formGrid}>
-                <div className={estilos.col4}>
-                  <Field label="Perfil">
-                    <Select value={perfilParaAtribuir} onChange={(_, d) => setPerfilParaAtribuir(d.value)}>
-                      <option value="">Selecione</option>
-                      {perfis.map((p) => (
-                        <option key={p.id} value={p.id}>
-                          {p.nome}
-                        </option>
-                      ))}
-                    </Select>
+              <FormSection titulo="Atribuir Perfil">
+                <FormGrid>
+                  <Campo span={4}>
+                    <Field label="Perfil">
+                      <Select value={perfilParaAtribuir} onChange={(_, d) => setPerfilParaAtribuir(d.value)}>
+                        <option value="">Selecione</option>
+                        {perfis.map((p) => (
+                          <option key={p.id} value={p.id}>
+                            {p.nome}
+                          </option>
+                        ))}
+                      </Select>
+                    </Field>
+                  </Campo>
+                  <Campo span={5}>
+                    <Field label="Obra (vazio = escopo global/unidade)">
+                      <Select value={obraParaAtribuir} onChange={(_, d) => setObraParaAtribuir(d.value)}>
+                        <option value="">Todas as obras (global)</option>
+                        {obras.map((o) => (
+                          <option key={o.id} value={o.id}>
+                            {o.nome}
+                          </option>
+                        ))}
+                      </Select>
+                    </Field>
+                  </Campo>
+                </FormGrid>
+                <FormRodape>
+                  <Button
+                    appearance="primary"
+                    icon={<Add24Regular />}
+                    onClick={atribuirPerfil}
+                    disabled={!perfilParaAtribuir}
+                  >
+                    Atribuir perfil
+                  </Button>
+                </FormRodape>
+              </FormSection>
+            </Card>
+          ) : (
+            <Card>
+              <Text>Selecione um usuário à esquerda para gerenciar seus acessos.</Text>
+            </Card>
+          )}
+
+          <Card titulo="Perfis de acesso">
+            <FormSection titulo="Novo Perfil" primeira>
+              <FormGrid>
+                <Campo span={4}>
+                  <Field label="Nome do perfil personalizado">
+                    <Input value={novoPerfil.nome} onChange={(_, d) => setNovoPerfil({ ...novoPerfil, nome: d.value })} />
                   </Field>
-                </div>
-                <div className={estilos.col5}>
-                  <Field label="Obra (vazio = escopo global/unidade)">
-                    <Select value={obraParaAtribuir} onChange={(_, d) => setObraParaAtribuir(d.value)}>
-                      <option value="">Todas as obras (global)</option>
-                      {obras.map((o) => (
-                        <option key={o.id} value={o.id}>
-                          {o.nome}
-                        </option>
-                      ))}
-                    </Select>
+                </Campo>
+                <Campo span={12}>
+                  <Field label="Descrição">
+                    <Textarea
+                      value={novoPerfil.descricao ?? ''}
+                      onChange={(_, d) => setNovoPerfil({ ...novoPerfil, descricao: d.value })}
+                    />
                   </Field>
-                </div>
-              </div>
-              <div className={estilos.formActions}>
+                </Campo>
+              </FormGrid>
+              <FormRodape>
                 <Button
                   appearance="primary"
                   icon={<Add24Regular />}
-                  onClick={atribuirPerfil}
-                  disabled={!perfilParaAtribuir}
+                  onClick={criarPerfil}
+                  disabled={carregando || !novoPerfil.nome}
                 >
-                  Atribuir perfil
+                  Criar perfil personalizado
                 </Button>
-              </div>
-            </div>
-          ) : (
-            <div className={estilos.card}>
-              <Text>Selecione um usuário à esquerda para gerenciar seus acessos.</Text>
-            </div>
-          )}
+              </FormRodape>
+            </FormSection>
 
-          <div className={estilos.card}>
-            <div className={estilos.toolbar}>
-              <Text weight="semibold">Perfis de acesso</Text>
-            </div>
-
-            <div className={`${estilos.sectionTitle} ${estilos.sectionTitleFirst}`}>Novo Perfil</div>
-            <div className={estilos.formGrid}>
-              <div className={estilos.col4}>
-                <Field label="Nome do perfil personalizado">
-                  <Input value={novoPerfil.nome} onChange={(_, d) => setNovoPerfil({ ...novoPerfil, nome: d.value })} />
-                </Field>
-              </div>
-              <div className={estilos.col12}>
-                <Field label="Descrição">
-                  <Textarea
-                    value={novoPerfil.descricao ?? ''}
-                    onChange={(_, d) => setNovoPerfil({ ...novoPerfil, descricao: d.value })}
+            <DataTable
+              aria-label="Perfis de acesso cadastrados"
+              colunas={colunasPerfis}
+              linhas={perfis}
+              chaveLinha={(p) => p.id}
+              carregando={carregandoLista}
+              vazio={{ titulo: 'Nenhum perfil de acesso cadastrado ainda.' }}
+              aoClicarLinha={selecionarPerfil}
+              acoesLinha={(perfil) =>
+                !perfil.ehSistema ? (
+                  <Button
+                    appearance="subtle"
+                    icon={<Delete24Regular />}
+                    onClick={() => excluirPerfil(perfil.id)}
+                    aria-label="Excluir"
                   />
-                </Field>
-              </div>
-            </div>
-            <div className={estilos.formActions}>
-              <Button
-                appearance="primary"
-                icon={<Add24Regular />}
-                onClick={criarPerfil}
-                disabled={carregando || !novoPerfil.nome}
-              >
-                Criar perfil personalizado
-              </Button>
-            </div>
-
-            {carregandoLista ? (
-              <ListaCarregando />
-            ) : perfis.length === 0 ? (
-              <EstadoVazio mensagem="Nenhum perfil de acesso cadastrado ainda." />
-            ) : (
-            <Table noNativeElements>
-              <TableHeader>
-                <TableRow>
-                  <TableHeaderCell>Nome</TableHeaderCell>
-                  <TableHeaderCell>Origem</TableHeaderCell>
-                  <TableHeaderCell>Permissões</TableHeaderCell>
-                  <TableHeaderCell></TableHeaderCell>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {perfis.map((perfil) => (
-                  <TableRow
-                    key={perfil.id}
-                    onClick={() => selecionarPerfil(perfil)}
-                    style={{ cursor: 'pointer', fontWeight: perfil.id === perfilSelecionadoId ? 600 : 400 }}
-                  >
-                    <TableCell>{perfil.nome}</TableCell>
-                    <TableCell>
-                      <Badge color={perfil.ehSistema ? 'informative' : 'subtle'} appearance="tint">
-                        {perfil.ehSistema ? 'Sistema' : 'Personalizado'}
-                      </Badge>
-                    </TableCell>
-                    <TableCell>{perfil.quantidadePermissoes}</TableCell>
-                    <TableCell>
-                      {!perfil.ehSistema && (
-                        <Button
-                          appearance="subtle"
-                          icon={<Delete24Regular />}
-                          onClick={(evento) => {
-                            evento.stopPropagation();
-                            excluirPerfil(perfil.id);
-                          }}
-                          aria-label="Excluir"
-                        />
-                      )}
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-            )}
-          </div>
+                ) : null
+              }
+            />
+          </Card>
 
           {perfilSelecionado && (
-            <div className={estilos.card}>
-              <div className={estilos.toolbar}>
-                <Text weight="semibold">Matriz de permissões — {perfilSelecionado.nome}</Text>
+            <Card
+              titulo={`Matriz de permissões — ${perfilSelecionado.nome}`}
+              acoes={
                 <Button appearance="primary" icon={<Save24Regular />} onClick={salvarPermissoes}>
                   Salvar permissões
                 </Button>
-              </div>
-
+              }
+            >
+              {/*
+                A matriz módulo × escopo NÃO virou `DataTable expansivel` (avaliado conforme a task
+                pedia). Motivo: em `DataTable`, a linha inteira fica clicável para abrir/fechar o
+                `expansivel` (mesmo padrão de MatrizEpiTab.tsx) — mas aqui cada linha de módulo já
+                carrega, nas próprias células, os checkboxes de bulk-toggle por escopo (marcar/
+                desmarcar a coluna inteira daquele módulo). Um clique no checkbox teria que
+                `stopPropagation` para não também expandir/recolher a linha sem querer — risco de
+                interação que esta tela nunca teve (hoje só o botão de seta alterna). Além disso,
+                vários módulos ficam abertos ao mesmo tempo (busca força todos os que casam a ficar
+                abertos), e o "detalhe" de cada módulo (as permissões) usa os MESMOS controles
+                interativos (checkbox por escopo) que a linha-pai — não é um detalhe auxiliar de UM
+                item, é a mesma grade repetida em dois níveis. Mantida como tabela crua (`Table`/
+                `TableRow`/`TableCell` agora importados de `@ui`, não mais de
+                `@fluentui/react-components` — ver `src/ui/index.ts`, mesmo precedente de grades
+                genuínas usado em `MatrizRiscoTab.tsx`), preservando exatamente a mesma lógica de
+                estado (`modulosAbertos`, `marcados`) e handlers desta tela.
+              */}
               <Field style={{ marginBottom: 12 }}>
                 <Input
                   contentBefore={<Search24Regular />}
@@ -715,7 +704,7 @@ export function ControleAcessoTab() {
                   </TableBody>
                 </Table>
               </div>
-            </div>
+            </Card>
           )}
         </div>
       </div>

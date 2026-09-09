@@ -1,35 +1,29 @@
-import { useState } from 'react';
-import { Tab, TabList, Text, type SelectTabData, type SelectTabEvent } from '@fluentui/react-components';
-import { usePillTabStyles, useSubTabStyles } from '../pageStyles';
+import { Abas, useAbaNaUrl, PageHeader } from '@ui';
 import { PtDashboardTab } from './dashboard/PtDashboardTab';
 import { PermissoesTrabalhoTab } from './PermissoesTrabalhoTab';
 
-type AbaPt = 'dashboard' | 'registros';
+const ABAS = ['registros', 'dashboard'] as const;
+type AbaPt = (typeof ABAS)[number];
 
+// Onda 2 Task 7 (camada ui/): mesmo padrão de EpiPage.tsx (piloto 1) — abas na URL (?aba=), sobrevive
+// a voltar/F5.
 export function PermissoesTrabalhoPage({ mostrarTitulo = true }: { mostrarTitulo?: boolean } = {}) {
-  const [aba, setAba] = useState<AbaPt>('registros');
-  const estilosPillTab = usePillTabStyles();
-  const estilosSubTab = useSubTabStyles();
-  const estilosAba = mostrarTitulo ? estilosPillTab : estilosSubTab;
+  const [aba, setAba] = useAbaNaUrl<AbaPt>('aba', ABAS, 'registros');
 
   return (
     <div>
-      {mostrarTitulo && (
-        <div style={{ marginBottom: 16 }}>
-          <Text size={500} weight="semibold">
-            Permissão de Trabalho
-          </Text>
-        </div>
-      )}
+      {mostrarTitulo && <PageHeader titulo="Permissão de Trabalho" />}
 
-      <TabList
-        selectedValue={aba}
-        onTabSelect={(_: SelectTabEvent, data: SelectTabData) => setAba(data.value as AbaPt)}
-        className={estilosAba.lista}
-      >
-        <Tab value="registros">PTs</Tab>
-        <Tab value="dashboard">Dashboard</Tab>
-      </TabList>
+      <Abas
+        nivel={mostrarTitulo ? 'pilar' : 'modulo'}
+        valor={aba}
+        aoMudar={setAba}
+        aria-label="Seções de Permissão de Trabalho"
+        abas={[
+          { valor: 'registros', rotulo: 'PTs' },
+          { valor: 'dashboard', rotulo: 'Dashboard' },
+        ]}
+      />
 
       {aba === 'registros' && <PermissoesTrabalhoTab />}
       {aba === 'dashboard' && <PtDashboardTab />}

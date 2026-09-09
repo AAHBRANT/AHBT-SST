@@ -1,18 +1,20 @@
 import { useEffect, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import { Button, Text } from '@fluentui/react-components';
 import { ArrowLeft24Regular } from '@fluentui/react-icons';
 import { api, type CursoTreinamento, type Trabalhador, type Treinamento } from '../../lib/api';
-import { usePageStyles } from '../pageStyles';
 import { AssinaturaQuiosque } from '../../components/assinatura/AssinaturaQuiosque';
+import { Button, FeedbackInline, PageHeader } from '@ui';
 
-// Tela de quiosque para o certificado de treinamento, mesmo padrão de AssinarEntregaEpiPage.tsx
-// (Motor de Assinatura Eletrônica): só resolve cabeçalho e navegação; o quiosque em si é o
-// componente genérico AssinaturaQuiosque, aqui com entidadeTipo="Treinamento".
+// Tela de quiosque para o certificado de treinamento, mesmo padrão de AssinarEntregaEpiPage.tsx/
+// AssinarPtPage.tsx (Motor de Assinatura Eletrônica): só resolve cabeçalho e navegação; o quiosque em
+// si é o componente genérico AssinaturaQuiosque, aqui com entidadeTipo="Treinamento".
+// Onda 2 Task 21 (camada ui/, conversões 2 e 4): card+toolbar manual → PageHeader; erro solto →
+// FeedbackInline. Sem `voltarPara` fixo (diferente de AssinarPtPage.tsx) — treinamento não tem uma
+// única página de detalhe canônica (acessado de vários pontos: lista de Treinamentos, notificações
+// etc.), então o botão "Voltar" preserva o navigate(-1) original (volta pro histórico do navegador).
 export function AssinarTreinamentoPage() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
-  const estilos = usePageStyles();
   const [treinamento, setTreinamento] = useState<Treinamento | null>(null);
   const [curso, setCurso] = useState<CursoTreinamento | null>(null);
   const [trabalhador, setTrabalhador] = useState<Trabalhador | null>(null);
@@ -32,7 +34,7 @@ export function AssinarTreinamentoPage() {
   }, [id]);
 
   if (!id) {
-    return <Text>Treinamento não encontrado.</Text>;
+    return <FeedbackInline tom="erro">Treinamento não encontrado.</FeedbackInline>;
   }
 
   return (
@@ -46,19 +48,20 @@ export function AssinarTreinamentoPage() {
         Voltar
       </Button>
 
-      {erro && <Text className={estilos.erro}>{erro}</Text>}
+      <PageHeader
+        titulo={`Assinatura eletrônica — ${curso?.nome ?? 'Carregando...'}`}
+        subtitulo={
+          treinamento
+            ? `Funcionário: ${trabalhador?.nome ?? treinamento.trabalhadorId} · Realização: ${treinamento.dataRealizacao?.slice(0, 10)}`
+            : undefined
+        }
+      />
 
-      <div className={estilos.card} style={{ marginBottom: 16 }}>
-        <Text size={500} weight="semibold">
-          Assinatura eletrônica — {curso?.nome ?? 'Carregando...'}
-        </Text>
-        {treinamento && (
-          <Text style={{ display: 'block', marginTop: 4 }}>
-            Funcionário: {trabalhador?.nome ?? treinamento.trabalhadorId} · Realização:{' '}
-            {treinamento.dataRealizacao?.slice(0, 10)}
-          </Text>
-        )}
-      </div>
+      {erro && (
+        <FeedbackInline tom="erro" aoFechar={() => setErro(null)}>
+          {erro}
+        </FeedbackInline>
+      )}
 
       <AssinaturaQuiosque entidadeTipo="Treinamento" entidadeId={id} />
     </div>

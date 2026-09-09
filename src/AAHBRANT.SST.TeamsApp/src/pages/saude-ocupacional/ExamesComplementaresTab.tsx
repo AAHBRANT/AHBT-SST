@@ -1,18 +1,26 @@
 import { useEffect, useState } from 'react';
 import {
   Button,
+  Campo,
+  Card,
+  CampoData,
+  DataTable,
   Field,
+  FeedbackInline,
+  FormGrid,
+  FormRodape,
+  FormSection,
   Input,
   Select,
-  Table,
-  TableBody,
-  TableCell,
-  TableHeader,
-  TableHeaderCell,
-  TableRow,
+  StatusChip,
   Text,
-} from '@fluentui/react-components';
-import { CampoData } from '../../components/CampoData';
+  designTokens,
+  nivelVencimento,
+  rotuloDeVencimento,
+  tomDeVencimento,
+  useConfirmar,
+  type Coluna,
+} from '@ui';
 import { Add24Regular, Delete24Regular, Save24Regular } from '@fluentui/react-icons';
 import {
   api,
@@ -22,12 +30,7 @@ import {
   type NovoExameComplementar,
   type Trabalhador,
 } from '../../lib/api';
-import { BadgeVencimento } from '../../components/badges/BadgeVencimento';
-import { usePageStyles } from '../pageStyles';
-import { useConfirmarExclusao } from '../../hooks/useConfirmarExclusao';
 import { useSucessoToast } from '../../hooks/useSucessoToast';
-import { EstadoVazio } from '../../components/EstadoVazio';
-import { ListaCarregando } from '../../components/ListaCarregando';
 
 function exameVazio(): NovoExameComplementar {
   return {
@@ -42,8 +45,15 @@ function exameVazio(): NovoExameComplementar {
   };
 }
 
+function chipVencimento(data?: string | null) {
+  const nivel = nivelVencimento(data);
+  return nivel ? <StatusChip tom={tomDeVencimento(nivel)}>{rotuloDeVencimento(nivel)}</StatusChip> : null;
+}
+
+// Onda 2 Task 12 (camada ui/): exames complementares do PCMSO (audiometria, acuidade visual etc.),
+// vinculados opcionalmente a um ASO. Sem chip de resultado — `resultado` é texto livre, não enum, ao
+// contrário de AsosTab.tsx/AptidoesTab.tsx. Edição inline por linha, mesmo padrão das outras abas.
 export function ExamesComplementaresTab() {
-  const estilos = usePageStyles();
   const [exames, setExames] = useState<ExameComplementar[]>([]);
   const [trabalhadores, setTrabalhadores] = useState<Trabalhador[]>([]);
   const [asos, setAsos] = useState<Aso[]>([]);
@@ -53,7 +63,7 @@ export function ExamesComplementaresTab() {
   const [erro, setErro] = useState<string | null>(null);
   const [carregando, setCarregando] = useState(false);
   const [carregandoLista, setCarregandoLista] = useState(true);
-  const { confirmar, dialogElement } = useConfirmarExclusao();
+  const { confirmar, dialogElement } = useConfirmar();
   const sucessoToast = useSucessoToast();
 
   async function carregar() {
@@ -136,202 +146,199 @@ export function ExamesComplementaresTab() {
     }
   }
 
-  return (
-    <div>
-      {dialogElement}
-      <div className={estilos.card} style={{ marginBottom: 16 }}>
-        <div className={estilos.toolbar}>
-          <Text weight="semibold">Novo exame complementar</Text>
-        </div>
-
-        {erro && <Text className={estilos.erro}>{erro}</Text>}
-
-        <div className={`${estilos.sectionTitle} ${estilos.sectionTitleFirst}`}>Dados do Exame</div>
-        <div className={estilos.formGrid}>
-          <div className={estilos.col3}>
-            <Field label="Funcionário">
-              <Select
-                value={novoExame.trabalhadorId}
-                onChange={(_, d) => setNovoExame({ ...novoExame, trabalhadorId: d.value, asoId: '' })}
-              >
-                <option value="">Selecione</option>
-                {trabalhadores.map((t) => (
-                  <option key={t.id} value={t.id}>
-                    {t.nome} ({t.matricula})
-                  </option>
-                ))}
-              </Select>
-            </Field>
-          </div>
-          <div className={estilos.col3}>
-            <Field label="ASO vinculado (opcional)">
-              <Select
-                value={novoExame.asoId ?? ''}
-                onChange={(_, d) => setNovoExame({ ...novoExame, asoId: d.value })}
-                disabled={!novoExame.trabalhadorId}
-              >
-                <option value="">Nenhum</option>
-                {asosDoTrabalhadorSelecionado.map((a) => (
-                  <option key={a.id} value={a.id}>
-                    {a.dataExame?.slice(0, 10)}
-                  </option>
-                ))}
-              </Select>
-            </Field>
-          </div>
-          <div className={estilos.col3}>
-            <Field label="Tipo de exame">
-              <Select value={novoExame.tipo} onChange={(_, d) => setNovoExame({ ...novoExame, tipo: Number(d.value) })}>
-                {Object.entries(tipoExameComplementarLabel).map(([valor, rotulo]) => (
-                  <option key={valor} value={valor}>
-                    {rotulo}
-                  </option>
-                ))}
-              </Select>
-            </Field>
-          </div>
-          <div className={estilos.col2}>
-            <Field label="Data de realização">
-              <CampoData
-                value={novoExame.dataRealizacao}
-                onChange={(_, d) => setNovoExame({ ...novoExame, dataRealizacao: d.value })}
-              />
-            </Field>
-          </div>
-          <div className={estilos.col2}>
-            <Field label="Validade">
-              <CampoData
-                value={novoExame.dataValidade}
-                onChange={(_, d) => setNovoExame({ ...novoExame, dataValidade: d.value })}
-              />
-            </Field>
-          </div>
-          <div className={estilos.col4}>
-            <Field label="Resultado">
-              <Input
-                value={novoExame.resultado}
-                onChange={(_, d) => setNovoExame({ ...novoExame, resultado: d.value })}
-              />
-            </Field>
-          </div>
-          <div className={estilos.col4}>
-            <Field label="Responsável técnico">
-              <Input
-                value={novoExame.responsavelTecnico ?? ''}
-                onChange={(_, d) => setNovoExame({ ...novoExame, responsavelTecnico: d.value })}
-              />
-            </Field>
-          </div>
-          <div className={estilos.col4}>
-            <Field label="Observações">
-              <Input
-                value={novoExame.observacoes ?? ''}
-                onChange={(_, d) => setNovoExame({ ...novoExame, observacoes: d.value })}
-              />
-            </Field>
-          </div>
-        </div>
-        <div className={estilos.formActions}>
-          <Button appearance="primary" icon={<Add24Regular />} onClick={criar} disabled={carregando}>
-            Registrar exame
-          </Button>
-        </div>
-      </div>
-
-      <div className={estilos.card}>
-        <div className={estilos.toolbar}>
-          <Text weight="semibold">Exames complementares registrados</Text>
-        </div>
-
-        {carregandoLista ? (
-          <ListaCarregando />
-        ) : exames.length === 0 ? (
-          <EstadoVazio mensagem="Nenhum exame complementar cadastrado ainda." />
+  const colunas: Coluna<ExameComplementar>[] = [
+    { chave: 'trabalhador', rotulo: 'Funcionário', render: (ex) => nomeTrabalhador(ex.trabalhadorId) },
+    {
+      chave: 'tipo',
+      rotulo: 'Tipo',
+      render: (ex) =>
+        edicaoId === ex.id && edicao ? (
+          <Select value={edicao.tipo} onChange={(_, d) => setEdicao({ ...edicao, tipo: Number(d.value) })}>
+            {Object.entries(tipoExameComplementarLabel).map(([valor, rotulo]) => (
+              <option key={valor} value={valor}>
+                {rotulo}
+              </option>
+            ))}
+          </Select>
         ) : (
-        <Table noNativeElements>
-          <TableHeader>
-            <TableRow>
-              <TableHeaderCell>Funcionário</TableHeaderCell>
-              <TableHeaderCell>Tipo</TableHeaderCell>
-              <TableHeaderCell>Realização</TableHeaderCell>
-              <TableHeaderCell>Validade</TableHeaderCell>
-              <TableHeaderCell>Resultado</TableHeaderCell>
-              <TableHeaderCell></TableHeaderCell>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {exames.map((exame) =>
-              edicaoId === exame.id && edicao ? (
-                <TableRow key={exame.id}>
-                  <TableCell>{nomeTrabalhador(exame.trabalhadorId)}</TableCell>
-                  <TableCell>
-                    <Select value={edicao.tipo} onChange={(_, d) => setEdicao({ ...edicao, tipo: Number(d.value) })}>
-                      {Object.entries(tipoExameComplementarLabel).map(([valor, rotulo]) => (
-                        <option key={valor} value={valor}>
-                          {rotulo}
-                        </option>
-                      ))}
-                    </Select>
-                  </TableCell>
-                  <TableCell>
-                    <CampoData
-                      value={edicao.dataRealizacao?.slice(0, 10)}
-                      onChange={(_, d) => setEdicao({ ...edicao, dataRealizacao: d.value })}
-                    />
-                  </TableCell>
-                  <TableCell>
-                    <CampoData
-                      value={edicao.dataValidade?.slice(0, 10)}
-                      onChange={(_, d) => setEdicao({ ...edicao, dataValidade: d.value })}
-                    />
-                  </TableCell>
-                  <TableCell>
-                    <Input
-                      value={edicao.resultado}
-                      onChange={(_, d) => setEdicao({ ...edicao, resultado: d.value })}
-                    />
-                  </TableCell>
-                  <TableCell>
-                    <Button
-                      appearance="subtle"
-                      icon={<Save24Regular />}
-                      onClick={salvarEdicao}
-                      disabled={carregando}
-                      aria-label="Salvar"
-                    />
-                  </TableCell>
-                </TableRow>
-              ) : (
-                <TableRow key={exame.id} onClick={() => iniciarEdicao(exame)} style={{ cursor: 'pointer' }}>
-                  <TableCell>{nomeTrabalhador(exame.trabalhadorId)}</TableCell>
-                  <TableCell>{tipoExameComplementarLabel[exame.tipo]}</TableCell>
-                  <TableCell>{exame.dataRealizacao?.slice(0, 10)}</TableCell>
-                  <TableCell>
-                    {exame.dataValidade?.slice(0, 10)}
-                    <BadgeVencimento dataValidade={exame.dataValidade} />
-                  </TableCell>
-                  <TableCell>{exame.resultado}</TableCell>
-                  <TableCell>
-                    <Button
-                      appearance="subtle"
-                      icon={<Delete24Regular />}
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        excluir(exame.id);
-                      }}
-                      aria-label="Excluir"
-                    />
-                  </TableCell>
-                </TableRow>
-              ),
-            )}
-          </TableBody>
-        </Table>
-        )}
-        <Text size={200} style={{ display: 'block', marginTop: 8 }}>
+          tipoExameComplementarLabel[ex.tipo]
+        ),
+    },
+    {
+      chave: 'realizacao',
+      rotulo: 'Realização',
+      render: (ex) =>
+        edicaoId === ex.id && edicao ? (
+          <CampoData
+            value={edicao.dataRealizacao?.slice(0, 10)}
+            onChange={(_, d) => setEdicao({ ...edicao, dataRealizacao: d.value })}
+          />
+        ) : (
+          ex.dataRealizacao?.slice(0, 10)
+        ),
+    },
+    {
+      chave: 'validade',
+      rotulo: 'Validade',
+      render: (ex) =>
+        edicaoId === ex.id && edicao ? (
+          <CampoData
+            value={edicao.dataValidade?.slice(0, 10)}
+            onChange={(_, d) => setEdicao({ ...edicao, dataValidade: d.value })}
+          />
+        ) : (
+          <>
+            {ex.dataValidade?.slice(0, 10)} {chipVencimento(ex.dataValidade)}
+          </>
+        ),
+    },
+    {
+      chave: 'resultado',
+      rotulo: 'Resultado',
+      render: (ex) =>
+        edicaoId === ex.id && edicao ? (
+          <Input value={edicao.resultado} onChange={(_, d) => setEdicao({ ...edicao, resultado: d.value })} />
+        ) : (
+          ex.resultado
+        ),
+    },
+  ];
+
+  return (
+    <>
+      {erro && (
+        <FeedbackInline tom="erro" aoFechar={() => setErro(null)}>
+          {erro}
+        </FeedbackInline>
+      )}
+
+      <Card titulo="Exames Complementares">
+        <FormSection titulo="Novo exame complementar" numero={1} primeira>
+          <FormGrid>
+            <Campo span={3}>
+              <Field label="Funcionário">
+                <Select
+                  value={novoExame.trabalhadorId}
+                  onChange={(_, d) => setNovoExame({ ...novoExame, trabalhadorId: d.value, asoId: '' })}
+                >
+                  <option value="">Selecione</option>
+                  {trabalhadores.map((t) => (
+                    <option key={t.id} value={t.id}>
+                      {t.nome} ({t.matricula})
+                    </option>
+                  ))}
+                </Select>
+              </Field>
+            </Campo>
+            <Campo span={3}>
+              <Field label="ASO vinculado (opcional)">
+                <Select
+                  value={novoExame.asoId ?? ''}
+                  onChange={(_, d) => setNovoExame({ ...novoExame, asoId: d.value })}
+                  disabled={!novoExame.trabalhadorId}
+                >
+                  <option value="">Nenhum</option>
+                  {asosDoTrabalhadorSelecionado.map((a) => (
+                    <option key={a.id} value={a.id}>
+                      {a.dataExame?.slice(0, 10)}
+                    </option>
+                  ))}
+                </Select>
+              </Field>
+            </Campo>
+            <Campo span={3}>
+              <Field label="Tipo de exame">
+                <Select value={novoExame.tipo} onChange={(_, d) => setNovoExame({ ...novoExame, tipo: Number(d.value) })}>
+                  {Object.entries(tipoExameComplementarLabel).map(([valor, rotulo]) => (
+                    <option key={valor} value={valor}>
+                      {rotulo}
+                    </option>
+                  ))}
+                </Select>
+              </Field>
+            </Campo>
+            <Campo span={2}>
+              <Field label="Data de realização">
+                <CampoData
+                  value={novoExame.dataRealizacao}
+                  onChange={(_, d) => setNovoExame({ ...novoExame, dataRealizacao: d.value })}
+                />
+              </Field>
+            </Campo>
+            <Campo span={2}>
+              <Field label="Validade">
+                <CampoData
+                  value={novoExame.dataValidade}
+                  onChange={(_, d) => setNovoExame({ ...novoExame, dataValidade: d.value })}
+                />
+              </Field>
+            </Campo>
+            <Campo span={4}>
+              <Field label="Resultado">
+                <Input
+                  value={novoExame.resultado}
+                  onChange={(_, d) => setNovoExame({ ...novoExame, resultado: d.value })}
+                />
+              </Field>
+            </Campo>
+            <Campo span={4}>
+              <Field label="Responsável técnico">
+                <Input
+                  value={novoExame.responsavelTecnico ?? ''}
+                  onChange={(_, d) => setNovoExame({ ...novoExame, responsavelTecnico: d.value })}
+                />
+              </Field>
+            </Campo>
+            <Campo span={4}>
+              <Field label="Observações">
+                <Input
+                  value={novoExame.observacoes ?? ''}
+                  onChange={(_, d) => setNovoExame({ ...novoExame, observacoes: d.value })}
+                />
+              </Field>
+            </Campo>
+          </FormGrid>
+          <FormRodape>
+            <Button appearance="primary" icon={<Add24Regular />} onClick={criar} disabled={carregando}>
+              Registrar exame
+            </Button>
+          </FormRodape>
+        </FormSection>
+
+        <DataTable
+          aria-label="Exames complementares registrados"
+          colunas={colunas}
+          linhas={exames}
+          chaveLinha={(ex) => ex.id}
+          carregando={carregandoLista}
+          vazio={{ titulo: 'Nenhum exame complementar cadastrado ainda.' }}
+          aoClicarLinha={(ex) => {
+            if (edicaoId !== ex.id) iniciarEdicao(ex);
+          }}
+          acoesLinha={(ex) =>
+            edicaoId === ex.id ? (
+              <Button
+                appearance="subtle"
+                icon={<Save24Regular />}
+                onClick={salvarEdicao}
+                disabled={carregando}
+                aria-label="Salvar"
+              />
+            ) : (
+              <Button
+                appearance="subtle"
+                icon={<Delete24Regular />}
+                onClick={() => excluir(ex.id)}
+                aria-label="Excluir"
+              />
+            )
+          }
+        />
+        <Text size={200} style={{ color: designTokens.colorNeutralMedium, display: 'block', marginTop: 8 }}>
           Clique em uma linha para editar o exame complementar.
         </Text>
-      </div>
-    </div>
+      </Card>
+      {dialogElement}
+    </>
   );
 }

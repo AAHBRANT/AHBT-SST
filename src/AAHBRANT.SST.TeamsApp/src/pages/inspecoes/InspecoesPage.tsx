@@ -1,37 +1,31 @@
-import { useState } from 'react';
-import { Tab, TabList, Text, type SelectTabData, type SelectTabEvent } from '@fluentui/react-components';
-import { usePillTabStyles, useSubTabStyles } from '../pageStyles';
+import { Abas, PageHeader, useAbaNaUrl } from '@ui';
 import { InspecoesDashboardTab } from './dashboard/InspecoesDashboardTab';
 import { ChecklistModelosTab } from './ChecklistModelosTab';
 import { InspecoesTab } from './InspecoesTab';
 
-type AbaInspecoes = 'dashboard' | 'execucoes' | 'checklists';
+const ABAS = ['execucoes', 'checklists', 'dashboard'] as const;
+type AbaInspecoes = (typeof ABAS)[number];
 
+// Onda 2 Task 10 (camada ui/): página-pilar de Inspeções — mesmo padrão de EpiPage.tsx (piloto 1):
+// aba sincronizada com a URL via useAbaNaUrl, nível pilar/modulo conforme mostrarTitulo.
 export function InspecoesPage({ mostrarTitulo = true }: { mostrarTitulo?: boolean } = {}) {
-  const [aba, setAba] = useState<AbaInspecoes>('execucoes');
-  const estilosPillTab = usePillTabStyles();
-  const estilosSubTab = useSubTabStyles();
-  const estilosAba = mostrarTitulo ? estilosPillTab : estilosSubTab;
+  const [aba, setAba] = useAbaNaUrl<AbaInspecoes>('aba', ABAS, 'execucoes');
 
   return (
     <div>
-      {mostrarTitulo && (
-        <div style={{ marginBottom: 16 }}>
-          <Text size={500} weight="semibold">
-            Inspeções
-          </Text>
-        </div>
-      )}
+      {mostrarTitulo && <PageHeader titulo="Inspeções" />}
 
-      <TabList
-        selectedValue={aba}
-        onTabSelect={(_: SelectTabEvent, data: SelectTabData) => setAba(data.value as AbaInspecoes)}
-        className={estilosAba.lista}
-      >
-        <Tab value="execucoes">Execuções</Tab>
-        <Tab value="checklists">Checklists</Tab>
-        <Tab value="dashboard">Dashboard</Tab>
-      </TabList>
+      <Abas
+        nivel={mostrarTitulo ? 'pilar' : 'modulo'}
+        valor={aba}
+        aoMudar={setAba}
+        aria-label="Seções de Inspeções"
+        abas={[
+          { valor: 'execucoes', rotulo: 'Execuções' },
+          { valor: 'checklists', rotulo: 'Checklists' },
+          { valor: 'dashboard', rotulo: 'Dashboard' },
+        ]}
+      />
 
       {aba === 'execucoes' && <InspecoesTab />}
       {aba === 'checklists' && <ChecklistModelosTab />}

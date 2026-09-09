@@ -2,25 +2,23 @@ import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   Button,
+  Campo,
+  Card,
+  CampoData,
+  DataTable,
   Field,
+  FeedbackInline,
+  FormGrid,
+  FormRodape,
+  FormSection,
   Input,
   Select,
-  Table,
-  TableBody,
-  TableCell,
-  TableHeader,
-  TableHeaderCell,
-  TableRow,
-  Text,
-} from '@fluentui/react-components';
-import { CampoData } from '../../components/CampoData';
-import { Add24Regular, ChevronRight24Regular, Delete24Regular } from '@fluentui/react-icons';
+  useConfirmar,
+  type Coluna,
+} from '@ui';
+import { Add24Regular, Delete24Regular } from '@fluentui/react-icons';
 import { api, statusPgrLabel, StatusPgr, type NovoPgr, type Obra, type Pgr } from '../../lib/api';
-import { usePageStyles } from '../pageStyles';
-import { useConfirmarExclusao } from '../../hooks/useConfirmarExclusao';
 import { useSucessoToast } from '../../hooks/useSucessoToast';
-import { EstadoVazio } from '../../components/EstadoVazio';
-import { ListaCarregando } from '../../components/ListaCarregando';
 
 const pgrVazio: NovoPgr = {
   obraId: '',
@@ -33,8 +31,12 @@ const pgrVazio: NovoPgr = {
   status: StatusPgr.EmElaboracao,
 };
 
+// Onda 2 Task 8 (camada ui/): lista + formulário de criação de PGR. É o exemplo literal do Guia de
+// conversão (item 1, Table→DataTable) — aplicado aqui junto com os itens 2/4/6 (Card+FormSection no
+// lugar de estilos.card/toolbar, FeedbackInline no lugar de estilos.erro, useConfirmar no lugar de
+// useConfirmarExclusao), mesmo formato de AprsTab.tsx (Task 11): formulário em FormSection dentro do
+// mesmo Card da tabela, sem PainelLateral (a lista já é curta o bastante para não precisar).
 export function PgrsTab() {
-  const estilos = usePageStyles();
   const navigate = useNavigate();
   const [pgrs, setPgrs] = useState<Pgr[]>([]);
   const [obras, setObras] = useState<Obra[]>([]);
@@ -42,7 +44,7 @@ export function PgrsTab() {
   const [erro, setErro] = useState<string | null>(null);
   const [carregando, setCarregando] = useState(false);
   const [carregandoLista, setCarregandoLista] = useState(true);
-  const { confirmar, dialogElement } = useConfirmarExclusao();
+  const { confirmar, dialogElement } = useConfirmar();
   const sucessoToast = useSucessoToast();
 
   async function carregar() {
@@ -85,8 +87,7 @@ export function PgrsTab() {
     }
   }
 
-  async function excluir(id: string, evento: React.MouseEvent) {
-    evento.stopPropagation();
+  async function excluir(id: string) {
     if (!(await confirmar('Excluir este PGR? Essa ação não pode ser desfeita.'))) return;
     try {
       await api.pgrs.excluir(id);
@@ -97,134 +98,111 @@ export function PgrsTab() {
     }
   }
 
+  const colunas: Coluna<Pgr>[] = [
+    { chave: 'nome', rotulo: 'Nome' },
+    { chave: 'obra', rotulo: 'Obra', render: (p) => nomeObra(p.obraId) },
+    { chave: 'elaboracao', rotulo: 'Elaboração', render: (p) => p.dataElaboracao?.slice(0, 10) ?? '' },
+    { chave: 'revisao', rotulo: 'Próxima revisão', render: (p) => p.dataProximaRevisao?.slice(0, 10) ?? '' },
+    { chave: 'termino', rotulo: 'Término', render: (p) => p.dataTermino?.slice(0, 10) ?? '' },
+    { chave: 'status', rotulo: 'Status', render: (p) => statusPgrLabel[p.status] },
+  ];
+
   return (
-    <div className={estilos.card}>
-      {dialogElement}
-      <div className={estilos.toolbar}>
-        <Text weight="semibold">Programas de Gerenciamento de Riscos (PGR)</Text>
-      </div>
-
-      {erro && <Text className={estilos.erro}>{erro}</Text>}
-
-      <div className={`${estilos.sectionTitle} ${estilos.sectionTitleFirst}`}>Dados do PGR</div>
-      <div className={estilos.formGrid}>
-        <div className={estilos.col3}>
-          <Field label="Obra">
-            <Select value={novoPgr.obraId} onChange={(_, d) => setNovoPgr({ ...novoPgr, obraId: d.value })}>
-              <option value="">Selecione</option>
-              {obras.map((obra) => (
-                <option key={obra.id} value={obra.id}>
-                  {obra.nome}
-                </option>
-              ))}
-            </Select>
-          </Field>
-        </div>
-        <div className={estilos.col4}>
-          <Field label="Nome do PGR">
-            <Input value={novoPgr.nome} onChange={(_, d) => setNovoPgr({ ...novoPgr, nome: d.value })} />
-          </Field>
-        </div>
-        <div className={estilos.col5}>
-          <Field label="Descrição">
-            <Input
-              value={novoPgr.descricao ?? ''}
-              onChange={(_, d) => setNovoPgr({ ...novoPgr, descricao: d.value })}
-            />
-          </Field>
-        </div>
-        <div className={estilos.col3}>
-          <Field label="Data de elaboração">
-            <CampoData
-              value={novoPgr.dataElaboracao}
-              onChange={(_, d) => setNovoPgr({ ...novoPgr, dataElaboracao: d.value })}
-            />
-          </Field>
-        </div>
-        <div className={estilos.col3}>
-          <Field label="Próxima revisão">
-            <CampoData
-              value={novoPgr.dataProximaRevisao ?? ''}
-              onChange={(_, d) => setNovoPgr({ ...novoPgr, dataProximaRevisao: d.value || null })}
-            />
-          </Field>
-        </div>
-        <div className={estilos.col3}>
-          <Field label="Término da vigência">
-            <CampoData
-              value={novoPgr.dataTermino ?? ''}
-              onChange={(_, d) => setNovoPgr({ ...novoPgr, dataTermino: d.value || null })}
-            />
-          </Field>
-        </div>
-        <div className={estilos.col3}>
-          <Field label="Status">
-            <Select
-              value={novoPgr.status}
-              onChange={(_, d) => setNovoPgr({ ...novoPgr, status: Number(d.value) })}
-            >
-              {Object.entries(statusPgrLabel).map(([valor, rotulo]) => (
-                <option key={valor} value={valor}>
-                  {rotulo}
-                </option>
-              ))}
-            </Select>
-          </Field>
-        </div>
-      </div>
-      <div className={estilos.formActions}>
-        <Button appearance="primary" icon={<Add24Regular />} onClick={criar} disabled={carregando}>
-          Adicionar PGR
-        </Button>
-      </div>
-
-      {carregandoLista ? (
-        <ListaCarregando />
-      ) : pgrs.length === 0 ? (
-        <EstadoVazio mensagem="Nenhum PGR cadastrado ainda." />
-      ) : (
-      <Table noNativeElements>
-        <TableHeader>
-          <TableRow>
-            <TableHeaderCell>Nome</TableHeaderCell>
-            <TableHeaderCell>Obra</TableHeaderCell>
-            <TableHeaderCell>Elaboração</TableHeaderCell>
-            <TableHeaderCell>Próxima revisão</TableHeaderCell>
-            <TableHeaderCell>Término</TableHeaderCell>
-            <TableHeaderCell>Status</TableHeaderCell>
-            <TableHeaderCell></TableHeaderCell>
-          </TableRow>
-        </TableHeader>
-        <TableBody>
-          {pgrs.map((pgr) => (
-            <TableRow key={pgr.id} onClick={() => navigate(`/prevencao/pgr/${pgr.id}`)} style={{ cursor: 'pointer' }}>
-              <TableCell>{pgr.nome}</TableCell>
-              <TableCell>{nomeObra(pgr.obraId)}</TableCell>
-              <TableCell>{pgr.dataElaboracao?.slice(0, 10)}</TableCell>
-              <TableCell>{pgr.dataProximaRevisao?.slice(0, 10)}</TableCell>
-              <TableCell>{pgr.dataTermino?.slice(0, 10)}</TableCell>
-              <TableCell>{statusPgrLabel[pgr.status]}</TableCell>
-              <TableCell>
-                <div style={{ display: 'flex', gap: 4 }}>
-                  <Button
-                    appearance="subtle"
-                    icon={<ChevronRight24Regular />}
-                    onClick={() => navigate(`/prevencao/pgr/${pgr.id}`)}
-                    aria-label="Ver PGR"
-                  />
-                  <Button
-                    appearance="subtle"
-                    icon={<Delete24Regular />}
-                    onClick={(evento) => excluir(pgr.id, evento)}
-                    aria-label="Excluir"
-                  />
-                </div>
-              </TableCell>
-            </TableRow>
-          ))}
-        </TableBody>
-      </Table>
+    <>
+      {erro && (
+        <FeedbackInline tom="erro" aoFechar={() => setErro(null)}>
+          {erro}
+        </FeedbackInline>
       )}
-    </div>
+
+      <Card titulo="Programas de Gerenciamento de Riscos (PGR)">
+        <FormSection titulo="Dados do PGR" numero={1} primeira>
+          <FormGrid>
+            <Campo span={3}>
+              <Field label="Obra">
+                <Select value={novoPgr.obraId} onChange={(_, d) => setNovoPgr({ ...novoPgr, obraId: d.value })}>
+                  <option value="">Selecione</option>
+                  {obras.map((obra) => (
+                    <option key={obra.id} value={obra.id}>
+                      {obra.nome}
+                    </option>
+                  ))}
+                </Select>
+              </Field>
+            </Campo>
+            <Campo span={4}>
+              <Field label="Nome do PGR">
+                <Input value={novoPgr.nome} onChange={(_, d) => setNovoPgr({ ...novoPgr, nome: d.value })} />
+              </Field>
+            </Campo>
+            <Campo span={5}>
+              <Field label="Descrição">
+                <Input
+                  value={novoPgr.descricao ?? ''}
+                  onChange={(_, d) => setNovoPgr({ ...novoPgr, descricao: d.value })}
+                />
+              </Field>
+            </Campo>
+            <Campo span={3}>
+              <Field label="Data de elaboração">
+                <CampoData
+                  value={novoPgr.dataElaboracao}
+                  onChange={(_, d) => setNovoPgr({ ...novoPgr, dataElaboracao: d.value })}
+                />
+              </Field>
+            </Campo>
+            <Campo span={3}>
+              <Field label="Próxima revisão">
+                <CampoData
+                  value={novoPgr.dataProximaRevisao ?? ''}
+                  onChange={(_, d) => setNovoPgr({ ...novoPgr, dataProximaRevisao: d.value || null })}
+                />
+              </Field>
+            </Campo>
+            <Campo span={3}>
+              <Field label="Término da vigência">
+                <CampoData
+                  value={novoPgr.dataTermino ?? ''}
+                  onChange={(_, d) => setNovoPgr({ ...novoPgr, dataTermino: d.value || null })}
+                />
+              </Field>
+            </Campo>
+            <Campo span={3}>
+              <Field label="Status">
+                <Select
+                  value={novoPgr.status}
+                  onChange={(_, d) => setNovoPgr({ ...novoPgr, status: Number(d.value) })}
+                >
+                  {Object.entries(statusPgrLabel).map(([valor, rotulo]) => (
+                    <option key={valor} value={valor}>
+                      {rotulo}
+                    </option>
+                  ))}
+                </Select>
+              </Field>
+            </Campo>
+          </FormGrid>
+          <FormRodape>
+            <Button appearance="primary" icon={<Add24Regular />} onClick={criar} disabled={carregando}>
+              Adicionar PGR
+            </Button>
+          </FormRodape>
+        </FormSection>
+
+        <DataTable
+          aria-label="PGRs cadastrados"
+          colunas={colunas}
+          linhas={pgrs}
+          chaveLinha={(p) => p.id}
+          carregando={carregandoLista}
+          vazio={{ titulo: 'Nenhum PGR cadastrado ainda.' }}
+          aoClicarLinha={(p) => navigate(`/prevencao/pgr/${p.id}`)}
+          acoesLinha={(p) => (
+            <Button appearance="subtle" icon={<Delete24Regular />} onClick={() => excluir(p.id)} aria-label="Excluir" />
+          )}
+        />
+      </Card>
+      {dialogElement}
+    </>
   );
 }

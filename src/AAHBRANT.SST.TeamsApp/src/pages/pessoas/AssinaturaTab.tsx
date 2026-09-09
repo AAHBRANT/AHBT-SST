@@ -1,9 +1,8 @@
 import { useState } from 'react';
-import { Button, Text } from '@fluentui/react-components';
+import { Button, Card, FeedbackInline, Legenda } from '@ui';
 import { Fingerprint24Regular } from '@fluentui/react-icons';
 import { api } from '../../lib/api';
 import { capturarDigitalBrutaLocal } from '../../lib/agenteBiometricoLocal';
-import { usePageStyles } from '../pageStyles';
 
 interface AssinaturaTabProps {
   trabalhadorId: string;
@@ -35,8 +34,6 @@ function extrairMensagemErro(e: unknown, fallback: string): string {
 // assinatura/termo-aceite e .../consentimento-biometria) e o cadastro de biometria abaixo vai
 // simplesmente devolver o erro real do backend se elas ainda não existirem.
 export function AssinaturaTab({ trabalhadorId }: AssinaturaTabProps) {
-  const estilos = usePageStyles();
-
   const [cadastrandoBiometriaLocal, setCadastrandoBiometriaLocal] = useState(false);
   const [erroBiometriaLocal, setErroBiometriaLocal] = useState<string | null>(null);
   const [biometriaLocalCadastrada, setBiometriaLocalCadastrada] = useState(false);
@@ -58,16 +55,19 @@ export function AssinaturaTab({ trabalhadorId }: AssinaturaTabProps) {
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-      <div className={estilos.card} style={{ maxWidth: 480 }}>
-        <Text weight="semibold" style={{ display: 'block', marginBottom: 4 }}>
-          Digital (leitor local — Futronic FS80H)
-        </Text>
-        <Text style={{ display: 'block', marginBottom: 12, color: 'var(--colorNeutralForeground3)' }}>
-          Exige Termo de Aceite e consentimento de uso de biometria já registrados para este funcionário.
-        </Text>
-        {erroBiometriaLocal && <Text className={estilos.erro}>{erroBiometriaLocal}</Text>}
+      <Card densidade="compacta" titulo="Digital (leitor local — Futronic FS80H)">
+        <div style={{ marginBottom: 12 }}>
+          <Legenda>Exige Termo de Aceite e consentimento de uso de biometria já registrados para este funcionário.</Legenda>
+        </div>
+        {erroBiometriaLocal && (
+          <FeedbackInline tom="erro" aoFechar={() => setErroBiometriaLocal(null)}>
+            {erroBiometriaLocal}
+          </FeedbackInline>
+        )}
         {biometriaLocalCadastrada && (
-          <Text style={{ display: 'block', marginBottom: 8 }}>Digital cadastrada com sucesso.</Text>
+          <FeedbackInline tom="sucesso" aoFechar={() => setBiometriaLocalCadastrada(false)}>
+            Digital cadastrada com sucesso.
+          </FeedbackInline>
         )}
         <Button
           icon={<Fingerprint24Regular />}
@@ -76,7 +76,7 @@ export function AssinaturaTab({ trabalhadorId }: AssinaturaTabProps) {
         >
           Capturar digital
         </Button>
-      </div>
+      </Card>
     </div>
   );
 }

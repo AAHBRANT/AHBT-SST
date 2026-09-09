@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Button, Checkbox, Field, Input, Text } from '@fluentui/react-components';
+import { Button, Checkbox, Field, FeedbackInline, Input, Text } from '@ui';
 import { Save24Regular } from '@fluentui/react-icons';
 import {
   TipoTrabalhoEspecialPt,
@@ -67,7 +67,11 @@ export function TiposTrabalhoPtTab({
         <Text weight="semibold">Tipos de trabalho especiais / permissões específicas</Text>
       </div>
 
-      {erro && <Text className={estilos.erro}>{erro}</Text>}
+      {erro && (
+        <FeedbackInline tom="erro" aoFechar={() => setErro(null)}>
+          {erro}
+        </FeedbackInline>
+      )}
 
       <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginBottom: 16 }}>
         {Object.entries(tipoTrabalhoEspecialPtLabel).map(([valor, rotulo]) => (
