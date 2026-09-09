@@ -1,38 +1,52 @@
 import { useEffect, useState } from 'react';
-import { useNavigate, useParams } from 'react-router-dom';
-import { Badge, Button, Tab, TabList, Text, type SelectTabData, type SelectTabEvent } from '@fluentui/react-components';
-import { ArrowLeft24Regular } from '@fluentui/react-icons';
+import { useParams } from 'react-router-dom';
+import { Abas, Card, Carregando, FeedbackInline, PageHeader, StatusChip, Text, type Tom } from '@ui';
 import { api, statusPgrLabel, type Obra, type PgrDetalhe } from '../../lib/api';
-import { usePageStyles, usePillTabStyles } from '../pageStyles';
 import { InventarioTab } from './InventarioTab';
 import { PlanoAcaoTab } from './PlanoAcaoTab';
 import { PgrRevisoesTab } from './PgrRevisoesTab';
 
 type AbaPgr = 'inventario' | 'planoAcao' | 'revisoes';
 
+// Mapeamento por julgamento (guia item 5, "não é 1:1 mecânico"): Vigente é o único estado
+// claramente positivo (ok); Em revisão pede atenção (atencao); Encerrado é neutro-informativo, não
+// um alerta (info) — mesmo raciocínio de tomPorStatusApr (AprsTab.tsx), aplicado ao enum de PGR.
+const tomPorStatusPgr: Record<number, Tom> = {
+  1: 'neutro', // EmElaboracao
+  2: 'ok', // Vigente
+  3: 'atencao', // EmRevisao
+  4: 'info', // Encerrado
+};
+
+// Onda 2 Task 8 (camada ui/): detalhe do PGR (inventário de riscos + plano de ação + revisões). Sem
+// DetailPageLayout/WorkflowActions — `api.pgrs` só expõe CRUD (criar/atualizar/excluir), não há um
+// conjunto de ações de fluxo nomeadas (aprovar/reprovar) como em AprDetalhePage.tsx; o status muda por
+// edição normal do registro, não por uma transição de estado dedicada. Por isso PageHeader + Card
+// empilhados, mesmo julgamento já usado em TrabalhadorDetalhePage.tsx/PcmsoDetalhePage.tsx — e mesma
+// razão para as abas internas usarem `Abas nivel="modulo"` sem `useAbaNaUrl` (reservado aos dois
+// níveis da página-pilar, spec §4.1).
 export function PgrDetalhePage() {
   const { id } = useParams<{ id: string }>();
-  const navigate = useNavigate();
-  const estilos = usePageStyles();
-  const estilosAba = usePillTabStyles();
   const [aba, setAba] = useState<AbaPgr>('inventario');
   const [detalhe, setDetalhe] = useState<PgrDetalhe | null>(null);
   const [obras, setObras] = useState<Obra[]>([]);
   const [erro, setErro] = useState<string | null>(null);
 
-  useEffect(() => {
-    async function carregar() {
-      if (!id) return;
-      try {
-        setErro(null);
-        const [det, obrs] = await Promise.all([api.pgrs.obterDetalhe(id), api.obras.listar()]);
-        setDetalhe(det);
-        setObras(obrs);
-      } catch (e) {
-        setErro(e instanceof Error ? e.message : 'Falha ao carregar PGR.');
-      }
+  async function carregar() {
+    if (!id) return;
+    try {
+      setErro(null);
+      const [det, obrs] = await Promise.all([api.pgrs.obterDetalhe(id), api.obras.listar()]);
+      setDetalhe(det);
+      setObras(obrs);
+    } catch (e) {
+      setErro(e instanceof Error ? e.message : 'Falha ao carregar PGR.');
     }
+  }
+
+  useEffect(() => {
     carregar();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id]);
 
   function nomeObra(obraId: string) {
@@ -40,58 +54,68 @@ export function PgrDetalhePage() {
   }
 
   if (!id) {
-    return <Text>PGR não encontrado.</Text>;
+    return <FeedbackInline tom="erro">PGR não encontrado.</FeedbackInline>;
   }
 
   const riscosDisponiveis = detalhe?.atividades.flatMap((a) => a.riscos) ?? [];
 
   return (
     <div>
-      <Button
-        appearance="subtle"
-        icon={<ArrowLeft24Regular />}
-        onClick={() => navigate('/prevencao/pgr')}
-        style={{ marginBottom: 12 }}
-      >
-        Voltar para PGR
-      </Button>
+      <PageHeader
+        titulo={detalhe?.pgr.nome ?? 'Carregando…'}
+        status={
+          detalhe && (
+            <StatusChip tom={tomPorStatusPgr[detalhe.pgr.status] ?? 'neutro'}>
+              {statusPgrLabel[detalhe.pgr.status]}
+            </StatusChip>
+          )
+        }
+        voltarPara="/prevencao/pgr"
+        rotuloVoltar="Voltar para PGR"
+      />
 
-      {erro && <Text className={estilos.erro}>{erro}</Text>}
+      {erro && (
+        <FeedbackInline tom="erro" aoFechar={() => setErro(null)}>
+          {erro}
+        </FeedbackInline>
+      )}
 
-      <div className={estilos.card} style={{ marginBottom: 16 }}>
-        {detalhe ? (
-          <>
-            <Text size={500} weight="semibold">
-              {detalhe.pgr.nome}
-            </Text>
-            <div style={{ display: 'flex', gap: 16, marginTop: 8, flexWrap: 'wrap', alignItems: 'center' }}>
-              <Text>Obra: {nomeObra(detalhe.pgr.obraId)}</Text>
-              <Text>Elaboração: {detalhe.pgr.dataElaboracao?.slice(0, 10)}</Text>
-              {detalhe.pgr.dataProximaRevisao && (
-                <Text>Próxima revisão: {detalhe.pgr.dataProximaRevisao.slice(0, 10)}</Text>
-              )}
-              {detalhe.pgr.dataTermino && <Text>Término: {detalhe.pgr.dataTermino.slice(0, 10)}</Text>}
-              <Badge appearance="tint">{statusPgrLabel[detalhe.pgr.status]}</Badge>
-            </div>
-          </>
-        ) : (
-          <Text>Carregando...</Text>
-        )}
-      </div>
+      {!detalhe ? (
+        <Carregando variante="detalhe" linhas={6} />
+      ) : (
+        <>
+          <div style={{ marginBottom: 16 }}>
+            <Card densidade="compacta">
+              <div style={{ display: 'flex', gap: 16, flexWrap: 'wrap', alignItems: 'center' }}>
+                <Text>Obra: {nomeObra(detalhe.pgr.obraId)}</Text>
+                <Text>Elaboração: {detalhe.pgr.dataElaboracao?.slice(0, 10)}</Text>
+                {detalhe.pgr.dataProximaRevisao && (
+                  <Text>Próxima revisão: {detalhe.pgr.dataProximaRevisao.slice(0, 10)}</Text>
+                )}
+                {detalhe.pgr.dataTermino && <Text>Término: {detalhe.pgr.dataTermino.slice(0, 10)}</Text>}
+              </div>
+            </Card>
+          </div>
 
-      <TabList
-        selectedValue={aba}
-        onTabSelect={(_: SelectTabEvent, data: SelectTabData) => setAba(data.value as AbaPgr)}
-        className={estilosAba.lista}
-      >
-        <Tab value="inventario">Inventário de riscos</Tab>
-        <Tab value="planoAcao">Plano de ação</Tab>
-        <Tab value="revisoes">Revisões</Tab>
-      </TabList>
+          <div style={{ marginBottom: 16 }}>
+            <Abas
+              nivel="modulo"
+              aria-label="Seções do PGR"
+              valor={aba}
+              aoMudar={setAba}
+              abas={[
+                { valor: 'inventario', rotulo: 'Inventário de riscos' },
+                { valor: 'planoAcao', rotulo: 'Plano de ação' },
+                { valor: 'revisoes', rotulo: 'Revisões' },
+              ]}
+            />
+          </div>
 
-      {aba === 'inventario' && <InventarioTab atividades={detalhe?.atividades ?? []} />}
-      {aba === 'planoAcao' && <PlanoAcaoTab pgrId={id} riscosDisponiveis={riscosDisponiveis} />}
-      {aba === 'revisoes' && <PgrRevisoesTab pgrId={id} />}
+          {aba === 'inventario' && <InventarioTab atividades={detalhe.atividades} />}
+          {aba === 'planoAcao' && <PlanoAcaoTab pgrId={id} riscosDisponiveis={riscosDisponiveis} />}
+          {aba === 'revisoes' && <PgrRevisoesTab pgrId={id} />}
+        </>
+      )}
     </div>
   );
 }
