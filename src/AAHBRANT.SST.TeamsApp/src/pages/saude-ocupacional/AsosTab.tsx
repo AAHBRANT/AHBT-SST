@@ -235,7 +235,7 @@ export function AsosTab() {
                   <option value="">Selecione</option>
                   {trabalhadores.map((t) => (
                     <option key={t.id} value={t.id}>
-                      {t.nome} ({t.matricula})
+                      {t.matricula ? `${t.nome} (${t.matricula})` : t.nome}
                     </option>
                   ))}
                 </Select>

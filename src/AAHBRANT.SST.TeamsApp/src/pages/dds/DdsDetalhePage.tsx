@@ -414,7 +414,7 @@ export function DdsDetalhePage() {
                     <option value="">Selecione um funcionário</option>
                     {trabalhadoresDisponiveis.map((trabalhador) => (
                       <option key={trabalhador.id} value={trabalhador.id}>
-                        {trabalhador.nome} ({trabalhador.matricula})
+                        {trabalhador.matricula ? `${trabalhador.nome} (${trabalhador.matricula})` : trabalhador.nome}
                       </option>
                     ))}
                   </Select>

@@ -234,7 +234,8 @@ export function TrabalhadoresTab() {
           <div style={{ minWidth: 0 }}>
             <div style={{ fontWeight: 600 }}>{t.nome}</div>
             <div style={{ fontSize: 12 }}>
-              {t.matricula} · {nomeObra(t.obraId)} · {nomeFuncao(t.funcaoId)} · {tipoVinculoLabel[t.vinculo]}
+              {t.matricula && `${t.matricula} · `}
+              {nomeObra(t.obraId)} · {nomeFuncao(t.funcaoId)} · {tipoVinculoLabel[t.vinculo]}
             </div>
           </div>
         </div>

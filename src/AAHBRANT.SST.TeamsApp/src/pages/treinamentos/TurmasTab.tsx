@@ -278,7 +278,10 @@ export function TurmasTab() {
               ) : (
                 <ChipCheckboxGroup
                   aria-label="Participantes"
-                  opcoes={trabalhadoresDaObra.map((t) => ({ id: t.id, rotulo: `${t.nome} (${t.matricula})` }))}
+                  opcoes={trabalhadoresDaObra.map((t) => ({
+                    id: t.id,
+                    rotulo: t.matricula ? `${t.nome} (${t.matricula})` : t.nome,
+                  }))}
                   selecionados={novaTurma.trabalhadoresIds}
                   aoMudar={(ids) => setNovaTurma((atual) => ({ ...atual, trabalhadoresIds: ids }))}
                 />
