@@ -1,11 +1,26 @@
 import { useEffect, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import { Badge, Button, Input, Select, Text, Textarea } from '@fluentui/react-components';
-import { CampoData } from '../../components/CampoData';
+import {
+  Button,
+  Campo,
+  Card,
+  CampoData,
+  Carregando,
+  DetailPageLayout,
+  Field,
+  FeedbackInline,
+  FormGrid,
+  Input,
+  Select,
+  StatusChip,
+  Text,
+  Textarea,
+  WorkflowActions,
+  type AcaoWorkflow,
+  type Tom,
+} from '@ui';
 import {
   ArrowDownload24Regular,
-  ArrowLeft24Regular,
-  LockClosed24Regular,
   Save24Regular,
   Signature24Regular,
   Warning24Regular,
@@ -21,7 +36,6 @@ import {
   type Usuario,
 } from '../../lib/api';
 import { SeletorFotoCamera } from '../../components/SeletorFotoCamera';
-import { usePageStyles } from '../pageStyles';
 
 interface EdicaoResposta {
   descricao: string;
@@ -37,19 +51,30 @@ function edicaoInicial(): EdicaoResposta {
   return { descricao: '', statusItem: '', observacao: '', local: '', planoDeAcao: '', responsavelUsuarioId: '', prazo: '' };
 }
 
+// EmAndamento/Concluida — mesmo mapeamento de InspecoesTab.tsx (Onda 2 ruling: mesmos tons entre
+// lista e detalhe do módulo).
+const tomPorStatusInspecao: Record<number, Tom> = {
+  [StatusInspecao.EmAndamento]: 'info',
+  [StatusInspecao.Concluida]: 'ok',
+};
+
 // Cor do status do achado — mesmo esquema verde/amarelo da planilha "Patrulha de Segurança do
 // Trabalho" (pendente = ainda não conforme, resolvido = já corrigido e reavaliado como conforme).
-function corStatusItem(statusItem?: number | null): 'success' | 'warning' | 'informative' | undefined {
-  if (statusItem === StatusItemChecklist.Conforme) return 'success';
-  if (statusItem === StatusItemChecklist.NaoConforme) return 'warning';
-  if (statusItem === StatusItemChecklist.NaoAplicavel) return 'informative';
-  return undefined;
-}
+const tomPorStatusItem: Record<number, Tom> = {
+  [StatusItemChecklist.Conforme]: 'ok',
+  [StatusItemChecklist.NaoConforme]: 'atencao',
+  [StatusItemChecklist.NaoAplicavel]: 'info',
+};
 
+// Onda 2 Task 10 (camada ui/): detalhe de uma execução de inspeção. DetailPageLayout com resumo e a
+// única ação de fluxo (encerrar) na lateral — "Baixar PDF" e "Assinar inspeção" ficam no cabeçalho
+// por serem navegação/exportação, não transição de estado (mesmo critério de AprDetalhePage.tsx: só
+// aprovar/reprovar entram em WorkflowActions, exportar fica em cabecalho.acoes). Retorno antecipado
+// com OU erro OU skeleton na carga inicial, nunca cabeçalho+skeleton+erro empilhados (padrão já
+// revisado em AprDetalhePage.tsx/PgrDetalhePage.tsx).
 export function InspecaoDetalhePage() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
-  const estilos = usePageStyles();
   const [detalhe, setDetalhe] = useState<InspecaoDetalhe | null>(null);
   const [usuarios, setUsuarios] = useState<Usuario[]>([]);
   const [edicoes, setEdicoes] = useState<Record<string, EdicaoResposta>>({});
@@ -196,8 +221,11 @@ export function InspecaoDetalhePage() {
     }
   }
 
+  // Entra em WorkflowActions: retornar `false` mantém o formulário aberto (aqui não há formulário —
+  // a ação executa direto — mas o contrato pede erro tratado sem lançar, mesmo padrão de
+  // AprDetalhePage.tsx).
   async function encerrar() {
-    if (!id) return;
+    if (!id) return false;
     try {
       setProcessando(true);
       setErro(null);
@@ -205,6 +233,7 @@ export function InspecaoDetalhePage() {
       await carregar();
     } catch (e) {
       setErro(e instanceof Error ? e.message : 'Falha ao encerrar inspeção. Confira se todos os itens foram respondidos.');
+      return false;
     } finally {
       setProcessando(false);
     }
@@ -229,85 +258,122 @@ export function InspecaoDetalhePage() {
     }
   }
 
-  if (!id) {
-    return <Text>Inspeção não encontrada.</Text>;
+  if (!id) return <FeedbackInline tom="erro">Inspeção não encontrada.</FeedbackInline>;
+
+  // Erro na carga inicial precisa aparecer aqui: sem isso o skeleton ficaria para sempre e a falha
+  // (API fora, id inexistente) não teria onde ser lida.
+  if (!detalhe) {
+    return erro ? (
+      <FeedbackInline tom="erro" acao={{ rotulo: 'Tentar de novo', aoClicar: () => void carregar() }}>
+        {erro}
+      </FeedbackInline>
+    ) : (
+      <Carregando variante="detalhe" linhas={8} />
+    );
   }
 
-  const inspecao = detalhe?.inspecao;
+  const inspecao = detalhe.inspecao;
+
+  const acoes: AcaoWorkflow[] = [];
+  if (inspecao.status === StatusInspecao.EmAndamento) {
+    acoes.push({
+      chave: 'encerrar',
+      rotulo: 'Encerrar inspeção',
+      descricao: 'Confira se todos os itens foram respondidos antes de encerrar.',
+      tom: 'primario',
+      habilitada: true,
+      aoExecutar: encerrar,
+    });
+  }
 
   return (
-    <div>
-      <Button
-        appearance="subtle"
-        icon={<ArrowLeft24Regular />}
-        onClick={() => navigate('/prevencao/inspecoes')}
-        style={{ marginBottom: 12 }}
-      >
-        Voltar para Inspeções
-      </Button>
-
-      {erro && <Text className={estilos.erro}>{erro}</Text>}
-
-      <div className={estilos.card} style={{ marginBottom: 16 }}>
-        {inspecao ? (
+    <DetailPageLayout
+      cabecalho={{
+        titulo: `${tipoInspecaoLabel[inspecao.tipoInspecao]} — ${inspecao.checklistModeloNome} (v${inspecao.checklistModeloVersao})`,
+        status: (
+          <StatusChip tom={tomPorStatusInspecao[inspecao.status] ?? 'neutro'}>
+            {statusInspecaoLabel[inspecao.status]}
+          </StatusChip>
+        ),
+        voltarPara: '/prevencao/inspecoes',
+        rotuloVoltar: 'Voltar para Inspeções',
+        acoes: (
           <>
-            <Text size={500} weight="semibold">
-              {tipoInspecaoLabel[inspecao.tipoInspecao]} — {inspecao.checklistModeloNome} (v
-              {inspecao.checklistModeloVersao})
-            </Text>
-            <div style={{ display: 'flex', gap: 16, marginTop: 8, flexWrap: 'wrap', alignItems: 'center' }}>
-              <Text>Obra: {inspecao.obraNome}</Text>
-              {inspecao.atividadeNome && <Text>Atividade: {inspecao.atividadeNome}</Text>}
-              <Text>Data: {inspecao.data?.slice(0, 10)}</Text>
-              <Text>Responsável: {inspecao.responsavelUsuarioNome}</Text>
-              <Badge appearance="tint">{statusInspecaoLabel[inspecao.status]}</Badge>
-            </div>
-            <div style={{ display: 'flex', gap: 16, marginTop: 8, alignItems: 'center' }}>
-              <Text>
-                Achados respondidos: {inspecao.itensRespondidos}/{inspecao.totalItens}
-              </Text>
-              {inspecao.itensNaoConformes > 0 && (
-                <Badge color="warning" appearance="tint">
-                  {inspecao.itensNaoConformes} pendente(s)
-                </Badge>
-              )}
-            </div>
-
-            <div className={estilos.formActions} style={{ marginTop: 16 }}>
-              <Button appearance="secondary" icon={<ArrowDownload24Regular />} onClick={baixarPdf} disabled={baixandoPdf}>
-                Baixar PDF
+            <Button appearance="secondary" icon={<ArrowDownload24Regular />} onClick={baixarPdf} disabled={baixandoPdf}>
+              Baixar PDF
+            </Button>
+            {inspecao.status === StatusInspecao.Concluida && (
+              <Button
+                appearance="primary"
+                icon={<Signature24Regular />}
+                onClick={() => navigate(`/prevencao/inspecoes/${id}/assinar`)}
+              >
+                Assinar inspeção
               </Button>
-              {inspecao.status === StatusInspecao.EmAndamento && (
-                <Button appearance="primary" icon={<LockClosed24Regular />} onClick={encerrar} disabled={processando}>
-                  Encerrar inspeção
-                </Button>
-              )}
-              {inspecao.status === StatusInspecao.Concluida && (
-                <Button
-                  appearance="primary"
-                  icon={<Signature24Regular />}
-                  onClick={() => navigate(`/prevencao/inspecoes/${id}/assinar`)}
-                >
-                  Assinar inspeção
-                </Button>
-              )}
-            </div>
+            )}
           </>
-        ) : (
-          <Text>Carregando...</Text>
-        )}
-      </div>
+        ),
+      }}
+      lateral={
+        <>
+          <Card densidade="compacta" titulo="Resumo">
+            <FormGrid>
+              <Campo span={12}>
+                <Field label="Obra">
+                  <Input value={inspecao.obraNome} readOnly />
+                </Field>
+              </Campo>
+              {inspecao.atividadeNome && (
+                <Campo span={12}>
+                  <Field label="Atividade">
+                    <Input value={inspecao.atividadeNome} readOnly />
+                  </Field>
+                </Campo>
+              )}
+              <Campo span={12}>
+                <Field label="Data">
+                  <Input value={inspecao.data?.slice(0, 10) ?? ''} readOnly />
+                </Field>
+              </Campo>
+              <Campo span={12}>
+                <Field label="Responsável">
+                  <Input value={inspecao.responsavelUsuarioNome} readOnly />
+                </Field>
+              </Campo>
+              <Campo span={12}>
+                <Field label="Achados respondidos">
+                  <Input value={`${inspecao.itensRespondidos}/${inspecao.totalItens}`} readOnly />
+                </Field>
+              </Campo>
+            </FormGrid>
+            {inspecao.itensNaoConformes > 0 && (
+              <div style={{ marginTop: 12 }}>
+                <StatusChip tom="atencao">{inspecao.itensNaoConformes} pendente(s)</StatusChip>
+              </div>
+            )}
+          </Card>
+          {acoes.length > 0 && (
+            <Card densidade="compacta" titulo="Ações disponíveis">
+              <WorkflowActions acoes={acoes} processando={processando} />
+            </Card>
+          )}
+        </>
+      }
+    >
+      {erro && (
+        <FeedbackInline tom="erro" aoFechar={() => setErro(null)}>
+          {erro}
+        </FeedbackInline>
+      )}
 
-      <Text weight="semibold" style={{ display: 'block', marginBottom: 8 }}>
-        Achados
-      </Text>
+      <Text weight="semibold">Achados</Text>
 
       <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-        {detalhe?.respostas.map((resposta) => {
+        {detalhe.respostas.map((resposta) => {
           const edicao = edicoes[resposta.id] ?? edicaoInicial();
-          const somenteLeitura = inspecao?.status !== StatusInspecao.EmAndamento;
+          const somenteLeitura = inspecao.status !== StatusInspecao.EmAndamento;
           return (
-            <div key={resposta.id} className={estilos.card}>
+            <Card key={resposta.id} densidade="compacta">
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 12, flexWrap: 'wrap' }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 8, flex: 1, minWidth: 260 }}>
                   <Text weight="semibold">{resposta.ordem}.</Text>
@@ -333,73 +399,75 @@ export function InspecaoDetalhePage() {
                   ))}
                 </Select>
                 {resposta.statusItem != null && (
-                  <Badge color={corStatusItem(resposta.statusItem)} appearance="tint">
+                  <StatusChip tom={tomPorStatusItem[resposta.statusItem] ?? 'neutro'}>
                     {statusItemChecklistLabel[resposta.statusItem]}
-                  </Badge>
+                  </StatusChip>
                 )}
               </div>
 
               <div style={{ display: 'flex', gap: 12, marginTop: 12, flexWrap: 'wrap' }}>
                 <div style={{ flex: 1, minWidth: 200 }}>
-                  <Text size={200} block style={{ marginBottom: 2 }}>Local</Text>
-                  <Input
-                    value={edicao.local}
-                    onChange={(_, d) => atualizarEdicao(resposta.id, { local: d.value })}
-                    disabled={somenteLeitura}
-                    style={{ width: '100%' }}
-                  />
+                  <Field label="Local">
+                    <Input
+                      value={edicao.local}
+                      onChange={(_, d) => atualizarEdicao(resposta.id, { local: d.value })}
+                      disabled={somenteLeitura}
+                    />
+                  </Field>
                 </div>
                 <div style={{ flex: 1, minWidth: 200 }}>
-                  <Text size={200} block style={{ marginBottom: 2 }}>Responsável</Text>
-                  <Select
-                    value={edicao.responsavelUsuarioId}
-                    onChange={(_, d) => atualizarEdicao(resposta.id, { responsavelUsuarioId: d.value })}
-                    disabled={somenteLeitura}
-                    style={{ width: '100%' }}
-                  >
-                    <option value="">Selecione</option>
-                    {usuarios.map((usuario) => (
-                      <option key={usuario.id} value={usuario.id}>
-                        {usuario.nome}
-                      </option>
-                    ))}
-                  </Select>
+                  <Field label="Responsável">
+                    <Select
+                      value={edicao.responsavelUsuarioId}
+                      onChange={(_, d) => atualizarEdicao(resposta.id, { responsavelUsuarioId: d.value })}
+                      disabled={somenteLeitura}
+                      style={{ width: '100%' }}
+                    >
+                      <option value="">Selecione</option>
+                      {usuarios.map((usuario) => (
+                        <option key={usuario.id} value={usuario.id}>
+                          {usuario.nome}
+                        </option>
+                      ))}
+                    </Select>
+                  </Field>
                 </div>
                 <div style={{ minWidth: 160 }}>
-                  <Text size={200} block style={{ marginBottom: 2 }}>Prazo</Text>
-                  <CampoData
-                    value={edicao.prazo}
-                    onChange={(_, d) => atualizarEdicao(resposta.id, { prazo: d.value })}
-                    disabled={somenteLeitura}
-                  />
+                  <Field label="Prazo">
+                    <CampoData
+                      value={edicao.prazo}
+                      onChange={(_, d) => atualizarEdicao(resposta.id, { prazo: d.value })}
+                      disabled={somenteLeitura}
+                    />
+                  </Field>
                 </div>
               </div>
 
               <div style={{ marginTop: 12 }}>
-                <Text size={200} block style={{ marginBottom: 2 }}>Plano de ação</Text>
-                <Textarea
-                  value={edicao.planoDeAcao}
-                  onChange={(_, d) => atualizarEdicao(resposta.id, { planoDeAcao: d.value })}
-                  disabled={somenteLeitura}
-                  resize="vertical"
-                  style={{ width: '100%' }}
-                />
+                <Field label="Plano de ação">
+                  <Textarea
+                    value={edicao.planoDeAcao}
+                    onChange={(_, d) => atualizarEdicao(resposta.id, { planoDeAcao: d.value })}
+                    disabled={somenteLeitura}
+                    resize="vertical"
+                  />
+                </Field>
               </div>
 
               <div style={{ marginTop: 12 }}>
-                <Text size={200} block style={{ marginBottom: 2 }}>OBS</Text>
-                <Textarea
-                  value={edicao.observacao}
-                  onChange={(_, d) => atualizarEdicao(resposta.id, { observacao: d.value })}
-                  disabled={somenteLeitura}
-                  resize="vertical"
-                  style={{ width: '100%' }}
-                />
+                <Field label="Observação">
+                  <Textarea
+                    value={edicao.observacao}
+                    onChange={(_, d) => atualizarEdicao(resposta.id, { observacao: d.value })}
+                    disabled={somenteLeitura}
+                    resize="vertical"
+                  />
+                </Field>
               </div>
 
               <div style={{ display: 'flex', gap: 24, marginTop: 12, flexWrap: 'wrap' }}>
                 <div>
-                  <Text size={200} block weight="semibold" style={{ marginBottom: 4 }}>Evidência anterior</Text>
+                  <Text weight="semibold" style={{ display: 'block', marginBottom: 4 }}>Evidência anterior</Text>
                   <div style={{ display: 'flex', flexDirection: 'column', gap: 4, alignItems: 'flex-start' }}>
                     {!somenteLeitura && (
                       <SeletorFotoCamera
@@ -423,7 +491,7 @@ export function InspecaoDetalhePage() {
                 </div>
 
                 <div>
-                  <Text size={200} block weight="semibold" style={{ marginBottom: 4 }}>Evidência posterior</Text>
+                  <Text weight="semibold" style={{ display: 'block', marginBottom: 4 }}>Evidência posterior</Text>
                   <div style={{ display: 'flex', flexDirection: 'column', gap: 4, alignItems: 'flex-start' }}>
                     {!somenteLeitura && (
                       <SeletorFotoCamera
@@ -478,10 +546,10 @@ export function InspecaoDetalhePage() {
                   </Button>
                 )}
               </div>
-            </div>
+            </Card>
           );
         })}
       </div>
-    </div>
+    </DetailPageLayout>
   );
 }
