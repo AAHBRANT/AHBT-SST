@@ -1,5 +1,19 @@
 import { useEffect, useMemo, useState } from 'react';
-import { Field, Select, Text } from '@fluentui/react-components';
+import {
+  Card,
+  EstadoVazio,
+  Field,
+  FeedbackInline,
+  KpiCard,
+  RankingBarChart,
+  Select,
+  StatusDonutChart,
+  TrendBarChart,
+  usePaletaGraficos,
+  type FatiaDonut,
+  type ItemRanking,
+  type PontoTendencia,
+} from '@ui';
 import {
   Warning24Regular,
   Alert24Regular,
@@ -20,15 +34,7 @@ import {
   type Obra,
   type RegistroHhtMensal,
 } from '../../../lib/api';
-import { CardGrid } from '../../../layout/AppShell';
-import { designTokens } from '../../../theme';
-import { usePageStyles } from '../../pageStyles';
-import { useDashboardStyles } from '../../../components/dashboard/dashboardStyles';
-import { KpiCard } from '../../../components/dashboard/KpiCard';
 import { TaxaGravidadeCard } from '../../../components/dashboard/TaxaGravidadeCard';
-import { StatusDonutChart, type FatiaDonut } from '../../../components/dashboard/charts/StatusDonutChart';
-import { RankingBarChart, type ItemRanking } from '../../../components/dashboard/charts/RankingBarChart';
-import { TrendBarChart, type PontoTendencia } from '../../../components/dashboard/charts/TrendBarChart';
 
 const NOMES_MESES_ABREVIADOS = ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez'];
 
@@ -42,23 +48,15 @@ function ultimosSeisMeses(): Array<{ ano: number; mes: number; rotulo: string }>
   return meses;
 }
 
-const CORES_TIPO_OCORRENCIA: Record<number, string> = {
-  [TipoOcorrencia.Acidente]: designTokens.colorAlert,
-  [TipoOcorrencia.Incidente]: designTokens.colorWarning,
-  [TipoOcorrencia.QuaseAcidente]: designTokens.colorInfo,
-  [TipoOcorrencia.CondicaoInsegura]: designTokens.colorNeutralMedium,
-  [TipoOcorrencia.AtoInseguro]: designTokens.colorNeutralMedium,
-  [TipoOcorrencia.DoencaOcupacional]: designTokens.colorSuccess,
-};
-
 // Dashboard do pilar Ocorrências (pedido do usuário, 03/09) — reúne Acidentes/Incidentes/
 // Quase-acidentes (mesma entidade Acidente, diferenciada por Tipo — ver OcorrenciasPage.tsx) e Não
 // Conformidades num único painel, no mesmo padrão visual dos outros dashboards de módulo (ver
 // NaoConformidadesDashboardTab.tsx). Reaproveita TaxaGravidadeCard (mesmo cálculo NBR 14280 do
 // Dashboard principal) em vez de duplicar a fórmula.
+// Onda 2 Task 21 (camada ui/, conversão 8): mesmo formato de AprDashboardTab.tsx (Task 11)/
+// PgrDashboardTab.tsx (Task 8) — KpiCard+Card+usePaletaGraficos, grade CSS Grid simples (spec §4.4).
 export function OcorrenciasDashboardTab() {
-  const estilosPagina = usePageStyles();
-  const estilos = useDashboardStyles();
+  const paleta = usePaletaGraficos();
 
   const [obras, setObras] = useState<Obra[]>([]);
   const [atividades, setAtividades] = useState<Atividade[]>([]);
@@ -123,6 +121,18 @@ export function OcorrenciasDashboardTab() {
     (nc) => nc.status !== StatusNaoConformidade.Encerrada,
   ).length;
 
+  const coresTipoOcorrencia: Record<number, string> = useMemo(
+    () => ({
+      [TipoOcorrencia.Acidente]: paleta.alerta,
+      [TipoOcorrencia.Incidente]: paleta.atencao,
+      [TipoOcorrencia.QuaseAcidente]: paleta.info,
+      [TipoOcorrencia.CondicaoInsegura]: paleta.neutro,
+      [TipoOcorrencia.AtoInseguro]: paleta.neutro,
+      [TipoOcorrencia.DoencaOcupacional]: paleta.ok,
+    }),
+    [paleta],
+  );
+
   const tipoDados: FatiaDonut[] = useMemo(() => {
     const contagem = new Map<number, number>();
     for (const a of acidentesFiltrados) {
@@ -132,10 +142,10 @@ export function OcorrenciasDashboardTab() {
       .map(([tipo, valor]) => ({
         rotulo: tipoOcorrenciaLabel[tipo] ?? String(tipo),
         valor,
-        cor: CORES_TIPO_OCORRENCIA[tipo] ?? designTokens.colorNeutralMedium,
+        cor: coresTipoOcorrencia[tipo] ?? paleta.neutro,
       }))
       .sort((a, b) => b.valor - a.valor);
-  }, [acidentesFiltrados]);
+  }, [acidentesFiltrados, coresTipoOcorrencia, paleta.neutro]);
 
   const gravidadeDados: ItemRanking[] = useMemo(() => {
     const contagem = new Map<number, number>();
@@ -147,10 +157,10 @@ export function OcorrenciasDashboardTab() {
       .map(([gravidade, valor]) => ({
         rotulo: gravidadeAcidenteLabel[gravidade] ?? String(gravidade),
         valor,
-        cor: gravidade >= 3 ? designTokens.colorAlert : designTokens.colorWarning,
+        cor: gravidade >= 3 ? paleta.alerta : paleta.atencao,
       }))
       .sort((a, b) => b.valor - a.valor);
-  }, [acidentesFiltrados]);
+  }, [acidentesFiltrados, paleta]);
 
   const porObraDados: ItemRanking[] = useMemo(() => {
     const contagem = new Map<string, number>();
@@ -159,10 +169,10 @@ export function OcorrenciasDashboardTab() {
       contagem.set(nome, (contagem.get(nome) ?? 0) + 1);
     }
     return [...contagem.entries()]
-      .map(([rotulo, valor]) => ({ rotulo, valor, cor: designTokens.colorInfo }))
+      .map(([rotulo, valor]) => ({ rotulo, valor, cor: paleta.info }))
       .sort((a, b) => b.valor - a.valor)
       .slice(0, 6);
-  }, [acidentesFiltrados]);
+  }, [acidentesFiltrados, paleta.info]);
 
   const tendenciaDados: PontoTendencia[] = useMemo(
     () =>
@@ -178,7 +188,7 @@ export function OcorrenciasDashboardTab() {
 
   return (
     <div>
-      <div className={estilos.filtros}>
+      <div style={{ display: 'flex', gap: 16, marginBottom: 16, flexWrap: 'wrap' }}>
         <Field label="Obra">
           <Select value={obraId} onChange={(_, data) => setObraId(data.value)}>
             <option value="">Todas as obras</option>
@@ -191,76 +201,48 @@ export function OcorrenciasDashboardTab() {
         </Field>
       </div>
 
-      {erro && <Text className={estilosPagina.erro}>{erro}</Text>}
+      {erro && (
+        <FeedbackInline tom="erro" aoFechar={() => setErro(null)}>
+          {erro}
+        </FeedbackInline>
+      )}
 
-      <div style={{ marginBottom: 16 }}>
-        <CardGrid>
-          <KpiCard
-            rotulo="Total de ocorrências"
-            valor={acidentesFiltrados.length}
-            cor={designTokens.colorPrimary}
-            icone={<ClipboardTaskListLtr24Regular />}
-          />
-          <KpiCard rotulo="Acidentes" valor={totalAcidentes} cor={designTokens.colorAlert} icone={<Alert24Regular />} />
-          <KpiCard
-            rotulo="Incidentes"
-            valor={totalIncidentes}
-            cor={designTokens.colorWarning}
-            icone={<ShieldError24Regular />}
-          />
-          <KpiCard
-            rotulo="Quase-acidentes"
-            valor={totalQuaseAcidentes}
-            cor={designTokens.colorInfo}
-            icone={<Warning24Regular />}
-          />
-          <KpiCard
-            rotulo="Com afastamento"
-            valor={comAfastamento}
-            cor={designTokens.colorAlert}
-            icone={<PersonSubtract24Regular />}
-          />
-          <KpiCard
-            rotulo="Não conformidades abertas"
-            valor={naoConformidadesAbertas}
-            cor={designTokens.colorWarning}
-            icone={<DocumentError24Regular />}
-          />
-        </CardGrid>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(185px, 1fr))', gap: 16, marginBottom: 16 }}>
+        <KpiCard rotulo="Total de ocorrências" valor={acidentesFiltrados.length} tom="info" indice={0} icone={<ClipboardTaskListLtr24Regular />} />
+        <KpiCard rotulo="Acidentes" valor={totalAcidentes} tom="alerta" indice={1} icone={<Alert24Regular />} />
+        <KpiCard rotulo="Incidentes" valor={totalIncidentes} tom="atencao" indice={2} icone={<ShieldError24Regular />} />
+        <KpiCard rotulo="Quase-acidentes" valor={totalQuaseAcidentes} tom="info" indice={3} icone={<Warning24Regular />} />
+        <KpiCard rotulo="Com afastamento" valor={comAfastamento} tom="alerta" indice={4} icone={<PersonSubtract24Regular />} />
+        <KpiCard rotulo="Não conformidades abertas" valor={naoConformidadesAbertas} tom="atencao" indice={5} icone={<DocumentError24Regular />} />
       </div>
 
       <div style={{ marginBottom: 16 }}>
         <TaxaGravidadeCard acidentes={acidentesFiltrados} registrosHht={registrosHhtFiltrados} />
       </div>
 
-      <div className={estilos.chartRow}>
-        <div className={estilos.chartCard}>
-          <Text className={estilos.chartTitulo}>Ocorrências por tipo</Text>
-          <div className={estilos.chartSubtitulo}>Distribuição entre acidentes, incidentes e demais tipos</div>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(340px, 1fr))', gap: 16, marginBottom: 16 }}>
+        <Card titulo="Ocorrências por tipo" subtitulo="Distribuição entre acidentes, incidentes e demais tipos">
           <StatusDonutChart dados={tipoDados} legendaCentral="ocorrências" />
-        </div>
-        <div className={estilos.chartCard}>
-          <Text className={estilos.chartTitulo}>Gravidade dos acidentes</Text>
-          <div className={estilos.chartSubtitulo}>Classificação NBR 14280 dos acidentes registrados</div>
+        </Card>
+        <Card titulo="Gravidade dos acidentes" subtitulo="Classificação NBR 14280 dos acidentes registrados">
           <RankingBarChart dados={gravidadeDados} />
-        </div>
-        <div className={estilos.chartCard}>
-          <Text className={estilos.chartTitulo}>Ocorrências por obra</Text>
-          <div className={estilos.chartSubtitulo}>Top obras com mais registros</div>
-          <RankingBarChart dados={porObraDados} corPadrao={designTokens.colorInfo} />
-        </div>
+        </Card>
+        <Card titulo="Ocorrências por obra" subtitulo="Top obras com mais registros">
+          <RankingBarChart dados={porObraDados} corPadrao={paleta.info} />
+        </Card>
       </div>
 
-      <div className={estilos.chartCard} style={{ marginBottom: 16 }}>
-        <Text className={estilos.chartTitulo}>Ocorrências — últimos 6 meses</Text>
-        <div className={estilos.chartSubtitulo}>Acidentes, incidentes, quase-acidentes e demais tipos, por mês</div>
-        <TrendBarChart dados={tendenciaDados} cor={designTokens.colorAlert} />
+      <div style={{ marginBottom: 16 }}>
+        <Card titulo="Ocorrências — últimos 6 meses" subtitulo="Acidentes, incidentes, quase-acidentes e demais tipos, por mês">
+          <TrendBarChart dados={tendenciaDados} cor={paleta.alerta} />
+        </Card>
       </div>
 
       {!carregando && acidentesFiltrados.length === 0 && naoConformidadesFiltradas.length === 0 && (
-        <div className={estilosPagina.card}>
-          <Text>Nenhuma ocorrência encontrada para os filtros selecionados.</Text>
-        </div>
+        <EstadoVazio
+          titulo="Nenhuma ocorrência encontrada"
+          descricao="Ajuste o filtro de obra para ver resultados."
+        />
       )}
     </div>
   );
