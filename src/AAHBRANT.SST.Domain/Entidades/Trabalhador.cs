@@ -18,7 +18,12 @@ public class Trabalhador : AuditableEntity
     public Funcao? Funcao { get; set; }
 
     public string Nome { get; set; } = string.Empty;
-    public string Matricula { get; set; } = string.Empty;
+
+    // Opcional desde a Integração G-RH (2026-09-09) — o G-RH não rastreia matrícula (vem sempre nula
+    // na carga/nos eventos de colaborador), diferente da criação manual pela tela do SST, onde
+    // continua obrigatória (ver CriarTrabalhadorCommandValidator). O índice único
+    // (ObraId, Matricula) continua funcionando: SQL Server trata cada NULL como distinto.
+    public string? Matricula { get; set; }
     public string? Rg { get; set; }
 
     // LGPD: valor armazenado é sempre o CPF criptografado (AES-256-GCM via CpfCriptografiaConversor,

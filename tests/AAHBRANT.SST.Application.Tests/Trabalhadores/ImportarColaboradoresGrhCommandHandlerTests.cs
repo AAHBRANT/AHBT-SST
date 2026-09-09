@@ -52,7 +52,7 @@ public class ImportarColaboradoresGrhCommandHandlerTests
         Municipio: null,
         Uf: null,
         Cep: null,
-        Matricula: "MAT-1",
+        Matricula: null, // G-RH não rastreia matrícula hoje — vem sempre nula na prática
         DataAdmissao: new DateTime(2026, 1, 1),
         DataDemissao: null,
         Situacao: SituacaoTrabalhador.Ativo,

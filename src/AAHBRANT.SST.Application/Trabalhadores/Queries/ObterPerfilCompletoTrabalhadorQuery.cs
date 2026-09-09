@@ -283,7 +283,7 @@ public class ObterPerfilCompletoTrabalhadorQueryHandler : IRequestHandler<ObterP
         return new PerfilCompletoTrabalhadorDto(
             trabalhador.Id,
             trabalhador.Nome,
-            trabalhador.Matricula,
+            trabalhador.Matricula ?? string.Empty,
             trabalhador.Cpf,
             trabalhador.Rg,
             trabalhador.ObraId,

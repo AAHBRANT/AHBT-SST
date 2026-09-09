@@ -57,7 +57,7 @@ export interface Trabalhador {
   equipeId?: string | null;
   funcaoId: string;
   nome: string;
-  matricula: string;
+  matricula: string | null;
   cpf: string;
   vinculo: number;
   dataAdmissao: string;
@@ -3034,6 +3034,25 @@ export const api = {
       return response.json() as Promise<{ id: string }>;
     },
     excluir: (id: string) => request<void>(`/api/obras/${id}`, { method: 'DELETE' }),
+    // CNPJ não entra aqui de propósito — o endpoint de edição (AtualizarObraCommand) não o inclui;
+    // trocar de CNPJ é raro o bastante que ficou de fora da primeira versão desta tela.
+    atualizar: (id: string, obra: NovaObra & { dataTerminoReal?: string | null }) =>
+      request<void>(`/api/obras/${id}`, {
+        method: 'PUT',
+        body: JSON.stringify({
+          id,
+          codigo: obra.codigo,
+          nome: obra.nome,
+          cliente: obra.cliente || null,
+          status: obra.status,
+          dataInicio: obra.dataInicio || null,
+          dataPrevisaoTermino: obra.dataPrevisaoTermino || null,
+          dataTerminoReal: obra.dataTerminoReal || null,
+          endereco: obra.endereco || null,
+          cidade: obra.cidade || null,
+          uf: obra.uf || null,
+        }),
+      }),
     anexarLogo: async (id: string, arquivo: File) => {
       const formData = new FormData();
       formData.append('Logo', arquivo);

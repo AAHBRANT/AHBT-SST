@@ -24,7 +24,7 @@ public record ColaboradorGrhDto(
     string? Municipio,
     string? Uf,
     string? Cep,
-    string Matricula,
+    string? Matricula,
     DateTime DataAdmissao,
     DateTime? DataDemissao,
     SituacaoTrabalhador Situacao,

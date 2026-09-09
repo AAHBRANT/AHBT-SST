@@ -98,7 +98,7 @@ public class ColaboradorGrhClient : IColaboradorGrhClient
         [JsonPropertyName("municipio")] public string? Municipio { get; set; }
         [JsonPropertyName("uf")] public string? Uf { get; set; }
         [JsonPropertyName("cep")] public string? Cep { get; set; }
-        [JsonPropertyName("matricula")] public string Matricula { get; set; } = string.Empty;
+        [JsonPropertyName("matricula")] public string? Matricula { get; set; }
         [JsonPropertyName("admissao")] public DateTime Admissao { get; set; }
         [JsonPropertyName("desligamento")] public DateTime? Desligamento { get; set; }
         [JsonPropertyName("situacao")] public string? Situacao { get; set; }

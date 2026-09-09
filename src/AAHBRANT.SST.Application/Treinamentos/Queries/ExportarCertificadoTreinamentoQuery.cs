@@ -74,7 +74,7 @@ public class ExportarCertificadoTreinamentoQueryHandler : IRequestHandler<Export
             treinamento.Trabalhador.Nome,
             CpfMascarador.Mascarar(treinamento.Trabalhador.Cpf),
             treinamento.Trabalhador.Rg,
-            treinamento.Trabalhador.Matricula,
+            treinamento.Trabalhador.Matricula ?? string.Empty,
             treinamento.Trabalhador.Funcao?.Nome ?? string.Empty,
             treinamento.CursoTreinamento.Nome,
             treinamento.CursoTreinamento.NormaReferencia,

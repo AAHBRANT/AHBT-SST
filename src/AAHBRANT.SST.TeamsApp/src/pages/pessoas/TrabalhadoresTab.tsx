@@ -175,7 +175,7 @@ export function TrabalhadoresTab() {
     const termo = busca.trim().toLowerCase();
     if (!termo) return trabalhadores;
     return trabalhadores.filter(
-      (t) => t.nome.toLowerCase().includes(termo) || t.matricula.toLowerCase().includes(termo),
+      (t) => t.nome.toLowerCase().includes(termo) || (t.matricula ?? '').toLowerCase().includes(termo),
     );
   }, [busca, trabalhadores]);
 
@@ -384,7 +384,7 @@ export function TrabalhadoresTab() {
             <Campo span={4}>
               <Field label="Matrícula">
                 <Input
-                  value={novoTrabalhador.matricula}
+                  value={novoTrabalhador.matricula ?? ''}
                   onChange={(_, d) => setNovoTrabalhador({ ...novoTrabalhador, matricula: d.value })}
                 />
               </Field>

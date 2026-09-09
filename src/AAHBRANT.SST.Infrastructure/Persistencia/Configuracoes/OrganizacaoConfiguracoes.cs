@@ -79,7 +79,7 @@ public class TrabalhadorConfiguracao : IEntityTypeConfiguration<Trabalhador>
     public void Configure(EntityTypeBuilder<Trabalhador> builder)
     {
         builder.Property(t => t.Nome).IsRequired().HasMaxLength(200);
-        builder.Property(t => t.Matricula).IsRequired().HasMaxLength(30);
+        builder.Property(t => t.Matricula).HasMaxLength(30);
         // Cpf: criptografado em repouso via AES-256-GCM (LGPD art. 46) — o valor de coluna nunca é o
         // CPF em texto puro. HasMaxLength(200) acomoda nonce+tag+ciphertext em Base64 (bem maior que
         // os 11 dígitos originais). Unicidade não pode mais viver em Cpf (ciphertext não-determinístico

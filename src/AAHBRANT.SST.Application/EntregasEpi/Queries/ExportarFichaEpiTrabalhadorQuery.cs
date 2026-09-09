@@ -112,7 +112,7 @@ public class ExportarFichaEpiTrabalhadorQueryHandler : IRequestHandler<ExportarF
             trabalhador.Obra?.LogoContentType,
             trabalhador.Nome,
             CpfMascarador.Mascarar(trabalhador.Cpf),
-            trabalhador.Matricula,
+            trabalhador.Matricula ?? string.Empty,
             trabalhador.Funcao?.Nome ?? string.Empty,
             trabalhador.Turno,
             trabalhador.DataAdmissao,

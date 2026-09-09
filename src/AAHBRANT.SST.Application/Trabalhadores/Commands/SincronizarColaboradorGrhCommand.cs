@@ -30,7 +30,7 @@ public record SincronizarColaboradorGrhCommand(
     string? Municipio,
     string? Uf,
     string? Cep,
-    string Matricula,
+    string? Matricula,
     DateTime DataAdmissao,
     DateTime? DataDemissao,
     string CargoNome,
@@ -51,7 +51,9 @@ public class SincronizarColaboradorGrhCommandValidator : AbstractValidator<Sincr
         RuleFor(x => x.Cpf).NotEmpty().Length(11).Matches("^[0-9]+$")
             .Must(CpfValidador.EhValido).WithMessage("CPF inválido.");
         RuleFor(x => x.Nome).NotEmpty().MaximumLength(200);
-        RuleFor(x => x.Matricula).NotEmpty().MaximumLength(30);
+        // Opcional: o G-RH não rastreia matrícula (vem sempre nula hoje) — diferente da criação manual
+        // pela tela do SST, onde continua obrigatória (CriarTrabalhadorCommandValidator).
+        RuleFor(x => x.Matricula).MaximumLength(30);
         RuleFor(x => x.DataAdmissao).NotEmpty();
         RuleFor(x => x.CargoNome).NotEmpty().MaximumLength(200);
     }
