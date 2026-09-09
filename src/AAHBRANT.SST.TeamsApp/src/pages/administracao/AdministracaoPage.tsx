@@ -3,8 +3,9 @@ import { ObrasPage } from '../ObrasPage';
 import { ControleAcessoTab } from './ControleAcessoTab';
 import { TrilhaAuditoriaTab } from './TrilhaAuditoriaTab';
 import { PainelAssinaturasTab } from './PainelAssinaturasTab';
+import { IntegracaoGrhTab } from './IntegracaoGrhTab';
 
-const ABAS_VALIDAS = ['obras', 'acesso', 'auditoria', 'assinaturas'] as const;
+const ABAS_VALIDAS = ['obras', 'acesso', 'auditoria', 'assinaturas', 'grh'] as const;
 type AbaAdministracao = (typeof ABAS_VALIDAS)[number];
 
 // Obras virou aba daqui (pedido do usuário, 01/09) — antes era aba de Operação (ver App.tsx pro
@@ -35,6 +36,7 @@ export function AdministracaoPage() {
           { valor: 'acesso', rotulo: 'Controle de Acesso' },
           { valor: 'auditoria', rotulo: 'Trilha de Auditoria' },
           { valor: 'assinaturas', rotulo: 'Assinaturas' },
+          { valor: 'grh', rotulo: 'Integração G-RH' },
         ]}
       />
 
@@ -42,6 +44,7 @@ export function AdministracaoPage() {
       {aba === 'acesso' && <ControleAcessoTab />}
       {aba === 'auditoria' && <TrilhaAuditoriaTab />}
       {aba === 'assinaturas' && <PainelAssinaturasTab />}
+      {aba === 'grh' && <IntegracaoGrhTab />}
     </div>
   );
 }

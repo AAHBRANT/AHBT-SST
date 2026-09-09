@@ -79,6 +79,12 @@ export interface GerarVinculoTelegramResultado {
   linkTelegram: string;
 }
 
+export interface ImportarColaboradoresGrhResultado {
+  totalRecebidos: number;
+  totalSincronizados: number;
+  erros: string[];
+}
+
 export const TipoExameAso = {
   Admissional: 1,
   Periodico: 2,
@@ -3150,6 +3156,10 @@ export const api = {
         throw new Error(`${response.status} ${response.statusText}: ${corpo}`);
       }
     },
+    // Carga inicial única do cadastro do G-RH (Integração G-RH) — a atualização contínua depois
+    // disso é automática, via evento de Service Bus; não faz sentido rodar isto repetidamente.
+    importarGrh: () =>
+      request<ImportarColaboradoresGrhResultado>('/api/trabalhadores/importar-grh', { method: 'POST' }),
   },
   funcoes: {
     listar: () => request<Funcao[]>('/api/funcoes'),
