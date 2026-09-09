@@ -1,5 +1,17 @@
 import { useEffect, useMemo, useState } from 'react';
-import { Field, Select, Text } from '@fluentui/react-components';
+import {
+  Card,
+  EstadoVazio,
+  Field,
+  FeedbackInline,
+  KpiCard,
+  RankingBarChart,
+  Select,
+  StatusDonutChart,
+  usePaletaGraficos,
+  type FatiaDonut,
+  type ItemRanking,
+} from '@ui';
 import { ShieldCheckmark24Regular, Warning24Regular, ClipboardTaskListLtr24Regular, Alert24Regular } from '@fluentui/react-icons';
 import {
   api,
@@ -11,13 +23,6 @@ import {
   type Perigo,
   type Risco,
 } from '../../../lib/api';
-import { CardGrid } from '../../../layout/AppShell';
-import { designTokens } from '../../../theme';
-import { usePageStyles } from '../../pageStyles';
-import { useDashboardStyles } from '../../../components/dashboard/dashboardStyles';
-import { KpiCard } from '../../../components/dashboard/KpiCard';
-import { StatusDonutChart, type FatiaDonut } from '../../../components/dashboard/charts/StatusDonutChart';
-import { RankingBarChart, type ItemRanking } from '../../../components/dashboard/charts/RankingBarChart';
 import { RiscosCriticosPanel } from './RiscosCriticosPanel';
 import { ListaRiscosPanel } from './ListaRiscosPanel';
 
@@ -25,17 +30,13 @@ const hojeISO = new Date().toISOString().slice(0, 10);
 
 const NIVEIS_DESC = [5, 4, 3, 2, 1];
 
-const CORES_NIVEL: Record<number, string> = {
-  5: designTokens.colorAlert,
-  4: '#F97316',
-  3: designTokens.colorWarning,
-  2: designTokens.colorSuccess,
-  1: '#86EFAC',
-};
-
+// Onda 2 Task 13 (camada ui/): dashboard de Riscos — mesmo formato de AprDashboardTab.tsx (Task 11):
+// KpiCard + gráficos com cores de usePaletaGraficos, grade CSS Grid simples (spec §4.4, sem
+// componente de grade próprio). Os 5 níveis de risco colapsam em 4 cores da paleta (ok/info/atencao/
+// alerta), mesmo colapso já usado em ListaRiscosPanel.tsx/RiscosCriticosPanel.tsx desta task — Alto
+// (4) e Crítico (5) dividem a cor "alerta", o rótulo textual continua distinguindo os dois.
 export function RiscosDashboardTab() {
-  const estilosPagina = usePageStyles();
-  const estilos = useDashboardStyles();
+  const paleta = usePaletaGraficos();
 
   const [obras, setObras] = useState<Obra[]>([]);
   const [atividades, setAtividades] = useState<Atividade[]>([]);
@@ -97,28 +98,36 @@ export function RiscosDashboardTab() {
     {
       rotulo: 'Pendente',
       valor: riscosFiltrados.filter((r) => r.status === StatusControleRisco.Pendente).length,
-      cor: designTokens.colorAlert,
+      cor: paleta.alerta,
     },
     {
       rotulo: 'Em andamento',
       valor: riscosFiltrados.filter((r) => r.status === StatusControleRisco.EmAndamento).length,
-      cor: designTokens.colorWarning,
+      cor: paleta.atencao,
     },
     {
       rotulo: 'Concluído',
       valor: riscosFiltrados.filter((r) => r.status === StatusControleRisco.Concluido).length,
-      cor: designTokens.colorSuccess,
+      cor: paleta.ok,
     },
   ];
+
+  const coresPorNivel: Record<number, string> = {
+    5: paleta.alerta,
+    4: paleta.alerta,
+    3: paleta.atencao,
+    2: paleta.info,
+    1: paleta.ok,
+  };
 
   const nivelDados: ItemRanking[] = useMemo(
     () =>
       NIVEIS_DESC.map((nivel) => ({
         rotulo: nivelRiscoLabel[nivel],
         valor: riscosFiltrados.filter((r) => r.nivelRisco === nivel).length,
-        cor: CORES_NIVEL[nivel],
+        cor: coresPorNivel[nivel],
       })),
-    [riscosFiltrados],
+    [riscosFiltrados, paleta],
   );
 
   const perigosDados: ItemRanking[] = useMemo(() => {
@@ -128,14 +137,14 @@ export function RiscosDashboardTab() {
       contagem.set(nome, (contagem.get(nome) ?? 0) + 1);
     }
     return [...contagem.entries()]
-      .map(([rotulo, valor]) => ({ rotulo, valor, cor: designTokens.colorInfo }))
+      .map(([rotulo, valor]) => ({ rotulo, valor, cor: paleta.info }))
       .sort((a, b) => b.valor - a.valor)
       .slice(0, 5);
-  }, [riscosFiltrados, perigos]);
+  }, [riscosFiltrados, perigos, paleta.info]);
 
   return (
     <div>
-      <div className={estilos.filtros}>
+      <div style={{ display: 'flex', gap: 16, marginBottom: 16, flexWrap: 'wrap' }}>
         <Field label="Obra">
           <Select value={obraId} onChange={(_, data) => setObraId(data.value)}>
             <option value="">Todas as obras</option>
@@ -168,53 +177,29 @@ export function RiscosDashboardTab() {
         </Field>
       </div>
 
-      {erro && <Text className={estilosPagina.erro}>{erro}</Text>}
+      {erro && (
+        <FeedbackInline tom="erro" aoFechar={() => setErro(null)}>
+          {erro}
+        </FeedbackInline>
+      )}
 
-      <div style={{ marginBottom: 16 }}>
-        <CardGrid>
-          <KpiCard
-            rotulo="Riscos avaliados"
-            valor={riscosFiltrados.length}
-            cor={designTokens.colorPrimary}
-            icone={<ShieldCheckmark24Regular />}
-          />
-          <KpiCard
-            rotulo="Alto/Crítico"
-            valor={criticosAltos}
-            cor={designTokens.colorAlert}
-            icone={<Warning24Regular />}
-          />
-          <KpiCard
-            rotulo="Controle pendente"
-            valor={controlePendente}
-            cor={designTokens.colorWarning}
-            icone={<ClipboardTaskListLtr24Regular />}
-          />
-          <KpiCard
-            rotulo="Com prazo vencido"
-            valor={prazoVencido}
-            cor={designTokens.colorAlert}
-            icone={<Alert24Regular />}
-          />
-        </CardGrid>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(185px, 1fr))', gap: 16, marginBottom: 16 }}>
+        <KpiCard rotulo="Riscos avaliados" valor={riscosFiltrados.length} tom="info" indice={0} icone={<ShieldCheckmark24Regular />} />
+        <KpiCard rotulo="Alto/Crítico" valor={criticosAltos} tom="alerta" indice={1} icone={<Warning24Regular />} />
+        <KpiCard rotulo="Controle pendente" valor={controlePendente} tom="atencao" indice={2} icone={<ClipboardTaskListLtr24Regular />} />
+        <KpiCard rotulo="Com prazo vencido" valor={prazoVencido} tom="alerta" indice={3} icone={<Alert24Regular />} />
       </div>
 
-      <div className={estilos.chartRow}>
-        <div className={estilos.chartCard}>
-          <Text className={estilos.chartTitulo}>Status de controle dos riscos</Text>
-          <div className={estilos.chartSubtitulo}>Situação do plano de ação de cada avaliação de risco</div>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(340px, 1fr))', gap: 16, marginBottom: 16 }}>
+        <Card titulo="Status de controle dos riscos" subtitulo="Situação do plano de ação de cada avaliação de risco">
           <StatusDonutChart dados={statusDados} legendaCentral="riscos" />
-        </div>
-        <div className={estilos.chartCard}>
-          <Text className={estilos.chartTitulo}>Riscos por nível</Text>
-          <div className={estilos.chartSubtitulo}>Distribuição das avaliações pela matriz de probabilidade × severidade</div>
+        </Card>
+        <Card titulo="Riscos por nível" subtitulo="Distribuição das avaliações pela matriz de probabilidade × severidade">
           <RankingBarChart dados={nivelDados} />
-        </div>
-        <div className={estilos.chartCard}>
-          <Text className={estilos.chartTitulo}>Perigos mais frequentes</Text>
-          <div className={estilos.chartSubtitulo}>Top 5 perigos com mais avaliações de risco vinculadas</div>
+        </Card>
+        <Card titulo="Perigos mais frequentes" subtitulo="Top 5 perigos com mais avaliações de risco vinculadas">
           <RankingBarChart dados={perigosDados} />
-        </div>
+        </Card>
       </div>
 
       <RiscosCriticosPanel riscos={riscosFiltrados} atividades={atividades} perigos={perigos} />
@@ -227,8 +212,11 @@ export function RiscosDashboardTab() {
       />
 
       {!carregando && riscosFiltrados.length === 0 && (
-        <div className={estilosPagina.card} style={{ marginTop: 16 }}>
-          <Text>Nenhuma avaliação de risco encontrada para os filtros selecionados.</Text>
+        <div style={{ marginTop: 16 }}>
+          <EstadoVazio
+            titulo="Nenhuma avaliação de risco encontrada"
+            descricao="Ajuste os filtros de obra, nível ou status para ver resultados."
+          />
         </div>
       )}
     </div>

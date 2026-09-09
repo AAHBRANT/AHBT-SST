@@ -1,10 +1,20 @@
 import { useEffect, useState } from 'react';
-import { Button, Field, Select, Text, Textarea } from '@fluentui/react-components';
+import {
+  Button,
+  Campo,
+  Card,
+  Field,
+  FeedbackInline,
+  FormGrid,
+  FormSection,
+  Legenda,
+  Select,
+  Textarea,
+  useConfirmar,
+} from '@ui';
 import { CloudArrowUp24Regular, Delete24Regular } from '@fluentui/react-icons';
 import { api, type ImportarRiscosLoteResultado, type Obra, type RiscoLoteItem } from '../../lib/api';
-import { usePageStyles } from '../pageStyles';
 import { useSucessoToast } from '../../hooks/useSucessoToast';
-import { useConfirmarExclusao } from '../../hooks/useConfirmarExclusao';
 
 const EXEMPLO = `[
   {
@@ -26,8 +36,9 @@ const EXEMPLO = `[
 // inventário de risco inteiro (ex.: PGR de uma obra) de uma vez, sem precisar passar pela tela de
 // cadastro registro por registro. Atividade e Perigo são resolvidos por nome — criados
 // automaticamente se ainda não existirem, reaproveitados se já existirem.
+// Camada ui/ (Onda 2, Task 13): sem lista para empurrar pra baixo, então sem PainelLateral — só
+// embrulha em Card + FormSection/FormGrid/Campo para o seletor de Obra.
 export function ImportarLoteTab() {
-  const estilos = usePageStyles();
   const [obras, setObras] = useState<Obra[]>([]);
   const [obraId, setObraId] = useState('');
   const [json, setJson] = useState('');
@@ -36,7 +47,7 @@ export function ImportarLoteTab() {
   const [resultado, setResultado] = useState<ImportarRiscosLoteResultado | null>(null);
   const [limpando, setLimpando] = useState(false);
   const sucessoToast = useSucessoToast();
-  const { confirmar, dialogElement } = useConfirmarExclusao();
+  const { confirmar, dialogElement } = useConfirmar();
 
   useEffect(() => {
     api.obras.listar().then(setObras).catch(() => setErro('Falha ao carregar obras.'));
@@ -95,42 +106,39 @@ export function ImportarLoteTab() {
   }
 
   return (
-    <div className={estilos.card}>
+    <Card
+      titulo="Importar riscos em lote"
+      subtitulo="Cole um array JSON de riscos (ex.: transcrito de um PGR). Atividade e Perigo são criados automaticamente se ainda não existirem para a obra selecionada, ou reaproveitados se já existirem."
+    >
       {dialogElement}
-      <Text weight="semibold">Importar riscos em lote</Text>
-      <Text size={200} style={{ display: 'block', marginTop: 4, marginBottom: 12 }}>
-        Cole um array JSON de riscos (ex.: transcrito de um PGR). Atividade e Perigo são criados
-        automaticamente se ainda não existirem para a obra selecionada, ou reaproveitados se já existirem.
-      </Text>
+      {erro && (
+        <FeedbackInline tom="erro" aoFechar={() => setErro(null)}>
+          {erro}
+        </FeedbackInline>
+      )}
 
-      {erro && <Text className={estilos.erro}>{erro}</Text>}
+      <FormSection titulo="Seleção da Obra" primeira>
+        <FormGrid>
+          <Campo span={4}>
+            <Field label="Obra">
+              <Select value={obraId} onChange={(_, d) => setObraId(d.value)}>
+                <option value="">Selecione</option>
+                {obras.map((obra) => (
+                  <option key={obra.id} value={obra.id}>
+                    {obra.nome}
+                  </option>
+                ))}
+              </Select>
+            </Field>
+          </Campo>
+        </FormGrid>
+      </FormSection>
 
-      <div className={`${estilos.sectionTitle} ${estilos.sectionTitleFirst}`}>Seleção da Obra</div>
-      <div className={estilos.formGrid}>
-        <div className={estilos.col4}>
-          <Field label="Obra">
-            <Select value={obraId} onChange={(_, d) => setObraId(d.value)}>
-              <option value="">Selecione</option>
-              {obras.map((obra) => (
-                <option key={obra.id} value={obra.id}>
-                  {obra.nome}
-                </option>
-              ))}
-            </Select>
-          </Field>
-        </div>
-      </div>
-
-      <Field label="Itens (JSON)" style={{ marginTop: 12 }}>
-        <Textarea
-          value={json}
-          onChange={(_, d) => setJson(d.value)}
-          rows={12}
-          placeholder={EXEMPLO}
-        />
+      <Field label="Itens (JSON)">
+        <Textarea value={json} onChange={(_, d) => setJson(d.value)} rows={12} placeholder={EXEMPLO} />
       </Field>
 
-      <div className={estilos.formActions} style={{ marginTop: 12 }}>
+      <div style={{ display: 'flex', gap: 8, marginTop: 12 }}>
         <Button appearance="primary" icon={<CloudArrowUp24Regular />} onClick={importar} disabled={carregando}>
           Importar lote
         </Button>
@@ -145,11 +153,13 @@ export function ImportarLoteTab() {
       </div>
 
       {resultado && (
-        <Text style={{ display: 'block', marginTop: 12 }}>
-          {resultado.atividadesCriadas} atividade(s) nova(s), {resultado.perigosCriados} perigo(s) novo(s),{' '}
-          {resultado.riscosCriados} risco(s) criado(s).
-        </Text>
+        <div style={{ marginTop: 12 }}>
+          <Legenda>
+            {resultado.atividadesCriadas} atividade(s) nova(s), {resultado.perigosCriados} perigo(s) novo(s),{' '}
+            {resultado.riscosCriados} risco(s) criado(s).
+          </Legenda>
+        </div>
       )}
-    </div>
+    </Card>
   );
 }
