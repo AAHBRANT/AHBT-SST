@@ -1,9 +1,11 @@
 using System.Security.Cryptography;
+using AAHBRANT.SST.Application.Assinatura;
 using AAHBRANT.SST.Application.Common.Interfaces;
 using AAHBRANT.SST.Application.EntregasEpi;
 using AAHBRANT.SST.Application.EntregasEpi.Queries;
 using AAHBRANT.SST.Domain.Entidades;
 using AAHBRANT.SST.Domain.Enums;
+using AAHBRANT.SST.Infrastructure.Assinatura;
 using AAHBRANT.SST.Infrastructure.Persistencia;
 using AAHBRANT.SST.Infrastructure.Seguranca;
 using Microsoft.EntityFrameworkCore;
@@ -32,6 +34,11 @@ public class ExportarFichaEpiTrabalhadorQueryHandlerTests
         }
     }
 
+    private class QrCodeDocumentoServiceFalso : IQrCodeDocumentoService
+    {
+        public QrCodeDocumentoResultado Gerar(string token) => new(new byte[] { 9 }, $"https://fake/#/validar/{token}");
+    }
+
     private static IAppDbContext CriarDb(string nomeBanco)
     {
         var options = new DbContextOptionsBuilder<SstDbContext>()
@@ -45,7 +52,7 @@ public class ExportarFichaEpiTrabalhadorQueryHandlerTests
     {
         var db = CriarDb(nameof(Handle_TrabalhadorInexistente_RetornaNull));
         var pdf = new FichaEpiPdfServiceFake();
-        var handler = new ExportarFichaEpiTrabalhadorQueryHandler(db, pdf);
+        var handler = new ExportarFichaEpiTrabalhadorQueryHandler(db, pdf, new RegistradorRastreabilidadeService(db, new QrCodeDocumentoServiceFalso()));
 
         var resultado = await handler.Handle(new ExportarFichaEpiTrabalhadorQuery(Guid.NewGuid()), default);
 
@@ -109,7 +116,7 @@ public class ExportarFichaEpiTrabalhadorQueryHandlerTests
         await db.SaveChangesAsync();
 
         var pdf = new FichaEpiPdfServiceFake();
-        var handler = new ExportarFichaEpiTrabalhadorQueryHandler(db, pdf);
+        var handler = new ExportarFichaEpiTrabalhadorQueryHandler(db, pdf, new RegistradorRastreabilidadeService(db, new QrCodeDocumentoServiceFalso()));
 
         var resultado = await handler.Handle(new ExportarFichaEpiTrabalhadorQuery(trabalhador.Id), default);
 

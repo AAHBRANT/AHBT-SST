@@ -24,6 +24,7 @@ public class ListarPcmsosQueryHandler : IRequestHandler<ListarPcmsosQuery, List<
         return pcmsos.Select(p => new PcmsoDto
         {
             Id = p.Id,
+            NumeroDocumento = p.NumeroDocumento,
             Nome = p.Nome,
             Versao = p.Versao,
             Validade = p.Validade,

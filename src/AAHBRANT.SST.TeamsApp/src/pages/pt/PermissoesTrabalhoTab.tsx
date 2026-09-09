@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+﻿import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   Button,
@@ -33,7 +33,6 @@ import {
 import { useSucessoToast } from '../../hooks/useSucessoToast';
 
 const ptVazia: NovaPermissaoTrabalho = {
-  numeroPt: '',
   atividadeId: '',
   descricaoAtividade: '',
   local: '',
@@ -110,7 +109,6 @@ export function PermissoesTrabalhoTab() {
       setErro(null);
       await api.permissoesTrabalho.criar({
         ...novaPt,
-        numeroPt: novaPt.numeroPt || null,
         empresaExecutante: novaPt.empresaExecutante || null,
         equipeId: novaPt.equipeId || null,
         horarioInicio: novaPt.horarioInicio ? `${novaPt.horarioInicio}:00` : null,
@@ -164,11 +162,6 @@ export function PermissoesTrabalhoTab() {
       <Card titulo="Permissão de Trabalho (PT)">
         <FormSection titulo="Dados Gerais" numero={1} primeira>
           <FormGrid>
-            <Campo span={2}>
-              <Field label="Nº PT">
-                <Input value={novaPt.numeroPt ?? ''} onChange={(_, d) => setNovaPt({ ...novaPt, numeroPt: d.value })} />
-              </Field>
-            </Campo>
             <Campo span={3}>
               <Field label="Atividade">
                 <Select value={novaPt.atividadeId} onChange={(_, d) => setNovaPt({ ...novaPt, atividadeId: d.value })}>

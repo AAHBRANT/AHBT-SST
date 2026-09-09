@@ -101,6 +101,7 @@ export function DdsSemanalPage() {
   }
 
   const colunas: Coluna<DdsSemanal>[] = [
+    { chave: 'numeroDocumento', rotulo: 'Nº do documento', render: (s) => s.numeroDocumento ?? '-' },
     { chave: 'obra', rotulo: 'Obra', render: (s) => s.obraNome },
     { chave: 'tipo', rotulo: 'Tipo', render: (s) => tipoDdsSemanalLabel[s.tipo] },
     {

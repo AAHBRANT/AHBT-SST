@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+﻿import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   Button,
@@ -33,6 +33,8 @@ function treinamentoVazio(trabalhadorId: string): NovoTreinamento {
     cargaHorariaRealizada: 0,
     instituicaoInstrutor: '',
     numeroCertificado: '',
+    local: '',
+    instrutorRegistroProfissional: '',
   };
 }
 
@@ -42,8 +44,8 @@ function treinamentoVazio(trabalhadorId: string): NovoTreinamento {
 // à mão em situacaoTreinamento(), mesma regra de 30 dias) passa a usar os helpers
 // nivelVencimento/tomDeVencimento/rotuloDeVencimento de @ui (guia de conversão, "Badge→StatusChip"),
 // mantendo a data crua ao lado do chip (aprendizado do piloto 1: chip nunca substitui sozinho um
-// valor de auditoria).
-export function TreinamentosTab({ trabalhadorId }: { trabalhadorId: string }) {
+// valor de auditoria). obraId propaga pro AssinaturaCertificadoTreinamentoDialog (AssinaturaQuiosque).
+export function TreinamentosTab({ trabalhadorId, obraId }: { trabalhadorId: string; obraId: string }) {
   const navigate = useNavigate();
   const [treinamentos, setTreinamentos] = useState<Treinamento[]>([]);
   const [cursos, setCursos] = useState<CursoTreinamento[]>([]);
@@ -285,11 +287,27 @@ export function TreinamentosTab({ trabalhadorId }: { trabalhadorId: string }) {
               />
             </Field>
           </Campo>
-          <Campo span={12}>
-            <Field label="Instituição / instrutor">
+          <Campo span={6}>
+            <Field label="Técnico de Segurança do Trabalho (Instrutor/Resp. Técnico)">
               <Input
                 value={novoTreinamento.instituicaoInstrutor ?? ''}
                 onChange={(_, d) => setNovoTreinamento({ ...novoTreinamento, instituicaoInstrutor: d.value })}
+              />
+            </Field>
+          </Campo>
+          <Campo span={6}>
+            <Field label="Registro profissional do instrutor (CREA/MTE)">
+              <Input
+                value={novoTreinamento.instrutorRegistroProfissional ?? ''}
+                onChange={(_, d) => setNovoTreinamento({ ...novoTreinamento, instrutorRegistroProfissional: d.value })}
+              />
+            </Field>
+          </Campo>
+          <Campo span={12}>
+            <Field label="Local / Instalações (opcional — sem preencher, usa a Obra)">
+              <Input
+                value={novoTreinamento.local ?? ''}
+                onChange={(_, d) => setNovoTreinamento({ ...novoTreinamento, local: d.value })}
               />
             </Field>
           </Campo>
@@ -304,6 +322,7 @@ export function TreinamentosTab({ trabalhadorId }: { trabalhadorId: string }) {
           cursoNome={assinaturaAberta.cursoNome}
           dataRealizacao={assinaturaAberta.dataRealizacao}
           cargaHorariaRealizada={assinaturaAberta.cargaHorariaRealizada}
+          obraId={obraId}
         />
       )}
     </div>

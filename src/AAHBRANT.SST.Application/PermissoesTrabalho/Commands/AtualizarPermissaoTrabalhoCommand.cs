@@ -10,7 +10,6 @@ namespace AAHBRANT.SST.Application.PermissoesTrabalho.Commands;
 // revalidação/encerramento, que passam por seus próprios comandos dedicados.
 public record AtualizarPermissaoTrabalhoCommand(
     Guid Id,
-    string? NumeroPt,
     Guid AtividadeId,
     string DescricaoAtividade,
     string Local,
@@ -29,7 +28,6 @@ public class AtualizarPermissaoTrabalhoCommandValidator : AbstractValidator<Atua
     public AtualizarPermissaoTrabalhoCommandValidator()
     {
         RuleFor(x => x.Id).NotEmpty();
-        RuleFor(x => x.NumeroPt).MaximumLength(60);
         RuleFor(x => x.AtividadeId).NotEmpty();
         RuleFor(x => x.DescricaoAtividade).NotEmpty().MaximumLength(500);
         RuleFor(x => x.Local).NotEmpty().MaximumLength(200);
@@ -50,7 +48,6 @@ public class AtualizarPermissaoTrabalhoCommandHandler : IRequestHandler<Atualiza
             .FirstOrDefaultAsync(p => p.Id == request.Id, ct)
             ?? throw new KeyNotFoundException($"Permissão de Trabalho {request.Id} não encontrada.");
 
-        pt.NumeroPt = request.NumeroPt;
         pt.AtividadeId = request.AtividadeId;
         pt.DescricaoAtividade = request.DescricaoAtividade;
         pt.Local = request.Local;

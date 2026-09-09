@@ -1,6 +1,17 @@
-import { useRef, useState } from 'react';
-import { Button, Spinner } from '@fluentui/react-components';
+import { useEffect, useRef, useState } from 'react';
+import {
+  Button,
+  Dialog,
+  DialogActions,
+  DialogBody,
+  DialogContent,
+  DialogSurface,
+  DialogTitle,
+  Spinner,
+  Text,
+} from '@fluentui/react-components';
 import { Camera24Regular } from '@fluentui/react-icons';
+import { comprimirImagem } from '../lib/imagem';
 
 interface SeletorFotoCameraProps {
   aoSelecionarArquivo: (arquivo: File) => void | Promise<void>;
@@ -15,46 +26,16 @@ interface SeletorFotoCameraProps {
   tiposAceitos?: string;
   aparencia?: 'subtle' | 'secondary' | 'primary';
   apenasIcone?: boolean;
+  // Câmera frontal ("user", ex.: reconhecimento facial — a pessoa fotografa o próprio rosto) ou
+  // traseira ("environment", padrão — fotos de evidência/EPI/documento, apontando pra outra coisa).
+  modoCamera?: 'user' | 'environment';
 }
 
-const LADO_MAXIMO_PX = 1600;
-const QUALIDADE_JPEG = 0.8;
-
-// Fotos de câmera de celular vêm em resolução plena (3-8 MB) mas são exibidas em miniaturas
-// pequenas nas telas do sistema — sem isso, cada upload gasta banda/tempo à toa e engorda o banco
-// (todo arquivo é gravado como byte[] direto numa tabela, não há storage próprio). Redesenha a
-// imagem num <canvas> reduzindo pro lado maior de 1600px e reexporta como JPEG 80% de qualidade
-// antes de checar o limite de tamanho. Se falhar (formato exótico, navegador sem suporte), segue
-// com o arquivo original — a checagem de tamanho abaixo continua valendo como rede de segurança.
-async function comprimirImagem(arquivo: File): Promise<File> {
-  const bitmap = await createImageBitmap(arquivo);
-  try {
-    const escala = Math.min(1, LADO_MAXIMO_PX / Math.max(bitmap.width, bitmap.height));
-    const largura = Math.round(bitmap.width * escala);
-    const altura = Math.round(bitmap.height * escala);
-
-    const canvas = document.createElement('canvas');
-    canvas.width = largura;
-    canvas.height = altura;
-    const contexto = canvas.getContext('2d');
-    if (!contexto) return arquivo;
-    contexto.drawImage(bitmap, 0, 0, largura, altura);
-
-    const blob = await new Promise<Blob | null>((resolve) => canvas.toBlob(resolve, 'image/jpeg', QUALIDADE_JPEG));
-    if (!blob) return arquivo;
-
-    const novoNome = arquivo.name.replace(/\.[^./]+$/, '') + '.jpg';
-    return new File([blob], novoNome, { type: 'image/jpeg' });
-  } finally {
-    bitmap.close();
-  }
-}
-
-// Botão padrão de captura/seleção de foto em todo o sistema (pedido do usuário, 31/08): ícone de
-// câmera no lugar do input de arquivo nativo ("Escolher Arquivo", feio e sem padrão visual), com
-// capture="environment" para abrir a câmera traseira do celular direto — em vez do seletor de
-// galeria/arquivos do sistema operacional. Mostra um spinner enquanto aoSelecionarArquivo roda
-// (upload direto) ou instantâneo (seleção que só alimenta estado do formulário pai).
+// Botão padrão de captura/seleção de foto em todo o sistema (pedido do usuário, 31/08 e 04/09): ao
+// clicar, tenta abrir um preview ao vivo da câmera do dispositivo (getUserMedia) num diálogo, com
+// botão "Capturar" — funciona tanto em notebook (webcam) quanto em celular/tablet. Se a câmera não
+// existir, a permissão for negada, ou o navegador não suportar getUserMedia, cai automaticamente no
+// seletor de arquivos nativo do sistema operacional (mesmo comportamento de antes).
 export function SeletorFotoCamera({
   aoSelecionarArquivo,
   aoErroValidacao,
@@ -65,9 +46,23 @@ export function SeletorFotoCamera({
   tiposAceitos = 'image/*',
   aparencia = 'subtle',
   apenasIcone = false,
+  modoCamera = 'environment',
 }: SeletorFotoCameraProps) {
   const inputRef = useRef<HTMLInputElement>(null);
+  const videoRef = useRef<HTMLVideoElement>(null);
   const [processando, setProcessando] = useState(false);
+  const [stream, setStream] = useState<MediaStream | null>(null);
+
+  // Anexa o stream ao <video> só depois que o diálogo (e portanto o elemento) já está montado, e
+  // para as tracks da câmera sempre que o stream muda ou o componente desmonta — sem isso a luz da
+  // webcam ficava acesa mesmo depois de fechar o diálogo.
+  useEffect(() => {
+    if (!stream) return;
+    if (videoRef.current) videoRef.current.srcObject = stream;
+    return () => {
+      stream.getTracks().forEach((track) => track.stop());
+    };
+  }, [stream]);
 
   async function tratarArquivo(arquivo: File | undefined) {
     if (!arquivo) return;
@@ -97,13 +92,49 @@ export function SeletorFotoCamera({
     }
   }
 
+  async function abrirCamera() {
+    if (!navigator.mediaDevices?.getUserMedia) {
+      inputRef.current?.click();
+      return;
+    }
+    try {
+      const novoStream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: modoCamera } });
+      setStream(novoStream);
+    } catch {
+      // Sem câmera, permissão negada, ou navegador sem suporte — cai no seletor de arquivos.
+      inputRef.current?.click();
+    }
+  }
+
+  function fecharCamera() {
+    setStream(null);
+  }
+
+  function capturarFoto() {
+    const video = videoRef.current;
+    if (!video || !video.videoWidth) return;
+    const canvas = document.createElement('canvas');
+    canvas.width = video.videoWidth;
+    canvas.height = video.videoHeight;
+    canvas.getContext('2d')?.drawImage(video, 0, 0);
+    fecharCamera();
+    canvas.toBlob(
+      (blob) => {
+        if (!blob) return;
+        tratarArquivo(new File([blob], `captura-${Date.now()}.jpg`, { type: 'image/jpeg' }));
+      },
+      'image/jpeg',
+      0.92,
+    );
+  }
+
   return (
     <>
       <input
         ref={inputRef}
         type="file"
         accept={tiposAceitos}
-        capture="environment"
+        capture={modoCamera}
         style={{ display: 'none' }}
         onChange={(e) => {
           const arquivo = e.target.files?.[0];
@@ -115,13 +146,49 @@ export function SeletorFotoCamera({
         appearance={aparencia}
         size={tamanho}
         icon={processando ? <Spinner size="tiny" /> : <Camera24Regular />}
-        onClick={() => inputRef.current?.click()}
+        onClick={abrirCamera}
         disabled={desabilitado || processando}
         aria-label={rotulo}
         title={rotulo}
       >
         {apenasIcone ? undefined : rotulo}
       </Button>
+
+      <Dialog open={!!stream} onOpenChange={(_, data) => !data.open && fecharCamera()}>
+        <DialogSurface>
+          <DialogBody>
+            <DialogTitle>Tirar foto</DialogTitle>
+            <DialogContent>
+              <video
+                ref={videoRef}
+                autoPlay
+                playsInline
+                muted
+                style={{
+                  width: '100%',
+                  borderRadius: 8,
+                  transform: modoCamera === 'user' ? 'scaleX(-1)' : undefined,
+                }}
+              />
+              <Text size={200} style={{ display: 'block', marginTop: 8 }}>
+                Não consegue usar a câmera?{' '}
+                <a href="#" onClick={(e) => { e.preventDefault(); fecharCamera(); inputRef.current?.click(); }}>
+                  Selecionar um arquivo
+                </a>
+                .
+              </Text>
+            </DialogContent>
+            <DialogActions>
+              <Button appearance="secondary" onClick={fecharCamera}>
+                Cancelar
+              </Button>
+              <Button appearance="primary" icon={<Camera24Regular />} onClick={capturarFoto}>
+                Capturar
+              </Button>
+            </DialogActions>
+          </DialogBody>
+        </DialogSurface>
+      </Dialog>
     </>
   );
 }

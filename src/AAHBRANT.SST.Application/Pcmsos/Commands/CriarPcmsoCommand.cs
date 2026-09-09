@@ -39,13 +39,19 @@ public class CriarPcmsoCommandValidator : AbstractValidator<CriarPcmsoCommand>
 public class CriarPcmsoCommandHandler : IRequestHandler<CriarPcmsoCommand, Guid>
 {
     private readonly IAppDbContext _db;
+    private readonly IGeradorNumeroDocumentoService _geradorNumero;
 
-    public CriarPcmsoCommandHandler(IAppDbContext db) => _db = db;
+    public CriarPcmsoCommandHandler(IAppDbContext db, IGeradorNumeroDocumentoService geradorNumero)
+    {
+        _db = db;
+        _geradorNumero = geradorNumero;
+    }
 
     public async Task<Guid> Handle(CriarPcmsoCommand request, CancellationToken ct)
     {
         var pcmso = new PcmsoDetalhe
         {
+            NumeroDocumento = await _geradorNumero.GerarAsync("PCMSO", ct),
             Nome = request.Nome,
             Versao = request.Versao,
             Validade = request.Validade,

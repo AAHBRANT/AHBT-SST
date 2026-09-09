@@ -36,6 +36,7 @@ export interface AssinaturaCertificadoTreinamentoDialogProps {
   cursoNome: string;
   dataRealizacao: string;
   cargaHorariaRealizada: number;
+  obraId: string;
 }
 
 // Popup de assinatura disparado logo após "Adicionar treinamento" em TreinamentosTab.tsx — mesmo
@@ -52,6 +53,7 @@ export function AssinaturaCertificadoTreinamentoDialog({
   cursoNome,
   dataRealizacao,
   cargaHorariaRealizada,
+  obraId,
 }: AssinaturaCertificadoTreinamentoDialogProps) {
   const estilos = usePageStyles();
   const [documento, setDocumento] = useState<DocumentoAssinatura | null>(null);
@@ -138,7 +140,7 @@ export function AssinaturaCertificadoTreinamentoDialog({
             <Text weight="semibold" style={{ display: 'block', marginBottom: 12 }}>
               Assinatura do funcionário
             </Text>
-            <AssinaturaQuiosque entidadeTipo="Treinamento" entidadeId={treinamentoId} />
+            <AssinaturaQuiosque entidadeTipo="Treinamento" entidadeId={treinamentoId} obraId={obraId} />
           </DialogContent>
           <DialogActions>
             <Button appearance="secondary" onClick={onClose}>

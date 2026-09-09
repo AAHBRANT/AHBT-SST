@@ -9,7 +9,6 @@ namespace AAHBRANT.SST.Application.Aprs.Commands;
 // A APR sempre nasce em elaboração ("aprovação" é uma etapa distinta do cadastro) — o campo
 // Status não é exposto aqui; a mudança de status passa por AprovarAprCommand/ReprovarAprCommand.
 public record CriarAprCommand(
-    string? NumeroApr,
     Guid AtividadeId,
     string Local,
     string? MaquinasEquipamentos,
@@ -23,7 +22,6 @@ public class CriarAprCommandValidator : AbstractValidator<CriarAprCommand>
 {
     public CriarAprCommandValidator()
     {
-        RuleFor(x => x.NumeroApr).MaximumLength(60);
         RuleFor(x => x.AtividadeId).NotEmpty();
         RuleFor(x => x.Local).NotEmpty().MaximumLength(200);
         RuleFor(x => x.MaquinasEquipamentos).MaximumLength(500);
@@ -34,8 +32,13 @@ public class CriarAprCommandValidator : AbstractValidator<CriarAprCommand>
 public class CriarAprCommandHandler : IRequestHandler<CriarAprCommand, Guid>
 {
     private readonly IAppDbContext _db;
+    private readonly IGeradorNumeroDocumentoService _geradorNumero;
 
-    public CriarAprCommandHandler(IAppDbContext db) => _db = db;
+    public CriarAprCommandHandler(IAppDbContext db, IGeradorNumeroDocumentoService geradorNumero)
+    {
+        _db = db;
+        _geradorNumero = geradorNumero;
+    }
 
     public async Task<Guid> Handle(CriarAprCommand request, CancellationToken ct)
     {
@@ -45,7 +48,7 @@ public class CriarAprCommandHandler : IRequestHandler<CriarAprCommand, Guid>
 
         var apr = new Apr
         {
-            NumeroApr = request.NumeroApr,
+            NumeroApr = await _geradorNumero.GerarAsync("APR", ct),
             AtividadeId = request.AtividadeId,
             Local = request.Local,
             MaquinasEquipamentos = request.MaquinasEquipamentos,

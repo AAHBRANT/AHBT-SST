@@ -22,6 +22,12 @@ public class DocumentoAssinatura : AuditableEntity
     public string? TokenValidacaoPublica { get; set; }
     public DateTime? FinalizadoEm { get; set; }
 
+    // Timestamp de quando o token de validação pública foi gerado pela primeira vez (Task 2 —
+    // IRegistradorRastreabilidadeService), independente de o documento chegar a ser Finalizado. Usado
+    // como "emitido em" na página pública/rodapé para documentos que nunca finalizam (CIPA, DDS
+    // Semanal — nunca assinam digitalmente).
+    public DateTime? RastreadoEm { get; set; }
+
     // PDF assinado gerado na finalização. Sem Blob Storage provisionado no projeto (confirmado em
     // diagnóstico anterior) — segue o mesmo padrão já usado por DdsParticipante.FotoConteudo
     // (varbinary(max) no próprio banco) em vez de introduzir uma dependência de storage nova.

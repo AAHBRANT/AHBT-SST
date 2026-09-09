@@ -93,11 +93,8 @@ public class CipaPdfService : ICipaPdfService
                     });
                 });
 
-                pagina.Footer().AlignCenter().Text(t =>
-                {
-                    t.Span("Gerado em ").FontSize(8);
-                    t.Span(DateTime.Now.ToString("dd/MM/yyyy HH:mm")).FontSize(8);
-                });
+                pagina.Footer().Column(coluna => RodapeDocumentoPadrao.Desenhar(
+                    coluna, "Ata de Eleição CIPA", modelo.NumeroDocumento, null, modelo.ConteudoHash, modelo.UrlValidacaoPublica, modelo.QrCodePng, temAssinatura: false));
             });
         });
 
@@ -144,11 +141,8 @@ public class CipaPdfService : ICipaPdfService
                     }
                 });
 
-                pagina.Footer().AlignCenter().Text(t =>
-                {
-                    t.Span("Gerado em ").FontSize(8);
-                    t.Span(DateTime.Now.ToString("dd/MM/yyyy HH:mm")).FontSize(8);
-                });
+                pagina.Footer().Column(coluna => RodapeDocumentoPadrao.Desenhar(
+                    coluna, "Ata de Reunião CIPA", protocolo: null, null, modelo.ConteudoHash, modelo.UrlValidacaoPublica, modelo.QrCodePng, temAssinatura: false));
             });
         });
 

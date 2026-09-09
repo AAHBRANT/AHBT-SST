@@ -10,6 +10,7 @@ public class DdsConfiguracao : IEntityTypeConfiguration<Dds>
     {
         builder.Property(d => d.TemaLivreNome).HasMaxLength(200);
         builder.Property(d => d.TemaLivreDescricao).HasMaxLength(500);
+        builder.Property(d => d.NumeroDocumento).HasMaxLength(50);
 
         builder.HasOne(d => d.Obra)
             .WithMany()

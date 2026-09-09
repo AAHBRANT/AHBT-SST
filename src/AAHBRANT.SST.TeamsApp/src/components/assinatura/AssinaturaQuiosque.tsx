@@ -14,6 +14,8 @@ import {
 import { Checkmark24Filled, Fingerprint24Regular, Warning24Regular } from '@fluentui/react-icons';
 import { api, metodoAutenticacaoAssinaturaLabel, type DocumentoAssinatura } from '../../lib/api';
 import { capturarDigitalLocal, estaAgenteLocalDisponivel, obterDispositivoLocal } from '../../lib/agenteBiometricoLocal';
+import { SeletorFotoCamera } from '../SeletorFotoCamera';
+import { MutacaoEnfileiradaOfflineError } from '../../lib/offline/syncEngine';
 import { usePageStyles } from '../../pages/pageStyles';
 
 function extrairMensagemErro(e: unknown, fallback: string): string {
@@ -33,6 +35,9 @@ function extrairMensagemErro(e: unknown, fallback: string): string {
 export interface AssinaturaQuiosqueProps {
   entidadeTipo: string;
   entidadeId: string;
+  // Obra do trabalhador que vai assinar — necessária só pelo bloco de reconhecimento facial (o
+  // Identify busca no PersonGroup da obra). Os demais métodos (Futronic/sessão logada) não usam.
+  obraId: string;
 }
 
 // Bloco de quiosque do Motor de Assinatura Eletrônica (docs/Motor-Assinatura-Eletronica.md §5,
@@ -43,7 +48,7 @@ export interface AssinaturaQuiosqueProps {
 // página de detalhe do módulo. Crachá/QR+PIN e WebAuthn/FIDO2 foram removidos do sistema em 31/08
 // (decisão do usuário: único método de assinatura é a digital via leitor Futronic FS80H, "para não
 // dar conflitos" com métodos alternativos) — sem o leitor local disponível não há como assinar aqui.
-export function AssinaturaQuiosque({ entidadeTipo, entidadeId }: AssinaturaQuiosqueProps) {
+export function AssinaturaQuiosque({ entidadeTipo, entidadeId, obraId }: AssinaturaQuiosqueProps) {
   const estilos = usePageStyles();
   const [documento, setDocumento] = useState<DocumentoAssinatura | null>(null);
   const [processando, setProcessando] = useState(false);
@@ -51,6 +56,7 @@ export function AssinaturaQuiosque({ entidadeTipo, entidadeId }: AssinaturaQuios
   const [ultimoAssinante, setUltimoAssinante] = useState<string | null>(null);
   const [agenteLocalDisponivel, setAgenteLocalDisponivel] = useState(false);
   const [dispositivoLocal, setDispositivoLocal] = useState<{ dispositivoId: string; segredoDispositivo: string } | null>(null);
+  const [pendenteFacial, setPendenteFacial] = useState(false);
 
   useEffect(() => {
     estaAgenteLocalDisponivel().then(async (disponivel) => {
@@ -107,6 +113,25 @@ export function AssinaturaQuiosque({ entidadeTipo, entidadeId }: AssinaturaQuios
   // novo). Outros documentos (DDS, PT, EPI) continuam com quantas assinaturas forem necessárias.
   const assinaturaUnicaConcluida = entidadeTipo === 'Inspecao' && (documento?.signatarios.length ?? 0) > 0;
 
+  async function assinarComFacial(arquivo: File) {
+    if (!documento) return;
+    try {
+      setErro(null);
+      setPendenteFacial(false);
+      setUltimoAssinante(null);
+      const signatario = await api.assinatura.autenticarFacial(documento.id, obraId, arquivo);
+      setUltimoAssinante(signatario.trabalhadorNome);
+      const doc = await api.assinatura.obter(entidadeTipo, entidadeId);
+      setDocumento(doc);
+    } catch (e) {
+      if (e instanceof MutacaoEnfileiradaOfflineError) {
+        setPendenteFacial(true);
+        return;
+      }
+      setErro(extrairMensagemErro(e, 'Falha na autenticação facial.'));
+    }
+  }
+
   return (
     <div>
       {erro && <Text className={estilos.erro}>{erro}</Text>}
@@ -149,9 +174,28 @@ export function AssinaturaQuiosque({ entidadeTipo, entidadeId }: AssinaturaQuios
             <Text weight="semibold">Leitor Futronic não encontrado nesta máquina</Text>
           </div>
           <Text style={{ display: 'block', marginTop: 8 }}>
-            Este é o único método de assinatura do sistema. Verifique se o leitor está conectado e se o
-            Agente Biométrico está em execução, depois recarregue esta página.
+            Verifique se o leitor está conectado e se o Agente Biométrico está em execução, depois
+            recarregue esta página — ou use o reconhecimento facial abaixo.
           </Text>
+        </div>
+      )}
+
+      {!assinaturaUnicaConcluida && (
+        <div className={estilos.card} style={{ marginBottom: 16, maxWidth: 480 }}>
+          <Text weight="semibold" style={{ display: 'block', marginBottom: 12 }}>
+            Reconhecimento Facial (Azure)
+          </Text>
+          {pendenteFacial && (
+            <Text style={{ display: 'block', marginBottom: 8 }}>
+              Sem internet — a foto foi salva neste dispositivo e será verificada assim que a conexão voltar.
+            </Text>
+          )}
+          <SeletorFotoCamera
+            aoSelecionarArquivo={assinarComFacial}
+            rotulo="Assinar com reconhecimento facial"
+            desabilitado={!documento}
+            modoCamera="user"
+          />
         </div>
       )}
 

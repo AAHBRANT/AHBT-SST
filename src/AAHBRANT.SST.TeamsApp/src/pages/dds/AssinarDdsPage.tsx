@@ -43,7 +43,7 @@ export function AssinarDdsPage() {
         </FeedbackInline>
       )}
 
-      <AssinaturaQuiosque entidadeTipo="Dds" entidadeId={id} />
+      <AssinaturaQuiosque entidadeTipo="Dds" entidadeId={id} obraId={dds?.obraId ?? ''} />
     </div>
   );
 }

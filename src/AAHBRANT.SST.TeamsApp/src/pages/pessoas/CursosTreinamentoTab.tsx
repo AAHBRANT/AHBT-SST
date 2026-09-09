@@ -3,6 +3,7 @@ import {
   Button,
   Field,
   Input,
+  Textarea,
   Card,
   PageHeader,
   DataTable,
@@ -22,6 +23,7 @@ const cursoVazio: NovoCursoTreinamento = {
   normaReferencia: '',
   cargaHorariaMinima: 0,
   validadeEmMeses: 12,
+  conteudoProgramatico: '',
 };
 
 // Camada ui/ (Onda 2, Task 1): formulário de criação foi para um PainelLateral, mesmo padrão dos
@@ -170,6 +172,15 @@ export function CursosTreinamentoTab() {
                 type="number"
                 value={String(novoCurso.validadeEmMeses)}
                 onChange={(_, d) => setNovoCurso({ ...novoCurso, validadeEmMeses: Number(d.value) })}
+              />
+            </Field>
+          </Campo>
+          <Campo span={12}>
+            <Field label="Conteúdo programático (um tópico por linha — vira o verso do certificado)">
+              <Textarea
+                rows={6}
+                value={novoCurso.conteudoProgramatico ?? ''}
+                onChange={(_, d) => setNovoCurso({ ...novoCurso, conteudoProgramatico: d.value })}
               />
             </Field>
           </Campo>

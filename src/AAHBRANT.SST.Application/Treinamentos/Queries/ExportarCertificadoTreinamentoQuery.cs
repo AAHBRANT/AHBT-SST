@@ -1,3 +1,4 @@
+using AAHBRANT.SST.Application.Assinatura;
 using AAHBRANT.SST.Application.Common;
 using AAHBRANT.SST.Application.Common.Interfaces;
 using MediatR;
@@ -11,11 +12,13 @@ public class ExportarCertificadoTreinamentoQueryHandler : IRequestHandler<Export
 {
     private readonly IAppDbContext _db;
     private readonly ICertificadoTreinamentoPdfService _pdf;
+    private readonly IRegistradorRastreabilidadeService _rastreabilidade;
 
-    public ExportarCertificadoTreinamentoQueryHandler(IAppDbContext db, ICertificadoTreinamentoPdfService pdf)
+    public ExportarCertificadoTreinamentoQueryHandler(IAppDbContext db, ICertificadoTreinamentoPdfService pdf, IRegistradorRastreabilidadeService rastreabilidade)
     {
         _db = db;
         _pdf = pdf;
+        _rastreabilidade = rastreabilidade;
     }
 
     public async Task<byte[]?> Handle(ExportarCertificadoTreinamentoQuery request, CancellationToken ct)
@@ -30,7 +33,8 @@ public class ExportarCertificadoTreinamentoQueryHandler : IRequestHandler<Export
         if (treinamento is null || treinamento.Trabalhador is null || treinamento.CursoTreinamento is null) return null;
 
         // Um DocumentoAssinatura por treinamento (EntidadeTipo="Treinamento", EntidadeId=Treinamento.Id) —
-        // ver docs/Motor-Assinatura-Eletronica.md, mesmo padrão de ExportarFichaEpiTrabalhadorQuery.
+        // ver docs/Motor-Assinatura-Eletronica.md. Signatários vêm direto da tabela (não do resultado
+        // de GarantirAsync) para exibir nome+método+data no corpo do certificado.
         var documento = await _db.DocumentosAssinatura
             .Include(d => d.Signatarios)
                 .ThenInclude(s => s.Trabalhador)
@@ -42,8 +46,27 @@ public class ExportarCertificadoTreinamentoQueryHandler : IRequestHandler<Export
             .Select(s => new CertificadoTreinamentoPdfSignatarioModelo(s.Trabalhador?.Nome ?? string.Empty, s.AssinadoEm))
             .ToList() ?? new List<CertificadoTreinamentoPdfSignatarioModelo>();
 
+        // Rastreabilidade sempre disponível a partir do primeiro export (Motor de Assinatura Task 2) —
+        // antes disto, o QR só existia depois de uma finalização que, para Treinamento, nada nunca dispara.
+        var rastreio = await _rastreabilidade.GarantirAsync("Treinamento", request.TreinamentoId, ct);
+        var qrCodePng = rastreio.QrCodePng;
+
+        // Foto da turma (item 6 da proposta) — só existe quando este Treinamento foi gerado pelo
+        // encerramento de uma SessaoTreinamento (fluxo antigo, criado manualmente por trabalhador,
+        // continua sem foto). Usa a primeira das 3 fotos obrigatórias (Ordem = 1) como representativa.
+        byte[]? fotoTurma = null;
+        if (treinamento.SessaoTreinamentoId is not null)
+        {
+            fotoTurma = await _db.FotosEvidenciaSessaoTreinamento
+                .Where(f => f.SessaoTreinamentoId == treinamento.SessaoTreinamentoId && f.Ativo)
+                .OrderBy(f => f.Ordem)
+                .Select(f => f.FotoConteudo)
+                .FirstOrDefaultAsync(ct);
+        }
+
         var modelo = new CertificadoTreinamentoPdfModelo(
             treinamento.Trabalhador.Obra?.Nome ?? string.Empty,
+            treinamento.Trabalhador.Obra?.LogoConteudo,
             treinamento.Trabalhador.Obra?.Cnpj,
             treinamento.Trabalhador.Obra?.Endereco,
             treinamento.Trabalhador.Obra?.Cidade,
@@ -51,6 +74,7 @@ public class ExportarCertificadoTreinamentoQueryHandler : IRequestHandler<Export
             treinamento.Trabalhador.Nome,
             CpfMascarador.Mascarar(treinamento.Trabalhador.Cpf),
             treinamento.Trabalhador.Rg,
+            treinamento.Trabalhador.Matricula,
             treinamento.Trabalhador.Funcao?.Nome ?? string.Empty,
             treinamento.CursoTreinamento.Nome,
             treinamento.CursoTreinamento.NormaReferencia,
@@ -59,9 +83,17 @@ public class ExportarCertificadoTreinamentoQueryHandler : IRequestHandler<Export
             treinamento.DataRealizacao,
             treinamento.DataValidade,
             treinamento.InstituicaoInstrutor,
+            treinamento.InstrutorRegistroProfissional,
             treinamento.NumeroCertificado,
+            treinamento.Local,
             treinamento.CursoTreinamento.ConteudoProgramatico,
-            signatarios);
+            signatarios,
+            qrCodePng,
+            fotoTurma,
+            rastreio.ConteudoHash,
+            rastreio.UrlValidacaoPublica,
+            rastreio.QrCodePng,
+            rastreio.TemAssinatura);
 
         return _pdf.Gerar(modelo);
     }
