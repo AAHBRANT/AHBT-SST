@@ -94,6 +94,19 @@ public class TrabalhadorConfiguracao : IEntityTypeConfiguration<Trabalhador>
         builder.Property(t => t.FotoContentType).HasMaxLength(100);
         builder.Property(t => t.AzureFacePersonId).HasMaxLength(64);
 
+        // Campos sincronizados do G-RH — ver disclosure na entidade.
+        builder.Property(t => t.Pis).HasMaxLength(20);
+        builder.Property(t => t.Ctps).HasMaxLength(30);
+        builder.Property(t => t.NomeMae).HasMaxLength(200);
+        builder.Property(t => t.Endereco).HasMaxLength(300);
+        builder.Property(t => t.Municipio).HasMaxLength(100);
+        builder.Property(t => t.Uf).HasMaxLength(2);
+        builder.Property(t => t.Cep).HasMaxLength(9);
+        builder.Property(t => t.Salario).HasPrecision(12, 2);
+        builder.Property(t => t.TamanhoBlusaEpi).HasMaxLength(10);
+        builder.Property(t => t.TamanhoCalcaEpi).HasMaxLength(10);
+        builder.Property(t => t.TamanhoCalcadoEpi).HasMaxLength(10);
+
         builder.HasOne(t => t.Obra).WithMany(o => o.Trabalhadores)
             .HasForeignKey(t => t.ObraId).OnDelete(DeleteBehavior.Restrict);
         builder.HasOne(t => t.Setor).WithMany()

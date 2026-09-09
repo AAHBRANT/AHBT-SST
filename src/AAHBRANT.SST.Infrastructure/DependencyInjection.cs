@@ -43,6 +43,7 @@ public static class DependencyInjection
         // SstDbContext depende disso, incluindo o Worker (sem HttpContext/usuário logado; ver
         // CurrentUserService sobre por que o padrão "acesso global" é o correto lá).
         services.AddScoped<ICurrentUserService, CurrentUserService>();
+        services.AddScoped<ICpfHashService, CpfHashService>();
 
         // Chaves de criptografia/hash do CPF (LGPD) — carregadas uma única vez aqui porque o
         // ValueConverter e a IEntityTypeConfiguration são instanciados por reflection pelo EF Core,

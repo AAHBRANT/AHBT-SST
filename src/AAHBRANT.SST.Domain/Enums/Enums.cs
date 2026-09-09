@@ -53,6 +53,16 @@ public enum TipoVinculo
     Estagiario = 4
 }
 
+// Situação do vínculo, sincronizada do G-RH (fonte única de cadastro) — DataDemissao já cobre
+// "desligado" para fins de data, mas não distingue "afastado temporariamente" (INSS, licença),
+// que o G-RH controla via módulo de Férias & Afastamentos e o SST só precisa refletir.
+public enum SituacaoTrabalhador
+{
+    Ativo = 1,
+    Afastado = 2,
+    Desligado = 3
+}
+
 // Seção 9 da Base de Conhecimento — status de aptidão
 public enum ResultadoAso
 {
