@@ -1,27 +1,35 @@
 import { useEffect, useState } from 'react';
 import {
-  Badge,
   Button,
+  Campo,
+  Card,
+  CampoData,
+  DataTable,
   Field,
+  FeedbackInline,
+  FormGrid,
+  FormRodape,
+  FormSection,
   Input,
-  Table,
-  TableBody,
-  TableCell,
-  TableHeader,
-  TableHeaderCell,
-  TableRow,
-  Text,
-} from '@fluentui/react-components';
-import { CampoData } from '../../components/CampoData';
+  PageHeader,
+  StatusChip,
+  type Coluna,
+  type Tom,
+} from '@ui';
 import { ArrowDownload24Regular, Filter24Regular, Link24Regular } from '@fluentui/react-icons';
 import { api, statusDocumentoAssinaturaLabel, type DocumentoAssinaturaResumo } from '../../lib/api';
-import { usePageStyles } from '../pageStyles';
+
+// Status do Motor de Assinatura Eletrônica não tinha mapeamento de cor no Badge original (só
+// appearance="tint" genérico) — julgamento novo desta conversão (Guia item 5): Em andamento = ainda
+// não decidido (info), Finalizado = ok, Cancelado = alerta, mesmo padrão de "Cancelado→alerta" já
+// usado em StatusPcmsoDocumento (Task 12).
+const tomPorStatusAssinatura: Record<number, Tom> = { 1: 'info', 2: 'ok', 3: 'alerta' };
 
 // Painel administrativo do Motor de Assinatura Eletrônica (docs/Motor-Assinatura-Eletronica.md §5,
 // etapa 12) — mesmo template de TrilhaAuditoriaTab (filtro + tabela), sem aba própria no menu (padrão
 // "IA consolidada": funcionalidade nova vira aba dentro de Administração, não item novo de sidebar).
+// Onda 2 Task 17 (camada ui/).
 export function PainelAssinaturasTab() {
-  const estilos = usePageStyles();
   const [documentos, setDocumentos] = useState<DocumentoAssinaturaResumo[]>([]);
   const [entidadeTipo, setEntidadeTipo] = useState('');
   const [dataInicio, setDataInicio] = useState('');
@@ -49,6 +57,7 @@ export function PainelAssinaturasTab() {
 
   useEffect(() => {
     carregar();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   async function baixarPdf(documento: DocumentoAssinaturaResumo) {
@@ -79,88 +88,89 @@ export function PainelAssinaturasTab() {
     }
   }
 
+  const colunas: Coluna<DocumentoAssinaturaResumo>[] = [
+    { chave: 'entidade', rotulo: 'Entidade', render: (d) => `${d.entidadeTipo} (${d.entidadeId})` },
+    {
+      chave: 'status',
+      rotulo: 'Status',
+      render: (d) => (
+        <StatusChip tom={tomPorStatusAssinatura[d.status] ?? 'neutro'}>
+          {statusDocumentoAssinaturaLabel[d.status] ?? 'Desconhecido'}
+        </StatusChip>
+      ),
+    },
+    { chave: 'criadoEm', rotulo: 'Criado em', render: (d) => new Date(d.criadoEm).toLocaleString('pt-BR') },
+    {
+      chave: 'finalizadoEm',
+      rotulo: 'Finalizado em',
+      render: (d) => (d.finalizadoEm ? new Date(d.finalizadoEm).toLocaleString('pt-BR') : '—'),
+    },
+    { chave: 'assinaturas', rotulo: 'Assinaturas', render: (d) => d.quantidadeSignatarios },
+  ];
+
   return (
     <div>
-      <div className={estilos.card}>
-        <div className={estilos.toolbar}>
-          <Text weight="semibold">Painel de assinaturas</Text>
-        </div>
+      <PageHeader titulo="Painel de assinaturas" />
+      {erro && (
+        <FeedbackInline tom="erro" aoFechar={() => setErro(null)}>
+          {erro}
+        </FeedbackInline>
+      )}
 
-        {erro && <Text className={estilos.erro}>{erro}</Text>}
+      <Card>
+        <FormSection titulo="Filtros" primeira>
+          <FormGrid>
+            <Campo span={4}>
+              <Field label="Tipo de entidade">
+                <Input value={entidadeTipo} onChange={(_, d) => setEntidadeTipo(d.value)} placeholder="Ex.: Dds" />
+              </Field>
+            </Campo>
+            <Campo span={3}>
+              <Field label="Data início">
+                <CampoData value={dataInicio} onChange={(_, d) => setDataInicio(d.value)} />
+              </Field>
+            </Campo>
+            <Campo span={3}>
+              <Field label="Data fim">
+                <CampoData value={dataFim} onChange={(_, d) => setDataFim(d.value)} />
+              </Field>
+            </Campo>
+          </FormGrid>
+          <FormRodape>
+            <Button appearance="primary" icon={<Filter24Regular />} onClick={carregar} disabled={carregando}>
+              Filtrar
+            </Button>
+          </FormRodape>
+        </FormSection>
 
-        <div className={`${estilos.sectionTitle} ${estilos.sectionTitleFirst}`}>Filtros</div>
-        <div className={estilos.formGrid}>
-          <div className={estilos.col4}>
-            <Field label="Tipo de entidade">
-              <Input value={entidadeTipo} onChange={(_, d) => setEntidadeTipo(d.value)} placeholder="Ex.: Dds" />
-            </Field>
-          </div>
-          <div className={estilos.col3}>
-            <Field label="Data início">
-              <CampoData value={dataInicio} onChange={(_, d) => setDataInicio(d.value)} />
-            </Field>
-          </div>
-          <div className={estilos.col3}>
-            <Field label="Data fim">
-              <CampoData value={dataFim} onChange={(_, d) => setDataFim(d.value)} />
-            </Field>
-          </div>
-        </div>
-        <div className={estilos.formActions}>
-          <Button appearance="primary" icon={<Filter24Regular />} onClick={carregar} disabled={carregando}>
-            Filtrar
-          </Button>
-        </div>
-
-        <Table noNativeElements>
-          <TableHeader>
-            <TableRow>
-              <TableHeaderCell>Entidade</TableHeaderCell>
-              <TableHeaderCell>Status</TableHeaderCell>
-              <TableHeaderCell>Criado em</TableHeaderCell>
-              <TableHeaderCell>Finalizado em</TableHeaderCell>
-              <TableHeaderCell>Assinaturas</TableHeaderCell>
-              <TableHeaderCell>Ações</TableHeaderCell>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {documentos.map((documento) => (
-              <TableRow key={documento.id}>
-                <TableCell>
-                  {documento.entidadeTipo} ({documento.entidadeId})
-                </TableCell>
-                <TableCell>
-                  <Badge appearance="tint" size="small">
-                    {statusDocumentoAssinaturaLabel[documento.status] ?? 'Desconhecido'}
-                  </Badge>
-                </TableCell>
-                <TableCell>{new Date(documento.criadoEm).toLocaleString('pt-BR')}</TableCell>
-                <TableCell>{documento.finalizadoEm ? new Date(documento.finalizadoEm).toLocaleString('pt-BR') : '—'}</TableCell>
-                <TableCell>{documento.quantidadeSignatarios}</TableCell>
-                <TableCell>
-                  <div style={{ display: 'flex', gap: 8 }}>
-                    {documento.temPdf && (
-                      <Button
-                        size="small"
-                        icon={<ArrowDownload24Regular />}
-                        onClick={() => baixarPdf(documento)}
-                        disabled={baixandoId === documento.id}
-                      >
-                        PDF
-                      </Button>
-                    )}
-                    {documento.tokenValidacaoPublica && (
-                      <Button size="small" icon={<Link24Regular />} onClick={() => copiarLinkPublico(documento)}>
-                        Link
-                      </Button>
-                    )}
-                  </div>
-                </TableCell>
-              </TableRow>
-            ))}
-          </TableBody>
-        </Table>
-      </div>
+        <DataTable
+          aria-label="Documentos de assinatura eletrônica"
+          colunas={colunas}
+          linhas={documentos}
+          chaveLinha={(d) => d.id}
+          carregando={carregando}
+          vazio={{ titulo: 'Nenhum documento de assinatura encontrado para os filtros selecionados.' }}
+          acoesLinha={(documento) => (
+            <>
+              {documento.temPdf && (
+                <Button
+                  size="small"
+                  icon={<ArrowDownload24Regular />}
+                  onClick={() => baixarPdf(documento)}
+                  disabled={baixandoId === documento.id}
+                >
+                  PDF
+                </Button>
+              )}
+              {documento.tokenValidacaoPublica && (
+                <Button size="small" icon={<Link24Regular />} onClick={() => copiarLinkPublico(documento)}>
+                  Link
+                </Button>
+              )}
+            </>
+          )}
+        />
+      </Card>
     </div>
   );
 }

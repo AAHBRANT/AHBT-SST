@@ -8,6 +8,21 @@ export * from './tokens/movimento';
 // importar @fluentui/react-components.
 export {
   Avatar, Button, Checkbox, Field, Input, Select, Spinner, Text, Textarea, Tooltip,
+  // Radio/RadioGroup: mesmo espírito do resto da lista (a11y já correta, sem hex/estilo próprio) —
+  // faltava na lista original da spec §2.2 por não ter uso ainda; achado na Onda 2 Task 18
+  // (QuestionarioAplicabilidadeTab.tsx, único consumidor no app hoje).
+  Radio, RadioGroup,
+} from '@fluentui/react-components';
+
+// Exceção pontual (spec §5.1): primitivos de tabela crus, só para grades que genuinamente não são
+// lista de dados — DataTable não serve. Ex.: MatrizRiscoTab.tsx (Onda 2 Task 13) — heatmap
+// Probabilidade × Severidade onde cada célula é um <Select>, sem noção de "linha = item com colunas
+// fixas"; ControleAcessoTab.tsx (Onda 2 Task 17) — matriz módulo × escopo com bulk-toggle por
+// coluna, onde a própria "linha" carrega controles interativos que colidiriam com o clique de
+// expandir/recolher de `DataTable`. Continuam proibidos para qualquer caso de lista — esse é
+// sempre DataTable. Não é wrapper — é o mesmo Table do Fluent, só reexportado por aqui.
+export {
+  Table, TableBody, TableCell, TableHeader, TableHeaderCell, TableRow,
 } from '@fluentui/react-components';
 
 // Peças já existentes, ainda no lugar antigo até a Onda 3.

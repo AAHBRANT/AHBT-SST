@@ -17,8 +17,8 @@ import {
   type EventoGraphCalendario,
   type EventoSstCalendario,
 } from '../../lib/api';
-import { designTokens } from '../../theme';
 import { usePageStyles } from '../pageStyles';
+import { designTokens, FeedbackInline } from '@ui';
 
 const useStyles = makeStyles({
   grid: {
@@ -267,7 +267,11 @@ export function CalendarioPage() {
         </div>
       </div>
 
-      {erro && <Text className={estilos.erro}>{erro}</Text>}
+      {erro && (
+        <FeedbackInline tom="erro" aoFechar={() => setErro(null)}>
+          {erro}
+        </FeedbackInline>
+      )}
 
       {calendario && !calendario.usuarioIdentificado && (
         <div className={estilos.card} style={{ marginBottom: 16 }}>

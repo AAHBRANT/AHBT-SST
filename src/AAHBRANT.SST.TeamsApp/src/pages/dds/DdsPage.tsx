@@ -1,7 +1,4 @@
-import { useState } from 'react';
-import { useSearchParams } from 'react-router-dom';
-import { Tab, TabList, Text, type SelectTabData, type SelectTabEvent } from '@fluentui/react-components';
-import { usePillTabStyles, useSubTabStyles } from '../pageStyles';
+import { Abas, PageHeader, useAbaNaUrl } from '@ui';
 import { DdsSemanalPage } from './DdsSemanalPage';
 import { CatalogoTemasDdsPage } from './CatalogoTemasDdsPage';
 
@@ -9,38 +6,28 @@ import { CatalogoTemasDdsPage } from './CatalogoTemasDdsPage';
 // (o catálogo de temas é usado na hora de conduzir o DDS do dia) — Temas de DDS não tem link
 // próprio na sidebar. Suporta abrir direto na aba de temas via ?aba=temas-dds — usado pelo
 // redirecionamento da antiga sub-rota /prevencao/temas-dds.
-type AbaDds = 'dds' | 'temas-dds';
+const ABAS = ['dds', 'temas-dds'] as const;
+type AbaDds = (typeof ABAS)[number];
 
-const ABAS_VALIDAS: AbaDds[] = ['dds', 'temas-dds'];
-
+// Onda 2 (Task 14): usePillTabStyles/useSubTabStyles + <Text size={500}> cru → Abas + PageHeader,
+// mesmo padrão de EpiPage.tsx (piloto 1) — `aba` sincronizada com `?aba=` nos dois sentidos.
 export function DdsPage({ mostrarTitulo = true }: { mostrarTitulo?: boolean } = {}) {
-  const [searchParams] = useSearchParams();
-  const abaInicial = searchParams.get('aba');
-  const [aba, setAba] = useState<AbaDds>(
-    ABAS_VALIDAS.includes(abaInicial as AbaDds) ? (abaInicial as AbaDds) : 'dds',
-  );
-  const estilosPillTab = usePillTabStyles();
-  const estilosSubTab = useSubTabStyles();
-  const estilosAba = mostrarTitulo ? estilosPillTab : estilosSubTab;
+  const [aba, setAba] = useAbaNaUrl<AbaDds>('aba', ABAS, 'dds');
 
   return (
     <div>
-      {mostrarTitulo && (
-        <div style={{ marginBottom: 16 }}>
-          <Text size={500} weight="semibold">
-            DDS
-          </Text>
-        </div>
-      )}
+      {mostrarTitulo && <PageHeader titulo="DDS" />}
 
-      <TabList
-        selectedValue={aba}
-        onTabSelect={(_: SelectTabEvent, data: SelectTabData) => setAba(data.value as AbaDds)}
-        className={estilosAba.lista}
-      >
-        <Tab value="dds">DDS</Tab>
-        <Tab value="temas-dds">Temas de DDS</Tab>
-      </TabList>
+      <Abas
+        nivel={mostrarTitulo ? 'pilar' : 'modulo'}
+        valor={aba}
+        aoMudar={setAba}
+        aria-label="Seções de DDS"
+        abas={[
+          { valor: 'dds', rotulo: 'DDS' },
+          { valor: 'temas-dds', rotulo: 'Temas de DDS' },
+        ]}
+      />
 
       {aba === 'dds' && <DdsSemanalPage />}
       {aba === 'temas-dds' && <CatalogoTemasDdsPage />}

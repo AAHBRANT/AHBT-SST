@@ -1,26 +1,26 @@
 import { useEffect, useState } from 'react';
-import {
-  Button,
-  Field,
-  Input,
-  Select,
-  Table,
-  TableBody,
-  TableCell,
-  TableHeader,
-  TableHeaderCell,
-  TableRow,
-  Text,
-} from '@fluentui/react-components';
-import { CampoData } from '../components/CampoData';
 import { Add24Regular, Delete24Regular } from '@fluentui/react-icons';
 import { api, statusObraLabel, StatusObra, type NovaObra, type Obra } from '../lib/api';
 import { SeletorFotoCamera } from '../components/SeletorFotoCamera';
-import { usePageStyles } from './pageStyles';
-import { useConfirmarExclusao } from '../hooks/useConfirmarExclusao';
 import { useSucessoToast } from '../hooks/useSucessoToast';
-import { EstadoVazio } from '../components/EstadoVazio';
-import { ListaCarregando } from '../components/ListaCarregando';
+import {
+  Button,
+  Campo,
+  CampoData,
+  Card,
+  DataTable,
+  Field,
+  FeedbackInline,
+  FormGrid,
+  FormRodape,
+  FormSection,
+  Input,
+  PageHeader,
+  PainelLateral,
+  Select,
+  useConfirmar,
+  type Coluna,
+} from '@ui';
 
 const obraVazia: NovaObra = {
   codigo: '',
@@ -34,24 +34,29 @@ const obraVazia: NovaObra = {
   cnpj: '',
 };
 
+// Onda 2 Task 21 (camada ui/): mesmo golden rule já aplicado em FuncoesTab.tsx/TrabalhadoresTab.tsx
+// (Task 1/2) — o formulário de cadastro, que empurrava a lista pra baixo, sai para um `PainelLateral`
+// (conversões 1, 4, 6 do Guia, mais 2 pelo mesmo julgamento de precedente). Erro do painel é estado
+// próprio, separado do erro de nível de lista (Guia §4).
 export function ObrasPage() {
-  const estilos = usePageStyles();
   const [obras, setObras] = useState<Obra[]>([]);
+  const [painelAberto, setPainelAberto] = useState(false);
   const [novaObra, setNovaObra] = useState<NovaObra>(obraVazia);
   const [logoNovaObra, setLogoNovaObra] = useState<File | null>(null);
-  const [erro, setErro] = useState<string | null>(null);
+  const [erroLista, setErroLista] = useState<string | null>(null);
+  const [erroPainel, setErroPainel] = useState<string | null>(null);
   const [carregando, setCarregando] = useState(false);
   const [carregandoLista, setCarregandoLista] = useState(true);
   const [logoUrls, setLogoUrls] = useState<Record<string, string>>({});
-  const { confirmar, dialogElement } = useConfirmarExclusao();
+  const { confirmar, dialogElement } = useConfirmar();
   const sucessoToast = useSucessoToast();
 
   async function carregar() {
     try {
-      setErro(null);
+      setErroLista(null);
       setObras(await api.obras.listar());
     } catch (e) {
-      setErro(e instanceof Error ? e.message : 'Falha ao carregar obras.');
+      setErroLista(e instanceof Error ? e.message : 'Falha ao carregar obras.');
     } finally {
       setCarregandoLista(false);
     }
@@ -94,7 +99,7 @@ export function ObrasPage() {
 
   async function enviarLogo(obraId: string, arquivo: File) {
     try {
-      setErro(null);
+      setErroLista(null);
       await api.obras.anexarLogo(obraId, arquivo);
       setLogoUrls((atual) => {
         const anterior = atual[obraId];
@@ -105,18 +110,25 @@ export function ObrasPage() {
       await carregar();
       sucessoToast('Logo atualizado com sucesso.');
     } catch (e) {
-      setErro(e instanceof Error ? e.message : 'Falha ao enviar o logo.');
+      setErroLista(e instanceof Error ? e.message : 'Falha ao enviar o logo.');
     }
+  }
+
+  function fecharPainel() {
+    setPainelAberto(false);
+    setNovaObra(obraVazia);
+    setLogoNovaObra(null);
+    setErroPainel(null);
   }
 
   async function criar() {
     if (!logoNovaObra) {
-      setErro('A logomarca da obra é obrigatória para finalizar o cadastro.');
+      setErroPainel('A logomarca da obra é obrigatória para finalizar o cadastro.');
       return;
     }
     try {
       setCarregando(true);
-      setErro(null);
+      setErroPainel(null);
       await api.obras.criar(
         {
           ...novaObra,
@@ -125,12 +137,11 @@ export function ObrasPage() {
         },
         logoNovaObra,
       );
-      setNovaObra(obraVazia);
-      setLogoNovaObra(null);
       await carregar();
       sucessoToast('Obra criada com sucesso.');
+      fecharPainel();
     } catch (e) {
-      setErro(e instanceof Error ? e.message : 'Falha ao criar obra.');
+      setErroPainel(e instanceof Error ? e.message : 'Falha ao criar obra.');
     } finally {
       setCarregando(false);
     }
@@ -143,179 +154,198 @@ export function ObrasPage() {
       await carregar();
       sucessoToast('Obra excluída com sucesso.');
     } catch (e) {
-      setErro(e instanceof Error ? e.message : 'Falha ao excluir obra.');
+      setErroLista(e instanceof Error ? e.message : 'Falha ao excluir obra.');
     }
   }
 
+  const colunas: Coluna<Obra>[] = [
+    { chave: 'codigo', rotulo: 'Código' },
+    { chave: 'nome', rotulo: 'Nome' },
+    { chave: 'cliente', rotulo: 'Cliente' },
+    { chave: 'status', rotulo: 'Status', render: (o) => statusObraLabel[o.status] },
+    { chave: 'cidadeUf', rotulo: 'Cidade/UF', render: (o) => `${o.cidade ?? ''}${o.uf ? `/${o.uf}` : ''}` },
+    { chave: 'cnpj', rotulo: 'CNPJ' },
+    {
+      chave: 'logo',
+      rotulo: 'Logo',
+      render: (o) => (
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+          {logoUrls[o.id] && (
+            <img
+              src={logoUrls[o.id]}
+              alt={`Logo de ${o.nome}`}
+              style={{ height: 32, width: 32, objectFit: 'contain', borderRadius: 4 }}
+            />
+          )}
+          <SeletorFotoCamera
+            rotulo="Trocar logo"
+            apenasIcone
+            aoSelecionarArquivo={(arquivo) => enviarLogo(o.id, arquivo)}
+            aoErroValidacao={setErroLista}
+          />
+        </div>
+      ),
+    },
+  ];
+
   return (
-    <div className={estilos.card}>
+    <div>
       {dialogElement}
-      <div className={estilos.toolbar}>
-        <Text weight="semibold">Obras cadastradas</Text>
-      </div>
+      <PageHeader
+        titulo="Obras cadastradas"
+        acoes={
+          <Button appearance="primary" icon={<Add24Regular />} onClick={() => setPainelAberto(true)}>
+            Adicionar obra
+          </Button>
+        }
+      />
 
-      {erro && <Text className={estilos.erro}>{erro}</Text>}
+      {erroLista && (
+        <FeedbackInline tom="erro" aoFechar={() => setErroLista(null)}>
+          {erroLista}
+        </FeedbackInline>
+      )}
 
-      <div className={`${estilos.sectionTitle} ${estilos.sectionTitleFirst}`}>Dados Gerais da Obra</div>
-      <div className={estilos.formGrid}>
-        <div className={estilos.col2}>
-          <Field label="Código">
-            <Input value={novaObra.codigo} onChange={(_, d) => setNovaObra({ ...novaObra, codigo: d.value })} />
-          </Field>
-        </div>
-        <div className={estilos.col3}>
-          <Field label="Nome">
-            <Input value={novaObra.nome} onChange={(_, d) => setNovaObra({ ...novaObra, nome: d.value })} />
-          </Field>
-        </div>
-        <div className={estilos.col2}>
-          <Field label="Status">
-            <Select
-              value={novaObra.status}
-              onChange={(_, d) => setNovaObra({ ...novaObra, status: Number(d.value) })}
-            >
-              {Object.entries(statusObraLabel).map(([valor, rotulo]) => (
-                <option key={valor} value={valor}>
-                  {rotulo}
-                </option>
-              ))}
-            </Select>
-          </Field>
-        </div>
-        <div className={estilos.col2}>
-          <Field label="Data de início">
-            <CampoData
-              value={novaObra.dataInicio ?? ''}
-              onChange={(_, d) => setNovaObra({ ...novaObra, dataInicio: d.value })}
+      <Card>
+        <DataTable
+          aria-label="Obras cadastradas"
+          colunas={colunas}
+          linhas={obras}
+          chaveLinha={(o) => o.id}
+          carregando={carregandoLista}
+          vazio={{
+            titulo: 'Nenhuma obra cadastrada ainda.',
+            acao: { rotulo: 'Adicionar obra', aoClicar: () => setPainelAberto(true) },
+          }}
+          acoesLinha={(o) => (
+            <Button
+              appearance="subtle"
+              icon={<Delete24Regular />}
+              onClick={(evento) => {
+                evento.stopPropagation();
+                excluir(o.id);
+              }}
+              aria-label="Excluir"
             />
-          </Field>
-        </div>
-        <div className={estilos.col3}>
-          <Field label="Previsão de término">
-            <CampoData
-              value={novaObra.dataPrevisaoTermino ?? ''}
-              onChange={(_, d) => setNovaObra({ ...novaObra, dataPrevisaoTermino: d.value })}
-            />
-          </Field>
-        </div>
-      </div>
+          )}
+        />
+      </Card>
 
-      <div className={estilos.sectionTitle}>Endereço e Documentos</div>
-      <div className={estilos.formGrid}>
-        <div className={estilos.col4}>
-          <Field label="Endereço">
-            <Input
-              value={novaObra.endereco ?? ''}
-              onChange={(_, d) => setNovaObra({ ...novaObra, endereco: d.value })}
-            />
-          </Field>
-        </div>
-        <div className={estilos.col3}>
-          <Field label="Cidade">
-            <Input value={novaObra.cidade ?? ''} onChange={(_, d) => setNovaObra({ ...novaObra, cidade: d.value })} />
-          </Field>
-        </div>
-        <div className={estilos.col2}>
-          <Field label="UF">
-            <Input
-              value={novaObra.uf ?? ''}
-              maxLength={2}
-              onChange={(_, d) => setNovaObra({ ...novaObra, uf: d.value.toUpperCase() })}
-            />
-          </Field>
-        </div>
-        <div className={estilos.col3}>
-          <Field label="CNPJ">
-            <Input
-              value={novaObra.cnpj ?? ''}
-              maxLength={18}
-              onChange={(_, d) => setNovaObra({ ...novaObra, cnpj: d.value })}
-            />
-          </Field>
-        </div>
-        <div className={estilos.col6}>
-          <Field label="Logomarca da obra" required>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-              <SeletorFotoCamera
-                rotulo={logoNovaObra ? logoNovaObra.name : 'Tirar foto ou escolher arquivo'}
-                tiposAceitos="image/jpeg,image/png"
-                aoSelecionarArquivo={(arquivo) => setLogoNovaObra(arquivo)}
-                aoErroValidacao={setErro}
-              />
-            </div>
-          </Field>
-        </div>
-      </div>
-      <div className={estilos.footer}>
-        <Text className={estilos.footerInfo}>
-          A logomarca é obrigatória: ela será usada no cabeçalho dos documentos gerados e assinados
-          para esta obra (APR, PT, DDS, Ficha de EPI, Relatório de Fiscalização).
-        </Text>
-        <Button appearance="primary" icon={<Add24Regular />} onClick={criar} disabled={carregando || !logoNovaObra}>
-          Adicionar obra
-        </Button>
-      </div>
+      <PainelLateral
+        aberto={painelAberto}
+        aoFechar={fecharPainel}
+        titulo="Adicionar obra"
+        largura="lg"
+        rodape={
+          <FormRodape info="A logomarca é obrigatória: ela será usada no cabeçalho dos documentos gerados e assinados para esta obra (APR, PT, DDS, Ficha de EPI, Relatório de Fiscalização).">
+            <Button appearance="secondary" onClick={fecharPainel}>
+              Cancelar
+            </Button>
+            <Button appearance="primary" icon={<Add24Regular />} onClick={criar} disabled={carregando || !logoNovaObra}>
+              Adicionar obra
+            </Button>
+          </FormRodape>
+        }
+      >
+        {erroPainel && (
+          <FeedbackInline tom="erro" aoFechar={() => setErroPainel(null)}>
+            {erroPainel}
+          </FeedbackInline>
+        )}
 
-      {carregandoLista ? (
-        <ListaCarregando />
-      ) : obras.length === 0 ? (
-        <EstadoVazio mensagem="Nenhuma obra cadastrada ainda." />
-      ) : (
-      <Table noNativeElements>
-        <TableHeader>
-          <TableRow>
-            <TableHeaderCell>Código</TableHeaderCell>
-            <TableHeaderCell>Nome</TableHeaderCell>
-            <TableHeaderCell>Cliente</TableHeaderCell>
-            <TableHeaderCell>Status</TableHeaderCell>
-            <TableHeaderCell>Cidade/UF</TableHeaderCell>
-            <TableHeaderCell>CNPJ</TableHeaderCell>
-            <TableHeaderCell>Logo</TableHeaderCell>
-            <TableHeaderCell></TableHeaderCell>
-          </TableRow>
-        </TableHeader>
-        <TableBody>
-          {obras.map((obra) => (
-            <TableRow key={obra.id}>
-              <TableCell>{obra.codigo}</TableCell>
-              <TableCell>{obra.nome}</TableCell>
-              <TableCell>{obra.cliente}</TableCell>
-              <TableCell>{statusObraLabel[obra.status]}</TableCell>
-              <TableCell>
-                {obra.cidade}
-                {obra.uf ? `/${obra.uf}` : ''}
-              </TableCell>
-              <TableCell>{obra.cnpj}</TableCell>
-              <TableCell>
+        <FormSection titulo="Dados Gerais da Obra" numero={1} primeira>
+          <FormGrid>
+            <Campo span={2}>
+              <Field label="Código">
+                <Input value={novaObra.codigo} onChange={(_, d) => setNovaObra({ ...novaObra, codigo: d.value })} />
+              </Field>
+            </Campo>
+            <Campo span={3}>
+              <Field label="Nome">
+                <Input value={novaObra.nome} onChange={(_, d) => setNovaObra({ ...novaObra, nome: d.value })} />
+              </Field>
+            </Campo>
+            <Campo span={2}>
+              <Field label="Status">
+                <Select
+                  value={novaObra.status}
+                  onChange={(_, d) => setNovaObra({ ...novaObra, status: Number(d.value) })}
+                >
+                  {Object.entries(statusObraLabel).map(([valor, rotulo]) => (
+                    <option key={valor} value={valor}>
+                      {rotulo}
+                    </option>
+                  ))}
+                </Select>
+              </Field>
+            </Campo>
+            <Campo span={2}>
+              <Field label="Data de início">
+                <CampoData
+                  value={novaObra.dataInicio ?? ''}
+                  onChange={(_, d) => setNovaObra({ ...novaObra, dataInicio: d.value })}
+                />
+              </Field>
+            </Campo>
+            <Campo span={3}>
+              <Field label="Previsão de término">
+                <CampoData
+                  value={novaObra.dataPrevisaoTermino ?? ''}
+                  onChange={(_, d) => setNovaObra({ ...novaObra, dataPrevisaoTermino: d.value })}
+                />
+              </Field>
+            </Campo>
+          </FormGrid>
+        </FormSection>
+
+        <FormSection titulo="Endereço e Documentos" numero={2}>
+          <FormGrid>
+            <Campo span={4}>
+              <Field label="Endereço">
+                <Input
+                  value={novaObra.endereco ?? ''}
+                  onChange={(_, d) => setNovaObra({ ...novaObra, endereco: d.value })}
+                />
+              </Field>
+            </Campo>
+            <Campo span={3}>
+              <Field label="Cidade">
+                <Input value={novaObra.cidade ?? ''} onChange={(_, d) => setNovaObra({ ...novaObra, cidade: d.value })} />
+              </Field>
+            </Campo>
+            <Campo span={2}>
+              <Field label="UF">
+                <Input
+                  value={novaObra.uf ?? ''}
+                  maxLength={2}
+                  onChange={(_, d) => setNovaObra({ ...novaObra, uf: d.value.toUpperCase() })}
+                />
+              </Field>
+            </Campo>
+            <Campo span={3}>
+              <Field label="CNPJ">
+                <Input
+                  value={novaObra.cnpj ?? ''}
+                  maxLength={18}
+                  onChange={(_, d) => setNovaObra({ ...novaObra, cnpj: d.value })}
+                />
+              </Field>
+            </Campo>
+            <Campo span={12}>
+              <Field label="Logomarca da obra" required>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                  {logoUrls[obra.id] && (
-                    <img
-                      src={logoUrls[obra.id]}
-                      alt={`Logo de ${obra.nome}`}
-                      style={{ height: 32, width: 32, objectFit: 'contain', borderRadius: 4 }}
-                    />
-                  )}
                   <SeletorFotoCamera
-                    rotulo="Trocar logo"
-                    apenasIcone
-                    aoSelecionarArquivo={(arquivo) => enviarLogo(obra.id, arquivo)}
-                    aoErroValidacao={setErro}
+                    rotulo={logoNovaObra ? logoNovaObra.name : 'Tirar foto ou escolher arquivo'}
+                    tiposAceitos="image/jpeg,image/png"
+                    aoSelecionarArquivo={(arquivo) => setLogoNovaObra(arquivo)}
+                    aoErroValidacao={setErroPainel}
                   />
                 </div>
-              </TableCell>
-              <TableCell>
-                <Button
-                  appearance="subtle"
-                  icon={<Delete24Regular />}
-                  onClick={() => excluir(obra.id)}
-                  aria-label="Excluir"
-                />
-              </TableCell>
-            </TableRow>
-          ))}
-        </TableBody>
-      </Table>
-      )}
+              </Field>
+            </Campo>
+          </FormGrid>
+        </FormSection>
+      </PainelLateral>
     </div>
   );
 }

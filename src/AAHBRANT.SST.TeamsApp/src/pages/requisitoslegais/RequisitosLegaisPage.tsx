@@ -1,39 +1,34 @@
-import { useState } from 'react';
-import { Tab, TabList, Text, type SelectTabData, type SelectTabEvent } from '@fluentui/react-components';
-import { usePillTabStyles, useSubTabStyles } from '../pageStyles';
+import { Abas, PageHeader, useAbaNaUrl } from '@ui';
 import { RequisitosLegaisTab } from './RequisitosLegaisTab';
 import { QuestionarioAplicabilidadeTab } from './QuestionarioAplicabilidadeTab';
 
-type AbaRequisitosLegais = 'requisitos' | 'questionario';
+const ABAS = ['requisitos', 'questionario'] as const;
+type AbaRequisitosLegais = (typeof ABAS)[number];
 
 // Módulo de Requisitos Legais — Motor de Aplicabilidade Legal (requisito do usuário, 2026-08-29).
 // Fase 1 (fundação de dados): cadastro dos requisitos/critérios e do questionário de aplicabilidade
 // por obra. O cruzamento automático (o "motor" em si, que decide Aplicável/Não aplicável/Em análise
 // por obra e gera as obrigações derivadas) é uma fase seguinte, ainda não implementada.
+// Onda 2 Task 18 (camada ui/): mesmo padrão de EpiPage.tsx (piloto 1) — aba sincronizada com a URL
+// via useAbaNaUrl('aba', ...), nível de Abas trocando conforme a página é raiz ou aninhada em
+// GestaoSstPage.tsx (que renderiza com mostrarTitulo={false}).
 export function RequisitosLegaisPage({ mostrarTitulo = true }: { mostrarTitulo?: boolean } = {}) {
-  const [aba, setAba] = useState<AbaRequisitosLegais>('requisitos');
-  const estilosPillTab = usePillTabStyles();
-  const estilosSubTab = useSubTabStyles();
-  const estilosAba = mostrarTitulo ? estilosPillTab : estilosSubTab;
+  const [aba, setAba] = useAbaNaUrl<AbaRequisitosLegais>('aba', ABAS, 'requisitos');
 
   return (
     <div>
-      {mostrarTitulo && (
-        <div style={{ marginBottom: 16 }}>
-          <Text size={500} weight="semibold">
-            Requisitos Legais
-          </Text>
-        </div>
-      )}
+      {mostrarTitulo && <PageHeader titulo="Requisitos Legais" />}
 
-      <TabList
-        selectedValue={aba}
-        onTabSelect={(_: SelectTabEvent, data: SelectTabData) => setAba(data.value as AbaRequisitosLegais)}
-        className={estilosAba.lista}
-      >
-        <Tab value="requisitos">Requisitos e critérios</Tab>
-        <Tab value="questionario">Questionário de aplicabilidade</Tab>
-      </TabList>
+      <Abas
+        nivel={mostrarTitulo ? 'pilar' : 'modulo'}
+        valor={aba}
+        aoMudar={setAba}
+        aria-label="Seções de Requisitos Legais"
+        abas={[
+          { valor: 'requisitos', rotulo: 'Requisitos e critérios' },
+          { valor: 'questionario', rotulo: 'Questionário de aplicabilidade' },
+        ]}
+      />
 
       {aba === 'requisitos' && <RequisitosLegaisTab />}
       {aba === 'questionario' && <QuestionarioAplicabilidadeTab />}
