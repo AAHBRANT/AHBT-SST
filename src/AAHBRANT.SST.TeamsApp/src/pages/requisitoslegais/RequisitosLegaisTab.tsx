@@ -1,19 +1,24 @@
-import { Fragment, useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import {
-  Badge,
   Button,
+  Campo,
+  Card,
+  DataTable,
   Field,
+  FeedbackInline,
+  FormGrid,
+  FormRodape,
+  FormSection,
   Input,
+  Legenda,
   Select,
-  Table,
-  TableBody,
-  TableCell,
-  TableHeader,
-  TableHeaderCell,
-  TableRow,
+  StatusChip,
   Text,
   Textarea,
-} from '@fluentui/react-components';
+  useConfirmar,
+  type Coluna,
+  type Tom,
+} from '@ui';
 import { AddCircle24Regular, Delete24Regular } from '@fluentui/react-icons';
 import {
   api,
@@ -30,11 +35,7 @@ import {
   type RequisitoLegal,
   type RequisitoLegalCriterio,
 } from '../../lib/api';
-import { usePageStyles } from '../pageStyles';
-import { useConfirmarExclusao } from '../../hooks/useConfirmarExclusao';
 import { useSucessoToast } from '../../hooks/useSucessoToast';
-import { EstadoVazio } from '../../components/EstadoVazio';
-import { ListaCarregando } from '../../components/ListaCarregando';
 
 function novoInicial(): NovoRequisitoLegal {
   return { norma: '', artigo: '', titulo: '', descricao: '', categoria: 1, fonte: '' };
@@ -44,8 +45,21 @@ function novoCriterioInicial(): CriterioAplicabilidadeInput {
   return { tipo: TipoCriterioAplicabilidade.Perigo, perigoId: '', funcaoId: '', tipoEquipamento: null, itemQuestionarioAplicabilidadeId: '' };
 }
 
+// Mapeamento 1:1 pelo nome semântico do Fluent (Guia de conversão item 5): success→ok, danger→alerta
+// — só os dois status existentes hoje (Ativo/Revogado).
+const tomPorStatusRequisito: Record<number, Tom> = {
+  [StatusRequisitoLegal.Ativo]: 'ok',
+  [StatusRequisitoLegal.Revogado]: 'alerta',
+};
+
+// Onda 2 Task 18 (camada ui/): lista de requisitos legais + cadastro de critérios de aplicabilidade
+// por linha expandida — mesmo padrão de MatrizEpiTab.tsx (piloto 3): aoClicarLinha alterna a
+// expansão (e busca os critérios do requisito), expansivel.render mostra o conteúdo. O "tipo de
+// critério" (Perigo/Função/Equipamento/Questionário) era um Badge appearance="outline" — sem
+// equivalente de "etiqueta de categoria" em @ui (só StatusChip, pensado para estado), então usa
+// StatusChip tom="neutro" como rótulo neutro, mesmo julgamento de colapso de tom já registrado em
+// outras tasks quando a união de casos não bate 1:1 com os 5 tons disponíveis.
 export function RequisitosLegaisTab() {
-  const estilos = usePageStyles();
   const [requisitos, setRequisitos] = useState<RequisitoLegal[]>([]);
   const [perigos, setPerigos] = useState<Perigo[]>([]);
   const [funcoes, setFuncoes] = useState<Funcao[]>([]);
@@ -57,7 +71,7 @@ export function RequisitosLegaisTab() {
   const [erro, setErro] = useState<string | null>(null);
   const [processando, setProcessando] = useState(false);
   const [carregandoLista, setCarregandoLista] = useState(true);
-  const { confirmar, dialogElement } = useConfirmarExclusao();
+  const { confirmar, dialogElement } = useConfirmar();
   const sucessoToast = useSucessoToast();
 
   async function carregar() {
@@ -184,233 +198,212 @@ export function RequisitosLegaisTab() {
     }
   }
 
-  return (
-    <div>
-      {dialogElement}
-      {erro && <Text className={estilos.erro}>{erro}</Text>}
+  const colunas: Coluna<RequisitoLegal>[] = [
+    { chave: 'norma', rotulo: 'Norma/Artigo', render: (r) => (r.artigo ? `${r.norma} — ${r.artigo}` : r.norma) },
+    { chave: 'titulo', rotulo: 'Título' },
+    { chave: 'categoria', rotulo: 'Categoria', render: (r) => categoriaRequisitoLegalLabel[r.categoria] },
+    {
+      chave: 'status',
+      rotulo: 'Status',
+      render: (r) => (
+        <StatusChip tom={tomPorStatusRequisito[r.status] ?? 'neutro'}>{statusRequisitoLegalLabel[r.status]}</StatusChip>
+      ),
+    },
+  ];
 
-      <Text size={200} style={{ display: 'block', marginBottom: 12 }}>
+  return (
+    <>
+      {dialogElement}
+      {erro && (
+        <FeedbackInline tom="erro" aoFechar={() => setErro(null)}>
+          {erro}
+        </FeedbackInline>
+      )}
+
+      <Legenda>
         Cadastro estruturado dos requisitos legais e de seus critérios de aplicabilidade. O conteúdo jurídico
         (norma, artigo, critério) deve ser validado por QSMS/jurídico antes de publicar — este cadastro não
         substitui essa validação.
-      </Text>
+      </Legenda>
 
-      <div className={estilos.card} style={{ marginBottom: 16 }}>
-        <div className={estilos.toolbar}>
-          <Text weight="semibold">Novo requisito legal</Text>
-        </div>
-        <div className={`${estilos.sectionTitle} ${estilos.sectionTitleFirst}`}>Dados do Requisito Legal</div>
-        <div className={estilos.formGrid}>
-          <div className={estilos.col2}>
-            <Field label="Norma" required>
-              <Input value={novo.norma} onChange={(_, d) => setNovo({ ...novo, norma: d.value })} placeholder="ex.: NR-35" />
-            </Field>
-          </div>
-          <div className={estilos.col2}>
-            <Field label="Artigo">
-              <Input value={novo.artigo ?? ''} onChange={(_, d) => setNovo({ ...novo, artigo: d.value })} placeholder="ex.: 35.4" />
-            </Field>
-          </div>
-          <div className={estilos.col3}>
-            <Field label="Categoria">
-              <Select value={String(novo.categoria)} onChange={(_, d) => setNovo({ ...novo, categoria: Number(d.value) })}>
-                {Object.entries(categoriaRequisitoLegalLabel).map(([valor, rotulo]) => (
-                  <option key={valor} value={valor}>
-                    {rotulo}
-                  </option>
-                ))}
-              </Select>
-            </Field>
-          </div>
-          <div className={estilos.col5}>
-            <Field label="Título" required>
-              <Input value={novo.titulo} onChange={(_, d) => setNovo({ ...novo, titulo: d.value })} />
-            </Field>
-          </div>
-          <div className={estilos.col6}>
-            <Field label="Fonte">
-              <Input value={novo.fonte ?? ''} onChange={(_, d) => setNovo({ ...novo, fonte: d.value })} placeholder="link/referência" />
-            </Field>
-          </div>
-          <div className={estilos.col12}>
-            <Field label="Descrição" required>
-              <Textarea value={novo.descricao} onChange={(_, d) => setNovo({ ...novo, descricao: d.value })} />
-            </Field>
-          </div>
-        </div>
-        <div className={estilos.formActions}>
-          <Button appearance="primary" icon={<AddCircle24Regular />} onClick={criar} disabled={processando}>
-            Cadastrar requisito
-          </Button>
-        </div>
-      </div>
+      <Card titulo="Requisitos legais cadastrados">
+        <FormSection titulo="Dados do Requisito Legal" numero={1} primeira>
+          <FormGrid>
+            <Campo span={2}>
+              <Field label="Norma" required>
+                <Input value={novo.norma} onChange={(_, d) => setNovo({ ...novo, norma: d.value })} placeholder="ex.: NR-35" />
+              </Field>
+            </Campo>
+            <Campo span={2}>
+              <Field label="Artigo">
+                <Input value={novo.artigo ?? ''} onChange={(_, d) => setNovo({ ...novo, artigo: d.value })} placeholder="ex.: 35.4" />
+              </Field>
+            </Campo>
+            <Campo span={3}>
+              <Field label="Categoria">
+                <Select value={String(novo.categoria)} onChange={(_, d) => setNovo({ ...novo, categoria: Number(d.value) })}>
+                  {Object.entries(categoriaRequisitoLegalLabel).map(([valor, rotulo]) => (
+                    <option key={valor} value={valor}>
+                      {rotulo}
+                    </option>
+                  ))}
+                </Select>
+              </Field>
+            </Campo>
+            <Campo span={5}>
+              <Field label="Título" required>
+                <Input value={novo.titulo} onChange={(_, d) => setNovo({ ...novo, titulo: d.value })} />
+              </Field>
+            </Campo>
+            <Campo span={6}>
+              <Field label="Fonte">
+                <Input value={novo.fonte ?? ''} onChange={(_, d) => setNovo({ ...novo, fonte: d.value })} placeholder="link/referência" />
+              </Field>
+            </Campo>
+            <Campo span={12}>
+              <Field label="Descrição" required>
+                <Textarea value={novo.descricao} onChange={(_, d) => setNovo({ ...novo, descricao: d.value })} />
+              </Field>
+            </Campo>
+          </FormGrid>
+          <FormRodape>
+            <Button appearance="primary" icon={<AddCircle24Regular />} onClick={criar} disabled={processando}>
+              Cadastrar requisito
+            </Button>
+          </FormRodape>
+        </FormSection>
 
-      {carregandoLista ? (
-        <ListaCarregando />
-      ) : requisitos.length === 0 ? (
-        <EstadoVazio mensagem="Nenhum requisito legal cadastrado ainda." />
-      ) : (
-      <Table noNativeElements>
-        <TableHeader>
-          <TableRow>
-            <TableHeaderCell>Norma/Artigo</TableHeaderCell>
-            <TableHeaderCell>Título</TableHeaderCell>
-            <TableHeaderCell>Categoria</TableHeaderCell>
-            <TableHeaderCell>Status</TableHeaderCell>
-            <TableHeaderCell></TableHeaderCell>
-          </TableRow>
-        </TableHeader>
-        <TableBody>
-          {requisitos.map((r) => (
-            <Fragment key={r.id}>
-              <TableRow onClick={() => alternarExpansao(r)} style={{ cursor: 'pointer' }}>
-                <TableCell>
-                  {r.norma}
-                  {r.artigo ? ` — ${r.artigo}` : ''}
-                </TableCell>
-                <TableCell>{r.titulo}</TableCell>
-                <TableCell>{categoriaRequisitoLegalLabel[r.categoria]}</TableCell>
-                <TableCell>
-                  <Badge appearance="tint" color={r.status === StatusRequisitoLegal.Ativo ? 'success' : 'danger'}>
-                    {statusRequisitoLegalLabel[r.status]}
-                  </Badge>
-                </TableCell>
-                <TableCell>
-                  <Button
-                    appearance="subtle"
-                    icon={<Delete24Regular />}
-                    aria-label="Excluir"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      excluir(r.id);
-                    }}
-                  />
-                </TableCell>
-              </TableRow>
-              {expandidoId === r.id && (
-                <TableRow>
-                  <TableCell colSpan={5}>
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: 8, padding: '8px 0' }}>
-                      <Text weight="semibold">Critérios de aplicabilidade — {r.norma}</Text>
-                      <Text size={200}>
-                        Qualquer critério satisfeito já torna o requisito aplicável a uma obra (lógica "ou").
-                      </Text>
+        <DataTable
+          aria-label="Requisitos legais cadastrados"
+          colunas={colunas}
+          linhas={requisitos}
+          chaveLinha={(r) => r.id}
+          carregando={carregandoLista}
+          vazio={{ titulo: 'Nenhum requisito legal cadastrado ainda.' }}
+          aoClicarLinha={alternarExpansao}
+          acoesLinha={(r) => (
+            <Button appearance="subtle" icon={<Delete24Regular />} aria-label="Excluir" onClick={() => excluir(r.id)} />
+          )}
+          expansivel={{
+            aberta: (r) => r.id === expandidoId,
+            render: (r) => (
+              <>
+                <Text weight="semibold">Critérios de aplicabilidade — {r.norma}</Text>
+                <Text size={200}>
+                  Qualquer critério satisfeito já torna o requisito aplicável a uma obra (lógica "ou").
+                </Text>
 
-                      {criterios.length === 0 ? (
-                        <Text>Nenhum critério definido ainda.</Text>
-                      ) : (
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-                          {criterios.map((c) => (
-                            <div key={c.id} style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                              <Badge appearance="outline">{tipoCriterioAplicabilidadeLabel[c.tipo]}</Badge>
-                              <Text>{rotuloCriterio(c)}</Text>
-                              <Button appearance="subtle" size="small" onClick={() => removerCriterio(c.id)}>
-                                Remover
-                              </Button>
-                            </div>
-                          ))}
-                        </div>
-                      )}
-
-                      <div style={{ display: 'flex', gap: 8, alignItems: 'flex-end', flexWrap: 'wrap' }}>
-                        <Field label="Tipo de critério">
-                          <Select
-                            value={String(novoCriterio.tipo)}
-                            onChange={(_, d) => setNovoCriterio({ ...novoCriterio, tipo: Number(d.value) })}
-                          >
-                            {Object.entries(tipoCriterioAplicabilidadeLabel).map(([valor, rotulo]) => (
-                              <option key={valor} value={valor}>
-                                {rotulo}
-                              </option>
-                            ))}
-                          </Select>
-                        </Field>
-
-                        {novoCriterio.tipo === TipoCriterioAplicabilidade.Perigo && (
-                          <Field label="Perigo">
-                            <Select
-                              value={novoCriterio.perigoId ?? ''}
-                              onChange={(_, d) => setNovoCriterio({ ...novoCriterio, perigoId: d.value })}
-                            >
-                              <option value="">Selecione</option>
-                              {perigos.map((p) => (
-                                <option key={p.id} value={p.id}>
-                                  {p.nome}
-                                </option>
-                              ))}
-                            </Select>
-                          </Field>
-                        )}
-
-                        {novoCriterio.tipo === TipoCriterioAplicabilidade.Funcao && (
-                          <Field label="Função">
-                            <Select
-                              value={novoCriterio.funcaoId ?? ''}
-                              onChange={(_, d) => setNovoCriterio({ ...novoCriterio, funcaoId: d.value })}
-                            >
-                              <option value="">Selecione</option>
-                              {funcoes.map((f) => (
-                                <option key={f.id} value={f.id}>
-                                  {f.nome}
-                                </option>
-                              ))}
-                            </Select>
-                          </Field>
-                        )}
-
-                        {novoCriterio.tipo === TipoCriterioAplicabilidade.Equipamento && (
-                          <Field label="Tipo de equipamento">
-                            <Select
-                              value={novoCriterio.tipoEquipamento != null ? String(novoCriterio.tipoEquipamento) : ''}
-                              onChange={(_, d) => setNovoCriterio({ ...novoCriterio, tipoEquipamento: Number(d.value) })}
-                            >
-                              <option value="">Selecione</option>
-                              {Object.entries(tipoAtivoLabel).map(([valor, rotulo]) => (
-                                <option key={valor} value={valor}>
-                                  {rotulo}
-                                </option>
-                              ))}
-                            </Select>
-                          </Field>
-                        )}
-
-                        {novoCriterio.tipo === TipoCriterioAplicabilidade.ItemQuestionario && (
-                          <Field label="Item do questionário">
-                            <Select
-                              value={novoCriterio.itemQuestionarioAplicabilidadeId ?? ''}
-                              onChange={(_, d) =>
-                                setNovoCriterio({ ...novoCriterio, itemQuestionarioAplicabilidadeId: d.value })
-                              }
-                            >
-                              <option value="">Selecione</option>
-                              {itensQuestionario.map((i) => (
-                                <option key={i.id} value={i.id}>
-                                  {i.pergunta}
-                                </option>
-                              ))}
-                            </Select>
-                          </Field>
-                        )}
-
-                        <Button appearance="secondary" onClick={adicionarCriterio}>
-                          Adicionar critério
+                {criterios.length === 0 ? (
+                  <Text>Nenhum critério definido ainda.</Text>
+                ) : (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+                    {criterios.map((c) => (
+                      <div key={c.id} style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                        <StatusChip tom="neutro">{tipoCriterioAplicabilidadeLabel[c.tipo]}</StatusChip>
+                        <Text>{rotuloCriterio(c)}</Text>
+                        <Button appearance="subtle" size="small" onClick={() => removerCriterio(c.id)}>
+                          Remover
                         </Button>
                       </div>
+                    ))}
+                  </div>
+                )}
 
-                      <div>
-                        <Button appearance="primary" onClick={() => salvarCriterios(r.id)} disabled={processando}>
-                          Salvar critérios
-                        </Button>
-                      </div>
-                    </div>
-                  </TableCell>
-                </TableRow>
-              )}
-            </Fragment>
-          ))}
-        </TableBody>
-      </Table>
-      )}
-    </div>
+                <div style={{ display: 'flex', gap: 8, alignItems: 'flex-end', flexWrap: 'wrap' }}>
+                  <Field label="Tipo de critério">
+                    <Select
+                      value={String(novoCriterio.tipo)}
+                      onChange={(_, d) => setNovoCriterio({ ...novoCriterio, tipo: Number(d.value) })}
+                    >
+                      {Object.entries(tipoCriterioAplicabilidadeLabel).map(([valor, rotulo]) => (
+                        <option key={valor} value={valor}>
+                          {rotulo}
+                        </option>
+                      ))}
+                    </Select>
+                  </Field>
+
+                  {novoCriterio.tipo === TipoCriterioAplicabilidade.Perigo && (
+                    <Field label="Perigo">
+                      <Select
+                        value={novoCriterio.perigoId ?? ''}
+                        onChange={(_, d) => setNovoCriterio({ ...novoCriterio, perigoId: d.value })}
+                      >
+                        <option value="">Selecione</option>
+                        {perigos.map((p) => (
+                          <option key={p.id} value={p.id}>
+                            {p.nome}
+                          </option>
+                        ))}
+                      </Select>
+                    </Field>
+                  )}
+
+                  {novoCriterio.tipo === TipoCriterioAplicabilidade.Funcao && (
+                    <Field label="Função">
+                      <Select
+                        value={novoCriterio.funcaoId ?? ''}
+                        onChange={(_, d) => setNovoCriterio({ ...novoCriterio, funcaoId: d.value })}
+                      >
+                        <option value="">Selecione</option>
+                        {funcoes.map((f) => (
+                          <option key={f.id} value={f.id}>
+                            {f.nome}
+                          </option>
+                        ))}
+                      </Select>
+                    </Field>
+                  )}
+
+                  {novoCriterio.tipo === TipoCriterioAplicabilidade.Equipamento && (
+                    <Field label="Tipo de equipamento">
+                      <Select
+                        value={novoCriterio.tipoEquipamento != null ? String(novoCriterio.tipoEquipamento) : ''}
+                        onChange={(_, d) => setNovoCriterio({ ...novoCriterio, tipoEquipamento: Number(d.value) })}
+                      >
+                        <option value="">Selecione</option>
+                        {Object.entries(tipoAtivoLabel).map(([valor, rotulo]) => (
+                          <option key={valor} value={valor}>
+                            {rotulo}
+                          </option>
+                        ))}
+                      </Select>
+                    </Field>
+                  )}
+
+                  {novoCriterio.tipo === TipoCriterioAplicabilidade.ItemQuestionario && (
+                    <Field label="Item do questionário">
+                      <Select
+                        value={novoCriterio.itemQuestionarioAplicabilidadeId ?? ''}
+                        onChange={(_, d) =>
+                          setNovoCriterio({ ...novoCriterio, itemQuestionarioAplicabilidadeId: d.value })
+                        }
+                      >
+                        <option value="">Selecione</option>
+                        {itensQuestionario.map((i) => (
+                          <option key={i.id} value={i.id}>
+                            {i.pergunta}
+                          </option>
+                        ))}
+                      </Select>
+                    </Field>
+                  )}
+
+                  <Button appearance="secondary" onClick={adicionarCriterio}>
+                    Adicionar critério
+                  </Button>
+                </div>
+
+                <div>
+                  <Button appearance="primary" onClick={() => salvarCriterios(r.id)} disabled={processando}>
+                    Salvar critérios
+                  </Button>
+                </div>
+              </>
+            ),
+          }}
+        />
+      </Card>
+    </>
   );
 }
