@@ -160,7 +160,7 @@ export function EntregasTab({ aoNavegarParaMatriz }: EntregasTabProps) {
 
   // SeletorPesquisavel pede a lista memoizada (a de trabalhadores é a maior do app).
   const opcoesTrabalhadores = useMemo(
-    () => trabalhadores.map((t) => ({ id: t.id, rotulo: t.nome, descricao: t.matricula })),
+    () => trabalhadores.map((t) => ({ id: t.id, rotulo: t.nome, descricao: t.matricula ?? undefined })),
     [trabalhadores],
   );
 

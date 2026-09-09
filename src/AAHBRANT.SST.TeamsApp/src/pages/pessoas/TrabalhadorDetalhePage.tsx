@@ -140,7 +140,7 @@ export function TrabalhadorDetalhePage() {
         titulo={perfil?.nome ?? 'Carregando…'}
         subtitulo={
           perfil &&
-          `Matrícula ${perfil.matricula} · ${perfil.obraNome} · ${perfil.funcaoNome} · Admissão em ${perfil.dataAdmissao?.slice(0, 10)}`
+          `${perfil.matricula ? `Matrícula ${perfil.matricula} · ` : ''}${perfil.obraNome} · ${perfil.funcaoNome} · Admissão em ${perfil.dataAdmissao?.slice(0, 10)}`
         }
         status={perfil && <StatusChip tom={tomAptidao[perfil.statusAptidao] ?? 'neutro'}>{perfil.statusAptidao}</StatusChip>}
         acoes={
