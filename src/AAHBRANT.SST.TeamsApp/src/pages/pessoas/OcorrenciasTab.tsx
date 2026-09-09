@@ -1,70 +1,49 @@
-import {
-  Badge,
-  Table,
-  TableBody,
-  TableCell,
-  TableHeader,
-  TableHeaderCell,
-  TableRow,
-  Text,
-} from '@fluentui/react-components';
+import { Card, DataTable, StatusChip, type Coluna, type Tom } from '@ui';
 import {
   gravidadeAcidenteLabel,
   statusAcidenteLabel,
   tipoOcorrenciaLabel,
   type OcorrenciaPerfil,
 } from '../../lib/api';
-import { usePageStyles } from '../pageStyles';
 
-const corBadgeGravidade: Record<number, 'success' | 'warning' | 'severe' | 'danger'> = {
-  1: 'success',
-  2: 'warning',
-  3: 'severe',
-  4: 'severe',
-  5: 'danger',
+// Gravidade 1-5: mapeamento por julgamento semântico (guia de conversão da Onda 2), não posicional —
+// StatusChip só tem 5 tons e nenhum equivale a "severe" separado de "danger".
+const tomPorGravidade: Record<number, Tom> = {
+  1: 'ok',
+  2: 'atencao',
+  3: 'alerta',
+  4: 'alerta',
+  5: 'alerta',
 };
 
+// Sub-aba somente-leitura de TrabalhadorDetalhePage (aba "Ocorrências"). Camada ui/ (Onda 2, Task 1):
+// Card com título de seção + DataTable; sem formulário e sem erro próprio (dados vêm prontos do
+// perfil carregado pela página-mãe), por isso nenhuma conversão de FeedbackInline aqui.
 export function OcorrenciasTab({ ocorrencias }: { ocorrencias: OcorrenciaPerfil[] }) {
-  const estilos = usePageStyles();
+  const colunas: Coluna<OcorrenciaPerfil>[] = [
+    { chave: 'tipo', rotulo: 'Tipo', render: (o) => tipoOcorrenciaLabel[o.tipo] },
+    { chave: 'data', rotulo: 'Data', render: (o) => o.data?.slice(0, 10) ?? '' },
+    { chave: 'local', rotulo: 'Local' },
+    {
+      chave: 'gravidade',
+      rotulo: 'Gravidade',
+      render: (o) => (
+        <StatusChip tom={tomPorGravidade[o.gravidade] ?? 'neutro'}>{gravidadeAcidenteLabel[o.gravidade]}</StatusChip>
+      ),
+    },
+    { chave: 'diasAfastado', rotulo: 'Dias afastado', render: (o) => (o.houveAfastamento ? o.diasAfastamento ?? 0 : '—') },
+    { chave: 'status', rotulo: 'Status', render: (o) => statusAcidenteLabel[o.status] },
+  ];
 
   return (
-    <div className={estilos.card}>
-      <div className={estilos.toolbar}>
-        <Text weight="semibold">Ocorrências registradas</Text>
-      </div>
-
-      {ocorrencias.length === 0 ? (
-        <Text>Nenhuma ocorrência registrada para este funcionário.</Text>
-      ) : (
-        <Table noNativeElements>
-          <TableHeader>
-            <TableRow>
-              <TableHeaderCell>Tipo</TableHeaderCell>
-              <TableHeaderCell>Data</TableHeaderCell>
-              <TableHeaderCell>Local</TableHeaderCell>
-              <TableHeaderCell>Gravidade</TableHeaderCell>
-              <TableHeaderCell>Dias afastado</TableHeaderCell>
-              <TableHeaderCell>Status</TableHeaderCell>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {ocorrencias.map((ocorrencia) => (
-              <TableRow key={ocorrencia.id}>
-                <TableCell>{tipoOcorrenciaLabel[ocorrencia.tipo]}</TableCell>
-                <TableCell>{ocorrencia.data?.slice(0, 10)}</TableCell>
-                <TableCell>{ocorrencia.local}</TableCell>
-                <TableCell>
-                  <Badge color={corBadgeGravidade[ocorrencia.gravidade]} appearance="tint">
-                    {gravidadeAcidenteLabel[ocorrencia.gravidade]}
-                  </Badge>
-                </TableCell>
-                <TableCell>{ocorrencia.houveAfastamento ? ocorrencia.diasAfastamento ?? 0 : '—'}</TableCell>
-                <TableCell>{statusAcidenteLabel[ocorrencia.status]}</TableCell>
-              </TableRow>
-            ))}
-          </TableBody>
-        </Table>
-      )}
-    </div>
+    <Card titulo="Ocorrências registradas">
+      <DataTable
+        aria-label="Ocorrências registradas"
+        colunas={colunas}
+        linhas={ocorrencias}
+        chaveLinha={(o) => o.id}
+        vazio={{ titulo: 'Nenhuma ocorrência registrada para este funcionário.' }}
+      />
+    </Card>
   );
 }

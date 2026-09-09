@@ -3,21 +3,19 @@ import {
   Button,
   Field,
   Input,
-  Table,
-  TableBody,
-  TableCell,
-  TableHeader,
-  TableHeaderCell,
-  TableRow,
-  Text,
-} from '@fluentui/react-components';
+  Card,
+  PageHeader,
+  DataTable,
+  PainelLateral,
+  FormGrid,
+  Campo,
+  FeedbackInline,
+  useConfirmar,
+  type Coluna,
+} from '@ui';
 import { Add24Regular, Delete24Regular } from '@fluentui/react-icons';
 import { api, type CursoTreinamento, type NovoCursoTreinamento } from '../../lib/api';
-import { usePageStyles } from '../pageStyles';
-import { useConfirmarExclusao } from '../../hooks/useConfirmarExclusao';
 import { useSucessoToast } from '../../hooks/useSucessoToast';
-import { EstadoVazio } from '../../components/EstadoVazio';
-import { ListaCarregando } from '../../components/ListaCarregando';
 
 const cursoVazio: NovoCursoTreinamento = {
   nome: '',
@@ -26,14 +24,17 @@ const cursoVazio: NovoCursoTreinamento = {
   validadeEmMeses: 12,
 };
 
+// Camada ui/ (Onda 2, Task 1): formulário de criação foi para um PainelLateral, mesmo padrão dos
+// demais cadastros deste módulo.
 export function CursosTreinamentoTab() {
-  const estilos = usePageStyles();
   const [cursos, setCursos] = useState<CursoTreinamento[]>([]);
   const [novoCurso, setNovoCurso] = useState<NovoCursoTreinamento>(cursoVazio);
   const [erro, setErro] = useState<string | null>(null);
+  const [erroPainel, setErroPainel] = useState<string | null>(null);
   const [carregando, setCarregando] = useState(false);
   const [carregandoLista, setCarregandoLista] = useState(true);
-  const { confirmar, dialogElement } = useConfirmarExclusao();
+  const [painelAberto, setPainelAberto] = useState(false);
+  const { confirmar, dialogElement } = useConfirmar();
   const sucessoToast = useSucessoToast();
 
   async function carregar() {
@@ -51,16 +52,22 @@ export function CursosTreinamentoTab() {
     carregar();
   }, []);
 
+  function fecharPainel() {
+    setPainelAberto(false);
+    setErroPainel(null);
+  }
+
   async function criar() {
     try {
       setCarregando(true);
-      setErro(null);
+      setErroPainel(null);
       await api.cursosTreinamento.criar(novoCurso);
       setNovoCurso(cursoVazio);
       await carregar();
       sucessoToast('Curso de treinamento criado com sucesso.');
+      fecharPainel();
     } catch (e) {
-      setErro(e instanceof Error ? e.message : 'Falha ao criar curso de treinamento.');
+      setErroPainel(e instanceof Error ? e.message : 'Falha ao criar curso de treinamento.');
     } finally {
       setCarregando(false);
     }
@@ -77,90 +84,97 @@ export function CursosTreinamentoTab() {
     }
   }
 
+  const colunas: Coluna<CursoTreinamento>[] = [
+    { chave: 'nome', rotulo: 'Nome' },
+    { chave: 'normaReferencia', rotulo: 'Norma' },
+    { chave: 'cargaHorariaMinima', rotulo: 'CH mínima', render: (c) => `${c.cargaHorariaMinima}h` },
+    { chave: 'validadeEmMeses', rotulo: 'Validade (meses)' },
+  ];
+
   return (
-    <div className={estilos.card}>
+    <div>
       {dialogElement}
-      <div className={estilos.toolbar}>
-        <Text weight="semibold">Cursos de treinamento (catálogo)</Text>
-      </div>
-
-      {erro && <Text className={estilos.erro}>{erro}</Text>}
-
-      <div className={`${estilos.sectionTitle} ${estilos.sectionTitleFirst}`}>Dados do Curso</div>
-      <div className={estilos.formGrid}>
-        <div className={estilos.col5}>
-          <Field label="Nome">
-            <Input value={novoCurso.nome} onChange={(_, d) => setNovoCurso({ ...novoCurso, nome: d.value })} />
-          </Field>
-        </div>
-        <div className={estilos.col3}>
-          <Field label="Norma de referência">
-            <Input
-              value={novoCurso.normaReferencia ?? ''}
-              onChange={(_, d) => setNovoCurso({ ...novoCurso, normaReferencia: d.value })}
-            />
-          </Field>
-        </div>
-        <div className={estilos.col2}>
-          <Field label="Carga horária mínima (h)">
-            <Input
-              type="number"
-              value={String(novoCurso.cargaHorariaMinima)}
-              onChange={(_, d) => setNovoCurso({ ...novoCurso, cargaHorariaMinima: Number(d.value) })}
-            />
-          </Field>
-        </div>
-        <div className={estilos.col2}>
-          <Field label="Validade (meses)">
-            <Input
-              type="number"
-              value={String(novoCurso.validadeEmMeses)}
-              onChange={(_, d) => setNovoCurso({ ...novoCurso, validadeEmMeses: Number(d.value) })}
-            />
-          </Field>
-        </div>
-      </div>
-      <div className={estilos.formActions}>
-        <Button appearance="primary" icon={<Add24Regular />} onClick={criar} disabled={carregando}>
-          Adicionar curso
-        </Button>
-      </div>
-
-      {carregandoLista ? (
-        <ListaCarregando />
-      ) : cursos.length === 0 ? (
-        <EstadoVazio mensagem="Nenhum curso de treinamento cadastrado ainda." />
-      ) : (
-      <Table noNativeElements>
-        <TableHeader>
-          <TableRow>
-            <TableHeaderCell>Nome</TableHeaderCell>
-            <TableHeaderCell>Norma</TableHeaderCell>
-            <TableHeaderCell>CH mínima</TableHeaderCell>
-            <TableHeaderCell>Validade (meses)</TableHeaderCell>
-            <TableHeaderCell></TableHeaderCell>
-          </TableRow>
-        </TableHeader>
-        <TableBody>
-          {cursos.map((curso) => (
-            <TableRow key={curso.id}>
-              <TableCell>{curso.nome}</TableCell>
-              <TableCell>{curso.normaReferencia}</TableCell>
-              <TableCell>{curso.cargaHorariaMinima}h</TableCell>
-              <TableCell>{curso.validadeEmMeses}</TableCell>
-              <TableCell>
-                <Button
-                  appearance="subtle"
-                  icon={<Delete24Regular />}
-                  onClick={() => excluir(curso.id)}
-                  aria-label="Excluir"
-                />
-              </TableCell>
-            </TableRow>
-          ))}
-        </TableBody>
-      </Table>
+      <PageHeader
+        titulo="Cursos de treinamento (catálogo)"
+        acoes={
+          <Button appearance="primary" icon={<Add24Regular />} onClick={() => setPainelAberto(true)}>
+            Adicionar curso
+          </Button>
+        }
+      />
+      {erro && (
+        <FeedbackInline tom="erro" aoFechar={() => setErro(null)}>
+          {erro}
+        </FeedbackInline>
       )}
+      <Card>
+        <DataTable
+          aria-label="Cursos de treinamento"
+          colunas={colunas}
+          linhas={cursos}
+          chaveLinha={(c) => c.id}
+          carregando={carregandoLista}
+          vazio={{
+            titulo: 'Nenhum curso de treinamento cadastrado ainda',
+            acao: { rotulo: 'Adicionar curso', aoClicar: () => setPainelAberto(true) },
+          }}
+          acoesLinha={(c) => (
+            <Button appearance="subtle" icon={<Delete24Regular />} onClick={() => excluir(c.id)} aria-label="Excluir" />
+          )}
+        />
+      </Card>
+      <PainelLateral
+        aberto={painelAberto}
+        aoFechar={fecharPainel}
+        titulo="Novo curso de treinamento"
+        rodape={
+          <>
+            <Button onClick={fecharPainel}>Cancelar</Button>
+            <Button appearance="primary" onClick={criar} disabled={carregando}>
+              Adicionar curso
+            </Button>
+          </>
+        }
+      >
+        {erroPainel && (
+          <FeedbackInline tom="erro" aoFechar={() => setErroPainel(null)}>
+            {erroPainel}
+          </FeedbackInline>
+        )}
+        <FormGrid>
+          <Campo span={6}>
+            <Field label="Nome">
+              <Input value={novoCurso.nome} onChange={(_, d) => setNovoCurso({ ...novoCurso, nome: d.value })} />
+            </Field>
+          </Campo>
+          <Campo span={6}>
+            <Field label="Norma de referência">
+              <Input
+                value={novoCurso.normaReferencia ?? ''}
+                onChange={(_, d) => setNovoCurso({ ...novoCurso, normaReferencia: d.value })}
+              />
+            </Field>
+          </Campo>
+          <Campo span={6}>
+            <Field label="Carga horária mínima (h)">
+              <Input
+                type="number"
+                value={String(novoCurso.cargaHorariaMinima)}
+                onChange={(_, d) => setNovoCurso({ ...novoCurso, cargaHorariaMinima: Number(d.value) })}
+              />
+            </Field>
+          </Campo>
+          <Campo span={6}>
+            <Field label="Validade (meses)">
+              <Input
+                type="number"
+                value={String(novoCurso.validadeEmMeses)}
+                onChange={(_, d) => setNovoCurso({ ...novoCurso, validadeEmMeses: Number(d.value) })}
+              />
+            </Field>
+          </Campo>
+        </FormGrid>
+      </PainelLateral>
     </div>
   );
 }
