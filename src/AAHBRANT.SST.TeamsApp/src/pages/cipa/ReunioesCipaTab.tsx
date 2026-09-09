@@ -1,21 +1,24 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
-  Badge,
   Button,
+  Campo,
+  CampoData,
+  Card,
+  DataTable,
   Field,
+  FeedbackInline,
+  FormGrid,
+  PageHeader,
+  PainelLateral,
   Select,
-  Table,
-  TableBody,
-  TableCell,
-  TableHeader,
-  TableHeaderCell,
-  TableRow,
-  Text,
+  StatusChip,
   Textarea,
-} from '@fluentui/react-components';
-import { CampoData } from '../../components/CampoData';
-import { Add24Regular, ChevronRight24Regular, Delete24Regular } from '@fluentui/react-icons';
+  useConfirmar,
+  type Coluna,
+  type Tom,
+} from '@ui';
+import { Add24Regular, Delete24Regular } from '@fluentui/react-icons';
 import {
   api,
   statusReuniaoCipaLabel,
@@ -25,26 +28,30 @@ import {
   type Obra,
   type ReuniaoCipa,
 } from '../../lib/api';
-import { usePageStyles } from '../pageStyles';
-import { useConfirmarExclusao } from '../../hooks/useConfirmarExclusao';
 import { useSucessoToast } from '../../hooks/useSucessoToast';
-import { EstadoVazio } from '../../components/EstadoVazio';
-import { ListaCarregando } from '../../components/ListaCarregando';
 
 function vazio(): NovaReuniaoCipa {
   return { obraId: '', tipo: TipoReuniaoCipa.Ordinaria, dataReuniao: '', pauta: '' };
 }
 
+// Status da reunião (Agendada → Realizada → AtaRegistrada, guia de conversão da Onda 2, seção
+// "Badge→StatusChip"): progressão de workflow, não severidade — mapeada por julgamento (agendada
+// como próximo passo, realizada como pendência de ata, ata registrada como concluído).
+const tomPorStatus: Record<number, Tom> = { 1: 'info', 2: 'atencao', 3: 'ok' };
+
+// Camada ui/ (Onda 2, Task 4): formulário de agendamento saiu para PainelLateral (Guia §2); a linha
+// inteira já navega para o detalhe, então o botão "ver" redundante saiu (Guia §1).
 export function ReunioesCipaTab() {
-  const estilos = usePageStyles();
   const navigate = useNavigate();
   const [lista, setLista] = useState<ReuniaoCipa[]>([]);
   const [obras, setObras] = useState<Obra[]>([]);
   const [novo, setNovo] = useState<NovaReuniaoCipa>(vazio());
   const [erro, setErro] = useState<string | null>(null);
+  const [erroPainel, setErroPainel] = useState<string | null>(null);
   const [carregando, setCarregando] = useState(false);
   const [carregandoLista, setCarregandoLista] = useState(true);
-  const { confirmar, dialogElement } = useConfirmarExclusao();
+  const [painelAberto, setPainelAberto] = useState(false);
+  const { confirmar, dialogElement } = useConfirmar();
   const sucessoToast = useSucessoToast();
 
   async function carregar() {
@@ -68,27 +75,32 @@ export function ReunioesCipaTab() {
     return obras.find((o) => o.id === id)?.nome ?? id;
   }
 
+  function fecharPainel() {
+    setPainelAberto(false);
+    setErroPainel(null);
+  }
+
   async function criar() {
     if (!novo.obraId || !novo.dataReuniao) {
-      setErro('Preencha obra e data da reunião.');
+      setErroPainel('Preencha obra e data da reunião.');
       return;
     }
     try {
       setCarregando(true);
-      setErro(null);
+      setErroPainel(null);
       await api.cipa.reunioes.criar({ ...novo, pauta: novo.pauta || null });
       setNovo(vazio());
       await carregar();
       sucessoToast('Reunião agendada com sucesso.');
+      fecharPainel();
     } catch (e) {
-      setErro(e instanceof Error ? e.message : 'Falha ao criar reunião.');
+      setErroPainel(e instanceof Error ? e.message : 'Falha ao criar reunião.');
     } finally {
       setCarregando(false);
     }
   }
 
-  async function excluir(id: string, evento: React.MouseEvent) {
-    evento.stopPropagation();
+  async function excluir(id: string) {
     if (!(await confirmar('Excluir esta reunião da CIPA? Essa ação não pode ser desfeita.'))) return;
     try {
       await api.cipa.reunioes.excluir(id);
@@ -99,17 +111,72 @@ export function ReunioesCipaTab() {
     }
   }
 
+  const colunas: Coluna<ReuniaoCipa>[] = [
+    { chave: 'obra', rotulo: 'Obra', render: (r) => nomeObra(r.obraId) },
+    { chave: 'tipo', rotulo: 'Tipo', render: (r) => tipoReuniaoCipaLabel[r.tipo] },
+    { chave: 'dataReuniao', rotulo: 'Data', render: (r) => r.dataReuniao?.slice(0, 10) ?? '' },
+    { chave: 'presentes', rotulo: 'Presentes', render: (r) => `${r.totalPresentes}/${r.totalParticipantes}` },
+    {
+      chave: 'status',
+      rotulo: 'Status',
+      render: (r) => <StatusChip tom={tomPorStatus[r.status] ?? 'neutro'}>{statusReuniaoCipaLabel[r.status]}</StatusChip>,
+    },
+  ];
+
   return (
     <div>
       {dialogElement}
-      <div className={estilos.card} style={{ marginBottom: 16 }}>
-        <div className={estilos.toolbar}>
-          <Text weight="semibold">Agendar reunião</Text>
-        </div>
-        {erro && <Text className={estilos.erro}>{erro}</Text>}
-        <div className={`${estilos.sectionTitle} ${estilos.sectionTitleFirst}`}>Dados da Reunião</div>
-        <div className={estilos.formGrid}>
-          <div className={estilos.col4}>
+      <PageHeader
+        titulo="Reuniões CIPA"
+        acoes={
+          <Button appearance="primary" icon={<Add24Regular />} onClick={() => setPainelAberto(true)}>
+            Agendar reunião
+          </Button>
+        }
+      />
+      {erro && (
+        <FeedbackInline tom="erro" aoFechar={() => setErro(null)}>
+          {erro}
+        </FeedbackInline>
+      )}
+      <Card>
+        <DataTable
+          aria-label="Reuniões"
+          colunas={colunas}
+          linhas={lista}
+          chaveLinha={(r) => r.id}
+          carregando={carregandoLista}
+          vazio={{
+            titulo: 'Nenhuma reunião da CIPA cadastrada ainda',
+            acao: { rotulo: 'Agendar reunião', aoClicar: () => setPainelAberto(true) },
+          }}
+          aoClicarLinha={(r) => navigate(`/operacao/cipa/reuniao/${r.id}`)}
+          acoesLinha={(r) => (
+            <Button appearance="subtle" icon={<Delete24Regular />} onClick={() => excluir(r.id)} aria-label="Excluir" />
+          )}
+        />
+      </Card>
+      <PainelLateral
+        aberto={painelAberto}
+        aoFechar={fecharPainel}
+        titulo="Agendar reunião"
+        subtitulo="Lista de presença, deliberações e o plano de ações (matriz 5W2H) da reunião são registrados na tela de detalhe."
+        rodape={
+          <>
+            <Button onClick={fecharPainel}>Cancelar</Button>
+            <Button appearance="primary" onClick={criar} disabled={carregando}>
+              Agendar reunião
+            </Button>
+          </>
+        }
+      >
+        {erroPainel && (
+          <FeedbackInline tom="erro" aoFechar={() => setErroPainel(null)}>
+            {erroPainel}
+          </FeedbackInline>
+        )}
+        <FormGrid>
+          <Campo span={4}>
             <Field label="Obra" required>
               <Select value={novo.obraId} onChange={(_, d) => setNovo({ ...novo, obraId: d.value })}>
                 <option value="">Selecione</option>
@@ -120,8 +187,8 @@ export function ReunioesCipaTab() {
                 ))}
               </Select>
             </Field>
-          </div>
-          <div className={estilos.col3}>
+          </Campo>
+          <Campo span={3}>
             <Field label="Tipo">
               <Select value={String(novo.tipo)} onChange={(_, d) => setNovo({ ...novo, tipo: Number(d.value) })}>
                 {Object.entries(tipoReuniaoCipaLabel).map(([valor, rotulo]) => (
@@ -131,78 +198,19 @@ export function ReunioesCipaTab() {
                 ))}
               </Select>
             </Field>
-          </div>
-          <div className={estilos.col3}>
+          </Campo>
+          <Campo span={3}>
             <Field label="Data da reunião" required>
               <CampoData value={novo.dataReuniao} onChange={(_, d) => setNovo({ ...novo, dataReuniao: d.value })} />
             </Field>
-          </div>
-          <div className={estilos.col12}>
+          </Campo>
+          <Campo span={12}>
             <Field label="Pauta">
               <Textarea value={novo.pauta ?? ''} onChange={(_, d) => setNovo({ ...novo, pauta: d.value })} />
             </Field>
-          </div>
-        </div>
-        <div className={estilos.footer}>
-          <Text className={estilos.footerInfo}>
-            Lista de presença, deliberações e o plano de ações (matriz 5W2H) da reunião são registrados
-            na tela de detalhe.
-          </Text>
-          <Button appearance="primary" icon={<Add24Regular />} onClick={criar} disabled={carregando}>
-            Agendar reunião
-          </Button>
-        </div>
-      </div>
-
-      <div className={estilos.card}>
-        <div className={estilos.toolbar}>
-          <Text weight="semibold">Reuniões</Text>
-        </div>
-        {carregandoLista ? (
-          <ListaCarregando />
-        ) : lista.length === 0 ? (
-          <EstadoVazio mensagem="Nenhuma reunião da CIPA cadastrada ainda." />
-        ) : (
-        <Table noNativeElements>
-          <TableHeader>
-            <TableRow>
-              <TableHeaderCell>Obra</TableHeaderCell>
-              <TableHeaderCell>Tipo</TableHeaderCell>
-              <TableHeaderCell>Data</TableHeaderCell>
-              <TableHeaderCell>Presentes</TableHeaderCell>
-              <TableHeaderCell>Status</TableHeaderCell>
-              <TableHeaderCell></TableHeaderCell>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {lista.map((r) => (
-              <TableRow key={r.id} onClick={() => navigate(`/operacao/cipa/reuniao/${r.id}`)} style={{ cursor: 'pointer' }}>
-                <TableCell>{nomeObra(r.obraId)}</TableCell>
-                <TableCell>{tipoReuniaoCipaLabel[r.tipo]}</TableCell>
-                <TableCell>{r.dataReuniao?.slice(0, 10)}</TableCell>
-                <TableCell>
-                  {r.totalPresentes}/{r.totalParticipantes}
-                </TableCell>
-                <TableCell>
-                  <Badge appearance="tint">{statusReuniaoCipaLabel[r.status]}</Badge>
-                </TableCell>
-                <TableCell>
-                  <div style={{ display: 'flex', gap: 4 }}>
-                    <Button
-                      appearance="subtle"
-                      icon={<ChevronRight24Regular />}
-                      onClick={() => navigate(`/operacao/cipa/reuniao/${r.id}`)}
-                      aria-label="Ver reunião"
-                    />
-                    <Button appearance="subtle" icon={<Delete24Regular />} onClick={(e) => excluir(r.id, e)} aria-label="Excluir" />
-                  </div>
-                </TableCell>
-              </TableRow>
-            ))}
-          </TableBody>
-        </Table>
-        )}
-      </div>
+          </Campo>
+        </FormGrid>
+      </PainelLateral>
     </div>
   );
 }

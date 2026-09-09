@@ -1,17 +1,20 @@
 import { useEffect, useState } from 'react';
 import {
-  Badge,
   Button,
+  Card,
+  Campo,
+  DataTable,
+  FeedbackInline,
+  FormGrid,
+  Field,
   Input,
+  PainelLateral,
   Select,
-  Table,
-  TableBody,
-  TableCell,
-  TableHeader,
-  TableHeaderCell,
-  TableRow,
-  Text,
-} from '@fluentui/react-components';
+  StatusChip,
+  useConfirmar,
+  type Coluna,
+  type Tom,
+} from '@ui';
 import { AddCircle24Regular, Delete24Regular, Save24Regular } from '@fluentui/react-icons';
 import {
   api,
@@ -23,39 +26,41 @@ import {
   type RegraAlerta,
   type Usuario,
 } from '../../lib/api';
-import { usePageStyles } from '../pageStyles';
-import { useConfirmarExclusao } from '../../hooks/useConfirmarExclusao';
 import { useSucessoToast } from '../../hooks/useSucessoToast';
-import { ListaCarregando } from '../../components/ListaCarregando';
 
 // Tela de administração do Motor Central de Alertas (requisito do usuário, 2026-08-25): antes só
 // dava para ajustar RegraAlerta.DiasAntecedencia/Severidade direto no banco. Um card por módulo
 // (TipoModuloAlerta), com as regras atuais em linhas editáveis inline (Dias + Severidade + Salvar/
-// Excluir) e uma linha de inclusão no rodapé de cada card — decisão de UI própria (não especificada
-// no requisito): evita modal e deixa visível de uma vez só o "degrau" de urgência de cada módulo.
+// Excluir) e um botão "Adicionar regra" por card, que abre um PainelLateral compartilhado — decisão
+// de UI própria (não especificada no requisito): evita repetir um formulário por card e segue o
+// mesmo padrão já usado em toda a Onda 2 para formulário de criação (ex.: AtividadesTab.tsx).
 const modulosOrdenados = Object.entries(TipoModuloAlerta)
   .map(([, valor]) => valor)
   .sort((a, b) => a - b);
 
-function severidadeCor(severidade: number): 'informative' | 'warning' | 'danger' {
-  if (severidade === SeveridadeAlerta.Critico) return 'danger';
-  if (severidade === SeveridadeAlerta.Atencao) return 'warning';
-  return 'informative';
-}
+// Mapeamento 1:1 pelo nome semântico (Guia de conversão item 5): Info→info, Atenção→atencao,
+// Crítico→alerta.
+const tomPorSeveridade: Record<number, Tom> = {
+  [SeveridadeAlerta.Info]: 'info',
+  [SeveridadeAlerta.Atencao]: 'atencao',
+  [SeveridadeAlerta.Critico]: 'alerta',
+};
 
 function rascunhoInicial(modulo: number): NovaRegraAlerta {
   return { modulo, diasAntecedencia: 30, severidade: SeveridadeAlerta.Info, responsavelUsuarioId: '' };
 }
 
 export function AlertasConfiguracaoTab() {
-  const estilos = usePageStyles();
   const [regras, setRegras] = useState<RegraAlerta[]>([]);
   const [usuarios, setUsuarios] = useState<Usuario[]>([]);
-  const [rascunhos, setRascunhos] = useState<Record<number, NovaRegraAlerta>>({});
   const [erro, setErro] = useState<string | null>(null);
+  const [erroPainel, setErroPainel] = useState<string | null>(null);
   const [carregando, setCarregando] = useState(false);
   const [carregandoLista, setCarregandoLista] = useState(true);
-  const { confirmar, dialogElement } = useConfirmarExclusao();
+  const [painelAberto, setPainelAberto] = useState(false);
+  const [moduloPainel, setModuloPainel] = useState<number | null>(null);
+  const [rascunho, setRascunho] = useState<NovaRegraAlerta | null>(null);
+  const { confirmar, dialogElement } = useConfirmar();
   const sucessoToast = useSucessoToast();
 
   async function carregar() {
@@ -118,193 +123,230 @@ export function AlertasConfiguracaoTab() {
     }
   }
 
-  async function adicionar(modulo: number) {
-    const rascunho = rascunhos[modulo] ?? rascunhoInicial(modulo);
+  function abrirPainel(modulo: number) {
+    setModuloPainel(modulo);
+    setRascunho(rascunhoInicial(modulo));
+    setErroPainel(null);
+    setPainelAberto(true);
+  }
+
+  function fecharPainel() {
+    setPainelAberto(false);
+    setModuloPainel(null);
+    setRascunho(null);
+    setErroPainel(null);
+  }
+
+  function atualizarRascunho(campo: 'diasAntecedencia' | 'severidade' | 'responsavelUsuarioId', valor: number | string) {
+    setRascunho((atual) => (atual ? { ...atual, [campo]: valor } : atual));
+  }
+
+  async function adicionar() {
+    if (!rascunho) return;
     try {
       setCarregando(true);
-      setErro(null);
+      setErroPainel(null);
       await api.regrasAlerta.criar({
         ...rascunho,
         responsavelUsuarioId: rascunho.responsavelUsuarioId || null,
       });
-      setRascunhos((atual) => ({ ...atual, [modulo]: rascunhoInicial(modulo) }));
       await carregar();
       sucessoToast('Regra de alerta adicionada com sucesso.');
+      fecharPainel();
     } catch (e) {
-      setErro(e instanceof Error ? e.message : 'Falha ao adicionar regra de alerta.');
+      setErroPainel(e instanceof Error ? e.message : 'Falha ao adicionar regra de alerta.');
     } finally {
       setCarregando(false);
     }
   }
 
-  function rascunhoDoModulo(modulo: number): NovaRegraAlerta {
-    return rascunhos[modulo] ?? rascunhoInicial(modulo);
-  }
-
-  function atualizarRascunho(
-    modulo: number,
-    campo: 'diasAntecedencia' | 'severidade' | 'responsavelUsuarioId',
-    valor: number | string
-  ) {
-    setRascunhos((atual) => ({
-      ...atual,
-      [modulo]: { ...rascunhoDoModulo(modulo), [campo]: valor },
-    }));
-  }
-
   return (
     <div>
       {dialogElement}
-      {erro && <Text className={estilos.erro}>{erro}</Text>}
+      {erro && (
+        <FeedbackInline tom="erro" aoFechar={() => setErro(null)}>
+          {erro}
+        </FeedbackInline>
+      )}
 
-      <Text as="p">
+      <p>
         Defina, por módulo, os limiares de antecedência (em dias) que disparam cada nível de
         severidade. O motor de alertas escolhe sempre a regra mais urgente cujo limiar cobre os dias
         restantes até o vencimento; um item já vencido gera severidade Crítico automaticamente,
         mesmo sem regra cadastrada.
-      </Text>
+      </p>
 
-      {carregandoLista ? (
-        <ListaCarregando />
-      ) : (
-      modulosOrdenados.map((modulo) => {
+      {modulosOrdenados.map((modulo) => {
         const regrasDoModulo = regras
           .filter((r) => r.modulo === modulo)
           .sort((a, b) => b.diasAntecedencia - a.diasAntecedencia);
-        const rascunho = rascunhoDoModulo(modulo);
+
+        const colunas: Coluna<RegraAlerta>[] = [
+          {
+            chave: 'diasAntecedencia',
+            rotulo: 'Dias de antecedência',
+            render: (regra) => (
+              <Input
+                type="number"
+                min={0}
+                value={String(regra.diasAntecedencia)}
+                onChange={(_, d) => atualizarCampoLocal(regra.id, 'diasAntecedencia', Number(d.value))}
+                style={{ maxWidth: 120 }}
+              />
+            ),
+          },
+          {
+            chave: 'severidade',
+            rotulo: 'Severidade',
+            render: (regra) => (
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                <Select
+                  value={String(regra.severidade)}
+                  onChange={(_, d) => atualizarCampoLocal(regra.id, 'severidade', Number(d.value))}
+                >
+                  {Object.entries(severidadeAlertaLabel).map(([valor, rotulo]) => (
+                    <option key={valor} value={valor}>
+                      {rotulo}
+                    </option>
+                  ))}
+                </Select>
+                <StatusChip tom={tomPorSeveridade[regra.severidade] ?? 'neutro'}>
+                  {severidadeAlertaLabel[regra.severidade]}
+                </StatusChip>
+              </div>
+            ),
+          },
+          {
+            chave: 'responsavel',
+            rotulo: 'Responsável (notificação no Teams)',
+            render: (regra) => (
+              <Select
+                value={regra.responsavelUsuarioId ?? ''}
+                onChange={(_, d) => atualizarCampoLocal(regra.id, 'responsavelUsuarioId', d.value)}
+                style={{ maxWidth: 220 }}
+              >
+                <option value="">Nenhum</option>
+                {usuarios.map((usuario) => (
+                  <option key={usuario.id} value={usuario.id}>
+                    {usuario.nome}
+                  </option>
+                ))}
+              </Select>
+            ),
+          },
+        ];
 
         return (
-          <div className={estilos.card} style={{ marginBottom: 16 }} key={modulo}>
-            <div className={estilos.toolbar}>
-              <Text weight="semibold">{moduloAlertaLabel[modulo] ?? modulo}</Text>
-            </div>
-
-            <Table noNativeElements>
-              <TableHeader>
-                <TableRow>
-                  <TableHeaderCell>Dias de antecedência</TableHeaderCell>
-                  <TableHeaderCell>Severidade</TableHeaderCell>
-                  <TableHeaderCell>Responsável (notificação no Teams)</TableHeaderCell>
-                  <TableHeaderCell></TableHeaderCell>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {regrasDoModulo.map((regra) => (
-                  <TableRow key={regra.id}>
-                    <TableCell>
-                      <Input
-                        type="number"
-                        min={0}
-                        value={String(regra.diasAntecedencia)}
-                        onChange={(_, d) =>
-                          atualizarCampoLocal(regra.id, 'diasAntecedencia', Number(d.value))
-                        }
-                        style={{ maxWidth: 120 }}
-                      />
-                    </TableCell>
-                    <TableCell>
-                      <Select
-                        value={String(regra.severidade)}
-                        onChange={(_, d) => atualizarCampoLocal(regra.id, 'severidade', Number(d.value))}
-                      >
-                        {Object.entries(severidadeAlertaLabel).map(([valor, rotulo]) => (
-                          <option key={valor} value={valor}>
-                            {rotulo}
-                          </option>
-                        ))}
-                      </Select>
-                      <Badge appearance="tint" color={severidadeCor(regra.severidade)} style={{ marginLeft: 8 }}>
-                        {severidadeAlertaLabel[regra.severidade]}
-                      </Badge>
-                    </TableCell>
-                    <TableCell>
-                      <Select
-                        value={regra.responsavelUsuarioId ?? ''}
-                        onChange={(_, d) => atualizarCampoLocal(regra.id, 'responsavelUsuarioId', d.value)}
-                        style={{ maxWidth: 220 }}
-                      >
-                        <option value="">Nenhum</option>
-                        {usuarios.map((usuario) => (
-                          <option key={usuario.id} value={usuario.id}>
-                            {usuario.nome}
-                          </option>
-                        ))}
-                      </Select>
-                    </TableCell>
-                    <TableCell>
-                      <div style={{ display: 'flex', gap: 4 }}>
-                        <Button
-                          appearance="subtle"
-                          icon={<Save24Regular />}
-                          title="Salvar"
-                          disabled={carregando}
-                          onClick={() => salvar(regra)}
-                        />
-                        <Button
-                          appearance="subtle"
-                          icon={<Delete24Regular />}
-                          title="Excluir"
-                          disabled={carregando}
-                          onClick={() => excluir(regra.id)}
-                        />
-                      </div>
-                    </TableCell>
-                  </TableRow>
-                ))}
-                <TableRow>
-                  <TableCell>
-                    <Input
-                      type="number"
-                      min={0}
-                      value={String(rascunho.diasAntecedencia)}
-                      onChange={(_, d) => atualizarRascunho(modulo, 'diasAntecedencia', Number(d.value))}
-                      style={{ maxWidth: 120 }}
-                    />
-                  </TableCell>
-                  <TableCell>
-                    <Select
-                      value={String(rascunho.severidade)}
-                      onChange={(_, d) => atualizarRascunho(modulo, 'severidade', Number(d.value))}
-                    >
-                      {Object.entries(severidadeAlertaLabel).map(([valor, rotulo]) => (
-                        <option key={valor} value={valor}>
-                          {rotulo}
-                        </option>
-                      ))}
-                    </Select>
-                  </TableCell>
-                  <TableCell>
-                    <Select
-                      value={rascunho.responsavelUsuarioId ?? ''}
-                      onChange={(_, d) => atualizarRascunho(modulo, 'responsavelUsuarioId', d.value)}
-                      style={{ maxWidth: 220 }}
-                    >
-                      <option value="">Nenhum</option>
-                      {usuarios.map((usuario) => (
-                        <option key={usuario.id} value={usuario.id}>
-                          {usuario.nome}
-                        </option>
-                      ))}
-                    </Select>
-                  </TableCell>
-                  <TableCell>
+          <div style={{ marginBottom: 16 }} key={modulo}>
+            <Card
+              titulo={moduloAlertaLabel[modulo] ?? String(modulo)}
+              acoes={
+                <Button
+                  appearance="subtle"
+                  icon={<AddCircle24Regular />}
+                  onClick={() => abrirPainel(modulo)}
+                  disabled={carregando}
+                >
+                  Adicionar regra
+                </Button>
+              }
+            >
+              <DataTable
+                aria-label={`Regras de alerta — ${moduloAlertaLabel[modulo] ?? modulo}`}
+                colunas={colunas}
+                linhas={regrasDoModulo}
+                chaveLinha={(r) => r.id}
+                carregando={carregandoLista}
+                vazio={{
+                  titulo: 'Nenhuma regra cadastrada para este módulo',
+                  acao: { rotulo: 'Adicionar regra', aoClicar: () => abrirPainel(modulo) },
+                }}
+                acoesLinha={(regra) => (
+                  <div style={{ display: 'flex', gap: 4 }}>
                     <Button
                       appearance="subtle"
-                      icon={<AddCircle24Regular />}
-                      title="Adicionar regra"
+                      icon={<Save24Regular />}
+                      title="Salvar"
                       disabled={carregando}
-                      onClick={() => adicionar(modulo)}
-                    >
-                      Adicionar
-                    </Button>
-                  </TableCell>
-                </TableRow>
-              </TableBody>
-            </Table>
+                      onClick={() => salvar(regra)}
+                    />
+                    <Button
+                      appearance="subtle"
+                      icon={<Delete24Regular />}
+                      title="Excluir"
+                      disabled={carregando}
+                      onClick={() => excluir(regra.id)}
+                    />
+                  </div>
+                )}
+              />
+            </Card>
           </div>
         );
-      })
-      )}
+      })}
+
+      <PainelLateral
+        aberto={painelAberto}
+        aoFechar={fecharPainel}
+        titulo={`Nova regra — ${moduloPainel !== null ? moduloAlertaLabel[moduloPainel] ?? moduloPainel : ''}`}
+        rodape={
+          <>
+            <Button onClick={fecharPainel}>Cancelar</Button>
+            <Button appearance="primary" onClick={adicionar} disabled={carregando || !rascunho}>
+              Adicionar regra
+            </Button>
+          </>
+        }
+      >
+        {erroPainel && (
+          <FeedbackInline tom="erro" aoFechar={() => setErroPainel(null)}>
+            {erroPainel}
+          </FeedbackInline>
+        )}
+        {rascunho && (
+          <FormGrid>
+            <Campo span={4}>
+              <Field label="Dias de antecedência">
+                <Input
+                  type="number"
+                  min={0}
+                  value={String(rascunho.diasAntecedencia)}
+                  onChange={(_, d) => atualizarRascunho('diasAntecedencia', Number(d.value))}
+                />
+              </Field>
+            </Campo>
+            <Campo span={4}>
+              <Field label="Severidade">
+                <Select
+                  value={String(rascunho.severidade)}
+                  onChange={(_, d) => atualizarRascunho('severidade', Number(d.value))}
+                >
+                  {Object.entries(severidadeAlertaLabel).map(([valor, rotulo]) => (
+                    <option key={valor} value={valor}>
+                      {rotulo}
+                    </option>
+                  ))}
+                </Select>
+              </Field>
+            </Campo>
+            <Campo span={4}>
+              <Field label="Responsável">
+                <Select
+                  value={rascunho.responsavelUsuarioId ?? ''}
+                  onChange={(_, d) => atualizarRascunho('responsavelUsuarioId', d.value)}
+                >
+                  <option value="">Nenhum</option>
+                  {usuarios.map((usuario) => (
+                    <option key={usuario.id} value={usuario.id}>
+                      {usuario.nome}
+                    </option>
+                  ))}
+                </Select>
+              </Field>
+            </Campo>
+          </FormGrid>
+        )}
+      </PainelLateral>
     </div>
   );
 }

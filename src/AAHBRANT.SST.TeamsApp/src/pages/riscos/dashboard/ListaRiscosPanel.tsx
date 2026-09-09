@@ -1,20 +1,7 @@
-import {
-  Badge,
-  Button,
-  Table,
-  TableBody,
-  TableCell,
-  TableHeader,
-  TableHeaderCell,
-  TableRow,
-  Text,
-} from '@fluentui/react-components';
+import { Button, Card, DataTable, StatusChip, useConfirmar, type Coluna, type Tom } from '@ui';
 import { Delete24Regular } from '@fluentui/react-icons';
 import { api, nivelRiscoLabel, type Atividade, type Perigo, type Risco } from '../../../lib/api';
-import { usePageStyles } from '../../pageStyles';
-import { useConfirmarExclusao } from '../../../hooks/useConfirmarExclusao';
 import { useSucessoToast } from '../../../hooks/useSucessoToast';
-import { EstadoVazio } from '../../../components/EstadoVazio';
 
 interface ListaRiscosPanelProps {
   riscos: Risco[];
@@ -23,17 +10,17 @@ interface ListaRiscosPanelProps {
   aoExcluir: () => void;
 }
 
-const corNivel: Record<number, 'informative' | 'success' | 'warning' | 'severe' | 'danger'> = {
-  1: 'informative',
-  2: 'success',
-  3: 'warning',
-  4: 'severe',
-  5: 'danger',
-};
+// Guia de conversão §5, mesmo padrão do item 5 (5 tons Fluent → 4 tons @ui, Alto/Crítico colapsados
+// em "alerta").
+const tomPorNivel: Record<number, Tom> = { 1: 'ok', 2: 'info', 3: 'atencao', 4: 'alerta', 5: 'alerta' };
 
+// Camada ui/ (Onda 2, Task 13): painel de dashboard, lista simples de riscos avaliados. Table cru ->
+// DataTable, Badge -> StatusChip, useConfirmarExclusao -> useConfirmar. Altura limitada + rolagem
+// interna preservadas (mesmo precedente de painel de dashboard: RiscosCriticosPanel/AprVencidaPanel
+// também limitam a lista a uma caixa com scroll próprio, em vez de deixar o dashboard crescer sem
+// limite) — a caixa envolve o DataTable, já que a peça em si não tem essa opção embutida.
 export function ListaRiscosPanel({ riscos, atividades, perigos, aoExcluir }: ListaRiscosPanelProps) {
-  const estilos = usePageStyles();
-  const { confirmar, dialogElement } = useConfirmarExclusao();
+  const { confirmar, dialogElement } = useConfirmar();
   const sucessoToast = useSucessoToast();
 
   const nomeAtividade = (id: string) => atividades.find((a) => a.id === id)?.nome ?? id;
@@ -48,47 +35,33 @@ export function ListaRiscosPanel({ riscos, atividades, perigos, aoExcluir }: Lis
 
   const ordenados = [...riscos].sort((a, b) => b.nivelRisco - a.nivelRisco);
 
+  const colunas: Coluna<Risco>[] = [
+    { chave: 'atividade', rotulo: 'Atividade', render: (r) => nomeAtividade(r.atividadeId) },
+    { chave: 'perigo', rotulo: 'Perigo', render: (r) => nomePerigo(r.perigoId) },
+    {
+      chave: 'nivel',
+      rotulo: 'Nível',
+      render: (r) => <StatusChip tom={tomPorNivel[r.nivelRisco]}>{nivelRiscoLabel[r.nivelRisco]}</StatusChip>,
+    },
+  ];
+
   return (
-    <div className={estilos.card} style={{ marginTop: 16 }}>
+    <div style={{ marginTop: 16 }}>
       {dialogElement}
-      <Text weight="semibold">Todos os riscos avaliados ({riscos.length})</Text>
-      <div style={{ maxHeight: 480, overflowY: 'auto', marginTop: 12 }}>
-        {ordenados.length === 0 ? (
-          <EstadoVazio mensagem="Nenhum risco avaliado para os filtros selecionados." />
-        ) : (
-          <Table noNativeElements>
-            <TableHeader>
-              <TableRow>
-                <TableHeaderCell>Atividade</TableHeaderCell>
-                <TableHeaderCell>Perigo</TableHeaderCell>
-                <TableHeaderCell>Nível</TableHeaderCell>
-                <TableHeaderCell></TableHeaderCell>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {ordenados.map((risco) => (
-                <TableRow key={risco.id}>
-                  <TableCell>{nomeAtividade(risco.atividadeId)}</TableCell>
-                  <TableCell>{nomePerigo(risco.perigoId)}</TableCell>
-                  <TableCell>
-                    <Badge appearance="tint" color={corNivel[risco.nivelRisco]}>
-                      {nivelRiscoLabel[risco.nivelRisco]}
-                    </Badge>
-                  </TableCell>
-                  <TableCell>
-                    <Button
-                      appearance="subtle"
-                      icon={<Delete24Regular />}
-                      onClick={() => excluir(risco.id)}
-                      aria-label="Excluir"
-                    />
-                  </TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
-        )}
-      </div>
+      <Card titulo={`Todos os riscos avaliados (${riscos.length})`}>
+        <div style={{ maxHeight: 480, overflowY: 'auto', marginTop: 12 }}>
+          <DataTable
+            aria-label="Todos os riscos avaliados"
+            colunas={colunas}
+            linhas={ordenados}
+            chaveLinha={(r) => r.id}
+            vazio={{ titulo: 'Nenhum risco avaliado para os filtros selecionados.' }}
+            acoesLinha={(r) => (
+              <Button appearance="subtle" icon={<Delete24Regular />} onClick={() => excluir(r.id)} aria-label="Excluir" />
+            )}
+          />
+        </div>
+      </Card>
     </div>
   );
 }

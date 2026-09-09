@@ -1,33 +1,32 @@
-import { useState } from 'react';
-import { Tab, TabList, Text, type SelectTabData, type SelectTabEvent } from '@fluentui/react-components';
-import { usePillTabStyles } from '../pageStyles';
+import { Abas, PageHeader, useAbaNaUrl } from '@ui';
 import { AlertasDashboardTab } from './dashboard/AlertasDashboardTab';
 import { AlertasListaTab } from './AlertasListaTab';
 import { AlertasConfiguracaoTab } from './AlertasConfiguracaoTab';
 
-type AbaAlertas = 'dashboard' | 'lista' | 'configuracao';
+const ABAS_ALERTAS = ['lista', 'configuracao', 'dashboard'] as const;
+type AbaAlertas = (typeof ABAS_ALERTAS)[number];
 
+// Onda 2 Task 16 (camada ui/): item de 1º nível próprio na sidebar, rota direta `/alertas` (sem
+// nesting em outra página-pilar — confirmado em App.tsx). Mesmo padrão de CipaPage.tsx: aba
+// sincronizada com a URL (?aba=) via useAbaNaUrl, para voltar/F5 preservarem a aba.
 export function AlertasPage() {
-  const [aba, setAba] = useState<AbaAlertas>('lista');
-  const estilosAba = usePillTabStyles();
+  const [aba, setAba] = useAbaNaUrl<AbaAlertas>('aba', ABAS_ALERTAS, 'lista');
 
   return (
     <div>
-      <div style={{ marginBottom: 16 }}>
-        <Text size={500} weight="semibold">
-          Alertas
-        </Text>
-      </div>
+      <PageHeader titulo="Alertas" />
 
-      <TabList
-        selectedValue={aba}
-        onTabSelect={(_: SelectTabEvent, data: SelectTabData) => setAba(data.value as AbaAlertas)}
-        className={estilosAba.lista}
-      >
-        <Tab value="lista">Lista</Tab>
-        <Tab value="configuracao">Configurações</Tab>
-        <Tab value="dashboard">Dashboard</Tab>
-      </TabList>
+      <Abas
+        nivel="pilar"
+        valor={aba}
+        aoMudar={setAba}
+        aria-label="Seções de Alertas"
+        abas={[
+          { valor: 'lista', rotulo: 'Lista' },
+          { valor: 'configuracao', rotulo: 'Configurações' },
+          { valor: 'dashboard', rotulo: 'Dashboard' },
+        ]}
+      />
 
       {aba === 'lista' && <AlertasListaTab />}
       {aba === 'configuracao' && <AlertasConfiguracaoTab />}

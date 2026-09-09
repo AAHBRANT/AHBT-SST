@@ -1,29 +1,31 @@
 import { useEffect, useState } from 'react';
 import {
   Button,
+  Campo,
+  Card,
+  DataTable,
   Field,
+  FeedbackInline,
+  FormGrid,
+  FormRodape,
+  FormSection,
   Input,
-  RadioGroup,
+  Legenda,
   Radio,
+  RadioGroup,
   Select,
-  Table,
-  TableBody,
-  TableCell,
-  TableHeader,
-  TableHeaderCell,
-  TableRow,
   Text,
-} from '@fluentui/react-components';
+  useConfirmar,
+  type Coluna,
+} from '@ui';
 import { AddCircle24Regular, Delete24Regular } from '@fluentui/react-icons';
 import { api, type ItemQuestionarioAplicabilidade, type Obra, type RespostaQuestionarioObra } from '../../lib/api';
-import { usePageStyles } from '../pageStyles';
-import { useConfirmarExclusao } from '../../hooks/useConfirmarExclusao';
 import { useSucessoToast } from '../../hooks/useSucessoToast';
-import { EstadoVazio } from '../../components/EstadoVazio';
-import { ListaCarregando } from '../../components/ListaCarregando';
 
+// Onda 2 Task 18 (camada ui/): catálogo de perguntas do questionário de aplicabilidade + respostas
+// por obra. Duas tabelas (catálogo e respostas) viram DataTable; Radio/RadioGroup do Fluent
+// ganharam re-export em @ui (ui/index.ts) nesta mesma task — único consumidor no app hoje.
 export function QuestionarioAplicabilidadeTab() {
-  const estilos = usePageStyles();
   const [itens, setItens] = useState<ItemQuestionarioAplicabilidade[]>([]);
   const [obras, setObras] = useState<Obra[]>([]);
   const [obraSelecionadaId, setObraSelecionadaId] = useState('');
@@ -34,7 +36,7 @@ export function QuestionarioAplicabilidadeTab() {
   const [erro, setErro] = useState<string | null>(null);
   const [processando, setProcessando] = useState(false);
   const [carregandoLista, setCarregandoLista] = useState(true);
-  const { confirmar, dialogElement } = useConfirmarExclusao();
+  const { confirmar, dialogElement } = useConfirmar();
   const sucessoToast = useSucessoToast();
 
   async function carregarCatalogoEObras() {
@@ -115,71 +117,103 @@ export function QuestionarioAplicabilidadeTab() {
     }
   }
 
+  const colunasCatalogo: Coluna<ItemQuestionarioAplicabilidade>[] = [
+    { chave: 'pergunta', rotulo: 'Pergunta' },
+    { chave: 'textoApoio', rotulo: 'Texto de apoio', render: (i) => i.textoApoio ?? '—' },
+  ];
+
+  const colunasRespostas: Coluna<RespostaQuestionarioObra>[] = [
+    {
+      chave: 'pergunta',
+      rotulo: 'Pergunta',
+      render: (r) => (
+        <>
+          {r.pergunta}
+          {r.textoApoio && <Text size={200} style={{ display: 'block' }}>{r.textoApoio}</Text>}
+        </>
+      ),
+    },
+    {
+      chave: 'resposta',
+      rotulo: 'Resposta',
+      render: (r) => (
+        <RadioGroup
+          layout="horizontal"
+          value={r.resposta === null ? '' : r.resposta ? 'sim' : 'nao'}
+          onChange={(_, d) => responder(r.itemId, d.value === 'sim')}
+        >
+          <Radio value="sim" label="Sim" />
+          <Radio value="nao" label="Não" />
+        </RadioGroup>
+      ),
+    },
+    {
+      chave: 'observacao',
+      rotulo: 'Observação',
+      render: (r) => (
+        <Input
+          value={observacoesEdicao[r.itemId] ?? ''}
+          onChange={(_, d) => setObservacoesEdicao({ ...observacoesEdicao, [r.itemId]: d.value })}
+          onBlur={() => {
+            if (r.resposta !== null) responder(r.itemId, r.resposta);
+          }}
+        />
+      ),
+    },
+  ];
+
   return (
-    <div>
+    <>
       {dialogElement}
-      {erro && <Text className={estilos.erro}>{erro}</Text>}
+      {erro && (
+        <FeedbackInline tom="erro" aoFechar={() => setErro(null)}>
+          {erro}
+        </FeedbackInline>
+      )}
 
-      <div className={estilos.card} style={{ marginBottom: 16 }}>
-        <div className={estilos.toolbar}>
-          <Text weight="semibold">Catálogo de perguntas</Text>
-        </div>
-        <Text size={200} style={{ display: 'block', marginBottom: 8 }}>
-          Perguntas usadas como critério de aplicabilidade quando não dá para derivar de Perigo/Função/Equipamento
-          já cadastrados (ex.: "a obra realiza trabalho em espaço confinado?"). A mesma pergunta vale para todas as
-          obras — só a resposta é por obra.
-        </Text>
-        <div className={`${estilos.sectionTitle} ${estilos.sectionTitleFirst}`}>Dados da Pergunta</div>
-        <div className={estilos.formGrid}>
-          <div className={estilos.col6}>
-            <Field label="Pergunta" required>
-              <Input value={novaPergunta} onChange={(_, d) => setNovaPergunta(d.value)} />
-            </Field>
-          </div>
-          <div className={estilos.col6}>
-            <Field label="Texto de apoio">
-              <Input value={novoTextoApoio} onChange={(_, d) => setNovoTextoApoio(d.value)} />
-            </Field>
-          </div>
-        </div>
-        <div className={estilos.formActions}>
-          <Button appearance="primary" icon={<AddCircle24Regular />} onClick={criarItem} disabled={processando}>
-            Adicionar pergunta
-          </Button>
-        </div>
+      <div style={{ marginBottom: 16 }}>
+        <Card titulo="Catálogo de perguntas">
+          <Legenda>
+            Perguntas usadas como critério de aplicabilidade quando não dá para derivar de Perigo/Função/Equipamento
+            já cadastrados (ex.: "a obra realiza trabalho em espaço confinado?"). A mesma pergunta vale para todas as
+            obras — só a resposta é por obra.
+          </Legenda>
 
-        {carregandoLista ? (
-          <ListaCarregando />
-        ) : itens.length === 0 ? (
-          <EstadoVazio mensagem="Nenhuma pergunta cadastrada ainda." />
-        ) : (
-        <Table noNativeElements style={{ marginTop: 12 }}>
-          <TableHeader>
-            <TableRow>
-              <TableHeaderCell>Pergunta</TableHeaderCell>
-              <TableHeaderCell>Texto de apoio</TableHeaderCell>
-              <TableHeaderCell></TableHeaderCell>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {itens.map((i) => (
-              <TableRow key={i.id}>
-                <TableCell>{i.pergunta}</TableCell>
-                <TableCell>{i.textoApoio ?? '—'}</TableCell>
-                <TableCell>
-                  <Button appearance="subtle" icon={<Delete24Regular />} aria-label="Excluir" onClick={() => excluirItem(i.id)} />
-                </TableCell>
-              </TableRow>
-            ))}
-          </TableBody>
-        </Table>
-        )}
+          <FormSection titulo="Dados da Pergunta" numero={1}>
+            <FormGrid>
+              <Campo span={6}>
+                <Field label="Pergunta" required>
+                  <Input value={novaPergunta} onChange={(_, d) => setNovaPergunta(d.value)} />
+                </Field>
+              </Campo>
+              <Campo span={6}>
+                <Field label="Texto de apoio">
+                  <Input value={novoTextoApoio} onChange={(_, d) => setNovoTextoApoio(d.value)} />
+                </Field>
+              </Campo>
+            </FormGrid>
+            <FormRodape>
+              <Button appearance="primary" icon={<AddCircle24Regular />} onClick={criarItem} disabled={processando}>
+                Adicionar pergunta
+              </Button>
+            </FormRodape>
+          </FormSection>
+
+          <DataTable
+            aria-label="Catálogo de perguntas do questionário de aplicabilidade"
+            colunas={colunasCatalogo}
+            linhas={itens}
+            chaveLinha={(i) => i.id}
+            carregando={carregandoLista}
+            vazio={{ titulo: 'Nenhuma pergunta cadastrada ainda.' }}
+            acoesLinha={(i) => (
+              <Button appearance="subtle" icon={<Delete24Regular />} aria-label="Excluir" onClick={() => excluirItem(i.id)} />
+            )}
+          />
+        </Card>
       </div>
 
-      <div className={estilos.card}>
-        <div className={estilos.toolbar}>
-          <Text weight="semibold">Responder por obra</Text>
-        </div>
+      <Card titulo="Responder por obra">
         <Field label="Obra">
           <Select
             value={obraSelecionadaId}
@@ -198,50 +232,15 @@ export function QuestionarioAplicabilidadeTab() {
         </Field>
 
         {obraSelecionadaId && (
-          <Table noNativeElements style={{ marginTop: 12 }}>
-            <TableHeader>
-              <TableRow>
-                <TableHeaderCell>Pergunta</TableHeaderCell>
-                <TableHeaderCell>Resposta</TableHeaderCell>
-                <TableHeaderCell>Observação</TableHeaderCell>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {respostas.map((r) => (
-                <TableRow key={r.itemId}>
-                  <TableCell>
-                    {r.pergunta}
-                    {r.textoApoio && (
-                      <Text size={200} style={{ display: 'block' }}>
-                        {r.textoApoio}
-                      </Text>
-                    )}
-                  </TableCell>
-                  <TableCell>
-                    <RadioGroup
-                      layout="horizontal"
-                      value={r.resposta === null ? '' : r.resposta ? 'sim' : 'nao'}
-                      onChange={(_, d) => responder(r.itemId, d.value === 'sim')}
-                    >
-                      <Radio value="sim" label="Sim" />
-                      <Radio value="nao" label="Não" />
-                    </RadioGroup>
-                  </TableCell>
-                  <TableCell>
-                    <Input
-                      value={observacoesEdicao[r.itemId] ?? ''}
-                      onChange={(_, d) => setObservacoesEdicao({ ...observacoesEdicao, [r.itemId]: d.value })}
-                      onBlur={() => {
-                        if (r.resposta !== null) responder(r.itemId, r.resposta);
-                      }}
-                    />
-                  </TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
+          <DataTable
+            aria-label="Respostas do questionário de aplicabilidade da obra selecionada"
+            colunas={colunasRespostas}
+            linhas={respostas}
+            chaveLinha={(r) => r.itemId}
+            vazio={{ titulo: 'Nenhuma pergunta cadastrada ainda.' }}
+          />
         )}
-      </div>
-    </div>
+      </Card>
+    </>
   );
 }

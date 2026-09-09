@@ -1,21 +1,22 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
-  Badge,
   Button,
+  Campo,
+  CampoData,
+  Card,
   Checkbox,
+  DataTable,
   Field,
+  FeedbackInline,
+  FormGrid,
+  PageHeader,
+  PainelLateral,
   Select,
-  Table,
-  TableBody,
-  TableCell,
-  TableHeader,
-  TableHeaderCell,
-  TableRow,
-  Text,
-} from '@fluentui/react-components';
-import { CampoData } from '../../components/CampoData';
-import { Add24Regular, ChevronRight24Regular } from '@fluentui/react-icons';
+  StatusChip,
+  type Coluna,
+} from '@ui';
+import { Add24Regular } from '@fluentui/react-icons';
 import {
   api,
   cargoMembroCipaLabel,
@@ -27,7 +28,6 @@ import {
   type Obra,
   type Trabalhador,
 } from '../../lib/api';
-import { usePageStyles } from '../pageStyles';
 
 function vazio(): NovoMembroCipa {
   return {
@@ -42,9 +42,10 @@ function vazio(): NovoMembroCipa {
 
 // Membros eleitos pelos empregados normalmente entram aqui pela apuração do Processo Eleitoral
 // (aba "Processo Eleitoral"). Este formulário serve para cadastrar diretamente os indicados pelo
-// empregador (que não passam por votação) — ver disclosure em Cipa.cs.
+// empregador (que não passam por votação) — ver disclosure em Cipa.cs. Camada ui/ (Onda 2, Task 4):
+// formulário saiu para PainelLateral; filtro "somente mandato ativo" migrou do toolbar da lista para
+// os filtros do PageHeader.
 export function MembrosCipaTab() {
-  const estilos = usePageStyles();
   const navigate = useNavigate();
   const [lista, setLista] = useState<MembroCipa[]>([]);
   const [obras, setObras] = useState<Obra[]>([]);
@@ -52,7 +53,10 @@ export function MembrosCipaTab() {
   const [somenteMandatoAtivo, setSomenteMandatoAtivo] = useState(true);
   const [novo, setNovo] = useState<NovoMembroCipa>(vazio());
   const [erro, setErro] = useState<string | null>(null);
+  const [erroPainel, setErroPainel] = useState<string | null>(null);
   const [carregando, setCarregando] = useState(false);
+  const [carregandoLista, setCarregandoLista] = useState(true);
+  const [painelAberto, setPainelAberto] = useState(false);
 
   async function carregar() {
     try {
@@ -65,6 +69,8 @@ export function MembrosCipaTab() {
       setObras(listaObras);
     } catch (e) {
       setErro(e instanceof Error ? e.message : 'Falha ao carregar membros da CIPA.');
+    } finally {
+      setCarregandoLista(false);
     }
   }
 
@@ -78,35 +84,102 @@ export function MembrosCipaTab() {
     setTrabalhadores(obraId ? await api.trabalhadores.listar(obraId) : []);
   }
 
+  function fecharPainel() {
+    setPainelAberto(false);
+    setErroPainel(null);
+  }
+
   async function criar() {
     if (!novo.obraId || !novo.trabalhadorId || !novo.dataInicioMandato || !novo.dataFimMandato) {
-      setErro('Preencha obra, funcionário e o período do mandato.');
+      setErroPainel('Preencha obra, funcionário e o período do mandato.');
       return;
     }
     try {
       setCarregando(true);
-      setErro(null);
+      setErroPainel(null);
       await api.cipa.membros.criar(novo);
       setNovo(vazio());
       setTrabalhadores([]);
       await carregar();
+      fecharPainel();
     } catch (e) {
-      setErro(e instanceof Error ? e.message : 'Falha ao cadastrar membro.');
+      setErroPainel(e instanceof Error ? e.message : 'Falha ao cadastrar membro.');
     } finally {
       setCarregando(false);
     }
   }
 
+  const colunas: Coluna<MembroCipa>[] = [
+    { chave: 'nome', rotulo: 'Nome', render: (m) => m.trabalhadorNome },
+    { chave: 'obra', rotulo: 'Obra', render: (m) => m.obraNome },
+    { chave: 'origem', rotulo: 'Origem', render: (m) => origemMembroCipaLabel[m.origemMembro] },
+    { chave: 'cargo', rotulo: 'Cargo', render: (m) => cargoMembroCipaLabel[m.cargo] },
+    {
+      chave: 'mandato',
+      rotulo: 'Mandato',
+      render: (m) => (
+        <>
+          {m.dataInicioMandato?.slice(0, 10)} a {m.dataFimMandato?.slice(0, 10)}{' '}
+          {m.mandatoAtivo && <StatusChip tom="ok">Ativo</StatusChip>}
+        </>
+      ),
+    },
+    { chave: 'totalTreinamentos', rotulo: 'Treinamentos' },
+  ];
+
   return (
     <div>
-      <div className={estilos.card} style={{ marginBottom: 16 }}>
-        <div className={estilos.toolbar}>
-          <Text weight="semibold">Indicar membro (empregador)</Text>
-        </div>
-        {erro && <Text className={estilos.erro}>{erro}</Text>}
-        <div className={`${estilos.sectionTitle} ${estilos.sectionTitleFirst}`}>Dados do Membro</div>
-        <div className={estilos.formGrid}>
-          <div className={estilos.col3}>
+      <PageHeader
+        titulo="Membros da CIPA"
+        filtros={
+          <Checkbox
+            label="Somente mandato ativo"
+            checked={somenteMandatoAtivo}
+            onChange={(_, d) => setSomenteMandatoAtivo(!!d.checked)}
+          />
+        }
+        acoes={
+          <Button appearance="primary" icon={<Add24Regular />} onClick={() => setPainelAberto(true)}>
+            Indicar membro
+          </Button>
+        }
+      />
+      {erro && (
+        <FeedbackInline tom="erro" aoFechar={() => setErro(null)}>
+          {erro}
+        </FeedbackInline>
+      )}
+      <Card>
+        <DataTable
+          aria-label="Membros da CIPA"
+          colunas={colunas}
+          linhas={lista}
+          chaveLinha={(m) => m.id}
+          carregando={carregandoLista}
+          vazio={{ titulo: 'Nenhum membro cadastrado ainda' }}
+          aoClicarLinha={(m) => navigate(`/operacao/cipa/membro/${m.id}`)}
+        />
+      </Card>
+      <PainelLateral
+        aberto={painelAberto}
+        aoFechar={fecharPainel}
+        titulo="Indicar membro (empregador)"
+        rodape={
+          <>
+            <Button onClick={fecharPainel}>Cancelar</Button>
+            <Button appearance="primary" onClick={criar} disabled={carregando}>
+              Cadastrar membro
+            </Button>
+          </>
+        }
+      >
+        {erroPainel && (
+          <FeedbackInline tom="erro" aoFechar={() => setErroPainel(null)}>
+            {erroPainel}
+          </FeedbackInline>
+        )}
+        <FormGrid>
+          <Campo span={6}>
             <Field label="Obra" required>
               <Select value={novo.obraId} onChange={(_, d) => trocarObra(d.value)}>
                 <option value="">Selecione</option>
@@ -117,8 +190,8 @@ export function MembrosCipaTab() {
                 ))}
               </Select>
             </Field>
-          </div>
-          <div className={estilos.col3}>
+          </Campo>
+          <Campo span={6}>
             <Field label="Funcionário" required>
               <Select
                 value={novo.trabalhadorId}
@@ -133,8 +206,8 @@ export function MembrosCipaTab() {
                 ))}
               </Select>
             </Field>
-          </div>
-          <div className={estilos.col3}>
+          </Campo>
+          <Campo span={6}>
             <Field label="Origem">
               <Select value={String(novo.origemMembro)} onChange={(_, d) => setNovo({ ...novo, origemMembro: Number(d.value) })}>
                 {Object.entries(origemMembroCipaLabel).map(([valor, rotulo]) => (
@@ -144,8 +217,8 @@ export function MembrosCipaTab() {
                 ))}
               </Select>
             </Field>
-          </div>
-          <div className={estilos.col3}>
+          </Campo>
+          <Campo span={6}>
             <Field label="Cargo">
               <Select value={String(novo.cargo)} onChange={(_, d) => setNovo({ ...novo, cargo: Number(d.value) })}>
                 {Object.entries(cargoMembroCipaLabel).map(([valor, rotulo]) => (
@@ -155,71 +228,19 @@ export function MembrosCipaTab() {
                 ))}
               </Select>
             </Field>
-          </div>
-          <div className={estilos.col3}>
+          </Campo>
+          <Campo span={6}>
             <Field label="Início do mandato" required>
               <CampoData value={novo.dataInicioMandato} onChange={(_, d) => setNovo({ ...novo, dataInicioMandato: d.value })} />
             </Field>
-          </div>
-          <div className={estilos.col3}>
+          </Campo>
+          <Campo span={6}>
             <Field label="Fim do mandato" required>
               <CampoData value={novo.dataFimMandato} onChange={(_, d) => setNovo({ ...novo, dataFimMandato: d.value })} />
             </Field>
-          </div>
-        </div>
-        <div className={estilos.formActions}>
-          <Button appearance="primary" icon={<Add24Regular />} onClick={criar} disabled={carregando}>
-            Cadastrar membro
-          </Button>
-        </div>
-      </div>
-
-      <div className={estilos.card}>
-        <div className={estilos.toolbar}>
-          <Text weight="semibold">Membros da CIPA</Text>
-          <Checkbox
-            label="Somente mandato ativo"
-            checked={somenteMandatoAtivo}
-            onChange={(_, d) => setSomenteMandatoAtivo(!!d.checked)}
-          />
-        </div>
-        <Table noNativeElements>
-          <TableHeader>
-            <TableRow>
-              <TableHeaderCell>Nome</TableHeaderCell>
-              <TableHeaderCell>Obra</TableHeaderCell>
-              <TableHeaderCell>Origem</TableHeaderCell>
-              <TableHeaderCell>Cargo</TableHeaderCell>
-              <TableHeaderCell>Mandato</TableHeaderCell>
-              <TableHeaderCell>Treinamentos</TableHeaderCell>
-              <TableHeaderCell></TableHeaderCell>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {lista.map((m) => (
-              <TableRow key={m.id} onClick={() => navigate(`/operacao/cipa/membro/${m.id}`)} style={{ cursor: 'pointer' }}>
-                <TableCell>{m.trabalhadorNome}</TableCell>
-                <TableCell>{m.obraNome}</TableCell>
-                <TableCell>{origemMembroCipaLabel[m.origemMembro]}</TableCell>
-                <TableCell>{cargoMembroCipaLabel[m.cargo]}</TableCell>
-                <TableCell>
-                  {m.dataInicioMandato?.slice(0, 10)} a {m.dataFimMandato?.slice(0, 10)}{' '}
-                  {m.mandatoAtivo && <Badge appearance="tint" color="success">Ativo</Badge>}
-                </TableCell>
-                <TableCell>{m.totalTreinamentos}</TableCell>
-                <TableCell>
-                  <Button
-                    appearance="subtle"
-                    icon={<ChevronRight24Regular />}
-                    onClick={() => navigate(`/operacao/cipa/membro/${m.id}`)}
-                    aria-label="Ver membro"
-                  />
-                </TableCell>
-              </TableRow>
-            ))}
-          </TableBody>
-        </Table>
-      </div>
+          </Campo>
+        </FormGrid>
+      </PainelLateral>
     </div>
   );
 }
