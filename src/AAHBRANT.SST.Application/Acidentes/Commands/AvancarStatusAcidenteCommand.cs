@@ -1,3 +1,4 @@
+using AAHBRANT.SST.Application.Acidentes;
 using AAHBRANT.SST.Application.Common.Interfaces;
 using AAHBRANT.SST.Domain.Enums;
 using FluentValidation;
@@ -25,8 +26,13 @@ public class AvancarStatusAcidenteCommandValidator : AbstractValidator<AvancarSt
 public class AvancarStatusAcidenteCommandHandler : IRequestHandler<AvancarStatusAcidenteCommand>
 {
     private readonly IAppDbContext _db;
+    private readonly IPublicadorAcidenteGrh _publicadorGrh;
 
-    public AvancarStatusAcidenteCommandHandler(IAppDbContext db) => _db = db;
+    public AvancarStatusAcidenteCommandHandler(IAppDbContext db, IPublicadorAcidenteGrh publicadorGrh)
+    {
+        _db = db;
+        _publicadorGrh = publicadorGrh;
+    }
 
     public async Task Handle(AvancarStatusAcidenteCommand request, CancellationToken ct)
     {
@@ -59,5 +65,6 @@ public class AvancarStatusAcidenteCommandHandler : IRequestHandler<AvancarStatus
         };
 
         await _db.SaveChangesAsync(ct);
+        await _publicadorGrh.PublicarAsync(await AcidenteGrhEventoFactory.CriarAsync(_db, acidente, ct), ct);
     }
 }

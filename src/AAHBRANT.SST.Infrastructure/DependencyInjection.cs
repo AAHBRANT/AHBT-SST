@@ -140,6 +140,11 @@ public static class DependencyInjection
             services.AddHostedService<ServiceBusNotificacaoTeamsProcessor>();
             services.AddSingleton<IFilaCalendarioTeams, ServiceBusFilaCalendarioTeams>();
             services.AddHostedService<ServiceBusCalendarioTeamsProcessor>();
+
+            // Integração G-RH (2026-09-09) — usa o mesmo namespace/connection string do Service Bus
+            // acima, só com filas dedicadas ("colaborador-grh"/"acidente-grh"; ver ServiceBusOptions).
+            services.AddSingleton<IPublicadorAcidenteGrh, ServiceBusPublicadorAcidenteGrh>();
+            services.AddHostedService<ServiceBusColaboradorGrhProcessor>();
         }
         else
         {
@@ -149,6 +154,11 @@ public static class DependencyInjection
             services.AddSingleton<InMemoryFilaCalendarioTeams>();
             services.AddSingleton<IFilaCalendarioTeams>(sp => sp.GetRequiredService<InMemoryFilaCalendarioTeams>());
             services.AddHostedService<InMemoryCalendarioTeamsProcessor>();
+
+            // Sem Service Bus real, não há fila "colaborador-grh" pra consumir (nenhum hosted service
+            // registrado) e a publicação de Acidente vira log (ver NoOpPublicadorAcidenteGrh) — evita
+            // travar dev local/CI, e evita fingir uma entrega que não aconteceu.
+            services.AddSingleton<IPublicadorAcidenteGrh, NoOpPublicadorAcidenteGrh>();
         }
 
         return services;

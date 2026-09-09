@@ -9,4 +9,11 @@ public class ServiceBusOptions
     public string ConnectionString { get; set; } = string.Empty;
     public string FilaNotificacoesTeams { get; set; } = "notificacoes-teams";
     public string FilaCalendarioTeams { get; set; } = "calendario-teams";
+
+    // Integração G-RH (2026-09-09): filas dedicadas, provisionadas manualmente no mesmo namespace do
+    // Service Bus acima. "colaborador-grh" é publicada pelo G-RH e consumida aqui
+    // (ServiceBusColaboradorGrhProcessor); "acidente-grh" é publicada por este sistema e consumida pelo
+    // G-RH (ServiceBusPublicadorAcidenteGrh) — nomes definidos em conjunto com o time do G-RH.
+    public string FilaColaboradorGrh { get; set; } = "colaborador-grh";
+    public string FilaAcidenteGrh { get; set; } = "acidente-grh";
 }
