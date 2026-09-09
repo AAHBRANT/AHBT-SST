@@ -1,19 +1,18 @@
 import { useEffect, useState } from 'react';
-import { useNavigate, useParams } from 'react-router-dom';
-import { Button, Text } from '@fluentui/react-components';
-import { ArrowLeft24Regular } from '@fluentui/react-icons';
+import { useParams } from 'react-router-dom';
+import { Card, FeedbackInline, PageHeader, Text } from '@ui';
 import { api, type CatalogoEpi, type EntregaEpi, type Trabalhador } from '../../lib/api';
-import { usePageStyles } from '../pageStyles';
 import { AssinaturaQuiosque } from '../../components/assinatura/AssinaturaQuiosque';
 import { FotoCatalogoEpi } from './FotoCatalogoEpi';
 
-// Tela de quiosque para a ficha de entrega de EPI, mesmo padrão de AssinarDdsPage.tsx (etapa 14 do
-// Motor de Assinatura Eletrônica): só resolve cabeçalho e navegação; o quiosque em si é o
-// componente genérico AssinaturaQuiosque, aqui com entidadeTipo="EntregaEpi".
+// Tela de quiosque para a ficha de entrega de EPI, mesmo padrão de AssinarDdsPage.tsx/AssinarPtPage.tsx
+// (etapa 14 do Motor de Assinatura Eletrônica): só resolve cabeçalho e navegação; o quiosque em si é
+// o componente genérico AssinaturaQuiosque, aqui com entidadeTipo="EntregaEpi".
+// Onda 2 Task 19 (camada ui/): PageHeader substitui o card+botão de voltar manuais; erro vira
+// FeedbackInline; a foto do EPI (que não cabe em PageHeader, sem slot de mídia) fica num Card
+// compacto próprio, entre o cabeçalho e o quiosque.
 export function AssinarEntregaEpiPage() {
   const { id } = useParams<{ id: string }>();
-  const navigate = useNavigate();
-  const estilos = usePageStyles();
   const [entrega, setEntrega] = useState<EntregaEpi | null>(null);
   const [epi, setEpi] = useState<CatalogoEpi | null>(null);
   const [trabalhador, setTrabalhador] = useState<Trabalhador | null>(null);
@@ -33,32 +32,35 @@ export function AssinarEntregaEpiPage() {
   }, [id]);
 
   if (!id) {
-    return <Text>Entrega de EPI não encontrada.</Text>;
+    return <FeedbackInline tom="erro">Entrega de EPI não encontrada.</FeedbackInline>;
   }
 
   return (
-    <div>
-      <Button appearance="subtle" icon={<ArrowLeft24Regular />} onClick={() => navigate('/epi')} style={{ marginBottom: 12 }}>
-        Voltar para EPI
-      </Button>
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+      <PageHeader
+        titulo={`Assinatura eletrônica — ${epi?.nome ?? 'Carregando...'}`}
+        voltarPara="/epi"
+        rotuloVoltar="Voltar para EPI"
+      />
 
-      {erro && <Text className={estilos.erro}>{erro}</Text>}
+      {erro && (
+        <FeedbackInline tom="erro" aoFechar={() => setErro(null)}>
+          {erro}
+        </FeedbackInline>
+      )}
 
-      <div className={estilos.card} style={{ marginBottom: 16 }}>
-        <div style={{ display: 'flex', gap: 16, alignItems: 'flex-start' }}>
-          {epi && <FotoCatalogoEpi catalogoEpiId={epi.id} temFoto={epi.temFoto} tamanho={96} />}
-          <div>
-            <Text size={500} weight="semibold">
-              Assinatura eletrônica — {epi?.nome ?? 'Carregando...'}
-            </Text>
+      {epi && (
+        <Card densidade="compacta">
+          <div style={{ display: 'flex', gap: 16, alignItems: 'center' }}>
+            <FotoCatalogoEpi catalogoEpiId={epi.id} temFoto={epi.temFoto} tamanho={96} />
             {entrega && (
-              <Text style={{ display: 'block', marginTop: 4 }}>
+              <Text>
                 Funcionário: {trabalhador?.nome ?? entrega.trabalhadorId} · Entrega: {entrega.dataEntrega?.slice(0, 10)}
               </Text>
             )}
           </div>
-        </div>
-      </div>
+        </Card>
+      )}
 
       <AssinaturaQuiosque entidadeTipo="EntregaEpi" entidadeId={id} />
     </div>
