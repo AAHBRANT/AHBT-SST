@@ -34,7 +34,7 @@ public class ObterAprDetalheQueryHandler : IRequestHandler<ObterAprDetalheQuery,
 
         var assinaturas = await _db.AprAssinaturas
             .Where(s => s.AprId == apr.Id)
-            .Include(s => s.Trabalhador)
+            .Include(s => s.Trabalhador!).ThenInclude(t => t.Funcao)
             .OrderByDescending(s => s.DataAssinatura)
             .ToListAsync(ct);
 
@@ -99,6 +99,7 @@ public class ObterAprDetalheQueryHandler : IRequestHandler<ObterAprDetalheQuery,
                 AprId = s.AprId,
                 TrabalhadorId = s.TrabalhadorId,
                 TrabalhadorNome = s.Trabalhador?.Nome ?? string.Empty,
+                TrabalhadorFuncaoNome = s.Trabalhador?.Funcao?.Nome,
                 Papel = s.Papel,
                 DataAssinatura = s.DataAssinatura
             }).ToList()

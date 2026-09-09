@@ -9,6 +9,7 @@ public class PcmsoDto
 {
     public Guid Id { get; set; }
 
+    public string? NumeroDocumento { get; set; }
     public string Nome { get; set; } = string.Empty;
     public string? Versao { get; set; }
     public DateTime? Validade { get; set; }

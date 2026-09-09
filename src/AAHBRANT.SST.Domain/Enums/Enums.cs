@@ -556,6 +556,13 @@ public enum StatusDds
     Concluido = 2
 }
 
+// Sessão/Turma de Treinamento (04/09) — mesmo vocabulário de StatusDds.
+public enum StatusSessaoTreinamento
+{
+    EmAndamento = 1,
+    Concluida = 2
+}
+
 // Evidência de presença no DDS — a Fase 1 (2026-08-24) previa "assinatura/foto fora do escopo"
 // (ver comentário original em DdsParticipante); trazido para o escopo a pedido do usuário no mesmo
 // dia. Pessoa/DocumentoAssinado preservados só para exibir o histórico de registros anteriores a
@@ -620,17 +627,23 @@ public enum MetodoAutenticacaoAssinatura
     // Assinatura em um clique do usuário logado (ex.: entregador de EPI assinando com a própria
     // sessão) — não é um método do "cardápio" por obra (MetodoAutenticacaoObra), pois não depende
     // de hardware/kiosque: está sempre disponível para quem já está autenticado no app.
-    SessaoLogada = 5
+    SessaoLogada = 5,
+    // Reconhecimento facial via Azure Face API (docs/superpowers/specs/2026-09-04-assinatura-facial-
+    // azure-design.md) — método adicional ao Futronic, não o substitui. Diferente da Biometria (match
+    // local no dispositivo), o match aqui acontece na nuvem (Face - Identify).
+    ReconhecimentoFacial = 6
 }
 
 // [Flags] em Obra.MetodosAutenticacaoHabilitados: cada obra decide se aceita assinatura (Biometria,
-// via Futronic) ou não (Nenhum). CrachaPin/QrCodePin/WebAuthnCelular removidos em 31/08 junto com os
-// métodos correspondentes (ver MetodoAutenticacaoAssinatura acima).
+// via Futronic; ReconhecimentoFacial, via Azure Face API) ou não (Nenhum). CrachaPin/QrCodePin/
+// WebAuthnCelular removidos em 31/08 junto com os métodos correspondentes (ver
+// MetodoAutenticacaoAssinatura acima).
 [Flags]
 public enum MetodoAutenticacaoObra
 {
     Nenhum = 0,
-    Biometria = 1
+    Biometria = 1,
+    ReconhecimentoFacial = 2
 }
 
 // Ficha de EPI reformulada (docs/superpowers/specs/2026-08-27-ficha-epi-reformulada-design.md) —
@@ -653,6 +666,23 @@ public enum TipoMovimentacaoEstoqueEpi
     SaidaEntrega = 1,
     DevolucaoEntrada = 2,
     AjusteManual = 3,
+}
+
+// EPC (pedido do usuário, 04/09) — mesmo vocabulário de TipoMovimentacaoEstoqueEpi, só que
+// "SaidaInstalacao"/"RetornoRemocao" em vez de "SaidaEntrega"/"DevolucaoEntrada", já que o EPC não é
+// entregue a um funcionário — é instalado/removido de uma Obra.
+public enum TipoMovimentacaoEstoqueEpc
+{
+    EntradaManual = 0,
+    SaidaInstalacao = 1,
+    RetornoRemocao = 2,
+    AjusteManual = 3,
+}
+
+public enum StatusInspecaoEpc
+{
+    Conforme = 1,
+    NaoConforme = 2,
 }
 
 // Motor de Aplicabilidade Legal (requisito do usuário, 2026-08-29) — classifica o requisito legal

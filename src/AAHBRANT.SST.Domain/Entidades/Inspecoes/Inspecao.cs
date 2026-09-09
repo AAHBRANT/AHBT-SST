@@ -23,6 +23,9 @@ public class Inspecao : AuditableEntity
     public Guid ChecklistModeloId { get; set; }
     public ChecklistModelo? ChecklistModelo { get; set; }
 
+    // Protocolo automático (prefixo "INSP"), gerado uma única vez na criação (CriarInspecaoCommand).
+    public string? NumeroDocumento { get; set; }
+
     public DateTime Data { get; set; }
 
     public Guid ResponsavelUsuarioId { get; set; }

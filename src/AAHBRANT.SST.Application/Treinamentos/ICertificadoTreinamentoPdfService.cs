@@ -8,6 +8,7 @@ public record CertificadoTreinamentoPdfSignatarioModelo(string TrabalhadorNome, 
 // padrão visual AAHBRANT (#670000) usado em EntregaEpiPdfService/DdsPdfService.
 public record CertificadoTreinamentoPdfModelo(
     string ObraNome,
+    byte[]? ObraLogoConteudo,
     string? ObraCnpj,
     string? ObraEndereco,
     string? ObraCidade,
@@ -15,6 +16,7 @@ public record CertificadoTreinamentoPdfModelo(
     string TrabalhadorNome,
     string TrabalhadorCpfMascarado,
     string? TrabalhadorRg,
+    string TrabalhadorMatricula,
     string TrabalhadorFuncaoNome,
     string CursoNome,
     string? NormaReferencia,
@@ -23,9 +25,17 @@ public record CertificadoTreinamentoPdfModelo(
     DateTime DataRealizacao,
     DateTime DataValidade,
     string? InstituicaoInstrutor,
+    string? InstrutorRegistroProfissional,
     string? NumeroCertificado,
+    string? Local,
     string? ConteudoProgramatico,
-    IReadOnlyList<CertificadoTreinamentoPdfSignatarioModelo> Signatarios);
+    IReadOnlyList<CertificadoTreinamentoPdfSignatarioModelo> Signatarios,
+    byte[]? QrCodeValidacaoPng,
+    byte[]? FotoTurma,
+    string ConteudoHash,
+    string UrlValidacaoPublica,
+    byte[] QrCodePng,
+    bool TemAssinatura);
 
 public interface ICertificadoTreinamentoPdfService
 {

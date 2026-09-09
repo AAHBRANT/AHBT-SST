@@ -35,7 +35,11 @@ public record AprPdfModelo(
     IReadOnlyList<AprPdfEnvolvido> Envolvidos,
     IReadOnlyList<AprPdfRiscoLinha> Riscos,
     AprPdfAssinatura Elaboracao,
-    AprPdfAssinatura Supervisao);
+    AprPdfAssinatura Supervisao,
+    string ConteudoHash,
+    string UrlValidacaoPublica,
+    byte[] QrCodePng,
+    bool TemAssinatura);
 
 public interface IAprPdfService
 {

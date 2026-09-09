@@ -226,10 +226,80 @@ export interface Treinamento {
   cargaHorariaRealizada: number;
   instituicaoInstrutor?: string | null;
   numeroCertificado?: string | null;
+  // Local/instalações e registro profissional do instrutor (CREA/MTE) no certificado (pedido do
+  // usuário, 06/09). Sem preencher Local, o certificado usa o nome da Obra do trabalhador.
+  local?: string | null;
+  instrutorRegistroProfissional?: string | null;
 }
 
 export type NovoTreinamento = Omit<Treinamento, 'id'>;
 export type AtualizarTreinamento = Treinamento;
+
+// Sessão/Turma de Treinamento (pedido do usuário, 04/09) — reformulação do fluxo: o responsável
+// abre a turma já com os participantes selecionados, registra presença de cada um por biometria
+// durante a aula, anexa as 3 fotos obrigatórias e encerra — o encerramento gera 1 Treinamento (e
+// certificado, com dupla assinatura já existente) por participante que confirmou presença.
+export const StatusSessaoTreinamento = {
+  EmAndamento: 1,
+  Concluida: 2,
+} as const;
+
+export const statusSessaoTreinamentoLabel: Record<number, string> = {
+  1: 'Em andamento',
+  2: 'Concluída',
+};
+
+export interface SessaoTreinamento {
+  id: string;
+  obraId: string;
+  obraNome: string;
+  cursoTreinamentoId: string;
+  cursoTreinamentoNome: string;
+  dataRealizacao: string;
+  cargaHorariaRealizada: number;
+  instituicaoInstrutor?: string | null;
+  numeroCertificado?: string | null;
+  status: number;
+  dataEncerramento?: string | null;
+  totalParticipantes: number;
+  totalPresencasConfirmadas: number;
+  totalFotosEvidencia: number;
+}
+
+export interface NovaSessaoTreinamento {
+  obraId: string;
+  cursoTreinamentoId: string;
+  dataRealizacao: string;
+  cargaHorariaRealizada: number;
+  instituicaoInstrutor?: string | null;
+  trabalhadoresIds: string[];
+}
+
+export interface ParticipanteSessaoTreinamento {
+  id: string;
+  trabalhadorId: string;
+  trabalhadorNome: string;
+  trabalhadorMatricula?: string | null;
+  presencaConfirmadaEm?: string | null;
+  scoreConfianca?: number | null;
+  treinamentoGeradoId?: string | null;
+  // Assinatura do certificado (04/09) — a mesma digital da presença já vale como assinatura do
+  // trabalhador; a do instrutor é automática ao encerrar. Nulos até o encerramento ou se a
+  // assinatura automática falhou (a tela oferece "Assinar" manual como reforço nesse caso).
+  certificadoAssinadoPeloTrabalhadorEm?: string | null;
+  certificadoAssinadoPeloInstrutorEm?: string | null;
+}
+
+export interface FotoEvidenciaSessaoTreinamento {
+  id: string;
+  ordem: number;
+}
+
+export interface SessaoTreinamentoDetalhe {
+  sessao: SessaoTreinamento;
+  participantes: ParticipanteSessaoTreinamento[];
+  fotosEvidencia: FotoEvidenciaSessaoTreinamento[];
+}
 
 // Módulo de Requisitos Legais — Motor de Aplicabilidade Legal (requisito do usuário, 2026-08-29).
 // Fase 1 (fundação de dados): cadastro do requisito e seus critérios de aplicabilidade, catálogo do
@@ -422,6 +492,110 @@ export interface EntregaEpi {
 
 export type NovaEntregaEpi = Omit<EntregaEpi, 'id'> & { motivoTipo: number };
 export type AtualizarEntregaEpi = EntregaEpi & { motivoTipo: number };
+
+// EPC — Equipamento de Proteção Coletiva (aba própria, separada de EPI, pedido do usuário 04/09).
+// Diferente do EPI: não é entregue/assinado por um trabalhador, e sim instalado numa Obra, com
+// validade e inspeções periódicas. Não existe Matriz de EPC (decisão confirmada: só catálogo e
+// estoque).
+export interface CatalogoEpc {
+  id: string;
+  nome: string;
+  fabricante?: string | null;
+  certificadoAprovacaoNumero?: string | null;
+  certificadoAprovacaoValidade?: string | null;
+  vidaUtilEmMeses: number;
+  saldoTotal: number;
+  temFoto: boolean;
+}
+
+export type NovoCatalogoEpc = Omit<CatalogoEpc, 'id' | 'saldoTotal' | 'temFoto'>;
+export type AtualizarCatalogoEpc = Omit<CatalogoEpc, 'saldoTotal' | 'temFoto'>;
+
+export const TipoMovimentacaoEstoqueEpc = {
+  EntradaManual: 0,
+  SaidaInstalacao: 1,
+  RetornoRemocao: 2,
+  AjusteManual: 3,
+} as const;
+
+export const tipoMovimentacaoEstoqueEpcLabel: Record<number, string> = {
+  0: 'Entrada manual',
+  1: 'Saída (instalação)',
+  2: 'Retorno (remoção)',
+  3: 'Ajuste manual',
+};
+
+export interface EstoqueEpcPorObra {
+  catalogoEpcId: string;
+  catalogoEpcNome: string;
+  fabricante?: string | null;
+  saldo: number;
+}
+
+export interface MovimentacaoEstoqueEpc {
+  id: string;
+  tipo: number;
+  quantidade: number;
+  saldoResultante: number;
+  createdAtUtc: string;
+  observacao?: string | null;
+  instalacaoEpcId?: string | null;
+}
+
+export interface RegistrarEntradaEstoqueEpc {
+  catalogoEpcId: string;
+  obraId: string;
+  quantidade: number;
+  observacao?: string | null;
+}
+
+export interface AjustarEstoqueEpc {
+  catalogoEpcId: string;
+  obraId: string;
+  novoSaldo: number;
+  observacao: string;
+}
+
+export const StatusInspecaoEpc = {
+  Conforme: 1,
+  NaoConforme: 2,
+} as const;
+
+export const statusInspecaoEpcLabel: Record<number, string> = {
+  1: 'Conforme',
+  2: 'Não conforme',
+};
+
+export interface InstalacaoEpc {
+  id: string;
+  catalogoEpcId: string;
+  obraId: string;
+  localInstalacao?: string | null;
+  quantidade: number;
+  dataInstalacao: string;
+  dataValidade?: string | null;
+  dataUltimaInspecao?: string | null;
+  statusUltimaInspecao?: number | null;
+  observacoesInspecao?: string | null;
+  dataRemocao?: string | null;
+  observacoes?: string | null;
+}
+
+export type NovaInstalacaoEpc = Omit<
+  InstalacaoEpc,
+  'id' | 'dataUltimaInspecao' | 'statusUltimaInspecao' | 'observacoesInspecao' | 'dataRemocao' | 'observacoes'
+>;
+
+export interface RegistrarInspecaoEpc {
+  dataInspecao: string;
+  status: number;
+  observacoes?: string | null;
+}
+
+export interface RegistrarRemocaoEpc {
+  dataRemocao: string;
+  observacoes?: string | null;
+}
 
 export interface Atividade {
   id: string;
@@ -850,7 +1024,6 @@ export interface Apr {
 }
 
 export interface NovaApr {
-  numeroApr?: string | null;
   atividadeId: string;
   local: string;
   maquinasEquipamentos?: string | null;
@@ -1092,6 +1265,7 @@ export interface PermissaoTrabalho {
   numeroPt?: string | null;
   atividadeId: string;
   atividadeNome: string;
+  obraId?: string | null;
   obraNome?: string | null;
   descricaoAtividade: string;
   local: string;
@@ -1130,7 +1304,6 @@ export interface PermissaoTrabalho {
 }
 
 export interface NovaPermissaoTrabalho {
-  numeroPt?: string | null;
   atividadeId: string;
   descricaoAtividade: string;
   local: string;
@@ -1576,6 +1749,9 @@ export interface DdsParticipante {
   scoreConfianca?: number | null;
   telegramEnviadoEm?: string | null;
   telegramConfirmadoEm?: string | null;
+  // Assinatura do DDS (04/09) — a mesma digital da presença já vale como assinatura eletrônica,
+  // sem precisar ler de novo na tela "Assinar DDS".
+  assinadoEm?: string | null;
 }
 
 export interface DdsFotoEvidencia {
@@ -1644,7 +1820,6 @@ export interface NovaDdsSemanal {
   obraId: string;
   tipo: number;
   empresaTerceirizada?: string | null;
-  numeroDocumento?: string | null;
   localFrenteServico?: string | null;
   dataInicioSemana: string;
 }
@@ -1724,8 +1899,9 @@ export interface DocumentoPublicoSignatario {
 
 export interface DocumentoPublico {
   entidadeTipo: string;
-  finalizadoEm: string;
+  emitidoEm: string;
   conteudoHash: string;
+  assinado: boolean;
   signatarios: DocumentoPublicoSignatario[];
 }
 
@@ -2079,6 +2255,7 @@ export type AtualizarRegistroHhtMensalPayload = NovoRegistroHhtMensal;
 // documentoGestaoId aponta para o DocumentoGestao vinculado (edição/exclusão usam este último).
 export interface Pcmso {
   id: string;
+  numeroDocumento?: string | null;
   nome: string;
   versao?: string | null;
   validade?: string | null;
@@ -2662,7 +2839,6 @@ export interface ProcessoEleitoralCipa {
 
 export interface NovoProcessoEleitoralCipa {
   obraId: string;
-  numeroDocumento?: string | null;
   dataConvocacao: string;
   dataInicioInscricoes: string;
   dataFimInscricoes: string;
@@ -2913,6 +3089,22 @@ export const api = {
         method: 'POST',
         body: JSON.stringify({ templateBruto: templateBrutoBase64 }),
       }),
+    // Cadastro de reconhecimento facial (Azure Face API) — multipart, não passa por request<T>
+    // (que sempre força Content-Type: application/json, incompatível com FormData) nem pelo motor
+    // de sincronização offline (cadastro é ação administrativa, sempre com internet).
+    cadastrarFacial: async (id: string, foto: File): Promise<void> => {
+      const formData = new FormData();
+      formData.append('foto', foto);
+      const response = await fetch(`${API_BASE_URL}/api/trabalhadores/${id}/assinatura/facial/cadastro`, {
+        method: 'POST',
+        headers: await montarHeadersAuth(),
+        body: formData,
+      });
+      if (!response.ok) {
+        const corpo = await response.text().catch(() => '');
+        throw new Error(`${response.status} ${response.statusText}: ${corpo}`);
+      }
+    },
   },
   funcoes: {
     listar: () => request<Funcao[]>('/api/funcoes'),
@@ -3015,6 +3207,45 @@ export const api = {
       return response.blob();
     },
   },
+  sessoesTreinamento: {
+    listar: (obraId?: string) => request<SessaoTreinamento[]>(`/api/sessoestreinamento${obraId ? `?obraId=${obraId}` : ''}`),
+    obterDetalhe: (id: string) => request<SessaoTreinamentoDetalhe>(`/api/sessoestreinamento/${id}`),
+    criar: (sessao: NovaSessaoTreinamento) =>
+      request<{ id: string }>('/api/sessoestreinamento', { method: 'POST', body: JSON.stringify(sessao) }),
+    // Presença exclusivamente por biometria (mesmo padrão de api.dds.registrarParticipante) —
+    // dispositivoId/segredoDispositivo vêm do agente local, score é o resultado do match 1:N já
+    // feito por ele (ver capturarDigitalLocal).
+    registrarPresenca: (sessaoId: string, trabalhadorId: string, dispositivoId: string, segredoDispositivo: string, score: number) =>
+      request<void>(`/api/sessoestreinamento/${sessaoId}/presenca`, {
+        method: 'POST',
+        body: JSON.stringify({ trabalhadorId, dispositivoId, segredoDispositivo, score }),
+      }),
+    encerrar: (id: string) => request<void>(`/api/sessoestreinamento/${id}/encerrar`, { method: 'POST' }),
+    // Slot fixo por ordem (04/09) — reanexar no mesmo quadro substitui a foto existente.
+    anexarFotoEvidencia: async (sessaoId: string, ordem: number, foto: File) => {
+      const formData = new FormData();
+      formData.append('foto', foto);
+      formData.append('ordem', String(ordem));
+      const authHeaders = await montarHeadersAuth();
+      return syncMutateMultipart<{ id: string }>(`/api/sessoestreinamento/${sessaoId}/fotos-evidencia`, formData, authHeaders);
+    },
+    baixarFotoEvidencia: async (fotoId: string) => {
+      const authHeaders = await montarHeadersAuth();
+      return syncFetchBlob(`/api/sessoestreinamento/fotos-evidencia/${fotoId}`, authHeaders);
+    },
+    removerFotoEvidencia: (fotoId: string) =>
+      request<void>(`/api/sessoestreinamento/fotos-evidencia/${fotoId}`, { method: 'DELETE' }),
+    baixarAta: async (id: string) => {
+      const response = await fetch(`${API_BASE_URL}/api/sessoestreinamento/${id}/ata/pdf`, {
+        headers: await montarHeadersAuth(),
+      });
+      if (!response.ok) {
+        const corpo = await response.text().catch(() => '');
+        throw new Error(extrairMensagemErro(corpo, response.status, response.statusText));
+      }
+      return response.blob();
+    },
+  },
   requisitosLegais: {
     listar: (categoria?: number, status?: number) => {
       const params = new URLSearchParams();
@@ -3112,6 +3343,58 @@ export const api = {
       }
       return response.blob();
     },
+  },
+  catalogosEpc: {
+    listar: () => request<CatalogoEpc[]>('/api/catalogosepc'),
+    criar: (epc: NovoCatalogoEpc) =>
+      request<{ id: string }>('/api/catalogosepc', { method: 'POST', body: JSON.stringify(epc) }),
+    atualizar: (epc: AtualizarCatalogoEpc) =>
+      request<void>(`/api/catalogosepc/${epc.id}`, { method: 'PUT', body: JSON.stringify(epc) }),
+    excluir: (id: string) => request<void>(`/api/catalogosepc/${id}`, { method: 'DELETE' }),
+    anexarFoto: async (id: string, arquivo: File) => {
+      const formData = new FormData();
+      formData.append('Foto', arquivo);
+      const response = await fetch(`${API_BASE_URL}/api/catalogosepc/${id}/foto`, {
+        method: 'POST',
+        headers: await montarHeadersAuth(),
+        body: formData,
+      });
+      if (!response.ok) {
+        const corpo = await response.text().catch(() => '');
+        throw new Error(extrairMensagemErro(corpo, response.status, response.statusText));
+      }
+    },
+    baixarFoto: async (id: string) => {
+      const response = await fetch(`${API_BASE_URL}/api/catalogosepc/${id}/foto`, {
+        headers: await montarHeadersAuth(),
+      });
+      if (!response.ok) {
+        const corpo = await response.text().catch(() => '');
+        throw new Error(extrairMensagemErro(corpo, response.status, response.statusText));
+      }
+      return response.blob();
+    },
+  },
+  estoquesEpc: {
+    listarPorObra: (obraId: string) => request<EstoqueEpcPorObra[]>(`/api/estoquesepc/obra/${obraId}`),
+    listarMovimentacoes: (obraId: string, catalogoEpcId: string) =>
+      request<MovimentacaoEstoqueEpc[]>(`/api/estoquesepc/obra/${obraId}/epc/${catalogoEpcId}/movimentacoes`),
+    registrarEntrada: (dados: RegistrarEntradaEstoqueEpc) =>
+      request<void>('/api/estoquesepc/entrada', { method: 'POST', body: JSON.stringify(dados) }),
+    ajustar: (dados: AjustarEstoqueEpc) =>
+      request<void>('/api/estoquesepc/ajuste', { method: 'POST', body: JSON.stringify(dados) }),
+  },
+  instalacoesEpc: {
+    listar: (obraId?: string) =>
+      request<InstalacaoEpc[]>(`/api/instalacoesepc${obraId ? `?obraId=${obraId}` : ''}`),
+    obterPorId: (id: string) => request<InstalacaoEpc>(`/api/instalacoesepc/${id}`),
+    criar: (instalacao: NovaInstalacaoEpc) =>
+      request<{ id: string }>('/api/instalacoesepc', { method: 'POST', body: JSON.stringify(instalacao) }),
+    registrarInspecao: (id: string, dados: RegistrarInspecaoEpc) =>
+      request<void>(`/api/instalacoesepc/${id}/inspecao`, { method: 'POST', body: JSON.stringify(dados) }),
+    registrarRemocao: (id: string, dados: RegistrarRemocaoEpc) =>
+      request<void>(`/api/instalacoesepc/${id}/remocao`, { method: 'POST', body: JSON.stringify(dados) }),
+    excluir: (id: string) => request<void>(`/api/instalacoesepc/${id}`, { method: 'DELETE' }),
   },
   atividades: {
     listar: (obraId?: string) => request<Atividade[]>(`/api/atividades${obraId ? `?obraId=${obraId}` : ''}`),
@@ -3509,9 +3792,11 @@ export const api = {
     enviarTelegram: (id: string) =>
       request<EnviarDdsTelegramResultado>(`/api/dds/${id}/telegram/enviar`, { method: 'POST' }),
     // Evidências fotográficas do registro diário (3 obrigatórias para encerrar, ver EncerrarDdsCommand).
-    anexarFotoEvidencia: async (ddsId: string, foto: File) => {
+    // Slot fixo por ordem (04/09) — reanexar no mesmo quadro substitui a foto existente.
+    anexarFotoEvidencia: async (ddsId: string, ordem: number, foto: File) => {
       const formData = new FormData();
       formData.append('foto', foto);
+      formData.append('ordem', String(ordem));
       const authHeaders = await montarHeadersAuth();
       return syncMutateMultipart<{ id: string }>(`/api/dds/${ddsId}/fotos-evidencia`, formData, authHeaders);
     },
@@ -3519,6 +3804,7 @@ export const api = {
       const authHeaders = await montarHeadersAuth();
       return syncFetchBlob(`/api/dds/fotos-evidencia/${fotoId}`, authHeaders);
     },
+    removerFotoEvidencia: (fotoId: string) => request<void>(`/api/dds/fotos-evidencia/${fotoId}`, { method: 'DELETE' }),
   },
   ddsSemanal: {
     listar: (obraId?: string) => request<DdsSemanal[]>(`/api/ddssemanal${obraId ? `?obraId=${obraId}` : ''}`),
@@ -3573,6 +3859,17 @@ export const api = {
         method: 'POST',
         body: JSON.stringify({ dispositivoId, segredoDispositivo, trabalhadorId, score }),
       }),
+    // Assinatura via reconhecimento facial (Azure Face API) — multipart e offline-aware, mesmo
+    // padrão de anexarFotoEvidencia (DDS): syncMutateMultipart enfileira sozinho se faltar conexão.
+    autenticarFacial: async (documentoAssinaturaId: string, obraId: string, foto: File) => {
+      const formData = new FormData();
+      formData.append('obraId', obraId);
+      formData.append('foto', foto);
+      const authHeaders = await montarHeadersAuth();
+      return syncMutateMultipart<DocumentoSignatario>(
+        `/api/documentos/${documentoAssinaturaId}/autenticacao/facial`, formData, authHeaders,
+      );
+    },
     listar: (filtros?: { entidadeTipo?: string; status?: number; dataInicio?: string; dataFim?: string }) => {
       const query = new URLSearchParams();
       if (filtros?.entidadeTipo) query.set('entidadeTipo', filtros.entidadeTipo);

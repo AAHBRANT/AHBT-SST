@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+﻿import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   Button,
@@ -24,7 +24,6 @@ import { api, StatusApr, statusAprLabel, type Apr, type Atividade, type Equipe, 
 import { useSucessoToast } from '../../hooks/useSucessoToast';
 
 const aprVazia: NovaApr = {
-  numeroApr: '',
   atividadeId: '',
   local: '',
   maquinasEquipamentos: '',
@@ -144,11 +143,6 @@ export function AprsTab() {
       <Card titulo="Análise Preliminar de Risco (APR)">
         <FormSection titulo="Dados da APR" numero={1} primeira>
           <FormGrid>
-            <Campo span={2}>
-              <Field label="Nº APR">
-                <Input value={novaApr.numeroApr ?? ''} onChange={(_, d) => setNovaApr({ ...novaApr, numeroApr: d.value })} />
-              </Field>
-            </Campo>
             <Campo span={4}>
               <Field label="Atividade">
                 <Select

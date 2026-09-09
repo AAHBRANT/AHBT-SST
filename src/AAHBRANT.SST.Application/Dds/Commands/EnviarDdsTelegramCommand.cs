@@ -1,5 +1,7 @@
+using AAHBRANT.SST.Application.Assinatura;
 using AAHBRANT.SST.Application.Common.Interfaces;
 using AAHBRANT.SST.Application.Dds.Queries;
+using AAHBRANT.SST.Domain.Entidades;
 using FluentValidation;
 using MediatR;
 using Microsoft.EntityFrameworkCore;
@@ -24,13 +26,15 @@ public class EnviarDdsTelegramCommandHandler : IRequestHandler<EnviarDdsTelegram
     private readonly IMediator _mediator;
     private readonly IDdsPdfService _pdf;
     private readonly ITelegramService _telegram;
+    private readonly IRegistradorRastreabilidadeService _rastreabilidade;
 
-    public EnviarDdsTelegramCommandHandler(IAppDbContext db, IMediator mediator, IDdsPdfService pdf, ITelegramService telegram)
+    public EnviarDdsTelegramCommandHandler(IAppDbContext db, IMediator mediator, IDdsPdfService pdf, ITelegramService telegram, IRegistradorRastreabilidadeService rastreabilidade)
     {
         _db = db;
         _mediator = mediator;
         _pdf = pdf;
         _telegram = telegram;
+        _rastreabilidade = rastreabilidade;
     }
 
     public async Task<EnviarDdsTelegramResultado> Handle(EnviarDdsTelegramCommand request, CancellationToken ct)
@@ -44,8 +48,10 @@ public class EnviarDdsTelegramCommandHandler : IRequestHandler<EnviarDdsTelegram
             .Select(t => new { t.Id, ChatId = t.TelegramChatId!.Value })
             .ToListAsync(ct);
 
+        var dds = await _db.Dds.FirstAsync(d => d.Id == request.Id, ct);
         var logoConteudo = await _db.Obras.Where(o => o.Id == detalhe.Dds.ObraId).Select(o => o.LogoConteudo).FirstOrDefaultAsync(ct);
-        var pdfBytes = _pdf.Gerar(ExportarDdsPdfQueryHandler.MontarModelo(detalhe, logoConteudo));
+        var rastreio = await _rastreabilidade.GarantirAsync(nameof(Dds), request.Id, ct);
+        var pdfBytes = _pdf.Gerar(ExportarDdsPdfQueryHandler.MontarModelo(detalhe, logoConteudo, dds.NumeroDocumento, rastreio));
         var nomeArquivo = $"DDS_{detalhe.Dds.Data:yyyy-MM-dd}.pdf";
         var nomesAtividades = string.Join(", ", detalhe.Dds.AtividadesNomes);
         var topico = nomesAtividades.Length > 0 ? nomesAtividades : "DDS do dia";

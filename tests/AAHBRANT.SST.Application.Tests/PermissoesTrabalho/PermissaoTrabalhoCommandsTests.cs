@@ -4,6 +4,7 @@ using AAHBRANT.SST.Application.PermissaoTrabalhoVerificacoes.Commands;
 using AAHBRANT.SST.Application.PermissoesTrabalho.Commands;
 using AAHBRANT.SST.Domain.Entidades;
 using AAHBRANT.SST.Domain.Enums;
+using AAHBRANT.SST.Infrastructure.Documentos;
 using AAHBRANT.SST.Infrastructure.Persistencia;
 using AAHBRANT.SST.Infrastructure.Seguranca;
 using Microsoft.EntityFrameworkCore;
@@ -32,9 +33,9 @@ public class PermissaoTrabalhoCommandsTests
 
     private static async Task<Guid> CriarPtAsync(IAppDbContext db, Guid atividadeId)
     {
-        var handler = new CriarPermissaoTrabalhoCommandHandler(db);
+        var handler = new CriarPermissaoTrabalhoCommandHandler(db, new GeradorNumeroDocumentoService(db));
         return await handler.Handle(new CriarPermissaoTrabalhoCommand(
-            "PT-0001", atividadeId, "Solda em tubulação de gás", "Frente 2",
+            atividadeId, "Solda em tubulação de gás", "Frente 2",
             "Empresa Executante Ltda", null, DateTime.UtcNow, null, null, null,
             null, null, new List<Guid>()), default);
     }

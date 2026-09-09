@@ -9,7 +9,10 @@ public record AtaEleicaoCipaPdfModelo(
     DateTime DataConvocacao,
     DateTime DataVotacao,
     DateTime? DataApuracao,
-    IReadOnlyList<AtaEleicaoCipaCandidatoModelo> Candidatos);
+    IReadOnlyList<AtaEleicaoCipaCandidatoModelo> Candidatos,
+    string ConteudoHash,
+    string UrlValidacaoPublica,
+    byte[] QrCodePng);
 
 public record AtaReuniaoCipaParticipanteModelo(string Nome, bool Presente);
 
@@ -20,7 +23,10 @@ public record AtaReuniaoCipaPdfModelo(
     DateTime DataReuniao,
     string? Pauta,
     string? Deliberacoes,
-    IReadOnlyList<AtaReuniaoCipaParticipanteModelo> Participantes);
+    IReadOnlyList<AtaReuniaoCipaParticipanteModelo> Participantes,
+    string ConteudoHash,
+    string UrlValidacaoPublica,
+    byte[] QrCodePng);
 
 public interface ICipaPdfService
 {

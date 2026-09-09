@@ -31,6 +31,11 @@ public class Obra : AuditableEntity
     // explicitamente, nunca por omissão.
     public MetodoAutenticacaoObra MetodosAutenticacaoHabilitados { get; set; } = MetodoAutenticacaoObra.Nenhum;
 
+    // Id do PersonGroup no Azure Face API para esta obra — um grupo por obra (reduz o universo de
+    // candidatos do Identify e evita falso positivo entre trabalhadores de obras diferentes).
+    // Criado sob demanda no primeiro cadastro facial de um trabalhador desta obra.
+    public string? AzureFacePersonGroupId { get; set; }
+
     public ICollection<Setor> Setores { get; set; } = new List<Setor>();
     public ICollection<Trabalhador> Trabalhadores { get; set; } = new List<Trabalhador>();
     public ICollection<Atividade> Atividades { get; set; } = new List<Atividade>();

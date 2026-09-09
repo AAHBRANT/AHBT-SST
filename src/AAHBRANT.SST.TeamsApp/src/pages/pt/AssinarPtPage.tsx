@@ -41,7 +41,7 @@ export function AssinarPtPage() {
         </FeedbackInline>
       )}
 
-      <AssinaturaQuiosque entidadeTipo="PermissaoTrabalho" entidadeId={id} />
+      <AssinaturaQuiosque entidadeTipo="PermissaoTrabalho" entidadeId={id} obraId={pt?.obraId ?? ''} />
     </div>
   );
 }

@@ -26,7 +26,12 @@ public record InspecaoPdfModelo(
     DateTime Data,
     string ResponsavelNome,
     string Status,
-    IReadOnlyList<InspecaoPdfItemModelo> Itens);
+    IReadOnlyList<InspecaoPdfItemModelo> Itens,
+    string? Protocolo,
+    string ConteudoHash,
+    string UrlValidacaoPublica,
+    byte[] QrCodePng,
+    bool TemAssinatura);
 
 public interface IInspecaoPdfService
 {

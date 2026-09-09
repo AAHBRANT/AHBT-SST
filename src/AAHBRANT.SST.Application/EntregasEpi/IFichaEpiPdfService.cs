@@ -20,7 +20,10 @@ public record FichaEpiPdfModelo(
     string? TrabalhadorTurno,
     DateTime TrabalhadorDataAdmissao,
     List<LinhaEntregaEpiPdf> Entregas,
-    List<LinhaDevolucaoEpiPdf> Devolucoes);
+    List<LinhaDevolucaoEpiPdf> Devolucoes,
+    string ConteudoHash,
+    string UrlValidacaoPublica,
+    byte[] QrCodePng);
 
 public record LinhaEntregaEpiPdf(
     int Numero,
