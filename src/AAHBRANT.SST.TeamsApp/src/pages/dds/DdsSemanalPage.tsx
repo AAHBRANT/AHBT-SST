@@ -1,21 +1,24 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
-  Badge,
   Button,
   Field,
   Input,
   Select,
-  Table,
-  TableBody,
-  TableCell,
-  TableHeader,
-  TableHeaderCell,
-  TableRow,
-  Text,
-} from '@fluentui/react-components';
-import { CampoData } from '../../components/CampoData';
-import { Add24Regular, ChevronRight24Regular } from '@fluentui/react-icons';
+  CampoData,
+  Card,
+  PageHeader,
+  DataTable,
+  StatusChip,
+  FeedbackInline,
+  PainelLateral,
+  FormSection,
+  FormGrid,
+  Campo,
+  type Coluna,
+  type Tom,
+} from '@ui';
+import { Add24Regular } from '@fluentui/react-icons';
 import {
   api,
   statusDdsSemanalLabel,
@@ -26,37 +29,45 @@ import {
   type NovaDdsSemanal,
   type Obra,
 } from '../../lib/api';
-import { usePageStyles } from '../pageStyles';
 
 function semanalVazia(): NovaDdsSemanal {
   return { obraId: '', tipo: TipoDdsSemanal.Proprios, dataInicioSemana: '' };
 }
 
-const corBadgeStatus: Record<number, 'informative' | 'success'> = {
-  [StatusDdsSemanal.EmAndamento]: 'informative',
-  [StatusDdsSemanal.Concluida]: 'success',
+const tomStatusSemanal: Record<number, Tom> = {
+  [StatusDdsSemanal.EmAndamento]: 'info',
+  [StatusDdsSemanal.Concluida]: 'ok',
 };
 
 // Reformulação 31/08 — o DDS passou a ser organizado por semana (contêiner), seguindo o modelo em
 // papel "Registro Semanal de DDS - Empregados Próprios/Terceirizados". Os registros diários (feitos
 // e assinados todo dia) ficam dentro de cada semana — ver DdsSemanalDetalhePage.
+// Onda 2 (Task 14): conversões 1 (Table → DataTable), 5 (Badge color → StatusChip), 3
+// (Text size=500 → PageHeader.titulo), 4 (erro → FeedbackInline). O formulário de criação
+// empurrava a lista para baixo (Guia §2) — mesmo julgamento já usado em AprsTab.tsx/FuncoesTab.tsx:
+// sai para um PainelLateral aberto pelo "+ Nova semana".
 export function DdsSemanalPage() {
-  const estilos = usePageStyles();
   const navigate = useNavigate();
   const [registros, setRegistros] = useState<DdsSemanal[]>([]);
   const [obras, setObras] = useState<Obra[]>([]);
   const [nova, setNova] = useState<NovaDdsSemanal>(semanalVazia());
   const [erro, setErro] = useState<string | null>(null);
+  const [erroPainel, setErroPainel] = useState<string | null>(null);
   const [carregando, setCarregando] = useState(false);
+  const [carregandoLista, setCarregandoLista] = useState(true);
+  const [painelAberto, setPainelAberto] = useState(false);
 
   async function carregar() {
     try {
       setErro(null);
+      setCarregandoLista(true);
       const [lista, listaObras] = await Promise.all([api.ddsSemanal.listar(), api.obras.listar()]);
       setRegistros(lista);
       setObras(listaObras);
     } catch (e) {
       setErro(e instanceof Error ? e.message : 'Falha ao carregar as semanas de DDS.');
+    } finally {
+      setCarregandoLista(false);
     }
   }
 
@@ -64,153 +75,159 @@ export function DdsSemanalPage() {
     carregar();
   }, []);
 
+  function fecharPainel() {
+    setPainelAberto(false);
+    setNova(semanalVazia());
+    setErroPainel(null);
+  }
+
   async function criar() {
     if (!nova.obraId || !nova.dataInicioSemana || (nova.tipo === TipoDdsSemanal.Terceirizados && !nova.empresaTerceirizada)) {
-      setErro('Preencha obra, data de início da semana e, se terceirizado, a empresa.');
+      setErroPainel('Preencha obra, data de início da semana e, se terceirizado, a empresa.');
       return;
     }
     try {
       setCarregando(true);
-      setErro(null);
+      setErroPainel(null);
       const resultado = await api.ddsSemanal.criar(nova);
       setNova(semanalVazia());
       await carregar();
       navigate(`/prevencao/dds/semana/${resultado.id}`);
     } catch (e) {
-      setErro(e instanceof Error ? e.message : 'Falha ao criar a semana de DDS.');
+      setErroPainel(e instanceof Error ? e.message : 'Falha ao criar a semana de DDS.');
     } finally {
       setCarregando(false);
     }
   }
 
+  const colunas: Coluna<DdsSemanal>[] = [
+    { chave: 'obra', rotulo: 'Obra', render: (s) => s.obraNome },
+    { chave: 'tipo', rotulo: 'Tipo', render: (s) => tipoDdsSemanalLabel[s.tipo] },
+    {
+      chave: 'semana',
+      rotulo: 'Semana',
+      render: (s) => `${s.dataInicioSemana?.slice(0, 10)} a ${s.dataFimSemana?.slice(0, 10)}`,
+    },
+    { chave: 'responsavel', rotulo: 'Responsável', render: (s) => s.responsavelUsuarioNome },
+    {
+      chave: 'dias',
+      rotulo: 'Dias registrados',
+      render: (s) => `${s.totalDiasConcluidos}/${s.totalDiasRegistrados} concluídos (de 5)`,
+    },
+    {
+      chave: 'status',
+      rotulo: 'Status',
+      render: (s) => <StatusChip tom={tomStatusSemanal[s.status] ?? 'neutro'}>{statusDdsSemanalLabel[s.status]}</StatusChip>,
+    },
+  ];
+
   return (
     <div>
-      <div style={{ marginBottom: 16 }}>
-        <Text size={500} weight="semibold">
-          DDS — Diálogo Diário de Segurança (Registro Semanal)
-        </Text>
-      </div>
+      <PageHeader
+        titulo="DDS — Diálogo Diário de Segurança (Registro Semanal)"
+        acoes={
+          <Button appearance="primary" icon={<Add24Regular />} onClick={() => setPainelAberto(true)}>
+            Nova semana
+          </Button>
+        }
+      />
 
-      <div className={estilos.card} style={{ marginBottom: 16 }}>
-        <div className={estilos.toolbar}>
-          <Text weight="semibold">Nova semana de DDS</Text>
-        </div>
+      {erro && (
+        <FeedbackInline tom="erro" aoFechar={() => setErro(null)}>
+          {erro}
+        </FeedbackInline>
+      )}
 
-        {erro && <Text className={estilos.erro}>{erro}</Text>}
+      <Card densidade="compacta">
+        <DataTable
+          aria-label="Semanas de DDS registradas"
+          colunas={colunas}
+          linhas={registros}
+          chaveLinha={(s) => s.id}
+          carregando={carregandoLista}
+          vazio={{
+            titulo: 'Nenhuma semana de DDS registrada ainda.',
+            acao: { rotulo: 'Nova semana', aoClicar: () => setPainelAberto(true) },
+          }}
+          aoClicarLinha={(s) => navigate(`/prevencao/dds/semana/${s.id}`)}
+        />
+      </Card>
 
-        <div className={`${estilos.sectionTitle} ${estilos.sectionTitleFirst}`}>Dados da Semana</div>
-        <div className={estilos.formGrid}>
-          <div className={estilos.col4}>
-            <Field label="Obra">
-              <Select value={nova.obraId} onChange={(_, d) => setNova({ ...nova, obraId: d.value })}>
-                <option value="">Selecione</option>
-                {obras.map((obra) => (
-                  <option key={obra.id} value={obra.id}>
-                    {obra.nome}
-                  </option>
-                ))}
-              </Select>
-            </Field>
-          </div>
-          <div className={estilos.col3}>
-            <Field label="Tipo">
-              <Select value={String(nova.tipo)} onChange={(_, d) => setNova({ ...nova, tipo: Number(d.value) })}>
-                <option value={String(TipoDdsSemanal.Proprios)}>{tipoDdsSemanalLabel[TipoDdsSemanal.Proprios]}</option>
-                <option value={String(TipoDdsSemanal.Terceirizados)}>{tipoDdsSemanalLabel[TipoDdsSemanal.Terceirizados]}</option>
-              </Select>
-            </Field>
-          </div>
-          <div className={estilos.col3}>
-            <Field label="Início da semana">
-              <CampoData
-                value={nova.dataInicioSemana}
-                onChange={(_, d) => setNova({ ...nova, dataInicioSemana: d.value })}
-              />
-            </Field>
-          </div>
-          {nova.tipo === TipoDdsSemanal.Terceirizados && (
-            <div className={estilos.col4}>
-              <Field label="Empresa terceirizada">
-                <Input
-                  value={nova.empresaTerceirizada ?? ''}
-                  onChange={(_, d) => setNova({ ...nova, empresaTerceirizada: d.value })}
+      <PainelLateral
+        aberto={painelAberto}
+        aoFechar={fecharPainel}
+        titulo="Nova semana de DDS"
+        rodape={
+          <>
+            <Button onClick={fecharPainel}>Cancelar</Button>
+            <Button appearance="primary" onClick={criar} disabled={carregando}>
+              Abrir semana
+            </Button>
+          </>
+        }
+      >
+        {erroPainel && (
+          <FeedbackInline tom="erro" aoFechar={() => setErroPainel(null)}>
+            {erroPainel}
+          </FeedbackInline>
+        )}
+
+        <FormSection titulo="Dados da Semana" numero={1} primeira>
+          <FormGrid>
+            <Campo span={4}>
+              <Field label="Obra" required>
+                <Select value={nova.obraId} onChange={(_, d) => setNova({ ...nova, obraId: d.value })}>
+                  <option value="">Selecione</option>
+                  {obras.map((obra) => (
+                    <option key={obra.id} value={obra.id}>
+                      {obra.nome}
+                    </option>
+                  ))}
+                </Select>
+              </Field>
+            </Campo>
+            <Campo span={3}>
+              <Field label="Tipo">
+                <Select value={String(nova.tipo)} onChange={(_, d) => setNova({ ...nova, tipo: Number(d.value) })}>
+                  <option value={String(TipoDdsSemanal.Proprios)}>{tipoDdsSemanalLabel[TipoDdsSemanal.Proprios]}</option>
+                  <option value={String(TipoDdsSemanal.Terceirizados)}>{tipoDdsSemanalLabel[TipoDdsSemanal.Terceirizados]}</option>
+                </Select>
+              </Field>
+            </Campo>
+            <Campo span={3}>
+              <Field label="Início da semana" required>
+                <CampoData
+                  value={nova.dataInicioSemana}
+                  onChange={(_, d) => setNova({ ...nova, dataInicioSemana: d.value })}
                 />
               </Field>
-            </div>
-          )}
-          <div className={estilos.col3}>
-            <Field label="Nº do documento">
-              <Input value={nova.numeroDocumento ?? ''} onChange={(_, d) => setNova({ ...nova, numeroDocumento: d.value })} />
-            </Field>
-          </div>
-          <div className={estilos.col5}>
-            <Field label="Local / Frente de serviço">
-              <Input
-                value={nova.localFrenteServico ?? ''}
-                onChange={(_, d) => setNova({ ...nova, localFrenteServico: d.value })}
-              />
-            </Field>
-          </div>
-        </div>
-
-        <div className={estilos.formActions}>
-          <Button appearance="primary" icon={<Add24Regular />} onClick={criar} disabled={carregando}>
-            Abrir semana
-          </Button>
-        </div>
-      </div>
-
-      <div className={estilos.card}>
-        <div className={estilos.toolbar}>
-          <Text weight="semibold">Semanas registradas</Text>
-        </div>
-
-        <Table noNativeElements>
-          <TableHeader>
-            <TableRow>
-              <TableHeaderCell>Obra</TableHeaderCell>
-              <TableHeaderCell>Tipo</TableHeaderCell>
-              <TableHeaderCell>Semana</TableHeaderCell>
-              <TableHeaderCell>Responsável</TableHeaderCell>
-              <TableHeaderCell>Dias registrados</TableHeaderCell>
-              <TableHeaderCell>Status</TableHeaderCell>
-              <TableHeaderCell></TableHeaderCell>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {registros.map((semanal) => (
-              <TableRow
-                key={semanal.id}
-                onClick={() => navigate(`/prevencao/dds/semana/${semanal.id}`)}
-                style={{ cursor: 'pointer' }}
-              >
-                <TableCell>{semanal.obraNome}</TableCell>
-                <TableCell>{tipoDdsSemanalLabel[semanal.tipo]}</TableCell>
-                <TableCell>
-                  {semanal.dataInicioSemana?.slice(0, 10)} a {semanal.dataFimSemana?.slice(0, 10)}
-                </TableCell>
-                <TableCell>{semanal.responsavelUsuarioNome}</TableCell>
-                <TableCell>
-                  {semanal.totalDiasConcluidos}/{semanal.totalDiasRegistrados} concluídos (de 5)
-                </TableCell>
-                <TableCell>
-                  <Badge color={corBadgeStatus[semanal.status]} appearance="tint">
-                    {statusDdsSemanalLabel[semanal.status]}
-                  </Badge>
-                </TableCell>
-                <TableCell>
-                  <Button
-                    appearance="subtle"
-                    icon={<ChevronRight24Regular />}
-                    onClick={() => navigate(`/prevencao/dds/semana/${semanal.id}`)}
-                    aria-label="Ver semana"
+            </Campo>
+            {nova.tipo === TipoDdsSemanal.Terceirizados && (
+              <Campo span={4}>
+                <Field label="Empresa terceirizada" required>
+                  <Input
+                    value={nova.empresaTerceirizada ?? ''}
+                    onChange={(_, d) => setNova({ ...nova, empresaTerceirizada: d.value })}
                   />
-                </TableCell>
-              </TableRow>
-            ))}
-          </TableBody>
-        </Table>
-      </div>
+                </Field>
+              </Campo>
+            )}
+            <Campo span={3}>
+              <Field label="Nº do documento">
+                <Input value={nova.numeroDocumento ?? ''} onChange={(_, d) => setNova({ ...nova, numeroDocumento: d.value })} />
+              </Field>
+            </Campo>
+            <Campo span={5}>
+              <Field label="Local / Frente de serviço">
+                <Input
+                  value={nova.localFrenteServico ?? ''}
+                  onChange={(_, d) => setNova({ ...nova, localFrenteServico: d.value })}
+                />
+              </Field>
+            </Campo>
+          </FormGrid>
+        </FormSection>
+      </PainelLateral>
     </div>
   );
 }
