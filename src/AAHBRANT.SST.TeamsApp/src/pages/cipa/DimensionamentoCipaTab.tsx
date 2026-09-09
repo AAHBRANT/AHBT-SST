@@ -1,25 +1,23 @@
 import { useEffect, useState } from 'react';
 import {
   Button,
+  Card,
+  Campo,
+  DataTable,
   Field,
+  FeedbackInline,
+  FormGrid,
   Input,
+  PageHeader,
+  PainelLateral,
   Select,
-  Table,
-  TableBody,
-  TableCell,
-  TableHeader,
-  TableHeaderCell,
-  TableRow,
-  Text,
   Textarea,
-} from '@fluentui/react-components';
+  useConfirmar,
+  type Coluna,
+} from '@ui';
 import { Add24Regular, Delete24Regular } from '@fluentui/react-icons';
 import { api, nivelRiscoLabel, type DimensionamentoCipa, type NovoDimensionamentoCipa, type Obra } from '../../lib/api';
-import { usePageStyles } from '../pageStyles';
-import { useConfirmarExclusao } from '../../hooks/useConfirmarExclusao';
 import { useSucessoToast } from '../../hooks/useSucessoToast';
-import { EstadoVazio } from '../../components/EstadoVazio';
-import { ListaCarregando } from '../../components/ListaCarregando';
 
 function vazio(): NovoDimensionamentoCipa {
   return { obraId: '', cnae: '', grauRisco: 1, numeroFuncionarios: 0, numeroTitulares: 0, numeroSuplentes: 0, observacoes: '' };
@@ -28,15 +26,18 @@ function vazio(): NovoDimensionamentoCipa {
 // Dimensionamento CIPA: número de titulares/suplentes é sempre informado manualmente por quem
 // cadastra — este sistema não calcula automaticamente o Quadro I da NR-5 (deve ser validado por
 // técnico/engenheiro de segurança do trabalho habilitado). Ver disclosure completo em Cipa.cs.
+// Camada ui/ (Onda 2, Task 4): formulário saiu de cima da tabela (empurrava a lista pra baixo) para
+// um PainelLateral, mesmo padrão do Guia de conversão §2 já aplicado em FuncoesTab.tsx (Task 1).
 export function DimensionamentoCipaTab() {
-  const estilos = usePageStyles();
   const [lista, setLista] = useState<DimensionamentoCipa[]>([]);
   const [obras, setObras] = useState<Obra[]>([]);
   const [novo, setNovo] = useState<NovoDimensionamentoCipa>(vazio());
   const [erro, setErro] = useState<string | null>(null);
+  const [erroPainel, setErroPainel] = useState<string | null>(null);
   const [carregando, setCarregando] = useState(false);
   const [carregandoLista, setCarregandoLista] = useState(true);
-  const { confirmar, dialogElement } = useConfirmarExclusao();
+  const [painelAberto, setPainelAberto] = useState(false);
+  const { confirmar, dialogElement } = useConfirmar();
   const sucessoToast = useSucessoToast();
 
   async function carregar() {
@@ -60,20 +61,26 @@ export function DimensionamentoCipaTab() {
     return obras.find((o) => o.id === id)?.nome ?? id;
   }
 
+  function fecharPainel() {
+    setPainelAberto(false);
+    setErroPainel(null);
+  }
+
   async function criar() {
     if (!novo.obraId || !novo.cnae.trim() || novo.numeroFuncionarios <= 0) {
-      setErro('Preencha obra, CNAE e número de funcionários.');
+      setErroPainel('Preencha obra, CNAE e número de funcionários.');
       return;
     }
     try {
       setCarregando(true);
-      setErro(null);
+      setErroPainel(null);
       await api.cipa.dimensionamento.criar({ ...novo, observacoes: novo.observacoes || null });
       setNovo(vazio());
       await carregar();
       sucessoToast('Dimensionamento criado com sucesso.');
+      fecharPainel();
     } catch (e) {
-      setErro(e instanceof Error ? e.message : 'Falha ao criar dimensionamento.');
+      setErroPainel(e instanceof Error ? e.message : 'Falha ao criar dimensionamento.');
     } finally {
       setCarregando(false);
     }
@@ -90,22 +97,69 @@ export function DimensionamentoCipaTab() {
     }
   }
 
+  const colunas: Coluna<DimensionamentoCipa>[] = [
+    { chave: 'obra', rotulo: 'Obra', render: (d) => nomeObra(d.obraId) },
+    { chave: 'cnae', rotulo: 'CNAE' },
+    { chave: 'grauRisco', rotulo: 'Grau de risco', render: (d) => nivelRiscoLabel[d.grauRisco] },
+    { chave: 'numeroFuncionarios', rotulo: 'Funcionários' },
+    { chave: 'numeroTitulares', rotulo: 'Titulares' },
+    { chave: 'numeroSuplentes', rotulo: 'Suplentes' },
+    { chave: 'dataCalculo', rotulo: 'Data do cálculo', render: (d) => d.dataCalculo?.slice(0, 10) ?? '' },
+  ];
+
   return (
     <div>
       {dialogElement}
-      <div className={estilos.card} style={{ marginBottom: 16 }}>
-        <div className={estilos.toolbar}>
-          <Text weight="semibold">Novo dimensionamento</Text>
-        </div>
-        {erro && <Text className={estilos.erro}>{erro}</Text>}
-        <Text size={200} style={{ display: 'block', marginBottom: 12 }}>
-          O número de titulares/suplentes é definido manualmente por quem cadastra, conforme o Quadro
-          I da NR-5 para o CNAE e grau de risco informados. Recomenda-se validação por técnico ou
-          engenheiro de segurança do trabalho habilitado.
-        </Text>
-        <div className={`${estilos.sectionTitle} ${estilos.sectionTitleFirst}`}>Dados do Dimensionamento</div>
-        <div className={estilos.formGrid}>
-          <div className={estilos.col4}>
+      <PageHeader
+        titulo="Dimensionamento CIPA"
+        acoes={
+          <Button appearance="primary" icon={<Add24Regular />} onClick={() => setPainelAberto(true)}>
+            Adicionar dimensionamento
+          </Button>
+        }
+      />
+      {erro && (
+        <FeedbackInline tom="erro" aoFechar={() => setErro(null)}>
+          {erro}
+        </FeedbackInline>
+      )}
+      <Card>
+        <DataTable
+          aria-label="Dimensionamentos cadastrados"
+          colunas={colunas}
+          linhas={lista}
+          chaveLinha={(d) => d.id}
+          carregando={carregandoLista}
+          vazio={{
+            titulo: 'Nenhum dimensionamento cadastrado ainda',
+            acao: { rotulo: 'Adicionar dimensionamento', aoClicar: () => setPainelAberto(true) },
+          }}
+          acoesLinha={(d) => (
+            <Button appearance="subtle" icon={<Delete24Regular />} onClick={() => excluir(d.id)} aria-label="Excluir" />
+          )}
+        />
+      </Card>
+      <PainelLateral
+        aberto={painelAberto}
+        aoFechar={fecharPainel}
+        titulo="Novo dimensionamento"
+        subtitulo="O número de titulares/suplentes é definido manualmente por quem cadastra, conforme o Quadro I da NR-5 para o CNAE e grau de risco informados. Recomenda-se validação por técnico ou engenheiro de segurança do trabalho habilitado."
+        rodape={
+          <>
+            <Button onClick={fecharPainel}>Cancelar</Button>
+            <Button appearance="primary" onClick={criar} disabled={carregando}>
+              Adicionar dimensionamento
+            </Button>
+          </>
+        }
+      >
+        {erroPainel && (
+          <FeedbackInline tom="erro" aoFechar={() => setErroPainel(null)}>
+            {erroPainel}
+          </FeedbackInline>
+        )}
+        <FormGrid>
+          <Campo span={4}>
             <Field label="Obra" required>
               <Select value={novo.obraId} onChange={(_, d) => setNovo({ ...novo, obraId: d.value })}>
                 <option value="">Selecione</option>
@@ -116,13 +170,13 @@ export function DimensionamentoCipaTab() {
                 ))}
               </Select>
             </Field>
-          </div>
-          <div className={estilos.col2}>
+          </Campo>
+          <Campo span={2}>
             <Field label="CNAE" required>
               <Input value={novo.cnae} onChange={(_, d) => setNovo({ ...novo, cnae: d.value })} />
             </Field>
-          </div>
-          <div className={estilos.col3}>
+          </Campo>
+          <Campo span={3}>
             <Field label="Grau de risco">
               <Select value={String(novo.grauRisco)} onChange={(_, d) => setNovo({ ...novo, grauRisco: Number(d.value) })}>
                 {Object.entries(nivelRiscoLabel).map(([valor, rotulo]) => (
@@ -132,8 +186,8 @@ export function DimensionamentoCipaTab() {
                 ))}
               </Select>
             </Field>
-          </div>
-          <div className={estilos.col3}>
+          </Campo>
+          <Campo span={3}>
             <Field label="Número de funcionários" required>
               <Input
                 type="number"
@@ -141,8 +195,8 @@ export function DimensionamentoCipaTab() {
                 onChange={(_, d) => setNovo({ ...novo, numeroFuncionarios: Number(d.value) })}
               />
             </Field>
-          </div>
-          <div className={estilos.col2}>
+          </Campo>
+          <Campo span={2}>
             <Field label="Titulares" required>
               <Input
                 type="number"
@@ -150,8 +204,8 @@ export function DimensionamentoCipaTab() {
                 onChange={(_, d) => setNovo({ ...novo, numeroTitulares: Number(d.value) })}
               />
             </Field>
-          </div>
-          <div className={estilos.col2}>
+          </Campo>
+          <Campo span={2}>
             <Field label="Suplentes" required>
               <Input
                 type="number"
@@ -159,61 +213,14 @@ export function DimensionamentoCipaTab() {
                 onChange={(_, d) => setNovo({ ...novo, numeroSuplentes: Number(d.value) })}
               />
             </Field>
-          </div>
-          <div className={estilos.col12}>
+          </Campo>
+          <Campo span={12}>
             <Field label="Observações">
               <Textarea value={novo.observacoes ?? ''} onChange={(_, d) => setNovo({ ...novo, observacoes: d.value })} />
             </Field>
-          </div>
-        </div>
-        <div className={estilos.formActions}>
-          <Button appearance="primary" icon={<Add24Regular />} onClick={criar} disabled={carregando}>
-            Adicionar dimensionamento
-          </Button>
-        </div>
-      </div>
-
-      <div className={estilos.card}>
-        <div className={estilos.toolbar}>
-          <Text weight="semibold">Dimensionamentos cadastrados</Text>
-        </div>
-        {carregandoLista ? (
-          <ListaCarregando />
-        ) : lista.length === 0 ? (
-          <EstadoVazio mensagem="Nenhum dimensionamento cadastrado ainda." />
-        ) : (
-        <Table noNativeElements>
-          <TableHeader>
-            <TableRow>
-              <TableHeaderCell>Obra</TableHeaderCell>
-              <TableHeaderCell>CNAE</TableHeaderCell>
-              <TableHeaderCell>Grau de risco</TableHeaderCell>
-              <TableHeaderCell>Funcionários</TableHeaderCell>
-              <TableHeaderCell>Titulares</TableHeaderCell>
-              <TableHeaderCell>Suplentes</TableHeaderCell>
-              <TableHeaderCell>Data do cálculo</TableHeaderCell>
-              <TableHeaderCell></TableHeaderCell>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {lista.map((d) => (
-              <TableRow key={d.id}>
-                <TableCell>{nomeObra(d.obraId)}</TableCell>
-                <TableCell>{d.cnae}</TableCell>
-                <TableCell>{nivelRiscoLabel[d.grauRisco]}</TableCell>
-                <TableCell>{d.numeroFuncionarios}</TableCell>
-                <TableCell>{d.numeroTitulares}</TableCell>
-                <TableCell>{d.numeroSuplentes}</TableCell>
-                <TableCell>{d.dataCalculo?.slice(0, 10)}</TableCell>
-                <TableCell>
-                  <Button appearance="subtle" icon={<Delete24Regular />} onClick={() => excluir(d.id)} aria-label="Excluir" />
-                </TableCell>
-              </TableRow>
-            ))}
-          </TableBody>
-        </Table>
-        )}
-      </div>
+          </Campo>
+        </FormGrid>
+      </PainelLateral>
     </div>
   );
 }
