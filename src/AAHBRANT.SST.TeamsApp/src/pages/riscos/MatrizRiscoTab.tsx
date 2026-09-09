@@ -1,8 +1,15 @@
 import { useEffect, useMemo, useState } from 'react';
 import {
   Button,
+  Campo,
+  Card,
+  DataTable,
   Field,
+  FeedbackInline,
+  FormGrid,
+  FormSection,
   Input,
+  PageHeader,
   Select,
   Table,
   TableBody,
@@ -11,22 +18,18 @@ import {
   TableHeaderCell,
   TableRow,
   Text,
-} from '@fluentui/react-components';
+  tokensUi,
+  useConfirmar,
+  type Coluna,
+  type Tom,
+} from '@ui';
 import { Add24Regular, Delete24Regular } from '@fluentui/react-icons';
 import { api, nivelRiscoLabel, NivelRisco, type MatrizRiscoConfig } from '../../lib/api';
-import { usePageStyles } from '../pageStyles';
-import { useConfirmarExclusao } from '../../hooks/useConfirmarExclusao';
 import { useSucessoToast } from '../../hooks/useSucessoToast';
-import { EstadoVazio } from '../../components/EstadoVazio';
-import { ListaCarregando } from '../../components/ListaCarregando';
 
-const coresNivel: Record<number, string> = {
-  1: '#DFF6DD',
-  2: '#D6ECFF',
-  3: '#FFF4CE',
-  4: '#FFE0C7',
-  5: '#FDE2E1',
-};
+// Guia de conversão §5 (StatusChip), mesma união de 5 tons do Fluent → 4 tons de @ui, colapsando
+// Alto/Crítico no mesmo "alerta" (o rótulo textual continua distinguindo os dois níveis).
+const tomPorNivel: Record<number, Tom> = { 1: 'ok', 2: 'info', 3: 'atencao', 4: 'alerta', 5: 'alerta' };
 
 function nivelSugerido(probabilidade: number, severidade: number): number {
   const score = probabilidade + severidade;
@@ -37,13 +40,32 @@ function nivelSugerido(probabilidade: number, severidade: number): number {
   return NivelRisco.Critico;
 }
 
+const colunasConfigs: Coluna<MatrizRiscoConfig>[] = [
+  { chave: 'nome', rotulo: 'Nome' },
+  {
+    chave: 'dimensoes',
+    rotulo: 'Dimensões',
+    render: (c) => `${c.numNiveisProbabilidade} × ${c.numNiveisSeveridade}`,
+  },
+];
+
+// Camada ui/ (Onda 2, Task 13). Julgamento registrado (guia §5.1, spec §4.5 "Matriz"): a grade
+// Probabilidade × Severidade abaixo é um heatmap genuíno — célula = <Select>, sem noção de "linha =
+// item de dado com colunas fixas" — estruturalmente diferente de MatrizEpiTab/MatrizTreinamentoTab
+// (linha-por-item com expansão). DataTable não serve aqui; a grade continua Table/TableRow/TableCell,
+// só que importados de @ui (exceção pontual adicionada ao barril nesta mesma task) em vez de
+// @fluentui/react-components direto. A segunda seção ("Matrizes cadastradas", lista simples de
+// nome+dimensões+excluir) essa sim é DataTable de verdade — não tem nenhuma característica de grade.
+// Cor de nível: fundo de célula (não StatusChip) — StatusChip é um chip de conteúdo inline, não uma
+// tinta de área; aqui a cor É o dado (indicador visual do nível sugerido/escolhido para aquele
+// cruzamento P×S), então vira backgroundColor lido de tokensUi.status[tom].fundo (mesma família
+// "lavada" que o StatusChip usa internamente) em vez do hex cru que a página tinha antes.
 export function MatrizRiscoTab() {
-  const estilos = usePageStyles();
   const [configs, setConfigs] = useState<MatrizRiscoConfig[]>([]);
   const [erro, setErro] = useState<string | null>(null);
   const [carregando, setCarregando] = useState(false);
   const [carregandoLista, setCarregandoLista] = useState(true);
-  const { confirmar, dialogElement } = useConfirmarExclusao();
+  const { confirmar, dialogElement } = useConfirmar();
   const sucessoToast = useSucessoToast();
 
   const [nome, setNome] = useState('Matriz de risco padrão');
@@ -116,51 +138,56 @@ export function MatrizRiscoTab() {
   }
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+    <div>
       {dialogElement}
-      <div className={estilos.card}>
-        <div className={estilos.toolbar}>
-          <Text weight="semibold">Nova matriz de risco (Probabilidade × Severidade)</Text>
-        </div>
+      <PageHeader
+        titulo="Matriz de Risco (Probabilidade × Severidade)"
+        subtitulo="A Base de Conhecimento (§36) exige que a matriz seja configurável pela organização — não há fórmula fixa. Os níveis abaixo já vêm preenchidos com uma sugestão (Probabilidade + Severidade); ajuste célula a célula conforme a política de risco da empresa antes de salvar."
+        acoes={
+          <Button appearance="primary" icon={<Add24Regular />} onClick={salvar} disabled={carregando}>
+            Salvar matriz
+          </Button>
+        }
+      />
 
-        {erro && <Text className={estilos.erro}>{erro}</Text>}
+      {erro && (
+        <FeedbackInline tom="erro" aoFechar={() => setErro(null)}>
+          {erro}
+        </FeedbackInline>
+      )}
 
-        <Text size={200} style={{ display: 'block', marginBottom: 12 }}>
-          A Base de Conhecimento (§36) exige que a matriz seja configurável pela organização — não há fórmula fixa.
-          Os níveis abaixo já vêm preenchidos com uma sugestão (Probabilidade + Severidade); ajuste célula a célula
-          conforme a política de risco da empresa antes de salvar.
-        </Text>
-
-        <div className={`${estilos.sectionTitle} ${estilos.sectionTitleFirst}`}>Dados da Matriz de Risco</div>
-        <div className={estilos.formGrid}>
-          <div className={estilos.col6}>
-            <Field label="Nome da matriz">
-              <Input value={nome} onChange={(_, d) => setNome(d.value)} />
-            </Field>
-          </div>
-          <div className={estilos.col3}>
-            <Field label="Níveis de probabilidade">
-              <Input
-                type="number"
-                min={1}
-                max={10}
-                value={String(numP)}
-                onChange={(_, d) => setNumP(Math.max(1, Number(d.value) || 1))}
-              />
-            </Field>
-          </div>
-          <div className={estilos.col3}>
-            <Field label="Níveis de severidade">
-              <Input
-                type="number"
-                min={1}
-                max={10}
-                value={String(numS)}
-                onChange={(_, d) => setNumS(Math.max(1, Number(d.value) || 1))}
-              />
-            </Field>
-          </div>
-        </div>
+      <Card titulo="Nova matriz de risco">
+        <FormSection titulo="Dados da Matriz de Risco" primeira>
+          <FormGrid>
+            <Campo span={6}>
+              <Field label="Nome da matriz">
+                <Input value={nome} onChange={(_, d) => setNome(d.value)} />
+              </Field>
+            </Campo>
+            <Campo span={3}>
+              <Field label="Níveis de probabilidade">
+                <Input
+                  type="number"
+                  min={1}
+                  max={10}
+                  value={String(numP)}
+                  onChange={(_, d) => setNumP(Math.max(1, Number(d.value) || 1))}
+                />
+              </Field>
+            </Campo>
+            <Campo span={3}>
+              <Field label="Níveis de severidade">
+                <Input
+                  type="number"
+                  min={1}
+                  max={10}
+                  value={String(numS)}
+                  onChange={(_, d) => setNumS(Math.max(1, Number(d.value) || 1))}
+                />
+              </Field>
+            </Campo>
+          </FormGrid>
+        </FormSection>
 
         <div style={{ overflowX: 'auto' }}>
           <Table noNativeElements>
@@ -178,70 +205,44 @@ export function MatrizRiscoTab() {
                   <TableCell>
                     <Text weight="semibold">{p}</Text>
                   </TableCell>
-                  {colunasSeveridade.map((s) => (
-                    <TableCell key={s} style={{ backgroundColor: coresNivel[nivelDaCelula(p, s)] }}>
-                      <Select
-                        value={String(nivelDaCelula(p, s))}
-                        onChange={(_, d) => definirCelula(p, s, Number(d.value))}
-                      >
-                        {Object.entries(nivelRiscoLabel).map(([valor, rotulo]) => (
-                          <option key={valor} value={valor}>
-                            {rotulo}
-                          </option>
-                        ))}
-                      </Select>
-                    </TableCell>
-                  ))}
+                  {colunasSeveridade.map((s) => {
+                    const tom = tomPorNivel[nivelDaCelula(p, s)];
+                    return (
+                      <TableCell key={s} style={{ backgroundColor: tokensUi.status[tom].fundo }}>
+                        <Select
+                          value={String(nivelDaCelula(p, s))}
+                          onChange={(_, d) => definirCelula(p, s, Number(d.value))}
+                        >
+                          {Object.entries(nivelRiscoLabel).map(([valor, rotulo]) => (
+                            <option key={valor} value={valor}>
+                              {rotulo}
+                            </option>
+                          ))}
+                        </Select>
+                      </TableCell>
+                    );
+                  })}
                 </TableRow>
               ))}
             </TableBody>
           </Table>
         </div>
+      </Card>
 
-        <div className={estilos.formActions}>
-          <Button appearance="primary" icon={<Add24Regular />} onClick={salvar} disabled={carregando}>
-            Salvar matriz
-          </Button>
-        </div>
-      </div>
-
-      <div className={estilos.card}>
-        <div className={estilos.toolbar}>
-          <Text weight="semibold">Matrizes cadastradas</Text>
-        </div>
-        {carregandoLista ? (
-          <ListaCarregando />
-        ) : configs.length === 0 ? (
-          <EstadoVazio mensagem="Nenhuma matriz de risco cadastrada ainda." />
-        ) : (
-        <Table noNativeElements>
-          <TableHeader>
-            <TableRow>
-              <TableHeaderCell>Nome</TableHeaderCell>
-              <TableHeaderCell>Dimensões</TableHeaderCell>
-              <TableHeaderCell></TableHeaderCell>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {configs.map((config) => (
-              <TableRow key={config.id}>
-                <TableCell>{config.nome}</TableCell>
-                <TableCell>
-                  {config.numNiveisProbabilidade} × {config.numNiveisSeveridade}
-                </TableCell>
-                <TableCell>
-                  <Button
-                    appearance="subtle"
-                    icon={<Delete24Regular />}
-                    onClick={() => excluir(config.id)}
-                    aria-label="Excluir"
-                  />
-                </TableCell>
-              </TableRow>
-            ))}
-          </TableBody>
-        </Table>
-        )}
+      <div style={{ marginTop: 16 }}>
+        <Card titulo="Matrizes cadastradas">
+          <DataTable
+            aria-label="Matrizes de risco cadastradas"
+            colunas={colunasConfigs}
+            linhas={configs}
+            chaveLinha={(c) => c.id}
+            carregando={carregandoLista}
+            vazio={{ titulo: 'Nenhuma matriz de risco cadastrada ainda.' }}
+            acoesLinha={(c) => (
+              <Button appearance="subtle" icon={<Delete24Regular />} onClick={() => excluir(c.id)} aria-label="Excluir" />
+            )}
+          />
+        </Card>
       </div>
     </div>
   );
