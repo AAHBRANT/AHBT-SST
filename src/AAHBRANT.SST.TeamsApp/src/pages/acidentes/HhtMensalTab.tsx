@@ -1,24 +1,22 @@
 import { useEffect, useState } from 'react';
 import {
   Button,
+  Campo,
+  Card,
+  DataTable,
   Field,
+  FeedbackInline,
+  FormGrid,
+  FormRodape,
+  FormSection,
   Input,
   Select,
-  Table,
-  TableBody,
-  TableCell,
-  TableHeader,
-  TableHeaderCell,
-  TableRow,
-  Text,
-} from '@fluentui/react-components';
+  useConfirmar,
+  type Coluna,
+} from '@ui';
 import { AddCircle24Regular, Delete24Regular } from '@fluentui/react-icons';
 import { api, type NovoRegistroHhtMensal, type Obra, type RegistroHhtMensal } from '../../lib/api';
-import { usePageStyles } from '../pageStyles';
-import { useConfirmarExclusao } from '../../hooks/useConfirmarExclusao';
 import { useSucessoToast } from '../../hooks/useSucessoToast';
-import { EstadoVazio } from '../../components/EstadoVazio';
-import { ListaCarregando } from '../../components/ListaCarregando';
 
 const nomesMes = [
   'Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho',
@@ -30,14 +28,14 @@ function novoInicial(): NovoRegistroHhtMensal {
   return { obraId: '', ano: agora.getFullYear(), mes: agora.getMonth() + 1, horasHomemTrabalhadas: 0 };
 }
 
+// Onda 2 Task 20 (camada ui/): lançamento + histórico de HHT mensal por obra, aba de AcidentesPage.
 export function HhtMensalTab({ obras }: { obras: Obra[] }) {
-  const estilos = usePageStyles();
   const [registros, setRegistros] = useState<RegistroHhtMensal[]>([]);
   const [novo, setNovo] = useState<NovoRegistroHhtMensal>(novoInicial());
   const [erro, setErro] = useState<string | null>(null);
   const [carregando, setCarregando] = useState(false);
   const [carregandoLista, setCarregandoLista] = useState(true);
-  const { confirmar, dialogElement } = useConfirmarExclusao();
+  const { confirmar, dialogElement } = useConfirmar();
   const sucessoToast = useSucessoToast();
 
   async function carregar() {
@@ -86,107 +84,85 @@ export function HhtMensalTab({ obras }: { obras: Obra[] }) {
     }
   }
 
-  return (
-    <div>
-      {dialogElement}
-      {erro && <Text className={estilos.erro}>{erro}</Text>}
+  const colunas: Coluna<RegistroHhtMensal>[] = [
+    { chave: 'obra', rotulo: 'Obra', render: (r) => r.obraNome ?? '—' },
+    { chave: 'ano', rotulo: 'Ano' },
+    { chave: 'mes', rotulo: 'Mês', render: (r) => nomesMes[r.mes - 1] },
+    { chave: 'hht', rotulo: 'HHT', render: (r) => r.horasHomemTrabalhadas.toLocaleString('pt-BR') },
+  ];
 
-      <div className={estilos.card} style={{ marginBottom: 16 }}>
-        <div className={estilos.toolbar}>
-          <Text weight="semibold">Lançar HHT do mês</Text>
-        </div>
-        <div className={`${estilos.sectionTitle} ${estilos.sectionTitleFirst}`}>Dados do Lançamento</div>
-        <div className={estilos.formGrid}>
-          <div className={estilos.col4}>
-            <Field label="Obra" required>
-              <Select value={novo.obraId} onChange={(_, d) => setNovo({ ...novo, obraId: d.value })}>
-                <option value="">Selecione</option>
-                {obras.map((obra) => (
-                  <option key={obra.id} value={obra.id}>
-                    {obra.nome}
-                  </option>
-                ))}
-              </Select>
-            </Field>
-          </div>
-          <div className={estilos.col2}>
-            <Field label="Ano" required>
-              <Input
-                type="number"
-                value={String(novo.ano)}
-                onChange={(_, d) => setNovo({ ...novo, ano: Number(d.value) || novo.ano })}
-              />
-            </Field>
-          </div>
-          <div className={estilos.col3}>
-            <Field label="Mês" required>
-              <Select value={String(novo.mes)} onChange={(_, d) => setNovo({ ...novo, mes: Number(d.value) })}>
-                {nomesMes.map((nome, indice) => (
-                  <option key={nome} value={indice + 1}>
-                    {nome}
-                  </option>
-                ))}
-              </Select>
-            </Field>
-          </div>
-          <div className={estilos.col3}>
-            <Field label="Horas-Homem Trabalhadas (HHT)" required>
-              <Input
-                type="number"
-                min={0}
-                value={String(novo.horasHomemTrabalhadas)}
-                onChange={(_, d) => setNovo({ ...novo, horasHomemTrabalhadas: Number(d.value) || 0 })}
-              />
-            </Field>
-          </div>
-        </div>
-        <div className={estilos.formActions}>
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+      {dialogElement}
+      {erro && <FeedbackInline tom="erro" aoFechar={() => setErro(null)}>{erro}</FeedbackInline>}
+
+      <Card titulo="Lançar HHT do mês">
+        <FormSection titulo="Dados do Lançamento" numero={1} primeira>
+          <FormGrid>
+            <Campo span={4}>
+              <Field label="Obra" required>
+                <Select value={novo.obraId} onChange={(_, d) => setNovo({ ...novo, obraId: d.value })}>
+                  <option value="">Selecione</option>
+                  {obras.map((obra) => (
+                    <option key={obra.id} value={obra.id}>
+                      {obra.nome}
+                    </option>
+                  ))}
+                </Select>
+              </Field>
+            </Campo>
+            <Campo span={2}>
+              <Field label="Ano" required>
+                <Input
+                  type="number"
+                  value={String(novo.ano)}
+                  onChange={(_, d) => setNovo({ ...novo, ano: Number(d.value) || novo.ano })}
+                />
+              </Field>
+            </Campo>
+            <Campo span={3}>
+              <Field label="Mês" required>
+                <Select value={String(novo.mes)} onChange={(_, d) => setNovo({ ...novo, mes: Number(d.value) })}>
+                  {nomesMes.map((nome, indice) => (
+                    <option key={nome} value={indice + 1}>
+                      {nome}
+                    </option>
+                  ))}
+                </Select>
+              </Field>
+            </Campo>
+            <Campo span={3}>
+              <Field label="Horas-Homem Trabalhadas (HHT)" required>
+                <Input
+                  type="number"
+                  min={0}
+                  value={String(novo.horasHomemTrabalhadas)}
+                  onChange={(_, d) => setNovo({ ...novo, horasHomemTrabalhadas: Number(d.value) || 0 })}
+                />
+              </Field>
+            </Campo>
+          </FormGrid>
+        </FormSection>
+        <FormRodape>
           <Button appearance="primary" icon={<AddCircle24Regular />} onClick={criar} disabled={carregando}>
             Lançar
           </Button>
-        </div>
-      </div>
+        </FormRodape>
+      </Card>
 
-      <div className={estilos.card}>
-        <div className={estilos.toolbar}>
-          <Text weight="semibold">Histórico de HHT por obra</Text>
-        </div>
-        {carregandoLista ? (
-          <ListaCarregando />
-        ) : registros.length === 0 ? (
-          <EstadoVazio mensagem="Nenhum registro de HHT cadastrado ainda." />
-        ) : (
-        <Table noNativeElements>
-          <TableHeader>
-            <TableRow>
-              <TableHeaderCell>Obra</TableHeaderCell>
-              <TableHeaderCell>Ano</TableHeaderCell>
-              <TableHeaderCell>Mês</TableHeaderCell>
-              <TableHeaderCell>HHT</TableHeaderCell>
-              <TableHeaderCell></TableHeaderCell>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {registros.map((registro) => (
-              <TableRow key={registro.id}>
-                <TableCell>{registro.obraNome ?? '—'}</TableCell>
-                <TableCell>{registro.ano}</TableCell>
-                <TableCell>{nomesMes[registro.mes - 1]}</TableCell>
-                <TableCell>{registro.horasHomemTrabalhadas.toLocaleString('pt-BR')}</TableCell>
-                <TableCell>
-                  <Button
-                    appearance="subtle"
-                    icon={<Delete24Regular />}
-                    onClick={() => excluir(registro.id)}
-                    aria-label="Excluir"
-                  />
-                </TableCell>
-              </TableRow>
-            ))}
-          </TableBody>
-        </Table>
-        )}
-      </div>
+      <Card titulo="Histórico de HHT por obra">
+        <DataTable
+          aria-label="Histórico de HHT por obra"
+          colunas={colunas}
+          linhas={registros}
+          chaveLinha={(r) => r.id}
+          carregando={carregandoLista}
+          vazio={{ titulo: 'Nenhum registro de HHT cadastrado ainda.' }}
+          acoesLinha={(r) => (
+            <Button appearance="subtle" icon={<Delete24Regular />} onClick={() => excluir(r.id)} aria-label="Excluir" />
+          )}
+        />
+      </Card>
     </div>
   );
 }
