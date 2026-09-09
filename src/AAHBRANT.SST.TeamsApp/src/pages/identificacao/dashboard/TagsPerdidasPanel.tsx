@@ -1,43 +1,30 @@
 import { AnimatePresence, motion } from 'framer-motion';
-import { Badge, Text } from '@fluentui/react-components';
+import { Card, designTokens, Legenda, StatusChip, Text } from '@ui';
 import { Warning24Filled } from '@fluentui/react-icons';
 import { tipoEntidadeVinculadaLabel, tipoTagLabel, type TagIdentificacao } from '../../../lib/api';
-import { useDashboardStyles } from '../../../components/dashboard/dashboardStyles';
 
 interface TagsPerdidasPanelProps {
   tags: TagIdentificacao[];
 }
 
+// Onda 2 Task 9 (camada ui/): painel de Tags Perdidas do dashboard — motorPainel→Card,
+// Badge→StatusChip (item 5, 8 do Guia), mesmo padrão de AreasBloqueadasPanel.tsx neste módulo e de
+// AprVencidaPanel.tsx (Task 11).
 export function TagsPerdidasPanel({ tags }: TagsPerdidasPanelProps) {
-  const estilos = useDashboardStyles();
-
   const perdidas = [...tags].sort((a, b) => a.uid.localeCompare(b.uid));
 
   return (
-    <div className={estilos.motorPainel}>
-      <div className={estilos.motorCabecalho}>
-        <div>
-          <Text weight="semibold" size={400}>
-            Tags de Identificação Perdidas
-          </Text>
-          <div>
-            <Text size={200} style={{ color: 'var(--colorNeutralForeground3, #6D6D6D)' }}>
-              Tags NTAG/QR/RFID marcadas como perdidas — podem representar um risco de identificação indevida se
-              ainda estiverem vinculadas a uma área, ativo ou trabalhador.
-            </Text>
-          </div>
-        </div>
-        <Badge appearance="tint" color={perdidas.length === 0 ? 'success' : 'danger'}>
+    <Card
+      titulo="Tags de Identificação Perdidas"
+      subtitulo="Tags NTAG/QR/RFID marcadas como perdidas — podem representar um risco de identificação indevida se ainda estiverem vinculadas a uma área, ativo ou trabalhador."
+      acoes={
+        <StatusChip tom={perdidas.length === 0 ? 'ok' : 'alerta'}>
           {perdidas.length} tag(s) perdida(s)
-        </Badge>
-      </div>
-
-      <div className={estilos.motorLista}>
-        {perdidas.length === 0 && (
-          <Text size={200} style={{ color: 'var(--colorNeutralForeground3, #6D6D6D)' }}>
-            Nenhuma tag perdida para os filtros selecionados.
-          </Text>
-        )}
+        </StatusChip>
+      }
+    >
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 8, maxHeight: 420, overflowY: 'auto' }}>
+        {perdidas.length === 0 && <Legenda>Nenhuma tag perdida para os filtros selecionados.</Legenda>}
         <AnimatePresence initial={false}>
           {perdidas.map((tag, indice) => (
             <motion.div
@@ -46,26 +33,35 @@ export function TagsPerdidasPanel({ tags }: TagsPerdidasPanelProps) {
               initial={{ opacity: 0, x: -8 }}
               animate={{ opacity: 1, x: 0 }}
               transition={{ duration: 0.25, delay: Math.min(indice, 12) * 0.02 }}
-              className={`${estilos.motorLinha} ${estilos.motorLinhaBloqueada}`}
+              style={{
+                display: 'grid',
+                gridTemplateColumns: '1fr auto',
+                alignItems: 'center',
+                gap: 12,
+                padding: '10px 14px',
+                borderRadius: 6,
+                backgroundColor: designTokens.colorNeutralLight,
+                borderLeft: `3px solid ${designTokens.colorAlert}`,
+              }}
             >
               <div>
                 <Text weight="semibold">{tag.uid}</Text>
                 <div>
-                  <Text size={200} style={{ color: 'var(--colorNeutralForeground3, #6D6D6D)' }}>
+                  <Legenda>
                     {tipoTagLabel[tag.tipo]}
                     {tag.entidadeVinculadaTipo
                       ? ` · vinculada a ${tipoEntidadeVinculadaLabel[tag.entidadeVinculadaTipo]}`
                       : ' · sem vínculo'}
-                  </Text>
+                  </Legenda>
                 </div>
               </div>
-              <Badge appearance="tint" color="danger" icon={<Warning24Filled />}>
+              <StatusChip tom="alerta" icone={<Warning24Filled aria-hidden="true" />}>
                 Perdida
-              </Badge>
+              </StatusChip>
             </motion.div>
           ))}
         </AnimatePresence>
       </div>
-    </div>
+    </Card>
   );
 }
