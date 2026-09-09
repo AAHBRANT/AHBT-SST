@@ -1,8 +1,9 @@
-import { Abas, EstadoVazio, useAbaNaUrl } from '@ui';
+import { Abas, useAbaNaUrl } from '@ui';
 import { PgrRiscosPage } from '../pgr/PgrRiscosPage';
 import { SaudeOcupacionalPage } from '../saude-ocupacional/SaudeOcupacionalPage';
 import { TreinamentosPage } from '../treinamentos/TreinamentosPage';
 import { RequisitosLegaisPage } from '../requisitoslegais/RequisitosLegaisPage';
+import { MateriaisApoioTab } from './MateriaisApoioTab';
 
 type SecaoGestaoSst = 'pgr' | 'pcmso' | 'treinamentos' | 'documentos' | 'requisitos-legais';
 
@@ -40,13 +41,7 @@ export function GestaoSstPage() {
       {secao === 'pgr' && <PgrRiscosPage mostrarTitulo={false} />}
       {secao === 'pcmso' && <SaudeOcupacionalPage abaInicial="pcmso" mostrarTitulo={false} />}
       {secao === 'treinamentos' && <TreinamentosPage mostrarTitulo={false} />}
-      {secao === 'documentos' && (
-        <EstadoVazio
-          variante="em-construcao"
-          titulo="Documentos & Procedimentos"
-          descricao="O módulo de Gestão Documental foi removido do sistema em 28/08 (junto com a Matriz Legal antiga). Esse item está reservado no menu, mas precisa ser reconstruído do zero."
-        />
-      )}
+      {secao === 'documentos' && <MateriaisApoioTab />}
       {secao === 'requisitos-legais' && <RequisitosLegaisPage mostrarTitulo={false} />}
     </div>
   );

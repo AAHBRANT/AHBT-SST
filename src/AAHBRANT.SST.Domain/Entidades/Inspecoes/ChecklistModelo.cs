@@ -29,6 +29,11 @@ public class ChecklistModeloItem : AuditableEntity
     public int Ordem { get; set; }
     public string Descricao { get; set; } = string.Empty;
 
+    // Agrupamento visual opcional (ex.: "Dormitórios", "Instalações sanitárias" no checklist de
+    // Alojamento) — texto livre para não travar checklists futuros a um vocabulário fechado.
+    // Null preserva o comportamento anterior: lista plana sem seções.
+    public string? Secao { get; set; }
+
     public bool ExigeFotografia { get; set; }
     public bool ExigeResponsavel { get; set; }
     public bool ExigePrazo { get; set; }

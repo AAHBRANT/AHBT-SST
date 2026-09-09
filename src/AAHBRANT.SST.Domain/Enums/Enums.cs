@@ -256,11 +256,15 @@ public enum TipoEntidadeVinculada
 }
 
 // NTAG.md §2 — sst_areas.type: comentário do documento lista 'WORK_AREA', 'RISK_ZONE', 'STORAGE'.
+// Alojamento (4) não está nessa lista literal — adicionado para cadastrar formalmente cada
+// alojamento de obra como uma área (endereço em DetalhesLocalizacao), pedido do usuário em
+// 2026-09-09.
 public enum TipoArea
 {
     AreaDeTrabalho = 1,
     ZonaDeRisco = 2,
-    Armazenamento = 3
+    Armazenamento = 3,
+    Alojamento = 4
 }
 
 // NTAG.md §2 — sst_areas.status: CHECK (status IN ('ACTIVE', 'INACTIVE', 'BLOCKED')).
@@ -414,6 +418,9 @@ public enum ItemEpcPt
 }
 
 // Seção 23 da Base de Conhecimento (linhas 581-595) — 13 tipos literais de inspeção.
+// Alojamento (14) não está nessa lista literal, mas é citado explicitamente como "Inspeção
+// Específica" em REFORMULAÇÃO.md §PR-SST-005 — adicionado para o checklist de estrutura de
+// alojamento (NR-18 18.5 / NR-24), pedido do usuário em 2026-09-09.
 public enum TipoInspecao
 {
     Obra = 1,
@@ -428,7 +435,8 @@ public enum TipoInspecao
     Altura = 10,
     EspacoConfinado = 11,
     Comportamental = 12,
-    Terceiros = 13
+    Terceiros = 13,
+    Alojamento = 14
 }
 
 // Seção 24 da Base de Conhecimento (linhas 605-614) — status literal de item de checklist.

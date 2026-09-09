@@ -36,12 +36,18 @@ public class ExportarInspecaoPdfQueryHandler : IRequestHandler<ExportarInspecaoP
             .Select(r => new { r.Id, r.FotoConteudo, r.FotoDepoisConteudo })
             .ToDictionaryAsync(r => r.Id, ct);
 
+        var obraLogoConteudo = await _db.Obras
+            .Where(o => o.Id == detalhe.Inspecao.ObraId)
+            .Select(o => o.LogoConteudo)
+            .FirstOrDefaultAsync(ct);
+
         var itens = detalhe.Respostas.Select(r =>
         {
             fotosPorResposta.TryGetValue(r.Id, out var fotos);
             return new InspecaoPdfItemModelo(
                 r.Ordem,
                 r.Descricao,
+                r.Secao,
                 r.Local,
                 r.StatusItem,
                 r.Observacao,
@@ -57,6 +63,7 @@ public class ExportarInspecaoPdfQueryHandler : IRequestHandler<ExportarInspecaoP
 
         var modelo = new InspecaoPdfModelo(
             detalhe.Inspecao.ObraNome,
+            obraLogoConteudo,
             DescreverTipoInspecao(detalhe.Inspecao.TipoInspecao),
             detalhe.Inspecao.ChecklistModeloNome,
             detalhe.Inspecao.ChecklistModeloVersao,
@@ -88,6 +95,7 @@ public class ExportarInspecaoPdfQueryHandler : IRequestHandler<ExportarInspecaoP
         TipoInspecao.EspacoConfinado => "Espaço confinado",
         TipoInspecao.Comportamental => "Comportamental",
         TipoInspecao.Terceiros => "Terceiros",
+        TipoInspecao.Alojamento => "Alojamento",
         _ => tipo.ToString(),
     };
 }

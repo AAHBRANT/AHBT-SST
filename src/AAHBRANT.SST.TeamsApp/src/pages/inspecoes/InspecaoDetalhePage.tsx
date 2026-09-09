@@ -369,11 +369,21 @@ export function InspecaoDetalhePage() {
       <Text weight="semibold">Achados</Text>
 
       <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-        {detalhe.respostas.map((resposta) => {
+        {detalhe.respostas.map((resposta, indice) => {
           const edicao = edicoes[resposta.id] ?? edicaoInicial();
           const somenteLeitura = inspecao.status !== StatusInspecao.EmAndamento;
+          // Cabeçalho de seção só aparece na fronteira entre seções diferentes — checklists sem
+          // Secao preenchida (todos os anteriores ao campo existir) continuam em lista corrida.
+          const secaoAnterior = indice > 0 ? detalhe.respostas[indice - 1].secao : undefined;
+          const mostrarCabecalhoSecao = !!resposta.secao && resposta.secao !== secaoAnterior;
           return (
-            <Card key={resposta.id} densidade="compacta">
+            <div key={resposta.id}>
+              {mostrarCabecalhoSecao && (
+                <Text weight="semibold" style={{ display: 'block', margin: '16px 0 8px' }}>
+                  {resposta.secao}
+                </Text>
+              )}
+              <Card densidade="compacta">
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 12, flexWrap: 'wrap' }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 8, flex: 1, minWidth: 260 }}>
                   <Text weight="semibold">{resposta.ordem}.</Text>
@@ -546,7 +556,8 @@ export function InspecaoDetalhePage() {
                   </Button>
                 )}
               </div>
-            </Card>
+              </Card>
+            </div>
           );
         })}
       </div>

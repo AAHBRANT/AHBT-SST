@@ -18,6 +18,7 @@ public class ChecklistModeloItemDto
     public Guid ChecklistModeloId { get; set; }
     public int Ordem { get; set; }
     public string Descricao { get; set; } = string.Empty;
+    public string? Secao { get; set; }
     public bool ExigeFotografia { get; set; }
     public bool ExigeResponsavel { get; set; }
     public bool ExigePrazo { get; set; }

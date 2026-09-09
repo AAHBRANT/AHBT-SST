@@ -6,7 +6,7 @@ using MediatR;
 
 namespace AAHBRANT.SST.Application.ChecklistModelos.Commands;
 
-public record CriarChecklistModeloItemInput(string Descricao, bool ExigeFotografia, bool ExigeResponsavel, bool ExigePrazo);
+public record CriarChecklistModeloItemInput(string Descricao, bool ExigeFotografia, bool ExigeResponsavel, bool ExigePrazo, string? Secao = null);
 
 // Todo checklist nasce na versão 1 (§24 "diferentes versões" é tratado por
 // CriarNovaVersaoChecklistModeloCommand, que encadeia a partir desta).
@@ -50,6 +50,7 @@ public class CriarChecklistModeloCommandHandler : IRequestHandler<CriarChecklist
             {
                 Ordem = ordem++,
                 Descricao = item.Descricao,
+                Secao = item.Secao,
                 ExigeFotografia = item.ExigeFotografia,
                 ExigeResponsavel = item.ExigeResponsavel,
                 ExigePrazo = item.ExigePrazo,
