@@ -1,8 +1,7 @@
 import { AnimatePresence, motion } from 'framer-motion';
-import { Badge, Text } from '@fluentui/react-components';
+import { Card, designTokens, Legenda, StatusChip, Text } from '@ui';
 import { Warning24Filled } from '@fluentui/react-icons';
 import { StatusControleRisco, statusControleRiscoLabel, type PlanoAcaoItem } from '../../../lib/api';
-import { useDashboardStyles } from '../../../components/dashboard/dashboardStyles';
 
 export interface AcaoPlanoComContexto extends PlanoAcaoItem {
   pgrNome: string;
@@ -20,38 +19,28 @@ function diasVencido(prazo: string): number {
   return Math.round(diffMs / (1000 * 60 * 60 * 24));
 }
 
+// Onda 2 Task 8 (camada ui/): painel de ações do plano de ação (PGR) com prazo vencido — mesmo padrão
+// de AprVencidaPanel.tsx (Task 11): Card + StatusChip, animação de entrada por linha (framer-motion)
+// preservada inline (não há componente @ui dedicado a esta forma de lista). Usa `Legenda` (já em
+// `@ui` desde a Task 3/PR #33) para o texto secundário, em vez da ponte `designTokens.colorNeutralMedium`
+// que os pilotos anteriores usaram antes de `Legenda` existir.
 export function PgrPlanoAcaoVencidoPanel({ acoes }: PgrPlanoAcaoVencidoPanelProps) {
-  const estilos = useDashboardStyles();
-
   const vencidas = acoes
     .filter((a) => !!a.prazo && a.prazo < hojeISO && a.status !== StatusControleRisco.Concluido)
     .sort((a, b) => diasVencido(b.prazo!) - diasVencido(a.prazo!));
 
   return (
-    <div className={estilos.motorPainel}>
-      <div className={estilos.motorCabecalho}>
-        <div>
-          <Text weight="semibold" size={400}>
-            Ações do Plano de Ação (PGR) com Prazo Vencido
-          </Text>
-          <div>
-            <Text size={200} style={{ color: 'var(--colorNeutralForeground3, #6D6D6D)' }}>
-              Itens do plano de ação de qualquer PGR ainda não concluídos cujo prazo já passou, ordenados da mais
-              atrasada para a menos atrasada.
-            </Text>
-          </div>
-        </div>
-        <Badge appearance="tint" color={vencidas.length === 0 ? 'success' : 'danger'}>
+    <Card
+      titulo="Ações do Plano de Ação (PGR) com Prazo Vencido"
+      subtitulo="Itens do plano de ação de qualquer PGR ainda não concluídos cujo prazo já passou, ordenados da mais atrasada para a menos atrasada."
+      acoes={
+        <StatusChip tom={vencidas.length === 0 ? 'ok' : 'alerta'}>
           {vencidas.length} ação(ões) com prazo vencido
-        </Badge>
-      </div>
-
-      <div className={estilos.motorLista}>
-        {vencidas.length === 0 && (
-          <Text size={200} style={{ color: 'var(--colorNeutralForeground3, #6D6D6D)' }}>
-            Nenhuma ação do plano de ação com prazo vencido para os filtros selecionados.
-          </Text>
-        )}
+        </StatusChip>
+      }
+    >
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 8, maxHeight: 420, overflowY: 'auto' }}>
+        {vencidas.length === 0 && <Legenda>Nenhuma ação do plano de ação com prazo vencido para os filtros selecionados.</Legenda>}
         <AnimatePresence initial={false}>
           {vencidas.map((acao, indice) => (
             <motion.div
@@ -60,24 +49,33 @@ export function PgrPlanoAcaoVencidoPanel({ acoes }: PgrPlanoAcaoVencidoPanelProp
               initial={{ opacity: 0, x: -8 }}
               animate={{ opacity: 1, x: 0 }}
               transition={{ duration: 0.25, delay: Math.min(indice, 12) * 0.02 }}
-              className={`${estilos.motorLinha} ${estilos.motorLinhaBloqueada}`}
+              style={{
+                display: 'grid',
+                gridTemplateColumns: '1fr auto',
+                alignItems: 'center',
+                gap: 12,
+                padding: '10px 14px',
+                borderRadius: 6,
+                backgroundColor: designTokens.colorNeutralLight,
+                borderLeft: `3px solid ${designTokens.colorAlert}`,
+              }}
             >
               <div>
                 <Text weight="semibold">{acao.descricao}</Text>
                 <div>
-                  <Text size={200} style={{ color: 'var(--colorNeutralForeground3, #6D6D6D)' }}>
+                  <Legenda>
                     {acao.obraNome} · {acao.pgrNome} · {statusControleRiscoLabel[acao.status]} · vencida há{' '}
                     {diasVencido(acao.prazo!)} dia(s)
-                  </Text>
+                  </Legenda>
                 </div>
               </div>
-              <Badge appearance="tint" color="danger" icon={<Warning24Filled />}>
+              <StatusChip tom="alerta" icone={<Warning24Filled aria-hidden="true" />}>
                 Prazo: {acao.prazo!.slice(0, 10)}
-              </Badge>
+              </StatusChip>
             </motion.div>
           ))}
         </AnimatePresence>
       </div>
-    </div>
+    </Card>
   );
 }
