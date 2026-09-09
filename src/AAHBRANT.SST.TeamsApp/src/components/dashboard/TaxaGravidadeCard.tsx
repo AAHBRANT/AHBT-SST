@@ -4,7 +4,7 @@ import { Badge, Input, Text, Tooltip } from '@fluentui/react-components';
 import type { Acidente, RegistroHhtMensal } from '../../lib/api';
 import { usePageStyles } from '../../pages/pageStyles';
 import { useDashboardStyles } from './dashboardStyles';
-import { designTokens } from '../../theme';
+import { designTokens } from '@ui';
 
 const CHAVE_META_LOCALSTORAGE = 'sst.tg.metaTaxaGravidade';
 

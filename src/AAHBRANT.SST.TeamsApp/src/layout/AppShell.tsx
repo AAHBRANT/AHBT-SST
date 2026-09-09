@@ -17,7 +17,7 @@ import {
   WeatherMoon24Regular,
   Search24Regular,
 } from '@fluentui/react-icons';
-import { designTokens } from '../theme';
+import { designTokens } from '@ui';
 import { useThemeMode } from '../theme/ThemeModeContext';
 import { useTeamsContext } from '../teams/useTeamsContext';
 import { api, StatusAlerta } from '../lib/api';
