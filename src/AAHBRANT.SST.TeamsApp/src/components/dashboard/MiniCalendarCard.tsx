@@ -1,6 +1,6 @@
 import { useMemo } from 'react';
 import { makeStyles, mergeClasses, Text } from '@fluentui/react-components';
-import { designTokens } from '../../theme';
+import { designTokens } from '@ui';
 import { useDashboardStyles } from './dashboardStyles';
 
 const NOMES_MESES = [

@@ -1,5 +1,5 @@
 import { makeStyles, tokens } from '@fluentui/react-components';
-import { designTokens } from '../../theme';
+import { designTokens } from '@ui';
 
 export const useDashboardStyles = makeStyles({
   filtros: {

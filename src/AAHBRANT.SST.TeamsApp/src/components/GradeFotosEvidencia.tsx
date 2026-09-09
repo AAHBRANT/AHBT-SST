@@ -2,7 +2,7 @@ import { useRef, useState } from 'react';
 import { Button, Spinner, Text, makeStyles, tokens } from '@fluentui/react-components';
 import { Camera24Regular, Dismiss16Regular } from '@fluentui/react-icons';
 import { comprimirImagem } from '../lib/imagem';
-import { designTokens } from '../theme';
+import { designTokens } from '@ui';
 
 const useEstilos = makeStyles({
   grade: {

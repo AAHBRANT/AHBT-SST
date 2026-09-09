@@ -1,7 +1,7 @@
 import { motion } from 'framer-motion';
 import { Cell, Legend, Pie, PieChart, ResponsiveContainer, Tooltip } from 'recharts';
 import { Text } from '@fluentui/react-components';
-import { designTokens } from '../../../theme';
+import { designTokens } from '@ui';
 
 export interface FatiaDonut {
   rotulo: string;
