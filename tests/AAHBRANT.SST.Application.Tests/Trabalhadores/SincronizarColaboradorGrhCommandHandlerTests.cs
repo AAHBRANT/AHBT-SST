@@ -25,6 +25,7 @@ public class SincronizarColaboradorGrhCommandHandlerTests
         Cep: "01000-000",
         Matricula: "MAT-001",
         DataAdmissao: new DateTime(2026, 8, 11),
+        DataDemissao: null,
         CargoNome: cargoNome,
         CargoCboCodigo: "715125",
         Salario: 5400m,
@@ -118,6 +119,23 @@ public class SincronizarColaboradorGrhCommandHandlerTests
         var trabalhador = await db.Trabalhadores.IgnoreQueryFilters().SingleAsync(t => t.Id == id);
         Assert.False(trabalhador.Ativo);
         Assert.Equal(SituacaoTrabalhador.Desligado, trabalhador.Situacao);
+    }
+
+    [Fact]
+    public async Task Handle_ComDataDemissao_PropagaParaTrabalhador()
+    {
+        var db = DbContextFactory.Criar();
+        var obra = new Obra { Codigo = "OBRA-1", Nome = "Ponte Rio Cuiá" };
+        db.Obras.Add(obra);
+        await db.SaveChangesAsync();
+
+        var handler = new SincronizarColaboradorGrhCommandHandler(db, CpfHash);
+        var comando = Comando("38062559890", "Adriano Manoel da Silva", "Ponte Rio Cuiá", "Operador De Maquina Nivel 3")
+            with { DataDemissao = new DateTime(2026, 9, 1) };
+        var id = await handler.Handle(comando, default);
+
+        var trabalhador = await db.Trabalhadores.SingleAsync(t => t.Id == id);
+        Assert.Equal(new DateTime(2026, 9, 1), trabalhador.DataDemissao);
     }
 
     [Fact]

@@ -14,6 +14,7 @@ using AAHBRANT.SST.Infrastructure.Auditoria;
 using AAHBRANT.SST.Infrastructure.Documentos;
 using AAHBRANT.SST.Infrastructure.Integracao;
 using AAHBRANT.SST.Infrastructure.Integracao.Bot;
+using AAHBRANT.SST.Infrastructure.Integracao.Grh;
 using AAHBRANT.SST.Infrastructure.Integracao.Teams;
 using AAHBRANT.SST.Infrastructure.Persistencia;
 using AAHBRANT.SST.Infrastructure.Seguranca;
@@ -126,6 +127,13 @@ public static class DependencyInjection
         // 2026-08-28-calendario-teams-design.md) — mesmo App Registration/GraphOptions do Activity
         // Feed acima, faltando apenas a permissão de aplicativo Calendars.ReadWrite ser provisionada.
         services.AddScoped<ICalendarioTeamsService, GraphCalendarioTeamsService>();
+
+        // Integração G-RH — carga inicial do cadastro de colaboradores (contrato acordado em
+        // 2026-09-09, ver ColaboradorGrhClient). ClientSecret fica vazio até o segredo do App
+        // Registration ser gerado e provisionado; até lá, ImportarColaboradoresGrhCommand lança
+        // exceção graciosamente (mesmo padrão de GraphActivityNotificacaoTeamsService).
+        services.Configure<GrhOptions>(configuration.GetSection("Grh"));
+        services.AddScoped<IColaboradorGrhClient, ColaboradorGrhClient>();
 
         // Fila de retry para falhas de envio (PROJECT RULES.md §4). Usa Azure Service Bus quando
         // "ServiceBus:ConnectionString" estiver preenchida (recurso provisionado manualmente no

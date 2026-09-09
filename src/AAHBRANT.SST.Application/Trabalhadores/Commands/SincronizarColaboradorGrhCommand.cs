@@ -32,6 +32,7 @@ public record SincronizarColaboradorGrhCommand(
     string? Cep,
     string Matricula,
     DateTime DataAdmissao,
+    DateTime? DataDemissao,
     string CargoNome,
     string? CargoCboCodigo,
     decimal? Salario,
@@ -102,6 +103,7 @@ public class SincronizarColaboradorGrhCommandHandler : IRequestHandler<Sincroniz
                 Matricula = request.Matricula,
                 Cpf = request.Cpf,
                 DataAdmissao = request.DataAdmissao,
+                DataDemissao = request.DataDemissao,
             };
             _db.Trabalhadores.Add(trabalhador);
         }
@@ -112,6 +114,7 @@ public class SincronizarColaboradorGrhCommandHandler : IRequestHandler<Sincroniz
             trabalhador.Nome = request.Nome;
             trabalhador.Matricula = request.Matricula;
             trabalhador.DataAdmissao = request.DataAdmissao;
+            trabalhador.DataDemissao = request.DataDemissao;
             if (obra is not null) trabalhador.ObraId = obra.Id;
         }
 
