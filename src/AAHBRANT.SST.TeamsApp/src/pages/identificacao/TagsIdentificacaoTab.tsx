@@ -1,17 +1,5 @@
 import { useEffect, useState } from 'react';
-import {
-  Button,
-  Field,
-  Input,
-  Select,
-  Table,
-  TableBody,
-  TableCell,
-  TableHeader,
-  TableHeaderCell,
-  TableRow,
-  Text,
-} from '@fluentui/react-components';
+import { Button, DataTable, Field, FeedbackInline, Input, Select, Text, useConfirmar, type Coluna } from '@ui';
 import {
   Add24Regular,
   Delete24Regular,
@@ -35,13 +23,14 @@ import {
 } from '../../lib/api';
 import { usePageStyles } from '../pageStyles';
 import { ResolverTagResultado } from './ResolverTagResultado';
-import { useConfirmarExclusao } from '../../hooks/useConfirmarExclusao';
 import { useSucessoToast } from '../../hooks/useSucessoToast';
-import { EstadoVazio } from '../../components/EstadoVazio';
-import { ListaCarregando } from '../../components/ListaCarregando';
 
 const tagVazia: NovaTagIdentificacao = { uid: '', tipo: TipoTag.QrCode };
 
+// Onda 2 Task 9 (camada ui/): lista de Tags de identificação (NFC/QR) — Table→DataTable,
+// erro→FeedbackInline, useConfirmarExclusao→useConfirmar (item 1, 4, 6 do Guia). Os dois cards
+// (resolver por UID e cadastro/lista) mantêm o layout estilos.card/formGrid de pageStyles (não
+// tagueado pro item 2 nesta task).
 export function TagsIdentificacaoTab() {
   const estilos = usePageStyles();
   const [tags, setTags] = useState<TagIdentificacao[]>([]);
@@ -51,7 +40,7 @@ export function TagsIdentificacaoTab() {
   const [erro, setErro] = useState<string | null>(null);
   const [carregando, setCarregando] = useState(false);
   const [carregandoLista, setCarregandoLista] = useState(true);
-  const { confirmar, dialogElement } = useConfirmarExclusao();
+  const { confirmar, dialogElement } = useConfirmar();
   const sucessoToast = useSucessoToast();
 
   const [vinculandoId, setVinculandoId] = useState<string | null>(null);
@@ -179,6 +168,13 @@ export function TagsIdentificacaoTab() {
     }
   }
 
+  const colunas: Coluna<TagIdentificacao>[] = [
+    { chave: 'uid', rotulo: 'UID' },
+    { chave: 'tipo', rotulo: 'Tipo', render: (t) => tipoTagLabel[t.tipo] },
+    { chave: 'status', rotulo: 'Status', render: (t) => statusTagLabel[t.status] },
+    { chave: 'vinculada', rotulo: 'Vinculada a', render: (t) => nomeEntidadeVinculada(t) },
+  ];
+
   return (
     <>
       {dialogElement}
@@ -199,7 +195,11 @@ export function TagsIdentificacaoTab() {
             Resolver
           </Button>
         </div>
-        {erroBusca && <Text className={estilos.erro}>{erroBusca}</Text>}
+        {erroBusca && (
+          <FeedbackInline tom="erro" aoFechar={() => setErroBusca(null)}>
+            {erroBusca}
+          </FeedbackInline>
+        )}
         {resultadoBusca && <ResolverTagResultado resultado={resultadoBusca} />}
 
         {resultadoBusca && resultadoBusca.status === StatusTag.Disponivel && (
@@ -248,7 +248,11 @@ export function TagsIdentificacaoTab() {
           <Text weight="semibold">Tags de identificação cadastradas</Text>
         </div>
 
-        {erro && <Text className={estilos.erro}>{erro}</Text>}
+        {erro && (
+          <FeedbackInline tom="erro" aoFechar={() => setErro(null)}>
+            {erro}
+          </FeedbackInline>
+        )}
 
         <div className={`${estilos.sectionTitle} ${estilos.sectionTitleFirst}`}>Nova Tag</div>
         <div className={estilos.formGrid}>
@@ -318,66 +322,49 @@ export function TagsIdentificacaoTab() {
           </>
         )}
 
-        {carregandoLista ? (
-          <ListaCarregando />
-        ) : tags.length === 0 ? (
-          <EstadoVazio mensagem="Nenhuma tag de identificação cadastrada ainda." />
-        ) : (
-        <Table noNativeElements>
-          <TableHeader>
-            <TableRow>
-              <TableHeaderCell>UID</TableHeaderCell>
-              <TableHeaderCell>Tipo</TableHeaderCell>
-              <TableHeaderCell>Status</TableHeaderCell>
-              <TableHeaderCell>Vinculada a</TableHeaderCell>
-              <TableHeaderCell></TableHeaderCell>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {tags.map((tag) => (
-              <TableRow key={tag.id}>
-                <TableCell>{tag.uid}</TableCell>
-                <TableCell>{tipoTagLabel[tag.tipo]}</TableCell>
-                <TableCell>{statusTagLabel[tag.status]}</TableCell>
-                <TableCell>{nomeEntidadeVinculada(tag)}</TableCell>
-                <TableCell>
-                  {tag.status === StatusTag.Disponivel && (
-                    <Button
-                      appearance="subtle"
-                      icon={<Link24Regular />}
-                      onClick={() => iniciarVinculo(tag.id)}
-                      aria-label="Vincular"
-                    />
-                  )}
-                  {tag.status === StatusTag.Vinculada && (
-                    <>
-                      <Button
-                        appearance="subtle"
-                        icon={<QrCode24Regular />}
-                        onClick={() => window.open(`${window.location.origin}${window.location.pathname}#/p/${tag.uid}`, '_blank')}
-                        aria-label="Abrir crachá/card público desta tag"
-                        title="Abrir crachá/card público (o link para gravar na NTAG215 ou gerar o QR Code)"
-                      />
-                      <Button
-                        appearance="subtle"
-                        icon={<LinkDismiss24Regular />}
-                        onClick={() => desvincular(tag.id)}
-                        aria-label="Desvincular"
-                      />
-                    </>
-                  )}
+        <DataTable
+          aria-label="Tags de identificação cadastradas"
+          colunas={colunas}
+          linhas={tags}
+          chaveLinha={(t) => t.id}
+          carregando={carregandoLista}
+          vazio={{ titulo: 'Nenhuma tag de identificação cadastrada ainda.' }}
+          acoesLinha={(tag) => (
+            <>
+              {tag.status === StatusTag.Disponivel && (
+                <Button
+                  appearance="subtle"
+                  icon={<Link24Regular />}
+                  onClick={() => iniciarVinculo(tag.id)}
+                  aria-label="Vincular"
+                />
+              )}
+              {tag.status === StatusTag.Vinculada && (
+                <>
                   <Button
                     appearance="subtle"
-                    icon={<Delete24Regular />}
-                    onClick={() => excluir(tag.id)}
-                    aria-label="Excluir"
+                    icon={<QrCode24Regular />}
+                    onClick={() => window.open(`${window.location.origin}${window.location.pathname}#/p/${tag.uid}`, '_blank')}
+                    aria-label="Abrir crachá/card público desta tag"
+                    title="Abrir crachá/card público (o link para gravar na NTAG215 ou gerar o QR Code)"
                   />
-                </TableCell>
-              </TableRow>
-            ))}
-          </TableBody>
-        </Table>
-        )}
+                  <Button
+                    appearance="subtle"
+                    icon={<LinkDismiss24Regular />}
+                    onClick={() => desvincular(tag.id)}
+                    aria-label="Desvincular"
+                  />
+                </>
+              )}
+              <Button
+                appearance="subtle"
+                icon={<Delete24Regular />}
+                onClick={() => excluir(tag.id)}
+                aria-label="Excluir"
+              />
+            </>
+          )}
+        />
       </div>
     </>
   );
