@@ -1,6 +1,20 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { makeStyles, mergeClasses, shorthands, tokens, Badge, Button, Text } from '@fluentui/react-components';
+// makeStyles/mergeClasses/shorthands/tokens (Fluent cru) continuam aqui de propósito — exceção
+// permanente e consciente, não sobra não explicada. A Task 21 (Onda 2, já mesclada) já tinha
+// decidido manter o layout desta página fora dos templates (spec §4): a grade mensal 7x6 com
+// hover/seleção por célula, "chip" compacto de evento dentro da célula e o "ponto" colorido da
+// legenda não têm equivalente em `src/ui/` — não é lista (`DataTable`), não é card único
+// (`Card`/`FormSection`), não é o texto secundário genérico de `Legenda` (que é tipografia, não
+// marcador colorido). `tokens` cobre a escala de neutros/hover do Fluent (colorNeutralStroke2,
+// colorNeutralBackground1/2/3, colorNeutralBackground1Hover) que `designTokens` não reexpõe —
+// só tem os tokens semânticos da marca (primary/success/warning/...), não a escala neutra completa
+// de grade. `shorthands`/`mergeClasses` são utilitários de `makeStyles` sem substituto em `@ui`
+// (nenhum componente novo nasce nesta frente — global constraint da Onda 2/3). Construir um
+// componente de calendário em `@ui` para isto é trabalho de componente novo, fora do escopo desta
+// task de pontas soltas; se/quando `*Calendario*` ganhar um segundo consumidor, aí sim justifica
+// extrair `Grade`/`CelulaCalendario` para `@ui` (regra §5.1 se aplica quando há caso real repetido).
+import { makeStyles, mergeClasses, shorthands, tokens } from '@fluentui/react-components';
 import {
   ArrowLeft24Regular,
   ArrowRight24Regular,
@@ -18,7 +32,7 @@ import {
   type EventoSstCalendario,
 } from '../../lib/api';
 import { usePageStyles } from '../pageStyles';
-import { designTokens, FeedbackInline } from '@ui';
+import { Button, designTokens, FeedbackInline, StatusChip, Text, type Tom } from '@ui';
 
 const useStyles = makeStyles({
   grid: {
@@ -124,6 +138,14 @@ const CorSeveridade: Record<number, string> = {
   1: designTokens.colorInfo,
   2: designTokens.colorWarning,
   3: designTokens.colorAlert,
+};
+// Mesmos 3 níveis de CorSeveridade, como Tom de StatusChip — usado só no painel do dia selecionado
+// (item 5 do Guia de conversão); o "chip" dentro da célula da grade continua com a cor sólida acima,
+// ele é um marcador compacto de espaço mínimo, não um indicador de status no sentido do template.
+const TomSeveridade: Record<number, Tom> = {
+  1: 'info',
+  2: 'atencao',
+  3: 'alerta',
 };
 
 interface EventoDoDia {
@@ -405,9 +427,9 @@ export function CalendarioPage() {
             >
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 8 }}>
                 <Text weight="semibold">{evento.sst.titulo}</Text>
-                <Badge appearance="tint" style={{ backgroundColor: CorSeveridade[evento.sst.severidade], color: '#FFFFFF' }}>
+                <StatusChip tom={TomSeveridade[evento.sst.severidade] ?? 'info'}>
                   {severidadeAlertaLabel[evento.sst.severidade]}
-                </Badge>
+                </StatusChip>
               </div>
               <Text size={200} style={{ display: 'block', marginTop: 4 }}>
                 {tipoAlertaLabel[evento.sst.tipo]}
