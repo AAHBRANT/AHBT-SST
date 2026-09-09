@@ -57,18 +57,29 @@ export function PgrDetalhePage() {
     return <FeedbackInline tom="erro">PGR não encontrado.</FeedbackInline>;
   }
 
-  const riscosDisponiveis = detalhe?.atividades.flatMap((a) => a.riscos) ?? [];
+  // Erro na carga inicial precisa aparecer aqui: sem isso o skeleton ficaria para sempre e a falha
+  // (API fora, id inexistente) não teria onde ser lida — mesmo padrão de AprDetalhePage.tsx (Task
+  // 11): retorno antecipado com OU o erro OU o skeleton, nunca cabeçalho+skeleton+erro empilhados.
+  if (!detalhe) {
+    return erro ? (
+      <FeedbackInline tom="erro" acao={{ rotulo: 'Tentar de novo', aoClicar: () => void carregar() }}>
+        {erro}
+      </FeedbackInline>
+    ) : (
+      <Carregando variante="detalhe" linhas={6} />
+    );
+  }
+
+  const riscosDisponiveis = detalhe.atividades.flatMap((a) => a.riscos);
 
   return (
     <div>
       <PageHeader
-        titulo={detalhe?.pgr.nome ?? 'Carregando…'}
+        titulo={detalhe.pgr.nome}
         status={
-          detalhe && (
-            <StatusChip tom={tomPorStatusPgr[detalhe.pgr.status] ?? 'neutro'}>
-              {statusPgrLabel[detalhe.pgr.status]}
-            </StatusChip>
-          )
+          <StatusChip tom={tomPorStatusPgr[detalhe.pgr.status] ?? 'neutro'}>
+            {statusPgrLabel[detalhe.pgr.status]}
+          </StatusChip>
         }
         voltarPara="/prevencao/pgr"
         rotuloVoltar="Voltar para PGR"
@@ -80,42 +91,36 @@ export function PgrDetalhePage() {
         </FeedbackInline>
       )}
 
-      {!detalhe ? (
-        <Carregando variante="detalhe" linhas={6} />
-      ) : (
-        <>
-          <div style={{ marginBottom: 16 }}>
-            <Card densidade="compacta">
-              <div style={{ display: 'flex', gap: 16, flexWrap: 'wrap', alignItems: 'center' }}>
-                <Text>Obra: {nomeObra(detalhe.pgr.obraId)}</Text>
-                <Text>Elaboração: {detalhe.pgr.dataElaboracao?.slice(0, 10)}</Text>
-                {detalhe.pgr.dataProximaRevisao && (
-                  <Text>Próxima revisão: {detalhe.pgr.dataProximaRevisao.slice(0, 10)}</Text>
-                )}
-                {detalhe.pgr.dataTermino && <Text>Término: {detalhe.pgr.dataTermino.slice(0, 10)}</Text>}
-              </div>
-            </Card>
+      <div style={{ marginBottom: 16 }}>
+        <Card densidade="compacta">
+          <div style={{ display: 'flex', gap: 16, flexWrap: 'wrap', alignItems: 'center' }}>
+            <Text>Obra: {nomeObra(detalhe.pgr.obraId)}</Text>
+            <Text>Elaboração: {detalhe.pgr.dataElaboracao?.slice(0, 10)}</Text>
+            {detalhe.pgr.dataProximaRevisao && (
+              <Text>Próxima revisão: {detalhe.pgr.dataProximaRevisao.slice(0, 10)}</Text>
+            )}
+            {detalhe.pgr.dataTermino && <Text>Término: {detalhe.pgr.dataTermino.slice(0, 10)}</Text>}
           </div>
+        </Card>
+      </div>
 
-          <div style={{ marginBottom: 16 }}>
-            <Abas
-              nivel="modulo"
-              aria-label="Seções do PGR"
-              valor={aba}
-              aoMudar={setAba}
-              abas={[
-                { valor: 'inventario', rotulo: 'Inventário de riscos' },
-                { valor: 'planoAcao', rotulo: 'Plano de ação' },
-                { valor: 'revisoes', rotulo: 'Revisões' },
-              ]}
-            />
-          </div>
+      <div style={{ marginBottom: 16 }}>
+        <Abas
+          nivel="modulo"
+          aria-label="Seções do PGR"
+          valor={aba}
+          aoMudar={setAba}
+          abas={[
+            { valor: 'inventario', rotulo: 'Inventário de riscos' },
+            { valor: 'planoAcao', rotulo: 'Plano de ação' },
+            { valor: 'revisoes', rotulo: 'Revisões' },
+          ]}
+        />
+      </div>
 
-          {aba === 'inventario' && <InventarioTab atividades={detalhe.atividades} />}
-          {aba === 'planoAcao' && <PlanoAcaoTab pgrId={id} riscosDisponiveis={riscosDisponiveis} />}
-          {aba === 'revisoes' && <PgrRevisoesTab pgrId={id} />}
-        </>
-      )}
+      {aba === 'inventario' && <InventarioTab atividades={detalhe.atividades} />}
+      {aba === 'planoAcao' && <PlanoAcaoTab pgrId={id} riscosDisponiveis={riscosDisponiveis} />}
+      {aba === 'revisoes' && <PgrRevisoesTab pgrId={id} />}
     </div>
   );
 }
