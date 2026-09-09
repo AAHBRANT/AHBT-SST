@@ -1,35 +1,36 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
-  Badge,
   Button,
-  Checkbox,
+  Campo,
+  Card,
+  CampoData,
+  ChipCheckboxGroup,
+  DataTable,
   Field,
+  FeedbackInline,
+  FormGrid,
   Input,
+  Legenda,
+  PageHeader,
+  PainelLateral,
   Select,
-  Table,
-  TableBody,
-  TableCell,
-  TableHeader,
-  TableHeaderCell,
-  TableRow,
-  Text,
-} from '@fluentui/react-components';
-import { CampoData } from '../../components/CampoData';
-import { Add24Regular, ArrowRight24Regular } from '@fluentui/react-icons';
+  StatusChip,
+  type Coluna,
+  type Tom,
+} from '@ui';
+import { Add24Regular } from '@fluentui/react-icons';
 import {
   api,
   statusSessaoTreinamentoLabel,
+  StatusSessaoTreinamento,
   type CursoTreinamento,
   type NovaSessaoTreinamento,
   type Obra,
   type SessaoTreinamento,
   type Trabalhador,
 } from '../../lib/api';
-import { usePageStyles } from '../pageStyles';
 import { useSucessoToast } from '../../hooks/useSucessoToast';
-import { EstadoVazio } from '../../components/EstadoVazio';
-import { ListaCarregando } from '../../components/ListaCarregando';
 
 function turmaVazia(): NovaSessaoTreinamento {
   return {
@@ -42,12 +43,22 @@ function turmaVazia(): NovaSessaoTreinamento {
   };
 }
 
+// Mesmo mapeamento de tom já usado em DdsDetalhePage.tsx/DdsSemanalDetalhePage.tsx para o par
+// EmAndamento/Concluída (Guia de conversão item 5).
+const tomPorStatusTurma: Record<number, Tom> = {
+  [StatusSessaoTreinamento.EmAndamento]: 'atencao',
+  [StatusSessaoTreinamento.Concluida]: 'ok',
+};
+
 // Turmas de treinamento (pedido do usuário, 04/09) — o responsável abre a turma já com os
 // participantes selecionados (ao contrário do DDS, onde o participante só aparece na hora da
 // biometria). O registro de presença por biometria, as fotos obrigatórias e o encerramento
 // acontecem na tela de detalhe (SessaoTreinamentoDetalhePage), depois de criada a turma.
+// Onda 3 Task 22.5 (camada ui/): mesmo padrão de CursosTreinamentoTab.tsx (aba-irmã, mesma página
+// Treinamentos) — formulário de criação em PainelLateral aberto por um botão no PageHeader; seleção
+// de participantes em ChipCheckboxGroup (mesmo componente de "Responsáveis" em AprsTab.tsx e
+// "Atividades do dia" em DdsSemanalDetalhePage.tsx); lista em DataTable com StatusChip de status.
 export function TurmasTab() {
-  const estilos = usePageStyles();
   const navigate = useNavigate();
   const [turmas, setTurmas] = useState<SessaoTreinamento[]>([]);
   const [obras, setObras] = useState<Obra[]>([]);
@@ -55,8 +66,10 @@ export function TurmasTab() {
   const [trabalhadoresDaObra, setTrabalhadoresDaObra] = useState<Trabalhador[]>([]);
   const [novaTurma, setNovaTurma] = useState<NovaSessaoTreinamento>(turmaVazia);
   const [erro, setErro] = useState<string | null>(null);
+  const [erroPainel, setErroPainel] = useState<string | null>(null);
   const [carregando, setCarregando] = useState(false);
   const [carregandoLista, setCarregandoLista] = useState(true);
+  const [painelAberto, setPainelAberto] = useState(false);
   const sucessoToast = useSucessoToast();
 
   async function carregar() {
@@ -92,26 +105,24 @@ export function TurmasTab() {
       .catch(() => setTrabalhadoresDaObra([]));
   }, [novaTurma.obraId]);
 
-  function alternarParticipante(trabalhadorId: string, marcado: boolean) {
-    setNovaTurma((atual) => ({
-      ...atual,
-      trabalhadoresIds: marcado
-        ? [...atual.trabalhadoresIds, trabalhadorId]
-        : atual.trabalhadoresIds.filter((id) => id !== trabalhadorId),
-    }));
+  function fecharPainel() {
+    setPainelAberto(false);
+    setErroPainel(null);
+    setNovaTurma(turmaVazia());
   }
 
   async function criar() {
     try {
       setCarregando(true);
-      setErro(null);
+      setErroPainel(null);
       const { id } = await api.sessoesTreinamento.criar(novaTurma);
       setNovaTurma(turmaVazia());
       await carregar();
       sucessoToast('Turma criada com sucesso.');
+      setPainelAberto(false);
       navigate(`/treinamentos/turma/${id}`);
     } catch (e) {
-      setErro(e instanceof Error ? e.message : 'Falha ao criar turma.');
+      setErroPainel(e instanceof Error ? e.message : 'Falha ao criar turma.');
     } finally {
       setCarregando(false);
     }
@@ -128,20 +139,84 @@ export function TurmasTab() {
     novaTurma.cargaHorariaRealizada > 0 &&
     novaTurma.trabalhadoresIds.length > 0;
 
+  const colunas: Coluna<SessaoTreinamento>[] = [
+    { chave: 'certificado', rotulo: 'Nº certificado', render: (t) => t.numeroCertificado },
+    { chave: 'curso', rotulo: 'Curso', render: (t) => t.cursoTreinamentoNome || nomeCurso(t.cursoTreinamentoId) },
+    { chave: 'obra', rotulo: 'Obra', render: (t) => t.obraNome },
+    { chave: 'data', rotulo: 'Data', render: (t) => t.dataRealizacao?.slice(0, 10) },
+    {
+      chave: 'presenca',
+      rotulo: 'Presença',
+      render: (t) => `${t.totalPresencasConfirmadas}/${t.totalParticipantes}`,
+    },
+    { chave: 'fotos', rotulo: 'Fotos', render: (t) => `${t.totalFotosEvidencia}/3` },
+    {
+      chave: 'status',
+      rotulo: 'Status',
+      render: (t) => <StatusChip tom={tomPorStatusTurma[t.status] ?? 'neutro'}>{statusSessaoTreinamentoLabel[t.status]}</StatusChip>,
+    },
+  ];
+
   return (
-    <div>
-      <div className={estilos.card} style={{ marginBottom: 16 }}>
-        <div className={estilos.toolbar}>
-          <Text weight="semibold">Nova turma</Text>
-        </div>
+    <>
+      <PageHeader
+        titulo="Turmas de treinamento"
+        acoes={
+          <Button appearance="primary" icon={<Add24Regular />} onClick={() => setPainelAberto(true)}>
+            Nova turma
+          </Button>
+        }
+      />
 
-        {erro && <Text className={estilos.erro}>{erro}</Text>}
+      {erro && (
+        <FeedbackInline tom="erro" aoFechar={() => setErro(null)}>
+          {erro}
+        </FeedbackInline>
+      )}
 
-        <div className={`${estilos.sectionTitle} ${estilos.sectionTitleFirst}`}>Dados da turma</div>
-        <div className={estilos.formGrid}>
-          <div className={estilos.col3}>
+      <Card>
+        <DataTable
+          aria-label="Turmas de treinamento"
+          colunas={colunas}
+          linhas={turmas}
+          chaveLinha={(t) => t.id}
+          carregando={carregandoLista}
+          vazio={{
+            titulo: 'Nenhuma turma de treinamento criada ainda.',
+            acao: { rotulo: 'Nova turma', aoClicar: () => setPainelAberto(true) },
+          }}
+          aoClicarLinha={(t) => navigate(`/treinamentos/turma/${t.id}`)}
+        />
+      </Card>
+
+      <PainelLateral
+        aberto={painelAberto}
+        aoFechar={fecharPainel}
+        titulo="Nova turma"
+        subtitulo="Nada é salvo até você criar a turma."
+        largura="lg"
+        rodape={
+          <>
+            <Button onClick={fecharPainel}>Cancelar</Button>
+            <Button appearance="primary" icon={<Add24Regular />} onClick={criar} disabled={carregando || !podeCriar}>
+              Criar turma
+            </Button>
+          </>
+        }
+      >
+        {erroPainel && (
+          <FeedbackInline tom="erro" aoFechar={() => setErroPainel(null)}>
+            {erroPainel}
+          </FeedbackInline>
+        )}
+
+        <FormGrid>
+          <Campo span={6}>
             <Field label="Obra">
-              <Select value={novaTurma.obraId} onChange={(_, d) => setNovaTurma({ ...novaTurma, obraId: d.value, trabalhadoresIds: [] })}>
+              <Select
+                value={novaTurma.obraId}
+                onChange={(_, d) => setNovaTurma({ ...novaTurma, obraId: d.value, trabalhadoresIds: [] })}
+              >
                 <option value="">Selecione</option>
                 {obras.map((o) => (
                   <option key={o.id} value={o.id}>
@@ -150,8 +225,8 @@ export function TurmasTab() {
                 ))}
               </Select>
             </Field>
-          </div>
-          <div className={estilos.col3}>
+          </Campo>
+          <Campo span={6}>
             <Field label="Curso">
               <Select
                 value={novaTurma.cursoTreinamentoId}
@@ -165,16 +240,16 @@ export function TurmasTab() {
                 ))}
               </Select>
             </Field>
-          </div>
-          <div className={estilos.col3}>
+          </Campo>
+          <Campo span={6}>
             <Field label="Data de realização">
               <CampoData
                 value={novaTurma.dataRealizacao}
                 onChange={(_, d) => setNovaTurma({ ...novaTurma, dataRealizacao: d.value })}
               />
             </Field>
-          </div>
-          <div className={estilos.col3}>
+          </Campo>
+          <Campo span={6}>
             <Field label="Carga horária (h)">
               <Input
                 type="number"
@@ -182,95 +257,36 @@ export function TurmasTab() {
                 onChange={(_, d) => setNovaTurma({ ...novaTurma, cargaHorariaRealizada: Number(d.value) })}
               />
             </Field>
-          </div>
-          <div className={estilos.col12}>
+          </Campo>
+          <Campo span={12}>
             <Field label="Instituição / instrutor">
               <Input
                 value={novaTurma.instituicaoInstrutor ?? ''}
                 onChange={(_, d) => setNovaTurma({ ...novaTurma, instituicaoInstrutor: d.value })}
               />
             </Field>
-          </div>
-        </div>
-        <Text size={200} style={{ display: 'block' }}>
-          O número do certificado é gerado automaticamente ao criar a turma.
-        </Text>
-
-        <div className={`${estilos.sectionTitle}`}>
-          Participantes {novaTurma.obraId && `(${novaTurma.trabalhadoresIds.length} selecionado(s))`}
-        </div>
-        {!novaTurma.obraId ? (
-          <Text size={200}>Selecione a obra para listar os funcionários disponíveis.</Text>
-        ) : trabalhadoresDaObra.length === 0 ? (
-          <Text size={200}>Nenhum funcionário cadastrado nesta obra.</Text>
-        ) : (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 4, maxHeight: 260, overflowY: 'auto' }}>
-            {trabalhadoresDaObra.map((t) => (
-              <Checkbox
-                key={t.id}
-                label={`${t.nome} (${t.matricula})`}
-                checked={novaTurma.trabalhadoresIds.includes(t.id)}
-                onChange={(_, d) => alternarParticipante(t.id, !!d.checked)}
-              />
-            ))}
-          </div>
-        )}
-
-        <div className={estilos.formActions}>
-          <Button appearance="primary" icon={<Add24Regular />} onClick={criar} disabled={carregando || !podeCriar}>
-            Criar turma
-          </Button>
-        </div>
-      </div>
-
-      <div className={estilos.card}>
-        <div className={estilos.toolbar}>
-          <Text weight="semibold">Turmas de treinamento</Text>
-        </div>
-
-        {carregandoLista ? (
-          <ListaCarregando />
-        ) : turmas.length === 0 ? (
-          <EstadoVazio mensagem="Nenhuma turma de treinamento criada ainda." />
-        ) : (
-          <Table noNativeElements>
-            <TableHeader>
-              <TableRow>
-                <TableHeaderCell>Nº certificado</TableHeaderCell>
-                <TableHeaderCell>Curso</TableHeaderCell>
-                <TableHeaderCell>Obra</TableHeaderCell>
-                <TableHeaderCell>Data</TableHeaderCell>
-                <TableHeaderCell>Presença</TableHeaderCell>
-                <TableHeaderCell>Fotos</TableHeaderCell>
-                <TableHeaderCell>Status</TableHeaderCell>
-                <TableHeaderCell></TableHeaderCell>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {turmas.map((t) => (
-                <TableRow key={t.id} onClick={() => navigate(`/treinamentos/turma/${t.id}`)} style={{ cursor: 'pointer' }}>
-                  <TableCell>{t.numeroCertificado}</TableCell>
-                  <TableCell>{t.cursoTreinamentoNome || nomeCurso(t.cursoTreinamentoId)}</TableCell>
-                  <TableCell>{t.obraNome}</TableCell>
-                  <TableCell>{t.dataRealizacao?.slice(0, 10)}</TableCell>
-                  <TableCell>
-                    {t.totalPresencasConfirmadas}/{t.totalParticipantes}
-                  </TableCell>
-                  <TableCell>{t.totalFotosEvidencia}/3</TableCell>
-                  <TableCell>
-                    <Badge appearance="tint" color={t.status === 2 ? 'success' : 'warning'}>
-                      {statusSessaoTreinamentoLabel[t.status]}
-                    </Badge>
-                  </TableCell>
-                  <TableCell>
-                    <Button appearance="subtle" icon={<ArrowRight24Regular />} aria-label="Abrir turma" />
-                  </TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
-        )}
-      </div>
-    </div>
+          </Campo>
+          <Campo span={12}>
+            <Legenda>O número do certificado é gerado automaticamente ao criar a turma.</Legenda>
+          </Campo>
+          <Campo span={12}>
+            <Field label={`Participantes${novaTurma.obraId ? ` (${novaTurma.trabalhadoresIds.length} selecionado(s))` : ''}`}>
+              {!novaTurma.obraId ? (
+                <Legenda>Selecione a obra para listar os funcionários disponíveis.</Legenda>
+              ) : trabalhadoresDaObra.length === 0 ? (
+                <Legenda>Nenhum funcionário cadastrado nesta obra.</Legenda>
+              ) : (
+                <ChipCheckboxGroup
+                  aria-label="Participantes"
+                  opcoes={trabalhadoresDaObra.map((t) => ({ id: t.id, rotulo: `${t.nome} (${t.matricula})` }))}
+                  selecionados={novaTurma.trabalhadoresIds}
+                  aoMudar={(ids) => setNovaTurma((atual) => ({ ...atual, trabalhadoresIds: ids }))}
+                />
+              )}
+            </Field>
+          </Campo>
+        </FormGrid>
+      </PainelLateral>
+    </>
   );
 }
