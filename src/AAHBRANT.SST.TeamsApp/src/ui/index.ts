@@ -22,6 +22,16 @@ export {
   Table, TableBody, TableCell, TableHeader, TableHeaderCell, TableRow,
 } from '@fluentui/react-components';
 
+// Table cru do Fluent, para as poucas grades genuínas que não são "lista + detalhe" e por isso não
+// cabem no contrato de `DataTable` (linha = item, `expansivel` = detalhe de UM item por vez) — ex.:
+// matriz módulo × escopo com bulk-toggle por coluna em `ControleAcessoTab.tsx` (Onda 2, Task 17),
+// onde a própria "linha" carrega controles interativos que colidiriam com o clique de
+// expandir/recolher de `DataTable`. Sem isso a página precisaria importar `@fluentui/react-components`
+// direto, violando §2.4. Não é wrapper — é o mesmo Table do Fluent, só reexportado por aqui.
+export {
+  Table, TableBody, TableCell, TableHeader, TableHeaderCell, TableRow,
+} from '@fluentui/react-components';
+
 // Peças já existentes, ainda no lugar antigo até a Onda 3.
 export { CampoData } from '../components/CampoData';
 export { ChipsField } from '../components/ChipsField';

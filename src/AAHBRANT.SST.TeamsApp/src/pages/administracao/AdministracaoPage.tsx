@@ -1,15 +1,11 @@
-import { useState } from 'react';
-import { useSearchParams } from 'react-router-dom';
-import { Tab, TabList, Text, type SelectTabData, type SelectTabEvent } from '@fluentui/react-components';
-import { usePillTabStyles } from '../pageStyles';
+import { Abas, PageHeader, useAbaNaUrl } from '@ui';
 import { ObrasPage } from '../ObrasPage';
 import { ControleAcessoTab } from './ControleAcessoTab';
 import { TrilhaAuditoriaTab } from './TrilhaAuditoriaTab';
 import { PainelAssinaturasTab } from './PainelAssinaturasTab';
 
-type AbaAdministracao = 'obras' | 'acesso' | 'auditoria' | 'assinaturas';
-
-const ABAS_VALIDAS: AbaAdministracao[] = ['obras', 'acesso', 'auditoria', 'assinaturas'];
+const ABAS_VALIDAS = ['obras', 'acesso', 'auditoria', 'assinaturas'] as const;
+type AbaAdministracao = (typeof ABAS_VALIDAS)[number];
 
 // Obras virou aba daqui (pedido do usuário, 01/09) — antes era aba de Operação (ver App.tsx pro
 // redirecionamento legado). Administração deixou de ser grupo expansível na sidebar (ver
@@ -17,34 +13,30 @@ const ABAS_VALIDAS: AbaAdministracao[] = ['obras', 'acesso', 'auditoria', 'assin
 // PillarLayout, só que com abas controladas por estado local em vez de sub-rotas, já que nenhuma
 // dessas telas precisa de URL própria. "Configurações" chegou a existir como aba/rota própria mas
 // foi removida (pedido do usuário, 01/09) por não ter conteúdo real ainda — sem gaveta vazia.
+//
+// Onda 2 Task 17 (camada ui/): `?aba=` (usado pelos redirecionamentos legados de /operacao/obras e
+// /obras, ver App.tsx) já era lido na montagem via useState — vira `useAbaNaUrl` para sincronizar
+// nos dois sentidos (spec §3), mesmo padrão de PessoasPage/EpiPage. Página de rota única (não é
+// aninhada em outra página-pilar), então o PageHeader "Administração" é sempre renderizado.
 export function AdministracaoPage() {
-  // Suporta abrir já numa aba específica via URL (?aba=obras) — usado pelos redirecionamentos
-  // legados de /operacao/obras e /obras (ver App.tsx).
-  const [searchParams] = useSearchParams();
-  const abaInicial = searchParams.get('aba');
-  const [aba, setAba] = useState<AbaAdministracao>(
-    ABAS_VALIDAS.includes(abaInicial as AbaAdministracao) ? (abaInicial as AbaAdministracao) : 'obras',
-  );
-  const estilosAba = usePillTabStyles();
+  const [aba, setAba] = useAbaNaUrl<AbaAdministracao>('aba', ABAS_VALIDAS, 'obras');
 
   return (
     <div>
-      <div style={{ marginBottom: 16 }}>
-        <Text size={500} weight="semibold">
-          Administração
-        </Text>
-      </div>
+      <PageHeader titulo="Administração" />
 
-      <TabList
-        selectedValue={aba}
-        onTabSelect={(_: SelectTabEvent, data: SelectTabData) => setAba(data.value as AbaAdministracao)}
-        className={estilosAba.lista}
-      >
-        <Tab value="obras">Obras</Tab>
-        <Tab value="acesso">Controle de Acesso</Tab>
-        <Tab value="auditoria">Trilha de Auditoria</Tab>
-        <Tab value="assinaturas">Assinaturas</Tab>
-      </TabList>
+      <Abas
+        nivel="pilar"
+        valor={aba}
+        aoMudar={setAba}
+        aria-label="Seções de Administração"
+        abas={[
+          { valor: 'obras', rotulo: 'Obras' },
+          { valor: 'acesso', rotulo: 'Controle de Acesso' },
+          { valor: 'auditoria', rotulo: 'Trilha de Auditoria' },
+          { valor: 'assinaturas', rotulo: 'Assinaturas' },
+        ]}
+      />
 
       {aba === 'obras' && <ObrasPage />}
       {aba === 'acesso' && <ControleAcessoTab />}
