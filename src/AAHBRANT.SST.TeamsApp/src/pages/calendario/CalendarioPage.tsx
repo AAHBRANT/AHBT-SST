@@ -14,6 +14,7 @@ import { useNavigate } from 'react-router-dom';
 // componente de calendário em `@ui` para isto é trabalho de componente novo, fora do escopo desta
 // task de pontas soltas; se/quando `*Calendario*` ganhar um segundo consumidor, aí sim justifica
 // extrair `Grade`/`CelulaCalendario` para `@ui` (regra §5.1 se aplica quando há caso real repetido).
+// oxlint-disable-next-line no-restricted-imports
 import { makeStyles, mergeClasses, shorthands, tokens } from '@fluentui/react-components';
 import {
   ArrowLeft24Regular,

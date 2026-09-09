@@ -7,9 +7,9 @@
   },
   "overrides": [
     {
-      "files": ["src/pages/**"],
+      "files": ["src/pages/**/*.tsx"],
       "rules": {
-        "no-restricted-imports": ["warn", {
+        "no-restricted-imports": ["error", {
           "paths": [
             { "name": "@fluentui/react-components", "message": "Em pages/, importe de @ui (spec 2026-09-07 §2.2)." }
           ],
