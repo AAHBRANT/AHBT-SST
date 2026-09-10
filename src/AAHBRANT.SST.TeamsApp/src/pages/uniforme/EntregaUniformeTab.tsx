@@ -162,7 +162,7 @@ export function EntregaUniformeTab({ aoNavegarParaMatriz }: EntregaUniformeTabPr
 
         {erro && <Text className={estilos.erro}>{erro}</Text>}
 
-        <div className={`${estilos.sectionTitle} ${estilos.sectionTitleFirst}`}>Dados da Entrega</div>
+        <div className={`${estilos.sectionTitle} ${estilos.sectionTitleFirst}`}>Informações da entrega</div>
         <div className={estilos.formGrid}>
           <div className={estilos.col4}>
             <Field label="Funcionário">

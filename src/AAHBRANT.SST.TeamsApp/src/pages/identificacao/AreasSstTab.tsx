@@ -122,7 +122,7 @@ export function AreasSstTab() {
         </FeedbackInline>
       )}
 
-      <div className={`${estilos.sectionTitle} ${estilos.sectionTitleFirst}`}>Dados da Área</div>
+      <div className={`${estilos.sectionTitle} ${estilos.sectionTitleFirst}`}>Informações da área</div>
       <div className={estilos.formGrid}>
         <div className={estilos.col2}>
           <Field label="Código">

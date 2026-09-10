@@ -104,7 +104,7 @@ export function AssinaturaCertificadoTreinamentoDialog({
           <DialogContent>
             <div className={estilos.card} style={{ marginBottom: 16 }}>
               <Text weight="semibold" style={{ display: 'block', marginBottom: 8 }}>
-                Dados do treinamento
+                Informações do treinamento
               </Text>
               <Text style={{ display: 'block' }}>Curso: {cursoNome}</Text>
               <Text style={{ display: 'block' }}>Realização: {dataRealizacao.slice(0, 10).split('-').reverse().join('/')}</Text>

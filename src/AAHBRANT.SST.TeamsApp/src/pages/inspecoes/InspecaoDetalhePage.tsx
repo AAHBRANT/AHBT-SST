@@ -58,7 +58,7 @@ const tomPorStatusInspecao: Record<number, Tom> = {
   [StatusInspecao.Concluida]: 'ok',
 };
 
-// Cor do status do achado — mesmo esquema verde/amarelo da planilha "Patrulha de Segurança do
+// Cor do status do ponto verificado — mesmo esquema verde/amarelo da planilha "Patrulha de Segurança do
 // Trabalho" (pendente = ainda não conforme, resolvido = já corrigido e reavaliado como conforme).
 const tomPorStatusItem: Record<number, Tom> = {
   [StatusItemChecklist.Conforme]: 'ok',
@@ -127,7 +127,7 @@ export function InspecaoDetalhePage() {
   async function salvarResposta(respostaId: string, descricaoOriginal: string) {
     const edicao = edicoes[respostaId];
     if (!edicao?.statusItem) {
-      setErro('Selecione o status do achado antes de salvar.');
+      setErro('Selecione o status do ponto verificado antes de salvar.');
       return;
     }
     try {
@@ -145,7 +145,7 @@ export function InspecaoDetalhePage() {
       );
       await carregar();
     } catch (e) {
-      setErro(e instanceof Error ? e.message : 'Falha ao salvar o achado.');
+      setErro(e instanceof Error ? e.message : 'Falha ao salvar o ponto verificado.');
     } finally {
       setProcessando(false);
     }
@@ -341,7 +341,7 @@ export function InspecaoDetalhePage() {
                 </Field>
               </Campo>
               <Campo span={12}>
-                <Field label="Achados respondidos">
+                <Field label="Pontos verificados respondidos">
                   <Input value={`${inspecao.itensRespondidos}/${inspecao.totalItens}`} readOnly />
                 </Field>
               </Campo>
@@ -366,7 +366,7 @@ export function InspecaoDetalhePage() {
         </FeedbackInline>
       )}
 
-      <Text weight="semibold">Achados</Text>
+      <Text weight="semibold">Pontos verificados</Text>
 
       <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
         {detalhe.respostas.map((resposta, indice) => {
@@ -385,29 +385,36 @@ export function InspecaoDetalhePage() {
               )}
               <Card densidade="compacta">
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 12, flexWrap: 'wrap' }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 8, flex: 1, minWidth: 260 }}>
-                  <Text weight="semibold">{resposta.ordem}.</Text>
-                  <Input
-                    value={edicao.descricao}
-                    onChange={(_, d) => atualizarEdicao(resposta.id, { descricao: d.value })}
-                    disabled={somenteLeitura}
-                    style={{ flex: 1 }}
-                    placeholder="Descrição do achado / irregularidade encontrada"
-                  />
+                <div style={{ flex: 1, minWidth: 260 }}>
+                  <Text weight="semibold" style={{ display: 'block', marginBottom: 8 }}>
+                    Ponto verificado {resposta.ordem}
+                  </Text>
+                  <Field label="Descrição do ponto verificado">
+                    <Input
+                      value={edicao.descricao}
+                      onChange={(_, d) => atualizarEdicao(resposta.id, { descricao: d.value })}
+                      disabled={somenteLeitura}
+                      placeholder="Descreva a irregularidade encontrada"
+                    />
+                  </Field>
                 </div>
-                <Select
-                  value={edicao.statusItem}
-                  onChange={(_, d) => atualizarEdicao(resposta.id, { statusItem: d.value })}
-                  disabled={somenteLeitura}
-                  style={{ minWidth: 160 }}
-                >
-                  <option value="">Selecione o status</option>
-                  {Object.entries(statusItemChecklistLabel).map(([valor, rotulo]) => (
-                    <option key={valor} value={valor}>
-                      {rotulo}
-                    </option>
-                  ))}
-                </Select>
+                <div style={{ minWidth: 180 }}>
+                  <Field label="Status do ponto verificado">
+                    <Select
+                      value={edicao.statusItem}
+                      onChange={(_, d) => atualizarEdicao(resposta.id, { statusItem: d.value })}
+                      disabled={somenteLeitura}
+                      style={{ width: '100%' }}
+                    >
+                      <option value="">Selecione o status</option>
+                      {Object.entries(statusItemChecklistLabel).map(([valor, rotulo]) => (
+                        <option key={valor} value={valor}>
+                          {rotulo}
+                        </option>
+                      ))}
+                    </Select>
+                  </Field>
+                </div>
                 {resposta.statusItem != null && (
                   <StatusChip tom={tomPorStatusItem[resposta.statusItem] ?? 'neutro'}>
                     {statusItemChecklistLabel[resposta.statusItem]}
@@ -552,7 +559,7 @@ export function InspecaoDetalhePage() {
                     onClick={() => salvarResposta(resposta.id, resposta.descricao)}
                     disabled={processando}
                   >
-                    Salvar achado
+                    Salvar ponto verificado
                   </Button>
                 )}
               </div>

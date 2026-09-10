@@ -125,7 +125,7 @@ export function CatalogoUniformeTab() {
 
       {erro && <Text className={estilos.erro}>{erro}</Text>}
 
-      <div className={`${estilos.sectionTitle} ${estilos.sectionTitleFirst}`}>Dados da Peça</div>
+      <div className={`${estilos.sectionTitle} ${estilos.sectionTitleFirst}`}>Informações da peça</div>
       <div className={estilos.formGrid}>
         <div className={estilos.col6}>
           <Field label="Nome (ex.: Camisa, Calça, Bota)">

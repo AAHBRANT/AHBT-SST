@@ -168,7 +168,7 @@ export function EstoqueUniformeTab() {
             <div className={estilos.toolbar}>
               <Text weight="semibold">Entrada manual (reposição)</Text>
             </div>
-            <div className={`${estilos.sectionTitle} ${estilos.sectionTitleFirst}`}>Dados da Entrada</div>
+            <div className={`${estilos.sectionTitle} ${estilos.sectionTitleFirst}`}>Informações da entrada</div>
             <div className={estilos.formGrid}>
               <div className={estilos.col4}>
                 <Field label="Peça">
@@ -213,7 +213,7 @@ export function EstoqueUniformeTab() {
             <div className={estilos.toolbar}>
               <Text weight="semibold">Ajuste de saldo (correção de inventário)</Text>
             </div>
-            <div className={`${estilos.sectionTitle} ${estilos.sectionTitleFirst}`}>Dados do Ajuste</div>
+            <div className={`${estilos.sectionTitle} ${estilos.sectionTitleFirst}`}>Informações do ajuste</div>
             <div className={estilos.formGrid}>
               <div className={estilos.col4}>
                 <Field label="Peça">

@@ -210,6 +210,7 @@ export function MatrizRiscoTab() {
                     return (
                       <TableCell key={s} style={{ backgroundColor: tokensUi.status[tom].fundo }}>
                         <Select
+                          aria-label={`Nível de risco para probabilidade ${p} e severidade ${s}`}
                           value={String(nivelDaCelula(p, s))}
                           onChange={(_, d) => definirCelula(p, s, Number(d.value))}
                         >

@@ -187,6 +187,7 @@ export function AlertasConfiguracaoTab() {
             rotulo: 'Dias de antecedência',
             render: (regra) => (
               <Input
+                aria-label={`Dias de antecedência para ${moduloAlertaLabel[modulo] ?? String(modulo)}`}
                 type="number"
                 min={0}
                 value={String(regra.diasAntecedencia)}
@@ -201,6 +202,7 @@ export function AlertasConfiguracaoTab() {
             render: (regra) => (
               <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                 <Select
+                  aria-label={`Severidade para ${moduloAlertaLabel[modulo] ?? String(modulo)}`}
                   value={String(regra.severidade)}
                   onChange={(_, d) => atualizarCampoLocal(regra.id, 'severidade', Number(d.value))}
                 >
@@ -221,6 +223,7 @@ export function AlertasConfiguracaoTab() {
             rotulo: 'Responsável (notificação no Teams)',
             render: (regra) => (
               <Select
+                aria-label={`Responsável por notificação de ${moduloAlertaLabel[modulo] ?? String(modulo)}`}
                 value={regra.responsavelUsuarioId ?? ''}
                 onChange={(_, d) => atualizarCampoLocal(regra.id, 'responsavelUsuarioId', d.value)}
                 style={{ maxWidth: 220 }}
