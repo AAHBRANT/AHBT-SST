@@ -15,16 +15,25 @@ const useStyles = makeStyles({
 export interface ChipCheckboxGroupProps {
   opcoes: { id: string; rotulo: string }[];
   selecionados: string[];
-  aoMudar: (ids: string[]) => void;
+  /** Recebe uma função de atualização (padrão `setState(prev => ...)`), não a lista já calculada. */
+  aoMudar: (atualizar: (atuais: string[]) => string[]) => void;
   'aria-label'?: string;
 }
 
 // Seleção múltipla em chips clicáveis inteiros (pedido do usuário 02/09; spec §3). Formaliza
 // useCheckboxChipStyles, usado em matrizes, PT e DDS.
+//
+// `aoMudar` recebe uma função de atualização, não a lista pronta — dois cliques em sequência rápida
+// disparam dois `onChange` antes deste componente re-renderizar com a prop `selecionados`
+// atualizada; se a lista fosse calculada aqui (a partir da prop, que nesse instante ainda está
+// desatualizada), o segundo clique sobrescrevia o resultado do primeiro (achado do usuário, 10/09:
+// "clico em mais de um e o primeiro desseleciona", reproduzido em Responsáveis da APR e
+// Participantes da Turma de treinamento). Repassando a atualização pro `set` funcional do
+// componente-pai, o React garante que cada clique enfileirado usa o estado realmente mais recente.
 export function ChipCheckboxGroup({ opcoes, selecionados, aoMudar, 'aria-label': ariaLabel }: ChipCheckboxGroupProps) {
   const e = useStyles();
   function alternar(id: string, marcado: boolean) {
-    aoMudar(marcado ? [...selecionados, id] : selecionados.filter((s) => s !== id));
+    aoMudar((atuais) => (marcado ? [...atuais, id] : atuais.filter((s) => s !== id)));
   }
   return (
     <div role="group" aria-label={ariaLabel} className={e.grupo}>
