@@ -1032,7 +1032,9 @@ export interface TrabalhadorPublicoDto {
   funcaoNome: string;
   obraNome: string;
   temFoto: boolean;
-  statusAptidao: string;
+  // Ausente na leitura anônima da tag (dado de saúde só sai autenticado) — ver
+  // ResolverTrabalhadorPublicoQuery.IncluirDadosSensiveis.
+  statusAptidao?: string | null;
   episAtivos: EpiAtivoPublico[];
   treinamentos: TreinamentoPublico[];
   historicoDds: DdsPublico[];

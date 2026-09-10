@@ -1,8 +1,8 @@
 namespace AAHBRANT.SST.Application.Trabalhadores;
 
-// "Crachá digital" do trabalhador — mesmo espírito de AreaPublicaDto (NTAG.md §3.B.4), mas agora
-// autenticado: o UID da tag é só um ponteiro físico, e o backend continua aplicando login/escopo.
-// Ainda assim, mantém recorte enxuto e nunca inclui CPF/RG.
+// "Crachá digital" do trabalhador — mesmo espírito de AreaPublicaDto (NTAG.md §3.B.4). Recorte
+// enxuto: nunca inclui CPF/RG, e StatusAptidao (dado de saúde) só vem preenchido para chamador
+// autenticado — ver ResolverTrabalhadorPublicoQuery.IncluirDadosSensiveis.
 public class TrabalhadorPublicoDto
 {
     // Discriminador pro frontend distinguir os dois tipos de recurso que a mesma rota
@@ -14,7 +14,7 @@ public class TrabalhadorPublicoDto
     public string FuncaoNome { get; set; } = string.Empty;
     public string ObraNome { get; set; } = string.Empty;
     public bool TemFoto { get; set; }
-    public string StatusAptidao { get; set; } = string.Empty;
+    public string? StatusAptidao { get; set; }
     public List<EpiAtivoPublicoDto> EpisAtivos { get; set; } = new();
     public List<TreinamentoPublicoDto> Treinamentos { get; set; } = new();
     public List<DdsPublicoDto> HistoricoDds { get; set; } = new();

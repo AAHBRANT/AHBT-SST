@@ -288,7 +288,11 @@ export function IdentificacaoPublicaPage() {
               </div>
             }
             acoes={
-              <StatusChip tom={tomAptidao[recurso.statusAptidao] ?? 'info'}>{recurso.statusAptidao}</StatusChip>
+              // Vem ausente na leitura anônima da tag: o status de aptidão sai do ASO (dado de
+              // saúde) e só é retornado a chamador autenticado — ver ResolverTrabalhadorPublicoQuery.
+              recurso.statusAptidao ? (
+                <StatusChip tom={tomAptidao[recurso.statusAptidao] ?? 'info'}>{recurso.statusAptidao}</StatusChip>
+              ) : undefined
             }
           >
             <div style={{ marginTop: 16 }}>
