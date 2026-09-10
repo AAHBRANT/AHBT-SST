@@ -2,6 +2,7 @@ using AAHBRANT.SST.Application.Pcmsos.Commands;
 using AAHBRANT.SST.Application.Pcmsos.Queries;
 using MediatR;
 using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 
 namespace AAHBRANT.SST.Api.Controllers;
@@ -45,10 +46,35 @@ public class PcmsosController : ControllerBase
     }
 
     [Authorize(Policy = "pcmso:editar")]
+    [HttpPost("{id:guid}/documento")]
+    [RequestSizeLimit(21_000_000)]
+    public async Task<IActionResult> AnexarDocumento(Guid id, [FromForm] AnexarDocumentoPcmsoRequestBody body, CancellationToken ct)
+    {
+        await using var stream = new MemoryStream();
+        await body.Arquivo.CopyToAsync(stream, ct);
+
+        await _mediator.Send(new AnexarDocumentoPcmsoCommand(id, stream.ToArray(), body.Arquivo.ContentType), ct);
+        return NoContent();
+    }
+
+    [Authorize(Policy = "pcmso:ver")]
+    [HttpGet("{id:guid}/documento")]
+    public async Task<IActionResult> ObterDocumento(Guid id, CancellationToken ct)
+    {
+        var documento = await _mediator.Send(new ObterDocumentoPcmsoQuery(id), ct);
+        return documento is null ? NotFound() : File(documento.Conteudo, documento.ContentType);
+    }
+
+    [Authorize(Policy = "pcmso:editar")]
     [HttpDelete("{id:guid}")]
     public async Task<IActionResult> Excluir(Guid id, CancellationToken ct)
     {
         await _mediator.Send(new ExcluirPcmsoCommand(id), ct);
         return NoContent();
     }
+}
+
+public class AnexarDocumentoPcmsoRequestBody
+{
+    public IFormFile Arquivo { get; set; } = null!;
 }
