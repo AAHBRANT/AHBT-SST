@@ -26,9 +26,9 @@ public class Obra : AuditableEntity
     public string? LogoContentType { get; set; }
 
     // Motor de Assinatura Eletrônica (docs/Motor-Assinatura-Eletronica.md §2/§3) — cada obra decide
-    // quais métodos aceita; ex.: obra sem leitor biométrico ainda comprado opera só com CrachaPin
-    // até o hardware chegar. Default Nenhum: uma obra só passa a assinar depois de configurada
-    // explicitamente, nunca por omissão.
+    // quais métodos aceita (Biometria via Futronic, ReconhecimentoFacial via Azure Face API).
+    // CrachaPin/QrCodePin/WebAuthnCelular foram removidos do sistema em 31/08. Default Nenhum: uma
+    // obra só passa a assinar depois de configurada explicitamente, nunca por omissão.
     public MetodoAutenticacaoObra MetodosAutenticacaoHabilitados { get; set; } = MetodoAutenticacaoObra.Nenhum;
 
     // Id do PersonGroup no Azure Face API para esta obra — um grupo por obra (reduz o universo de
