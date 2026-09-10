@@ -283,7 +283,7 @@ export function TurmasTab() {
                     rotulo: t.matricula ? `${t.nome} (${t.matricula})` : t.nome,
                   }))}
                   selecionados={novaTurma.trabalhadoresIds}
-                  aoMudar={(ids) => setNovaTurma((atual) => ({ ...atual, trabalhadoresIds: ids }))}
+                  aoMudar={(atualizar) => setNovaTurma((atual) => ({ ...atual, trabalhadoresIds: atualizar(atual.trabalhadoresIds) }))}
                 />
               )}
             </Field>
