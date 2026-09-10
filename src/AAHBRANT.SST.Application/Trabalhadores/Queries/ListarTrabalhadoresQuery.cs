@@ -37,8 +37,6 @@ public class ListarTrabalhadoresQueryHandler : IRequestHandler<ListarTrabalhador
                 DataAdmissao = t.DataAdmissao,
                 DataDemissao = t.DataDemissao,
                 Turno = t.Turno,
-                TelegramVinculado = t.TelegramChatId != null,
-                TelegramCodigoVinculo = t.TelegramCodigoVinculo,
                 TemFoto = t.FotoConteudo != null,
                 TemBiometria = _db.TemplatesBiometricoFutronic.Any(tb => tb.TrabalhadorId == t.Id)
             })

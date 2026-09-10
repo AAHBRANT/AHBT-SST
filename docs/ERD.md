@@ -137,7 +137,7 @@ cada um:
 | APR | `Apr/Apr`, `AprEtapa`, `AprEtapaRisco`, `AprResponsavel`, `AprAssinatura` | `/operacao/apr` |
 | PT (Permissão de Trabalho) | `Pt/PermissaoTrabalho`, `PermissaoTrabalhoPerigo/Controle/Requisito/Responsavel` | `/operacao/pt` |
 | Inspeções/Checklists | `Inspecoes/ChecklistModelo(Item)`, `Inspecao`, `InspecaoItemResposta` | `/prevencao/inspecoes` |
-| DDS | `Dds/Dds`, `DdsAtividade`, `DdsItemChecklist`, `DdsParticipante`, `DdsTelegramEnvio` | `/prevencao/dds` |
+| DDS | `Dds/Dds`, `DdsAtividade`, `DdsItemChecklist`, `DdsParticipante` | `/prevencao/dds` |
 | Identificação (NTAG/QR) | `Identificacao/TagIdentificacao`, `AreaSst` | `/operacao/identificacao` |
 | Ativos | `AtivoSst` | `/operacao/ativos` |
 | Não Conformidades / Plano de Ação | `NaoConformidades/NaoConformidade`, `AcaoPlano` | `/nao-conformidades` |

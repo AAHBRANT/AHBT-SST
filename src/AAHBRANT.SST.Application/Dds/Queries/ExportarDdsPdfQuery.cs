@@ -34,7 +34,6 @@ public class ExportarDdsPdfQueryHandler : IRequestHandler<ExportarDdsPdfQuery, b
         return _pdf.Gerar(MontarModelo(detalhe, logoConteudo, dds.NumeroDocumento, rastreio));
     }
 
-    // Reaproveitado por EnviarDdsTelegramCommandHandler para não duplicar a montagem do modelo do PDF.
     public static DdsPdfModelo MontarModelo(DdsDetalheDto detalhe, byte[]? obraLogoConteudo, string? protocolo, RastreabilidadeDocumentoResultado rastreio) => new(
         detalhe.Dds.ObraNome,
         obraLogoConteudo,

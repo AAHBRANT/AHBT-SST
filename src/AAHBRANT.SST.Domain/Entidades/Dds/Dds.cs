@@ -143,20 +143,3 @@ public class DdsParticipante : AuditableEntity
     public string FotoContentType { get; set; } = string.Empty;
     public double? ScoreConfianca { get; set; }
 }
-
-// Um envio de Telegram por trabalhador — dobra como log de envio e como registro de confirmação de
-// ciência (botão inline "Confirmo ciência" no chat). Id (Guid gerado no client, ver AuditableEntity)
-// é usado como callback_data do botão para correlacionar o clique a este envio.
-public class DdsTelegramEnvio : AuditableEntity
-{
-    public Guid DdsId { get; set; }
-    public Dds? Dds { get; set; }
-
-    public Guid TrabalhadorId { get; set; }
-    public Trabalhador? Trabalhador { get; set; }
-
-    public long ChatId { get; set; }
-    public DateTime EnviadoEm { get; set; }
-    public int? MessageId { get; set; }
-    public DateTime? ConfirmadoEm { get; set; }
-}

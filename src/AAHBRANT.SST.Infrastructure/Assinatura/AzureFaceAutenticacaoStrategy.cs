@@ -11,9 +11,9 @@ namespace AAHBRANT.SST.Infrastructure.Assinatura;
 
 // Estratégia de autenticação facial via Azure Face API — mesmo papel de FutronicAutenticacaoStrategy,
 // mas o match acontece na nuvem (Face - Identify), não no dispositivo. Chamadas REST cruas via
-// IHttpClientFactory, mesmo estilo já usado por TelegramBotService — sem SDK do Azure como
-// dependência nova. Confirme a versão da API (face/v1.0) contra a documentação da Azure no momento
-// de rodar isto pela primeira vez contra um recurso real.
+// IHttpClientFactory — sem SDK do Azure como dependência nova. Confirme a versão da API
+// (face/v1.0) contra a documentação da Azure no momento de rodar isto pela primeira vez contra um
+// recurso real.
 public class AzureFaceAutenticacaoStrategy : IAutenticacaoFacialService
 {
     private readonly IAppDbContext _db;

@@ -156,22 +156,3 @@ public class DdsParticipanteConfiguracao : IEntityTypeConfiguration<DdsParticipa
         builder.HasQueryFilter(p => p.Ativo);
     }
 }
-
-public class DdsTelegramEnvioConfiguracao : IEntityTypeConfiguration<DdsTelegramEnvio>
-{
-    public void Configure(EntityTypeBuilder<DdsTelegramEnvio> builder)
-    {
-        builder.HasOne(e => e.Dds)
-            .WithMany()
-            .HasForeignKey(e => e.DdsId)
-            .OnDelete(DeleteBehavior.Cascade);
-
-        builder.HasOne(e => e.Trabalhador)
-            .WithMany()
-            .HasForeignKey(e => e.TrabalhadorId)
-            .OnDelete(DeleteBehavior.Restrict);
-
-        builder.HasIndex(e => new { e.DdsId, e.TrabalhadorId });
-        builder.HasQueryFilter(e => e.Ativo);
-    }
-}

@@ -49,7 +49,6 @@ public static class RbacSeeder
         ("trabalhador:criar", "Trabalhador", "Criar", "Criar cadastro de trabalhador"),
         ("trabalhador:editar", "Trabalhador", "Editar", "Editar cadastro de trabalhador"),
         ("trabalhador:excluir", "Trabalhador", "Excluir", "Excluir cadastro de trabalhador"),
-        ("trabalhador:telegram", "Trabalhador", "Telegram", "Gerar vínculo de Telegram do trabalhador"),
         ("trabalhador:assinatura", "Trabalhador", "Assinatura", "Configurar assinatura eletrônica do trabalhador (PIN, Termo de Aceite, consentimento biométrico)"),
 
         ("aso:ver_status", "Aso", "VerStatus", "Ver status do ASO (Apto/Inapto/etc.), sem detalhe clínico"),
@@ -175,7 +174,7 @@ public static class RbacSeeder
         ("dds:criar", "Dds", "Criar", "Criar DDS a partir das atividades do dia"),
         ("dds:conduzir", "Dds", "Conduzir", "Marcar itens do checklist e registrar participantes durante a condução do DDS"),
         ("dds:encerrar", "Dds", "Encerrar", "Encerrar DDS"),
-        ("dds:exportar", "Dds", "Exportar", "Exportar DDS em PDF e enviar via Telegram"),
+        ("dds:exportar", "Dds", "Exportar", "Exportar DDS em PDF"),
 
         // Motor de Assinatura Eletrônica (docs/Motor-Assinatura-Eletronica.md §5, etapa 6) — genérico,
         // usado pela tela de quiosque de qualquer módulo (Dds hoje, Treinamento/EPI/APR/PT/Inspeções

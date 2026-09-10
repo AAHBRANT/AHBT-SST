@@ -24,7 +24,6 @@ import {
   Checkmark24Filled,
   Fingerprint24Regular,
   PersonAdd24Regular,
-  Send24Regular,
   Signature24Regular,
 } from '@fluentui/react-icons';
 import {
@@ -47,20 +46,8 @@ const tomStatusDia: Record<number, Tom> = {
   [StatusDds.Concluido]: 'ok',
 };
 
-function tomTelegram(p: DdsParticipante): Tom {
-  if (p.telegramConfirmadoEm) return 'ok';
-  if (p.telegramEnviadoEm) return 'atencao';
-  return 'info';
-}
-
-function rotuloTelegram(p: DdsParticipante): string {
-  if (p.telegramConfirmadoEm) return 'Ciência confirmada';
-  if (p.telegramEnviadoEm) return 'Enviado, aguardando confirmação';
-  return 'Não enviado';
-}
-
 // A mesma digital da presença já vale como assinatura eletrônica do DDS (04/09) — sem precisar ler
-// de novo na tela "Assinar DDS". Coluna própria, separada de Telegram (são confirmações distintas).
+// de novo na tela "Assinar DDS". Coluna própria de assinatura.
 function tomAssinatura(p: DdsParticipante): Tom {
   return p.assinadoEm ? 'ok' : 'info';
 }
@@ -71,10 +58,10 @@ function rotuloAssinatura(p: DdsParticipante): string {
 }
 
 // Onda 2 (Task 14) — candidata a DetailPageLayout (conversões 1, 2, 3, 4, 5): cabeçalho com
-// voltar/título/status/ações utilitárias (assinar/baixar/telegram); lateral com o resumo e a única
-// transição de estado real (Encerrar DDS) em WorkflowActions — as demais ações (assinar, baixar,
-// telegram) não são transição de estado, ficam no cabeçalho. Participantes é o único <Table> cru
-// do arquivo → DataTable; badges de status (geral + Telegram) → StatusChip.
+// voltar/título/status/ações utilitárias (assinar/baixar); lateral com o resumo e a única
+// transição de estado real (Encerrar DDS) em WorkflowActions — as demais ações (assinar, baixar)
+// não são transição de estado, ficam no cabeçalho. Participantes é o único <Table> cru
+// do arquivo → DataTable; badge de status → StatusChip.
 export function DdsDetalhePage() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
@@ -90,8 +77,6 @@ export function DdsDetalhePage() {
   const [processando, setProcessando] = useState(false);
   const [baixandoPdf, setBaixandoPdf] = useState(false);
   const [baixandoFotoId, setBaixandoFotoId] = useState<string | null>(null);
-  const [enviandoTelegram, setEnviandoTelegram] = useState(false);
-  const [resultadoTelegram, setResultadoTelegram] = useState<string | null>(null);
 
   async function carregar() {
     if (!id) return;
@@ -254,24 +239,6 @@ export function DdsDetalhePage() {
     }
   }
 
-  async function enviarTelegram() {
-    if (!id) return;
-    try {
-      setEnviandoTelegram(true);
-      setErro(null);
-      setResultadoTelegram(null);
-      const resultado = await api.dds.enviarTelegram(id);
-      setResultadoTelegram(
-        `Enviado para ${resultado.enviados} de ${resultado.totalParticipantes} participantes` +
-          (resultado.semVinculo > 0 ? ` — ${resultado.semVinculo} sem vínculo de Telegram.` : '.'),
-      );
-    } catch (e) {
-      setErro(e instanceof Error ? e.message : 'Falha ao enviar o DDS via Telegram.');
-    } finally {
-      setEnviandoTelegram(false);
-    }
-  }
-
   if (!id) return <FeedbackInline tom="erro">DDS não encontrado.</FeedbackInline>;
 
   if (!detalhe) {
@@ -299,7 +266,7 @@ export function DdsDetalhePage() {
         ? `Tema livre: ${dds.temaLivreNome}`
         : 'DDS do dia';
 
-  // Só a transição de estado real (encerrar) entra em WorkflowActions — assinar/baixar/telegram
+  // Só a transição de estado real (encerrar) entra em WorkflowActions — assinar/baixar
   // são ações utilitárias sempre disponíveis, não mudam o status, então ficam no cabeçalho.
   const acoesWorkflow: AcaoWorkflow[] = [];
   if (!somenteLeitura) {
@@ -325,11 +292,6 @@ export function DdsDetalhePage() {
         </StatusChip>
       ),
     },
-    {
-      chave: 'telegram',
-      rotulo: 'Telegram',
-      render: (p) => <StatusChip tom={tomTelegram(p)}>{rotuloTelegram(p)}</StatusChip>,
-    },
   ];
 
   return (
@@ -347,9 +309,6 @@ export function DdsDetalhePage() {
             </Button>
             <Button icon={<ArrowDownload24Regular />} onClick={baixarPdf} disabled={baixandoPdf}>
               Baixar PDF
-            </Button>
-            <Button icon={<Send24Regular />} onClick={enviarTelegram} disabled={enviandoTelegram}>
-              Enviar via Telegram
             </Button>
           </>
         ),
@@ -382,7 +341,6 @@ export function DdsDetalhePage() {
           {erro}
         </FeedbackInline>
       )}
-      {resultadoTelegram && <FeedbackInline tom="sucesso">{resultadoTelegram}</FeedbackInline>}
 
       <Card>
         <GradeFotosEvidencia
