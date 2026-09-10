@@ -282,7 +282,7 @@ export function PermissoesTrabalhoTab() {
                   aria-label="Equipe executante (responsáveis)"
                   opcoes={trabalhadores.map((t) => ({ id: t.id, rotulo: t.nome }))}
                   selecionados={novaPt.responsaveisIds}
-                  aoMudar={(ids) => setNovaPt((atual) => ({ ...atual, responsaveisIds: ids }))}
+                  aoMudar={(atualizar) => setNovaPt((atual) => ({ ...atual, responsaveisIds: atualizar(atual.responsaveisIds) }))}
                 />
               </Field>
             </Campo>
