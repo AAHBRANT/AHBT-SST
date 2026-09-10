@@ -33,7 +33,6 @@ public class ListarPcmsosQueryHandler : IRequestHandler<ListarPcmsosQuery, List<
             ResponsavelUsuarioNome = p.ResponsavelUsuario?.Nome,
             ObraId = p.ObraId,
             SetorId = p.SetorId,
-            Arquivo = p.Arquivo,
             Status = p.Status,
             MedicoResponsavelNome = p.MedicoResponsavelNome,
             MedicoResponsavelCrm = p.MedicoResponsavelCrm,

@@ -2296,7 +2296,6 @@ export interface Pcmso {
   responsavelUsuarioNome?: string | null;
   obraId?: string | null;
   setorId?: string | null;
-  arquivo?: string | null;
   status: number;
   medicoResponsavelNome?: string | null;
   medicoResponsavelCrm?: string | null;
@@ -2315,7 +2314,6 @@ export interface NovoPcmso {
   responsavelUsuarioId?: string | null;
   obraId?: string | null;
   setorId?: string | null;
-  arquivo?: string | null;
   medicoResponsavelNome?: string | null;
   medicoResponsavelCrm?: string | null;
   funcoesContempladas?: string | null;

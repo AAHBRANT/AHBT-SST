@@ -14,7 +14,6 @@ public record CriarPcmsoCommand(
     Guid? ResponsavelUsuarioId,
     Guid? ObraId,
     Guid? SetorId,
-    string? Arquivo,
     string? MedicoResponsavelNome,
     string? MedicoResponsavelCrm,
     string? FuncoesContempladas,
@@ -29,7 +28,6 @@ public class CriarPcmsoCommandValidator : AbstractValidator<CriarPcmsoCommand>
     {
         RuleFor(x => x.Nome).NotEmpty().MaximumLength(200);
         RuleFor(x => x.Versao).MaximumLength(50);
-        RuleFor(x => x.Arquivo).MaximumLength(500);
         RuleFor(x => x.MedicoResponsavelNome).MaximumLength(150);
         RuleFor(x => x.MedicoResponsavelCrm).MaximumLength(30);
         RuleFor(x => x.DataEmissao).NotEmpty();
@@ -59,7 +57,6 @@ public class CriarPcmsoCommandHandler : IRequestHandler<CriarPcmsoCommand, Guid>
             ResponsavelUsuarioId = request.ResponsavelUsuarioId,
             ObraId = request.ObraId,
             SetorId = request.SetorId,
-            Arquivo = request.Arquivo,
             Status = StatusPcmsoDocumento.Rascunho,
             MedicoResponsavelNome = request.MedicoResponsavelNome,
             MedicoResponsavelCrm = request.MedicoResponsavelCrm,
