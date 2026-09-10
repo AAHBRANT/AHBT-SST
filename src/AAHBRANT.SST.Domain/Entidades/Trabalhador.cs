@@ -92,6 +92,8 @@ public class Trabalhador : AuditableEntity
     public ICollection<Aso> Asos { get; set; } = new List<Aso>();
     public ICollection<Treinamento> Treinamentos { get; set; } = new List<Treinamento>();
     public ICollection<EntregaEpi> EntregasEpi { get; set; } = new List<EntregaEpi>();
+    public ICollection<EntregaUniforme> EntregasUniforme { get; set; } = new List<EntregaUniforme>();
+    public ICollection<TrabalhadorTamanhoUniforme> TamanhosUniforme { get; set; } = new List<TrabalhadorTamanhoUniforme>();
     public ICollection<RiscoTrabalhadorExposto> RiscosExpostos { get; set; } = new List<RiscoTrabalhadorExposto>();
     public ICollection<ExameComplementar> ExamesComplementares { get; set; } = new List<ExameComplementar>();
     public ICollection<AptidaoAtividadeEspecifica> AptidoesAtividadeEspecifica { get; set; } = new List<AptidaoAtividadeEspecifica>();

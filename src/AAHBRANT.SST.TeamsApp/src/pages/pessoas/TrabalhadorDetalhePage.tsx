@@ -21,6 +21,7 @@ import { ArrowDownload24Regular, Eye24Regular, EyeOff24Regular } from '@fluentui
 import { api, tipoVinculoLabel, type PerfilCompletoTrabalhador } from '../../lib/api';
 import { formatarCpf, mascararCpf } from '../../lib/cpf';
 import { PerfilGeralTab } from './PerfilGeralTab';
+import { TamanhosUniformeSecao } from './TamanhosUniformeSecao';
 import { TreinamentosTab } from './TreinamentosTab';
 import { RiscosTab } from './RiscosTab';
 import { OcorrenciasTab } from './OcorrenciasTab';
@@ -192,7 +193,12 @@ export function TrabalhadorDetalhePage() {
             <Abas nivel="modulo" aria-label="Seções do perfil" abas={ABAS_PERFIL} valor={aba} aoMudar={setAba} />
           </div>
 
-          {aba === 'geral' && <PerfilGeralTab perfil={perfil} />}
+          {aba === 'geral' && (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+              <PerfilGeralTab perfil={perfil} />
+              <TamanhosUniformeSecao trabalhadorId={id!} />
+            </div>
+          )}
           {aba === 'epi' && (
             <Card titulo="Frequência de trocas por EPI">
               {dadosFrequenciaEpi.length === 0 ? (

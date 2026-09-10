@@ -39,6 +39,12 @@ public interface IAppDbContext
     DbSet<InstalacaoEpc> InstalacoesEpc { get; }
     DbSet<EstoqueEpc> EstoquesEpc { get; }
     DbSet<MovimentacaoEstoqueEpc> MovimentacoesEstoqueEpc { get; }
+    DbSet<CatalogoUniforme> CatalogoUniformes { get; }
+    DbSet<EstoqueUniforme> EstoquesUniforme { get; }
+    DbSet<MovimentacaoEstoqueUniforme> MovimentacoesEstoqueUniforme { get; }
+    DbSet<MatrizUniformeFuncao> MatrizUniformeFuncoes { get; }
+    DbSet<TrabalhadorTamanhoUniforme> TrabalhadorTamanhosUniforme { get; }
+    DbSet<EntregaUniforme> EntregasUniforme { get; }
     DbSet<Alerta> Alertas { get; }
     DbSet<AlertaHistoricoEnvio> AlertaHistoricoEnvios { get; }
     DbSet<RegraAlerta> RegrasAlerta { get; }

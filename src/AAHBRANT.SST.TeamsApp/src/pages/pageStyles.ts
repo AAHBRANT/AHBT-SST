@@ -62,6 +62,7 @@ export const usePageStyles = makeStyles({
       gridTemplateColumns: 'repeat(1, 1fr)',
     },
   },
+  col6: { gridColumn: 'span 6' },
   col4: { gridColumn: 'span 4' },
   col3: { gridColumn: 'span 3' },
   col2: { gridColumn: 'span 2' },

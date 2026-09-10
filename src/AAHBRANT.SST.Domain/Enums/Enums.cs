@@ -781,3 +781,23 @@ public enum StatusReuniaoCipa
     Realizada = 2,
     AtaRegistrada = 3
 }
+
+// Módulo Uniforme (docs/superpowers/specs/2026-09-07-modulo-uniforme-design.md) — motivos da
+// entrega, equivalente a MotivoEntregaEpi mas sem "Vencimento" (uniforme não tem CA/validade
+// certificada) e com "Desgaste" no lugar de "Dano" (linguagem mais natural para uniforme).
+public enum MotivoEntregaUniforme
+{
+    Inicial = 0,
+    Desgaste = 1,
+    Extravio = 2,
+    TrocaDeFuncao = 3,
+}
+
+// Classifica cada linha do ledger MovimentacaoEstoqueUniforme. Sem DevolucaoEntrada (sem fluxo de
+// devolução neste módulo) — equivalente reduzido de TipoMovimentacaoEstoqueEpi.
+public enum TipoMovimentacaoEstoqueUniforme
+{
+    EntradaManual = 0,
+    SaidaEntrega = 1,
+    AjusteManual = 2,
+}
