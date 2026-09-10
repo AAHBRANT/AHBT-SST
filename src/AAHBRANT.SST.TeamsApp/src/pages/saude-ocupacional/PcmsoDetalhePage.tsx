@@ -1,6 +1,7 @@
 ﻿import { useEffect, useState } from 'react';
 import { useParams } from 'react-router-dom';
 import {
+  Abas,
   Button,
   Campo,
   Card,
@@ -42,6 +43,7 @@ import {
   type Usuario,
 } from '../../lib/api';
 import { useSucessoToast } from '../../hooks/useSucessoToast';
+import { VisualizadorDocumentoPdf } from '../../components/VisualizadorDocumentoPdf';
 
 function novaAcaoInicial(): Omit<NovaAcaoPlano, 'origemTipo' | 'origemId'> {
   return { tipo: 1, descricao: '', responsavelUsuarioId: '', prioridade: 3, prazo: '' };
@@ -71,6 +73,7 @@ function chipVencimento(data?: string | null) {
 // o fluxo documental de Gestão Documental, "não editável diretamente aqui" (ver footer do form).
 export function PcmsoDetalhePage() {
   const { id } = useParams<{ id: string }>();
+  const [aba, setAba] = useState<'documento' | 'dados'>('documento');
   const [pcmso, setPcmso] = useState<Pcmso | null>(null);
   const [edicao, setEdicao] = useState<AtualizarPcmsoPayload | null>(null);
   const [obras, setObras] = useState<Obra[]>([]);
@@ -241,6 +244,29 @@ export function PcmsoDetalhePage() {
         </FeedbackInline>
       )}
 
+      <div style={{ marginBottom: 16 }}>
+        <Abas
+          nivel="modulo"
+          aria-label="Seções do PCMSO"
+          valor={aba}
+          aoMudar={setAba}
+          abas={[
+            { valor: 'documento', rotulo: 'PCMSO' },
+            { valor: 'dados', rotulo: 'Dados' },
+          ]}
+        />
+      </div>
+
+      {aba === 'documento' && (
+        <VisualizadorDocumentoPdf
+          id={id}
+          obterDocumento={() => api.pcmsos.obterDocumento(id)}
+          enviarDocumento={(arquivo) => api.pcmsos.enviarDocumento(id, arquivo)}
+        />
+      )}
+
+      {aba === 'dados' && (
+        <>
       <Card>
         <FormSection titulo="Dados gerais do documento" numero={1} primeira>
           <FormGrid>
@@ -491,6 +517,8 @@ export function PcmsoDetalhePage() {
           )}
         />
       </Card>
+      </>
+      )}
       {dialogElement}
     </DetailPageLayout>
   );
