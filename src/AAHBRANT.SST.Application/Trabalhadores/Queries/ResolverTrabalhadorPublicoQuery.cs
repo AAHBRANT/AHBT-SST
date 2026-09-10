@@ -8,9 +8,13 @@ namespace AAHBRANT.SST.Application.Trabalhadores.Queries;
 // NTAG.md §1/§3.B.4 — resolução do "crachá digital" de um trabalhador. Diferente de
 // ResolverAreaPublicaQuery (que também aceita o Código de negócio da área na URL), aqui só
 // resolvemos pelo Uid opaco da tag: a matrícula do trabalhador costuma ser sequencial/previsível, e
-// virar identificador permitiria "varrer" a URL. A rota da API também exige login: a tag só aponta
-// para o perfil, quem decide se pode ver é a sessão/permissão/obra do usuário.
-public record ResolverTrabalhadorPublicoQuery(string Uid) : IRequest<TrabalhadorPublicoDto?>;
+// virar identificador permitiria "varrer" a URL. A rota é lida sem login (o celular que encosta na
+// tag em campo não está no Teams e não tem token), então a posse física da tag é a autorização.
+// IncluirDadosSensiveis: o status de aptidão vem do ASO, ou seja, é dado pessoal sensível de saúde
+// (LGPD art. 5º, II). A leitura da tag em campo é anônima (posse física da tag é o controle de
+// acesso), então esse campo só sai para quem está autenticado — o crachá anônimo mostra apenas
+// identificação, EPIs e validade de treinamento, que é o que o fiscal precisa ver no capacete.
+public record ResolverTrabalhadorPublicoQuery(string Uid, bool IncluirDadosSensiveis = false) : IRequest<TrabalhadorPublicoDto?>;
 
 public class ResolverTrabalhadorPublicoQueryHandler : IRequestHandler<ResolverTrabalhadorPublicoQuery, TrabalhadorPublicoDto?>
 {
@@ -51,19 +55,23 @@ public class ResolverTrabalhadorPublicoQueryHandler : IRequestHandler<ResolverTr
             .Select(f => f.Nome)
             .FirstOrDefaultAsync(ct);
 
-        var resultadoAsoMaisRecente = await _db.Asos
-            .Where(a => a.TrabalhadorId == trabalhadorId)
-            .OrderByDescending(a => a.DataExame)
-            .Select(a => (ResultadoAso?)a.ResultadoStatus)
-            .FirstOrDefaultAsync(ct);
-        var statusAptidao = resultadoAsoMaisRecente switch
+        string? statusAptidao = null;
+        if (request.IncluirDadosSensiveis)
         {
-            null => "Sem ASO",
-            ResultadoAso.Apto => "Apto",
-            ResultadoAso.AptoComRestricao => "Apto com restrição",
-            ResultadoAso.Inapto => "Inapto",
-            _ => "Pendente",
-        };
+            var resultadoAsoMaisRecente = await _db.Asos
+                .Where(a => a.TrabalhadorId == trabalhadorId)
+                .OrderByDescending(a => a.DataExame)
+                .Select(a => (ResultadoAso?)a.ResultadoStatus)
+                .FirstOrDefaultAsync(ct);
+            statusAptidao = resultadoAsoMaisRecente switch
+            {
+                null => "Sem ASO",
+                ResultadoAso.Apto => "Apto",
+                ResultadoAso.AptoComRestricao => "Apto com restrição",
+                ResultadoAso.Inapto => "Inapto",
+                _ => "Pendente",
+            };
+        }
 
         var episAtivos = await _db.EntregasEpi
             .Where(e => e.TrabalhadorId == trabalhadorId && e.DataDevolucao == null)
