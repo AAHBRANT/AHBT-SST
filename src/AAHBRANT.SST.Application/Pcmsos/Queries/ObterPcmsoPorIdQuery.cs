@@ -14,31 +14,29 @@ public class ObterPcmsoPorIdQueryHandler : IRequestHandler<ObterPcmsoPorIdQuery,
 
     public async Task<PcmsoDto?> Handle(ObterPcmsoPorIdQuery request, CancellationToken ct)
     {
-        var p = await _db.PcmsoDetalhes.Include(x => x.ResponsavelUsuario)
-            .FirstOrDefaultAsync(x => x.Id == request.Id, ct);
-
-        if (p is null) return null;
-
-        return new PcmsoDto
-        {
-            Id = p.Id,
-            NumeroDocumento = p.NumeroDocumento,
-            Nome = p.Nome,
-            Versao = p.Versao,
-            Validade = p.Validade,
-            DataEmissao = p.DataEmissao,
-            ResponsavelUsuarioId = p.ResponsavelUsuarioId,
-            ResponsavelUsuarioNome = p.ResponsavelUsuario?.Nome,
-            ObraId = p.ObraId,
-            SetorId = p.SetorId,
-            Status = p.Status,
-            MedicoResponsavelNome = p.MedicoResponsavelNome,
-            MedicoResponsavelCrm = p.MedicoResponsavelCrm,
-            FuncoesContempladas = p.FuncoesContempladas,
-            RiscosConsiderados = p.RiscosConsiderados,
-            ExamesPrevistos = p.ExamesPrevistos,
-            Periodicidades = p.Periodicidades,
-            UnidadesObrasAbrangidas = p.UnidadesObrasAbrangidas
-        };
+        return await _db.PcmsoDetalhes
+            .Where(p => p.Id == request.Id)
+            .Select(p => new PcmsoDto
+            {
+                Id = p.Id,
+                NumeroDocumento = p.NumeroDocumento,
+                Nome = p.Nome,
+                Versao = p.Versao,
+                Validade = p.Validade,
+                DataEmissao = p.DataEmissao,
+                ResponsavelUsuarioId = p.ResponsavelUsuarioId,
+                ResponsavelUsuarioNome = p.ResponsavelUsuario != null ? p.ResponsavelUsuario.Nome : null,
+                ObraId = p.ObraId,
+                SetorId = p.SetorId,
+                Status = p.Status,
+                MedicoResponsavelNome = p.MedicoResponsavelNome,
+                MedicoResponsavelCrm = p.MedicoResponsavelCrm,
+                FuncoesContempladas = p.FuncoesContempladas,
+                RiscosConsiderados = p.RiscosConsiderados,
+                ExamesPrevistos = p.ExamesPrevistos,
+                Periodicidades = p.Periodicidades,
+                UnidadesObrasAbrangidas = p.UnidadesObrasAbrangidas
+            })
+            .FirstOrDefaultAsync(ct);
     }
 }
