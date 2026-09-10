@@ -64,7 +64,11 @@ public class PcmsoDetalhe : AuditableEntity
     public Guid? SetorId { get; set; }
     public Setor? Setor { get; set; }
 
-    public string? Arquivo { get; set; }
+    // Documento PDF original do PCMSO (consulta na aba "PCMSO" da tela de detalhe) — binário direto
+    // na linha, mesmo padrão já usado por Trabalhador.FotoConteudo/FotoContentType. Substitui o campo
+    // Arquivo (string), que nunca chegou a ser ligado a nenhuma tela/upload real.
+    public byte[]? DocumentoConteudo { get; set; }
+    public string? DocumentoContentType { get; set; }
     public StatusPcmsoDocumento Status { get; set; } = StatusPcmsoDocumento.Rascunho;
 
     public string? MedicoResponsavelNome { get; set; }

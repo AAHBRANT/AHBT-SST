@@ -5,8 +5,9 @@ import { api, statusPgrLabel, type Obra, type PgrDetalhe } from '../../lib/api';
 import { InventarioTab } from './InventarioTab';
 import { PlanoAcaoTab } from './PlanoAcaoTab';
 import { PgrRevisoesTab } from './PgrRevisoesTab';
+import { VisualizadorDocumentoPdf } from '../../components/VisualizadorDocumentoPdf';
 
-type AbaPgr = 'inventario' | 'planoAcao' | 'revisoes';
+type AbaPgr = 'documento' | 'inventario' | 'planoAcao' | 'revisoes';
 
 // Mapeamento por julgamento (guia item 5, "não é 1:1 mecânico"): Vigente é o único estado
 // claramente positivo (ok); Em revisão pede atenção (atencao); Encerrado é neutro-informativo, não
@@ -27,7 +28,7 @@ const tomPorStatusPgr: Record<number, Tom> = {
 // níveis da página-pilar, spec §4.1).
 export function PgrDetalhePage() {
   const { id } = useParams<{ id: string }>();
-  const [aba, setAba] = useState<AbaPgr>('inventario');
+  const [aba, setAba] = useState<AbaPgr>('documento');
   const [detalhe, setDetalhe] = useState<PgrDetalhe | null>(null);
   const [obras, setObras] = useState<Obra[]>([]);
   const [erro, setErro] = useState<string | null>(null);
@@ -111,6 +112,7 @@ export function PgrDetalhePage() {
           valor={aba}
           aoMudar={setAba}
           abas={[
+            { valor: 'documento', rotulo: 'PGR' },
             { valor: 'inventario', rotulo: 'Inventário de riscos' },
             { valor: 'planoAcao', rotulo: 'Plano de ação' },
             { valor: 'revisoes', rotulo: 'Revisões' },
@@ -118,6 +120,13 @@ export function PgrDetalhePage() {
         />
       </div>
 
+      {aba === 'documento' && (
+        <VisualizadorDocumentoPdf
+          id={id}
+          obterDocumento={() => api.pgrs.obterDocumento(id)}
+          enviarDocumento={(arquivo) => api.pgrs.enviarDocumento(id, arquivo)}
+        />
+      )}
       {aba === 'inventario' && <InventarioTab atividades={detalhe.atividades} />}
       {aba === 'planoAcao' && <PlanoAcaoTab pgrId={id} riscosDisponiveis={riscosDisponiveis} />}
       {aba === 'revisoes' && <PgrRevisoesTab pgrId={id} />}

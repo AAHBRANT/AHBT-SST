@@ -2373,7 +2373,6 @@ export interface Pcmso {
   responsavelUsuarioNome?: string | null;
   obraId?: string | null;
   setorId?: string | null;
-  arquivo?: string | null;
   status: number;
   medicoResponsavelNome?: string | null;
   medicoResponsavelCrm?: string | null;
@@ -2392,7 +2391,6 @@ export interface NovoPcmso {
   responsavelUsuarioId?: string | null;
   obraId?: string | null;
   setorId?: string | null;
-  arquivo?: string | null;
   medicoResponsavelNome?: string | null;
   medicoResponsavelCrm?: string | null;
   funcoesContempladas?: string | null;
@@ -3325,6 +3323,30 @@ export const api = {
     atualizar: (id: string, pcmso: AtualizarPcmsoPayload) =>
       request<void>(`/api/pcmsos/${id}`, { method: 'PUT', body: JSON.stringify({ ...pcmso, id }) }),
     excluir: (id: string) => request<void>(`/api/pcmsos/${id}`, { method: 'DELETE' }),
+    obterDocumento: async (id: string): Promise<Blob | null> => {
+      const response = await fetch(`${API_BASE_URL}/api/pcmsos/${id}/documento`, {
+        headers: await montarHeadersAuth(),
+      });
+      if (response.status === 404) return null;
+      if (!response.ok) {
+        const corpo = await response.text().catch(() => '');
+        throw new Error(extrairMensagemErro(corpo, response.status, response.statusText));
+      }
+      return response.blob();
+    },
+    enviarDocumento: async (id: string, arquivo: File) => {
+      const formData = new FormData();
+      formData.append('Arquivo', arquivo);
+      const response = await fetch(`${API_BASE_URL}/api/pcmsos/${id}/documento`, {
+        method: 'POST',
+        headers: await montarHeadersAuth(),
+        body: formData,
+      });
+      if (!response.ok) {
+        const corpo = await response.text().catch(() => '');
+        throw new Error(extrairMensagemErro(corpo, response.status, response.statusText));
+      }
+    },
   },
   cursosTreinamento: {
     listar: () => request<CursoTreinamento[]>('/api/cursostreinamento'),
@@ -3629,6 +3651,30 @@ export const api = {
     atualizar: (id: string, pgr: Pgr) =>
       request<void>(`/api/pgrs/${id}`, { method: 'PUT', body: JSON.stringify(pgr) }),
     excluir: (id: string) => request<void>(`/api/pgrs/${id}`, { method: 'DELETE' }),
+    obterDocumento: async (id: string): Promise<Blob | null> => {
+      const response = await fetch(`${API_BASE_URL}/api/pgrs/${id}/documento`, {
+        headers: await montarHeadersAuth(),
+      });
+      if (response.status === 404) return null;
+      if (!response.ok) {
+        const corpo = await response.text().catch(() => '');
+        throw new Error(extrairMensagemErro(corpo, response.status, response.statusText));
+      }
+      return response.blob();
+    },
+    enviarDocumento: async (id: string, arquivo: File) => {
+      const formData = new FormData();
+      formData.append('Arquivo', arquivo);
+      const response = await fetch(`${API_BASE_URL}/api/pgrs/${id}/documento`, {
+        method: 'POST',
+        headers: await montarHeadersAuth(),
+        body: formData,
+      });
+      if (!response.ok) {
+        const corpo = await response.text().catch(() => '');
+        throw new Error(extrairMensagemErro(corpo, response.status, response.statusText));
+      }
+    },
   },
   planoAcao: {
     listar: (pgrId: string) => request<PlanoAcaoItem[]>(`/api/planoacao?pgrId=${pgrId}`),

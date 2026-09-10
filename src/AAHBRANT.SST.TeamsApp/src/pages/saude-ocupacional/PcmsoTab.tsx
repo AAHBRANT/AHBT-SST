@@ -40,7 +40,6 @@ function pcmsoVazio(): NovoPcmso {
     responsavelUsuarioId: '',
     obraId: '',
     setorId: '',
-    arquivo: '',
     medicoResponsavelNome: '',
     medicoResponsavelCrm: '',
     funcoesContempladas: '',

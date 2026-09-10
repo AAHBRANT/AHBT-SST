@@ -18,7 +18,6 @@ public class PcmsoDto
     public string? ResponsavelUsuarioNome { get; set; }
     public Guid? ObraId { get; set; }
     public Guid? SetorId { get; set; }
-    public string? Arquivo { get; set; }
     public StatusPcmsoDocumento Status { get; set; }
 
     public string? MedicoResponsavelNome { get; set; }

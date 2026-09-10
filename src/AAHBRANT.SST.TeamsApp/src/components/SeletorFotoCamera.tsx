@@ -29,6 +29,9 @@ interface SeletorFotoCameraProps {
   // Câmera frontal ("user", ex.: reconhecimento facial — a pessoa fotografa o próprio rosto) ou
   // traseira ("environment", padrão — fotos de evidência/EPI/documento, apontando pra outra coisa).
   modoCamera?: 'user' | 'environment';
+  // false para pontos de anexo que nunca são foto (ex.: documento PDF) — pula o diálogo de câmera
+  // e vai direto pro seletor de arquivos nativo, já que a câmera só pode produzir JPEG.
+  permitirCamera?: boolean;
 }
 
 // Botão padrão de captura/seleção de foto em todo o sistema (pedido do usuário, 31/08 e 04/09): ao
@@ -47,6 +50,7 @@ export function SeletorFotoCamera({
   aparencia = 'subtle',
   apenasIcone = false,
   modoCamera = 'environment',
+  permitirCamera = true,
 }: SeletorFotoCameraProps) {
   const inputRef = useRef<HTMLInputElement>(null);
   const videoRef = useRef<HTMLVideoElement>(null);
@@ -78,8 +82,9 @@ export function SeletorFotoCamera({
 
     const tamanhoMb = arquivoFinal.size / (1024 * 1024);
     if (tamanhoMb > tamanhoMaximoMb) {
+      const sugestao = arquivoFinal.type.startsWith('image/') ? ' Tente uma foto com qualidade menor.' : '';
       aoErroValidacao?.(
-        `O arquivo tem ${tamanhoMb.toFixed(1)} MB — o máximo permitido é ${tamanhoMaximoMb} MB. Tente uma foto com qualidade menor.`,
+        `O arquivo tem ${tamanhoMb.toFixed(1)} MB — o máximo permitido é ${tamanhoMaximoMb} MB.${sugestao}`,
       );
       return;
     }
@@ -134,7 +139,7 @@ export function SeletorFotoCamera({
         ref={inputRef}
         type="file"
         accept={tiposAceitos}
-        capture={modoCamera}
+        capture={permitirCamera ? modoCamera : undefined}
         style={{ display: 'none' }}
         onChange={(e) => {
           const arquivo = e.target.files?.[0];
@@ -146,7 +151,7 @@ export function SeletorFotoCamera({
         appearance={aparencia}
         size={tamanho}
         icon={processando ? <Spinner size="tiny" /> : <Camera24Regular />}
-        onClick={abrirCamera}
+        onClick={permitirCamera ? abrirCamera : () => inputRef.current?.click()}
         disabled={desabilitado || processando}
         aria-label={rotulo}
         title={rotulo}

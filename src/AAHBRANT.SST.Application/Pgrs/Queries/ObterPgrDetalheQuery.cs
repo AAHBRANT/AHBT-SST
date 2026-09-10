@@ -17,7 +17,21 @@ public class ObterPgrDetalheQueryHandler : IRequestHandler<ObterPgrDetalheQuery,
 
     public async Task<PgrDetalheDto?> Handle(ObterPgrDetalheQuery request, CancellationToken ct)
     {
-        var pgr = await _db.Pgrs.FirstOrDefaultAsync(p => p.Id == request.Id, ct);
+        var pgr = await _db.Pgrs
+            .Where(p => p.Id == request.Id)
+            .Select(p => new PgrDto
+            {
+                Id = p.Id,
+                ObraId = p.ObraId,
+                Nome = p.Nome,
+                Descricao = p.Descricao,
+                DataElaboracao = p.DataElaboracao,
+                DataProximaRevisao = p.DataProximaRevisao,
+                DataTermino = p.DataTermino,
+                ResponsavelUsuarioId = p.ResponsavelUsuarioId,
+                Status = p.Status
+            })
+            .FirstOrDefaultAsync(ct);
         if (pgr is null) return null;
 
         var atividades = await _db.Atividades
@@ -38,18 +52,7 @@ public class ObterPgrDetalheQueryHandler : IRequestHandler<ObterPgrDetalheQuery,
 
         return new PgrDetalheDto
         {
-            Pgr = new PgrDto
-            {
-                Id = pgr.Id,
-                ObraId = pgr.ObraId,
-                Nome = pgr.Nome,
-                Descricao = pgr.Descricao,
-                DataElaboracao = pgr.DataElaboracao,
-                DataProximaRevisao = pgr.DataProximaRevisao,
-                DataTermino = pgr.DataTermino,
-                ResponsavelUsuarioId = pgr.ResponsavelUsuarioId,
-                Status = pgr.Status
-            },
+            Pgr = pgr,
             Atividades = atividades.Select(a => new AtividadeCaracterizadaDto
             {
                 AtividadeId = a.Id,
