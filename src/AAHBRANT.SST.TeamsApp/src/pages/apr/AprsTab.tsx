@@ -213,7 +213,7 @@ export function AprsTab() {
                   aria-label="Responsáveis"
                   opcoes={trabalhadores.map((t) => ({ id: t.id, rotulo: t.nome }))}
                   selecionados={novaApr.responsaveisIds}
-                  aoMudar={(atualizar) => setNovaApr((atual) => ({ ...atual, responsaveisIds: atualizar(atual.responsaveisIds) }))}
+                  aoMudar={(ids) => setNovaApr({ ...novaApr, responsaveisIds: ids })}
                 />
               </Field>
             </Campo>

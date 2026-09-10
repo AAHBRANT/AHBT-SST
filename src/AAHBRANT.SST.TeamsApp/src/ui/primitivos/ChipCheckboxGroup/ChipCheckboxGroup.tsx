@@ -1,3 +1,4 @@
+import { useRef } from 'react';
 import { Checkbox, makeStyles, shorthands } from '@fluentui/react-components';
 import { designTokens, tokensUi } from '../../tokens/tokens';
 
@@ -15,25 +16,30 @@ const useStyles = makeStyles({
 export interface ChipCheckboxGroupProps {
   opcoes: { id: string; rotulo: string }[];
   selecionados: string[];
-  /** Recebe uma função de atualização (padrão `setState(prev => ...)`), não a lista já calculada. */
-  aoMudar: (atualizar: (atuais: string[]) => string[]) => void;
+  aoMudar: (ids: string[]) => void;
   'aria-label'?: string;
 }
 
 // Seleção múltipla em chips clicáveis inteiros (pedido do usuário 02/09; spec §3). Formaliza
 // useCheckboxChipStyles, usado em matrizes, PT e DDS.
 //
-// `aoMudar` recebe uma função de atualização, não a lista pronta — dois cliques em sequência rápida
-// disparam dois `onChange` antes deste componente re-renderizar com a prop `selecionados`
-// atualizada; se a lista fosse calculada aqui (a partir da prop, que nesse instante ainda está
-// desatualizada), o segundo clique sobrescrevia o resultado do primeiro (achado do usuário, 10/09:
-// "clico em mais de um e o primeiro desseleciona", reproduzido em Responsáveis da APR e
-// Participantes da Turma de treinamento). Repassando a atualização pro `set` funcional do
-// componente-pai, o React garante que cada clique enfileirado usa o estado realmente mais recente.
+// Mantém uma cópia dos selecionados num ref, atualizada de forma otimista a cada clique, em vez de
+// calcular a próxima lista direto da prop `selecionados`: dois cliques em sequência rápida disparam
+// dois `onChange` antes deste componente re-renderizar com a prop atualizada, e calcular a partir
+// dela (que nesse instante ainda está desatualizada) fazia o segundo clique sobrescrever o resultado
+// do primeiro (achado do usuário, 10/09: "clico em mais de um e o primeiro desseleciona",
+// reproduzido em Responsáveis da APR e Participantes da Turma de treinamento). O ref garante que o
+// segundo clique enxergue o resultado do primeiro mesmo sem essa re-renderização — sem exigir que
+// nenhum dos consumidores (Responsáveis, matriz de EPI, Atividades do DDS, Equipe da PT etc.) troque
+// o `setState` que já usa por uma forma funcional.
 export function ChipCheckboxGroup({ opcoes, selecionados, aoMudar, 'aria-label': ariaLabel }: ChipCheckboxGroupProps) {
   const e = useStyles();
+  const selecionadosRef = useRef(selecionados);
+  selecionadosRef.current = selecionados;
   function alternar(id: string, marcado: boolean) {
-    aoMudar((atuais) => (marcado ? [...atuais, id] : atuais.filter((s) => s !== id)));
+    const proximos = marcado ? [...selecionadosRef.current, id] : selecionadosRef.current.filter((s) => s !== id);
+    selecionadosRef.current = proximos;
+    aoMudar(proximos);
   }
   return (
     <div role="group" aria-label={ariaLabel} className={e.grupo}>
