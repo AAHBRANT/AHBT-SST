@@ -1,7 +1,7 @@
 namespace AAHBRANT.SST.Infrastructure.Integracao.Grh;
 
 // Credenciais/endpoint da carga inicial do G-RH (Integração G-RH, contrato acordado em 2026-09-09).
-// Mesmo padrão "vazio até o recurso existir" de GraphOptions/TelegramOptions — ver
+// Mesmo padrão "vazio até o recurso existir" de GraphOptions — ver
 // appsettings.json/appsettings.Development.json, seção "Grh". ClientId/ClientSecret são do próprio
 // App Registration do SST (o mesmo de AzureAd/Graph); TenantId também é o tenant compartilhado — mas
 // ficam duplicados aqui em vez de reaproveitar AzureAdOptions/GraphOptions porque o Scope (recurso do

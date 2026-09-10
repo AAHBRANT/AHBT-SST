@@ -102,11 +102,6 @@ public class TrabalhadoresController : ControllerBase
         return foto is null ? NotFound() : File(foto.Conteudo, foto.ContentType, foto.NomeArquivo);
     }
 
-    [Authorize(Policy = "trabalhador:telegram")]
-    [HttpPost("{id:guid}/telegram/vinculo")]
-    public async Task<IActionResult> GerarVinculoTelegram(Guid id, CancellationToken ct)
-        => Ok(await _mediator.Send(new GerarVinculoTelegramCommand(id), ct));
-
     [Authorize(Policy = "trabalhador:assinatura")]
     [HttpPost("{id:guid}/assinatura/termo-aceite")]
     public async Task<IActionResult> RegistrarTermoAceiteAssinatura(Guid id, CancellationToken ct)

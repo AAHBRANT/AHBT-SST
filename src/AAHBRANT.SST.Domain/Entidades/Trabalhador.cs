@@ -69,13 +69,6 @@ public class Trabalhador : AuditableEntity
     public byte[]? FotoConteudo { get; set; }
     public string? FotoContentType { get; set; }
 
-    // Integração com Telegram (DDS Fase 3): ChatId só é preenchido depois que o trabalhador
-    // manda /start <codigo> para o bot — bots não podem iniciar a conversa. CodigoVinculo é o
-    // código temporário exibido no perfil para o trabalhador usar nesse /start.
-    public long? TelegramChatId { get; set; }
-    public string? TelegramCodigoVinculo { get; set; }
-    public DateTime? TelegramVinculadoEm { get; set; }
-
     // Validade jurídica e LGPD (docs/Motor-Assinatura-Eletronica.md §4) — dois consentimentos
     // distintos e obrigatórios antes do trabalhador poder assinar por este motor:
     // TermoAceiteAssinaturaEletronicaEm = aceite geral do método eletrônico (MP 2.200-2/2001,

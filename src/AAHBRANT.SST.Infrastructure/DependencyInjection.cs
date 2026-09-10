@@ -13,7 +13,6 @@ using AAHBRANT.SST.Application.Treinamentos;
 using AAHBRANT.SST.Infrastructure.Assinatura;
 using AAHBRANT.SST.Infrastructure.Auditoria;
 using AAHBRANT.SST.Infrastructure.Documentos;
-using AAHBRANT.SST.Infrastructure.Integracao;
 using AAHBRANT.SST.Infrastructure.Integracao.Bot;
 using AAHBRANT.SST.Infrastructure.Integracao.Grh;
 using AAHBRANT.SST.Infrastructure.Integracao.Teams;
@@ -32,8 +31,7 @@ public static class DependencyInjection
 {
     public static IServiceCollection AddInfrastructure(
         this IServiceCollection services,
-        IConfiguration configuration,
-        bool habilitarPollingTelegram = true)
+        IConfiguration configuration)
     {
         var connectionString = configuration.GetConnectionString("SstDatabase")
             ?? throw new InvalidOperationException("Connection string 'SstDatabase' não configurada.");
@@ -67,22 +65,7 @@ public static class DependencyInjection
             throw new InvalidOperationException("Configuração 'Lgpd:ChaveCriptografiaBiometriaBase64' não configurada.");
         TemplateBiometricoCriptografiaContexto.Configurar(Convert.FromBase64String(chaveCriptografiaBiometria));
 
-        // Integração Telegram (DDS Fase 3) — token/username ficam vazios até o usuário criar o
-        // bot via @BotFather e preencher appsettings; ver disclosures em TelegramBotService/
-        // TelegramUpdatesPollingService sobre o comportamento com a configuração vazia. Enviar
-        // mensagem (ITelegramService) é seguro em qualquer processo; só o LONG POLLING de updates
-        // (AddPollingDeAtualizacoesTelegram, abaixo) não pode rodar em mais de um processo ao mesmo
-        // tempo — por isso ficou separado, para o Worker de alertas poder usar AddInfrastructure
-        // sem também herdar o polling que já roda na Api.
-        services.Configure<TelegramOptions>(configuration.GetSection("Telegram"));
         services.AddHttpClient();
-        services.AddScoped<ITelegramService, TelegramBotService>();
-
-        // O Telegram getUpdates (long polling) só permite um consumidor simultâneo por bot token.
-        // A Api já roda esse polling; o Worker (AlertaEngineWorker) chama AddInfrastructure com
-        // habilitarPollingTelegram: false para não abrir um segundo consumidor e causar 409 Conflict.
-        if (habilitarPollingTelegram)
-            services.AddHostedService<TelegramUpdatesPollingService>();
 
         services.AddScoped<IDdsPdfService, DdsPdfService>();
         services.AddScoped<IDdsSemanalPdfService, DdsSemanalPdfService>();
@@ -171,15 +154,6 @@ public static class DependencyInjection
             services.AddSingleton<IPublicadorAcidenteGrh, NoOpPublicadorAcidenteGrh>();
         }
 
-        return services;
-    }
-
-    // Long polling do Telegram (getUpdates) — só pode rodar em UM processo por vez (rodar em dois
-    // ao mesmo tempo causa 409/updates perdidos na API do Telegram). Chamado só pela Api; o Worker
-    // de alertas automáticos (AAHBRANT.SST.Worker) usa AddInfrastructure sem isto.
-    public static IServiceCollection AddPollingDeAtualizacoesTelegram(this IServiceCollection services)
-    {
-        services.AddHostedService<TelegramUpdatesPollingService>();
         return services;
     }
 }

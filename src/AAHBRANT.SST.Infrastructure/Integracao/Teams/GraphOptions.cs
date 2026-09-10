@@ -1,7 +1,7 @@
 namespace AAHBRANT.SST.Infrastructure.Integracao.Teams;
 
 // Credenciais do App Registration no Entra ID com a permissão de aplicativo TeamsActivity.Send
-// (Microsoft Graph) — mesmo padrão de "vazio até o recurso existir" já usado em TelegramOptions.
+// (Microsoft Graph) — mesmo padrão de "vazio até o recurso existir" usado em outras integrações.
 // Ver appsettings.json / appsettings.Development.json, seção "Graph".
 public class GraphOptions
 {

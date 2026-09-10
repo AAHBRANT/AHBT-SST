@@ -106,11 +106,6 @@ public class DdsController : ControllerBase
         var pdf = await _mediator.Send(new ExportarDdsPdfQuery(id), ct);
         return pdf is null ? NotFound() : File(pdf, "application/pdf", $"dds-{id}.pdf");
     }
-
-    [Authorize(Policy = "dds:exportar")]
-    [HttpPost("{id:guid}/telegram/enviar")]
-    public async Task<IActionResult> EnviarTelegram(Guid id, CancellationToken ct)
-        => Ok(await _mediator.Send(new EnviarDdsTelegramCommand(id), ct));
 }
 
 public record MarcarItemChecklistRequestBody(bool Verificado);

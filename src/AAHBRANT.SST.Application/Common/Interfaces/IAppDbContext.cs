@@ -92,7 +92,6 @@ public interface IAppDbContext
     DbSet<DdsAtividade> DdsAtividades { get; }
     DbSet<DdsItemChecklist> DdsItensChecklist { get; }
     DbSet<DdsParticipante> DdsParticipantes { get; }
-    DbSet<DdsTelegramEnvio> DdsTelegramEnvios { get; }
     DbSet<DdsSemanal> DdsSemanais { get; }
     DbSet<CatalogoTemaDds> CatalogosTemaDds { get; }
     DbSet<DdsFotoEvidencia> DdsFotosEvidencia { get; }
