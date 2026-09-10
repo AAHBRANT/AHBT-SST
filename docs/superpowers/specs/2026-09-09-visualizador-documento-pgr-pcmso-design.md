@@ -135,13 +135,13 @@ Componente novo e compartilhado (usado pelas duas telas), ex.
 
 `PgrDetalhePage.tsx`:
 - Novo valor de aba `'documento'` adicionado ao tipo `AbaPgr`.
-- Nova `<Tab value="documento">Documento</Tab>` inserida **antes** de
-  `<Tab value="inventario">`.
+- Nova `<Tab value="documento">PGR</Tab>` inserida **antes** de
+  `<Tab value="inventario">` (rótulo "PGR", não "Documento" — decisão do usuário).
 - `useState<AbaPgr>('documento')` como valor inicial (era `'inventario'`).
 
 `PcmsoDetalhePage.tsx`:
 - Introduzir `TabList`/`Tab` (que hoje não existem nesta tela), com duas abas:
-  `'documento'` (padrão) e `'dados'`.
+  `'documento'` (rótulo "PCMSO", padrão) e `'dados'` (rótulo "Dados").
 - Todo o JSX atual do formulário + plano de ação passa a renderizar apenas quando
   `aba === 'dados'`; nenhuma mudança de comportamento dentro dele.
 
