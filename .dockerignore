@@ -11,3 +11,22 @@
 .vs/
 .vs/**
 *.log
+
+# Material de trabalho na raiz (PDFs de PGR/PCMSO, extrações, saídas temporárias): não entra em
+# nenhuma imagem e deixava o upload do contexto para o `az acr build` inviável de lento.
+# CREDENCIAIS.txt é coberto por *.txt de propósito — nunca deve chegar a uma imagem publicada.
+output/
+output/**
+tmp/
+tmp/**
+ALOJAMENTO/
+ALOJAMENTO/**
+docs/
+docs/**
+*.pdf
+*.png
+*.webp
+*.txt
+*.md
+*.html
+*.sln
