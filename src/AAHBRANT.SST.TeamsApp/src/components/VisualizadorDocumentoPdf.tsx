@@ -80,6 +80,7 @@ export function VisualizadorDocumentoPdf({ id, obterDocumento, enviarDocumento }
               rotulo="Anexar documento"
               tiposAceitos="application/pdf"
               tamanhoMaximoMb={20}
+              permitirCamera={false}
               aoSelecionarArquivo={enviar}
               aoErroValidacao={setErro}
             />
@@ -92,6 +93,7 @@ export function VisualizadorDocumentoPdf({ id, obterDocumento, enviarDocumento }
               rotulo="Substituir documento"
               tiposAceitos="application/pdf"
               tamanhoMaximoMb={20}
+              permitirCamera={false}
               aoSelecionarArquivo={enviar}
               aoErroValidacao={setErro}
             />
