@@ -157,22 +157,36 @@ public class SstDbContext : DbContext, IAppDbContext
             }
         }
 
-        // Camada 3 do RBAC (docs/RBAC-Matrix.md §4, "Global Query Filter... mitiga BOLA"): as 9
+        // Camada 3 do RBAC (docs/RBAC-Matrix.md §4, "Global Query Filter... mitiga BOLA"): as
         // entidades abaixo têm ObraId direto na própria tabela — são o alvo do filtro. Cada uma
         // SUBSTITUI (não acumula com) o HasQueryFilter(x => x.Ativo) já registrado por sua própria
-        // Configuracao logo acima (EF Core só guarda um filtro por entidade) — por isso a condição
-        // Ativo é repetida aqui explicitamente, senão o soft-delete deixaria de funcionar para
-        // estas 8 entidades. Sem efeito hoje (TemAcessoGlobal fica true enquanto a autenticação
+        // Configuracao logo acima (EF Core só guarda um filtro por entidade). Por isso a condição
+        // Ativo é repetida aqui explicitamente, senão o soft-delete deixaria de funcionar. Obra
+        // entra no mesmo filtro para que api.obras.listar() exponha apenas as obras do perfil em
+        // uso; esse retorno é a base para a UI travar automaticamente quando só houver uma obra.
+        // Sem efeito hoje (TemAcessoGlobal fica true enquanto a autenticação
         // Entra ID não estiver configurada — ver EscopoPorObraMiddleware): a consulta gerada é
         // idêntica à de antes até a autenticação real entrar em vigor.
+        modelBuilder.Entity<Obra>().HasQueryFilter(o =>
+            o.Ativo && (_usuarioAtual.TemAcessoGlobal || _usuarioAtual.ObrasPermitidas.Contains(o.Id)));
+        modelBuilder.Entity<Alerta>().HasQueryFilter(a =>
+            a.Ativo && (_usuarioAtual.TemAcessoGlobal || (a.ObraId.HasValue && _usuarioAtual.ObrasPermitidas.Contains(a.ObraId.Value))));
+        modelBuilder.Entity<AtivoSst>().HasQueryFilter(a =>
+            a.Ativo && (_usuarioAtual.TemAcessoGlobal || _usuarioAtual.ObrasPermitidas.Contains(a.ObraId)));
         modelBuilder.Entity<Dds>().HasQueryFilter(d =>
+            d.Ativo && (_usuarioAtual.TemAcessoGlobal || _usuarioAtual.ObrasPermitidas.Contains(d.ObraId)));
+        modelBuilder.Entity<DdsSemanal>().HasQueryFilter(d =>
             d.Ativo && (_usuarioAtual.TemAcessoGlobal || _usuarioAtual.ObrasPermitidas.Contains(d.ObraId)));
         modelBuilder.Entity<Inspecao>().HasQueryFilter(i =>
             i.Ativo && (_usuarioAtual.TemAcessoGlobal || _usuarioAtual.ObrasPermitidas.Contains(i.ObraId)));
         modelBuilder.Entity<Acidente>().HasQueryFilter(a =>
             a.Ativo && (_usuarioAtual.TemAcessoGlobal || _usuarioAtual.ObrasPermitidas.Contains(a.ObraId)));
+        modelBuilder.Entity<RegistroHhtMensal>().HasQueryFilter(r =>
+            r.Ativo && (_usuarioAtual.TemAcessoGlobal || _usuarioAtual.ObrasPermitidas.Contains(r.ObraId)));
         modelBuilder.Entity<Pgr>().HasQueryFilter(p =>
             p.Ativo && (_usuarioAtual.TemAcessoGlobal || _usuarioAtual.ObrasPermitidas.Contains(p.ObraId)));
+        modelBuilder.Entity<PcmsoDetalhe>().HasQueryFilter(p =>
+            p.Ativo && (_usuarioAtual.TemAcessoGlobal || (p.ObraId.HasValue && _usuarioAtual.ObrasPermitidas.Contains(p.ObraId.Value))));
         modelBuilder.Entity<Atividade>().HasQueryFilter(a =>
             a.Ativo && (_usuarioAtual.TemAcessoGlobal || _usuarioAtual.ObrasPermitidas.Contains(a.ObraId)));
         modelBuilder.Entity<Setor>().HasQueryFilter(s =>
@@ -181,11 +195,27 @@ public class SstDbContext : DbContext, IAppDbContext
             t.Ativo && (_usuarioAtual.TemAcessoGlobal || _usuarioAtual.ObrasPermitidas.Contains(t.ObraId)));
         modelBuilder.Entity<AreaSst>().HasQueryFilter(a =>
             a.Ativo && (_usuarioAtual.TemAcessoGlobal || _usuarioAtual.ObrasPermitidas.Contains(a.ObraId)));
+        modelBuilder.Entity<EstoqueEpi>().HasQueryFilter(e =>
+            e.Ativo && (_usuarioAtual.TemAcessoGlobal || _usuarioAtual.ObrasPermitidas.Contains(e.ObraId)));
+        modelBuilder.Entity<RespostaQuestionarioAplicabilidade>().HasQueryFilter(r =>
+            r.Ativo && (_usuarioAtual.TemAcessoGlobal || _usuarioAtual.ObrasPermitidas.Contains(r.ObraId)));
+        modelBuilder.Entity<DimensionamentoCipa>().HasQueryFilter(d =>
+            d.Ativo && (_usuarioAtual.TemAcessoGlobal || _usuarioAtual.ObrasPermitidas.Contains(d.ObraId)));
+        modelBuilder.Entity<ProcessoEleitoralCipa>().HasQueryFilter(p =>
+            p.Ativo && (_usuarioAtual.TemAcessoGlobal || _usuarioAtual.ObrasPermitidas.Contains(p.ObraId)));
+        modelBuilder.Entity<MembroCipa>().HasQueryFilter(m =>
+            m.Ativo && (_usuarioAtual.TemAcessoGlobal || _usuarioAtual.ObrasPermitidas.Contains(m.ObraId)));
+        modelBuilder.Entity<ReuniaoCipa>().HasQueryFilter(r =>
+            r.Ativo && (_usuarioAtual.TemAcessoGlobal || _usuarioAtual.ObrasPermitidas.Contains(r.ObraId)));
+        modelBuilder.Entity<InspecaoCipa>().HasQueryFilter(i =>
+            i.Ativo && (_usuarioAtual.TemAcessoGlobal || _usuarioAtual.ObrasPermitidas.Contains(i.ObraId)));
+        modelBuilder.Entity<EventoSipat>().HasQueryFilter(e =>
+            e.Ativo && (_usuarioAtual.TemAcessoGlobal || _usuarioAtual.ObrasPermitidas.Contains(e.ObraId)));
 
-        // PcmsoDetalhe/ExameComplementar/AptidaoAtividadeEspecifica (Saúde Ocupacional, PR-SST-003)
-        // ainda NÃO têm filtro de escopo por obra (Camada 3) — PcmsoDetalhe não tem ObraId direto
-        // (herda de DocumentoGestao via DocumentoGestaoId) e os outros dois são por Trabalhador, não
-        // por Obra. Pendência a avaliar antes de confiar no RBAC Camada 2/3 para esses três.
+        // ExameComplementar/AptidaoAtividadeEspecifica/EntregaEpi e filhos de entidades escopadas
+        // dependem de navegação por Trabalhador/Estoque/Membro/Reunião. Mantêm a proteção nos
+        // handlers e nas entidades-raiz já filtradas acima; se virarem listagens amplas, precisam de
+        // filtro explícito por navegação para fechar a mesma regra de obra.
 
         base.OnModelCreating(modelBuilder);
     }
