@@ -5,9 +5,9 @@ using Microsoft.EntityFrameworkCore;
 
 namespace AAHBRANT.SST.Application.Trabalhadores.Queries;
 
-// Foto do "crachá digital" público — mesmo cuidado de ResolverTrabalhadorPublicoQuery: só resolve
+// Foto do "crachá digital" — mesmo cuidado de ResolverTrabalhadorPublicoQuery: só resolve
 // pelo Uid opaco da tag, nunca pelo Id (Guid) do trabalhador direto, pra manter uma única porta de
-// entrada auditável/controlável para essa rota sem login (a tag precisa estar vinculada e existir).
+// entrada auditável/controlável (a tag precisa estar vinculada e existir; a API exige login).
 public record ObterFotoTrabalhadorPublicoQuery(string Uid) : IRequest<FotoTrabalhadorResultado?>;
 
 public class ObterFotoTrabalhadorPublicoQueryHandler : IRequestHandler<ObterFotoTrabalhadorPublicoQuery, FotoTrabalhadorResultado?>

@@ -46,6 +46,21 @@ public class TagsIdentificacaoController : ControllerBase
         return CreatedAtAction(nameof(ObterPorId), new { id }, new { id });
     }
 
+    [Authorize(Policy = "identificacao:criar")]
+    [HttpPost("trabalhadores/qr-codes")]
+    public async Task<IActionResult> GerarQrCodesTrabalhadores(GerarQrCodesTrabalhadoresRequest request, CancellationToken ct)
+        => Ok(await _mediator.Send(new GerarQrCodesTrabalhadoresCommand(request.ObraId), ct));
+
+    [Authorize(Policy = "identificacao:ver")]
+    [HttpGet("trabalhadores/qr-codes/{uid}/png")]
+    public IActionResult ObterQrCodeTrabalhador(
+        string uid,
+        [FromServices] AAHBRANT.SST.Application.TagsIdentificacao.IQrCodePerfilPublicoService qrCodePerfil)
+    {
+        var qrCode = qrCodePerfil.Gerar(uid);
+        return File(qrCode.Png, "image/png", $"qr-funcionario-{uid}.png");
+    }
+
     [Authorize(Policy = "identificacao:editar")]
     [HttpPost("{id:guid}/vincular")]
     public async Task<IActionResult> Vincular(Guid id, VincularTagRequest request, CancellationToken ct)
@@ -91,3 +106,4 @@ public class TagsIdentificacaoController : ControllerBase
 public record VincularTagRequest(TipoEntidadeVinculada EntidadeVinculadaTipo, Guid EntidadeVinculadaId);
 public record VincularTagPorUidRequest(string Uid, TipoEntidadeVinculada EntidadeVinculadaTipo, Guid EntidadeVinculadaId);
 public record AtualizarStatusTagRequest(StatusTag Status);
+public record GerarQrCodesTrabalhadoresRequest(Guid? ObraId = null);

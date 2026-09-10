@@ -5,11 +5,11 @@ using Microsoft.EntityFrameworkCore;
 
 namespace AAHBRANT.SST.Application.Trabalhadores.Queries;
 
-// NTAG.md §1/§3.B.4 — resolução pública do "crachá digital" de um trabalhador. Diferente de
+// NTAG.md §1/§3.B.4 — resolução do "crachá digital" de um trabalhador. Diferente de
 // ResolverAreaPublicaQuery (que também aceita o Código de negócio da área na URL), aqui só
 // resolvemos pelo Uid opaco da tag: a matrícula do trabalhador costuma ser sequencial/previsível, e
-// virar identificador público permitiria "varrer" a URL e vazar o crachá de todo mundo. Por isso um
-// trabalhador só fica acessível por esta rota depois de ter uma tag vinculada (TagsIdentificacaoTab).
+// virar identificador permitiria "varrer" a URL. A rota da API também exige login: a tag só aponta
+// para o perfil, quem decide se pode ver é a sessão/permissão/obra do usuário.
 public record ResolverTrabalhadorPublicoQuery(string Uid) : IRequest<TrabalhadorPublicoDto?>;
 
 public class ResolverTrabalhadorPublicoQueryHandler : IRequestHandler<ResolverTrabalhadorPublicoQuery, TrabalhadorPublicoDto?>
@@ -112,6 +112,7 @@ public class ResolverTrabalhadorPublicoQueryHandler : IRequestHandler<ResolverTr
 
         return new TrabalhadorPublicoDto
         {
+            TrabalhadorId = trabalhadorId,
             Nome = trabalhador.Nome,
             Matricula = trabalhador.Matricula ?? string.Empty,
             FuncaoNome = funcaoNome ?? string.Empty,

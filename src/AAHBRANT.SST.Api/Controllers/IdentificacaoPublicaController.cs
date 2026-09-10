@@ -6,11 +6,10 @@ using Microsoft.AspNetCore.Mvc;
 
 namespace AAHBRANT.SST.Api.Controllers;
 
-// NTAG.md §3.B.4 — "View Contextual Pública": rota que precisa continuar acessível sem login ao
-// escanear NFC/QR em campo. [AllowAnonymous] garante isso mesmo depois que a autenticação Entra ID
-// for habilitada em Program.cs (hoje ainda desligada em ambiente de desenvolvimento).
+// Rota aberta por NFC/QR em campo, mas não anônima: o UID da tag é só um ponteiro físico, e a
+// autorização real continua sendo o login + filtros por obra/perfil aplicados pelo backend.
 [ApiController]
-[AllowAnonymous]
+[Authorize]
 [Route("sst/p")]
 public class IdentificacaoPublicaController : ControllerBase
 {

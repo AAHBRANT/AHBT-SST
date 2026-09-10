@@ -1021,11 +1021,12 @@ export interface DdsPublico {
   tema?: string | null;
 }
 
-// Crachá digital público de um trabalhador (NTAG215/QR do capacete) — mesma rota de AreaPublicaDto,
+// Crachá digital de um trabalhador (NTAG215/QR do capacete) — mesma rota de AreaPublicaDto,
 // distinguido pelo campo tipoRecurso. Ver ResolverTrabalhadorPublicoQuery.cs: nunca inclui CPF/RG/
 // admissão/ocorrências — só o suficiente pra um fiscal em campo checar aptidão/EPI/treinamento.
 export interface TrabalhadorPublicoDto {
   tipoRecurso: 'trabalhador';
+  trabalhadorId: string;
   nome: string;
   matricula: string;
   funcaoNome: string;
@@ -1038,6 +1039,18 @@ export interface TrabalhadorPublicoDto {
 }
 
 export type RecursoPublico = AreaPublicaDto | TrabalhadorPublicoDto;
+
+export interface QrCodeTrabalhador {
+  trabalhadorId: string;
+  trabalhadorNome: string;
+  matricula: string;
+  obraId: string;
+  obraNome: string;
+  tagId: string;
+  uid: string;
+  urlPerfil: string;
+  jaExistia: boolean;
+}
 
 export const StatusApr = {
   EmElaboracao: 1,
@@ -3706,6 +3719,22 @@ export const api = {
     },
     criar: (tag: NovaTagIdentificacao) =>
       request<{ id: string }>('/api/tagsidentificacao', { method: 'POST', body: JSON.stringify(tag) }),
+    gerarQrCodesTrabalhadores: (obraId?: string) =>
+      request<QrCodeTrabalhador[]>('/api/tagsidentificacao/trabalhadores/qr-codes', {
+        method: 'POST',
+        body: JSON.stringify({ obraId: obraId || null }),
+      }),
+    baixarQrCodeTrabalhador: async (uid: string) => {
+      const response = await fetch(
+        `${API_BASE_URL}/api/tagsidentificacao/trabalhadores/qr-codes/${encodeURIComponent(uid)}/png`,
+        { headers: await montarHeadersAuth() },
+      );
+      if (!response.ok) {
+        const corpo = await response.text().catch(() => '');
+        throw new Error(extrairMensagemErro(corpo, response.status, response.statusText));
+      }
+      return response.blob();
+    },
     vincular: (id: string, entidadeVinculadaTipo: number, entidadeVinculadaId: string) =>
       request<void>(`/api/tagsidentificacao/${id}/vincular`, {
         method: 'POST',
@@ -3724,9 +3753,10 @@ export const api = {
   },
   identificacaoPublica: {
     resolver: (codigoOuUid: string) => request<RecursoPublico>(`/sst/p/${encodeURIComponent(codigoOuUid)}`),
-    // Sem auth de propósito — rota [AllowAnonymous], só acessível pra quem já tem o Uid da tag.
     baixarFotoTrabalhador: async (uid: string) => {
-      const response = await fetch(`${API_BASE_URL}/sst/p/${encodeURIComponent(uid)}/foto`);
+      const response = await fetch(`${API_BASE_URL}/sst/p/${encodeURIComponent(uid)}/foto`, {
+        headers: await montarHeadersAuth(),
+      });
       if (!response.ok) {
         const corpo = await response.text().catch(() => '');
         throw new Error(extrairMensagemErro(corpo, response.status, response.statusText));

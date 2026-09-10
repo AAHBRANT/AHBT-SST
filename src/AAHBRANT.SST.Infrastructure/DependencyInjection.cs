@@ -7,6 +7,7 @@ using AAHBRANT.SST.Application.EntregasEpi;
 using AAHBRANT.SST.Application.Inspecoes;
 using AAHBRANT.SST.Application.PermissoesTrabalho;
 using AAHBRANT.SST.Application.SessoesTreinamento;
+using AAHBRANT.SST.Application.TagsIdentificacao;
 using AAHBRANT.SST.Application.Trabalhadores;
 using AAHBRANT.SST.Application.Treinamentos;
 using AAHBRANT.SST.Infrastructure.Assinatura;
@@ -112,6 +113,7 @@ public static class DependencyInjection
         services.AddScoped<IDocumentoAssinaturaPdfService, DocumentoAssinaturaPdfService>();
         services.Configure<AssinaturaOptions>(configuration.GetSection("Assinatura"));
         services.AddScoped<IQrCodeDocumentoService, QrCodeDocumentoService>();
+        services.AddScoped<IQrCodePerfilPublicoService, QrCodePerfilPublicoService>();
         services.AddScoped<IRegistradorAssinaturaService, RegistradorAssinaturaService>();
         services.AddScoped<IRegistradorRastreabilidadeService, RegistradorRastreabilidadeService>();
 
