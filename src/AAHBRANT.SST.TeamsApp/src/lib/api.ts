@@ -62,8 +62,6 @@ export interface Trabalhador {
   vinculo: number;
   dataAdmissao: string;
   dataDemissao?: string | null;
-  telegramVinculado: boolean;
-  telegramCodigoVinculo?: string | null;
   turno?: string | null;
   temFoto: boolean;
   temBiometria: boolean;
@@ -71,13 +69,8 @@ export interface Trabalhador {
 
 export type NovoTrabalhador = Omit<
   Trabalhador,
-  'id' | 'dataDemissao' | 'telegramVinculado' | 'telegramCodigoVinculo' | 'temFoto' | 'temBiometria'
+  'id' | 'dataDemissao' | 'temFoto' | 'temBiometria'
 >;
-
-export interface GerarVinculoTelegramResultado {
-  codigo: string;
-  linkTelegram: string;
-}
 
 export interface ImportarColaboradoresGrhResultado {
   totalRecebidos: number;
@@ -1871,8 +1864,6 @@ export interface DdsParticipante {
   trabalhadorNome: string;
   fotoTipo: number;
   scoreConfianca?: number | null;
-  telegramEnviadoEm?: string | null;
-  telegramConfirmadoEm?: string | null;
   // Assinatura do DDS (04/09) — a mesma digital da presença já vale como assinatura eletrônica,
   // sem precisar ler de novo na tela "Assinar DDS".
   assinadoEm?: string | null;
@@ -1888,12 +1879,6 @@ export interface DdsDetalhe {
   itensChecklist: DdsItemChecklist[];
   participantes: DdsParticipante[];
   fotosEvidencia: DdsFotoEvidencia[];
-}
-
-export interface EnviarDdsTelegramResultado {
-  totalParticipantes: number;
-  enviados: number;
-  semVinculo: number;
 }
 
 // DDS Semanal (31/08) — contêiner que agrupa os 5 registros diários (Seg-Sex) de uma semana, seguindo
@@ -3207,8 +3192,6 @@ export const api = {
       }
       return response.blob();
     },
-    gerarVinculoTelegram: (id: string) =>
-      request<GerarVinculoTelegramResultado>(`/api/trabalhadores/${id}/telegram/vinculo`, { method: 'POST' }),
     registrarTermoAceiteAssinatura: (id: string) =>
       request<void>(`/api/trabalhadores/${id}/assinatura/termo-aceite`, { method: 'POST' }),
     registrarConsentimentoBiometria: (id: string) =>
@@ -4097,8 +4080,6 @@ export const api = {
       const authHeaders = await montarHeadersAuth();
       return syncFetchBlob(`/api/dds/participantes/${participanteId}/foto`, authHeaders);
     },
-    enviarTelegram: (id: string) =>
-      request<EnviarDdsTelegramResultado>(`/api/dds/${id}/telegram/enviar`, { method: 'POST' }),
     // Evidências fotográficas do registro diário (3 obrigatórias para encerrar, ver EncerrarDdsCommand).
     // Slot fixo por ordem (04/09) — reanexar no mesmo quadro substitui a foto existente.
     anexarFotoEvidencia: async (ddsId: string, ordem: number, foto: File) => {
