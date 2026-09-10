@@ -10,7 +10,7 @@ interface VisualizadorDocumentoPdfProps {
   enviarDocumento: (arquivo: File) => Promise<void>;
 }
 
-// Mostra o PDF já cadastrado direto na tela (iframe + Blob URL), com rolagem nativa do navegador
+// Mostra o PDF já cadastrado direto na tela (object + Blob URL), com rolagem nativa do navegador
 // por todas as páginas — pedido do usuário (09/09): nada de botão "abrir em outro lugar", o
 // documento tem que aparecer inteiro assim que a aba é aberta.
 export function VisualizadorDocumentoPdf({ id, obterDocumento, enviarDocumento }: VisualizadorDocumentoPdfProps) {
@@ -98,7 +98,14 @@ export function VisualizadorDocumentoPdf({ id, obterDocumento, enviarDocumento }
               aoErroValidacao={setErro}
             />
           </div>
-          <iframe src={blobUrl} title="Documento" style={{ width: '100%', height: '80vh', border: 'none' }} />
+          <object
+            data={blobUrl}
+            type="application/pdf"
+            aria-label="Documento PDF"
+            style={{ display: 'block', width: '100%', height: '80vh', border: 'none' }}
+          >
+            <iframe src={blobUrl} title="Documento PDF" style={{ width: '100%', height: '100%', border: 'none' }} />
+          </object>
         </>
       )}
     </div>
