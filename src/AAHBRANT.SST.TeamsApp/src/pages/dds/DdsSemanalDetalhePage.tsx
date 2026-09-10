@@ -272,7 +272,7 @@ export function DdsSemanalDetalhePage() {
                           aria-label="Atividades do dia"
                           opcoes={atividades.map((a) => ({ id: a.id, rotulo: a.nome }))}
                           selecionados={novoDia.atividadesIds}
-                          aoMudar={(atualizar) => setNovoDia((atual) => ({ ...atual, atividadesIds: atualizar(atual.atividadesIds) }))}
+                          aoMudar={(ids) => setNovoDia((atual) => ({ ...atual, atividadesIds: ids }))}
                         />
                       </Field>
                     )}
