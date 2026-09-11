@@ -2,7 +2,8 @@ import { useEffect, useState } from 'react';
 import { FluentProvider } from '@fluentui/react-components';
 import { MotionConfig } from 'framer-motion';
 import { HashRouter, Navigate, Outlet, Route, Routes, useLocation, useParams } from 'react-router-dom';
-import { aahbrantLightTheme } from './theme';
+import { aahbrantTheme, aahbrantLightTheme } from './theme';
+import { ThemeModeProvider, useThemeMode } from './theme/ThemeModeContext';
 import { processarLoginNavegadorPendente } from './lib/browserAuth';
 import { AppShell } from './layout/AppShell';
 import { DashboardPage } from './pages/DashboardPage';
@@ -67,10 +68,15 @@ function RedirecionarParaPilar({ pilar, secao }: { pilar: string; secao: string 
 
 // HashRouter evita depender de configuração de rota no servidor durante o sideload no Teams.
 function App() {
-  return <AppRoteado />;
+  return (
+    <ThemeModeProvider>
+      <AppRoteado />
+    </ThemeModeProvider>
+  );
 }
 
 function AppRoteado() {
+  const { modo } = useThemeMode();
   const [loginProcessado, setLoginProcessado] = useState(() => !window.location.hash.startsWith('#code='));
 
   useEffect(() => {
@@ -83,14 +89,14 @@ function AppRoteado() {
 
   if (!loginProcessado) {
     return (
-      <FluentProvider theme={aahbrantLightTheme}>
+      <FluentProvider theme={modo === 'dark' ? aahbrantTheme : aahbrantLightTheme}>
         <div style={{ padding: 24 }}>Entrando...</div>
       </FluentProvider>
     );
   }
 
   return (
-    <FluentProvider theme={aahbrantLightTheme}>
+    <FluentProvider theme={modo === 'dark' ? aahbrantTheme : aahbrantLightTheme}>
       {/* Com 'reduzir movimento' no SO, o framer-motion desliga animações de transform/opacity
           (spec §1.5); o CSS em index.css cuida das keyframes/transições. */}
       <MotionConfig reducedMotion="user">

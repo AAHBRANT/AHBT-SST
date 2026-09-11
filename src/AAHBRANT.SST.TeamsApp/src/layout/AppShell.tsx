@@ -13,15 +13,16 @@ import {
   ChevronLeft24Regular,
   ChevronRight24Regular,
   Person24Regular,
-  Search24Regular,
+  WeatherSunny24Regular,
+  WeatherMoon24Regular,
 } from '@fluentui/react-icons';
 import { designTokens } from '@ui';
+import { useThemeMode } from '../theme/ThemeModeContext';
 import { useTeamsContext } from '../teams/useTeamsContext';
 import { api, StatusAlerta } from '../lib/api';
 import logoSst from '../assets/logo-sst.png';
 import { SyncStatusBadge } from '../components/SyncStatusBadge';
 import { ID_TOASTER_GLOBAL } from '../lib/toaster';
-import { TrabalhadoresGaveta } from '../pages/pessoas/TrabalhadoresGaveta';
 
 // Rail de navegação (Hub Gênesis SST — design decidido em sessão anterior): faixa fina só com
 // ícones + tooltip ao passar o mouse/focar, no lugar do menu largo com texto. O botão de
@@ -293,12 +294,9 @@ export function AppShell({ children }: { children: ReactNode }) {
   const location = useLocation();
   const navigate = useNavigate();
   const { carregando, dentroDoTeams, contexto } = useTeamsContext();
+  const { modo, alternarModo } = useThemeMode();
   const nomeUsuario = contexto?.user?.displayName ?? 'Usuário';
   const [alertasAbertos, setAlertasAbertos] = useState<number | null>(null);
-  // Busca rápida de funcionários (pedido do usuário, 03/09) — reconecta TrabalhadoresGaveta, que
-  // já existia pronta (busca por nome/função/obra, foto, status do ASO) mas tinha ficado sem
-  // nenhum ponto de entrada na interface. Fica na topbar pra abrir de qualquer tela do app.
-  const [gavetaFuncionariosAberta, setGavetaFuncionariosAberta] = useState(false);
   const [railExpandido, setRailExpandido] = useState<boolean>(
     () => localStorage.getItem(CHAVE_RAIL_EXPANDIDO) === '1',
   );
@@ -359,10 +357,10 @@ export function AppShell({ children }: { children: ReactNode }) {
           )}
           <Button
             appearance="subtle"
-            icon={<Search24Regular />}
-            aria-label="Buscar funcionário"
-            title="Buscar funcionário"
-            onClick={() => setGavetaFuncionariosAberta(true)}
+            icon={modo === 'dark' ? <WeatherSunny24Regular /> : <WeatherMoon24Regular />}
+            aria-label={modo === 'dark' ? 'Mudar para modo claro' : 'Mudar para modo escuro'}
+            title={modo === 'dark' ? 'Modo claro' : 'Modo escuro'}
+            onClick={alternarModo}
           />
           <div className={estilos.sinoAlertas}>
             <Button
@@ -393,10 +391,6 @@ export function AppShell({ children }: { children: ReactNode }) {
       </header>
 
       <main className={estilos.content}>{children}</main>
-      <TrabalhadoresGaveta
-        aberta={gavetaFuncionariosAberta}
-        aoFechar={() => setGavetaFuncionariosAberta(false)}
-      />
       <Toaster toasterId={ID_TOASTER_GLOBAL} />
     </div>
   );
