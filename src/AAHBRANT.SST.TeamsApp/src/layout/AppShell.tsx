@@ -13,12 +13,9 @@ import {
   ChevronLeft24Regular,
   ChevronRight24Regular,
   Person24Regular,
-  WeatherSunny24Regular,
-  WeatherMoon24Regular,
   Search24Regular,
 } from '@fluentui/react-icons';
 import { designTokens } from '@ui';
-import { useThemeMode } from '../theme/ThemeModeContext';
 import { useTeamsContext } from '../teams/useTeamsContext';
 import { api, StatusAlerta } from '../lib/api';
 import logoSst from '../assets/logo-sst.png';
@@ -296,7 +293,6 @@ export function AppShell({ children }: { children: ReactNode }) {
   const location = useLocation();
   const navigate = useNavigate();
   const { carregando, dentroDoTeams, contexto } = useTeamsContext();
-  const { modo, alternarModo } = useThemeMode();
   const nomeUsuario = contexto?.user?.displayName ?? 'Usuário';
   const [alertasAbertos, setAlertasAbertos] = useState<number | null>(null);
   // Busca rápida de funcionários (pedido do usuário, 03/09) — reconecta TrabalhadoresGaveta, que
@@ -367,13 +363,6 @@ export function AppShell({ children }: { children: ReactNode }) {
             aria-label="Buscar funcionário"
             title="Buscar funcionário"
             onClick={() => setGavetaFuncionariosAberta(true)}
-          />
-          <Button
-            appearance="subtle"
-            icon={modo === 'dark' ? <WeatherSunny24Regular /> : <WeatherMoon24Regular />}
-            aria-label={modo === 'dark' ? 'Mudar para modo claro' : 'Mudar para modo escuro'}
-            title={modo === 'dark' ? 'Modo claro' : 'Modo escuro'}
-            onClick={alternarModo}
           />
           <div className={estilos.sinoAlertas}>
             <Button

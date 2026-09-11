@@ -2,8 +2,7 @@ import { useEffect, useState } from 'react';
 import { FluentProvider } from '@fluentui/react-components';
 import { MotionConfig } from 'framer-motion';
 import { HashRouter, Navigate, Outlet, Route, Routes, useLocation, useParams } from 'react-router-dom';
-import { aahbrantTheme, aahbrantLightTheme } from './theme';
-import { ThemeModeProvider, useThemeMode } from './theme/ThemeModeContext';
+import { aahbrantLightTheme } from './theme';
 import { processarLoginNavegadorPendente } from './lib/browserAuth';
 import { AppShell } from './layout/AppShell';
 import { DashboardPage } from './pages/DashboardPage';
@@ -68,18 +67,10 @@ function RedirecionarParaPilar({ pilar, secao }: { pilar: string; secao: string 
 
 // HashRouter evita depender de configuração de rota no servidor durante o sideload no Teams.
 function App() {
-  return (
-    <ThemeModeProvider>
-      <AppRoteado />
-    </ThemeModeProvider>
-  );
+  return <AppRoteado />;
 }
 
-// Separado de App só pra poder usar useThemeMode (o hook precisa estar dentro do Provider) e
-// escolher o tema do Fluent (claro/escuro) que o botão de dark/light mode alterna — ver
-// ThemeModeContext.tsx e o botão em AppShell.tsx.
 function AppRoteado() {
-  const { modo } = useThemeMode();
   const [loginProcessado, setLoginProcessado] = useState(() => !window.location.hash.startsWith('#code='));
 
   useEffect(() => {
@@ -92,14 +83,14 @@ function AppRoteado() {
 
   if (!loginProcessado) {
     return (
-      <FluentProvider theme={modo === 'dark' ? aahbrantTheme : aahbrantLightTheme}>
+      <FluentProvider theme={aahbrantLightTheme}>
         <div style={{ padding: 24 }}>Entrando...</div>
       </FluentProvider>
     );
   }
 
   return (
-    <FluentProvider theme={modo === 'dark' ? aahbrantTheme : aahbrantLightTheme}>
+    <FluentProvider theme={aahbrantLightTheme}>
       {/* Com 'reduzir movimento' no SO, o framer-motion desliga animações de transform/opacity
           (spec §1.5); o CSS em index.css cuida das keyframes/transições. */}
       <MotionConfig reducedMotion="user">

@@ -36,7 +36,6 @@ import {
 import { Card, FeedbackInline, KpiCard, Legenda, StatusChip, StatusDonutChart, TrendBarChart, usePaletaGraficos, type FatiaDonut, type PontoTendencia, type Tom } from '@ui';
 import { useDashboardStyles } from '../components/dashboard/dashboardStyles';
 import { TaxaGravidadeCard } from '../components/dashboard/TaxaGravidadeCard';
-import { MiniCalendarCard, type DiaComPrazo } from '../components/dashboard/MiniCalendarCard';
 import { MiniCalendarioCard } from '../components/dashboard/MiniCalendarioCard';
 
 interface KpiDelta {
@@ -386,17 +385,6 @@ export function DashboardPage() {
     [alertasAbertosFiltrados],
   );
 
-  const prazosDoCalendario: DiaComPrazo[] = useMemo(
-    () =>
-      alertasAbertosFiltrados
-        .filter((alerta): alerta is Alerta & { dataLimiteTratamento: string } => !!alerta.dataLimiteTratamento)
-        .map((alerta) => ({
-          dataISO: alerta.dataLimiteTratamento.slice(0, 10),
-          vencido: alerta.dataLimiteTratamento < hojeISO,
-        })),
-    [alertasAbertosFiltrados, hojeISO],
-  );
-
   // ---------- Atividade recente (montada a partir dos módulos existentes) ----------
 
   const atividadeRecente: ItemFeed[] = useMemo(() => {
@@ -522,7 +510,6 @@ export function DashboardPage() {
         <Card titulo="Quase-acidentes — últimos 6 meses" subtitulo={`Registros classificados como quase-acidente, ${escopoIndicadores}`}>
           <TrendBarChart dados={tendenciaQuaseAcidentes} />
         </Card>
-        <MiniCalendarCard prazos={prazosDoCalendario} />
       </div>
 
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(340px, 1fr))', gap: 16, marginBottom: 16 }}>
