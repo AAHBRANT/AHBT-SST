@@ -92,6 +92,7 @@ export function TaxaGravidadeCard({ acidentes, registrosHht }: TaxaGravidadeCard
             autoFocus
             value={rascunhoMeta}
             onChange={(_, d) => setRascunhoMeta(d.value)}
+            onClick={(e) => e.stopPropagation()}
             onBlur={salvarMeta}
             onKeyDown={(e) => e.key === 'Enter' && salvarMeta()}
             style={{ width: 90 }}
@@ -100,7 +101,8 @@ export function TaxaGravidadeCard({ acidentes, registrosHht }: TaxaGravidadeCard
           <Text
             size={200}
             style={{ color: designTokens.colorNeutralMedium, cursor: 'pointer', textDecoration: 'underline' }}
-            onClick={() => {
+            onClick={(e) => {
+              e.stopPropagation();
               setRascunhoMeta(meta !== null ? String(meta) : '');
               setEditandoMeta(true);
             }}

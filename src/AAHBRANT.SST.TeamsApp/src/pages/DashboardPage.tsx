@@ -1,5 +1,6 @@
-import { useEffect, useMemo, useState, type ReactElement } from 'react';
+import { useEffect, useMemo, useState, type KeyboardEvent, type ReactElement } from 'react';
 import { Select } from '@fluentui/react-components';
+import { useNavigate } from 'react-router-dom';
 import {
   BuildingBank24Regular,
   People24Regular,
@@ -49,6 +50,7 @@ interface Kpi {
   icone: ReactElement;
   tom: Tom;
   deltas: KpiDelta[];
+  destino: string;
 }
 
 interface ItemFeed {
@@ -93,6 +95,7 @@ function ultimosSeisMeses(): Array<{ ano: number; mes: number; rotulo: string }>
 export function DashboardPage() {
   const dashEstilos = useDashboardStyles();
   const paleta = usePaletaGraficos();
+  const navigate = useNavigate();
 
   const [obras, setObras] = useState<Obra[]>([]);
   const [obraSelecionadaId, setObraSelecionadaId] = useState('');
@@ -280,6 +283,7 @@ export function DashboardPage() {
       icone: <BuildingBank24Regular />,
       tom: 'info',
       deltas: [{ texto: `${obrasEmAndamento} em andamento`, tom: 'neutro' }],
+      destino: '/administracao?aba=obras',
     },
     {
       rotulo: 'Funcionários ativos',
@@ -287,6 +291,7 @@ export function DashboardPage() {
       icone: <People24Regular />,
       tom: 'info',
       deltas: admitidosEsteMes > 0 ? [{ texto: `+${admitidosEsteMes} este mês`, tom: 'neutro' }] : [],
+      destino: '/pessoas?aba=trabalhadores',
     },
     {
       rotulo: 'Conformidade de EPI',
@@ -294,6 +299,7 @@ export function DashboardPage() {
       icone: <ShieldCheckmark24Regular />,
       tom: 'ok',
       deltas: entregasEpiAtivas.length > 0 ? [{ texto: `${entregasEpiAtivas.length} entregas ativas`, tom: 'neutro' }] : [],
+      destino: '/operacao?secao=epi&aba=entregas',
     },
     {
       rotulo: 'Treinamentos em dia',
@@ -308,6 +314,7 @@ export function DashboardPage() {
           ? [{ texto: `${treinamentosVencidos.length} vencidos`, tom: 'alerta' as const }]
           : []),
       ],
+      destino: '/gestao-sst?secao=treinamentos&aba=turmas',
     },
     {
       rotulo: 'Quase-acidentes (mês)',
@@ -315,6 +322,7 @@ export function DashboardPage() {
       icone: <Warning24Regular />,
       tom: 'atencao',
       deltas: quaseAcidentesMes.length > 0 ? [{ texto: 'Acompanhar', tom: 'atencao' }] : [],
+      destino: '/ocorrencias?secao=acidentes',
     },
     {
       rotulo: 'Não conformidades abertas',
@@ -322,6 +330,7 @@ export function DashboardPage() {
       icone: <DocumentError24Regular />,
       tom: 'alerta',
       deltas: naoConformidadesEmTratamento > 0 ? [{ texto: `${naoConformidadesEmTratamento} em tratamento`, tom: 'alerta' }] : [],
+      destino: '/ocorrencias?secao=nao-conformidades&aba=registros',
     },
   ];
 
@@ -455,6 +464,20 @@ export function DashboardPage() {
     return <StatusChip tom="atencao">{dias} dia(s)</StatusChip>;
   }
 
+  function abrirComTeclado(evento: KeyboardEvent<HTMLDivElement>, destino: string) {
+    if (evento.key === 'Enter' || evento.key === ' ') {
+      evento.preventDefault();
+      navigate(destino);
+    }
+  }
+
+  const pendenciasResumo = [
+    { rotulo: 'Alertas em aberto', valor: alertasAbertosFiltrados.length, destino: '/alertas?aba=lista' },
+    { rotulo: 'NC abertas', valor: naoConformidadesAbertas.length, destino: '/ocorrencias?secao=nao-conformidades&aba=registros' },
+    { rotulo: 'Treinamentos vencidos', valor: treinamentosVencidos.length, destino: '/gestao-sst?secao=treinamentos&aba=turmas' },
+    { rotulo: 'EPIs vencidos', valor: entregasEpiVencidas.length, destino: '/operacao?secao=epi&aba=entregas' },
+  ];
+
   return (
     <div>
       {erro && (
@@ -493,6 +516,8 @@ export function DashboardPage() {
               icone={kpi.icone}
               deltas={kpi.deltas}
               indice={indice}
+              onClick={() => navigate(kpi.destino)}
+              ariaLabel={`Abrir ${kpi.rotulo}`}
             />
           ))}
         </div>
@@ -500,19 +525,67 @@ export function DashboardPage() {
       </div>
 
       <div style={{ marginBottom: 16 }}>
-        <TaxaGravidadeCard acidentes={acidentesFiltrados} registrosHht={registrosHhtFiltrados} />
+        <div
+          className={dashEstilos.cardAcionavel}
+          role="button"
+          tabIndex={0}
+          onClick={() => navigate('/ocorrencias?secao=acidentes')}
+          onKeyDown={(evento) => abrirComTeclado(evento, '/ocorrencias?secao=acidentes')}
+        >
+          <TaxaGravidadeCard acidentes={acidentesFiltrados} registrosHht={registrosHhtFiltrados} />
+        </div>
       </div>
 
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(340px, 1fr))', gap: 16, marginBottom: 16 }}>
-        <Card titulo="Status de aptidão ocupacional (ASO)" subtitulo="Situação clínica do ASO mais recente de cada funcionário">
-          <StatusDonutChart dados={statusAsoDados} legendaCentral="funcionários" />
-        </Card>
-        <Card titulo="Quase-acidentes — últimos 6 meses" subtitulo={`Registros classificados como quase-acidente, ${escopoIndicadores}`}>
-          <TrendBarChart dados={tendenciaQuaseAcidentes} />
+        <div
+          className={dashEstilos.cardAcionavel}
+          role="button"
+          tabIndex={0}
+          onClick={() => navigate('/operacao/saude-ocupacional?aba=aso')}
+          onKeyDown={(evento) => abrirComTeclado(evento, '/operacao/saude-ocupacional?aba=aso')}
+        >
+          <Card titulo="Status de aptidão ocupacional (ASO)" subtitulo="Situação clínica do ASO mais recente de cada funcionário">
+            <StatusDonutChart dados={statusAsoDados} legendaCentral="funcionários" />
+          </Card>
+        </div>
+        <div
+          className={dashEstilos.cardAcionavel}
+          role="button"
+          tabIndex={0}
+          onClick={() => navigate('/ocorrencias?secao=acidentes')}
+          onKeyDown={(evento) => abrirComTeclado(evento, '/ocorrencias?secao=acidentes')}
+        >
+          <Card titulo="Quase-acidentes — últimos 6 meses" subtitulo={`Registros classificados como quase-acidente, ${escopoIndicadores}`}>
+            <TrendBarChart dados={tendenciaQuaseAcidentes} />
+          </Card>
+        </div>
+        <Card titulo="Resumo de pendências" subtitulo={`Itens que pedem atenção, ${escopoIndicadores}`}>
+          <div className={dashEstilos.resumoPendencias}>
+            {pendenciasResumo.map((item) => (
+              <div
+                key={item.rotulo}
+                className={dashEstilos.resumoItem}
+                role="button"
+                tabIndex={0}
+                onClick={() => navigate(item.destino)}
+                onKeyDown={(evento) => abrirComTeclado(evento, item.destino)}
+              >
+                <div className={dashEstilos.resumoValor}>{item.valor}</div>
+                <div className={dashEstilos.resumoRotulo}>{item.rotulo}</div>
+              </div>
+            ))}
+          </div>
         </Card>
       </div>
 
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(340px, 1fr))', gap: 16, marginBottom: 16 }}>
+        <div
+          className={dashEstilos.cardAcionavel}
+          role="button"
+          tabIndex={0}
+          onClick={() => navigate('/alertas?aba=lista')}
+          onKeyDown={(evento) => abrirComTeclado(evento, '/alertas?aba=lista')}
+        >
         <Card titulo="Próximos vencimentos" subtitulo="Alertas em aberto, ordenados por prazo">
           <div className={dashEstilos.feed}>
             {proximosVencimentos.map((alerta) => (
@@ -536,7 +609,15 @@ export function DashboardPage() {
             {proximosVencimentos.length === 0 && <Legenda>Nenhum alerta em aberto.</Legenda>}
           </div>
         </Card>
+        </div>
 
+        <div
+          className={dashEstilos.cardAcionavel}
+          role="button"
+          tabIndex={0}
+          onClick={() => navigate('/operacao')}
+          onKeyDown={(evento) => abrirComTeclado(evento, '/operacao')}
+        >
         <Card titulo="Atividade recente" subtitulo="Últimos registros nos módulos de campo">
           <div className={dashEstilos.feed}>
             {atividadeRecente.map((item) => (
@@ -554,6 +635,7 @@ export function DashboardPage() {
             {atividadeRecente.length === 0 && <Legenda>Nenhuma atividade recente.</Legenda>}
           </div>
         </Card>
+        </div>
       </div>
     </div>
   );

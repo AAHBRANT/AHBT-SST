@@ -154,4 +154,41 @@ export const useDashboardStyles = makeStyles({
     whiteSpace: 'nowrap',
     paddingTop: '2px',
   },
+  cardAcionavel: {
+    height: '100%',
+    cursor: 'pointer',
+    borderRadius: '12px',
+    ':focus-visible': {
+      outline: `2px solid ${designTokens.colorPrimary}`,
+      outlineOffset: '2px',
+    },
+  },
+  resumoPendencias: {
+    display: 'grid',
+    gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))',
+    gap: '10px',
+  },
+  resumoItem: {
+    border: `1px solid ${designTokens.colorCardBorder}`,
+    borderRadius: '8px',
+    padding: '12px',
+    backgroundColor: designTokens.colorNeutralLight,
+    cursor: 'pointer',
+    ':focus-visible': {
+      outline: `2px solid ${designTokens.colorPrimary}`,
+      outlineOffset: '2px',
+    },
+  },
+  resumoValor: {
+    fontSize: '24px',
+    lineHeight: '28px',
+    fontWeight: 800,
+    color: designTokens.colorNeutralDark,
+  },
+  resumoRotulo: {
+    marginTop: '4px',
+    fontSize: '12px',
+    fontWeight: 700,
+    color: designTokens.colorNeutralMedium,
+  },
 });
