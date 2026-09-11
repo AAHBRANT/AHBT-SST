@@ -54,6 +54,7 @@ export { SeletorPesquisavel, type SeletorPesquisavelProps, type OpcaoSeletor } f
 export { useConfirmar, type OpcoesConfirmacao } from './primitivos/ConfirmDialog/useConfirmar';
 
 export { PainelLateral, type PainelLateralProps } from './compostos/PainelLateral/PainelLateral';
+export { PainelCriacaoInline, type PainelCriacaoInlineProps } from './compostos/PainelCriacaoInline/PainelCriacaoInline';
 export { KpiCard, type KpiCardProps } from './compostos/KpiCard/KpiCard';
 
 export { DetailPageLayout, type DetailPageLayoutProps } from './layout/DetailPageLayout/DetailPageLayout';
