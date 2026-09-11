@@ -105,7 +105,7 @@ regra já registrada no projeto (`feedback_mostrar_antes_de_deploy`, `feedback_d
 - Qualquer mudança em backend/API — este design é só front-end
   (`src/AAHBRANT.SST.TeamsApp`).
 
-## 5. Addendum pós-Onda A (2026-09-11) — API de gatilho do `PainelCriacaoInline`
+## 5. Addendum pós-Onda A (2026-09-11) — hook `usePainelCriacaoInline`, não gatilho embutido
 
 A Onda A foi implementada, revisada (SDD: 5 tasks + revisão final de branch) e implantada em hml via
 PR #69. A revisão final de branch (modelo mais capaz) encontrou uma lacuna real no design original
@@ -115,32 +115,65 @@ botão, o ícone e o `aria-expanded`/`aria-controls`. Um desses pontos manuais (
 limpando `erroPainel` ao fechar) já nasceu com bug — corrigido ainda na Onda A, mas é exatamente o tipo
 de defeito que se replicaria 25 vezes sem uma correção de design.
 
-**Decisão:** antes da Onda B, o `PainelCriacaoInline` ganha uma API de gatilho **opcional**, aditiva e
-retrocompatível (`aberto`/`titulo`/`children` continuam funcionando sozinhos para quem, como
-`AtividadesTab`, precisa do botão em outro lugar — ex. dentro do `PageHeader`):
+**Primeira decisão registrada aqui (revertida abaixo):** um `gatilho` opcional que faria o próprio
+`PainelCriacaoInline` renderizar seu botão de abrir/fechar. O levantamento das 6 telas da Onda B
+(Trabalhadores, Funções, Equipes, Setores, Cursos, Treinamentos) mostrou que essa forma não serve: **as
+6 telas, como `AtividadesTab.tsx` na Onda A, mantêm o botão "+ Novo X" dentro do cabeçalho** (`PageHeader`
+em 5 delas; dentro do `acoes` de um `Card` em `TreinamentosTab.tsx`, que é sub-aba sem `PageHeader`
+próprio) — nunca solto acima do formulário. Um `gatilho` que renderiza o próprio botão do componente
+nunca seria usado por nenhuma das 6 telas reais; só serviria telas hipotéticas que este projeto não tem.
+
+**Decisão final:** em vez de um render-prop, o componente ganha 2 props opcionais e aditivas
+(`aberto`/`titulo`/`children` continuam funcionando sozinhos, `AtividadesTab.tsx` não muda) e um hook
+companheiro, que juntos cobrem exatamente o que se repete nas 6 telas independentemente de onde o botão
+mora:
 
 ```ts
 export interface PainelCriacaoInlineProps {
   aberto: boolean;
   titulo: ReactNode;
+  subtitulo?: ReactNode; // repassado ao Card — cobre o caso de FuncoesTab.tsx
+  id?: string;           // aplicado no wrapper; alvo de aria-controls do botão externo
   children: ReactNode;
-  /** Se presente, o componente renderiza o próprio botão de abrir/fechar, com aria-expanded/
-   *  aria-controls corretos e um id estável ligando os dois. Omitir quando o gatilho precisa viver
-   *  em outro lugar da página (ex. no PageHeader, como em AtividadesTab). */
-  gatilho?: {
-    aoAlternar: () => void;
-    rotuloAbrir: ReactNode;
-    rotuloFechar?: ReactNode; // default: rotuloAbrir
-  };
+}
+
+// ui/compostos/PainelCriacaoInline/usePainelCriacaoInline.ts
+export function usePainelCriacaoInline() {
+  const [aberto, setAberto] = useState(false);
+  const id = useId();
+  return {
+    aberto,
+    id,
+    abrir: () => setAberto(true),
+    fechar: () => setAberto(false),
+    alternar: () => setAberto((a) => !a),
+  } as const;
 }
 ```
 
-Quando `gatilho` é passado, o componente renderiza um botão próprio (ícone `Add24Regular`/
-`Dismiss24Regular` conforme o estado, texto de `rotuloAbrir`/`rotuloFechar`) acima do `Card`, com
-`aria-expanded={aberto}` e `aria-controls` apontando para um `id` gerado internamente (`useId()` do
-React) no wrapper do `Card`. Quando omitido, o comportamento é idêntico ao da Onda A — nada quebra em
-`AtividadesTab.tsx`.
+O hook não sabe de `erroPainel` (é estado específico de cada página) — cada tela continua com seu
+`fecharPainel()` local, só que ele chama `painel.fechar()` em vez de gerenciar o `useState` à mão:
 
-Isso resolve, de uma vez, os dois achados adiados da revisão final da Onda A: a acessibilidade do toggle
-(antes um `aria-expanded` manual por tela) e o boilerplate repetido (antes um `useState` + JSX por tela).
-As 6 telas de Pessoas (Onda B) são o primeiro consumidor real da API nova.
+```tsx
+const painel = usePainelCriacaoInline();
+function fecharPainel() {
+  painel.fechar();
+  setErroPainel(null);
+}
+// no botão do PageHeader/Card:
+<Button
+  onClick={() => (painel.aberto ? fecharPainel() : painel.abrir())}
+  aria-expanded={painel.aberto}
+  aria-controls={painel.id}
+>
+  {painel.aberto ? 'Fechar' : 'Adicionar X'}
+</Button>
+// no componente:
+<PainelCriacaoInline aberto={painel.aberto} id={painel.id} titulo="Novo X">...</PainelCriacaoInline>
+```
+
+Isso resolve os dois achados adiados da revisão final da Onda A (acessibilidade e boilerplate) sem
+inventar um mecanismo que nenhuma tela real usaria. As 6 telas de Pessoas (Onda B) são o primeiro
+consumidor real; `AtividadesTab.tsx` fica como está (não é migrada para o hook nesta rodada — troca de
+`useState` por hook em código já aprovado, sem tela nova para justificar, entra na Onda F se fizer
+sentido).
