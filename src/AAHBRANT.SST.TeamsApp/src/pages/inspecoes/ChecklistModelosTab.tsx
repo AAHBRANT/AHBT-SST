@@ -173,7 +173,7 @@ export function ChecklistModelosTab() {
     <div>
       {dialogElement}
       <PageHeader
-        titulo="Checklists de inspeção"
+        titulo="Catálogo de inspeções"
         acoes={
           <Button appearance="primary" icon={<Add24Regular />} onClick={() => setPainelAberto(true)}>
             Novo checklist
@@ -189,7 +189,7 @@ export function ChecklistModelosTab() {
 
       <Card>
         <DataTable
-          aria-label="Checklists cadastrados"
+          aria-label="Catálogo de inspeções"
           colunas={colunasChecklists}
           linhas={checklists}
           chaveLinha={(c) => c.id}

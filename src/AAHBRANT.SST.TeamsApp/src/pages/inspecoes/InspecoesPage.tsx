@@ -21,8 +21,8 @@ export function InspecoesPage({ mostrarTitulo = true }: { mostrarTitulo?: boolea
         aoMudar={setAba}
         aria-label="Seções de Inspeções"
         abas={[
-          { valor: 'execucoes', rotulo: 'Execuções' },
-          { valor: 'checklists', rotulo: 'Checklists' },
+          { valor: 'execucoes', rotulo: 'Inspeções' },
+          { valor: 'checklists', rotulo: 'Catálogo de inspeções' },
           { valor: 'dashboard', rotulo: 'Dashboard' },
         ]}
       />

@@ -153,7 +153,7 @@ export function InspecoesTab() {
   return (
     <div>
       <PageHeader
-        titulo="Execuções de inspeção"
+        titulo="Inspeções"
         acoes={
           <Button appearance="primary" icon={<Add24Regular />} onClick={() => setPainelAberto(true)}>
             Nova inspeção
@@ -169,7 +169,7 @@ export function InspecoesTab() {
 
       <Card>
         <DataTable
-          aria-label="Execuções de inspeção"
+          aria-label="Inspeções"
           colunas={colunas}
           linhas={inspecoes}
           chaveLinha={(i) => i.id}
