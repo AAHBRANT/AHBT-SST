@@ -7,22 +7,26 @@ import {
   Field,
   FeedbackInline,
   FormGrid,
+  FormRodape,
+  FormSection,
   Input,
   PageHeader,
-  PainelLateral,
+  PainelCriacaoInline,
   Select,
   useConfirmar,
   type Coluna,
 } from '@ui';
 import { Add24Regular, Delete24Regular } from '@fluentui/react-icons';
 import { api, type Atividade, type NovaAtividade, type Obra } from '../../lib/api';
+import { valorUnico } from '../../lib/valoresPadrao';
 import { useSucessoToast } from '../../hooks/useSucessoToast';
 
 const atividadeVazia: NovaAtividade = { obraId: '', nome: '', descricao: '' };
 
-// Camada ui/ (Onda 2, Task 13): mesmo padrão de FuncoesTab.tsx (Task 1) — formulário de 3 campos que
-// empurrava a lista pra baixo saiu para um PainelLateral aberto pelo "+ Adicionar atividade" do
-// PageHeader. Erro do formulário fica em estado próprio, separado do erro de carga da lista.
+// Onda A do spec de formulário inline (2026-09-11): o PainelLateral (drawer) saiu — em tablet, o
+// formulário de 3 campos esticava até a altura total da tela e sobrava um vão vazio enorme antes
+// dos botões. Agora é um PainelCriacaoInline, que cresce acima da lista só até a altura do próprio
+// formulário. Erro do formulário fica em estado próprio, separado do erro de carga da lista.
 export function AtividadesTab() {
   const [atividades, setAtividades] = useState<Atividade[]>([]);
   const [obras, setObras] = useState<Obra[]>([]);
@@ -41,6 +45,9 @@ export function AtividadesTab() {
       const [ativs, obrs] = await Promise.all([api.atividades.listar(), api.obras.listar()]);
       setAtividades(ativs);
       setObras(obrs);
+      // Select com uma única opção possível no contexto atual vem pré-selecionado (spec §2). Não
+      // sobrescreve se o usuário já tiver escolhido uma Obra.
+      setNovaAtividade((prev) => (prev.obraId ? prev : { ...prev, obraId: valorUnico(obrs, (o) => o.id) }));
     } catch (e) {
       setErro(e instanceof Error ? e.message : 'Falha ao carregar atividades.');
     } finally {
@@ -95,13 +102,13 @@ export function AtividadesTab() {
   ];
 
   return (
-    <div>
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
       {dialogElement}
       <PageHeader
         titulo="Atividades cadastradas"
         acoes={
-          <Button appearance="primary" icon={<Add24Regular />} onClick={() => setPainelAberto(true)}>
-            Adicionar atividade
+          <Button appearance="primary" icon={<Add24Regular />} onClick={() => setPainelAberto((a) => !a)}>
+            {painelAberto ? 'Fechar' : 'Adicionar atividade'}
           </Button>
         }
       />
@@ -110,6 +117,54 @@ export function AtividadesTab() {
           {erro}
         </FeedbackInline>
       )}
+      <PainelCriacaoInline aberto={painelAberto} titulo="Nova atividade">
+        <FormSection titulo="Dados da atividade" numero={1} primeira>
+          {erroPainel && (
+            <FeedbackInline tom="erro" aoFechar={() => setErroPainel(null)}>
+              {erroPainel}
+            </FeedbackInline>
+          )}
+          <FormGrid>
+            <Campo span={3}>
+              <Field label="Obra">
+                <Select
+                  value={novaAtividade.obraId}
+                  onChange={(_, d) => setNovaAtividade({ ...novaAtividade, obraId: d.value })}
+                >
+                  <option value="">Selecione</option>
+                  {obras.map((obra) => (
+                    <option key={obra.id} value={obra.id}>
+                      {obra.nome}
+                    </option>
+                  ))}
+                </Select>
+              </Field>
+            </Campo>
+            <Campo span={4}>
+              <Field label="Nome da atividade">
+                <Input
+                  value={novaAtividade.nome}
+                  onChange={(_, d) => setNovaAtividade({ ...novaAtividade, nome: d.value })}
+                />
+              </Field>
+            </Campo>
+            <Campo span={5}>
+              <Field label="Descrição">
+                <Input
+                  value={novaAtividade.descricao ?? ''}
+                  onChange={(_, d) => setNovaAtividade({ ...novaAtividade, descricao: d.value })}
+                />
+              </Field>
+            </Campo>
+          </FormGrid>
+          <FormRodape>
+            <Button onClick={fecharPainel}>Cancelar</Button>
+            <Button appearance="primary" onClick={criar} disabled={carregando}>
+              Adicionar atividade
+            </Button>
+          </FormRodape>
+        </FormSection>
+      </PainelCriacaoInline>
       <Card>
         <DataTable
           aria-label="Atividades cadastradas"
@@ -126,58 +181,6 @@ export function AtividadesTab() {
           )}
         />
       </Card>
-      <PainelLateral
-        aberto={painelAberto}
-        aoFechar={fecharPainel}
-        titulo="Nova atividade"
-        rodape={
-          <>
-            <Button onClick={fecharPainel}>Cancelar</Button>
-            <Button appearance="primary" onClick={criar} disabled={carregando}>
-              Adicionar atividade
-            </Button>
-          </>
-        }
-      >
-        {erroPainel && (
-          <FeedbackInline tom="erro" aoFechar={() => setErroPainel(null)}>
-            {erroPainel}
-          </FeedbackInline>
-        )}
-        <FormGrid>
-          <Campo span={3}>
-            <Field label="Obra">
-              <Select
-                value={novaAtividade.obraId}
-                onChange={(_, d) => setNovaAtividade({ ...novaAtividade, obraId: d.value })}
-              >
-                <option value="">Selecione</option>
-                {obras.map((obra) => (
-                  <option key={obra.id} value={obra.id}>
-                    {obra.nome}
-                  </option>
-                ))}
-              </Select>
-            </Field>
-          </Campo>
-          <Campo span={4}>
-            <Field label="Nome da atividade">
-              <Input
-                value={novaAtividade.nome}
-                onChange={(_, d) => setNovaAtividade({ ...novaAtividade, nome: d.value })}
-              />
-            </Field>
-          </Campo>
-          <Campo span={5}>
-            <Field label="Descrição">
-              <Input
-                value={novaAtividade.descricao ?? ''}
-                onChange={(_, d) => setNovaAtividade({ ...novaAtividade, descricao: d.value })}
-              />
-            </Field>
-          </Campo>
-        </FormGrid>
-      </PainelLateral>
     </div>
   );
 }
