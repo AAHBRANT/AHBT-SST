@@ -163,6 +163,8 @@ export const useDashboardStyles = makeStyles({
   },
   alturaCompleta: {
     height: '100%',
+    minHeight: '360px',
+    boxSizing: 'border-box',
   },
   cardAcionavel: {
     height: '100%',
