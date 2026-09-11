@@ -111,9 +111,13 @@ export function DashboardPage() {
   const [erro, setErro] = useState<string | null>(null);
 
   useEffect(() => {
+    api.atividades
+      .listar()
+      .then(setAtividades)
+      .catch(() => setAtividades([]));
+
     Promise.all([
       api.obras.listar(),
-      api.atividades.listar(),
       api.trabalhadores.listar(),
       api.asos.listar(),
       api.treinamentos.listar(),
@@ -128,7 +132,6 @@ export function DashboardPage() {
       .then(
         ([
           obrasResp,
-          atividadesResp,
           trabalhadoresResp,
           asosResp,
           treinamentosResp,
@@ -141,7 +144,6 @@ export function DashboardPage() {
           inspecoesResp,
         ]) => {
           setObras(obrasResp);
-          setAtividades(atividadesResp);
           setTrabalhadores(trabalhadoresResp);
           setAsos(asosResp);
           setTreinamentos(treinamentosResp);
