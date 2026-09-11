@@ -84,6 +84,19 @@ function selecionarConta(msal: PublicClientApplication): AccountInfo | null {
   return null;
 }
 
+export async function processarLoginNavegadorPendente(): Promise<void> {
+  const msal = await obterMsal();
+  if (!msal) {
+    return;
+  }
+
+  await processarRedirect(msal);
+
+  if (window.location.hash.startsWith('#code=') || window.location.hash.startsWith('#state=')) {
+    window.history.replaceState(null, document.title, window.location.pathname + window.location.search);
+  }
+}
+
 export async function obterTokenAutenticacaoNavegador(): Promise<string | null> {
   const msal = await obterMsal();
   if (!msal) {

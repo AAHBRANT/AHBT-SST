@@ -1,8 +1,10 @@
+import { useEffect, useState } from 'react';
 import { FluentProvider } from '@fluentui/react-components';
 import { MotionConfig } from 'framer-motion';
 import { HashRouter, Navigate, Outlet, Route, Routes, useLocation, useParams } from 'react-router-dom';
 import { aahbrantTheme, aahbrantLightTheme } from './theme';
 import { ThemeModeProvider, useThemeMode } from './theme/ThemeModeContext';
+import { processarLoginNavegadorPendente } from './lib/browserAuth';
 import { AppShell } from './layout/AppShell';
 import { DashboardPage } from './pages/DashboardPage';
 import { GestaoSstPage } from './pages/gestao-sst/GestaoSstPage';
@@ -78,6 +80,24 @@ function App() {
 // ThemeModeContext.tsx e o botão em AppShell.tsx.
 function AppRoteado() {
   const { modo } = useThemeMode();
+  const [loginProcessado, setLoginProcessado] = useState(() => !window.location.hash.startsWith('#code='));
+
+  useEffect(() => {
+    if (loginProcessado) {
+      return;
+    }
+
+    processarLoginNavegadorPendente().finally(() => setLoginProcessado(true));
+  }, [loginProcessado]);
+
+  if (!loginProcessado) {
+    return (
+      <FluentProvider theme={modo === 'dark' ? aahbrantTheme : aahbrantLightTheme}>
+        <div style={{ padding: 24 }}>Entrando...</div>
+      </FluentProvider>
+    );
+  }
+
   return (
     <FluentProvider theme={modo === 'dark' ? aahbrantTheme : aahbrantLightTheme}>
       {/* Com 'reduzir movimento' no SO, o framer-motion desliga animações de transform/opacity
