@@ -3,7 +3,7 @@ import { useSearchParams } from 'react-router-dom';
 import { makeStyles } from '@fluentui/react-components';
 import { BuildingBank24Regular, ShieldCheckmark24Regular, DocumentCheckmark24Regular, DocumentError24Regular } from '@fluentui/react-icons';
 import { useTipografia } from '../tokens/tipografia';
-import { Card, PageHeader, Button, Input, Text, StatusChip, nivelVencimento, tomDeVencimento, rotuloDeVencimento, EstadoVazio, Carregando, FeedbackInline, Legenda, BarraProgresso, Abas, useAbaNaUrl, DataTable, FormSection, FormGrid, Campo, FormRodape, ChipCheckboxGroup, Field, Select, Textarea, CampoData, SeletorPesquisavel, useConfirmar, PainelLateral, KpiCard, DetailPageLayout, WorkflowActions, usePaletaGraficos, StatusDonutChart, RankingBarChart, TrendBarChart, TrendLineChart, ChipsField } from '../index';
+import { Card, PageHeader, Button, Input, Text, StatusChip, nivelVencimento, tomDeVencimento, rotuloDeVencimento, EstadoVazio, Carregando, FeedbackInline, Legenda, BarraProgresso, Abas, useAbaNaUrl, DataTable, FormSection, FormGrid, Campo, FormRodape, ChipCheckboxGroup, Field, Select, Textarea, CampoData, SeletorPesquisavel, useConfirmar, PainelLateral, PainelCriacaoInline, KpiCard, DetailPageLayout, WorkflowActions, usePaletaGraficos, StatusDonutChart, RankingBarChart, TrendBarChart, TrendLineChart, ChipsField } from '../index';
 import { Secao } from './Secao';
 
 // Calculado uma vez no carregamento do módulo (não a cada render) para não disparar o alerta de
@@ -54,6 +54,7 @@ export function GaleriaPage() {
   const [parametros] = useSearchParams();
   const abrir = parametros.get('abrir');
   const [painelAberto, setPainelAberto] = useState(abrir === 'painel');
+  const [painelCriacaoAberto, setPainelCriacaoAberto] = useState(abrir === 'painel-criacao-inline');
   // ?abrir=expandida abre a 1ª linha do DataTable de exemplo — sem isto o snapshot da seção fecha
   // sempre a linha e nunca fotografa os 2 filhos empilhados (chevron + título + chips).
   const [abertaDemo, setAbertaDemo] = useState<string | null>(abrir === 'expandida' ? '1' : null);
@@ -251,6 +252,27 @@ export function GaleriaPage() {
             <Campo span={4}><Field label="Validade"><CampoData value="" onChange={() => {}} /></Field></Campo>
           </FormGrid></FormSection>
         </PainelLateral>
+      </Secao>
+      <Secao id="painel-criacao-inline" titulo="PainelCriacaoInline">
+        <div className={g.larguraTotal}>
+          <Button appearance="primary" onClick={() => setPainelCriacaoAberto((a) => !a)}>
+            {painelCriacaoAberto ? 'Fechar formulário' : '+ Novo item'}
+          </Button>
+          <div className={g.margemTopo}>
+            <PainelCriacaoInline aberto={painelCriacaoAberto} titulo="Novo item">
+              <FormSection titulo="Dados" numero={1} primeira>
+                <FormGrid>
+                  <Campo span={6}><Field label="Nome"><Input /></Field></Campo>
+                  <Campo span={6}><Field label="Quantidade"><Input type="number" defaultValue="1" /></Field></Campo>
+                </FormGrid>
+                <FormRodape>
+                  <Button onClick={() => setPainelCriacaoAberto(false)}>Cancelar</Button>
+                  <Button appearance="primary" onClick={() => setPainelCriacaoAberto(false)}>Adicionar</Button>
+                </FormRodape>
+              </FormSection>
+            </PainelCriacaoInline>
+          </div>
+        </div>
       </Secao>
       <Secao id="kpi-card" titulo="KpiCard (entrada escalonada — recarregue a página)">
         <div className={g.gradeKpi}>

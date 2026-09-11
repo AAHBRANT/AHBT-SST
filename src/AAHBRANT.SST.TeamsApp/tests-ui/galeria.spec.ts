@@ -11,7 +11,7 @@ for (const tema of ['light', 'dark'] as const) {
     await page.evaluate(async () => { await document.fonts.ready; });
     const secoes = page.locator('main section[data-secao]');
     const total = await secoes.count();
-    expect(total).toBe(21);
+    expect(total).toBe(22);
     for (let i = 0; i < total; i++) {
       const s = secoes.nth(i);
       const dataSecao = await s.getAttribute('data-secao');
@@ -29,6 +29,15 @@ for (const tema of ['light', 'dark'] as const) {
     const painel = page.locator('[role="dialog"]').first();
     await expect(painel).toBeVisible();
     await expect(painel).toHaveScreenshot(`${tema}-painel-lateral-aberto.png`);
+  });
+
+  test(`painel de criação inline aberto em tema ${tema}`, async ({ page }) => {
+    await page.addInitScript((t) => localStorage.setItem('sst.modoTema', t), tema);
+    await page.goto('/#/ui-galeria?abrir=painel-criacao-inline');
+    await page.evaluate(async () => { await document.fonts.ready; });
+    const secao = page.locator('section[data-secao="painel-criacao-inline"]');
+    await secao.scrollIntoViewIfNeeded();
+    await expect(secao).toHaveScreenshot(`${tema}-painel-criacao-inline-aberto.png`);
   });
 
   test(`confirm dialog aberto em tema ${tema}`, async ({ page }) => {
