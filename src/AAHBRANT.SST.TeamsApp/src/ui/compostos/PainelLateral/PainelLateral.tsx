@@ -5,11 +5,40 @@ import { designTokens, tokensUi } from '../../tokens/tokens';
 import { useTipografia } from '../../tokens/tipografia';
 
 const useStyles = makeStyles({
-  md: { width: '400px', maxWidth: '94vw' },
-  lg: { width: '560px', maxWidth: '94vw' },
+  md: {
+    width: '440px',
+    maxWidth: '94vw',
+    '@media (max-width: 1024px)': { width: '100vw', maxWidth: '100vw' },
+  },
+  lg: {
+    width: '640px',
+    maxWidth: '94vw',
+    '@media (max-width: 1024px)': { width: '100vw', maxWidth: '100vw' },
+  },
   cabecalho: { borderBottom: `1px solid ${tokensUi.bordaSuave}` },
   subtitulo: { color: designTokens.colorNeutralMedium, marginTop: tokensUi.espaco.xs },
-  rodape: { borderTop: `1px solid ${tokensUi.bordaSuave}`, justifyContent: 'flex-end', gap: tokensUi.espaco.sm },
+  corpo: {
+    '@media (max-width: 1024px)': { paddingLeft: tokensUi.espaco.xl, paddingRight: tokensUi.espaco.xl },
+    '@media (max-width: 600px)': { paddingLeft: tokensUi.espaco.lg, paddingRight: tokensUi.espaco.lg },
+  },
+  rodape: {
+    borderTop: `1px solid ${tokensUi.bordaSuave}`,
+    justifyContent: 'flex-end',
+    gap: tokensUi.espaco.sm,
+    '& .fui-Button': { minHeight: '40px' },
+    '@media (max-width: 1024px)': {
+      paddingLeft: tokensUi.espaco.xl,
+      paddingRight: tokensUi.espaco.xl,
+      '& .fui-Button': { minHeight: '44px' },
+    },
+    '@media (max-width: 600px)': {
+      flexDirection: 'column-reverse',
+      alignItems: 'stretch',
+      paddingLeft: tokensUi.espaco.lg,
+      paddingRight: tokensUi.espaco.lg,
+      '& .fui-Button': { width: '100%' },
+    },
+  },
 });
 
 export interface PainelLateralProps {
@@ -35,7 +64,7 @@ export function PainelLateral({ aberto, aoFechar, titulo, subtitulo, largura = '
           {subtitulo && <div className={mergeClasses(tipo.legenda, e.subtitulo)}>{subtitulo}</div>}
         </DrawerHeaderTitle>
       </DrawerHeader>
-      <DrawerBody>{children}</DrawerBody>
+      <DrawerBody className={e.corpo}>{children}</DrawerBody>
       {rodape && <DrawerFooter className={e.rodape}>{rodape}</DrawerFooter>}
     </OverlayDrawer>
   );

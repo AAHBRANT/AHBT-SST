@@ -51,7 +51,6 @@ internal static class CabecalhoDocumentoPadrao
                         {
                             esquerda.Item().Text(t =>
                             {
-                                t.Justify();
                                 t.Span(texto).FontSize(8).SemiBold();
                             });
                         }
@@ -78,7 +77,6 @@ internal static class CabecalhoDocumentoPadrao
                     {
                         direita.Item().AlignRight().Text(t =>
                         {
-                            t.Justify();
                             t.Span(texto).FontSize(8).SemiBold();
                         });
                     }

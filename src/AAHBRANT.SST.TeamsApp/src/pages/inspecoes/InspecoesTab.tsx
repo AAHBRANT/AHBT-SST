@@ -18,6 +18,7 @@ import {
   type Tom,
 } from '@ui';
 import { Add24Regular } from '@fluentui/react-icons';
+import { hojeIso } from '../../lib/datas';
 import {
   api,
   statusInspecaoLabel,
@@ -30,13 +31,15 @@ import {
   type Usuario,
 } from '../../lib/api';
 
-const inspecaoVazia: NovaInspecao = {
-  checklistModeloId: '',
-  obraId: '',
-  atividadeId: null,
-  data: '',
-  responsavelUsuarioId: '',
-};
+function criarInspecaoVazia(): NovaInspecao {
+  return {
+    checklistModeloId: '',
+    obraId: '',
+    atividadeId: null,
+    data: hojeIso(),
+    responsavelUsuarioId: '',
+  };
+}
 
 // EmAndamento/Concluida (StatusInspecao) — mesmo julgamento do guia item 5: em andamento ainda não
 // terminou (info), concluída é o estado positivo (ok).
@@ -56,7 +59,7 @@ export function InspecoesTab() {
   const [atividades, setAtividades] = useState<Atividade[]>([]);
   const [checklists, setChecklists] = useState<ChecklistModelo[]>([]);
   const [usuarios, setUsuarios] = useState<Usuario[]>([]);
-  const [novaInspecao, setNovaInspecao] = useState<NovaInspecao>(inspecaoVazia);
+  const [novaInspecao, setNovaInspecao] = useState<NovaInspecao>(() => criarInspecaoVazia());
   const [erro, setErro] = useState<string | null>(null);
   const [erroPainel, setErroPainel] = useState<string | null>(null);
   const [carregando, setCarregando] = useState(false);
@@ -94,7 +97,7 @@ export function InspecoesTab() {
   function fecharPainel() {
     setPainelAberto(false);
     setErroPainel(null);
-    setNovaInspecao(inspecaoVazia);
+    setNovaInspecao(criarInspecaoVazia());
   }
 
   async function criar() {
