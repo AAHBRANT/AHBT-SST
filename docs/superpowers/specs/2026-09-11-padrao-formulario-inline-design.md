@@ -104,3 +104,43 @@ regra já registrada no projeto (`feedback_mostrar_antes_de_deploy`, `feedback_d
   deliberada do sistema.
 - Qualquer mudança em backend/API — este design é só front-end
   (`src/AAHBRANT.SST.TeamsApp`).
+
+## 5. Addendum pós-Onda A (2026-09-11) — API de gatilho do `PainelCriacaoInline`
+
+A Onda A foi implementada, revisada (SDD: 5 tasks + revisão final de branch) e implantada em hml via
+PR #69. A revisão final de branch (modelo mais capaz) encontrou uma lacuna real no design original
+desta seção: o componente ficou **só controlado** (`{ aberto, titulo, children }`, sem gatilho próprio),
+então quem consome (`AtividadesTab.tsx`) teve que escrever à mão o `useState`, o rótulo condicional do
+botão, o ícone e o `aria-expanded`/`aria-controls`. Um desses pontos manuais (o `onClick` do botão não
+limpando `erroPainel` ao fechar) já nasceu com bug — corrigido ainda na Onda A, mas é exatamente o tipo
+de defeito que se replicaria 25 vezes sem uma correção de design.
+
+**Decisão:** antes da Onda B, o `PainelCriacaoInline` ganha uma API de gatilho **opcional**, aditiva e
+retrocompatível (`aberto`/`titulo`/`children` continuam funcionando sozinhos para quem, como
+`AtividadesTab`, precisa do botão em outro lugar — ex. dentro do `PageHeader`):
+
+```ts
+export interface PainelCriacaoInlineProps {
+  aberto: boolean;
+  titulo: ReactNode;
+  children: ReactNode;
+  /** Se presente, o componente renderiza o próprio botão de abrir/fechar, com aria-expanded/
+   *  aria-controls corretos e um id estável ligando os dois. Omitir quando o gatilho precisa viver
+   *  em outro lugar da página (ex. no PageHeader, como em AtividadesTab). */
+  gatilho?: {
+    aoAlternar: () => void;
+    rotuloAbrir: ReactNode;
+    rotuloFechar?: ReactNode; // default: rotuloAbrir
+  };
+}
+```
+
+Quando `gatilho` é passado, o componente renderiza um botão próprio (ícone `Add24Regular`/
+`Dismiss24Regular` conforme o estado, texto de `rotuloAbrir`/`rotuloFechar`) acima do `Card`, com
+`aria-expanded={aberto}` e `aria-controls` apontando para um `id` gerado internamente (`useId()` do
+React) no wrapper do `Card`. Quando omitido, o comportamento é idêntico ao da Onda A — nada quebra em
+`AtividadesTab.tsx`.
+
+Isso resolve, de uma vez, os dois achados adiados da revisão final da Onda A: a acessibilidade do toggle
+(antes um `aria-expanded` manual por tela) e o boilerplate repetido (antes um `useState` + JSX por tela).
+As 6 telas de Pessoas (Onda B) são o primeiro consumidor real da API nova.
