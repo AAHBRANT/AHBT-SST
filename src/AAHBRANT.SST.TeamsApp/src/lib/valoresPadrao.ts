@@ -4,7 +4,10 @@
 
 /** Data de hoje em yyyy-MM-dd, o formato que a API e o CampoData esperam. */
 export function hoje(): string {
-  return new Date().toISOString().slice(0, 10);
+  // toLocaleDateString('sv-SE') usa o formato yyyy-MM-dd (padrão sueco) já no fuso local do
+  // navegador, evitando o bug de toISOString() (que converte para UTC e vira o dia errado à
+  // noite no fuso do Brasil, UTC-3).
+  return new Date().toLocaleDateString('sv-SE');
 }
 
 /**

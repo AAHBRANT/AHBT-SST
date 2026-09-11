@@ -111,6 +111,8 @@ export function AtividadesTab() {
             appearance="primary"
             icon={<Add24Regular />}
             onClick={() => (painelAberto ? fecharPainel() : setPainelAberto(true))}
+            aria-expanded={painelAberto}
+            aria-controls="painel-nova-atividade"
           >
             {painelAberto ? 'Fechar' : 'Adicionar atividade'}
           </Button>
@@ -121,54 +123,56 @@ export function AtividadesTab() {
           {erro}
         </FeedbackInline>
       )}
-      <PainelCriacaoInline aberto={painelAberto} titulo="Nova atividade">
-        <FormSection titulo="Dados da atividade" numero={1} primeira>
-          {erroPainel && (
-            <FeedbackInline tom="erro" aoFechar={() => setErroPainel(null)}>
-              {erroPainel}
-            </FeedbackInline>
-          )}
-          <FormGrid>
-            <Campo span={3}>
-              <Field label="Obra">
-                <Select
-                  value={novaAtividade.obraId}
-                  onChange={(_, d) => setNovaAtividade({ ...novaAtividade, obraId: d.value })}
-                >
-                  <option value="">Selecione</option>
-                  {obras.map((obra) => (
-                    <option key={obra.id} value={obra.id}>
-                      {obra.nome}
-                    </option>
-                  ))}
-                </Select>
-              </Field>
-            </Campo>
-            <Campo span={4}>
-              <Field label="Nome da atividade">
-                <Input
-                  value={novaAtividade.nome}
-                  onChange={(_, d) => setNovaAtividade({ ...novaAtividade, nome: d.value })}
-                />
-              </Field>
-            </Campo>
-            <Campo span={5}>
-              <Field label="Descrição">
-                <Input
-                  value={novaAtividade.descricao ?? ''}
-                  onChange={(_, d) => setNovaAtividade({ ...novaAtividade, descricao: d.value })}
-                />
-              </Field>
-            </Campo>
-          </FormGrid>
-          <FormRodape>
-            <Button onClick={fecharPainel}>Cancelar</Button>
-            <Button appearance="primary" onClick={criar} disabled={carregando}>
-              Adicionar atividade
-            </Button>
-          </FormRodape>
-        </FormSection>
-      </PainelCriacaoInline>
+      <div id="painel-nova-atividade">
+        <PainelCriacaoInline aberto={painelAberto} titulo="Nova atividade">
+          <FormSection titulo="Dados da atividade" numero={1} primeira>
+            {erroPainel && (
+              <FeedbackInline tom="erro" aoFechar={() => setErroPainel(null)}>
+                {erroPainel}
+              </FeedbackInline>
+            )}
+            <FormGrid>
+              <Campo span={3}>
+                <Field label="Obra">
+                  <Select
+                    value={novaAtividade.obraId}
+                    onChange={(_, d) => setNovaAtividade({ ...novaAtividade, obraId: d.value })}
+                  >
+                    <option value="">Selecione</option>
+                    {obras.map((obra) => (
+                      <option key={obra.id} value={obra.id}>
+                        {obra.nome}
+                      </option>
+                    ))}
+                  </Select>
+                </Field>
+              </Campo>
+              <Campo span={4}>
+                <Field label="Nome da atividade">
+                  <Input
+                    value={novaAtividade.nome}
+                    onChange={(_, d) => setNovaAtividade({ ...novaAtividade, nome: d.value })}
+                  />
+                </Field>
+              </Campo>
+              <Campo span={5}>
+                <Field label="Descrição">
+                  <Input
+                    value={novaAtividade.descricao ?? ''}
+                    onChange={(_, d) => setNovaAtividade({ ...novaAtividade, descricao: d.value })}
+                  />
+                </Field>
+              </Campo>
+            </FormGrid>
+            <FormRodape>
+              <Button onClick={fecharPainel}>Cancelar</Button>
+              <Button appearance="primary" onClick={criar} disabled={carregando}>
+                Adicionar atividade
+              </Button>
+            </FormRodape>
+          </FormSection>
+        </PainelCriacaoInline>
+      </div>
       <Card>
         <DataTable
           aria-label="Atividades cadastradas"
