@@ -390,7 +390,11 @@ export function AppShell({ children }: { children: ReactNode }) {
             )}
           </div>
           <div className={estilos.divisorTopbar} />
-          <button className={estilos.usuarioChip} title={nomeUsuario}>
+          <button
+            className={estilos.usuarioChip}
+            title="Abrir funcionários e assinaturas"
+            onClick={() => navigate('/pessoas?aba=trabalhadores')}
+          >
             <Text className={estilos.usuarioNome}>{nomeUsuario}</Text>
             <div className={estilos.usuarioAvatar} title="Foto de perfil (em breve)">
               <Person24Regular fontSize={17} />
