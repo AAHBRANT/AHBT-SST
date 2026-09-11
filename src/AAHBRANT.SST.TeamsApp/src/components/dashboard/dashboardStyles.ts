@@ -154,8 +154,19 @@ export const useDashboardStyles = makeStyles({
     whiteSpace: 'nowrap',
     paddingTop: '2px',
   },
+  gradeCards: {
+    display: 'grid',
+    gridTemplateColumns: 'repeat(auto-fit, minmax(340px, 1fr))',
+    gap: '16px',
+    marginBottom: '16px',
+    alignItems: 'stretch',
+  },
+  alturaCompleta: {
+    height: '100%',
+  },
   cardAcionavel: {
     height: '100%',
+    display: 'flex',
     cursor: 'pointer',
     borderRadius: '12px',
     ':focus-visible': {

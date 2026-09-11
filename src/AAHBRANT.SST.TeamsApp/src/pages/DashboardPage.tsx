@@ -536,7 +536,7 @@ export function DashboardPage() {
         </div>
       </div>
 
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(340px, 1fr))', gap: 16, marginBottom: 16 }}>
+      <div className={dashEstilos.gradeCards}>
         <div
           className={dashEstilos.cardAcionavel}
           role="button"
@@ -544,7 +544,7 @@ export function DashboardPage() {
           onClick={() => navigate('/operacao/saude-ocupacional?aba=aso')}
           onKeyDown={(evento) => abrirComTeclado(evento, '/operacao/saude-ocupacional?aba=aso')}
         >
-          <Card titulo="Status de aptidão ocupacional (ASO)" subtitulo="Situação clínica do ASO mais recente de cada funcionário">
+          <Card className={dashEstilos.alturaCompleta} titulo="Status de aptidão ocupacional (ASO)" subtitulo="Situação clínica do ASO mais recente de cada funcionário">
             <StatusDonutChart dados={statusAsoDados} legendaCentral="funcionários" />
           </Card>
         </div>
@@ -555,11 +555,11 @@ export function DashboardPage() {
           onClick={() => navigate('/ocorrencias?secao=acidentes')}
           onKeyDown={(evento) => abrirComTeclado(evento, '/ocorrencias?secao=acidentes')}
         >
-          <Card titulo="Quase-acidentes — últimos 6 meses" subtitulo={`Registros classificados como quase-acidente, ${escopoIndicadores}`}>
+          <Card className={dashEstilos.alturaCompleta} titulo="Quase-acidentes — últimos 6 meses" subtitulo={`Registros classificados como quase-acidente, ${escopoIndicadores}`}>
             <TrendBarChart dados={tendenciaQuaseAcidentes} />
           </Card>
         </div>
-        <Card titulo="Resumo de pendências" subtitulo={`Itens que pedem atenção, ${escopoIndicadores}`}>
+        <Card className={dashEstilos.alturaCompleta} titulo="Resumo de pendências" subtitulo={`Itens que pedem atenção, ${escopoIndicadores}`}>
           <div className={dashEstilos.resumoPendencias}>
             {pendenciasResumo.map((item) => (
               <div
