@@ -57,8 +57,10 @@ novo em `ui/compostos/`:
   `PainelLateral`/`FormSection` já existentes — confirmar no code review da Onda A).
 - **Responsabilidade:** um botão "+ Novo X" (ou equivalente) que revela/esconde um `Card` com
   `FormSection`/`FormGrid`/`FormRodape` dentro, posicionado **acima** da lista/tabela da página (nunca
-  como overlay). Anima com o preset `deslizarDe('baixo')` de `ui/tokens/movimento.ts` — já existe, só
-  precisa ser aplicado aqui — para não perder a sensação de transição suave que o drawer tinha.
+  como overlay). Anima com `AnimatePresence` + altura/opacidade (`transicaoNormal` de
+  `ui/tokens/movimento.ts`) — o mesmo mecanismo que `ui/layout/WorkflowActions/WorkflowActions.tsx` já
+  usa para "formulário cresce de onde foi acionado" — para não perder a sensação de transição suave que
+  o drawer tinha, seguindo o princípio de movimento já documentado (origem, não decoração).
 - **O que ele NÃO faz:** não busca dado, não sabe de API — só orquestra abrir/fechar e o slot de
   conteúdo, igual à regra de dependência do resto de `src/ui/` (`ui/*` nunca importa `lib/api`).
 - **Reuso:** `FormSection`, `FormGrid`, `FormRodape`, `Card` já existem e não mudam — o componente novo é
