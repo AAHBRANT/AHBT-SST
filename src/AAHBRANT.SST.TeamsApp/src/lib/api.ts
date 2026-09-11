@@ -2748,6 +2748,9 @@ function ehRotaOffline(path: string): boolean {
 // ASP.NET Core, {"title": "Not Found", ...}. Sem isso, o usuário via literalmente
 // "400 Bad Request: {\"erro\":\"O campo Local é obrigatório.\"}" na tela em vez da mensagem limpa.
 function extrairMensagemErro(corpo: string, status: number, statusText: string): string {
+  if (status === 401) {
+    return 'Sessão não autenticada (401). Entre com sua conta Microsoft/Entra para acessar o sistema.';
+  }
   if (corpo) {
     try {
       const json = JSON.parse(corpo) as { erro?: string; title?: string };

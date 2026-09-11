@@ -93,6 +93,9 @@ async function lerCorpoErro(response: Response): Promise<string> {
 // {"title": "..."} num 404 de rota que nem chega a controller) — sem isso, o usuário via
 // "400 Bad Request: {...}" cru em vez da mensagem limpa.
 function extrairMensagemErro(corpo: string, status: number, statusText: string): string {
+  if (status === 401) {
+    return 'Sessão não autenticada (401). Entre com sua conta Microsoft/Entra para sincronizar os dados.';
+  }
   if (corpo) {
     try {
       const json = JSON.parse(corpo) as { erro?: string; title?: string };
