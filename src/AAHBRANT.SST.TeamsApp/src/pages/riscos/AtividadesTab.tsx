@@ -107,7 +107,11 @@ export function AtividadesTab() {
       <PageHeader
         titulo="Atividades cadastradas"
         acoes={
-          <Button appearance="primary" icon={<Add24Regular />} onClick={() => setPainelAberto((a) => !a)}>
+          <Button
+            appearance="primary"
+            icon={<Add24Regular />}
+            onClick={() => (painelAberto ? fecharPainel() : setPainelAberto(true))}
+          >
             {painelAberto ? 'Fechar' : 'Adicionar atividade'}
           </Button>
         }
