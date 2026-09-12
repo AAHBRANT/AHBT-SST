@@ -1,5 +1,4 @@
 import { useEffect, useMemo, useState, type KeyboardEvent, type ReactElement } from 'react';
-import { Select } from '@fluentui/react-components';
 import { useNavigate } from 'react-router-dom';
 import {
   BuildingBank24Regular,
@@ -34,7 +33,7 @@ import {
   type Trabalhador,
   type Treinamento,
 } from '../lib/api';
-import { Card, FeedbackInline, KpiCard, Legenda, StatusChip, StatusDonutChart, TrendBarChart, usePaletaGraficos, type FatiaDonut, type PontoTendencia, type Tom } from '@ui';
+import { Card, FeedbackInline, KpiCard, Legenda, Select, StatusChip, StatusDonutChart, TrendBarChart, usePaletaGraficos, type FatiaDonut, type PontoTendencia, type Tom } from '@ui';
 import { useDashboardStyles } from '../components/dashboard/dashboardStyles';
 import { TaxaGravidadeCard } from '../components/dashboard/TaxaGravidadeCard';
 import { MiniCalendarioCard } from '../components/dashboard/MiniCalendarioCard';

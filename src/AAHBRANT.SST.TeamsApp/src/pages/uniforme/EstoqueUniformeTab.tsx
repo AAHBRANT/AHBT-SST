@@ -1,18 +1,22 @@
-import { Fragment, useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import {
   Button,
+  Campo,
+  Card,
+  DataTable,
   Field,
+  FeedbackInline,
+  FormGrid,
+  FormRodape,
+  FormSection,
   Input,
+  Legenda,
+  PageHeader,
   Select,
-  Table,
-  TableBody,
-  TableCell,
-  TableHeader,
-  TableHeaderCell,
-  TableRow,
   Text,
   Textarea,
-} from '@fluentui/react-components';
+  type Coluna,
+} from '@ui';
 import {
   api,
   tipoMovimentacaoEstoqueUniformeLabel,
@@ -21,14 +25,15 @@ import {
   type MovimentacaoEstoqueUniforme,
   type Obra,
 } from '../../lib/api';
-import { usePageStyles } from '../pageStyles';
 
 // Estoque de Uniforme — grade por Obra + Tamanho (mesmo princípio de segmentação por Obra do
 // EstoqueTab.tsx do EPI, com uma dimensão a mais: o tamanho). Entrada é sempre manual (sem código
 // de barras — decisão do brainstorming, 2026-09-07): escolhe a peça, digita o tamanho (cria um
 // tamanho novo se ainda não existir nessa peça+obra) e a quantidade recebida.
+// Camada ui/: saldo por peça+tamanho vira DataTable expansivel — expandir uma linha mostra o
+// histórico de movimentações numa segunda DataTable aninhada (mesmo padrão de EstoqueTab.tsx do EPI),
+// substituindo a Table crua com Fragment que a versão antiga usava para simular a mesma expansão.
 export function EstoqueUniformeTab() {
-  const estilos = usePageStyles();
   const [obras, setObras] = useState<Obra[]>([]);
   const [obraId, setObraId] = useState('');
   const [itensCatalogo, setItensCatalogo] = useState<CatalogoUniforme[]>([]);
@@ -79,15 +84,15 @@ export function EstoqueUniformeTab() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [obraId]);
 
-  async function alternarHistorico(catalogoUniformeId: string, tamanho: string) {
-    if (linhaSelecionada?.catalogoUniformeId === catalogoUniformeId && linhaSelecionada.tamanho === tamanho) {
+  async function alternarHistorico(saldo: EstoqueUniformePorObra) {
+    if (linhaSelecionada?.catalogoUniformeId === saldo.catalogoUniformeId && linhaSelecionada.tamanho === saldo.tamanho) {
       setLinhaSelecionada(null);
       return;
     }
     try {
       setErro(null);
-      setMovimentacoes(await api.estoquesUniforme.listarMovimentacoes(obraId, catalogoUniformeId, tamanho));
-      setLinhaSelecionada({ catalogoUniformeId, tamanho });
+      setMovimentacoes(await api.estoquesUniforme.listarMovimentacoes(obraId, saldo.catalogoUniformeId, saldo.tamanho));
+      setLinhaSelecionada({ catalogoUniformeId: saldo.catalogoUniformeId, tamanho: saldo.tamanho });
     } catch (e) {
       setErro(e instanceof Error ? e.message : 'Falha ao carregar histórico de movimentações.');
     }
@@ -141,187 +146,176 @@ export function EstoqueUniformeTab() {
     }
   }
 
+  const colunasSaldo: Coluna<EstoqueUniformePorObra>[] = [
+    { chave: 'peca', rotulo: 'Peça', render: (s) => s.catalogoUniformeNome },
+    { chave: 'tamanho', rotulo: 'Tamanho' },
+    { chave: 'saldo', rotulo: 'Saldo', alinhar: 'direita' },
+  ];
+
+  const colunasMovimentacoes: Coluna<MovimentacaoEstoqueUniforme>[] = [
+    { chave: 'data', rotulo: 'Data', render: (m) => new Date(m.createdAtUtc).toLocaleString('pt-BR') },
+    { chave: 'tipo', rotulo: 'Tipo', render: (m) => tipoMovimentacaoEstoqueUniformeLabel[m.tipo] },
+    { chave: 'quantidade', rotulo: 'Quantidade', alinhar: 'direita' },
+    { chave: 'saldoResultante', rotulo: 'Saldo resultante', alinhar: 'direita' },
+    { chave: 'observacao', rotulo: 'Observação' },
+  ];
+
   return (
-    <div>
-      <div className={estilos.card} style={{ marginBottom: 16 }}>
-        <div className={estilos.toolbar}>
-          <Text weight="semibold">Estoque de Uniforme por Obra</Text>
-        </div>
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+      <PageHeader titulo="Estoque de Uniforme por Obra" />
 
-        {erro && <Text className={estilos.erro}>{erro}</Text>}
+      {erro && (
+        <FeedbackInline tom="erro" aoFechar={() => setErro(null)}>
+          {erro}
+        </FeedbackInline>
+      )}
 
-        <Field label="Obra">
-          <Select value={obraId} onChange={(_, d) => setObraId(d.value)}>
-            <option value="">Selecione</option>
-            {obras.map((o) => (
-              <option key={o.id} value={o.id}>
-                {o.nome}
-              </option>
-            ))}
-          </Select>
-        </Field>
-      </div>
+      <Card densidade="compacta">
+        <FormSection titulo="Obra" numero={1} primeira>
+          <FormGrid>
+            <Campo span={6}>
+              <Field label="Obra">
+                <Select value={obraId} onChange={(_, d) => setObraId(d.value)}>
+                  <option value="">Selecione</option>
+                  {obras.map((o) => (
+                    <option key={o.id} value={o.id}>
+                      {o.nome}
+                    </option>
+                  ))}
+                </Select>
+              </Field>
+            </Campo>
+          </FormGrid>
+        </FormSection>
+      </Card>
 
       {obraId && (
         <>
-          <div className={estilos.card} style={{ marginBottom: 16 }}>
-            <div className={estilos.toolbar}>
-              <Text weight="semibold">Entrada manual (reposição)</Text>
-            </div>
-            <div className={`${estilos.sectionTitle} ${estilos.sectionTitleFirst}`}>Informações da entrada</div>
-            <div className={estilos.formGrid}>
-              <div className={estilos.col4}>
-                <Field label="Peça">
-                  <Select value={entradaCatalogoUniformeId} onChange={(_, d) => setEntradaCatalogoUniformeId(d.value)}>
-                    <option value="">Selecione</option>
-                    {itensCatalogo.map((i) => (
-                      <option key={i.id} value={i.id}>
-                        {i.nome}
-                      </option>
-                    ))}
-                  </Select>
-                </Field>
-              </div>
-              <div className={estilos.col2}>
-                <Field label="Tamanho">
-                  <Input value={entradaTamanho} onChange={(_, d) => setEntradaTamanho(d.value)} placeholder="ex.: M, 42..." />
-                </Field>
-              </div>
-              <div className={estilos.col2}>
-                <Field label="Quantidade">
-                  <Input type="number" value={entradaQuantidade} onChange={(_, d) => setEntradaQuantidade(d.value)} />
-                </Field>
-              </div>
-              <div className={estilos.col4}>
-                <Field label="Observação (opcional)">
-                  <Input value={entradaObservacao} onChange={(_, d) => setEntradaObservacao(d.value)} />
-                </Field>
-              </div>
-            </div>
-            <div className={estilos.formActions}>
-              <Button
-                appearance="primary"
-                onClick={registrarEntrada}
-                disabled={carregando || !entradaCatalogoUniformeId || !entradaTamanho.trim() || Number(entradaQuantidade) <= 0}
-              >
-                Registrar entrada
-              </Button>
-            </div>
-          </div>
+          <Card titulo="Entrada manual (reposição)" densidade="compacta">
+            <FormSection titulo="Dados da entrada" numero={1} primeira>
+              <FormGrid>
+                <Campo span={4}>
+                  <Field label="Peça">
+                    <Select value={entradaCatalogoUniformeId} onChange={(_, d) => setEntradaCatalogoUniformeId(d.value)}>
+                      <option value="">Selecione</option>
+                      {itensCatalogo.map((i) => (
+                        <option key={i.id} value={i.id}>
+                          {i.nome}
+                        </option>
+                      ))}
+                    </Select>
+                  </Field>
+                </Campo>
+                <Campo span={2}>
+                  <Field label="Tamanho">
+                    <Input value={entradaTamanho} onChange={(_, d) => setEntradaTamanho(d.value)} placeholder="ex.: M, 42..." />
+                  </Field>
+                </Campo>
+                <Campo span={2}>
+                  <Field label="Quantidade">
+                    <Input type="number" value={entradaQuantidade} onChange={(_, d) => setEntradaQuantidade(d.value)} />
+                  </Field>
+                </Campo>
+                <Campo span={4}>
+                  <Field label="Observação (opcional)">
+                    <Input value={entradaObservacao} onChange={(_, d) => setEntradaObservacao(d.value)} />
+                  </Field>
+                </Campo>
+              </FormGrid>
+              <FormRodape>
+                <Button
+                  appearance="primary"
+                  onClick={registrarEntrada}
+                  disabled={carregando || !entradaCatalogoUniformeId || !entradaTamanho.trim() || Number(entradaQuantidade) <= 0}
+                >
+                  Registrar entrada
+                </Button>
+              </FormRodape>
+            </FormSection>
+          </Card>
 
-          <div className={estilos.card} style={{ marginBottom: 16 }}>
-            <div className={estilos.toolbar}>
-              <Text weight="semibold">Ajuste de saldo (correção de inventário)</Text>
-            </div>
-            <div className={`${estilos.sectionTitle} ${estilos.sectionTitleFirst}`}>Informações do ajuste</div>
-            <div className={estilos.formGrid}>
-              <div className={estilos.col4}>
-                <Field label="Peça">
-                  <Select value={ajusteCatalogoUniformeId} onChange={(_, d) => setAjusteCatalogoUniformeId(d.value)}>
-                    <option value="">Selecione</option>
-                    {itensCatalogo.map((i) => (
-                      <option key={i.id} value={i.id}>
-                        {i.nome}
-                      </option>
-                    ))}
-                  </Select>
-                </Field>
-              </div>
-              <div className={estilos.col2}>
-                <Field label="Tamanho">
-                  <Input value={ajusteTamanho} onChange={(_, d) => setAjusteTamanho(d.value)} placeholder="ex.: M, 42..." />
-                </Field>
-              </div>
-              <div className={estilos.col2}>
-                <Field label="Novo saldo">
-                  <Input type="number" value={ajusteNovoSaldo} onChange={(_, d) => setAjusteNovoSaldo(d.value)} />
-                </Field>
-              </div>
-              <div className={estilos.col4}>
-                <Field label="Observação (obrigatória)">
-                  <Textarea value={ajusteObservacao} onChange={(_, d) => setAjusteObservacao(d.value)} />
-                </Field>
-              </div>
-            </div>
-            <div className={estilos.formActions}>
-              <Button
-                appearance="primary"
-                onClick={ajustarSaldo}
-                disabled={carregando || !ajusteCatalogoUniformeId || !ajusteTamanho.trim() || !ajusteObservacao.trim() || Number(ajusteNovoSaldo) < 0}
-              >
-                Ajustar saldo
-              </Button>
-            </div>
-          </div>
+          <Card titulo="Ajuste de saldo (correção de inventário)" densidade="compacta">
+            <FormSection titulo="Dados do ajuste" numero={1} primeira>
+              <FormGrid>
+                <Campo span={4}>
+                  <Field label="Peça">
+                    <Select value={ajusteCatalogoUniformeId} onChange={(_, d) => setAjusteCatalogoUniformeId(d.value)}>
+                      <option value="">Selecione</option>
+                      {itensCatalogo.map((i) => (
+                        <option key={i.id} value={i.id}>
+                          {i.nome}
+                        </option>
+                      ))}
+                    </Select>
+                  </Field>
+                </Campo>
+                <Campo span={2}>
+                  <Field label="Tamanho">
+                    <Input value={ajusteTamanho} onChange={(_, d) => setAjusteTamanho(d.value)} placeholder="ex.: M, 42..." />
+                  </Field>
+                </Campo>
+                <Campo span={2}>
+                  <Field label="Novo saldo">
+                    <Input type="number" value={ajusteNovoSaldo} onChange={(_, d) => setAjusteNovoSaldo(d.value)} />
+                  </Field>
+                </Campo>
+                <Campo span={4}>
+                  <Field label="Observação (obrigatória)">
+                    <Textarea value={ajusteObservacao} onChange={(_, d) => setAjusteObservacao(d.value)} />
+                  </Field>
+                </Campo>
+              </FormGrid>
+              <FormRodape>
+                <Button
+                  appearance="primary"
+                  onClick={ajustarSaldo}
+                  disabled={
+                    carregando ||
+                    !ajusteCatalogoUniformeId ||
+                    !ajusteTamanho.trim() ||
+                    !ajusteObservacao.trim() ||
+                    Number(ajusteNovoSaldo) < 0
+                  }
+                >
+                  Ajustar saldo
+                </Button>
+              </FormRodape>
+            </FormSection>
+          </Card>
 
-          <div className={estilos.card}>
-            <div className={estilos.toolbar}>
-              <Text weight="semibold">Saldo atual</Text>
-            </div>
-            <Table noNativeElements>
-              <TableHeader>
-                <TableRow>
-                  <TableHeaderCell>Peça</TableHeaderCell>
-                  <TableHeaderCell>Tamanho</TableHeaderCell>
-                  <TableHeaderCell>Saldo</TableHeaderCell>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {saldos.map((s) => {
-                  const chave = `${s.catalogoUniformeId}-${s.tamanho}`;
-                  const selecionada = linhaSelecionada?.catalogoUniformeId === s.catalogoUniformeId && linhaSelecionada.tamanho === s.tamanho;
-                  return (
-                    <Fragment key={chave}>
-                      <TableRow onClick={() => alternarHistorico(s.catalogoUniformeId, s.tamanho)} style={{ cursor: 'pointer' }}>
-                        <TableCell>{s.catalogoUniformeNome}</TableCell>
-                        <TableCell>{s.tamanho}</TableCell>
-                        <TableCell>{s.saldo}</TableCell>
-                      </TableRow>
-                      {selecionada && (
-                        <TableRow key={`${chave}-historico`}>
-                          <TableCell colSpan={3}>
-                            <div style={{ padding: '8px 0' }}>
-                              <Text weight="semibold">
-                                Histórico de movimentações — {s.catalogoUniformeNome} ({s.tamanho})
-                              </Text>
-                              {movimentacoes.length === 0 ? (
-                                <Text as="p" size={200}>
-                                  Nenhuma movimentação registrada.
-                                </Text>
-                              ) : (
-                                <Table noNativeElements>
-                                  <TableHeader>
-                                    <TableRow>
-                                      <TableHeaderCell>Data</TableHeaderCell>
-                                      <TableHeaderCell>Tipo</TableHeaderCell>
-                                      <TableHeaderCell>Quantidade</TableHeaderCell>
-                                      <TableHeaderCell>Saldo resultante</TableHeaderCell>
-                                      <TableHeaderCell>Observação</TableHeaderCell>
-                                    </TableRow>
-                                  </TableHeader>
-                                  <TableBody>
-                                    {movimentacoes.map((m) => (
-                                      <TableRow key={m.id}>
-                                        <TableCell>{new Date(m.createdAtUtc).toLocaleString('pt-BR')}</TableCell>
-                                        <TableCell>{tipoMovimentacaoEstoqueUniformeLabel[m.tipo]}</TableCell>
-                                        <TableCell>{m.quantidade}</TableCell>
-                                        <TableCell>{m.saldoResultante}</TableCell>
-                                        <TableCell>{m.observacao}</TableCell>
-                                      </TableRow>
-                                    ))}
-                                  </TableBody>
-                                </Table>
-                              )}
-                            </div>
-                          </TableCell>
-                        </TableRow>
-                      )}
-                    </Fragment>
-                  );
-                })}
-              </TableBody>
-            </Table>
-          </div>
+          <Card titulo="Saldo atual" densidade="compacta">
+            <DataTable
+              aria-label="Saldo de uniforme por obra"
+              densidade="compacta"
+              colunas={colunasSaldo}
+              linhas={saldos}
+              chaveLinha={(s) => `${s.catalogoUniformeId}-${s.tamanho}`}
+              vazio={{ titulo: 'Nenhum saldo registrado para esta obra.' }}
+              aoClicarLinha={alternarHistorico}
+              expansivel={{
+                aberta: (s) =>
+                  s.catalogoUniformeId === linhaSelecionada?.catalogoUniformeId && s.tamanho === linhaSelecionada.tamanho,
+                render: (s) => (
+                  <>
+                    <Text weight="semibold">
+                      Histórico de movimentações — {s.catalogoUniformeNome} ({s.tamanho})
+                    </Text>
+                    {movimentacoes.length === 0 ? (
+                      <Legenda>Nenhuma movimentação registrada.</Legenda>
+                    ) : (
+                      <DataTable
+                        aria-label={`Movimentações de ${s.catalogoUniformeNome} (${s.tamanho})`}
+                        densidade="compacta"
+                        colunas={colunasMovimentacoes}
+                        linhas={movimentacoes}
+                        chaveLinha={(m) => m.id}
+                      />
+                    )}
+                  </>
+                ),
+              }}
+            />
+          </Card>
         </>
       )}
     </div>

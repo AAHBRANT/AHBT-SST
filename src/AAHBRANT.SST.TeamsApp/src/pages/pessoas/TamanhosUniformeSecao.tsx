@@ -1,17 +1,16 @@
 import { useEffect, useState } from 'react';
-import { Button, Input, Table, TableBody, TableCell, TableHeader, TableHeaderCell, TableRow, Text } from '@fluentui/react-components';
+import { Button, Card, DataTable, FeedbackInline, FormRodape, Input, type Coluna } from '@ui';
 import { Save24Regular } from '@fluentui/react-icons';
 import { api, type CatalogoUniforme, type ItemTamanhoUniforme } from '../../lib/api';
-import { usePageStyles } from '../pageStyles';
 import { useSucessoToast } from '../../hooks/useSucessoToast';
 
 // Tamanho de uniforme por trabalhador — seção do perfil (docs/superpowers/specs/2026-09-07-modulo-
 // uniforme-design.md: "nova seção na tela de perfil dele, ao lado das demais seções de dados
 // cadastrais"). Substitui a aba global TamanhosUniformeTab.tsx (removida na revisão final do
 // branch, que apontou o desvio da spec) — mesma API, sem o seletor de trabalhador, que aqui vem da
-// própria página de perfil.
+// própria página de perfil. Camada ui/: como é seção de página (não página inteira), o título vai
+// no Card, não num PageHeader.
 export function TamanhosUniformeSecao({ trabalhadorId }: { trabalhadorId: string }) {
-  const estilos = usePageStyles();
   const sucessoToast = useSucessoToast();
   const [itensCatalogo, setItensCatalogo] = useState<CatalogoUniforme[]>([]);
   const [tamanhos, setTamanhos] = useState<Record<string, string>>({});
@@ -60,42 +59,43 @@ export function TamanhosUniformeSecao({ trabalhadorId }: { trabalhadorId: string
 
   if (carregandoLista || itensCatalogo.length === 0) return null;
 
+  const colunas: Coluna<CatalogoUniforme>[] = [
+    { chave: 'peca', rotulo: 'Peça', render: (item) => item.nome },
+    {
+      chave: 'tamanho',
+      rotulo: 'Tamanho',
+      render: (item) => (
+        <Input
+          value={tamanhos[item.id] ?? ''}
+          onChange={(_, d) => setTamanhos({ ...tamanhos, [item.id]: d.value })}
+          placeholder="ex.: M, 42..."
+          style={{ width: 100 }}
+        />
+      ),
+    },
+  ];
+
   return (
-    <div className={estilos.card}>
-      <div className={estilos.toolbar}>
-        <Text weight="semibold">Tamanhos de uniforme</Text>
-      </div>
+    <Card titulo="Tamanhos de uniforme" densidade="compacta">
+      {erro && (
+        <FeedbackInline tom="erro" aoFechar={() => setErro(null)}>
+          {erro}
+        </FeedbackInline>
+      )}
 
-      {erro && <Text className={estilos.erro}>{erro}</Text>}
+      <DataTable
+        aria-label="Tamanhos de uniforme do trabalhador"
+        densidade="compacta"
+        colunas={colunas}
+        linhas={itensCatalogo}
+        chaveLinha={(i) => i.id}
+      />
 
-      <Table noNativeElements>
-        <TableHeader>
-          <TableRow>
-            <TableHeaderCell>Peça</TableHeaderCell>
-            <TableHeaderCell>Tamanho</TableHeaderCell>
-          </TableRow>
-        </TableHeader>
-        <TableBody>
-          {itensCatalogo.map((item) => (
-            <TableRow key={item.id}>
-              <TableCell>{item.nome}</TableCell>
-              <TableCell>
-                <Input
-                  value={tamanhos[item.id] ?? ''}
-                  onChange={(_, d) => setTamanhos({ ...tamanhos, [item.id]: d.value })}
-                  placeholder="ex.: M, 42..."
-                  style={{ width: 100 }}
-                />
-              </TableCell>
-            </TableRow>
-          ))}
-        </TableBody>
-      </Table>
-      <div className={estilos.formActions}>
+      <FormRodape>
         <Button appearance="primary" icon={<Save24Regular />} onClick={salvar} disabled={carregando}>
           Salvar tamanhos
         </Button>
-      </div>
-    </div>
+      </FormRodape>
+    </Card>
   );
 }
