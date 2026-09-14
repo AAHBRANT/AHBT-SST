@@ -20,7 +20,7 @@ import { Add24Regular, Delete24Regular, Save24Regular } from '@fluentui/react-ic
 import { api, type CatalogoUniforme, type NovoCatalogoUniforme } from '../../lib/api';
 import { useSucessoToast } from '../../hooks/useSucessoToast';
 import { SeletorFotoCamera } from '../../components/SeletorFotoCamera';
-import { FotoCatalogoUniforme } from './FotoCatalogoUniforme';
+import { SlotFotoRemota } from '../../components/camera/SlotFotoRemota';
 
 const itemVazio: NovoCatalogoUniforme = { nome: '', categoria: '' };
 
@@ -137,22 +137,20 @@ export function CatalogoUniformeTab() {
     {
       chave: 'foto',
       rotulo: 'Foto',
-      render: (item) =>
-        edicaoId === item.id && edicao ? (
-          <div style={{ display: 'flex', alignItems: 'center', gap: 6 }} onClick={(ev) => ev.stopPropagation()}>
-            <FotoCatalogoUniforme catalogoUniformeId={item.id} temFoto={item.temFoto} tamanho={36} />
-            <SeletorFotoCamera
-              apenasIcone
-              tamanho="small"
-              rotulo="Trocar foto"
-              tiposAceitos="image/jpeg,image/png"
-              aoSelecionarArquivo={(arquivo) => trocarFoto(item.id, arquivo)}
-              aoErroValidacao={setErro}
-            />
-          </div>
-        ) : (
-          <FotoCatalogoUniforme catalogoUniformeId={item.id} temFoto={item.temFoto} tamanho={36} />
-        ),
+      render: (item) => (
+        <div onClick={(ev) => ev.stopPropagation()}>
+          <SlotFotoRemota
+            rotulo="Foto da peça"
+            id={item.id}
+            temFoto={item.temFoto}
+            baixarFoto={api.catalogosUniforme.baixarFoto}
+            tamanho="compacta"
+            somenteLeitura={!(edicaoId === item.id && edicao)}
+            aoSelecionarArquivo={(arquivo) => trocarFoto(item.id, arquivo)}
+            aoErroValidacao={setErro}
+          />
+        </div>
+      ),
     },
     {
       chave: 'nome',

@@ -21,7 +21,7 @@ import { Add24Regular, Delete24Regular, Save24Regular } from '@fluentui/react-ic
 import { api, type CatalogoEpc, type NovoCatalogoEpc } from '../../lib/api';
 import { useSucessoToast } from '../../hooks/useSucessoToast';
 import { SeletorFotoCamera } from '../../components/SeletorFotoCamera';
-import { FotoCatalogoEpc } from './FotoCatalogoEpc';
+import { SlotFotoRemota } from '../../components/camera/SlotFotoRemota';
 
 const epcVazio: NovoCatalogoEpc = {
   nome: '',
@@ -145,22 +145,20 @@ export function CatalogoEpcTab() {
     {
       chave: 'foto',
       rotulo: 'Foto',
-      render: (epc) =>
-        edicaoId === epc.id && edicao ? (
-          <div style={{ display: 'flex', alignItems: 'center', gap: 6 }} onClick={(ev) => ev.stopPropagation()}>
-            <FotoCatalogoEpc catalogoEpcId={epc.id} temFoto={epc.temFoto} tamanho={36} />
-            <SeletorFotoCamera
-              apenasIcone
-              tamanho="small"
-              rotulo="Trocar foto"
-              tiposAceitos="image/jpeg,image/png"
-              aoSelecionarArquivo={(arquivo) => trocarFoto(epc.id, arquivo)}
-              aoErroValidacao={setErro}
-            />
-          </div>
-        ) : (
-          <FotoCatalogoEpc catalogoEpcId={epc.id} temFoto={epc.temFoto} tamanho={36} />
-        ),
+      render: (epc) => (
+        <div onClick={(ev) => ev.stopPropagation()}>
+          <SlotFotoRemota
+            rotulo="Foto do EPC"
+            id={epc.id}
+            temFoto={epc.temFoto}
+            baixarFoto={api.catalogosEpc.baixarFoto}
+            tamanho="compacta"
+            somenteLeitura={!(edicaoId === epc.id && edicao)}
+            aoSelecionarArquivo={(arquivo) => trocarFoto(epc.id, arquivo)}
+            aoErroValidacao={setErro}
+          />
+        </div>
+      ),
     },
     {
       chave: 'nome',

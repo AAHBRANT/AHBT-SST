@@ -21,7 +21,7 @@ import { Add24Regular, Delete24Regular, Save24Regular } from '@fluentui/react-ic
 import { api, type CatalogoEpi, type NovoCatalogoEpi } from '../../lib/api';
 import { useSucessoToast } from '../../hooks/useSucessoToast';
 import { SeletorFotoCamera } from '../../components/SeletorFotoCamera';
-import { FotoCatalogoEpi } from './FotoCatalogoEpi';
+import { SlotFotoRemota } from '../../components/camera/SlotFotoRemota';
 
 const epiVazio: NovoCatalogoEpi = {
   nome: '',
@@ -152,22 +152,20 @@ export function CatalogoTab() {
     {
       chave: 'foto',
       rotulo: 'Foto',
-      render: (epi) =>
-        edicaoId === epi.id && edicao ? (
-          <div style={{ display: 'flex', alignItems: 'center', gap: 6 }} onClick={(ev) => ev.stopPropagation()}>
-            <FotoCatalogoEpi catalogoEpiId={epi.id} temFoto={epi.temFoto} tamanho={36} />
-            <SeletorFotoCamera
-              apenasIcone
-              tamanho="small"
-              rotulo="Trocar foto"
-              tiposAceitos="image/jpeg,image/png"
-              aoSelecionarArquivo={(arquivo) => trocarFoto(epi.id, arquivo)}
-              aoErroValidacao={setErro}
-            />
-          </div>
-        ) : (
-          <FotoCatalogoEpi catalogoEpiId={epi.id} temFoto={epi.temFoto} tamanho={36} />
-        ),
+      render: (epi) => (
+        <div onClick={(ev) => ev.stopPropagation()}>
+          <SlotFotoRemota
+            rotulo="Foto do EPI"
+            id={epi.id}
+            temFoto={epi.temFoto}
+            baixarFoto={api.catalogosEpi.baixarFoto}
+            tamanho="compacta"
+            somenteLeitura={!(edicaoId === epi.id && edicao)}
+            aoSelecionarArquivo={(arquivo) => trocarFoto(epi.id, arquivo)}
+            aoErroValidacao={setErro}
+          />
+        </div>
+      ),
     },
     {
       chave: 'nome',

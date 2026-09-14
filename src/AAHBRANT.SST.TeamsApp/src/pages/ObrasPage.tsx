@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { Add24Regular, Delete24Regular, Edit24Regular } from '@fluentui/react-icons';
 import { api, statusObraLabel, StatusObra, type NovaObra, type Obra } from '../lib/api';
 import { SeletorFotoCamera } from '../components/SeletorFotoCamera';
+import { SlotFotoRemota } from '../components/camera/SlotFotoRemota';
 import { useSucessoToast } from '../hooks/useSucessoToast';
 import {
   Button,
@@ -48,7 +49,6 @@ export function ObrasPage() {
   const [erroPainel, setErroPainel] = useState<string | null>(null);
   const [carregando, setCarregando] = useState(false);
   const [carregandoLista, setCarregandoLista] = useState(true);
-  const [logoUrls, setLogoUrls] = useState<Record<string, string>>({});
   const [obraEditando, setObraEditando] = useState<Obra | null>(null);
   const [erroEdicao, setErroEdicao] = useState<string | null>(null);
   const [salvandoEdicao, setSalvandoEdicao] = useState(false);
@@ -70,47 +70,12 @@ export function ObrasPage() {
     carregar();
   }, []);
 
-  // Miniaturas do logo são baixadas sob demanda (só para obras com temLogo) e mantidas como
-  // object URL até a página ser desmontada — diferente do padrão "baixar PDF" já usado no
-  // restante do app (que cria e revoga a URL na mesma função), pois aqui a URL precisa
-  // permanecer viva para o <img> renderizar.
-  useEffect(() => {
-    let cancelado = false;
-    (async () => {
-      for (const obra of obras) {
-        if (!obra.temLogo || logoUrls[obra.id]) continue;
-        try {
-          const blob = await api.obras.baixarLogo(obra.id);
-          if (cancelado) return;
-          setLogoUrls((atual) => ({ ...atual, [obra.id]: URL.createObjectURL(blob) }));
-        } catch {
-          // Falha ao carregar miniatura não impede o uso da página; a obra fica sem preview.
-        }
-      }
-    })();
-    return () => {
-      cancelado = true;
-    };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [obras]);
-
-  useEffect(() => {
-    return () => {
-      Object.values(logoUrls).forEach((url) => URL.revokeObjectURL(url));
-    };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-
+  // Miniatura do logo mora em SlotFotoRemota (14/09) — busca sob demanda por obra, sem precisar de
+  // um mapa de object URLs mantido aqui.
   async function enviarLogo(obraId: string, arquivo: File) {
     try {
       setErroLista(null);
       await api.obras.anexarLogo(obraId, arquivo);
-      setLogoUrls((atual) => {
-        const anterior = atual[obraId];
-        if (anterior) URL.revokeObjectURL(anterior);
-        const { [obraId]: _removido, ...resto } = atual;
-        return resto;
-      });
       await carregar();
       sucessoToast('Logo atualizado com sucesso.');
     } catch (e) {
@@ -210,17 +175,13 @@ export function ObrasPage() {
       chave: 'logo',
       rotulo: 'Logo',
       render: (o) => (
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-          {logoUrls[o.id] && (
-            <img
-              src={logoUrls[o.id]}
-              alt={`Logo de ${o.nome}`}
-              style={{ height: 32, width: 32, objectFit: 'contain', borderRadius: 4 }}
-            />
-          )}
-          <SeletorFotoCamera
-            rotulo="Trocar logo"
-            apenasIcone
+        <div onClick={(ev) => ev.stopPropagation()}>
+          <SlotFotoRemota
+            rotulo="Logo da obra"
+            id={o.id}
+            temFoto={o.temLogo}
+            baixarFoto={api.obras.baixarLogo}
+            tamanho="compacta"
             aoSelecionarArquivo={(arquivo) => enviarLogo(o.id, arquivo)}
             aoErroValidacao={setErroLista}
           />
