@@ -8,8 +8,10 @@ import {
   Field,
   FeedbackInline,
   FormGrid,
+  FormRodape,
+  FormSection,
   Input,
-  PainelLateral,
+  PainelCriacaoInline,
   Select,
   StatusChip,
   useConfirmar,
@@ -70,6 +72,9 @@ const tomPorStatus: Record<number, Tom> = {
   [StatusAlerta.Resolvido]: 'ok',
   [StatusAlerta.Ignorado]: 'neutro',
 };
+
+// Migrado para o padrão PainelCriacaoInline (spec 2026-09-11): o PainelLateral (drawer) saiu — o
+// formulário de "Novo alerta manual" agora cresce acima da lista, sem cobrir a tela com uma gaveta.
 
 export function AlertasListaTab() {
   const [alertas, setAlertas] = useState<Alerta[]>([]);
@@ -192,13 +197,134 @@ export function AlertasListaTab() {
   ];
 
   return (
-    <div>
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
       {dialogElement}
       {erro && (
         <FeedbackInline tom="erro" aoFechar={() => setErro(null)}>
           {erro}
         </FeedbackInline>
       )}
+
+      <div id="painel-novo-alerta">
+        <PainelCriacaoInline aberto={painelAberto} titulo="Novo alerta manual">
+          <FormSection titulo="Dados do alerta" numero={1} primeira>
+            {erroPainel && (
+              <FeedbackInline tom="erro" aoFechar={() => setErroPainel(null)}>
+                {erroPainel}
+              </FeedbackInline>
+            )}
+            <FormGrid>
+              <Campo span={2}>
+                <Field label="Tipo">
+                  <Select value={String(novo.tipo)} onChange={(_, d) => setNovo({ ...novo, tipo: Number(d.value) })}>
+                    {Object.entries(tipoAlertaLabel).map(([valor, rotulo]) => (
+                      <option key={valor} value={valor}>
+                        {rotulo}
+                      </option>
+                    ))}
+                  </Select>
+                </Field>
+              </Campo>
+              <Campo span={2}>
+                <Field label="Severidade">
+                  <Select
+                    value={String(novo.severidade)}
+                    onChange={(_, d) => setNovo({ ...novo, severidade: Number(d.value) })}
+                  >
+                    {Object.entries(severidadeAlertaLabel).map(([valor, rotulo]) => (
+                      <option key={valor} value={valor}>
+                        {rotulo}
+                      </option>
+                    ))}
+                  </Select>
+                </Field>
+              </Campo>
+              <Campo span={4}>
+                <Field label="Título" required>
+                  <Input value={novo.titulo} onChange={(_, d) => setNovo({ ...novo, titulo: d.value })} />
+                </Field>
+              </Campo>
+              <Campo span={4}>
+                <Field label="Descrição">
+                  <Input value={novo.descricao ?? ''} onChange={(_, d) => setNovo({ ...novo, descricao: d.value })} />
+                </Field>
+              </Campo>
+              <Campo span={4}>
+                <Field label="Tipo da entidade de origem" required hint="Ex.: Aso, Treinamento, Epi, NaoConformidade">
+                  <Input
+                    value={novo.entidadeOrigemTipo}
+                    onChange={(_, d) => setNovo({ ...novo, entidadeOrigemTipo: d.value })}
+                  />
+                </Field>
+              </Campo>
+              <Campo span={4}>
+                <Field label="Id da entidade de origem" required>
+                  <Input
+                    value={novo.entidadeOrigemId}
+                    onChange={(_, d) => setNovo({ ...novo, entidadeOrigemId: d.value })}
+                  />
+                </Field>
+              </Campo>
+              <Campo span={4}>
+                <Field label="Obra">
+                  <Select value={novo.obraId ?? ''} onChange={(_, d) => setNovo({ ...novo, obraId: d.value })}>
+                    <option value="">Nenhuma</option>
+                    {obras.map((obra) => (
+                      <option key={obra.id} value={obra.id}>
+                        {obra.nome}
+                      </option>
+                    ))}
+                  </Select>
+                </Field>
+              </Campo>
+              <Campo span={4}>
+                <Field label="Funcionário">
+                  <Select
+                    value={novo.trabalhadorId ?? ''}
+                    onChange={(_, d) => setNovo({ ...novo, trabalhadorId: d.value })}
+                  >
+                    <option value="">Nenhum</option>
+                    {trabalhadores.map((trabalhador) => (
+                      <option key={trabalhador.id} value={trabalhador.id}>
+                        {trabalhador.nome}
+                      </option>
+                    ))}
+                  </Select>
+                </Field>
+              </Campo>
+              <Campo span={4}>
+                <Field label="Destinatário">
+                  <Select
+                    value={novo.destinatarioUsuarioId ?? ''}
+                    onChange={(_, d) => setNovo({ ...novo, destinatarioUsuarioId: d.value })}
+                  >
+                    <option value="">Nenhum</option>
+                    {usuarios.map((usuario) => (
+                      <option key={usuario.id} value={usuario.id}>
+                        {usuario.nome}
+                      </option>
+                    ))}
+                  </Select>
+                </Field>
+              </Campo>
+              <Campo span={4}>
+                <Field label="Prazo para tratamento">
+                  <CampoData
+                    value={novo.dataLimiteTratamento ?? ''}
+                    onChange={(_, d) => setNovo({ ...novo, dataLimiteTratamento: d.value })}
+                  />
+                </Field>
+              </Campo>
+            </FormGrid>
+            <FormRodape>
+              <Button onClick={fecharPainel}>Cancelar</Button>
+              <Button appearance="primary" onClick={criar} disabled={carregando}>
+                Registrar
+              </Button>
+            </FormRodape>
+          </FormSection>
+        </PainelCriacaoInline>
+      </div>
 
       <Card
         titulo="Alertas"
@@ -220,8 +346,14 @@ export function AlertasListaTab() {
                 </option>
               ))}
             </Select>
-            <Button appearance="primary" icon={<AddCircle24Regular />} onClick={abrirPainel}>
-              Novo alerta
+            <Button
+              appearance="primary"
+              icon={<AddCircle24Regular />}
+              onClick={() => (painelAberto ? fecharPainel() : abrirPainel())}
+              aria-expanded={painelAberto}
+              aria-controls="painel-novo-alerta"
+            >
+              {painelAberto ? 'Fechar' : 'Novo alerta'}
             </Button>
           </div>
         }
@@ -278,130 +410,6 @@ export function AlertasListaTab() {
           )}
         />
       </Card>
-
-      <PainelLateral
-        aberto={painelAberto}
-        aoFechar={fecharPainel}
-        titulo="Novo alerta manual"
-        largura="lg"
-        rodape={
-          <>
-            <Button onClick={fecharPainel}>Cancelar</Button>
-            <Button appearance="primary" onClick={criar} disabled={carregando}>
-              Registrar
-            </Button>
-          </>
-        }
-      >
-        {erroPainel && (
-          <FeedbackInline tom="erro" aoFechar={() => setErroPainel(null)}>
-            {erroPainel}
-          </FeedbackInline>
-        )}
-        <FormGrid>
-          <Campo span={2}>
-            <Field label="Tipo">
-              <Select value={String(novo.tipo)} onChange={(_, d) => setNovo({ ...novo, tipo: Number(d.value) })}>
-                {Object.entries(tipoAlertaLabel).map(([valor, rotulo]) => (
-                  <option key={valor} value={valor}>
-                    {rotulo}
-                  </option>
-                ))}
-              </Select>
-            </Field>
-          </Campo>
-          <Campo span={2}>
-            <Field label="Severidade">
-              <Select
-                value={String(novo.severidade)}
-                onChange={(_, d) => setNovo({ ...novo, severidade: Number(d.value) })}
-              >
-                {Object.entries(severidadeAlertaLabel).map(([valor, rotulo]) => (
-                  <option key={valor} value={valor}>
-                    {rotulo}
-                  </option>
-                ))}
-              </Select>
-            </Field>
-          </Campo>
-          <Campo span={4}>
-            <Field label="Título" required>
-              <Input value={novo.titulo} onChange={(_, d) => setNovo({ ...novo, titulo: d.value })} />
-            </Field>
-          </Campo>
-          <Campo span={4}>
-            <Field label="Descrição">
-              <Input value={novo.descricao ?? ''} onChange={(_, d) => setNovo({ ...novo, descricao: d.value })} />
-            </Field>
-          </Campo>
-          <Campo span={4}>
-            <Field label="Tipo da entidade de origem" required hint="Ex.: Aso, Treinamento, Epi, NaoConformidade">
-              <Input
-                value={novo.entidadeOrigemTipo}
-                onChange={(_, d) => setNovo({ ...novo, entidadeOrigemTipo: d.value })}
-              />
-            </Field>
-          </Campo>
-          <Campo span={4}>
-            <Field label="Id da entidade de origem" required>
-              <Input
-                value={novo.entidadeOrigemId}
-                onChange={(_, d) => setNovo({ ...novo, entidadeOrigemId: d.value })}
-              />
-            </Field>
-          </Campo>
-          <Campo span={4}>
-            <Field label="Obra">
-              <Select value={novo.obraId ?? ''} onChange={(_, d) => setNovo({ ...novo, obraId: d.value })}>
-                <option value="">Nenhuma</option>
-                {obras.map((obra) => (
-                  <option key={obra.id} value={obra.id}>
-                    {obra.nome}
-                  </option>
-                ))}
-              </Select>
-            </Field>
-          </Campo>
-          <Campo span={4}>
-            <Field label="Funcionário">
-              <Select
-                value={novo.trabalhadorId ?? ''}
-                onChange={(_, d) => setNovo({ ...novo, trabalhadorId: d.value })}
-              >
-                <option value="">Nenhum</option>
-                {trabalhadores.map((trabalhador) => (
-                  <option key={trabalhador.id} value={trabalhador.id}>
-                    {trabalhador.nome}
-                  </option>
-                ))}
-              </Select>
-            </Field>
-          </Campo>
-          <Campo span={4}>
-            <Field label="Destinatário">
-              <Select
-                value={novo.destinatarioUsuarioId ?? ''}
-                onChange={(_, d) => setNovo({ ...novo, destinatarioUsuarioId: d.value })}
-              >
-                <option value="">Nenhum</option>
-                {usuarios.map((usuario) => (
-                  <option key={usuario.id} value={usuario.id}>
-                    {usuario.nome}
-                  </option>
-                ))}
-              </Select>
-            </Field>
-          </Campo>
-          <Campo span={4}>
-            <Field label="Prazo para tratamento">
-              <CampoData
-                value={novo.dataLimiteTratamento ?? ''}
-                onChange={(_, d) => setNovo({ ...novo, dataLimiteTratamento: d.value })}
-              />
-            </Field>
-          </Campo>
-        </FormGrid>
-      </PainelLateral>
     </div>
   );
 }

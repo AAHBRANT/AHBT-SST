@@ -6,9 +6,11 @@ import {
   DataTable,
   FeedbackInline,
   FormGrid,
+  FormRodape,
+  FormSection,
   Field,
   Input,
-  PainelLateral,
+  PainelCriacaoInline,
   Select,
   StatusChip,
   useConfirmar,
@@ -31,9 +33,11 @@ import { useSucessoToast } from '../../hooks/useSucessoToast';
 // Tela de administração do Motor Central de Alertas (requisito do usuário, 2026-08-25): antes só
 // dava para ajustar RegraAlerta.DiasAntecedencia/Severidade direto no banco. Um card por módulo
 // (TipoModuloAlerta), com as regras atuais em linhas editáveis inline (Dias + Severidade + Salvar/
-// Excluir) e um botão "Adicionar regra" por card, que abre um PainelLateral compartilhado — decisão
-// de UI própria (não especificada no requisito): evita repetir um formulário por card e segue o
-// mesmo padrão já usado em toda a Onda 2 para formulário de criação (ex.: AtividadesTab.tsx).
+// Excluir) e um botão "Adicionar regra" por card, que abre um PainelCriacaoInline compartilhado —
+// decisão de UI própria (não especificada no requisito): evita repetir um formulário por card e
+// segue o mesmo padrão já usado em toda a Onda 2 para formulário de criação (ex.:
+// AtividadesTab.tsx). Migrado do PainelLateral (drawer) para o PainelCriacaoInline (spec
+// 2026-09-11): o painel compartilhado agora cresce acima da lista de cards, sem cobrir a tela.
 const modulosOrdenados = Object.entries(TipoModuloAlerta)
   .map(([, valor]) => valor)
   .sort((a, b) => a - b);
@@ -161,7 +165,7 @@ export function AlertasConfiguracaoTab() {
   }
 
   return (
-    <div>
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
       {dialogElement}
       {erro && (
         <FeedbackInline tom="erro" aoFechar={() => setErro(null)}>
@@ -175,6 +179,70 @@ export function AlertasConfiguracaoTab() {
         restantes até o vencimento; um item já vencido gera severidade Crítico automaticamente,
         mesmo sem regra cadastrada.
       </p>
+
+      <div id="painel-nova-regra-alerta">
+        <PainelCriacaoInline
+          aberto={painelAberto}
+          titulo={`Nova regra — ${moduloPainel !== null ? moduloAlertaLabel[moduloPainel] ?? moduloPainel : ''}`}
+        >
+          <FormSection titulo="Dados da regra" numero={1} primeira>
+            {erroPainel && (
+              <FeedbackInline tom="erro" aoFechar={() => setErroPainel(null)}>
+                {erroPainel}
+              </FeedbackInline>
+            )}
+            {rascunho && (
+              <FormGrid>
+                <Campo span={4}>
+                  <Field label="Dias de antecedência">
+                    <Input
+                      type="number"
+                      min={0}
+                      value={String(rascunho.diasAntecedencia)}
+                      onChange={(_, d) => atualizarRascunho('diasAntecedencia', Number(d.value))}
+                    />
+                  </Field>
+                </Campo>
+                <Campo span={4}>
+                  <Field label="Severidade">
+                    <Select
+                      value={String(rascunho.severidade)}
+                      onChange={(_, d) => atualizarRascunho('severidade', Number(d.value))}
+                    >
+                      {Object.entries(severidadeAlertaLabel).map(([valor, rotulo]) => (
+                        <option key={valor} value={valor}>
+                          {rotulo}
+                        </option>
+                      ))}
+                    </Select>
+                  </Field>
+                </Campo>
+                <Campo span={4}>
+                  <Field label="Responsável">
+                    <Select
+                      value={rascunho.responsavelUsuarioId ?? ''}
+                      onChange={(_, d) => atualizarRascunho('responsavelUsuarioId', d.value)}
+                    >
+                      <option value="">Nenhum</option>
+                      {usuarios.map((usuario) => (
+                        <option key={usuario.id} value={usuario.id}>
+                          {usuario.nome}
+                        </option>
+                      ))}
+                    </Select>
+                  </Field>
+                </Campo>
+              </FormGrid>
+            )}
+            <FormRodape>
+              <Button onClick={fecharPainel}>Cancelar</Button>
+              <Button appearance="primary" onClick={adicionar} disabled={carregando || !rascunho}>
+                Adicionar regra
+              </Button>
+            </FormRodape>
+          </FormSection>
+        </PainelCriacaoInline>
+      </div>
 
       {modulosOrdenados.map((modulo) => {
         const regrasDoModulo = regras
@@ -247,10 +315,12 @@ export function AlertasConfiguracaoTab() {
                 <Button
                   appearance="subtle"
                   icon={<AddCircle24Regular />}
-                  onClick={() => abrirPainel(modulo)}
+                  onClick={() => (painelAberto && moduloPainel === modulo ? fecharPainel() : abrirPainel(modulo))}
                   disabled={carregando}
+                  aria-expanded={painelAberto && moduloPainel === modulo}
+                  aria-controls="painel-nova-regra-alerta"
                 >
-                  Adicionar regra
+                  {painelAberto && moduloPainel === modulo ? 'Fechar' : 'Adicionar regra'}
                 </Button>
               }
             >
@@ -287,69 +357,6 @@ export function AlertasConfiguracaoTab() {
           </div>
         );
       })}
-
-      <PainelLateral
-        aberto={painelAberto}
-        aoFechar={fecharPainel}
-        titulo={`Nova regra — ${moduloPainel !== null ? moduloAlertaLabel[moduloPainel] ?? moduloPainel : ''}`}
-        rodape={
-          <>
-            <Button onClick={fecharPainel}>Cancelar</Button>
-            <Button appearance="primary" onClick={adicionar} disabled={carregando || !rascunho}>
-              Adicionar regra
-            </Button>
-          </>
-        }
-      >
-        {erroPainel && (
-          <FeedbackInline tom="erro" aoFechar={() => setErroPainel(null)}>
-            {erroPainel}
-          </FeedbackInline>
-        )}
-        {rascunho && (
-          <FormGrid>
-            <Campo span={4}>
-              <Field label="Dias de antecedência">
-                <Input
-                  type="number"
-                  min={0}
-                  value={String(rascunho.diasAntecedencia)}
-                  onChange={(_, d) => atualizarRascunho('diasAntecedencia', Number(d.value))}
-                />
-              </Field>
-            </Campo>
-            <Campo span={4}>
-              <Field label="Severidade">
-                <Select
-                  value={String(rascunho.severidade)}
-                  onChange={(_, d) => atualizarRascunho('severidade', Number(d.value))}
-                >
-                  {Object.entries(severidadeAlertaLabel).map(([valor, rotulo]) => (
-                    <option key={valor} value={valor}>
-                      {rotulo}
-                    </option>
-                  ))}
-                </Select>
-              </Field>
-            </Campo>
-            <Campo span={4}>
-              <Field label="Responsável">
-                <Select
-                  value={rascunho.responsavelUsuarioId ?? ''}
-                  onChange={(_, d) => atualizarRascunho('responsavelUsuarioId', d.value)}
-                >
-                  <option value="">Nenhum</option>
-                  {usuarios.map((usuario) => (
-                    <option key={usuario.id} value={usuario.id}>
-                      {usuario.nome}
-                    </option>
-                  ))}
-                </Select>
-              </Field>
-            </Campo>
-          </FormGrid>
-        )}
-      </PainelLateral>
     </div>
   );
 }
