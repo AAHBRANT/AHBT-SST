@@ -1,6 +1,7 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Spinner, Text } from '@fluentui/react-components';
 import { SeletorFotoCamera } from './SeletorFotoCamera';
+import { PaginasPdf } from './PaginasPdf';
 import { EstadoVazio } from '../ui';
 import { usePageStyles } from '../pages/pageStyles';
 
@@ -10,32 +11,21 @@ interface VisualizadorDocumentoPdfProps {
   enviarDocumento: (arquivo: File) => Promise<void>;
 }
 
-// Mostra o PDF já cadastrado direto na tela (object + Blob URL), com rolagem nativa do navegador
-// por todas as páginas — pedido do usuário (09/09): nada de botão "abrir em outro lugar", o
-// documento tem que aparecer inteiro assim que a aba é aberta.
+// Mostra o PDF já cadastrado direto na tela, com rolagem por todas as páginas — pedido do usuário
+// (09/09): nada de botão "abrir em outro lugar", o documento tem que aparecer inteiro assim que a
+// aba é aberta. A renderização é feita em canvas pelo pdf.js (PaginasPdf) porque <iframe>/<object>
+// com PDF fica em branco dentro do Teams (13/09) — ver comentário em PaginasPdf.tsx.
 export function VisualizadorDocumentoPdf({ id, obterDocumento, enviarDocumento }: VisualizadorDocumentoPdfProps) {
   const estilos = usePageStyles();
   const [carregando, setCarregando] = useState(true);
-  const [blobUrl, setBlobUrl] = useState<string | null>(null);
+  const [arquivo, setArquivo] = useState<Blob | null>(null);
   const [erro, setErro] = useState<string | null>(null);
-  const blobUrlRef = useRef<string | null>(null);
 
   async function carregar() {
     try {
       setCarregando(true);
       setErro(null);
-      const blob = await obterDocumento();
-      if (blobUrlRef.current) {
-        URL.revokeObjectURL(blobUrlRef.current);
-        blobUrlRef.current = null;
-      }
-      if (!blob) {
-        setBlobUrl(null);
-        return;
-      }
-      const url = URL.createObjectURL(blob);
-      blobUrlRef.current = url;
-      setBlobUrl(url);
+      setArquivo(await obterDocumento());
     } catch (e) {
       setErro(e instanceof Error ? e.message : 'Falha ao carregar o documento.');
     } finally {
@@ -45,9 +35,6 @@ export function VisualizadorDocumentoPdf({ id, obterDocumento, enviarDocumento }
 
   useEffect(() => {
     carregar();
-    return () => {
-      if (blobUrlRef.current) URL.revokeObjectURL(blobUrlRef.current);
-    };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id]);
 
@@ -72,7 +59,7 @@ export function VisualizadorDocumentoPdf({ id, obterDocumento, enviarDocumento }
   return (
     <div>
       {erro && <Text className={estilos.erro}>{erro}</Text>}
-      {!blobUrl ? (
+      {!arquivo ? (
         <>
           <EstadoVazio titulo="Nenhum documento anexado ainda." />
           <div style={{ textAlign: 'center', marginTop: 8 }}>
@@ -98,12 +85,7 @@ export function VisualizadorDocumentoPdf({ id, obterDocumento, enviarDocumento }
               aoErroValidacao={setErro}
             />
           </div>
-          <iframe
-            src={blobUrl}
-            title="Documento PDF"
-            aria-label="Documento PDF"
-            style={{ display: 'block', width: '100%', height: '80vh', border: 'none' }}
-          />
+          <PaginasPdf arquivo={arquivo} />
         </>
       )}
     </div>
