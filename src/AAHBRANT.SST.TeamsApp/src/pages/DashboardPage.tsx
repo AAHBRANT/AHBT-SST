@@ -498,7 +498,7 @@ export function DashboardPage() {
       </div>
 
       <div style={{ display: 'flex', gap: 16, alignItems: 'flex-start', marginBottom: 16 }}>
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(185px, 1fr))', gap: 16, flex: 1 }}>
+        <div className={dashEstilos.gradeKpis}>
           {kpis.map((kpi, indice) => (
             <KpiCard
               key={kpi.rotulo}
@@ -512,20 +512,19 @@ export function DashboardPage() {
               ariaLabel={`Abrir ${kpi.rotulo}`}
             />
           ))}
+          {/* Taxa de Gravidade é o 7º indicador da mesma grade — em linha própria ele ficava órfão,
+              com estilo de card diferente e um vazio ao lado (13/09). */}
+          <div
+            className={dashEstilos.cardAcionavel}
+            role="button"
+            tabIndex={0}
+            onClick={() => navigate('/ocorrencias?secao=acidentes')}
+            onKeyDown={(evento) => abrirComTeclado(evento, '/ocorrencias?secao=acidentes')}
+          >
+            <TaxaGravidadeCard acidentes={acidentesFiltrados} registrosHht={registrosHhtFiltrados} indice={kpis.length} />
+          </div>
         </div>
         <MiniCalendarioCard />
-      </div>
-
-      <div style={{ marginBottom: 16 }}>
-        <div
-          className={dashEstilos.cardAcionavel}
-          role="button"
-          tabIndex={0}
-          onClick={() => navigate('/ocorrencias?secao=acidentes')}
-          onKeyDown={(evento) => abrirComTeclado(evento, '/ocorrencias?secao=acidentes')}
-        >
-          <TaxaGravidadeCard acidentes={acidentesFiltrados} registrosHht={registrosHhtFiltrados} />
-        </div>
       </div>
 
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(340px, 1fr))', gap: 16, marginBottom: 16 }}>
