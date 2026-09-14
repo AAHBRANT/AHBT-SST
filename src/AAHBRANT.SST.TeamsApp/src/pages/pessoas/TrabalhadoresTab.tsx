@@ -8,9 +8,10 @@ import {
   DataTable,
   StatusChip,
   FeedbackInline,
-  PainelLateral,
-  FormSection,
+  PainelCriacaoInline,
   FormGrid,
+  FormRodape,
+  FormSection,
   Campo,
   Field,
   Input,
@@ -65,9 +66,12 @@ const trabalhadorVazio: NovoTrabalhador = {
 };
 
 // Lista de funcionários — piloto 1 estabeleceu o padrão (spec §4.2): o formulário de cadastro sai da
-// lista (que hoje empurrava a tabela pra baixo) e vira um PainelLateral próprio, com erro isolado do
-// erro de carga da lista (regra dos 3 pilotos: erro de painel é estado PRÓPRIO). A lista em si já era
-// um cartão-por-linha construído à mão — vira DataTable, que formaliza exatamente esse visual.
+// lista (que hoje empurrava a tabela pra baixo) e vira um painel próprio, com erro isolado do erro de
+// carga da lista (regra dos 3 pilotos: erro de painel é estado PRÓPRIO). A lista em si já era um
+// cartão-por-linha construído à mão — vira DataTable, que formaliza exatamente esse visual.
+// Migração do formulário inline (spec 2026-09-11): o PainelLateral (drawer, com largura="lg") saiu —
+// mesmo padrão de AtividadesTab.tsx/InspecoesTab.tsx. Agora é um PainelCriacaoInline, que cresce
+// acima da lista até a altura do próprio formulário, em vez de cobrir a tela com uma gaveta larga.
 export function TrabalhadoresTab() {
   const navigate = useNavigate();
   const [trabalhadores, setTrabalhadores] = useState<Trabalhador[]>([]);
@@ -257,7 +261,7 @@ export function TrabalhadoresTab() {
   ];
 
   return (
-    <div>
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
       {dialogElement}
       <PageHeader
         titulo="Funcionários cadastrados"
@@ -267,13 +271,117 @@ export function TrabalhadoresTab() {
           </Field>
         }
         acoes={
-          <Button appearance="primary" icon={<Add24Regular />} onClick={() => setPainelAberto(true)}>
-            Adicionar funcionário
+          <Button
+            appearance="primary"
+            icon={<Add24Regular />}
+            onClick={() => (painelAberto ? fecharPainel() : setPainelAberto(true))}
+            aria-expanded={painelAberto}
+            aria-controls="painel-novo-funcionario"
+          >
+            {painelAberto ? 'Fechar' : 'Adicionar funcionário'}
           </Button>
         }
       />
 
       {erro && <FeedbackInline tom="erro" aoFechar={() => setErro(null)}>{erro}</FeedbackInline>}
+
+      <div id="painel-novo-funcionario">
+        <PainelCriacaoInline aberto={painelAberto} titulo="Novo funcionário">
+          <FormSection titulo="Dados do funcionário" numero={1} primeira>
+            {erroPainel && (
+              <FeedbackInline tom="erro" aoFechar={() => setErroPainel(null)}>
+                {erroPainel}
+              </FeedbackInline>
+            )}
+            <FormGrid>
+              <Campo span={6}>
+                <Field label="Obra">
+                  <Select
+                    value={novoTrabalhador.obraId}
+                    onChange={(_, d) => setNovoTrabalhador({ ...novoTrabalhador, obraId: d.value })}
+                  >
+                    <option value="">Selecione</option>
+                    {obras.map((obra) => (
+                      <option key={obra.id} value={obra.id}>
+                        {obra.nome}
+                      </option>
+                    ))}
+                  </Select>
+                </Field>
+              </Campo>
+              <Campo span={6}>
+                <Field label="Função">
+                  <Select
+                    value={novoTrabalhador.funcaoId}
+                    onChange={(_, d) => setNovoTrabalhador({ ...novoTrabalhador, funcaoId: d.value })}
+                  >
+                    <option value="">Selecione</option>
+                    {funcoes.map((funcao) => (
+                      <option key={funcao.id} value={funcao.id}>
+                        {funcao.nome}
+                      </option>
+                    ))}
+                  </Select>
+                </Field>
+              </Campo>
+              <Campo span={8}>
+                <Field label="Nome">
+                  <Input
+                    value={novoTrabalhador.nome}
+                    onChange={(_, d) => setNovoTrabalhador({ ...novoTrabalhador, nome: d.value })}
+                  />
+                </Field>
+              </Campo>
+              <Campo span={4}>
+                <Field label="Matrícula">
+                  <Input
+                    value={novoTrabalhador.matricula ?? ''}
+                    onChange={(_, d) => setNovoTrabalhador({ ...novoTrabalhador, matricula: d.value })}
+                  />
+                </Field>
+              </Campo>
+              <Campo span={6}>
+                <Field label="CPF (11 dígitos)">
+                  <Input
+                    value={formatarCpf(novoTrabalhador.cpf)}
+                    onChange={(_, d) =>
+                      setNovoTrabalhador({ ...novoTrabalhador, cpf: d.value.replace(/\D/g, '').slice(0, 11) })
+                    }
+                  />
+                </Field>
+              </Campo>
+              <Campo span={3}>
+                <Field label="Vínculo">
+                  <Select
+                    value={novoTrabalhador.vinculo}
+                    onChange={(_, d) => setNovoTrabalhador({ ...novoTrabalhador, vinculo: Number(d.value) })}
+                  >
+                    {Object.entries(tipoVinculoLabel).map(([valor, rotulo]) => (
+                      <option key={valor} value={valor}>
+                        {rotulo}
+                      </option>
+                    ))}
+                  </Select>
+                </Field>
+              </Campo>
+              <Campo span={3}>
+                <Field label="Data de admissão">
+                  <CampoData
+                    value={novoTrabalhador.dataAdmissao}
+                    onChange={(_, d) => setNovoTrabalhador({ ...novoTrabalhador, dataAdmissao: d.value })}
+                  />
+                </Field>
+              </Campo>
+            </FormGrid>
+            <FormRodape>
+              <Button onClick={fecharPainel}>Cancelar</Button>
+              <Button appearance="primary" onClick={criar} disabled={carregando}>
+                Adicionar funcionário
+              </Button>
+            </FormRodape>
+          </FormSection>
+        </PainelCriacaoInline>
+      </div>
 
       <Card>
         <DataTable
@@ -321,110 +429,6 @@ export function TrabalhadoresTab() {
           )}
         />
       </Card>
-
-      <PainelLateral
-        aberto={painelAberto}
-        aoFechar={fecharPainel}
-        titulo="Novo funcionário"
-        largura="lg"
-        rodape={
-          <>
-            <Button onClick={fecharPainel}>Cancelar</Button>
-            <Button appearance="primary" onClick={criar} disabled={carregando}>
-              Adicionar funcionário
-            </Button>
-          </>
-        }
-      >
-        {erroPainel && (
-          <FeedbackInline tom="erro" aoFechar={() => setErroPainel(null)}>
-            {erroPainel}
-          </FeedbackInline>
-        )}
-
-        <FormSection titulo="Dados do funcionário" numero={1} primeira>
-          <FormGrid>
-            <Campo span={6}>
-              <Field label="Obra">
-                <Select
-                  value={novoTrabalhador.obraId}
-                  onChange={(_, d) => setNovoTrabalhador({ ...novoTrabalhador, obraId: d.value })}
-                >
-                  <option value="">Selecione</option>
-                  {obras.map((obra) => (
-                    <option key={obra.id} value={obra.id}>
-                      {obra.nome}
-                    </option>
-                  ))}
-                </Select>
-              </Field>
-            </Campo>
-            <Campo span={6}>
-              <Field label="Função">
-                <Select
-                  value={novoTrabalhador.funcaoId}
-                  onChange={(_, d) => setNovoTrabalhador({ ...novoTrabalhador, funcaoId: d.value })}
-                >
-                  <option value="">Selecione</option>
-                  {funcoes.map((funcao) => (
-                    <option key={funcao.id} value={funcao.id}>
-                      {funcao.nome}
-                    </option>
-                  ))}
-                </Select>
-              </Field>
-            </Campo>
-            <Campo span={8}>
-              <Field label="Nome">
-                <Input
-                  value={novoTrabalhador.nome}
-                  onChange={(_, d) => setNovoTrabalhador({ ...novoTrabalhador, nome: d.value })}
-                />
-              </Field>
-            </Campo>
-            <Campo span={4}>
-              <Field label="Matrícula">
-                <Input
-                  value={novoTrabalhador.matricula ?? ''}
-                  onChange={(_, d) => setNovoTrabalhador({ ...novoTrabalhador, matricula: d.value })}
-                />
-              </Field>
-            </Campo>
-            <Campo span={6}>
-              <Field label="CPF (11 dígitos)">
-                <Input
-                  value={formatarCpf(novoTrabalhador.cpf)}
-                  onChange={(_, d) =>
-                    setNovoTrabalhador({ ...novoTrabalhador, cpf: d.value.replace(/\D/g, '').slice(0, 11) })
-                  }
-                />
-              </Field>
-            </Campo>
-            <Campo span={3}>
-              <Field label="Vínculo">
-                <Select
-                  value={novoTrabalhador.vinculo}
-                  onChange={(_, d) => setNovoTrabalhador({ ...novoTrabalhador, vinculo: Number(d.value) })}
-                >
-                  {Object.entries(tipoVinculoLabel).map(([valor, rotulo]) => (
-                    <option key={valor} value={valor}>
-                      {rotulo}
-                    </option>
-                  ))}
-                </Select>
-              </Field>
-            </Campo>
-            <Campo span={3}>
-              <Field label="Data de admissão">
-                <CampoData
-                  value={novoTrabalhador.dataAdmissao}
-                  onChange={(_, d) => setNovoTrabalhador({ ...novoTrabalhador, dataAdmissao: d.value })}
-                />
-              </Field>
-            </Campo>
-          </FormGrid>
-        </FormSection>
-      </PainelLateral>
 
       <RequisitosFuncaoDialog
         funcaoId={trabalhadorRequisitosAlvo?.funcaoId ?? null}

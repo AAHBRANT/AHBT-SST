@@ -6,8 +6,10 @@ import {
   Card,
   PageHeader,
   DataTable,
-  PainelLateral,
+  PainelCriacaoInline,
   FormGrid,
+  FormRodape,
+  FormSection,
   Campo,
   FeedbackInline,
   SeletorPesquisavel,
@@ -20,8 +22,10 @@ import { useSucessoToast } from '../../hooks/useSucessoToast';
 
 const equipeVazia: NovaEquipe = { setorId: '', nome: '', encarregadoId: null };
 
-// Camada ui/ (Onda 2, Task 1): formulário de criação foi para um PainelLateral. Setor e Encarregado
-// (lista de trabalhadores, potencialmente grande) viram SeletorPesquisavel (spec §3); Encarregado é
+// Migração do formulário inline (spec 2026-09-11): o PainelLateral (drawer) saiu — mesmo padrão de
+// AtividadesTab.tsx/InspecoesTab.tsx. Agora é um PainelCriacaoInline, que cresce acima da lista até
+// a altura do próprio formulário, em vez de cobrir a tela com uma gaveta. Setor e Encarregado (lista
+// de trabalhadores, potencialmente grande) continuam como SeletorPesquisavel (spec §3); Encarregado é
 // opcional, então o `opcaoVazia` "Sem encarregado definido" preserva o caminho de volta ao vazio que
 // o <select> original tinha (aprendizado do piloto 2).
 export function EquipesTab() {
@@ -107,13 +111,19 @@ export function EquipesTab() {
   ];
 
   return (
-    <div>
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
       {dialogElement}
       <PageHeader
         titulo="Equipes cadastradas"
         acoes={
-          <Button appearance="primary" icon={<Add24Regular />} onClick={() => setPainelAberto(true)}>
-            Adicionar equipe
+          <Button
+            appearance="primary"
+            icon={<Add24Regular />}
+            onClick={() => (painelAberto ? fecharPainel() : setPainelAberto(true))}
+            aria-expanded={painelAberto}
+            aria-controls="painel-nova-equipe"
+          >
+            {painelAberto ? 'Fechar' : 'Adicionar equipe'}
           </Button>
         }
       />
@@ -122,6 +132,52 @@ export function EquipesTab() {
           {erro}
         </FeedbackInline>
       )}
+      <div id="painel-nova-equipe">
+        <PainelCriacaoInline aberto={painelAberto} titulo="Nova equipe">
+          <FormSection titulo="Dados da equipe" numero={1} primeira>
+            {erroPainel && (
+              <FeedbackInline tom="erro" aoFechar={() => setErroPainel(null)}>
+                {erroPainel}
+              </FeedbackInline>
+            )}
+            <FormGrid>
+              <Campo span={12}>
+                <Field label="Setor" required>
+                  <SeletorPesquisavel
+                    placeholder="Selecione o setor"
+                    opcaoVazia="Selecione o setor"
+                    opcoes={opcoesSetores}
+                    valor={novaEquipe.setorId}
+                    aoMudar={(id) => setNovaEquipe({ ...novaEquipe, setorId: id })}
+                  />
+                </Field>
+              </Campo>
+              <Campo span={6}>
+                <Field label="Nome da equipe">
+                  <Input value={novaEquipe.nome} onChange={(_, d) => setNovaEquipe({ ...novaEquipe, nome: d.value })} />
+                </Field>
+              </Campo>
+              <Campo span={6}>
+                <Field label="Encarregado (opcional)">
+                  <SeletorPesquisavel
+                    placeholder="Sem encarregado definido"
+                    opcaoVazia="Sem encarregado definido"
+                    opcoes={opcoesTrabalhadores}
+                    valor={novaEquipe.encarregadoId ?? ''}
+                    aoMudar={(id) => setNovaEquipe({ ...novaEquipe, encarregadoId: id || null })}
+                  />
+                </Field>
+              </Campo>
+            </FormGrid>
+            <FormRodape>
+              <Button onClick={fecharPainel}>Cancelar</Button>
+              <Button appearance="primary" onClick={criar} disabled={carregando}>
+                Adicionar equipe
+              </Button>
+            </FormRodape>
+          </FormSection>
+        </PainelCriacaoInline>
+      </div>
       <Card>
         <DataTable
           aria-label="Equipes cadastradas"
@@ -138,54 +194,6 @@ export function EquipesTab() {
           )}
         />
       </Card>
-      <PainelLateral
-        aberto={painelAberto}
-        aoFechar={fecharPainel}
-        titulo="Nova equipe"
-        rodape={
-          <>
-            <Button onClick={fecharPainel}>Cancelar</Button>
-            <Button appearance="primary" onClick={criar} disabled={carregando}>
-              Adicionar equipe
-            </Button>
-          </>
-        }
-      >
-        {erroPainel && (
-          <FeedbackInline tom="erro" aoFechar={() => setErroPainel(null)}>
-            {erroPainel}
-          </FeedbackInline>
-        )}
-        <FormGrid>
-          <Campo span={12}>
-            <Field label="Setor" required>
-              <SeletorPesquisavel
-                placeholder="Selecione o setor"
-                opcaoVazia="Selecione o setor"
-                opcoes={opcoesSetores}
-                valor={novaEquipe.setorId}
-                aoMudar={(id) => setNovaEquipe({ ...novaEquipe, setorId: id })}
-              />
-            </Field>
-          </Campo>
-          <Campo span={6}>
-            <Field label="Nome da equipe">
-              <Input value={novaEquipe.nome} onChange={(_, d) => setNovaEquipe({ ...novaEquipe, nome: d.value })} />
-            </Field>
-          </Campo>
-          <Campo span={6}>
-            <Field label="Encarregado (opcional)">
-              <SeletorPesquisavel
-                placeholder="Sem encarregado definido"
-                opcaoVazia="Sem encarregado definido"
-                opcoes={opcoesTrabalhadores}
-                valor={novaEquipe.encarregadoId ?? ''}
-                aoMudar={(id) => setNovaEquipe({ ...novaEquipe, encarregadoId: id || null })}
-              />
-            </Field>
-          </Campo>
-        </FormGrid>
-      </PainelLateral>
     </div>
   );
 }

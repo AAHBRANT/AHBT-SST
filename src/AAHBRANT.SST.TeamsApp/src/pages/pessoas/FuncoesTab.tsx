@@ -6,8 +6,10 @@ import {
   Card,
   PageHeader,
   DataTable,
-  PainelLateral,
+  PainelCriacaoInline,
   FormGrid,
+  FormRodape,
+  FormSection,
   Campo,
   FeedbackInline,
   useConfirmar,
@@ -20,10 +22,12 @@ import { useSucessoToast } from '../../hooks/useSucessoToast';
 const funcaoVazia: NovaFuncao = { nome: '', cboCodigo: '', descricao: '' };
 
 // A matriz de EPI por função fica no módulo EPI (ver MatrizEpiTab.tsx em pages/epi) — aqui é só o
-// cadastro (CRUD) da função em si, usado também por Trabalhadores/Equipes. Camada ui/ (Onda 2,
-// Task 1): formulário de criação saiu de cima da tabela (empurrava a lista pra baixo) e foi para um
-// PainelLateral, aberto pelo "+ Adicionar função" do PageHeader — mesmo padrão do piloto 1
-// (EntregasTab). Erro do formulário fica em estado próprio, separado do erro de carga da lista.
+// cadastro (CRUD) da função em si, usado também por Trabalhadores/Equipes. Migração do formulário
+// inline (spec 2026-09-11): o PainelLateral (drawer) saiu — mesmo padrão de
+// AtividadesTab.tsx/InspecoesTab.tsx. Agora é um PainelCriacaoInline, que cresce acima da lista até a
+// altura do próprio formulário. O aviso sobre a matriz de EPI, que era o `subtitulo` do PainelLateral,
+// virou o `info` do FormRodape (mesmo uso: texto de ajuda à esquerda das ações). Erro do formulário
+// fica em estado próprio, separado do erro de carga da lista.
 export function FuncoesTab() {
   const [funcoes, setFuncoes] = useState<Funcao[]>([]);
   const [novaFuncao, setNovaFuncao] = useState<NovaFuncao>(funcaoVazia);
@@ -90,13 +94,19 @@ export function FuncoesTab() {
   ];
 
   return (
-    <div>
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
       {dialogElement}
       <PageHeader
         titulo="Funções cadastradas"
         acoes={
-          <Button appearance="primary" icon={<Add24Regular />} onClick={() => setPainelAberto(true)}>
-            Adicionar função
+          <Button
+            appearance="primary"
+            icon={<Add24Regular />}
+            onClick={() => (painelAberto ? fecharPainel() : setPainelAberto(true))}
+            aria-expanded={painelAberto}
+            aria-controls="painel-nova-funcao"
+          >
+            {painelAberto ? 'Fechar' : 'Adicionar função'}
           </Button>
         }
       />
@@ -105,6 +115,46 @@ export function FuncoesTab() {
           {erro}
         </FeedbackInline>
       )}
+      <div id="painel-nova-funcao">
+        <PainelCriacaoInline aberto={painelAberto} titulo="Nova função">
+          <FormSection titulo="Dados da função" numero={1} primeira>
+            {erroPainel && (
+              <FeedbackInline tom="erro" aoFechar={() => setErroPainel(null)}>
+                {erroPainel}
+              </FeedbackInline>
+            )}
+            <FormGrid>
+              <Campo span={6}>
+                <Field label="Nome">
+                  <Input value={novaFuncao.nome} onChange={(_, d) => setNovaFuncao({ ...novaFuncao, nome: d.value })} />
+                </Field>
+              </Campo>
+              <Campo span={3}>
+                <Field label="Código CBO">
+                  <Input
+                    value={novaFuncao.cboCodigo ?? ''}
+                    onChange={(_, d) => setNovaFuncao({ ...novaFuncao, cboCodigo: d.value })}
+                  />
+                </Field>
+              </Campo>
+              <Campo span={3}>
+                <Field label="Descrição">
+                  <Input
+                    value={novaFuncao.descricao ?? ''}
+                    onChange={(_, d) => setNovaFuncao({ ...novaFuncao, descricao: d.value })}
+                  />
+                </Field>
+              </Campo>
+            </FormGrid>
+            <FormRodape info="A matriz de EPI de cada função é definida em EPI → Matriz de EPI por Função.">
+              <Button onClick={fecharPainel}>Cancelar</Button>
+              <Button appearance="primary" onClick={criar} disabled={carregando}>
+                Adicionar função
+              </Button>
+            </FormRodape>
+          </FormSection>
+        </PainelCriacaoInline>
+      </div>
       <Card>
         <DataTable
           aria-label="Funções cadastradas"
@@ -121,49 +171,6 @@ export function FuncoesTab() {
           )}
         />
       </Card>
-      <PainelLateral
-        aberto={painelAberto}
-        aoFechar={fecharPainel}
-        titulo="Nova função"
-        subtitulo="A matriz de EPI de cada função é definida em EPI → Matriz de EPI por Função."
-        rodape={
-          <>
-            <Button onClick={fecharPainel}>Cancelar</Button>
-            <Button appearance="primary" onClick={criar} disabled={carregando}>
-              Adicionar função
-            </Button>
-          </>
-        }
-      >
-        {erroPainel && (
-          <FeedbackInline tom="erro" aoFechar={() => setErroPainel(null)}>
-            {erroPainel}
-          </FeedbackInline>
-        )}
-        <FormGrid>
-          <Campo span={6}>
-            <Field label="Nome">
-              <Input value={novaFuncao.nome} onChange={(_, d) => setNovaFuncao({ ...novaFuncao, nome: d.value })} />
-            </Field>
-          </Campo>
-          <Campo span={3}>
-            <Field label="Código CBO">
-              <Input
-                value={novaFuncao.cboCodigo ?? ''}
-                onChange={(_, d) => setNovaFuncao({ ...novaFuncao, cboCodigo: d.value })}
-              />
-            </Field>
-          </Campo>
-          <Campo span={3}>
-            <Field label="Descrição">
-              <Input
-                value={novaFuncao.descricao ?? ''}
-                onChange={(_, d) => setNovaFuncao({ ...novaFuncao, descricao: d.value })}
-              />
-            </Field>
-          </Campo>
-        </FormGrid>
-      </PainelLateral>
     </div>
   );
 }
