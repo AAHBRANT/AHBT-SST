@@ -7,6 +7,7 @@ import {
   PageHeader,
   DataTable,
   StatusChip,
+  EstadoVazio,
   FeedbackInline,
   PainelCriacaoInline,
   FormGrid,
@@ -21,7 +22,7 @@ import {
   type Coluna,
   type Tom,
 } from '@ui';
-import { Add24Regular, Fingerprint24Regular, Search24Regular } from '@fluentui/react-icons';
+import { Add24Regular, ArrowLeft24Regular, Fingerprint24Regular, PeopleTeam24Regular, Search24Regular } from '@fluentui/react-icons';
 import { SeletorFotoCamera } from '../../components/SeletorFotoCamera';
 import {
   api,
@@ -94,6 +95,7 @@ export function TrabalhadoresTab() {
     nome: string;
     funcaoId: string;
   } | null>(null);
+  const [obraSelecionadaId, setObraSelecionadaId] = useState<string | null>(null);
   const { confirmar, dialogElement } = useConfirmar();
   const sucessoToast = useSucessoToast();
 
@@ -167,21 +169,49 @@ export function TrabalhadoresTab() {
     }
   }
 
-  function nomeObra(id: string) {
-    return obras.find((o) => o.id === id)?.nome ?? id;
-  }
-
   function nomeFuncao(id: string) {
     return funcoes.find((f) => f.id === id)?.nome ?? id;
   }
 
+  // Resumo por obra (spec 14/09): cada obra vira um card com a contagem dos 4 vínculos, calculada
+  // no cliente a partir da lista já carregada — mesmo padrão de agregação client-side do
+  // PessoasDashboardTab, sem endpoint próprio.
+  const resumoPorObra = useMemo(() => {
+    const mapa = new Map<string, Record<number, number>>();
+    for (const t of trabalhadores) {
+      const contagem = mapa.get(t.obraId) ?? {};
+      contagem[t.vinculo] = (contagem[t.vinculo] ?? 0) + 1;
+      mapa.set(t.obraId, contagem);
+    }
+    return mapa;
+  }, [trabalhadores]);
+
+  const obraSelecionada = obras.find((o) => o.id === obraSelecionadaId) ?? null;
+
   const trabalhadoresFiltrados = useMemo(() => {
     const termo = busca.trim().toLowerCase();
-    if (!termo) return trabalhadores;
-    return trabalhadores.filter(
-      (t) => t.nome.toLowerCase().includes(termo) || (t.matricula ?? '').toLowerCase().includes(termo),
-    );
-  }, [busca, trabalhadores]);
+    return trabalhadores.filter((t) => {
+      if (obraSelecionadaId && t.obraId !== obraSelecionadaId) return false;
+      if (!termo) return true;
+      return t.nome.toLowerCase().includes(termo) || (t.matricula ?? '').toLowerCase().includes(termo);
+    });
+  }, [busca, trabalhadores, obraSelecionadaId]);
+
+  function abrirObra(obraId: string) {
+    setObraSelecionadaId(obraId);
+    setBusca('');
+  }
+
+  function voltarParaObras() {
+    setObraSelecionadaId(null);
+    setBusca('');
+    fecharPainel();
+  }
+
+  function abrirPainelNovoFuncionario() {
+    setNovoTrabalhador((atual) => ({ ...atual, obraId: obraSelecionadaId ?? atual.obraId }));
+    setPainelAberto(true);
+  }
 
   // Todo caminho de fechar o painel limpa o formulário e o erro dele — senão reabrir mostra rascunho
   // e mensagem de uma tentativa anterior.
@@ -239,7 +269,7 @@ export function TrabalhadoresTab() {
             <div style={{ fontWeight: 600 }}>{t.nome}</div>
             <div style={{ fontSize: 12 }}>
               {t.matricula && `${t.matricula} · `}
-              {nomeObra(t.obraId)} · {nomeFuncao(t.funcaoId)} · {tipoVinculoLabel[t.vinculo]}
+              {nomeFuncao(t.funcaoId)} · {tipoVinculoLabel[t.vinculo]}
             </div>
           </div>
         </div>
@@ -260,26 +290,86 @@ export function TrabalhadoresTab() {
     },
   ];
 
+  // Sem obra selecionada: tela inicial é a grade de obras com o resumo de vínculo (spec 14/09) —
+  // a lista de pessoas só aparece depois do clique numa obra (ver obraSelecionada abaixo).
+  if (!obraSelecionadaId) {
+    return (
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+        <PageHeader titulo="Funcionários cadastrados" subtitulo="Selecione uma obra para ver os funcionários dela." />
+
+        {erro && <FeedbackInline tom="erro" aoFechar={() => setErro(null)}>{erro}</FeedbackInline>}
+
+        {!carregandoLista && obras.length === 0 && (
+          <Card>
+            <EstadoVazio
+              titulo="Nenhuma obra cadastrada ainda."
+              descricao="Cadastre uma obra em Obras para depois vincular funcionários a ela."
+            />
+          </Card>
+        )}
+
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: 16 }}>
+          {obras.map((obra) => {
+            const contagem = resumoPorObra.get(obra.id) ?? {};
+            const total = Object.values(contagem).reduce((soma, n) => soma + n, 0);
+            return (
+              <Card key={obra.id}>
+                <div
+                  role="button"
+                  tabIndex={0}
+                  onClick={() => abrirObra(obra.id)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter' || e.key === ' ') abrirObra(obra.id);
+                  }}
+                  style={{ cursor: 'pointer', display: 'flex', flexDirection: 'column', gap: 8 }}
+                >
+                  <div style={{ fontWeight: 600 }}>{obra.nome}</div>
+                  <div style={{ fontSize: 12 }}>{obra.codigo}</div>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12, marginTop: 4 }}>
+                    <PeopleTeam24Regular />
+                    <span style={{ fontWeight: 600 }}>{total}</span>
+                    <span>{total === 1 ? 'funcionário' : 'funcionários'}</span>
+                  </div>
+                  <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+                    <StatusChip tom="info">CLT: {contagem[TipoVinculo.Clt] ?? 0}</StatusChip>
+                    <StatusChip tom="atencao">Terceirizado: {contagem[TipoVinculo.Terceirizado] ?? 0}</StatusChip>
+                    <StatusChip tom="ok">Autônomo: {contagem[TipoVinculo.Autonomo] ?? 0}</StatusChip>
+                    <StatusChip tom="alerta">Estagiário: {contagem[TipoVinculo.Estagiario] ?? 0}</StatusChip>
+                  </div>
+                </div>
+              </Card>
+            );
+          })}
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
       {dialogElement}
       <PageHeader
-        titulo="Funcionários cadastrados"
-        filtros={
-          <Field label="Buscar por nome ou matrícula">
-            <Input contentBefore={<Search24Regular />} value={busca} onChange={(_, d) => setBusca(d.value)} />
-          </Field>
-        }
+        titulo={`Funcionários — ${obraSelecionada?.nome ?? ''}`}
         acoes={
           <Button
             appearance="primary"
             icon={<Add24Regular />}
-            onClick={() => (painelAberto ? fecharPainel() : setPainelAberto(true))}
+            onClick={() => (painelAberto ? fecharPainel() : abrirPainelNovoFuncionario())}
             aria-expanded={painelAberto}
             aria-controls="painel-novo-funcionario"
           >
             {painelAberto ? 'Fechar' : 'Adicionar funcionário'}
           </Button>
+        }
+        filtros={
+          <>
+            <Button appearance="subtle" icon={<ArrowLeft24Regular />} onClick={voltarParaObras}>
+              Voltar às obras
+            </Button>
+            <Field label="Buscar por nome ou matrícula">
+              <Input contentBefore={<Search24Regular />} value={busca} onChange={(_, d) => setBusca(d.value)} />
+            </Field>
+          </>
         }
       />
 
@@ -396,7 +486,7 @@ export function TrabalhadoresTab() {
               ? {
                   titulo: 'Nenhum funcionário cadastrado ainda.',
                   descricao: 'Cadastre o primeiro funcionário para começar.',
-                  acao: { rotulo: 'Adicionar funcionário', aoClicar: () => setPainelAberto(true) },
+                  acao: { rotulo: 'Adicionar funcionário', aoClicar: abrirPainelNovoFuncionario },
                 }
               : { titulo: 'Nenhum funcionário encontrado.', descricao: 'Tente outro termo de busca.', variante: 'sem-resultado' }
           }

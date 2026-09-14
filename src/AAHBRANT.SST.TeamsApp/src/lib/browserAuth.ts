@@ -100,6 +100,11 @@ export async function processarLoginNavegadorPendente(): Promise<void> {
 export async function obterTokenAutenticacaoNavegador(): Promise<string | null> {
   const msal = await obterMsal();
   if (!msal) {
+    // Só em build de dev (import.meta.env.DEV, nunca true em produção): sem VITE_ENTRA_TENANT_ID
+    // configurado, degrada para chamada anônima em vez de travar toda a tela — permite testar o
+    // app no navegador standalone (fora do Teams) sem precisar de um App Registration Entra local.
+    // Em produção o comportamento não muda: continua lançando, forçando configuração antes do deploy.
+    if (import.meta.env.DEV) return null;
     throw new LoginNavegadorNaoConfiguradoError();
   }
 
