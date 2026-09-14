@@ -10,8 +10,10 @@ import {
   Field,
   FeedbackInline,
   FormGrid,
+  FormRodape,
+  FormSection,
   PageHeader,
-  PainelLateral,
+  PainelCriacaoInline,
   Select,
   StatusChip,
   type Coluna,
@@ -42,9 +44,10 @@ function vazio(): NovoMembroCipa {
 
 // Membros eleitos pelos empregados normalmente entram aqui pela apuração do Processo Eleitoral
 // (aba "Processo Eleitoral"). Este formulário serve para cadastrar diretamente os indicados pelo
-// empregador (que não passam por votação) — ver disclosure em Cipa.cs. Camada ui/ (Onda 2, Task 4):
-// formulário saiu para PainelLateral; filtro "somente mandato ativo" migrou do toolbar da lista para
-// os filtros do PageHeader.
+// empregador (que não passam por votação) — ver disclosure em Cipa.cs. Migração para
+// PainelCriacaoInline (mesmo padrão de AtividadesTab.tsx/InspecoesTab.tsx): o PainelLateral (drawer)
+// saiu — agora o formulário cresce acima da lista. Filtro "somente mandato ativo" continua nos
+// filtros do PageHeader.
 export function MembrosCipaTab() {
   const navigate = useNavigate();
   const [lista, setLista] = useState<MembroCipa[]>([]);
@@ -128,7 +131,7 @@ export function MembrosCipaTab() {
   ];
 
   return (
-    <div>
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
       <PageHeader
         titulo="Membros da CIPA"
         filtros={
@@ -139,8 +142,14 @@ export function MembrosCipaTab() {
           />
         }
         acoes={
-          <Button appearance="primary" icon={<Add24Regular />} onClick={() => setPainelAberto(true)}>
-            Indicar membro
+          <Button
+            appearance="primary"
+            icon={<Add24Regular />}
+            onClick={() => (painelAberto ? fecharPainel() : setPainelAberto(true))}
+            aria-expanded={painelAberto}
+            aria-controls="painel-novo-membro-cipa"
+          >
+            {painelAberto ? 'Fechar' : 'Indicar membro'}
           </Button>
         }
       />
@@ -149,6 +158,85 @@ export function MembrosCipaTab() {
           {erro}
         </FeedbackInline>
       )}
+      <div id="painel-novo-membro-cipa">
+        <PainelCriacaoInline aberto={painelAberto} titulo="Indicar membro (empregador)">
+          <FormSection titulo="Dados do membro" numero={1} primeira>
+            {erroPainel && (
+              <FeedbackInline tom="erro" aoFechar={() => setErroPainel(null)}>
+                {erroPainel}
+              </FeedbackInline>
+            )}
+            <FormGrid>
+              <Campo span={6}>
+                <Field label="Obra" required>
+                  <Select value={novo.obraId} onChange={(_, d) => trocarObra(d.value)}>
+                    <option value="">Selecione</option>
+                    {obras.map((obra) => (
+                      <option key={obra.id} value={obra.id}>
+                        {obra.nome}
+                      </option>
+                    ))}
+                  </Select>
+                </Field>
+              </Campo>
+              <Campo span={6}>
+                <Field label="Funcionário" required>
+                  <Select
+                    value={novo.trabalhadorId}
+                    onChange={(_, d) => setNovo({ ...novo, trabalhadorId: d.value })}
+                    disabled={!novo.obraId}
+                  >
+                    <option value="">Selecione</option>
+                    {trabalhadores.map((t) => (
+                      <option key={t.id} value={t.id}>
+                        {t.matricula ? `${t.nome} (${t.matricula})` : t.nome}
+                      </option>
+                    ))}
+                  </Select>
+                </Field>
+              </Campo>
+              <Campo span={6}>
+                <Field label="Origem">
+                  <Select value={String(novo.origemMembro)} onChange={(_, d) => setNovo({ ...novo, origemMembro: Number(d.value) })}>
+                    {Object.entries(origemMembroCipaLabel).map(([valor, rotulo]) => (
+                      <option key={valor} value={valor}>
+                        {rotulo}
+                      </option>
+                    ))}
+                  </Select>
+                </Field>
+              </Campo>
+              <Campo span={6}>
+                <Field label="Cargo">
+                  <Select value={String(novo.cargo)} onChange={(_, d) => setNovo({ ...novo, cargo: Number(d.value) })}>
+                    {Object.entries(cargoMembroCipaLabel).map(([valor, rotulo]) => (
+                      <option key={valor} value={valor}>
+                        {rotulo}
+                      </option>
+                    ))}
+                  </Select>
+                </Field>
+              </Campo>
+              <Campo span={6}>
+                <Field label="Início do mandato" required>
+                  <CampoData value={novo.dataInicioMandato} onChange={(_, d) => setNovo({ ...novo, dataInicioMandato: d.value })} />
+                </Field>
+              </Campo>
+              <Campo span={6}>
+                <Field label="Fim do mandato" required>
+                  <CampoData value={novo.dataFimMandato} onChange={(_, d) => setNovo({ ...novo, dataFimMandato: d.value })} />
+                </Field>
+              </Campo>
+            </FormGrid>
+            <FormRodape>
+              <Button onClick={fecharPainel}>Cancelar</Button>
+              <Button appearance="primary" onClick={criar} disabled={carregando}>
+                Cadastrar membro
+              </Button>
+            </FormRodape>
+          </FormSection>
+        </PainelCriacaoInline>
+      </div>
       <Card>
         <DataTable
           aria-label="Membros da CIPA"
@@ -160,87 +248,6 @@ export function MembrosCipaTab() {
           aoClicarLinha={(m) => navigate(`/operacao/cipa/membro/${m.id}`)}
         />
       </Card>
-      <PainelLateral
-        aberto={painelAberto}
-        aoFechar={fecharPainel}
-        titulo="Indicar membro (empregador)"
-        rodape={
-          <>
-            <Button onClick={fecharPainel}>Cancelar</Button>
-            <Button appearance="primary" onClick={criar} disabled={carregando}>
-              Cadastrar membro
-            </Button>
-          </>
-        }
-      >
-        {erroPainel && (
-          <FeedbackInline tom="erro" aoFechar={() => setErroPainel(null)}>
-            {erroPainel}
-          </FeedbackInline>
-        )}
-        <FormGrid>
-          <Campo span={6}>
-            <Field label="Obra" required>
-              <Select value={novo.obraId} onChange={(_, d) => trocarObra(d.value)}>
-                <option value="">Selecione</option>
-                {obras.map((obra) => (
-                  <option key={obra.id} value={obra.id}>
-                    {obra.nome}
-                  </option>
-                ))}
-              </Select>
-            </Field>
-          </Campo>
-          <Campo span={6}>
-            <Field label="Funcionário" required>
-              <Select
-                value={novo.trabalhadorId}
-                onChange={(_, d) => setNovo({ ...novo, trabalhadorId: d.value })}
-                disabled={!novo.obraId}
-              >
-                <option value="">Selecione</option>
-                {trabalhadores.map((t) => (
-                  <option key={t.id} value={t.id}>
-                    {t.matricula ? `${t.nome} (${t.matricula})` : t.nome}
-                  </option>
-                ))}
-              </Select>
-            </Field>
-          </Campo>
-          <Campo span={6}>
-            <Field label="Origem">
-              <Select value={String(novo.origemMembro)} onChange={(_, d) => setNovo({ ...novo, origemMembro: Number(d.value) })}>
-                {Object.entries(origemMembroCipaLabel).map(([valor, rotulo]) => (
-                  <option key={valor} value={valor}>
-                    {rotulo}
-                  </option>
-                ))}
-              </Select>
-            </Field>
-          </Campo>
-          <Campo span={6}>
-            <Field label="Cargo">
-              <Select value={String(novo.cargo)} onChange={(_, d) => setNovo({ ...novo, cargo: Number(d.value) })}>
-                {Object.entries(cargoMembroCipaLabel).map(([valor, rotulo]) => (
-                  <option key={valor} value={valor}>
-                    {rotulo}
-                  </option>
-                ))}
-              </Select>
-            </Field>
-          </Campo>
-          <Campo span={6}>
-            <Field label="Início do mandato" required>
-              <CampoData value={novo.dataInicioMandato} onChange={(_, d) => setNovo({ ...novo, dataInicioMandato: d.value })} />
-            </Field>
-          </Campo>
-          <Campo span={6}>
-            <Field label="Fim do mandato" required>
-              <CampoData value={novo.dataFimMandato} onChange={(_, d) => setNovo({ ...novo, dataFimMandato: d.value })} />
-            </Field>
-          </Campo>
-        </FormGrid>
-      </PainelLateral>
     </div>
   );
 }

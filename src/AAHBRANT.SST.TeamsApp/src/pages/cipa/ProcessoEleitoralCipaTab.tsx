@@ -9,8 +9,10 @@ import {
   Field,
   FeedbackInline,
   FormGrid,
+  FormRodape,
+  FormSection,
   PageHeader,
-  PainelLateral,
+  PainelCriacaoInline,
   Select,
   StatusChip,
   useConfirmar,
@@ -44,8 +46,11 @@ const tomPorStatus: Record<number, Tom> = {
   6: 'ok',
 };
 
-// Camada ui/ (Onda 2, Task 4): formulário de convocação saiu para PainelLateral (Guia §2); a linha
-// inteira já navega para o detalhe, então o botão "ver" redundante saiu (Guia §1).
+// Migração para PainelCriacaoInline (mesmo padrão de AtividadesTab.tsx/InspecoesTab.tsx): o
+// PainelLateral (drawer) de convocação saiu — agora o formulário cresce acima da lista. O
+// subtítulo de disclosure (inscrição/avaliação/apuração/ata no detalhe) virou texto de ajuda no
+// rodapé do formulário (FormRodape info). A linha inteira já navega para o detalhe, então o botão
+// "ver" redundante não existe (Guia §1).
 export function ProcessoEleitoralCipaTab() {
   const navigate = useNavigate();
   const [lista, setLista] = useState<ProcessoEleitoralCipa[]>([]);
@@ -129,13 +134,19 @@ export function ProcessoEleitoralCipaTab() {
   ];
 
   return (
-    <div>
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
       {dialogElement}
       <PageHeader
         titulo="Processo Eleitoral CIPA"
         acoes={
-          <Button appearance="primary" icon={<Add24Regular />} onClick={() => setPainelAberto(true)}>
-            Convocar eleição
+          <Button
+            appearance="primary"
+            icon={<Add24Regular />}
+            onClick={() => (painelAberto ? fecharPainel() : setPainelAberto(true))}
+            aria-expanded={painelAberto}
+            aria-controls="painel-nova-eleicao-cipa"
+          >
+            {painelAberto ? 'Fechar' : 'Convocar eleição'}
           </Button>
         }
       />
@@ -144,6 +155,63 @@ export function ProcessoEleitoralCipaTab() {
           {erro}
         </FeedbackInline>
       )}
+      <div id="painel-nova-eleicao-cipa">
+        <PainelCriacaoInline aberto={painelAberto} titulo="Nova convocação de eleição">
+          <FormSection titulo="Dados da convocação" numero={1} primeira>
+            {erroPainel && (
+              <FeedbackInline tom="erro" aoFechar={() => setErroPainel(null)}>
+                {erroPainel}
+              </FeedbackInline>
+            )}
+            <FormGrid>
+              <Campo span={4}>
+                <Field label="Obra" required>
+                  <Select value={novo.obraId} onChange={(_, d) => setNovo({ ...novo, obraId: d.value })}>
+                    <option value="">Selecione</option>
+                    {obras.map((obra) => (
+                      <option key={obra.id} value={obra.id}>
+                        {obra.nome}
+                      </option>
+                    ))}
+                  </Select>
+                </Field>
+              </Campo>
+              <Campo span={3}>
+                <Field label="Data da convocação" required>
+                  <CampoData value={novo.dataConvocacao} onChange={(_, d) => setNovo({ ...novo, dataConvocacao: d.value })} />
+                </Field>
+              </Campo>
+              <Campo span={2}>
+                <Field label="Início das inscrições" required>
+                  <CampoData
+                    value={novo.dataInicioInscricoes}
+                    onChange={(_, d) => setNovo({ ...novo, dataInicioInscricoes: d.value })}
+                  />
+                </Field>
+              </Campo>
+              <Campo span={2}>
+                <Field label="Fim das inscrições" required>
+                  <CampoData
+                    value={novo.dataFimInscricoes}
+                    onChange={(_, d) => setNovo({ ...novo, dataFimInscricoes: d.value })}
+                  />
+                </Field>
+              </Campo>
+              <Campo span={2}>
+                <Field label="Data da votação" required>
+                  <CampoData value={novo.dataVotacao} onChange={(_, d) => setNovo({ ...novo, dataVotacao: d.value })} />
+                </Field>
+              </Campo>
+            </FormGrid>
+            <FormRodape info="Inscrição de candidatos, avaliação, apuração (manual, sem urna digital) e geração da ata em PDF são feitas na tela de detalhe do processo.">
+              <Button onClick={fecharPainel}>Cancelar</Button>
+              <Button appearance="primary" onClick={criar} disabled={carregando}>
+                Convocar eleição
+              </Button>
+            </FormRodape>
+          </FormSection>
+        </PainelCriacaoInline>
+      </div>
       <Card>
         <DataTable
           aria-label="Processos eleitorais"
@@ -161,66 +229,6 @@ export function ProcessoEleitoralCipaTab() {
           )}
         />
       </Card>
-      <PainelLateral
-        aberto={painelAberto}
-        aoFechar={fecharPainel}
-        titulo="Nova convocação de eleição"
-        subtitulo="Inscrição de candidatos, avaliação, apuração (manual, sem urna digital) e geração da ata em PDF são feitas na tela de detalhe do processo."
-        rodape={
-          <>
-            <Button onClick={fecharPainel}>Cancelar</Button>
-            <Button appearance="primary" onClick={criar} disabled={carregando}>
-              Convocar eleição
-            </Button>
-          </>
-        }
-      >
-        {erroPainel && (
-          <FeedbackInline tom="erro" aoFechar={() => setErroPainel(null)}>
-            {erroPainel}
-          </FeedbackInline>
-        )}
-        <FormGrid>
-          <Campo span={4}>
-            <Field label="Obra" required>
-              <Select value={novo.obraId} onChange={(_, d) => setNovo({ ...novo, obraId: d.value })}>
-                <option value="">Selecione</option>
-                {obras.map((obra) => (
-                  <option key={obra.id} value={obra.id}>
-                    {obra.nome}
-                  </option>
-                ))}
-              </Select>
-            </Field>
-          </Campo>
-          <Campo span={3}>
-            <Field label="Data da convocação" required>
-              <CampoData value={novo.dataConvocacao} onChange={(_, d) => setNovo({ ...novo, dataConvocacao: d.value })} />
-            </Field>
-          </Campo>
-          <Campo span={2}>
-            <Field label="Início das inscrições" required>
-              <CampoData
-                value={novo.dataInicioInscricoes}
-                onChange={(_, d) => setNovo({ ...novo, dataInicioInscricoes: d.value })}
-              />
-            </Field>
-          </Campo>
-          <Campo span={2}>
-            <Field label="Fim das inscrições" required>
-              <CampoData
-                value={novo.dataFimInscricoes}
-                onChange={(_, d) => setNovo({ ...novo, dataFimInscricoes: d.value })}
-              />
-            </Field>
-          </Campo>
-          <Campo span={2}>
-            <Field label="Data da votação" required>
-              <CampoData value={novo.dataVotacao} onChange={(_, d) => setNovo({ ...novo, dataVotacao: d.value })} />
-            </Field>
-          </Campo>
-        </FormGrid>
-      </PainelLateral>
     </div>
   );
 }
