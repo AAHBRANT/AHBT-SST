@@ -7,11 +7,12 @@ import {
   Field,
   FeedbackInline,
   FormGrid,
+  FormRodape,
   FormSection,
   Input,
   Legenda,
   PageHeader,
-  PainelLateral,
+  PainelCriacaoInline,
   useConfirmar,
   type Coluna,
 } from '@ui';
@@ -27,8 +28,9 @@ const itemVazio: NovoCatalogoUniforme = { nome: '', categoria: '' };
 // do cadastro do trabalhador, ver EstoqueUniformeTab.tsx e pages/pessoas/TamanhosUniformeSecao.tsx).
 // Mesmo padrão de CatalogoTab.tsx (EPI), incluindo foto do item (decisão do usuário, 2026-09-07).
 // Camada ui/: o formulário de cadastro empurrava a lista pra baixo (padrão do Guia §2) — sai para um
-// PainelLateral, mesmo golden rule já aplicado em CatalogoTab.tsx (EPI). Erro do painel isolado do
-// erro da lista. Edição inline por linha preservada (clicar na linha edita nela mesma).
+// PainelCriacaoInline, que cresce acima da lista em vez de cobrir a tela com um drawer (migração de
+// 2026-09-11, mesmo padrão de AtividadesTab.tsx/InspecoesTab.tsx). Erro do painel isolado do erro da
+// lista. Edição inline por linha preservada (clicar na linha edita nela mesma).
 export function CatalogoUniformeTab() {
   const [itens, setItens] = useState<CatalogoUniforme[]>([]);
   const [novoItem, setNovoItem] = useState<NovoCatalogoUniforme>(itemVazio);
@@ -36,8 +38,9 @@ export function CatalogoUniformeTab() {
   const [edicaoId, setEdicaoId] = useState<string | null>(null);
   const [edicao, setEdicao] = useState<CatalogoUniforme | null>(null);
   const [erro, setErro] = useState<string | null>(null);
-  // Erro do painel de criação fica separado do erro da lista — o PainelLateral é um drawer modal,
-  // uma mensagem de nível de página apareceria atrás dele, fora do foco do usuário.
+  // Erro do painel de criação fica separado do erro da lista — mesmo padrão de
+  // AtividadesTab.tsx/InspecoesTab.tsx: erro de carga da lista e erro de criação são estados
+  // independentes, não faz sentido um fechar/limpar o outro.
   const [erroPainel, setErroPainel] = useState<string | null>(null);
   const [carregando, setCarregando] = useState(false);
   const [carregandoLista, setCarregandoLista] = useState(true);
@@ -174,12 +177,18 @@ export function CatalogoUniformeTab() {
   ];
 
   return (
-    <>
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
       <PageHeader
         titulo="Catálogo de Uniforme"
         acoes={
-          <Button appearance="primary" icon={<Add24Regular />} onClick={() => setPainelAberto(true)}>
-            Nova peça
+          <Button
+            appearance="primary"
+            icon={<Add24Regular />}
+            onClick={() => (painelAberto ? fecharPainel() : setPainelAberto(true))}
+            aria-expanded={painelAberto}
+            aria-controls="painel-nova-peca-uniforme"
+          >
+            {painelAberto ? 'Fechar' : 'Nova peça'}
           </Button>
         }
       />
@@ -189,6 +198,54 @@ export function CatalogoUniformeTab() {
           {erro}
         </FeedbackInline>
       )}
+
+      <div id="painel-nova-peca-uniforme">
+        <PainelCriacaoInline aberto={painelAberto} titulo="Nova peça de uniforme">
+          <FormSection titulo="Informações da peça" numero={1} primeira>
+            {erroPainel && (
+              <FeedbackInline tom="erro" aoFechar={() => setErroPainel(null)}>
+                {erroPainel}
+              </FeedbackInline>
+            )}
+            <FormGrid>
+              <Campo span={6}>
+                <Field label="Nome (ex.: Camisa, Calça, Bota)">
+                  <Input value={novoItem.nome} onChange={(_, d) => setNovoItem({ ...novoItem, nome: d.value })} />
+                </Field>
+              </Campo>
+              <Campo span={6}>
+                <Field label="Categoria (opcional)">
+                  <Input
+                    value={novoItem.categoria ?? ''}
+                    onChange={(_, d) => setNovoItem({ ...novoItem, categoria: d.value })}
+                  />
+                </Field>
+              </Campo>
+              <Campo span={6}>
+                <Field label="Foto da peça">
+                  <SeletorFotoCamera
+                    rotulo={fotoNovoItem ? fotoNovoItem.name : 'Tirar foto ou escolher arquivo'}
+                    tiposAceitos="image/jpeg,image/png"
+                    aoSelecionarArquivo={(arquivo) => setFotoNovoItem(arquivo)}
+                    aoErroValidacao={setErroPainel}
+                  />
+                </Field>
+              </Campo>
+            </FormGrid>
+            <FormRodape>
+              <Button onClick={fecharPainel}>Cancelar</Button>
+              <Button
+                appearance="primary"
+                icon={<Add24Regular />}
+                onClick={criar}
+                disabled={carregando || !novoItem.nome.trim()}
+              >
+                Adicionar peça
+              </Button>
+            </FormRodape>
+          </FormSection>
+        </PainelCriacaoInline>
+      </div>
 
       <Card densidade="compacta">
         <DataTable
@@ -230,62 +287,7 @@ export function CatalogoUniformeTab() {
         </Legenda>
       </Card>
 
-      <PainelLateral
-        aberto={painelAberto}
-        aoFechar={fecharPainel}
-        titulo="Nova peça de uniforme"
-        subtitulo="Nada é salvo até você adicionar."
-        largura="lg"
-        rodape={
-          <>
-            <Button onClick={fecharPainel}>Cancelar</Button>
-            <Button
-              appearance="primary"
-              icon={<Add24Regular />}
-              onClick={criar}
-              disabled={carregando || !novoItem.nome.trim()}
-            >
-              Adicionar peça
-            </Button>
-          </>
-        }
-      >
-        {erroPainel && (
-          <FeedbackInline tom="erro" aoFechar={() => setErroPainel(null)}>
-            {erroPainel}
-          </FeedbackInline>
-        )}
-
-        <FormSection titulo="Informações da peça" numero={1} primeira>
-          <FormGrid>
-            <Campo span={6}>
-              <Field label="Nome (ex.: Camisa, Calça, Bota)">
-                <Input value={novoItem.nome} onChange={(_, d) => setNovoItem({ ...novoItem, nome: d.value })} />
-              </Field>
-            </Campo>
-            <Campo span={6}>
-              <Field label="Categoria (opcional)">
-                <Input
-                  value={novoItem.categoria ?? ''}
-                  onChange={(_, d) => setNovoItem({ ...novoItem, categoria: d.value })}
-                />
-              </Field>
-            </Campo>
-            <Campo span={6}>
-              <Field label="Foto da peça">
-                <SeletorFotoCamera
-                  rotulo={fotoNovoItem ? fotoNovoItem.name : 'Tirar foto ou escolher arquivo'}
-                  tiposAceitos="image/jpeg,image/png"
-                  aoSelecionarArquivo={(arquivo) => setFotoNovoItem(arquivo)}
-                  aoErroValidacao={setErroPainel}
-                />
-              </Field>
-            </Campo>
-          </FormGrid>
-        </FormSection>
-      </PainelLateral>
-
       {dialogElement}
-    </>
+    </div>
   );
 }

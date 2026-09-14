@@ -8,11 +8,12 @@ import {
   Field,
   FeedbackInline,
   FormGrid,
+  FormRodape,
   FormSection,
   Input,
   Legenda,
   PageHeader,
-  PainelLateral,
+  PainelCriacaoInline,
   useConfirmar,
   type Coluna,
 } from '@ui';
@@ -33,8 +34,9 @@ const epcVazio: NovoCatalogoEpc = {
 // Catálogo de EPC — mesma estrutura do Catálogo de EPI (pedido do usuário, 04/09: aba própria e
 // separada de EPI). Sem CódigoBarras (isso ficou só na Entrega Rápida de EPI, não usado aqui).
 // Onda 3 Task 22.5 (camada ui/): mesmo padrão de CatalogoTab.tsx (EPI, Onda 2 Task 19) — formulário
-// de cadastro em PainelLateral (erro do painel isolado do erro da lista), edição inline por linha
-// preservada, lista em DataTable.
+// de cadastro em PainelCriacaoInline (erro do painel isolado do erro da lista), cresce acima da
+// lista em vez de cobrir a tela com um drawer (mesma migração de AtividadesTab.tsx/InspecoesTab.tsx,
+// spec 2026-09-11), edição inline por linha preservada, lista em DataTable.
 export function CatalogoEpcTab() {
   const [epcs, setEpcs] = useState<CatalogoEpc[]>([]);
   const [novoEpc, setNovoEpc] = useState<NovoCatalogoEpc>(epcVazio);
@@ -224,12 +226,18 @@ export function CatalogoEpcTab() {
   ];
 
   return (
-    <>
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
       <PageHeader
         titulo="Catálogo de EPCs"
         acoes={
-          <Button appearance="primary" icon={<Add24Regular />} onClick={() => setPainelAberto(true)}>
-            Novo EPC
+          <Button
+            appearance="primary"
+            icon={<Add24Regular />}
+            onClick={() => (painelAberto ? fecharPainel() : setPainelAberto(true))}
+            aria-expanded={painelAberto}
+            aria-controls="painel-novo-epc"
+          >
+            {painelAberto ? 'Fechar' : 'Novo EPC'}
           </Button>
         }
       />
@@ -239,6 +247,74 @@ export function CatalogoEpcTab() {
           {erro}
         </FeedbackInline>
       )}
+
+      <div id="painel-novo-epc">
+        <PainelCriacaoInline aberto={painelAberto} titulo="Novo EPC">
+          <FormSection titulo="Dados do EPC" numero={1} primeira>
+            {erroPainel && (
+              <FeedbackInline tom="erro" aoFechar={() => setErroPainel(null)}>
+                {erroPainel}
+              </FeedbackInline>
+            )}
+            <FormGrid>
+              <Campo span={4}>
+                <Field label="Nome">
+                  <Input value={novoEpc.nome} onChange={(_, d) => setNovoEpc({ ...novoEpc, nome: d.value })} />
+                </Field>
+              </Campo>
+              <Campo span={4}>
+                <Field label="Fabricante">
+                  <Input
+                    value={novoEpc.fabricante ?? ''}
+                    onChange={(_, d) => setNovoEpc({ ...novoEpc, fabricante: d.value })}
+                  />
+                </Field>
+              </Campo>
+              <Campo span={4}>
+                <Field label="Nº do CA (se houver)">
+                  <Input
+                    value={novoEpc.certificadoAprovacaoNumero ?? ''}
+                    onChange={(_, d) => setNovoEpc({ ...novoEpc, certificadoAprovacaoNumero: d.value })}
+                  />
+                </Field>
+              </Campo>
+              <Campo span={3}>
+                <Field label="Validade do CA">
+                  <CampoData
+                    value={novoEpc.certificadoAprovacaoValidade ?? ''}
+                    onChange={(_, d) => setNovoEpc({ ...novoEpc, certificadoAprovacaoValidade: d.value })}
+                  />
+                </Field>
+              </Campo>
+              <Campo span={3}>
+                <Field label="Vida útil (meses)">
+                  <Input
+                    type="number"
+                    value={String(novoEpc.vidaUtilEmMeses)}
+                    onChange={(_, d) => setNovoEpc({ ...novoEpc, vidaUtilEmMeses: Number(d.value) })}
+                  />
+                </Field>
+              </Campo>
+              <Campo span={6}>
+                <Field label="Foto do EPC">
+                  <SeletorFotoCamera
+                    rotulo={fotoNovoEpc ? fotoNovoEpc.name : 'Tirar foto ou escolher arquivo'}
+                    tiposAceitos="image/jpeg,image/png"
+                    aoSelecionarArquivo={(arquivo) => setFotoNovoEpc(arquivo)}
+                    aoErroValidacao={setErroPainel}
+                  />
+                </Field>
+              </Campo>
+            </FormGrid>
+            <FormRodape>
+              <Button onClick={fecharPainel}>Cancelar</Button>
+              <Button appearance="primary" icon={<Add24Regular />} onClick={criar} disabled={carregando}>
+                Adicionar EPC
+              </Button>
+            </FormRodape>
+          </FormSection>
+        </PainelCriacaoInline>
+      </div>
 
       <Card densidade="compacta">
         <DataTable
@@ -280,82 +356,7 @@ export function CatalogoEpcTab() {
         </Legenda>
       </Card>
 
-      <PainelLateral
-        aberto={painelAberto}
-        aoFechar={fecharPainel}
-        titulo="Novo EPC"
-        subtitulo="Nada é salvo até você adicionar."
-        largura="lg"
-        rodape={
-          <>
-            <Button onClick={fecharPainel}>Cancelar</Button>
-            <Button appearance="primary" icon={<Add24Regular />} onClick={criar} disabled={carregando}>
-              Adicionar EPC
-            </Button>
-          </>
-        }
-      >
-        {erroPainel && (
-          <FeedbackInline tom="erro" aoFechar={() => setErroPainel(null)}>
-            {erroPainel}
-          </FeedbackInline>
-        )}
-
-        <FormSection titulo="Dados do EPC" numero={1} primeira>
-          <FormGrid>
-            <Campo span={4}>
-              <Field label="Nome">
-                <Input value={novoEpc.nome} onChange={(_, d) => setNovoEpc({ ...novoEpc, nome: d.value })} />
-              </Field>
-            </Campo>
-            <Campo span={4}>
-              <Field label="Fabricante">
-                <Input
-                  value={novoEpc.fabricante ?? ''}
-                  onChange={(_, d) => setNovoEpc({ ...novoEpc, fabricante: d.value })}
-                />
-              </Field>
-            </Campo>
-            <Campo span={4}>
-              <Field label="Nº do CA (se houver)">
-                <Input
-                  value={novoEpc.certificadoAprovacaoNumero ?? ''}
-                  onChange={(_, d) => setNovoEpc({ ...novoEpc, certificadoAprovacaoNumero: d.value })}
-                />
-              </Field>
-            </Campo>
-            <Campo span={3}>
-              <Field label="Validade do CA">
-                <CampoData
-                  value={novoEpc.certificadoAprovacaoValidade ?? ''}
-                  onChange={(_, d) => setNovoEpc({ ...novoEpc, certificadoAprovacaoValidade: d.value })}
-                />
-              </Field>
-            </Campo>
-            <Campo span={3}>
-              <Field label="Vida útil (meses)">
-                <Input
-                  type="number"
-                  value={String(novoEpc.vidaUtilEmMeses)}
-                  onChange={(_, d) => setNovoEpc({ ...novoEpc, vidaUtilEmMeses: Number(d.value) })}
-                />
-              </Field>
-            </Campo>
-            <Campo span={6}>
-              <Field label="Foto do EPC">
-                <SeletorFotoCamera
-                  rotulo={fotoNovoEpc ? fotoNovoEpc.name : 'Tirar foto ou escolher arquivo'}
-                  tiposAceitos="image/jpeg,image/png"
-                  aoSelecionarArquivo={(arquivo) => setFotoNovoEpc(arquivo)}
-                  aoErroValidacao={setErroPainel}
-                />
-              </Field>
-            </Campo>
-          </FormGrid>
-        </FormSection>
-      </PainelLateral>
-
       {dialogElement}
-    </>
+    </div>
   );
 }

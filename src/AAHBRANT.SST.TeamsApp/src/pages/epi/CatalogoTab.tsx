@@ -8,11 +8,12 @@ import {
   Field,
   FeedbackInline,
   FormGrid,
+  FormRodape,
   FormSection,
   Input,
   Legenda,
   PageHeader,
-  PainelLateral,
+  PainelCriacaoInline,
   useConfirmar,
   type Coluna,
 } from '@ui';
@@ -35,7 +36,8 @@ const epiVazio: NovoCatalogoEpi = {
 // entre entregas; com o módulo próprio de EPI aprovado pelo usuário, a gestão de catálogo/estoque
 // passou para cá por inteiro.
 // Onda 2 Task 19 (camada ui/): o formulário de cadastro empurrava a lista pra baixo (padrão do Guia
-// §2) — sai para um PainelLateral, mesmo golden rule já aplicado em FuncoesTab.tsx (Task 1). Erro do
+// §2) — sai para um PainelCriacaoInline, que cresce acima da lista em vez de cobrir a tela com um
+// drawer (migração de 2026-09-11, mesmo padrão de AtividadesTab.tsx/InspecoesTab.tsx). Erro do
 // painel isolado do erro da lista. Edição inline por linha preservada (clicar na linha edita nela
 // mesma, mesmo padrão de AsosTab.tsx/Task 12), só a criação de item novo é que muda de lugar.
 export function CatalogoTab() {
@@ -46,8 +48,8 @@ export function CatalogoTab() {
   const [edicao, setEdicao] = useState<CatalogoEpi | null>(null);
   const [erro, setErro] = useState<string | null>(null);
   // Erro do painel de criação fica separado do erro da lista — mesmo motivo já registrado em
-  // EntregasTab.tsx: o PainelLateral é um drawer modal, uma mensagem de nível de página apareceria
-  // atrás dele, fora do foco do usuário.
+  // AtividadesTab.tsx/InspecoesTab.tsx: erro de carga da lista e erro de criação são estados
+  // independentes, não faz sentido um fechar/limpar o outro.
   const [erroPainel, setErroPainel] = useState<string | null>(null);
   const [carregando, setCarregando] = useState(false);
   const [carregandoLista, setCarregandoLista] = useState(true);
@@ -231,12 +233,18 @@ export function CatalogoTab() {
   ];
 
   return (
-    <>
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
       <PageHeader
         titulo="Catálogo de EPIs"
         acoes={
-          <Button appearance="primary" icon={<Add24Regular />} onClick={() => setPainelAberto(true)}>
-            Novo EPI
+          <Button
+            appearance="primary"
+            icon={<Add24Regular />}
+            onClick={() => (painelAberto ? fecharPainel() : setPainelAberto(true))}
+            aria-expanded={painelAberto}
+            aria-controls="painel-novo-epi"
+          >
+            {painelAberto ? 'Fechar' : 'Novo EPI'}
           </Button>
         }
       />
@@ -246,6 +254,74 @@ export function CatalogoTab() {
           {erro}
         </FeedbackInline>
       )}
+
+      <div id="painel-novo-epi">
+        <PainelCriacaoInline aberto={painelAberto} titulo="Novo EPI">
+          <FormSection titulo="Dados do EPI" numero={1} primeira>
+            {erroPainel && (
+              <FeedbackInline tom="erro" aoFechar={() => setErroPainel(null)}>
+                {erroPainel}
+              </FeedbackInline>
+            )}
+            <FormGrid>
+              <Campo span={4}>
+                <Field label="Nome">
+                  <Input value={novoEpi.nome} onChange={(_, d) => setNovoEpi({ ...novoEpi, nome: d.value })} />
+                </Field>
+              </Campo>
+              <Campo span={4}>
+                <Field label="Fabricante">
+                  <Input
+                    value={novoEpi.fabricante ?? ''}
+                    onChange={(_, d) => setNovoEpi({ ...novoEpi, fabricante: d.value })}
+                  />
+                </Field>
+              </Campo>
+              <Campo span={4}>
+                <Field label="Nº do CA">
+                  <Input
+                    value={novoEpi.certificadoAprovacaoNumero ?? ''}
+                    onChange={(_, d) => setNovoEpi({ ...novoEpi, certificadoAprovacaoNumero: d.value })}
+                  />
+                </Field>
+              </Campo>
+              <Campo span={3}>
+                <Field label="Validade do CA">
+                  <CampoData
+                    value={novoEpi.certificadoAprovacaoValidade ?? ''}
+                    onChange={(_, d) => setNovoEpi({ ...novoEpi, certificadoAprovacaoValidade: d.value })}
+                  />
+                </Field>
+              </Campo>
+              <Campo span={3}>
+                <Field label="Vida útil (meses)">
+                  <Input
+                    type="number"
+                    value={String(novoEpi.vidaUtilEmMeses)}
+                    onChange={(_, d) => setNovoEpi({ ...novoEpi, vidaUtilEmMeses: Number(d.value) })}
+                  />
+                </Field>
+              </Campo>
+              <Campo span={6}>
+                <Field label="Foto do EPI">
+                  <SeletorFotoCamera
+                    rotulo={fotoNovoEpi ? fotoNovoEpi.name : 'Tirar foto ou escolher arquivo'}
+                    tiposAceitos="image/jpeg,image/png"
+                    aoSelecionarArquivo={(arquivo) => setFotoNovoEpi(arquivo)}
+                    aoErroValidacao={setErroPainel}
+                  />
+                </Field>
+              </Campo>
+            </FormGrid>
+            <FormRodape>
+              <Button onClick={fecharPainel}>Cancelar</Button>
+              <Button appearance="primary" icon={<Add24Regular />} onClick={criar} disabled={carregando}>
+                Adicionar EPI
+              </Button>
+            </FormRodape>
+          </FormSection>
+        </PainelCriacaoInline>
+      </div>
 
       <Card densidade="compacta">
         <DataTable
@@ -287,82 +363,7 @@ export function CatalogoTab() {
         </Legenda>
       </Card>
 
-      <PainelLateral
-        aberto={painelAberto}
-        aoFechar={fecharPainel}
-        titulo="Novo EPI"
-        subtitulo="Nada é salvo até você adicionar."
-        largura="lg"
-        rodape={
-          <>
-            <Button onClick={fecharPainel}>Cancelar</Button>
-            <Button appearance="primary" icon={<Add24Regular />} onClick={criar} disabled={carregando}>
-              Adicionar EPI
-            </Button>
-          </>
-        }
-      >
-        {erroPainel && (
-          <FeedbackInline tom="erro" aoFechar={() => setErroPainel(null)}>
-            {erroPainel}
-          </FeedbackInline>
-        )}
-
-        <FormSection titulo="Dados do EPI" numero={1} primeira>
-          <FormGrid>
-            <Campo span={4}>
-              <Field label="Nome">
-                <Input value={novoEpi.nome} onChange={(_, d) => setNovoEpi({ ...novoEpi, nome: d.value })} />
-              </Field>
-            </Campo>
-            <Campo span={4}>
-              <Field label="Fabricante">
-                <Input
-                  value={novoEpi.fabricante ?? ''}
-                  onChange={(_, d) => setNovoEpi({ ...novoEpi, fabricante: d.value })}
-                />
-              </Field>
-            </Campo>
-            <Campo span={4}>
-              <Field label="Nº do CA">
-                <Input
-                  value={novoEpi.certificadoAprovacaoNumero ?? ''}
-                  onChange={(_, d) => setNovoEpi({ ...novoEpi, certificadoAprovacaoNumero: d.value })}
-                />
-              </Field>
-            </Campo>
-            <Campo span={3}>
-              <Field label="Validade do CA">
-                <CampoData
-                  value={novoEpi.certificadoAprovacaoValidade ?? ''}
-                  onChange={(_, d) => setNovoEpi({ ...novoEpi, certificadoAprovacaoValidade: d.value })}
-                />
-              </Field>
-            </Campo>
-            <Campo span={3}>
-              <Field label="Vida útil (meses)">
-                <Input
-                  type="number"
-                  value={String(novoEpi.vidaUtilEmMeses)}
-                  onChange={(_, d) => setNovoEpi({ ...novoEpi, vidaUtilEmMeses: Number(d.value) })}
-                />
-              </Field>
-            </Campo>
-            <Campo span={6}>
-              <Field label="Foto do EPI">
-                <SeletorFotoCamera
-                  rotulo={fotoNovoEpi ? fotoNovoEpi.name : 'Tirar foto ou escolher arquivo'}
-                  tiposAceitos="image/jpeg,image/png"
-                  aoSelecionarArquivo={(arquivo) => setFotoNovoEpi(arquivo)}
-                  aoErroValidacao={setErroPainel}
-                />
-              </Field>
-            </Campo>
-          </FormGrid>
-        </FormSection>
-      </PainelLateral>
-
       {dialogElement}
-    </>
+    </div>
   );
 }
