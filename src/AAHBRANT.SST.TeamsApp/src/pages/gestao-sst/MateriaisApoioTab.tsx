@@ -8,10 +8,11 @@ import {
   Field,
   FeedbackInline,
   FormGrid,
+  FormRodape,
   FormSection,
   Input,
   PageHeader,
-  PainelLateral,
+  PainelCriacaoInline,
   useConfirmar,
   type Coluna,
 } from '@ui';
@@ -43,6 +44,9 @@ function IconePorTipo({ contentType }: { contentType: string }) {
 // global de materiais de apoio (pôsteres de sinalização, instruções técnicas). Espaço reservado no
 // menu desde a remoção do módulo de Gestão Documental em 28/08 — deliberadamente mais simples que
 // aquele: sem workflow de aprovação/versão, só nome + categoria + arquivo (ver MaterialApoio.cs).
+// Onda A do spec de formulário inline (2026-09-11): os dois PainelLateral (upload e preview) saem —
+// mesmo padrão de AtividadesTab.tsx/InspecoesTab.tsx. Agora são PainelCriacaoInline, que cresce
+// acima da lista só até a altura do próprio conteúdo, em vez de cobrir a tela com uma gaveta.
 export function MateriaisApoioTab() {
   const [materiais, setMateriais] = useState<MaterialApoio[]>([]);
   const [carregandoLista, setCarregandoLista] = useState(true);
@@ -171,14 +175,20 @@ export function MateriaisApoioTab() {
   const podePreVisualizar = materialPreview?.contentType.startsWith('image/') || materialPreview?.contentType === 'application/pdf';
 
   return (
-    <div>
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
       {dialogElement}
       <PageHeader
         titulo="Documentos & Procedimentos"
         subtitulo="Materiais de apoio (sinalização, instruções técnicas) disponíveis para consulta e download."
         acoes={
-          <Button appearance="primary" icon={<Add24Regular />} onClick={() => setPainelUploadAberto(true)}>
-            Enviar material
+          <Button
+            appearance="primary"
+            icon={<Add24Regular />}
+            onClick={() => (painelUploadAberto ? fecharPainelUpload() : setPainelUploadAberto(true))}
+            aria-expanded={painelUploadAberto}
+            aria-controls="painel-novo-material-apoio"
+          >
+            {painelUploadAberto ? 'Fechar' : 'Enviar material'}
           </Button>
         }
       />
@@ -188,6 +198,79 @@ export function MateriaisApoioTab() {
           {erro}
         </FeedbackInline>
       )}
+
+      <div id="painel-novo-material-apoio">
+        <PainelCriacaoInline aberto={painelUploadAberto} titulo="Novo material de apoio">
+          <FormSection titulo="Dados do material" numero={1} primeira>
+            {erroPainel && (
+              <FeedbackInline tom="erro" aoFechar={() => setErroPainel(null)}>
+                {erroPainel}
+              </FeedbackInline>
+            )}
+            <FormGrid>
+              <Campo span={12}>
+                <Field label="Nome">
+                  <Input value={nome} onChange={(_, d) => setNome(d.value)} />
+                </Field>
+              </Campo>
+              <Campo span={12}>
+                <Field label="Categoria (opcional)">
+                  <Input value={categoria} onChange={(_, d) => setCategoria(d.value)} placeholder="Ex.: Sinalização - Alojamento" />
+                </Field>
+              </Campo>
+              <Campo span={12}>
+                <Field label="Arquivo (imagem JPEG/PNG, PDF ou Word)">
+                  <input
+                    type="file"
+                    accept="image/jpeg,image/png,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+                    onChange={(e) => setArquivo(e.target.files?.[0] ?? null)}
+                  />
+                </Field>
+              </Campo>
+            </FormGrid>
+            <FormRodape>
+              <Button onClick={fecharPainelUpload}>Cancelar</Button>
+              <Button appearance="primary" onClick={enviar} disabled={enviando}>
+                Enviar
+              </Button>
+            </FormRodape>
+          </FormSection>
+        </PainelCriacaoInline>
+      </div>
+
+      <div id="painel-preview-material-apoio">
+        <PainelCriacaoInline aberto={!!materialPreview} titulo={materialPreview?.nome ?? ''}>
+          {carregandoPreview && <Carregando variante="detalhe" linhas={4} />}
+          {!carregandoPreview && urlPreview && materialPreview && (
+            <>
+              {materialPreview.contentType.startsWith('image/') && (
+                <img src={urlPreview} alt={materialPreview.nome} style={{ maxWidth: '100%', borderRadius: 8 }} />
+              )}
+              {materialPreview.contentType === 'application/pdf' && (
+                <iframe src={urlPreview} title={materialPreview.nome} style={{ width: '100%', height: '70vh', border: 'none' }} />
+              )}
+              {!podePreVisualizar && (
+                <FeedbackInline tom="info">
+                  Pré-visualização não disponível para este tipo de arquivo. Use o botão "Baixar" abaixo.
+                </FeedbackInline>
+              )}
+            </>
+          )}
+          <FormRodape>
+            <Button onClick={fecharPreview}>Fechar</Button>
+            {materialPreview && (
+              <Button
+                appearance="primary"
+                icon={<ArrowDownload24Regular />}
+                onClick={() => baixar(materialPreview)}
+                disabled={baixandoId === materialPreview.id}
+              >
+                Baixar
+              </Button>
+            )}
+          </FormRodape>
+        </PainelCriacaoInline>
+      </div>
 
       <Card>
         <DataTable
@@ -236,87 +319,6 @@ export function MateriaisApoioTab() {
           )}
         />
       </Card>
-
-      <PainelLateral
-        aberto={painelUploadAberto}
-        aoFechar={fecharPainelUpload}
-        titulo="Novo material de apoio"
-        largura="md"
-        rodape={
-          <>
-            <Button onClick={fecharPainelUpload}>Cancelar</Button>
-            <Button appearance="primary" onClick={enviar} disabled={enviando}>
-              Enviar
-            </Button>
-          </>
-        }
-      >
-        {erroPainel && (
-          <FeedbackInline tom="erro" aoFechar={() => setErroPainel(null)}>
-            {erroPainel}
-          </FeedbackInline>
-        )}
-
-        <FormSection titulo="Dados do material" numero={1} primeira>
-          <FormGrid>
-            <Campo span={12}>
-              <Field label="Nome">
-                <Input value={nome} onChange={(_, d) => setNome(d.value)} />
-              </Field>
-            </Campo>
-            <Campo span={12}>
-              <Field label="Categoria (opcional)">
-                <Input value={categoria} onChange={(_, d) => setCategoria(d.value)} placeholder="Ex.: Sinalização - Alojamento" />
-              </Field>
-            </Campo>
-            <Campo span={12}>
-              <Field label="Arquivo (imagem JPEG/PNG, PDF ou Word)">
-                <input
-                  type="file"
-                  accept="image/jpeg,image/png,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
-                  onChange={(e) => setArquivo(e.target.files?.[0] ?? null)}
-                />
-              </Field>
-            </Campo>
-          </FormGrid>
-        </FormSection>
-      </PainelLateral>
-
-      <PainelLateral
-        aberto={!!materialPreview}
-        aoFechar={fecharPreview}
-        titulo={materialPreview?.nome ?? ''}
-        largura="lg"
-        rodape={
-          materialPreview && (
-            <Button
-              appearance="primary"
-              icon={<ArrowDownload24Regular />}
-              onClick={() => baixar(materialPreview)}
-              disabled={baixandoId === materialPreview.id}
-            >
-              Baixar
-            </Button>
-          )
-        }
-      >
-        {carregandoPreview && <Carregando variante="detalhe" linhas={4} />}
-        {!carregandoPreview && urlPreview && materialPreview && (
-          <>
-            {materialPreview.contentType.startsWith('image/') && (
-              <img src={urlPreview} alt={materialPreview.nome} style={{ maxWidth: '100%', borderRadius: 8 }} />
-            )}
-            {materialPreview.contentType === 'application/pdf' && (
-              <iframe src={urlPreview} title={materialPreview.nome} style={{ width: '100%', height: '70vh', border: 'none' }} />
-            )}
-            {!podePreVisualizar && (
-              <FeedbackInline tom="info">
-                Pré-visualização não disponível para este tipo de arquivo. Use o botão "Baixar" abaixo.
-              </FeedbackInline>
-            )}
-          </>
-        )}
-      </PainelLateral>
     </div>
   );
 }

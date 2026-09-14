@@ -10,10 +10,11 @@ import {
   Field,
   FeedbackInline,
   FormGrid,
+  FormRodape,
   Input,
   Legenda,
   PageHeader,
-  PainelLateral,
+  PainelCriacaoInline,
   Select,
   StatusChip,
   type Coluna,
@@ -55,9 +56,11 @@ const tomPorStatusTurma: Record<number, Tom> = {
 // biometria). O registro de presença por biometria, as fotos obrigatórias e o encerramento
 // acontecem na tela de detalhe (SessaoTreinamentoDetalhePage), depois de criada a turma.
 // Onda 3 Task 22.5 (camada ui/): mesmo padrão de CursosTreinamentoTab.tsx (aba-irmã, mesma página
-// Treinamentos) — formulário de criação em PainelLateral aberto por um botão no PageHeader; seleção
-// de participantes em ChipCheckboxGroup (mesmo componente de "Responsáveis" em AprsTab.tsx e
-// "Atividades do dia" em DdsSemanalDetalhePage.tsx); lista em DataTable com StatusChip de status.
+// Treinamentos) — seleção de participantes em ChipCheckboxGroup (mesmo componente de
+// "Responsáveis" em AprsTab.tsx e "Atividades do dia" em DdsSemanalDetalhePage.tsx); lista em
+// DataTable com StatusChip de status. Onda A do spec de formulário inline (2026-09-11): o
+// PainelLateral saiu — mesmo padrão de AtividadesTab.tsx/InspecoesTab.tsx. Agora é um
+// PainelCriacaoInline, que cresce acima da lista em vez de cobrir a tela com uma gaveta.
 export function TurmasTab() {
   const navigate = useNavigate();
   const [turmas, setTurmas] = useState<SessaoTreinamento[]>([]);
@@ -158,12 +161,18 @@ export function TurmasTab() {
   ];
 
   return (
-    <>
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
       <PageHeader
         titulo="Turmas de treinamento"
         acoes={
-          <Button appearance="primary" icon={<Add24Regular />} onClick={() => setPainelAberto(true)}>
-            Nova turma
+          <Button
+            appearance="primary"
+            icon={<Add24Regular />}
+            onClick={() => (painelAberto ? fecharPainel() : setPainelAberto(true))}
+            aria-expanded={painelAberto}
+            aria-controls="painel-nova-turma"
+          >
+            {painelAberto ? 'Fechar' : 'Nova turma'}
           </Button>
         }
       />
@@ -173,6 +182,103 @@ export function TurmasTab() {
           {erro}
         </FeedbackInline>
       )}
+
+      <div id="painel-nova-turma">
+        <PainelCriacaoInline aberto={painelAberto} titulo="Nova turma">
+          {erroPainel && (
+            <FeedbackInline tom="erro" aoFechar={() => setErroPainel(null)}>
+              {erroPainel}
+            </FeedbackInline>
+          )}
+          <FormGrid>
+            <Campo span={6}>
+              <Field label="Obra">
+                <Select
+                  value={novaTurma.obraId}
+                  onChange={(_, d) => setNovaTurma({ ...novaTurma, obraId: d.value, trabalhadoresIds: [] })}
+                >
+                  <option value="">Selecione</option>
+                  {obras.map((o) => (
+                    <option key={o.id} value={o.id}>
+                      {o.nome}
+                    </option>
+                  ))}
+                </Select>
+              </Field>
+            </Campo>
+            <Campo span={6}>
+              <Field label="Curso">
+                <Select
+                  value={novaTurma.cursoTreinamentoId}
+                  onChange={(_, d) => setNovaTurma({ ...novaTurma, cursoTreinamentoId: d.value })}
+                >
+                  <option value="">Selecione</option>
+                  {cursos.map((c) => (
+                    <option key={c.id} value={c.id}>
+                      {c.nome}
+                    </option>
+                  ))}
+                </Select>
+              </Field>
+            </Campo>
+            <Campo span={6}>
+              <Field label="Data de realização">
+                <CampoData
+                  value={novaTurma.dataRealizacao}
+                  onChange={(_, d) => setNovaTurma({ ...novaTurma, dataRealizacao: d.value })}
+                />
+              </Field>
+            </Campo>
+            <Campo span={6}>
+              <Field label="Carga horária (h)">
+                <Input
+                  type="number"
+                  value={String(novaTurma.cargaHorariaRealizada)}
+                  onChange={(_, d) => setNovaTurma({ ...novaTurma, cargaHorariaRealizada: Number(d.value) })}
+                />
+              </Field>
+            </Campo>
+            <Campo span={12}>
+              <Field label="Instituição / instrutor">
+                <Input
+                  value={novaTurma.instituicaoInstrutor ?? ''}
+                  onChange={(_, d) => setNovaTurma({ ...novaTurma, instituicaoInstrutor: d.value })}
+                />
+              </Field>
+            </Campo>
+            <Campo span={12}>
+              <Legenda>
+                Nada é salvo até você criar a turma. O número do certificado é gerado automaticamente ao criar a turma.
+              </Legenda>
+            </Campo>
+            <Campo span={12}>
+              <Field label={`Participantes${novaTurma.obraId ? ` (${novaTurma.trabalhadoresIds.length} selecionado(s))` : ''}`}>
+                {!novaTurma.obraId ? (
+                  <Legenda>Selecione a obra para listar os funcionários disponíveis.</Legenda>
+                ) : trabalhadoresDaObra.length === 0 ? (
+                  <Legenda>Nenhum funcionário cadastrado nesta obra.</Legenda>
+                ) : (
+                  <ChipCheckboxGroup
+                    aria-label="Participantes"
+                    opcoes={trabalhadoresDaObra.map((t) => ({
+                      id: t.id,
+                      rotulo: t.matricula ? `${t.nome} (${t.matricula})` : t.nome,
+                    }))}
+                    selecionados={novaTurma.trabalhadoresIds}
+                    aoMudar={(atualizar) => setNovaTurma((atual) => ({ ...atual, trabalhadoresIds: atualizar(atual.trabalhadoresIds) }))}
+                  />
+                )}
+              </Field>
+            </Campo>
+          </FormGrid>
+          <FormRodape>
+            <Button onClick={fecharPainel}>Cancelar</Button>
+            <Button appearance="primary" icon={<Add24Regular />} onClick={criar} disabled={carregando || !podeCriar}>
+              Criar turma
+            </Button>
+          </FormRodape>
+        </PainelCriacaoInline>
+      </div>
 
       <Card>
         <DataTable
@@ -188,108 +294,6 @@ export function TurmasTab() {
           aoClicarLinha={(t) => navigate(`/treinamentos/turma/${t.id}`)}
         />
       </Card>
-
-      <PainelLateral
-        aberto={painelAberto}
-        aoFechar={fecharPainel}
-        titulo="Nova turma"
-        subtitulo="Nada é salvo até você criar a turma."
-        largura="lg"
-        rodape={
-          <>
-            <Button onClick={fecharPainel}>Cancelar</Button>
-            <Button appearance="primary" icon={<Add24Regular />} onClick={criar} disabled={carregando || !podeCriar}>
-              Criar turma
-            </Button>
-          </>
-        }
-      >
-        {erroPainel && (
-          <FeedbackInline tom="erro" aoFechar={() => setErroPainel(null)}>
-            {erroPainel}
-          </FeedbackInline>
-        )}
-
-        <FormGrid>
-          <Campo span={6}>
-            <Field label="Obra">
-              <Select
-                value={novaTurma.obraId}
-                onChange={(_, d) => setNovaTurma({ ...novaTurma, obraId: d.value, trabalhadoresIds: [] })}
-              >
-                <option value="">Selecione</option>
-                {obras.map((o) => (
-                  <option key={o.id} value={o.id}>
-                    {o.nome}
-                  </option>
-                ))}
-              </Select>
-            </Field>
-          </Campo>
-          <Campo span={6}>
-            <Field label="Curso">
-              <Select
-                value={novaTurma.cursoTreinamentoId}
-                onChange={(_, d) => setNovaTurma({ ...novaTurma, cursoTreinamentoId: d.value })}
-              >
-                <option value="">Selecione</option>
-                {cursos.map((c) => (
-                  <option key={c.id} value={c.id}>
-                    {c.nome}
-                  </option>
-                ))}
-              </Select>
-            </Field>
-          </Campo>
-          <Campo span={6}>
-            <Field label="Data de realização">
-              <CampoData
-                value={novaTurma.dataRealizacao}
-                onChange={(_, d) => setNovaTurma({ ...novaTurma, dataRealizacao: d.value })}
-              />
-            </Field>
-          </Campo>
-          <Campo span={6}>
-            <Field label="Carga horária (h)">
-              <Input
-                type="number"
-                value={String(novaTurma.cargaHorariaRealizada)}
-                onChange={(_, d) => setNovaTurma({ ...novaTurma, cargaHorariaRealizada: Number(d.value) })}
-              />
-            </Field>
-          </Campo>
-          <Campo span={12}>
-            <Field label="Instituição / instrutor">
-              <Input
-                value={novaTurma.instituicaoInstrutor ?? ''}
-                onChange={(_, d) => setNovaTurma({ ...novaTurma, instituicaoInstrutor: d.value })}
-              />
-            </Field>
-          </Campo>
-          <Campo span={12}>
-            <Legenda>O número do certificado é gerado automaticamente ao criar a turma.</Legenda>
-          </Campo>
-          <Campo span={12}>
-            <Field label={`Participantes${novaTurma.obraId ? ` (${novaTurma.trabalhadoresIds.length} selecionado(s))` : ''}`}>
-              {!novaTurma.obraId ? (
-                <Legenda>Selecione a obra para listar os funcionários disponíveis.</Legenda>
-              ) : trabalhadoresDaObra.length === 0 ? (
-                <Legenda>Nenhum funcionário cadastrado nesta obra.</Legenda>
-              ) : (
-                <ChipCheckboxGroup
-                  aria-label="Participantes"
-                  opcoes={trabalhadoresDaObra.map((t) => ({
-                    id: t.id,
-                    rotulo: t.matricula ? `${t.nome} (${t.matricula})` : t.nome,
-                  }))}
-                  selecionados={novaTurma.trabalhadoresIds}
-                  aoMudar={(atualizar) => setNovaTurma((atual) => ({ ...atual, trabalhadoresIds: atualizar(atual.trabalhadoresIds) }))}
-                />
-              )}
-            </Field>
-          </Campo>
-        </FormGrid>
-      </PainelLateral>
-    </>
+    </div>
   );
 }

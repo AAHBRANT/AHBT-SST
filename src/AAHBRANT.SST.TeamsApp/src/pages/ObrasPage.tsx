@@ -16,7 +16,7 @@ import {
   FormSection,
   Input,
   PageHeader,
-  PainelLateral,
+  PainelCriacaoInline,
   Select,
   useConfirmar,
   type Coluna,
@@ -34,10 +34,11 @@ const obraVazia: NovaObra = {
   cnpj: '',
 };
 
-// Onda 2 Task 21 (camada ui/): mesmo golden rule já aplicado em FuncoesTab.tsx/TrabalhadoresTab.tsx
-// (Task 1/2) — o formulário de cadastro, que empurrava a lista pra baixo, sai para um `PainelLateral`
-// (conversões 1, 4, 6 do Guia, mais 2 pelo mesmo julgamento de precedente). Erro do painel é estado
-// próprio, separado do erro de nível de lista (Guia §4).
+// Onda A do spec de formulário inline (2026-09-11): o PainelLateral (drawer) saiu — mesmo padrão
+// de AtividadesTab.tsx/InspecoesTab.tsx. Tanto o cadastro quanto a edição de obra agora usam
+// PainelCriacaoInline, que cresce acima da lista só até a altura do próprio formulário, em vez de
+// cobrir a tela com uma gaveta. Erro do painel é estado próprio, separado do erro de nível de
+// lista (Guia §4).
 export function ObrasPage() {
   const [obras, setObras] = useState<Obra[]>([]);
   const [painelAberto, setPainelAberto] = useState(false);
@@ -229,13 +230,19 @@ export function ObrasPage() {
   ];
 
   return (
-    <div>
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
       {dialogElement}
       <PageHeader
         titulo="Obras cadastradas"
         acoes={
-          <Button appearance="primary" icon={<Add24Regular />} onClick={() => setPainelAberto(true)}>
-            Adicionar obra
+          <Button
+            appearance="primary"
+            icon={<Add24Regular />}
+            onClick={() => (painelAberto ? fecharPainel() : setPainelAberto(true))}
+            aria-expanded={painelAberto}
+            aria-controls="painel-nova-obra"
+          >
+            {painelAberto ? 'Fechar' : 'Adicionar obra'}
           </Button>
         }
       />
@@ -245,6 +252,226 @@ export function ObrasPage() {
           {erroLista}
         </FeedbackInline>
       )}
+
+      <div id="painel-nova-obra">
+        <PainelCriacaoInline aberto={painelAberto} titulo="Adicionar obra">
+          <FormSection titulo="Dados Gerais da Obra" numero={1} primeira>
+            {erroPainel && (
+              <FeedbackInline tom="erro" aoFechar={() => setErroPainel(null)}>
+                {erroPainel}
+              </FeedbackInline>
+            )}
+            <FormGrid>
+              <Campo span={2}>
+                <Field label="Código">
+                  <Input value={novaObra.codigo} onChange={(_, d) => setNovaObra({ ...novaObra, codigo: d.value })} />
+                </Field>
+              </Campo>
+              <Campo span={3}>
+                <Field label="Nome">
+                  <Input value={novaObra.nome} onChange={(_, d) => setNovaObra({ ...novaObra, nome: d.value })} />
+                </Field>
+              </Campo>
+              <Campo span={2}>
+                <Field label="Status">
+                  <Select
+                    value={novaObra.status}
+                    onChange={(_, d) => setNovaObra({ ...novaObra, status: Number(d.value) })}
+                  >
+                    {Object.entries(statusObraLabel).map(([valor, rotulo]) => (
+                      <option key={valor} value={valor}>
+                        {rotulo}
+                      </option>
+                    ))}
+                  </Select>
+                </Field>
+              </Campo>
+              <Campo span={2}>
+                <Field label="Data de início">
+                  <CampoData
+                    value={novaObra.dataInicio ?? ''}
+                    onChange={(_, d) => setNovaObra({ ...novaObra, dataInicio: d.value })}
+                  />
+                </Field>
+              </Campo>
+              <Campo span={3}>
+                <Field label="Previsão de término">
+                  <CampoData
+                    value={novaObra.dataPrevisaoTermino ?? ''}
+                    onChange={(_, d) => setNovaObra({ ...novaObra, dataPrevisaoTermino: d.value })}
+                  />
+                </Field>
+              </Campo>
+            </FormGrid>
+          </FormSection>
+
+          <FormSection titulo="Endereço e Documentos" numero={2}>
+            <FormGrid>
+              <Campo span={4}>
+                <Field label="Endereço">
+                  <Input
+                    value={novaObra.endereco ?? ''}
+                    onChange={(_, d) => setNovaObra({ ...novaObra, endereco: d.value })}
+                  />
+                </Field>
+              </Campo>
+              <Campo span={3}>
+                <Field label="Cidade">
+                  <Input value={novaObra.cidade ?? ''} onChange={(_, d) => setNovaObra({ ...novaObra, cidade: d.value })} />
+                </Field>
+              </Campo>
+              <Campo span={2}>
+                <Field label="UF">
+                  <Input
+                    value={novaObra.uf ?? ''}
+                    maxLength={2}
+                    onChange={(_, d) => setNovaObra({ ...novaObra, uf: d.value.toUpperCase() })}
+                  />
+                </Field>
+              </Campo>
+              <Campo span={3}>
+                <Field label="CNPJ">
+                  <Input
+                    value={novaObra.cnpj ?? ''}
+                    maxLength={18}
+                    onChange={(_, d) => setNovaObra({ ...novaObra, cnpj: d.value })}
+                  />
+                </Field>
+              </Campo>
+              <Campo span={12}>
+                <Field label="Logomarca da obra" required>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                    <SeletorFotoCamera
+                      rotulo={logoNovaObra ? logoNovaObra.name : 'Tirar foto ou escolher arquivo'}
+                      tiposAceitos="image/jpeg,image/png"
+                      aoSelecionarArquivo={(arquivo) => setLogoNovaObra(arquivo)}
+                      aoErroValidacao={setErroPainel}
+                    />
+                  </div>
+                </Field>
+              </Campo>
+            </FormGrid>
+            <FormRodape info="A logomarca é obrigatória: ela será usada no cabeçalho dos documentos gerados e assinados para esta obra (APR, PT, DDS, Ficha de EPI, Relatório de Fiscalização).">
+              <Button appearance="secondary" onClick={fecharPainel}>
+                Cancelar
+              </Button>
+              <Button appearance="primary" icon={<Add24Regular />} onClick={criar} disabled={carregando || !logoNovaObra}>
+                Adicionar obra
+              </Button>
+            </FormRodape>
+          </FormSection>
+        </PainelCriacaoInline>
+      </div>
+
+      <div id="painel-editar-obra">
+        <PainelCriacaoInline aberto={obraEditando !== null} titulo="Editar obra">
+          {obraEditando && (
+            <>
+              <FormSection titulo="Dados Gerais da Obra" numero={1} primeira>
+                {erroEdicao && (
+                  <FeedbackInline tom="erro" aoFechar={() => setErroEdicao(null)}>
+                    {erroEdicao}
+                  </FeedbackInline>
+                )}
+                <FormGrid>
+                  <Campo span={2}>
+                    <Field label="Código">
+                      <Input
+                        value={obraEditando.codigo}
+                        onChange={(_, d) => setObraEditando({ ...obraEditando, codigo: d.value })}
+                      />
+                    </Field>
+                  </Campo>
+                  <Campo span={3}>
+                    <Field label="Nome">
+                      <Input
+                        value={obraEditando.nome}
+                        onChange={(_, d) => setObraEditando({ ...obraEditando, nome: d.value })}
+                      />
+                    </Field>
+                  </Campo>
+                  <Campo span={2}>
+                    <Field label="Cliente">
+                      <Input
+                        value={obraEditando.cliente ?? ''}
+                        onChange={(_, d) => setObraEditando({ ...obraEditando, cliente: d.value })}
+                      />
+                    </Field>
+                  </Campo>
+                  <Campo span={2}>
+                    <Field label="Status">
+                      <Select
+                        value={obraEditando.status}
+                        onChange={(_, d) => setObraEditando({ ...obraEditando, status: Number(d.value) })}
+                      >
+                        {Object.entries(statusObraLabel).map(([valor, rotulo]) => (
+                          <option key={valor} value={valor}>
+                            {rotulo}
+                          </option>
+                        ))}
+                      </Select>
+                    </Field>
+                  </Campo>
+                  <Campo span={2}>
+                    <Field label="Data de início">
+                      <CampoData
+                        value={obraEditando.dataInicio ?? ''}
+                        onChange={(_, d) => setObraEditando({ ...obraEditando, dataInicio: d.value })}
+                      />
+                    </Field>
+                  </Campo>
+                  <Campo span={3}>
+                    <Field label="Previsão de término">
+                      <CampoData
+                        value={obraEditando.dataPrevisaoTermino ?? ''}
+                        onChange={(_, d) => setObraEditando({ ...obraEditando, dataPrevisaoTermino: d.value })}
+                      />
+                    </Field>
+                  </Campo>
+                </FormGrid>
+              </FormSection>
+
+              <FormSection titulo="Endereço" numero={2}>
+                <FormGrid>
+                  <Campo span={4}>
+                    <Field label="Endereço">
+                      <Input
+                        value={obraEditando.endereco ?? ''}
+                        onChange={(_, d) => setObraEditando({ ...obraEditando, endereco: d.value })}
+                      />
+                    </Field>
+                  </Campo>
+                  <Campo span={3}>
+                    <Field label="Cidade">
+                      <Input
+                        value={obraEditando.cidade ?? ''}
+                        onChange={(_, d) => setObraEditando({ ...obraEditando, cidade: d.value })}
+                      />
+                    </Field>
+                  </Campo>
+                  <Campo span={2}>
+                    <Field label="UF">
+                      <Input
+                        value={obraEditando.uf ?? ''}
+                        maxLength={2}
+                        onChange={(_, d) => setObraEditando({ ...obraEditando, uf: d.value.toUpperCase() })}
+                      />
+                    </Field>
+                  </Campo>
+                </FormGrid>
+                <FormRodape>
+                  <Button appearance="secondary" onClick={fecharEdicao}>
+                    Cancelar
+                  </Button>
+                  <Button appearance="primary" onClick={salvarEdicao} disabled={salvandoEdicao}>
+                    Salvar
+                  </Button>
+                </FormRodape>
+              </FormSection>
+            </>
+          )}
+        </PainelCriacaoInline>
+      </div>
 
       <Card>
         <DataTable
@@ -281,238 +508,6 @@ export function ObrasPage() {
           )}
         />
       </Card>
-
-      <PainelLateral
-        aberto={painelAberto}
-        aoFechar={fecharPainel}
-        titulo="Adicionar obra"
-        largura="lg"
-        rodape={
-          <FormRodape info="A logomarca é obrigatória: ela será usada no cabeçalho dos documentos gerados e assinados para esta obra (APR, PT, DDS, Ficha de EPI, Relatório de Fiscalização).">
-            <Button appearance="secondary" onClick={fecharPainel}>
-              Cancelar
-            </Button>
-            <Button appearance="primary" icon={<Add24Regular />} onClick={criar} disabled={carregando || !logoNovaObra}>
-              Adicionar obra
-            </Button>
-          </FormRodape>
-        }
-      >
-        {erroPainel && (
-          <FeedbackInline tom="erro" aoFechar={() => setErroPainel(null)}>
-            {erroPainel}
-          </FeedbackInline>
-        )}
-
-        <FormSection titulo="Dados Gerais da Obra" numero={1} primeira>
-          <FormGrid>
-            <Campo span={2}>
-              <Field label="Código">
-                <Input value={novaObra.codigo} onChange={(_, d) => setNovaObra({ ...novaObra, codigo: d.value })} />
-              </Field>
-            </Campo>
-            <Campo span={3}>
-              <Field label="Nome">
-                <Input value={novaObra.nome} onChange={(_, d) => setNovaObra({ ...novaObra, nome: d.value })} />
-              </Field>
-            </Campo>
-            <Campo span={2}>
-              <Field label="Status">
-                <Select
-                  value={novaObra.status}
-                  onChange={(_, d) => setNovaObra({ ...novaObra, status: Number(d.value) })}
-                >
-                  {Object.entries(statusObraLabel).map(([valor, rotulo]) => (
-                    <option key={valor} value={valor}>
-                      {rotulo}
-                    </option>
-                  ))}
-                </Select>
-              </Field>
-            </Campo>
-            <Campo span={2}>
-              <Field label="Data de início">
-                <CampoData
-                  value={novaObra.dataInicio ?? ''}
-                  onChange={(_, d) => setNovaObra({ ...novaObra, dataInicio: d.value })}
-                />
-              </Field>
-            </Campo>
-            <Campo span={3}>
-              <Field label="Previsão de término">
-                <CampoData
-                  value={novaObra.dataPrevisaoTermino ?? ''}
-                  onChange={(_, d) => setNovaObra({ ...novaObra, dataPrevisaoTermino: d.value })}
-                />
-              </Field>
-            </Campo>
-          </FormGrid>
-        </FormSection>
-
-        <FormSection titulo="Endereço e Documentos" numero={2}>
-          <FormGrid>
-            <Campo span={4}>
-              <Field label="Endereço">
-                <Input
-                  value={novaObra.endereco ?? ''}
-                  onChange={(_, d) => setNovaObra({ ...novaObra, endereco: d.value })}
-                />
-              </Field>
-            </Campo>
-            <Campo span={3}>
-              <Field label="Cidade">
-                <Input value={novaObra.cidade ?? ''} onChange={(_, d) => setNovaObra({ ...novaObra, cidade: d.value })} />
-              </Field>
-            </Campo>
-            <Campo span={2}>
-              <Field label="UF">
-                <Input
-                  value={novaObra.uf ?? ''}
-                  maxLength={2}
-                  onChange={(_, d) => setNovaObra({ ...novaObra, uf: d.value.toUpperCase() })}
-                />
-              </Field>
-            </Campo>
-            <Campo span={3}>
-              <Field label="CNPJ">
-                <Input
-                  value={novaObra.cnpj ?? ''}
-                  maxLength={18}
-                  onChange={(_, d) => setNovaObra({ ...novaObra, cnpj: d.value })}
-                />
-              </Field>
-            </Campo>
-            <Campo span={12}>
-              <Field label="Logomarca da obra" required>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                  <SeletorFotoCamera
-                    rotulo={logoNovaObra ? logoNovaObra.name : 'Tirar foto ou escolher arquivo'}
-                    tiposAceitos="image/jpeg,image/png"
-                    aoSelecionarArquivo={(arquivo) => setLogoNovaObra(arquivo)}
-                    aoErroValidacao={setErroPainel}
-                  />
-                </div>
-              </Field>
-            </Campo>
-          </FormGrid>
-        </FormSection>
-      </PainelLateral>
-
-      <PainelLateral
-        aberto={obraEditando !== null}
-        aoFechar={fecharEdicao}
-        titulo="Editar obra"
-        largura="lg"
-        rodape={
-          <FormRodape>
-            <Button appearance="secondary" onClick={fecharEdicao}>
-              Cancelar
-            </Button>
-            <Button appearance="primary" onClick={salvarEdicao} disabled={salvandoEdicao}>
-              Salvar
-            </Button>
-          </FormRodape>
-        }
-      >
-        {erroEdicao && (
-          <FeedbackInline tom="erro" aoFechar={() => setErroEdicao(null)}>
-            {erroEdicao}
-          </FeedbackInline>
-        )}
-
-        {obraEditando && (
-          <>
-            <FormSection titulo="Dados Gerais da Obra" numero={1} primeira>
-              <FormGrid>
-                <Campo span={2}>
-                  <Field label="Código">
-                    <Input
-                      value={obraEditando.codigo}
-                      onChange={(_, d) => setObraEditando({ ...obraEditando, codigo: d.value })}
-                    />
-                  </Field>
-                </Campo>
-                <Campo span={3}>
-                  <Field label="Nome">
-                    <Input
-                      value={obraEditando.nome}
-                      onChange={(_, d) => setObraEditando({ ...obraEditando, nome: d.value })}
-                    />
-                  </Field>
-                </Campo>
-                <Campo span={2}>
-                  <Field label="Cliente">
-                    <Input
-                      value={obraEditando.cliente ?? ''}
-                      onChange={(_, d) => setObraEditando({ ...obraEditando, cliente: d.value })}
-                    />
-                  </Field>
-                </Campo>
-                <Campo span={2}>
-                  <Field label="Status">
-                    <Select
-                      value={obraEditando.status}
-                      onChange={(_, d) => setObraEditando({ ...obraEditando, status: Number(d.value) })}
-                    >
-                      {Object.entries(statusObraLabel).map(([valor, rotulo]) => (
-                        <option key={valor} value={valor}>
-                          {rotulo}
-                        </option>
-                      ))}
-                    </Select>
-                  </Field>
-                </Campo>
-                <Campo span={2}>
-                  <Field label="Data de início">
-                    <CampoData
-                      value={obraEditando.dataInicio ?? ''}
-                      onChange={(_, d) => setObraEditando({ ...obraEditando, dataInicio: d.value })}
-                    />
-                  </Field>
-                </Campo>
-                <Campo span={3}>
-                  <Field label="Previsão de término">
-                    <CampoData
-                      value={obraEditando.dataPrevisaoTermino ?? ''}
-                      onChange={(_, d) => setObraEditando({ ...obraEditando, dataPrevisaoTermino: d.value })}
-                    />
-                  </Field>
-                </Campo>
-              </FormGrid>
-            </FormSection>
-
-            <FormSection titulo="Endereço" numero={2}>
-              <FormGrid>
-                <Campo span={4}>
-                  <Field label="Endereço">
-                    <Input
-                      value={obraEditando.endereco ?? ''}
-                      onChange={(_, d) => setObraEditando({ ...obraEditando, endereco: d.value })}
-                    />
-                  </Field>
-                </Campo>
-                <Campo span={3}>
-                  <Field label="Cidade">
-                    <Input
-                      value={obraEditando.cidade ?? ''}
-                      onChange={(_, d) => setObraEditando({ ...obraEditando, cidade: d.value })}
-                    />
-                  </Field>
-                </Campo>
-                <Campo span={2}>
-                  <Field label="UF">
-                    <Input
-                      value={obraEditando.uf ?? ''}
-                      maxLength={2}
-                      onChange={(_, d) => setObraEditando({ ...obraEditando, uf: d.value.toUpperCase() })}
-                    />
-                  </Field>
-                </Campo>
-              </FormGrid>
-            </FormSection>
-          </>
-        )}
-      </PainelLateral>
     </div>
   );
 }
