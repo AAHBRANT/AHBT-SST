@@ -105,7 +105,9 @@ public class TrabalhadorConfiguracao : IEntityTypeConfiguration<Trabalhador>
         builder.Property(t => t.Endereco).HasMaxLength(300);
         builder.Property(t => t.Municipio).HasMaxLength(100);
         builder.Property(t => t.Uf).HasMaxLength(2);
-        builder.Property(t => t.Cep).HasMaxLength(9);
+        // 20 (não só "12345-678", 9 chars): o G-RH manda CEP com ponto de milhar também
+        // ("07.144-480", 10 chars) — mesma classe de truncamento do CboCodigo (ver FuncaoConfiguracao).
+        builder.Property(t => t.Cep).HasMaxLength(20);
         builder.Property(t => t.Salario).HasPrecision(12, 2);
         builder.Property(t => t.TamanhoBlusaEpi).HasMaxLength(10);
         builder.Property(t => t.TamanhoCalcaEpi).HasMaxLength(10);
