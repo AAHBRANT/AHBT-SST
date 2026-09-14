@@ -231,6 +231,8 @@ public class SstDbContext : DbContext, IAppDbContext
         return base.SaveChangesAsync(cancellationToken);
     }
 
+    public void DescartarAlteracoesPendentes() => ChangeTracker.Clear();
+
     private void AplicarAuditoria()
     {
         var agora = DateTime.UtcNow;

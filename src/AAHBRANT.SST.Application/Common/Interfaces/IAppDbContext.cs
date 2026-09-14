@@ -132,4 +132,10 @@ public interface IAppDbContext
     DbSet<ContadorDocumento> ContadoresDocumento { get; }
 
     Task<int> SaveChangesAsync(CancellationToken cancellationToken = default);
+
+    // Descarta entidades rastreadas que não foram salvas (ex.: após uma falha de SaveChangesAsync) —
+    // usado por lotes que reusam o mesmo contexto entre itens independentes (ImportarColaboradoresGrhCommand),
+    // onde uma entidade que falhou ao salvar ficaria presa no rastreamento e derrubaria toda tentativa
+    // seguinte no mesmo lote.
+    void DescartarAlteracoesPendentes();
 }

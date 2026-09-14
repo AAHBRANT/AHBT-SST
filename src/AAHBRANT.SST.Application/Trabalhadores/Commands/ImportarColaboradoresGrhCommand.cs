@@ -20,11 +20,13 @@ public class ImportarColaboradoresGrhCommandHandler : IRequestHandler<ImportarCo
 {
     private readonly IColaboradorGrhClient _client;
     private readonly IMediator _mediator;
+    private readonly IAppDbContext _db;
 
-    public ImportarColaboradoresGrhCommandHandler(IColaboradorGrhClient client, IMediator mediator)
+    public ImportarColaboradoresGrhCommandHandler(IColaboradorGrhClient client, IMediator mediator, IAppDbContext db)
     {
         _client = client;
         _mediator = mediator;
+        _db = db;
     }
 
     public async Task<ImportarColaboradoresGrhResultado> Handle(ImportarColaboradoresGrhCommand request, CancellationToken ct)
@@ -43,6 +45,10 @@ public class ImportarColaboradoresGrhCommandHandler : IRequestHandler<ImportarCo
             catch (Exception ex)
             {
                 erros.Add($"CPF {CpfMascarador.Mascarar(c.Cpf)} ({c.Nome}): {ex.Message}");
+                // Todo o lote reusa o mesmo IAppDbContext (mesmo escopo da requisição HTTP) — sem isto,
+                // a entidade que falhou ao salvar (ex.: Funcao nova) fica presa no rastreamento e
+                // derruba o SaveChanges de TODOS os colaboradores seguintes no lote, mesmo os válidos.
+                _db.DescartarAlteracoesPendentes();
             }
         }
 

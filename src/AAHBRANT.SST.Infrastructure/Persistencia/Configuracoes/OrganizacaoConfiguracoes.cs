@@ -65,7 +65,11 @@ public class FuncaoConfiguracao : IEntityTypeConfiguration<Funcao>
     public void Configure(EntityTypeBuilder<Funcao> builder)
     {
         builder.Property(f => f.Nome).IsRequired().HasMaxLength(150);
-        builder.Property(f => f.CboCodigo).HasMaxLength(10);
+        // 100 (não só o código de 6 dígitos): o campo "cbo" do G-RH vem como "<código> - <descrição>"
+        // concatenados (ex.: "715125 - Operador..."), não só o código — truncava e derrubava a
+        // importação inteira (ver SincronizarColaboradorGrhCommand). Aceita o valor como veio, sem
+        // tentar adivinhar/parsear o formato do lado do G-RH.
+        builder.Property(f => f.CboCodigo).HasMaxLength(100);
         builder.HasQueryFilter(f => f.Ativo);
         // Mesma divergência pré-existente de schema descrita em PermissaoConfiguracao (AcessoConfiguracoes.cs):
         // a coluna física já é timestamp/rowversion; sem IsRowVersion() o EF tenta inserir valor explícito

@@ -79,7 +79,7 @@ public class ImportarColaboradoresGrhCommandHandlerTests
             Colaborador("38062559890", "Fulano de Tal"),
             Colaborador("52998224725", "Ciclano de Tal"),
         });
-        var handler = new ImportarColaboradoresGrhCommandHandler(client, mediator);
+        var handler = new ImportarColaboradoresGrhCommandHandler(client, mediator, db);
 
         var resultado = await handler.Handle(new ImportarColaboradoresGrhCommand(), default);
 
@@ -102,7 +102,7 @@ public class ImportarColaboradoresGrhCommandHandlerTests
             Colaborador("38062559890", "Fulano de Tal", obraNome: "Obra Que Não Existe"),
             Colaborador("52998224725", "Ciclano de Tal"),
         });
-        var handler = new ImportarColaboradoresGrhCommandHandler(client, mediator);
+        var handler = new ImportarColaboradoresGrhCommandHandler(client, mediator, db);
 
         var resultado = await handler.Handle(new ImportarColaboradoresGrhCommand(), default);
 
@@ -123,7 +123,7 @@ public class ImportarColaboradoresGrhCommandHandlerTests
 
         var mediator = CriarMediator(db);
         var client = new ColaboradorGrhClientFake(new[] { Colaborador("38062559890", "Fulano de Tal", cargoNome: null) });
-        var handler = new ImportarColaboradoresGrhCommandHandler(client, mediator);
+        var handler = new ImportarColaboradoresGrhCommandHandler(client, mediator, db);
 
         var resultado = await handler.Handle(new ImportarColaboradoresGrhCommand(), default);
 
