@@ -14,6 +14,12 @@ public static class AppRolesReconhecidas
     private static readonly Dictionary<string, string[]> PermissoesPorAppRole = new()
     {
         ["Grh.LerColaboradores"] = new[] { "trabalhador:ver" },
+        // App Role definida no app registration do SST (não confundir com a entrada acima, que
+        // é nomeada do lado do G-RH) — concedida ao service principal do G-RH em 15/09/2026, pra
+        // ele buscar foto de trabalhador por CPF (ver IntegracaoGrhController). Mesma permissão
+        // "trabalhador:ver" da entrada acima: dado equivalente (foto é parte do cadastro do
+        // trabalhador), mesmo tratamento de acesso global.
+        ["Sst.LerFotos"] = new[] { "trabalhador:ver" },
     };
 
     private static IEnumerable<string> ObterRoles(ClaimsPrincipal user) =>
