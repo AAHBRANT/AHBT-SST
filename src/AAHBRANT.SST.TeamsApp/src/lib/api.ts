@@ -3294,8 +3294,13 @@ export const api = {
     excluir: (id: string) => request<void>(`/api/equipes/${id}`, { method: 'DELETE' }),
   },
   asos: {
-    listar: (trabalhadorId?: string) =>
-      request<Aso[]>(`/api/asos${trabalhadorId ? `?trabalhadorId=${trabalhadorId}` : ''}`),
+    listar: (trabalhadorId?: string, obraId?: string) => {
+      const params = new URLSearchParams();
+      if (trabalhadorId) params.set('trabalhadorId', trabalhadorId);
+      if (obraId) params.set('obraId', obraId);
+      const query = params.toString();
+      return request<Aso[]>(`/api/asos${query ? `?${query}` : ''}`);
+    },
     obterPorId: (id: string) => request<Aso>(`/api/asos/${id}`),
     criar: (aso: NovoAso) => request<{ id: string }>('/api/asos', { method: 'POST', body: JSON.stringify(aso) }),
     atualizar: (aso: Aso) => request<void>(`/api/asos/${aso.id}`, { method: 'PUT', body: JSON.stringify(aso) }),
@@ -3362,8 +3367,13 @@ export const api = {
     excluir: (id: string) => request<void>(`/api/cursostreinamento/${id}`, { method: 'DELETE' }),
   },
   treinamentos: {
-    listar: (trabalhadorId?: string) =>
-      request<Treinamento[]>(`/api/treinamentos${trabalhadorId ? `?trabalhadorId=${trabalhadorId}` : ''}`),
+    listar: (trabalhadorId?: string, obraId?: string) => {
+      const params = new URLSearchParams();
+      if (trabalhadorId) params.set('trabalhadorId', trabalhadorId);
+      if (obraId) params.set('obraId', obraId);
+      const query = params.toString();
+      return request<Treinamento[]>(`/api/treinamentos${query ? `?${query}` : ''}`);
+    },
     obterPorId: (id: string) => request<Treinamento>(`/api/treinamentos/${id}`),
     criar: (treinamento: NovoTreinamento) =>
       request<{ id: string }>('/api/treinamentos', { method: 'POST', body: JSON.stringify(treinamento) }),
@@ -3548,8 +3558,13 @@ export const api = {
       request<void>('/api/estoquesuniforme/ajuste', { method: 'POST', body: JSON.stringify(dados) }),
   },
   entregasEpi: {
-    listar: (trabalhadorId?: string) =>
-      request<EntregaEpi[]>(`/api/entregasepi${trabalhadorId ? `?trabalhadorId=${trabalhadorId}` : ''}`),
+    listar: (trabalhadorId?: string, obraId?: string) => {
+      const params = new URLSearchParams();
+      if (trabalhadorId) params.set('trabalhadorId', trabalhadorId);
+      if (obraId) params.set('obraId', obraId);
+      const query = params.toString();
+      return request<EntregaEpi[]>(`/api/entregasepi${query ? `?${query}` : ''}`);
+    },
     obterPorId: (id: string) => request<EntregaEpi>(`/api/entregasepi/${id}`),
     criar: (entrega: NovaEntregaEpi) =>
       request<{ id: string }>('/api/entregasepi', { method: 'POST', body: JSON.stringify(entrega) }),
@@ -4207,8 +4222,13 @@ export const api = {
     excluir: (id: string) => request<void>(`/api/ativos/${id}`, { method: 'DELETE' }),
   },
   naoConformidades: {
-    listar: (status?: number) =>
-      request<NaoConformidade[]>(`/api/naoconformidades${status ? `?status=${status}` : ''}`),
+    listar: (status?: number, obraId?: string) => {
+      const params = new URLSearchParams();
+      if (status) params.set('status', String(status));
+      if (obraId) params.set('obraId', obraId);
+      const query = params.toString();
+      return request<NaoConformidade[]>(`/api/naoconformidades${query ? `?${query}` : ''}`);
+    },
     obterDetalhe: (id: string) => request<NaoConformidadeDetalhe>(`/api/naoconformidades/${id}`),
     criar: (nc: NovaNaoConformidade) =>
       request<{ id: string }>('/api/naoconformidades', { method: 'POST', body: JSON.stringify(nc) }),

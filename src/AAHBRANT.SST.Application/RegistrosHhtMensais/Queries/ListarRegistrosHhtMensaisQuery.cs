@@ -15,7 +15,7 @@ public class ListarRegistrosHhtMensaisQueryHandler
 
     public async Task<List<RegistroHhtMensalDto>> Handle(ListarRegistrosHhtMensaisQuery request, CancellationToken ct)
     {
-        var query = _db.RegistrosHhtMensais.AsQueryable();
+        var query = _db.RegistrosHhtMensais.AsNoTracking().AsQueryable();
 
         if (request.ObraId.HasValue)
             query = query.Where(r => r.ObraId == request.ObraId.Value);

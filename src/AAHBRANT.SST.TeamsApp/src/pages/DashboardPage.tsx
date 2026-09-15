@@ -112,23 +112,30 @@ export function DashboardPage() {
   const [erro, setErro] = useState<string | null>(null);
 
   useEffect(() => {
+    // obraId filtra no servidor em vez de trazer a empresa inteira e recortar aqui (memória
+    // acompanha com os useMemo de *Filtrados abaixo, que continuam existindo por segurança — filtro
+    // client-side idempotente sobre dado já filtrado não muda o resultado, só protege contra
+    // eventuais respostas não filtradas). obras.listar() nunca leva obraId: alimenta o próprio
+    // seletor, precisa sempre da lista completa.
+    const obraId = obraSelecionadaId || undefined;
+
     api.atividades
-      .listar()
+      .listar(obraId)
       .then(setAtividades)
       .catch(() => setAtividades([]));
 
     Promise.all([
       api.obras.listar(),
-      api.trabalhadores.listar(),
-      api.asos.listar(),
-      api.treinamentos.listar(),
-      api.entregasEpi.listar(),
-      api.acidentes.listar(),
-      api.naoConformidades.listar(),
-      api.alertas.listar({ status: StatusAlerta.Aberto }),
-      api.registrosHht.listar(),
-      api.dds.listar(),
-      api.inspecoes.listar(),
+      api.trabalhadores.listar(obraId),
+      api.asos.listar(undefined, obraId),
+      api.treinamentos.listar(undefined, obraId),
+      api.entregasEpi.listar(undefined, obraId),
+      api.acidentes.listar({ obraId }),
+      api.naoConformidades.listar(undefined, obraId),
+      api.alertas.listar({ status: StatusAlerta.Aberto, obraId }),
+      api.registrosHht.listar({ obraId }),
+      api.dds.listar(obraId),
+      api.inspecoes.listar(obraId),
     ])
       .then(
         ([
@@ -158,7 +165,7 @@ export function DashboardPage() {
         },
       )
       .catch((e) => setErro(e instanceof Error ? e.message : 'Falha ao carregar indicadores.'));
-  }, []);
+  }, [obraSelecionadaId]);
 
   function nomeObra(id: string) {
     return obras.find((o) => o.id === id)?.nome ?? id;

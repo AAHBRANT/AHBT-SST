@@ -14,7 +14,7 @@ public class ListarAtividadesQueryHandler : IRequestHandler<ListarAtividadesQuer
 
     public async Task<List<AtividadeDto>> Handle(ListarAtividadesQuery request, CancellationToken ct)
     {
-        var query = _db.Atividades.AsQueryable();
+        var query = _db.Atividades.AsNoTracking().AsQueryable();
 
         if (request.ObraId.HasValue)
             query = query.Where(a => a.ObraId == request.ObraId.Value);

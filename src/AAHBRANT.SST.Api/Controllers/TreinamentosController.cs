@@ -16,8 +16,8 @@ public class TreinamentosController : ControllerBase
 
     [Authorize(Policy = "treinamento:ver")]
     [HttpGet]
-    public async Task<IActionResult> Listar([FromQuery] Guid? trabalhadorId, CancellationToken ct)
-        => Ok(await _mediator.Send(new ListarTreinamentosQuery(trabalhadorId), ct));
+    public async Task<IActionResult> Listar([FromQuery] Guid? trabalhadorId, [FromQuery] Guid? obraId, CancellationToken ct)
+        => Ok(await _mediator.Send(new ListarTreinamentosQuery(trabalhadorId, obraId), ct));
 
     [Authorize(Policy = "treinamento:ver")]
     [HttpGet("{id:guid}")]

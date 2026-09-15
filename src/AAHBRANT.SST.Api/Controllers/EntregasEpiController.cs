@@ -16,8 +16,8 @@ public class EntregasEpiController : ControllerBase
 
     [Authorize(Policy = "epi:ver")]
     [HttpGet]
-    public async Task<IActionResult> Listar([FromQuery] Guid? trabalhadorId, CancellationToken ct)
-        => Ok(await _mediator.Send(new ListarEntregasEpiQuery(trabalhadorId), ct));
+    public async Task<IActionResult> Listar([FromQuery] Guid? trabalhadorId, [FromQuery] Guid? obraId, CancellationToken ct)
+        => Ok(await _mediator.Send(new ListarEntregasEpiQuery(trabalhadorId, obraId), ct));
 
     [Authorize(Policy = "epi:ver")]
     [HttpGet("{id:guid}")]
