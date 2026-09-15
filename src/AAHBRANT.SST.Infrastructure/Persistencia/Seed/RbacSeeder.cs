@@ -135,6 +135,10 @@ public static class RbacSeeder
         ("inspecao:responder", "Inspecao", "Responder", "Responder itens do checklist da inspeção"),
         ("inspecao:encerrar", "Inspecao", "Encerrar", "Encerrar inspeção"),
 
+        ("alojamento:ver", "Alojamento", "Ver", "Ver alojamentos cadastrados e seus moradores"),
+        ("alojamento:criar", "Alojamento", "Criar", "Cadastrar alojamento"),
+        ("alojamento:gerenciar-moradores", "Alojamento", "GerenciarMoradores", "Adicionar/remover morador de alojamento"),
+
         ("checklist:ver", "Checklist", "Ver", "Ver modelos de checklist"),
         ("checklist:gerenciar", "Checklist", "Gerenciar", "Criar/versionar modelo de checklist"),
 
