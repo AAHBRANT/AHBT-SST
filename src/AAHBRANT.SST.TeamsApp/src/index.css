@@ -28,41 +28,41 @@ body,
      pilar), então o escuro usa os passos 110/120 da rampa da marca (theme.ts). */
   --sst-color-primary: #670000;
   --sst-color-secondary: #7a0101;
-  --sst-color-neutral-dark: #1f1f1f;
-  --sst-color-neutral-medium: #6d6d6d;
-  --sst-color-neutral-light: #f5f5f7;
-  --sst-color-rail-background: #e8f5e9;
-  --sst-color-rail-border: #c8e6c9;
-  --sst-color-rail-ink: #15625c;
-  --sst-color-rail-ink-muted: #15625c;
-  --sst-color-rail-active-background: #1b9b48;
-  --sst-color-rail-active-ink: #ffffff;
-  --sst-color-admin-button-background: #1b9b48;
+  --sst-color-neutral-dark: #20201d;
+  --sst-color-neutral-medium: #636159;
+  --sst-color-neutral-light: #f1efe8;
+  --sst-color-rail-background: #183f36;
+  --sst-color-rail-border: #27594d;
+  --sst-color-rail-ink: #dbe8df;
+  --sst-color-rail-ink-muted: #a6beb3;
+  --sst-color-rail-active-background: #d6e6dc;
+  --sst-color-rail-active-ink: #183f36;
+  --sst-color-admin-button-background: #670000;
   --sst-color-admin-button-ink: #ffffff;
-  --sst-color-admin-button-background-hover: #178a3f;
-  --sst-color-card-border: #e7e4da;
-  --sst-card-shadow: 0 1px 2px rgba(20, 17, 15, 0.04), 0 6px 20px rgba(20, 17, 15, 0.06);
+  --sst-color-admin-button-background-hover: #7a0101;
+  --sst-color-card-border: #ddd9cc;
+  --sst-card-shadow: 0 1px 2px rgba(35, 31, 27, 0.06);
   --sst-color-success-wash: #eaf7ee;
   --sst-color-warning-wash: #fdf3e3;
   --sst-color-alert-wash: #fceaea;
   --sst-color-info-wash: #eaf1fe;
-  --sst-color-surface: #ffffff;
-  --sst-color-page-background: #f5f5f7;
+  --sst-color-surface: #fffdf8;
+  --sst-color-page-background: #ebe7dc;
 
   /* Famílias novas (spec 2026-09-07 §1.1). Convivem com --sst-color-rail-* até a Onda 3. */
-  --sst-chrome-fundo: #e8f5e9;
-  --sst-chrome-borda: #c8e6c9;
-  --sst-chrome-tinta: #15625c;
-  --sst-chrome-ativo-fundo: #1b9b48;
-  --sst-chrome-ativo-tinta: #ffffff;
+  --sst-chrome-fundo: #183f36;
+  --sst-chrome-borda: #27594d;
+  --sst-chrome-tinta: #dbe8df;
+  --sst-chrome-ativo-fundo: #d6e6dc;
+  --sst-chrome-ativo-tinta: #183f36;
   --sst-status-ok-tinta: #16a34a;      --sst-status-ok-fundo: #eaf7ee;
   --sst-status-atencao-tinta: #d97706; --sst-status-atencao-fundo: #fdf3e3;
   --sst-status-alerta-tinta: #dc2626;  --sst-status-alerta-fundo: #fceaea;
   --sst-status-info-tinta: #2563eb;    --sst-status-info-fundo: #eaf1fe;
   --sst-status-neutro-tinta: #6d6d6d;  --sst-status-neutro-fundo: #f0f0f2;
-  --sst-border-soft: #efede6;
-  --sst-row-shadow: 0 1px 2px rgba(20, 17, 15, 0.05);
-  --sst-row-shadow-hover: 0 4px 12px rgba(20, 17, 15, 0.10);
+  --sst-border-soft: #e3dfd2;
+  --sst-row-shadow: none;
+  --sst-row-shadow-hover: inset 3px 0 0 #670000;
 }
 
 [data-theme='dark'] {
@@ -70,38 +70,38 @@ body,
   --sst-color-secondary: #c24a4a;
   --sst-color-neutral-dark: #f3f4f6;
   --sst-color-neutral-medium: #9ca3af;
-  --sst-color-neutral-light: #28394f;
-  --sst-color-rail-background: #1e293b;
-  --sst-color-rail-border: #334155;
-  --sst-color-rail-ink: #9ca3af;
-  --sst-color-rail-ink-muted: #9ca3af;
-  --sst-color-rail-active-background: #064e3b;
-  --sst-color-rail-active-ink: #10b981;
-  --sst-color-admin-button-background: #10b981;
-  --sst-color-admin-button-ink: #0f172a;
-  --sst-color-admin-button-background-hover: #0da271;
-  --sst-color-card-border: #334155;
-  --sst-card-shadow: 0 1px 2px rgba(0, 0, 0, 0.3), 0 6px 20px rgba(0, 0, 0, 0.35);
+  --sst-color-neutral-light: #26332f;
+  --sst-color-rail-background: #10241f;
+  --sst-color-rail-border: #244139;
+  --sst-color-rail-ink: #d2ded7;
+  --sst-color-rail-ink-muted: #8ea49a;
+  --sst-color-rail-active-background: #d6e6dc;
+  --sst-color-rail-active-ink: #10241f;
+  --sst-color-admin-button-background: #b03838;
+  --sst-color-admin-button-ink: #ffffff;
+  --sst-color-admin-button-background-hover: #c24a4a;
+  --sst-color-card-border: #34423d;
+  --sst-card-shadow: 0 1px 2px rgba(0, 0, 0, 0.28);
   --sst-color-success-wash: rgba(22, 163, 74, 0.16);
   --sst-color-warning-wash: rgba(245, 158, 11, 0.16);
   --sst-color-alert-wash: rgba(239, 68, 68, 0.16);
   --sst-color-info-wash: rgba(59, 130, 246, 0.16);
-  --sst-color-surface: #1e293b;
-  --sst-color-page-background: #0f172a;
+  --sst-color-surface: #182620;
+  --sst-color-page-background: #0d1714;
 
-  --sst-chrome-fundo: #1e293b;
-  --sst-chrome-borda: #334155;
-  --sst-chrome-tinta: #9ca3af;
-  --sst-chrome-ativo-fundo: #064e3b;
-  --sst-chrome-ativo-tinta: #10b981;
+  --sst-chrome-fundo: #10241f;
+  --sst-chrome-borda: #244139;
+  --sst-chrome-tinta: #d2ded7;
+  --sst-chrome-ativo-fundo: #d6e6dc;
+  --sst-chrome-ativo-tinta: #10241f;
   --sst-status-ok-tinta: #16a34a;      --sst-status-ok-fundo: rgba(22, 163, 74, 0.16);
   --sst-status-atencao-tinta: #f59e0b; --sst-status-atencao-fundo: rgba(245, 158, 11, 0.16);
   --sst-status-alerta-tinta: #ef4444;  --sst-status-alerta-fundo: rgba(239, 68, 68, 0.16);
   --sst-status-info-tinta: #3b82f6;    --sst-status-info-fundo: rgba(59, 130, 246, 0.16);
   --sst-status-neutro-tinta: #9ca3af;  --sst-status-neutro-fundo: #28394f;
-  --sst-border-soft: #2a3a52;
-  --sst-row-shadow: 0 1px 2px rgba(0, 0, 0, 0.25);
-  --sst-row-shadow-hover: 0 6px 16px rgba(0, 0, 0, 0.4);
+  --sst-border-soft: #34423d;
+  --sst-row-shadow: none;
+  --sst-row-shadow-hover: inset 3px 0 0 #c24a4a;
 }
 
 body {
@@ -132,12 +132,12 @@ h3,
 .fui-TableBody .fui-TableRow.fui-TableRow {
   background-color: var(--sst-color-surface);
   border: 1px solid var(--sst-color-card-border);
-  border-radius: 12px;
-  margin-bottom: 16px;
-  padding-top: 6px;
-  padding-bottom: 6px;
-  transition: transform 0.15s ease, box-shadow 0.15s ease;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+  border-radius: 6px;
+  margin-bottom: 8px;
+  padding-top: 2px;
+  padding-bottom: 2px;
+  transition: background-color 0.12s ease, box-shadow 0.12s ease;
+  box-shadow: none;
 }
 
 .fui-TableBody .fui-TableRow.fui-TableRow:last-child {
@@ -145,9 +145,8 @@ h3,
 }
 
 .fui-TableBody .fui-TableRow.fui-TableRow:hover {
-  background-color: var(--sst-color-surface);
-  transform: translateY(-2px);
-  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.16);
+  background-color: color-mix(in srgb, var(--sst-color-surface) 88%, var(--sst-color-primary));
+  box-shadow: var(--sst-row-shadow-hover);
 }
 
 /* Movimento: com "reduzir movimento" no sistema operacional, tudo é instantâneo (spec §1.5). */
