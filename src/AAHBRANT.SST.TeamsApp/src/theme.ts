@@ -36,21 +36,21 @@ const sobrescritasComuns: Partial<Theme> = {
   fontWeightSemibold: 600,
   fontWeightBold: 700,
   borderRadiusSmall: '6px',
-  borderRadiusMedium: '10px',
-  borderRadiusLarge: '12px',
-  borderRadiusXLarge: '12px',
+  borderRadiusMedium: '8px',
+  borderRadiusLarge: '8px',
+  borderRadiusXLarge: '8px',
 };
 
 export const aahbrantTheme: Theme = {
   ...createDarkTheme(aahbrantBrandRamp),
   ...sobrescritasComuns,
-  colorNeutralBackground1: '#1E293B',
-  colorNeutralBackground2: '#0F172A',
+  colorNeutralBackground1: '#182620',
+  colorNeutralBackground2: '#0D1714',
 };
 
 export const aahbrantLightTheme: Theme = {
   ...createLightTheme(aahbrantBrandRamp),
   ...sobrescritasComuns,
-  colorNeutralBackground1: '#FFFFFF',
-  colorNeutralBackground2: '#F5F5F7',
+  colorNeutralBackground1: '#FFFDF8',
+  colorNeutralBackground2: '#EBE7DC',
 };

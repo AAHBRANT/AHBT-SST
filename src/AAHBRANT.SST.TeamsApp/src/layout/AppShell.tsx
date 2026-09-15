@@ -14,6 +14,7 @@ import {
   DialogTitle,
   DialogBody,
   DialogActions,
+  Input,
 } from '@fluentui/react-components';
 import {
   Grid24Regular,
@@ -25,9 +26,13 @@ import {
   People24Regular,
   ChevronLeft24Regular,
   ChevronRight24Regular,
-  Person24Regular,
   WeatherSunny24Regular,
   WeatherMoon24Regular,
+  ChevronDown16Regular,
+  Checkmark20Regular,
+  Fingerprint24Regular,
+  PersonAvailable24Regular,
+  Camera20Regular,
 } from '@fluentui/react-icons';
 import { designTokens } from '@ui';
 import { useThemeMode } from '../theme/ThemeModeContext';
@@ -45,6 +50,7 @@ import { ID_TOASTER_GLOBAL } from '../lib/toaster';
 const LARGURA_RAIL_COLAPSADO = '66px';
 const LARGURA_RAIL_EXPANDIDO = '220px';
 const CHAVE_RAIL_EXPANDIDO = 'sst.railExpandido';
+const VERSAO_APP = '5.10.0';
 
 const useStyles = makeStyles({
   root: {
@@ -69,8 +75,8 @@ const useStyles = makeStyles({
     display: 'flex',
     flexDirection: 'column',
     alignItems: 'stretch',
-    padding: '18px 0',
-    gap: '6px',
+    padding: '16px 0',
+    gap: '4px',
     overflowY: 'auto',
     overflowX: 'hidden',
   },
@@ -89,7 +95,7 @@ const useStyles = makeStyles({
   marca: {
     width: '34px',
     height: '34px',
-    borderRadius: '8px',
+    borderRadius: '6px',
     flexShrink: 0,
   },
   botaoAlternarRail: {
@@ -102,7 +108,7 @@ const useStyles = makeStyles({
     width: '42px',
     height: '42px',
     marginLeft: '12px',
-    borderRadius: '10px',
+    borderRadius: '6px',
     color: designTokens.colorRailInkMuted,
     display: 'flex',
     alignItems: 'center',
@@ -120,8 +126,8 @@ const useStyles = makeStyles({
   },
   navItemHover: {
     ':hover': {
-      color: designTokens.colorNeutralDark,
-      backgroundColor: designTokens.colorNeutralLight,
+      color: designTokens.colorRailInk,
+      backgroundColor: 'rgba(255, 255, 255, 0.08)',
     },
   },
   navItemActive: {
@@ -150,10 +156,10 @@ const useStyles = makeStyles({
   itemAdministracaoBotao: {
     width: '100%',
     height: '48px',
-    borderRadius: '12px',
+    borderRadius: '6px',
     backgroundColor: designTokens.colorAdminButtonBackground,
     color: designTokens.colorAdminButtonInk,
-    boxShadow: '0 4px 6px rgba(0,0,0,0.3)',
+    boxShadow: 'none',
     ':hover': {
       backgroundColor: designTokens.colorAdminButtonBackgroundHover,
       color: designTokens.colorAdminButtonInk,
@@ -179,7 +185,7 @@ const useStyles = makeStyles({
     backgroundColor: 'transparent',
     border: 'none',
     padding: '4px 6px 4px 4px',
-    borderRadius: '10px',
+    borderRadius: '6px',
     cursor: 'pointer',
     ':hover': {
       backgroundColor: designTokens.colorNeutralLight,
@@ -189,6 +195,25 @@ const useStyles = makeStyles({
     fontSize: '13px',
     fontWeight: 600,
     color: designTokens.colorNeutralDark,
+    whiteSpace: 'nowrap',
+    maxWidth: '180px',
+    overflow: 'hidden',
+    textOverflow: 'ellipsis',
+  },
+  usuarioResumo: {
+    display: 'flex',
+    flexDirection: 'column',
+    alignItems: 'flex-end',
+    gap: '1px',
+    minWidth: 0,
+  },
+  usuarioEmailTopo: {
+    fontSize: '11px',
+    lineHeight: '14px',
+    color: designTokens.colorNeutralMedium,
+    maxWidth: '180px',
+    overflow: 'hidden',
+    textOverflow: 'ellipsis',
     whiteSpace: 'nowrap',
   },
   usuarioAvatar: {
@@ -203,11 +228,123 @@ const useStyles = makeStyles({
     justifyContent: 'center',
     color: designTokens.colorNeutralMedium,
   },
+  usuarioAvatarMenu: {
+    width: '74px',
+    height: '74px',
+    borderRadius: '50%',
+    backgroundColor: '#7d87d4',
+    border: 'none',
+    color: '#ffffff',
+    fontSize: '24px',
+    fontWeight: 700,
+  },
   usuarioAvatarImagem: {
     width: '100%',
     height: '100%',
     objectFit: 'cover',
     borderRadius: '50%',
+  },
+  fotoPerfilLinha: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: '14px',
+    padding: '12px',
+    marginBottom: '16px',
+    backgroundColor: designTokens.colorNeutralLight,
+    borderRadius: '6px',
+  },
+  fotoPerfilGrande: {
+    width: '64px',
+    height: '64px',
+    borderRadius: '50%',
+    flexShrink: 0,
+    backgroundColor: '#7d87d4',
+    color: '#ffffff',
+    display: 'grid',
+    placeItems: 'center',
+    fontSize: '22px',
+    fontWeight: 800,
+    overflow: 'hidden',
+  },
+  fotoPerfilTexto: {
+    display: 'grid',
+    gap: '4px',
+    minWidth: 0,
+  },
+  fotoPerfilAjuda: {
+    color: designTokens.colorNeutralMedium,
+    fontSize: '12px',
+    lineHeight: '16px',
+  },
+  usuarioArea: {
+    position: 'relative',
+  },
+  menuPerfil: {
+    position: 'absolute',
+    top: '42px',
+    right: 0,
+    width: '260px',
+    backgroundColor: designTokens.colorSurface,
+    border: `1px solid ${designTokens.colorCardBorder}`,
+    borderRadius: '6px',
+    boxShadow: '0 14px 30px rgba(0, 0, 0, 0.20)',
+    zIndex: 20,
+    overflow: 'hidden',
+  },
+  menuPerfilTopo: {
+    display: 'flex',
+    flexDirection: 'column',
+    alignItems: 'center',
+    padding: '18px 16px 14px',
+    gap: '6px',
+    textAlign: 'center',
+  },
+  menuNome: {
+    fontSize: '15px',
+    lineHeight: '20px',
+    fontWeight: 700,
+    color: designTokens.colorNeutralDark,
+    maxWidth: '100%',
+    overflow: 'hidden',
+    textOverflow: 'ellipsis',
+    whiteSpace: 'nowrap',
+  },
+  menuEmail: {
+    fontSize: '12px',
+    lineHeight: '16px',
+    color: designTokens.colorNeutralMedium,
+    maxWidth: '100%',
+    overflow: 'hidden',
+    textOverflow: 'ellipsis',
+    whiteSpace: 'nowrap',
+  },
+  menuPerfilTipo: {
+    fontSize: '12px',
+    lineHeight: '16px',
+    color: designTokens.colorNeutralMedium,
+  },
+  menuVersao: {
+    marginTop: '4px',
+    fontSize: '10px',
+    lineHeight: '14px',
+    color: designTokens.colorNeutralMedium,
+  },
+  menuItem: {
+    width: '100%',
+    height: '44px',
+    border: 'none',
+    borderTop: `1px solid ${designTokens.colorCardBorder}`,
+    backgroundColor: 'transparent',
+    color: designTokens.colorNeutralDark,
+    font: 'inherit',
+    cursor: 'pointer',
+    textAlign: 'center',
+    ':hover': {
+      backgroundColor: designTokens.colorNeutralLight,
+    },
+  },
+  menuItemSair: {
+    color: '#d70000',
   },
   header: {
     gridRow: '1',
@@ -217,19 +354,94 @@ const useStyles = makeStyles({
     display: 'flex',
     alignItems: 'center',
     justifyContent: 'space-between',
-    padding: '0 24px',
+    padding: '0 20px',
   },
   content: {
     gridRow: '2',
     gridColumn: '2',
     backgroundColor: designTokens.colorPageBackground,
     overflowY: 'auto',
-    padding: '24px',
+    padding: '20px',
   },
   cardGrid: {
     display: 'grid',
     gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))',
     gap: '16px',
+  },
+  perfilSurface: {
+    width: 'min(1080px, calc(100vw - 48px))',
+    maxWidth: '1080px',
+  },
+  perfilGrid: {
+    display: 'grid',
+    gridTemplateColumns: 'minmax(360px, 1fr) minmax(320px, 1fr)',
+    gap: '20px',
+    marginTop: '16px',
+  },
+  perfilCard: {
+    backgroundColor: designTokens.colorSurface,
+    border: `1px solid ${designTokens.colorCardBorder}`,
+    borderRadius: '6px',
+    overflow: 'hidden',
+  },
+  perfilCardTitulo: {
+    padding: '14px 16px',
+    borderBottom: `1px solid ${designTokens.colorCardBorder}`,
+    color: designTokens.colorPrimary,
+    fontWeight: 800,
+  },
+  perfilCardCorpo: {
+    padding: '16px',
+  },
+  perfilCampos: {
+    display: 'grid',
+    gap: '14px',
+  },
+  perfilRotulo: {
+    display: 'grid',
+    gap: '6px',
+    fontSize: '12px',
+    fontWeight: 700,
+    color: designTokens.colorNeutralDark,
+  },
+  obrigatorio: {
+    color: designTokens.colorPrimary,
+  },
+  biometriaTexto: {
+    color: designTokens.colorNeutralMedium,
+    marginBottom: '14px',
+  },
+  biometriaGrade: {
+    display: 'grid',
+    gridTemplateColumns: 'repeat(2, minmax(0, 1fr))',
+    gap: '12px',
+  },
+  biometriaMetodo: {
+    border: `1px solid ${designTokens.colorCardBorder}`,
+    borderRadius: '6px',
+    padding: '12px',
+    display: 'grid',
+    gap: '8px',
+    backgroundColor: designTokens.colorNeutralLight,
+  },
+  biometriaMetodoTopo: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: '8px',
+    fontWeight: 800,
+    color: designTokens.colorNeutralDark,
+  },
+  biometriaStatus: {
+    fontSize: '12px',
+    lineHeight: '16px',
+    color: designTokens.colorNeutralMedium,
+  },
+  empresasLista: {
+    margin: 0,
+    padding: 0,
+    listStyle: 'none',
+    display: 'grid',
+    gap: '8px',
   },
 });
 
@@ -316,8 +528,12 @@ export function AppShell({ children }: { children: ReactNode }) {
   const { modo, alternarModo } = useThemeMode();
   const nomeUsuario = contexto?.user?.displayName ?? 'Usuário';
   const emailUsuario = contexto?.user?.userPrincipalName ?? contexto?.user?.loginHint ?? '';
-  const chaveFotoUsuario = `sst.fotoPerfil.${emailUsuario || nomeUsuario}`;
+  const identidadeUsuario = emailUsuario || nomeUsuario;
+  const chaveFotoUsuario = `sst.fotoPerfil.${identidadeUsuario}`;
+  const chaveNomeUsuario = `sst.nomePerfil.${identidadeUsuario}`;
   const [fotoPerfil, setFotoPerfil] = useState<string | null>(() => localStorage.getItem(chaveFotoUsuario));
+  const [nomePerfil, setNomePerfil] = useState(() => localStorage.getItem(chaveNomeUsuario) ?? nomeUsuario);
+  const [menuPerfilAberto, setMenuPerfilAberto] = useState(false);
   const [perfilAberto, setPerfilAberto] = useState(false);
   const [alertasAbertos, setAlertasAbertos] = useState<number | null>(null);
   const [railExpandido, setRailExpandido] = useState<boolean>(
@@ -330,7 +546,10 @@ export function AppShell({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     setFotoPerfil(localStorage.getItem(chaveFotoUsuario));
-  }, [chaveFotoUsuario]);
+    setNomePerfil(localStorage.getItem(chaveNomeUsuario) ?? nomeUsuario);
+  }, [chaveFotoUsuario, chaveNomeUsuario, nomeUsuario]);
+
+  const iniciaisPerfil = obterIniciais(nomePerfil);
 
   function selecionarFotoPerfil(evento: React.ChangeEvent<HTMLInputElement>) {
     const arquivo = evento.target.files?.[0];
@@ -344,6 +563,17 @@ export function AppShell({ children }: { children: ReactNode }) {
     };
     leitor.readAsDataURL(arquivo);
     evento.target.value = '';
+  }
+
+  function abrirMeuPerfil() {
+    setMenuPerfilAberto(false);
+    setPerfilAberto(true);
+  }
+
+  function salvarMeuPerfil() {
+    localStorage.setItem(chaveNomeUsuario, nomePerfil.trim() || nomeUsuario);
+    setNomePerfil(nomePerfil.trim() || nomeUsuario);
+    setPerfilAberto(false);
   }
 
   useEffect(() => {
@@ -418,59 +648,155 @@ export function AppShell({ children }: { children: ReactNode }) {
             )}
           </div>
           <div className={estilos.divisorTopbar} />
-          <button
-            className={estilos.usuarioChip}
-            title="Abrir configurações do perfil"
-            aria-label={`Abrir configurações do perfil de ${nomeUsuario}`}
-            onClick={() => setPerfilAberto(true)}
-          >
-            <Text className={estilos.usuarioNome}>{nomeUsuario}</Text>
-            <div className={estilos.usuarioAvatar}>
-              {fotoPerfil ? (
-                <img src={fotoPerfil} alt="" className={estilos.usuarioAvatarImagem} />
-              ) : (
-                <Person24Regular fontSize={17} />
-              )}
-            </div>
-          </button>
+          <div className={estilos.usuarioArea}>
+            <button
+              className={estilos.usuarioChip}
+              title="Abrir menu do usuário"
+              aria-label={`Abrir menu do usuário de ${nomePerfil}`}
+              aria-expanded={menuPerfilAberto}
+              onClick={() => setMenuPerfilAberto((aberto) => !aberto)}
+            >
+              <div className={estilos.usuarioResumo}>
+                <Text className={estilos.usuarioNome}>{nomePerfil}</Text>
+                {emailUsuario && <span className={estilos.usuarioEmailTopo}>{emailUsuario}</span>}
+              </div>
+              <div className={estilos.usuarioAvatar}>
+                {fotoPerfil ? (
+                  <img src={fotoPerfil} alt="" className={estilos.usuarioAvatarImagem} />
+                ) : (
+                  <span>{iniciaisPerfil}</span>
+                )}
+              </div>
+              <ChevronDown16Regular />
+            </button>
+            {menuPerfilAberto && (
+              <div className={estilos.menuPerfil} role="menu">
+                <div className={estilos.menuPerfilTopo}>
+                  <div className={mergeClasses(estilos.usuarioAvatar, estilos.usuarioAvatarMenu)}>
+                    {fotoPerfil ? (
+                      <img src={fotoPerfil} alt="" className={estilos.usuarioAvatarImagem} />
+                    ) : (
+                      <span>{iniciaisPerfil}</span>
+                    )}
+                  </div>
+                  <div className={estilos.menuNome}>{nomePerfil}</div>
+                  <div className={estilos.menuEmail}>{emailUsuario || 'Conta Microsoft'}</div>
+                  <div className={estilos.menuPerfilTipo}>Personalizado</div>
+                  <div className={estilos.menuVersao}>VERSÃO: {VERSAO_APP}</div>
+                </div>
+                <button className={estilos.menuItem} type="button" role="menuitem" onClick={abrirMeuPerfil}>
+                  Meu perfil
+                </button>
+                <button className={estilos.menuItem} type="button" role="menuitem" onClick={() => setMenuPerfilAberto(false)}>
+                  Atualizações
+                </button>
+                <button className={estilos.menuItem} type="button" role="menuitem" onClick={() => setMenuPerfilAberto(false)}>
+                  Suporte técnico
+                </button>
+                <button className={estilos.menuItem} type="button" role="menuitem" onClick={() => setMenuPerfilAberto(false)}>
+                  Termos de uso
+                </button>
+                <button className={mergeClasses(estilos.menuItem, estilos.menuItemSair)} type="button" role="menuitem">
+                  Sair do sistema
+                </button>
+              </div>
+            )}
+          </div>
         </div>
       </header>
 
       <Dialog open={perfilAberto} onOpenChange={(_, data) => setPerfilAberto(data.open)}>
-        <DialogSurface>
+        <DialogSurface className={estilos.perfilSurface}>
           <DialogBody>
-            <DialogTitle>Configurações do perfil</DialogTitle>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 16, margin: '18px 0' }}>
-              <div className={estilos.usuarioAvatar} style={{ width: 64, height: 64 }}>
-                {fotoPerfil ? (
-                  <img src={fotoPerfil} alt="Foto do perfil" className={estilos.usuarioAvatarImagem} />
-                ) : (
-                  <Person24Regular fontSize={28} />
-                )}
-              </div>
-              <div>
-                <Text weight="semibold" size={400}>{nomeUsuario}</Text>
-                <div>{emailUsuario || 'Conta Microsoft'}</div>
-                <input
-                  id="upload-foto-perfil"
-                  type="file"
-                  accept="image/png,image/jpeg,image/webp"
-                  hidden
-                  onChange={selecionarFotoPerfil}
-                />
-                <Button
-                  appearance="subtle"
-                  onClick={() => document.getElementById('upload-foto-perfil')?.click()}
-                  style={{ paddingLeft: 0, marginTop: 6 }}
-                >
-                  Alterar foto
-                </Button>
+            <DialogTitle>Meu perfil</DialogTitle>
+            <div className={estilos.perfilGrid}>
+              <section className={estilos.perfilCard}>
+                <div className={estilos.perfilCardTitulo}>Informações do usuário</div>
+                <div className={estilos.perfilCardCorpo}>
+                  <div className={estilos.fotoPerfilLinha}>
+                    <div className={estilos.fotoPerfilGrande}>
+                      {fotoPerfil ? (
+                        <img src={fotoPerfil} alt="Foto do perfil" className={estilos.usuarioAvatarImagem} />
+                      ) : (
+                        <span>{iniciaisPerfil}</span>
+                      )}
+                    </div>
+                    <div className={estilos.fotoPerfilTexto}>
+                      <Text weight="semibold">Foto do perfil</Text>
+                      <span className={estilos.fotoPerfilAjuda}>Usada no menu do usuário deste navegador.</span>
+                      <Button
+                        appearance="secondary"
+                        icon={<Camera20Regular />}
+                        onClick={() => document.getElementById('upload-foto-perfil')?.click()}
+                      >
+                        Alterar foto
+                      </Button>
+                    </div>
+                  </div>
+                  <div className={estilos.perfilCampos}>
+                    <label className={estilos.perfilRotulo}>
+                      <span>Nome <span className={estilos.obrigatorio}>*</span></span>
+                      <Input value={nomePerfil} onChange={(_, data) => setNomePerfil(data.value)} />
+                    </label>
+                    <label className={estilos.perfilRotulo}>
+                      <span>E-mail de acesso <span className={estilos.obrigatorio}>*</span></span>
+                      <Input value={emailUsuario || 'Conta Microsoft'} disabled />
+                    </label>
+                  </div>
+                  <input
+                    id="upload-foto-perfil"
+                    type="file"
+                    accept="image/png,image/jpeg,image/webp"
+                    hidden
+                    onChange={selecionarFotoPerfil}
+                  />
+                </div>
+              </section>
+
+              <div style={{ display: 'grid', gap: 20, alignContent: 'start' }}>
+                <section className={estilos.perfilCard}>
+                  <div className={estilos.perfilCardTitulo}>Minha assinatura biométrica</div>
+                  <div className={estilos.perfilCardCorpo}>
+                    <Text size={200} className={estilos.biometriaTexto}>
+                      Cada usuário assina documentos com a própria biometria cadastrada: reconhecimento facial
+                      ou digital do polegar.
+                    </Text>
+                    <div className={estilos.biometriaGrade}>
+                      <div className={estilos.biometriaMetodo}>
+                        <div className={estilos.biometriaMetodoTopo}>
+                          <PersonAvailable24Regular />
+                          <span>Facial</span>
+                        </div>
+                        <div className={estilos.biometriaStatus}>Vinculada ao usuário logado.</div>
+                        <Button appearance="secondary" disabled>Gerenciar face</Button>
+                      </div>
+                      <div className={estilos.biometriaMetodo}>
+                        <div className={estilos.biometriaMetodoTopo}>
+                          <Fingerprint24Regular />
+                          <span>Polegar</span>
+                        </div>
+                        <div className={estilos.biometriaStatus}>Vinculada ao usuário logado.</div>
+                        <Button appearance="secondary" disabled>Gerenciar digital</Button>
+                      </div>
+                    </div>
+                  </div>
+                </section>
+
+                <section className={estilos.perfilCard}>
+                  <div className={estilos.perfilCardTitulo}>Obras que tenho acesso</div>
+                  <div className={estilos.perfilCardCorpo}>
+                    <ul className={estilos.empresasLista}>
+                      <li>Ponte Rio Cuiá</li>
+                      <li>Obra principal SST</li>
+                    </ul>
+                  </div>
+                </section>
               </div>
             </div>
-            <div>O nome é sincronizado com a conta Microsoft. A foto escolhida fica salva neste navegador.</div>
           </DialogBody>
           <DialogActions>
-            <Button appearance="primary" onClick={() => setPerfilAberto(false)}>Concluir</Button>
+            <Button appearance="secondary" onClick={() => setPerfilAberto(false)}>Cancelar</Button>
+            <Button appearance="primary" icon={<Checkmark20Regular />} onClick={salvarMeuPerfil}>Salvar</Button>
           </DialogActions>
         </DialogSurface>
       </Dialog>
@@ -484,4 +810,12 @@ export function AppShell({ children }: { children: ReactNode }) {
 export function CardGrid({ children }: { children: ReactNode }) {
   const estilos = useStyles();
   return <div className={estilos.cardGrid}>{children}</div>;
+}
+
+function obterIniciais(nome: string) {
+  const partes = nome.trim().split(/\s+/).filter(Boolean);
+  if (partes.length === 0) return 'US';
+  const primeira = partes[0]?.[0] ?? '';
+  const segunda = partes.length > 1 ? partes[partes.length - 1]?.[0] ?? '' : partes[0]?.[1] ?? '';
+  return `${primeira}${segunda}`.toUpperCase();
 }

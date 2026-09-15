@@ -6,7 +6,7 @@ import { designTokens, tokensUi } from '../../tokens/tokens';
 import { useTipografia } from '../../tokens/tipografia';
 
 const useStyles = makeStyles({
-  root: { display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: tokensUi.espaco.lg, marginBottom: tokensUi.espaco.lg, flexWrap: 'wrap' },
+  root: { display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: tokensUi.espaco.lg, marginBottom: tokensUi.espaco.lg, paddingBottom: tokensUi.espaco.md, borderBottom: `1px solid ${designTokens.colorCardBorder}`, flexWrap: 'wrap' },
   titulo: { margin: 0, display: 'flex', alignItems: 'center', gap: tokensUi.espaco.sm, flexWrap: 'wrap' },
   subtitulo: { color: designTokens.colorNeutralMedium, marginTop: tokensUi.espaco.xs },
   acoes: { display: 'flex', alignItems: 'center', gap: tokensUi.espaco.sm, flexWrap: 'wrap' },
