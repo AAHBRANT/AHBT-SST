@@ -52,7 +52,9 @@ app.MapGet("/health", () => Results.Ok(new { status = "ok", agora = DateTime.Utc
 
 var grupo = app.MapGroup("/api/processos");
 
-// 1) Busca livre por nome da parte (DJEN). justica: trabalhista (padrão) | estadual | federal | todas.
+// 1) Busca livre por nome da parte (DJEN). O DJEN é um único diário NACIONAL — a busca já cobre
+// todos os tribunais do Brasil (TJs, TRTs, TRFs, TREs, STJ, STF) numa chamada só, sem precisar de
+// conector por estado/tribunal. justica: todas (padrão) | trabalhista | estadual | federal | eleitoral.
 grupo.MapGet("/buscar", async (
         [FromQuery] string nome,
         [FromQuery] string? justica,
@@ -68,7 +70,7 @@ grupo.MapGet("/buscar", async (
             return Results.BadRequest(new { erro = "Informe 'nome' com pelo menos 3 caracteres." });
 
         var comunicacoes = await djen.BuscarAsync(nome.Trim(), tribunal, null, desde, ate, ct);
-        return Results.Ok(DjenClient.Agrupar(comunicacoes, nome.Trim(), justica ?? "trabalhista", incluirComunicacoes ?? false, incluirTexto ?? false));
+        return Results.Ok(DjenClient.Agrupar(comunicacoes, nome.Trim(), justica ?? "todas", incluirComunicacoes ?? false, incluirTexto ?? false));
     })
     .WithName("BuscarProcessosPorNome")
     .WithSummary("Descobre processos por nome da parte (DJEN/CNJ), agrupados por número CNJ.");
@@ -94,7 +96,7 @@ grupo.MapGet("/monitorados", async (
                     todas.AddRange(await djen.BuscarAsync(termo, null, null, desde, null, ct));
 
                 var agrupado = DjenClient.Agrupar(
-                    todas.DistinctBy(c => c.Id), parte.Nome, justica ?? "trabalhista", incluirComunicacoes ?? false, false);
+                    todas.DistinctBy(c => c.Id), parte.Nome, justica ?? "todas", incluirComunicacoes ?? false, false);
                 item.Processos = agrupado.Processos;
                 item.TotalProcessos = agrupado.TotalProcessos;
                 item.PorTribunal = agrupado.PorTribunal;
@@ -108,13 +110,13 @@ grupo.MapGet("/monitorados", async (
 
         return Results.Ok(new
         {
-            justica = justica ?? "trabalhista",
+            justica = justica ?? "todas",
             totalProcessos = resultado.Sum(r => r.TotalProcessos),
             partes = resultado,
         });
     })
     .WithName("ProcessosDasPartesMonitoradas")
-    .WithSummary("Processos das empresas/consórcios configurados em PartesMonitoradas.");
+    .WithSummary("Todos os processos (Brasil inteiro, todas as justiças) das partes configuradas em PartesMonitoradas.");
 
 // 3) Detalhe de um processo por número CNJ: DataJud (movimentos) + DJEN (intimações).
 grupo.MapGet("/{numero}", async (

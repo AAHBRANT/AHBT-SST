@@ -10,6 +10,11 @@ API interna do G-JURI que combina duas fontes públicas do CNJ:
 O DataJud não expõe partes/CNPJ na API pública, por isso a descoberta é feita pelo DJEN.
 Sem banco, sem login e sem agendamento nesta versão.
 
+**Cobertura: Brasil inteiro, desde o início.** O DJEN é um único diário nacional — cada busca por
+nome já varre todos os tribunais do país (TJs, TRTs, TRFs, TREs, STJ, STF) numa chamada só. Não é
+preciso integrar tribunal por tribunal ou estado por estado: hoje a AAHBRANT aparece em 9 tribunais
+(TRT13, TRT2, TRT19, TJSP, TRT4, TJRS, TRT7, TJPB, STJ) sem nenhuma configuração extra por região.
+
 ## Rodar
 
 ```bash
@@ -22,14 +27,14 @@ Swagger na raiz: <http://localhost:5210/>
 
 | Rota | Descrição |
 |---|---|
-| `GET /api/processos/buscar?nome=AAHBRANT` | Processos em que a parte aparece, agrupados por número CNJ. Padrão: só Justiça do Trabalho. |
-| `GET /api/processos/monitorados` | O mesmo para as empresas de `PartesMonitoradas` (appsettings.json). |
+| `GET /api/processos/buscar?nome=AAHBRANT` | Processos em que a parte aparece, agrupados por número CNJ. Padrão: **todas as justiças, Brasil inteiro**. |
+| `GET /api/processos/monitorados` | O mesmo para as empresas de `PartesMonitoradas` (appsettings.json) — todos os processos de cada CNPJ monitorado, em qualquer tribunal do país. |
 | `GET /api/processos/{numeroCnj}` | Detalhe: movimentos (DataJud) + intimações (DJEN). Aceita com ou sem máscara. |
 | `GET /health` | Verificação simples. |
 
 Parâmetros opcionais de `buscar` e `monitorados`:
 
-- `justica` = `trabalhista` (padrão) \| `estadual` \| `federal` \| `stj` \| `todas`
+- `justica` = `todas` (padrão) \| `trabalhista` \| `estadual` \| `federal` \| `stj` \| `eleitoral` — use para **restringir**, não para habilitar; o padrão já traz tudo.
 - `tribunal` = sigla DJEN (`TRT13`, `TJPB`…), só em `buscar`
 - `desde` / `ate` = `AAAA-MM-DD` (data de disponibilização no DJEN)
 - `incluirComunicacoes=true` = lista todas as intimações de cada processo
