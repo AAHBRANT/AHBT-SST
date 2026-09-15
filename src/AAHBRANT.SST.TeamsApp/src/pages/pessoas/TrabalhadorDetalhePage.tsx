@@ -169,7 +169,7 @@ export function TrabalhadorDetalhePage() {
                   name={perfil.nome}
                   image={fotoUrl ? { src: fotoUrl } : undefined}
                   color="brand"
-                  size={64}
+                  size={96}
                 />
                 <div style={{ display: 'flex', gap: 16, flexWrap: 'wrap', alignItems: 'center' }}>
                   <StatusChip tom="neutro">{tipoVinculoLabel[perfil.vinculo]}</StatusChip>

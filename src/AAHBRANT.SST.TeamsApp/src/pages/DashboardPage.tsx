@@ -119,11 +119,16 @@ export function DashboardPage() {
     // eventuais respostas não filtradas). obras.listar() nunca leva obraId: alimenta o próprio
     // seletor, precisa sempre da lista completa.
     const obraId = obraSelecionadaId || undefined;
+    let cancelado = false;
 
     api.atividades
       .listar(obraId)
-      .then(setAtividades)
-      .catch(() => setAtividades([]));
+      .then((resp) => {
+        if (!cancelado) setAtividades(resp);
+      })
+      .catch(() => {
+        if (!cancelado) setAtividades([]);
+      });
 
     Promise.all([
       api.obras.listar(),
@@ -152,6 +157,7 @@ export function DashboardPage() {
           ddsResp,
           inspecoesResp,
         ]) => {
+          if (cancelado) return;
           setObras(obrasResp);
           setTrabalhadores(trabalhadoresResp);
           setAsos(asosResp);
@@ -165,7 +171,13 @@ export function DashboardPage() {
           setInspecoes(inspecoesResp);
         },
       )
-      .catch((e) => setErro(e instanceof Error ? e.message : 'Falha ao carregar indicadores.'));
+      .catch((e) => {
+        if (!cancelado) setErro(e instanceof Error ? e.message : 'Falha ao carregar indicadores.');
+      });
+
+    return () => {
+      cancelado = true;
+    };
   }, [obraSelecionadaId]);
 
   function nomeObra(id: string) {
