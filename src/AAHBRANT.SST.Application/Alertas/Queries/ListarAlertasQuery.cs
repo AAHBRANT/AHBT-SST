@@ -19,7 +19,7 @@ public class ListarAlertasQueryHandler : IRequestHandler<ListarAlertasQuery, Lis
 
     public async Task<List<AlertaDto>> Handle(ListarAlertasQuery request, CancellationToken ct)
     {
-        var query = _db.Alertas.AsQueryable();
+        var query = _db.Alertas.AsNoTracking().AsQueryable();
 
         if (request.Status.HasValue)
             query = query.Where(a => a.Status == request.Status.Value);

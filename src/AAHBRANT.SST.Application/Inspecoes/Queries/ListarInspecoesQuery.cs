@@ -13,43 +13,39 @@ public class ListarInspecoesQueryHandler : IRequestHandler<ListarInspecoesQuery,
 
     public ListarInspecoesQueryHandler(IAppDbContext db) => _db = db;
 
+    // Projeção direta via Select em vez de Include de Obra/Atividade/ChecklistModelo/
+    // ResponsavelUsuario/Respostas: o Include de Respostas (potencialmente muitas linhas por
+    // inspeção) junto dos demais Includes de referência causava explosão cartesiana no SQL gerado
+    // — pesado justamente na chamada sem filtro de obra feita pelo dashboard. Select gera uma
+    // subconsulta correlacionada só para os contadores de Respostas, sem duplicar linhas.
     public async Task<List<InspecaoDto>> Handle(ListarInspecoesQuery request, CancellationToken ct)
     {
-        var query = _db.Inspecoes
-            .Include(i => i.Obra)
-            .Include(i => i.Atividade)
-            .Include(i => i.ChecklistModelo)
-            .Include(i => i.ResponsavelUsuario)
-            .Include(i => i.Respostas)
-            .AsQueryable();
+        var query = _db.Inspecoes.AsNoTracking().AsQueryable();
 
         if (request.ObraId.HasValue)
             query = query.Where(i => i.ObraId == request.ObraId.Value);
 
-        var inspecoes = await query.OrderByDescending(i => i.CreatedAtUtc).ToListAsync(ct);
-
-        return inspecoes.Select(i =>
-        {
-            var respostasAtivas = i.Respostas.Where(r => r.Ativo).ToList();
-            return new InspecaoDto
+        return await query
+            .OrderByDescending(i => i.CreatedAtUtc)
+            .Select(i => new InspecaoDto
             {
                 Id = i.Id,
                 TipoInspecao = i.TipoInspecao,
                 ObraId = i.ObraId,
-                ObraNome = i.Obra?.Nome ?? string.Empty,
+                ObraNome = i.Obra != null ? i.Obra.Nome : string.Empty,
                 AtividadeId = i.AtividadeId,
-                AtividadeNome = i.Atividade?.Nome,
+                AtividadeNome = i.Atividade != null ? i.Atividade.Nome : null,
                 ChecklistModeloId = i.ChecklistModeloId,
-                ChecklistModeloNome = i.ChecklistModelo?.Nome ?? string.Empty,
-                ChecklistModeloVersao = i.ChecklistModelo?.Versao ?? 0,
+                ChecklistModeloNome = i.ChecklistModelo != null ? i.ChecklistModelo.Nome : string.Empty,
+                ChecklistModeloVersao = i.ChecklistModelo != null ? i.ChecklistModelo.Versao : 0,
                 Data = i.Data,
                 ResponsavelUsuarioId = i.ResponsavelUsuarioId,
-                ResponsavelUsuarioNome = i.ResponsavelUsuario?.Nome ?? string.Empty,
+                ResponsavelUsuarioNome = i.ResponsavelUsuario != null ? i.ResponsavelUsuario.Nome : string.Empty,
                 Status = i.Status,
-                TotalItens = respostasAtivas.Count,
-                ItensRespondidos = respostasAtivas.Count(r => r.StatusItem != null),
-                ItensNaoConformes = respostasAtivas.Count(r => r.StatusItem == StatusItemChecklist.NaoConforme)
-            };
-        }).ToList();
+                TotalItens = i.Respostas.Count,
+                ItensRespondidos = i.Respostas.Count(r => r.StatusItem != null),
+                ItensNaoConformes = i.Respostas.Count(r => r.StatusItem == StatusItemChecklist.NaoConforme),
+            })
+            .ToListAsync(ct);
     }
 }

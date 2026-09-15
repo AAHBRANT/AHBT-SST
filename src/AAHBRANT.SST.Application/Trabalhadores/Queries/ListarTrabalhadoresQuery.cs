@@ -14,7 +14,7 @@ public class ListarTrabalhadoresQueryHandler : IRequestHandler<ListarTrabalhador
 
     public async Task<List<TrabalhadorDto>> Handle(ListarTrabalhadoresQuery request, CancellationToken ct)
     {
-        var query = _db.Trabalhadores.AsQueryable();
+        var query = _db.Trabalhadores.AsNoTracking().AsQueryable();
 
         if (request.ObraId.HasValue)
         {

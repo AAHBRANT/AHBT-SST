@@ -16,8 +16,8 @@ public class AsosController : ControllerBase
 
     [Authorize(Policy = "aso:ver_status")]
     [HttpGet]
-    public async Task<IActionResult> Listar([FromQuery] Guid? trabalhadorId, CancellationToken ct)
-        => Ok(await _mediator.Send(new ListarAsosQuery(trabalhadorId), ct));
+    public async Task<IActionResult> Listar([FromQuery] Guid? trabalhadorId, [FromQuery] Guid? obraId, CancellationToken ct)
+        => Ok(await _mediator.Send(new ListarAsosQuery(trabalhadorId, obraId), ct));
 
     [Authorize(Policy = "aso:ver_status")]
     [HttpGet("{id:guid}")]

@@ -15,6 +15,7 @@ public class ListarObrasQueryHandler : IRequestHandler<ListarObrasQuery, List<Ob
     public async Task<List<ObraDto>> Handle(ListarObrasQuery request, CancellationToken ct)
     {
         return await _db.Obras
+            .AsNoTracking()
             .OrderBy(o => o.Nome)
             .Select(o => new ObraDto
             {
