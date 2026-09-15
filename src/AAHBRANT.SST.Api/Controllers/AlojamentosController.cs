@@ -28,4 +28,20 @@ public class AlojamentosController : ControllerBase
         var id = await _mediator.Send(command, ct);
         return CreatedAtAction(nameof(Listar), new { obraId = command.ObraId }, new { id });
     }
+
+    [Authorize(Policy = "alojamento:gerenciar-moradores")]
+    [HttpPost("{alojamentoId:guid}/moradores")]
+    public async Task<IActionResult> AdicionarMorador(Guid alojamentoId, [FromBody] Guid trabalhadorId, CancellationToken ct)
+    {
+        var id = await _mediator.Send(new AdicionarMoradorAlojamentoCommand(alojamentoId, trabalhadorId), ct);
+        return CreatedAtAction(nameof(Listar), null, new { id });
+    }
+
+    [Authorize(Policy = "alojamento:gerenciar-moradores")]
+    [HttpDelete("moradores/{alojamentoMoradorId:guid}")]
+    public async Task<IActionResult> RemoverMorador(Guid alojamentoMoradorId, CancellationToken ct)
+    {
+        await _mediator.Send(new RemoverMoradorAlojamentoCommand(alojamentoMoradorId), ct);
+        return NoContent();
+    }
 }
