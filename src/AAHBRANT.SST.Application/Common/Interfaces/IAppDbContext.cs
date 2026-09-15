@@ -85,6 +85,10 @@ public interface IAppDbContext
     DbSet<Inspecao> Inspecoes { get; }
     DbSet<InspecaoItemResposta> InspecaoItemRespostas { get; }
 
+    DbSet<Alojamento> Alojamentos { get; }
+    DbSet<AlojamentoMorador> AlojamentoMoradores { get; }
+    DbSet<ConfiguracaoAlojamento> ConfiguracoesAlojamento { get; }
+
     // Qualificação explícita necessária: "Dds" sem prefixo é ambíguo aqui — a namespace
     // AAHBRANT.SST.Application.Dds (Commands/Queries deste módulo) sombreia o tipo importado por
     // using, já que ela é encontrada em um nível de namespace mais interno.
