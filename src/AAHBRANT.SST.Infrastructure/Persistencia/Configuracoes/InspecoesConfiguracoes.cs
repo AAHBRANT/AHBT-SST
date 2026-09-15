@@ -38,6 +38,8 @@ public class InspecaoConfiguracao : IEntityTypeConfiguration<Inspecao>
             .HasForeignKey(i => i.ObraId).OnDelete(DeleteBehavior.Restrict);
         builder.HasOne(i => i.Atividade).WithMany()
             .HasForeignKey(i => i.AtividadeId).OnDelete(DeleteBehavior.Restrict);
+        builder.HasOne(i => i.Alojamento).WithMany()
+            .HasForeignKey(i => i.AlojamentoId).OnDelete(DeleteBehavior.Restrict);
         builder.HasOne(i => i.ChecklistModelo).WithMany()
             .HasForeignKey(i => i.ChecklistModeloId).OnDelete(DeleteBehavior.Restrict);
         builder.HasOne(i => i.ResponsavelUsuario).WithMany()

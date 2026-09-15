@@ -20,6 +20,12 @@ public class Inspecao : AuditableEntity
     public Guid? AtividadeId { get; set; }
     public Atividade? Atividade { get; set; }
 
+    // Sub-aba de Inspeções (feature Alojamento) — preenchida quando esta inspeção é a checklist de
+    // um alojamento específico. Nullable pelo mesmo motivo de AtividadeId acima: nem toda inspeção
+    // é de alojamento.
+    public Guid? AlojamentoId { get; set; }
+    public Alojamento? Alojamento { get; set; }
+
     public Guid ChecklistModeloId { get; set; }
     public ChecklistModelo? ChecklistModelo { get; set; }
 

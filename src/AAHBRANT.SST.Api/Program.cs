@@ -125,6 +125,7 @@ await RbacSeeder.ExecutarAsync(app.Services);
 await CpfLgpdBackfillSeeder.ExecutarAsync(app.Services);
 await RegraAlertaSeeder.ExecutarAsync(app.Services);
 await ChecklistAlojamentoSeeder.ExecutarAsync(app.Services);
+await ConfiguracaoAlojamentoSeeder.ExecutarAsync(app.Services);
 await MateriaisApoioSeeder.ExecutarAsync(app.Services);
 
 if (app.Environment.IsDevelopment())

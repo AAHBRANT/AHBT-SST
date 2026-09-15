@@ -40,13 +40,17 @@ public class AreaSstConfiguracao : IEntityTypeConfiguration<AreaSst>
             l => l.Aggregate(0, (hash, item) => HashCode.Combine(hash, item.GetHashCode())),
             l => l.ToList());
 
+        // HasColumnType("nvarchar(max)") explícito foi removido em 2026-09-15 (task Alojamento):
+        // era redundante — string sem HasMaxLength já mapeia para nvarchar(max) por convenção no
+        // SQL Server, então a coluna gerada não muda — e "nvarchar(max)" é sintaxe inválida para o
+        // parser de DDL do Sqlite ("near 'max': syntax error"), o que quebrava qualquer teste que
+        // precisasse criar o schema inteiro (EnsureCreated) num provider Sqlite real, como o novo
+        // teste de índice único de AlojamentoEntidadeTests.
         builder.Property(a => a.Riscos)
-            .HasConversion(conversorLista, comparadorLista)
-            .HasColumnType("nvarchar(max)");
+            .HasConversion(conversorLista, comparadorLista);
 
         builder.Property(a => a.Requisitos)
-            .HasConversion(conversorLista, comparadorLista)
-            .HasColumnType("nvarchar(max)");
+            .HasConversion(conversorLista, comparadorLista);
 
         builder.HasQueryFilter(a => a.Ativo);
 
