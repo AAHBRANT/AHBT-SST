@@ -9,6 +9,7 @@ public class PcmsoDto
 {
     public Guid Id { get; set; }
 
+    public string? NumeroDocumento { get; set; }
     public string Nome { get; set; } = string.Empty;
     public string? Versao { get; set; }
     public DateTime? Validade { get; set; }
@@ -17,7 +18,6 @@ public class PcmsoDto
     public string? ResponsavelUsuarioNome { get; set; }
     public Guid? ObraId { get; set; }
     public Guid? SetorId { get; set; }
-    public string? Arquivo { get; set; }
     public StatusPcmsoDocumento Status { get; set; }
 
     public string? MedicoResponsavelNome { get; set; }

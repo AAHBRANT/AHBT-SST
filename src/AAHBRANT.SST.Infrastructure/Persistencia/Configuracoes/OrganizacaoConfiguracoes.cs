@@ -17,6 +17,7 @@ public class ObraConfiguracao : IEntityTypeConfiguration<Obra>
 
         builder.Property(o => o.Cnpj).HasMaxLength(18);
         builder.Property(o => o.LogoContentType).HasMaxLength(100);
+        builder.Property(o => o.AzureFacePersonGroupId).HasMaxLength(64);
 
         // Mesmo bug já corrigido para Acidentes (ver migration CorrigirRowVersionAcidentes): sem
         // IsRowVersion() o EF tenta INSERT com valor explícito na coluna RowVersion, e o SQL Server
@@ -64,7 +65,11 @@ public class FuncaoConfiguracao : IEntityTypeConfiguration<Funcao>
     public void Configure(EntityTypeBuilder<Funcao> builder)
     {
         builder.Property(f => f.Nome).IsRequired().HasMaxLength(150);
-        builder.Property(f => f.CboCodigo).HasMaxLength(10);
+        // 100 (não só o código de 6 dígitos): o campo "cbo" do G-RH vem como "<código> - <descrição>"
+        // concatenados (ex.: "715125 - Operador..."), não só o código — truncava e derrubava a
+        // importação inteira (ver SincronizarColaboradorGrhCommand). Aceita o valor como veio, sem
+        // tentar adivinhar/parsear o formato do lado do G-RH.
+        builder.Property(f => f.CboCodigo).HasMaxLength(100);
         builder.HasQueryFilter(f => f.Ativo);
         // Mesma divergência pré-existente de schema descrita em PermissaoConfiguracao (AcessoConfiguracoes.cs):
         // a coluna física já é timestamp/rowversion; sem IsRowVersion() o EF tenta inserir valor explícito
@@ -78,7 +83,7 @@ public class TrabalhadorConfiguracao : IEntityTypeConfiguration<Trabalhador>
     public void Configure(EntityTypeBuilder<Trabalhador> builder)
     {
         builder.Property(t => t.Nome).IsRequired().HasMaxLength(200);
-        builder.Property(t => t.Matricula).IsRequired().HasMaxLength(30);
+        builder.Property(t => t.Matricula).HasMaxLength(30);
         // Cpf: criptografado em repouso via AES-256-GCM (LGPD art. 46) — o valor de coluna nunca é o
         // CPF em texto puro. HasMaxLength(200) acomoda nonce+tag+ciphertext em Base64 (bem maior que
         // os 11 dígitos originais). Unicidade não pode mais viver em Cpf (ciphertext não-determinístico
@@ -91,6 +96,22 @@ public class TrabalhadorConfiguracao : IEntityTypeConfiguration<Trabalhador>
 
         builder.Property(t => t.Turno).HasMaxLength(50);
         builder.Property(t => t.FotoContentType).HasMaxLength(100);
+        builder.Property(t => t.AzureFacePersonId).HasMaxLength(64);
+
+        // Campos sincronizados do G-RH — ver disclosure na entidade.
+        builder.Property(t => t.Pis).HasMaxLength(20);
+        builder.Property(t => t.Ctps).HasMaxLength(30);
+        builder.Property(t => t.NomeMae).HasMaxLength(200);
+        builder.Property(t => t.Endereco).HasMaxLength(300);
+        builder.Property(t => t.Municipio).HasMaxLength(100);
+        builder.Property(t => t.Uf).HasMaxLength(2);
+        // 20 (não só "12345-678", 9 chars): o G-RH manda CEP com ponto de milhar também
+        // ("07.144-480", 10 chars) — mesma classe de truncamento do CboCodigo (ver FuncaoConfiguracao).
+        builder.Property(t => t.Cep).HasMaxLength(20);
+        builder.Property(t => t.Salario).HasPrecision(12, 2);
+        builder.Property(t => t.TamanhoBlusaEpi).HasMaxLength(10);
+        builder.Property(t => t.TamanhoCalcaEpi).HasMaxLength(10);
+        builder.Property(t => t.TamanhoCalcadoEpi).HasMaxLength(10);
 
         builder.HasOne(t => t.Obra).WithMany(o => o.Trabalhadores)
             .HasForeignKey(t => t.ObraId).OnDelete(DeleteBehavior.Restrict);

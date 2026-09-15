@@ -68,6 +68,7 @@ public class ObterInspecaoDetalheQueryHandler : IRequestHandler<ObterInspecaoDet
                 ChecklistModeloItemId = r.ChecklistModeloItemId,
                 Ordem = r.ChecklistModeloItem?.Ordem ?? 0,
                 Descricao = r.DescricaoPersonalizada ?? r.ChecklistModeloItem?.Descricao ?? string.Empty,
+                Secao = r.ChecklistModeloItem?.Secao,
                 ExigeFotografia = r.ChecklistModeloItem?.ExigeFotografia ?? false,
                 ExigeResponsavel = r.ChecklistModeloItem?.ExigeResponsavel ?? false,
                 ExigePrazo = r.ChecklistModeloItem?.ExigePrazo ?? false,

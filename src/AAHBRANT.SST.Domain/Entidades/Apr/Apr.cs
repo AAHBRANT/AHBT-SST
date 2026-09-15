@@ -10,7 +10,7 @@ namespace AAHBRANT.SST.Domain.Entidades;
 public class Apr : AuditableEntity
 {
     // Campo "Nº APR:" do cabeçalho — gerado automaticamente pelo sistema na criação (formato
-    // "APR-{ano}-{sequencial}", ver GeradorNumeroDocumento; pedido do usuário, 03/09), não editável
+    // "APR-{ano}-{sequencial}", ver GeradorNumeroDocumentoService; pedido do usuário, 03/09), não editável
     // depois. O documento original não definia uma regra de numeração — decisão própria.
     public string? NumeroApr { get; set; }
 

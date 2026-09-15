@@ -1,4 +1,6 @@
+using AAHBRANT.SST.Application.Assinatura;
 using AAHBRANT.SST.Application.Common.Interfaces;
+using AAHBRANT.SST.Domain.Entidades;
 using AAHBRANT.SST.Domain.Enums;
 using MediatR;
 using Microsoft.EntityFrameworkCore;
@@ -12,12 +14,14 @@ public class ExportarInspecaoPdfQueryHandler : IRequestHandler<ExportarInspecaoP
     private readonly IMediator _mediator;
     private readonly IAppDbContext _db;
     private readonly IInspecaoPdfService _pdf;
+    private readonly IRegistradorRastreabilidadeService _rastreabilidade;
 
-    public ExportarInspecaoPdfQueryHandler(IMediator mediator, IAppDbContext db, IInspecaoPdfService pdf)
+    public ExportarInspecaoPdfQueryHandler(IMediator mediator, IAppDbContext db, IInspecaoPdfService pdf, IRegistradorRastreabilidadeService rastreabilidade)
     {
         _mediator = mediator;
         _db = db;
         _pdf = pdf;
+        _rastreabilidade = rastreabilidade;
     }
 
     public async Task<byte[]?> Handle(ExportarInspecaoPdfQuery request, CancellationToken ct)
@@ -32,12 +36,18 @@ public class ExportarInspecaoPdfQueryHandler : IRequestHandler<ExportarInspecaoP
             .Select(r => new { r.Id, r.FotoConteudo, r.FotoDepoisConteudo })
             .ToDictionaryAsync(r => r.Id, ct);
 
+        var obraLogoConteudo = await _db.Obras
+            .Where(o => o.Id == detalhe.Inspecao.ObraId)
+            .Select(o => o.LogoConteudo)
+            .FirstOrDefaultAsync(ct);
+
         var itens = detalhe.Respostas.Select(r =>
         {
             fotosPorResposta.TryGetValue(r.Id, out var fotos);
             return new InspecaoPdfItemModelo(
                 r.Ordem,
                 r.Descricao,
+                r.Secao,
                 r.Local,
                 r.StatusItem,
                 r.Observacao,
@@ -48,15 +58,24 @@ public class ExportarInspecaoPdfQueryHandler : IRequestHandler<ExportarInspecaoP
                 fotos?.FotoDepoisConteudo is { Length: > 0 } depois ? depois : null);
         }).ToList();
 
+        var inspecao = await _db.Inspecoes.FirstAsync(i => i.Id == request.Id, ct);
+        var rastreio = await _rastreabilidade.GarantirAsync(nameof(Inspecao), request.Id, ct);
+
         var modelo = new InspecaoPdfModelo(
             detalhe.Inspecao.ObraNome,
+            obraLogoConteudo,
             DescreverTipoInspecao(detalhe.Inspecao.TipoInspecao),
             detalhe.Inspecao.ChecklistModeloNome,
             detalhe.Inspecao.ChecklistModeloVersao,
             detalhe.Inspecao.Data,
             detalhe.Inspecao.ResponsavelUsuarioNome,
             detalhe.Inspecao.Status == StatusInspecao.Concluida ? "Concluída" : "Em andamento",
-            itens);
+            itens,
+            inspecao.NumeroDocumento,
+            rastreio.ConteudoHash,
+            rastreio.UrlValidacaoPublica,
+            rastreio.QrCodePng,
+            rastreio.TemAssinatura);
 
         return _pdf.Gerar(modelo);
     }
@@ -76,6 +95,7 @@ public class ExportarInspecaoPdfQueryHandler : IRequestHandler<ExportarInspecaoP
         TipoInspecao.EspacoConfinado => "Espaço confinado",
         TipoInspecao.Comportamental => "Comportamental",
         TipoInspecao.Terceiros => "Terceiros",
+        TipoInspecao.Alojamento => "Alojamento",
         _ => tipo.ToString(),
     };
 }

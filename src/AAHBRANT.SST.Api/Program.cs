@@ -15,7 +15,6 @@ var builder = WebApplication.CreateBuilder(args);
 
 builder.Services.AddApplication();
 builder.Services.AddInfrastructure(builder.Configuration);
-builder.Services.AddPollingDeAtualizacoesTelegram();
 
 // Autenticação Entra ID: só é ativada se a seção "AzureAd" estiver configurada com um
 // App Registration real (TenantId/ClientId). Provisionamento desse recurso no Azure
@@ -125,6 +124,8 @@ using (var escopoMigracao = app.Services.CreateScope())
 await RbacSeeder.ExecutarAsync(app.Services);
 await CpfLgpdBackfillSeeder.ExecutarAsync(app.Services);
 await RegraAlertaSeeder.ExecutarAsync(app.Services);
+await ChecklistAlojamentoSeeder.ExecutarAsync(app.Services);
+await MateriaisApoioSeeder.ExecutarAsync(app.Services);
 
 if (app.Environment.IsDevelopment())
 {

@@ -1,4 +1,5 @@
-import { useEffect, useMemo, useState, type ReactElement } from 'react';
+import { useEffect, useMemo, useState, type KeyboardEvent, type ReactElement } from 'react';
+import { useNavigate } from 'react-router-dom';
 import {
   BuildingBank24Regular,
   People24Regular,
@@ -22,6 +23,7 @@ import {
   type Acidente,
   type Alerta,
   type Aso,
+  type Atividade,
   type Dds,
   type EntregaEpi,
   type Inspecao,
@@ -31,10 +33,10 @@ import {
   type Trabalhador,
   type Treinamento,
 } from '../lib/api';
-import { Card, FeedbackInline, KpiCard, Legenda, StatusChip, StatusDonutChart, TrendBarChart, usePaletaGraficos, type FatiaDonut, type PontoTendencia, type Tom } from '@ui';
+import { Card, FeedbackInline, KpiCard, Legenda, Select, StatusChip, StatusDonutChart, TrendBarChart, usePaletaGraficos, type FatiaDonut, type PontoTendencia, type Tom } from '@ui';
 import { useDashboardStyles } from '../components/dashboard/dashboardStyles';
 import { TaxaGravidadeCard } from '../components/dashboard/TaxaGravidadeCard';
-import { MiniCalendarCard, type DiaComPrazo } from '../components/dashboard/MiniCalendarCard';
+import { MiniCalendarioCard } from '../components/dashboard/MiniCalendarioCard';
 
 interface KpiDelta {
   texto: string;
@@ -47,6 +49,7 @@ interface Kpi {
   icone: ReactElement;
   tom: Tom;
   deltas: KpiDelta[];
+  destino: string;
 }
 
 interface ItemFeed {
@@ -91,8 +94,11 @@ function ultimosSeisMeses(): Array<{ ano: number; mes: number; rotulo: string }>
 export function DashboardPage() {
   const dashEstilos = useDashboardStyles();
   const paleta = usePaletaGraficos();
+  const navigate = useNavigate();
 
   const [obras, setObras] = useState<Obra[]>([]);
+  const [obraSelecionadaId, setObraSelecionadaId] = useState('');
+  const [atividades, setAtividades] = useState<Atividade[]>([]);
   const [trabalhadores, setTrabalhadores] = useState<Trabalhador[]>([]);
   const [asos, setAsos] = useState<Aso[]>([]);
   const [treinamentos, setTreinamentos] = useState<Treinamento[]>([]);
@@ -106,18 +112,30 @@ export function DashboardPage() {
   const [erro, setErro] = useState<string | null>(null);
 
   useEffect(() => {
+    // obraId filtra no servidor em vez de trazer a empresa inteira e recortar aqui (memória
+    // acompanha com os useMemo de *Filtrados abaixo, que continuam existindo por segurança — filtro
+    // client-side idempotente sobre dado já filtrado não muda o resultado, só protege contra
+    // eventuais respostas não filtradas). obras.listar() nunca leva obraId: alimenta o próprio
+    // seletor, precisa sempre da lista completa.
+    const obraId = obraSelecionadaId || undefined;
+
+    api.atividades
+      .listar(obraId)
+      .then(setAtividades)
+      .catch(() => setAtividades([]));
+
     Promise.all([
       api.obras.listar(),
-      api.trabalhadores.listar(),
-      api.asos.listar(),
-      api.treinamentos.listar(),
-      api.entregasEpi.listar(),
-      api.acidentes.listar(),
-      api.naoConformidades.listar(),
-      api.alertas.listar({ status: StatusAlerta.Aberto }),
-      api.registrosHht.listar(),
-      api.dds.listar(),
-      api.inspecoes.listar(),
+      api.trabalhadores.listar(obraId),
+      api.asos.listar(undefined, obraId),
+      api.treinamentos.listar(undefined, obraId),
+      api.entregasEpi.listar(undefined, obraId),
+      api.acidentes.listar({ obraId }),
+      api.naoConformidades.listar(undefined, obraId),
+      api.alertas.listar({ status: StatusAlerta.Aberto, obraId }),
+      api.registrosHht.listar({ obraId }),
+      api.dds.listar(obraId),
+      api.inspecoes.listar(obraId),
     ])
       .then(
         ([
@@ -147,7 +165,7 @@ export function DashboardPage() {
         },
       )
       .catch((e) => setErro(e instanceof Error ? e.message : 'Falha ao carregar indicadores.'));
-  }, []);
+  }, [obraSelecionadaId]);
 
   function nomeObra(id: string) {
     return obras.find((o) => o.id === id)?.nome ?? id;
@@ -155,21 +173,83 @@ export function DashboardPage() {
 
   const hojeISO = new Date().toISOString().slice(0, 10);
   const mesAtualISO = hojeISO.slice(0, 7);
+  const obraSelecionada = obras.find((obra) => obra.id === obraSelecionadaId);
+  const escopoIndicadores = obraSelecionada?.nome ?? 'todas as obras';
+  const atividadesDaObraIds = useMemo(
+    () => new Set(atividades.filter((atividade) => atividade.obraId === obraSelecionadaId).map((atividade) => atividade.id)),
+    [atividades, obraSelecionadaId],
+  );
+  const trabalhadoresFiltrados = useMemo(
+    () => (obraSelecionadaId ? trabalhadores.filter((trabalhador) => trabalhador.obraId === obraSelecionadaId) : trabalhadores),
+    [trabalhadores, obraSelecionadaId],
+  );
+  const trabalhadoresDaObraIds = useMemo(
+    () => new Set(trabalhadoresFiltrados.map((trabalhador) => trabalhador.id)),
+    [trabalhadoresFiltrados],
+  );
+  const obrasFiltradas = useMemo(
+    () => (obraSelecionadaId ? obras.filter((obra) => obra.id === obraSelecionadaId) : obras),
+    [obras, obraSelecionadaId],
+  );
+  const asosFiltrados = useMemo(
+    () => (obraSelecionadaId ? asos.filter((aso) => trabalhadoresDaObraIds.has(aso.trabalhadorId)) : asos),
+    [asos, trabalhadoresDaObraIds, obraSelecionadaId],
+  );
+  const treinamentosFiltrados = useMemo(
+    () =>
+      obraSelecionadaId
+        ? treinamentos.filter((treinamento) => trabalhadoresDaObraIds.has(treinamento.trabalhadorId))
+        : treinamentos,
+    [treinamentos, trabalhadoresDaObraIds, obraSelecionadaId],
+  );
+  const entregasEpiFiltradas = useMemo(
+    () => (obraSelecionadaId ? entregasEpi.filter((entrega) => trabalhadoresDaObraIds.has(entrega.trabalhadorId)) : entregasEpi),
+    [entregasEpi, trabalhadoresDaObraIds, obraSelecionadaId],
+  );
+  const acidentesFiltrados = useMemo(
+    () => (obraSelecionadaId ? acidentes.filter((acidente) => acidente.obraId === obraSelecionadaId) : acidentes),
+    [acidentes, obraSelecionadaId],
+  );
+  const naoConformidadesFiltradas = useMemo(
+    () =>
+      obraSelecionadaId
+        ? naoConformidades.filter((naoConformidade) =>
+            naoConformidade.atividadeId ? atividadesDaObraIds.has(naoConformidade.atividadeId) : false,
+          )
+        : naoConformidades,
+    [naoConformidades, atividadesDaObraIds, obraSelecionadaId],
+  );
+  const alertasAbertosFiltrados = useMemo(
+    () => (obraSelecionadaId ? alertasAbertos.filter((alerta) => alerta.obraId === obraSelecionadaId) : alertasAbertos),
+    [alertasAbertos, obraSelecionadaId],
+  );
+  const registrosHhtFiltrados = useMemo(
+    () => (obraSelecionadaId ? registrosHht.filter((registro) => registro.obraId === obraSelecionadaId) : registrosHht),
+    [registrosHht, obraSelecionadaId],
+  );
+  const ddsFiltrados = useMemo(
+    () => (obraSelecionadaId ? dds.filter((registro) => registro.obraId === obraSelecionadaId) : dds),
+    [dds, obraSelecionadaId],
+  );
+  const inspecoesFiltradas = useMemo(
+    () => (obraSelecionadaId ? inspecoes.filter((inspecao) => inspecao.obraId === obraSelecionadaId) : inspecoes),
+    [inspecoes, obraSelecionadaId],
+  );
 
   // ---------- KPIs ----------
 
   const obrasAtivas = useMemo(
-    () => obras.filter((o) => o.status !== StatusObra.Encerrada && o.status !== StatusObra.Concluida),
-    [obras],
+    () => obrasFiltradas.filter((o) => o.status !== StatusObra.Encerrada && o.status !== StatusObra.Concluida),
+    [obrasFiltradas],
   );
   const obrasEmAndamento = obrasAtivas.filter((o) => o.status === StatusObra.EmAndamento).length;
 
-  const trabalhadoresAtivos = useMemo(() => trabalhadores.filter((t) => !t.dataDemissao), [trabalhadores]);
+  const trabalhadoresAtivos = useMemo(() => trabalhadoresFiltrados.filter((t) => !t.dataDemissao), [trabalhadoresFiltrados]);
   const admitidosEsteMes = trabalhadoresAtivos.filter((t) => t.dataAdmissao?.slice(0, 7) === mesAtualISO).length;
 
   // Conformidade de EPI: fórmula provisória (sem indicador oficial ainda no sistema) — % de entregas
   // ativas (sem devolução registrada) que estão dentro da validade.
-  const entregasEpiAtivas = useMemo(() => entregasEpi.filter((e) => !e.dataDevolucao), [entregasEpi]);
+  const entregasEpiAtivas = useMemo(() => entregasEpiFiltradas.filter((e) => !e.dataDevolucao), [entregasEpiFiltradas]);
   const entregasEpiVencidas = entregasEpiAtivas.filter((e) => e.dataValidade && e.dataValidade < hojeISO);
   const conformidadeEpiPct =
     entregasEpiAtivas.length > 0
@@ -177,27 +257,27 @@ export function DashboardPage() {
       : null;
 
   // Treinamentos em dia: fórmula provisória — % dos registros de treinamento com validade não vencida.
-  const treinamentosVencidos = treinamentos.filter((t) => t.dataValidade < hojeISO);
+  const treinamentosVencidos = treinamentosFiltrados.filter((t) => t.dataValidade < hojeISO);
   // Mesmo limiar de 30 dias usado em TreinamentosTab.tsx para considerar um treinamento "a vencer".
-  const treinamentosAVencer = treinamentos.filter((t) => {
+  const treinamentosAVencer = treinamentosFiltrados.filter((t) => {
     if (t.dataValidade < hojeISO) return false;
     const diasRestantes = (new Date(t.dataValidade).getTime() - new Date(hojeISO).getTime()) / 86_400_000;
     return diasRestantes <= 30;
   });
   const treinamentosEmDiaPct =
-    treinamentos.length > 0
-      ? Math.round(((treinamentos.length - treinamentosVencidos.length) / treinamentos.length) * 100)
+    treinamentosFiltrados.length > 0
+      ? Math.round(((treinamentosFiltrados.length - treinamentosVencidos.length) / treinamentosFiltrados.length) * 100)
       : null;
 
   const quaseAcidentes = useMemo(
-    () => acidentes.filter((a) => a.tipo === TipoOcorrencia.QuaseAcidente),
-    [acidentes],
+    () => acidentesFiltrados.filter((a) => a.tipo === TipoOcorrencia.QuaseAcidente),
+    [acidentesFiltrados],
   );
   const quaseAcidentesMes = quaseAcidentes.filter((a) => a.data.slice(0, 7) === mesAtualISO);
 
   // "Abertas" = qualquer não conformidade que ainda não foi encerrada (mesmo critério usado no
   // dashboard do módulo Não Conformidades).
-  const naoConformidadesAbertas = naoConformidades.filter((nc) => nc.status !== StatusNaoConformidade.Encerrada);
+  const naoConformidadesAbertas = naoConformidadesFiltradas.filter((nc) => nc.status !== StatusNaoConformidade.Encerrada);
   const naoConformidadesEmTratamento = naoConformidadesAbertas.filter(
     (nc) => nc.status === StatusNaoConformidade.EmAndamento,
   ).length;
@@ -209,6 +289,7 @@ export function DashboardPage() {
       icone: <BuildingBank24Regular />,
       tom: 'info',
       deltas: [{ texto: `${obrasEmAndamento} em andamento`, tom: 'neutro' }],
+      destino: '/administracao?aba=obras',
     },
     {
       rotulo: 'Funcionários ativos',
@@ -216,6 +297,7 @@ export function DashboardPage() {
       icone: <People24Regular />,
       tom: 'info',
       deltas: admitidosEsteMes > 0 ? [{ texto: `+${admitidosEsteMes} este mês`, tom: 'neutro' }] : [],
+      destino: '/pessoas?aba=trabalhadores',
     },
     {
       rotulo: 'Conformidade de EPI',
@@ -223,6 +305,7 @@ export function DashboardPage() {
       icone: <ShieldCheckmark24Regular />,
       tom: 'ok',
       deltas: entregasEpiAtivas.length > 0 ? [{ texto: `${entregasEpiAtivas.length} entregas ativas`, tom: 'neutro' }] : [],
+      destino: '/operacao?secao=epi&aba=entregas',
     },
     {
       rotulo: 'Treinamentos em dia',
@@ -237,6 +320,7 @@ export function DashboardPage() {
           ? [{ texto: `${treinamentosVencidos.length} vencidos`, tom: 'alerta' as const }]
           : []),
       ],
+      destino: '/gestao-sst?secao=treinamentos&aba=turmas',
     },
     {
       rotulo: 'Quase-acidentes (mês)',
@@ -244,6 +328,7 @@ export function DashboardPage() {
       icone: <Warning24Regular />,
       tom: 'atencao',
       deltas: quaseAcidentesMes.length > 0 ? [{ texto: 'Acompanhar', tom: 'atencao' }] : [],
+      destino: '/ocorrencias?secao=acidentes',
     },
     {
       rotulo: 'Não conformidades abertas',
@@ -251,6 +336,7 @@ export function DashboardPage() {
       icone: <DocumentError24Regular />,
       tom: 'alerta',
       deltas: naoConformidadesEmTratamento > 0 ? [{ texto: `${naoConformidadesEmTratamento} em tratamento`, tom: 'alerta' }] : [],
+      destino: '/ocorrencias?secao=nao-conformidades&aba=registros',
     },
   ];
 
@@ -260,13 +346,13 @@ export function DashboardPage() {
   const asoMaisRecentePorTrabalhador = useMemo(() => {
     const mapa = new Map<string, Aso>();
     for (const trabalhador of trabalhadoresAtivos) {
-      const aso = asos
+      const aso = asosFiltrados
         .filter((a) => a.trabalhadorId === trabalhador.id)
         .sort((a, b) => b.dataValidade.localeCompare(a.dataValidade))[0];
       if (aso) mapa.set(trabalhador.id, aso);
     }
     return mapa;
-  }, [trabalhadoresAtivos, asos]);
+  }, [trabalhadoresAtivos, asosFiltrados]);
 
   const statusAsoGeral = useMemo(() => {
     let aptos = 0;
@@ -308,21 +394,10 @@ export function DashboardPage() {
 
   const proximosVencimentos = useMemo(
     () =>
-      [...alertasAbertos]
+      [...alertasAbertosFiltrados]
         .sort((a, b) => (a.dataLimiteTratamento ?? '').localeCompare(b.dataLimiteTratamento ?? ''))
         .slice(0, 6),
-    [alertasAbertos],
-  );
-
-  const prazosDoCalendario: DiaComPrazo[] = useMemo(
-    () =>
-      alertasAbertos
-        .filter((alerta): alerta is Alerta & { dataLimiteTratamento: string } => !!alerta.dataLimiteTratamento)
-        .map((alerta) => ({
-          dataISO: alerta.dataLimiteTratamento.slice(0, 10),
-          vencido: alerta.dataLimiteTratamento < hojeISO,
-        })),
-    [alertasAbertos, hojeISO],
+    [alertasAbertosFiltrados],
   );
 
   // ---------- Atividade recente (montada a partir dos módulos existentes) ----------
@@ -330,7 +405,7 @@ export function DashboardPage() {
   const atividadeRecente: ItemFeed[] = useMemo(() => {
     const itens: ItemFeed[] = [];
 
-    for (const registro of dds) {
+    for (const registro of ddsFiltrados) {
       itens.push({
         id: `dds-${registro.id}`,
         icone: <ClipboardTaskListLtr24Regular />,
@@ -340,7 +415,7 @@ export function DashboardPage() {
         dataISO: registro.data,
       });
     }
-    for (const inspecao of inspecoes) {
+    for (const inspecao of inspecoesFiltradas) {
       if (inspecao.status !== StatusInspecao.Concluida) continue;
       itens.push({
         id: `inspecao-${inspecao.id}`,
@@ -351,7 +426,7 @@ export function DashboardPage() {
         dataISO: inspecao.data,
       });
     }
-    for (const naoConformidade of naoConformidades) {
+    for (const naoConformidade of naoConformidadesFiltradas) {
       if (naoConformidade.status !== StatusNaoConformidade.Encerrada || !naoConformidade.dataConclusao) continue;
       itens.push({
         id: `nc-${naoConformidade.id}`,
@@ -374,7 +449,7 @@ export function DashboardPage() {
     }
 
     return itens.sort((a, b) => b.dataISO.localeCompare(a.dataISO)).slice(0, 6);
-  }, [dds, inspecoes, naoConformidades, trabalhadoresAtivos, obras]);
+  }, [ddsFiltrados, inspecoesFiltradas, naoConformidadesFiltradas, trabalhadoresAtivos, obras]);
 
   const classeIconeFeed: Record<ItemFeed['variante'], string> = {
     bom: dashEstilos.feedIconeBom,
@@ -395,6 +470,13 @@ export function DashboardPage() {
     return <StatusChip tom="atencao">{dias} dia(s)</StatusChip>;
   }
 
+  function abrirComTeclado(evento: KeyboardEvent<HTMLDivElement>, destino: string) {
+    if (evento.key === 'Enter' || evento.key === ' ') {
+      evento.preventDefault();
+      navigate(destino);
+    }
+  }
+
   return (
     <div>
       {erro && (
@@ -404,35 +486,87 @@ export function DashboardPage() {
         </FeedbackInline>
       )}
 
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(185px, 1fr))', gap: 16, marginBottom: 16 }}>
-        {kpis.map((kpi, indice) => (
-          <KpiCard
-            key={kpi.rotulo}
-            rotulo={kpi.rotulo}
-            valor={kpi.valor}
-            tom={kpi.tom}
-            icone={kpi.icone}
-            deltas={kpi.deltas}
-            indice={indice}
-          />
-        ))}
+      <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 16 }}>
+        <label style={{ display: 'flex', alignItems: 'center', gap: 8, maxWidth: 360, width: '100%' }}>
+          <span style={{ fontWeight: 600, whiteSpace: 'nowrap' }}>Obra</span>
+          <Select
+            value={obraSelecionadaId}
+            onChange={(_, dados) => setObraSelecionadaId(dados.value)}
+            aria-label="Filtrar indicadores por obra"
+          >
+            <option value="">Todas as obras</option>
+            {obras.map((obra) => (
+              <option key={obra.id} value={obra.id}>
+                {obra.nome}
+              </option>
+            ))}
+          </Select>
+        </label>
       </div>
 
-      <div style={{ marginBottom: 16 }}>
-        <TaxaGravidadeCard acidentes={acidentes} registrosHht={registrosHht} />
+      <div style={{ display: 'flex', gap: 16, alignItems: 'flex-start', marginBottom: 16 }}>
+        <div className={dashEstilos.gradeKpis}>
+          {kpis.map((kpi, indice) => (
+            <KpiCard
+              key={kpi.rotulo}
+              rotulo={kpi.rotulo}
+              valor={kpi.valor}
+              tom={kpi.tom}
+              icone={kpi.icone}
+              deltas={kpi.deltas}
+              indice={indice}
+              onClick={() => navigate(kpi.destino)}
+              ariaLabel={`Abrir ${kpi.rotulo}`}
+            />
+          ))}
+          {/* Taxa de Gravidade é o 7º indicador da mesma grade — em linha própria ele ficava órfão,
+              com estilo de card diferente e um vazio ao lado (13/09). */}
+          <div
+            className={dashEstilos.cardAcionavel}
+            role="button"
+            tabIndex={0}
+            onClick={() => navigate('/ocorrencias?secao=acidentes')}
+            onKeyDown={(evento) => abrirComTeclado(evento, '/ocorrencias?secao=acidentes')}
+          >
+            <TaxaGravidadeCard acidentes={acidentesFiltrados} registrosHht={registrosHhtFiltrados} indice={kpis.length} />
+          </div>
+        </div>
+        <MiniCalendarioCard />
       </div>
 
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(340px, 1fr))', gap: 16, marginBottom: 16 }}>
-        <Card titulo="Status de aptidão ocupacional (ASO)" subtitulo="Situação clínica do ASO mais recente de cada funcionário">
-          <StatusDonutChart dados={statusAsoDados} legendaCentral="funcionários" />
-        </Card>
-        <Card titulo="Quase-acidentes — últimos 6 meses" subtitulo="Registros classificados como quase-acidente, todas as obras">
-          <TrendBarChart dados={tendenciaQuaseAcidentes} />
-        </Card>
-        <MiniCalendarCard prazos={prazosDoCalendario} />
+        <div
+          className={dashEstilos.cardAcionavel}
+          role="button"
+          tabIndex={0}
+          onClick={() => navigate('/operacao/saude-ocupacional?aba=aso')}
+          onKeyDown={(evento) => abrirComTeclado(evento, '/operacao/saude-ocupacional?aba=aso')}
+        >
+          <Card titulo="Status de aptidão ocupacional (ASO)" subtitulo="Situação clínica do ASO mais recente de cada funcionário">
+            <StatusDonutChart dados={statusAsoDados} legendaCentral="funcionários" />
+          </Card>
+        </div>
+        <div
+          className={dashEstilos.cardAcionavel}
+          role="button"
+          tabIndex={0}
+          onClick={() => navigate('/ocorrencias?secao=acidentes')}
+          onKeyDown={(evento) => abrirComTeclado(evento, '/ocorrencias?secao=acidentes')}
+        >
+          <Card titulo="Quase-acidentes — últimos 6 meses" subtitulo={`Registros classificados como quase-acidente, ${escopoIndicadores}`}>
+            <TrendBarChart dados={tendenciaQuaseAcidentes} />
+          </Card>
+        </div>
       </div>
 
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(340px, 1fr))', gap: 16, marginBottom: 16 }}>
+        <div
+          className={dashEstilos.cardAcionavel}
+          role="button"
+          tabIndex={0}
+          onClick={() => navigate('/alertas?aba=lista')}
+          onKeyDown={(evento) => abrirComTeclado(evento, '/alertas?aba=lista')}
+        >
         <Card titulo="Próximos vencimentos" subtitulo="Alertas em aberto, ordenados por prazo">
           <div className={dashEstilos.feed}>
             {proximosVencimentos.map((alerta) => (
@@ -456,7 +590,15 @@ export function DashboardPage() {
             {proximosVencimentos.length === 0 && <Legenda>Nenhum alerta em aberto.</Legenda>}
           </div>
         </Card>
+        </div>
 
+        <div
+          className={dashEstilos.cardAcionavel}
+          role="button"
+          tabIndex={0}
+          onClick={() => navigate('/operacao')}
+          onKeyDown={(evento) => abrirComTeclado(evento, '/operacao')}
+        >
         <Card titulo="Atividade recente" subtitulo="Últimos registros nos módulos de campo">
           <div className={dashEstilos.feed}>
             {atividadeRecente.map((item) => (
@@ -474,6 +616,7 @@ export function DashboardPage() {
             {atividadeRecente.length === 0 && <Legenda>Nenhuma atividade recente.</Legenda>}
           </div>
         </Card>
+        </div>
       </div>
     </div>
   );

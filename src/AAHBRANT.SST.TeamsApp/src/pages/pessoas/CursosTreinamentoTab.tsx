@@ -3,11 +3,14 @@ import {
   Button,
   Field,
   Input,
+  Textarea,
   Card,
   PageHeader,
   DataTable,
-  PainelLateral,
+  PainelCriacaoInline,
   FormGrid,
+  FormRodape,
+  FormSection,
   Campo,
   FeedbackInline,
   useConfirmar,
@@ -22,10 +25,12 @@ const cursoVazio: NovoCursoTreinamento = {
   normaReferencia: '',
   cargaHorariaMinima: 0,
   validadeEmMeses: 12,
+  conteudoProgramatico: '',
 };
 
-// Camada ui/ (Onda 2, Task 1): formulário de criação foi para um PainelLateral, mesmo padrão dos
-// demais cadastros deste módulo.
+// Migração do formulário inline (spec 2026-09-11): o PainelLateral (drawer) saiu — mesmo padrão de
+// AtividadesTab.tsx/InspecoesTab.tsx. Agora é um PainelCriacaoInline, que cresce acima da lista até
+// a altura do próprio formulário, em vez de cobrir a tela com uma gaveta.
 export function CursosTreinamentoTab() {
   const [cursos, setCursos] = useState<CursoTreinamento[]>([]);
   const [novoCurso, setNovoCurso] = useState<NovoCursoTreinamento>(cursoVazio);
@@ -92,13 +97,19 @@ export function CursosTreinamentoTab() {
   ];
 
   return (
-    <div>
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
       {dialogElement}
       <PageHeader
         titulo="Cursos de treinamento (catálogo)"
         acoes={
-          <Button appearance="primary" icon={<Add24Regular />} onClick={() => setPainelAberto(true)}>
-            Adicionar curso
+          <Button
+            appearance="primary"
+            icon={<Add24Regular />}
+            onClick={() => (painelAberto ? fecharPainel() : setPainelAberto(true))}
+            aria-expanded={painelAberto}
+            aria-controls="painel-novo-curso"
+          >
+            {painelAberto ? 'Fechar' : 'Adicionar curso'}
           </Button>
         }
       />
@@ -107,6 +118,65 @@ export function CursosTreinamentoTab() {
           {erro}
         </FeedbackInline>
       )}
+      <div id="painel-novo-curso">
+        <PainelCriacaoInline aberto={painelAberto} titulo="Novo curso de treinamento">
+          <FormSection titulo="Dados do curso" numero={1} primeira>
+            {erroPainel && (
+              <FeedbackInline tom="erro" aoFechar={() => setErroPainel(null)}>
+                {erroPainel}
+              </FeedbackInline>
+            )}
+            <FormGrid>
+              <Campo span={6}>
+                <Field label="Nome">
+                  <Input value={novoCurso.nome} onChange={(_, d) => setNovoCurso({ ...novoCurso, nome: d.value })} />
+                </Field>
+              </Campo>
+              <Campo span={6}>
+                <Field label="Norma de referência">
+                  <Input
+                    value={novoCurso.normaReferencia ?? ''}
+                    onChange={(_, d) => setNovoCurso({ ...novoCurso, normaReferencia: d.value })}
+                  />
+                </Field>
+              </Campo>
+              <Campo span={6}>
+                <Field label="Carga horária mínima (h)">
+                  <Input
+                    type="number"
+                    value={String(novoCurso.cargaHorariaMinima)}
+                    onChange={(_, d) => setNovoCurso({ ...novoCurso, cargaHorariaMinima: Number(d.value) })}
+                  />
+                </Field>
+              </Campo>
+              <Campo span={6}>
+                <Field label="Validade (meses)">
+                  <Input
+                    type="number"
+                    value={String(novoCurso.validadeEmMeses)}
+                    onChange={(_, d) => setNovoCurso({ ...novoCurso, validadeEmMeses: Number(d.value) })}
+                  />
+                </Field>
+              </Campo>
+              <Campo span={12}>
+                <Field label="Conteúdo programático (um tópico por linha — vira o verso do certificado)">
+                  <Textarea
+                    rows={6}
+                    value={novoCurso.conteudoProgramatico ?? ''}
+                    onChange={(_, d) => setNovoCurso({ ...novoCurso, conteudoProgramatico: d.value })}
+                  />
+                </Field>
+              </Campo>
+            </FormGrid>
+            <FormRodape>
+              <Button onClick={fecharPainel}>Cancelar</Button>
+              <Button appearance="primary" onClick={criar} disabled={carregando}>
+                Adicionar curso
+              </Button>
+            </FormRodape>
+          </FormSection>
+        </PainelCriacaoInline>
+      </div>
       <Card>
         <DataTable
           aria-label="Cursos de treinamento"
@@ -123,58 +193,6 @@ export function CursosTreinamentoTab() {
           )}
         />
       </Card>
-      <PainelLateral
-        aberto={painelAberto}
-        aoFechar={fecharPainel}
-        titulo="Novo curso de treinamento"
-        rodape={
-          <>
-            <Button onClick={fecharPainel}>Cancelar</Button>
-            <Button appearance="primary" onClick={criar} disabled={carregando}>
-              Adicionar curso
-            </Button>
-          </>
-        }
-      >
-        {erroPainel && (
-          <FeedbackInline tom="erro" aoFechar={() => setErroPainel(null)}>
-            {erroPainel}
-          </FeedbackInline>
-        )}
-        <FormGrid>
-          <Campo span={6}>
-            <Field label="Nome">
-              <Input value={novoCurso.nome} onChange={(_, d) => setNovoCurso({ ...novoCurso, nome: d.value })} />
-            </Field>
-          </Campo>
-          <Campo span={6}>
-            <Field label="Norma de referência">
-              <Input
-                value={novoCurso.normaReferencia ?? ''}
-                onChange={(_, d) => setNovoCurso({ ...novoCurso, normaReferencia: d.value })}
-              />
-            </Field>
-          </Campo>
-          <Campo span={6}>
-            <Field label="Carga horária mínima (h)">
-              <Input
-                type="number"
-                value={String(novoCurso.cargaHorariaMinima)}
-                onChange={(_, d) => setNovoCurso({ ...novoCurso, cargaHorariaMinima: Number(d.value) })}
-              />
-            </Field>
-          </Campo>
-          <Campo span={6}>
-            <Field label="Validade (meses)">
-              <Input
-                type="number"
-                value={String(novoCurso.validadeEmMeses)}
-                onChange={(_, d) => setNovoCurso({ ...novoCurso, validadeEmMeses: Number(d.value) })}
-              />
-            </Field>
-          </Campo>
-        </FormGrid>
-      </PainelLateral>
     </div>
   );
 }

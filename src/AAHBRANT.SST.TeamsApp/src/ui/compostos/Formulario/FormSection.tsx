@@ -10,13 +10,23 @@ const useStyles = makeStyles({
   info: { color: designTokens.colorNeutralMedium, maxWidth: '700px' },
 });
 
+function tituloExplicito(titulo: ReactNode): ReactNode {
+  if (typeof titulo !== 'string') return titulo;
+  return titulo
+    .replace(/^Dados Gerais\b/i, 'Informações principais')
+    .replace(/^Dados gerais\b/i, 'Informações principais')
+    .replace(/^Dados do\b/i, 'Informações do')
+    .replace(/^Dados da\b/i, 'Informações da');
+}
+
 // Seção de formulário (spec §3): rótulo pequeno em versalete que divide um formulário longo em blocos
-// nomeados. Formaliza usePageStyles.sectionTitle/sectionTitleFirst.
+// nomeados. O prefixo textual evita número solto ("1.") sem contexto para quem está cadastrando.
 export function FormSection({ titulo, numero, primeira, children }: { titulo: ReactNode; numero?: number; primeira?: boolean; children: ReactNode }) {
   const e = useStyles(); const tipo = useTipografia();
+  const tituloVisivel = tituloExplicito(titulo);
   return (
     <>
-      <div className={mergeClasses(tipo.micro, e.titulo, primeira && e.primeira)}>{numero !== undefined ? `${numero}. ` : ''}{titulo}</div>
+      <div className={mergeClasses(tipo.micro, e.titulo, primeira && e.primeira)}>{numero !== undefined ? `Etapa ${numero} - ` : ''}{tituloVisivel}</div>
       {children}
     </>
   );

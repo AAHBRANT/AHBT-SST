@@ -11,6 +11,9 @@ public static class ValidadorAssinaturaArquivo
         "image/jpeg" => TemPrefixo(conteudo, 0xFF, 0xD8, 0xFF),
         "image/png" => TemPrefixo(conteudo, 0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A),
         "application/pdf" => TemPrefixo(conteudo, 0x25, 0x50, 0x44, 0x46), // "%PDF"
+        // .docx/.xlsx/.pptx são todos contêineres ZIP (Office Open XML) — mesma assinatura "PK\3\4"
+        // de qualquer arquivo ZIP; não dá pra diferenciar entre os três só pelos primeiros bytes.
+        "application/vnd.openxmlformats-officedocument.wordprocessingml.document" => TemPrefixo(conteudo, 0x50, 0x4B, 0x03, 0x04),
         _ => false,
     };
 

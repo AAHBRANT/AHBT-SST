@@ -108,6 +108,26 @@ Todo acesso ao registro clínico (não só alteração) deve gravar em `TrilhaAu
 | Encarregado | O (equipe) | O (registro de entrega EPI) | — | — |
 | Trabalhador | P | — | — | — |
 
+### Materiais de Apoio (`MaterialApoio`) — catálogo global de sinalização/instruções técnicas
+
+Módulo novo (2026-09-09), baixa sensibilidade (não é dado pessoal/clínico) — catálogo único,
+compartilhado por todas as obras. Só V(er)/C(riar)/X(cluir) existem hoje no código (não há
+Editar/Aprovar implementados). Proposta abaixo segue o mesmo critério já usado no resto da
+matriz (times de QSMS/Engenharia controlam o conteúdo oficial; demais perfis só consultam):
+
+| Perfil | V | C | X |
+|---|---|---|---|
+| Administrador | G | G | G |
+| GestorQsms | G/U | G/U | G/U |
+| EngenheiroSeguranca | O | O | — |
+| TecnicoSeguranca | O | O | — |
+| Rh | O | — | — |
+| GestorDeObra | O | — | — |
+| Encarregado | O | — | — |
+| Trabalhador | O (consulta o que está afixado na própria obra) | — | — |
+| Auditor | G/U | — | — |
+| Terceiro | O | — | — |
+
 ### Liberação de atividade de risco / motor de elegibilidade (§45)
 
 **Regra crítica:** a aprovação/liberação de atividade de risco (ex.: aprovar Permissão de Trabalho
@@ -166,3 +186,7 @@ SQL quando o banco de produção for provisionado).
 - Definir regras específicas de escopo e retenção de dados para o perfil **Terceiro** por contrato
   (o quanto ele vê de trabalhadores/obras que não são dele).
 - Confirmar se Rh precisa de visão de status de ASO por unidade inteira ou apenas por obra.
+- Validar a proposta de Materiais de Apoio (`materialapoio:ver/criar/excluir`) acima e, uma vez
+  aprovada, conceder as permissões aos perfis definidos pela tela "Perfis & Matriz de Permissões"
+  — hoje nenhum perfil tem essas 3 permissões atribuídas (mesmo estado de todo módulo já existente
+  no sistema até que alguém configure pela tela; ver disclosure em `RbacSeeder.cs`).

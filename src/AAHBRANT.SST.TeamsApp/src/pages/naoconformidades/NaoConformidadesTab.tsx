@@ -8,11 +8,12 @@ import {
   DataTable,
   Field,
   FormGrid,
+  FormRodape,
   FormSection,
   FeedbackInline,
   Input,
   PageHeader,
-  PainelLateral,
+  PainelCriacaoInline,
   Select,
   StatusChip,
   type Coluna,
@@ -58,11 +59,13 @@ const tomStatus: Record<number, Tom> = {
 };
 
 // Onda 2 Task 15 (camada ui/): lista de não conformidades — mesmo padrão já usado em
-// TrabalhadoresTab.tsx/AtividadesTab.tsx (golden rule, spec §5.1): o formulário de criação, que
-// empurrava a tabela pra baixo, sai para um PainelLateral com erro PRÓPRIO (regra dos 3 pilotos:
-// erro de painel nunca reaproveita o erro de carga da lista). A linha inteira já navega para o
-// detalhe via aoClicarLinha — o antigo <ChevronRight24Regular> era só um espelho redundante disso
-// e sai (mesma regra do Guia de conversão, seção 1).
+// TrabalhadoresTab.tsx/AtividadesTab.tsx (golden rule, spec §5.1). Onda A do spec de formulário
+// inline (2026-09-11): o PainelLateral saiu — mesmo padrão de AtividadesTab.tsx/InspecoesTab.tsx.
+// Agora é um PainelCriacaoInline, que cresce acima da lista em vez de cobrir a tela com uma gaveta,
+// com erro PRÓPRIO (regra dos 3 pilotos: erro de painel nunca reaproveita o erro de carga da
+// lista). A linha inteira já navega para o detalhe via aoClicarLinha — o antigo
+// <ChevronRight24Regular> era só um espelho redundante disso e sai (mesma regra do Guia de
+// conversão, seção 1).
 export function NaoConformidadesTab() {
   const navigate = useNavigate();
   const [naoConformidades, setNaoConformidades] = useState<NaoConformidade[]>([]);
@@ -126,7 +129,7 @@ export function NaoConformidadesTab() {
         prazo: nova.prazo || null,
       });
       setNova(novaInicial());
-      setPainelAberto(false);
+      fecharPainel();
       await carregar();
     } catch (e) {
       setErroPainel(e instanceof Error ? e.message : 'Falha ao criar não conformidade.');
@@ -149,17 +152,122 @@ export function NaoConformidadesTab() {
   ];
 
   return (
-    <div>
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
       <PageHeader
         titulo="Não conformidades"
         acoes={
-          <Button appearance="primary" icon={<AddCircle24Regular />} onClick={() => setPainelAberto(true)}>
-            Nova não conformidade
+          <Button
+            appearance="primary"
+            icon={<AddCircle24Regular />}
+            onClick={() => (painelAberto ? fecharPainel() : setPainelAberto(true))}
+            aria-expanded={painelAberto}
+            aria-controls="painel-nova-nao-conformidade"
+          >
+            {painelAberto ? 'Fechar' : 'Nova não conformidade'}
           </Button>
         }
       />
 
       {erro && <FeedbackInline tom="erro" aoFechar={() => setErro(null)}>{erro}</FeedbackInline>}
+
+      <div id="painel-nova-nao-conformidade">
+        <PainelCriacaoInline aberto={painelAberto} titulo="Nova não conformidade">
+          <FormSection titulo="Dados da Não Conformidade" numero={1} primeira>
+            {erroPainel && (
+              <FeedbackInline tom="erro" aoFechar={() => setErroPainel(null)}>
+                {erroPainel}
+              </FeedbackInline>
+            )}
+            <FormGrid>
+              <Campo span={3}>
+                <Field label="Origem">
+                  <Select
+                    value={String(nova.origemDeteccao)}
+                    onChange={(_, d) => setNova({ ...nova, origemDeteccao: Number(d.value) })}
+                  >
+                    {Object.entries(origemNaoConformidadeLabel).map(([valor, rotulo]) => (
+                      <option key={valor} value={valor}>
+                        {rotulo}
+                      </option>
+                    ))}
+                  </Select>
+                </Field>
+              </Campo>
+              <Campo span={4}>
+                <Field label="Requisito relacionado">
+                  <Input
+                    value={nova.requisitoRelacionado ?? ''}
+                    onChange={(_, d) => setNova({ ...nova, requisitoRelacionado: d.value })}
+                  />
+                </Field>
+              </Campo>
+              <Campo span={5}>
+                <Field label="Descrição" required>
+                  <Input value={nova.descricao} onChange={(_, d) => setNova({ ...nova, descricao: d.value })} />
+                </Field>
+              </Campo>
+              <Campo span={2}>
+                <Field label="Local">
+                  <Input value={nova.local ?? ''} onChange={(_, d) => setNova({ ...nova, local: d.value })} />
+                </Field>
+              </Campo>
+              <Campo span={3}>
+                <Field label="Atividade">
+                  <Select
+                    value={nova.atividadeId ?? ''}
+                    onChange={(_, d) => setNova({ ...nova, atividadeId: d.value })}
+                  >
+                    <option value="">Nenhuma</option>
+                    {atividades.map((atividade) => (
+                      <option key={atividade.id} value={atividade.id}>
+                        {atividade.nome}
+                      </option>
+                    ))}
+                  </Select>
+                </Field>
+              </Campo>
+              <Campo span={3}>
+                <Field label="Risco associado">
+                  <Select value={nova.riscoId ?? ''} onChange={(_, d) => setNova({ ...nova, riscoId: d.value })}>
+                    <option value="">Nenhum</option>
+                    {riscos.map((risco) => (
+                      <option key={risco.id} value={risco.id}>
+                        {risco.ambiente || risco.id}
+                      </option>
+                    ))}
+                  </Select>
+                </Field>
+              </Campo>
+              <Campo span={2}>
+                <Field label="Responsável">
+                  <Select
+                    value={nova.responsavelUsuarioId ?? ''}
+                    onChange={(_, d) => setNova({ ...nova, responsavelUsuarioId: d.value })}
+                  >
+                    <option value="">Nenhum</option>
+                    {usuarios.map((usuario) => (
+                      <option key={usuario.id} value={usuario.id}>
+                        {usuario.nome}
+                      </option>
+                    ))}
+                  </Select>
+                </Field>
+              </Campo>
+              <Campo span={2}>
+                <Field label="Prazo">
+                  <CampoData value={nova.prazo ?? ''} onChange={(_, d) => setNova({ ...nova, prazo: d.value })} />
+                </Field>
+              </Campo>
+            </FormGrid>
+            <FormRodape>
+              <Button onClick={fecharPainel}>Cancelar</Button>
+              <Button appearance="primary" onClick={criar} disabled={carregando}>
+                Registrar
+              </Button>
+            </FormRodape>
+          </FormSection>
+        </PainelCriacaoInline>
+      </div>
 
       <Card>
         <DataTable
@@ -176,111 +284,6 @@ export function NaoConformidadesTab() {
           }}
         />
       </Card>
-
-      <PainelLateral
-        aberto={painelAberto}
-        aoFechar={fecharPainel}
-        titulo="Nova não conformidade"
-        largura="lg"
-        rodape={
-          <>
-            <Button onClick={fecharPainel}>Cancelar</Button>
-            <Button appearance="primary" onClick={criar} disabled={carregando}>
-              Registrar
-            </Button>
-          </>
-        }
-      >
-        {erroPainel && (
-          <FeedbackInline tom="erro" aoFechar={() => setErroPainel(null)}>
-            {erroPainel}
-          </FeedbackInline>
-        )}
-
-        <FormSection titulo="Dados da Não Conformidade" numero={1} primeira>
-          <FormGrid>
-            <Campo span={3}>
-              <Field label="Origem">
-                <Select
-                  value={String(nova.origemDeteccao)}
-                  onChange={(_, d) => setNova({ ...nova, origemDeteccao: Number(d.value) })}
-                >
-                  {Object.entries(origemNaoConformidadeLabel).map(([valor, rotulo]) => (
-                    <option key={valor} value={valor}>
-                      {rotulo}
-                    </option>
-                  ))}
-                </Select>
-              </Field>
-            </Campo>
-            <Campo span={4}>
-              <Field label="Requisito relacionado">
-                <Input
-                  value={nova.requisitoRelacionado ?? ''}
-                  onChange={(_, d) => setNova({ ...nova, requisitoRelacionado: d.value })}
-                />
-              </Field>
-            </Campo>
-            <Campo span={5}>
-              <Field label="Descrição" required>
-                <Input value={nova.descricao} onChange={(_, d) => setNova({ ...nova, descricao: d.value })} />
-              </Field>
-            </Campo>
-            <Campo span={2}>
-              <Field label="Local">
-                <Input value={nova.local ?? ''} onChange={(_, d) => setNova({ ...nova, local: d.value })} />
-              </Field>
-            </Campo>
-            <Campo span={3}>
-              <Field label="Atividade">
-                <Select
-                  value={nova.atividadeId ?? ''}
-                  onChange={(_, d) => setNova({ ...nova, atividadeId: d.value })}
-                >
-                  <option value="">Nenhuma</option>
-                  {atividades.map((atividade) => (
-                    <option key={atividade.id} value={atividade.id}>
-                      {atividade.nome}
-                    </option>
-                  ))}
-                </Select>
-              </Field>
-            </Campo>
-            <Campo span={3}>
-              <Field label="Risco associado">
-                <Select value={nova.riscoId ?? ''} onChange={(_, d) => setNova({ ...nova, riscoId: d.value })}>
-                  <option value="">Nenhum</option>
-                  {riscos.map((risco) => (
-                    <option key={risco.id} value={risco.id}>
-                      {risco.ambiente || risco.id}
-                    </option>
-                  ))}
-                </Select>
-              </Field>
-            </Campo>
-            <Campo span={2}>
-              <Field label="Responsável">
-                <Select
-                  value={nova.responsavelUsuarioId ?? ''}
-                  onChange={(_, d) => setNova({ ...nova, responsavelUsuarioId: d.value })}
-                >
-                  <option value="">Nenhum</option>
-                  {usuarios.map((usuario) => (
-                    <option key={usuario.id} value={usuario.id}>
-                      {usuario.nome}
-                    </option>
-                  ))}
-                </Select>
-              </Field>
-            </Campo>
-            <Campo span={2}>
-              <Field label="Prazo">
-                <CampoData value={nova.prazo ?? ''} onChange={(_, d) => setNova({ ...nova, prazo: d.value })} />
-              </Field>
-            </Campo>
-          </FormGrid>
-        </FormSection>
-      </PainelLateral>
     </div>
   );
 }

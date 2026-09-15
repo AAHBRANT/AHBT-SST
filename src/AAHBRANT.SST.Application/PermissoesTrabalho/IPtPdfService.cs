@@ -38,7 +38,11 @@ public record PtPdfModelo(
     PtPdfAssinatura? Sst,
     PtPdfSuspensao? Suspensao,
     PtPdfEncerramento? Encerramento,
-    List<PtPdfEnvolvido> Envolvidos);
+    List<PtPdfEnvolvido> Envolvidos,
+    string ConteudoHash,
+    string UrlValidacaoPublica,
+    byte[] QrCodePng,
+    bool TemAssinatura);
 
 public interface IPtPdfService
 {

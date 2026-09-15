@@ -223,7 +223,9 @@ public class ObterPerfilCompletoTrabalhadorQueryHandler : IRequestHandler<ObterP
                 x.DataValidade,
                 x.CargaHorariaRealizada,
                 x.InstituicaoInstrutor,
-                x.NumeroCertificado))
+                x.NumeroCertificado,
+                x.Local,
+                x.InstrutorRegistroProfissional))
             .ToListAsync(ct);
 
         var totalDdsRealizados = await _db.Dds
@@ -281,7 +283,7 @@ public class ObterPerfilCompletoTrabalhadorQueryHandler : IRequestHandler<ObterP
         return new PerfilCompletoTrabalhadorDto(
             trabalhador.Id,
             trabalhador.Nome,
-            trabalhador.Matricula,
+            trabalhador.Matricula ?? string.Empty,
             trabalhador.Cpf,
             trabalhador.Rg,
             trabalhador.ObraId,

@@ -8,10 +8,11 @@ import {
   Field,
   FeedbackInline,
   FormGrid,
+  FormRodape,
   FormSection,
   Input,
   PageHeader,
-  PainelLateral,
+  PainelCriacaoInline,
   Select,
   StatusChip,
   useConfirmar,
@@ -28,6 +29,7 @@ import { useSucessoToast } from '../../hooks/useSucessoToast';
 
 const itemVazio: NovoChecklistModeloItem = {
   descricao: '',
+  secao: '',
   exigeFotografia: false,
   exigeResponsavel: false,
   exigePrazo: false,
@@ -35,8 +37,10 @@ const itemVazio: NovoChecklistModeloItem = {
 
 // Onda 2 Task 10 (camada ui/): o formulário de criação/nova versão (mais os itens que ele acumula
 // antes de salvar) empurrava a lista pra baixo — mesmo golden rule já aplicado em
-// TrabalhadoresTab.tsx/AprsTab.tsx (spec §4.2), mesmo sem a task marcar a conversão 2 literalmente:
-// vira PainelLateral. Erro do painel é estado PRÓPRIO (erroPainel), nunca o erro de nível de página.
+// TrabalhadoresTab.tsx/AprsTab.tsx (spec §4.2). Onda A do spec de formulário inline (2026-09-11): o
+// PainelLateral saiu — mesmo padrão de AtividadesTab.tsx/InspecoesTab.tsx. Agora é um
+// PainelCriacaoInline, que cresce acima da lista em vez de cobrir a tela com uma gaveta. Erro do
+// painel é estado PRÓPRIO (erroPainel), nunca o erro de nível de página.
 export function ChecklistModelosTab() {
   const [checklists, setChecklists] = useState<ChecklistModelo[]>([]);
   const [nome, setNome] = useState('');
@@ -69,7 +73,7 @@ export function ChecklistModelosTab() {
 
   function adicionarItem() {
     if (!itemAtual.descricao.trim()) return;
-    setItens((atual) => [...atual, itemAtual]);
+    setItens((atual) => [...atual, { ...itemAtual, secao: itemAtual.secao?.trim() || undefined }]);
     setItemAtual(itemVazio);
   }
 
@@ -99,6 +103,7 @@ export function ChecklistModelosTab() {
       setItens(
         detalhe.itens.map((i) => ({
           descricao: i.descricao,
+          secao: i.secao ?? '',
           exigeFotografia: i.exigeFotografia,
           exigeResponsavel: i.exigeResponsavel,
           exigePrazo: i.exigePrazo,
@@ -153,6 +158,7 @@ export function ChecklistModelosTab() {
   }
 
   const colunasItens: Coluna<NovoChecklistModeloItem & { indice: number }>[] = [
+    { chave: 'secao', rotulo: 'Seção', render: (i) => i.secao || '—' },
     { chave: 'descricao', rotulo: 'Descrição' },
     { chave: 'exigeFotografia', rotulo: 'Foto', render: (i) => (i.exigeFotografia ? 'Sim' : '—') },
     { chave: 'exigeResponsavel', rotulo: 'Responsável', render: (i) => (i.exigeResponsavel ? 'Sim' : '—') },
@@ -167,13 +173,19 @@ export function ChecklistModelosTab() {
   ];
 
   return (
-    <div>
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
       {dialogElement}
       <PageHeader
-        titulo="Checklists de inspeção"
+        titulo="Catálogo de inspeções"
         acoes={
-          <Button appearance="primary" icon={<Add24Regular />} onClick={() => setPainelAberto(true)}>
-            Novo checklist
+          <Button
+            appearance="primary"
+            icon={<Add24Regular />}
+            onClick={() => (painelAberto ? fecharPainel() : setPainelAberto(true))}
+            aria-expanded={painelAberto}
+            aria-controls="painel-novo-checklist"
+          >
+            {painelAberto ? 'Fechar' : 'Novo checklist'}
           </Button>
         }
       />
@@ -184,9 +196,116 @@ export function ChecklistModelosTab() {
         </FeedbackInline>
       )}
 
+      <div id="painel-novo-checklist">
+        <PainelCriacaoInline aberto={painelAberto} titulo={versionandoId ? `Nova versão de "${nome}"` : 'Novo checklist'}>
+          <FormSection titulo="Dados do checklist" numero={1} primeira>
+            {erroPainel && (
+              <FeedbackInline tom="erro" aoFechar={() => setErroPainel(null)}>
+                {erroPainel}
+              </FeedbackInline>
+            )}
+            <FormGrid>
+              <Campo span={6}>
+                <Field label="Nome do checklist">
+                  <Input value={nome} onChange={(_, d) => setNome(d.value)} disabled={!!versionandoId} />
+                </Field>
+              </Campo>
+              <Campo span={6}>
+                <Field label="Tipo de inspeção">
+                  <Select
+                    value={String(tipoInspecao)}
+                    onChange={(_, d) => setTipoInspecao(Number(d.value))}
+                    disabled={!!versionandoId}
+                  >
+                    {Object.entries(tipoInspecaoLabel).map(([valor, rotulo]) => (
+                      <option key={valor} value={valor}>
+                        {rotulo}
+                      </option>
+                    ))}
+                  </Select>
+                </Field>
+              </Campo>
+            </FormGrid>
+          </FormSection>
+
+          <FormSection titulo="Itens do checklist" numero={2}>
+            <FormGrid>
+              <Campo span={4}>
+                <Field label="Seção (opcional)">
+                  <Input
+                    value={itemAtual.secao ?? ''}
+                    onChange={(_, d) => setItemAtual({ ...itemAtual, secao: d.value })}
+                    placeholder="Ex.: Dormitórios"
+                  />
+                </Field>
+              </Campo>
+              <Campo span={8}>
+                <Field label="Descrição do item">
+                  <Input
+                    value={itemAtual.descricao}
+                    onChange={(_, d) => setItemAtual({ ...itemAtual, descricao: d.value })}
+                  />
+                </Field>
+              </Campo>
+              <Campo span={2}>
+                <Checkbox
+                  label="Exige fotografia"
+                  checked={itemAtual.exigeFotografia}
+                  onChange={(_, d) => setItemAtual({ ...itemAtual, exigeFotografia: !!d.checked })}
+                />
+              </Campo>
+              <Campo span={2}>
+                <Checkbox
+                  label="Exige responsável"
+                  checked={itemAtual.exigeResponsavel}
+                  onChange={(_, d) => setItemAtual({ ...itemAtual, exigeResponsavel: !!d.checked })}
+                />
+              </Campo>
+              <Campo span={2}>
+                <Checkbox
+                  label="Exige prazo"
+                  checked={itemAtual.exigePrazo}
+                  onChange={(_, d) => setItemAtual({ ...itemAtual, exigePrazo: !!d.checked })}
+                />
+              </Campo>
+            </FormGrid>
+
+            <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 12 }}>
+              <Button appearance="secondary" icon={<Add24Regular />} onClick={adicionarItem}>
+                Adicionar item à lista
+              </Button>
+            </div>
+
+            <DataTable
+              aria-label="Itens adicionados a este checklist"
+              colunas={colunasItens}
+              linhas={itens.map((item, indice) => ({ ...item, indice }))}
+              chaveLinha={(i) => String(i.indice)}
+              vazio={{ titulo: 'Nenhum item adicionado ainda.' }}
+              densidade="compacta"
+              acoesLinha={(i) => (
+                <Button
+                  appearance="subtle"
+                  size="small"
+                  icon={<Delete24Regular />}
+                  onClick={() => removerItem(i.indice)}
+                  aria-label="Remover item"
+                />
+              )}
+            />
+            <FormRodape>
+              <Button onClick={fecharPainel}>Cancelar</Button>
+              <Button appearance="primary" onClick={salvar} disabled={carregando}>
+                {versionandoId ? 'Salvar nova versão' : 'Criar checklist'}
+              </Button>
+            </FormRodape>
+          </FormSection>
+        </PainelCriacaoInline>
+      </div>
+
       <Card>
         <DataTable
-          aria-label="Checklists cadastrados"
+          aria-label="Catálogo de inspeções"
           colunas={colunasChecklists}
           linhas={checklists}
           chaveLinha={(c) => c.id}
@@ -220,110 +339,6 @@ export function ChecklistModelosTab() {
           )}
         />
       </Card>
-
-      <PainelLateral
-        aberto={painelAberto}
-        aoFechar={fecharPainel}
-        titulo={versionandoId ? `Nova versão de "${nome}"` : 'Novo checklist'}
-        largura="lg"
-        rodape={
-          <>
-            <Button onClick={fecharPainel}>Cancelar</Button>
-            <Button appearance="primary" onClick={salvar} disabled={carregando}>
-              {versionandoId ? 'Salvar nova versão' : 'Criar checklist'}
-            </Button>
-          </>
-        }
-      >
-        {erroPainel && (
-          <FeedbackInline tom="erro" aoFechar={() => setErroPainel(null)}>
-            {erroPainel}
-          </FeedbackInline>
-        )}
-
-        <FormSection titulo="Dados do checklist" numero={1} primeira>
-          <FormGrid>
-            <Campo span={6}>
-              <Field label="Nome do checklist">
-                <Input value={nome} onChange={(_, d) => setNome(d.value)} disabled={!!versionandoId} />
-              </Field>
-            </Campo>
-            <Campo span={6}>
-              <Field label="Tipo de inspeção">
-                <Select
-                  value={String(tipoInspecao)}
-                  onChange={(_, d) => setTipoInspecao(Number(d.value))}
-                  disabled={!!versionandoId}
-                >
-                  {Object.entries(tipoInspecaoLabel).map(([valor, rotulo]) => (
-                    <option key={valor} value={valor}>
-                      {rotulo}
-                    </option>
-                  ))}
-                </Select>
-              </Field>
-            </Campo>
-          </FormGrid>
-        </FormSection>
-
-        <FormSection titulo="Itens do checklist" numero={2}>
-          <FormGrid>
-            <Campo span={6}>
-              <Field label="Descrição do item">
-                <Input
-                  value={itemAtual.descricao}
-                  onChange={(_, d) => setItemAtual({ ...itemAtual, descricao: d.value })}
-                />
-              </Field>
-            </Campo>
-            <Campo span={2}>
-              <Checkbox
-                label="Exige fotografia"
-                checked={itemAtual.exigeFotografia}
-                onChange={(_, d) => setItemAtual({ ...itemAtual, exigeFotografia: !!d.checked })}
-              />
-            </Campo>
-            <Campo span={2}>
-              <Checkbox
-                label="Exige responsável"
-                checked={itemAtual.exigeResponsavel}
-                onChange={(_, d) => setItemAtual({ ...itemAtual, exigeResponsavel: !!d.checked })}
-              />
-            </Campo>
-            <Campo span={2}>
-              <Checkbox
-                label="Exige prazo"
-                checked={itemAtual.exigePrazo}
-                onChange={(_, d) => setItemAtual({ ...itemAtual, exigePrazo: !!d.checked })}
-              />
-            </Campo>
-          </FormGrid>
-
-          <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 12 }}>
-            <Button appearance="secondary" icon={<Add24Regular />} onClick={adicionarItem}>
-              Adicionar item à lista
-            </Button>
-          </div>
-
-          <DataTable
-            aria-label="Itens adicionados a este checklist"
-            colunas={colunasItens}
-            linhas={itens.map((item, indice) => ({ ...item, indice }))}
-            chaveLinha={(i) => String(i.indice)}
-            vazio={{ titulo: 'Nenhum item adicionado ainda.' }}
-            densidade="compacta"
-            acoesLinha={(i) => (
-              <Button
-                appearance="subtle"
-                size="small"
-                icon={<Delete24Regular />}
-                onClick={() => removerItem(i.indice)}
-                aria-label="Remover item"
-              />
-            )}
-          />
-        </FormSection>
-      </PainelLateral>
     </div>
   );
 }

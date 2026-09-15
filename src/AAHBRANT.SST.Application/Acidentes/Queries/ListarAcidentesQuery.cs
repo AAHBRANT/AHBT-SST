@@ -16,7 +16,7 @@ public class ListarAcidentesQueryHandler : IRequestHandler<ListarAcidentesQuery,
 
     public async Task<List<AcidenteDto>> Handle(ListarAcidentesQuery request, CancellationToken ct)
     {
-        var query = _db.Acidentes.AsQueryable();
+        var query = _db.Acidentes.AsNoTracking().AsQueryable();
 
         if (request.Tipo.HasValue)
             query = query.Where(a => a.Tipo == request.Tipo.Value);

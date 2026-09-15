@@ -6,9 +6,13 @@ using Microsoft.AspNetCore.Mvc;
 
 namespace AAHBRANT.SST.Api.Controllers;
 
-// NTAG.md §3.B.4 — "View Contextual Pública": rota que precisa continuar acessível sem login ao
-// escanear NFC/QR em campo. [AllowAnonymous] garante isso mesmo depois que a autenticação Entra ID
-// for habilitada em Program.cs (hoje ainda desligada em ambiente de desenvolvimento).
+// NTAG.md §3.B.4 — "View Contextual Pública": precisa abrir sem login, porque quem encosta o
+// celular na tag do capacete em campo (fiscal, encarregado, auditor) não está dentro do Teams e o
+// app só consegue token via Teams SSO (ver TeamsApp/src/lib/authHeaders.ts). Exigir [Authorize] aqui
+// derrubava toda leitura de NFC para 401 — que o frontend ainda mostra como "tag não encontrada".
+// O controle de acesso é a posse física da tag: o UID é opaco e não enumerável (mesmo modelo de
+// ValidacaoPublicaController). Dado sensível de saúde não sai nesta rota sem login — ver
+// ResolverTrabalhadorPublicoQuery.
 [ApiController]
 [AllowAnonymous]
 [Route("sst/p")]
@@ -27,7 +31,8 @@ public class IdentificacaoPublicaController : ControllerBase
         var area = await _mediator.Send(new ResolverAreaPublicaQuery(codigoOuUid), ct);
         if (area is not null) return Ok(area);
 
-        var trabalhador = await _mediator.Send(new ResolverTrabalhadorPublicoQuery(codigoOuUid), ct);
+        var autenticado = User.Identity?.IsAuthenticated == true;
+        var trabalhador = await _mediator.Send(new ResolverTrabalhadorPublicoQuery(codigoOuUid, autenticado), ct);
         return trabalhador is null ? NotFound() : Ok(trabalhador);
     }
 

@@ -11,9 +11,10 @@ import {
   DataTable,
   StatusChip,
   FeedbackInline,
-  PainelLateral,
+  PainelCriacaoInline,
   FormSection,
   FormGrid,
+  FormRodape,
   Campo,
   type Coluna,
   type Tom,
@@ -44,9 +45,9 @@ const tomStatusSemanal: Record<number, Tom> = {
 // papel "Registro Semanal de DDS - Empregados Próprios/Terceirizados". Os registros diários (feitos
 // e assinados todo dia) ficam dentro de cada semana — ver DdsSemanalDetalhePage.
 // Onda 2 (Task 14): conversões 1 (Table → DataTable), 5 (Badge color → StatusChip), 3
-// (Text size=500 → PageHeader.titulo), 4 (erro → FeedbackInline). O formulário de criação
-// empurrava a lista para baixo (Guia §2) — mesmo julgamento já usado em AprsTab.tsx/FuncoesTab.tsx:
-// sai para um PainelLateral aberto pelo "+ Nova semana".
+// (Text size=500 → PageHeader.titulo), 4 (erro → FeedbackInline). Migrado para o padrão
+// PainelCriacaoInline (spec 2026-09-11): o PainelLateral (drawer) saiu — agora o formulário de
+// criação cresce acima da lista, sem cobrir a tela com uma gaveta.
 export function DdsSemanalPage() {
   const navigate = useNavigate();
   const [registros, setRegistros] = useState<DdsSemanal[]>([]);
@@ -102,6 +103,7 @@ export function DdsSemanalPage() {
   }
 
   const colunas: Coluna<DdsSemanal>[] = [
+    { chave: 'numeroDocumento', rotulo: 'Nº do documento', render: (s) => s.numeroDocumento ?? '-' },
     { chave: 'obra', rotulo: 'Obra', render: (s) => s.obraNome },
     { chave: 'tipo', rotulo: 'Tipo', render: (s) => tipoDdsSemanalLabel[s.tipo] },
     {
@@ -123,12 +125,18 @@ export function DdsSemanalPage() {
   ];
 
   return (
-    <div>
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
       <PageHeader
         titulo="DDS — Diálogo Diário de Segurança (Registro Semanal)"
         acoes={
-          <Button appearance="primary" icon={<Add24Regular />} onClick={() => setPainelAberto(true)}>
-            Nova semana
+          <Button
+            appearance="primary"
+            icon={<Add24Regular />}
+            onClick={() => (painelAberto ? fecharPainel() : setPainelAberto(true))}
+            aria-expanded={painelAberto}
+            aria-controls="painel-nova-semana-dds"
+          >
+            {painelAberto ? 'Fechar' : 'Nova semana'}
           </Button>
         }
       />
@@ -138,6 +146,72 @@ export function DdsSemanalPage() {
           {erro}
         </FeedbackInline>
       )}
+
+      <div id="painel-nova-semana-dds">
+        <PainelCriacaoInline aberto={painelAberto} titulo="Nova semana de DDS">
+          <FormSection titulo="Dados da Semana" numero={1} primeira>
+            {erroPainel && (
+              <FeedbackInline tom="erro" aoFechar={() => setErroPainel(null)}>
+                {erroPainel}
+              </FeedbackInline>
+            )}
+            <FormGrid>
+              <Campo span={4}>
+                <Field label="Obra" required>
+                  <Select value={nova.obraId} onChange={(_, d) => setNova({ ...nova, obraId: d.value })}>
+                    <option value="">Selecione</option>
+                    {obras.map((obra) => (
+                      <option key={obra.id} value={obra.id}>
+                        {obra.nome}
+                      </option>
+                    ))}
+                  </Select>
+                </Field>
+              </Campo>
+              <Campo span={3}>
+                <Field label="Tipo">
+                  <Select value={String(nova.tipo)} onChange={(_, d) => setNova({ ...nova, tipo: Number(d.value) })}>
+                    <option value={String(TipoDdsSemanal.Proprios)}>{tipoDdsSemanalLabel[TipoDdsSemanal.Proprios]}</option>
+                    <option value={String(TipoDdsSemanal.Terceirizados)}>{tipoDdsSemanalLabel[TipoDdsSemanal.Terceirizados]}</option>
+                  </Select>
+                </Field>
+              </Campo>
+              <Campo span={3}>
+                <Field label="Início da semana" required>
+                  <CampoData
+                    value={nova.dataInicioSemana}
+                    onChange={(_, d) => setNova({ ...nova, dataInicioSemana: d.value })}
+                  />
+                </Field>
+              </Campo>
+              {nova.tipo === TipoDdsSemanal.Terceirizados && (
+                <Campo span={4}>
+                  <Field label="Empresa terceirizada" required>
+                    <Input
+                      value={nova.empresaTerceirizada ?? ''}
+                      onChange={(_, d) => setNova({ ...nova, empresaTerceirizada: d.value })}
+                    />
+                  </Field>
+                </Campo>
+              )}
+              <Campo span={5}>
+                <Field label="Local / Frente de serviço">
+                  <Input
+                    value={nova.localFrenteServico ?? ''}
+                    onChange={(_, d) => setNova({ ...nova, localFrenteServico: d.value })}
+                  />
+                </Field>
+              </Campo>
+            </FormGrid>
+            <FormRodape>
+              <Button onClick={fecharPainel}>Cancelar</Button>
+              <Button appearance="primary" onClick={criar} disabled={carregando}>
+                Abrir semana
+              </Button>
+            </FormRodape>
+          </FormSection>
+        </PainelCriacaoInline>
+      </div>
 
       <Card densidade="compacta">
         <DataTable
@@ -153,82 +227,6 @@ export function DdsSemanalPage() {
           aoClicarLinha={(s) => navigate(`/prevencao/dds/semana/${s.id}`)}
         />
       </Card>
-
-      <PainelLateral
-        aberto={painelAberto}
-        aoFechar={fecharPainel}
-        titulo="Nova semana de DDS"
-        rodape={
-          <>
-            <Button onClick={fecharPainel}>Cancelar</Button>
-            <Button appearance="primary" onClick={criar} disabled={carregando}>
-              Abrir semana
-            </Button>
-          </>
-        }
-      >
-        {erroPainel && (
-          <FeedbackInline tom="erro" aoFechar={() => setErroPainel(null)}>
-            {erroPainel}
-          </FeedbackInline>
-        )}
-
-        <FormSection titulo="Dados da Semana" numero={1} primeira>
-          <FormGrid>
-            <Campo span={4}>
-              <Field label="Obra" required>
-                <Select value={nova.obraId} onChange={(_, d) => setNova({ ...nova, obraId: d.value })}>
-                  <option value="">Selecione</option>
-                  {obras.map((obra) => (
-                    <option key={obra.id} value={obra.id}>
-                      {obra.nome}
-                    </option>
-                  ))}
-                </Select>
-              </Field>
-            </Campo>
-            <Campo span={3}>
-              <Field label="Tipo">
-                <Select value={String(nova.tipo)} onChange={(_, d) => setNova({ ...nova, tipo: Number(d.value) })}>
-                  <option value={String(TipoDdsSemanal.Proprios)}>{tipoDdsSemanalLabel[TipoDdsSemanal.Proprios]}</option>
-                  <option value={String(TipoDdsSemanal.Terceirizados)}>{tipoDdsSemanalLabel[TipoDdsSemanal.Terceirizados]}</option>
-                </Select>
-              </Field>
-            </Campo>
-            <Campo span={3}>
-              <Field label="Início da semana" required>
-                <CampoData
-                  value={nova.dataInicioSemana}
-                  onChange={(_, d) => setNova({ ...nova, dataInicioSemana: d.value })}
-                />
-              </Field>
-            </Campo>
-            {nova.tipo === TipoDdsSemanal.Terceirizados && (
-              <Campo span={4}>
-                <Field label="Empresa terceirizada" required>
-                  <Input
-                    value={nova.empresaTerceirizada ?? ''}
-                    onChange={(_, d) => setNova({ ...nova, empresaTerceirizada: d.value })}
-                  />
-                </Field>
-              </Campo>
-            )}
-            <Campo span={3}>
-              <Field label="Nº do documento">
-                <Input value={nova.numeroDocumento ?? ''} onChange={(_, d) => setNova({ ...nova, numeroDocumento: d.value })} />
-              </Field>
-            </Campo>
-            <Campo span={5}>
-              <Field label="Local / Frente de serviço">
-                <Input
-                  value={nova.localFrenteServico ?? ''}
-                  onChange={(_, d) => setNova({ ...nova, localFrenteServico: d.value })}
-                />
-              </Field>
-            </Campo>
-          </FormGrid>
-        </FormSection>
-      </PainelLateral>
     </div>
   );
 }

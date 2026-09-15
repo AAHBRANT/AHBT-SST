@@ -2,6 +2,8 @@ using AAHBRANT.SST.Application.Treinamentos;
 using QuestPDF.Fluent;
 using QuestPDF.Helpers;
 using QuestPDF.Infrastructure;
+using SixLabors.ImageSharp.Formats.Jpeg;
+using SixLabors.ImageSharp.Processing;
 
 namespace AAHBRANT.SST.Infrastructure.Documentos;
 
@@ -14,24 +16,15 @@ public class CertificadoTreinamentoPdfService : ICertificadoTreinamentoPdfServic
     private const string CorMarca = "#670000";
     private const string CorBege = "#ebe9ad";
     private const string CorTexto = "#1a1a1a";
-
-    // Logo padrão da empresa (não confundir com o logo por Obra usado em EntregaEpiPdfService) —
-    // embutida como recurso do assembly para não depender de layout de arquivos em runtime/Docker.
-    private static readonly byte[] LogoAahbrant = CarregarLogoAahbrant();
-
-    private static byte[] CarregarLogoAahbrant()
-    {
-        var assembly = typeof(CertificadoTreinamentoPdfService).Assembly;
-        using var stream = assembly.GetManifestResourceStream("AAHBRANT.SST.Infrastructure.Documentos.Assets.logo-aahbrant.png")
-            ?? throw new InvalidOperationException("Logo padrão da AAHBRANT não encontrada como recurso embutido.");
-        using var memoria = new MemoryStream();
-        stream.CopyTo(memoria);
-        return memoria.ToArray();
-    }
+    // Azul de destaque do selo de norma (NR-XX) — pedido do usuário, 06/09: cor de ênfase
+    // distinta do vinho institucional para o badge da norma no cabeçalho.
+    private const string CorSeloNorma = "#2A34AF";
 
     public byte[] Gerar(CertificadoTreinamentoPdfModelo modelo)
     {
-        var temVerso = !string.IsNullOrWhiteSpace(modelo.ConteudoProgramatico);
+        // Verso passa a existir também só para mostrar QR de verificação/foto da turma (item 6 da
+        // proposta do usuário, 04/09), mesmo quando o curso não tem conteúdo programático cadastrado.
+        var temVerso = !string.IsNullOrWhiteSpace(modelo.ConteudoProgramatico) || modelo.QrCodeValidacaoPng is not null || modelo.FotoTurma is not null;
 
         var documento = Document.Create(container =>
         {
@@ -41,11 +34,12 @@ public class CertificadoTreinamentoPdfService : ICertificadoTreinamentoPdfServic
                 pagina.Content().Padding(14).Column(coluna =>
                 {
                     coluna.Spacing(6);
-                    coluna.Item().Element(c => Cabecalho(c, modelo, "CERTIFICADO"));
+                    coluna.Item().Element(c => Cabecalho(c, modelo));
                     coluna.Item().PaddingBottom(4).LineHorizontal(2).LineColor(CorMarca);
+                    coluna.Item().Element(c => TituloDocumento(c, "CERTIFICADO DE TREINAMENTO"));
                     coluna.Item().Element(c => Frente(c, modelo));
                 });
-                Rodape(pagina);
+                Rodape(pagina, modelo);
             });
 
             if (temVerso)
@@ -56,11 +50,12 @@ public class CertificadoTreinamentoPdfService : ICertificadoTreinamentoPdfServic
                     pagina.Content().Padding(14).Column(coluna =>
                     {
                         coluna.Spacing(6);
-                        coluna.Item().Element(c => Cabecalho(c, modelo, "CONTEÚDO PROGRAMÁTICO"));
+                        coluna.Item().Element(c => Cabecalho(c, modelo));
                         coluna.Item().PaddingBottom(4).LineHorizontal(2).LineColor(CorMarca);
+                        coluna.Item().Element(c => TituloDocumento(c, "CONTEÚDO PROGRAMÁTICO DO TREINAMENTO"));
                         coluna.Item().Element(c => Verso(c, modelo));
                     });
-                    Rodape(pagina);
+                    Rodape(pagina, modelo);
                 });
             }
         });
@@ -76,25 +71,38 @@ public class CertificadoTreinamentoPdfService : ICertificadoTreinamentoPdfServic
         pagina.Background().Border(2).BorderColor(CorMarca);
     }
 
-    private static void Rodape(PageDescriptor pagina)
+    private static void Rodape(PageDescriptor pagina, CertificadoTreinamentoPdfModelo modelo)
     {
-        pagina.Footer().AlignCenter().Text(t =>
-        {
-            t.Span("Gerado em ").FontSize(7).FontColor(Colors.Grey.Darken1);
-            t.Span(DateTime.Now.ToString("dd/MM/yyyy HH:mm")).FontSize(7).FontColor(Colors.Grey.Darken1);
-        });
+        pagina.Footer().Column(coluna => RodapeDocumentoPadrao.Desenhar(
+            coluna, "Certificado", modelo.NumeroCertificado, null, modelo.ConteudoHash, modelo.UrlValidacaoPublica, modelo.QrCodePng, modelo.TemAssinatura));
     }
 
-    private static void Cabecalho(IContainer container, CertificadoTreinamentoPdfModelo modelo, string titulo)
+    private static void Cabecalho(IContainer container, CertificadoTreinamentoPdfModelo modelo)
     {
         container.Row(linha =>
         {
-            linha.ConstantItem(170).Height(45).AlignMiddle().Image(LogoAahbrant).FitArea();
+            // Única logo permitida em qualquer documento gerado pelo sistema é a cadastrada na
+            // própria Obra (pedido do usuário, 04/09: "não tá cadastrado nessa obra" — a AAHBRANT
+            // fixa foi removida daqui e de CabecalhoDocumentoPadrao). Sem logo cadastrada, o slot
+            // fica em branco (mesmo princípio já usado em InspecaoPdfService).
+            if (modelo.ObraLogoConteudo is not null)
+                linha.ConstantItem(170).Height(45).AlignMiddle().Image(modelo.ObraLogoConteudo).FitArea();
+            else
+                linha.ConstantItem(170);
 
-            linha.RelativeItem().AlignCenter().AlignMiddle().Text(titulo).FontSize(20).Bold().FontColor(CorMarca);
+            // Cabeçalho mostra o nome da Obra (não um rótulo genérico de documento) — é o layout
+            // "padrão de cada obra" pedido pelo usuário: o que muda de certificado pra certificado
+            // é a obra, então é ela quem tem destaque; o título do documento vira uma linha própria
+            // abaixo do cabeçalho (TituloDocumento).
+            linha.RelativeItem().AlignCenter().AlignMiddle().Text(modelo.ObraNome.ToUpperInvariant()).FontSize(18).Bold().FontColor(CorMarca);
 
             linha.ConstantItem(90).AlignRight().Element(c => Selo(c, modelo.NormaReferencia));
         });
+    }
+
+    private static void TituloDocumento(IContainer container, string titulo)
+    {
+        container.PaddingBottom(2).AlignCenter().Text(titulo).FontSize(16).Bold().FontColor(CorMarca);
     }
 
     private static void Selo(IContainer container, string? normaReferencia)
@@ -104,11 +112,9 @@ public class CertificadoTreinamentoPdfService : ICertificadoTreinamentoPdfServic
             return;
         }
 
-        container.Background(CorMarca).Padding(6).Column(selo =>
-        {
-            selo.Item().AlignCenter().Text("NORMA").FontSize(7).FontColor(Colors.White);
-            selo.Item().AlignCenter().Text(normaReferencia).FontSize(12).Bold().FontColor(Colors.White);
-        });
+        // Sem rótulo "NORMA" acima do valor (pedido do usuário, 06/09) — "NR" já significa Norma
+        // Regulamentadora, escrever os dois juntos é redundante.
+        container.Background(CorSeloNorma).Padding(8).AlignCenter().Text(normaReferencia).FontSize(15).Bold().FontColor(Colors.White);
     }
 
     private static void Frente(IContainer container, CertificadoTreinamentoPdfModelo modelo)
@@ -126,7 +132,9 @@ public class CertificadoTreinamentoPdfService : ICertificadoTreinamentoPdfServic
                 {
                     t.Span($", portador(a) do RG {modelo.TrabalhadorRg},");
                 }
-                t.Span(" participou do curso de ");
+                t.Span(" registrado(a) sob a Matrícula nº ");
+                t.Span(modelo.TrabalhadorMatricula).Bold();
+                t.Span(", participou do curso de ");
                 t.Span(modelo.CursoNome).Bold();
                 if (!string.IsNullOrWhiteSpace(modelo.NormaReferencia))
                 {
@@ -155,7 +163,13 @@ public class CertificadoTreinamentoPdfService : ICertificadoTreinamentoPdfServic
                 coluna.Item().Text(modelo.ObraEndereco).FontSize(9);
             }
 
+            // Local/Instalações (pedido do usuário, 06/09): sem preenchimento próprio, usa o nome da
+            // Obra do trabalhador como sempre fez.
             coluna.Item().PaddingTop(2).Text($"Obra: {modelo.ObraNome}").FontSize(9).SemiBold();
+            if (!string.IsNullOrWhiteSpace(modelo.Local))
+            {
+                coluna.Item().Text($"Local/Instalações: {modelo.Local}").FontSize(9);
+            }
 
             coluna.Item().PaddingTop(2).Text(
                 string.IsNullOrWhiteSpace(modelo.ObraCidade)
@@ -190,27 +204,83 @@ public class CertificadoTreinamentoPdfService : ICertificadoTreinamentoPdfServic
         {
             coluna.Spacing(4);
 
-            var topicos = (modelo.ConteudoProgramatico ?? string.Empty)
-                .Split('\n', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
-
-            coluna.Item().PaddingTop(4).Column(lista =>
+            if (!string.IsNullOrWhiteSpace(modelo.ConteudoProgramatico))
             {
-                lista.Spacing(3);
-                foreach (var topico in topicos)
-                {
-                    lista.Item().Text(t =>
-                    {
-                        t.DefaultTextStyle(x => x.FontSize(10));
-                        t.Span("• ").Bold();
-                        t.Span(topico);
-                    });
-                }
-            });
+                var topicos = modelo.ConteudoProgramatico
+                    .Split('\n', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
 
-            DescricaoCarga(coluna.Item(), modelo);
+                coluna.Item().PaddingTop(4).Column(lista =>
+                {
+                    lista.Spacing(3);
+                    foreach (var topico in topicos)
+                    {
+                        lista.Item().Text(t =>
+                        {
+                            t.DefaultTextStyle(x => x.FontSize(10));
+                            t.Span("• ").Bold();
+                            t.Span(topico);
+                        });
+                    }
+                });
+
+                DescricaoCarga(coluna.Item(), modelo);
+            }
+
+            if (modelo.FotoTurma is not null || modelo.QrCodeValidacaoPng is not null)
+            {
+                coluna.Item().PaddingTop(10).Element(c => EvidenciaEVerificacao(c, modelo));
+            }
 
             coluna.Item().PaddingTop(20).Element(c => Assinaturas(c, modelo));
         });
+    }
+
+    // Foto da turma (evidência do treinamento em grupo, ver SessaoTreinamento) + QR de verificação
+    // pública do certificado — item 6 da proposta do usuário (04/09). Layout lado a lado quando os
+    // dois existem; cada bloco só aparece se o dado correspondente estiver disponível.
+    private static void EvidenciaEVerificacao(IContainer container, CertificadoTreinamentoPdfModelo modelo)
+    {
+        container.Row(linha =>
+        {
+            if (modelo.FotoTurma is not null)
+            {
+                linha.RelativeItem().Column(bloco =>
+                {
+                    bloco.Item().AlignCenter().Text("Evidência da turma").FontSize(8).SemiBold().FontColor(Colors.Grey.Darken2);
+                    bloco.Item().PaddingTop(4).AlignCenter().Height(150).Width(220)
+                        .Border(1).BorderColor(Colors.Grey.Lighten2)
+                        .Image(RecortarFotoTurma(modelo.FotoTurma)).FitArea();
+                });
+            }
+
+            if (modelo.FotoTurma is not null && modelo.QrCodeValidacaoPng is not null)
+            {
+                linha.ConstantItem(24);
+            }
+
+            if (modelo.QrCodeValidacaoPng is not null)
+            {
+                linha.ConstantItem(110).Column(bloco =>
+                {
+                    bloco.Item().AlignCenter().Text("Verificação").FontSize(8).SemiBold().FontColor(Colors.Grey.Darken2);
+                    bloco.Item().PaddingTop(4).AlignCenter().Height(90).Width(90).Image(modelo.QrCodeValidacaoPng).FitArea();
+                });
+            }
+        });
+    }
+
+    private static byte[] RecortarFotoTurma(byte[] foto)
+    {
+        using var imagem = SixLabors.ImageSharp.Image.Load(foto);
+        imagem.Mutate(x => x.Resize(new ResizeOptions
+        {
+            Size = new SixLabors.ImageSharp.Size(440, 300),
+            Mode = ResizeMode.Crop,
+        }));
+
+        using var saida = new MemoryStream();
+        imagem.Save(saida, new JpegEncoder { Quality = 85 });
+        return saida.ToArray();
     }
 
     private static void DescricaoCarga(IContainer container, CertificadoTreinamentoPdfModelo modelo)
@@ -229,7 +299,14 @@ public class CertificadoTreinamentoPdfService : ICertificadoTreinamentoPdfServic
                 {
                     bloco.Item().PaddingBottom(2).LineHorizontal(1).LineColor(CorTexto);
                     bloco.Item().AlignCenter().Text(modelo.InstituicaoInstrutor ?? "Instrutor responsável").FontSize(9).SemiBold();
-                    bloco.Item().AlignCenter().Text("Instrutor").FontSize(8).Italic();
+                    // O instrutor é sempre o Técnico de Segurança do Trabalho responsável, que também
+                    // assina como Responsável Técnico — uma assinatura só, não três (pedido do
+                    // usuário, 06/09).
+                    bloco.Item().AlignCenter().Text("Técnico de Segurança do Trabalho — Instrutor/Resp. Técnico").FontSize(8).Italic();
+                    if (!string.IsNullOrWhiteSpace(modelo.InstrutorRegistroProfissional))
+                    {
+                        bloco.Item().AlignCenter().Text($"Registro: {modelo.InstrutorRegistroProfissional}").FontSize(7.5f).FontColor(Colors.Grey.Darken2);
+                    }
                 });
 
                 linha.ConstantItem(24);

@@ -8,9 +8,10 @@ import {
   PageHeader,
   DataTable,
   FeedbackInline,
-  PainelLateral,
+  PainelCriacaoInline,
   FormSection,
   FormGrid,
+  FormRodape,
   Campo,
   useConfirmar,
   type Coluna,
@@ -22,9 +23,9 @@ import { useSucessoToast } from '../../hooks/useSucessoToast';
 // Catálogo de temas livres de DDS (ex.: "Outubro Amarelo") — administração própria, separada da
 // tela de conduzir o DDS do dia (DdsSemanalDetalhePage só lista/seleciona um tema já cadastrado).
 // Onda 2 (Task 14): conversões 1 (Table → DataTable), 4 (erro → FeedbackInline), 6
-// (useConfirmarExclusao → useConfirmar). O formulário de criação/edição saía empurrando a tabela
-// para baixo (mesmo padrão do Guia §2) — mesmo julgamento já aplicado em FuncoesTab.tsx/AprsTab.tsx:
-// sai para um PainelLateral aberto pelo "+ Novo tema", com a lista sempre visível atrás.
+// (useConfirmarExclusao → useConfirmar). Migrado para o padrão PainelCriacaoInline (spec
+// 2026-09-11): o PainelLateral (drawer) saiu — agora o formulário de criação/edição cresce acima
+// da lista, sem cobrir a tela com uma gaveta.
 export function CatalogoTemasDdsPage() {
   const [temas, setTemas] = useState<CatalogoTemaDds[]>([]);
   const [nome, setNome] = useState('');
@@ -125,13 +126,19 @@ export function CatalogoTemasDdsPage() {
   ];
 
   return (
-    <div>
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
       {dialogElement}
       <PageHeader
         titulo="Temas de DDS"
         acoes={
-          <Button appearance="primary" icon={<Add24Regular />} onClick={iniciarCriacao}>
-            Novo tema
+          <Button
+            appearance="primary"
+            icon={<Add24Regular />}
+            onClick={() => (painelAberto ? fecharPainel() : iniciarCriacao())}
+            aria-expanded={painelAberto}
+            aria-controls="painel-novo-tema-dds"
+          >
+            {painelAberto ? 'Fechar' : 'Novo tema'}
           </Button>
         }
       />
@@ -141,6 +148,42 @@ export function CatalogoTemasDdsPage() {
           {erro}
         </FeedbackInline>
       )}
+
+      <div id="painel-novo-tema-dds">
+        <PainelCriacaoInline aberto={painelAberto} titulo={editandoId ? 'Editar tema' : 'Novo tema de DDS'}>
+          <FormSection titulo="Dados do tema" numero={1} primeira>
+            {erroPainel && (
+              <FeedbackInline tom="erro" aoFechar={() => setErroPainel(null)}>
+                {erroPainel}
+              </FeedbackInline>
+            )}
+            <FormGrid>
+              <Campo span={6}>
+                <Field label="Nome" required>
+                  <Input value={nome} onChange={(_, d) => setNome(d.value)} />
+                </Field>
+              </Campo>
+              <Campo span={12}>
+                <Field label="Descrição">
+                  <Textarea
+                    value={descricao}
+                    onChange={(_, d) => setDescricao(d.value)}
+                    resize="vertical"
+                    rows={10}
+                    style={{ width: '100%' }}
+                  />
+                </Field>
+              </Campo>
+            </FormGrid>
+            <FormRodape>
+              <Button onClick={fecharPainel}>Cancelar</Button>
+              <Button appearance="primary" onClick={salvar} disabled={carregando}>
+                {editandoId ? 'Salvar alterações' : 'Criar tema'}
+              </Button>
+            </FormRodape>
+          </FormSection>
+        </PainelCriacaoInline>
+      </div>
 
       <Card densidade="compacta">
         <DataTable
@@ -161,47 +204,6 @@ export function CatalogoTemasDdsPage() {
           )}
         />
       </Card>
-
-      <PainelLateral
-        aberto={painelAberto}
-        aoFechar={fecharPainel}
-        titulo={editandoId ? 'Editar tema' : 'Novo tema de DDS'}
-        rodape={
-          <>
-            <Button onClick={fecharPainel}>Cancelar</Button>
-            <Button appearance="primary" onClick={salvar} disabled={carregando}>
-              {editandoId ? 'Salvar alterações' : 'Criar tema'}
-            </Button>
-          </>
-        }
-      >
-        {erroPainel && (
-          <FeedbackInline tom="erro" aoFechar={() => setErroPainel(null)}>
-            {erroPainel}
-          </FeedbackInline>
-        )}
-
-        <FormSection titulo="Dados do tema" numero={1} primeira>
-          <FormGrid>
-            <Campo span={6}>
-              <Field label="Nome" required>
-                <Input value={nome} onChange={(_, d) => setNome(d.value)} />
-              </Field>
-            </Campo>
-            <Campo span={12}>
-              <Field label="Descrição">
-                <Textarea
-                  value={descricao}
-                  onChange={(_, d) => setDescricao(d.value)}
-                  resize="vertical"
-                  rows={10}
-                  style={{ width: '100%' }}
-                />
-              </Field>
-            </Campo>
-          </FormGrid>
-        </FormSection>
-      </PainelLateral>
     </div>
   );
 }

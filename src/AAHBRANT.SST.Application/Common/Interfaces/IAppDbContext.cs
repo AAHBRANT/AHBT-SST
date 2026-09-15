@@ -27,11 +27,24 @@ public interface IAppDbContext
     DbSet<CursoTreinamento> CursosTreinamento { get; }
     DbSet<Treinamento> Treinamentos { get; }
     DbSet<MatrizTreinamentoFuncao> MatrizTreinamentoFuncoes { get; }
+    DbSet<SessaoTreinamento> SessoesTreinamento { get; }
+    DbSet<ParticipanteSessaoTreinamento> ParticipantesSessaoTreinamento { get; }
+    DbSet<FotoEvidenciaSessaoTreinamento> FotosEvidenciaSessaoTreinamento { get; }
     DbSet<CatalogoEpi> CatalogoEpis { get; }
     DbSet<EntregaEpi> EntregasEpi { get; }
     DbSet<MatrizEpiFuncao> MatrizEpiFuncoes { get; }
     DbSet<EstoqueEpi> EstoquesEpi { get; }
     DbSet<MovimentacaoEstoqueEpi> MovimentacoesEstoqueEpi { get; }
+    DbSet<CatalogoEpc> CatalogoEpcs { get; }
+    DbSet<InstalacaoEpc> InstalacoesEpc { get; }
+    DbSet<EstoqueEpc> EstoquesEpc { get; }
+    DbSet<MovimentacaoEstoqueEpc> MovimentacoesEstoqueEpc { get; }
+    DbSet<CatalogoUniforme> CatalogoUniformes { get; }
+    DbSet<EstoqueUniforme> EstoquesUniforme { get; }
+    DbSet<MovimentacaoEstoqueUniforme> MovimentacoesEstoqueUniforme { get; }
+    DbSet<MatrizUniformeFuncao> MatrizUniformeFuncoes { get; }
+    DbSet<TrabalhadorTamanhoUniforme> TrabalhadorTamanhosUniforme { get; }
+    DbSet<EntregaUniforme> EntregasUniforme { get; }
     DbSet<Alerta> Alertas { get; }
     DbSet<AlertaHistoricoEnvio> AlertaHistoricoEnvios { get; }
     DbSet<RegraAlerta> RegrasAlerta { get; }
@@ -79,7 +92,6 @@ public interface IAppDbContext
     DbSet<DdsAtividade> DdsAtividades { get; }
     DbSet<DdsItemChecklist> DdsItensChecklist { get; }
     DbSet<DdsParticipante> DdsParticipantes { get; }
-    DbSet<DdsTelegramEnvio> DdsTelegramEnvios { get; }
     DbSet<DdsSemanal> DdsSemanais { get; }
     DbSet<CatalogoTemaDds> CatalogosTemaDds { get; }
     DbSet<DdsFotoEvidencia> DdsFotosEvidencia { get; }
@@ -115,5 +127,15 @@ public interface IAppDbContext
     DbSet<EventoSipat> EventosSipat { get; }
     DbSet<AtividadeSipat> AtividadesSipat { get; }
 
+    DbSet<MaterialApoio> MateriaisApoio { get; }
+
+    DbSet<ContadorDocumento> ContadoresDocumento { get; }
+
     Task<int> SaveChangesAsync(CancellationToken cancellationToken = default);
+
+    // Descarta entidades rastreadas que não foram salvas (ex.: após uma falha de SaveChangesAsync) —
+    // usado por lotes que reusam o mesmo contexto entre itens independentes (ImportarColaboradoresGrhCommand),
+    // onde uma entidade que falhou ao salvar ficaria presa no rastreamento e derrubaria toda tentativa
+    // seguinte no mesmo lote.
+    void DescartarAlteracoesPendentes();
 }

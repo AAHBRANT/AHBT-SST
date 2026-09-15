@@ -1,4 +1,5 @@
 using System.Security.Claims;
+using AAHBRANT.SST.Api.Autorizacao;
 using AAHBRANT.SST.Application.Common.Interfaces;
 using Microsoft.EntityFrameworkCore;
 
@@ -28,6 +29,15 @@ public class EscopoPorObraMiddleware
     {
         var autenticacaoEntraIdHabilitada = !string.IsNullOrWhiteSpace(configuracao["AzureAd:TenantId"]);
         if (!autenticacaoEntraIdHabilitada)
+        {
+            usuarioAtual.DefinirEscopo(temAcessoGlobal: true, Array.Empty<Guid>());
+            await _proximo(contexto);
+            return;
+        }
+
+        // Integração G-RH (10/09) — token client-credentials com App Role reconhecida (ver
+        // AppRolesReconhecidas): acesso global, sem usuário humano vinculado em UsuariosPerfilObra.
+        if (AppRolesReconhecidas.TemAcessoGlobal(contexto.User))
         {
             usuarioAtual.DefinirEscopo(temAcessoGlobal: true, Array.Empty<Guid>());
             await _proximo(contexto);

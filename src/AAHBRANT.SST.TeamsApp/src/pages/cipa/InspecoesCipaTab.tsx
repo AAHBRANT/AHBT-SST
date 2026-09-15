@@ -8,9 +8,11 @@ import {
   Field,
   FeedbackInline,
   FormGrid,
+  FormRodape,
+  FormSection,
   Input,
   PageHeader,
-  PainelLateral,
+  PainelCriacaoInline,
   Select,
   StatusChip,
   Textarea,
@@ -36,9 +38,10 @@ function vazio(): NovaInspecaoCipa {
 // Integração com PGR/GRO: este sistema NÃO envia alertas automáticos ao inventário de riscos do
 // GRO. O botão "Gerar Não Conformidade" cria manualmente uma Não Conformidade (mesmo mecanismo de
 // NaoConformidadesTab.tsx) a partir do risco identificado na inspeção — ver disclosure em Cipa.cs.
-// Camada ui/ (Onda 2, Task 4): formulário de registro saiu de cima da tabela para um PainelLateral
-// (Guia §2); o mini-formulário de "gerar NC" fica como Card contextual acima da lista, por ser
-// disparado por linha e de vida curta (não é o formulário principal da tela).
+// Migração para PainelCriacaoInline (mesmo padrão de AtividadesTab.tsx/InspecoesTab.tsx): o
+// PainelLateral (drawer) do formulário de registro saiu — agora é um PainelCriacaoInline, que
+// cresce acima da lista. O mini-formulário de "gerar NC" continua como Card contextual acima da
+// lista, por ser disparado por linha e de vida curta (não é o formulário principal da tela).
 export function InspecoesCipaTab() {
   const [lista, setLista] = useState<InspecaoCipa[]>([]);
   const [obras, setObras] = useState<Obra[]>([]);
@@ -151,13 +154,19 @@ export function InspecoesCipaTab() {
   ];
 
   return (
-    <div>
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
       {dialogElement}
       <PageHeader
         titulo="Inspeções CIPA"
         acoes={
-          <Button appearance="primary" icon={<Add24Regular />} onClick={() => setPainelAberto(true)}>
-            Registrar inspeção
+          <Button
+            appearance="primary"
+            icon={<Add24Regular />}
+            onClick={() => (painelAberto ? fecharPainel() : setPainelAberto(true))}
+            aria-expanded={painelAberto}
+            aria-controls="painel-nova-inspecao-cipa"
+          >
+            {painelAberto ? 'Fechar' : 'Registrar inspeção'}
           </Button>
         }
       />
@@ -166,6 +175,84 @@ export function InspecoesCipaTab() {
           {erro}
         </FeedbackInline>
       )}
+
+      <div id="painel-nova-inspecao-cipa">
+        <PainelCriacaoInline aberto={painelAberto} titulo="Nova inspeção">
+          <FormSection titulo="Dados da inspeção" numero={1} primeira>
+            {erroPainel && (
+              <FeedbackInline tom="erro" aoFechar={() => setErroPainel(null)}>
+                {erroPainel}
+              </FeedbackInline>
+            )}
+            <FormGrid>
+              <Campo span={3}>
+                <Field label="Obra" required>
+                  <Select value={novo.obraId} onChange={(_, d) => trocarObra(d.value)}>
+                    <option value="">Selecione</option>
+                    {obras.map((obra) => (
+                      <option key={obra.id} value={obra.id}>
+                        {obra.nome}
+                      </option>
+                    ))}
+                  </Select>
+                </Field>
+              </Campo>
+              <Campo span={3}>
+                <Field label="Membro que inspecionou">
+                  <Select
+                    value={novo.membroCipaId ?? ''}
+                    onChange={(_, d) => setNovo({ ...novo, membroCipaId: d.value || null })}
+                    disabled={!novo.obraId}
+                  >
+                    <option value="">Não informado</option>
+                    {membros.map((m) => (
+                      <option key={m.id} value={m.id}>
+                        {m.trabalhadorNome}
+                      </option>
+                    ))}
+                  </Select>
+                </Field>
+              </Campo>
+              <Campo span={2}>
+                <Field label="Data" required>
+                  <CampoData value={novo.data} onChange={(_, d) => setNovo({ ...novo, data: d.value })} />
+                </Field>
+              </Campo>
+              <Campo span={4}>
+                <Field label="Local" required>
+                  <Input value={novo.local} onChange={(_, d) => setNovo({ ...novo, local: d.value })} />
+                </Field>
+              </Campo>
+              <Campo span={3}>
+                <Field label="Grau de risco">
+                  <Select
+                    value={novo.grauRisco != null ? String(novo.grauRisco) : ''}
+                    onChange={(_, d) => setNovo({ ...novo, grauRisco: d.value ? Number(d.value) : null })}
+                  >
+                    <option value="">Não informado</option>
+                    {Object.entries(nivelRiscoLabel).map(([valor, rotulo]) => (
+                      <option key={valor} value={valor}>
+                        {rotulo}
+                      </option>
+                    ))}
+                  </Select>
+                </Field>
+              </Campo>
+              <Campo span={12}>
+                <Field label="Risco identificado" required>
+                  <Textarea value={novo.riscoIdentificado} onChange={(_, d) => setNovo({ ...novo, riscoIdentificado: d.value })} />
+                </Field>
+              </Campo>
+            </FormGrid>
+            <FormRodape>
+              <Button onClick={fecharPainel}>Cancelar</Button>
+              <Button appearance="primary" onClick={criar} disabled={carregando}>
+                Registrar inspeção
+              </Button>
+            </FormRodape>
+          </FormSection>
+        </PainelCriacaoInline>
+      </div>
 
       {gerandoNcPara && (
         <div style={{ marginBottom: 16 }}>
@@ -231,86 +318,6 @@ export function InspecoesCipaTab() {
           )}
         />
       </Card>
-
-      <PainelLateral
-        aberto={painelAberto}
-        aoFechar={fecharPainel}
-        titulo="Nova inspeção"
-        rodape={
-          <>
-            <Button onClick={fecharPainel}>Cancelar</Button>
-            <Button appearance="primary" onClick={criar} disabled={carregando}>
-              Registrar inspeção
-            </Button>
-          </>
-        }
-      >
-        {erroPainel && (
-          <FeedbackInline tom="erro" aoFechar={() => setErroPainel(null)}>
-            {erroPainel}
-          </FeedbackInline>
-        )}
-        <FormGrid>
-          <Campo span={3}>
-            <Field label="Obra" required>
-              <Select value={novo.obraId} onChange={(_, d) => trocarObra(d.value)}>
-                <option value="">Selecione</option>
-                {obras.map((obra) => (
-                  <option key={obra.id} value={obra.id}>
-                    {obra.nome}
-                  </option>
-                ))}
-              </Select>
-            </Field>
-          </Campo>
-          <Campo span={3}>
-            <Field label="Membro que inspecionou">
-              <Select
-                value={novo.membroCipaId ?? ''}
-                onChange={(_, d) => setNovo({ ...novo, membroCipaId: d.value || null })}
-                disabled={!novo.obraId}
-              >
-                <option value="">Não informado</option>
-                {membros.map((m) => (
-                  <option key={m.id} value={m.id}>
-                    {m.trabalhadorNome}
-                  </option>
-                ))}
-              </Select>
-            </Field>
-          </Campo>
-          <Campo span={2}>
-            <Field label="Data" required>
-              <CampoData value={novo.data} onChange={(_, d) => setNovo({ ...novo, data: d.value })} />
-            </Field>
-          </Campo>
-          <Campo span={4}>
-            <Field label="Local" required>
-              <Input value={novo.local} onChange={(_, d) => setNovo({ ...novo, local: d.value })} />
-            </Field>
-          </Campo>
-          <Campo span={3}>
-            <Field label="Grau de risco">
-              <Select
-                value={novo.grauRisco != null ? String(novo.grauRisco) : ''}
-                onChange={(_, d) => setNovo({ ...novo, grauRisco: d.value ? Number(d.value) : null })}
-              >
-                <option value="">Não informado</option>
-                {Object.entries(nivelRiscoLabel).map(([valor, rotulo]) => (
-                  <option key={valor} value={valor}>
-                    {rotulo}
-                  </option>
-                ))}
-              </Select>
-            </Field>
-          </Campo>
-          <Campo span={12}>
-            <Field label="Risco identificado" required>
-              <Textarea value={novo.riscoIdentificado} onChange={(_, d) => setNovo({ ...novo, riscoIdentificado: d.value })} />
-            </Field>
-          </Campo>
-        </FormGrid>
-      </PainelLateral>
     </div>
   );
 }

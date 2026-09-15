@@ -5,7 +5,8 @@ using Microsoft.EntityFrameworkCore;
 
 namespace AAHBRANT.SST.Application.NaoConformidades.Queries;
 
-public record ListarNaoConformidadesQuery(StatusNaoConformidade? Status) : IRequest<List<NaoConformidadeDto>>;
+public record ListarNaoConformidadesQuery(StatusNaoConformidade? Status, Guid? ObraId = null)
+    : IRequest<List<NaoConformidadeDto>>;
 
 public class ListarNaoConformidadesQueryHandler
     : IRequestHandler<ListarNaoConformidadesQuery, List<NaoConformidadeDto>>
@@ -16,10 +17,16 @@ public class ListarNaoConformidadesQueryHandler
 
     public async Task<List<NaoConformidadeDto>> Handle(ListarNaoConformidadesQuery request, CancellationToken ct)
     {
-        var query = _db.NaoConformidades.AsQueryable();
+        var query = _db.NaoConformidades.AsNoTracking().AsQueryable();
 
         if (request.Status.HasValue)
             query = query.Where(n => n.Status == request.Status.Value);
+
+        // NC não tem ObraId direto, só via Atividade (nullable) — mesmo critério já usado pelo
+        // Dashboard no filtro client-side (naoConformidade.atividadeId ? ... : false): NC sem
+        // atividade vinculada fica de fora quando uma obra é selecionada.
+        if (request.ObraId.HasValue)
+            query = query.Where(n => n.AtividadeId != null && n.Atividade != null && n.Atividade.ObraId == request.ObraId.Value);
 
         return await query
             .Include(n => n.Atividade)

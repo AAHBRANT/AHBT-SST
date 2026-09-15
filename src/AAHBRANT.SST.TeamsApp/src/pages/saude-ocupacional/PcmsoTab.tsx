@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+﻿import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   Button,
@@ -40,7 +40,6 @@ function pcmsoVazio(): NovoPcmso {
     responsavelUsuarioId: '',
     obraId: '',
     setorId: '',
-    arquivo: '',
     medicoResponsavelNome: '',
     medicoResponsavelCrm: '',
     funcoesContempladas: '',
@@ -133,6 +132,7 @@ export function PcmsoTab() {
   }
 
   const colunas: Coluna<Pcmso>[] = [
+    { chave: 'numeroDocumento', rotulo: 'Nº do documento', render: (p) => p.numeroDocumento ?? '-' },
     { chave: 'nome', rotulo: 'Nome' },
     { chave: 'obra', rotulo: 'Obra', render: (p) => nomeObra(p.obraId) },
     { chave: 'emissao', rotulo: 'Emissão', render: (p) => p.dataEmissao?.slice(0, 10) ?? '' },

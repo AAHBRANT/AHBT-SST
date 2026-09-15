@@ -35,12 +35,12 @@ public class ObterDdsDetalheQueryHandler : IRequestHandler<ObterDdsDetalheQuery,
             .OrderBy(f => f.Ordem)
             .ToListAsync(ct);
 
-        // Envio mais recente por trabalhador (reenvios substituem o status anterior na tela).
-        var enviosPorTrabalhador = await _db.DdsTelegramEnvios
-            .Where(e => e.DdsId == dds.Id && e.Ativo)
-            .GroupBy(e => e.TrabalhadorId)
-            .Select(g => g.OrderByDescending(e => e.EnviadoEm).First())
-            .ToDictionaryAsync(e => e.TrabalhadorId, ct);
+        // Assinatura por trabalhador (04/09) — a presença biométrica já vale como assinatura (ver
+        // RegistrarParticipanteCommand); busca aqui só pra exibir na lista de presença, sem duplicar
+        // a lógica de quem pode assinar (isso continua no Motor de Assinatura).
+        var assinadosEmPorTrabalhador = await _db.DocumentoSignatarios
+            .Where(s => s.DocumentoAssinatura!.EntidadeTipo == nameof(Domain.Entidades.Dds) && s.DocumentoAssinatura!.EntidadeId == dds.Id)
+            .ToDictionaryAsync(s => s.TrabalhadorId, s => s.AssinadoEm, ct);
 
         dds.ItensChecklist = itens;
         dds.Participantes = participantes;
@@ -59,7 +59,7 @@ public class ObterDdsDetalheQueryHandler : IRequestHandler<ObterDdsDetalheQuery,
             }).ToList(),
             Participantes = participantes.Select(p =>
             {
-                enviosPorTrabalhador.TryGetValue(p.TrabalhadorId, out var envio);
+                assinadosEmPorTrabalhador.TryGetValue(p.TrabalhadorId, out var assinadoEm);
                 return new DdsParticipanteDto
                 {
                     Id = p.Id,
@@ -67,8 +67,7 @@ public class ObterDdsDetalheQueryHandler : IRequestHandler<ObterDdsDetalheQuery,
                     TrabalhadorNome = p.Trabalhador?.Nome ?? string.Empty,
                     FotoTipo = p.FotoTipo,
                     ScoreConfianca = p.ScoreConfianca,
-                    TelegramEnviadoEm = envio?.EnviadoEm,
-                    TelegramConfirmadoEm = envio?.ConfirmadoEm,
+                    AssinadoEm = assinadoEm == default ? null : assinadoEm,
                 };
             }).ToList(),
             FotosEvidencia = fotosEvidencia.Select(f => new DdsFotoEvidenciaDto { Id = f.Id, Ordem = f.Ordem }).ToList(),

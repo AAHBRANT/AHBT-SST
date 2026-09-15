@@ -32,11 +32,13 @@ public class ObterCalendarioQueryHandler : IRequestHandler<ObterCalendarioQuery,
             return new CalendarioDto(false, false, null, new List<EventoGraphDto>(), new List<EventoSstDto>());
 
         var usuario = await _db.Usuarios
+            .AsNoTracking()
             .FirstOrDefaultAsync(u => u.AzureAdObjectId == request.AzureAdObjectId, ct);
         if (usuario is null)
             return new CalendarioDto(false, false, null, new List<EventoGraphDto>(), new List<EventoSstDto>());
 
         var eventosSst = await _db.Alertas
+            .AsNoTracking()
             .Where(a => a.DestinatarioUsuarioId == usuario.Id
                 && a.DataLimiteTratamento != null
                 && a.DataLimiteTratamento >= request.Inicio

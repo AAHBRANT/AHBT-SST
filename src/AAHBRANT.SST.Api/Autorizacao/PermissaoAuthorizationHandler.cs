@@ -48,6 +48,14 @@ public class PermissaoAuthorizationHandler : AuthorizationHandler<PermissaoRequi
             return;
         }
 
+        // Integração G-RH (10/09) — token client-credentials com App Role reconhecida (ver
+        // AppRolesReconhecidas), sem usuário humano por trás.
+        if (AppRolesReconhecidas.TemPermissao(context.User, requirement.Codigo))
+        {
+            context.Succeed(requirement);
+            return;
+        }
+
         // "oid" é o claim padrão do Entra ID para o Object Id do usuário no tenant; ClaimTypes.NameIdentifier
         // cobre o fallback de outros provedores de identidade compatíveis com OpenID Connect.
         var azureAdObjectId = context.User.FindFirst("oid")?.Value

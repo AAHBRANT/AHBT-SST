@@ -21,6 +21,7 @@ public class ChecklistModeloItemConfiguracao : IEntityTypeConfiguration<Checklis
     public void Configure(EntityTypeBuilder<ChecklistModeloItem> builder)
     {
         builder.Property(i => i.Descricao).IsRequired().HasMaxLength(500);
+        builder.Property(i => i.Secao).HasMaxLength(150);
         builder.HasOne(i => i.ChecklistModelo).WithMany(c => c.Itens)
             .HasForeignKey(i => i.ChecklistModeloId).OnDelete(DeleteBehavior.Cascade);
         builder.HasIndex(i => i.ChecklistModeloId);
@@ -32,6 +33,7 @@ public class InspecaoConfiguracao : IEntityTypeConfiguration<Inspecao>
 {
     public void Configure(EntityTypeBuilder<Inspecao> builder)
     {
+        builder.Property(i => i.NumeroDocumento).HasMaxLength(50);
         builder.HasOne(i => i.Obra).WithMany()
             .HasForeignKey(i => i.ObraId).OnDelete(DeleteBehavior.Restrict);
         builder.HasOne(i => i.Atividade).WithMany()

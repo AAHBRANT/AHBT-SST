@@ -274,7 +274,11 @@ export function ReuniaoCipaDetalhePage() {
             <DataTable
               aria-label="Lista de presença"
               colunas={[
-                { chave: 'nome', rotulo: 'Funcionário', render: (t: Trabalhador) => `${t.nome} (${t.matricula})` },
+                {
+                  chave: 'nome',
+                  rotulo: 'Funcionário',
+                  render: (t: Trabalhador) => (t.matricula ? `${t.nome} (${t.matricula})` : t.nome),
+                },
                 {
                   chave: 'convocado',
                   rotulo: 'Convocado',

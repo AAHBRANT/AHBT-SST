@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { ImageAdd24Regular } from '@fluentui/react-icons';
 import { api } from '../../lib/api';
-import { designTokens } from '../../theme';
+import { designTokens } from '@ui';
 
 interface FotoCatalogoEpiProps {
   catalogoEpiId: string;

@@ -1,8 +1,10 @@
+import { useEffect, useState } from 'react';
 import { FluentProvider } from '@fluentui/react-components';
 import { MotionConfig } from 'framer-motion';
 import { HashRouter, Navigate, Outlet, Route, Routes, useLocation, useParams } from 'react-router-dom';
 import { aahbrantTheme, aahbrantLightTheme } from './theme';
 import { ThemeModeProvider, useThemeMode } from './theme/ThemeModeContext';
+import { processarLoginNavegadorPendente } from './lib/browserAuth';
 import { AppShell } from './layout/AppShell';
 import { DashboardPage } from './pages/DashboardPage';
 import { GestaoSstPage } from './pages/gestao-sst/GestaoSstPage';
@@ -34,6 +36,7 @@ import { MembroCipaDetalhePage } from './pages/cipa/MembroCipaDetalhePage';
 import { ReuniaoCipaDetalhePage } from './pages/cipa/ReuniaoCipaDetalhePage';
 import { EventoSipatDetalhePage } from './pages/cipa/EventoSipatDetalhePage';
 import { AssinarTreinamentoPage } from './pages/treinamentos/AssinarTreinamentoPage';
+import { SessaoTreinamentoDetalhePage } from './pages/treinamentos/SessaoTreinamentoDetalhePage';
 import { GaleriaPage } from './ui/galeria/GaleriaPage';
 
 // Envolve as rotas internas do app com o AppShell (sidebar/header do Teams). As rotas públicas
@@ -72,11 +75,26 @@ function App() {
   );
 }
 
-// Separado de App só pra poder usar useThemeMode (o hook precisa estar dentro do Provider) e
-// escolher o tema do Fluent (claro/escuro) que o botão de dark/light mode alterna — ver
-// ThemeModeContext.tsx e o botão em AppShell.tsx.
 function AppRoteado() {
   const { modo } = useThemeMode();
+  const [loginProcessado, setLoginProcessado] = useState(() => !window.location.hash.startsWith('#code='));
+
+  useEffect(() => {
+    if (loginProcessado) {
+      return;
+    }
+
+    processarLoginNavegadorPendente().finally(() => setLoginProcessado(true));
+  }, [loginProcessado]);
+
+  if (!loginProcessado) {
+    return (
+      <FluentProvider theme={modo === 'dark' ? aahbrantTheme : aahbrantLightTheme}>
+        <div style={{ padding: 24 }}>Entrando...</div>
+      </FluentProvider>
+    );
+  }
+
   return (
     <FluentProvider theme={modo === 'dark' ? aahbrantTheme : aahbrantLightTheme}>
       {/* Com 'reduzir movimento' no SO, o framer-motion desliga animações de transform/opacity
@@ -138,6 +156,7 @@ function AppRoteado() {
               <Route path="/prevencao/pcmso" element={<Navigate to="/operacao/saude-ocupacional" replace />} />
               <Route path="/prevencao/pcmso/:id" element={<RedirecionarComId para={(id) => `/operacao/saude-ocupacional/pcmso/${id}`} />} />
               <Route path="/treinamentos" element={<RedirecionarParaPilar pilar="/gestao-sst" secao="treinamentos" />} />
+              <Route path="/treinamentos/turma/:id" element={<SessaoTreinamentoDetalhePage />} />
               <Route path="/epi" element={<RedirecionarParaPilar pilar="/operacao" secao="epi" />} />
               <Route path="/requisitos-legais" element={<RedirecionarParaPilar pilar="/gestao-sst" secao="requisitos-legais" />} />
               <Route path="/gestao-sst/documentos" element={<Navigate to="/gestao-sst?secao=documentos" replace />} />

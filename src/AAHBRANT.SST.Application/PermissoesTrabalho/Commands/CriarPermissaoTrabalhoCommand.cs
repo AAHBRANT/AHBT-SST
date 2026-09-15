@@ -12,7 +12,7 @@ namespace AAHBRANT.SST.Application.PermissoesTrabalho.Commands;
 // CriarAprCommand). Nasce já com os 6 PreRequisitos (§2) e os 15 Verificacoes (§4) do formulário —
 // todos "em branco" (Atendido=false / Resposta=null) — mesmo princípio de CriarInspecaoCommand
 // gerando uma InspecaoItemResposta em branco por item do checklist. NumeroPt não é mais informado
-// por quem cadastra (pedido do usuário, 03/09): o sistema gera sozinho, ver GeradorNumeroDocumento.
+// por quem cadastra (pedido do usuário, 03/09): o sistema gera sozinho, ver GeradorNumeroDocumentoService.
 public record CriarPermissaoTrabalhoCommand(
     Guid AtividadeId,
     string DescricaoAtividade,
@@ -41,8 +41,13 @@ public class CriarPermissaoTrabalhoCommandValidator : AbstractValidator<CriarPer
 public class CriarPermissaoTrabalhoCommandHandler : IRequestHandler<CriarPermissaoTrabalhoCommand, Guid>
 {
     private readonly IAppDbContext _db;
+    private readonly IGeradorNumeroDocumentoService _geradorNumero;
 
-    public CriarPermissaoTrabalhoCommandHandler(IAppDbContext db) => _db = db;
+    public CriarPermissaoTrabalhoCommandHandler(IAppDbContext db, IGeradorNumeroDocumentoService geradorNumero)
+    {
+        _db = db;
+        _geradorNumero = geradorNumero;
+    }
 
     public async Task<Guid> Handle(CriarPermissaoTrabalhoCommand request, CancellationToken ct)
     {
@@ -50,12 +55,9 @@ public class CriarPermissaoTrabalhoCommandHandler : IRequestHandler<CriarPermiss
         if (!atividadeExiste)
             throw new KeyNotFoundException($"Atividade {request.AtividadeId} não encontrada.");
 
-        var numeroPt = await GeradorNumeroDocumento.GerarProximoAsync(
-            _db.PermissoesTrabalho.IgnoreQueryFilters().Select(p => p.NumeroPt), "PT", DateTime.UtcNow, ct);
-
         var pt = new PermissaoTrabalho
         {
-            NumeroPt = numeroPt,
+            NumeroPt = await _geradorNumero.GerarAsync("PT", ct),
             AtividadeId = request.AtividadeId,
             DescricaoAtividade = request.DescricaoAtividade,
             Local = request.Local,

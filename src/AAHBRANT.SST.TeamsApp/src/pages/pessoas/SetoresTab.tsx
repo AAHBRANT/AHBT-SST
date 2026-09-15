@@ -6,8 +6,10 @@ import {
   Card,
   PageHeader,
   DataTable,
-  PainelLateral,
+  PainelCriacaoInline,
   FormGrid,
+  FormRodape,
+  FormSection,
   Campo,
   FeedbackInline,
   SeletorPesquisavel,
@@ -18,9 +20,10 @@ import { Add24Regular, Delete24Regular } from '@fluentui/react-icons';
 import { api, type NovoSetor, type Obra, type Setor } from '../../lib/api';
 import { useSucessoToast } from '../../hooks/useSucessoToast';
 
-// Camada ui/ (Onda 2, Task 1): formulário de criação foi para um PainelLateral (mesmo padrão do
-// piloto 1); Obra vira SeletorPesquisavel (spec §3: lista de obras é candidata a busca em vez de
-// <select>), com `opcaoVazia` preservando o prompt "Selecione a obra" que o <select> tinha.
+// Migração do formulário inline (spec 2026-09-11): o PainelLateral (drawer) saiu — mesmo padrão de
+// AtividadesTab.tsx/InspecoesTab.tsx. Agora é um PainelCriacaoInline, que cresce acima da lista até a
+// altura do próprio formulário. Obra continua como SeletorPesquisavel (spec §3: lista de obras é
+// candidata a busca em vez de <select>), com `opcaoVazia` preservando o prompt "Selecione a obra".
 export function SetoresTab() {
   const [obras, setObras] = useState<Obra[]>([]);
   const [setores, setSetores] = useState<Setor[]>([]);
@@ -94,13 +97,19 @@ export function SetoresTab() {
   ];
 
   return (
-    <div>
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
       {dialogElement}
       <PageHeader
         titulo="Setores cadastrados"
         acoes={
-          <Button appearance="primary" icon={<Add24Regular />} onClick={() => setPainelAberto(true)}>
-            Adicionar setor
+          <Button
+            appearance="primary"
+            icon={<Add24Regular />}
+            onClick={() => (painelAberto ? fecharPainel() : setPainelAberto(true))}
+            aria-expanded={painelAberto}
+            aria-controls="painel-novo-setor"
+          >
+            {painelAberto ? 'Fechar' : 'Adicionar setor'}
           </Button>
         }
       />
@@ -109,6 +118,41 @@ export function SetoresTab() {
           {erro}
         </FeedbackInline>
       )}
+      <div id="painel-novo-setor">
+        <PainelCriacaoInline aberto={painelAberto} titulo="Novo setor">
+          <FormSection titulo="Dados do setor" numero={1} primeira>
+            {erroPainel && (
+              <FeedbackInline tom="erro" aoFechar={() => setErroPainel(null)}>
+                {erroPainel}
+              </FeedbackInline>
+            )}
+            <FormGrid>
+              <Campo span={6}>
+                <Field label="Obra" required>
+                  <SeletorPesquisavel
+                    placeholder="Selecione a obra"
+                    opcaoVazia="Selecione a obra"
+                    opcoes={opcoesObras}
+                    valor={novoSetor.obraId}
+                    aoMudar={(id) => setNovoSetor({ ...novoSetor, obraId: id })}
+                  />
+                </Field>
+              </Campo>
+              <Campo span={6}>
+                <Field label="Nome do setor">
+                  <Input value={novoSetor.nome} onChange={(_, d) => setNovoSetor({ ...novoSetor, nome: d.value })} />
+                </Field>
+              </Campo>
+            </FormGrid>
+            <FormRodape>
+              <Button onClick={fecharPainel}>Cancelar</Button>
+              <Button appearance="primary" onClick={criar} disabled={carregando}>
+                Adicionar setor
+              </Button>
+            </FormRodape>
+          </FormSection>
+        </PainelCriacaoInline>
+      </div>
       <Card>
         <DataTable
           aria-label="Setores cadastrados"
@@ -125,43 +169,6 @@ export function SetoresTab() {
           )}
         />
       </Card>
-      <PainelLateral
-        aberto={painelAberto}
-        aoFechar={fecharPainel}
-        titulo="Novo setor"
-        rodape={
-          <>
-            <Button onClick={fecharPainel}>Cancelar</Button>
-            <Button appearance="primary" onClick={criar} disabled={carregando}>
-              Adicionar setor
-            </Button>
-          </>
-        }
-      >
-        {erroPainel && (
-          <FeedbackInline tom="erro" aoFechar={() => setErroPainel(null)}>
-            {erroPainel}
-          </FeedbackInline>
-        )}
-        <FormGrid>
-          <Campo span={6}>
-            <Field label="Obra" required>
-              <SeletorPesquisavel
-                placeholder="Selecione a obra"
-                opcaoVazia="Selecione a obra"
-                opcoes={opcoesObras}
-                valor={novoSetor.obraId}
-                aoMudar={(id) => setNovoSetor({ ...novoSetor, obraId: id })}
-              />
-            </Field>
-          </Campo>
-          <Campo span={6}>
-            <Field label="Nome do setor">
-              <Input value={novoSetor.nome} onChange={(_, d) => setNovoSetor({ ...novoSetor, nome: d.value })} />
-            </Field>
-          </Campo>
-        </FormGrid>
-      </PainelLateral>
     </div>
   );
 }

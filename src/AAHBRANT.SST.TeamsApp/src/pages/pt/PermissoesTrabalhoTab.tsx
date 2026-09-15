@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+﻿import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   Button,
@@ -165,7 +165,7 @@ export function PermissoesTrabalhoTab() {
       <Card titulo="Permissão de Trabalho (PT)">
         <FormSection titulo="Dados Gerais" numero={1} primeira>
           <FormGrid>
-            <Campo span={5}>
+            <Campo span={3}>
               <Field label="Atividade">
                 <Select value={novaPt.atividadeId} onChange={(_, d) => setNovaPt({ ...novaPt, atividadeId: d.value })}>
                   <option value="">Selecione</option>
@@ -285,7 +285,7 @@ export function PermissoesTrabalhoTab() {
                   aria-label="Equipe executante (responsáveis)"
                   opcoes={trabalhadores.map((t) => ({ id: t.id, rotulo: t.nome }))}
                   selecionados={novaPt.responsaveisIds}
-                  aoMudar={(ids) => setNovaPt({ ...novaPt, responsaveisIds: ids })}
+                  aoMudar={(atualizar) => setNovaPt((atual) => ({ ...atual, responsaveisIds: atualizar(atual.responsaveisIds) }))}
                 />
               </Field>
             </Campo>

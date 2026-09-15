@@ -1,6 +1,6 @@
 import { motion } from 'framer-motion';
 import { Bar, BarChart, Cell, LabelList, ReferenceLine, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
-import { designTokens } from '../../../theme';
+import { designTokens } from '@ui';
 
 export interface ItemRanking {
   rotulo: string;

@@ -8,9 +8,7 @@ using Microsoft.Extensions.Hosting;
 var builder = Host.CreateApplicationBuilder(args);
 
 builder.Services.AddApplication();
-// habilitarPollingTelegram: false — a Api já roda o long polling do Telegram; ver
-// AAHBRANT.SST.Infrastructure.DependencyInjection para o motivo.
-builder.Services.AddInfrastructure(builder.Configuration, habilitarPollingTelegram: false);
+builder.Services.AddInfrastructure(builder.Configuration);
 
 builder.Services.AddHostedService<AlertaEngineWorker>();
 

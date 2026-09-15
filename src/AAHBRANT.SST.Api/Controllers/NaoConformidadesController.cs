@@ -17,8 +17,8 @@ public class NaoConformidadesController : ControllerBase
 
     [Authorize(Policy = "nc:ver")]
     [HttpGet]
-    public async Task<IActionResult> Listar([FromQuery] StatusNaoConformidade? status, CancellationToken ct)
-        => Ok(await _mediator.Send(new ListarNaoConformidadesQuery(status), ct));
+    public async Task<IActionResult> Listar([FromQuery] StatusNaoConformidade? status, [FromQuery] Guid? obraId, CancellationToken ct)
+        => Ok(await _mediator.Send(new ListarNaoConformidadesQuery(status, obraId), ct));
 
     [Authorize(Policy = "nc:ver")]
     [HttpGet("{id:guid}")]

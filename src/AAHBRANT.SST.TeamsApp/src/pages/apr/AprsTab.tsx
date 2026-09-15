@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+﻿import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   Button,
@@ -146,7 +146,7 @@ export function AprsTab() {
       <Card titulo="Análise Preliminar de Risco (APR)">
         <FormSection titulo="Dados da APR" numero={1} primeira>
           <FormGrid>
-            <Campo span={6}>
+            <Campo span={4}>
               <Field label="Atividade">
                 <Select
                   value={novaApr.atividadeId}
@@ -216,7 +216,7 @@ export function AprsTab() {
                   aria-label="Responsáveis"
                   opcoes={trabalhadores.map((t) => ({ id: t.id, rotulo: t.nome }))}
                   selecionados={novaApr.responsaveisIds}
-                  aoMudar={(ids) => setNovaApr({ ...novaApr, responsaveisIds: ids })}
+                  aoMudar={(atualizar) => setNovaApr((atual) => ({ ...atual, responsaveisIds: atualizar(atual.responsaveisIds) }))}
                 />
               </Field>
             </Campo>

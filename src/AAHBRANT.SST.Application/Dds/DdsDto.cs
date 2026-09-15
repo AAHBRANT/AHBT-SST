@@ -34,6 +34,8 @@ public class DdsDto
     public int ItensVerificados { get; set; }
     public int TotalParticipantes { get; set; }
     public int TotalFotosEvidencia { get; set; }
+    public bool SemExpediente { get; set; }
+    public string? MotivoSemExpediente { get; set; }
 }
 
 public class DdsItemChecklistDto
@@ -52,8 +54,10 @@ public class DdsParticipanteDto
     public string TrabalhadorNome { get; set; } = string.Empty;
     public TipoFotoParticipante FotoTipo { get; set; }
     public double? ScoreConfianca { get; set; }
-    public DateTime? TelegramEnviadoEm { get; set; }
-    public DateTime? TelegramConfirmadoEm { get; set; }
+    // Preenchido quando a presença já valeu como assinatura eletrônica deste DDS (04/09) — a mesma
+    // digital da presença é reaproveitada pelo Motor de Assinatura (ver RegistrarParticipanteCommand),
+    // sem exigir uma segunda leitura na tela "Assinar DDS".
+    public DateTime? AssinadoEm { get; set; }
 }
 
 public class DdsFotoEvidenciaDto

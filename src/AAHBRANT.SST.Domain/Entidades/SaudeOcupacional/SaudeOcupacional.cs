@@ -45,6 +45,9 @@ public class AptidaoAtividadeEspecifica : AuditableEntity
 // mesmo padrão já usado por Pgr (Domain/Entidades/Pgr/Pgr.cs), que nunca dependeu de DocumentoGestao.
 public class PcmsoDetalhe : AuditableEntity
 {
+    // Gerado automaticamente na criação (GeradorNumeroDocumentoService, prefixo "PCMSO") — Nome
+    // continua sendo digitado à mão, é o título descritivo do documento (ex.: "PCMSO Obra X 2026").
+    public string? NumeroDocumento { get; set; }
     public string Nome { get; set; } = string.Empty;
     public string? Versao { get; set; }
     public DateTime? Validade { get; set; }
@@ -61,7 +64,11 @@ public class PcmsoDetalhe : AuditableEntity
     public Guid? SetorId { get; set; }
     public Setor? Setor { get; set; }
 
-    public string? Arquivo { get; set; }
+    // Documento PDF original do PCMSO (consulta na aba "PCMSO" da tela de detalhe) — binário direto
+    // na linha, mesmo padrão já usado por Trabalhador.FotoConteudo/FotoContentType. Substitui o campo
+    // Arquivo (string), que nunca chegou a ser ligado a nenhuma tela/upload real.
+    public byte[]? DocumentoConteudo { get; set; }
+    public string? DocumentoContentType { get; set; }
     public StatusPcmsoDocumento Status { get; set; } = StatusPcmsoDocumento.Rascunho;
 
     public string? MedicoResponsavelNome { get; set; }

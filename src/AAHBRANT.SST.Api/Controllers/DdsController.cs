@@ -35,6 +35,14 @@ public class DdsController : ControllerBase
         return CreatedAtAction(nameof(ObterDetalhe), new { id }, new { id });
     }
 
+    [Authorize(Policy = "dds:criar")]
+    [HttpPost("sem-expediente")]
+    public async Task<IActionResult> RegistrarSemExpediente(RegistrarDiaSemExpedienteCommand command, CancellationToken ct)
+    {
+        var id = await _mediator.Send(command, ct);
+        return CreatedAtAction(nameof(ObterDetalhe), new { id }, new { id });
+    }
+
     [Authorize(Policy = "dds:conduzir")]
     [HttpPost("itens/{itemId:guid}/marcar")]
     public async Task<IActionResult> MarcarItem(Guid itemId, MarcarItemChecklistRequestBody body, CancellationToken ct)
@@ -79,7 +87,7 @@ public class DdsController : ControllerBase
         await using var stream = new MemoryStream();
         await body.Foto.CopyToAsync(stream, ct);
 
-        var fotoId = await _mediator.Send(new AnexarFotoEvidenciaDdsCommand(id, stream.ToArray(), body.Foto.ContentType), ct);
+        var fotoId = await _mediator.Send(new AnexarFotoEvidenciaDdsCommand(id, body.Ordem, stream.ToArray(), body.Foto.ContentType), ct);
         return Ok(new { id = fotoId });
     }
 
@@ -91,6 +99,14 @@ public class DdsController : ControllerBase
         return foto is null ? NotFound() : File(foto.Conteudo, foto.ContentType, foto.NomeArquivo);
     }
 
+    [Authorize(Policy = "dds:conduzir")]
+    [HttpDelete("fotos-evidencia/{fotoId:guid}")]
+    public async Task<IActionResult> RemoverFotoEvidencia(Guid fotoId, CancellationToken ct)
+    {
+        await _mediator.Send(new RemoverFotoEvidenciaDdsCommand(fotoId), ct);
+        return NoContent();
+    }
+
     [Authorize(Policy = "dds:exportar")]
     [HttpGet("{id:guid}/pdf")]
     public async Task<IActionResult> ExportarPdf(Guid id, CancellationToken ct)
@@ -98,11 +114,6 @@ public class DdsController : ControllerBase
         var pdf = await _mediator.Send(new ExportarDdsPdfQuery(id), ct);
         return pdf is null ? NotFound() : File(pdf, "application/pdf", $"dds-{id}.pdf");
     }
-
-    [Authorize(Policy = "dds:exportar")]
-    [HttpPost("{id:guid}/telegram/enviar")]
-    public async Task<IActionResult> EnviarTelegram(Guid id, CancellationToken ct)
-        => Ok(await _mediator.Send(new EnviarDdsTelegramCommand(id), ct));
 }
 
 public record MarcarItemChecklistRequestBody(bool Verificado);
@@ -118,4 +129,5 @@ public class RegistrarParticipanteRequestBody
 public class AnexarFotoEvidenciaDdsRequestBody
 {
     public IFormFile Foto { get; set; } = null!;
+    public int Ordem { get; set; }
 }

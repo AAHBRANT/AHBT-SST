@@ -9,8 +9,10 @@ import {
   Field,
   FeedbackInline,
   FormGrid,
+  FormRodape,
+  FormSection,
   PageHeader,
-  PainelLateral,
+  PainelCriacaoInline,
   Select,
   StatusChip,
   Textarea,
@@ -39,8 +41,11 @@ function vazio(): NovaReuniaoCipa {
 // como próximo passo, realizada como pendência de ata, ata registrada como concluído).
 const tomPorStatus: Record<number, Tom> = { 1: 'info', 2: 'atencao', 3: 'ok' };
 
-// Camada ui/ (Onda 2, Task 4): formulário de agendamento saiu para PainelLateral (Guia §2); a linha
-// inteira já navega para o detalhe, então o botão "ver" redundante saiu (Guia §1).
+// Migração para PainelCriacaoInline (mesmo padrão de AtividadesTab.tsx/InspecoesTab.tsx): o
+// PainelLateral (drawer) de agendamento saiu — agora o formulário cresce acima da lista. O
+// subtítulo de disclosure (lista de presença/deliberações/plano de ação no detalhe) virou texto de
+// ajuda no rodapé do formulário (FormRodape info). A linha inteira já navega para o detalhe, então
+// o botão "ver" redundante não existe (Guia §1).
 export function ReunioesCipaTab() {
   const navigate = useNavigate();
   const [lista, setLista] = useState<ReuniaoCipa[]>([]);
@@ -124,13 +129,19 @@ export function ReunioesCipaTab() {
   ];
 
   return (
-    <div>
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
       {dialogElement}
       <PageHeader
         titulo="Reuniões CIPA"
         acoes={
-          <Button appearance="primary" icon={<Add24Regular />} onClick={() => setPainelAberto(true)}>
-            Agendar reunião
+          <Button
+            appearance="primary"
+            icon={<Add24Regular />}
+            onClick={() => (painelAberto ? fecharPainel() : setPainelAberto(true))}
+            aria-expanded={painelAberto}
+            aria-controls="painel-nova-reuniao-cipa"
+          >
+            {painelAberto ? 'Fechar' : 'Agendar reunião'}
           </Button>
         }
       />
@@ -139,6 +150,58 @@ export function ReunioesCipaTab() {
           {erro}
         </FeedbackInline>
       )}
+      <div id="painel-nova-reuniao-cipa">
+        <PainelCriacaoInline aberto={painelAberto} titulo="Agendar reunião">
+          <FormSection titulo="Dados da reunião" numero={1} primeira>
+            {erroPainel && (
+              <FeedbackInline tom="erro" aoFechar={() => setErroPainel(null)}>
+                {erroPainel}
+              </FeedbackInline>
+            )}
+            <FormGrid>
+              <Campo span={4}>
+                <Field label="Obra" required>
+                  <Select value={novo.obraId} onChange={(_, d) => setNovo({ ...novo, obraId: d.value })}>
+                    <option value="">Selecione</option>
+                    {obras.map((obra) => (
+                      <option key={obra.id} value={obra.id}>
+                        {obra.nome}
+                      </option>
+                    ))}
+                  </Select>
+                </Field>
+              </Campo>
+              <Campo span={3}>
+                <Field label="Tipo">
+                  <Select value={String(novo.tipo)} onChange={(_, d) => setNovo({ ...novo, tipo: Number(d.value) })}>
+                    {Object.entries(tipoReuniaoCipaLabel).map(([valor, rotulo]) => (
+                      <option key={valor} value={valor}>
+                        {rotulo}
+                      </option>
+                    ))}
+                  </Select>
+                </Field>
+              </Campo>
+              <Campo span={3}>
+                <Field label="Data da reunião" required>
+                  <CampoData value={novo.dataReuniao} onChange={(_, d) => setNovo({ ...novo, dataReuniao: d.value })} />
+                </Field>
+              </Campo>
+              <Campo span={12}>
+                <Field label="Pauta">
+                  <Textarea value={novo.pauta ?? ''} onChange={(_, d) => setNovo({ ...novo, pauta: d.value })} />
+                </Field>
+              </Campo>
+            </FormGrid>
+            <FormRodape info="Lista de presença, deliberações e o plano de ações (matriz 5W2H) da reunião são registrados na tela de detalhe.">
+              <Button onClick={fecharPainel}>Cancelar</Button>
+              <Button appearance="primary" onClick={criar} disabled={carregando}>
+                Agendar reunião
+              </Button>
+            </FormRodape>
+          </FormSection>
+        </PainelCriacaoInline>
+      </div>
       <Card>
         <DataTable
           aria-label="Reuniões"
@@ -156,61 +219,6 @@ export function ReunioesCipaTab() {
           )}
         />
       </Card>
-      <PainelLateral
-        aberto={painelAberto}
-        aoFechar={fecharPainel}
-        titulo="Agendar reunião"
-        subtitulo="Lista de presença, deliberações e o plano de ações (matriz 5W2H) da reunião são registrados na tela de detalhe."
-        rodape={
-          <>
-            <Button onClick={fecharPainel}>Cancelar</Button>
-            <Button appearance="primary" onClick={criar} disabled={carregando}>
-              Agendar reunião
-            </Button>
-          </>
-        }
-      >
-        {erroPainel && (
-          <FeedbackInline tom="erro" aoFechar={() => setErroPainel(null)}>
-            {erroPainel}
-          </FeedbackInline>
-        )}
-        <FormGrid>
-          <Campo span={4}>
-            <Field label="Obra" required>
-              <Select value={novo.obraId} onChange={(_, d) => setNovo({ ...novo, obraId: d.value })}>
-                <option value="">Selecione</option>
-                {obras.map((obra) => (
-                  <option key={obra.id} value={obra.id}>
-                    {obra.nome}
-                  </option>
-                ))}
-              </Select>
-            </Field>
-          </Campo>
-          <Campo span={3}>
-            <Field label="Tipo">
-              <Select value={String(novo.tipo)} onChange={(_, d) => setNovo({ ...novo, tipo: Number(d.value) })}>
-                {Object.entries(tipoReuniaoCipaLabel).map(([valor, rotulo]) => (
-                  <option key={valor} value={valor}>
-                    {rotulo}
-                  </option>
-                ))}
-              </Select>
-            </Field>
-          </Campo>
-          <Campo span={3}>
-            <Field label="Data da reunião" required>
-              <CampoData value={novo.dataReuniao} onChange={(_, d) => setNovo({ ...novo, dataReuniao: d.value })} />
-            </Field>
-          </Campo>
-          <Campo span={12}>
-            <Field label="Pauta">
-              <Textarea value={novo.pauta ?? ''} onChange={(_, d) => setNovo({ ...novo, pauta: d.value })} />
-            </Field>
-          </Campo>
-        </FormGrid>
-      </PainelLateral>
     </div>
   );
 }

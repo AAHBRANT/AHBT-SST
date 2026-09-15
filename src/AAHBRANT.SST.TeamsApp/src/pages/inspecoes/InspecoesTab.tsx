@@ -9,15 +9,17 @@ import {
   Field,
   FeedbackInline,
   FormGrid,
+  FormRodape,
   FormSection,
   PageHeader,
-  PainelLateral,
+  PainelCriacaoInline,
   Select,
   StatusChip,
   type Coluna,
   type Tom,
 } from '@ui';
 import { Add24Regular } from '@fluentui/react-icons';
+import { hojeIso } from '../../lib/datas';
 import {
   api,
   statusInspecaoLabel,
@@ -30,13 +32,15 @@ import {
   type Usuario,
 } from '../../lib/api';
 
-const inspecaoVazia: NovaInspecao = {
-  checklistModeloId: '',
-  obraId: '',
-  atividadeId: null,
-  data: '',
-  responsavelUsuarioId: '',
-};
+function criarInspecaoVazia(): NovaInspecao {
+  return {
+    checklistModeloId: '',
+    obraId: '',
+    atividadeId: null,
+    data: hojeIso(),
+    responsavelUsuarioId: '',
+  };
+}
 
 // EmAndamento/Concluida (StatusInspecao) — mesmo julgamento do guia item 5: em andamento ainda não
 // terminou (info), concluída é o estado positivo (ok).
@@ -45,10 +49,10 @@ const tomPorStatusInspecao: Record<number, Tom> = {
   2: 'ok',
 };
 
-// Onda 2 Task 10 (camada ui/): o formulário de nova inspeção empurrava a lista pra baixo — mesmo
-// golden rule já aplicado em outras listas do mesmo template (spec §4.2), vira PainelLateral mesmo
-// sem a task marcar a conversão 2 literalmente. O botão "Ver inspeção" que só repetia a navegação da
-// linha (guia item 1) sai — a linha inteira já navega via aoClicarLinha.
+// Onda D do spec de formulário inline (2026-09-11): o PainelLateral (drawer) saiu — mesmo padrão
+// da Onda A/AtividadesTab.tsx. Agora é um PainelCriacaoInline, que cresce acima da lista só até a
+// altura do próprio formulário, em vez de cobrir a tela com uma gaveta. O botão "Ver inspeção" que
+// só repetia a navegação da linha (guia item 1) sai — a linha inteira já navega via aoClicarLinha.
 export function InspecoesTab() {
   const navigate = useNavigate();
   const [inspecoes, setInspecoes] = useState<Inspecao[]>([]);
@@ -56,7 +60,7 @@ export function InspecoesTab() {
   const [atividades, setAtividades] = useState<Atividade[]>([]);
   const [checklists, setChecklists] = useState<ChecklistModelo[]>([]);
   const [usuarios, setUsuarios] = useState<Usuario[]>([]);
-  const [novaInspecao, setNovaInspecao] = useState<NovaInspecao>(inspecaoVazia);
+  const [novaInspecao, setNovaInspecao] = useState<NovaInspecao>(() => criarInspecaoVazia());
   const [erro, setErro] = useState<string | null>(null);
   const [erroPainel, setErroPainel] = useState<string | null>(null);
   const [carregando, setCarregando] = useState(false);
@@ -94,7 +98,7 @@ export function InspecoesTab() {
   function fecharPainel() {
     setPainelAberto(false);
     setErroPainel(null);
-    setNovaInspecao(inspecaoVazia);
+    setNovaInspecao(criarInspecaoVazia());
   }
 
   async function criar() {
@@ -148,12 +152,18 @@ export function InspecoesTab() {
   ];
 
   return (
-    <div>
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
       <PageHeader
-        titulo="Execuções de inspeção"
+        titulo="Inspeções"
         acoes={
-          <Button appearance="primary" icon={<Add24Regular />} onClick={() => setPainelAberto(true)}>
-            Nova inspeção
+          <Button
+            appearance="primary"
+            icon={<Add24Regular />}
+            onClick={() => (painelAberto ? fecharPainel() : setPainelAberto(true))}
+            aria-expanded={painelAberto}
+            aria-controls="painel-nova-inspecao"
+          >
+            {painelAberto ? 'Fechar' : 'Nova inspeção'}
           </Button>
         }
       />
@@ -164,9 +174,98 @@ export function InspecoesTab() {
         </FeedbackInline>
       )}
 
+      <div id="painel-nova-inspecao">
+        <PainelCriacaoInline aberto={painelAberto} titulo="Nova inspeção">
+          <FormSection titulo="Dados da inspeção" numero={1} primeira>
+            {erroPainel && (
+              <FeedbackInline tom="erro" aoFechar={() => setErroPainel(null)}>
+                {erroPainel}
+              </FeedbackInline>
+            )}
+            <FormGrid>
+              <Campo span={12}>
+                <Field label="Checklist">
+                  <Select
+                    value={novaInspecao.checklistModeloId}
+                    onChange={(_, d) => setNovaInspecao({ ...novaInspecao, checklistModeloId: d.value })}
+                  >
+                    <option value="">Selecione</option>
+                    {checklists.map((c) => (
+                      <option key={c.id} value={c.id}>
+                        {c.nome} (v{c.versao} — {tipoInspecaoLabel[c.tipoInspecao]})
+                      </option>
+                    ))}
+                  </Select>
+                </Field>
+              </Campo>
+              <Campo span={6}>
+                <Field label="Obra">
+                  <Select
+                    value={novaInspecao.obraId}
+                    onChange={(_, d) => setNovaInspecao({ ...novaInspecao, obraId: d.value, atividadeId: null })}
+                  >
+                    <option value="">Selecione</option>
+                    {obras.map((obra) => (
+                      <option key={obra.id} value={obra.id}>
+                        {obra.nome}
+                      </option>
+                    ))}
+                  </Select>
+                </Field>
+              </Campo>
+              <Campo span={6}>
+                <Field label="Atividade (opcional)">
+                  <Select
+                    value={novaInspecao.atividadeId ?? ''}
+                    onChange={(_, d) => setNovaInspecao({ ...novaInspecao, atividadeId: d.value || null })}
+                    disabled={!novaInspecao.obraId}
+                  >
+                    <option value="">Nenhuma</option>
+                    {atividadesDaObra.map((atividade) => (
+                      <option key={atividade.id} value={atividade.id}>
+                        {atividade.nome}
+                      </option>
+                    ))}
+                  </Select>
+                </Field>
+              </Campo>
+              <Campo span={6}>
+                <Field label="Data">
+                  <CampoData
+                    value={novaInspecao.data}
+                    onChange={(_, d) => setNovaInspecao({ ...novaInspecao, data: d.value })}
+                  />
+                </Field>
+              </Campo>
+              <Campo span={6}>
+                <Field label="Responsável">
+                  <Select
+                    value={novaInspecao.responsavelUsuarioId}
+                    onChange={(_, d) => setNovaInspecao({ ...novaInspecao, responsavelUsuarioId: d.value })}
+                  >
+                    <option value="">Selecione</option>
+                    {usuarios.map((usuario) => (
+                      <option key={usuario.id} value={usuario.id}>
+                        {usuario.nome}
+                      </option>
+                    ))}
+                  </Select>
+                </Field>
+              </Campo>
+            </FormGrid>
+            <FormRodape>
+              <Button onClick={fecharPainel}>Cancelar</Button>
+              <Button appearance="primary" onClick={criar} disabled={carregando}>
+                Iniciar inspeção
+              </Button>
+            </FormRodape>
+          </FormSection>
+        </PainelCriacaoInline>
+      </div>
+
       <Card>
         <DataTable
-          aria-label="Execuções de inspeção"
+          aria-label="Inspeções"
           colunas={colunas}
           linhas={inspecoes}
           chaveLinha={(i) => i.id}
@@ -179,101 +278,6 @@ export function InspecoesTab() {
           }}
         />
       </Card>
-
-      <PainelLateral
-        aberto={painelAberto}
-        aoFechar={fecharPainel}
-        titulo="Nova inspeção"
-        largura="lg"
-        rodape={
-          <>
-            <Button onClick={fecharPainel}>Cancelar</Button>
-            <Button appearance="primary" onClick={criar} disabled={carregando}>
-              Iniciar inspeção
-            </Button>
-          </>
-        }
-      >
-        {erroPainel && (
-          <FeedbackInline tom="erro" aoFechar={() => setErroPainel(null)}>
-            {erroPainel}
-          </FeedbackInline>
-        )}
-
-        <FormSection titulo="Dados da inspeção" numero={1} primeira>
-          <FormGrid>
-            <Campo span={12}>
-              <Field label="Checklist">
-                <Select
-                  value={novaInspecao.checklistModeloId}
-                  onChange={(_, d) => setNovaInspecao({ ...novaInspecao, checklistModeloId: d.value })}
-                >
-                  <option value="">Selecione</option>
-                  {checklists.map((c) => (
-                    <option key={c.id} value={c.id}>
-                      {c.nome} (v{c.versao} — {tipoInspecaoLabel[c.tipoInspecao]})
-                    </option>
-                  ))}
-                </Select>
-              </Field>
-            </Campo>
-            <Campo span={6}>
-              <Field label="Obra">
-                <Select
-                  value={novaInspecao.obraId}
-                  onChange={(_, d) => setNovaInspecao({ ...novaInspecao, obraId: d.value, atividadeId: null })}
-                >
-                  <option value="">Selecione</option>
-                  {obras.map((obra) => (
-                    <option key={obra.id} value={obra.id}>
-                      {obra.nome}
-                    </option>
-                  ))}
-                </Select>
-              </Field>
-            </Campo>
-            <Campo span={6}>
-              <Field label="Atividade (opcional)">
-                <Select
-                  value={novaInspecao.atividadeId ?? ''}
-                  onChange={(_, d) => setNovaInspecao({ ...novaInspecao, atividadeId: d.value || null })}
-                  disabled={!novaInspecao.obraId}
-                >
-                  <option value="">Nenhuma</option>
-                  {atividadesDaObra.map((atividade) => (
-                    <option key={atividade.id} value={atividade.id}>
-                      {atividade.nome}
-                    </option>
-                  ))}
-                </Select>
-              </Field>
-            </Campo>
-            <Campo span={6}>
-              <Field label="Data">
-                <CampoData
-                  value={novaInspecao.data}
-                  onChange={(_, d) => setNovaInspecao({ ...novaInspecao, data: d.value })}
-                />
-              </Field>
-            </Campo>
-            <Campo span={6}>
-              <Field label="Responsável">
-                <Select
-                  value={novaInspecao.responsavelUsuarioId}
-                  onChange={(_, d) => setNovaInspecao({ ...novaInspecao, responsavelUsuarioId: d.value })}
-                >
-                  <option value="">Selecione</option>
-                  {usuarios.map((usuario) => (
-                    <option key={usuario.id} value={usuario.id}>
-                      {usuario.nome}
-                    </option>
-                  ))}
-                </Select>
-              </Field>
-            </Campo>
-          </FormGrid>
-        </FormSection>
-      </PainelLateral>
     </div>
   );
 }

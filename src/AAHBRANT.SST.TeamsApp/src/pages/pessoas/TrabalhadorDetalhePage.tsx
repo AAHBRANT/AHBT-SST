@@ -21,6 +21,7 @@ import { ArrowDownload24Regular, Eye24Regular, EyeOff24Regular } from '@fluentui
 import { api, tipoVinculoLabel, type PerfilCompletoTrabalhador } from '../../lib/api';
 import { formatarCpf, mascararCpf } from '../../lib/cpf';
 import { PerfilGeralTab } from './PerfilGeralTab';
+import { TamanhosUniformeSecao } from './TamanhosUniformeSecao';
 import { TreinamentosTab } from './TreinamentosTab';
 import { RiscosTab } from './RiscosTab';
 import { OcorrenciasTab } from './OcorrenciasTab';
@@ -140,7 +141,7 @@ export function TrabalhadorDetalhePage() {
         titulo={perfil?.nome ?? 'Carregando…'}
         subtitulo={
           perfil &&
-          `Matrícula ${perfil.matricula} · ${perfil.obraNome} · ${perfil.funcaoNome} · Admissão em ${perfil.dataAdmissao?.slice(0, 10)}`
+          `${perfil.matricula ? `Matrícula ${perfil.matricula} · ` : ''}${perfil.obraNome} · ${perfil.funcaoNome} · Admissão em ${perfil.dataAdmissao?.slice(0, 10)}`
         }
         status={perfil && <StatusChip tom={tomAptidao[perfil.statusAptidao] ?? 'neutro'}>{perfil.statusAptidao}</StatusChip>}
         acoes={
@@ -192,7 +193,12 @@ export function TrabalhadorDetalhePage() {
             <Abas nivel="modulo" aria-label="Seções do perfil" abas={ABAS_PERFIL} valor={aba} aoMudar={setAba} />
           </div>
 
-          {aba === 'geral' && <PerfilGeralTab perfil={perfil} />}
+          {aba === 'geral' && (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+              <PerfilGeralTab perfil={perfil} />
+              <TamanhosUniformeSecao trabalhadorId={id!} />
+            </div>
+          )}
           {aba === 'epi' && (
             <Card titulo="Frequência de trocas por EPI">
               {dadosFrequenciaEpi.length === 0 ? (
@@ -211,7 +217,7 @@ export function TrabalhadorDetalhePage() {
                   <StatusDonutChart dados={dadosAssiduidadeDds} legendaCentral="DDS realizados" />
                 )}
               </Card>
-              <TreinamentosTab trabalhadorId={id} />
+              <TreinamentosTab trabalhadorId={id} obraId={perfil.obraId} />
             </div>
           )}
           {aba === 'riscos' && <RiscosTab riscos={perfil.riscos} />}

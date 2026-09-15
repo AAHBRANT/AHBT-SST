@@ -53,6 +53,16 @@ public enum TipoVinculo
     Estagiario = 4
 }
 
+// Situação do vínculo, sincronizada do G-RH (fonte única de cadastro) — DataDemissao já cobre
+// "desligado" para fins de data, mas não distingue "afastado temporariamente" (INSS, licença),
+// que o G-RH controla via módulo de Férias & Afastamentos e o SST só precisa refletir.
+public enum SituacaoTrabalhador
+{
+    Ativo = 1,
+    Afastado = 2,
+    Desligado = 3
+}
+
 // Seção 9 da Base de Conhecimento — status de aptidão
 public enum ResultadoAso
 {
@@ -256,11 +266,15 @@ public enum TipoEntidadeVinculada
 }
 
 // NTAG.md §2 — sst_areas.type: comentário do documento lista 'WORK_AREA', 'RISK_ZONE', 'STORAGE'.
+// Alojamento (4) não está nessa lista literal — adicionado para cadastrar formalmente cada
+// alojamento de obra como uma área (endereço em DetalhesLocalizacao), pedido do usuário em
+// 2026-09-09.
 public enum TipoArea
 {
     AreaDeTrabalho = 1,
     ZonaDeRisco = 2,
-    Armazenamento = 3
+    Armazenamento = 3,
+    Alojamento = 4
 }
 
 // NTAG.md §2 — sst_areas.status: CHECK (status IN ('ACTIVE', 'INACTIVE', 'BLOCKED')).
@@ -414,6 +428,9 @@ public enum ItemEpcPt
 }
 
 // Seção 23 da Base de Conhecimento (linhas 581-595) — 13 tipos literais de inspeção.
+// Alojamento (14) não está nessa lista literal, mas é citado explicitamente como "Inspeção
+// Específica" em REFORMULAÇÃO.md §PR-SST-005 — adicionado para o checklist de estrutura de
+// alojamento (NR-18 18.5 / NR-24), pedido do usuário em 2026-09-09.
 public enum TipoInspecao
 {
     Obra = 1,
@@ -428,7 +445,8 @@ public enum TipoInspecao
     Altura = 10,
     EspacoConfinado = 11,
     Comportamental = 12,
-    Terceiros = 13
+    Terceiros = 13,
+    Alojamento = 14
 }
 
 // Seção 24 da Base de Conhecimento (linhas 605-614) — status literal de item de checklist.
@@ -556,6 +574,13 @@ public enum StatusDds
     Concluido = 2
 }
 
+// Sessão/Turma de Treinamento (04/09) — mesmo vocabulário de StatusDds.
+public enum StatusSessaoTreinamento
+{
+    EmAndamento = 1,
+    Concluida = 2
+}
+
 // Evidência de presença no DDS — a Fase 1 (2026-08-24) previa "assinatura/foto fora do escopo"
 // (ver comentário original em DdsParticipante); trazido para o escopo a pedido do usuário no mesmo
 // dia. Pessoa/DocumentoAssinado preservados só para exibir o histórico de registros anteriores a
@@ -620,17 +645,23 @@ public enum MetodoAutenticacaoAssinatura
     // Assinatura em um clique do usuário logado (ex.: entregador de EPI assinando com a própria
     // sessão) — não é um método do "cardápio" por obra (MetodoAutenticacaoObra), pois não depende
     // de hardware/kiosque: está sempre disponível para quem já está autenticado no app.
-    SessaoLogada = 5
+    SessaoLogada = 5,
+    // Reconhecimento facial via Azure Face API (docs/superpowers/specs/2026-09-04-assinatura-facial-
+    // azure-design.md) — método adicional ao Futronic, não o substitui. Diferente da Biometria (match
+    // local no dispositivo), o match aqui acontece na nuvem (Face - Identify).
+    ReconhecimentoFacial = 6
 }
 
 // [Flags] em Obra.MetodosAutenticacaoHabilitados: cada obra decide se aceita assinatura (Biometria,
-// via Futronic) ou não (Nenhum). CrachaPin/QrCodePin/WebAuthnCelular removidos em 31/08 junto com os
-// métodos correspondentes (ver MetodoAutenticacaoAssinatura acima).
+// via Futronic; ReconhecimentoFacial, via Azure Face API) ou não (Nenhum). CrachaPin/QrCodePin/
+// WebAuthnCelular removidos em 31/08 junto com os métodos correspondentes (ver
+// MetodoAutenticacaoAssinatura acima).
 [Flags]
 public enum MetodoAutenticacaoObra
 {
     Nenhum = 0,
-    Biometria = 1
+    Biometria = 1,
+    ReconhecimentoFacial = 2
 }
 
 // Ficha de EPI reformulada (docs/superpowers/specs/2026-08-27-ficha-epi-reformulada-design.md) —
@@ -653,6 +684,23 @@ public enum TipoMovimentacaoEstoqueEpi
     SaidaEntrega = 1,
     DevolucaoEntrada = 2,
     AjusteManual = 3,
+}
+
+// EPC (pedido do usuário, 04/09) — mesmo vocabulário de TipoMovimentacaoEstoqueEpi, só que
+// "SaidaInstalacao"/"RetornoRemocao" em vez de "SaidaEntrega"/"DevolucaoEntrada", já que o EPC não é
+// entregue a um funcionário — é instalado/removido de uma Obra.
+public enum TipoMovimentacaoEstoqueEpc
+{
+    EntradaManual = 0,
+    SaidaInstalacao = 1,
+    RetornoRemocao = 2,
+    AjusteManual = 3,
+}
+
+public enum StatusInspecaoEpc
+{
+    Conforme = 1,
+    NaoConforme = 2,
 }
 
 // Motor de Aplicabilidade Legal (requisito do usuário, 2026-08-29) — classifica o requisito legal
@@ -732,4 +780,24 @@ public enum StatusReuniaoCipa
     Agendada = 1,
     Realizada = 2,
     AtaRegistrada = 3
+}
+
+// Módulo Uniforme (docs/superpowers/specs/2026-09-07-modulo-uniforme-design.md) — motivos da
+// entrega, equivalente a MotivoEntregaEpi mas sem "Vencimento" (uniforme não tem CA/validade
+// certificada) e com "Desgaste" no lugar de "Dano" (linguagem mais natural para uniforme).
+public enum MotivoEntregaUniforme
+{
+    Inicial = 0,
+    Desgaste = 1,
+    Extravio = 2,
+    TrocaDeFuncao = 3,
+}
+
+// Classifica cada linha do ledger MovimentacaoEstoqueUniforme. Sem DevolucaoEntrada (sem fluxo de
+// devolução neste módulo) — equivalente reduzido de TipoMovimentacaoEstoqueEpi.
+public enum TipoMovimentacaoEstoqueUniforme
+{
+    EntradaManual = 0,
+    SaidaEntrega = 1,
+    AjusteManual = 2,
 }

@@ -1,7 +1,20 @@
 import type { ReactNode } from 'react';
 import { useEffect, useState } from 'react';
 import { NavLink, useLocation, useNavigate } from 'react-router-dom';
-import { makeStyles, mergeClasses, Text, Badge, Button, Toaster, Tooltip } from '@fluentui/react-components';
+import {
+  makeStyles,
+  mergeClasses,
+  Text,
+  Badge,
+  Button,
+  Toaster,
+  Tooltip,
+  Dialog,
+  DialogSurface,
+  DialogTitle,
+  DialogBody,
+  DialogActions,
+} from '@fluentui/react-components';
 import {
   Grid24Regular,
   ShieldError24Regular,
@@ -15,16 +28,14 @@ import {
   Person24Regular,
   WeatherSunny24Regular,
   WeatherMoon24Regular,
-  Search24Regular,
 } from '@fluentui/react-icons';
-import { designTokens } from '../theme';
+import { designTokens } from '@ui';
 import { useThemeMode } from '../theme/ThemeModeContext';
 import { useTeamsContext } from '../teams/useTeamsContext';
 import { api, StatusAlerta } from '../lib/api';
 import logoSst from '../assets/logo-sst.png';
 import { SyncStatusBadge } from '../components/SyncStatusBadge';
 import { ID_TOASTER_GLOBAL } from '../lib/toaster';
-import { TrabalhadoresGaveta } from '../pages/pessoas/TrabalhadoresGaveta';
 
 // Rail de navegação (Hub Gênesis SST — design decidido em sessão anterior): faixa fina só com
 // ícones + tooltip ao passar o mouse/focar, no lugar do menu largo com texto. O botão de
@@ -192,6 +203,12 @@ const useStyles = makeStyles({
     justifyContent: 'center',
     color: designTokens.colorNeutralMedium,
   },
+  usuarioAvatarImagem: {
+    width: '100%',
+    height: '100%',
+    objectFit: 'cover',
+    borderRadius: '50%',
+  },
   header: {
     gridRow: '1',
     gridColumn: '2',
@@ -298,11 +315,11 @@ export function AppShell({ children }: { children: ReactNode }) {
   const { carregando, dentroDoTeams, contexto } = useTeamsContext();
   const { modo, alternarModo } = useThemeMode();
   const nomeUsuario = contexto?.user?.displayName ?? 'Usuário';
+  const emailUsuario = contexto?.user?.userPrincipalName ?? contexto?.user?.loginHint ?? '';
+  const chaveFotoUsuario = `sst.fotoPerfil.${emailUsuario || nomeUsuario}`;
+  const [fotoPerfil, setFotoPerfil] = useState<string | null>(() => localStorage.getItem(chaveFotoUsuario));
+  const [perfilAberto, setPerfilAberto] = useState(false);
   const [alertasAbertos, setAlertasAbertos] = useState<number | null>(null);
-  // Busca rápida de funcionários (pedido do usuário, 03/09) — reconecta TrabalhadoresGaveta, que
-  // já existia pronta (busca por nome/função/obra, foto, status do ASO) mas tinha ficado sem
-  // nenhum ponto de entrada na interface. Fica na topbar pra abrir de qualquer tela do app.
-  const [gavetaFuncionariosAberta, setGavetaFuncionariosAberta] = useState(false);
   const [railExpandido, setRailExpandido] = useState<boolean>(
     () => localStorage.getItem(CHAVE_RAIL_EXPANDIDO) === '1',
   );
@@ -310,6 +327,24 @@ export function AppShell({ children }: { children: ReactNode }) {
   useEffect(() => {
     localStorage.setItem(CHAVE_RAIL_EXPANDIDO, railExpandido ? '1' : '0');
   }, [railExpandido]);
+
+  useEffect(() => {
+    setFotoPerfil(localStorage.getItem(chaveFotoUsuario));
+  }, [chaveFotoUsuario]);
+
+  function selecionarFotoPerfil(evento: React.ChangeEvent<HTMLInputElement>) {
+    const arquivo = evento.target.files?.[0];
+    if (!arquivo || !arquivo.type.startsWith('image/')) return;
+    const leitor = new FileReader();
+    leitor.onload = () => {
+      const foto = typeof leitor.result === 'string' ? leitor.result : null;
+      if (!foto) return;
+      localStorage.setItem(chaveFotoUsuario, foto);
+      setFotoPerfil(foto);
+    };
+    leitor.readAsDataURL(arquivo);
+    evento.target.value = '';
+  }
 
   useEffect(() => {
     let cancelado = false;
@@ -363,13 +398,6 @@ export function AppShell({ children }: { children: ReactNode }) {
           )}
           <Button
             appearance="subtle"
-            icon={<Search24Regular />}
-            aria-label="Buscar funcionário"
-            title="Buscar funcionário"
-            onClick={() => setGavetaFuncionariosAberta(true)}
-          />
-          <Button
-            appearance="subtle"
             icon={modo === 'dark' ? <WeatherSunny24Regular /> : <WeatherMoon24Regular />}
             aria-label={modo === 'dark' ? 'Mudar para modo claro' : 'Mudar para modo escuro'}
             title={modo === 'dark' ? 'Modo claro' : 'Modo escuro'}
@@ -390,20 +418,64 @@ export function AppShell({ children }: { children: ReactNode }) {
             )}
           </div>
           <div className={estilos.divisorTopbar} />
-          <button className={estilos.usuarioChip} title={nomeUsuario}>
+          <button
+            className={estilos.usuarioChip}
+            title="Abrir configurações do perfil"
+            aria-label={`Abrir configurações do perfil de ${nomeUsuario}`}
+            onClick={() => setPerfilAberto(true)}
+          >
             <Text className={estilos.usuarioNome}>{nomeUsuario}</Text>
-            <div className={estilos.usuarioAvatar} title="Foto de perfil (em breve)">
-              <Person24Regular fontSize={17} />
+            <div className={estilos.usuarioAvatar}>
+              {fotoPerfil ? (
+                <img src={fotoPerfil} alt="" className={estilos.usuarioAvatarImagem} />
+              ) : (
+                <Person24Regular fontSize={17} />
+              )}
             </div>
           </button>
         </div>
       </header>
 
+      <Dialog open={perfilAberto} onOpenChange={(_, data) => setPerfilAberto(data.open)}>
+        <DialogSurface>
+          <DialogBody>
+            <DialogTitle>Configurações do perfil</DialogTitle>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 16, margin: '18px 0' }}>
+              <div className={estilos.usuarioAvatar} style={{ width: 64, height: 64 }}>
+                {fotoPerfil ? (
+                  <img src={fotoPerfil} alt="Foto do perfil" className={estilos.usuarioAvatarImagem} />
+                ) : (
+                  <Person24Regular fontSize={28} />
+                )}
+              </div>
+              <div>
+                <Text weight="semibold" size={400}>{nomeUsuario}</Text>
+                <div>{emailUsuario || 'Conta Microsoft'}</div>
+                <input
+                  id="upload-foto-perfil"
+                  type="file"
+                  accept="image/png,image/jpeg,image/webp"
+                  hidden
+                  onChange={selecionarFotoPerfil}
+                />
+                <Button
+                  appearance="subtle"
+                  onClick={() => document.getElementById('upload-foto-perfil')?.click()}
+                  style={{ paddingLeft: 0, marginTop: 6 }}
+                >
+                  Alterar foto
+                </Button>
+              </div>
+            </div>
+            <div>O nome é sincronizado com a conta Microsoft. A foto escolhida fica salva neste navegador.</div>
+          </DialogBody>
+          <DialogActions>
+            <Button appearance="primary" onClick={() => setPerfilAberto(false)}>Concluir</Button>
+          </DialogActions>
+        </DialogSurface>
+      </Dialog>
+
       <main className={estilos.content}>{children}</main>
-      <TrabalhadoresGaveta
-        aberta={gavetaFuncionariosAberta}
-        aoFechar={() => setGavetaFuncionariosAberta(false)}
-      />
       <Toaster toasterId={ID_TOASTER_GLOBAL} />
     </div>
   );

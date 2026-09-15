@@ -6,13 +6,15 @@ using AAHBRANT.SST.Application.Dds;
 using AAHBRANT.SST.Application.EntregasEpi;
 using AAHBRANT.SST.Application.Inspecoes;
 using AAHBRANT.SST.Application.PermissoesTrabalho;
+using AAHBRANT.SST.Application.SessoesTreinamento;
+using AAHBRANT.SST.Application.TagsIdentificacao;
 using AAHBRANT.SST.Application.Trabalhadores;
 using AAHBRANT.SST.Application.Treinamentos;
 using AAHBRANT.SST.Infrastructure.Assinatura;
 using AAHBRANT.SST.Infrastructure.Auditoria;
 using AAHBRANT.SST.Infrastructure.Documentos;
-using AAHBRANT.SST.Infrastructure.Integracao;
 using AAHBRANT.SST.Infrastructure.Integracao.Bot;
+using AAHBRANT.SST.Infrastructure.Integracao.Grh;
 using AAHBRANT.SST.Infrastructure.Integracao.Teams;
 using AAHBRANT.SST.Infrastructure.Persistencia;
 using AAHBRANT.SST.Infrastructure.Seguranca;
@@ -29,8 +31,7 @@ public static class DependencyInjection
 {
     public static IServiceCollection AddInfrastructure(
         this IServiceCollection services,
-        IConfiguration configuration,
-        bool habilitarPollingTelegram = true)
+        IConfiguration configuration)
     {
         var connectionString = configuration.GetConnectionString("SstDatabase")
             ?? throw new InvalidOperationException("Connection string 'SstDatabase' não configurada.");
@@ -42,6 +43,7 @@ public static class DependencyInjection
         // SstDbContext depende disso, incluindo o Worker (sem HttpContext/usuário logado; ver
         // CurrentUserService sobre por que o padrão "acesso global" é o correto lá).
         services.AddScoped<ICurrentUserService, CurrentUserService>();
+        services.AddScoped<ICpfHashService, CpfHashService>();
 
         // Chaves de criptografia/hash do CPF (LGPD) — carregadas uma única vez aqui porque o
         // ValueConverter e a IEntityTypeConfiguration são instanciados por reflection pelo EF Core,
@@ -63,22 +65,7 @@ public static class DependencyInjection
             throw new InvalidOperationException("Configuração 'Lgpd:ChaveCriptografiaBiometriaBase64' não configurada.");
         TemplateBiometricoCriptografiaContexto.Configurar(Convert.FromBase64String(chaveCriptografiaBiometria));
 
-        // Integração Telegram (DDS Fase 3) — token/username ficam vazios até o usuário criar o
-        // bot via @BotFather e preencher appsettings; ver disclosures em TelegramBotService/
-        // TelegramUpdatesPollingService sobre o comportamento com a configuração vazia. Enviar
-        // mensagem (ITelegramService) é seguro em qualquer processo; só o LONG POLLING de updates
-        // (AddPollingDeAtualizacoesTelegram, abaixo) não pode rodar em mais de um processo ao mesmo
-        // tempo — por isso ficou separado, para o Worker de alertas poder usar AddInfrastructure
-        // sem também herdar o polling que já roda na Api.
-        services.Configure<TelegramOptions>(configuration.GetSection("Telegram"));
         services.AddHttpClient();
-        services.AddScoped<ITelegramService, TelegramBotService>();
-
-        // O Telegram getUpdates (long polling) só permite um consumidor simultâneo por bot token.
-        // A Api já roda esse polling; o Worker (AlertaEngineWorker) chama AddInfrastructure com
-        // habilitarPollingTelegram: false para não abrir um segundo consumidor e causar 409 Conflict.
-        if (habilitarPollingTelegram)
-            services.AddHostedService<TelegramUpdatesPollingService>();
 
         services.AddScoped<IDdsPdfService, DdsPdfService>();
         services.AddScoped<IDdsSemanalPdfService, DdsSemanalPdfService>();
@@ -87,8 +74,10 @@ public static class DependencyInjection
         services.AddScoped<IFichaEpiPdfService, EntregaEpiPdfService>();
         services.AddScoped<IPtPdfService, PtPdfService>();
         services.AddScoped<ICertificadoTreinamentoPdfService, CertificadoTreinamentoPdfService>();
+        services.AddScoped<IAtaSessaoTreinamentoPdfService, AtaSessaoTreinamentoPdfService>();
         services.AddScoped<IRelatorioFiscalizacaoPdfService, RelatorioFiscalizacaoPdfService>();
         services.AddScoped<IInspecaoPdfService, InspecaoPdfService>();
+        services.AddScoped<IGeradorNumeroDocumentoService, GeradorNumeroDocumentoService>();
 
         // Motor de Assinatura Eletrônica (docs/Motor-Assinatura-Eletronica.md §5) — PIN/crachá-QR
         // (CrachaPinAutenticacaoStrategy) e WebAuthn/FIDO2 (Fido2AutenticacaoStrategy) foram removidos
@@ -102,11 +91,14 @@ public static class DependencyInjection
         services.AddScoped<ITemplateBiometricoCriptografia, TemplateBiometricoCriptografiaService>();
         services.AddScoped<IDispositivoAgenteAutenticador, DispositivoAgenteAutenticador>();
         services.AddScoped<IAutenticacaoBiometriaLocalService, FutronicAutenticacaoStrategy>();
+        services.AddScoped<IAutenticacaoFacialService, AzureFaceAutenticacaoStrategy>();
         services.AddScoped<IAuditoriaService, AuditoriaService>();
         services.AddScoped<IDocumentoAssinaturaPdfService, DocumentoAssinaturaPdfService>();
         services.Configure<AssinaturaOptions>(configuration.GetSection("Assinatura"));
         services.AddScoped<IQrCodeDocumentoService, QrCodeDocumentoService>();
+        services.AddScoped<IQrCodePerfilPublicoService, QrCodePerfilPublicoService>();
         services.AddScoped<IRegistradorAssinaturaService, RegistradorAssinaturaService>();
+        services.AddScoped<IRegistradorRastreabilidadeService, RegistradorRastreabilidadeService>();
 
         // Motor Central de Alertas, Etapa 4 — notificação de "sino" do Teams (Activity Feed) via
         // Microsoft Graph (POST /users/{aadObjectId}/teamwork/sendActivityNotification), sem Bot
@@ -121,6 +113,13 @@ public static class DependencyInjection
         // Feed acima, faltando apenas a permissão de aplicativo Calendars.ReadWrite ser provisionada.
         services.AddScoped<ICalendarioTeamsService, GraphCalendarioTeamsService>();
 
+        // Integração G-RH — carga inicial do cadastro de colaboradores (contrato acordado em
+        // 2026-09-09, ver ColaboradorGrhClient). ClientSecret fica vazio até o segredo do App
+        // Registration ser gerado e provisionado; até lá, ImportarColaboradoresGrhCommand lança
+        // exceção graciosamente (mesmo padrão de GraphActivityNotificacaoTeamsService).
+        services.Configure<GrhOptions>(configuration.GetSection("Grh"));
+        services.AddScoped<IColaboradorGrhClient, ColaboradorGrhClient>();
+
         // Fila de retry para falhas de envio (PROJECT RULES.md §4). Usa Azure Service Bus quando
         // "ServiceBus:ConnectionString" estiver preenchida (recurso provisionado manualmente no
         // Azure); caso contrário, cai para um fallback local em memória — não bloqueia a aplicação
@@ -134,6 +133,11 @@ public static class DependencyInjection
             services.AddHostedService<ServiceBusNotificacaoTeamsProcessor>();
             services.AddSingleton<IFilaCalendarioTeams, ServiceBusFilaCalendarioTeams>();
             services.AddHostedService<ServiceBusCalendarioTeamsProcessor>();
+
+            // Integração G-RH (2026-09-09) — usa o mesmo namespace/connection string do Service Bus
+            // acima, só com filas dedicadas ("colaborador-grh"/"acidente-grh"; ver ServiceBusOptions).
+            services.AddSingleton<IPublicadorAcidenteGrh, ServiceBusPublicadorAcidenteGrh>();
+            services.AddHostedService<ServiceBusColaboradorGrhProcessor>();
         }
         else
         {
@@ -143,17 +147,13 @@ public static class DependencyInjection
             services.AddSingleton<InMemoryFilaCalendarioTeams>();
             services.AddSingleton<IFilaCalendarioTeams>(sp => sp.GetRequiredService<InMemoryFilaCalendarioTeams>());
             services.AddHostedService<InMemoryCalendarioTeamsProcessor>();
+
+            // Sem Service Bus real, não há fila "colaborador-grh" pra consumir (nenhum hosted service
+            // registrado) e a publicação de Acidente vira log (ver NoOpPublicadorAcidenteGrh) — evita
+            // travar dev local/CI, e evita fingir uma entrega que não aconteceu.
+            services.AddSingleton<IPublicadorAcidenteGrh, NoOpPublicadorAcidenteGrh>();
         }
 
-        return services;
-    }
-
-    // Long polling do Telegram (getUpdates) — só pode rodar em UM processo por vez (rodar em dois
-    // ao mesmo tempo causa 409/updates perdidos na API do Telegram). Chamado só pela Api; o Worker
-    // de alertas automáticos (AAHBRANT.SST.Worker) usa AddInfrastructure sem isto.
-    public static IServiceCollection AddPollingDeAtualizacoesTelegram(this IServiceCollection services)
-    {
-        services.AddHostedService<TelegramUpdatesPollingService>();
         return services;
     }
 }

@@ -17,7 +17,12 @@ public record DdsPdfModelo(
     string? TemaLivreNome,
     string? TemaLivreDescricao,
     IReadOnlyList<(string Descricao, bool Verificado)> ItensChecklist,
-    IReadOnlyList<string> ParticipantesNomes);
+    IReadOnlyList<string> ParticipantesNomes,
+    string? Protocolo,
+    string ConteudoHash,
+    string UrlValidacaoPublica,
+    byte[] QrCodePng,
+    bool TemAssinatura);
 
 public interface IDdsPdfService
 {

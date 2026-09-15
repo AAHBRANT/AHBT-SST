@@ -48,11 +48,8 @@ public class DdsSemanalPdfService : IDdsSemanalPdfService
                     coluna.Item().PaddingTop(10).Element(c => DesenharAssinaturas(c, modelo, terceirizados));
                 });
 
-                pagina.Footer().AlignCenter().Text(t =>
-                {
-                    t.Span("Gerado em ").FontSize(8);
-                    t.Span(DateTime.Now.ToString("dd/MM/yyyy HH:mm")).FontSize(8);
-                });
+                pagina.Footer().Column(coluna => RodapeDocumentoPadrao.Desenhar(
+                    coluna, "DDS Semanal", modelo.NumeroDocumento, null, modelo.ConteudoHash, modelo.UrlValidacaoPublica, modelo.QrCodePng, modelo.TemAssinatura));
             });
         });
 
@@ -190,6 +187,8 @@ public class DdsSemanalPdfService : IDdsSemanalPdfService
     private static string TextoResumoTema(DdsSemanalPdfDiaModelo? dia)
     {
         if (dia is null) return "—";
+        if (dia.SemExpediente)
+            return $"SEM EXPEDIENTE — {dia.MotivoSemExpediente}";
         var partes = new List<string>(dia.AtividadesNomes);
         if (!string.IsNullOrWhiteSpace(dia.TemaLivreNome))
             partes.Add(dia.TemaLivreNome);

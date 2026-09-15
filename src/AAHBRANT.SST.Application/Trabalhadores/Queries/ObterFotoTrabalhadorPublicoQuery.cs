@@ -5,9 +5,9 @@ using Microsoft.EntityFrameworkCore;
 
 namespace AAHBRANT.SST.Application.Trabalhadores.Queries;
 
-// Foto do "crachá digital" público — mesmo cuidado de ResolverTrabalhadorPublicoQuery: só resolve
+// Foto do "crachá digital" — mesmo cuidado de ResolverTrabalhadorPublicoQuery: só resolve
 // pelo Uid opaco da tag, nunca pelo Id (Guid) do trabalhador direto, pra manter uma única porta de
-// entrada auditável/controlável para essa rota sem login (a tag precisa estar vinculada e existir).
+// entrada auditável/controlável (a tag precisa estar vinculada e existir; a API exige login).
 public record ObterFotoTrabalhadorPublicoQuery(string Uid) : IRequest<FotoTrabalhadorResultado?>;
 
 public class ObterFotoTrabalhadorPublicoQueryHandler : IRequestHandler<ObterFotoTrabalhadorPublicoQuery, FotoTrabalhadorResultado?>
@@ -22,7 +22,12 @@ public class ObterFotoTrabalhadorPublicoQueryHandler : IRequestHandler<ObterFoto
         if (tag is not { EntidadeVinculadaTipo: TipoEntidadeVinculada.Trabalhador, EntidadeVinculadaId: not null })
             return null;
 
-        var trabalhador = await _db.Trabalhadores.FirstOrDefaultAsync(t => t.Id == tag.EntidadeVinculadaId.Value, ct);
+        // IgnoreQueryFilters() necessário — ver comentário em ResolverTrabalhadorPublicoQuery.cs
+        // (mesmo filtro global de RBAC/obra nega tudo em requisição anônima). Ativo reaplicado
+        // manualmente: funcionário desativado não mantém foto pública.
+        var trabalhador = await _db.Trabalhadores
+            .IgnoreQueryFilters()
+            .FirstOrDefaultAsync(t => t.Id == tag.EntidadeVinculadaId.Value && t.Ativo, ct);
         if (trabalhador is null || trabalhador.FotoConteudo is null || trabalhador.FotoConteudo.Length == 0) return null;
 
         var extensao = trabalhador.FotoContentType == "image/png" ? "png" : "jpg";

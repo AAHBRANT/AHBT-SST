@@ -45,7 +45,6 @@ public class PcmsoDetalheConfiguracao : IEntityTypeConfiguration<PcmsoDetalhe>
     {
         builder.Property(p => p.Nome).IsRequired().HasMaxLength(200);
         builder.Property(p => p.Versao).HasMaxLength(50);
-        builder.Property(p => p.Arquivo).HasMaxLength(500);
         builder.Property(p => p.MedicoResponsavelNome).HasMaxLength(150);
         builder.Property(p => p.MedicoResponsavelCrm).HasMaxLength(30);
 

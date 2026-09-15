@@ -63,7 +63,7 @@ export function AssinarTreinamentoPage() {
         </FeedbackInline>
       )}
 
-      <AssinaturaQuiosque entidadeTipo="Treinamento" entidadeId={id} />
+      <AssinaturaQuiosque entidadeTipo="Treinamento" entidadeId={id} obraId={trabalhador?.obraId ?? ''} />
     </div>
   );
 }

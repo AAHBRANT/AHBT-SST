@@ -18,7 +18,7 @@ public class QrCodeDocumentoService : IQrCodeDocumentoService
     {
         // UrlBaseValidacaoPublica vazia (config ainda não preenchida no ambiente) não deve derrubar a
         // finalização do documento — mesmo espírito de tolerância a config ausente usado em
-        // Telegram/Graph/ServiceBus (DependencyInjection.cs); o QR fica com um caminho relativo, que
+        // Graph/ServiceBus (DependencyInjection.cs); o QR fica com um caminho relativo, que
         // segue válido assim que o link completo for necessário.
         //
         // Prefixo "/#/" obrigatório: o TeamsApp usa HashRouter (App.tsx — evita depender de rota

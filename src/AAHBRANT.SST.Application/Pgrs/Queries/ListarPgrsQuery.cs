@@ -19,19 +19,19 @@ public class ListarPgrsQueryHandler : IRequestHandler<ListarPgrsQuery, List<PgrD
         if (request.ObraId.HasValue)
             query = query.Where(p => p.ObraId == request.ObraId.Value);
 
-        var pgrs = await query.OrderByDescending(p => p.CreatedAtUtc).ToListAsync(ct);
-
-        return pgrs.Select(p => new PgrDto
-        {
-            Id = p.Id,
-            ObraId = p.ObraId,
-            Nome = p.Nome,
-            Descricao = p.Descricao,
-            DataElaboracao = p.DataElaboracao,
-            DataProximaRevisao = p.DataProximaRevisao,
-            DataTermino = p.DataTermino,
-            ResponsavelUsuarioId = p.ResponsavelUsuarioId,
-            Status = p.Status
-        }).ToList();
+        return await query.OrderByDescending(p => p.CreatedAtUtc)
+            .Select(p => new PgrDto
+            {
+                Id = p.Id,
+                ObraId = p.ObraId,
+                Nome = p.Nome,
+                Descricao = p.Descricao,
+                DataElaboracao = p.DataElaboracao,
+                DataProximaRevisao = p.DataProximaRevisao,
+                DataTermino = p.DataTermino,
+                ResponsavelUsuarioId = p.ResponsavelUsuarioId,
+                Status = p.Status
+            })
+            .ToListAsync(ct);
     }
 }

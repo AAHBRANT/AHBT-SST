@@ -9,9 +9,11 @@ import {
   Field,
   FeedbackInline,
   FormGrid,
+  FormRodape,
+  FormSection,
   Input,
   PageHeader,
-  PainelLateral,
+  PainelCriacaoInline,
   Select,
   Textarea,
   useConfirmar,
@@ -25,8 +27,9 @@ function vazio(): NovoEventoSipat {
   return { obraId: '', anoReferencia: new Date().getFullYear(), dataInicio: '', dataFim: '', tema: '', programacao: '' };
 }
 
-// Camada ui/ (Onda 2, Task 4): formulário de cadastro saiu para PainelLateral (Guia §2); a linha
-// inteira já navega para o detalhe, então o botão "ver" redundante saiu (Guia §1).
+// Migração para PainelCriacaoInline (mesmo padrão de AtividadesTab.tsx/InspecoesTab.tsx): o
+// PainelLateral (drawer) de cadastro saiu — agora o formulário cresce acima da lista. A linha
+// inteira já navega para o detalhe, então o botão "ver" redundante não existe (Guia §1).
 export function SipatTab() {
   const navigate = useNavigate();
   const [lista, setLista] = useState<EventoSipat[]>([]);
@@ -106,13 +109,19 @@ export function SipatTab() {
   ];
 
   return (
-    <div>
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
       {dialogElement}
       <PageHeader
         titulo="SIPAT"
         acoes={
-          <Button appearance="primary" icon={<Add24Regular />} onClick={() => setPainelAberto(true)}>
-            Criar evento
+          <Button
+            appearance="primary"
+            icon={<Add24Regular />}
+            onClick={() => (painelAberto ? fecharPainel() : setPainelAberto(true))}
+            aria-expanded={painelAberto}
+            aria-controls="painel-novo-evento-sipat"
+          >
+            {painelAberto ? 'Fechar' : 'Criar evento'}
           </Button>
         }
       />
@@ -121,6 +130,66 @@ export function SipatTab() {
           {erro}
         </FeedbackInline>
       )}
+      <div id="painel-novo-evento-sipat">
+        <PainelCriacaoInline aberto={painelAberto} titulo="Novo evento SIPAT">
+          <FormSection titulo="Dados do evento" numero={1} primeira>
+            {erroPainel && (
+              <FeedbackInline tom="erro" aoFechar={() => setErroPainel(null)}>
+                {erroPainel}
+              </FeedbackInline>
+            )}
+            <FormGrid>
+              <Campo span={4}>
+                <Field label="Obra" required>
+                  <Select value={novo.obraId} onChange={(_, d) => setNovo({ ...novo, obraId: d.value })}>
+                    <option value="">Selecione</option>
+                    {obras.map((obra) => (
+                      <option key={obra.id} value={obra.id}>
+                        {obra.nome}
+                      </option>
+                    ))}
+                  </Select>
+                </Field>
+              </Campo>
+              <Campo span={2}>
+                <Field label="Ano de referência" required>
+                  <Input
+                    type="number"
+                    value={String(novo.anoReferencia)}
+                    onChange={(_, d) => setNovo({ ...novo, anoReferencia: Number(d.value) })}
+                  />
+                </Field>
+              </Campo>
+              <Campo span={3}>
+                <Field label="Início" required>
+                  <CampoData value={novo.dataInicio} onChange={(_, d) => setNovo({ ...novo, dataInicio: d.value })} />
+                </Field>
+              </Campo>
+              <Campo span={3}>
+                <Field label="Fim" required>
+                  <CampoData value={novo.dataFim} onChange={(_, d) => setNovo({ ...novo, dataFim: d.value })} />
+                </Field>
+              </Campo>
+              <Campo span={4}>
+                <Field label="Tema">
+                  <Input value={novo.tema ?? ''} onChange={(_, d) => setNovo({ ...novo, tema: d.value })} />
+                </Field>
+              </Campo>
+              <Campo span={12}>
+                <Field label="Programação">
+                  <Textarea value={novo.programacao ?? ''} onChange={(_, d) => setNovo({ ...novo, programacao: d.value })} />
+                </Field>
+              </Campo>
+            </FormGrid>
+            <FormRodape>
+              <Button onClick={fecharPainel}>Cancelar</Button>
+              <Button appearance="primary" onClick={criar} disabled={carregando}>
+                Criar evento
+              </Button>
+            </FormRodape>
+          </FormSection>
+        </PainelCriacaoInline>
+      </div>
       <Card>
         <DataTable
           aria-label="Eventos SIPAT"
@@ -138,68 +207,6 @@ export function SipatTab() {
           )}
         />
       </Card>
-      <PainelLateral
-        aberto={painelAberto}
-        aoFechar={fecharPainel}
-        titulo="Novo evento SIPAT"
-        rodape={
-          <>
-            <Button onClick={fecharPainel}>Cancelar</Button>
-            <Button appearance="primary" onClick={criar} disabled={carregando}>
-              Criar evento
-            </Button>
-          </>
-        }
-      >
-        {erroPainel && (
-          <FeedbackInline tom="erro" aoFechar={() => setErroPainel(null)}>
-            {erroPainel}
-          </FeedbackInline>
-        )}
-        <FormGrid>
-          <Campo span={4}>
-            <Field label="Obra" required>
-              <Select value={novo.obraId} onChange={(_, d) => setNovo({ ...novo, obraId: d.value })}>
-                <option value="">Selecione</option>
-                {obras.map((obra) => (
-                  <option key={obra.id} value={obra.id}>
-                    {obra.nome}
-                  </option>
-                ))}
-              </Select>
-            </Field>
-          </Campo>
-          <Campo span={2}>
-            <Field label="Ano de referência" required>
-              <Input
-                type="number"
-                value={String(novo.anoReferencia)}
-                onChange={(_, d) => setNovo({ ...novo, anoReferencia: Number(d.value) })}
-              />
-            </Field>
-          </Campo>
-          <Campo span={3}>
-            <Field label="Início" required>
-              <CampoData value={novo.dataInicio} onChange={(_, d) => setNovo({ ...novo, dataInicio: d.value })} />
-            </Field>
-          </Campo>
-          <Campo span={3}>
-            <Field label="Fim" required>
-              <CampoData value={novo.dataFim} onChange={(_, d) => setNovo({ ...novo, dataFim: d.value })} />
-            </Field>
-          </Campo>
-          <Campo span={4}>
-            <Field label="Tema">
-              <Input value={novo.tema ?? ''} onChange={(_, d) => setNovo({ ...novo, tema: d.value })} />
-            </Field>
-          </Campo>
-          <Campo span={12}>
-            <Field label="Programação">
-              <Textarea value={novo.programacao ?? ''} onChange={(_, d) => setNovo({ ...novo, programacao: d.value })} />
-            </Field>
-          </Campo>
-        </FormGrid>
-      </PainelLateral>
     </div>
   );
 }

@@ -49,7 +49,6 @@ public static class RbacSeeder
         ("trabalhador:criar", "Trabalhador", "Criar", "Criar cadastro de trabalhador"),
         ("trabalhador:editar", "Trabalhador", "Editar", "Editar cadastro de trabalhador"),
         ("trabalhador:excluir", "Trabalhador", "Excluir", "Excluir cadastro de trabalhador"),
-        ("trabalhador:telegram", "Trabalhador", "Telegram", "Gerar vínculo de Telegram do trabalhador"),
         ("trabalhador:assinatura", "Trabalhador", "Assinatura", "Configurar assinatura eletrônica do trabalhador (PIN, Termo de Aceite, consentimento biométrico)"),
 
         ("aso:ver_status", "Aso", "VerStatus", "Ver status do ASO (Apto/Inapto/etc.), sem detalhe clínico"),
@@ -79,6 +78,15 @@ public static class RbacSeeder
         ("epi:ver", "Epi", "Ver", "Ver catálogo/entregas de EPI"),
         ("epi:criar", "Epi", "Criar", "Criar catálogo/entrega de EPI"),
         ("epi:editar", "Epi", "Editar", "Editar catálogo/entrega de EPI"),
+
+        ("epc:ver", "Epc", "Ver", "Ver catálogo/instalações de EPC"),
+        ("epc:criar", "Epc", "Criar", "Criar catálogo/instalação de EPC"),
+        ("epc:editar", "Epc", "Editar", "Editar catálogo/instalação de EPC"),
+
+        ("uniforme:ver", "Uniforme", "Ver", "Ver catálogo/entregas de uniforme"),
+        ("uniforme:criar", "Uniforme", "Criar", "Criar catálogo/entrega de uniforme"),
+        ("uniforme:editar", "Uniforme", "Editar", "Editar catálogo/entrega de uniforme"),
+
 
         ("risco:ver", "Risco", "Ver", "Ver atividades/perigos/riscos"),
         ("risco:criar", "Risco", "Criar", "Criar atividade/perigo/risco"),
@@ -130,6 +138,10 @@ public static class RbacSeeder
         ("checklist:ver", "Checklist", "Ver", "Ver modelos de checklist"),
         ("checklist:gerenciar", "Checklist", "Gerenciar", "Criar/versionar modelo de checklist"),
 
+        ("materialapoio:ver", "MaterialApoio", "Ver", "Ver materiais de apoio (sinalização, instruções técnicas)"),
+        ("materialapoio:criar", "MaterialApoio", "Criar", "Enviar novo material de apoio"),
+        ("materialapoio:excluir", "MaterialApoio", "Excluir", "Excluir material de apoio"),
+
         ("nc:ver", "NaoConformidade", "Ver", "Ver não conformidades"),
         ("nc:criar", "NaoConformidade", "Criar", "Registrar não conformidade"),
         ("nc:editar", "NaoConformidade", "Editar", "Editar não conformidade"),
@@ -162,7 +174,7 @@ public static class RbacSeeder
         ("dds:criar", "Dds", "Criar", "Criar DDS a partir das atividades do dia"),
         ("dds:conduzir", "Dds", "Conduzir", "Marcar itens do checklist e registrar participantes durante a condução do DDS"),
         ("dds:encerrar", "Dds", "Encerrar", "Encerrar DDS"),
-        ("dds:exportar", "Dds", "Exportar", "Exportar DDS em PDF e enviar via Telegram"),
+        ("dds:exportar", "Dds", "Exportar", "Exportar DDS em PDF"),
 
         // Motor de Assinatura Eletrônica (docs/Motor-Assinatura-Eletronica.md §5, etapa 6) — genérico,
         // usado pela tela de quiosque de qualquer módulo (Dds hoje, Treinamento/EPI/APR/PT/Inspeções

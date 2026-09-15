@@ -45,6 +45,9 @@ export default defineConfig({
         // abertas assim que termina de instalar, sem depender de fechar nada.
         skipWaiting: true,
         clientsClaim: true,
+        // Bundle passou de 2 MiB (limite padrão do workbox) com a chegada dos módulos
+        // Uniforme/EPC (merge de 2026-09-10) — sem isso o build falha ao gerar o service worker.
+        maximumFileSizeToCacheInBytes: 3 * 1024 * 1024,
       },
     }),
   ],

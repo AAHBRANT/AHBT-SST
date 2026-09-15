@@ -1,10 +1,8 @@
 import { Abas, useAbaNaUrl, PageHeader } from '@ui';
 import { IdentificacaoDashboardTab } from './dashboard/IdentificacaoDashboardTab';
 import { AreasSstTab } from './AreasSstTab';
-import { TagsIdentificacaoTab } from './TagsIdentificacaoTab';
-import { LeitorNfcTab } from './LeitorNfcTab';
 
-const ABAS_IDENTIFICACAO = ['areas', 'tags', 'leitor', 'dashboard'] as const;
+const ABAS_IDENTIFICACAO = ['areas', 'dashboard'] as const;
 type AbaIdentificacao = (typeof ABAS_IDENTIFICACAO)[number];
 
 // Onda 2 Task 9 (camada ui/): página-pilar de Identificação — mesmo padrão de AprsPage.tsx/EpiPage.tsx
@@ -23,15 +21,11 @@ export function IdentificacaoPage({ mostrarTitulo = true }: { mostrarTitulo?: bo
         aria-label="Seções de Identificação"
         abas={[
           { valor: 'areas', rotulo: 'Áreas' },
-          { valor: 'tags', rotulo: 'Tags (NFC/QR)' },
-          { valor: 'leitor', rotulo: 'Leitor / Teste NFC' },
           { valor: 'dashboard', rotulo: 'Dashboard' },
         ]}
       />
 
       {aba === 'areas' && <AreasSstTab />}
-      {aba === 'tags' && <TagsIdentificacaoTab />}
-      {aba === 'leitor' && <LeitorNfcTab />}
       {aba === 'dashboard' && <IdentificacaoDashboardTab />}
     </div>
   );

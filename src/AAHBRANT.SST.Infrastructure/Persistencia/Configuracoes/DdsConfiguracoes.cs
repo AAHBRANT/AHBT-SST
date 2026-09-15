@@ -10,6 +10,8 @@ public class DdsConfiguracao : IEntityTypeConfiguration<Dds>
     {
         builder.Property(d => d.TemaLivreNome).HasMaxLength(200);
         builder.Property(d => d.TemaLivreDescricao).HasMaxLength(500);
+        builder.Property(d => d.NumeroDocumento).HasMaxLength(50);
+        builder.Property(d => d.MotivoSemExpediente).HasMaxLength(500);
 
         builder.HasOne(d => d.Obra)
             .WithMany()
@@ -153,24 +155,5 @@ public class DdsParticipanteConfiguracao : IEntityTypeConfiguration<DdsParticipa
 
         builder.HasIndex(p => new { p.DdsId, p.TrabalhadorId });
         builder.HasQueryFilter(p => p.Ativo);
-    }
-}
-
-public class DdsTelegramEnvioConfiguracao : IEntityTypeConfiguration<DdsTelegramEnvio>
-{
-    public void Configure(EntityTypeBuilder<DdsTelegramEnvio> builder)
-    {
-        builder.HasOne(e => e.Dds)
-            .WithMany()
-            .HasForeignKey(e => e.DdsId)
-            .OnDelete(DeleteBehavior.Cascade);
-
-        builder.HasOne(e => e.Trabalhador)
-            .WithMany()
-            .HasForeignKey(e => e.TrabalhadorId)
-            .OnDelete(DeleteBehavior.Restrict);
-
-        builder.HasIndex(e => new { e.DdsId, e.TrabalhadorId });
-        builder.HasQueryFilter(e => e.Ativo);
     }
 }

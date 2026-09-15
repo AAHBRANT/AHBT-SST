@@ -24,6 +24,10 @@ public class Dds : AuditableEntity
     public Guid ResponsavelUsuarioId { get; set; }
     public Usuario? ResponsavelUsuario { get; set; }
 
+    // Protocolo automático (prefixo "DDS-D" — "DDS" já pertence ao DdsSemanal), gerado uma única vez
+    // na criação (CriarDdsCommand), mesmo padrão de DdsSemanal/Cipa/Pcmso/Certificado.
+    public string? NumeroDocumento { get; set; }
+
     // Tema livre (opcional, aditivo — não substitui os temas das atividades abaixo). Nome/
     // descrição são uma cópia do CatalogoTemaDds no momento da criação (mesmo princípio de
     // snapshot já usado nos itens de checklist): se o item do catálogo for editado ou excluído
@@ -36,6 +40,14 @@ public class Dds : AuditableEntity
     // Documento não lista vocabulário literal de status para este módulo (mesma lacuna já
     // registrada em StatusApr/StatusPgr/StatusPt/StatusInspecao) — proposta própria.
     public StatusDds Status { get; set; } = StatusDds.EmAndamento;
+
+    // Dia sem expediente — feriado, folga, obra parada (pedido do usuário, 03/09): em vez de deixar
+    // o dia da semana em branco/pendente sem explicação, o responsável registra o motivo. Este
+    // registro nasce direto com Status=Concluido (ver RegistrarDiaSemExpedienteCommand) — não passa
+    // pelo fluxo normal de encerramento (que exige 3 fotos de evidência do DDS; não há o que
+    // fotografar num dia sem DDS) — e não tem Atividades/ItensChecklist/Participantes/FotosEvidencia.
+    public bool SemExpediente { get; set; }
+    public string? MotivoSemExpediente { get; set; }
 
     public ICollection<DdsAtividade> Atividades { get; set; } = new List<DdsAtividade>();
     public ICollection<DdsItemChecklist> ItensChecklist { get; set; } = new List<DdsItemChecklist>();
@@ -138,21 +150,4 @@ public class DdsParticipante : AuditableEntity
     public byte[] FotoConteudo { get; set; } = Array.Empty<byte>();
     public string FotoContentType { get; set; } = string.Empty;
     public double? ScoreConfianca { get; set; }
-}
-
-// Um envio de Telegram por trabalhador — dobra como log de envio e como registro de confirmação de
-// ciência (botão inline "Confirmo ciência" no chat). Id (Guid gerado no client, ver AuditableEntity)
-// é usado como callback_data do botão para correlacionar o clique a este envio.
-public class DdsTelegramEnvio : AuditableEntity
-{
-    public Guid DdsId { get; set; }
-    public Dds? Dds { get; set; }
-
-    public Guid TrabalhadorId { get; set; }
-    public Trabalhador? Trabalhador { get; set; }
-
-    public long ChatId { get; set; }
-    public DateTime EnviadoEm { get; set; }
-    public int? MessageId { get; set; }
-    public DateTime? ConfirmadoEm { get; set; }
 }

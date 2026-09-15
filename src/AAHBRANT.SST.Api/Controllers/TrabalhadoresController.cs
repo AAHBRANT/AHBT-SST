@@ -56,6 +56,14 @@ public class TrabalhadoresController : ControllerBase
         return CreatedAtAction(nameof(ObterPorId), new { id }, new { id });
     }
 
+    // Carga inicial única do cadastro vindo do G-RH (Integração G-RH) — chamado manualmente uma vez
+    // pela tela de Administração depois que "Grh:ClientSecret" estiver configurado. A atualização
+    // contínua depois disso é automática, via evento do Service Bus.
+    [Authorize(Policy = "trabalhador:criar")]
+    [HttpPost("importar-grh")]
+    public async Task<IActionResult> ImportarDoGrh(CancellationToken ct)
+        => Ok(await _mediator.Send(new ImportarColaboradoresGrhCommand(), ct));
+
     [Authorize(Policy = "trabalhador:editar")]
     [HttpPut("{id:guid}")]
     public async Task<IActionResult> Atualizar(Guid id, AtualizarTrabalhadorCommand command, CancellationToken ct)
@@ -94,11 +102,6 @@ public class TrabalhadoresController : ControllerBase
         return foto is null ? NotFound() : File(foto.Conteudo, foto.ContentType, foto.NomeArquivo);
     }
 
-    [Authorize(Policy = "trabalhador:telegram")]
-    [HttpPost("{id:guid}/telegram/vinculo")]
-    public async Task<IActionResult> GerarVinculoTelegram(Guid id, CancellationToken ct)
-        => Ok(await _mediator.Send(new GerarVinculoTelegramCommand(id), ct));
-
     [Authorize(Policy = "trabalhador:assinatura")]
     [HttpPost("{id:guid}/assinatura/termo-aceite")]
     public async Task<IActionResult> RegistrarTermoAceiteAssinatura(Guid id, CancellationToken ct)
@@ -124,9 +127,40 @@ public class TrabalhadoresController : ControllerBase
         await _mediator.Send(new CadastrarTemplateBiometricoCommand(id, body.TemplateBruto), ct);
         return NoContent();
     }
+
+    public class CadastrarFacialRequestBody
+    {
+        public IFormFile Foto { get; set; } = null!;
+    }
+
+    [Authorize(Policy = "trabalhador:assinatura")]
+    [HttpPost("{id:guid}/assinatura/facial/cadastro")]
+    [RequestSizeLimit(6_000_000)]
+    public async Task<IActionResult> CadastrarFacial(Guid id, [FromForm] CadastrarFacialRequestBody body, CancellationToken ct)
+    {
+        await using var stream = new MemoryStream();
+        await body.Foto.CopyToAsync(stream, ct);
+        await _mediator.Send(new CadastrarFacialCommand(id, stream.ToArray()), ct);
+        return NoContent();
+    }
+
+    [Authorize(Policy = "trabalhador:ver")]
+    [HttpGet("{id:guid}/uniformes")]
+    public async Task<IActionResult> ListarTamanhosUniforme(Guid id, CancellationToken ct)
+        => Ok(await _mediator.Send(new ListarTamanhosUniformeTrabalhadorQuery(id), ct));
+
+    [Authorize(Policy = "trabalhador:editar")]
+    [HttpPut("{id:guid}/uniformes")]
+    public async Task<IActionResult> DefinirTamanhosUniforme(Guid id, DefinirTamanhosUniformeRequest request, CancellationToken ct)
+    {
+        await _mediator.Send(new DefinirTamanhosUniformeTrabalhadorCommand(id, request.Itens), ct);
+        return NoContent();
+    }
 }
 
 public class AnexarFotoTrabalhadorRequestBody
 {
     public IFormFile Foto { get; set; } = null!;
 }
+
+public record DefinirTamanhosUniformeRequest(List<ItemTamanhoUniforme> Itens);

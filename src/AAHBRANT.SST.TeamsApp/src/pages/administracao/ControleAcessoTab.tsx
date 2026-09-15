@@ -673,6 +673,7 @@ export function ControleAcessoTab() {
                                 <TableCell key={escopo}>
                                   <input
                                     type="checkbox"
+                                    aria-label={`Marcar ou desmarcar todas as permissões do módulo ${modulo} no escopo ${escopoAcessoLabel[escopo]}`}
                                     checked={todosMarcadosNoEscopo}
                                     onChange={() => alternarColunaModulo(lista, escopo, !todosMarcadosNoEscopo)}
                                     title={`Marcar/desmarcar toda a coluna "${escopoAcessoLabel[escopo]}" deste módulo`}
@@ -691,6 +692,7 @@ export function ControleAcessoTab() {
                                   <TableCell key={escopo}>
                                     <input
                                       type="checkbox"
+                                      aria-label={`${permissao.acao} - ${escopoAcessoLabel[escopo]}`}
                                       checked={marcados.has(chave(permissao.id, escopo))}
                                       onChange={() => alternarPermissao(permissao.id, escopo)}
                                     />

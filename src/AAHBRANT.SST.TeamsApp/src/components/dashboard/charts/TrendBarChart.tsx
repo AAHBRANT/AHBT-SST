@@ -1,6 +1,6 @@
 import { motion } from 'framer-motion';
 import { Bar, BarChart, CartesianGrid, LabelList, ResponsiveContainer, Tooltip, XAxis } from 'recharts';
-import { designTokens } from '../../../theme';
+import { designTokens } from '@ui';
 
 export interface PontoTendencia {
   rotulo: string;

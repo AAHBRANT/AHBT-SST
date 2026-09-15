@@ -29,8 +29,13 @@ public class CriarInspecaoCommandValidator : AbstractValidator<CriarInspecaoComm
 public class CriarInspecaoCommandHandler : IRequestHandler<CriarInspecaoCommand, Guid>
 {
     private readonly IAppDbContext _db;
+    private readonly IGeradorNumeroDocumentoService _geradorNumero;
 
-    public CriarInspecaoCommandHandler(IAppDbContext db) => _db = db;
+    public CriarInspecaoCommandHandler(IAppDbContext db, IGeradorNumeroDocumentoService geradorNumero)
+    {
+        _db = db;
+        _geradorNumero = geradorNumero;
+    }
 
     public async Task<Guid> Handle(CriarInspecaoCommand request, CancellationToken ct)
     {
@@ -55,6 +60,7 @@ public class CriarInspecaoCommandHandler : IRequestHandler<CriarInspecaoCommand,
             ChecklistModeloId = checklist.Id,
             Data = request.Data,
             ResponsavelUsuarioId = request.ResponsavelUsuarioId,
+            NumeroDocumento = await _geradorNumero.GerarAsync("INSP", ct),
         };
 
         foreach (var item in checklist.Itens.Where(i => i.Ativo))

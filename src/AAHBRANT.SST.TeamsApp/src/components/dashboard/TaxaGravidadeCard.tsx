@@ -1,24 +1,46 @@
 import { useEffect, useMemo, useState } from 'react';
 import { motion } from 'framer-motion';
-import { Badge, Input, Text, Tooltip } from '@fluentui/react-components';
+import { Badge, Input, Text, Tooltip, makeStyles } from '@fluentui/react-components';
 import type { Acidente, RegistroHhtMensal } from '../../lib/api';
-import { usePageStyles } from '../../pages/pageStyles';
 import { useDashboardStyles } from './dashboardStyles';
-import { designTokens } from '../../theme';
+import { designTokens, tokensUi, escalonado } from '@ui';
+
+// Mesma casca visual do KpiCard (@ui): este card vive na grade de indicadores do Dashboard e
+// precisa ler como irmão dos outros seis — antes usava o card de página (raio 16, padding 24/28)
+// e destoava (13/09). Copia o root ATUAL do KpiCard (sem borda colorida no topo, que é uma mudança
+// de design separada, ainda não commitada) para não introduzir uma inconsistência nova.
+const useStyles = makeStyles({
+  root: {
+    backgroundColor: designTokens.colorSurface,
+    border: `1px solid ${designTokens.colorCardBorder}`,
+    borderRadius: tokensUi.raio.lg,
+    boxShadow: designTokens.cardShadow,
+    padding: tokensUi.espaco.xl,
+    width: '100%',
+    minHeight: '100%',
+    display: 'flex',
+    flexDirection: 'column',
+    justifyContent: 'space-between',
+    gap: '6px',
+    boxSizing: 'border-box',
+  },
+});
 
 const CHAVE_META_LOCALSTORAGE = 'sst.tg.metaTaxaGravidade';
 
 interface TaxaGravidadeCardProps {
   acidentes: Acidente[];
   registrosHht: RegistroHhtMensal[];
+  /** Posição na grade de KPIs, para a entrada escalonada acompanhar os irmãos. */
+  indice?: number;
 }
 
 // TG = (Dias Perdidos + Dias Debitados) × 1.000.000 / HHT — NBR 14280. Cálculo client-side,
 // consistente com todos os outros KPIs do app (nenhum endpoint de agregação dedicado).
 // A meta de comparação é um valor de negócio que este sistema não pode inventar — fica salva em
 // localStorage, definida pelo próprio usuário no card (decisão de 2026-08-26).
-export function TaxaGravidadeCard({ acidentes, registrosHht }: TaxaGravidadeCardProps) {
-  const estilosPagina = usePageStyles();
+export function TaxaGravidadeCard({ acidentes, registrosHht, indice = 0 }: TaxaGravidadeCardProps) {
+  const casca = useStyles();
   const estilos = useDashboardStyles();
   const [meta, setMeta] = useState<number | null>(null);
   const [editandoMeta, setEditandoMeta] = useState(false);
@@ -59,12 +81,7 @@ export function TaxaGravidadeCard({ acidentes, registrosHht }: TaxaGravidadeCard
   const dentroDaMeta = meta !== null && taxaGravidade !== null ? taxaGravidade <= meta : null;
 
   return (
-    <motion.div
-      initial={{ opacity: 0, y: 8 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.3 }}
-      className={estilosPagina.card}
-    >
+    <motion.div variants={escalonado(indice)} initial="inicial" animate="visivel" className={casca.root}>
       <Tooltip
         content={
           hht > 0
@@ -81,7 +98,7 @@ export function TaxaGravidadeCard({ acidentes, registrosHht }: TaxaGravidadeCard
         </div>
       </Tooltip>
 
-      <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 8, flexWrap: 'wrap' }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
         {renderBadgeMeta(dentroDaMeta)}
 
         {editandoMeta ? (
@@ -92,6 +109,7 @@ export function TaxaGravidadeCard({ acidentes, registrosHht }: TaxaGravidadeCard
             autoFocus
             value={rascunhoMeta}
             onChange={(_, d) => setRascunhoMeta(d.value)}
+            onClick={(e) => e.stopPropagation()}
             onBlur={salvarMeta}
             onKeyDown={(e) => e.key === 'Enter' && salvarMeta()}
             style={{ width: 90 }}
@@ -100,7 +118,8 @@ export function TaxaGravidadeCard({ acidentes, registrosHht }: TaxaGravidadeCard
           <Text
             size={200}
             style={{ color: designTokens.colorNeutralMedium, cursor: 'pointer', textDecoration: 'underline' }}
-            onClick={() => {
+            onClick={(e) => {
+              e.stopPropagation();
               setRascunhoMeta(meta !== null ? String(meta) : '');
               setEditandoMeta(true);
             }}

@@ -57,13 +57,11 @@ export interface Trabalhador {
   equipeId?: string | null;
   funcaoId: string;
   nome: string;
-  matricula: string;
+  matricula: string | null;
   cpf: string;
   vinculo: number;
   dataAdmissao: string;
   dataDemissao?: string | null;
-  telegramVinculado: boolean;
-  telegramCodigoVinculo?: string | null;
   turno?: string | null;
   temFoto: boolean;
   temBiometria: boolean;
@@ -71,12 +69,13 @@ export interface Trabalhador {
 
 export type NovoTrabalhador = Omit<
   Trabalhador,
-  'id' | 'dataDemissao' | 'telegramVinculado' | 'telegramCodigoVinculo' | 'temFoto' | 'temBiometria'
+  'id' | 'dataDemissao' | 'temFoto' | 'temBiometria'
 >;
 
-export interface GerarVinculoTelegramResultado {
-  codigo: string;
-  linkTelegram: string;
+export interface ImportarColaboradoresGrhResultado {
+  totalRecebidos: number;
+  totalSincronizados: number;
+  erros: string[];
 }
 
 export const TipoExameAso = {
@@ -226,10 +225,80 @@ export interface Treinamento {
   cargaHorariaRealizada: number;
   instituicaoInstrutor?: string | null;
   numeroCertificado?: string | null;
+  // Local/instalações e registro profissional do instrutor (CREA/MTE) no certificado (pedido do
+  // usuário, 06/09). Sem preencher Local, o certificado usa o nome da Obra do trabalhador.
+  local?: string | null;
+  instrutorRegistroProfissional?: string | null;
 }
 
 export type NovoTreinamento = Omit<Treinamento, 'id'>;
 export type AtualizarTreinamento = Treinamento;
+
+// Sessão/Turma de Treinamento (pedido do usuário, 04/09) — reformulação do fluxo: o responsável
+// abre a turma já com os participantes selecionados, registra presença de cada um por biometria
+// durante a aula, anexa as 3 fotos obrigatórias e encerra — o encerramento gera 1 Treinamento (e
+// certificado, com dupla assinatura já existente) por participante que confirmou presença.
+export const StatusSessaoTreinamento = {
+  EmAndamento: 1,
+  Concluida: 2,
+} as const;
+
+export const statusSessaoTreinamentoLabel: Record<number, string> = {
+  1: 'Em andamento',
+  2: 'Concluída',
+};
+
+export interface SessaoTreinamento {
+  id: string;
+  obraId: string;
+  obraNome: string;
+  cursoTreinamentoId: string;
+  cursoTreinamentoNome: string;
+  dataRealizacao: string;
+  cargaHorariaRealizada: number;
+  instituicaoInstrutor?: string | null;
+  numeroCertificado?: string | null;
+  status: number;
+  dataEncerramento?: string | null;
+  totalParticipantes: number;
+  totalPresencasConfirmadas: number;
+  totalFotosEvidencia: number;
+}
+
+export interface NovaSessaoTreinamento {
+  obraId: string;
+  cursoTreinamentoId: string;
+  dataRealizacao: string;
+  cargaHorariaRealizada: number;
+  instituicaoInstrutor?: string | null;
+  trabalhadoresIds: string[];
+}
+
+export interface ParticipanteSessaoTreinamento {
+  id: string;
+  trabalhadorId: string;
+  trabalhadorNome: string;
+  trabalhadorMatricula?: string | null;
+  presencaConfirmadaEm?: string | null;
+  scoreConfianca?: number | null;
+  treinamentoGeradoId?: string | null;
+  // Assinatura do certificado (04/09) — a mesma digital da presença já vale como assinatura do
+  // trabalhador; a do instrutor é automática ao encerrar. Nulos até o encerramento ou se a
+  // assinatura automática falhou (a tela oferece "Assinar" manual como reforço nesse caso).
+  certificadoAssinadoPeloTrabalhadorEm?: string | null;
+  certificadoAssinadoPeloInstrutorEm?: string | null;
+}
+
+export interface FotoEvidenciaSessaoTreinamento {
+  id: string;
+  ordem: number;
+}
+
+export interface SessaoTreinamentoDetalhe {
+  sessao: SessaoTreinamento;
+  participantes: ParticipanteSessaoTreinamento[];
+  fotosEvidencia: FotoEvidenciaSessaoTreinamento[];
+}
 
 // Módulo de Requisitos Legais — Motor de Aplicabilidade Legal (requisito do usuário, 2026-08-29).
 // Fase 1 (fundação de dados): cadastro do requisito e seus critérios de aplicabilidade, catálogo do
@@ -422,6 +491,187 @@ export interface EntregaEpi {
 
 export type NovaEntregaEpi = Omit<EntregaEpi, 'id'> & { motivoTipo: number };
 export type AtualizarEntregaEpi = EntregaEpi & { motivoTipo: number };
+
+// EPC — Equipamento de Proteção Coletiva (aba própria, separada de EPI, pedido do usuário 04/09).
+// Diferente do EPI: não é entregue/assinado por um trabalhador, e sim instalado numa Obra, com
+// validade e inspeções periódicas. Não existe Matriz de EPC (decisão confirmada: só catálogo e
+// estoque).
+export interface CatalogoEpc {
+  id: string;
+  nome: string;
+  fabricante?: string | null;
+  certificadoAprovacaoNumero?: string | null;
+  certificadoAprovacaoValidade?: string | null;
+  vidaUtilEmMeses: number;
+  saldoTotal: number;
+  temFoto: boolean;
+}
+
+export type NovoCatalogoEpc = Omit<CatalogoEpc, 'id' | 'saldoTotal' | 'temFoto'>;
+export type AtualizarCatalogoEpc = Omit<CatalogoEpc, 'saldoTotal' | 'temFoto'>;
+
+export const TipoMovimentacaoEstoqueEpc = {
+  EntradaManual: 0,
+  SaidaInstalacao: 1,
+  RetornoRemocao: 2,
+  AjusteManual: 3,
+} as const;
+
+export const tipoMovimentacaoEstoqueEpcLabel: Record<number, string> = {
+  0: 'Entrada manual',
+  1: 'Saída (instalação)',
+  2: 'Retorno (remoção)',
+  3: 'Ajuste manual',
+};
+
+export interface EstoqueEpcPorObra {
+  catalogoEpcId: string;
+  catalogoEpcNome: string;
+  fabricante?: string | null;
+  saldo: number;
+}
+
+export interface MovimentacaoEstoqueEpc {
+  id: string;
+  tipo: number;
+  quantidade: number;
+  saldoResultante: number;
+  createdAtUtc: string;
+  observacao?: string | null;
+  instalacaoEpcId?: string | null;
+}
+
+export interface RegistrarEntradaEstoqueEpc {
+  catalogoEpcId: string;
+  obraId: string;
+  quantidade: number;
+  observacao?: string | null;
+}
+
+export interface AjustarEstoqueEpc {
+  catalogoEpcId: string;
+  obraId: string;
+  novoSaldo: number;
+  observacao: string;
+}
+
+export const StatusInspecaoEpc = {
+  Conforme: 1,
+  NaoConforme: 2,
+} as const;
+
+export const statusInspecaoEpcLabel: Record<number, string> = {
+  1: 'Conforme',
+  2: 'Não conforme',
+};
+
+export interface InstalacaoEpc {
+  id: string;
+  catalogoEpcId: string;
+  obraId: string;
+  localInstalacao?: string | null;
+  quantidade: number;
+  dataInstalacao: string;
+  dataValidade?: string | null;
+  dataUltimaInspecao?: string | null;
+  statusUltimaInspecao?: number | null;
+  observacoesInspecao?: string | null;
+  dataRemocao?: string | null;
+  observacoes?: string | null;
+}
+
+export type NovaInstalacaoEpc = Omit<
+  InstalacaoEpc,
+  'id' | 'dataUltimaInspecao' | 'statusUltimaInspecao' | 'observacoesInspecao' | 'dataRemocao' | 'observacoes'
+>;
+
+export interface RegistrarInspecaoEpc {
+  dataInspecao: string;
+  status: number;
+  observacoes?: string | null;
+}
+
+export interface RegistrarRemocaoEpc {
+  dataRemocao: string;
+  observacoes?: string | null;
+}
+
+export interface CatalogoUniforme {
+  id: string;
+  nome: string;
+  categoria?: string | null;
+  temFoto: boolean;
+}
+
+export type NovoCatalogoUniforme = Omit<CatalogoUniforme, 'id' | 'temFoto'>;
+export type AtualizarCatalogoUniforme = Omit<CatalogoUniforme, 'temFoto'>;
+
+export const MotivoEntregaUniforme = {
+  Inicial: 0,
+  Desgaste: 1,
+  Extravio: 2,
+  TrocaDeFuncao: 3,
+} as const;
+
+export const motivoEntregaUniformeLabel: Record<number, string> = {
+  0: 'Entrega inicial',
+  1: 'Desgaste',
+  2: 'Extravio',
+  3: 'Troca de função',
+};
+
+export interface EntregaUniforme {
+  id: string;
+  trabalhadorId: string;
+  catalogoUniformeId: string;
+  tamanho: string;
+  quantidade: number;
+  dataEntrega: string;
+  motivoTipo: number;
+  observacoes?: string | null;
+}
+
+export type NovaEntregaUniforme = Omit<EntregaUniforme, 'id' | 'tamanho'>;
+
+export const TipoMovimentacaoEstoqueUniforme = {
+  EntradaManual: 0,
+  SaidaEntrega: 1,
+  AjusteManual: 2,
+} as const;
+
+export const tipoMovimentacaoEstoqueUniformeLabel: Record<number, string> = {
+  0: 'Entrada manual',
+  1: 'Saída (entrega)',
+  2: 'Ajuste manual',
+};
+
+export interface EstoqueUniformePorObra {
+  catalogoUniformeId: string;
+  catalogoUniformeNome: string;
+  tamanho: string;
+  saldo: number;
+}
+
+export interface MovimentacaoEstoqueUniforme {
+  id: string;
+  tipo: number;
+  quantidade: number;
+  saldoResultante: number;
+  createdAtUtc: string;
+  observacao?: string | null;
+  entregaUniformeId?: string | null;
+}
+
+export interface TamanhoUniformeTrabalhador {
+  catalogoUniformeId: string;
+  catalogoUniformeNome: string;
+  tamanho: string;
+}
+
+export interface ItemTamanhoUniforme {
+  catalogoUniformeId: string;
+  tamanho: string;
+}
 
 export interface Atividade {
   id: string;
@@ -640,12 +890,14 @@ export const TipoArea = {
   AreaDeTrabalho: 1,
   ZonaDeRisco: 2,
   Armazenamento: 3,
+  Alojamento: 4,
 } as const;
 
 export const tipoAreaLabel: Record<number, string> = {
   1: 'Área de trabalho',
   2: 'Zona de risco',
   3: 'Armazenamento',
+  4: 'Alojamento',
 };
 
 export const StatusArea = {
@@ -756,22 +1008,44 @@ export interface TreinamentoPublico {
   dataValidade: string;
 }
 
-// Crachá digital público de um trabalhador (NTAG215/QR do capacete) — mesma rota de AreaPublicaDto,
+export interface DdsPublico {
+  data: string;
+  obraNome: string;
+  tema?: string | null;
+}
+
+// Crachá digital de um trabalhador (NTAG215/QR do capacete) — mesma rota de AreaPublicaDto,
 // distinguido pelo campo tipoRecurso. Ver ResolverTrabalhadorPublicoQuery.cs: nunca inclui CPF/RG/
 // admissão/ocorrências — só o suficiente pra um fiscal em campo checar aptidão/EPI/treinamento.
 export interface TrabalhadorPublicoDto {
   tipoRecurso: 'trabalhador';
+  trabalhadorId: string;
   nome: string;
   matricula: string;
   funcaoNome: string;
   obraNome: string;
   temFoto: boolean;
-  statusAptidao: string;
+  // Ausente na leitura anônima da tag (dado de saúde só sai autenticado) — ver
+  // ResolverTrabalhadorPublicoQuery.IncluirDadosSensiveis.
+  statusAptidao?: string | null;
   episAtivos: EpiAtivoPublico[];
   treinamentos: TreinamentoPublico[];
+  historicoDds: DdsPublico[];
 }
 
 export type RecursoPublico = AreaPublicaDto | TrabalhadorPublicoDto;
+
+export interface QrCodeTrabalhador {
+  trabalhadorId: string;
+  trabalhadorNome: string;
+  matricula: string;
+  obraId: string;
+  obraNome: string;
+  tagId: string;
+  uid: string;
+  urlPerfil: string;
+  jaExistia: boolean;
+}
 
 export const StatusApr = {
   EmElaboracao: 1,
@@ -1091,6 +1365,7 @@ export interface PermissaoTrabalho {
   numeroPt?: string | null;
   atividadeId: string;
   atividadeNome: string;
+  obraId?: string | null;
   obraNome?: string | null;
   descricaoAtividade: string;
   local: string;
@@ -1367,6 +1642,7 @@ export const TipoInspecao = {
   EspacoConfinado: 11,
   Comportamental: 12,
   Terceiros: 13,
+  Alojamento: 14,
 } as const;
 
 export const tipoInspecaoLabel: Record<number, string> = {
@@ -1383,6 +1659,7 @@ export const tipoInspecaoLabel: Record<number, string> = {
   11: 'Espaço confinado',
   12: 'Comportamental',
   13: 'Terceiros',
+  14: 'Alojamento',
 };
 
 export const StatusItemChecklist = {
@@ -1421,6 +1698,7 @@ export interface ChecklistModeloItem {
   checklistModeloId: string;
   ordem: number;
   descricao: string;
+  secao?: string | null;
   exigeFotografia: boolean;
   exigeResponsavel: boolean;
   exigePrazo: boolean;
@@ -1428,6 +1706,7 @@ export interface ChecklistModeloItem {
 
 export interface NovoChecklistModeloItem {
   descricao: string;
+  secao?: string | null;
   exigeFotografia: boolean;
   exigeResponsavel: boolean;
   exigePrazo: boolean;
@@ -1477,6 +1756,7 @@ export interface InspecaoItemResposta {
   checklistModeloItemId: string;
   ordem: number;
   descricao: string;
+  secao?: string | null;
   exigeFotografia: boolean;
   exigeResponsavel: boolean;
   exigePrazo: boolean;
@@ -1495,6 +1775,18 @@ export interface InspecaoItemResposta {
 export interface InspecaoDetalhe {
   inspecao: Inspecao;
   respostas: InspecaoItemResposta[];
+}
+
+// Catálogo global de materiais de apoio (pôsteres de sinalização, instruções técnicas) — aba
+// "Documentos & Procedimentos" de Gestão de SST, pedido do usuário em 2026-09-09.
+export interface MaterialApoio {
+  id: string;
+  nome: string;
+  categoria?: string | null;
+  nomeArquivo: string;
+  contentType: string;
+  tamanhoBytes: number;
+  createdAtUtc: string;
 }
 
 export const StatusDds = {
@@ -1537,6 +1829,8 @@ export interface Dds {
   itensVerificados: number;
   totalParticipantes: number;
   totalFotosEvidencia: number;
+  semExpediente: boolean;
+  motivoSemExpediente?: string | null;
 }
 
 export interface NovaDds {
@@ -1572,8 +1866,9 @@ export interface DdsParticipante {
   trabalhadorNome: string;
   fotoTipo: number;
   scoreConfianca?: number | null;
-  telegramEnviadoEm?: string | null;
-  telegramConfirmadoEm?: string | null;
+  // Assinatura do DDS (04/09) — a mesma digital da presença já vale como assinatura eletrônica,
+  // sem precisar ler de novo na tela "Assinar DDS".
+  assinadoEm?: string | null;
 }
 
 export interface DdsFotoEvidencia {
@@ -1586,12 +1881,6 @@ export interface DdsDetalhe {
   itensChecklist: DdsItemChecklist[];
   participantes: DdsParticipante[];
   fotosEvidencia: DdsFotoEvidencia[];
-}
-
-export interface EnviarDdsTelegramResultado {
-  totalParticipantes: number;
-  enviados: number;
-  semVinculo: number;
 }
 
 // DDS Semanal (31/08) — contêiner que agrupa os 5 registros diários (Seg-Sex) de uma semana, seguindo
@@ -1642,7 +1931,6 @@ export interface NovaDdsSemanal {
   obraId: string;
   tipo: number;
   empresaTerceirizada?: string | null;
-  numeroDocumento?: string | null;
   localFrenteServico?: string | null;
   dataInicioSemana: string;
 }
@@ -1656,6 +1944,8 @@ export interface DdsSemanalDia {
   status?: number | null;
   totalFotosEvidencia: number;
   totalParticipantes: number;
+  semExpediente: boolean;
+  motivoSemExpediente?: string | null;
 }
 
 export interface DdsSemanalDetalhe {
@@ -1722,8 +2012,9 @@ export interface DocumentoPublicoSignatario {
 
 export interface DocumentoPublico {
   entidadeTipo: string;
-  finalizadoEm: string;
+  emitidoEm: string;
   conteudoHash: string;
+  assinado: boolean;
   signatarios: DocumentoPublicoSignatario[];
 }
 
@@ -2077,6 +2368,7 @@ export type AtualizarRegistroHhtMensalPayload = NovoRegistroHhtMensal;
 // documentoGestaoId aponta para o DocumentoGestao vinculado (edição/exclusão usam este último).
 export interface Pcmso {
   id: string;
+  numeroDocumento?: string | null;
   nome: string;
   versao?: string | null;
   validade?: string | null;
@@ -2085,7 +2377,6 @@ export interface Pcmso {
   responsavelUsuarioNome?: string | null;
   obraId?: string | null;
   setorId?: string | null;
-  arquivo?: string | null;
   status: number;
   medicoResponsavelNome?: string | null;
   medicoResponsavelCrm?: string | null;
@@ -2104,7 +2395,6 @@ export interface NovoPcmso {
   responsavelUsuarioId?: string | null;
   obraId?: string | null;
   setorId?: string | null;
-  arquivo?: string | null;
   medicoResponsavelNome?: string | null;
   medicoResponsavelCrm?: string | null;
   funcoesContempladas?: string | null;
@@ -2462,6 +2752,9 @@ function ehRotaOffline(path: string): boolean {
 // ASP.NET Core, {"title": "Not Found", ...}. Sem isso, o usuário via literalmente
 // "400 Bad Request: {\"erro\":\"O campo Local é obrigatório.\"}" na tela em vez da mensagem limpa.
 function extrairMensagemErro(corpo: string, status: number, statusText: string): string {
+  if (status === 401) {
+    return 'Sessão não autenticada (401). Entre com sua conta Microsoft/Entra para acessar o sistema.';
+  }
   if (corpo) {
     try {
       const json = JSON.parse(corpo) as { erro?: string; title?: string };
@@ -2660,7 +2953,6 @@ export interface ProcessoEleitoralCipa {
 
 export interface NovoProcessoEleitoralCipa {
   obraId: string;
-  numeroDocumento?: string | null;
   dataConvocacao: string;
   dataInicioInscricoes: string;
   dataFimInscricoes: string;
@@ -2837,6 +3129,25 @@ export const api = {
       return response.json() as Promise<{ id: string }>;
     },
     excluir: (id: string) => request<void>(`/api/obras/${id}`, { method: 'DELETE' }),
+    // CNPJ não entra aqui de propósito — o endpoint de edição (AtualizarObraCommand) não o inclui;
+    // trocar de CNPJ é raro o bastante que ficou de fora da primeira versão desta tela.
+    atualizar: (id: string, obra: NovaObra & { dataTerminoReal?: string | null }) =>
+      request<void>(`/api/obras/${id}`, {
+        method: 'PUT',
+        body: JSON.stringify({
+          id,
+          codigo: obra.codigo,
+          nome: obra.nome,
+          cliente: obra.cliente || null,
+          status: obra.status,
+          dataInicio: obra.dataInicio || null,
+          dataPrevisaoTermino: obra.dataPrevisaoTermino || null,
+          dataTerminoReal: obra.dataTerminoReal || null,
+          endereco: obra.endereco || null,
+          cidade: obra.cidade || null,
+          uf: obra.uf || null,
+        }),
+      }),
     anexarLogo: async (id: string, arquivo: File) => {
       const formData = new FormData();
       formData.append('Logo', arquivo);
@@ -2888,8 +3199,6 @@ export const api = {
       }
       return response.blob();
     },
-    gerarVinculoTelegram: (id: string) =>
-      request<GerarVinculoTelegramResultado>(`/api/trabalhadores/${id}/telegram/vinculo`, { method: 'POST' }),
     registrarTermoAceiteAssinatura: (id: string) =>
       request<void>(`/api/trabalhadores/${id}/assinatura/termo-aceite`, { method: 'POST' }),
     registrarConsentimentoBiometria: (id: string) =>
@@ -2911,6 +3220,29 @@ export const api = {
         method: 'POST',
         body: JSON.stringify({ templateBruto: templateBrutoBase64 }),
       }),
+    // Cadastro de reconhecimento facial (Azure Face API) — multipart, não passa por request<T>
+    // (que sempre força Content-Type: application/json, incompatível com FormData) nem pelo motor
+    // de sincronização offline (cadastro é ação administrativa, sempre com internet).
+    cadastrarFacial: async (id: string, foto: File): Promise<void> => {
+      const formData = new FormData();
+      formData.append('foto', foto);
+      const response = await fetch(`${API_BASE_URL}/api/trabalhadores/${id}/assinatura/facial/cadastro`, {
+        method: 'POST',
+        headers: await montarHeadersAuth(),
+        body: formData,
+      });
+      if (!response.ok) {
+        const corpo = await response.text().catch(() => '');
+        throw new Error(`${response.status} ${response.statusText}: ${corpo}`);
+      }
+    },
+    // Carga inicial única do cadastro do G-RH (Integração G-RH) — a atualização contínua depois
+    // disso é automática, via evento de Service Bus; não faz sentido rodar isto repetidamente.
+    importarGrh: () =>
+      request<ImportarColaboradoresGrhResultado>('/api/trabalhadores/importar-grh', { method: 'POST' }),
+    listarTamanhosUniforme: (id: string) => request<TamanhoUniformeTrabalhador[]>(`/api/trabalhadores/${id}/uniformes`),
+    definirTamanhosUniforme: (id: string, itens: ItemTamanhoUniforme[]) =>
+      request<void>(`/api/trabalhadores/${id}/uniformes`, { method: 'PUT', body: JSON.stringify({ itens }) }),
   },
   funcoes: {
     listar: () => request<Funcao[]>('/api/funcoes'),
@@ -2929,6 +3261,18 @@ export const api = {
       request<void>(`/api/funcoes/${funcaoId}/treinamentos-obrigatorios`, {
         method: 'PUT',
         body: JSON.stringify({ cursoTreinamentoIds }),
+      }),
+    listarUniformes: (funcaoId: string) => request<CatalogoUniforme[]>(`/api/funcoes/${funcaoId}/uniformes`),
+    definirUniformes: (funcaoId: string, catalogoUniformeIds: string[]) =>
+      request<void>(`/api/funcoes/${funcaoId}/uniformes`, {
+        method: 'PUT',
+        body: JSON.stringify({ catalogoUniformeIds }),
+      }),
+    listarEpcs: (funcaoId: string) => request<CatalogoEpc[]>(`/api/funcoes/${funcaoId}/epcs`),
+    definirEpcs: (funcaoId: string, catalogoEpcIds: string[]) =>
+      request<void>(`/api/funcoes/${funcaoId}/epcs`, {
+        method: 'PUT',
+        body: JSON.stringify({ catalogoEpcIds }),
       }),
   },
   setores: {
@@ -2950,8 +3294,13 @@ export const api = {
     excluir: (id: string) => request<void>(`/api/equipes/${id}`, { method: 'DELETE' }),
   },
   asos: {
-    listar: (trabalhadorId?: string) =>
-      request<Aso[]>(`/api/asos${trabalhadorId ? `?trabalhadorId=${trabalhadorId}` : ''}`),
+    listar: (trabalhadorId?: string, obraId?: string) => {
+      const params = new URLSearchParams();
+      if (trabalhadorId) params.set('trabalhadorId', trabalhadorId);
+      if (obraId) params.set('obraId', obraId);
+      const query = params.toString();
+      return request<Aso[]>(`/api/asos${query ? `?${query}` : ''}`);
+    },
     obterPorId: (id: string) => request<Aso>(`/api/asos/${id}`),
     criar: (aso: NovoAso) => request<{ id: string }>('/api/asos', { method: 'POST', body: JSON.stringify(aso) }),
     atualizar: (aso: Aso) => request<void>(`/api/asos/${aso.id}`, { method: 'PUT', body: JSON.stringify(aso) }),
@@ -2984,6 +3333,30 @@ export const api = {
     atualizar: (id: string, pcmso: AtualizarPcmsoPayload) =>
       request<void>(`/api/pcmsos/${id}`, { method: 'PUT', body: JSON.stringify({ ...pcmso, id }) }),
     excluir: (id: string) => request<void>(`/api/pcmsos/${id}`, { method: 'DELETE' }),
+    obterDocumento: async (id: string): Promise<Blob | null> => {
+      const response = await fetch(`${API_BASE_URL}/api/pcmsos/${id}/documento`, {
+        headers: await montarHeadersAuth(),
+      });
+      if (response.status === 404) return null;
+      if (!response.ok) {
+        const corpo = await response.text().catch(() => '');
+        throw new Error(extrairMensagemErro(corpo, response.status, response.statusText));
+      }
+      return response.blob();
+    },
+    enviarDocumento: async (id: string, arquivo: File) => {
+      const formData = new FormData();
+      formData.append('Arquivo', arquivo);
+      const response = await fetch(`${API_BASE_URL}/api/pcmsos/${id}/documento`, {
+        method: 'POST',
+        headers: await montarHeadersAuth(),
+        body: formData,
+      });
+      if (!response.ok) {
+        const corpo = await response.text().catch(() => '');
+        throw new Error(extrairMensagemErro(corpo, response.status, response.statusText));
+      }
+    },
   },
   cursosTreinamento: {
     listar: () => request<CursoTreinamento[]>('/api/cursostreinamento'),
@@ -2994,8 +3367,13 @@ export const api = {
     excluir: (id: string) => request<void>(`/api/cursostreinamento/${id}`, { method: 'DELETE' }),
   },
   treinamentos: {
-    listar: (trabalhadorId?: string) =>
-      request<Treinamento[]>(`/api/treinamentos${trabalhadorId ? `?trabalhadorId=${trabalhadorId}` : ''}`),
+    listar: (trabalhadorId?: string, obraId?: string) => {
+      const params = new URLSearchParams();
+      if (trabalhadorId) params.set('trabalhadorId', trabalhadorId);
+      if (obraId) params.set('obraId', obraId);
+      const query = params.toString();
+      return request<Treinamento[]>(`/api/treinamentos${query ? `?${query}` : ''}`);
+    },
     obterPorId: (id: string) => request<Treinamento>(`/api/treinamentos/${id}`),
     criar: (treinamento: NovoTreinamento) =>
       request<{ id: string }>('/api/treinamentos', { method: 'POST', body: JSON.stringify(treinamento) }),
@@ -3009,6 +3387,45 @@ export const api = {
       if (!response.ok) {
         const corpo = await response.text().catch(() => '');
         throw new Error(`${response.status} ${response.statusText}: ${corpo}`);
+      }
+      return response.blob();
+    },
+  },
+  sessoesTreinamento: {
+    listar: (obraId?: string) => request<SessaoTreinamento[]>(`/api/sessoestreinamento${obraId ? `?obraId=${obraId}` : ''}`),
+    obterDetalhe: (id: string) => request<SessaoTreinamentoDetalhe>(`/api/sessoestreinamento/${id}`),
+    criar: (sessao: NovaSessaoTreinamento) =>
+      request<{ id: string }>('/api/sessoestreinamento', { method: 'POST', body: JSON.stringify(sessao) }),
+    // Presença exclusivamente por biometria (mesmo padrão de api.dds.registrarParticipante) —
+    // dispositivoId/segredoDispositivo vêm do agente local, score é o resultado do match 1:N já
+    // feito por ele (ver capturarDigitalLocal).
+    registrarPresenca: (sessaoId: string, trabalhadorId: string, dispositivoId: string, segredoDispositivo: string, score: number) =>
+      request<void>(`/api/sessoestreinamento/${sessaoId}/presenca`, {
+        method: 'POST',
+        body: JSON.stringify({ trabalhadorId, dispositivoId, segredoDispositivo, score }),
+      }),
+    encerrar: (id: string) => request<void>(`/api/sessoestreinamento/${id}/encerrar`, { method: 'POST' }),
+    // Slot fixo por ordem (04/09) — reanexar no mesmo quadro substitui a foto existente.
+    anexarFotoEvidencia: async (sessaoId: string, ordem: number, foto: File) => {
+      const formData = new FormData();
+      formData.append('foto', foto);
+      formData.append('ordem', String(ordem));
+      const authHeaders = await montarHeadersAuth();
+      return syncMutateMultipart<{ id: string }>(`/api/sessoestreinamento/${sessaoId}/fotos-evidencia`, formData, authHeaders);
+    },
+    baixarFotoEvidencia: async (fotoId: string) => {
+      const authHeaders = await montarHeadersAuth();
+      return syncFetchBlob(`/api/sessoestreinamento/fotos-evidencia/${fotoId}`, authHeaders);
+    },
+    removerFotoEvidencia: (fotoId: string) =>
+      request<void>(`/api/sessoestreinamento/fotos-evidencia/${fotoId}`, { method: 'DELETE' }),
+    baixarAta: async (id: string) => {
+      const response = await fetch(`${API_BASE_URL}/api/sessoestreinamento/${id}/ata/pdf`, {
+        headers: await montarHeadersAuth(),
+      });
+      if (!response.ok) {
+        const corpo = await response.text().catch(() => '');
+        throw new Error(extrairMensagemErro(corpo, response.status, response.statusText));
       }
       return response.blob();
     },
@@ -3082,6 +3499,44 @@ export const api = {
       return response.blob();
     },
   },
+  catalogosUniforme: {
+    listar: () => request<CatalogoUniforme[]>('/api/catalogosuniforme'),
+    criar: (item: NovoCatalogoUniforme) =>
+      request<{ id: string }>('/api/catalogosuniforme', { method: 'POST', body: JSON.stringify(item) }),
+    atualizar: (item: AtualizarCatalogoUniforme) =>
+      request<void>(`/api/catalogosuniforme/${item.id}`, { method: 'PUT', body: JSON.stringify(item) }),
+    excluir: (id: string) => request<void>(`/api/catalogosuniforme/${id}`, { method: 'DELETE' }),
+    anexarFoto: async (id: string, arquivo: File) => {
+      const formData = new FormData();
+      formData.append('Foto', arquivo);
+      const response = await fetch(`${API_BASE_URL}/api/catalogosuniforme/${id}/foto`, {
+        method: 'POST',
+        headers: await montarHeadersAuth(),
+        body: formData,
+      });
+      if (!response.ok) {
+        const corpo = await response.text().catch(() => '');
+        throw new Error(extrairMensagemErro(corpo, response.status, response.statusText));
+      }
+    },
+    baixarFoto: async (id: string) => {
+      const response = await fetch(`${API_BASE_URL}/api/catalogosuniforme/${id}/foto`, {
+        headers: await montarHeadersAuth(),
+      });
+      if (!response.ok) {
+        const corpo = await response.text().catch(() => '');
+        throw new Error(extrairMensagemErro(corpo, response.status, response.statusText));
+      }
+      return response.blob();
+    },
+  },
+  entregasUniforme: {
+    listar: (trabalhadorId?: string) =>
+      request<EntregaUniforme[]>(`/api/entregasuniforme${trabalhadorId ? `?trabalhadorId=${trabalhadorId}` : ''}`),
+    obterPorId: (id: string) => request<EntregaUniforme>(`/api/entregasuniforme/${id}`),
+    criar: (dados: NovaEntregaUniforme) =>
+      request<{ id: string }>('/api/entregasuniforme', { method: 'POST', body: JSON.stringify(dados) }),
+  },
   estoquesEpi: {
     listarPorObra: (obraId: string) => request<EstoqueEpiPorObra[]>(`/api/estoquesepi/obra/${obraId}`),
     listarMovimentacoes: (obraId: string, catalogoEpiId: string) =>
@@ -3091,9 +3546,25 @@ export const api = {
     ajustar: (dados: AjustarEstoqueEpi) =>
       request<void>('/api/estoquesepi/ajuste', { method: 'POST', body: JSON.stringify(dados) }),
   },
+  estoquesUniforme: {
+    listarPorObra: (obraId: string) => request<EstoqueUniformePorObra[]>(`/api/estoquesuniforme/obra/${obraId}`),
+    listarMovimentacoes: (obraId: string, catalogoUniformeId: string, tamanho: string) =>
+      request<MovimentacaoEstoqueUniforme[]>(
+        `/api/estoquesuniforme/obra/${obraId}/peca/${catalogoUniformeId}/tamanho/${encodeURIComponent(tamanho)}/movimentacoes`,
+      ),
+    registrarEntrada: (dados: { catalogoUniformeId: string; obraId: string; tamanho: string; quantidade: number; observacao?: string | null }) =>
+      request<void>('/api/estoquesuniforme/entrada', { method: 'POST', body: JSON.stringify(dados) }),
+    ajustar: (dados: { catalogoUniformeId: string; obraId: string; tamanho: string; novoSaldo: number; observacao: string }) =>
+      request<void>('/api/estoquesuniforme/ajuste', { method: 'POST', body: JSON.stringify(dados) }),
+  },
   entregasEpi: {
-    listar: (trabalhadorId?: string) =>
-      request<EntregaEpi[]>(`/api/entregasepi${trabalhadorId ? `?trabalhadorId=${trabalhadorId}` : ''}`),
+    listar: (trabalhadorId?: string, obraId?: string) => {
+      const params = new URLSearchParams();
+      if (trabalhadorId) params.set('trabalhadorId', trabalhadorId);
+      if (obraId) params.set('obraId', obraId);
+      const query = params.toString();
+      return request<EntregaEpi[]>(`/api/entregasepi${query ? `?${query}` : ''}`);
+    },
     obterPorId: (id: string) => request<EntregaEpi>(`/api/entregasepi/${id}`),
     criar: (entrega: NovaEntregaEpi) =>
       request<{ id: string }>('/api/entregasepi', { method: 'POST', body: JSON.stringify(entrega) }),
@@ -3110,6 +3581,58 @@ export const api = {
       }
       return response.blob();
     },
+  },
+  catalogosEpc: {
+    listar: () => request<CatalogoEpc[]>('/api/catalogosepc'),
+    criar: (epc: NovoCatalogoEpc) =>
+      request<{ id: string }>('/api/catalogosepc', { method: 'POST', body: JSON.stringify(epc) }),
+    atualizar: (epc: AtualizarCatalogoEpc) =>
+      request<void>(`/api/catalogosepc/${epc.id}`, { method: 'PUT', body: JSON.stringify(epc) }),
+    excluir: (id: string) => request<void>(`/api/catalogosepc/${id}`, { method: 'DELETE' }),
+    anexarFoto: async (id: string, arquivo: File) => {
+      const formData = new FormData();
+      formData.append('Foto', arquivo);
+      const response = await fetch(`${API_BASE_URL}/api/catalogosepc/${id}/foto`, {
+        method: 'POST',
+        headers: await montarHeadersAuth(),
+        body: formData,
+      });
+      if (!response.ok) {
+        const corpo = await response.text().catch(() => '');
+        throw new Error(extrairMensagemErro(corpo, response.status, response.statusText));
+      }
+    },
+    baixarFoto: async (id: string) => {
+      const response = await fetch(`${API_BASE_URL}/api/catalogosepc/${id}/foto`, {
+        headers: await montarHeadersAuth(),
+      });
+      if (!response.ok) {
+        const corpo = await response.text().catch(() => '');
+        throw new Error(extrairMensagemErro(corpo, response.status, response.statusText));
+      }
+      return response.blob();
+    },
+  },
+  estoquesEpc: {
+    listarPorObra: (obraId: string) => request<EstoqueEpcPorObra[]>(`/api/estoquesepc/obra/${obraId}`),
+    listarMovimentacoes: (obraId: string, catalogoEpcId: string) =>
+      request<MovimentacaoEstoqueEpc[]>(`/api/estoquesepc/obra/${obraId}/epc/${catalogoEpcId}/movimentacoes`),
+    registrarEntrada: (dados: RegistrarEntradaEstoqueEpc) =>
+      request<void>('/api/estoquesepc/entrada', { method: 'POST', body: JSON.stringify(dados) }),
+    ajustar: (dados: AjustarEstoqueEpc) =>
+      request<void>('/api/estoquesepc/ajuste', { method: 'POST', body: JSON.stringify(dados) }),
+  },
+  instalacoesEpc: {
+    listar: (obraId?: string) =>
+      request<InstalacaoEpc[]>(`/api/instalacoesepc${obraId ? `?obraId=${obraId}` : ''}`),
+    obterPorId: (id: string) => request<InstalacaoEpc>(`/api/instalacoesepc/${id}`),
+    criar: (instalacao: NovaInstalacaoEpc) =>
+      request<{ id: string }>('/api/instalacoesepc', { method: 'POST', body: JSON.stringify(instalacao) }),
+    registrarInspecao: (id: string, dados: RegistrarInspecaoEpc) =>
+      request<void>(`/api/instalacoesepc/${id}/inspecao`, { method: 'POST', body: JSON.stringify(dados) }),
+    registrarRemocao: (id: string, dados: RegistrarRemocaoEpc) =>
+      request<void>(`/api/instalacoesepc/${id}/remocao`, { method: 'POST', body: JSON.stringify(dados) }),
+    excluir: (id: string) => request<void>(`/api/instalacoesepc/${id}`, { method: 'DELETE' }),
   },
   atividades: {
     listar: (obraId?: string) => request<Atividade[]>(`/api/atividades${obraId ? `?obraId=${obraId}` : ''}`),
@@ -3148,6 +3671,30 @@ export const api = {
     atualizar: (id: string, pgr: Pgr) =>
       request<void>(`/api/pgrs/${id}`, { method: 'PUT', body: JSON.stringify(pgr) }),
     excluir: (id: string) => request<void>(`/api/pgrs/${id}`, { method: 'DELETE' }),
+    obterDocumento: async (id: string): Promise<Blob | null> => {
+      const response = await fetch(`${API_BASE_URL}/api/pgrs/${id}/documento`, {
+        headers: await montarHeadersAuth(),
+      });
+      if (response.status === 404) return null;
+      if (!response.ok) {
+        const corpo = await response.text().catch(() => '');
+        throw new Error(extrairMensagemErro(corpo, response.status, response.statusText));
+      }
+      return response.blob();
+    },
+    enviarDocumento: async (id: string, arquivo: File) => {
+      const formData = new FormData();
+      formData.append('Arquivo', arquivo);
+      const response = await fetch(`${API_BASE_URL}/api/pgrs/${id}/documento`, {
+        method: 'POST',
+        headers: await montarHeadersAuth(),
+        body: formData,
+      });
+      if (!response.ok) {
+        const corpo = await response.text().catch(() => '');
+        throw new Error(extrairMensagemErro(corpo, response.status, response.statusText));
+      }
+    },
   },
   planoAcao: {
     listar: (pgrId: string) => request<PlanoAcaoItem[]>(`/api/planoacao?pgrId=${pgrId}`),
@@ -3179,6 +3726,22 @@ export const api = {
     },
     criar: (tag: NovaTagIdentificacao) =>
       request<{ id: string }>('/api/tagsidentificacao', { method: 'POST', body: JSON.stringify(tag) }),
+    gerarQrCodesTrabalhadores: (obraId?: string) =>
+      request<QrCodeTrabalhador[]>('/api/tagsidentificacao/trabalhadores/qr-codes', {
+        method: 'POST',
+        body: JSON.stringify({ obraId: obraId || null }),
+      }),
+    baixarQrCodeTrabalhador: async (uid: string) => {
+      const response = await fetch(
+        `${API_BASE_URL}/api/tagsidentificacao/trabalhadores/qr-codes/${encodeURIComponent(uid)}/png`,
+        { headers: await montarHeadersAuth() },
+      );
+      if (!response.ok) {
+        const corpo = await response.text().catch(() => '');
+        throw new Error(extrairMensagemErro(corpo, response.status, response.statusText));
+      }
+      return response.blob();
+    },
     vincular: (id: string, entidadeVinculadaTipo: number, entidadeVinculadaId: string) =>
       request<void>(`/api/tagsidentificacao/${id}/vincular`, {
         method: 'POST',
@@ -3197,9 +3760,10 @@ export const api = {
   },
   identificacaoPublica: {
     resolver: (codigoOuUid: string) => request<RecursoPublico>(`/sst/p/${encodeURIComponent(codigoOuUid)}`),
-    // Sem auth de propósito — rota [AllowAnonymous], só acessível pra quem já tem o Uid da tag.
     baixarFotoTrabalhador: async (uid: string) => {
-      const response = await fetch(`${API_BASE_URL}/sst/p/${encodeURIComponent(uid)}/foto`);
+      const response = await fetch(`${API_BASE_URL}/sst/p/${encodeURIComponent(uid)}/foto`, {
+        headers: await montarHeadersAuth(),
+      });
       if (!response.ok) {
         const corpo = await response.text().catch(() => '');
         throw new Error(extrairMensagemErro(corpo, response.status, response.statusText));
@@ -3475,10 +4039,51 @@ export const api = {
         body: JSON.stringify(body),
       }),
   },
+  materiaisApoio: {
+    listar: (categoria?: string) =>
+      request<MaterialApoio[]>(`/api/materiaisapoio${categoria ? `?categoria=${encodeURIComponent(categoria)}` : ''}`),
+    // Retorna o Blob (não uma URL direta): o endpoint exige autenticação, então uma tag <img src>
+    // apontando pra API não carregaria os headers — a página busca o blob via fetch autenticado e
+    // monta um object URL local pra pré-visualização/download (mesmo padrão de baixarFoto acima).
+    baixarConteudo: async (id: string) => {
+      const response = await fetch(`${API_BASE_URL}/api/materiaisapoio/${id}/conteudo`, {
+        headers: await montarHeadersAuth(),
+      });
+      if (!response.ok) {
+        const corpo = await response.text().catch(() => '');
+        throw new Error(extrairMensagemErro(corpo, response.status, response.statusText));
+      }
+      return response.blob();
+    },
+    criar: async (nome: string, categoria: string | null, arquivo: File) => {
+      const formData = new FormData();
+      formData.append('nome', nome);
+      if (categoria) formData.append('categoria', categoria);
+      formData.append('arquivo', arquivo);
+      const response = await fetch(`${API_BASE_URL}/api/materiaisapoio`, {
+        method: 'POST',
+        headers: await montarHeadersAuth(),
+        body: formData,
+      });
+      if (!response.ok) {
+        const corpo = await response.text().catch(() => '');
+        throw new Error(extrairMensagemErro(corpo, response.status, response.statusText));
+      }
+      return response.json() as Promise<{ id: string }>;
+    },
+    excluir: (id: string) => request<void>(`/api/materiaisapoio/${id}`, { method: 'DELETE' }),
+  },
   dds: {
     listar: (obraId?: string) => request<Dds[]>(`/api/dds${obraId ? `?obraId=${obraId}` : ''}`),
     obterDetalhe: (id: string) => request<DdsDetalhe>(`/api/dds/${id}`),
     criar: (dds: NovaDds) => request<{ id: string }>('/api/dds', { method: 'POST', body: JSON.stringify(dds) }),
+    // Dia sem expediente — feriado, folga, obra parada (pedido do usuário, 03/09): registra o dia
+    // com a justificativa do responsável em vez de forçar um DDS ou deixar o dia em branco.
+    registrarSemExpediente: (ddsSemanalId: string, data: string, motivo: string) =>
+      request<{ id: string }>('/api/dds/sem-expediente', {
+        method: 'POST',
+        body: JSON.stringify({ ddsSemanalId, data, motivo }),
+      }),
     marcarItem: (itemId: string, verificado: boolean) =>
       request<void>(`/api/dds/itens/${itemId}/marcar`, { method: 'POST', body: JSON.stringify({ verificado }) }),
     // Presença exclusivamente por biometria (2026-08-31, pedido do usuário) — dispositivoId/
@@ -3504,12 +4109,12 @@ export const api = {
       const authHeaders = await montarHeadersAuth();
       return syncFetchBlob(`/api/dds/participantes/${participanteId}/foto`, authHeaders);
     },
-    enviarTelegram: (id: string) =>
-      request<EnviarDdsTelegramResultado>(`/api/dds/${id}/telegram/enviar`, { method: 'POST' }),
     // Evidências fotográficas do registro diário (3 obrigatórias para encerrar, ver EncerrarDdsCommand).
-    anexarFotoEvidencia: async (ddsId: string, foto: File) => {
+    // Slot fixo por ordem (04/09) — reanexar no mesmo quadro substitui a foto existente.
+    anexarFotoEvidencia: async (ddsId: string, ordem: number, foto: File) => {
       const formData = new FormData();
       formData.append('foto', foto);
+      formData.append('ordem', String(ordem));
       const authHeaders = await montarHeadersAuth();
       return syncMutateMultipart<{ id: string }>(`/api/dds/${ddsId}/fotos-evidencia`, formData, authHeaders);
     },
@@ -3517,6 +4122,7 @@ export const api = {
       const authHeaders = await montarHeadersAuth();
       return syncFetchBlob(`/api/dds/fotos-evidencia/${fotoId}`, authHeaders);
     },
+    removerFotoEvidencia: (fotoId: string) => request<void>(`/api/dds/fotos-evidencia/${fotoId}`, { method: 'DELETE' }),
   },
   ddsSemanal: {
     listar: (obraId?: string) => request<DdsSemanal[]>(`/api/ddssemanal${obraId ? `?obraId=${obraId}` : ''}`),
@@ -3571,6 +4177,17 @@ export const api = {
         method: 'POST',
         body: JSON.stringify({ dispositivoId, segredoDispositivo, trabalhadorId, score }),
       }),
+    // Assinatura via reconhecimento facial (Azure Face API) — multipart e offline-aware, mesmo
+    // padrão de anexarFotoEvidencia (DDS): syncMutateMultipart enfileira sozinho se faltar conexão.
+    autenticarFacial: async (documentoAssinaturaId: string, obraId: string, foto: File) => {
+      const formData = new FormData();
+      formData.append('obraId', obraId);
+      formData.append('foto', foto);
+      const authHeaders = await montarHeadersAuth();
+      return syncMutateMultipart<DocumentoSignatario>(
+        `/api/documentos/${documentoAssinaturaId}/autenticacao/facial`, formData, authHeaders,
+      );
+    },
     listar: (filtros?: { entidadeTipo?: string; status?: number; dataInicio?: string; dataFim?: string }) => {
       const query = new URLSearchParams();
       if (filtros?.entidadeTipo) query.set('entidadeTipo', filtros.entidadeTipo);
@@ -3605,8 +4222,13 @@ export const api = {
     excluir: (id: string) => request<void>(`/api/ativos/${id}`, { method: 'DELETE' }),
   },
   naoConformidades: {
-    listar: (status?: number) =>
-      request<NaoConformidade[]>(`/api/naoconformidades${status ? `?status=${status}` : ''}`),
+    listar: (status?: number, obraId?: string) => {
+      const params = new URLSearchParams();
+      if (status) params.set('status', String(status));
+      if (obraId) params.set('obraId', obraId);
+      const query = params.toString();
+      return request<NaoConformidade[]>(`/api/naoconformidades${query ? `?${query}` : ''}`);
+    },
     obterDetalhe: (id: string) => request<NaoConformidadeDetalhe>(`/api/naoconformidades/${id}`),
     criar: (nc: NovaNaoConformidade) =>
       request<{ id: string }>('/api/naoconformidades', { method: 'POST', body: JSON.stringify(nc) }),

@@ -1,5 +1,5 @@
 import { makeStyles, tokens } from '@fluentui/react-components';
-import { designTokens } from '../../theme';
+import { designTokens } from '@ui';
 
 export const useDashboardStyles = makeStyles({
   filtros: {
@@ -7,6 +7,21 @@ export const useDashboardStyles = makeStyles({
     gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
     gap: '12px',
     marginBottom: '20px',
+  },
+  // Grade dos 7 indicadores do topo (6 KPIs + Taxa de Gravidade). Colunas FIXAS por largura, e não
+  // auto-fit: com auto-fit o número de colunas variava com a tela e o 7º cartão caía sozinho numa
+  // segunda linha ao lado de um vazio (13/09). Com colunas fixas, as linhas ficam sempre alinhadas
+  // (7 em uma linha em telas largas; 4+3 em médias; 2 por linha em estreitas).
+  gradeKpis: {
+    display: 'grid',
+    gridTemplateColumns: 'repeat(2, minmax(0, 1fr))',
+    gap: '16px',
+    flexGrow: 1,
+    minWidth: 0,
+    // Faixas mutuamente exclusivas de propósito: o Griffel não garante a ordem das @media na folha
+    // gerada, e com min-width em cascata a regra de 4 colunas vencia a de 7 em tela larga.
+    '@media (min-width: 960px) and (max-width: 1559px)': { gridTemplateColumns: 'repeat(4, minmax(0, 1fr))' },
+    '@media (min-width: 1560px)': { gridTemplateColumns: 'repeat(7, minmax(0, 1fr))' },
   },
   kpiIcone: {
     width: '34px',
@@ -153,5 +168,21 @@ export const useDashboardStyles = makeStyles({
     flexShrink: 0,
     whiteSpace: 'nowrap',
     paddingTop: '2px',
+  },
+  // Wrapper clicável dos cards do Dashboard. É flex para o card interno esticar na altura da linha,
+  // mas um filho flex NÃO estica na largura por padrão (flex: 0 1 auto) — o card encolhia para a
+  // largura do conteúdo e sobrava um buraco na coluna da grade ("dashboard desalinhado", 13/09).
+  // O seletor de filho força o card a ocupar a célula inteira nas duas direções.
+  cardAcionavel: {
+    height: '100%',
+    display: 'flex',
+    alignItems: 'stretch',
+    cursor: 'pointer',
+    borderRadius: '12px',
+    '& > *': { flexGrow: 1, flexShrink: 1, flexBasis: 'auto', minWidth: 0, width: '100%' },
+    ':focus-visible': {
+      outline: `2px solid ${designTokens.colorPrimary}`,
+      outlineOffset: '2px',
+    },
   },
 });
