@@ -44,4 +44,17 @@ public class AlojamentosController : ControllerBase
         await _mediator.Send(new RemoverMoradorAlojamentoCommand(alojamentoMoradorId), ct);
         return NoContent();
     }
+
+    [Authorize(Policy = "alojamento:ver")]
+    [HttpGet("configuracao")]
+    public async Task<IActionResult> ObterConfiguracao(CancellationToken ct) =>
+        Ok(new { diasParaInspecaoAtrasada = await _mediator.Send(new ObterConfiguracaoAlojamentoQuery(), ct) });
+
+    [Authorize(Policy = "alojamento:configurar")]
+    [HttpPut("configuracao")]
+    public async Task<IActionResult> AtualizarConfiguracao(AtualizarConfiguracaoAlojamentoCommand command, CancellationToken ct)
+    {
+        await _mediator.Send(command, ct);
+        return NoContent();
+    }
 }

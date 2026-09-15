@@ -138,6 +138,7 @@ public static class RbacSeeder
         ("alojamento:ver", "Alojamento", "Ver", "Ver alojamentos cadastrados e seus moradores"),
         ("alojamento:criar", "Alojamento", "Criar", "Cadastrar alojamento"),
         ("alojamento:gerenciar-moradores", "Alojamento", "GerenciarMoradores", "Adicionar/remover morador de alojamento"),
+        ("alojamento:configurar", "Alojamento", "Configurar", "Editar configuração global de Alojamento"),
 
         ("checklist:ver", "Checklist", "Ver", "Ver modelos de checklist"),
         ("checklist:gerenciar", "Checklist", "Gerenciar", "Criar/versionar modelo de checklist"),
