@@ -1,5 +1,10 @@
 # AAHBRANT.JURI.Api — busca de processos (MVP)
 
+**Instância pública (hml):** `https://juri-api-hml.kindground-7a44c4f0.brazilsouth.azurecontainerapps.io`
+Container App `juri-api-hml`, resource group `rg-gnezis-hub-staging` (mesmo ambiente do G-SST).
+Todo `/api/**` exige o header `X-Api-Key` — pegue a chave com o Wellington, não está commitada.
+`min-replicas 0`: a primeira chamada do dia pode demorar alguns segundos (cold start).
+
 API interna do G-JURI que combina duas fontes públicas do CNJ:
 
 | Fonte | Para quê | Autenticação |
