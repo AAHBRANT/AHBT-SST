@@ -34,3 +34,5 @@ Thumbs.db
 # Git worktrees isolados (subagent-driven-development)
 .worktrees/
 .superpowers/
+.vercel
+.env*

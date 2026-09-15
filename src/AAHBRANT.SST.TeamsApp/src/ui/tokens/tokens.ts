@@ -68,7 +68,7 @@ export const tokensUi = {
   sombraLinha: 'var(--sst-row-shadow)',
   sombraLinhaHover: 'var(--sst-row-shadow-hover)',
   espaco: { xs: '4px', sm: '8px', md: '12px', lg: '16px', xl: '24px', xxl: '32px', xxxl: '48px' },
-  raio: { sm: '6px', md: '10px', lg: '12px', full: '999px' },
+  raio: { sm: '4px', md: '6px', lg: '8px', full: '999px' },
   // Durações e curva das transições CSS (spec §1.5). movimento.ts guarda os equivalentes em segundos
   // para o framer-motion; aqui ficam os valores em ms usados por Griffel/transitionDuration.
   duracao: { rapido: '120ms', normal: '200ms', entrada: '300ms' },

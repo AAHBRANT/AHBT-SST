@@ -8,7 +8,7 @@ import { escalonado } from '../../tokens/movimento';
 import { Carregando } from '../../primitivos/Carregando/Carregando';
 
 const useStyles = makeStyles({
-  root: { backgroundColor: designTokens.colorSurface, border: `1px solid ${designTokens.colorCardBorder}`, borderRadius: tokensUi.raio.lg, boxShadow: designTokens.cardShadow, padding: tokensUi.espaco.xl, display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '10px' },
+  root: { backgroundColor: designTokens.colorSurface, border: `1px solid ${designTokens.colorCardBorder}`, borderTop: `3px solid ${designTokens.colorPrimary}`, borderRadius: tokensUi.raio.lg, boxShadow: designTokens.cardShadow, padding: tokensUi.espaco.lg, display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '10px' },
   acionavel: {
     width: '100%',
     minHeight: '100%',
@@ -20,7 +20,7 @@ const useStyles = makeStyles({
     transitionProperty: 'border, box-shadow, transform',
     ':hover': {
       border: `1px solid ${designTokens.colorPrimary}`,
-      boxShadow: designTokens.cardShadow,
+      boxShadow: `inset 0 0 0 1px ${designTokens.colorPrimary}`,
     },
     ':focus-visible': {
       outline: `2px solid ${designTokens.colorPrimary}`,
@@ -29,7 +29,7 @@ const useStyles = makeStyles({
   },
   textos: { display: 'flex', flexDirection: 'column', gap: '6px', minWidth: 0 },
   rotulo: { color: designTokens.colorNeutralMedium },
-  icone: { width: '42px', height: '42px', borderRadius: '50%', display: 'grid', placeItems: 'center', flexShrink: 0 },
+  icone: { width: '38px', height: '38px', borderRadius: tokensUi.raio.md, display: 'grid', placeItems: 'center', flexShrink: 0 },
   deltas: { display: 'flex', flexWrap: 'wrap', gap: '6px' },
   delta: { fontSize: '11px', lineHeight: '14px', fontWeight: 700, padding: '3px 8px', borderRadius: tokensUi.raio.full },
 });
@@ -68,7 +68,11 @@ export function KpiCard({ rotulo, valor, tom, icone, deltas, indice = 0, carrega
         <span className={tipo.display}>{valor}</span>
         <span className={mergeClasses(tipo.legenda, e.rotulo)}>{rotulo}</span>
         {deltas && deltas.length > 0 && (
-          <div className={e.deltas}>{deltas.map((d, i) => <span key={`${i}-${d.texto}`} className={mergeClasses(e.delta, tons[d.tom], d.pulsar === 'rapido' && pulsos.rapido, d.pulsar === 'leve' && pulsos.leve)}>{d.texto}</span>)}</div>
+          <div className={e.deltas}>{deltas.map((d, i) => {
+            // Critério de cor: tom "alerta" (vermelho) sempre pulsa rápido, mesmo sem `pulsar` explícito — pedido do usuário, 15/09.
+            const pulsar = d.pulsar ?? (d.tom === 'alerta' ? 'rapido' : undefined);
+            return <span key={`${i}-${d.texto}`} className={mergeClasses(e.delta, tons[d.tom], pulsar === 'rapido' && pulsos.rapido, pulsar === 'leve' && pulsos.leve)}>{d.texto}</span>;
+          })}</div>
         )}
       </div>
       {icone && <div className={mergeClasses(e.icone, tons[tom])}>{icone}</div>}

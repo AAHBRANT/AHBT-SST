@@ -48,6 +48,16 @@ export default defineConfig({
         // Bundle passou de 2 MiB (limite padrão do workbox) com a chegada dos módulos
         // Uniforme/EPC (merge de 2026-09-10) — sem isso o build falha ao gerar o service worker.
         maximumFileSizeToCacheInBytes: 3 * 1024 * 1024,
+        // skipWaiting+clientsClaim fazem o SW novo assumir as abas abertas, mas a PÁGINA continua
+        // rodando o JS antigo até recarregar — e dentro do Teams (aba viva por dias, sem navegação)
+        // isso nunca acontece; era por isso que o Teams mostrava uma versão e o navegador outra
+        // (13/09). public/sw-atualizacao.js roda dentro do SW e, ao ativar uma troca de versão,
+        // manda todas as janelas controladas navegarem para a própria URL (recarregar). É o único
+        // código novo que alcança um cliente já preso no bundle antigo.
+        importScripts: ['sw-atualizacao.js'],
+        // Fora do precache: ele é buscado pelo próprio navegador ao instalar o SW (com os
+        // cabeçalhos no-cache do nginx), não pela página.
+        globIgnores: ['**/sw-atualizacao.js'],
       },
     }),
   ],

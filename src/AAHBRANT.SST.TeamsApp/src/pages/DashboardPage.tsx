@@ -41,6 +41,7 @@ import { MiniCalendarioCard } from '../components/dashboard/MiniCalendarioCard';
 interface KpiDelta {
   texto: string;
   tom: Tom;
+  pulsar?: 'rapido' | 'leve';
 }
 
 interface Kpi {
@@ -314,10 +315,10 @@ export function DashboardPage() {
       tom: 'atencao',
       deltas: [
         ...(treinamentosAVencer.length > 0
-          ? [{ texto: `${treinamentosAVencer.length} a vencer`, tom: 'atencao' as const }]
+          ? [{ texto: `${treinamentosAVencer.length} a vencer`, tom: 'atencao' as const, pulsar: 'leve' as const }]
           : []),
         ...(treinamentosVencidos.length > 0
-          ? [{ texto: `${treinamentosVencidos.length} vencidos`, tom: 'alerta' as const }]
+          ? [{ texto: `${treinamentosVencidos.length} vencidos`, tom: 'alerta' as const, pulsar: 'rapido' as const }]
           : []),
       ],
       destino: '/gestao-sst?secao=treinamentos&aba=turmas',
