@@ -57,6 +57,11 @@ curl "http://localhost:5210/api/processos/0000567-57.2026.5.13.0026?maxMovimento
 - `PartesMonitoradas[]` — `Nome`, `Cnpj` e `Termos` (o que é enviado ao DJEN em `nomeParte`).
   O termo `AAHBRANT` cobre razão social antiga (EIRELI-EPP), atual (LTDA) e a filial PB.
 - `Djen:MaxPaginas` — teto de páginas de 100 itens por termo (padrão 50).
+- `Seguranca:ApiKey` — chave de acesso à própria API. **Vazia em dev local** (sem checagem, como
+  hoje). Em qualquer ambiente exposto fora da máquina local, configure via variável de ambiente
+  `Seguranca__ApiKey` (nunca commitada) — todo `/api/**` passa a exigir o header `X-Api-Key: <chave>`.
+  `/health` e o Swagger continuam livres. Sem isso, os dados retornados (nomes de partes, CNPJ, texto
+  de intimações) ficam públicos para qualquer um com a URL.
 
 ## Limites conhecidos
 

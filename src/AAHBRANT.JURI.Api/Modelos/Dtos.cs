@@ -23,6 +23,14 @@ public class DataJudOptions
     public string ApiKey { get; set; } = string.Empty;
 }
 
+// Chave de acesso da própria API G-JURI (não confundir com DataJud:ApiKey, que é do CNJ).
+// Vazia = sem checagem (uso local). Em qualquer deploy público, configurar Seguranca__ApiKey como
+// segredo do Container App — os dados retornados (partes, CNPJ, texto de intimação) são sensíveis.
+public class SegurancaOptions
+{
+    public string ApiKey { get; set; } = string.Empty;
+}
+
 // ---------- Payload bruto do DJEN (comunicaapi.pje.jus.br/api/v1/comunicacao) ----------
 public class DjenResposta
 {

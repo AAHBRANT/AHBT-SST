@@ -14,6 +14,7 @@ var builder = WebApplication.CreateBuilder(args);
 
 builder.Services.Configure<DjenOptions>(builder.Configuration.GetSection("Djen"));
 builder.Services.Configure<DataJudOptions>(builder.Configuration.GetSection("DataJud"));
+builder.Services.Configure<SegurancaOptions>(builder.Configuration.GetSection("Seguranca"));
 builder.Services.Configure<List<ParteMonitoradaConfig>>(builder.Configuration.GetSection("PartesMonitoradas"));
 
 builder.Services.AddHttpClient<DjenClient>(c =>
@@ -49,6 +50,29 @@ app.UseSwaggerUI(o =>
 app.UseCors();
 
 app.MapGet("/health", () => Results.Ok(new { status = "ok", agora = DateTime.UtcNow }));
+
+// Trava de acesso por chave de API. Só ativa quando Seguranca:ApiKey está configurado (vazio em
+// dev local = sem checagem). Protege /api/**; /health e o Swagger continuam livres para diagnóstico.
+// Motivo: os dados retornados (partes, CNPJ, texto de intimação) são sensíveis e a API não tem
+// nenhuma outra autenticação — necessário antes de qualquer exposição fora da máquina local.
+var chaveApi = app.Services.GetRequiredService<Microsoft.Extensions.Options.IOptions<SegurancaOptions>>().Value.ApiKey;
+if (!string.IsNullOrWhiteSpace(chaveApi))
+{
+    app.Use(async (context, next) =>
+    {
+        if (context.Request.Path.StartsWithSegments("/api"))
+        {
+            var informada = context.Request.Headers.TryGetValue("X-Api-Key", out var valores) ? valores.ToString() : null;
+            if (!string.Equals(informada, chaveApi, StringComparison.Ordinal))
+            {
+                context.Response.StatusCode = StatusCodes.Status401Unauthorized;
+                await context.Response.WriteAsJsonAsync(new { erro = "Cabeçalho X-Api-Key ausente ou inválido." });
+                return;
+            }
+        }
+        await next();
+    });
+}
 
 var grupo = app.MapGroup("/api/processos");
 
