@@ -68,7 +68,7 @@ export function PermissoesTrabalhoTab() {
   const [trabalhadores, setTrabalhadores] = useState<Trabalhador[]>([]);
   const [equipes, setEquipes] = useState<Equipe[]>([]);
   const [usuarios, setUsuarios] = useState<Usuario[]>([]);
-  const [novaPt, setNovaPt] = useState<NovaPermissaoTrabalho>(ptVazia);
+  const [novaPt, setNovaPt] = useState<NovaPermissaoTrabalho>(ptVazia());
   const [erro, setErro] = useState<string | null>(null);
   const [carregando, setCarregando] = useState(false);
   const [carregandoLista, setCarregandoLista] = useState(true);
@@ -120,7 +120,7 @@ export function PermissoesTrabalhoTab() {
         responsavelExecucaoUsuarioId: novaPt.responsavelExecucaoUsuarioId || null,
         responsavelAreaUsuarioId: novaPt.responsavelAreaUsuarioId || null,
       });
-      setNovaPt(ptVazia);
+      setNovaPt(ptVazia());
       await carregar();
       sucessoToast('Permissão de Trabalho criada com sucesso.');
     } catch (e) {

@@ -57,7 +57,7 @@ export function AprsTab() {
   const [atividades, setAtividades] = useState<Atividade[]>([]);
   const [trabalhadores, setTrabalhadores] = useState<Trabalhador[]>([]);
   const [equipes, setEquipes] = useState<Equipe[]>([]);
-  const [novaApr, setNovaApr] = useState<NovaApr>(aprVazia);
+  const [novaApr, setNovaApr] = useState<NovaApr>(aprVazia());
   const [erro, setErro] = useState<string | null>(null);
   const [carregando, setCarregando] = useState(false);
   const [carregandoLista, setCarregandoLista] = useState(true);
@@ -101,7 +101,7 @@ export function AprsTab() {
         ...novaApr,
         validade: novaApr.validade || null,
       });
-      setNovaApr(aprVazia);
+      setNovaApr(aprVazia());
       await carregar();
       sucessoToast('APR criada com sucesso.');
     } catch (e) {

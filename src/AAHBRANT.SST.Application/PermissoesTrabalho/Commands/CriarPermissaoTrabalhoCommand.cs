@@ -1,3 +1,4 @@
+using AAHBRANT.SST.Application.Common;
 using AAHBRANT.SST.Application.Common.Interfaces;
 using AAHBRANT.SST.Domain.Entidades;
 using AAHBRANT.SST.Domain.Enums;
@@ -10,7 +11,8 @@ namespace AAHBRANT.SST.Application.PermissoesTrabalho.Commands;
 // A PT sempre nasce em elaboração ("autorização" é uma etapa distinta do cadastro, mesmo padrão de
 // CriarAprCommand). Nasce já com os 6 PreRequisitos (§2) e os 15 Verificacoes (§4) do formulário —
 // todos "em branco" (Atendido=false / Resposta=null) — mesmo princípio de CriarInspecaoCommand
-// gerando uma InspecaoItemResposta em branco por item do checklist.
+// gerando uma InspecaoItemResposta em branco por item do checklist. NumeroPt não é mais informado
+// por quem cadastra (pedido do usuário, 03/09): o sistema gera sozinho, ver GeradorNumeroDocumentoService.
 public record CriarPermissaoTrabalhoCommand(
     Guid AtividadeId,
     string DescricaoAtividade,
