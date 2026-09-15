@@ -7,6 +7,8 @@ import {
   Text,
   Badge,
   Button,
+  Toast,
+  ToastTitle,
   Toaster,
   Tooltip,
   Dialog,
@@ -15,6 +17,7 @@ import {
   DialogBody,
   DialogActions,
   Input,
+  useToastController,
 } from '@fluentui/react-components';
 import {
   Grid24Regular,
@@ -51,6 +54,34 @@ const LARGURA_RAIL_COLAPSADO = '66px';
 const LARGURA_RAIL_EXPANDIDO = '220px';
 const CHAVE_RAIL_EXPANDIDO = 'sst.railExpandido';
 const VERSAO_APP = '5.10.0';
+const TAMANHO_MAXIMO_FOTO_PERFIL_BYTES = 8 * 1024 * 1024;
+const DIMENSAO_MAXIMA_FOTO_PERFIL = 256;
+
+// Fotos de celular (vários MB, resolução alta) não cabem cruas no localStorage (quota ~5-10MB por
+// origem) e travavam o perfil quando o setItem estourava a quota. Redimensiona para um avatar
+// pequeno e recomprime em JPEG antes de persistir.
+function redimensionarFotoPerfil(dataUrlOriginal: string, dimensaoMaxima: number): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const imagem = new Image();
+    imagem.onload = () => {
+      const escala = Math.min(1, dimensaoMaxima / Math.max(imagem.width, imagem.height));
+      const largura = Math.max(1, Math.round(imagem.width * escala));
+      const altura = Math.max(1, Math.round(imagem.height * escala));
+      const canvas = document.createElement('canvas');
+      canvas.width = largura;
+      canvas.height = altura;
+      const contexto = canvas.getContext('2d');
+      if (!contexto) {
+        reject(new Error('Não foi possível processar a imagem.'));
+        return;
+      }
+      contexto.drawImage(imagem, 0, 0, largura, altura);
+      resolve(canvas.toDataURL('image/jpeg', 0.82));
+    };
+    imagem.onerror = () => reject(new Error('Arquivo de imagem inválido.'));
+    imagem.src = dataUrlOriginal;
+  });
+}
 
 const useStyles = makeStyles({
   root: {
@@ -550,19 +581,42 @@ export function AppShell({ children }: { children: ReactNode }) {
   }, [chaveFotoUsuario, chaveNomeUsuario, nomeUsuario]);
 
   const iniciaisPerfil = obterIniciais(nomePerfil);
+  const { dispatchToast } = useToastController(ID_TOASTER_GLOBAL);
+
+  function avisarErroFoto(mensagem: string) {
+    dispatchToast(
+      <Toast>
+        <ToastTitle>{mensagem}</ToastTitle>
+      </Toast>,
+      { intent: 'error', timeout: 5000 },
+    );
+  }
 
   function selecionarFotoPerfil(evento: React.ChangeEvent<HTMLInputElement>) {
     const arquivo = evento.target.files?.[0];
+    evento.target.value = '';
     if (!arquivo || !arquivo.type.startsWith('image/')) return;
+    if (arquivo.size > TAMANHO_MAXIMO_FOTO_PERFIL_BYTES) {
+      avisarErroFoto('Imagem muito grande (máximo 8 MB). Escolha outra foto.');
+      return;
+    }
     const leitor = new FileReader();
     leitor.onload = () => {
-      const foto = typeof leitor.result === 'string' ? leitor.result : null;
-      if (!foto) return;
-      localStorage.setItem(chaveFotoUsuario, foto);
-      setFotoPerfil(foto);
+      const fotoOriginal = typeof leitor.result === 'string' ? leitor.result : null;
+      if (!fotoOriginal) return;
+      redimensionarFotoPerfil(fotoOriginal, DIMENSAO_MAXIMA_FOTO_PERFIL)
+        .then((foto) => {
+          try {
+            localStorage.setItem(chaveFotoUsuario, foto);
+            setFotoPerfil(foto);
+          } catch {
+            avisarErroFoto('Não foi possível salvar a foto neste dispositivo (armazenamento cheio).');
+          }
+        })
+        .catch(() => avisarErroFoto('Não foi possível processar essa imagem.'));
     };
+    leitor.onerror = () => avisarErroFoto('Não foi possível ler o arquivo selecionado.');
     leitor.readAsDataURL(arquivo);
-    evento.target.value = '';
   }
 
   function abrirMeuPerfil() {
