@@ -1777,6 +1777,25 @@ export interface InspecaoDetalhe {
   respostas: InspecaoItemResposta[];
 }
 
+// Alojamento em Inspeções (Tasks 2-5, 2026-09-15): módulo de alojamentos de obra, com
+// moradores e inspeção "obter ou criar" atômica.
+export interface AlojamentoResumo {
+  id: string;
+  obraId: string;
+  nome: string;
+  endereco: string | null;
+  totalMoradores: number;
+  statusUltimaInspecao: 'nunca' | 'em-dia' | 'atrasada';
+  diasDesdeUltimaInspecao: number | null;
+}
+
+export interface InspecaoAtual {
+  inspecaoId: string;
+  foiCriadaAgora: boolean;
+  responsavelUsuarioId: string;
+  criadaEm: string;
+}
+
 // Catálogo global de materiais de apoio (pôsteres de sinalização, instruções técnicas) — aba
 // "Documentos & Procedimentos" de Gestão de SST, pedido do usuário em 2026-09-09.
 export interface MaterialApoio {
@@ -4038,6 +4057,31 @@ export const api = {
         method: 'POST',
         body: JSON.stringify(body),
       }),
+  },
+  // Alojamento em Inspeções (Tasks 2-5, 2026-09-15). adicionarMorador envia só o Guid cru como
+  // corpo (o endpoint recebe `[FromBody] Guid trabalhadorId`, não um objeto envolvendo o campo).
+  alojamentos: {
+    listar: (obraId?: string) => request<AlojamentoResumo[]>(`/api/alojamentos${obraId ? `?obraId=${obraId}` : ''}`),
+    criar: (nome: string, endereco: string | null, obraId: string) =>
+      request<{ id: string }>('/api/alojamentos', {
+        method: 'POST',
+        body: JSON.stringify({ nome, endereco, obraId }),
+      }),
+    adicionarMorador: (alojamentoId: string, trabalhadorId: string) =>
+      request<{ id: string }>(`/api/alojamentos/${alojamentoId}/moradores`, {
+        method: 'POST',
+        body: JSON.stringify(trabalhadorId),
+      }),
+    removerMorador: (alojamentoMoradorId: string) =>
+      request<void>(`/api/alojamentos/moradores/${alojamentoMoradorId}`, { method: 'DELETE' }),
+    obterConfiguracao: () => request<{ diasParaInspecaoAtrasada: number }>('/api/alojamentos/configuracao'),
+    atualizarConfiguracao: (diasParaInspecaoAtrasada: number) =>
+      request<void>('/api/alojamentos/configuracao', {
+        method: 'PUT',
+        body: JSON.stringify({ diasParaInspecaoAtrasada }),
+      }),
+    obterOuCriarInspecaoAtual: (alojamentoId: string) =>
+      request<InspecaoAtual>(`/api/alojamentos/${alojamentoId}/inspecao-atual`, { method: 'POST' }),
   },
   materiaisApoio: {
     listar: (categoria?: string) =>
