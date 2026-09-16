@@ -46,6 +46,12 @@ public class InspecaoConfiguracao : IEntityTypeConfiguration<Inspecao>
             .HasForeignKey(i => i.ResponsavelUsuarioId).OnDelete(DeleteBehavior.Restrict);
         builder.HasIndex(i => i.ObraId);
         builder.HasIndex(i => i.ChecklistModeloId);
+        // Só uma inspeção em andamento por alojamento — garantia no banco, não só na aplicação
+        // (evita duas inspeções abertas se dois técnicos clicarem ao mesmo tempo no mesmo
+        // alojamento). StatusInspecao.EmAndamento = 1 (ver Enums.cs).
+        builder.HasIndex(i => i.AlojamentoId)
+            .IsUnique()
+            .HasFilter("[AlojamentoId] IS NOT NULL AND [Status] = 1");
         builder.HasQueryFilter(i => i.Ativo);
     }
 }

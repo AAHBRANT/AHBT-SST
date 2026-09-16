@@ -3,6 +3,7 @@ using AAHBRANT.SST.Application.Alojamentos.Queries;
 using MediatR;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using System.Security.Claims;
 
 namespace AAHBRANT.SST.Api.Controllers;
 
@@ -56,5 +57,18 @@ public class AlojamentosController : ControllerBase
     {
         await _mediator.Send(command, ct);
         return NoContent();
+    }
+
+    // Endpoint atômico "obter ou criar" (Task 5): abrir a aba Inspeções de um alojamento sempre
+    // resolve para a inspeção em andamento (retoma se já existe, cria se não existe) — o usuário
+    // logado é sempre o responsável, extraído do ClaimsPrincipal (claim "oid"), mesmo padrão de
+    // DdsSemanalController/CalendarioController/AssinaturaController/SessoesTreinamentoController.
+    [Authorize(Policy = "inspecao:criar")]
+    [HttpPost("{alojamentoId:guid}/inspecao-atual")]
+    public async Task<IActionResult> ObterOuCriarInspecaoAtual(Guid alojamentoId, CancellationToken ct)
+    {
+        var azureAdObjectId = User.FindFirst("oid")?.Value ?? User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+        var resultado = await _mediator.Send(new ObterOuCriarInspecaoAlojamentoCommand(alojamentoId, azureAdObjectId), ct);
+        return Ok(resultado);
     }
 }
