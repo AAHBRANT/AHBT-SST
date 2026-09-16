@@ -214,6 +214,8 @@ public class SstDbContext : DbContext, IAppDbContext
             i.Ativo && (_usuarioAtual.TemAcessoGlobal || _usuarioAtual.ObrasPermitidas.Contains(i.ObraId)));
         modelBuilder.Entity<EventoSipat>().HasQueryFilter(e =>
             e.Ativo && (_usuarioAtual.TemAcessoGlobal || _usuarioAtual.ObrasPermitidas.Contains(e.ObraId)));
+        modelBuilder.Entity<Alojamento>().HasQueryFilter(a =>
+            a.Ativo && (_usuarioAtual.TemAcessoGlobal || _usuarioAtual.ObrasPermitidas.Contains(a.ObraId)));
 
         // ExameComplementar/AptidaoAtividadeEspecifica/EntregaEpi e filhos de entidades escopadas
         // dependem de navegação por Trabalhador/Estoque/Membro/Reunião. Mantêm a proteção nos

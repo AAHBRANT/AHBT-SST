@@ -80,11 +80,12 @@ public class ObterOuCriarInspecaoAlojamentoCommandHandler : IRequestHandler<Obte
         {
             // O "perdedor" real da corrida: o índice único filtrado (ver InspecoesConfiguracoes.cs)
             // rejeitou esta inserção porque outra requisição, entre a consulta de "existente" acima
-            // e este SaveChangesAsync, já criou a inspeção em andamento deste alojamento. Sem
-            // middleware global de tratamento de exceção (confirmado — não existe em Program.cs),
-            // deixar a DbUpdateException se propagar viraria um 500 cru para o segundo usuário —
-            // exatamente o cenário que este endpoint "obter OU criar" existe para evitar. Reconsulta
-            // e devolve a que venceu, espelhando o caminho feliz de "já existe" acima.
+            // e este SaveChangesAsync, já criou a inspeção em andamento deste alojamento. Existe
+            // middleware global de tratamento de exceção (TratamentoDeExcecaoMiddleware, registrado
+            // em Program.cs), mas sem este catch ele devolveria um 500 genérico para o segundo
+            // usuário — exatamente o cenário que este endpoint "obter OU criar" existe para evitar.
+            // Reconsulta e devolve a que venceu, espelhando o caminho feliz de "já existe" acima —
+            // um resultado idempotente em vez de um erro genérico.
             var vencedora = await _db.Inspecoes
                 .Where(i => i.AlojamentoId == alojamento.Id && i.Status == StatusInspecao.EmAndamento)
                 .OrderByDescending(i => i.Data)
