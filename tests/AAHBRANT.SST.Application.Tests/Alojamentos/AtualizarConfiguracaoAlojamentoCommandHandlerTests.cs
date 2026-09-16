@@ -23,4 +23,30 @@ public class AtualizarConfiguracaoAlojamentoCommandHandlerTests
         var config = await db.ConfiguracoesAlojamento.FirstAsync();
         Assert.Equal(45, config.DiasParaInspecaoAtrasada);
     }
+
+    [Fact]
+    public async Task Handle_ConfiguracaoNaoSeedada_LancaInvalidOperationException()
+    {
+        var options = new DbContextOptionsBuilder<SstDbContext>()
+            .UseInMemoryDatabase(nameof(Handle_ConfiguracaoNaoSeedada_LancaInvalidOperationException)).Options;
+        var db = new SstDbContext(options, new CurrentUserService());
+        // sem adicionar nenhuma ConfiguracaoAlojamento
+
+        var handler = new AtualizarConfiguracaoAlojamentoCommandHandler(db);
+
+        await Assert.ThrowsAsync<InvalidOperationException>(() =>
+            handler.Handle(new AtualizarConfiguracaoAlojamentoCommand(45), default));
+    }
+
+    [Theory]
+    [InlineData(0, false)]
+    [InlineData(1, true)]
+    [InlineData(365, true)]
+    [InlineData(366, false)]
+    public void Validator_LimitesDeDias_ValidaCorretamente(int dias, bool esperadoValido)
+    {
+        var validator = new AtualizarConfiguracaoAlojamentoCommandValidator();
+        var resultado = validator.Validate(new AtualizarConfiguracaoAlojamentoCommand(dias));
+        Assert.Equal(esperadoValido, resultado.IsValid);
+    }
 }
