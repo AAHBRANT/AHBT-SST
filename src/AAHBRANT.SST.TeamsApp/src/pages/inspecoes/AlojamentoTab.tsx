@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Button, Card, EstadoVazio, FeedbackInline, PageHeader, StatusChip, type Tom } from '@ui';
 import { ArrowLeft24Regular, Home24Regular } from '@fluentui/react-icons';
 import { api, type AlojamentoResumo, type Obra } from '../../lib/api';
@@ -15,16 +16,12 @@ function rotuloStatus(status: AlojamentoResumo['statusUltimaInspecao'], dias: nu
   return `Em dia · há ${dias} dias`;
 }
 
-function abrirInspecao(alojamentoId: string) {
-  // implementado na Task 9 — por enquanto, no-op para não quebrar o build.
-  console.log('abrir inspecao', alojamentoId);
-}
-
 // Sub-aba "Alojamento" (Task 8, 2026-09-15): mesmo padrão obra → sub-itens de TrabalhadoresTab.tsx —
 // grade de obras com resumo, clique abre a grade de alojamentos daquela obra. Diferente de
 // TrabalhadoresTab, aqui os "sub-itens" também são cards (não uma DataTable), pois um alojamento
 // não tem colunas tabulares ricas o bastante para justificar DataTable (regra dos 3 pilotos).
 export function AlojamentoTab() {
+  const navigate = useNavigate();
   const [obras, setObras] = useState<Obra[]>([]);
   const [alojamentos, setAlojamentos] = useState<AlojamentoResumo[]>([]);
   const [erro, setErro] = useState<string | null>(null);
@@ -47,6 +44,25 @@ export function AlojamentoTab() {
   useEffect(() => {
     carregar();
   }, []);
+
+  // Task 9 (2026-09-15): clique no card do alojamento obtém (ou cria, se não houver uma em
+  // andamento) a inspeção do dia via endpoint atômico (Task 7) e navega direto pro detalhe. Quando
+  // já existia uma inspeção em andamento, leva um aviso em location.state pra InspecaoDetalhePage
+  // mostrar que a inspeção foi retomada, não criada agora.
+  async function abrirInspecao(alojamentoId: string) {
+    try {
+      const resultado = await api.alojamentos.obterOuCriarInspecaoAtual(alojamentoId);
+      navigate(`/prevencao/inspecoes/${resultado.inspecaoId}`, {
+        state: resultado.foiCriadaAgora
+          ? undefined
+          : {
+              avisoRetomada: `Inspeção em andamento, criada em ${new Date(resultado.criadaEm).toLocaleString('pt-BR')}.`,
+            },
+      });
+    } catch (e) {
+      setErro(e instanceof Error ? e.message : 'Não foi possível abrir a inspeção deste alojamento.');
+    }
+  }
 
   const resumoPorObra = useMemo(
     () =>

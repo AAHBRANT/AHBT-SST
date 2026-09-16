@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { useNavigate, useParams } from 'react-router-dom';
+import { useLocation, useNavigate, useParams } from 'react-router-dom';
 import {
   Button,
   Campo,
@@ -76,6 +76,13 @@ const tomPorStatusItem: Record<number, Tom> = {
 export function InspecaoDetalhePage() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
+  const location = useLocation();
+  // Task 9 (2026-09-15): quando AlojamentoTab retoma (em vez de criar) a inspeção do dia, o aviso
+  // vem via location.state — lido só na primeira renderização; navegar de novo pra cá sem esse
+  // estado (ex. F5) não deve reexibir um aviso obsoleto.
+  const [avisoRetomada, setAvisoRetomada] = useState<string | null>(
+    (location.state as { avisoRetomada?: string } | null)?.avisoRetomada ?? null,
+  );
   const [detalhe, setDetalhe] = useState<InspecaoDetalhe | null>(null);
   const [usuarios, setUsuarios] = useState<Usuario[]>([]);
   const [edicoes, setEdicoes] = useState<Record<string, EdicaoResposta>>({});
@@ -367,6 +374,12 @@ export function InspecaoDetalhePage() {
         </>
       }
     >
+      {avisoRetomada && (
+        <FeedbackInline tom="info" aoFechar={() => setAvisoRetomada(null)}>
+          {avisoRetomada}
+        </FeedbackInline>
+      )}
+
       {erro && (
         <FeedbackInline tom="erro" aoFechar={() => setErro(null)}>
           {erro}
