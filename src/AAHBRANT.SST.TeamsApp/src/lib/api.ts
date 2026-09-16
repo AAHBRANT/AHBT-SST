@@ -78,6 +78,12 @@ export interface ImportarColaboradoresGrhResultado {
   erros: string[];
 }
 
+export interface ImportarAlojamentosGrhResultado {
+  totalRecebidos: number;
+  totalSincronizados: number;
+  erros: string[];
+}
+
 export const TipoExameAso = {
   Admissional: 1,
   Periodico: 2,
@@ -4082,6 +4088,8 @@ export const api = {
       }),
     obterOuCriarInspecaoAtual: (alojamentoId: string) =>
       request<InspecaoAtual>(`/api/alojamentos/${alojamentoId}/inspecao-atual`, { method: 'POST' }),
+    importarGrh: () =>
+      request<ImportarAlojamentosGrhResultado>('/api/alojamentos/importar-grh', { method: 'POST' }),
   },
   materiaisApoio: {
     listar: (categoria?: string) =>

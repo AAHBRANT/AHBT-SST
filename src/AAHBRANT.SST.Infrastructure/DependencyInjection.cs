@@ -120,6 +120,10 @@ public static class DependencyInjection
         services.Configure<GrhOptions>(configuration.GetSection("Grh"));
         services.AddScoped<IColaboradorGrhClient, ColaboradorGrhClient>();
 
+        // Integração G-RH — Alojamento (2026-09-16): mesmo padrão de Colaborador acima, endpoint e
+        // App Role dedicados (ver AlojamentoGrhClient).
+        services.AddScoped<IAlojamentoGrhClient, AlojamentoGrhClient>();
+
         // Fila de retry para falhas de envio (PROJECT RULES.md §4). Usa Azure Service Bus quando
         // "ServiceBus:ConnectionString" estiver preenchida (recurso provisionado manualmente no
         // Azure); caso contrário, cai para um fallback local em memória — não bloqueia a aplicação
@@ -138,6 +142,7 @@ public static class DependencyInjection
             // acima, só com filas dedicadas ("colaborador-grh"/"acidente-grh"; ver ServiceBusOptions).
             services.AddSingleton<IPublicadorAcidenteGrh, ServiceBusPublicadorAcidenteGrh>();
             services.AddHostedService<ServiceBusColaboradorGrhProcessor>();
+            services.AddHostedService<ServiceBusAlojamentoGrhProcessor>();
         }
         else
         {

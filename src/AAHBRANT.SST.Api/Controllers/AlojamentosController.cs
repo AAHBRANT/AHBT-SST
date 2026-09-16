@@ -30,6 +30,14 @@ public class AlojamentosController : ControllerBase
         return CreatedAtAction(nameof(Listar), new { obraId = command.ObraId }, new { id });
     }
 
+    // Carga inicial única do cadastro do G-RH (Integração G-RH). A atualização contínua depois disso é
+    // automática, via evento do Service Bus (ServiceBusAlojamentoGrhProcessor) — mesmo padrão de
+    // TrabalhadoresController.ImportarDoGrh.
+    [Authorize(Policy = "alojamento:criar")]
+    [HttpPost("importar-grh")]
+    public async Task<IActionResult> ImportarDoGrh(CancellationToken ct)
+        => Ok(await _mediator.Send(new ImportarAlojamentosGrhCommand(), ct));
+
     [Authorize(Policy = "alojamento:gerenciar-moradores")]
     [HttpPost("{alojamentoId:guid}/moradores")]
     public async Task<IActionResult> AdicionarMorador(Guid alojamentoId, [FromBody] Guid trabalhadorId, CancellationToken ct)
