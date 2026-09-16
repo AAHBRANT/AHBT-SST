@@ -34,7 +34,7 @@ public class EncerrarInspecaoCommandHandler : IRequestHandler<EncerrarInspecaoCo
     public async Task Handle(EncerrarInspecaoCommand request, CancellationToken ct)
     {
         var inspecao = await _db.Inspecoes
-            .Include(i => i.Respostas)
+            .Include(i => i.Respostas).ThenInclude(r => r.ChecklistModeloItem)
             .FirstOrDefaultAsync(i => i.Id == request.Id, ct)
             ?? throw new KeyNotFoundException($"Inspeção {request.Id} não encontrada.");
 
@@ -42,6 +42,18 @@ public class EncerrarInspecaoCommandHandler : IRequestHandler<EncerrarInspecaoCo
         if (pendentes.Count > 0)
             throw new InvalidOperationException(
                 $"Não é possível encerrar: {pendentes.Count} item(ns) do checklist ainda não respondido(s).");
+
+        // Task 6 (Alojamento em Inspeções, 2026-09-15): item com ChecklistModeloItem.ExigeFotografia
+        // bloqueia o encerramento enquanto não tiver foto registrada. FotoConteudo nunca é null
+        // (default Array.Empty<byte>() em InspecaoItemResposta) — por isso a checagem é por Length.
+        var itensSemFotoObrigatoria = inspecao.Respostas
+            .Where(r => r.Ativo && (r.ChecklistModeloItem?.ExigeFotografia ?? false) && r.FotoConteudo.Length == 0)
+            .Select(r => r.DescricaoPersonalizada ?? r.ChecklistModeloItem!.Descricao)
+            .ToList();
+
+        if (itensSemFotoObrigatoria.Count > 0)
+            throw new InvalidOperationException(
+                $"Não é possível encerrar: os seguintes itens exigem foto e ainda não têm: {string.Join("; ", itensSemFotoObrigatoria)}");
 
         inspecao.Status = StatusInspecao.Concluida;
 
