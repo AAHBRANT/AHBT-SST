@@ -17,6 +17,7 @@ public class SincronizarAlojamentoGrhCommandHandlerTests
         Nome: nome,
         ObraNome: obraNome,
         Endereco: "Rua das Flores, 251",
+        Ativo: true,
         Moradores: moradores);
 
     [Fact]
@@ -87,6 +88,24 @@ public class SincronizarAlojamentoGrhCommandHandlerTests
         Assert.Equal(1, await db.Alojamentos.IgnoreQueryFilters().CountAsync());
         var reativado = await db.Alojamentos.SingleAsync(a => a.Id == id);
         Assert.True(reativado.Ativo);
+    }
+
+    [Fact]
+    public async Task Handle_GrhMarcaComoInativo_DesativaNoSst()
+    {
+        var db = DbContextFactory.Criar();
+        var obra = new Obra { Codigo = "OBRA-1", Nome = "Ponte Rio Cuiá" };
+        db.Obras.Add(obra);
+        await db.SaveChangesAsync();
+
+        var handler = new SincronizarAlojamentoGrhCommandHandler(db, CpfHash);
+        var id = await handler.Handle(Comando("GRH-001", "Alojamento 01", "Ponte Rio Cuiá"), default);
+
+        var comandoInativo = Comando("GRH-001", "Alojamento 01", "Ponte Rio Cuiá") with { Ativo = false };
+        await handler.Handle(comandoInativo, default);
+
+        var alojamento = await db.Alojamentos.IgnoreQueryFilters().SingleAsync(a => a.Id == id);
+        Assert.False(alojamento.Ativo);
     }
 
     [Fact]

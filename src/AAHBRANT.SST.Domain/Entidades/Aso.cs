@@ -12,6 +12,13 @@ public class Aso : AuditableEntity
     public DateTime DataExame { get; set; }
     public DateTime DataValidade { get; set; }
 
+    // Chave de sincronização com o G-RH (fonte do documento "ASO" na tabela `documentos` deles) —
+    // nulo pra ASOs cadastrados manualmente no SST. Ver SincronizarAsoGrhCommand: campos clínicos
+    // (ResultadoStatus/Restricoes/MedicoNome) só são sobrescritos quando o G-RH manda valor
+    // preenchido, nunca apagam o que o médico do trabalho já lançou no SST.
+    public string? GrhAsoId { get; set; }
+    public DateTime? DataUltimaSincronizacao { get; set; }
+
     // Conteúdo clínico — visível apenas ao perfil Médico do Trabalho (docs/RBAC-Matrix.md); demais perfis veem só ResultadoStatus.
     public ResultadoAso ResultadoStatus { get; set; } = ResultadoAso.Pendente;
     public string? MedicoNome { get; set; }

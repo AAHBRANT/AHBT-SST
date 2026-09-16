@@ -51,4 +51,12 @@ public class AsosController : ControllerBase
         await _mediator.Send(new ExcluirAsoCommand(id), ct);
         return NoContent();
     }
+
+    // Sincronização manual sob demanda (Integração G-RH, 2026-09-16) — a rotina normal é o polling
+    // automático (GrhDbPollingService); este endpoint só força uma rodada agora, útil pra testar ou
+    // pra não esperar o próximo ciclo depois de completar o cadastro no G-RH.
+    [Authorize(Policy = "aso:criar")]
+    [HttpPost("importar-grh")]
+    public async Task<IActionResult> ImportarDoGrh(CancellationToken ct)
+        => Ok(await _mediator.Send(new ImportarAsoGrhCommand(), ct));
 }
