@@ -120,9 +120,18 @@ public static class DependencyInjection
         services.Configure<GrhOptions>(configuration.GetSection("Grh"));
         services.AddScoped<IColaboradorGrhClient, ColaboradorGrhClient>();
 
-        // Integração G-RH — Alojamento (2026-09-16): mesmo padrão de Colaborador acima, endpoint e
-        // App Role dedicados (ver AlojamentoGrhClient).
-        services.AddScoped<IAlojamentoGrhClient, AlojamentoGrhClient>();
+        // Integração G-RH — Alojamento e ASO (2026-09-16): o time do G-RH concordou em construir os
+        // endpoints HTTP dedicados (mesmo padrão de Colaborador acima), mas não tinha capacidade no
+        // momento — decisão provisória do usuário (que administra os dois sistemas) foi ler direto
+        // do banco do G-RH via polling (GrhDbPollingService), enquanto isso. AlojamentoGrhClient
+        // (HTTP) continua no código pra quando o endpoint deles existir de verdade — só troca a
+        // implementação registrada abaixo.
+        services.Configure<GrhDbOptions>(configuration.GetSection("GrhDb"));
+        services.AddScoped<IAlojamentoGrhClient, AlojamentoGrhDbClient>();
+        services.AddScoped<IAsoGrhClient, AsoGrhDbClient>();
+        var grhDbConnectionString = configuration["GrhDb:ConnectionString"];
+        if (!string.IsNullOrWhiteSpace(grhDbConnectionString))
+            services.AddHostedService<GrhDbPollingService>();
 
         // Fila de retry para falhas de envio (PROJECT RULES.md §4). Usa Azure Service Bus quando
         // "ServiceBus:ConnectionString" estiver preenchida (recurso provisionado manualmente no

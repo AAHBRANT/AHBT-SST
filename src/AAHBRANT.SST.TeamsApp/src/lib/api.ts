@@ -84,6 +84,12 @@ export interface ImportarAlojamentosGrhResultado {
   erros: string[];
 }
 
+export interface ImportarAsoGrhResultado {
+  totalRecebidos: number;
+  totalSincronizados: number;
+  erros: string[];
+}
+
 export const TipoExameAso = {
   Admissional: 1,
   Periodico: 2,
@@ -3330,6 +3336,7 @@ export const api = {
     criar: (aso: NovoAso) => request<{ id: string }>('/api/asos', { method: 'POST', body: JSON.stringify(aso) }),
     atualizar: (aso: Aso) => request<void>(`/api/asos/${aso.id}`, { method: 'PUT', body: JSON.stringify(aso) }),
     excluir: (id: string) => request<void>(`/api/asos/${id}`, { method: 'DELETE' }),
+    importarGrh: () => request<ImportarAsoGrhResultado>('/api/asos/importar-grh', { method: 'POST' }),
   },
   examesComplementares: {
     listar: (trabalhadorId?: string) =>

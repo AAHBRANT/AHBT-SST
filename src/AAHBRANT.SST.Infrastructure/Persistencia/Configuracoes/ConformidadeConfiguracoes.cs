@@ -11,6 +11,8 @@ public class AsoConfiguracao : IEntityTypeConfiguration<Aso>
         builder.HasOne(a => a.Trabalhador).WithMany(t => t.Asos)
             .HasForeignKey(a => a.TrabalhadorId).OnDelete(DeleteBehavior.Restrict);
         builder.HasIndex(a => new { a.TrabalhadorId, a.DataValidade });
+        builder.Property(a => a.GrhAsoId).HasMaxLength(100);
+        builder.HasIndex(a => a.GrhAsoId).IsUnique().HasFilter("[GrhAsoId] IS NOT NULL");
         builder.HasQueryFilter(a => a.Ativo);
 
         // Mesmo bug já corrigido para Acidentes (ver migration CorrigirRowVersionAcidentes): sem

@@ -16,6 +16,7 @@ public record AlojamentoGrhDto(
     string Nome,
     string? ObraNome,
     string? Endereco,
+    bool Ativo,
     IReadOnlyList<AlojamentoMoradorGrhDto> Moradores);
 
 public record AlojamentoMoradorGrhDto(string Cpf, string? Matricula, DateTime Desde);

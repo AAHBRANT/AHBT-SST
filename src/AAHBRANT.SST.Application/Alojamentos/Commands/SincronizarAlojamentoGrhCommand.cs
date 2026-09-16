@@ -17,10 +17,11 @@ public record SincronizarAlojamentoGrhCommand(
     string Nome,
     string? ObraNome,
     string? Endereco,
+    bool Ativo,
     IReadOnlyList<AlojamentoMoradorGrhDto> Moradores) : IRequest<Guid>
 {
     public static SincronizarAlojamentoGrhCommand DoAlojamentoGrh(AlojamentoGrhDto a) =>
-        new(a.GrhAlojamentoId, a.Nome, a.ObraNome, a.Endereco, a.Moradores);
+        new(a.GrhAlojamentoId, a.Nome, a.ObraNome, a.Endereco, a.Ativo, a.Moradores);
 }
 
 public class SincronizarAlojamentoGrhCommandValidator : AbstractValidator<SincronizarAlojamentoGrhCommand>
@@ -74,12 +75,15 @@ public class SincronizarAlojamentoGrhCommandHandler : IRequestHandler<Sincroniza
         }
         else
         {
-            alojamento.Ativo = true; // reativa se alguém excluiu manualmente pela tela
             alojamento.Nome = request.Nome;
             alojamento.Endereco = request.Endereco;
             if (obra is not null) alojamento.ObraId = obra.Id;
         }
 
+        // Reflete o status do G-RH diretamente — inclusive desativando quando o G-RH marca o
+        // alojamento como não mais ativo (antes só reativava, nunca desativava; ver campo Ativo em
+        // AlojamentoGrhDto).
+        alojamento.Ativo = request.Ativo;
         alojamento.DataUltimaSincronizacao = DateTime.UtcNow;
 
         await SincronizarMoradoresAsync(alojamento.Id, request.Moradores, ct);

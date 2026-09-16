@@ -14,6 +14,7 @@ internal class AlojamentoGrhPayload
     [JsonPropertyName("nome")] public string Nome { get; set; } = string.Empty;
     [JsonPropertyName("obraNome")] public string? ObraNome { get; set; }
     [JsonPropertyName("endereco")] public string? Endereco { get; set; }
+    [JsonPropertyName("ativo")] public bool Ativo { get; set; } = true;
     [JsonPropertyName("moradores")] public List<AlojamentoMoradorGrhPayload> Moradores { get; set; } = new();
 }
 
@@ -31,5 +32,6 @@ internal static class AlojamentoGrhPayloadMapper
         Nome: p.Nome,
         ObraNome: p.ObraNome,
         Endereco: p.Endereco,
+        Ativo: p.Ativo,
         Moradores: p.Moradores.ConvertAll(m => new AlojamentoMoradorGrhDto(m.Cpf, m.Matricula, m.Desde)));
 }
