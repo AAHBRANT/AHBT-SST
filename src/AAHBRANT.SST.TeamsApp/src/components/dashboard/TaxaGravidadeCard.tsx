@@ -1,9 +1,9 @@
 import { useEffect, useMemo, useState } from 'react';
 import { motion } from 'framer-motion';
-import { Badge, Input, Text, Tooltip, makeStyles } from '@fluentui/react-components';
+import { Badge, Input, Text, makeStyles } from '@fluentui/react-components';
 import type { Acidente, RegistroHhtMensal } from '../../lib/api';
 import { useDashboardStyles } from './dashboardStyles';
-import { designTokens, tokensUi, escalonado } from '@ui';
+import { SstTooltip, designTokens, tokensUi, escalonado } from '@ui';
 
 // Mesma casca visual do KpiCard (@ui): este card vive na grade de indicadores do Dashboard e
 // precisa ler como irmão dos outros seis — antes usava o card de página (raio 16, padding 24/28)
@@ -82,13 +82,15 @@ export function TaxaGravidadeCard({ acidentes, registrosHht, indice = 0 }: TaxaG
 
   return (
     <motion.div variants={escalonado(indice)} initial="inicial" animate="visivel" className={casca.root}>
-      <Tooltip
-        content={
+      <SstTooltip
+        titulo="Taxa de Gravidade"
+        conteudo={hht > 0 ? `HHT: ${hht.toLocaleString('pt-BR')} h` : 'Sem lançamento de HHT.'}
+        detalhes={
           hht > 0
-            ? `HHT: ${hht.toLocaleString('pt-BR')} h · Dias perdidos: ${diasPerdidos} · Dias debitados: ${diasDebitados}`
-            : 'Sem lançamento de HHT — não é possível calcular a Taxa de Gravidade.'
+            ? [`Dias perdidos: ${diasPerdidos}`, `Dias debitados: ${diasDebitados}`, 'Base: NBR 14280']
+            : ['Não é possível calcular sem horas-homem trabalhadas.']
         }
-        relationship="description"
+        relacao="description"
       >
         <div>
           <div className={estilos.kpiValor} style={{ color: designTokens.colorPrimary }}>
@@ -96,7 +98,7 @@ export function TaxaGravidadeCard({ acidentes, registrosHht, indice = 0 }: TaxaG
           </div>
           <div className={estilos.kpiRotulo}>Taxa de Gravidade (NBR 14280)</div>
         </div>
-      </Tooltip>
+      </SstTooltip>
 
       <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
         {renderBadgeMeta(dentroDaMeta)}
