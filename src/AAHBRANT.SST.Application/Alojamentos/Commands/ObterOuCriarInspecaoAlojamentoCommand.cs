@@ -72,7 +72,33 @@ public class ObterOuCriarInspecaoAlojamentoCommandHandler : IRequestHandler<Obte
             inspecao.Respostas.Add(new InspecaoItemResposta { ChecklistModeloItemId = item.Id });
 
         _db.Inspecoes.Add(inspecao);
-        await _db.SaveChangesAsync(ct);
+        try
+        {
+            await _db.SaveChangesAsync(ct);
+        }
+        catch (DbUpdateException)
+        {
+            // O "perdedor" real da corrida: o índice único filtrado (ver InspecoesConfiguracoes.cs)
+            // rejeitou esta inserção porque outra requisição, entre a consulta de "existente" acima
+            // e este SaveChangesAsync, já criou a inspeção em andamento deste alojamento. Sem
+            // middleware global de tratamento de exceção (confirmado — não existe em Program.cs),
+            // deixar a DbUpdateException se propagar viraria um 500 cru para o segundo usuário —
+            // exatamente o cenário que este endpoint "obter OU criar" existe para evitar. Reconsulta
+            // e devolve a que venceu, espelhando o caminho feliz de "já existe" acima.
+            var vencedora = await _db.Inspecoes
+                .Where(i => i.AlojamentoId == alojamento.Id && i.Status == StatusInspecao.EmAndamento)
+                .OrderByDescending(i => i.Data)
+                .FirstOrDefaultAsync(ct);
+
+            // Anômalo (não deveria acontecer: a exceção só ocorre por violação do índice único,
+            // que exige que exista uma linha concorrente) — não esconder um erro real atrás de um
+            // retorno vazio, deixar a exceção original se propagar.
+            if (vencedora is null)
+                throw;
+
+            return new InspecaoAtualDto(vencedora.Id, false, vencedora.ResponsavelUsuarioId, vencedora.CreatedAtUtc);
+        }
+
         return new InspecaoAtualDto(inspecao.Id, true, inspecao.ResponsavelUsuarioId, inspecao.CreatedAtUtc);
     }
 }
