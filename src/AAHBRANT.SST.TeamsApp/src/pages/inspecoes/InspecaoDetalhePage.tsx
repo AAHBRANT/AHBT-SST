@@ -32,11 +32,13 @@ import {
   StatusItemChecklist,
   statusInspecaoLabel,
   statusItemChecklistLabel,
+  TipoInspecao,
   tipoInspecaoLabel,
   type InspecaoDetalhe,
   type Usuario,
 } from '../../lib/api';
 import { SlotFoto } from '../../components/camera/SlotFoto';
+import { SeletorStatusItemChecklist } from '../../components/inspecoes/SeletorStatusItemChecklist';
 
 interface EdicaoResposta {
   descricao: string;
@@ -420,19 +422,29 @@ export function InspecaoDetalhePage() {
                 </div>
                 <div style={{ minWidth: 180 }}>
                   <Field label="Status do ponto verificado">
-                    <Select
-                      value={edicao.statusItem}
-                      onChange={(_, d) => atualizarEdicao(resposta.id, { statusItem: d.value })}
-                      disabled={somenteLeitura}
-                      style={{ width: '100%' }}
-                    >
-                      <option value="">Selecione o status</option>
-                      {Object.entries(statusItemChecklistLabel).map(([valor, rotulo]) => (
-                        <option key={valor} value={valor}>
-                          {rotulo}
-                        </option>
-                      ))}
-                    </Select>
+                    {/* Alojamento usa o seletor de 3 bolinhas (Task 10, 2026-09-15); os demais tipos
+                        de inspeção mantêm o Select genérico, sem nenhuma mudança de comportamento. */}
+                    {inspecao.tipoInspecao === TipoInspecao.Alojamento ? (
+                      <SeletorStatusItemChecklist
+                        value={edicao.statusItem ? Number(edicao.statusItem) : null}
+                        onChange={(valor) => atualizarEdicao(resposta.id, { statusItem: String(valor) })}
+                        disabled={somenteLeitura}
+                      />
+                    ) : (
+                      <Select
+                        value={edicao.statusItem}
+                        onChange={(_, d) => atualizarEdicao(resposta.id, { statusItem: d.value })}
+                        disabled={somenteLeitura}
+                        style={{ width: '100%' }}
+                      >
+                        <option value="">Selecione o status</option>
+                        {Object.entries(statusItemChecklistLabel).map(([valor, rotulo]) => (
+                          <option key={valor} value={valor}>
+                            {rotulo}
+                          </option>
+                        ))}
+                      </Select>
+                    )}
                   </Field>
                 </div>
                 {resposta.statusItem != null && (
