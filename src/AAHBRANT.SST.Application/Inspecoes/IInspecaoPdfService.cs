@@ -20,6 +20,18 @@ public record InspecaoPdfItemModelo(
     byte[]? FotoAntesConteudo,
     byte[]? FotoDepoisConteudo);
 
+public record InspecaoPdfSignatarioModelo(
+    string Nome,
+    string Metodo,
+    DateTime AssinadoEm);
+
+public record InspecaoPdfAssinaturaModelo(
+    DateTime FinalizadoEm,
+    string ConteudoHash,
+    string UrlValidacaoPublica,
+    byte[] QrCodePng,
+    IReadOnlyList<InspecaoPdfSignatarioModelo> Signatarios);
+
 public record InspecaoPdfModelo(
     string? ObraNome,
     byte[]? ObraLogoConteudo,
@@ -34,7 +46,8 @@ public record InspecaoPdfModelo(
     string ConteudoHash,
     string UrlValidacaoPublica,
     byte[] QrCodePng,
-    bool TemAssinatura);
+    bool TemAssinatura,
+    InspecaoPdfAssinaturaModelo? Assinatura = null);
 
 public interface IInspecaoPdfService
 {

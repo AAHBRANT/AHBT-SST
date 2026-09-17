@@ -60,6 +60,7 @@ public class ExportarInspecaoPdfQueryHandler : IRequestHandler<ExportarInspecaoP
 
         var inspecao = await _db.Inspecoes.FirstAsync(i => i.Id == request.Id, ct);
         var rastreio = await _rastreabilidade.GarantirAsync(nameof(Inspecao), request.Id, ct);
+        var assinatura = await ObterAssinaturaFinalizada(request.Id, ct);
 
         var modelo = new InspecaoPdfModelo(
             detalhe.Inspecao.ObraNome,
@@ -72,12 +73,55 @@ public class ExportarInspecaoPdfQueryHandler : IRequestHandler<ExportarInspecaoP
             detalhe.Inspecao.Status == StatusInspecao.Concluida ? "Concluída" : "Em andamento",
             itens,
             inspecao.NumeroDocumento,
-            rastreio.ConteudoHash,
-            rastreio.UrlValidacaoPublica,
-            rastreio.QrCodePng,
-            rastreio.TemAssinatura);
+            assinatura?.ConteudoHash ?? rastreio.ConteudoHash,
+            assinatura?.UrlValidacaoPublica ?? rastreio.UrlValidacaoPublica,
+            assinatura?.QrCodePng ?? rastreio.QrCodePng,
+            assinatura is not null || rastreio.TemAssinatura,
+            assinatura);
 
         return _pdf.Gerar(modelo);
+    }
+
+    private async Task<InspecaoPdfAssinaturaModelo?> ObterAssinaturaFinalizada(Guid inspecaoId, CancellationToken ct)
+    {
+        var documento = await _db.DocumentosAssinatura
+            .Where(d => d.EntidadeTipo == nameof(Inspecao)
+                && d.EntidadeId == inspecaoId
+                && d.Status == StatusDocumentoAssinatura.Finalizado
+                && d.FinalizadoEm != null
+                && d.ConteudoHash != null
+                && d.TokenValidacaoPublica != null)
+            .OrderByDescending(d => d.FinalizadoEm)
+            .Select(d => new
+            {
+                d.Id,
+                d.FinalizadoEm,
+                d.ConteudoHash,
+                d.TokenValidacaoPublica,
+            })
+            .FirstOrDefaultAsync(ct);
+
+        if (documento is null)
+            return null;
+
+        var signatarios = await _db.DocumentoSignatarios
+            .Where(s => s.DocumentoAssinaturaId == documento.Id)
+            .OrderBy(s => s.AssinadoEm)
+            .Join(_db.Trabalhadores, s => s.TrabalhadorId, t => t.Id,
+                (s, t) => new InspecaoPdfSignatarioModelo(
+                    t.Nome,
+                    DescreverMetodoAssinatura(s.MetodoAutenticacao),
+                    s.AssinadoEm))
+            .ToListAsync(ct);
+
+        var finalizadoEm = documento.FinalizadoEm!.Value;
+        var qrCode = await _rastreabilidade.GarantirAsync(nameof(Inspecao), inspecaoId, ct);
+        return new InspecaoPdfAssinaturaModelo(
+            finalizadoEm,
+            documento.ConteudoHash!,
+            qrCode.UrlValidacaoPublica,
+            qrCode.QrCodePng,
+            signatarios);
     }
 
     private static string DescreverTipoInspecao(TipoInspecao tipo) => tipo switch
@@ -97,5 +141,13 @@ public class ExportarInspecaoPdfQueryHandler : IRequestHandler<ExportarInspecaoP
         TipoInspecao.Terceiros => "Terceiros",
         TipoInspecao.Alojamento => "Alojamento",
         _ => tipo.ToString(),
+    };
+
+    private static string DescreverMetodoAssinatura(MetodoAutenticacaoAssinatura metodo) => metodo switch
+    {
+        MetodoAutenticacaoAssinatura.Biometria => "Digital (leitor Futronic FS80H)",
+        MetodoAutenticacaoAssinatura.SessaoLogada => "Sessão logada",
+        MetodoAutenticacaoAssinatura.ReconhecimentoFacial => "Reconhecimento facial",
+        _ => metodo.ToString(),
     };
 }

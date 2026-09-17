@@ -12,7 +12,13 @@ namespace AAHBRANT.SST.Api.Controllers;
 public class AlojamentosController : ControllerBase
 {
     private readonly IMediator _mediator;
-    public AlojamentosController(IMediator mediator) => _mediator = mediator;
+    private readonly IWebHostEnvironment _environment;
+
+    public AlojamentosController(IMediator mediator, IWebHostEnvironment environment)
+    {
+        _mediator = mediator;
+        _environment = environment;
+    }
 
     [Authorize(Policy = "alojamento:ver")]
     [HttpGet]
@@ -76,6 +82,9 @@ public class AlojamentosController : ControllerBase
     public async Task<IActionResult> ObterOuCriarInspecaoAtual(Guid alojamentoId, CancellationToken ct)
     {
         var azureAdObjectId = User.FindFirst("oid")?.Value ?? User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+        if (string.IsNullOrWhiteSpace(azureAdObjectId) && _environment.IsDevelopment())
+            azureAdObjectId = "dev-local-user";
+
         var resultado = await _mediator.Send(new ObterOuCriarInspecaoAlojamentoCommand(alojamentoId, azureAdObjectId), ct);
         return Ok(resultado);
     }

@@ -64,9 +64,9 @@ public class EncerrarInspecaoComItemSemFotoObrigatoriaTests
     }
 
     [Fact]
-    public async Task Handle_ItemExigeFotoComFoto_EncerraSemErro()
+    public async Task Handle_AlojamentoItemExigeFotoSemFotoPosterior_LancaInvalidOperationException()
     {
-        var db = CriarDb(nameof(Handle_ItemExigeFotoComFoto_EncerraSemErro));
+        var db = CriarDb(nameof(Handle_AlojamentoItemExigeFotoSemFotoPosterior_LancaInvalidOperationException));
         var obra = new Obra { Codigo = "OB2", Nome = "Obra Teste 2" };
         var usuario = new Usuario { Email = "responsavel2@aahbrant.com", Nome = "Responsável Teste 2" };
         var checklist = new ChecklistModelo { Nome = "Checklist Alojamento", TipoInspecao = TipoInspecao.Alojamento };
@@ -96,6 +96,54 @@ public class EncerrarInspecaoComItemSemFotoObrigatoriaTests
             StatusItem = StatusItemChecklist.Conforme,
             FotoConteudo = new byte[] { 1, 2, 3 },
             FotoContentType = "image/jpeg",
+        });
+        db.Inspecoes.Add(inspecao);
+        await db.SaveChangesAsync();
+
+        var handler = new EncerrarInspecaoCommandHandler(db);
+
+        var ex = await Assert.ThrowsAsync<InvalidOperationException>(
+            () => handler.Handle(new EncerrarInspecaoCommand(inspecao.Id), default));
+
+        Assert.Contains("evidência posterior", ex.Message);
+        Assert.Contains(item.Descricao, ex.Message);
+    }
+
+    [Fact]
+    public async Task Handle_AlojamentoItemExigeFotoComDuasFotos_EncerraSemErro()
+    {
+        var db = CriarDb(nameof(Handle_AlojamentoItemExigeFotoComDuasFotos_EncerraSemErro));
+        var obra = new Obra { Codigo = "OB3", Nome = "Obra Teste 3" };
+        var usuario = new Usuario { Email = "responsavel3@aahbrant.com", Nome = "Responsável Teste 3" };
+        var checklist = new ChecklistModelo { Nome = "Checklist Alojamento", TipoInspecao = TipoInspecao.Alojamento };
+        var item = new ChecklistModeloItem
+        {
+            Ordem = 1,
+            Descricao = "Piso resistente, lavável e impermeável",
+            ExigeFotografia = true,
+        };
+        checklist.Itens.Add(item);
+        db.Obras.Add(obra);
+        db.Usuarios.Add(usuario);
+        db.ChecklistModelos.Add(checklist);
+        await db.SaveChangesAsync();
+
+        var inspecao = new Inspecao
+        {
+            TipoInspecao = TipoInspecao.Alojamento,
+            ObraId = obra.Id,
+            ChecklistModeloId = checklist.Id,
+            Data = DateTime.UtcNow,
+            ResponsavelUsuarioId = usuario.Id,
+        };
+        inspecao.Respostas.Add(new InspecaoItemResposta
+        {
+            ChecklistModeloItemId = item.Id,
+            StatusItem = StatusItemChecklist.Conforme,
+            FotoConteudo = new byte[] { 1, 2, 3 },
+            FotoContentType = "image/jpeg",
+            FotoDepoisConteudo = new byte[] { 4, 5, 6 },
+            FotoDepoisContentType = "image/jpeg",
         });
         db.Inspecoes.Add(inspecao);
         await db.SaveChangesAsync();

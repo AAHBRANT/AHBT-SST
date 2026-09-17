@@ -69,6 +69,23 @@ const tomPorStatusItem: Record<number, Tom> = {
   [StatusItemChecklist.NaoAplicavel]: 'info',
 };
 
+function formatarDataIso(data?: string | null) {
+  if (!data) return '';
+  const [ano, mes, dia] = data.slice(0, 10).split('-');
+  return dia && mes && ano ? `${dia}/${mes}/${ano}` : data;
+}
+
+function DadoResumo({ rotulo, valor }: { rotulo: string; valor: string }) {
+  return (
+    <div style={{ borderBottom: '1px solid rgba(0, 0, 0, 0.08)', padding: '0 0 10px' }}>
+      <Text size={200} style={{ display: 'block', color: '#667085', marginBottom: 4 }}>
+        {rotulo}
+      </Text>
+      <Text weight="semibold">{valor}</Text>
+    </div>
+  );
+}
+
 // Onda 2 Task 10 (camada ui/): detalhe de uma execução de inspeção. DetailPageLayout com resumo e a
 // única ação de fluxo (encerrar) na lateral — "Baixar PDF" e "Assinar inspeção" ficam no cabeçalho
 // por serem navegação/exportação, não transição de estado (mesmo critério de AprDetalhePage.tsx: só
@@ -289,6 +306,7 @@ export function InspecaoDetalhePage() {
   }
 
   const inspecao = detalhe.inspecao;
+  const ehInspecaoAlojamento = inspecao.tipoInspecao === TipoInspecao.Alojamento;
 
   const acoes: AcaoWorkflow[] = [];
   if (inspecao.status === StatusInspecao.EmAndamento) {
@@ -333,35 +351,44 @@ export function InspecaoDetalhePage() {
       lateral={
         <>
           <Card densidade="compacta" titulo="Resumo">
-            <FormGrid>
-              <Campo span={12}>
-                <Field label="Obra">
-                  <Input value={inspecao.obraNome} readOnly />
-                </Field>
-              </Campo>
-              {inspecao.atividadeNome && (
+            {ehInspecaoAlojamento ? (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+                <DadoResumo rotulo="Obra vinculada ao alojamento" valor={inspecao.obraNome} />
+                <DadoResumo rotulo="Data do preenchimento" valor={formatarDataIso(inspecao.data)} />
+                <DadoResumo rotulo="Responsável" valor={inspecao.responsavelUsuarioNome} />
+                <DadoResumo rotulo="Itens respondidos" valor={`${inspecao.itensRespondidos}/${inspecao.totalItens}`} />
+              </div>
+            ) : (
+              <FormGrid>
                 <Campo span={12}>
-                  <Field label="Atividade">
-                    <Input value={inspecao.atividadeNome} readOnly />
+                  <Field label="Obra">
+                    <Input value={inspecao.obraNome} readOnly />
                   </Field>
                 </Campo>
-              )}
-              <Campo span={12}>
-                <Field label="Data">
-                  <Input value={inspecao.data?.slice(0, 10) ?? ''} readOnly />
-                </Field>
-              </Campo>
-              <Campo span={12}>
-                <Field label="Responsável">
-                  <Input value={inspecao.responsavelUsuarioNome} readOnly />
-                </Field>
-              </Campo>
-              <Campo span={12}>
-                <Field label="Pontos verificados respondidos">
-                  <Input value={`${inspecao.itensRespondidos}/${inspecao.totalItens}`} readOnly />
-                </Field>
-              </Campo>
-            </FormGrid>
+                {inspecao.atividadeNome && (
+                  <Campo span={12}>
+                    <Field label="Atividade">
+                      <Input value={inspecao.atividadeNome} readOnly />
+                    </Field>
+                  </Campo>
+                )}
+                <Campo span={12}>
+                  <Field label="Data">
+                    <Input value={inspecao.data?.slice(0, 10) ?? ''} readOnly />
+                  </Field>
+                </Campo>
+                <Campo span={12}>
+                  <Field label="Responsável">
+                    <Input value={inspecao.responsavelUsuarioNome} readOnly />
+                  </Field>
+                </Campo>
+                <Campo span={12}>
+                  <Field label="Pontos verificados respondidos">
+                    <Input value={`${inspecao.itensRespondidos}/${inspecao.totalItens}`} readOnly />
+                  </Field>
+                </Campo>
+              </FormGrid>
+            )}
             {inspecao.itensNaoConformes > 0 && (
               <div style={{ marginTop: 12 }}>
                 <StatusChip tom="atencao">{inspecao.itensNaoConformes} pendente(s)</StatusChip>
@@ -406,6 +433,69 @@ export function InspecaoDetalhePage() {
                 </Text>
               )}
               <Card densidade="compacta">
+              {ehInspecaoAlojamento ? (
+                <>
+                  <div style={{ display: 'grid', gridTemplateColumns: 'minmax(260px, 1fr) minmax(220px, 320px)', gap: 16, alignItems: 'start' }}>
+                    <div>
+                      <Text weight="semibold" style={{ display: 'block', marginBottom: 8 }}>
+                        Item {resposta.ordem}
+                      </Text>
+                      <Text style={{ display: 'block', lineHeight: 1.45 }}>
+                        {resposta.descricao}
+                      </Text>
+                    </div>
+                    <Field label="Status do item">
+                      <SeletorStatusItemChecklist
+                        value={edicao.statusItem ? Number(edicao.statusItem) : null}
+                        onChange={(valor) => atualizarEdicao(resposta.id, { statusItem: String(valor) })}
+                        disabled={somenteLeitura}
+                      />
+                    </Field>
+                  </div>
+
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: 16, marginTop: 16 }}>
+                    <Field label="Evidência anterior obrigatória">
+                      <div style={{ maxWidth: 180 }}>
+                        <SlotFoto
+                          rotulo="Evidência anterior"
+                          url={fotoUrls[resposta.id]}
+                          carregandoMiniatura={resposta.temFoto && !fotoUrls[resposta.id]}
+                          somenteLeitura={somenteLeitura}
+                          aoSelecionarArquivo={(arquivo) => enviarFoto(resposta.id, arquivo)}
+                          aoErroValidacao={setErro}
+                        />
+                      </div>
+                    </Field>
+
+                    <Field label="Evidência posterior obrigatória">
+                      <div style={{ maxWidth: 180 }}>
+                        <SlotFoto
+                          rotulo="Evidência posterior"
+                          url={fotoDepoisUrls[resposta.id]}
+                          carregandoMiniatura={resposta.temFotoDepois && !fotoDepoisUrls[resposta.id]}
+                          somenteLeitura={somenteLeitura}
+                          aoSelecionarArquivo={(arquivo) => enviarFotoDepois(resposta.id, arquivo)}
+                          aoErroValidacao={setErro}
+                        />
+                      </div>
+                    </Field>
+                  </div>
+
+                  {!somenteLeitura && (
+                    <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: 16 }}>
+                      <Button
+                        appearance="primary"
+                        icon={<Save24Regular />}
+                        onClick={() => salvarResposta(resposta.id, resposta.descricao)}
+                        disabled={processando}
+                      >
+                        Salvar item
+                      </Button>
+                    </div>
+                  )}
+                </>
+              ) : (
+                <>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 12, flexWrap: 'wrap' }}>
                 <div style={{ flex: 1, minWidth: 260 }}>
                   <Text weight="semibold" style={{ display: 'block', marginBottom: 8 }}>
@@ -422,29 +512,19 @@ export function InspecaoDetalhePage() {
                 </div>
                 <div style={{ minWidth: 180 }}>
                   <Field label="Status do ponto verificado">
-                    {/* Alojamento usa o seletor de 3 bolinhas (Task 10, 2026-09-15); os demais tipos
-                        de inspeção mantêm o Select genérico, sem nenhuma mudança de comportamento. */}
-                    {inspecao.tipoInspecao === TipoInspecao.Alojamento ? (
-                      <SeletorStatusItemChecklist
-                        value={edicao.statusItem ? Number(edicao.statusItem) : null}
-                        onChange={(valor) => atualizarEdicao(resposta.id, { statusItem: String(valor) })}
-                        disabled={somenteLeitura}
-                      />
-                    ) : (
-                      <Select
-                        value={edicao.statusItem}
-                        onChange={(_, d) => atualizarEdicao(resposta.id, { statusItem: d.value })}
-                        disabled={somenteLeitura}
-                        style={{ width: '100%' }}
-                      >
-                        <option value="">Selecione o status</option>
-                        {Object.entries(statusItemChecklistLabel).map(([valor, rotulo]) => (
-                          <option key={valor} value={valor}>
-                            {rotulo}
-                          </option>
-                        ))}
-                      </Select>
-                    )}
+                    <Select
+                      value={edicao.statusItem}
+                      onChange={(_, d) => atualizarEdicao(resposta.id, { statusItem: d.value })}
+                      disabled={somenteLeitura}
+                      style={{ width: '100%' }}
+                    >
+                      <option value="">Selecione o status</option>
+                      {Object.entries(statusItemChecklistLabel).map(([valor, rotulo]) => (
+                        <option key={valor} value={valor}>
+                          {rotulo}
+                        </option>
+                      ))}
+                    </Select>
                   </Field>
                 </div>
                 {resposta.statusItem != null && (
@@ -578,6 +658,8 @@ export function InspecaoDetalhePage() {
                   </Button>
                 )}
               </div>
+              </>
+              )}
               </Card>
             </div>
           );

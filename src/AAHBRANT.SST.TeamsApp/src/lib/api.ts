@@ -1799,6 +1799,26 @@ export interface AlojamentoResumo {
   totalMoradores: number;
   statusUltimaInspecao: 'nunca' | 'em-dia' | 'atrasada';
   diasDesdeUltimaInspecao: number | null;
+  inspecaoEmAndamento: AlojamentoInspecaoResumo | null;
+  ultimaInspecaoConcluida: AlojamentoInspecaoResumo | null;
+  historicoInspecoes: AlojamentoInspecaoResumo[];
+}
+
+export interface AlojamentoInspecaoResumo {
+  id: string;
+  data: string;
+  status: number;
+  totalItens: number;
+  itensRespondidos: number;
+  itensNaoConformes: number;
+  documentoAssinatura: AlojamentoDocumentoAssinaturaResumo | null;
+}
+
+export interface AlojamentoDocumentoAssinaturaResumo {
+  id: string;
+  status: number;
+  temPdf: boolean;
+  finalizadoEm?: string | null;
 }
 
 export interface InspecaoAtual {

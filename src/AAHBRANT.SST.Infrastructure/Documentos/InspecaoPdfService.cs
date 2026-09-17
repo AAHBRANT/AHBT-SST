@@ -50,11 +50,31 @@ public class InspecaoPdfService : IInspecaoPdfService
 
                         coluna.Item().Element(c => SecaoItem(c, item));
                     }
+
                 });
 
                 pagina.Footer().Column(coluna => RodapeDocumentoPadrao.Desenhar(
                     coluna, "Inspeção", modelo.Protocolo, null, modelo.ConteudoHash, modelo.UrlValidacaoPublica, modelo.QrCodePng, modelo.TemAssinatura));
             });
+
+            if (modelo.Assinatura is not null)
+            {
+                container.Page(pagina =>
+                {
+                    pagina.Size(PageSizes.A4);
+                    pagina.Margin(1.5f, Unit.Centimetre);
+                    pagina.DefaultTextStyle(estilo => estilo.FontSize(9));
+
+                    pagina.Header().Column(coluna =>
+                        CabecalhoDocumentoPadrao.Desenhar(coluna, "Assinaturas e validação", modelo.ObraNome, modelo.ObraLogoConteudo));
+
+                    pagina.Content().PaddingVertical(10).Element(c => SecaoAssinaturas(c, modelo.Assinatura));
+
+                    pagina.Footer().Column(coluna => RodapeDocumentoPadrao.Desenhar(
+                        coluna, "Inspeção assinada", modelo.Protocolo, null, modelo.Assinatura.ConteudoHash,
+                        modelo.Assinatura.UrlValidacaoPublica, modelo.Assinatura.QrCodePng, temAssinatura: true));
+                });
+            }
         });
 
         return documento.GeneratePdf();
@@ -122,6 +142,46 @@ public class InspecaoPdfService : IInspecaoPdfService
             else
                 coluna.Item().Height(140).Border(1).BorderColor(Colors.Grey.Lighten2).Background(Colors.Grey.Lighten4)
                     .AlignCenter().AlignMiddle().Text("Sem foto").FontSize(8).FontColor(Colors.Grey.Darken1);
+        });
+    }
+
+    private static void SecaoAssinaturas(IContainer container, InspecaoPdfAssinaturaModelo assinatura)
+    {
+        container.Column(coluna =>
+        {
+            coluna.Spacing(10);
+
+            coluna.Item().Text("Assinaturas eletrônicas").FontSize(14).Bold().FontColor(CorMarca);
+            coluna.Item().Text($"Documento finalizado em {assinatura.FinalizadoEm:dd/MM/yyyy HH:mm}.").FontSize(10);
+
+            foreach (var signatario in assinatura.Signatarios)
+            {
+                coluna.Item().Border(1).BorderColor(Colors.Grey.Lighten1).Padding(8).Column(card =>
+                {
+                    card.Spacing(3);
+                    card.Item().Text(signatario.Nome).FontSize(11).Bold();
+                    card.Item().Text($"Método: {signatario.Metodo}");
+                    card.Item().Text($"Assinado em: {signatario.AssinadoEm:dd/MM/yyyy HH:mm}");
+                });
+            }
+
+            coluna.Item().PaddingTop(6).Text("Validação do documento").FontSize(12).Bold().FontColor(CorMarca);
+            coluna.Item().Text(t =>
+            {
+                t.Span("Hash de integridade (SHA-256): ").SemiBold();
+                t.Span(assinatura.ConteudoHash);
+            });
+
+            coluna.Item().Row(linha =>
+            {
+                linha.ConstantItem(90).Image(assinatura.QrCodePng);
+                linha.RelativeItem().PaddingLeft(10).Column(info =>
+                {
+                    info.Spacing(4);
+                    info.Item().Text("A autenticidade deste documento pode ser conferida pelo QR Code ou pelo endereço abaixo.");
+                    info.Item().Text(assinatura.UrlValidacaoPublica).FontSize(8);
+                });
+            });
         });
     }
 

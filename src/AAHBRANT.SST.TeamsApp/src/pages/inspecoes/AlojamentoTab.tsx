@@ -1,8 +1,18 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Button, Card, EstadoVazio, FeedbackInline, PageHeader, StatusChip, type Tom } from '@ui';
-import { ArrowLeft24Regular, Home24Regular } from '@fluentui/react-icons';
-import { api, type AlojamentoResumo, type Obra } from '../../lib/api';
+import { ArrowDownload24Regular, ArrowLeft24Regular, ClipboardTaskListLtr24Regular, Home24Regular, Open24Regular, Send24Regular } from '@fluentui/react-icons';
+import {
+  api,
+  StatusDocumentoAssinatura,
+  StatusInspecao,
+  statusDocumentoAssinaturaLabel,
+  statusInspecaoLabel,
+  type AlojamentoDocumentoAssinaturaResumo,
+  type AlojamentoInspecaoResumo,
+  type AlojamentoResumo,
+  type Obra,
+} from '../../lib/api';
 
 const tomStatus: Record<AlojamentoResumo['statusUltimaInspecao'], Tom> = {
   'em-dia': 'ok',
@@ -16,6 +26,19 @@ function rotuloStatus(status: AlojamentoResumo['statusUltimaInspecao'], dias: nu
   return `Em dia · há ${dias} dias`;
 }
 
+function formatarData(data: string) {
+  return new Date(data).toLocaleDateString('pt-BR');
+}
+
+function baixarBlob(blob: Blob, nomeArquivo: string) {
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement('a');
+  link.href = url;
+  link.download = nomeArquivo;
+  link.click();
+  URL.revokeObjectURL(url);
+}
+
 // Sub-aba "Alojamento" (Task 8, 2026-09-15): mesmo padrão obra → sub-itens de TrabalhadoresTab.tsx —
 // grade de obras com resumo, clique abre a grade de alojamentos daquela obra. Diferente de
 // TrabalhadoresTab, aqui os "sub-itens" também são cards (não uma DataTable), pois um alojamento
@@ -27,6 +50,9 @@ export function AlojamentoTab() {
   const [erro, setErro] = useState<string | null>(null);
   const [carregandoLista, setCarregandoLista] = useState(true);
   const [obraSelecionadaId, setObraSelecionadaId] = useState<string | null>(null);
+  const [baixandoPdfId, setBaixandoPdfId] = useState<string | null>(null);
+  const [enviandoAssinaturaId, setEnviandoAssinaturaId] = useState<string | null>(null);
+  const [baixandoAssinadoId, setBaixandoAssinadoId] = useState<string | null>(null);
 
   async function carregar() {
     try {
@@ -61,6 +87,49 @@ export function AlojamentoTab() {
       });
     } catch (e) {
       setErro(e instanceof Error ? e.message : 'Não foi possível abrir a inspeção deste alojamento.');
+    }
+  }
+
+  function abrirInspecaoExistente(inspecaoId: string) {
+    navigate(`/prevencao/inspecoes/${inspecaoId}`);
+  }
+
+  async function baixarPdfInspecao(inspecao: AlojamentoInspecaoResumo) {
+    try {
+      setBaixandoPdfId(inspecao.id);
+      setErro(null);
+      const blob = await api.inspecoes.baixarPdf(inspecao.id);
+      baixarBlob(blob, `inspecao-alojamento-${formatarData(inspecao.data).replaceAll('/', '-')}.pdf`);
+    } catch (e) {
+      setErro(e instanceof Error ? e.message : 'Não foi possível baixar o PDF da inspeção.');
+    } finally {
+      setBaixandoPdfId(null);
+    }
+  }
+
+  async function enviarParaAssinatura(inspecao: AlojamentoInspecaoResumo) {
+    try {
+      setEnviandoAssinaturaId(inspecao.id);
+      setErro(null);
+      await api.assinatura.criar('Inspecao', inspecao.id);
+      await carregar();
+    } catch (e) {
+      setErro(e instanceof Error ? e.message : 'Não foi possível enviar a inspeção para assinatura.');
+    } finally {
+      setEnviandoAssinaturaId(null);
+    }
+  }
+
+  async function baixarPdfAssinado(inspecao: AlojamentoInspecaoResumo, documento: AlojamentoDocumentoAssinaturaResumo) {
+    try {
+      setBaixandoAssinadoId(documento.id);
+      setErro(null);
+      const blob = await api.assinatura.baixarPdf(documento.id);
+      baixarBlob(blob, `inspecao-alojamento-assinada-${formatarData(inspecao.data).replaceAll('/', '-')}.pdf`);
+    } catch (e) {
+      setErro(e instanceof Error ? e.message : 'Não foi possível baixar o documento assinado.');
+    } finally {
+      setBaixandoAssinadoId(null);
     }
   }
 
@@ -111,15 +180,7 @@ export function AlojamentoTab() {
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: 16 }}>
           {obraAtual.alojamentos.map((alojamento) => (
             <Card key={alojamento.id}>
-              <div
-                role="button"
-                tabIndex={0}
-                onClick={() => abrirInspecao(alojamento.id)}
-                onKeyDown={(e) => {
-                  if (e.key === 'Enter' || e.key === ' ') abrirInspecao(alojamento.id);
-                }}
-                style={{ cursor: 'pointer', display: 'flex', flexDirection: 'column', gap: 8 }}
-              >
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
                 <div style={{ fontWeight: 600 }}>{alojamento.nome}</div>
                 {alojamento.endereco && <div style={{ fontSize: 12 }}>{alojamento.endereco}</div>}
                 <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12, marginTop: 4 }}>
@@ -131,7 +192,139 @@ export function AlojamentoTab() {
                   <StatusChip tom={tomStatus[alojamento.statusUltimaInspecao]}>
                     {rotuloStatus(alojamento.statusUltimaInspecao, alojamento.diasDesdeUltimaInspecao)}
                   </StatusChip>
+                  {alojamento.inspecaoEmAndamento && <StatusChip tom="info">Inspeção em andamento</StatusChip>}
                 </div>
+
+                {alojamento.ultimaInspecaoConcluida && (
+                  <div style={{ fontSize: 12 }}>
+                    Última concluída: {formatarData(alojamento.ultimaInspecaoConcluida.data)} ·{' '}
+                    {alojamento.ultimaInspecaoConcluida.itensNaoConformes} pendência(s)
+                  </div>
+                )}
+
+                {alojamento.ultimaInspecaoConcluida?.documentoAssinatura && (
+                  <StatusChip
+                    tom={
+                      alojamento.ultimaInspecaoConcluida.documentoAssinatura.status === StatusDocumentoAssinatura.Finalizado
+                        ? 'ok'
+                        : 'info'
+                    }
+                  >
+                    Assinatura: {statusDocumentoAssinaturaLabel[alojamento.ultimaInspecaoConcluida.documentoAssinatura.status]}
+                  </StatusChip>
+                )}
+
+                <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginTop: 4 }}>
+                  <Button
+                    appearance="primary"
+                    icon={<ClipboardTaskListLtr24Regular />}
+                    onClick={() =>
+                      alojamento.inspecaoEmAndamento
+                        ? abrirInspecaoExistente(alojamento.inspecaoEmAndamento.id)
+                        : abrirInspecao(alojamento.id)
+                    }
+                  >
+                    {alojamento.inspecaoEmAndamento ? 'Continuar inspeção' : 'Nova inspeção'}
+                  </Button>
+                  {alojamento.ultimaInspecaoConcluida && (
+                    <Button
+                      appearance="secondary"
+                      icon={<ArrowDownload24Regular />}
+                      disabled={baixandoPdfId === alojamento.ultimaInspecaoConcluida.id}
+                      onClick={() => baixarPdfInspecao(alojamento.ultimaInspecaoConcluida!)}
+                    >
+                      Baixar última
+                    </Button>
+                  )}
+                  {alojamento.ultimaInspecaoConcluida && !alojamento.ultimaInspecaoConcluida.documentoAssinatura && (
+                    <Button
+                      appearance="secondary"
+                      icon={<Send24Regular />}
+                      disabled={enviandoAssinaturaId === alojamento.ultimaInspecaoConcluida.id}
+                      onClick={() => enviarParaAssinatura(alojamento.ultimaInspecaoConcluida!)}
+                    >
+                      Enviar para assinatura
+                    </Button>
+                  )}
+                  {alojamento.ultimaInspecaoConcluida?.documentoAssinatura?.temPdf && (
+                    <Button
+                      appearance="secondary"
+                      icon={<ArrowDownload24Regular />}
+                      disabled={baixandoAssinadoId === alojamento.ultimaInspecaoConcluida.documentoAssinatura.id}
+                      onClick={() =>
+                        baixarPdfAssinado(
+                          alojamento.ultimaInspecaoConcluida!,
+                          alojamento.ultimaInspecaoConcluida!.documentoAssinatura!,
+                        )
+                      }
+                    >
+                      Baixar assinado
+                    </Button>
+                  )}
+                </div>
+
+                {alojamento.historicoInspecoes.length > 0 && (
+                  <div style={{ borderTop: '1px solid rgba(0, 0, 0, 0.08)', paddingTop: 10, marginTop: 2 }}>
+                    <div style={{ fontSize: 12, fontWeight: 700, marginBottom: 8 }}>Histórico de inspeções</div>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                      {alojamento.historicoInspecoes.map((inspecao) => (
+                        <div
+                          key={inspecao.id}
+                          style={{ display: 'grid', gridTemplateColumns: '1fr auto', alignItems: 'center', gap: 8, fontSize: 12 }}
+                        >
+                          <div>
+                            <div style={{ fontWeight: 600 }}>
+                              {formatarData(inspecao.data)} · {statusInspecaoLabel[inspecao.status]}
+                            </div>
+                            <div>
+                              {inspecao.itensRespondidos}/{inspecao.totalItens} itens · {inspecao.itensNaoConformes} pendência(s)
+                            </div>
+                            {inspecao.status === StatusInspecao.Concluida && inspecao.documentoAssinatura && (
+                              <div>
+                                Assinatura: {statusDocumentoAssinaturaLabel[inspecao.documentoAssinatura.status]}
+                              </div>
+                            )}
+                          </div>
+                          <div style={{ display: 'flex', gap: 4 }}>
+                            <Button
+                              appearance="subtle"
+                              icon={<Open24Regular />}
+                              onClick={() => abrirInspecaoExistente(inspecao.id)}
+                              aria-label="Abrir inspeção"
+                            />
+                            {inspecao.status === StatusInspecao.Concluida && (
+                              <Button
+                                appearance="subtle"
+                                icon={<ArrowDownload24Regular />}
+                                disabled={baixandoPdfId === inspecao.id}
+                                onClick={() => baixarPdfInspecao(inspecao)}
+                                aria-label="Baixar PDF"
+                              />
+                            )}
+                            {inspecao.status === StatusInspecao.Concluida && !inspecao.documentoAssinatura && (
+                              <Button
+                                appearance="subtle"
+                                icon={<Send24Regular />}
+                                disabled={enviandoAssinaturaId === inspecao.id}
+                                onClick={() => enviarParaAssinatura(inspecao)}
+                                aria-label="Enviar para assinatura"
+                              />
+                            )}
+                            {inspecao.status === StatusInspecao.Concluida && inspecao.documentoAssinatura?.temPdf && (
+                              <Button
+                                appearance="subtle"
+                                icon={<ArrowDownload24Regular />}
+                                disabled={baixandoAssinadoId === inspecao.documentoAssinatura.id}
+                                onClick={() => baixarPdfAssinado(inspecao, inspecao.documentoAssinatura!)}
+                                aria-label="Baixar PDF assinado"
+                              />
+                            )}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
               </div>
             </Card>
           ))}

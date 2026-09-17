@@ -1,5 +1,6 @@
 using AAHBRANT.SST.Application.Assinatura.Queries;
 using AAHBRANT.SST.Application.Common.Interfaces;
+using AAHBRANT.SST.Application.Inspecoes.Queries;
 using AAHBRANT.SST.Domain.Enums;
 using FluentValidation;
 using MediatR;
@@ -26,13 +27,15 @@ public class FinalizarDocumentoCommandHandler : IRequestHandler<FinalizarDocumen
 {
     private readonly IAppDbContext _db;
     private readonly IAuditoriaService _auditoria;
+    private readonly IMediator _mediator;
     private readonly IDocumentoAssinaturaPdfService _pdf;
     private readonly IQrCodeDocumentoService _qrCode;
 
-    public FinalizarDocumentoCommandHandler(IAppDbContext db, IAuditoriaService auditoria, IDocumentoAssinaturaPdfService pdf, IQrCodeDocumentoService qrCode)
+    public FinalizarDocumentoCommandHandler(IAppDbContext db, IAuditoriaService auditoria, IMediator mediator, IDocumentoAssinaturaPdfService pdf, IQrCodeDocumentoService qrCode)
     {
         _db = db;
         _auditoria = auditoria;
+        _mediator = mediator;
         _pdf = pdf;
         _qrCode = qrCode;
     }
@@ -63,10 +66,16 @@ public class FinalizarDocumentoCommandHandler : IRequestHandler<FinalizarDocumen
         documento.FinalizadoEm = DateTime.UtcNow;
         documento.ConteudoHash = hash;
         documento.TokenValidacaoPublica = token;
-        documento.PdfConteudo = _pdf.Gerar(new DocumentoAssinaturaPdfModelo(
-            documento.Id, documento.EntidadeTipo, documento.EntidadeId, documento.FinalizadoEm.Value, hash,
-            signatarios.Select(s => new DocumentoAssinaturaPdfSignatarioModelo(s.TrabalhadorNome, s.MetodoAutenticacao, s.AssinadoEm)).ToList(),
-            qrCode.Png, qrCode.UrlValidacao));
+        if (documento.EntidadeTipo == "Inspecao")
+        {
+            await _db.SaveChangesAsync(ct);
+            documento.PdfConteudo = await _mediator.Send(new ExportarInspecaoPdfQuery(documento.EntidadeId), ct);
+        }
+
+        documento.PdfConteudo ??= _pdf.Gerar(new DocumentoAssinaturaPdfModelo(
+                documento.Id, documento.EntidadeTipo, documento.EntidadeId, documento.FinalizadoEm.Value, hash,
+                signatarios.Select(s => new DocumentoAssinaturaPdfSignatarioModelo(s.TrabalhadorNome, s.MetodoAutenticacao, s.AssinadoEm)).ToList(),
+                qrCode.Png, qrCode.UrlValidacao));
 
         // usuarioId/trabalhadorId nulos: não há ICurrentUserService no projeto hoje para capturar quem
         // disparou a finalização (ver docs/Motor-Assinatura-Eletronica.md — nota da etapa 8); quando o

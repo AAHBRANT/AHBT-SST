@@ -55,6 +55,18 @@ public class EncerrarInspecaoCommandHandler : IRequestHandler<EncerrarInspecaoCo
             throw new InvalidOperationException(
                 $"Não é possível encerrar: os seguintes itens exigem foto e ainda não têm: {string.Join("; ", itensSemFotoObrigatoria)}");
 
+        if (inspecao.TipoInspecao == TipoInspecao.Alojamento)
+        {
+            var itensSemFotoPosteriorObrigatoria = inspecao.Respostas
+                .Where(r => r.Ativo && (r.ChecklistModeloItem?.ExigeFotografia ?? false) && (r.FotoDepoisConteudo?.Length ?? 0) == 0)
+                .Select(r => r.DescricaoPersonalizada ?? r.ChecklistModeloItem!.Descricao)
+                .ToList();
+
+            if (itensSemFotoPosteriorObrigatoria.Count > 0)
+                throw new InvalidOperationException(
+                    $"Não é possível encerrar: os seguintes itens de Alojamento exigem evidência posterior e ainda não têm: {string.Join("; ", itensSemFotoPosteriorObrigatoria)}");
+        }
+
         inspecao.Status = StatusInspecao.Concluida;
 
         var documentoExistente = await _db.DocumentosAssinatura.FirstOrDefaultAsync(
