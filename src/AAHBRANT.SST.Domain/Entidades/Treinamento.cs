@@ -14,6 +14,13 @@ public class CursoTreinamento : AuditableEntity
     // conteúdo cadastrado simplesmente não geram a página de conteúdo programático no certificado.
     public string? ConteudoProgramatico { get; set; }
 
+    // Módulo Terceirizado (docs/superpowers/specs/2026-09-18-modulo-terceirizado-design.md) — marca
+    // qual curso do catálogo representa a "Integração de Segurança" obrigatória para TODO
+    // terceirizado, independente da função (regra fixa do módulo, não depende de
+    // MatrizTreinamentoFuncao). No máximo um curso com true por vez — ver
+    // AtualizarCursoTreinamentoCommandHandler/CriarCursoTreinamentoCommandHandler.
+    public bool EhIntegracaoSeguranca { get; set; }
+
     public ICollection<Treinamento> Realizacoes { get; set; } = new List<Treinamento>();
 }
 

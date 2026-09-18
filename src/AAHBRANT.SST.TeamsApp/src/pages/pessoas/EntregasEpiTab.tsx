@@ -64,6 +64,15 @@ export function EntregasEpiTab({ trabalhadorId }: { trabalhadorId: string }) {
     }
   }
 
+  async function confirmar(id: string) {
+    try {
+      await api.entregasEpi.confirmar(id);
+      await carregar();
+    } catch (e) {
+      setErro(e instanceof Error ? e.message : 'Falha ao confirmar a entrega.');
+    }
+  }
+
   const colunas: Coluna<EntregaEpi>[] = [
     { chave: 'epi', rotulo: 'EPI', render: (e) => nomeEpi(e.catalogoEpiId) },
     { chave: 'quantidade', rotulo: 'Qtd.', alinhar: 'direita', largura: '64px' },
@@ -79,6 +88,16 @@ export function EntregasEpiTab({ trabalhadorId }: { trabalhadorId: string }) {
       ),
     },
     { chave: 'devolucao', rotulo: 'Devolução', render: (e) => e.dataDevolucao?.slice(0, 10) ?? '—' },
+    {
+      chave: 'confirmacao',
+      rotulo: 'Confirmação',
+      render: (e) =>
+        e.confirmada ? (
+          <StatusChip tom="ok">Confirmada</StatusChip>
+        ) : (
+          <StatusChip tom="atencao">Pendente</StatusChip>
+        ),
+    },
   ];
 
   return (
@@ -113,6 +132,13 @@ export function EntregasEpiTab({ trabalhadorId }: { trabalhadorId: string }) {
           descricao: 'Registre a entrega no módulo EPI.',
           acao: { rotulo: 'Ir para EPI', aoClicar: () => navigate('/epi') },
         }}
+        acoesLinha={(e) =>
+          !e.confirmada && (
+            <Button appearance="subtle" onClick={() => confirmar(e.id)}>
+              Confirmar entrega
+            </Button>
+          )
+        }
       />
     </Card>
   );

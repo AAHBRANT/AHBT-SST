@@ -6,4 +6,5 @@ public record CursoTreinamentoDto(
     string? NormaReferencia,
     int CargaHorariaMinima,
     int ValidadeEmMeses,
-    string? ConteudoProgramatico);
+    string? ConteudoProgramatico,
+    bool EhIntegracaoSeguranca);

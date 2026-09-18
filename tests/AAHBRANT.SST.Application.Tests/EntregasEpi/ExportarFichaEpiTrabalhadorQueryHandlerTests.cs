@@ -140,4 +140,63 @@ public class ExportarFichaEpiTrabalhadorQueryHandlerTests
         Assert.True(devolucao.AssinadoPeloEmpregado);
         Assert.Equal("Visto do encarregado", devolucao.VistoResponsavel);
     }
+
+    [Fact]
+    public async Task Handle_EntregaNaoConfirmada_NaoAparecerNaFicha()
+    {
+        var db = CriarDb(nameof(Handle_EntregaNaoConfirmada_NaoAparecerNaFicha));
+
+        var obra = new Obra { Codigo = "OB2", Nome = "Obra Norte", Cliente = "Cliente X", Cnpj = "12.345.678/0001-90" };
+        var funcao = new Funcao { Nome = "Eletricista" };
+        var trabalhador = new Trabalhador
+        {
+            Obra = obra,
+            Funcao = funcao,
+            Nome = "Maria Souza",
+            Matricula = "MAT-002",
+            Cpf = "98765432100",
+            DataAdmissao = new DateTime(2024, 3, 1),
+            Turno = "Noturno",
+        };
+        var epi = new CatalogoEpi { Nome = "Luva isolante", VidaUtilEmMeses = 6, CertificadoAprovacaoNumero = "CA-456" };
+
+        var entregaConfirmada = new EntregaEpi
+        {
+            Trabalhador = trabalhador,
+            CatalogoEpi = epi,
+            DataEntrega = new DateTime(2024, 4, 1),
+            Quantidade = 1,
+            MotivoTipo = MotivoEntregaEpi.Inicial,
+            Confirmada = true,
+        };
+        // Reserva automática do módulo Terceirizado (Confirmada=false, entrega ainda não confirmada
+        // fisicamente) — nunca deve aparecer na ficha NR-6, que tem valor de prova em fiscalização.
+        var entregaReservada = new EntregaEpi
+        {
+            Trabalhador = trabalhador,
+            CatalogoEpi = epi,
+            DataEntrega = new DateTime(2024, 5, 1),
+            Quantidade = 1,
+            MotivoTipo = MotivoEntregaEpi.Inicial,
+            Confirmada = false,
+        };
+
+        db.Obras.Add(obra);
+        db.Funcoes.Add(funcao);
+        db.Trabalhadores.Add(trabalhador);
+        db.CatalogoEpis.Add(epi);
+        db.EntregasEpi.AddRange(entregaConfirmada, entregaReservada);
+        await db.SaveChangesAsync();
+
+        var pdf = new FichaEpiPdfServiceFake();
+        var handler = new ExportarFichaEpiTrabalhadorQueryHandler(db, pdf, new RegistradorRastreabilidadeService(db, new QrCodeDocumentoServiceFalso()));
+
+        var resultado = await handler.Handle(new ExportarFichaEpiTrabalhadorQuery(trabalhador.Id), default);
+
+        Assert.NotNull(resultado);
+        var modelo = pdf.UltimoModelo!;
+
+        var linha = Assert.Single(modelo.Entregas);
+        Assert.Equal(new DateTime(2024, 4, 1), linha.DataEntrega);
+    }
 }

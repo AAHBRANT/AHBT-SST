@@ -2,6 +2,7 @@ using AAHBRANT.SST.Application.Common.Interfaces;
 using AAHBRANT.SST.Domain.Entidades;
 using FluentValidation;
 using MediatR;
+using Microsoft.EntityFrameworkCore;
 
 namespace AAHBRANT.SST.Application.CursosTreinamento.Commands;
 
@@ -10,7 +11,8 @@ public record CriarCursoTreinamentoCommand(
     string? NormaReferencia,
     int CargaHorariaMinima,
     int ValidadeEmMeses,
-    string? ConteudoProgramatico = null) : IRequest<Guid>;
+    string? ConteudoProgramatico = null,
+    bool EhIntegracaoSeguranca = false) : IRequest<Guid>;
 
 public class CriarCursoTreinamentoCommandValidator : AbstractValidator<CriarCursoTreinamentoCommand>
 {
@@ -36,7 +38,15 @@ public class CriarCursoTreinamentoCommandHandler : IRequestHandler<CriarCursoTre
             CargaHorariaMinima = request.CargaHorariaMinima,
             ValidadeEmMeses = request.ValidadeEmMeses,
             ConteudoProgramatico = request.ConteudoProgramatico,
+            EhIntegracaoSeguranca = request.EhIntegracaoSeguranca,
         };
+
+        if (request.EhIntegracaoSeguranca)
+        {
+            var atual = await _db.CursosTreinamento.Where(c => c.EhIntegracaoSeguranca).ToListAsync(ct);
+            foreach (var c in atual) c.EhIntegracaoSeguranca = false;
+        }
+
         _db.CursosTreinamento.Add(curso);
         await _db.SaveChangesAsync(ct);
         return curso.Id;

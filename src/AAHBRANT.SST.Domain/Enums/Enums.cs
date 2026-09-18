@@ -125,6 +125,16 @@ public enum TipoAlerta
     PgrRevisaoVencendo = 23,
     PgrRevisaoVencida = 24,
     SuporteIaDemandaTecnica = 25
+    ,
+    // Módulo Terceirizado (docs/superpowers/specs/2026-09-18-modulo-terceirizado-design.md §6) —
+    // disparado no ato (não pelo Motor Central de Alertas periódico) quando não há saldo de
+    // EstoqueEpi suficiente para reservar um EPI obrigatório no cadastro de uma pessoa terceirizada.
+    EpiEstoqueInsuficiente = 26
+    ,
+    // Módulo Terceirizado (docs/superpowers/specs/2026-09-18-modulo-terceirizado-design.md §8) —
+    // contrato encerrado no G-Juri com pessoas ainda ativas no SST. Spec: "só alerta, não desliga
+    // ninguém automaticamente" — o desligamento continua manual.
+    ContratoTerceirizadoEncerrado = 27
 }
 
 public enum SeveridadeAlerta
@@ -841,4 +851,18 @@ public enum CategoriaNovidade
     Correcao = 1,
     Melhoria = 2,
     Novidade = 3
+}
+
+// Módulo Terceirizado (docs/superpowers/specs/2026-09-18-modulo-terceirizado-design.md).
+public enum StatusEmpresa
+{
+    Ativa = 1,
+    Inativa = 2
+}
+
+public enum StatusContrato
+{
+    Validado = 1,
+    Encerrado = 2,
+    Cancelado = 3
 }

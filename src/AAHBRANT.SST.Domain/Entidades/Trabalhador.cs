@@ -36,6 +36,15 @@ public class Trabalhador : AuditableEntity
     public string? CpfHash { get; set; }
 
     public TipoVinculo Vinculo { get; set; } = TipoVinculo.Clt;
+
+    // Módulo Terceirizado (docs/superpowers/specs/2026-09-18-modulo-terceirizado-design.md) — só
+    // preenchidos quando Vinculo = Terceirizado; nulos para CLT/Autonomo/Estagiario. Preenchidos por
+    // CadastrarPessoaTerceirizadaCommand (Task 8), nunca editados manualmente depois.
+    public Guid? EmpresaId { get; set; }
+    public Empresa? Empresa { get; set; }
+    public Guid? ContratoId { get; set; }
+    public Contrato? Contrato { get; set; }
+
     public DateTime DataAdmissao { get; set; }
     public DateTime? DataDemissao { get; set; }
 

@@ -1,3 +1,4 @@
+using AAHBRANT.SST.Application.Alertas;
 using AAHBRANT.SST.Application.Alertas.Motor;
 using AAHBRANT.SST.Application.Common.Behaviors;
 using AAHBRANT.SST.Application.Elegibilidade;
@@ -35,6 +36,7 @@ public static class DependencyInjection
         services.AddScoped<IAlertaOrigemProvider, PgrAlertaProvider>();
         services.AddScoped<IAlertaEngineService, AlertaEngineService>();
         services.AddScoped<ISuporteIaTriagemService, HeuristicaSuporteIaTriagemService>();
+        services.AddScoped<ITecnicosSegurancaPorObraService, TecnicosSegurancaPorObraService>();
 
         return services;
     }
