@@ -1,5 +1,7 @@
 import { Abas, PageHeader, useAbaNaUrl } from '@ui';
 import { EmpresasTab } from './EmpresasTab';
+import { PessoasTab } from './PessoasTab';
+import { PendenciasTab } from './PendenciasTab';
 
 // Módulo Terceirizado (docs/superpowers/specs/2026-09-18-modulo-terceirizado-design.md) — item
 // próprio na sidebar (decisão explícita do usuário, quebra a convenção de módulo-como-aba-de-pilar
@@ -27,6 +29,8 @@ export function TerceirizadoPage() {
       />
 
       {aba === 'empresas' && <EmpresasTab />}
+      {aba === 'pessoas' && <PessoasTab />}
+      {aba === 'pendencias' && <PendenciasTab />}
     </div>
   );
 }

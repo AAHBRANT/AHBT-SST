@@ -40,6 +40,8 @@ import { AssinarTreinamentoPage } from './pages/treinamentos/AssinarTreinamentoP
 import { SessaoTreinamentoDetalhePage } from './pages/treinamentos/SessaoTreinamentoDetalhePage';
 import { GaleriaPage } from './ui/galeria/GaleriaPage';
 import { TerceirizadoPage } from './pages/terceirizados/TerceirizadoPage';
+import { EmpresaDetalhePage } from './pages/terceirizados/EmpresaDetalhePage';
+import { ContratoDetalhePage } from './pages/terceirizados/ContratoDetalhePage';
 
 // Envolve as rotas internas do app com o AppShell (sidebar/header do Teams). As rotas públicas
 // /p/:codigoOuUid e /validar/:token ficam de fora dessa camada — ver IdentificacaoPublicaPage/ValidarDocumentoPage.
@@ -198,6 +200,8 @@ function AppRoteado() {
               <Route path="/pessoas/:id" element={<TrabalhadorDetalhePage />} />
 
               <Route path="/terceirizados" element={<TerceirizadoPage />} />
+              <Route path="/terceirizados/empresas/:id" element={<EmpresaDetalhePage />} />
+              <Route path="/terceirizados/contratos/:id" element={<ContratoDetalhePage />} />
 
               {/* Item "Ocorrências" da sidebar: Acidentes/Incidentes/Quase-acidentes (já eram a mesma
                   tela filtrada por tipo) e Não Conformidades viraram abas de OcorrenciasPage. */}
