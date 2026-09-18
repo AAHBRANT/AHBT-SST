@@ -930,7 +930,7 @@ export function AppShell({ children }: { children: ReactNode }) {
       {novidadePendente && (
         <NovidadesModal
           novidade={novidadePendente}
-          nomeUsuario={nomeUsuario}
+          nomeUsuario={nomePerfil}
           aberto={Boolean(novidadePendente)}
           aoFechar={fecharNovidades}
         />
