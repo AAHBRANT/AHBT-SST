@@ -3,6 +3,7 @@ import { useParams } from 'react-router-dom';
 import {
   Button,
   Card,
+  Carregando,
   PageHeader,
   DataTable,
   PainelCriacaoInline,
@@ -85,7 +86,13 @@ export function ContratoDetalhePage() {
   ];
 
   if (!contrato) {
-    return <div>{erro && <FeedbackInline tom="erro" aoFechar={() => setErro(null)}>{erro}</FeedbackInline>}</div>;
+    return erro ? (
+      <FeedbackInline tom="erro" acao={{ rotulo: 'Tentar de novo', aoClicar: () => void carregar() }}>
+        {erro}
+      </FeedbackInline>
+    ) : (
+      <Carregando variante="detalhe" linhas={6} />
+    );
   }
 
   return (
@@ -93,6 +100,8 @@ export function ContratoDetalhePage() {
       <PageHeader
         titulo={`Contrato ${contrato.numeroContrato}`}
         subtitulo={`${contrato.empresaRazaoSocial} — Obra ${contrato.obraNome} — ${contrato.status}`}
+        voltarPara={`/terceirizados/empresas/${contrato.empresaId}`}
+        rotuloVoltar="Voltar para a empresa"
       />
       {erro && <FeedbackInline tom="erro" aoFechar={() => setErro(null)}>{erro}</FeedbackInline>}
 

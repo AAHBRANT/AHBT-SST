@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import { Button, Card, PageHeader, DataTable, FeedbackInline, StatusChip, type Coluna } from '@ui';
+import { Button, Card, Carregando, PageHeader, DataTable, FeedbackInline, StatusChip, type Coluna } from '@ui';
 import { Open24Regular } from '@fluentui/react-icons';
 import { api, type Empresa, type Contrato } from '../../lib/api';
 
@@ -51,16 +51,23 @@ export function EmpresaDetalhePage() {
   ];
 
   if (!empresa) {
-    return (
-      <div>
-        {erro && <FeedbackInline tom="erro" aoFechar={() => setErro(null)}>{erro}</FeedbackInline>}
-      </div>
+    return erro ? (
+      <FeedbackInline tom="erro" acao={{ rotulo: 'Tentar de novo', aoClicar: () => void carregar() }}>
+        {erro}
+      </FeedbackInline>
+    ) : (
+      <Carregando variante="detalhe" linhas={6} />
     );
   }
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-      <PageHeader titulo={empresa.razaoSocial} subtitulo={`CNPJ ${empresa.cnpj} — ${empresa.status}`} />
+      <PageHeader
+        titulo={empresa.razaoSocial}
+        subtitulo={`CNPJ ${empresa.cnpj} — ${empresa.status}`}
+        voltarPara="/terceirizados"
+        rotuloVoltar="Voltar para Terceirizado"
+      />
       {erro && <FeedbackInline tom="erro" aoFechar={() => setErro(null)}>{erro}</FeedbackInline>}
 
       <Card titulo="Contratos">
