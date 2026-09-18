@@ -39,7 +39,11 @@ public record PerfilCompletoTrabalhadorDto(
     List<OcorrenciaDto> Ocorrencias,
     List<AssinaturaPerfilDto> Assinaturas,
     int TrocasNoAno,
-    List<MotivoTrocaEpiDto> MotivosTroca);
+    List<MotivoTrocaEpiDto> MotivosTroca,
+    Guid? EmpresaId,
+    string? EmpresaRazaoSocial,
+    Guid? ContratoId,
+    string? NumeroContrato);
 
 public record FrequenciaTrocaEpiDto(Guid CatalogoEpiId, string CatalogoEpiNome, int QuantidadeTrocas);
 
@@ -113,6 +117,8 @@ public class ObterPerfilCompletoTrabalhadorQueryHandler : IRequestHandler<ObterP
                 t.FuncaoId,
                 t.Vinculo,
                 t.DataAdmissao,
+                t.EmpresaId,
+                t.ContratoId,
                 TemFoto = t.FotoConteudo != null,
                 TemBiometria = _db.TemplatesBiometricoFutronic.Any(tb => tb.TrabalhadorId == t.Id),
             })
@@ -129,6 +135,22 @@ public class ObterPerfilCompletoTrabalhadorQueryHandler : IRequestHandler<ObterP
             .Where(f => f.Id == trabalhador.FuncaoId)
             .Select(f => f.Nome)
             .FirstOrDefaultAsync(ct);
+
+        // Empresa/Contrato só existem para Terceirizado — mesmo motivo do IgnoreQueryFilters() acima
+        // para Obra/Funcao: a empresa/contrato pode ter sido inativada depois, o perfil ainda deve abrir.
+        string? empresaRazaoSocial = null;
+        string? numeroContrato = null;
+        if (trabalhador.EmpresaId is not null)
+        {
+            empresaRazaoSocial = await _db.Empresas.IgnoreQueryFilters()
+                .Where(e => e.Id == trabalhador.EmpresaId)
+                .Select(e => e.RazaoSocial)
+                .FirstOrDefaultAsync(ct);
+            numeroContrato = await _db.Contratos.IgnoreQueryFilters()
+                .Where(c => c.Id == trabalhador.ContratoId)
+                .Select(c => c.NumeroContrato)
+                .FirstOrDefaultAsync(ct);
+        }
 
         var asos = await _db.Asos
             .Where(a => a.TrabalhadorId == request.Id)
@@ -305,6 +327,10 @@ public class ObterPerfilCompletoTrabalhadorQueryHandler : IRequestHandler<ObterP
             ocorrencias,
             assinaturas,
             trocasDoAno.Count,
-            motivosTroca);
+            motivosTroca,
+            trabalhador.EmpresaId,
+            empresaRazaoSocial,
+            trabalhador.ContratoId,
+            numeroContrato);
     }
 }

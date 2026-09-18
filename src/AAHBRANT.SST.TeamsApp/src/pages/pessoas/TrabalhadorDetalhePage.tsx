@@ -18,7 +18,7 @@ import {
   type Tom,
 } from '@ui';
 import { ArrowDownload24Regular, Eye24Regular, EyeOff24Regular } from '@fluentui/react-icons';
-import { api, tipoVinculoLabel, type PerfilCompletoTrabalhador } from '../../lib/api';
+import { api, tipoVinculoLabel, TipoVinculo, type PerfilCompletoTrabalhador } from '../../lib/api';
 import { formatarCpf, mascararCpf } from '../../lib/cpf';
 import { PerfilGeralTab } from './PerfilGeralTab';
 import { TamanhosUniformeSecao } from './TamanhosUniformeSecao';
@@ -26,10 +26,11 @@ import { TreinamentosTab } from './TreinamentosTab';
 import { RiscosTab } from './RiscosTab';
 import { OcorrenciasTab } from './OcorrenciasTab';
 import { CofreAssinaturasTab } from './CofreAssinaturasTab';
+import { TerceirizadoTab } from './TerceirizadoTab';
 
-type AbaPerfil = 'geral' | 'epi' | 'treinamentos' | 'riscos' | 'ocorrencias' | 'cofre';
+type AbaPerfil = 'geral' | 'epi' | 'treinamentos' | 'riscos' | 'ocorrencias' | 'cofre' | 'terceirizado';
 
-const ABAS_PERFIL = [
+const ABAS_PERFIL_BASE = [
   { valor: 'geral', rotulo: 'Geral & ASO' },
   { valor: 'epi', rotulo: 'EPI & Matriz' },
   { valor: 'treinamentos', rotulo: 'Treinamentos & DDS' },
@@ -37,6 +38,11 @@ const ABAS_PERFIL = [
   { valor: 'ocorrencias', rotulo: 'Ocorrências' },
   { valor: 'cofre', rotulo: 'Cofre de Assinaturas' },
 ] as const satisfies readonly { valor: AbaPerfil; rotulo: string }[];
+
+const ABA_TERCEIRIZADO = { valor: 'terceirizado', rotulo: 'Terceirizado' } as const satisfies {
+  valor: AbaPerfil;
+  rotulo: string;
+};
 
 const tomAptidao: Record<string, Tom> = {
   Apto: 'ok',
@@ -122,6 +128,9 @@ export function TrabalhadorDetalhePage() {
   const dadosFrequenciaEpi: ItemRanking[] =
     perfil?.frequenciaTrocas.map((f) => ({ rotulo: f.catalogoEpiNome, valor: f.quantidadeTrocas })) ?? [];
 
+  const abasVisiveis =
+    perfil?.vinculo === TipoVinculo.Terceirizado ? [...ABAS_PERFIL_BASE, ABA_TERCEIRIZADO] : ABAS_PERFIL_BASE;
+
   const dadosAssiduidadeDds: FatiaDonut[] = perfil
     ? [
         { rotulo: 'Participou', valor: perfil.assiduidadeDds.totalParticipados, cor: paleta.ok },
@@ -190,7 +199,7 @@ export function TrabalhadorDetalhePage() {
           </div>
 
           <div style={{ marginBottom: 16 }}>
-            <Abas nivel="modulo" aria-label="Seções do perfil" abas={ABAS_PERFIL} valor={aba} aoMudar={setAba} />
+            <Abas nivel="modulo" aria-label="Seções do perfil" abas={abasVisiveis} valor={aba} aoMudar={setAba} />
           </div>
 
           {aba === 'geral' && (
@@ -223,6 +232,7 @@ export function TrabalhadorDetalhePage() {
           {aba === 'riscos' && <RiscosTab riscos={perfil.riscos} />}
           {aba === 'ocorrencias' && <OcorrenciasTab ocorrencias={perfil.ocorrencias} />}
           {aba === 'cofre' && <CofreAssinaturasTab trabalhadorId={id} assinaturas={perfil.assinaturas} />}
+          {aba === 'terceirizado' && <TerceirizadoTab trabalhadorId={id} perfil={perfil} />}
         </>
       )}
     </div>
