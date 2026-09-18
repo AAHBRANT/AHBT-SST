@@ -224,6 +224,7 @@ export interface CursoTreinamento {
   cargaHorariaMinima: number;
   validadeEmMeses: number;
   conteudoProgramatico?: string | null;
+  ehIntegracaoSeguranca: boolean;
 }
 
 export type NovoCursoTreinamento = Omit<CursoTreinamento, 'id'>;

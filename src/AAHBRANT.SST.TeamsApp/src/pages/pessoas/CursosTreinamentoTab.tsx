@@ -14,8 +14,10 @@ import {
   Campo,
   FeedbackInline,
   useConfirmar,
+  StatusChip,
   type Coluna,
 } from '@ui';
+import { Switch } from '@fluentui/react-components';
 import { Add24Regular, Delete24Regular } from '@fluentui/react-icons';
 import { api, type CursoTreinamento, type NovoCursoTreinamento } from '../../lib/api';
 import { useSucessoToast } from '../../hooks/useSucessoToast';
@@ -26,6 +28,7 @@ const cursoVazio: NovoCursoTreinamento = {
   cargaHorariaMinima: 0,
   validadeEmMeses: 12,
   conteudoProgramatico: '',
+  ehIntegracaoSeguranca: false,
 };
 
 // Migração do formulário inline (spec 2026-09-11): o PainelLateral (drawer) saiu — mesmo padrão de
@@ -89,11 +92,26 @@ export function CursosTreinamentoTab() {
     }
   }
 
+  async function marcarComoIntegracaoSeguranca(curso: CursoTreinamento) {
+    try {
+      await api.cursosTreinamento.atualizar(curso.id, { ...curso, ehIntegracaoSeguranca: true });
+      await carregar();
+      sucessoToast(`"${curso.nome}" agora é o curso de Integração de Segurança.`);
+    } catch (e) {
+      setErro(e instanceof Error ? e.message : 'Falha ao marcar curso como Integração de Segurança.');
+    }
+  }
+
   const colunas: Coluna<CursoTreinamento>[] = [
     { chave: 'nome', rotulo: 'Nome' },
     { chave: 'normaReferencia', rotulo: 'Norma' },
     { chave: 'cargaHorariaMinima', rotulo: 'CH mínima', render: (c) => `${c.cargaHorariaMinima}h` },
     { chave: 'validadeEmMeses', rotulo: 'Validade (meses)' },
+    {
+      chave: 'integracaoSeguranca',
+      rotulo: 'Integração de Segurança',
+      render: (c) => (c.ehIntegracaoSeguranca ? <StatusChip tom="ok">Sim</StatusChip> : '—'),
+    },
   ];
 
   return (
@@ -167,6 +185,13 @@ export function CursosTreinamentoTab() {
                   />
                 </Field>
               </Campo>
+              <Campo span={12}>
+                <Switch
+                  label="Este é o curso de Integração de Segurança obrigatório para todo terceirizado"
+                  checked={novoCurso.ehIntegracaoSeguranca}
+                  onChange={(_, d) => setNovoCurso({ ...novoCurso, ehIntegracaoSeguranca: d.checked })}
+                />
+              </Campo>
             </FormGrid>
             <FormRodape>
               <Button onClick={fecharPainel}>Cancelar</Button>
@@ -189,7 +214,14 @@ export function CursosTreinamentoTab() {
             acao: { rotulo: 'Adicionar curso', aoClicar: () => setPainelAberto(true) },
           }}
           acoesLinha={(c) => (
-            <Button appearance="subtle" icon={<Delete24Regular />} onClick={() => excluir(c.id)} aria-label="Excluir" />
+            <>
+              {!c.ehIntegracaoSeguranca && (
+                <Button appearance="subtle" onClick={() => marcarComoIntegracaoSeguranca(c)}>
+                  Marcar como Integração de Segurança
+                </Button>
+              )}
+              <Button appearance="subtle" icon={<Delete24Regular />} onClick={() => excluir(c.id)} aria-label="Excluir" />
+            </>
           )}
         />
       </Card>
