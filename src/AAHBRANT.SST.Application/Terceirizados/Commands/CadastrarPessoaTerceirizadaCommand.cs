@@ -84,6 +84,34 @@ public class CadastrarPessoaTerceirizadaCommandHandler : IRequestHandler<Cadastr
         var alertasEstoqueInsuficiente = new List<Alerta>();
         foreach (var catalogoEpiId in episObrigatorios)
         {
+            var catalogo = await _db.CatalogoEpis.FirstAsync(c => c.Id == catalogoEpiId, ct);
+
+            // Bloqueio de CA vencido — mesma decisão já confirmada com o usuário para a entrega manual
+            // (CriarEntregaEpiCommand): não apenas um aviso, o EPI não é reservado. Checado antes do
+            // saldo, pois um CA vencido bloqueia independentemente de haver estoque.
+            if (catalogo.CertificadoAprovacaoValidade is not null && catalogo.CertificadoAprovacaoValidade < DateTime.UtcNow)
+            {
+                var tecnicosCaVencido = await _tecnicosSegurancaPorObra.ObterUsuarioIdsAsync(contrato.ObraId, ct);
+                foreach (var usuarioId in tecnicosCaVencido)
+                {
+                    var alerta = new Alerta
+                    {
+                        Tipo = TipoAlerta.EpiEstoqueInsuficiente,
+                        Severidade = SeveridadeAlerta.Critico,
+                        Titulo = $"EPI {catalogo.Nome} com CA vencido para {trabalhador.Nome}",
+                        Descricao = $"O Certificado de Aprovação deste EPI está vencido — não é possível liberar para {trabalhador.Nome} ({funcao.Nome}). Providencie um EPI com CA válido.",
+                        EntidadeOrigemTipo = "Trabalhador",
+                        EntidadeOrigemId = trabalhador.Id,
+                        TrabalhadorId = trabalhador.Id,
+                        ObraId = contrato.ObraId,
+                        DestinatarioUsuarioId = usuarioId,
+                    };
+                    _db.Alertas.Add(alerta);
+                    alertasEstoqueInsuficiente.Add(alerta);
+                }
+                continue;
+            }
+
             var estoque = await _db.EstoquesEpi
                 .FirstOrDefaultAsync(e => e.CatalogoEpiId == catalogoEpiId && e.ObraId == contrato.ObraId, ct);
             var saldoAtual = estoque?.Saldo ?? 0;
@@ -113,7 +141,6 @@ public class CadastrarPessoaTerceirizadaCommandHandler : IRequestHandler<Cadastr
             }
             else
             {
-                var catalogo = await _db.CatalogoEpis.FirstAsync(c => c.Id == catalogoEpiId, ct);
                 var tecnicos = await _tecnicosSegurancaPorObra.ObterUsuarioIdsAsync(contrato.ObraId, ct);
                 foreach (var usuarioId in tecnicos)
                 {

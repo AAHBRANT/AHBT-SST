@@ -140,4 +140,34 @@ public class CadastrarPessoaTerceirizadaCommandHandlerTests
         await Assert.ThrowsAsync<InvalidOperationException>(() => handler.Handle(
             new CadastrarPessoaTerceirizadaCommand(contrato.Id, funcao.Id, "X", "MAT-4", "52998224725", DateTime.UtcNow), default));
     }
+
+    [Fact]
+    public async Task Handle_EpiComCaVencidoMesmoComEstoque_NaoReservaEGeraAlerta()
+    {
+        var db = CriarDb(nameof(Handle_EpiComCaVencidoMesmoComEstoque_NaoReservaEGeraAlerta));
+        var (obra, _, funcao, contrato, _, epi) = await SemearAsync(db);
+
+        var catalogoEntidade = await db.CatalogoEpis.FirstAsync(c => c.Id == epi.Id);
+        catalogoEntidade.CertificadoAprovacaoValidade = DateTime.UtcNow.AddDays(-1);
+        db.EstoquesEpi.Add(new EstoqueEpi { CatalogoEpiId = epi.Id, ObraId = obra.Id, Saldo = 5 });
+        await db.SaveChangesAsync();
+
+        var tecnicoId = Guid.NewGuid();
+        var tecnicos = new TecnicosSegurancaPorObraServiceFalso { UsuarioIdsARetornar = new List<Guid> { tecnicoId } };
+        var handler = CriarHandler(db, tecnicos);
+
+        var trabalhadorId = await handler.Handle(
+            new CadastrarPessoaTerceirizadaCommand(contrato.Id, funcao.Id, "Carlos Pedreiro", "MAT-5", "11144477735", DateTime.UtcNow),
+            default);
+
+        Assert.False(await db.EntregasEpi.AnyAsync(e => e.TrabalhadorId == trabalhadorId));
+
+        var estoqueInalterado = await db.EstoquesEpi.FirstAsync(e => e.CatalogoEpiId == epi.Id && e.ObraId == obra.Id);
+        Assert.Equal(5, estoqueInalterado.Saldo);
+
+        var alerta = await db.Alertas.SingleAsync(a => a.TrabalhadorId == trabalhadorId);
+        Assert.Equal(TipoAlerta.EpiEstoqueInsuficiente, alerta.Tipo);
+        Assert.Contains("CA vencido", alerta.Titulo);
+        Assert.Equal(tecnicoId, alerta.DestinatarioUsuarioId);
+    }
 }
