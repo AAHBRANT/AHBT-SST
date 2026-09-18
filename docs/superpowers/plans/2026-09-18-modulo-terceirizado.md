@@ -1028,6 +1028,12 @@ Em `src/AAHBRANT.SST.Infrastructure/Persistencia/Seed/RbacSeeder.cs`, adicionar 
         ("terceirizado:criar", "Terceirizado", "Criar", "Cadastrar empresa terceirizada e pessoas em vagas de contrato"),
         ("terceirizado:editar", "Terceirizado", "Editar", "Editar empresa terceirizada"),
         ("terceirizado:excluir", "Terceirizado", "Excluir", "Inativar empresa terceirizada"),
+        // Não concedida a nenhum PerfilAcesso humano — existe só para o AppRole do webhook do G-Juri
+        // (Task 10) casar contra ela via AppRolesReconhecidas. Separada de "terceirizado:criar" de
+        // propósito (revisão técnica durante o planejamento): a permissão de um usuário humano
+        // cadastrar empresas pela tela nunca deve, mesmo que indiretamente, autorizar quem pode
+        // chamar o webhook.
+        ("terceirizado:integracao-gjuri", "Terceirizado", "IntegracaoGJuri", "Receber webhook de contrato validado/encerrado do G-Juri"),
 ```
 
 - [ ] **Step 7: Escrever os testes**
@@ -1968,9 +1974,12 @@ public static class CalculadoraLiberacaoTerceirizado
             .ToListAsync(ct);
         foreach (var epi in episObrigatorios)
         {
-            var confirmada = await db.EntregasEpi.AnyAsync(e => e.TrabalhadorId == trabalhadorId
-                && e.CatalogoEpiId == epi.CatalogoEpiId && e.Confirmada, ct);
-            if (confirmada) continue;
+            // Confirmada=true E ainda não devolvida — um EPI já devolvido (DataDevolucao preenchida)
+            // não satisfaz mais a exigência da função, mesmo tendo sido confirmado no passado
+            // (correção feita após revisão técnica: a primeira versão só checava Confirmada).
+            var confirmadaEEmPosse = await db.EntregasEpi.AnyAsync(e => e.TrabalhadorId == trabalhadorId
+                && e.CatalogoEpiId == epi.CatalogoEpiId && e.Confirmada && e.DataDevolucao == null, ct);
+            if (confirmadaEEmPosse) continue;
 
             var reservada = await db.EntregasEpi.AnyAsync(e => e.TrabalhadorId == trabalhadorId
                 && e.CatalogoEpiId == epi.CatalogoEpiId && !e.Confirmada, ct);
@@ -2228,13 +2237,48 @@ public class ListarPessoasTerceirizadasQueryHandlerTests
         Assert.Equal(StatusLiberacaoTerceirizado.Liberada, dto.Status);
         Assert.Empty(dto.Pendencias);
     }
+
+    [Fact]
+    public async Task Handle_EpiObrigatorioConfirmadoMasDevolvido_NaoContaComoSatisfeito()
+    {
+        var db = CriarDb(nameof(Handle_EpiObrigatorioConfirmadoMasDevolvido_NaoContaComoSatisfeito));
+        var (empresa, _, funcao, integracao, pessoa) = await SemearAsync(db);
+        var catalogo = new CatalogoEpi { Nome = "Capacete", VidaUtilEmMeses = 12 };
+        db.CatalogoEpis.Add(catalogo);
+        await db.SaveChangesAsync();
+        db.MatrizEpiFuncoes.Add(new MatrizEpiFuncao { FuncaoId = funcao.Id, CatalogoEpiId = catalogo.Id });
+        db.Asos.Add(new Aso
+        {
+            TrabalhadorId = pessoa.Id, Tipo = TipoExameAso.Admissional,
+            DataExame = DateTime.UtcNow, DataValidade = DateTime.UtcNow.AddMonths(11), ResultadoStatus = ResultadoAso.Apto,
+        });
+        db.Treinamentos.Add(new Treinamento
+        {
+            TrabalhadorId = pessoa.Id, CursoTreinamentoId = integracao.Id,
+            DataRealizacao = DateTime.UtcNow, DataValidade = DateTime.UtcNow.AddMonths(11), CargaHorariaRealizada = 4,
+        });
+        // Confirmada=true, mas já devolvida — não deve mais satisfazer a exigência da função.
+        db.EntregasEpi.Add(new EntregaEpi
+        {
+            TrabalhadorId = pessoa.Id, CatalogoEpiId = catalogo.Id, DataEntrega = DateTime.UtcNow.AddMonths(-2),
+            Quantidade = 1, MotivoTipo = MotivoEntregaEpi.Inicial, Confirmada = true, DataDevolucao = DateTime.UtcNow.AddDays(-1),
+        });
+        await db.SaveChangesAsync();
+
+        var handler = new ListarPessoasTerceirizadasQueryHandler(db);
+        var resultado = await handler.Handle(new ListarPessoasTerceirizadasQuery(empresa.Id, null), default);
+
+        var dto = Assert.Single(resultado);
+        Assert.Equal(StatusLiberacaoTerceirizado.Pendente, dto.Status);
+        Assert.Contains("EPI não reservado (sem estoque): Capacete", dto.Pendencias);
+    }
 }
 ```
 
 - [ ] **Step 6: Rodar os testes**
 
 Run: `dotnet test tests/AAHBRANT.SST.Application.Tests --filter FullyQualifiedName~Terceirizados.ListarPessoasTerceirizadasQueryHandlerTests`
-Expected: 2 testes passando.
+Expected: 3 testes passando.
 
 - [ ] **Step 7: Commit**
 
@@ -2257,9 +2301,11 @@ git commit -m "feat(terceirizado): status de liberação e listagem de pessoas t
 - Consumes: `Empresa`, `Contrato`, `ContratoVagaFuncao` (Task 1).
 - Produces: `ContratoValidadoWebhookCommand(...) : IRequest<Guid>` (retorna o `Contrato.Id`) — chamado pelo `IntegracaoGJuriController`, autenticado via Entra ID App Role `Sst.ReceberContratosGJuri`.
 
-Autenticação: mesmo padrão de `Grh.LerColaboradores`/`Sst.LerFotos` (`AppRolesReconhecidas.cs`) — não `X-Api-Key` solto. Idempotência: um evento repetido do G-Juri (mesmo `GJuriContratoId`) nunca cria um segundo `Contrato` — a chamada repetida simplesmente retorna o `Id` já existente, sem alterar nada.
+Autenticação: mesmo padrão de `Grh.LerColaboradores`/`Sst.LerFotos` (`AppRolesReconhecidas.cs`) — não `X-Api-Key` solto, e com uma permissão **dedicada** (`terceirizado:integracao-gjuri`, Task 5), nunca reaproveitando `terceirizado:criar` (revisão técnica feita durante o planejamento — ver spec §5: a permissão de um usuário humano cadastrar empresas pela tela nunca deve autorizar, mesmo que indiretamente, quem chama o webhook).
 
-Resolução do ponto técnico aberto na spec (§10, "formato de resolução de FuncaoId"): o payload traz o `Guid` do `Funcao.Id` **do próprio SST** diretamente — ou seja, o G-Juri precisa conhecer/armazenar o Id da Função do SST ao montar o contrato (um mapeamento a ser resolvido do lado do G-Juri, fora do escopo deste plano). Se isso não for viável quando o G-Juri for implementado, o ajuste fica isolado no `ContratoValidadoWebhookCommand` (troca de `Guid FuncaoId` por um código/nome que este handler resolve para o `Funcao.Id` correspondente) — não afeta nenhuma outra parte do módulo.
+Resolução de `FuncaoId` (spec §5/§10, revisada durante o planejamento): o payload traz o **nome da função** (`FuncaoNome`, string), não o `Guid` interno — evita acoplar o G-Juri a identificadores internos do SST, que divergem entre dev/homologação/produção. O handler resolve por nome exato (`Funcao.Nome`); função não encontrada rejeita o evento.
+
+Idempotência (spec §5): um evento repetido com o **mesmo `GJuriContratoId`** nunca duplica o `Contrato`. Mas idempotência não é "ignorar sempre" — se nenhuma vaga deste contrato ainda tiver pessoa cadastrada (`QuantidadePreenchidas == 0` em todas), um reenvio com dados diferentes (vigência corrigida, quantidade de vagas ajustada) **atualiza** os campos permitidos; depois que a primeira pessoa é cadastrada em qualquer vaga, o contrato é tratado como imutável e reenvios só retornam o `Id` existente sem alterar nada (evita corromper alocação já em andamento).
 
 - [ ] **Step 1: Registrar a nova App Role**
 
@@ -2268,9 +2314,11 @@ Em `src/AAHBRANT.SST.Api/Autorizacao/AppRolesReconhecidas.cs`, adicionar ao dici
 ```csharp
         // App Role definida no app registration do SST, concedida ao service principal do G-Juri —
         // dispara o webhook de contrato validado/encerrado (ver IntegracaoGJuriController). Mapeada
-        // para "terceirizado:criar" porque processar o webhook cria/atualiza Empresa e Contrato,
-        // mesma natureza de permissão que o cadastro manual via tela.
-        ["Sst.ReceberContratosGJuri"] = new[] { "terceirizado:criar" },
+        // para uma permissão DEDICADA ("terceirizado:integracao-gjuri", Task 5), não
+        // "terceirizado:criar" — decisão revisada durante o planejamento: a permissão de um usuário
+        // humano cadastrar empresas pela tela nunca deve autorizar, mesmo indiretamente, quem chama
+        // o webhook.
+        ["Sst.ReceberContratosGJuri"] = new[] { "terceirizado:integracao-gjuri" },
 ```
 
 - [ ] **Step 2: Criar o command**
@@ -2295,7 +2343,7 @@ public record EmpresaWebhookDto(
     string? ContatoTelefone,
     string? ContatoEmail);
 
-public record VagaFuncaoWebhookDto(Guid FuncaoId, int Quantidade);
+public record VagaFuncaoWebhookDto(string FuncaoNome, int Quantidade);
 
 public record ContratoValidadoWebhookCommand(
     string GJuriContratoId,
@@ -2318,7 +2366,7 @@ public class ContratoValidadoWebhookCommandValidator : AbstractValidator<Contrat
         RuleFor(x => x.Vagas).NotEmpty().WithMessage("O contrato precisa vir com ao menos uma vaga.");
         RuleForEach(x => x.Vagas).ChildRules(v =>
         {
-            v.RuleFor(x => x.FuncaoId).NotEmpty();
+            v.RuleFor(x => x.FuncaoNome).NotEmpty();
             v.RuleFor(x => x.Quantidade).GreaterThan(0);
         });
     }
@@ -2331,19 +2379,24 @@ public class ContratoValidadoWebhookCommandHandler : IRequestHandler<ContratoVal
 
     public async Task<Guid> Handle(ContratoValidadoWebhookCommand request, CancellationToken ct)
     {
-        var contratoExistente = await _db.Contratos.FirstOrDefaultAsync(c => c.GJuriContratoId == request.GJuriContratoId, ct);
+        // Resolve nome -> Funcao.Id (não Guid cru no payload — decisão revisada no planejamento:
+        // evita acoplar o G-Juri a identificadores internos do SST, que divergem entre ambientes).
+        var funcoesPorNome = await _db.Funcoes
+            .Where(f => request.Vagas.Select(v => v.FuncaoNome).Contains(f.Nome))
+            .ToDictionaryAsync(f => f.Nome, f => f.Id, ct);
+        var nomeFuncaoFaltante = request.Vagas.Select(v => v.FuncaoNome).FirstOrDefault(nome => !funcoesPorNome.ContainsKey(nome));
+        if (nomeFuncaoFaltante is not null)
+            throw new KeyNotFoundException($"Função '{nomeFuncaoFaltante}' não encontrada.");
+
+        var contratoExistente = await _db.Contratos
+            .Include(c => c.Vagas)
+            .FirstOrDefaultAsync(c => c.GJuriContratoId == request.GJuriContratoId, ct);
         if (contratoExistente is not null)
-            return contratoExistente.Id; // idempotente — evento repetido do G-Juri não duplica nada.
+            return await AtualizarOuIgnorarAsync(contratoExistente, request, funcoesPorNome, ct);
 
         var obraExiste = await _db.Obras.AnyAsync(o => o.Id == request.ObraId, ct);
         if (!obraExiste)
             throw new KeyNotFoundException($"Obra {request.ObraId} não encontrada.");
-
-        var funcaoIds = request.Vagas.Select(v => v.FuncaoId).Distinct().ToList();
-        var funcoesEncontradas = await _db.Funcoes.Where(f => funcaoIds.Contains(f.Id)).Select(f => f.Id).ToListAsync(ct);
-        var funcaoFaltante = funcaoIds.FirstOrDefault(id => !funcoesEncontradas.Contains(id));
-        if (funcaoFaltante != Guid.Empty)
-            throw new KeyNotFoundException($"Função {funcaoFaltante} não encontrada.");
 
         var empresa = await _db.Empresas.FirstOrDefaultAsync(e => e.Cnpj == request.Empresa.Cnpj, ct);
         if (empresa is null)
@@ -2377,10 +2430,47 @@ public class ContratoValidadoWebhookCommandHandler : IRequestHandler<ContratoVal
             _db.ContratoVagasFuncao.Add(new ContratoVagaFuncao
             {
                 ContratoId = contrato.Id,
-                FuncaoId = vaga.FuncaoId,
+                FuncaoId = funcoesPorNome[vaga.FuncaoNome],
                 QuantidadeVagas = vaga.Quantidade,
                 QuantidadePreenchidas = 0,
             });
+        }
+
+        await _db.SaveChangesAsync(ct);
+        return contrato.Id;
+    }
+
+    // Idempotência não é "ignorar sempre": enquanto nenhuma vaga do contrato tiver pessoa
+    // cadastrada, um reenvio do G-Juri com dados diferentes (vigência corrigida, quantidade de
+    // vagas ajustada) atualiza os campos — depois que a primeira pessoa é alocada em qualquer vaga,
+    // o contrato passa a ser tratado como imutável e o reenvio só retorna o Id existente, sem
+    // alterar nada (evita corromper alocação já em andamento). Decisão revisada no planejamento.
+    private async Task<Guid> AtualizarOuIgnorarAsync(
+        Contrato contrato, ContratoValidadoWebhookCommand request, Dictionary<string, Guid> funcoesPorNome, CancellationToken ct)
+    {
+        var temVagaPreenchida = contrato.Vagas.Any(v => v.QuantidadePreenchidas > 0);
+        if (temVagaPreenchida)
+            return contrato.Id;
+
+        contrato.NumeroContrato = request.NumeroContrato;
+        contrato.DataInicioVigencia = request.DataInicioVigencia;
+        contrato.DataFimVigencia = request.DataFimVigencia;
+
+        var vagasAtuais = contrato.Vagas.ToDictionary(v => v.FuncaoId);
+        foreach (var vaga in request.Vagas)
+        {
+            var funcaoId = funcoesPorNome[vaga.FuncaoNome];
+            if (vagasAtuais.TryGetValue(funcaoId, out var vagaAtual))
+            {
+                vagaAtual.QuantidadeVagas = vaga.Quantidade;
+            }
+            else
+            {
+                _db.ContratoVagasFuncao.Add(new ContratoVagaFuncao
+                {
+                    ContratoId = contrato.Id, FuncaoId = funcaoId, QuantidadeVagas = vaga.Quantidade, QuantidadePreenchidas = 0,
+                });
+            }
         }
 
         await _db.SaveChangesAsync(ct);
@@ -2412,7 +2502,7 @@ public class IntegracaoGJuriController : ControllerBase
     private readonly IMediator _mediator;
     public IntegracaoGJuriController(IMediator mediator) => _mediator = mediator;
 
-    [Authorize(Policy = "terceirizado:criar")]
+    [Authorize(Policy = "terceirizado:integracao-gjuri")]
     [HttpPost("contratos/validados")]
     public async Task<IActionResult> ContratoValidado(ContratoValidadoWebhookCommand command, CancellationToken ct)
     {
@@ -2456,12 +2546,13 @@ public class ContratoValidadoWebhookCommandHandlerTests
         return (obra, funcao);
     }
 
-    private static ContratoValidadoWebhookCommand CriarCommand(Guid obraId, Guid funcaoId, string gjuriContratoId, string cnpj = "12345678000199") =>
+    private static ContratoValidadoWebhookCommand CriarCommand(
+        Guid obraId, string funcaoNome, string gjuriContratoId, string cnpj = "12345678000199", int quantidadeVagas = 5) =>
         new(gjuriContratoId, "CT-001",
             DateOnly.FromDateTime(DateTime.UtcNow), DateOnly.FromDateTime(DateTime.UtcNow.AddMonths(6)),
             obraId,
             new EmpresaWebhookDto("Construtora XPTO", "XPTO", cnpj, "Elétrica", "João", "11999990000", "joao@xpto.com"),
-            new List<VagaFuncaoWebhookDto> { new(funcaoId, 5) });
+            new List<VagaFuncaoWebhookDto> { new(funcaoNome, quantidadeVagas) });
 
     [Fact]
     public async Task Handle_ContratoNovo_CriaEmpresaContratoEVagas()
@@ -2470,13 +2561,14 @@ public class ContratoValidadoWebhookCommandHandlerTests
         var (obra, funcao) = await SemearAsync(db);
         var handler = new ContratoValidadoWebhookCommandHandler(db);
 
-        var contratoId = await handler.Handle(CriarCommand(obra.Id, funcao.Id, "gjuri-1"), default);
+        var contratoId = await handler.Handle(CriarCommand(obra.Id, funcao.Nome, "gjuri-1"), default);
 
         var contrato = await db.Contratos.FirstAsync(c => c.Id == contratoId);
         Assert.Equal("CT-001", contrato.NumeroContrato);
         var empresa = await db.Empresas.FirstAsync(e => e.Id == contrato.EmpresaId);
         Assert.Equal("12345678000199", empresa.Cnpj);
         var vaga = await db.ContratoVagasFuncao.SingleAsync(v => v.ContratoId == contratoId);
+        Assert.Equal(funcao.Id, vaga.FuncaoId);
         Assert.Equal(5, vaga.QuantidadeVagas);
     }
 
@@ -2490,7 +2582,7 @@ public class ContratoValidadoWebhookCommandHandlerTests
         await db.SaveChangesAsync();
         var handler = new ContratoValidadoWebhookCommandHandler(db);
 
-        var contratoId = await handler.Handle(CriarCommand(obra.Id, funcao.Id, "gjuri-2"), default);
+        var contratoId = await handler.Handle(CriarCommand(obra.Id, funcao.Nome, "gjuri-2"), default);
 
         var contrato = await db.Contratos.FirstAsync(c => c.Id == contratoId);
         Assert.Equal(empresaExistente.Id, contrato.EmpresaId);
@@ -2498,18 +2590,36 @@ public class ContratoValidadoWebhookCommandHandlerTests
     }
 
     [Fact]
-    public async Task Handle_MesmoGJuriContratoIdChamadoDuasVezes_EhIdempotente()
+    public async Task Handle_MesmoGJuriContratoIdChamadoDuasVezes_SemVagaPreenchida_AtualizaQuantidadeDeVagas()
     {
-        var db = CriarDb(nameof(Handle_MesmoGJuriContratoIdChamadoDuasVezes_EhIdempotente));
+        var db = CriarDb(nameof(Handle_MesmoGJuriContratoIdChamadoDuasVezes_SemVagaPreenchida_AtualizaQuantidadeDeVagas));
         var (obra, funcao) = await SemearAsync(db);
         var handler = new ContratoValidadoWebhookCommandHandler(db);
-        var primeiroId = await handler.Handle(CriarCommand(obra.Id, funcao.Id, "gjuri-3"), default);
+        var primeiroId = await handler.Handle(CriarCommand(obra.Id, funcao.Nome, "gjuri-3", quantidadeVagas: 5), default);
 
-        var segundoId = await handler.Handle(CriarCommand(obra.Id, funcao.Id, "gjuri-3"), default);
+        var segundoId = await handler.Handle(CriarCommand(obra.Id, funcao.Nome, "gjuri-3", quantidadeVagas: 8), default);
 
         Assert.Equal(primeiroId, segundoId);
         Assert.Equal(1, await db.Contratos.CountAsync());
-        Assert.Equal(1, await db.ContratoVagasFuncao.CountAsync());
+        var vaga = await db.ContratoVagasFuncao.SingleAsync(v => v.ContratoId == primeiroId);
+        Assert.Equal(8, vaga.QuantidadeVagas); // reenvio antes de qualquer vaga preenchida corrige o dado.
+    }
+
+    [Fact]
+    public async Task Handle_MesmoGJuriContratoId_ComVagaJaPreenchida_IgnoraNovoPayload()
+    {
+        var db = CriarDb(nameof(Handle_MesmoGJuriContratoId_ComVagaJaPreenchida_IgnoraNovoPayload));
+        var (obra, funcao) = await SemearAsync(db);
+        var handler = new ContratoValidadoWebhookCommandHandler(db);
+        var contratoId = await handler.Handle(CriarCommand(obra.Id, funcao.Nome, "gjuri-5", quantidadeVagas: 5), default);
+        var vaga = await db.ContratoVagasFuncao.SingleAsync(v => v.ContratoId == contratoId);
+        vaga.QuantidadePreenchidas = 1;
+        await db.SaveChangesAsync();
+
+        await handler.Handle(CriarCommand(obra.Id, funcao.Nome, "gjuri-5", quantidadeVagas: 99), default);
+
+        var vagaAposReenvio = await db.ContratoVagasFuncao.SingleAsync(v => v.ContratoId == contratoId);
+        Assert.Equal(5, vagaAposReenvio.QuantidadeVagas); // já tem gente alocada — contrato passa a ser imutável.
     }
 
     [Fact]
@@ -2520,7 +2630,18 @@ public class ContratoValidadoWebhookCommandHandlerTests
         var handler = new ContratoValidadoWebhookCommandHandler(db);
 
         await Assert.ThrowsAsync<KeyNotFoundException>(() =>
-            handler.Handle(CriarCommand(Guid.NewGuid(), funcao.Id, "gjuri-4"), default));
+            handler.Handle(CriarCommand(Guid.NewGuid(), funcao.Nome, "gjuri-4"), default));
+    }
+
+    [Fact]
+    public async Task Handle_NomeDeFuncaoInexistente_LancaKeyNotFoundException()
+    {
+        var db = CriarDb(nameof(Handle_NomeDeFuncaoInexistente_LancaKeyNotFoundException));
+        var (obra, _) = await SemearAsync(db);
+        var handler = new ContratoValidadoWebhookCommandHandler(db);
+
+        await Assert.ThrowsAsync<KeyNotFoundException>(() =>
+            handler.Handle(CriarCommand(obra.Id, "Função Que Não Existe", "gjuri-6"), default));
     }
 }
 ```
@@ -2528,7 +2649,7 @@ public class ContratoValidadoWebhookCommandHandlerTests
 - [ ] **Step 5: Rodar os testes**
 
 Run: `dotnet test tests/AAHBRANT.SST.Application.Tests --filter FullyQualifiedName~Terceirizados.ContratoValidadoWebhookCommandHandlerTests`
-Expected: 4 testes passando.
+Expected: 6 testes passando.
 
 - [ ] **Step 6: Commit**
 
@@ -2655,7 +2776,7 @@ public class ContratoEncerradoWebhookCommandHandler : IRequestHandler<ContratoEn
 Em `src/AAHBRANT.SST.Api/Controllers/IntegracaoGJuriController.cs`, adicionar:
 
 ```csharp
-    [Authorize(Policy = "terceirizado:criar")]
+    [Authorize(Policy = "terceirizado:integracao-gjuri")]
     [HttpPost("contratos/encerrados")]
     public async Task<IActionResult> ContratoEncerrado(ContratoEncerradoWebhookCommand command, CancellationToken ct)
     {
@@ -3991,12 +4112,20 @@ git commit -m "feat(terceirizado): ficha de empresa/contrato, pessoas, pendênci
 
 ---
 
+## Riscos aceitos conscientemente (fora do escopo deste plano)
+
+Levantados numa segunda revisão técnica independente (Codex CLI) durante o planejamento — ver spec §11 para o texto completo. Registrados aqui para nenhum revisor futuro redescobrir e achar que foi esquecimento:
+
+- **Concorrência em estoque/vagas**: o padrão "ler saldo, validar, decrementar, salvar" sem transação explícita/retry já existe hoje em `CriarEntregaEpiCommandHandler` (módulo EPI manual) e é reaproveitado tal qual nas Tasks 8/10, por consistência com o resto do agregado `EstoqueEpi`. Correção de concorrência, se necessária, é melhoria transversal do módulo EPI/Estoque como um todo — não deste plano.
+- **Escopo RBAC por Obra**: nenhum controller do sistema hoje filtra automaticamente pelo escopo de obra do usuário (`PermissaoAuthorizationHandler.cs` documenta isso como pendência deliberada nas Camadas 2/3). Os controllers deste módulo seguem a mesma política dos demais.
+- **Cancelamento/reversão de EPI reservado**: se uma pessoa é cadastrada numa vaga e um EPI é reservado (Task 8) mas a pessoa nunca é liberada (ex.: desistência), não há fluxo automático de estorno — reverter é manual via `AjustarEstoqueEpiCommand` já existente.
+
 ## Resumo de verificação final
 
 Depois de completar todos os Tasks, antes de considerar o módulo pronto:
 
 - [ ] `dotnet build` limpo em todos os projetos.
-- [ ] `dotnet test` verde em `tests/AAHBRANT.SST.Application.Tests` (todos os testes deste plano, ~24 no total entre os Tasks 3–12).
+- [ ] `dotnet test` verde em `tests/AAHBRANT.SST.Application.Tests` (todos os testes deste plano, ~28 no total entre os Tasks 3–12).
 - [ ] `npm --prefix src/AAHBRANT.SST.TeamsApp run build` sem erros.
 - [ ] Fluxo ponta a ponta verificado no navegador (Task 15, Step 8).
 - [ ] Nenhuma migration aplicada em produção/homologação sem autorização explícita do usuário (ver `feedback_deploy_so_quando_mandar`/`feedback_mostrar_antes_de_deploy` — mostrar o resultado local e esperar validação antes de qualquer `az acr build`/`containerapp update`).

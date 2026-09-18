@@ -137,9 +137,21 @@ pessoas que elas alocam nas obras, cobrindo:
 - **Direção**: G-Juri chama o SST (o SST não faz polling nem lê banco
   direto — diferente do padrão usado com o G-RH, pois o G-Juri está
   sendo construído agora e pode expor uma API própria desde já).
-- **Endpoint**: `POST /api/terceirizados/contratos/webhook`, autenticado
-  por chave de API (mesmo padrão simples já usado na API do G-Juri:
-  header `X-Api-Key`).
+- **Endpoint**: `POST /api/integracoes/gjuri/contratos/validados` e
+  `.../contratos/encerrados`. **Atualização pós-brainstorming (definida
+  durante o planejamento, após levantamento do código):** autenticação
+  via Entra ID App Role client-credentials — mesmo mecanismo já usado
+  pela integração G-RH existente (`AppRolesReconhecidas.cs`) — em vez
+  do `X-Api-Key` originalmente esboçado aqui. Justificativa: o SST já
+  tem esse mecanismo maduro para integrações inbound (rotação e
+  auditoria via Entra ID, sem segredo estático trafegando), e o
+  `X-Api-Key` é só como a própria API do G-Juri protege quem a
+  consome — não o padrão de entrada do SST. A App Role dedicada
+  (`Sst.ReceberContratosGJuri`) é mapeada para uma permissão própria
+  do webhook (`terceirizado:integracao-gjuri`), não reaproveitando
+  `terceirizado:criar`, para que a permissão de um usuário humano
+  cadastrar empresas nunca autorize, mesmo que indiretamente, quem
+  pode chamar o webhook.
 - **Eventos**:
   - `ContratoValidado`: payload com dados da empresa (CNPJ, razão
     social, nome fantasia, contato), dados do contrato (número,
@@ -154,10 +166,14 @@ pessoas que elas alocam nas obras, cobrindo:
   - Vagas: cria/atualiza `ContratoVagaFuncao` por função informada.
   - `ContratoEncerrado`: marca `Status = Encerrado` e dispara alerta
     (seção 8) — não desliga ninguém automaticamente.
-- **Resolução de `FuncaoId`**: o payload precisa trazer um identificador
-  de função que o SST reconheça (a definir na integração: nome exato
-  cadastrado em `Funcao`, ou um código compartilhado entre os dois
-  sistemas — detalhe técnico a resolver no plano de implementação).
+- **Resolução de `FuncaoId`**: **atualização pós-brainstorming.** Em vez
+  de o G-Juri conhecer o `Guid` interno do `Funcao.Id` do SST (o que
+  acoplaria os dois sistemas por ambiente — dev/homologação/produção
+  teriam IDs diferentes), o payload traz o **nome exato da função**
+  (`FuncaoNome`, string), e o SST resolve para o `Funcao.Id`
+  correspondente por nome. Função não encontrada por nome é erro
+  (`KeyNotFoundException`), rejeitando o evento — mais simples e
+  estável entre ambientes do que sincronizar identificadores internos.
 
 ## 6. Automação de EPI
 
@@ -240,12 +256,46 @@ Pendências/Alertas e na ficha da pessoa, sem necessidade de alerta
   explícita do usuário, quebrando a convenção atual de módulos como
   aba de pilar existente).
 
-## 10. Pontos técnicos a resolver no plano de implementação
+## 10. Pontos técnicos resolvidos durante o planejamento
 
-- Formato exato de resolução de `FuncaoId` no payload do webhook
-  (nome vs. código compartilhado entre G-Juri e SST).
-- Onde/como a chave de API do webhook é armazenada e rotacionada
-  (mesmo padrão de secrets já usado no Worker/Api do SST).
-- Se o cadastro de "técnicos de segurança vinculados à Obra" já existe
-  como consulta pronta (para direcionar os alertas) ou precisa ser
-  levantado/criado.
+- Resolução de `FuncaoId`: por nome (`FuncaoNome`), não por Guid — ver
+  seção 5.
+- Autenticação do webhook: Entra ID App Role, não `X-Api-Key` — ver
+  seção 5.
+- "Técnicos de segurança vinculados à Obra": não existia consulta
+  pronta — foi criada como serviço próprio
+  (`ITecnicosSegurancaPorObraService`) no plano de implementação.
+
+## 11. Riscos aceitos conscientemente (débito técnico transversal, não deste módulo)
+
+Levantados numa segunda revisão técnica independente durante o
+planejamento (Codex CLI) e mantidos deliberadamente fora do escopo
+desta v1 porque são características do sistema como um todo, não algo
+que este módulo introduz:
+
+- **Concorrência em estoque/vagas**: o mesmo padrão de "ler saldo,
+  validar, decrementar, salvar" sem transação explícita ou tratamento
+  de `DbUpdateConcurrencyException` já existe hoje em
+  `CriarEntregaEpiCommandHandler` (módulo EPI manual, entregas). O
+  módulo Terceirizado reaproveita o mesmo padrão para manter
+  consistência — corrigir isso isoladamente aqui criaria duas
+  semânticas de estoque diferentes dentro do mesmo agregado
+  `EstoqueEpi`. Uma correção de concorrência, se necessária, deve ser
+  uma melhoria transversal do módulo EPI/Estoque como um todo.
+- **Escopo RBAC por Obra**: `PermissaoAuthorizationHandler.cs` já
+  documenta que a Camada 2 (autorização por obra) e a Camada 3
+  (Global Query Filter) estão **deliberadamente pendentes** em todo o
+  sistema — nenhum módulo hoje filtra automaticamente pelo escopo de
+  obra do usuário. Os endpoints de Empresas/Contratos/Pessoas/
+  Pendências deste módulo seguem a mesma política de permissão (sem
+  escopo por obra) dos demais controllers existentes
+  (`TrabalhadoresController`, `EntregasEpiController` etc.) — quando
+  esse débito for endereçado globalmente, este módulo deve aderir ao
+  mesmo mecanismo.
+- **Cancelamento/reversão de EPI reservado**: se uma pessoa é
+  cadastrada numa vaga e um EPI é reservado (estoque decrementado,
+  `EntregaEpi.Confirmada = false`), a v1 não tem um fluxo de
+  cancelamento caso a pessoa nunca seja efetivamente liberada (ex.:
+  desistência antes da confirmação física). Aceito como simplificação
+  de v1 — o estorno, se necessário, é manual via ajuste de estoque já
+  existente (`AjustarEstoqueEpiCommand`).
