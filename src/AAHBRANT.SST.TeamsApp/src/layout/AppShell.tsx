@@ -26,6 +26,7 @@ import {
   Settings24Regular,
   Alert24Regular,
   BriefcaseMedical24Regular,
+  Building24Regular,
   People24Regular,
   ChevronLeft24Regular,
   ChevronRight24Regular,
@@ -531,6 +532,7 @@ const itensPilares: Array<ItemNav & { icone: typeof Grid24Regular }> = [
   { rota: '/operacao', rotulo: 'Operação', icone: BuildingBank24Regular },
   { rota: '/pessoas', rotulo: 'Pessoas', icone: People24Regular },
   { rota: '/ocorrencias', rotulo: 'Ocorrências', icone: BriefcaseMedical24Regular },
+  { rota: '/terceirizados', rotulo: 'Terceirizado', icone: Building24Regular },
 ];
 
 // Administração fica fixa no rodapé do rail (mesmo padrão do mockup Hub Gênesis SST) — item único,
