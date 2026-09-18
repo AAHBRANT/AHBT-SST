@@ -127,6 +127,7 @@ await RegraAlertaSeeder.ExecutarAsync(app.Services);
 await ChecklistAlojamentoSeeder.ExecutarAsync(app.Services);
 await ConfiguracaoAlojamentoSeeder.ExecutarAsync(app.Services);
 await MateriaisApoioSeeder.ExecutarAsync(app.Services);
+await NovidadesSeeder.ExecutarAsync(app.Services);
 
 if (app.Environment.IsDevelopment())
 {
