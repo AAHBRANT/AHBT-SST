@@ -47,6 +47,28 @@ public static class NovidadesSeeder
                     "O pop-up aparecia com \"Bem-vindo de volta, !\", sem o nome preenchido.",
                     "O pop-up mostra corretamente o seu primeiro nome."),
             }),
+        new(
+            Versao: "5.12.0",
+            Titulo: "Novo módulo: Terceirizado",
+            DataPublicacao: new DateTime(2026, 9, 18, 0, 0, 0, DateTimeKind.Utc),
+            Itens: new[]
+            {
+                new NovidadeSeedItem(
+                    CategoriaNovidade.Novidade,
+                    "Novo módulo para gerenciar empresas e pessoas terceirizadas",
+                    "Empresas terceirizadas, contratos e as pessoas alocadas por elas não tinham um espaço próprio no sistema.",
+                    "Cadastre empresas terceirizadas e acompanhe seus contratos — que chegam automaticamente do G-Juri assim que validados — direto no novo item \"Terceirizado\" do menu."),
+                new NovidadeSeedItem(
+                    CategoriaNovidade.Novidade,
+                    "Controle automático de EPI e treinamento obrigatório por pessoa terceirizada",
+                    "Não havia como saber rapidamente se uma pessoa terceirizada estava liberada para trabalhar (EPI entregue, Integração de Segurança em dia).",
+                    "Ao cadastrar uma pessoa terceirizada numa vaga do contrato, o sistema reserva os EPIs obrigatórios da função automaticamente e mostra o status de liberação (Liberada ou Pendente) com a lista de pendências."),
+                new NovidadeSeedItem(
+                    CategoriaNovidade.Novidade,
+                    "Painel de pendências consolidado do módulo Terceirizado",
+                    "Não havia uma visão única de pessoas terceirizadas bloqueadas, contratos encerrados com pessoas ainda ativas e alertas de estoque de EPI.",
+                    "Um novo painel de pendências reúne tudo isso em um só lugar, para facilitar a ação dos técnicos de segurança."),
+            }),
     };
 
     public static async Task ExecutarAsync(IServiceProvider services, CancellationToken ct = default)
