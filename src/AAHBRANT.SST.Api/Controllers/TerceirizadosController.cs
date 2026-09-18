@@ -21,4 +21,9 @@ public class TerceirizadosController : ControllerBase
     [HttpGet("pessoas/{trabalhadorId:guid}/status")]
     public async Task<IActionResult> ObterStatus(Guid trabalhadorId, CancellationToken ct)
         => Ok(await _mediator.Send(new ObterStatusLiberacaoTrabalhadorQuery(trabalhadorId), ct));
+
+    [Authorize(Policy = "terceirizado:ver")]
+    [HttpGet("pendencias")]
+    public async Task<IActionResult> ListarPendencias(CancellationToken ct)
+        => Ok(await _mediator.Send(new ListarPendenciasTerceirizadoQuery(), ct));
 }
