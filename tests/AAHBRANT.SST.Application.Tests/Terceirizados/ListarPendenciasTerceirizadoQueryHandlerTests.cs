@@ -82,4 +82,32 @@ public class ListarPendenciasTerceirizadoQueryHandlerTests
         Assert.Equal("CT-002", painel.ContratosEncerradosComPessoasAtivas[0].NumeroContrato);
         Assert.Single(painel.AlertasEstoqueInsuficiente);
     }
+
+    [Fact]
+    public async Task Handle_TerceirizadoSemEmpresa_NaoLancaExcecaoENaoAparece()
+    {
+        var db = CriarDb(nameof(Handle_TerceirizadoSemEmpresa_NaoLancaExcecaoENaoAparece));
+        var obra = new Obra { Codigo = "O1", Nome = "Obra 1" };
+        var funcao = new Funcao { Nome = "Pedreiro" };
+        db.Obras.Add(obra);
+        db.Funcoes.Add(funcao);
+        await db.SaveChangesAsync();
+
+        // Terceirizado "solto" — selecionável no formulário comum de Funcionário sem exigir
+        // empresa/contrato (TrabalhadoresTab.tsx). Não pertence a este módulo.
+        db.Trabalhadores.Add(new Trabalhador
+        {
+            ObraId = obra.Id, FuncaoId = funcao.Id, Nome = "Solto", Matricula = "MAT-99", Cpf = "11144477735",
+            Vinculo = TipoVinculo.Terceirizado, DataAdmissao = DateTime.UtcNow,
+            EmpresaId = null, ContratoId = null,
+        });
+        await db.SaveChangesAsync();
+
+        var handler = new ListarPendenciasTerceirizadoQueryHandler(db);
+
+        // Não deve lançar InvalidOperationException (Nullable.Value em EmpresaId nulo).
+        var painel = await handler.Handle(new ListarPendenciasTerceirizadoQuery(), default);
+
+        Assert.DoesNotContain(painel.PessoasBloqueadas, p => p.Nome == "Solto");
+    }
 }

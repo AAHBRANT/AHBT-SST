@@ -15,7 +15,7 @@ public class ListarPendenciasTerceirizadoQueryHandler : IRequestHandler<ListarPe
     public async Task<PainelPendenciasTerceirizadoDto> Handle(ListarPendenciasTerceirizadoQuery request, CancellationToken ct)
     {
         var terceirizados = await _db.Trabalhadores
-            .Where(t => t.Vinculo == TipoVinculo.Terceirizado)
+            .Where(t => t.Vinculo == TipoVinculo.Terceirizado && t.EmpresaId != null)
             .Select(t => new { t.Id, t.Nome, t.FuncaoId, EmpresaId = t.EmpresaId!.Value, EmpresaRazaoSocial = t.Empresa!.RazaoSocial })
             .ToListAsync(ct);
 

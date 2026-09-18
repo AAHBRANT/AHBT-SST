@@ -14,7 +14,7 @@ public class ListarPessoasTerceirizadasQueryHandler : IRequestHandler<ListarPess
 
     public async Task<List<PessoaTerceirizadaDto>> Handle(ListarPessoasTerceirizadasQuery request, CancellationToken ct)
     {
-        var query = _db.Trabalhadores.Where(t => t.Vinculo == TipoVinculo.Terceirizado);
+        var query = _db.Trabalhadores.Where(t => t.Vinculo == TipoVinculo.Terceirizado && t.EmpresaId != null && t.ContratoId != null);
         if (request.EmpresaId.HasValue) query = query.Where(t => t.EmpresaId == request.EmpresaId);
         if (request.ContratoId.HasValue) query = query.Where(t => t.ContratoId == request.ContratoId);
 

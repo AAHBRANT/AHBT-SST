@@ -135,4 +135,30 @@ public class ListarPessoasTerceirizadasQueryHandlerTests
         Assert.Equal(StatusLiberacaoTerceirizado.Pendente, dto.Status);
         Assert.Contains("EPI não reservado (sem estoque): Capacete", dto.Pendencias);
     }
+
+    [Fact]
+    public async Task Handle_TerceirizadoSemEmpresaOuContrato_NaoLancaExcecaoENaoAparece()
+    {
+        var db = CriarDb(nameof(Handle_TerceirizadoSemEmpresaOuContrato_NaoLancaExcecaoENaoAparece));
+        var (empresa, _, funcao, _, _) = await SemearAsync(db);
+
+        // Terceirizado "solto" — selecionável no formulário comum de Funcionário sem exigir
+        // empresa/contrato (TrabalhadoresTab.tsx). Não pertence a este módulo.
+        var obra = await db.Obras.FirstAsync();
+        db.Trabalhadores.Add(new Trabalhador
+        {
+            ObraId = obra.Id, FuncaoId = funcao.Id, Nome = "Solto", Matricula = "MAT-99", Cpf = "11144477735",
+            Vinculo = TipoVinculo.Terceirizado, DataAdmissao = DateTime.UtcNow,
+            EmpresaId = null, ContratoId = null,
+        });
+        await db.SaveChangesAsync();
+
+        var handler = new ListarPessoasTerceirizadasQueryHandler(db);
+
+        // Não deve lançar InvalidOperationException (Nullable.Value em EmpresaId/ContratoId nulos).
+        var resultado = await handler.Handle(new ListarPessoasTerceirizadasQuery(null, null), default);
+
+        var dto = Assert.Single(resultado);
+        Assert.NotEqual("Solto", dto.Nome);
+    }
 }
