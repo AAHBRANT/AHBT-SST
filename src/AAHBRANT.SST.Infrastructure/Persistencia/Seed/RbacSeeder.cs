@@ -226,6 +226,17 @@ public static class RbacSeeder
         ("cipa:ver", "Cipa", "Ver", "Ver dimensionamento, processo eleitoral, membros, reuniões, inspeções e SIPAT da CIPA"),
         ("cipa:gerenciar", "Cipa", "Gerenciar", "Cadastrar/editar/excluir dimensionamento, conduzir processo eleitoral, gerenciar membros/treinamentos, reuniões, inspeções e SIPAT da CIPA"),
         ("cipa:exportar", "Cipa", "Exportar", "Exportar atas de eleição e de reunião da CIPA em PDF"),
+
+        ("terceirizado:ver", "Terceirizado", "Ver", "Ver empresas terceirizadas, contratos e pessoas vinculadas"),
+        ("terceirizado:criar", "Terceirizado", "Criar", "Cadastrar empresa terceirizada e pessoas em vagas de contrato"),
+        ("terceirizado:editar", "Terceirizado", "Editar", "Editar empresa terceirizada"),
+        ("terceirizado:excluir", "Terceirizado", "Excluir", "Inativar empresa terceirizada"),
+        // Não concedida a nenhum PerfilAcesso humano — existe só para o AppRole do webhook do G-Juri
+        // (Task 10) casar contra ela via AppRolesReconhecidas. Separada de "terceirizado:criar" de
+        // propósito (revisão técnica durante o planejamento): a permissão de um usuário humano
+        // cadastrar empresas pela tela nunca deve, mesmo que indiretamente, autorizar quem pode
+        // chamar o webhook.
+        ("terceirizado:integracao-gjuri", "Terceirizado", "IntegracaoGJuri", "Receber webhook de contrato validado/encerrado do G-Juri"),
     };
 
     public static async Task ExecutarAsync(IServiceProvider services, CancellationToken ct = default)
