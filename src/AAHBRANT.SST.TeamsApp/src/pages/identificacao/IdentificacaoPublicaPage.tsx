@@ -1,22 +1,8 @@
-import { useEffect, useMemo, useState, type CSSProperties } from 'react';
-import { useNavigate, useParams } from 'react-router-dom';
-import { Avatar, Button, Card, designTokens, Legenda, Spinner, StatusChip, Text, type Tom } from '@ui';
-import { ArrowDownload24Regular, ShieldError24Regular, Signature24Regular } from '@fluentui/react-icons';
-import {
-  api,
-  motivoEntregaEpiLabel,
-  StatusArea,
-  tipoAreaLabel,
-  statusAreaLabel,
-  type CatalogoEpi,
-  type EntregaEpi,
-  type PerfilCompletoTrabalhador,
-  type RecursoPublico,
-} from '../../lib/api';
-import { useDashboardStyles } from '../../components/dashboard/dashboardStyles';
-import { StatusDonutChart, type FatiaDonut } from '../../components/dashboard/charts/StatusDonutChart';
-import { RankingBarChart, type ItemRanking } from '../../components/dashboard/charts/RankingBarChart';
-import { usePaletaGraficos } from '../../ui/graficos';
+import { useEffect, useState, type CSSProperties } from 'react';
+import { useParams } from 'react-router-dom';
+import { Avatar, Card, designTokens, Legenda, Spinner, StatusChip, Text, type Tom } from '@ui';
+import { ShieldError24Regular } from '@fluentui/react-icons';
+import { api, StatusArea, tipoAreaLabel, statusAreaLabel, type RecursoPublico } from '../../lib/api';
 
 const raiz: CSSProperties = {
   minHeight: '100vh',
@@ -62,16 +48,20 @@ function statusEpi(dataValidade?: string | null): { rotulo: string; tom: Tom } {
   return { rotulo: 'Em dia', tom: 'ok' };
 }
 
+// NTAG.md §1/§3.B.4 — "crachá digital" público: quem encosta o celular na tag em campo (fiscal,
+// auditor, o próprio trabalhador) não está no Teams e não tem token — a página inteira PRECISA
+// funcionar sem login. Por isso só consome api.identificacaoPublica.* aqui: qualquer outra chamada
+// (api.entregasEpi, api.trabalhadores.obterPerfilCompleto etc.) exige autenticação e, sem sessão
+// Microsoft no aparelho, dispara um login redirect nesta tela — foi exatamente isso que quebrou o
+// crachá de campo em 18/09 (AADSTS50011: o pathname da leitura anônima não bate com nenhum redirect
+// URI cadastrado no App Registration). Todo o dado exibido abaixo já vem de
+// ResolverTrabalhadorPublicoQuery, que deliberadamente omite o que é sensível demais pra leitura
+// anônima (status de aptidão do ASO, evidência de presença em DDS) — não adicione de volta uma
+// chamada autenticada aqui sem antes criar um endpoint público equivalente no backend.
 export function IdentificacaoPublicaPage() {
   const { codigoOuUid } = useParams<{ codigoOuUid: string }>();
-  const navigate = useNavigate();
-  const dashEstilos = useDashboardStyles();
-  const paleta = usePaletaGraficos();
   const [recurso, setRecurso] = useState<RecursoPublico | null>(null);
   const [fotoUrl, setFotoUrl] = useState<string | null>(null);
-  const [entregasEpi, setEntregasEpi] = useState<EntregaEpi[]>([]);
-  const [catalogosEpi, setCatalogosEpi] = useState<CatalogoEpi[]>([]);
-  const [perfilCompleto, setPerfilCompleto] = useState<PerfilCompletoTrabalhador | null>(null);
   const [carregando, setCarregando] = useState(true);
   const [naoEncontrado, setNaoEncontrado] = useState(false);
 
@@ -86,39 +76,6 @@ export function IdentificacaoPublicaPage() {
       .catch(() => setNaoEncontrado(true))
       .finally(() => setCarregando(false));
   }, [codigoOuUid]);
-
-  useEffect(() => {
-    if (recurso?.tipoRecurso !== 'trabalhador') {
-      setEntregasEpi([]);
-      setCatalogosEpi([]);
-      setPerfilCompleto(null);
-      return;
-    }
-
-    let cancelado = false;
-    (async () => {
-      try {
-        const [entregas, catalogos, perfil] = await Promise.all([
-          api.entregasEpi.listar(recurso.trabalhadorId),
-          api.catalogosEpi.listar(),
-          api.trabalhadores.obterPerfilCompleto(recurso.trabalhadorId),
-        ]);
-        if (cancelado) return;
-        setEntregasEpi(entregas);
-        setCatalogosEpi(catalogos);
-        setPerfilCompleto(perfil);
-      } catch {
-        if (cancelado) return;
-        setEntregasEpi([]);
-        setCatalogosEpi([]);
-        setPerfilCompleto(null);
-      }
-    })();
-
-    return () => {
-      cancelado = true;
-    };
-  }, [recurso]);
 
   useEffect(() => {
     if (!codigoOuUid || recurso?.tipoRecurso !== 'trabalhador' || !recurso.temFoto) return;
@@ -140,70 +97,9 @@ export function IdentificacaoPublicaPage() {
     };
   }, [codigoOuUid, recurso]);
 
-  async function baixarFichaEpi(trabalhadorId: string) {
-    const blob = await api.entregasEpi.baixarFichaTrabalhador(trabalhadorId);
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement('a');
-    link.href = url;
-    link.download = `ficha-epi-${trabalhadorId}.pdf`;
-    document.body.appendChild(link);
-    link.click();
-    link.remove();
-    URL.revokeObjectURL(url);
-  }
-
-  function nomeCatalogoEpi(catalogoEpiId: string) {
-    return catalogosEpi.find((epi) => epi.id === catalogoEpiId)?.nome ?? catalogoEpiId;
-  }
-
-  const dadosDonutEpi: FatiaDonut[] = useMemo(() => {
-    const epis = perfilCompleto?.episAtivos ?? [];
-    let emDia = 0;
-    let vencendo = 0;
-    let vencido = 0;
-    for (const epi of epis) {
-      const status = statusEpi(epi.dataValidade);
-      if (status.tom === 'alerta') vencido++;
-      else if (status.tom === 'atencao') vencendo++;
-      else emDia++;
-    }
-    return [
-      { rotulo: 'Em dia', valor: emDia, cor: paleta.ok },
-      { rotulo: 'Vencendo', valor: vencendo, cor: paleta.atencao },
-      { rotulo: 'Vencido', valor: vencido, cor: paleta.alerta },
-    ];
-  }, [paleta.alerta, paleta.atencao, paleta.ok, perfilCompleto?.episAtivos]);
-
-  const dadosFrequenciaEpi: ItemRanking[] = useMemo(
-    () =>
-      perfilCompleto?.frequenciaTrocas.map((f) => ({
-        rotulo: f.catalogoEpiNome,
-        valor: f.quantidadeTrocas,
-      })) ?? [],
-    [perfilCompleto?.frequenciaTrocas],
-  );
-
-  const dadosAssiduidadeDds: FatiaDonut[] = useMemo(
-    () =>
-      perfilCompleto
-        ? [
-            { rotulo: 'Participou', valor: perfilCompleto.assiduidadeDds.totalParticipados, cor: paleta.ok },
-            {
-              rotulo: 'Não participou',
-              valor: Math.max(
-                perfilCompleto.assiduidadeDds.totalRealizados - perfilCompleto.assiduidadeDds.totalParticipados,
-                0,
-              ),
-              cor: paleta.alerta,
-            },
-          ]
-        : [],
-    [paleta.alerta, paleta.ok, perfilCompleto],
-  );
-
   return (
     <div style={raiz} data-theme="light">
-      <div style={{ width: '100%', maxWidth: recurso?.tipoRecurso === 'trabalhador' ? 920 : 480 }}>
+      <div style={{ width: '100%', maxWidth: 480 }}>
         {carregando && (
           <Card>
             <div style={{ display: 'flex', justifyContent: 'center', padding: '48px 0' }}>
@@ -310,96 +206,6 @@ export function IdentificacaoPublicaPage() {
                   );
                 })
               )}
-            </div>
-
-            {entregasEpi.length > 0 && (
-              <div style={{ marginTop: 16 }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', gap: 8, alignItems: 'center' }}>
-                  <Text weight="semibold">Entregas de EPI</Text>
-                  <Button size="small" icon={<ArrowDownload24Regular />} onClick={() => baixarFichaEpi(recurso.trabalhadorId)}>
-                    Ficha
-                  </Button>
-                </div>
-
-                {entregasEpi.slice(0, 6).map((entrega) => {
-                  const devolvido = entrega.dataDevolucao != null;
-                  return (
-                    <div key={entrega.id} style={linhaItem}>
-                      <div>
-                        <Text weight="semibold" size={200} style={{ display: 'block' }}>
-                          {nomeCatalogoEpi(entrega.catalogoEpiId)}
-                        </Text>
-                        <Legenda>
-                          {entrega.quantidade} un. · Entregue em {entrega.dataEntrega.slice(0, 10)}
-                        </Legenda>
-                      </div>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                        <StatusChip tom={devolvido ? 'info' : 'ok'}>{devolvido ? 'Devolvido' : 'Ativo'}</StatusChip>
-                        {!devolvido && (
-                          <Button
-                            appearance="subtle"
-                            icon={<Signature24Regular />}
-                            onClick={() => navigate(`/epi/${entrega.id}/assinar`)}
-                            aria-label="Assinar entrega"
-                          />
-                        )}
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-            )}
-
-            <div style={{ marginTop: 16 }}>
-              <Text weight="semibold">Gráficos do perfil</Text>
-              <div className={dashEstilos.chartRow} style={{ marginTop: 12 }}>
-                <div className={dashEstilos.chartCard}>
-                  <Text className={dashEstilos.chartTitulo}>Status dos EPIs</Text>
-                  <div className={dashEstilos.chartSubtitulo}>Validade dos itens em posse do funcionário</div>
-                  {!perfilCompleto || perfilCompleto.episAtivos.length === 0 ? (
-                    <Text>Nenhum EPI ativo alimentado ainda.</Text>
-                  ) : (
-                    <StatusDonutChart dados={dadosDonutEpi} legendaCentral="EPIs ativos" />
-                  )}
-                </div>
-
-                <div className={dashEstilos.chartCard}>
-                  <Text className={dashEstilos.chartTitulo}>Frequência de trocas por EPI</Text>
-                  <div className={dashEstilos.chartSubtitulo}>Histórico de trocas registradas por item</div>
-                  {dadosFrequenciaEpi.length === 0 ? (
-                    <Text>Sem dados de troca de EPI alimentados ainda.</Text>
-                  ) : (
-                    <RankingBarChart dados={dadosFrequenciaEpi} corPadrao={paleta.marca} sufixo=" trocas" />
-                  )}
-                </div>
-
-                <div className={dashEstilos.chartCard}>
-                  <Text className={dashEstilos.chartTitulo}>Assiduidade em DDS</Text>
-                  <div className={dashEstilos.chartSubtitulo}>Participações do funcionário nos DDS da obra</div>
-                  {!perfilCompleto || perfilCompleto.assiduidadeDds.totalRealizados === 0 ? (
-                    <Text>Nenhum DDS realizado/alimentado ainda.</Text>
-                  ) : (
-                    <StatusDonutChart dados={dadosAssiduidadeDds} legendaCentral="DDS realizados" />
-                  )}
-                </div>
-
-                <div className={dashEstilos.chartCard}>
-                  <Text className={dashEstilos.chartTitulo}>Motivo das trocas no ano</Text>
-                  <div className={dashEstilos.chartSubtitulo}>Reposições classificadas por motivo</div>
-                  {!perfilCompleto || perfilCompleto.motivosTroca.length === 0 ? (
-                    <Text>Nenhuma troca classificada alimentada ainda.</Text>
-                  ) : (
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-                      {perfilCompleto.motivosTroca.map((m) => (
-                        <div key={m.motivo} style={linhaItem}>
-                          <Text>{motivoEntregaEpiLabel[m.motivo]}</Text>
-                          <StatusChip tom="info">{m.quantidade}</StatusChip>
-                        </div>
-                      ))}
-                    </div>
-                  )}
-                </div>
-              </div>
             </div>
 
             <div style={{ marginTop: 16 }}>
