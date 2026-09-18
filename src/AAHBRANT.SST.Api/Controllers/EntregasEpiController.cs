@@ -52,6 +52,14 @@ public class EntregasEpiController : ControllerBase
         return NoContent();
     }
 
+    [Authorize(Policy = "epi:editar")]
+    [HttpPut("{id:guid}/confirmar")]
+    public async Task<IActionResult> Confirmar(Guid id, CancellationToken ct)
+    {
+        await _mediator.Send(new ConfirmarEntregaEpiCommand(id), ct);
+        return NoContent();
+    }
+
     // Ficha de EPI reformulada — PDF passa a ser consolidado por trabalhador (todas as entregas e
     // devoluções dele), não mais por entrega individual. Rota fica aqui em EntregasEpiController
     // (e não em TrabalhadoresController) por já concentrar toda a lógica/dependências de PDF de EPI.

@@ -44,6 +44,15 @@ public class EntregaEpi : AuditableEntity
     public string? Motivo { get; set; } // ex.: "Entrega inicial", "Substituição por desgaste"
     public string? Observacoes { get; set; }
 
+    // Módulo Terceirizado (docs/superpowers/specs/2026-09-18-modulo-terceirizado-design.md) — quando
+    // esta entrega nasce da automação de EPI (CadastrarPessoaTerceirizadaCommand, Task 8), o estoque
+    // já é decrementado no ato (mesma semântica de SaidaEntrega que uma entrega manual já tem hoje),
+    // mas Confirmada nasce false: ninguém confirmou que o EPI foi de fato entregue fisicamente à
+    // pessoa ainda. Default true para toda entrega criada pelo fluxo manual existente (linha nunca
+    // fica "pendente" por acidente) — só a automação do Terceirizado cria com false.
+    public bool Confirmada { get; set; } = true;
+    public DateTime? DataConfirmacao { get; set; }
+
     // Ficha de EPI reformulada — MotivoTipo é o campo estruturado exigido pelo modelo oficial
     // (Motivo acima vira observação complementar opcional). Nullable para não quebrar entregas
     // antigas; obrigatório apenas via validação de aplicação em CriarEntregaEpiCommand.
