@@ -35,6 +35,18 @@ public static class NovidadesSeeder
                     "Não havia nenhum aviso sobre o que mudava quando o sistema era atualizado.",
                     "Um pop-up aparece automaticamente ao entrar, mostrando o que foi corrigido, melhorado ou adicionado — clique em cada item para ver o antes e depois."),
             }),
+        new(
+            Versao: "5.11.1",
+            Titulo: "Correção no pop-up de boas-vindas",
+            DataPublicacao: new DateTime(2026, 9, 18, 0, 0, 0, DateTimeKind.Utc),
+            Itens: new[]
+            {
+                new NovidadeSeedItem(
+                    CategoriaNovidade.Correcao,
+                    "Corrigido: o pop-up de novidades não mostrava o nome do usuário",
+                    "O pop-up aparecia com \"Bem-vindo de volta, !\", sem o nome preenchido.",
+                    "O pop-up mostra corretamente o seu primeiro nome."),
+            }),
     };
 
     public static async Task ExecutarAsync(IServiceProvider services, CancellationToken ct = default)

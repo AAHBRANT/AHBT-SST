@@ -558,7 +558,9 @@ export function AppShell({ children }: { children: ReactNode }) {
   const navigate = useNavigate();
   const { carregando, dentroDoTeams, contexto } = useTeamsContext();
   const { modo, alternarModo } = useThemeMode();
-  const nomeUsuario = contexto?.user?.displayName ?? 'Usuário';
+  // `??` só cobre null/undefined — o Teams client já retornou displayName como string vazia em
+  // produção (achado ao testar o pop-up de novidades, 18/09), então precisa tratar vazio também.
+  const nomeUsuario = contexto?.user?.displayName?.trim() || 'Usuário';
   const emailUsuario = contexto?.user?.userPrincipalName ?? contexto?.user?.loginHint ?? '';
   const identidadeUsuario = emailUsuario || nomeUsuario;
   const chaveFotoUsuario = `sst.fotoPerfil.${identidadeUsuario}`;
