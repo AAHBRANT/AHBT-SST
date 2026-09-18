@@ -19,6 +19,7 @@ import {
 import { PersonAdd24Regular } from '@fluentui/react-icons';
 import { api, type ContratoDetalhe, type VagaFuncao } from '../../lib/api';
 import { useSucessoToast } from '../../hooks/useSucessoToast';
+import { formatarCpf } from '../../lib/cpf';
 
 const novaPessoaVazia = { nome: '', matricula: '', cpf: '', dataAdmissao: '' };
 
@@ -126,7 +127,10 @@ export function ContratoDetalhePage() {
               </Campo>
               <Campo span={3}>
                 <Field label="CPF (só números)">
-                  <Input value={novaPessoa.cpf} onChange={(_, d) => setNovaPessoa({ ...novaPessoa, cpf: d.value })} />
+                  <Input
+                    value={formatarCpf(novaPessoa.cpf)}
+                    onChange={(_, d) => setNovaPessoa({ ...novaPessoa, cpf: d.value.replace(/\D/g, '').slice(0, 11) })}
+                  />
                 </Field>
               </Campo>
               <Campo span={4}>

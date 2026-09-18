@@ -139,7 +139,10 @@ export function EmpresasTab() {
               </Campo>
               <Campo span={4}>
                 <Field label="CNPJ (só números)">
-                  <Input value={novaEmpresa.cnpj} onChange={(_, d) => setNovaEmpresa({ ...novaEmpresa, cnpj: d.value })} />
+                  <Input
+                    value={novaEmpresa.cnpj}
+                    onChange={(_, d) => setNovaEmpresa({ ...novaEmpresa, cnpj: d.value.replace(/\D/g, '').slice(0, 14) })}
+                  />
                 </Field>
               </Campo>
               <Campo span={4}>
