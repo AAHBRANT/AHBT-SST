@@ -130,6 +130,11 @@ public enum TipoAlerta
     // disparado no ato (não pelo Motor Central de Alertas periódico) quando não há saldo de
     // EstoqueEpi suficiente para reservar um EPI obrigatório no cadastro de uma pessoa terceirizada.
     EpiEstoqueInsuficiente = 26
+    ,
+    // Módulo Terceirizado (docs/superpowers/specs/2026-09-18-modulo-terceirizado-design.md §8) —
+    // contrato encerrado no G-Juri com pessoas ainda ativas no SST. Spec: "só alerta, não desliga
+    // ninguém automaticamente" — o desligamento continua manual.
+    ContratoTerceirizadoEncerrado = 27
 }
 
 public enum SeveridadeAlerta

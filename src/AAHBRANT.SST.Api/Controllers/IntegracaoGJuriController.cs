@@ -23,4 +23,12 @@ public class IntegracaoGJuriController : ControllerBase
         var contratoId = await _mediator.Send(command, ct);
         return Ok(new { contratoId });
     }
+
+    [Authorize(Policy = "terceirizado:integracao-gjuri")]
+    [HttpPost("contratos/encerrados")]
+    public async Task<IActionResult> ContratoEncerrado(ContratoEncerradoWebhookCommand command, CancellationToken ct)
+    {
+        await _mediator.Send(command, ct);
+        return NoContent();
+    }
 }
