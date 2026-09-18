@@ -41,6 +41,7 @@ public class ContratoEncerradoWebhookCommandHandler : IRequestHandler<ContratoEn
             return; // idempotente — evento repetido do G-Juri não gera alerta duplicado.
 
         contrato.Status = StatusContrato.Encerrado;
+        contrato.DataEncerramento = request.DataEncerramento;
 
         var pessoasAtivas = await _db.Trabalhadores
             .Where(t => t.ContratoId == contrato.Id && t.DataDemissao == null)

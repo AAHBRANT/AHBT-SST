@@ -10,7 +10,7 @@ public class EmpresaConfiguracao : IEntityTypeConfiguration<Empresa>
     {
         builder.Property(e => e.RazaoSocial).IsRequired().HasMaxLength(200);
         builder.Property(e => e.NomeFantasia).HasMaxLength(200);
-        builder.Property(e => e.Cnpj).IsRequired().HasMaxLength(18);
+        builder.Property(e => e.Cnpj).IsRequired().HasMaxLength(14);
         builder.Property(e => e.TipoServicoPrestado).HasMaxLength(200);
         builder.Property(e => e.ContatoNome).HasMaxLength(200);
         builder.Property(e => e.ContatoTelefone).HasMaxLength(30);

@@ -37,6 +37,7 @@ public class Contrato : AuditableEntity
     public DateOnly DataInicioVigencia { get; set; }
     public DateOnly DataFimVigencia { get; set; }
     public StatusContrato Status { get; set; } = StatusContrato.Validado;
+    public DateOnly? DataEncerramento { get; set; }
 
     // Chave de idempotência do webhook (Task 10/11) — único; um evento repetido do G-Juri nunca
     // duplica o Contrato.
