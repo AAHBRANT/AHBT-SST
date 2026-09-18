@@ -1,4 +1,5 @@
 using AAHBRANT.SST.Application.Contratos.Queries;
+using AAHBRANT.SST.Application.Terceirizados.Commands;
 using MediatR;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -24,4 +25,17 @@ public class ContratosController : ControllerBase
         var contrato = await _mediator.Send(new ObterContratoDetalheQuery(id), ct);
         return contrato is null ? NotFound() : Ok(contrato);
     }
+
+    [Authorize(Policy = "terceirizado:criar")]
+    [HttpPost("{contratoId:guid}/vagas/{funcaoId:guid}/pessoas")]
+    public async Task<IActionResult> CadastrarPessoaNaVaga(
+        Guid contratoId, Guid funcaoId, CadastrarPessoaNaVagaRequest request, CancellationToken ct)
+    {
+        var trabalhadorId = await _mediator.Send(
+            new CadastrarPessoaTerceirizadaCommand(contratoId, funcaoId, request.Nome, request.Matricula, request.Cpf, request.DataAdmissao),
+            ct);
+        return Ok(new { trabalhadorId });
+    }
 }
+
+public record CadastrarPessoaNaVagaRequest(string Nome, string Matricula, string Cpf, DateTime DataAdmissao);

@@ -125,6 +125,11 @@ public enum TipoAlerta
     PgrRevisaoVencendo = 23,
     PgrRevisaoVencida = 24,
     SuporteIaDemandaTecnica = 25
+    ,
+    // Módulo Terceirizado (docs/superpowers/specs/2026-09-18-modulo-terceirizado-design.md §6) —
+    // disparado no ato (não pelo Motor Central de Alertas periódico) quando não há saldo de
+    // EstoqueEpi suficiente para reservar um EPI obrigatório no cadastro de uma pessoa terceirizada.
+    EpiEstoqueInsuficiente = 26
 }
 
 public enum SeveridadeAlerta
