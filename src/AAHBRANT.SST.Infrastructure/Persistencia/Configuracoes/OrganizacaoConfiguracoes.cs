@@ -121,6 +121,10 @@ public class TrabalhadorConfiguracao : IEntityTypeConfiguration<Trabalhador>
             .HasForeignKey(t => t.EquipeId).OnDelete(DeleteBehavior.Restrict);
         builder.HasOne(t => t.Funcao).WithMany(f => f.Trabalhadores)
             .HasForeignKey(t => t.FuncaoId).OnDelete(DeleteBehavior.Restrict);
+        builder.HasOne(t => t.Empresa).WithMany()
+            .HasForeignKey(t => t.EmpresaId).OnDelete(DeleteBehavior.Restrict);
+        builder.HasOne(t => t.Contrato).WithMany(c => c.Trabalhadores)
+            .HasForeignKey(t => t.ContratoId).OnDelete(DeleteBehavior.Restrict);
 
         builder.HasQueryFilter(t => t.Ativo);
 
