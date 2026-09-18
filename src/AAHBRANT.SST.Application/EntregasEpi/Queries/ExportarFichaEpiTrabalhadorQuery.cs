@@ -30,9 +30,13 @@ public class ExportarFichaEpiTrabalhadorQueryHandler : IRequestHandler<ExportarF
             .FirstOrDefaultAsync(t => t.Id == request.TrabalhadorId, ct);
         if (trabalhador is null) return null;
 
+        // Ficha NR-6 tem valor de prova em fiscalização — uma entrega apenas reservada
+        // (Confirmada=false, automação de EPI do módulo Terceirizado) nunca deve aparecer como se
+        // tivesse sido fisicamente entregue. Decisão do usuário (revisão final do módulo
+        // Terceirizado, 2026-09-18): excluir da ficha em vez de marcar como "reservada".
         var entregas = await _db.EntregasEpi
             .Include(e => e.CatalogoEpi)
-            .Where(e => e.TrabalhadorId == request.TrabalhadorId)
+            .Where(e => e.TrabalhadorId == request.TrabalhadorId && e.Confirmada)
             .OrderBy(e => e.DataEntrega)
             .ToListAsync(ct);
 
