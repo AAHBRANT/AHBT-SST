@@ -194,6 +194,92 @@ export interface Funcao {
 
 export type NovaFuncao = Omit<Funcao, 'id'>;
 
+export interface Empresa {
+  id: string;
+  razaoSocial: string;
+  nomeFantasia?: string | null;
+  cnpj: string;
+  tipoServicoPrestado?: string | null;
+  contatoNome?: string | null;
+  contatoTelefone?: string | null;
+  contatoEmail?: string | null;
+  status: 'Ativa' | 'Inativa';
+}
+export type NovaEmpresa = Omit<Empresa, 'id' | 'status'>;
+export type AtualizarEmpresa = Omit<Empresa, 'razaoSocial'> & { razaoSocial: string };
+
+export interface Contrato {
+  id: string;
+  empresaId: string;
+  obraId: string;
+  obraNome: string;
+  numeroContrato: string;
+  dataInicioVigencia: string;
+  dataFimVigencia: string;
+  status: 'Validado' | 'Encerrado' | 'Cancelado';
+}
+
+export interface VagaFuncao {
+  id: string;
+  funcaoId: string;
+  funcaoNome: string;
+  quantidadeVagas: number;
+  quantidadePreenchidas: number;
+}
+
+export interface ContratoDetalhe extends Contrato {
+  empresaRazaoSocial: string;
+  vagas: VagaFuncao[];
+}
+
+export interface PessoaTerceirizada {
+  trabalhadorId: string;
+  nome: string;
+  matricula?: string | null;
+  empresaId: string;
+  empresaRazaoSocial: string;
+  contratoId: string;
+  numeroContrato: string;
+  funcaoId: string;
+  funcaoNome: string;
+  status: 'Pendente' | 'Liberada';
+  pendencias: string[];
+}
+
+export interface StatusLiberacaoTrabalhador {
+  trabalhadorId: string;
+  status: 'Pendente' | 'Liberada';
+  pendencias: string[];
+}
+
+export interface PendenciaPessoa {
+  trabalhadorId: string;
+  nome: string;
+  empresaId: string;
+  empresaRazaoSocial: string;
+  pendencias: string[];
+}
+
+export interface ContratoEncerradoComPessoasAtivas {
+  contratoId: string;
+  numeroContrato: string;
+  empresaRazaoSocial: string;
+  quantidadePessoasAtivas: number;
+}
+
+export interface AlertaEstoqueInsuficiente {
+  alertaId: string;
+  titulo: string;
+  descricao?: string | null;
+  criadoEmUtc: string;
+}
+
+export interface PainelPendenciasTerceirizado {
+  pessoasBloqueadas: PendenciaPessoa[];
+  contratosEncerradosComPessoasAtivas: ContratoEncerradoComPessoasAtivas[];
+  alertasEstoqueInsuficiente: AlertaEstoqueInsuficiente[];
+}
+
 export interface Setor {
   id: string;
   obraId: string;
@@ -500,9 +586,11 @@ export interface EntregaEpi {
   motivoTipo: number | null;
   numeroListaPresencaNr6?: string | null;
   dataTreinamentoNr6?: string | null;
+  confirmada: boolean;
+  dataConfirmacao?: string | null;
 }
 
-export type NovaEntregaEpi = Omit<EntregaEpi, 'id'> & { motivoTipo: number };
+export type NovaEntregaEpi = Omit<EntregaEpi, 'id' | 'confirmada' | 'dataConfirmacao'> & { motivoTipo: number };
 export type AtualizarEntregaEpi = EntregaEpi & { motivoTipo: number };
 
 // EPC — Equipamento de Proteção Coletiva (aba própria, separada de EPI, pedido do usuário 04/09).
@@ -3749,6 +3837,7 @@ export const api = {
     atualizar: (entrega: AtualizarEntregaEpi) =>
       request<void>(`/api/entregasepi/${entrega.id}`, { method: 'PUT', body: JSON.stringify(entrega) }),
     excluir: (id: string) => request<void>(`/api/entregasepi/${id}`, { method: 'DELETE' }),
+    confirmar: (id: string) => request<void>(`/api/entregasepi/${id}/confirmar`, { method: 'PUT' }),
     baixarFichaTrabalhador: async (trabalhadorId: string) => {
       const response = await fetch(`${API_BASE_URL}/api/entregasepi/ficha-trabalhador/${trabalhadorId}/pdf`, {
         headers: await montarHeadersAuth(),
@@ -4758,6 +4847,44 @@ export const api = {
           method: 'POST',
           body: JSON.stringify({ data, horario, temaPalestra, palestrante }),
         }),
+    },
+  },
+  terceirizados: {
+    empresas: {
+      listar: () => request<Empresa[]>('/api/empresas'),
+      obterPorId: (id: string) => request<Empresa>(`/api/empresas/${id}`),
+      criar: (empresa: NovaEmpresa) =>
+        request<{ id: string }>('/api/empresas', { method: 'POST', body: JSON.stringify(empresa) }),
+      atualizar: (empresa: AtualizarEmpresa) =>
+        request<void>(`/api/empresas/${empresa.id}`, { method: 'PUT', body: JSON.stringify(empresa) }),
+      excluir: (id: string) => request<void>(`/api/empresas/${id}`, { method: 'DELETE' }),
+    },
+    contratos: {
+      listarPorEmpresa: (empresaId: string) => request<Contrato[]>(`/api/contratos?empresaId=${empresaId}`),
+      obterDetalhe: (id: string) => request<ContratoDetalhe>(`/api/contratos/${id}`),
+      cadastrarPessoaNaVaga: (
+        contratoId: string,
+        funcaoId: string,
+        dados: { nome: string; matricula: string; cpf: string; dataAdmissao: string },
+      ) =>
+        request<{ trabalhadorId: string }>(`/api/contratos/${contratoId}/vagas/${funcaoId}/pessoas`, {
+          method: 'POST',
+          body: JSON.stringify(dados),
+        }),
+    },
+    pessoas: {
+      listar: (filtro: { empresaId?: string; contratoId?: string } = {}) => {
+        const params = new URLSearchParams();
+        if (filtro.empresaId) params.set('empresaId', filtro.empresaId);
+        if (filtro.contratoId) params.set('contratoId', filtro.contratoId);
+        const query = params.toString();
+        return request<PessoaTerceirizada[]>(`/api/terceirizados/pessoas${query ? `?${query}` : ''}`);
+      },
+      obterStatus: (trabalhadorId: string) =>
+        request<StatusLiberacaoTrabalhador>(`/api/terceirizados/pessoas/${trabalhadorId}/status`),
+    },
+    pendencias: {
+      listar: () => request<PainelPendenciasTerceirizado>('/api/terceirizados/pendencias'),
     },
   },
 };

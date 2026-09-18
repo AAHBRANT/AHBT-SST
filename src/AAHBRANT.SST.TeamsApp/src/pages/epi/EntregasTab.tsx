@@ -198,7 +198,7 @@ export function EntregasTab({ aoNavegarParaMatriz }: EntregasTabProps) {
         dataTreinamentoNr6: novaEntrega.dataTreinamentoNr6 || null,
       };
       const { id } = await api.entregasEpi.criar(payload);
-      setEntregaParaAssinar({ ...payload, id });
+      setEntregaParaAssinar({ ...payload, id, confirmada: true });
       setNovaEntrega(entregaVazia());
       await carregar();
       fecharPainel();
