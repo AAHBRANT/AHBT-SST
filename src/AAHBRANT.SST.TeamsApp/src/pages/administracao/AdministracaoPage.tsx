@@ -6,8 +6,9 @@ import { PainelAssinaturasTab } from './PainelAssinaturasTab';
 import { IntegracaoGrhTab } from './IntegracaoGrhTab';
 import { TagsIdentificacaoTab } from '../identificacao/TagsIdentificacaoTab';
 import { LeitorNfcTab } from '../identificacao/LeitorNfcTab';
+import { NovidadesTab } from './NovidadesTab';
 
-const ABAS_VALIDAS = ['obras', 'acesso', 'auditoria', 'assinaturas', 'grh', 'tags', 'leitor'] as const;
+const ABAS_VALIDAS = ['obras', 'acesso', 'auditoria', 'assinaturas', 'grh', 'tags', 'leitor', 'novidades'] as const;
 type AbaAdministracao = (typeof ABAS_VALIDAS)[number];
 
 // Obras virou aba daqui (pedido do usuário, 01/09) — antes era aba de Operação (ver App.tsx pro
@@ -41,6 +42,7 @@ export function AdministracaoPage() {
           { valor: 'grh', rotulo: 'Integração G-RH' },
           { valor: 'tags', rotulo: 'Tags (NFC/QR)' },
           { valor: 'leitor', rotulo: 'Leitor / Teste NFC' },
+          { valor: 'novidades', rotulo: 'Novidades da versão' },
         ]}
       />
 
@@ -51,6 +53,7 @@ export function AdministracaoPage() {
       {aba === 'grh' && <IntegracaoGrhTab />}
       {aba === 'tags' && <TagsIdentificacaoTab />}
       {aba === 'leitor' && <LeitorNfcTab />}
+      {aba === 'novidades' && <NovidadesTab />}
     </div>
   );
 }

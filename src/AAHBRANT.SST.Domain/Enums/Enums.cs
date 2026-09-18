@@ -801,3 +801,12 @@ public enum TipoMovimentacaoEstoqueUniforme
     SaidaEntrega = 1,
     AjusteManual = 2,
 }
+
+// Pop-up de novidades da versão (requisito do usuário, 18/09) — classifica cada item para escolher
+// o ícone/cor exibido no mock aprovado (correção = verde/bug, melhoria e novidade = azul/destaque).
+public enum CategoriaNovidade
+{
+    Correcao = 1,
+    Melhoria = 2,
+    Novidade = 3
+}

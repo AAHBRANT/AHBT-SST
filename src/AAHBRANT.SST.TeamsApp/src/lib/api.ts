@@ -3149,6 +3149,45 @@ export interface EventoSipatDetalhe {
   atividades: AtividadeSipat[];
 }
 
+// Pop-up de novidades da versão (requisito do usuário, 18/09) — aparece uma vez por usuário, ao
+// logar, com o que mudou desde o último acesso.
+export const CategoriaNovidade = {
+  Correcao: 1,
+  Melhoria: 2,
+  Novidade: 3,
+} as const;
+
+export interface NovidadeVersaoItem {
+  id: string;
+  categoria: number;
+  descricao: string;
+  antes?: string | null;
+  agora?: string | null;
+  ordem: number;
+}
+
+export interface NovidadeVersao {
+  id: string;
+  titulo: string;
+  versao: string;
+  dataPublicacao: string;
+  itens: NovidadeVersaoItem[];
+}
+
+export interface NovidadeVersaoItemInput {
+  categoria: number;
+  descricao: string;
+  antes?: string | null;
+  agora?: string | null;
+}
+
+export interface NovaNovidadeVersao {
+  titulo: string;
+  versao: string;
+  dataPublicacao: string;
+  itens: NovidadeVersaoItemInput[];
+}
+
 export const api = {
   obras: {
     listar: () => request<Obra[]>('/api/obras'),
@@ -4412,6 +4451,16 @@ export const api = {
       }),
     resolver: (id: string) => request<void>(`/api/alertas/${id}/resolver`, { method: 'POST' }),
     ignorar: (id: string) => request<void>(`/api/alertas/${id}/ignorar`, { method: 'POST' }),
+  },
+  novidades: {
+    listar: () => request<NovidadeVersao[]>('/api/novidades'),
+    criar: (novidade: NovaNovidadeVersao) =>
+      request<NovidadeVersao>('/api/novidades', { method: 'POST', body: JSON.stringify(novidade) }),
+    atualizar: (id: string, novidade: NovaNovidadeVersao) =>
+      request<NovidadeVersao>(`/api/novidades/${id}`, { method: 'PUT', body: JSON.stringify(novidade) }),
+    excluir: (id: string) => request<void>(`/api/novidades/${id}`, { method: 'DELETE' }),
+    obterPendente: () => request<NovidadeVersao | undefined>('/api/novidades/pendente'),
+    marcarVisto: (id: string) => request<void>(`/api/novidades/${id}/marcar-visto`, { method: 'POST' }),
   },
   regrasAlerta: {
     listar: () => request<RegraAlerta[]>('/api/regrasalerta'),

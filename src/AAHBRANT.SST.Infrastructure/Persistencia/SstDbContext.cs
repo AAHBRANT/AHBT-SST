@@ -142,6 +142,10 @@ public class SstDbContext : DbContext, IAppDbContext
 
     public DbSet<ContadorDocumento> ContadoresDocumento => Set<ContadorDocumento>();
 
+    public DbSet<NovidadeVersao> NovidadesVersao => Set<NovidadeVersao>();
+    public DbSet<NovidadeVersaoItem> NovidadesVersaoItens => Set<NovidadeVersaoItem>();
+    public DbSet<NovidadeVisualizacao> NovidadesVisualizacao => Set<NovidadeVisualizacao>();
+
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         modelBuilder.ApplyConfigurationsFromAssembly(typeof(SstDbContext).Assembly);

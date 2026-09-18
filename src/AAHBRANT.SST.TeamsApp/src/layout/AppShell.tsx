@@ -40,9 +40,10 @@ import {
 import { designTokens } from '@ui';
 import { useThemeMode } from '../theme/ThemeModeContext';
 import { useTeamsContext } from '../teams/useTeamsContext';
-import { api, StatusAlerta } from '../lib/api';
+import { api, StatusAlerta, type NovidadeVersao } from '../lib/api';
 import logoSst from '../assets/logo-sst.png';
 import { SyncStatusBadge } from '../components/SyncStatusBadge';
+import { NovidadesModal } from '../components/novidades/NovidadesModal';
 import { ID_TOASTER_GLOBAL } from '../lib/toaster';
 
 // Rail de navegação (Hub Gênesis SST — design decidido em sessão anterior): faixa fina só com
@@ -645,6 +646,36 @@ export function AppShell({ children }: { children: ReactNode }) {
     };
   }, [location.pathname]);
 
+  // Pop-up de novidades da versão (requisito do usuário, 18/09) — busca uma única vez, ao montar o
+  // shell autenticado, e só mostra se o backend confirmar que há algo ainda não visto por este
+  // usuário (204 sem corpo quando não há pendência, ver ObterNovidadePendenteQuery).
+  const [novidadePendente, setNovidadePendente] = useState<NovidadeVersao | null>(null);
+  useEffect(() => {
+    if (carregando) return;
+    let cancelado = false;
+    api.novidades
+      .obterPendente()
+      .then((novidade) => {
+        if (!cancelado && novidade) setNovidadePendente(novidade);
+      })
+      .catch(() => {
+        // Falha ao buscar novidades não deve incomodar o usuário — mesmo princípio de "nice to
+        // have" já aplicado a outras integrações opcionais do AppShell.
+      });
+    return () => {
+      cancelado = true;
+    };
+  }, [carregando]);
+
+  function fecharNovidades() {
+    if (!novidadePendente) return;
+    const id = novidadePendente.id;
+    setNovidadePendente(null);
+    api.novidades.marcarVisto(id).catch(() => {
+      // Idem: se a marcação falhar, o pop-up pode reaparecer no próximo login — inofensivo.
+    });
+  }
+
   return (
     <div className={mergeClasses(estilos.root, railExpandido ? estilos.rootExpandido : estilos.rootColapsado)}>
       <nav className={estilos.rail} aria-label="Navegação principal">
@@ -854,6 +885,15 @@ export function AppShell({ children }: { children: ReactNode }) {
           </DialogActions>
         </DialogSurface>
       </Dialog>
+
+      {novidadePendente && (
+        <NovidadesModal
+          novidade={novidadePendente}
+          nomeUsuario={nomeUsuario}
+          aberto={Boolean(novidadePendente)}
+          aoFechar={fecharNovidades}
+        />
+      )}
 
       <main className={estilos.content}>{children}</main>
       <Toaster toasterId={ID_TOASTER_GLOBAL} />

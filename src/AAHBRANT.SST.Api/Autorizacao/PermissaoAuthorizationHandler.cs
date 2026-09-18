@@ -66,6 +66,15 @@ public class PermissaoAuthorizationHandler : AuthorizationHandler<PermissaoRequi
             return;
         }
 
+        // Pop-up de novidades da versão (requisito do usuário, 18/09): ver e cadastrar são liberados
+        // para qualquer usuário autenticado, sem checagem de RBAC — decisão explícita do usuário ao
+        // aprovar o design, já que hoje só ele mesmo usa a tela de cadastro.
+        if (requirement.Codigo == "novidades:usar" && context.User.Identity?.IsAuthenticated == true)
+        {
+            context.Succeed(requirement);
+            return;
+        }
+
         var temPermissao = await _db.Usuarios
             .Where(u => u.AzureAdObjectId == azureAdObjectId && u.Status == StatusUsuario.Ativo)
             .SelectMany(u => u.PerfisPorObra)
