@@ -20,6 +20,13 @@ public static class AppRolesReconhecidas
         // "trabalhador:ver" da entrada acima: dado equivalente (foto é parte do cadastro do
         // trabalhador), mesmo tratamento de acesso global.
         ["Sst.LerFotos"] = new[] { "trabalhador:ver" },
+        // App Role definida no app registration do SST, concedida ao service principal do G-Juri —
+        // dispara o webhook de contrato validado/encerrado (ver IntegracaoGJuriController). Mapeada
+        // para uma permissão DEDICADA ("terceirizado:integracao-gjuri", Task 5), não
+        // "terceirizado:criar" — decisão revisada durante o planejamento: a permissão de um usuário
+        // humano cadastrar empresas pela tela nunca deve autorizar, mesmo indiretamente, quem chama
+        // o webhook.
+        ["Sst.ReceberContratosGJuri"] = new[] { "terceirizado:integracao-gjuri" },
     };
 
     private static IEnumerable<string> ObterRoles(ClaimsPrincipal user) =>
