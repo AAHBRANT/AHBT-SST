@@ -3149,6 +3149,92 @@ export interface EventoSipatDetalhe {
   atividades: AtividadeSipat[];
 }
 
+export const TipoSolicitacaoSuporteIa = {
+  Erro: 1,
+  Duvida: 2,
+  Melhoria: 3,
+} as const;
+
+export const tipoSolicitacaoSuporteIaLabel: Record<number, string> = {
+  1: 'Erro',
+  2: 'Dúvida',
+  3: 'Melhoria',
+};
+
+export const SeveridadeSolicitacaoSuporteIa = {
+  Baixa: 1,
+  Media: 2,
+  Alta: 3,
+  Critica: 4,
+} as const;
+
+export const severidadeSolicitacaoSuporteIaLabel: Record<number, string> = {
+  1: 'Baixa',
+  2: 'Média',
+  3: 'Alta',
+  4: 'Crítica',
+};
+
+export const ResultadoTriagemSuporteIa = {
+  RespostaAoUsuario: 1,
+  DemandaTecnica: 2,
+} as const;
+
+export const resultadoTriagemSuporteIaLabel: Record<number, string> = {
+  1: 'Resposta ao usuário',
+  2: 'Demanda técnica',
+};
+
+export const StatusSolicitacaoSuporteIa = {
+  Recebida: 1,
+  Respondida: 2,
+  Encaminhada: 3,
+  EmAnaliseTecnica: 4,
+  Resolvida: 5,
+  Cancelada: 6,
+} as const;
+
+export const statusSolicitacaoSuporteIaLabel: Record<number, string> = {
+  1: 'Recebida',
+  2: 'Respondida',
+  3: 'Encaminhada',
+  4: 'Em análise técnica',
+  5: 'Resolvida',
+  6: 'Cancelada',
+};
+
+export interface SuporteIaSolicitacao {
+  id: string;
+  tipo: number;
+  severidadeInformada: number;
+  status: number;
+  titulo: string;
+  descricao: string;
+  modulo?: string | null;
+  urlContexto?: string | null;
+  solicitanteUsuarioId?: string | null;
+  solicitanteNome?: string | null;
+  solicitanteEmail?: string | null;
+  resultadoTriagem: number;
+  requerAlteracaoCodigo: boolean;
+  respostaAoUsuario: string;
+  demandaReduzida: string;
+  solucaoProposta: string;
+  evidenciasTecnicas?: string | null;
+  createdAtUtc: string;
+  triadoEmUtc: string;
+  encaminhadoEmUtc?: string | null;
+}
+
+export interface NovaSolicitacaoSuporteIa {
+  tipo: number;
+  severidadeInformada: number;
+  titulo: string;
+  descricao: string;
+  modulo?: string | null;
+  urlContexto?: string | null;
+}
+
 // Pop-up de novidades da versão (requisito do usuário, 18/09) — aparece uma vez por usuário, ao
 // logar, com o que mudou desde o último acesso.
 export const CategoriaNovidade = {
@@ -4451,6 +4537,19 @@ export const api = {
       }),
     resolver: (id: string) => request<void>(`/api/alertas/${id}/resolver`, { method: 'POST' }),
     ignorar: (id: string) => request<void>(`/api/alertas/${id}/ignorar`, { method: 'POST' }),
+  },
+  suporteIa: {
+    listar: (status?: number) => {
+      const params = new URLSearchParams();
+      if (status !== undefined) params.set('status', String(status));
+      const query = params.toString();
+      return request<SuporteIaSolicitacao[]>(`/api/suporte-ia${query ? `?${query}` : ''}`);
+    },
+    criar: (solicitacao: NovaSolicitacaoSuporteIa) =>
+      request<SuporteIaSolicitacao>('/api/suporte-ia', {
+        method: 'POST',
+        body: JSON.stringify(solicitacao),
+      }),
   },
   novidades: {
     listar: () => request<NovidadeVersao[]>('/api/novidades'),

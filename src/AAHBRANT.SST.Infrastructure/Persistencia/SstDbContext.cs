@@ -141,6 +141,7 @@ public class SstDbContext : DbContext, IAppDbContext
     public DbSet<MaterialApoio> MateriaisApoio => Set<MaterialApoio>();
 
     public DbSet<ContadorDocumento> ContadoresDocumento => Set<ContadorDocumento>();
+    public DbSet<SuporteIaSolicitacao> SuporteIaSolicitacoes => Set<SuporteIaSolicitacao>();
 
     public DbSet<NovidadeVersao> NovidadesVersao => Set<NovidadeVersao>();
     public DbSet<NovidadeVersaoItem> NovidadesVersaoItens => Set<NovidadeVersaoItem>();

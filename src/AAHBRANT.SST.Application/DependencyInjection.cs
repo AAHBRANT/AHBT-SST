@@ -2,6 +2,7 @@ using AAHBRANT.SST.Application.Alertas.Motor;
 using AAHBRANT.SST.Application.Common.Behaviors;
 using AAHBRANT.SST.Application.Elegibilidade;
 using AAHBRANT.SST.Application.Elegibilidade.Rules;
+using AAHBRANT.SST.Application.SuporteIa;
 using AAHBRANT.SST.Domain.Interfaces;
 using FluentValidation;
 using Microsoft.Extensions.DependencyInjection;
@@ -33,6 +34,7 @@ public static class DependencyInjection
         services.AddScoped<IAlertaOrigemProvider, AcaoPlanoAlertaProvider>();
         services.AddScoped<IAlertaOrigemProvider, PgrAlertaProvider>();
         services.AddScoped<IAlertaEngineService, AlertaEngineService>();
+        services.AddScoped<ISuporteIaTriagemService, HeuristicaSuporteIaTriagemService>();
 
         return services;
     }

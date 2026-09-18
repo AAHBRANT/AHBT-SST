@@ -15,6 +15,8 @@ using AAHBRANT.SST.Infrastructure.Auditoria;
 using AAHBRANT.SST.Infrastructure.Documentos;
 using AAHBRANT.SST.Infrastructure.Integracao.Bot;
 using AAHBRANT.SST.Infrastructure.Integracao.Grh;
+using AAHBRANT.SST.Infrastructure.Integracao.SuporteIa;
+using AAHBRANT.SST.Infrastructure.Integracao.Telegram;
 using AAHBRANT.SST.Infrastructure.Integracao.Teams;
 using AAHBRANT.SST.Infrastructure.Persistencia;
 using AAHBRANT.SST.Infrastructure.Seguranca;
@@ -66,6 +68,9 @@ public static class DependencyInjection
         TemplateBiometricoCriptografiaContexto.Configurar(Convert.FromBase64String(chaveCriptografiaBiometria));
 
         services.AddHttpClient();
+        services.Configure<TelegramSuporteOptions>(configuration.GetSection("Telegram"));
+        services.AddScoped<ITelegramSuporteService, TelegramSuporteService>();
+        services.AddScoped<ISuporteIaConfiguracao, SuporteIaConfiguracao>();
 
         services.AddScoped<IDdsPdfService, DdsPdfService>();
         services.AddScoped<IDdsSemanalPdfService, DdsSemanalPdfService>();

@@ -21,6 +21,7 @@ import { AssinarInspecaoPage } from './pages/inspecoes/AssinarInspecaoPage';
 import { IdentificacaoPublicaPage } from './pages/identificacao/IdentificacaoPublicaPage';
 import { ValidarDocumentoPage } from './pages/validacao/ValidarDocumentoPage';
 import { AdministracaoPage } from './pages/administracao/AdministracaoPage';
+import { SuporteIaPage } from './pages/suporte-ia/SuporteIaPage';
 import { NaoConformidadeDetalhePage } from './pages/naoconformidades/NaoConformidadeDetalhePage';
 import { AlertasPage } from './pages/alertas/AlertasPage';
 import { CalendarioPage } from './pages/calendario/CalendarioPage';
@@ -186,6 +187,7 @@ function AppRoteado() {
 
               <Route path="/alertas" element={<AlertasPage />} />
               <Route path="/calendario" element={<CalendarioPage />} />
+              <Route path="/suporte-ia" element={<SuporteIaPage />} />
 
               {/* Item "Pessoas" da sidebar: Funcionários/Funções/Dashboard são abas de PessoasPage.
                   "ASO & Exames" chegou a ser uma 2ª aba aqui (via PessoasPillarPage, réplica de
@@ -205,6 +207,7 @@ function AppRoteado() {
               <Route path="/epi/:id/assinar" element={<AssinarEntregaEpiPage />} />
               <Route path="/treinamentos/:id/assinar" element={<AssinarTreinamentoPage />} />
               <Route path="/administracao" element={<AdministracaoPage />} />
+              <Route path="/administracao/suporte-ia" element={<Navigate to="/suporte-ia" replace />} />
 
               {/* Redirecionamentos legados: caminhos antigos (pré-consolidação de 24/08 e pré-reforma
                   de 02/09) apontando pras páginas-pilar atuais — preserva links/favoritos antigos. */}

@@ -205,6 +205,9 @@ public static class RbacSeeder
         // terceiros), mas ainda assim exige permissão explícita, mesmo padrão de todo módulo aqui.
         ("calendario:ver", "Calendario", "Ver", "Ver a própria agenda dentro do app (Outlook/Teams + vencimentos do SST)"),
 
+        ("suporte-ia:usar", "SuporteIa", "Usar", "Abrir solicitações e consultar o histórico do suporte com IA"),
+        ("suporte-ia:administrar", "SuporteIa", "Administrar", "Ver e tratar todas as solicitações abertas na Central de Suporte IA"),
+
         // Motor de Aplicabilidade Legal (requisito do usuário, 2026-08-29) — cadastro restrito a
         // quem tem competência para validar conteúdo jurídico (QSMS/Diretoria); "responder" o
         // questionário de aplicabilidade por obra é uma ação mais operacional, por isso permissão

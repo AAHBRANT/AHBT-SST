@@ -51,13 +51,12 @@ public class GraphActivityNotificacaoTeamsService : INotificacaoTeamsService
 
         var corpo = new
         {
-            topic = new { source = "text", value = "Alerta SST" },
+            topic = new { source = "text", value = "Alerta SST", webUrl = _opcoes.TopicWebUrl },
             activityType = _opcoes.ActivityType,
             previewText = new { content = previewText },
             templateParameters = new[]
             {
                 new { name = "titulo", value = titulo },
-                new { name = "descricao", value = descricao ?? string.Empty },
             },
         };
 

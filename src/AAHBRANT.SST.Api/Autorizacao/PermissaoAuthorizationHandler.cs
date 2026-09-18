@@ -66,6 +66,14 @@ public class PermissaoAuthorizationHandler : AuthorizationHandler<PermissaoRequi
             return;
         }
 
+        // A Central de Suporte IA é um canal de atendimento para qualquer usuário autenticado.
+        // A visão administrativa continua protegida por suporte-ia:administrar e pela matriz RBAC.
+        if (requirement.Codigo == "suporte-ia:usar" && context.User.Identity?.IsAuthenticated == true)
+        {
+            context.Succeed(requirement);
+            return;
+        }
+
         // Pop-up de novidades da versão (requisito do usuário, 18/09): ver e cadastrar são liberados
         // para qualquer usuário autenticado, sem checagem de RBAC — decisão explícita do usuário ao
         // aprovar o design, já que hoje só ele mesmo usa a tela de cadastro.

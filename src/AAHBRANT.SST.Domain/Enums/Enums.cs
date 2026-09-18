@@ -123,7 +123,8 @@ public enum TipoAlerta
     PgrVencendo = 21,
     PgrVencido = 22,
     PgrRevisaoVencendo = 23,
-    PgrRevisaoVencida = 24
+    PgrRevisaoVencida = 24,
+    SuporteIaDemandaTecnica = 25
 }
 
 public enum SeveridadeAlerta
@@ -162,6 +163,37 @@ public enum StatusAlerta
     Escalonado = 3,
     Resolvido = 4,
     Ignorado = 5
+}
+
+public enum TipoSolicitacaoSuporteIa
+{
+    Erro = 1,
+    Duvida = 2,
+    Melhoria = 3
+}
+
+public enum SeveridadeSolicitacaoSuporteIa
+{
+    Baixa = 1,
+    Media = 2,
+    Alta = 3,
+    Critica = 4
+}
+
+public enum ResultadoTriagemSuporteIa
+{
+    RespostaAoUsuario = 1,
+    DemandaTecnica = 2
+}
+
+public enum StatusSolicitacaoSuporteIa
+{
+    Recebida = 1,
+    Respondida = 2,
+    Encaminhada = 3,
+    EmAnaliseTecnica = 4,
+    Resolvida = 5,
+    Cancelada = 6
 }
 
 // Integração do Motor de Alertas com o Calendário do Teams (docs/superpowers/specs/

@@ -36,6 +36,7 @@ import {
   Fingerprint24Regular,
   PersonAvailable24Regular,
   Camera20Regular,
+  ChatHelp24Regular,
 } from '@fluentui/react-icons';
 import { designTokens } from '@ui';
 import { useThemeMode } from '../theme/ThemeModeContext';
@@ -395,6 +396,36 @@ const useStyles = makeStyles({
     overflowY: 'auto',
     padding: '20px',
   },
+  suporteSuspenso: {
+    position: 'fixed',
+    right: '24px',
+    bottom: '24px',
+    zIndex: 30,
+    minWidth: '184px',
+    height: '52px',
+    borderRadius: '8px',
+    border: `1px solid ${designTokens.colorPrimary}`,
+    backgroundColor: designTokens.colorPrimary,
+    color: '#ffffff',
+    boxShadow: '0 16px 36px rgba(0, 0, 0, 0.24)',
+    fontWeight: 800,
+    ':hover': {
+      backgroundColor: designTokens.colorAdminButtonBackgroundHover,
+      color: '#ffffff',
+    },
+    '@media (max-width: 720px)': {
+      right: '18px',
+      bottom: '18px',
+      minWidth: '52px',
+      width: '52px',
+      padding: 0,
+    },
+  },
+  suporteSuspensoRotulo: {
+    '@media (max-width: 720px)': {
+      display: 'none',
+    },
+  },
   cardGrid: {
     display: 'grid',
     gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))',
@@ -633,6 +664,11 @@ export function AppShell({ children }: { children: ReactNode }) {
     setPerfilAberto(false);
   }
 
+  function abrirSuporteIa() {
+    setMenuPerfilAberto(false);
+    navigate('/suporte-ia');
+  }
+
   useEffect(() => {
     let cancelado = false;
     api.alertas
@@ -700,6 +736,7 @@ export function AppShell({ children }: { children: ReactNode }) {
           <ItemRail key={item.rota} {...item} expandido={railExpandido} />
         ))}
         <div className={estilos.railRodape}>
+          <ItemRail rota="/suporte-ia" rotulo="Suporte IA" icone={ChatHelp24Regular} expandido={railExpandido} />
           <ItemRail {...itemAdministracao} expandido={railExpandido} destaque />
         </div>
       </nav>
@@ -777,7 +814,7 @@ export function AppShell({ children }: { children: ReactNode }) {
                 <button className={estilos.menuItem} type="button" role="menuitem" onClick={() => setMenuPerfilAberto(false)}>
                   Atualizações
                 </button>
-                <button className={estilos.menuItem} type="button" role="menuitem" onClick={() => setMenuPerfilAberto(false)}>
+                <button className={estilos.menuItem} type="button" role="menuitem" onClick={abrirSuporteIa}>
                   Suporte técnico
                 </button>
                 <button className={estilos.menuItem} type="button" role="menuitem" onClick={() => setMenuPerfilAberto(false)}>
@@ -898,6 +935,17 @@ export function AppShell({ children }: { children: ReactNode }) {
       )}
 
       <main className={estilos.content}>{children}</main>
+      <Tooltip content="Abrir Central de Suporte IA" relationship="label">
+        <Button
+          className={estilos.suporteSuspenso}
+          appearance="primary"
+          icon={<ChatHelp24Regular />}
+          onClick={abrirSuporteIa}
+          aria-label="Abrir Central de Suporte IA"
+        >
+          <span className={estilos.suporteSuspensoRotulo}>Suporte IA</span>
+        </Button>
+      </Tooltip>
       <Toaster toasterId={ID_TOASTER_GLOBAL} />
     </div>
   );

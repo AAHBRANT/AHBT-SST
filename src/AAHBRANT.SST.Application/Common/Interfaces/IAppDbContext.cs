@@ -134,6 +134,7 @@ public interface IAppDbContext
     DbSet<MaterialApoio> MateriaisApoio { get; }
 
     DbSet<ContadorDocumento> ContadoresDocumento { get; }
+    DbSet<SuporteIaSolicitacao> SuporteIaSolicitacoes { get; }
 
     DbSet<NovidadeVersao> NovidadesVersao { get; }
     DbSet<NovidadeVersaoItem> NovidadesVersaoItens { get; }
