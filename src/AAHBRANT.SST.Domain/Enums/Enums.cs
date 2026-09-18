@@ -842,3 +842,17 @@ public enum CategoriaNovidade
     Melhoria = 2,
     Novidade = 3
 }
+
+// Módulo Terceirizado (docs/superpowers/specs/2026-09-18-modulo-terceirizado-design.md).
+public enum StatusEmpresa
+{
+    Ativa = 1,
+    Inativa = 2
+}
+
+public enum StatusContrato
+{
+    Validado = 1,
+    Encerrado = 2,
+    Cancelado = 3
+}
