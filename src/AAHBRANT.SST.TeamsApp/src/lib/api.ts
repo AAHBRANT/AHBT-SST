@@ -206,7 +206,9 @@ export interface Empresa {
   status: 'Ativa' | 'Inativa';
 }
 export type NovaEmpresa = Omit<Empresa, 'id' | 'status'>;
-export type AtualizarEmpresa = Omit<Empresa, 'razaoSocial'> & { razaoSocial: string };
+export type AtualizarEmpresa = Pick<Empresa, 'id' | 'razaoSocial' | 'nomeFantasia' | 'cnpj' | 'tipoServicoPrestado' | 'contatoNome' | 'contatoTelefone' | 'contatoEmail'> & {
+  status: 1 | 2; // StatusEmpresa: Ativa=1, Inativa=2 (backend não tem JsonStringEnumConverter)
+};
 
 export interface Contrato {
   id: string;
@@ -2871,6 +2873,10 @@ export interface PerfilCompletoTrabalhador {
   assinaturas: AssinaturaPerfil[];
   trocasNoAno: number;
   motivosTroca: MotivoTrocaEpi[];
+  empresaId?: string | null;
+  empresaRazaoSocial?: string | null;
+  contratoId?: string | null;
+  numeroContrato?: string | null;
 }
 
 // Módulos com suporte a uso offline (piloto acordado com o usuário em 24/08: módulos de campo,
