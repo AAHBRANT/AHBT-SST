@@ -3353,6 +3353,7 @@ export interface NovidadeVersao {
   versao: string;
   dataPublicacao: string;
   itens: NovidadeVersaoItem[];
+  nomeUsuario?: string | null;
 }
 
 export interface NovidadeVersaoItemInput {
