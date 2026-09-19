@@ -28,6 +28,13 @@ public class ObterNovidadePendenteQueryHandler : IRequestHandler<ObterNovidadePe
             .ThenByDescending(n => n.CreatedAtUtc)
             .FirstOrDefaultAsync(ct);
 
-        return novidade is null ? null : NovidadesMapper.Mapear(novidade);
+        if (novidade is null) return null;
+
+        var dto = NovidadesMapper.Mapear(novidade);
+        dto.NomeUsuario = await _db.Usuarios
+            .Where(u => u.Id == usuarioId)
+            .Select(u => u.Nome)
+            .FirstOrDefaultAsync(ct);
+        return dto;
     }
 }
