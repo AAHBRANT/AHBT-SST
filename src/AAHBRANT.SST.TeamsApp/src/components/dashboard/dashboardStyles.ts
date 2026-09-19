@@ -1,5 +1,5 @@
 import { makeStyles, tokens } from '@fluentui/react-components';
-import { designTokens } from '@ui';
+import { designTokens, tokensUi } from '@ui';
 
 export const useDashboardStyles = makeStyles({
   filtros: {
@@ -26,7 +26,7 @@ export const useDashboardStyles = makeStyles({
   kpiIcone: {
     width: '34px',
     height: '34px',
-    borderRadius: '9px',
+    borderRadius: tokensUi.raio.md,
     backgroundColor: designTokens.colorNeutralLight,
     display: 'flex',
     alignItems: 'center',
@@ -122,7 +122,7 @@ export const useDashboardStyles = makeStyles({
   feedIcone: {
     width: '34px',
     height: '34px',
-    borderRadius: '9px',
+    borderRadius: tokensUi.raio.md,
     display: 'flex',
     alignItems: 'center',
     justifyContent: 'center',
@@ -151,18 +151,21 @@ export const useDashboardStyles = makeStyles({
     minWidth: 0,
   },
   feedTitulo: {
-    fontSize: '13px',
+    fontSize: '14px',
+    lineHeight: '20px',
     fontWeight: 700,
     color: designTokens.colorNeutralDark,
   },
   feedMeta: {
-    fontSize: '11.5px',
+    fontSize: '12px',
+    lineHeight: '16px',
     color: designTokens.colorNeutralMedium,
-    fontWeight: 500,
+    fontWeight: 600,
     marginTop: '1px',
   },
   feedHora: {
-    fontSize: '11px',
+    fontSize: '12px',
+    lineHeight: '16px',
     color: designTokens.colorNeutralMedium,
     fontWeight: 600,
     flexShrink: 0,
@@ -178,7 +181,7 @@ export const useDashboardStyles = makeStyles({
     display: 'flex',
     alignItems: 'stretch',
     cursor: 'pointer',
-    borderRadius: '12px',
+    borderRadius: tokensUi.raio.lg,
     '& > *': { flexGrow: 1, flexShrink: 1, flexBasis: 'auto', minWidth: 0, width: '100%' },
     ':focus-visible': {
       outline: `2px solid ${designTokens.colorPrimary}`,

@@ -1,36 +1,31 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { makeStyles, mergeClasses, shorthands, tokens, Text } from '@fluentui/react-components';
+import { makeStyles, mergeClasses, tokens, Text } from '@fluentui/react-components';
 import { CalendarLtr20Regular } from '@fluentui/react-icons';
 import { api, SeveridadeAlerta, type Calendario } from '../../lib/api';
-import { usePageStyles } from '../../pages/pageStyles';
-import { designTokens } from '@ui';
+import { Card, designTokens, tokensUi } from '@ui';
+import { useDashboardStyles } from './dashboardStyles';
 
 const useStyles = makeStyles({
-  cartao: {
+  contentor: {
     width: '200px',
     flexShrink: 0,
-    cursor: 'pointer',
-    padding: '12px 14px',
-    ...shorthands.transition('box-shadow', '0.15s'),
-    ':hover': {
-      boxShadow: '0 4px 14px rgba(0, 0, 0, 0.1)',
-    },
   },
   cabecalho: {
     display: 'flex',
     alignItems: 'center',
     justifyContent: 'space-between',
-    marginBottom: '8px',
+    marginBottom: tokensUi.espaco.sm,
   },
   grade: {
     display: 'grid',
     gridTemplateColumns: 'repeat(7, 1fr)',
-    gap: '2px',
+    gap: tokensUi.espaco.xs,
   },
   cabecalhoDiaSemana: {
-    fontSize: '9px',
-    fontWeight: 600,
+    fontSize: '11px',
+    lineHeight: '14px',
+    fontWeight: 700,
     textAlign: 'center',
     color: tokens.colorNeutralForeground3,
   },
@@ -40,7 +35,8 @@ const useStyles = makeStyles({
     alignItems: 'center',
     justifyContent: 'center',
     height: '20px',
-    fontSize: '10px',
+    fontSize: '11px',
+    lineHeight: '14px',
     color: tokens.colorNeutralForeground3,
   },
   celulaDiaDoMes: {
@@ -52,14 +48,14 @@ const useStyles = makeStyles({
     justifyContent: 'center',
     width: '15px',
     height: '15px',
-    borderRadius: '999px',
+    borderRadius: tokensUi.raio.full,
     backgroundColor: designTokens.colorPrimary,
     color: designTokens.colorWhite,
   },
   bolinhaEvento: {
     width: '4px',
     height: '4px',
-    borderRadius: '999px',
+    borderRadius: tokensUi.raio.full,
     marginTop: '1px',
   },
 });
@@ -80,8 +76,8 @@ function inicioDaSemana(data: Date): Date {
 // Alertas), só que reduzida a uma grade mensal compacta sem navegação nem lista de eventos —
 // clicar no card leva para /calendario, onde o dia pode ser explorado em detalhe.
 export function MiniCalendarioCard() {
-  const estilosPagina = usePageStyles();
   const estilos = useStyles();
+  const dashEstilos = useDashboardStyles();
   const navigate = useNavigate();
 
   const [calendario, setCalendario] = useState<Calendario | null>(null);
@@ -152,43 +148,45 @@ export function MiniCalendarioCard() {
 
   return (
     <div
-      className={mergeClasses(estilosPagina.card, estilos.cartao)}
+      className={mergeClasses(dashEstilos.cardAcionavel, estilos.contentor)}
       onClick={() => navigate('/calendario')}
       role="button"
       tabIndex={0}
       onKeyDown={(e) => e.key === 'Enter' && navigate('/calendario')}
     >
-      <div className={estilos.cabecalho}>
-        <Text weight="semibold" size={200}>
-          {nomeMesAbreviado.charAt(0).toUpperCase() + nomeMesAbreviado.slice(1)}
-        </Text>
-        <CalendarLtr20Regular style={{ color: designTokens.colorPrimary }} />
-      </div>
-      <div className={estilos.grade}>
-        {['D', 'S', 'T', 'Q', 'Q', 'S', 'S'].map((letra, i) => (
-          <div key={i} className={estilos.cabecalhoDiaSemana}>
-            {letra}
-          </div>
-        ))}
-        {diasDaGrade.map((dia) => {
-          const chave = chaveDia(dia);
-          const doMesAtual = dia.getMonth() === mesAtual.getMonth();
-          const cor = corPorDia.get(chave);
-          return (
-            <div key={chave} className={mergeClasses(estilos.celulaDia, doMesAtual && estilos.celulaDiaDoMes)}>
-              {chave === hojeChave ? (
-                <span className={estilos.numeroDiaHoje}>{dia.getDate()}</span>
-              ) : (
-                dia.getDate()
-              )}
-              <span
-                className={estilos.bolinhaEvento}
-                style={{ backgroundColor: cor ?? 'transparent' }}
-              />
+      <Card densidade="compacta">
+        <div className={estilos.cabecalho}>
+          <Text weight="semibold" size={200}>
+            {nomeMesAbreviado.charAt(0).toUpperCase() + nomeMesAbreviado.slice(1)}
+          </Text>
+          <CalendarLtr20Regular style={{ color: designTokens.colorPrimary }} />
+        </div>
+        <div className={estilos.grade}>
+          {['D', 'S', 'T', 'Q', 'Q', 'S', 'S'].map((letra, i) => (
+            <div key={i} className={estilos.cabecalhoDiaSemana}>
+              {letra}
             </div>
-          );
-        })}
-      </div>
+          ))}
+          {diasDaGrade.map((dia) => {
+            const chave = chaveDia(dia);
+            const doMesAtual = dia.getMonth() === mesAtual.getMonth();
+            const cor = corPorDia.get(chave);
+            return (
+              <div key={chave} className={mergeClasses(estilos.celulaDia, doMesAtual && estilos.celulaDiaDoMes)}>
+                {chave === hojeChave ? (
+                  <span className={estilos.numeroDiaHoje}>{dia.getDate()}</span>
+                ) : (
+                  dia.getDate()
+                )}
+                <span
+                  className={estilos.bolinhaEvento}
+                  style={{ backgroundColor: cor ?? 'transparent' }}
+                />
+              </div>
+            );
+          })}
+        </div>
+      </Card>
     </div>
   );
 }

@@ -1,21 +1,20 @@
 import { useEffect, useMemo, useState } from 'react';
 import { motion } from 'framer-motion';
-import { Badge, Input, Text, makeStyles } from '@fluentui/react-components';
+import { Input, Text, makeStyles, mergeClasses } from '@fluentui/react-components';
 import type { Acidente, RegistroHhtMensal } from '../../lib/api';
-import { useDashboardStyles } from './dashboardStyles';
-import { SstTooltip, designTokens, tokensUi, escalonado } from '@ui';
+import { SstTooltip, StatusChip, designTokens, tokensUi, useTipografia, escalonado } from '@ui';
 
 // Mesma casca visual do KpiCard (@ui): este card vive na grade de indicadores do Dashboard e
-// precisa ler como irmão dos outros seis — antes usava o card de página (raio 16, padding 24/28)
-// e destoava (13/09). Copia o root ATUAL do KpiCard (sem borda colorida no topo, que é uma mudança
-// de design separada, ainda não commitada) para não introduzir uma inconsistência nova.
+// precisa ler como irmão dos outros seis — mesmo padding (lg) e mesma borda de topo vinho, senão o
+// 7º card da fileira destoa dos outros 6 (achado ao revisar o polimento visual do Dashboard, 19/09).
 const useStyles = makeStyles({
   root: {
     backgroundColor: designTokens.colorSurface,
     border: `1px solid ${designTokens.colorCardBorder}`,
+    borderTop: `3px solid ${designTokens.colorPrimary}`,
     borderRadius: tokensUi.raio.lg,
     boxShadow: designTokens.cardShadow,
-    padding: tokensUi.espaco.xl,
+    padding: tokensUi.espaco.lg,
     width: '100%',
     minHeight: '100%',
     display: 'flex',
@@ -24,6 +23,7 @@ const useStyles = makeStyles({
     gap: '6px',
     boxSizing: 'border-box',
   },
+  rotulo: { color: designTokens.colorNeutralMedium },
 });
 
 const CHAVE_META_LOCALSTORAGE = 'sst.tg.metaTaxaGravidade';
@@ -41,7 +41,7 @@ interface TaxaGravidadeCardProps {
 // localStorage, definida pelo próprio usuário no card (decisão de 2026-08-26).
 export function TaxaGravidadeCard({ acidentes, registrosHht, indice = 0 }: TaxaGravidadeCardProps) {
   const casca = useStyles();
-  const estilos = useDashboardStyles();
+  const tipo = useTipografia();
   const [meta, setMeta] = useState<number | null>(null);
   const [editandoMeta, setEditandoMeta] = useState(false);
   const [rascunhoMeta, setRascunhoMeta] = useState('');
@@ -93,10 +93,10 @@ export function TaxaGravidadeCard({ acidentes, registrosHht, indice = 0 }: TaxaG
         relacao="description"
       >
         <div>
-          <div className={estilos.kpiValor} style={{ color: designTokens.colorPrimary }}>
+          <div className={tipo.display} style={{ color: designTokens.colorPrimary }}>
             {taxaGravidade !== null ? taxaGravidade.toFixed(2) : '—'}
           </div>
-          <div className={estilos.kpiRotulo}>Taxa de Gravidade (NBR 14280)</div>
+          <div className={mergeClasses(tipo.legenda, casca.rotulo)}>Taxa de Gravidade (NBR 14280)</div>
         </div>
       </SstTooltip>
 
@@ -137,12 +137,8 @@ export function TaxaGravidadeCard({ acidentes, registrosHht, indice = 0 }: TaxaG
 function renderBadgeMeta(dentroDaMeta: boolean | null) {
   if (dentroDaMeta === null) return null;
   return dentroDaMeta ? (
-    <Badge appearance="filled" color="success">
-      Dentro da meta
-    </Badge>
+    <StatusChip tom="ok">Dentro da meta</StatusChip>
   ) : (
-    <Badge appearance="filled" color="danger">
-      Acima da meta
-    </Badge>
+    <StatusChip tom="alerta">Acima da meta</StatusChip>
   );
 }
