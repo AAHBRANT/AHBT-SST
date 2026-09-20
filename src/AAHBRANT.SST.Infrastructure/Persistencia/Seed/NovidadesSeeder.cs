@@ -154,6 +154,23 @@ public static class NovidadesSeeder
                     "O Dashboard só mostrava os números do mês atual, sem opção de ver outros períodos.",
                     "Uma nova barra de período permite alternar entre Última semana, Último mês, Último ano ou Tudo (selecionado por padrão), além do filtro por obra."),
             }),
+        new(
+            Versao: "5.14.0",
+            Titulo: "Suporte IA: chamados clicáveis e fluxo de aprovação",
+            DataPublicacao: new DateTime(2026, 9, 20, 0, 0, 0, DateTimeKind.Utc),
+            Itens: new[]
+            {
+                new NovidadeSeedItem(
+                    CategoriaNovidade.Novidade,
+                    "Agora é possível abrir o detalhe de um chamado do Suporte IA",
+                    "Os chamados listados em \"Fila recente\" só podiam ser vistos por cima; não havia como abrir um chamado específico.",
+                    "Clique em qualquer chamado (na fila recente ou na fila do responsável) para abrir a ficha completa, com a esteira de etapas e as ações disponíveis."),
+                new NovidadeSeedItem(
+                    CategoriaNovidade.Novidade,
+                    "Etapas 3 (Aprovação e execução) e 4 (Validação do solicitante) agora funcionam",
+                    "A esteira do Suporte IA mostrava 4 etapas, mas só as duas primeiras aconteciam de fato — não havia como aprovar, concluir ou validar um chamado.",
+                    "Quem administra o Suporte IA pode aprovar um chamado encaminhado, executá-lo e concluir a execução; quem abriu o chamado confirma se a orientação ou correção resolveu, ou reabre o chamado para nova análise."),
+            }),
     };
 
     public static async Task ExecutarAsync(IServiceProvider services, CancellationToken ct = default)

@@ -18,9 +18,14 @@ public class SuporteIaConfiguracao : IEntityTypeConfiguration<SuporteIaSolicitac
         builder.Property(s => s.DemandaReduzida).HasMaxLength(4000).IsRequired();
         builder.Property(s => s.SolucaoProposta).HasMaxLength(4000).IsRequired();
         builder.Property(s => s.EvidenciasTecnicas).HasMaxLength(4000);
+        builder.Property(s => s.ResponsavelNome).HasMaxLength(160);
+        builder.Property(s => s.NotaFechamento).HasMaxLength(4000);
+        builder.Property(s => s.ComentarioValidacao).HasMaxLength(4000);
 
         builder.HasOne(s => s.SolicitanteUsuario).WithMany()
             .HasForeignKey(s => s.SolicitanteUsuarioId).OnDelete(DeleteBehavior.Restrict);
+        builder.HasOne(s => s.ResponsavelUsuario).WithMany()
+            .HasForeignKey(s => s.ResponsavelUsuarioId).OnDelete(DeleteBehavior.Restrict);
         builder.HasOne(s => s.Alerta).WithMany()
             .HasForeignKey(s => s.AlertaId).OnDelete(DeleteBehavior.SetNull);
 

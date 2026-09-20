@@ -1,10 +1,12 @@
 import { useEffect, useMemo, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Input, Textarea, makeStyles, tokens } from '@fluentui/react-components';
 import { Send24Regular } from '@fluentui/react-icons';
 import {
   api,
   ResultadoTriagemSuporteIa,
   SeveridadeSolicitacaoSuporteIa,
+  StatusSolicitacaoSuporteIa,
   TipoSolicitacaoSuporteIa,
   resultadoTriagemSuporteIaLabel,
   severidadeSolicitacaoSuporteIaLabel,
@@ -13,6 +15,15 @@ import {
   type SuporteIaSolicitacao,
 } from '../../lib/api';
 import { Button, FeedbackInline, Legenda, StatusChip } from '@ui';
+import { EsteiraSuporteIa } from './EsteiraSuporteIa';
+import { etapaAtivaPorStatus } from './statusEtapaSuporteIa';
+
+const STATUS_PENDENTES_RESPONSAVEL: number[] = [
+  StatusSolicitacaoSuporteIa.Encaminhada,
+  StatusSolicitacaoSuporteIa.EmAnaliseTecnica,
+  StatusSolicitacaoSuporteIa.Reaberta,
+  StatusSolicitacaoSuporteIa.AguardandoValidacao,
+];
 
 const useStyles = makeStyles({
   cockpit: {
@@ -206,53 +217,6 @@ const useStyles = makeStyles({
     background: '#1B6B55',
     boxShadow: '0 0 0 4px rgba(27, 107, 85, 0.14)',
   },
-  governanca: {
-    display: 'grid',
-    gridTemplateColumns: 'repeat(4, minmax(180px, 1fr))',
-    gap: '12px',
-    '@media (max-width: 980px)': {
-      gridTemplateColumns: 'repeat(2, minmax(180px, 1fr))',
-    },
-    '@media (max-width: 620px)': {
-      gridTemplateColumns: '1fr',
-    },
-  },
-  etapa: {
-    border: `1px solid ${tokens.colorNeutralStroke2}`,
-    borderRadius: '8px',
-    padding: '14px',
-    background: tokens.colorNeutralBackground1,
-    display: 'grid',
-    gap: '8px',
-    minHeight: '132px',
-  },
-  etapaAtiva: {
-    border: '1px solid #1B6B55',
-    boxShadow: 'inset 3px 0 0 #1B6B55',
-  },
-  etapaNumero: {
-    width: '24px',
-    height: '24px',
-    borderRadius: '50%',
-    display: 'grid',
-    placeItems: 'center',
-    background: '#E5F1EC',
-    color: '#10483B',
-    fontSize: '12px',
-    fontWeight: 800,
-  },
-  etapaTitulo: {
-    margin: 0,
-    fontSize: '13px',
-    fontWeight: 800,
-    color: tokens.colorNeutralForeground1,
-  },
-  etapaTexto: {
-    margin: 0,
-    fontSize: '12px',
-    lineHeight: '18px',
-    color: tokens.colorNeutralForeground2,
-  },
   historicoPainel: {
     border: `1px solid ${tokens.colorNeutralStroke2}`,
     borderRadius: '8px',
@@ -284,6 +248,17 @@ const useStyles = makeStyles({
     padding: '14px 16px',
     borderTop: `1px solid ${tokens.colorNeutralStroke2}`,
     alignItems: 'center',
+    cursor: 'pointer',
+    background: 'none',
+    border: 0,
+    borderTopWidth: '1px',
+    width: '100%',
+    textAlign: 'left',
+    font: 'inherit',
+    color: 'inherit',
+    ':hover': {
+      backgroundColor: tokens.colorNeutralBackground2,
+    },
     ':first-child': {
       borderTop: 0,
     },
@@ -320,14 +295,9 @@ function formatarData(valor: string) {
   });
 }
 
-function indiceEtapaAtual(resultado: SuporteIaSolicitacao | null) {
-  if (!resultado) return 0;
-  if (resultado.requerAlteracaoCodigo) return 2;
-  return 1;
-}
-
 export function SuporteIaTab() {
   const estilos = useStyles();
+  const navigate = useNavigate();
   const [tipo, setTipo] = useState<number>(TipoSolicitacaoSuporteIa.Duvida);
   const [severidade, setSeveridade] = useState<number>(SeveridadeSolicitacaoSuporteIa.Media);
   const [titulo, setTitulo] = useState('');
@@ -337,7 +307,8 @@ export function SuporteIaTab() {
   const [erro, setErro] = useState<string | null>(null);
   const [resultado, setResultado] = useState<SuporteIaSolicitacao | null>(null);
   const [historico, setHistorico] = useState<SuporteIaSolicitacao[]>([]);
-  const etapaAtual = indiceEtapaAtual(resultado);
+  const [filaResponsavel, setFilaResponsavel] = useState<SuporteIaSolicitacao[] | null>(null);
+  const etapaAtual = resultado ? etapaAtivaPorStatus(resultado.status) : 0;
 
   const pedidoPreview = useMemo(
     () => ({
@@ -360,8 +331,19 @@ export function SuporteIaTab() {
     }
   }
 
+  async function carregarFilaResponsavel() {
+    try {
+      const dados = await api.suporteIa.listarTodos();
+      setFilaResponsavel(dados.filter((item) => STATUS_PENDENTES_RESPONSAVEL.includes(item.status)));
+    } catch {
+      // suporte-ia:administrar negado (usuário sem essa permissão) — a seção do responsável some.
+      setFilaResponsavel(null);
+    }
+  }
+
   useEffect(() => {
     carregarHistorico();
+    carregarFilaResponsavel();
   }, []);
 
   async function enviar() {
@@ -379,7 +361,7 @@ export function SuporteIaTab() {
       setResultado(resposta);
       setTitulo('');
       setDescricao('');
-      await carregarHistorico();
+      await Promise.all([carregarHistorico(), carregarFilaResponsavel()]);
     } catch (e) {
       setErro(e instanceof Error ? e.message : 'Falha ao enviar a solicitação ao suporte IA.');
     } finally {
@@ -567,36 +549,7 @@ export function SuporteIaTab() {
         </section>
       </div>
 
-      <section className={estilos.governanca} aria-label="Esteira governada do suporte com IA">
-        <div className={`${estilos.etapa} ${etapaAtual === 0 ? estilos.etapaAtiva : ''}`}>
-          <span className={estilos.etapaNumero}>1</span>
-          <h3 className={estilos.etapaTitulo}>Abertura do chamado</h3>
-          <p className={estilos.etapaTexto}>
-            O pedido do usuário vira um registro estruturado, com módulo, severidade, descrição e contexto da tela.
-          </p>
-        </div>
-        <div className={`${estilos.etapa} ${etapaAtual === 1 ? estilos.etapaAtiva : ''}`}>
-          <span className={estilos.etapaNumero}>2</span>
-          <h3 className={estilos.etapaTitulo}>Triagem assistida</h3>
-          <p className={estilos.etapaTexto}>
-            A IA responde dúvidas operacionais e mantém rastreável o diagnóstico usado para classificar o chamado.
-          </p>
-        </div>
-        <div className={`${estilos.etapa} ${etapaAtual === 2 ? estilos.etapaAtiva : ''}`}>
-          <span className={estilos.etapaNumero}>3</span>
-          <h3 className={estilos.etapaTitulo}>Aprovação e execução</h3>
-          <p className={estilos.etapaTexto}>
-            Bugs, melhorias e novas funcionalidades entram como demanda técnica antes de qualquer alteração real.
-          </p>
-        </div>
-        <div className={estilos.etapa}>
-          <span className={estilos.etapaNumero}>4</span>
-          <h3 className={estilos.etapaTitulo}>Validação do solicitante</h3>
-          <p className={estilos.etapaTexto}>
-            O fechamento deve voltar ao usuário para confirmar se a orientação ou correção resolveu o problema.
-          </p>
-        </div>
-      </section>
+      <EsteiraSuporteIa etapaAtiva={etapaAtual} />
 
       <section className={estilos.historicoPainel}>
         <div className={estilos.historicoCabecalho}>
@@ -613,7 +566,12 @@ export function SuporteIaTab() {
             </div>
           )}
           {historico.slice(0, 8).map((item) => (
-            <div className={estilos.itemHistorico} key={item.id}>
+            <button
+              type="button"
+              className={estilos.itemHistorico}
+              key={item.id}
+              onClick={() => navigate(`/suporte-ia/${item.id}`)}
+            >
               <div className={estilos.itemTitulo}>
                 <span className={estilos.forte}>{item.titulo}</span>
                 <span className={estilos.data}>
@@ -627,10 +585,52 @@ export function SuporteIaTab() {
                 <StatusChip tom="neutro">{tipoSolicitacaoSuporteIaLabel[item.tipo]}</StatusChip>
               </div>
               <StatusChip tom="neutro">{statusSolicitacaoSuporteIaLabel[item.status]}</StatusChip>
-            </div>
+            </button>
           ))}
         </div>
       </section>
+
+      {filaResponsavel && (
+        <section className={estilos.historicoPainel}>
+          <div className={estilos.historicoCabecalho}>
+            <div>
+              <p className={estilos.eyebrow}>Fila do responsável</p>
+              <h2 className={estilos.historicoTitulo}>Chamados aguardando aprovação, execução ou validação</h2>
+            </div>
+            <StatusChip tom="neutro">{filaResponsavel.length} pendentes</StatusChip>
+          </div>
+          <div className={estilos.historico}>
+            {filaResponsavel.length === 0 && (
+              <div className={estilos.corpo}>
+                <Legenda>Nenhum chamado pendente de tratativa no momento.</Legenda>
+              </div>
+            )}
+            {filaResponsavel.slice(0, 20).map((item) => (
+              <button
+                type="button"
+                className={estilos.itemHistorico}
+                key={item.id}
+                onClick={() => navigate(`/suporte-ia/${item.id}`)}
+              >
+                <div className={estilos.itemTitulo}>
+                  <span className={estilos.forte}>{item.titulo}</span>
+                  <span className={estilos.data}>
+                    {item.solicitanteNome || item.solicitanteEmail || 'Solicitante não identificado'} ·{' '}
+                    {formatarData(item.createdAtUtc)}
+                  </span>
+                </div>
+                <div className={estilos.meta}>
+                  <StatusChip tom="neutro">{tipoSolicitacaoSuporteIaLabel[item.tipo]}</StatusChip>
+                  <StatusChip tom={item.severidadeInformada >= SeveridadeSolicitacaoSuporteIa.Alta ? 'alerta' : 'atencao'}>
+                    {severidadeSolicitacaoSuporteIaLabel[item.severidadeInformada]}
+                  </StatusChip>
+                </div>
+                <StatusChip tom="neutro">{statusSolicitacaoSuporteIaLabel[item.status]}</StatusChip>
+              </button>
+            ))}
+          </div>
+        </section>
+      )}
     </div>
   );
 }

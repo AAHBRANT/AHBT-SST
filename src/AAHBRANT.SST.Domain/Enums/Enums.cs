@@ -203,7 +203,12 @@ public enum StatusSolicitacaoSuporteIa
     Encaminhada = 3,
     EmAnaliseTecnica = 4,
     Resolvida = 5,
-    Cancelada = 6
+    Cancelada = 6,
+    // Adicionados em 20/09 para fechar as etapas 3 e 4 da esteira (aprovação/execução e validação
+    // do solicitante), que só existiam como desenho visual sem transição de status real. Valores
+    // novos no final para não renumerar os já persistidos.
+    AguardandoValidacao = 7,
+    Reaberta = 8
 }
 
 // Integração do Motor de Alertas com o Calendário do Teams (docs/superpowers/specs/

@@ -24,6 +24,22 @@ public class SuporteIaSolicitacaoDto
     public DateTime CreatedAtUtc { get; set; }
     public DateTime TriadoEmUtc { get; set; }
     public DateTime? EncaminhadoEmUtc { get; set; }
+
+    public Guid? ResponsavelUsuarioId { get; set; }
+    public string? ResponsavelNome { get; set; }
+    public DateTime? AprovadoEmUtc { get; set; }
+
+    public string? NotaFechamento { get; set; }
+    public DateTime? ConcluidoEmUtc { get; set; }
+
+    public bool? ValidacaoConfirmada { get; set; }
+    public string? ComentarioValidacao { get; set; }
+    public DateTime? ValidadoEmUtc { get; set; }
+
+    // Calculado pelo controller a partir de quem está autenticado — decide no front se as ações de
+    // validação (etapa 4) aparecem para esta pessoa, sem repetir a lógica de identidade do
+    // solicitante no cliente.
+    public bool SouSolicitante { get; set; }
 }
 
 public record TriagemSuporteIaResultado(

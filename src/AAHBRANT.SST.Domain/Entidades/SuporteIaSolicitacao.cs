@@ -31,4 +31,18 @@ public class SuporteIaSolicitacao : AuditableEntity
 
     public Guid? AlertaId { get; set; }
     public Alerta? Alerta { get; set; }
+
+    // Etapa 3 (Aprovação e execução) e 4 (Validação do solicitante) da esteira — adicionados em
+    // 20/09 junto com os comandos de transição (ver Application/SuporteIa/Commands).
+    public Guid? ResponsavelUsuarioId { get; set; }
+    public Usuario? ResponsavelUsuario { get; set; }
+    public string? ResponsavelNome { get; set; }
+    public DateTime? AprovadoEmUtc { get; set; }
+
+    public string? NotaFechamento { get; set; }
+    public DateTime? ConcluidoEmUtc { get; set; }
+
+    public bool? ValidacaoConfirmada { get; set; }
+    public string? ComentarioValidacao { get; set; }
+    public DateTime? ValidadoEmUtc { get; set; }
 }

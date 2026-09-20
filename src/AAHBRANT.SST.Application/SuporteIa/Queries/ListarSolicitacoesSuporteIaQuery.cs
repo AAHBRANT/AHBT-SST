@@ -31,7 +31,7 @@ public class ListarSolicitacoesSuporteIaQueryHandler : IRequestHandler<ListarSol
                 (!string.IsNullOrWhiteSpace(email) && s.SolicitanteEmail == email));
         }
 
-        return await query
+        var itens = await query
             .OrderByDescending(s => s.CreatedAtUtc)
             .Take(100)
             .Select(s => new SuporteIaSolicitacaoDto
@@ -55,8 +55,34 @@ public class ListarSolicitacoesSuporteIaQueryHandler : IRequestHandler<ListarSol
                 EvidenciasTecnicas = s.EvidenciasTecnicas,
                 CreatedAtUtc = s.CreatedAtUtc,
                 TriadoEmUtc = s.TriadoEmUtc,
-                EncaminhadoEmUtc = s.EncaminhadoEmUtc
+                EncaminhadoEmUtc = s.EncaminhadoEmUtc,
+                ResponsavelUsuarioId = s.ResponsavelUsuarioId,
+                ResponsavelNome = s.ResponsavelNome,
+                AprovadoEmUtc = s.AprovadoEmUtc,
+                NotaFechamento = s.NotaFechamento,
+                ConcluidoEmUtc = s.ConcluidoEmUtc,
+                ValidacaoConfirmada = s.ValidacaoConfirmada,
+                ComentarioValidacao = s.ComentarioValidacao,
+                ValidadoEmUtc = s.ValidadoEmUtc
             })
             .ToListAsync(ct);
+
+        foreach (var item in itens)
+        {
+            item.SouSolicitante = EhOSolicitante(item, request.SolicitanteUsuarioId, email);
+        }
+
+        return itens;
+    }
+
+    internal static bool EhOSolicitante(SuporteIaSolicitacaoDto item, Guid? solicitanteUsuarioId, string? solicitanteEmail)
+    {
+        if (solicitanteUsuarioId.HasValue && item.SolicitanteUsuarioId.HasValue)
+            return item.SolicitanteUsuarioId == solicitanteUsuarioId;
+
+        if (!string.IsNullOrWhiteSpace(solicitanteEmail) && !string.IsNullOrWhiteSpace(item.SolicitanteEmail))
+            return string.Equals(item.SolicitanteEmail, solicitanteEmail, StringComparison.OrdinalIgnoreCase);
+
+        return false;
     }
 }
