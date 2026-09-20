@@ -1,4 +1,11 @@
 import { Abas, useAbaNaUrl } from '@ui';
+import {
+  ClipboardTaskListLtr24Regular,
+  DocumentCheckmark24Regular,
+  DocumentText24Regular,
+  HeartPulse24Regular,
+  ShieldCheckmark24Regular,
+} from '@fluentui/react-icons';
 import { PgrRiscosPage } from '../pgr/PgrRiscosPage';
 import { SaudeOcupacionalPage } from '../saude-ocupacional/SaudeOcupacionalPage';
 import { TreinamentosPage } from '../treinamentos/TreinamentosPage';
@@ -30,11 +37,11 @@ export function GestaoSstPage() {
         aoMudar={setSecao}
         aria-label="Seções de Gestão de SST"
         abas={[
-          { valor: 'pgr', rotulo: 'PGR / GRO' },
-          { valor: 'pcmso', rotulo: 'PCMSO' },
-          { valor: 'treinamentos', rotulo: 'Treinamentos' },
-          { valor: 'documentos', rotulo: 'Documentos & Procedimentos' },
-          { valor: 'requisitos-legais', rotulo: 'Requisitos Legais' },
+          { valor: 'pgr', rotulo: 'PGR / GRO', icone: <ShieldCheckmark24Regular /> },
+          { valor: 'pcmso', rotulo: 'PCMSO', icone: <HeartPulse24Regular /> },
+          { valor: 'treinamentos', rotulo: 'Treinamentos', icone: <ClipboardTaskListLtr24Regular /> },
+          { valor: 'documentos', rotulo: 'Documentos & Procedimentos', icone: <DocumentText24Regular /> },
+          { valor: 'requisitos-legais', rotulo: 'Requisitos Legais', icone: <DocumentCheckmark24Regular /> },
         ]}
       />
 

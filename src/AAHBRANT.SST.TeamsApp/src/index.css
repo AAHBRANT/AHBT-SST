@@ -1,3 +1,5 @@
+@import url('https://fonts.googleapis.com/css2?family=Anta&family=Roboto:wght@400;500;600;700&display=swap');
+
 * {
   box-sizing: border-box;
 }
@@ -24,76 +26,76 @@ body,
 
 :root,
 [data-theme='light'] {
-  /* Vinho da marca por tema: #670000 sobre superfície escura reprova contraste (faixa/texto da aba
-     pilar), então o escuro usa os passos 110/120 da rampa da marca (theme.ts). */
-  --sst-color-primary: #670000;
-  --sst-color-secondary: #7a0101;
-  --sst-color-neutral-dark: #20201d;
-  --sst-color-neutral-medium: #636159;
-  --sst-color-neutral-light: #f1efe8;
-  --sst-color-rail-background: #183f36;
-  --sst-color-rail-border: #27594d;
-  --sst-color-rail-ink: #dbe8df;
-  --sst-color-rail-ink-muted: #a6beb3;
-  --sst-color-rail-active-background: #d6e6dc;
-  --sst-color-rail-active-ink: #183f36;
-  --sst-color-admin-button-background: #670000;
+  --sst-color-primary: #96110d;
+  --sst-color-secondary: #b01814;
+  --sst-color-neutral-dark: #09090b;
+  --sst-color-neutral-medium: #6f7280;
+  --sst-color-neutral-light: #f4f4f8;
+  --sst-color-rail-background: #ffffff;
+  --sst-color-rail-border: #e2e0ef;
+  --sst-color-rail-ink: #0b0b0f;
+  --sst-color-rail-ink-muted: #0b0b0f;
+  --sst-color-rail-active-background: #16a34a;
+  --sst-color-rail-active-ink: #ffffff;
+  --sst-color-admin-button-background: #96110d;
   --sst-color-admin-button-ink: #ffffff;
-  --sst-color-admin-button-background-hover: #7a0101;
-  --sst-color-card-border: #ddd9cc;
-  --sst-card-shadow: 0 1px 2px rgba(35, 31, 27, 0.06);
+  --sst-color-admin-button-background-hover: #7a0d0a;
+  --sst-color-card-border: #dedbea;
+  --sst-card-shadow: none;
   --sst-color-success-wash: #eaf7ee;
   --sst-color-warning-wash: #fdf3e3;
   --sst-color-alert-wash: #fceaea;
   --sst-color-info-wash: #eaf1fe;
-  --sst-color-surface: #fffdf8;
-  --sst-color-page-background: #ebe7dc;
+  --sst-color-surface: #ffffff;
+  --sst-color-page-background: #eeeeff;
+  --sst-grid-line: #d9d9ed;
 
   /* Famílias novas (spec 2026-09-07 §1.1). Convivem com --sst-color-rail-* até a Onda 3. */
-  --sst-chrome-fundo: #183f36;
-  --sst-chrome-borda: #27594d;
-  --sst-chrome-tinta: #dbe8df;
-  --sst-chrome-ativo-fundo: #d6e6dc;
-  --sst-chrome-ativo-tinta: #183f36;
+  --sst-chrome-fundo: #ffffff;
+  --sst-chrome-borda: #e2e0ef;
+  --sst-chrome-tinta: #0b0b0f;
+  --sst-chrome-ativo-fundo: #96110d;
+  --sst-chrome-ativo-tinta: #ffffff;
   --sst-status-ok-tinta: #16a34a;      --sst-status-ok-fundo: #eaf7ee;
   --sst-status-atencao-tinta: #d97706; --sst-status-atencao-fundo: #fdf3e3;
   --sst-status-alerta-tinta: #dc2626;  --sst-status-alerta-fundo: #fceaea;
   --sst-status-info-tinta: #2563eb;    --sst-status-info-fundo: #eaf1fe;
   --sst-status-neutro-tinta: #6d6d6d;  --sst-status-neutro-fundo: #f0f0f2;
-  --sst-border-soft: #e3dfd2;
+  --sst-border-soft: #dedbea;
   --sst-row-shadow: none;
-  --sst-row-shadow-hover: inset 3px 0 0 #670000;
+  --sst-row-shadow-hover: inset 3px 0 0 #96110d;
 }
 
 [data-theme='dark'] {
-  --sst-color-primary: #b03838;
-  --sst-color-secondary: #c24a4a;
-  --sst-color-neutral-dark: #f3f4f6;
-  --sst-color-neutral-medium: #9ca3af;
-  --sst-color-neutral-light: #26332f;
-  --sst-color-rail-background: #10241f;
-  --sst-color-rail-border: #244139;
-  --sst-color-rail-ink: #d2ded7;
-  --sst-color-rail-ink-muted: #8ea49a;
-  --sst-color-rail-active-background: #d6e6dc;
-  --sst-color-rail-active-ink: #10241f;
-  --sst-color-admin-button-background: #b03838;
+  --sst-color-primary: #f06f6b;
+  --sst-color-secondary: #ff8c87;
+  --sst-color-neutral-dark: #f8fafc;
+  --sst-color-neutral-medium: #b7bdca;
+  --sst-color-neutral-light: #202333;
+  --sst-color-rail-background: #10121a;
+  --sst-color-rail-border: #282b3a;
+  --sst-color-rail-ink: #f8fafc;
+  --sst-color-rail-ink-muted: #d5d8e2;
+  --sst-color-rail-active-background: #16a34a;
+  --sst-color-rail-active-ink: #ffffff;
+  --sst-color-admin-button-background: #96110d;
   --sst-color-admin-button-ink: #ffffff;
-  --sst-color-admin-button-background-hover: #c24a4a;
-  --sst-color-card-border: #34423d;
-  --sst-card-shadow: 0 1px 2px rgba(0, 0, 0, 0.28);
+  --sst-color-admin-button-background-hover: #b01814;
+  --sst-color-card-border: #303447;
+  --sst-card-shadow: none;
   --sst-color-success-wash: rgba(22, 163, 74, 0.16);
   --sst-color-warning-wash: rgba(245, 158, 11, 0.16);
   --sst-color-alert-wash: rgba(239, 68, 68, 0.16);
   --sst-color-info-wash: rgba(59, 130, 246, 0.16);
-  --sst-color-surface: #182620;
-  --sst-color-page-background: #0d1714;
+  --sst-color-surface: #151824;
+  --sst-color-page-background: #0f1220;
+  --sst-grid-line: #25293b;
 
-  --sst-chrome-fundo: #10241f;
-  --sst-chrome-borda: #244139;
-  --sst-chrome-tinta: #d2ded7;
-  --sst-chrome-ativo-fundo: #d6e6dc;
-  --sst-chrome-ativo-tinta: #10241f;
+  --sst-chrome-fundo: #10121a;
+  --sst-chrome-borda: #282b3a;
+  --sst-chrome-tinta: #f8fafc;
+  --sst-chrome-ativo-fundo: #96110d;
+  --sst-chrome-ativo-tinta: #ffffff;
   --sst-status-ok-tinta: #16a34a;      --sst-status-ok-fundo: rgba(22, 163, 74, 0.16);
   --sst-status-atencao-tinta: #f59e0b; --sst-status-atencao-fundo: rgba(245, 158, 11, 0.16);
   --sst-status-alerta-tinta: #ef4444;  --sst-status-alerta-fundo: rgba(239, 68, 68, 0.16);
@@ -105,7 +107,7 @@ body,
 }
 
 body {
-  font-family: 'Montserrat', -apple-system, BlinkMacSystemFont, sans-serif;
+  font-family: 'Roboto', -apple-system, BlinkMacSystemFont, sans-serif;
   color: var(--sst-color-neutral-dark);
   background-color: var(--sst-color-page-background);
   -webkit-font-smoothing: antialiased;
@@ -113,9 +115,12 @@ body {
 
 h1,
 h2,
-h3,
+h3 {
+  font-family: 'Roboto', sans-serif;
+}
+
 .brand-title {
-  font-family: 'Montserrat', sans-serif;
+  font-family: 'Anta', 'Roboto', sans-serif;
 }
 
 /* Lista em cartões (pedido do usuário, 03/09, réplica de mockup): cada linha de QUALQUER tabela do

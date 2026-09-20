@@ -2,6 +2,59 @@ import { makeStyles, tokens } from '@fluentui/react-components';
 import { designTokens, tokensUi } from '@ui';
 
 export const useDashboardStyles = makeStyles({
+  barraFiltrosDashboard: {
+    display: 'flex',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    gap: '16px',
+    marginBottom: '16px',
+    padding: '10px 14px',
+    backgroundColor: designTokens.colorSurface,
+    border: `1px solid ${designTokens.colorCardBorder}`,
+    borderRadius: '14px',
+    boxShadow: '0 8px 20px rgba(15, 23, 42, 0.04)',
+    '@media (max-width: 900px)': {
+      alignItems: 'stretch',
+      flexDirection: 'column',
+    },
+  },
+  grupoPeriodos: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: '6px',
+    flexWrap: 'wrap',
+  },
+  botaoPeriodo: {
+    minWidth: 'auto',
+    height: '32px',
+    borderRadius: '8px',
+    fontWeight: 700,
+    color: designTokens.colorNeutralMedium,
+  },
+  botaoPeriodoAtivo: {
+    color: '#16a34a',
+    backgroundColor: 'color-mix(in srgb, #16a34a 10%, transparent)',
+    '& .fui-Button__content': {
+      color: '#16a34a',
+      fontWeight: 800,
+    },
+    ':hover': {
+      color: '#16a34a',
+      backgroundColor: 'color-mix(in srgb, #16a34a 14%, transparent)',
+    },
+  },
+  filtroObra: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: '8px',
+    maxWidth: '360px',
+    width: '100%',
+    justifyContent: 'flex-end',
+    '@media (max-width: 900px)': {
+      justifyContent: 'flex-start',
+      maxWidth: 'none',
+    },
+  },
   filtros: {
     display: 'grid',
     gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',

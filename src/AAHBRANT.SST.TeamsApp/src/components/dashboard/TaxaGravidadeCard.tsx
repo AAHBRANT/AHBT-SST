@@ -14,7 +14,7 @@ const useStyles = makeStyles({
     borderTop: `3px solid ${designTokens.colorPrimary}`,
     borderRadius: tokensUi.raio.lg,
     boxShadow: designTokens.cardShadow,
-    padding: tokensUi.espaco.lg,
+    padding: '20px 16px',
     width: '100%',
     minHeight: '100%',
     display: 'flex',

@@ -127,6 +127,33 @@ public static class NovidadesSeeder
                     "O card de Taxa de Gravidade destoava dos outros 6 indicadores (sem a faixa vinho no topo, padding diferente) e o selo de meta usava um estilo genérico, fora do padrão do resto do sistema.",
                     "Os 7 indicadores do topo agora têm o mesmo acabamento, e o selo de meta usa o mesmo padrão visual de status do resto do app."),
             }),
+        new(
+            Versao: "5.13.0",
+            Titulo: "Sistema com novo visual (redesign completo)",
+            DataPublicacao: new DateTime(2026, 9, 20, 0, 0, 0, DateTimeKind.Utc),
+            Itens: new[]
+            {
+                new NovidadeSeedItem(
+                    CategoriaNovidade.Melhoria,
+                    "Novo cabeçalho, mais compacto e com busca rápida",
+                    "A marca do sistema ficava no menu lateral e não havia como buscar direto por um cadastro, aba ou seção sem navegar até ela.",
+                    "O cabeçalho agora reúne a marca, uma busca rápida (digite e aperte Enter para ir direto a APR, PT, PGR, treinamentos, ocorrências, pendências etc.), o botão \"Criar\" com os atalhos mais usados e o status de sincronização."),
+                new NovidadeSeedItem(
+                    CategoriaNovidade.Melhoria,
+                    "Menu lateral com novo destaque para a seção ativa",
+                    "A seção do menu lateral em que você estava não se destacava claramente das demais.",
+                    "A seção ativa do menu agora aparece em uma pastilha verde com texto branco, clara no modo claro e escura no modo escuro, sempre com o mesmo destaque verde."),
+                new NovidadeSeedItem(
+                    CategoriaNovidade.Melhoria,
+                    "Novo visual para cartões, indicadores e abas em todo o sistema",
+                    "Os cartões, indicadores (KPIs) e abas do sistema usavam um visual mais denso, sem um padrão único de cores e ícones.",
+                    "Cartões e KPIs ganharam uma faixa vinho fina no topo e ícones em caixas suaves; abas e subabas ganharam ícones e a seção ativa aparece destacada em verde; o fundo das páginas ganhou uma grade sutil em tom lilás."),
+                new NovidadeSeedItem(
+                    CategoriaNovidade.Melhoria,
+                    "Dashboard com filtro de período",
+                    "O Dashboard só mostrava os números do mês atual, sem opção de ver outros períodos.",
+                    "Uma nova barra de período permite alternar entre Última semana, Último mês, Último ano ou Tudo (selecionado por padrão), além do filtro por obra."),
+            }),
     };
 
     public static async Task ExecutarAsync(IServiceProvider services, CancellationToken ct = default)

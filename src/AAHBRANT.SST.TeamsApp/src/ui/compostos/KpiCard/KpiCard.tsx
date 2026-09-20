@@ -8,7 +8,18 @@ import { escalonado } from '../../tokens/movimento';
 import { Carregando } from '../../primitivos/Carregando/Carregando';
 
 const useStyles = makeStyles({
-  root: { backgroundColor: designTokens.colorSurface, border: `1px solid ${designTokens.colorCardBorder}`, borderTop: `3px solid ${designTokens.colorPrimary}`, borderRadius: tokensUi.raio.lg, boxShadow: designTokens.cardShadow, padding: tokensUi.espaco.lg, display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '10px' },
+  root: {
+    backgroundColor: designTokens.colorSurface,
+    border: `1px solid ${designTokens.colorCardBorder}`,
+    borderTop: `3px solid ${designTokens.colorPrimary}`,
+    borderRadius: tokensUi.raio.lg,
+    boxShadow: designTokens.cardShadow,
+    padding: '20px 16px',
+    display: 'flex',
+    justifyContent: 'space-between',
+    alignItems: 'flex-start',
+    gap: '12px',
+  },
   acionavel: {
     width: '100%',
     minHeight: '100%',
@@ -17,10 +28,12 @@ const useStyles = makeStyles({
     textAlign: 'left',
     cursor: 'pointer',
     transitionDuration: tokensUi.duracao.rapido,
-    transitionProperty: 'border, box-shadow, transform',
+    transitionProperty: 'border, box-shadow, transform, background-color',
     ':hover': {
       border: `1px solid ${designTokens.colorPrimary}`,
-      boxShadow: `inset 0 0 0 1px ${designTokens.colorPrimary}`,
+      borderTop: `3px solid ${designTokens.colorPrimary}`,
+      backgroundColor: 'color-mix(in srgb, var(--sst-color-surface) 96%, var(--sst-color-primary))',
+      boxShadow: `inset 0 0 0 1px color-mix(in srgb, var(--sst-color-primary) 30%, transparent)`,
     },
     ':focus-visible': {
       outline: `2px solid ${designTokens.colorPrimary}`,
@@ -28,8 +41,8 @@ const useStyles = makeStyles({
     },
   },
   textos: { display: 'flex', flexDirection: 'column', gap: '6px', minWidth: 0 },
-  rotulo: { color: designTokens.colorNeutralMedium },
-  icone: { width: '38px', height: '38px', borderRadius: tokensUi.raio.md, display: 'grid', placeItems: 'center', flexShrink: 0 },
+  rotulo: { color: designTokens.colorNeutralMedium, fontWeight: 600 },
+  icone: { width: '40px', height: '40px', borderRadius: tokensUi.raio.md, display: 'grid', placeItems: 'center', flexShrink: 0 },
   deltas: { display: 'flex', flexWrap: 'wrap', gap: '6px' },
   delta: { fontSize: '11px', lineHeight: '14px', fontWeight: 700, padding: '3px 8px', borderRadius: tokensUi.raio.full },
 });
