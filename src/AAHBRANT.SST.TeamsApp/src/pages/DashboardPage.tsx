@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState, type KeyboardEvent, type ReactElement } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { Button, mergeClasses } from '@fluentui/react-components';
 import {
   BuildingBank24Regular,
   People24Regular,
@@ -66,6 +67,15 @@ const NOMES_MESES_ABREVIADOS = [
   'Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez',
 ];
 
+type PeriodoDashboard = 'semana' | 'mes' | 'ano' | 'tudo';
+
+const PERIODOS_DASHBOARD: Array<{ valor: PeriodoDashboard; rotulo: string }> = [
+  { valor: 'semana', rotulo: 'Última semana' },
+  { valor: 'mes', rotulo: 'Último mês' },
+  { valor: 'ano', rotulo: 'Último ano' },
+  { valor: 'tudo', rotulo: 'Tudo' },
+];
+
 function formatarDataRelativa(dataISO: string): string {
   const data = new Date(dataISO);
   const hoje = new Date();
@@ -99,6 +109,7 @@ export function DashboardPage() {
 
   const [obras, setObras] = useState<Obra[]>([]);
   const [obraSelecionadaId, setObraSelecionadaId] = useState('');
+  const [periodoSelecionado, setPeriodoSelecionado] = useState<PeriodoDashboard>('tudo');
   const [atividades, setAtividades] = useState<Atividade[]>([]);
   const [trabalhadores, setTrabalhadores] = useState<Trabalhador[]>([]);
   const [asos, setAsos] = useState<Aso[]>([]);
@@ -185,7 +196,15 @@ export function DashboardPage() {
   }
 
   const hojeISO = new Date().toISOString().slice(0, 10);
-  const mesAtualISO = hojeISO.slice(0, 7);
+  const inicioPeriodoISO = useMemo(() => {
+    if (periodoSelecionado === 'tudo') return null;
+    const data = new Date(hojeISO);
+    if (periodoSelecionado === 'semana') data.setDate(data.getDate() - 7);
+    if (periodoSelecionado === 'mes') data.setMonth(data.getMonth() - 1);
+    if (periodoSelecionado === 'ano') data.setFullYear(data.getFullYear() - 1);
+    return data.toISOString().slice(0, 10);
+  }, [hojeISO, periodoSelecionado]);
+  const noPeriodoSelecionado = (dataISO?: string | null) => !!dataISO && (!inicioPeriodoISO || dataISO >= inicioPeriodoISO);
   const obraSelecionada = obras.find((obra) => obra.id === obraSelecionadaId);
   const escopoIndicadores = obraSelecionada?.nome ?? 'todas as obras';
   const atividadesDaObraIds = useMemo(
@@ -258,7 +277,7 @@ export function DashboardPage() {
   const obrasEmAndamento = obrasAtivas.filter((o) => o.status === StatusObra.EmAndamento).length;
 
   const trabalhadoresAtivos = useMemo(() => trabalhadoresFiltrados.filter((t) => !t.dataDemissao), [trabalhadoresFiltrados]);
-  const admitidosEsteMes = trabalhadoresAtivos.filter((t) => t.dataAdmissao?.slice(0, 7) === mesAtualISO).length;
+  const admitidosNoPeriodo = trabalhadoresAtivos.filter((t) => noPeriodoSelecionado(t.dataAdmissao)).length;
 
   // Conformidade de EPI: fórmula provisória (sem indicador oficial ainda no sistema) — % de entregas
   // ativas (sem devolução registrada) que estão dentro da validade.
@@ -286,7 +305,7 @@ export function DashboardPage() {
     () => acidentesFiltrados.filter((a) => a.tipo === TipoOcorrencia.QuaseAcidente),
     [acidentesFiltrados],
   );
-  const quaseAcidentesMes = quaseAcidentes.filter((a) => a.data.slice(0, 7) === mesAtualISO);
+  const quaseAcidentesNoPeriodo = quaseAcidentes.filter((a) => noPeriodoSelecionado(a.data));
 
   // "Abertas" = qualquer não conformidade que ainda não foi encerrada (mesmo critério usado no
   // dashboard do módulo Não Conformidades).
@@ -309,7 +328,7 @@ export function DashboardPage() {
       valor: String(trabalhadoresAtivos.length),
       icone: <People24Regular />,
       tom: 'info',
-      deltas: admitidosEsteMes > 0 ? [{ texto: `+${admitidosEsteMes} este mês`, tom: 'neutro' }] : [],
+      deltas: admitidosNoPeriodo > 0 ? [{ texto: `+${admitidosNoPeriodo} no período`, tom: 'neutro' }] : [],
       destino: '/pessoas?aba=trabalhadores',
     },
     {
@@ -336,11 +355,11 @@ export function DashboardPage() {
       destino: '/gestao-sst?secao=treinamentos&aba=turmas',
     },
     {
-      rotulo: 'Quase-acidentes (mês)',
-      valor: String(quaseAcidentesMes.length),
+      rotulo: 'Quase-acidentes',
+      valor: String(quaseAcidentesNoPeriodo.length),
       icone: <Warning24Regular />,
       tom: 'atencao',
-      deltas: quaseAcidentesMes.length > 0 ? [{ texto: 'Acompanhar', tom: 'atencao' }] : [],
+      deltas: quaseAcidentesNoPeriodo.length > 0 ? [{ texto: 'Acompanhar', tom: 'atencao' }] : [],
       destino: '/ocorrencias?secao=acidentes',
     },
     {
@@ -461,8 +480,11 @@ export function DashboardPage() {
       });
     }
 
-    return itens.sort((a, b) => b.dataISO.localeCompare(a.dataISO)).slice(0, 6);
-  }, [ddsFiltrados, inspecoesFiltradas, naoConformidadesFiltradas, trabalhadoresAtivos, obras]);
+    return itens
+      .filter((item) => noPeriodoSelecionado(item.dataISO))
+      .sort((a, b) => b.dataISO.localeCompare(a.dataISO))
+      .slice(0, 6);
+  }, [ddsFiltrados, inspecoesFiltradas, naoConformidadesFiltradas, trabalhadoresAtivos, obras, inicioPeriodoISO]);
 
   const classeIconeFeed: Record<ItemFeed['variante'], string> = {
     bom: dashEstilos.feedIconeBom,
@@ -499,8 +521,23 @@ export function DashboardPage() {
         </FeedbackInline>
       )}
 
-      <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 16 }}>
-        <label style={{ display: 'flex', alignItems: 'center', gap: 8, maxWidth: 360, width: '100%' }}>
+      <div className={dashEstilos.barraFiltrosDashboard}>
+        <div className={dashEstilos.grupoPeriodos} aria-label="Filtrar dashboard por período">
+          {PERIODOS_DASHBOARD.map((periodo) => (
+            <Button
+              key={periodo.valor}
+              appearance="subtle"
+              className={mergeClasses(
+                dashEstilos.botaoPeriodo,
+                periodoSelecionado === periodo.valor && dashEstilos.botaoPeriodoAtivo,
+              )}
+              onClick={() => setPeriodoSelecionado(periodo.valor)}
+            >
+              {periodo.rotulo}
+            </Button>
+          ))}
+        </div>
+        <label className={dashEstilos.filtroObra}>
           <span style={{ fontWeight: 600, whiteSpace: 'nowrap' }}>Obra</span>
           <Select
             value={obraSelecionadaId}

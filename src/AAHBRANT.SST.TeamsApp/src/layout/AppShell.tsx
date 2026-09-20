@@ -1,4 +1,4 @@
-import type { ReactNode } from 'react';
+import type { ComponentType, ReactNode, SVGProps } from 'react';
 import { useEffect, useState } from 'react';
 import { NavLink, useLocation, useNavigate } from 'react-router-dom';
 import {
@@ -17,12 +17,19 @@ import {
   DialogBody,
   DialogActions,
   Input,
+  Menu,
+  MenuTrigger,
+  MenuPopover,
+  MenuList,
+  MenuItem,
   useToastController,
 } from '@fluentui/react-components';
 import {
   Grid24Regular,
-  ShieldError24Regular,
-  BuildingBank24Regular,
+  Add24Regular,
+  Search24Regular,
+  Warning24Regular,
+  ClipboardTaskListLtr24Regular,
   Settings24Regular,
   Alert24Regular,
   BriefcaseMedical24Regular,
@@ -32,12 +39,12 @@ import {
   ChevronRight24Regular,
   WeatherSunny24Regular,
   WeatherMoon24Regular,
-  ChevronDown16Regular,
   Checkmark20Regular,
   Fingerprint24Regular,
   PersonAvailable24Regular,
   Camera20Regular,
   ChatHelp24Regular,
+  DocumentAdd24Regular,
 } from '@fluentui/react-icons';
 import { designTokens } from '@ui';
 import { useThemeMode } from '../theme/ThemeModeContext';
@@ -53,8 +60,8 @@ import { ID_TOASTER_GLOBAL } from '../lib/toaster';
 // expandir/recolher (removido na reformulação Hub Gênesis, pedido de volta pelo usuário em 31/08)
 // alterna entre essa faixa fina e uma versão larga com rótulos visíveis, sem o overlay flutuante
 // de mobile da versão antiga (app roda majoritariamente dentro do Teams desktop/browser).
-const LARGURA_RAIL_COLAPSADO = '66px';
-const LARGURA_RAIL_EXPANDIDO = '220px';
+const LARGURA_RAIL_COLAPSADO = '64px';
+const LARGURA_RAIL_EXPANDIDO = '240px';
 const CHAVE_RAIL_EXPANDIDO = 'sst.railExpandido';
 const VERSAO_APP = '5.10.0';
 const TAMANHO_MAXIMO_FOTO_PERFIL_BYTES = 8 * 1024 * 1024;
@@ -89,7 +96,7 @@ function redimensionarFotoPerfil(dataUrlOriginal: string, dimensaoMaxima: number
 const useStyles = makeStyles({
   root: {
     display: 'grid',
-    gridTemplateRows: '64px 1fr',
+    gridTemplateRows: '56px 1fr',
     height: '100vh',
     width: '100%',
     transition: 'grid-template-columns 0.15s ease',
@@ -101,7 +108,7 @@ const useStyles = makeStyles({
     gridTemplateColumns: `${LARGURA_RAIL_EXPANDIDO} 1fr`,
   },
   rail: {
-    gridRow: '1 / span 2',
+    gridRow: '2',
     gridColumn: '1',
     background: designTokens.colorRailBackground,
     borderRight: `1px solid ${designTokens.colorRailBorder}`,
@@ -109,28 +116,63 @@ const useStyles = makeStyles({
     display: 'flex',
     flexDirection: 'column',
     alignItems: 'stretch',
-    padding: '16px 0',
+    padding: '8px 0',
     gap: '4px',
     overflowY: 'auto',
     overflowX: 'hidden',
   },
   cabecalhoRail: {
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    padding: '0 12px',
-    marginBottom: '14px',
+    display: 'none',
   },
   cabecalhoRailColapsado: {
-    flexDirection: 'column',
-    gap: '10px',
-    padding: '0 12px',
+    display: 'none',
   },
   marca: {
     width: '34px',
     height: '34px',
-    borderRadius: '6px',
+    borderRadius: '8px',
     flexShrink: 0,
+  },
+  marcaTopo: {
+    width: '36px',
+    height: '36px',
+    borderRadius: '8px',
+    flexShrink: 0,
+  },
+  topoEsquerda: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: '12px',
+    minWidth: '300px',
+  },
+  botoesTopoInicio: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: '4px',
+  },
+  marcaBloco: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: '8px',
+  },
+  marcaTexto: {
+    display: 'flex',
+    flexDirection: 'column',
+    lineHeight: 1,
+  },
+  marcaNome: {
+    fontFamily: '"Anta", "Roboto", sans-serif',
+    fontSize: '20px',
+    lineHeight: '20px',
+    fontWeight: 700,
+    color: designTokens.colorNeutralDark,
+  },
+  marcaSubtitulo: {
+    fontSize: '12px',
+    lineHeight: '14px',
+    color: designTokens.colorNeutralMedium,
+    textTransform: 'uppercase',
+    whiteSpace: 'nowrap',
   },
   botaoAlternarRail: {
     color: designTokens.colorRailInkMuted,
@@ -139,10 +181,10 @@ const useStyles = makeStyles({
   },
   navItem: {
     position: 'relative',
-    width: '42px',
-    height: '42px',
+    width: '40px',
+    height: '40px',
     marginLeft: '12px',
-    borderRadius: '6px',
+    borderRadius: '8px',
     color: designTokens.colorRailInkMuted,
     display: 'flex',
     alignItems: 'center',
@@ -152,16 +194,17 @@ const useStyles = makeStyles({
     flexShrink: 0,
   },
   navItemExpandido: {
-    width: 'calc(100% - 24px)',
+    width: 'calc(100% - 16px)',
+    marginLeft: '8px',
     justifyContent: 'flex-start',
-    gap: '10px',
+    gap: '12px',
     padding: '0 12px',
     whiteSpace: 'nowrap',
   },
   navItemHover: {
     ':hover': {
       color: designTokens.colorRailInk,
-      backgroundColor: 'rgba(255, 255, 255, 0.08)',
+      backgroundColor: 'color-mix(in srgb, var(--sst-color-primary) 10%, transparent)',
     },
   },
   navItemActive: {
@@ -170,7 +213,7 @@ const useStyles = makeStyles({
   },
   navRotulo: {
     fontSize: '15px',
-    fontWeight: 700,
+    fontWeight: 500,
     flex: 1,
   },
   navSeparador: {
@@ -190,7 +233,7 @@ const useStyles = makeStyles({
   itemAdministracaoBotao: {
     width: '100%',
     height: '48px',
-    borderRadius: '6px',
+    borderRadius: '8px',
     backgroundColor: designTokens.colorAdminButtonBackground,
     color: designTokens.colorAdminButtonInk,
     boxShadow: 'none',
@@ -215,19 +258,19 @@ const useStyles = makeStyles({
   usuarioChip: {
     display: 'flex',
     alignItems: 'center',
-    gap: '8px',
+    gap: '10px',
     backgroundColor: 'transparent',
     border: 'none',
-    padding: '4px 6px 4px 4px',
-    borderRadius: '6px',
+    padding: '4px',
+    borderRadius: '999px',
     cursor: 'pointer',
     ':hover': {
       backgroundColor: designTokens.colorNeutralLight,
     },
   },
   usuarioNome: {
-    fontSize: '13px',
-    fontWeight: 600,
+    fontSize: '14px',
+    fontWeight: 700,
     color: designTokens.colorNeutralDark,
     whiteSpace: 'nowrap',
     maxWidth: '180px',
@@ -242,8 +285,8 @@ const useStyles = makeStyles({
     minWidth: 0,
   },
   usuarioEmailTopo: {
-    fontSize: '11px',
-    lineHeight: '14px',
+    fontSize: '12px',
+    lineHeight: '16px',
     color: designTokens.colorNeutralMedium,
     maxWidth: '180px',
     overflow: 'hidden',
@@ -251,16 +294,17 @@ const useStyles = makeStyles({
     whiteSpace: 'nowrap',
   },
   usuarioAvatar: {
-    width: '32px',
-    height: '32px',
-    borderRadius: '50%',
+    width: '36px',
+    height: '36px',
+    borderRadius: '14px',
     flexShrink: 0,
-    backgroundColor: designTokens.colorNeutralLight,
-    border: `1.5px dashed ${designTokens.colorCardBorder}`,
+    backgroundColor: '#00c853',
+    border: 'none',
     display: 'flex',
     alignItems: 'center',
     justifyContent: 'center',
-    color: designTokens.colorNeutralMedium,
+    color: '#ffffff',
+    fontWeight: 800,
   },
   usuarioAvatarMenu: {
     width: '74px',
@@ -382,20 +426,72 @@ const useStyles = makeStyles({
   },
   header: {
     gridRow: '1',
-    gridColumn: '2',
+    gridColumn: '1 / span 2',
     backgroundColor: designTokens.colorSurface,
     borderBottom: `1px solid ${designTokens.colorCardBorder}`,
     display: 'flex',
     alignItems: 'center',
     justifyContent: 'space-between',
-    padding: '0 20px',
+    padding: '0 16px',
+    gap: '16px',
+  },
+  acoesTopo: {
+    position: 'absolute',
+    left: '50%',
+    transform: 'translateX(-50%)',
+    top: '8px',
+    display: 'flex',
+    alignItems: 'center',
+    gap: '8px',
+    height: '40px',
+    padding: '4px',
+    borderRadius: '12px',
+    backgroundColor: 'color-mix(in srgb, var(--sst-color-page-background) 92%, #ffffff)',
+    '@media (max-width: 1180px)': {
+      position: 'static',
+      transform: 'none',
+      marginLeft: 'auto',
+    },
+    '@media (max-width: 920px)': {
+      display: 'none',
+    },
+  },
+  buscaTopo: {
+    width: '260px',
+    height: '32px',
+    minHeight: '32px',
+    borderRadius: '8px',
+    backgroundColor: designTokens.colorSurface,
+    '@media (max-width: 1280px)': {
+      width: '200px',
+    },
+  },
+  botaoAcaoTopo: {
+    height: '32px',
+    minWidth: '32px',
+    borderRadius: '8px',
+    fontWeight: 700,
+  },
+  botaoCriarTopo: {
+    height: '32px',
+    borderRadius: '8px',
+    backgroundColor: '#16a34a',
+    color: '#ffffff',
+    fontWeight: 800,
+    ':hover': {
+      backgroundColor: '#15803d',
+      color: '#ffffff',
+    },
   },
   content: {
     gridRow: '2',
     gridColumn: '2',
     backgroundColor: designTokens.colorPageBackground,
+    backgroundImage:
+      'linear-gradient(var(--sst-grid-line) 1px, transparent 1px), linear-gradient(90deg, var(--sst-grid-line) 1px, transparent 1px)',
+    backgroundSize: '80px 80px',
     overflowY: 'auto',
-    padding: '20px',
+    padding: '16px',
   },
   suporteSuspenso: {
     position: 'fixed',
@@ -514,10 +610,26 @@ interface ItemNav {
   rotulo: string;
 }
 
+type IconeNav = ComponentType<SVGProps<SVGSVGElement>>;
+
+// Ícone próprio de capacete de obra (substitui BuildingBank24Regular para "Operação") — nenhum
+// ícone pronto do Fluent lia como EPI de canteiro; refinado após teste visual (19/09) porque a
+// primeira versão lia como capacete "pequeno demais" no rail colapsado.
+function CapaceteObra24Regular(props: SVGProps<SVGSVGElement>) {
+  return (
+    <svg viewBox="2 3 20 18" width="1em" height="1em" fill="none" stroke="currentColor" strokeWidth="2.1" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" {...props}>
+      <path d="M4 13.8a8 8 0 0 1 16 0" />
+      <path d="M8 13.8V9.2a4 4 0 0 1 8 0v4.6" />
+      <path d="M3.8 15.8h16.4" />
+      <path d="M5.7 15.8l1.1 3.4h10.4l1.1-3.4" />
+    </svg>
+  );
+}
+
 // Item solto no topo, fora de qualquer módulo — Dashboard não pertence a nenhum pilar. Calendário
 // saiu da sidebar (pedido do usuário, 01/09): virou redundante com o card de mini calendário no
 // Dashboard, que já leva pra /calendario ao clicar — a rota continua existindo.
-const itensAvulsos: Array<ItemNav & { icone: typeof Grid24Regular }> = [
+const itensAvulsos: Array<ItemNav & { icone: IconeNav }> = [
   { rota: '/', rotulo: 'Dashboard', icone: Grid24Regular },
 ];
 
@@ -527,9 +639,9 @@ const itensAvulsos: Array<ItemNav & { icone: typeof Grid24Regular }> = [
 // GestaoSstPage/OperacaoPage/PessoasPillarPage/OcorrenciasPage), e as abas que essas páginas de
 // destino já tinham viram sub-abas. A sidebar fica só com os 5 módulos (4 pilares + Administração,
 // fixa no rodapé) e o Dashboard solto no topo.
-const itensPilares: Array<ItemNav & { icone: typeof Grid24Regular }> = [
-  { rota: '/gestao-sst', rotulo: 'Gestão de SST', icone: ShieldError24Regular },
-  { rota: '/operacao', rotulo: 'Operação', icone: BuildingBank24Regular },
+const itensPilares: Array<ItemNav & { icone: IconeNav }> = [
+  { rota: '/gestao-sst', rotulo: 'Gestão de SST', icone: ClipboardTaskListLtr24Regular },
+  { rota: '/operacao', rotulo: 'Operação', icone: CapaceteObra24Regular },
   { rota: '/pessoas', rotulo: 'Pessoas', icone: People24Regular },
   { rota: '/ocorrencias', rotulo: 'Ocorrências', icone: BriefcaseMedical24Regular },
   { rota: '/terceirizados', rotulo: 'Terceirizado', icone: Building24Regular },
@@ -538,7 +650,7 @@ const itensPilares: Array<ItemNav & { icone: typeof Grid24Regular }> = [
 // Administração fica fixa no rodapé do rail (mesmo padrão do mockup Hub Gênesis SST) — item único,
 // não módulo: Obras/Controle de Acesso/Configurações/Trilha de Auditoria/Assinaturas são abas
 // internas de AdministracaoPage em vez de destinos separados na sidebar (pedido do usuário, 01/09).
-const itemAdministracao: ItemNav & { icone: typeof Grid24Regular } = {
+const itemAdministracao: ItemNav & { icone: IconeNav } = {
   rota: '/administracao',
   rotulo: 'Administração',
   icone: Settings24Regular,
@@ -553,7 +665,7 @@ function ItemRail({
 }: {
   rota: string;
   rotulo: string;
-  icone: typeof Grid24Regular;
+  icone: IconeNav;
   expandido: boolean;
   destaque?: boolean;
 }) {
@@ -603,9 +715,16 @@ export function AppShell({ children }: { children: ReactNode }) {
   const [menuPerfilAberto, setMenuPerfilAberto] = useState(false);
   const [perfilAberto, setPerfilAberto] = useState(false);
   const [alertasAbertos, setAlertasAbertos] = useState<number | null>(null);
+  const [buscaGlobal, setBuscaGlobal] = useState('');
   const [railExpandido, setRailExpandido] = useState<boolean>(
     () => localStorage.getItem(CHAVE_RAIL_EXPANDIDO) === '1',
   );
+  const dataTopo = new Date().toLocaleDateString('pt-BR', {
+    weekday: 'long',
+    day: 'numeric',
+    month: 'long',
+    year: 'numeric',
+  });
 
   useEffect(() => {
     localStorage.setItem(CHAVE_RAIL_EXPANDIDO, railExpandido ? '1' : '0');
@@ -671,6 +790,20 @@ export function AppShell({ children }: { children: ReactNode }) {
     navigate('/suporte-ia');
   }
 
+  function navegarBuscaGlobal() {
+    const termo = buscaGlobal.trim().toLowerCase();
+    if (!termo) return;
+
+    if (termo.includes('apr')) navigate('/operacao?secao=apr');
+    else if (termo.includes('pt') || termo.includes('permiss')) navigate('/operacao?secao=pt');
+    else if (termo.includes('pgr') || termo.includes('gro') || termo.includes('risco')) navigate('/gestao-sst?secao=pgr');
+    else if (termo.includes('func') || termo.includes('pessoa') || termo.includes('colaborador')) navigate('/pessoas');
+    else if (termo.includes('trein')) navigate('/gestao-sst?secao=treinamentos');
+    else if (termo.includes('ocorr') || termo.includes('acidente') || termo.includes('nc')) navigate('/ocorrencias');
+    else if (termo.includes('alert') || termo.includes('pend')) navigate('/alertas');
+    else navigate('/');
+  }
+
   useEffect(() => {
     let cancelado = false;
     api.alertas
@@ -719,17 +852,6 @@ export function AppShell({ children }: { children: ReactNode }) {
   return (
     <div className={mergeClasses(estilos.root, railExpandido ? estilos.rootExpandido : estilos.rootColapsado)}>
       <nav className={estilos.rail} aria-label="Navegação principal">
-        <div className={mergeClasses(estilos.cabecalhoRail, !railExpandido && estilos.cabecalhoRailColapsado)}>
-          <img src={logoSst} alt="AAHBRANT SST" className={estilos.marca} />
-          <Button
-            appearance="subtle"
-            className={estilos.botaoAlternarRail}
-            icon={railExpandido ? <ChevronLeft24Regular /> : <ChevronRight24Regular />}
-            aria-label={railExpandido ? 'Recolher menu' : 'Expandir menu'}
-            title={railExpandido ? 'Recolher menu' : 'Expandir menu'}
-            onClick={() => setRailExpandido((atual) => !atual)}
-          />
-        </div>
         {itensAvulsos.map((item) => (
           <ItemRail key={item.rota} {...item} expandido={railExpandido} />
         ))}
@@ -744,9 +866,77 @@ export function AppShell({ children }: { children: ReactNode }) {
       </nav>
 
       <header className={estilos.header}>
-        <div />
-        <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
+        <div className={estilos.topoEsquerda}>
+          <div className={estilos.botoesTopoInicio}>
+            <Button
+              appearance="subtle"
+              className={estilos.botaoAlternarRail}
+              icon={railExpandido ? <ChevronLeft24Regular /> : <ChevronRight24Regular />}
+              aria-label={railExpandido ? 'Recolher menu lateral' : 'Expandir menu lateral'}
+              title={railExpandido ? 'Recolher menu lateral' : 'Expandir menu lateral'}
+              onClick={() => setRailExpandido((atual) => !atual)}
+            />
+          </div>
+          <div className={estilos.marcaBloco}>
+            <img src={logoSst} alt="AAHBRANT SST" className={estilos.marcaTopo} />
+            <div className={estilos.marcaTexto}>
+              <span className={estilos.marcaNome}>SST</span>
+              <span className={estilos.marcaSubtitulo}>Hub Gênesis SST</span>
+            </div>
+          </div>
+        </div>
+
+        <div className={estilos.acoesTopo} aria-label="Ações globais">
+          <Input
+            className={estilos.buscaTopo}
+            value={buscaGlobal}
+            contentBefore={<Search24Regular />}
+            placeholder="Buscar no sistema"
+            aria-label="Buscar no sistema"
+            onChange={(_, dados) => setBuscaGlobal(dados.value)}
+            onKeyDown={(evento) => {
+              if (evento.key === 'Enter') navegarBuscaGlobal();
+            }}
+          />
+          <Menu>
+            <MenuTrigger disableButtonEnhancement>
+              <Button className={estilos.botaoCriarTopo} appearance="primary" icon={<Add24Regular />}>
+                Criar
+              </Button>
+            </MenuTrigger>
+            <MenuPopover>
+              <MenuList>
+                <MenuItem icon={<DocumentAdd24Regular />} onClick={() => navigate('/gestao-sst?secao=pgr')}>
+                  Novo PGR
+                </MenuItem>
+                <MenuItem icon={<DocumentAdd24Regular />} onClick={() => navigate('/operacao?secao=apr')}>
+                  Nova APR
+                </MenuItem>
+                <MenuItem icon={<People24Regular />} onClick={() => navigate('/pessoas')}>
+                  Novo funcionário
+                </MenuItem>
+                <MenuItem icon={<BriefcaseMedical24Regular />} onClick={() => navigate('/ocorrencias')}>
+                  Nova ocorrência
+                </MenuItem>
+                <MenuItem icon={<ClipboardTaskListLtr24Regular />} onClick={() => navigate('/gestao-sst?secao=treinamentos')}>
+                  Novo treinamento
+                </MenuItem>
+              </MenuList>
+            </MenuPopover>
+          </Menu>
+          <Tooltip content="Pendências" relationship="label">
+            <Button
+              className={estilos.botaoAcaoTopo}
+              appearance="subtle"
+              icon={<Warning24Regular />}
+              aria-label="Pendências"
+              onClick={() => navigate('/alertas')}
+            />
+          </Tooltip>
           <SyncStatusBadge />
+        </div>
+
+        <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginLeft: 'auto' }}>
           {!carregando && (
             <Badge color={dentroDoTeams ? 'success' : 'informative'} appearance="tint">
               {dentroDoTeams ? 'Executando no Teams' : 'Modo standalone (dev)'}
@@ -784,7 +974,7 @@ export function AppShell({ children }: { children: ReactNode }) {
             >
               <div className={estilos.usuarioResumo}>
                 <Text className={estilos.usuarioNome}>{nomePerfil}</Text>
-                {emailUsuario && <span className={estilos.usuarioEmailTopo}>{emailUsuario}</span>}
+                <span className={estilos.usuarioEmailTopo}>{dataTopo}</span>
               </div>
               <div className={estilos.usuarioAvatar}>
                 {fotoPerfil ? (
@@ -793,7 +983,6 @@ export function AppShell({ children }: { children: ReactNode }) {
                   <span>{iniciaisPerfil}</span>
                 )}
               </div>
-              <ChevronDown16Regular />
             </button>
             {menuPerfilAberto && (
               <div className={estilos.menuPerfil} role="menu">

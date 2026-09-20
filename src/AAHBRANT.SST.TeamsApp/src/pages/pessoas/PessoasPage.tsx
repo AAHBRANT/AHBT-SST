@@ -1,6 +1,7 @@
 import { useEffect } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { Abas, PageHeader, useAbaNaUrl } from '@ui';
+import { Grid24Regular, People24Regular, Settings24Regular } from '@fluentui/react-icons';
 import { PessoasDashboardTab } from './dashboard/PessoasDashboardTab';
 import { TrabalhadoresTab } from './TrabalhadoresTab';
 import { FuncoesTab } from './FuncoesTab';
@@ -46,9 +47,9 @@ export function PessoasPage({ mostrarTitulo = true }: { mostrarTitulo?: boolean 
         aoMudar={setAba}
         aria-label="Seções de Pessoas"
         abas={[
-          { valor: 'trabalhadores', rotulo: 'Funcionários' },
-          { valor: 'funcoes', rotulo: 'Funções' },
-          { valor: 'dashboard', rotulo: 'Dashboard' },
+          { valor: 'trabalhadores', rotulo: 'Funcionários', icone: <People24Regular /> },
+          { valor: 'funcoes', rotulo: 'Funções', icone: <Settings24Regular /> },
+          { valor: 'dashboard', rotulo: 'Dashboard', icone: <Grid24Regular /> },
         ]}
       />
 

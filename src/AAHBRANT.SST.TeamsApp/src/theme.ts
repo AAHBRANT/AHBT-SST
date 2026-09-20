@@ -26,7 +26,7 @@ const aahbrantBrandRamp: BrandVariants = {
 // Sobrescritas comuns aos dois temas (spec 2026-09-07 §1.2 e §1.4): escala tipográfica de 6 passos
 // e raios sm/md/lg ligados nos tokens do Fluent, para Text/Button/Input/Dialog seguirem sem wrapper.
 const sobrescritasComuns: Partial<Theme> = {
-  fontFamilyBase: "'Montserrat', -apple-system, BlinkMacSystemFont, sans-serif",
+  fontFamilyBase: "'Roboto', -apple-system, BlinkMacSystemFont, sans-serif",
   fontSizeBase200: '11px', lineHeightBase200: '14px',
   fontSizeBase300: '14px', lineHeightBase300: '20px',
   fontSizeBase400: '16px', lineHeightBase400: '22px',
@@ -35,22 +35,22 @@ const sobrescritasComuns: Partial<Theme> = {
   fontWeightRegular: 500,
   fontWeightSemibold: 600,
   fontWeightBold: 700,
-  borderRadiusSmall: '6px',
+  borderRadiusSmall: '8px',
   borderRadiusMedium: '8px',
-  borderRadiusLarge: '8px',
-  borderRadiusXLarge: '8px',
+  borderRadiusLarge: '14px',
+  borderRadiusXLarge: '14px',
 };
 
 export const aahbrantTheme: Theme = {
   ...createDarkTheme(aahbrantBrandRamp),
   ...sobrescritasComuns,
-  colorNeutralBackground1: '#182620',
-  colorNeutralBackground2: '#0D1714',
+  colorNeutralBackground1: '#151824',
+  colorNeutralBackground2: '#0f1220',
 };
 
 export const aahbrantLightTheme: Theme = {
   ...createLightTheme(aahbrantBrandRamp),
   ...sobrescritasComuns,
-  colorNeutralBackground1: '#FFFDF8',
-  colorNeutralBackground2: '#EBE7DC',
+  colorNeutralBackground1: '#ffffff',
+  colorNeutralBackground2: '#eeeeff',
 };
