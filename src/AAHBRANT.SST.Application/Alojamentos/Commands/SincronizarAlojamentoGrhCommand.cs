@@ -77,7 +77,26 @@ public class SincronizarAlojamentoGrhCommandHandler : IRequestHandler<Sincroniza
         {
             alojamento.Nome = request.Nome;
             alojamento.Endereco = request.Endereco;
-            if (obra is not null) alojamento.ObraId = obra.Id;
+            if (obra is not null && alojamento.ObraId != obra.Id)
+            {
+                // Bug real encontrado em homologação (21/09): quando a obra do alojamento muda numa
+                // re-sincronização (ex.: nome da obra ajustado no G-RH), as Inspeções já criadas
+                // ficavam com o ObraId antigo gravado (snapshot do momento da criação, ver
+                // ObterOuCriarInspecaoAlojamentoCommand) — o Global Query Filter de escopo por Obra
+                // (SstDbContext) então as escondia de quem só tem acesso à obra nova, mesmo o
+                // alojamento aparecendo normalmente na lista (que usa o ObraId atual do alojamento).
+                // Sintoma: "Continuar inspeção" dava 404 só nos alojamentos com inspeção em aberto
+                // criada antes da mudança — uma inspeção nova, criada depois, já nascia com o ObraId
+                // certo. IgnoreQueryFilters para pegar TODAS as inspeções deste alojamento, inclusive
+                // as que já ficaram fora do escopo do usuário atual (não há usuário logado neste
+                // fluxo — é o consumidor de fila/importação em lote).
+                var inspecoesDoAlojamento = await _db.Inspecoes.IgnoreQueryFilters()
+                    .Where(i => i.AlojamentoId == alojamento.Id)
+                    .ToListAsync(ct);
+                foreach (var inspecao in inspecoesDoAlojamento)
+                    inspecao.ObraId = obra.Id;
+                alojamento.ObraId = obra.Id;
+            }
         }
 
         // Reflete o status do G-RH diretamente — inclusive desativando quando o G-RH marca o
