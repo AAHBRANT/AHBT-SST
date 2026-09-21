@@ -148,7 +148,7 @@ export function MiniCalendarioCard() {
 
   return (
     <div
-      className={mergeClasses(dashEstilos.cardAcionavel, estilos.contentor)}
+      className={mergeClasses(dashEstilos.cardAcionavel, estilos.contentor, dashEstilos.calendarioEscondidoNoMobile)}
       onClick={() => navigate('/calendario')}
       role="button"
       tabIndex={0}

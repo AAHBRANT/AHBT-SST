@@ -74,6 +74,11 @@ export const useDashboardStyles = makeStyles({
     marginBottom: '16px',
     '@media (max-width: 620px)': { gridTemplateColumns: '1fr' },
   },
+  // No celular o card ocupava uma linha inteira só pra mostrar um calendário mensal, que já existe
+  // por completo em /calendario — pedido do usuário (21/09) pra ganhar espaço de tela lá.
+  calendarioEscondidoNoMobile: {
+    '@media (max-width: 620px)': { display: 'none' },
+  },
   // Grade dos 7 indicadores do topo (6 KPIs + Taxa de Gravidade). Colunas FIXAS por largura, e não
   // auto-fit: com auto-fit o número de colunas variava com a tela e o 7º cartão caía sozinho numa
   // segunda linha ao lado de um vazio (13/09). Com colunas fixas, as linhas ficam sempre alinhadas
