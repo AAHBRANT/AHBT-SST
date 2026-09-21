@@ -554,7 +554,7 @@ export function DashboardPage() {
         </label>
       </div>
 
-      <div style={{ display: 'flex', gap: 16, alignItems: 'flex-start', marginBottom: 16 }}>
+      <div className={dashEstilos.linhaKpisCalendario}>
         <div className={dashEstilos.gradeKpis}>
           {kpis.map((kpi, indice) => (
             <KpiCard

@@ -1,4 +1,4 @@
-import type { ComponentType, ReactNode, SVGProps } from 'react';
+import type { ComponentType, ReactElement, ReactNode, SVGProps } from 'react';
 import { useEffect, useState } from 'react';
 import { NavLink, useLocation, useNavigate } from 'react-router-dom';
 import {
@@ -101,11 +101,16 @@ const useStyles = makeStyles({
     width: '100%',
     transition: 'grid-template-columns 0.15s ease',
   },
+  // Abaixo de 680px a sidebar sai do fluxo do grid (vira overlay position:fixed, ver `rail`) — sem
+  // isso o conteúdo nunca recebia de fato uma viewport estreita, então nenhuma media query de
+  // página (Dashboard, DetailPageLayout etc.) chegava a disparar (achado ao testar no celular, 20/09).
   rootColapsado: {
     gridTemplateColumns: `${LARGURA_RAIL_COLAPSADO} 1fr`,
+    '@media (max-width: 680px)': { gridTemplateColumns: '1fr' },
   },
   rootExpandido: {
     gridTemplateColumns: `${LARGURA_RAIL_EXPANDIDO} 1fr`,
+    '@media (max-width: 680px)': { gridTemplateColumns: '1fr' },
   },
   rail: {
     gridRow: '2',
@@ -120,6 +125,30 @@ const useStyles = makeStyles({
     gap: '4px',
     overflowY: 'auto',
     overflowX: 'hidden',
+    '@media (max-width: 680px)': {
+      position: 'fixed',
+      top: '56px',
+      left: 0,
+      bottom: 0,
+      width: LARGURA_RAIL_EXPANDIDO,
+      zIndex: 25,
+      boxShadow: '0 16px 36px rgba(0, 0, 0, 0.28)',
+      transform: 'translateX(-100%)',
+      transition: 'transform 0.2s ease',
+    },
+  },
+  railAberto: {
+    '@media (max-width: 680px)': { transform: 'translateX(0)' },
+  },
+  fundoRailMobile: {
+    display: 'none',
+    '@media (max-width: 680px)': {
+      display: 'block',
+      position: 'fixed',
+      inset: '56px 0 0 0',
+      backgroundColor: 'rgba(0, 0, 0, 0.35)',
+      zIndex: 24,
+    },
   },
   cabecalhoRail: {
     display: 'none',
@@ -144,6 +173,7 @@ const useStyles = makeStyles({
     alignItems: 'center',
     gap: '12px',
     minWidth: '300px',
+    '@media (max-width: 640px)': { minWidth: 'auto' },
   },
   botoesTopoInicio: {
     display: 'flex',
@@ -173,6 +203,7 @@ const useStyles = makeStyles({
     color: designTokens.colorNeutralMedium,
     textTransform: 'uppercase',
     whiteSpace: 'nowrap',
+    '@media (max-width: 480px)': { display: 'none' },
   },
   botaoAlternarRail: {
     color: designTokens.colorRailInkMuted,
@@ -283,6 +314,16 @@ const useStyles = makeStyles({
     alignItems: 'flex-end',
     gap: '1px',
     minWidth: 0,
+    '@media (max-width: 560px)': { display: 'none' },
+  },
+  badgeModo: {
+    '@media (max-width: 560px)': { display: 'none' },
+  },
+  acoesTopoCompactas: {
+    display: 'none',
+    alignItems: 'center',
+    gap: '4px',
+    '@media (max-width: 920px)': { display: 'flex' },
   },
   usuarioEmailTopo: {
     fontSize: '12px',
@@ -492,6 +533,7 @@ const useStyles = makeStyles({
     backgroundSize: '80px 80px',
     overflowY: 'auto',
     padding: '16px',
+    '@media (max-width: 680px)': { gridColumn: '1', padding: '12px' },
   },
   suporteSuspenso: {
     position: 'fixed',
@@ -656,18 +698,50 @@ const itemAdministracao: ItemNav & { icone: IconeNav } = {
   icone: Settings24Regular,
 };
 
+// Menu "Criar" — mesmos atalhos na barra de ações (desktop) e na versão compacta que aparece no
+// lugar dela em telas estreitas (abaixo de 920px, ver `acoesTopo`/`acoesTopoCompactas`).
+function MenuCriar({ botao }: { botao: ReactElement }) {
+  const navigate = useNavigate();
+  return (
+    <Menu>
+      <MenuTrigger disableButtonEnhancement>{botao}</MenuTrigger>
+      <MenuPopover>
+        <MenuList>
+          <MenuItem icon={<DocumentAdd24Regular />} onClick={() => navigate('/gestao-sst?secao=pgr')}>
+            Novo PGR
+          </MenuItem>
+          <MenuItem icon={<DocumentAdd24Regular />} onClick={() => navigate('/operacao?secao=apr')}>
+            Nova APR
+          </MenuItem>
+          <MenuItem icon={<People24Regular />} onClick={() => navigate('/pessoas')}>
+            Novo funcionário
+          </MenuItem>
+          <MenuItem icon={<BriefcaseMedical24Regular />} onClick={() => navigate('/ocorrencias')}>
+            Nova ocorrência
+          </MenuItem>
+          <MenuItem icon={<ClipboardTaskListLtr24Regular />} onClick={() => navigate('/gestao-sst?secao=treinamentos')}>
+            Novo treinamento
+          </MenuItem>
+        </MenuList>
+      </MenuPopover>
+    </Menu>
+  );
+}
+
 function ItemRail({
   rota,
   rotulo,
   icone: Icone,
   expandido,
   destaque,
+  aoNavegar,
 }: {
   rota: string;
   rotulo: string;
   icone: IconeNav;
   expandido: boolean;
   destaque?: boolean;
+  aoNavegar?: () => void;
 }) {
   const estilos = useStyles();
   const link = (
@@ -675,6 +749,11 @@ function ItemRail({
       to={rota}
       end={rota === '/'}
       aria-label={rotulo}
+      // Abaixo de 680px o rail é a gaveta mobile (ver `rail`/`fundoRailMobile`) — navegar deve
+      // fechá-la, senão ela continua cobrindo a página seguinte até o usuário tocar no fundo.
+      onClick={() => {
+        if (window.innerWidth <= 680) aoNavegar?.();
+      }}
       className={({ isActive }) =>
         mergeClasses(
           estilos.navItem,
@@ -851,17 +930,30 @@ export function AppShell({ children }: { children: ReactNode }) {
 
   return (
     <div className={mergeClasses(estilos.root, railExpandido ? estilos.rootExpandido : estilos.rootColapsado)}>
-      <nav className={estilos.rail} aria-label="Navegação principal">
+      {railExpandido && (
+        <div
+          className={estilos.fundoRailMobile}
+          onClick={() => setRailExpandido(false)}
+          aria-hidden="true"
+        />
+      )}
+      <nav className={mergeClasses(estilos.rail, railExpandido && estilos.railAberto)} aria-label="Navegação principal">
         {itensAvulsos.map((item) => (
-          <ItemRail key={item.rota} {...item} expandido={railExpandido} />
+          <ItemRail key={item.rota} {...item} expandido={railExpandido} aoNavegar={() => setRailExpandido(false)} />
         ))}
         <div className={mergeClasses(estilos.navSeparador, railExpandido && estilos.navSeparadorExpandido)} />
         {itensPilares.map((item) => (
-          <ItemRail key={item.rota} {...item} expandido={railExpandido} />
+          <ItemRail key={item.rota} {...item} expandido={railExpandido} aoNavegar={() => setRailExpandido(false)} />
         ))}
         <div className={estilos.railRodape}>
-          <ItemRail rota="/suporte-ia" rotulo="Suporte IA" icone={ChatHelp24Regular} expandido={railExpandido} />
-          <ItemRail {...itemAdministracao} expandido={railExpandido} destaque />
+          <ItemRail
+            rota="/suporte-ia"
+            rotulo="Suporte IA"
+            icone={ChatHelp24Regular}
+            expandido={railExpandido}
+            aoNavegar={() => setRailExpandido(false)}
+          />
+          <ItemRail {...itemAdministracao} expandido={railExpandido} destaque aoNavegar={() => setRailExpandido(false)} />
         </div>
       </nav>
 
@@ -898,32 +990,13 @@ export function AppShell({ children }: { children: ReactNode }) {
               if (evento.key === 'Enter') navegarBuscaGlobal();
             }}
           />
-          <Menu>
-            <MenuTrigger disableButtonEnhancement>
+          <MenuCriar
+            botao={
               <Button className={estilos.botaoCriarTopo} appearance="primary" icon={<Add24Regular />}>
                 Criar
               </Button>
-            </MenuTrigger>
-            <MenuPopover>
-              <MenuList>
-                <MenuItem icon={<DocumentAdd24Regular />} onClick={() => navigate('/gestao-sst?secao=pgr')}>
-                  Novo PGR
-                </MenuItem>
-                <MenuItem icon={<DocumentAdd24Regular />} onClick={() => navigate('/operacao?secao=apr')}>
-                  Nova APR
-                </MenuItem>
-                <MenuItem icon={<People24Regular />} onClick={() => navigate('/pessoas')}>
-                  Novo funcionário
-                </MenuItem>
-                <MenuItem icon={<BriefcaseMedical24Regular />} onClick={() => navigate('/ocorrencias')}>
-                  Nova ocorrência
-                </MenuItem>
-                <MenuItem icon={<ClipboardTaskListLtr24Regular />} onClick={() => navigate('/gestao-sst?secao=treinamentos')}>
-                  Novo treinamento
-                </MenuItem>
-              </MenuList>
-            </MenuPopover>
-          </Menu>
+            }
+          />
           <Tooltip content="Pendências" relationship="label">
             <Button
               className={estilos.botaoAcaoTopo}
@@ -937,8 +1010,22 @@ export function AppShell({ children }: { children: ReactNode }) {
         </div>
 
         <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginLeft: 'auto' }}>
+          <div className={estilos.acoesTopoCompactas} aria-label="Ações globais (compacto)">
+            <SyncStatusBadge />
+            <MenuCriar
+              botao={
+                <Button
+                  className={estilos.botaoAcaoTopo}
+                  appearance="primary"
+                  icon={<Add24Regular />}
+                  aria-label="Criar"
+                  title="Criar"
+                />
+              }
+            />
+          </div>
           {!carregando && (
-            <Badge color={dentroDoTeams ? 'success' : 'informative'} appearance="tint">
+            <Badge className={estilos.badgeModo} color={dentroDoTeams ? 'success' : 'informative'} appearance="tint">
               {dentroDoTeams ? 'Executando no Teams' : 'Modo standalone (dev)'}
             </Badge>
           )}
