@@ -2110,11 +2110,17 @@ export interface CatalogoTemaDds {
 export const MetodoAutenticacaoAssinatura = {
   Biometria: 1,
   SessaoLogada: 5,
+  // Faltava aqui (só existia no enum do backend, Enums.cs) — sem isso, qualquer tela que precisasse
+  // distinguir "assinatura do receptor" por valor de enum (em vez de só listar o histórico) tratava
+  // uma assinatura por reconhecimento facial como se não tivesse assinado (achado ao implementar
+  // AssinaturaEntregaEpiLoteDialog.tsx, 21/09).
+  ReconhecimentoFacial: 6,
 } as const;
 
 export const metodoAutenticacaoAssinaturaLabel: Record<number, string> = {
   1: 'Digital (Futronic FS80H)',
   5: 'Sessão logada',
+  6: 'Reconhecimento facial',
 };
 
 export const StatusDocumentoAssinatura = {

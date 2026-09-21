@@ -11,6 +11,7 @@ import {
   api,
   motivoEntregaEpiLabel,
   MotivoEntregaEpi,
+  MetodoAutenticacaoAssinatura,
   type AtualizarEntregaEpi,
   type CatalogoEpi,
   type CursoTreinamento,
@@ -18,18 +19,30 @@ import {
   type NovaEntregaEpi,
   type Trabalhador,
 } from '../../lib/api';
-import { AssinaturaEntregaEpiDialog } from '../../components/assinatura/AssinaturaEntregaEpiDialog';
+import { AssinaturaEntregaEpiLoteDialog, type ItemLoteAssinaturaEpi } from '../../components/assinatura/AssinaturaEntregaEpiLoteDialog';
 import { AssinaturaDevolucaoEpiDialog } from '../../components/assinatura/AssinaturaDevolucaoEpiDialog';
 import { FotoCatalogoEpi } from './FotoCatalogoEpi';
+import { SeletorItensEpi, type ItemCarrinhoEpi } from './SeletorItensEpi';
+import { CarrinhoEntregaEpi } from './CarrinhoEntregaEpi';
 
-function entregaVazia(): NovaEntregaEpi {
+// Campos aplicados a todas as entregas do carrinho de uma vez (mesmo funcionário, mesma data,
+// mesmo motivo/documentação NR-6) — o que varia por item é só EPI/quantidade/validade, tratado em
+// ItemCarrinhoEpi (SeletorItensEpi.tsx).
+interface CamposComunsEntrega {
+  trabalhadorId: string;
+  dataEntrega: string;
+  vistoConsorcioResponsavel: string;
+  motivo: string;
+  observacoes: string;
+  motivoTipo: number;
+  numeroListaPresencaNr6: string;
+  dataTreinamentoNr6: string;
+}
+
+function camposComunsVazios(): CamposComunsEntrega {
   return {
     trabalhadorId: '',
-    catalogoEpiId: '',
     dataEntrega: new Date().toISOString().slice(0, 10),
-    dataDevolucao: '',
-    dataValidade: '',
-    quantidade: 1,
     vistoConsorcioResponsavel: '',
     motivo: '',
     observacoes: '',
@@ -39,14 +52,39 @@ function entregaVazia(): NovaEntregaEpi {
   };
 }
 
-// Entregas de EPI do módulo dedicado /epi — registro, devolução (repõe estoque no backend),
-// ficha em PDF e atalho para a assinatura eletrônica (AssinarEntregaEpiPage). Primeira página na
+interface LoteParaAssinar {
+  trabalhadorId: string;
+  dataEntrega: string;
+  numeroListaPresencaNr6?: string | null;
+  dataTreinamentoNr6?: string | null;
+  itens: ItemLoteAssinaturaEpi[];
+}
+
+function escapeHtml(texto: string): string {
+  return texto.replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c] ?? c);
+}
+
+// Bloqueio pedido pelo usuário (21/09): sem a Integração de Segurança assinada, o funcionário não
+// pode receber EPI — o backend já recusa (CriarEntregaEpiCommand), isto aqui só avisa antes, para
+// não deixar montar o carrinho inteiro pra descobrir o bloqueio só na hora de confirmar.
+type StatusIntegracao =
+  | { tipo: 'sem-curso' }
+  | { tipo: 'ok' }
+  | { tipo: 'pendente'; nomeCurso: string; temRegistroValido: boolean };
+
+// Entregas de EPI do módulo dedicado /epi — registro (em carrinho: vários itens de uma vez para o
+// mesmo funcionário, assinados numa única interação — spec pedida pelo usuário, 19-21/09), devolução
+// (repõe estoque no backend), ficha em PDF e atalho para a assinatura eletrônica. Primeira página na
 // camada ui/ (piloto 1 da Onda 1, spec §5.1): nada de Fluent cru nem de pageStyles aqui — lista em
 // DataTable com chips de vencimento e o formulário de criação em PainelCriacaoInline, que cresce
 // acima da lista em vez de cobrir a tela com um drawer (migração de 2026-09-11, mesmo padrão de
 // AtividadesTab.tsx/InspecoesTab.tsx). O bloqueio de estoque insuficiente / CA vencido acontece no
-// backend (CriarEntregaEpiCommand); o erro retornado é exibido como veio, mesmo padrão já usado em
-// todo o resto do frontend (ver api.ts request()).
+// backend (CriarEntregaEpiCommand, chamado uma vez por item do carrinho); o erro retornado é exibido
+// como veio, mesmo padrão já usado em todo o resto do frontend (ver api.ts request()).
+// Decisão de escopo do carrinho (confirmada com o usuário): sem mudar o banco — cada item do
+// carrinho ainda vira uma EntregaEpi individual via o endpoint que já existe, só que a tela deixa de
+// mandar uma de cada vez. Ver AssinaturaEntregaEpiLoteDialog.tsx para como a assinatura única cobre
+// as N entregas por trás.
 // "NR-06"/"NR-6"/"NR 06" etc. — compara só o número, não o formato exato do texto cadastrado no
 // curso (ver CursoTreinamento.normaReferencia, campo livre).
 function ehNormaNr6(normaReferencia?: string | null): boolean {
@@ -64,7 +102,8 @@ export function EntregasTab({ aoNavegarParaMatriz }: EntregasTabProps) {
   const [episPermitidos, setEpisPermitidos] = useState<CatalogoEpi[]>([]);
   const [trabalhadores, setTrabalhadores] = useState<Trabalhador[]>([]);
   const [cursos, setCursos] = useState<CursoTreinamento[]>([]);
-  const [novaEntrega, setNovaEntrega] = useState<NovaEntregaEpi>(entregaVazia());
+  const [dadosComuns, setDadosComuns] = useState<CamposComunsEntrega>(camposComunsVazios());
+  const [carrinho, setCarrinho] = useState<ItemCarrinhoEpi[]>([]);
   const [erro, setErro] = useState<string | null>(null);
   // Erro do formulário de criação fica separado do erro da lista: são estados independentes, um
   // erro de carga da lista não deveria fechar/limpar o erro de validação do formulário de criação
@@ -77,8 +116,9 @@ export function EntregasTab({ aoNavegarParaMatriz }: EntregasTabProps) {
   const [devolucaoId, setDevolucaoId] = useState<string | null>(null);
   const [devolucaoData, setDevolucaoData] = useState('');
   const [devolucaoQtd, setDevolucaoQtd] = useState('');
-  const [entregaParaAssinar, setEntregaParaAssinar] = useState<EntregaEpi | null>(null);
+  const [loteParaAssinar, setLoteParaAssinar] = useState<LoteParaAssinar | null>(null);
   const [devolucaoParaAssinar, setDevolucaoParaAssinar] = useState<EntregaEpi | null>(null);
+  const [statusIntegracao, setStatusIntegracao] = useState<StatusIntegracao | null>(null);
 
   async function carregar() {
     try {
@@ -108,40 +148,70 @@ export function EntregasTab({ aoNavegarParaMatriz }: EntregasTabProps) {
   // data do treinamento de NR-06 se o funcionário já tem esse treinamento cadastrado no módulo de
   // Treinamentos — busca automaticamente o mais recente ao trocar de funcionário (o usuário ainda
   // pode sobrescrever os campos à mão, ex.: quando o treinamento ainda não foi cadastrado no sistema).
+  // Também verifica aqui (mesma lista de treinamentos já buscada) se a Integração de Segurança está
+  // em dia e assinada pelo próprio trabalhador (pedido do usuário, 21/09) — o backend é quem
+  // efetivamente bloqueia; isto só avisa antes de montar o carrinho inteiro à toa.
   useEffect(() => {
     let cancelado = false;
-    async function preencherDadosNr6() {
-      if (!novaEntrega.trabalhadorId) return;
+    async function sincronizarDadosTrabalhador() {
+      if (!dadosComuns.trabalhadorId) {
+        setStatusIntegracao(null);
+        return;
+      }
+      const cursoIntegracao = cursos.find((c) => c.ehIntegracaoSeguranca);
+      if (!cursoIntegracao) {
+        setStatusIntegracao({ tipo: 'sem-curso' });
+        return;
+      }
       try {
-        const treinamentosTrabalhador = await api.treinamentos.listar(novaEntrega.trabalhadorId);
+        const treinamentosTrabalhador = await api.treinamentos.listar(dadosComuns.trabalhadorId);
         if (cancelado) return;
+
         const treinamentoNr6 = treinamentosTrabalhador
           .filter((t) => ehNormaNr6(cursos.find((c) => c.id === t.cursoTreinamentoId)?.normaReferencia))
           .sort((a, b) => b.dataRealizacao.localeCompare(a.dataRealizacao))[0];
-        if (!treinamentoNr6) return;
-        setNovaEntrega((atual) =>
-          atual.trabalhadorId === treinamentoNr6.trabalhadorId
-            ? {
-                ...atual,
-                numeroListaPresencaNr6: treinamentoNr6.numeroCertificado ?? '',
-                dataTreinamentoNr6: treinamentoNr6.dataRealizacao.slice(0, 10),
-              }
-            : atual,
+        if (treinamentoNr6) {
+          setDadosComuns((atual) =>
+            atual.trabalhadorId === treinamentoNr6.trabalhadorId
+              ? {
+                  ...atual,
+                  numeroListaPresencaNr6: treinamentoNr6.numeroCertificado ?? '',
+                  dataTreinamentoNr6: treinamentoNr6.dataRealizacao.slice(0, 10),
+                }
+              : atual,
+          );
+        }
+
+        const hoje = new Date().toISOString().slice(0, 10);
+        const treinamentoIntegracao = treinamentosTrabalhador
+          .filter((t) => t.cursoTreinamentoId === cursoIntegracao.id && t.dataValidade.slice(0, 10) >= hoje)
+          .sort((a, b) => b.dataRealizacao.localeCompare(a.dataRealizacao))[0];
+        if (!treinamentoIntegracao) {
+          setStatusIntegracao({ tipo: 'pendente', nomeCurso: cursoIntegracao.nome, temRegistroValido: false });
+          return;
+        }
+        const documento = await api.assinatura.obter('Treinamento', treinamentoIntegracao.id);
+        if (cancelado) return;
+        const trabalhadorAssinou =
+          documento?.signatarios.some((s) => s.metodoAutenticacao !== MetodoAutenticacaoAssinatura.SessaoLogada) ?? false;
+        setStatusIntegracao(
+          trabalhadorAssinou ? { tipo: 'ok' } : { tipo: 'pendente', nomeCurso: cursoIntegracao.nome, temRegistroValido: true },
         );
       } catch {
-        // Falha ao buscar o treinamento não impede o preenchimento manual dos campos.
+        // Falha ao verificar não deve travar a tela — o backend valida de qualquer forma ao confirmar.
+        if (!cancelado) setStatusIntegracao(null);
       }
     }
-    preencherDadosNr6();
+    sincronizarDadosTrabalhador();
     return () => {
       cancelado = true;
     };
-  }, [novaEntrega.trabalhadorId, cursos]);
+  }, [dadosComuns.trabalhadorId, cursos]);
 
   useEffect(() => {
     let cancelado = false;
     async function carregarEpisPermitidos() {
-      const trabalhador = trabalhadores.find((t) => t.id === novaEntrega.trabalhadorId);
+      const trabalhador = trabalhadores.find((t) => t.id === dadosComuns.trabalhadorId);
       if (!trabalhador) {
         setEpisPermitidos([]);
         return;
@@ -157,7 +227,7 @@ export function EntregasTab({ aoNavegarParaMatriz }: EntregasTabProps) {
     return () => {
       cancelado = true;
     };
-  }, [novaEntrega.trabalhadorId, trabalhadores]);
+  }, [dadosComuns.trabalhadorId, trabalhadores]);
 
   // SeletorPesquisavel pede a lista memoizada (a de trabalhadores é a maior do app).
   const opcoesTrabalhadores = useMemo(
@@ -181,38 +251,147 @@ export function EntregasTab({ aoNavegarParaMatriz }: EntregasTabProps) {
     return trabalhadores.find((t) => t.id === id)?.obraId ?? '';
   }
 
+  function trocarTrabalhador(id: string) {
+    // A lista de EPIs permitidos (matriz da função) muda com o funcionário — itens já escolhidos
+    // para o funcionário anterior podem nem existir na matriz do novo, então o carrinho é limpo.
+    setDadosComuns({ ...dadosComuns, trabalhadorId: id, numeroListaPresencaNr6: '', dataTreinamentoNr6: '' });
+    setCarrinho([]);
+    // Evita mostrar por um instante o status de integração do funcionário anterior até o efeito
+    // que verifica o novo terminar de carregar.
+    setStatusIntegracao(null);
+  }
 
-  async function criar() {
-    if (!novaEntrega.trabalhadorId || !novaEntrega.catalogoEpiId || !novaEntrega.dataEntrega || novaEntrega.quantidade < 1) {
-      setErroPainel('Preencha funcionário, EPI, data de entrega e quantidade.');
+  function adicionarAoCarrinho(item: ItemCarrinhoEpi) {
+    setCarrinho((atual) => [...atual.filter((i) => i.catalogoEpiId !== item.catalogoEpiId), item]);
+    setErroPainel(null);
+  }
+
+  function removerDoCarrinho(catalogoEpiId: string) {
+    setCarrinho((atual) => atual.filter((i) => i.catalogoEpiId !== catalogoEpiId));
+  }
+
+  // Confirma todo o carrinho: cria uma EntregaEpi por item, em sequência (o backend não tem uma
+  // transação em lote — não existe hoje um endpoint que crie N entregas atomicamente). Se um item
+  // falhar (estoque insuficiente, CA vencido) no meio do caminho, os anteriores já foram gravados e
+  // já debitaram estoque; o carrinho é ajustado para mostrar só o que falta, com um aviso claro de
+  // quantos itens já entraram antes do erro.
+  async function confirmarCarrinho() {
+    if (!dadosComuns.trabalhadorId || !dadosComuns.dataEntrega) {
+      setErroPainel('Selecione o funcionário e a data de entrega.');
       return;
     }
+    if (carrinho.length === 0) {
+      setErroPainel('Adicione ao menos um EPI ao carrinho antes de confirmar.');
+      return;
+    }
+    setCarregando(true);
+    setErroPainel(null);
+    const criados: { item: ItemCarrinhoEpi; id: string }[] = [];
     try {
-      setCarregando(true);
-      setErroPainel(null);
-      const payload: NovaEntregaEpi = {
-        ...novaEntrega,
-        dataDevolucao: novaEntrega.dataDevolucao || null,
-        dataValidade: novaEntrega.dataValidade || null,
-        numeroListaPresencaNr6: novaEntrega.numeroListaPresencaNr6 || null,
-        dataTreinamentoNr6: novaEntrega.dataTreinamentoNr6 || null,
+      for (const item of carrinho) {
+        const payload: NovaEntregaEpi = {
+          trabalhadorId: dadosComuns.trabalhadorId,
+          catalogoEpiId: item.catalogoEpiId,
+          dataEntrega: dadosComuns.dataEntrega,
+          dataDevolucao: null,
+          dataValidade: item.dataValidade || null,
+          quantidade: item.quantidade,
+          vistoConsorcioResponsavel: dadosComuns.vistoConsorcioResponsavel || null,
+          motivo: dadosComuns.motivo || null,
+          observacoes: dadosComuns.observacoes || null,
+          motivoTipo: dadosComuns.motivoTipo,
+          numeroListaPresencaNr6: dadosComuns.numeroListaPresencaNr6 || null,
+          dataTreinamentoNr6: dadosComuns.dataTreinamentoNr6 || null,
+        };
+        const { id } = await api.entregasEpi.criar(payload);
+        criados.push({ item, id });
+      }
+
+      const loteConfirmado: LoteParaAssinar = {
+        trabalhadorId: dadosComuns.trabalhadorId,
+        dataEntrega: dadosComuns.dataEntrega,
+        numeroListaPresencaNr6: dadosComuns.numeroListaPresencaNr6,
+        dataTreinamentoNr6: dadosComuns.dataTreinamentoNr6,
+        itens: criados.map(({ item, id }) => ({
+          entregaId: id,
+          catalogoEpiId: item.catalogoEpiId,
+          epiNome: nomeEpi(item.catalogoEpiId),
+          epiTemFoto: epiTemFoto(item.catalogoEpiId),
+          quantidade: item.quantidade,
+        })),
       };
-      const { id } = await api.entregasEpi.criar(payload);
-      setEntregaParaAssinar({ ...payload, id, confirmada: true });
-      setNovaEntrega(entregaVazia());
-      await carregar();
+      setCarrinho([]);
+      setDadosComuns(camposComunsVazios());
       fecharPainel();
+      await carregar();
+      setLoteParaAssinar(loteConfirmado);
     } catch (e) {
-      setErroPainel(e instanceof Error ? e.message : 'Falha ao criar entrega de EPI.');
+      const itemFalho = carrinho[criados.length];
+      const mensagem = e instanceof Error ? e.message : 'Falha ao registrar entrega.';
+      if (criados.length > 0) {
+        setErroPainel(
+          `${criados.length} de ${carrinho.length} itens foram registrados antes do erro em "${nomeEpi(itemFalho?.catalogoEpiId ?? '')}": ${mensagem} ` +
+            'Os itens já registrados permanecem no sistema — o carrinho foi ajustado para mostrar só o que falta.',
+        );
+        const idsCriados = new Set(criados.map((c) => c.item.catalogoEpiId));
+        setCarrinho((atual) => atual.filter((i) => !idsCriados.has(i.catalogoEpiId)));
+        await carregar();
+      } else {
+        setErroPainel(`Falha ao registrar "${nomeEpi(itemFalho?.catalogoEpiId ?? '')}": ${mensagem}`);
+      }
     } finally {
       setCarregando(false);
     }
   }
 
-  // Todo caminho de fechar o painel limpa o erro do formulário — senão reabrir mostra mensagem velha.
+  // Recibo de conferência do carrinho antes de confirmar — gerado 100% no navegador (sem endpoint
+  // novo no backend), pedido do usuário a partir do mockup fornecido. Deixa claro que não substitui
+  // a ficha oficial (essa só existe depois de "Confirmar entrega" + assinatura eletrônica).
+  function imprimirRascunhoCarrinho() {
+    if (!dadosComuns.trabalhadorId || carrinho.length === 0) return;
+    const nomeFunc = escapeHtml(nomeTrabalhador(dadosComuns.trabalhadorId));
+    const dataFmt = dadosComuns.dataEntrega ? dadosComuns.dataEntrega.split('-').reverse().join('/') : '—';
+    const linhas = carrinho
+      .map((item) => {
+        const validade = item.dataValidade ? item.dataValidade.split('-').reverse().join('/') : '—';
+        return `<tr><td>${escapeHtml(nomeEpi(item.catalogoEpiId))}</td><td style="text-align:right">${item.quantidade}</td><td>${validade}</td></tr>`;
+      })
+      .join('');
+    const janela = window.open('', '_blank', 'width=720,height=900');
+    if (!janela) return;
+    janela.document.write(`<!DOCTYPE html><html lang="pt-br"><head><meta charset="UTF-8"><title>Canhoto de recibo - EPI</title>
+      <style>
+        body { font-family: Arial, sans-serif; padding: 28px; color: #1a1a1a; }
+        h1 { font-size: 18px; color: #670000; margin-bottom: 4px; }
+        .subtitulo { font-size: 12px; color: #555; margin-bottom: 20px; }
+        table { width: 100%; border-collapse: collapse; margin-top: 12px; }
+        th, td { border: 1px solid #ccc; padding: 8px; text-align: left; font-size: 13px; }
+        th { background: #ebe9ad; }
+        .assinatura { margin-top: 64px; border-top: 1px solid #000; width: 320px; padding-top: 4px; font-size: 12px; }
+        .aviso { margin-top: 28px; font-size: 11px; color: #666; }
+      </style></head>
+      <body>
+        <h1>Canhoto de Recibo — Entrega de EPI</h1>
+        <div class="subtitulo">Funcionário: ${nomeFunc} · Data de entrega: ${dataFmt}</div>
+        <table>
+          <thead><tr><th>EPI</th><th>Qtd.</th><th>Validade</th></tr></thead>
+          <tbody>${linhas}</tbody>
+        </table>
+        <div class="assinatura">Assinatura do recebedor</div>
+        <p class="aviso">Documento de conferência gerado antes da confirmação da entrega — não substitui a ficha oficial assinada eletronicamente, emitida após "Confirmar entrega".</p>
+      </body></html>`);
+    janela.document.close();
+    janela.focus();
+    janela.print();
+  }
+
+  // Todo caminho de fechar o painel limpa o carrinho e o erro do formulário — senão reabrir mostra
+  // itens/mensagem velhos.
   function fecharPainel() {
     setPainelAberto(false);
     setErroPainel(null);
+    setCarrinho([]);
+    setDadosComuns(camposComunsVazios());
   }
 
   function iniciarDevolucao(entrega: EntregaEpi) {
@@ -339,52 +518,54 @@ export function EntregasTab({ aoNavegarParaMatriz }: EntregasTabProps) {
 
       <div id="painel-nova-entrega-epi">
         <PainelCriacaoInline aberto={painelAberto} titulo="Nova entrega de EPI">
-          <FormSection titulo="Quem recebe" numero={1} primeira>
-            {erroPainel && (
-              <FeedbackInline tom="erro" aoFechar={() => setErroPainel(null)}>
-                {erroPainel}
-              </FeedbackInline>
-            )}
-            <FormGrid>
-              <Campo>
-                <Field label="Funcionário" required>
-                  <SeletorPesquisavel
-                    placeholder={`Buscar entre ${trabalhadores.length} funcionários`}
-                    opcoes={opcoesTrabalhadores}
-                    valor={novaEntrega.trabalhadorId}
-                    aoMudar={(id) =>
-                      setNovaEntrega({
-                        ...novaEntrega,
-                        trabalhadorId: id,
-                        catalogoEpiId: '',
-                        numeroListaPresencaNr6: '',
-                        dataTreinamentoNr6: '',
-                      })
-                    }
-                  />
-                </Field>
-              </Campo>
-            </FormGrid>
-          </FormSection>
+          <div
+            style={{
+              display: 'grid',
+              gridTemplateColumns: '1fr 340px',
+              gap: 20,
+              alignItems: 'start',
+            }}
+          >
+            <div>
+              <FormSection titulo="Quem recebe" numero={1} primeira>
+                {erroPainel && (
+                  <FeedbackInline tom="erro" aoFechar={() => setErroPainel(null)}>
+                    {erroPainel}
+                  </FeedbackInline>
+                )}
+                <FormGrid>
+                  <Campo span={6}>
+                    <Field label="Funcionário" required>
+                      <SeletorPesquisavel
+                        placeholder={`Buscar entre ${trabalhadores.length} funcionários`}
+                        opcoes={opcoesTrabalhadores}
+                        valor={dadosComuns.trabalhadorId}
+                        aoMudar={trocarTrabalhador}
+                      />
+                    </Field>
+                  </Campo>
+                  <Campo span={6}>
+                    <Field label="Data de entrega" required>
+                      <CampoData
+                        value={dadosComuns.dataEntrega}
+                        onChange={(_, d) => setDadosComuns({ ...dadosComuns, dataEntrega: d.value })}
+                      />
+                    </Field>
+                  </Campo>
+                </FormGrid>
+              </FormSection>
 
-          <FormSection titulo="O que é entregue" numero={2}>
-            <FormGrid>
-              <Campo>
-                <Field label="EPI" required>
-                  <Select
-                    value={novaEntrega.catalogoEpiId}
-                    onChange={(_, d) => setNovaEntrega({ ...novaEntrega, catalogoEpiId: d.value })}
-                    disabled={!novaEntrega.trabalhadorId || episPermitidos.length === 0}
-                  >
-                    <option value="">Selecione</option>
-                    {episPermitidos.map((e) => (
-                      <option key={e.id} value={e.id}>
-                        {e.nome} (estoque total: {e.saldoTotal})
-                      </option>
-                    ))}
-                  </Select>
-                </Field>
-                {novaEntrega.trabalhadorId && episPermitidos.length === 0 && (
+              <FormSection titulo="O que é entregue" numero={2}>
+                {!dadosComuns.trabalhadorId ? (
+                  <FeedbackInline tom="info">Selecione o funcionário para ver os EPIs vinculados à função dele.</FeedbackInline>
+                ) : statusIntegracao?.tipo === 'pendente' ? (
+                  <FeedbackInline tom="erro">
+                    Este funcionário {statusIntegracao.temRegistroValido
+                      ? <>tem o treinamento de <b>{statusIntegracao.nomeCurso}</b> registrado, mas ainda não o assinou</>
+                      : <>ainda não tem o treinamento de <b>{statusIntegracao.nomeCurso}</b> em dia</>}
+                    {' '}— a entrega de EPI fica bloqueada até isso ser resolvido em Pessoas &gt; Treinamentos.
+                  </FeedbackInline>
+                ) : episPermitidos.length === 0 ? (
                   <FeedbackInline
                     tom="aviso"
                     acao={{
@@ -397,100 +578,91 @@ export function EntregasTab({ aoNavegarParaMatriz }: EntregasTabProps) {
                   >
                     Esta função não tem EPIs cadastrados na matriz.
                   </FeedbackInline>
+                ) : (
+                  <SeletorItensEpi
+                    episPermitidos={episPermitidos}
+                    carrinho={carrinho}
+                    aoAdicionar={adicionarAoCarrinho}
+                    aoRemover={removerDoCarrinho}
+                  />
                 )}
-              </Campo>
-              <Campo span={4}>
-                <Field label="Quantidade">
-                  <Input
-                    type="number"
-                    value={String(novaEntrega.quantidade)}
-                    onChange={(_, d) => setNovaEntrega({ ...novaEntrega, quantidade: Number(d.value) })}
-                  />
-                </Field>
-              </Campo>
-              <Campo span={4}>
-                <Field label="Data de entrega">
-                  <CampoData
-                    value={novaEntrega.dataEntrega}
-                    onChange={(_, d) => setNovaEntrega({ ...novaEntrega, dataEntrega: d.value })}
-                  />
-                </Field>
-              </Campo>
-              <Campo span={4}>
-                <Field label="Validade">
-                  <CampoData
-                    value={novaEntrega.dataValidade ?? ''}
-                    onChange={(_, d) => setNovaEntrega({ ...novaEntrega, dataValidade: d.value })}
-                  />
-                </Field>
-              </Campo>
-              <Campo span={6}>
-                <Field label="Motivo">
-                  <Select
-                    value={novaEntrega.motivoTipo}
-                    onChange={(_, d) => setNovaEntrega({ ...novaEntrega, motivoTipo: Number(d.value) })}
-                  >
-                    {Object.entries(motivoEntregaEpiLabel).map(([valor, rotulo]) => (
-                      <option key={valor} value={valor}>
-                        {rotulo}
-                      </option>
-                    ))}
-                  </Select>
-                </Field>
-              </Campo>
-              <Campo span={6}>
-                <Field label="Observação do motivo">
-                  <Input
-                    value={novaEntrega.motivo ?? ''}
-                    onChange={(_, d) => setNovaEntrega({ ...novaEntrega, motivo: d.value })}
-                  />
-                </Field>
-              </Campo>
-            </FormGrid>
-          </FormSection>
 
-          <FormSection titulo="Documentação NR-6" numero={3}>
-            <FormGrid>
-              <Campo span={6}>
-                <Field label="Nº lista de presença" hint="Preenchido do treinamento de NR-06 cadastrado, se houver.">
-                  <Input
-                    value={novaEntrega.numeroListaPresencaNr6 ?? ''}
-                    onChange={(_, d) => setNovaEntrega({ ...novaEntrega, numeroListaPresencaNr6: d.value })}
-                  />
-                </Field>
-              </Campo>
-              <Campo span={6}>
-                <Field label="Data do treinamento">
-                  <CampoData
-                    value={novaEntrega.dataTreinamentoNr6 ?? ''}
-                    onChange={(_, d) => setNovaEntrega({ ...novaEntrega, dataTreinamentoNr6: d.value })}
-                  />
-                </Field>
-              </Campo>
-              <Campo span={6}>
-                <Field label="Visto do consórcio/responsável">
-                  <Input
-                    value={novaEntrega.vistoConsorcioResponsavel ?? ''}
-                    onChange={(_, d) => setNovaEntrega({ ...novaEntrega, vistoConsorcioResponsavel: d.value })}
-                  />
-                </Field>
-              </Campo>
-              <Campo span={6}>
-                <Field label="Observações">
-                  <Input
-                    value={novaEntrega.observacoes ?? ''}
-                    onChange={(_, d) => setNovaEntrega({ ...novaEntrega, observacoes: d.value })}
-                  />
-                </Field>
-              </Campo>
-            </FormGrid>
-            <FormRodape>
-              <Button onClick={fecharPainel}>Cancelar</Button>
-              <Button appearance="primary" onClick={criar} disabled={carregando}>
-                Registrar entrega
-              </Button>
-            </FormRodape>
-          </FormSection>
+                <FormGrid>
+                  <Campo span={6}>
+                    <Field label="Motivo">
+                      <Select
+                        value={dadosComuns.motivoTipo}
+                        onChange={(_, d) => setDadosComuns({ ...dadosComuns, motivoTipo: Number(d.value) })}
+                      >
+                        {Object.entries(motivoEntregaEpiLabel).map(([valor, rotulo]) => (
+                          <option key={valor} value={valor}>
+                            {rotulo}
+                          </option>
+                        ))}
+                      </Select>
+                    </Field>
+                  </Campo>
+                  <Campo span={6}>
+                    <Field label="Observação do motivo">
+                      <Input
+                        value={dadosComuns.motivo}
+                        onChange={(_, d) => setDadosComuns({ ...dadosComuns, motivo: d.value })}
+                      />
+                    </Field>
+                  </Campo>
+                </FormGrid>
+              </FormSection>
+
+              <FormSection titulo="Documentação NR-6" numero={3}>
+                <FormGrid>
+                  <Campo span={6}>
+                    <Field label="Nº lista de presença" hint="Preenchido do treinamento de NR-06 cadastrado, se houver.">
+                      <Input
+                        value={dadosComuns.numeroListaPresencaNr6}
+                        onChange={(_, d) => setDadosComuns({ ...dadosComuns, numeroListaPresencaNr6: d.value })}
+                      />
+                    </Field>
+                  </Campo>
+                  <Campo span={6}>
+                    <Field label="Data do treinamento">
+                      <CampoData
+                        value={dadosComuns.dataTreinamentoNr6}
+                        onChange={(_, d) => setDadosComuns({ ...dadosComuns, dataTreinamentoNr6: d.value })}
+                      />
+                    </Field>
+                  </Campo>
+                  <Campo span={6}>
+                    <Field label="Visto do consórcio/responsável">
+                      <Input
+                        value={dadosComuns.vistoConsorcioResponsavel}
+                        onChange={(_, d) => setDadosComuns({ ...dadosComuns, vistoConsorcioResponsavel: d.value })}
+                      />
+                    </Field>
+                  </Campo>
+                  <Campo span={6}>
+                    <Field label="Observações">
+                      <Input
+                        value={dadosComuns.observacoes}
+                        onChange={(_, d) => setDadosComuns({ ...dadosComuns, observacoes: d.value })}
+                      />
+                    </Field>
+                  </Campo>
+                </FormGrid>
+                <FormRodape>
+                  <Button onClick={fecharPainel}>Cancelar</Button>
+                </FormRodape>
+              </FormSection>
+            </div>
+
+            <CarrinhoEntregaEpi
+              carrinho={carrinho}
+              epis={epis}
+              carregando={carregando}
+              aoRemover={removerDoCarrinho}
+              aoImprimirRascunho={imprimirRascunhoCarrinho}
+              aoConfirmar={confirmarCarrinho}
+            />
+          </div>
         </PainelCriacaoInline>
       </div>
 
@@ -530,20 +702,16 @@ export function EntregasTab({ aoNavegarParaMatriz }: EntregasTabProps) {
         />
       </Card>
 
-      {entregaParaAssinar && (
-        <AssinaturaEntregaEpiDialog
-          open={!!entregaParaAssinar}
-          onClose={() => setEntregaParaAssinar(null)}
-          entregaId={entregaParaAssinar.id}
-          obraId={obraIdTrabalhador(entregaParaAssinar.trabalhadorId)}
-          trabalhadorNome={nomeTrabalhador(entregaParaAssinar.trabalhadorId)}
-          epiNome={nomeEpi(entregaParaAssinar.catalogoEpiId)}
-          catalogoEpiId={entregaParaAssinar.catalogoEpiId}
-          epiTemFoto={epiTemFoto(entregaParaAssinar.catalogoEpiId)}
-          quantidade={entregaParaAssinar.quantidade}
-          dataEntrega={entregaParaAssinar.dataEntrega}
-          numeroListaPresencaNr6={entregaParaAssinar.numeroListaPresencaNr6}
-          dataTreinamentoNr6={entregaParaAssinar.dataTreinamentoNr6}
+      {loteParaAssinar && (
+        <AssinaturaEntregaEpiLoteDialog
+          open={!!loteParaAssinar}
+          onClose={() => setLoteParaAssinar(null)}
+          itens={loteParaAssinar.itens}
+          obraId={obraIdTrabalhador(loteParaAssinar.trabalhadorId)}
+          trabalhadorNome={nomeTrabalhador(loteParaAssinar.trabalhadorId)}
+          dataEntrega={loteParaAssinar.dataEntrega}
+          numeroListaPresencaNr6={loteParaAssinar.numeroListaPresencaNr6}
+          dataTreinamentoNr6={loteParaAssinar.dataTreinamentoNr6}
         />
       )}
 
