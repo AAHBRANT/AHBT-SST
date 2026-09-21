@@ -11,6 +11,7 @@ import {
   api,
   motivoEntregaEpiLabel,
   MotivoEntregaEpi,
+  MetodoAutenticacaoAssinatura,
   type AtualizarEntregaEpi,
   type CatalogoEpi,
   type CursoTreinamento,
@@ -63,6 +64,14 @@ function escapeHtml(texto: string): string {
   return texto.replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c] ?? c);
 }
 
+// Bloqueio pedido pelo usuário (21/09): sem a Integração de Segurança assinada, o funcionário não
+// pode receber EPI — o backend já recusa (CriarEntregaEpiCommand), isto aqui só avisa antes, para
+// não deixar montar o carrinho inteiro pra descobrir o bloqueio só na hora de confirmar.
+type StatusIntegracao =
+  | { tipo: 'sem-curso' }
+  | { tipo: 'ok' }
+  | { tipo: 'pendente'; nomeCurso: string; temRegistroValido: boolean };
+
 // Entregas de EPI do módulo dedicado /epi — registro (em carrinho: vários itens de uma vez para o
 // mesmo funcionário, assinados numa única interação — spec pedida pelo usuário, 19-21/09), devolução
 // (repõe estoque no backend), ficha em PDF e atalho para a assinatura eletrônica. Primeira página na
@@ -109,6 +118,7 @@ export function EntregasTab({ aoNavegarParaMatriz }: EntregasTabProps) {
   const [devolucaoQtd, setDevolucaoQtd] = useState('');
   const [loteParaAssinar, setLoteParaAssinar] = useState<LoteParaAssinar | null>(null);
   const [devolucaoParaAssinar, setDevolucaoParaAssinar] = useState<EntregaEpi | null>(null);
+  const [statusIntegracao, setStatusIntegracao] = useState<StatusIntegracao | null>(null);
 
   async function carregar() {
     try {
@@ -138,31 +148,61 @@ export function EntregasTab({ aoNavegarParaMatriz }: EntregasTabProps) {
   // data do treinamento de NR-06 se o funcionário já tem esse treinamento cadastrado no módulo de
   // Treinamentos — busca automaticamente o mais recente ao trocar de funcionário (o usuário ainda
   // pode sobrescrever os campos à mão, ex.: quando o treinamento ainda não foi cadastrado no sistema).
+  // Também verifica aqui (mesma lista de treinamentos já buscada) se a Integração de Segurança está
+  // em dia e assinada pelo próprio trabalhador (pedido do usuário, 21/09) — o backend é quem
+  // efetivamente bloqueia; isto só avisa antes de montar o carrinho inteiro à toa.
   useEffect(() => {
     let cancelado = false;
-    async function preencherDadosNr6() {
-      if (!dadosComuns.trabalhadorId) return;
+    async function sincronizarDadosTrabalhador() {
+      if (!dadosComuns.trabalhadorId) {
+        setStatusIntegracao(null);
+        return;
+      }
+      const cursoIntegracao = cursos.find((c) => c.ehIntegracaoSeguranca);
+      if (!cursoIntegracao) {
+        setStatusIntegracao({ tipo: 'sem-curso' });
+        return;
+      }
       try {
         const treinamentosTrabalhador = await api.treinamentos.listar(dadosComuns.trabalhadorId);
         if (cancelado) return;
+
         const treinamentoNr6 = treinamentosTrabalhador
           .filter((t) => ehNormaNr6(cursos.find((c) => c.id === t.cursoTreinamentoId)?.normaReferencia))
           .sort((a, b) => b.dataRealizacao.localeCompare(a.dataRealizacao))[0];
-        if (!treinamentoNr6) return;
-        setDadosComuns((atual) =>
-          atual.trabalhadorId === treinamentoNr6.trabalhadorId
-            ? {
-                ...atual,
-                numeroListaPresencaNr6: treinamentoNr6.numeroCertificado ?? '',
-                dataTreinamentoNr6: treinamentoNr6.dataRealizacao.slice(0, 10),
-              }
-            : atual,
+        if (treinamentoNr6) {
+          setDadosComuns((atual) =>
+            atual.trabalhadorId === treinamentoNr6.trabalhadorId
+              ? {
+                  ...atual,
+                  numeroListaPresencaNr6: treinamentoNr6.numeroCertificado ?? '',
+                  dataTreinamentoNr6: treinamentoNr6.dataRealizacao.slice(0, 10),
+                }
+              : atual,
+          );
+        }
+
+        const hoje = new Date().toISOString().slice(0, 10);
+        const treinamentoIntegracao = treinamentosTrabalhador
+          .filter((t) => t.cursoTreinamentoId === cursoIntegracao.id && t.dataValidade.slice(0, 10) >= hoje)
+          .sort((a, b) => b.dataRealizacao.localeCompare(a.dataRealizacao))[0];
+        if (!treinamentoIntegracao) {
+          setStatusIntegracao({ tipo: 'pendente', nomeCurso: cursoIntegracao.nome, temRegistroValido: false });
+          return;
+        }
+        const documento = await api.assinatura.obter('Treinamento', treinamentoIntegracao.id);
+        if (cancelado) return;
+        const trabalhadorAssinou =
+          documento?.signatarios.some((s) => s.metodoAutenticacao !== MetodoAutenticacaoAssinatura.SessaoLogada) ?? false;
+        setStatusIntegracao(
+          trabalhadorAssinou ? { tipo: 'ok' } : { tipo: 'pendente', nomeCurso: cursoIntegracao.nome, temRegistroValido: true },
         );
       } catch {
-        // Falha ao buscar o treinamento não impede o preenchimento manual dos campos.
+        // Falha ao verificar não deve travar a tela — o backend valida de qualquer forma ao confirmar.
+        if (!cancelado) setStatusIntegracao(null);
       }
     }
-    preencherDadosNr6();
+    sincronizarDadosTrabalhador();
     return () => {
       cancelado = true;
     };
@@ -216,6 +256,9 @@ export function EntregasTab({ aoNavegarParaMatriz }: EntregasTabProps) {
     // para o funcionário anterior podem nem existir na matriz do novo, então o carrinho é limpo.
     setDadosComuns({ ...dadosComuns, trabalhadorId: id, numeroListaPresencaNr6: '', dataTreinamentoNr6: '' });
     setCarrinho([]);
+    // Evita mostrar por um instante o status de integração do funcionário anterior até o efeito
+    // que verifica o novo terminar de carregar.
+    setStatusIntegracao(null);
   }
 
   function adicionarAoCarrinho(item: ItemCarrinhoEpi) {
@@ -515,6 +558,13 @@ export function EntregasTab({ aoNavegarParaMatriz }: EntregasTabProps) {
               <FormSection titulo="O que é entregue" numero={2}>
                 {!dadosComuns.trabalhadorId ? (
                   <FeedbackInline tom="info">Selecione o funcionário para ver os EPIs vinculados à função dele.</FeedbackInline>
+                ) : statusIntegracao?.tipo === 'pendente' ? (
+                  <FeedbackInline tom="erro">
+                    Este funcionário {statusIntegracao.temRegistroValido
+                      ? <>tem o treinamento de <b>{statusIntegracao.nomeCurso}</b> registrado, mas ainda não o assinou</>
+                      : <>ainda não tem o treinamento de <b>{statusIntegracao.nomeCurso}</b> em dia</>}
+                    {' '}— a entrega de EPI fica bloqueada até isso ser resolvido em Pessoas &gt; Treinamentos.
+                  </FeedbackInline>
                 ) : episPermitidos.length === 0 ? (
                   <FeedbackInline
                     tom="aviso"

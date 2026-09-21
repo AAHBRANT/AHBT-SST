@@ -127,8 +127,14 @@ export function AssinaturaEntregaEpiLoteDialog({
     return documentos[entregaId]?.signatarios.some((s) => s.metodoAutenticacao === metodo) ?? false;
   }
 
+  // Receptor pode assinar por digital (Biometria) OU reconhecimento facial — qualquer método que
+  // não seja SessaoLogada (exclusivo do entregador) conta como "o receptor já assinou".
+  function receptorAssinou(entregaId: string): boolean {
+    return documentos[entregaId]?.signatarios.some((s) => s.metodoAutenticacao !== MetodoAutenticacaoAssinatura.SessaoLogada) ?? false;
+  }
+
   const entregadorAssinouTodos = itens.length > 0 && itens.every((i) => assinouComo(i.entregaId, MetodoAutenticacaoAssinatura.SessaoLogada));
-  const receptorAssinouTodos = itens.length > 0 && itens.every((i) => assinouComo(i.entregaId, MetodoAutenticacaoAssinatura.Biometria));
+  const receptorAssinouTodos = itens.length > 0 && itens.every((i) => receptorAssinou(i.entregaId));
 
   async function assinarComoEntregador() {
     try {
@@ -159,7 +165,7 @@ export function AssinaturaEntregaEpiLoteDialog({
       let nome: string | null = null;
       for (const item of itens) {
         const doc = documentos[item.entregaId];
-        if (!doc || assinouComo(item.entregaId, MetodoAutenticacaoAssinatura.Biometria)) continue;
+        if (!doc || receptorAssinou(item.entregaId)) continue;
         const signatario = await api.assinatura.autenticarBiometriaLocal(
           doc.id,
           dispositivoLocal.dispositivoId,
@@ -189,7 +195,7 @@ export function AssinaturaEntregaEpiLoteDialog({
       let nome: string | null = null;
       for (const item of itens) {
         const doc = documentos[item.entregaId];
-        if (!doc || assinouComo(item.entregaId, MetodoAutenticacaoAssinatura.Biometria)) continue;
+        if (!doc || receptorAssinou(item.entregaId)) continue;
         const signatario = await api.assinatura.autenticarFacial(doc.id, obraId, arquivo);
         nome = signatario.trabalhadorNome;
       }
