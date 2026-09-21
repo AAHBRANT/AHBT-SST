@@ -22,6 +22,7 @@ import { IdentificacaoPublicaPage } from './pages/identificacao/IdentificacaoPub
 import { ValidarDocumentoPage } from './pages/validacao/ValidarDocumentoPage';
 import { AdministracaoPage } from './pages/administracao/AdministracaoPage';
 import { SuporteIaPage } from './pages/suporte-ia/SuporteIaPage';
+import { SuporteIaDetalhePage } from './pages/suporte-ia/SuporteIaDetalhePage';
 import { NaoConformidadeDetalhePage } from './pages/naoconformidades/NaoConformidadeDetalhePage';
 import { AlertasPage } from './pages/alertas/AlertasPage';
 import { CalendarioPage } from './pages/calendario/CalendarioPage';
@@ -191,6 +192,7 @@ function AppRoteado() {
               <Route path="/alertas" element={<AlertasPage />} />
               <Route path="/calendario" element={<CalendarioPage />} />
               <Route path="/suporte-ia" element={<SuporteIaPage />} />
+              <Route path="/suporte-ia/:id" element={<SuporteIaDetalhePage />} />
 
               {/* Item "Pessoas" da sidebar: Funcionários/Funções/Dashboard são abas de PessoasPage.
                   "ASO & Exames" chegou a ser uma 2ª aba aqui (via PessoasPillarPage, réplica de

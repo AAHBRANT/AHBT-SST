@@ -226,6 +226,10 @@ public class CriarSolicitacaoSuporteIaCommandHandler : IRequestHandler<CriarSoli
         EvidenciasTecnicas = s.EvidenciasTecnicas,
         CreatedAtUtc = s.CreatedAtUtc,
         TriadoEmUtc = s.TriadoEmUtc,
-        EncaminhadoEmUtc = s.EncaminhadoEmUtc
+        EncaminhadoEmUtc = s.EncaminhadoEmUtc,
+        // Quem acabou de criar o chamado é, por definição, o solicitante — sem precisar comparar
+        // identidade como nas outras queries/comandos, que recebem a entidade já persistida sem
+        // saber quem está chamando.
+        SouSolicitante = true
     };
 }

@@ -3287,6 +3287,8 @@ export const StatusSolicitacaoSuporteIa = {
   EmAnaliseTecnica: 4,
   Resolvida: 5,
   Cancelada: 6,
+  AguardandoValidacao: 7,
+  Reaberta: 8,
 } as const;
 
 export const statusSolicitacaoSuporteIaLabel: Record<number, string> = {
@@ -3296,6 +3298,8 @@ export const statusSolicitacaoSuporteIaLabel: Record<number, string> = {
   4: 'Em análise técnica',
   5: 'Resolvida',
   6: 'Cancelada',
+  7: 'Aguardando validação',
+  8: 'Reaberta',
 };
 
 export interface SuporteIaSolicitacao {
@@ -3319,6 +3323,15 @@ export interface SuporteIaSolicitacao {
   createdAtUtc: string;
   triadoEmUtc: string;
   encaminhadoEmUtc?: string | null;
+  responsavelUsuarioId?: string | null;
+  responsavelNome?: string | null;
+  aprovadoEmUtc?: string | null;
+  notaFechamento?: string | null;
+  concluidoEmUtc?: string | null;
+  validacaoConfirmada?: boolean | null;
+  comentarioValidacao?: string | null;
+  validadoEmUtc?: string | null;
+  souSolicitante: boolean;
 }
 
 export interface NovaSolicitacaoSuporteIa {
@@ -4642,10 +4655,34 @@ export const api = {
       const query = params.toString();
       return request<SuporteIaSolicitacao[]>(`/api/suporte-ia${query ? `?${query}` : ''}`);
     },
+    listarTodos: (status?: number) => {
+      const params = new URLSearchParams();
+      if (status !== undefined) params.set('status', String(status));
+      const query = params.toString();
+      return request<SuporteIaSolicitacao[]>(`/api/suporte-ia/admin${query ? `?${query}` : ''}`);
+    },
+    obterDetalhe: (id: string) => request<SuporteIaSolicitacao>(`/api/suporte-ia/${id}`),
     criar: (solicitacao: NovaSolicitacaoSuporteIa) =>
       request<SuporteIaSolicitacao>('/api/suporte-ia', {
         method: 'POST',
         body: JSON.stringify(solicitacao),
+      }),
+    aprovar: (id: string) =>
+      request<SuporteIaSolicitacao>(`/api/suporte-ia/${id}/aprovar`, { method: 'POST' }),
+    concluir: (id: string, notaFechamento: string | null) =>
+      request<SuporteIaSolicitacao>(`/api/suporte-ia/${id}/concluir`, {
+        method: 'POST',
+        body: JSON.stringify({ notaFechamento }),
+      }),
+    recusar: (id: string, notaFechamento: string) =>
+      request<SuporteIaSolicitacao>(`/api/suporte-ia/${id}/recusar`, {
+        method: 'POST',
+        body: JSON.stringify({ notaFechamento }),
+      }),
+    validar: (id: string, confirmado: boolean, comentario: string | null) =>
+      request<SuporteIaSolicitacao>(`/api/suporte-ia/${id}/validar`, {
+        method: 'POST',
+        body: JSON.stringify({ confirmado, comentario }),
       }),
   },
   novidades: {
