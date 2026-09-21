@@ -61,6 +61,19 @@ export const useDashboardStyles = makeStyles({
     gap: '12px',
     marginBottom: '20px',
   },
+  // Linha que combina a grade de KPIs com o mini calendário (largura fixa de 200px, ver
+  // MiniCalendarioCard). Grid em vez de flex: com flex e flex-basis:auto, o tamanho "auto" da
+  // grade de KPIs é o max-content do conteúdo, não o espaço realmente disponível — isso forçava o
+  // calendário a quebrar de linha mesmo em telas onde os dois cabiam lado a lado (768px, achado ao
+  // corrigir o layout mobile em 21/09). Com colunas de grid explícitas, quem decide é o breakpoint.
+  linhaKpisCalendario: {
+    display: 'grid',
+    gridTemplateColumns: '1fr 200px',
+    gap: '16px',
+    alignItems: 'start',
+    marginBottom: '16px',
+    '@media (max-width: 620px)': { gridTemplateColumns: '1fr' },
+  },
   // Grade dos 7 indicadores do topo (6 KPIs + Taxa de Gravidade). Colunas FIXAS por largura, e não
   // auto-fit: com auto-fit o número de colunas variava com a tela e o 7º cartão caía sozinho numa
   // segunda linha ao lado de um vazio (13/09). Com colunas fixas, as linhas ficam sempre alinhadas
