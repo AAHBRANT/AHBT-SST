@@ -2,6 +2,7 @@ using AAHBRANT.SST.Application.Alojamentos.Commands;
 using AAHBRANT.SST.Application.Common.Interfaces;
 using AAHBRANT.SST.Application.Tests.TestSupport;
 using AAHBRANT.SST.Domain.Entidades;
+using AAHBRANT.SST.Domain.Enums;
 using AAHBRANT.SST.Infrastructure.Seguranca;
 using Microsoft.EntityFrameworkCore;
 
@@ -219,6 +220,45 @@ public class SincronizarAlojamentoGrhCommandHandlerTests
         var alojamento = await db.Alojamentos.SingleAsync(a => a.Id == id);
         Assert.Equal("Alojamento 01", alojamento.Nome);
         Assert.False(await db.AlojamentoMoradores.AnyAsync());
+    }
+
+    // Bug real encontrado em homologação (21/09): a obra do alojamento mudou numa re-sincronização
+    // e as Inspeções já criadas ficaram com o ObraId antigo, escondidas pelo filtro de escopo por
+    // obra (SstDbContext) de quem só tinha acesso à obra nova — "Continuar inspeção" dava 404 só
+    // nos alojamentos com inspeção em aberto criada antes da mudança.
+    [Fact]
+    public async Task Handle_ObraDoAlojamentoMuda_PropagaNovaObraParaInspecoesExistentes()
+    {
+        var db = DbContextFactory.Criar();
+        var obraAntiga = new Obra { Codigo = "OBRA-1", Nome = "Ponte Rio Cuiá" };
+        var obraNova = new Obra { Codigo = "OBRA-2", Nome = "Consórcio Ponte Rio Cuiá" };
+        db.Obras.AddRange(obraAntiga, obraNova);
+        await db.SaveChangesAsync();
+
+        var handler = new SincronizarAlojamentoGrhCommandHandler(db, CpfHash);
+        var alojamentoId = await handler.Handle(Comando("GRH-001", "Alojamento 01", "Ponte Rio Cuiá"), default);
+
+        var inspecaoEmAndamento = new Inspecao
+        {
+            TipoInspecao = TipoInspecao.Alojamento,
+            ObraId = obraAntiga.Id,
+            AlojamentoId = alojamentoId,
+            ChecklistModeloId = Guid.NewGuid(),
+            ResponsavelUsuarioId = Guid.NewGuid(),
+            Data = new DateTime(2026, 9, 1),
+            Status = StatusInspecao.EmAndamento,
+        };
+        db.Inspecoes.Add(inspecaoEmAndamento);
+        await db.SaveChangesAsync();
+
+        // Re-sincroniza o mesmo alojamento (mesmo GrhAlojamentoId), agora resolvendo para a obra nova.
+        await handler.Handle(Comando("GRH-001", "Alojamento 01", "Consórcio Ponte Rio Cuiá"), default);
+
+        var alojamento = await db.Alojamentos.SingleAsync(a => a.Id == alojamentoId);
+        Assert.Equal(obraNova.Id, alojamento.ObraId);
+
+        var inspecaoAtualizada = await db.Inspecoes.IgnoreQueryFilters().SingleAsync(i => i.Id == inspecaoEmAndamento.Id);
+        Assert.Equal(obraNova.Id, inspecaoAtualizada.ObraId);
     }
 
     [Fact]
