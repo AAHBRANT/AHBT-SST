@@ -26,6 +26,27 @@ export interface UseCapturaFotoOptions {
 // também pelo visual de slot em quadro (SlotFoto/GradeFotosEvidencia) — mesmo diálogo de câmera ao
 // vivo (getUserMedia) nos dois lugares, em vez de um <input capture> "burro" que o Chrome/Edge de
 // desktop costuma ignorar (só funciona de verdade em navegador mobile).
+// Chave única (não por modoCamera): um notebook com webcam USB externa plugada é o mesmo
+// equipamento físico independente de a tela pedir câmera "user" (facial) ou "environment"
+// (evidência) — o usuário só quer escolher uma vez qual câmera o computador deve usar.
+const CHAVE_CAMERA_PREFERIDA = 'sst.camera.dispositivoPreferido';
+
+function lerCameraPreferida(): string | null {
+  try {
+    return localStorage.getItem(CHAVE_CAMERA_PREFERIDA);
+  } catch {
+    return null;
+  }
+}
+
+function salvarCameraPreferida(deviceId: string) {
+  try {
+    localStorage.setItem(CHAVE_CAMERA_PREFERIDA, deviceId);
+  } catch {
+    // Sem localStorage (modo privado, storage bloqueado) — só não persiste a escolha entre sessões.
+  }
+}
+
 export function useCapturaFoto({
   aoSelecionarArquivo,
   aoErroValidacao,
@@ -38,6 +59,22 @@ export function useCapturaFoto({
   const videoRef = useRef<HTMLVideoElement>(null);
   const [processando, setProcessando] = useState(false);
   const [stream, setStream] = useState<MediaStream | null>(null);
+  // Pedido do usuário (22/09): notebook com mais de uma câmera (webcam interna + USB externa, ex.:
+  // quiosque de assinatura facial) precisa deixar escolher qual usar — antes disso o navegador
+  // escolhia sozinho via `facingMode`, sem opção de troca. Lista só vem populada com rótulos depois
+  // da primeira permissão concedida (getUserMedia bem-sucedido); ver abrirCamera/atualizarDispositivos.
+  const [dispositivosVideo, setDispositivosVideo] = useState<MediaDeviceInfo[]>([]);
+  const [dispositivoAtualId, setDispositivoAtualId] = useState<string | null>(null);
+
+  async function atualizarDispositivos() {
+    if (!navigator.mediaDevices?.enumerateDevices) return;
+    try {
+      const todos = await navigator.mediaDevices.enumerateDevices();
+      setDispositivosVideo(todos.filter((d) => d.kind === 'videoinput'));
+    } catch {
+      // Falha ao listar não impede o uso da câmera já aberta — só não mostra o seletor.
+    }
+  }
 
   // Anexa o stream ao <video> só depois que o diálogo (e portanto o elemento) já está montado, e
   // para as tracks da câmera sempre que o stream muda ou o componente desmonta — sem isso a luz da
@@ -79,29 +116,60 @@ export function useCapturaFoto({
     }
   }
 
+  function falharAbertura() {
+    if (exigirCamera) {
+      aoErroValidacao?.(
+        'Não foi possível acessar a câmera. Verifique se o navegador/app tem permissão de câmera liberada e tente novamente — este cadastro exige captura ao vivo, não aceita foto do álbum/arquivos.',
+      );
+      return;
+    }
+    // Sem câmera, permissão negada, ou navegador sem suporte — cai no seletor de arquivos.
+    inputRef.current?.click();
+  }
+
   async function abrirCamera() {
     if (!permitirCamera || !navigator.mediaDevices?.getUserMedia) {
-      if (exigirCamera) {
-        aoErroValidacao?.(
-          'Não foi possível acessar a câmera. Verifique se o navegador/app tem permissão de câmera liberada e tente novamente — este cadastro exige captura ao vivo, não aceita foto do álbum/arquivos.',
-        );
-        return;
-      }
-      inputRef.current?.click();
+      falharAbertura();
       return;
+    }
+    // Se o usuário já escolheu uma câmera específica antes neste computador (ex.: webcam USB do
+    // quiosque de assinatura facial), tenta abrir ela direto — sem isso o navegador decidiria
+    // sozinho e podia cair na webcam interna do notebook em vez da externa. Se o dispositivo salvo
+    // não existir mais (foi desconectado), cai para a escolha automática por facingMode abaixo.
+    const preferidaId = lerCameraPreferida();
+    if (preferidaId) {
+      try {
+        const novoStream = await navigator.mediaDevices.getUserMedia({ video: { deviceId: { exact: preferidaId } } });
+        setStream(novoStream);
+        setDispositivoAtualId(preferidaId);
+        await atualizarDispositivos();
+        return;
+      } catch {
+        // Câmera salva indisponível — segue para a tentativa padrão abaixo.
+      }
     }
     try {
       const novoStream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: modoCamera } });
       setStream(novoStream);
+      setDispositivoAtualId(novoStream.getVideoTracks()[0]?.getSettings().deviceId ?? null);
+      await atualizarDispositivos();
     } catch {
-      if (exigirCamera) {
-        aoErroValidacao?.(
-          'Não foi possível acessar a câmera. Verifique se o navegador/app tem permissão de câmera liberada e tente novamente — este cadastro exige captura ao vivo, não aceita foto do álbum/arquivos.',
-        );
-        return;
-      }
-      // Sem câmera, permissão negada, ou navegador sem suporte — cai no seletor de arquivos.
-      inputRef.current?.click();
+      falharAbertura();
+    }
+  }
+
+  // Troca de câmera com o diálogo aberto (seletor no DialogoCameraFoto) — para o stream atual e
+  // abre o dispositivo escolhido, sem fechar o diálogo. Lembra a escolha pras próximas vezes neste
+  // mesmo computador (pedido do usuário, 22/09).
+  async function trocarDispositivo(deviceId: string) {
+    if (!navigator.mediaDevices?.getUserMedia) return;
+    try {
+      const novoStream = await navigator.mediaDevices.getUserMedia({ video: { deviceId: { exact: deviceId } } });
+      setStream(novoStream);
+      setDispositivoAtualId(deviceId);
+      salvarCameraPreferida(deviceId);
+    } catch {
+      aoErroValidacao?.('Não foi possível trocar para essa câmera. Verifique se ela ainda está conectada.');
     }
   }
 
@@ -140,9 +208,13 @@ export function useCapturaFoto({
     stream,
     modoCamera,
     permitirCamera,
+    exigirCamera,
+    dispositivosVideo,
+    dispositivoAtualId,
     abrirCamera,
     fecharCamera,
     capturarFoto,
+    trocarDispositivo,
     onInputChange,
   };
 }

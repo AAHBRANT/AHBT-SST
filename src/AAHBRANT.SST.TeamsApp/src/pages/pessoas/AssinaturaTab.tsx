@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Button, Card, FeedbackInline, Legenda } from '@ui';
-import { Fingerprint24Regular } from '@fluentui/react-icons';
+import { CheckmarkCircle24Regular, Fingerprint24Regular } from '@fluentui/react-icons';
 import { api } from '../../lib/api';
 import { capturarDigitalBrutaLocal } from '../../lib/agenteBiometricoLocal';
 import { SeletorFotoCamera } from '../../components/SeletorFotoCamera';
@@ -29,11 +29,9 @@ function extrairMensagemErro(e: unknown, fallback: string): string {
 // WebAuthn/FIDO2 foram removidos daqui (o backend/API deles continua existindo, só não é mais
 // oferecido nesta tela de cadastro por trabalhador).
 //
-// O Termo de Aceite (MP 2.200-2/2001) e o consentimento LGPD de biometria ainda não têm tela própria
-// — o texto jurídico depende de revisão do jurídico e não deve ser aproximado por um texto provisório
-// aqui. Até lá, essas duas confirmações são registradas via Swagger (POST /api/trabalhadores/{id}/
-// assinatura/termo-aceite e .../consentimento-biometria) e o cadastro de biometria abaixo vai
-// simplesmente devolver o erro real do backend se elas ainda não existirem.
+// O Termo de Aceite de Assinatura Eletrônica e o consentimento LGPD de biometria são registros
+// separados no backend. O texto abaixo orienta o operador, mas a captura continua bloqueada pelo
+// backend caso esses registros ainda não existam para o trabalhador.
 export function AssinaturaTab({ trabalhadorId }: AssinaturaTabProps) {
   const [cadastrandoBiometriaLocal, setCadastrandoBiometriaLocal] = useState(false);
   const [erroBiometriaLocal, setErroBiometriaLocal] = useState<string | null>(null);
@@ -41,6 +39,32 @@ export function AssinaturaTab({ trabalhadorId }: AssinaturaTabProps) {
 
   const [erroFacial, setErroFacial] = useState<string | null>(null);
   const [facialCadastrada, setFacialCadastrada] = useState(false);
+
+  const [confirmandoAceite, setConfirmandoAceite] = useState(false);
+  const [erroAceite, setErroAceite] = useState<string | null>(null);
+  const [aceiteConfirmado, setAceiteConfirmado] = useState(false);
+
+  // Pedido do usuário (22/09): botão único que registra os dois consentimentos de uma vez, enquanto
+  // não existe tela própria com o texto jurídico definitivo (ver comentário acima da função do
+  // componente). RegistrarTermoAceiteAssinaturaCommand/RegistrarConsentimentoBiometriaCommand não são
+  // idempotentes por design (cada chamada é um novo evento de aceite com timestamp atual) — clicar de
+  // novo só reafirma, não dá erro. Em sequência, não em paralelo (testado e corrigido em 22/09): os
+  // dois comandos escrevem no mesmo Trabalhador, e a leitura+gravação concorrente das duas chamadas
+  // batia no RowVersion (concorrência otimista do EF Core) e devolvia 409 Conflict.
+  async function confirmarAceite() {
+    try {
+      setConfirmandoAceite(true);
+      setErroAceite(null);
+      setAceiteConfirmado(false);
+      await api.trabalhadores.registrarTermoAceiteAssinatura(trabalhadorId);
+      await api.trabalhadores.registrarConsentimentoBiometria(trabalhadorId);
+      setAceiteConfirmado(true);
+    } catch (e) {
+      setErroAceite(extrairMensagemErro(e, 'Falha ao confirmar o aceite.'));
+    } finally {
+      setConfirmandoAceite(false);
+    }
+  }
 
   async function cadastrarFacial(arquivo: File) {
     try {
@@ -70,9 +94,50 @@ export function AssinaturaTab({ trabalhadorId }: AssinaturaTabProps) {
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+      <Card densidade="compacta" titulo="Termos e consentimento">
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+          <Legenda>
+            Antes de cadastrar digital ou reconhecimento facial, o trabalhador deve ter Termo de Aceite de
+            Assinatura Eletrônica e Termo de Consentimento LGPD para Biometria registrados.
+          </Legenda>
+          <Legenda>
+            O consentimento biométrico cobre dado pessoal sensível usado para identificação e autenticação
+            em documentos de SST, incluindo digital no leitor local e reconhecimento facial via Azure Face
+            API quando a obra permitir esse método.
+          </Legenda>
+          <Legenda>
+            <strong>Atenção:</strong> o texto jurídico definitivo do Termo de Aceite e do Consentimento LGPD
+            ainda está pendente de revisão do jurídico. O botão abaixo só registra a data/hora da
+            confirmação — use com o trabalhador ciente do que está aceitando, até o texto final substituir
+            este aviso.
+          </Legenda>
+        </div>
+        {erroAceite && (
+          <FeedbackInline tom="erro" aoFechar={() => setErroAceite(null)}>
+            {erroAceite}
+          </FeedbackInline>
+        )}
+        {aceiteConfirmado && (
+          <FeedbackInline tom="sucesso" aoFechar={() => setAceiteConfirmado(false)}>
+            Termo de Aceite e Consentimento Biométrico confirmados para este trabalhador.
+          </FeedbackInline>
+        )}
+        <Button
+          icon={<CheckmarkCircle24Regular />}
+          onClick={confirmarAceite}
+          disabled={confirmandoAceite}
+          style={{ marginTop: 8 }}
+        >
+          Confirmar aceite
+        </Button>
+      </Card>
+
       <Card densidade="compacta" titulo="Digital (leitor local — Futronic FS80H)">
         <div style={{ marginBottom: 12 }}>
-          <Legenda>Exige Termo de Aceite e consentimento de uso de biometria já registrados para este funcionário.</Legenda>
+          <Legenda>
+            Exige aceite de assinatura eletrônica e consentimento biométrico já registrados para este
+            trabalhador.
+          </Legenda>
         </div>
         {erroBiometriaLocal && (
           <FeedbackInline tom="erro" aoFechar={() => setErroBiometriaLocal(null)}>
@@ -96,8 +161,8 @@ export function AssinaturaTab({ trabalhadorId }: AssinaturaTabProps) {
       <Card densidade="compacta" titulo="Reconhecimento Facial (Azure)">
         <div style={{ marginBottom: 12 }}>
           <Legenda>
-            Método adicional ao leitor de digital — exige Termo de Aceite e consentimento de biometria já
-            registrados para este funcionário.
+            Método adicional ao leitor de digital. A foto facial é enviada ao Azure Face API para cadastro
+            e autenticação, usando o consentimento biométrico LGPD já registrado para este trabalhador.
           </Legenda>
         </div>
         {erroFacial && (
