@@ -1,3 +1,5 @@
+using System.Globalization;
+using System.Text.Json;
 using System.Text.Json.Serialization;
 using AAHBRANT.SST.Application.Common.Interfaces;
 using AAHBRANT.SST.Domain.Enums;
@@ -14,7 +16,7 @@ internal class ColaboradorGrhPayload
     [JsonPropertyName("nome")] public string Nome { get; set; } = string.Empty;
     [JsonPropertyName("pis")] public string? Pis { get; set; }
     [JsonPropertyName("ctps")] public string? Ctps { get; set; }
-    [JsonPropertyName("nascimento")] public DateTime? Nascimento { get; set; }
+    [JsonPropertyName("nascimento")] [JsonConverter(typeof(DataGrhLenienteConverter))] public DateTime? Nascimento { get; set; }
     [JsonPropertyName("nomeMae")] public string? NomeMae { get; set; }
     [JsonPropertyName("endereco")] public string? Endereco { get; set; }
     [JsonPropertyName("municipio")] public string? Municipio { get; set; }
@@ -22,11 +24,11 @@ internal class ColaboradorGrhPayload
     [JsonPropertyName("cep")] public string? Cep { get; set; }
     [JsonPropertyName("matricula")] public string? Matricula { get; set; }
     [JsonPropertyName("admissao")] public DateTime Admissao { get; set; }
-    [JsonPropertyName("desligamento")] public DateTime? Desligamento { get; set; }
+    [JsonPropertyName("desligamento")] [JsonConverter(typeof(DataGrhLenienteConverter))] public DateTime? Desligamento { get; set; }
     [JsonPropertyName("situacao")] public string? Situacao { get; set; }
     [JsonPropertyName("salario")] public decimal? Salario { get; set; }
-    [JsonPropertyName("experiencia1Fim")] public DateTime? Experiencia1Fim { get; set; }
-    [JsonPropertyName("experiencia2Fim")] public DateTime? Experiencia2Fim { get; set; }
+    [JsonPropertyName("experiencia1Fim")] [JsonConverter(typeof(DataGrhLenienteConverter))] public DateTime? Experiencia1Fim { get; set; }
+    [JsonPropertyName("experiencia2Fim")] [JsonConverter(typeof(DataGrhLenienteConverter))] public DateTime? Experiencia2Fim { get; set; }
     [JsonPropertyName("tamanhoBlusa")] public string? TamanhoBlusa { get; set; }
     [JsonPropertyName("tamanhoCalca")] public string? TamanhoCalca { get; set; }
     [JsonPropertyName("tamanhoCalcado")] public string? TamanhoCalcado { get; set; }
@@ -38,6 +40,36 @@ internal class CargoGrhPayload
 {
     [JsonPropertyName("nome")] public string? Nome { get; set; }
     [JsonPropertyName("cbo")] public string? Cbo { get; set; }
+}
+
+// Incidente real (22/09): um colaborador trouxe "experiencia2Fim" num formato que
+// System.Text.Json não reconhece (ex.: vazio ou fora do ISO 8601) — como a carga inicial
+// desserializa o array inteiro de uma vez (ReadFromJsonAsync<List<...>>), isso quebrava a
+// importação de TODOS os colaboradores, não só desse um. Datas opcionais (Nascimento/
+// Desligamento/Experiencia1Fim/Experiencia2Fim) usam este conversor tolerante: um valor que não
+// dá pra interpretar vira null (campo "não informado") em vez de derrubar o lote inteiro.
+// Admissao continua estrita (é obrigatória) — um colaborador sem data de admissão válida é
+// mesmo um registro inválido.
+internal class DataGrhLenienteConverter : JsonConverter<DateTime?>
+{
+    public override DateTime? Read(ref Utf8JsonReader reader, Type typeToConvert, JsonSerializerOptions options)
+    {
+        if (reader.TokenType == JsonTokenType.Null) return null;
+        if (reader.TokenType != JsonTokenType.String) return null;
+
+        var texto = reader.GetString();
+        if (string.IsNullOrWhiteSpace(texto)) return null;
+
+        return DateTime.TryParse(texto, CultureInfo.InvariantCulture, DateTimeStyles.None, out var data)
+            ? data
+            : null;
+    }
+
+    public override void Write(Utf8JsonWriter writer, DateTime? value, JsonSerializerOptions options)
+    {
+        if (value.HasValue) writer.WriteStringValue(value.Value);
+        else writer.WriteNullValue();
+    }
 }
 
 internal static class ColaboradorGrhPayloadMapper

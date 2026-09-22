@@ -5,3 +5,4 @@ using System.Runtime.CompilerServices;
 // precisariam de reflection ou duplicar a lógica. Repositório não usa mocking library nenhuma
 // (ver tests/**/*.csproj), então essa é a única forma limpa de testar lógica internal.
 [assembly: InternalsVisibleTo("AAHBRANT.SST.Application.Tests")]
+[assembly: InternalsVisibleTo("AAHBRANT.SST.Infrastructure.Tests")]
