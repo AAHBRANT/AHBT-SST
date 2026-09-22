@@ -33,7 +33,7 @@ public class AzureFaceAutenticacaoStrategy : IAutenticacaoFacialService
             ?? throw new KeyNotFoundException("Trabalhador não encontrado.");
 
         if (trabalhador.TermoAceiteAssinaturaEletronicaEm is null || trabalhador.ConsentimentoBiometriaEm is null)
-            throw new InvalidOperationException("Trabalhador ainda não confirmou o Termo de Aceite ou o consentimento de biometria.");
+            throw new InvalidOperationException("Trabalhador ainda não confirmou o Termo de Aceite de Assinatura Eletrônica e o consentimento LGPD para uso de biometria facial.");
 
         var obra = await _db.Obras.FirstOrDefaultAsync(o => o.Id == trabalhador.ObraId, ct)
             ?? throw new KeyNotFoundException("Obra do trabalhador não encontrada.");
@@ -44,9 +44,9 @@ public class AzureFaceAutenticacaoStrategy : IAutenticacaoFacialService
         if (personGroupId is null)
         {
             personGroupId = $"obra-{obra.Id:N}";
-            await CriarPersonGroupSeNaoExistirAsync(cliente, personGroupId, obra.Nome, ct);
             obra.AzureFacePersonGroupId = personGroupId;
         }
+        await CriarPersonGroupSeNaoExistirAsync(cliente, personGroupId, obra.Nome, ct);
 
         var personId = trabalhador.AzureFacePersonId;
         if (personId is null)
@@ -55,7 +55,16 @@ public class AzureFaceAutenticacaoStrategy : IAutenticacaoFacialService
             trabalhador.AzureFacePersonId = personId;
         }
 
-        await AdicionarFaceAsync(cliente, personGroupId, personId, fotoJpeg, ct);
+        var erroAdicionarFace = await TentarAdicionarFaceAsync(cliente, personGroupId, personId, fotoJpeg, ct);
+        if (erroAdicionarFace?.Code is "PersonNotFound")
+        {
+            personId = await CriarPersonAsync(cliente, personGroupId, trabalhador.Nome, ct);
+            trabalhador.AzureFacePersonId = personId;
+            erroAdicionarFace = await TentarAdicionarFaceAsync(cliente, personGroupId, personId, fotoJpeg, ct);
+        }
+        if (erroAdicionarFace is not null)
+            throw new InvalidOperationException(MontarMensagemErroAzure("Falha ao adicionar foto ao Person no Azure Face API", erroAdicionarFace));
+
         await _db.SaveChangesAsync(ct);
 
         await TreinarEAguardarAsync(cliente, personGroupId, ct);
@@ -125,13 +134,14 @@ public class AzureFaceAutenticacaoStrategy : IAutenticacaoFacialService
         return corpo!.PersonId;
     }
 
-    private static async Task AdicionarFaceAsync(HttpClient cliente, string personGroupId, string personId, byte[] fotoJpeg, CancellationToken ct)
+    private static async Task<AzureFaceErro?> TentarAdicionarFaceAsync(HttpClient cliente, string personGroupId, string personId, byte[] fotoJpeg, CancellationToken ct)
     {
         using var conteudo = new ByteArrayContent(fotoJpeg);
         conteudo.Headers.ContentType = new MediaTypeHeaderValue("application/octet-stream");
         var resposta = await cliente.PostAsync($"face/v1.0/persongroups/{personGroupId}/persons/{personId}/persistedFaces", conteudo, ct);
-        if (!resposta.IsSuccessStatusCode)
-            throw new InvalidOperationException($"Falha ao adicionar foto ao Person no Azure Face API: {resposta.StatusCode}");
+        if (resposta.IsSuccessStatusCode)
+            return null;
+        return await LerErroAzureAsync(resposta, ct);
     }
 
     private static async Task TreinarEAguardarAsync(HttpClient cliente, string personGroupId, CancellationToken ct)
@@ -171,11 +181,11 @@ public class AzureFaceAutenticacaoStrategy : IAutenticacaoFacialService
 
     private static async Task<List<string>> DetectarRostosAsync(HttpClient cliente, byte[] fotoJpeg, CancellationToken ct)
     {
-        var resposta = await EnviarComRetry429Async(() =>
+        var resposta = await EnviarComRetry429Async(async () =>
         {
             using var conteudo = new ByteArrayContent(fotoJpeg);
             conteudo.Headers.ContentType = new MediaTypeHeaderValue("application/octet-stream");
-            return cliente.PostAsync("face/v1.0/detect?returnFaceId=true", conteudo, ct);
+            return await cliente.PostAsync("face/v1.0/detect?returnFaceId=true", conteudo, ct);
         }, ct);
         if (!resposta.IsSuccessStatusCode)
             throw new InvalidOperationException($"Falha ao detectar rostos no Azure Face API: {resposta.StatusCode}");
@@ -188,13 +198,56 @@ public class AzureFaceAutenticacaoStrategy : IAutenticacaoFacialService
         var corpo = new { personGroupId, faceIds = new[] { faceId }, maxNumOfCandidatesReturned = 1, confidenceThreshold = 0.5 };
         var resposta = await EnviarComRetry429Async(() => cliente.PostAsJsonAsync("face/v1.0/identify", corpo, ct), ct);
         if (!resposta.IsSuccessStatusCode)
-            throw new InvalidOperationException($"Falha ao identificar rosto no Azure Face API: {resposta.StatusCode}");
+        {
+            var erro = await LerErroAzureAsync(resposta, ct);
+            if (erro.Code is "PersonGroupNotFound" or "LargePersonGroupNotFound")
+                return null;
+            throw new InvalidOperationException(MontarMensagemErroAzure("Falha ao identificar rosto no Azure Face API", erro));
+        }
         var resultados = await resposta.Content.ReadFromJsonAsync<List<IdentificacaoResposta>>(cancellationToken: ct);
         var candidato = resultados?.FirstOrDefault()?.Candidates.FirstOrDefault();
         return candidato is null ? null : new CandidatoIdentificacao(candidato.PersonId, candidato.Confidence);
     }
 
+    private static async Task<AzureFaceErro> LerErroAzureAsync(HttpResponseMessage resposta, CancellationToken ct)
+    {
+        AzureFaceErroResposta? corpo = null;
+        try
+        {
+            corpo = await resposta.Content.ReadFromJsonAsync<AzureFaceErroResposta>(cancellationToken: ct);
+        }
+        catch
+        {
+            // Alguns erros de gateway podem não vir no envelope JSON padrão do Face API.
+        }
+
+        var erro = corpo?.Error;
+        var codigo = erro?.InnerError?.Code ?? erro?.Code ?? resposta.StatusCode.ToString();
+        var mensagem = erro?.InnerError?.Message ?? erro?.Message ?? resposta.ReasonPhrase ?? resposta.StatusCode.ToString();
+        return new AzureFaceErro(resposta.StatusCode.ToString(), codigo, mensagem);
+    }
+
+    private static string MontarMensagemErroAzure(string contexto, AzureFaceErro erro)
+        => $"{contexto}: {erro.Status} ({erro.Code}: {erro.Message})";
+
     private record CandidatoIdentificacao(string PersonId, double Confidence);
+    private record AzureFaceErro(string Status, string Code, string Message);
+
+    private class AzureFaceErroResposta
+    {
+        [JsonPropertyName("error")]
+        public AzureFaceErroCorpo? Error { get; set; }
+    }
+
+    private class AzureFaceErroCorpo
+    {
+        [JsonPropertyName("code")]
+        public string? Code { get; set; }
+        [JsonPropertyName("message")]
+        public string? Message { get; set; }
+        [JsonPropertyName("innererror")]
+        public AzureFaceErroCorpo? InnerError { get; set; }
+    }
 
     private class PersonCriadoResposta
     {

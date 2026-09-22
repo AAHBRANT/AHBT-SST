@@ -22,8 +22,13 @@ public class HttpClientFactoryFalso : IHttpClientFactory
     {
         private readonly Func<HttpRequestMessage, HttpResponseMessage> _responder;
         public HandlerFalso(Func<HttpRequestMessage, HttpResponseMessage> responder) => _responder = responder;
-        protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken ct)
-            => Task.FromResult(_responder(request));
+        protected override async Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken ct)
+        {
+            await Task.Yield();
+            if (request.Content is not null)
+                _ = await request.Content.ReadAsByteArrayAsync(ct);
+            return _responder(request);
+        }
     }
 
     public HttpClient CreateClient(string name = "") => new(new HandlerFalso(_responder));
@@ -248,5 +253,112 @@ public class AzureFaceAutenticacaoStrategyTests
         Assert.NotNull(obraAtualizada.AzureFacePersonGroupId);
         Assert.Equal("person-novo", trabalhadorAtualizado.AzureFacePersonId);
         Assert.True(chamadasTreino >= 1);
+    }
+
+    [Fact]
+    public async Task CadastrarAsync_ObraComGrupoPersistido_GarantePersonGroupAntesDeAdicionarFace()
+    {
+        var db = CriarDb(nameof(CadastrarAsync_ObraComGrupoPersistido_GarantePersonGroupAntesDeAdicionarFace));
+        var obra = new Obra
+        {
+            Codigo = "OB1",
+            Nome = "Obra Teste",
+            AzureFacePersonGroupId = "obra-antiga",
+        };
+        db.Obras.Add(obra);
+        await db.SaveChangesAsync();
+        var trabalhador = new Trabalhador
+        {
+            ObraId = obra.Id,
+            Nome = "Fulano",
+            Cpf = "12345678901",
+            DataAdmissao = DateTime.UtcNow,
+            TermoAceiteAssinaturaEletronicaEm = DateTime.UtcNow,
+            ConsentimentoBiometriaEm = DateTime.UtcNow,
+            AzureFacePersonId = "person-existente",
+        };
+        db.Trabalhadores.Add(trabalhador);
+        await db.SaveChangesAsync();
+
+        var garantiuGrupo = false;
+        var factory = new HttpClientFactoryFalso(req =>
+        {
+            var caminho = req.RequestUri!.AbsolutePath;
+            if (req.Method == HttpMethod.Put && caminho.EndsWith("/persongroups/obra-antiga"))
+            {
+                garantiuGrupo = true;
+                return new HttpResponseMessage(HttpStatusCode.OK);
+            }
+            if (caminho.EndsWith("/persistedFaces"))
+            {
+                Assert.True(garantiuGrupo);
+                return Json(new { persistedFaceId = "face-persistida-1" });
+            }
+            if (caminho.EndsWith("/train"))
+                return new HttpResponseMessage(HttpStatusCode.Accepted);
+            if (caminho.EndsWith("/training"))
+                return Json(new { status = "succeeded" });
+            throw new InvalidOperationException("chamada inesperada: " + req.RequestUri);
+        });
+        var servico = new AzureFaceAutenticacaoStrategy(db, factory, Opcoes());
+
+        await servico.CadastrarAsync(trabalhador.Id, new byte[] { 1, 2, 3 }, default);
+
+        Assert.True(garantiuGrupo);
+    }
+
+    [Fact]
+    public async Task CadastrarAsync_PersonAntigoNaoExiste_RecriaPersonERetentaAdicionarFace()
+    {
+        var db = CriarDb(nameof(CadastrarAsync_PersonAntigoNaoExiste_RecriaPersonERetentaAdicionarFace));
+        var obra = new Obra
+        {
+            Codigo = "OB1",
+            Nome = "Obra Teste",
+            AzureFacePersonGroupId = "obra-antiga",
+        };
+        db.Obras.Add(obra);
+        await db.SaveChangesAsync();
+        var trabalhador = new Trabalhador
+        {
+            ObraId = obra.Id,
+            Nome = "Fulano",
+            Cpf = "12345678901",
+            DataAdmissao = DateTime.UtcNow,
+            TermoAceiteAssinaturaEletronicaEm = DateTime.UtcNow,
+            ConsentimentoBiometriaEm = DateTime.UtcNow,
+            AzureFacePersonId = "person-antigo",
+        };
+        db.Trabalhadores.Add(trabalhador);
+        await db.SaveChangesAsync();
+
+        var tentativasFace = 0;
+        var factory = new HttpClientFactoryFalso(req =>
+        {
+            var caminho = req.RequestUri!.AbsolutePath;
+            if (req.Method == HttpMethod.Put && caminho.EndsWith("/persongroups/obra-antiga"))
+                return new HttpResponseMessage(HttpStatusCode.OK);
+            if (caminho.EndsWith("/persons"))
+                return Json(new { personId = "person-recriado" });
+            if (caminho.EndsWith("/persistedFaces"))
+            {
+                tentativasFace++;
+                if (tentativasFace == 1)
+                    return Json(new { error = new { code = "BadArgument", innererror = new { code = "PersonNotFound", message = "Person not found." } } }, HttpStatusCode.BadRequest);
+                return Json(new { persistedFaceId = "face-persistida-1" });
+            }
+            if (caminho.EndsWith("/train"))
+                return new HttpResponseMessage(HttpStatusCode.Accepted);
+            if (caminho.EndsWith("/training"))
+                return Json(new { status = "succeeded" });
+            throw new InvalidOperationException("chamada inesperada: " + req.RequestUri);
+        });
+        var servico = new AzureFaceAutenticacaoStrategy(db, factory, Opcoes());
+
+        await servico.CadastrarAsync(trabalhador.Id, new byte[] { 1, 2, 3 }, default);
+
+        var trabalhadorAtualizado = await db.Trabalhadores.FirstAsync(t => t.Id == trabalhador.Id);
+        Assert.Equal(2, tentativasFace);
+        Assert.Equal("person-recriado", trabalhadorAtualizado.AzureFacePersonId);
     }
 }
