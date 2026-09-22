@@ -266,7 +266,7 @@ export function EntregasTab({ aoNavegarParaMatriz }: EntregasTabProps) {
   function nomeObra(id?: string | null) {
     if (!id) return '—';
     const obra = obras.find((o) => o.id === id);
-    return obra ? `${obra.codigo ? `${obra.codigo} - ` : ''}${obra.nome}` : id;
+    return obra ? (obra.codigo || obra.nome) : id;
   }
 
   function nomeFuncao(id?: string | null) {
