@@ -20,6 +20,19 @@ public class FuncoesController : ControllerBase
         => Ok(await _mediator.Send(new ListarFuncoesQuery(), ct));
 
     [Authorize(Policy = "organizacional:ver")]
+    [HttpGet("duplicadas")]
+    public async Task<IActionResult> ListarDuplicadas(CancellationToken ct)
+        => Ok(await _mediator.Send(new ListarFuncoesDuplicadasQuery(), ct));
+
+    [Authorize(Policy = "organizacional:excluir")]
+    [HttpPost("duplicadas/mesclar")]
+    public async Task<IActionResult> MesclarDuplicada(MesclarFuncaoDuplicadaCommand command, CancellationToken ct)
+    {
+        await _mediator.Send(command, ct);
+        return NoContent();
+    }
+
+    [Authorize(Policy = "organizacional:ver")]
     [HttpGet("{id:guid}")]
     public async Task<IActionResult> ObterPorId(Guid id, CancellationToken ct)
     {

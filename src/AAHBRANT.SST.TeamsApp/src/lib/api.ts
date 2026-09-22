@@ -194,6 +194,19 @@ export interface Funcao {
 
 export type NovaFuncao = Omit<Funcao, 'id'>;
 
+export interface FuncaoDuplicada {
+  id: string;
+  nome: string;
+  cboCodigo?: string | null;
+  quantidadeTrabalhadores: number;
+}
+
+export interface GrupoFuncaoDuplicada {
+  nome: string;
+  manter: FuncaoDuplicada;
+  remover: FuncaoDuplicada[];
+}
+
 export interface Empresa {
   id: string;
   razaoSocial: string;
@@ -3540,6 +3553,12 @@ export const api = {
     criar: (funcao: NovaFuncao) =>
       request<{ id: string }>('/api/funcoes', { method: 'POST', body: JSON.stringify(funcao) }),
     excluir: (id: string) => request<void>(`/api/funcoes/${id}`, { method: 'DELETE' }),
+    listarDuplicadas: () => request<GrupoFuncaoDuplicada[]>('/api/funcoes/duplicadas'),
+    mesclarDuplicada: (funcaoManterId: string, funcaoRemoverId: string) =>
+      request<void>('/api/funcoes/duplicadas/mesclar', {
+        method: 'POST',
+        body: JSON.stringify({ funcaoManterId, funcaoRemoverId }),
+      }),
     listarEpis: (funcaoId: string) => request<CatalogoEpi[]>(`/api/funcoes/${funcaoId}/epis`),
     definirEpis: (funcaoId: string, catalogoEpiIds: string[]) =>
       request<void>(`/api/funcoes/${funcaoId}/epis`, {

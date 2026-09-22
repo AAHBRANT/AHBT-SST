@@ -15,8 +15,8 @@ import {
   useConfirmar,
   type Coluna,
 } from '@ui';
-import { Add24Regular, Delete24Regular } from '@fluentui/react-icons';
-import { api, type Funcao, type NovaFuncao } from '../../lib/api';
+import { Add24Regular, Delete24Regular, Merge24Regular } from '@fluentui/react-icons';
+import { api, type Funcao, type GrupoFuncaoDuplicada, type NovaFuncao } from '../../lib/api';
 import { useSucessoToast } from '../../hooks/useSucessoToast';
 
 const funcaoVazia: NovaFuncao = { nome: '', cboCodigo: '', descricao: '' };
@@ -39,6 +39,10 @@ export function FuncoesTab() {
   const { confirmar, dialogElement } = useConfirmar();
   const sucessoToast = useSucessoToast();
 
+  const [duplicadas, setDuplicadas] = useState<GrupoFuncaoDuplicada[]>([]);
+  const [mesclandoId, setMesclandoId] = useState<string | null>(null);
+  const [erroDuplicadas, setErroDuplicadas] = useState<string | null>(null);
+
   async function carregar() {
     try {
       setErro(null);
@@ -51,9 +55,42 @@ export function FuncoesTab() {
     }
   }
 
+  // Pedido do usuário (22/09): detecta funções duplicadas (mesmo nome — uma com CBO vindo do G-RH,
+  // outra sem, criada manualmente antes da integração) e oferece mesclar com um clique, sem tocar em
+  // função sem CBO que não seja duplicata de nenhuma outra (essas são reais, só nunca sincronizadas).
+  async function carregarDuplicadas() {
+    try {
+      setErroDuplicadas(null);
+      setDuplicadas(await api.funcoes.listarDuplicadas());
+    } catch (e) {
+      setErroDuplicadas(e instanceof Error ? e.message : 'Falha ao verificar funções duplicadas.');
+    }
+  }
+
   useEffect(() => {
     carregar();
+    carregarDuplicadas();
   }, []);
+
+  async function mesclar(funcaoManterId: string, funcaoRemoverId: string, nome: string) {
+    if (
+      !(await confirmar(
+        `Mesclar a função duplicada "${nome}"? Os trabalhadores e matrizes da duplicata sem CBO passam a usar a função com CBO, e a duplicata vazia é excluída. Essa ação não pode ser desfeita.`,
+      ))
+    )
+      return;
+    try {
+      setMesclandoId(funcaoRemoverId);
+      setErroDuplicadas(null);
+      await api.funcoes.mesclarDuplicada(funcaoManterId, funcaoRemoverId);
+      await Promise.all([carregar(), carregarDuplicadas()]);
+      sucessoToast('Função duplicada mesclada com sucesso.');
+    } catch (e) {
+      setErroDuplicadas(e instanceof Error ? e.message : 'Falha ao mesclar função duplicada.');
+    } finally {
+      setMesclandoId(null);
+    }
+  }
 
   function fecharPainel() {
     setPainelAberto(false);
@@ -66,7 +103,7 @@ export function FuncoesTab() {
       setErroPainel(null);
       await api.funcoes.criar(novaFuncao);
       setNovaFuncao(funcaoVazia);
-      await carregar();
+      await Promise.all([carregar(), carregarDuplicadas()]);
       sucessoToast('Função criada com sucesso.');
       fecharPainel();
     } catch (e) {
@@ -80,7 +117,7 @@ export function FuncoesTab() {
     if (!(await confirmar('Excluir esta função? Essa ação não pode ser desfeita.'))) return;
     try {
       await api.funcoes.excluir(id);
-      await carregar();
+      await Promise.all([carregar(), carregarDuplicadas()]);
       sucessoToast('Função excluída com sucesso.');
     } catch (e) {
       setErro(e instanceof Error ? e.message : 'Falha ao excluir função.');
@@ -114,6 +151,47 @@ export function FuncoesTab() {
         <FeedbackInline tom="erro" aoFechar={() => setErro(null)}>
           {erro}
         </FeedbackInline>
+      )}
+      {erroDuplicadas && (
+        <FeedbackInline tom="erro" aoFechar={() => setErroDuplicadas(null)}>
+          {erroDuplicadas}
+        </FeedbackInline>
+      )}
+      {duplicadas.length > 0 && (
+        <Card titulo="Funções duplicadas encontradas">
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+            {duplicadas.map((grupo) => (
+              <div
+                key={grupo.nome}
+                style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap' }}
+              >
+                <div>
+                  <strong>{grupo.nome}</strong>
+                  <div style={{ fontSize: 12 }}>
+                    Manter: CBO {grupo.manter.cboCodigo} ({grupo.manter.quantidadeTrabalhadores} trabalhador
+                    {grupo.manter.quantidadeTrabalhadores === 1 ? '' : 'es'}) — Mesclar:{' '}
+                    {grupo.remover
+                      .map((f) => `sem CBO (${f.quantidadeTrabalhadores} trabalhador${f.quantidadeTrabalhadores === 1 ? '' : 'es'})`)
+                      .join(', ')}
+                  </div>
+                </div>
+                <div style={{ display: 'flex', gap: 8 }}>
+                  {grupo.remover.map((f) => (
+                    <Button
+                      key={f.id}
+                      appearance="primary"
+                      icon={<Merge24Regular />}
+                      disabled={mesclandoId === f.id}
+                      onClick={() => mesclar(grupo.manter.id, f.id, grupo.nome)}
+                    >
+                      Mesclar
+                    </Button>
+                  ))}
+                </div>
+              </div>
+            ))}
+          </div>
+        </Card>
       )}
       <div id="painel-nova-funcao">
         <PainelCriacaoInline aberto={painelAberto} titulo="Nova função">
