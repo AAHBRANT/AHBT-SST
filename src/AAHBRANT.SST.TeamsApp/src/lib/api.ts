@@ -207,6 +207,11 @@ export interface GrupoFuncaoDuplicada {
   remover: FuncaoDuplicada[];
 }
 
+export interface FuncaoOrfa {
+  id: string;
+  nome: string;
+}
+
 export interface Empresa {
   id: string;
   razaoSocial: string;
@@ -3558,6 +3563,12 @@ export const api = {
       request<void>('/api/funcoes/duplicadas/mesclar', {
         method: 'POST',
         body: JSON.stringify({ funcaoManterId, funcaoRemoverId }),
+      }),
+    listarOrfas: () => request<FuncaoOrfa[]>('/api/funcoes/orfas'),
+    excluirOrfas: (funcaoIds: string[]) =>
+      request<{ quantidadeExcluida: number }>('/api/funcoes/orfas/excluir', {
+        method: 'POST',
+        body: JSON.stringify({ funcaoIds }),
       }),
     listarEpis: (funcaoId: string) => request<CatalogoEpi[]>(`/api/funcoes/${funcaoId}/epis`),
     definirEpis: (funcaoId: string, catalogoEpiIds: string[]) =>

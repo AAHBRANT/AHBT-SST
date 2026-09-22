@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import {
   Button,
+  Checkbox,
   Field,
   Input,
   Card,
@@ -16,7 +17,7 @@ import {
   type Coluna,
 } from '@ui';
 import { Add24Regular, Delete24Regular, Merge24Regular } from '@fluentui/react-icons';
-import { api, type Funcao, type GrupoFuncaoDuplicada, type NovaFuncao } from '../../lib/api';
+import { api, type Funcao, type FuncaoOrfa, type GrupoFuncaoDuplicada, type NovaFuncao } from '../../lib/api';
 import { useSucessoToast } from '../../hooks/useSucessoToast';
 
 const funcaoVazia: NovaFuncao = { nome: '', cboCodigo: '', descricao: '' };
@@ -43,6 +44,11 @@ export function FuncoesTab() {
   const [mesclandoId, setMesclandoId] = useState<string | null>(null);
   const [erroDuplicadas, setErroDuplicadas] = useState<string | null>(null);
 
+  const [orfas, setOrfas] = useState<FuncaoOrfa[]>([]);
+  const [orfasSelecionadasIds, setOrfasSelecionadasIds] = useState<Set<string>>(new Set());
+  const [excluindoOrfas, setExcluindoOrfas] = useState(false);
+  const [erroOrfas, setErroOrfas] = useState<string | null>(null);
+
   async function carregar() {
     try {
       setErro(null);
@@ -67,10 +73,56 @@ export function FuncoesTab() {
     }
   }
 
+  // Pedido do usuário (22/09): limpeza em massa de funções "lixo" — sem CBO, sem EPI/Treinamento/
+  // Uniforme na matriz e sem trabalhador vinculado (as 5 proteções, ver DeteccaoFuncaoOrfa no
+  // backend). Lista vem toda pré-selecionada — o backend só devolve o que já é seguro de excluir.
+  async function carregarOrfas() {
+    try {
+      setErroOrfas(null);
+      const lista = await api.funcoes.listarOrfas();
+      setOrfas(lista);
+      setOrfasSelecionadasIds(new Set(lista.map((f) => f.id)));
+    } catch (e) {
+      setErroOrfas(e instanceof Error ? e.message : 'Falha ao verificar funções sem uso.');
+    }
+  }
+
   useEffect(() => {
     carregar();
     carregarDuplicadas();
+    carregarOrfas();
   }, []);
+
+  function alternarSelecaoOrfa(id: string) {
+    setOrfasSelecionadasIds((atual) => {
+      const novo = new Set(atual);
+      if (novo.has(id)) novo.delete(id);
+      else novo.add(id);
+      return novo;
+    });
+  }
+
+  async function excluirOrfasSelecionadas() {
+    const quantidade = orfasSelecionadasIds.size;
+    if (quantidade === 0) return;
+    if (
+      !(await confirmar(
+        `Excluir ${quantidade} função${quantidade === 1 ? '' : 'ões'} sem uso (sem CBO, sem EPI/treinamento/uniforme na matriz e sem trabalhador vinculado)? Essa ação não pode ser desfeita.`,
+      ))
+    )
+      return;
+    try {
+      setExcluindoOrfas(true);
+      setErroOrfas(null);
+      const { quantidadeExcluida } = await api.funcoes.excluirOrfas(Array.from(orfasSelecionadasIds));
+      await Promise.all([carregar(), carregarDuplicadas(), carregarOrfas()]);
+      sucessoToast(`${quantidadeExcluida} função${quantidadeExcluida === 1 ? '' : 'ões'} excluída${quantidadeExcluida === 1 ? '' : 's'} com sucesso.`);
+    } catch (e) {
+      setErroOrfas(e instanceof Error ? e.message : 'Falha ao excluir funções sem uso.');
+    } finally {
+      setExcluindoOrfas(false);
+    }
+  }
 
   async function mesclar(funcaoManterId: string, funcaoRemoverId: string, nome: string) {
     if (
@@ -103,7 +155,7 @@ export function FuncoesTab() {
       setErroPainel(null);
       await api.funcoes.criar(novaFuncao);
       setNovaFuncao(funcaoVazia);
-      await Promise.all([carregar(), carregarDuplicadas()]);
+      await Promise.all([carregar(), carregarDuplicadas(), carregarOrfas()]);
       sucessoToast('Função criada com sucesso.');
       fecharPainel();
     } catch (e) {
@@ -117,7 +169,7 @@ export function FuncoesTab() {
     if (!(await confirmar('Excluir esta função? Essa ação não pode ser desfeita.'))) return;
     try {
       await api.funcoes.excluir(id);
-      await Promise.all([carregar(), carregarDuplicadas()]);
+      await Promise.all([carregar(), carregarDuplicadas(), carregarOrfas()]);
       sucessoToast('Função excluída com sucesso.');
     } catch (e) {
       setErro(e instanceof Error ? e.message : 'Falha ao excluir função.');
@@ -191,6 +243,37 @@ export function FuncoesTab() {
               </div>
             ))}
           </div>
+        </Card>
+      )}
+      {erroOrfas && (
+        <FeedbackInline tom="erro" aoFechar={() => setErroOrfas(null)}>
+          {erroOrfas}
+        </FeedbackInline>
+      )}
+      {orfas.length > 0 && (
+        <Card titulo="Funções sem uso encontradas">
+          <div style={{ fontSize: 12, marginBottom: 8 }}>
+            Sem CBO, sem EPI/treinamento/uniforme cadastrado na matriz e sem nenhum trabalhador vinculado.
+            Desmarque as que não quiser excluir.
+          </div>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 4, marginBottom: 12, maxHeight: 240, overflowY: 'auto' }}>
+            {orfas.map((f) => (
+              <Checkbox
+                key={f.id}
+                label={f.nome}
+                checked={orfasSelecionadasIds.has(f.id)}
+                onChange={() => alternarSelecaoOrfa(f.id)}
+              />
+            ))}
+          </div>
+          <Button
+            appearance="primary"
+            icon={<Delete24Regular />}
+            disabled={excluindoOrfas || orfasSelecionadasIds.size === 0}
+            onClick={excluirOrfasSelecionadas}
+          >
+            Excluir {orfasSelecionadasIds.size} selecionada{orfasSelecionadasIds.size === 1 ? '' : 's'}
+          </Button>
         </Card>
       )}
       <div id="painel-nova-funcao">

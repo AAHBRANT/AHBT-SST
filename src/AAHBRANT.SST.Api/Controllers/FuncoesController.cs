@@ -33,6 +33,16 @@ public class FuncoesController : ControllerBase
     }
 
     [Authorize(Policy = "organizacional:ver")]
+    [HttpGet("orfas")]
+    public async Task<IActionResult> ListarOrfas(CancellationToken ct)
+        => Ok(await _mediator.Send(new ListarFuncoesOrfasQuery(), ct));
+
+    [Authorize(Policy = "organizacional:excluir")]
+    [HttpPost("orfas/excluir")]
+    public async Task<IActionResult> ExcluirOrfas(ExcluirFuncoesOrfasCommand command, CancellationToken ct)
+        => Ok(new { quantidadeExcluida = await _mediator.Send(command, ct) });
+
+    [Authorize(Policy = "organizacional:ver")]
     [HttpGet("{id:guid}")]
     public async Task<IActionResult> ObterPorId(Guid id, CancellationToken ct)
     {
