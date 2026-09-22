@@ -135,7 +135,13 @@ public static class DependencyInjection
         services.AddScoped<IAlojamentoGrhClient, AlojamentoGrhDbClient>();
         services.AddScoped<IAsoGrhClient, AsoGrhDbClient>();
         var grhDbConnectionString = configuration["GrhDb:ConnectionString"];
-        if (!string.IsNullOrWhiteSpace(grhDbConnectionString))
+        var grhClientSecret = configuration["Grh:ClientSecret"];
+        // Correção de emergência (22/09): Colaborador entrou nesta mesma rodada de polling (ver
+        // GrhDbPollingService) como rede de segurança pro evento de Service Bus que pode se perder —
+        // por isso o serviço agora também liga quando só Grh:ClientSecret está configurado, mesmo sem
+        // GrhDb:ConnectionString (são integrações independentes que só passaram a compartilhar o
+        // mesmo BackgroundService).
+        if (!string.IsNullOrWhiteSpace(grhDbConnectionString) || !string.IsNullOrWhiteSpace(grhClientSecret))
             services.AddHostedService<GrhDbPollingService>();
 
         // Fila de retry para falhas de envio (PROJECT RULES.md §4). Usa Azure Service Bus quando
