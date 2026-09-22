@@ -16,7 +16,9 @@ import {
   type CatalogoEpi,
   type CursoTreinamento,
   type EntregaEpi,
+  type Funcao,
   type NovaEntregaEpi,
+  type Obra,
   type Trabalhador,
 } from '../../lib/api';
 import { AssinaturaEntregaEpiLoteDialog, type ItemLoteAssinaturaEpi } from '../../components/assinatura/AssinaturaEntregaEpiLoteDialog';
@@ -100,6 +102,8 @@ export function EntregasTab({ aoNavegarParaMatriz }: EntregasTabProps) {
   const [entregas, setEntregas] = useState<EntregaEpi[]>([]);
   const [epis, setEpis] = useState<CatalogoEpi[]>([]);
   const [episPermitidos, setEpisPermitidos] = useState<CatalogoEpi[]>([]);
+  const [obras, setObras] = useState<Obra[]>([]);
+  const [funcoes, setFuncoes] = useState<Funcao[]>([]);
   const [trabalhadores, setTrabalhadores] = useState<Trabalhador[]>([]);
   const [cursos, setCursos] = useState<CursoTreinamento[]>([]);
   const [dadosComuns, setDadosComuns] = useState<CamposComunsEntrega>(camposComunsVazios());
@@ -124,14 +128,18 @@ export function EntregasTab({ aoNavegarParaMatriz }: EntregasTabProps) {
     try {
       setCarregandoLista(true);
       setErro(null);
-      const [lista, listaEpis, listaTrabalhadores] = await Promise.all([
+      const [lista, listaEpis, listaTrabalhadores, listaObras, listaFuncoes] = await Promise.all([
         api.entregasEpi.listar(),
         api.catalogosEpi.listar(),
         api.trabalhadores.listar(),
+        api.obras.listar(),
+        api.funcoes.listar(),
       ]);
       setEntregas(lista);
       setEpis(listaEpis);
       setTrabalhadores(listaTrabalhadores);
+      setObras(listaObras);
+      setFuncoes(listaFuncoes);
     } catch (e) {
       setErro(e instanceof Error ? e.message : 'Falha ao carregar entregas de EPI.');
     } finally {
@@ -239,12 +247,31 @@ export function EntregasTab({ aoNavegarParaMatriz }: EntregasTabProps) {
     return epis.find((e) => e.id === id)?.nome ?? id;
   }
 
+  function catalogoEpi(id: string) {
+    return epis.find((e) => e.id === id);
+  }
+
   function epiTemFoto(id: string) {
     return epis.find((e) => e.id === id)?.temFoto ?? false;
   }
 
   function nomeTrabalhador(id: string) {
     return trabalhadores.find((t) => t.id === id)?.nome ?? id;
+  }
+
+  function trabalhadorPorId(id: string) {
+    return trabalhadores.find((t) => t.id === id);
+  }
+
+  function nomeObra(id?: string | null) {
+    if (!id) return '—';
+    const obra = obras.find((o) => o.id === id);
+    return obra ? `${obra.codigo ? `${obra.codigo} - ` : ''}${obra.nome}` : id;
+  }
+
+  function nomeFuncao(id?: string | null) {
+    if (!id) return '—';
+    return funcoes.find((f) => f.id === id)?.nome ?? id;
   }
 
   function obraIdTrabalhador(id: string) {
@@ -347,38 +374,101 @@ export function EntregasTab({ aoNavegarParaMatriz }: EntregasTabProps) {
   // Recibo de conferência do carrinho antes de confirmar — gerado 100% no navegador (sem endpoint
   // novo no backend), pedido do usuário a partir do mockup fornecido. Deixa claro que não substitui
   // a ficha oficial (essa só existe depois de "Confirmar entrega" + assinatura eletrônica).
-  function imprimirRascunhoCarrinho() {
+  async function imprimirRascunhoCarrinho() {
     if (!dadosComuns.trabalhadorId || carrinho.length === 0) return;
-    const nomeFunc = escapeHtml(nomeTrabalhador(dadosComuns.trabalhadorId));
-    const dataFmt = dadosComuns.dataEntrega ? dadosComuns.dataEntrega.split('-').reverse().join('/') : '—';
-    const linhas = carrinho
-      .map((item) => {
-        const validade = item.dataValidade ? item.dataValidade.split('-').reverse().join('/') : '—';
-        return `<tr><td>${escapeHtml(nomeEpi(item.catalogoEpiId))}</td><td style="text-align:right">${item.quantidade}</td><td>${validade}</td></tr>`;
-      })
-      .join('');
-    const janela = window.open('', '_blank', 'width=720,height=900');
+    const janela = window.open('', '_blank', 'width=420,height=720');
     if (!janela) return;
+    janela.document.write('<!DOCTYPE html><html lang="pt-br"><head><meta charset="UTF-8"><title>EPIs recebidos</title></head><body>Gerando canhoto...</body></html>');
+    janela.document.close();
+
+    function blobParaDataUrl(blob: Blob): Promise<string> {
+      return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => resolve(String(reader.result));
+        reader.onerror = () => reject(reader.error);
+        reader.readAsDataURL(blob);
+      });
+    }
+
+    async function fotoItem(epi?: CatalogoEpi): Promise<string | null> {
+      if (!epi?.temFoto) return null;
+      try {
+        return await blobParaDataUrl(await api.catalogosEpi.baixarFoto(epi.id));
+      } catch {
+        return null;
+      }
+    }
+
+    const trabalhador = trabalhadorPorId(dadosComuns.trabalhadorId);
+    const nomeFunc = escapeHtml(trabalhador?.nome ?? nomeTrabalhador(dadosComuns.trabalhadorId));
+    const dataFmt = dadosComuns.dataEntrega ? dadosComuns.dataEntrega.split('-').reverse().join('/') : '—';
+    const dataTreinamentoFmt = dadosComuns.dataTreinamentoNr6 ? dadosComuns.dataTreinamentoNr6.split('-').reverse().join('/') : '—';
+    const emitidoEm = new Date().toLocaleString('pt-BR');
+    const motivo = motivoEntregaEpiLabel[dadosComuns.motivoTipo] ?? '—';
+    const observacaoMotivo = dadosComuns.motivo || '—';
+    const observacoes = dadosComuns.observacoes || '—';
+    const vistoResponsavel = dadosComuns.vistoConsorcioResponsavel || '—';
+    const numeroLista = dadosComuns.numeroListaPresencaNr6 || '—';
+    const linhas = (await Promise.all(carrinho
+      .map(async (item) => {
+        const epi = catalogoEpi(item.catalogoEpiId);
+        const foto = await fotoItem(epi);
+        const validade = item.dataValidade ? item.dataValidade.split('-').reverse().join('/') : '—';
+        const ca = epi?.certificadoAprovacaoNumero || '—';
+        const validadeCa = epi?.certificadoAprovacaoValidade ? epi.certificadoAprovacaoValidade.slice(0, 10).split('-').reverse().join('/') : '—';
+        const fabricante = epi?.fabricante || '—';
+        return `<div class="item">
+          ${foto ? `<img class="item-foto" src="${foto}" alt="">` : ''}
+          <div class="item-conteudo">
+            <div class="item-nome">${escapeHtml(epi?.nome ?? nomeEpi(item.catalogoEpiId))}</div>
+            <div class="item-linha"><span>Fabricante: ${escapeHtml(fabricante)}</span><span>Qtd: ${item.quantidade}</span></div>
+            <div class="item-linha"><span>CA: ${escapeHtml(ca)}</span><span>Val. CA: ${validadeCa}</span></div>
+            <div class="item-linha"><span>Val. entrega: ${validade}</span></div>
+          </div>
+        </div>`;
+      })
+    )).join('');
     janela.document.write(`<!DOCTYPE html><html lang="pt-br"><head><meta charset="UTF-8"><title>Canhoto de recibo - EPI</title>
       <style>
-        body { font-family: Arial, sans-serif; padding: 28px; color: #1a1a1a; }
-        h1 { font-size: 18px; color: #670000; margin-bottom: 4px; }
-        .subtitulo { font-size: 12px; color: #555; margin-bottom: 20px; }
-        table { width: 100%; border-collapse: collapse; margin-top: 12px; }
-        th, td { border: 1px solid #ccc; padding: 8px; text-align: left; font-size: 13px; }
-        th { background: #ebe9ad; }
-        .assinatura { margin-top: 64px; border-top: 1px solid #000; width: 320px; padding-top: 4px; font-size: 12px; }
-        .aviso { margin-top: 28px; font-size: 11px; color: #666; }
+        @page { size: 80mm auto; margin: 4mm; }
+        * { box-sizing: border-box; }
+        body { width: 72mm; margin: 0 auto; font-family: Arial, sans-serif; color: #1a1a1a; font-size: 11px; }
+        h1 { font-size: 13px; color: #670000; margin: 0 0 2px; text-align: center; text-transform: uppercase; }
+        h2 { font-size: 11px; color: #670000; margin: 10px 0 5px; padding-top: 6px; border-top: 1px dashed #999; text-transform: uppercase; }
+        .subtitulo { font-size: 10px; color: #555; margin-bottom: 8px; text-align: center; }
+        .campo { display: flex; justify-content: space-between; gap: 8px; font-size: 10.5px; margin: 2px 0; }
+        .campo b { color: #555; font-weight: 700; white-space: nowrap; }
+        .campo span:last-child { text-align: right; overflow-wrap: anywhere; }
+        .item { border-top: 1px dashed #ccc; padding: 6px 0; display: flex; gap: 6px; align-items: flex-start; }
+        .item:first-child { border-top: 0; }
+        .item-foto { width: 16mm; height: 16mm; object-fit: cover; border: 1px solid #ddd; border-radius: 3px; flex: 0 0 auto; }
+        .item-conteudo { flex: 1; min-width: 0; }
+        .item-nome { font-weight: 700; font-size: 11px; margin-bottom: 3px; overflow-wrap: anywhere; }
+        .item-linha { display: flex; justify-content: space-between; gap: 8px; font-size: 10px; color: #333; }
+        .aviso { margin-top: 10px; padding-top: 6px; border-top: 1px dashed #999; font-size: 9.5px; color: #666; text-align: center; }
       </style></head>
       <body>
-        <h1>Canhoto de Recibo — Entrega de EPI</h1>
-        <div class="subtitulo">Funcionário: ${nomeFunc} · Data de entrega: ${dataFmt}</div>
-        <table>
-          <thead><tr><th>EPI</th><th>Qtd.</th><th>Validade</th></tr></thead>
-          <tbody>${linhas}</tbody>
-        </table>
-        <div class="assinatura">Assinatura do recebedor</div>
-        <p class="aviso">Documento de conferência gerado antes da confirmação da entrega — não substitui a ficha oficial assinada eletronicamente, emitida após "Confirmar entrega".</p>
+        <h1>EPIs recebidos</h1>
+        <div class="subtitulo">Documento de conferência do carrinho · Emitido em ${emitidoEm}</div>
+
+        <h2>Identificação</h2>
+        <div class="campo"><b>Funcionário</b><span>${nomeFunc}</span></div>
+        <div class="campo"><b>Função</b><span>${escapeHtml(nomeFuncao(trabalhador?.funcaoId))}</span></div>
+        <div class="campo"><b>Obra</b><span>${escapeHtml(nomeObra(trabalhador?.obraId))}</span></div>
+        <div class="campo"><b>Data</b><span>${dataFmt}</span></div>
+
+        <h2>Itens do carrinho</h2>
+        ${linhas}
+
+        <h2>Documentação e motivo</h2>
+        <div class="campo"><b>Motivo</b><span>${escapeHtml(motivo)}</span></div>
+        <div class="campo"><b>Obs. motivo</b><span>${escapeHtml(observacaoMotivo)}</span></div>
+        <div class="campo"><b>Lista NR-6</b><span>${escapeHtml(numeroLista)}</span></div>
+        <div class="campo"><b>Trein. NR-6</b><span>${dataTreinamentoFmt}</span></div>
+        <div class="campo"><b>Responsável</b><span>${escapeHtml(vistoResponsavel)}</span></div>
+        <div class="campo"><b>Obs.</b><span>${escapeHtml(observacoes)}</span></div>
+
+        <p class="aviso">Comprovante de conferência prévia. A ficha oficial é emitida após confirmar e assinar eletronicamente a entrega.</p>
       </body></html>`);
     janela.document.close();
     janela.focus();
