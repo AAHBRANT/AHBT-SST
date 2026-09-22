@@ -218,6 +218,15 @@ export interface FuncaoInativaComTrabalhador {
   quantidadeTrabalhadores: number;
 }
 
+export interface FuncaoSemTrabalhador {
+  id: string;
+  nome: string;
+  cboCodigo?: string | null;
+  temEpiNaMatriz: boolean;
+  temTreinamentoNaMatriz: boolean;
+  temUniformeNaMatriz: boolean;
+}
+
 export interface Empresa {
   id: string;
   razaoSocial: string;
@@ -3579,6 +3588,7 @@ export const api = {
     listarInativasComTrabalhador: () =>
       request<FuncaoInativaComTrabalhador[]>('/api/funcoes/inativas-com-trabalhador'),
     reativar: (id: string) => request<void>(`/api/funcoes/${id}/reativar`, { method: 'POST' }),
+    listarSemTrabalhador: () => request<FuncaoSemTrabalhador[]>('/api/funcoes/sem-trabalhador'),
     listarEpis: (funcaoId: string) => request<CatalogoEpi[]>(`/api/funcoes/${funcaoId}/epis`),
     definirEpis: (funcaoId: string, catalogoEpiIds: string[]) =>
       request<void>(`/api/funcoes/${funcaoId}/epis`, {

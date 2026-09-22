@@ -22,6 +22,7 @@ import {
   type Funcao,
   type FuncaoInativaComTrabalhador,
   type FuncaoOrfa,
+  type FuncaoSemTrabalhador,
   type GrupoFuncaoDuplicada,
   type NovaFuncao,
 } from '../../lib/api';
@@ -59,6 +60,11 @@ export function FuncoesTab() {
   const [inativasComTrabalhador, setInativasComTrabalhador] = useState<FuncaoInativaComTrabalhador[]>([]);
   const [reativandoId, setReativandoId] = useState<string | null>(null);
   const [erroInativas, setErroInativas] = useState<string | null>(null);
+
+  const [semTrabalhador, setSemTrabalhador] = useState<FuncaoSemTrabalhador[] | null>(null);
+  const [carregandoSemTrabalhador, setCarregandoSemTrabalhador] = useState(false);
+  const [erroSemTrabalhador, setErroSemTrabalhador] = useState<string | null>(null);
+  const [excluindoSemTrabalhadorId, setExcluindoSemTrabalhadorId] = useState<string | null>(null);
 
   async function carregar() {
     try {
@@ -117,6 +123,43 @@ export function FuncoesTab() {
     carregarOrfas();
     carregarInativasComTrabalhador();
   }, []);
+
+  // Pedido do usuário (22/09): diferente do card "Funções sem uso" acima (só o subconjunto seguro
+  // pra exclusão automática — sem CBO e sem nenhuma matriz), aqui aparece QUALQUER função sem
+  // trabalhador vinculado, mesmo com CBO ou com matriz de EPI/treinamento/uniforme cadastrada — pra
+  // revisão manual, com o usuário decidindo caso a caso. Carrega só sob demanda (botão), não junto
+  // com o resto da tela, porque é uma lista potencialmente maior e não é um alerta de segurança.
+  async function carregarSemTrabalhador() {
+    if (semTrabalhador !== null) {
+      setSemTrabalhador(null);
+      return;
+    }
+    try {
+      setCarregandoSemTrabalhador(true);
+      setErroSemTrabalhador(null);
+      setSemTrabalhador(await api.funcoes.listarSemTrabalhador());
+    } catch (e) {
+      setErroSemTrabalhador(e instanceof Error ? e.message : 'Falha ao verificar funções sem trabalhador vinculado.');
+    } finally {
+      setCarregandoSemTrabalhador(false);
+    }
+  }
+
+  async function excluirSemTrabalhador(id: string, nome: string) {
+    if (!(await confirmar(`Excluir a função "${nome}"? Essa ação não pode ser desfeita.`))) return;
+    try {
+      setExcluindoSemTrabalhadorId(id);
+      setErroSemTrabalhador(null);
+      await api.funcoes.excluir(id);
+      setSemTrabalhador((atual) => atual?.filter((f) => f.id !== id) ?? null);
+      await Promise.all([carregar(), carregarDuplicadas(), carregarOrfas(), carregarInativasComTrabalhador()]);
+      sucessoToast('Função excluída com sucesso.');
+    } catch (e) {
+      setErroSemTrabalhador(e instanceof Error ? e.message : 'Falha ao excluir função.');
+    } finally {
+      setExcluindoSemTrabalhadorId(null);
+    }
+  }
 
   function alternarSelecaoOrfa(id: string) {
     setOrfasSelecionadasIds((atual) => {
@@ -233,15 +276,20 @@ export function FuncoesTab() {
       <PageHeader
         titulo="Funções cadastradas"
         acoes={
-          <Button
-            appearance="primary"
-            icon={<Add24Regular />}
-            onClick={() => (painelAberto ? fecharPainel() : setPainelAberto(true))}
-            aria-expanded={painelAberto}
-            aria-controls="painel-nova-funcao"
-          >
-            {painelAberto ? 'Fechar' : 'Adicionar função'}
-          </Button>
+          <div style={{ display: 'flex', gap: 8 }}>
+            <Button onClick={carregarSemTrabalhador} disabled={carregandoSemTrabalhador}>
+              {semTrabalhador !== null ? 'Ocultar' : 'Ver'} funções sem trabalhador vinculado
+            </Button>
+            <Button
+              appearance="primary"
+              icon={<Add24Regular />}
+              onClick={() => (painelAberto ? fecharPainel() : setPainelAberto(true))}
+              aria-expanded={painelAberto}
+              aria-controls="painel-nova-funcao"
+            >
+              {painelAberto ? 'Fechar' : 'Adicionar função'}
+            </Button>
+          </div>
         }
       />
       {erro && (
@@ -357,6 +405,53 @@ export function FuncoesTab() {
           >
             Excluir {orfasSelecionadasIds.size} selecionada{orfasSelecionadasIds.size === 1 ? '' : 's'}
           </Button>
+        </Card>
+      )}
+      {erroSemTrabalhador && (
+        <FeedbackInline tom="erro" aoFechar={() => setErroSemTrabalhador(null)}>
+          {erroSemTrabalhador}
+        </FeedbackInline>
+      )}
+      {semTrabalhador !== null && (
+        <Card titulo={`Funções sem trabalhador vinculado (${semTrabalhador.length})`}>
+          <div style={{ fontSize: 12, marginBottom: 8 }}>
+            Revisão manual — inclui também funções com CBO ou com EPI/treinamento/uniforme cadastrado
+            na matriz. Confira antes de excluir: as com matriz cadastrada podem estar reservadas para
+            uso futuro.
+          </div>
+          {carregandoSemTrabalhador ? (
+            <div style={{ fontSize: 12 }}>Carregando...</div>
+          ) : semTrabalhador.length === 0 ? (
+            <div style={{ fontSize: 12 }}>Nenhuma função sem trabalhador vinculado.</div>
+          ) : (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 4, maxHeight: 320, overflowY: 'auto' }}>
+              {semTrabalhador.map((f) => (
+                <div
+                  key={f.id}
+                  style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap' }}
+                >
+                  <div>
+                    <strong>{f.nome}</strong>
+                    <div style={{ fontSize: 12 }}>
+                      {f.cboCodigo ? `CBO ${f.cboCodigo}` : 'Sem CBO'}
+                      {f.temEpiNaMatriz ? ' · com EPI na matriz' : ''}
+                      {f.temTreinamentoNaMatriz ? ' · com treinamento na matriz' : ''}
+                      {f.temUniformeNaMatriz ? ' · com uniforme na matriz' : ''}
+                    </div>
+                  </div>
+                  <Button
+                    appearance="subtle"
+                    icon={<Delete24Regular />}
+                    disabled={excluindoSemTrabalhadorId === f.id}
+                    onClick={() => excluirSemTrabalhador(f.id, f.nome)}
+                    aria-label="Excluir"
+                  >
+                    Excluir
+                  </Button>
+                </div>
+              ))}
+            </div>
+          )}
         </Card>
       )}
       <div id="painel-nova-funcao">

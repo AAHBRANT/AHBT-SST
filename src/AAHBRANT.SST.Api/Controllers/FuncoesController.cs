@@ -57,6 +57,13 @@ public class FuncoesController : ControllerBase
         return NoContent();
     }
 
+    // Pedido do usuário (22/09): visão ampla pra revisão manual — ver comentário em
+    // ListarFuncoesSemTrabalhadorQuery.
+    [Authorize(Policy = "organizacional:ver")]
+    [HttpGet("sem-trabalhador")]
+    public async Task<IActionResult> ListarSemTrabalhador(CancellationToken ct)
+        => Ok(await _mediator.Send(new ListarFuncoesSemTrabalhadorQuery(), ct));
+
     [Authorize(Policy = "organizacional:ver")]
     [HttpGet("{id:guid}")]
     public async Task<IActionResult> ObterPorId(Guid id, CancellationToken ct)
