@@ -1,7 +1,7 @@
 {
   "$schema": "https://developer.microsoft.com/en-us/json-schemas/teams/v1.16/MicrosoftTeams.schema.json",
   "manifestVersion": "1.16",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "id": "fdf875ee-359e-4c16-b56e-7ee6e2034dd3",
   "developer": {
     "name": "AAHBRANT",
@@ -38,6 +38,7 @@
     }
   ],
   "permissions": ["identity", "messageTeamMembers"],
+  "devicePermissions": ["media"],
   "validDomains": ["sst-web-hml.kindground-7a44c4f0.brazilsouth.azurecontainerapps.io"],
   "activities": {
     "activityTypes": [

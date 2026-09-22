@@ -152,10 +152,11 @@ export function EntregasTab({ aoNavegarParaMatriz }: EntregasTabProps) {
     api.cursosTreinamento.listar().then(setCursos).catch(() => setCursos([]));
   }, []);
 
-  // Pedido do usuário (03/09): não faz sentido digitar manualmente o nº da lista de presença e a
-  // data do treinamento de NR-06 se o funcionário já tem esse treinamento cadastrado no módulo de
-  // Treinamentos — busca automaticamente o mais recente ao trocar de funcionário (o usuário ainda
-  // pode sobrescrever os campos à mão, ex.: quando o treinamento ainda não foi cadastrado no sistema).
+  // Pedido do usuário (03/09, travado em 22/09): nº da lista de presença e data do treinamento de
+  // NR-06 nunca são digitados à mão — vêm só do treinamento mais recente cadastrado no módulo de
+  // Treinamentos para o funcionário selecionado. Os dois campos ficam desabilitados na tela (evita
+  // divergência entre o que está na ficha de EPI e o que está realmente cadastrado); se não houver
+  // treinamento de NR-06, os campos ficam vazios e `confirmarCarrinho()` bloqueia o registro.
   // Também verifica aqui (mesma lista de treinamentos já buscada) se a Integração de Segurança está
   // em dia e assinada pelo próprio trabalhador (pedido do usuário, 21/09) — o backend é quem
   // efetivamente bloqueia; isto só avisa antes de montar o carrinho inteiro à toa.
@@ -207,6 +208,7 @@ export function EntregasTab({ aoNavegarParaMatriz }: EntregasTabProps) {
         );
       } catch {
         // Falha ao verificar não deve travar a tela — o backend valida de qualquer forma ao confirmar.
+        // Também deixa os campos de NR-06 vazios; `confirmarCarrinho()` bloqueia nesse caso.
         if (!cancelado) setStatusIntegracao(null);
       }
     }
@@ -309,6 +311,16 @@ export function EntregasTab({ aoNavegarParaMatriz }: EntregasTabProps) {
     }
     if (carrinho.length === 0) {
       setErroPainel('Adicione ao menos um EPI ao carrinho antes de confirmar.');
+      return;
+    }
+    // Pedido do usuário (22/09): nº da lista de presença e data do treinamento de NR-06 deixaram de
+    // ser digitáveis (só vêm do treinamento cadastrado, ver useEffect sincronizarDadosTrabalhador
+    // acima) — sem essa checagem aqui, um funcionário sem NR-06 cadastrada geraria uma ficha de EPI
+    // incompleta e sem chance de corrigir depois (os campos ficam travados na tela também).
+    if (!dadosComuns.numeroListaPresencaNr6 || !dadosComuns.dataTreinamentoNr6) {
+      setErroPainel(
+        'Este funcionário não tem treinamento de NR-06 cadastrado. Cadastre o treinamento em Treinamentos antes de registrar a entrega de EPI.',
+      );
       return;
     }
     setCarregando(true);
@@ -706,19 +718,19 @@ export function EntregasTab({ aoNavegarParaMatriz }: EntregasTabProps) {
               <FormSection titulo="Documentação NR-6" numero={3}>
                 <FormGrid>
                   <Campo span={6}>
-                    <Field label="Nº lista de presença" hint="Preenchido do treinamento de NR-06 cadastrado, se houver.">
-                      <Input
-                        value={dadosComuns.numeroListaPresencaNr6}
-                        onChange={(_, d) => setDadosComuns({ ...dadosComuns, numeroListaPresencaNr6: d.value })}
-                      />
+                    <Field
+                      label="Nº lista de presença"
+                      hint="Puxado automaticamente do treinamento de NR-06 cadastrado — não editável. Sem treinamento cadastrado, registre-o em Treinamentos primeiro."
+                    >
+                      <Input value={dadosComuns.numeroListaPresencaNr6} disabled />
                     </Field>
                   </Campo>
                   <Campo span={6}>
-                    <Field label="Data do treinamento">
-                      <CampoData
-                        value={dadosComuns.dataTreinamentoNr6}
-                        onChange={(_, d) => setDadosComuns({ ...dadosComuns, dataTreinamentoNr6: d.value })}
-                      />
+                    <Field
+                      label="Data do treinamento"
+                      hint="Puxado automaticamente do treinamento de NR-06 cadastrado — não editável."
+                    >
+                      <CampoData value={dadosComuns.dataTreinamentoNr6} onChange={() => {}} disabled />
                     </Field>
                   </Campo>
                   <Campo span={6}>
@@ -753,6 +765,7 @@ export function EntregasTab({ aoNavegarParaMatriz }: EntregasTabProps) {
               aoConfirmar={confirmarCarrinho}
             />
           </div>
+
         </PainelCriacaoInline>
       </div>
 
