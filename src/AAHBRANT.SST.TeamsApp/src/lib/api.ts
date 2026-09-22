@@ -212,6 +212,12 @@ export interface FuncaoOrfa {
   nome: string;
 }
 
+export interface FuncaoInativaComTrabalhador {
+  id: string;
+  nome: string;
+  quantidadeTrabalhadores: number;
+}
+
 export interface Empresa {
   id: string;
   razaoSocial: string;
@@ -3570,6 +3576,9 @@ export const api = {
         method: 'POST',
         body: JSON.stringify({ funcaoIds }),
       }),
+    listarInativasComTrabalhador: () =>
+      request<FuncaoInativaComTrabalhador[]>('/api/funcoes/inativas-com-trabalhador'),
+    reativar: (id: string) => request<void>(`/api/funcoes/${id}/reativar`, { method: 'POST' }),
     listarEpis: (funcaoId: string) => request<CatalogoEpi[]>(`/api/funcoes/${funcaoId}/epis`),
     definirEpis: (funcaoId: string, catalogoEpiIds: string[]) =>
       request<void>(`/api/funcoes/${funcaoId}/epis`, {

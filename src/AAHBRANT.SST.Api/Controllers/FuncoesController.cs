@@ -42,6 +42,21 @@ public class FuncoesController : ControllerBase
     public async Task<IActionResult> ExcluirOrfas(ExcluirFuncoesOrfasCommand command, CancellationToken ct)
         => Ok(new { quantidadeExcluida = await _mediator.Send(command, ct) });
 
+    // Diagnóstico/correção de emergência (22/09) — ver comentário em
+    // ListarFuncoesInativasComTrabalhadorQuery/ReativarFuncaoCommand.
+    [Authorize(Policy = "organizacional:ver")]
+    [HttpGet("inativas-com-trabalhador")]
+    public async Task<IActionResult> ListarInativasComTrabalhador(CancellationToken ct)
+        => Ok(await _mediator.Send(new ListarFuncoesInativasComTrabalhadorQuery(), ct));
+
+    [Authorize(Policy = "organizacional:editar")]
+    [HttpPost("{id:guid}/reativar")]
+    public async Task<IActionResult> Reativar(Guid id, CancellationToken ct)
+    {
+        await _mediator.Send(new ReativarFuncaoCommand(id), ct);
+        return NoContent();
+    }
+
     [Authorize(Policy = "organizacional:ver")]
     [HttpGet("{id:guid}")]
     public async Task<IActionResult> ObterPorId(Guid id, CancellationToken ct)

@@ -16,8 +16,15 @@ import {
   useConfirmar,
   type Coluna,
 } from '@ui';
-import { Add24Regular, Delete24Regular, Merge24Regular } from '@fluentui/react-icons';
-import { api, type Funcao, type FuncaoOrfa, type GrupoFuncaoDuplicada, type NovaFuncao } from '../../lib/api';
+import { Add24Regular, ArrowUndo24Regular, Delete24Regular, Merge24Regular } from '@fluentui/react-icons';
+import {
+  api,
+  type Funcao,
+  type FuncaoInativaComTrabalhador,
+  type FuncaoOrfa,
+  type GrupoFuncaoDuplicada,
+  type NovaFuncao,
+} from '../../lib/api';
 import { useSucessoToast } from '../../hooks/useSucessoToast';
 
 const funcaoVazia: NovaFuncao = { nome: '', cboCodigo: '', descricao: '' };
@@ -48,6 +55,10 @@ export function FuncoesTab() {
   const [orfasSelecionadasIds, setOrfasSelecionadasIds] = useState<Set<string>>(new Set());
   const [excluindoOrfas, setExcluindoOrfas] = useState(false);
   const [erroOrfas, setErroOrfas] = useState<string | null>(null);
+
+  const [inativasComTrabalhador, setInativasComTrabalhador] = useState<FuncaoInativaComTrabalhador[]>([]);
+  const [reativandoId, setReativandoId] = useState<string | null>(null);
+  const [erroInativas, setErroInativas] = useState<string | null>(null);
 
   async function carregar() {
     try {
@@ -87,10 +98,24 @@ export function FuncoesTab() {
     }
   }
 
+  // Correção de emergência (22/09): o botão "Excluir" de linha, logo abaixo, nunca teve as 5
+  // proteções acima — sempre foi possível desativar uma função com trabalhador ativo vinculado a
+  // ela (ver ListarFuncoesInativasComTrabalhadorQuery no backend). Isso detecta esse estado quebrado
+  // e permite reverter (reativar) com um clique, um por vez.
+  async function carregarInativasComTrabalhador() {
+    try {
+      setErroInativas(null);
+      setInativasComTrabalhador(await api.funcoes.listarInativasComTrabalhador());
+    } catch (e) {
+      setErroInativas(e instanceof Error ? e.message : 'Falha ao verificar funções desativadas com trabalhador vinculado.');
+    }
+  }
+
   useEffect(() => {
     carregar();
     carregarDuplicadas();
     carregarOrfas();
+    carregarInativasComTrabalhador();
   }, []);
 
   function alternarSelecaoOrfa(id: string) {
@@ -121,6 +146,26 @@ export function FuncoesTab() {
       setErroOrfas(e instanceof Error ? e.message : 'Falha ao excluir funções sem uso.');
     } finally {
       setExcluindoOrfas(false);
+    }
+  }
+
+  async function reativar(id: string, nome: string) {
+    if (
+      !(await confirmar(
+        `Reativar a função "${nome}"? Ela volta a aparecer normalmente para o(s) trabalhador(es) vinculado(s) a ela.`,
+      ))
+    )
+      return;
+    try {
+      setReativandoId(id);
+      setErroInativas(null);
+      await api.funcoes.reativar(id);
+      await Promise.all([carregar(), carregarOrfas(), carregarInativasComTrabalhador()]);
+      sucessoToast('Função reativada com sucesso.');
+    } catch (e) {
+      setErroInativas(e instanceof Error ? e.message : 'Falha ao reativar função.');
+    } finally {
+      setReativandoId(null);
     }
   }
 
@@ -169,7 +214,7 @@ export function FuncoesTab() {
     if (!(await confirmar('Excluir esta função? Essa ação não pode ser desfeita.'))) return;
     try {
       await api.funcoes.excluir(id);
-      await Promise.all([carregar(), carregarDuplicadas(), carregarOrfas()]);
+      await Promise.all([carregar(), carregarDuplicadas(), carregarOrfas(), carregarInativasComTrabalhador()]);
       sucessoToast('Função excluída com sucesso.');
     } catch (e) {
       setErro(e instanceof Error ? e.message : 'Falha ao excluir função.');
@@ -203,6 +248,44 @@ export function FuncoesTab() {
         <FeedbackInline tom="erro" aoFechar={() => setErro(null)}>
           {erro}
         </FeedbackInline>
+      )}
+      {erroInativas && (
+        <FeedbackInline tom="erro" aoFechar={() => setErroInativas(null)}>
+          {erroInativas}
+        </FeedbackInline>
+      )}
+      {inativasComTrabalhador.length > 0 && (
+        <Card titulo="Funções desativadas com trabalhador vinculado">
+          <div style={{ fontSize: 12, marginBottom: 8 }}>
+            Estas funções foram excluídas (botão "Excluir" da lista abaixo) mas ainda têm trabalhador ativo
+            vinculado a elas — por isso ficaram invisíveis em fichas de EPI, dashboard e outras telas.
+            Reative para corrigir.
+          </div>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+            {inativasComTrabalhador.map((f) => (
+              <div
+                key={f.id}
+                style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap' }}
+              >
+                <div>
+                  <strong>{f.nome}</strong>
+                  <div style={{ fontSize: 12 }}>
+                    {f.quantidadeTrabalhadores} trabalhador{f.quantidadeTrabalhadores === 1 ? '' : 'es'} afetado
+                    {f.quantidadeTrabalhadores === 1 ? '' : 's'}
+                  </div>
+                </div>
+                <Button
+                  appearance="primary"
+                  icon={<ArrowUndo24Regular />}
+                  disabled={reativandoId === f.id}
+                  onClick={() => reativar(f.id, f.nome)}
+                >
+                  Reativar
+                </Button>
+              </div>
+            ))}
+          </div>
+        </Card>
       )}
       {erroDuplicadas && (
         <FeedbackInline tom="erro" aoFechar={() => setErroDuplicadas(null)}>
