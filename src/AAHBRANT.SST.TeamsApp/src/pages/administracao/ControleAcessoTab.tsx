@@ -86,6 +86,7 @@ export function ControleAcessoTab() {
   const [usuarioSelecionadoId, setUsuarioSelecionadoId] = useState<string | null>(null);
   const [nomeEdicao, setNomeEdicao] = useState('');
   const [statusEdicao, setStatusEdicao] = useState<number>(StatusUsuario.Ativo);
+  const [trabalhadorIdEdicao, setTrabalhadorIdEdicao] = useState('');
   const [perfilParaAtribuir, setPerfilParaAtribuir] = useState('');
   const [obraParaAtribuir, setObraParaAtribuir] = useState('');
 
@@ -191,6 +192,7 @@ export function ControleAcessoTab() {
     setUsuarioSelecionadoId(usuario.id);
     setNomeEdicao(usuario.nome);
     setStatusEdicao(usuario.status);
+    setTrabalhadorIdEdicao(usuario.trabalhadorId ?? '');
     setPerfilParaAtribuir('');
     setObraParaAtribuir('');
   }
@@ -230,7 +232,7 @@ export function ControleAcessoTab() {
         id: usuarioSelecionado.id,
         nome: nomeEdicao,
         status: statusEdicao,
-        trabalhadorId: usuarioSelecionado.trabalhadorId,
+        trabalhadorId: trabalhadorIdEdicao || null,
       });
       await carregar();
       sucessoToast('Usuário atualizado com sucesso.');
@@ -460,6 +462,18 @@ export function ControleAcessoTab() {
                         {Object.entries(statusUsuarioLabel).map(([valor, rotulo]) => (
                           <option key={valor} value={valor}>
                             {rotulo}
+                          </option>
+                        ))}
+                      </Select>
+                    </Field>
+                  </Campo>
+                  <Campo span={3}>
+                    <Field label="Funcionário vinculado">
+                      <Select value={trabalhadorIdEdicao} onChange={(_, d) => setTrabalhadorIdEdicao(d.value)}>
+                        <option value="">Nenhum</option>
+                        {trabalhadores.map((t) => (
+                          <option key={t.id} value={t.id}>
+                            {t.nome}
                           </option>
                         ))}
                       </Select>
