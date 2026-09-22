@@ -285,6 +285,7 @@ const useStyles = makeStyles({
     width: '1px',
     height: '26px',
     backgroundColor: designTokens.colorCardBorder,
+    '@media (max-width: 560px)': { display: 'none' },
   },
   usuarioChip: {
     display: 'flex',
@@ -324,6 +325,17 @@ const useStyles = makeStyles({
     alignItems: 'center',
     gap: '4px',
     '@media (max-width: 920px)': { display: 'flex' },
+  },
+  acoesMobileOcultas: {
+    '@media (max-width: 560px)': { display: 'none' },
+  },
+  topoDireita: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: '12px',
+    marginLeft: 'auto',
+    minWidth: 0,
+    '@media (max-width: 560px)': { gap: '4px' },
   },
   usuarioEmailTopo: {
     fontSize: '12px',
@@ -1009,7 +1021,7 @@ export function AppShell({ children }: { children: ReactNode }) {
           <SyncStatusBadge />
         </div>
 
-        <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginLeft: 'auto' }}>
+        <div className={estilos.topoDireita}>
           <div className={estilos.acoesTopoCompactas} aria-label="Ações globais (compacto)">
             <SyncStatusBadge />
             <MenuCriar
@@ -1030,13 +1042,14 @@ export function AppShell({ children }: { children: ReactNode }) {
             </Badge>
           )}
           <Button
+            className={estilos.acoesMobileOcultas}
             appearance="subtle"
             icon={modo === 'dark' ? <WeatherSunny24Regular /> : <WeatherMoon24Regular />}
             aria-label={modo === 'dark' ? 'Mudar para modo claro' : 'Mudar para modo escuro'}
             title={modo === 'dark' ? 'Modo claro' : 'Modo escuro'}
             onClick={alternarModo}
           />
-          <div className={estilos.sinoAlertas}>
+          <div className={mergeClasses(estilos.sinoAlertas, estilos.acoesMobileOcultas)}>
             <Button
               appearance="subtle"
               icon={<Alert24Regular />}

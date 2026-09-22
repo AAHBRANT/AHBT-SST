@@ -584,7 +584,7 @@ export function DashboardPage() {
         <MiniCalendarioCard />
       </div>
 
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(340px, 1fr))', gap: 16, marginBottom: 16 }}>
+      <div className={dashEstilos.dashboardGrid}>
         <div
           className={dashEstilos.cardAcionavel}
           role="button"
@@ -609,7 +609,7 @@ export function DashboardPage() {
         </div>
       </div>
 
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(340px, 1fr))', gap: 16, marginBottom: 16 }}>
+      <div className={dashEstilos.dashboardGrid}>
         <div
           className={dashEstilos.cardAcionavel}
           role="button"

@@ -17,12 +17,21 @@ export const useDashboardStyles = makeStyles({
       alignItems: 'stretch',
       flexDirection: 'column',
     },
+    '@media (max-width: 520px)': {
+      padding: '10px',
+      gap: '10px',
+      borderRadius: tokensUi.raio.md,
+    },
   },
   grupoPeriodos: {
     display: 'flex',
     alignItems: 'center',
     gap: '6px',
     flexWrap: 'wrap',
+    '@media (max-width: 520px)': {
+      display: 'grid',
+      gridTemplateColumns: 'repeat(2, minmax(0, 1fr))',
+    },
   },
   botaoPeriodo: {
     minWidth: 'auto',
@@ -30,6 +39,9 @@ export const useDashboardStyles = makeStyles({
     borderRadius: '8px',
     fontWeight: 700,
     color: designTokens.colorNeutralMedium,
+    '@media (max-width: 520px)': {
+      width: '100%',
+    },
   },
   botaoPeriodoAtivo: {
     color: '#16a34a',
@@ -53,6 +65,15 @@ export const useDashboardStyles = makeStyles({
     '@media (max-width: 900px)': {
       justifyContent: 'flex-start',
       maxWidth: 'none',
+    },
+    '@media (max-width: 520px)': {
+      alignItems: 'stretch',
+      flexDirection: 'column',
+      gap: '6px',
+    },
+    '& .fui-Select': {
+      minWidth: 0,
+      width: '100%',
     },
   },
   filtros: {
@@ -85,14 +106,25 @@ export const useDashboardStyles = makeStyles({
   // (7 em uma linha em telas largas; 4+3 em médias; 2 por linha em estreitas).
   gradeKpis: {
     display: 'grid',
-    gridTemplateColumns: 'repeat(2, minmax(0, 1fr))',
+    gridTemplateColumns: '1fr',
     gap: '16px',
     flexGrow: 1,
     minWidth: 0,
     // Faixas mutuamente exclusivas de propósito: o Griffel não garante a ordem das @media na folha
     // gerada, e com min-width em cascata a regra de 4 colunas vencia a de 7 em tela larga.
+    '@media (min-width: 480px) and (max-width: 959px)': { gridTemplateColumns: 'repeat(2, minmax(0, 1fr))' },
     '@media (min-width: 960px) and (max-width: 1559px)': { gridTemplateColumns: 'repeat(4, minmax(0, 1fr))' },
     '@media (min-width: 1560px)': { gridTemplateColumns: 'repeat(7, minmax(0, 1fr))' },
+  },
+  dashboardGrid: {
+    display: 'grid',
+    gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 340px), 1fr))',
+    gap: '16px',
+    marginBottom: '16px',
+    minWidth: 0,
+    '@media (max-width: 680px)': {
+      gridTemplateColumns: '1fr',
+    },
   },
   kpiIcone: {
     width: '34px',
@@ -118,7 +150,7 @@ export const useDashboardStyles = makeStyles({
   },
   chartRow: {
     display: 'grid',
-    gridTemplateColumns: 'repeat(auto-fit, minmax(340px, 1fr))',
+    gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 340px), 1fr))',
     gap: '16px',
     marginBottom: '16px',
   },
