@@ -14,6 +14,12 @@ export interface UseCapturaFotoOptions {
   // false para pontos de anexo que nunca são foto (ex.: documento PDF) — pula o diálogo de câmera
   // e vai direto pro seletor de arquivos nativo, já que a câmera só pode produzir JPEG.
   permitirCamera?: boolean;
+  // Pedido do usuário (22/09): cadastro de reconhecimento facial não pode aceitar foto do
+  // álbum/arquivos — uma foto antiga ou de outra pessoa escolhida da galeria quebra a garantia de
+  // "captura ao vivo" que a biometria facial depende. Com isto true, se a câmera falhar (sem
+  // permissão, sem hardware, navegador sem suporte) o fluxo termina em erro em vez de cair no
+  // seletor de arquivos nativo — vale pra qualquer dispositivo (PC/notebook/celular/tablet).
+  exigirCamera?: boolean;
 }
 
 // Lógica de captura/seleção de foto extraída de SeletorFotoCamera (14/09) para ser reaproveitada
@@ -26,6 +32,7 @@ export function useCapturaFoto({
   tamanhoMaximoMb = 5,
   modoCamera = 'environment',
   permitirCamera = true,
+  exigirCamera = false,
 }: UseCapturaFotoOptions) {
   const inputRef = useRef<HTMLInputElement>(null);
   const videoRef = useRef<HTMLVideoElement>(null);
@@ -74,6 +81,12 @@ export function useCapturaFoto({
 
   async function abrirCamera() {
     if (!permitirCamera || !navigator.mediaDevices?.getUserMedia) {
+      if (exigirCamera) {
+        aoErroValidacao?.(
+          'Não foi possível acessar a câmera. Verifique se o navegador/app tem permissão de câmera liberada e tente novamente — este cadastro exige captura ao vivo, não aceita foto do álbum/arquivos.',
+        );
+        return;
+      }
       inputRef.current?.click();
       return;
     }
@@ -81,6 +94,12 @@ export function useCapturaFoto({
       const novoStream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: modoCamera } });
       setStream(novoStream);
     } catch {
+      if (exigirCamera) {
+        aoErroValidacao?.(
+          'Não foi possível acessar a câmera. Verifique se o navegador/app tem permissão de câmera liberada e tente novamente — este cadastro exige captura ao vivo, não aceita foto do álbum/arquivos.',
+        );
+        return;
+      }
       // Sem câmera, permissão negada, ou navegador sem suporte — cai no seletor de arquivos.
       inputRef.current?.click();
     }

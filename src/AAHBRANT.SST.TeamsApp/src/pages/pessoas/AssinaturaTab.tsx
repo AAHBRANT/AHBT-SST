@@ -106,7 +106,13 @@ export function AssinaturaTab({ trabalhadorId }: AssinaturaTabProps) {
           </FeedbackInline>
         )}
         {facialCadastrada && <FeedbackInline tom="sucesso">Face cadastrada com sucesso.</FeedbackInline>}
-        <SeletorFotoCamera aoSelecionarArquivo={cadastrarFacial} rotulo="Capturar foto do rosto" modoCamera="user" />
+        <SeletorFotoCamera
+          aoSelecionarArquivo={cadastrarFacial}
+          aoErroValidacao={setErroFacial}
+          rotulo="Capturar foto do rosto"
+          modoCamera="user"
+          exigirCamera
+        />
       </Card>
     </div>
   );

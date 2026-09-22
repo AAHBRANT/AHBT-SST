@@ -192,9 +192,11 @@ export function AssinaturaQuiosque({ entidadeTipo, entidadeId, obraId }: Assinat
           )}
           <SeletorFotoCamera
             aoSelecionarArquivo={assinarComFacial}
+            aoErroValidacao={setErro}
             rotulo="Assinar com reconhecimento facial"
             desabilitado={!documento}
             modoCamera="user"
+            exigirCamera
           />
         </div>
       )}
