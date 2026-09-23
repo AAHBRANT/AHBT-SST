@@ -70,11 +70,22 @@ jobs:
       - name: Conferir se o modelo bate com a última migration
         env:
           # O comando compara o modelo do código com o snapshot da última migration e NÃO abre
-          # conexão — mas o host da API monta o DbContext no startup e DependencyInjection.cs
-          # lança se a connection string não existir. Uma string sintaticamente válida e suficiente;
-          # esse servidor nunca é contatado. Sem isso o job falha com "Connection string
-          # 'SstDatabase' não configurada", e não por haver migration pendente de verdade.
+          # conexão nem criptografa nada — mas o host da API monta o DbContext no startup, e
+          # DependencyInjection.cs exige 4 configurações antes disso (linhas 39, 56, 58 e 67).
+          # Sem elas o job falha por configuração ausente, e não por haver migration pendente,
+          # que é o que ele existe para detectar.
+          #
+          # NÃO SÃO SEGREDOS. São valores descartáveis, fixos no arquivo de propósito: o servidor
+          # nunca é contatado e as chaves nunca cifram um byte. As chaves reais vivem nos secrets
+          # do Container App; se algum dia este job precisar de uma credencial de verdade, ela tem
+          # de entrar por secrets do repositório, nunca aqui.
           ConnectionStrings__SstDatabase: 'Server=localhost;Database=sst_ci;User Id=ci;Password=naoUsado;TrustServerCertificate=True'
+          # Base64 de 32 bytes ASCII legíveis ("chave-de-ci-sem-valor-real-...") — decodifique e
+          # veja: é texto dizendo que não vale nada. Tamanho de chave AES-256 só para o caso de
+          # alguma validação de comprimento aparecer no futuro.
+          Lgpd__ChaveCriptografiaCpfBase64: 'Y2hhdmUtZGUtY2ktc2VtLXZhbG9yLXJlYWwtY3BmMS4='
+          Lgpd__ChaveHashCpfBase64: 'Y2hhdmUtZGUtY2ktc2VtLXZhbG9yLXJlYWwtaGFzaC4='
+          Lgpd__ChaveCriptografiaBiometriaBase64: 'Y2hhdmUtZGUtY2ktc2VtLXZhbG9yLXJlYWwtYmlvbS4='
         run: |
           dotnet ef migrations has-pending-model-changes \
             --project src/AAHBRANT.SST.Infrastructure \
