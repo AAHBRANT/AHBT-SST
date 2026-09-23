@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import {
   Button,
+  Checkbox,
   Field,
   Input,
   Textarea,
@@ -13,8 +14,8 @@ import {
   FormSection,
   Campo,
   FeedbackInline,
-  useConfirmar,
   StatusChip,
+  useConfirmar,
   type Coluna,
 } from '@ui';
 import { Switch } from '@fluentui/react-components';
@@ -29,6 +30,7 @@ const cursoVazio: NovoCursoTreinamento = {
   validadeEmMeses: 12,
   conteudoProgramatico: '',
   ehIntegracaoSeguranca: false,
+  atendeNr6: false,
 };
 
 // Migração do formulário inline (spec 2026-09-11): o PainelLateral (drawer) saiu — mesmo padrão de
@@ -104,7 +106,16 @@ export function CursosTreinamentoTab() {
 
   const colunas: Coluna<CursoTreinamento>[] = [
     { chave: 'nome', rotulo: 'Nome' },
-    { chave: 'normaReferencia', rotulo: 'Norma' },
+    {
+      chave: 'normaReferencia',
+      rotulo: 'Norma',
+      render: (c) => (
+        <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+          <span>{c.normaReferencia ?? '—'}</span>
+          {c.atendeNr6 && <StatusChip tom="info">Habilita EPI</StatusChip>}
+        </div>
+      ),
+    },
     { chave: 'cargaHorariaMinima', rotulo: 'CH mínima', render: (c) => `${c.cargaHorariaMinima}h` },
     { chave: 'validadeEmMeses', rotulo: 'Validade (meses)' },
     {
@@ -155,6 +166,18 @@ export function CursosTreinamentoTab() {
                   <Input
                     value={novoCurso.normaReferencia ?? ''}
                     onChange={(_, d) => setNovoCurso({ ...novoCurso, normaReferencia: d.value })}
+                  />
+                </Field>
+              </Campo>
+              <Campo span={12}>
+                {/* Marcador explícito (22/09): é ele que libera a entrega de EPI, e não mais o texto
+                    digitado em "Norma de referência". Marcar o curso errado aqui destrava entrega de
+                    EPI para quem não tem NR-06 — por isso o aviso fica no próprio rótulo. */}
+                <Field hint="Só marque para cursos que de fato capacitam no uso de EPI (NR-06). A entrega de EPI só é liberada para quem tem um curso marcado aqui, dentro da validade.">
+                  <Checkbox
+                    label="Este curso atende à NR-06 (habilita a entrega de EPI)"
+                    checked={novoCurso.atendeNr6 ?? false}
+                    onChange={(_, d) => setNovoCurso({ ...novoCurso, atendeNr6: !!d.checked })}
                   />
                 </Field>
               </Campo>

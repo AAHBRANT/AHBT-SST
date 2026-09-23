@@ -1,4 +1,5 @@
 using AAHBRANT.SST.Application.Common.Interfaces;
+using AAHBRANT.SST.Domain.Enums;
 using FluentValidation;
 using MediatR;
 using Microsoft.EntityFrameworkCore;
@@ -15,7 +16,8 @@ public record AtualizarTreinamentoCommand(
     string? InstituicaoInstrutor,
     string? NumeroCertificado,
     string? Local,
-    string? InstrutorRegistroProfissional) : IRequest;
+    string? InstrutorRegistroProfissional,
+    OrigemCertificadoTreinamento OrigemCertificado = OrigemCertificadoTreinamento.Aahbrant) : IRequest;
 
 public class AtualizarTreinamentoCommandValidator : AbstractValidator<AtualizarTreinamentoCommand>
 {
@@ -26,6 +28,7 @@ public class AtualizarTreinamentoCommandValidator : AbstractValidator<AtualizarT
         RuleFor(x => x.CursoTreinamentoId).NotEmpty();
         RuleFor(x => x.DataRealizacao).NotEmpty();
         RuleFor(x => x.DataValidade).NotEmpty().GreaterThanOrEqualTo(x => x.DataRealizacao);
+        RuleFor(x => x.OrigemCertificado).IsInEnum();
     }
 }
 
@@ -48,6 +51,7 @@ public class AtualizarTreinamentoCommandHandler : IRequestHandler<AtualizarTrein
         treinamento.NumeroCertificado = request.NumeroCertificado;
         treinamento.Local = request.Local;
         treinamento.InstrutorRegistroProfissional = request.InstrutorRegistroProfissional;
+        treinamento.OrigemCertificado = request.OrigemCertificado;
 
         await _db.SaveChangesAsync(ct);
     }

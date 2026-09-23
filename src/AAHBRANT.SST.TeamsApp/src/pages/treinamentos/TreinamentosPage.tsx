@@ -1,11 +1,12 @@
 import { Abas, PageHeader, useAbaNaUrl } from '@ui';
+import { CertificadosTab } from './CertificadosTab';
 import { CursosTreinamentoTab } from '../pessoas/CursosTreinamentoTab';
 import { MatrizTreinamentoTab } from '../pessoas/MatrizTreinamentoTab';
 import { TurmasTab } from './TurmasTab';
 
-type AbaTreinamentos = 'turmas' | 'cursos' | 'matriz';
+type AbaTreinamentos = 'turmas' | 'certificados' | 'cursos' | 'matriz';
 
-const ABAS: AbaTreinamentos[] = ['turmas', 'cursos', 'matriz'];
+const ABAS: AbaTreinamentos[] = ['turmas', 'certificados', 'cursos', 'matriz'];
 
 // Item "Treinamentos" da sidebar (02/09): saiu de dentro de PessoasPage (onde só cabia por
 // conveniência, ao lado de Trabalhadores/Funções, que não têm nada a ver) e virou módulo próprio —
@@ -29,12 +30,14 @@ export function TreinamentosPage({ mostrarTitulo = true }: { mostrarTitulo?: boo
         aria-label="Seções de Treinamentos"
         abas={[
           { valor: 'turmas', rotulo: 'Turmas' },
+          { valor: 'certificados', rotulo: 'Certificados' },
           { valor: 'cursos', rotulo: 'Catálogo de Cursos' },
           { valor: 'matriz', rotulo: 'Matriz de Treinamento por Função' },
         ]}
       />
 
       {aba === 'turmas' && <TurmasTab />}
+      {aba === 'certificados' && <CertificadosTab />}
       {aba === 'cursos' && <CursosTreinamentoTab />}
       {aba === 'matriz' && <MatrizTreinamentoTab />}
     </div>

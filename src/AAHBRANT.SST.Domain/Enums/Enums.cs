@@ -871,3 +871,14 @@ public enum StatusContrato
     Encerrado = 2,
     Cancelado = 3
 }
+
+// Lançamento retroativo de certificados (pedido do usuário, 22/09): a obra já está em andamento e
+// os trabalhadores chegaram com treinamentos feitos antes, muitas vezes por terceiros. Distinguir a
+// origem importa juridicamente — emitir o certificado no modelo AAHBRANT para um curso que a
+// AAHBRANT não ministrou seria atestar treinamento alheio. Por isso Externo bloqueia a emissão do
+// modelo próprio (ver ExportarCertificadoTreinamentoQuery) e exige o arquivo original anexado.
+public enum OrigemCertificadoTreinamento
+{
+    Aahbrant = 1,
+    Externo = 2
+}

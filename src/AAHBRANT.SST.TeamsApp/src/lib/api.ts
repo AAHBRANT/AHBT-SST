@@ -346,6 +346,10 @@ export interface CursoTreinamento {
   validadeEmMeses: number;
   conteudoProgramatico?: string | null;
   ehIntegracaoSeguranca: boolean;
+  // Marcador explícito "este curso atende à NR-06 (uso de EPI)" (22/09). Substitui a adivinhação
+  // pelo texto de normaReferencia, que era campo livre: bastava digitar a norma de um jeito
+  // diferente para a entrega de EPI deixar de reconhecer o curso e travar a obra inteira.
+  atendeNr6?: boolean;
 }
 
 export type NovoCursoTreinamento = Omit<CursoTreinamento, 'id'>;
@@ -363,10 +367,53 @@ export interface Treinamento {
   // usuário, 06/09). Sem preencher Local, o certificado usa o nome da Obra do trabalhador.
   local?: string | null;
   instrutorRegistroProfissional?: string | null;
+  // Lançamento retroativo (22/09): Aahbrant = curso ministrado pela empresa, o sistema emite o
+  // certificado no modelo próprio. Externo = curso feito por terceiro, só registrado aqui — a
+  // emissão do modelo AAHBRANT é recusada pela API e o que se baixa é o arquivo anexado.
+  origemCertificado?: OrigemCertificadoTreinamento;
 }
+
+export const OrigemCertificadoTreinamento = {
+  Aahbrant: 1,
+  Externo: 2,
+} as const;
+export type OrigemCertificadoTreinamento =
+  (typeof OrigemCertificadoTreinamento)[keyof typeof OrigemCertificadoTreinamento];
+
+export const origemCertificadoTreinamentoLabel: Record<number, string> = {
+  1: 'AAHBRANT',
+  2: 'Externo',
+};
 
 export type NovoTreinamento = Omit<Treinamento, 'id'>;
 export type AtualizarTreinamento = Treinamento;
+
+// Linha da sub-aba "Certificados" (22/09) — lista central com trabalhador/obra/curso já resolvidos,
+// para lançar e conferir certificados sem entrar no perfil de um trabalhador por vez. NUNCA traz o
+// conteúdo do arquivo, só se existe: a lista pode ter centenas de linhas.
+export interface CertificadoTreinamento {
+  id: string;
+  trabalhadorId: string;
+  trabalhadorNome: string;
+  funcaoNome?: string | null;
+  obraId: string;
+  obraNome?: string | null;
+  cursoTreinamentoId: string;
+  cursoNome: string;
+  normaReferencia?: string | null;
+  atendeNr6: boolean;
+  dataRealizacao: string;
+  dataValidade: string;
+  cargaHorariaRealizada: number;
+  instituicaoInstrutor?: string | null;
+  numeroCertificado?: string | null;
+  local?: string | null;
+  instrutorRegistroProfissional?: string | null;
+  origemCertificado: OrigemCertificadoTreinamento;
+  temArquivo: boolean;
+  nomeArquivo?: string | null;
+  contentTypeArquivo?: string | null;
+}
 
 // Sessão/Turma de Treinamento (pedido do usuário, 04/09) — reformulação do fluxo: o responsável
 // abre a turma já com os participantes selecionados, registra presença de cada um por biometria
@@ -3727,10 +3774,32 @@ export const api = {
       });
       if (!response.ok) {
         const corpo = await response.text().catch(() => '');
-        throw new Error(`${response.status} ${response.statusText}: ${corpo}`);
+        throw new Error(extrairMensagemErro(corpo, response.status, response.statusText));
       }
       return response.blob();
     },
+    listarCertificados: (filtros?: { obraId?: string; cursoTreinamentoId?: string; trabalhadorId?: string }) => {
+      const params = new URLSearchParams();
+      if (filtros?.obraId) params.set('obraId', filtros.obraId);
+      if (filtros?.cursoTreinamentoId) params.set('cursoTreinamentoId', filtros.cursoTreinamentoId);
+      if (filtros?.trabalhadorId) params.set('trabalhadorId', filtros.trabalhadorId);
+      const query = params.toString();
+      return request<CertificadoTreinamento[]>(`/api/treinamentos/certificados${query ? `?${query}` : ''}`);
+    },
+    // Certificado digitalizado do lançamento retroativo (22/09): PDF original ou foto do papel.
+    // Reenviar substitui o anterior — é o caminho quando a primeira foto sai ilegível.
+    anexarArquivoCertificado: async (id: string, arquivo: File) => {
+      const formData = new FormData();
+      formData.append('arquivo', arquivo);
+      const authHeaders = await montarHeadersAuth();
+      return syncMutateMultipart<{ id: string }>(`/api/treinamentos/${id}/certificado/arquivo`, formData, authHeaders);
+    },
+    baixarArquivoCertificado: async (id: string) => {
+      const authHeaders = await montarHeadersAuth();
+      return syncFetchBlob(`/api/treinamentos/${id}/certificado/arquivo`, authHeaders);
+    },
+    removerArquivoCertificado: (id: string) =>
+      request<void>(`/api/treinamentos/${id}/certificado/arquivo`, { method: 'DELETE' }),
   },
   sessoesTreinamento: {
     listar: (obraId?: string) => request<SessaoTreinamento[]>(`/api/sessoestreinamento${obraId ? `?obraId=${obraId}` : ''}`),
