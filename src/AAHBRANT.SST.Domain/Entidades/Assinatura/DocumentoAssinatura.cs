@@ -33,6 +33,18 @@ public class DocumentoAssinatura : AuditableEntity
     // (varbinary(max) no próprio banco) em vez de introduzir uma dependência de storage nova.
     public byte[]? PdfConteudo { get; set; }
 
+    // Integridade do CONTEÚDO, distinta de ConteudoHash (que cobre só a lista de signatários e não
+    // detecta adulteração do documento em si). SHA-256 sobre os bytes exatos do PDF guardado em
+    // PdfConteudo, calculado DEPOIS da geração — por isso não entra no rodapé do próprio PDF, o que
+    // seria circular. É o que permite a terceiro conferir o arquivo em mãos contra o registro:
+    // baixa o PDF pela página pública, calcula o SHA-256 e compara.
+    //
+    // Enquanto o documento aceita assinatura, arquivo e hash são substituídos a cada exportação (o
+    // registro sempre reflete a última versão emitida). Depois de Finalizado, ficam congelados —
+    // é a cópia que serve de prova.
+    public string? HashPdf { get; set; }
+    public DateTime? ArquivoAtualizadoEm { get; set; }
+
     public ICollection<DocumentoSignatario> Signatarios { get; set; } = new List<DocumentoSignatario>();
 }
 

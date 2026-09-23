@@ -25,8 +25,16 @@ public class ExportarCertificadoTreinamentoOrigemTests
 
     private class RastreabilidadeFalsa : IRegistradorRastreabilidadeService
     {
+        public byte[]? ArquivoRegistrado { get; private set; }
+
         public Task<RastreabilidadeDocumentoResultado> GarantirAsync(string entidadeTipo, Guid entidadeId, CancellationToken ct)
-            => Task.FromResult(new RastreabilidadeDocumentoResultado("hash", "https://exemplo/validar", Array.Empty<byte>(), false));
+            => Task.FromResult(new RastreabilidadeDocumentoResultado(Guid.NewGuid(), "hash", "https://exemplo/validar", Array.Empty<byte>(), false));
+
+        public Task RegistrarArquivoAsync(Guid documentoId, byte[] pdf, CancellationToken ct)
+        {
+            ArquivoRegistrado = pdf;
+            return Task.CompletedTask;
+        }
     }
 
     private static async Task<Guid> SemearAsync(

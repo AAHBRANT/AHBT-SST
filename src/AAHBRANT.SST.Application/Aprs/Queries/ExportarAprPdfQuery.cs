@@ -34,7 +34,11 @@ public class ExportarAprPdfQueryHandler : IRequestHandler<ExportarAprPdfQuery, b
 
         var rastreio = await _rastreabilidade.GarantirAsync(nameof(Domain.Entidades.Apr), request.Id, ct);
 
-        return _pdf.Gerar(MontarModelo(detalhe, logoConteudo, rastreio));
+        var pdf = _pdf.Gerar(MontarModelo(detalhe, logoConteudo, rastreio));
+        // Guarda a cópia exata emitida e o SHA-256 dela — é o que permite conferir, depois,
+        // que o arquivo em mãos não foi adulterado (ver HashArquivoCalculador).
+        await _rastreabilidade.RegistrarArquivoAsync(rastreio.DocumentoId, pdf, ct);
+        return pdf;
     }
 
     public static AprPdfModelo MontarModelo(AprDetalheDto detalhe, byte[]? obraLogoConteudo, RastreabilidadeDocumentoResultado rastreio)

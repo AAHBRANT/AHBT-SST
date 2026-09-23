@@ -2236,6 +2236,9 @@ export interface DocumentoPublicoSignatario {
   trabalhadorNome: string;
   metodoAutenticacao: number;
   assinadoEm: string;
+  // Origem de rede da assinatura, já mascarada pelo backend (IpMascarador) — a página é anônima,
+  // então o endereço completo nunca sai daqui.
+  origemRede?: string | null;
 }
 
 export interface DocumentoPublico {
@@ -2244,6 +2247,17 @@ export interface DocumentoPublico {
   conteudoHash: string;
   assinado: boolean;
   signatarios: DocumentoPublicoSignatario[];
+  // Rótulo institucional do tipo, resolvido no backend (TipoDocumentoAssinatura) — nome técnico da
+  // entidade nunca aparece para quem escaneia o QR.
+  entidadeTipoRotulo: string;
+  // Documento que agrega N registros individuais (Ficha de EPI, Ata de Sessão, DDS Semanal): não
+  // recebe assinatura própria, e `signatarios` vem dos registros agregados.
+  consolidado: boolean;
+  origemAssinaturas?: string | null;
+  // SHA-256 do PDF exato que foi emitido — é o que prova que o conteúdo não mudou. `conteudoHash`
+  // acima cobre apenas a lista de signatários.
+  hashPdf?: string | null;
+  arquivoAtualizadoEm?: string | null;
 }
 
 // Painel administrativo (etapa 12) — ao contrário de DocumentoPublico, aqui o consumidor já está
@@ -2252,6 +2266,7 @@ export interface DocumentoPublico {
 export interface DocumentoAssinaturaResumo {
   id: string;
   entidadeTipo: string;
+  entidadeTipoRotulo: string;
   entidadeId: string;
   status: number;
   criadoEm: string;

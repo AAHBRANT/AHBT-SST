@@ -7,7 +7,8 @@ namespace AAHBRANT.SST.Application.Tests.Dds;
 
 public class ExportarDdsPdfQueryMontarModeloTests
 {
-    private static readonly RastreabilidadeDocumentoResultado RastreioFake = new("hash", "https://validar.teste", Array.Empty<byte>(), false);
+    private static readonly RastreabilidadeDocumentoResultado RastreioFake =
+        new(Guid.NewGuid(), "hash", "https://validar.teste", Array.Empty<byte>(), false);
 
     private static DdsDetalheDto CriarDetalhe(List<DdsTemaAtividadeDto> temas, string? temaLivreNome, string? temaLivreDescricao)
     {

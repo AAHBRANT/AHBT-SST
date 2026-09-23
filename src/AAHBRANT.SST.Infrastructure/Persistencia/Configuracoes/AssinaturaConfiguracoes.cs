@@ -10,6 +10,7 @@ public class DocumentoAssinaturaConfiguracao : IEntityTypeConfiguration<Document
     {
         builder.Property(d => d.EntidadeTipo).IsRequired().HasMaxLength(50);
         builder.Property(d => d.ConteudoHash).HasMaxLength(64);
+        builder.Property(d => d.HashPdf).HasMaxLength(64);
         builder.Property(d => d.TokenValidacaoPublica).HasMaxLength(64);
 
         builder.HasIndex(d => new { d.EntidadeTipo, d.EntidadeId });

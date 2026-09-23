@@ -89,7 +89,13 @@ export function PainelAssinaturasTab() {
   }
 
   const colunas: Coluna<DocumentoAssinaturaResumo>[] = [
-    { chave: 'entidade', rotulo: 'Entidade', render: (d) => `${d.entidadeTipo} (${d.entidadeId})` },
+    // Rótulo institucional vindo do backend (TipoDocumentoAssinatura), com o tipo técnico ainda
+    // visível entre parênteses — aqui o consumidor é interno e usa o tipo para filtrar.
+    {
+      chave: 'entidade',
+      rotulo: 'Entidade',
+      render: (d) => `${d.entidadeTipoRotulo || d.entidadeTipo} (${d.entidadeId})`,
+    },
     {
       chave: 'status',
       rotulo: 'Status',

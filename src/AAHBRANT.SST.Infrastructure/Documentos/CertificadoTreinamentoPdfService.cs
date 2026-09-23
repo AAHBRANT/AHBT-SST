@@ -228,10 +228,16 @@ public class CertificadoTreinamentoPdfService : ICertificadoTreinamentoPdfServic
 
             if (modelo.FotoTurma is not null || modelo.QrCodeValidacaoPng is not null)
             {
-                coluna.Item().PaddingTop(10).Element(c => EvidenciaEVerificacao(c, modelo));
+                coluna.Item().PaddingTop(4).Element(c => EvidenciaEVerificacao(c, modelo));
             }
 
-            coluna.Item().PaddingTop(20).Element(c => Assinaturas(c, modelo));
+            // Alturas e respiros do verso enxugados, e ShowEntire no bloco de assinaturas: o verso
+            // pedia ~480pt numa página que oferece ~420pt úteis (A4 paisagem, margem 1,5cm, menos o
+            // rodapé), então o bloco de assinaturas transbordava e o QuestPDF o partia ao meio —
+            // gerando uma terceira página com uma única linha de signatário e sem cabeçalho.
+            // ShowEntire garante que, se algum dia não couber de novo (conteúdo programático muito
+            // longo), o bloco vá inteiro para a página seguinte em vez de se dividir.
+            coluna.Item().PaddingTop(8).ShowEntire().Element(c => Assinaturas(c, modelo));
         });
     }
 
@@ -247,7 +253,7 @@ public class CertificadoTreinamentoPdfService : ICertificadoTreinamentoPdfServic
                 linha.RelativeItem().Column(bloco =>
                 {
                     bloco.Item().AlignCenter().Text("Evidência da turma").FontSize(8).SemiBold().FontColor(Colors.Grey.Darken2);
-                    bloco.Item().PaddingTop(4).AlignCenter().Height(150).Width(220)
+                    bloco.Item().PaddingTop(4).AlignCenter().Height(95).Width(140)
                         .Border(1).BorderColor(Colors.Grey.Lighten2)
                         .Image(RecortarFotoTurma(modelo.FotoTurma)).FitArea();
                 });
@@ -263,7 +269,7 @@ public class CertificadoTreinamentoPdfService : ICertificadoTreinamentoPdfServic
                 linha.ConstantItem(110).Column(bloco =>
                 {
                     bloco.Item().AlignCenter().Text("Verificação").FontSize(8).SemiBold().FontColor(Colors.Grey.Darken2);
-                    bloco.Item().PaddingTop(4).AlignCenter().Height(90).Width(90).Image(modelo.QrCodeValidacaoPng).FitArea();
+                    bloco.Item().PaddingTop(4).AlignCenter().Height(70).Width(70).Image(modelo.QrCodeValidacaoPng).FitArea();
                 });
             }
         });

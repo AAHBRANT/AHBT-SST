@@ -31,7 +31,11 @@ public class ExportarDdsPdfQueryHandler : IRequestHandler<ExportarDdsPdfQuery, b
         var logoConteudo = await _db.Obras.Where(o => o.Id == detalhe.Dds.ObraId).Select(o => o.LogoConteudo).FirstOrDefaultAsync(ct);
         var rastreio = await _rastreabilidade.GarantirAsync(nameof(Domain.Entidades.Dds), request.Id, ct);
 
-        return _pdf.Gerar(MontarModelo(detalhe, logoConteudo, dds.NumeroDocumento, rastreio));
+        var pdf = _pdf.Gerar(MontarModelo(detalhe, logoConteudo, dds.NumeroDocumento, rastreio));
+        // Guarda a cópia exata emitida e o SHA-256 dela — é o que permite conferir, depois,
+        // que o arquivo em mãos não foi adulterado (ver HashArquivoCalculador).
+        await _rastreabilidade.RegistrarArquivoAsync(rastreio.DocumentoId, pdf, ct);
+        return pdf;
     }
 
     public static DdsPdfModelo MontarModelo(DdsDetalheDto detalhe, byte[]? obraLogoConteudo, string? protocolo, RastreabilidadeDocumentoResultado rastreio) => new(

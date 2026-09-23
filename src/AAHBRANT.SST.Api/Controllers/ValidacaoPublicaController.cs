@@ -23,4 +23,11 @@ public class ValidacaoPublicaController : ControllerBase
         var documento = await _mediator.Send(new ResolverDocumentoPublicoQuery(token), ct);
         return documento is null ? NotFound() : Ok(documento);
     }
+
+    // Não existe rota pública para baixar o PDF, por decisão do usuário (23/09): servir o arquivo
+    // inteiro de forma anônima transformaria um QR fotografado e repassado em acesso indiscriminado
+    // ao documento, com nome e função do trabalhador. A conferência de integridade não depende
+    // disso — quem tem o documento calcula o SHA-256 dele e compara com o publicado nesta página.
+    // A cópia emitida continua guardada (DocumentoAssinatura.PdfConteudo), acessível só pelo painel
+    // administrativo autenticado.
 }

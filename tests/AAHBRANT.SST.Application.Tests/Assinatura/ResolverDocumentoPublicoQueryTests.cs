@@ -1,3 +1,4 @@
+using AAHBRANT.SST.Application.Assinatura;
 using AAHBRANT.SST.Application.Assinatura.Queries;
 using AAHBRANT.SST.Application.Tests.TestSupport;
 using AAHBRANT.SST.Domain.Entidades;
@@ -61,6 +62,143 @@ public class ResolverDocumentoPublicoQueryTests
         Assert.Equal(finalizadoEm, resultado!.EmitidoEm);
         Assert.True(resultado.Assinado);
         Assert.Single(resultado.Signatarios);
+    }
+
+    // A Ficha de EPI é documento consolidado: o registro dela nunca recebe signatário (ver
+    // TipoDocumentoAssinatura), então a página pública precisa mostrar as assinaturas das entregas
+    // que ela agrega — senão afirma "nenhuma assinatura" sobre um PDF assinado linha a linha.
+    [Fact]
+    public async Task Handle_FichaEpiConsolidada_AgregaAssinaturasDasEntregasDoTrabalhador()
+    {
+        using var db = DbContextFactory.Criar();
+        var trabalhador = new Trabalhador { Nome = "João Teste", Cpf = "11122233344", DataAdmissao = DateTime.UtcNow };
+        db.Trabalhadores.Add(trabalhador);
+        var entrega = new EntregaEpi { TrabalhadorId = trabalhador.Id, Quantidade = 1, DataEntrega = DateTime.UtcNow };
+        db.EntregasEpi.Add(entrega);
+        await db.SaveChangesAsync();
+
+        var assinadoEm = new DateTime(2026, 9, 10, 9, 0, 0, DateTimeKind.Utc);
+        var documentoEntrega = new DocumentoAssinatura
+        {
+            EntidadeTipo = "EntregaEpi",
+            EntidadeId = entrega.Id,
+            Status = StatusDocumentoAssinatura.Finalizado,
+            ConteudoHash = "HASH-ENTREGA",
+            FinalizadoEm = assinadoEm,
+        };
+        documentoEntrega.Signatarios.Add(new DocumentoSignatario
+        {
+            TrabalhadorId = trabalhador.Id,
+            MetodoAutenticacao = MetodoAutenticacaoAssinatura.Biometria,
+            AssinadoEm = assinadoEm,
+        });
+        db.DocumentosAssinatura.Add(documentoEntrega);
+
+        // Registro da Ficha: só rastreabilidade, sem signatário próprio.
+        db.DocumentosAssinatura.Add(new DocumentoAssinatura
+        {
+            EntidadeTipo = "FichaEpiTrabalhador",
+            EntidadeId = trabalhador.Id,
+            Status = StatusDocumentoAssinatura.EmAndamento,
+            TokenValidacaoPublica = "TOKEN-FICHA",
+            ConteudoHash = "HASH-FICHA",
+            RastreadoEm = assinadoEm,
+        });
+        await db.SaveChangesAsync();
+        var handler = new ResolverDocumentoPublicoQueryHandler(db);
+
+        var resultado = await handler.Handle(new ResolverDocumentoPublicoQuery("TOKEN-FICHA"), default);
+
+        Assert.NotNull(resultado);
+        Assert.True(resultado!.Consolidado);
+        Assert.Equal("Ficha de EPI", resultado.EntidadeTipoRotulo);
+        Assert.NotNull(resultado.OrigemAssinaturas);
+        Assert.True(resultado.Assinado);
+        Assert.Single(resultado.Signatarios);
+        Assert.Equal("João Teste", resultado.Signatarios[0].TrabalhadorNome);
+    }
+
+    // Documento comum sem assinatura continua dizendo que não tem — a frase de documento
+    // consolidado não pode vazar para tipos que de fato assinam a si próprios.
+    [Fact]
+    public async Task Handle_DocumentoComumSemSignatario_NaoRecebeTratamentoDeConsolidado()
+    {
+        using var db = DbContextFactory.Criar();
+        db.DocumentosAssinatura.Add(new DocumentoAssinatura
+        {
+            EntidadeTipo = "Apr",
+            EntidadeId = Guid.NewGuid(),
+            Status = StatusDocumentoAssinatura.EmAndamento,
+            TokenValidacaoPublica = "TOKEN-APR",
+            ConteudoHash = "HASH-APR",
+            RastreadoEm = DateTime.UtcNow,
+        });
+        await db.SaveChangesAsync();
+        var handler = new ResolverDocumentoPublicoQueryHandler(db);
+
+        var resultado = await handler.Handle(new ResolverDocumentoPublicoQuery("TOKEN-APR"), default);
+
+        Assert.NotNull(resultado);
+        Assert.False(resultado!.Consolidado);
+        Assert.Null(resultado.OrigemAssinaturas);
+        Assert.Equal("APR — Análise Preliminar de Risco", resultado.EntidadeTipoRotulo);
+        Assert.Empty(resultado.Signatarios);
+    }
+
+    // Integridade de conteúdo: a página precisa entregar o SHA-256 do arquivo emitido, senão quem
+    // escaneia o QR não tem como distinguir o documento original de um adulterado.
+    [Fact]
+    public async Task Handle_DocumentoComArquivoRegistrado_ExpoeHashDoArquivo()
+    {
+        using var db = DbContextFactory.Criar();
+        var pdf = new byte[] { 0x25, 0x50, 0x44, 0x46, 0x2D, 0x31 };
+        var hashEsperado = HashArquivoCalculador.Calcular(pdf);
+        db.DocumentosAssinatura.Add(new DocumentoAssinatura
+        {
+            EntidadeTipo = "Dds",
+            EntidadeId = Guid.NewGuid(),
+            Status = StatusDocumentoAssinatura.EmAndamento,
+            TokenValidacaoPublica = "TOKEN-ARQUIVO",
+            ConteudoHash = "HASH-SIGNATARIOS",
+            RastreadoEm = DateTime.UtcNow,
+            PdfConteudo = pdf,
+            HashPdf = hashEsperado,
+            ArquivoAtualizadoEm = new DateTime(2026, 9, 23, 10, 0, 0, DateTimeKind.Utc),
+        });
+        await db.SaveChangesAsync();
+        var handler = new ResolverDocumentoPublicoQueryHandler(db);
+
+        var resultado = await handler.Handle(new ResolverDocumentoPublicoQuery("TOKEN-ARQUIVO"), default);
+
+        Assert.NotNull(resultado);
+        Assert.NotNull(resultado);
+        Assert.Equal(hashEsperado, resultado.HashPdf);
+        Assert.NotNull(resultado.ArquivoAtualizadoEm);
+        // O hash das assinaturas continua existindo e é outro valor — são provas distintas.
+        Assert.Equal("HASH-SIGNATARIOS", resultado.ConteudoHash);
+        Assert.NotEqual(resultado.ConteudoHash, resultado.HashPdf);
+    }
+
+    [Fact]
+    public async Task Handle_DocumentoSemArquivoRegistrado_NaoExpoeHashDoArquivo()
+    {
+        using var db = DbContextFactory.Criar();
+        db.DocumentosAssinatura.Add(new DocumentoAssinatura
+        {
+            EntidadeTipo = "Dds",
+            EntidadeId = Guid.NewGuid(),
+            Status = StatusDocumentoAssinatura.EmAndamento,
+            TokenValidacaoPublica = "TOKEN-SEM-ARQUIVO",
+            ConteudoHash = "HASH",
+            RastreadoEm = DateTime.UtcNow,
+        });
+        await db.SaveChangesAsync();
+        var handler = new ResolverDocumentoPublicoQueryHandler(db);
+
+        var resultado = await handler.Handle(new ResolverDocumentoPublicoQuery("TOKEN-SEM-ARQUIVO"), default);
+
+        Assert.NotNull(resultado);
+        Assert.Null(resultado.HashPdf);
     }
 
     [Fact]

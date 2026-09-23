@@ -79,7 +79,11 @@ public class ExportarInspecaoPdfQueryHandler : IRequestHandler<ExportarInspecaoP
             assinatura is not null || rastreio.TemAssinatura,
             assinatura);
 
-        return _pdf.Gerar(modelo);
+        var pdf = _pdf.Gerar(modelo);
+        // Guarda a cópia exata emitida e o SHA-256 dela — é o que permite conferir, depois,
+        // que o arquivo em mãos não foi adulterado (ver HashArquivoCalculador).
+        await _rastreabilidade.RegistrarArquivoAsync(rastreio.DocumentoId, pdf, ct);
+        return pdf;
     }
 
     private async Task<InspecaoPdfAssinaturaModelo?> ObterAssinaturaFinalizada(Guid inspecaoId, CancellationToken ct)

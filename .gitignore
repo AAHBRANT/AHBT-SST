@@ -36,3 +36,8 @@ Thumbs.db
 .superpowers/
 .vercel
 .env*
+
+# Saída de ferramenta e scratch local — nunca versionado (tmp/ chega a centenas de MB)
+tmp/
+.codex-artifacts/
+.playwright-mcp/

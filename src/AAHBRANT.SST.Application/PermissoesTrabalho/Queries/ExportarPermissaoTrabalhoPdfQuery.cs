@@ -42,7 +42,11 @@ public class ExportarPermissaoTrabalhoPdfQueryHandler : IRequestHandler<Exportar
 
         var rastreio = await _rastreabilidade.GarantirAsync(nameof(PermissaoTrabalho), request.Id, ct);
 
-        return _pdf.Gerar(MontarModelo(detalhe, assinaram, logoConteudo, rastreio));
+        var pdf = _pdf.Gerar(MontarModelo(detalhe, assinaram, logoConteudo, rastreio));
+        // Guarda a cópia exata emitida e o SHA-256 dela — é o que permite conferir, depois,
+        // que o arquivo em mãos não foi adulterado (ver HashArquivoCalculador).
+        await _rastreabilidade.RegistrarArquivoAsync(rastreio.DocumentoId, pdf, ct);
+        return pdf;
     }
 
     private static readonly Dictionary<ItemPreRequisitoPt, string> RotulosPreRequisito = new()
