@@ -34,7 +34,9 @@ public record LinhaEntregaEpiPdf(
     int Quantidade,
     DateTime DataEntrega,
     bool AssinadoPeloEmpregado,
-    bool AssinadoPeloResponsavel);
+    bool AssinadoPeloResponsavel,
+    DateTime? AssinadoPeloEmpregadoEm,
+    DateTime? AssinadoPeloResponsavelEm);
 
 public record LinhaDevolucaoEpiPdf(
     int NumeroReferenciaEntrega,
@@ -42,6 +44,7 @@ public record LinhaDevolucaoEpiPdf(
     int QuantidadeDevolvida,
     DateTime DataDevolucao,
     bool AssinadoPeloEmpregado,
+    DateTime? AssinadoPeloEmpregadoEm,
     string? VistoResponsavel);
 
 public interface IFichaEpiPdfService

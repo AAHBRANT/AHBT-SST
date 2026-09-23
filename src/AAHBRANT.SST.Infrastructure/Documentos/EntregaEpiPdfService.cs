@@ -78,18 +78,30 @@ public class EntregaEpiPdfService : IFichaEpiPdfService
     private static Action<IContainer> SecaoTermoCompromisso(FichaEpiPdfModelo modelo)
     {
         var contratante = modelo.ObraCliente ?? "empregador";
+        var dataTermo = ConverterParaHorarioBrasilia(DateTime.UtcNow);
+        var dataTermoFormatada = dataTermo.ToString("dd/MM/yyyy");
+        var primeiraAssinaturaEmpregado = modelo.Entregas
+            .Where(e => e.AssinadoPeloEmpregadoEm is not null)
+            .OrderBy(e => e.AssinadoPeloEmpregadoEm)
+            .Select(e => e.AssinadoPeloEmpregadoEm)
+            .FirstOrDefault();
+        var assinaturaTermo = primeiraAssinaturaEmpregado is null
+            ? "Assinatura do Empregado — Termo de Compromisso: pendente"
+            : $"Assinatura do Empregado — Termo de Compromisso: assinado digitalmente por {modelo.TrabalhadorNome} em {FormatarDataHoraAssinatura(primeiraAssinaturaEmpregado.Value)}";
+
         return container => container.Column(coluna =>
         {
             coluna.Spacing(3);
             coluna.Item().Text("2. Termo de Recebimento e Compromisso de Uso").FontSize(11).Bold().FontColor(CorMarca);
 
             coluna.Item().Text($"1 — Declaro ter recebido do {contratante} os Equipamentos de Proteção Individual (EPIs) relacionados nesta ficha, nas datas e quantidades ali indicadas, todos em perfeitas condições de uso e com Certificado de Aprovação (CA) válido.");
-            coluna.Item().Text("2 — Declaro ter recebido orientação e treinamento sobre o uso correto, a guarda, a conservação, a higienização e os critérios de substituição de cada EPI relacionado, conforme registrado na Lista de Presença de Treinamento (NR-6) nº __________, realizada em ___/___/______.");
+            coluna.Item().Text($"2 — Declaro ter recebido orientação e treinamento sobre o uso correto, a guarda, a conservação, a higienização e os critérios de substituição de cada EPI relacionado, conforme registrado na Lista de Presença de Treinamento (NR-6) nº __________, realizada em {dataTermoFormatada}.");
             coluna.Item().Text("3 — Comprometo-me a utilizar os EPIs exclusivamente para a finalidade a que se destinam, durante toda a execução das minhas atividades laborais, zelando por sua guarda, conservação e higienização adequadas, e a comunicar imediatamente ao Setor de Segurança do Trabalho qualquer dano, extravio ou alteração que os torne impróprios para uso.");
             coluna.Item().Text("4 — Comprometo-me a devolver os EPIs sempre que solicitado, inclusive nos casos de substituição, troca de função, mudança de atividade ou rescisão do meu contrato de trabalho.");
             coluna.Item().Text("5 — Estou ciente de que o descumprimento das obrigações aqui assumidas constitui falta funcional, passível de sanções disciplinares que poderão variar, a critério do empregador, de advertência por escrito até a rescisão contratual por justa causa, sem prejuízo de demais medidas legais cabíveis, conforme disposto no Art. 158 da CLT e na Norma Regulamentadora nº 6 (NR-6).");
 
-            coluna.Item().PaddingTop(4).Text("Local: ______________________________     Data: ___/___/_______     Assinatura do Empregado — Termo de Compromisso: (ver assinaturas registradas por entrega, seção 3)").FontSize(8).Italic();
+            coluna.Item().PaddingTop(4).Text($"Local: ______________________________     Data: {dataTermoFormatada}").FontSize(8).Italic();
+            coluna.Item().Text(assinaturaTermo).FontSize(8).Italic();
         });
     }
 
@@ -115,8 +127,8 @@ public class EntregaEpiPdfService : IFichaEpiPdfService
                     columns.RelativeColumn(2);
                     columns.ConstantColumn(30);
                     columns.RelativeColumn(1.6f);
-                    columns.RelativeColumn(1.6f);
-                    columns.RelativeColumn(1.8f);
+                    columns.RelativeColumn(2.2f);
+                    columns.RelativeColumn(2.2f);
                 });
 
                 table.Header(header =>
@@ -139,8 +151,8 @@ public class EntregaEpiPdfService : IFichaEpiPdfService
                     table.Cell().Element(Celula).Text(MotivoLabel(linha.MotivoTipo, linha.MotivoObservacao));
                     table.Cell().Element(Celula).Text(linha.Quantidade.ToString());
                     table.Cell().Element(Celula).Text(linha.DataEntrega.ToString("dd/MM/yyyy"));
-                    table.Cell().Element(Celula).Text(linha.AssinadoPeloEmpregado ? "Assinado" : "Pendente");
-                    table.Cell().Element(Celula).Text(linha.AssinadoPeloResponsavel ? "Assinado" : "Pendente");
+                    table.Cell().Element(Celula).Text(FormatarAssinaturaDigital(linha.AssinadoPeloEmpregadoEm, linha.AssinadoPeloEmpregado));
+                    table.Cell().Element(Celula).Text(FormatarAssinaturaDigital(linha.AssinadoPeloResponsavelEm, linha.AssinadoPeloResponsavel));
                 }
             });
         });
@@ -166,7 +178,7 @@ public class EntregaEpiPdfService : IFichaEpiPdfService
                     columns.RelativeColumn(3);
                     columns.RelativeColumn(1.4f);
                     columns.RelativeColumn(1.6f);
-                    columns.RelativeColumn(1.8f);
+                    columns.RelativeColumn(2.2f);
                     columns.RelativeColumn(2);
                 });
 
@@ -186,7 +198,7 @@ public class EntregaEpiPdfService : IFichaEpiPdfService
                     table.Cell().Element(Celula).Text(linha.EpiNome);
                     table.Cell().Element(Celula).Text(linha.QuantidadeDevolvida.ToString());
                     table.Cell().Element(Celula).Text(linha.DataDevolucao.ToString("dd/MM/yyyy"));
-                    table.Cell().Element(Celula).Text(linha.AssinadoPeloEmpregado ? "Assinado" : "Pendente");
+                    table.Cell().Element(Celula).Text(FormatarAssinaturaDigital(linha.AssinadoPeloEmpregadoEm, linha.AssinadoPeloEmpregado));
                     table.Cell().Element(Celula).Text(linha.VistoResponsavel ?? "-");
                 }
             });
@@ -207,6 +219,35 @@ public class EntregaEpiPdfService : IFichaEpiPdfService
 
     private static IContainer Celula(IContainer container) =>
         container.Padding(3).BorderBottom(0.5f).BorderColor(Colors.Grey.Lighten1).DefaultTextStyle(t => t.FontSize(7.5f));
+
+    private static string FormatarAssinaturaDigital(DateTime? assinadoEm, bool assinado)
+    {
+        if (!assinado) return "Pendente";
+        if (assinadoEm is null) return "Assinado digitalmente";
+
+        var dataHora = ConverterParaHorarioBrasilia(assinadoEm.Value);
+        return $"Assinado digitalmente em {dataHora:dd/MM/yyyy HH:mm}";
+    }
+
+    private static string FormatarDataHoraAssinatura(DateTime assinadoEm)
+    {
+        var dataHora = ConverterParaHorarioBrasilia(assinadoEm);
+        return $"{dataHora:dd/MM/yyyy HH:mm}";
+    }
+
+    private static DateTime ConverterParaHorarioBrasilia(DateTime dataHora)
+    {
+        try
+        {
+            var fuso = TimeZoneInfo.FindSystemTimeZoneById("E. South America Standard Time");
+            return TimeZoneInfo.ConvertTimeFromUtc(DateTime.SpecifyKind(dataHora, DateTimeKind.Utc), fuso);
+        }
+        catch (TimeZoneNotFoundException)
+        {
+            var fuso = TimeZoneInfo.FindSystemTimeZoneById("America/Sao_Paulo");
+            return TimeZoneInfo.ConvertTimeFromUtc(DateTime.SpecifyKind(dataHora, DateTimeKind.Utc), fuso);
+        }
+    }
 
     private static string MotivoLabel(MotivoEntregaEpi? motivo, string? observacao)
     {

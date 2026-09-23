@@ -15,6 +15,7 @@ import { Checkmark24Filled, Fingerprint24Regular, Warning24Regular } from '@flue
 import { api, metodoAutenticacaoAssinaturaLabel, type DocumentoAssinatura } from '../../lib/api';
 import { capturarDigitalLocal, estaAgenteLocalDisponivel, obterDispositivoLocal } from '../../lib/agenteBiometricoLocal';
 import { SeletorFotoCamera } from '../SeletorFotoCamera';
+import { formatarAssinaturaDigital } from './assinaturaDigital';
 import { MutacaoEnfileiradaOfflineError } from '../../lib/offline/syncEngine';
 import { usePageStyles } from '../../pages/pageStyles';
 
@@ -210,7 +211,7 @@ export function AssinaturaQuiosque({ entidadeTipo, entidadeId, obraId }: Assinat
             <TableRow>
               <TableHeaderCell>Nome</TableHeaderCell>
               <TableHeaderCell>Método</TableHeaderCell>
-              <TableHeaderCell>Horário</TableHeaderCell>
+              <TableHeaderCell>Assinatura</TableHeaderCell>
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -220,7 +221,7 @@ export function AssinaturaQuiosque({ entidadeTipo, entidadeId, obraId }: Assinat
                 <TableCell>
                   <Badge appearance="tint">{metodoAutenticacaoAssinaturaLabel[signatario.metodoAutenticacao]}</Badge>
                 </TableCell>
-                <TableCell>{new Date(signatario.assinadoEm).toLocaleTimeString('pt-BR')}</TableCell>
+                <TableCell>{formatarAssinaturaDigital(signatario.assinadoEm)}</TableCell>
               </TableRow>
             ))}
           </TableBody>

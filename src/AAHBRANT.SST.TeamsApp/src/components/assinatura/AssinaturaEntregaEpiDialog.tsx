@@ -16,6 +16,7 @@ import { usePageStyles } from '../../pages/pageStyles';
 import { AssinaturaQuiosque } from './AssinaturaQuiosque';
 import { FotoCatalogoEpi } from '../../pages/epi/FotoCatalogoEpi';
 import { clausulasTermoCompromisso } from './termoCompromissoEpi';
+import { formatarAssinaturaDigital } from './assinaturaDigital';
 
 function extrairMensagemErro(e: unknown, fallback: string): string {
   if (!(e instanceof Error)) return fallback;
@@ -89,9 +90,10 @@ export function AssinaturaEntregaEpiDialog({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open, entregaId]);
 
-  const entregadorJaAssinou = documento?.signatarios.some(
+  const assinaturaEntregador = documento?.signatarios.find(
     (s) => s.metodoAutenticacao === MetodoAutenticacaoAssinatura.SessaoLogada
   );
+  const entregadorJaAssinou = Boolean(assinaturaEntregador);
 
   async function assinarComoEntregador() {
     if (!documento) return;
@@ -143,7 +145,7 @@ export function AssinaturaEntregaEpiDialog({
               {entregadorJaAssinou ? (
                 <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                   <Checkmark24Filled style={{ color: tokens.colorPaletteGreenForeground1 }} />
-                  <Text>Assinado.</Text>
+                  <Text>{formatarAssinaturaDigital(assinaturaEntregador!.assinadoEm)}</Text>
                 </div>
               ) : (
                 <Button
