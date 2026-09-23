@@ -68,6 +68,13 @@ jobs:
         run: dotnet tool install --global dotnet-ef --version 8.0.11
 
       - name: Conferir se o modelo bate com a última migration
+        env:
+          # O comando compara o modelo do código com o snapshot da última migration e NÃO abre
+          # conexão — mas o host da API monta o DbContext no startup e DependencyInjection.cs
+          # lança se a connection string não existir. Uma string sintaticamente válida e suficiente;
+          # esse servidor nunca é contatado. Sem isso o job falha com "Connection string
+          # 'SstDatabase' não configurada", e não por haver migration pendente de verdade.
+          ConnectionStrings__SstDatabase: 'Server=localhost;Database=sst_ci;User Id=ci;Password=naoUsado;TrustServerCertificate=True'
         run: |
           dotnet ef migrations has-pending-model-changes \
             --project src/AAHBRANT.SST.Infrastructure \
