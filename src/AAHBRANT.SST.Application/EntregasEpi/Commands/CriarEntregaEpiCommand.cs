@@ -103,28 +103,48 @@ public class CriarEntregaEpiCommandHandler : IRequestHandler<CriarEntregaEpiComm
     // ele de fato recebeu a integração, não só que alguém digitou a data no sistema.
     // Sem nenhum curso marcado como Integração de Segurança no catálogo ainda, não bloqueia nada —
     // evita travar obras que não configuraram esse curso.
+    //
+    // Exceção do lançamento retroativo (decisão do usuário, 23/09): obra que já está em andamento
+    // tem gente treinada ANTES de o sistema existir, e essa assinatura nunca vai existir aqui. Um
+    // certificado lançado como Externo E com o arquivo anexado vale como prova no lugar da
+    // assinatura — o documento digitalizado é a evidência. Sem arquivo não vale: sobraria só a
+    // palavra de quem digitou, e é justamente a evidência que a fiscalização pede.
     private static async Task GarantirIntegracaoSegurancaAssinadaAsync(IAppDbContext db, Guid trabalhadorId, CancellationToken ct)
     {
         var cursoIntegracao = await db.CursosTreinamento.FirstOrDefaultAsync(c => c.EhIntegracaoSeguranca, ct);
         if (cursoIntegracao is null) return;
 
         var hoje = DateTime.UtcNow.Date;
-        var treinamentoValido = await db.Treinamentos
+        // Todos os registros válidos, não só o mais recente: com lançamento retroativo o trabalhador
+        // pode ter um certificado externo anexado E um registro interno ainda sem assinatura, e
+        // olhar só o de data de realização mais recente bloquearia quem já tem a prova no sistema.
+        var treinamentosValidos = await db.Treinamentos
             .Where(t => t.TrabalhadorId == trabalhadorId && t.CursoTreinamentoId == cursoIntegracao.Id && t.DataValidade.Date >= hoje)
-            .OrderByDescending(t => t.DataRealizacao)
-            .FirstOrDefaultAsync(ct);
-        if (treinamentoValido is null)
+            .Select(t => new
+            {
+                t.Id,
+                t.OrigemCertificado,
+                TemArquivo = t.ArquivoCertificado != null,
+            })
+            .ToListAsync(ct);
+        if (treinamentosValidos.Count == 0)
             throw new InvalidOperationException($"Este funcionário ainda não tem o treinamento de Integração de Segurança (\"{cursoIntegracao.Nome}\") em dia — não é possível registrar a entrega de EPI.");
 
-        var documentoId = await db.DocumentosAssinatura
-            .Where(d => d.EntidadeTipo == "Treinamento" && d.EntidadeId == treinamentoValido.Id)
-            .Select(d => (Guid?)d.Id)
-            .FirstOrDefaultAsync(ct);
+        if (treinamentosValidos.Any(t => t.OrigemCertificado == OrigemCertificadoTreinamento.Externo && t.TemArquivo))
+            return;
+
+        var idsValidos = treinamentosValidos.Select(t => t.Id).ToList();
+        var documentoIds = await db.DocumentosAssinatura
+            .Where(d => d.EntidadeTipo == "Treinamento" && idsValidos.Contains(d.EntidadeId))
+            .Select(d => d.Id)
+            .ToListAsync(ct);
         // O próprio trabalhador precisa ter assinado (Biometria ou ReconhecimentoFacial) — a
         // assinatura do instrutor (SessaoLogada) sozinha não comprova que ele recebeu a integração.
-        var trabalhadorAssinou = documentoId is not null && await db.DocumentoSignatarios
-            .AnyAsync(s => s.DocumentoAssinaturaId == documentoId && s.MetodoAutenticacao != MetodoAutenticacaoAssinatura.SessaoLogada, ct);
+        var trabalhadorAssinou = documentoIds.Count > 0 && await db.DocumentoSignatarios
+            .AnyAsync(s => documentoIds.Contains(s.DocumentoAssinaturaId) && s.MetodoAutenticacao != MetodoAutenticacaoAssinatura.SessaoLogada, ct);
         if (!trabalhadorAssinou)
-            throw new InvalidOperationException($"Este funcionário tem o treinamento de Integração de Segurança (\"{cursoIntegracao.Nome}\") registrado, mas ainda não o assinou — não é possível registrar a entrega de EPI até a assinatura ser feita.");
+            throw new InvalidOperationException(
+                $"Este funcionário tem o treinamento de Integração de Segurança (\"{cursoIntegracao.Nome}\") registrado, mas ainda não o assinou — não é possível registrar a entrega de EPI até a assinatura ser feita. " +
+                "Se o treinamento foi feito antes de a obra entrar no sistema, lance-o em Treinamentos › Certificados como certificado externo e anexe o arquivo digitalizado.");
     }
 }

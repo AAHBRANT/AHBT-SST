@@ -104,6 +104,42 @@ export function CursosTreinamentoTab() {
     }
   }
 
+  // Sem esta ação, "Habilita EPI (NR-06)" só existia no formulário de criação (22/09): curso que já
+  // estava no catálogo e não foi pego pela migration ficava sem o marcador, e nenhum certificado
+  // lançado nele liberava a entrega de EPI — sem nenhum caminho pela tela para corrigir. Foi o que
+  // travou a entrega em homologação em 23/09.
+  async function alternarAtendeNr6(curso: CursoTreinamento) {
+    const passaAHabilitar = !curso.atendeNr6;
+    // Tom destrutivo só ao retirar o marcador: aí a ação bloqueia entrega de EPI para quem tem só
+    // esse treinamento. Habilitar é ação comum — com o diálogo padrão, dizia "Confirmar exclusão".
+    const confirmado = await confirmar(
+      passaAHabilitar
+        ? {
+            titulo: 'Habilitar entrega de EPI',
+            mensagem: `Marcar "${curso.nome}" como curso que atende à NR-06? Todo funcionário com este treinamento dentro da validade passa a poder receber EPI.`,
+            rotuloConfirmar: 'Habilitar',
+            tom: 'neutro',
+          }
+        : {
+            titulo: 'Retirar habilitação de EPI',
+            mensagem: `"${curso.nome}" deixa de habilitar a entrega de EPI. Quem tem só este treinamento fica bloqueado para receber EPI. Confirma?`,
+            rotuloConfirmar: 'Retirar',
+          },
+    );
+    if (!confirmado) return;
+    try {
+      await api.cursosTreinamento.atualizar(curso.id, { ...curso, atendeNr6: passaAHabilitar });
+      await carregar();
+      sucessoToast(
+        passaAHabilitar
+          ? `"${curso.nome}" agora habilita a entrega de EPI.`
+          : `"${curso.nome}" não habilita mais a entrega de EPI.`,
+      );
+    } catch (e) {
+      setErro(e instanceof Error ? e.message : 'Falha ao alterar o marcador de NR-06 do curso.');
+    }
+  }
+
   const colunas: Coluna<CursoTreinamento>[] = [
     { chave: 'nome', rotulo: 'Nome' },
     {
@@ -238,6 +274,9 @@ export function CursosTreinamentoTab() {
           }}
           acoesLinha={(c) => (
             <>
+              <Button appearance="subtle" onClick={() => alternarAtendeNr6(c)}>
+                {c.atendeNr6 ? 'Não habilita mais EPI' : 'Habilita EPI (NR-06)'}
+              </Button>
               {!c.ehIntegracaoSeguranca && (
                 <Button appearance="subtle" onClick={() => marcarComoIntegracaoSeguranca(c)}>
                   Marcar como Integração de Segurança

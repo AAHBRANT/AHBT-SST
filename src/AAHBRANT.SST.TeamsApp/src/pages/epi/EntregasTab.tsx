@@ -12,6 +12,7 @@ import {
   motivoEntregaEpiLabel,
   MotivoEntregaEpi,
   MetodoAutenticacaoAssinatura,
+  OrigemCertificadoTreinamento,
   type AtualizarEntregaEpi,
   type CatalogoEpi,
   type CursoTreinamento,
@@ -93,15 +94,29 @@ function formatarDataBr(valor?: string | null): string {
   return dia && mes && ano ? `${dia}/${mes}/${ano}` : valor.slice(0, 10);
 }
 
+// Rede de segurança para curso cadastrado antes da migration que marcou os existentes. A versão
+// anterior (`replace(/\D/g, '') === '6'`) recusava praticamente tudo o que o técnico digita de
+// verdade: "NR-06" vira "06" (≠ "6") e "NR-06 e NR-18" vira "0618". Era esse o motivo de um
+// certificado lançado corretamente não destravar a entrega de EPI (achado em hml, 23/09).
+// "NR-16"/"NR-36" continuam de fora: o 6 tem que ser o número da norma, não o fim dele.
+function normaMencionaNr6(norma?: string | null): boolean {
+  const texto = (norma ?? '').trim();
+  if (!texto) return false;
+  // Norma que cita uma única NR: "6", "06", "NR-06", "NR 6", "nr06".
+  if (/^0*6$/.test(texto.replace(/\D/g, ''))) return true;
+  // Norma composta: "NR-06 e NR-18", "NR 06/NR 35".
+  return /\bn\.?r\.?\s*-?\s*0*6\b/i.test(texto);
+}
+
 // Curso que atende à NR-06 (o que habilita a entrega de EPI). Desde 22/09 vale o marcador explícito
 // do Catálogo de Cursos (CursoTreinamento.atendeNr6): antes isto era adivinhado do texto livre de
 // normaReferencia, e bastava alguém cadastrar "NR-06 e NR-18" para o curso deixar de ser reconhecido
-// e a obra inteira travar na entrega. A heurística antiga fica como rede de segurança para curso
-// cadastrado antes da migration que marcou os existentes.
-function ehCursoNr6(curso?: CursoTreinamento): boolean {
+// e a obra inteira travar na entrega. Recebe tanto um curso do catálogo quanto uma linha de
+// certificado — as duas carregam o marcador e a norma.
+function ehCursoNr6(curso?: { atendeNr6?: boolean; normaReferencia?: string | null }): boolean {
   if (!curso) return false;
   if (curso.atendeNr6) return true;
-  return (curso.normaReferencia ?? '').replace(/\D/g, '') === '6';
+  return normaMencionaNr6(curso.normaReferencia);
 }
 
 interface EntregasTabProps {
@@ -140,6 +155,9 @@ export function EntregasTab({ aoNavegarParaMatriz }: EntregasTabProps) {
   // Sem isto, entre escolher o funcionário e a busca responder a tela afirmava que ele "não tem
   // treinamento de NR-06" — alarme falso que faz o técnico recadastrar um treinamento que existe.
   const [verificandoNr6, setVerificandoNr6] = useState(false);
+  // Por que a NR-06 não foi encontrada (23/09). A mesma frase servia para "nunca foi lançado" e
+  // para "lançado em curso que não habilita EPI", e só a segunda tem solução no Catálogo de cursos.
+  const [motivoSemNr6, setMotivoSemNr6] = useState<string | null>(null);
 
   async function carregar() {
     try {
@@ -186,20 +204,26 @@ export function EntregasTab({ aoNavegarParaMatriz }: EntregasTabProps) {
         return;
       }
       setVerificandoNr6(true);
-      const cursoIntegracao = cursos.find((c) => c.ehIntegracaoSeguranca);
-      if (!cursoIntegracao) {
-        setStatusIntegracao({ tipo: 'sem-curso' });
-        return;
-      }
       try {
-        const treinamentosTrabalhador = await api.treinamentos.listar(dadosComuns.trabalhadorId);
+        // Usa a lista de Certificados (e não `treinamentos.listar`) porque só ela traz, por
+        // registro, o marcador do curso, a norma, a origem (Aahbrant/Externo) e se há arquivo
+        // anexado — os quatro dados de que as duas travas desta tela precisam. Antes faltavam
+        // origem e arquivo, e a tela não tinha como reproduzir a regra do servidor.
+        const treinamentosTrabalhador = await api.treinamentos.listarCertificados({
+          trabalhadorId: dadosComuns.trabalhadorId,
+        });
         if (cancelado) return;
 
+        // Entre dois treinamentos de NR-06, vale o de validade mais longe — e não o de realização
+        // mais recente. Com o lançamento retroativo (22/09) o técnico cadastra certificado antigo
+        // depois do novo, e ordenar por realização fazia um certificado vencido tomar o lugar do
+        // válido e bloquear a entrega.
         const treinamentoNr6 = treinamentosTrabalhador
-          .filter((t) => ehCursoNr6(cursos.find((c) => c.id === t.cursoTreinamentoId)))
-          .sort((a, b) => b.dataRealizacao.localeCompare(a.dataRealizacao))[0];
+          .filter((t) => ehCursoNr6(t))
+          .sort((a, b) => b.dataValidade.localeCompare(a.dataValidade))[0];
         setValidadeNr6(treinamentoNr6?.dataValidade?.slice(0, 10) ?? null);
         if (treinamentoNr6) {
+          setMotivoSemNr6(null);
           setDadosComuns((atual) =>
             atual.trabalhadorId === treinamentoNr6.trabalhadorId
               ? {
@@ -209,20 +233,55 @@ export function EntregasTab({ aoNavegarParaMatriz }: EntregasTabProps) {
                 }
               : atual,
           );
+        } else {
+          // Distinguir os dois casos é o que faltava para o técnico resolver sozinho: "não lancei o
+          // certificado" e "lancei, mas o curso dele não está marcado como Habilita EPI no Catálogo"
+          // apareciam com a mesma frase, e no segundo o certificado estava lá na tela de
+          // Treinamentos, o que fazia a mensagem parecer mentira (hml, 23/09).
+          setMotivoSemNr6(
+            treinamentosTrabalhador.length === 0
+              ? 'Este funcionário não tem nenhum treinamento cadastrado. Lance o certificado de NR-06 em Treinamentos › Certificados antes de registrar a entrega de EPI.'
+              : 'Este funcionário tem treinamento cadastrado, mas nenhum em curso marcado como "Habilita EPI (NR-06)". Abra Treinamentos › Catálogo de cursos e marque o curso de NR-06 — ou lance o certificado no curso correto.',
+          );
+        }
+
+        // Integração de Segurança: verificada depois da NR-06, e nunca antes. Sem curso de
+        // Integração marcado no catálogo o backend não bloqueia nada de propósito (ver
+        // GarantirIntegracaoSegurancaAssinadaAsync) — mas esta função saía aqui, antes de buscar os
+        // treinamentos, e a tela acusava falta de NR-06 em obra que só não tinha configurado o
+        // curso de Integração. O `return` agora é dentro do try, então o `finally` roda e a tela
+        // não fica presa em "Verificando…".
+        const cursoIntegracao = cursos.find((c) => c.ehIntegracaoSeguranca);
+        if (!cursoIntegracao) {
+          setStatusIntegracao({ tipo: 'sem-curso' });
+          return;
         }
 
         const hoje = new Date().toISOString().slice(0, 10);
-        const treinamentoIntegracao = treinamentosTrabalhador
-          .filter((t) => t.cursoTreinamentoId === cursoIntegracao.id && t.dataValidade.slice(0, 10) >= hoje)
-          .sort((a, b) => b.dataRealizacao.localeCompare(a.dataRealizacao))[0];
-        if (!treinamentoIntegracao) {
+        const integracoesValidas = treinamentosTrabalhador.filter(
+          (t) => t.cursoTreinamentoId === cursoIntegracao.id && t.dataValidade.slice(0, 10) >= hoje,
+        );
+        if (integracoesValidas.length === 0) {
           setStatusIntegracao({ tipo: 'pendente', nomeCurso: cursoIntegracao.nome, temRegistroValido: false });
           return;
         }
-        const documento = await api.assinatura.obter('Treinamento', treinamentoIntegracao.id);
+        // Mesma exceção do servidor (23/09): obra em andamento tem gente treinada antes de o
+        // sistema existir, e essa assinatura nunca vai existir aqui. Certificado externo COM
+        // arquivo anexado vale como prova no lugar dela — ver
+        // GarantirIntegracaoSegurancaAssinadaAsync em CriarEntregaEpiCommand.
+        if (integracoesValidas.some((t) => t.origemCertificado === OrigemCertificadoTreinamento.Externo && t.temArquivo)) {
+          setStatusIntegracao({ tipo: 'ok' });
+          return;
+        }
+        // Qualquer um dos registros válidos assinado já libera — são um ou dois por trabalhador.
+        const documentos = await Promise.all(
+          integracoesValidas.map((t) => api.assinatura.obter('Treinamento', t.id).catch(() => null)),
+        );
         if (cancelado) return;
-        const trabalhadorAssinou =
-          documento?.signatarios.some((s) => s.metodoAutenticacao !== MetodoAutenticacaoAssinatura.SessaoLogada) ?? false;
+        const trabalhadorAssinou = documentos.some(
+          (documento) =>
+            documento?.signatarios.some((s) => s.metodoAutenticacao !== MetodoAutenticacaoAssinatura.SessaoLogada) ?? false,
+        );
         setStatusIntegracao(
           trabalhadorAssinou ? { tipo: 'ok' } : { tipo: 'pendente', nomeCurso: cursoIntegracao.nome, temRegistroValido: true },
         );
@@ -307,6 +366,7 @@ export function EntregasTab({ aoNavegarParaMatriz }: EntregasTabProps) {
     // para o funcionário anterior podem nem existir na matriz do novo, então o carrinho é limpo.
     setDadosComuns({ ...dadosComuns, trabalhadorId: id, numeroListaPresencaNr6: '', dataTreinamentoNr6: '' });
     setValidadeNr6(null);
+    setMotivoSemNr6(null);
     setCarrinho([]);
     // Evita mostrar por um instante o status de integração do funcionário anterior até o efeito
     // que verifica o novo terminar de carregar.
@@ -345,7 +405,8 @@ export function EntregasTab({ aoNavegarParaMatriz }: EntregasTabProps) {
     // treinamento em dia (achado no lançamento retroativo, 22/09).
     if (!dadosComuns.dataTreinamentoNr6) {
       setErroPainel(
-        'Este funcionário não tem treinamento de NR-06 cadastrado. Cadastre o treinamento em Treinamentos › Certificados antes de registrar a entrega de EPI.',
+        motivoSemNr6 ??
+          'Este funcionário não tem treinamento de NR-06 cadastrado. Cadastre o treinamento em Treinamentos › Certificados antes de registrar a entrega de EPI.',
       );
       return;
     }
@@ -699,7 +760,9 @@ export function EntregasTab({ aoNavegarParaMatriz }: EntregasTabProps) {
                     Este funcionário {statusIntegracao.temRegistroValido
                       ? <>tem o treinamento de <b>{statusIntegracao.nomeCurso}</b> registrado, mas ainda não o assinou</>
                       : <>ainda não tem o treinamento de <b>{statusIntegracao.nomeCurso}</b> em dia</>}
-                    {' '}— a entrega de EPI fica bloqueada até isso ser resolvido em Pessoas &gt; Treinamentos.
+                    {' '}— a entrega de EPI fica bloqueada até isso ser resolvido em Treinamentos.
+                    {' '}Se o treinamento foi feito antes de a obra entrar no sistema, lance-o em Treinamentos › Certificados
+                    {' '}como certificado externo e anexe o arquivo — isso vale como prova no lugar da assinatura.
                   </FeedbackInline>
                 ) : episPermitidos.length === 0 ? (
                   <FeedbackInline
@@ -757,8 +820,8 @@ export function EntregasTab({ aoNavegarParaMatriz }: EntregasTabProps) {
                 )}
                 {dadosComuns.trabalhadorId && !verificandoNr6 && !dadosComuns.dataTreinamentoNr6 && (
                   <FeedbackInline tom="erro">
-                    Este funcionário não tem treinamento de NR-06 cadastrado. Cadastre em Treinamentos › Certificados
-                    antes de registrar a entrega de EPI.
+                    {motivoSemNr6 ??
+                      'Este funcionário não tem treinamento de NR-06 cadastrado. Cadastre em Treinamentos › Certificados antes de registrar a entrega de EPI.'}
                   </FeedbackInline>
                 )}
                 {dadosComuns.dataTreinamentoNr6 && nivelVencimento(validadeNr6) === 'vencido' && (
