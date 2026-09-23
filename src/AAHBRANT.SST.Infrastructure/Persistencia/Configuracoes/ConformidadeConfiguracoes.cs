@@ -65,6 +65,23 @@ public class TreinamentoConfiguracao : IEntityTypeConfiguration<Treinamento>
     }
 }
 
+public class ArquivoCertificadoTreinamentoConfiguracao : IEntityTypeConfiguration<ArquivoCertificadoTreinamento>
+{
+    public void Configure(EntityTypeBuilder<ArquivoCertificadoTreinamento> builder)
+    {
+        builder.Property(a => a.NomeArquivo).IsRequired().HasMaxLength(260);
+        builder.Property(a => a.ContentType).IsRequired().HasMaxLength(150);
+
+        // Um arquivo por treinamento (decisão do usuário, 22/09: um anexo só, PDF ou foto). Cascade
+        // porque o arquivo não tem vida própria — excluído o treinamento, o certificado vai junto.
+        builder.HasOne(a => a.Treinamento).WithOne(t => t.ArquivoCertificado)
+            .HasForeignKey<ArquivoCertificadoTreinamento>(a => a.TreinamentoId)
+            .OnDelete(DeleteBehavior.Cascade);
+        builder.HasIndex(a => a.TreinamentoId).IsUnique();
+        builder.HasQueryFilter(a => a.Ativo);
+    }
+}
+
 public class CatalogoEpiConfiguracao : IEntityTypeConfiguration<CatalogoEpi>
 {
     public void Configure(EntityTypeBuilder<CatalogoEpi> builder)

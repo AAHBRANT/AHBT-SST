@@ -87,10 +87,21 @@ type StatusIntegracao =
 // carrinho ainda vira uma EntregaEpi individual via o endpoint que já existe, só que a tela deixa de
 // mandar uma de cada vez. Ver AssinaturaEntregaEpiLoteDialog.tsx para como a assinatura única cobre
 // as N entregas por trás.
-// "NR-06"/"NR-6"/"NR 06" etc. — compara só o número, não o formato exato do texto cadastrado no
-// curso (ver CursoTreinamento.normaReferencia, campo livre).
-function ehNormaNr6(normaReferencia?: string | null): boolean {
-  return (normaReferencia ?? '').replace(/\D/g, '') === '6';
+function formatarDataBr(valor?: string | null): string {
+  if (!valor) return '—';
+  const [ano, mes, dia] = valor.slice(0, 10).split('-');
+  return dia && mes && ano ? `${dia}/${mes}/${ano}` : valor.slice(0, 10);
+}
+
+// Curso que atende à NR-06 (o que habilita a entrega de EPI). Desde 22/09 vale o marcador explícito
+// do Catálogo de Cursos (CursoTreinamento.atendeNr6): antes isto era adivinhado do texto livre de
+// normaReferencia, e bastava alguém cadastrar "NR-06 e NR-18" para o curso deixar de ser reconhecido
+// e a obra inteira travar na entrega. A heurística antiga fica como rede de segurança para curso
+// cadastrado antes da migration que marcou os existentes.
+function ehCursoNr6(curso?: CursoTreinamento): boolean {
+  if (!curso) return false;
+  if (curso.atendeNr6) return true;
+  return (curso.normaReferencia ?? '').replace(/\D/g, '') === '6';
 }
 
 interface EntregasTabProps {
@@ -123,6 +134,12 @@ export function EntregasTab({ aoNavegarParaMatriz }: EntregasTabProps) {
   const [loteParaAssinar, setLoteParaAssinar] = useState<LoteParaAssinar | null>(null);
   const [devolucaoParaAssinar, setDevolucaoParaAssinar] = useState<EntregaEpi | null>(null);
   const [statusIntegracao, setStatusIntegracao] = useState<StatusIntegracao | null>(null);
+  // Validade do treinamento de NR-06 do funcionário selecionado (22/09). Fora de `dadosComuns`
+  // porque não é dado da entrega — só o que a trava precisa para recusar NR-06 vencida.
+  const [validadeNr6, setValidadeNr6] = useState<string | null>(null);
+  // Sem isto, entre escolher o funcionário e a busca responder a tela afirmava que ele "não tem
+  // treinamento de NR-06" — alarme falso que faz o técnico recadastrar um treinamento que existe.
+  const [verificandoNr6, setVerificandoNr6] = useState(false);
 
   async function carregar() {
     try {
@@ -165,8 +182,10 @@ export function EntregasTab({ aoNavegarParaMatriz }: EntregasTabProps) {
     async function sincronizarDadosTrabalhador() {
       if (!dadosComuns.trabalhadorId) {
         setStatusIntegracao(null);
+        setVerificandoNr6(false);
         return;
       }
+      setVerificandoNr6(true);
       const cursoIntegracao = cursos.find((c) => c.ehIntegracaoSeguranca);
       if (!cursoIntegracao) {
         setStatusIntegracao({ tipo: 'sem-curso' });
@@ -177,8 +196,9 @@ export function EntregasTab({ aoNavegarParaMatriz }: EntregasTabProps) {
         if (cancelado) return;
 
         const treinamentoNr6 = treinamentosTrabalhador
-          .filter((t) => ehNormaNr6(cursos.find((c) => c.id === t.cursoTreinamentoId)?.normaReferencia))
+          .filter((t) => ehCursoNr6(cursos.find((c) => c.id === t.cursoTreinamentoId)))
           .sort((a, b) => b.dataRealizacao.localeCompare(a.dataRealizacao))[0];
+        setValidadeNr6(treinamentoNr6?.dataValidade?.slice(0, 10) ?? null);
         if (treinamentoNr6) {
           setDadosComuns((atual) =>
             atual.trabalhadorId === treinamentoNr6.trabalhadorId
@@ -210,6 +230,8 @@ export function EntregasTab({ aoNavegarParaMatriz }: EntregasTabProps) {
         // Falha ao verificar não deve travar a tela — o backend valida de qualquer forma ao confirmar.
         // Também deixa os campos de NR-06 vazios; `confirmarCarrinho()` bloqueia nesse caso.
         if (!cancelado) setStatusIntegracao(null);
+      } finally {
+        if (!cancelado) setVerificandoNr6(false);
       }
     }
     sincronizarDadosTrabalhador();
@@ -284,6 +306,7 @@ export function EntregasTab({ aoNavegarParaMatriz }: EntregasTabProps) {
     // A lista de EPIs permitidos (matriz da função) muda com o funcionário — itens já escolhidos
     // para o funcionário anterior podem nem existir na matriz do novo, então o carrinho é limpo.
     setDadosComuns({ ...dadosComuns, trabalhadorId: id, numeroListaPresencaNr6: '', dataTreinamentoNr6: '' });
+    setValidadeNr6(null);
     setCarrinho([]);
     // Evita mostrar por um instante o status de integração do funcionário anterior até o efeito
     // que verifica o novo terminar de carregar.
@@ -317,9 +340,20 @@ export function EntregasTab({ aoNavegarParaMatriz }: EntregasTabProps) {
     // ser digitáveis (só vêm do treinamento cadastrado, ver useEffect sincronizarDadosTrabalhador
     // acima) — sem essa checagem aqui, um funcionário sem NR-06 cadastrada geraria uma ficha de EPI
     // incompleta e sem chance de corrigir depois (os campos ficam travados na tela também).
-    if (!dadosComuns.numeroListaPresencaNr6 || !dadosComuns.dataTreinamentoNr6) {
+    // A checagem é só pela DATA, e não pelo número: certificado antigo de instituição externa
+    // frequentemente não tem numeração, e exigir o número travava a entrega de EPI de quem tem o
+    // treinamento em dia (achado no lançamento retroativo, 22/09).
+    if (!dadosComuns.dataTreinamentoNr6) {
       setErroPainel(
-        'Este funcionário não tem treinamento de NR-06 cadastrado. Cadastre o treinamento em Treinamentos antes de registrar a entrega de EPI.',
+        'Este funcionário não tem treinamento de NR-06 cadastrado. Cadastre o treinamento em Treinamentos › Certificados antes de registrar a entrega de EPI.',
+      );
+      return;
+    }
+    // NR-06 vencida não habilita entrega de EPI: treinamento fora da validade é o mesmo que não ter
+    // treinamento perante a fiscalização (decisão do usuário, 22/09).
+    if (nivelVencimento(validadeNr6) === 'vencido') {
+      setErroPainel(
+        `O treinamento de NR-06 deste funcionário está vencido (validade ${formatarDataBr(validadeNr6)}). Registre o novo treinamento em Treinamentos antes de entregar EPI.`,
       );
       return;
     }
@@ -716,11 +750,34 @@ export function EntregasTab({ aoNavegarParaMatriz }: EntregasTabProps) {
               </FormSection>
 
               <FormSection titulo="Documentação NR-6" numero={3}>
+                {/* Avisa ao escolher o funcionário, não só ao confirmar: no canteiro o técnico
+                    precisa saber de cara que a entrega não vai sair e o que resolver. */}
+                {dadosComuns.trabalhadorId && verificandoNr6 && (
+                  <FeedbackInline tom="info">Verificando o treinamento de NR-06 deste funcionário…</FeedbackInline>
+                )}
+                {dadosComuns.trabalhadorId && !verificandoNr6 && !dadosComuns.dataTreinamentoNr6 && (
+                  <FeedbackInline tom="erro">
+                    Este funcionário não tem treinamento de NR-06 cadastrado. Cadastre em Treinamentos › Certificados
+                    antes de registrar a entrega de EPI.
+                  </FeedbackInline>
+                )}
+                {dadosComuns.dataTreinamentoNr6 && nivelVencimento(validadeNr6) === 'vencido' && (
+                  <FeedbackInline tom="erro">
+                    O treinamento de NR-06 deste funcionário venceu em {formatarDataBr(validadeNr6)}. Registre o novo
+                    treinamento antes de entregar EPI.
+                  </FeedbackInline>
+                )}
+                {dadosComuns.dataTreinamentoNr6 && nivelVencimento(validadeNr6) === 'alerta' && (
+                  <FeedbackInline tom="aviso">
+                    O treinamento de NR-06 deste funcionário vence em {formatarDataBr(validadeNr6)}. A entrega é
+                    permitida, mas programe a reciclagem.
+                  </FeedbackInline>
+                )}
                 <FormGrid>
                   <Campo span={6}>
                     <Field
                       label="Nº lista de presença"
-                      hint="Puxado automaticamente do treinamento de NR-06 cadastrado — não editável. Sem treinamento cadastrado, registre-o em Treinamentos primeiro."
+                      hint="Puxado do treinamento de NR-06 cadastrado — não editável. Fica vazio quando o certificado não tem numeração, o que não impede a entrega."
                     >
                       <Input value={dadosComuns.numeroListaPresencaNr6} disabled />
                     </Field>

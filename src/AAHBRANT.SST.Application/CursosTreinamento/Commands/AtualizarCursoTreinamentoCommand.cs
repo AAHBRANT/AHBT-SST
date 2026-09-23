@@ -12,7 +12,8 @@ public record AtualizarCursoTreinamentoCommand(
     int CargaHorariaMinima,
     int ValidadeEmMeses,
     string? ConteudoProgramatico = null,
-    bool EhIntegracaoSeguranca = false) : IRequest;
+    bool EhIntegracaoSeguranca = false,
+    bool AtendeNr6 = false) : IRequest;
 
 public class AtualizarCursoTreinamentoCommandValidator : AbstractValidator<AtualizarCursoTreinamentoCommand>
 {
@@ -40,6 +41,7 @@ public class AtualizarCursoTreinamentoCommandHandler : IRequestHandler<Atualizar
         curso.CargaHorariaMinima = request.CargaHorariaMinima;
         curso.ValidadeEmMeses = request.ValidadeEmMeses;
         curso.ConteudoProgramatico = request.ConteudoProgramatico;
+        curso.AtendeNr6 = request.AtendeNr6;
 
         if (request.EhIntegracaoSeguranca && !curso.EhIntegracaoSeguranca)
         {

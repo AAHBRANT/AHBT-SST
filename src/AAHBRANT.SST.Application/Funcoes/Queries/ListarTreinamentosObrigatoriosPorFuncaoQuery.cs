@@ -24,6 +24,7 @@ public class ListarTreinamentosObrigatoriosPorFuncaoQueryHandler
                 m.CursoTreinamento!.CargaHorariaMinima,
                 m.CursoTreinamento!.ValidadeEmMeses,
                 m.CursoTreinamento!.ConteudoProgramatico,
-                m.CursoTreinamento!.EhIntegracaoSeguranca))
+                m.CursoTreinamento!.EhIntegracaoSeguranca,
+                m.CursoTreinamento!.AtendeNr6))
             .ToListAsync(ct);
 }

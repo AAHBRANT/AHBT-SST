@@ -1,4 +1,4 @@
-using AAHBRANT.SST.Domain.Entidades;
+﻿using AAHBRANT.SST.Domain.Entidades;
 using Microsoft.EntityFrameworkCore;
 
 namespace AAHBRANT.SST.Application.Common.Interfaces;
@@ -26,6 +26,7 @@ public interface IAppDbContext
     DbSet<PcmsoDetalhe> PcmsoDetalhes { get; }
     DbSet<CursoTreinamento> CursosTreinamento { get; }
     DbSet<Treinamento> Treinamentos { get; }
+    DbSet<ArquivoCertificadoTreinamento> ArquivosCertificadoTreinamento { get; }
     DbSet<MatrizTreinamentoFuncao> MatrizTreinamentoFuncoes { get; }
     DbSet<SessaoTreinamento> SessoesTreinamento { get; }
     DbSet<ParticipanteSessaoTreinamento> ParticipantesSessaoTreinamento { get; }

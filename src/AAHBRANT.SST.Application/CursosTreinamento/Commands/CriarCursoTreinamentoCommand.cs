@@ -12,7 +12,8 @@ public record CriarCursoTreinamentoCommand(
     int CargaHorariaMinima,
     int ValidadeEmMeses,
     string? ConteudoProgramatico = null,
-    bool EhIntegracaoSeguranca = false) : IRequest<Guid>;
+    bool EhIntegracaoSeguranca = false,
+    bool AtendeNr6 = false) : IRequest<Guid>;
 
 public class CriarCursoTreinamentoCommandValidator : AbstractValidator<CriarCursoTreinamentoCommand>
 {
@@ -39,6 +40,7 @@ public class CriarCursoTreinamentoCommandHandler : IRequestHandler<CriarCursoTre
             ValidadeEmMeses = request.ValidadeEmMeses,
             ConteudoProgramatico = request.ConteudoProgramatico,
             EhIntegracaoSeguranca = request.EhIntegracaoSeguranca,
+            AtendeNr6 = request.AtendeNr6,
         };
 
         if (request.EhIntegracaoSeguranca)

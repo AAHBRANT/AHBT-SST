@@ -1,6 +1,7 @@
 using AAHBRANT.SST.Application.Assinatura;
 using AAHBRANT.SST.Application.Common;
 using AAHBRANT.SST.Application.Common.Interfaces;
+using AAHBRANT.SST.Domain.Enums;
 using MediatR;
 using Microsoft.EntityFrameworkCore;
 
@@ -31,6 +32,15 @@ public class ExportarCertificadoTreinamentoQueryHandler : IRequestHandler<Export
                 .ThenInclude(t => t!.Funcao)
             .FirstOrDefaultAsync(t => t.Id == request.TreinamentoId, ct);
         if (treinamento is null || treinamento.Trabalhador is null || treinamento.CursoTreinamento is null) return null;
+
+        // Certificado externo (lançamento retroativo, 22/09): o curso foi ministrado por terceiro e
+        // só está registrado aqui. Emitir o modelo AAHBRANT nesse caso seria a empresa atestar um
+        // treinamento que não deu, com o Técnico de Segurança assinando como responsável técnico —
+        // exposição real em fiscalização e em ação trabalhista. O que se baixa é o arquivo original
+        // anexado (ObterArquivoCertificadoTreinamentoQuery), não este PDF.
+        if (treinamento.OrigemCertificado == OrigemCertificadoTreinamento.Externo)
+            throw new InvalidOperationException(
+                "Este treinamento foi realizado por instituição externa. Baixe o certificado original anexado — a AAHBRANT não emite certificado de treinamento que não ministrou.");
 
         // Um DocumentoAssinatura por treinamento (EntidadeTipo="Treinamento", EntidadeId=Treinamento.Id) —
         // ver docs/Motor-Assinatura-Eletronica.md. Signatários vêm direto da tabela (não do resultado
