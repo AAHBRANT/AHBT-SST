@@ -1,0 +1,141 @@
+name: CI (build e testes)
+
+# Validação de Pull Request. Existe porque o deploy.yml roda SÓ em push para master —
+# até 23/09/2026 nenhum PR tinha check nenhum, e a única validação de build/teste era a que
+# alguém lembrasse de rodar na própria máquina antes de mergear (ver docs/HANDOFF-2026-09-23.md).
+#
+# Não faz deploy e não toca no Azure: só compila, testa e confere que o modelo do EF bate com a
+# última migration. Quem publica continua sendo o deploy.yml, depois que o merge entra no master.
+
+on:
+  pull_request:
+    branches: [master]
+  push:
+    branches: [master]
+  workflow_dispatch: {}
+
+# PR que recebe vários pushes seguidos cancela a execução anterior — a última é a que vale.
+# Em master não cancela: cada commit publicado merece ter seu resultado registrado.
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+jobs:
+  backend:
+    name: Backend (build + 447 testes)
+    # windows-latest, não ubuntu: AAHBRANT.SST.AgenteBiometria e seus testes são net8.0-windows
+    # (integração com o leitor Futronic), então a solution inteira só compila no Windows.
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '8.0.x'
+
+      - name: Restaurar pacotes
+        run: dotnet restore SST-APP.sln
+
+      - name: Compilar
+        run: dotnet build SST-APP.sln --no-restore --configuration Debug
+
+      - name: Rodar testes
+        run: dotnet test SST-APP.sln --no-build --configuration Debug --logger "trx;LogFileName=testes.trx" --results-directory testes
+
+      - name: Publicar resultado dos testes
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: resultado-testes
+          path: testes/
+          retention-days: 7
+
+  migrations:
+    name: Migration pendente
+    # Pega o caso em que alguém altera uma entidade e esquece de gerar a migration: o deploy sobe,
+    # a aplicação starta e só quebra quando a query bate numa coluna que não existe no banco.
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '8.0.x'
+
+      - name: Instalar dotnet-ef
+        # Versão fixada na mesma do Microsoft.EntityFrameworkCore.* do projeto (8.0.11). Instalar o
+        # "latest" traz a 10.x, que exige runtime .NET 10 e falha aqui.
+        run: dotnet tool install --global dotnet-ef --version 8.0.11
+
+      - name: Conferir se o modelo bate com a última migration
+        env:
+          # O comando compara o modelo do código com o snapshot da última migration e NÃO abre
+          # conexão nem criptografa nada — mas o host da API monta o DbContext no startup, e
+          # DependencyInjection.cs exige 4 configurações antes disso (linhas 39, 56, 58 e 67).
+          # Sem elas o job falha por configuração ausente, e não por haver migration pendente,
+          # que é o que ele existe para detectar.
+          #
+          # NÃO SÃO SEGREDOS. São valores descartáveis, fixos no arquivo de propósito: o servidor
+          # nunca é contatado e as chaves nunca cifram um byte. As chaves reais vivem nos secrets
+          # do Container App; se algum dia este job precisar de uma credencial de verdade, ela tem
+          # de entrar por secrets do repositório, nunca aqui.
+          ConnectionStrings__SstDatabase: 'Server=localhost;Database=sst_ci;User Id=ci;Password=naoUsado;TrustServerCertificate=True'
+          # Base64 de 32 bytes ASCII legíveis ("chave-de-ci-sem-valor-real-...") — decodifique e
+          # veja: é texto dizendo que não vale nada. Tamanho de chave AES-256 só para o caso de
+          # alguma validação de comprimento aparecer no futuro.
+          Lgpd__ChaveCriptografiaCpfBase64: 'Y2hhdmUtZGUtY2ktc2VtLXZhbG9yLXJlYWwtY3BmMS4='
+          Lgpd__ChaveHashCpfBase64: 'Y2hhdmUtZGUtY2ktc2VtLXZhbG9yLXJlYWwtaGFzaC4='
+          Lgpd__ChaveCriptografiaBiometriaBase64: 'Y2hhdmUtZGUtY2ktc2VtLXZhbG9yLXJlYWwtYmlvbS4='
+        run: |
+          dotnet ef migrations has-pending-model-changes \
+            --project src/AAHBRANT.SST.Infrastructure \
+            --startup-project src/AAHBRANT.SST.Api
+
+  frontend:
+    name: Frontend (tipos + build)
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: src/AAHBRANT.SST.TeamsApp
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          # Histórico completo: o passo de lint compara com a base do PR para saber o que mudou.
+          fetch-depth: 0
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: npm
+          cache-dependency-path: src/AAHBRANT.SST.TeamsApp/package-lock.json
+
+      - name: Instalar dependências
+        run: npm ci
+
+      - name: Checar tipos
+        run: npx tsc -b
+
+      - name: Build de produção
+        run: npx vite build
+
+      - name: Lint dos arquivos alterados no PR
+        if: github.event_name == 'pull_request'
+        # Só os arquivos que o PR tocou, de propósito. O master ainda tem 5 violações antigas de
+        # no-restricted-imports (páginas importando direto de @fluentui/react-components), e duas
+        # delas dependem de o @ui passar a reexportar makeStyles/mergeClasses — enquanto isso não
+        # for resolvido, rodar o lint no projeto inteiro reprovaria todo PR, inclusive os que não
+        # têm nada a ver com o problema. Assim o que já está ruim não bloqueia ninguém, mas nada
+        # novo entra: quem mexer num desses arquivos vai ter que deixá-lo limpo.
+        run: |
+          base="${{ github.event.pull_request.base.sha }}"
+          # --relative: o passo roda dentro de src/AAHBRANT.SST.TeamsApp, então tanto o pathspec
+          # quanto os caminhos de saída ficam relativos a essa pasta, que é o que o oxlint espera.
+          alterados=$(git diff --name-only --relative --diff-filter=ACMR "$base" HEAD \
+            -- 'src/**/*.ts' 'src/**/*.tsx')
+          if [ -z "$alterados" ]; then
+            echo "Nenhum arquivo .ts/.tsx do frontend alterado neste PR."
+            exit 0
+          fi
+          echo "Arquivos analisados:"
+          echo "$alterados"
+          npx oxlint $alterados
