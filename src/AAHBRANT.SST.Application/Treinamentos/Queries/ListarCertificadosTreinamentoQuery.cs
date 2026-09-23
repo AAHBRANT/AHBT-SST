@@ -54,23 +54,28 @@ public class ListarCertificadosTreinamentoQueryHandler : IRequestHandler<ListarC
         if (request.CursoTreinamentoId is not null)
             query = query.Where(t => t.CursoTreinamentoId == request.CursoTreinamentoId.Value);
 
-        // O conteúdo do arquivo NUNCA entra nesta projeção — só o fato de existir, o nome e o tipo.
+        // Nenhum dado de outra tabela entra na projeção, e o motivo é uma regressão real (23/09):
+        // projetar `t.CursoTreinamento!.Nome` e `t.Trabalhador!.Funcao` faz o EF gerar INNER JOIN em
+        // navegação obrigatória, e "excluir" aqui é soft delete (SstDbContext marca Ativo=false, e
+        // cada entidade tem filtro global por Ativo). Resultado: bastava o curso sair do catálogo —
+        // ou a função do trabalhador ser excluída — para o certificado inteiro sumir desta lista,
+        // embora o registro exista e continue aparecendo na aba Treinamentos do perfil (que não faz
+        // join). Como esta query também alimenta as travas da entrega de EPI, isso bloqueava a
+        // entrega dizendo que o trabalhador "não tem nenhum treinamento cadastrado".
+        // Os nomes vêm de consultas separadas, resolvidas em memória: curso, função e obra são
+        // buscados ignorando o filtro de Ativo (o certificado vale mesmo que o curso tenha saído do
+        // catálogo depois), e só o Trabalhador continua respeitando o filtro — trabalhador excluído
+        // some da lista de propósito.
+        //
+        // O conteúdo do arquivo NUNCA entra na projeção — só o fato de existir, o nome e o tipo.
         // É justamente para isso que o arquivo mora em tabela própria: a lista pode ter centenas de
         // linhas e arrastar os bytes de cada certificado aqui derrubaria a tela.
-        return await query
-            .OrderBy(t => t.Trabalhador!.Nome)
-            .ThenByDescending(t => t.DataRealizacao)
-            .Select(t => new CertificadoTreinamentoDto(
+        var treinamentos = await query
+            .Select(t => new
+            {
                 t.Id,
                 t.TrabalhadorId,
-                t.Trabalhador!.Nome,
-                t.Trabalhador.Funcao != null ? t.Trabalhador.Funcao.Nome : null,
-                t.Trabalhador.ObraId,
-                t.Trabalhador.Obra != null ? t.Trabalhador.Obra.Nome : null,
                 t.CursoTreinamentoId,
-                t.CursoTreinamento!.Nome,
-                t.CursoTreinamento.NormaReferencia,
-                t.CursoTreinamento.AtendeNr6,
                 t.DataRealizacao,
                 t.DataValidade,
                 t.CargaHorariaRealizada,
@@ -79,9 +84,75 @@ public class ListarCertificadosTreinamentoQueryHandler : IRequestHandler<ListarC
                 t.Local,
                 t.InstrutorRegistroProfissional,
                 t.OrigemCertificado,
-                t.ArquivoCertificado != null,
-                t.ArquivoCertificado != null ? t.ArquivoCertificado.NomeArquivo : null,
-                t.ArquivoCertificado != null ? t.ArquivoCertificado.ContentType : null))
+                TemArquivo = t.ArquivoCertificado != null,
+                NomeArquivo = t.ArquivoCertificado != null ? t.ArquivoCertificado.NomeArquivo : null,
+                ContentTypeArquivo = t.ArquivoCertificado != null ? t.ArquivoCertificado.ContentType : null,
+            })
             .ToListAsync(ct);
+
+        if (treinamentos.Count == 0) return new List<CertificadoTreinamentoDto>();
+
+        var trabalhadorIds = treinamentos.Select(t => t.TrabalhadorId).Distinct().ToList();
+        var trabalhadores = await _db.Trabalhadores.AsNoTracking()
+            .Where(x => trabalhadorIds.Contains(x.Id))
+            .Select(x => new { x.Id, x.Nome, x.ObraId, x.FuncaoId })
+            .ToListAsync(ct);
+        var trabalhadorPorId = trabalhadores.ToDictionary(x => x.Id);
+
+        var cursoIds = treinamentos.Select(t => t.CursoTreinamentoId).Distinct().ToList();
+        var cursoPorId = (await _db.CursosTreinamento.AsNoTracking().IgnoreQueryFilters()
+                .Where(c => cursoIds.Contains(c.Id))
+                .Select(c => new { c.Id, c.Nome, c.NormaReferencia, c.AtendeNr6 })
+                .ToListAsync(ct))
+            .ToDictionary(c => c.Id);
+
+        var obraIds = trabalhadores.Select(x => x.ObraId).Distinct().ToList();
+        var nomeObraPorId = (await _db.Obras.AsNoTracking().IgnoreQueryFilters()
+                .Where(o => obraIds.Contains(o.Id))
+                .Select(o => new { o.Id, o.Nome })
+                .ToListAsync(ct))
+            .ToDictionary(o => o.Id, o => o.Nome);
+
+        var funcaoIds = trabalhadores.Select(x => x.FuncaoId).Distinct().ToList();
+        var nomeFuncaoPorId = (await _db.Funcoes.AsNoTracking().IgnoreQueryFilters()
+                .Where(f => funcaoIds.Contains(f.Id))
+                .Select(f => new { f.Id, f.Nome })
+                .ToListAsync(ct))
+            .ToDictionary(f => f.Id, f => f.Nome);
+
+        return treinamentos
+            // Trabalhador ausente = trabalhador excluído (o filtro global o removeu): o certificado
+            // dele sai da lista junto, ao contrário do curso.
+            .Where(t => trabalhadorPorId.ContainsKey(t.TrabalhadorId))
+            .Select(t =>
+            {
+                var trabalhador = trabalhadorPorId[t.TrabalhadorId];
+                cursoPorId.TryGetValue(t.CursoTreinamentoId, out var curso);
+                return new CertificadoTreinamentoDto(
+                    t.Id,
+                    t.TrabalhadorId,
+                    trabalhador.Nome,
+                    nomeFuncaoPorId.GetValueOrDefault(trabalhador.FuncaoId),
+                    trabalhador.ObraId,
+                    nomeObraPorId.GetValueOrDefault(trabalhador.ObraId),
+                    t.CursoTreinamentoId,
+                    curso?.Nome ?? "Curso removido do catálogo",
+                    curso?.NormaReferencia,
+                    curso?.AtendeNr6 ?? false,
+                    t.DataRealizacao,
+                    t.DataValidade,
+                    t.CargaHorariaRealizada,
+                    t.InstituicaoInstrutor,
+                    t.NumeroCertificado,
+                    t.Local,
+                    t.InstrutorRegistroProfissional,
+                    t.OrigemCertificado,
+                    t.TemArquivo,
+                    t.NomeArquivo,
+                    t.ContentTypeArquivo);
+            })
+            .OrderBy(c => c.TrabalhadorNome)
+            .ThenByDescending(c => c.DataRealizacao)
+            .ToList();
     }
 }
