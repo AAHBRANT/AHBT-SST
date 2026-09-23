@@ -73,10 +73,16 @@ public class ExportarFichaEpiTrabalhadorQueryHandler : IRequestHandler<ExportarF
         {
             numero++;
 
-            var assinadoPeloEmpregado = documentosEntrega.TryGetValue(entrega.Id, out var docEntrega)
-                && docEntrega.Signatarios.Any(s => s.TrabalhadorId == entrega.TrabalhadorId);
-            var assinadoPeloResponsavel = docEntrega is not null
-                && docEntrega.Signatarios.Any(s => s.MetodoAutenticacao == MetodoAutenticacaoAssinatura.SessaoLogada);
+            var assinaturaEmpregado = documentosEntrega.TryGetValue(entrega.Id, out var docEntrega)
+                ? docEntrega.Signatarios
+                    .Where(s => s.TrabalhadorId == entrega.TrabalhadorId)
+                    .OrderBy(s => s.AssinadoEm)
+                    .FirstOrDefault()
+                : null;
+            var assinaturaResponsavel = docEntrega?.Signatarios
+                .Where(s => s.MetodoAutenticacao == MetodoAutenticacaoAssinatura.SessaoLogada)
+                .OrderBy(s => s.AssinadoEm)
+                .FirstOrDefault();
 
             linhasEntrega.Add(new LinhaEntregaEpiPdf(
                 numero,
@@ -86,20 +92,27 @@ public class ExportarFichaEpiTrabalhadorQueryHandler : IRequestHandler<ExportarF
                 entrega.Motivo,
                 entrega.Quantidade,
                 entrega.DataEntrega,
-                assinadoPeloEmpregado,
-                assinadoPeloResponsavel));
+                assinaturaEmpregado is not null,
+                assinaturaResponsavel is not null,
+                assinaturaEmpregado?.AssinadoEm,
+                assinaturaResponsavel?.AssinadoEm));
 
             if (entrega.DataDevolucao is null) continue;
 
-            var assinadoDevolucaoPeloEmpregado = documentosDevolucao.TryGetValue(entrega.Id, out var docDevolucao)
-                && docDevolucao.Signatarios.Any(s => s.TrabalhadorId == entrega.TrabalhadorId);
+            var assinaturaDevolucaoEmpregado = documentosDevolucao.TryGetValue(entrega.Id, out var docDevolucao)
+                ? docDevolucao.Signatarios
+                    .Where(s => s.TrabalhadorId == entrega.TrabalhadorId)
+                    .OrderBy(s => s.AssinadoEm)
+                    .FirstOrDefault()
+                : null;
 
             linhasDevolucao.Add(new LinhaDevolucaoEpiPdf(
                 numero,
                 entrega.CatalogoEpi?.Nome ?? string.Empty,
                 entrega.QuantidadeDevolucao ?? entrega.Quantidade,
                 entrega.DataDevolucao.Value,
-                assinadoDevolucaoPeloEmpregado,
+                assinaturaDevolucaoEmpregado is not null,
+                assinaturaDevolucaoEmpregado?.AssinadoEm,
                 entrega.VistoConsorcioResponsavel));
         }
 

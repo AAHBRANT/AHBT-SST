@@ -38,7 +38,7 @@ public class FutronicAutenticacaoStrategy : IAutenticacaoBiometriaLocalService
 
         if (trabalhador.TermoAceiteAssinaturaEletronicaEm is null || trabalhador.ConsentimentoBiometriaEm is null)
         {
-            throw new InvalidOperationException("Trabalhador ainda não confirmou o Termo de Aceite ou o consentimento de biometria.");
+            throw new InvalidOperationException("Trabalhador ainda não confirmou o Termo de Aceite de Assinatura Eletrônica e o consentimento LGPD para uso de biometria.");
         }
 
         if (score < _options.LimiarConfiancaBiometriaLocal)

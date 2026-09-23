@@ -39,10 +39,10 @@ function extrairMensagemErro(e: unknown, fallback: string): string {
 // só marcado como "Digital pendente" na lista (ver TrabalhadoresTab) até completar depois.
 //
 // O backend exige Termo de Aceite (MP 2.200-2/2001) e consentimento LGPD de biometria já
-// registrados antes de aceitar o template (ver CadastrarTemplateBiometricoCommand). Por decisão
-// do usuário (combinada com o jurídico, 31/08), esses dois termos são coletados em papel, FORA do
-// sistema — esta tela não exibe nenhum texto de consentimento, só uma confirmação administrativa
-// de que o físico já foi assinado, antes de registrar as duas datas no backend.
+// registrados antes de aceitar qualquer biometria. Esta tela confirma administrativamente que os
+// termos físicos do pacote admissional/funcional foram assinados e deixa explícito que o
+// consentimento cobre biometria digital e reconhecimento facial, sem trocar a revisão jurídica do
+// documento físico por um texto improvisado no sistema.
 //
 // Vive em components/ (não em pages/), mesmo padrão de components/assinatura/ e de
 // RequisitosFuncaoDialog.tsx nesta mesma pasta: Dialog modal bespoke sem equivalente em ui/ (spec §3
@@ -63,6 +63,7 @@ export function CadastroDigitalDialog({
   const [erro, setErro] = useState<string | null>(null);
 
   const aberto = trabalhadorId !== null;
+  const nomeFuncionario = trabalhadorNome ?? 'funcionário';
 
   // Todo caminho de fechar/reabrir este diálogo limpa o estado do fluxo anterior — inclusive quando
   // reaberto para outro trabalhador (chave trabalhadorId), senão o passo/erro de uma tentativa
@@ -124,13 +125,34 @@ export function CadastroDigitalDialog({
             {!consentimentosSalvos ? (
               <>
                 <Text>
-                  O Termo de Aceite de Assinatura Eletrônica e o Termo de Consentimento LGPD (uso de dado
-                  biométrico) são assinados em papel, fora do sistema.
+                  Antes de cadastrar biometria, confirme que {nomeFuncionario} assinou os termos
+                  formais exigidos para assinatura eletrônica e tratamento de dado biométrico sensível.
+                </Text>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                  <Text weight="semibold">Termos obrigatórios</Text>
+                  <Text>
+                    1. Termo de Aceite de Assinatura Eletrônica: autoriza o uso de assinatura eletrônica
+                    nos documentos de SST, com registro de data, hora, documento, método de autenticação e
+                    trilha de auditoria.
+                  </Text>
+                  <Text>
+                    2. Termo de Consentimento LGPD para Biometria: autoriza o tratamento de dado
+                    biométrico sensível para identificação e autenticação, incluindo digital em leitor
+                    local e reconhecimento facial via Azure Face API quando habilitado para a obra.
+                  </Text>
+                  <Text>
+                    O funcionário deve ter sido informado sobre finalidade, segurança, acesso restrito,
+                    possibilidade de método alternativo e direitos previstos na LGPD.
+                  </Text>
+                </div>
+                <Text>
+                  Ao continuar, o sistema registrará a data de aceite desses dois termos no cadastro do
+                  trabalhador.
                 </Text>
                 <Checkbox
                   checked={termoFisicoConfirmado}
                   onChange={(_, d) => setTermoFisicoConfirmado(!!d.checked)}
-                  label="Confirmo que os termos físicos já foram assinados pelo funcionário."
+                  label="Confirmo que os termos físicos de assinatura eletrônica e consentimento biométrico foram assinados pelo funcionário."
                 />
               </>
             ) : (

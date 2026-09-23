@@ -27,13 +27,14 @@ export interface StatusChipProps {
 // zera em index.css.
 export function StatusChip({ tom, icone, children, className, pulsar }: StatusChipProps) {
   const estilos = useStyles(); const tons = useTons(); const pulsos = usePulsos();
+  const pulsoEfetivo = pulsar ?? (tom === 'alerta' ? 'rapido' : undefined);
   return (
     <span
       className={mergeClasses(
         estilos.root,
         tons[tom],
-        pulsar === 'rapido' && pulsos.rapido,
-        pulsar === 'leve' && pulsos.leve,
+        pulsoEfetivo === 'rapido' && pulsos.rapido,
+        pulsoEfetivo === 'leve' && pulsos.leve,
         className,
       )}
     >
