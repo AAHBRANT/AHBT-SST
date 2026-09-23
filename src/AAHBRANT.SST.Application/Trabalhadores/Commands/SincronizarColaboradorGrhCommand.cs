@@ -1,3 +1,5 @@
+using System.Globalization;
+using System.Text;
 using AAHBRANT.SST.Application.Common;
 using AAHBRANT.SST.Application.Common.Interfaces;
 using AAHBRANT.SST.Domain.Entidades;
@@ -124,9 +126,18 @@ public class SincronizarColaboradorGrhCommandHandler : IRequestHandler<Sincroniz
             funcao.CboCodigo = request.CargoCboCodigo;
         }
 
+        // Incidente real (22/09): o G-RH manda o nome da obra com acentuação normal ("Consórcio
+        // Ponte Rio Cuiá"), mas o cadastro correspondente no SST foi digitado sem acento e em
+        // caixa alta ("CONSORCIO PONTE RIO CUIA") — comparação por igualdade exata nunca batia,
+        // e vários colaboradores (incluindo Hamilton Costa Gomes) ficavam de fora só por isso.
+        // Compara ignorando acentuação e maiúsculas/minúsculas (ver NormalizarNomeObra).
         Obra? obra = null;
         if (!string.IsNullOrWhiteSpace(request.ObraNome))
-            obra = await _db.Obras.FirstOrDefaultAsync(o => o.Nome == request.ObraNome, ct);
+        {
+            var nomeNormalizado = NormalizarNomeObra(request.ObraNome);
+            var todasObras = await _db.Obras.ToListAsync(ct);
+            obra = todasObras.FirstOrDefault(o => NormalizarNomeObra(o.Nome) == nomeNormalizado);
+        }
 
         if (trabalhador is null)
         {
@@ -180,5 +191,14 @@ public class SincronizarColaboradorGrhCommandHandler : IRequestHandler<Sincroniz
 
         await TratamentoCpfDuplicado.SalvarAsync(_db, ct);
         return trabalhador.Id;
+    }
+
+    private static string NormalizarNomeObra(string nome)
+    {
+        var semAcento = nome.Trim().Normalize(NormalizationForm.FormD);
+        var apenasBase = new string(semAcento
+            .Where(c => CharUnicodeInfo.GetUnicodeCategory(c) != UnicodeCategory.NonSpacingMark)
+            .ToArray());
+        return apenasBase.ToUpperInvariant();
     }
 }
