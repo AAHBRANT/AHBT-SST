@@ -463,6 +463,18 @@ public static class NovidadesSeeder
                     "O sistema registrava a assinatura de quem a biometria identificasse, sem conferir de quem era o documento. Se o reconhecimento facial trocasse duas pessoas parecidas, a entrega de um ficava assinada em nome do outro — e o registro parecia válido.",
                     "Antes de registrar, o sistema confere se a pessoa identificada é a mesma do documento (entrega de EPI, devolução, uniforme, treinamento e ficha de EPI). Quando não é, a assinatura é recusada dizendo de quem era o rosto ou a digital e de quem é o documento. O visto do responsável por sessão logada continua funcionando como antes, porque ali quem assina não é o trabalhador."),
             }),
+        new(
+            Versao: "5.28.0",
+            Titulo: "Continuar inspeção voltou a abrir",
+            DataPublicacao: new DateTime(2026, 9, 24, 0, 0, 0, DateTimeKind.Utc),
+            Itens: new[]
+            {
+                new NovidadeSeedItem(
+                    CategoriaNovidade.Correcao,
+                    "Inspeção em andamento abre mesmo depois de editar o checklist",
+                    "Quando o checklist era editado no Catálogo de inspeções, as inspeções que já estavam em andamento com a versão anterior passavam a mostrar \"Not Found\" ao clicar em \"Continuar inspeção\" — no alojamento e nos demais tipos.",
+                    "A inspeção abre normalmente e continua com os itens da versão do checklist com que foi iniciada. As próximas inspeções já usam a versão nova."),
+            }),
     };
 
     public static async Task ExecutarAsync(IServiceProvider services, CancellationToken ct = default)

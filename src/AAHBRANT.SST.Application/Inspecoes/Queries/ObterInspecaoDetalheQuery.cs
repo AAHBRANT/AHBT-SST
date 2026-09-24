@@ -15,16 +15,26 @@ public class ObterInspecaoDetalheQueryHandler : IRequestHandler<ObterInspecaoDet
 
     public async Task<InspecaoDetalheDto?> Handle(ObterInspecaoDetalheQuery request, CancellationToken ct)
     {
+        // Obra continua no Include de propósito: o filtro global dela é o escopo RBAC por obra
+        // (SstDbContext), e quem não tem acesso à obra deve receber 404.
         var inspecao = await _db.Inspecoes
             .Include(i => i.Obra)
             .Include(i => i.Atividade)
-            .Include(i => i.ChecklistModelo)
-            .Include(i => i.ResponsavelUsuario)
             .FirstOrDefaultAsync(i => i.Id == request.Id, ct);
         if (inspecao is null) return null;
 
-        var respostas = await _db.InspecaoItemRespostas
-            .Where(r => r.InspecaoId == inspecao.Id)
+        // Checklist e responsável vêm à parte, ignorando o filtro de soft delete: nova versão do
+        // checklist (CriarNovaVersaoChecklistModelo) desativa a anterior, e um Include aqui virava
+        // inner join que sumia com a inspeção inteira ("Not Found" ao continuar — bug 24/09/2026).
+        var checklist = await _db.ChecklistModelos.IgnoreQueryFilters()
+            .FirstOrDefaultAsync(c => c.Id == inspecao.ChecklistModeloId, ct);
+        var responsavelNome = await _db.Usuarios.IgnoreQueryFilters()
+            .Where(u => u.Id == inspecao.ResponsavelUsuarioId)
+            .Select(u => u.Nome)
+            .FirstOrDefaultAsync(ct);
+
+        var respostas = await _db.InspecaoItemRespostas.IgnoreQueryFilters()
+            .Where(r => r.InspecaoId == inspecao.Id && r.Ativo)
             .Include(r => r.ChecklistModeloItem)
             .Include(r => r.ResponsavelUsuario)
             .ToListAsync(ct);
@@ -51,11 +61,11 @@ public class ObterInspecaoDetalheQueryHandler : IRequestHandler<ObterInspecaoDet
                 AtividadeId = inspecao.AtividadeId,
                 AtividadeNome = inspecao.Atividade?.Nome,
                 ChecklistModeloId = inspecao.ChecklistModeloId,
-                ChecklistModeloNome = inspecao.ChecklistModelo?.Nome ?? string.Empty,
-                ChecklistModeloVersao = inspecao.ChecklistModelo?.Versao ?? 0,
+                ChecklistModeloNome = checklist?.Nome ?? string.Empty,
+                ChecklistModeloVersao = checklist?.Versao ?? 0,
                 Data = inspecao.Data,
                 ResponsavelUsuarioId = inspecao.ResponsavelUsuarioId,
-                ResponsavelUsuarioNome = inspecao.ResponsavelUsuario?.Nome ?? string.Empty,
+                ResponsavelUsuarioNome = responsavelNome ?? string.Empty,
                 Status = inspecao.Status,
                 TotalItens = respostasOrdenadas.Count(r => r.Ativo),
                 ItensRespondidos = respostasOrdenadas.Count(r => r.Ativo && r.StatusItem != null),
