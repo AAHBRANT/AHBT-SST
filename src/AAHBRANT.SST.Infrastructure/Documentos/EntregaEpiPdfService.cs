@@ -78,7 +78,7 @@ public class EntregaEpiPdfService : IFichaEpiPdfService
     private static Action<IContainer> SecaoTermoCompromisso(FichaEpiPdfModelo modelo)
     {
         var contratante = modelo.ObraCliente ?? "empregador";
-        var dataTermo = ConverterParaHorarioBrasilia(DateTime.UtcNow);
+        var dataTermo = HorarioBrasilia.Agora;
         var dataTermoFormatada = dataTermo.ToString("dd/MM/yyyy");
         var primeiraAssinaturaEmpregado = modelo.Entregas
             .Where(e => e.AssinadoPeloEmpregadoEm is not null)
@@ -225,28 +225,14 @@ public class EntregaEpiPdfService : IFichaEpiPdfService
         if (!assinado) return "Pendente";
         if (assinadoEm is null) return "Assinado digitalmente";
 
-        var dataHora = ConverterParaHorarioBrasilia(assinadoEm.Value);
+        var dataHora = HorarioBrasilia.De(assinadoEm.Value);
         return $"Assinado digitalmente em {dataHora:dd/MM/yyyy HH:mm}";
     }
 
     private static string FormatarDataHoraAssinatura(DateTime assinadoEm)
     {
-        var dataHora = ConverterParaHorarioBrasilia(assinadoEm);
+        var dataHora = HorarioBrasilia.De(assinadoEm);
         return $"{dataHora:dd/MM/yyyy HH:mm}";
-    }
-
-    private static DateTime ConverterParaHorarioBrasilia(DateTime dataHora)
-    {
-        try
-        {
-            var fuso = TimeZoneInfo.FindSystemTimeZoneById("E. South America Standard Time");
-            return TimeZoneInfo.ConvertTimeFromUtc(DateTime.SpecifyKind(dataHora, DateTimeKind.Utc), fuso);
-        }
-        catch (TimeZoneNotFoundException)
-        {
-            var fuso = TimeZoneInfo.FindSystemTimeZoneById("America/Sao_Paulo");
-            return TimeZoneInfo.ConvertTimeFromUtc(DateTime.SpecifyKind(dataHora, DateTimeKind.Utc), fuso);
-        }
     }
 
     private static string MotivoLabel(MotivoEntregaEpi? motivo, string? observacao)

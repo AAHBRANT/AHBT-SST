@@ -78,7 +78,7 @@ public class DocumentoAssinaturaPdfService : IDocumentoAssinaturaPdfService
                 pagina.Footer().AlignCenter().Text(t =>
                 {
                     t.Span("Gerado em ").FontSize(9);
-                    t.Span(DateTime.Now.ToString("dd/MM/yyyy HH:mm")).FontSize(9);
+                    t.Span(HorarioBrasilia.Agora.ToString("dd/MM/yyyy HH:mm")).FontSize(9);
                 });
             });
         });

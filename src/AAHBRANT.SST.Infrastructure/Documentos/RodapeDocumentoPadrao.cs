@@ -57,7 +57,7 @@ internal static class RodapeDocumentoPadrao
                     // o token completo, não pelo hash em si.
                     var chaveCurta = conteudoHash.Length >= 8 ? $"{conteudoHash[..4]}-{conteudoHash[4..8]}" : conteudoHash;
                     t.Span($"Validável em {urlValidacaoPublica} — chave {chaveCurta} | Emitido em ").FontSize(6.5f);
-                    t.Span(DateTime.Now.ToString("dd/MM/yyyy HH:mm")).FontSize(6.5f);
+                    t.Span(HorarioBrasilia.Agora.ToString("dd/MM/yyyy HH:mm")).FontSize(6.5f);
                 });
 
                 textoColuna.Item().AlignCenter().Text(t =>
