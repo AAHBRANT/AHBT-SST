@@ -20,15 +20,33 @@ public class ListarSetoresQueryHandler : IRequestHandler<ListarSetoresQuery, Lis
             query = query.Where(s => s.ObraId == request.ObraId.Value);
         }
 
-        return await query
-            .OrderBy(s => s.Nome)
+        // O nome da obra vem de consulta separada, e não de `s.Obra!.Nome`: projetar navegação
+        // obrigatória gera INNER JOIN, e Obra tem filtro global por Ativo. Com "excluir" sendo soft
+        // delete neste sistema, uma obra excluída fazia TODOS os setores dela sumirem da lista —
+        // junto com as equipes e os trabalhadores pendurados neles, que continuam no banco e ficam
+        // sem tela para corrigir. Mesma armadilha que derrubou a entrega de EPI em 23/09.
+        var setores = await query
+            .Select(s => new { s.Id, s.ObraId, s.Nome })
+            .ToListAsync(ct);
+
+        var obraIds = setores.Select(s => s.ObraId).Distinct().ToList();
+        var nomeObraPorId = (await _db.Obras.AsNoTracking().IgnoreQueryFilters()
+                .Where(o => obraIds.Contains(o.Id))
+                .Select(o => new { o.Id, o.Nome, o.Ativo })
+                .ToListAsync(ct))
+            // Obra excluída aparece com o nome real, para a pessoa reconhecer de onde é o setor —
+            // marcada como removida, para a tela não afirmar que a obra continua lá.
+            .ToDictionary(o => o.Id, o => o.Ativo ? o.Nome : $"{o.Nome} (obra removida)");
+
+        return setores
             .Select(s => new SetorDto
             {
                 Id = s.Id,
                 ObraId = s.ObraId,
-                ObraNome = s.Obra!.Nome,
+                ObraNome = nomeObraPorId.GetValueOrDefault(s.ObraId, "Obra removida"),
                 Nome = s.Nome
             })
-            .ToListAsync(ct);
+            .OrderBy(s => s.Nome)
+            .ToList();
     }
 }
