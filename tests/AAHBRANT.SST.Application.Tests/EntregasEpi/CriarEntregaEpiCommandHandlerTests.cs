@@ -29,10 +29,12 @@ public class CriarEntregaEpiCommandHandlerTests
         return new SstDbContext(options, new CurrentUserService());
     }
 
-    private static async Task<(Trabalhador trabalhador, CatalogoEpi catalogo)> CriarTrabalhadorECatalogoAsync(IAppDbContext db)
+    private static async Task<(Trabalhador trabalhador, CatalogoEpi catalogo)> CriarTrabalhadorECatalogoAsync(IAppDbContext db, string nomeFuncao = "Pedreiro")
     {
-        var trabalhador = new Trabalhador { ObraId = Guid.NewGuid(), FuncaoId = Guid.NewGuid(), Nome = "Carlos Eduardo", Cpf = "00000000000" };
+        var funcao = new Funcao { Nome = nomeFuncao };
+        var trabalhador = new Trabalhador { ObraId = Guid.NewGuid(), Funcao = funcao, Nome = "Carlos Eduardo", Cpf = "00000000000" };
         var catalogo = new CatalogoEpi { Nome = "Capacete de Segurança", VidaUtilEmMeses = 12 };
+        db.Funcoes.Add(funcao);
         db.Trabalhadores.Add(trabalhador);
         db.CatalogoEpis.Add(catalogo);
         db.EstoquesEpi.Add(new EstoqueEpi { CatalogoEpiId = catalogo.Id, ObraId = trabalhador.ObraId, Saldo = 10 });
@@ -68,6 +70,20 @@ public class CriarEntregaEpiCommandHandlerTests
         var ex = await Assert.ThrowsAsync<InvalidOperationException>(() =>
             handler.Handle(ComandoPara(trabalhador, catalogo), default));
         Assert.Contains("Integração de Segurança", ex.Message);
+    }
+
+    [Fact]
+    public async Task Handle_TecnicoSegurancaSemIntegracao_CriaEntregaNormalmente()
+    {
+        var db = CriarDb(nameof(Handle_TecnicoSegurancaSemIntegracao_CriaEntregaNormalmente));
+        var (trabalhador, catalogo) = await CriarTrabalhadorECatalogoAsync(db, "Técnico de Segurança");
+        db.CursosTreinamento.Add(new CursoTreinamento { Nome = "Integração de Segurança", EhIntegracaoSeguranca = true, CargaHorariaMinima = 4, ValidadeEmMeses = 12 });
+        await db.SaveChangesAsync();
+        var handler = new CriarEntregaEpiCommandHandler(db);
+
+        var id = await handler.Handle(ComandoPara(trabalhador, catalogo), default);
+
+        Assert.NotEqual(Guid.Empty, id);
     }
 
     [Fact]

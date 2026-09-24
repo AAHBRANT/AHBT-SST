@@ -1,3 +1,4 @@
+using AAHBRANT.SST.Application.Common;
 using AAHBRANT.SST.Application.Common.Interfaces;
 using AAHBRANT.SST.Domain.Entidades;
 using AAHBRANT.SST.Domain.Enums;
@@ -44,10 +45,13 @@ public class CriarEntregaEpiCommandHandler : IRequestHandler<CriarEntregaEpiComm
         var catalogo = await _db.CatalogoEpis.FirstOrDefaultAsync(x => x.Id == request.CatalogoEpiId, ct)
             ?? throw new KeyNotFoundException("EPI de catálogo não encontrado.");
 
-        var trabalhador = await _db.Trabalhadores.FirstOrDefaultAsync(x => x.Id == request.TrabalhadorId, ct)
+        var trabalhador = await _db.Trabalhadores
+            .Include(x => x.Funcao)
+            .FirstOrDefaultAsync(x => x.Id == request.TrabalhadorId, ct)
             ?? throw new KeyNotFoundException("Trabalhador não encontrado.");
 
-        await GarantirIntegracaoSegurancaAssinadaAsync(_db, request.TrabalhadorId, ct);
+        if (!FuncaoSstClassifier.EhTecnicoSeguranca(trabalhador.Funcao?.Nome))
+            await GarantirIntegracaoSegurancaAssinadaAsync(_db, request.TrabalhadorId, ct);
 
         // Bloqueio de entrega com CA vencido e de estoque insuficiente: decisões confirmadas com o
         // usuário — não apenas um aviso, a entrega não é registrada.

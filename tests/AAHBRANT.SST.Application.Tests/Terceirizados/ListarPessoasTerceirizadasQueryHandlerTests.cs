@@ -25,11 +25,13 @@ public class ListarPessoasTerceirizadasQueryHandlerTests
         return new SstDbContext(options, new CurrentUserService());
     }
 
-    private static async Task<(Empresa Empresa, Contrato Contrato, Funcao Funcao, CursoTreinamento Integracao, Trabalhador Pessoa)> SemearAsync(IAppDbContext db)
+    private static async Task<(Empresa Empresa, Contrato Contrato, Funcao Funcao, CursoTreinamento Integracao, Trabalhador Pessoa)> SemearAsync(
+        IAppDbContext db,
+        string funcaoNome = "Pedreiro")
     {
         var obra = new Obra { Codigo = "O1", Nome = "Obra 1" };
         var empresa = new Empresa { RazaoSocial = "XPTO", Cnpj = "12345678000199" };
-        var funcao = new Funcao { Nome = "Pedreiro" };
+        var funcao = new Funcao { Nome = funcaoNome };
         var integracao = new CursoTreinamento { Nome = "Integração de Segurança", CargaHorariaMinima = 4, ValidadeEmMeses = 12, EhIntegracaoSeguranca = true };
         db.Obras.Add(obra);
         db.Empresas.Add(empresa);
@@ -90,6 +92,30 @@ public class ListarPessoasTerceirizadasQueryHandlerTests
         {
             TrabalhadorId = pessoa.Id, CursoTreinamentoId = integracao.Id,
             DataRealizacao = DateTime.UtcNow, DataValidade = DateTime.UtcNow.AddMonths(11), CargaHorariaRealizada = 4,
+        });
+        await db.SaveChangesAsync();
+
+        var handler = new ListarPessoasTerceirizadasQueryHandler(db);
+        var resultado = await handler.Handle(new ListarPessoasTerceirizadasQuery(empresa.Id, null), default);
+
+        var dto = Assert.Single(resultado);
+        Assert.Equal(StatusLiberacaoTerceirizado.Liberada, dto.Status);
+        Assert.Empty(dto.Pendencias);
+    }
+
+    [Fact]
+    public async Task Handle_TecnicoSegurancaComAsoValido_SemTreinamentos_RetornaLiberada()
+    {
+        var db = CriarDb(nameof(Handle_TecnicoSegurancaComAsoValido_SemTreinamentos_RetornaLiberada));
+        var (empresa, _, funcao, _, pessoa) = await SemearAsync(db, "Técnico de Segurança");
+        var cursoObrigatorio = new CursoTreinamento { Nome = "NR-35 Trabalho em Altura", CargaHorariaMinima = 8, ValidadeEmMeses = 24 };
+        db.CursosTreinamento.Add(cursoObrigatorio);
+        db.MatrizTreinamentoFuncoes.Add(new MatrizTreinamentoFuncao { FuncaoId = funcao.Id, CursoTreinamentoId = cursoObrigatorio.Id });
+        db.Asos.Add(new Aso
+        {
+            TrabalhadorId = pessoa.Id, Tipo = TipoExameAso.Admissional,
+            DataExame = DateTime.UtcNow, DataValidade = DateTime.UtcNow.AddMonths(11),
+            ResultadoStatus = ResultadoAso.Apto,
         });
         await db.SaveChangesAsync();
 
