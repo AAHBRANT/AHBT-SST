@@ -42,11 +42,15 @@ public class RegistradorAssinaturaService : IRegistradorAssinaturaService
             throw new InvalidOperationException("Este documento não está mais aceitando assinaturas.");
 
         var jaAssinou = await _db.DocumentoSignatarios.AnyAsync(
-            s => s.DocumentoAssinaturaId == documento.Id && s.TrabalhadorId == resultado.TrabalhadorId, ct);
+            s => s.DocumentoAssinaturaId == documento.Id
+                && s.TrabalhadorId == resultado.TrabalhadorId
+                && MesmoPapelDeAssinatura(s.MetodoAutenticacao, resultado.Metodo), ct);
         if (jaAssinou)
             throw new InvalidOperationException("Este trabalhador já assinou este documento.");
 
         var trabalhador = await _db.Trabalhadores.Include(t => t.Funcao).FirstAsync(t => t.Id == resultado.TrabalhadorId, ct);
+
+        await GarantirQueEhOSignatarioEsperadoAsync(documento, resultado, trabalhador, ct);
 
         // Regras específicas de Inspeção/Patrulha de Segurança (pedido do usuário, 01/09) — o Motor
         // de Assinatura é genérico (qualquer trabalhador assina DDS/PT/EPI), então essas duas
@@ -98,11 +102,74 @@ public class RegistradorAssinaturaService : IRegistradorAssinaturaService
         "engenheiro de seguranca",
     };
 
+    // Confere se quem a biometria identificou é mesmo a pessoa de quem o documento trata.
+    //
+    // Sem isto, o registro aceitava qualquer trabalhador identificado: se o reconhecimento facial
+    // devolvesse um colega parecido acima do limiar, a entrega de EPI do Gabriel ficava assinada em
+    // nome desse colega — registro errado numa peça com valor juridico. O risco ficou concreto em
+    // 24/09, quando o Azure devolveu um candidato para alguem que sequer tinha cadastro facial (o
+    // identify sempre retorna o mais parecido acima de 50%); quem barrou foi o limiar de confianca,
+    // que e a ultima linha, nao a unica que deveria existir.
+    //
+    // Vale so para os metodos que identificam a PESSOA (facial e digital). SessaoLogada fica de
+    // fora de proposito: ali quem assina é o responsavel/instrutor logado, que legitimamente nao é
+    // o trabalhador do documento.
+    //
+    // Tipos sem dono unico (SessaoTreinamento, onde cada participante assina; Inspecao, que tem
+    // regra propria por Funcao logo acima; APR/PT, assinadas pela equipe) nao entram: para eles nao
+    // existe "o signatario esperado", e restringir quebraria fluxo legitimo.
+    private async Task GarantirQueEhOSignatarioEsperadoAsync(
+        DocumentoAssinatura documento, ResultadoAutenticacaoAssinatura resultado, Trabalhador identificado, CancellationToken ct)
+    {
+        if (resultado.Metodo == MetodoAutenticacaoAssinatura.SessaoLogada)
+            return;
+
+        var trabalhadorEsperadoId = documento.EntidadeTipo switch
+        {
+            "EntregaEpi" or "DevolucaoEpi" => await _db.EntregasEpi
+                .Where(e => e.Id == documento.EntidadeId).Select(e => (Guid?)e.TrabalhadorId).FirstOrDefaultAsync(ct),
+            "EntregaUniforme" => await _db.EntregasUniforme
+                .Where(e => e.Id == documento.EntidadeId).Select(e => (Guid?)e.TrabalhadorId).FirstOrDefaultAsync(ct),
+            "Treinamento" => await _db.Treinamentos
+                .Where(t => t.Id == documento.EntidadeId).Select(t => (Guid?)t.TrabalhadorId).FirstOrDefaultAsync(ct),
+            // A ficha consolidada é do próprio trabalhador: a entidade É ele.
+            "FichaEpiTrabalhador" => documento.EntidadeId,
+            _ => null,
+        };
+
+        if (trabalhadorEsperadoId is null || trabalhadorEsperadoId == identificado.Id)
+            return;
+
+        var nomeEsperado = await _db.Trabalhadores
+            .Where(t => t.Id == trabalhadorEsperadoId.Value)
+            .Select(t => t.Nome)
+            .FirstOrDefaultAsync(ct);
+
+        var comoFoiIdentificado = resultado.Metodo == MetodoAutenticacaoAssinatura.ReconhecimentoFacial
+            ? "O rosto reconhecido"
+            : "A digital lida";
+
+        throw new InvalidOperationException(
+            $"{comoFoiIdentificado} é de {identificado.Nome}, mas este documento é de {nomeEsperado ?? "outro trabalhador"} — " +
+            "a assinatura não foi registrada. Confirme que quem está assinando é a pessoa certa; " +
+            "se for, o cadastro biométrico de um dos dois precisa ser refeito.");
+    }
+
     private static bool FuncaoPodeAssinarInspecao(string? nomeFuncao)
     {
         if (string.IsNullOrWhiteSpace(nomeFuncao)) return false;
         var normalizado = RemoverAcentos(nomeFuncao.Trim().ToLowerInvariant());
         return FuncoesHabilitadasAssinarInspecao.Any(f => normalizado.StartsWith(f, StringComparison.Ordinal));
+    }
+
+    private static bool MesmoPapelDeAssinatura(MetodoAutenticacaoAssinatura existente, MetodoAutenticacaoAssinatura novo)
+    {
+        return EhAssinaturaDeResponsavel(existente) == EhAssinaturaDeResponsavel(novo);
+    }
+
+    private static bool EhAssinaturaDeResponsavel(MetodoAutenticacaoAssinatura metodo)
+    {
+        return metodo == MetodoAutenticacaoAssinatura.SessaoLogada;
     }
 
     private static string RemoverAcentos(string texto)

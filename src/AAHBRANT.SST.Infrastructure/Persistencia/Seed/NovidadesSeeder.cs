@@ -451,6 +451,18 @@ public static class NovidadesSeeder
                     "Qualquer foto era aceita no cadastro. Uma foto escura, tremida ou de longe entrava sem aviso — e o problema só aparecia semanas depois, quando o trabalhador tentava assinar e recebia \"rosto reconhecido com baixa confiança\", sem ninguém ligar uma coisa à outra.",
                     "A foto é conferida na hora do cadastro, com o trabalhador ainda na frente da câmera: resolução, um único rosto, rosto grande o suficiente no quadro e a avaliação de qualidade do próprio Azure. Quando recusa, a mensagem diz o que corrigir — iluminação, distância, boné ou óculos escuros — e a tela já mostra essas orientações antes da captura."),
             }),
+        new(
+            Versao: "5.27.0",
+            Titulo: "A biometria confere se é a pessoa certa assinando",
+            DataPublicacao: new DateTime(2026, 9, 24, 0, 0, 0, DateTimeKind.Utc),
+            Itens: new[]
+            {
+                new NovidadeSeedItem(
+                    CategoriaNovidade.Correcao,
+                    "Assinatura por rosto ou digital só vale se for o trabalhador do documento",
+                    "O sistema registrava a assinatura de quem a biometria identificasse, sem conferir de quem era o documento. Se o reconhecimento facial trocasse duas pessoas parecidas, a entrega de um ficava assinada em nome do outro — e o registro parecia válido.",
+                    "Antes de registrar, o sistema confere se a pessoa identificada é a mesma do documento (entrega de EPI, devolução, uniforme, treinamento e ficha de EPI). Quando não é, a assinatura é recusada dizendo de quem era o rosto ou a digital e de quem é o documento. O visto do responsável por sessão logada continua funcionando como antes, porque ali quem assina não é o trabalhador."),
+            }),
     };
 
     public static async Task ExecutarAsync(IServiceProvider services, CancellationToken ct = default)
