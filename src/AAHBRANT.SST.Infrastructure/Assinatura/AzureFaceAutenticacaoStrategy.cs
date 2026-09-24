@@ -40,6 +40,13 @@ public class AzureFaceAutenticacaoStrategy : IAutenticacaoFacialService
 
         using var cliente = CriarCliente();
 
+        // A foto de cadastro é a régua de todo reconhecimento futuro: uma referência ruim derruba a
+        // confiança de todas as tentativas de assinatura depois, e o técnico não tem como adivinhar
+        // que o problema está no cadastro, não na hora de assinar. Por isso a recusa acontece aqui,
+        // com o trabalhador ainda na frente da câmera e podendo repetir na hora (pedido do usuário,
+        // 24/09) — em vez de aceitar qualquer imagem e descobrir o problema semanas depois.
+        await ValidarQualidadeParaCadastroAsync(cliente, fotoJpeg, ct);
+
         var personGroupId = obra.AzureFacePersonGroupId;
         if (personGroupId is null)
         {
@@ -69,6 +76,82 @@ public class AzureFaceAutenticacaoStrategy : IAutenticacaoFacialService
 
         await TreinarEAguardarAsync(cliente, personGroupId, ct);
     }
+
+    // Resolução mínima da imagem inteira. Abaixo disto nem vale gastar chamada no Azure: câmera de
+    // notebook antigo e print de tela caem aqui.
+    private const int LadoMinimoImagemPx = 480;
+
+    // Lado mínimo do rosto detectado dentro da foto. A Microsoft recomenda 200x200 para a foto de
+    // referência; abaixo disso a pessoa está longe demais da câmera, ainda que a imagem seja grande.
+    private const int LadoMinimoRostoPx = 200;
+
+    // Recusa foto ruim no momento do cadastro, com a mensagem dizendo o que corrigir. Valida em três
+    // camadas, da mais barata para a mais cara:
+    //   1. resolução da imagem, sem sair da máquina;
+    //   2. um rosto e apenas um, com tamanho suficiente;
+    //   3. qualityForRecognition do próprio Azure, que é o que ele usa para dizer se a imagem serve
+    //      como referência de reconhecimento.
+    //
+    // O detect aqui vai com returnFaceId=false de propósito: não precisamos do id nesta chamada, e
+    // assim ela não depende da aprovação de Limited Access. O recognitionModel é exigido pelo Azure
+    // para calcular qualityForRecognition e não interfere no modelo do PersonGroup — esta chamada só
+    // mede a foto, quem cadastra de fato é o TentarAdicionarFaceAsync logo depois.
+    private static async Task ValidarQualidadeParaCadastroAsync(HttpClient cliente, byte[] fotoJpeg, CancellationToken ct)
+    {
+        using (var imagem = SixLabors.ImageSharp.Image.Load(fotoJpeg))
+        {
+            if (Math.Min(imagem.Width, imagem.Height) < LadoMinimoImagemPx)
+                throw new InvalidOperationException(
+                    $"A foto está em resolução baixa demais para servir de referência ({imagem.Width}x{imagem.Height}). " +
+                    $"Use uma câmera melhor ou aproxime-se: o menor lado precisa ter pelo menos {LadoMinimoImagemPx} pixels.");
+        }
+
+        // `async` + `await` aqui não é enfeite: sem eles o `using` fecha o ByteArrayContent antes de
+        // a requisição terminar de enviá-lo (mesmo padrão já usado em DetectarRostosAsync).
+        var resposta = await EnviarComRetry429Async(async () =>
+        {
+            using var conteudo = new ByteArrayContent(fotoJpeg);
+            conteudo.Headers.ContentType = new MediaTypeHeaderValue("application/octet-stream");
+            return await cliente.PostAsync(
+                "face/v1.0/detect?returnFaceId=false&detectionModel=detection_01&recognitionModel=recognition_04&returnFaceAttributes=qualityForRecognition",
+                conteudo, ct);
+        }, ct);
+
+        if (!resposta.IsSuccessStatusCode)
+            throw new InvalidOperationException($"Falha ao avaliar a qualidade da foto no Azure Face API: {resposta.StatusCode}");
+
+        var rostos = await resposta.Content.ReadFromJsonAsync<List<RostoComQualidadeResposta>>(cancellationToken: ct)
+            ?? new List<RostoComQualidadeResposta>();
+
+        if (rostos.Count == 0)
+            throw new InvalidOperationException(
+                "Nenhum rosto foi detectado na foto. Enquadre o rosto de frente, com o ambiente bem iluminado e sem nada cobrindo o rosto.");
+
+        if (rostos.Count > 1)
+            throw new InvalidOperationException(
+                "Mais de um rosto na foto. A foto de cadastro precisa ter apenas o trabalhador — peça para os outros saírem do enquadramento.");
+
+        var rosto = rostos[0];
+        var ladoRosto = Math.Min(rosto.FaceRectangle.Width, rosto.FaceRectangle.Height);
+        if (ladoRosto < LadoMinimoRostoPx)
+            throw new InvalidOperationException(
+                $"O rosto ficou pequeno demais na foto ({ladoRosto} pixels). Aproxime o rosto da câmera até ele ocupar boa parte do quadro.");
+
+        // "high" é o único nível que a Microsoft considera adequado para foto de referência.
+        var qualidade = rosto.FaceAttributes?.QualityForRecognition;
+        if (!string.Equals(qualidade, "high", StringComparison.OrdinalIgnoreCase))
+            throw new InvalidOperationException(
+                "A qualidade da foto não está boa o suficiente para reconhecimento" +
+                (qualidade is null ? "" : $" (avaliada como \"{TraduzirQualidade(qualidade)}\")") +
+                ". Melhore a iluminação (luz de frente, sem contraluz), tire boné e óculos escuros, olhe direto para a câmera e evite foto tremida.");
+    }
+
+    private static string TraduzirQualidade(string qualidade) => qualidade.ToLowerInvariant() switch
+    {
+        "low" => "baixa",
+        "medium" => "média",
+        _ => qualidade,
+    };
 
     public async Task<ResultadoIdentificacaoFacial> IdentificarAsync(Guid obraId, byte[] fotoJpeg, CancellationToken ct)
     {
@@ -267,6 +350,34 @@ public class AzureFaceAutenticacaoStrategy : IAutenticacaoFacialService
     {
         [JsonPropertyName("faceId")]
         public string FaceId { get; set; } = "";
+    }
+
+    // Resposta do detect usado só para medir a qualidade da foto no cadastro — ver
+    // ValidarQualidadeParaCadastroAsync.
+    private class RostoComQualidadeResposta
+    {
+        [JsonPropertyName("faceRectangle")]
+        public RetanguloRosto FaceRectangle { get; set; } = new();
+
+        [JsonPropertyName("faceAttributes")]
+        public AtributosRosto? FaceAttributes { get; set; }
+    }
+
+    private class RetanguloRosto
+    {
+        [JsonPropertyName("width")]
+        public int Width { get; set; }
+
+        [JsonPropertyName("height")]
+        public int Height { get; set; }
+    }
+
+    private class AtributosRosto
+    {
+        // "low" | "medium" | "high" — a Microsoft recomenda aceitar apenas "high" no cadastro,
+        // porque é a foto de referência que define a qualidade de todo reconhecimento futuro.
+        [JsonPropertyName("qualityForRecognition")]
+        public string? QualityForRecognition { get; set; }
     }
 
     private class IdentificacaoResposta

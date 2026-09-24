@@ -57,6 +57,24 @@ public class AzureFaceAutenticacaoStrategyTests
         LimiarConfiancaFacialMinimo = 0.60,
     });
 
+    // O cadastro passou a recusar foto ruim antes de tocar no Azure (24/09): a validação começa
+    // pela resolução da imagem, então os testes de cadastro precisam de um JPEG de verdade, com
+    // tamanho suficiente — `new byte[] { 1 }` não é imagem e para na primeira linha da validação.
+    private static byte[] JpegDeCadastro()
+    {
+        using var imagem = new SixLabors.ImageSharp.Image<SixLabors.ImageSharp.PixelFormats.Rgba32>(800, 800);
+        using var memoria = new MemoryStream();
+        imagem.Save(memoria, new SixLabors.ImageSharp.Formats.Jpeg.JpegEncoder());
+        return memoria.ToArray();
+    }
+
+    // Resposta do detect de qualidade usado só no cadastro — rosto único, grande e nítido.
+    private static object RostoBomParaCadastro() => new
+    {
+        faceRectangle = new { width = 400, height = 400, top = 0, left = 0 },
+        faceAttributes = new { qualityForRecognition = "high" },
+    };
+
     private static HttpResponseMessage Json(object corpo, HttpStatusCode status = HttpStatusCode.OK) =>
         new(status) { Content = new StringContent(JsonSerializer.Serialize(corpo)) };
 
@@ -207,7 +225,7 @@ public class AzureFaceAutenticacaoStrategyTests
         var factory = new HttpClientFactoryFalso(_ => throw new InvalidOperationException("não deveria chamar a rede"));
         var servico = new AzureFaceAutenticacaoStrategy(db, factory, Opcoes());
 
-        await Assert.ThrowsAsync<InvalidOperationException>(() => servico.CadastrarAsync(trabalhador.Id, new byte[] { 1 }, default));
+        await Assert.ThrowsAsync<InvalidOperationException>(() => servico.CadastrarAsync(trabalhador.Id, JpegDeCadastro(), default));
     }
 
     [Fact]
@@ -229,6 +247,8 @@ public class AzureFaceAutenticacaoStrategyTests
         var factory = new HttpClientFactoryFalso(req =>
         {
             var caminho = req.RequestUri!.AbsolutePath;
+            if (caminho.EndsWith("/detect"))
+                return Json(new[] { RostoBomParaCadastro() });
             if (req.Method == HttpMethod.Put && caminho.Contains("/persongroups/"))
                 return new HttpResponseMessage(HttpStatusCode.OK);
             if (caminho.EndsWith("/persons"))
@@ -246,7 +266,7 @@ public class AzureFaceAutenticacaoStrategyTests
         });
         var servico = new AzureFaceAutenticacaoStrategy(db, factory, Opcoes());
 
-        await servico.CadastrarAsync(trabalhador.Id, new byte[] { 1, 2, 3 }, default);
+        await servico.CadastrarAsync(trabalhador.Id, JpegDeCadastro(), default);
 
         var obraAtualizada = await db.Obras.FirstAsync(o => o.Id == obra.Id);
         var trabalhadorAtualizado = await db.Trabalhadores.FirstAsync(t => t.Id == trabalhador.Id);
@@ -284,6 +304,8 @@ public class AzureFaceAutenticacaoStrategyTests
         var factory = new HttpClientFactoryFalso(req =>
         {
             var caminho = req.RequestUri!.AbsolutePath;
+            if (caminho.EndsWith("/detect"))
+                return Json(new[] { RostoBomParaCadastro() });
             if (req.Method == HttpMethod.Put && caminho.EndsWith("/persongroups/obra-antiga"))
             {
                 garantiuGrupo = true;
@@ -302,7 +324,7 @@ public class AzureFaceAutenticacaoStrategyTests
         });
         var servico = new AzureFaceAutenticacaoStrategy(db, factory, Opcoes());
 
-        await servico.CadastrarAsync(trabalhador.Id, new byte[] { 1, 2, 3 }, default);
+        await servico.CadastrarAsync(trabalhador.Id, JpegDeCadastro(), default);
 
         Assert.True(garantiuGrupo);
     }
@@ -336,6 +358,8 @@ public class AzureFaceAutenticacaoStrategyTests
         var factory = new HttpClientFactoryFalso(req =>
         {
             var caminho = req.RequestUri!.AbsolutePath;
+            if (caminho.EndsWith("/detect"))
+                return Json(new[] { RostoBomParaCadastro() });
             if (req.Method == HttpMethod.Put && caminho.EndsWith("/persongroups/obra-antiga"))
                 return new HttpResponseMessage(HttpStatusCode.OK);
             if (caminho.EndsWith("/persons"))
@@ -355,7 +379,7 @@ public class AzureFaceAutenticacaoStrategyTests
         });
         var servico = new AzureFaceAutenticacaoStrategy(db, factory, Opcoes());
 
-        await servico.CadastrarAsync(trabalhador.Id, new byte[] { 1, 2, 3 }, default);
+        await servico.CadastrarAsync(trabalhador.Id, JpegDeCadastro(), default);
 
         var trabalhadorAtualizado = await db.Trabalhadores.FirstAsync(t => t.Id == trabalhador.Id);
         Assert.Equal(2, tentativasFace);

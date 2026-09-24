@@ -165,6 +165,17 @@ export function AssinaturaTab({ trabalhadorId }: AssinaturaTabProps) {
             e autenticação, usando o consentimento biométrico LGPD já registrado para este trabalhador.
           </Legenda>
         </div>
+        {/* Esta é a foto de referência: é contra ela que toda assinatura futura vai ser comparada.
+            Foto ruim aqui vira "baixa confiança" na hora de assinar, semanas depois, e ninguém liga
+            uma coisa à outra. Por isso o servidor recusa foto fraca (ver ValidarQualidadeParaCadastro)
+            e a orientação vem antes da captura, não só no erro. */}
+        <div style={{ marginBottom: 12 }}>
+          <Legenda>
+            <strong>Para a foto ser aceita:</strong> rosto de frente ocupando boa parte do quadro, luz vindo
+            da frente (nunca contra janela), sem boné, capacete na testa ou óculos escuros, olhando direto
+            para a câmera e sem tremer. Só o trabalhador no enquadramento.
+          </Legenda>
+        </div>
         {erroFacial && (
           <FeedbackInline tom="erro" aoFechar={() => setErroFacial(null)}>
             {erroFacial}
