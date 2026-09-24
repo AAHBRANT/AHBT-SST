@@ -101,7 +101,7 @@ public class RelatorioFiscalizacaoPdfService : IRelatorioFiscalizacaoPdfService
                         coluna.Item().Text("Nenhuma assinatura registrada.").Italic();
                     else
                         foreach (var assinatura in perfil.Assinaturas)
-                            coluna.Item().Text($"• {assinatura.EntidadeTipo} — {assinatura.AssinadoEm:dd/MM/yyyy HH:mm}, IP {assinatura.IpAddress ?? "não registrado"}").FontSize(9);
+                            coluna.Item().Element(c => DesenharAssinaturaCofre(c, assinatura));
 
                     coluna.Item().PaddingTop(12).Text("Documento gerado para fins de fiscalização, consolidando os registros de SST do trabalhador na data de emissão.").FontSize(9).Italic();
 
@@ -142,4 +142,31 @@ public class RelatorioFiscalizacaoPdfService : IRelatorioFiscalizacaoPdfService
         ResultadoAso.Pendente => "Pendente",
         _ => resultado.ToString(),
     };
+
+    private static void DesenharAssinaturaCofre(IContainer container, AssinaturaPerfilDto assinatura)
+    {
+        container.PaddingBottom(6).BorderBottom(0.5f).BorderColor(Colors.Grey.Lighten2).PaddingBottom(5).Row(row =>
+        {
+            row.RelativeItem().Column(coluna =>
+            {
+                coluna.Spacing(2);
+                coluna.Item().Text(t =>
+                {
+                    t.Span("• ").FontSize(9);
+                    t.Span(assinatura.EntidadeTipo).SemiBold().FontSize(9);
+                    t.Span($" — {HorarioBrasilia.De(assinatura.AssinadoEm):dd/MM/yyyy HH:mm} - Horário de Brasília").FontSize(9);
+                });
+                coluna.Item().Text($"Método: {assinatura.Metodo} · IP {assinatura.IpAddress ?? "não registrado"}").FontSize(8);
+
+                if (!string.IsNullOrWhiteSpace(assinatura.FotoEvidenciaHash))
+                    coluna.Item().Text($"SHA-256 da foto: {assinatura.FotoEvidenciaHash}").FontSize(7).FontColor(Colors.Grey.Darken1);
+            });
+
+            if (assinatura.FotoEvidenciaConteudo is { Length: > 0 })
+            {
+                row.ConstantItem(58).Height(58).Border(0.5f).BorderColor(Colors.Grey.Lighten1).Padding(2)
+                    .Image(assinatura.FotoEvidenciaConteudo).FitArea();
+            }
+        });
+    }
 }

@@ -33,6 +33,9 @@ import {
 } from '../../lib/api';
 import { capturarDigitalLocal, estaAgenteLocalDisponivel, obterDispositivoLocal } from '../../lib/agenteBiometricoLocal';
 import { GradeFotosEvidencia } from '../../components/GradeFotosEvidencia';
+import { SeletorFotoCamera } from '../../components/SeletorFotoCamera';
+import { MutacaoEnfileiradaOfflineError } from '../../lib/offline/syncEngine';
+import { ErroFacialDialog } from '../../components/assinatura/ErroFacialDialog';
 
 const TOTAL_FOTOS_EVIDENCIA_OBRIGATORIAS = 3;
 
@@ -83,7 +86,9 @@ export function SessaoTreinamentoDetalhePage() {
   const [agenteDisponivel, setAgenteDisponivel] = useState<boolean | null>(null);
   const [dispositivoLocal, setDispositivoLocal] = useState<{ dispositivoId: string; segredoDispositivo: string } | null>(null);
   const [lendoDigital, setLendoDigital] = useState(false);
+  const [lendoFacial, setLendoFacial] = useState(false);
   const [mensagemPresenca, setMensagemPresenca] = useState<{ tipo: 'success' | 'info' | 'erro'; texto: string } | null>(null);
+  const [erroFacial, setErroFacial] = useState<string | null>(null);
   const [fotosEvidenciaPreview, setFotosEvidenciaPreview] = useState<Record<string, string>>({});
   const [erro, setErro] = useState<string | null>(null);
   const [processando, setProcessando] = useState(false);
@@ -184,6 +189,35 @@ export function SessaoTreinamentoDetalhePage() {
       setErro(e instanceof Error ? e.message : 'Falha na validação biométrica.');
     } finally {
       setLendoDigital(false);
+    }
+  }
+
+  async function confirmarPresencaFacial(arquivo: File) {
+    if (!id || !detalhe) return;
+    try {
+      setLendoFacial(true);
+      setErro(null);
+      setErroFacial(null);
+      setMensagemPresenca(null);
+
+      const resultado = await api.sessoesTreinamento.registrarPresencaFacial(id, detalhe.sessao.obraId, arquivo);
+      const participante = detalhe.participantes.find((p) => p.trabalhadorId === resultado.trabalhadorId);
+      setMensagemPresenca({
+        tipo: 'success',
+        texto: `Presença de ${participante?.trabalhadorNome ?? 'participante'} confirmada por reconhecimento facial.`,
+      });
+      await carregar();
+    } catch (e) {
+      if (e instanceof MutacaoEnfileiradaOfflineError) {
+        setMensagemPresenca({
+          tipo: 'info',
+          texto: 'Sem internet — a foto foi salva neste dispositivo e será verificada assim que a conexão voltar.',
+        });
+        return;
+      }
+      setErroFacial(e instanceof Error ? e.message : 'Falha na validação facial.');
+    } finally {
+      setLendoFacial(false);
     }
   }
 
@@ -374,18 +408,28 @@ export function SessaoTreinamentoDetalhePage() {
         {!somenteLeitura && (
           <div style={{ marginBottom: 16, display: 'flex', flexDirection: 'column', gap: 8 }}>
             <Legenda>
-              Um leitor só, em fila: cada participante encosta o dedo e o sistema reconhece quem é — não precisa
-              selecionar ninguém antes.
+              Em fila: cada participante usa a digital ou o reconhecimento facial e o sistema reconhece quem é — não
+              precisa selecionar ninguém antes.
             </Legenda>
             <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
               <Button
                 appearance="primary"
                 icon={<Fingerprint24Regular />}
                 onClick={lerProximaDigital}
-                disabled={!agenteDisponivel || !dispositivoLocal || lendoDigital}
+                disabled={!agenteDisponivel || !dispositivoLocal || lendoDigital || lendoFacial}
               >
                 {lendoDigital ? 'Lendo digital...' : 'Ler digital do próximo participante'}
               </Button>
+              <SeletorFotoCamera
+                aoSelecionarArquivo={confirmarPresencaFacial}
+                aoErroValidacao={setErroFacial}
+                rotulo="Facial Azure"
+                desabilitado={lendoDigital || lendoFacial}
+                tamanho="medium"
+                variante="facialAzure"
+                modoCamera="user"
+                exigirCamera
+              />
             </div>
             {mensagemPresenca && (
               <FeedbackInline tom={mensagemPresenca.tipo === 'success' ? 'sucesso' : mensagemPresenca.tipo === 'erro' ? 'erro' : 'info'}>
@@ -428,6 +472,7 @@ export function SessaoTreinamentoDetalhePage() {
           }
         />
       </Card>
+      <ErroFacialDialog mensagem={erroFacial} aoFechar={() => setErroFacial(null)} />
     </DetailPageLayout>
   );
 }

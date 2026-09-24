@@ -13,7 +13,8 @@ const hashEstilo = {
 } as const;
 
 function formatarDataHoraBrasilia(valor: string) {
-  return new Date(valor).toLocaleString('pt-BR', {
+  const valorUtc = /(?:Z|[+-]\d{2}:\d{2})$/i.test(valor) ? valor : `${valor}Z`;
+  return new Date(valorUtc).toLocaleString('pt-BR', {
     timeZone: 'America/Sao_Paulo',
     day: '2-digit',
     month: '2-digit',
@@ -137,7 +138,7 @@ export function ValidarDocumentoPage() {
                         </Text>
                       )}
                       {/* Origem de rede mascarada: atesta que a assinatura tem registro de origem
-                          sem publicar o endereço de quem assinou numa página anônima. */}
+                          sem publicar o endereço completo numa página anônima. */}
                       {s.origemRede && (
                         <Text block style={{ fontSize: 11, color: designTokens.colorNeutralMedium }}>
                           Origem de rede registrada: {s.origemRede}

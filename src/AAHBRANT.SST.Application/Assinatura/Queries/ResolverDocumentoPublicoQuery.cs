@@ -97,7 +97,7 @@ public class ResolverDocumentoPublicoQueryHandler : IRequestHandler<ResolverDocu
         if (consolidado && signatarios.Count == 0)
             signatarios = await CarregarSignatariosAgregadosAsync(documento.EntidadeTipo, documento.EntidadeId, ct);
 
-        var emitidoEm = documento.FinalizadoEm ?? documento.RastreadoEm ?? documento.CreatedAtUtc;
+        var emitidoEm = ComoUtc(documento.FinalizadoEm ?? documento.RastreadoEm ?? documento.CreatedAtUtc);
         return new DocumentoPublicoDto(
             documento.EntidadeTipo,
             emitidoEm,
@@ -108,7 +108,7 @@ public class ResolverDocumentoPublicoQueryHandler : IRequestHandler<ResolverDocu
             consolidado,
             TipoDocumentoAssinatura.OrigemAssinaturas(documento.EntidadeTipo),
             documento.HashPdf,
-            documento.ArquivoAtualizadoEm);
+            documento.ArquivoAtualizadoEm.HasValue ? ComoUtc(documento.ArquivoAtualizadoEm.Value) : null);
     }
 
     private async Task<List<DocumentoPublicoSignatarioDto>> CarregarSignatariosAsync(
@@ -136,10 +136,15 @@ public class ResolverDocumentoPublicoQueryHandler : IRequestHandler<ResolverDocu
                 string.IsNullOrWhiteSpace(x.Cpf) ? null : CpfMascarador.Mascarar(x.Cpf),
                 x.FuncaoNome,
                 x.MetodoAutenticacao,
-                x.AssinadoEm,
+                ComoUtc(x.AssinadoEm),
                 IpMascarador.Mascarar(x.IpAddress)))
             .ToList();
     }
+
+    // SQL Server devolve DateTime sem Kind. Esses campos são gravados em UTC no domínio; especificar
+    // aqui força a serialização JSON com "Z" e evita o navegador reinterpretar como horário local.
+    private static DateTime ComoUtc(DateTime valor) =>
+        valor.Kind == DateTimeKind.Utc ? valor : DateTime.SpecifyKind(valor, DateTimeKind.Utc);
 
     // Resolve os registros individuais que um documento consolidado agrega e devolve as assinaturas
     // deles. IgnoreQueryFilters em todo lado pelo mesmo motivo do Join acima: rota anônima, sem

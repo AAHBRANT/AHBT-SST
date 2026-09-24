@@ -18,6 +18,7 @@ import { SeletorFotoCamera } from '../SeletorFotoCamera';
 import { formatarAssinaturaDigital } from './assinaturaDigital';
 import { MutacaoEnfileiradaOfflineError } from '../../lib/offline/syncEngine';
 import { usePageStyles } from '../../pages/pageStyles';
+import { ErroFacialDialog } from './ErroFacialDialog';
 
 function extrairMensagemErro(e: unknown, fallback: string): string {
   if (!(e instanceof Error)) return fallback;
@@ -54,6 +55,7 @@ export function AssinaturaQuiosque({ entidadeTipo, entidadeId, obraId }: Assinat
   const [documento, setDocumento] = useState<DocumentoAssinatura | null>(null);
   const [processando, setProcessando] = useState(false);
   const [erro, setErro] = useState<string | null>(null);
+  const [erroFacial, setErroFacial] = useState<string | null>(null);
   const [ultimoAssinante, setUltimoAssinante] = useState<string | null>(null);
   const [agenteLocalDisponivel, setAgenteLocalDisponivel] = useState(false);
   const [dispositivoLocal, setDispositivoLocal] = useState<{ dispositivoId: string; segredoDispositivo: string } | null>(null);
@@ -118,6 +120,7 @@ export function AssinaturaQuiosque({ entidadeTipo, entidadeId, obraId }: Assinat
     if (!documento) return;
     try {
       setErro(null);
+      setErroFacial(null);
       setPendenteFacial(false);
       setUltimoAssinante(null);
       const signatario = await api.assinatura.autenticarFacial(documento.id, obraId, arquivo);
@@ -129,7 +132,7 @@ export function AssinaturaQuiosque({ entidadeTipo, entidadeId, obraId }: Assinat
         setPendenteFacial(true);
         return;
       }
-      setErro(extrairMensagemErro(e, 'Falha na autenticação facial.'));
+      setErroFacial(extrairMensagemErro(e, 'Falha na autenticação facial.'));
     }
   }
 
@@ -184,7 +187,7 @@ export function AssinaturaQuiosque({ entidadeTipo, entidadeId, obraId }: Assinat
       {!assinaturaUnicaConcluida && (
         <div className={estilos.card} style={{ marginBottom: 16, maxWidth: 480 }}>
           <Text weight="semibold" style={{ display: 'block', marginBottom: 12 }}>
-            Reconhecimento Facial (Azure)
+            Facial Azure
           </Text>
           {pendenteFacial && (
             <Text style={{ display: 'block', marginBottom: 8 }}>
@@ -193,9 +196,11 @@ export function AssinaturaQuiosque({ entidadeTipo, entidadeId, obraId }: Assinat
           )}
           <SeletorFotoCamera
             aoSelecionarArquivo={assinarComFacial}
-            aoErroValidacao={setErro}
-            rotulo="Assinar com reconhecimento facial"
+            aoErroValidacao={setErroFacial}
+            rotulo="Facial Azure"
             desabilitado={!documento}
+            tamanho="medium"
+            variante="facialAzure"
             modoCamera="user"
             exigirCamera
           />
@@ -227,6 +232,7 @@ export function AssinaturaQuiosque({ entidadeTipo, entidadeId, obraId }: Assinat
           </TableBody>
         </Table>
       </div>
+      <ErroFacialDialog mensagem={erroFacial} aoFechar={() => setErroFacial(null)} />
     </div>
   );
 }

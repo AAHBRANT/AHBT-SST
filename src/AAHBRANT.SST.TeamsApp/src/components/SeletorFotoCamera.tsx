@@ -9,6 +9,7 @@ interface SeletorFotoCameraProps extends UseCapturaFotoOptions {
   tamanho?: 'small' | 'medium';
   tiposAceitos?: string;
   apenasIcone?: boolean;
+  variante?: 'padrao' | 'facialAzure';
 }
 
 // Pedido do usuário (22/09): todo botão que abre a câmera (não os de só anexar arquivo/PDF, que têm
@@ -19,6 +20,8 @@ const useEstilosBotaoCamera = makeStyles({
     backgroundColor: '#16a34a',
     color: '#ffffff',
     fontWeight: 600,
+    minWidth: '128px',
+    whiteSpace: 'nowrap',
     ':hover': {
       backgroundColor: '#15803d',
       color: '#ffffff',
@@ -30,6 +33,30 @@ const useEstilosBotaoCamera = makeStyles({
     ':disabled': {
       backgroundColor: 'var(--colorNeutralBackgroundDisabled)',
       color: 'var(--colorNeutralForegroundDisabled)',
+    },
+  },
+  facialAzure: {
+    minHeight: '52px',
+    minWidth: '148px',
+    border: '1px solid transparent',
+    borderRadius: '5px',
+    backgroundColor: '#0b5c32',
+    color: '#ffffff',
+    fontWeight: 800,
+    boxShadow: 'inset 0 -3px 0 rgba(0, 0, 0, .14)',
+    whiteSpace: 'nowrap',
+    ':hover': {
+      backgroundColor: '#084827',
+      color: '#ffffff',
+    },
+    ':hover:active': {
+      backgroundColor: '#06381f',
+      color: '#ffffff',
+    },
+    ':disabled': {
+      backgroundColor: 'var(--colorNeutralBackgroundDisabled)',
+      color: 'var(--colorNeutralForegroundDisabled)',
+      boxShadow: 'none',
     },
   },
 });
@@ -54,10 +81,16 @@ export function SeletorFotoCamera({
   modoCamera = 'environment',
   permitirCamera = true,
   exigirCamera = false,
+  variante = 'padrao',
 }: SeletorFotoCameraProps) {
   const captura = useCapturaFoto({ aoSelecionarArquivo, aoErroValidacao, tamanhoMaximoMb, modoCamera, permitirCamera, exigirCamera });
   const { inputRef, processando, abrirCamera, onInputChange } = captura;
   const estilosBotaoCamera = useEstilosBotaoCamera();
+  const classeBotao = permitirCamera
+    ? variante === 'facialAzure'
+      ? estilosBotaoCamera.facialAzure
+      : estilosBotaoCamera.botao
+    : undefined;
 
   return (
     <>
@@ -71,7 +104,7 @@ export function SeletorFotoCamera({
       />
       <Button
         appearance={permitirCamera ? 'primary' : 'subtle'}
-        className={permitirCamera ? estilosBotaoCamera.botao : undefined}
+        className={classeBotao}
         size={tamanho}
         icon={processando ? <Spinner size="tiny" /> : <Camera24Regular />}
         onClick={permitirCamera ? abrirCamera : () => inputRef.current?.click()}

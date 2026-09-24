@@ -6,7 +6,12 @@ namespace AAHBRANT.SST.Application.Assinatura.Commands;
 
 // Diferente de RegistrarAssinaturaBiometriaLocalCommand: não recebe TrabalhadorId — quem está na
 // foto é descoberto pelo Azure (Identify), não resolvido antes pelo cliente.
-public record RegistrarAssinaturaFacialCommand(Guid DocumentoAssinaturaId, Guid ObraId, byte[] FotoJpeg, string? IpAddress = null) : IRequest<DocumentoSignatarioDto>;
+public record RegistrarAssinaturaFacialCommand(
+    Guid DocumentoAssinaturaId,
+    Guid ObraId,
+    byte[] FotoJpeg,
+    string? FotoContentType = null,
+    string? IpAddress = null) : IRequest<DocumentoSignatarioDto>;
 
 public class RegistrarAssinaturaFacialCommandValidator : AbstractValidator<RegistrarAssinaturaFacialCommand>
 {
@@ -53,6 +58,12 @@ public class RegistrarAssinaturaFacialCommandHandler : IRequestHandler<Registrar
             throw new RejeicaoFacialException(identificacao.Motivo!.Value, mensagem);
         }
 
-        return await _registrador.RegistrarAsync(request.DocumentoAssinaturaId, identificacao.Resultado!, request.IpAddress, ct);
+        return await _registrador.RegistrarAsync(
+            request.DocumentoAssinaturaId,
+            identificacao.Resultado!,
+            request.IpAddress,
+            ct,
+            request.FotoJpeg,
+            request.FotoContentType);
     }
 }

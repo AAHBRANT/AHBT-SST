@@ -1,6 +1,8 @@
 using System.Globalization;
+using System.Security.Cryptography;
 using System.Text;
 using AAHBRANT.SST.Application.Assinatura.Queries;
+using AAHBRANT.SST.Application.Common;
 using AAHBRANT.SST.Application.Common.Interfaces;
 using AAHBRANT.SST.Domain.Entidades;
 using AAHBRANT.SST.Domain.Enums;
@@ -19,7 +21,13 @@ public record ResultadoAutenticacaoAssinatura(Guid TrabalhadorId, MetodoAutentic
 // acontece depois de autenticado é sempre o mesmo.
 public interface IRegistradorAssinaturaService
 {
-    Task<DocumentoSignatarioDto> RegistrarAsync(Guid documentoAssinaturaId, ResultadoAutenticacaoAssinatura resultado, string? ipAddress, CancellationToken ct);
+    Task<DocumentoSignatarioDto> RegistrarAsync(
+        Guid documentoAssinaturaId,
+        ResultadoAutenticacaoAssinatura resultado,
+        string? ipAddress,
+        CancellationToken ct,
+        byte[]? fotoEvidenciaConteudo = null,
+        string? fotoEvidenciaContentType = null);
 }
 
 public class RegistradorAssinaturaService : IRegistradorAssinaturaService
@@ -33,7 +41,13 @@ public class RegistradorAssinaturaService : IRegistradorAssinaturaService
         _auditoria = auditoria;
     }
 
-    public async Task<DocumentoSignatarioDto> RegistrarAsync(Guid documentoAssinaturaId, ResultadoAutenticacaoAssinatura resultado, string? ipAddress, CancellationToken ct)
+    public async Task<DocumentoSignatarioDto> RegistrarAsync(
+        Guid documentoAssinaturaId,
+        ResultadoAutenticacaoAssinatura resultado,
+        string? ipAddress,
+        CancellationToken ct,
+        byte[]? fotoEvidenciaConteudo = null,
+        string? fotoEvidenciaContentType = null)
     {
         var documento = await _db.DocumentosAssinatura.FirstOrDefaultAsync(d => d.Id == documentoAssinaturaId, ct);
         if (documento is null)
@@ -41,14 +55,17 @@ public class RegistradorAssinaturaService : IRegistradorAssinaturaService
         if (documento.Status != StatusDocumentoAssinatura.EmAndamento)
             throw new InvalidOperationException("Este documento não está mais aceitando assinaturas.");
 
+        var trabalhador = await _db.Trabalhadores.Include(t => t.Funcao).FirstAsync(t => t.Id == resultado.TrabalhadorId, ct);
+        var permiteDuplaAssinaturaTecnicoEpi = documento.EntidadeTipo == "EntregaEpi"
+            && FuncaoSstClassifier.EhTecnicoSeguranca(trabalhador.Funcao?.Nome);
+        var novoEhAssinaturaDeResponsavel = EhAssinaturaDeResponsavel(resultado.Metodo);
         var jaAssinou = await _db.DocumentoSignatarios.AnyAsync(
             s => s.DocumentoAssinaturaId == documento.Id
                 && s.TrabalhadorId == resultado.TrabalhadorId
-                && MesmoPapelDeAssinatura(s.MetodoAutenticacao, resultado.Metodo), ct);
+                && (!permiteDuplaAssinaturaTecnicoEpi
+                    || (s.MetodoAutenticacao == MetodoAutenticacaoAssinatura.SessaoLogada) == novoEhAssinaturaDeResponsavel), ct);
         if (jaAssinou)
             throw new InvalidOperationException("Este trabalhador já assinou este documento.");
-
-        var trabalhador = await _db.Trabalhadores.Include(t => t.Funcao).FirstAsync(t => t.Id == resultado.TrabalhadorId, ct);
 
         await GarantirQueEhOSignatarioEsperadoAsync(documento, resultado, trabalhador, ct);
 
@@ -75,6 +92,14 @@ public class RegistradorAssinaturaService : IRegistradorAssinaturaService
             AssinadoEm = DateTime.UtcNow,
             IpAddress = ipAddress,
         };
+        if (resultado.Metodo == MetodoAutenticacaoAssinatura.ReconhecimentoFacial && fotoEvidenciaConteudo is { Length: > 0 })
+        {
+            signatario.FotoEvidenciaConteudo = fotoEvidenciaConteudo;
+            signatario.FotoEvidenciaContentType = string.IsNullOrWhiteSpace(fotoEvidenciaContentType)
+                ? "image/jpeg"
+                : fotoEvidenciaContentType;
+            signatario.FotoEvidenciaHash = Convert.ToHexString(SHA256.HashData(fotoEvidenciaConteudo));
+        }
         _db.DocumentoSignatarios.Add(signatario);
 
         await _auditoria.RegistrarAsync(

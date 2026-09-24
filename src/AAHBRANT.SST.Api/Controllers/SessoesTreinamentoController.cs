@@ -50,6 +50,25 @@ public class SessoesTreinamentoController : ControllerBase
     }
 
     [Authorize(Policy = "treinamento:criar")]
+    [HttpPost("{id:guid}/presenca/facial")]
+    [RequestSizeLimit(6_000_000)]
+    public async Task<IActionResult> RegistrarPresencaFacial(Guid id, [FromForm] RegistrarPresencaFacialSessaoTreinamentoRequestBody body, CancellationToken ct)
+    {
+        await using var stream = new MemoryStream();
+        await body.Foto.CopyToAsync(stream, ct);
+
+        try
+        {
+            var trabalhadorId = await _mediator.Send(new RegistrarPresencaFacialSessaoTreinamentoCommand(id, body.ObraId, stream.ToArray()), ct);
+            return Ok(new { trabalhadorId });
+        }
+        catch (AAHBRANT.SST.Application.Assinatura.Commands.RejeicaoFacialException ex)
+        {
+            return BadRequest(new { erro = ex.Message, motivo = ex.Motivo.ToString() });
+        }
+    }
+
+    [Authorize(Policy = "treinamento:criar")]
     [HttpPost("{id:guid}/fotos-evidencia")]
     [RequestSizeLimit(6_000_000)]
     public async Task<IActionResult> AnexarFotoEvidencia(Guid id, [FromForm] AnexarFotoEvidenciaSessaoTreinamentoRequestBody body, CancellationToken ct)
@@ -105,6 +124,12 @@ public class RegistrarPresencaSessaoTreinamentoRequestBody
     public Guid DispositivoId { get; set; }
     public string SegredoDispositivo { get; set; } = string.Empty;
     public double Score { get; set; }
+}
+
+public class RegistrarPresencaFacialSessaoTreinamentoRequestBody
+{
+    public Guid ObraId { get; set; }
+    public IFormFile Foto { get; set; } = null!;
 }
 
 public class AnexarFotoEvidenciaSessaoTreinamentoRequestBody

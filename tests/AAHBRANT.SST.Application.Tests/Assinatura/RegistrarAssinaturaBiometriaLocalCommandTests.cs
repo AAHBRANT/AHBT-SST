@@ -24,7 +24,13 @@ public class RegistradorAssinaturaFalso : IRegistradorAssinaturaService
     public Guid? DocumentoIdRecebido { get; private set; }
     public string? IpAddressRecebido { get; private set; }
 
-    public Task<DocumentoSignatarioDto> RegistrarAsync(Guid documentoAssinaturaId, ResultadoAutenticacaoAssinatura resultado, string? ipAddress, CancellationToken ct)
+    public Task<DocumentoSignatarioDto> RegistrarAsync(
+        Guid documentoAssinaturaId,
+        ResultadoAutenticacaoAssinatura resultado,
+        string? ipAddress,
+        CancellationToken ct,
+        byte[]? fotoEvidenciaConteudo = null,
+        string? fotoEvidenciaContentType = null)
     {
         DocumentoIdRecebido = documentoAssinaturaId;
         IpAddressRecebido = ipAddress;

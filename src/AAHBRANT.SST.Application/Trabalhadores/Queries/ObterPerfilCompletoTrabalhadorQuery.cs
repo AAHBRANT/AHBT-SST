@@ -5,6 +5,7 @@ using AAHBRANT.SST.Application.Treinamentos;
 using AAHBRANT.SST.Domain.Enums;
 using MediatR;
 using Microsoft.EntityFrameworkCore;
+using System.Text.Json.Serialization;
 
 namespace AAHBRANT.SST.Application.Trabalhadores.Queries;
 
@@ -80,13 +81,18 @@ public record OcorrenciaDto(
     StatusAcidente Status);
 
 public record AssinaturaPerfilDto(
+    Guid SignatarioId,
     Guid DocumentoAssinaturaId,
     string EntidadeTipo,
     Guid EntidadeId,
     MetodoAutenticacaoAssinatura Metodo,
     DateTime AssinadoEm,
     string? IpAddress,
-    bool TemPdf);
+    bool TemPdf,
+    bool TemFotoEvidencia,
+    string? FotoEvidenciaHash,
+    [property: JsonIgnore] byte[]? FotoEvidenciaConteudo,
+    [property: JsonIgnore] string? FotoEvidenciaContentType);
 
 public record ObterPerfilCompletoTrabalhadorQuery(Guid Id) : IRequest<PerfilCompletoTrabalhadorDto?>;
 
@@ -293,13 +299,18 @@ public class ObterPerfilCompletoTrabalhadorQueryHandler : IRequestHandler<ObterP
             .Where(s => s.TrabalhadorId == request.Id)
             .OrderByDescending(s => s.AssinadoEm)
             .Select(s => new AssinaturaPerfilDto(
+                s.Id,
                 s.DocumentoAssinaturaId,
                 s.DocumentoAssinatura!.EntidadeTipo,
                 s.DocumentoAssinatura.EntidadeId,
                 s.MetodoAutenticacao,
                 s.AssinadoEm,
                 s.IpAddress,
-                s.DocumentoAssinatura.PdfConteudo != null))
+                s.DocumentoAssinatura.PdfConteudo != null,
+                s.FotoEvidenciaConteudo != null,
+                s.FotoEvidenciaHash,
+                s.FotoEvidenciaConteudo,
+                s.FotoEvidenciaContentType))
             .ToListAsync(ct);
 
         return new PerfilCompletoTrabalhadorDto(

@@ -26,14 +26,18 @@ public class DocumentoSignatarioConfiguracao : IEntityTypeConfiguration<Document
 {
     public void Configure(EntityTypeBuilder<DocumentoSignatario> builder)
     {
+        builder.Property(s => s.FotoEvidenciaContentType).HasMaxLength(80);
+        builder.Property(s => s.FotoEvidenciaHash).HasMaxLength(64);
+
         builder.HasOne(s => s.DocumentoAssinatura).WithMany(d => d.Signatarios)
             .HasForeignKey(s => s.DocumentoAssinaturaId).OnDelete(DeleteBehavior.Cascade);
         builder.HasOne(s => s.Trabalhador).WithMany()
             .HasForeignKey(s => s.TrabalhadorId).OnDelete(DeleteBehavior.Restrict);
 
-        // Idempotência (mesmo padrão de RegistrarParticipanteCommand): um trabalhador não pode
-        // assinar o mesmo documento duas vezes.
-        builder.HasIndex(s => new { s.DocumentoAssinaturaId, s.TrabalhadorId }).IsUnique();
+        // Idempotência por papel: em EntregaEpi um Técnico de Segurança pode assinar como
+        // recebedor e como responsável, desde que use métodos distintos. A regra de aplicação
+        // bloqueia a repetição do mesmo método; o índice precisa refletir esse contrato.
+        builder.HasIndex(s => new { s.DocumentoAssinaturaId, s.TrabalhadorId, s.MetodoAutenticacao }).IsUnique();
 
         builder.HasQueryFilter(s => s.Ativo);
     }

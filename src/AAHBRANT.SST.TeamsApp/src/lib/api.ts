@@ -2953,6 +2953,7 @@ export interface OcorrenciaPerfil {
 }
 
 export interface AssinaturaPerfil {
+  signatarioId: string;
   documentoAssinaturaId: string;
   entidadeTipo: string;
   entidadeId: string;
@@ -2960,6 +2961,8 @@ export interface AssinaturaPerfil {
   assinadoEm: string;
   ipAddress?: string | null;
   temPdf: boolean;
+  temFotoEvidencia: boolean;
+  fotoEvidenciaHash?: string | null;
 }
 
 export interface PerfilCompletoTrabalhador {
@@ -3057,6 +3060,28 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
     headers: {
       'Content-Type': 'application/json',
       ...authHeaders,
+      ...init?.headers,
+    },
+  });
+
+  if (!response.ok) {
+    const corpo = await response.text().catch(() => '');
+    throw new Error(extrairMensagemErro(corpo, response.status, response.statusText));
+  }
+
+  if (response.status === 204) {
+    return undefined as T;
+  }
+
+  const texto = await response.text();
+  return parsearJsonSeguro<T>(texto, response);
+}
+
+async function requestPublico<T>(path: string, init?: RequestInit): Promise<T> {
+  const response = await fetch(`${API_BASE_URL}${path}`, {
+    ...init,
+    headers: {
+      'Content-Type': 'application/json',
       ...init?.headers,
     },
   });
@@ -3842,6 +3867,17 @@ export const api = {
         method: 'POST',
         body: JSON.stringify({ trabalhadorId, dispositivoId, segredoDispositivo, score }),
       }),
+    registrarPresencaFacial: async (sessaoId: string, obraId: string, foto: File) => {
+      const formData = new FormData();
+      formData.append('obraId', obraId);
+      formData.append('foto', foto);
+      const authHeaders = await montarHeadersAuth();
+      return syncMutateMultipart<{ trabalhadorId: string }>(
+        `/api/sessoestreinamento/${sessaoId}/presenca/facial`,
+        formData,
+        authHeaders,
+      );
+    },
     encerrar: (id: string) => request<void>(`/api/sessoestreinamento/${id}/encerrar`, { method: 'POST' }),
     // Slot fixo por ordem (04/09) — reanexar no mesmo quadro substitui a foto existente.
     anexarFotoEvidencia: async (sessaoId: string, ordem: number, foto: File) => {
@@ -4214,7 +4250,7 @@ export const api = {
     },
   },
   validacaoPublica: {
-    resolver: (token: string) => request<DocumentoPublico>(`/sst/validar/${encodeURIComponent(token)}`),
+    resolver: (token: string) => requestPublico<DocumentoPublico>(`/sst/validar/${encodeURIComponent(token)}`),
   },
   aprs: {
     listar: (atividadeId?: string) => request<Apr[]>(`/api/aprs${atividadeId ? `?atividadeId=${atividadeId}` : ''}`),
@@ -4672,6 +4708,14 @@ export const api = {
     },
     baixarPdf: async (id: string) => {
       const response = await fetch(`${API_BASE_URL}/api/documentos/${id}/pdf`, { headers: await montarHeadersAuth() });
+      if (!response.ok) {
+        const corpo = await response.text().catch(() => '');
+        throw new Error(extrairMensagemErro(corpo, response.status, response.statusText));
+      }
+      return response.blob();
+    },
+    baixarFotoEvidencia: async (signatarioId: string) => {
+      const response = await fetch(`${API_BASE_URL}/api/documentos/signatarios/${signatarioId}/foto`, { headers: await montarHeadersAuth() });
       if (!response.ok) {
         const corpo = await response.text().catch(() => '');
         throw new Error(extrairMensagemErro(corpo, response.status, response.statusText));

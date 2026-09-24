@@ -91,7 +91,7 @@ public class AssinaturaController : ControllerBase
         try
         {
             var resultado = await _mediator.Send(
-                new RegistrarAssinaturaFacialCommand(id, body.ObraId, stream.ToArray(), ObterIpCliente()), ct);
+                new RegistrarAssinaturaFacialCommand(id, body.ObraId, stream.ToArray(), body.Foto.ContentType, ObterIpCliente()), ct);
             return Ok(resultado);
         }
         catch (RejeicaoFacialException ex)
@@ -126,6 +126,14 @@ public class AssinaturaController : ControllerBase
     {
         var verificacao = await _mediator.Send(new VerificarIntegridadeQuery(id), ct);
         return Ok(verificacao);
+    }
+
+    [Authorize(Policy = "assinatura:ver")]
+    [HttpGet("signatarios/{signatarioId:guid}/foto")]
+    public async Task<IActionResult> ObterFotoEvidencia(Guid signatarioId, CancellationToken ct)
+    {
+        var foto = await _mediator.Send(new ObterFotoEvidenciaAssinaturaQuery(signatarioId), ct);
+        return foto is null ? NotFound() : File(foto.Conteudo, foto.ContentType, foto.NomeArquivo);
     }
 
     [Authorize(Policy = "assinatura:ver")]

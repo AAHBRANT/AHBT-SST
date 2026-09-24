@@ -4,6 +4,7 @@ using AAHBRANT.SST.Infrastructure.Persistencia;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 
 #nullable disable
@@ -11,9 +12,11 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace AAHBRANT.SST.Infrastructure.Persistencia.Migrations
 {
     [DbContext(typeof(SstDbContext))]
-    partial class SstDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260924174139_PermitirAssinaturasTecnicoPorMetodo")]
+    partial class PermitirAssinaturasTecnicoPorMetodo
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -2532,17 +2535,6 @@ namespace AAHBRANT.SST.Infrastructure.Persistencia.Migrations
 
                     b.Property<Guid>("DocumentoAssinaturaId")
                         .HasColumnType("uniqueidentifier");
-
-                    b.Property<string>("FotoEvidenciaContentType")
-                        .HasMaxLength(80)
-                        .HasColumnType("nvarchar(80)");
-
-                    b.Property<byte[]>("FotoEvidenciaConteudo")
-                        .HasColumnType("varbinary(max)");
-
-                    b.Property<string>("FotoEvidenciaHash")
-                        .HasMaxLength(64)
-                        .HasColumnType("nvarchar(64)");
 
                     b.Property<string>("IpAddress")
                         .HasColumnType("nvarchar(max)");

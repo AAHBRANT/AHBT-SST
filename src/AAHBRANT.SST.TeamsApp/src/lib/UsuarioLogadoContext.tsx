@@ -10,6 +10,10 @@ interface UsuarioLogadoContextValue {
 
 const UsuarioLogadoContext = createContext<UsuarioLogadoContextValue>({ usuario: null, carregando: true });
 
+function rotaAtualEhPublica(): boolean {
+  return window.location.hash.startsWith('#/validar/') || window.location.hash.startsWith('#/p/');
+}
+
 // Quem está logado e o que essa pessoa pode fazer (23/09). Antes disto o frontend não tinha essa
 // informação em lugar nenhum — toda checagem de permissão vivia só no servidor, e a tela mostrava
 // as mesmas ações para todo mundo. Carregado uma vez, no topo da árvore: é uma chamada por sessão,
@@ -22,6 +26,12 @@ export function UsuarioLogadoProvider({ children }: { children: ReactNode }) {
   const [carregando, setCarregando] = useState(true);
 
   useEffect(() => {
+    if (rotaAtualEhPublica()) {
+      setUsuario(null);
+      setCarregando(false);
+      return;
+    }
+
     let cancelado = false;
     api.usuarios
       .eu()

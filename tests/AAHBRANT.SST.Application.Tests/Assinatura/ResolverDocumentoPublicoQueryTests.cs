@@ -3,6 +3,7 @@ using AAHBRANT.SST.Application.Assinatura.Queries;
 using AAHBRANT.SST.Application.Tests.TestSupport;
 using AAHBRANT.SST.Domain.Entidades;
 using AAHBRANT.SST.Domain.Enums;
+using System.Text.Json;
 
 namespace AAHBRANT.SST.Application.Tests.Assinatura;
 
@@ -29,6 +30,7 @@ public class ResolverDocumentoPublicoQueryTests
 
         Assert.NotNull(resultado);
         Assert.Equal(rastreadoEm, resultado!.EmitidoEm);
+        Assert.Equal(DateTimeKind.Utc, resultado.EmitidoEm.Kind);
         Assert.False(resultado.Assinado);
         Assert.Empty(resultado.Signatarios);
     }
@@ -67,9 +69,13 @@ public class ResolverDocumentoPublicoQueryTests
 
         Assert.NotNull(resultado);
         Assert.Equal(finalizadoEm, resultado!.EmitidoEm);
+        Assert.Equal(DateTimeKind.Utc, resultado.EmitidoEm.Kind);
+        Assert.Contains("\"emitidoEm\":\"2026-09-03T08:00:00Z\"", JsonSerializer.Serialize(resultado, JsonOptions));
         Assert.True(resultado.Assinado);
         Assert.Single(resultado.Signatarios);
         Assert.Equal("Maria Teste", resultado.Signatarios[0].TrabalhadorNome);
+        Assert.Equal(DateTimeKind.Utc, resultado.Signatarios[0].AssinadoEm.Kind);
+        Assert.Contains("\"assinadoEm\":\"2026-09-03T08:00:00Z\"", JsonSerializer.Serialize(resultado, JsonOptions));
         Assert.Equal("***.***.***-44", resultado.Signatarios[0].TrabalhadorCpfMascarado);
         Assert.Equal("Servente de Obras", resultado.Signatarios[0].TrabalhadorFuncaoNome);
         Assert.Equal("187.19.184.xxx", resultado.Signatarios[0].OrigemRede);
@@ -191,10 +197,13 @@ public class ResolverDocumentoPublicoQueryTests
         Assert.NotNull(resultado);
         Assert.Equal(hashEsperado, resultado.HashPdf);
         Assert.NotNull(resultado.ArquivoAtualizadoEm);
+        Assert.Equal(DateTimeKind.Utc, resultado.ArquivoAtualizadoEm.Value.Kind);
         // O hash das assinaturas continua existindo e é outro valor — são provas distintas.
         Assert.Equal("HASH-SIGNATARIOS", resultado.ConteudoHash);
         Assert.NotEqual(resultado.ConteudoHash, resultado.HashPdf);
     }
+
+    private static readonly JsonSerializerOptions JsonOptions = new(JsonSerializerDefaults.Web);
 
     [Fact]
     public async Task Handle_DocumentoSemArquivoRegistrado_NaoExpoeHashDoArquivo()

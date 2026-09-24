@@ -51,27 +51,35 @@ public class EntregaEpiPdfService : IFichaEpiPdfService
         {
             coluna.Item().Text("1. Identificação do Trabalhador").FontSize(11).Bold().FontColor(CorMarca);
 
-            coluna.Item().Row(linha =>
+            coluna.Item().PaddingTop(2).Table(tabela =>
             {
-                linha.RelativeItem(2).Text(t => { t.Span("Nome completo: ").SemiBold(); t.Span(modelo.TrabalhadorNome); });
-                linha.RelativeItem().Text(t => { t.Span("CPF: ").SemiBold(); t.Span(modelo.TrabalhadorCpfMascarado); });
+                tabela.ColumnsDefinition(columns =>
+                {
+                    columns.RelativeColumn(1.5f);
+                    columns.RelativeColumn(1.5f);
+                    columns.RelativeColumn(1.5f);
+                    columns.RelativeColumn(1.5f);
+                });
+
+                CelulaIdentificacao(tabela, "Nome completo:", modelo.TrabalhadorNome, colSpan: 3);
+                CelulaIdentificacao(tabela, "CPF:", modelo.TrabalhadorCpfMascarado);
+                CelulaIdentificacao(tabela, "Matrícula:", modelo.TrabalhadorMatricula);
+                CelulaIdentificacao(tabela, "Função:", modelo.TrabalhadorFuncaoNome, colSpan: 2);
+                CelulaIdentificacao(tabela, "Turno:", modelo.TrabalhadorTurno ?? "não informado");
+                CelulaIdentificacao(tabela, "Data de admissão:", modelo.TrabalhadorDataAdmissao.ToString("dd/MM/yyyy"));
+                CelulaIdentificacao(tabela, "Obra / Frente de trabalho:", modelo.ObraNome, colSpan: 3);
+                CelulaIdentificacao(tabela, "Empresa contratante:", modelo.ObraCliente ?? "não informado", colSpan: 2);
+                CelulaIdentificacao(tabela, "CNPJ da contratada:", modelo.ObraCnpj ?? "não informado", colSpan: 2);
             });
-            coluna.Item().Row(linha =>
-            {
-                linha.RelativeItem().Text(t => { t.Span("Matrícula: ").SemiBold(); t.Span(modelo.TrabalhadorMatricula); });
-                linha.RelativeItem().Text(t => { t.Span("Função: ").SemiBold(); t.Span(modelo.TrabalhadorFuncaoNome); });
-                linha.RelativeItem().Text(t => { t.Span("Turno: ").SemiBold(); t.Span(modelo.TrabalhadorTurno ?? "não informado"); });
-            });
-            coluna.Item().Row(linha =>
-            {
-                linha.RelativeItem().Text(t => { t.Span("Data de admissão: ").SemiBold(); t.Span(modelo.TrabalhadorDataAdmissao.ToString("dd/MM/yyyy")); });
-                linha.RelativeItem(2).Text(t => { t.Span("Obra / Frente de trabalho: ").SemiBold(); t.Span(modelo.ObraNome); });
-            });
-            coluna.Item().Row(linha =>
-            {
-                linha.RelativeItem(2).Text(t => { t.Span("Empresa contratante: ").SemiBold(); t.Span(modelo.ObraCliente ?? "não informado"); });
-                linha.RelativeItem().Text(t => { t.Span("CNPJ da contratada: ").SemiBold(); t.Span(modelo.ObraCnpj ?? "não informado"); });
-            });
+        });
+    }
+
+    private static void CelulaIdentificacao(TableDescriptor tabela, string rotulo, string valor, uint colSpan = 1)
+    {
+        tabela.Cell().ColumnSpan(colSpan).PaddingRight(8).PaddingBottom(2).Text(t =>
+        {
+            t.Span(rotulo + " ").SemiBold();
+            t.Span(valor);
         });
     }
 

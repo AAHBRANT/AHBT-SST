@@ -4,6 +4,7 @@ import { CheckmarkCircle24Regular, Fingerprint24Regular } from '@fluentui/react-
 import { api } from '../../lib/api';
 import { capturarDigitalBrutaLocal } from '../../lib/agenteBiometricoLocal';
 import { SeletorFotoCamera } from '../../components/SeletorFotoCamera';
+import { ErroFacialDialog } from '../../components/assinatura/ErroFacialDialog';
 
 interface AssinaturaTabProps {
   trabalhadorId: string;
@@ -176,20 +177,18 @@ export function AssinaturaTab({ trabalhadorId }: AssinaturaTabProps) {
             para a câmera e sem tremer. Só o trabalhador no enquadramento.
           </Legenda>
         </div>
-        {erroFacial && (
-          <FeedbackInline tom="erro" aoFechar={() => setErroFacial(null)}>
-            {erroFacial}
-          </FeedbackInline>
-        )}
         {facialCadastrada && <FeedbackInline tom="sucesso">Face cadastrada com sucesso.</FeedbackInline>}
         <SeletorFotoCamera
           aoSelecionarArquivo={cadastrarFacial}
           aoErroValidacao={setErroFacial}
-          rotulo="Capturar foto do rosto"
+          rotulo="Facial Azure"
+          tamanho="medium"
+          variante="facialAzure"
           modoCamera="user"
           exigirCamera
         />
       </Card>
+      <ErroFacialDialog mensagem={erroFacial} aoFechar={() => setErroFacial(null)} />
     </div>
   );
 }

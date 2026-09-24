@@ -1,3 +1,4 @@
+using System.Security.Cryptography;
 using AAHBRANT.SST.Application.Assinatura;
 using AAHBRANT.SST.Application.Common.Interfaces;
 using AAHBRANT.SST.Application.Tests.TestSupport;
@@ -69,6 +70,33 @@ public class RegistradorAssinaturaServiceTests
         await Assert.ThrowsAsync<InvalidOperationException>(() => servico.RegistrarAsync(
             documento.Id,
             new ResultadoAutenticacaoAssinatura(trabalhador.Id, MetodoAutenticacaoAssinatura.ReconhecimentoFacial),
+            null,
+            CancellationToken.None));
+    }
+
+    [Fact]
+    public async Task RegistrarAsync_TrabalhadorComumNaoPodeAssinarEntregaEpiComoRecebedorEResponsavel()
+    {
+        using var db = DbContextFactory.Criar();
+        var trabalhador = new Trabalhador { Nome = "Carlos", Cpf = "11122233344", Funcao = new Funcao { Nome = "Pedreiro" } };
+        var entrega = new EntregaEpi { Trabalhador = trabalhador, Quantidade = 1, DataEntrega = DateTime.UtcNow };
+        var documento = new DocumentoAssinatura { EntidadeTipo = "EntregaEpi", EntidadeId = entrega.Id };
+        db.Trabalhadores.Add(trabalhador);
+        db.EntregasEpi.Add(entrega);
+        db.DocumentosAssinatura.Add(documento);
+        await db.SaveChangesAsync();
+
+        var servico = new RegistradorAssinaturaService(db, new AuditoriaServiceFalsa());
+
+        await servico.RegistrarAsync(
+            documento.Id,
+            new ResultadoAutenticacaoAssinatura(trabalhador.Id, MetodoAutenticacaoAssinatura.Biometria),
+            null,
+            CancellationToken.None);
+
+        await Assert.ThrowsAsync<InvalidOperationException>(() => servico.RegistrarAsync(
+            documento.Id,
+            new ResultadoAutenticacaoAssinatura(trabalhador.Id, MetodoAutenticacaoAssinatura.SessaoLogada),
             null,
             CancellationToken.None));
     }
@@ -154,6 +182,37 @@ public class RegistradorAssinaturaServiceTests
             CancellationToken.None);
 
         Assert.Single(db.DocumentoSignatarios);
+    }
+
+    [Fact]
+    public async Task RegistrarAsync_AssinaturaFacialGuardaFotoEHashNoCofre()
+    {
+        using var db = DbContextFactory.Criar();
+        var funcao = new Funcao { Nome = "Ajudante Geral" };
+        var dono = new Trabalhador { Nome = "Dono da Entrega", Cpf = "11122233344", Funcao = funcao };
+        var entrega = new EntregaEpi { Trabalhador = dono, Quantidade = 1, DataEntrega = DateTime.UtcNow };
+        var documento = new DocumentoAssinatura { EntidadeTipo = "EntregaEpi", EntidadeId = entrega.Id };
+        var foto = new byte[] { 1, 2, 3, 4, 5 };
+        db.Funcoes.Add(funcao);
+        db.Trabalhadores.Add(dono);
+        db.EntregasEpi.Add(entrega);
+        db.DocumentosAssinatura.Add(documento);
+        await db.SaveChangesAsync();
+
+        var servico = new RegistradorAssinaturaService(db, new AuditoriaServiceFalsa());
+
+        await servico.RegistrarAsync(
+            documento.Id,
+            new ResultadoAutenticacaoAssinatura(dono.Id, MetodoAutenticacaoAssinatura.ReconhecimentoFacial),
+            "10.0.0.1",
+            CancellationToken.None,
+            foto,
+            "image/png");
+
+        var signatario = await db.DocumentoSignatarios.SingleAsync();
+        Assert.Equal(foto, signatario.FotoEvidenciaConteudo);
+        Assert.Equal("image/png", signatario.FotoEvidenciaContentType);
+        Assert.Equal(Convert.ToHexString(SHA256.HashData(foto)), signatario.FotoEvidenciaHash);
     }
 
     // Quem assina por sessão logada é o responsável/instrutor, que legitimamente não é o trabalhador

@@ -18,6 +18,7 @@ import { usePageStyles } from '../../pages/pageStyles';
 import { FotoCatalogoEpi } from '../../pages/epi/FotoCatalogoEpi';
 import { SeletorFotoCamera } from '../SeletorFotoCamera';
 import { clausulasTermoCompromisso } from './termoCompromissoEpi';
+import { ErroFacialDialog } from './ErroFacialDialog';
 
 function extrairMensagemErro(e: unknown, fallback: string): string {
   if (!(e instanceof Error)) return fallback;
@@ -78,6 +79,7 @@ export function AssinaturaEntregaEpiLoteDialog({
   const [erroEntregador, setErroEntregador] = useState<string | null>(null);
   const [processandoReceptor, setProcessandoReceptor] = useState(false);
   const [erroReceptor, setErroReceptor] = useState<string | null>(null);
+  const [erroFacialReceptor, setErroFacialReceptor] = useState<string | null>(null);
   const [ultimoAssinante, setUltimoAssinante] = useState<string | null>(null);
   const [agenteLocalDisponivel, setAgenteLocalDisponivel] = useState(false);
   const [dispositivoLocal, setDispositivoLocal] = useState<{ dispositivoId: string; segredoDispositivo: string } | null>(null);
@@ -117,6 +119,7 @@ export function AssinaturaEntregaEpiLoteDialog({
     setDocumentos({});
     setErroEntregador(null);
     setErroReceptor(null);
+    setErroFacialReceptor(null);
     setUltimoAssinante(null);
     setPendenteFacial(false);
     carregarDocumentos();
@@ -190,6 +193,7 @@ export function AssinaturaEntregaEpiLoteDialog({
   async function assinarComFacial(arquivo: File) {
     try {
       setErroReceptor(null);
+      setErroFacialReceptor(null);
       setPendenteFacial(false);
       setUltimoAssinante(null);
       let nome: string | null = null;
@@ -206,7 +210,7 @@ export function AssinaturaEntregaEpiLoteDialog({
         setPendenteFacial(true);
         return;
       }
-      setErroReceptor(extrairMensagemErro(e, 'Falha na autenticação facial.'));
+      setErroFacialReceptor(extrairMensagemErro(e, 'Falha na autenticação facial.'));
     }
   }
 
@@ -328,7 +332,7 @@ export function AssinaturaEntregaEpiLoteDialog({
             {!receptorAssinouTodos && (
               <div className={estilos.card} style={{ marginBottom: 16, maxWidth: 480 }}>
                 <Text weight="semibold" style={{ display: 'block', marginBottom: 12 }}>
-                  Reconhecimento Facial (Azure)
+                  Facial Azure
                 </Text>
                 <Text size={200} style={{ display: 'block', marginBottom: 8 }}>
                   Uma única foto assina todos os itens do carrinho ainda pendentes.
@@ -340,8 +344,11 @@ export function AssinaturaEntregaEpiLoteDialog({
                 )}
                 <SeletorFotoCamera
                   aoSelecionarArquivo={assinarComFacial}
-                  rotulo="Assinar com reconhecimento facial"
+                  aoErroValidacao={setErroFacialReceptor}
+                  rotulo="Facial Azure"
                   desabilitado={carregandoDocs || Object.keys(documentos).length === 0}
+                  tamanho="medium"
+                  variante="facialAzure"
                   modoCamera="user"
                 />
               </div>
@@ -365,6 +372,7 @@ export function AssinaturaEntregaEpiLoteDialog({
           </DialogActions>
         </DialogBody>
       </DialogSurface>
+      <ErroFacialDialog mensagem={erroFacialReceptor} aoFechar={() => setErroFacialReceptor(null)} />
     </Dialog>
   );
 }

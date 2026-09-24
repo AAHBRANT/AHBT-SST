@@ -68,4 +68,10 @@ public class DocumentoSignatario : AuditableEntity
     // Rastro de IP para o audit trail jurídico (Cofre de Assinaturas) — capturado no controller a
     // partir do HttpContext, nunca aceito do cliente (ver AssinaturaController.ObterIpCliente).
     public string? IpAddress { get; set; }
+
+    // Evidência visual capturada na assinatura por reconhecimento facial. Fica apenas no cofre
+    // interno/relatórios autenticados; a validação pública do documento não expõe esta imagem.
+    public byte[]? FotoEvidenciaConteudo { get; set; }
+    public string? FotoEvidenciaContentType { get; set; }
+    public string? FotoEvidenciaHash { get; set; }
 }

@@ -44,7 +44,9 @@ public class RegistrarAssinaturaSessaoLogadaCommandTests
             Guid documentoAssinaturaId,
             ResultadoAutenticacaoAssinatura resultado,
             string? ipAddress,
-            CancellationToken ct)
+            CancellationToken ct,
+            byte[]? fotoEvidenciaConteudo = null,
+            string? fotoEvidenciaContentType = null)
         {
             IpRecebido = ipAddress;
             ResultadoRecebido = resultado;
