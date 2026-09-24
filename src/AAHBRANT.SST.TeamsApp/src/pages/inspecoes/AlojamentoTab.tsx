@@ -90,10 +90,6 @@ export function AlojamentoTab() {
     }
   }
 
-  function abrirInspecaoExistente(inspecaoId: string) {
-    navigate(`/prevencao/inspecoes/${inspecaoId}`);
-  }
-
   async function baixarPdfInspecao(inspecao: AlojamentoInspecaoResumo) {
     try {
       setBaixandoPdfId(inspecao.id);
@@ -218,11 +214,7 @@ export function AlojamentoTab() {
                   <Button
                     appearance="primary"
                     icon={<ClipboardTaskListLtr24Regular />}
-                    onClick={() =>
-                      alojamento.inspecaoEmAndamento
-                        ? abrirInspecaoExistente(alojamento.inspecaoEmAndamento.id)
-                        : abrirInspecao(alojamento.id)
-                    }
+                    onClick={() => abrirInspecao(alojamento.id)}
                   >
                     {alojamento.inspecaoEmAndamento ? 'Continuar inspeção' : 'Nova inspeção'}
                   </Button>
@@ -289,7 +281,11 @@ export function AlojamentoTab() {
                             <Button
                               appearance="subtle"
                               icon={<Open24Regular />}
-                              onClick={() => abrirInspecaoExistente(inspecao.id)}
+                              onClick={() =>
+                                inspecao.status === StatusInspecao.EmAndamento
+                                  ? abrirInspecao(alojamento.id)
+                                  : navigate(`/prevencao/inspecoes/${inspecao.id}`)
+                              }
                               aria-label="Abrir inspeção"
                             />
                             {inspecao.status === StatusInspecao.Concluida && (
