@@ -1,4 +1,3 @@
-using System.Security.Cryptography;
 using AAHBRANT.SST.Application.Common.Interfaces;
 using AAHBRANT.SST.Application.Terceirizados.Queries;
 using AAHBRANT.SST.Domain.Entidades;
@@ -6,6 +5,7 @@ using AAHBRANT.SST.Domain.Enums;
 using AAHBRANT.SST.Infrastructure.Persistencia;
 using AAHBRANT.SST.Infrastructure.Seguranca;
 using Microsoft.EntityFrameworkCore;
+using AAHBRANT.SST.Application.Tests.TestSupport;
 
 namespace AAHBRANT.SST.Application.Tests.Terceirizados;
 
@@ -13,7 +13,7 @@ public class ListarPendenciasTerceirizadoQueryHandlerTests
 {
     static ListarPendenciasTerceirizadoQueryHandlerTests()
     {
-        CpfCriptografiaContexto.Configurar(RandomNumberGenerator.GetBytes(32), RandomNumberGenerator.GetBytes(32));
+        ChavesCpfDeTeste.Configurar();
     }
 
     private static IAppDbContext CriarDb(string nomeBanco)

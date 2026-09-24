@@ -4,9 +4,10 @@ import {
   Button, Field, Input, Select, CampoData,
   Card, PageHeader, DataTable, StatusChip, nivelVencimento, tomDeVencimento, rotuloDeVencimento,
   PainelCriacaoInline, FormSection, FormGrid, FormRodape, Campo, SeletorPesquisavel, FeedbackInline,
+  useConfirmar,
   type Coluna,
 } from '@ui';
-import { Add24Regular, ArrowDownload24Regular, Signature24Regular } from '@fluentui/react-icons';
+import { Add24Regular, ArrowDownload24Regular, Delete24Regular, Signature24Regular } from '@fluentui/react-icons';
 import {
   api,
   motivoEntregaEpiLabel,
@@ -22,6 +23,7 @@ import {
   type Obra,
   type Trabalhador,
 } from '../../lib/api';
+import { useSouAdministrador } from '../../lib/UsuarioLogadoContext';
 import { AssinaturaEntregaEpiLoteDialog, type ItemLoteAssinaturaEpi } from '../../components/assinatura/AssinaturaEntregaEpiLoteDialog';
 import { AssinaturaDevolucaoEpiDialog } from '../../components/assinatura/AssinaturaDevolucaoEpiDialog';
 import { FotoCatalogoEpi } from './FotoCatalogoEpi';
@@ -143,6 +145,9 @@ export function EntregasTab({ aoNavegarParaMatriz }: EntregasTabProps) {
   const [carregandoLista, setCarregandoLista] = useState(true);
   const [painelAberto, setPainelAberto] = useState(false);
   const [baixandoId, setBaixandoId] = useState<string | null>(null);
+  const [excluindoId, setExcluindoId] = useState<string | null>(null);
+  const souAdministrador = useSouAdministrador();
+  const { confirmar, dialogElement } = useConfirmar();
   const [devolucaoId, setDevolucaoId] = useState<string | null>(null);
   const [devolucaoData, setDevolucaoData] = useState('');
   const [devolucaoQtd, setDevolucaoQtd] = useState('');
@@ -359,6 +364,33 @@ export function EntregasTab({ aoNavegarParaMatriz }: EntregasTabProps) {
 
   function obraIdTrabalhador(id: string) {
     return trabalhadores.find((t) => t.id === id)?.obraId ?? '';
+  }
+
+  // Exclusão é definitiva e só aparece para Administrador (ver PoliticasAutorizacao no backend, que
+  // é quem de fato recusa). O servidor devolve ao estoque o que ainda estava com o trabalhador —
+  // ver ExcluirEntregaEpiCommand —, por isso a confirmação avisa que o saldo volta.
+  async function excluirEntrega(entrega: EntregaEpi) {
+    const emPosse = entrega.quantidade - (entrega.quantidadeDevolucao ?? 0);
+    const confirmado = await confirmar({
+      titulo: 'Excluir entrega de EPI',
+      mensagem:
+        `Excluir a entrega de ${nomeEpi(entrega.catalogoEpiId)} para ${nomeTrabalhador(entrega.trabalhadorId)}` +
+        ` registrada em ${formatarDataBr(entrega.dataEntrega)}?` +
+        (emPosse > 0 ? ` ${emPosse} unidade(s) voltam para o estoque da obra.` : '') +
+        ' Esta ação não pode ser desfeita.',
+      rotuloConfirmar: 'Excluir',
+    });
+    if (!confirmado) return;
+    try {
+      setExcluindoId(entrega.id);
+      setErro(null);
+      await api.entregasEpi.excluir(entrega.id);
+      await carregar();
+    } catch (e) {
+      setErro(e instanceof Error ? e.message : 'Falha ao excluir a entrega de EPI.');
+    } finally {
+      setExcluindoId(null);
+    }
   }
 
   function trocarTrabalhador(id: string) {
@@ -691,6 +723,7 @@ export function EntregasTab({ aoNavegarParaMatriz }: EntregasTabProps) {
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+      {dialogElement}
       <PageHeader
         titulo="Entregas de EPI"
         subtitulo={`${entregas.filter((e) => !e.dataDevolucao).length} entregas ativas`}
@@ -920,6 +953,19 @@ export function EntregasTab({ aoNavegarParaMatriz }: EntregasTabProps) {
                 aria-label="Baixar ficha do funcionário"
                 title="Baixar ficha de EPI do funcionário em PDF"
               />
+              {/* Só Administrador (pedido do usuário, 23/09): o servidor recusa a exclusão de quem
+                  não for, então mostrar o botão para os outros só geraria erro na cara do técnico. */}
+              {souAdministrador && (
+                <Button
+                  appearance="subtle"
+                  size="small"
+                  icon={<Delete24Regular />}
+                  onClick={() => excluirEntrega(e)}
+                  disabled={excluindoId === e.id}
+                  aria-label="Excluir entrega"
+                  title="Excluir esta entrega (somente administrador)"
+                />
+              )}
             </>
           )}
         />

@@ -1,4 +1,3 @@
-using System.Security.Cryptography;
 using AAHBRANT.SST.Application.Assinatura;
 using AAHBRANT.SST.Application.Common.Interfaces;
 using AAHBRANT.SST.Application.EntregasEpi;
@@ -9,6 +8,7 @@ using AAHBRANT.SST.Infrastructure.Assinatura;
 using AAHBRANT.SST.Infrastructure.Persistencia;
 using AAHBRANT.SST.Infrastructure.Seguranca;
 using Microsoft.EntityFrameworkCore;
+using AAHBRANT.SST.Application.Tests.TestSupport;
 
 namespace AAHBRANT.SST.Application.Tests.EntregasEpi;
 
@@ -20,7 +20,7 @@ public class ExportarFichaEpiTrabalhadorQueryHandlerTests
     // de teste, igual ao que qualquer outro teste que grave um Trabalhador precisaria fazer.
     static ExportarFichaEpiTrabalhadorQueryHandlerTests()
     {
-        CpfCriptografiaContexto.Configurar(RandomNumberGenerator.GetBytes(32), RandomNumberGenerator.GetBytes(32));
+        ChavesCpfDeTeste.Configurar();
     }
 
     private class FichaEpiPdfServiceFake : IFichaEpiPdfService

@@ -1,3 +1,4 @@
+using AAHBRANT.SST.Api.Autorizacao;
 using AAHBRANT.SST.Application.EntregasEpi.Commands;
 using AAHBRANT.SST.Application.EntregasEpi.Queries;
 using MediatR;
@@ -44,7 +45,9 @@ public class EntregasEpiController : ControllerBase
         return NoContent();
     }
 
-    [Authorize(Policy = "epi:editar")]
+    // Excluir entrega registrada é privilégio de Administrador (pedido do usuário, 23/09) — quem
+    // tem "epi:editar" corrige uma entrega, mas não a apaga. Ver PoliticasAutorizacao.
+    [Authorize(Policy = PoliticasAutorizacao.SomenteAdministrador)]
     [HttpDelete("{id:guid}")]
     public async Task<IActionResult> Excluir(Guid id, CancellationToken ct)
     {

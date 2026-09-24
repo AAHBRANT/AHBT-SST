@@ -1,3 +1,5 @@
+using System.Security.Claims;
+using AAHBRANT.SST.Api.Autorizacao;
 using AAHBRANT.SST.Application.Usuarios;
 using AAHBRANT.SST.Application.Usuarios.Commands;
 using AAHBRANT.SST.Application.Usuarios.Queries;
@@ -13,8 +15,27 @@ namespace AAHBRANT.SST.Api.Controllers;
 public class UsuariosController : ControllerBase
 {
     private readonly IMediator _mediator;
+    private readonly IConfiguration _configuracao;
 
-    public UsuariosController(IMediator mediator) => _mediator = mediator;
+    public UsuariosController(IMediator mediator, IConfiguration configuracao)
+    {
+        _mediator = mediator;
+        _configuracao = configuracao;
+    }
+
+    // "Quem sou eu": nome, se é Administrador e os códigos de permissão de quem está logado. A tela
+    // usa isto para não oferecer ação que o servidor vai recusar — hoje, o botão de excluir
+    // registro. A identidade sai do claim do token, nunca de parâmetro da requisição.
+    [Authorize(Policy = PoliticasAutorizacao.QualquerUsuarioAutenticado)]
+    [HttpGet("eu")]
+    public async Task<ActionResult<UsuarioLogadoDto>> Eu(CancellationToken ct)
+    {
+        var azureAdObjectId = User.FindFirst("oid")?.Value ?? User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+        // Mesma flag de PermissaoAuthorizationHandler e EscopoPorObraMiddleware: com o Entra ID
+        // desligado (desenvolvimento), o servidor não checa nada e a tela precisa saber disso.
+        var autenticacaoHabilitada = !string.IsNullOrWhiteSpace(_configuracao["AzureAd:TenantId"]);
+        return Ok(await _mediator.Send(new ObterUsuarioLogadoQuery(azureAdObjectId, autenticacaoHabilitada), ct));
+    }
 
     [Authorize(Policy = "usuario:ver")]
     [HttpGet]

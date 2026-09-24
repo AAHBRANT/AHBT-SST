@@ -74,6 +74,30 @@ public class PermissaoAuthorizationHandler : AuthorizationHandler<PermissaoRequi
             return;
         }
 
+        // Saber quem eu sou e o que eu posso é pré-requisito para a tela decidir o que mostrar —
+        // qualquer autenticado consulta o próprio cadastro, e só o próprio (ver
+        // ObterUsuarioLogadoQuery, que resolve pelo claim do token, nunca por id vindo da rota).
+        if (requirement.Codigo == PoliticasAutorizacao.QualquerUsuarioAutenticado && context.User.Identity?.IsAuthenticated == true)
+        {
+            context.Succeed(requirement);
+            return;
+        }
+
+        // Regra fixa de Administrador (23/09) — não passa pela matriz Perfil x Permissão. Fica
+        // depois de AppRolesReconhecidas de propósito: token de serviço (client-credentials do
+        // G-RH) não apaga registro, isso é ação de gente.
+        if (requirement.Codigo == PoliticasAutorizacao.SomenteAdministrador)
+        {
+            var ehAdministrador = await _db.Usuarios
+                .Where(u => u.AzureAdObjectId == azureAdObjectId && u.Status == StatusUsuario.Ativo)
+                .SelectMany(u => u.PerfisPorObra)
+                .AnyAsync(vinculo => vinculo.PerfilAcesso != null
+                    && vinculo.PerfilAcesso.Tipo == TipoPerfilAcesso.Administrador);
+
+            if (ehAdministrador) context.Succeed(requirement);
+            return;
+        }
+
         // Pop-up de novidades da versão (requisito do usuário, 18/09): ver e cadastrar são liberados
         // para qualquer usuário autenticado, sem checagem de RBAC — decisão explícita do usuário ao
         // aprovar o design, já que hoje só ele mesmo usa a tela de cadastro.

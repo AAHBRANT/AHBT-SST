@@ -388,6 +388,23 @@ public static class NovidadesSeeder
                     "O servidor trabalha em horário universal (UTC), e o rodapé carimbava a hora dele em vez da hora do canteiro. Um documento emitido às 14h saía marcado como 17h — em APR, Ata de treinamento, Certificado, CIPA, DDS, Ficha de EPI, Inspeção e Permissão de Trabalho.",
                     "Todos os documentos passam a carimbar o horário de Brasília. Documentos emitidos antes desta correção continuam com a hora antiga registrada."),
             }),
+        new(
+            Versao: "5.23.0",
+            Titulo: "Administrador pode excluir entrega de EPI",
+            DataPublicacao: new DateTime(2026, 9, 24, 0, 0, 0, DateTimeKind.Utc),
+            Itens: new[]
+            {
+                new NovidadeSeedItem(
+                    CategoriaNovidade.Novidade,
+                    "Botão para excluir uma entrega de EPI registrada por engano",
+                    "Entrega lançada errada ficava na lista para sempre — não havia como apagar pela tela.",
+                    "Quem tem perfil de Administrador vê um botão de lixeira em cada linha da lista de entregas. A confirmação diz qual entrega será apagada e quantas unidades voltam para o estoque. Para os demais perfis o botão não aparece, e o servidor recusa a exclusão."),
+                new NovidadeSeedItem(
+                    CategoriaNovidade.Correcao,
+                    "Excluir uma entrega devolve o EPI ao estoque da obra",
+                    "A exclusão apagava a entrega mas não devolvia nada ao saldo: cada entrega apagada tirava unidades do estoque em definitivo, sem deixar rastro.",
+                    "O que ainda estava com o trabalhador volta para o saldo da obra, com uma movimentação de estorno registrada no histórico do EPI. O que já tinha sido devolvido antes não é somado duas vezes."),
+            }),
     };
 
     public static async Task ExecutarAsync(IServiceProvider services, CancellationToken ct = default)

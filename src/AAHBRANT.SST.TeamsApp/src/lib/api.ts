@@ -338,6 +338,17 @@ export interface Equipe {
 
 export type NovaEquipe = Omit<Equipe, 'id' | 'setorNome' | 'obraId' | 'obraNome' | 'encarregadoNome' | 'quantidadeTrabalhadores'>;
 
+// "Quem sou eu" (23/09): o app passou a saber quem está logado e o que essa pessoa pode fazer, para
+// não oferecer ação que o servidor vai recusar. Ver UsuarioLogadoContext.
+export interface UsuarioLogado {
+  nome: string;
+  email?: string | null;
+  // Administrador é o único que pode excluir registro operacional (regra fixa no servidor, não
+  // configurável pela matriz de permissões — ver PoliticasAutorizacao no backend).
+  ehAdministrador: boolean;
+  permissoes: string[];
+}
+
 export interface CursoTreinamento {
   id: string;
   nome: string;
@@ -4325,6 +4336,7 @@ export const api = {
     },
   },
   usuarios: {
+    eu: () => request<UsuarioLogado>('/api/usuarios/eu'),
     listar: (status?: number) => request<Usuario[]>(`/api/usuarios${status ? `?status=${status}` : ''}`),
     obterPorId: (id: string) => request<Usuario>(`/api/usuarios/${id}`),
     criar: (usuario: NovoUsuario) =>

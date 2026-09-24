@@ -4,6 +4,7 @@ import { MotionConfig } from 'framer-motion';
 import { HashRouter, Navigate, Outlet, Route, Routes, useLocation, useParams } from 'react-router-dom';
 import { aahbrantTheme, aahbrantLightTheme } from './theme';
 import { ThemeModeProvider, useThemeMode } from './theme/ThemeModeContext';
+import { UsuarioLogadoProvider } from './lib/UsuarioLogadoContext';
 import { processarLoginNavegadorPendente } from './lib/browserAuth';
 import { AppShell } from './layout/AppShell';
 import { DashboardPage } from './pages/DashboardPage';
@@ -75,7 +76,11 @@ function RedirecionarParaPilar({ pilar, secao }: { pilar: string; secao: string 
 function App() {
   return (
     <ThemeModeProvider>
-      <AppRoteado />
+      {/* Quem está logado e o que pode fazer — uma chamada por sessão, no topo da árvore, para
+          qualquer tela decidir se mostra uma ação restrita (ver UsuarioLogadoContext). */}
+      <UsuarioLogadoProvider>
+        <AppRoteado />
+      </UsuarioLogadoProvider>
     </ThemeModeProvider>
   );
 }

@@ -3,9 +3,9 @@ using AAHBRANT.SST.Application.EntregasEpi.Commands;
 using AAHBRANT.SST.Domain.Entidades;
 using AAHBRANT.SST.Domain.Enums;
 using AAHBRANT.SST.Infrastructure.Persistencia;
-using System.Security.Cryptography;
 using AAHBRANT.SST.Infrastructure.Seguranca;
 using Microsoft.EntityFrameworkCore;
+using AAHBRANT.SST.Application.Tests.TestSupport;
 
 namespace AAHBRANT.SST.Application.Tests.EntregasEpi;
 
@@ -18,7 +18,7 @@ public class CriarEntregaEpiCommandHandlerTests
     // do CPF não configurada".
     static CriarEntregaEpiCommandHandlerTests()
     {
-        CpfCriptografiaContexto.Configurar(RandomNumberGenerator.GetBytes(32), RandomNumberGenerator.GetBytes(32));
+        ChavesCpfDeTeste.Configurar();
     }
 
     private static IAppDbContext CriarDb(string nomeBanco)
