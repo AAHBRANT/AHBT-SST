@@ -3972,6 +3972,9 @@ export const api = {
     obterPorId: (id: string) => request<EntregaUniforme>(`/api/entregasuniforme/${id}`),
     criar: (dados: NovaEntregaUniforme) =>
       request<{ id: string }>('/api/entregasuniforme', { method: 'POST', body: JSON.stringify(dados) }),
+    // Só Administrador (o servidor recusa os demais). Devolve a peça ao estoque do bucket
+    // peça+tamanho da obra — ver ExcluirEntregaUniformeCommand.
+    excluir: (id: string) => request<void>(`/api/entregasuniforme/${id}`, { method: 'DELETE' }),
   },
   estoquesEpi: {
     listarPorObra: (obraId: string) => request<EstoqueEpiPorObra[]>(`/api/estoquesepi/obra/${obraId}`),
@@ -4386,6 +4389,9 @@ export const api = {
     obterDetalhe: (id: string) => request<InspecaoDetalhe>(`/api/inspecoes/${id}`),
     criar: (inspecao: NovaInspecao) =>
       request<{ id: string }>('/api/inspecoes', { method: 'POST', body: JSON.stringify(inspecao) }),
+    // Só Administrador. Recusada quando a inspeção já gerou não conformidade — a mensagem do
+    // servidor explica quantas e o que fazer (ver ExcluirInspecaoCommand).
+    excluir: (id: string) => request<void>(`/api/inspecoes/${id}`, { method: 'DELETE' }),
     responderItem: (
       respostaId: string,
       statusItem: number,

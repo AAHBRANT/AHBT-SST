@@ -15,10 +15,12 @@ import {
   PainelCriacaoInline,
   Select,
   StatusChip,
+  useConfirmar,
   type Coluna,
   type Tom,
 } from '@ui';
-import { Add24Regular } from '@fluentui/react-icons';
+import { Add24Regular, Delete24Regular } from '@fluentui/react-icons';
+import { useSouAdministrador } from '../../lib/UsuarioLogadoContext';
 import { hojeIso } from '../../lib/datas';
 import {
   api,
@@ -62,6 +64,9 @@ export function InspecoesTab() {
   const [usuarios, setUsuarios] = useState<Usuario[]>([]);
   const [novaInspecao, setNovaInspecao] = useState<NovaInspecao>(() => criarInspecaoVazia());
   const [erro, setErro] = useState<string | null>(null);
+  const [excluindoId, setExcluindoId] = useState<string | null>(null);
+  const souAdministrador = useSouAdministrador();
+  const { confirmar, dialogElement } = useConfirmar();
   const [erroPainel, setErroPainel] = useState<string | null>(null);
   const [carregando, setCarregando] = useState(false);
   const [carregandoLista, setCarregandoLista] = useState(true);
@@ -151,8 +156,32 @@ export function InspecoesTab() {
     },
   ];
 
+  // Exclusão definitiva, só para Administrador. O servidor recusa quando a inspeção já gerou não
+  // conformidade — nesse caso a mensagem dele diz quantas são, e é ela que aparece na tela.
+  async function excluir(inspecao: Inspecao) {
+    const confirmado = await confirmar({
+      titulo: 'Excluir inspeção',
+      mensagem:
+        'Excluir esta inspeção e todas as respostas do checklist dela?' +
+        ' Esta ação não pode ser desfeita.',
+      rotuloConfirmar: 'Excluir',
+    });
+    if (!confirmado) return;
+    try {
+      setExcluindoId(inspecao.id);
+      setErro(null);
+      await api.inspecoes.excluir(inspecao.id);
+      await carregar();
+    } catch (e) {
+      setErro(e instanceof Error ? e.message : 'Falha ao excluir a inspeção.');
+    } finally {
+      setExcluindoId(null);
+    }
+  }
+
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+      {dialogElement}
       <PageHeader
         titulo="Inspeções"
         acoes={
@@ -271,6 +300,25 @@ export function InspecoesTab() {
           chaveLinha={(i) => i.id}
           carregando={carregandoLista}
           aoClicarLinha={(i) => navigate(`/prevencao/inspecoes/${i.id}`)}
+          acoesLinha={(i) => (
+            <>
+              {/* Exclusão é privilégio de Administrador (o servidor recusa os demais) — ver PoliticasAutorizacao. */}
+              {souAdministrador && (
+                <Button
+                  appearance="subtle"
+                  size="small"
+                  icon={<Delete24Regular />}
+                  disabled={excluindoId === i.id}
+                  onClick={(evento) => {
+                    evento.stopPropagation();
+                    excluir(i);
+                  }}
+                  aria-label="Excluir inspeção"
+                  title="Excluir esta inspeção (somente administrador)"
+                />
+              )}
+            </>
+          )}
           vazio={{
             titulo: 'Nenhuma inspeção iniciada ainda.',
             descricao: 'Inicie a primeira inspeção para começar.',

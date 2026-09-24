@@ -1,3 +1,4 @@
+using AAHBRANT.SST.Api.Autorizacao;
 using AAHBRANT.SST.Application.EntregasUniforme.Commands;
 using AAHBRANT.SST.Application.EntregasUniforme.Queries;
 using MediatR;
@@ -32,5 +33,15 @@ public class EntregasUniformeController : ControllerBase
     {
         var id = await _mediator.Send(command, ct);
         return CreatedAtAction(nameof(ObterPorId), new { id }, new { id });
+    }
+
+    // Exclusao definitiva e privilegio de Administrador (pedido do usuario, 23/09): quem tem
+    // permissao de editar corrige o registro, mas nao o apaga. Ver PoliticasAutorizacao.
+    [Authorize(Policy = PoliticasAutorizacao.SomenteAdministrador)]
+    [HttpDelete("{id:guid}")]
+    public async Task<IActionResult> Excluir(Guid id, CancellationToken ct)
+    {
+        await _mediator.Send(new ExcluirEntregaUniformeCommand(id), ct);
+        return NoContent();
     }
 }

@@ -422,6 +422,23 @@ public static class NovidadesSeeder
                     "Assim como acontecia no EPI, instalar baixava o saldo e excluir não devolvia nada — o EPC sumia do estoque da obra em definitivo.",
                     "O que ainda estava instalado volta para o saldo, com movimentação de estorno no histórico. Instalação já removida não é somada de novo."),
             }),
+        new(
+            Versao: "5.25.0",
+            Titulo: "Entrega de uniforme e inspeção também podem ser excluídas",
+            DataPublicacao: new DateTime(2026, 9, 24, 0, 0, 0, DateTimeKind.Utc),
+            Itens: new[]
+            {
+                new NovidadeSeedItem(
+                    CategoriaNovidade.Novidade,
+                    "Excluir entrega de uniforme, com a peça voltando ao estoque",
+                    "Entrega de uniforme não tinha como ser excluída de jeito nenhum — o registro ficava na lista para sempre.",
+                    "O Administrador vê o botão de lixeira na lista de entregas. A peça volta para o estoque do tamanho correspondente na obra, com movimentação de estorno registrada."),
+                new NovidadeSeedItem(
+                    CategoriaNovidade.Novidade,
+                    "Excluir inspeção, com proteção para as não conformidades",
+                    "Inspeção também não tinha exclusão. E apagar uma inspeção em cascata levaria junto as não conformidades geradas a partir dela, que têm prazo, responsável e plano de ação próprios.",
+                    "O Administrador pode excluir a inspeção e as respostas do checklist. Se a inspeção já gerou não conformidade, a exclusão é recusada e o sistema informa quantas são — resolva ou exclua essas não conformidades primeiro."),
+            }),
     };
 
     public static async Task ExecutarAsync(IServiceProvider services, CancellationToken ct = default)
