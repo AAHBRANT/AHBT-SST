@@ -12,6 +12,18 @@ const hashEstilo = {
   color: designTokens.colorNeutralMedium,
 } as const;
 
+function formatarDataHoraBrasilia(valor: string) {
+  return new Date(valor).toLocaleString('pt-BR', {
+    timeZone: 'America/Sao_Paulo',
+    day: '2-digit',
+    month: '2-digit',
+    year: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit',
+    second: '2-digit',
+  });
+}
+
 // Motor de Assinatura Eletrônica (docs/Motor-Assinatura-Eletronica.md §5, etapa 11) — página pública
 // aberta ao escanear o QR do comprovante. Fica fora do AppShell (sem sidebar/header do Teams), mesmo
 // padrão de IdentificacaoPublicaPage (módulo NTAG/Identificação) e template §4.6 "Público" (Onda 2,
@@ -79,7 +91,7 @@ export function ValidarDocumentoPage() {
         {!carregando && documento && (
           <Card
             titulo={documento.assinado ? 'Documento válido' : 'Documento rastreável'}
-            subtitulo={`${documento.entidadeTipoRotulo} · emitido em ${new Date(documento.emitidoEm).toLocaleString('pt-BR')}`}
+            subtitulo={`${documento.entidadeTipoRotulo} · emitido em ${formatarDataHoraBrasilia(documento.emitidoEm)} - Horário de Brasília`}
             acoes={
               <StatusChip tom={documento.assinado ? 'ok' : 'info'} icone={<CheckmarkCircle24Regular />}>
                 {documento.assinado ? 'Válido' : 'Rastreável'}
@@ -116,7 +128,14 @@ export function ValidarDocumentoPage() {
                       <StatusChip tom="neutro">
                         {metodoAutenticacaoAssinaturaLabel[s.metodoAutenticacao] ?? 'Método desconhecido'}
                       </StatusChip>
-                      <Text> em {new Date(s.assinadoEm).toLocaleString('pt-BR')}</Text>
+                      <Text> em {formatarDataHoraBrasilia(s.assinadoEm)} - Horário de Brasília</Text>
+                      {(s.trabalhadorCpfMascarado || s.trabalhadorFuncaoNome) && (
+                        <Text block style={{ fontSize: 11, color: designTokens.colorNeutralMedium }}>
+                          {s.trabalhadorCpfMascarado ? `CPF: ${s.trabalhadorCpfMascarado}` : ''}
+                          {s.trabalhadorCpfMascarado && s.trabalhadorFuncaoNome ? ' · ' : ''}
+                          {s.trabalhadorFuncaoNome ? `Função: ${s.trabalhadorFuncaoNome}` : ''}
+                        </Text>
+                      )}
                       {/* Origem de rede mascarada: atesta que a assinatura tem registro de origem
                           sem publicar o endereço de quem assinou numa página anônima. */}
                       {s.origemRede && (
@@ -146,7 +165,7 @@ export function ValidarDocumentoPage() {
                   <Text block as="p" style={{ marginTop: 4, color: designTokens.colorNeutralMedium }}>
                     Impressão digital do documento emitido
                     {documento.arquivoAtualizadoEm
-                      ? ` em ${new Date(documento.arquivoAtualizadoEm).toLocaleString('pt-BR')}`
+                      ? ` em ${formatarDataHoraBrasilia(documento.arquivoAtualizadoEm)} - Horário de Brasília`
                       : ''}{' '}
                     (SHA-256). Cobre todo o conteúdo: qualquer alteração de um único caractere muda
                     este código.

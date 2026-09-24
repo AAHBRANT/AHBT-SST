@@ -2245,6 +2245,8 @@ export interface DocumentoAssinatura {
 // (ver DocumentoPublicoDto no backend: "nunca expor Id/EntidadeId/dado pessoal na página pública").
 export interface DocumentoPublicoSignatario {
   trabalhadorNome: string;
+  trabalhadorCpfMascarado?: string | null;
+  trabalhadorFuncaoNome?: string | null;
   metodoAutenticacao: number;
   assinadoEm: string;
   // Origem de rede da assinatura, já mascarada pelo backend (IpMascarador) — a página é anônima,

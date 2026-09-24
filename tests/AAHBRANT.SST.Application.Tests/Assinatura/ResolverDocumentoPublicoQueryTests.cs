@@ -37,7 +37,8 @@ public class ResolverDocumentoPublicoQueryTests
     public async Task Handle_DocumentoFinalizadoComSignatario_ResolveComAssinadoTrue()
     {
         using var db = DbContextFactory.Criar();
-        var trabalhador = new Trabalhador { Nome = "Maria Teste", Cpf = "11122233344", DataAdmissao = DateTime.UtcNow };
+        var funcao = new Funcao { Nome = "Servente de Obras" };
+        var trabalhador = new Trabalhador { Nome = "Maria Teste", Cpf = "11122233344", Funcao = funcao, DataAdmissao = DateTime.UtcNow };
         db.Trabalhadores.Add(trabalhador);
         await db.SaveChangesAsync();
 
@@ -51,7 +52,13 @@ public class ResolverDocumentoPublicoQueryTests
             ConteudoHash = "HASHDEF",
             FinalizadoEm = finalizadoEm,
         };
-        documento.Signatarios.Add(new DocumentoSignatario { TrabalhadorId = trabalhador.Id, MetodoAutenticacao = MetodoAutenticacaoAssinatura.Biometria, AssinadoEm = finalizadoEm });
+        documento.Signatarios.Add(new DocumentoSignatario
+        {
+            TrabalhadorId = trabalhador.Id,
+            MetodoAutenticacao = MetodoAutenticacaoAssinatura.Biometria,
+            AssinadoEm = finalizadoEm,
+            IpAddress = "187.19.184.130",
+        });
         db.DocumentosAssinatura.Add(documento);
         await db.SaveChangesAsync();
         var handler = new ResolverDocumentoPublicoQueryHandler(db);
@@ -62,6 +69,10 @@ public class ResolverDocumentoPublicoQueryTests
         Assert.Equal(finalizadoEm, resultado!.EmitidoEm);
         Assert.True(resultado.Assinado);
         Assert.Single(resultado.Signatarios);
+        Assert.Equal("Maria Teste", resultado.Signatarios[0].TrabalhadorNome);
+        Assert.Equal("***.***.***-44", resultado.Signatarios[0].TrabalhadorCpfMascarado);
+        Assert.Equal("Servente de Obras", resultado.Signatarios[0].TrabalhadorFuncaoNome);
+        Assert.Equal("187.19.184.xxx", resultado.Signatarios[0].OrigemRede);
     }
 
     // A Ficha de EPI é documento consolidado: o registro dela nunca recebe signatário (ver
@@ -71,7 +82,13 @@ public class ResolverDocumentoPublicoQueryTests
     public async Task Handle_FichaEpiConsolidada_AgregaAssinaturasDasEntregasDoTrabalhador()
     {
         using var db = DbContextFactory.Criar();
-        var trabalhador = new Trabalhador { Nome = "João Teste", Cpf = "11122233344", DataAdmissao = DateTime.UtcNow };
+        var trabalhador = new Trabalhador
+        {
+            Nome = "João Teste",
+            Cpf = "11122233344",
+            Funcao = new Funcao { Nome = "Ajudante" },
+            DataAdmissao = DateTime.UtcNow,
+        };
         db.Trabalhadores.Add(trabalhador);
         var entrega = new EntregaEpi { TrabalhadorId = trabalhador.Id, Quantidade = 1, DataEntrega = DateTime.UtcNow };
         db.EntregasEpi.Add(entrega);

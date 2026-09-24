@@ -60,7 +60,7 @@ public class AssinaturaController : ControllerBase
     public async Task<IActionResult> AssinarComSessaoLogada(Guid id, CancellationToken ct)
     {
         var azureAdObjectId = User.FindFirst("oid")?.Value ?? User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
-        var signatario = await _mediator.Send(new RegistrarAssinaturaSessaoLogadaCommand(id, azureAdObjectId), ct);
+        var signatario = await _mediator.Send(new RegistrarAssinaturaSessaoLogadaCommand(id, azureAdObjectId, ObterIpCliente()), ct);
         return Ok(signatario);
     }
 

@@ -1,4 +1,5 @@
 using AAHBRANT.SST.Application.Common.Interfaces;
+using AAHBRANT.SST.Application.Common;
 using AAHBRANT.SST.Domain.Enums;
 using FluentValidation;
 using MediatR;
@@ -8,6 +9,8 @@ namespace AAHBRANT.SST.Application.Assinatura.Queries;
 
 public record DocumentoPublicoSignatarioDto(
     string TrabalhadorNome,
+    string? TrabalhadorCpfMascarado,
+    string? TrabalhadorFuncaoNome,
     MetodoAutenticacaoAssinatura MetodoAutenticacao,
     DateTime AssinadoEm,
     // Origem de rede da assinatura, mascarada (ver IpMascarador) — atesta que há registro de onde a
@@ -115,13 +118,26 @@ public class ResolverDocumentoPublicoQueryHandler : IRequestHandler<ResolverDocu
         var linhas = await _db.DocumentoSignatarios
             .Where(s => documentoIds.Contains(s.DocumentoAssinaturaId))
             .Join(_db.Trabalhadores.IgnoreQueryFilters().Where(t => t.Ativo), s => s.TrabalhadorId, t => t.Id,
-                (s, t) => new { t.Nome, s.MetodoAutenticacao, s.AssinadoEm, s.IpAddress })
+                (s, t) => new
+                {
+                    t.Nome,
+                    t.Cpf,
+                    FuncaoNome = t.Funcao != null ? t.Funcao.Nome : null,
+                    s.MetodoAutenticacao,
+                    s.AssinadoEm,
+                    s.IpAddress,
+                })
             .OrderBy(x => x.AssinadoEm)
             .ToListAsync(ct);
 
         return linhas
             .Select(x => new DocumentoPublicoSignatarioDto(
-                x.Nome, x.MetodoAutenticacao, x.AssinadoEm, IpMascarador.Mascarar(x.IpAddress)))
+                x.Nome,
+                string.IsNullOrWhiteSpace(x.Cpf) ? null : CpfMascarador.Mascarar(x.Cpf),
+                x.FuncaoNome,
+                x.MetodoAutenticacao,
+                x.AssinadoEm,
+                IpMascarador.Mascarar(x.IpAddress)))
             .ToList();
     }
 
