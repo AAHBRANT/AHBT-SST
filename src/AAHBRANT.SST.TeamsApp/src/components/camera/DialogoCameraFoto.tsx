@@ -24,13 +24,11 @@ export function DialogoCameraFoto({ captura }: DialogoCameraFotoProps) {
     stream,
     videoRef,
     modoCamera,
-    exigirCamera,
     dispositivosVideo,
     dispositivoAtualId,
     fecharCamera,
     capturarFoto,
     trocarDispositivo,
-    inputRef,
   } = captura;
 
   // Reconhecimento facial (câmera frontal) ganha uma guia oval sobreposta ao vídeo — pedido do
@@ -105,22 +103,6 @@ export function DialogoCameraFoto({ captura }: DialogoCameraFotoProps) {
               </Text>
             )}
 
-            {!exigirCamera && (
-              <Text size={200} style={{ display: 'block', marginTop: 8 }}>
-                Não consegue usar a câmera?{' '}
-                <a
-                  href="#"
-                  onClick={(e) => {
-                    e.preventDefault();
-                    fecharCamera();
-                    inputRef.current?.click();
-                  }}
-                >
-                  Selecionar um arquivo
-                </a>
-                .
-              </Text>
-            )}
           </DialogContent>
           <DialogActions>
             <Button appearance="secondary" onClick={fecharCamera}>
