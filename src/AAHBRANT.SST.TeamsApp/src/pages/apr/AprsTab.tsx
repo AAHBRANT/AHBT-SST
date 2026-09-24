@@ -1,4 +1,4 @@
-﻿import { useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   Button,
@@ -23,6 +23,7 @@ import { Add24Regular, Delete24Regular } from '@fluentui/react-icons';
 import { api, StatusApr, statusAprLabel, type Apr, type Atividade, type Equipe, type NovaApr, type Trabalhador } from '../../lib/api';
 import { useSucessoToast } from '../../hooks/useSucessoToast';
 import { hojeIso } from '../../lib/datas';
+import { useSouAdministrador } from '../../lib/UsuarioLogadoContext';
 
 function aprVazia(): NovaApr {
   return {
@@ -52,6 +53,7 @@ const tomPorStatusApr: Record<number, Tom> = {
 // Onda 2 Task 11 (camada ui/): lista + formulário de criação de APR. Nada de Fluent cru nem de
 // pageStyles aqui — lista em DataTable, seleção de responsáveis em ChipCheckboxGroup.
 export function AprsTab() {
+  const souAdministrador = useSouAdministrador();
   const navigate = useNavigate();
   const [aprs, setAprs] = useState<Apr[]>([]);
   const [atividades, setAtividades] = useState<Atividade[]>([]);
@@ -237,7 +239,12 @@ export function AprsTab() {
           vazio={{ titulo: 'Nenhuma APR cadastrada ainda.' }}
           aoClicarLinha={(a) => navigate(`/operacao/apr/${a.id}`)}
           acoesLinha={(a) => (
-            <Button appearance="subtle" icon={<Delete24Regular />} onClick={() => excluir(a.id)} aria-label="Excluir" />
+            <>
+              {/* Exclusão é privilégio de Administrador (o servidor recusa os demais) — ver PoliticasAutorizacao. */}
+              {souAdministrador && (
+                <Button appearance="subtle" icon={<Delete24Regular />} onClick={() => excluir(a.id)} aria-label="Excluir" />
+              )}
+            </>
           )}
         />
       </Card>

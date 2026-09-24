@@ -16,10 +16,11 @@ import {
   PainelCriacaoInline,
   Select,
   StatusChip,
+  useConfirmar,
   type Coluna,
   type Tom,
 } from '@ui';
-import { AddCircle24Regular } from '@fluentui/react-icons';
+import { Delete24Regular, AddCircle24Regular } from '@fluentui/react-icons';
 import {
   api,
   origemNaoConformidadeLabel,
@@ -31,6 +32,7 @@ import {
   type Risco,
   type Usuario,
 } from '../../lib/api';
+import { useSouAdministrador } from '../../lib/UsuarioLogadoContext';
 
 function novaInicial(): NovaNaoConformidade {
   return {
@@ -74,6 +76,9 @@ export function NaoConformidadesTab() {
   const [usuarios, setUsuarios] = useState<Usuario[]>([]);
   const [nova, setNova] = useState<NovaNaoConformidade>(novaInicial());
   const [erro, setErro] = useState<string | null>(null);
+  const [excluindoId, setExcluindoId] = useState<string | null>(null);
+  const souAdministrador = useSouAdministrador();
+  const { confirmar, dialogElement } = useConfirmar();
   const [erroPainel, setErroPainel] = useState<string | null>(null);
   const [carregando, setCarregando] = useState(false);
   const [carregandoLista, setCarregandoLista] = useState(true);
@@ -151,8 +156,31 @@ export function NaoConformidadesTab() {
     },
   ];
 
+  // Exclusão definitiva, só para Administrador (o servidor recusa os demais — ver
+  // PoliticasAutorizacao). Serve para tirar da lista um registro lançado por engano; o caminho
+  // normal de encerrar uma não conformidade continua sendo mudar o status dela.
+  async function excluir(nc: NaoConformidade) {
+    const confirmado = await confirmar({
+      titulo: 'Excluir não conformidade',
+      mensagem: `Excluir a não conformidade "${nc.descricao}"? Esta ação não pode ser desfeita.`,
+      rotuloConfirmar: 'Excluir',
+    });
+    if (!confirmado) return;
+    try {
+      setExcluindoId(nc.id);
+      setErro(null);
+      await api.naoConformidades.excluir(nc.id);
+      await carregar();
+    } catch (e) {
+      setErro(e instanceof Error ? e.message : 'Falha ao excluir a não conformidade.');
+    } finally {
+      setExcluindoId(null);
+    }
+  }
+
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+      {dialogElement}
       <PageHeader
         titulo="Não conformidades"
         acoes={
@@ -277,6 +305,25 @@ export function NaoConformidadesTab() {
           chaveLinha={(nc) => nc.id}
           carregando={carregandoLista}
           aoClicarLinha={(nc) => navigate(`/nao-conformidades/${nc.id}`)}
+          acoesLinha={(nc) => (
+            <>
+              {/* Exclusão é privilégio de Administrador (o servidor recusa os demais) — ver PoliticasAutorizacao. */}
+              {souAdministrador && (
+                <Button
+                  appearance="subtle"
+                  size="small"
+                  icon={<Delete24Regular />}
+                  disabled={excluindoId === nc.id}
+                  onClick={(evento) => {
+                    evento.stopPropagation();
+                    excluir(nc);
+                  }}
+                  aria-label="Excluir não conformidade"
+                  title="Excluir esta não conformidade (somente administrador)"
+                />
+              )}
+            </>
+          )}
           vazio={{
             titulo: 'Nenhuma não conformidade registrada ainda.',
             descricao: 'Registre a primeira não conformidade para começar.',

@@ -30,6 +30,7 @@ import {
   type Obra,
 } from '../../lib/api';
 import { useSucessoToast } from '../../hooks/useSucessoToast';
+import { useSouAdministrador } from '../../lib/UsuarioLogadoContext';
 
 const hoje = () => new Date().toISOString().slice(0, 10);
 
@@ -52,6 +53,7 @@ const instalacaoVazia = (obraId: string): NovaInstalacaoEpc => ({
 // (mesmo mecanismo do histórico de movimentações em EstoqueTab.tsx/EstoqueEpcTab.tsx), só que o
 // conteúdo expandido é um formulário em vez de uma tabela aninhada.
 export function InstalacoesTab() {
+  const souAdministrador = useSouAdministrador();
   const [obras, setObras] = useState<Obra[]>([]);
   const [obraId, setObraId] = useState('');
   const [epcs, setEpcs] = useState<CatalogoEpc[]>([]);
@@ -339,13 +341,16 @@ export function InstalacoesTab() {
                       />
                     </>
                   )}
-                  <Button
-                    appearance="subtle"
-                    size="small"
-                    icon={<Delete24Regular />}
-                    onClick={() => excluir(inst.id)}
-                    aria-label="Excluir"
-                  />
+                  {/* Exclusão é privilégio de Administrador (o servidor recusa os demais) — ver PoliticasAutorizacao. */}
+                  {souAdministrador && (
+                    <Button
+                      appearance="subtle"
+                      size="small"
+                      icon={<Delete24Regular />}
+                      onClick={() => excluir(inst.id)}
+                      aria-label="Excluir"
+                    />
+                  )}
                 </div>
               )}
               expansivel={{

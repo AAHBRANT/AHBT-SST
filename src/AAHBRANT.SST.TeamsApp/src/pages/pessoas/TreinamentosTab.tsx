@@ -25,6 +25,7 @@ import { Add24Regular, ArrowDownload24Regular, Delete24Regular, Signature24Regul
 import { api, type CursoTreinamento, type NovoTreinamento, type Treinamento } from '../../lib/api';
 import { useSucessoToast } from '../../hooks/useSucessoToast';
 import { AssinaturaCertificadoTreinamentoDialog } from '../../components/assinatura/AssinaturaCertificadoTreinamentoDialog';
+import { useSouAdministrador } from '../../lib/UsuarioLogadoContext';
 
 function treinamentoVazio(trabalhadorId: string): NovoTreinamento {
   return {
@@ -50,6 +51,7 @@ function treinamentoVazio(trabalhadorId: string): NovoTreinamento {
 // mantendo a data crua ao lado do chip (aprendizado do piloto 1: chip nunca substitui sozinho um
 // valor de auditoria). obraId propaga pro AssinaturaCertificadoTreinamentoDialog (AssinaturaQuiosque).
 export function TreinamentosTab({ trabalhadorId, obraId }: { trabalhadorId: string; obraId: string }) {
+  const souAdministrador = useSouAdministrador();
   const navigate = useNavigate();
   const [treinamentos, setTreinamentos] = useState<Treinamento[]>([]);
   const [cursos, setCursos] = useState<CursoTreinamento[]>([]);
@@ -310,13 +312,16 @@ export function TreinamentosTab({ trabalhadorId, obraId }: { trabalhadorId: stri
                 aria-label="Baixar certificado"
                 title="Baixar certificado em PDF"
               />
-              <Button
-                appearance="subtle"
-                size="small"
-                icon={<Delete24Regular />}
-                onClick={() => excluir(t.id)}
-                aria-label="Excluir"
-              />
+              {/* Exclusão é privilégio de Administrador (o servidor recusa os demais) — ver PoliticasAutorizacao. */}
+              {souAdministrador && (
+                <Button
+                  appearance="subtle"
+                  size="small"
+                  icon={<Delete24Regular />}
+                  onClick={() => excluir(t.id)}
+                  aria-label="Excluir"
+                />
+              )}
             </>
           )}
         />

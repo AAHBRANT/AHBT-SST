@@ -1,4 +1,4 @@
-﻿import { useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   Button,
@@ -32,6 +32,7 @@ import {
 } from '../../lib/api';
 import { useSucessoToast } from '../../hooks/useSucessoToast';
 import { hojeIso } from '../../lib/datas';
+import { useSouAdministrador } from '../../lib/UsuarioLogadoContext';
 
 function ptVazia(): NovaPermissaoTrabalho {
   return {
@@ -62,6 +63,7 @@ const tomPorStatusPt: Record<number, Tom> = {
 // Onda 2 Task 6 (camada ui/): lista + formulário de criação de Permissão de Trabalho. Mesmo padrão
 // de AprsTab.tsx (Task 11) — Card + FormSection + DataTable, seleção de responsáveis em ChipCheckboxGroup.
 export function PermissoesTrabalhoTab() {
+  const souAdministrador = useSouAdministrador();
   const navigate = useNavigate();
   const [permissoes, setPermissoes] = useState<PermissaoTrabalho[]>([]);
   const [atividades, setAtividades] = useState<Atividade[]>([]);
@@ -311,7 +313,12 @@ export function PermissoesTrabalhoTab() {
           vazio={{ titulo: 'Nenhuma Permissão de Trabalho cadastrada ainda.' }}
           aoClicarLinha={(pt) => navigate(`/operacao/pt/${pt.id}`)}
           acoesLinha={(pt) => (
-            <Button appearance="subtle" icon={<Delete24Regular />} onClick={() => excluir(pt.id)} aria-label="Excluir" />
+            <>
+              {/* Exclusão é privilégio de Administrador (o servidor recusa os demais) — ver PoliticasAutorizacao. */}
+              {souAdministrador && (
+                <Button appearance="subtle" icon={<Delete24Regular />} onClick={() => excluir(pt.id)} aria-label="Excluir" />
+              )}
+            </>
           )}
         />
       </Card>

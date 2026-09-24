@@ -405,6 +405,23 @@ public static class NovidadesSeeder
                     "A exclusão apagava a entrega mas não devolvia nada ao saldo: cada entrega apagada tirava unidades do estoque em definitivo, sem deixar rastro.",
                     "O que ainda estava com o trabalhador volta para o saldo da obra, com uma movimentação de estorno registrada no histórico do EPI. O que já tinha sido devolvido antes não é somado duas vezes."),
             }),
+        new(
+            Versao: "5.24.0",
+            Titulo: "Exclusão de registro passa a ser só do Administrador",
+            DataPublicacao: new DateTime(2026, 9, 24, 0, 0, 0, DateTimeKind.Utc),
+            Itens: new[]
+            {
+                new NovidadeSeedItem(
+                    CategoriaNovidade.Melhoria,
+                    "Apagar registro exige perfil de Administrador",
+                    "Quem podia editar um registro também podia apagá-lo: APR, Permissão de Trabalho, instalação de EPC, treinamento/certificado e não conformidade sumiam de vez com um clique de qualquer perfil com permissão de edição.",
+                    "Excluir passou a ser privilégio de Administrador nesses módulos e na entrega de EPI. Para os demais perfis o botão nem aparece. Ações de rotina continuam liberadas: trocar a foto de evidência do DDS, substituir o arquivo de um certificado e tirar um risco crítico de dentro da PT."),
+                new NovidadeSeedItem(
+                    CategoriaNovidade.Correcao,
+                    "Excluir instalação de EPC devolve o material ao estoque",
+                    "Assim como acontecia no EPI, instalar baixava o saldo e excluir não devolvia nada — o EPC sumia do estoque da obra em definitivo.",
+                    "O que ainda estava instalado volta para o saldo, com movimentação de estorno no histórico. Instalação já removida não é somada de novo."),
+            }),
     };
 
     public static async Task ExecutarAsync(IServiceProvider services, CancellationToken ct = default)

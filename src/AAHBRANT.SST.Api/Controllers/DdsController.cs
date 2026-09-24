@@ -3,6 +3,7 @@ using AAHBRANT.SST.Application.Dds.Queries;
 using MediatR;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using AAHBRANT.SST.Api.Autorizacao;
 
 namespace AAHBRANT.SST.Api.Controllers;
 

@@ -43,6 +43,7 @@ import {
 } from '../../lib/api';
 import { useSucessoToast } from '../../hooks/useSucessoToast';
 import { SeletorFotoCamera } from '../../components/SeletorFotoCamera';
+import { useSouAdministrador } from '../../lib/UsuarioLogadoContext';
 
 // Sub-aba "Certificados" (pedido do usuário, 22/09). As obras já estavam em andamento quando o
 // sistema entrou, então os trabalhadores chegaram com treinamentos feitos antes — muitos por
@@ -103,6 +104,7 @@ function formatarData(valor?: string | null): string {
 }
 
 export function CertificadosTab() {
+  const souAdministrador = useSouAdministrador();
   const [certificados, setCertificados] = useState<CertificadoTreinamento[]>([]);
   const [cursos, setCursos] = useState<CursoTreinamento[]>([]);
   const [trabalhadores, setTrabalhadores] = useState<Trabalhador[]>([]);
@@ -750,16 +752,19 @@ export function CertificadosTab() {
                     : 'Baixar o certificado no modelo AAHBRANT'
                 }
               />
-              <Button
-                appearance="subtle"
-                size="small"
-                icon={<Delete24Regular />}
-                onClick={(evento) => {
-                  evento.stopPropagation();
-                  excluir(c);
-                }}
-                aria-label="Excluir certificado"
-              />
+              {/* Exclusão é privilégio de Administrador (o servidor recusa os demais) — ver PoliticasAutorizacao. */}
+              {souAdministrador && (
+                <Button
+                  appearance="subtle"
+                  size="small"
+                  icon={<Delete24Regular />}
+                  onClick={(evento) => {
+                    evento.stopPropagation();
+                    excluir(c);
+                  }}
+                  aria-label="Excluir certificado"
+                />
+              )}
             </div>
           )}
         />
