@@ -44,7 +44,9 @@ import {
   PersonAvailable24Regular,
   Camera20Regular,
   ChatHelp24Regular,
-  DocumentAdd24Regular,
+  ChatMultiple24Regular,
+  HatGraduation24Regular,
+  ShieldCheckmark24Regular,
 } from '@fluentui/react-icons';
 import { designTokens } from '@ui';
 import { useThemeMode } from '../theme/ThemeModeContext';
@@ -710,29 +712,30 @@ const itemAdministracao: ItemNav & { icone: IconeNav } = {
   icone: Settings24Regular,
 };
 
-// Menu "Criar" — mesmos atalhos na barra de ações (desktop) e na versão compacta que aparece no
-// lugar dela em telas estreitas (abaixo de 920px, ver `acoesTopo`/`acoesTopoCompactas`).
-function MenuCriar({ botao }: { botao: ReactElement }) {
+// Menu "Atalhos" (pedido do usuário, 24/09): substituiu o antigo "Criar" (PGR/APR/funcionário/
+// ocorrência/treinamento) pelos atalhos do dia a dia de campo, nesta ordem. Mesmo menu na barra de
+// ações (desktop) e na versão compacta de telas estreitas (abaixo de 920px, ver `acoesTopoCompactas`).
+function MenuAtalhos({ botao }: { botao: ReactElement }) {
   const navigate = useNavigate();
   return (
     <Menu>
       <MenuTrigger disableButtonEnhancement>{botao}</MenuTrigger>
       <MenuPopover>
         <MenuList>
-          <MenuItem icon={<DocumentAdd24Regular />} onClick={() => navigate('/gestao-sst?secao=pgr')}>
-            Novo PGR
+          <MenuItem icon={<ChatMultiple24Regular />} onClick={() => navigate('/operacao?secao=dds')}>
+            DDS
           </MenuItem>
-          <MenuItem icon={<DocumentAdd24Regular />} onClick={() => navigate('/operacao?secao=apr')}>
-            Nova APR
+          <MenuItem icon={<ShieldCheckmark24Regular />} onClick={() => navigate('/operacao?secao=epi')}>
+            EPI
           </MenuItem>
-          <MenuItem icon={<People24Regular />} onClick={() => navigate('/pessoas')}>
-            Novo funcionário
+          <MenuItem icon={<HatGraduation24Regular />} onClick={() => navigate('/gestao-sst?secao=treinamentos')}>
+            Treinamento
+          </MenuItem>
+          <MenuItem icon={<ClipboardTaskListLtr24Regular />} onClick={() => navigate('/operacao?secao=inspecoes')}>
+            Inspeção
           </MenuItem>
           <MenuItem icon={<BriefcaseMedical24Regular />} onClick={() => navigate('/ocorrencias')}>
-            Nova ocorrência
-          </MenuItem>
-          <MenuItem icon={<ClipboardTaskListLtr24Regular />} onClick={() => navigate('/gestao-sst?secao=treinamentos')}>
-            Novo treinamento
+            Ocorrência
           </MenuItem>
         </MenuList>
       </MenuPopover>
@@ -1002,10 +1005,10 @@ export function AppShell({ children }: { children: ReactNode }) {
               if (evento.key === 'Enter') navegarBuscaGlobal();
             }}
           />
-          <MenuCriar
+          <MenuAtalhos
             botao={
               <Button className={estilos.botaoCriarTopo} appearance="primary" icon={<Add24Regular />}>
-                Criar
+                Atalhos
               </Button>
             }
           />
@@ -1024,14 +1027,14 @@ export function AppShell({ children }: { children: ReactNode }) {
         <div className={estilos.topoDireita}>
           <div className={estilos.acoesTopoCompactas} aria-label="Ações globais (compacto)">
             <SyncStatusBadge />
-            <MenuCriar
+            <MenuAtalhos
               botao={
                 <Button
                   className={estilos.botaoAcaoTopo}
                   appearance="primary"
                   icon={<Add24Regular />}
-                  aria-label="Criar"
-                  title="Criar"
+                  aria-label="Atalhos"
+                  title="Atalhos"
                 />
               }
             />
