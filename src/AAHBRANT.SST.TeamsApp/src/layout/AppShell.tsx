@@ -27,7 +27,6 @@ import {
 import {
   Grid24Regular,
   Add24Regular,
-  Warning24Regular,
   ClipboardTaskListLtr24Regular,
   Settings24Regular,
   Alert24Regular,
@@ -975,15 +974,6 @@ export function AppShell({ children }: { children: ReactNode }) {
               </Button>
             }
           />
-          <Tooltip content="Pendências" relationship="label">
-            <Button
-              className={estilos.botaoAcaoTopo}
-              appearance="subtle"
-              icon={<Warning24Regular />}
-              aria-label="Pendências"
-              onClick={() => navigate('/alertas')}
-            />
-          </Tooltip>
           <SyncStatusBadge />
         </div>
 
