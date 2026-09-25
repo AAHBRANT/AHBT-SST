@@ -102,6 +102,36 @@
       "runtimeExecutable": "npm",
       "runtimeArgs": ["--prefix", "src/AAHBRANT.SST.TeamsApp", "run", "dev", "--", "--port", "5295"],
       "port": 5295
+    },
+    {
+      "name": "sst-web-formulario-inline-onda-b",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": ["--prefix", "C:/Projetos/SST-APP/.worktrees/ui-formulario-inline-onda-b/src/AAHBRANT.SST.TeamsApp", "run", "dev", "--", "--port", "5298"],
+      "port": 5298
+    },
+    {
+      "name": "sst-web-verificar-inspecoes",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": ["--prefix", "src/AAHBRANT.SST.TeamsApp", "run", "dev", "--", "--port", "5299"],
+      "port": 5299
+    },
+    {
+      "name": "sst-api-verificar-obras-pessoas",
+      "runtimeExecutable": "dotnet",
+      "runtimeArgs": ["run", "--project", "src/AAHBRANT.SST.Api/AAHBRANT.SST.Api.csproj", "--urls", "http://localhost:5227"],
+      "port": 5227
+    },
+    {
+      "name": "sst-web-verificar-obras-pessoas",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": ["--prefix", "src/AAHBRANT.SST.TeamsApp", "run", "dev", "--", "--port", "5301", "--mode", "verificar"],
+      "port": 5301
+    },
+    {
+      "name": "juri-api",
+      "runtimeExecutable": "dotnet",
+      "runtimeArgs": ["run", "--project", "src/AAHBRANT.JURI.Api/AAHBRANT.JURI.Api.csproj", "--urls", "http://localhost:5210"],
+      "port": 5210
     }
   ]
 }
