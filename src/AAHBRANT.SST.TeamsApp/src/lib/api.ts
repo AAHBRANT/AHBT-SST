@@ -334,9 +334,21 @@ export interface Equipe {
   encarregadoId?: string | null;
   encarregadoNome?: string | null;
   quantidadeTrabalhadores: number;
+  trabalhadorIds: string[];
 }
 
-export type NovaEquipe = Omit<Equipe, 'id' | 'setorNome' | 'obraId' | 'obraNome' | 'encarregadoNome' | 'quantidadeTrabalhadores'>;
+export type NovaEquipe = Omit<
+  Equipe,
+  'id' | 'setorNome' | 'obraId' | 'obraNome' | 'encarregadoNome' | 'quantidadeTrabalhadores' | 'trabalhadorIds'
+>;
+
+// Equipe montada dentro da APR (24/09/2026): vai para o setor "Geral" da obra.
+export interface NovaEquipeComMembros {
+  obraId: string;
+  nome: string;
+  encarregadoId: string | null;
+  trabalhadorIds: string[];
+}
 
 // "Quem sou eu" (23/09): o app passou a saber quem está logado e o que essa pessoa pode fazer, para
 // não oferecer ação que o servidor vai recusar. Ver UsuarioLogadoContext.
@@ -3731,6 +3743,8 @@ export const api = {
     },
     criar: (equipe: NovaEquipe) =>
       request<{ id: string }>('/api/equipes', { method: 'POST', body: JSON.stringify(equipe) }),
+    criarComMembros: (equipe: NovaEquipeComMembros) =>
+      request<{ id: string }>('/api/equipes/com-membros', { method: 'POST', body: JSON.stringify(equipe) }),
     excluir: (id: string) => request<void>(`/api/equipes/${id}`, { method: 'DELETE' }),
   },
   asos: {

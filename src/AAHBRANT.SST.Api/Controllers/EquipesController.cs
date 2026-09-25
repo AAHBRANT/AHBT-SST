@@ -35,6 +35,16 @@ public class EquipesController : ControllerBase
         return CreatedAtAction(nameof(ObterPorId), new { id }, new { id });
     }
 
+    // Equipe montada na própria APR (24/09/2026): quem cria APR pode salvar a seleção de
+    // responsáveis como equipe, sem precisar de permissão organizacional.
+    [Authorize(Policy = "apr:criar")]
+    [HttpPost("com-membros")]
+    public async Task<IActionResult> CriarComMembros(CriarEquipeComMembrosCommand command, CancellationToken ct)
+    {
+        var id = await _mediator.Send(command, ct);
+        return CreatedAtAction(nameof(ObterPorId), new { id }, new { id });
+    }
+
     [Authorize(Policy = "organizacional:editar")]
     [HttpPut("{id:guid}")]
     public async Task<IActionResult> Atualizar(Guid id, AtualizarEquipeCommand command, CancellationToken ct)

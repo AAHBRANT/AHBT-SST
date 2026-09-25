@@ -475,6 +475,23 @@ public static class NovidadesSeeder
                     "Quando o checklist era editado no Catálogo de inspeções, as inspeções que já estavam em andamento com a versão anterior passavam a mostrar \"Not Found\" ao clicar em \"Continuar inspeção\" — no alojamento e nos demais tipos.",
                     "A inspeção abre normalmente e continua com os itens da versão do checklist com que foi iniciada. As próximas inspeções já usam a versão nova."),
             }),
+        new(
+            Versao: "5.29.0",
+            Titulo: "Monte a equipe direto na APR",
+            DataPublicacao: new DateTime(2026, 9, 24, 0, 0, 0, DateTimeKind.Utc),
+            Itens: new[]
+            {
+                new NovidadeSeedItem(
+                    CategoriaNovidade.Novidade,
+                    "Salvar os responsáveis marcados como equipe",
+                    "O campo Equipe da APR ficava sempre em \"Nenhuma\": não havia onde cadastrar equipes, e a cada APR era preciso procurar e marcar os responsáveis um por um na lista.",
+                    "Marque os responsáveis, clique em \"Salvar seleção como equipe\", dê um nome e, se quiser, escolha o encarregado. A equipe fica salva na obra da atividade. Quem já estava em outra equipe passa para a nova, e a tela avisa antes de salvar."),
+                new NovidadeSeedItem(
+                    CategoriaNovidade.Melhoria,
+                    "Escolher a equipe já marca os responsáveis",
+                    "Selecionar uma equipe na APR não mudava nada na lista de responsáveis.",
+                    "Ao escolher a equipe, todos os membros dela ficam marcados como responsáveis. Dá para desmarcar ou incluir alguém antes de salvar a APR."),
+            }),
     };
 
     public static async Task ExecutarAsync(IServiceProvider services, CancellationToken ct = default)

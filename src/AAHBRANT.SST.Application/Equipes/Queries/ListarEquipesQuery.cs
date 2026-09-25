@@ -38,6 +38,7 @@ public class ListarEquipesQueryHandler : IRequestHandler<ListarEquipesQuery, Lis
                 e.EncarregadoId,
                 EncarregadoNome = e.Encarregado != null ? e.Encarregado.Nome : null,
                 QuantidadeTrabalhadores = e.Trabalhadores.Count(t => t.Ativo),
+                TrabalhadorIds = e.Trabalhadores.Where(t => t.Ativo).Select(t => t.Id).ToList(),
             })
             .ToListAsync(ct);
 
@@ -72,6 +73,7 @@ public class ListarEquipesQueryHandler : IRequestHandler<ListarEquipesQuery, Lis
                     EncarregadoId = e.EncarregadoId,
                     EncarregadoNome = e.EncarregadoNome,
                     QuantidadeTrabalhadores = e.QuantidadeTrabalhadores,
+                    TrabalhadorIds = e.TrabalhadorIds,
                 };
             })
             .OrderBy(e => e.Nome)

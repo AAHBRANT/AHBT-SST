@@ -19,7 +19,7 @@ import {
   type Coluna,
   type Tom,
 } from '@ui';
-import { Add24Regular, Delete24Regular } from '@fluentui/react-icons';
+import { Add24Regular, Delete24Regular, PeopleTeamAdd24Regular } from '@fluentui/react-icons';
 import { api, StatusApr, statusAprLabel, type Apr, type Atividade, type Equipe, type NovaApr, type Trabalhador } from '../../lib/api';
 import { useSucessoToast } from '../../hooks/useSucessoToast';
 import { hojeIso } from '../../lib/datas';
@@ -63,6 +63,10 @@ export function AprsTab() {
   const [erro, setErro] = useState<string | null>(null);
   const [carregando, setCarregando] = useState(false);
   const [carregandoLista, setCarregandoLista] = useState(true);
+  const [montandoEquipe, setMontandoEquipe] = useState(false);
+  const [nomeNovaEquipe, setNomeNovaEquipe] = useState('');
+  const [encarregadoNovaEquipe, setEncarregadoNovaEquipe] = useState('');
+  const [salvandoEquipe, setSalvandoEquipe] = useState(false);
   const { confirmar, dialogElement } = useConfirmar();
   const sucessoToast = useSucessoToast();
 
@@ -94,6 +98,51 @@ export function AprsTab() {
   useEffect(() => {
     carregar();
   }, []);
+
+  // Equipe na APR (24/09/2026): escolher a equipe marca os membros dela como responsáveis — dá
+  // para desmarcar ou incluir alguém depois. "Nenhuma" não mexe na seleção.
+  function escolherEquipe(equipeId: string) {
+    const equipe = equipes.find((e) => e.id === equipeId);
+    setNovaApr((atual) => ({
+      ...atual,
+      equipeId: equipeId || null,
+      responsaveisIds: equipe ? [...equipe.trabalhadorIds] : atual.responsaveisIds,
+    }));
+  }
+
+  const responsaveisSelecionados = trabalhadores.filter((t) => novaApr.responsaveisIds.includes(t.id));
+  // Trabalhador pertence a uma equipe só: quem já está em outra será movido para a nova.
+  const seraoMovidos = responsaveisSelecionados.filter((t) => t.equipeId);
+
+  function abrirMontagemEquipe() {
+    setNomeNovaEquipe('');
+    setEncarregadoNovaEquipe('');
+    setMontandoEquipe(true);
+  }
+
+  async function salvarEquipe() {
+    if (!obraIdAtividadeSelecionada) return;
+    try {
+      setSalvandoEquipe(true);
+      setErro(null);
+      const { id } = await api.equipes.criarComMembros({
+        obraId: obraIdAtividadeSelecionada,
+        nome: nomeNovaEquipe.trim(),
+        encarregadoId: encarregadoNovaEquipe || null,
+        trabalhadorIds: novaApr.responsaveisIds,
+      });
+      const [equips, trabs] = await Promise.all([api.equipes.listar(), api.trabalhadores.listar()]);
+      setEquipes(equips);
+      setTrabalhadores(trabs);
+      setNovaApr((atual) => ({ ...atual, equipeId: id }));
+      setMontandoEquipe(false);
+      sucessoToast(`Equipe "${nomeNovaEquipe.trim()}" criada.`);
+    } catch (e) {
+      setErro(e instanceof Error ? e.message : 'Falha ao criar a equipe.');
+    } finally {
+      setSalvandoEquipe(false);
+    }
+  }
 
   async function criar() {
     try {
@@ -188,7 +237,7 @@ export function AprsTab() {
               <Field label="Equipe">
                 <Select
                   value={novaApr.equipeId ?? ''}
-                  onChange={(_, d) => setNovaApr({ ...novaApr, equipeId: d.value || null })}
+                  onChange={(_, d) => escolherEquipe(d.value)}
                 >
                   <option value="">Nenhuma</option>
                   {equipesDaObra.map((equipe) => (
@@ -211,6 +260,71 @@ export function AprsTab() {
                   onChange={(_, d) => setNovaApr({ ...novaApr, validade: d.value || null })}
                 />
               </Field>
+            </Campo>
+            <Campo span={12}>
+              {!montandoEquipe ? (
+                <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
+                  <Button
+                    icon={<PeopleTeamAdd24Regular />}
+                    onClick={abrirMontagemEquipe}
+                    disabled={!obraIdAtividadeSelecionada || novaApr.responsaveisIds.length === 0}
+                  >
+                    Salvar seleção como equipe
+                  </Button>
+                  <span style={{ fontSize: 12, opacity: 0.75 }}>
+                    {!obraIdAtividadeSelecionada
+                      ? 'Escolha a atividade para saber de qual obra é a equipe.'
+                      : novaApr.responsaveisIds.length === 0
+                        ? 'Marque os responsáveis que formam a equipe.'
+                        : `${novaApr.responsaveisIds.length} responsável(is) marcado(s).`}
+                  </span>
+                </div>
+              ) : (
+                <FormGrid>
+                  <Campo span={4}>
+                    <Field label="Nome da equipe" required>
+                      <Input
+                        value={nomeNovaEquipe}
+                        onChange={(_, d) => setNomeNovaEquipe(d.value)}
+                        placeholder="Ex.: Armação – Frente 2"
+                      />
+                    </Field>
+                  </Campo>
+                  <Campo span={4}>
+                    <Field label="Encarregado">
+                      <Select value={encarregadoNovaEquipe} onChange={(_, d) => setEncarregadoNovaEquipe(d.value)}>
+                        <option value="">Sem encarregado definido</option>
+                        {responsaveisSelecionados.map((t) => (
+                          <option key={t.id} value={t.id}>
+                            {t.nome}
+                          </option>
+                        ))}
+                      </Select>
+                    </Field>
+                  </Campo>
+                  <Campo span={12}>
+                    <span style={{ fontSize: 12 }}>
+                      {responsaveisSelecionados.length} membro(s): {responsaveisSelecionados.map((t) => t.nome).join(', ')}.
+                      {seraoMovidos.length > 0 &&
+                        ` ${seraoMovidos.length} já está(ão) em outra equipe e será(ão) movido(s) para esta.`}
+                    </span>
+                  </Campo>
+                  <Campo span={12}>
+                    <div style={{ display: 'flex', gap: 8 }}>
+                      <Button
+                        appearance="primary"
+                        onClick={salvarEquipe}
+                        disabled={salvandoEquipe || nomeNovaEquipe.trim() === ''}
+                      >
+                        Criar equipe
+                      </Button>
+                      <Button onClick={() => setMontandoEquipe(false)} disabled={salvandoEquipe}>
+                        Cancelar
+                      </Button>
+                    </div>
+                  </Campo>
+                </FormGrid>
+              )}
             </Campo>
             <Campo span={12}>
               <Field label="Responsáveis">
