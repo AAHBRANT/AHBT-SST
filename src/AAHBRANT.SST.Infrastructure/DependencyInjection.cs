@@ -70,6 +70,8 @@ public static class DependencyInjection
         services.AddHttpClient();
         services.Configure<TelegramSuporteOptions>(configuration.GetSection("Telegram"));
         services.AddScoped<ITelegramSuporteService, TelegramSuporteService>();
+        services.Configure<TeamsWorkflowSuporteOptions>(configuration.GetSection("TeamsWorkflow"));
+        services.AddScoped<ITeamsWorkflowSuporteService, TeamsWorkflowSuporteService>();
         services.AddScoped<ISuporteIaConfiguracao, SuporteIaConfiguracao>();
 
         services.AddScoped<IDdsPdfService, DdsPdfService>();

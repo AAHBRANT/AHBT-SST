@@ -504,6 +504,18 @@ public static class NovidadesSeeder
                     "O botão verde \"Criar\" no topo levava a PGR, APR, funcionário, ocorrência e treinamento — nem sempre o que se usa no campo todo dia.",
                     "O botão agora se chama \"Atalhos\" e leva direto a DDS, EPI, Treinamento, Inspeção e Ocorrência. O campo \"Buscar no sistema\", que só levava a algumas telas por palavra-chave, saiu do topo, assim como o ícone de Pendências, que repetia o sininho de alertas."),
             }),
+        new(
+            Versao: "5.31.0",
+            Titulo: "Chamados do Suporte IA avisam no Teams",
+            DataPublicacao: new DateTime(2026, 9, 25, 0, 0, 0, DateTimeKind.Utc),
+            Itens: new[]
+            {
+                new NovidadeSeedItem(
+                    CategoriaNovidade.Melhoria,
+                    "Todo chamado do Suporte IA chega no Teams do responsável",
+                    "O responsável pelo suporte só era avisado no Teams quando a IA concluía que o chamado exigia mudança no sistema. Dúvidas e chamados respondidos pela própria IA chegavam apenas por fora do Teams.",
+                    "Todo chamado aberto na Central de Suporte IA agora gera aviso no sininho do Teams do responsável e uma mensagem no chat do Teams com o resumo: tipo, severidade, módulo, solicitante, descrição e a resposta da IA."),
+            }),
     };
 
     public static async Task ExecutarAsync(IServiceProvider services, CancellationToken ct = default)

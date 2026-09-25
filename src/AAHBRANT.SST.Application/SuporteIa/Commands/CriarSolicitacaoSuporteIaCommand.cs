@@ -36,6 +36,7 @@ public class CriarSolicitacaoSuporteIaCommandHandler : IRequestHandler<CriarSoli
     private readonly IAppDbContext _db;
     private readonly ISuporteIaTriagemService _triagem;
     private readonly ITelegramSuporteService _telegram;
+    private readonly ITeamsWorkflowSuporteService _workflowTeams;
     private readonly IFilaNotificacaoTeams _filaTeams;
     private readonly ISuporteIaConfiguracao _configuracao;
 
@@ -43,12 +44,14 @@ public class CriarSolicitacaoSuporteIaCommandHandler : IRequestHandler<CriarSoli
         IAppDbContext db,
         ISuporteIaTriagemService triagem,
         ITelegramSuporteService telegram,
+        ITeamsWorkflowSuporteService workflowTeams,
         IFilaNotificacaoTeams filaTeams,
         ISuporteIaConfiguracao configuracao)
     {
         _db = db;
         _triagem = triagem;
         _telegram = telegram;
+        _workflowTeams = workflowTeams;
         _filaTeams = filaTeams;
         _configuracao = configuracao;
     }
@@ -88,14 +91,21 @@ public class CriarSolicitacaoSuporteIaCommandHandler : IRequestHandler<CriarSoli
 
         _db.SuporteIaSolicitacoes.Add(solicitacao);
 
-        if (triagem.RequerAlteracaoCodigo && TryObterResponsavel(out var responsavelId))
+        // Todo chamado avisa o responsável no sininho do Teams (pedido do usuário, 24/09/2026) — antes
+        // só a demanda técnica avisava, e dúvida respondida pela IA chegava apenas no Telegram. O
+        // chamado já respondido pela IA nasce com o alerta resolvido: avisa, mas não fica pendente
+        // no contador de alertas abertos.
+        if (TryObterResponsavel(out var responsavelId))
         {
             var alerta = new Alerta
             {
                 Tipo = TipoAlerta.SuporteIaDemandaTecnica,
-                Severidade = request.SeveridadeInformada >= SeveridadeSolicitacaoSuporteIa.Alta ? SeveridadeAlerta.Critico : SeveridadeAlerta.Atencao,
+                Severidade = !triagem.RequerAlteracaoCodigo
+                    ? SeveridadeAlerta.Info
+                    : request.SeveridadeInformada >= SeveridadeSolicitacaoSuporteIa.Alta ? SeveridadeAlerta.Critico : SeveridadeAlerta.Atencao,
+                Status = triagem.RequerAlteracaoCodigo ? StatusAlerta.Aberto : StatusAlerta.Resolvido,
                 Titulo = $"Suporte IA: {request.Titulo.Trim()}",
-                Descricao = triagem.DemandaReduzida,
+                Descricao = triagem.RequerAlteracaoCodigo ? triagem.DemandaReduzida : triagem.RespostaAoUsuario,
                 EntidadeOrigemTipo = nameof(SuporteIaSolicitacao),
                 EntidadeOrigemId = solicitacao.Id,
                 DestinatarioUsuarioId = responsavelId
@@ -107,11 +117,8 @@ public class CriarSolicitacaoSuporteIaCommandHandler : IRequestHandler<CriarSoli
         await _db.SaveChangesAsync(ct);
 
         await NotificarTelegramAsync(solicitacao, ct);
-
-        if (triagem.RequerAlteracaoCodigo)
-        {
-            await NotificarTeamsAsync(solicitacao, ct);
-        }
+        await NotificarChatTeamsAsync(solicitacao, ct);
+        await NotificarTeamsAsync(solicitacao, ct);
 
         return Mapear(solicitacao);
     }
@@ -129,6 +136,18 @@ public class CriarSolicitacaoSuporteIaCommandHandler : IRequestHandler<CriarSoli
         }
     }
 
+    private async Task NotificarChatTeamsAsync(SuporteIaSolicitacao solicitacao, CancellationToken ct)
+    {
+        try
+        {
+            await _workflowTeams.EnviarDemandaAsync(solicitacao, ct);
+        }
+        catch
+        {
+            // Mesmo princípio do Telegram: o registro da demanda é a fonte de verdade.
+        }
+    }
+
     private async Task NotificarTeamsAsync(SuporteIaSolicitacao solicitacao, CancellationToken ct)
     {
         if (solicitacao.AlertaId.HasValue && TryObterResponsavel(out var responsavelId))
@@ -139,7 +158,7 @@ public class CriarSolicitacaoSuporteIaCommandHandler : IRequestHandler<CriarSoli
                     solicitacao.AlertaId.Value,
                     responsavelId,
                     $"Suporte IA: {solicitacao.Titulo}",
-                    solicitacao.DemandaReduzida), ct);
+                    solicitacao.RequerAlteracaoCodigo ? solicitacao.DemandaReduzida : solicitacao.RespostaAoUsuario), ct);
             }
             catch
             {
