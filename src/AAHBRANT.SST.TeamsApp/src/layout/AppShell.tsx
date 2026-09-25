@@ -27,7 +27,6 @@ import {
 import {
   Grid24Regular,
   Add24Regular,
-  Search24Regular,
   Warning24Regular,
   ClipboardTaskListLtr24Regular,
   Settings24Regular,
@@ -511,16 +510,6 @@ const useStyles = makeStyles({
       display: 'none',
     },
   },
-  buscaTopo: {
-    width: '260px',
-    height: '32px',
-    minHeight: '32px',
-    borderRadius: '8px',
-    backgroundColor: designTokens.colorSurface,
-    '@media (max-width: 1280px)': {
-      width: '200px',
-    },
-  },
   botaoAcaoTopo: {
     height: '32px',
     minWidth: '32px',
@@ -809,7 +798,6 @@ export function AppShell({ children }: { children: ReactNode }) {
   const [menuPerfilAberto, setMenuPerfilAberto] = useState(false);
   const [perfilAberto, setPerfilAberto] = useState(false);
   const [alertasAbertos, setAlertasAbertos] = useState<number | null>(null);
-  const [buscaGlobal, setBuscaGlobal] = useState('');
   const [railExpandido, setRailExpandido] = useState<boolean>(
     () => localStorage.getItem(CHAVE_RAIL_EXPANDIDO) === '1',
   );
@@ -882,20 +870,6 @@ export function AppShell({ children }: { children: ReactNode }) {
   function abrirSuporteIa() {
     setMenuPerfilAberto(false);
     navigate('/suporte-ia');
-  }
-
-  function navegarBuscaGlobal() {
-    const termo = buscaGlobal.trim().toLowerCase();
-    if (!termo) return;
-
-    if (termo.includes('apr')) navigate('/operacao?secao=apr');
-    else if (termo.includes('pt') || termo.includes('permiss')) navigate('/operacao?secao=pt');
-    else if (termo.includes('pgr') || termo.includes('gro') || termo.includes('risco')) navigate('/gestao-sst?secao=pgr');
-    else if (termo.includes('func') || termo.includes('pessoa') || termo.includes('colaborador')) navigate('/pessoas');
-    else if (termo.includes('trein')) navigate('/gestao-sst?secao=treinamentos');
-    else if (termo.includes('ocorr') || termo.includes('acidente') || termo.includes('nc')) navigate('/ocorrencias');
-    else if (termo.includes('alert') || termo.includes('pend')) navigate('/alertas');
-    else navigate('/');
   }
 
   useEffect(() => {
@@ -994,17 +968,6 @@ export function AppShell({ children }: { children: ReactNode }) {
         </div>
 
         <div className={estilos.acoesTopo} aria-label="Ações globais">
-          <Input
-            className={estilos.buscaTopo}
-            value={buscaGlobal}
-            contentBefore={<Search24Regular />}
-            placeholder="Buscar no sistema"
-            aria-label="Buscar no sistema"
-            onChange={(_, dados) => setBuscaGlobal(dados.value)}
-            onKeyDown={(evento) => {
-              if (evento.key === 'Enter') navegarBuscaGlobal();
-            }}
-          />
           <MenuAtalhos
             botao={
               <Button className={estilos.botaoCriarTopo} appearance="primary" icon={<Add24Regular />}>

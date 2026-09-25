@@ -502,7 +502,7 @@ public static class NovidadesSeeder
                     CategoriaNovidade.Melhoria,
                     "Atalhos do dia a dia no topo da tela",
                     "O botão verde \"Criar\" no topo levava a PGR, APR, funcionário, ocorrência e treinamento — nem sempre o que se usa no campo todo dia.",
-                    "O botão agora se chama \"Atalhos\" e leva direto a DDS, EPI, Treinamento, Inspeção e Ocorrência."),
+                    "O botão agora se chama \"Atalhos\" e leva direto a DDS, EPI, Treinamento, Inspeção e Ocorrência. O campo \"Buscar no sistema\", que só levava a algumas telas por palavra-chave, saiu do topo."),
             }),
     };
 
