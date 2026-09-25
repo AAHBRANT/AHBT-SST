@@ -36,8 +36,13 @@ public class ValidarSolicitacaoSuporteIaCommandHandler
     : IRequestHandler<ValidarSolicitacaoSuporteIaCommand, SuporteIaSolicitacaoDto>
 {
     private readonly IAppDbContext _db;
+    private readonly IFilaCalendarioTeams _filaCalendario;
 
-    public ValidarSolicitacaoSuporteIaCommandHandler(IAppDbContext db) => _db = db;
+    public ValidarSolicitacaoSuporteIaCommandHandler(IAppDbContext db, IFilaCalendarioTeams filaCalendario)
+    {
+        _db = db;
+        _filaCalendario = filaCalendario;
+    }
 
     public async Task<SuporteIaSolicitacaoDto> Handle(ValidarSolicitacaoSuporteIaCommand request, CancellationToken ct)
     {
@@ -62,6 +67,8 @@ public class ValidarSolicitacaoSuporteIaCommandHandler
         solicitacao.ValidadoEmUtc = DateTime.UtcNow;
 
         await _db.SaveChangesAsync(ct);
+        if (solicitacao.Status == StatusSolicitacaoSuporteIa.Resolvida)
+            await SuporteIaCalendario.EncerrarAsync(_db, _filaCalendario, solicitacao, ct);
 
         return SuporteIaMapeador.Mapear(solicitacao, solicitacao.SolicitanteUsuarioId, solicitacao.SolicitanteEmail);
     }

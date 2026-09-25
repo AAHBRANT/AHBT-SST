@@ -1,3 +1,4 @@
+using AAHBRANT.SST.Application.Alertas.Motor;
 using AAHBRANT.SST.Application.Common.Interfaces;
 using AAHBRANT.SST.Domain.Entidades;
 using AAHBRANT.SST.Domain.Enums;
@@ -36,7 +37,7 @@ public class CriarSolicitacaoSuporteIaCommandHandler : IRequestHandler<CriarSoli
     private readonly IAppDbContext _db;
     private readonly ISuporteIaTriagemService _triagem;
     private readonly ITelegramSuporteService _telegram;
-    private readonly ITeamsWorkflowSuporteService _workflowTeams;
+    private readonly IFilaCalendarioTeams _filaCalendario;
     private readonly IFilaNotificacaoTeams _filaTeams;
     private readonly ISuporteIaConfiguracao _configuracao;
 
@@ -44,14 +45,14 @@ public class CriarSolicitacaoSuporteIaCommandHandler : IRequestHandler<CriarSoli
         IAppDbContext db,
         ISuporteIaTriagemService triagem,
         ITelegramSuporteService telegram,
-        ITeamsWorkflowSuporteService workflowTeams,
         IFilaNotificacaoTeams filaTeams,
+        IFilaCalendarioTeams filaCalendario,
         ISuporteIaConfiguracao configuracao)
     {
         _db = db;
         _triagem = triagem;
         _telegram = telegram;
-        _workflowTeams = workflowTeams;
+        _filaCalendario = filaCalendario;
         _filaTeams = filaTeams;
         _configuracao = configuracao;
     }
@@ -117,8 +118,8 @@ public class CriarSolicitacaoSuporteIaCommandHandler : IRequestHandler<CriarSoli
         await _db.SaveChangesAsync(ct);
 
         await NotificarTelegramAsync(solicitacao, ct);
-        await NotificarChatTeamsAsync(solicitacao, ct);
         await NotificarTeamsAsync(solicitacao, ct);
+        await CriarEventoCalendarioAsync(solicitacao, agora, ct);
 
         return Mapear(solicitacao);
     }
@@ -136,15 +137,27 @@ public class CriarSolicitacaoSuporteIaCommandHandler : IRequestHandler<CriarSoli
         }
     }
 
-    private async Task NotificarChatTeamsAsync(SuporteIaSolicitacao solicitacao, CancellationToken ct)
+    // Evento de dia inteiro no calendário do responsável, na data do prazo de atendimento pela
+    // severidade (ver SuporteIaCalendario.CalcularPrazo). Cancelado quando o chamado é encerrado.
+    private async Task CriarEventoCalendarioAsync(SuporteIaSolicitacao solicitacao, DateTime agoraUtc, CancellationToken ct)
     {
-        try
+        if (solicitacao.AlertaId.HasValue && TryObterResponsavel(out var responsavelId))
         {
-            await _workflowTeams.EnviarDemandaAsync(solicitacao, ct);
-        }
-        catch
-        {
-            // Mesmo princípio do Telegram: o registro da demanda é a fonte de verdade.
+            try
+            {
+                await _filaCalendario.EnfileirarAsync(new CalendarioTeamsMensagem(
+                    AlertaEngineService.OrigemCalendarioAlerta,
+                    solicitacao.AlertaId.Value,
+                    OperacaoCalendarioTeams.Criar,
+                    responsavelId,
+                    $"Suporte IA: {solicitacao.Titulo}",
+                    solicitacao.RequerAlteracaoCodigo ? solicitacao.DemandaReduzida : solicitacao.RespostaAoUsuario,
+                    SuporteIaCalendario.CalcularPrazo(solicitacao.SeveridadeInformada, agoraUtc)), ct);
+            }
+            catch
+            {
+                // Mesmo princípio do Telegram: o registro da demanda é a fonte de verdade.
+            }
         }
     }
 

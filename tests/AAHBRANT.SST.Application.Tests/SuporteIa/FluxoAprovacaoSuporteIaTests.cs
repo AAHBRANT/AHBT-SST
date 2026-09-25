@@ -13,6 +13,11 @@ namespace AAHBRANT.SST.Application.Tests.SuporteIa;
 // usuário de 20/09). Cobre o ciclo feliz e as guardas de estado/identidade de cada comando.
 public class FluxoAprovacaoSuporteIaTests
 {
+    private sealed class FilaCalendarioNula : IFilaCalendarioTeams
+    {
+        public Task EnfileirarAsync(CalendarioTeamsMensagem mensagem, CancellationToken ct = default) => Task.CompletedTask;
+    }
+
     private static IAppDbContext CriarDb(string nomeBanco) =>
         new SstDbContext(new DbContextOptionsBuilder<SstDbContext>().UseInMemoryDatabase(nomeBanco).Options, new CurrentUserService());
 
@@ -99,7 +104,7 @@ public class FluxoAprovacaoSuporteIaTests
         var db = CriarDb(nameof(Recusar_EstadosPermitidos_MoveParaCancelada) + statusInicial);
         var id = await CriarSolicitacaoAsync(db, statusInicial);
 
-        var resultado = await new RecusarSolicitacaoSuporteIaCommandHandler(db)
+        var resultado = await new RecusarSolicitacaoSuporteIaCommandHandler(db, new FilaCalendarioNula())
             .Handle(new RecusarSolicitacaoSuporteIaCommand(id, "Duplicado de outro chamado"), CancellationToken.None);
 
         Assert.Equal(StatusSolicitacaoSuporteIa.Cancelada, resultado.Status);
@@ -113,7 +118,7 @@ public class FluxoAprovacaoSuporteIaTests
         var id = await CriarSolicitacaoAsync(db, StatusSolicitacaoSuporteIa.Resolvida);
 
         await Assert.ThrowsAsync<InvalidOperationException>(() =>
-            new RecusarSolicitacaoSuporteIaCommandHandler(db)
+            new RecusarSolicitacaoSuporteIaCommandHandler(db, new FilaCalendarioNula())
                 .Handle(new RecusarSolicitacaoSuporteIaCommand(id, "Motivo"), CancellationToken.None));
     }
 
@@ -123,7 +128,7 @@ public class FluxoAprovacaoSuporteIaTests
         var db = CriarDb(nameof(Validar_ConfirmadoPeloSolicitante_MoveParaResolvida));
         var id = await CriarSolicitacaoAsync(db, StatusSolicitacaoSuporteIa.AguardandoValidacao, solicitanteEmail: "quem-abriu@aahbrant.com");
 
-        var resultado = await new ValidarSolicitacaoSuporteIaCommandHandler(db)
+        var resultado = await new ValidarSolicitacaoSuporteIaCommandHandler(db, new FilaCalendarioNula())
             .Handle(new ValidarSolicitacaoSuporteIaCommand(id, true, null, null, "quem-abriu@aahbrant.com"), CancellationToken.None);
 
         Assert.Equal(StatusSolicitacaoSuporteIa.Resolvida, resultado.Status);
@@ -136,7 +141,7 @@ public class FluxoAprovacaoSuporteIaTests
         var db = CriarDb(nameof(Validar_NaoConfirmado_ReabreChamado));
         var id = await CriarSolicitacaoAsync(db, StatusSolicitacaoSuporteIa.Respondida, solicitanteEmail: "quem-abriu@aahbrant.com");
 
-        var resultado = await new ValidarSolicitacaoSuporteIaCommandHandler(db)
+        var resultado = await new ValidarSolicitacaoSuporteIaCommandHandler(db, new FilaCalendarioNula())
             .Handle(new ValidarSolicitacaoSuporteIaCommand(id, false, "Ainda não resolveu", null, "quem-abriu@aahbrant.com"), CancellationToken.None);
 
         Assert.Equal(StatusSolicitacaoSuporteIa.Reaberta, resultado.Status);
@@ -150,7 +155,7 @@ public class FluxoAprovacaoSuporteIaTests
         var id = await CriarSolicitacaoAsync(db, StatusSolicitacaoSuporteIa.AguardandoValidacao, solicitanteEmail: "quem-abriu@aahbrant.com");
 
         await Assert.ThrowsAsync<InvalidOperationException>(() =>
-            new ValidarSolicitacaoSuporteIaCommandHandler(db)
+            new ValidarSolicitacaoSuporteIaCommandHandler(db, new FilaCalendarioNula())
                 .Handle(new ValidarSolicitacaoSuporteIaCommand(id, true, null, null, "outra-pessoa@aahbrant.com"), CancellationToken.None));
     }
 
@@ -161,7 +166,7 @@ public class FluxoAprovacaoSuporteIaTests
         var id = await CriarSolicitacaoAsync(db, StatusSolicitacaoSuporteIa.Encaminhada, solicitanteEmail: "quem-abriu@aahbrant.com");
 
         await Assert.ThrowsAsync<InvalidOperationException>(() =>
-            new ValidarSolicitacaoSuporteIaCommandHandler(db)
+            new ValidarSolicitacaoSuporteIaCommandHandler(db, new FilaCalendarioNula())
                 .Handle(new ValidarSolicitacaoSuporteIaCommand(id, true, null, null, "quem-abriu@aahbrant.com"), CancellationToken.None));
     }
 

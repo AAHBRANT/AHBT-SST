@@ -514,7 +514,7 @@ public static class NovidadesSeeder
                     CategoriaNovidade.Melhoria,
                     "Todo chamado do Suporte IA chega no Teams do responsável",
                     "O responsável pelo suporte só era avisado no Teams quando a IA concluía que o chamado exigia mudança no sistema. Dúvidas e chamados respondidos pela própria IA chegavam apenas por fora do Teams.",
-                    "Todo chamado aberto na Central de Suporte IA agora gera aviso no sininho do Teams do responsável e uma mensagem no chat do Teams com o resumo: tipo, severidade, módulo, solicitante, descrição e a resposta da IA."),
+                    "Todo chamado aberto na Central de Suporte IA agora gera aviso no sininho do Teams do responsável e um evento no calendário dele, na data do prazo de atendimento: Crítica no mesmo dia, Alta em 1, Média em 3 e Baixa em 5 dias úteis. Quando o chamado é resolvido ou recusado, o evento sai do calendário."),
             }),
     };
 

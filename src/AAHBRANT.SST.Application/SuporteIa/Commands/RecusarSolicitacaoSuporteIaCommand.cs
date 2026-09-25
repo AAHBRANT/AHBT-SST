@@ -24,8 +24,13 @@ public class RecusarSolicitacaoSuporteIaCommandHandler
     : IRequestHandler<RecusarSolicitacaoSuporteIaCommand, SuporteIaSolicitacaoDto>
 {
     private readonly IAppDbContext _db;
+    private readonly IFilaCalendarioTeams _filaCalendario;
 
-    public RecusarSolicitacaoSuporteIaCommandHandler(IAppDbContext db) => _db = db;
+    public RecusarSolicitacaoSuporteIaCommandHandler(IAppDbContext db, IFilaCalendarioTeams filaCalendario)
+    {
+        _db = db;
+        _filaCalendario = filaCalendario;
+    }
 
     public async Task<SuporteIaSolicitacaoDto> Handle(RecusarSolicitacaoSuporteIaCommand request, CancellationToken ct)
     {
@@ -44,6 +49,7 @@ public class RecusarSolicitacaoSuporteIaCommandHandler
         solicitacao.ConcluidoEmUtc = DateTime.UtcNow;
 
         await _db.SaveChangesAsync(ct);
+        await SuporteIaCalendario.EncerrarAsync(_db, _filaCalendario, solicitacao, ct);
 
         return SuporteIaMapeador.Mapear(solicitacao, solicitacao.SolicitanteUsuarioId, solicitacao.SolicitanteEmail);
     }
