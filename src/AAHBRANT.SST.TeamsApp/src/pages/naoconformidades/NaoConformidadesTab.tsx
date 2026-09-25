@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
+  BotaoAcao,
   Button,
   Campo,
   CampoData,
@@ -309,9 +310,8 @@ export function NaoConformidadesTab() {
             <>
               {/* Exclusão é privilégio de Administrador (o servidor recusa os demais) — ver PoliticasAutorizacao. */}
               {souAdministrador && (
-                <Button
-                  appearance="subtle"
-                  size="small"
+                <BotaoAcao
+                  tom="excluir"
                   icon={<Delete24Regular />}
                   disabled={excluindoId === nc.id}
                   onClick={(evento) => {

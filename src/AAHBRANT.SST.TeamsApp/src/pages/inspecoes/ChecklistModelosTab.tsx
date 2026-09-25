@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import {
+  BotaoAcao,
   Button,
   Card,
   Campo,
@@ -284,9 +285,8 @@ export function ChecklistModelosTab() {
               vazio={{ titulo: 'Nenhum item adicionado ainda.' }}
               densidade="compacta"
               acoesLinha={(i) => (
-                <Button
-                  appearance="subtle"
-                  size="small"
+                <BotaoAcao
+                  tom="excluir"
                   icon={<Delete24Regular />}
                   onClick={() => removerItem(i.indice)}
                   aria-label="Remover item"
@@ -316,9 +316,9 @@ export function ChecklistModelosTab() {
             acao: { rotulo: 'Novo checklist', aoClicar: () => setPainelAberto(true) },
           }}
           acoesLinha={(c) => (
-            <div style={{ display: 'flex', gap: 4 }}>
-              <Button
-                appearance="subtle"
+            <div style={{ display: 'flex', gap: 6 }}>
+              <BotaoAcao
+                tom="ver"
                 icon={<ArrowSync24Regular />}
                 onClick={(evento) => {
                   evento.stopPropagation();
@@ -326,8 +326,8 @@ export function ChecklistModelosTab() {
                 }}
                 aria-label="Nova versão"
               />
-              <Button
-                appearance="subtle"
+              <BotaoAcao
+                tom="excluir"
                 icon={<Delete24Regular />}
                 onClick={(evento) => {
                   evento.stopPropagation();

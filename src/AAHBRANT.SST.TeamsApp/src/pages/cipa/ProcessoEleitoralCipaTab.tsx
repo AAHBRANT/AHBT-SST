@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
+  BotaoAcao,
   Button,
   Campo,
   CampoData,
@@ -225,7 +226,7 @@ export function ProcessoEleitoralCipaTab() {
           }}
           aoClicarLinha={(p) => navigate(`/operacao/cipa/eleicao/${p.id}`)}
           acoesLinha={(p) => (
-            <Button appearance="subtle" icon={<Delete24Regular />} onClick={() => excluir(p.id)} aria-label="Excluir" />
+            <BotaoAcao tom="excluir" icon={<Delete24Regular />} onClick={() => excluir(p.id)} aria-label="Excluir" />
           )}
         />
       </Card>

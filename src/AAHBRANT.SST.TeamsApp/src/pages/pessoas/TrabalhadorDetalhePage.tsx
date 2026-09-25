@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { useParams } from 'react-router-dom';
 import {
   Avatar,
+  BotaoAcao,
   Button,
   Card,
   PageHeader,
@@ -162,17 +163,18 @@ export function TrabalhadorDetalhePage() {
         status={perfil && <StatusChip tom={tomAptidao[perfil.statusAptidao] ?? 'neutro'}>{perfil.statusAptidao}</StatusChip>}
         acoes={
           <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-            <Button appearance="secondary" icon={<Eye24Regular />} onClick={visualizarRelatorio} disabled={!perfil}>
+            <BotaoAcao tom="ver" icon={<Eye24Regular />} onClick={visualizarRelatorio} disabled={!perfil} aria-label="Visualizar relatório">
               Visualizar relatório
-            </Button>
-            <Button
-              appearance="primary"
+            </BotaoAcao>
+            <BotaoAcao
+              tom="baixar"
               icon={<ArrowDownload24Regular />}
               onClick={baixarRelatorio}
               disabled={baixandoRelatorio || !perfil}
+              aria-label="Emitir relatório de fiscalização (PDF)"
             >
               Emitir relatório de fiscalização (PDF)
-            </Button>
+            </BotaoAcao>
           </div>
         }
       />

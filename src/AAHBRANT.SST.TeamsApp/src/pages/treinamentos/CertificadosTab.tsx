@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import {
+  BotaoAcao,
   Button,
   Campo,
   Card,
@@ -28,7 +29,7 @@ import {
   DocumentPdf24Regular,
   Eye24Regular,
   Image24Regular,
-  Warning24Regular,
+  ArrowUpload24Regular,
 } from '@fluentui/react-icons';
 import {
   api,
@@ -274,6 +275,10 @@ export function CertificadosTab() {
   // Externo sem arquivo anexado não tem o que mostrar (a API recusa emitir o modelo para ele).
   function podeVisualizar(certificado: CertificadoTreinamento) {
     return certificado.temArquivo || certificado.origemCertificado !== OrigemCertificadoTreinamento.Externo;
+  }
+
+  function precisaAnexo(certificado: CertificadoTreinamento) {
+    return certificado.origemCertificado === OrigemCertificadoTreinamento.Externo && !certificado.temArquivo;
   }
 
   function visualizar(certificado: CertificadoTreinamento) {
@@ -660,11 +665,10 @@ export function CertificadosTab() {
             acao: { rotulo: 'Lançar certificado', aoClicar: () => setPainelAberto(true) },
           }}
           acoesLinha={(c) => (
-            <div style={{ display: 'flex', gap: 4 }}>
+            <div style={{ display: 'flex', gap: 6 }}>
               {podeVisualizar(c) && (
-                <Button
-                  appearance="subtle"
-                  size="small"
+                <BotaoAcao
+                  tom="ver"
                   icon={<Eye24Regular />}
                   onClick={(evento) => {
                     evento.stopPropagation();
@@ -672,44 +676,44 @@ export function CertificadosTab() {
                   }}
                   disabled={ocupadoId === c.id}
                   aria-label="Visualizar certificado"
-                  title="Visualizar certificado"
                 />
               )}
-              {!c.temArquivo && (
-                <Button
-                  appearance="subtle"
-                  size="small"
-                  icon={<Warning24Regular />}
+              {/* Anexar só aparece enquanto falta o escaneado de um certificado externo (mesma regra
+                  do "Pendente" da coluna Arquivo). Emitido pelo sistema não precisa de anexo, e depois
+                  de anexado o botão some — para trocar, exclui e lança de novo (pedido de 25/09). */}
+              {precisaAnexo(c) && (
+                <BotaoAcao
+                  tom="atencao"
+                  icon={<ArrowUpload24Regular />}
                   onClick={(evento) => {
                     evento.stopPropagation();
                     pedirArquivoPara(c.id);
                   }}
                   disabled={ocupadoId === c.id}
                   aria-label="Anexar arquivo do certificado"
-                  title="Anexar arquivo do certificado"
                 />
               )}
-              <Button
-                appearance="subtle"
-                size="small"
-                icon={<ArrowDownload24Regular />}
-                onClick={(evento) => {
-                  evento.stopPropagation();
-                  baixar(c);
-                }}
-                disabled={ocupadoId === c.id}
-                aria-label="Baixar certificado"
-                title={
-                  c.origemCertificado === OrigemCertificadoTreinamento.Externo
-                    ? 'Baixar o certificado original anexado'
-                    : 'Baixar o certificado no modelo AAHBRANT'
-                }
-              />
+              {podeVisualizar(c) && (
+                <BotaoAcao
+                  tom="baixar"
+                  icon={<ArrowDownload24Regular />}
+                  onClick={(evento) => {
+                    evento.stopPropagation();
+                    baixar(c);
+                  }}
+                  disabled={ocupadoId === c.id}
+                  aria-label="Baixar certificado"
+                  title={
+                    c.origemCertificado === OrigemCertificadoTreinamento.Externo
+                      ? 'Baixar o certificado original anexado'
+                      : 'Baixar o certificado no modelo AAHBRANT'
+                  }
+                />
+              )}
               {/* Exclusão é privilégio de Administrador (o servidor recusa os demais) — ver PoliticasAutorizacao. */}
               {souAdministrador && (
-                <Button
-                  appearance="subtle"
-                  size="small"
+                <BotaoAcao
+                  tom="excluir"
                   icon={<Delete24Regular />}
                   onClick={(evento) => {
                     evento.stopPropagation();

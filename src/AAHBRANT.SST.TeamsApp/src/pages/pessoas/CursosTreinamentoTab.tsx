@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import {
+  BotaoAcao,
   Button,
   Checkbox,
   Field,
@@ -282,7 +283,7 @@ export function CursosTreinamentoTab() {
                   Marcar como Integração de Segurança
                 </Button>
               )}
-              <Button appearance="subtle" icon={<Delete24Regular />} onClick={() => excluir(c.id)} aria-label="Excluir" />
+              <BotaoAcao tom="excluir" icon={<Delete24Regular />} onClick={() => excluir(c.id)} aria-label="Excluir" />
             </>
           )}
         />

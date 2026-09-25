@@ -54,6 +54,7 @@ export { ChipCheckboxGroup, type ChipCheckboxGroupProps } from './primitivos/Chi
 
 export { SeletorPesquisavel, type SeletorPesquisavelProps, type OpcaoSeletor } from './primitivos/SeletorPesquisavel/SeletorPesquisavel';
 export { useConfirmar, type OpcoesConfirmacao } from './primitivos/ConfirmDialog/useConfirmar';
+export { BotaoAcao, type BotaoAcaoProps, type TomBotaoAcao } from './primitivos/BotaoAcao/BotaoAcao';
 
 export { PainelLateral, type PainelLateralProps } from './compostos/PainelLateral/PainelLateral';
 export { PainelCriacaoInline, type PainelCriacaoInlineProps } from './compostos/PainelCriacaoInline/PainelCriacaoInline';

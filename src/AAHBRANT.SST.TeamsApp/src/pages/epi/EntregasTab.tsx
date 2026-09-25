@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
+  BotaoAcao,
   Button, Field, Input, Select, CampoData,
   Card, PageHeader, DataTable, StatusChip, nivelVencimento, tomDeVencimento, rotuloDeVencimento,
   PainelCriacaoInline, FormSection, FormGrid, FormRodape, Campo, SeletorPesquisavel, FeedbackInline,
@@ -942,25 +943,22 @@ export function EntregasTab({ aoNavegarParaMatriz }: EntregasTabProps) {
           }}
           acoesLinha={(e) => (
             <>
-              <Button
-                appearance="subtle"
-                size="small"
+              <BotaoAcao
+                tom="ver"
                 icon={<Signature24Regular />}
                 onClick={() => navigate(`/epi/${e.id}/assinar`)}
                 aria-label="Assinar ficha"
                 title="Assinar ficha"
               />
-              <Button
-                appearance="subtle"
-                size="small"
+              <BotaoAcao
+                tom="ver"
                 icon={<Eye24Regular />}
                 onClick={() => visualizarFicha(e.trabalhadorId)}
                 aria-label="Visualizar ficha do funcionário"
                 title="Visualizar ficha de EPI do funcionário"
               />
-              <Button
-                appearance="subtle"
-                size="small"
+              <BotaoAcao
+                tom="baixar"
                 icon={<ArrowDownload24Regular />}
                 onClick={() => baixarFicha(e.trabalhadorId)}
                 disabled={baixandoId === e.trabalhadorId}
@@ -970,9 +968,8 @@ export function EntregasTab({ aoNavegarParaMatriz }: EntregasTabProps) {
               {/* Só Administrador (pedido do usuário, 23/09): o servidor recusa a exclusão de quem
                   não for, então mostrar o botão para os outros só geraria erro na cara do técnico. */}
               {souAdministrador && (
-                <Button
-                  appearance="subtle"
-                  size="small"
+                <BotaoAcao
+                  tom="excluir"
                   icon={<Delete24Regular />}
                   onClick={() => excluirEntrega(e)}
                   disabled={excluindoId === e.id}

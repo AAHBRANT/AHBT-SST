@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { useParams } from 'react-router-dom';
 import {
   Abas,
-  Button,
+  BotaoAcao,
   Campo,
   Card,
   Carregando,
@@ -187,12 +187,12 @@ export function AprDetalhePage() {
         rotuloVoltar: 'Voltar para APR',
         acoes: (
           <>
-            <Button appearance="secondary" icon={<Eye24Regular />} onClick={visualizarPdf}>
+            <BotaoAcao tom="ver" icon={<Eye24Regular />} onClick={visualizarPdf} aria-label="Visualizar PDF">
               Visualizar PDF
-            </Button>
-            <Button appearance="secondary" icon={<ArrowDownload24Regular />} onClick={exportarPdf} disabled={exportando}>
+            </BotaoAcao>
+            <BotaoAcao tom="baixar" icon={<ArrowDownload24Regular />} onClick={exportarPdf} disabled={exportando} aria-label="Exportar PDF">
               Exportar PDF
-            </Button>
+            </BotaoAcao>
             {dialogoVisualizador}
           </>
         ),

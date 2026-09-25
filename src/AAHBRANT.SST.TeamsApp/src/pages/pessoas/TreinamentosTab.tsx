@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
+  BotaoAcao,
   Button,
   Field,
   Input,
@@ -301,25 +302,20 @@ export function TreinamentosTab({ trabalhadorId, obraId }: { trabalhadorId: stri
           }}
           acoesLinha={(t) => (
             <>
-              <Button
-                appearance="subtle"
-                size="small"
+              <BotaoAcao
+                tom="ver"
                 icon={<Signature24Regular />}
                 onClick={() => navigate(`/treinamentos/${t.id}/assinar`)}
                 aria-label="Assinar certificado"
-                title="Assinar certificado"
               />
-              <Button
-                appearance="subtle"
-                size="small"
+              <BotaoAcao
+                tom="ver"
                 icon={<Eye24Regular />}
                 onClick={() => visualizarCertificado(t)}
                 aria-label="Visualizar certificado"
-                title="Visualizar certificado"
               />
-              <Button
-                appearance="subtle"
-                size="small"
+              <BotaoAcao
+                tom="baixar"
                 icon={<ArrowDownload24Regular />}
                 onClick={() => baixarCertificado(t.id)}
                 disabled={baixandoId === t.id}
@@ -328,9 +324,8 @@ export function TreinamentosTab({ trabalhadorId, obraId }: { trabalhadorId: stri
               />
               {/* Exclusão é privilégio de Administrador (o servidor recusa os demais) — ver PoliticasAutorizacao. */}
               {souAdministrador && (
-                <Button
-                  appearance="subtle"
-                  size="small"
+                <BotaoAcao
+                  tom="excluir"
                   icon={<Delete24Regular />}
                   onClick={() => excluir(t.id)}
                   aria-label="Excluir"

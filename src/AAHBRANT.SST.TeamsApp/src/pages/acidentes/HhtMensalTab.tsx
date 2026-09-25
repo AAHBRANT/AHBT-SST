@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import {
+  BotaoAcao,
   Button,
   Campo,
   Card,
@@ -159,7 +160,7 @@ export function HhtMensalTab({ obras }: { obras: Obra[] }) {
           carregando={carregandoLista}
           vazio={{ titulo: 'Nenhum registro de HHT cadastrado ainda.' }}
           acoesLinha={(r) => (
-            <Button appearance="subtle" icon={<Delete24Regular />} onClick={() => excluir(r.id)} aria-label="Excluir" />
+            <BotaoAcao tom="excluir" icon={<Delete24Regular />} onClick={() => excluir(r.id)} aria-label="Excluir" />
           )}
         />
       </Card>

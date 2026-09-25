@@ -1,4 +1,4 @@
-import { Button, Card, DataTable, StatusChip, useConfirmar, type Coluna, type Tom } from '@ui';
+import { BotaoAcao, Card, DataTable, StatusChip, useConfirmar, type Coluna, type Tom } from '@ui';
 import { Delete24Regular } from '@fluentui/react-icons';
 import { api, nivelRiscoLabel, type Atividade, type Perigo, type Risco } from '../../../lib/api';
 import { useSucessoToast } from '../../../hooks/useSucessoToast';
@@ -57,7 +57,7 @@ export function ListaRiscosPanel({ riscos, atividades, perigos, aoExcluir }: Lis
             chaveLinha={(r) => r.id}
             vazio={{ titulo: 'Nenhum risco avaliado para os filtros selecionados.' }}
             acoesLinha={(r) => (
-              <Button appearance="subtle" icon={<Delete24Regular />} onClick={() => excluir(r.id)} aria-label="Excluir" />
+              <BotaoAcao tom="excluir" icon={<Delete24Regular />} onClick={() => excluir(r.id)} aria-label="Excluir" />
             )}
           />
         </div>

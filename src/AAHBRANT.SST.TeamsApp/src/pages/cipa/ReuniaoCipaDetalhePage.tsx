@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useParams } from 'react-router-dom';
 import {
+  BotaoAcao,
   Button,
   Campo,
   CampoData,
@@ -271,12 +272,12 @@ export function ReuniaoCipaDetalhePage() {
             subtitulo={detalhe.reuniao.pauta ? `Pauta: ${detalhe.reuniao.pauta}` : undefined}
           >
             <FormRodape>
-              <Button appearance="secondary" icon={<Eye24Regular />} onClick={visualizarAta}>
+              <BotaoAcao tom="ver" aria-label="Visualizar ata" icon={<Eye24Regular />} onClick={visualizarAta}>
                 Visualizar ata
-              </Button>
-              <Button appearance="primary" icon={<DocumentPdf24Regular />} onClick={baixarAta} disabled={baixandoPdf}>
+              </BotaoAcao>
+              <BotaoAcao tom="baixar" aria-label="Baixar ata em PDF" icon={<DocumentPdf24Regular />} onClick={baixarAta} disabled={baixandoPdf}>
                 Baixar ata em PDF
-              </Button>
+              </BotaoAcao>
             </FormRodape>
           </Card>
 
@@ -431,13 +432,13 @@ export function ReuniaoCipaDetalhePage() {
               chaveLinha={(a) => a.id}
               vazio={{ titulo: 'Nenhuma ação registrada no plano ainda.' }}
               acoesLinha={(acao) => (
-                <div style={{ display: 'flex', gap: 4 }}>
+                <div style={{ display: 'flex', gap: 6 }}>
                   {!acao.dataValidacao && (
                     <Button appearance="subtle" onClick={() => validarAcao(acao.id)} disabled={salvando}>
                       Validar
                     </Button>
                   )}
-                  <Button appearance="subtle" icon={<Delete24Regular />} onClick={() => excluirAcao(acao.id)} aria-label="Excluir" />
+                  <BotaoAcao tom="excluir" icon={<Delete24Regular />} onClick={() => excluirAcao(acao.id)} aria-label="Excluir" />
                 </div>
               )}
             />

@@ -1,6 +1,7 @@
 ﻿import { useEffect, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import {
+  BotaoAcao,
   Button,
   Field,
   Select,
@@ -320,12 +321,12 @@ export function DdsDetalhePage() {
             <Button icon={<Signature24Regular />} onClick={() => navigate(`/prevencao/dds/dia/${id}/assinar`)}>
               Assinar DDS
             </Button>
-            <Button appearance="secondary" icon={<Eye24Regular />} onClick={visualizarPdf}>
+            <BotaoAcao tom="ver" icon={<Eye24Regular />} onClick={visualizarPdf} aria-label="Visualizar PDF">
               Visualizar PDF
-            </Button>
-            <Button icon={<ArrowDownload24Regular />} onClick={baixarPdf} disabled={baixandoPdf}>
+            </BotaoAcao>
+            <BotaoAcao tom="baixar" icon={<ArrowDownload24Regular />} onClick={baixarPdf} disabled={baixandoPdf} aria-label="Baixar PDF">
               Baixar PDF
-            </Button>
+            </BotaoAcao>
             {dialogoVisualizador}
           </>
         ),
@@ -437,15 +438,16 @@ export function DdsDetalhePage() {
           vazio={{ titulo: 'Nenhum participante registrado ainda.' }}
           acoesLinha={(p) =>
             p.fotoTipo !== TipoFotoParticipante.Biometria ? (
-              <Button
-                appearance="subtle"
+              <BotaoAcao
+                tom="baixar"
                 size="small"
                 icon={<ArrowDownload24Regular />}
                 onClick={() => baixarFotoParticipante(p.id, p.trabalhadorNome)}
                 disabled={baixandoFotoId === p.id}
+                aria-label="Baixar foto"
               >
                 Baixar foto
-              </Button>
+              </BotaoAcao>
             ) : null
           }
         />

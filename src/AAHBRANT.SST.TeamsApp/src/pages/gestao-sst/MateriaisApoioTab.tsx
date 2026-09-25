@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import {
+  BotaoAcao,
   Button,
   Card,
   Campo,
@@ -236,10 +237,10 @@ export function MateriaisApoioTab() {
             acao: { rotulo: 'Enviar material', aoClicar: () => setPainelUploadAberto(true) },
           }}
           acoesLinha={(m) => (
-            <div style={{ display: 'flex', gap: 4 }}>
+            <div style={{ display: 'flex', gap: 6 }}>
               {podeVisualizar(m) && (
-                <Button
-                  appearance="subtle"
+                <BotaoAcao
+                  tom="ver"
                   icon={<Eye24Regular />}
                   onClick={(evento) => {
                     evento.stopPropagation();
@@ -249,8 +250,8 @@ export function MateriaisApoioTab() {
                   title="Visualizar"
                 />
               )}
-              <Button
-                appearance="subtle"
+              <BotaoAcao
+                tom="baixar"
                 icon={<ArrowDownload24Regular />}
                 onClick={(evento) => {
                   evento.stopPropagation();
@@ -259,8 +260,8 @@ export function MateriaisApoioTab() {
                 disabled={baixandoId === m.id}
                 aria-label="Baixar"
               />
-              <Button
-                appearance="subtle"
+              <BotaoAcao
+                tom="excluir"
                 icon={<Delete24Regular />}
                 onClick={(evento) => {
                   evento.stopPropagation();

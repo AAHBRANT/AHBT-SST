@@ -528,6 +528,23 @@ public static class NovidadesSeeder
                     "Para ver um DDS, APR, PT, inspeção, ficha de EPI, certificado ou ata era preciso baixar o PDF. Dentro do Teams, a pré-visualização de certificados e de Documentos & Procedimentos abria em branco.",
                     "O documento abre numa janela dentro do próprio sistema, com todas as páginas, também no Teams. Se precisar do arquivo, é só clicar em Baixar na mesma janela."),
             }),
+        new(
+            Versao: "5.33.0",
+            Titulo: "Botões de ação com cores da AAHBRANT",
+            DataPublicacao: new DateTime(2026, 9, 25, 0, 0, 0, DateTimeKind.Utc),
+            Itens: new[]
+            {
+                new NovidadeSeedItem(
+                    CategoriaNovidade.Melhoria,
+                    "Cada ação agora tem sua cor",
+                    "Os botões das tabelas eram só ícones soltos, sem fundo — Ver, Baixar e Excluir pareciam iguais.",
+                    "Ver e Editar têm contorno vinho, Baixar é vinho sólido e Excluir é vermelho, em todas as telas do sistema."),
+                new NovidadeSeedItem(
+                    CategoriaNovidade.Correcao,
+                    "Certificados: botão de anexar só quando falta o arquivo",
+                    "O ícone de alerta para anexar aparecia também em certificados emitidos pelo sistema, que não precisam de anexo.",
+                    "O botão de anexar (âmbar) só aparece em certificado externo que ainda não tem o arquivo escaneado, e some depois do envio."),
+            }),
     };
 
     public static async Task ExecutarAsync(IServiceProvider services, CancellationToken ct = default)

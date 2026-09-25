@@ -5,6 +5,7 @@ import { SeletorFotoCamera } from '../components/SeletorFotoCamera';
 import { SlotFotoRemota } from '../components/camera/SlotFotoRemota';
 import { useSucessoToast } from '../hooks/useSucessoToast';
 import {
+  BotaoAcao,
   Button,
   Campo,
   CampoData,
@@ -447,8 +448,8 @@ export function ObrasPage() {
           }}
           acoesLinha={(o) => (
             <>
-              <Button
-                appearance="subtle"
+              <BotaoAcao
+                tom="ver"
                 icon={<Edit24Regular />}
                 onClick={(evento) => {
                   evento.stopPropagation();
@@ -456,8 +457,8 @@ export function ObrasPage() {
                 }}
                 aria-label="Editar"
               />
-              <Button
-                appearance="subtle"
+              <BotaoAcao
+                tom="excluir"
                 icon={<Delete24Regular />}
                 onClick={(evento) => {
                   evento.stopPropagation();

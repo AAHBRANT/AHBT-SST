@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import {
+  BotaoAcao,
   Button,
   Card,
   Carregando,
@@ -254,8 +255,8 @@ export function EmpresaDetalhePage() {
           carregando={carregando}
           vazio={{ titulo: 'Nenhum contrato recebido do G-Juri ainda para esta empresa' }}
           acoesLinha={(c) => (
-            <Button
-              appearance="subtle"
+            <BotaoAcao
+              tom="ver"
               icon={<Open24Regular />}
               onClick={() => navigate(`/terceirizados/contratos/${c.id}`)}
               aria-label="Ver vagas do contrato"

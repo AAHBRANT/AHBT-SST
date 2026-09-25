@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Button, Card, EstadoVazio, FeedbackInline, PageHeader, StatusChip, type Tom } from '@ui';
+import { BotaoAcao, Button, Card, EstadoVazio, FeedbackInline, PageHeader, StatusChip, type Tom } from '@ui';
 import { ArrowDownload24Regular, ArrowLeft24Regular, ClipboardTaskListLtr24Regular, Eye24Regular, Home24Regular, Open24Regular, Send24Regular } from '@fluentui/react-icons';
 import {
   api,
@@ -249,23 +249,25 @@ export function AlojamentoTab() {
                     {alojamento.inspecaoEmAndamento ? 'Continuar inspeção' : 'Nova inspeção'}
                   </Button>
                   {alojamento.ultimaInspecaoConcluida && (
-                    <Button
-                      appearance="secondary"
+                    <BotaoAcao
+                      tom="ver"
                       icon={<Eye24Regular />}
                       onClick={() => visualizarPdfInspecao(alojamento.ultimaInspecaoConcluida!)}
+                      aria-label="Visualizar última inspeção"
                     >
                       Visualizar última
-                    </Button>
+                    </BotaoAcao>
                   )}
                   {alojamento.ultimaInspecaoConcluida && (
-                    <Button
-                      appearance="secondary"
+                    <BotaoAcao
+                      tom="baixar"
                       icon={<ArrowDownload24Regular />}
                       disabled={baixandoPdfId === alojamento.ultimaInspecaoConcluida.id}
                       onClick={() => baixarPdfInspecao(alojamento.ultimaInspecaoConcluida!)}
+                      aria-label="Baixar última inspeção"
                     >
                       Baixar última
-                    </Button>
+                    </BotaoAcao>
                   )}
                   {alojamento.ultimaInspecaoConcluida && !alojamento.ultimaInspecaoConcluida.documentoAssinatura && (
                     <Button
@@ -278,8 +280,8 @@ export function AlojamentoTab() {
                     </Button>
                   )}
                   {alojamento.ultimaInspecaoConcluida?.documentoAssinatura?.temPdf && (
-                    <Button
-                      appearance="secondary"
+                    <BotaoAcao
+                      tom="ver"
                       icon={<Eye24Regular />}
                       onClick={() =>
                         visualizarPdfAssinado(
@@ -287,13 +289,14 @@ export function AlojamentoTab() {
                           alojamento.ultimaInspecaoConcluida!.documentoAssinatura!,
                         )
                       }
+                      aria-label="Visualizar última inspeção assinada"
                     >
                       Visualizar assinado
-                    </Button>
+                    </BotaoAcao>
                   )}
                   {alojamento.ultimaInspecaoConcluida?.documentoAssinatura?.temPdf && (
-                    <Button
-                      appearance="secondary"
+                    <BotaoAcao
+                      tom="baixar"
                       icon={<ArrowDownload24Regular />}
                       disabled={baixandoAssinadoId === alojamento.ultimaInspecaoConcluida.documentoAssinatura.id}
                       onClick={() =>
@@ -302,9 +305,10 @@ export function AlojamentoTab() {
                           alojamento.ultimaInspecaoConcluida!.documentoAssinatura!,
                         )
                       }
+                      aria-label="Baixar última inspeção assinada"
                     >
                       Baixar assinado
-                    </Button>
+                    </BotaoAcao>
                   )}
                 </div>
 
@@ -330,9 +334,9 @@ export function AlojamentoTab() {
                               </div>
                             )}
                           </div>
-                          <div style={{ display: 'flex', gap: 4 }}>
-                            <Button
-                              appearance="subtle"
+                          <div style={{ display: 'flex', gap: 6 }}>
+                            <BotaoAcao
+                              tom="ver"
                               icon={<Open24Regular />}
                               onClick={() =>
                                 inspecao.status === StatusInspecao.EmAndamento
@@ -342,17 +346,16 @@ export function AlojamentoTab() {
                               aria-label="Abrir inspeção"
                             />
                             {inspecao.status === StatusInspecao.Concluida && (
-                              <Button
-                                appearance="subtle"
+                              <BotaoAcao
+                                tom="ver"
                                 icon={<Eye24Regular />}
                                 onClick={() => visualizarPdfInspecao(inspecao)}
                                 aria-label="Visualizar PDF"
-                                title="Visualizar PDF"
                               />
                             )}
                             {inspecao.status === StatusInspecao.Concluida && (
-                              <Button
-                                appearance="subtle"
+                              <BotaoAcao
+                                tom="baixar"
                                 icon={<ArrowDownload24Regular />}
                                 disabled={baixandoPdfId === inspecao.id}
                                 onClick={() => baixarPdfInspecao(inspecao)}
@@ -360,8 +363,8 @@ export function AlojamentoTab() {
                               />
                             )}
                             {inspecao.status === StatusInspecao.Concluida && !inspecao.documentoAssinatura && (
-                              <Button
-                                appearance="subtle"
+                              <BotaoAcao
+                                tom="ver"
                                 icon={<Send24Regular />}
                                 disabled={enviandoAssinaturaId === inspecao.id}
                                 onClick={() => enviarParaAssinatura(inspecao)}
@@ -369,17 +372,16 @@ export function AlojamentoTab() {
                               />
                             )}
                             {inspecao.status === StatusInspecao.Concluida && inspecao.documentoAssinatura?.temPdf && (
-                              <Button
-                                appearance="subtle"
+                              <BotaoAcao
+                                tom="ver"
                                 icon={<Eye24Regular />}
                                 onClick={() => visualizarPdfAssinado(inspecao, inspecao.documentoAssinatura!)}
                                 aria-label="Visualizar PDF assinado"
-                                title="Visualizar PDF assinado"
                               />
                             )}
                             {inspecao.status === StatusInspecao.Concluida && inspecao.documentoAssinatura?.temPdf && (
-                              <Button
-                                appearance="subtle"
+                              <BotaoAcao
+                                tom="baixar"
                                 icon={<ArrowDownload24Regular />}
                                 disabled={baixandoAssinadoId === inspecao.documentoAssinatura.id}
                                 onClick={() => baixarPdfAssinado(inspecao, inspecao.documentoAssinatura!)}

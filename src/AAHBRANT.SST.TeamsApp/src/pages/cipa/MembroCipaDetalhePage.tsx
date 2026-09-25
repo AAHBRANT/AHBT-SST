@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import {
+  BotaoAcao,
   Button,
   Campo,
   CampoData,
@@ -20,7 +21,7 @@ import {
   useConfirmar,
   type Coluna,
 } from '@ui';
-import { Delete24Regular, Eye24Regular } from '@fluentui/react-icons';
+import { ArrowDownload24Regular, Delete24Regular, Eye24Regular } from '@fluentui/react-icons';
 import {
   api,
   cargoMembroCipaLabel,
@@ -184,13 +185,13 @@ export function MembroCipaDetalhePage() {
       rotulo: 'Certificado',
       render: (t) =>
         t.temCertificado ? (
-          <div style={{ display: 'flex', gap: 4 }}>
-            <Button appearance="secondary" icon={<Eye24Regular />} onClick={() => visualizarArquivo(t.id, 'certificado')}>
+          <div style={{ display: 'flex', gap: 6 }}>
+            <BotaoAcao tom="ver" aria-label="Visualizar certificado" icon={<Eye24Regular />} onClick={() => visualizarArquivo(t.id, 'certificado')}>
               Visualizar
-            </Button>
-            <Button appearance="subtle" onClick={() => baixarArquivo(t.id, 'certificado')}>
+            </BotaoAcao>
+            <BotaoAcao tom="baixar" icon={<ArrowDownload24Regular />} aria-label="Baixar certificado" onClick={() => baixarArquivo(t.id, 'certificado')}>
               Baixar
-            </Button>
+            </BotaoAcao>
           </div>
         ) : (
           <SeletorFotoCamera
@@ -208,13 +209,13 @@ export function MembroCipaDetalhePage() {
       rotulo: 'Lista de presença',
       render: (t) =>
         t.temListaPresenca ? (
-          <div style={{ display: 'flex', gap: 4 }}>
-            <Button appearance="secondary" icon={<Eye24Regular />} onClick={() => visualizarArquivo(t.id, 'lista-presenca')}>
+          <div style={{ display: 'flex', gap: 6 }}>
+            <BotaoAcao tom="ver" aria-label="Visualizar lista de presença" icon={<Eye24Regular />} onClick={() => visualizarArquivo(t.id, 'lista-presenca')}>
               Visualizar
-            </Button>
-            <Button appearance="subtle" onClick={() => baixarArquivo(t.id, 'lista-presenca')}>
+            </BotaoAcao>
+            <BotaoAcao tom="baixar" icon={<ArrowDownload24Regular />} aria-label="Baixar lista de presença" onClick={() => baixarArquivo(t.id, 'lista-presenca')}>
               Baixar
-            </Button>
+            </BotaoAcao>
           </div>
         ) : (
           <SeletorFotoCamera

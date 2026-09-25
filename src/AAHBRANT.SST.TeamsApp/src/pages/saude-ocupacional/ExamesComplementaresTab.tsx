@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import {
+  BotaoAcao,
   Button,
   Campo,
   Card,
@@ -325,8 +326,8 @@ export function ExamesComplementaresTab() {
                 aria-label="Salvar"
               />
             ) : (
-              <Button
-                appearance="subtle"
+              <BotaoAcao
+                tom="excluir"
                 icon={<Delete24Regular />}
                 onClick={() => excluir(ex.id)}
                 aria-label="Excluir"

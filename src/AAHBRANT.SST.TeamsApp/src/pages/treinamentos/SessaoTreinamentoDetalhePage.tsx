@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import {
+  BotaoAcao,
   Button,
   Campo,
   Card,
@@ -353,12 +354,18 @@ export function SessaoTreinamentoDetalhePage() {
         rotuloVoltar: 'Voltar para Turmas',
         acoes: (
           <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-            <Button appearance="secondary" icon={<Eye24Regular />} onClick={visualizarAta}>
+            <BotaoAcao tom="ver" icon={<Eye24Regular />} onClick={visualizarAta} aria-label="Visualizar ata">
               Visualizar ata
-            </Button>
-            <Button icon={<ArrowDownload24Regular />} onClick={baixarAta} disabled={baixandoAta}>
+            </BotaoAcao>
+            <BotaoAcao
+              tom="baixar"
+              icon={<ArrowDownload24Regular />}
+              onClick={baixarAta}
+              disabled={baixandoAta}
+              aria-label="Baixar ata / anexo de evidências"
+            >
               Baixar ata / anexo de evidências
-            </Button>
+            </BotaoAcao>
           </div>
         ),
       }}
@@ -462,34 +469,37 @@ export function SessaoTreinamentoDetalhePage() {
           vazio={{ titulo: 'Nenhum participante inscrito nesta turma.' }}
           acoesLinha={(p) =>
             p.treinamentoGeradoId ? (
-              <div style={{ display: 'flex', gap: 4 }}>
+              <div style={{ display: 'flex', gap: 6 }}>
                 {!(p.certificadoAssinadoPeloTrabalhadorEm && p.certificadoAssinadoPeloInstrutorEm) && (
-                  <Button
-                    appearance="subtle"
+                  <BotaoAcao
+                    tom="ver"
                     size="small"
                     icon={<Signature24Regular />}
                     onClick={() => navigate(`/treinamentos/${p.treinamentoGeradoId}/assinar`)}
+                    aria-label="Assinar treinamento"
                   >
                     Assinar
-                  </Button>
+                  </BotaoAcao>
                 )}
-                <Button
-                  appearance="secondary"
+                <BotaoAcao
+                  tom="ver"
                   size="small"
                   icon={<Eye24Regular />}
                   onClick={() => visualizarCertificado(p.treinamentoGeradoId!, p.trabalhadorNome)}
+                  aria-label="Visualizar certificado"
                 >
                   Visualizar
-                </Button>
-                <Button
-                  appearance="subtle"
+                </BotaoAcao>
+                <BotaoAcao
+                  tom="baixar"
                   size="small"
                   icon={<ArrowDownload24Regular />}
                   onClick={() => baixarCertificado(p.treinamentoGeradoId!)}
                   disabled={baixandoId === p.treinamentoGeradoId}
+                  aria-label="Baixar certificado"
                 >
                   Baixar
-                </Button>
+                </BotaoAcao>
               </div>
             ) : null
           }

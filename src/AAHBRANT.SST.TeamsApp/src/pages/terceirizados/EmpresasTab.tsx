@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
+  BotaoAcao,
   Button,
   Field,
   Input,
@@ -200,13 +201,13 @@ export function EmpresasTab() {
           }}
           acoesLinha={(e) => (
             <>
-              <Button
-                appearance="subtle"
+              <BotaoAcao
+                tom="ver"
                 icon={<Eye24Regular />}
                 onClick={() => navigate(`/terceirizados/empresas/${e.id}`)}
                 aria-label="Ver detalhes"
               />
-              <Button appearance="subtle" icon={<Delete24Regular />} onClick={() => excluir(e.id)} aria-label="Inativar" />
+              <BotaoAcao tom="excluir" icon={<Delete24Regular />} onClick={() => excluir(e.id)} aria-label="Inativar" />
             </>
           )}
         />

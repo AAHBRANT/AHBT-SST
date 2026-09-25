@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import {
+  BotaoAcao,
   Button,
   Campo,
   Card,
@@ -282,7 +283,7 @@ export function RequisitosLegaisTab() {
           vazio={{ titulo: 'Nenhum requisito legal cadastrado ainda.' }}
           aoClicarLinha={alternarExpansao}
           acoesLinha={(r) => (
-            <Button appearance="subtle" icon={<Delete24Regular />} aria-label="Excluir" onClick={() => excluir(r.id)} />
+            <BotaoAcao tom="excluir" icon={<Delete24Regular />} aria-label="Excluir" onClick={() => excluir(r.id)} />
           )}
           expansivel={{
             aberta: (r) => r.id === expandidoId,

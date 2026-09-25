@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import {
+  BotaoAcao,
   Button,
   Field,
   Input,
@@ -247,12 +248,12 @@ export function DdsSemanalDetalhePage() {
         rotuloVoltar="Semanas de DDS"
         acoes={
           <>
-            <Button appearance="secondary" icon={<Eye24Regular />} onClick={visualizarPdf}>
+            <BotaoAcao tom="ver" icon={<Eye24Regular />} onClick={visualizarPdf} aria-label="Visualizar PDF da semana">
               Visualizar PDF da semana
-            </Button>
-            <Button icon={<ArrowDownload24Regular />} onClick={baixarPdf} disabled={baixandoPdf}>
+            </BotaoAcao>
+            <BotaoAcao tom="baixar" icon={<ArrowDownload24Regular />} onClick={baixarPdf} disabled={baixandoPdf} aria-label="Baixar PDF da semana">
               Baixar PDF da semana
-            </Button>
+            </BotaoAcao>
           </>
         }
       />

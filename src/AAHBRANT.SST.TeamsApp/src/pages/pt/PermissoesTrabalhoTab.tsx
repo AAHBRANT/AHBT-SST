@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
+  BotaoAcao,
   Button,
   Campo,
   Card,
@@ -316,7 +317,7 @@ export function PermissoesTrabalhoTab() {
             <>
               {/* Exclusão é privilégio de Administrador (o servidor recusa os demais) — ver PoliticasAutorizacao. */}
               {souAdministrador && (
-                <Button appearance="subtle" icon={<Delete24Regular />} onClick={() => excluir(pt.id)} aria-label="Excluir" />
+                <BotaoAcao tom="excluir" icon={<Delete24Regular />} onClick={() => excluir(pt.id)} aria-label="Excluir" />
               )}
             </>
           )}

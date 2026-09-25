@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import {
+  BotaoAcao,
   Button,
   Campo,
   Card,
@@ -322,19 +323,17 @@ export function InstalacoesTab() {
               carregando={carregandoLista}
               vazio={{ titulo: 'Nenhuma instalação de EPC registrada nesta obra ainda.' }}
               acoesLinha={(inst) => (
-                <div style={{ display: 'flex', gap: 4 }}>
+                <div style={{ display: 'flex', gap: 6 }}>
                   {!inst.dataRemocao && (
                     <>
-                      <Button
-                        appearance="subtle"
-                        size="small"
+                      <BotaoAcao
+                        tom="ver"
                         icon={<SearchInfo24Regular />}
                         onClick={() => abrirInspecao(inst)}
                         aria-label="Registrar inspeção"
                       />
-                      <Button
-                        appearance="subtle"
-                        size="small"
+                      <BotaoAcao
+                        tom="ver"
                         icon={<ArrowExit24Regular />}
                         onClick={() => abrirRemocao(inst)}
                         aria-label="Registrar remoção"
@@ -343,9 +342,8 @@ export function InstalacoesTab() {
                   )}
                   {/* Exclusão é privilégio de Administrador (o servidor recusa os demais) — ver PoliticasAutorizacao. */}
                   {souAdministrador && (
-                    <Button
-                      appearance="subtle"
-                      size="small"
+                    <BotaoAcao
+                      tom="excluir"
                       icon={<Delete24Regular />}
                       onClick={() => excluir(inst.id)}
                       aria-label="Excluir"

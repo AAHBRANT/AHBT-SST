@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import {
+  BotaoAcao,
   Button,
   Checkbox,
   Field,
@@ -439,15 +440,15 @@ export function FuncoesTab() {
                       {f.temUniformeNaMatriz ? ' · com uniforme na matriz' : ''}
                     </div>
                   </div>
-                  <Button
-                    appearance="subtle"
+                  <BotaoAcao
+                    tom="excluir"
                     icon={<Delete24Regular />}
                     disabled={excluindoSemTrabalhadorId === f.id}
                     onClick={() => excluirSemTrabalhador(f.id, f.nome)}
                     aria-label="Excluir"
                   >
                     Excluir
-                  </Button>
+                  </BotaoAcao>
                 </div>
               ))}
             </div>
@@ -506,7 +507,7 @@ export function FuncoesTab() {
             acao: { rotulo: 'Adicionar função', aoClicar: () => setPainelAberto(true) },
           }}
           acoesLinha={(f) => (
-            <Button appearance="subtle" icon={<Delete24Regular />} onClick={() => excluir(f.id)} aria-label="Excluir" />
+            <BotaoAcao tom="excluir" icon={<Delete24Regular />} onClick={() => excluir(f.id)} aria-label="Excluir" />
           )}
         />
       </Card>

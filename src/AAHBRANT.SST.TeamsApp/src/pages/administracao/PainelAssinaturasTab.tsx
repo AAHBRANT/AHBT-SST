@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import {
+  BotaoAcao,
   Button,
   Campo,
   Card,
@@ -165,29 +166,38 @@ export function PainelAssinaturasTab() {
           acoesLinha={(documento) => (
             <>
               {documento.temPdf && (
-                <Button
+                <BotaoAcao
+                  tom="ver"
                   size="small"
-                  appearance="secondary"
                   icon={<Eye24Regular />}
                   onClick={() => visualizarPdf(documento)}
+                  aria-label="Visualizar PDF"
                 >
                   Visualizar
-                </Button>
+                </BotaoAcao>
               )}
               {documento.temPdf && (
-                <Button
+                <BotaoAcao
+                  tom="baixar"
                   size="small"
                   icon={<ArrowDownload24Regular />}
                   onClick={() => baixarPdf(documento)}
                   disabled={baixandoId === documento.id}
+                  aria-label="Baixar PDF"
                 >
                   PDF
-                </Button>
+                </BotaoAcao>
               )}
               {documento.tokenValidacaoPublica && (
-                <Button size="small" icon={<Link24Regular />} onClick={() => copiarLinkPublico(documento)}>
+                <BotaoAcao
+                  tom="ver"
+                  size="small"
+                  icon={<Link24Regular />}
+                  onClick={() => copiarLinkPublico(documento)}
+                  aria-label="Copiar link público"
+                >
                   Link
-                </Button>
+                </BotaoAcao>
               )}
             </>
           )}

@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useParams } from 'react-router-dom';
 import {
+  BotaoAcao,
   Button,
   Campo,
   CampoData,
@@ -242,12 +243,12 @@ export function ProcessoEleitoralCipaDetalhePage() {
           >
             {jaApurado && (
               <FormRodape>
-                <Button appearance="secondary" icon={<Eye24Regular />} onClick={visualizarAta}>
+                <BotaoAcao tom="ver" aria-label="Visualizar ata" icon={<Eye24Regular />} onClick={visualizarAta}>
                   Visualizar ata
-                </Button>
-                <Button appearance="primary" icon={<DocumentPdf24Regular />} onClick={baixarAta} disabled={baixandoPdf}>
+                </BotaoAcao>
+                <BotaoAcao tom="baixar" aria-label="Baixar ata em PDF" icon={<DocumentPdf24Regular />} onClick={baixarAta} disabled={baixandoPdf}>
                   Baixar ata em PDF
-                </Button>
+                </BotaoAcao>
               </FormRodape>
             )}
           </Card>

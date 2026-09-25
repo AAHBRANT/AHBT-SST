@@ -61,6 +61,9 @@ body,
   --sst-status-alerta-tinta: #dc2626;  --sst-status-alerta-fundo: #fceaea;
   --sst-status-info-tinta: #2563eb;    --sst-status-info-fundo: #eaf1fe;
   --sst-status-neutro-tinta: #6d6d6d;  --sst-status-neutro-fundo: #f0f0f2;
+  /* Botões de ação (BotaoAcao, opção C de 25/09): vinho oficial no claro. */
+  --sst-acao-marca-fundo: #670000;     --sst-acao-marca-fundo-hover: #7a0101;
+  --sst-acao-marca-tinta: #670000;     --sst-acao-marca-wash: rgba(103, 0, 0, 0.08);
   --sst-border-soft: #dedbea;
   --sst-row-shadow: none;
   --sst-row-shadow-hover: inset 3px 0 0 #96110d;
@@ -101,6 +104,9 @@ body,
   --sst-status-alerta-tinta: #ef4444;  --sst-status-alerta-fundo: rgba(239, 68, 68, 0.16);
   --sst-status-info-tinta: #3b82f6;    --sst-status-info-fundo: rgba(59, 130, 246, 0.16);
   --sst-status-neutro-tinta: #9ca3af;  --sst-status-neutro-fundo: #28394f;
+  /* No escuro #670000 some sobre o fundo: sólido vai para o vinho do menu ativo e o contorno clareia. */
+  --sst-acao-marca-fundo: #96110d;     --sst-acao-marca-fundo-hover: #b03838;
+  --sst-acao-marca-tinta: #ec8484;     --sst-acao-marca-wash: rgba(236, 132, 132, 0.14);
   --sst-border-soft: #34423d;
   --sst-row-shadow: none;
   --sst-row-shadow-hover: inset 3px 0 0 #c24a4a;

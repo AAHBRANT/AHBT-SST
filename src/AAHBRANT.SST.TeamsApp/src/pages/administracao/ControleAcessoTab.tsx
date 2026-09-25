@@ -1,5 +1,6 @@
 import { Fragment, useEffect, useMemo, useState } from 'react';
 import {
+  BotaoAcao,
   Button,
   Campo,
   Card,
@@ -436,8 +437,8 @@ export function ControleAcessoTab() {
             vazio={{ titulo: 'Nenhum usuário cadastrado ainda.' }}
             aoClicarLinha={selecionarUsuario}
             acoesLinha={(usuario) => (
-              <Button
-                appearance="subtle"
+              <BotaoAcao
+                tom="excluir"
                 icon={<Delete24Regular />}
                 onClick={() => excluirUsuario(usuario.id)}
                 aria-label="Excluir"
@@ -497,8 +498,8 @@ export function ControleAcessoTab() {
                 chaveLinha={(v) => v.id}
                 vazio={{ titulo: 'Nenhum perfil atribuído ainda.' }}
                 acoesLinha={(vinculo) => (
-                  <Button
-                    appearance="subtle"
+                  <BotaoAcao
+                    tom="excluir"
                     icon={<Delete24Regular />}
                     onClick={() => removerPerfilObra(vinculo.id)}
                     aria-label="Remover"
@@ -590,8 +591,8 @@ export function ControleAcessoTab() {
               aoClicarLinha={selecionarPerfil}
               acoesLinha={(perfil) =>
                 !perfil.ehSistema ? (
-                  <Button
-                    appearance="subtle"
+                  <BotaoAcao
+                    tom="excluir"
                     icon={<Delete24Regular />}
                     onClick={() => excluirPerfil(perfil.id)}
                     aria-label="Excluir"

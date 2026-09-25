@@ -1,6 +1,7 @@
 ﻿import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
+  BotaoAcao,
   Button,
   Campo,
   Card,
@@ -234,7 +235,7 @@ export function PcmsoTab() {
           vazio={{ titulo: 'Nenhum PCMSO cadastrado ainda.' }}
           aoClicarLinha={(p) => navigate(`/saude-ocupacional/pcmso/${p.id}`)}
           acoesLinha={(p) => (
-            <Button appearance="subtle" icon={<Delete24Regular />} onClick={() => excluir(p.id)} aria-label="Excluir" />
+            <BotaoAcao tom="excluir" icon={<Delete24Regular />} onClick={() => excluir(p.id)} aria-label="Excluir" />
           )}
         />
       </Card>

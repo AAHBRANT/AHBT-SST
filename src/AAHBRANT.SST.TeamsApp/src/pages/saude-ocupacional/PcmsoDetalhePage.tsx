@@ -2,6 +2,7 @@
 import { useParams } from 'react-router-dom';
 import {
   Abas,
+  BotaoAcao,
   Button,
   Campo,
   Card,
@@ -507,8 +508,8 @@ export function PcmsoDetalhePage() {
                   Validar
                 </Button>
               )}
-              <Button
-                appearance="subtle"
+              <BotaoAcao
+                tom="excluir"
                 icon={<Delete24Regular />}
                 onClick={() => excluirAcao(a.id)}
                 aria-label="Excluir"

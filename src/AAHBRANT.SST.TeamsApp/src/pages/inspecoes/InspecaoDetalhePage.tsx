@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useLocation, useNavigate, useParams } from 'react-router-dom';
 import {
+  BotaoAcao,
   Button,
   Campo,
   Card,
@@ -346,12 +347,12 @@ export function InspecaoDetalhePage() {
         rotuloVoltar: 'Voltar para Inspeções',
         acoes: (
           <>
-            <Button appearance="secondary" icon={<Eye24Regular />} onClick={visualizarPdf}>
+            <BotaoAcao tom="ver" icon={<Eye24Regular />} onClick={visualizarPdf} aria-label="Visualizar PDF">
               Visualizar PDF
-            </Button>
-            <Button appearance="secondary" icon={<ArrowDownload24Regular />} onClick={baixarPdf} disabled={baixandoPdf}>
+            </BotaoAcao>
+            <BotaoAcao tom="baixar" icon={<ArrowDownload24Regular />} onClick={baixarPdf} disabled={baixandoPdf} aria-label="Baixar PDF">
               Baixar PDF
-            </Button>
+            </BotaoAcao>
             {dialogoVisualizador}
             {inspecao.status === StatusInspecao.Concluida && (
               <Button

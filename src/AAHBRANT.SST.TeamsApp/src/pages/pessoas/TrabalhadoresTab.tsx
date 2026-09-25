@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   Avatar,
+  BotaoAcao,
   Button,
   Card,
   PageHeader,
@@ -491,17 +492,15 @@ export function TrabalhadoresTab() {
               : { titulo: 'Nenhum funcionário encontrado.', descricao: 'Tente outro termo de busca.', variante: 'sem-resultado' }
           }
           acoesLinha={(t) => (
-            <div style={{ display: 'flex', gap: 4 }}>
-              <Button
-                appearance="subtle"
-                size="small"
+            <div style={{ display: 'flex', gap: 6 }}>
+              <BotaoAcao
+                tom="ver"
                 icon={<Fingerprint24Regular />}
                 onClick={(evento) => {
                   evento.stopPropagation();
                   setTrabalhadorDigitalAlvo({ id: t.id, nome: t.nome });
                 }}
                 aria-label="Cadastrar digital"
-                title="Cadastrar digital"
               />
               <span onClick={(evento) => evento.stopPropagation()}>
                 <SeletorFotoCamera
@@ -512,9 +511,9 @@ export function TrabalhadoresTab() {
                   aoErroValidacao={setErro}
                 />
               </span>
-              <Button appearance="subtle" size="small" onClick={() => excluir(t.id)} aria-label="Excluir">
+              <BotaoAcao tom="excluir" onClick={() => excluir(t.id)} aria-label="Excluir">
                 Excluir
-              </Button>
+              </BotaoAcao>
             </div>
           )}
         />

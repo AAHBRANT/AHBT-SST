@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Button, Card, DataTable, StatusChip, FeedbackInline, type Coluna } from '@ui';
+import { BotaoAcao, Button, Card, DataTable, StatusChip, FeedbackInline, type Coluna } from '@ui';
 import { ArrowDownload24Regular, Eye24Regular, Open24Regular } from '@fluentui/react-icons';
 import { api, type CatalogoEpi, type EntregaEpi } from '../../lib/api';
 import { salvarBlob, useVisualizadorPdf } from '../../components/useVisualizadorPdf';
@@ -110,22 +110,24 @@ export function EntregasEpiTab({ trabalhadorId }: { trabalhadorId: string }) {
       titulo="Entregas de EPI do funcionário"
       acoes={
         <div style={{ display: 'flex', gap: 8 }}>
-          <Button
-            appearance="secondary"
+          <BotaoAcao
+            tom="ver"
             icon={<Eye24Regular />}
             onClick={visualizarFicha}
             disabled={entregas.length === 0}
+            aria-label="Visualizar ficha"
           >
             Visualizar ficha
-          </Button>
-          <Button
-            appearance="subtle"
+          </BotaoAcao>
+          <BotaoAcao
+            tom="baixar"
             icon={<ArrowDownload24Regular />}
             onClick={baixarFicha}
             disabled={baixando || entregas.length === 0}
+            aria-label="Baixar ficha (PDF)"
           >
             Baixar ficha (PDF)
-          </Button>
+          </BotaoAcao>
           <Button appearance="primary" icon={<Open24Regular />} onClick={() => navigate('/epi')}>
             Registrar nova entrega
           </Button>

@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import {
+  BotaoAcao,
   Button,
   Field,
   Input,
@@ -330,8 +331,8 @@ export function NovidadesTab() {
           }}
           acoesLinha={(n) => (
             <>
-              <Button appearance="subtle" icon={<Edit24Regular />} onClick={() => abrirParaEditar(n)} aria-label="Editar" />
-              <Button appearance="subtle" icon={<Delete24Regular />} onClick={() => excluir(n.id)} aria-label="Excluir" />
+              <BotaoAcao tom="ver" icon={<Edit24Regular />} onClick={() => abrirParaEditar(n)} aria-label="Editar" />
+              <BotaoAcao tom="excluir" icon={<Delete24Regular />} onClick={() => excluir(n.id)} aria-label="Excluir" />
             </>
           )}
         />

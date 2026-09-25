@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import {
+  BotaoAcao,
   Button,
   Field,
   Input,
@@ -190,7 +191,7 @@ export function EquipesTab() {
             acao: { rotulo: 'Adicionar equipe', aoClicar: () => setPainelAberto(true) },
           }}
           acoesLinha={(e) => (
-            <Button appearance="subtle" icon={<Delete24Regular />} onClick={() => excluir(e.id)} aria-label="Excluir" />
+            <BotaoAcao tom="excluir" icon={<Delete24Regular />} onClick={() => excluir(e.id)} aria-label="Excluir" />
           )}
         />
       </Card>

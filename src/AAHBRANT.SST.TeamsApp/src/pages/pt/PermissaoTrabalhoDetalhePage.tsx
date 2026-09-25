@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import {
   Abas,
+  BotaoAcao,
   Button,
   Campo,
   Card,
@@ -287,17 +288,18 @@ export function PermissaoTrabalhoDetalhePage() {
             >
               Assinar PT (ciência da equipe)
             </Button>
-            <Button appearance="secondary" icon={<Eye24Regular />} onClick={visualizarPdf}>
+            <BotaoAcao tom="ver" icon={<Eye24Regular />} onClick={visualizarPdf} aria-label="Visualizar PDF">
               Visualizar PDF
-            </Button>
-            <Button
-              appearance="secondary"
+            </BotaoAcao>
+            <BotaoAcao
+              tom="baixar"
               icon={<ArrowDownload24Regular />}
               onClick={exportarPdf}
               disabled={exportando}
+              aria-label="Exportar PDF"
             >
               Exportar PDF
-            </Button>
+            </BotaoAcao>
             {dialogoVisualizador}
           </>
         ),

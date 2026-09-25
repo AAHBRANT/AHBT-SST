@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import {
-  Button,
+  BotaoAcao,
   Card,
   Field,
   FeedbackInline,
@@ -239,27 +239,27 @@ export function AlertasDashboardTab() {
                   {alerta.dataLimiteTratamento ? ` · prazo ${alerta.dataLimiteTratamento.slice(0, 10)}` : ''}
                 </Legenda>
               </div>
-              <div style={{ display: 'flex', gap: 4 }}>
+              <div style={{ display: 'flex', gap: 6 }}>
                 {alerta.status === StatusAlerta.Aberto && (
-                  <Button
-                    appearance="subtle"
+                  <BotaoAcao
+                    tom="ver"
                     icon={<PlayCircle24Regular />}
-                    title="Iniciar tratamento"
+                    aria-label="Iniciar tratamento"
                     disabled={processandoId === alerta.id}
                     onClick={() => executar(api.alertas.iniciarTratamento, alerta.id, 'Falha ao iniciar tratamento.')}
                   />
                 )}
-                <Button
-                  appearance="subtle"
+                <BotaoAcao
+                  tom="ver"
                   icon={<CheckmarkCircle24Regular />}
-                  title="Resolver"
+                  aria-label="Resolver"
                   disabled={processandoId === alerta.id}
                   onClick={() => executar(api.alertas.resolver, alerta.id, 'Falha ao resolver alerta.')}
                 />
-                <Button
-                  appearance="subtle"
+                <BotaoAcao
+                  tom="ver"
                   icon={<DismissCircle24Regular />}
-                  title="Ignorar"
+                  aria-label="Ignorar"
                   disabled={processandoId === alerta.id}
                   onClick={() => executar(api.alertas.ignorar, alerta.id, 'Falha ao ignorar alerta.')}
                 />

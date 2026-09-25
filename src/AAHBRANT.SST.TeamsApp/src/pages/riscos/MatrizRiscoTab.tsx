@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import {
+  BotaoAcao,
   Button,
   Campo,
   Card,
@@ -240,7 +241,7 @@ export function MatrizRiscoTab() {
             carregando={carregandoLista}
             vazio={{ titulo: 'Nenhuma matriz de risco cadastrada ainda.' }}
             acoesLinha={(c) => (
-              <Button appearance="subtle" icon={<Delete24Regular />} onClick={() => excluir(c.id)} aria-label="Excluir" />
+              <BotaoAcao tom="excluir" icon={<Delete24Regular />} onClick={() => excluir(c.id)} aria-label="Excluir" />
             )}
           />
         </Card>

@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import {
+  BotaoAcao,
   Button,
   Field,
   Input,
@@ -198,8 +199,8 @@ export function CatalogoTemasDdsPage() {
           }}
           acoesLinha={(t) => (
             <>
-              <Button appearance="subtle" size="small" icon={<Edit24Regular />} onClick={() => iniciarEdicao(t)} aria-label="Editar" />
-              <Button appearance="subtle" size="small" icon={<Delete24Regular />} onClick={() => excluir(t.id)} aria-label="Excluir" />
+              <BotaoAcao tom="ver" icon={<Edit24Regular />} onClick={() => iniciarEdicao(t)} aria-label="Editar" />
+              <BotaoAcao tom="excluir" icon={<Delete24Regular />} onClick={() => excluir(t.id)} aria-label="Excluir" />
             </>
           )}
         />

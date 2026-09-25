@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import {
+  BotaoAcao,
   Button,
   Campo,
   CampoData,
@@ -300,7 +301,7 @@ export function InspecoesCipaTab() {
             acao: { rotulo: 'Registrar inspeção', aoClicar: () => setPainelAberto(true) },
           }}
           acoesLinha={(i) => (
-            <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
               {i.naoConformidadeId ? (
                 <StatusChip tom="atencao">NC gerada</StatusChip>
               ) : (
@@ -313,7 +314,7 @@ export function InspecoesCipaTab() {
                   Gerar NC
                 </Button>
               )}
-              <Button appearance="subtle" icon={<Delete24Regular />} onClick={() => excluir(i.id)} aria-label="Excluir" />
+              <BotaoAcao tom="excluir" icon={<Delete24Regular />} onClick={() => excluir(i.id)} aria-label="Excluir" />
             </div>
           )}
         />

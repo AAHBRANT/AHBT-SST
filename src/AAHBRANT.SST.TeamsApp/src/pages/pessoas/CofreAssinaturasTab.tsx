@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Button, Card, DataTable, FeedbackInline, type Coluna } from '@ui';
+import { BotaoAcao, Card, DataTable, FeedbackInline, type Coluna } from '@ui';
 import { ArrowDownload24Regular, Eye24Regular, Image24Regular } from '@fluentui/react-icons';
 import { api, metodoAutenticacaoAssinaturaLabel, type AssinaturaPerfil } from '../../lib/api';
 import { AssinaturaTab } from './AssinaturaTab';
@@ -80,24 +80,24 @@ export function CofreAssinaturasTab({ trabalhadorId, assinaturas }: CofreAssinat
           vazio={{ titulo: 'Nenhuma assinatura registrada para este funcionário.' }}
           acoesLinha={(a) => (
             <>
-              <Button
-                appearance="subtle"
+              <BotaoAcao
+                tom="ver"
                 icon={<Image24Regular />}
                 onClick={() => abrirFotoEvidencia(a.signatarioId)}
                 disabled={!a.temFotoEvidencia || abrindoFotoId === a.signatarioId}
                 aria-label="Abrir foto da assinatura"
                 title={a.temFotoEvidencia ? 'Abrir foto capturada na assinatura' : 'Foto não disponível'}
               />
-              <Button
-                appearance="subtle"
+              <BotaoAcao
+                tom="ver"
                 icon={<Eye24Regular />}
                 onClick={() => visualizarComprovante(a)}
                 disabled={!a.temPdf}
                 aria-label="Visualizar comprovante"
                 title={a.temPdf ? 'Visualizar comprovante' : 'PDF ainda não disponível'}
               />
-              <Button
-                appearance="subtle"
+              <BotaoAcao
+                tom="baixar"
                 icon={<ArrowDownload24Regular />}
                 onClick={() => baixarComprovante(a.documentoAssinaturaId)}
                 disabled={!a.temPdf || baixandoId === a.documentoAssinaturaId}
