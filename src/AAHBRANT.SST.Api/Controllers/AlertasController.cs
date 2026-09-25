@@ -26,6 +26,11 @@ public class AlertasController : ControllerBase
         => Ok(await _mediator.Send(new ListarAlertasQuery(status, severidade, obraId, trabalhadorId), ct));
 
     [Authorize(Policy = "alerta:ver")]
+    [HttpGet("saude-envio-teams")]
+    public async Task<IActionResult> SaudeEnvioTeams(CancellationToken ct)
+        => Ok(await _mediator.Send(new ObterSaudeEnvioTeamsQuery(), ct));
+
+    [Authorize(Policy = "alerta:ver")]
     [HttpGet("{id:guid}")]
     public async Task<IActionResult> ObterPorId(Guid id, CancellationToken ct)
     {

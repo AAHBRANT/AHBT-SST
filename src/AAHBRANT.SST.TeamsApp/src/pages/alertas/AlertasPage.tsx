@@ -2,6 +2,7 @@ import { Abas, PageHeader, useAbaNaUrl } from '@ui';
 import { AlertasDashboardTab } from './dashboard/AlertasDashboardTab';
 import { AlertasListaTab } from './AlertasListaTab';
 import { AlertasConfiguracaoTab } from './AlertasConfiguracaoTab';
+import { AvisoEnvioTeams } from './AvisoEnvioTeams';
 
 const ABAS_ALERTAS = ['lista', 'configuracao', 'dashboard'] as const;
 type AbaAlertas = (typeof ABAS_ALERTAS)[number];
@@ -15,6 +16,8 @@ export function AlertasPage() {
   return (
     <div>
       <PageHeader titulo="Alertas" />
+
+      <AvisoEnvioTeams />
 
       <Abas
         nivel="pilar"

@@ -2791,6 +2791,15 @@ export function categoriaAlertaRotulo(entidadeOrigemTipo: string): string {
   return categoriaAlertaLabel[entidadeOrigemTipo] ?? entidadeOrigemTipo;
 }
 
+// Estado do envio ao sininho do Teams (GET /api/alertas/saude-envio-teams) — ver ObterSaudeEnvioTeamsQuery.
+export interface SaudeEnvioTeams {
+  falhando: boolean;
+  falhasDesdeUltimoSucesso: number;
+  ultimaFalhaEmUtc: string | null;
+  ultimoSucessoEmUtc: string | null;
+  ultimoErro: string | null;
+}
+
 export interface Alerta {
   id: string;
   tipo: number;
@@ -4851,6 +4860,7 @@ export const api = {
       return request<Alerta[]>(`/api/alertas${query ? `?${query}` : ''}`);
     },
     obterPorId: (id: string) => request<Alerta>(`/api/alertas/${id}`),
+    saudeEnvioTeams: () => request<SaudeEnvioTeams>('/api/alertas/saude-envio-teams'),
     criar: (alerta: NovoAlerta) =>
       request<{ id: string }>('/api/alertas', { method: 'POST', body: JSON.stringify(alerta) }),
     atualizar: (id: string, alerta: AtualizarAlertaPayload) =>
