@@ -21,6 +21,7 @@ import {
 } from '@ui';
 import {
   ArrowDownload24Regular,
+  Eye24Regular,
   Open24Regular,
   Save24Regular,
   Signature24Regular,
@@ -39,6 +40,7 @@ import {
 } from '../../lib/api';
 import { SlotFoto } from '../../components/camera/SlotFoto';
 import { SeletorStatusItemChecklist } from '../../components/inspecoes/SeletorStatusItemChecklist';
+import { useVisualizadorPdf } from '../../components/useVisualizadorPdf';
 
 interface EdicaoResposta {
   descricao: string;
@@ -109,6 +111,7 @@ export function InspecaoDetalhePage() {
   const [processando, setProcessando] = useState(false);
   const [gerandoOcorrenciaId, setGerandoOcorrenciaId] = useState<string | null>(null);
   const [baixandoPdf, setBaixandoPdf] = useState(false);
+  const { visualizar, dialogoVisualizador } = useVisualizadorPdf();
   const [fotoUrls, setFotoUrls] = useState<Record<string, string>>({});
   const [fotoDepoisUrls, setFotoDepoisUrls] = useState<Record<string, string>>({});
 
@@ -281,7 +284,7 @@ export function InspecaoDetalhePage() {
       const url = URL.createObjectURL(blob);
       const link = document.createElement('a');
       link.href = url;
-      link.download = `inspecao-${detalhe.inspecao.data?.slice(0, 10)}.pdf`;
+      link.download = nomeArquivoPdf(detalhe);
       link.click();
       URL.revokeObjectURL(url);
     } catch (e) {
@@ -289,6 +292,16 @@ export function InspecaoDetalhePage() {
     } finally {
       setBaixandoPdf(false);
     }
+  }
+
+  function nomeArquivoPdf(det: InspecaoDetalhe) {
+    return `inspecao-${det.inspecao.data?.slice(0, 10)}.pdf`;
+  }
+
+  // Abre o mesmo PDF do "Baixar PDF" numa janela, sem baixar.
+  function visualizarPdf() {
+    if (!id || !detalhe) return;
+    void visualizar({ titulo: 'PDF da inspeção', nomeArquivo: nomeArquivoPdf(detalhe), obter: () => api.inspecoes.baixarPdf(id) });
   }
 
   if (!id) return <FeedbackInline tom="erro">Inspeção não encontrada.</FeedbackInline>;
@@ -333,9 +346,13 @@ export function InspecaoDetalhePage() {
         rotuloVoltar: 'Voltar para Inspeções',
         acoes: (
           <>
+            <Button appearance="secondary" icon={<Eye24Regular />} onClick={visualizarPdf}>
+              Visualizar PDF
+            </Button>
             <Button appearance="secondary" icon={<ArrowDownload24Regular />} onClick={baixarPdf} disabled={baixandoPdf}>
               Baixar PDF
             </Button>
+            {dialogoVisualizador}
             {inspecao.status === StatusInspecao.Concluida && (
               <Button
                 appearance="primary"

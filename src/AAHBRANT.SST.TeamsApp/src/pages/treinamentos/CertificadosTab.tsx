@@ -4,7 +4,6 @@ import {
   Campo,
   Card,
   CampoData,
-  Carregando,
   DataTable,
   FeedbackInline,
   Field,
@@ -43,6 +42,7 @@ import {
 } from '../../lib/api';
 import { useSucessoToast } from '../../hooks/useSucessoToast';
 import { SeletorFotoCamera } from '../../components/SeletorFotoCamera';
+import { salvarBlob, useVisualizadorPdf } from '../../components/useVisualizadorPdf';
 import { useSouAdministrador } from '../../lib/UsuarioLogadoContext';
 
 // Sub-aba "Certificados" (pedido do usuário, 22/09). As obras já estavam em andamento quando o
@@ -132,8 +132,7 @@ export function CertificadosTab() {
   const inputAnexoListaRef = useRef<HTMLInputElement>(null);
   const [anexandoParaId, setAnexandoParaId] = useState<string | null>(null);
 
-  const [preview, setPreview] = useState<{ certificado: CertificadoTreinamento; url: string } | null>(null);
-  const [carregandoPreview, setCarregandoPreview] = useState(false);
+  const { visualizar: abrirVisualizador, dialogoVisualizador } = useVisualizadorPdf();
   const [ocupadoId, setOcupadoId] = useState<string | null>(null);
 
   async function carregar() {
@@ -161,14 +160,6 @@ export function CertificadosTab() {
     carregar();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [filtroObraId]);
-
-  // Blob de preview vive enquanto o painel está aberto — revogar na hora de fechar evita segurar
-  // dezenas de megabytes na memória do WebView do Teams durante um mutirão de cadastro.
-  useEffect(() => {
-    return () => {
-      if (preview) URL.revokeObjectURL(preview.url);
-    };
-  }, [preview]);
 
   const listaFiltrada = useMemo(() => {
     const termo = busca.trim().toLowerCase();
@@ -265,43 +256,39 @@ export function CertificadosTab() {
     }
   }
 
-  async function visualizar(certificado: CertificadoTreinamento) {
-    if (!certificado.temArquivo) return;
-    try {
-      setCarregandoPreview(true);
-      setOcupadoId(certificado.id);
-      const blob = await api.treinamentos.baixarArquivoCertificado(certificado.id);
-      setPreview({ certificado, url: URL.createObjectURL(blob) });
-    } catch (e) {
-      setErro(e instanceof Error ? e.message : 'Falha ao abrir o certificado anexado.');
-    } finally {
-      setCarregandoPreview(false);
-      setOcupadoId(null);
-    }
+  // Externo: o documento válido é o arquivo original digitalizado. AAHBRANT: emite o modelo
+  // próprio como sempre — a API recusa emitir o modelo para certificado externo.
+  function obterArquivo(certificado: CertificadoTreinamento) {
+    return certificado.origemCertificado === OrigemCertificadoTreinamento.Externo || certificado.temArquivo
+      ? api.treinamentos.baixarArquivoCertificado(certificado.id)
+      : api.treinamentos.baixarCertificado(certificado.id);
   }
 
-  function fecharPreview() {
-    if (preview) URL.revokeObjectURL(preview.url);
-    setPreview(null);
+  function nomeArquivo(certificado: CertificadoTreinamento) {
+    return (
+      certificado.nomeArquivo ??
+      `certificado-${certificado.trabalhadorNome.replace(/\s+/g, '-').toLowerCase()}-${certificado.id}.pdf`
+    );
+  }
+
+  // Externo sem arquivo anexado não tem o que mostrar (a API recusa emitir o modelo para ele).
+  function podeVisualizar(certificado: CertificadoTreinamento) {
+    return certificado.temArquivo || certificado.origemCertificado !== OrigemCertificadoTreinamento.Externo;
+  }
+
+  function visualizar(certificado: CertificadoTreinamento) {
+    if (!podeVisualizar(certificado)) return;
+    void abrirVisualizador({
+      titulo: `${certificado.cursoNome} — ${certificado.trabalhadorNome}`,
+      nomeArquivo: nomeArquivo(certificado),
+      obter: () => obterArquivo(certificado),
+    });
   }
 
   async function baixar(certificado: CertificadoTreinamento) {
     try {
       setOcupadoId(certificado.id);
-      // Externo: o documento válido é o arquivo original digitalizado. AAHBRANT: emite o modelo
-      // próprio como sempre — a API recusa emitir o modelo para certificado externo.
-      const blob =
-        certificado.origemCertificado === OrigemCertificadoTreinamento.Externo || certificado.temArquivo
-          ? await api.treinamentos.baixarArquivoCertificado(certificado.id)
-          : await api.treinamentos.baixarCertificado(certificado.id);
-      const url = URL.createObjectURL(blob);
-      const link = document.createElement('a');
-      link.href = url;
-      link.download =
-        certificado.nomeArquivo ??
-        `certificado-${certificado.trabalhadorNome.replace(/\s+/g, '-').toLowerCase()}-${certificado.id}.pdf`;
-      link.click();
-      URL.revokeObjectURL(url);
+      salvarBlob(await obterArquivo(certificado), nomeArquivo(certificado));
     } catch (e) {
       setErro(e instanceof Error ? e.message : 'Falha ao baixar o certificado.');
     } finally {
@@ -584,41 +571,7 @@ export function CertificadosTab() {
         </PainelCriacaoInline>
       </div>
 
-      <div id="painel-preview-certificado">
-        <PainelCriacaoInline
-          aberto={!!preview}
-          titulo={preview ? `${preview.certificado.cursoNome} — ${preview.certificado.trabalhadorNome}` : ''}
-        >
-          {carregandoPreview && <Carregando variante="detalhe" linhas={4} />}
-          {preview && (
-            <>
-              {preview.certificado.contentTypeArquivo === 'application/pdf' ? (
-                <iframe
-                  src={preview.url}
-                  title={preview.certificado.nomeArquivo ?? 'Certificado'}
-                  style={{ width: '100%', height: '70vh', border: 'none' }}
-                />
-              ) : (
-                <img
-                  src={preview.url}
-                  alt={preview.certificado.nomeArquivo ?? 'Certificado'}
-                  style={{ maxWidth: '100%', borderRadius: 8 }}
-                />
-              )}
-              <FormRodape>
-                <Button onClick={fecharPreview}>Fechar</Button>
-                <Button
-                  appearance="primary"
-                  icon={<ArrowDownload24Regular />}
-                  onClick={() => baixar(preview.certificado)}
-                >
-                  Baixar
-                </Button>
-              </FormRodape>
-            </>
-          )}
-        </PainelCriacaoInline>
-      </div>
+      {dialogoVisualizador}
 
       <Card
         titulo="Certificados de treinamento"
@@ -700,7 +653,7 @@ export function CertificadosTab() {
           linhas={listaFiltrada}
           chaveLinha={(c) => c.id}
           carregando={carregandoLista}
-          aoClicarLinha={(c) => c.temArquivo && visualizar(c)}
+          aoClicarLinha={(c) => visualizar(c)}
           vazio={{
             titulo: 'Nenhum certificado encontrado',
             descricao: 'Lance os certificados dos funcionários que já estavam na obra antes do sistema.',
@@ -708,7 +661,7 @@ export function CertificadosTab() {
           }}
           acoesLinha={(c) => (
             <div style={{ display: 'flex', gap: 4 }}>
-              {c.temArquivo && (
+              {podeVisualizar(c) && (
                 <Button
                   appearance="subtle"
                   size="small"
@@ -718,8 +671,8 @@ export function CertificadosTab() {
                     visualizar(c);
                   }}
                   disabled={ocupadoId === c.id}
-                  aria-label="Visualizar certificado anexado"
-                  title="Visualizar certificado anexado"
+                  aria-label="Visualizar certificado"
+                  title="Visualizar certificado"
                 />
               )}
               {!c.temArquivo && (

@@ -20,7 +20,7 @@ import {
   useConfirmar,
   type Coluna,
 } from '@ui';
-import { Delete24Regular } from '@fluentui/react-icons';
+import { Delete24Regular, Eye24Regular } from '@fluentui/react-icons';
 import {
   api,
   cargoMembroCipaLabel,
@@ -29,6 +29,7 @@ import {
   type MembroCipaDetalhe,
   type TreinamentoCipa,
 } from '../../lib/api';
+import { salvarBlob, useVisualizadorPdf } from '../../components/useVisualizadorPdf';
 import { SeletorFotoCamera } from '../../components/SeletorFotoCamera';
 import { useSucessoToast } from '../../hooks/useSucessoToast';
 
@@ -44,6 +45,7 @@ export function MembroCipaDetalhePage() {
   const [erro, setErro] = useState<string | null>(null);
   const [salvando, setSalvando] = useState(false);
   const { confirmar, dialogElement } = useConfirmar();
+  const { visualizar, dialogoVisualizador } = useVisualizadorPdf();
   const sucessoToast = useSucessoToast();
 
   async function carregar() {
@@ -140,19 +142,31 @@ export function MembroCipaDetalhePage() {
     }
   }
 
-  async function baixarArquivo(treinamentoId: string, tipo: 'certificado' | 'lista-presenca') {
+  type TipoArquivo = 'certificado' | 'lista-presenca';
+
+  // Mesma chamada e mesmo nome para "Baixar" e "Visualizar" (anexo pode ser PDF ou imagem).
+  function obterArquivo(treinamentoId: string, tipo: TipoArquivo) {
+    return tipo === 'certificado'
+      ? api.cipa.membros.baixarCertificado(treinamentoId)
+      : api.cipa.membros.baixarListaPresenca(treinamentoId);
+  }
+
+  function nomeArquivo(treinamentoId: string, tipo: TipoArquivo) {
+    return `${tipo}-treinamento-cipa-${treinamentoId}`;
+  }
+
+  function visualizarArquivo(treinamentoId: string, tipo: TipoArquivo) {
+    void visualizar({
+      titulo: tipo === 'certificado' ? 'Certificado do treinamento CIPA' : 'Lista de presença do treinamento CIPA',
+      nomeArquivo: nomeArquivo(treinamentoId, tipo),
+      obter: () => obterArquivo(treinamentoId, tipo),
+    });
+  }
+
+  async function baixarArquivo(treinamentoId: string, tipo: TipoArquivo) {
     try {
       setErro(null);
-      const blob =
-        tipo === 'certificado'
-          ? await api.cipa.membros.baixarCertificado(treinamentoId)
-          : await api.cipa.membros.baixarListaPresenca(treinamentoId);
-      const url = URL.createObjectURL(blob);
-      const link = document.createElement('a');
-      link.href = url;
-      link.download = `${tipo}-treinamento-cipa-${treinamentoId}`;
-      link.click();
-      URL.revokeObjectURL(url);
+      salvarBlob(await obterArquivo(treinamentoId, tipo), nomeArquivo(treinamentoId, tipo));
     } catch (e) {
       setErro(e instanceof Error ? e.message : 'Falha ao baixar arquivo.');
     }
@@ -170,9 +184,14 @@ export function MembroCipaDetalhePage() {
       rotulo: 'Certificado',
       render: (t) =>
         t.temCertificado ? (
-          <Button appearance="subtle" onClick={() => baixarArquivo(t.id, 'certificado')}>
-            Baixar
-          </Button>
+          <div style={{ display: 'flex', gap: 4 }}>
+            <Button appearance="secondary" icon={<Eye24Regular />} onClick={() => visualizarArquivo(t.id, 'certificado')}>
+              Visualizar
+            </Button>
+            <Button appearance="subtle" onClick={() => baixarArquivo(t.id, 'certificado')}>
+              Baixar
+            </Button>
+          </div>
         ) : (
           <SeletorFotoCamera
             rotulo="Anexar"
@@ -189,9 +208,14 @@ export function MembroCipaDetalhePage() {
       rotulo: 'Lista de presença',
       render: (t) =>
         t.temListaPresenca ? (
-          <Button appearance="subtle" onClick={() => baixarArquivo(t.id, 'lista-presenca')}>
-            Baixar
-          </Button>
+          <div style={{ display: 'flex', gap: 4 }}>
+            <Button appearance="secondary" icon={<Eye24Regular />} onClick={() => visualizarArquivo(t.id, 'lista-presenca')}>
+              Visualizar
+            </Button>
+            <Button appearance="subtle" onClick={() => baixarArquivo(t.id, 'lista-presenca')}>
+              Baixar
+            </Button>
+          </div>
         ) : (
           <SeletorFotoCamera
             rotulo="Anexar"
@@ -208,6 +232,7 @@ export function MembroCipaDetalhePage() {
   return (
     <div>
       {dialogElement}
+      {dialogoVisualizador}
       <PageHeader titulo="Membro da CIPA" voltarPara="/operacao/cipa" rotuloVoltar="Voltar para CIPA" />
 
       {erro && (

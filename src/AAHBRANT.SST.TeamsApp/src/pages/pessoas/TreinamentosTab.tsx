@@ -21,11 +21,12 @@ import {
   useConfirmar,
   type Coluna,
 } from '@ui';
-import { Add24Regular, ArrowDownload24Regular, Delete24Regular, Signature24Regular } from '@fluentui/react-icons';
+import { Add24Regular, ArrowDownload24Regular, Delete24Regular, Eye24Regular, Signature24Regular } from '@fluentui/react-icons';
 import { api, type CursoTreinamento, type NovoTreinamento, type Treinamento } from '../../lib/api';
 import { useSucessoToast } from '../../hooks/useSucessoToast';
 import { AssinaturaCertificadoTreinamentoDialog } from '../../components/assinatura/AssinaturaCertificadoTreinamentoDialog';
 import { useSouAdministrador } from '../../lib/UsuarioLogadoContext';
+import { salvarBlob, useVisualizadorPdf } from '../../components/useVisualizadorPdf';
 
 function treinamentoVazio(trabalhadorId: string): NovoTreinamento {
   return {
@@ -62,6 +63,7 @@ export function TreinamentosTab({ trabalhadorId, obraId }: { trabalhadorId: stri
   const [carregandoLista, setCarregandoLista] = useState(true);
   const [painelAberto, setPainelAberto] = useState(false);
   const { confirmar, dialogElement } = useConfirmar();
+  const { visualizar, dialogoVisualizador } = useVisualizadorPdf();
   const sucessoToast = useSucessoToast();
   const [baixandoId, setBaixandoId] = useState<string | null>(null);
   const [assinaturaAberta, setAssinaturaAberta] = useState<{
@@ -94,18 +96,21 @@ export function TreinamentosTab({ trabalhadorId, obraId }: { trabalhadorId: stri
   async function baixarCertificado(id: string) {
     try {
       setBaixandoId(id);
-      const blob = await api.treinamentos.baixarCertificado(id);
-      const url = URL.createObjectURL(blob);
-      const link = document.createElement('a');
-      link.href = url;
-      link.download = `certificado-treinamento-${id}.pdf`;
-      link.click();
-      URL.revokeObjectURL(url);
+      salvarBlob(await api.treinamentos.baixarCertificado(id), `certificado-treinamento-${id}.pdf`);
     } catch (e) {
       setErro(e instanceof Error ? e.message : 'Falha ao baixar o certificado em PDF.');
     } finally {
       setBaixandoId(null);
     }
+  }
+
+  // Mesmo certificado do "Baixar", aberto na janela de visualização.
+  function visualizarCertificado(t: Treinamento) {
+    void visualizar({
+      titulo: `Certificado — ${nomeCurso(t.cursoTreinamentoId)}`,
+      nomeArquivo: `certificado-treinamento-${t.id}.pdf`,
+      obter: () => api.treinamentos.baixarCertificado(t.id),
+    });
   }
 
   useEffect(() => {
@@ -176,6 +181,7 @@ export function TreinamentosTab({ trabalhadorId, obraId }: { trabalhadorId: stri
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
       {dialogElement}
+      {dialogoVisualizador}
       <div id="painel-novo-treinamento">
         <PainelCriacaoInline aberto={painelAberto} titulo="Novo treinamento">
           <FormSection titulo="Dados do treinamento" numero={1} primeira>
@@ -302,6 +308,14 @@ export function TreinamentosTab({ trabalhadorId, obraId }: { trabalhadorId: stri
                 onClick={() => navigate(`/treinamentos/${t.id}/assinar`)}
                 aria-label="Assinar certificado"
                 title="Assinar certificado"
+              />
+              <Button
+                appearance="subtle"
+                size="small"
+                icon={<Eye24Regular />}
+                onClick={() => visualizarCertificado(t)}
+                aria-label="Visualizar certificado"
+                title="Visualizar certificado"
               />
               <Button
                 appearance="subtle"

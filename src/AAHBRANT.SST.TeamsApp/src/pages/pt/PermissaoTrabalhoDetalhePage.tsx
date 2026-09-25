@@ -18,13 +18,14 @@ import {
   type Tom,
 } from '@ui';
 import { CampoData } from '../../components/CampoData';
-import { ArrowDownload24Regular, Signature24Regular } from '@fluentui/react-icons';
+import { ArrowDownload24Regular, Eye24Regular, Signature24Regular } from '@fluentui/react-icons';
 import { api, StatusPt, statusPtLabel, type PermissaoTrabalhoDetalhe } from '../../lib/api';
 import { PreRequisitosPtTab } from './PreRequisitosPtTab';
 import { TiposTrabalhoPtTab } from './TiposTrabalhoPtTab';
 import { VerificacoesPtTab } from './VerificacoesPtTab';
 import { EpiEpcPtTab } from './EpiEpcPtTab';
 import { RiscosCriticosPtTab } from './RiscosCriticosPtTab';
+import { useVisualizadorPdf } from '../../components/useVisualizadorPdf';
 
 const ABAS_PT = ['preRequisitos', 'tiposTrabalho', 'verificacoes', 'episEpcs', 'riscosCriticos'] as const;
 type AbaPt = (typeof ABAS_PT)[number];
@@ -52,6 +53,7 @@ export function PermissaoTrabalhoDetalhePage() {
   const [detalhe, setDetalhe] = useState<PermissaoTrabalhoDetalhe | null>(null);
   const [erro, setErro] = useState<string | null>(null);
   const [exportando, setExportando] = useState(false);
+  const { visualizar, dialogoVisualizador } = useVisualizadorPdf();
 
   const [autorizadoPorUsuarioId, setAutorizadoPorUsuarioId] = useState('');
   const [responsavelSstUsuarioId, setResponsavelSstUsuarioId] = useState('');
@@ -153,7 +155,7 @@ export function PermissaoTrabalhoDetalhePage() {
       const url = URL.createObjectURL(blob);
       const link = document.createElement('a');
       link.href = url;
-      link.download = `pt-${id}.pdf`;
+      link.download = nomeArquivoPdf(id);
       link.click();
       URL.revokeObjectURL(url);
     } catch (e) {
@@ -161,6 +163,20 @@ export function PermissaoTrabalhoDetalhePage() {
     } finally {
       setExportando(false);
     }
+  }
+
+  function nomeArquivoPdf(ptId: string) {
+    return `pt-${ptId}.pdf`;
+  }
+
+  // Abre o mesmo PDF do "Exportar PDF" numa janela, sem baixar.
+  function visualizarPdf() {
+    if (!id) return;
+    void visualizar({
+      titulo: 'PDF da Permissão de Trabalho',
+      nomeArquivo: nomeArquivoPdf(id),
+      obter: () => api.permissoesTrabalho.exportarPdf(id),
+    });
   }
 
   if (!id) return <FeedbackInline tom="erro">Permissão de Trabalho não encontrada.</FeedbackInline>;
@@ -271,6 +287,9 @@ export function PermissaoTrabalhoDetalhePage() {
             >
               Assinar PT (ciência da equipe)
             </Button>
+            <Button appearance="secondary" icon={<Eye24Regular />} onClick={visualizarPdf}>
+              Visualizar PDF
+            </Button>
             <Button
               appearance="secondary"
               icon={<ArrowDownload24Regular />}
@@ -279,6 +298,7 @@ export function PermissaoTrabalhoDetalhePage() {
             >
               Exportar PDF
             </Button>
+            {dialogoVisualizador}
           </>
         ),
       }}

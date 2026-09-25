@@ -20,6 +20,7 @@ import {
 import { ArrowDownload24Regular, Eye24Regular, EyeOff24Regular } from '@fluentui/react-icons';
 import { api, tipoVinculoLabel, TipoVinculo, type PerfilCompletoTrabalhador } from '../../lib/api';
 import { formatarCpf, mascararCpf } from '../../lib/cpf';
+import { salvarBlob, useVisualizadorPdf } from '../../components/useVisualizadorPdf';
 import { PerfilGeralTab } from './PerfilGeralTab';
 import { TamanhosUniformeSecao } from './TamanhosUniformeSecao';
 import { TreinamentosTab } from './TreinamentosTab';
@@ -64,6 +65,7 @@ export function TrabalhadorDetalhePage() {
   const [baixandoRelatorio, setBaixandoRelatorio] = useState(false);
   const [fotoUrl, setFotoUrl] = useState<string | null>(null);
   const paleta = usePaletaGraficos();
+  const { visualizar, dialogoVisualizador } = useVisualizadorPdf();
 
   async function carregar() {
     if (!id) return;
@@ -107,18 +109,23 @@ export function TrabalhadorDetalhePage() {
     try {
       setBaixandoRelatorio(true);
       setErro(null);
-      const blob = await api.trabalhadores.baixarRelatorioFiscalizacao(id);
-      const url = URL.createObjectURL(blob);
-      const link = document.createElement('a');
-      link.href = url;
-      link.download = `relatorio-fiscalizacao-${id}.pdf`;
-      link.click();
-      URL.revokeObjectURL(url);
+      salvarBlob(await api.trabalhadores.baixarRelatorioFiscalizacao(id), `relatorio-fiscalizacao-${id}.pdf`);
     } catch (e) {
       setErro(e instanceof Error ? e.message : 'Falha ao gerar o relatório de fiscalização.');
     } finally {
       setBaixandoRelatorio(false);
     }
+  }
+
+  // Mesmo relatório do botão "Emitir", aberto na janela de visualização.
+  function visualizarRelatorio() {
+    if (!id) return;
+    const trabalhadorId = id;
+    void visualizar({
+      titulo: `Relatório de fiscalização — ${perfil?.nome ?? 'Funcionário'}`,
+      nomeArquivo: `relatorio-fiscalizacao-${trabalhadorId}.pdf`,
+      obter: () => api.trabalhadores.baixarRelatorioFiscalizacao(trabalhadorId),
+    });
   }
 
   if (!id) {
@@ -154,18 +161,24 @@ export function TrabalhadorDetalhePage() {
         }
         status={perfil && <StatusChip tom={tomAptidao[perfil.statusAptidao] ?? 'neutro'}>{perfil.statusAptidao}</StatusChip>}
         acoes={
-          <Button
-            appearance="primary"
-            icon={<ArrowDownload24Regular />}
-            onClick={baixarRelatorio}
-            disabled={baixandoRelatorio || !perfil}
-          >
-            Emitir relatório de fiscalização (PDF)
-          </Button>
+          <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+            <Button appearance="secondary" icon={<Eye24Regular />} onClick={visualizarRelatorio} disabled={!perfil}>
+              Visualizar relatório
+            </Button>
+            <Button
+              appearance="primary"
+              icon={<ArrowDownload24Regular />}
+              onClick={baixarRelatorio}
+              disabled={baixandoRelatorio || !perfil}
+            >
+              Emitir relatório de fiscalização (PDF)
+            </Button>
+          </div>
         }
       />
 
       {erro && <FeedbackInline tom="erro" aoFechar={() => setErro(null)}>{erro}</FeedbackInline>}
+      {dialogoVisualizador}
 
       {!perfil ? (
         <Carregando variante="detalhe" linhas={6} />

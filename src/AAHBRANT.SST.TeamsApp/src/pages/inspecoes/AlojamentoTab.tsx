@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Button, Card, EstadoVazio, FeedbackInline, PageHeader, StatusChip, type Tom } from '@ui';
-import { ArrowDownload24Regular, ArrowLeft24Regular, ClipboardTaskListLtr24Regular, Home24Regular, Open24Regular, Send24Regular } from '@fluentui/react-icons';
+import { ArrowDownload24Regular, ArrowLeft24Regular, ClipboardTaskListLtr24Regular, Eye24Regular, Home24Regular, Open24Regular, Send24Regular } from '@fluentui/react-icons';
 import {
   api,
   StatusDocumentoAssinatura,
@@ -13,6 +13,7 @@ import {
   type AlojamentoResumo,
   type Obra,
 } from '../../lib/api';
+import { useVisualizadorPdf } from '../../components/useVisualizadorPdf';
 
 const tomStatus: Record<AlojamentoResumo['statusUltimaInspecao'], Tom> = {
   'em-dia': 'ok',
@@ -39,6 +40,15 @@ function baixarBlob(blob: Blob, nomeArquivo: string) {
   URL.revokeObjectURL(url);
 }
 
+// Mesmos nomes usados no download e no botão "Baixar" do visualizador.
+function nomePdfInspecao(inspecao: AlojamentoInspecaoResumo) {
+  return `inspecao-alojamento-${formatarData(inspecao.data).replaceAll('/', '-')}.pdf`;
+}
+
+function nomePdfAssinado(inspecao: AlojamentoInspecaoResumo) {
+  return `inspecao-alojamento-assinada-${formatarData(inspecao.data).replaceAll('/', '-')}.pdf`;
+}
+
 // Sub-aba "Alojamento" (Task 8, 2026-09-15): mesmo padrão obra → sub-itens de TrabalhadoresTab.tsx —
 // grade de obras com resumo, clique abre a grade de alojamentos daquela obra. Diferente de
 // TrabalhadoresTab, aqui os "sub-itens" também são cards (não uma DataTable), pois um alojamento
@@ -53,6 +63,7 @@ export function AlojamentoTab() {
   const [baixandoPdfId, setBaixandoPdfId] = useState<string | null>(null);
   const [enviandoAssinaturaId, setEnviandoAssinaturaId] = useState<string | null>(null);
   const [baixandoAssinadoId, setBaixandoAssinadoId] = useState<string | null>(null);
+  const { visualizar, dialogoVisualizador } = useVisualizadorPdf();
 
   async function carregar() {
     try {
@@ -95,7 +106,7 @@ export function AlojamentoTab() {
       setBaixandoPdfId(inspecao.id);
       setErro(null);
       const blob = await api.inspecoes.baixarPdf(inspecao.id);
-      baixarBlob(blob, `inspecao-alojamento-${formatarData(inspecao.data).replaceAll('/', '-')}.pdf`);
+      baixarBlob(blob, nomePdfInspecao(inspecao));
     } catch (e) {
       setErro(e instanceof Error ? e.message : 'Não foi possível baixar o PDF da inspeção.');
     } finally {
@@ -121,12 +132,29 @@ export function AlojamentoTab() {
       setBaixandoAssinadoId(documento.id);
       setErro(null);
       const blob = await api.assinatura.baixarPdf(documento.id);
-      baixarBlob(blob, `inspecao-alojamento-assinada-${formatarData(inspecao.data).replaceAll('/', '-')}.pdf`);
+      baixarBlob(blob, nomePdfAssinado(inspecao));
     } catch (e) {
       setErro(e instanceof Error ? e.message : 'Não foi possível baixar o documento assinado.');
     } finally {
       setBaixandoAssinadoId(null);
     }
+  }
+
+  // Abrem os mesmos PDFs dos botões de baixar numa janela, sem baixar.
+  function visualizarPdfInspecao(inspecao: AlojamentoInspecaoResumo) {
+    void visualizar({
+      titulo: `Inspeção de alojamento — ${formatarData(inspecao.data)}`,
+      nomeArquivo: nomePdfInspecao(inspecao),
+      obter: () => api.inspecoes.baixarPdf(inspecao.id),
+    });
+  }
+
+  function visualizarPdfAssinado(inspecao: AlojamentoInspecaoResumo, documento: AlojamentoDocumentoAssinaturaResumo) {
+    void visualizar({
+      titulo: `Inspeção de alojamento assinada — ${formatarData(inspecao.data)}`,
+      nomeArquivo: nomePdfAssinado(inspecao),
+      obter: () => api.assinatura.baixarPdf(documento.id),
+    });
   }
 
   const resumoPorObra = useMemo(
@@ -163,6 +191,8 @@ export function AlojamentoTab() {
         />
 
         {erro && <FeedbackInline tom="erro" aoFechar={() => setErro(null)}>{erro}</FeedbackInline>}
+
+        {dialogoVisualizador}
 
         {obraAtual.alojamentos.length === 0 && (
           <Card>
@@ -221,6 +251,15 @@ export function AlojamentoTab() {
                   {alojamento.ultimaInspecaoConcluida && (
                     <Button
                       appearance="secondary"
+                      icon={<Eye24Regular />}
+                      onClick={() => visualizarPdfInspecao(alojamento.ultimaInspecaoConcluida!)}
+                    >
+                      Visualizar última
+                    </Button>
+                  )}
+                  {alojamento.ultimaInspecaoConcluida && (
+                    <Button
+                      appearance="secondary"
                       icon={<ArrowDownload24Regular />}
                       disabled={baixandoPdfId === alojamento.ultimaInspecaoConcluida.id}
                       onClick={() => baixarPdfInspecao(alojamento.ultimaInspecaoConcluida!)}
@@ -236,6 +275,20 @@ export function AlojamentoTab() {
                       onClick={() => enviarParaAssinatura(alojamento.ultimaInspecaoConcluida!)}
                     >
                       Enviar para assinatura
+                    </Button>
+                  )}
+                  {alojamento.ultimaInspecaoConcluida?.documentoAssinatura?.temPdf && (
+                    <Button
+                      appearance="secondary"
+                      icon={<Eye24Regular />}
+                      onClick={() =>
+                        visualizarPdfAssinado(
+                          alojamento.ultimaInspecaoConcluida!,
+                          alojamento.ultimaInspecaoConcluida!.documentoAssinatura!,
+                        )
+                      }
+                    >
+                      Visualizar assinado
                     </Button>
                   )}
                   {alojamento.ultimaInspecaoConcluida?.documentoAssinatura?.temPdf && (
@@ -291,6 +344,15 @@ export function AlojamentoTab() {
                             {inspecao.status === StatusInspecao.Concluida && (
                               <Button
                                 appearance="subtle"
+                                icon={<Eye24Regular />}
+                                onClick={() => visualizarPdfInspecao(inspecao)}
+                                aria-label="Visualizar PDF"
+                                title="Visualizar PDF"
+                              />
+                            )}
+                            {inspecao.status === StatusInspecao.Concluida && (
+                              <Button
+                                appearance="subtle"
                                 icon={<ArrowDownload24Regular />}
                                 disabled={baixandoPdfId === inspecao.id}
                                 onClick={() => baixarPdfInspecao(inspecao)}
@@ -304,6 +366,15 @@ export function AlojamentoTab() {
                                 disabled={enviandoAssinaturaId === inspecao.id}
                                 onClick={() => enviarParaAssinatura(inspecao)}
                                 aria-label="Enviar para assinatura"
+                              />
+                            )}
+                            {inspecao.status === StatusInspecao.Concluida && inspecao.documentoAssinatura?.temPdf && (
+                              <Button
+                                appearance="subtle"
+                                icon={<Eye24Regular />}
+                                onClick={() => visualizarPdfAssinado(inspecao, inspecao.documentoAssinatura!)}
+                                aria-label="Visualizar PDF assinado"
+                                title="Visualizar PDF assinado"
                               />
                             )}
                             {inspecao.status === StatusInspecao.Concluida && inspecao.documentoAssinatura?.temPdf && (

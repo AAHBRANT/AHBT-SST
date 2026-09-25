@@ -516,6 +516,18 @@ public static class NovidadesSeeder
                     "O responsável pelo suporte só era avisado no Teams quando a IA concluía que o chamado exigia mudança no sistema. Dúvidas e chamados respondidos pela própria IA chegavam apenas por fora do Teams.",
                     "Todo chamado aberto na Central de Suporte IA agora gera aviso no sininho do Teams do responsável e um evento no calendário dele, na data do prazo de atendimento: Crítica no mesmo dia, Alta em 1, Média em 3 e Baixa em 5 dias úteis. Quando o chamado é resolvido ou recusado, o evento sai do calendário."),
             }),
+        new(
+            Versao: "5.32.0",
+            Titulo: "Visualize documentos sem baixar",
+            DataPublicacao: new DateTime(2026, 9, 25, 0, 0, 0, DateTimeKind.Utc),
+            Itens: new[]
+            {
+                new NovidadeSeedItem(
+                    CategoriaNovidade.Melhoria,
+                    "Botão Visualizar ao lado de cada Baixar",
+                    "Para ver um DDS, APR, PT, inspeção, ficha de EPI, certificado ou ata era preciso baixar o PDF. Dentro do Teams, a pré-visualização de certificados e de Documentos & Procedimentos abria em branco.",
+                    "O documento abre numa janela dentro do próprio sistema, com todas as páginas, também no Teams. Se precisar do arquivo, é só clicar em Baixar na mesma janela."),
+            }),
     };
 
     public static async Task ExecutarAsync(IServiceProvider services, CancellationToken ct = default)

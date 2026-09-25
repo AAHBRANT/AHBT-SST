@@ -3,7 +3,6 @@ import {
   Button,
   Card,
   Campo,
-  Carregando,
   DataTable,
   Field,
   FeedbackInline,
@@ -27,6 +26,7 @@ import {
 } from '@fluentui/react-icons';
 import { api, type MaterialApoio } from '../../lib/api';
 import { useSucessoToast } from '../../hooks/useSucessoToast';
+import { salvarBlob, useVisualizadorPdf } from '../../components/useVisualizadorPdf';
 
 function formatarTamanho(bytes: number): string {
   if (bytes < 1024) return `${bytes} B`;
@@ -38,6 +38,11 @@ function IconePorTipo({ contentType }: { contentType: string }) {
   if (contentType.startsWith('image/')) return <Image24Regular />;
   if (contentType === 'application/pdf') return <DocumentPdf24Regular />;
   return <Document24Regular />;
+}
+
+// A janela de visualização só desenha PDF (pdf.js) ou imagem; Word e demais tipos ficam só com "Baixar".
+function podeVisualizar(material: MaterialApoio) {
+  return material.contentType.startsWith('image/') || material.contentType === 'application/pdf';
 }
 
 // Aba "Documentos & Procedimentos" de Gestão de SST (pedido do usuário, 2026-09-09): catálogo
@@ -59,12 +64,10 @@ export function MateriaisApoioTab() {
   const [enviando, setEnviando] = useState(false);
   const [erroPainel, setErroPainel] = useState<string | null>(null);
 
-  const [materialPreview, setMaterialPreview] = useState<MaterialApoio | null>(null);
-  const [urlPreview, setUrlPreview] = useState<string | null>(null);
-  const [carregandoPreview, setCarregandoPreview] = useState(false);
   const [baixandoId, setBaixandoId] = useState<string | null>(null);
 
   const { confirmar, dialogElement } = useConfirmar();
+  const { visualizar: abrirVisualizador, dialogoVisualizador } = useVisualizadorPdf();
   const sucessoToast = useSucessoToast();
 
   async function carregar() {
@@ -124,39 +127,21 @@ export function MateriaisApoioTab() {
     }
   }
 
-  // Abre o painel de pré-visualização e busca o conteúdo sob demanda (endpoint exige autenticação,
-  // então <img src> direto pra API não funcionaria — mesmo raciocínio de baixarFoto em Inspeções).
-  async function visualizar(material: MaterialApoio) {
-    setMaterialPreview(material);
-    setUrlPreview(null);
-    setCarregandoPreview(true);
-    try {
-      const blob = await api.materiaisApoio.baixarConteudo(material.id);
-      setUrlPreview(URL.createObjectURL(blob));
-    } catch (e) {
-      setErro(e instanceof Error ? e.message : 'Falha ao carregar pré-visualização.');
-      setMaterialPreview(null);
-    } finally {
-      setCarregandoPreview(false);
-    }
-  }
-
-  function fecharPreview() {
-    if (urlPreview) URL.revokeObjectURL(urlPreview);
-    setMaterialPreview(null);
-    setUrlPreview(null);
+  // Janela única de visualização (useVisualizadorPdf): o <iframe> do antigo painel de preview
+  // ficava em branco no Teams. Busca sob demanda porque o endpoint exige autenticação.
+  function visualizar(material: MaterialApoio) {
+    if (!podeVisualizar(material)) return;
+    void abrirVisualizador({
+      titulo: material.nome,
+      nomeArquivo: material.nomeArquivo,
+      obter: () => api.materiaisApoio.baixarConteudo(material.id),
+    });
   }
 
   async function baixar(material: MaterialApoio) {
     try {
       setBaixandoId(material.id);
-      const blob = await api.materiaisApoio.baixarConteudo(material.id);
-      const url = URL.createObjectURL(blob);
-      const link = document.createElement('a');
-      link.href = url;
-      link.download = material.nomeArquivo;
-      link.click();
-      URL.revokeObjectURL(url);
+      salvarBlob(await api.materiaisApoio.baixarConteudo(material.id), material.nomeArquivo);
     } catch (e) {
       setErro(e instanceof Error ? e.message : 'Falha ao baixar o material.');
     } finally {
@@ -172,11 +157,10 @@ export function MateriaisApoioTab() {
     { chave: 'createdAtUtc', rotulo: 'Enviado em', render: (m) => new Date(m.createdAtUtc).toLocaleDateString('pt-BR') },
   ];
 
-  const podePreVisualizar = materialPreview?.contentType.startsWith('image/') || materialPreview?.contentType === 'application/pdf';
-
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
       {dialogElement}
+      {dialogoVisualizador}
       <PageHeader
         titulo="Documentos & Procedimentos"
         subtitulo="Materiais de apoio (sinalização, instruções técnicas) disponíveis para consulta e download."
@@ -238,40 +222,6 @@ export function MateriaisApoioTab() {
         </PainelCriacaoInline>
       </div>
 
-      <div id="painel-preview-material-apoio">
-        <PainelCriacaoInline aberto={!!materialPreview} titulo={materialPreview?.nome ?? ''}>
-          {carregandoPreview && <Carregando variante="detalhe" linhas={4} />}
-          {!carregandoPreview && urlPreview && materialPreview && (
-            <>
-              {materialPreview.contentType.startsWith('image/') && (
-                <img src={urlPreview} alt={materialPreview.nome} style={{ maxWidth: '100%', borderRadius: 8 }} />
-              )}
-              {materialPreview.contentType === 'application/pdf' && (
-                <iframe src={urlPreview} title={materialPreview.nome} style={{ width: '100%', height: '70vh', border: 'none' }} />
-              )}
-              {!podePreVisualizar && (
-                <FeedbackInline tom="info">
-                  Pré-visualização não disponível para este tipo de arquivo. Use o botão "Baixar" abaixo.
-                </FeedbackInline>
-              )}
-            </>
-          )}
-          <FormRodape>
-            <Button onClick={fecharPreview}>Fechar</Button>
-            {materialPreview && (
-              <Button
-                appearance="primary"
-                icon={<ArrowDownload24Regular />}
-                onClick={() => baixar(materialPreview)}
-                disabled={baixandoId === materialPreview.id}
-              >
-                Baixar
-              </Button>
-            )}
-          </FormRodape>
-        </PainelCriacaoInline>
-      </div>
-
       <Card>
         <DataTable
           aria-label="Materiais de apoio cadastrados"
@@ -279,7 +229,7 @@ export function MateriaisApoioTab() {
           linhas={materiais}
           chaveLinha={(m) => m.id}
           carregando={carregandoLista}
-          aoClicarLinha={visualizar}
+          aoClicarLinha={(m) => (podeVisualizar(m) ? visualizar(m) : baixar(m))}
           vazio={{
             titulo: 'Nenhum material cadastrado ainda.',
             descricao: 'Envie o primeiro material de apoio para começar.',
@@ -287,15 +237,18 @@ export function MateriaisApoioTab() {
           }}
           acoesLinha={(m) => (
             <div style={{ display: 'flex', gap: 4 }}>
-              <Button
-                appearance="subtle"
-                icon={<Eye24Regular />}
-                onClick={(evento) => {
-                  evento.stopPropagation();
-                  visualizar(m);
-                }}
-                aria-label="Visualizar"
-              />
+              {podeVisualizar(m) && (
+                <Button
+                  appearance="subtle"
+                  icon={<Eye24Regular />}
+                  onClick={(evento) => {
+                    evento.stopPropagation();
+                    visualizar(m);
+                  }}
+                  aria-label="Visualizar"
+                  title="Visualizar"
+                />
+              )}
               <Button
                 appearance="subtle"
                 icon={<ArrowDownload24Regular />}

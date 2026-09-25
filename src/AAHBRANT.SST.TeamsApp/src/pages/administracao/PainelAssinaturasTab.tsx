@@ -16,8 +16,9 @@ import {
   type Coluna,
   type Tom,
 } from '@ui';
-import { ArrowDownload24Regular, Filter24Regular, Link24Regular } from '@fluentui/react-icons';
+import { ArrowDownload24Regular, Eye24Regular, Filter24Regular, Link24Regular } from '@fluentui/react-icons';
 import { api, statusDocumentoAssinaturaLabel, type DocumentoAssinaturaResumo } from '../../lib/api';
+import { salvarBlob, useVisualizadorPdf } from '../../components/useVisualizadorPdf';
 
 // Status do Motor de Assinatura Eletrônica não tinha mapeamento de cor no Badge original (só
 // appearance="tint" genérico) — julgamento novo desta conversão (Guia item 5): Em andamento = ainda
@@ -37,6 +38,7 @@ export function PainelAssinaturasTab() {
   const [erro, setErro] = useState<string | null>(null);
   const [carregando, setCarregando] = useState(false);
   const [baixandoId, setBaixandoId] = useState<string | null>(null);
+  const { visualizar, dialogoVisualizador } = useVisualizadorPdf();
 
   async function carregar() {
     try {
@@ -64,18 +66,21 @@ export function PainelAssinaturasTab() {
     try {
       setBaixandoId(documento.id);
       setErro(null);
-      const blob = await api.assinatura.baixarPdf(documento.id);
-      const url = URL.createObjectURL(blob);
-      const link = document.createElement('a');
-      link.href = url;
-      link.download = `comprovante-assinatura-${documento.id}.pdf`;
-      link.click();
-      URL.revokeObjectURL(url);
+      salvarBlob(await api.assinatura.baixarPdf(documento.id), `comprovante-assinatura-${documento.id}.pdf`);
     } catch (e) {
       setErro(e instanceof Error ? e.message : 'Falha ao baixar o PDF do documento.');
     } finally {
       setBaixandoId(null);
     }
+  }
+
+  // Mesmo comprovante do botão "PDF", aberto na janela sem baixar.
+  function visualizarPdf(documento: DocumentoAssinaturaResumo) {
+    void visualizar({
+      titulo: `Comprovante de assinatura — ${documento.entidadeTipoRotulo || documento.entidadeTipo}`,
+      nomeArquivo: `comprovante-assinatura-${documento.id}.pdf`,
+      obter: () => api.assinatura.baixarPdf(documento.id),
+    });
   }
 
   async function copiarLinkPublico(documento: DocumentoAssinaturaResumo) {
@@ -116,6 +121,7 @@ export function PainelAssinaturasTab() {
 
   return (
     <div>
+      {dialogoVisualizador}
       <PageHeader titulo="Painel de assinaturas" />
       {erro && (
         <FeedbackInline tom="erro" aoFechar={() => setErro(null)}>
@@ -158,6 +164,16 @@ export function PainelAssinaturasTab() {
           vazio={{ titulo: 'Nenhum documento de assinatura encontrado para os filtros selecionados.' }}
           acoesLinha={(documento) => (
             <>
+              {documento.temPdf && (
+                <Button
+                  size="small"
+                  appearance="secondary"
+                  icon={<Eye24Regular />}
+                  onClick={() => visualizarPdf(documento)}
+                >
+                  Visualizar
+                </Button>
+              )}
               {documento.temPdf && (
                 <Button
                   size="small"

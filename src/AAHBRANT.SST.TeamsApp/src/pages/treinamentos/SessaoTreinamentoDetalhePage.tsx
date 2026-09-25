@@ -21,6 +21,7 @@ import {
 import {
   ArrowDownload24Regular,
   Checkmark24Filled,
+  Eye24Regular,
   Fingerprint24Regular,
   Signature24Regular,
 } from '@fluentui/react-icons';
@@ -36,6 +37,7 @@ import { GradeFotosEvidencia } from '../../components/GradeFotosEvidencia';
 import { SeletorFotoCamera } from '../../components/SeletorFotoCamera';
 import { MutacaoEnfileiradaOfflineError } from '../../lib/offline/syncEngine';
 import { ErroFacialDialog } from '../../components/assinatura/ErroFacialDialog';
+import { salvarBlob, useVisualizadorPdf } from '../../components/useVisualizadorPdf';
 
 const TOTAL_FOTOS_EVIDENCIA_OBRIGATORIAS = 3;
 
@@ -93,6 +95,7 @@ export function SessaoTreinamentoDetalhePage() {
   const [erro, setErro] = useState<string | null>(null);
   const [processando, setProcessando] = useState(false);
   const [baixandoId, setBaixandoId] = useState<string | null>(null);
+  const { visualizar, dialogoVisualizador } = useVisualizadorPdf();
   const [baixandoAta, setBaixandoAta] = useState(false);
 
   async function carregar() {
@@ -240,13 +243,7 @@ export function SessaoTreinamentoDetalhePage() {
     if (!id) return;
     try {
       setBaixandoAta(true);
-      const blob = await api.sessoesTreinamento.baixarAta(id);
-      const url = URL.createObjectURL(blob);
-      const link = document.createElement('a');
-      link.href = url;
-      link.download = `ata-turma-treinamento-${id}.pdf`;
-      link.click();
-      URL.revokeObjectURL(url);
+      salvarBlob(await api.sessoesTreinamento.baixarAta(id), `ata-turma-treinamento-${id}.pdf`);
     } catch (e) {
       setErro(e instanceof Error ? e.message : 'Falha ao baixar a ata em PDF.');
     } finally {
@@ -257,18 +254,31 @@ export function SessaoTreinamentoDetalhePage() {
   async function baixarCertificado(treinamentoId: string) {
     try {
       setBaixandoId(treinamentoId);
-      const blob = await api.treinamentos.baixarCertificado(treinamentoId);
-      const url = URL.createObjectURL(blob);
-      const link = document.createElement('a');
-      link.href = url;
-      link.download = `certificado-treinamento-${treinamentoId}.pdf`;
-      link.click();
-      URL.revokeObjectURL(url);
+      salvarBlob(await api.treinamentos.baixarCertificado(treinamentoId), `certificado-treinamento-${treinamentoId}.pdf`);
     } catch (e) {
       setErro(e instanceof Error ? e.message : 'Falha ao baixar o certificado em PDF.');
     } finally {
       setBaixandoId(null);
     }
+  }
+
+  // Mesmos documentos dos botões "Baixar", abertos na janela de visualização.
+  function visualizarAta() {
+    if (!id) return;
+    const sessaoId = id;
+    void visualizar({
+      titulo: 'Ata / anexo de evidências da turma',
+      nomeArquivo: `ata-turma-treinamento-${sessaoId}.pdf`,
+      obter: () => api.sessoesTreinamento.baixarAta(sessaoId),
+    });
+  }
+
+  function visualizarCertificado(treinamentoId: string, trabalhadorNome: string) {
+    void visualizar({
+      titulo: `Certificado — ${trabalhadorNome}`,
+      nomeArquivo: `certificado-treinamento-${treinamentoId}.pdf`,
+      obter: () => api.treinamentos.baixarCertificado(treinamentoId),
+    });
   }
 
   if (!id) return <FeedbackInline tom="erro">Turma não encontrada.</FeedbackInline>;
@@ -342,9 +352,14 @@ export function SessaoTreinamentoDetalhePage() {
         voltarPara: '/treinamentos',
         rotuloVoltar: 'Voltar para Turmas',
         acoes: (
-          <Button icon={<ArrowDownload24Regular />} onClick={baixarAta} disabled={baixandoAta}>
-            Baixar ata / anexo de evidências
-          </Button>
+          <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+            <Button appearance="secondary" icon={<Eye24Regular />} onClick={visualizarAta}>
+              Visualizar ata
+            </Button>
+            <Button icon={<ArrowDownload24Regular />} onClick={baixarAta} disabled={baixandoAta}>
+              Baixar ata / anexo de evidências
+            </Button>
+          </div>
         ),
       }}
       lateral={
@@ -459,6 +474,14 @@ export function SessaoTreinamentoDetalhePage() {
                   </Button>
                 )}
                 <Button
+                  appearance="secondary"
+                  size="small"
+                  icon={<Eye24Regular />}
+                  onClick={() => visualizarCertificado(p.treinamentoGeradoId!, p.trabalhadorNome)}
+                >
+                  Visualizar
+                </Button>
+                <Button
                   appearance="subtle"
                   size="small"
                   icon={<ArrowDownload24Regular />}
@@ -473,6 +496,7 @@ export function SessaoTreinamentoDetalhePage() {
         />
       </Card>
       <ErroFacialDialog mensagem={erroFacial} aoFechar={() => setErroFacial(null)} />
+      {dialogoVisualizador}
     </DetailPageLayout>
   );
 }

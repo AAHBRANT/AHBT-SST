@@ -22,6 +22,7 @@ import {
 import {
   ArrowDownload24Regular,
   Checkmark24Filled,
+  Eye24Regular,
   Fingerprint24Regular,
   PersonAdd24Regular,
   Signature24Regular,
@@ -38,6 +39,7 @@ import {
 } from '../../lib/api';
 import { capturarDigitalLocal, estaAgenteLocalDisponivel, obterDispositivoLocal } from '../../lib/agenteBiometricoLocal';
 import { GradeFotosEvidencia } from '../../components/GradeFotosEvidencia';
+import { useVisualizadorPdf } from '../../components/useVisualizadorPdf';
 
 const TOTAL_FOTOS_EVIDENCIA_OBRIGATORIAS = 3;
 
@@ -77,6 +79,7 @@ export function DdsDetalhePage() {
   const [processando, setProcessando] = useState(false);
   const [baixandoPdf, setBaixandoPdf] = useState(false);
   const [baixandoFotoId, setBaixandoFotoId] = useState<string | null>(null);
+  const { visualizar, dialogoVisualizador } = useVisualizadorPdf();
 
   async function carregar() {
     if (!id) return;
@@ -229,7 +232,7 @@ export function DdsDetalhePage() {
       const url = URL.createObjectURL(blob);
       const link = document.createElement('a');
       link.href = url;
-      link.download = `dds-${detalhe.dds.data?.slice(0, 10)}.pdf`;
+      link.download = nomeArquivoPdf(detalhe);
       link.click();
       URL.revokeObjectURL(url);
     } catch (e) {
@@ -237,6 +240,16 @@ export function DdsDetalhePage() {
     } finally {
       setBaixandoPdf(false);
     }
+  }
+
+  function nomeArquivoPdf(det: DdsDetalhe) {
+    return `dds-${det.dds.data?.slice(0, 10)}.pdf`;
+  }
+
+  // Abre o mesmo PDF do "Baixar PDF" numa janela, sem baixar.
+  function visualizarPdf() {
+    if (!id || !detalhe) return;
+    void visualizar({ titulo: 'PDF do DDS', nomeArquivo: nomeArquivoPdf(detalhe), obter: () => api.dds.baixarPdf(id) });
   }
 
   if (!id) return <FeedbackInline tom="erro">DDS não encontrado.</FeedbackInline>;
@@ -307,9 +320,13 @@ export function DdsDetalhePage() {
             <Button icon={<Signature24Regular />} onClick={() => navigate(`/prevencao/dds/dia/${id}/assinar`)}>
               Assinar DDS
             </Button>
+            <Button appearance="secondary" icon={<Eye24Regular />} onClick={visualizarPdf}>
+              Visualizar PDF
+            </Button>
             <Button icon={<ArrowDownload24Regular />} onClick={baixarPdf} disabled={baixandoPdf}>
               Baixar PDF
             </Button>
+            {dialogoVisualizador}
           </>
         ),
       }}

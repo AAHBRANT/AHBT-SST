@@ -17,10 +17,11 @@ import {
   type AcaoWorkflow,
   type Tom,
 } from '@ui';
-import { ArrowDownload24Regular } from '@fluentui/react-icons';
+import { ArrowDownload24Regular, Eye24Regular } from '@fluentui/react-icons';
 import { api, StatusApr, statusAprLabel, type AprDetalhe } from '../../lib/api';
 import { AprAssinaturasTab } from './AprAssinaturasTab';
 import { AprEtapasTab } from './AprEtapasTab';
+import { useVisualizadorPdf } from '../../components/useVisualizadorPdf';
 
 const ABAS_APR = ['etapas', 'assinaturas'] as const;
 type AbaApr = (typeof ABAS_APR)[number];
@@ -48,6 +49,7 @@ export function AprDetalhePage() {
   const [motivoReprovacao, setMotivoReprovacao] = useState('');
   const [processando, setProcessando] = useState(false);
   const [exportando, setExportando] = useState(false);
+  const { visualizar, dialogoVisualizador } = useVisualizadorPdf();
 
   async function carregar() {
     if (!id) return;
@@ -107,7 +109,7 @@ export function AprDetalhePage() {
       const url = URL.createObjectURL(blob);
       const link = document.createElement('a');
       link.href = url;
-      link.download = `apr-${id}.pdf`;
+      link.download = nomeArquivoPdf(id);
       link.click();
       URL.revokeObjectURL(url);
     } catch (e) {
@@ -115,6 +117,16 @@ export function AprDetalhePage() {
     } finally {
       setExportando(false);
     }
+  }
+
+  function nomeArquivoPdf(aprId: string) {
+    return `apr-${aprId}.pdf`;
+  }
+
+  // Abre o mesmo PDF do "Exportar PDF" numa janela, sem baixar.
+  function visualizarPdf() {
+    if (!id) return;
+    void visualizar({ titulo: 'PDF da APR', nomeArquivo: nomeArquivoPdf(id), obter: () => api.aprs.exportarPdf(id) });
   }
 
   if (!id) return <FeedbackInline tom="erro">APR não encontrada.</FeedbackInline>;
@@ -174,9 +186,15 @@ export function AprDetalhePage() {
         voltarPara: '/operacao/apr',
         rotuloVoltar: 'Voltar para APR',
         acoes: (
-          <Button appearance="secondary" icon={<ArrowDownload24Regular />} onClick={exportarPdf} disabled={exportando}>
-            Exportar PDF
-          </Button>
+          <>
+            <Button appearance="secondary" icon={<Eye24Regular />} onClick={visualizarPdf}>
+              Visualizar PDF
+            </Button>
+            <Button appearance="secondary" icon={<ArrowDownload24Regular />} onClick={exportarPdf} disabled={exportando}>
+              Exportar PDF
+            </Button>
+            {dialogoVisualizador}
+          </>
         ),
       }}
       lateral={

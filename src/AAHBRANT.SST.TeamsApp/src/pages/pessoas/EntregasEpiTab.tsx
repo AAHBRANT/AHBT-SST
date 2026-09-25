@@ -1,8 +1,9 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Button, Card, DataTable, StatusChip, FeedbackInline, type Coluna } from '@ui';
-import { ArrowDownload24Regular, Open24Regular } from '@fluentui/react-icons';
+import { ArrowDownload24Regular, Eye24Regular, Open24Regular } from '@fluentui/react-icons';
 import { api, type CatalogoEpi, type EntregaEpi } from '../../lib/api';
+import { salvarBlob, useVisualizadorPdf } from '../../components/useVisualizadorPdf';
 
 // Histórico somente-leitura das entregas de EPI deste trabalhador. O registro de novas entregas,
 // devoluções e a assinatura da ficha passaram a viver no módulo dedicado /epi (sidebar fixa "EPI",
@@ -15,6 +16,7 @@ export function EntregasEpiTab({ trabalhadorId }: { trabalhadorId: string }) {
   const [erro, setErro] = useState<string | null>(null);
   const [carregando, setCarregando] = useState(true);
   const [baixando, setBaixando] = useState(false);
+  const { visualizar, dialogoVisualizador } = useVisualizadorPdf();
 
   async function carregar() {
     try {
@@ -50,18 +52,21 @@ export function EntregasEpiTab({ trabalhadorId }: { trabalhadorId: string }) {
   async function baixarFicha() {
     try {
       setBaixando(true);
-      const blob = await api.entregasEpi.baixarFichaTrabalhador(trabalhadorId);
-      const url = URL.createObjectURL(blob);
-      const link = document.createElement('a');
-      link.href = url;
-      link.download = `ficha-epi-${trabalhadorId}.pdf`;
-      link.click();
-      URL.revokeObjectURL(url);
+      salvarBlob(await api.entregasEpi.baixarFichaTrabalhador(trabalhadorId), `ficha-epi-${trabalhadorId}.pdf`);
     } catch (e) {
       setErro(e instanceof Error ? e.message : 'Falha ao baixar a ficha em PDF.');
     } finally {
       setBaixando(false);
     }
+  }
+
+  // Mesma ficha do "Baixar", aberta na janela de visualização.
+  function visualizarFicha() {
+    void visualizar({
+      titulo: 'Ficha de EPI do funcionário',
+      nomeArquivo: `ficha-epi-${trabalhadorId}.pdf`,
+      obter: () => api.entregasEpi.baixarFichaTrabalhador(trabalhadorId),
+    });
   }
 
   async function confirmar(id: string) {
@@ -106,6 +111,14 @@ export function EntregasEpiTab({ trabalhadorId }: { trabalhadorId: string }) {
       acoes={
         <div style={{ display: 'flex', gap: 8 }}>
           <Button
+            appearance="secondary"
+            icon={<Eye24Regular />}
+            onClick={visualizarFicha}
+            disabled={entregas.length === 0}
+          >
+            Visualizar ficha
+          </Button>
+          <Button
             appearance="subtle"
             icon={<ArrowDownload24Regular />}
             onClick={baixarFicha}
@@ -120,6 +133,7 @@ export function EntregasEpiTab({ trabalhadorId }: { trabalhadorId: string }) {
       }
     >
       {erro && <FeedbackInline tom="erro" aoFechar={() => setErro(null)}>{erro}</FeedbackInline>}
+      {dialogoVisualizador}
 
       <DataTable
         aria-label="Entregas de EPI do funcionário"

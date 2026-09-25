@@ -1,8 +1,9 @@
 import { useState } from 'react';
 import { Button, Card, DataTable, FeedbackInline, type Coluna } from '@ui';
-import { ArrowDownload24Regular, Image24Regular } from '@fluentui/react-icons';
+import { ArrowDownload24Regular, Eye24Regular, Image24Regular } from '@fluentui/react-icons';
 import { api, metodoAutenticacaoAssinaturaLabel, type AssinaturaPerfil } from '../../lib/api';
 import { AssinaturaTab } from './AssinaturaTab';
+import { salvarBlob, useVisualizadorPdf } from '../../components/useVisualizadorPdf';
 
 interface CofreAssinaturasTabProps {
   trabalhadorId: string;
@@ -13,23 +14,27 @@ export function CofreAssinaturasTab({ trabalhadorId, assinaturas }: CofreAssinat
   const [erro, setErro] = useState<string | null>(null);
   const [baixandoId, setBaixandoId] = useState<string | null>(null);
   const [abrindoFotoId, setAbrindoFotoId] = useState<string | null>(null);
+  const { visualizar, dialogoVisualizador } = useVisualizadorPdf();
 
   async function baixarComprovante(documentoAssinaturaId: string) {
     try {
       setErro(null);
       setBaixandoId(documentoAssinaturaId);
-      const blob = await api.assinatura.baixarPdf(documentoAssinaturaId);
-      const url = URL.createObjectURL(blob);
-      const link = document.createElement('a');
-      link.href = url;
-      link.download = `comprovante-assinatura-${documentoAssinaturaId}.pdf`;
-      link.click();
-      URL.revokeObjectURL(url);
+      salvarBlob(await api.assinatura.baixarPdf(documentoAssinaturaId), `comprovante-assinatura-${documentoAssinaturaId}.pdf`);
     } catch (e) {
       setErro(e instanceof Error ? e.message : 'Falha ao baixar o comprovante em PDF.');
     } finally {
       setBaixandoId(null);
     }
+  }
+
+  // Mesmo comprovante do "Baixar", aberto na janela de visualização.
+  function visualizarComprovante(a: AssinaturaPerfil) {
+    void visualizar({
+      titulo: `Comprovante de assinatura — ${a.entidadeTipo}`,
+      nomeArquivo: `comprovante-assinatura-${a.documentoAssinaturaId}.pdf`,
+      obter: () => api.assinatura.baixarPdf(a.documentoAssinaturaId),
+    });
   }
 
   async function abrirFotoEvidencia(signatarioId: string) {
@@ -65,6 +70,7 @@ export function CofreAssinaturasTab({ trabalhadorId, assinaturas }: CofreAssinat
     <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
       <Card titulo="Cofre de assinaturas">
         {erro && <FeedbackInline tom="erro" aoFechar={() => setErro(null)}>{erro}</FeedbackInline>}
+        {dialogoVisualizador}
 
         <DataTable
           aria-label="Cofre de assinaturas"
@@ -81,6 +87,14 @@ export function CofreAssinaturasTab({ trabalhadorId, assinaturas }: CofreAssinat
                 disabled={!a.temFotoEvidencia || abrindoFotoId === a.signatarioId}
                 aria-label="Abrir foto da assinatura"
                 title={a.temFotoEvidencia ? 'Abrir foto capturada na assinatura' : 'Foto não disponível'}
+              />
+              <Button
+                appearance="subtle"
+                icon={<Eye24Regular />}
+                onClick={() => visualizarComprovante(a)}
+                disabled={!a.temPdf}
+                aria-label="Visualizar comprovante"
+                title={a.temPdf ? 'Visualizar comprovante' : 'PDF ainda não disponível'}
               />
               <Button
                 appearance="subtle"

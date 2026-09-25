@@ -24,6 +24,7 @@ import {
   ArrowDownload24Regular,
   CalendarCancel24Regular,
   ChevronRight24Regular,
+  Eye24Regular,
   LockClosed24Regular,
 } from '@fluentui/react-icons';
 import {
@@ -38,6 +39,7 @@ import {
   type CatalogoTemaDds,
   type DdsSemanalDetalhe,
 } from '../../lib/api';
+import { useVisualizadorPdf } from '../../components/useVisualizadorPdf';
 
 const NOMES_DIAS = ['Segunda-feira', 'Terça-feira', 'Quarta-feira', 'Quinta-feira', 'Sexta-feira'];
 
@@ -81,6 +83,7 @@ export function DdsSemanalDetalhePage() {
   const [erro, setErro] = useState<string | null>(null);
   const [processando, setProcessando] = useState(false);
   const [baixandoPdf, setBaixandoPdf] = useState(false);
+  const { visualizar, dialogoVisualizador } = useVisualizadorPdf();
 
   async function carregar() {
     if (!id) return;
@@ -184,7 +187,7 @@ export function DdsSemanalDetalhePage() {
       const url = URL.createObjectURL(blob);
       const link = document.createElement('a');
       link.href = url;
-      link.download = `dds-semanal-${id}.pdf`;
+      link.download = nomeArquivoPdf(id);
       link.click();
       URL.revokeObjectURL(url);
     } catch (e) {
@@ -192,6 +195,16 @@ export function DdsSemanalDetalhePage() {
     } finally {
       setBaixandoPdf(false);
     }
+  }
+
+  function nomeArquivoPdf(semanalId: string) {
+    return `dds-semanal-${semanalId}.pdf`;
+  }
+
+  // Abre o mesmo PDF do "Baixar PDF da semana" numa janela, sem baixar.
+  function visualizarPdf() {
+    if (!id) return;
+    void visualizar({ titulo: 'PDF da semana de DDS', nomeArquivo: nomeArquivoPdf(id), obter: () => api.ddsSemanal.baixarPdf(id) });
   }
 
   if (!id) return <FeedbackInline tom="erro">Semana de DDS não encontrada.</FeedbackInline>;
@@ -233,11 +246,17 @@ export function DdsSemanalDetalhePage() {
         voltarPara="/prevencao/dds"
         rotuloVoltar="Semanas de DDS"
         acoes={
-          <Button icon={<ArrowDownload24Regular />} onClick={baixarPdf} disabled={baixandoPdf}>
-            Baixar PDF da semana
-          </Button>
+          <>
+            <Button appearance="secondary" icon={<Eye24Regular />} onClick={visualizarPdf}>
+              Visualizar PDF da semana
+            </Button>
+            <Button icon={<ArrowDownload24Regular />} onClick={baixarPdf} disabled={baixandoPdf}>
+              Baixar PDF da semana
+            </Button>
+          </>
         }
       />
+      {dialogoVisualizador}
 
       {erro && (
         <FeedbackInline tom="erro" aoFechar={() => setErro(null)}>

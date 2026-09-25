@@ -7,7 +7,7 @@ import {
   useConfirmar,
   type Coluna,
 } from '@ui';
-import { Add24Regular, ArrowDownload24Regular, Delete24Regular, Signature24Regular } from '@fluentui/react-icons';
+import { Add24Regular, ArrowDownload24Regular, Delete24Regular, Eye24Regular, Signature24Regular } from '@fluentui/react-icons';
 import {
   api,
   motivoEntregaEpiLabel,
@@ -24,6 +24,7 @@ import {
   type Trabalhador,
 } from '../../lib/api';
 import { useSouAdministrador } from '../../lib/UsuarioLogadoContext';
+import { salvarBlob, useVisualizadorPdf } from '../../components/useVisualizadorPdf';
 import { AssinaturaEntregaEpiLoteDialog, type ItemLoteAssinaturaEpi } from '../../components/assinatura/AssinaturaEntregaEpiLoteDialog';
 import { AssinaturaDevolucaoEpiDialog } from '../../components/assinatura/AssinaturaDevolucaoEpiDialog';
 import { FotoCatalogoEpi } from './FotoCatalogoEpi';
@@ -148,6 +149,7 @@ export function EntregasTab({ aoNavegarParaMatriz }: EntregasTabProps) {
   const [excluindoId, setExcluindoId] = useState<string | null>(null);
   const souAdministrador = useSouAdministrador();
   const { confirmar, dialogElement } = useConfirmar();
+  const { visualizar, dialogoVisualizador } = useVisualizadorPdf();
   const [devolucaoId, setDevolucaoId] = useState<string | null>(null);
   const [devolucaoData, setDevolucaoData] = useState('');
   const [devolucaoQtd, setDevolucaoQtd] = useState('');
@@ -655,18 +657,21 @@ export function EntregasTab({ aoNavegarParaMatriz }: EntregasTabProps) {
   async function baixarFicha(trabalhadorId: string) {
     try {
       setBaixandoId(trabalhadorId);
-      const blob = await api.entregasEpi.baixarFichaTrabalhador(trabalhadorId);
-      const url = URL.createObjectURL(blob);
-      const link = document.createElement('a');
-      link.href = url;
-      link.download = `ficha-epi-${trabalhadorId}.pdf`;
-      link.click();
-      URL.revokeObjectURL(url);
+      salvarBlob(await api.entregasEpi.baixarFichaTrabalhador(trabalhadorId), `ficha-epi-${trabalhadorId}.pdf`);
     } catch (e) {
       setErro(e instanceof Error ? e.message : 'Falha ao baixar a ficha em PDF.');
     } finally {
       setBaixandoId(null);
     }
+  }
+
+  // Mesma ficha do "Baixar", aberta na janela de visualização.
+  function visualizarFicha(trabalhadorId: string) {
+    void visualizar({
+      titulo: `Ficha de EPI — ${nomeTrabalhador(trabalhadorId)}`,
+      nomeArquivo: `ficha-epi-${trabalhadorId}.pdf`,
+      obter: () => api.entregasEpi.baixarFichaTrabalhador(trabalhadorId),
+    });
   }
 
   // Coluna de devolução com edição na própria linha: o DataTable não tem edição inline embutida
@@ -724,6 +729,7 @@ export function EntregasTab({ aoNavegarParaMatriz }: EntregasTabProps) {
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
       {dialogElement}
+      {dialogoVisualizador}
       <PageHeader
         titulo="Entregas de EPI"
         subtitulo={`${entregas.filter((e) => !e.dataDevolucao).length} entregas ativas`}
@@ -943,6 +949,14 @@ export function EntregasTab({ aoNavegarParaMatriz }: EntregasTabProps) {
                 onClick={() => navigate(`/epi/${e.id}/assinar`)}
                 aria-label="Assinar ficha"
                 title="Assinar ficha"
+              />
+              <Button
+                appearance="subtle"
+                size="small"
+                icon={<Eye24Regular />}
+                onClick={() => visualizarFicha(e.trabalhadorId)}
+                aria-label="Visualizar ficha do funcionário"
+                title="Visualizar ficha de EPI do funcionário"
               />
               <Button
                 appearance="subtle"
