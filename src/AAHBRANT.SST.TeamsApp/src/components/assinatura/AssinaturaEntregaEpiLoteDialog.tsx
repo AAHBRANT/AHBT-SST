@@ -13,6 +13,7 @@ import {
 import { Checkmark24Filled, Fingerprint24Regular, PersonBoard24Regular, Warning24Regular } from '@fluentui/react-icons';
 import { api, MetodoAutenticacaoAssinatura, type DocumentoAssinatura } from '../../lib/api';
 import { capturarDigitalLocal, estaAgenteLocalDisponivel, obterDispositivoLocal } from '../../lib/agenteBiometricoLocal';
+import { tocarBipeAssinaturaAceita } from '../../lib/bipeAssinatura';
 import { MutacaoEnfileiradaOfflineError } from '../../lib/offline/syncEngine';
 import { usePageStyles } from '../../pages/pageStyles';
 import { FotoCatalogoEpi } from '../../pages/epi/FotoCatalogoEpi';
@@ -178,7 +179,10 @@ export function AssinaturaEntregaEpiLoteDialog({
         );
         nome = signatario.trabalhadorNome;
       }
-      if (nome) setUltimoAssinante(nome);
+      if (nome) {
+        setUltimoAssinante(nome);
+        tocarBipeAssinaturaAceita();
+      }
       await carregarDocumentos();
     } catch (e) {
       setErroReceptor(extrairMensagemErro(e, 'Falha na autenticação via biometria local.'));
@@ -203,7 +207,10 @@ export function AssinaturaEntregaEpiLoteDialog({
         const signatario = await api.assinatura.autenticarFacial(doc.id, obraId, arquivo);
         nome = signatario.trabalhadorNome;
       }
-      if (nome) setUltimoAssinante(nome);
+      if (nome) {
+        setUltimoAssinante(nome);
+        tocarBipeAssinaturaAceita();
+      }
       await carregarDocumentos();
     } catch (e) {
       if (e instanceof MutacaoEnfileiradaOfflineError) {

@@ -10,6 +10,9 @@ interface SeletorFotoCameraProps extends UseCapturaFotoOptions {
   tiposAceitos?: string;
   apenasIcone?: boolean;
   variante?: 'padrao' | 'facialAzure';
+  // Exibe um guia antes da câmera (ex.: orientações do cadastro facial): recebe a função que abre a
+  // câmera e decide quando chamá-la (normalmente após o operador confirmar com OK).
+  guiaAntesDeAbrir?: (abrirCamera: () => void) => void;
 }
 
 // Pedido do usuário (22/09): todo botão que abre a câmera (não os de só anexar arquivo/PDF, que têm
@@ -83,6 +86,7 @@ export function SeletorFotoCamera({
   exigirCamera = false,
   variante = 'padrao',
   contextoFoto,
+  guiaAntesDeAbrir,
 }: SeletorFotoCameraProps) {
   const captura = useCapturaFoto({ contextoFoto, aoSelecionarArquivo, aoErroValidacao, tamanhoMaximoMb, modoCamera, permitirCamera, exigirCamera });
   const { inputRef, processando, abrirCamera, onInputChange } = captura;
@@ -108,7 +112,13 @@ export function SeletorFotoCamera({
         className={classeBotao}
         size={tamanho}
         icon={processando ? <Spinner size="tiny" /> : <Camera24Regular />}
-        onClick={permitirCamera ? abrirCamera : () => inputRef.current?.click()}
+        onClick={
+          permitirCamera
+            ? guiaAntesDeAbrir
+              ? () => guiaAntesDeAbrir(abrirCamera)
+              : abrirCamera
+            : () => inputRef.current?.click()
+        }
         disabled={desabilitado || processando}
         aria-label={rotulo}
         title={rotulo}

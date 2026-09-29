@@ -27,9 +27,11 @@ public class Obra : AuditableEntity
 
     // Motor de Assinatura Eletrônica (docs/Motor-Assinatura-Eletronica.md §2/§3) — cada obra decide
     // quais métodos aceita (Biometria via Futronic, ReconhecimentoFacial via Azure Face API).
-    // CrachaPin/QrCodePin/WebAuthnCelular foram removidos do sistema em 31/08. Default Nenhum: uma
-    // obra só passa a assinar depois de configurada explicitamente, nunca por omissão.
-    public MetodoAutenticacaoObra MetodosAutenticacaoHabilitados { get; set; } = MetodoAutenticacaoObra.Nenhum;
+    // CrachaPin/QrCodePin/WebAuthnCelular foram removidos do sistema em 31/08. Padrão (decisão do
+    // usuário, 29/09/2026): toda obra aceita digital e facial; dá para restringir por obra em
+    // Administração > Obras > Editar (PUT /api/obras/{id}/metodos-assinatura).
+    public MetodoAutenticacaoObra MetodosAutenticacaoHabilitados { get; set; } =
+        MetodoAutenticacaoObra.Biometria | MetodoAutenticacaoObra.ReconhecimentoFacial;
 
     // Id do PersonGroup no Azure Face API para esta obra — um grupo por obra (reduz o universo de
     // candidatos do Identify e evita falso positivo entre trabalhadores de obras diferentes).

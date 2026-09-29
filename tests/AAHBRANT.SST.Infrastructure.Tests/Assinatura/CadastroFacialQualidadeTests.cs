@@ -196,4 +196,45 @@ public class CadastroFacialQualidadeTests
         Assert.True(adicionouFace);
         Assert.NotNull((await db.Trabalhadores.SingleAsync(t => t.Id == trabalhador.Id)).AzureFacePersonId);
     }
+
+    // A foto aprovada vira parte do perfil do trabalhador (pedido do usuário, 29/09): guardada com o
+    // hash do conteúdo, para conferir depois se a referência era boa e provar que não foi alterada.
+    [Fact]
+    public async Task CadastrarAsync_FotoAprovada_FicaGuardadaNoPerfilComHash()
+    {
+        var (db, trabalhador) = await SemearAsync(nameof(CadastrarAsync_FotoAprovada_FicaGuardadaNoPerfilComHash));
+        var factory = new HttpClientFactoryFalso(req =>
+        {
+            var caminho = req.RequestUri!.AbsolutePath;
+            if (caminho.EndsWith("/detect")) return Json(new[] { RostoDetectado(400, "high") });
+            if (caminho.EndsWith("/persistedFaces")) return Json(new { persistedFaceId = Guid.NewGuid().ToString() });
+            if (caminho.EndsWith("/train")) return new HttpResponseMessage(HttpStatusCode.Accepted);
+            if (caminho.EndsWith("/training")) return Json(new { status = "succeeded" });
+            if (caminho.EndsWith("/persons")) return Json(new { personId = Guid.NewGuid().ToString() });
+            return new HttpResponseMessage(HttpStatusCode.OK) { Content = new StringContent("{}") };
+        });
+        var servico = new AzureFaceAutenticacaoStrategy(db, factory, Opcoes());
+        var foto = Jpeg(800, 800);
+
+        await servico.CadastrarAsync(trabalhador.Id, foto, default);
+
+        var guardada = await db.FotosCadastroFacial.SingleAsync(f => f.TrabalhadorId == trabalhador.Id);
+        Assert.Equal(foto, guardada.Conteudo);
+        Assert.Equal("image/jpeg", guardada.ContentType);
+        Assert.Equal(Convert.ToHexString(System.Security.Cryptography.SHA256.HashData(foto)).ToLowerInvariant(), guardada.HashSha256);
+    }
+
+    // Foto recusada não pode deixar rastro no perfil: só a referência aceita fica guardada.
+    [Fact]
+    public async Task CadastrarAsync_FotoRecusada_NaoFicaGuardadaNoPerfil()
+    {
+        var (db, trabalhador) = await SemearAsync(nameof(CadastrarAsync_FotoRecusada_NaoFicaGuardadaNoPerfil));
+        var factory = new HttpClientFactoryFalso(_ => throw new InvalidOperationException("não deveria chamar a rede"));
+        var servico = new AzureFaceAutenticacaoStrategy(db, factory, Opcoes());
+
+        await Assert.ThrowsAsync<InvalidOperationException>(() =>
+            servico.CadastrarAsync(trabalhador.Id, Jpeg(320, 240), default));
+
+        Assert.Empty(await db.FotosCadastroFacial.ToListAsync());
+    }
 }

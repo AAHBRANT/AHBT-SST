@@ -40,6 +40,7 @@ import {
   type Trabalhador,
 } from '../../lib/api';
 import { capturarDigitalLocal, estaAgenteLocalDisponivel, obterDispositivoLocal } from '../../lib/agenteBiometricoLocal';
+import { tocarBipeAssinaturaAceita } from '../../lib/bipeAssinatura';
 import { GradeFotosEvidencia } from '../../components/GradeFotosEvidencia';
 import { useVisualizadorPdf } from '../../components/useVisualizadorPdf';
 
@@ -182,6 +183,7 @@ export function DdsDetalhePage() {
         dispositivoLocal.segredoDispositivo,
         biometriaValidada.score,
       );
+      tocarBipeAssinaturaAceita();
       setParticipanteSelecionado('');
       setBiometriaValidada(null);
       await carregar();

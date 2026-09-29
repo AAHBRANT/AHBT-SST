@@ -71,3 +71,19 @@ public class TemplateBiometricoFutronicConfiguracao : IEntityTypeConfiguration<T
         builder.HasQueryFilter(t => t.Ativo);
     }
 }
+
+public class FotoCadastroFacialConfiguracao : IEntityTypeConfiguration<FotoCadastroFacial>
+{
+    public void Configure(EntityTypeBuilder<FotoCadastroFacial> builder)
+    {
+        builder.Property(f => f.Conteudo).IsRequired();
+        builder.Property(f => f.ContentType).IsRequired().HasMaxLength(100);
+        builder.Property(f => f.HashSha256).IsRequired().HasMaxLength(64);
+
+        builder.HasOne(f => f.Trabalhador).WithMany()
+            .HasForeignKey(f => f.TrabalhadorId).OnDelete(DeleteBehavior.Restrict);
+
+        builder.HasIndex(f => f.TrabalhadorId);
+        builder.HasQueryFilter(f => f.Ativo);
+    }
+}

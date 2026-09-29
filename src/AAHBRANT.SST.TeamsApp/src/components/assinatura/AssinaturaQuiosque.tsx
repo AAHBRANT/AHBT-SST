@@ -14,6 +14,7 @@ import {
 import { Checkmark24Filled, Fingerprint24Regular, Warning24Regular } from '@fluentui/react-icons';
 import { api, metodoAutenticacaoAssinaturaLabel, type DocumentoAssinatura } from '../../lib/api';
 import { capturarDigitalLocal, estaAgenteLocalDisponivel, obterDispositivoLocal } from '../../lib/agenteBiometricoLocal';
+import { tocarBipeAssinaturaAceita } from '../../lib/bipeAssinatura';
 import { SeletorFotoCamera } from '../SeletorFotoCamera';
 import { formatarAssinaturaDigital } from './assinaturaDigital';
 import { MutacaoEnfileiradaOfflineError } from '../../lib/offline/syncEngine';
@@ -102,6 +103,7 @@ export function AssinaturaQuiosque({ entidadeTipo, entidadeId, obraId }: Assinat
         captura.score,
       );
       setUltimoAssinante(signatario.trabalhadorNome);
+      tocarBipeAssinaturaAceita();
       const doc = await api.assinatura.obter(entidadeTipo, entidadeId);
       setDocumento(doc);
     } catch (e) {
@@ -125,6 +127,7 @@ export function AssinaturaQuiosque({ entidadeTipo, entidadeId, obraId }: Assinat
       setUltimoAssinante(null);
       const signatario = await api.assinatura.autenticarFacial(documento.id, obraId, arquivo);
       setUltimoAssinante(signatario.trabalhadorNome);
+      tocarBipeAssinaturaAceita();
       const doc = await api.assinatura.obter(entidadeTipo, entidadeId);
       setDocumento(doc);
     } catch (e) {
@@ -150,7 +153,7 @@ export function AssinaturaQuiosque({ entidadeTipo, entidadeId, obraId }: Assinat
             A Patrulha de Segurança aceita apenas uma assinatura, já registrada abaixo.
           </Text>
         </div>
-      ) : agenteLocalDisponivel && dispositivoLocal ? (
+      ) : (
         <div className={estilos.card} style={{ marginBottom: 16, maxWidth: 480 }}>
           <Text weight="semibold" style={{ display: 'block', marginBottom: 12 }}>
             Digital (leitor local — Futronic FS80H)
@@ -160,27 +163,25 @@ export function AssinaturaQuiosque({ entidadeTipo, entidadeId, obraId }: Assinat
             size="large"
             icon={<Fingerprint24Regular />}
             onClick={assinarComBiometriaLocal}
-            disabled={processando || !documento}
+            disabled={processando || !documento || !agenteLocalDisponivel || !dispositivoLocal}
           >
             Autenticar com digital
           </Button>
+          {!(agenteLocalDisponivel && dispositivoLocal) && (
+            <div style={{ display: 'flex', alignItems: 'flex-start', gap: 8, marginTop: 12 }}>
+              <Warning24Regular />
+              <Text>
+                Leitor Futronic não encontrado nesta máquina. Verifique se o leitor está conectado e se o Agente
+                Biométrico está em execução, depois recarregue esta página — ou use o reconhecimento facial abaixo.
+              </Text>
+            </div>
+          )}
           {ultimoAssinante && (
             <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 12 }}>
               <Checkmark24Filled style={{ color: tokens.colorPaletteGreenForeground1 }} />
               <Text>Assinatura registrada: {ultimoAssinante}</Text>
             </div>
           )}
-        </div>
-      ) : (
-        <div className={estilos.card} style={{ marginBottom: 16, maxWidth: 480 }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-            <Warning24Regular />
-            <Text weight="semibold">Leitor Futronic não encontrado nesta máquina</Text>
-          </div>
-          <Text style={{ display: 'block', marginTop: 8 }}>
-            Verifique se o leitor está conectado e se o Agente Biométrico está em execução, depois
-            recarregue esta página — ou use o reconhecimento facial abaixo.
-          </Text>
         </div>
       )}
 

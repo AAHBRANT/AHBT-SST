@@ -35,6 +35,7 @@ import {
   type ParticipanteSessaoTreinamento,
 } from '../../lib/api';
 import { capturarDigitalLocal, estaAgenteLocalDisponivel, obterDispositivoLocal } from '../../lib/agenteBiometricoLocal';
+import { tocarBipeAssinaturaAceita } from '../../lib/bipeAssinatura';
 import { GradeFotosEvidencia } from '../../components/GradeFotosEvidencia';
 import { SeletorFotoCamera } from '../../components/SeletorFotoCamera';
 import { MutacaoEnfileiradaOfflineError } from '../../lib/offline/syncEngine';
@@ -189,6 +190,7 @@ export function SessaoTreinamentoDetalhePage() {
         captura.score,
       );
       setMensagemPresenca({ tipo: 'success', texto: `Presença de ${participante.trabalhadorNome} confirmada.` });
+      tocarBipeAssinaturaAceita();
       await carregar();
     } catch (e) {
       setErro(e instanceof Error ? e.message : 'Falha na validação biométrica.');
@@ -211,6 +213,7 @@ export function SessaoTreinamentoDetalhePage() {
         tipo: 'success',
         texto: `Presença de ${participante?.trabalhadorNome ?? 'participante'} confirmada por reconhecimento facial.`,
       });
+      tocarBipeAssinaturaAceita();
       await carregar();
     } catch (e) {
       if (e instanceof MutacaoEnfileiradaOfflineError) {

@@ -5,6 +5,8 @@ import { api } from '../../lib/api';
 import { capturarDigitalBrutaLocal } from '../../lib/agenteBiometricoLocal';
 import { SeletorFotoCamera } from '../../components/SeletorFotoCamera';
 import { ErroFacialDialog } from '../../components/assinatura/ErroFacialDialog';
+import { useGuiaCadastroFacial } from '../../components/pessoas/GuiaCadastroFacialDialog';
+import { FotosCadastroFacial } from '../../components/pessoas/FotosCadastroFacial';
 
 interface AssinaturaTabProps {
   trabalhadorId: string;
@@ -40,6 +42,8 @@ export function AssinaturaTab({ trabalhadorId }: AssinaturaTabProps) {
 
   const [erroFacial, setErroFacial] = useState<string | null>(null);
   const [facialCadastrada, setFacialCadastrada] = useState(false);
+  const [versaoFotosFacial, setVersaoFotosFacial] = useState(0);
+  const { guia: guiaFacial, pedirGuia } = useGuiaCadastroFacial();
 
   const [confirmandoAceite, setConfirmandoAceite] = useState(false);
   const [erroAceite, setErroAceite] = useState<string | null>(null);
@@ -73,6 +77,7 @@ export function AssinaturaTab({ trabalhadorId }: AssinaturaTabProps) {
       setFacialCadastrada(false);
       await api.trabalhadores.cadastrarFacial(trabalhadorId, arquivo);
       setFacialCadastrada(true);
+      setVersaoFotosFacial((v) => v + 1);
     } catch (e) {
       setErroFacial(extrairMensagemErro(e, 'Falha ao cadastrar a face.'));
     }
@@ -186,8 +191,13 @@ export function AssinaturaTab({ trabalhadorId }: AssinaturaTabProps) {
           variante="facialAzure"
           modoCamera="user"
           exigirCamera
+          guiaAntesDeAbrir={pedirGuia}
         />
+        <div style={{ marginTop: 16 }}>
+          <FotosCadastroFacial trabalhadorId={trabalhadorId} versao={versaoFotosFacial} />
+        </div>
       </Card>
+      {guiaFacial}
       <ErroFacialDialog mensagem={erroFacial} aoFechar={() => setErroFacial(null)} />
     </div>
   );

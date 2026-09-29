@@ -3,6 +3,7 @@ using System.Net.Http.Json;
 using System.Text.Json.Serialization;
 using AAHBRANT.SST.Application.Assinatura;
 using AAHBRANT.SST.Application.Common.Interfaces;
+using AAHBRANT.SST.Domain.Entidades;
 using AAHBRANT.SST.Domain.Enums;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
@@ -71,6 +72,17 @@ public class AzureFaceAutenticacaoStrategy : IAutenticacaoFacialService
         }
         if (erroAdicionarFace is not null)
             throw new InvalidOperationException(MontarMensagemErroAzure("Falha ao adicionar foto ao Person no Azure Face API", erroAdicionarFace));
+
+        // Só chega aqui com a foto já aprovada na validação de qualidade e aceita pelo Azure: é essa
+        // foto (a referência do reconhecimento) que fica guardada no perfil do trabalhador.
+        _db.FotosCadastroFacial.Add(new FotoCadastroFacial
+        {
+            TrabalhadorId = trabalhador.Id,
+            Conteudo = fotoJpeg,
+            ContentType = "image/jpeg",
+            HashSha256 = Convert.ToHexString(System.Security.Cryptography.SHA256.HashData(fotoJpeg)).ToLowerInvariant(),
+            CapturadaEm = DateTime.UtcNow,
+        });
 
         await _db.SaveChangesAsync(ct);
 

@@ -37,6 +37,12 @@ export interface Obra {
   metodosAssinatura: number;
 }
 
+export interface FotoCadastroFacial {
+  id: string;
+  capturadaEm: string;
+  hashSha256: string;
+}
+
 export const MetodoAssinaturaObra = { Biometria: 1, ReconhecimentoFacial: 2 } as const;
 
 export type NovaObra = Omit<Obra, 'id' | 'dataTerminoReal' | 'temLogo' | 'metodosAssinatura'>;
@@ -1320,6 +1326,7 @@ export interface Apr {
   numeroApr?: string | null;
   atividadeId: string;
   atividadeNome: string;
+  obraId?: string | null;
   obraNome?: string | null;
   local: string;
   maquinasEquipamentos?: string | null;
@@ -3648,6 +3655,18 @@ export const api = {
     },
     baixarFoto: async (id: string) => {
       const response = await fetch(`${API_BASE_URL}/api/trabalhadores/${id}/foto`, {
+        headers: await montarHeadersAuth(),
+      });
+      if (!response.ok) {
+        const corpo = await response.text().catch(() => '');
+        throw new Error(extrairMensagemErro(corpo, response.status, response.statusText));
+      }
+      return response.blob();
+    },
+    listarFotosCadastroFacial: (id: string) =>
+      request<FotoCadastroFacial[]>(`/api/trabalhadores/${id}/assinatura/facial/fotos`),
+    baixarFotoCadastroFacial: async (id: string, fotoId: string) => {
+      const response = await fetch(`${API_BASE_URL}/api/trabalhadores/${id}/assinatura/facial/fotos/${fotoId}`, {
         headers: await montarHeadersAuth(),
       });
       if (!response.ok) {

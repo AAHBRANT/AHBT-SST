@@ -144,6 +144,19 @@ public class TrabalhadoresController : ControllerBase
         return NoContent();
     }
 
+    [Authorize(Policy = "trabalhador:assinatura")]
+    [HttpGet("{id:guid}/assinatura/facial/fotos")]
+    public async Task<IActionResult> ListarFotosCadastroFacial(Guid id, CancellationToken ct)
+        => Ok(await _mediator.Send(new ListarFotosCadastroFacialQuery(id), ct));
+
+    [Authorize(Policy = "trabalhador:assinatura")]
+    [HttpGet("{id:guid}/assinatura/facial/fotos/{fotoId:guid}")]
+    public async Task<IActionResult> ObterFotoCadastroFacial(Guid id, Guid fotoId, CancellationToken ct)
+    {
+        var foto = await _mediator.Send(new ObterFotoCadastroFacialQuery(id, fotoId), ct);
+        return foto is null ? NotFound() : File(foto.Conteudo, foto.ContentType, foto.NomeArquivo);
+    }
+
     [Authorize(Policy = "trabalhador:ver")]
     [HttpGet("{id:guid}/uniformes")]
     public async Task<IActionResult> ListarTamanhosUniforme(Guid id, CancellationToken ct)

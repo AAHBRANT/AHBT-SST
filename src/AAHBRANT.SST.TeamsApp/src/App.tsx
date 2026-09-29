@@ -17,6 +17,7 @@ import { PgrDetalhePage } from './pages/pgr/PgrDetalhePage';
 import { AprDetalhePage } from './pages/apr/AprDetalhePage';
 import { PermissaoTrabalhoDetalhePage } from './pages/pt/PermissaoTrabalhoDetalhePage';
 import { AssinarPtPage } from './pages/pt/AssinarPtPage';
+import { AssinarAprPage } from './pages/apr/AssinarAprPage';
 import { InspecaoDetalhePage } from './pages/inspecoes/InspecaoDetalhePage';
 import { AssinarInspecaoPage } from './pages/inspecoes/AssinarInspecaoPage';
 import { IdentificacaoPublicaPage } from './pages/identificacao/IdentificacaoPublicaPage';
@@ -179,6 +180,7 @@ function AppRoteado() {
               <Route path="/operacao" element={<OperacaoPage />} />
               <Route path="/operacao/apr" element={<RedirecionarParaPilar pilar="/operacao" secao="apr" />} />
               <Route path="/operacao/apr/:id" element={<AprDetalhePage />} />
+              <Route path="/operacao/apr/:id/assinar" element={<AssinarAprPage />} />
               <Route path="/operacao/pt" element={<RedirecionarParaPilar pilar="/operacao" secao="pt" />} />
               <Route path="/operacao/pt/:id" element={<PermissaoTrabalhoDetalhePage />} />
               <Route path="/operacao/pt/:id/assinar" element={<AssinarPtPage />} />

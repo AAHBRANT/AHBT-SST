@@ -114,6 +114,7 @@ public interface IAppDbContext
     DbSet<DocumentoSignatario> DocumentoSignatarios { get; }
     DbSet<DispositivoAgenteBiometrico> DispositivosAgenteBiometrico { get; }
     DbSet<TemplateBiometricoFutronic> TemplatesBiometricoFutronic { get; }
+    DbSet<FotoCadastroFacial> FotosCadastroFacial { get; }
 
     DbSet<IdempotenciaRegistro> IdempotenciaRegistros { get; }
 
