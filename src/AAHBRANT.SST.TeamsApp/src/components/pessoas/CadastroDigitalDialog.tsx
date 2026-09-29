@@ -8,7 +8,7 @@ import {
   DialogTitle,
 } from '@fluentui/react-components';
 import { Button, Checkbox, Text, FeedbackInline } from '@ui';
-import { Fingerprint24Regular } from '@fluentui/react-icons';
+import { BotaoBiometriaDigital } from '../assinatura/BotaoBiometriaDigital';
 import { api } from '../../lib/api';
 import { capturarDigitalBrutaLocal, estaAgenteLocalDisponivel } from '../../lib/agenteBiometricoLocal';
 
@@ -187,14 +187,9 @@ export function CadastroDigitalDialog({
               </Button>
             )}
             {consentimentosSalvos && !cadastrada && (
-              <Button
-                appearance="primary"
-                icon={<Fingerprint24Regular />}
-                onClick={capturarDigital}
-                disabled={!agenteDisponivel || capturando}
-              >
+              <BotaoBiometriaDigital onClick={capturarDigital} disabled={!agenteDisponivel || capturando}>
                 Capturar digital
-              </Button>
+              </BotaoBiometriaDigital>
             )}
             {consentimentosSalvos && agenteDisponivel === false && (
               <Button

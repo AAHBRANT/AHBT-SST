@@ -10,7 +10,8 @@ import {
   Text,
   tokens,
 } from '@fluentui/react-components';
-import { Checkmark24Filled, Fingerprint24Regular, PersonBoard24Regular, Warning24Regular } from '@fluentui/react-icons';
+import { Checkmark24Filled, PersonBoard24Regular, Warning24Regular } from '@fluentui/react-icons';
+import { BotaoBiometriaDigital } from './BotaoBiometriaDigital';
 import { api, MetodoAutenticacaoAssinatura, type DocumentoAssinatura } from '../../lib/api';
 import { capturarDigitalLocal, estaAgenteLocalDisponivel, obterDispositivoLocal } from '../../lib/agenteBiometricoLocal';
 import { tocarBipeAssinaturaAceita } from '../../lib/bipeAssinatura';
@@ -307,15 +308,10 @@ export function AssinaturaEntregaEpiLoteDialog({
                 <Text size={200} style={{ display: 'block', marginBottom: 8 }}>
                   Um único toque no leitor assina todos os itens do carrinho ainda pendentes.
                 </Text>
-                <Button
-                  appearance="primary"
-                  size="large"
-                  icon={<Fingerprint24Regular />}
+                <BotaoBiometriaDigital
                   onClick={assinarComBiometriaLocal}
                   disabled={processandoReceptor || carregandoDocs || Object.keys(documentos).length === 0}
-                >
-                  Autenticar com digital
-                </Button>
+                />
                 {ultimoAssinante && (
                   <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 12 }}>
                     <Checkmark24Filled style={{ color: tokens.colorPaletteGreenForeground1 }} />

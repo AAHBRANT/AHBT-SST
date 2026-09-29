@@ -3,7 +3,6 @@ import { useEffect, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import {
   BotaoAcao,
-  Button,
   Campo,
   Card,
   Carregando,
@@ -24,7 +23,6 @@ import {
   ArrowDownload24Regular,
   Checkmark24Filled,
   Eye24Regular,
-  Fingerprint24Regular,
   Signature24Regular,
 } from '@fluentui/react-icons';
 import {
@@ -40,6 +38,7 @@ import { GradeFotosEvidencia } from '../../components/GradeFotosEvidencia';
 import { SeletorFotoCamera } from '../../components/SeletorFotoCamera';
 import { MutacaoEnfileiradaOfflineError } from '../../lib/offline/syncEngine';
 import { ErroFacialDialog } from '../../components/assinatura/ErroFacialDialog';
+import { BotaoBiometriaDigital } from '../../components/assinatura/BotaoBiometriaDigital';
 import { salvarBlob, useVisualizadorPdf } from '../../components/useVisualizadorPdf';
 
 const TOTAL_FOTOS_EVIDENCIA_OBRIGATORIAS = 3;
@@ -440,14 +439,9 @@ export function SessaoTreinamentoDetalhePage() {
               precisa selecionar ninguém antes.
             </Legenda>
             <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
-              <Button
-                appearance="primary"
-                icon={<Fingerprint24Regular />}
-                onClick={lerProximaDigital}
-                disabled={!agenteDisponivel || !dispositivoLocal || lendoDigital || lendoFacial}
-              >
+              <BotaoBiometriaDigital onClick={lerProximaDigital} disabled={!agenteDisponivel || !dispositivoLocal || lendoDigital || lendoFacial}>
                 {lendoDigital ? 'Lendo digital...' : 'Ler digital do próximo participante'}
-              </Button>
+              </BotaoBiometriaDigital>
               <SeletorFotoCamera
                 aoSelecionarArquivo={confirmarPresencaFacial}
                 aoErroValidacao={setErroFacial}

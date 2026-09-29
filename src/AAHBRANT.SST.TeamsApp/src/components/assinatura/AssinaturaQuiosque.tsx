@@ -1,7 +1,6 @@
 import { useEffect, useState } from 'react';
 import {
   Badge,
-  Button,
   Table,
   TableBody,
   TableCell,
@@ -11,7 +10,8 @@ import {
   Text,
   tokens,
 } from '@fluentui/react-components';
-import { Checkmark24Filled, Fingerprint24Regular, Warning24Regular } from '@fluentui/react-icons';
+import { Checkmark24Filled, Warning24Regular } from '@fluentui/react-icons';
+import { BotaoBiometriaDigital } from './BotaoBiometriaDigital';
 import { api, metodoAutenticacaoAssinaturaLabel, type DocumentoAssinatura } from '../../lib/api';
 import { capturarDigitalLocal, estaAgenteLocalDisponivel, obterDispositivoLocal } from '../../lib/agenteBiometricoLocal';
 import { tocarBipeAssinaturaAceita } from '../../lib/bipeAssinatura';
@@ -158,15 +158,10 @@ export function AssinaturaQuiosque({ entidadeTipo, entidadeId, obraId }: Assinat
           <Text weight="semibold" style={{ display: 'block', marginBottom: 12 }}>
             Digital (leitor local — Futronic FS80H)
           </Text>
-          <Button
-            appearance="primary"
-            size="large"
-            icon={<Fingerprint24Regular />}
+          <BotaoBiometriaDigital
             onClick={assinarComBiometriaLocal}
             disabled={processando || !documento || !agenteLocalDisponivel || !dispositivoLocal}
-          >
-            Autenticar com digital
-          </Button>
+          />
           {!(agenteLocalDisponivel && dispositivoLocal) && (
             <div style={{ display: 'flex', alignItems: 'flex-start', gap: 8, marginTop: 12 }}>
               <Warning24Regular />

@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { Button, Card, FeedbackInline, Legenda } from '@ui';
-import { CheckmarkCircle24Regular, Fingerprint24Regular } from '@fluentui/react-icons';
+import { CheckmarkCircle24Regular } from '@fluentui/react-icons';
+import { BotaoBiometriaDigital } from '../../components/assinatura/BotaoBiometriaDigital';
 import { api } from '../../lib/api';
 import { capturarDigitalBrutaLocal } from '../../lib/agenteBiometricoLocal';
 import { SeletorFotoCamera } from '../../components/SeletorFotoCamera';
@@ -155,13 +156,9 @@ export function AssinaturaTab({ trabalhadorId }: AssinaturaTabProps) {
             Digital cadastrada com sucesso.
           </FeedbackInline>
         )}
-        <Button
-          icon={<Fingerprint24Regular />}
-          onClick={cadastrarBiometriaLocal}
-          disabled={cadastrandoBiometriaLocal}
-        >
+        <BotaoBiometriaDigital onClick={cadastrarBiometriaLocal} disabled={cadastrandoBiometriaLocal}>
           Capturar digital
-        </Button>
+        </BotaoBiometriaDigital>
       </Card>
 
       <Card densidade="compacta" titulo="Reconhecimento Facial (Azure)">
