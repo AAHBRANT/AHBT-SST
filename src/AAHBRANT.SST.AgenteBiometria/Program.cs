@@ -31,11 +31,20 @@ public static class Program
         builder.Services.AddHttpClient<BackendClient>();
         builder.Services.AddSingleton<TemplateCacheService>();
 
-        // Únicas implementações neste plano — sem SDK Futronic real disponível (fora de escopo).
-        builder.Services.AddSingleton<IFingerprintReader>(new SimuladoFingerprintReader(new byte[] { 1, 2, 3, 4 }));
-        builder.Services.AddSingleton<IFingerprintMatcher, SimuladoFingerprintMatcher>();
-
         var agenteOptions = builder.Configuration.GetSection("Agente").Get<AgenteOptions>() ?? new AgenteOptions();
+
+        // Leitor real só quando configurado ("Leitor": "Futronic") — exige ftrScanAPI.dll ao lado do
+        // executável e processo x86. O matcher continua simulado até haver um motor de match real.
+        if (string.Equals(agenteOptions.Leitor, "Futronic", StringComparison.OrdinalIgnoreCase))
+        {
+            builder.Services.AddSingleton<IFingerprintReader, FutronicFingerprintReader>();
+        }
+        else
+        {
+            builder.Services.AddSingleton<IFingerprintReader>(new SimuladoFingerprintReader(new byte[] { 1, 2, 3, 4 }));
+        }
+
+        builder.Services.AddSingleton<IFingerprintMatcher, SimuladoFingerprintMatcher>();
 
         builder.Services.AddCors(options =>
         {

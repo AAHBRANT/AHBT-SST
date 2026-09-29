@@ -7,4 +7,7 @@ public class AgenteOptions
     public string ChaveCriptografiaBiometriaBase64 { get; set; } = string.Empty;
     public string BackendBaseUrl { get; set; } = string.Empty;
     public string OrigemPermitida { get; set; } = string.Empty;
+
+    // "Simulado" (padrão, sem hardware) ou "Futronic" (leitor real via ftrScanAPI.dll, exige processo x86).
+    public string Leitor { get; set; } = "Simulado";
 }

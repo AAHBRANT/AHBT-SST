@@ -8,4 +8,10 @@
     <OutputType>WinExe</OutputType>
   </PropertyGroup>
 
+  <!-- DLLs do SDK Futronic (32 bits) não são versionadas — copie ftrScanAPI.dll para Native/ (ver Native/LEIAME.md).
+       Para rodar com o leitor real: dotnet publish com RID win-x86 e self-contained. -->
+  <ItemGroup>
+    <None Include="Native\*.dll" CopyToOutputDirectory="PreserveNewest" Link="%(Filename)%(Extension)" />
+  </ItemGroup>
+
 </Project>
