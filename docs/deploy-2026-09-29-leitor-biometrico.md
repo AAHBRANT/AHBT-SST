@@ -1,24 +1,25 @@
 # Resumo de deploy — leitor de digital, assinatura digital/facial e DDS (29/09/2026)
 
 Base atual em hml/`origin/master`: `90546e1` (feat(fotos): exigir metadados de captura…).
-Este pacote: `master` local em `586309e` — **18 commits, 95 arquivos** (+40.641 / −324; quase tudo de código
-novo, o volume vem principalmente dos snapshots do EF).
+Este pacote: `master` local, **20 commits à frente de `90546e1`** (os dois últimos são este documento), ~95 arquivos
+(+40 mil linhas; o volume vem principalmente dos snapshots do EF). Confira com `git log --oneline 90546e1..HEAD`.
 
 ## ⚠ Leia antes de dar o push
 
 **`git push` na `master` dispara o deploy automático das 3 imagens em hml** (`.github/workflows/deploy.yml`:
 API, Worker e Web; tag = hash completo do commit; um deploy por vez). Não existe "subir só uma parte": a
-história é linear e cumulativa, então **os 18 commits vão juntos**, inclusive o DDS (seleção de funcionários) que
+história é linear e cumulativa, então **todos os commits vão juntos**, inclusive o DDS (seleção de funcionários) que
 ainda não estava em hml.
 
 Antes de empurrar:
 
 ```bash
 git fetch origin
-git rev-list --left-right --count origin/master...master   # esperado: "0  18"
+git rev-list --left-right --count origin/master...master   # esperado: "0  20" (0 atrás; 20 à frente)
 ```
 
-Se o primeiro número não for `0`, alguém empurrou algo novo — refaça a conta antes de subir.
+Se o primeiro número não for `0`, alguém empurrou algo novo — refaça a conta antes de subir. Se o segundo
+número for maior que 20, entrou trabalho novo depois deste resumo: confira o que é antes de empurrar.
 
 ## O que muda para o usuário
 
@@ -74,7 +75,7 @@ essa situação; desligamento continua valendo por `DataDemissao`/G-RH.
 
 ## Deploy (executado por você)
 
-1. `git fetch` e a conferência do "0 18" acima.
+1. `git fetch` e a conferência do "0 20" acima.
 2. `git push origin master` — dispara o workflow. Acompanhe: `gh run watch`.
 3. Ao terminar, confirme os 3 Container Apps `Healthy/Running` (`sst-api-hml`, `sst-worker-hml`, `sst-web-hml`) com
    a imagem `:<hash do commit empurrado>`. Nomes conforme as notas de deploy do projeto (`rg-gnezis-hub-staging`,
