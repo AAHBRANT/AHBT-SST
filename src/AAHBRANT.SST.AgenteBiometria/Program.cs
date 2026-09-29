@@ -67,6 +67,7 @@ public static class Program
             serverOptions.Listen(System.Net.IPAddress.Loopback, 5251));
 
         var app = builder.Build();
+        app.UseAcessoRedePrivada(agenteOptions.OrigemPermitida);
         app.UseCors(PoliticaCorsKiosk);
         app.UseTraducaoDeErros();
         AgenteEndpoints.Mapear(app, PoliticaCorsKiosk);
