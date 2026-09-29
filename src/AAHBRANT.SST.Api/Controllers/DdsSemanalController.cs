@@ -17,8 +17,13 @@ namespace AAHBRANT.SST.Api.Controllers;
 public class DdsSemanalController : ControllerBase
 {
     private readonly IMediator _mediator;
+    private readonly IWebHostEnvironment _environment;
 
-    public DdsSemanalController(IMediator mediator) => _mediator = mediator;
+    public DdsSemanalController(IMediator mediator, IWebHostEnvironment environment)
+    {
+        _mediator = mediator;
+        _environment = environment;
+    }
 
     [Authorize(Policy = "dds:ver")]
     [HttpGet]
@@ -63,8 +68,13 @@ public class DdsSemanalController : ControllerBase
         return pdf is null ? NotFound() : File(pdf, "application/pdf", $"dds-semanal-{id}.pdf");
     }
 
+    // Em desenvolvimento o Entra ID está desligado e não há claim "oid": cai no usuário de dev, como
+    // AlojamentosController.ObterOuCriarInspecaoAtual. Nunca vale fora de Development.
     private string? ObterAzureAdObjectId()
-        => User.FindFirst("oid")?.Value ?? User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+    {
+        var id = User.FindFirst("oid")?.Value ?? User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+        return string.IsNullOrWhiteSpace(id) && _environment.IsDevelopment() ? "dev-local-user" : id;
+    }
 }
 
 public record CriarDdsSemanalRequestBody(
