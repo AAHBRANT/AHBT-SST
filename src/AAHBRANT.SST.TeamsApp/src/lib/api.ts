@@ -2112,12 +2112,14 @@ export const TipoFotoParticipante = {
   Pessoa: 1,
   DocumentoAssinado: 2,
   Biometria: 3,
+  Facial: 4,
 } as const;
 
 export const tipoFotoParticipanteLabel: Record<number, string> = {
   1: 'Foto da pessoa',
   2: 'Documento assinado',
   3: 'Biometria Validada',
+  4: 'Reconhecimento facial',
 };
 
 export interface DdsParticipante {
@@ -2141,7 +2143,14 @@ export interface DdsDetalhe {
   dds: Dds;
   itensChecklist: DdsItemChecklist[];
   participantes: DdsParticipante[];
+  funcionariosSelecionados: DdsFuncionario[];
   fotosEvidencia: DdsFotoEvidencia[];
+}
+
+export interface DdsFuncionario {
+  trabalhadorId: string;
+  nome: string;
+  matricula: string | null;
 }
 
 // DDS Semanal (31/08) — contêiner que agrupa os 5 registros diários (Seg-Sex) de uma semana, seguindo
@@ -4644,6 +4653,9 @@ export const api = {
   dds: {
     listar: (obraId?: string) => request<Dds[]>(`/api/dds${obraId ? `?obraId=${obraId}` : ''}`),
     obterDetalhe: (id: string) => request<DdsDetalhe>(`/api/dds/${id}`),
+    listarFuncionarios: (id: string) => request<DdsFuncionario[]>(`/api/dds/${id}/funcionarios-disponiveis`),
+    atualizarFuncionarios: (id: string, trabalhadoresIds: string[]) =>
+      request<DdsDetalhe>(`/api/dds/${id}/funcionarios-selecionados`, { method: 'PUT', body: JSON.stringify({ trabalhadoresIds }) }),
     criar: (dds: NovaDds) => request<{ id: string }>('/api/dds', { method: 'POST', body: JSON.stringify(dds) }),
     // Dia sem expediente — feriado, folga, obra parada (pedido do usuário, 03/09): registra o dia
     // com a justificativa do responsável em vez de forçar um DDS ou deixar o dia em branco.
@@ -4662,6 +4674,23 @@ export const api = {
         method: 'POST',
         body: JSON.stringify({ trabalhadorId, dispositivoId, segredoDispositivo, score }),
       }),
+    // Presença por reconhecimento facial: a foto é identificada no servidor (grupo da obra do DDS) e o
+    // rosto precisa ser do funcionário informado. Erros de rejeição vêm como { erro, motivo } no corpo.
+    registrarParticipanteFacial: async (ddsId: string, trabalhadorId: string, foto: File) => {
+      const formData = new FormData();
+      formData.append('TrabalhadorId', trabalhadorId);
+      formData.append('Foto', foto);
+      const response = await fetch(`${API_BASE_URL}/api/dds/${ddsId}/participantes/facial`, {
+        method: 'POST',
+        headers: await montarHeadersAuth(),
+        body: formData,
+      });
+      if (!response.ok) {
+        const corpo = await response.text().catch(() => '');
+        throw new Error(`${response.status} ${response.statusText}: ${corpo}`);
+      }
+      return (await response.json()) as { id: string };
+    },
     encerrar: (id: string) => request<void>(`/api/dds/${id}/encerrar`, { method: 'POST' }),
     // PDF gerado sob demanda no servidor a partir do estado atual — não faz sentido cachear para
     // uso offline (ficaria sempre desatualizado assim que o DDS mudasse). Segue fetch direto.

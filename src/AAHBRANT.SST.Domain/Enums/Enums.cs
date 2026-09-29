@@ -638,7 +638,8 @@ public enum TipoFotoParticipante
 {
     Pessoa = 1,
     DocumentoAssinado = 2,
-    Biometria = 3
+    Biometria = 3,
+    Facial = 4
 }
 
 // DDS Semanal (31/08) — reformulação para seguir o modelo "Registro Semanal de DDS" do usuário

@@ -8,7 +8,8 @@
     "build": "tsc -b && vite build",
     "lint": "oxlint",
     "preview": "vite preview",
-    "ui:snapshots": "playwright test -c playwright.config.ts"
+    "ui:snapshots": "playwright test -c playwright.config.ts",
+    "test:dds": "playwright test -c playwright.dds.config.ts"
   },
   "dependencies": {
     "@azure/msal-browser": "^5.21.0",

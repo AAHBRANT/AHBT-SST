@@ -35,6 +35,12 @@ public class ObterDdsDetalheQueryHandler : IRequestHandler<ObterDdsDetalheQuery,
             .OrderBy(f => f.Ordem)
             .ToListAsync(ct);
 
+        var selecionados = await _db.DdsFuncionariosSelecionados.AsNoTracking()
+            .Where(s => s.DdsId == dds.Id)
+            .OrderBy(s => s.Trabalhador!.Nome)
+            .Select(s => new DdsFuncionarioDto(s.TrabalhadorId, s.Trabalhador!.Nome, s.Trabalhador.Matricula))
+            .ToListAsync(ct);
+
         // Assinatura por trabalhador (04/09) — a presença biométrica já vale como assinatura (ver
         // RegistrarParticipanteCommand); busca aqui só pra exibir na lista de presença, sem duplicar
         // a lógica de quem pode assinar (isso continua no Motor de Assinatura).
@@ -49,6 +55,7 @@ public class ObterDdsDetalheQueryHandler : IRequestHandler<ObterDdsDetalheQuery,
         return new DdsDetalheDto
         {
             Dds = ListarDdsQueryHandler.MapearParaDto(dds),
+            FuncionariosSelecionados = selecionados,
             ItensChecklist = itens.Select(i => new DdsItemChecklistDto
             {
                 Id = i.Id,

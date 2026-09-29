@@ -63,9 +63,12 @@ public class RegistrarParticipanteCommandHandler : IRequestHandler<RegistrarPart
 
     public async Task<Guid> Handle(RegistrarParticipanteCommand request, CancellationToken ct)
     {
-        var ddsExiste = await _db.Dds.AnyAsync(d => d.Id == request.DdsId, ct);
-        if (!ddsExiste)
-            throw new KeyNotFoundException($"DDS {request.DdsId} não encontrado.");
+        var dds = await _db.Dds.Include(d => d.DdsSemanal).FirstOrDefaultAsync(d => d.Id == request.DdsId, ct)
+            ?? throw new KeyNotFoundException($"DDS {request.DdsId} não encontrado.");
+        if (dds.SemExpediente || dds.Status != StatusDds.EmAndamento || dds.DdsSemanal?.Status == StatusDdsSemanal.Concluida)
+            throw new InvalidOperationException("Só é possível registrar presença em um DDS em andamento.");
+        if (!await _db.Trabalhadores.AnyAsync(t => t.Id == request.TrabalhadorId && t.ObraId == dds.ObraId && t.Ativo, ct))
+            throw new InvalidOperationException("O funcionário deve pertencer à obra deste DDS.");
 
         var jaParticipa = await _db.DdsParticipantes
             .AnyAsync(p => p.DdsId == request.DdsId && p.TrabalhadorId == request.TrabalhadorId, ct);
@@ -83,6 +86,9 @@ public class RegistrarParticipanteCommandHandler : IRequestHandler<RegistrarPart
             ScoreConfianca = request.Score,
         };
         _db.DdsParticipantes.Add(participante);
+        var selecao = await _db.DdsFuncionariosSelecionados
+            .Where(s => s.DdsId == dds.Id && s.TrabalhadorId == participante.TrabalhadorId).ToListAsync(ct);
+        _db.DdsFuncionariosSelecionados.RemoveRange(selecao);
         await _db.SaveChangesAsync(ct);
 
         // Melhor esforço: a presença já registrada acima é o que importa de verdade — se o Motor de

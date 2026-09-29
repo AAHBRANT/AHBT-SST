@@ -73,5 +73,8 @@ public class DdsDetalheDto
     public DdsDto Dds { get; set; } = null!;
     public List<DdsItemChecklistDto> ItensChecklist { get; set; } = new();
     public List<DdsParticipanteDto> Participantes { get; set; } = new();
+    public List<DdsFuncionarioDto> FuncionariosSelecionados { get; set; } = new();
     public List<DdsFotoEvidenciaDto> FotosEvidencia { get; set; } = new();
 }
+
+public record DdsFuncionarioDto(Guid TrabalhadorId, string Nome, string? Matricula);

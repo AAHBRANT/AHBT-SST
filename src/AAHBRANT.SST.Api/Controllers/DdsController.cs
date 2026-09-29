@@ -61,6 +61,38 @@ public class DdsController : ControllerBase
         return Ok(new { id = participanteId });
     }
 
+    [Authorize(Policy = "dds:conduzir")]
+    [HttpPost("{id:guid}/participantes/facial")]
+    [RequestSizeLimit(6_000_000)]
+    public async Task<IActionResult> RegistrarParticipanteFacial(Guid id, [FromForm] RegistrarParticipanteFacialRequestBody body, CancellationToken ct)
+    {
+        await using var stream = new MemoryStream();
+        await body.Foto.CopyToAsync(stream, ct);
+
+        try
+        {
+            var participanteId = await _mediator.Send(new RegistrarParticipanteFacialCommand(id, body.TrabalhadorId, stream.ToArray()), ct);
+            return Ok(new { id = participanteId });
+        }
+        catch (AAHBRANT.SST.Application.Assinatura.Commands.RejeicaoFacialException ex)
+        {
+            return BadRequest(new { erro = ex.Message, motivo = ex.Motivo.ToString() });
+        }
+    }
+
+    [Authorize(Policy = "dds:ver")]
+    [HttpGet("{id:guid}/funcionarios-disponiveis")]
+    public async Task<IActionResult> ListarFuncionarios(Guid id, CancellationToken ct)
+        => Ok(await _mediator.Send(new ListarFuncionariosDdsQuery(id), ct));
+
+    [Authorize(Policy = "dds:conduzir")]
+    [HttpPut("{id:guid}/funcionarios-selecionados")]
+    public async Task<IActionResult> AtualizarFuncionarios(Guid id, AtualizarFuncionariosDdsRequestBody body, CancellationToken ct)
+    {
+        await _mediator.Send(new AtualizarFuncionariosDdsCommand(id, body.TrabalhadoresIds), ct);
+        return Ok(await _mediator.Send(new ObterDdsDetalheQuery(id), ct));
+    }
+
     [Authorize(Policy = "dds:ver")]
     [HttpGet("participantes/{participanteId:guid}/foto")]
     public async Task<IActionResult> ObterFotoParticipante(Guid participanteId, CancellationToken ct)
@@ -118,6 +150,13 @@ public class DdsController : ControllerBase
 }
 
 public record MarcarItemChecklistRequestBody(bool Verificado);
+public record AtualizarFuncionariosDdsRequestBody(List<Guid> TrabalhadoresIds);
+
+public class RegistrarParticipanteFacialRequestBody
+{
+    public Guid TrabalhadorId { get; set; }
+    public IFormFile Foto { get; set; } = null!;
+}
 
 public class RegistrarParticipanteRequestBody
 {

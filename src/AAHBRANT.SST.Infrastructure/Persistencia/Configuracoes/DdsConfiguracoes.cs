@@ -4,6 +4,17 @@ using Microsoft.EntityFrameworkCore.Metadata.Builders;
 
 namespace AAHBRANT.SST.Infrastructure.Persistencia.Configuracoes;
 
+public class DdsFuncionarioSelecionadoConfiguracao : IEntityTypeConfiguration<DdsFuncionarioSelecionado>
+{
+    public void Configure(EntityTypeBuilder<DdsFuncionarioSelecionado> builder)
+    {
+        builder.HasOne(s => s.Dds).WithMany().HasForeignKey(s => s.DdsId).OnDelete(DeleteBehavior.Cascade);
+        builder.HasOne(s => s.Trabalhador).WithMany().HasForeignKey(s => s.TrabalhadorId).OnDelete(DeleteBehavior.Restrict);
+        builder.HasIndex(s => new { s.DdsId, s.TrabalhadorId }).IsUnique().HasFilter("[Ativo] = 1");
+        builder.HasQueryFilter(s => s.Ativo);
+    }
+}
+
 public class DdsConfiguracao : IEntityTypeConfiguration<Dds>
 {
     public void Configure(EntityTypeBuilder<Dds> builder)
