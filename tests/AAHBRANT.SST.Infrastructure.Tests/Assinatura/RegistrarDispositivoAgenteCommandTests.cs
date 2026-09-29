@@ -19,12 +19,13 @@ public class RegistrarDispositivoAgenteCommandTests
         var handler = new RegistrarDispositivoAgenteCommandHandler(db, new SegredoDispositivoHasherService());
         var comando = new RegistrarDispositivoAgenteCommand(obra.Id, "Totem Portaria");
 
-        var segredo = await handler.Handle(comando, CancellationToken.None);
+        var registro = await handler.Handle(comando, CancellationToken.None);
 
-        Assert.False(string.IsNullOrWhiteSpace(segredo));
+        Assert.False(string.IsNullOrWhiteSpace(registro.Segredo));
         var dispositivo = await db.DispositivosAgenteBiometrico.FirstOrDefaultAsync(d => d.ObraId == obra.Id);
         Assert.NotNull(dispositivo);
-        Assert.NotEqual(segredo, dispositivo!.SegredoHash);
+        Assert.Equal(dispositivo!.Id, registro.DispositivoId);
+        Assert.NotEqual(registro.Segredo, dispositivo.SegredoHash);
     }
 
     [Fact]

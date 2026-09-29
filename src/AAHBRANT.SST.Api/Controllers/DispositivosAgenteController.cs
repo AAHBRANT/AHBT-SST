@@ -19,12 +19,24 @@ public class DispositivosAgenteController : ControllerBase
 
     public record RegistrarDispositivoAgenteRequestBody(Guid ObraId, string Nome);
 
+    // Devolve o Id e o segredo em claro UMA vez (no banco fica só o hash): quem registra precisa
+    // guardá-los para configurar o agente no PC da obra.
     [HttpPost]
     [Authorize(Policy = "organizacional:editar")]
-    public async Task<ActionResult<string>> Registrar(RegistrarDispositivoAgenteRequestBody body, CancellationToken ct)
+    public async Task<ActionResult<RegistroDispositivoAgente>> Registrar(RegistrarDispositivoAgenteRequestBody body, CancellationToken ct)
+        => Ok(await _mediator.Send(new RegistrarDispositivoAgenteCommand(body.ObraId, body.Nome), ct));
+
+    [HttpGet]
+    [Authorize(Policy = "organizacional:ver")]
+    public async Task<ActionResult<List<DispositivoAgenteDto>>> Listar([FromQuery] Guid? obraId, CancellationToken ct)
+        => Ok(await _mediator.Send(new ListarDispositivosAgenteQuery(obraId), ct));
+
+    [HttpDelete("{id:guid}")]
+    [Authorize(Policy = "organizacional:excluir")]
+    public async Task<IActionResult> Revogar(Guid id, CancellationToken ct)
     {
-        var segredo = await _mediator.Send(new RegistrarDispositivoAgenteCommand(body.ObraId, body.Nome), ct);
-        return Ok(segredo);
+        await _mediator.Send(new RevogarDispositivoAgenteCommand(id), ct);
+        return NoContent();
     }
 
     public record SincronizarTemplatesRequestBody(string SegredoDispositivo);

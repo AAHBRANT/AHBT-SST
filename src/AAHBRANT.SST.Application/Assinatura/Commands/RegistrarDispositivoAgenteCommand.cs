@@ -6,7 +6,11 @@ using Microsoft.EntityFrameworkCore;
 
 namespace AAHBRANT.SST.Application.Assinatura.Commands;
 
-public record RegistrarDispositivoAgenteCommand(Guid ObraId, string Nome) : IRequest<string>;
+// O segredo em claro só existe neste retorno: no banco fica apenas o hash. Quem registra precisa
+// guardar o segredo (e o Id) agora para configurar o agente no PC da obra.
+public record RegistroDispositivoAgente(Guid DispositivoId, string Segredo);
+
+public record RegistrarDispositivoAgenteCommand(Guid ObraId, string Nome) : IRequest<RegistroDispositivoAgente>;
 
 public class RegistrarDispositivoAgenteCommandValidator : AbstractValidator<RegistrarDispositivoAgenteCommand>
 {
@@ -17,7 +21,7 @@ public class RegistrarDispositivoAgenteCommandValidator : AbstractValidator<Regi
     }
 }
 
-public class RegistrarDispositivoAgenteCommandHandler : IRequestHandler<RegistrarDispositivoAgenteCommand, string>
+public class RegistrarDispositivoAgenteCommandHandler : IRequestHandler<RegistrarDispositivoAgenteCommand, RegistroDispositivoAgente>
 {
     private readonly IAppDbContext _db;
     private readonly ISegredoDispositivoHasher _hasher;
@@ -28,7 +32,7 @@ public class RegistrarDispositivoAgenteCommandHandler : IRequestHandler<Registra
         _hasher = hasher;
     }
 
-    public async Task<string> Handle(RegistrarDispositivoAgenteCommand request, CancellationToken ct)
+    public async Task<RegistroDispositivoAgente> Handle(RegistrarDispositivoAgenteCommand request, CancellationToken ct)
     {
         var obra = await _db.Obras.FirstOrDefaultAsync(o => o.Id == request.ObraId, ct);
         if (obra is null)
@@ -40,12 +44,12 @@ public class RegistrarDispositivoAgenteCommandHandler : IRequestHandler<Registra
         var dispositivo = new DispositivoAgenteBiometrico
         {
             ObraId = request.ObraId,
-            Nome = request.Nome,
+            Nome = request.Nome.Trim(),
             SegredoHash = _hasher.GerarHash(segredo),
         };
         _db.DispositivosAgenteBiometrico.Add(dispositivo);
         await _db.SaveChangesAsync(ct);
 
-        return segredo;
+        return new RegistroDispositivoAgente(dispositivo.Id, segredo);
     }
 }

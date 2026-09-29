@@ -43,6 +43,21 @@ export interface FotoCadastroFacial {
   hashSha256: string;
 }
 
+export interface DispositivoAgente {
+  id: string;
+  obraId: string;
+  obraNome: string;
+  nome: string;
+  ultimaSincronizacaoEm?: string | null;
+  registradoEm: string;
+}
+
+// O segredo só vem nesta resposta (no banco fica o hash): a tela o mostra uma única vez.
+export interface RegistroDispositivoAgente {
+  dispositivoId: string;
+  segredo: string;
+}
+
 export const MetodoAssinaturaObra = { Biometria: 1, ReconhecimentoFacial: 2 } as const;
 
 export type NovaObra = Omit<Obra, 'id' | 'dataTerminoReal' | 'temLogo' | 'metodosAssinatura'>;
@@ -3730,6 +3745,16 @@ export const api = {
     definirTamanhosUniforme: (id: string, itens: ItemTamanhoUniforme[]) =>
       request<void>(`/api/trabalhadores/${id}/uniformes`, { method: 'PUT', body: JSON.stringify({ itens }) }),
   },
+  dispositivosAgente: {
+    listar: (obraId?: string) =>
+      request<DispositivoAgente[]>(`/api/dispositivos-agente${obraId ? `?obraId=${obraId}` : ''}`),
+    registrar: (obraId: string, nome: string) =>
+      request<RegistroDispositivoAgente>('/api/dispositivos-agente', {
+        method: 'POST',
+        body: JSON.stringify({ obraId, nome }),
+      }),
+    revogar: (id: string) => request<void>(`/api/dispositivos-agente/${id}`, { method: 'DELETE' }),
+  },
   funcoes: {
     listar: () => request<Funcao[]>('/api/funcoes'),
     criar: (funcao: NovaFuncao) =>
@@ -5025,15 +5050,6 @@ export const api = {
       const query = params.toString();
       return request<TrilhaAuditoria[]>(`/api/trilhaauditoria${query ? `?${query}` : ''}`);
     },
-  },
-  dispositivosAgente: {
-    // Chamado uma vez na configuração inicial de cada totem/quiosque (tela administrativa,
-    // fora de escopo deste plano) — retorna o segredo em claro, exibido uma única vez.
-    registrar: (obraId: string, nome: string) =>
-      request<string>('/api/dispositivos-agente', {
-        method: 'POST',
-        body: JSON.stringify({ obraId, nome }),
-      }),
   },
   cipa: {
     dimensionamento: {
