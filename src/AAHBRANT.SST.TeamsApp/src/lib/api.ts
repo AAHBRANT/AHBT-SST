@@ -33,9 +33,13 @@ export interface Obra {
   uf?: string | null;
   cnpj?: string | null;
   temLogo: boolean;
+  // Flags de MetodoAutenticacaoObra (ver MetodoAssinaturaObra abaixo).
+  metodosAssinatura: number;
 }
 
-export type NovaObra = Omit<Obra, 'id' | 'dataTerminoReal' | 'temLogo'>;
+export const MetodoAssinaturaObra = { Biometria: 1, ReconhecimentoFacial: 2 } as const;
+
+export type NovaObra = Omit<Obra, 'id' | 'dataTerminoReal' | 'temLogo' | 'metodosAssinatura'>;
 
 export const TipoVinculo = {
   Clt: 1,
@@ -3580,6 +3584,8 @@ export const api = {
       return response.json() as Promise<{ id: string }>;
     },
     excluir: (id: string) => request<void>(`/api/obras/${id}`, { method: 'DELETE' }),
+    atualizarMetodosAssinatura: (id: string, metodos: { biometria: boolean; reconhecimentoFacial: boolean }) =>
+      request<void>(`/api/obras/${id}/metodos-assinatura`, { method: 'PUT', body: JSON.stringify(metodos) }),
     // CNPJ não entra aqui de propósito — o endpoint de edição (AtualizarObraCommand) não o inclui;
     // trocar de CNPJ é raro o bastante que ficou de fora da primeira versão desta tela.
     atualizar: (id: string, obra: NovaObra & { dataTerminoReal?: string | null }) =>

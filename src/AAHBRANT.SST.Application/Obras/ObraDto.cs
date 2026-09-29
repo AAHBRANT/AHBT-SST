@@ -17,4 +17,7 @@ public class ObraDto
     public string? Uf { get; set; }
     public string? Cnpj { get; set; }
     public bool TemLogo { get; set; }
+
+    // Flags de MetodoAutenticacaoObra: quais métodos de assinatura eletrônica a obra aceita.
+    public MetodoAutenticacaoObra MetodosAssinatura { get; set; }
 }

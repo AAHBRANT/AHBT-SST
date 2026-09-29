@@ -30,7 +30,8 @@ public class ObterObraPorIdQueryHandler : IRequestHandler<ObterObraPorIdQuery, O
                 Cidade = o.Cidade,
                 Uf = o.Uf,
                 Cnpj = o.Cnpj,
-                TemLogo = o.LogoConteudo != null
+                TemLogo = o.LogoConteudo != null,
+                MetodosAssinatura = o.MetodosAutenticacaoHabilitados
             })
             .FirstOrDefaultAsync(ct);
     }

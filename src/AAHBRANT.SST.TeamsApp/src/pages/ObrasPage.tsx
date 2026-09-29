@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { Add24Regular, Delete24Regular, Edit24Regular } from '@fluentui/react-icons';
-import { api, statusObraLabel, StatusObra, type NovaObra, type Obra } from '../lib/api';
+import { api, MetodoAssinaturaObra, statusObraLabel, StatusObra, type NovaObra, type Obra } from '../lib/api';
 import { SeletorFotoCamera } from '../components/SeletorFotoCamera';
 import { SlotFotoRemota } from '../components/camera/SlotFotoRemota';
 import { useSucessoToast } from '../hooks/useSucessoToast';
@@ -10,6 +10,7 @@ import {
   Campo,
   CampoData,
   Card,
+  Checkbox,
   DataTable,
   Field,
   FeedbackInline,
@@ -127,6 +128,12 @@ export function ObrasPage() {
     setErroEdicao(null);
   }
 
+  function alternarMetodo(metodo: number, ligado: boolean) {
+    if (!obraEditando) return;
+    const metodos = ligado ? obraEditando.metodosAssinatura | metodo : obraEditando.metodosAssinatura & ~metodo;
+    setObraEditando({ ...obraEditando, metodosAssinatura: metodos });
+  }
+
   async function salvarEdicao() {
     if (!obraEditando) return;
     try {
@@ -143,6 +150,10 @@ export function ObrasPage() {
         endereco: obraEditando.endereco,
         cidade: obraEditando.cidade,
         uf: obraEditando.uf,
+      });
+      await api.obras.atualizarMetodosAssinatura(obraEditando.id, {
+        biometria: (obraEditando.metodosAssinatura & MetodoAssinaturaObra.Biometria) !== 0,
+        reconhecimentoFacial: (obraEditando.metodosAssinatura & MetodoAssinaturaObra.ReconhecimentoFacial) !== 0,
       });
       await carregar();
       sucessoToast('Obra atualizada com sucesso.');
@@ -421,6 +432,21 @@ export function ObrasPage() {
                     </Field>
                   </Campo>
                 </FormGrid>
+              </FormSection>
+
+              <FormSection titulo="Assinatura eletrônica" numero={3}>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                  <Checkbox
+                    label="Impressão digital (leitor Futronic)"
+                    checked={(obraEditando.metodosAssinatura & MetodoAssinaturaObra.Biometria) !== 0}
+                    onChange={(_, d) => alternarMetodo(MetodoAssinaturaObra.Biometria, !!d.checked)}
+                  />
+                  <Checkbox
+                    label="Reconhecimento facial"
+                    checked={(obraEditando.metodosAssinatura & MetodoAssinaturaObra.ReconhecimentoFacial) !== 0}
+                    onChange={(_, d) => alternarMetodo(MetodoAssinaturaObra.ReconhecimentoFacial, !!d.checked)}
+                  />
+                </div>
                 <FormRodape>
                   <Button appearance="secondary" onClick={fecharEdicao}>
                     Cancelar

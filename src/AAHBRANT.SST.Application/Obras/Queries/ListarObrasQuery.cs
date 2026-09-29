@@ -31,7 +31,8 @@ public class ListarObrasQueryHandler : IRequestHandler<ListarObrasQuery, List<Ob
                 Cidade = o.Cidade,
                 Uf = o.Uf,
                 Cnpj = o.Cnpj,
-                TemLogo = o.LogoConteudo != null
+                TemLogo = o.LogoConteudo != null,
+                MetodosAssinatura = o.MetodosAutenticacaoHabilitados
             })
             .ToListAsync(ct);
     }

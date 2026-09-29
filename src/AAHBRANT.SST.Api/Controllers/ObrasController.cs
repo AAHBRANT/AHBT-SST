@@ -66,6 +66,16 @@ public class ObrasController : ControllerBase
         return NoContent();
     }
 
+    public record AtualizarMetodosAssinaturaRequestBody(bool Biometria, bool ReconhecimentoFacial);
+
+    [Authorize(Policy = "organizacional:editar")]
+    [HttpPut("{id:guid}/metodos-assinatura")]
+    public async Task<IActionResult> AtualizarMetodosAssinatura(Guid id, AtualizarMetodosAssinaturaRequestBody body, CancellationToken ct)
+    {
+        await _mediator.Send(new AtualizarMetodosAssinaturaObraCommand(id, body.Biometria, body.ReconhecimentoFacial), ct);
+        return NoContent();
+    }
+
     [Authorize(Policy = "organizacional:excluir")]
     [HttpDelete("{id:guid}")]
     public async Task<IActionResult> Excluir(Guid id, CancellationToken ct)
