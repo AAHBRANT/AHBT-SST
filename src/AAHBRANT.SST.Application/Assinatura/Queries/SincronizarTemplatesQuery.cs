@@ -37,9 +37,16 @@ public class SincronizarTemplatesQueryHandler : IRequestHandler<SincronizarTempl
         dispositivo.UltimaSincronizacaoEm = DateTime.UtcNow;
         await _db.SaveChangesAsync(ct);
 
+        // Rota anônima (agente local, sem usuário): o filtro global de RBAC do Trabalhador esconderia todos
+        // os trabalhadores. O acesso já foi validado pelo segredo do dispositivo, então o filtro é reaplicado
+        // à mão (soft delete + obra do posto) e o JOIN é feito explicitamente.
+        var trabalhadoresDaObra = _db.Trabalhadores
+            .IgnoreQueryFilters()
+            .Where(t => t.Ativo && t.ObraId == dispositivo.ObraId);
+
         return await _db.TemplatesBiometricoFutronic
-            .Where(t => t.Trabalhador!.ObraId == dispositivo.ObraId)
-            .Select(t => new TemplateSincronizadoDto(t.TrabalhadorId, t.Trabalhador!.Nome, t.TemplateCriptografado))
+            .Join(trabalhadoresDaObra, t => t.TrabalhadorId, tr => tr.Id,
+                (t, tr) => new TemplateSincronizadoDto(tr.Id, tr.Nome, t.TemplateCriptografado))
             .ToListAsync(ct);
     }
 }
