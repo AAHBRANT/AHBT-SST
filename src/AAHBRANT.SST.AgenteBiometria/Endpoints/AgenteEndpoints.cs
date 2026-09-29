@@ -31,16 +31,16 @@ public static class AgenteEndpoints
         return TypedResults.Ok(new SincronizarResponse(cache.Templates.Count));
     }
 
-    public static async Task<Ok<CapturaBrutaResponse>> CapturarBruto(IFingerprintReader leitor, CancellationToken ct)
+    public static async Task<Ok<CapturaBrutaResponse>> CapturarBruto(IFingerprintReader leitor, IFingerprintMatcher matcher, CancellationToken ct)
     {
         var captura = await leitor.CapturarAsync(ct);
-        return TypedResults.Ok(new CapturaBrutaResponse(captura));
+        return TypedResults.Ok(new CapturaBrutaResponse(matcher.ExtrairTemplate(captura)));
     }
 
     public static async Task<Results<Ok<CapturaResponse>, NotFound<ErroResponse>>> Capturar(
         IFingerprintReader leitor, IFingerprintMatcher matcher, TemplateCacheService cache, CancellationToken ct)
     {
-        var captura = await leitor.CapturarAsync(ct);
+        var captura = matcher.ExtrairTemplate(await leitor.CapturarAsync(ct));
 
         var melhor = cache.Templates
             .Select(t => new { t.TrabalhadorId, Score = matcher.Comparar(captura, t.TemplateBruto) })

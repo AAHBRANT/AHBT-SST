@@ -6,6 +6,7 @@ namespace AAHBRANT.SST.AgenteBiometria.Leitores;
 // Devolve a imagem bruta em tons de cinza (1 byte por pixel, largura x altura do próprio leitor).
 public class FutronicFingerprintReader : IFingerprintReader
 {
+    private const uint ErroQuadroVazio = 4306;
     private static readonly TimeSpan IntervaloPolling = TimeSpan.FromMilliseconds(100);
 
     private readonly TimeSpan _timeoutDedo;
@@ -48,21 +49,41 @@ public class FutronicFingerprintReader : IFingerprintReader
 
             var buffer = new byte[tamanho.nImageSize];
             var limite = DateTime.UtcNow + _timeoutDedo;
+            var dedoDetectado = false;
+            var quadrosVazios = 0;
 
-            while (!NativeMethods.ftrScanIsFingerPresent(handle, IntPtr.Zero))
+            // Repete até o timeout: o dedo pode ser detectado antes de assentar e o quadro vir vazio
+            // (erro 4306, EMPTY_FRAME) — nesse caso é só esperar e tentar de novo.
+            while (true)
             {
                 ct.ThrowIfCancellationRequested();
                 if (DateTime.UtcNow > limite)
                 {
-                    throw new TimeoutException("Nenhum dedo detectado no leitor dentro do tempo limite.");
+                    throw new TimeoutException(dedoDetectado
+                        ? $"Dedo detectado, mas o leitor só devolveu quadros vazios ({quadrosVazios}x). Reposicione o dedo cobrindo bem o vidro."
+                        : "Nenhum dedo detectado no leitor dentro do tempo limite.");
                 }
 
-                Thread.Sleep(IntervaloPolling);
-            }
+                if (!NativeMethods.ftrScanIsFingerPresent(handle, IntPtr.Zero))
+                {
+                    Thread.Sleep(IntervaloPolling);
+                    continue;
+                }
 
-            if (!NativeMethods.ftrScanGetFrame(handle, buffer, IntPtr.Zero))
-            {
-                throw new InvalidOperationException($"Falha ao capturar a digital (erro {NativeMethods.ftrScanGetLastError()}).");
+                dedoDetectado = true;
+                if (NativeMethods.ftrScanGetFrame(handle, buffer, IntPtr.Zero))
+                {
+                    break;
+                }
+
+                var erro = NativeMethods.ftrScanGetLastError();
+                if (erro != ErroQuadroVazio)
+                {
+                    throw new InvalidOperationException($"Falha ao capturar a digital (erro {erro}).");
+                }
+
+                quadrosVazios++;
+                Thread.Sleep(IntervaloPolling);
             }
 
             return buffer;

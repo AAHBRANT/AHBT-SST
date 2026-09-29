@@ -13,5 +13,8 @@
   <ItemGroup>
     <None Include="Native\*.dll" CopyToOutputDirectory="PreserveNewest" Link="%(Filename)%(Extension)" />
   </ItemGroup>
+  <ItemGroup>
+    <PackageReference Include="SourceAFIS" Version="3.14.0" />
+  </ItemGroup>
 
 </Project>

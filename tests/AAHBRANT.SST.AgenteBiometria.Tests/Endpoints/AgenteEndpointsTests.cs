@@ -45,7 +45,7 @@ public class AgenteEndpointsTests
         var captura = new byte[] { 9, 8, 7 };
         var leitor = new SimuladoFingerprintReader(captura);
 
-        var resultado = await AgenteEndpoints.CapturarBruto(leitor, CancellationToken.None);
+        var resultado = await AgenteEndpoints.CapturarBruto(leitor, new SimuladoFingerprintMatcher(), CancellationToken.None);
 
         var ok = Assert.IsType<Ok<CapturaBrutaResponse>>(resultado);
         Assert.Equal(captura, ok.Value!.TemplateBruto);

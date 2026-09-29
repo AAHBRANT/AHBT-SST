@@ -10,4 +10,7 @@ public class AgenteOptions
 
     // "Simulado" (padrão, sem hardware) ou "Futronic" (leitor real via ftrScanAPI.dll, exige processo x86).
     public string Leitor { get; set; } = "Simulado";
+
+    // Ajuste de polaridade da imagem para o SourceAFIS (espera cristas escuras em fundo claro).
+    public bool InverterImagem { get; set; }
 }

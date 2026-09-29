@@ -5,6 +5,8 @@ namespace AAHBRANT.SST.AgenteBiometria.Leitores;
 // chegar (fora do escopo deste plano).
 public class SimuladoFingerprintMatcher : IFingerprintMatcher
 {
+    public byte[] ExtrairTemplate(byte[] capturaBruta) => capturaBruta;
+
     public double Comparar(byte[] capturaBruta, byte[] templateBruto)
     {
         if (capturaBruta.Length == 0 || templateBruto.Length == 0)
