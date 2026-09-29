@@ -1,3 +1,4 @@
+import { anexarDadosFoto, type DadosFoto } from './dadosFoto';
 import { API_BASE_URL } from './apiBase';
 import { montarHeadersAuth } from './authHeaders';
 import { syncFetchBlob, syncFetchJson, syncMutateJson, syncMutateMultipart } from './offline/syncEngine';
@@ -494,6 +495,7 @@ export interface ParticipanteSessaoTreinamento {
 }
 
 export interface FotoEvidenciaSessaoTreinamento {
+  dadosFoto?: DadosFoto | null;
   id: string;
   ordem: number;
 }
@@ -1957,6 +1959,8 @@ export interface NovaInspecao {
 }
 
 export interface InspecaoItemResposta {
+  dadosFoto?: DadosFoto | null;
+  dadosFotoDepois?: DadosFoto | null;
   id: string;
   inspecaoId: string;
   checklistModeloItemId: string;
@@ -2117,6 +2121,7 @@ export interface DdsParticipante {
 }
 
 export interface DdsFotoEvidencia {
+  dadosFoto?: DadosFoto | null;
   id: string;
   ordem: number;
 }
@@ -2612,6 +2617,7 @@ export interface NovoAcidente {
 export type AtualizarAcidentePayload = NovoAcidente;
 
 export interface AcidenteDetalhe {
+  fotos: DdsFotoEvidencia[];
   acidente: Acidente;
   acoesPlano: AcaoPlano[];
 }
@@ -3671,6 +3677,7 @@ export const api = {
     cadastrarFacial: async (id: string, foto: File): Promise<void> => {
       const formData = new FormData();
       formData.append('foto', foto);
+      anexarDadosFoto(formData, foto);
       const response = await fetch(`${API_BASE_URL}/api/trabalhadores/${id}/assinatura/facial/cadastro`, {
         method: 'POST',
         headers: await montarHeadersAuth(),
@@ -3894,6 +3901,7 @@ export const api = {
       const formData = new FormData();
       formData.append('obraId', obraId);
       formData.append('foto', foto);
+      anexarDadosFoto(formData, foto);
       const authHeaders = await montarHeadersAuth();
       return syncMutateMultipart<{ trabalhadorId: string }>(
         `/api/sessoestreinamento/${sessaoId}/presenca/facial`,
@@ -3906,6 +3914,7 @@ export const api = {
     anexarFotoEvidencia: async (sessaoId: string, ordem: number, foto: File) => {
       const formData = new FormData();
       formData.append('foto', foto);
+      anexarDadosFoto(formData, foto);
       formData.append('ordem', String(ordem));
       const authHeaders = await montarHeadersAuth();
       return syncMutateMultipart<{ id: string }>(`/api/sessoestreinamento/${sessaoId}/fotos-evidencia`, formData, authHeaders);
@@ -4478,6 +4487,7 @@ export const api = {
     anexarFoto: async (respostaId: string, foto: File) => {
       const formData = new FormData();
       formData.append('foto', foto);
+      anexarDadosFoto(formData, foto);
       const response = await fetch(`${API_BASE_URL}/api/inspecoes/respostas/${respostaId}/foto`, {
         method: 'POST',
         headers: await montarHeadersAuth(),
@@ -4503,6 +4513,7 @@ export const api = {
     anexarFotoDepois: async (respostaId: string, foto: File) => {
       const formData = new FormData();
       formData.append('foto', foto);
+      anexarDadosFoto(formData, foto);
       const response = await fetch(`${API_BASE_URL}/api/inspecoes/respostas/${respostaId}/foto-depois`, {
         method: 'POST',
         headers: await montarHeadersAuth(),
@@ -4646,6 +4657,7 @@ export const api = {
     anexarFotoEvidencia: async (ddsId: string, ordem: number, foto: File) => {
       const formData = new FormData();
       formData.append('foto', foto);
+      anexarDadosFoto(formData, foto);
       formData.append('ordem', String(ordem));
       const authHeaders = await montarHeadersAuth();
       return syncMutateMultipart<{ id: string }>(`/api/dds/${ddsId}/fotos-evidencia`, formData, authHeaders);
@@ -4715,6 +4727,7 @@ export const api = {
       const formData = new FormData();
       formData.append('obraId', obraId);
       formData.append('foto', foto);
+      anexarDadosFoto(formData, foto);
       const authHeaders = await montarHeadersAuth();
       return syncMutateMultipart<DocumentoSignatario>(
         `/api/documentos/${documentoAssinaturaId}/autenticacao/facial`, formData, authHeaders,
@@ -4819,6 +4832,13 @@ export const api = {
       }),
   },
   acidentes: {
+    anexarFoto: async (id: string, ordem: number, foto: File) => {
+      const form = new FormData();
+      form.append('foto', foto); form.append('ordem', String(ordem)); anexarDadosFoto(form, foto);
+      return syncMutateMultipart<{ id: string }>('/api/acidentes/' + id + '/fotos', form, await montarHeadersAuth());
+    },
+    baixarFoto: async (id: string) => syncFetchBlob('/api/acidentes/fotos/' + id, await montarHeadersAuth()),
+    removerFoto: (id: string) => request<void>('/api/acidentes/fotos/' + id, { method: 'DELETE' }),
     listar: (filtros?: { tipo?: number; status?: number; obraId?: string }) => {
       const params = new URLSearchParams();
       if (filtros?.tipo) params.set('tipo', String(filtros.tipo));

@@ -16,7 +16,7 @@ public record AnexarFotoEvidenciaSessaoTreinamentoCommand(
     Guid SessaoTreinamentoId,
     int Ordem,
     byte[] FotoConteudo,
-    string FotoContentType) : IRequest<Guid>;
+    string FotoContentType, string? Metadados = null) : IRequest<Guid>;
 
 public class AnexarFotoEvidenciaSessaoTreinamentoCommandValidator : AbstractValidator<AnexarFotoEvidenciaSessaoTreinamentoCommand>
 {
@@ -46,20 +46,16 @@ public class AnexarFotoEvidenciaSessaoTreinamentoCommandHandler : IRequestHandle
 
     public async Task<Guid> Handle(AnexarFotoEvidenciaSessaoTreinamentoCommand request, CancellationToken ct)
     {
-        var sessaoExiste = await _db.SessoesTreinamento.AnyAsync(s => s.Id == request.SessaoTreinamentoId, ct);
-        if (!sessaoExiste)
-            throw new KeyNotFoundException($"Turma de treinamento {request.SessaoTreinamentoId} não encontrada.");
+        var registro = await _db.SessoesTreinamento.FirstOrDefaultAsync(x => x.Id == request.SessaoTreinamentoId, ct)
+            ?? throw new KeyNotFoundException("Registro não encontrado.");
+        if (registro.Status == AAHBRANT.SST.Domain.Enums.StatusSessaoTreinamento.Concluida)
+            throw new InvalidOperationException("O registro já foi finalizado. As fotos não podem ser alteradas.");
+        var metadados = await DadosCapturaFoto.PrepararAsync(request.Metadados, registro.ObraId, _db, ct);
 
         var fotoExistente = await _db.FotosEvidenciaSessaoTreinamento
             .FirstOrDefaultAsync(f => f.SessaoTreinamentoId == request.SessaoTreinamentoId && f.Ordem == request.Ordem && f.Ativo, ct);
 
-        if (fotoExistente is not null)
-        {
-            fotoExistente.FotoConteudo = request.FotoConteudo;
-            fotoExistente.FotoContentType = request.FotoContentType;
-            await _db.SaveChangesAsync(ct);
-            return fotoExistente.Id;
-        }
+        if (fotoExistente is not null) fotoExistente.Ativo = false;
 
         var foto = new FotoEvidenciaSessaoTreinamento
         {
@@ -67,6 +63,7 @@ public class AnexarFotoEvidenciaSessaoTreinamentoCommandHandler : IRequestHandle
             Ordem = request.Ordem,
             FotoConteudo = request.FotoConteudo,
             FotoContentType = request.FotoContentType,
+            FotoMetadadosJson = metadados,
         };
         _db.FotosEvidenciaSessaoTreinamento.Add(foto);
         await _db.SaveChangesAsync(ct);

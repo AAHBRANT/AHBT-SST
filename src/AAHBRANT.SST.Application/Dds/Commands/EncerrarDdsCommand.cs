@@ -37,6 +37,10 @@ public class EncerrarDdsCommandHandler : IRequestHandler<EncerrarDdsCommand>
             throw new InvalidOperationException(
                 $"São necessárias {TotalFotosObrigatorias} fotos de evidência para encerrar o DDS do dia (faltam {TotalFotosObrigatorias - totalFotos}).");
 
+        var fotos = await _db.DdsFotosEvidencia.Where(f => f.DdsId == dds.Id && f.Ativo).OrderBy(f => f.Ordem).ToListAsync(ct);
+        foreach (var foto in fotos)
+            AAHBRANT.SST.Application.Common.DadosCapturaFoto.ExigirCompletaSeInformada(foto.FotoMetadadosJson, $"Foto {foto.Ordem}");
+
         dds.Status = StatusDds.Concluido;
         await _db.SaveChangesAsync(ct);
     }

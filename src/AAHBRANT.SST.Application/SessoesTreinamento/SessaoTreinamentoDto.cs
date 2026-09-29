@@ -40,6 +40,7 @@ public class ParticipanteSessaoTreinamentoDto
 
 public class FotoEvidenciaSessaoTreinamentoDto
 {
+    public AAHBRANT.SST.Application.Common.DadosCapturaFoto? DadosFoto { get; set; }
     public Guid Id { get; set; }
     public int Ordem { get; set; }
 }

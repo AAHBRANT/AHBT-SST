@@ -1,3 +1,4 @@
+import { pendenciasFoto } from '../../lib/dadosFoto';
 import { useEffect, useState } from 'react';
 import { useLocation, useNavigate, useParams } from 'react-router-dom';
 import {
@@ -326,7 +327,17 @@ export function InspecaoDetalhePage() {
   if (inspecao.status === StatusInspecao.EmAndamento) {
     acoes.push({
       chave: 'encerrar',
-      rotulo: 'Encerrar inspeção',
+      rotulo: 'Finalizar inspeção',
+      finalizacao: true,
+      pendencias: detalhe.respostas.flatMap(r => {
+        const p: string[] = [];
+        if (r.statusItem == null) p.push('resposta do checklist');
+        if (r.exigeFotografia && !r.temFoto) p.push('foto anterior obrigatória');
+        if (ehInspecaoAlojamento && r.exigeFotografia && !r.temFotoDepois) p.push('foto posterior obrigatória');
+        if (r.temFoto && r.dadosFoto) p.push(...pendenciasFoto(r.dadosFoto).map(d => 'foto anterior: ' + d));
+        if (r.temFotoDepois && r.dadosFotoDepois) p.push(...pendenciasFoto(r.dadosFotoDepois).map(d => 'foto posterior: ' + d));
+        return p.length ? [r.descricao + ': ' + p.join('; ')] : [];
+      }),
       descricao: 'Confira se todos os itens foram respondidos antes de encerrar.',
       tom: 'primario',
       habilitada: true,
@@ -415,7 +426,7 @@ export function InspecaoDetalhePage() {
           </Card>
           {acoes.length > 0 && (
             <Card densidade="compacta" titulo="Ações disponíveis">
-              <WorkflowActions acoes={acoes} processando={processando} />
+              <WorkflowActions acoes={acoes} processando={processando} erro={erro} />
             </Card>
           )}
         </>
@@ -476,6 +487,8 @@ export function InspecaoDetalhePage() {
                       <div style={{ maxWidth: 180 }}>
                         <SlotFoto
                           rotulo="Evidência anterior"
+                          contextoFoto={{ obraId: inspecao.obraId, obraNome: inspecao.obraNome, local: resposta.local }}
+                          dadosFoto={resposta.dadosFoto}
                           url={fotoUrls[resposta.id]}
                           carregandoMiniatura={resposta.temFoto && !fotoUrls[resposta.id]}
                           somenteLeitura={somenteLeitura}
@@ -489,6 +502,8 @@ export function InspecaoDetalhePage() {
                       <div style={{ maxWidth: 180 }}>
                         <SlotFoto
                           rotulo="Evidência posterior"
+                          contextoFoto={{ obraId: inspecao.obraId, obraNome: inspecao.obraNome, local: resposta.local }}
+                          dadosFoto={resposta.dadosFotoDepois}
                           url={fotoDepoisUrls[resposta.id]}
                           carregandoMiniatura={resposta.temFotoDepois && !fotoDepoisUrls[resposta.id]}
                           somenteLeitura={somenteLeitura}
@@ -619,6 +634,8 @@ export function InspecaoDetalhePage() {
                   <div style={{ maxWidth: 160 }}>
                     <SlotFoto
                       rotulo="Evidência anterior"
+                      contextoFoto={{ obraId: inspecao.obraId, obraNome: inspecao.obraNome, local: resposta.local }}
+                      dadosFoto={resposta.dadosFoto}
                       url={fotoUrls[resposta.id]}
                       carregandoMiniatura={resposta.temFoto && !fotoUrls[resposta.id]}
                       somenteLeitura={somenteLeitura}
@@ -632,6 +649,8 @@ export function InspecaoDetalhePage() {
                   <div style={{ maxWidth: 160 }}>
                     <SlotFoto
                       rotulo="Evidência posterior"
+                      contextoFoto={{ obraId: inspecao.obraId, obraNome: inspecao.obraNome, local: resposta.local }}
+                      dadosFoto={resposta.dadosFotoDepois}
                       url={fotoDepoisUrls[resposta.id]}
                       carregandoMiniatura={resposta.temFotoDepois && !fotoDepoisUrls[resposta.id]}
                       somenteLeitura={somenteLeitura}

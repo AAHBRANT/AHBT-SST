@@ -42,6 +42,8 @@ public class InspecaoItemRespostaDto
     public Guid? ResponsavelUsuarioId { get; set; }
     public string? ResponsavelUsuarioNome { get; set; }
     public DateTime? Prazo { get; set; }
+    public AAHBRANT.SST.Application.Common.DadosCapturaFoto? DadosFoto { get; set; }
+    public AAHBRANT.SST.Application.Common.DadosCapturaFoto? DadosFotoDepois { get; set; }
     public bool TemFoto { get; set; }
     public bool TemFotoDepois { get; set; }
     public Guid? NaoConformidadeId { get; set; }

@@ -76,7 +76,7 @@ public class SessoesTreinamentoController : ControllerBase
         await using var stream = new MemoryStream();
         await body.Foto.CopyToAsync(stream, ct);
 
-        var fotoId = await _mediator.Send(new AnexarFotoEvidenciaSessaoTreinamentoCommand(id, body.Ordem, stream.ToArray(), body.Foto.ContentType), ct);
+        var fotoId = await _mediator.Send(new AnexarFotoEvidenciaSessaoTreinamentoCommand(id, body.Ordem, stream.ToArray(), body.Foto.ContentType, body.Metadados), ct);
         return Ok(new { id = fotoId });
     }
 
@@ -134,6 +134,7 @@ public class RegistrarPresencaFacialSessaoTreinamentoRequestBody
 
 public class AnexarFotoEvidenciaSessaoTreinamentoRequestBody
 {
+    public string? Metadados { get; set; }
     public IFormFile Foto { get; set; } = null!;
     public int Ordem { get; set; }
 }

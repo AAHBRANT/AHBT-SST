@@ -89,6 +89,8 @@ public class ObterInspecaoDetalheQueryHandler : IRequestHandler<ObterInspecaoDet
                 ResponsavelUsuarioId = r.ResponsavelUsuarioId,
                 ResponsavelUsuarioNome = r.ResponsavelUsuario?.Nome,
                 Prazo = r.Prazo,
+                DadosFoto = AAHBRANT.SST.Application.Common.DadosCapturaFoto.Ler(r.FotoMetadadosJson),
+                DadosFotoDepois = AAHBRANT.SST.Application.Common.DadosCapturaFoto.Ler(r.FotoDepoisMetadadosJson),
                 TemFoto = r.FotoConteudo.Length > 0,
                 TemFotoDepois = r.FotoDepoisConteudo != null && r.FotoDepoisConteudo.Length > 0,
                 NaoConformidadeId = ncPorResposta.GetValueOrDefault(r.Id)

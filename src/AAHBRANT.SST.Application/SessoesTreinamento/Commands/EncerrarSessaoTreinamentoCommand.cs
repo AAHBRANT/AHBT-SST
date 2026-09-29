@@ -68,6 +68,10 @@ public class EncerrarSessaoTreinamentoCommandHandler : IRequestHandler<EncerrarS
             throw new InvalidOperationException(
                 $"São necessárias {TotalFotosObrigatorias} fotos de evidência para encerrar a turma (faltam {TotalFotosObrigatorias - totalFotos}).");
 
+        var fotos = await _db.FotosEvidenciaSessaoTreinamento.Where(f => f.SessaoTreinamentoId == sessao.Id && f.Ativo).OrderBy(f => f.Ordem).ToListAsync(ct);
+        foreach (var foto in fotos)
+            AAHBRANT.SST.Application.Common.DadosCapturaFoto.ExigirCompletaSeInformada(foto.FotoMetadadosJson, $"Foto {foto.Ordem}");
+
         var participantes = await _db.ParticipantesSessaoTreinamento
             .Where(p => p.SessaoTreinamentoId == sessao.Id && p.Ativo)
             .ToListAsync(ct);

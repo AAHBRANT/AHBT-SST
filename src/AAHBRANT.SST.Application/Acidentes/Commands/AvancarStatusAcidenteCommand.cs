@@ -44,6 +44,14 @@ public class AvancarStatusAcidenteCommandHandler : IRequestHandler<AvancarStatus
 
         if (acidente.Status == StatusAcidente.EmInvestigacao)
         {
+            if (acidente.Tipo == TipoOcorrencia.Acidente)
+            {
+                var fotos = await _db.AcidentesFotos.Where(f => f.AcidenteId == acidente.Id).ToListAsync(ct);
+                if (fotos.Select(f => f.Ordem).Distinct().Count() != 3)
+                    throw new InvalidOperationException("São obrigatórias três fotos do local do acidente para finalizar a investigação.");
+                foreach (var foto in fotos)
+                    AAHBRANT.SST.Application.Common.DadosCapturaFoto.ExigirCompleta(foto.FotoMetadadosJson, $"Foto {foto.Ordem}");
+            }
             var existeAcaoPendente = await _db.AcoesPlano.AnyAsync(
                 a => a.OrigemTipo == nameof(Domain.Entidades.Acidente) &&
                      a.OrigemId == acidente.Id &&

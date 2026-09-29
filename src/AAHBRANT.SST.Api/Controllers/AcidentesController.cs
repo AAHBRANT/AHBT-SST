@@ -64,6 +64,40 @@ public class AcidentesController : ControllerBase
         await _mediator.Send(new AvancarStatusAcidenteCommand(id), ct);
         return NoContent();
     }
+
+    [Authorize(Policy = "acidente:editar")]
+    [HttpPost("{id:guid}/fotos")]
+    [RequestSizeLimit(6_000_000)]
+    public async Task<IActionResult> AnexarFoto(Guid id, [FromForm] AnexarFotoAcidenteBody body, CancellationToken ct)
+    {
+        await using var stream = new MemoryStream();
+        await body.Foto.CopyToAsync(stream, ct);
+        var fotoId = await _mediator.Send(new AnexarFotoAcidenteCommand(id, body.Ordem, stream.ToArray(), body.Foto.ContentType, body.Metadados), ct);
+        return Ok(new { id = fotoId });
+    }
+
+    [Authorize(Policy = "acidente:ver")]
+    [HttpGet("fotos/{fotoId:guid}")]
+    public async Task<IActionResult> ObterFoto(Guid fotoId, CancellationToken ct)
+    {
+        var foto = await _mediator.Send(new ObterFotoAcidenteQuery(fotoId), ct);
+        return foto is null ? NotFound() : File(foto.Conteudo, foto.ContentType);
+    }
+
+    [Authorize(Policy = "acidente:editar")]
+    [HttpDelete("fotos/{fotoId:guid}")]
+    public async Task<IActionResult> RemoverFoto(Guid fotoId, CancellationToken ct)
+    {
+        await _mediator.Send(new RemoverFotoAcidenteCommand(fotoId), ct);
+        return NoContent();
+    }
+}
+
+public class AnexarFotoAcidenteBody
+{
+    public IFormFile Foto { get; set; } = null!;
+    public int Ordem { get; set; }
+    public string? Metadados { get; set; }
 }
 
 public record AtualizarAcidenteRequestBody(

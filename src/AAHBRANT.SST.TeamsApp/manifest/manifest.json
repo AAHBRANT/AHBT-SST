@@ -38,7 +38,7 @@
     }
   ],
   "permissions": ["identity", "messageTeamMembers"],
-  "devicePermissions": ["media"],
+  "devicePermissions": ["media", "geolocation"],
   "validDomains": ["sst-web-hml.kindground-7a44c4f0.brazilsouth.azurecontainerapps.io"],
   "activities": {
     "activityTypes": [

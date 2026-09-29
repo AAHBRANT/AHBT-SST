@@ -319,7 +319,8 @@ export function NaoConformidadeDetalhePage() {
   if (nc?.status === StatusNaoConformidade.AguardandoValidacao) {
     acoes.push({
       chave: 'encerrar',
-      rotulo: 'Encerrar',
+      rotulo: 'Finalizar não conformidade',
+      finalizacao: true,
       descricao: 'Valida e encerra a não conformidade',
       tom: 'primario',
       aoExecutar: encerrar,

@@ -100,6 +100,7 @@ public class CatalogoTemaDds : AuditableEntity
 // (1 a 3) só identifica qual das 3 fotos obrigatórias é essa — sem significado além de UI.
 public class DdsFotoEvidencia : AuditableEntity
 {
+    public string? FotoMetadadosJson { get; set; }
     public Guid DdsId { get; set; }
     public Dds? Dds { get; set; }
 

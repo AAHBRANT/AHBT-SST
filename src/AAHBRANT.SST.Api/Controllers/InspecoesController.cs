@@ -56,7 +56,7 @@ public class InspecoesController : ControllerBase
         await using var stream = new MemoryStream();
         await body.Foto.CopyToAsync(stream, ct);
 
-        await _mediator.Send(new AnexarFotoItemInspecaoCommand(respostaId, stream.ToArray(), body.Foto.ContentType), ct);
+        await _mediator.Send(new AnexarFotoItemInspecaoCommand(respostaId, stream.ToArray(), body.Foto.ContentType, body.Metadados), ct);
         return NoContent();
     }
 
@@ -78,7 +78,7 @@ public class InspecoesController : ControllerBase
         await using var stream = new MemoryStream();
         await body.Foto.CopyToAsync(stream, ct);
 
-        await _mediator.Send(new AnexarFotoDepoisItemInspecaoCommand(respostaId, stream.ToArray(), body.Foto.ContentType), ct);
+        await _mediator.Send(new AnexarFotoDepoisItemInspecaoCommand(respostaId, stream.ToArray(), body.Foto.ContentType, body.Metadados), ct);
         return NoContent();
     }
 
@@ -148,5 +148,6 @@ public record GerarOcorrenciaRequestBody(
 
 public class AnexarFotoItemInspecaoRequestBody
 {
+    public string? Metadados { get; set; }
     public IFormFile Foto { get; set; } = null!;
 }

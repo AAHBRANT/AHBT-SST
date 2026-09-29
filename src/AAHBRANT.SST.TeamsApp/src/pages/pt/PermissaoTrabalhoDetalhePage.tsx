@@ -255,7 +255,8 @@ export function PermissaoTrabalhoDetalhePage() {
     });
     acoes.push({
       chave: 'encerrar',
-      rotulo: 'Encerrar',
+      rotulo: 'Finalizar permissão de trabalho',
+      finalizacao: true,
       tom: 'primario',
       habilitada: true,
       aoExecutar: encerrar,

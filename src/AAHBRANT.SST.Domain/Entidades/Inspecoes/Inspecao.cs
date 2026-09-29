@@ -55,6 +55,8 @@ public class Inspecao : AuditableEntity
 // NC gerada — a FK fica do lado da NC, que é sempre opcional/posterior ao item).
 public class InspecaoItemResposta : AuditableEntity
 {
+    public string? FotoMetadadosJson { get; set; }
+    public string? FotoDepoisMetadadosJson { get; set; }
     public Guid InspecaoId { get; set; }
     public Inspecao? Inspecao { get; set; }
 

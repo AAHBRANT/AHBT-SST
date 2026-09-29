@@ -13,6 +13,8 @@ import { Camera24Regular, Dismiss16Regular, Dismiss24Regular, Edit16Regular } fr
 import { designTokens } from '@ui';
 import { useCapturaFoto, type UseCapturaFotoOptions } from './useCapturaFoto';
 import { DialogoCameraFoto } from './DialogoCameraFoto';
+import { ResumoDadosFoto } from './ResumoDadosFoto';
+import type { DadosFoto } from '../../lib/dadosFoto';
 
 const useEstilos = makeStyles({
   slotVazio: {
@@ -127,6 +129,7 @@ const useEstilos = makeStyles({
 });
 
 export interface SlotFotoProps extends UseCapturaFotoOptions {
+  dadosFoto?: DadosFoto | null;
   /** Texto mostrado dentro do quadro vazio (ex.: "Foto 1", "Antes", "Depois", "Funcionário"). */
   rotulo: string;
   /** URL da miniatura já carregada, se houver. */
@@ -168,9 +171,12 @@ export function SlotFoto({
   tamanhoMaximoMb,
   modoCamera,
   permitirCamera,
+  exigirCamera,
+  contextoFoto,
+  dadosFoto,
 }: SlotFotoProps) {
   const estilos = useEstilos();
-  const captura = useCapturaFoto({ aoSelecionarArquivo, aoErroValidacao, tamanhoMaximoMb, modoCamera, permitirCamera });
+  const captura = useCapturaFoto({ contextoFoto, exigirCamera, aoSelecionarArquivo, aoErroValidacao, tamanhoMaximoMb, modoCamera, permitirCamera });
   const { inputRef, processando, abrirCamera, onInputChange } = captura;
   const compacta = tamanho === 'compacta';
   const ocupado = processando || carregandoMiniatura;
@@ -227,6 +233,7 @@ export function SlotFoto({
         </button>
       )}
 
+      {url && contextoFoto && <ResumoDadosFoto dados={dadosFoto} />}
       <DialogoCameraFoto captura={captura} />
 
       {url && (

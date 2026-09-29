@@ -62,6 +62,7 @@ public class DdsParticipanteDto
 
 public class DdsFotoEvidenciaDto
 {
+    public AAHBRANT.SST.Application.Common.DadosCapturaFoto? DadosFoto { get; set; }
     public Guid Id { get; set; }
     public int Ordem { get; set; }
 }

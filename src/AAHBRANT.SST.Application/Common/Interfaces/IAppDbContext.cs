@@ -105,6 +105,7 @@ public interface IAppDbContext
     DbSet<AcaoPlano> AcoesPlano { get; }
 
     DbSet<Acidente> Acidentes { get; }
+    DbSet<AcidenteFoto> AcidentesFotos { get; }
     DbSet<RegistroHhtMensal> RegistrosHhtMensais { get; }
 
     DbSet<AtivoSst> AtivosSst { get; }

@@ -1,3 +1,4 @@
+import { pendenciasGrade } from '../../lib/dadosFoto';
 ﻿import { useEffect, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import {
@@ -286,10 +287,12 @@ export function DdsDetalhePage() {
   if (!somenteLeitura) {
     acoesWorkflow.push({
       chave: 'encerrar',
-      rotulo: 'Encerrar DDS',
+      rotulo: 'Finalizar DDS',
+      finalizacao: true,
+      pendencias: pendenciasGrade(detalhe.fotosEvidencia),
       descricao: faltamFotosEvidencia > 0 ? `Faltam ${faltamFotosEvidencia} foto(s) de evidência.` : undefined,
       tom: 'primario',
-      habilitada: faltamFotosEvidencia === 0,
+      habilitada: true,
       aoExecutar: encerrar,
     });
   }
@@ -348,7 +351,7 @@ export function DdsDetalhePage() {
           </Card>
           {acoesWorkflow.length > 0 && (
             <Card densidade="compacta" titulo="Ações disponíveis">
-              <WorkflowActions acoes={acoesWorkflow} processando={processando} />
+              <WorkflowActions acoes={acoesWorkflow} processando={processando} erro={erro} />
             </Card>
           )}
         </>
@@ -362,13 +365,13 @@ export function DdsDetalhePage() {
 
       <Card>
         <GradeFotosEvidencia
+          contextoFoto={{ obraId: dds.obraId, obraNome: dds.obraNome }}
           titulo="Evidências fotográficas"
           subtitulo={`${TOTAL_FOTOS_EVIDENCIA_OBRIGATORIAS} fotos são obrigatórias para liberar o encerramento deste registro diário.`}
           total={TOTAL_FOTOS_EVIDENCIA_OBRIGATORIAS}
           fotos={
             detalhe.fotosEvidencia
-              .filter((f) => fotosEvidenciaPreview[f.id])
-              .map((f) => ({ ordem: f.ordem, id: f.id, url: fotosEvidenciaPreview[f.id] }))
+              .map((f) => ({ ordem: f.ordem, id: f.id, dadosFoto: f.dadosFoto, url: fotosEvidenciaPreview[f.id] }))
           }
           somenteLeitura={somenteLeitura}
           onSelecionarFoto={anexarFotoEvidencia}

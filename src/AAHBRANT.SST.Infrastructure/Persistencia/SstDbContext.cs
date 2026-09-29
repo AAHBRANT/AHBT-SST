@@ -112,6 +112,7 @@ public class SstDbContext : DbContext, IAppDbContext
     public DbSet<AcaoPlano> AcoesPlano => Set<AcaoPlano>();
 
     public DbSet<Acidente> Acidentes => Set<Acidente>();
+    public DbSet<AcidenteFoto> AcidentesFotos => Set<AcidenteFoto>();
     public DbSet<RegistroHhtMensal> RegistrosHhtMensais => Set<RegistroHhtMensal>();
 
     public DbSet<AtivoSst> AtivosSst => Set<AtivoSst>();
@@ -191,6 +192,8 @@ public class SstDbContext : DbContext, IAppDbContext
             d.Ativo && (_usuarioAtual.TemAcessoGlobal || _usuarioAtual.ObrasPermitidas.Contains(d.ObraId)));
         modelBuilder.Entity<Inspecao>().HasQueryFilter(i =>
             i.Ativo && (_usuarioAtual.TemAcessoGlobal || _usuarioAtual.ObrasPermitidas.Contains(i.ObraId)));
+        modelBuilder.Entity<AcidenteFoto>().HasQueryFilter(f =>
+            f.Ativo && f.Acidente!.Ativo && (_usuarioAtual.TemAcessoGlobal || _usuarioAtual.ObrasPermitidas.Contains(f.Acidente.ObraId)));
         modelBuilder.Entity<Acidente>().HasQueryFilter(a =>
             a.Ativo && (_usuarioAtual.TemAcessoGlobal || _usuarioAtual.ObrasPermitidas.Contains(a.ObraId)));
         modelBuilder.Entity<RegistroHhtMensal>().HasQueryFilter(r =>

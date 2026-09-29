@@ -59,6 +59,7 @@ public class ParticipanteSessaoTreinamento : AuditableEntity
 // encerramento) — mesmo princípio de DdsFotoEvidencia.cs.
 public class FotoEvidenciaSessaoTreinamento : AuditableEntity
 {
+    public string? FotoMetadadosJson { get; set; }
     public Guid SessaoTreinamentoId { get; set; }
     public SessaoTreinamento? SessaoTreinamento { get; set; }
 

@@ -84,7 +84,7 @@ public class ObterSessaoTreinamentoDetalheQueryHandler : IRequestHandler<ObterSe
                         CertificadoAssinadoPeloInstrutorEm = assinadoEmPorMetodo(MetodoAutenticacaoAssinatura.SessaoLogada),
                     };
                 }).ToList(),
-            FotosEvidencia = fotosEvidencia.Select(f => new FotoEvidenciaSessaoTreinamentoDto { Id = f.Id, Ordem = f.Ordem }).ToList(),
+            FotosEvidencia = fotosEvidencia.Select(f => new FotoEvidenciaSessaoTreinamentoDto { Id = f.Id, Ordem = f.Ordem, DadosFoto = AAHBRANT.SST.Application.Common.DadosCapturaFoto.Ler(f.FotoMetadadosJson) }).ToList(),
         };
     }
 }

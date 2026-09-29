@@ -1,3 +1,4 @@
+import { pendenciasGrade } from '../../lib/dadosFoto';
 import { useEffect, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import {
@@ -307,10 +308,12 @@ export function SessaoTreinamentoDetalhePage() {
   if (!somenteLeitura) {
     acoesWorkflow.push({
       chave: 'encerrar',
-      rotulo: 'Encerrar treinamento e gerar certificados',
+      rotulo: 'Finalizar treinamento e gerar certificados',
+      finalizacao: true,
+      pendencias: pendenciasGrade(detalhe.fotosEvidencia),
       descricao: faltamFotosEvidencia > 0 ? `Faltam ${faltamFotosEvidencia} foto(s) de evidência.` : undefined,
       tom: 'primario',
-      habilitada: faltamFotosEvidencia === 0,
+      habilitada: true,
       aoExecutar: encerrar,
     });
   }
@@ -392,7 +395,7 @@ export function SessaoTreinamentoDetalhePage() {
           </Card>
           {acoesWorkflow.length > 0 && (
             <Card densidade="compacta" titulo="Ações disponíveis">
-              <WorkflowActions acoes={acoesWorkflow} processando={processando} />
+              <WorkflowActions acoes={acoesWorkflow} processando={processando} erro={erro} />
             </Card>
           )}
         </>
@@ -406,12 +409,12 @@ export function SessaoTreinamentoDetalhePage() {
 
       <Card>
         <GradeFotosEvidencia
+          contextoFoto={{ obraId: sessao.obraId, obraNome: sessao.obraNome }}
           titulo="Evidências fotográficas"
           subtitulo={`${TOTAL_FOTOS_EVIDENCIA_OBRIGATORIAS} fotos da turma são obrigatórias para liberar o encerramento.`}
           total={TOTAL_FOTOS_EVIDENCIA_OBRIGATORIAS}
           fotos={detalhe.fotosEvidencia
-            .filter((f) => fotosEvidenciaPreview[f.id])
-            .map((f) => ({ ordem: f.ordem, id: f.id, url: fotosEvidenciaPreview[f.id] }))}
+            .map((f) => ({ ordem: f.ordem, id: f.id, dadosFoto: f.dadosFoto, url: fotosEvidenciaPreview[f.id] }))}
           somenteLeitura={somenteLeitura}
           onSelecionarFoto={anexarFotoEvidencia}
           onRemoverFoto={removerFotoEvidencia}

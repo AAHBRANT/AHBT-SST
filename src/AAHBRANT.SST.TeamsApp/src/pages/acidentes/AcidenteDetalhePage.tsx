@@ -1,3 +1,5 @@
+import { pendenciasGrade } from '../../lib/dadosFoto';
+import { GradeFotosEvidencia } from '../../components/GradeFotosEvidencia';
 import { useEffect, useState } from 'react';
 import { useParams } from 'react-router-dom';
 import {
@@ -69,6 +71,7 @@ const tomPorStatusAcaoPlano: Record<number, Tom> = {
 // AprDetalhePage.tsx/PgrDetalhePage.tsx/InspecaoDetalhePage.tsx).
 export function AcidenteDetalhePage() {
   const { id } = useParams<{ id: string }>();
+  const [fotoUrls, setFotoUrls] = useState<Record<string, string>>({});
   const [detalhe, setDetalhe] = useState<AcidenteDetalhe | null>(null);
   const [usuarios, setUsuarios] = useState<Usuario[]>([]);
   const [metodologia, setMetodologia] = useState<string>('');
@@ -77,6 +80,20 @@ export function AcidenteDetalhePage() {
   const [usuarioValidador, setUsuarioValidador] = useState('');
   const [erro, setErro] = useState<string | null>(null);
   const [processando, setProcessando] = useState(false);
+
+  useEffect(() => {
+    let ativo = true;
+    const urls: string[] = [];
+    void Promise.all((detalhe?.fotos ?? []).map(async f => {
+      try {
+        const blob = await api.acidentes.baixarFoto(f.id);
+        if (!ativo) return null;
+        const url = URL.createObjectURL(blob); urls.push(url);
+        return [f.id, url] as const;
+      } catch { return null; }
+    })).then(entries => { if (ativo) setFotoUrls(Object.fromEntries(entries.filter(e => e !== null))); });
+    return () => { ativo = false; urls.forEach(url => URL.revokeObjectURL(url)); };
+  }, [detalhe]);
 
   async function carregar() {
     if (!id) return;
@@ -217,7 +234,12 @@ export function AcidenteDetalhePage() {
   if (a.status !== StatusAcidente.Concluido) {
     acoes.push({
       chave: 'avancar-status',
-      rotulo: `Avançar status (${statusAcidenteLabel[a.status]} → ${statusAcidenteLabel[a.status + 1]})`,
+      rotulo: a.status === StatusAcidente.EmInvestigacao ? 'Finalizar investigação do acidente' : 'Iniciar investigação',
+      finalizacao: a.status === StatusAcidente.EmInvestigacao,
+      pendencias: a.status === StatusAcidente.EmInvestigacao ? [
+        ...(a.tipo === 1 ? pendenciasGrade(detalhe.fotos ?? []) : []),
+        ...(detalhe.acoesPlano.some(acao => acao.status !== StatusAcaoPlano.Concluido) ? ['Conclua as ações do plano que estão pendentes.'] : []),
+      ] : [],
       descricao: 'Confira se as ações do plano em aberto já foram concluídas antes de avançar.',
       tom: 'primario',
       habilitada: true,
@@ -317,7 +339,7 @@ export function AcidenteDetalhePage() {
           </Card>
           {acoes.length > 0 && (
             <Card densidade="compacta" titulo="Ações disponíveis">
-              <WorkflowActions acoes={acoes} processando={processando} />
+              <WorkflowActions acoes={acoes} processando={processando} erro={erro} />
             </Card>
           )}
         </>
@@ -329,6 +351,16 @@ export function AcidenteDetalhePage() {
         </FeedbackInline>
       )}
 
+      {a.tipo === 1 && <Card titulo="Fotos do local do acidente">
+        <GradeFotosEvidencia titulo="Três fotos obrigatórias" total={3}
+          subtitulo="Registre a visão geral, o ponto da ocorrência e um detalhe relevante. Confira os dados antes de sair do local."
+          contextoFoto={{ obraId: a.obraId, obraNome: a.obraNome ?? '', local: a.local }}
+          fotos={(detalhe.fotos ?? []).map(f => ({ ...f, url: fotoUrls[f.id] }))}
+          somenteLeitura={a.status === StatusAcidente.Concluido}
+          onSelecionarFoto={async (ordem, arquivo) => { await api.acidentes.anexarFoto(a.id, ordem, arquivo); await carregar(); }}
+          onRemoverFoto={async fotoId => { try { await api.acidentes.removerFoto(fotoId); await carregar(); } catch (e) { setErro(e instanceof Error ? e.message : 'Falha ao remover foto.'); } }}
+          onErroValidacao={setErro} />
+      </Card>}
       <Text style={{ display: 'block' }}>{a.descricao}</Text>
 
       <Card titulo="Investigação (Seção 28 — análise de causas)">

@@ -1,7 +1,9 @@
 import { useEffect, useRef, useState, type ChangeEvent } from 'react';
 import { comprimirImagem } from '../../lib/imagem';
+import { obterLocalizacaoFoto, pendenciasFoto, vincularDadosFoto, type ContextoFoto, type DadosFoto, type LocalizacaoFoto } from '../../lib/dadosFoto';
 
 export interface UseCapturaFotoOptions {
+  contextoFoto?: ContextoFoto;
   aoSelecionarArquivo: (arquivo: File) => void | Promise<void>;
   // Sem isso, o usuário só descobria que o arquivo era grande demais depois do upload ir e voltar
   // do servidor com erro — o limite de negócio (5 MB pra foto, mais pra PDF/certificado) já existe
@@ -54,7 +56,33 @@ export function useCapturaFoto({
   modoCamera = 'environment',
   permitirCamera = true,
   exigirCamera = false,
+  contextoFoto,
 }: UseCapturaFotoOptions) {
+  const [localFoto, setLocalFoto] = useState(contextoFoto?.local ?? '');
+  const [localizacao, setLocalizacao] = useState<LocalizacaoFoto>({});
+  const [localizando, setLocalizando] = useState(false);
+
+  useEffect(() => {
+    setLocalFoto(contextoFoto?.local ?? '');
+  }, [contextoFoto?.local]);
+  const [fotoPendente, setFotoPendente] = useState<{ arquivo: File; dados: DadosFoto } | null>(null);
+  const pedidoLocalizacao = useRef(0);
+  useEffect(() => () => { pedidoLocalizacao.current++; }, []);
+  async function tentarLocalizacao() {
+    if (!contextoFoto) return;
+    const pedido = ++pedidoLocalizacao.current;
+    setLocalizando(true);
+    const resultado = await obterLocalizacaoFoto();
+    if (pedido !== pedidoLocalizacao.current) return;
+    setLocalizacao(resultado);
+    setLocalizando(false);
+  }
+  function montarDados(origem: 'camera' | 'arquivo'): DadosFoto {
+    return { ...(origem === 'camera' ? localizacao : {}), origem,
+      capturadaEm: origem === 'camera' ? new Date().toISOString() : null,
+      fusoMinutos: new Date().getTimezoneOffset(),
+      obraId: contextoFoto?.obraId, obraNome: contextoFoto?.obraNome, local: localFoto.trim() };
+  }
   const inputRef = useRef<HTMLInputElement>(null);
   const videoRef = useRef<HTMLVideoElement>(null);
   const [processando, setProcessando] = useState(false);
@@ -87,7 +115,7 @@ export function useCapturaFoto({
     };
   }, [stream]);
 
-  async function tratarArquivo(arquivo: File | undefined) {
+  async function tratarArquivo(arquivo: File | undefined, dados = montarDados('arquivo')) {
     if (!arquivo) return;
 
     let arquivoFinal = arquivo;
@@ -108,12 +136,30 @@ export function useCapturaFoto({
       return;
     }
 
+    if (contextoFoto) {
+      vincularDadosFoto(arquivoFinal, dados);
+      if (pendenciasFoto(dados).length) {
+        setFotoPendente({ arquivo: arquivoFinal, dados });
+        return;
+      }
+    }
     try {
       setProcessando(true);
       await aoSelecionarArquivo(arquivoFinal);
     } finally {
       setProcessando(false);
     }
+  }
+
+  async function salvarFotoPendente() {
+    if (!fotoPendente) return;
+    try {
+      setProcessando(true);
+      await aoSelecionarArquivo(fotoPendente.arquivo);
+      setFotoPendente(null);
+    } catch (erro) {
+      aoErroValidacao?.(erro instanceof Error ? erro.message : 'Falha ao salvar a foto. Tente novamente.');
+    } finally { setProcessando(false); }
   }
 
   function falharAbertura() {
@@ -128,6 +174,9 @@ export function useCapturaFoto({
   }
 
   async function abrirCamera() {
+    if (contextoFoto?.local) setLocalFoto(contextoFoto.local);
+    setLocalizacao({});
+    void tentarLocalizacao();
     if (!permitirCamera || !navigator.mediaDevices?.getUserMedia) {
       falharAbertura();
       return;
@@ -174,6 +223,8 @@ export function useCapturaFoto({
   }
 
   function fecharCamera() {
+    pedidoLocalizacao.current++;
+    setLocalizando(false);
     setStream(null);
   }
 
@@ -184,11 +235,12 @@ export function useCapturaFoto({
     canvas.width = video.videoWidth;
     canvas.height = video.videoHeight;
     canvas.getContext('2d')?.drawImage(video, 0, 0);
+    const dados = montarDados('camera');
     fecharCamera();
     canvas.toBlob(
       (blob) => {
         if (!blob) return;
-        tratarArquivo(new File([blob], `captura-${Date.now()}.jpg`, { type: 'image/jpeg' }));
+        void tratarArquivo(new File([blob], `captura-${Date.now()}.jpg`, { type: 'image/jpeg' }), dados).catch(erro => aoErroValidacao?.(erro instanceof Error ? erro.message : 'Falha ao salvar foto.'));
       },
       'image/jpeg',
       0.92,
@@ -198,10 +250,12 @@ export function useCapturaFoto({
   function onInputChange(evento: ChangeEvent<HTMLInputElement>) {
     const arquivo = evento.target.files?.[0];
     evento.target.value = '';
-    tratarArquivo(arquivo);
+    void tratarArquivo(arquivo).catch(erro => aoErroValidacao?.(erro instanceof Error ? erro.message : 'Falha ao salvar foto.'));
   }
 
   return {
+    contextoFoto, localFoto, setLocalFoto, localizacao, localizando, tentarLocalizacao,
+    fotoPendente, salvarFotoPendente, cancelarFotoPendente: () => setFotoPendente(null),
     inputRef,
     videoRef,
     processando,

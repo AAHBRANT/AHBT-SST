@@ -42,8 +42,16 @@ public class AcidenteDto
 
 // Composição por query, não por tabela nova — mesmo princípio já usado em NaoConformidadeDetalheDto.
 // As ações do plano vinculadas são lidas de AcaoPlano filtrando por OrigemTipo=nameof(Acidente)/OrigemId=Id.
+public class AcidenteFotoDto
+{
+    public Guid Id { get; set; }
+    public int Ordem { get; set; }
+    public AAHBRANT.SST.Application.Common.DadosCapturaFoto? DadosFoto { get; set; }
+}
+
 public class AcidenteDetalheDto
 {
+    public List<AcidenteFotoDto> Fotos { get; set; } = new();
     public AcidenteDto Acidente { get; set; } = null!;
     public List<AcaoPlanoDto> AcoesPlano { get; set; } = new();
 }

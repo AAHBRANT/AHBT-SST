@@ -76,9 +76,12 @@ public class ObterAcidenteDetalheQueryHandler : IRequestHandler<ObterAcidenteDet
             })
             .ToListAsync(ct);
 
+        var fotos = await _db.AcidentesFotos.Where(f => f.AcidenteId == request.Id).OrderBy(f => f.Ordem).ToListAsync(ct);
+
         return new AcidenteDetalheDto
         {
             Acidente = acidente,
+            Fotos = fotos.Select(f => new AcidenteFotoDto { Id = f.Id, Ordem = f.Ordem, DadosFoto = AAHBRANT.SST.Application.Common.DadosCapturaFoto.Ler(f.FotoMetadadosJson) }).ToList(),
             AcoesPlano = acoesPlano,
         };
     }

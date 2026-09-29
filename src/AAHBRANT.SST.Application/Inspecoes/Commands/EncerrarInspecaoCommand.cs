@@ -67,6 +67,14 @@ public class EncerrarInspecaoCommandHandler : IRequestHandler<EncerrarInspecaoCo
                     $"Não é possível encerrar: os seguintes itens de Alojamento exigem evidência posterior e ainda não têm: {string.Join("; ", itensSemFotoPosteriorObrigatoria)}");
         }
 
+        foreach (var resposta in inspecao.Respostas.Where(r => r.Ativo))
+        {
+            if (resposta.FotoConteudo.Length > 0)
+                AAHBRANT.SST.Application.Common.DadosCapturaFoto.ExigirCompletaSeInformada(resposta.FotoMetadadosJson, $"Item {resposta.ChecklistModeloItem?.Ordem} — foto anterior");
+            if (resposta.FotoDepoisConteudo is { Length: > 0 })
+                AAHBRANT.SST.Application.Common.DadosCapturaFoto.ExigirCompletaSeInformada(resposta.FotoDepoisMetadadosJson, $"Item {resposta.ChecklistModeloItem?.Ordem} — foto posterior");
+        }
+
         inspecao.Status = StatusInspecao.Concluida;
 
         var documentoExistente = await _db.DocumentosAssinatura.FirstOrDefaultAsync(

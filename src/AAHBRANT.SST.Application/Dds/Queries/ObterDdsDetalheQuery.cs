@@ -70,7 +70,7 @@ public class ObterDdsDetalheQueryHandler : IRequestHandler<ObterDdsDetalheQuery,
                     AssinadoEm = assinadoEm == default ? null : assinadoEm,
                 };
             }).ToList(),
-            FotosEvidencia = fotosEvidencia.Select(f => new DdsFotoEvidenciaDto { Id = f.Id, Ordem = f.Ordem }).ToList(),
+            FotosEvidencia = fotosEvidencia.Select(f => new DdsFotoEvidenciaDto { Id = f.Id, Ordem = f.Ordem, DadosFoto = AAHBRANT.SST.Application.Common.DadosCapturaFoto.Ler(f.FotoMetadadosJson) }).ToList(),
         };
     }
 }
