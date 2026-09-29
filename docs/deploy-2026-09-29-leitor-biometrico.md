@@ -1,8 +1,9 @@
 # Resumo de deploy — leitor de digital, assinatura digital/facial e DDS (29/09/2026)
 
 Base atual em hml/`origin/master`: `90546e1` (feat(fotos): exigir metadados de captura…).
-Este pacote: `master` local, **20 commits à frente de `90546e1`** (os dois últimos são este documento), ~95 arquivos
-(+40 mil linhas; o volume vem principalmente dos snapshots do EF). Confira com `git log --oneline 90546e1..HEAD`.
+Este pacote: `master` local, **à frente de `90546e1`** (21 commits em 29/09/2026; os últimos são documentação do
+piloto), ~95 arquivos (+40 mil linhas; o volume vem principalmente dos snapshots do EF). A lista exata sai de
+`git log --oneline 90546e1..HEAD`.
 
 ## ⚠ Leia antes de dar o push
 
@@ -15,11 +16,12 @@ Antes de empurrar:
 
 ```bash
 git fetch origin
-git rev-list --left-right --count origin/master...master   # esperado: "0  20" (0 atrás; 20 à frente)
+git rev-list --left-right --count origin/master...master   # esperado: "0  N", com N = nº de linhas de: git log --oneline 90546e1..HEAD
 ```
 
 Se o primeiro número não for `0`, alguém empurrou algo novo — refaça a conta antes de subir. Se o segundo
-número for maior que 20, entrou trabalho novo depois deste resumo: confira o que é antes de empurrar.
+número for maior que o de `git log 90546e1..HEAD`, ou se o primeiro não for `0`, entrou trabalho novo: confira o
+que é antes de empurrar.
 
 ## O que muda para o usuário
 
@@ -75,7 +77,7 @@ essa situação; desligamento continua valendo por `DataDemissao`/G-RH.
 
 ## Deploy (executado por você)
 
-1. `git fetch` e a conferência do "0 20" acima.
+1. `git fetch` e a conferência do `0  N` acima.
 2. `git push origin master` — dispara o workflow. Acompanhe: `gh run watch`.
 3. Ao terminar, confirme os 3 Container Apps `Healthy/Running` (`sst-api-hml`, `sst-worker-hml`, `sst-web-hml`) com
    a imagem `:<hash do commit empurrado>`. Nomes conforme as notas de deploy do projeto (`rg-gnezis-hub-staging`,
