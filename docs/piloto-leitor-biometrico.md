@@ -39,7 +39,7 @@ No repositório, com a `ftrScanAPI.dll` (32 bits) em `src\AAHBRANT.SST.AgenteBio
 .\scripts\agente-biometria\publicar.ps1
 ```
 
-Gera `dist\agente-biometria.zip` (~76 MB, com o .NET embutido e o `instalar.ps1`).
+Gera `dist\agente-biometria.zip` (~76 MB, com o .NET embutido, o `instalar.ps1` e o `diagnostico.ps1`).
 
 ## 4. Instalar no PC da obra
 
@@ -58,9 +58,24 @@ Gera `dist\agente-biometria.zip` (~76 MB, com o .NET embutido e o `instalar.ps1`
 
 Para remover: `.\instalar.ps1 -Desinstalar`.
 
+### 4.1 Diagnóstico do PC (rode antes dos testes)
+
+O pacote traz o `diagnostico.ps1`, que só lê e nunca mostra segredos. Ele confere: leitor USB e driver, agente e
+DLL instalados, configuração, agente rodando e porta 5251 só neste PC, início automático, resposta do agente ao
+app, **CORS da origem do app**, **liberação de rede privada** (Chrome/Edge/Teams) e se o PC alcança a API. Cada
+falha vem com a causa provável.
+
+```powershell
+powershell -ExecutionPolicy Bypass -File .\diagnostico.ps1              # verificação geral
+powershell -ExecutionPolicy Bypass -File .\diagnostico.ps1 -Capturar    # inclui uma leitura real (apoie o dedo ao ouvir o bipe)
+```
+
+Cole a saída na ficha (`docs/piloto-leitor-biometrico-ficha.md`). Se algo falhar nos testes, rode de novo e envie a
+saída junto com a mensagem exata da tela.
+
 ## 5. Validar (o ponto crítico)
 
-Marque cada item no PC do piloto. Se algum falhar, anote a mensagem exata.
+Marque cada item no PC do piloto (use a ficha `docs/piloto-leitor-biometrico-ficha.md`). Se algum falhar, anote a mensagem exata.
 
 | # | Teste | Esperado |
 |---|---|---|

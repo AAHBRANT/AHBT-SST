@@ -26,6 +26,7 @@ if ($LASTEXITCODE -ne 0) { throw 'dotnet publish falhou.' }
 
 Copy-Item $SdkDll $destino -Force
 Copy-Item (Join-Path $PSScriptRoot 'instalar.ps1') $destino -Force
+Copy-Item (Join-Path $PSScriptRoot 'diagnostico.ps1') $destino -Force
 
 $zip = "$destino.zip"
 if (Test-Path $zip) { Remove-Item $zip -Force }
