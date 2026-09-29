@@ -16,4 +16,8 @@ public class AgenteOptions
 
     // De quanto em quanto tempo o agente busca os templates no backend (0 desliga).
     public int IntervaloSincronizacaoMinutos { get; set; } = 2;
+
+    // Liga a detecção de dedo vivo (LFD) do leitor. Desligada por padrão: no FS80H testado ela recusou a
+    // maioria dos dedos verdadeiros. Ver docs/piloto-leitor-biometrico.md.
+    public bool DetectarDedoFalso { get; set; }
 }

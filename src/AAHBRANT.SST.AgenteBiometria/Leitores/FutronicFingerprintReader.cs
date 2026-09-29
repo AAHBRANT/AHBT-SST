@@ -7,14 +7,21 @@ namespace AAHBRANT.SST.AgenteBiometria.Leitores;
 public class FutronicFingerprintReader : IFingerprintReader
 {
     private const uint ErroQuadroVazio = 4306;
+    private const int RecursoLfd = 1;               // FTR_SCANNER_FEATURE_LFD
+    private const uint OpcaoDetectarDedoFalso = 1;  // FTR_OPTIONS_DETECT_FAKE_FINGER
     private static readonly TimeSpan IntervaloPolling = TimeSpan.FromMilliseconds(100);
 
     private readonly TimeSpan _timeoutDedo;
+    private readonly bool _detectarDedoFalso;
     private readonly SemaphoreSlim _acessoExclusivo = new(1, 1);
 
-    public FutronicFingerprintReader(TimeSpan? timeoutDedo = null)
+    // detectarDedoFalso: liga a detecção de dedo vivo (LFD) do próprio leitor. Desligada por padrão: no FS80H
+    // testado ela recusou a maioria dos dedos verdadeiros (0 de 3 no teste A/B com o mesmo dedo), e um dedo
+    // recusado não gera erro — o leitor só nunca "detecta" o dedo. Ligue só depois de validar no piloto.
+    public FutronicFingerprintReader(TimeSpan? timeoutDedo = null, bool detectarDedoFalso = false)
     {
         _timeoutDedo = timeoutDedo ?? TimeSpan.FromSeconds(15);
+        _detectarDedoFalso = detectarDedoFalso;
     }
 
     public async Task<byte[]> CapturarAsync(CancellationToken ct, bool exigirNovoToque = false)
@@ -42,6 +49,21 @@ public class FutronicFingerprintReader : IFingerprintReader
 
         try
         {
+            if (_detectarDedoFalso)
+            {
+                if (!NativeMethods.ftrScanIsScannerFeaturePresent(handle, RecursoLfd, out var temLfd) || !temLfd)
+                {
+                    throw new InvalidOperationException(
+                        "Este leitor não tem detecção de dedo vivo (LFD). Desligue a opção DetectarDedoFalso do agente.");
+                }
+
+                if (!NativeMethods.ftrScanSetOptions(handle, OpcaoDetectarDedoFalso, OpcaoDetectarDedoFalso))
+                {
+                    throw new InvalidOperationException(
+                        $"Não foi possível ligar a detecção de dedo vivo (erro {NativeMethods.ftrScanGetLastError()}).");
+                }
+            }
+
             if (!NativeMethods.ftrScanGetImageSize(handle, out var tamanho))
             {
                 throw new InvalidOperationException($"Falha ao obter o tamanho da imagem (erro {NativeMethods.ftrScanGetLastError()}).");
@@ -74,7 +96,9 @@ public class FutronicFingerprintReader : IFingerprintReader
                 {
                     throw new TimeoutException(dedoDetectado
                         ? $"Dedo detectado, mas o leitor só devolveu quadros vazios ({quadrosVazios}x). Reposicione o dedo cobrindo bem o vidro."
-                        : "Nenhum dedo detectado no leitor dentro do tempo limite.");
+                        : _detectarDedoFalso
+                            ? "Nenhum dedo detectado (ou o leitor não reconheceu o dedo como vivo). Limpe o dedo e o vidro e tente de novo."
+                            : "Nenhum dedo detectado no leitor dentro do tempo limite.");
                 }
 
                 if (!NativeMethods.ftrScanIsFingerPresent(handle, IntPtr.Zero))
@@ -131,6 +155,14 @@ public class FutronicFingerprintReader : IFingerprintReader
         [DllImport(Dll, CallingConvention = CallingConvention.StdCall)]
         [return: MarshalAs(UnmanagedType.Bool)]
         public static extern bool ftrScanGetImageSize(IntPtr handle, out FtrScanImageSize tamanho);
+
+        [DllImport(Dll, CallingConvention = CallingConvention.StdCall)]
+        [return: MarshalAs(UnmanagedType.Bool)]
+        public static extern bool ftrScanIsScannerFeaturePresent(IntPtr handle, int recurso, [MarshalAs(UnmanagedType.Bool)] out bool presente);
+
+        [DllImport(Dll, CallingConvention = CallingConvention.StdCall)]
+        [return: MarshalAs(UnmanagedType.Bool)]
+        public static extern bool ftrScanSetOptions(IntPtr handle, uint mascara, uint flags);
 
         [DllImport(Dll, CallingConvention = CallingConvention.StdCall)]
         [return: MarshalAs(UnmanagedType.Bool)]

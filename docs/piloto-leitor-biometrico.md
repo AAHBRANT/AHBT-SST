@@ -99,3 +99,25 @@ Verifique, nesta ordem:
 - **Novo trabalhador com digital:** o agente busca as digitais novas sozinho a cada 2 minutos.
 - **Situação do leitor:** "Conectado" (sincronizou nos últimos 10 min), "Sem sincronizar" (agente parado ou sem
   internet) ou "Nunca conectou" (instalação não concluída).
+
+## 8. Detecção de dedo falso / dedo vivo (LFD)
+
+**Situação: desligada por padrão.** O leitor do piloto (FS80H) tem o recurso (LFD presente e calibrado), e o agente
+sabe ligá-lo (`"DetectarDedoFalso": true` no `appsettings.Production.json`). Mas, nos testes de 29/09/2026, ligá-lo
+**recusou dedos verdadeiros**:
+
+| Teste (mesmo dedo, mesmo leitor) | Leituras aceitas |
+|---|---|
+| Detecção desligada | 2 de 3 (a falha foi a 1ª, atraso de reação) |
+| Detecção **ligada** | **0 de 3** (4 de 10 somando todas as tentativas com ela ligada) |
+
+- O leitor **não devolve erro** quando barra um dedo: ele simplesmente nunca "detecta" o dedo. Com a opção ligada, a
+  tela mostra "Nenhum dedo detectado (ou o leitor não reconheceu o dedo como vivo)…".
+- Um **papel com a digital impressa** nem foi reconhecido como dedo, mesmo com a detecção **desligada**: a detecção
+  básica do leitor já ignora impressão em papel. Um falso mais convincente (silicone, gelatina) **não foi testado**,
+  então não há prova prática de quanto o LFD acrescenta de proteção.
+- **Recomendação:** manter desligada no piloto. Antes de ligar, perguntar à Futronic (no mesmo e-mail do SDK) como
+  ajustar/recalibrar o LFD do FS80H (faixa de aceitação do valor "fake replica", padrão 4 a 7) e repetir este teste
+  A/B com várias pessoas. Se ligar, exija taxa de aceite de dedos verdadeiros próxima de 100 % antes de usar em obra.
+- Mitigações que já existem sem o LFD: cadastro com duas leituras concordantes, comparação com limiar 50, assinatura
+  registrada com IP e trilha de auditoria, e presença/assinatura sempre ligadas a um funcionário cadastrado.
