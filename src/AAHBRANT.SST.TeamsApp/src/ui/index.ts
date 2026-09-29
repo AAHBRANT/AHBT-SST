@@ -51,6 +51,7 @@ export { DataTable, type DataTableProps, type Coluna } from './compostos/DataTab
 export { FormSection, FormRodape } from './compostos/Formulario/FormSection';
 export { FormGrid, Campo } from './compostos/Formulario/FormGrid';
 export { ChipCheckboxGroup, type ChipCheckboxGroupProps } from './primitivos/ChipCheckboxGroup/ChipCheckboxGroup';
+export { ListaSelecaoMultipla, type ListaSelecaoMultiplaProps } from './primitivos/ListaSelecaoMultipla/ListaSelecaoMultipla';
 
 export { SeletorPesquisavel, type SeletorPesquisavelProps, type OpcaoSeletor } from './primitivos/SeletorPesquisavel/SeletorPesquisavel';
 export { useConfirmar, type OpcoesConfirmacao } from './primitivos/ConfirmDialog/useConfirmar';

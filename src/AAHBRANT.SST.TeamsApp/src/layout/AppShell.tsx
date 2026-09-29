@@ -537,36 +537,6 @@ const useStyles = makeStyles({
     padding: '16px',
     '@media (max-width: 680px)': { gridColumn: '1', padding: '12px' },
   },
-  suporteSuspenso: {
-    position: 'fixed',
-    right: '24px',
-    bottom: '24px',
-    zIndex: 30,
-    minWidth: '184px',
-    height: '52px',
-    borderRadius: '8px',
-    border: `1px solid ${designTokens.colorPrimary}`,
-    backgroundColor: designTokens.colorPrimary,
-    color: '#ffffff',
-    boxShadow: '0 16px 36px rgba(0, 0, 0, 0.24)',
-    fontWeight: 800,
-    ':hover': {
-      backgroundColor: designTokens.colorAdminButtonBackgroundHover,
-      color: '#ffffff',
-    },
-    '@media (max-width: 720px)': {
-      right: '18px',
-      bottom: '18px',
-      minWidth: '52px',
-      width: '52px',
-      padding: 0,
-    },
-  },
-  suporteSuspensoRotulo: {
-    '@media (max-width: 720px)': {
-      display: 'none',
-    },
-  },
   cardGrid: {
     display: 'grid',
     gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))',
@@ -1182,17 +1152,6 @@ export function AppShell({ children }: { children: ReactNode }) {
       )}
 
       <main className={estilos.content}>{children}</main>
-      <Tooltip content="Abrir Central de Suporte IA" relationship="label">
-        <Button
-          className={estilos.suporteSuspenso}
-          appearance="primary"
-          icon={<ChatHelp24Regular />}
-          onClick={abrirSuporteIa}
-          aria-label="Abrir Central de Suporte IA"
-        >
-          <span className={estilos.suporteSuspensoRotulo}>Suporte IA</span>
-        </Button>
-      </Tooltip>
       <Toaster toasterId={ID_TOASTER_GLOBAL} />
     </div>
   );

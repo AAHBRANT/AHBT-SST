@@ -5,7 +5,7 @@ import {
   Campo,
   Card,
   CampoData,
-  ChipCheckboxGroup,
+  ListaSelecaoMultipla,
   DataTable,
   Field,
   FeedbackInline,
@@ -258,7 +258,7 @@ export function TurmasTab() {
                 ) : trabalhadoresDaObra.length === 0 ? (
                   <Legenda>Nenhum funcionário cadastrado nesta obra.</Legenda>
                 ) : (
-                  <ChipCheckboxGroup
+                  <ListaSelecaoMultipla
                     aria-label="Participantes"
                     opcoes={trabalhadoresDaObra.map((t) => ({
                       id: t.id,

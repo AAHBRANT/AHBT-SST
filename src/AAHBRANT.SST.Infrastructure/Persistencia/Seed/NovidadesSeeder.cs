@@ -592,6 +592,23 @@ public static class NovidadesSeeder
                     "Funcionários cadastrados antes de setembro não eram listados para seleção no DDS.",
                     "Todos os funcionários ativos da obra aparecem na lista do DDS."),
             }),
+        new(
+            Versao: "5.35.0",
+            Titulo: "Escolher funcionários ficou mais fácil",
+            DataPublicacao: new DateTime(2026, 9, 29, 0, 0, 0, DateTimeKind.Utc),
+            Itens: new[]
+            {
+                new NovidadeSeedItem(
+                    CategoriaNovidade.Melhoria,
+                    "Lista com busca para escolher responsáveis, equipe e participantes",
+                    "Os funcionários apareciam como uma nuvem de botões soltos, difícil de percorrer e de achar um nome.",
+                    "Na APR (Responsáveis), na Permissão de Trabalho (Equipe executante) e nas Turmas de treinamento (Participantes), os nomes aparecem numa lista com campo de busca, contador de selecionados e botões para marcar os resultados da busca ou limpar a seleção."),
+                new NovidadeSeedItem(
+                    CategoriaNovidade.Melhoria,
+                    "Botão flutuante \"Suporte IA\" removido das telas",
+                    "O botão ficava fixo no canto e cobria parte das telas.",
+                    "A Central de Suporte IA continua disponível pelo item \"Suporte IA\" na barra lateral."),
+            }),
     };
 
     public static async Task ExecutarAsync(IServiceProvider services, CancellationToken ct = default)

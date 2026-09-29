@@ -6,7 +6,7 @@ import {
   Campo,
   Card,
   CampoData,
-  ChipCheckboxGroup,
+  ListaSelecaoMultipla,
   DataTable,
   Field,
   FeedbackInline,
@@ -284,7 +284,7 @@ export function PermissoesTrabalhoTab() {
             </Campo>
             <Campo span={12}>
               <Field label="Equipe executante (responsáveis)">
-                <ChipCheckboxGroup
+                <ListaSelecaoMultipla
                   aria-label="Equipe executante (responsáveis)"
                   opcoes={trabalhadores.map((t) => ({ id: t.id, rotulo: t.nome }))}
                   selecionados={novaPt.responsaveisIds}

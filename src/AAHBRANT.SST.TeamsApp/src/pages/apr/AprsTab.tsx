@@ -6,7 +6,7 @@ import {
   Campo,
   Card,
   CampoData,
-  ChipCheckboxGroup,
+  ListaSelecaoMultipla,
   DataTable,
   Field,
   FeedbackInline,
@@ -329,7 +329,7 @@ export function AprsTab() {
             </Campo>
             <Campo span={12}>
               <Field label="Responsáveis">
-                <ChipCheckboxGroup
+                <ListaSelecaoMultipla
                   aria-label="Responsáveis"
                   opcoes={trabalhadores.map((t) => ({ id: t.id, rotulo: t.nome }))}
                   selecionados={novaApr.responsaveisIds}
