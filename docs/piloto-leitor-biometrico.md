@@ -5,6 +5,10 @@ Versão 1 · 29/09/2026 · Escopo: **um PC de obra**, antes de espalhar para as 
 Este roteiro cobre o que falta depois do código pronto: colocar em homologação (hml), registrar o agente,
 instalar no PC e validar o caminho **site HTTPS → agente local**, que é o principal risco ainda não testado.
 
+> **Para quem vai operar o piloto na obra:** há um roteiro de **uma página**, para imprimir, em
+> `docs/roteiros/AHBT-IT-SSO-XXX-00_Operacao-piloto-leitor-de-digital_2026-09-29.pdf`. Este documento é o roteiro
+> técnico completo.
+
 ## 0. Pré-requisitos
 
 | Item | Detalhe |
