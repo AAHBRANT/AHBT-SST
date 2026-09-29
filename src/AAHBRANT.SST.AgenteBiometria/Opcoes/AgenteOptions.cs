@@ -20,4 +20,7 @@ public class AgenteOptions
     // Liga a detecção de dedo vivo (LFD) do leitor. Desligada por padrão: no FS80H testado ela recusou a
     // maioria dos dedos verdadeiros. Ver docs/piloto-leitor-biometrico.md.
     public bool DetectarDedoFalso { get; set; }
+
+    // Tempo que o agente espera o dedo em cada leitura (segundos). Aumente se os trabalhadores precisarem de mais tempo.
+    public int TempoLimiteDedoSegundos { get; set; } = 15;
 }

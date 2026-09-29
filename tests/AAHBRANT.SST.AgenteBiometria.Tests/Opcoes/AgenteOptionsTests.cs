@@ -33,4 +33,10 @@ public class AgenteOptionsTests
 
         Assert.False(config.GetSection("Agente").Get<AgenteOptions>()!.DetectarDedoFalso);
     }
+
+    [Fact]
+    public void TempoLimiteDedo_PadraoE15Segundos()
+    {
+        Assert.Equal(15, new AgenteOptions().TempoLimiteDedoSegundos);
+    }
 }

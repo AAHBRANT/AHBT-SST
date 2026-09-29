@@ -1,3 +1,5 @@
+import { tocarBipeLeituraDigital } from './bipeAssinatura';
+
 // Porta fixa definida em Program.cs do AAHBRANT.SST.AgenteBiometria (Kestrel em 127.0.0.1:5251).
 const AGENTE_LOCAL_URL = 'http://127.0.0.1:5251';
 
@@ -73,6 +75,7 @@ export const LIMIAR_CONFIRMACAO_CADASTRO = 50;
 export async function capturarDigitalParaCadastro(aoMudarEtapa: (mensagem: string) => void): Promise<string> {
   aoMudarEtapa('1ª leitura: apoie o dedo no leitor e mantenha até terminar.');
   const primeira = await capturarDigitalBrutaLocal();
+  tocarBipeLeituraDigital();
 
   aoMudarEtapa('Retire o dedo e apoie o MESMO dedo novamente para confirmar (2ª leitura).');
   const segunda = await capturarDigitalBrutaLocal(true);

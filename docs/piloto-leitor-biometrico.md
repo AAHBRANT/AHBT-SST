@@ -97,6 +97,12 @@ Verifique, nesta ordem:
 
 - **PC perdido ou trocado:** revogar o leitor em Administração → Leitores de digital e registrar um novo.
 - **Novo trabalhador com digital:** o agente busca as digitais novas sozinho a cada 2 minutos.
+- **Tempo para apoiar o dedo:** 15 s por leitura (padrão). Se os trabalhadores precisarem de mais tempo, ajuste
+  `"TempoLimiteDedoSegundos"` (5 a 120) no `appsettings.Production.json` do agente e reinicie o agente.
+- **Sinais sonoros:** no cadastro da digital, um **bipe grave e curto** avisa que a leitura terminou e que o dedo
+  pode ser retirado para a 2ª leitura; o **bipe de dois tons subindo** indica assinatura/presença aceita.
+- **Cadastrar de novo:** cada cadastro **acrescenta** um template (permite mais de um dedo por pessoa); o cadastro
+  antigo não é apagado.
 - **Situação do leitor:** "Conectado" (sincronizou nos últimos 10 min), "Sem sincronizar" (agente parado ou sem
   internet) ou "Nunca conectou" (instalação não concluída).
 

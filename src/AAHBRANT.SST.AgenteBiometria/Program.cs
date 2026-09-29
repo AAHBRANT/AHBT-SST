@@ -38,7 +38,8 @@ public static class Program
         // executável e processo x86. O match usa SourceAFIS (código aberto) até haver o SDK ANSI da Futronic.
         if (string.Equals(agenteOptions.Leitor, "Futronic", StringComparison.OrdinalIgnoreCase))
         {
-            builder.Services.AddSingleton<IFingerprintReader>(_ => new FutronicFingerprintReader(detectarDedoFalso: agenteOptions.DetectarDedoFalso));
+            builder.Services.AddSingleton<IFingerprintReader>(_ => new FutronicFingerprintReader(
+                TimeSpan.FromSeconds(Math.Clamp(agenteOptions.TempoLimiteDedoSegundos, 5, 120)), agenteOptions.DetectarDedoFalso));
         }
         else
         {
