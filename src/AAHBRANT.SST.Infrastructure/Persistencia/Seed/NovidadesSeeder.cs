@@ -545,6 +545,53 @@ public static class NovidadesSeeder
                     "O ícone de alerta para anexar aparecia também em certificados emitidos pelo sistema, que não precisam de anexo.",
                     "O botão de anexar (âmbar) só aparece em certificado externo que ainda não tem o arquivo escaneado, e some depois do envio."),
             }),
+        new(
+            Versao: "5.34.0",
+            Titulo: "Assinatura e presença por digital ou facial",
+            DataPublicacao: new DateTime(2026, 9, 29, 0, 0, 0, DateTimeKind.Utc),
+            Itens: new[]
+            {
+                new NovidadeSeedItem(
+                    CategoriaNovidade.Novidade,
+                    "Presença no DDS por digital ou reconhecimento facial, à escolha do operador",
+                    "A presença no DDS era confirmada só pela digital, e não havia como escolher quem da obra participaria.",
+                    "Selecione os funcionários da obra no DDS e confirme a presença de cada um pelo botão \"Confirmar por digital\" ou \"Confirmar por facial\"."),
+                new NovidadeSeedItem(
+                    CategoriaNovidade.Novidade,
+                    "A APR agora pode ser assinada por digital ou reconhecimento facial",
+                    "A aba Assinaturas da APR só registrava a ciência manualmente, sem confirmar a identidade de quem assinava.",
+                    "Na aba Assinaturas da APR, o botão \"Assinar com digital ou facial\" abre a assinatura eletrônica, como já acontecia no DDS, na PT e nas inspeções."),
+                new NovidadeSeedItem(
+                    CategoriaNovidade.Novidade,
+                    "Nova tela para registrar e acompanhar os leitores de digital das obras",
+                    "Cada PC de obra com leitor de digital precisava ser configurado por fora do sistema.",
+                    "Em Administração > \"Leitores de digital\" você registra o leitor de cada obra, acompanha se ele está conectado e revoga um PC perdido ou trocado."),
+                new NovidadeSeedItem(
+                    CategoriaNovidade.Melhoria,
+                    "Digital e facial disponíveis em todas as obras, com botões no mesmo padrão",
+                    "A assinatura por digital ou facial só funcionava nas obras em que alguém tivesse ligado o método por trás do sistema.",
+                    "Toda obra aceita os dois métodos, e o botão de digital tem o mesmo tamanho do de facial. Dá para restringir por obra em Administração > Obras > Editar."),
+                new NovidadeSeedItem(
+                    CategoriaNovidade.Melhoria,
+                    "Cadastro da digital com duas leituras e aviso sonoro",
+                    "A digital era cadastrada com uma única leitura, e uma leitura ruim atrapalhava o reconhecimento nas assinaturas seguintes.",
+                    "O cadastro pede duas leituras do mesmo dedo e só grava se elas coincidirem. Um bipe avisa quando retirar o dedo, e outro confirma cada assinatura ou presença aceita."),
+                new NovidadeSeedItem(
+                    CategoriaNovidade.Melhoria,
+                    "Cadastro facial com guia de captura e fotos guardadas no perfil",
+                    "O cadastro facial abria a câmera direto, e a foto usada não ficava registrada no perfil do funcionário.",
+                    "Antes de fotografar, um guia explica como tirar a foto (sem óculos, ambiente claro, rosto de frente) e só abre a câmera após o OK. As fotos aprovadas ficam no perfil, na aba Cofre de Assinaturas."),
+                new NovidadeSeedItem(
+                    CategoriaNovidade.Correcao,
+                    "Corrigido: horário da assinatura aparecia 3 horas adiantado",
+                    "A tela mostrava, por exemplo, \"às 15:22\" para uma assinatura feita às 12:22.",
+                    "O horário da assinatura aparece no horário local, igual ao relógio de quem assinou."),
+                new NovidadeSeedItem(
+                    CategoriaNovidade.Correcao,
+                    "Corrigido: funcionários mais antigos não apareciam na lista do DDS",
+                    "Funcionários cadastrados antes de setembro não eram listados para seleção no DDS.",
+                    "Todos os funcionários ativos da obra aparecem na lista do DDS."),
+            }),
     };
 
     public static async Task ExecutarAsync(IServiceProvider services, CancellationToken ct = default)
