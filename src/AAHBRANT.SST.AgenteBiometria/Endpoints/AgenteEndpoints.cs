@@ -9,6 +9,8 @@ namespace AAHBRANT.SST.AgenteBiometria.Endpoints;
 public record DispositivoResponse(Guid DispositivoId, string SegredoDispositivo);
 public record SincronizarResponse(int Total);
 public record CapturaBrutaResponse(byte[] TemplateBruto);
+public record CompararTemplatesRequest(byte[] TemplateA, byte[] TemplateB);
+public record CompararTemplatesResponse(double Score);
 public record CapturaResponse(Guid TrabalhadorId, double Score);
 public record ErroResponse(string Erro);
 
@@ -19,6 +21,7 @@ public static class AgenteEndpoints
         app.MapGet("/api/dispositivo", ObterDispositivo).RequireCors(politicaCors);
         app.MapPost("/api/sincronizar", Sincronizar).RequireCors(politicaCors);
         app.MapPost("/api/capturar-bruto", CapturarBruto).RequireCors(politicaCors);
+        app.MapPost("/api/comparar-templates", CompararTemplates).RequireCors(politicaCors);
         app.MapPost("/api/capturar", Capturar).RequireCors(politicaCors);
     }
 
@@ -31,10 +34,23 @@ public static class AgenteEndpoints
         return TypedResults.Ok(new SincronizarResponse(cache.Templates.Count));
     }
 
-    public static async Task<Ok<CapturaBrutaResponse>> CapturarBruto(IFingerprintReader leitor, IFingerprintMatcher matcher, CancellationToken ct)
+    // novoToque=true na segunda leitura do cadastro: exige tirar o dedo e apoiar de novo.
+    public static async Task<Ok<CapturaBrutaResponse>> CapturarBruto(IFingerprintReader leitor, IFingerprintMatcher matcher, bool? novoToque, CancellationToken ct)
     {
-        var captura = await leitor.CapturarAsync(ct);
+        var captura = await leitor.CapturarAsync(ct, novoToque ?? false);
         return TypedResults.Ok(new CapturaBrutaResponse(matcher.ExtrairTemplate(captura)));
+    }
+
+    // Cadastro com confirmação: duas leituras do mesmo dedo precisam concordar entre si (mesma escala do
+    // limiar de assinatura) antes de virarem cadastro.
+    public static Results<Ok<CompararTemplatesResponse>, BadRequest<ErroResponse>> CompararTemplates(CompararTemplatesRequest corpo, IFingerprintMatcher matcher)
+    {
+        if (corpo.TemplateA is not { Length: > 0 } || corpo.TemplateB is not { Length: > 0 })
+        {
+            return TypedResults.BadRequest(new ErroResponse("Informe os dois templates para comparar."));
+        }
+
+        return TypedResults.Ok(new CompararTemplatesResponse(matcher.Comparar(corpo.TemplateA, corpo.TemplateB)));
     }
 
     public static async Task<Results<Ok<CapturaResponse>, NotFound<ErroResponse>>> Capturar(

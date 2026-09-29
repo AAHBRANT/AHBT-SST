@@ -45,9 +45,59 @@ public class AgenteEndpointsTests
         var captura = new byte[] { 9, 8, 7 };
         var leitor = new SimuladoFingerprintReader(captura);
 
-        var resultado = await AgenteEndpoints.CapturarBruto(leitor, new SimuladoFingerprintMatcher(), CancellationToken.None);
+        var resultado = await AgenteEndpoints.CapturarBruto(leitor, new SimuladoFingerprintMatcher(), null, CancellationToken.None);
 
         var ok = Assert.IsType<Ok<CapturaBrutaResponse>>(resultado);
         Assert.Equal(captura, ok.Value!.TemplateBruto);
+    }
+
+    // Ordem de captura e pedido de "novo toque" precisam chegar ao leitor: é isso que impede confirmar a
+    // digital com a mesma imagem ainda no vidro.
+    private sealed class LeitorEspiao : IFingerprintReader
+    {
+        public List<bool> PedidosDeNovoToque { get; } = new();
+
+        public Task<byte[]> CapturarAsync(CancellationToken ct, bool exigirNovoToque = false)
+        {
+            PedidosDeNovoToque.Add(exigirNovoToque);
+            return Task.FromResult(new byte[] { 5 });
+        }
+    }
+
+    [Theory]
+    [InlineData(null, false)]
+    [InlineData(false, false)]
+    [InlineData(true, true)]
+    public async Task CapturarBruto_RepassaOPedidoDeNovoToqueAoLeitor(bool? novoToque, bool esperado)
+    {
+        var leitor = new LeitorEspiao();
+
+        await AgenteEndpoints.CapturarBruto(leitor, new SimuladoFingerprintMatcher(), novoToque, CancellationToken.None);
+
+        Assert.Equal(new[] { esperado }, leitor.PedidosDeNovoToque);
+    }
+
+    [Fact]
+    public void CompararTemplates_DevolveOScoreDoMatcher()
+    {
+        var resultado = AgenteEndpoints.CompararTemplates(
+            new CompararTemplatesRequest(new byte[] { 1, 2, 3, 4 }, new byte[] { 1, 2, 3, 4 }), new SimuladoFingerprintMatcher());
+
+        var ok = Assert.IsType<Ok<CompararTemplatesResponse>>(resultado.Result);
+        Assert.Equal(100, ok.Value!.Score);
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public void CompararTemplates_ComTemplateVazio_RetornaBadRequest(bool vazioOA)
+    {
+        var vazio = Array.Empty<byte>();
+        var cheio = new byte[] { 1 };
+        var corpo = vazioOA ? new CompararTemplatesRequest(vazio, cheio) : new CompararTemplatesRequest(cheio, vazio);
+
+        var resultado = AgenteEndpoints.CompararTemplates(corpo, new SimuladoFingerprintMatcher());
+
+        Assert.IsType<BadRequest<ErroResponse>>(resultado.Result);
     }
 }

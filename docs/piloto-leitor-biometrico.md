@@ -64,7 +64,9 @@ Marque cada item no PC do piloto. Se algum falhar, anote a mensagem exata.
 
 | # | Teste | Esperado |
 |---|---|---|
-| 1 | Abrir o app **em hml (HTTPS)** no Chrome/Edge e cadastrar a digital de um trabalhador de teste (Perfil → Cofre de Assinaturas → Capturar digital). | Botão habilitado; ao apoiar o dedo, "Digital cadastrada com sucesso". |
+| 1 | Abrir o app **em hml (HTTPS)** no Chrome/Edge e cadastrar a digital de um trabalhador de teste (Perfil → Cofre de Assinaturas → Capturar digital). O cadastro pede **duas leituras do mesmo dedo** (1ª: apoiar; 2ª: tirar o dedo e apoiar de novo). | Botão habilitado; as etapas aparecem na tela; ao fim, "Digital cadastrada com sucesso". |
+| 1b | No mesmo cadastro, usar **dedos diferentes** nas duas leituras. | Recusado: "As duas leituras não coincidiram…" (nada é gravado). |
+| 1c | No mesmo cadastro, **não tirar o dedo** entre as leituras. | Aviso "O dedo não foi retirado do leitor…". |
 | 2 | Repetir **dentro do Teams** (aba do app). | Igual ao item 1. |
 | 3 | Assinar um documento pelo quiosque com o dedo cadastrado (ex.: DDS, PT ou EPI). | Assinatura registrada e **bipe**. |
 | 4 | Tentar assinar com **outro dedo/pessoa**. | Recusado ("abaixo do limiar"). |
@@ -86,7 +88,7 @@ Verifique, nesta ordem:
 
 ## 6. Critérios para sair do piloto
 
-- Testes 1 a 7 aprovados por, no mínimo, 5 pessoas diferentes (vários dedos), sem falso aceite no teste 4.
+- Testes 1 a 7 (incluindo 1b e 1c) aprovados por, no mínimo, 5 pessoas diferentes (vários dedos), sem falso aceite no teste 4.
 - Consentimento LGPD revisado pelo jurídico (ver `docs/juridico/consentimento-biometria-rascunho.md`).
 - Resposta da Futronic sobre o SDK oficial de comparação avaliada (hoje o reconhecimento usa a biblioteca
   gratuita SourceAFIS).

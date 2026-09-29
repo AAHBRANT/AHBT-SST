@@ -12,5 +12,5 @@ public class SimuladoFingerprintReader : IFingerprintReader
         _proximaCaptura = proximaCaptura;
     }
 
-    public Task<byte[]> CapturarAsync(CancellationToken ct) => Task.FromResult(_proximaCaptura);
+    public Task<byte[]> CapturarAsync(CancellationToken ct, bool exigirNovoToque = false) => Task.FromResult(_proximaCaptura);
 }

@@ -10,7 +10,7 @@ import {
 import { Button, Checkbox, Text, FeedbackInline } from '@ui';
 import { BotaoBiometriaDigital } from '../assinatura/BotaoBiometriaDigital';
 import { api } from '../../lib/api';
-import { capturarDigitalBrutaLocal, estaAgenteLocalDisponivel } from '../../lib/agenteBiometricoLocal';
+import { capturarDigitalParaCadastro, estaAgenteLocalDisponivel } from '../../lib/agenteBiometricoLocal';
 
 interface CadastroDigitalDialogProps {
   trabalhadorId: string | null;
@@ -59,6 +59,7 @@ export function CadastroDigitalDialog({
 
   const [agenteDisponivel, setAgenteDisponivel] = useState<boolean | null>(null);
   const [capturando, setCapturando] = useState(false);
+  const [etapaCaptura, setEtapaCaptura] = useState<string | null>(null);
   const [cadastrada, setCadastrada] = useState(false);
   const [erro, setErro] = useState<string | null>(null);
 
@@ -103,7 +104,7 @@ export function CadastroDigitalDialog({
     try {
       setCapturando(true);
       setErro(null);
-      const templateBase64 = await capturarDigitalBrutaLocal();
+      const templateBase64 = await capturarDigitalParaCadastro(setEtapaCaptura);
       await api.trabalhadores.cadastrarBiometriaLocal(trabalhadorId, templateBase64);
       setCadastrada(true);
       aoConcluir?.();
@@ -111,6 +112,7 @@ export function CadastroDigitalDialog({
       setErro(extrairMensagemErro(e, 'Falha ao cadastrar a digital.'));
     } finally {
       setCapturando(false);
+      setEtapaCaptura(null);
     }
   }
 
@@ -186,6 +188,7 @@ export function CadastroDigitalDialog({
                 Continuar
               </Button>
             )}
+            {capturando && etapaCaptura && <FeedbackInline tom="info">{etapaCaptura}</FeedbackInline>}
             {consentimentosSalvos && !cadastrada && (
               <BotaoBiometriaDigital onClick={capturarDigital} disabled={!agenteDisponivel || capturando}>
                 Capturar digital

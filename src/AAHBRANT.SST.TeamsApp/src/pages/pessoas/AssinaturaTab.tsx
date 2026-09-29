@@ -3,7 +3,7 @@ import { Button, Card, FeedbackInline, Legenda } from '@ui';
 import { CheckmarkCircle24Regular } from '@fluentui/react-icons';
 import { BotaoBiometriaDigital } from '../../components/assinatura/BotaoBiometriaDigital';
 import { api } from '../../lib/api';
-import { capturarDigitalBrutaLocal } from '../../lib/agenteBiometricoLocal';
+import { capturarDigitalParaCadastro } from '../../lib/agenteBiometricoLocal';
 import { SeletorFotoCamera } from '../../components/SeletorFotoCamera';
 import { ErroFacialDialog } from '../../components/assinatura/ErroFacialDialog';
 import { useGuiaCadastroFacial } from '../../components/pessoas/GuiaCadastroFacialDialog';
@@ -40,6 +40,7 @@ export function AssinaturaTab({ trabalhadorId }: AssinaturaTabProps) {
   const [cadastrandoBiometriaLocal, setCadastrandoBiometriaLocal] = useState(false);
   const [erroBiometriaLocal, setErroBiometriaLocal] = useState<string | null>(null);
   const [biometriaLocalCadastrada, setBiometriaLocalCadastrada] = useState(false);
+  const [etapaCaptura, setEtapaCaptura] = useState<string | null>(null);
 
   const [erroFacial, setErroFacial] = useState<string | null>(null);
   const [facialCadastrada, setFacialCadastrada] = useState(false);
@@ -89,13 +90,14 @@ export function AssinaturaTab({ trabalhadorId }: AssinaturaTabProps) {
       setCadastrandoBiometriaLocal(true);
       setErroBiometriaLocal(null);
       setBiometriaLocalCadastrada(false);
-      const templateBase64 = await capturarDigitalBrutaLocal();
+      const templateBase64 = await capturarDigitalParaCadastro(setEtapaCaptura);
       await api.trabalhadores.cadastrarBiometriaLocal(trabalhadorId, templateBase64);
       setBiometriaLocalCadastrada(true);
     } catch (e) {
       setErroBiometriaLocal(extrairMensagemErro(e, 'Falha ao cadastrar a digital.'));
     } finally {
       setCadastrandoBiometriaLocal(false);
+      setEtapaCaptura(null);
     }
   }
 
@@ -156,6 +158,7 @@ export function AssinaturaTab({ trabalhadorId }: AssinaturaTabProps) {
             Digital cadastrada com sucesso.
           </FeedbackInline>
         )}
+        {cadastrandoBiometriaLocal && etapaCaptura && <FeedbackInline tom="info">{etapaCaptura}</FeedbackInline>}
         <BotaoBiometriaDigital onClick={cadastrarBiometriaLocal} disabled={cadastrandoBiometriaLocal}>
           Capturar digital
         </BotaoBiometriaDigital>

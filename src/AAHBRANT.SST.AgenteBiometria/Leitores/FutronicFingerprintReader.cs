@@ -17,13 +17,13 @@ public class FutronicFingerprintReader : IFingerprintReader
         _timeoutDedo = timeoutDedo ?? TimeSpan.FromSeconds(15);
     }
 
-    public async Task<byte[]> CapturarAsync(CancellationToken ct)
+    public async Task<byte[]> CapturarAsync(CancellationToken ct, bool exigirNovoToque = false)
     {
         // O driver só aceita um handle aberto por vez; requisições simultâneas ao agente esperam a vez.
         await _acessoExclusivo.WaitAsync(ct);
         try
         {
-            return await Task.Run(() => CapturarBloqueante(ct), ct);
+            return await Task.Run(() => CapturarBloqueante(ct, exigirNovoToque), ct);
         }
         finally
         {
@@ -31,7 +31,7 @@ public class FutronicFingerprintReader : IFingerprintReader
         }
     }
 
-    private byte[] CapturarBloqueante(CancellationToken ct)
+    private byte[] CapturarBloqueante(CancellationToken ct, bool exigirNovoToque)
     {
         var handle = NativeMethods.ftrScanOpenDevice();
         if (handle == IntPtr.Zero)
@@ -51,6 +51,19 @@ public class FutronicFingerprintReader : IFingerprintReader
             var limite = DateTime.UtcNow + _timeoutDedo;
             var dedoDetectado = false;
             var quadrosVazios = 0;
+
+            // Segunda leitura do cadastro: o dedo da leitura anterior ainda pode estar no vidro. Espera sair
+            // (dentro do mesmo tempo limite) para que a confirmação seja uma nova apoiada de verdade.
+            while (exigirNovoToque && NativeMethods.ftrScanIsFingerPresent(handle, IntPtr.Zero))
+            {
+                ct.ThrowIfCancellationRequested();
+                if (DateTime.UtcNow > limite)
+                {
+                    throw new TimeoutException("O dedo não foi retirado do leitor. Retire o dedo e tente novamente.");
+                }
+
+                Thread.Sleep(IntervaloPolling);
+            }
 
             // Repete até o timeout: o dedo pode ser detectado antes de assentar e o quadro vir vazio
             // (erro 4306, EMPTY_FRAME) — nesse caso é só esperar e tentar de novo.
