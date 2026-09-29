@@ -13,4 +13,7 @@ public class AgenteOptions
 
     // Ajuste de polaridade da imagem para o SourceAFIS (espera cristas escuras em fundo claro).
     public bool InverterImagem { get; set; }
+
+    // De quanto em quanto tempo o agente busca os templates no backend (0 desliga).
+    public int IntervaloSincronizacaoMinutos { get; set; } = 2;
 }

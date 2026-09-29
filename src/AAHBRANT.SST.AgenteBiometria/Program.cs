@@ -30,6 +30,7 @@ public static class Program
         builder.Services.Configure<AgenteOptions>(builder.Configuration.GetSection("Agente"));
         builder.Services.AddHttpClient<BackendClient>();
         builder.Services.AddSingleton<TemplateCacheService>();
+        builder.Services.AddHostedService<SincronizacaoTemplatesService>();
 
         var agenteOptions = builder.Configuration.GetSection("Agente").Get<AgenteOptions>() ?? new AgenteOptions();
 
@@ -67,6 +68,7 @@ public static class Program
 
         var app = builder.Build();
         app.UseCors(PoliticaCorsKiosk);
+        app.UseTraducaoDeErros();
         AgenteEndpoints.Mapear(app, PoliticaCorsKiosk);
 
         return app;
