@@ -732,6 +732,7 @@ public enum TipoMovimentacaoEstoqueEpi
     SaidaEntrega = 1,
     DevolucaoEntrada = 2,
     AjusteManual = 3,
+    IntegracaoGsupri = 4,
 }
 
 // EPC (pedido do usuário, 04/09) — mesmo vocabulário de TipoMovimentacaoEstoqueEpi, só que
@@ -743,6 +744,7 @@ public enum TipoMovimentacaoEstoqueEpc
     SaidaInstalacao = 1,
     RetornoRemocao = 2,
     AjusteManual = 3,
+    IntegracaoGsupri = 4,
 }
 
 public enum StatusInspecaoEpc
@@ -848,6 +850,7 @@ public enum TipoMovimentacaoEstoqueUniforme
     EntradaManual = 0,
     SaidaEntrega = 1,
     AjusteManual = 2,
+    IntegracaoGsupri = 4,
 }
 
 // Pop-up de novidades da versão (requisito do usuário, 18/09) — classifica cada item para escolher

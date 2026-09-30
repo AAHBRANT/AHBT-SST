@@ -650,6 +650,7 @@ export const TipoMovimentacaoEstoqueEpi = {
 } as const;
 
 export const tipoMovimentacaoEstoqueEpiLabel: Record<number, string> = {
+  4: 'Integração G-SUPRI',
   0: 'Entrada manual',
   1: 'Saída (entrega)',
   2: 'Devolução',
@@ -751,6 +752,7 @@ export const TipoMovimentacaoEstoqueEpc = {
 } as const;
 
 export const tipoMovimentacaoEstoqueEpcLabel: Record<number, string> = {
+  4: 'Integração G-SUPRI',
   0: 'Entrada manual',
   1: 'Saída (instalação)',
   2: 'Retorno (remoção)',
@@ -873,6 +875,7 @@ export const TipoMovimentacaoEstoqueUniforme = {
 } as const;
 
 export const tipoMovimentacaoEstoqueUniformeLabel: Record<number, string> = {
+  4: 'Integração G-SUPRI',
   0: 'Entrada manual',
   1: 'Saída (entrega)',
   2: 'Ajuste manual',

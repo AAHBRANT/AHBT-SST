@@ -40,6 +40,8 @@ public static class DependencyInjection
 
         services.AddDbContext<SstDbContext>(options => options.UseSqlServer(connectionString));
         services.AddScoped<IAppDbContext>(sp => sp.GetRequiredService<SstDbContext>());
+        services.AddScoped<AAHBRANT.SST.Application.IntegracaoGsupri.IIntegracaoGsupriService,
+            AAHBRANT.SST.Infrastructure.Integracao.Gsupri.IntegracaoGsupriService>();
 
         // Precisa estar registrado aqui (não só na Api) — todo composition root que usa
         // SstDbContext depende disso, incluindo o Worker (sem HttpContext/usuário logado; ver

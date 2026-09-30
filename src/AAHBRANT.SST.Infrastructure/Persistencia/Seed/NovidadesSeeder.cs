@@ -610,6 +610,17 @@ public static class NovidadesSeeder
                     "A Central de Suporte IA continua disponível pelo item \"Suporte IA\" na barra lateral."),
             }),
         new(
+            Versao: "5.36.0",
+            Titulo: "Preparação da integração de estoque com o G-SUPRI",
+            DataPublicacao: new DateTime(2026, 9, 30, 0, 0, 0, DateTimeKind.Utc),
+            Itens: new[]
+            {
+                new NovidadeSeedItem(CategoriaNovidade.Novidade,
+                    "Painel de recebimentos e vínculos do G-SUPRI em Administração",
+                    "As entradas de estoque precisavam ser lançadas novamente no SST.",
+                    "O SST está preparado para receber materiais pelo G-SUPRI, controlar reenvios e mostrar pendências de vínculo ou liberação. O envio depende da conexão e ativação pela equipe responsável."),
+            }),
+        new(
             Versao: "5.37.0",
             Titulo: "Catálogo de APR e PT por atividade",
             DataPublicacao: new DateTime(2026, 9, 30, 0, 0, 0, DateTimeKind.Utc),

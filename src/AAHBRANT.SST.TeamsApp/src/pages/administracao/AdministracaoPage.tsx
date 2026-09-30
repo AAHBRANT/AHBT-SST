@@ -4,12 +4,13 @@ import { ControleAcessoTab } from './ControleAcessoTab';
 import { TrilhaAuditoriaTab } from './TrilhaAuditoriaTab';
 import { PainelAssinaturasTab } from './PainelAssinaturasTab';
 import { IntegracaoGrhTab } from './IntegracaoGrhTab';
+import { IntegracaoGsupriTab } from './IntegracaoGsupriTab';
 import { TagsIdentificacaoTab } from '../identificacao/TagsIdentificacaoTab';
 import { LeitorNfcTab } from '../identificacao/LeitorNfcTab';
 import { NovidadesTab } from './NovidadesTab';
 import { LeitoresDigitalTab } from './LeitoresDigitalTab';
 
-const ABAS_VALIDAS = ['obras', 'acesso', 'auditoria', 'assinaturas', 'grh', 'tags', 'leitor', 'leitoresDigital', 'novidades'] as const;
+const ABAS_VALIDAS = ['obras', 'acesso', 'auditoria', 'assinaturas', 'grh', 'gsupri', 'tags', 'leitor', 'leitoresDigital', 'novidades'] as const;
 type AbaAdministracao = (typeof ABAS_VALIDAS)[number];
 
 // Obras virou aba daqui (pedido do usuário, 01/09) — antes era aba de Operação (ver App.tsx pro
@@ -41,6 +42,7 @@ export function AdministracaoPage() {
           { valor: 'auditoria', rotulo: 'Trilha de Auditoria' },
           { valor: 'assinaturas', rotulo: 'Assinaturas' },
           { valor: 'grh', rotulo: 'Integração G-RH' },
+          { valor: 'gsupri', rotulo: 'Integração G-SUPRI' },
           { valor: 'tags', rotulo: 'Tags (NFC/QR)' },
           { valor: 'leitor', rotulo: 'Leitor / Teste NFC' },
           { valor: 'leitoresDigital', rotulo: 'Leitores de digital' },
@@ -53,6 +55,7 @@ export function AdministracaoPage() {
       {aba === 'auditoria' && <TrilhaAuditoriaTab />}
       {aba === 'assinaturas' && <PainelAssinaturasTab />}
       {aba === 'grh' && <IntegracaoGrhTab />}
+      {aba === 'gsupri' && <IntegracaoGsupriTab />}
       {aba === 'tags' && <TagsIdentificacaoTab />}
       {aba === 'leitor' && <LeitorNfcTab />}
       {aba === 'leitoresDigital' && <LeitoresDigitalTab />}
