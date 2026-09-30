@@ -85,21 +85,30 @@ public class DdsPdfService : IDdsPdfService
                         });
                     }
 
-                    coluna.Item().PaddingTop(8).Text("Checklist de verificação").FontSize(13).Bold();
-                    foreach (var item in modelo.ItensChecklist)
+                    // Pedido do usuário (30/09): o documento do DDS traz só os temas e a lista de
+                    // presença — o checklist de verificação continua no sistema, mas não sai no PDF.
+                    coluna.Item().PaddingTop(8).Text("Lista de Presença").FontSize(13).Bold();
+                    coluna.Item().Table(tabela =>
                     {
-                        coluna.Item().Text(t =>
+                        tabela.ColumnsDefinition(c =>
                         {
-                            t.Span(item.Verificado ? "[X] " : "[ ] ").FontColor(CorMarca).Bold();
-                            t.Span(item.Descricao);
+                            c.ConstantColumn(36);
+                            c.RelativeColumn();
                         });
-                    }
 
-                    coluna.Item().PaddingTop(8).Text("Participantes").FontSize(13).Bold();
-                    foreach (var nome in modelo.ParticipantesNomes)
-                    {
-                        coluna.Item().Text($"• {nome}");
-                    }
+                        tabela.Header(h =>
+                        {
+                            h.Cell().Background(CorMarca).Padding(4).AlignCenter().Text("Nº").FontColor(Colors.White).SemiBold();
+                            h.Cell().Background(CorMarca).Padding(4).Text("Nome").FontColor(Colors.White).SemiBold();
+                        });
+
+                        var numero = 1;
+                        foreach (var nome in modelo.ParticipantesNomes)
+                        {
+                            tabela.Cell().BorderBottom(1).BorderColor(Colors.Grey.Lighten2).Padding(4).AlignCenter().Text($"{numero++}");
+                            tabela.Cell().BorderBottom(1).BorderColor(Colors.Grey.Lighten2).Padding(4).Text(nome);
+                        }
+                    });
                 });
 
                 pagina.Footer().Column(coluna => RodapeDocumentoPadrao.Desenhar(

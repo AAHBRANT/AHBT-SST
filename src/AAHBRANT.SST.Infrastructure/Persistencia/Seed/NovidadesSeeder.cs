@@ -646,6 +646,17 @@ public static class NovidadesSeeder
                     "Mesmo depois de cadastrada a digital ou o facial, os botões de cadastro continuavam disponíveis, permitindo cadastrar de novo.",
                     "Depois do cadastro concluído com sucesso, os botões somem e a tela mostra a data em que a biometria foi cadastrada. O sistema também recusa um segundo cadastro."),
             }),
+        new(
+            Versao: "5.37.2",
+            Titulo: "Documento do DDS mais enxuto",
+            DataPublicacao: new DateTime(2026, 9, 30, 0, 0, 0, DateTimeKind.Utc),
+            Itens: new[]
+            {
+                new NovidadeSeedItem(CategoriaNovidade.Melhoria,
+                    "PDF do DDS traz só os temas e a Lista de Presença",
+                    "O PDF do DDS diário imprimia também o checklist de verificação, deixando o documento longo.",
+                    "O PDF mostra apenas os temas do dia e a Lista de Presença, numerada. O checklist continua sendo preenchido no sistema, mas não sai mais no documento."),
+            }),
     };
 
     public static async Task ExecutarAsync(IServiceProvider services, CancellationToken ct = default)
