@@ -1,4 +1,4 @@
-using AAHBRANT.SST.Domain.Entidades;
+﻿using AAHBRANT.SST.Domain.Entidades;
 using AAHBRANT.SST.Domain.Enums;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
@@ -656,6 +656,25 @@ public static class NovidadesSeeder
                     "PDF do DDS traz só os temas e a Lista de Presença",
                     "O PDF do DDS diário imprimia também o checklist de verificação, deixando o documento longo.",
                     "O PDF mostra apenas os temas do dia e a Lista de Presença, numerada. O checklist continua sendo preenchido no sistema, mas não sai mais no documento."),
+            }),
+        new(
+            Versao: "5.37.3",
+            Titulo: "DDS com fila de digitais",
+            DataPublicacao: new DateTime(2026, 9, 30, 0, 0, 0, DateTimeKind.Utc),
+            Itens: new[]
+            {
+                new NovidadeSeedItem(CategoriaNovidade.Melhoria,
+                    "Fila de digitais e lista completa no DDS",
+                    "Era preciso selecionar os funcionários um a um e clicar em \"Confirmar por digital\" na linha de cada pessoa.",
+                    "Ao abrir o DDS, todos os funcionários da obra já entram na lista. O botão \"Abrir fila\" deixa o leitor aberto: cada funcionário encosta o dedo e a presença é registrada sozinha, com bipe só quando der certo. Digital não reconhecida aparece como erro na tela. O reconhecimento facial continua em cada linha."),
+                new NovidadeSeedItem(CategoriaNovidade.Melhoria,
+                    "Aviso de quem faltou ao finalizar o DDS",
+                    "Era possível finalizar o DDS sem perceber que havia funcionários da lista sem presença.",
+                    "Antes de finalizar, o sistema avisa quantos e quais funcionários da lista ainda estão sem presença confirmada."),
+                new NovidadeSeedItem(CategoriaNovidade.Correcao,
+                    "Erro ao criar DDS com tema de descrição longa",
+                    "Escolher um tema com descrição muito longa (como o de câncer de mama) gerava \"erro inesperado\" ao criar o DDS.",
+                    "O DDS é criado normalmente com temas de descrição longa."),
             }),
     };
 

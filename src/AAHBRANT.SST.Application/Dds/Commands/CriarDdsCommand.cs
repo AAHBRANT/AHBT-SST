@@ -1,4 +1,4 @@
-using AAHBRANT.SST.Application.Common.Interfaces;
+﻿using AAHBRANT.SST.Application.Common.Interfaces;
 using AAHBRANT.SST.Domain.Enums;
 using FluentValidation;
 using MediatR;
@@ -112,6 +112,24 @@ public class CriarDdsCommandHandler : IRequestHandler<CriarDdsCommand, Guid>
 
         _db.Dds.Add(dds);
         await _db.SaveChangesAsync(ct);
+
+        // Todos os funcionários ativos da obra já entram na lista do DDS (mesmo critério de
+        // ListarFuncionariosDdsQuery); a presença continua só para quem assina. Dia sem expediente
+        // nasce por outro comando, então não passa por aqui.
+        var trabalhadoresIds = await _db.Trabalhadores.AsNoTracking()
+            .Where(t => t.ObraId == dds.ObraId && t.Ativo && t.Situacao == SituacaoTrabalhador.Ativo
+                && (!t.DataDemissao.HasValue || t.DataDemissao.Value.Date > dds.Data.Date))
+            .Select(t => t.Id)
+            .ToListAsync(ct);
+        if (trabalhadoresIds.Count > 0)
+        {
+            _db.DdsFuncionariosSelecionados.AddRange(trabalhadoresIds.Select(id => new Domain.Entidades.DdsFuncionarioSelecionado
+            {
+                DdsId = dds.Id,
+                TrabalhadorId = id,
+            }));
+            await _db.SaveChangesAsync(ct);
+        }
         return dds.Id;
     }
 

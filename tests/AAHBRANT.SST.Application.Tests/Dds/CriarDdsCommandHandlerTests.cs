@@ -1,4 +1,4 @@
-using AAHBRANT.SST.Application.Common.Interfaces;
+﻿using AAHBRANT.SST.Application.Common.Interfaces;
 using AAHBRANT.SST.Application.Dds.Commands;
 using AAHBRANT.SST.Domain.Entidades;
 using AAHBRANT.SST.Domain.Enums;
@@ -157,5 +157,28 @@ public class CriarDdsCommandHandlerTests
 
         var dds = await db.Dds.FirstAsync(d => d.Id == id);
         Assert.StartsWith("DDS-D-", dds.NumeroDocumento);
+    }
+
+    [Fact]
+    public async Task Handle_SelecionaTodosOsFuncionariosAtivosDaObra()
+    {
+        var db = CriarDb(nameof(Handle_SelecionaTodosOsFuncionariosAtivosDaObra));
+        var (obra, _, semanal, atividadeComRisco, _) = await SemearAsync(db);
+        var outraObra = new Obra { Codigo = "OBRA-2", Nome = "Outra" };
+        db.Obras.Add(outraObra);
+        await db.SaveChangesAsync();
+        var ana = new Trabalhador { Nome = "Ana", ObraId = obra.Id };
+        var bruno = new Trabalhador { Nome = "Bruno", ObraId = obra.Id };
+        db.Trabalhadores.AddRange(ana, bruno,
+            new Trabalhador { Nome = "Desligado", ObraId = obra.Id, Situacao = SituacaoTrabalhador.Desligado },
+            new Trabalhador { Nome = "Outra obra", ObraId = outraObra.Id });
+        await db.SaveChangesAsync();
+        var handler = new CriarDdsCommandHandler(db, new GeradorNumeroDocumentoService(db));
+
+        var id = await handler.Handle(new CriarDdsCommand(semanal.Id, new List<Guid> { atividadeComRisco.Id }, semanal.DataInicioSemana, null), default);
+
+        var selecionados = await db.DdsFuncionariosSelecionados.Where(s => s.DdsId == id)
+            .Select(s => s.TrabalhadorId).ToListAsync();
+        Assert.Equal(new[] { ana.Id, bruno.Id }.OrderBy(x => x), selecionados.OrderBy(x => x));
     }
 }
