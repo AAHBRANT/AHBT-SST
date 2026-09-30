@@ -41,6 +41,13 @@ public class CadastrarTemplateBiometricoCommandHandler : IRequestHandler<Cadastr
             throw new InvalidOperationException("Trabalhador ainda não confirmou o Termo de Aceite de Assinatura Eletrônica e o consentimento LGPD para uso de biometria.");
         }
 
+        // Regra do usuário (30/09): a digital é cadastrada uma única vez. A tela já esconde o botão
+        // depois do sucesso; a trava aqui cobre aba antiga aberta, duplo clique e chamada direta.
+        if (await _db.TemplatesBiometricoFutronic.AnyAsync(tb => tb.TrabalhadorId == request.TrabalhadorId, ct))
+        {
+            throw new InvalidOperationException("A digital deste trabalhador já está cadastrada.");
+        }
+
         var template = new TemplateBiometricoFutronic
         {
             TrabalhadorId = request.TrabalhadorId,

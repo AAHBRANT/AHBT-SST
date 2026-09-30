@@ -36,6 +36,11 @@ public class AzureFaceAutenticacaoStrategy : IAutenticacaoFacialService
         if (trabalhador.TermoAceiteAssinaturaEletronicaEm is null || trabalhador.ConsentimentoBiometriaEm is null)
             throw new InvalidOperationException("Trabalhador ainda não confirmou o Termo de Aceite de Assinatura Eletrônica e o consentimento LGPD para uso de biometria facial.");
 
+        // Regra do usuário (30/09): o facial é cadastrado uma única vez. A foto só é gravada depois de
+        // aprovada na qualidade e aceita pelo Azure, então existir foto = cadastro concluído com sucesso.
+        if (await _db.FotosCadastroFacial.AnyAsync(f => f.TrabalhadorId == trabalhadorId, ct))
+            throw new InvalidOperationException("O reconhecimento facial deste trabalhador já está cadastrado.");
+
         var obra = await _db.Obras.FirstOrDefaultAsync(o => o.Id == trabalhador.ObraId, ct)
             ?? throw new KeyNotFoundException("Obra do trabalhador não encontrada.");
 

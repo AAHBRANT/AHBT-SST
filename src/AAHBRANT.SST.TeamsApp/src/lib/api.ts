@@ -43,6 +43,13 @@ export interface FotoCadastroFacial {
   hashSha256: string;
 }
 
+export interface StatusCadastroBiometrico {
+  temDigital: boolean;
+  temFacial: boolean;
+  digitalCadastradaEm: string | null;
+  facialCadastradoEm: string | null;
+}
+
 export interface DispositivoAgente {
   id: string;
   obraId: string;
@@ -3745,6 +3752,8 @@ export const api = {
       request<void>(`/api/trabalhadores/${id}/assinatura/termo-aceite`, { method: 'POST' }),
     registrarConsentimentoBiometria: (id: string) =>
       request<void>(`/api/trabalhadores/${id}/assinatura/consentimento-biometria`, { method: 'POST' }),
+    obterStatusCadastroBiometrico: (id: string) =>
+      request<StatusCadastroBiometrico>(`/api/trabalhadores/${id}/assinatura/status-cadastro`),
     obterPerfilCompleto: (id: string) =>
       request<PerfilCompletoTrabalhador>(`/api/trabalhadores/${id}/perfil-completo`),
     baixarRelatorioFiscalizacao: async (id: string) => {

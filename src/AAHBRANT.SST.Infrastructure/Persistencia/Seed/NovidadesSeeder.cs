@@ -635,6 +635,17 @@ public static class NovidadesSeeder
                     "Ao aprovar uma APR ou liberar, suspender, revalidar e encerrar uma PT, a tela pedia para digitar o código (ID) do usuário responsável.",
                     "O sistema registra automaticamente o usuário que está logado, sem precisar digitar nada. Não é mais possível assinar em nome de outra pessoa."),
             }),
+        new(
+            Versao: "5.37.1",
+            Titulo: "Biometria cadastrada uma única vez",
+            DataPublicacao: new DateTime(2026, 9, 30, 0, 0, 0, DateTimeKind.Utc),
+            Itens: new[]
+            {
+                new NovidadeSeedItem(CategoriaNovidade.Melhoria,
+                    "Digital e reconhecimento facial são cadastrados só uma vez por funcionário",
+                    "Mesmo depois de cadastrada a digital ou o facial, os botões de cadastro continuavam disponíveis, permitindo cadastrar de novo.",
+                    "Depois do cadastro concluído com sucesso, os botões somem e a tela mostra a data em que a biometria foi cadastrada. O sistema também recusa um segundo cadastro."),
+            }),
     };
 
     public static async Task ExecutarAsync(IServiceProvider services, CancellationToken ct = default)

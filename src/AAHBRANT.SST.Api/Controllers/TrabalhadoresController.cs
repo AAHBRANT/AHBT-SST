@@ -118,6 +118,11 @@ public class TrabalhadoresController : ControllerBase
         return NoContent();
     }
 
+    [Authorize(Policy = "trabalhador:assinatura")]
+    [HttpGet("{id:guid}/assinatura/status-cadastro")]
+    public async Task<IActionResult> ObterStatusCadastroBiometrico(Guid id, CancellationToken ct)
+        => Ok(await _mediator.Send(new ObterStatusCadastroBiometricoQuery(id), ct));
+
     public record CadastrarBiometriaLocalRequestBody(byte[] TemplateBruto);
 
     [Authorize(Policy = "trabalhador:assinatura")]

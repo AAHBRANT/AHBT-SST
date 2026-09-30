@@ -493,15 +493,18 @@ export function TrabalhadoresTab() {
           }
           acoesLinha={(t) => (
             <div style={{ display: 'flex', gap: 6 }}>
-              <BotaoAcao
-                tom="ver"
-                icon={<Fingerprint24Regular />}
-                onClick={(evento) => {
-                  evento.stopPropagation();
-                  setTrabalhadorDigitalAlvo({ id: t.id, nome: t.nome });
-                }}
-                aria-label="Cadastrar digital"
-              />
+              {/* Digital é cadastrada uma única vez (regra do usuário, 30/09): já cadastrada, o botão some. */}
+              {!t.temBiometria && (
+                <BotaoAcao
+                  tom="ver"
+                  icon={<Fingerprint24Regular />}
+                  onClick={(evento) => {
+                    evento.stopPropagation();
+                    setTrabalhadorDigitalAlvo({ id: t.id, nome: t.nome });
+                  }}
+                  aria-label="Cadastrar digital"
+                />
+              )}
               <span onClick={(evento) => evento.stopPropagation()}>
                 <SeletorFotoCamera
                   rotulo="Enviar foto"
