@@ -19,8 +19,13 @@ namespace AAHBRANT.SST.Api.Controllers;
 public class PermissoesTrabalhoController : ControllerBase
 {
     private readonly IMediator _mediator;
+    private readonly IUsuarioAtualResolver _usuarioAtual;
 
-    public PermissoesTrabalhoController(IMediator mediator) => _mediator = mediator;
+    public PermissoesTrabalhoController(IMediator mediator, IUsuarioAtualResolver usuarioAtual)
+    {
+        _mediator = mediator;
+        _usuarioAtual = usuarioAtual;
+    }
 
     [Authorize(Policy = "pt:ver")]
     [HttpGet]
@@ -64,9 +69,10 @@ public class PermissoesTrabalhoController : ControllerBase
 
     [Authorize(Policy = "pt:autorizar")]
     [HttpPost("{id:guid}/autorizar")]
-    public async Task<IActionResult> Autorizar(Guid id, AutorizarPermissaoTrabalhoRequestBody body, CancellationToken ct)
+    public async Task<IActionResult> Autorizar(Guid id, AutorizarPermissaoTrabalhoRequestBody? body, CancellationToken ct)
     {
-        await _mediator.Send(new AutorizarPermissaoTrabalhoCommand(id, body.AutorizadoPorUsuarioId, body.ResponsavelSstUsuarioId), ct);
+        var usuarioId = await _usuarioAtual.ObterIdAsync(User, ct);
+        await _mediator.Send(new AutorizarPermissaoTrabalhoCommand(id, usuarioId, body?.ResponsavelSstUsuarioId), ct);
         return NoContent();
     }
 
@@ -74,7 +80,8 @@ public class PermissoesTrabalhoController : ControllerBase
     [HttpPost("{id:guid}/suspender")]
     public async Task<IActionResult> Suspender(Guid id, SuspenderPermissaoTrabalhoRequestBody body, CancellationToken ct)
     {
-        await _mediator.Send(new SuspenderPermissaoTrabalhoCommand(id, body.Motivo, body.SuspensaPorUsuarioId), ct);
+        var usuarioId = await _usuarioAtual.ObterIdAsync(User, ct);
+        await _mediator.Send(new SuspenderPermissaoTrabalhoCommand(id, body.Motivo, usuarioId), ct);
         return NoContent();
     }
 
@@ -82,8 +89,9 @@ public class PermissoesTrabalhoController : ControllerBase
     [HttpPost("{id:guid}/revalidar")]
     public async Task<IActionResult> Revalidar(Guid id, RevalidarPermissaoTrabalhoRequestBody body, CancellationToken ct)
     {
+        var usuarioId = await _usuarioAtual.ObterIdAsync(User, ct);
         await _mediator.Send(new RevalidarPermissaoTrabalhoCommand(
-            id, body.NovaValidade, body.NovoHorarioFim, body.RevalidadaPorUsuarioId), ct);
+            id, body.NovaValidade, body.NovoHorarioFim, usuarioId), ct);
         return NoContent();
     }
 
@@ -91,7 +99,8 @@ public class PermissoesTrabalhoController : ControllerBase
     [HttpPost("{id:guid}/encerrar")]
     public async Task<IActionResult> Encerrar(Guid id, EncerrarPermissaoTrabalhoRequestBody body, CancellationToken ct)
     {
-        await _mediator.Send(new EncerrarPermissaoTrabalhoCommand(id, body.EncerradaPorUsuarioId, body.Observacoes), ct);
+        var usuarioId = await _usuarioAtual.ObterIdAsync(User, ct);
+        await _mediator.Send(new EncerrarPermissaoTrabalhoCommand(id, usuarioId, body.Observacoes), ct);
         return NoContent();
     }
 
@@ -170,10 +179,10 @@ public class PermissoesTrabalhoController : ControllerBase
     }
 }
 
-public record AutorizarPermissaoTrabalhoRequestBody(Guid AutorizadoPorUsuarioId, Guid? ResponsavelSstUsuarioId);
-public record SuspenderPermissaoTrabalhoRequestBody(string Motivo, Guid SuspensaPorUsuarioId);
-public record RevalidarPermissaoTrabalhoRequestBody(DateTime NovaValidade, TimeSpan? NovoHorarioFim, Guid RevalidadaPorUsuarioId);
-public record EncerrarPermissaoTrabalhoRequestBody(Guid EncerradaPorUsuarioId, string? Observacoes);
+public record AutorizarPermissaoTrabalhoRequestBody(Guid? ResponsavelSstUsuarioId);
+public record SuspenderPermissaoTrabalhoRequestBody(string Motivo);
+public record RevalidarPermissaoTrabalhoRequestBody(DateTime NovaValidade, TimeSpan? NovoHorarioFim);
+public record EncerrarPermissaoTrabalhoRequestBody(string? Observacoes);
 public record MarcarPreRequisitoRequestBody(bool Atendido);
 public record ResponderVerificacaoRequestBody(RespostaVerificacaoPt Resposta);
 public record DefinirTiposTrabalhoRequestBody(List<TipoTrabalhoInput> Tipos);

@@ -609,6 +609,21 @@ public static class NovidadesSeeder
                     "O botão ficava fixo no canto e cobria parte das telas.",
                     "A Central de Suporte IA continua disponível pelo item \"Suporte IA\" na barra lateral."),
             }),
+        new(
+            Versao: "5.37.0",
+            Titulo: "Catálogo de APR e PT por atividade",
+            DataPublicacao: new DateTime(2026, 9, 30, 0, 0, 0, DateTimeKind.Utc),
+            Itens: new[]
+            {
+                new NovidadeSeedItem(CategoriaNovidade.Novidade,
+                    "Aba Catálogo em APR e em Permissão de Trabalho",
+                    "Para emitir uma APR ou PT de uma atividade da obra, era preciso preencher tudo do zero.",
+                    "A aba Catálogo lista as atividades da obra com os riscos do PGR e mostra quais estão sem APR ou PT vigente. Com um clique em \"+\", o sistema gera o documento em elaboração já preenchido com os riscos e as medidas de controle do PGR, para você revisar antes de aprovar ou liberar."),
+                new NovidadeSeedItem(CategoriaNovidade.Melhoria,
+                    "Aprovações e liberações usam o usuário logado",
+                    "Ao aprovar uma APR ou liberar, suspender, revalidar e encerrar uma PT, a tela pedia para digitar o código (ID) do usuário responsável.",
+                    "O sistema registra automaticamente o usuário que está logado, sem precisar digitar nada. Não é mais possível assinar em nome de outra pessoa."),
+            }),
     };
 
     public static async Task ExecutarAsync(IServiceProvider services, CancellationToken ct = default)

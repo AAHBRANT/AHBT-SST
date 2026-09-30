@@ -45,7 +45,6 @@ export function AprDetalhePage() {
   const [aba, setAba] = useState<AbaApr>('etapas');
   const [detalhe, setDetalhe] = useState<AprDetalhe | null>(null);
   const [erro, setErro] = useState<string | null>(null);
-  const [aprovadoPorUsuarioId, setAprovadoPorUsuarioId] = useState('');
   const [motivoReprovacao, setMotivoReprovacao] = useState('');
   const [processando, setProcessando] = useState(false);
   const [exportando, setExportando] = useState(false);
@@ -70,11 +69,11 @@ export function AprDetalhePage() {
   // `false` mantém o formulário aberto — tanto a guarda local (campo vazio) quanto a falha da API
   // devolvem `false`, senão o acordeão fecharia e a mensagem de erro ficaria fora da vista.
   async function aprovar() {
-    if (!id || !aprovadoPorUsuarioId) return false;
+    if (!id) return false;
     try {
       setProcessando(true);
       setErro(null);
-      await api.aprs.aprovar(id, aprovadoPorUsuarioId);
+      await api.aprs.aprovar(id);
       await carregar();
     } catch (e) {
       setErro(e instanceof Error ? e.message : 'Falha ao aprovar APR.');
@@ -154,11 +153,7 @@ export function AprDetalhePage() {
       tom: 'primario',
       habilitada: true,
       aoExecutar: aprovar,
-      formulario: (
-        <Field label="ID do usuário aprovador (GUID)" required>
-          <Input value={aprovadoPorUsuarioId} onChange={(_, d) => setAprovadoPorUsuarioId(d.value)} />
-        </Field>
-      ),
+      formulario: <p style={{ margin: 0 }}>A aprovação será registrada com o seu usuário, na data e hora atuais.</p>,
     });
     acoes.push({
       chave: 'reprovar',

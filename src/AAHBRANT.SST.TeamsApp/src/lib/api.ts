@@ -906,6 +906,37 @@ export interface ItemTamanhoUniforme {
   tamanho: string;
 }
 
+// Catálogo de APR/PT por atividade da obra (29/09): "modelo" = atividade + riscos do PGR.
+export interface CatalogoDocumento {
+  id: string;
+  numero?: string | null;
+  status: number;
+  data: string;
+  validade?: string | null;
+  vigente: boolean;
+}
+
+export interface CatalogoAtividade {
+  atividadeId: string;
+  nome: string;
+  descricao?: string | null;
+  obraId: string;
+  obraNome: string;
+  pgrNome?: string | null;
+  quantidadeRiscos: number;
+  maiorNivelRisco?: number | null;
+  aprs: CatalogoDocumento[];
+  pts: CatalogoDocumento[];
+}
+
+export interface GerarDocumentoDaAtividade {
+  atividadeId: string;
+  local: string;
+  equipeId: string | null;
+  data: string;
+  validade: string | null;
+}
+
 export interface Atividade {
   id: string;
   obraId: string;
@@ -3585,6 +3616,14 @@ export interface NovaNovidadeVersao {
 }
 
 export const api = {
+  catalogo: {
+    atividades: (obraId?: string) =>
+      request<CatalogoAtividade[]>(`/api/catalogo/atividades${obraId ? `?obraId=${obraId}` : ''}`),
+    gerarApr: (dados: GerarDocumentoDaAtividade) =>
+      request<{ id: string }>('/api/catalogo/apr', { method: 'POST', body: JSON.stringify(dados) }),
+    gerarPt: (dados: GerarDocumentoDaAtividade) =>
+      request<{ id: string }>('/api/catalogo/pt', { method: 'POST', body: JSON.stringify(dados) }),
+  },
   obras: {
     listar: () => request<Obra[]>('/api/obras'),
     // Logomarca obrigatória no cadastro (decisão do usuário, 31/08) — a criação passa a ser
@@ -4350,8 +4389,8 @@ export const api = {
     atualizar: (id: string, apr: AtualizarAprPayload) =>
       request<void>(`/api/aprs/${id}`, { method: 'PUT', body: JSON.stringify(apr) }),
     excluir: (id: string) => request<void>(`/api/aprs/${id}`, { method: 'DELETE' }),
-    aprovar: (id: string, aprovadoPorUsuarioId: string) =>
-      request<void>(`/api/aprs/${id}/aprovar`, { method: 'POST', body: JSON.stringify({ aprovadoPorUsuarioId }) }),
+    // Quem aprova é o usuário logado: o servidor resolve pelo token, nunca pelo corpo.
+    aprovar: (id: string) => request<void>(`/api/aprs/${id}/aprovar`, { method: 'POST' }),
     reprovar: (id: string, motivo: string) =>
       request<void>(`/api/aprs/${id}/reprovar`, { method: 'POST', body: JSON.stringify({ motivo }) }),
     exportarPdf: async (id: string) => {
@@ -4396,26 +4435,18 @@ export const api = {
     atualizar: (id: string, pt: AtualizarPermissaoTrabalhoPayload) =>
       request<void>(`/api/permissoesTrabalho/${id}`, { method: 'PUT', body: JSON.stringify(pt) }),
     excluir: (id: string) => request<void>(`/api/permissoesTrabalho/${id}`, { method: 'DELETE' }),
-    autorizar: (id: string, autorizadoPorUsuarioId: string, responsavelSstUsuarioId?: string | null) =>
-      request<void>(`/api/permissoesTrabalho/${id}/autorizar`, {
-        method: 'POST',
-        body: JSON.stringify({ autorizadoPorUsuarioId, responsavelSstUsuarioId: responsavelSstUsuarioId || null }),
-      }),
-    suspender: (id: string, motivo: string, suspensaPorUsuarioId: string) =>
-      request<void>(`/api/permissoesTrabalho/${id}/suspender`, {
-        method: 'POST',
-        body: JSON.stringify({ motivo, suspensaPorUsuarioId }),
-      }),
-    revalidar: (id: string, novaValidade: string, novoHorarioFim: string | null, revalidadaPorUsuarioId: string) =>
+    // Quem libera/suspende/revalida/encerra é o usuário logado: o servidor resolve pelo token.
+    autorizar: (id: string) =>
+      request<void>(`/api/permissoesTrabalho/${id}/autorizar`, { method: 'POST', body: JSON.stringify({}) }),
+    suspender: (id: string, motivo: string) =>
+      request<void>(`/api/permissoesTrabalho/${id}/suspender`, { method: 'POST', body: JSON.stringify({ motivo }) }),
+    revalidar: (id: string, novaValidade: string, novoHorarioFim: string | null) =>
       request<void>(`/api/permissoesTrabalho/${id}/revalidar`, {
         method: 'POST',
-        body: JSON.stringify({ novaValidade, novoHorarioFim, revalidadaPorUsuarioId }),
+        body: JSON.stringify({ novaValidade, novoHorarioFim }),
       }),
-    encerrar: (id: string, encerradaPorUsuarioId: string, observacoes?: string | null) =>
-      request<void>(`/api/permissoesTrabalho/${id}/encerrar`, {
-        method: 'POST',
-        body: JSON.stringify({ encerradaPorUsuarioId, observacoes }),
-      }),
+    encerrar: (id: string, observacoes?: string | null) =>
+      request<void>(`/api/permissoesTrabalho/${id}/encerrar`, { method: 'POST', body: JSON.stringify({ observacoes }) }),
     marcarPreRequisito: (id: string, itemId: string, atendido: boolean) =>
       request<void>(`/api/permissoesTrabalho/${id}/pre-requisitos/${itemId}/marcar`, {
         method: 'POST',
