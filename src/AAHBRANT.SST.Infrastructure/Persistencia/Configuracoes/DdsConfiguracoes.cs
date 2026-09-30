@@ -20,7 +20,7 @@ public class DdsConfiguracao : IEntityTypeConfiguration<Dds>
     public void Configure(EntityTypeBuilder<Dds> builder)
     {
         builder.Property(d => d.TemaLivreNome).HasMaxLength(200);
-        builder.Property(d => d.TemaLivreDescricao).HasMaxLength(500);
+        builder.Property(d => d.TemaLivreDescricao).HasMaxLength(1000);
         builder.Property(d => d.NumeroDocumento).HasMaxLength(50);
         builder.Property(d => d.MotivoSemExpediente).HasMaxLength(500);
 
