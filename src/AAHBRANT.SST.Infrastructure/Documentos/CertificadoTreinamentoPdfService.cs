@@ -334,7 +334,7 @@ public class CertificadoTreinamentoPdfService : ICertificadoTreinamentoPdfServic
                 coluna.Item().PaddingTop(8).Text("Assinado digitalmente por:").FontSize(8).SemiBold().FontColor(Colors.Grey.Darken2);
                 foreach (var signatario in modelo.Signatarios)
                 {
-                    coluna.Item().Text($"• {signatario.TrabalhadorNome} em {signatario.AssinadoEm:dd/MM/yyyy HH:mm}").FontSize(8).FontColor(Colors.Grey.Darken2);
+                    coluna.Item().Text($"• {signatario.TrabalhadorNome} em {HorarioBrasilia.De(signatario.AssinadoEm):dd/MM/yyyy HH:mm}").FontSize(8).FontColor(Colors.Grey.Darken2);
                 }
             }
         });

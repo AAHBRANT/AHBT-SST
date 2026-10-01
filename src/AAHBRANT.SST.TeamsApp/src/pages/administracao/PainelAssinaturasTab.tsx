@@ -20,6 +20,7 @@ import {
 import { ArrowDownload24Regular, Eye24Regular, Filter24Regular, Link24Regular } from '@fluentui/react-icons';
 import { api, statusDocumentoAssinaturaLabel, type DocumentoAssinaturaResumo } from '../../lib/api';
 import { salvarBlob, useVisualizadorPdf } from '../../components/useVisualizadorPdf';
+import { formatarDataHoraBrasilia } from '../../lib/datas';
 
 // Status do Motor de Assinatura Eletrônica não tinha mapeamento de cor no Badge original (só
 // appearance="tint" genérico) — julgamento novo desta conversão (Guia item 5): Em andamento = ainda
@@ -111,11 +112,11 @@ export function PainelAssinaturasTab() {
         </StatusChip>
       ),
     },
-    { chave: 'criadoEm', rotulo: 'Criado em', render: (d) => new Date(d.criadoEm).toLocaleString('pt-BR') },
+    { chave: 'criadoEm', rotulo: 'Criado em', render: (d) => formatarDataHoraBrasilia(d.criadoEm) },
     {
       chave: 'finalizadoEm',
       rotulo: 'Finalizado em',
-      render: (d) => (d.finalizadoEm ? new Date(d.finalizadoEm).toLocaleString('pt-BR') : '—'),
+      render: (d) => (d.finalizadoEm ? formatarDataHoraBrasilia(d.finalizadoEm) : '—'),
     },
     { chave: 'assinaturas', rotulo: 'Assinaturas', render: (d) => d.quantidadeSignatarios },
   ];

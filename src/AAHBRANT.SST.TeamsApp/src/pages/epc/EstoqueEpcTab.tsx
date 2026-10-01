@@ -25,6 +25,7 @@ import {
   type MovimentacaoEstoqueEpc,
   type Obra,
 } from '../../lib/api';
+import { formatarDataHoraBrasilia } from '../../lib/datas';
 
 // Estoque de EPC segmentado por Obra — mesma estrutura do estoque de EPI (Fase 3). Entradas/saídas
 // por instalação e remoção são automáticas (ver CriarInstalacaoEpcCommand/RegistrarRemocaoEpcCommand
@@ -146,7 +147,7 @@ export function EstoqueEpcTab() {
   ];
 
   const colunasMovimentacoes: Coluna<MovimentacaoEstoqueEpc>[] = [
-    { chave: 'data', rotulo: 'Data', render: (m) => new Date(m.createdAtUtc).toLocaleString('pt-BR') },
+    { chave: 'data', rotulo: 'Data', render: (m) => formatarDataHoraBrasilia(m.createdAtUtc) },
     { chave: 'tipo', rotulo: 'Tipo', render: (m) => tipoMovimentacaoEstoqueEpcLabel[m.tipo] },
     { chave: 'quantidade', rotulo: 'Quantidade', alinhar: 'direita' },
     { chave: 'saldoResultante', rotulo: 'Saldo resultante', alinhar: 'direita' },

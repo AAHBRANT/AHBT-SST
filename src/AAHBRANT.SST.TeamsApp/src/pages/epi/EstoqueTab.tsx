@@ -25,6 +25,7 @@ import {
   type MovimentacaoEstoqueEpi,
   type Obra,
 } from '../../lib/api';
+import { formatarDataHoraBrasilia } from '../../lib/datas';
 
 // Estoque de EPI segmentado por Obra (Fase 3 da reformulação do módulo EPI) — substitui o antigo
 // saldo único global do catálogo. Entradas/saídas por entrega e devolução são automáticas (ver
@@ -147,7 +148,7 @@ export function EstoqueTab() {
   ];
 
   const colunasMovimentacoes: Coluna<MovimentacaoEstoqueEpi>[] = [
-    { chave: 'data', rotulo: 'Data', render: (m) => new Date(m.createdAtUtc).toLocaleString('pt-BR') },
+    { chave: 'data', rotulo: 'Data', render: (m) => formatarDataHoraBrasilia(m.createdAtUtc) },
     { chave: 'tipo', rotulo: 'Tipo', render: (m) => tipoMovimentacaoEstoqueEpiLabel[m.tipo] },
     { chave: 'quantidade', rotulo: 'Quantidade', alinhar: 'direita' },
     { chave: 'saldoResultante', rotulo: 'Saldo resultante', alinhar: 'direita' },
