@@ -70,7 +70,7 @@ public class AtaSessaoTreinamentoPdfService : IAtaSessaoTreinamentoPdfService
             {
                 t.Span("Status: ").SemiBold();
                 t.Span(modelo.DataEncerramento is not null
-                    ? $"Concluída em {modelo.DataEncerramento:dd/MM/yyyy HH:mm}"
+                    ? $"Concluída em {HorarioBrasilia.De(modelo.DataEncerramento.Value):dd/MM/yyyy HH:mm}"
                     : "Em andamento");
             });
         });
@@ -104,7 +104,7 @@ public class AtaSessaoTreinamentoPdfService : IAtaSessaoTreinamentoPdfService
                     Celula(tabela.Cell(), participante.TrabalhadorNome);
                     Celula(tabela.Cell(), participante.TrabalhadorMatricula ?? string.Empty);
                     Celula(tabela.Cell(), participante.PresencaConfirmadaEm is not null
-                        ? $"Confirmada às {participante.PresencaConfirmadaEm:dd/MM/yyyy HH:mm}"
+                        ? $"Confirmada às {HorarioBrasilia.De(participante.PresencaConfirmadaEm.Value):dd/MM/yyyy HH:mm}"
                         : "Ausente");
                 }
             });

@@ -25,6 +25,7 @@ import {
   type MovimentacaoEstoqueUniforme,
   type Obra,
 } from '../../lib/api';
+import { formatarDataHoraBrasilia } from '../../lib/datas';
 
 // Estoque de Uniforme — grade por Obra + Tamanho (mesmo princípio de segmentação por Obra do
 // EstoqueTab.tsx do EPI, com uma dimensão a mais: o tamanho). Entrada é sempre manual (sem código
@@ -153,7 +154,7 @@ export function EstoqueUniformeTab() {
   ];
 
   const colunasMovimentacoes: Coluna<MovimentacaoEstoqueUniforme>[] = [
-    { chave: 'data', rotulo: 'Data', render: (m) => new Date(m.createdAtUtc).toLocaleString('pt-BR') },
+    { chave: 'data', rotulo: 'Data', render: (m) => formatarDataHoraBrasilia(m.createdAtUtc) },
     { chave: 'tipo', rotulo: 'Tipo', render: (m) => tipoMovimentacaoEstoqueUniformeLabel[m.tipo] },
     { chave: 'quantidade', rotulo: 'Quantidade', alinhar: 'direita' },
     { chave: 'saldoResultante', rotulo: 'Saldo resultante', alinhar: 'direita' },

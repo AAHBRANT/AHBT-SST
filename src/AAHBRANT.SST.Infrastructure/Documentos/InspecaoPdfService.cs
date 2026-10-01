@@ -152,7 +152,7 @@ public class InspecaoPdfService : IInspecaoPdfService
             coluna.Spacing(10);
 
             coluna.Item().Text("Assinaturas eletrônicas").FontSize(14).Bold().FontColor(CorMarca);
-            coluna.Item().Text($"Documento finalizado em {assinatura.FinalizadoEm:dd/MM/yyyy HH:mm}.").FontSize(10);
+            coluna.Item().Text($"Documento finalizado em {HorarioBrasilia.De(assinatura.FinalizadoEm):dd/MM/yyyy HH:mm}.").FontSize(10);
 
             foreach (var signatario in assinatura.Signatarios)
             {
@@ -161,7 +161,7 @@ public class InspecaoPdfService : IInspecaoPdfService
                     card.Spacing(3);
                     card.Item().Text(signatario.Nome).FontSize(11).Bold();
                     card.Item().Text($"Método: {signatario.Metodo}");
-                    card.Item().Text($"Assinado em: {signatario.AssinadoEm:dd/MM/yyyy HH:mm}");
+                    card.Item().Text($"Assinado em: {HorarioBrasilia.De(signatario.AssinadoEm):dd/MM/yyyy HH:mm}");
                 });
             }
 

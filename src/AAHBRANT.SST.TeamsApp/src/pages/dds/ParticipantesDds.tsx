@@ -13,6 +13,7 @@ import { tocarBipeAssinaturaAceita } from '../../lib/bipeAssinatura';
 import { SeletorFotoCamera } from '../../components/SeletorFotoCamera';
 import { BotaoBiometriaDigital } from '../../components/assinatura/BotaoBiometriaDigital';
 import { ErroFacialDialog } from '../../components/assinatura/ErroFacialDialog';
+import { formatarHoraBrasilia } from '../../lib/datas';
 
 const linhaFlex = { display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' as const };
 // O backend devolve { erro, motivo } no corpo das rejeições; mostra só o texto do erro.
@@ -278,7 +279,7 @@ export function ParticipantesDds({ detalhe, somenteLeitura, aoAtualizar }: Props
     return presenca ? <div style={{ display: 'grid', gap: 4 }}>
       <StatusChip tom="ok">Presença confirmada</StatusChip>
       <Legenda>{presenca.assinadoEm
-        ? `Assinado às ${new Date(presenca.assinadoEm).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}`
+        ? `Assinado às ${formatarHoraBrasilia(presenca.assinadoEm)}`
         : 'Assinatura pendente'}</Legenda>
     </div> : selecionados.has(f.trabalhadorId)
       ? <StatusChip tom="atencao">Selecionado · presença pendente</StatusChip>

@@ -1,11 +1,16 @@
 import { useEffect, useState } from 'react';
-import { Dialog, DialogActions, DialogBody, DialogContent, DialogSurface, DialogTitle } from '@fluentui/react-components';
 import { Add24Regular, Copy24Regular, Delete24Regular, Warning20Regular } from '@fluentui/react-icons';
 import {
   BotaoAcao,
   Button,
   Card,
   DataTable,
+  Dialog,
+  DialogActions,
+  DialogBody,
+  DialogContent,
+  DialogSurface,
+  DialogTitle,
   Field,
   FeedbackInline,
   Input,
@@ -20,18 +25,19 @@ import {
 import { API_BASE_URL } from '../../lib/apiBase';
 import { api, type DispositivoAgente, type Obra, type RegistroDispositivoAgente } from '../../lib/api';
 import { useSucessoToast } from '../../hooks/useSucessoToast';
+import { lerInstanteUtc } from '../../lib/datas';
 
 // Sincronizou nos últimos 10 min = agente conectado (ele sincroniza a cada 2 min por padrão).
 const JANELA_ONLINE_MS = 10 * 60 * 1000;
 
 function situacao(d: DispositivoAgente): { tom: 'ok' | 'atencao' | 'info'; texto: string } {
   if (!d.ultimaSincronizacaoEm) return { tom: 'atencao', texto: 'Nunca conectou' };
-  const idade = Date.now() - new Date(d.ultimaSincronizacaoEm).getTime();
+  const idade = Date.now() - lerInstanteUtc(d.ultimaSincronizacaoEm).getTime();
   return idade <= JANELA_ONLINE_MS ? { tom: 'ok', texto: 'Conectado' } : { tom: 'info', texto: 'Sem sincronizar' };
 }
 
 function formatarData(iso: string): string {
-  return new Date(iso).toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' });
+  return lerInstanteUtc(iso).toLocaleString('pt-BR', { timeZone: 'America/Sao_Paulo', dateStyle: 'short', timeStyle: 'short' });
 }
 
 // PowerShell: aspas simples literais; ' dentro do valor vira ''.

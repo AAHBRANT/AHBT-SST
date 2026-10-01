@@ -61,22 +61,30 @@ export function formatarDataFoto(d?: DadosFoto | null) {
 }
 
 export type LocalizacaoFoto = Pick<DadosFoto, 'latitude' | 'longitude' | 'precisaoMetros' | 'localizacaoObtidaEm' | 'motivoLocalizacao'>;
+
+const MOTIVO_SEM_LOCALIZACAO_TEAMS = 'Este aparelho não fornece localização ao Teams. Use o celular com o aplicativo do Teams atualizado.';
+
+// GPS do navegador/webview. Também é o fallback quando o cliente do Teams não oferece a API própria.
+function obterLocalizacaoNavegador(motivoIndisponivel: string): Promise<LocalizacaoFoto> {
+  if (!navigator.geolocation) return Promise.resolve({ motivoLocalizacao: motivoIndisponivel });
+  return new Promise<LocalizacaoFoto>((resolve) => navigator.geolocation.getCurrentPosition(
+    p => resolve({ latitude: p.coords.latitude, longitude: p.coords.longitude, precisaoMetros: p.coords.accuracy, localizacaoObtidaEm: new Date(p.timestamp).toISOString() }),
+    e => resolve({ motivoLocalizacao: e.code === 1 ? 'Permissão de localização bloqueada. Libere nas configurações do aparelho e do aplicativo.' : e.code === 3 ? 'O aparelho demorou para obter a localização. Tente novamente no local.' : 'O aparelho não conseguiu obter a localização. Tente novamente no local.' }),
+    { enableHighAccuracy: true, maximumAge: 0, timeout: 15_000 },
+  ));
+}
+
 export async function obterLocalizacaoFoto(): Promise<LocalizacaoFoto> {
   let timer: ReturnType<typeof setTimeout> | undefined;
   try {
     return await Promise.race([
       (async (): Promise<LocalizacaoFoto> => {
         if (await aguardarInicializacaoTeams()) {
-          if (!geoLocation.isSupported()) return { motivoLocalizacao: 'Este Teams não oferece localização. Use um dispositivo compatível.' };
+          if (!geoLocation.isSupported()) return obterLocalizacaoNavegador(MOTIVO_SEM_LOCALIZACAO_TEAMS);
           const pos = await geoLocation.getCurrentLocation();
           return { latitude: pos.latitude, longitude: pos.longitude, precisaoMetros: pos.accuracy, localizacaoObtidaEm: pos.timestamp ? new Date(pos.timestamp).toISOString() : new Date().toISOString() };
         }
-        if (!navigator.geolocation) return { motivoLocalizacao: 'Localização indisponível neste navegador.' };
-        return await new Promise<LocalizacaoFoto>((resolve) => navigator.geolocation.getCurrentPosition(
-          p => resolve({ latitude: p.coords.latitude, longitude: p.coords.longitude, precisaoMetros: p.coords.accuracy, localizacaoObtidaEm: new Date(p.timestamp).toISOString() }),
-          e => resolve({ motivoLocalizacao: e.code === 1 ? 'Permissão de localização bloqueada. Libere nas configurações do aparelho e do aplicativo.' : e.code === 3 ? 'O aparelho demorou para obter a localização. Tente novamente no local.' : 'O aparelho não conseguiu obter a localização. Tente novamente no local.' }),
-          { enableHighAccuracy: true, maximumAge: 0, timeout: 15_000 },
-        ));
+        return obterLocalizacaoNavegador('Localização indisponível neste navegador.');
       })(),
       new Promise<LocalizacaoFoto>(resolve => { timer = setTimeout(() => resolve({ motivoLocalizacao: 'Tempo de localização esgotado. Tente novamente no local.' }), 20_000); }),
     ]);

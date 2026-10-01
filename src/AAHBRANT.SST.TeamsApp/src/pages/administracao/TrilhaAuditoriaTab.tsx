@@ -17,6 +17,7 @@ import {
 } from '@ui';
 import { Filter24Regular } from '@fluentui/react-icons';
 import { api, type TrilhaAuditoria } from '../../lib/api';
+import { formatarDataHoraBrasilia } from '../../lib/datas';
 
 // Onda 2 Task 17 (camada ui/): arquivo citado no Guia de conversão (seção 4) como referência real de
 // `estilos.erro` → `FeedbackInline`. Filtro + tabela vira `FormSection`/`FormGrid`+`DataTable`; o
@@ -58,7 +59,7 @@ export function TrilhaAuditoriaTab() {
   const detalhe = registros.find((r) => r.id === detalheId) ?? null;
 
   const colunas: Coluna<TrilhaAuditoria>[] = [
-    { chave: 'timestamp', rotulo: 'Data/Hora', render: (r) => new Date(r.timestamp).toLocaleString('pt-BR') },
+    { chave: 'timestamp', rotulo: 'Data/Hora', render: (r) => formatarDataHoraBrasilia(r.timestamp) },
     { chave: 'usuario', rotulo: 'Usuário', render: (r) => r.usuarioNome ?? '—' },
     { chave: 'acao', rotulo: 'Ação' },
     { chave: 'entidade', rotulo: 'Entidade', render: (r) => `${r.entidadeTipo} (${r.entidadeId})` },
