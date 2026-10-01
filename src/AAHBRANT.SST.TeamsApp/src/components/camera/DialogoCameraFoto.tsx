@@ -49,7 +49,7 @@ export function DialogoCameraFoto({ captura }: DialogoCameraFotoProps) {
         <DialogBody>
           <DialogTitle>Tirar foto</DialogTitle>
           <DialogContent>
-            {captura.contextoFoto && <div style={{ display: 'grid', gap: 12, marginBottom: 16 }}>
+            {captura.contextoFoto && <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr)', gap: 12, marginBottom: 16, overflowWrap: 'anywhere' }}>
               <Text weight="semibold">Obra: {captura.contextoFoto.obraNome || 'não identificada'}</Text>
               <Text size={200}>A data e a hora serão registradas ao capturar.</Text>
               <Field label="Local da foto" required>

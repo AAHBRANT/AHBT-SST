@@ -42,7 +42,7 @@ public class DocumentoAssinaturaPdfService : IDocumentoAssinaturaPdfService
                     coluna.Item().Text(t =>
                     {
                         t.Span("Finalizado em: ").SemiBold();
-                        t.Span(modelo.FinalizadoEm.ToString("dd/MM/yyyy HH:mm"));
+                        t.Span(HorarioBrasilia.De(modelo.FinalizadoEm).ToString("dd/MM/yyyy HH:mm"));
                     });
 
                     coluna.Item().PaddingTop(8).Text("Assinaturas registradas").FontSize(13).Bold();
@@ -51,7 +51,7 @@ public class DocumentoAssinaturaPdfService : IDocumentoAssinaturaPdfService
                         coluna.Item().Text(t =>
                         {
                             t.Span($"• {signatario.TrabalhadorNome} — ").SemiBold();
-                            t.Span($"{DescreverMetodo(signatario.Metodo)}, em {signatario.AssinadoEm:dd/MM/yyyy HH:mm}");
+                            t.Span($"{DescreverMetodo(signatario.Metodo)}, em {HorarioBrasilia.De(signatario.AssinadoEm):dd/MM/yyyy HH:mm}");
                         });
                     }
 

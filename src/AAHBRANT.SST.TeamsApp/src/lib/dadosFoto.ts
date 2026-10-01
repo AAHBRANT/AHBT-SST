@@ -66,8 +66,9 @@ export async function obterLocalizacaoFoto(): Promise<LocalizacaoFoto> {
   try {
     return await Promise.race([
       (async (): Promise<LocalizacaoFoto> => {
-        if (await aguardarInicializacaoTeams()) {
-          if (!geoLocation.isSupported()) return { motivoLocalizacao: 'Este Teams não oferece localização. Use um dispositivo compatível.' };
+        // Alguns clientes Teams (ex.: tablet) não expõem a capability geoLocation do SDK; nesses casos
+        // cai para a geolocalização do WebView em vez de encerrar com erro.
+        if (await aguardarInicializacaoTeams() && geoLocation.isSupported()) {
           const pos = await geoLocation.getCurrentLocation();
           return { latitude: pos.latitude, longitude: pos.longitude, precisaoMetros: pos.accuracy, localizacaoObtidaEm: pos.timestamp ? new Date(pos.timestamp).toISOString() : new Date().toISOString() };
         }

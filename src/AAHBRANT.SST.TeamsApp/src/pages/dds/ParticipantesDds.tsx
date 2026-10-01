@@ -9,6 +9,7 @@ import {
 } from '@fluentui/react-icons';
 import { api, TipoFotoParticipante, type DdsDetalhe, type DdsFuncionario } from '../../lib/api';
 import { capturarDigitalLocal, obterDispositivoLocal, type DispositivoLocal } from '../../lib/agenteBiometricoLocal';
+import { formatarHoraBrasilia } from '../../components/assinatura/assinaturaDigital';
 import { tocarBipeAssinaturaAceita } from '../../lib/bipeAssinatura';
 import { SeletorFotoCamera } from '../../components/SeletorFotoCamera';
 import { BotaoBiometriaDigital } from '../../components/assinatura/BotaoBiometriaDigital';
@@ -278,7 +279,7 @@ export function ParticipantesDds({ detalhe, somenteLeitura, aoAtualizar }: Props
     return presenca ? <div style={{ display: 'grid', gap: 4 }}>
       <StatusChip tom="ok">Presença confirmada</StatusChip>
       <Legenda>{presenca.assinadoEm
-        ? `Assinado às ${new Date(presenca.assinadoEm).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}`
+        ? `Assinado às ${formatarHoraBrasilia(presenca.assinadoEm)}`
         : 'Assinatura pendente'}</Legenda>
     </div> : selecionados.has(f.trabalhadorId)
       ? <StatusChip tom="atencao">Selecionado · presença pendente</StatusChip>
