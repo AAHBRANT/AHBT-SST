@@ -27,6 +27,36 @@ public class DadosCapturaFotoTests
     }
 
     [Fact]
+    public void ExigirCompleta_FotoDaGaleriaComObraELocal_NaoExigeDataNemGeolocalizacao()
+    {
+        var json = JsonSerializer.Serialize(new DadosCapturaFoto
+        {
+            Origem = "arquivo",
+            Local = "Pátio",
+            ObraId = Guid.NewGuid(),
+            ObraNome = "Obra Centro",
+        });
+
+        DadosCapturaFoto.ExigirCompleta(json, "Foto 3");
+    }
+
+    [Fact]
+    public void ExigirCompleta_FotoDaGaleriaSemLocal_InformaSoDescricaoDoLocal()
+    {
+        var json = JsonSerializer.Serialize(new DadosCapturaFoto
+        {
+            Origem = "arquivo",
+            ObraId = Guid.NewGuid(),
+            ObraNome = "Obra Centro",
+        });
+
+        var ex = Assert.Throws<InvalidOperationException>(() => DadosCapturaFoto.ExigirCompleta(json, "Foto 3"));
+
+        Assert.Contains("descrição do local", ex.Message);
+        Assert.DoesNotContain("geolocalização", ex.Message);
+    }
+
+    [Fact]
     public void ExigirCompleta_SemLocalizacao_InformaPendenciaSemUsarHorarioDeRecebimento()
     {
         var json = JsonSerializer.Serialize(new DadosCapturaFoto

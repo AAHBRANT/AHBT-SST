@@ -676,6 +676,21 @@ public static class NovidadesSeeder
                     "Escolher um tema com descrição muito longa (como o de câncer de mama) gerava \"erro inesperado\" ao criar o DDS.",
                     "O DDS é criado normalmente com temas de descrição longa."),
             }),
+        new(
+            Versao: "5.37.4",
+            Titulo: "Fotos de evidência mais flexíveis e horas corrigidas",
+            DataPublicacao: new DateTime(2026, 10, 1, 0, 0, 0, DateTimeKind.Utc),
+            Itens: new[]
+            {
+                new NovidadeSeedItem(CategoriaNovidade.Melhoria,
+                    "Anexar foto da galeria nas evidências",
+                    "Quando o aparelho não conseguia obter a localização, não era possível concluir as fotos de evidência nem finalizar o DDS.",
+                    "No diálogo \"Tirar foto\" há o botão \"Anexar foto da galeria (sem geolocalização)\". A foto fica marcada como anexada da galeria e exige só a descrição do local. A localização também passou a ser pedida ao navegador quando o Teams não a oferece, e o diálogo não corta mais o texto."),
+                new NovidadeSeedItem(CategoriaNovidade.Correcao,
+                    "Horário das assinaturas do DDS em horário de Brasília",
+                    "A hora das assinaturas aparecia 3 horas adiantada, inclusive com horário futuro.",
+                    "A lista de presença, o Cofre de Assinaturas e o comprovante em PDF mostram as horas no horário de Brasília. Comprovantes já gerados precisam ser gerados de novo."),
+            }),
     };
 
     public static async Task ExecutarAsync(IServiceProvider services, CancellationToken ct = default)

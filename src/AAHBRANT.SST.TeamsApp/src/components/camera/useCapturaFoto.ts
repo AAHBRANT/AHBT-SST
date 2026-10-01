@@ -228,6 +228,13 @@ export function useCapturaFoto({
     setStream(null);
   }
 
+  // Anexo da galeria no lugar da câmera (sem geolocalização): fecha o diálogo e abre o seletor
+  // de arquivos; o local digitado no diálogo segue em localFoto.
+  function anexarDaGaleria() {
+    fecharCamera();
+    inputRef.current?.click();
+  }
+
   function capturarFoto() {
     const video = videoRef.current;
     if (!video || !video.videoWidth) return;
@@ -268,6 +275,7 @@ export function useCapturaFoto({
     abrirCamera,
     fecharCamera,
     capturarFoto,
+    anexarDaGaleria,
     trocarDispositivo,
     onInputChange,
   };

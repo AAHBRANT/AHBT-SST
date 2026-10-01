@@ -63,6 +63,9 @@ export function DialogoCameraFoto({ captura }: DialogoCameraFotoProps) {
                     : 'Localização ainda não obtida. A foto ficará com pendência.')}
               </FeedbackInline>
               <Button onClick={() => void captura.tentarLocalizacao()} disabled={captura.localizando}>Tentar localização novamente</Button>
+              {!captura.exigirCamera && <Button appearance="subtle" onClick={captura.anexarDaGaleria} disabled={!captura.localFoto.trim()}>
+                Anexar foto da galeria (sem geolocalização)
+              </Button>}
             </div>}
             {dispositivosVideo.length > 1 && (
               <Field label="Câmera" style={{ marginBottom: 8 }}>
