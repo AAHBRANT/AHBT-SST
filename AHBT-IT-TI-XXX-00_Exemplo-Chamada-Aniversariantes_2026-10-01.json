@@ -1,0 +1,16 @@
+{
+  "assunto": "Aniversariantes de Novembro",
+  "assunto_sem_prefixo": true,
+  "titulo": "Aniversariantes de Novembro",
+  "mensagem_principal": "Neste mês, a AAHBRANT parabeniza os colaboradores que celebram aniversário:\n\n**[Dia/Mês] – [Nome do colaborador] – [Setor]**\n**[Dia/Mês] – [Nome do colaborador] – [Setor]**\n\nDesejamos a todos um dia de alegria e muitas conquistas.",
+  "data_comunicado": "01/11/2026",
+  "hora_comunicado": "08h00",
+  "setor": "RH",
+  "formato": "Paisagem",
+  "solicitante": "[Nome do responsável do RH]",
+  "email_solicitante": "[responsavel.rh]@aahbrant.com",
+  "data_hora_agendada": "2026-10-30T08:00:00-03:00",
+  "modo_teste": true,
+  "email_teste": "[email.de.teste]@aahbrant.com",
+  "confirmar_envio": "SIM"
+}
