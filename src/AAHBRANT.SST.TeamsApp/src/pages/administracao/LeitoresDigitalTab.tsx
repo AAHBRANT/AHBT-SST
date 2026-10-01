@@ -1,11 +1,16 @@
 import { useEffect, useState } from 'react';
-import { Dialog, DialogActions, DialogBody, DialogContent, DialogSurface, DialogTitle } from '@fluentui/react-components';
 import { Add24Regular, Copy24Regular, Delete24Regular, Warning20Regular } from '@fluentui/react-icons';
 import {
   BotaoAcao,
   Button,
   Card,
   DataTable,
+  Dialog,
+  DialogActions,
+  DialogBody,
+  DialogContent,
+  DialogSurface,
+  DialogTitle,
   Field,
   FeedbackInline,
   Input,
