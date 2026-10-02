@@ -259,7 +259,10 @@ export function EntregasTab({ aoNavegarParaMatriz }: EntregasTabProps) {
         // treinamentos, e a tela acusava falta de NR-06 em obra que só não tinha configurado o
         // curso de Integração. O `return` agora é dentro do try, então o `finally` roda e a tela
         // não fica presa em "Verificando…".
-        const cursoIntegracao = cursos.find((c) => c.ehIntegracaoSeguranca);
+        // 02/10: Integração de Segurança NÃO é mais exigida para entregar EPI (só a NR-06). O backend
+        // não chama mais a trava; aqui a verificação fica desligada para a tela não bloquear à toa.
+        const EXIGE_INTEGRACAO_PARA_EPI = false;
+        const cursoIntegracao = EXIGE_INTEGRACAO_PARA_EPI ? cursos.find((c) => c.ehIntegracaoSeguranca) : undefined;
         if (!cursoIntegracao) {
           setStatusIntegracao({ tipo: 'sem-curso' });
           return;
