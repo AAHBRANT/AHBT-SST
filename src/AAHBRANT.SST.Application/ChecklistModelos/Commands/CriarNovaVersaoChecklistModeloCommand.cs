@@ -37,6 +37,7 @@ public class CriarNovaVersaoChecklistModeloCommandHandler : IRequestHandler<Cria
         {
             Nome = anterior.Nome,
             TipoInspecao = anterior.TipoInspecao,
+            TipoVeiculo = anterior.TipoVeiculo,
             Versao = anterior.Versao + 1,
             ChecklistModeloAnteriorId = anterior.Id,
         };

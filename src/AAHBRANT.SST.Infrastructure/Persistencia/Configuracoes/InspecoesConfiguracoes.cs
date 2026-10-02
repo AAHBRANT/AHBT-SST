@@ -12,6 +12,7 @@ public class ChecklistModeloConfiguracao : IEntityTypeConfiguration<ChecklistMod
         builder.HasOne(c => c.ChecklistModeloAnterior).WithMany()
             .HasForeignKey(c => c.ChecklistModeloAnteriorId).OnDelete(DeleteBehavior.Restrict);
         builder.HasIndex(c => c.TipoInspecao);
+        builder.HasIndex(c => c.TipoVeiculo);
         builder.HasQueryFilter(c => c.Ativo);
     }
 }
@@ -40,6 +41,8 @@ public class InspecaoConfiguracao : IEntityTypeConfiguration<Inspecao>
             .HasForeignKey(i => i.AtividadeId).OnDelete(DeleteBehavior.Restrict);
         builder.HasOne(i => i.Alojamento).WithMany()
             .HasForeignKey(i => i.AlojamentoId).OnDelete(DeleteBehavior.Restrict);
+        builder.HasOne(i => i.Veiculo).WithMany()
+            .HasForeignKey(i => i.VeiculoId).OnDelete(DeleteBehavior.Restrict);
         builder.HasOne(i => i.ChecklistModelo).WithMany()
             .HasForeignKey(i => i.ChecklistModeloId).OnDelete(DeleteBehavior.Restrict);
         builder.HasOne(i => i.ResponsavelUsuario).WithMany()
@@ -52,6 +55,10 @@ public class InspecaoConfiguracao : IEntityTypeConfiguration<Inspecao>
         builder.HasIndex(i => i.AlojamentoId)
             .IsUnique()
             .HasFilter("[AlojamentoId] IS NOT NULL AND [Status] = 1");
+        // Idem para veículos: uma única inspeção em andamento por veículo, garantida no banco.
+        builder.HasIndex(i => i.VeiculoId)
+            .IsUnique()
+            .HasFilter("[VeiculoId] IS NOT NULL AND [Status] = 1");
         builder.HasQueryFilter(i => i.Ativo);
     }
 }
