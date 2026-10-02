@@ -29,6 +29,14 @@ public class CursoTreinamento : AuditableEntity
     // 6, então nada muda para o que já estava cadastrado.
     public bool AtendeNr6 { get; set; }
 
+    // Regra fixa (02/10): só o curso cuja norma é a NR-06 habilita a entrega de EPI. Nunca vem do
+    // cliente — Criar/Atualizar derivam o marcador daqui, então nenhum outro curso (ex.: NR-11) pode ser marcado.
+    public static bool NormaHabilitaEpi(string? normaReferencia)
+    {
+        var norma = normaReferencia?.Trim().Replace(" ", "").ToUpperInvariant();
+        return norma is "NR-06" or "NR-6" or "NR06" or "NR6";
+    }
+
     public ICollection<Treinamento> Realizacoes { get; set; } = new List<Treinamento>();
 }
 

@@ -691,6 +691,17 @@ public static class NovidadesSeeder
                     "A hora das assinaturas aparecia 3 horas adiantada, inclusive com horário futuro.",
                     "A lista de presença, o Cofre de Assinaturas e o comprovante em PDF mostram as horas no horário de Brasília. Comprovantes já gerados precisam ser gerados de novo."),
             }),
+        new(
+            Versao: "5.37.5",
+            Titulo: "Só a NR-06 habilita a entrega de EPI",
+            DataPublicacao: new DateTime(2026, 10, 2, 0, 0, 0, DateTimeKind.Utc),
+            Itens: new[]
+            {
+                new NovidadeSeedItem(CategoriaNovidade.Correcao,
+                    "Catálogo de cursos: habilitação de EPI fixa na NR-06",
+                    "Cada curso do catálogo tinha um botão \"Habilita EPI (NR-06)\", e era possível marcar outro curso (como a NR-11) para liberar a entrega de EPI.",
+                    "Apenas o curso da NR-06 habilita a entrega de EPI. O botão e a caixa de marcação foram removidos e o sistema não aceita mais outro curso nessa função."),
+            }),
     };
 
     public static async Task ExecutarAsync(IServiceProvider services, CancellationToken ct = default)
