@@ -691,6 +691,25 @@ public static class NovidadesSeeder
                     "A hora das assinaturas aparecia 3 horas adiantada, inclusive com horário futuro.",
                     "A lista de presença, o Cofre de Assinaturas e o comprovante em PDF mostram as horas no horário de Brasília. Comprovantes já gerados precisam ser gerados de novo."),
             }),
+        new(
+            Versao: "5.38.0",
+            Titulo: "Inspeção de veículos e equipamentos",
+            DataPublicacao: new DateTime(2026, 10, 2, 0, 0, 0, DateTimeKind.Utc),
+            Itens: new[]
+            {
+                new NovidadeSeedItem(CategoriaNovidade.Novidade,
+                    "Nova aba Veículos em Inspeções",
+                    "Não havia como inspecionar caminhões, retroescavadeiras e escavadeiras no sistema: o check list era feito só na planilha.",
+                    "Em Operação > Inspeções > Veículos, escolha a obra e depois o tipo (caminhão basculante, retroescavadeira, escavadeira hidráulica, caminhão carroceria ou caminhão munck). Aparecem todos os veículos daquele tipo na obra, cada um com seu card, botão de inspeção, histórico e PDF."),
+                new NovidadeSeedItem(CategoriaNovidade.Novidade,
+                    "Cadastro de veículos feito pelo próprio SST",
+                    "Os veículos não vêm de nenhum outro sistema.",
+                    "O Técnico cadastra o veículo (placa/prefixo, modelo, subcontratada, responsável) na própria aba e pode trocá-lo de obra sem perder o histórico. Só o Administrador exclui."),
+                new NovidadeSeedItem(CategoriaNovidade.Novidade,
+                    "Checklist por tipo de veículo e foto só nas não conformidades",
+                    "Os 5 check lists estavam apenas na planilha \"CHECK LIST - AT CUIA\".",
+                    "Cada tipo tem seu checklist (Conforme, Não conforme ou Não aplicável), editável em Catálogo de inspeções. A foto é pedida somente nos itens marcados como Não conforme, uma por item, e o PDF mostra a identificação do veículo."),
+            }),
     };
 
     public static async Task ExecutarAsync(IServiceProvider services, CancellationToken ct = default)
