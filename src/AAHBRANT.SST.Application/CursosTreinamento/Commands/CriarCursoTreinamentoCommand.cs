@@ -40,7 +40,7 @@ public class CriarCursoTreinamentoCommandHandler : IRequestHandler<CriarCursoTre
             ValidadeEmMeses = request.ValidadeEmMeses,
             ConteudoProgramatico = request.ConteudoProgramatico,
             EhIntegracaoSeguranca = request.EhIntegracaoSeguranca,
-            AtendeNr6 = request.AtendeNr6,
+            AtendeNr6 = Domain.Entidades.CursoTreinamento.NormaHabilitaEpi(request.NormaReferencia),
         };
 
         if (request.EhIntegracaoSeguranca)

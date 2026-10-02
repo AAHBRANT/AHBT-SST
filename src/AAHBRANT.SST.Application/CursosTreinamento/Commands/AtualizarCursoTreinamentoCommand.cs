@@ -41,7 +41,7 @@ public class AtualizarCursoTreinamentoCommandHandler : IRequestHandler<Atualizar
         curso.CargaHorariaMinima = request.CargaHorariaMinima;
         curso.ValidadeEmMeses = request.ValidadeEmMeses;
         curso.ConteudoProgramatico = request.ConteudoProgramatico;
-        curso.AtendeNr6 = request.AtendeNr6;
+        curso.AtendeNr6 = Domain.Entidades.CursoTreinamento.NormaHabilitaEpi(request.NormaReferencia);
 
         if (request.EhIntegracaoSeguranca && !curso.EhIntegracaoSeguranca)
         {

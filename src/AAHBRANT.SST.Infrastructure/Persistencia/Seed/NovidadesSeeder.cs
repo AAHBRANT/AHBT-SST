@@ -692,6 +692,28 @@ public static class NovidadesSeeder
                     "A lista de presença, o Cofre de Assinaturas e o comprovante em PDF mostram as horas no horário de Brasília. Comprovantes já gerados precisam ser gerados de novo."),
             }),
         new(
+            Versao: "5.37.5",
+            Titulo: "Só a NR-06 habilita a entrega de EPI",
+            DataPublicacao: new DateTime(2026, 10, 2, 0, 0, 0, DateTimeKind.Utc),
+            Itens: new[]
+            {
+                new NovidadeSeedItem(CategoriaNovidade.Correcao,
+                    "Catálogo de cursos: habilitação de EPI fixa na NR-06",
+                    "Cada curso do catálogo tinha um botão \"Habilita EPI (NR-06)\", e era possível marcar outro curso (como a NR-11) para liberar a entrega de EPI.",
+                    "Apenas o curso da NR-06 habilita a entrega de EPI. O botão e a caixa de marcação foram removidos e o sistema não aceita mais outro curso nessa função."),
+            }),
+        new(
+            Versao: "5.37.6",
+            Titulo: "Canhoto de EPI volta a imprimir",
+            DataPublicacao: new DateTime(2026, 10, 2, 0, 0, 0, DateTimeKind.Utc),
+            Itens: new[]
+            {
+                new NovidadeSeedItem(CategoriaNovidade.Correcao,
+                    "Imprimir o canhoto do carrinho de EPI",
+                    "Ao clicar em imprimir o canhoto no carrinho de EPI, nada acontecia dentro do Teams.",
+                    "O canhoto abre numa janela da própria tela, com as fotos dos EPIs, e o botão Imprimir envia para a impressora."),
+            }),
+        new(
             Versao: "5.38.0",
             Titulo: "Inspeção de veículos e equipamentos",
             DataPublicacao: new DateTime(2026, 10, 2, 0, 0, 0, DateTimeKind.Utc),
