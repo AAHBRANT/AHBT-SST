@@ -31,10 +31,9 @@ public class EntregaEpiPdfService : IFichaEpiPdfService
                     coluna.Spacing(10);
 
                     coluna.Item().Element(c => SecaoIdentificacao(c, modelo));
-                    coluna.Item().Element(SecaoTermoCompromisso(modelo));
                     coluna.Item().Element(c => SecaoControleEntrega(c, modelo));
+                    coluna.Item().Element(SecaoTermoCompromisso(modelo));
                     coluna.Item().Element(c => SecaoControleDevolucao(c, modelo));
-                    coluna.Item().Element(SecaoObservacao);
                 });
 
                 pagina.Footer().Column(coluna => RodapeDocumentoPadrao.Desenhar(
@@ -100,7 +99,7 @@ public class EntregaEpiPdfService : IFichaEpiPdfService
         return container => container.Column(coluna =>
         {
             coluna.Spacing(3);
-            coluna.Item().Text("2. Termo de Recebimento e Compromisso de Uso").FontSize(11).Bold().FontColor(CorMarca);
+            coluna.Item().Text("3. Termo de Recebimento e Compromisso de Uso").FontSize(11).Bold().FontColor(CorMarca);
 
             coluna.Item().Text($"1 — Declaro ter recebido do {contratante} os Equipamentos de Proteção Individual (EPIs) relacionados nesta ficha, nas datas e quantidades ali indicadas, todos em perfeitas condições de uso e com Certificado de Aprovação (CA) válido.");
             coluna.Item().Text($"2 — Declaro ter recebido orientação e treinamento sobre o uso correto, a guarda, a conservação, a higienização e os critérios de substituição de cada EPI relacionado, conforme registrado na Lista de Presença de Treinamento (NR-6) nº __________, realizada em {dataTermoFormatada}.");
@@ -117,7 +116,7 @@ public class EntregaEpiPdfService : IFichaEpiPdfService
     {
         container.Column(coluna =>
         {
-            coluna.Item().Text("3. Controle de Entrega de EPI").FontSize(11).Bold().FontColor(CorMarca);
+            coluna.Item().Text("2. Controle de Entrega de EPI").FontSize(11).Bold().FontColor(CorMarca);
 
             if (modelo.Entregas.Count == 0)
             {
@@ -144,7 +143,7 @@ public class EntregaEpiPdfService : IFichaEpiPdfService
                     header.Cell().Element(CabecalhoCelula).Text("Nº");
                     header.Cell().Element(CabecalhoCelula).Text("EPI");
                     header.Cell().Element(CabecalhoCelula).Text("CA");
-                    header.Cell().Element(CabecalhoCelula).Text("Motivo");
+                    header.Cell().Element(CabecalhoCelula).Text("Observação");
                     header.Cell().Element(CabecalhoCelula).Text("Qtd.");
                     header.Cell().Element(CabecalhoCelula).Text("Data");
                     header.Cell().Element(CabecalhoCelula).Text("Assin. empregado");
@@ -210,15 +209,6 @@ public class EntregaEpiPdfService : IFichaEpiPdfService
                     table.Cell().Element(Celula).Text(linha.VistoResponsavel ?? "-");
                 }
             });
-        });
-    }
-
-    private static void SecaoObservacao(IContainer container)
-    {
-        container.Column(coluna =>
-        {
-            coluna.Item().Text("Observação").FontSize(11).Bold().FontColor(CorMarca);
-            coluna.Item().Text("Antes de cada entrega, confirmar a validade do CA na Matriz de EPI por Função. Manter esta ficha arquivada por, no mínimo, 20 anos após o desligamento do trabalhador, para fins de rastreabilidade em fiscalizações e processos trabalhistas.").FontSize(8);
         });
     }
 

@@ -732,6 +732,21 @@ public static class NovidadesSeeder
                     "Os 5 check lists estavam apenas na planilha \"CHECK LIST - AT CUIA\".",
                     "Cada tipo tem seu checklist (Conforme, Não conforme ou Não aplicável), editável em Catálogo de inspeções. A foto é pedida somente nos itens marcados como Não conforme, uma por item, e o PDF mostra a identificação do veículo."),
             }),
+        new(
+            Versao: "5.38.1",
+            Titulo: "Ficha de EPI com a tabela de entregas antes do termo",
+            DataPublicacao: new DateTime(2026, 10, 2, 0, 0, 0, DateTimeKind.Utc),
+            Itens: new[]
+            {
+                new NovidadeSeedItem(CategoriaNovidade.Melhoria,
+                    "Nova ordem das seções da Ficha de EPI",
+                    "A ficha trazia o Termo de Recebimento e Compromisso de Uso antes do Controle de Entrega de EPI.",
+                    "O Controle de Entrega de EPI passou a ser o item 2 e o Termo de Recebimento e Compromisso de Uso o item 3. Só as fichas geradas a partir de agora saem na nova ordem."),
+                new NovidadeSeedItem(CategoriaNovidade.Melhoria,
+                    "Coluna \"Observação\" e fim do texto final da Ficha de EPI",
+                    "A coluna da tabela de entregas se chamava \"Motivo\" e a ficha terminava com uma seção \"Observação\" de texto fixo.",
+                    "A coluna agora se chama \"Observação\" e continua mostrando o motivo da entrega. A seção final de texto fixo foi removida."),
+            }),
     };
 
     public static async Task ExecutarAsync(IServiceProvider services, CancellationToken ct = default)
