@@ -36,8 +36,15 @@ public class DocumentoSignatarioConfiguracao : IEntityTypeConfiguration<Document
 
         // Idempotência por papel: em EntregaEpi um Técnico de Segurança pode assinar como
         // recebedor e como responsável, desde que use métodos distintos. A regra de aplicação
-        // bloqueia a repetição do mesmo método; o índice precisa refletir esse contrato.
-        builder.HasIndex(s => new { s.DocumentoAssinaturaId, s.TrabalhadorId, s.MetodoAutenticacao }).IsUnique();
+        // bloqueia a repetição do mesmo método; o índice precisa refletir esse contrato. O Papel
+        // entra no índice para o técnico assinar o Registro Semanal de DDS nas duas funções (ambas
+        // por sessão logada); sem papel (nulo) o comportamento é o de sempre.
+        builder.HasIndex(s => new { s.DocumentoAssinaturaId, s.TrabalhadorId, s.MetodoAutenticacao, s.Papel })
+            .IsUnique()
+            // Sem filtro: o EF poria "[Papel] IS NOT NULL" por a coluna ser anulável, e as assinaturas
+            // comuns (Papel nulo) perderiam a garantia de unicidade. No SQL Server o índice único
+            // trata nulos como iguais, que é o que queremos.
+            .HasFilter(null);
 
         builder.HasQueryFilter(s => s.Ativo);
     }

@@ -28,7 +28,8 @@ public class ListarAprAssinaturasQueryHandler : IRequestHandler<ListarAprAssinat
             TrabalhadorId = s.TrabalhadorId,
             TrabalhadorNome = s.Trabalhador?.Nome ?? string.Empty,
             Papel = s.Papel,
-            DataAssinatura = s.DataAssinatura
+            DataAssinatura = s.DataAssinatura,
+            MetodoAutenticacao = s.MetodoAutenticacao
         }).ToList();
     }
 }

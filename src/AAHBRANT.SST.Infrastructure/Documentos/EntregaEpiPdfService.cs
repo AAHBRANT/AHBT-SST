@@ -1,3 +1,4 @@
+using AAHBRANT.SST.Application.Assinatura;
 using AAHBRANT.SST.Application.EntregasEpi;
 using AAHBRANT.SST.Domain.Enums;
 using QuestPDF.Fluent;
@@ -88,14 +89,19 @@ public class EntregaEpiPdfService : IFichaEpiPdfService
         var contratante = modelo.ObraCliente ?? "empregador";
         var dataTermo = HorarioBrasilia.Agora;
         var dataTermoFormatada = dataTermo.ToString("dd/MM/yyyy");
-        var primeiraAssinaturaEmpregado = modelo.Entregas
+        // Data e nº vêm do certificado de NR-06 do trabalhador (pedido de 02/10); sem certificado,
+        // ficam em branco para preenchimento à mão — a trava de NR-06 já barra a entrega nesse caso.
+        var dataNr6 = modelo.DataTreinamentoNr6?.ToString("dd/MM/yyyy") ?? "____/____/______";
+        var numeroNr6 = string.IsNullOrWhiteSpace(modelo.NumeroCertificadoNr6) ? "__________" : modelo.NumeroCertificadoNr6;
+        var primeiraEntregaAssinada = modelo.Entregas
             .Where(e => e.AssinadoPeloEmpregadoEm is not null)
             .OrderBy(e => e.AssinadoPeloEmpregadoEm)
-            .Select(e => e.AssinadoPeloEmpregadoEm)
             .FirstOrDefault();
+        var primeiraAssinaturaEmpregado = primeiraEntregaAssinada?.AssinadoPeloEmpregadoEm;
         var assinaturaTermo = primeiraAssinaturaEmpregado is null
             ? "Assinatura do Empregado — Termo de Compromisso: pendente"
-            : $"Assinatura do Empregado — Termo de Compromisso: assinado digitalmente por {modelo.TrabalhadorNome} em {FormatarDataHoraAssinatura(primeiraAssinaturaEmpregado.Value)}";
+            : $"Assinatura do Empregado — Termo de Compromisso: assinado digitalmente por {modelo.TrabalhadorNome}. "
+              + DescricaoMetodoAssinatura.Legenda(HorarioBrasilia.De(primeiraAssinaturaEmpregado.Value), primeiraEntregaAssinada!.MetodoEmpregado);
 
         return container => container.Column(coluna =>
         {
@@ -103,7 +109,7 @@ public class EntregaEpiPdfService : IFichaEpiPdfService
             coluna.Item().Text("2. Termo de Recebimento e Compromisso de Uso").FontSize(11).Bold().FontColor(CorMarca);
 
             coluna.Item().Text($"1 — Declaro ter recebido do {contratante} os Equipamentos de Proteção Individual (EPIs) relacionados nesta ficha, nas datas e quantidades ali indicadas, todos em perfeitas condições de uso e com Certificado de Aprovação (CA) válido.");
-            coluna.Item().Text($"2 — Declaro ter recebido orientação e treinamento sobre o uso correto, a guarda, a conservação, a higienização e os critérios de substituição de cada EPI relacionado, conforme registrado na Lista de Presença de Treinamento (NR-6) nº __________, realizada em {dataTermoFormatada}.");
+            coluna.Item().Text($"2 — Declaro ter recebido orientação e treinamento sobre o uso correto, a guarda, a conservação, a higienização e os critérios de substituição de cada EPI relacionado, conforme registrado na Lista de Presença de Treinamento (NR-6) nº {numeroNr6}, realizada em {dataNr6}.");
             coluna.Item().Text("3 — Comprometo-me a utilizar os EPIs exclusivamente para a finalidade a que se destinam, durante toda a execução das minhas atividades laborais, zelando por sua guarda, conservação e higienização adequadas, e a comunicar imediatamente ao Setor de Segurança do Trabalho qualquer dano, extravio ou alteração que os torne impróprios para uso.");
             coluna.Item().Text("4 — Comprometo-me a devolver os EPIs sempre que solicitado, inclusive nos casos de substituição, troca de função, mudança de atividade ou rescisão do meu contrato de trabalho.");
             coluna.Item().Text("5 — Estou ciente de que o descumprimento das obrigações aqui assumidas constitui falta funcional, passível de sanções disciplinares que poderão variar, a critério do empregador, de advertência por escrito até a rescisão contratual por justa causa, sem prejuízo de demais medidas legais cabíveis, conforme disposto no Art. 158 da CLT e na Norma Regulamentadora nº 6 (NR-6).");
@@ -159,8 +165,8 @@ public class EntregaEpiPdfService : IFichaEpiPdfService
                     table.Cell().Element(Celula).Text(MotivoLabel(linha.MotivoTipo, linha.MotivoObservacao));
                     table.Cell().Element(Celula).Text(linha.Quantidade.ToString());
                     table.Cell().Element(Celula).Text(linha.DataEntrega.ToString("dd/MM/yyyy"));
-                    table.Cell().Element(Celula).Text(FormatarAssinaturaDigital(linha.AssinadoPeloEmpregadoEm, linha.AssinadoPeloEmpregado));
-                    table.Cell().Element(Celula).Text(FormatarAssinaturaDigital(linha.AssinadoPeloResponsavelEm, linha.AssinadoPeloResponsavel));
+                    table.Cell().Element(Celula).Element(c => CelulaAssinatura(c, linha.AssinadoPeloEmpregadoEm, linha.AssinadoPeloEmpregado, linha.MetodoEmpregado));
+                    table.Cell().Element(Celula).Element(c => CelulaAssinatura(c, linha.AssinadoPeloResponsavelEm, linha.AssinadoPeloResponsavel, linha.MetodoResponsavel));
                 }
             });
         });
@@ -206,7 +212,7 @@ public class EntregaEpiPdfService : IFichaEpiPdfService
                     table.Cell().Element(Celula).Text(linha.EpiNome);
                     table.Cell().Element(Celula).Text(linha.QuantidadeDevolvida.ToString());
                     table.Cell().Element(Celula).Text(linha.DataDevolucao.ToString("dd/MM/yyyy"));
-                    table.Cell().Element(Celula).Text(FormatarAssinaturaDigital(linha.AssinadoPeloEmpregadoEm, linha.AssinadoPeloEmpregado));
+                    table.Cell().Element(Celula).Element(c => CelulaAssinatura(c, linha.AssinadoPeloEmpregadoEm, linha.AssinadoPeloEmpregado, linha.MetodoEmpregado));
                     table.Cell().Element(Celula).Text(linha.VistoResponsavel ?? "-");
                 }
             });
@@ -228,13 +234,23 @@ public class EntregaEpiPdfService : IFichaEpiPdfService
     private static IContainer Celula(IContainer container) =>
         container.Padding(3).BorderBottom(0.5f).BorderColor(Colors.Grey.Lighten1).DefaultTextStyle(t => t.FontSize(7.5f));
 
-    private static string FormatarAssinaturaDigital(DateTime? assinadoEm, bool assinado)
+    // "Assinado digitalmente" + legenda miúda (corpo 6) com data/hora e método de identificação —
+    // pedido do usuário (02/10) para toda assinatura de documento; corpo pequeno para não esticar a linha.
+    private static void CelulaAssinatura(IContainer container, DateTime? assinadoEm, bool assinado, MetodoAutenticacaoAssinatura? metodo)
     {
-        if (!assinado) return "Pendente";
-        if (assinadoEm is null) return "Assinado digitalmente";
+        if (!assinado)
+        {
+            container.Text("Pendente");
+            return;
+        }
 
-        var dataHora = HorarioBrasilia.De(assinadoEm.Value);
-        return $"Assinado digitalmente em {dataHora:dd/MM/yyyy HH:mm}";
+        container.Column(c =>
+        {
+            c.Item().Text("Assinado digitalmente").FontSize(6);
+            if (assinadoEm is { } quando)
+                c.Item().Text(DescricaoMetodoAssinatura.LegendaCurta(HorarioBrasilia.De(quando), metodo))
+                    .FontSize(6).FontColor(Colors.Grey.Darken2);
+        });
     }
 
     private static string FormatarDataHoraAssinatura(DateTime assinadoEm)

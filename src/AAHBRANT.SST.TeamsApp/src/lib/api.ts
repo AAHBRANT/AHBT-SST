@@ -2279,9 +2279,17 @@ export interface DdsSemanalDetalhe {
   dias: DdsSemanalDia[];
 }
 
+// Quem assinou um dos dois campos do documento semanal e quando (null = ainda não assinado).
+export interface DdsSemanalAssinatura {
+  nome: string;
+  assinadoEm: string;
+}
+
 export interface CatalogoTemaDds {
   id: string;
   nome: string;
+  assinaturaResponsavelDds?: DdsSemanalAssinatura | null;
+  assinaturaResponsavelObraSst?: DdsSemanalAssinatura | null;
   descricao?: string | null;
 }
 
@@ -4809,6 +4817,9 @@ export const api = {
   catalogoTemasDds: {
     listar: () => request<CatalogoTemaDds[]>('/api/catalogotemasdds'),
     criar: (nome: string, descricao?: string | null) =>
+    // Assinatura com um clique do usuário logado em um dos dois campos do documento semanal.
+    assinar: (id: string, campo: 'responsavel-dds' | 'responsavel-obra-sst') =>
+      request<void>(`/api/ddssemanal/${id}/assinar/${campo}`, { method: 'POST' }),
       request<{ id: string }>('/api/catalogotemasdds', { method: 'POST', body: JSON.stringify({ nome, descricao }) }),
     atualizar: (id: string, nome: string, descricao?: string | null) =>
       request<void>(`/api/catalogotemasdds/${id}`, { method: 'PUT', body: JSON.stringify({ nome, descricao }) }),
@@ -4817,6 +4828,15 @@ export const api = {
   assinatura: {
     obter: async (entidadeTipo: string, entidadeId: string) => {
       const query = new URLSearchParams({ entidadeTipo, entidadeId });
+    // "Baixar semana": DDS semanal + os diários com lista de presença, num PDF só.
+    baixarSemanaCompleta: async (id: string) => {
+      const response = await fetch(`${API_BASE_URL}/api/ddssemanal/${id}/pdf-completo`, { headers: await montarHeadersAuth() });
+      if (!response.ok) {
+        const corpo = await response.text().catch(() => '');
+        throw new Error(extrairMensagemErro(corpo, response.status, response.statusText));
+      }
+      return response.blob();
+    },
       const response = await fetch(`${API_BASE_URL}/api/documentos?${query.toString()}`, {
         headers: await montarHeadersAuth(),
       });

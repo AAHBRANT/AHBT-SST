@@ -96,16 +96,21 @@ public class AtaSessaoTreinamentoPdfService : IAtaSessaoTreinamentoPdfService
                 {
                     CelulaCabecalho(cabecalho.Cell(), "Nome");
                     CelulaCabecalho(cabecalho.Cell(), "Matrícula");
-                    CelulaCabecalho(cabecalho.Cell(), "Presença (biometria)");
+                    CelulaCabecalho(cabecalho.Cell(), "Assinatura");
                 });
 
                 foreach (var participante in modelo.Participantes)
                 {
                     Celula(tabela.Cell(), participante.TrabalhadorNome);
                     Celula(tabela.Cell(), participante.TrabalhadorMatricula ?? string.Empty);
-                    Celula(tabela.Cell(), participante.PresencaConfirmadaEm is not null
-                        ? $"Confirmada às {participante.PresencaConfirmadaEm:dd/MM/yyyy HH:mm}"
-                        : "Ausente");
+                    // Padrão único de assinatura (AssinaturaPdfPadrao); ausente = sem assinatura.
+                    tabela.Cell().BorderBottom(1).BorderColor(Colors.Grey.Lighten2).Padding(4).AlignMiddle().Column(assinatura =>
+                    {
+                        if (participante.PresencaConfirmadaEm is { } quando)
+                            AssinaturaPdfPadrao.Legenda(assinatura, quando, participante.Metodo);
+                        else
+                            assinatura.Item().AlignCenter().Text("Ausente").FontSize(8).Italic().FontColor(Colors.Grey.Darken1);
+                    });
                 }
             });
         });

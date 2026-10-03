@@ -2,7 +2,7 @@ using AAHBRANT.SST.Domain.Enums;
 
 namespace AAHBRANT.SST.Application.Aprs;
 
-public record AprPdfEnvolvido(string Nome, string? Funcao, bool Assinou);
+public record AprPdfEnvolvido(string Nome, string? Funcao, bool Assinou, DateTime? AssinadoEm = null, MetodoAutenticacaoAssinatura? Metodo = null);
 
 public record AprPdfRiscoLinha(
     string Etapa,
@@ -19,7 +19,7 @@ public record AprPdfRiscoLinha(
     int SeveridadeResidual,
     NivelRiscoApr NivelRiscoResidual);
 
-public record AprPdfAssinatura(string? Nome, string? Funcao, DateTime? Data);
+public record AprPdfAssinatura(string? Nome, string? Funcao, DateTime? Data, MetodoAutenticacaoAssinatura? Metodo = null);
 
 // Modelo achatado (não o AprDetalheDto direto) — mesmo princípio de DdsPdfModelo: o serviço de PDF
 // não depende do EF/Include, só dos dados já resolvidos pela query.

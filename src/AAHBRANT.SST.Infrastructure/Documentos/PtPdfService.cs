@@ -1,3 +1,4 @@
+using AAHBRANT.SST.Application.Assinatura;
 using AAHBRANT.SST.Application.PermissoesTrabalho;
 using AAHBRANT.SST.Domain.Enums;
 using QuestPDF.Fluent;
@@ -234,7 +235,11 @@ public class PtPdfService : IPtPdfService
             coluna.Item().Text(titulo).Bold().FontSize(7.5f);
             coluna.Item().PaddingTop(4).Text($"Nome: {assinatura.Nome ?? "____________________________"}");
             coluna.Item().Text("Assinatura: ______________________");
-            coluna.Item().Text($"Data: {(assinatura.Data.HasValue ? assinatura.Data.Value.ToString("dd/MM/yyyy HH:mm") : "____/____/______")}");
+            coluna.Item().Text($"Data: {(assinatura.Data.HasValue ? HorarioBrasilia.De(assinatura.Data.Value).ToString("dd/MM/yyyy HH:mm") : "____/____/______")}");
+            // Legenda miúda (pedido de 02/10): como a pessoa foi identificada na assinatura.
+            if (assinatura.Data is { } quando)
+                coluna.Item().Text(DescricaoMetodoAssinatura.Legenda(HorarioBrasilia.De(quando), assinatura.Metodo))
+                    .FontSize(6).FontColor(Colors.Grey.Darken2);
         });
     }
 
@@ -282,7 +287,13 @@ public class PtPdfService : IPtPdfService
                 {
                     table.Cell().Element(Celula).Text(envolvido.Nome);
                     table.Cell().Element(Celula).Text(envolvido.Funcao ?? "-");
-                    table.Cell().Element(Celula).Text(envolvido.Assinou ? "Assinado" : "Pendente");
+                    table.Cell().Element(Celula).Column(c =>
+                    {
+                        c.Item().Text(envolvido.Assinou ? "Assinado" : "Pendente");
+                        if (envolvido.AssinadoEm is { } quando)
+                            c.Item().Text(DescricaoMetodoAssinatura.LegendaCurta(HorarioBrasilia.De(quando), envolvido.Metodo))
+                                .FontSize(6).FontColor(Colors.Grey.Darken2);
+                    });
                 }
             });
         });

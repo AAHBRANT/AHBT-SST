@@ -34,7 +34,10 @@ public class ExportarPermissaoTrabalhoPdfQueryHandler : IRequestHandler<Exportar
         var documento = await _db.DocumentosAssinatura
             .Include(d => d.Signatarios)
             .FirstOrDefaultAsync(d => d.EntidadeTipo == nameof(PermissaoTrabalho) && d.EntidadeId == request.Id, ct);
-        var assinaram = documento?.Signatarios.Select(s => s.TrabalhadorId).ToHashSet() ?? new HashSet<Guid>();
+        var assinaram = documento?.Signatarios
+            .GroupBy(s => s.TrabalhadorId)
+            .ToDictionary(g => g.Key, g => g.OrderBy(s => s.AssinadoEm).First())
+            ?? new Dictionary<Guid, DocumentoSignatario>();
 
         byte[]? logoConteudo = detalhe.PermissaoTrabalho.ObraId is { } obraId
             ? await _db.Obras.Where(o => o.Id == obraId).Select(o => o.LogoConteudo).FirstOrDefaultAsync(ct)
@@ -120,7 +123,7 @@ public class ExportarPermissaoTrabalhoPdfQueryHandler : IRequestHandler<Exportar
         [ItemEpcPt.Sinalizacao] = "Sinalização",
     };
 
-    private static PtPdfModelo MontarModelo(PermissaoTrabalhoDetalheDto detalhe, HashSet<Guid> assinaram, byte[]? obraLogoConteudo, RastreabilidadeDocumentoResultado rastreio)
+    private static PtPdfModelo MontarModelo(PermissaoTrabalhoDetalheDto detalhe, Dictionary<Guid, DocumentoSignatario> assinaram, byte[]? obraLogoConteudo, RastreabilidadeDocumentoResultado rastreio)
     {
         var pt = detalhe.PermissaoTrabalho;
         return new PtPdfModelo(
@@ -144,12 +147,14 @@ public class ExportarPermissaoTrabalhoPdfQueryHandler : IRequestHandler<Exportar
             detalhe.Epcs.Select(e => RotulosEpc[e.Item]).ToList(),
             pt.OutrosEpcs,
             detalhe.RiscosCriticos.Select(r => new PtPdfRiscoCritico(r.RiscoCondicao, r.ControleComplementar, r.ResponsavelEvidencia)).ToList(),
-            new PtPdfAssinatura(pt.AutorizadoPorUsuarioNome, pt.DataAutorizacao),
-            new PtPdfAssinatura(pt.ResponsavelExecucaoUsuarioNome, pt.DataAssinaturaExecucao),
-            pt.ResponsavelSstUsuarioId.HasValue ? new PtPdfAssinatura(pt.ResponsavelSstUsuarioNome, pt.DataAssinaturaSst) : null,
+            new PtPdfAssinatura(pt.AutorizadoPorUsuarioNome, pt.DataAutorizacao, pt.MetodoAssinatura),
+            new PtPdfAssinatura(pt.ResponsavelExecucaoUsuarioNome, pt.DataAssinaturaExecucao, pt.MetodoAssinatura),
+            pt.ResponsavelSstUsuarioId.HasValue ? new PtPdfAssinatura(pt.ResponsavelSstUsuarioNome, pt.DataAssinaturaSst, pt.MetodoAssinatura) : null,
             pt.SuspensaPorUsuarioId.HasValue ? new PtPdfSuspensao(pt.SuspensaPorUsuarioNome, pt.DataSuspensao, pt.MotivoSuspensao) : null,
             pt.EncerradaPorUsuarioId.HasValue ? new PtPdfEncerramento(pt.EncerradaPorUsuarioNome, pt.DataEncerramento, pt.ObservacoesEncerramento) : null,
-            detalhe.Responsaveis.Select(r => new PtPdfEnvolvido(r.TrabalhadorNome, r.TrabalhadorFuncaoNome, assinaram.Contains(r.TrabalhadorId))).ToList(),
+            detalhe.Responsaveis.Select(r => assinaram.TryGetValue(r.TrabalhadorId, out var ass)
+                ? new PtPdfEnvolvido(r.TrabalhadorNome, r.TrabalhadorFuncaoNome, true, ass.AssinadoEm, ass.MetodoAutenticacao)
+                : new PtPdfEnvolvido(r.TrabalhadorNome, r.TrabalhadorFuncaoNome, false)).ToList(),
             rastreio.ConteudoHash,
             rastreio.UrlValidacaoPublica,
             rastreio.QrCodePng,

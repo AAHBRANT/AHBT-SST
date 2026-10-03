@@ -1,4 +1,5 @@
 using AAHBRANT.SST.Application.Aprs;
+using AAHBRANT.SST.Application.Assinatura;
 using AAHBRANT.SST.Domain.Enums;
 using QuestPDF.Fluent;
 using QuestPDF.Helpers;
@@ -115,7 +116,13 @@ public class AprPdfService : IAprPdfService
                 {
                     table.Cell().Element(Celula).Text(envolvido.Nome);
                     table.Cell().Element(Celula).Text(envolvido.Funcao ?? "-");
-                    table.Cell().Element(Celula).Text(envolvido.Assinou ? "Assinado" : "Pendente");
+                    table.Cell().Element(Celula).Column(c =>
+                    {
+                        c.Item().Text(envolvido.Assinou ? "Assinado" : "Pendente");
+                        if (envolvido.AssinadoEm is { } quando)
+                            c.Item().Text(DescricaoMetodoAssinatura.LegendaCurta(HorarioBrasilia.De(quando), envolvido.Metodo))
+                                .FontSize(6).FontColor(Colors.Grey.Darken2);
+                    });
                 }
             });
         });
@@ -202,6 +209,10 @@ public class AprPdfService : IAprPdfService
             coluna.Item().Text($"Função: {assinatura.Funcao ?? "____________________________"}");
             coluna.Item().Text("Assinatura: ______________________");
             coluna.Item().Text($"Data: {(assinatura.Data.HasValue ? assinatura.Data.Value.ToString("dd/MM/yyyy") : "____/____/______")}");
+            // Legenda miúda (pedido de 02/10): data/hora de Brasília e como a pessoa foi identificada.
+            if (assinatura.Data is { } quando)
+                coluna.Item().Text(DescricaoMetodoAssinatura.Legenda(HorarioBrasilia.De(quando), assinatura.Metodo))
+                    .FontSize(6).FontColor(Colors.Grey.Darken2);
         });
     }
 

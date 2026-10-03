@@ -1,3 +1,4 @@
+using AAHBRANT.SST.Application.Assinatura;
 using AAHBRANT.SST.Application.Dds;
 using QuestPDF.Fluent;
 using QuestPDF.Helpers;
@@ -88,27 +89,49 @@ public class DdsPdfService : IDdsPdfService
                     // Pedido do usuário (30/09): o documento do DDS traz só os temas e a lista de
                     // presença — o checklist de verificação continua no sistema, mas não sai no PDF.
                     coluna.Item().PaddingTop(8).Text("Lista de Presença").FontSize(13).Bold();
-                    coluna.Item().Table(tabela =>
+                    // Pedido do usuário (02/10): a assinatura fica na MESMA linha do nome, numa coluna
+                    // própria — "Assinado digitalmente" e, embaixo em letra miúda, data/hora (Brasília;
+                    // AssinadoEm é UTC) e o método de identificação (biometria facial/digital).
+                    // Só entra na lista quem assinou (pedido de 02/10): com 10 funcionários e 8
+                    // assinaturas, saem os 8 — quem não assinou não aparece no documento.
+                    var assinantes = modelo.Participantes.Where(p => p.AssinadoEm is not null).ToList();
+                    if (assinantes.Count == 0)
+                    {
+                        coluna.Item().Text("Nenhuma presença assinada até o momento.").Italic().FontColor(Colors.Grey.Darken1);
+                    }
+                    else coluna.Item().Table(tabela =>
                     {
                         tabela.ColumnsDefinition(c =>
                         {
                             c.ConstantColumn(36);
-                            c.RelativeColumn();
+                            c.RelativeColumn(1.2f);
+                            c.RelativeColumn(1.3f);
                         });
 
                         tabela.Header(h =>
                         {
                             h.Cell().Background(CorMarca).Padding(4).AlignCenter().Text("Nº").FontColor(Colors.White).SemiBold();
                             h.Cell().Background(CorMarca).Padding(4).Text("Nome").FontColor(Colors.White).SemiBold();
+                            h.Cell().Background(CorMarca).Padding(4).AlignCenter().Text("Assinatura").FontColor(Colors.White).SemiBold();
                         });
 
                         var numero = 1;
-                        foreach (var nome in modelo.ParticipantesNomes)
+                        foreach (var participante in assinantes)
                         {
-                            tabela.Cell().BorderBottom(1).BorderColor(Colors.Grey.Lighten2).Padding(4).AlignCenter().Text($"{numero++}");
-                            tabela.Cell().BorderBottom(1).BorderColor(Colors.Grey.Lighten2).Padding(4).Text(nome);
+                            tabela.Cell().BorderBottom(1).BorderColor(Colors.Grey.Lighten2).Padding(4).AlignCenter().AlignMiddle().Text($"{numero++}");
+                            tabela.Cell().BorderBottom(1).BorderColor(Colors.Grey.Lighten2).Padding(4).AlignMiddle().Text(participante.Nome);
+                            tabela.Cell().BorderBottom(1).BorderColor(Colors.Grey.Lighten2).Padding(4).AlignMiddle().Column(assinatura =>
+                            {
+                                if (participante.AssinadoEm is { } quando)
+                                    AssinaturaPdfPadrao.Legenda(assinatura, quando, participante.Metodo);
+                            });
                         }
                     });
+
+                    // Responsável/técnico pelo DDS (regra de 02/10): nome completo, linha e a
+                    // assinatura miúda logo abaixo — mesmo padrão de todo documento do sistema.
+                    coluna.Item().PaddingTop(24).AlignCenter().Width(260).Element(c => AssinaturaPdfPadrao.Bloco(
+                        c, "Responsável pelo DDS", modelo.ResponsavelNome, modelo.ResponsavelFuncao, modelo.ResponsavelAssinadoEm, modelo.ResponsavelMetodo));
                 });
 
                 pagina.Footer().Column(coluna => RodapeDocumentoPadrao.Desenhar(

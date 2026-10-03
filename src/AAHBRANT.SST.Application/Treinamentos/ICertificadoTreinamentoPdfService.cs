@@ -1,6 +1,9 @@
 namespace AAHBRANT.SST.Application.Treinamentos;
 
-public record CertificadoTreinamentoPdfSignatarioModelo(string TrabalhadorNome, DateTime AssinadoEm);
+public record CertificadoTreinamentoPdfSignatarioModelo(
+    string TrabalhadorNome,
+    DateTime AssinadoEm,
+    AAHBRANT.SST.Domain.Enums.MetodoAutenticacaoAssinatura? Metodo = null);
 
 // Certificado individual de conclusão de treinamento/NR (PR-SST-002, item 4). Distinto do
 // comprovante genérico de DocumentoAssinaturaPdfService (que só atesta quem assinou o quê) — este

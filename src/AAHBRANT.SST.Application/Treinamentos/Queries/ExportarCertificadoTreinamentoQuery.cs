@@ -53,7 +53,7 @@ public class ExportarCertificadoTreinamentoQueryHandler : IRequestHandler<Export
             .FirstOrDefaultAsync(ct);
 
         var signatarios = documento?.Signatarios
-            .Select(s => new CertificadoTreinamentoPdfSignatarioModelo(s.Trabalhador?.Nome ?? string.Empty, s.AssinadoEm))
+            .Select(s => new CertificadoTreinamentoPdfSignatarioModelo(s.Trabalhador?.Nome ?? string.Empty, s.AssinadoEm, s.MetodoAutenticacao))
             .ToList() ?? new List<CertificadoTreinamentoPdfSignatarioModelo>();
 
         // Rastreabilidade sempre disponível a partir do primeiro export (Motor de Assinatura Task 2) —

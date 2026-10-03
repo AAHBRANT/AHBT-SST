@@ -1,3 +1,4 @@
+using AAHBRANT.SST.Application.Assinatura;
 using AAHBRANT.SST.Application.Treinamentos;
 using QuestPDF.Fluent;
 using QuestPDF.Helpers;
@@ -334,7 +335,7 @@ public class CertificadoTreinamentoPdfService : ICertificadoTreinamentoPdfServic
                 coluna.Item().PaddingTop(8).Text("Assinado digitalmente por:").FontSize(8).SemiBold().FontColor(Colors.Grey.Darken2);
                 foreach (var signatario in modelo.Signatarios)
                 {
-                    coluna.Item().Text($"• {signatario.TrabalhadorNome} em {signatario.AssinadoEm:dd/MM/yyyy HH:mm}").FontSize(8).FontColor(Colors.Grey.Darken2);
+                    coluna.Item().Text($"• {signatario.TrabalhadorNome} — {DescricaoMetodoAssinatura.Legenda(HorarioBrasilia.De(signatario.AssinadoEm), signatario.Metodo)}").FontSize(6.5f).FontColor(Colors.Grey.Darken2);
                 }
             }
         });

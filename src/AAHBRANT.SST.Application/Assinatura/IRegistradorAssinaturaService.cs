@@ -27,7 +27,8 @@ public interface IRegistradorAssinaturaService
         string? ipAddress,
         CancellationToken ct,
         byte[]? fotoEvidenciaConteudo = null,
-        string? fotoEvidenciaContentType = null);
+        string? fotoEvidenciaContentType = null,
+        PapelAssinatura? papel = null);
 }
 
 public class RegistradorAssinaturaService : IRegistradorAssinaturaService
@@ -47,7 +48,8 @@ public class RegistradorAssinaturaService : IRegistradorAssinaturaService
         string? ipAddress,
         CancellationToken ct,
         byte[]? fotoEvidenciaConteudo = null,
-        string? fotoEvidenciaContentType = null)
+        string? fotoEvidenciaContentType = null,
+        PapelAssinatura? papel = null)
     {
         var documento = await _db.DocumentosAssinatura.FirstOrDefaultAsync(d => d.Id == documentoAssinaturaId, ct);
         if (documento is null)
@@ -62,6 +64,7 @@ public class RegistradorAssinaturaService : IRegistradorAssinaturaService
         var jaAssinou = await _db.DocumentoSignatarios.AnyAsync(
             s => s.DocumentoAssinaturaId == documento.Id
                 && s.TrabalhadorId == resultado.TrabalhadorId
+                && s.Papel == papel
                 && (!permiteDuplaAssinaturaTecnicoEpi
                     || (s.MetodoAutenticacao == MetodoAutenticacaoAssinatura.SessaoLogada) == novoEhAssinaturaDeResponsavel), ct);
         if (jaAssinou)
@@ -89,6 +92,7 @@ public class RegistradorAssinaturaService : IRegistradorAssinaturaService
             DocumentoAssinaturaId = documento.Id,
             TrabalhadorId = resultado.TrabalhadorId,
             MetodoAutenticacao = resultado.Metodo,
+            Papel = papel,
             AssinadoEm = DateTime.UtcNow,
             IpAddress = ipAddress,
         };

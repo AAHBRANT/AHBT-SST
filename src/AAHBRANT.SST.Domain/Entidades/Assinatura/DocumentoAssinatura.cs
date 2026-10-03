@@ -63,6 +63,7 @@ public class DocumentoSignatario : AuditableEntity
     public Trabalhador? Trabalhador { get; set; }
 
     public MetodoAutenticacaoAssinatura MetodoAutenticacao { get; set; }
+    public PapelAssinatura? Papel { get; set; }
     public DateTime AssinadoEm { get; set; }
 
     // Rastro de IP para o audit trail jurídico (Cofre de Assinaturas) — capturado no controller a
