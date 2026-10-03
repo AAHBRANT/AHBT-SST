@@ -26,7 +26,7 @@ public class AtaSessaoTreinamentoPdfService : IAtaSessaoTreinamentoPdfService
                 pagina.DefaultTextStyle(estilo => estilo.FontSize(10));
 
                 pagina.Header().Column(coluna =>
-                    CabecalhoDocumentoPadrao.Desenhar(coluna, "Ata de Treinamento — Anexo de Evidências", modelo.ObraNome, modelo.ObraLogoConteudo));
+                    CabecalhoDocumentoPadrao.Desenhar(coluna, "Lista de Presença de Treinamento", modelo.ObraNome, modelo.ObraLogoConteudo));
 
                 pagina.Content().PaddingVertical(12).Column(coluna =>
                 {
@@ -38,7 +38,7 @@ public class AtaSessaoTreinamentoPdfService : IAtaSessaoTreinamentoPdfService
                 });
 
                 pagina.Footer().Column(coluna => RodapeDocumentoPadrao.Desenhar(
-                    coluna, "Ata de Sessão de Treinamento", modelo.NumeroCertificado, null, modelo.ConteudoHash, modelo.UrlValidacaoPublica, modelo.QrCodePng, temAssinatura: false));
+                    coluna, "Lista de Presença de Treinamento", modelo.NumeroCertificado, null, modelo.ConteudoHash, modelo.UrlValidacaoPublica, modelo.QrCodePng, temAssinatura: false));
             });
         });
 
@@ -80,7 +80,7 @@ public class AtaSessaoTreinamentoPdfService : IAtaSessaoTreinamentoPdfService
     {
         container.Column(coluna =>
         {
-            coluna.Item().Text($"Lista de presença ({modelo.Participantes.Count(p => p.PresencaConfirmadaEm is not null)}/{modelo.Participantes.Count} confirmadas)")
+            coluna.Item().Text($"Participantes ({modelo.Participantes.Count(p => p.PresencaConfirmadaEm is not null)}/{modelo.Participantes.Count} presenças confirmadas)")
                 .FontSize(12).Bold().FontColor(CorMarca);
 
             coluna.Item().PaddingTop(4).Table(tabela =>

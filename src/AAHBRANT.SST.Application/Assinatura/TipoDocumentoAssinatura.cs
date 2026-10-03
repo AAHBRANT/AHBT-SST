@@ -22,7 +22,7 @@ public static class TipoDocumentoAssinatura
         ["ProcessoEleitoralCipa"] = "Ata do Processo Eleitoral da CIPA",
         ["ReuniaoCipa"] = "Ata de Reunião da CIPA",
         ["FichaEpiTrabalhador"] = "Ficha de EPI",
-        ["SessaoTreinamento"] = "Ata de Sessão de Treinamento",
+        ["SessaoTreinamento"] = "Lista de Presença de Treinamento",
         ["Treinamento"] = "Certificado de Treinamento",
         ["EntregaEpi"] = "Entrega de EPI",
         ["DevolucaoEpi"] = "Devolução de EPI",
