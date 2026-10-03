@@ -25,6 +25,7 @@ public static class TipoDocumentoAssinatura
         ["SessaoTreinamento"] = "Lista de Presença de Treinamento",
         ["Treinamento"] = "Certificado de Treinamento",
         ["EntregaEpi"] = "Entrega de EPI",
+        ["TermoCompromissoEpi"] = "Termo de Recebimento e Compromisso de Uso (EPI)",
         ["DevolucaoEpi"] = "Devolução de EPI",
         ["EntregaUniforme"] = "Entrega de Uniforme",
         ["NaoConformidade"] = "Registro de Não Conformidade",

@@ -27,6 +27,7 @@ import {
 import { useSouAdministrador } from '../../lib/UsuarioLogadoContext';
 import { salvarBlob, useVisualizadorPdf } from '../../components/useVisualizadorPdf';
 import { AssinaturaEntregaEpiLoteDialog, type ItemLoteAssinaturaEpi } from '../../components/assinatura/AssinaturaEntregaEpiLoteDialog';
+import { TermoCompromissoEpiDialog } from '../../components/assinatura/TermoCompromissoEpiDialog';
 import { AssinaturaDevolucaoEpiDialog } from '../../components/assinatura/AssinaturaDevolucaoEpiDialog';
 import { FotoCatalogoEpi } from './FotoCatalogoEpi';
 import { SeletorItensEpi, type ItemCarrinhoEpi } from './SeletorItensEpi';
@@ -156,6 +157,7 @@ export function EntregasTab({ aoNavegarParaMatriz }: EntregasTabProps) {
   const [devolucaoQtd, setDevolucaoQtd] = useState('');
   const [loteParaAssinar, setLoteParaAssinar] = useState<LoteParaAssinar | null>(null);
   const [devolucaoParaAssinar, setDevolucaoParaAssinar] = useState<EntregaEpi | null>(null);
+  const [termoDoTrabalhadorId, setTermoDoTrabalhadorId] = useState<string | null>(null);
   const [statusIntegracao, setStatusIntegracao] = useState<StatusIntegracao | null>(null);
   // Validade do treinamento de NR-06 do funcionário selecionado (22/09). Fora de `dadosComuns`
   // porque não é dado da entrega — só o que a trava precisa para recusar NR-06 vencida.
@@ -947,8 +949,15 @@ export function EntregasTab({ aoNavegarParaMatriz }: EntregasTabProps) {
                 tom="ver"
                 icon={<Signature24Regular />}
                 onClick={() => navigate(`/epi/${e.id}/assinar`)}
-                aria-label="Assinar ficha"
-                title="Assinar ficha"
+                aria-label="Assinar esta entrega"
+                title="Assinar esta entrega"
+              />
+              <BotaoAcao
+                tom="ver"
+                icon={<Signature24Regular />}
+                onClick={() => setTermoDoTrabalhadorId(e.trabalhadorId)}
+                aria-label="Assinatura de termo de recebimento e compromisso"
+                title="Assinatura de termo de recebimento e compromisso"
               />
               <BotaoAcao
                 tom="ver"
@@ -992,6 +1001,15 @@ export function EntregasTab({ aoNavegarParaMatriz }: EntregasTabProps) {
           dataEntrega={loteParaAssinar.dataEntrega}
           numeroListaPresencaNr6={loteParaAssinar.numeroListaPresencaNr6}
           dataTreinamentoNr6={loteParaAssinar.dataTreinamentoNr6}
+        />
+      )}
+
+      {termoDoTrabalhadorId && (
+        <TermoCompromissoEpiDialog
+          open
+          onClose={() => setTermoDoTrabalhadorId(null)}
+          trabalhadorId={termoDoTrabalhadorId}
+          trabalhadorNome={nomeTrabalhador(termoDoTrabalhadorId)}
         />
       )}
 

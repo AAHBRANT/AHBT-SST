@@ -1,8 +1,9 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { BotaoAcao, Button, Card, DataTable, StatusChip, FeedbackInline, type Coluna } from '@ui';
-import { ArrowDownload24Regular, Eye24Regular, Open24Regular } from '@fluentui/react-icons';
-import { api, type CatalogoEpi, type EntregaEpi } from '../../lib/api';
+import { ArrowDownload24Regular, Eye24Regular, Open24Regular, Signature24Regular } from '@fluentui/react-icons';
+import { api, SituacaoTermoCompromissoEpi, type CatalogoEpi, type EntregaEpi, type TermoCompromissoEpi } from '../../lib/api';
+import { TermoCompromissoEpiDialog } from '../../components/assinatura/TermoCompromissoEpiDialog';
 import { salvarBlob, useVisualizadorPdf } from '../../components/useVisualizadorPdf';
 
 // Histórico somente-leitura das entregas de EPI deste trabalhador. O registro de novas entregas,
@@ -16,6 +17,8 @@ export function EntregasEpiTab({ trabalhadorId }: { trabalhadorId: string }) {
   const [erro, setErro] = useState<string | null>(null);
   const [carregando, setCarregando] = useState(true);
   const [baixando, setBaixando] = useState(false);
+  const [termo, setTermo] = useState<TermoCompromissoEpi | null>(null);
+  const [termoAberto, setTermoAberto] = useState(false);
   const { visualizar, dialogoVisualizador } = useVisualizadorPdf();
 
   async function carregar() {
@@ -28,6 +31,7 @@ export function EntregasEpiTab({ trabalhadorId }: { trabalhadorId: string }) {
       ]);
       setEntregas(lista);
       setEpis(listaEpis);
+      setTermo(await api.termosCompromissoEpi.obter(trabalhadorId).catch(() => null));
     } catch (e) {
       setErro(e instanceof Error ? e.message : 'Falha ao carregar entregas de EPI.');
     } finally {
@@ -128,6 +132,18 @@ export function EntregasEpiTab({ trabalhadorId }: { trabalhadorId: string }) {
           >
             Baixar ficha (PDF)
           </BotaoAcao>
+          {termo && (
+            <StatusChip tom={termo.situacao === SituacaoTermoCompromissoEpi.Pendente ? 'atencao' : termo.situacao === SituacaoTermoCompromissoEpi.Manual ? 'info' : 'ok'}>
+              {termo.situacao === SituacaoTermoCompromissoEpi.Digital
+                ? 'Termo assinado digitalmente'
+                : termo.situacao === SituacaoTermoCompromissoEpi.Manual
+                  ? 'Termo assinado em papel'
+                  : 'Termo pendente'}
+            </StatusChip>
+          )}
+          <Button icon={<Signature24Regular />} onClick={() => setTermoAberto(true)}>
+            Assinatura de termo de recebimento e compromisso
+          </Button>
           <Button appearance="primary" icon={<Open24Regular />} onClick={() => navigate('/epi')}>
             Registrar nova entrega
           </Button>
@@ -136,6 +152,12 @@ export function EntregasEpiTab({ trabalhadorId }: { trabalhadorId: string }) {
     >
       {erro && <FeedbackInline tom="erro" aoFechar={() => setErro(null)}>{erro}</FeedbackInline>}
       {dialogoVisualizador}
+      <TermoCompromissoEpiDialog
+        open={termoAberto}
+        onClose={() => setTermoAberto(false)}
+        trabalhadorId={trabalhadorId}
+        aoAlterar={() => void carregar()}
+      />
 
       <DataTable
         aria-label="Entregas de EPI do funcionário"

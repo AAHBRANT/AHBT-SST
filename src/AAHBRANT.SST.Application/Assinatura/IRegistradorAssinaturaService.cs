@@ -57,6 +57,17 @@ public class RegistradorAssinaturaService : IRegistradorAssinaturaService
         if (documento.Status != StatusDocumentoAssinatura.EmAndamento)
             throw new InvalidOperationException("Este documento não está mais aceitando assinaturas.");
 
+        // Termo de Recebimento e Compromisso (03/10): é pessoal e não pode ser assinado por clique de
+        // quem está logado — isso fabricaria a assinatura do funcionário. E, se ele já assinou em
+        // papel, o Motor não pode registrar uma assinatura eletrônica por cima.
+        if (documento.EntidadeTipo == TermosCompromissoEpi.TermoCompromissoEpiConsulta.EntidadeTipo)
+        {
+            if (resultado.Metodo == MetodoAutenticacaoAssinatura.SessaoLogada)
+                throw new InvalidOperationException("O termo de recebimento e compromisso só pode ser assinado pelo próprio funcionário, por digital ou reconhecimento facial.");
+            if (await _db.TermosCompromissoEpiManual.AnyAsync(t => t.TrabalhadorId == documento.EntidadeId, ct))
+                throw new InvalidOperationException("Este funcionário já tem o termo registrado como assinado manualmente (em papel).");
+        }
+
         var trabalhador = await _db.Trabalhadores.Include(t => t.Funcao).FirstAsync(t => t.Id == resultado.TrabalhadorId, ct);
         var permiteDuplaAssinaturaTecnicoEpi = documento.EntidadeTipo == "EntregaEpi"
             && FuncaoSstClassifier.EhTecnicoSeguranca(trabalhador.Funcao?.Nome);
@@ -163,6 +174,8 @@ public class RegistradorAssinaturaService : IRegistradorAssinaturaService
                 .Where(t => t.Id == documento.EntidadeId).Select(t => (Guid?)t.TrabalhadorId).FirstOrDefaultAsync(ct),
             // A ficha consolidada é do próprio trabalhador: a entidade É ele.
             "FichaEpiTrabalhador" => documento.EntidadeId,
+            // O termo também é do próprio trabalhador.
+            "TermoCompromissoEpi" => documento.EntidadeId,
             _ => null,
         };
 

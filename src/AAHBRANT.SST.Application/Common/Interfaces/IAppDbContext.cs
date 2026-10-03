@@ -27,6 +27,7 @@ public interface IAppDbContext
     DbSet<CursoTreinamento> CursosTreinamento { get; }
     DbSet<Treinamento> Treinamentos { get; }
     DbSet<ArquivoCertificadoTreinamento> ArquivosCertificadoTreinamento { get; }
+    DbSet<TermoCompromissoEpiManual> TermosCompromissoEpiManual { get; }
     DbSet<MatrizTreinamentoFuncao> MatrizTreinamentoFuncoes { get; }
     DbSet<SessaoTreinamento> SessoesTreinamento { get; }
     DbSet<ParticipanteSessaoTreinamento> ParticipantesSessaoTreinamento { get; }

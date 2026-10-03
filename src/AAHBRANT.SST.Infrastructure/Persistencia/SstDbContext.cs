@@ -35,6 +35,7 @@ public class SstDbContext : DbContext, IAppDbContext
     public DbSet<CursoTreinamento> CursosTreinamento => Set<CursoTreinamento>();
     public DbSet<Treinamento> Treinamentos => Set<Treinamento>();
     public DbSet<ArquivoCertificadoTreinamento> ArquivosCertificadoTreinamento => Set<ArquivoCertificadoTreinamento>();
+    public DbSet<TermoCompromissoEpiManual> TermosCompromissoEpiManual => Set<TermoCompromissoEpiManual>();
     public DbSet<MatrizTreinamentoFuncao> MatrizTreinamentoFuncoes => Set<MatrizTreinamentoFuncao>();
     public DbSet<SessaoTreinamento> SessoesTreinamento => Set<SessaoTreinamento>();
     public DbSet<ParticipanteSessaoTreinamento> ParticipantesSessaoTreinamento => Set<ParticipanteSessaoTreinamento>();

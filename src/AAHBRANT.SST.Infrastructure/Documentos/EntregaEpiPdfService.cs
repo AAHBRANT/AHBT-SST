@@ -1,5 +1,6 @@
 using AAHBRANT.SST.Application.Assinatura;
 using AAHBRANT.SST.Application.EntregasEpi;
+using AAHBRANT.SST.Application.TermosCompromissoEpi;
 using AAHBRANT.SST.Domain.Enums;
 using QuestPDF.Fluent;
 using QuestPDF.Helpers;
@@ -105,7 +106,39 @@ public class EntregaEpiPdfService : IFichaEpiPdfService
             coluna.Item().Text("3 — Comprometo-me a utilizar os EPIs exclusivamente para a finalidade a que se destinam, durante toda a execução das minhas atividades laborais, zelando por sua guarda, conservação e higienização adequadas, e a comunicar imediatamente ao Setor de Segurança do Trabalho qualquer dano, extravio ou alteração que os torne impróprios para uso.");
             coluna.Item().Text("4 — Comprometo-me a devolver os EPIs sempre que solicitado, inclusive nos casos de substituição, troca de função, mudança de atividade ou rescisão do meu contrato de trabalho.");
             coluna.Item().Text("5 — Estou ciente de que o descumprimento das obrigações aqui assumidas constitui falta funcional, passível de sanções disciplinares que poderão variar, a critério do empregador, de advertência por escrito até a rescisão contratual por justa causa, sem prejuízo de demais medidas legais cabíveis, conforme disposto no Art. 158 da CLT e na Norma Regulamentadora nº 6 (NR-6).");
+
+            // Assinatura do empregado no termo (03/10): digital (Motor), em papel (registro manual) ou
+            // pendente. O papel NUNCA vira "Assinado digitalmente": só informa quem registrou e quando.
+            coluna.Item().PaddingTop(10).AlignCenter().Width(300).Element(c => BlocoAssinaturaTermo(c, modelo));
         });
+    }
+
+    private static void BlocoAssinaturaTermo(IContainer container, FichaEpiPdfModelo modelo)
+    {
+        var termo = modelo.Termo;
+        if (termo is { Situacao: SituacaoTermoCompromissoEpi.Manual })
+        {
+            container.ShowEntire().Column(coluna =>
+            {
+                coluna.Item().AlignCenter().Text("Empregado — Termo de Compromisso").FontSize(7.5f).Bold();
+                coluna.Item().PaddingTop(10).AlignCenter().Text(modelo.TrabalhadorNome).FontSize(9).SemiBold();
+                coluna.Item().PaddingTop(2).LineHorizontal(0.75f).LineColor(Colors.Black);
+                coluna.Item().PaddingTop(2).AlignCenter().Text(modelo.TrabalhadorFuncaoNome).FontSize(7).SemiBold();
+                coluna.Item().AlignCenter()
+                    .Text($"Termo assinado manualmente (em papel) em {termo.DataAssinatura:dd/MM/yyyy}")
+                    .FontSize(AssinaturaPdfPadrao.TamanhoFonte).Italic().FontColor(AssinaturaPdfPadrao.Cor);
+                if (termo.RegistradoEm is { } registradoEm)
+                    coluna.Item().AlignCenter()
+                        .Text($"Registrado no sistema por {termo.RegistradoPorNome ?? "usuário não identificado"} em {HorarioBrasilia.De(registradoEm):dd/MM/yyyy HH:mm}")
+                        .FontSize(AssinaturaPdfPadrao.TamanhoFonte).FontColor(AssinaturaPdfPadrao.Cor);
+            });
+            return;
+        }
+
+        var digital = termo is { Situacao: SituacaoTermoCompromissoEpi.Digital };
+        AssinaturaPdfPadrao.Bloco(
+            container, "Empregado — Termo de Compromisso", modelo.TrabalhadorNome, modelo.TrabalhadorFuncaoNome,
+            digital ? termo!.DataAssinatura : null, digital ? termo!.Metodo : null);
     }
 
     private static void SecaoControleEntrega(IContainer container, FichaEpiPdfModelo modelo)

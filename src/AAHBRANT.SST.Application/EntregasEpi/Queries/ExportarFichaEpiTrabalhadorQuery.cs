@@ -42,6 +42,8 @@ public class ExportarFichaEpiTrabalhadorQueryHandler : IRequestHandler<ExportarF
 
         var entregaIds = entregas.Select(e => e.Id).ToList();
 
+        var termo = await TermosCompromissoEpi.TermoCompromissoEpiConsulta.ObterAsync(_db, request.TrabalhadorId, ct);
+
         // Mesma regra da tela de entrega (EntregasTab): entre os certificados de NR-06 do
         // trabalhador vale o de validade mais distante, para um certificado antigo lançado depois
         // do novo não tomar o lugar do válido. Alimenta a cláusula 2 do termo de compromisso.
@@ -151,7 +153,8 @@ public class ExportarFichaEpiTrabalhadorQueryHandler : IRequestHandler<ExportarF
             rastreio.UrlValidacaoPublica,
             rastreio.QrCodePng,
             certificadoNr6?.DataRealizacao,
-            certificadoNr6?.NumeroCertificado);
+            certificadoNr6?.NumeroCertificado,
+            termo);
 
         var pdf = _pdf.Gerar(modelo);
         // Guarda a cópia exata emitida e o SHA-256 dela — é o que permite conferir, depois,

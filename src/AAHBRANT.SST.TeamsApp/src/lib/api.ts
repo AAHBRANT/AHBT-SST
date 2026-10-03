@@ -2274,22 +2274,22 @@ export interface DdsSemanalDia {
   motivoSemExpediente?: string | null;
 }
 
-export interface DdsSemanalDetalhe {
-  semanal: DdsSemanal;
-  dias: DdsSemanalDia[];
-}
-
 // Quem assinou um dos dois campos do documento semanal e quando (null = ainda não assinado).
 export interface DdsSemanalAssinatura {
   nome: string;
   assinadoEm: string;
 }
 
+export interface DdsSemanalDetalhe {
+  semanal: DdsSemanal;
+  dias: DdsSemanalDia[];
+  assinaturaResponsavelDds?: DdsSemanalAssinatura | null;
+  assinaturaResponsavelObraSst?: DdsSemanalAssinatura | null;
+}
+
 export interface CatalogoTemaDds {
   id: string;
   nome: string;
-  assinaturaResponsavelDds?: DdsSemanalAssinatura | null;
-  assinaturaResponsavelObraSst?: DdsSemanalAssinatura | null;
   descricao?: string | null;
 }
 
@@ -2332,6 +2332,22 @@ export interface DocumentoSignatario {
   trabalhadorNome: string;
   metodoAutenticacao: number;
   assinadoEm: string;
+}
+
+// Termo de Recebimento e Compromisso de Uso do EPI (03/10): um por funcionário. Digital = assinou
+// no Motor (digital/facial); Manual = já assinou em papel e alguém registrou isso no sistema.
+export const SituacaoTermoCompromissoEpi = { Pendente: 0, Digital: 1, Manual: 2 } as const;
+
+export interface TermoCompromissoEpi {
+  situacao: number;
+  // Digital: instante da assinatura (UTC). Manual: dia que consta no papel.
+  dataAssinatura?: string | null;
+  metodo?: number | null;
+  registradoPorNome?: string | null;
+  registradoEm?: string | null;
+  observacao?: string | null;
+  temArquivo: boolean;
+  arquivoNome?: string | null;
 }
 
 export interface DocumentoAssinatura {
@@ -4002,6 +4018,25 @@ export const api = {
     removerArquivoCertificado: (id: string) =>
       request<void>(`/api/treinamentos/${id}/certificado/arquivo`, { method: 'DELETE' }),
   },
+  termosCompromissoEpi: {
+    obter: (trabalhadorId: string) => request<TermoCompromissoEpi>(`/api/termoscompromissoepi/${trabalhadorId}`),
+    // Registra que o funcionário já assinou o termo em papel. dataAssinaturaPapel em yyyy-MM-dd;
+    // foto/PDF do papel é opcional.
+    registrarManual: async (trabalhadorId: string, dataAssinaturaPapel: string, observacao: string, arquivo?: File | null) => {
+      const formData = new FormData();
+      formData.append('dataAssinaturaPapel', dataAssinaturaPapel);
+      if (observacao.trim()) formData.append('observacao', observacao.trim());
+      if (arquivo) formData.append('arquivo', arquivo);
+      const authHeaders = await montarHeadersAuth();
+      return syncMutateMultipart<{ id: string }>(`/api/termoscompromissoepi/${trabalhadorId}/manual`, formData, authHeaders);
+    },
+    baixarArquivoManual: async (trabalhadorId: string) => {
+      const authHeaders = await montarHeadersAuth();
+      return syncFetchBlob(`/api/termoscompromissoepi/${trabalhadorId}/manual/arquivo`, authHeaders);
+    },
+    removerManual: (trabalhadorId: string) =>
+      request<void>(`/api/termoscompromissoepi/${trabalhadorId}/manual`, { method: 'DELETE' }),
+  },
   sessoesTreinamento: {
     listar: (obraId?: string) => request<SessaoTreinamento[]>(`/api/sessoestreinamento${obraId ? `?obraId=${obraId}` : ''}`),
     obterDetalhe: (id: string) => request<SessaoTreinamentoDetalhe>(`/api/sessoestreinamento/${id}`),
@@ -4805,8 +4840,20 @@ export const api = {
       request<{ id: string }>('/api/ddssemanal', { method: 'POST', body: JSON.stringify(semanal) }),
     encerrar: (id: string, body?: { responsavelEmpresaTerceirizadaNome?: string | null; responsavelEmpresaTerceirizadaFuncao?: string | null }) =>
       request<void>(`/api/ddssemanal/${id}/encerrar`, { method: 'POST', body: JSON.stringify(body ?? {}) }),
+    // Assinatura com um clique do usuário logado em um dos dois campos do documento semanal.
+    assinar: (id: string, campo: 'responsavel-dds' | 'responsavel-obra-sst') =>
+      request<void>(`/api/ddssemanal/${id}/assinar/${campo}`, { method: 'POST' }),
     baixarPdf: async (id: string) => {
       const response = await fetch(`${API_BASE_URL}/api/ddssemanal/${id}/pdf`, { headers: await montarHeadersAuth() });
+      if (!response.ok) {
+        const corpo = await response.text().catch(() => '');
+        throw new Error(extrairMensagemErro(corpo, response.status, response.statusText));
+      }
+      return response.blob();
+    },
+    // "Baixar semana": DDS semanal + os diários com lista de presença, num PDF só.
+    baixarSemanaCompleta: async (id: string) => {
+      const response = await fetch(`${API_BASE_URL}/api/ddssemanal/${id}/pdf-completo`, { headers: await montarHeadersAuth() });
       if (!response.ok) {
         const corpo = await response.text().catch(() => '');
         throw new Error(extrairMensagemErro(corpo, response.status, response.statusText));
@@ -4817,9 +4864,6 @@ export const api = {
   catalogoTemasDds: {
     listar: () => request<CatalogoTemaDds[]>('/api/catalogotemasdds'),
     criar: (nome: string, descricao?: string | null) =>
-    // Assinatura com um clique do usuário logado em um dos dois campos do documento semanal.
-    assinar: (id: string, campo: 'responsavel-dds' | 'responsavel-obra-sst') =>
-      request<void>(`/api/ddssemanal/${id}/assinar/${campo}`, { method: 'POST' }),
       request<{ id: string }>('/api/catalogotemasdds', { method: 'POST', body: JSON.stringify({ nome, descricao }) }),
     atualizar: (id: string, nome: string, descricao?: string | null) =>
       request<void>(`/api/catalogotemasdds/${id}`, { method: 'PUT', body: JSON.stringify({ nome, descricao }) }),
@@ -4828,15 +4872,6 @@ export const api = {
   assinatura: {
     obter: async (entidadeTipo: string, entidadeId: string) => {
       const query = new URLSearchParams({ entidadeTipo, entidadeId });
-    // "Baixar semana": DDS semanal + os diários com lista de presença, num PDF só.
-    baixarSemanaCompleta: async (id: string) => {
-      const response = await fetch(`${API_BASE_URL}/api/ddssemanal/${id}/pdf-completo`, { headers: await montarHeadersAuth() });
-      if (!response.ok) {
-        const corpo = await response.text().catch(() => '');
-        throw new Error(extrairMensagemErro(corpo, response.status, response.statusText));
-      }
-      return response.blob();
-    },
       const response = await fetch(`${API_BASE_URL}/api/documentos?${query.toString()}`, {
         headers: await montarHeadersAuth(),
       });
