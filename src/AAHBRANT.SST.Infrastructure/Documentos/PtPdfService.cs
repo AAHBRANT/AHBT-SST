@@ -233,13 +233,9 @@ public class PtPdfService : IPtPdfService
         container.Border(1).BorderColor(Colors.Grey.Lighten1).Padding(6).Column(coluna =>
         {
             coluna.Item().Text(titulo).Bold().FontSize(7.5f);
-            coluna.Item().PaddingTop(4).Text($"Nome: {assinatura.Nome ?? "____________________________"}");
-            coluna.Item().Text("Assinatura: ______________________");
-            coluna.Item().Text($"Data: {(assinatura.Data.HasValue ? HorarioBrasilia.De(assinatura.Data.Value).ToString("dd/MM/yyyy HH:mm") : "____/____/______")}");
-            // Legenda miúda (pedido de 02/10): como a pessoa foi identificada na assinatura.
-            if (assinatura.Data is { } quando)
-                coluna.Item().Text(DescricaoMetodoAssinatura.Legenda(HorarioBrasilia.De(quando), assinatura.Metodo))
-                    .FontSize(6).FontColor(Colors.Grey.Darken2);
+            // Padrão único de assinatura: nome, linha, cargo e a legenda miúda (pedido de 02/10).
+            coluna.Item().PaddingTop(2).Element(b => AssinaturaPdfPadrao.Bloco(
+                b, null, assinatura.Nome, assinatura.Funcao, assinatura.Data, assinatura.Metodo));
         });
     }
 

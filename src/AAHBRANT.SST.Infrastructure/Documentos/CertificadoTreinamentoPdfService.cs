@@ -304,8 +304,9 @@ public class CertificadoTreinamentoPdfService : ICertificadoTreinamentoPdfServic
             {
                 linha.RelativeItem().Column(bloco =>
                 {
-                    bloco.Item().PaddingBottom(2).LineHorizontal(1).LineColor(CorTexto);
-                    bloco.Item().AlignCenter().Text(modelo.InstituicaoInstrutor ?? "Instrutor responsável").FontSize(9).SemiBold();
+                    // Mesma ordem do padrão de assinatura: nome, linha e cargo logo abaixo.
+                    bloco.Item().PaddingTop(14).AlignCenter().Text(modelo.InstituicaoInstrutor ?? "Instrutor responsável").FontSize(9).SemiBold();
+                    bloco.Item().PaddingTop(2).LineHorizontal(0.75f).LineColor(CorTexto);
                     // O instrutor é sempre o Técnico de Segurança do Trabalho responsável, que também
                     // assina como Responsável Técnico — uma assinatura só, não três (pedido do
                     // usuário, 06/09).
@@ -316,28 +317,24 @@ public class CertificadoTreinamentoPdfService : ICertificadoTreinamentoPdfServic
                     }
                 });
 
-                linha.ConstantItem(24);
-
-                linha.RelativeItem().Column(bloco =>
+                // Assinatura(s) do documento no padrão único (nome, linha, cargo, legenda miúda), uma ao
+                // lado da outra para o bloco não crescer em altura e empurrar o certificado para uma
+                // terceira página. Sem nenhuma assinatura ainda, mostra o trabalhador como "Aguardando".
+                if (modelo.Signatarios.Count == 0)
                 {
-                    bloco.Item().PaddingBottom(2).LineHorizontal(1).LineColor(CorTexto);
-                    bloco.Item().AlignCenter().Text(modelo.TrabalhadorNome).FontSize(9).SemiBold();
-                    bloco.Item().AlignCenter().Text(modelo.TrabalhadorFuncaoNome).FontSize(8).Italic();
-                });
-            });
+                    linha.ConstantItem(24);
+                    linha.RelativeItem().Element(c => AssinaturaPdfPadrao.Bloco(c, null, modelo.TrabalhadorNome, modelo.TrabalhadorFuncaoNome, null, null));
+                }
 
-            if (modelo.Signatarios.Count == 0)
-            {
-                coluna.Item().PaddingTop(8).Text("Nenhuma assinatura registrada até o momento.").FontSize(8).Italic().FontColor(Colors.Grey.Darken2);
-            }
-            else
-            {
-                coluna.Item().PaddingTop(8).Text("Assinado digitalmente por:").FontSize(8).SemiBold().FontColor(Colors.Grey.Darken2);
                 foreach (var signatario in modelo.Signatarios)
                 {
-                    coluna.Item().Text($"• {signatario.TrabalhadorNome} — {DescricaoMetodoAssinatura.Legenda(HorarioBrasilia.De(signatario.AssinadoEm), signatario.Metodo)}").FontSize(6.5f).FontColor(Colors.Grey.Darken2);
+                    linha.ConstantItem(24);
+                    linha.RelativeItem().Element(c => AssinaturaPdfPadrao.Bloco(
+                        c, null, signatario.TrabalhadorNome,
+                        string.IsNullOrWhiteSpace(signatario.Funcao) ? null : signatario.Funcao,
+                        signatario.AssinadoEm, signatario.Metodo));
                 }
-            }
+            });
         });
     }
 }

@@ -27,14 +27,18 @@ public static class AssinaturaPdfPadrao
 
     // Bloco completo de um assinante: [papel] / nome completo / linha / [cargo] / assinatura miúda.
     // Sem assinatura ainda, mostra "Aguardando assinatura" no lugar da legenda.
-    public static void Bloco(IContainer container, string? papel, string nome, string? funcao, DateTime? assinadoEm, MetodoAutenticacaoAssinatura? metodo)
+    public static void Bloco(IContainer container, string? papel, string? nome, string? funcao, DateTime? assinadoEm, MetodoAutenticacaoAssinatura? metodo)
     {
         container.ShowEntire().Column(coluna =>
         {
             if (!string.IsNullOrWhiteSpace(papel))
                 coluna.Item().AlignCenter().Text(papel).FontSize(7.5f).Bold();
 
-            coluna.Item().PaddingTop(14).AlignCenter().Text(nome).FontSize(9).SemiBold();
+            // Sem nome (ainda não há quem assine) reserva a altura do nome para a linha não colar no título.
+            if (string.IsNullOrWhiteSpace(nome))
+                coluna.Item().PaddingTop(14).Height(12);
+            else
+                coluna.Item().PaddingTop(14).AlignCenter().Text(nome).FontSize(9).SemiBold();
             coluna.Item().PaddingTop(2).LineHorizontal(0.75f).LineColor(Colors.Black);
 
             if (!string.IsNullOrWhiteSpace(funcao))

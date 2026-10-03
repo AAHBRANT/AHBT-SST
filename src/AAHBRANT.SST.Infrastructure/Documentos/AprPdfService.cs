@@ -205,14 +205,9 @@ public class AprPdfService : IAprPdfService
         container.Border(1).BorderColor(Colors.Grey.Lighten1).Padding(6).Column(coluna =>
         {
             coluna.Item().Background(CorMarca).Padding(3).Text(titulo).FontColor(Colors.White).Bold().FontSize(8);
-            coluna.Item().PaddingTop(4).Text($"Nome: {assinatura.Nome ?? "____________________________"}");
-            coluna.Item().Text($"Função: {assinatura.Funcao ?? "____________________________"}");
-            coluna.Item().Text("Assinatura: ______________________");
-            coluna.Item().Text($"Data: {(assinatura.Data.HasValue ? assinatura.Data.Value.ToString("dd/MM/yyyy") : "____/____/______")}");
-            // Legenda miúda (pedido de 02/10): data/hora de Brasília e como a pessoa foi identificada.
-            if (assinatura.Data is { } quando)
-                coluna.Item().Text(DescricaoMetodoAssinatura.Legenda(HorarioBrasilia.De(quando), assinatura.Metodo))
-                    .FontSize(6).FontColor(Colors.Grey.Darken2);
+            // Padrão único de assinatura: nome, linha, cargo e a legenda miúda (pedido de 02/10).
+            coluna.Item().PaddingTop(2).Element(b => AssinaturaPdfPadrao.Bloco(
+                b, null, assinatura.Nome, assinatura.Funcao, assinatura.Data, assinatura.Metodo));
         });
     }
 

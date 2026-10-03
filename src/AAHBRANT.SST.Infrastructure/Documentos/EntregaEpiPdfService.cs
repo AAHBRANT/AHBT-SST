@@ -98,11 +98,7 @@ public class EntregaEpiPdfService : IFichaEpiPdfService
             .OrderBy(e => e.AssinadoPeloEmpregadoEm)
             .FirstOrDefault();
         var primeiraAssinaturaEmpregado = primeiraEntregaAssinada?.AssinadoPeloEmpregadoEm;
-        var assinaturaTermo = primeiraAssinaturaEmpregado is null
-            ? "Assinatura do Empregado — Termo de Compromisso: pendente"
-            : $"Assinatura do Empregado — Termo de Compromisso: assinado digitalmente por {modelo.TrabalhadorNome}. "
-              + DescricaoMetodoAssinatura.Legenda(HorarioBrasilia.De(primeiraAssinaturaEmpregado.Value), primeiraEntregaAssinada!.MetodoEmpregado);
-
+        
         return container => container.Column(coluna =>
         {
             coluna.Spacing(3);
@@ -115,7 +111,10 @@ public class EntregaEpiPdfService : IFichaEpiPdfService
             coluna.Item().Text("5 — Estou ciente de que o descumprimento das obrigações aqui assumidas constitui falta funcional, passível de sanções disciplinares que poderão variar, a critério do empregador, de advertência por escrito até a rescisão contratual por justa causa, sem prejuízo de demais medidas legais cabíveis, conforme disposto no Art. 158 da CLT e na Norma Regulamentadora nº 6 (NR-6).");
 
             coluna.Item().PaddingTop(4).Text($"Local: ______________________________     Data: {dataTermoFormatada}").FontSize(8).Italic();
-            coluna.Item().Text(assinaturaTermo).FontSize(8).Italic();
+            // Assinatura do empregado no termo — padrão único (nome, linha, cargo, legenda miúda).
+            coluna.Item().PaddingTop(10).AlignCenter().Width(260).Element(c => AssinaturaPdfPadrao.Bloco(
+                c, "Empregado — Termo de Compromisso", modelo.TrabalhadorNome, modelo.TrabalhadorFuncaoNome,
+                primeiraAssinaturaEmpregado, primeiraEntregaAssinada?.MetodoEmpregado));
         });
     }
 
@@ -251,12 +250,6 @@ public class EntregaEpiPdfService : IFichaEpiPdfService
                 c.Item().Text(DescricaoMetodoAssinatura.LegendaCurta(HorarioBrasilia.De(quando), metodo))
                     .FontSize(6).FontColor(Colors.Grey.Darken2);
         });
-    }
-
-    private static string FormatarDataHoraAssinatura(DateTime assinadoEm)
-    {
-        var dataHora = HorarioBrasilia.De(assinadoEm);
-        return $"{dataHora:dd/MM/yyyy HH:mm}";
     }
 
     private static string MotivoLabel(MotivoEntregaEpi? motivo, string? observacao)

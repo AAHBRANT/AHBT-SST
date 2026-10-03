@@ -23,7 +23,9 @@ public record InspecaoPdfItemModelo(
 public record InspecaoPdfSignatarioModelo(
     string Nome,
     string Metodo,
-    DateTime AssinadoEm);
+    DateTime AssinadoEm,
+    string? Funcao = null,
+    AAHBRANT.SST.Domain.Enums.MetodoAutenticacaoAssinatura? MetodoAutenticacao = null);
 
 public record InspecaoPdfAssinaturaModelo(
     DateTime FinalizadoEm,

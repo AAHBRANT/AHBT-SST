@@ -43,9 +43,18 @@ public class ExportarPermissaoTrabalhoPdfQueryHandler : IRequestHandler<Exportar
             ? await _db.Obras.Where(o => o.Id == obraId).Select(o => o.LogoConteudo).FirstOrDefaultAsync(ct)
             : null;
 
+        // Cargo de quem assina a liberação: usuário → trabalhador vinculado → função.
+        var pt0 = detalhe.PermissaoTrabalho;
+        var usuarioIds = new[] { pt0.AutorizadoPorUsuarioId, pt0.ResponsavelExecucaoUsuarioId, pt0.ResponsavelSstUsuarioId }
+            .Where(i => i.HasValue).Select(i => i!.Value).Distinct().ToList();
+        var funcoes = await _db.Usuarios
+            .Where(u => usuarioIds.Contains(u.Id))
+            .Select(u => new { u.Id, Funcao = u.Trabalhador != null && u.Trabalhador.Funcao != null ? u.Trabalhador.Funcao.Nome : null })
+            .ToDictionaryAsync(u => u.Id, u => u.Funcao, ct);
+
         var rastreio = await _rastreabilidade.GarantirAsync(nameof(PermissaoTrabalho), request.Id, ct);
 
-        var pdf = _pdf.Gerar(MontarModelo(detalhe, assinaram, logoConteudo, rastreio));
+        var pdf = _pdf.Gerar(MontarModelo(detalhe, assinaram, funcoes, logoConteudo, rastreio));
         // Guarda a cópia exata emitida e o SHA-256 dela — é o que permite conferir, depois,
         // que o arquivo em mãos não foi adulterado (ver HashArquivoCalculador).
         await _rastreabilidade.RegistrarArquivoAsync(rastreio.DocumentoId, pdf, ct);
@@ -123,7 +132,10 @@ public class ExportarPermissaoTrabalhoPdfQueryHandler : IRequestHandler<Exportar
         [ItemEpcPt.Sinalizacao] = "Sinalização",
     };
 
-    private static PtPdfModelo MontarModelo(PermissaoTrabalhoDetalheDto detalhe, Dictionary<Guid, DocumentoSignatario> assinaram, byte[]? obraLogoConteudo, RastreabilidadeDocumentoResultado rastreio)
+    private static string? FuncaoDe(Dictionary<Guid, string?> funcoes, Guid? usuarioId) =>
+        usuarioId.HasValue && funcoes.TryGetValue(usuarioId.Value, out var f) ? f : null;
+
+    private static PtPdfModelo MontarModelo(PermissaoTrabalhoDetalheDto detalhe, Dictionary<Guid, DocumentoSignatario> assinaram, Dictionary<Guid, string?> funcoes, byte[]? obraLogoConteudo, RastreabilidadeDocumentoResultado rastreio)
     {
         var pt = detalhe.PermissaoTrabalho;
         return new PtPdfModelo(
@@ -147,9 +159,9 @@ public class ExportarPermissaoTrabalhoPdfQueryHandler : IRequestHandler<Exportar
             detalhe.Epcs.Select(e => RotulosEpc[e.Item]).ToList(),
             pt.OutrosEpcs,
             detalhe.RiscosCriticos.Select(r => new PtPdfRiscoCritico(r.RiscoCondicao, r.ControleComplementar, r.ResponsavelEvidencia)).ToList(),
-            new PtPdfAssinatura(pt.AutorizadoPorUsuarioNome, pt.DataAutorizacao, pt.MetodoAssinatura),
-            new PtPdfAssinatura(pt.ResponsavelExecucaoUsuarioNome, pt.DataAssinaturaExecucao, pt.MetodoAssinatura),
-            pt.ResponsavelSstUsuarioId.HasValue ? new PtPdfAssinatura(pt.ResponsavelSstUsuarioNome, pt.DataAssinaturaSst, pt.MetodoAssinatura) : null,
+            new PtPdfAssinatura(pt.AutorizadoPorUsuarioNome, pt.DataAutorizacao, pt.MetodoAssinatura, FuncaoDe(funcoes, pt.AutorizadoPorUsuarioId)),
+            new PtPdfAssinatura(pt.ResponsavelExecucaoUsuarioNome, pt.DataAssinaturaExecucao, pt.MetodoAssinatura, FuncaoDe(funcoes, pt.ResponsavelExecucaoUsuarioId)),
+            pt.ResponsavelSstUsuarioId.HasValue ? new PtPdfAssinatura(pt.ResponsavelSstUsuarioNome, pt.DataAssinaturaSst, pt.MetodoAssinatura, FuncaoDe(funcoes, pt.ResponsavelSstUsuarioId)) : null,
             pt.SuspensaPorUsuarioId.HasValue ? new PtPdfSuspensao(pt.SuspensaPorUsuarioNome, pt.DataSuspensao, pt.MotivoSuspensao) : null,
             pt.EncerradaPorUsuarioId.HasValue ? new PtPdfEncerramento(pt.EncerradaPorUsuarioNome, pt.DataEncerramento, pt.ObservacoesEncerramento) : null,
             detalhe.Responsaveis.Select(r => assinaram.TryGetValue(r.TrabalhadorId, out var ass)
