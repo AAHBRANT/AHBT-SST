@@ -32,8 +32,9 @@ public class EntregaEpiPdfService : IFichaEpiPdfService
                     coluna.Spacing(10);
 
                     coluna.Item().Element(c => SecaoIdentificacao(c, modelo));
-                    coluna.Item().Element(SecaoTermoCompromisso(modelo));
+                    // Ordem do documento (pedido do usuário): 2 = Controle de Entrega, 3 = Termo de Recebimento.
                     coluna.Item().Element(c => SecaoControleEntrega(c, modelo));
+                    coluna.Item().Element(SecaoTermoCompromisso(modelo));
                     coluna.Item().Element(c => SecaoControleDevolucao(c, modelo));
                     coluna.Item().Element(SecaoObservacao);
                 });
@@ -102,7 +103,7 @@ public class EntregaEpiPdfService : IFichaEpiPdfService
         return container => container.Column(coluna =>
         {
             coluna.Spacing(3);
-            coluna.Item().Text("2. Termo de Recebimento e Compromisso de Uso").FontSize(11).Bold().FontColor(CorMarca);
+            coluna.Item().Text("3. Termo de Recebimento e Compromisso de Uso").FontSize(11).Bold().FontColor(CorMarca);
 
             coluna.Item().Text($"1 — Declaro ter recebido do {contratante} os Equipamentos de Proteção Individual (EPIs) relacionados nesta ficha, nas datas e quantidades ali indicadas, todos em perfeitas condições de uso e com Certificado de Aprovação (CA) válido.");
             coluna.Item().Text($"2 — Declaro ter recebido orientação e treinamento sobre o uso correto, a guarda, a conservação, a higienização e os critérios de substituição de cada EPI relacionado, conforme registrado na Lista de Presença de Treinamento (NR-6) nº {numeroNr6}, realizada em {dataNr6}.");
@@ -122,7 +123,7 @@ public class EntregaEpiPdfService : IFichaEpiPdfService
     {
         container.Column(coluna =>
         {
-            coluna.Item().Text("3. Controle de Entrega de EPI").FontSize(11).Bold().FontColor(CorMarca);
+            coluna.Item().Text("2. Controle de Entrega de EPI").FontSize(11).Bold().FontColor(CorMarca);
 
             if (modelo.Entregas.Count == 0)
             {
