@@ -54,53 +54,47 @@ public class EntregaEpiPdfService : IFichaEpiPdfService
         {
             coluna.Item().Text("1. Identificação do Trabalhador").FontSize(11).Bold().FontColor(CorMarca);
 
+            // Grade de 3 colunas, cada campo numa caixa com o rótulo pequeno em cima e o valor embaixo
+            // (mesmo desenho do cabeçalho do DDS semanal) — linhas alinhadas e sem quebra irregular.
             coluna.Item().PaddingTop(2).Table(tabela =>
             {
                 tabela.ColumnsDefinition(columns =>
                 {
-                    columns.RelativeColumn(1.5f);
-                    columns.RelativeColumn(1.5f);
-                    columns.RelativeColumn(1.5f);
-                    columns.RelativeColumn(1.5f);
+                    columns.RelativeColumn();
+                    columns.RelativeColumn();
+                    columns.RelativeColumn();
                 });
 
-                CelulaIdentificacao(tabela, "Nome completo:", modelo.TrabalhadorNome, colSpan: 3);
-                CelulaIdentificacao(tabela, "CPF:", modelo.TrabalhadorCpfMascarado);
-                CelulaIdentificacao(tabela, "Matrícula:", modelo.TrabalhadorMatricula);
-                CelulaIdentificacao(tabela, "Função:", modelo.TrabalhadorFuncaoNome, colSpan: 2);
-                CelulaIdentificacao(tabela, "Turno:", modelo.TrabalhadorTurno ?? "não informado");
-                CelulaIdentificacao(tabela, "Data de admissão:", modelo.TrabalhadorDataAdmissao.ToString("dd/MM/yyyy"));
-                CelulaIdentificacao(tabela, "Obra / Frente de trabalho:", modelo.ObraNome, colSpan: 3);
-                CelulaIdentificacao(tabela, "Empresa contratante:", modelo.ObraCliente ?? "não informado", colSpan: 2);
-                CelulaIdentificacao(tabela, "CNPJ da contratada:", modelo.ObraCnpj ?? "não informado", colSpan: 2);
+                CelulaIdentificacao(tabela, "Nome completo", modelo.TrabalhadorNome, colSpan: 2);
+                CelulaIdentificacao(tabela, "CPF", modelo.TrabalhadorCpfMascarado);
+                CelulaIdentificacao(tabela, "Matrícula", modelo.TrabalhadorMatricula);
+                CelulaIdentificacao(tabela, "Função", modelo.TrabalhadorFuncaoNome);
+                CelulaIdentificacao(tabela, "Turno", modelo.TrabalhadorTurno ?? "não informado");
+                CelulaIdentificacao(tabela, "Data de admissão", modelo.TrabalhadorDataAdmissao.ToString("dd/MM/yyyy"));
+                CelulaIdentificacao(tabela, "Obra / Frente de trabalho", modelo.ObraNome, colSpan: 2);
+                CelulaIdentificacao(tabela, "Empresa contratante", modelo.ObraCliente ?? "não informado", colSpan: 2);
+                CelulaIdentificacao(tabela, "CNPJ da contratada", modelo.ObraCnpj ?? "não informado");
             });
         });
     }
 
     private static void CelulaIdentificacao(TableDescriptor tabela, string rotulo, string valor, uint colSpan = 1)
     {
-        tabela.Cell().ColumnSpan(colSpan).PaddingRight(8).PaddingBottom(2).Text(t =>
+        tabela.Cell().ColumnSpan(colSpan).Border(0.5f).BorderColor(Colors.Grey.Lighten1).Padding(4).Column(celula =>
         {
-            t.Span(rotulo + " ").SemiBold();
-            t.Span(valor);
+            celula.Item().Text(rotulo).FontSize(7).SemiBold().FontColor(CorMarca);
+            celula.Item().Text(valor).FontSize(9);
         });
     }
 
     private static Action<IContainer> SecaoTermoCompromisso(FichaEpiPdfModelo modelo)
     {
         var contratante = modelo.ObraCliente ?? "empregador";
-        var dataTermo = HorarioBrasilia.Agora;
-        var dataTermoFormatada = dataTermo.ToString("dd/MM/yyyy");
         // Data e nº vêm do certificado de NR-06 do trabalhador (pedido de 02/10); sem certificado,
         // ficam em branco para preenchimento à mão — a trava de NR-06 já barra a entrega nesse caso.
         var dataNr6 = modelo.DataTreinamentoNr6?.ToString("dd/MM/yyyy") ?? "____/____/______";
         var numeroNr6 = string.IsNullOrWhiteSpace(modelo.NumeroCertificadoNr6) ? "__________" : modelo.NumeroCertificadoNr6;
-        var primeiraEntregaAssinada = modelo.Entregas
-            .Where(e => e.AssinadoPeloEmpregadoEm is not null)
-            .OrderBy(e => e.AssinadoPeloEmpregadoEm)
-            .FirstOrDefault();
-        var primeiraAssinaturaEmpregado = primeiraEntregaAssinada?.AssinadoPeloEmpregadoEm;
-        
+
         return container => container.Column(coluna =>
         {
             coluna.Spacing(3);
@@ -111,12 +105,6 @@ public class EntregaEpiPdfService : IFichaEpiPdfService
             coluna.Item().Text("3 — Comprometo-me a utilizar os EPIs exclusivamente para a finalidade a que se destinam, durante toda a execução das minhas atividades laborais, zelando por sua guarda, conservação e higienização adequadas, e a comunicar imediatamente ao Setor de Segurança do Trabalho qualquer dano, extravio ou alteração que os torne impróprios para uso.");
             coluna.Item().Text("4 — Comprometo-me a devolver os EPIs sempre que solicitado, inclusive nos casos de substituição, troca de função, mudança de atividade ou rescisão do meu contrato de trabalho.");
             coluna.Item().Text("5 — Estou ciente de que o descumprimento das obrigações aqui assumidas constitui falta funcional, passível de sanções disciplinares que poderão variar, a critério do empregador, de advertência por escrito até a rescisão contratual por justa causa, sem prejuízo de demais medidas legais cabíveis, conforme disposto no Art. 158 da CLT e na Norma Regulamentadora nº 6 (NR-6).");
-
-            coluna.Item().PaddingTop(4).Text($"Local: ______________________________     Data: {dataTermoFormatada}").FontSize(8).Italic();
-            // Assinatura do empregado no termo — padrão único (nome, linha, cargo, legenda miúda).
-            coluna.Item().PaddingTop(10).AlignCenter().Width(260).Element(c => AssinaturaPdfPadrao.Bloco(
-                c, "Empregado — Termo de Compromisso", modelo.TrabalhadorNome, modelo.TrabalhadorFuncaoNome,
-                primeiraAssinaturaEmpregado, primeiraEntregaAssinada?.MetodoEmpregado));
         });
     }
 
