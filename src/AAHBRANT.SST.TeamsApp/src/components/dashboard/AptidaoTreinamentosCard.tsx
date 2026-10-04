@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { makeStyles, mergeClasses } from '@fluentui/react-components';
 import type { AptidaoCurso } from '../../lib/api';
 import { Card, Legenda, designTokens, tokensUi, usePaletaGraficos } from '@ui';
+import { RotuloEscopo } from './RotuloEscopo';
 
 interface AptidaoTreinamentosCardProps {
   cursos: AptidaoCurso[];
@@ -84,7 +85,11 @@ export function AptidaoTreinamentosCard({ cursos, escopo }: AptidaoTreinamentosC
 
   return (
     <Card
-      titulo="Aptidão por treinamento"
+      titulo={
+        <>
+          Aptidão por treinamento <RotuloEscopo tipo="hoje" />
+        </>
+      }
       subtitulo={`Trabalhadores que precisam do curso para a sua função, ${escopo}`}
     >
       {!curso ? (

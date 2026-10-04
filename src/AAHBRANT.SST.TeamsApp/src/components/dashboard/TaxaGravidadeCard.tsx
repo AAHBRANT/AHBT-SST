@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { Input, makeStyles } from '@fluentui/react-components';
 import type { Acidente, RegistroHhtMensal } from '../../lib/api';
 import { Card, Legenda, StatusChip, designTokens, usePaletaGraficos } from '@ui';
+import { RotuloEscopo } from './RotuloEscopo';
 
 const useStyles = makeStyles({
   destaque: { display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: '10px' },
@@ -50,6 +51,23 @@ const useStyles = makeStyles({
     color: designTokens.colorPrimary,
     whiteSpace: 'nowrap',
   },
+  semAcidente: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: '12px',
+    padding: '10px 14px',
+    borderRadius: '10px',
+    backgroundColor: designTokens.colorSuccessWash,
+  },
+  semAcidenteNumero: {
+    fontSize: '30px',
+    lineHeight: '30px',
+    fontWeight: 800,
+    fontVariantNumeric: 'tabular-nums',
+    color: designTokens.colorSuccess,
+  },
+  semAcidenteTexto: { fontSize: '13px', fontWeight: 600, color: designTokens.colorNeutralDark },
+  semAcidenteDetalhe: { display: 'block', fontSize: '12px', fontWeight: 500, color: designTokens.colorNeutralMedium },
   grafico: { width: '100%', height: 'auto', display: 'block', marginTop: '4px' },
 });
 
@@ -133,13 +151,31 @@ export function TaxaGravidadeCard({ acidentes, registrosHht, escopo, className }
     });
   }, [acidentes, registrosHht]);
 
+  // Dias corridos desde o último acidente com afastamento. Sem nenhum registro, não inventa um número.
+  const semAfastamento = useMemo(() => {
+    const comAfastamento = acidentes
+      .filter((a) => a.houveAfastamento)
+      .sort((a, b) => b.data.localeCompare(a.data));
+    const ultimo = comAfastamento[0];
+    if (!ultimo) return null;
+    const hoje = new Date();
+    // A data do acidente é só o dia (sem fuso): lida como UTC, igual ao 'hoje' abaixo, para não perder um dia.
+    const diaDoAcidente = new Date(ultimo.data.slice(0, 10));
+    const dias = Math.max(0, Math.round((Date.UTC(hoje.getFullYear(), hoje.getMonth(), hoje.getDate()) - diaDoAcidente.getTime()) / 86_400_000));
+    return { dias, data: diaDoAcidente.toLocaleDateString('pt-BR', { timeZone: 'UTC' }), obra: ultimo.obraNome };
+  }, [acidentes]);
+
   const dentroDaMeta = meta !== null && taxaGravidade !== null ? taxaGravidade <= meta : null;
   const corMeta = dentroDaMeta === false ? paleta.alerta : paleta.ok;
 
   return (
     <Card
       className={className}
-      titulo="Taxa de Gravidade"
+      titulo={
+        <>
+          Taxa de Gravidade <RotuloEscopo tipo="acumulado" />
+        </>
+      }
       subtitulo={`NBR 14280 · ${escopo}`}
       acoes={
         editandoMeta ? (
@@ -169,6 +205,23 @@ export function TaxaGravidadeCard({ acidentes, registrosHht, escopo, className }
         )
       }
     >
+      <div className={estilos.semAcidente}>
+        {semAfastamento ? (
+          <>
+            <span className={estilos.semAcidenteNumero}>{semAfastamento.dias}</span>
+            <span className={estilos.semAcidenteTexto}>
+              dias sem acidente com afastamento
+              <small className={estilos.semAcidenteDetalhe}>
+                último: {semAfastamento.data}
+                {semAfastamento.obra ? ` · ${semAfastamento.obra}` : ''}
+              </small>
+            </span>
+          </>
+        ) : (
+          <span className={estilos.semAcidenteTexto}>Nenhum acidente com afastamento registrado.</span>
+        )}
+      </div>
+
       {taxaGravidade === null ? (
         <Legenda>
           Sem horas-homem trabalhadas lançadas: não dá para calcular a taxa. Lance o HHT mensal para ver o indicador.

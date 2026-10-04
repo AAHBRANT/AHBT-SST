@@ -83,6 +83,17 @@ export const tipoVinculoLabel: Record<number, string> = {
   4: 'Estagiário',
 };
 
+// Quantos trabalhadores ativos podem trabalhar hoje (ASO, treinamentos da função e EPI em dia) e por que os demais não.
+// Uma pessoa pode ter mais de um motivo, então os motivos não somam o total de bloqueados.
+export interface LiberacaoTrabalho {
+  ativos: number;
+  liberados: number;
+  bloqueados: number;
+  semAsoValido: number;
+  treinamentoPendente: number;
+  epiPendente: number;
+}
+
 export interface Trabalhador {
   id: string;
   obraId: string;
@@ -3810,6 +3821,8 @@ export const api = {
     },
   },
   trabalhadores: {
+    liberacao: (obraId?: string) =>
+      request<LiberacaoTrabalho>(`/api/trabalhadores/liberacao${obraId ? `?obraId=${obraId}` : ''}`),
     listar: (obraId?: string) =>
       request<Trabalhador[]>(`/api/trabalhadores${obraId ? `?obraId=${obraId}` : ''}`),
     criar: (trabalhador: NovoTrabalhador) =>

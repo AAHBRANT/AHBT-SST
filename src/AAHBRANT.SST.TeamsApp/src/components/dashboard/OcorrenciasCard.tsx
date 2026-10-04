@@ -3,6 +3,7 @@ import { motion } from 'framer-motion';
 import { Bar, BarChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
 import { makeStyles, mergeClasses } from '@fluentui/react-components';
 import { Card, designTokens, tokensUi } from '@ui';
+import { RotuloEscopo } from './RotuloEscopo';
 
 export interface TipoOcorrenciaResumo {
   /** Chave da série no gráfico (ex.: 'acidente'). */
@@ -119,7 +120,11 @@ export function OcorrenciasCard({ tipos, serie, recentes, subtitulo, aoAbrirOcor
 
   return (
     <Card
-      titulo="Ocorrências — últimos 6 meses"
+      titulo={
+        <>
+          Ocorrências — últimos 6 meses <RotuloEscopo tipo="periodo" />
+        </>
+      }
       subtitulo={
         tipoSelecionado
           ? `Mostrando só ${tipoSelecionado.rotulo.toLowerCase()}. Clique no tipo de novo ou em "Total" para ver tudo.`
