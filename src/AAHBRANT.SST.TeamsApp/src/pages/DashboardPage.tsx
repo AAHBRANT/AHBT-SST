@@ -238,13 +238,6 @@ export function DashboardPage() {
     () => (obraSelecionadaId ? asos.filter((aso) => trabalhadoresDaObraIds.has(aso.trabalhadorId)) : asos),
     [asos, trabalhadoresDaObraIds, obraSelecionadaId],
   );
-  const treinamentosFiltrados = useMemo(
-    () =>
-      obraSelecionadaId
-        ? treinamentos.filter((treinamento) => trabalhadoresDaObraIds.has(treinamento.trabalhadorId))
-        : treinamentos,
-    [treinamentos, trabalhadoresDaObraIds, obraSelecionadaId],
-  );
   const entregasEpiFiltradas = useMemo(
     () => (obraSelecionadaId ? entregasEpi.filter((entrega) => trabalhadoresDaObraIds.has(entrega.trabalhadorId)) : entregasEpi),
     [entregasEpi, trabalhadoresDaObraIds, obraSelecionadaId],

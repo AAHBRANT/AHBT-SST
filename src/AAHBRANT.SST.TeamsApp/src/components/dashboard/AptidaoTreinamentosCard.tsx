@@ -19,13 +19,13 @@ const useStyles = makeStyles({
     fontSize: '12.5px',
     fontWeight: 600,
     cursor: 'pointer',
-    ':hover': { borderColor: designTokens.colorNeutralMedium },
+    ':hover': { border: `1px solid ${designTokens.colorNeutralMedium}` },
   },
   botaoAtivo: {
     backgroundColor: designTokens.colorPrimary,
-    borderColor: designTokens.colorPrimary,
+    border: `1px solid ${designTokens.colorPrimary}`,
     color: '#ffffff',
-    ':hover': { borderColor: designTokens.colorPrimary },
+    ':hover': { border: `1px solid ${designTokens.colorPrimary}` },
   },
   destaque: { display: 'flex', alignItems: 'baseline', flexWrap: 'wrap', gap: '8px', marginBottom: '12px' },
   numero: {

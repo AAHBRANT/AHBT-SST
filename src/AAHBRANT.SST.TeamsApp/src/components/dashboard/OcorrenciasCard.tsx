@@ -47,17 +47,17 @@ const useStyles = makeStyles({
     cursor: 'pointer',
     minWidth: 0,
     fontFamily: 'inherit',
-    ':hover': { borderColor: designTokens.colorNeutralMedium },
+    ':hover': { border: `1px solid ${designTokens.colorNeutralMedium}` },
   },
   chipTotal: {
     backgroundColor: designTokens.colorPrimary,
-    borderColor: designTokens.colorPrimary,
+    border: `1px solid ${designTokens.colorPrimary}`,
     color: '#ffffff',
-    ':hover': { borderColor: designTokens.colorPrimary, filter: 'brightness(1.15)' },
+    ':hover': { border: `1px solid ${designTokens.colorPrimary}`, filter: 'brightness(1.15)' },
   },
   chipSelecionado: {
     backgroundColor: designTokens.colorSurface,
-    borderColor: designTokens.colorPrimary,
+    border: `1px solid ${designTokens.colorPrimary}`,
     boxShadow: `inset 0 0 0 1px ${designTokens.colorPrimary}`,
   },
   chipEsmaecido: { opacity: 0.5 },
@@ -151,7 +151,7 @@ export function OcorrenciasCard({ tipos, serie, recentes, subtitulo, aoAbrirOcor
               className={mergeClasses(
                 estilos.chip,
                 ativo && estilos.chipSelecionado,
-                tipoSelecionado && !ativo && estilos.chipEsmaecido,
+                !!tipoSelecionado && !ativo && estilos.chipEsmaecido,
               )}
               onClick={() => setSelecionada(ativo ? null : tipo.chave)}
             >
