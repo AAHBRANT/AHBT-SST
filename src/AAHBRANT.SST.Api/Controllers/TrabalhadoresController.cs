@@ -21,6 +21,12 @@ public class TrabalhadoresController : ControllerBase
     public async Task<IActionResult> Listar([FromQuery] Guid? obraId, CancellationToken ct)
         => Ok(await _mediator.Send(new ListarTrabalhadoresQuery(obraId), ct));
 
+    // Indicador "Podem trabalhar hoje" do Início: quantos ativos estão liberados e por que os demais não.
+    [Authorize(Policy = "trabalhador:ver")]
+    [HttpGet("liberacao")]
+    public async Task<IActionResult> ObterLiberacao([FromQuery] Guid? obraId, CancellationToken ct)
+        => Ok(await _mediator.Send(new ObterLiberacaoParaTrabalhoQuery(obraId), ct));
+
     [Authorize(Policy = "trabalhador:ver")]
     [HttpGet("{id:guid}")]
     public async Task<IActionResult> ObterPorId(Guid id, CancellationToken ct)

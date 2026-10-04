@@ -4,6 +4,7 @@ import {
   BuildingBank24Regular,
   People24Regular,
   ShieldCheckmark24Regular,
+  ShieldError24Regular,
   DocumentError24Regular,
   Alert24Regular,
   CheckmarkCircle24Regular,
@@ -22,6 +23,7 @@ import {
   type Alerta,
   type Aso,
   type AptidaoCurso,
+  type LiberacaoTrabalho,
   type Atividade,
   type Dds,
   type EntregaEpi,
@@ -35,6 +37,7 @@ import {
 import { Button, Card, FeedbackInline, KpiCard, Legenda, Select, StatusChip, StatusDonutChart, usePaletaGraficos, type FatiaDonut, type Tom } from '@ui';
 import { AptidaoTreinamentosCard } from '../components/dashboard/AptidaoTreinamentosCard';
 import { ConformidadePorObraCard, type ConformidadeObra } from '../components/dashboard/ConformidadePorObraCard';
+import { RotuloEscopo } from '../components/dashboard/RotuloEscopo';
 import { OcorrenciasCard, type PontoOcorrencias, type RegistroRecente, type TipoOcorrenciaResumo } from '../components/dashboard/OcorrenciasCard';
 import { useDashboardStyles } from '../components/dashboard/dashboardStyles';
 import { TaxaGravidadeCard } from '../components/dashboard/TaxaGravidadeCard';
@@ -122,6 +125,7 @@ export function DashboardPage() {
   const [dds, setDds] = useState<Dds[]>([]);
   const [inspecoes, setInspecoes] = useState<Inspecao[]>([]);
   const [aptidaoCursos, setAptidaoCursos] = useState<AptidaoCurso[]>([]);
+  const [liberacao, setLiberacao] = useState<LiberacaoTrabalho | null>(null);
   const [erro, setErro] = useState<string | null>(null);
 
   useEffect(() => {
@@ -140,6 +144,15 @@ export function DashboardPage() {
       })
       .catch(() => {
         if (!cancelado) setAtividades([]);
+      });
+
+    api.trabalhadores
+      .liberacao(obraId)
+      .then((resp) => {
+        if (!cancelado) setLiberacao(resp);
+      })
+      .catch(() => {
+        if (!cancelado) setLiberacao(null);
       });
 
     api.cursosTreinamento
@@ -282,14 +295,11 @@ export function DashboardPage() {
   const trabalhadoresAtivos = useMemo(() => trabalhadoresFiltrados.filter((t) => !t.dataDemissao), [trabalhadoresFiltrados]);
   const admitidosNoPeriodo = trabalhadoresAtivos.filter((t) => noPeriodoSelecionado(t.dataAdmissao)).length;
 
-  // Conformidade de EPI: fórmula provisória (sem indicador oficial ainda no sistema) — % de entregas
-  // ativas (sem devolução registrada) que estão dentro da validade.
+  // EPI vencido: quantos trabalhadores têm ao menos uma entrega ativa (sem devolução) fora da validade.
   const entregasEpiAtivas = useMemo(() => entregasEpiFiltradas.filter((e) => !e.dataDevolucao), [entregasEpiFiltradas]);
   const entregasEpiVencidas = entregasEpiAtivas.filter((e) => e.dataValidade && e.dataValidade < hojeISO);
-  const conformidadeEpiPct =
-    entregasEpiAtivas.length > 0
-      ? Math.round(((entregasEpiAtivas.length - entregasEpiVencidas.length) / entregasEpiAtivas.length) * 100)
-      : null;
+  const trabalhadoresComEpiVencido = new Set(entregasEpiVencidas.map((e) => e.trabalhadorId)).size;
+  const trabalhadoresComEpi = new Set(entregasEpiAtivas.map((e) => e.trabalhadorId)).size;
 
   // Os 6 tipos de ocorrência, separados (decisão do usuário, 04/10). A cor de cada um é fixa para o
   // chip do resumo e a série do gráfico usarem a mesma.
@@ -308,9 +318,12 @@ export function DashboardPage() {
   // "Abertas" = qualquer não conformidade que ainda não foi encerrada (mesmo critério usado no
   // dashboard do módulo Não Conformidades).
   const naoConformidadesAbertas = naoConformidadesFiltradas.filter((nc) => nc.status !== StatusNaoConformidade.Encerrada);
-  const naoConformidadesEmTratamento = naoConformidadesAbertas.filter(
-    (nc) => nc.status === StatusNaoConformidade.EmAndamento,
-  ).length;
+  // Em atraso = ainda aberta e com o prazo de tratamento já vencido.
+  const naoConformidadesEmAtraso = naoConformidadesAbertas.filter((nc) => nc.prazo && nc.prazo.slice(0, 10) < hojeISO);
+  const maiorAtrasoDias = naoConformidadesEmAtraso.reduce((maior, nc) => {
+    const dias = Math.round((new Date(hojeISO).getTime() - new Date((nc.prazo as string).slice(0, 10)).getTime()) / 86_400_000);
+    return Math.max(maior, dias);
+  }, 0);
 
   const kpis: Kpi[] = [
     {
@@ -330,19 +343,45 @@ export function DashboardPage() {
       destino: '/pessoas?aba=trabalhadores',
     },
     {
-      rotulo: 'Conformidade de EPI',
-      valor: conformidadeEpiPct !== null ? `${conformidadeEpiPct}%` : '—',
-      icone: <ShieldCheckmark24Regular />,
-      tom: 'ok',
-      deltas: entregasEpiAtivas.length > 0 ? [{ texto: `${entregasEpiAtivas.length} entregas ativas`, tom: 'neutro' }] : [],
+      rotulo: 'Podem trabalhar hoje',
+      valor: liberacao ? String(liberacao.liberados) : '—',
+      icone: <CheckmarkCircle24Regular />,
+      tom: liberacao && liberacao.bloqueados > 0 ? 'alerta' : 'ok',
+      deltas: liberacao
+        ? [
+            { texto: `de ${liberacao.ativos} · ${liberacao.bloqueados} bloqueados`, tom: liberacao.bloqueados > 0 ? 'alerta' : 'ok' },
+            ...(liberacao.semAsoValido > 0 ? [{ texto: `${liberacao.semAsoValido} sem ASO válido`, tom: 'atencao' as const }] : []),
+            ...(liberacao.treinamentoPendente > 0 ? [{ texto: `${liberacao.treinamentoPendente} com treinamento pendente`, tom: 'atencao' as const }] : []),
+            ...(liberacao.epiPendente > 0 ? [{ texto: `${liberacao.epiPendente} sem EPI válido`, tom: 'atencao' as const }] : []),
+          ]
+        : [],
+      destino: '/pessoas?aba=trabalhadores',
+    },
+    {
+      rotulo: 'Trabalhadores com EPI vencido',
+      valor: String(trabalhadoresComEpiVencido),
+      icone: <ShieldError24Regular />,
+      tom: trabalhadoresComEpiVencido > 0 ? 'alerta' : 'ok',
+      deltas:
+        entregasEpiAtivas.length > 0
+          ? [
+              {
+                texto: `${entregasEpiVencidas.length} entregas vencidas · de ${trabalhadoresComEpi} com EPI`,
+                tom: trabalhadoresComEpiVencido > 0 ? 'alerta' : 'neutro',
+              },
+            ]
+          : [],
       destino: '/operacao?secao=epi&aba=entregas',
     },
     {
-      rotulo: 'Não conformidades abertas',
-      valor: String(naoConformidadesAbertas.length),
+      rotulo: 'Não conformidades em atraso',
+      valor: String(naoConformidadesEmAtraso.length),
       icone: <DocumentError24Regular />,
-      tom: 'alerta',
-      deltas: naoConformidadesEmTratamento > 0 ? [{ texto: `${naoConformidadesEmTratamento} em tratamento`, tom: 'alerta' }] : [],
+      tom: naoConformidadesEmAtraso.length > 0 ? 'alerta' : 'ok',
+      deltas: [
+        { texto: `${naoConformidadesAbertas.length} abertas`, tom: 'neutro' },
+        ...(naoConformidadesEmAtraso.length > 0 ? [{ texto: `maior atraso: ${maiorAtrasoDias} dias`, tom: 'alerta' as const }] : []),
+      ],
       destino: '/ocorrencias?secao=nao-conformidades&aba=registros',
     },
   ];
@@ -361,26 +400,29 @@ export function DashboardPage() {
     return mapa;
   }, [trabalhadoresAtivos, asosFiltrados]);
 
+  // Já considera a validade: um ASO "apto" que venceu deixa de contar como apto (antes aparecia como apto).
   const statusAsoGeral = useMemo(() => {
-    let aptos = 0;
-    let restricao = 0;
-    let inaptos = 0;
-    let pendentes = 0;
+    const contagem = { aptos: 0, vencem: 0, vencidos: 0, inaptos: 0, restricao: 0, pendentes: 0 };
+    const hojeMs = new Date(hojeISO).getTime();
     for (const trabalhador of trabalhadoresAtivos) {
       const aso = asoMaisRecentePorTrabalhador.get(trabalhador.id);
-      if (!aso || aso.resultadoStatus === ResultadoAso.Pendente) pendentes += 1;
-      else if (aso.resultadoStatus === ResultadoAso.Inapto) inaptos += 1;
-      else if (aso.resultadoStatus === ResultadoAso.AptoComRestricao) restricao += 1;
-      else aptos += 1;
+      if (!aso || aso.resultadoStatus === ResultadoAso.Pendente) contagem.pendentes += 1;
+      else if (aso.resultadoStatus === ResultadoAso.Inapto) contagem.inaptos += 1;
+      else if (aso.dataValidade.slice(0, 10) < hojeISO) contagem.vencidos += 1;
+      else if (aso.resultadoStatus === ResultadoAso.AptoComRestricao) contagem.restricao += 1;
+      else if ((new Date(aso.dataValidade.slice(0, 10)).getTime() - hojeMs) / 86_400_000 <= 30) contagem.vencem += 1;
+      else contagem.aptos += 1;
     }
-    return { aptos, restricao, inaptos, pendentes };
-  }, [trabalhadoresAtivos, asoMaisRecentePorTrabalhador]);
+    return contagem;
+  }, [trabalhadoresAtivos, asoMaisRecentePorTrabalhador, hojeISO]);
 
   const statusAsoDados: FatiaDonut[] = [
-    { rotulo: 'Aptos', valor: statusAsoGeral.aptos, cor: paleta.ok },
-    { rotulo: 'Restrição temporária', valor: statusAsoGeral.restricao, cor: paleta.atencao },
-    { rotulo: 'Inaptos', valor: statusAsoGeral.inaptos, cor: paleta.alerta },
-    { rotulo: 'Documentação pendente', valor: statusAsoGeral.pendentes, cor: paleta.info },
+    { rotulo: 'Aptos e válidos', valor: statusAsoGeral.aptos, cor: paleta.ok },
+    { rotulo: 'Vencem em 30 dias', valor: statusAsoGeral.vencem, cor: paleta.atencao },
+    { rotulo: 'Vencidos', valor: statusAsoGeral.vencidos, cor: paleta.alerta },
+    { rotulo: 'Inaptos', valor: statusAsoGeral.inaptos, cor: paleta.marca },
+    { rotulo: 'Restrição temporária', valor: statusAsoGeral.restricao, cor: paleta.info },
+    { rotulo: 'Sem ASO ou pendente', valor: statusAsoGeral.pendentes, cor: paleta.neutro },
   ];
 
   // ---------- Conformidade por obra ----------
@@ -634,7 +676,14 @@ export function DashboardPage() {
             onClick={() => navigate('/operacao/saude-ocupacional?aba=aso')}
             onKeyDown={(evento) => abrirComTeclado(evento, '/operacao/saude-ocupacional?aba=aso')}
           >
-            <Card titulo="Status de aptidão ocupacional (ASO)" subtitulo="Situação clínica do ASO mais recente de cada funcionário">
+            <Card
+              titulo={
+                <>
+                  Status de aptidão ocupacional (ASO) <RotuloEscopo tipo="hoje" />
+                </>
+              }
+              subtitulo="Situação do ASO mais recente de cada funcionário, já considerando a validade"
+            >
               <StatusDonutChart dados={statusAsoDados} legendaCentral="funcionários" />
             </Card>
           </div>
