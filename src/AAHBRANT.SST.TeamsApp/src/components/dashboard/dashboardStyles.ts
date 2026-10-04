@@ -56,7 +56,16 @@ export const useDashboardStyles = makeStyles({
       paddingRight: '4px',
     },
   },
-  botaoPeriodoAtivo: {
+  botaoPeriodoSelecionado: {
+    minWidth: 'auto',
+    height: '30px',
+    borderRadius: '7px',
+    fontWeight: 600,
+    '@media (max-width: 520px)': {
+      width: '100%',
+      paddingLeft: '4px',
+      paddingRight: '4px',
+    },
     color: '#ffffff',
     backgroundColor: designTokens.colorPrimary,
     '& .fui-Button__content': {
@@ -111,9 +120,10 @@ export const useDashboardStyles = makeStyles({
     flexDirection: 'column',
     gap: '16px',
     minWidth: 0,
+    // O ASO é clicável (cardAcionavel, height:100%); numa coluna flex isso brigaria com o card que
+    // estica, então o primeiro filho fica com a altura do próprio conteúdo.
+    '& > div:first-child': { height: 'auto', flexShrink: 0 },
   },
-  // cardAcionavel tem height:100%; numa coluna flex isso brigaria com o card que estica.
-  semAlturaTotal: { height: 'auto', flexShrink: 0 },
   // Card que cresce para ocupar o espaço que sobra da coluna; o corpo reparte o conteúdo na vertical.
   cardEsticado: {
     flexGrow: 1,
