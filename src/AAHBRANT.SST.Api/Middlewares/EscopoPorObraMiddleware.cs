@@ -1,6 +1,9 @@
 using System.Security.Claims;
 using AAHBRANT.SST.Api.Autorizacao;
 using AAHBRANT.SST.Application.Common.Interfaces;
+using AAHBRANT.SST.Application.Common.Seguranca;
+using AAHBRANT.SST.Domain.Enums;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.EntityFrameworkCore;
 
 namespace AAHBRANT.SST.Api.Middlewares;
@@ -25,7 +28,7 @@ public class EscopoPorObraMiddleware
         _proximo = proximo;
     }
 
-    public async Task InvokeAsync(HttpContext contexto, IAppDbContext db, ICurrentUserService usuarioAtual, IConfiguration configuracao)
+    public async Task InvokeAsync(HttpContext contexto, IAppDbContext db, ICurrentUserService usuarioAtual, IConfiguration configuracao, IAcessoPorObraService acesso)
     {
         var autenticacaoEntraIdHabilitada = !string.IsNullOrWhiteSpace(configuracao["AzureAd:TenantId"]);
         if (!autenticacaoEntraIdHabilitada)
@@ -58,14 +61,25 @@ public class EscopoPorObraMiddleware
         }
 
         var obrasVinculadas = await db.UsuariosPerfilObra
-            .Where(v => v.Usuario != null && v.Usuario.AzureAdObjectId == azureAdObjectId)
+            .Where(v => v.Ativo && v.Usuario != null && v.Usuario.Ativo
+                && v.Usuario.Status == StatusUsuario.Ativo && v.Usuario.AzureAdObjectId == azureAdObjectId
+                && v.PerfilAcesso != null && v.PerfilAcesso.Ativo)
             .Select(v => v.ObraId)
             .ToListAsync();
 
         var temAcessoGlobal = obrasVinculadas.Any(obraId => obraId == null);
         var obrasPermitidas = obrasVinculadas.Where(obraId => obraId.HasValue).Select(obraId => obraId!.Value).ToList();
 
-        usuarioAtual.DefinirEscopo(temAcessoGlobal, obrasPermitidas);
+        var escopo = new EscopoPermissao(temAcessoGlobal, obrasPermitidas);
+        var politicas = contexto.GetEndpoint()?.Metadata.GetOrderedMetadata<IAuthorizeData>()
+            .Select(a => a.Policy).Where(p => !string.IsNullOrEmpty(p)).Distinct() ?? [];
+        foreach (var politica in politicas)
+        {
+            if (politica is PoliticasAutorizacao.SomenteAdministrador
+                or PoliticasAutorizacao.QualquerUsuarioAutenticado or "suporte-ia:usar" or "novidades:usar") continue;
+            escopo = escopo.Intersectar(await acesso.ObterEscopoAsync(azureAdObjectId, politica!, contexto.RequestAborted));
+        }
+        usuarioAtual.DefinirEscopo(escopo.Global, escopo.Obras);
         await _proximo(contexto);
     }
 }

@@ -1,6 +1,7 @@
 using System.Net;
 using System.Text.Json;
 using FluentValidation;
+using AAHBRANT.SST.Application.Common.Seguranca;
 using Microsoft.EntityFrameworkCore;
 
 namespace AAHBRANT.SST.Api.Middlewares;
@@ -24,6 +25,10 @@ public class TratamentoDeExcecaoMiddleware
         try
         {
             await _proximo(contexto);
+        }
+        catch (AcessoNegadoException ex)
+        {
+            await EscreverRespostaAsync(contexto, HttpStatusCode.Forbidden, ex.Message);
         }
         catch (ValidationException ex)
         {
