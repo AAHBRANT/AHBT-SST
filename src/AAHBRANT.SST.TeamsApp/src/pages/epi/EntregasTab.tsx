@@ -6,9 +6,9 @@ import {
   Card, PageHeader, DataTable, StatusChip, nivelVencimento, tomDeVencimento, rotuloDeVencimento,
   PainelCriacaoInline, FormSection, FormGrid, FormRodape, Campo, SeletorPesquisavel, FeedbackInline,
   useConfirmar,
+  Dialog, DialogActions, DialogBody, DialogContent, DialogSurface, DialogTitle, Spinner,
   type Coluna,
 } from '@ui';
-import { Dialog, DialogActions, DialogBody, DialogContent, DialogSurface, DialogTitle, Spinner } from '@fluentui/react-components';
 import { Add24Regular, ArrowDownload24Regular, Delete24Regular, Eye24Regular, Print24Regular, Signature24Regular } from '@fluentui/react-icons';
 import {
   api,

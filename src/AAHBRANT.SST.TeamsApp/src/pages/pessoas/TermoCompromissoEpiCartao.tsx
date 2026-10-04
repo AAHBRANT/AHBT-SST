@@ -1,6 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Card, StatusChip, Text } from '@ui';
-import { Button } from '@fluentui/react-components';
+import { Button, Card, StatusChip, Text } from '@ui';
 import { Signature24Regular } from '@fluentui/react-icons';
 import { api, SituacaoTermoCompromissoEpi, type TermoCompromissoEpi } from '../../lib/api';
 import { TermoCompromissoEpiDialog } from '../../components/assinatura/TermoCompromissoEpiDialog';
