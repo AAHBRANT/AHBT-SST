@@ -747,6 +747,37 @@ public static class NovidadesSeeder
                     "A coluna da tabela de entregas se chamava \"Motivo\" e a ficha terminava com uma seção \"Observação\" de texto fixo.",
                     "A coluna agora se chama \"Observação\" e continua mostrando o motivo da entrega. A seção final de texto fixo foi removida."),
             }),
+        new(
+            Versao: "5.39.0",
+            Titulo: "Nova tela Início",
+            DataPublicacao: new DateTime(2026, 10, 4, 0, 0, 0, DateTimeKind.Utc),
+            Itens: new[]
+            {
+                new NovidadeSeedItem(CategoriaNovidade.Melhoria,
+                    "O Dashboard agora se chama Início e está mais claro",
+                    "A tela inicial mostrava sete cards separados, com um mini calendário ao lado e a barra de filtros em um quadro à parte.",
+                    "O título \"Início\" e os filtros de período e obra ficam no topo, e os indicadores aparecem numa faixa única, mais fácil de ler de uma vez."),
+                new NovidadeSeedItem(CategoriaNovidade.Melhoria,
+                    "Calendário virou um item do menu",
+                    "O calendário aparecia como uma miniatura no Dashboard.",
+                    "O item \"Calendário\" é o último do menu lateral e abre a página completa, com as mesmas funções de antes."),
+                new NovidadeSeedItem(CategoriaNovidade.Novidade,
+                    "Todas as ocorrências em um só card, com filtro por tipo",
+                    "O Dashboard mostrava apenas os quase-acidentes.",
+                    "O card de Ocorrências traz o total e a contagem de acidentes, incidentes, quase-acidentes, condições inseguras, atos inseguros e doenças ocupacionais, com a evolução dos últimos 6 meses. Clique num tipo para ver só ele no gráfico e nos últimos registros; o link do topo abre a tela de Ocorrências."),
+                new NovidadeSeedItem(CategoriaNovidade.Novidade,
+                    "Aptidão por treinamento",
+                    "O indicador \"Treinamentos em dia\" mostrava só um percentual, sem dizer quem estava com o curso vencido.",
+                    "Escolha o curso (NR-35, NR-18, NR-10 e outros) e veja quantos trabalhadores que precisam dele estão em dia, vencem em 30 dias, estão vencidos ou nunca fizeram o curso. A conta usa a Matriz de Treinamento por função."),
+                new NovidadeSeedItem(CategoriaNovidade.Melhoria,
+                    "Taxa de Gravidade em card próprio",
+                    "A Taxa de Gravidade dividia a faixa de indicadores e mostrava só o número.",
+                    "O card mostra a taxa, a comparação com a meta, a evolução mensal (quando há horas-homem lançadas em pelo menos dois meses) e os dias perdidos, dias debitados e horas-homem usados no cálculo."),
+                new NovidadeSeedItem(CategoriaNovidade.Novidade,
+                    "Conformidade por obra",
+                    "Não havia como comparar as obras num só lugar.",
+                    "Um novo card mostra a conformidade de cada obra (média de EPI, treinamentos e ASO em dia), da mais atrasada para a melhor, para indicar onde agir primeiro."),
+            }),
     };
 
     public static async Task ExecutarAsync(IServiceProvider services, CancellationToken ct = default)
