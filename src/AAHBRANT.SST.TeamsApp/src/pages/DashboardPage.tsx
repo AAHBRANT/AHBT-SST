@@ -1,6 +1,5 @@
 import { useEffect, useMemo, useState, type KeyboardEvent, type ReactElement } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Button, mergeClasses } from '@fluentui/react-components';
 import {
   BuildingBank24Regular,
   People24Regular,
@@ -33,7 +32,7 @@ import {
   type Trabalhador,
   type Treinamento,
 } from '../lib/api';
-import { Card, FeedbackInline, KpiCard, Legenda, Select, StatusChip, StatusDonutChart, usePaletaGraficos, type FatiaDonut, type Tom } from '@ui';
+import { Button, Card, FeedbackInline, KpiCard, Legenda, Select, StatusChip, StatusDonutChart, usePaletaGraficos, type FatiaDonut, type Tom } from '@ui';
 import { AptidaoTreinamentosCard } from '../components/dashboard/AptidaoTreinamentosCard';
 import { ConformidadePorObraCard, type ConformidadeObra } from '../components/dashboard/ConformidadePorObraCard';
 import { OcorrenciasCard, type PontoOcorrencias, type RegistroRecente, type TipoOcorrenciaResumo } from '../components/dashboard/OcorrenciasCard';
@@ -237,13 +236,6 @@ export function DashboardPage() {
   const asosFiltrados = useMemo(
     () => (obraSelecionadaId ? asos.filter((aso) => trabalhadoresDaObraIds.has(aso.trabalhadorId)) : asos),
     [asos, trabalhadoresDaObraIds, obraSelecionadaId],
-  );
-  const treinamentosFiltrados = useMemo(
-    () =>
-      obraSelecionadaId
-        ? treinamentos.filter((treinamento) => trabalhadoresDaObraIds.has(treinamento.trabalhadorId))
-        : treinamentos,
-    [treinamentos, trabalhadoresDaObraIds, obraSelecionadaId],
   );
   const entregasEpiFiltradas = useMemo(
     () => (obraSelecionadaId ? entregasEpi.filter((entrega) => trabalhadoresDaObraIds.has(entrega.trabalhadorId)) : entregasEpi),
@@ -581,10 +573,9 @@ export function DashboardPage() {
               <Button
                 key={periodo.valor}
                 appearance="subtle"
-                className={mergeClasses(
-                  dashEstilos.botaoPeriodo,
-                  periodoSelecionado === periodo.valor && dashEstilos.botaoPeriodoAtivo,
-                )}
+                className={
+                  periodoSelecionado === periodo.valor ? dashEstilos.botaoPeriodoSelecionado : dashEstilos.botaoPeriodo
+                }
                 onClick={() => setPeriodoSelecionado(periodo.valor)}
               >
                 {periodo.rotulo}
@@ -637,7 +628,7 @@ export function DashboardPage() {
         />
         <div className={dashEstilos.colunaDireita}>
           <div
-            className={mergeClasses(dashEstilos.cardAcionavel, dashEstilos.semAlturaTotal)}
+            className={dashEstilos.cardAcionavel}
             role="button"
             tabIndex={0}
             onClick={() => navigate('/operacao/saude-ocupacional?aba=aso')}
