@@ -1,5 +1,7 @@
 using AAHBRANT.SST.Domain.Enums;
 
+using AAHBRANT.SST.Application.TermosCompromissoEpi;
+
 namespace AAHBRANT.SST.Application.EntregasEpi;
 
 // ObraCliente ("empresa contratante") não estava no literal original da spec, mas a seção de
@@ -23,7 +25,15 @@ public record FichaEpiPdfModelo(
     List<LinhaDevolucaoEpiPdf> Devolucoes,
     string ConteudoHash,
     string UrlValidacaoPublica,
-    byte[] QrCodePng);
+    byte[] QrCodePng,
+    // Certificado de NR-06 do trabalhador (mesma escolha da tela de entrega: o de validade mais
+    // distante entre os cursos marcados AtendeNr6). Preenche a cláusula 2 do termo com a data de
+    // realização e o nº do certificado — nulos quando ele não tem certificado de NR-06.
+    DateTime? DataTreinamentoNr6 = null,
+    string? NumeroCertificadoNr6 = null,
+    // Situação do termo de recebimento e compromisso (digital, em papel ou pendente) — vira o
+    // bloco de assinatura no fim do item 4 do PDF.
+    TermoCompromissoEpiDto? Termo = null);
 
 public record LinhaEntregaEpiPdf(
     int Numero,
@@ -36,7 +46,9 @@ public record LinhaEntregaEpiPdf(
     bool AssinadoPeloEmpregado,
     bool AssinadoPeloResponsavel,
     DateTime? AssinadoPeloEmpregadoEm,
-    DateTime? AssinadoPeloResponsavelEm);
+    DateTime? AssinadoPeloResponsavelEm,
+    MetodoAutenticacaoAssinatura? MetodoEmpregado = null,
+    MetodoAutenticacaoAssinatura? MetodoResponsavel = null);
 
 public record LinhaDevolucaoEpiPdf(
     int NumeroReferenciaEntrega,
@@ -45,7 +57,8 @@ public record LinhaDevolucaoEpiPdf(
     DateTime DataDevolucao,
     bool AssinadoPeloEmpregado,
     DateTime? AssinadoPeloEmpregadoEm,
-    string? VistoResponsavel);
+    string? VistoResponsavel,
+    MetodoAutenticacaoAssinatura? MetodoEmpregado = null);
 
 public interface IFichaEpiPdfService
 {

@@ -1,4 +1,6 @@
+using AAHBRANT.SST.Application.Assinatura;
 using AAHBRANT.SST.Application.EntregasEpi;
+using AAHBRANT.SST.Application.TermosCompromissoEpi;
 using AAHBRANT.SST.Domain.Enums;
 using QuestPDF.Fluent;
 using QuestPDF.Helpers;
@@ -31,9 +33,12 @@ public class EntregaEpiPdfService : IFichaEpiPdfService
                     coluna.Spacing(10);
 
                     coluna.Item().Element(c => SecaoIdentificacao(c, modelo));
+                    // Ordem do documento (pedido do usuário): 1 Identificação, 2 Controle de Entrega,
+                    // 3 Controle de Devolução, 4 Termo de Recebimento (que fecha o documento com a
+                    // assinatura do empregado). Sem a antiga seção "Observação" no fim.
                     coluna.Item().Element(c => SecaoControleEntrega(c, modelo));
-                    coluna.Item().Element(SecaoTermoCompromisso(modelo));
                     coluna.Item().Element(c => SecaoControleDevolucao(c, modelo));
+                    coluna.Item().Element(SecaoTermoCompromisso(modelo));
                 });
 
                 pagina.Footer().Column(coluna => RodapeDocumentoPadrao.Desenhar(
@@ -50,66 +55,90 @@ public class EntregaEpiPdfService : IFichaEpiPdfService
         {
             coluna.Item().Text("1. Identificação do Trabalhador").FontSize(11).Bold().FontColor(CorMarca);
 
+            // Grade de 3 colunas, cada campo numa caixa com o rótulo pequeno em cima e o valor embaixo
+            // (mesmo desenho do cabeçalho do DDS semanal) — linhas alinhadas e sem quebra irregular.
             coluna.Item().PaddingTop(2).Table(tabela =>
             {
                 tabela.ColumnsDefinition(columns =>
                 {
-                    columns.RelativeColumn(1.5f);
-                    columns.RelativeColumn(1.5f);
-                    columns.RelativeColumn(1.5f);
-                    columns.RelativeColumn(1.5f);
+                    columns.RelativeColumn();
+                    columns.RelativeColumn();
+                    columns.RelativeColumn();
                 });
 
-                CelulaIdentificacao(tabela, "Nome completo:", modelo.TrabalhadorNome, colSpan: 3);
-                CelulaIdentificacao(tabela, "CPF:", modelo.TrabalhadorCpfMascarado);
-                CelulaIdentificacao(tabela, "Matrícula:", modelo.TrabalhadorMatricula);
-                CelulaIdentificacao(tabela, "Função:", modelo.TrabalhadorFuncaoNome, colSpan: 2);
-                CelulaIdentificacao(tabela, "Turno:", modelo.TrabalhadorTurno ?? "não informado");
-                CelulaIdentificacao(tabela, "Data de admissão:", modelo.TrabalhadorDataAdmissao.ToString("dd/MM/yyyy"));
-                CelulaIdentificacao(tabela, "Obra / Frente de trabalho:", modelo.ObraNome, colSpan: 3);
-                CelulaIdentificacao(tabela, "Empresa contratante:", modelo.ObraCliente ?? "não informado", colSpan: 2);
-                CelulaIdentificacao(tabela, "CNPJ da contratada:", modelo.ObraCnpj ?? "não informado", colSpan: 2);
+                CelulaIdentificacao(tabela, "Nome completo", modelo.TrabalhadorNome, colSpan: 2);
+                CelulaIdentificacao(tabela, "CPF", modelo.TrabalhadorCpfMascarado);
+                CelulaIdentificacao(tabela, "Matrícula", modelo.TrabalhadorMatricula);
+                CelulaIdentificacao(tabela, "Função", modelo.TrabalhadorFuncaoNome);
+                CelulaIdentificacao(tabela, "Turno", modelo.TrabalhadorTurno ?? "não informado");
+                CelulaIdentificacao(tabela, "Data de admissão", modelo.TrabalhadorDataAdmissao.ToString("dd/MM/yyyy"));
+                CelulaIdentificacao(tabela, "Obra / Frente de trabalho", modelo.ObraNome, colSpan: 2);
+                CelulaIdentificacao(tabela, "Empresa contratante", modelo.ObraCliente ?? "não informado", colSpan: 2);
+                CelulaIdentificacao(tabela, "CNPJ da contratada", modelo.ObraCnpj ?? "não informado");
             });
         });
     }
 
     private static void CelulaIdentificacao(TableDescriptor tabela, string rotulo, string valor, uint colSpan = 1)
     {
-        tabela.Cell().ColumnSpan(colSpan).PaddingRight(8).PaddingBottom(2).Text(t =>
+        tabela.Cell().ColumnSpan(colSpan).Border(0.5f).BorderColor(Colors.Grey.Lighten1).Padding(4).Column(celula =>
         {
-            t.Span(rotulo + " ").SemiBold();
-            t.Span(valor);
+            celula.Item().Text(rotulo).FontSize(7).SemiBold().FontColor(CorMarca);
+            celula.Item().Text(valor).FontSize(9);
         });
     }
 
     private static Action<IContainer> SecaoTermoCompromisso(FichaEpiPdfModelo modelo)
     {
         var contratante = modelo.ObraCliente ?? "empregador";
-        var dataTermo = HorarioBrasilia.Agora;
-        var dataTermoFormatada = dataTermo.ToString("dd/MM/yyyy");
-        var primeiraAssinaturaEmpregado = modelo.Entregas
-            .Where(e => e.AssinadoPeloEmpregadoEm is not null)
-            .OrderBy(e => e.AssinadoPeloEmpregadoEm)
-            .Select(e => e.AssinadoPeloEmpregadoEm)
-            .FirstOrDefault();
-        var assinaturaTermo = primeiraAssinaturaEmpregado is null
-            ? "Assinatura do Empregado — Termo de Compromisso: pendente"
-            : $"Assinatura do Empregado — Termo de Compromisso: assinado digitalmente por {modelo.TrabalhadorNome} em {FormatarDataHoraAssinatura(primeiraAssinaturaEmpregado.Value)}";
+        // Data e nº vêm do certificado de NR-06 do trabalhador (pedido de 02/10); sem certificado,
+        // ficam em branco para preenchimento à mão — a trava de NR-06 já barra a entrega nesse caso.
+        var dataNr6 = modelo.DataTreinamentoNr6?.ToString("dd/MM/yyyy") ?? "____/____/______";
+        var numeroNr6 = string.IsNullOrWhiteSpace(modelo.NumeroCertificadoNr6) ? "__________" : modelo.NumeroCertificadoNr6;
 
         return container => container.Column(coluna =>
         {
             coluna.Spacing(3);
-            coluna.Item().Text("3. Termo de Recebimento e Compromisso de Uso").FontSize(11).Bold().FontColor(CorMarca);
+            coluna.Item().Text("4. Termo de Recebimento e Compromisso de Uso").FontSize(11).Bold().FontColor(CorMarca);
 
             coluna.Item().Text($"1 — Declaro ter recebido do {contratante} os Equipamentos de Proteção Individual (EPIs) relacionados nesta ficha, nas datas e quantidades ali indicadas, todos em perfeitas condições de uso e com Certificado de Aprovação (CA) válido.");
-            coluna.Item().Text($"2 — Declaro ter recebido orientação e treinamento sobre o uso correto, a guarda, a conservação, a higienização e os critérios de substituição de cada EPI relacionado, conforme registrado na Lista de Presença de Treinamento (NR-6) nº __________, realizada em {dataTermoFormatada}.");
+            coluna.Item().Text($"2 — Declaro ter recebido orientação e treinamento sobre o uso correto, a guarda, a conservação, a higienização e os critérios de substituição de cada EPI relacionado, conforme registrado na Lista de Presença de Treinamento (NR-6) nº {numeroNr6}, realizada em {dataNr6}.");
             coluna.Item().Text("3 — Comprometo-me a utilizar os EPIs exclusivamente para a finalidade a que se destinam, durante toda a execução das minhas atividades laborais, zelando por sua guarda, conservação e higienização adequadas, e a comunicar imediatamente ao Setor de Segurança do Trabalho qualquer dano, extravio ou alteração que os torne impróprios para uso.");
             coluna.Item().Text("4 — Comprometo-me a devolver os EPIs sempre que solicitado, inclusive nos casos de substituição, troca de função, mudança de atividade ou rescisão do meu contrato de trabalho.");
             coluna.Item().Text("5 — Estou ciente de que o descumprimento das obrigações aqui assumidas constitui falta funcional, passível de sanções disciplinares que poderão variar, a critério do empregador, de advertência por escrito até a rescisão contratual por justa causa, sem prejuízo de demais medidas legais cabíveis, conforme disposto no Art. 158 da CLT e na Norma Regulamentadora nº 6 (NR-6).");
 
-            coluna.Item().PaddingTop(4).Text($"Local: ______________________________     Data: {dataTermoFormatada}").FontSize(8).Italic();
-            coluna.Item().Text(assinaturaTermo).FontSize(8).Italic();
+            // Assinatura do empregado no termo (03/10): digital (Motor), em papel (registro manual) ou
+            // pendente. O papel NUNCA vira "Assinado digitalmente": só informa quem registrou e quando.
+            coluna.Item().PaddingTop(10).AlignCenter().Width(300).Element(c => BlocoAssinaturaTermo(c, modelo));
         });
+    }
+
+    private static void BlocoAssinaturaTermo(IContainer container, FichaEpiPdfModelo modelo)
+    {
+        var termo = modelo.Termo;
+        if (termo is { Situacao: SituacaoTermoCompromissoEpi.Manual })
+        {
+            container.ShowEntire().Column(coluna =>
+            {
+                coluna.Item().AlignCenter().Text("Empregado — Termo de Compromisso").FontSize(7.5f).Bold();
+                coluna.Item().PaddingTop(10).AlignCenter().Text(modelo.TrabalhadorNome).FontSize(9).SemiBold();
+                coluna.Item().PaddingTop(2).LineHorizontal(0.75f).LineColor(Colors.Black);
+                coluna.Item().PaddingTop(2).AlignCenter().Text(modelo.TrabalhadorFuncaoNome).FontSize(7).SemiBold();
+                coluna.Item().AlignCenter()
+                    .Text($"Termo assinado manualmente (em papel) em {termo.DataAssinatura:dd/MM/yyyy}")
+                    .FontSize(AssinaturaPdfPadrao.TamanhoFonte).Italic().FontColor(AssinaturaPdfPadrao.Cor);
+                if (termo.RegistradoEm is { } registradoEm)
+                    coluna.Item().AlignCenter()
+                        .Text($"Registrado no sistema por {termo.RegistradoPorNome ?? "usuário não identificado"} em {HorarioBrasilia.De(registradoEm):dd/MM/yyyy HH:mm}")
+                        .FontSize(AssinaturaPdfPadrao.TamanhoFonte).FontColor(AssinaturaPdfPadrao.Cor);
+            });
+            return;
+        }
+
+        var digital = termo is { Situacao: SituacaoTermoCompromissoEpi.Digital };
+        AssinaturaPdfPadrao.Bloco(
+            container, "Empregado — Termo de Compromisso", modelo.TrabalhadorNome, modelo.TrabalhadorFuncaoNome,
+            digital ? termo!.DataAssinatura : null, digital ? termo!.Metodo : null);
     }
 
     private static void SecaoControleEntrega(IContainer container, FichaEpiPdfModelo modelo)
@@ -158,8 +187,8 @@ public class EntregaEpiPdfService : IFichaEpiPdfService
                     table.Cell().Element(Celula).Text(MotivoLabel(linha.MotivoTipo, linha.MotivoObservacao));
                     table.Cell().Element(Celula).Text(linha.Quantidade.ToString());
                     table.Cell().Element(Celula).Text(linha.DataEntrega.ToString("dd/MM/yyyy"));
-                    table.Cell().Element(Celula).Text(FormatarAssinaturaDigital(linha.AssinadoPeloEmpregadoEm, linha.AssinadoPeloEmpregado));
-                    table.Cell().Element(Celula).Text(FormatarAssinaturaDigital(linha.AssinadoPeloResponsavelEm, linha.AssinadoPeloResponsavel));
+                    table.Cell().Element(Celula).Element(c => CelulaAssinatura(c, linha.AssinadoPeloEmpregadoEm, linha.AssinadoPeloEmpregado, linha.MetodoEmpregado));
+                    table.Cell().Element(Celula).Element(c => CelulaAssinatura(c, linha.AssinadoPeloResponsavelEm, linha.AssinadoPeloResponsavel, linha.MetodoResponsavel));
                 }
             });
         });
@@ -169,7 +198,7 @@ public class EntregaEpiPdfService : IFichaEpiPdfService
     {
         container.Column(coluna =>
         {
-            coluna.Item().Text("4. Controle de Devolução de EPI").FontSize(11).Bold().FontColor(CorMarca);
+            coluna.Item().Text("3. Controle de Devolução de EPI").FontSize(11).Bold().FontColor(CorMarca);
 
             if (modelo.Devolucoes.Count == 0)
             {
@@ -205,7 +234,7 @@ public class EntregaEpiPdfService : IFichaEpiPdfService
                     table.Cell().Element(Celula).Text(linha.EpiNome);
                     table.Cell().Element(Celula).Text(linha.QuantidadeDevolvida.ToString());
                     table.Cell().Element(Celula).Text(linha.DataDevolucao.ToString("dd/MM/yyyy"));
-                    table.Cell().Element(Celula).Text(FormatarAssinaturaDigital(linha.AssinadoPeloEmpregadoEm, linha.AssinadoPeloEmpregado));
+                    table.Cell().Element(Celula).Element(c => CelulaAssinatura(c, linha.AssinadoPeloEmpregadoEm, linha.AssinadoPeloEmpregado, linha.MetodoEmpregado));
                     table.Cell().Element(Celula).Text(linha.VistoResponsavel ?? "-");
                 }
             });
@@ -218,19 +247,23 @@ public class EntregaEpiPdfService : IFichaEpiPdfService
     private static IContainer Celula(IContainer container) =>
         container.Padding(3).BorderBottom(0.5f).BorderColor(Colors.Grey.Lighten1).DefaultTextStyle(t => t.FontSize(7.5f));
 
-    private static string FormatarAssinaturaDigital(DateTime? assinadoEm, bool assinado)
+    // "Assinado digitalmente" + legenda miúda (corpo 6) com data/hora e método de identificação —
+    // pedido do usuário (02/10) para toda assinatura de documento; corpo pequeno para não esticar a linha.
+    private static void CelulaAssinatura(IContainer container, DateTime? assinadoEm, bool assinado, MetodoAutenticacaoAssinatura? metodo)
     {
-        if (!assinado) return "Pendente";
-        if (assinadoEm is null) return "Assinado digitalmente";
+        if (!assinado)
+        {
+            container.Text("Pendente");
+            return;
+        }
 
-        var dataHora = HorarioBrasilia.De(assinadoEm.Value);
-        return $"Assinado digitalmente em {dataHora:dd/MM/yyyy HH:mm}";
-    }
-
-    private static string FormatarDataHoraAssinatura(DateTime assinadoEm)
-    {
-        var dataHora = HorarioBrasilia.De(assinadoEm);
-        return $"{dataHora:dd/MM/yyyy HH:mm}";
+        container.Column(c =>
+        {
+            c.Item().Text("Assinado digitalmente").FontSize(6);
+            if (assinadoEm is { } quando)
+                c.Item().Text(DescricaoMetodoAssinatura.LegendaCurta(HorarioBrasilia.De(quando), metodo))
+                    .FontSize(6).FontColor(Colors.Grey.Darken2);
+        });
     }
 
     private static string MotivoLabel(MotivoEntregaEpi? motivo, string? observacao)

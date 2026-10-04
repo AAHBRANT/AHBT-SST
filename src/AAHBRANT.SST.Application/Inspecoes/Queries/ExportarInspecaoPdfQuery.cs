@@ -130,7 +130,9 @@ public class ExportarInspecaoPdfQueryHandler : IRequestHandler<ExportarInspecaoP
                 (s, t) => new InspecaoPdfSignatarioModelo(
                     t.Nome,
                     DescreverMetodoAssinatura(s.MetodoAutenticacao),
-                    s.AssinadoEm))
+                    s.AssinadoEm,
+                    t.Funcao != null ? t.Funcao.Nome : null,
+                    s.MetodoAutenticacao))
             .ToListAsync(ct);
 
         var finalizadoEm = documento.FinalizadoEm!.Value;

@@ -33,6 +33,7 @@ import { DdsSemanalDetalhePage } from './pages/dds/DdsSemanalDetalhePage';
 import { DdsDetalhePage } from './pages/dds/DdsDetalhePage';
 import { AssinarDdsPage } from './pages/dds/AssinarDdsPage';
 import { AssinarEntregaEpiPage } from './pages/epi/AssinarEntregaEpiPage';
+import { AssinarTermoEpiPage } from './pages/epi/AssinarTermoEpiPage';
 import { SaudeOcupacionalPage } from './pages/saude-ocupacional/SaudeOcupacionalPage';
 import { PcmsoDetalhePage } from './pages/saude-ocupacional/PcmsoDetalhePage';
 import { ProcessoEleitoralCipaDetalhePage } from './pages/cipa/ProcessoEleitoralCipaDetalhePage';
@@ -221,6 +222,7 @@ function AppRoteado() {
               <Route path="/acidentes/:id" element={<AcidenteDetalhePage />} />
 
               <Route path="/epi/:id/assinar" element={<AssinarEntregaEpiPage />} />
+              <Route path="/epi/termo/:trabalhadorId/assinar" element={<AssinarTermoEpiPage />} />
               <Route path="/treinamentos/:id/assinar" element={<AssinarTreinamentoPage />} />
               <Route path="/administracao" element={<AdministracaoPage />} />
               <Route path="/administracao/suporte-ia" element={<Navigate to="/suporte-ia" replace />} />

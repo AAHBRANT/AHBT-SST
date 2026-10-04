@@ -19,7 +19,6 @@ import { MutacaoEnfileiradaOfflineError } from '../../lib/offline/syncEngine';
 import { usePageStyles } from '../../pages/pageStyles';
 import { FotoCatalogoEpi } from '../../pages/epi/FotoCatalogoEpi';
 import { SeletorFotoCamera } from '../SeletorFotoCamera';
-import { clausulasTermoCompromisso } from './termoCompromissoEpi';
 import { ErroFacialDialog } from './ErroFacialDialog';
 
 function extrairMensagemErro(e: unknown, fallback: string): string {
@@ -71,8 +70,6 @@ export function AssinaturaEntregaEpiLoteDialog({
   obraId,
   trabalhadorNome,
   dataEntrega,
-  numeroListaPresencaNr6,
-  dataTreinamentoNr6,
 }: AssinaturaEntregaEpiLoteDialogProps) {
   const estilos = usePageStyles();
   const [documentos, setDocumentos] = useState<Record<string, DocumentoAssinatura>>({});
@@ -276,16 +273,11 @@ export function AssinaturaEntregaEpiLoteDialog({
             </div>
 
             <div className={estilos.card} style={{ marginBottom: 16 }}>
-              <Text weight="semibold" style={{ display: 'block', marginBottom: 8 }}>
-                Termo de Recebimento e Compromisso de Uso
+              <Text size={200}>
+                Ao assinar, o funcionário confirma o recebimento dos EPIs acima. O Termo de Recebimento e Compromisso de Uso
+                é assinado uma única vez, em separado: pelo botão "Assinatura de termo de recebimento e compromisso", no perfil do
+                funcionário (aba EPI &amp; Matriz) ou em EPI › Entregas.
               </Text>
-              <ol style={{ margin: 0, paddingLeft: 20 }}>
-                {clausulasTermoCompromisso(numeroListaPresencaNr6, dataTreinamentoNr6).map((clausula, indice) => (
-                  <li key={indice} style={{ marginBottom: 6 }}>
-                    <Text size={200}>{clausula}</Text>
-                  </li>
-                ))}
-              </ol>
             </div>
 
             <Text weight="semibold" style={{ display: 'block', marginBottom: 12 }}>

@@ -169,13 +169,9 @@ public class InspecaoPdfService : IInspecaoPdfService
 
             foreach (var signatario in assinatura.Signatarios)
             {
-                coluna.Item().Border(1).BorderColor(Colors.Grey.Lighten1).Padding(8).Column(card =>
-                {
-                    card.Spacing(3);
-                    card.Item().Text(signatario.Nome).FontSize(11).Bold();
-                    card.Item().Text($"Método: {signatario.Metodo}");
-                    card.Item().Text($"Assinado em: {signatario.AssinadoEm:dd/MM/yyyy HH:mm}");
-                });
+                // Padrão único de assinatura: nome, linha, cargo e a legenda miúda (pedido de 02/10).
+                coluna.Item().Element(c => AssinaturaPdfPadrao.Bloco(
+                    c, null, signatario.Nome, signatario.Funcao, signatario.AssinadoEm, signatario.MetodoAutenticacao));
             }
 
             coluna.Item().PaddingTop(6).Text("Validação do documento").FontSize(12).Bold().FontColor(CorMarca);

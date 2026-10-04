@@ -712,6 +712,16 @@ public enum MetodoAutenticacaoAssinatura
     ReconhecimentoFacial = 6
 }
 
+// Função em que a pessoa assina um documento que tem mais de um campo de assinatura (02/10, pedido
+// do usuário): no Registro Semanal de DDS o técnico de segurança assina separadamente como
+// "Responsável/Treinador pelo DDS" e como "Responsável da Obra/SST". Nulo = assinatura comum
+// (participante, recebedor etc.), que é o caso de todos os documentos anteriores.
+public enum PapelAssinatura
+{
+    ResponsavelDds = 1,
+    ResponsavelObraSst = 2,
+}
+
 // [Flags] em Obra.MetodosAutenticacaoHabilitados: cada obra decide se aceita assinatura (Biometria,
 // via Futronic; ReconhecimentoFacial, via Azure Face API) ou não (Nenhum). CrachaPin/QrCodePin/
 // WebAuthnCelular removidos em 31/08 junto com os métodos correspondentes (ver

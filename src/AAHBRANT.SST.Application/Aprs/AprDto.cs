@@ -69,6 +69,7 @@ public class AprAssinaturaDto
     public string? TrabalhadorFuncaoNome { get; set; }
     public PapelAssinaturaApr Papel { get; set; }
     public DateTime DataAssinatura { get; set; }
+    public MetodoAutenticacaoAssinatura MetodoAutenticacao { get; set; }
 }
 
 // Composição por query, não por tabela nova — mesmo princípio já usado em PgrDetalheDto:
