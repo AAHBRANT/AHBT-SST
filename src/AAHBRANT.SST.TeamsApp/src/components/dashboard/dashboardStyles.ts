@@ -2,32 +2,43 @@ import { makeStyles, tokens } from '@fluentui/react-components';
 import { designTokens, tokensUi } from '@ui';
 
 export const useDashboardStyles = makeStyles({
+  // Cabeçalho do Início (proposta C, 04/10): título à esquerda e filtros à direita, sem a moldura de
+  // card que existia antes — a barra solta no topo liberava a primeira dobra para os indicadores.
   barraFiltrosDashboard: {
     display: 'flex',
     justifyContent: 'space-between',
     alignItems: 'center',
-    gap: '16px',
-    marginBottom: '16px',
-    padding: '10px 14px',
-    backgroundColor: designTokens.colorSurface,
-    border: `1px solid ${designTokens.colorCardBorder}`,
-    borderRadius: '14px',
-    boxShadow: '0 8px 20px rgba(15, 23, 42, 0.04)',
-    '@media (max-width: 900px)': {
+    flexWrap: 'wrap',
+    gap: '12px 16px',
+    marginBottom: '14px',
+  },
+  tituloPagina: {
+    margin: 0,
+    fontSize: '22px',
+    lineHeight: '28px',
+    fontWeight: 700,
+    letterSpacing: '-0.02em',
+    color: designTokens.colorNeutralDark,
+  },
+  filtrosDireita: {
+    display: 'flex',
+    alignItems: 'center',
+    flexWrap: 'wrap',
+    gap: '10px',
+    '@media (max-width: 520px)': {
+      width: '100%',
       alignItems: 'stretch',
       flexDirection: 'column',
     },
-    '@media (max-width: 520px)': {
-      padding: '10px',
-      gap: '10px',
-      borderRadius: tokensUi.raio.md,
-    },
   },
   grupoPeriodos: {
-    display: 'flex',
+    display: 'inline-flex',
     alignItems: 'center',
-    gap: '6px',
-    flexWrap: 'wrap',
+    gap: '2px',
+    padding: '3px',
+    backgroundColor: designTokens.colorSurface,
+    border: `1px solid ${designTokens.colorCardBorder}`,
+    borderRadius: '10px',
     '@media (max-width: 520px)': {
       display: 'grid',
       gridTemplateColumns: 'repeat(2, minmax(0, 1fr))',
@@ -35,45 +46,96 @@ export const useDashboardStyles = makeStyles({
   },
   botaoPeriodo: {
     minWidth: 'auto',
-    height: '32px',
-    borderRadius: '8px',
-    fontWeight: 700,
+    height: '30px',
+    borderRadius: '7px',
+    fontWeight: 600,
     color: designTokens.colorNeutralMedium,
     '@media (max-width: 520px)': {
       width: '100%',
+      paddingLeft: '4px',
+      paddingRight: '4px',
     },
   },
   botaoPeriodoAtivo: {
-    color: '#16a34a',
-    backgroundColor: 'color-mix(in srgb, #16a34a 10%, transparent)',
+    color: '#ffffff',
+    backgroundColor: designTokens.colorPrimary,
     '& .fui-Button__content': {
-      color: '#16a34a',
-      fontWeight: 800,
+      color: '#ffffff',
+      fontWeight: 700,
     },
     ':hover': {
-      color: '#16a34a',
-      backgroundColor: 'color-mix(in srgb, #16a34a 14%, transparent)',
+      color: '#ffffff',
+      backgroundColor: designTokens.colorPrimary,
+      filter: 'brightness(1.15)',
     },
   },
   filtroObra: {
     display: 'flex',
     alignItems: 'center',
     gap: '8px',
-    maxWidth: '360px',
-    width: '100%',
-    justifyContent: 'flex-end',
-    '@media (max-width: 900px)': {
-      justifyContent: 'flex-start',
-      maxWidth: 'none',
-    },
     '@media (max-width: 520px)': {
       alignItems: 'stretch',
       flexDirection: 'column',
       gap: '6px',
     },
     '& .fui-Select': {
+      minWidth: '180px',
+      '@media (max-width: 520px)': { minWidth: 0 },
+    },
+  },
+  // Faixa única de indicadores: as células dividem uma moldura só (linha de 1px entre elas) em vez de
+  // sete cards separados. Flex com wrap e flex-grow, e não grid de colunas fixas: assim a última
+  // linha estica e nunca sobra célula vazia mostrando a cor da linha divisória.
+  faixaKpis: {
+    display: 'flex',
+    flexWrap: 'wrap',
+    gap: '1px',
+    minWidth: 0,
+    backgroundColor: designTokens.colorCardBorder,
+    border: `1px solid ${designTokens.colorCardBorder}`,
+    borderRadius: tokensUi.raio.lg,
+    overflow: 'hidden',
+    '& > *': {
+      flex: '1 1 150px',
       minWidth: 0,
-      width: '100%',
+      width: 'auto !important',
+      border: 'none !important',
+      borderRadius: '0 !important',
+      boxShadow: 'none !important',
+    },
+  },
+  // Coluna à direita das ocorrências: ASO em cima e Taxa de Gravidade embaixo, esticada até a altura
+  // do card de ocorrências para não deixar lacuna (pedido do usuário, 04/10).
+  colunaDireita: {
+    display: 'flex',
+    flexDirection: 'column',
+    gap: '16px',
+    minWidth: 0,
+  },
+  // cardAcionavel tem height:100%; numa coluna flex isso brigaria com o card que estica.
+  semAlturaTotal: { height: 'auto', flexShrink: 0 },
+  // Card que cresce para ocupar o espaço que sobra da coluna; o corpo reparte o conteúdo na vertical.
+  cardEsticado: {
+    flexGrow: 1,
+    display: 'flex',
+    flexDirection: 'column',
+    '& > div:last-child': {
+      flexGrow: 1,
+      display: 'flex',
+      flexDirection: 'column',
+      justifyContent: 'space-between',
+      gap: '14px',
+    },
+  },
+  // Gráfico de tendência ocupa 2/3 e o donut 1/3 (mosaico compacto).
+  gradeDoisParaUm: {
+    display: 'grid',
+    gridTemplateColumns: 'minmax(0, 2fr) minmax(0, 1fr)',
+    gap: '16px',
+    marginBottom: '16px',
+    minWidth: 0,
+    '@media (max-width: 900px)': {
+      gridTemplateColumns: '1fr',
     },
   },
   filtros: {
@@ -89,11 +151,10 @@ export const useDashboardStyles = makeStyles({
   // corrigir o layout mobile em 21/09). Com colunas de grid explícitas, quem decide é o breakpoint.
   linhaKpisCalendario: {
     display: 'grid',
-    gridTemplateColumns: '1fr 200px',
+    gridTemplateColumns: '1fr',
     gap: '16px',
     alignItems: 'start',
     marginBottom: '16px',
-    '@media (max-width: 620px)': { gridTemplateColumns: '1fr' },
   },
   // No celular o card ocupava uma linha inteira só pra mostrar um calendário mensal, que já existe
   // por completo em /calendario — pedido do usuário (21/09) pra ganhar espaço de tela lá.
@@ -123,6 +184,18 @@ export const useDashboardStyles = makeStyles({
     marginBottom: '16px',
     minWidth: 0,
     '@media (max-width: 680px)': {
+      gridTemplateColumns: '1fr',
+    },
+  },
+  // Última linha do Início: Aptidão por treinamento, Conformidade por obra, Vencimentos e Atividade
+  // em duas colunas iguais (04/10).
+  gradeDoisColunas: {
+    display: 'grid',
+    gridTemplateColumns: 'repeat(2, minmax(0, 1fr))',
+    gap: '16px',
+    marginBottom: '16px',
+    minWidth: 0,
+    '@media (max-width: 900px)': {
       gridTemplateColumns: '1fr',
     },
   },
