@@ -59,17 +59,17 @@ public class CriarEntregaEpiCommandHandlerTests
     }
 
     [Fact]
-    public async Task Handle_ComCursoIntegracao_SemTreinamentoRegistrado_LancaInvalidOperationException()
+    public async Task Handle_ComCursoIntegracao_SemTreinamentoRegistrado_CriaEntregaNormalmente_IntegracaoNaoEMaisExigida()
     {
-        var db = CriarDb(nameof(Handle_ComCursoIntegracao_SemTreinamentoRegistrado_LancaInvalidOperationException));
+        var db = CriarDb(nameof(Handle_ComCursoIntegracao_SemTreinamentoRegistrado_CriaEntregaNormalmente_IntegracaoNaoEMaisExigida));
         var (trabalhador, catalogo) = await CriarTrabalhadorECatalogoAsync(db);
         db.CursosTreinamento.Add(new CursoTreinamento { Nome = "Integração de Segurança", EhIntegracaoSeguranca = true, CargaHorariaMinima = 4, ValidadeEmMeses = 12 });
         await db.SaveChangesAsync();
         var handler = new CriarEntregaEpiCommandHandler(db);
 
-        var ex = await Assert.ThrowsAsync<InvalidOperationException>(() =>
-            handler.Handle(ComandoPara(trabalhador, catalogo), default));
-        Assert.Contains("Integração de Segurança", ex.Message);
+        var id = await handler.Handle(ComandoPara(trabalhador, catalogo), default);
+        // 02/10: só a NR-06 é exigida para entregar EPI; a Integração de Segurança não bloqueia mais.
+        Assert.NotEqual(Guid.Empty, id);
     }
 
     [Fact]
@@ -87,9 +87,9 @@ public class CriarEntregaEpiCommandHandlerTests
     }
 
     [Fact]
-    public async Task Handle_TreinamentoRegistradoMasNaoAssinadoPeloTrabalhador_LancaInvalidOperationException()
+    public async Task Handle_TreinamentoRegistradoMasNaoAssinadoPeloTrabalhador_CriaEntregaNormalmente_IntegracaoNaoEMaisExigida()
     {
-        var db = CriarDb(nameof(Handle_TreinamentoRegistradoMasNaoAssinadoPeloTrabalhador_LancaInvalidOperationException));
+        var db = CriarDb(nameof(Handle_TreinamentoRegistradoMasNaoAssinadoPeloTrabalhador_CriaEntregaNormalmente_IntegracaoNaoEMaisExigida));
         var (trabalhador, catalogo) = await CriarTrabalhadorECatalogoAsync(db);
         var curso = new CursoTreinamento { Nome = "Integração de Segurança", EhIntegracaoSeguranca = true, CargaHorariaMinima = 4, ValidadeEmMeses = 12 };
         db.CursosTreinamento.Add(curso);
@@ -105,9 +105,9 @@ public class CriarEntregaEpiCommandHandlerTests
         await db.SaveChangesAsync();
         var handler = new CriarEntregaEpiCommandHandler(db);
 
-        var ex = await Assert.ThrowsAsync<InvalidOperationException>(() =>
-            handler.Handle(ComandoPara(trabalhador, catalogo), default));
-        Assert.Contains("ainda não o assinou", ex.Message);
+        var id = await handler.Handle(ComandoPara(trabalhador, catalogo), default);
+        // 02/10: só a NR-06 é exigida para entregar EPI; a Integração de Segurança não bloqueia mais.
+        Assert.NotEqual(Guid.Empty, id);
     }
 
     // Lançamento retroativo (decisão do usuário, 23/09): obra já em andamento tem gente treinada
@@ -151,9 +151,9 @@ public class CriarEntregaEpiCommandHandlerTests
     // Sem o arquivo anexado sobraria só a palavra de quem digitou — e é justamente o documento que
     // a fiscalização pede. Continua bloqueando.
     [Fact]
-    public async Task Handle_CertificadoExternoSemArquivoAnexado_LancaInvalidOperationException()
+    public async Task Handle_CertificadoExternoSemArquivoAnexado_CriaEntregaNormalmente_IntegracaoNaoEMaisExigida()
     {
-        var db = CriarDb(nameof(Handle_CertificadoExternoSemArquivoAnexado_LancaInvalidOperationException));
+        var db = CriarDb(nameof(Handle_CertificadoExternoSemArquivoAnexado_CriaEntregaNormalmente_IntegracaoNaoEMaisExigida));
         var (trabalhador, catalogo) = await CriarTrabalhadorECatalogoAsync(db);
         var curso = new CursoTreinamento { Nome = "Integração de Segurança", EhIntegracaoSeguranca = true, CargaHorariaMinima = 4, ValidadeEmMeses = 12 };
         db.CursosTreinamento.Add(curso);
@@ -170,18 +170,18 @@ public class CriarEntregaEpiCommandHandlerTests
         await db.SaveChangesAsync();
         var handler = new CriarEntregaEpiCommandHandler(db);
 
-        var ex = await Assert.ThrowsAsync<InvalidOperationException>(() =>
-            handler.Handle(ComandoPara(trabalhador, catalogo), default));
-        Assert.Contains("ainda não o assinou", ex.Message);
+        var id = await handler.Handle(ComandoPara(trabalhador, catalogo), default);
+        // 02/10: só a NR-06 é exigida para entregar EPI; a Integração de Segurança não bloqueia mais.
+        Assert.NotEqual(Guid.Empty, id);
     }
 
     // Assinatura só do instrutor (SessaoLogada) não conta — precisa ser o próprio trabalhador
     // (Biometria/ReconhecimentoFacial), senão o registro só prova que alguém ministrou o curso, não
     // que este trabalhador específico o recebeu.
     [Fact]
-    public async Task Handle_TreinamentoSoAssinadoPeloInstrutor_LancaInvalidOperationException()
+    public async Task Handle_TreinamentoSoAssinadoPeloInstrutor_CriaEntregaNormalmente_IntegracaoNaoEMaisExigida()
     {
-        var db = CriarDb(nameof(Handle_TreinamentoSoAssinadoPeloInstrutor_LancaInvalidOperationException));
+        var db = CriarDb(nameof(Handle_TreinamentoSoAssinadoPeloInstrutor_CriaEntregaNormalmente_IntegracaoNaoEMaisExigida));
         var (trabalhador, catalogo) = await CriarTrabalhadorECatalogoAsync(db);
         var curso = new CursoTreinamento { Nome = "Integração de Segurança", EhIntegracaoSeguranca = true, CargaHorariaMinima = 4, ValidadeEmMeses = 12 };
         db.CursosTreinamento.Add(curso);
@@ -209,8 +209,9 @@ public class CriarEntregaEpiCommandHandlerTests
         await db.SaveChangesAsync();
         var handler = new CriarEntregaEpiCommandHandler(db);
 
-        await Assert.ThrowsAsync<InvalidOperationException>(() =>
-            handler.Handle(ComandoPara(trabalhador, catalogo), default));
+        var id = await handler.Handle(ComandoPara(trabalhador, catalogo), default);
+        // 02/10: só a NR-06 é exigida para entregar EPI; a Integração de Segurança não bloqueia mais.
+        Assert.NotEqual(Guid.Empty, id);
     }
 
     [Fact]
@@ -286,9 +287,9 @@ public class CriarEntregaEpiCommandHandlerTests
     }
 
     [Fact]
-    public async Task Handle_TreinamentoIntegracaoVencido_LancaInvalidOperationException()
+    public async Task Handle_TreinamentoIntegracaoVencido_CriaEntregaNormalmente_IntegracaoNaoEMaisExigida()
     {
-        var db = CriarDb(nameof(Handle_TreinamentoIntegracaoVencido_LancaInvalidOperationException));
+        var db = CriarDb(nameof(Handle_TreinamentoIntegracaoVencido_CriaEntregaNormalmente_IntegracaoNaoEMaisExigida));
         var (trabalhador, catalogo) = await CriarTrabalhadorECatalogoAsync(db);
         var curso = new CursoTreinamento { Nome = "Integração de Segurança", EhIntegracaoSeguranca = true, CargaHorariaMinima = 4, ValidadeEmMeses = 12 };
         db.CursosTreinamento.Add(curso);
@@ -307,7 +308,8 @@ public class CriarEntregaEpiCommandHandlerTests
         await db.SaveChangesAsync();
         var handler = new CriarEntregaEpiCommandHandler(db);
 
-        await Assert.ThrowsAsync<InvalidOperationException>(() =>
-            handler.Handle(ComandoPara(trabalhador, catalogo), default));
+        var id = await handler.Handle(ComandoPara(trabalhador, catalogo), default);
+        // 02/10: só a NR-06 é exigida para entregar EPI; a Integração de Segurança não bloqueia mais.
+        Assert.NotEqual(Guid.Empty, id);
     }
 }

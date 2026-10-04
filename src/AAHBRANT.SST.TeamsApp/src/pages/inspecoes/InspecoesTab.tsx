@@ -27,6 +27,7 @@ import {
   api,
   statusInspecaoLabel,
   tipoInspecaoLabel,
+  TipoInspecao,
   type Atividade,
   type ChecklistModelo,
   type Inspecao,
@@ -220,7 +221,7 @@ export function InspecoesTab() {
                     onChange={(_, d) => setNovaInspecao({ ...novaInspecao, checklistModeloId: d.value })}
                   >
                     <option value="">Selecione</option>
-                    {checklists.map((c) => (
+                    {checklists.filter((c) => c.tipoInspecao !== TipoInspecao.Veiculo).map((c) => (
                       <option key={c.id} value={c.id}>
                         {c.nome} (v{c.versao} — {tipoInspecaoLabel[c.tipoInspecao]})
                       </option>

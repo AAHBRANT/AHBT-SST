@@ -493,7 +493,19 @@ public enum TipoInspecao
     EspacoConfinado = 11,
     Comportamental = 12,
     Terceiros = 13,
-    Alojamento = 14
+    Alojamento = 14,
+    Veiculo = 15
+}
+
+// Tipos de veículo/equipamento pesado com checklist próprio (planilha "CHECK LIST - AT CUIA", 02/10/2026).
+// Cada tipo tem um ChecklistModelo (TipoInspecao.Veiculo + TipoVeiculo) e seus veículos cadastrados por obra.
+public enum TipoVeiculo
+{
+    CaminhaoBasculante = 1,
+    Retroescavadeira = 2,
+    EscavadeiraHidraulica = 3,
+    CaminhaoCarroceria = 4,
+    CaminhaoMunck = 5
 }
 
 // Seção 24 da Base de Conhecimento (linhas 605-614) — status literal de item de checklist.

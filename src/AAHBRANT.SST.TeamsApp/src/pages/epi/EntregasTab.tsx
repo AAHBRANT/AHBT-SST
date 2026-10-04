@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   BotaoAcao,
@@ -8,7 +8,8 @@ import {
   useConfirmar,
   type Coluna,
 } from '@ui';
-import { Add24Regular, ArrowDownload24Regular, Delete24Regular, Eye24Regular, Signature24Regular } from '@fluentui/react-icons';
+import { Dialog, DialogActions, DialogBody, DialogContent, DialogSurface, DialogTitle, Spinner } from '@fluentui/react-components';
+import { Add24Regular, ArrowDownload24Regular, Delete24Regular, Eye24Regular, Print24Regular, Signature24Regular } from '@fluentui/react-icons';
 import {
   api,
   motivoEntregaEpiLabel,
@@ -152,6 +153,11 @@ export function EntregasTab({ aoNavegarParaMatriz }: EntregasTabProps) {
   const souAdministrador = useSouAdministrador();
   const { confirmar, dialogElement } = useConfirmar();
   const { visualizar, dialogoVisualizador } = useVisualizadorPdf();
+  // Canhoto do carrinho: o Teams bloqueia window.open (nada acontecia ao clicar em imprimir), então o
+  // canhoto abre numa janela da própria tela, num iframe com o HTML, e imprime a partir dali.
+  const [canhotoAberto, setCanhotoAberto] = useState(false);
+  const [canhotoHtml, setCanhotoHtml] = useState<string | null>(null);
+  const canhotoFrameRef = useRef<HTMLIFrameElement>(null);
   const [devolucaoId, setDevolucaoId] = useState<string | null>(null);
   const [devolucaoData, setDevolucaoData] = useState('');
   const [devolucaoQtd, setDevolucaoQtd] = useState('');
@@ -261,7 +267,10 @@ export function EntregasTab({ aoNavegarParaMatriz }: EntregasTabProps) {
         // treinamentos, e a tela acusava falta de NR-06 em obra que só não tinha configurado o
         // curso de Integração. O `return` agora é dentro do try, então o `finally` roda e a tela
         // não fica presa em "Verificando…".
-        const cursoIntegracao = cursos.find((c) => c.ehIntegracaoSeguranca);
+        // 02/10: Integração de Segurança NÃO é mais exigida para entregar EPI (só a NR-06). O backend
+        // não chama mais a trava; aqui a verificação fica desligada para a tela não bloquear à toa.
+        const EXIGE_INTEGRACAO_PARA_EPI = false;
+        const cursoIntegracao = EXIGE_INTEGRACAO_PARA_EPI ? cursos.find((c) => c.ehIntegracaoSeguranca) : undefined;
         if (!cursoIntegracao) {
           setStatusIntegracao({ tipo: 'sem-curso' });
           return;
@@ -520,10 +529,8 @@ export function EntregasTab({ aoNavegarParaMatriz }: EntregasTabProps) {
   // a ficha oficial (essa só existe depois de "Confirmar entrega" + assinatura eletrônica).
   async function imprimirRascunhoCarrinho() {
     if (!dadosComuns.trabalhadorId || carrinho.length === 0) return;
-    const janela = window.open('', '_blank', 'width=420,height=720');
-    if (!janela) return;
-    janela.document.write('<!DOCTYPE html><html lang="pt-br"><head><meta charset="UTF-8"><title>EPIs recebidos</title></head><body>Gerando canhoto...</body></html>');
-    janela.document.close();
+    setCanhotoHtml(null);
+    setCanhotoAberto(true);
 
     function blobParaDataUrl(blob: Blob): Promise<string> {
       return new Promise((resolve, reject) => {
@@ -572,7 +579,7 @@ export function EntregasTab({ aoNavegarParaMatriz }: EntregasTabProps) {
         </div>`;
       })
     )).join('');
-    janela.document.write(`<!DOCTYPE html><html lang="pt-br"><head><meta charset="UTF-8"><title>Canhoto de recibo - EPI</title>
+    setCanhotoHtml(`<!DOCTYPE html><html lang="pt-br"><head><meta charset="UTF-8"><title>Canhoto de recibo - EPI</title>
       <style>
         @page { size: 80mm auto; margin: 4mm; }
         * { box-sizing: border-box; }
@@ -614,9 +621,13 @@ export function EntregasTab({ aoNavegarParaMatriz }: EntregasTabProps) {
 
         <p class="aviso">Comprovante de conferência prévia. A ficha oficial é emitida após confirmar e assinar eletronicamente a entrega.</p>
       </body></html>`);
-    janela.document.close();
-    janela.focus();
-    janela.print();
+  }
+
+  function imprimirCanhoto() {
+    const frame = canhotoFrameRef.current?.contentWindow;
+    if (!frame) return;
+    frame.focus();
+    frame.print();
   }
 
   // Todo caminho de fechar o painel limpa o carrinho e o erro do formulário — senão reabrir mostra
@@ -733,6 +744,33 @@ export function EntregasTab({ aoNavegarParaMatriz }: EntregasTabProps) {
     <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
       {dialogElement}
       {dialogoVisualizador}
+      <Dialog open={canhotoAberto} onOpenChange={(_, d) => { if (!d.open) setCanhotoAberto(false); }}>
+        <DialogSurface style={{ maxWidth: 480 }}>
+          <DialogBody>
+            <DialogTitle>EPIs recebidos — canhoto</DialogTitle>
+            <DialogContent>
+              {canhotoHtml ? (
+                <iframe
+                  ref={canhotoFrameRef}
+                  title="Canhoto de EPIs recebidos"
+                  srcDoc={canhotoHtml}
+                  style={{ width: '100%', height: '65vh', border: '1px solid #ddd', background: '#fff' }}
+                />
+              ) : (
+                <div style={{ padding: 48, textAlign: 'center' }}>
+                  <Spinner label="Gerando canhoto..." />
+                </div>
+              )}
+            </DialogContent>
+            <DialogActions>
+              <Button appearance="secondary" onClick={() => setCanhotoAberto(false)}>Fechar</Button>
+              <Button appearance="primary" icon={<Print24Regular />} disabled={!canhotoHtml} onClick={imprimirCanhoto}>
+                Imprimir
+              </Button>
+            </DialogActions>
+          </DialogBody>
+        </DialogSurface>
+      </Dialog>
       <PageHeader
         titulo="Entregas de EPI"
         subtitulo={`${entregas.filter((e) => !e.dataDevolucao).length} entregas ativas`}

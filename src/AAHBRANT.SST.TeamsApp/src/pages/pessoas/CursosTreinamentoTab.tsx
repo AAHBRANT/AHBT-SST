@@ -2,7 +2,6 @@ import { useEffect, useState } from 'react';
 import {
   BotaoAcao,
   Button,
-  Checkbox,
   Field,
   Input,
   Textarea,
@@ -105,41 +104,8 @@ export function CursosTreinamentoTab() {
     }
   }
 
-  // Sem esta ação, "Habilita EPI (NR-06)" só existia no formulário de criação (22/09): curso que já
-  // estava no catálogo e não foi pego pela migration ficava sem o marcador, e nenhum certificado
-  // lançado nele liberava a entrega de EPI — sem nenhum caminho pela tela para corrigir. Foi o que
-  // travou a entrega em homologação em 23/09.
-  async function alternarAtendeNr6(curso: CursoTreinamento) {
-    const passaAHabilitar = !curso.atendeNr6;
-    // Tom destrutivo só ao retirar o marcador: aí a ação bloqueia entrega de EPI para quem tem só
-    // esse treinamento. Habilitar é ação comum — com o diálogo padrão, dizia "Confirmar exclusão".
-    const confirmado = await confirmar(
-      passaAHabilitar
-        ? {
-            titulo: 'Habilitar entrega de EPI',
-            mensagem: `Marcar "${curso.nome}" como curso que atende à NR-06? Todo funcionário com este treinamento dentro da validade passa a poder receber EPI.`,
-            rotuloConfirmar: 'Habilitar',
-            tom: 'neutro',
-          }
-        : {
-            titulo: 'Retirar habilitação de EPI',
-            mensagem: `"${curso.nome}" deixa de habilitar a entrega de EPI. Quem tem só este treinamento fica bloqueado para receber EPI. Confirma?`,
-            rotuloConfirmar: 'Retirar',
-          },
-    );
-    if (!confirmado) return;
-    try {
-      await api.cursosTreinamento.atualizar(curso.id, { ...curso, atendeNr6: passaAHabilitar });
-      await carregar();
-      sucessoToast(
-        passaAHabilitar
-          ? `"${curso.nome}" agora habilita a entrega de EPI.`
-          : `"${curso.nome}" não habilita mais a entrega de EPI.`,
-      );
-    } catch (e) {
-      setErro(e instanceof Error ? e.message : 'Falha ao alterar o marcador de NR-06 do curso.');
-    }
-  }
+  // O marcador "Habilita EPI" não é editável pela tela: o backend o deriva da norma (só NR-06
+  // habilita a entrega de EPI — regra fixa, 02/10).
 
   const colunas: Coluna<CursoTreinamento>[] = [
     { chave: 'nome', rotulo: 'Nome' },
@@ -206,18 +172,6 @@ export function CursosTreinamentoTab() {
                   />
                 </Field>
               </Campo>
-              <Campo span={12}>
-                {/* Marcador explícito (22/09): é ele que libera a entrega de EPI, e não mais o texto
-                    digitado em "Norma de referência". Marcar o curso errado aqui destrava entrega de
-                    EPI para quem não tem NR-06 — por isso o aviso fica no próprio rótulo. */}
-                <Field hint="Só marque para cursos que de fato capacitam no uso de EPI (NR-06). A entrega de EPI só é liberada para quem tem um curso marcado aqui, dentro da validade.">
-                  <Checkbox
-                    label="Este curso atende à NR-06 (habilita a entrega de EPI)"
-                    checked={novoCurso.atendeNr6 ?? false}
-                    onChange={(_, d) => setNovoCurso({ ...novoCurso, atendeNr6: !!d.checked })}
-                  />
-                </Field>
-              </Campo>
               <Campo span={6}>
                 <Field label="Carga horária mínima (h)">
                   <Input
@@ -275,9 +229,6 @@ export function CursosTreinamentoTab() {
           }}
           acoesLinha={(c) => (
             <>
-              <Button appearance="subtle" onClick={() => alternarAtendeNr6(c)}>
-                {c.atendeNr6 ? 'Não habilita mais EPI' : 'Habilita EPI (NR-06)'}
-              </Button>
               {!c.ehIntegracaoSeguranca && (
                 <Button appearance="subtle" onClick={() => marcarComoIntegracaoSeguranca(c)}>
                   Marcar como Integração de Segurança

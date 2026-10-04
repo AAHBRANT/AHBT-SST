@@ -691,6 +691,62 @@ public static class NovidadesSeeder
                     "A hora das assinaturas aparecia 3 horas adiantada, inclusive com horário futuro.",
                     "A lista de presença, o Cofre de Assinaturas e o comprovante em PDF mostram as horas no horário de Brasília. Comprovantes já gerados precisam ser gerados de novo."),
             }),
+        new(
+            Versao: "5.37.5",
+            Titulo: "Só a NR-06 habilita a entrega de EPI",
+            DataPublicacao: new DateTime(2026, 10, 2, 0, 0, 0, DateTimeKind.Utc),
+            Itens: new[]
+            {
+                new NovidadeSeedItem(CategoriaNovidade.Correcao,
+                    "Catálogo de cursos: habilitação de EPI fixa na NR-06",
+                    "Cada curso do catálogo tinha um botão \"Habilita EPI (NR-06)\", e era possível marcar outro curso (como a NR-11) para liberar a entrega de EPI.",
+                    "Apenas o curso da NR-06 habilita a entrega de EPI. O botão e a caixa de marcação foram removidos e o sistema não aceita mais outro curso nessa função."),
+            }),
+        new(
+            Versao: "5.37.6",
+            Titulo: "Canhoto de EPI volta a imprimir",
+            DataPublicacao: new DateTime(2026, 10, 2, 0, 0, 0, DateTimeKind.Utc),
+            Itens: new[]
+            {
+                new NovidadeSeedItem(CategoriaNovidade.Correcao,
+                    "Imprimir o canhoto do carrinho de EPI",
+                    "Ao clicar em imprimir o canhoto no carrinho de EPI, nada acontecia dentro do Teams.",
+                    "O canhoto abre numa janela da própria tela, com as fotos dos EPIs, e o botão Imprimir envia para a impressora."),
+            }),
+        new(
+            Versao: "5.38.0",
+            Titulo: "Inspeção de veículos e equipamentos",
+            DataPublicacao: new DateTime(2026, 10, 2, 0, 0, 0, DateTimeKind.Utc),
+            Itens: new[]
+            {
+                new NovidadeSeedItem(CategoriaNovidade.Novidade,
+                    "Nova aba Veículos em Inspeções",
+                    "Não havia como inspecionar caminhões, retroescavadeiras e escavadeiras no sistema: o check list era feito só na planilha.",
+                    "Em Operação > Inspeções > Veículos, escolha a obra e depois o tipo (caminhão basculante, retroescavadeira, escavadeira hidráulica, caminhão carroceria ou caminhão munck). Aparecem todos os veículos daquele tipo na obra, cada um com seu card, botão de inspeção, histórico e PDF."),
+                new NovidadeSeedItem(CategoriaNovidade.Novidade,
+                    "Cadastro de veículos feito pelo próprio SST",
+                    "Os veículos não vêm de nenhum outro sistema.",
+                    "O Técnico cadastra o veículo (placa/prefixo, modelo, subcontratada, responsável) na própria aba e pode trocá-lo de obra sem perder o histórico. Só o Administrador exclui."),
+                new NovidadeSeedItem(CategoriaNovidade.Novidade,
+                    "Checklist por tipo de veículo e foto só nas não conformidades",
+                    "Os 5 check lists estavam apenas na planilha \"CHECK LIST - AT CUIA\".",
+                    "Cada tipo tem seu checklist (Conforme, Não conforme ou Não aplicável), editável em Catálogo de inspeções. A foto é pedida somente nos itens marcados como Não conforme, uma por item, e o PDF mostra a identificação do veículo."),
+            }),
+        new(
+            Versao: "5.38.1",
+            Titulo: "Ficha de EPI com a tabela de entregas antes do termo",
+            DataPublicacao: new DateTime(2026, 10, 2, 0, 0, 0, DateTimeKind.Utc),
+            Itens: new[]
+            {
+                new NovidadeSeedItem(CategoriaNovidade.Melhoria,
+                    "Nova ordem das seções da Ficha de EPI",
+                    "A ficha trazia o Termo de Recebimento e Compromisso de Uso antes do Controle de Entrega de EPI.",
+                    "O Controle de Entrega de EPI passou a ser o item 2 e o Termo de Recebimento e Compromisso de Uso o item 3. Só as fichas geradas a partir de agora saem na nova ordem."),
+                new NovidadeSeedItem(CategoriaNovidade.Melhoria,
+                    "Coluna \"Observação\" e fim do texto final da Ficha de EPI",
+                    "A coluna da tabela de entregas se chamava \"Motivo\" e a ficha terminava com uma seção \"Observação\" de texto fixo.",
+                    "A coluna agora se chama \"Observação\" e continua mostrando o motivo da entrega. A seção final de texto fixo foi removida."),
+            }),
     };
 
     public static async Task ExecutarAsync(IServiceProvider services, CancellationToken ct = default)

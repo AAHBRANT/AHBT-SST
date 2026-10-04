@@ -50,8 +50,11 @@ public class CriarEntregaEpiCommandHandler : IRequestHandler<CriarEntregaEpiComm
             .FirstOrDefaultAsync(x => x.Id == request.TrabalhadorId, ct)
             ?? throw new KeyNotFoundException("Trabalhador não encontrado.");
 
-        if (!FuncaoSstClassifier.EhTecnicoSeguranca(trabalhador.Funcao?.Nome))
-            await GarantirIntegracaoSegurancaAssinadaAsync(_db, request.TrabalhadorId, ct);
+        // 02/10: decisão do usuário — a ÚNICA exigência de treinamento para entregar EPI é a NR-06.
+        // A trava de Integração de Segurança (21/09) foi desativada aqui; o método abaixo fica
+        // preservado caso a regra volte, mas não é mais chamado.
+        // if (!FuncaoSstClassifier.EhTecnicoSeguranca(trabalhador.Funcao?.Nome))
+        //     await GarantirIntegracaoSegurancaAssinadaAsync(_db, request.TrabalhadorId, ct);
 
         // Bloqueio de entrega com CA vencido e de estoque insuficiente: decisões confirmadas com o
         // usuário — não apenas um aviso, a entrega não é registrada.

@@ -1918,6 +1918,7 @@ export const TipoInspecao = {
   Comportamental: 12,
   Terceiros: 13,
   Alojamento: 14,
+  Veiculo: 15,
 } as const;
 
 export const tipoInspecaoLabel: Record<number, string> = {
@@ -1935,6 +1936,33 @@ export const tipoInspecaoLabel: Record<number, string> = {
   12: 'Comportamental',
   13: 'Terceiros',
   14: 'Alojamento',
+  15: 'Veículo',
+};
+
+// Tipos de veículo/equipamento com checklist próprio (planilha CHECK LIST - AT CUIA, 02/10/2026).
+export const TipoVeiculo = {
+  CaminhaoBasculante: 1,
+  Retroescavadeira: 2,
+  EscavadeiraHidraulica: 3,
+  CaminhaoCarroceria: 4,
+  CaminhaoMunck: 5,
+} as const;
+
+export const tipoVeiculoLabel: Record<number, string> = {
+  1: 'Caminhão basculante',
+  2: 'Retroescavadeira',
+  3: 'Escavadeira hidráulica',
+  4: 'Caminhão carroceria',
+  5: 'Caminhão munck',
+};
+
+// Rótulo no plural, usado nos cards de tipo ("Retroescavadeiras").
+export const tipoVeiculoLabelPlural: Record<number, string> = {
+  1: 'Caminhões basculantes',
+  2: 'Retroescavadeiras',
+  3: 'Escavadeiras hidráulicas',
+  4: 'Caminhões carroceria',
+  5: 'Caminhões munck',
 };
 
 export const StatusItemChecklist = {
@@ -1963,6 +1991,7 @@ export interface ChecklistModelo {
   id: string;
   nome: string;
   tipoInspecao: number;
+  tipoVeiculo?: number | null;
   versao: number;
   checklistModeloAnteriorId?: string | null;
   quantidadeItens: number;
@@ -1990,6 +2019,7 @@ export interface NovoChecklistModeloItem {
 export interface NovoChecklistModelo {
   nome: string;
   tipoInspecao: number;
+  tipoVeiculo?: number | null;
   itens: NovoChecklistModeloItem[];
 }
 
@@ -2005,6 +2035,11 @@ export interface Inspecao {
   obraNome: string;
   atividadeId?: string | null;
   atividadeNome?: string | null;
+  veiculoId?: string | null;
+  veiculoTipo?: number | null;
+  veiculoPlacaPrefixo?: string | null;
+  veiculoMarcaModelo?: string | null;
+  veiculoEmpresa?: string | null;
   checklistModeloId: string;
   checklistModeloNome: string;
   checklistModeloVersao: number;
@@ -2084,6 +2119,36 @@ export interface AlojamentoDocumentoAssinaturaResumo {
   status: number;
   temPdf: boolean;
   finalizadoEm?: string | null;
+}
+
+// Veículos em Inspeções (02/10/2026): cadastro manual por obra (sem integração), checklist por tipo,
+// inspeção "obter ou criar" atômica. O resumo de cada inspeção reaproveita AlojamentoInspecaoResumo.
+export interface VeiculoResumo {
+  id: string;
+  obraId: string;
+  tipo: number;
+  placaPrefixo: string;
+  marcaModelo: string | null;
+  ano: number | null;
+  cor: string | null;
+  empresa: string | null;
+  responsavel: string | null;
+  statusUltimaInspecao: 'nunca' | 'inspecionado';
+  diasDesdeUltimaInspecao: number | null;
+  inspecaoEmAndamento: AlojamentoInspecaoResumo | null;
+  ultimaInspecaoConcluida: AlojamentoInspecaoResumo | null;
+  historicoInspecoes: AlojamentoInspecaoResumo[];
+}
+
+export interface DadosVeiculo {
+  obraId: string;
+  tipo: number;
+  placaPrefixo: string;
+  marcaModelo?: string | null;
+  ano?: number | null;
+  cor?: string | null;
+  empresa?: string | null;
+  responsavel?: string | null;
 }
 
 export interface InspecaoAtual {
@@ -4726,6 +4791,23 @@ export const api = {
       request<InspecaoAtual>(`/api/alojamentos/${alojamentoId}/inspecao-atual`, { method: 'POST' }),
     importarGrh: () =>
       request<ImportarAlojamentosGrhResultado>('/api/alojamentos/importar-grh', { method: 'POST' }),
+  },
+  veiculos: {
+    listar: (obraId?: string, tipo?: number) => {
+      const params = new URLSearchParams();
+      if (obraId) params.set('obraId', obraId);
+      if (tipo) params.set('tipo', String(tipo));
+      const qs = params.toString();
+      return request<VeiculoResumo[]>(`/api/veiculos${qs ? `?${qs}` : ''}`);
+    },
+    criar: (dados: DadosVeiculo) =>
+      request<{ id: string }>('/api/veiculos', { method: 'POST', body: JSON.stringify(dados) }),
+    atualizar: (id: string, dados: DadosVeiculo) =>
+      request<void>(`/api/veiculos/${id}`, { method: 'PUT', body: JSON.stringify({ id, ...dados }) }),
+    // Só Administrador (exclusão lógica; o histórico de inspeções é preservado).
+    excluir: (id: string) => request<void>(`/api/veiculos/${id}`, { method: 'DELETE' }),
+    obterOuCriarInspecaoAtual: (veiculoId: string) =>
+      request<InspecaoAtual>(`/api/veiculos/${veiculoId}/inspecao-atual`, { method: 'POST' }),
   },
   materiaisApoio: {
     listar: (categoria?: string) =>
