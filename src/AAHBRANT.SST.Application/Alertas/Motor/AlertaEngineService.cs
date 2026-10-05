@@ -94,10 +94,11 @@ public class AlertaEngineService : IAlertaEngineService
                     ? SeveridadeAlerta.Critico
                     : (SeveridadeAlerta?)regraAplicada?.Severidade;
 
-                if (severidade is null)
+                if (severidade is null || item.Substituido)
                 {
-                    // Item ficou dentro do prazo (ex.: nova higienização registrada) — se havia um
-                    // alerta em aberto gerado por este motor, encerra automaticamente.
+                    // Item ficou dentro do prazo (ex.: nova higienização registrada) ou foi renovado por um
+                    // registro mais recente (Substituido) — se havia um alerta em aberto gerado por este
+                    // motor, encerra automaticamente.
                     if (alertaExistente is not null)
                     {
                         alertaExistente.Status = StatusAlerta.Resolvido;

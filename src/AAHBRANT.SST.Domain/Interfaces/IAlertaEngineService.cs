@@ -33,6 +33,10 @@ public class AlertaOrigemItem
     public string? Descricao { get; set; }
     public Guid? TrabalhadorId { get; set; }
     public Guid? ObraId { get; set; }
+
+    // Registro já renovado por outro mais recente (ex.: ASO antigo de quem fez ASO novo). Nunca gera
+    // alerta, e o motor encerra o que já estiver em aberto: o vencimento dele não importa mais.
+    public bool Substituido { get; set; }
 }
 
 public interface IAlertaEngineService
