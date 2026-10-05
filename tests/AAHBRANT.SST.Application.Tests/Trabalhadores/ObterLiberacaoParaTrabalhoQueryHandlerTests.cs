@@ -88,7 +88,7 @@ public class ObterLiberacaoParaTrabalhoQueryHandlerTests
     }
 
     [Fact]
-    public async Task Handle_CadaMotivoBloqueiaEEhContadoSeparadamente()
+    public async Task Handle_AsoETreinamentoBloqueiamEEhContadoSeparadamente()
     {
         var c = await Preparar();
         var asoVencido = NovoTrabalhador(c.Funcao, c.Obra, "ASO vencido");
@@ -105,10 +105,27 @@ public class ObterLiberacaoParaTrabalhoQueryHandlerTests
         var r = await Consultar(c.Db);
 
         Assert.Equal(4, r.Ativos);
-        Assert.Equal(0, r.Liberados);
+        // EPI vencido ou ainda não confirmado não bloqueia: só ASO e treinamento.
+        Assert.Equal(2, r.Liberados);
         Assert.Equal(1, r.SemAsoValido);
         Assert.Equal(1, r.TreinamentoPendente);
-        Assert.Equal(2, r.EpiPendente);
+    }
+
+    [Fact]
+    public async Task Handle_SemNenhumaEntregaDeEpiNaoBloqueia()
+    {
+        var c = await Preparar();
+        var t = NovoTrabalhador(c.Funcao, c.Obra, "Sem EPI");
+        c.Db.Trabalhadores.Add(t);
+        await c.Db.SaveChangesAsync();
+        c.Db.Asos.Add(AsoApto(t, 200));
+        c.Db.Treinamentos.Add(Curso(t, c.Curso, 300));
+        await c.Db.SaveChangesAsync();
+
+        var r = await Consultar(c.Db);
+
+        Assert.Equal(1, r.Liberados);
+        Assert.Equal(0, r.Bloqueados);
     }
 
     [Fact]
