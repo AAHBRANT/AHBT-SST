@@ -40,9 +40,6 @@ public static class RbacSeeder
 
     private static readonly (string Codigo, string Modulo, string Acao, string Descricao)[] CatalogoPermissoes =
     {
-        // Fase 1 SST + Qualidade: apenas catálogo; a matriz continua sem concessões automáticas.
-        ("qualidade:ver", "Qualidade", "Ver", "Acessar Qualidade nas obras autorizadas"),
-        ("teams:configurar", "Teams", "Configurar", "Configurar abas de SST e Qualidade no Teams nas obras autorizadas"),
         ("organizacional:ver", "Organizacional", "Ver", "Ver Obra/Setor/Equipe/Função"),
         ("organizacional:criar", "Organizacional", "Criar", "Criar Obra/Setor/Equipe/Função"),
         ("organizacional:editar", "Organizacional", "Editar", "Editar Obra/Setor/Equipe/Função"),
