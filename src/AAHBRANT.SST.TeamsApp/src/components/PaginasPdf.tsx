@@ -90,8 +90,23 @@ export function PaginasPdf({ arquivo, altura = '80vh' }: PaginasPdfProps) {
 
         void tarefa.destroy();
       } catch (e) {
+        // Chunk do pdf.js sumiu após um deploy (aba com versão antiga): recarrega uma vez só.
+        const chunkAusente =
+          e instanceof Error && /dynamically imported module|Importing a module script failed/i.test(e.message);
+        if (chunkAusente && sessionStorage.getItem('sst-chunk-reload') !== '1') {
+          sessionStorage.setItem('sst-chunk-reload', '1');
+          window.setTimeout(() => sessionStorage.removeItem('sst-chunk-reload'), 30000);
+          window.location.reload();
+          return;
+        }
         if (!cancelado) {
-          setErro(e instanceof Error ? e.message : 'Falha ao exibir o documento.');
+          setErro(
+            chunkAusente
+              ? 'O aplicativo foi atualizado. Recarregue a página (Ctrl+F5) para visualizar o documento.'
+              : e instanceof Error
+                ? e.message
+                : 'Falha ao exibir o documento.',
+          );
         }
       } finally {
         if (!cancelado) setCarregando(false);

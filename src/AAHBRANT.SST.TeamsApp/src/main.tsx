@@ -3,6 +3,16 @@ import { createRoot } from 'react-dom/client'
 import './index.css'
 import App from './App.tsx'
 
+// Após um deploy, uma aba aberta com o index antigo pede chunks (ex.: pdf-*.js) que não existem
+// mais no servidor. O Vite avisa por este evento; recarregamos uma vez para pegar a versão nova.
+window.addEventListener('vite:preloadError', (evento) => {
+  evento.preventDefault()
+  if (sessionStorage.getItem('sst-chunk-reload') === '1') return
+  sessionStorage.setItem('sst-chunk-reload', '1')
+  window.setTimeout(() => sessionStorage.removeItem('sst-chunk-reload'), 30000)
+  window.location.reload()
+})
+
 if ('serviceWorker' in navigator) {
   const recarregarQuandoServiceWorkerAtualizar = () => {
     if (sessionStorage.getItem('sst-sw-reload-em-andamento') === '1') return

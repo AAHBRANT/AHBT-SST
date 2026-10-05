@@ -73,7 +73,7 @@ public class EntregaEpiPdfService : IFichaEpiPdfService
                 CelulaIdentificacao(tabela, "Turno", modelo.TrabalhadorTurno ?? "não informado");
                 CelulaIdentificacao(tabela, "Data de admissão", modelo.TrabalhadorDataAdmissao.ToString("dd/MM/yyyy"));
                 CelulaIdentificacao(tabela, "Obra / Frente de trabalho", modelo.ObraNome, colSpan: 2);
-                CelulaIdentificacao(tabela, "Empresa contratante", modelo.ObraCliente ?? "não informado", colSpan: 2);
+                CelulaIdentificacao(tabela, "Empresa contratante", modelo.ObraNome, colSpan: 2);
                 CelulaIdentificacao(tabela, "CNPJ da contratada", modelo.ObraCnpj ?? "não informado");
             });
         });
@@ -90,7 +90,7 @@ public class EntregaEpiPdfService : IFichaEpiPdfService
 
     private static Action<IContainer> SecaoTermoCompromisso(FichaEpiPdfModelo modelo)
     {
-        var contratante = modelo.ObraCliente ?? "empregador";
+        var contratante = modelo.ObraNome;
         // Data e nº vêm do certificado de NR-06 do trabalhador (pedido de 02/10); sem certificado,
         // ficam em branco para preenchimento à mão — a trava de NR-06 já barra a entrega nesse caso.
         var dataNr6 = modelo.DataTreinamentoNr6?.ToString("dd/MM/yyyy") ?? "____/____/______";
