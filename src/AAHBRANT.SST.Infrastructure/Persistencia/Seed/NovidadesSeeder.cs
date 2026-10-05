@@ -824,6 +824,21 @@ public static class NovidadesSeeder
                     "O documento da Lista de Presença trazia só os temas e as assinaturas, sem as fotos tiradas no encerramento.",
                     "Uma nova seção, \"Registro Fotográfico\", mostra as 3 fotos lado a lado, depois da lista de presença e antes da assinatura do responsável. Cada foto traz data e hora, local e coordenadas da captura; fotos anexadas da galeria aparecem como \"Sem geolocalização\". Vale para os PDFs gerados a partir de agora."),
             }),
+        new(
+            Versao: "5.40.2",
+            Titulo: "Empresa contratante com o nome da obra",
+            DataPublicacao: new DateTime(2026, 10, 5, 0, 0, 0, DateTimeKind.Utc),
+            Itens: new[]
+            {
+                new NovidadeSeedItem(CategoriaNovidade.Correcao,
+                    "Ficha de EPI e termos mostram o nome da obra como contratante",
+                    "A Ficha de EPI trazia \"não informado\" em \"Empresa contratante\", e os termos de EPI e Uniforme citavam sempre o mesmo consórcio.",
+                    "A empresa contratante e o texto \"Declaro ter recebido do...\" passam a usar o nome da obra do funcionário."),
+                new NovidadeSeedItem(CategoriaNovidade.Correcao,
+                    "Visualização de PDF não falha mais após uma atualização do sistema",
+                    "Com o app aberto durante uma atualização, a Ficha de EPI mostrava o erro \"Failed to fetch dynamically imported module\".",
+                    "O app se recarrega sozinho uma vez e abre o documento normalmente."),
+            }),
     };
 
     public static async Task ExecutarAsync(IServiceProvider services, CancellationToken ct = default)

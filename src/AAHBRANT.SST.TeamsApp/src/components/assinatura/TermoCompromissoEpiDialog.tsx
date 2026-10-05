@@ -57,6 +57,7 @@ export function TermoCompromissoEpiDialog({ open, onClose, trabalhadorId, trabal
   const navigate = useNavigate();
   const souAdministrador = useSouAdministrador();
   const [termo, setTermo] = useState<TermoCompromissoEpi | null>(null);
+  const [nomeObra, setNomeObra] = useState<string | null>(null);
   const [nr6, setNr6] = useState<{ numero?: string | null; data?: string | null }>({});
   const [modoPapel, setModoPapel] = useState(false);
   const [dataPapel, setDataPapel] = useState('');
@@ -74,6 +75,13 @@ export function TermoCompromissoEpiDialog({ open, onClose, trabalhadorId, trabal
         api.treinamentos.listarCertificados({ trabalhadorId }).catch(() => []),
       ]);
       setTermo(situacao);
+      // Nome da obra do funcionário (o consórcio) para a cláusula 1 do termo.
+      void Promise.all([api.trabalhadores.listar(), api.obras.listar()])
+        .then(([trabalhadores, obras]) => {
+          const obraId = trabalhadores.find((t) => t.id === trabalhadorId)?.obraId;
+          setNomeObra(obras.find((o) => o.id === obraId)?.nome ?? null);
+        })
+        .catch(() => undefined);
       // Mesma escolha do backend/PDF: entre os certificados de NR-06, o de validade mais distante.
       const nr6Escolhido = certificados
         .filter((c) => c.atendeNr6)
@@ -204,7 +212,7 @@ export function TermoCompromissoEpiDialog({ open, onClose, trabalhadorId, trabal
                     <div style={{ display: 'grid', gap: 6 }}>
                       <Text weight="semibold">Cláusulas do termo</Text>
                       <ol style={{ margin: 0, paddingLeft: 20 }}>
-                        {clausulasTermoCompromisso(nr6.numero, nr6.data).map((clausula, indice) => (
+                        {clausulasTermoCompromisso(nr6.numero, nr6.data, nomeObra).map((clausula, indice) => (
                           <li key={indice} style={{ marginBottom: 4 }}>
                             <Text size={200}>{clausula}</Text>
                           </li>
