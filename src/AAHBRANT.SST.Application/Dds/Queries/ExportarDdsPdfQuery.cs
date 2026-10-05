@@ -53,8 +53,20 @@ public class ExportarDdsPdfQueryHandler : IRequestHandler<ExportarDdsPdfQuery, b
                 .Select(s => new { s.AssinadoEm, s.MetodoAutenticacao })
                 .FirstOrDefaultAsync(ct);
 
+        var fotosBanco = await _db.DdsFotosEvidencia
+            .Where(f => f.DdsId == request.Id && f.Ativo)
+            .OrderBy(f => f.Ordem)
+            .Select(f => new { f.FotoConteudo, f.FotoMetadadosJson })
+            .ToListAsync(ct);
+        var fotos = fotosBanco.Select(f =>
+        {
+            var d = Common.DadosCapturaFoto.Ler(f.FotoMetadadosJson);
+            return new DdsPdfFotoModelo(f.FotoConteudo, d?.CapturadaEm, d?.FusoMinutos, d?.Local, d?.Latitude, d?.Longitude);
+        }).ToList();
+
         var modelo = MontarModelo(detalhe, logoConteudo, dds.NumeroDocumento, rastreio) with
         {
+            Fotos = fotos,
             ResponsavelAssinadoEm = assinaturaResponsavel?.AssinadoEm,
             ResponsavelMetodo = assinaturaResponsavel?.MetodoAutenticacao,
             ResponsavelFuncao = responsavel?.Funcao,

@@ -14,6 +14,16 @@ public record DdsPdfParticipanteModelo(
     DateTime? AssinadoEm,
     AAHBRANT.SST.Domain.Enums.MetodoAutenticacaoAssinatura? Metodo = null);
 
+// Foto de evidência do encerramento (3 obrigatórias). Metadados vêm de DadosCapturaFoto; foto
+// anexada da galeria não tem hora/GPS de captura (CapturadaEm e coordenadas nulos).
+public record DdsPdfFotoModelo(
+    byte[] Conteudo,
+    DateTimeOffset? CapturadaEm,
+    int? FusoMinutos,
+    string? Local,
+    double? Latitude,
+    double? Longitude);
+
 public record DdsPdfModelo(
     string ObraNome,
     byte[]? ObraLogoConteudo,
@@ -34,7 +44,8 @@ public record DdsPdfModelo(
     DateTime? ResponsavelAssinadoEm = null,
     AAHBRANT.SST.Domain.Enums.MetodoAutenticacaoAssinatura? ResponsavelMetodo = null,
     // Cargo/função do responsável (cadastro do trabalhador vinculado ao usuário), ex.: "Técnico de Segurança".
-    string? ResponsavelFuncao = null);
+    string? ResponsavelFuncao = null,
+    IReadOnlyList<DdsPdfFotoModelo>? Fotos = null);
 
 public interface IDdsPdfService
 {
