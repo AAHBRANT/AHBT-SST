@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState, type ChangeEvent } from 'react';
 import { comprimirImagem } from '../../lib/imagem';
-import { obterLocalizacaoFoto, pendenciasFoto, vincularDadosFoto, type ContextoFoto, type DadosFoto, type LocalizacaoFoto } from '../../lib/dadosFoto';
+import { localizacaoExpirada, obterLocalizacaoFoto, pendenciasFoto, vincularDadosFoto, type ContextoFoto, type DadosFoto, type LocalizacaoFoto } from '../../lib/dadosFoto';
 
 export interface UseCapturaFotoOptions {
   contextoFoto?: ContextoFoto;
@@ -77,9 +77,9 @@ export function useCapturaFoto({
     setLocalizacao(resultado);
     setLocalizando(false);
   }
-  function montarDados(origem: 'camera' | 'arquivo'): DadosFoto {
-    return { ...(origem === 'camera' ? localizacao : {}), origem,
-      capturadaEm: origem === 'camera' ? new Date().toISOString() : null,
+  function montarDados(origem: 'camera' | 'arquivo', loc: LocalizacaoFoto = localizacao, capturadaEm = new Date()): DadosFoto {
+    return { ...(origem === 'camera' ? loc : {}), origem,
+      capturadaEm: origem === 'camera' ? capturadaEm.toISOString() : null,
       fusoMinutos: new Date().getTimezoneOffset(),
       obraId: contextoFoto?.obraId, obraNome: contextoFoto?.obraNome, local: localFoto.trim() };
   }
@@ -235,14 +235,28 @@ export function useCapturaFoto({
     inputRef.current?.click();
   }
 
-  function capturarFoto() {
+  async function capturarFoto() {
     const video = videoRef.current;
-    if (!video || !video.videoWidth) return;
+    if (!video || !video.videoWidth || processando) return;
+    const capturadaEm = new Date();
     const canvas = document.createElement('canvas');
     canvas.width = video.videoWidth;
     canvas.height = video.videoHeight;
     canvas.getContext('2d')?.drawImage(video, 0, 0);
-    const dados = montarDados('camera');
+    // A posição é pedida ao abrir o diálogo; se o usuário demorou (digitando o local, por exemplo),
+    // ela passa da janela de 60 s da validação. Renova antes de gravar — o quadro já foi congelado
+    // acima, então a hora da captura continua sendo a do clique.
+    let loc = localizacao;
+    if (contextoFoto && localizacaoExpirada(localizacao, capturadaEm.getTime())) {
+      pedidoLocalizacao.current++;
+      setProcessando(true);
+      setLocalizando(true);
+      try {
+        const nova = await obterLocalizacaoFoto();
+        if (nova.latitude != null) { loc = nova; setLocalizacao(nova); }
+      } finally { setLocalizando(false); setProcessando(false); }
+    }
+    const dados = montarDados('camera', loc, capturadaEm);
     fecharCamera();
     canvas.toBlob(
       (blob) => {
