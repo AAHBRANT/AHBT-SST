@@ -23,4 +23,7 @@ public record AcidenteGrhEvento(
     TimeSpan? Hora,
     string? NumeroCat,
     bool CatEmitida,
-    string Status);
+    string Status,
+    // Todos os envolvidos (inclui o de TrabalhadorCpf, que segue sendo o primeiro). Campo novo e
+    // aditivo: consumidores antigos que só leem TrabalhadorCpf continuam funcionando.
+    IReadOnlyList<string>? TrabalhadoresCpf = null);
