@@ -52,6 +52,9 @@ public class ObterAcidenteDetalheQueryHandler : IRequestHandler<ObterAcidenteDet
             .FirstOrDefaultAsync(ct)
             ?? throw new KeyNotFoundException($"Acidente {request.Id} não encontrado.");
 
+        var envolvidos = await AcidenteEnvolvidosSync.CarregarAsync(_db, new[] { request.Id }, ct);
+        acidente.Envolvidos = envolvidos.GetValueOrDefault(request.Id) ?? new();
+
         var acoesPlano = await _db.AcoesPlano
             .Where(a => a.OrigemTipo == nameof(Domain.Entidades.Acidente) && a.OrigemId == request.Id)
             .Include(a => a.ResponsavelUsuario)

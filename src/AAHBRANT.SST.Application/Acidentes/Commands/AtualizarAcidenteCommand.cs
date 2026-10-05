@@ -27,7 +27,8 @@ public record AtualizarAcidenteCommand(
     MetodologiaInvestigacao? MetodologiaInvestigacao,
     string? Causas,
     GravidadeAcidente Gravidade,
-    int? DiasDebitadosInformados) : IRequest;
+    int? DiasDebitadosInformados,
+    List<Guid>? TrabalhadoresIds = null) : IRequest;
 
 public class AtualizarAcidenteCommandValidator : AbstractValidator<AtualizarAcidenteCommand>
 {
@@ -69,9 +70,8 @@ public class AtualizarAcidenteCommandHandler : IRequestHandler<AtualizarAcidente
         if (!await _db.Obras.AnyAsync(o => o.Id == request.ObraId, ct))
             throw new KeyNotFoundException($"Obra {request.ObraId} não encontrada.");
 
-        if (request.TrabalhadorId.HasValue &&
-            !await _db.Trabalhadores.AnyAsync(t => t.Id == request.TrabalhadorId, ct))
-            throw new KeyNotFoundException($"Trabalhador {request.TrabalhadorId} não encontrado.");
+        var envolvidos = AcidenteEnvolvidosSync.Resolver(request.TrabalhadoresIds, request.TrabalhadorId);
+        await AcidenteEnvolvidosSync.ValidarAsync(_db, envolvidos, ct);
 
         if (request.AtividadeId.HasValue &&
             !await _db.Atividades.AnyAsync(a => a.Id == request.AtividadeId, ct))
@@ -79,7 +79,7 @@ public class AtualizarAcidenteCommandHandler : IRequestHandler<AtualizarAcidente
 
         acidente.Tipo = request.Tipo;
         acidente.ObraId = request.ObraId;
-        acidente.TrabalhadorId = request.TrabalhadorId;
+        await AcidenteEnvolvidosSync.SincronizarAsync(_db, acidente, envolvidos, ct);
         acidente.AtividadeId = request.AtividadeId;
         acidente.Local = request.Local;
         acidente.Data = request.Data;
