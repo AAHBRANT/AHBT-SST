@@ -2649,6 +2649,7 @@ export interface Acidente {
   obraNome?: string | null;
   trabalhadorId?: string | null;
   trabalhadorNome?: string | null;
+  envolvidos: { trabalhadorId: string; nome: string }[];
   atividadeId?: string | null;
   atividadeNome?: string | null;
   local: string;
@@ -2673,6 +2674,8 @@ export interface NovoAcidente {
   tipo: number;
   obraId: string;
   trabalhadorId?: string | null;
+  // Funcionários envolvidos; o primeiro vira o principal (trabalhadorId) no backend.
+  trabalhadoresIds?: string[];
   atividadeId?: string | null;
   local: string;
   data: string;

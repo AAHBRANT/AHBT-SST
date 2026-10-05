@@ -124,6 +124,7 @@ export function AcidenteDetalhePage() {
         tipo: a.tipo,
         obraId: a.obraId,
         trabalhadorId: a.trabalhadorId,
+        trabalhadoresIds: a.envolvidos.map((e) => e.trabalhadorId),
         atividadeId: a.atividadeId,
         local: a.local,
         data: a.data,
@@ -281,10 +282,10 @@ export function AcidenteDetalhePage() {
                   <Input value={a.obraNome ?? '—'} readOnly />
                 </Field>
               </Campo>
-              {a.trabalhadorNome && (
+              {a.envolvidos.length > 0 && (
                 <Campo span={12}>
-                  <Field label="Funcionário">
-                    <Input value={a.trabalhadorNome} readOnly />
+                  <Field label={a.envolvidos.length > 1 ? `Funcionários envolvidos (${a.envolvidos.length})` : 'Funcionário'}>
+                    <Textarea value={a.envolvidos.map((e) => e.nome).join('\n')} readOnly rows={Math.min(a.envolvidos.length, 6)} />
                   </Field>
                 </Campo>
               )}
