@@ -128,6 +128,50 @@ public class DdsPdfService : IDdsPdfService
                         }
                     });
 
+                    // Pedido do usuário (05/10): as 3 fotos de evidência do encerramento saem no documento,
+                    // lado a lado e do mesmo tamanho (a ordem 1–3 não tem significado), depois da lista de
+                    // presença e antes da assinatura do responsável. ShowEntire evita partir o bloco.
+                    if (modelo.Fotos is { Count: > 0 } fotos)
+                    {
+                        coluna.Item().PaddingTop(8).ShowEntire().Column(secao =>
+                        {
+                            secao.Spacing(6);
+                            secao.Item().Text("Registro Fotográfico").FontSize(13).Bold();
+                            secao.Item().Row(linha =>
+                            {
+                                linha.Spacing(8);
+                                for (var i = 0; i < 3; i++)
+                                {
+                                    if (i >= fotos.Count) { linha.RelativeItem(); continue; }
+                                    var foto = fotos[i];
+                                    var numero = i + 1;
+                                    linha.RelativeItem().Column(item =>
+                                    {
+                                        item.Spacing(3);
+                                        item.Item().Height(105).Background(Colors.Grey.Lighten3).Border(1).BorderColor(Colors.Grey.Lighten2)
+                                            .Padding(1).AlignCenter().AlignMiddle().Image(foto.Conteudo).FitArea();
+                                        item.Item().Text(t =>
+                                        {
+                                            t.DefaultTextStyle(s => s.FontSize(8).FontColor(Colors.Grey.Darken2));
+                                            t.Span($"Foto {numero}").Bold().FontColor(CorMarca);
+                                            if (foto.CapturadaEm is { } quando)
+                                                t.Span($" · {HorarioBrasilia.De(quando.UtcDateTime):dd/MM/yyyy HH:mm}");
+                                            if (!string.IsNullOrWhiteSpace(foto.Local))
+                                            {
+                                                t.Line("");
+                                                t.Span(foto.Local);
+                                            }
+                                            t.Line("");
+                                            t.Span(foto.Latitude is { } lat && foto.Longitude is { } lon
+                                                ? string.Create(System.Globalization.CultureInfo.InvariantCulture, $"Lat {lat:0.0000} · Lon {lon:0.0000}")
+                                                : "Sem geolocalização");
+                                        });
+                                    });
+                                }
+                            });
+                        });
+                    }
+
                     // Responsável/técnico pelo DDS (regra de 02/10): nome completo, linha e a
                     // assinatura miúda logo abaixo — mesmo padrão de todo documento do sistema.
                     coluna.Item().PaddingTop(24).AlignCenter().Width(260).Element(c => AssinaturaPdfPadrao.Bloco(

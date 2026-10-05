@@ -813,6 +813,17 @@ public static class NovidadesSeeder
                     "Não ficava claro quais cards obedecem ao filtro de período.",
                     "Cada card informa se mostra a situação de hoje, segue o filtro de período ou é o acumulado."),
             }),
+        new(
+            Versao: "5.40.1",
+            Titulo: "Fotos do DDS no documento de presença",
+            DataPublicacao: new DateTime(2026, 10, 5, 0, 0, 0, DateTimeKind.Utc),
+            Itens: new[]
+            {
+                new NovidadeSeedItem(CategoriaNovidade.Melhoria,
+                    "As 3 fotos obrigatórias do DDS agora saem no PDF",
+                    "O documento da Lista de Presença trazia só os temas e as assinaturas, sem as fotos tiradas no encerramento.",
+                    "Uma nova seção, \"Registro Fotográfico\", mostra as 3 fotos lado a lado, depois da lista de presença e antes da assinatura do responsável. Cada foto traz data e hora, local e coordenadas da captura; fotos anexadas da galeria aparecem como \"Sem geolocalização\". Vale para os PDFs gerados a partir de agora."),
+            }),
     };
 
     public static async Task ExecutarAsync(IServiceProvider services, CancellationToken ct = default)
