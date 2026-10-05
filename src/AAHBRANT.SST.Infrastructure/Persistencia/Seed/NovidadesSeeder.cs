@@ -676,6 +676,17 @@ public static class NovidadesSeeder
                     "Escolher um tema com descrição muito longa (como o de câncer de mama) gerava \"erro inesperado\" ao criar o DDS.",
                     "O DDS é criado normalmente com temas de descrição longa."),
             }),
+        new(
+            Versao: "5.38.0",
+            Titulo: "Vários funcionários numa mesma ocorrência",
+            DataPublicacao: new DateTime(2026, 10, 5, 0, 0, 0, DateTimeKind.Utc),
+            Itens: new[]
+            {
+                new NovidadeSeedItem(CategoriaNovidade.Melhoria,
+                    "Funcionários envolvidos no registro de acidente/incidente",
+                    "Só dava para indicar um funcionário por ocorrência. Quando mais de uma pessoa estava envolvida, era preciso registrar a mesma ocorrência várias vezes.",
+                    "Escolha a obra e marque todos os funcionários envolvidos, com busca por nome. A ocorrência continua sendo um único registro, com uma só investigação, e aparece no perfil de cada envolvido. Na lista, aparece o nome do primeiro e o total de envolvidos (ex.: \"Carlos +1\")."),
+            }),
     };
 
     public static async Task ExecutarAsync(IServiceProvider services, CancellationToken ct = default)
