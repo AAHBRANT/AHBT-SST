@@ -850,6 +850,17 @@ public static class NovidadesSeeder
                     "Só dava para indicar um funcionário por ocorrência. Quando mais de uma pessoa estava envolvida, era preciso registrar a mesma ocorrência várias vezes.",
                     "Escolha a obra e marque todos os funcionários envolvidos, com busca por nome. A ocorrência continua sendo um único registro, com uma só investigação, e aparece no perfil de cada envolvido. Na lista, aparece o nome do primeiro e o total de envolvidos (ex.: \"Carlos +1\")."),
             }),
+        new(
+            Versao: "5.41.1",
+            Titulo: "Nova inspeção depois de excluir a anterior",
+            DataPublicacao: new DateTime(2026, 10, 5, 0, 0, 0, DateTimeKind.Utc),
+            Itens: new[]
+            {
+                new NovidadeSeedItem(CategoriaNovidade.Correcao,
+                    "\"Nova inspeção\" de veículo e alojamento voltou a funcionar após uma exclusão",
+                    "Depois de excluir uma inspeção em andamento, abrir uma nova inspeção do mesmo veículo ou alojamento mostrava \"Ocorreu um erro inesperado\".",
+                    "A inspeção excluída deixa de ocupar a vaga e a nova inspeção abre normalmente."),
+            }),
     };
 
     public static async Task ExecutarAsync(IServiceProvider services, CancellationToken ct = default)
