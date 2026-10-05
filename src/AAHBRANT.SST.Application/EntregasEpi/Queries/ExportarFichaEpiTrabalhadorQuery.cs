@@ -42,6 +42,17 @@ public class ExportarFichaEpiTrabalhadorQueryHandler : IRequestHandler<ExportarF
 
         var entregaIds = entregas.Select(e => e.Id).ToList();
 
+        var termo = await TermosCompromissoEpi.TermoCompromissoEpiConsulta.ObterAsync(_db, request.TrabalhadorId, ct);
+
+        // Mesma regra da tela de entrega (EntregasTab): entre os certificados de NR-06 do
+        // trabalhador vale o de validade mais distante, para um certificado antigo lançado depois
+        // do novo não tomar o lugar do válido. Alimenta a cláusula 2 do termo de compromisso.
+        var certificadoNr6 = await _db.Treinamentos.AsNoTracking()
+            .Where(t => t.TrabalhadorId == request.TrabalhadorId && t.CursoTreinamento!.AtendeNr6)
+            .OrderByDescending(t => t.DataValidade)
+            .Select(t => new { t.DataRealizacao, t.NumeroCertificado })
+            .FirstOrDefaultAsync(ct);
+
         // Um DocumentoAssinatura por entrega/devolução (EntidadeTipo="EntregaEpi"/"DevolucaoEpi",
         // EntidadeId=EntregaEpi.Id) — ver docs/Motor-Assinatura-Eletronica.md. Carrega tudo de uma vez
         // e agrupa em memória em vez de uma query por linha da ficha.
@@ -95,7 +106,9 @@ public class ExportarFichaEpiTrabalhadorQueryHandler : IRequestHandler<ExportarF
                 assinaturaEmpregado is not null,
                 assinaturaResponsavel is not null,
                 assinaturaEmpregado?.AssinadoEm,
-                assinaturaResponsavel?.AssinadoEm));
+                assinaturaResponsavel?.AssinadoEm,
+                assinaturaEmpregado?.MetodoAutenticacao,
+                assinaturaResponsavel?.MetodoAutenticacao));
 
             if (entrega.DataDevolucao is null) continue;
 
@@ -113,7 +126,8 @@ public class ExportarFichaEpiTrabalhadorQueryHandler : IRequestHandler<ExportarF
                 entrega.DataDevolucao.Value,
                 assinaturaDevolucaoEmpregado is not null,
                 assinaturaDevolucaoEmpregado?.AssinadoEm,
-                entrega.VistoConsorcioResponsavel));
+                entrega.VistoConsorcioResponsavel,
+                assinaturaDevolucaoEmpregado?.MetodoAutenticacao));
         }
 
         // Chave sintética "FichaEpiTrabalhador"/TrabalhadorId: a Ficha agrega N entregas, cada uma já
@@ -137,7 +151,10 @@ public class ExportarFichaEpiTrabalhadorQueryHandler : IRequestHandler<ExportarF
             linhasDevolucao,
             rastreio.ConteudoHash,
             rastreio.UrlValidacaoPublica,
-            rastreio.QrCodePng);
+            rastreio.QrCodePng,
+            certificadoNr6?.DataRealizacao,
+            certificadoNr6?.NumeroCertificado,
+            termo);
 
         var pdf = _pdf.Gerar(modelo);
         // Guarda a cópia exata emitida e o SHA-256 dela — é o que permite conferir, depois,

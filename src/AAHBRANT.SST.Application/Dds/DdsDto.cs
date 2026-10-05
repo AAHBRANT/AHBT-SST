@@ -58,6 +58,7 @@ public class DdsParticipanteDto
     // digital da presença é reaproveitada pelo Motor de Assinatura (ver RegistrarParticipanteCommand),
     // sem exigir uma segunda leitura na tela "Assinar DDS".
     public DateTime? AssinadoEm { get; set; }
+    public MetodoAutenticacaoAssinatura? MetodoAssinatura { get; set; }
 }
 
 public class DdsFotoEvidenciaDto

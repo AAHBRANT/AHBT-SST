@@ -8,6 +8,22 @@ public record DdsPdfTemaModelo(
     string? ControlesExistentes,
     string? ControlesAdicionais);
 
+// AssinadoEm em UTC (padrão do banco); null quando a presença ainda não virou assinatura.
+public record DdsPdfParticipanteModelo(
+    string Nome,
+    DateTime? AssinadoEm,
+    AAHBRANT.SST.Domain.Enums.MetodoAutenticacaoAssinatura? Metodo = null);
+
+// Foto de evidência do encerramento (3 obrigatórias). Metadados vêm de DadosCapturaFoto; foto
+// anexada da galeria não tem hora/GPS de captura (CapturadaEm e coordenadas nulos).
+public record DdsPdfFotoModelo(
+    byte[] Conteudo,
+    DateTimeOffset? CapturadaEm,
+    int? FusoMinutos,
+    string? Local,
+    double? Latitude,
+    double? Longitude);
+
 public record DdsPdfModelo(
     string ObraNome,
     byte[]? ObraLogoConteudo,
@@ -17,12 +33,19 @@ public record DdsPdfModelo(
     string? TemaLivreNome,
     string? TemaLivreDescricao,
     IReadOnlyList<(string Descricao, bool Verificado)> ItensChecklist,
-    IReadOnlyList<string> ParticipantesNomes,
+    IReadOnlyList<DdsPdfParticipanteModelo> Participantes,
     string? Protocolo,
     string ConteudoHash,
     string UrlValidacaoPublica,
     byte[] QrCodePng,
-    bool TemAssinatura);
+    bool TemAssinatura,
+    // Assinatura do responsável/técnico (feita pelo botão "Assinar DDS" — Motor de Assinatura, ligada
+    // ao trabalhador do usuário responsável). Nulos = ainda não assinou.
+    DateTime? ResponsavelAssinadoEm = null,
+    AAHBRANT.SST.Domain.Enums.MetodoAutenticacaoAssinatura? ResponsavelMetodo = null,
+    // Cargo/função do responsável (cadastro do trabalhador vinculado ao usuário), ex.: "Técnico de Segurança".
+    string? ResponsavelFuncao = null,
+    IReadOnlyList<DdsPdfFotoModelo>? Fotos = null);
 
 public interface IDdsPdfService
 {

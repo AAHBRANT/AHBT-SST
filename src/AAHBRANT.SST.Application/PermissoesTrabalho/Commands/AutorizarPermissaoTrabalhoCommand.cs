@@ -66,6 +66,7 @@ public class AutorizarPermissaoTrabalhoCommandHandler : IRequestHandler<Autoriza
         pt.AutorizadoPorUsuarioId = request.AutorizadoPorUsuarioId;
         pt.DataAutorizacao = agora;
         pt.DataAssinaturaExecucao = agora;
+        pt.MetodoAssinatura = MetodoAutenticacaoAssinatura.SessaoLogada;
         if (request.ResponsavelSstUsuarioId.HasValue)
         {
             pt.ResponsavelSstUsuarioId = request.ResponsavelSstUsuarioId;

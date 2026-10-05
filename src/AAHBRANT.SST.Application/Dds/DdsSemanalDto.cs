@@ -40,8 +40,18 @@ public class DdsSemanalDiaDto
     public string? MotivoSemExpediente { get; set; }
 }
 
+// Quem assinou um dos dois campos do documento semanal e quando (AssinadoEm em UTC).
+public record DdsSemanalAssinaturaDto(
+    string Nome,
+    DateTime AssinadoEm,
+    AAHBRANT.SST.Domain.Enums.MetodoAutenticacaoAssinatura? Metodo = null,
+    string? Funcao = null);
+
 public class DdsSemanalDetalheDto
 {
     public DdsSemanalDto Semanal { get; set; } = null!;
     public List<DdsSemanalDiaDto> Dias { get; set; } = new();
+    // Nulos enquanto o campo não foi assinado.
+    public DdsSemanalAssinaturaDto? AssinaturaResponsavelDds { get; set; }
+    public DdsSemanalAssinaturaDto? AssinaturaResponsavelObraSst { get; set; }
 }

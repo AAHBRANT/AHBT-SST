@@ -493,7 +493,19 @@ public enum TipoInspecao
     EspacoConfinado = 11,
     Comportamental = 12,
     Terceiros = 13,
-    Alojamento = 14
+    Alojamento = 14,
+    Veiculo = 15
+}
+
+// Tipos de veículo/equipamento pesado com checklist próprio (planilha "CHECK LIST - AT CUIA", 02/10/2026).
+// Cada tipo tem um ChecklistModelo (TipoInspecao.Veiculo + TipoVeiculo) e seus veículos cadastrados por obra.
+public enum TipoVeiculo
+{
+    CaminhaoBasculante = 1,
+    Retroescavadeira = 2,
+    EscavadeiraHidraulica = 3,
+    CaminhaoCarroceria = 4,
+    CaminhaoMunck = 5
 }
 
 // Seção 24 da Base de Conhecimento (linhas 605-614) — status literal de item de checklist.
@@ -698,6 +710,16 @@ public enum MetodoAutenticacaoAssinatura
     // azure-design.md) — método adicional ao Futronic, não o substitui. Diferente da Biometria (match
     // local no dispositivo), o match aqui acontece na nuvem (Face - Identify).
     ReconhecimentoFacial = 6
+}
+
+// Função em que a pessoa assina um documento que tem mais de um campo de assinatura (02/10, pedido
+// do usuário): no Registro Semanal de DDS o técnico de segurança assina separadamente como
+// "Responsável/Treinador pelo DDS" e como "Responsável da Obra/SST". Nulo = assinatura comum
+// (participante, recebedor etc.), que é o caso de todos os documentos anteriores.
+public enum PapelAssinatura
+{
+    ResponsavelDds = 1,
+    ResponsavelObraSst = 2,
 }
 
 // [Flags] em Obra.MetodosAutenticacaoHabilitados: cada obra decide se aceita assinatura (Biometria,

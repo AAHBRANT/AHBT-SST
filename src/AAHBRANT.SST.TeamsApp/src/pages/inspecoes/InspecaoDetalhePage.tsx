@@ -37,6 +37,7 @@ import {
   statusItemChecklistLabel,
   TipoInspecao,
   tipoInspecaoLabel,
+  tipoVeiculoLabel,
   type InspecaoDetalhe,
   type Usuario,
 } from '../../lib/api';
@@ -322,6 +323,8 @@ export function InspecaoDetalhePage() {
 
   const inspecao = detalhe.inspecao;
   const ehInspecaoAlojamento = inspecao.tipoInspecao === TipoInspecao.Alojamento;
+  // Veículos: 1 foto por item, obrigatória só quando o item é Não Conforme (decisão de 02/10/2026).
+  const ehInspecaoVeiculo = inspecao.tipoInspecao === TipoInspecao.Veiculo;
 
   const acoes: AcaoWorkflow[] = [];
   if (inspecao.status === StatusInspecao.EmAndamento) {
@@ -334,6 +337,7 @@ export function InspecaoDetalhePage() {
         if (r.statusItem == null) p.push('resposta do checklist');
         if (r.exigeFotografia && !r.temFoto) p.push('foto anterior obrigatória');
         if (ehInspecaoAlojamento && r.exigeFotografia && !r.temFotoDepois) p.push('foto posterior obrigatória');
+        if (ehInspecaoVeiculo && r.statusItem === StatusItemChecklist.NaoConforme && !r.temFoto) p.push('foto da não conformidade obrigatória');
         if (r.temFoto && r.dadosFoto) p.push(...pendenciasFoto(r.dadosFoto).map(d => 'foto anterior: ' + d));
         if (r.temFotoDepois && r.dadosFotoDepois) p.push(...pendenciasFoto(r.dadosFotoDepois).map(d => 'foto posterior: ' + d));
         return p.length ? [r.descricao + ': ' + p.join('; ')] : [];
@@ -380,7 +384,18 @@ export function InspecaoDetalhePage() {
       lateral={
         <>
           <Card densidade="compacta" titulo="Resumo">
-            {ehInspecaoAlojamento ? (
+            {ehInspecaoVeiculo ? (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+                <DadoResumo rotulo="Placa/Prefixo" valor={inspecao.veiculoPlacaPrefixo ?? '—'} />
+                <DadoResumo rotulo="Tipo de veículo" valor={inspecao.veiculoTipo ? tipoVeiculoLabel[inspecao.veiculoTipo] : '—'} />
+                {inspecao.veiculoMarcaModelo && <DadoResumo rotulo="Marca/Modelo" valor={inspecao.veiculoMarcaModelo} />}
+                {inspecao.veiculoEmpresa && <DadoResumo rotulo="Subcontratada" valor={inspecao.veiculoEmpresa} />}
+                <DadoResumo rotulo="Obra" valor={inspecao.obraNome} />
+                <DadoResumo rotulo="Data do preenchimento" valor={formatarDataIso(inspecao.data)} />
+                <DadoResumo rotulo="Responsável" valor={inspecao.responsavelUsuarioNome} />
+                <DadoResumo rotulo="Itens respondidos" valor={`${inspecao.itensRespondidos}/${inspecao.totalItens}`} />
+              </div>
+            ) : ehInspecaoAlojamento ? (
               <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
                 <DadoResumo rotulo="Obra vinculada ao alojamento" valor={inspecao.obraNome} />
                 <DadoResumo rotulo="Data do preenchimento" valor={formatarDataIso(inspecao.data)} />
@@ -462,7 +477,68 @@ export function InspecaoDetalhePage() {
                 </Text>
               )}
               <Card densidade="compacta">
-              {ehInspecaoAlojamento ? (
+              {ehInspecaoVeiculo ? (
+                <>
+                  <div style={{ display: 'grid', gridTemplateColumns: 'minmax(260px, 1fr) minmax(220px, 320px)', gap: 16, alignItems: 'start' }}>
+                    <div>
+                      <Text weight="semibold" style={{ display: 'block', marginBottom: 8 }}>
+                        Item {resposta.ordem}
+                      </Text>
+                      <Text style={{ display: 'block', lineHeight: 1.45 }}>
+                        {resposta.descricao}
+                      </Text>
+                    </div>
+                    <Field label="Status do item">
+                      <SeletorStatusItemChecklist
+                        value={edicao.statusItem ? Number(edicao.statusItem) : null}
+                        onChange={(valor) => atualizarEdicao(resposta.id, { statusItem: String(valor) })}
+                        disabled={somenteLeitura}
+                      />
+                    </Field>
+                  </div>
+
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: 16, marginTop: 16, alignItems: 'start' }}>
+                    <Field label="Observação (opcional)">
+                      <Textarea
+                        value={edicao.observacao}
+                        onChange={(_, d) => atualizarEdicao(resposta.id, { observacao: d.value })}
+                        disabled={somenteLeitura}
+                        rows={2}
+                      />
+                    </Field>
+
+                    {edicao.statusItem === String(StatusItemChecklist.NaoConforme) && (
+                      <Field label="Foto da não conformidade (obrigatória)">
+                        <div style={{ maxWidth: 180 }}>
+                          <SlotFoto
+                            rotulo="Foto da não conformidade"
+                            contextoFoto={{ obraId: inspecao.obraId, obraNome: inspecao.obraNome, local: inspecao.veiculoPlacaPrefixo }}
+                            dadosFoto={resposta.dadosFoto}
+                            url={fotoUrls[resposta.id]}
+                            carregandoMiniatura={resposta.temFoto && !fotoUrls[resposta.id]}
+                            somenteLeitura={somenteLeitura}
+                            aoSelecionarArquivo={(arquivo) => enviarFoto(resposta.id, arquivo)}
+                            aoErroValidacao={setErro}
+                          />
+                        </div>
+                      </Field>
+                    )}
+                  </div>
+
+                  {!somenteLeitura && (
+                    <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: 16 }}>
+                      <Button
+                        appearance="primary"
+                        icon={<Save24Regular />}
+                        onClick={() => salvarResposta(resposta.id, resposta.descricao)}
+                        disabled={processando}
+                      >
+                        Salvar item
+                      </Button>
+                    </div>
+                  )}
+                </>
+              ) : ehInspecaoAlojamento ? (
                 <>
                   <div style={{ display: 'grid', gridTemplateColumns: 'minmax(260px, 1fr) minmax(220px, 320px)', gap: 16, alignItems: 'start' }}>
                     <div>

@@ -27,6 +27,7 @@ import {
 import {
   Grid24Regular,
   Add24Regular,
+  CalendarLtr24Regular,
   ClipboardTaskListLtr24Regular,
   Settings24Regular,
   Alert24Regular,
@@ -640,11 +641,11 @@ function CapaceteObra24Regular(props: SVGProps<SVGSVGElement>) {
   );
 }
 
-// Item solto no topo, fora de qualquer módulo — Dashboard não pertence a nenhum pilar. Calendário
-// saiu da sidebar (pedido do usuário, 01/09): virou redundante com o card de mini calendário no
-// Dashboard, que já leva pra /calendario ao clicar — a rota continua existindo.
+// Item solto no topo, fora de qualquer módulo — Início (antes "Dashboard") não pertence a nenhum
+// pilar. O Calendário voltou à sidebar como último módulo (pedido do usuário, 04/10): o mini
+// calendário saiu da tela inicial e a página completa /calendario é aberta direto por este item.
 const itensAvulsos: Array<ItemNav & { icone: IconeNav }> = [
-  { rota: '/', rotulo: 'Dashboard', icone: Grid24Regular },
+  { rota: '/', rotulo: 'Início', icone: Grid24Regular },
 ];
 
 // Reformulação de navegação (pedido do usuário, 02/09, réplica de mockup dark-mode): a gaveta
@@ -659,6 +660,7 @@ const itensPilares: Array<ItemNav & { icone: IconeNav }> = [
   { rota: '/pessoas', rotulo: 'Pessoas', icone: People24Regular },
   { rota: '/ocorrencias', rotulo: 'Ocorrências', icone: BriefcaseMedical24Regular },
   { rota: '/terceirizados', rotulo: 'Terceirizado', icone: Building24Regular },
+  { rota: '/calendario', rotulo: 'Calendário', icone: CalendarLtr24Regular },
 ];
 
 // Administração fica fixa no rodapé do rail (mesmo padrão do mockup Hub Gênesis SST) — item único,

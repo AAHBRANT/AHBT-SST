@@ -49,7 +49,7 @@ export function DialogoCameraFoto({ captura }: DialogoCameraFotoProps) {
         <DialogBody>
           <DialogTitle>Tirar foto</DialogTitle>
           <DialogContent>
-            {captura.contextoFoto && <div style={{ display: 'grid', gap: 12, marginBottom: 16 }}>
+            {captura.contextoFoto && <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr)', gap: 12, marginBottom: 16, overflowWrap: 'anywhere' }}>
               <Text weight="semibold">Obra: {captura.contextoFoto.obraNome || 'não identificada'}</Text>
               <Text size={200}>A data e a hora serão registradas ao capturar.</Text>
               <Field label="Local da foto" required>
@@ -63,6 +63,9 @@ export function DialogoCameraFoto({ captura }: DialogoCameraFotoProps) {
                     : 'Localização ainda não obtida. A foto ficará com pendência.')}
               </FeedbackInline>
               <Button onClick={() => void captura.tentarLocalizacao()} disabled={captura.localizando}>Tentar localização novamente</Button>
+              {!captura.exigirCamera && <Button appearance="subtle" onClick={captura.anexarDaGaleria} disabled={!captura.localFoto.trim()}>
+                Anexar foto da galeria (sem geolocalização)
+              </Button>}
             </div>}
             {dispositivosVideo.length > 1 && (
               <Field label="Câmera" style={{ marginBottom: 8 }}>

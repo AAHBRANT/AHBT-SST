@@ -29,6 +29,7 @@ import { RiscosTab } from './RiscosTab';
 import { OcorrenciasTab } from './OcorrenciasTab';
 import { CofreAssinaturasTab } from './CofreAssinaturasTab';
 import { TerceirizadoTab } from './TerceirizadoTab';
+import { TermoCompromissoEpiCartao } from './TermoCompromissoEpiCartao';
 
 type AbaPerfil = 'geral' | 'epi' | 'treinamentos' | 'riscos' | 'ocorrencias' | 'cofre' | 'terceirizado';
 
@@ -224,13 +225,16 @@ export function TrabalhadorDetalhePage() {
             </div>
           )}
           {aba === 'epi' && (
-            <Card titulo="Frequência de trocas por EPI">
-              {dadosFrequenciaEpi.length === 0 ? (
-                <Text>Sem dados de troca de EPI para exibir.</Text>
-              ) : (
-                <RankingBarChart dados={dadosFrequenciaEpi} corPadrao={paleta.marca} sufixo=" trocas" />
-              )}
-            </Card>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+              <TermoCompromissoEpiCartao trabalhadorId={id} trabalhadorNome={perfil.nome} />
+              <Card titulo="Frequência de trocas por EPI">
+                {dadosFrequenciaEpi.length === 0 ? (
+                  <Text>Sem dados de troca de EPI para exibir.</Text>
+                ) : (
+                  <RankingBarChart dados={dadosFrequenciaEpi} corPadrao={paleta.marca} sufixo=" trocas" />
+                )}
+              </Card>
+            </div>
           )}
           {aba === 'treinamentos' && (
             <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>

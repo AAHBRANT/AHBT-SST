@@ -48,7 +48,7 @@ public class InspecaoPdfService : IInspecaoPdfService
                             coluna.Item().Text(item.Secao).FontSize(11).Bold().FontColor(CorMarca);
                         secaoAnterior = item.Secao;
 
-                        coluna.Item().Element(c => SecaoItem(c, item));
+                        coluna.Item().Element(c => SecaoItem(c, item, modelo.EvidenciaUnicaSoNaoConforme));
                     }
 
                 });
@@ -84,6 +84,8 @@ public class InspecaoPdfService : IInspecaoPdfService
     {
         container.Column(coluna =>
         {
+            if (modelo.IdentificacaoVeiculo is { Count: > 0 })
+                coluna.Item().Text(string.Join("   |   ", modelo.IdentificacaoVeiculo)).SemiBold();
             coluna.Item().Row(linha =>
             {
                 linha.RelativeItem().Text(t => { t.Span("Checklist: ").SemiBold(); t.Span($"{modelo.ChecklistNome} (v{modelo.ChecklistVersao})"); });
@@ -97,7 +99,7 @@ public class InspecaoPdfService : IInspecaoPdfService
         });
     }
 
-    private static void SecaoItem(IContainer container, InspecaoPdfItemModelo item)
+    private static void SecaoItem(IContainer container, InspecaoPdfItemModelo item, bool evidenciaUnicaSoNaoConforme)
     {
         container.Border(1).BorderColor(Colors.Grey.Lighten1).Padding(8).Column(coluna =>
         {
@@ -107,8 +109,19 @@ public class InspecaoPdfService : IInspecaoPdfService
             {
                 linha.RelativeItem().Text($"{item.Ordem}. {item.Descricao}").FontSize(10).Bold().FontColor(CorMarca);
                 linha.ConstantItem(90).Element(CelulaStatus(item.StatusItem)).AlignCenter()
-                    .Text(RotuloStatus(item.StatusItem)).FontSize(8).Bold();
+                    .Text(RotuloStatus(item.StatusItem, evidenciaUnicaSoNaoConforme)).FontSize(8).Bold();
             });
+
+            if (evidenciaUnicaSoNaoConforme)
+            {
+                if (!string.IsNullOrWhiteSpace(item.Observacao))
+                    coluna.Item().Text(t => { t.Span("OBS: ").SemiBold(); t.Span(item.Observacao); });
+
+                // Veículos: a foto só existe (e só sai no PDF) quando o item foi marcado Não Conforme.
+                if (item.StatusItem == StatusItemChecklist.NaoConforme && item.FotoAntesConteudo is not null)
+                    coluna.Item().PaddingTop(4).Width(220).Element(c => BlocoEvidencia(c, "Evidência da não conformidade", item.FotoAntesConteudo));
+                return;
+            }
 
             coluna.Item().Row(linha =>
             {
@@ -156,13 +169,9 @@ public class InspecaoPdfService : IInspecaoPdfService
 
             foreach (var signatario in assinatura.Signatarios)
             {
-                coluna.Item().Border(1).BorderColor(Colors.Grey.Lighten1).Padding(8).Column(card =>
-                {
-                    card.Spacing(3);
-                    card.Item().Text(signatario.Nome).FontSize(11).Bold();
-                    card.Item().Text($"Método: {signatario.Metodo}");
-                    card.Item().Text($"Assinado em: {signatario.AssinadoEm:dd/MM/yyyy HH:mm}");
-                });
+                // Padrão único de assinatura: nome, linha, cargo e a legenda miúda (pedido de 02/10).
+                coluna.Item().Element(c => AssinaturaPdfPadrao.Bloco(
+                    c, null, signatario.Nome, signatario.Funcao, signatario.AssinadoEm, signatario.MetodoAutenticacao));
             }
 
             coluna.Item().PaddingTop(6).Text("Validação do documento").FontSize(12).Bold().FontColor(CorMarca);
@@ -220,6 +229,18 @@ public class InspecaoPdfService : IInspecaoPdfService
         };
         return container => container.Background(cor).Padding(4).CornerRadius(4);
     }
+
+    // Veículos usam a legenda da planilha (C / NC / NA): Conforme, Não conforme, Não aplicável —
+    // "Resolvido/Pendente" só faz sentido nas patrulhas, onde o achado é depois resolvido.
+    private static string RotuloStatus(StatusItemChecklist? status, bool legendaVeiculo) => legendaVeiculo
+        ? status switch
+        {
+            StatusItemChecklist.Conforme => "CONFORME",
+            StatusItemChecklist.NaoConforme => "NÃO CONFORME",
+            StatusItemChecklist.NaoAplicavel => "NÃO APLICÁVEL",
+            _ => "NÃO RESPONDIDO",
+        }
+        : RotuloStatus(status);
 
     private static string RotuloStatus(StatusItemChecklist? status) => status switch
     {

@@ -19,8 +19,15 @@ public class AsoAlertaProvider : IAlertaOrigemProvider
             .Include(a => a.Trabalhador)
             .ToListAsync(ct);
 
+        // O ASO vigente de cada trabalhador é o de validade mais distante; os anteriores foram renovados
+        // e não podem manter alerta de vencido aberto.
+        var vigentePorTrabalhador = asos
+            .GroupBy(a => a.TrabalhadorId)
+            .ToDictionary(g => g.Key, g => g.OrderByDescending(a => a.DataValidade).ThenByDescending(a => a.DataExame).First().Id);
+
         return asos.Select(aso => new AlertaOrigemItem
         {
+            Substituido = vigentePorTrabalhador[aso.TrabalhadorId] != aso.Id,
             EntidadeOrigemTipo = "Aso",
             EntidadeOrigemId = aso.Id,
             DataVencimento = aso.DataValidade,

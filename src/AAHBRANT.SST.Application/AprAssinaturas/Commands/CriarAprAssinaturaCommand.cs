@@ -51,7 +51,8 @@ public class CriarAprAssinaturaCommandHandler : IRequestHandler<CriarAprAssinatu
             AprId = request.AprId,
             TrabalhadorId = request.TrabalhadorId,
             Papel = request.Papel,
-            DataAssinatura = DateTime.UtcNow
+            DataAssinatura = DateTime.UtcNow,
+            MetodoAutenticacao = MetodoAutenticacaoAssinatura.SessaoLogada
         };
 
         _db.AprAssinaturas.Add(assinatura);

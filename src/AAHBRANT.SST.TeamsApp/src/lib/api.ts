@@ -83,6 +83,16 @@ export const tipoVinculoLabel: Record<number, string> = {
   4: 'Estagiário',
 };
 
+// Quantos trabalhadores ativos podem trabalhar hoje (ASO e treinamentos da função em dia) e por que os demais não.
+// Uma pessoa pode ter mais de um motivo, então os motivos não somam o total de bloqueados.
+export interface LiberacaoTrabalho {
+  ativos: number;
+  liberados: number;
+  bloqueados: number;
+  semAsoValido: number;
+  treinamentoPendente: number;
+}
+
 export interface Trabalhador {
   id: string;
   obraId: string;
@@ -409,6 +419,19 @@ export interface CursoTreinamento {
 }
 
 export type NovoCursoTreinamento = Omit<CursoTreinamento, 'id'>;
+
+// Trabalhadores ativos que precisam do curso (pela matriz de função) e a situação de cada um.
+// "Apto" = treinamento válido hoje = emDia + vencemEm30Dias.
+export interface AptidaoCurso {
+  cursoId: string;
+  nome: string;
+  normaReferencia?: string | null;
+  exigidos: number;
+  emDia: number;
+  vencemEm30Dias: number;
+  vencidos: number;
+  semCurso: number;
+}
 
 export interface Treinamento {
   id: string;
@@ -1918,6 +1941,7 @@ export const TipoInspecao = {
   Comportamental: 12,
   Terceiros: 13,
   Alojamento: 14,
+  Veiculo: 15,
 } as const;
 
 export const tipoInspecaoLabel: Record<number, string> = {
@@ -1935,6 +1959,33 @@ export const tipoInspecaoLabel: Record<number, string> = {
   12: 'Comportamental',
   13: 'Terceiros',
   14: 'Alojamento',
+  15: 'Veículo',
+};
+
+// Tipos de veículo/equipamento com checklist próprio (planilha CHECK LIST - AT CUIA, 02/10/2026).
+export const TipoVeiculo = {
+  CaminhaoBasculante: 1,
+  Retroescavadeira: 2,
+  EscavadeiraHidraulica: 3,
+  CaminhaoCarroceria: 4,
+  CaminhaoMunck: 5,
+} as const;
+
+export const tipoVeiculoLabel: Record<number, string> = {
+  1: 'Caminhão basculante',
+  2: 'Retroescavadeira',
+  3: 'Escavadeira hidráulica',
+  4: 'Caminhão carroceria',
+  5: 'Caminhão munck',
+};
+
+// Rótulo no plural, usado nos cards de tipo ("Retroescavadeiras").
+export const tipoVeiculoLabelPlural: Record<number, string> = {
+  1: 'Caminhões basculantes',
+  2: 'Retroescavadeiras',
+  3: 'Escavadeiras hidráulicas',
+  4: 'Caminhões carroceria',
+  5: 'Caminhões munck',
 };
 
 export const StatusItemChecklist = {
@@ -1963,6 +2014,7 @@ export interface ChecklistModelo {
   id: string;
   nome: string;
   tipoInspecao: number;
+  tipoVeiculo?: number | null;
   versao: number;
   checklistModeloAnteriorId?: string | null;
   quantidadeItens: number;
@@ -1990,6 +2042,7 @@ export interface NovoChecklistModeloItem {
 export interface NovoChecklistModelo {
   nome: string;
   tipoInspecao: number;
+  tipoVeiculo?: number | null;
   itens: NovoChecklistModeloItem[];
 }
 
@@ -2005,6 +2058,11 @@ export interface Inspecao {
   obraNome: string;
   atividadeId?: string | null;
   atividadeNome?: string | null;
+  veiculoId?: string | null;
+  veiculoTipo?: number | null;
+  veiculoPlacaPrefixo?: string | null;
+  veiculoMarcaModelo?: string | null;
+  veiculoEmpresa?: string | null;
   checklistModeloId: string;
   checklistModeloNome: string;
   checklistModeloVersao: number;
@@ -2084,6 +2142,36 @@ export interface AlojamentoDocumentoAssinaturaResumo {
   status: number;
   temPdf: boolean;
   finalizadoEm?: string | null;
+}
+
+// Veículos em Inspeções (02/10/2026): cadastro manual por obra (sem integração), checklist por tipo,
+// inspeção "obter ou criar" atômica. O resumo de cada inspeção reaproveita AlojamentoInspecaoResumo.
+export interface VeiculoResumo {
+  id: string;
+  obraId: string;
+  tipo: number;
+  placaPrefixo: string;
+  marcaModelo: string | null;
+  ano: number | null;
+  cor: string | null;
+  empresa: string | null;
+  responsavel: string | null;
+  statusUltimaInspecao: 'nunca' | 'inspecionado';
+  diasDesdeUltimaInspecao: number | null;
+  inspecaoEmAndamento: AlojamentoInspecaoResumo | null;
+  ultimaInspecaoConcluida: AlojamentoInspecaoResumo | null;
+  historicoInspecoes: AlojamentoInspecaoResumo[];
+}
+
+export interface DadosVeiculo {
+  obraId: string;
+  tipo: number;
+  placaPrefixo: string;
+  marcaModelo?: string | null;
+  ano?: number | null;
+  cor?: string | null;
+  empresa?: string | null;
+  responsavel?: string | null;
 }
 
 export interface InspecaoAtual {
@@ -2274,9 +2362,17 @@ export interface DdsSemanalDia {
   motivoSemExpediente?: string | null;
 }
 
+// Quem assinou um dos dois campos do documento semanal e quando (null = ainda não assinado).
+export interface DdsSemanalAssinatura {
+  nome: string;
+  assinadoEm: string;
+}
+
 export interface DdsSemanalDetalhe {
   semanal: DdsSemanal;
   dias: DdsSemanalDia[];
+  assinaturaResponsavelDds?: DdsSemanalAssinatura | null;
+  assinaturaResponsavelObraSst?: DdsSemanalAssinatura | null;
 }
 
 export interface CatalogoTemaDds {
@@ -2324,6 +2420,22 @@ export interface DocumentoSignatario {
   trabalhadorNome: string;
   metodoAutenticacao: number;
   assinadoEm: string;
+}
+
+// Termo de Recebimento e Compromisso de Uso do EPI (03/10): um por funcionário. Digital = assinou
+// no Motor (digital/facial); Manual = já assinou em papel e alguém registrou isso no sistema.
+export const SituacaoTermoCompromissoEpi = { Pendente: 0, Digital: 1, Manual: 2 } as const;
+
+export interface TermoCompromissoEpi {
+  situacao: number;
+  // Digital: instante da assinatura (UTC). Manual: dia que consta no papel.
+  dataAssinatura?: string | null;
+  metodo?: number | null;
+  registradoPorNome?: string | null;
+  registradoEm?: string | null;
+  observacao?: string | null;
+  temArquivo: boolean;
+  arquivoNome?: string | null;
 }
 
 export interface DocumentoAssinatura {
@@ -3711,6 +3823,8 @@ export const api = {
     },
   },
   trabalhadores: {
+    liberacao: (obraId?: string) =>
+      request<LiberacaoTrabalho>(`/api/trabalhadores/liberacao${obraId ? `?obraId=${obraId}` : ''}`),
     listar: (obraId?: string) =>
       request<Trabalhador[]>(`/api/trabalhadores${obraId ? `?obraId=${obraId}` : ''}`),
     criar: (trabalhador: NovoTrabalhador) =>
@@ -3949,6 +4063,9 @@ export const api = {
     atualizar: (id: string, curso: CursoTreinamento) =>
       request<void>(`/api/cursostreinamento/${id}`, { method: 'PUT', body: JSON.stringify(curso) }),
     excluir: (id: string) => request<void>(`/api/cursostreinamento/${id}`, { method: 'DELETE' }),
+    // Card "Aptidão por treinamento" do Início: por curso exigido na matriz de funções.
+    aptidao: (obraId?: string) =>
+      request<AptidaoCurso[]>(`/api/cursostreinamento/aptidao${obraId ? `?obraId=${obraId}` : ''}`),
   },
   treinamentos: {
     listar: (trabalhadorId?: string, obraId?: string) => {
@@ -3996,6 +4113,25 @@ export const api = {
     },
     removerArquivoCertificado: (id: string) =>
       request<void>(`/api/treinamentos/${id}/certificado/arquivo`, { method: 'DELETE' }),
+  },
+  termosCompromissoEpi: {
+    obter: (trabalhadorId: string) => request<TermoCompromissoEpi>(`/api/termoscompromissoepi/${trabalhadorId}`),
+    // Registra que o funcionário já assinou o termo em papel. dataAssinaturaPapel em yyyy-MM-dd;
+    // foto/PDF do papel é opcional.
+    registrarManual: async (trabalhadorId: string, dataAssinaturaPapel: string, observacao: string, arquivo?: File | null) => {
+      const formData = new FormData();
+      formData.append('dataAssinaturaPapel', dataAssinaturaPapel);
+      if (observacao.trim()) formData.append('observacao', observacao.trim());
+      if (arquivo) formData.append('arquivo', arquivo);
+      const authHeaders = await montarHeadersAuth();
+      return syncMutateMultipart<{ id: string }>(`/api/termoscompromissoepi/${trabalhadorId}/manual`, formData, authHeaders);
+    },
+    baixarArquivoManual: async (trabalhadorId: string) => {
+      const authHeaders = await montarHeadersAuth();
+      return syncFetchBlob(`/api/termoscompromissoepi/${trabalhadorId}/manual/arquivo`, authHeaders);
+    },
+    removerManual: (trabalhadorId: string) =>
+      request<void>(`/api/termoscompromissoepi/${trabalhadorId}/manual`, { method: 'DELETE' }),
   },
   sessoesTreinamento: {
     listar: (obraId?: string) => request<SessaoTreinamento[]>(`/api/sessoestreinamento${obraId ? `?obraId=${obraId}` : ''}`),
@@ -4687,6 +4823,23 @@ export const api = {
     importarGrh: () =>
       request<ImportarAlojamentosGrhResultado>('/api/alojamentos/importar-grh', { method: 'POST' }),
   },
+  veiculos: {
+    listar: (obraId?: string, tipo?: number) => {
+      const params = new URLSearchParams();
+      if (obraId) params.set('obraId', obraId);
+      if (tipo) params.set('tipo', String(tipo));
+      const qs = params.toString();
+      return request<VeiculoResumo[]>(`/api/veiculos${qs ? `?${qs}` : ''}`);
+    },
+    criar: (dados: DadosVeiculo) =>
+      request<{ id: string }>('/api/veiculos', { method: 'POST', body: JSON.stringify(dados) }),
+    atualizar: (id: string, dados: DadosVeiculo) =>
+      request<void>(`/api/veiculos/${id}`, { method: 'PUT', body: JSON.stringify({ id, ...dados }) }),
+    // Só Administrador (exclusão lógica; o histórico de inspeções é preservado).
+    excluir: (id: string) => request<void>(`/api/veiculos/${id}`, { method: 'DELETE' }),
+    obterOuCriarInspecaoAtual: (veiculoId: string) =>
+      request<InspecaoAtual>(`/api/veiculos/${veiculoId}/inspecao-atual`, { method: 'POST' }),
+  },
   materiaisApoio: {
     listar: (categoria?: string) =>
       request<MaterialApoio[]>(`/api/materiaisapoio${categoria ? `?categoria=${encodeURIComponent(categoria)}` : ''}`),
@@ -4800,8 +4953,20 @@ export const api = {
       request<{ id: string }>('/api/ddssemanal', { method: 'POST', body: JSON.stringify(semanal) }),
     encerrar: (id: string, body?: { responsavelEmpresaTerceirizadaNome?: string | null; responsavelEmpresaTerceirizadaFuncao?: string | null }) =>
       request<void>(`/api/ddssemanal/${id}/encerrar`, { method: 'POST', body: JSON.stringify(body ?? {}) }),
+    // Assinatura com um clique do usuário logado em um dos dois campos do documento semanal.
+    assinar: (id: string, campo: 'responsavel-dds' | 'responsavel-obra-sst') =>
+      request<void>(`/api/ddssemanal/${id}/assinar/${campo}`, { method: 'POST' }),
     baixarPdf: async (id: string) => {
       const response = await fetch(`${API_BASE_URL}/api/ddssemanal/${id}/pdf`, { headers: await montarHeadersAuth() });
+      if (!response.ok) {
+        const corpo = await response.text().catch(() => '');
+        throw new Error(extrairMensagemErro(corpo, response.status, response.statusText));
+      }
+      return response.blob();
+    },
+    // "Baixar semana": DDS semanal + os diários com lista de presença, num PDF só.
+    baixarSemanaCompleta: async (id: string) => {
+      const response = await fetch(`${API_BASE_URL}/api/ddssemanal/${id}/pdf-completo`, { headers: await montarHeadersAuth() });
       if (!response.ok) {
         const corpo = await response.text().catch(() => '');
         throw new Error(extrairMensagemErro(corpo, response.status, response.statusText));

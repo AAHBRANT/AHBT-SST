@@ -1,5 +1,6 @@
 using AAHBRANT.SST.Application.Assinatura;
 using AAHBRANT.SST.Application.Common.Interfaces;
+using AAHBRANT.SST.Domain.Enums;
 using FluentValidation;
 using MediatR;
 using Microsoft.EntityFrameworkCore;
@@ -54,6 +55,7 @@ public class RegistrarPresencaSessaoTreinamentoCommandHandler : IRequestHandler<
 
         participante.PresencaConfirmadaEm = DateTime.UtcNow;
         participante.ScoreConfianca = request.Score;
+        participante.MetodoPresenca = MetodoAutenticacaoAssinatura.Biometria;
 
         await _db.SaveChangesAsync(ct);
     }

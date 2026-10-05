@@ -76,6 +76,7 @@ public static class DependencyInjection
 
         services.AddScoped<IDdsPdfService, DdsPdfService>();
         services.AddScoped<IDdsSemanalPdfService, DdsSemanalPdfService>();
+        services.AddScoped<IPdfMesclador, PdfMesclador>();
         services.AddScoped<ICipaPdfService, CipaPdfService>();
         services.AddScoped<IAprPdfService, AprPdfService>();
         services.AddScoped<IFichaEpiPdfService, EntregaEpiPdfService>();

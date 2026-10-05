@@ -101,7 +101,8 @@ public class ObterAprDetalheQueryHandler : IRequestHandler<ObterAprDetalheQuery,
                 TrabalhadorNome = s.Trabalhador?.Nome ?? string.Empty,
                 TrabalhadorFuncaoNome = s.Trabalhador?.Funcao?.Nome,
                 Papel = s.Papel,
-                DataAssinatura = s.DataAssinatura
+                DataAssinatura = s.DataAssinatura,
+                MetodoAutenticacao = s.MetodoAutenticacao
             }).ToList()
         };
     }

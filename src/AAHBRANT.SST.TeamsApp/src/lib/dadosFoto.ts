@@ -30,6 +30,12 @@ export function pendenciasFoto(d?: DadosFoto | null): string[] {
   // serializado pelo servidor, inclusive quando ainda estão pendentes.
   if (!d) return [];
   const pendencias: string[] = [];
+  // Foto anexada da galeria: sem data/posição comprováveis; só exige obra e descrição do local.
+  if (d.origem === 'arquivo') {
+    if (!d.obraId || !d.obraNome?.trim()) pendencias.push('obra vinculada');
+    if (!d.local?.trim()) pendencias.push('descrição do local');
+    return pendencias;
+  }
   if (!d?.capturadaEm || !Number.isFinite(Date.parse(d.capturadaEm))) pendencias.push('data e hora da captura');
   if (!d?.obraId || !d.obraNome?.trim()) pendencias.push('obra vinculada');
   if (!d?.local?.trim()) pendencias.push('descrição do local');
@@ -60,17 +66,43 @@ export function formatarDataFoto(d?: DadosFoto | null) {
     + ` (UTC${minutos <= 0 ? '+' : '-'}${String(Math.floor(Math.abs(minutos) / 60)).padStart(2, '0')}:${String(Math.abs(minutos) % 60).padStart(2, '0')})`;
 }
 
+// Margem abaixo do limite de 60 s da validação (front e backend): se a posição já tem mais que isso
+// na hora de capturar, ela é renovada antes de gravar a foto.
+export const IDADE_MAX_LOCALIZACAO_MS = 30_000;
+export function localizacaoExpirada(l: { latitude?: number | null; localizacaoObtidaEm?: string | null }, agora = Date.now()) {
+  const obtida = l.localizacaoObtidaEm ? Date.parse(l.localizacaoObtidaEm) : NaN;
+  return l.latitude == null || !Number.isFinite(obtida) || Math.abs(agora - obtida) > IDADE_MAX_LOCALIZACAO_MS;
+}
+
+const TETO_SDK_TEAMS_MS = 8_000;
+function comTeto<T>(fn: () => Promise<T>, ms: number): Promise<T> {
+  return new Promise<T>((resolve, reject) => {
+    const t = setTimeout(() => reject(new Error('tempo esgotado')), ms);
+    fn().then(v => { clearTimeout(t); resolve(v); }, e => { clearTimeout(t); reject(e); });
+  });
+}
+
 export type LocalizacaoFoto = Pick<DadosFoto, 'latitude' | 'longitude' | 'precisaoMetros' | 'localizacaoObtidaEm' | 'motivoLocalizacao'>;
 export async function obterLocalizacaoFoto(): Promise<LocalizacaoFoto> {
   let timer: ReturnType<typeof setTimeout> | undefined;
   try {
     return await Promise.race([
       (async (): Promise<LocalizacaoFoto> => {
-        if (await aguardarInicializacaoTeams()) {
-          if (!geoLocation.isSupported()) return { motivoLocalizacao: 'Este Teams não oferece localização. Use um dispositivo compatível.' };
-          const pos = await geoLocation.getCurrentLocation();
-          return { latitude: pos.latitude, longitude: pos.longitude, precisaoMetros: pos.accuracy, localizacaoObtidaEm: pos.timestamp ? new Date(pos.timestamp).toISOString() : new Date().toISOString() };
-        }
+        // Alguns clientes Teams (ex.: tablet) não expõem a capability geoLocation do SDK; nesses casos
+        // cai para a geolocalização do WebView em vez de encerrar com erro. Se o SDK declara suporte
+        // mas falha ao obter a posição (permissão negada, erro do cliente), também tenta o WebView.
+        try {
+          if (await aguardarInicializacaoTeams() && geoLocation.isSupported()) {
+            // O cliente Teams (iOS em especial) exige a permissão pedida explicitamente antes de
+            // getCurrentLocation; sem isso a chamada pode ficar sem resposta. O SDK tem teto próprio
+            // para sobrar tempo ao fallback do WebView dentro do limite total.
+            const pos = await comTeto(async () => {
+              if (!await geoLocation.hasPermission() && !await geoLocation.requestPermission()) throw new Error('permissão negada');
+              return geoLocation.getCurrentLocation();
+            }, TETO_SDK_TEAMS_MS);
+            return { latitude: pos.latitude, longitude: pos.longitude, precisaoMetros: pos.accuracy, localizacaoObtidaEm: pos.timestamp ? new Date(pos.timestamp).toISOString() : new Date().toISOString() };
+          }
+        } catch { /* segue para o fallback do WebView */ }
         if (!navigator.geolocation) return { motivoLocalizacao: 'Localização indisponível neste navegador.' };
         return await new Promise<LocalizacaoFoto>((resolve) => navigator.geolocation.getCurrentPosition(
           p => resolve({ latitude: p.coords.latitude, longitude: p.coords.longitude, precisaoMetros: p.coords.accuracy, localizacaoObtidaEm: new Date(p.timestamp).toISOString() }),

@@ -35,6 +35,7 @@ public class SstDbContext : DbContext, IAppDbContext
     public DbSet<CursoTreinamento> CursosTreinamento => Set<CursoTreinamento>();
     public DbSet<Treinamento> Treinamentos => Set<Treinamento>();
     public DbSet<ArquivoCertificadoTreinamento> ArquivosCertificadoTreinamento => Set<ArquivoCertificadoTreinamento>();
+    public DbSet<TermoCompromissoEpiManual> TermosCompromissoEpiManual => Set<TermoCompromissoEpiManual>();
     public DbSet<MatrizTreinamentoFuncao> MatrizTreinamentoFuncoes => Set<MatrizTreinamentoFuncao>();
     public DbSet<SessaoTreinamento> SessoesTreinamento => Set<SessaoTreinamento>();
     public DbSet<ParticipanteSessaoTreinamento> ParticipantesSessaoTreinamento => Set<ParticipanteSessaoTreinamento>();
@@ -99,6 +100,7 @@ public class SstDbContext : DbContext, IAppDbContext
     public DbSet<Alojamento> Alojamentos => Set<Alojamento>();
     public DbSet<AlojamentoMorador> AlojamentoMoradores => Set<AlojamentoMorador>();
     public DbSet<ConfiguracaoAlojamento> ConfiguracoesAlojamento => Set<ConfiguracaoAlojamento>();
+    public DbSet<Veiculo> Veiculos => Set<Veiculo>();
 
     public DbSet<Dds> Dds => Set<Dds>();
     public DbSet<DdsAtividade> DdsAtividades => Set<DdsAtividade>();
@@ -235,6 +237,8 @@ public class SstDbContext : DbContext, IAppDbContext
             e.Ativo && (_usuarioAtual.TemAcessoGlobal || _usuarioAtual.ObrasPermitidas.Contains(e.ObraId)));
         modelBuilder.Entity<Alojamento>().HasQueryFilter(a =>
             a.Ativo && (_usuarioAtual.TemAcessoGlobal || _usuarioAtual.ObrasPermitidas.Contains(a.ObraId)));
+        modelBuilder.Entity<Veiculo>().HasQueryFilter(v =>
+            v.Ativo && (_usuarioAtual.TemAcessoGlobal || _usuarioAtual.ObrasPermitidas.Contains(v.ObraId)));
 
         // ExameComplementar/AptidaoAtividadeEspecifica/EntregaEpi e filhos de entidades escopadas
         // dependem de navegação por Trabalhador/Estoque/Membro/Reunião. Mantêm a proteção nos

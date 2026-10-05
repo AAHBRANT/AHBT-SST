@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { BotaoAcao, Card, DataTable, FeedbackInline, type Coluna } from '@ui';
 import { ArrowDownload24Regular, Eye24Regular, Image24Regular } from '@fluentui/react-icons';
 import { api, metodoAutenticacaoAssinaturaLabel, type AssinaturaPerfil } from '../../lib/api';
+import { formatarDataHoraBrasilia } from '../../components/assinatura/assinaturaDigital';
 import { AssinaturaTab } from './AssinaturaTab';
 import { salvarBlob, useVisualizadorPdf } from '../../components/useVisualizadorPdf';
 
@@ -55,7 +56,7 @@ export function CofreAssinaturasTab({ trabalhadorId, assinaturas }: CofreAssinat
   const colunas: Coluna<AssinaturaPerfil>[] = [
     { chave: 'documento', rotulo: 'Documento', render: (a) => a.entidadeTipo },
     { chave: 'metodo', rotulo: 'Método', render: (a) => metodoAutenticacaoAssinaturaLabel[a.metodo] },
-    { chave: 'dataHora', rotulo: 'Data/Hora', render: (a) => new Date(a.assinadoEm).toLocaleString('pt-BR') },
+    { chave: 'dataHora', rotulo: 'Data/Hora', render: (a) => formatarDataHoraBrasilia(a.assinadoEm) },
     { chave: 'ip', rotulo: 'IP', render: (a) => a.ipAddress ?? 'Não registrado' },
     {
       chave: 'evidencia',

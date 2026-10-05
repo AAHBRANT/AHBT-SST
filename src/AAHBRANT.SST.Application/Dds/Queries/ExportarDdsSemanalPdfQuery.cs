@@ -81,6 +81,8 @@ public class ExportarDdsSemanalPdfQueryHandler : IRequestHandler<ExportarDdsSema
             detalhe.Semanal.ResponsavelObraSstNome,
             detalhe.Semanal.ResponsavelEmpresaTerceirizadaNome,
             detalhe.Semanal.ResponsavelEmpresaTerceirizadaFuncao,
+            detalhe.AssinaturaResponsavelDds,
+            detalhe.AssinaturaResponsavelObraSst,
             rastreio.ConteudoHash,
             rastreio.UrlValidacaoPublica,
             rastreio.QrCodePng,

@@ -247,9 +247,9 @@ export function SessaoTreinamentoDetalhePage() {
     if (!id) return;
     try {
       setBaixandoAta(true);
-      salvarBlob(await api.sessoesTreinamento.baixarAta(id), `ata-turma-treinamento-${id}.pdf`);
+      salvarBlob(await api.sessoesTreinamento.baixarAta(id), `lista-presenca-treinamento-${id}.pdf`);
     } catch (e) {
-      setErro(e instanceof Error ? e.message : 'Falha ao baixar a ata em PDF.');
+      setErro(e instanceof Error ? e.message : 'Falha ao baixar a lista de presença em PDF.');
     } finally {
       setBaixandoAta(false);
     }
@@ -271,8 +271,8 @@ export function SessaoTreinamentoDetalhePage() {
     if (!id) return;
     const sessaoId = id;
     void visualizar({
-      titulo: 'Ata / anexo de evidências da turma',
-      nomeArquivo: `ata-turma-treinamento-${sessaoId}.pdf`,
+      titulo: 'Lista de presença de treinamento',
+      nomeArquivo: `lista-presenca-treinamento-${sessaoId}.pdf`,
       obter: () => api.sessoesTreinamento.baixarAta(sessaoId),
     });
   }
@@ -359,17 +359,17 @@ export function SessaoTreinamentoDetalhePage() {
         rotuloVoltar: 'Voltar para Turmas',
         acoes: (
           <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-            <BotaoAcao tom="ver" icon={<Eye24Regular />} onClick={visualizarAta} aria-label="Visualizar ata">
-              Visualizar ata
+            <BotaoAcao tom="ver" icon={<Eye24Regular />} onClick={visualizarAta} aria-label="Visualizar lista de presença">
+              Visualizar lista de presença
             </BotaoAcao>
             <BotaoAcao
               tom="baixar"
               icon={<ArrowDownload24Regular />}
               onClick={baixarAta}
               disabled={baixandoAta}
-              aria-label="Baixar ata / anexo de evidências"
+              aria-label="Baixar lista de presença"
             >
-              Baixar ata / anexo de evidências
+              Baixar lista de presença
             </BotaoAcao>
           </div>
         ),
