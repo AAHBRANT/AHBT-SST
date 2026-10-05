@@ -839,6 +839,17 @@ public static class NovidadesSeeder
                     "Com o app aberto durante uma atualização, a Ficha de EPI mostrava o erro \"Failed to fetch dynamically imported module\".",
                     "O app se recarrega sozinho uma vez e abre o documento normalmente."),
             }),
+        new(
+            Versao: "5.41.0",
+            Titulo: "Vários funcionários numa mesma ocorrência",
+            DataPublicacao: new DateTime(2026, 10, 5, 0, 0, 0, DateTimeKind.Utc),
+            Itens: new[]
+            {
+                new NovidadeSeedItem(CategoriaNovidade.Melhoria,
+                    "Funcionários envolvidos no registro de acidente/incidente",
+                    "Só dava para indicar um funcionário por ocorrência. Quando mais de uma pessoa estava envolvida, era preciso registrar a mesma ocorrência várias vezes.",
+                    "Escolha a obra e marque todos os funcionários envolvidos, com busca por nome. A ocorrência continua sendo um único registro, com uma só investigação, e aparece no perfil de cada envolvido. Na lista, aparece o nome do primeiro e o total de envolvidos (ex.: \"Carlos +1\")."),
+            }),
     };
 
     public static async Task ExecutarAsync(IServiceProvider services, CancellationToken ct = default)

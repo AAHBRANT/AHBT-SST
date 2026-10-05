@@ -13,6 +13,7 @@ import {
   FormRodape,
   FormSection,
   Input,
+  ListaSelecaoMultipla,
   Select,
   StatusChip,
   Text,
@@ -40,7 +41,7 @@ function novaInicial(): NovoAcidente {
   return {
     tipo: 1,
     obraId: '',
-    trabalhadorId: '',
+    trabalhadoresIds: [],
     atividadeId: '',
     local: '',
     data: '',
@@ -92,23 +93,33 @@ export function AcidentesPage({ tipoFixo }: { tipoFixo?: number } = {}) {
   async function carregar() {
     try {
       setErro(null);
-      const [listaAcidentes, listaObras, listaTrabalhadores, listaAtividades] = await Promise.all([
+      const [listaAcidentes, listaObras, listaAtividades] = await Promise.all([
         api.acidentes.listar({
           status: filtroStatus ? Number(filtroStatus) : undefined,
           tipo: filtroTipo ? Number(filtroTipo) : undefined,
         }),
         api.obras.listar(),
-        api.trabalhadores.listar(),
         api.atividades.listar(),
       ]);
       setAcidentes(listaAcidentes);
       setObras(listaObras);
-      setTrabalhadores(listaTrabalhadores);
       setAtividades(listaAtividades);
     } catch (e) {
       setErro(e instanceof Error ? e.message : 'Falha ao carregar acidentes.');
     }
   }
+
+  // Funcionários envolvidos são sempre da obra escolhida (200+ no total não cabem num select único).
+  useEffect(() => {
+    if (!nova.obraId) {
+      setTrabalhadores([]);
+      return;
+    }
+    api.trabalhadores
+      .listar(nova.obraId)
+      .then(setTrabalhadores)
+      .catch(() => setTrabalhadores([]));
+  }, [nova.obraId]);
 
   useEffect(() => {
     carregar();
@@ -137,7 +148,7 @@ export function AcidentesPage({ tipoFixo }: { tipoFixo?: number } = {}) {
       setErro(null);
       await api.acidentes.criar({
         ...nova,
-        trabalhadorId: nova.trabalhadorId || null,
+        trabalhadoresIds: nova.trabalhadoresIds ?? [],
         atividadeId: nova.atividadeId || null,
         // input type="time" retorna "HH:mm"; TimeSpan? no backend exige segundos ("HH:mm:ss").
         hora: nova.hora ? `${nova.hora}:00` : null,
@@ -160,7 +171,12 @@ export function AcidentesPage({ tipoFixo }: { tipoFixo?: number } = {}) {
   const colunas: Coluna<Acidente>[] = [
     { chave: 'tipo', rotulo: 'Tipo', render: (a) => tipoOcorrenciaLabel[a.tipo] },
     { chave: 'obra', rotulo: 'Obra', render: (a) => a.obraNome ?? '—' },
-    { chave: 'funcionario', rotulo: 'Funcionário', render: (a) => a.trabalhadorNome ?? '—' },
+    { chave: 'funcionario', rotulo: 'Funcionário', render: (a) => {
+        const nomes = a.envolvidos.map((e) => e.nome);
+        if (nomes.length === 0) return '—';
+        return nomes.length === 1 ? nomes[0] : `${nomes[0]} +${nomes.length - 1}`;
+      },
+    },
     { chave: 'data', rotulo: 'Data', render: (a) => a.data?.slice(0, 10) ?? '' },
     { chave: 'local', rotulo: 'Local' },
     {
@@ -205,26 +221,11 @@ export function AcidentesPage({ tipoFixo }: { tipoFixo?: number } = {}) {
                 </Campo>
                 <Campo span={3}>
                   <Field label="Obra" required>
-                    <Select value={nova.obraId} onChange={(_, d) => setNova({ ...nova, obraId: d.value })}>
+                    <Select value={nova.obraId} onChange={(_, d) => setNova({ ...nova, obraId: d.value, trabalhadoresIds: [] })}>
                       <option value="">Selecione</option>
                       {obras.map((obra) => (
                         <option key={obra.id} value={obra.id}>
                           {obra.nome}
-                        </option>
-                      ))}
-                    </Select>
-                  </Field>
-                </Campo>
-                <Campo span={3}>
-                  <Field label="Funcionário">
-                    <Select
-                      value={nova.trabalhadorId ?? ''}
-                      onChange={(_, d) => setNova({ ...nova, trabalhadorId: d.value })}
-                    >
-                      <option value="">Nenhum</option>
-                      {trabalhadores.map((trabalhador) => (
-                        <option key={trabalhador.id} value={trabalhador.id}>
-                          {trabalhador.nome}
                         </option>
                       ))}
                     </Select>
@@ -258,6 +259,23 @@ export function AcidentesPage({ tipoFixo }: { tipoFixo?: number } = {}) {
                 <Campo span={2}>
                   <Field label="Hora">
                     <Input type="time" value={nova.hora ?? ''} onChange={(_, d) => setNova({ ...nova, hora: d.value })} />
+                  </Field>
+                </Campo>
+                <Campo span={12}>
+                  <Field
+                    label={`Funcionários envolvidos${(nova.trabalhadoresIds?.length ?? 0) > 0 ? ` (${nova.trabalhadoresIds?.length})` : ''}`}
+                    hint={nova.obraId ? 'Selecione todos os funcionários envolvidos na ocorrência. Deixe vazio se não houve funcionário envolvido.' : undefined}
+                  >
+                    {nova.obraId ? (
+                      <ListaSelecaoMultipla
+                        aria-label="Funcionários envolvidos"
+                        opcoes={trabalhadores.map((t) => ({ id: t.id, rotulo: t.matricula ? `${t.nome} (${t.matricula})` : t.nome }))}
+                        selecionados={nova.trabalhadoresIds ?? []}
+                        aoMudar={(atualizar) => setNova((atual) => ({ ...atual, trabalhadoresIds: atualizar(atual.trabalhadoresIds ?? []) }))}
+                      />
+                    ) : (
+                      <Text>Selecione a obra primeiro.</Text>
+                    )}
                   </Field>
                 </Campo>
               </FormGrid>

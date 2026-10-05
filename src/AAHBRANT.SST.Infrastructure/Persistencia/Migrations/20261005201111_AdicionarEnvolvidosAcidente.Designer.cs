@@ -4,6 +4,7 @@ using AAHBRANT.SST.Infrastructure.Persistencia;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 
 #nullable disable
@@ -11,9 +12,11 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace AAHBRANT.SST.Infrastructure.Persistencia.Migrations
 {
     [DbContext(typeof(SstDbContext))]
-    partial class SstDbContextModelSnapshot : ModelSnapshot
+    [Migration("20261005201111_AdicionarEnvolvidosAcidente")]
+    partial class AdicionarEnvolvidosAcidente
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -3948,7 +3951,7 @@ namespace AAHBRANT.SST.Infrastructure.Persistencia.Migrations
 
                     b.HasIndex("AlojamentoId")
                         .IsUnique()
-                        .HasFilter("[AlojamentoId] IS NOT NULL AND [Status] = 1 AND [Ativo] = 1");
+                        .HasFilter("[AlojamentoId] IS NOT NULL AND [Status] = 1");
 
                     b.HasIndex("AtividadeId");
 
@@ -3960,7 +3963,7 @@ namespace AAHBRANT.SST.Infrastructure.Persistencia.Migrations
 
                     b.HasIndex("VeiculoId")
                         .IsUnique()
-                        .HasFilter("[VeiculoId] IS NOT NULL AND [Status] = 1 AND [Ativo] = 1");
+                        .HasFilter("[VeiculoId] IS NOT NULL AND [Status] = 1");
 
                     b.ToTable("Inspecoes");
                 });

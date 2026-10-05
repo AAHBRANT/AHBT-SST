@@ -352,7 +352,6 @@ export function DashboardPage() {
             { texto: `de ${liberacao.ativos} · ${liberacao.bloqueados} bloqueados`, tom: liberacao.bloqueados > 0 ? 'alerta' : 'ok' },
             ...(liberacao.semAsoValido > 0 ? [{ texto: `${liberacao.semAsoValido} sem ASO válido`, tom: 'atencao' as const }] : []),
             ...(liberacao.treinamentoPendente > 0 ? [{ texto: `${liberacao.treinamentoPendente} com treinamento pendente`, tom: 'atencao' as const }] : []),
-            ...(liberacao.epiPendente > 0 ? [{ texto: `${liberacao.epiPendente} sem EPI válido`, tom: 'atencao' as const }] : []),
           ]
         : [],
       destino: '/pessoas?aba=trabalhadores',

@@ -9,8 +9,9 @@ namespace AAHBRANT.SST.Application.Trabalhadores.Queries;
 /// <summary>
 /// Quantos trabalhadores ativos podem trabalhar hoje e por que os demais estão bloqueados. Alimenta o
 /// indicador "Podem trabalhar hoje" do Início. É a mesma regra de CalculadoraLiberacaoTerceirizado, só que
-/// em lote (uma consulta por tabela, em vez de uma por trabalhador): ASO válido, treinamentos obrigatórios da
-/// função em dia e EPIs obrigatórios da função em posse.
+/// em lote (uma consulta por tabela, em vez de uma por trabalhador): ASO válido e treinamentos obrigatórios da
+/// função em dia. EPI não bloqueia (decisão do usuário, 05/10): nenhum EPI é obrigatório para liberar, e a matriz
+/// de EPI da função lista alternativas (ex.: protetor auditivo concha ou plug), não um kit exigido por inteiro.
 /// </summary>
 public record ObterLiberacaoParaTrabalhoQuery(Guid? ObraId = null) : IRequest<LiberacaoTrabalhoDto>;
 
@@ -18,9 +19,8 @@ public record ObterLiberacaoParaTrabalhoQuery(Guid? ObraId = null) : IRequest<Li
 /// <param name="Liberados">Sem nenhuma pendência.</param>
 /// <param name="SemAsoValido">Sem ASO apto (ou apto com restrição) dentro da validade.</param>
 /// <param name="TreinamentoPendente">Com algum treinamento obrigatório vencido ou nunca feito.</param>
-/// <param name="EpiPendente">Com algum EPI obrigatório sem entrega válida em posse.</param>
-/// <remarks>Uma pessoa pode ter mais de um motivo, então os três motivos não somam o total de bloqueados.</remarks>
-public record LiberacaoTrabalhoDto(int Ativos, int Liberados, int SemAsoValido, int TreinamentoPendente, int EpiPendente)
+/// <remarks>Uma pessoa pode ter mais de um motivo, então os motivos não somam o total de bloqueados.</remarks>
+public record LiberacaoTrabalhoDto(int Ativos, int Liberados, int SemAsoValido, int TreinamentoPendente)
 {
     public int Bloqueados => Ativos - Liberados;
 }
@@ -74,26 +74,9 @@ public class ObterLiberacaoParaTrabalhoQueryHandler : IRequestHandler<ObterLiber
             .Select(t => (t.TrabalhadorId, t.CursoTreinamentoId))
             .ToHashSet();
 
-        var episPorFuncao = (await _db.MatrizEpiFuncoes
-                .Select(m => new { m.FuncaoId, m.CatalogoEpiId })
-                .ToListAsync(ct))
-            .GroupBy(m => m.FuncaoId)
-            .ToDictionary(g => g.Key, g => g.Select(m => m.CatalogoEpiId).Distinct().ToList());
-
-        // EPI em posse = entrega confirmada, não devolvida e dentro da validade. A validade entra aqui
-        // (a regra do módulo Terceirizado só olha posse) porque um EPI vencido não protege.
-        var episEmPosse = (await _db.EntregasEpi
-                .Where(e => ids.Contains(e.TrabalhadorId) && e.Confirmada && e.DataDevolucao == null)
-                .Select(e => new { e.TrabalhadorId, e.CatalogoEpiId, e.DataValidade })
-                .ToListAsync(ct))
-            .Where(e => e.DataValidade == null || e.DataValidade.Value.Date >= hoje)
-            .Select(e => (e.TrabalhadorId, e.CatalogoEpiId))
-            .ToHashSet();
-
         var liberados = 0;
         var semAso = 0;
         var treinamentoPendente = 0;
-        var epiPendente = 0;
 
         foreach (var trabalhador in trabalhadores)
         {
@@ -111,15 +94,11 @@ public class ObterLiberacaoParaTrabalhoQueryHandler : IRequestHandler<ObterLiber
                 treinamentosOk = exigidos.All(curso => treinamentosValidos.Contains((trabalhador.Id, curso)));
             }
 
-            var epiOk = !episPorFuncao.TryGetValue(trabalhador.FuncaoId, out var epis)
-                || epis.All(epi => episEmPosse.Contains((trabalhador.Id, epi)));
-
             if (!asoOk) semAso++;
             if (!treinamentosOk) treinamentoPendente++;
-            if (!epiOk) epiPendente++;
-            if (asoOk && treinamentosOk && epiOk) liberados++;
+            if (asoOk && treinamentosOk) liberados++;
         }
 
-        return new LiberacaoTrabalhoDto(trabalhadores.Count, liberados, semAso, treinamentoPendente, epiPendente);
+        return new LiberacaoTrabalhoDto(trabalhadores.Count, liberados, semAso, treinamentoPendente);
     }
 }
