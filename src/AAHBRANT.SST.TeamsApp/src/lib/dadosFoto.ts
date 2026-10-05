@@ -74,6 +74,14 @@ export function localizacaoExpirada(l: { latitude?: number | null; localizacaoOb
   return l.latitude == null || !Number.isFinite(obtida) || Math.abs(agora - obtida) > IDADE_MAX_LOCALIZACAO_MS;
 }
 
+const TETO_SDK_TEAMS_MS = 8_000;
+function comTeto<T>(fn: () => Promise<T>, ms: number): Promise<T> {
+  return new Promise<T>((resolve, reject) => {
+    const t = setTimeout(() => reject(new Error('tempo esgotado')), ms);
+    fn().then(v => { clearTimeout(t); resolve(v); }, e => { clearTimeout(t); reject(e); });
+  });
+}
+
 export type LocalizacaoFoto = Pick<DadosFoto, 'latitude' | 'longitude' | 'precisaoMetros' | 'localizacaoObtidaEm' | 'motivoLocalizacao'>;
 export async function obterLocalizacaoFoto(): Promise<LocalizacaoFoto> {
   let timer: ReturnType<typeof setTimeout> | undefined;
@@ -85,7 +93,13 @@ export async function obterLocalizacaoFoto(): Promise<LocalizacaoFoto> {
         // mas falha ao obter a posição (permissão negada, erro do cliente), também tenta o WebView.
         try {
           if (await aguardarInicializacaoTeams() && geoLocation.isSupported()) {
-            const pos = await geoLocation.getCurrentLocation();
+            // O cliente Teams (iOS em especial) exige a permissão pedida explicitamente antes de
+            // getCurrentLocation; sem isso a chamada pode ficar sem resposta. O SDK tem teto próprio
+            // para sobrar tempo ao fallback do WebView dentro do limite total.
+            const pos = await comTeto(async () => {
+              if (!await geoLocation.hasPermission() && !await geoLocation.requestPermission()) throw new Error('permissão negada');
+              return geoLocation.getCurrentLocation();
+            }, TETO_SDK_TEAMS_MS);
             return { latitude: pos.latitude, longitude: pos.longitude, precisaoMetros: pos.accuracy, localizacaoObtidaEm: pos.timestamp ? new Date(pos.timestamp).toISOString() : new Date().toISOString() };
           }
         } catch { /* segue para o fallback do WebView */ }
