@@ -8,6 +8,8 @@ import { UsuarioLogadoProvider } from './lib/UsuarioLogadoContext';
 import { processarLoginNavegadorPendente } from './lib/browserAuth';
 import { AppShell } from './layout/AppShell';
 import { DashboardPage } from './pages/DashboardPage';
+import { QualidadePage } from './pages/qualidade/QualidadePage';
+import { TeamsConfigPage } from './pages/teams/TeamsConfigPage';
 import { GestaoSstPage } from './pages/gestao-sst/GestaoSstPage';
 import { OperacaoPage } from './pages/operacao/OperacaoPage';
 import { OcorrenciasPage } from './pages/ocorrencias/OcorrenciasPage';
@@ -114,6 +116,7 @@ function AppRoteado() {
       <MotionConfig reducedMotion="user">
         <HashRouter>
           <Routes>
+            <Route path="/config" element={<TeamsConfigPage />} />
             {/* Páginas públicas (abertas via QR code, sem sidebar/header do Teams) ficam no tema claro
                 original — não fazem parte do app interno e não devem escurecer junto com ele (02/09). */}
             <Route
@@ -134,6 +137,8 @@ function AppRoteado() {
             />
             <Route element={<LayoutComTeams />}>
               <Route path="/" element={<DashboardPage />} />
+              <Route path="/qualidade" element={<QualidadePage />} />
+              <Route path="/modulos/sst" element={<QualidadePage modulo="sst" />} />
 
               {/* Galeria da camada ui/ (spec 2026-09-07 §6) — só em desenvolvimento. */}
               {import.meta.env.DEV && <Route path="/ui-galeria" element={<GaleriaPage />} />}

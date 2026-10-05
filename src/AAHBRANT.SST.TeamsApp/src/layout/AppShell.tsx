@@ -1,5 +1,6 @@
 import type { ComponentType, ReactElement, ReactNode, SVGProps } from 'react';
 import { useEffect, useState } from 'react';
+import { useUsuarioLogado } from '../lib/UsuarioLogadoContext';
 import { NavLink, useLocation, useNavigate } from 'react-router-dom';
 import {
   makeStyles,
@@ -655,6 +656,7 @@ const itensAvulsos: Array<ItemNav & { icone: IconeNav }> = [
 // destino já tinham viram sub-abas. A sidebar fica só com os 5 módulos (4 pilares + Administração,
 // fixa no rodapé) e o Dashboard solto no topo.
 const itensPilares: Array<ItemNav & { icone: IconeNav }> = [
+  { rota: '/qualidade', rotulo: 'Qualidade', icone: ClipboardTaskListLtr24Regular },
   { rota: '/gestao-sst', rotulo: 'Gestão de SST', icone: ClipboardTaskListLtr24Regular },
   { rota: '/operacao', rotulo: 'Operação', icone: CapaceteObra24Regular },
   { rota: '/pessoas', rotulo: 'Pessoas', icone: People24Regular },
@@ -752,6 +754,7 @@ function ItemRail({
 }
 
 export function AppShell({ children }: { children: ReactNode }) {
+  const { usuario } = useUsuarioLogado();
   const estilos = useStyles();
   const location = useLocation();
   const navigate = useNavigate();
@@ -902,7 +905,7 @@ export function AppShell({ children }: { children: ReactNode }) {
           <ItemRail key={item.rota} {...item} expandido={railExpandido} aoNavegar={() => setRailExpandido(false)} />
         ))}
         <div className={mergeClasses(estilos.navSeparador, railExpandido && estilos.navSeparadorExpandido)} />
-        {itensPilares.map((item) => (
+        {itensPilares.filter(item => item.rota !== '/qualidade' || usuario?.permissoes.includes('qualidade:ver')).map((item) => (
           <ItemRail key={item.rota} {...item} expandido={railExpandido} aoNavegar={() => setRailExpandido(false)} />
         ))}
         <div className={estilos.railRodape}>
