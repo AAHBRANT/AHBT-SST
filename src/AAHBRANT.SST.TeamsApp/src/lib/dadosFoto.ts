@@ -66,6 +66,14 @@ export function formatarDataFoto(d?: DadosFoto | null) {
     + ` (UTC${minutos <= 0 ? '+' : '-'}${String(Math.floor(Math.abs(minutos) / 60)).padStart(2, '0')}:${String(Math.abs(minutos) % 60).padStart(2, '0')})`;
 }
 
+// Margem abaixo do limite de 60 s da validação (front e backend): se a posição já tem mais que isso
+// na hora de capturar, ela é renovada antes de gravar a foto.
+export const IDADE_MAX_LOCALIZACAO_MS = 30_000;
+export function localizacaoExpirada(l: { latitude?: number | null; localizacaoObtidaEm?: string | null }, agora = Date.now()) {
+  const obtida = l.localizacaoObtidaEm ? Date.parse(l.localizacaoObtidaEm) : NaN;
+  return l.latitude == null || !Number.isFinite(obtida) || Math.abs(agora - obtida) > IDADE_MAX_LOCALIZACAO_MS;
+}
+
 export type LocalizacaoFoto = Pick<DadosFoto, 'latitude' | 'longitude' | 'precisaoMetros' | 'localizacaoObtidaEm' | 'motivoLocalizacao'>;
 export async function obterLocalizacaoFoto(): Promise<LocalizacaoFoto> {
   let timer: ReturnType<typeof setTimeout> | undefined;
@@ -73,11 +81,14 @@ export async function obterLocalizacaoFoto(): Promise<LocalizacaoFoto> {
     return await Promise.race([
       (async (): Promise<LocalizacaoFoto> => {
         // Alguns clientes Teams (ex.: tablet) não expõem a capability geoLocation do SDK; nesses casos
-        // cai para a geolocalização do WebView em vez de encerrar com erro.
-        if (await aguardarInicializacaoTeams() && geoLocation.isSupported()) {
-          const pos = await geoLocation.getCurrentLocation();
-          return { latitude: pos.latitude, longitude: pos.longitude, precisaoMetros: pos.accuracy, localizacaoObtidaEm: pos.timestamp ? new Date(pos.timestamp).toISOString() : new Date().toISOString() };
-        }
+        // cai para a geolocalização do WebView em vez de encerrar com erro. Se o SDK declara suporte
+        // mas falha ao obter a posição (permissão negada, erro do cliente), também tenta o WebView.
+        try {
+          if (await aguardarInicializacaoTeams() && geoLocation.isSupported()) {
+            const pos = await geoLocation.getCurrentLocation();
+            return { latitude: pos.latitude, longitude: pos.longitude, precisaoMetros: pos.accuracy, localizacaoObtidaEm: pos.timestamp ? new Date(pos.timestamp).toISOString() : new Date().toISOString() };
+          }
+        } catch { /* segue para o fallback do WebView */ }
         if (!navigator.geolocation) return { motivoLocalizacao: 'Localização indisponível neste navegador.' };
         return await new Promise<LocalizacaoFoto>((resolve) => navigator.geolocation.getCurrentPosition(
           p => resolve({ latitude: p.coords.latitude, longitude: p.coords.longitude, precisaoMetros: p.coords.accuracy, localizacaoObtidaEm: new Date(p.timestamp).toISOString() }),
