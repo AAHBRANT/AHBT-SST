@@ -17,14 +17,14 @@ public class RelatorioFiscalizacaoPdfService : IRelatorioFiscalizacaoPdfService
 {
     private const string CorMarca = "#670000";
 
-    public byte[] Gerar(PerfilCompletoTrabalhadorDto perfil)
+    public byte[] Gerar(PerfilCompletoTrabalhadorDto perfil, IdentificacaoRelatorioFiscalizacao? identificacao = null)
     {
-        var semHash = CriarDocumento(perfil, hashConteudo: null).GeneratePdf();
+        var semHash = CriarDocumento(perfil, identificacao, hashConteudo: null).GeneratePdf();
         var hash = Convert.ToHexString(SHA256.HashData(semHash));
-        return CriarDocumento(perfil, hashConteudo: hash).GeneratePdf();
+        return CriarDocumento(perfil, identificacao, hashConteudo: hash).GeneratePdf();
     }
 
-    private static IDocument CriarDocumento(PerfilCompletoTrabalhadorDto perfil, string? hashConteudo)
+    private static IDocument CriarDocumento(PerfilCompletoTrabalhadorDto perfil, IdentificacaoRelatorioFiscalizacao? identificacao, string? hashConteudo)
     {
         return Document.Create(container =>
         {
@@ -41,16 +41,8 @@ public class RelatorioFiscalizacaoPdfService : IRelatorioFiscalizacaoPdfService
                 {
                     coluna.Spacing(10);
 
-                    coluna.Item().Text("Dados gerais").FontSize(13).Bold().FontColor(CorMarca);
-                    coluna.Item().Text(t => { t.Span("Nome: ").SemiBold(); t.Span(perfil.Nome); });
-                    coluna.Item().Text(t => { t.Span("Matrícula: ").SemiBold(); t.Span(perfil.Matricula); });
-                    coluna.Item().Text(t => { t.Span("CPF: ").SemiBold(); t.Span(perfil.Cpf); });
-                    if (!string.IsNullOrWhiteSpace(perfil.Rg))
-                        coluna.Item().Text(t => { t.Span("RG: ").SemiBold(); t.Span(perfil.Rg); });
-                    coluna.Item().Text(t => { t.Span("Obra: ").SemiBold(); t.Span(perfil.ObraNome); });
-                    coluna.Item().Text(t => { t.Span("Função: ").SemiBold(); t.Span(perfil.FuncaoNome); });
-                    coluna.Item().Text(t => { t.Span("Admissão: ").SemiBold(); t.Span(perfil.DataAdmissao.ToString("dd/MM/yyyy")); });
-                    coluna.Item().Text(t => { t.Span("Situação de aptidão: ").SemiBold(); t.Span(perfil.StatusAptidao); });
+                    // Mesma grade de identificação da Ficha de EPI, com a foto de cadastro à direita.
+                    coluna.Item().Element(c => GradeIdentificacaoFiscalizacaoPdf.Desenhar(c, perfil, identificacao));
 
                     // Cards e gráficos do perfil (mesmos números da aba Geral do app).
                     coluna.Item().PaddingTop(6).Element(c => ResumoGraficosFiscalizacao.Desenhar(c, perfil, HorarioBrasilia.Agora));
@@ -70,14 +62,14 @@ public class RelatorioFiscalizacaoPdfService : IRelatorioFiscalizacaoPdfService
                             coluna.Item().Text($"Médico responsável: {vigente.MedicoNome}{(string.IsNullOrWhiteSpace(vigente.MedicoCrm) ? "" : $" (CRM {vigente.MedicoCrm})")}").FontSize(9);
                     }
 
-                    coluna.Item().PaddingTop(6).Text("EPIs em posse do trabalhador").FontSize(13).Bold().FontColor(CorMarca);
+                    coluna.Item().PaddingTop(6).EnsureSpace(80).Text("EPIs em posse do trabalhador").FontSize(13).Bold().FontColor(CorMarca);
                     if (perfil.EpisAtivos.Count == 0)
                         coluna.Item().Text("Nenhum EPI ativo registrado.").Italic();
                     else
                         foreach (var epi in perfil.EpisAtivos)
                             coluna.Item().Text($"• Entregue em {epi.DataEntrega:dd/MM/yyyy}" + (epi.DataValidade.HasValue ? $", válido até {epi.DataValidade:dd/MM/yyyy}" : "") + $" — quantidade {epi.Quantidade}");
 
-                    coluna.Item().PaddingTop(6).Text("Treinamentos válidos").FontSize(13).Bold().FontColor(CorMarca);
+                    coluna.Item().PaddingTop(6).EnsureSpace(80).Text("Treinamentos válidos").FontSize(13).Bold().FontColor(CorMarca);
                     var treinamentosValidos = perfil.Treinamentos.Where(t => t.DataValidade >= DateTime.Today).ToList();
                     if (treinamentosValidos.Count == 0)
                         coluna.Item().Text("Nenhum treinamento válido registrado.").Italic();
@@ -85,21 +77,21 @@ public class RelatorioFiscalizacaoPdfService : IRelatorioFiscalizacaoPdfService
                         foreach (var treinamento in treinamentosValidos)
                             coluna.Item().Text($"• Realizado em {treinamento.DataRealizacao:dd/MM/yyyy}, válido até {treinamento.DataValidade:dd/MM/yyyy} ({treinamento.CargaHorariaRealizada}h)" + (string.IsNullOrWhiteSpace(treinamento.InstituicaoInstrutor) ? "" : $" — {treinamento.InstituicaoInstrutor}"));
 
-                    coluna.Item().PaddingTop(6).Text("Riscos expostos (PGR)").FontSize(13).Bold().FontColor(CorMarca);
+                    coluna.Item().PaddingTop(6).EnsureSpace(80).Text("Riscos expostos (PGR)").FontSize(13).Bold().FontColor(CorMarca);
                     if (perfil.Riscos.Count == 0)
                         coluna.Item().Text("Nenhum risco vinculado.").Italic();
                     else
                         foreach (var risco in perfil.Riscos)
                             coluna.Item().Text($"• {risco.PerigoNome} ({risco.AtividadeNome}) — nível {risco.NivelRisco} (P{risco.Probabilidade}×S{risco.Severidade})");
 
-                    coluna.Item().PaddingTop(6).Text("Ocorrências").FontSize(13).Bold().FontColor(CorMarca);
+                    coluna.Item().PaddingTop(6).EnsureSpace(80).Text("Ocorrências").FontSize(13).Bold().FontColor(CorMarca);
                     if (perfil.Ocorrencias.Count == 0)
                         coluna.Item().Text("Nenhuma ocorrência registrada.").Italic();
                     else
                         foreach (var ocorrencia in perfil.Ocorrencias)
                             coluna.Item().Text($"• {ocorrencia.Data:dd/MM/yyyy} — {ocorrencia.Tipo}, gravidade {ocorrencia.Gravidade}" + (ocorrencia.HouveAfastamento ? $", {ocorrencia.DiasAfastamento ?? 0} dia(s) de afastamento" : ""));
 
-                    coluna.Item().PaddingTop(6).Text("Cofre de assinaturas").FontSize(13).Bold().FontColor(CorMarca);
+                    coluna.Item().PaddingTop(6).EnsureSpace(80).Text("Cofre de assinaturas").FontSize(13).Bold().FontColor(CorMarca);
                     if (perfil.Assinaturas.Count == 0)
                         coluna.Item().Text("Nenhuma assinatura registrada.").Italic();
                     else

@@ -93,6 +93,56 @@ public class RelatorioFiscalizacaoResumoTests
         if (!string.IsNullOrWhiteSpace(destino)) File.WriteAllBytes(destino, pdf);
     }
 
+    // Grade de identificação do relatório (mesma da Ficha de EPI), com foto de cadastro à direita.
+    private static byte[] FotoDeTeste()
+    {
+        using var img = new SixLabors.ImageSharp.Image<SixLabors.ImageSharp.PixelFormats.Rgba32>(200, 260);
+        for (var y = 0; y < 260; y++)
+            for (var x = 0; x < 200; x++)
+            {
+                var dx = (x - 100) / 62.0; var dy = (y - 110) / 78.0;
+                img[x, y] = dx * dx + dy * dy < 1
+                    ? new SixLabors.ImageSharp.PixelFormats.Rgba32(201, 155, 122)
+                    : (y > 215 ? new SixLabors.ImageSharp.PixelFormats.Rgba32(74, 106, 134) : new SixLabors.ImageSharp.PixelFormats.Rgba32(122, 106, 90));
+            }
+        using var ms = new MemoryStream();
+        img.Save(ms, new SixLabors.ImageSharp.Formats.Jpeg.JpegEncoder());
+        return ms.ToArray();
+    }
+
+    [Fact]
+    public void Gerar_ComIdentificacaoEFoto_ProduzPdfComGrade()
+    {
+        var perfil = CriarPerfil(episAtivos: new[] { Epi(Hoje.AddDays(90)) }, assiduidade: new AssiduidadeDdsDto(20, 18));
+        var identificacao = new AAHBRANT.SST.Application.Trabalhadores.IdentificacaoRelatorioFiscalizacao(
+            FotoDeTeste(), "CONSORCIO PONTE RIO CUIA", "57.622.394/0001-37");
+
+        var pdf = new RelatorioFiscalizacaoPdfService().Gerar(perfil, identificacao);
+
+        Assert.Equal("%PDF", System.Text.Encoding.ASCII.GetString(pdf, 0, 4));
+        var destino = Environment.GetEnvironmentVariable("ARQUIVO_PDF_RELATORIO_IDENT");
+        if (!string.IsNullOrWhiteSpace(destino)) File.WriteAllBytes(destino, pdf);
+    }
+
+    [Fact]
+    public void Gerar_SemFotoNemDadosDaObra_UsaAvisosEmVezDeQuebrar()
+    {
+        var pdf = new RelatorioFiscalizacaoPdfService().Gerar(CriarPerfil(), identificacao: null);
+
+        Assert.True(pdf.Length > 1000);
+    }
+
+    [Fact]
+    public void Gerar_FotoCorrompida_NaoDerrubaORelatorio()
+    {
+        var identificacao = new AAHBRANT.SST.Application.Trabalhadores.IdentificacaoRelatorioFiscalizacao(
+            new byte[] { 1, 2, 3, 4 }, null, null);
+
+        var pdf = new RelatorioFiscalizacaoPdfService().Gerar(CriarPerfil(), identificacao);
+
+        Assert.True(pdf.Length > 1000);
+    }
+
     private static EntregaEpiDto Epi(DateTime? validade) => new(
         Guid.NewGuid(), Guid.NewGuid(), Guid.NewGuid(), Hoje.AddDays(-60), null, validade, 1, null, null, null, null, null, null, null);
 
