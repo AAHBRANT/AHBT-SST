@@ -3,6 +3,7 @@ using AAHBRANT.SST.Domain.Entidades;
 using AAHBRANT.SST.Domain.Enums;
 using FluentValidation;
 using MediatR;
+using Microsoft.EntityFrameworkCore;
 
 namespace AAHBRANT.SST.Application.Asos.Commands;
 
@@ -34,6 +35,12 @@ public class CriarAsoCommandHandler : IRequestHandler<CriarAsoCommand, Guid>
 
     public async Task<Guid> Handle(CriarAsoCommand request, CancellationToken ct)
     {
+        // Passa pelo filtro de obra: trabalhador de obra fora do escopo do usuário é "não encontrado"
+        // (antes, um perfil restrito lançava ASO em trabalhador de qualquer obra, e um id inexistente
+        // virava erro de FK/500).
+        if (!await _db.Trabalhadores.AnyAsync(t => t.Id == request.TrabalhadorId, ct))
+            throw new KeyNotFoundException("Trabalhador não encontrado.");
+
         var aso = new Aso
         {
             TrabalhadorId = request.TrabalhadorId,
