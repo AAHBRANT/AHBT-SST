@@ -1,10 +1,10 @@
-import { Abas, PageHeader, useAbaNaUrl } from '@ui';
+import { Abas, DashboardTopo, PageHeader, useAbaNaUrl } from '@ui';
 import { AlertasDashboardTab } from './dashboard/AlertasDashboardTab';
 import { AlertasListaTab } from './AlertasListaTab';
 import { AlertasConfiguracaoTab } from './AlertasConfiguracaoTab';
 import { AvisoEnvioTeams } from './AvisoEnvioTeams';
 
-const ABAS_ALERTAS = ['lista', 'configuracao', 'dashboard'] as const;
+const ABAS_ALERTAS = ['lista', 'configuracao'] as const;
 type AbaAlertas = (typeof ABAS_ALERTAS)[number];
 
 // Onda 2 Task 16 (camada ui/): item de 1º nível próprio na sidebar, rota direta `/alertas` (sem
@@ -19,6 +19,10 @@ export function AlertasPage() {
 
       <AvisoEnvioTeams />
 
+      <DashboardTopo>
+        <AlertasDashboardTab />
+      </DashboardTopo>
+
       <Abas
         nivel="pilar"
         valor={aba}
@@ -27,13 +31,11 @@ export function AlertasPage() {
         abas={[
           { valor: 'lista', rotulo: 'Lista' },
           { valor: 'configuracao', rotulo: 'Configurações' },
-          { valor: 'dashboard', rotulo: 'Dashboard' },
         ]}
       />
 
       {aba === 'lista' && <AlertasListaTab />}
       {aba === 'configuracao' && <AlertasConfiguracaoTab />}
-      {aba === 'dashboard' && <AlertasDashboardTab />}
     </div>
   );
 }

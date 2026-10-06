@@ -1,11 +1,11 @@
-import { Abas, PageHeader, useAbaNaUrl } from '@ui';
+import { Abas, DashboardTopo, PageHeader, useAbaNaUrl } from '@ui';
 import { InspecoesDashboardTab } from './dashboard/InspecoesDashboardTab';
 import { ChecklistModelosTab } from './ChecklistModelosTab';
 import { InspecoesTab } from './InspecoesTab';
 import { AlojamentoTab } from './AlojamentoTab';
 import { VeiculosTab } from './VeiculosTab';
 
-const ABAS = ['execucoes', 'checklists', 'alojamento', 'veiculos', 'dashboard'] as const;
+const ABAS = ['execucoes', 'checklists', 'alojamento', 'veiculos'] as const;
 type AbaInspecoes = (typeof ABAS)[number];
 
 // Onda 2 Task 10 (camada ui/): página-pilar de Inspeções — mesmo padrão de EpiPage.tsx (piloto 1):
@@ -17,6 +17,10 @@ export function InspecoesPage({ mostrarTitulo = true }: { mostrarTitulo?: boolea
     <div>
       {mostrarTitulo && <PageHeader titulo="Inspeções" />}
 
+      <DashboardTopo>
+        <InspecoesDashboardTab />
+      </DashboardTopo>
+
       <Abas
         nivel={mostrarTitulo ? 'pilar' : 'modulo'}
         valor={aba}
@@ -27,15 +31,12 @@ export function InspecoesPage({ mostrarTitulo = true }: { mostrarTitulo?: boolea
           { valor: 'checklists', rotulo: 'Catálogo de inspeções' },
           { valor: 'alojamento', rotulo: 'Alojamento' },
           { valor: 'veiculos', rotulo: 'Veículos' },
-          { valor: 'dashboard', rotulo: 'Dashboard' },
         ]}
       />
 
       {aba === 'execucoes' && <InspecoesTab />}
       {aba === 'checklists' && <ChecklistModelosTab />}
       {aba === 'alojamento' && <AlojamentoTab />}
-      {aba === 'veiculos' && <VeiculosTab />}
-      {aba === 'dashboard' && <InspecoesDashboardTab />}
-    </div>
+      {aba === 'veiculos' && <VeiculosTab />}    </div>
   );
 }
