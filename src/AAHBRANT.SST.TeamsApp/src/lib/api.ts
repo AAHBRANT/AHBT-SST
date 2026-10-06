@@ -420,6 +420,14 @@ export interface CursoTreinamento {
 
 export type NovoCursoTreinamento = Omit<CursoTreinamento, 'id'>;
 
+// Curso cuja norma cita a NR-06 mas que o servidor não reconhece como habilitador de EPI.
+export interface CursoNr6SemMarcador {
+  id: string;
+  nome: string;
+  normaReferencia?: string | null;
+  trabalhadoresComCertificadoValido: number;
+}
+
 // Trabalhadores ativos que precisam do curso (pela matriz de função) e a situação de cada um.
 // "Apto" = treinamento válido hoje = emDia + vencemEm30Dias.
 export interface AptidaoCurso {
@@ -4063,6 +4071,7 @@ export const api = {
     atualizar: (id: string, curso: CursoTreinamento) =>
       request<void>(`/api/cursostreinamento/${id}`, { method: 'PUT', body: JSON.stringify(curso) }),
     excluir: (id: string) => request<void>(`/api/cursostreinamento/${id}`, { method: 'DELETE' }),
+    nr06SemMarcador: () => request<CursoNr6SemMarcador[]>('/api/cursostreinamento/nr06-sem-marcador'),
     // Card "Aptidão por treinamento" do Início: por curso exigido na matriz de funções.
     aptidao: (obraId?: string) =>
       request<AptidaoCurso[]>(`/api/cursostreinamento/aptidao${obraId ? `?obraId=${obraId}` : ''}`),
