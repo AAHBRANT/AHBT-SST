@@ -9,8 +9,8 @@ using Microsoft.EntityFrameworkCore;
 
 namespace AAHBRANT.SST.Application.Tests.Asos;
 
-// Auditoria 06/10/2026 (A2): ASO tem dado clínico e não tinha filtro por obra — um perfil restrito
-// à obra A lia os ASOs da obra B. O filtro agora vem de Trabalhador.ObraId.
+// Criar/Atualizar ASO só aceitam trabalhador dentro do escopo de obra do usuário. O filtro global de
+// leitura do ASO foi revertido (escondia o ASO de trabalhadores desligados) — ver SstDbContext.
 public class AsoEscopoPorObraTests
 {
     static AsoEscopoPorObraTests() => ChavesCpfDeTeste.Configurar();
@@ -48,18 +48,6 @@ public class AsoEscopoPorObraTests
     }
 
     [Fact]
-    public async Task Listar_PerfilRestrito_VeSoAsosDaPropriaObra()
-    {
-        var (global, restrito) = CriarContextos();
-        var (_, _, asoA, _) = await SemearAsync(global);
-
-        var lista = await new ListarAsosQueryHandler(restrito).Handle(new ListarAsosQuery(), default);
-
-        var item = Assert.Single(lista);
-        Assert.Equal(asoA.Id, item.Id);
-    }
-
-    [Fact]
     public async Task Listar_AcessoGlobal_VeTodos()
     {
         var (global, _) = CriarContextos();
@@ -68,17 +56,6 @@ public class AsoEscopoPorObraTests
         var lista = await new ListarAsosQueryHandler(global).Handle(new ListarAsosQuery(), default);
 
         Assert.Equal(2, lista.Count);
-    }
-
-    [Fact]
-    public async Task Obter_AsoDeOutraObra_NaoEncontrado()
-    {
-        var (global, restrito) = CriarContextos();
-        var (_, _, _, asoB) = await SemearAsync(global);
-
-        var resultado = await new ObterAsoPorIdQueryHandler(restrito).Handle(new ObterAsoPorIdQuery(asoB.Id), default);
-
-        Assert.Null(resultado);
     }
 
     [Fact]
@@ -128,5 +105,20 @@ public class AsoEscopoPorObraTests
         await Assert.ThrowsAsync<KeyNotFoundException>(() => handler.Handle(
             new AtualizarAsoCommand(asoA.Id, deB.Id, TipoExameAso.Periodico, DateTime.UtcNow, DateTime.UtcNow.AddYears(1),
                 ResultadoAso.Apto, null, null, null), default));
+    }
+
+    // Guarda de regressão: ASO de trabalhador desligado (Ativo = false) continua consultável.
+    [Fact]
+    public async Task Listar_AsoDeTrabalhadorDesligado_ContinuaVisivel()
+    {
+        var (global, _) = CriarContextos();
+        var (deA, _, _, _) = await SemearAsync(global);
+        var trabalhador = await global.Trabalhadores.FirstAsync(t => t.Id == deA.Id);
+        trabalhador.Ativo = false;
+        await global.SaveChangesAsync();
+
+        var lista = await new ListarAsosQueryHandler(global).Handle(new ListarAsosQuery(), default);
+
+        Assert.Equal(2, lista.Count);
     }
 }

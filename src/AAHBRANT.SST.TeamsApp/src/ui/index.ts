@@ -47,6 +47,7 @@ export { SstTooltip, type SstTooltipProps } from './primitivos/Tooltip/SstToolti
 
 export { Abas, type AbasProps, type AbaItem } from './compostos/Abas/Abas';
 export { useAbaNaUrl } from './compostos/Abas/useAbaNaUrl';
+export { DashboardTopo } from './compostos/DashboardTopo/DashboardTopo';
 
 export { DataTable, type DataTableProps, type Coluna } from './compostos/DataTable/DataTable';
 
