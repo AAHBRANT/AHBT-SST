@@ -25,7 +25,8 @@ public record RegistrarParticipanteCommand(
     Guid TrabalhadorId,
     Guid DispositivoId,
     string SegredoDispositivo,
-    double Score) : IRequest<Guid>;
+    double Score,
+    byte[]? ImagemDigital = null) : IRequest<Guid>;
 
 public class RegistrarParticipanteCommandValidator : AbstractValidator<RegistrarParticipanteCommand>
 {
@@ -98,7 +99,8 @@ public class RegistrarParticipanteCommandHandler : IRequestHandler<RegistrarPart
         try
         {
             var documentoId = await _mediator.Send(new CriarDocumentoAssinaturaCommand(nameof(Domain.Entidades.Dds), request.DdsId), ct);
-            await _registrador.RegistrarAsync(documentoId, resultado, ipAddress: null, ct);
+            await _registrador.RegistrarAsync(documentoId, resultado, ipAddress: null, ct,
+                request.ImagemDigital, request.ImagemDigital is null ? null : "image/png");
         }
         catch (Exception ex)
         {
