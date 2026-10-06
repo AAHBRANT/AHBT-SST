@@ -861,6 +861,21 @@ public static class NovidadesSeeder
                     "Depois de excluir uma inspeção em andamento, abrir uma nova inspeção do mesmo veículo ou alojamento mostrava \"Ocorreu um erro inesperado\".",
                     "A inspeção excluída deixa de ocupar a vaga e a nova inspeção abre normalmente."),
             }),
+        new(
+            Versao: "5.42.0",
+            Titulo: "Imagem da digital e foto no Cofre de Assinaturas",
+            DataPublicacao: new DateTime(2026, 10, 7, 0, 0, 0, DateTimeKind.Utc),
+            Itens: new[]
+            {
+                new NovidadeSeedItem(CategoriaNovidade.Melhoria,
+                    "Imagem da digital e foto do rosto como evidência da assinatura",
+                    "No Cofre de Assinaturas, as assinaturas por digital apareciam como \"Sem foto\", sem nenhum registro visual do que foi lido.",
+                    "As novas assinaturas por digital guardam a imagem da impressão lida pelo leitor, e as presenças por reconhecimento facial no DDS guardam a foto do rosto. As duas abrem pelo botão de imagem no Cofre. Assinaturas anteriores continuam sem imagem e agora mostram \"Anterior ao registro de imagem\"."),
+                new NovidadeSeedItem(CategoriaNovidade.Correcao,
+                    "IP sempre registrado nas assinaturas",
+                    "Presenças no DDS e certificados de treinamento eram gravados com o IP \"Não registrado\".",
+                    "O IP do dispositivo que realizou a assinatura passa a ser gravado em todas as assinaturas novas. Registros antigos não têm como ser corrigidos."),
+            }),
     };
 
     public static async Task ExecutarAsync(IServiceProvider services, CancellationToken ct = default)

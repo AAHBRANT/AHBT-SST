@@ -8,7 +8,7 @@ import {
   PeopleTeam24Regular, Search24Regular, Stop24Regular,
 } from '@fluentui/react-icons';
 import { api, TipoFotoParticipante, type DdsDetalhe, type DdsFuncionario } from '../../lib/api';
-import { capturarDigitalLocal, obterDispositivoLocal, type DispositivoLocal } from '../../lib/agenteBiometricoLocal';
+import { capturarDigitalLocal, obterDispositivoLocal, type CapturaLocal, type DispositivoLocal } from '../../lib/agenteBiometricoLocal';
 import { formatarHoraBrasilia } from '../../components/assinatura/assinaturaDigital';
 import { tocarBipeAssinaturaAceita } from '../../lib/bipeAssinatura';
 import { SeletorFotoCamera } from '../../components/SeletorFotoCamera';
@@ -155,7 +155,7 @@ export function ParticipantesDds({ detalhe, somenteLeitura, aoAtualizar }: Props
   const contextoFila = useRef({ detalhe, dispositivo });
   contextoFila.current = { detalhe, dispositivo };
 
-  async function processarLeituraFila(captura: { trabalhadorId: string; score: number }) {
+  async function processarLeituraFila(captura: CapturaLocal) {
     const { detalhe: atual, dispositivo: leitor } = contextoFila.current;
     if (!leitor) return;
     const jaConfirmado = atual.participantes.find((p) => p.trabalhadorId === captura.trabalhadorId);
@@ -163,7 +163,7 @@ export function ParticipantesDds({ detalhe, somenteLeitura, aoAtualizar }: Props
       setResultadoFila({ tom: 'info', texto: `${jaConfirmado.trabalhadorNome} já teve a presença confirmada.` });
       return;
     }
-    await api.dds.registrarParticipante(dds.id, captura.trabalhadorId, leitor.dispositivoId, leitor.segredoDispositivo, captura.score);
+    await api.dds.registrarParticipante(dds.id, captura.trabalhadorId, leitor.dispositivoId, leitor.segredoDispositivo, captura.score, captura.imagemPng);
     const novo = await api.dds.obterDetalhe(dds.id);
     aoAtualizar(novo);
     const nome = novo.participantes.find((p) => p.trabalhadorId === captura.trabalhadorId)?.trabalhadorNome ?? 'Funcionário';

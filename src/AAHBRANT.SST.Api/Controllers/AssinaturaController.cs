@@ -64,14 +64,14 @@ public class AssinaturaController : ControllerBase
         return Ok(signatario);
     }
 
-    public record AutenticarBiometriaLocalRequestBody(Guid DispositivoId, string SegredoDispositivo, Guid TrabalhadorId, double Score);
+    public record AutenticarBiometriaLocalRequestBody(Guid DispositivoId, string SegredoDispositivo, Guid TrabalhadorId, double Score, byte[]? ImagemDigital = null);
 
     [Authorize(Policy = "assinatura:assinar")]
     [HttpPost("{id:guid}/autenticacao/biometria-local")]
     public async Task<ActionResult<DocumentoSignatarioDto>> AutenticarBiometriaLocal(Guid id, AutenticarBiometriaLocalRequestBody body, CancellationToken ct)
     {
         var resultado = await _mediator.Send(
-            new RegistrarAssinaturaBiometriaLocalCommand(id, body.DispositivoId, body.SegredoDispositivo, body.TrabalhadorId, body.Score, ObterIpCliente()), ct);
+            new RegistrarAssinaturaBiometriaLocalCommand(id, body.DispositivoId, body.SegredoDispositivo, body.TrabalhadorId, body.Score, ObterIpCliente(), body.ImagemDigital), ct);
         return Ok(resultado);
     }
 
