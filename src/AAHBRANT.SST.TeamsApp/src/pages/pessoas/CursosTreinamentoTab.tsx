@@ -4,6 +4,7 @@ import {
   Button,
   Field,
   Input,
+  Switch,
   Textarea,
   Card,
   PageHeader,
@@ -18,7 +19,6 @@ import {
   useConfirmar,
   type Coluna,
 } from '@ui';
-import { Switch } from '@fluentui/react-components';
 import { Add24Regular, Delete24Regular } from '@fluentui/react-icons';
 import { api, type CursoNr6SemMarcador, type CursoTreinamento, type NovoCursoTreinamento } from '../../lib/api';
 import { useSucessoToast } from '../../hooks/useSucessoToast';
