@@ -11,7 +11,8 @@ public record RegistrarAssinaturaFacialCommand(
     Guid ObraId,
     byte[] FotoJpeg,
     string? FotoContentType = null,
-    string? IpAddress = null) : IRequest<DocumentoSignatarioDto>;
+    string? IpAddress = null,
+    LocalizacaoAssinatura? Localizacao = null) : IRequest<DocumentoSignatarioDto>;
 
 public class RegistrarAssinaturaFacialCommandValidator : AbstractValidator<RegistrarAssinaturaFacialCommand>
 {
@@ -64,6 +65,7 @@ public class RegistrarAssinaturaFacialCommandHandler : IRequestHandler<Registrar
             request.IpAddress,
             ct,
             request.FotoJpeg,
-            request.FotoContentType);
+            request.FotoContentType,
+            localizacao: request.Localizacao);
     }
 }

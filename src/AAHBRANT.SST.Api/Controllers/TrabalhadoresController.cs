@@ -129,13 +129,13 @@ public class TrabalhadoresController : ControllerBase
     public async Task<IActionResult> ObterStatusCadastroBiometrico(Guid id, CancellationToken ct)
         => Ok(await _mediator.Send(new ObterStatusCadastroBiometricoQuery(id), ct));
 
-    public record CadastrarBiometriaLocalRequestBody(byte[] TemplateBruto);
+    public record CadastrarBiometriaLocalRequestBody(byte[] TemplateBruto, byte[]? ImagemCadastro = null);
 
     [Authorize(Policy = "trabalhador:assinatura")]
     [HttpPost("{id:guid}/assinatura/biometria-local/cadastro")]
     public async Task<IActionResult> CadastrarBiometriaLocal(Guid id, CadastrarBiometriaLocalRequestBody body, CancellationToken ct)
     {
-        await _mediator.Send(new CadastrarTemplateBiometricoCommand(id, body.TemplateBruto), ct);
+        await _mediator.Send(new CadastrarTemplateBiometricoCommand(id, body.TemplateBruto, body.ImagemCadastro), ct);
         return NoContent();
     }
 

@@ -75,4 +75,18 @@ public class DocumentoSignatario : AuditableEntity
     public byte[]? FotoEvidenciaConteudo { get; set; }
     public string? FotoEvidenciaContentType { get; set; }
     public string? FotoEvidenciaHash { get; set; }
+
+    // Rastro técnico da assinatura (log de assinaturas da Ficha de EPI). Todos opcionais: assinaturas
+    // anteriores à captura ficam nulas e o log as marca como "anterior à implantação".
+    // Leitor/dispositivo de borda que identificou a digital (DispositivoAgenteBiometrico).
+    public Guid? DispositivoAgenteId { get; set; }
+    // Navegador/sistema do aparelho que enviou a assinatura (cabeçalho User-Agent).
+    public string? UserAgent { get; set; }
+
+    // Geolocalização informada pelo aparelho no momento da assinatura (declarada pelo cliente, ao
+    // contrário do IP, que o servidor mede). Precisão em metros.
+    public StatusLocalizacaoAssinatura LocalizacaoStatus { get; set; }
+    public double? Latitude { get; set; }
+    public double? Longitude { get; set; }
+    public double? PrecisaoMetros { get; set; }
 }
