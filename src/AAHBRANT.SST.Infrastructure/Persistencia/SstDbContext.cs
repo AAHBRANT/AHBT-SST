@@ -245,6 +245,20 @@ public class SstDbContext : DbContext, IAppDbContext
         // teste no CI). O ASO precisa ser guardado e consultável por anos (fiscalização). O escopo por
         // obra do ASO exige gravar ObraId no próprio registro (migration + preenchimento) — pendente.
         // Exame/Aptidão/Treinamento têm a mesma limitação e também ficam sem filtro por enquanto.
+        // Registros que já têm ObraId próprio. Auditoria 06/10/2026 (A2), mesmo padrão dos demais filtros.
+        // Exame/Aptidão/Treinamento NÃO entram aqui de propósito: eles só chegam à obra pelo
+        // Trabalhador, e navegar até ele dentro do filtro faz o filtro de Trabalhador (Ativo) valer
+        // também, escondendo o histórico de quem foi desligado (comprovado em teste). Ver PR #116.
+        modelBuilder.Entity<SessaoTreinamento>().HasQueryFilter(s =>
+            s.Ativo && (_usuarioAtual.TemAcessoGlobal || _usuarioAtual.ObrasPermitidas.Contains(s.ObraId)));
+        modelBuilder.Entity<Contrato>().HasQueryFilter(c =>
+            c.Ativo && (_usuarioAtual.TemAcessoGlobal || _usuarioAtual.ObrasPermitidas.Contains(c.ObraId)));
+        modelBuilder.Entity<InstalacaoEpc>().HasQueryFilter(i =>
+            i.Ativo && (_usuarioAtual.TemAcessoGlobal || _usuarioAtual.ObrasPermitidas.Contains(i.ObraId)));
+        modelBuilder.Entity<EstoqueEpc>().HasQueryFilter(e =>
+            e.Ativo && (_usuarioAtual.TemAcessoGlobal || _usuarioAtual.ObrasPermitidas.Contains(e.ObraId)));
+        modelBuilder.Entity<EstoqueUniforme>().HasQueryFilter(e =>
+            e.Ativo && (_usuarioAtual.TemAcessoGlobal || _usuarioAtual.ObrasPermitidas.Contains(e.ObraId)));
         // ExameComplementar/AptidaoAtividadeEspecifica/EntregaEpi e filhos de entidades escopadas
         // dependem de navegação por Trabalhador/Estoque/Membro/Reunião. Mantêm a proteção nos
         // handlers e nas entidades-raiz já filtradas acima; se virarem listagens amplas, precisam de
