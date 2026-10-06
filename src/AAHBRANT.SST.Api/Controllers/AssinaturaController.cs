@@ -101,16 +101,11 @@ public class AssinaturaController : ControllerBase
     }
 
     // IP para o audit trail jurídico do Cofre de Assinaturas — nunca aceito do corpo da requisição
-    // (evidência não pode ser controlada pelo cliente). Preferimos X-Forwarded-For porque a API roda
-    // atrás de reverse proxy no Azure App Service; RemoteIpAddress é o fallback direto.
+    // (evidência não pode ser controlada pelo cliente). Não lê X-Forwarded-For na mão: o primeiro
+    // valor do cabeçalho é controlado pelo cliente. O UseForwardedHeaders (Program.cs) já aplica o
+    // IP acrescentado pelo ingress em RemoteIpAddress.
     private string? ObterIpCliente()
-    {
-        var forwardedFor = Request.Headers["X-Forwarded-For"].FirstOrDefault();
-        if (!string.IsNullOrWhiteSpace(forwardedFor))
-            return forwardedFor.Split(',')[0].Trim();
-
-        return HttpContext.Connection.RemoteIpAddress?.ToString();
-    }
+        => HttpContext.Connection.RemoteIpAddress?.ToString();
 
     [Authorize(Policy = "assinatura:finalizar")]
     [HttpPost("{id:guid}/finalizar")]

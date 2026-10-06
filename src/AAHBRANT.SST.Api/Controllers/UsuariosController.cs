@@ -82,7 +82,14 @@ public class UsuariosController : ControllerBase
     [HttpPost("perfis-obra")]
     public async Task<ActionResult<Guid>> AtribuirPerfilObra(AtribuirPerfilObraCommand command)
     {
-        var id = await _mediator.Send(command);
+        // Identidade de quem concede vem sempre do token — qualquer valor enviado no corpo é descartado.
+        var solicitante = User.FindFirst("oid")?.Value ?? User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+        var autenticacaoHabilitada = !string.IsNullOrWhiteSpace(_configuracao["AzureAd:TenantId"]);
+        var id = await _mediator.Send(command with
+        {
+            SolicitanteAzureAdObjectId = solicitante,
+            AutenticacaoHabilitada = autenticacaoHabilitada
+        });
         return Ok(id);
     }
 

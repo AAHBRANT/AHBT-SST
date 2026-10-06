@@ -77,7 +77,23 @@ builder.Services.AddCors(options =>
     }
 });
 
+// IP do cliente para a trilha de assinatura (evidência jurídica). A API recebe tráfego direto do
+// ingress do Azure Container Apps (um único proxy), que ACRESCENTA o IP real ao final de
+// X-Forwarded-For. Com ForwardLimit = 1 o ASP.NET usa só esse último valor e ignora o que o cliente
+// tenha enviado antes dele. A rede do ingress não é fixa, então KnownNetworks/KnownProxies são
+// esvaziados — seguro apenas porque a API não é exposta sem esse ingress. Auditoria 06/10/2026 (M3).
+builder.Services.Configure<Microsoft.AspNetCore.Builder.ForwardedHeadersOptions>(opcoes =>
+{
+    opcoes.ForwardedHeaders = Microsoft.AspNetCore.HttpOverrides.ForwardedHeaders.XForwardedFor
+        | Microsoft.AspNetCore.HttpOverrides.ForwardedHeaders.XForwardedProto;
+    opcoes.ForwardLimit = 1;
+    opcoes.KnownNetworks.Clear();
+    opcoes.KnownProxies.Clear();
+});
+
 var app = builder.Build();
+
+app.UseForwardedHeaders();
 
 app.UseMiddleware<TratamentoDeExcecaoMiddleware>();
 
