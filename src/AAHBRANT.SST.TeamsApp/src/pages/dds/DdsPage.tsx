@@ -1,4 +1,5 @@
-import { Abas, PageHeader, useAbaNaUrl } from '@ui';
+import { Abas, DashboardTopo, PageHeader, useAbaNaUrl } from '@ui';
+import { DdsDashboardTab } from './dashboard/DdsDashboardTab';
 import { DdsSemanalPage } from './DdsSemanalPage';
 import { CatalogoTemasDdsPage } from './CatalogoTemasDdsPage';
 
@@ -17,6 +18,10 @@ export function DdsPage({ mostrarTitulo = true }: { mostrarTitulo?: boolean } = 
   return (
     <div>
       {mostrarTitulo && <PageHeader titulo="DDS" />}
+
+      <DashboardTopo>
+        <DdsDashboardTab />
+      </DashboardTopo>
 
       <Abas
         nivel={mostrarTitulo ? 'pilar' : 'modulo'}
