@@ -6,8 +6,8 @@ using Microsoft.EntityFrameworkCore;
 
 namespace AAHBRANT.SST.Application.Tests.Common;
 
-// Auditoria 06/10/2026 (A2), continuação do ASO: exames, aptidões, treinamentos, turmas, contratos e
-// estoques/instalações de EPC e uniforme passam a respeitar o escopo de obra do usuário.
+// Auditoria 06/10/2026 (A2): turmas, contratos e estoques/instalações de EPC e uniforme (todos com
+// ObraId próprio) passam a respeitar o escopo de obra do usuário.
 public class EscopoPorObraDemaisRegistrosTests
 {
     static EscopoPorObraDemaisRegistrosTests() => ChavesCpfDeTeste.Configurar();
@@ -22,65 +22,6 @@ public class EscopoPorObraDemaisRegistrosTests
         var usuarioRestrito = new CurrentUserService();
         usuarioRestrito.DefinirEscopo(false, new[] { ObraA });
         return (global, new SstDbContext(opcoes, usuarioRestrito));
-    }
-
-    private static async Task<(Trabalhador deA, Trabalhador deB)> SemearTrabalhadoresAsync(SstDbContext db)
-    {
-        var funcao = new Funcao { Nome = "Pedreiro" };
-        var deA = new Trabalhador { ObraId = ObraA, Funcao = funcao, Nome = "A", Cpf = "00000000001" };
-        var deB = new Trabalhador { ObraId = ObraB, Funcao = funcao, Nome = "B", Cpf = "00000000002" };
-        db.Funcoes.Add(funcao);
-        db.Trabalhadores.AddRange(deA, deB);
-        await db.SaveChangesAsync();
-        return (deA, deB);
-    }
-
-    [Fact]
-    public async Task ExameComplementar_PerfilRestrito_VeSoDaPropriaObra()
-    {
-        var (global, restrito) = CriarContextos();
-        var (deA, deB) = await SemearTrabalhadoresAsync(global);
-        global.ExamesComplementares.AddRange(
-            new ExameComplementar { TrabalhadorId = deA.Id, Resultado = "A" },
-            new ExameComplementar { TrabalhadorId = deB.Id, Resultado = "B" });
-        await global.SaveChangesAsync();
-
-        Assert.Equal(2, await global.ExamesComplementares.CountAsync());
-        var visivel = Assert.Single(await restrito.ExamesComplementares.ToListAsync());
-        Assert.Equal("A", visivel.Resultado);
-    }
-
-    [Fact]
-    public async Task Aptidao_PerfilRestrito_VeSoDaPropriaObra()
-    {
-        var (global, restrito) = CriarContextos();
-        var (deA, deB) = await SemearTrabalhadoresAsync(global);
-        global.AptidoesAtividadeEspecifica.AddRange(
-            new AptidaoAtividadeEspecifica { TrabalhadorId = deA.Id, AtividadeCritica = "Altura A" },
-            new AptidaoAtividadeEspecifica { TrabalhadorId = deB.Id, AtividadeCritica = "Altura B" });
-        await global.SaveChangesAsync();
-
-        Assert.Equal(2, await global.AptidoesAtividadeEspecifica.CountAsync());
-        var visivel = Assert.Single(await restrito.AptidoesAtividadeEspecifica.ToListAsync());
-        Assert.Equal("Altura A", visivel.AtividadeCritica);
-    }
-
-    [Fact]
-    public async Task Treinamento_PerfilRestrito_VeSoDaPropriaObra()
-    {
-        var (global, restrito) = CriarContextos();
-        var (deA, deB) = await SemearTrabalhadoresAsync(global);
-        var curso = new CursoTreinamento { Nome = "NR-35" };
-        global.CursosTreinamento.Add(curso);
-        await global.SaveChangesAsync();
-        global.Treinamentos.AddRange(
-            new Treinamento { TrabalhadorId = deA.Id, CursoTreinamentoId = curso.Id, NumeroCertificado = "A" },
-            new Treinamento { TrabalhadorId = deB.Id, CursoTreinamentoId = curso.Id, NumeroCertificado = "B" });
-        await global.SaveChangesAsync();
-
-        Assert.Equal(2, await global.Treinamentos.CountAsync());
-        var visivel = Assert.Single(await restrito.Treinamentos.ToListAsync());
-        Assert.Equal("A", visivel.NumeroCertificado);
     }
 
     [Fact]
@@ -126,28 +67,5 @@ public class EscopoPorObraDemaisRegistrosTests
         Assert.Equal(ObraA, Assert.Single(await restrito.EstoquesEpc.ToListAsync()).ObraId);
         Assert.Equal(ObraA, Assert.Single(await restrito.InstalacoesEpc.ToListAsync()).ObraId);
         Assert.Equal(ObraA, Assert.Single(await restrito.EstoquesUniforme.ToListAsync()).ObraId);
-    }
-
-    // Trabalhador desligado vira Ativo = false. O filtro por obra de ASO/Treinamento navega até o
-    // Trabalhador; este teste fixa o comportamento esperado: quem tem acesso global continua vendo
-    // o histórico (ASO e certificado) de quem foi desligado.
-    [Fact]
-    public async Task AsoETreinamento_DeTrabalhadorDesligado_ContinuamVisiveisParaAcessoGlobal()
-    {
-        var (global, _) = CriarContextos();
-        var (deA, _) = await SemearTrabalhadoresAsync(global);
-        var curso = new CursoTreinamento { Nome = "NR-35" };
-        global.CursosTreinamento.Add(curso);
-        await global.SaveChangesAsync();
-        global.Asos.Add(new Aso { TrabalhadorId = deA.Id });
-        global.Treinamentos.Add(new Treinamento { TrabalhadorId = deA.Id, CursoTreinamentoId = curso.Id });
-        await global.SaveChangesAsync();
-
-        var trabalhador = await global.Trabalhadores.FirstAsync(t => t.Id == deA.Id);
-        trabalhador.Ativo = false;
-        await global.SaveChangesAsync();
-
-        Assert.Equal(1, await global.Asos.CountAsync());
-        Assert.Equal(1, await global.Treinamentos.CountAsync());
     }
 }

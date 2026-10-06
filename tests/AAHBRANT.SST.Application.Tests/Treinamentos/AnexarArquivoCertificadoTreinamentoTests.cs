@@ -14,21 +14,11 @@ public class AnexarArquivoCertificadoTreinamentoTests
     private static readonly byte[] PdfValido = { 0x25, 0x50, 0x44, 0x46, 0x01, 0x02 };
     private static readonly byte[] JpegValido = { 0xFF, 0xD8, 0xFF, 0x01, 0x02, 0x03 };
 
-    static AnexarArquivoCertificadoTreinamentoTests() => ChavesCpfDeTeste.Configurar();
-
     private static async Task<Guid> SemearTreinamentoAsync(Infrastructure.Persistencia.SstDbContext db)
     {
-        // Treinamento passou a ter filtro de obra via Trabalhador (auditoria 06/10/2026, A2): um
-        // treinamento sem trabalhador existente não é mais visível, então o teste precisa de um.
-        var funcao = new Funcao { Nome = "Pedreiro" };
-        var trabalhador = new Trabalhador { ObraId = Guid.NewGuid(), Funcao = funcao, Nome = "João", Cpf = "00000000001" };
-        db.Funcoes.Add(funcao);
-        db.Trabalhadores.Add(trabalhador);
-        await db.SaveChangesAsync();
-
         var treinamento = new Treinamento
         {
-            TrabalhadorId = trabalhador.Id,
+            TrabalhadorId = Guid.NewGuid(),
             CursoTreinamentoId = Guid.NewGuid(),
             DataRealizacao = new DateTime(2025, 3, 10),
             DataValidade = new DateTime(2027, 3, 10),
