@@ -23,6 +23,18 @@ public static class ResumoGraficosFiscalizacao
     private const string CorTrilho = "#eee9e2";
     private const string CorLinha = "#e4dfd6";
     private const string CorTextoSuave = "#6f6666";
+    private const string FundoInfo = "#e4eaf2";
+    private const string FundoOk = "#e0f0e6";
+    private const string FundoAtencao = "#f7ecd2";
+
+    // Ícones (viewBox 24, só traços) dos selos dos cards.
+    private const string IconeEscudo = "<path d=\"M12 3l7 3v5c0 5-3.2 8.2-7 10-3.8-1.8-7-5-7-10V6l7-3z\"/><path d=\"M9 12l2 2 4-4\"/>";
+    private const string IconePessoas = "<circle cx=\"9\" cy=\"8\" r=\"3\"/><path d=\"M3 20c0-3.3 2.7-6 6-6s6 2.7 6 6\"/><circle cx=\"17\" cy=\"9\" r=\"2.4\"/><path d=\"M17 14c2.5 0 4.5 2 4.5 4.5\"/>";
+    private const string IconeTroca = "<path d=\"M20 11a8 8 0 0 0-14.5-3.5L4 9\"/><path d=\"M4 4v5h5\"/><path d=\"M4 13a8 8 0 0 0 14.5 3.5L20 15\"/><path d=\"M20 20v-5h-5\"/>";
+    private const string IconeDocumento = "<path d=\"M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z\"/><path d=\"M14 3v5h5\"/><path d=\"M9 14l2 2 4-4\"/>";
+
+    private static string IconeSvg(string caminhos, string cor) =>
+        $"<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"{cor}\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\">{caminhos}</svg>";
 
     // Mesmo limiar de PerfilGeralTab.tsx (DIAS_ALERTA_VENCIMENTO_EPI).
     public const int DiasAlertaVencimentoEpi = 30;
@@ -72,13 +84,13 @@ public static class ResumoGraficosFiscalizacao
             coluna.Item().Row(linha =>
             {
                 linha.Spacing(6);
-                linha.RelativeItem().Element(c => Card(c, "EPIs ativos", $"{episAtivos} {(episAtivos == 1 ? "item" : "itens")}", CorInfo));
+                linha.RelativeItem().Element(c => Card(c, "EPIs ativos", $"{episAtivos} {(episAtivos == 1 ? "item" : "itens")}", CorInfo, FundoInfo, IconeEscudo));
                 linha.RelativeItem().Element(c => Card(c, "Presença em DDS",
-                    percentualDds is null ? "—" : $"{assiduidade.TotalParticipados}/{assiduidade.TotalRealizados} ({percentualDds}%)", CorOk));
+                    percentualDds is null ? "—" : $"{assiduidade.TotalParticipados}/{assiduidade.TotalRealizados} ({percentualDds}%)", CorOk, FundoOk, IconePessoas));
                 linha.RelativeItem().Element(c => Card(c, "Trocas de EPI (ano)",
-                    $"{perfil.TrocasNoAno} {(perfil.TrocasNoAno == 1 ? "solicitação" : "solicitações")}", CorAtencao));
+                    $"{perfil.TrocasNoAno} {(perfil.TrocasNoAno == 1 ? "solicitação" : "solicitações")}", CorAtencao, FundoAtencao, IconeTroca));
                 linha.RelativeItem().Element(c => Card(c, "Treinamentos válidos",
-                    $"{treinamentosValidos} {(treinamentosValidos == 1 ? "curso" : "cursos")}", CorInfo));
+                    $"{treinamentosValidos} {(treinamentosValidos == 1 ? "curso" : "cursos")}", CorInfo, FundoInfo, IconeDocumento));
             });
 
             coluna.Item().Row(linha =>
@@ -144,31 +156,45 @@ public static class ResumoGraficosFiscalizacao
         });
     }
 
-    private static void Card(IContainer container, string rotulo, string valor, string cor)
+    // Mesmo padrão dos cards do app (Início / Pessoas): linha de destaque no topo, número grande,
+    // rótulo pequeno e ícone em selo colorido à direita.
+    private static void Card(IContainer container, string rotulo, string valor, string cor, string fundoSelo, string icone)
     {
         container.Border(0.7f).BorderColor(CorLinha).Column(col =>
         {
-            col.Item().Height(3).Background(cor);
-            col.Item().Padding(7).Column(c =>
+            col.Item().Height(2.5f).Background(CorMarca);
+            col.Item().Padding(7).Row(r =>
             {
-                c.Spacing(3);
-                c.Item().Text(rotulo).FontSize(8).FontColor(CorTextoSuave);
-                c.Item().Text(valor).FontSize(12).Bold();
+                r.RelativeItem().Column(c =>
+                {
+                    c.Spacing(2);
+                    c.Item().Text(valor).FontSize(11.5f).Bold();
+                    c.Item().Text(rotulo).FontSize(8).FontColor(CorTextoSuave);
+                });
+                r.ConstantItem(6);
+                r.ConstantItem(24).Height(24).Background(fundoSelo).Padding(5).Svg(IconeSvg(icone, cor));
             });
         });
     }
 
+    // Painel com barra de destaque ao lado do título e subtítulo, separador e corpo — igual aos
+    // cards de gráfico do app.
     private static void Painel(IContainer container, string titulo, string legenda, Action<IContainer> conteudo)
     {
-        container.Border(0.7f).BorderColor(CorLinha).Padding(8).Column(col =>
+        container.Border(0.7f).BorderColor(CorLinha).Column(col =>
         {
-            col.Spacing(6);
-            col.Item().Column(cab =>
+            col.Item().Padding(8).Row(cab =>
             {
-                cab.Item().Text(titulo).FontSize(10).Bold();
-                cab.Item().Text(legenda).FontSize(8).FontColor(CorTextoSuave);
+                cab.ConstantItem(2.5f).Background(CorMarca);
+                cab.ConstantItem(7);
+                cab.RelativeItem().Column(t =>
+                {
+                    t.Item().Text(titulo).FontSize(10).Bold();
+                    t.Item().Text(legenda).FontSize(8).FontColor(CorTextoSuave);
+                });
             });
-            col.Item().Element(conteudo);
+            col.Item().LineHorizontal(0.7f).LineColor(CorLinha);
+            col.Item().Padding(10).Element(conteudo);
         });
     }
 
@@ -196,29 +222,24 @@ public static class ResumoGraficosFiscalizacao
 
     private static void Rosca(IContainer container, string legendaCentral, int total, IReadOnlyList<FatiaRosca> fatias)
     {
-        container.Row(linha =>
+        container.Column(coluna =>
         {
-            linha.Spacing(10);
-            linha.ConstantItem(86).Height(86).Layers(camadas =>
+            coluna.Spacing(8);
+            coluna.Item().AlignCenter().Width(104).Height(104).Layers(camadas =>
             {
                 camadas.Layer().Svg(GerarSvgRosca(fatias));
                 camadas.PrimaryLayer().AlignCenter().AlignMiddle().Column(c =>
                 {
-                    c.Item().AlignCenter().Text(total.ToString(CultureInfo.InvariantCulture)).FontSize(15).Bold();
-                    c.Item().AlignCenter().Text(legendaCentral).FontSize(6.5f).FontColor(CorTextoSuave);
+                    c.Item().AlignCenter().Text(total.ToString(CultureInfo.InvariantCulture)).FontSize(17).Bold();
+                    c.Item().AlignCenter().Text(legendaCentral).FontSize(7).FontColor(CorTextoSuave);
                 });
             });
-            linha.RelativeItem().AlignMiddle().Column(c =>
+            coluna.Item().AlignCenter().Text(t =>
             {
-                c.Spacing(4);
-                foreach (var fatia in fatias)
+                for (var i = 0; i < fatias.Count; i++)
                 {
-                    c.Item().Row(r =>
-                    {
-                        r.ConstantItem(8).PaddingTop(2).Height(8).Background(fatia.Cor);
-                        r.ConstantItem(5);
-                        r.RelativeItem().Text($"{fatia.Rotulo}: {fatia.Valor}").FontSize(9);
-                    });
+                    if (i > 0) t.Span("   ");
+                    t.Span($"• {fatias[i].Rotulo}: {fatias[i].Valor}").FontSize(8.5f).SemiBold().FontColor(fatias[i].Cor);
                 }
             });
         });

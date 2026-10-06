@@ -55,7 +55,7 @@ public class RelatorioFiscalizacaoPdfService : IRelatorioFiscalizacaoPdfService
                     // Cards e gráficos do perfil (mesmos números da aba Geral do app).
                     coluna.Item().PaddingTop(6).Element(c => ResumoGraficosFiscalizacao.Desenhar(c, perfil, HorarioBrasilia.Agora));
 
-                    coluna.Item().PaddingTop(6).Text("ASO — Atestado de Saúde Ocupacional").FontSize(13).Bold().FontColor(CorMarca);
+                    coluna.Item().PaddingTop(6).EnsureSpace(120).Text("ASO — Atestado de Saúde Ocupacional").FontSize(13).Bold().FontColor(CorMarca);
                     if (perfil.Asos.Count == 0)
                         coluna.Item().Text("Nenhum ASO registrado.").Italic();
                     else
