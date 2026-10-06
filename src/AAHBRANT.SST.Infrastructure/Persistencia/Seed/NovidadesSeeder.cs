@@ -861,6 +861,17 @@ public static class NovidadesSeeder
                     "Depois de excluir uma inspeção em andamento, abrir uma nova inspeção do mesmo veículo ou alojamento mostrava \"Ocorreu um erro inesperado\".",
                     "A inspeção excluída deixa de ocupar a vaga e a nova inspeção abre normalmente."),
             }),
+        new(
+            Versao: "5.43.0",
+            Titulo: "Cards e gráficos no relatório de fiscalização",
+            DataPublicacao: new DateTime(2026, 10, 6, 0, 0, 0, DateTimeKind.Utc),
+            Itens: new[]
+            {
+                new NovidadeSeedItem(CategoriaNovidade.Melhoria,
+                    "Cards e gráficos do funcionário no relatório de fiscalização (PDF)",
+                    "O relatório de fiscalização trazia só textos e listas, sem os cards e gráficos que aparecem no perfil do funcionário.",
+                    "O PDF agora tem uma seção de resumo logo depois dos dados gerais, com os cards (EPIs ativos, presença em DDS, trocas de EPI no ano e treinamentos válidos) e os gráficos de status dos EPIs, assiduidade em DDS, motivo das trocas e frequência de trocas por EPI."),
+            }),
     };
 
     public static async Task ExecutarAsync(IServiceProvider services, CancellationToken ct = default)
