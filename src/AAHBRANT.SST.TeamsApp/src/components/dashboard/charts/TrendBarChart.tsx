@@ -10,9 +10,10 @@ export interface PontoTendencia {
 interface TrendBarChartProps {
   dados: PontoTendencia[];
   cor?: string;
+  rotuloSerie?: string;
 }
 
-export function TrendBarChart({ dados, cor = designTokens.colorWarning }: TrendBarChartProps) {
+export function TrendBarChart({ dados, cor = designTokens.colorWarning, rotuloSerie = 'Ocorrências' }: TrendBarChartProps) {
   return (
     <motion.div
       initial={{ opacity: 0, y: 10 }}
@@ -24,7 +25,7 @@ export function TrendBarChart({ dados, cor = designTokens.colorWarning }: TrendB
         <BarChart data={dados} margin={{ top: 16, right: 8, bottom: 0, left: 0 }} barCategoryGap="30%">
           <CartesianGrid vertical={false} stroke={designTokens.colorCardBorder} />
           <XAxis dataKey="rotulo" tickLine={false} axisLine={false} fontSize={11} />
-          <Tooltip formatter={(valor: unknown) => [String(valor), 'Ocorrências']} />
+          <Tooltip formatter={(valor: unknown) => [String(valor), rotuloSerie]} />
           <Bar dataKey="valor" fill={cor} radius={[4, 4, 0, 0]} maxBarSize={36} isAnimationActive animationDuration={700}>
             <LabelList dataKey="valor" position="top" fontSize={12} fontWeight={700} fill={designTokens.colorNeutralDark} />
           </Bar>
