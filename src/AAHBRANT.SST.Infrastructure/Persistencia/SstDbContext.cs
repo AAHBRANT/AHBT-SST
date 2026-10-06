@@ -244,6 +244,24 @@ public class SstDbContext : DbContext, IAppDbContext
         // restrito à obra A lia os ASOs de todas as obras. Mesmo padrão de AcidenteFoto/DdsFuncionarioSelecionado.
         modelBuilder.Entity<Aso>().HasQueryFilter(a =>
             a.Ativo && (_usuarioAtual.TemAcessoGlobal || _usuarioAtual.ObrasPermitidas.Contains(a.Trabalhador!.ObraId)));
+        // Demais registros de saúde/treinamento que dependem do Trabalhador (dado clínico e
+        // certificados) e os que já têm ObraId próprio. Auditoria 06/10/2026 (A2), mesmo padrão do Aso.
+        modelBuilder.Entity<ExameComplementar>().HasQueryFilter(e =>
+            e.Ativo && (_usuarioAtual.TemAcessoGlobal || _usuarioAtual.ObrasPermitidas.Contains(e.Trabalhador!.ObraId)));
+        modelBuilder.Entity<AptidaoAtividadeEspecifica>().HasQueryFilter(a =>
+            a.Ativo && (_usuarioAtual.TemAcessoGlobal || _usuarioAtual.ObrasPermitidas.Contains(a.Trabalhador!.ObraId)));
+        modelBuilder.Entity<Treinamento>().HasQueryFilter(t =>
+            t.Ativo && (_usuarioAtual.TemAcessoGlobal || _usuarioAtual.ObrasPermitidas.Contains(t.Trabalhador!.ObraId)));
+        modelBuilder.Entity<SessaoTreinamento>().HasQueryFilter(s =>
+            s.Ativo && (_usuarioAtual.TemAcessoGlobal || _usuarioAtual.ObrasPermitidas.Contains(s.ObraId)));
+        modelBuilder.Entity<Contrato>().HasQueryFilter(c =>
+            c.Ativo && (_usuarioAtual.TemAcessoGlobal || _usuarioAtual.ObrasPermitidas.Contains(c.ObraId)));
+        modelBuilder.Entity<InstalacaoEpc>().HasQueryFilter(i =>
+            i.Ativo && (_usuarioAtual.TemAcessoGlobal || _usuarioAtual.ObrasPermitidas.Contains(i.ObraId)));
+        modelBuilder.Entity<EstoqueEpc>().HasQueryFilter(e =>
+            e.Ativo && (_usuarioAtual.TemAcessoGlobal || _usuarioAtual.ObrasPermitidas.Contains(e.ObraId)));
+        modelBuilder.Entity<EstoqueUniforme>().HasQueryFilter(e =>
+            e.Ativo && (_usuarioAtual.TemAcessoGlobal || _usuarioAtual.ObrasPermitidas.Contains(e.ObraId)));
 
         // ExameComplementar/AptidaoAtividadeEspecifica/EntregaEpi e filhos de entidades escopadas
         // dependem de navegação por Trabalhador/Estoque/Membro/Reunião. Mantêm a proteção nos
