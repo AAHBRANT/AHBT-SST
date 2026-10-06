@@ -202,7 +202,12 @@ public class AzureFaceAutenticacaoStrategy : IAutenticacaoFacialService
         if (trabalhador is null)
             return new ResultadoIdentificacaoFacial(false, null, MotivoRejeicaoFacial.RostoNaoReconhecido, candidato.Confidence);
 
-        var resultado = new ResultadoAutenticacaoAssinatura(trabalhador.Id, MetodoAutenticacaoAssinatura.ReconhecimentoFacial);
+        // Rastro da validação para o log de assinaturas: modelo real do grupo (lido do Azure), grupo e
+        // id da requisição. Nunca bloqueia a assinatura: se não vier, o log mostra "não informado".
+        var modelo = await ObterModeloReconhecimentoDoGrupoAsync(cliente, obra.AzureFacePersonGroupId, ct);
+        var resultado = new ResultadoAutenticacaoAssinatura(
+            trabalhador.Id, MetodoAutenticacaoAssinatura.ReconhecimentoFacial,
+            ValidacaoModelo: modelo, ValidacaoGrupoId: obra.AzureFacePersonGroupId, ValidacaoRequisicaoId: candidato.RequisicaoId);
         return new ResultadoIdentificacaoFacial(true, resultado, null, candidato.Confidence);
     }
 
@@ -306,7 +311,45 @@ public class AzureFaceAutenticacaoStrategy : IAutenticacaoFacialService
         }
         var resultados = await resposta.Content.ReadFromJsonAsync<List<IdentificacaoResposta>>(cancellationToken: ct);
         var candidato = resultados?.FirstOrDefault()?.Candidates.FirstOrDefault();
-        return candidato is null ? null : new CandidatoIdentificacao(candidato.PersonId, candidato.Confidence);
+        return candidato is null ? null : new CandidatoIdentificacao(candidato.PersonId, candidato.Confidence, LerIdRequisicao(resposta));
+    }
+
+    // O Face API devolve o identificador da chamada no cabeçalho apim-request-id (ou x-ms-request-id);
+    // é o que a Microsoft pede para localizar uma requisição.
+    private static string? LerIdRequisicao(HttpResponseMessage resposta)
+    {
+        foreach (var cabecalho in new[] { "apim-request-id", "x-ms-request-id" })
+            if (resposta.Headers.TryGetValues(cabecalho, out var valores) && valores.FirstOrDefault() is { Length: > 0 } valor)
+                return valor;
+        return null;
+    }
+
+    // O modelo que vale na identificação é o do grupo de pessoas (definido na criação do grupo), não o
+    // recognition_04 usado só na checagem de qualidade do cadastro. Consulta uma vez por grupo e guarda.
+    private static readonly System.Collections.Concurrent.ConcurrentDictionary<string, string> ModelosPorGrupo = new();
+
+    private static async Task<string?> ObterModeloReconhecimentoDoGrupoAsync(HttpClient cliente, string personGroupId, CancellationToken ct)
+    {
+        if (ModelosPorGrupo.TryGetValue(personGroupId, out var emCache)) return emCache;
+        try
+        {
+            var resposta = await cliente.GetAsync($"face/v1.0/persongroups/{personGroupId}", ct);
+            if (!resposta.IsSuccessStatusCode) return null;
+            var grupo = await resposta.Content.ReadFromJsonAsync<GrupoPessoasResposta>(cancellationToken: ct);
+            if (string.IsNullOrWhiteSpace(grupo?.RecognitionModel)) return null;
+            ModelosPorGrupo[personGroupId] = grupo.RecognitionModel;
+            return grupo.RecognitionModel;
+        }
+        catch
+        {
+            return null;
+        }
+    }
+
+    private class GrupoPessoasResposta
+    {
+        [JsonPropertyName("recognitionModel")]
+        public string? RecognitionModel { get; set; }
     }
 
     private static async Task<AzureFaceErro> LerErroAzureAsync(HttpResponseMessage resposta, CancellationToken ct)
@@ -330,7 +373,7 @@ public class AzureFaceAutenticacaoStrategy : IAutenticacaoFacialService
     private static string MontarMensagemErroAzure(string contexto, AzureFaceErro erro)
         => $"{contexto}: {erro.Status} ({erro.Code}: {erro.Message})";
 
-    private record CandidatoIdentificacao(string PersonId, double Confidence);
+    private record CandidatoIdentificacao(string PersonId, double Confidence, string? RequisicaoId = null);
     private record AzureFaceErro(string Status, string Code, string Message);
 
     private class AzureFaceErroResposta

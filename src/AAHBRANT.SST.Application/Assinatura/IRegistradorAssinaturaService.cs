@@ -14,8 +14,10 @@ namespace AAHBRANT.SST.Application.Assinatura;
 // removidos do sistema (decisão do usuário: único método de assinatura é o Futronic FS80H) — o
 // record continua compartilhado pelas estratégias que restaram (Futronic, sessão logada).
 // DispositivoAgenteId alimenta o log de assinaturas: qual leitor identificou a digital.
+// ValidacaoModelo/GrupoId/RequisicaoId: rastro da validação feita pelo Azure AI Face (assinatura facial).
 public record ResultadoAutenticacaoAssinatura(
-    Guid TrabalhadorId, MetodoAutenticacaoAssinatura Metodo, Guid? DispositivoAgenteId = null);
+    Guid TrabalhadorId, MetodoAutenticacaoAssinatura Metodo, Guid? DispositivoAgenteId = null,
+    string? ValidacaoModelo = null, string? ValidacaoGrupoId = null, string? ValidacaoRequisicaoId = null);
 
 // Geolocalização declarada pelo aparelho no momento da assinatura (log de assinaturas da Ficha de EPI).
 public record LocalizacaoAssinatura(StatusLocalizacaoAssinatura Status, double? Latitude = null, double? Longitude = null, double? PrecisaoMetros = null)
@@ -130,6 +132,9 @@ public class RegistradorAssinaturaService : IRegistradorAssinaturaService
             IpAddress = string.IsNullOrWhiteSpace(ipAddress) ? _clienteIp?.ObterIp() : ipAddress,
             DispositivoAgenteId = resultado.DispositivoAgenteId,
             UserAgent = Truncar(_clienteIp?.ObterUserAgent(), 300),
+            ValidacaoModelo = Truncar(resultado.ValidacaoModelo, 60),
+            ValidacaoGrupoId = Truncar(resultado.ValidacaoGrupoId, 80),
+            ValidacaoRequisicaoId = Truncar(resultado.ValidacaoRequisicaoId, 80),
         };
         var local = (localizacao ?? new LocalizacaoAssinatura(StatusLocalizacaoAssinatura.NaoInformada)).Normalizada();
         signatario.LocalizacaoStatus = local.Status;

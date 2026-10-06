@@ -211,6 +211,51 @@ public class AzureFaceAutenticacaoStrategyTests
         Assert.Equal(MetodoAutenticacaoAssinatura.ReconhecimentoFacial, resultado.Resultado.Metodo);
     }
 
+    // Rastro da validação para o log de assinaturas: modelo real do grupo (lido do Azure, não o
+    // recognition_04 da checagem de qualidade), grupo da obra e id da requisição do Azure.
+    [Fact]
+    public async Task IdentificarAsync_Aceita_GuardaModeloDoGrupoGrupoEIdDaRequisicao()
+    {
+        var db = CriarDb(nameof(IdentificarAsync_Aceita_GuardaModeloDoGrupoGrupoEIdDaRequisicao));
+        var obra = new Obra
+        {
+            Codigo = "OB1", Nome = "Obra Teste",
+            MetodosAutenticacaoHabilitados = MetodoAutenticacaoObra.ReconhecimentoFacial,
+            AzureFacePersonGroupId = "obra-rastro",
+        };
+        db.Obras.Add(obra);
+        await db.SaveChangesAsync();
+        db.Trabalhadores.Add(new Trabalhador
+        {
+            ObraId = obra.Id, Nome = "Fulano", Cpf = "12345678901", DataAdmissao = DateTime.UtcNow, AzureFacePersonId = "person-1",
+        });
+        await db.SaveChangesAsync();
+
+        var factory = new HttpClientFactoryFalso(req =>
+        {
+            var caminho = req.RequestUri!.AbsolutePath;
+            if (caminho.EndsWith("/detect"))
+                return Json(new[] { new { faceId = "face-1" } });
+            if (caminho.EndsWith("/identify"))
+            {
+                var identificacao = Json(new[] { new { faceId = "face-1", candidates = new[] { new { personId = "person-1", confidence = 0.95 } } } });
+                identificacao.Headers.Add("apim-request-id", "7f3c91ae-0000-4b1f-9c2d-aaaaaaaab204");
+                return identificacao;
+            }
+            if (caminho.EndsWith("/persongroups/obra-rastro"))
+                return Json(new { personGroupId = "obra-rastro", recognitionModel = "recognition_03" });
+            throw new InvalidOperationException("chamada inesperada: " + req.RequestUri);
+        });
+        var servico = new AzureFaceAutenticacaoStrategy(db, factory, Opcoes());
+
+        var resultado = await servico.IdentificarAsync(obra.Id, new byte[] { 1 }, default);
+
+        Assert.True(resultado.Aceito);
+        Assert.Equal("recognition_03", resultado.Resultado!.ValidacaoModelo);
+        Assert.Equal("obra-rastro", resultado.Resultado.ValidacaoGrupoId);
+        Assert.Equal("7f3c91ae-0000-4b1f-9c2d-aaaaaaaab204", resultado.Resultado.ValidacaoRequisicaoId);
+    }
+
     [Fact]
     public async Task CadastrarAsync_TrabalhadorSemConsentimento_LancaInvalidOperationException()
     {

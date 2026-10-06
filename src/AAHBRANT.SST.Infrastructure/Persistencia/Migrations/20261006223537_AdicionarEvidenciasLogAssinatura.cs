@@ -63,6 +63,27 @@ namespace AAHBRANT.SST.Infrastructure.Persistencia.Migrations
                 maxLength: 300,
                 nullable: true);
 
+            migrationBuilder.AddColumn<string>(
+                name: "ValidacaoGrupoId",
+                table: "DocumentoSignatarios",
+                type: "nvarchar(80)",
+                maxLength: 80,
+                nullable: true);
+
+            migrationBuilder.AddColumn<string>(
+                name: "ValidacaoModelo",
+                table: "DocumentoSignatarios",
+                type: "nvarchar(60)",
+                maxLength: 60,
+                nullable: true);
+
+            migrationBuilder.AddColumn<string>(
+                name: "ValidacaoRequisicaoId",
+                table: "DocumentoSignatarios",
+                type: "nvarchar(80)",
+                maxLength: 80,
+                nullable: true);
+
             migrationBuilder.CreateIndex(
                 name: "IX_Inspecoes_AlojamentoId",
                 table: "Inspecoes",
@@ -115,6 +136,18 @@ namespace AAHBRANT.SST.Infrastructure.Persistencia.Migrations
 
             migrationBuilder.DropColumn(
                 name: "UserAgent",
+                table: "DocumentoSignatarios");
+
+            migrationBuilder.DropColumn(
+                name: "ValidacaoGrupoId",
+                table: "DocumentoSignatarios");
+
+            migrationBuilder.DropColumn(
+                name: "ValidacaoModelo",
+                table: "DocumentoSignatarios");
+
+            migrationBuilder.DropColumn(
+                name: "ValidacaoRequisicaoId",
                 table: "DocumentoSignatarios");
 
             migrationBuilder.CreateIndex(

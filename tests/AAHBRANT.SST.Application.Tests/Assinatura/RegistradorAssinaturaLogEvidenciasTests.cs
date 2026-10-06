@@ -64,6 +64,25 @@ public class RegistradorAssinaturaLogEvidenciasTests
     }
 
     [Fact]
+    public async Task RegistrarAsync_Facial_GravaRastroDaValidacaoAzure()
+    {
+        var (db, trabalhador, documento) = await PrepararAsync();
+        var servico = new RegistradorAssinaturaService(db, new AuditoriaServiceFalsa());
+
+        await servico.RegistrarAsync(
+            documento.Id,
+            new ResultadoAutenticacaoAssinatura(
+                trabalhador.Id, MetodoAutenticacaoAssinatura.ReconhecimentoFacial,
+                ValidacaoModelo: "recognition_03", ValidacaoGrupoId: "obra-x", ValidacaoRequisicaoId: "req-123"),
+            "10.0.0.1", CancellationToken.None);
+
+        var s = await db.DocumentoSignatarios.SingleAsync();
+        Assert.Equal("recognition_03", s.ValidacaoModelo);
+        Assert.Equal("obra-x", s.ValidacaoGrupoId);
+        Assert.Equal("req-123", s.ValidacaoRequisicaoId);
+    }
+
+    [Fact]
     public async Task RegistrarAsync_SemLocalizacaoInformada_FicaComoNaoInformada()
     {
         var (db, trabalhador, documento) = await PrepararAsync();
