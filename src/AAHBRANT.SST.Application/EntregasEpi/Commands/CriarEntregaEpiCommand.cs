@@ -56,6 +56,26 @@ public class CriarEntregaEpiCommandHandler : IRequestHandler<CriarEntregaEpiComm
         // if (!FuncaoSstClassifier.EhTecnicoSeguranca(trabalhador.Funcao?.Nome))
         //     await GarantirIntegracaoSegurancaAssinadaAsync(_db, request.TrabalhadorId, ct);
 
+        // Trava de NR-06 NO SERVIDOR (auditoria 06/10/2026, A1). Antes só a tela barrava: uma chamada
+        // direta à API entregava EPI sem NR-06 ou vencida, e a data/nº da lista que iam para a ficha
+        // vinham do cliente. Regra espelha EntregasTab.tsx: entre os treinamentos do curso marcado
+        // AtendeNr6 vale o de validade mais longe (não o de realização mais recente — certificado
+        // antigo lançado depois do novo não pode ofuscar o válido); vencido bloqueia; e a ficha
+        // sempre recebe os dados do treinamento cadastrado, nunca os do payload.
+        var treinamentoNr6 = await _db.Treinamentos
+            .Where(t => t.TrabalhadorId == request.TrabalhadorId
+                && t.CursoTreinamento != null && t.CursoTreinamento.AtendeNr6)
+            .OrderByDescending(t => t.DataValidade)
+            .Select(t => new { t.DataRealizacao, t.DataValidade, t.NumeroCertificado })
+            .FirstOrDefaultAsync(ct);
+        if (treinamentoNr6 is null)
+            throw new InvalidOperationException(
+                "Este funcionário não tem treinamento de NR-06 cadastrado — não é possível registrar a entrega de EPI. " +
+                "Lance o certificado em Treinamentos › Certificados (o curso precisa estar marcado como \"Habilita EPI (NR-06)\" no Catálogo).");
+        if (treinamentoNr6.DataValidade.Date < HojeBrasilia())
+            throw new InvalidOperationException(
+                $"O treinamento de NR-06 deste funcionário está vencido (validade {treinamentoNr6.DataValidade:dd/MM/yyyy}) — não é possível registrar a entrega de EPI.");
+
         // Bloqueio de entrega com CA vencido e de estoque insuficiente: decisões confirmadas com o
         // usuário — não apenas um aviso, a entrega não é registrada.
         if (catalogo.CertificadoAprovacaoValidade is not null && catalogo.CertificadoAprovacaoValidade < DateTime.UtcNow)
@@ -82,8 +102,9 @@ public class CriarEntregaEpiCommandHandler : IRequestHandler<CriarEntregaEpiComm
             Motivo = request.Motivo,
             Observacoes = request.Observacoes,
             MotivoTipo = request.MotivoTipo,
-            NumeroListaPresencaNr6 = request.NumeroListaPresencaNr6,
-            DataTreinamentoNr6 = request.DataTreinamentoNr6,
+            // Do treinamento cadastrado, ignorando o que veio no payload (a tela já envia os mesmos valores).
+            NumeroListaPresencaNr6 = treinamentoNr6.NumeroCertificado,
+            DataTreinamentoNr6 = treinamentoNr6.DataRealizacao,
         };
         _db.EntregasEpi.Add(entrega);
 
@@ -99,6 +120,18 @@ public class CriarEntregaEpiCommandHandler : IRequestHandler<CriarEntregaEpiComm
 
         await _db.SaveChangesAsync(ct);
         return entrega.Id;
+    }
+
+    // "Hoje" no fuso de Brasília: UtcNow.Date vira o dia seguinte às 21h e declararia vencido um
+    // treinamento que vence hoje. O id do fuso muda entre Windows e Linux (dev x contêiner).
+    private static DateTime HojeBrasilia()
+    {
+        foreach (var id in new[] { "America/Sao_Paulo", "E. South America Standard Time" })
+        {
+            try { return TimeZoneInfo.ConvertTimeFromUtc(DateTime.UtcNow, TimeZoneInfo.FindSystemTimeZoneById(id)).Date; }
+            catch (TimeZoneNotFoundException) { }
+        }
+        return DateTime.UtcNow.AddHours(-3).Date;
     }
 
     // Bloqueio pedido pelo usuário (21/09): sem a Integração de Segurança assinada, o trabalhador

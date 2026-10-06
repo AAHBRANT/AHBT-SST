@@ -29,7 +29,33 @@ public class CriarEntregaEpiCommandHandlerTests
         return new SstDbContext(options, new CurrentUserService());
     }
 
-    private static async Task<(Trabalhador trabalhador, CatalogoEpi catalogo)> CriarTrabalhadorECatalogoAsync(IAppDbContext db, string nomeFuncao = "Pedreiro")
+    // Treinamento de NR-06 válido por padrão: sem ele a entrega é barrada (trava no servidor).
+    private static async Task<CursoTreinamento> CriarCursoNr6Async(IAppDbContext db)
+    {
+        var curso = new CursoTreinamento { Nome = "NR-06 Uso de EPI", NormaReferencia = "NR-06", AtendeNr6 = true };
+        db.CursosTreinamento.Add(curso);
+        await db.SaveChangesAsync();
+        return curso;
+    }
+
+    private static async Task<Treinamento> AdicionarTreinamentoNr6Async(
+        IAppDbContext db, Guid trabalhadorId, CursoTreinamento curso, DateTime realizacao, DateTime validade, string? numero = "LP-001")
+    {
+        var t = new Treinamento
+        {
+            TrabalhadorId = trabalhadorId,
+            CursoTreinamentoId = curso.Id,
+            DataRealizacao = realizacao,
+            DataValidade = validade,
+            NumeroCertificado = numero,
+        };
+        db.Treinamentos.Add(t);
+        await db.SaveChangesAsync();
+        return t;
+    }
+
+    private static async Task<(Trabalhador trabalhador, CatalogoEpi catalogo)> CriarTrabalhadorECatalogoAsync(
+        IAppDbContext db, string nomeFuncao = "Pedreiro", bool comNr6 = true)
     {
         var funcao = new Funcao { Nome = nomeFuncao };
         var trabalhador = new Trabalhador { ObraId = Guid.NewGuid(), Funcao = funcao, Nome = "Carlos Eduardo", Cpf = "00000000000" };
@@ -39,6 +65,11 @@ public class CriarEntregaEpiCommandHandlerTests
         db.CatalogoEpis.Add(catalogo);
         db.EstoquesEpi.Add(new EstoqueEpi { CatalogoEpiId = catalogo.Id, ObraId = trabalhador.ObraId, Saldo = 10 });
         await db.SaveChangesAsync();
+        if (comNr6)
+        {
+            var curso = await CriarCursoNr6Async(db);
+            await AdicionarTreinamentoNr6Async(db, trabalhador.Id, curso, DateTime.UtcNow.AddMonths(-1), DateTime.UtcNow.AddYears(1));
+        }
         return (trabalhador, catalogo);
     }
 
@@ -311,5 +342,86 @@ public class CriarEntregaEpiCommandHandlerTests
         var id = await handler.Handle(ComandoPara(trabalhador, catalogo), default);
         // 02/10: só a NR-06 é exigida para entregar EPI; a Integração de Segurança não bloqueia mais.
         Assert.NotEqual(Guid.Empty, id);
+    }
+
+    // Trava de NR-06 no servidor (auditoria 06/10/2026, A1).
+    [Fact]
+    public async Task Handle_SemTreinamentoNr6_Bloqueia()
+    {
+        var db = CriarDb(nameof(Handle_SemTreinamentoNr6_Bloqueia));
+        var (trabalhador, catalogo) = await CriarTrabalhadorECatalogoAsync(db, comNr6: false);
+        var handler = new CriarEntregaEpiCommandHandler(db);
+
+        var ex = await Assert.ThrowsAsync<InvalidOperationException>(() => handler.Handle(ComandoPara(trabalhador, catalogo), default));
+
+        Assert.Contains("NR-06", ex.Message);
+        Assert.Empty(await db.EntregasEpi.ToListAsync());
+    }
+
+    [Fact]
+    public async Task Handle_Nr6Vencida_Bloqueia()
+    {
+        var db = CriarDb(nameof(Handle_Nr6Vencida_Bloqueia));
+        var (trabalhador, catalogo) = await CriarTrabalhadorECatalogoAsync(db, comNr6: false);
+        var curso = await CriarCursoNr6Async(db);
+        await AdicionarTreinamentoNr6Async(db, trabalhador.Id, curso, DateTime.UtcNow.AddYears(-3), DateTime.UtcNow.AddDays(-30));
+        var handler = new CriarEntregaEpiCommandHandler(db);
+
+        var ex = await Assert.ThrowsAsync<InvalidOperationException>(() => handler.Handle(ComandoPara(trabalhador, catalogo), default));
+
+        Assert.Contains("vencido", ex.Message);
+    }
+
+    [Fact]
+    public async Task Handle_CursoSemMarcadorAtendeNr6_Bloqueia()
+    {
+        var db = CriarDb(nameof(Handle_CursoSemMarcadorAtendeNr6_Bloqueia));
+        var (trabalhador, catalogo) = await CriarTrabalhadorECatalogoAsync(db, comNr6: false);
+        var outroCurso = new CursoTreinamento { Nome = "NR-35 Altura", NormaReferencia = "NR-35", AtendeNr6 = false };
+        db.CursosTreinamento.Add(outroCurso);
+        await db.SaveChangesAsync();
+        await AdicionarTreinamentoNr6Async(db, trabalhador.Id, outroCurso, DateTime.UtcNow.AddMonths(-1), DateTime.UtcNow.AddYears(1));
+        var handler = new CriarEntregaEpiCommandHandler(db);
+
+        await Assert.ThrowsAsync<InvalidOperationException>(() => handler.Handle(ComandoPara(trabalhador, catalogo), default));
+    }
+
+    [Fact]
+    public async Task Handle_VenceHojeNoFusoDeBrasilia_AindaLibera()
+    {
+        var db = CriarDb(nameof(Handle_VenceHojeNoFusoDeBrasilia_AindaLibera));
+        var (trabalhador, catalogo) = await CriarTrabalhadorECatalogoAsync(db, comNr6: false);
+        var curso = await CriarCursoNr6Async(db);
+        // Validade = hoje em Brasília (UtcNow - 3h): depois das 21h BRT o UtcNow.Date já é amanhã.
+        await AdicionarTreinamentoNr6Async(db, trabalhador.Id, curso, DateTime.UtcNow.AddYears(-1), DateTime.UtcNow.AddHours(-3).Date);
+        var handler = new CriarEntregaEpiCommandHandler(db);
+
+        var id = await handler.Handle(ComandoPara(trabalhador, catalogo), default);
+
+        Assert.NotEqual(Guid.Empty, id);
+    }
+
+    [Fact]
+    public async Task Handle_VariasNr6_UsaValidadeMaisLongaEIgnoraPayload()
+    {
+        var db = CriarDb(nameof(Handle_VariasNr6_UsaValidadeMaisLongaEIgnoraPayload));
+        var (trabalhador, catalogo) = await CriarTrabalhadorECatalogoAsync(db, comNr6: false);
+        var curso = await CriarCursoNr6Async(db);
+        var realizacaoValida = DateTime.UtcNow.AddMonths(-2).Date;
+        // Certificado antigo (vencido) lançado DEPOIS do novo não pode ofuscar o válido.
+        await AdicionarTreinamentoNr6Async(db, trabalhador.Id, curso, realizacaoValida, DateTime.UtcNow.AddYears(1), "LP-VALIDA");
+        await AdicionarTreinamentoNr6Async(db, trabalhador.Id, curso, DateTime.UtcNow.AddYears(-5), DateTime.UtcNow.AddYears(-3), "LP-ANTIGA");
+        var handler = new CriarEntregaEpiCommandHandler(db);
+        var comando = ComandoPara(trabalhador, catalogo) with
+        {
+            NumeroListaPresencaNr6 = "FORJADO",
+            DataTreinamentoNr6 = new DateTime(2000, 1, 1),
+        };
+
+        var id = await handler.Handle(comando, default);
+
+        var entrega = await db.EntregasEpi.FirstAsync(e => e.Id == id);
+        Assert.Equal("LP-VALIDA", entrega.NumeroListaPresencaNr6);
+        Assert.Equal(realizacaoValida, entrega.DataTreinamentoNr6);
     }
 }
