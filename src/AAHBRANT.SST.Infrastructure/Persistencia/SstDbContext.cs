@@ -239,6 +239,11 @@ public class SstDbContext : DbContext, IAppDbContext
             a.Ativo && (_usuarioAtual.TemAcessoGlobal || _usuarioAtual.ObrasPermitidas.Contains(a.ObraId)));
         modelBuilder.Entity<Veiculo>().HasQueryFilter(v =>
             v.Ativo && (_usuarioAtual.TemAcessoGlobal || _usuarioAtual.ObrasPermitidas.Contains(v.ObraId)));
+        // ASO carrega dado clínico (médico, CRM, observações): o escopo vem da obra do Trabalhador,
+        // porque o ASO não tem ObraId próprio. Auditoria 06/10/2026 (A2) — antes, um perfil
+        // restrito à obra A lia os ASOs de todas as obras. Mesmo padrão de AcidenteFoto/DdsFuncionarioSelecionado.
+        modelBuilder.Entity<Aso>().HasQueryFilter(a =>
+            a.Ativo && (_usuarioAtual.TemAcessoGlobal || _usuarioAtual.ObrasPermitidas.Contains(a.Trabalhador!.ObraId)));
 
         // ExameComplementar/AptidaoAtividadeEspecifica/EntregaEpi e filhos de entidades escopadas
         // dependem de navegação por Trabalhador/Estoque/Membro/Reunião. Mantêm a proteção nos
