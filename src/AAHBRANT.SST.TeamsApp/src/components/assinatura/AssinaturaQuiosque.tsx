@@ -101,6 +101,7 @@ export function AssinaturaQuiosque({ entidadeTipo, entidadeId, obraId }: Assinat
         dispositivoLocal.segredoDispositivo,
         captura.trabalhadorId,
         captura.score,
+        captura.imagemPng,
       );
       setUltimoAssinante(signatario.trabalhadorNome);
       tocarBipeAssinaturaAceita();

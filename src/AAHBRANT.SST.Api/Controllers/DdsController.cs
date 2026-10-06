@@ -56,7 +56,7 @@ public class DdsController : ControllerBase
     [HttpPost("{id:guid}/participantes")]
     public async Task<IActionResult> RegistrarParticipante(Guid id, RegistrarParticipanteRequestBody body, CancellationToken ct)
     {
-        var command = new RegistrarParticipanteCommand(id, body.TrabalhadorId, body.DispositivoId, body.SegredoDispositivo, body.Score);
+        var command = new RegistrarParticipanteCommand(id, body.TrabalhadorId, body.DispositivoId, body.SegredoDispositivo, body.Score, body.ImagemDigital);
         var participanteId = await _mediator.Send(command, ct);
         return Ok(new { id = participanteId });
     }
@@ -164,6 +164,8 @@ public class RegistrarParticipanteRequestBody
     public Guid DispositivoId { get; set; }
     public string SegredoDispositivo { get; set; } = string.Empty;
     public double Score { get; set; }
+    // PNG da digital lida (base64 no JSON), guardado como evidência visual da assinatura.
+    public byte[]? ImagemDigital { get; set; }
 }
 
 public class AnexarFotoEvidenciaDdsRequestBody

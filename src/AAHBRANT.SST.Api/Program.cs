@@ -50,6 +50,8 @@ builder.Services.AddAuthorization();
 builder.Services.AddSingleton<IAuthorizationPolicyProvider, PermissaoAuthorizationPolicyProvider>();
 builder.Services.AddScoped<IAuthorizationHandler, PermissaoAuthorizationHandler>();
 builder.Services.AddScoped<IUsuarioAtualResolver, UsuarioAtualResolver>();
+builder.Services.AddHttpContextAccessor();
+builder.Services.AddScoped<AAHBRANT.SST.Application.Common.Interfaces.IClienteIpProvider, ClienteIpProvider>();
 // ICurrentUserService (camada 3 do RBAC) é registrado em AddInfrastructure — ver EscopoPorObraMiddleware.
 
 builder.Services.AddControllers();

@@ -11,6 +11,8 @@ export interface DispositivoLocal {
 export interface CapturaLocal {
   trabalhadorId: string;
   score: number;
+  // PNG (base64) da impressão lida pelo leitor — enviado junto da assinatura como evidência visual.
+  imagemPng?: string | null;
 }
 
 async function requisitarAgenteLocal<T>(caminho: string, init?: RequestInit): Promise<T> {

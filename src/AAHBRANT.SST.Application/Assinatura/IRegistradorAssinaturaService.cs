@@ -36,10 +36,13 @@ public class RegistradorAssinaturaService : IRegistradorAssinaturaService
     private readonly IAppDbContext _db;
     private readonly IAuditoriaService _auditoria;
 
-    public RegistradorAssinaturaService(IAppDbContext db, IAuditoriaService auditoria)
+    private readonly IClienteIpProvider? _clienteIp;
+
+    public RegistradorAssinaturaService(IAppDbContext db, IAuditoriaService auditoria, IClienteIpProvider? clienteIp = null)
     {
         _db = db;
         _auditoria = auditoria;
+        _clienteIp = clienteIp;
     }
 
     public async Task<DocumentoSignatarioDto> RegistrarAsync(
@@ -105,9 +108,13 @@ public class RegistradorAssinaturaService : IRegistradorAssinaturaService
             MetodoAutenticacao = resultado.Metodo,
             Papel = papel,
             AssinadoEm = DateTime.UtcNow,
-            IpAddress = ipAddress,
+            // Se o chamador não repassou o IP (presença no DDS, encerramento de turma...), usa o da
+            // requisição em andamento: o IP é parte da evidência e não pode ficar em branco.
+            IpAddress = string.IsNullOrWhiteSpace(ipAddress) ? _clienteIp?.ObterIp() : ipAddress,
         };
-        if (resultado.Metodo == MetodoAutenticacaoAssinatura.ReconhecimentoFacial && fotoEvidenciaConteudo is { Length: > 0 })
+        // Evidência visual: foto do rosto (facial) ou imagem da impressão lida pelo leitor (digital).
+        if (resultado.Metodo is MetodoAutenticacaoAssinatura.ReconhecimentoFacial or MetodoAutenticacaoAssinatura.Biometria
+            && fotoEvidenciaConteudo is { Length: > 0 })
         {
             signatario.FotoEvidenciaConteudo = fotoEvidenciaConteudo;
             signatario.FotoEvidenciaContentType = string.IsNullOrWhiteSpace(fotoEvidenciaContentType)

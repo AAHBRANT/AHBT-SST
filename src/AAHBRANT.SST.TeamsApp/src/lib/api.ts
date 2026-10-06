@@ -4893,10 +4893,10 @@ export const api = {
     // Presença exclusivamente por biometria (2026-08-31, pedido do usuário) — dispositivoId/
     // segredoDispositivo vêm do agente local (fetch a /api/dispositivo), nunca de localStorage;
     // score é o resultado do match 1:N já feito pelo agente (ver capturarDigitalLocal).
-    registrarParticipante: (ddsId: string, trabalhadorId: string, dispositivoId: string, segredoDispositivo: string, score: number) =>
+    registrarParticipante: (ddsId: string, trabalhadorId: string, dispositivoId: string, segredoDispositivo: string, score: number, imagemDigital?: string | null) =>
       request<{ id: string }>(`/api/dds/${ddsId}/participantes`, {
         method: 'POST',
-        body: JSON.stringify({ trabalhadorId, dispositivoId, segredoDispositivo, score }),
+        body: JSON.stringify({ trabalhadorId, dispositivoId, segredoDispositivo, score, imagemDigital: imagemDigital ?? null }),
       }),
     // Presença por reconhecimento facial: a foto é identificada no servidor (grupo da obra do DDS) e o
     // rosto precisa ser do funcionário informado. Erros de rejeição vêm como { erro, motivo } no corpo.
@@ -5006,10 +5006,10 @@ export const api = {
       request<DocumentoSignatario>(`/api/documentos/${documentoId}/assinar/sessao`, { method: 'POST' }),
     // Autenticação via biometria digital local (Futronic FS80H) — dispositivoId/segredoDispositivo
     // vêm do agente local (fetch a /api/dispositivo), nunca de localStorage.
-    autenticarBiometriaLocal: (documentoId: string, dispositivoId: string, segredoDispositivo: string, trabalhadorId: string, score: number) =>
+    autenticarBiometriaLocal: (documentoId: string, dispositivoId: string, segredoDispositivo: string, trabalhadorId: string, score: number, imagemDigital?: string | null) =>
       request<DocumentoSignatario>(`/api/documentos/${documentoId}/autenticacao/biometria-local`, {
         method: 'POST',
-        body: JSON.stringify({ dispositivoId, segredoDispositivo, trabalhadorId, score }),
+        body: JSON.stringify({ dispositivoId, segredoDispositivo, trabalhadorId, score, imagemDigital: imagemDigital ?? null }),
       }),
     // Assinatura via reconhecimento facial (Azure Face API) — multipart e offline-aware, mesmo
     // padrão de anexarFotoEvidencia (DDS): syncMutateMultipart enfileira sozinho se faltar conexão.

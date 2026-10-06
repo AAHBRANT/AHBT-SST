@@ -174,6 +174,7 @@ export function AssinaturaEntregaEpiLoteDialog({
           dispositivoLocal.segredoDispositivo,
           captura.trabalhadorId,
           captura.score,
+          captura.imagemPng,
         );
         nome = signatario.trabalhadorNome;
       }
