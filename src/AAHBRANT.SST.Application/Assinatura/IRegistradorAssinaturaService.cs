@@ -13,7 +13,24 @@ namespace AAHBRANT.SST.Application.Assinatura;
 // Movido de IAutenticacaoAssinaturaService.cs (31/08) quando PIN/crachá-QR e WebAuthn/FIDO2 foram
 // removidos do sistema (decisão do usuário: único método de assinatura é o Futronic FS80H) — o
 // record continua compartilhado pelas estratégias que restaram (Futronic, sessão logada).
-public record ResultadoAutenticacaoAssinatura(Guid TrabalhadorId, MetodoAutenticacaoAssinatura Metodo);
+// DispositivoAgenteId alimenta o log de assinaturas: qual leitor identificou a digital.
+// ValidacaoModelo/GrupoId/RequisicaoId: rastro da validação feita pelo Azure AI Face (assinatura facial).
+public record ResultadoAutenticacaoAssinatura(
+    Guid TrabalhadorId, MetodoAutenticacaoAssinatura Metodo, Guid? DispositivoAgenteId = null,
+    string? ValidacaoModelo = null, string? ValidacaoGrupoId = null, string? ValidacaoRequisicaoId = null);
+
+// Geolocalização declarada pelo aparelho no momento da assinatura (log de assinaturas da Ficha de EPI).
+public record LocalizacaoAssinatura(StatusLocalizacaoAssinatura Status, double? Latitude = null, double? Longitude = null, double? PrecisaoMetros = null)
+{
+    // Aceita só coordenadas plausíveis; o resto vira "indisponível" em vez de gravar lixo como se fosse prova.
+    public LocalizacaoAssinatura Normalizada()
+    {
+        if (Status != StatusLocalizacaoAssinatura.Capturada) return this with { Latitude = null, Longitude = null, PrecisaoMetros = null };
+        var valida = Latitude is >= -90 and <= 90 && Longitude is >= -180 and <= 180
+            && (PrecisaoMetros is null || PrecisaoMetros >= 0);
+        return valida ? this : new LocalizacaoAssinatura(StatusLocalizacaoAssinatura.Indisponivel);
+    }
+}
 
 // Extraído de RegistrarAssinaturaCommandHandler na etapa 13: gravar o DocumentoSignatario + trilha de
 // auditoria é idêntico não importa qual estratégia autenticou o trabalhador, só muda como o
@@ -28,7 +45,8 @@ public interface IRegistradorAssinaturaService
         CancellationToken ct,
         byte[]? fotoEvidenciaConteudo = null,
         string? fotoEvidenciaContentType = null,
-        PapelAssinatura? papel = null);
+        PapelAssinatura? papel = null,
+        LocalizacaoAssinatura? localizacao = null);
 }
 
 public class RegistradorAssinaturaService : IRegistradorAssinaturaService
@@ -52,7 +70,8 @@ public class RegistradorAssinaturaService : IRegistradorAssinaturaService
         CancellationToken ct,
         byte[]? fotoEvidenciaConteudo = null,
         string? fotoEvidenciaContentType = null,
-        PapelAssinatura? papel = null)
+        PapelAssinatura? papel = null,
+        LocalizacaoAssinatura? localizacao = null)
     {
         var documento = await _db.DocumentosAssinatura.FirstOrDefaultAsync(d => d.Id == documentoAssinaturaId, ct);
         if (documento is null)
@@ -111,7 +130,17 @@ public class RegistradorAssinaturaService : IRegistradorAssinaturaService
             // Se o chamador não repassou o IP (presença no DDS, encerramento de turma...), usa o da
             // requisição em andamento: o IP é parte da evidência e não pode ficar em branco.
             IpAddress = string.IsNullOrWhiteSpace(ipAddress) ? _clienteIp?.ObterIp() : ipAddress,
+            DispositivoAgenteId = resultado.DispositivoAgenteId,
+            UserAgent = Truncar(_clienteIp?.ObterUserAgent(), 300),
+            ValidacaoModelo = Truncar(resultado.ValidacaoModelo, 60),
+            ValidacaoGrupoId = Truncar(resultado.ValidacaoGrupoId, 80),
+            ValidacaoRequisicaoId = Truncar(resultado.ValidacaoRequisicaoId, 80),
         };
+        var local = (localizacao ?? new LocalizacaoAssinatura(StatusLocalizacaoAssinatura.NaoInformada)).Normalizada();
+        signatario.LocalizacaoStatus = local.Status;
+        signatario.Latitude = local.Latitude;
+        signatario.Longitude = local.Longitude;
+        signatario.PrecisaoMetros = local.PrecisaoMetros;
         // Evidência visual: foto do rosto (facial) ou imagem da impressão lida pelo leitor (digital).
         if (resultado.Metodo is MetodoAutenticacaoAssinatura.ReconhecimentoFacial or MetodoAutenticacaoAssinatura.Biometria
             && fotoEvidenciaConteudo is { Length: > 0 })
@@ -220,6 +249,9 @@ public class RegistradorAssinaturaService : IRegistradorAssinaturaService
     {
         return metodo == MetodoAutenticacaoAssinatura.SessaoLogada;
     }
+
+    private static string? Truncar(string? texto, int max) =>
+        string.IsNullOrWhiteSpace(texto) ? null : texto.Length <= max ? texto : texto[..max];
 
     private static string RemoverAcentos(string texto)
     {

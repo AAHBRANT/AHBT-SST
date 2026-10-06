@@ -46,6 +46,6 @@ public class FutronicAutenticacaoStrategy : IAutenticacaoBiometriaLocalService
             throw new InvalidOperationException("Confiança do match biométrico abaixo do limiar exigido.");
         }
 
-        return new ResultadoAutenticacaoAssinatura(trabalhador.Id, MetodoAutenticacaoAssinatura.Biometria);
+        return new ResultadoAutenticacaoAssinatura(trabalhador.Id, MetodoAutenticacaoAssinatura.Biometria, dispositivoId);
     }
 }

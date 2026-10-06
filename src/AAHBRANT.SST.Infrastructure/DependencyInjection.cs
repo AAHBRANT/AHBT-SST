@@ -97,6 +97,7 @@ public static class DependencyInjection
         // (Trabalhador.PinHash, CredenciaisWebAuthn) também foram removidos do schema.
         services.AddScoped<ISegredoDispositivoHasher, SegredoDispositivoHasherService>();
         services.AddScoped<ITemplateBiometricoCriptografia, TemplateBiometricoCriptografiaService>();
+        services.AddScoped<IImagemBiometricaCriptografia, ImagemBiometricaCriptografiaService>();
         services.AddScoped<IDispositivoAgenteAutenticador, DispositivoAgenteAutenticador>();
         services.AddScoped<IAutenticacaoBiometriaLocalService, FutronicAutenticacaoStrategy>();
         services.AddScoped<IAutenticacaoFacialService, AzureFaceAutenticacaoStrategy>();

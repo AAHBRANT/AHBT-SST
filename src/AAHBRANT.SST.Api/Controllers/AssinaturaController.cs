@@ -1,3 +1,4 @@
+using AAHBRANT.SST.Application.Assinatura;
 using AAHBRANT.SST.Application.Assinatura.Commands;
 using AAHBRANT.SST.Application.Assinatura.Queries;
 using AAHBRANT.SST.Domain.Enums;
@@ -57,21 +58,32 @@ public class AssinaturaController : ControllerBase
     // em dev com Entra ID desligado o claim não existe e o handler falha com mensagem amigável).
     [Authorize(Policy = "assinatura:assinar")]
     [HttpPost("{id:guid}/assinar/sessao")]
-    public async Task<IActionResult> AssinarComSessaoLogada(Guid id, CancellationToken ct)
+    public async Task<IActionResult> AssinarComSessaoLogada(Guid id, [FromBody] AssinarSessaoRequestBody? body, CancellationToken ct)
     {
         var azureAdObjectId = User.FindFirst("oid")?.Value ?? User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
-        var signatario = await _mediator.Send(new RegistrarAssinaturaSessaoLogadaCommand(id, azureAdObjectId, ObterIpCliente()), ct);
+        var signatario = await _mediator.Send(new RegistrarAssinaturaSessaoLogadaCommand(id, azureAdObjectId, ObterIpCliente(), body?.Localizacao?.ParaDominio()), ct);
         return Ok(signatario);
     }
 
-    public record AutenticarBiometriaLocalRequestBody(Guid DispositivoId, string SegredoDispositivo, Guid TrabalhadorId, double Score, byte[]? ImagemDigital = null);
+    // Geolocalização declarada pelo aparelho no momento da assinatura (log de assinaturas). Opcional:
+    // clientes antigos não enviam e o log mostra "não informada".
+    public record LocalizacaoAssinaturaBody(StatusLocalizacaoAssinatura Status, double? Latitude = null, double? Longitude = null, double? PrecisaoMetros = null)
+    {
+        public LocalizacaoAssinatura ParaDominio() => new(Status, Latitude, Longitude, PrecisaoMetros);
+    }
+
+    public record AssinarSessaoRequestBody(LocalizacaoAssinaturaBody? Localizacao = null);
+
+    public record AutenticarBiometriaLocalRequestBody(Guid DispositivoId, string SegredoDispositivo, Guid TrabalhadorId, double Score,
+        byte[]? ImagemDigital = null, LocalizacaoAssinaturaBody? Localizacao = null);
 
     [Authorize(Policy = "assinatura:assinar")]
     [HttpPost("{id:guid}/autenticacao/biometria-local")]
     public async Task<ActionResult<DocumentoSignatarioDto>> AutenticarBiometriaLocal(Guid id, AutenticarBiometriaLocalRequestBody body, CancellationToken ct)
     {
         var resultado = await _mediator.Send(
-            new RegistrarAssinaturaBiometriaLocalCommand(id, body.DispositivoId, body.SegredoDispositivo, body.TrabalhadorId, body.Score, ObterIpCliente(), body.ImagemDigital), ct);
+            new RegistrarAssinaturaBiometriaLocalCommand(id, body.DispositivoId, body.SegredoDispositivo, body.TrabalhadorId, body.Score, ObterIpCliente(), body.ImagemDigital,
+                body.Localizacao?.ParaDominio()), ct);
         return Ok(resultado);
     }
 
@@ -79,6 +91,11 @@ public class AssinaturaController : ControllerBase
     {
         public Guid ObraId { get; set; }
         public IFormFile Foto { get; set; } = null!;
+        // Geolocalização (campos de formulário, mesmo padrão de "metadados" das fotos de DDS).
+        public StatusLocalizacaoAssinatura? LocalizacaoStatus { get; set; }
+        public double? Latitude { get; set; }
+        public double? Longitude { get; set; }
+        public double? PrecisaoMetros { get; set; }
     }
 
     [Authorize(Policy = "assinatura:assinar")]
@@ -91,7 +108,8 @@ public class AssinaturaController : ControllerBase
         try
         {
             var resultado = await _mediator.Send(
-                new RegistrarAssinaturaFacialCommand(id, body.ObraId, stream.ToArray(), body.Foto.ContentType, ObterIpCliente()), ct);
+                new RegistrarAssinaturaFacialCommand(id, body.ObraId, stream.ToArray(), body.Foto.ContentType, ObterIpCliente(),
+                    body.LocalizacaoStatus is { } status ? new LocalizacaoAssinatura(status, body.Latitude, body.Longitude, body.PrecisaoMetros) : null), ct);
             return Ok(resultado);
         }
         catch (RejeicaoFacialException ex)

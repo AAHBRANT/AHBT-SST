@@ -887,6 +887,21 @@ public static class NovidadesSeeder
                     "O relatório de fiscalização trazia só textos e listas, sem os cards e gráficos que aparecem no perfil do funcionário.",
                     "O PDF agora tem uma seção de resumo logo depois dos dados gerais, com os cards (EPIs ativos, presença em DDS, trocas de EPI no ano e treinamentos válidos) e os gráficos de status dos EPIs, assiduidade em DDS, motivo das trocas e frequência de trocas por EPI."),
             }),
+        new(
+            Versao: "5.44.0",
+            Titulo: "Log de assinaturas na Ficha de EPI",
+            DataPublicacao: new DateTime(2026, 10, 6, 0, 0, 0, DateTimeKind.Utc),
+            Itens: new[]
+            {
+                new NovidadeSeedItem(CategoriaNovidade.Melhoria,
+                    "Ficha de EPI com foto do funcionário e log completo das assinaturas",
+                    "A ficha mostrava só o resultado das assinaturas (assinado ou pendente), sem o detalhe de como cada uma foi feita.",
+                    "A ficha ganhou a foto de cadastro no cabeçalho (o CPF sai completo e o turno saiu da grade) e, depois do termo, páginas novas com o log de todas as assinaturas de EPI do funcionário. Cada assinatura mostra o cupom da entrega, o método, o IP, o equipamento, a localização informada pelo aparelho e as imagens de cadastro e da assinatura lado a lado, com marca d'água de confidencial. As assinaturas por reconhecimento facial destacam a validação do Microsoft Azure AI Face. Assinaturas anteriores mostram \"anterior à implantação\" nos dados que ainda não eram guardados."),
+                new NovidadeSeedItem(CategoriaNovidade.Melhoria,
+                    "Mais rastro nas novas assinaturas",
+                    "Só o IP e o método ficavam registrados em cada assinatura.",
+                    "As novas assinaturas guardam também o equipamento, a geolocalização (quando o usuário permite) e, nas faciais, os dados da validação no Azure. Quem cadastra a digital passa a ter a imagem do cadastro guardada de forma criptografada."),
+            }),
     };
 
     public static async Task ExecutarAsync(IServiceProvider services, CancellationToken ct = default)

@@ -123,8 +123,8 @@ export function AssinaturaTab({ trabalhadorId }: AssinaturaTabProps) {
       setCadastrandoBiometriaLocal(true);
       setErroBiometriaLocal(null);
       setBiometriaLocalCadastrada(false);
-      const templateBase64 = await capturarDigitalParaCadastro(setEtapaCaptura);
-      await api.trabalhadores.cadastrarBiometriaLocal(trabalhadorId, templateBase64);
+      const captura = await capturarDigitalParaCadastro(setEtapaCaptura);
+      await api.trabalhadores.cadastrarBiometriaLocal(trabalhadorId, captura.templateBruto, captura.imagemPng);
       setBiometriaLocalCadastrada(true);
       marcarCadastrado('digital');
     } catch (e) {
