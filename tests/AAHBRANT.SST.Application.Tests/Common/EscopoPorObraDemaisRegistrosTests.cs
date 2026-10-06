@@ -127,4 +127,27 @@ public class EscopoPorObraDemaisRegistrosTests
         Assert.Equal(ObraA, Assert.Single(await restrito.InstalacoesEpc.ToListAsync()).ObraId);
         Assert.Equal(ObraA, Assert.Single(await restrito.EstoquesUniforme.ToListAsync()).ObraId);
     }
+
+    // Trabalhador desligado vira Ativo = false. O filtro por obra de ASO/Treinamento navega até o
+    // Trabalhador; este teste fixa o comportamento esperado: quem tem acesso global continua vendo
+    // o histórico (ASO e certificado) de quem foi desligado.
+    [Fact]
+    public async Task AsoETreinamento_DeTrabalhadorDesligado_ContinuamVisiveisParaAcessoGlobal()
+    {
+        var (global, _) = CriarContextos();
+        var (deA, _) = await SemearTrabalhadoresAsync(global);
+        var curso = new CursoTreinamento { Nome = "NR-35" };
+        global.CursosTreinamento.Add(curso);
+        await global.SaveChangesAsync();
+        global.Asos.Add(new Aso { TrabalhadorId = deA.Id });
+        global.Treinamentos.Add(new Treinamento { TrabalhadorId = deA.Id, CursoTreinamentoId = curso.Id });
+        await global.SaveChangesAsync();
+
+        var trabalhador = await global.Trabalhadores.FirstAsync(t => t.Id == deA.Id);
+        trabalhador.Ativo = false;
+        await global.SaveChangesAsync();
+
+        Assert.Equal(1, await global.Asos.CountAsync());
+        Assert.Equal(1, await global.Treinamentos.CountAsync());
+    }
 }
