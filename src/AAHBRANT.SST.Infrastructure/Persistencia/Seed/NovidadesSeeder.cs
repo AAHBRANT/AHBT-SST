@@ -864,7 +864,7 @@ public static class NovidadesSeeder
         new(
             Versao: "5.42.0",
             Titulo: "Imagem da digital e foto no Cofre de Assinaturas",
-            DataPublicacao: new DateTime(2026, 10, 7, 0, 0, 0, DateTimeKind.Utc),
+            DataPublicacao: new DateTime(2026, 10, 6, 0, 0, 0, DateTimeKind.Utc),
             Itens: new[]
             {
                 new NovidadeSeedItem(CategoriaNovidade.Melhoria,
