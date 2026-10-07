@@ -24,10 +24,40 @@ public class TelegramResumoService : ITelegramResumoService
         _logger = logger;
     }
 
+    public async Task<bool> EnviarImagemAsync(byte[] imagemPng, string legenda, CancellationToken ct = default)
+    {
+        var token = _options.Value.BotToken;
+        var chatId = ObterChatId();
+        if (string.IsNullOrWhiteSpace(token) || string.IsNullOrWhiteSpace(chatId))
+        {
+            _logger.LogInformation("Telegram de resumos não configurado (Telegram:BotToken e Telegram:SuporteChatId ou ResumoChatId): imagem não enviada.");
+            return false;
+        }
+
+        using var corpo = new MultipartFormDataContent();
+        corpo.Add(new StringContent(chatId), "chat_id");
+        corpo.Add(new StringContent(legenda.Length > 1000 ? legenda[..1000] : legenda), "caption");
+        var foto = new ByteArrayContent(imagemPng);
+        foto.Headers.ContentType = new System.Net.Http.Headers.MediaTypeHeaderValue("image/png");
+        corpo.Add(foto, "photo", "resumo-dds.png");
+
+        var client = _httpClientFactory.CreateClient();
+        var response = await client.PostAsync($"https://api.telegram.org/bot{token}/sendPhoto", corpo, ct);
+        if (!response.IsSuccessStatusCode)
+        {
+            _logger.LogWarning("Falha ao enviar a imagem do resumo ao Telegram: {StatusCode}", response.StatusCode);
+            return false;
+        }
+        return true;
+    }
+
+    private string? ObterChatId() =>
+        string.IsNullOrWhiteSpace(_options.Value.ResumoChatId) ? _options.Value.SuporteChatId : _options.Value.ResumoChatId;
+
     public async Task EnviarAsync(string mensagem, CancellationToken ct = default)
     {
         var token = _options.Value.BotToken;
-        var chatId = string.IsNullOrWhiteSpace(_options.Value.ResumoChatId) ? _options.Value.SuporteChatId : _options.Value.ResumoChatId;
+        var chatId = ObterChatId();
 
         if (string.IsNullOrWhiteSpace(token) || string.IsNullOrWhiteSpace(chatId))
         {

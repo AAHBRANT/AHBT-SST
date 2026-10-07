@@ -936,6 +936,17 @@ public static class NovidadesSeeder
                     "O encerramento do DDS não avisava ninguém sobre as falhas do reconhecimento facial.",
                     "Ao encerrar o DDS, um resumo vai para o grupo de SST do Telegram: presenças por facial e digital, quantidade de falhas e as matrículas que precisam refazer o cadastro. Sem nome, sem CPF e sem foto. Só envia quando o chat estiver configurado no ambiente."),
             }),
+        new(
+            Versao: "5.47.0",
+            Titulo: "Relatório do DDS em imagem no Telegram",
+            DataPublicacao: new DateTime(2026, 10, 7, 0, 0, 0, DateTimeKind.Utc),
+            Itens: new[]
+            {
+                new NovidadeSeedItem(CategoriaNovidade.Melhoria,
+                    "Resumo do DDS no Telegram agora é uma imagem no padrão AAHBRANT",
+                    "O resumo que chegava ao encerrar o DDS era só texto corrido.",
+                    "O resumo chega como uma imagem com o cabeçalho da marca, os cards de presença (total, facial e digital), a barra por método, o alerta de falhas do reconhecimento facial e as matrículas que precisam refazer o cadastro, com uma legenda curta. Continua sem nome, CPF ou foto. Se a imagem não puder ser gerada ou enviada, o resumo vai em texto, como antes."),
+            }),
     };
 
     public static async Task ExecutarAsync(IServiceProvider services, CancellationToken ct = default)
