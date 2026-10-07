@@ -120,6 +120,10 @@ public interface IAppDbContext
     DbSet<TemplateBiometricoFutronic> TemplatesBiometricoFutronic { get; }
     DbSet<FotoCadastroFacial> FotosCadastroFacial { get; }
     DbSet<FalhaReconhecimentoFacial> FalhasReconhecimentoFacial { get; }
+    DbSet<RelatorioGerado> RelatoriosGerados { get; }
+    DbSet<RelatorioEnvio> RelatorioEnvios { get; }
+    DbSet<DestinatarioRelatorio> DestinatariosRelatorio { get; }
+    DbSet<ExecucaoRelatorioAgendado> ExecucoesRelatorioAgendado { get; }
 
     DbSet<IdempotenciaRegistro> IdempotenciaRegistros { get; }
 

@@ -20,6 +20,7 @@ public static class DependencyInjection
         services.AddValidatorsFromAssembly(assembly);
         services.AddTransient(typeof(MediatR.IPipelineBehavior<,>), typeof(ValidationBehavior<,>));
 
+        services.AddScoped<AAHBRANT.SST.Application.Relatorios.IPublicadorRelatorio, AAHBRANT.SST.Application.Relatorios.PublicadorRelatorioService>();
         services.AddScoped<IEligibilityRule, AsoValidoRule>();
         services.AddScoped<IEligibilityRule, TreinamentoValidoRule>();
         services.AddScoped<IEligibilityRule, AprValidaRule>();

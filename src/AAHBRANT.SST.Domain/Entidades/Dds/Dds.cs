@@ -21,6 +21,11 @@ public class Dds : AuditableEntity
 
     public DateTime Data { get; set; }
 
+    // Momento (UTC) em que o DDS foi encerrado (botão Encerrar). Gravado a partir de 07/10/2026: DDS
+    // anteriores ficam sem esse dado. A duração do DDS NÃO usa este campo (vai da 1ª à última assinatura);
+    // ele mostra quando o DDS foi fechado e quanto se demorou para fechar.
+    public DateTime? EncerradoEm { get; set; }
+
     public Guid ResponsavelUsuarioId { get; set; }
     public Usuario? ResponsavelUsuario { get; set; }
 
