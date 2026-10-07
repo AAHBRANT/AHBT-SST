@@ -34,6 +34,14 @@ public class ImagemResumoDdsServiceTests
     }
 
     [Fact]
+    public void LogomarcaOficialEstaEmbutidaNoAssembly()
+    {
+        // Sem este recurso a imagem cairia para o texto "AAHBRANT" sem ninguém notar.
+        Assert.Contains("AAHBRANT.SST.Infrastructure.Documentos.Assets.logo-aahbrant.png",
+            typeof(ImagemResumoDdsService).Assembly.GetManifestResourceNames());
+    }
+
+    [Fact]
     public void SemCadastrosParaRevisar_AindaGera()
     {
         var png = Gerar(Dados(fracos: 0, falhas: 0));

@@ -59,13 +59,35 @@ public class ImagemResumoDdsService : IImagemResumoDdsService
         return imagens.First();
     }
 
+    // Logomarca oficial (PNG com fundo transparente, preta e vinho): embutida no assembly. Fica numa faixa
+    // branca no topo porque não tem leitura sobre o fundo vinho.
+    private const string RecursoLogo = "AAHBRANT.SST.Infrastructure.Documentos.Assets.logo-aahbrant.png";
+    private static readonly Lazy<byte[]?> Logo = new(() =>
+    {
+        using var stream = typeof(ImagemResumoDdsService).Assembly.GetManifestResourceStream(RecursoLogo);
+        if (stream is null) return null;
+        using var memoria = new MemoryStream();
+        stream.CopyTo(memoria);
+        return memoria.ToArray();
+    });
+
     private static void Cabecalho(IContainer container, ResumoDdsDados d)
     {
-        container.Background(Vinho).PaddingVertical(26).PaddingHorizontal(28).Column(c =>
+        container.Column(topo =>
         {
-            c.Item().Text("AAHBRANT  ·  SST").FontSize(9).FontColor("#e8d6d6").SemiBold().LetterSpacing(0.2f);
-            c.Item().PaddingTop(4).Text("DDS encerrado").FontSize(30).Bold().FontColor("#ffffff");
-            c.Item().PaddingTop(4).Text($"{d.Obra}  ·  {d.Quando:dd/MM/yyyy, HH:mm}").FontSize(12).FontColor("#f1e4e4");
+            topo.Item().Background("#ffffff").PaddingVertical(16).PaddingHorizontal(28).Row(linha =>
+            {
+                if (Logo.Value is { } logo)
+                    linha.AutoItem().Height(40).Image(logo).FitHeight();
+                else
+                    linha.AutoItem().AlignMiddle().Text("AAHBRANT").FontSize(18).Bold().FontColor(Vinho);
+                linha.RelativeItem().AlignMiddle().AlignRight().Text("SST  ·  Relatório do DDS").FontSize(9).FontColor(Cinza).SemiBold().LetterSpacing(0.12f);
+            });
+            topo.Item().Background(Vinho).PaddingVertical(22).PaddingHorizontal(28).Column(c =>
+            {
+                c.Item().Text("DDS encerrado").FontSize(30).Bold().FontColor("#ffffff");
+                c.Item().PaddingTop(4).Text($"{d.Obra}  ·  {d.Quando:dd/MM/yyyy, HH:mm}").FontSize(12).FontColor("#f1e4e4");
+            });
         });
     }
 
@@ -121,12 +143,17 @@ public class ImagemResumoDdsService : IImagemResumoDdsService
 
     private static void AlertaDeFalhas(IContainer container, ResumoDdsDados d)
     {
-        container.Border(1).BorderColor("#e2c9c9").Background("#fbeeee").CornerRadius(8).PaddingVertical(12).PaddingHorizontal(14).Row(linha =>
+        // Sem falha não é alerta: o quadro fica verde, para um DDS sem problema não parecer problemático.
+        var semFalhas = d.Falhas == 0;
+        var cor = semFalhas ? "#1f6b3a" : Vinho;
+        container.Border(1).BorderColor(semFalhas ? "#c5dfcb" : "#e2c9c9").Background(semFalhas ? "#eaf4ec" : "#fbeeee")
+            .CornerRadius(8).PaddingVertical(12).PaddingHorizontal(14).Row(linha =>
         {
-            linha.AutoItem().AlignMiddle().Text($"{d.Falhas}").FontSize(24).Bold().FontColor(Vinho);
+            linha.AutoItem().AlignMiddle().Text($"{d.Falhas}").FontSize(24).Bold().FontColor(cor);
             linha.RelativeItem().PaddingLeft(12).AlignMiddle()
-                .Text(d.Falhas == 1 ? "falha do reconhecimento facial neste DDS" : "falhas do reconhecimento facial neste DDS")
-                .FontSize(12).FontColor(Vinho);
+                .Text(semFalhas ? "falhas do reconhecimento facial neste DDS"
+                    : d.Falhas == 1 ? "falha do reconhecimento facial neste DDS" : "falhas do reconhecimento facial neste DDS")
+                .FontSize(12).FontColor(cor);
         });
     }
 
