@@ -15,6 +15,7 @@ import { Camera24Regular } from '@fluentui/react-icons';
 import type { UseCapturaFoto } from './useCapturaFoto';
 import { ResumoDadosFoto } from './ResumoDadosFoto';
 import { useDetectorRosto } from './useDetectorRosto';
+import { QuadradoRosto, CORES_DETECTOR } from './QuadradoRosto';
 import { pendenciasFoto } from '../../lib/dadosFoto';
 import { FeedbackInline } from '@ui';
 
@@ -46,8 +47,7 @@ export function DialogoCameraFoto({ captura }: DialogoCameraFotoProps) {
   const detector = useDetectorRosto(videoRef, mostrarGuiaRosto && !!stream);
   const avaliacao = detector.situacao === 'ativo' ? detector.avaliacao : null;
   const capturaBloqueadaPeloDetector = detector.situacao === 'ativo' && !avaliacao?.liberaCaptura;
-  const corPorTom = { ok: '#1f8a4c', atencao: '#d98a00', alerta: '#d13438' } as const;
-  const corQuadrado = avaliacao ? corPorTom[avaliacao.tom] : corPorTom.ok;
+  const corQuadrado = avaliacao ? CORES_DETECTOR[avaliacao.tom] : CORES_DETECTOR.ok;
 
   return (
     <>
@@ -126,24 +126,7 @@ export function DialogoCameraFoto({ captura }: DialogoCameraFotoProps) {
                   />
                 </div>
               )}
-              {mostrarGuiaRosto && detector.caixa && (
-                <div
-                  aria-hidden
-                  data-testid="quadrado-rosto"
-                  style={{
-                    position: 'absolute',
-                    // O vídeo da câmera frontal é espelhado (scaleX(-1)): o quadrado espelha junto.
-                    left: `${(1 - detector.caixa.x - detector.caixa.largura) * 100}%`,
-                    top: `${detector.caixa.y * 100}%`,
-                    width: `${detector.caixa.largura * 100}%`,
-                    height: `${detector.caixa.altura * 100}%`,
-                    border: `3px solid ${corQuadrado}`,
-                    borderRadius: 6,
-                    pointerEvents: 'none',
-                    transition: 'all 120ms linear',
-                  }}
-                />
-              )}
+              {mostrarGuiaRosto && <QuadradoRosto caixa={detector.caixa} cor={corQuadrado} />}
             </div>
             {mostrarGuiaRosto && (
               <div role="status" aria-live="polite" style={{ marginTop: 8, textAlign: 'center' }}>

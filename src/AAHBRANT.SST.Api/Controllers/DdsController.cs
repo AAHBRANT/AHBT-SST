@@ -13,7 +13,13 @@ public class DdsController : ControllerBase
 {
     private readonly IMediator _mediator;
 
-    public DdsController(IMediator mediator) => _mediator = mediator;
+    private readonly ILogger<DdsController> _logger;
+
+    public DdsController(IMediator mediator, ILogger<DdsController> logger)
+    {
+        _mediator = mediator;
+        _logger = logger;
+    }
 
     [Authorize(Policy = "dds:ver")]
     [HttpGet]
@@ -80,6 +86,26 @@ public class DdsController : ControllerBase
         }
     }
 
+    // Fila facial: câmera aberta, cada funcionário olha e o Azure descobre quem é (1:N). Só a foto é
+    // enviada; a obra vem do DDS.
+    [Authorize(Policy = "dds:conduzir")]
+    [HttpPost("{id:guid}/participantes/facial-fila")]
+    [RequestSizeLimit(6_000_000)]
+    public async Task<IActionResult> RegistrarParticipanteFacialFila(Guid id, [FromForm] RegistrarParticipanteFacialFilaRequestBody body, CancellationToken ct)
+    {
+        await using var stream = new MemoryStream();
+        await body.Foto.CopyToAsync(stream, ct);
+
+        try
+        {
+            return Ok(await _mediator.Send(new RegistrarParticipanteFacialFilaCommand(id, stream.ToArray()), ct));
+        }
+        catch (AAHBRANT.SST.Application.Assinatura.Commands.RejeicaoFacialException ex)
+        {
+            return BadRequest(new { erro = ex.Message, motivo = ex.Motivo.ToString() });
+        }
+    }
+
     [Authorize(Policy = "dds:ver")]
     [HttpGet("{id:guid}/funcionarios-disponiveis")]
     public async Task<IActionResult> ListarFuncionarios(Guid id, CancellationToken ct)
@@ -106,6 +132,20 @@ public class DdsController : ControllerBase
     public async Task<IActionResult> Encerrar(Guid id, CancellationToken ct)
     {
         await _mediator.Send(new EncerrarDdsCommand(id), ct);
+
+        // Resumo no Telegram: melhor esforço, com tempo limite curto. O DDS já foi encerrado e nenhuma
+        // falha do Telegram pode devolver erro ao operador.
+        try
+        {
+            using var limite = CancellationTokenSource.CreateLinkedTokenSource(ct);
+            limite.CancelAfter(TimeSpan.FromSeconds(8));
+            await _mediator.Send(new EnviarResumoDdsTelegramCommand(id), limite.Token);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Resumo do DDS {DdsId} não foi enviado ao Telegram.", id);
+        }
+
         return NoContent();
     }
 
@@ -151,6 +191,11 @@ public class DdsController : ControllerBase
 
 public record MarcarItemChecklistRequestBody(bool Verificado);
 public record AtualizarFuncionariosDdsRequestBody(List<Guid> TrabalhadoresIds);
+
+public class RegistrarParticipanteFacialFilaRequestBody
+{
+    public IFormFile Foto { get; set; } = null!;
+}
 
 public class RegistrarParticipanteFacialRequestBody
 {

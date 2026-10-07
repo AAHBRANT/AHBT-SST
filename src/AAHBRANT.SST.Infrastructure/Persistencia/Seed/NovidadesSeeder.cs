@@ -917,6 +917,25 @@ public static class NovidadesSeeder
                     "Quando a foto de cadastro saía ruim, não havia como refazer pelo sistema.",
                     "Na aba Assinatura do funcionário, o botão Refazer cadastro facial apaga o cadastro no Azure e libera uma nova captura. É obrigatório informar o motivo, e fica registrado quem refez e quando. As fotos antigas ficam arquivadas, então as assinaturas já feitas continuam com a prova no log da Ficha de EPI."),
             }),
+        new(
+            Versao: "5.46.0",
+            Titulo: "Fila facial no DDS e cadastros faciais para revisar",
+            DataPublicacao: new DateTime(2026, 10, 7, 0, 0, 0, DateTimeKind.Utc),
+            Itens: new[]
+            {
+                new NovidadeSeedItem(CategoriaNovidade.Melhoria,
+                    "Fila facial na presença do DDS",
+                    "A presença por rosto era confirmada funcionário por funcionário, escolhendo a pessoa na linha antes de abrir a câmera.",
+                    "O botão Abrir fila facial, ao lado da fila da digital, abre a câmera em tela cheia (próprio para tablet). Cada funcionário olha para a câmera e a presença é confirmada sozinha, com bipe e o nome em letras grandes. Quem já teve a presença confirmada recebe o aviso, sem registrar de novo. Se o rosto for parecido com o de outra pessoa, a leitura é recusada e o funcionário usa a digital, para nunca confirmar o colega errado."),
+                new NovidadeSeedItem(CategoriaNovidade.Melhoria,
+                    "Lista de cadastros faciais para revisar",
+                    "Quem tinha um cadastro facial fraco só era descoberto quando falhava na hora de assinar ou confirmar presença.",
+                    "Em Pessoas aparece a lista de funcionários com 3 ou mais falhas de reconhecimento nos últimos 30 dias, com o botão para abrir o cadastro e refazer a foto. Quem refaz o cadastro sai da lista sozinho. As falhas são guardadas sem a foto, por 90 dias."),
+                new NovidadeSeedItem(CategoriaNovidade.Melhoria,
+                    "Resumo do DDS no Telegram",
+                    "O encerramento do DDS não avisava ninguém sobre as falhas do reconhecimento facial.",
+                    "Ao encerrar o DDS, um resumo vai para o grupo de SST do Telegram: presenças por facial e digital, quantidade de falhas e as matrículas que precisam refazer o cadastro. Sem nome, sem CPF e sem foto. Só envia quando o chat estiver configurado no ambiente."),
+            }),
     };
 
     public static async Task ExecutarAsync(IServiceProvider services, CancellationToken ct = default)

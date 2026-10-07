@@ -126,6 +126,7 @@ public class SstDbContext : DbContext, IAppDbContext
     public DbSet<DispositivoAgenteBiometrico> DispositivosAgenteBiometrico => Set<DispositivoAgenteBiometrico>();
     public DbSet<TemplateBiometricoFutronic> TemplatesBiometricoFutronic => Set<TemplateBiometricoFutronic>();
     public DbSet<FotoCadastroFacial> FotosCadastroFacial => Set<FotoCadastroFacial>();
+    public DbSet<FalhaReconhecimentoFacial> FalhasReconhecimentoFacial => Set<FalhaReconhecimentoFacial>();
 
     public DbSet<IdempotenciaRegistro> IdempotenciaRegistros => Set<IdempotenciaRegistro>();
 
@@ -215,6 +216,8 @@ public class SstDbContext : DbContext, IAppDbContext
             a.Ativo && (_usuarioAtual.TemAcessoGlobal || _usuarioAtual.ObrasPermitidas.Contains(a.ObraId)));
         modelBuilder.Entity<Setor>().HasQueryFilter(s =>
             s.Ativo && (_usuarioAtual.TemAcessoGlobal || _usuarioAtual.ObrasPermitidas.Contains(s.ObraId)));
+        modelBuilder.Entity<FalhaReconhecimentoFacial>().HasQueryFilter(f =>
+            f.Ativo && (_usuarioAtual.TemAcessoGlobal || _usuarioAtual.ObrasPermitidas.Contains(f.ObraId)));
         modelBuilder.Entity<Trabalhador>().HasQueryFilter(t =>
             t.Ativo && (_usuarioAtual.TemAcessoGlobal || _usuarioAtual.ObrasPermitidas.Contains(t.ObraId)));
         modelBuilder.Entity<AreaSst>().HasQueryFilter(a =>

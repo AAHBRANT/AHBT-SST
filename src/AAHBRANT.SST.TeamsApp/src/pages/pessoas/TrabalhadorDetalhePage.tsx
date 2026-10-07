@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { useParams } from 'react-router-dom';
+import { useLocation, useParams } from 'react-router-dom';
 import {
   Avatar,
   BotaoAcao,
@@ -60,7 +60,9 @@ const tomAptidao: Record<string, Tom> = {
 // há `useAbaNaUrl` aqui de propósito, ela é reservada aos dois níveis da página-pilar (spec §4.1).
 export function TrabalhadorDetalhePage() {
   const { id } = useParams<{ id: string }>();
-  const [aba, setAba] = useState<AbaPerfil>('geral');
+  // Quem chega pela lista de cadastros faciais para revisar já cai na aba do cofre (onde fica Assinatura).
+  const abaInicial = (useLocation().state as { aba?: AbaPerfil } | null)?.aba;
+  const [aba, setAba] = useState<AbaPerfil>(abaInicial ?? 'geral');
   const [cpfVisivel, setCpfVisivel] = useState(false);
   const [perfil, setPerfil] = useState<PerfilCompletoTrabalhador | null>(null);
   const [erro, setErro] = useState<string | null>(null);

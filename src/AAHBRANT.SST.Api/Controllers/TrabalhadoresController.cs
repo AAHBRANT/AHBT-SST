@@ -130,6 +130,13 @@ public class TrabalhadoresController : ControllerBase
         return NoContent();
     }
 
+    // Funcionários com 3 ou mais falhas de reconhecimento facial em 30 dias contra o cadastro atual:
+    // candidatos a refazer a foto. O escopo por obra vem dos filtros globais.
+    [Authorize(Policy = "trabalhador:assinatura")]
+    [HttpGet("cadastros-faciais-fracos")]
+    public async Task<IActionResult> ListarCadastrosFaciaisFracos([FromQuery] Guid? obraId, CancellationToken ct)
+        => Ok(await _mediator.Send(new ListarCadastrosFaciaisFracosQuery(obraId), ct));
+
     [Authorize(Policy = "trabalhador:assinatura")]
     [HttpGet("{id:guid}/assinatura/status-cadastro")]
     public async Task<IActionResult> ObterStatusCadastroBiometrico(Guid id, CancellationToken ct)

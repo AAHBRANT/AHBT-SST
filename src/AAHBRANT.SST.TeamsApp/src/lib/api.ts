@@ -44,6 +44,25 @@ export interface FotoCadastroFacial {
   hashSha256: string;
 }
 
+export interface ResultadoPresencaFacialFila {
+  trabalhadorId: string;
+  trabalhadorNome: string;
+  jaConfirmado: boolean;
+  confianca: number | null;
+}
+
+export interface CadastroFacialFraco {
+  trabalhadorId: string;
+  nome: string;
+  matricula: string | null;
+  obraId: string;
+  obraNome: string;
+  falhas: number;
+  ultimoMotivo: string;
+  ultimaFalhaEm: string;
+  cadastroEm: string;
+}
+
 export interface StatusCadastroBiometrico {
   temDigital: boolean;
   temFacial: boolean;
@@ -3870,6 +3889,9 @@ export const api = {
       request<void>(`/api/trabalhadores/${id}/assinatura/termo-aceite`, { method: 'POST' }),
     registrarConsentimentoBiometria: (id: string) =>
       request<void>(`/api/trabalhadores/${id}/assinatura/consentimento-biometria`, { method: 'POST' }),
+    // Funcionários com 3 ou mais falhas de reconhecimento facial em 30 dias contra o cadastro atual.
+    listarCadastrosFaciaisFracos: (obraId?: string) =>
+      request<CadastroFacialFraco[]>(`/api/trabalhadores/cadastros-faciais-fracos${obraId ? `?obraId=${obraId}` : ''}`),
     obterStatusCadastroBiometrico: (id: string) =>
       request<StatusCadastroBiometrico>(`/api/trabalhadores/${id}/assinatura/status-cadastro`),
     obterPerfilCompleto: (id: string) =>
@@ -4919,6 +4941,22 @@ export const api = {
         throw new Error(`${response.status} ${response.statusText}: ${corpo}`);
       }
       return (await response.json()) as { id: string };
+    },
+    // Fila facial: só a foto vai; o servidor descobre quem é (1:N, dentro da obra do DDS) e recusa
+    // leituras ambíguas. Devolve jaConfirmado quando a presença já tinha sido registrada.
+    registrarParticipanteFacialFila: async (ddsId: string, foto: File) => {
+      const formData = new FormData();
+      formData.append('Foto', foto);
+      const response = await fetch(`${API_BASE_URL}/api/dds/${ddsId}/participantes/facial-fila`, {
+        method: 'POST',
+        headers: await montarHeadersAuth(),
+        body: formData,
+      });
+      if (!response.ok) {
+        const corpo = await response.text().catch(() => '');
+        throw new Error(`${response.status} ${response.statusText}: ${corpo}`);
+      }
+      return (await response.json()) as ResultadoPresencaFacialFila;
     },
     encerrar: (id: string) => request<void>(`/api/dds/${id}/encerrar`, { method: 'POST' }),
     // PDF gerado sob demanda no servidor a partir do estado atual — não faz sentido cachear para

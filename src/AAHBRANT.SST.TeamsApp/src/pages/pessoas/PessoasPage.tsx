@@ -4,6 +4,7 @@ import { Button, DashboardTopo, PageHeader, useAbaNaUrl } from '@ui';
 import { ArrowLeft16Regular, Settings24Regular } from '@fluentui/react-icons';
 import { PessoasDashboardTab } from './dashboard/PessoasDashboardTab';
 import { TrabalhadoresTab } from './TrabalhadoresTab';
+import { CadastrosFaciaisFracosCard } from '../../components/pessoas/CadastrosFaciaisFracosCard';
 import { FuncoesTab } from './FuncoesTab';
 
 // Setores e Equipes removidos da navegação por pedido do usuário (30/08) — não são necessários por
@@ -65,6 +66,7 @@ export function PessoasPage({ mostrarTitulo = true }: { mostrarTitulo?: boolean 
           <DashboardTopo>
             <PessoasDashboardTab />
           </DashboardTopo>
+          <CadastrosFaciaisFracosCard />
           <TrabalhadoresTab />
         </>
       )}
