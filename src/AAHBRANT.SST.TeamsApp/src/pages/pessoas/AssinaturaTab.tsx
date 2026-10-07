@@ -8,6 +8,7 @@ import { SeletorFotoCamera } from '../../components/SeletorFotoCamera';
 import { ErroFacialDialog } from '../../components/assinatura/ErroFacialDialog';
 import { useGuiaCadastroFacial } from '../../components/pessoas/GuiaCadastroFacialDialog';
 import { FotosCadastroFacial } from '../../components/pessoas/FotosCadastroFacial';
+import { RefazerCadastroFacialDialog } from '../../components/pessoas/RefazerCadastroFacialDialog';
 
 interface AssinaturaTabProps {
   trabalhadorId: string;
@@ -77,6 +78,21 @@ export function AssinaturaTab({ trabalhadorId }: AssinaturaTabProps) {
   const [erroFacial, setErroFacial] = useState<string | null>(null);
   const [facialCadastrada, setFacialCadastrada] = useState(false);
   const [versaoFotosFacial, setVersaoFotosFacial] = useState(0);
+  // Quem cadastra o facial (técnico) também refaz, só de funcionário da obra dele: o servidor confere
+  // a obra e devolve "não encontrado" para funcionário de outra obra.
+  const [refazendoFacial, setRefazendoFacial] = useState(false);
+
+  async function refazerCadastroFacial(motivo: string) {
+    try {
+      await api.trabalhadores.refazerCadastroFacial(trabalhadorId, motivo);
+    } catch (e) {
+      throw new Error(extrairMensagemErro(e, 'Falha ao refazer o cadastro facial.'));
+    }
+    setRefazendoFacial(false);
+    setFacialCadastrada(false);
+    setStatusCadastro((s) => (s ? { ...s, temFacial: false, facialCadastradoEm: null } : s));
+    setVersaoFotosFacial((v) => v + 1);
+  }
   const { guia: guiaFacial, pedirGuia } = useGuiaCadastroFacial();
 
   const [confirmandoAceite, setConfirmandoAceite] = useState(false);
@@ -233,6 +249,11 @@ export function AssinaturaTab({ trabalhadorId }: AssinaturaTabProps) {
             Reconhecimento facial já cadastrado em {formatarDataHora(statusCadastro.facialCadastradoEm)}.
           </FeedbackInline>
         )}
+        {statusCadastro?.temFacial && (
+          <Button appearance="secondary" onClick={() => setRefazendoFacial(true)}>
+            Refazer cadastro facial
+          </Button>
+        )}
         {statusCadastro && !statusCadastro.temFacial && (
           <SeletorFotoCamera
             aoSelecionarArquivo={cadastrarFacial}
@@ -250,6 +271,11 @@ export function AssinaturaTab({ trabalhadorId }: AssinaturaTabProps) {
         </div>
       </Card>
       {guiaFacial}
+      <RefazerCadastroFacialDialog
+        aberto={refazendoFacial}
+        aoConfirmar={refazerCadastroFacial}
+        aoCancelar={() => setRefazendoFacial(false)}
+      />
       <ErroFacialDialog mensagem={erroFacial} aoFechar={() => setErroFacial(null)} />
     </div>
   );

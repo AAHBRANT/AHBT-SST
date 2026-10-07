@@ -94,6 +94,40 @@ public class AzureFaceAutenticacaoStrategy : IAutenticacaoFacialService
         await TreinarEAguardarAsync(cliente, personGroupId, ct);
     }
 
+    public async Task RemoverCadastroAsync(Guid trabalhadorId, CancellationToken ct)
+    {
+        var trabalhador = await _db.Trabalhadores.FirstOrDefaultAsync(t => t.Id == trabalhadorId, ct)
+            ?? throw new KeyNotFoundException("Trabalhador não encontrado.");
+        if (trabalhador.AzureFacePersonId is null)
+            return;
+
+        var obra = await _db.Obras.FirstOrDefaultAsync(o => o.Id == trabalhador.ObraId, ct)
+            ?? throw new KeyNotFoundException("Obra do trabalhador não encontrada.");
+        if (obra.AzureFacePersonGroupId is null)
+            return;
+
+        using var cliente = CriarCliente();
+
+        var resposta = await cliente.DeleteAsync($"face/v1.0/persongroups/{obra.AzureFacePersonGroupId}/persons/{trabalhador.AzureFacePersonId}", ct);
+        // 404 = a pessoa (ou o grupo) já não existe no Azure: o objetivo da chamada já está cumprido.
+        if (!resposta.IsSuccessStatusCode && resposta.StatusCode != System.Net.HttpStatusCode.NotFound)
+        {
+            var erro = await LerErroAzureAsync(resposta, ct);
+            throw new InvalidOperationException(MontarMensagemErroAzure("Falha ao apagar o cadastro facial no Azure Face API", erro));
+        }
+
+        // O retreino não é requisito para a remoção valer: mesmo que o índice antigo ainda devolva o
+        // id apagado, IdentificarAsync não encontra trabalhador com esse PersonId e rejeita. Por isso
+        // uma falha aqui (ex.: grupo ficou sem ninguém) não desfaz a remoção.
+        try
+        {
+            await TreinarEAguardarAsync(cliente, obra.AzureFacePersonGroupId, ct);
+        }
+        catch (InvalidOperationException)
+        {
+        }
+    }
+
     // Resolução mínima da imagem inteira. Abaixo disto nem vale gastar chamada no Azure: câmera de
     // notebook antigo e print de tela caem aqui.
     private const int LadoMinimoImagemPx = 480;

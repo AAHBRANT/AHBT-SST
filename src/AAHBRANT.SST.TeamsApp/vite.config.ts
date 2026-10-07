@@ -57,7 +57,21 @@ export default defineConfig({
         importScripts: ['sw-atualizacao.js'],
         // Fora do precache: ele é buscado pelo próprio navegador ao instalar o SW (com os
         // cabeçalhos no-cache do nginx), não pela página.
-        globIgnores: ['**/sw-atualizacao.js'],
+        // O detector de rosto (MediaPipe) tem um .wasm de ~13 MB: ficaria no precache de TODOS os
+        // usuários, mesmo dos que nunca abrem a câmera facial. Fica fora e entra no cache só no
+        // primeiro uso (runtimeCaching abaixo).
+        globIgnores: ['**/sw-atualizacao.js', '**/vision_bundle-*', '**/vision_wasm_*', '**/blaze_face_*'],
+        runtimeCaching: [
+          {
+            urlPattern: /\/assets\/(vision_bundle|vision_wasm|blaze_face)[^/]*$/,
+            handler: 'CacheFirst',
+            options: {
+              cacheName: 'detector-rosto',
+              expiration: { maxEntries: 12 },
+              cacheableResponse: { statuses: [200] },
+            },
+          },
+        ],
       },
     }),
   ],

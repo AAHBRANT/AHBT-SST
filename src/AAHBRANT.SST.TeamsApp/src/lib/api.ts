@@ -3906,6 +3906,10 @@ export const api = {
         throw new Error(`${response.status} ${response.statusText}: ${corpo}`);
       }
     },
+    // Só Administrador (o backend recusa os demais): apaga a foto e o cadastro no Azure Face para o
+    // trabalhador poder capturar uma foto nova. O motivo é obrigatório e fica na trilha de auditoria.
+    refazerCadastroFacial: (id: string, motivo: string) =>
+      request<void>(`/api/trabalhadores/${id}/assinatura/facial/refazer`, { method: 'POST', body: JSON.stringify({ motivo }) }),
     // Carga inicial única do cadastro do G-RH (Integração G-RH) — a atualização contínua depois
     // disso é automática, via evento de Service Bus; não faz sentido rodar isto repetidamente.
     importarGrh: () =>
