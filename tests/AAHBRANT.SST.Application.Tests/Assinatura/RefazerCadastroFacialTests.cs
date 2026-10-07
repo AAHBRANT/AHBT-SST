@@ -24,7 +24,7 @@ public class RefazerCadastroFacialTests
             return Task.CompletedTask;
         }
 
-        public Task<ResultadoIdentificacaoFacial> IdentificarAsync(Guid obraId, byte[] fotoJpeg, CancellationToken ct)
+        public Task<ResultadoIdentificacaoFacial> IdentificarAsync(Guid obraId, byte[] fotoJpeg, CancellationToken ct, bool exigirMargemSobreSegundoColocado = false)
             => throw new NotSupportedException();
     }
 

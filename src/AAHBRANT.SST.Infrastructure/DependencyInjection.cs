@@ -72,6 +72,7 @@ public static class DependencyInjection
         services.AddHttpClient();
         services.Configure<TelegramSuporteOptions>(configuration.GetSection("Telegram"));
         services.AddScoped<ITelegramSuporteService, TelegramSuporteService>();
+        services.AddScoped<ITelegramResumoService, TelegramResumoService>();
         services.AddScoped<ISuporteIaConfiguracao, SuporteIaConfiguracao>();
 
         services.AddScoped<IDdsPdfService, DdsPdfService>();

@@ -98,3 +98,16 @@ public class FotoCadastroFacialConfiguracao : IEntityTypeConfiguration<FotoCadas
         builder.HasQueryFilter(f => f.Ativo);
     }
 }
+
+public class FalhaReconhecimentoFacialConfiguracao : IEntityTypeConfiguration<FalhaReconhecimentoFacial>
+{
+    public void Configure(EntityTypeBuilder<FalhaReconhecimentoFacial> builder)
+    {
+        builder.HasOne(f => f.Trabalhador).WithMany()
+            .HasForeignKey(f => f.TrabalhadorId).OnDelete(DeleteBehavior.Restrict);
+
+        builder.HasIndex(f => new { f.ObraId, f.OcorridaEm });
+        builder.HasIndex(f => new { f.TrabalhadorId, f.OcorridaEm });
+        builder.HasQueryFilter(f => f.Ativo);
+    }
+}

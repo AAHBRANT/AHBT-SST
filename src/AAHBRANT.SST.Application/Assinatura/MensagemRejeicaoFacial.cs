@@ -10,6 +10,7 @@ public static class MensagemRejeicaoFacial
         MotivoRejeicaoFacial.NenhumRostoDetectado => "Nenhum rosto detectado na foto.",
         MotivoRejeicaoFacial.MultiplosRostosDetectados => "Mais de uma pessoa detectada na câmera — aproxime-se sozinho.",
         MotivoRejeicaoFacial.ConfiancaBaixa => "Rosto reconhecido com baixa confiança — tente novamente com melhor iluminação.",
+        MotivoRejeicaoFacial.RostoAmbiguo => "Rosto parecido com o de outra pessoa. Use a digital ou tente de novo de frente para a câmera.",
         _ => "Rosto não reconhecido.",
     };
 }

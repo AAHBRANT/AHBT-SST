@@ -24,7 +24,7 @@ public class RegistrarParticipanteFacialCommandHandlerTests
 
         public Task RemoverCadastroAsync(Guid trabalhadorId, CancellationToken ct) => Task.CompletedTask;
 
-        public Task<ResultadoIdentificacaoFacial> IdentificarAsync(Guid obraId, byte[] fotoJpeg, CancellationToken ct)
+        public Task<ResultadoIdentificacaoFacial> IdentificarAsync(Guid obraId, byte[] fotoJpeg, CancellationToken ct, bool exigirMargemSobreSegundoColocado = false)
         {
             ObraConsultada = obraId;
             return Task.FromResult(_resultado);

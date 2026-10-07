@@ -9,6 +9,8 @@ public class TelegramSuporteOptions
 {
     public string? BotToken { get; set; }
     public string? SuporteChatId { get; set; }
+    // Chat separado para resumos operacionais (ex.: resumo do DDS ao encerrar).
+    public string? ResumoChatId { get; set; }
 }
 
 public class TelegramSuporteService : ITelegramSuporteService

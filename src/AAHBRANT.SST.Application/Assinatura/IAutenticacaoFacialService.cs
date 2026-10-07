@@ -9,9 +9,13 @@ public enum MotivoRejeicaoFacial
     MultiplosRostosDetectados,
     ConfiancaBaixa,
     RostoNaoReconhecido,
+    // Fila 1:N: o segundo colocado ficou perto demais do primeiro para confirmar com segurança.
+    RostoAmbiguo,
 }
 
-public record ResultadoIdentificacaoFacial(bool Aceito, ResultadoAutenticacaoAssinatura? Resultado, MotivoRejeicaoFacial? Motivo, double? Confianca);
+public record ResultadoIdentificacaoFacial(bool Aceito, ResultadoAutenticacaoAssinatura? Resultado, MotivoRejeicaoFacial? Motivo, double? Confianca,
+    // Quem o Azure apontou, quando a confiança permite atribuir a falha a alguém (cadastro fraco).
+    Guid? TrabalhadorIdProvavel = null);
 
 public interface IAutenticacaoFacialService
 {
@@ -29,5 +33,9 @@ public interface IAutenticacaoFacialService
     // Identifica quem está na foto dentro do PersonGroup da obra informada. Não recebe TrabalhadorId
     // — ao contrário do Futronic (que já resolveu o match localmente), aqui é o Azure quem descobre
     // quem é, a partir da foto.
-    Task<ResultadoIdentificacaoFacial> IdentificarAsync(Guid obraId, byte[] fotoJpeg, CancellationToken ct);
+    //
+    // exigirMargemSobreSegundoColocado: usar na fila (ninguém escolhe a pessoa). Recusa quando o
+    // segundo candidato está perto demais do primeiro (ver AssinaturaOptions.MargemMinima...).
+    // Toda falha (confiança baixa, não reconhecido, ambíguo) é registrada para a lista de cadastros fracos.
+    Task<ResultadoIdentificacaoFacial> IdentificarAsync(Guid obraId, byte[] fotoJpeg, CancellationToken ct, bool exigirMargemSobreSegundoColocado = false);
 }
