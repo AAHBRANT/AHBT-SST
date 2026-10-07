@@ -258,7 +258,7 @@ export function AssinaturaTab({ trabalhadorId }: AssinaturaTabProps) {
           <SeletorFotoCamera
             aoSelecionarArquivo={cadastrarFacial}
             aoErroValidacao={setErroFacial}
-            rotulo="Facial Azure"
+            rotulo="Capturar facial"
             tamanho="medium"
             variante="facialAzure"
             modoCamera="user"
