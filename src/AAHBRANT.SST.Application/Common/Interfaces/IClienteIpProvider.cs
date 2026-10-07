@@ -7,4 +7,7 @@ namespace AAHBRANT.SST.Application.Common.Interfaces;
 public interface IClienteIpProvider
 {
     string? ObterIp();
+
+    // Cabeçalho User-Agent da requisição (navegador/sistema do aparelho), para o log de assinaturas.
+    string? ObterUserAgent();
 }

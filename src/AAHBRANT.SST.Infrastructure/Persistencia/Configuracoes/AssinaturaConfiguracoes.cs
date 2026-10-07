@@ -28,6 +28,10 @@ public class DocumentoSignatarioConfiguracao : IEntityTypeConfiguration<Document
     {
         builder.Property(s => s.FotoEvidenciaContentType).HasMaxLength(80);
         builder.Property(s => s.FotoEvidenciaHash).HasMaxLength(64);
+        builder.Property(s => s.UserAgent).HasMaxLength(300);
+        builder.Property(s => s.ValidacaoModelo).HasMaxLength(60);
+        builder.Property(s => s.ValidacaoGrupoId).HasMaxLength(80);
+        builder.Property(s => s.ValidacaoRequisicaoId).HasMaxLength(80);
 
         builder.HasOne(s => s.DocumentoAssinatura).WithMany(d => d.Signatarios)
             .HasForeignKey(s => s.DocumentoAssinaturaId).OnDelete(DeleteBehavior.Cascade);

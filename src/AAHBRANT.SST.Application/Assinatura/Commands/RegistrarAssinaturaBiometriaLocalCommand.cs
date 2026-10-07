@@ -5,7 +5,8 @@ using MediatR;
 namespace AAHBRANT.SST.Application.Assinatura.Commands;
 
 public record RegistrarAssinaturaBiometriaLocalCommand(
-    Guid DocumentoAssinaturaId, Guid DispositivoId, string SegredoDispositivo, Guid TrabalhadorId, double Score, string? IpAddress = null, byte[]? ImagemDigital = null) : IRequest<DocumentoSignatarioDto>;
+    Guid DocumentoAssinaturaId, Guid DispositivoId, string SegredoDispositivo, Guid TrabalhadorId, double Score, string? IpAddress = null, byte[]? ImagemDigital = null,
+    LocalizacaoAssinatura? Localizacao = null) : IRequest<DocumentoSignatarioDto>;
 
 public class RegistrarAssinaturaBiometriaLocalCommandValidator : AbstractValidator<RegistrarAssinaturaBiometriaLocalCommand>
 {
@@ -36,6 +37,7 @@ public class RegistrarAssinaturaBiometriaLocalCommandHandler : IRequestHandler<R
             request.DispositivoId, request.SegredoDispositivo, request.TrabalhadorId, request.Score, ct);
         return await _registrador.RegistrarAsync(
             request.DocumentoAssinaturaId, resultado, request.IpAddress, ct,
-            request.ImagemDigital, request.ImagemDigital is null ? null : "image/png");
+            request.ImagemDigital, request.ImagemDigital is null ? null : "image/png",
+            localizacao: request.Localizacao);
     }
 }

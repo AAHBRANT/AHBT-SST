@@ -21,4 +21,7 @@ public class ClienteIpProvider : IClienteIpProvider
 
         return contexto.Connection.RemoteIpAddress?.ToString();
     }
+
+    public string? ObterUserAgent() =>
+        _http.HttpContext?.Request.Headers.UserAgent.FirstOrDefault();
 }

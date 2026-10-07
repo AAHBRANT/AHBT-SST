@@ -44,6 +44,10 @@ public class EntregaEpiPdfService : IFichaEpiPdfService
                 pagina.Footer().Column(coluna => RodapeDocumentoPadrao.Desenhar(
                     coluna, "Ficha de EPI", protocolo: null, null, modelo.ConteudoHash, modelo.UrlValidacaoPublica, modelo.QrCodePng, temAssinatura: false));
             });
+
+            // Páginas finais: log de assinaturas de EPI do funcionário (as páginas acima não mudam).
+            if (modelo.Log is { Itens.Count: > 0 } log)
+                LogAssinaturasEpiPdf.Adicionar(container, modelo, log);
         });
 
         return documento.GeneratePdf();
@@ -57,26 +61,53 @@ public class EntregaEpiPdfService : IFichaEpiPdfService
 
             // Grade de 3 colunas, cada campo numa caixa com o rótulo pequeno em cima e o valor embaixo
             // (mesmo desenho do cabeçalho do DDS semanal) — linhas alinhadas e sem quebra irregular.
-            coluna.Item().PaddingTop(2).Table(tabela =>
+            // À direita, a foto de cadastro do funcionário (pedido de 06/10); o turno saiu da grade e o
+            // CPF passou a sair completo (liberado pelo jurídico).
+            coluna.Item().PaddingTop(2).Row(linha =>
             {
-                tabela.ColumnsDefinition(columns =>
+                linha.RelativeItem().Table(tabela =>
                 {
-                    columns.RelativeColumn();
-                    columns.RelativeColumn();
-                    columns.RelativeColumn();
+                    tabela.ColumnsDefinition(columns =>
+                    {
+                        columns.RelativeColumn();
+                        columns.RelativeColumn();
+                        columns.RelativeColumn();
+                    });
+
+                    CelulaIdentificacao(tabela, "Nome completo", modelo.TrabalhadorNome, colSpan: 2);
+                    CelulaIdentificacao(tabela, "CPF", modelo.TrabalhadorCpf ?? modelo.TrabalhadorCpfMascarado);
+                    CelulaIdentificacao(tabela, "Matrícula", modelo.TrabalhadorMatricula);
+                    CelulaIdentificacao(tabela, "Função", modelo.TrabalhadorFuncaoNome);
+                    CelulaIdentificacao(tabela, "Data de admissão", modelo.TrabalhadorDataAdmissao.ToString("dd/MM/yyyy"));
+                    CelulaIdentificacao(tabela, "Obra / Frente de trabalho", modelo.ObraNome, colSpan: 3);
+                    CelulaIdentificacao(tabela, "Empresa contratante", modelo.ObraNome, colSpan: 2);
+                    CelulaIdentificacao(tabela, "CNPJ da contratada", modelo.ObraCnpj ?? "não informado");
                 });
 
-                CelulaIdentificacao(tabela, "Nome completo", modelo.TrabalhadorNome, colSpan: 2);
-                CelulaIdentificacao(tabela, "CPF", modelo.TrabalhadorCpfMascarado);
-                CelulaIdentificacao(tabela, "Matrícula", modelo.TrabalhadorMatricula);
-                CelulaIdentificacao(tabela, "Função", modelo.TrabalhadorFuncaoNome);
-                CelulaIdentificacao(tabela, "Turno", modelo.TrabalhadorTurno ?? "não informado");
-                CelulaIdentificacao(tabela, "Data de admissão", modelo.TrabalhadorDataAdmissao.ToString("dd/MM/yyyy"));
-                CelulaIdentificacao(tabela, "Obra / Frente de trabalho", modelo.ObraNome, colSpan: 2);
-                CelulaIdentificacao(tabela, "Empresa contratante", modelo.ObraNome, colSpan: 2);
-                CelulaIdentificacao(tabela, "CNPJ da contratada", modelo.ObraCnpj ?? "não informado");
+                linha.ConstantItem(78).Border(0.5f).BorderColor(Colors.Grey.Lighten1).Padding(4).Column(foto =>
+                {
+                    foto.Item().Text("Foto de cadastro").FontSize(7).SemiBold().FontColor(CorMarca);
+                    if (modelo.TrabalhadorFoto is { Length: > 0 } bytes && FotoValida(bytes))
+                        foto.Item().PaddingTop(2).Height(88).Image(bytes).FitArea();
+                    else
+                        foto.Item().PaddingTop(2).Height(88).Border(0.5f).BorderColor(Colors.Grey.Lighten1)
+                            .AlignCenter().AlignMiddle().Text("Sem foto cadastrada").FontSize(7).FontColor(Colors.Grey.Darken1).AlignCenter();
+                });
             });
         });
+    }
+
+    private static bool FotoValida(byte[] bytes)
+    {
+        try
+        {
+            using var ms = new MemoryStream(bytes);
+            return SixLabors.ImageSharp.Image.Identify(ms) is not null;
+        }
+        catch
+        {
+            return false;
+        }
     }
 
     private static void CelulaIdentificacao(TableDescriptor tabela, string rotulo, string valor, uint colSpan = 1)

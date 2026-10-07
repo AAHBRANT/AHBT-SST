@@ -75,4 +75,29 @@ public class DocumentoSignatario : AuditableEntity
     public byte[]? FotoEvidenciaConteudo { get; set; }
     public string? FotoEvidenciaContentType { get; set; }
     public string? FotoEvidenciaHash { get; set; }
+
+    // Rastro técnico da assinatura (log de assinaturas da Ficha de EPI). Todos opcionais: assinaturas
+    // anteriores à captura ficam nulas e o log as marca como "anterior à implantação".
+    // Leitor/dispositivo de borda que identificou a digital (DispositivoAgenteBiometrico).
+    public Guid? DispositivoAgenteId { get; set; }
+    // Navegador/sistema do aparelho que enviou a assinatura (cabeçalho User-Agent).
+    public string? UserAgent { get; set; }
+
+    // Detalhes da validação por serviço externo (hoje só o Azure AI Face, na assinatura facial), para o
+    // log de assinaturas poder destacar quem validou e dar o rastro para contestação. Nulos nas
+    // assinaturas anteriores a esta captura e nos outros métodos (a digital é conferida no agente
+    // local, e a sessão logada pelo próprio login).
+    // Modelo de reconhecimento do grupo de pessoas, como informado pelo Azure (ex.: recognition_01).
+    public string? ValidacaoModelo { get; set; }
+    // Grupo de pessoas da obra no Azure usado na identificação 1:N.
+    public string? ValidacaoGrupoId { get; set; }
+    // Identificador da requisição devolvido pelo Azure (cabeçalho apim-request-id), para rastreio.
+    public string? ValidacaoRequisicaoId { get; set; }
+
+    // Geolocalização informada pelo aparelho no momento da assinatura (declarada pelo cliente, ao
+    // contrário do IP, que o servidor mede). Precisão em metros.
+    public StatusLocalizacaoAssinatura LocalizacaoStatus { get; set; }
+    public double? Latitude { get; set; }
+    public double? Longitude { get; set; }
+    public double? PrecisaoMetros { get; set; }
 }

@@ -1,4 +1,5 @@
 import { anexarDadosFoto, type DadosFoto } from './dadosFoto';
+import { localizacaoParaCorpo, obterLocalizacaoAssinatura } from './localizacaoAssinatura';
 import { API_BASE_URL } from './apiBase';
 import { montarHeadersAuth } from './authHeaders';
 import { syncFetchBlob, syncFetchJson, syncMutateJson, syncMutateMultipart } from './offline/syncEngine';
@@ -3883,10 +3884,10 @@ export const api = {
     },
     // Cadastro de digital via agente local (Futronic FS80H) — templateBruto vem em base64 do
     // agente (fetch local a /api/capturar-bruto); o backend criptografa antes de persistir.
-    cadastrarBiometriaLocal: (id: string, templateBrutoBase64: string) =>
+    cadastrarBiometriaLocal: (id: string, templateBrutoBase64: string, imagemCadastroBase64?: string | null) =>
       request<void>(`/api/trabalhadores/${id}/assinatura/biometria-local/cadastro`, {
         method: 'POST',
-        body: JSON.stringify({ templateBruto: templateBrutoBase64 }),
+        body: JSON.stringify({ templateBruto: templateBrutoBase64, imagemCadastro: imagemCadastroBase64 ?? null }),
       }),
     // Cadastro de reconhecimento facial (Azure Face API) — multipart, não passa por request<T>
     // (que sempre força Content-Type: application/json, incompatível com FormData) nem pelo motor
@@ -5002,15 +5003,23 @@ export const api = {
       }),
     // Assinatura em um clique do usuário logado (entregador) — sem uid/pin, o backend resolve o
     // trabalhador a partir da sessão autenticada (claim "oid" do Entra ID).
-    assinarComSessao: (documentoId: string) =>
-      request<DocumentoSignatario>(`/api/documentos/${documentoId}/assinar/sessao`, { method: 'POST' }),
+    // A geolocalização do aparelho vai junto (log de assinaturas); nunca bloqueia a assinatura.
+    assinarComSessao: async (documentoId: string) => {
+      const localizacao = localizacaoParaCorpo(await obterLocalizacaoAssinatura());
+      return request<DocumentoSignatario>(`/api/documentos/${documentoId}/assinar/sessao`, {
+        method: 'POST',
+        body: JSON.stringify({ localizacao }),
+      });
+    },
     // Autenticação via biometria digital local (Futronic FS80H) — dispositivoId/segredoDispositivo
     // vêm do agente local (fetch a /api/dispositivo), nunca de localStorage.
-    autenticarBiometriaLocal: (documentoId: string, dispositivoId: string, segredoDispositivo: string, trabalhadorId: string, score: number, imagemDigital?: string | null) =>
-      request<DocumentoSignatario>(`/api/documentos/${documentoId}/autenticacao/biometria-local`, {
+    autenticarBiometriaLocal: async (documentoId: string, dispositivoId: string, segredoDispositivo: string, trabalhadorId: string, score: number, imagemDigital?: string | null) => {
+      const localizacao = localizacaoParaCorpo(await obterLocalizacaoAssinatura());
+      return request<DocumentoSignatario>(`/api/documentos/${documentoId}/autenticacao/biometria-local`, {
         method: 'POST',
-        body: JSON.stringify({ dispositivoId, segredoDispositivo, trabalhadorId, score, imagemDigital: imagemDigital ?? null }),
-      }),
+        body: JSON.stringify({ dispositivoId, segredoDispositivo, trabalhadorId, score, imagemDigital: imagemDigital ?? null, localizacao }),
+      });
+    },
     // Assinatura via reconhecimento facial (Azure Face API) — multipart e offline-aware, mesmo
     // padrão de anexarFotoEvidencia (DDS): syncMutateMultipart enfileira sozinho se faltar conexão.
     autenticarFacial: async (documentoAssinaturaId: string, obraId: string, foto: File) => {
@@ -5018,6 +5027,12 @@ export const api = {
       formData.append('obraId', obraId);
       formData.append('foto', foto);
       anexarDadosFoto(formData, foto);
+      // Geolocalização no momento da assinatura (log de assinaturas), como campos do formulário.
+      const localizacao = await obterLocalizacaoAssinatura();
+      formData.append('localizacaoStatus', String(localizacao.status));
+      if (localizacao.latitude != null) formData.append('latitude', String(localizacao.latitude));
+      if (localizacao.longitude != null) formData.append('longitude', String(localizacao.longitude));
+      if (localizacao.precisaoMetros != null) formData.append('precisaoMetros', String(localizacao.precisaoMetros));
       const authHeaders = await montarHeadersAuth();
       return syncMutateMultipart<DocumentoSignatario>(
         `/api/documentos/${documentoAssinaturaId}/autenticacao/facial`, formData, authHeaders,

@@ -13,7 +13,8 @@ namespace AAHBRANT.SST.Application.Assinatura.Commands;
 // estratégias. Falha com mensagem amigável (400, via TratamentoDeExcecaoMiddleware) quando o usuário
 // não está vinculado a um Trabalhador — a entrega/documento em si já foi salvo antes desta chamada,
 // então essa falha bloqueia só a assinatura do entregador, não o registro que a originou.
-public record RegistrarAssinaturaSessaoLogadaCommand(Guid DocumentoAssinaturaId, string? AzureAdObjectId, string? IpAddress = null) : IRequest<DocumentoSignatarioDto>;
+public record RegistrarAssinaturaSessaoLogadaCommand(Guid DocumentoAssinaturaId, string? AzureAdObjectId, string? IpAddress = null,
+    LocalizacaoAssinatura? Localizacao = null) : IRequest<DocumentoSignatarioDto>;
 
 public class RegistrarAssinaturaSessaoLogadaCommandValidator : AbstractValidator<RegistrarAssinaturaSessaoLogadaCommand>
 {
@@ -45,6 +46,6 @@ public class RegistrarAssinaturaSessaoLogadaCommandHandler : IRequestHandler<Reg
                 "Seu usuário não está vinculado a um cadastro de trabalhador. Peça a um administrador para vincular seu usuário antes de assinar.");
 
         var resultado = new ResultadoAutenticacaoAssinatura(usuario.TrabalhadorId.Value, MetodoAutenticacaoAssinatura.SessaoLogada);
-        return await _registrador.RegistrarAsync(request.DocumentoAssinaturaId, resultado, request.IpAddress, ct);
+        return await _registrador.RegistrarAsync(request.DocumentoAssinaturaId, resultado, request.IpAddress, ct, localizacao: request.Localizacao);
     }
 }
