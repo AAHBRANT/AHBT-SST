@@ -2,7 +2,6 @@ import { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   Avatar,
-  BotaoAcao,
   Button,
   Card,
   PageHeader,
@@ -23,8 +22,7 @@ import {
   type Coluna,
   type Tom,
 } from '@ui';
-import { Add24Regular, ArrowLeft24Regular, Fingerprint24Regular, PeopleTeam24Regular, Search24Regular } from '@fluentui/react-icons';
-import { SeletorFotoCamera } from '../../components/SeletorFotoCamera';
+import { Add24Regular, ArrowLeft24Regular, PeopleTeam24Regular, Search24Regular } from '@fluentui/react-icons';
 import {
   api,
   resultadoAsoLabel,
@@ -97,7 +95,7 @@ export function TrabalhadoresTab() {
     funcaoId: string;
   } | null>(null);
   const [obraSelecionadaId, setObraSelecionadaId] = useState<string | null>(null);
-  const { confirmar, dialogElement } = useConfirmar();
+  const { dialogElement } = useConfirmar();
   const sucessoToast = useSucessoToast();
 
   async function carregar() {
@@ -152,23 +150,6 @@ export function TrabalhadoresTab() {
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
-
-  async function enviarFoto(trabalhadorId: string, arquivo: File) {
-    try {
-      setErro(null);
-      await api.trabalhadores.enviarFoto(trabalhadorId, arquivo);
-      setFotoUrls((atual) => {
-        const anterior = atual[trabalhadorId];
-        if (anterior) URL.revokeObjectURL(anterior);
-        const { [trabalhadorId]: _removido, ...resto } = atual;
-        return resto;
-      });
-      await carregar();
-      sucessoToast('Foto enviada com sucesso.');
-    } catch (e) {
-      setErro(e instanceof Error ? e.message : 'Falha ao enviar a foto.');
-    }
-  }
 
   function nomeFuncao(id: string) {
     return funcoes.find((f) => f.id === id)?.nome ?? id;
@@ -239,52 +220,60 @@ export function TrabalhadoresTab() {
     }
   }
 
-  async function excluir(id: string) {
-    if (
-      !(await confirmar(
-        'Excluir este funcionário? Todo o histórico associado (ASO, treinamentos, EPI) fica desvinculado. Essa ação não pode ser desfeita.',
-      ))
-    )
-      return;
-    try {
-      await api.trabalhadores.excluir(id);
-      await carregar();
-      sucessoToast('Funcionário excluído com sucesso.');
-    } catch (e) {
-      setErro(e instanceof Error ? e.message : 'Falha ao excluir funcionário.');
-    }
-  }
-
   const colunas: Coluna<Trabalhador>[] = [
     {
       chave: 'nome',
-      rotulo: 'Funcionário',
+      rotulo: 'Nome',
       render: (t) => (
-        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 12, whiteSpace: 'nowrap' }}>
           {fotoUrls[t.id] ? (
-            <Avatar image={{ src: fotoUrls[t.id] }} size={40} name={t.nome} />
+            <Avatar image={{ src: fotoUrls[t.id] }} size={56} name={t.nome} />
           ) : (
-            <Avatar name={t.nome} color="colorful" size={40} />
+            <Avatar name={t.nome} color="colorful" size={56} />
           )}
-          <div style={{ minWidth: 0 }}>
-            <div style={{ fontWeight: 600 }}>{t.nome}</div>
-            <div style={{ fontSize: 12 }}>
-              {t.matricula && `${t.matricula} · `}
-              {nomeFuncao(t.funcaoId)} · {tipoVinculoLabel[t.vinculo]}
-            </div>
-          </div>
+          <span style={{ fontWeight: 600 }}>{t.nome}</span>
         </div>
       ),
     },
     {
-      chave: 'situacao',
-      rotulo: 'Situação',
+      chave: 'matricula',
+      rotulo: 'Matrícula',
+      render: (t) => <span style={{ whiteSpace: 'nowrap' }}>{t.matricula || '—'}</span>,
+    },
+    {
+      chave: 'funcao',
+      rotulo: 'Função',
+      render: (t) => <span style={{ whiteSpace: 'nowrap' }}>{nomeFuncao(t.funcaoId)}</span>,
+    },
+    {
+      chave: 'regime',
+      rotulo: 'Regime',
+      render: (t) => <span style={{ whiteSpace: 'nowrap' }}>{tipoVinculoLabel[t.vinculo] ?? '—'}</span>,
+    },
+    {
+      chave: 'aso',
+      rotulo: 'ASO',
       render: (t) => {
         const aso = ultimoAso(asos, t.id);
+        if (!aso) {
+          return (
+            <div style={{ whiteSpace: 'nowrap' }}>
+              <StatusChip tom="info">Sem ASO</StatusChip>
+              <div style={{ fontSize: 12, marginTop: 4 }}>Nenhum ASO cadastrado</div>
+            </div>
+          );
+        }
+        const validade = new Date(aso.dataValidade);
+        const vencido = validade.getTime() < Date.now();
+        const dataBr = validade.toLocaleDateString('pt-BR');
         return (
-          <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
-            {aso && <StatusChip tom={tomAso[aso.resultadoStatus] ?? 'info'}>{resultadoAsoLabel[aso.resultadoStatus]}</StatusChip>}
-            {!t.temBiometria && <StatusChip tom="atencao">Digital pendente</StatusChip>}
+          <div style={{ whiteSpace: 'nowrap' }}>
+            {vencido ? (
+              <StatusChip tom="alerta">Vencido</StatusChip>
+            ) : (
+              <StatusChip tom={tomAso[aso.resultadoStatus] ?? 'info'}>{resultadoAsoLabel[aso.resultadoStatus]}</StatusChip>
+            )}
+            <div style={{ fontSize: 12, marginTop: 4 }}>{vencido ? `venceu em ${dataBr}` : `válido até ${dataBr}`}</div>
           </div>
         );
       },
@@ -491,34 +480,6 @@ export function TrabalhadoresTab() {
                 }
               : { titulo: 'Nenhum funcionário encontrado.', descricao: 'Tente outro termo de busca.', variante: 'sem-resultado' }
           }
-          acoesLinha={(t) => (
-            <div style={{ display: 'flex', gap: 6 }}>
-              {/* Digital é cadastrada uma única vez (regra do usuário, 30/09): já cadastrada, o botão some. */}
-              {!t.temBiometria && (
-                <BotaoAcao
-                  tom="ver"
-                  icon={<Fingerprint24Regular />}
-                  onClick={(evento) => {
-                    evento.stopPropagation();
-                    setTrabalhadorDigitalAlvo({ id: t.id, nome: t.nome });
-                  }}
-                  aria-label="Cadastrar digital"
-                />
-              )}
-              <span onClick={(evento) => evento.stopPropagation()}>
-                <SeletorFotoCamera
-                  rotulo="Enviar foto"
-                  apenasIcone
-                  tiposAceitos="image/png,image/jpeg"
-                  aoSelecionarArquivo={(arquivo) => enviarFoto(t.id, arquivo)}
-                  aoErroValidacao={setErro}
-                />
-              </span>
-              <BotaoAcao tom="excluir" onClick={() => excluir(t.id)} aria-label="Excluir">
-                Excluir
-              </BotaoAcao>
-            </div>
-          )}
         />
       </Card>
 

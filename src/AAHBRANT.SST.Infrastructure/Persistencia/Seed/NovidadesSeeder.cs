@@ -996,6 +996,21 @@ public static class NovidadesSeeder
                     "A foto do perfil do funcionário e a foto do cadastro facial eram duas coisas separadas, e a do perfil ficava desatualizada ou vazia.",
                     "Quando o cadastro ou o recadastro facial é concluído, a foto aprovada passa a ser também a foto do perfil, substituindo a anterior. A foto biométrica continua guardada à parte, com hash, para auditoria. Quem já tinha facial cadastrado não é alterado agora: a foto só muda no próximo cadastro ou recadastro."),
             }),
+        new(
+            Versao: "5.51.0",
+            Titulo: "Lista de funcionários com mais informação",
+            DataPublicacao: new DateTime(2026, 10, 7, 0, 0, 0, DateTimeKind.Utc),
+            Itens: new[]
+            {
+                new NovidadeSeedItem(CategoriaNovidade.Melhoria,
+                    "Nova tabela de funcionários em Pessoas",
+                    "A lista mostrava só o nome (com matrícula e função em letra pequena) e uma coluna de situação.",
+                    "A lista agora tem as colunas Nome, Matrícula, Função, Regime (CLT, Terceirizado etc.) e ASO, com o resultado e a validade do último ASO, ou o aviso de ASO vencido ou sem ASO. A foto ficou maior e o nome aparece completo, em uma linha."),
+                new NovidadeSeedItem(CategoriaNovidade.Melhoria,
+                    "Botões de foto, Excluir e digital saíram da lista",
+                    "Cada linha da lista tinha botões de foto, Excluir e cadastro de digital.",
+                    "Esses botões não aparecem mais na lista, para evitar cliques por engano. A foto e o cadastro de digital ficam no perfil do funcionário."),
+            }),
     };
 
     public static async Task ExecutarAsync(IServiceProvider services, CancellationToken ct = default)
