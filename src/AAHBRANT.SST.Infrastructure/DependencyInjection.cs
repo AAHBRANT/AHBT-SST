@@ -74,6 +74,7 @@ public static class DependencyInjection
         services.AddScoped<ITelegramSuporteService, TelegramSuporteService>();
         services.AddScoped<ITelegramResumoService, TelegramResumoService>();
         services.AddSingleton<AAHBRANT.SST.Application.Dds.IImagemResumoDdsService, AAHBRANT.SST.Infrastructure.Documentos.ImagemResumoDdsService>();
+        services.AddSingleton<AAHBRANT.SST.Application.Relatorios.IImagemListaPresencaService, AAHBRANT.SST.Infrastructure.Documentos.ImagemListaPresencaService>();
         services.AddScoped<ISuporteIaConfiguracao, SuporteIaConfiguracao>();
 
         services.AddScoped<IDdsPdfService, DdsPdfService>();

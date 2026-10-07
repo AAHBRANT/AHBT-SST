@@ -2,6 +2,7 @@ using AAHBRANT.SST.Application.Dds;
 using QuestPDF.Fluent;
 using QuestPDF.Helpers;
 using QuestPDF.Infrastructure;
+using static AAHBRANT.SST.Infrastructure.Documentos.RelatorioImagemEstilo;
 
 namespace AAHBRANT.SST.Infrastructure.Documentos;
 
@@ -11,83 +12,26 @@ namespace AAHBRANT.SST.Infrastructure.Documentos;
 // página como PNG). Só matrícula e quantidades.
 public class ImagemResumoDdsService : IImagemResumoDdsService
 {
-    private const string Vinho = "#670000";
-    private const string Bege = "#ebe9ad";
-    private const string Linha = "#e2ddd7";
-    private const string Fundo = "#fbfaf7";
-    private const string Cinza = "#6b6560";
-    private const string Tinta = "#1c1a19";
     private const string CorFacial = "#670000";
     private const string CorDigital = "#b88a6a";
     private const string CorPendente = "#cfc9c0";
 
-    // Página em pontos (72 por polegada); 144 dpi de rasterização dá exatamente 1080 px de largura. A altura
-    // é contínua (cresce com a lista de matrículas, limitada a MaximoDeMatriculasNaImagem).
-    private const float LarguraPt = 540f;
-    private const int Dpi = 144;
     private const int MaximoDeMatriculasNaImagem = 6;
 
     public byte[] Gerar(ResumoDdsDados d)
     {
-        var documento = Document.Create(container =>
+        return RenderizarPng(pagina =>
         {
-            container.Page(pagina =>
+            pagina.Header().Element(c => Cabecalho(c, "SST  ·  Relatório do DDS", "DDS encerrado", $"{d.Obra}  ·  {d.Quando:dd/MM/yyyy, HH:mm}"));
+            pagina.Content().Padding(24).Column(coluna =>
             {
-                pagina.ContinuousSize(LarguraPt);
-                pagina.Margin(0);
-                pagina.PageColor(Fundo);
-                pagina.DefaultTextStyle(e => e.FontSize(12).FontColor(Tinta));
-
-                pagina.Header().Element(c => Cabecalho(c, d));
-                pagina.Content().Padding(24).Column(coluna =>
-                {
-                    coluna.Spacing(14);
-                    coluna.Item().Element(c => Cards(c, d));
-                    coluna.Item().Element(c => BarraDePresenca(c, d));
-                    coluna.Item().Element(c => AlertaDeFalhas(c, d));
-                    coluna.Item().Element(c => Revisao(c, d));
-                });
-                pagina.Footer().Element(c => Rodape(c, d));
+                coluna.Spacing(14);
+                coluna.Item().Element(c => Cards(c, d));
+                coluna.Item().Element(c => BarraDePresenca(c, d));
+                coluna.Item().Element(c => AlertaDeFalhas(c, d));
+                coluna.Item().Element(c => Revisao(c, d));
             });
-        });
-
-        var imagens = documento.GenerateImages(new ImageGenerationSettings
-        {
-            ImageFormat = ImageFormat.Png,
-            RasterDpi = Dpi,
-        });
-        return imagens.First();
-    }
-
-    // Logomarca oficial (PNG com fundo transparente, preta e vinho): embutida no assembly. Fica numa faixa
-    // branca no topo porque não tem leitura sobre o fundo vinho.
-    private const string RecursoLogo = "AAHBRANT.SST.Infrastructure.Documentos.Assets.logo-aahbrant.png";
-    private static readonly Lazy<byte[]?> Logo = new(() =>
-    {
-        using var stream = typeof(ImagemResumoDdsService).Assembly.GetManifestResourceStream(RecursoLogo);
-        if (stream is null) return null;
-        using var memoria = new MemoryStream();
-        stream.CopyTo(memoria);
-        return memoria.ToArray();
-    });
-
-    private static void Cabecalho(IContainer container, ResumoDdsDados d)
-    {
-        container.Column(topo =>
-        {
-            topo.Item().Background("#ffffff").PaddingVertical(16).PaddingHorizontal(28).Row(linha =>
-            {
-                if (Logo.Value is { } logo)
-                    linha.AutoItem().Height(40).Image(logo).FitHeight();
-                else
-                    linha.AutoItem().AlignMiddle().Text("AAHBRANT").FontSize(18).Bold().FontColor(Vinho);
-                linha.RelativeItem().AlignMiddle().AlignRight().Text("SST  ·  Relatório do DDS").FontSize(9).FontColor(Cinza).SemiBold().LetterSpacing(0.12f);
-            });
-            topo.Item().Background(Vinho).PaddingVertical(22).PaddingHorizontal(28).Column(c =>
-            {
-                c.Item().Text("DDS encerrado").FontSize(30).Bold().FontColor("#ffffff");
-                c.Item().PaddingTop(4).Text($"{d.Obra}  ·  {d.Quando:dd/MM/yyyy, HH:mm}").FontSize(12).FontColor("#f1e4e4");
-            });
+            pagina.Footer().Element(c => Rodape(c, d.Quando));
         });
     }
 
@@ -193,15 +137,6 @@ public class ImagemResumoDdsService : IImagemResumoDdsService
                 if (restantes > 0)
                     lista.Item().Text($"e mais {restantes}").FontSize(10).FontColor("#3d3b10");
             });
-        });
-    }
-
-    private static void Rodape(IContainer container, ResumoDdsDados d)
-    {
-        container.BorderTop(1).BorderColor(Linha).PaddingVertical(10).PaddingHorizontal(28).Row(linha =>
-        {
-            linha.RelativeItem().Text("Sistema SST AAHBRANT").FontSize(9).FontColor(Cinza);
-            linha.AutoItem().Text($"Gerado às {d.Quando:HH:mm}").FontSize(9).FontColor(Cinza);
         });
     }
 }

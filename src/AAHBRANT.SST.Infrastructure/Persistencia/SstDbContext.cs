@@ -127,6 +127,10 @@ public class SstDbContext : DbContext, IAppDbContext
     public DbSet<TemplateBiometricoFutronic> TemplatesBiometricoFutronic => Set<TemplateBiometricoFutronic>();
     public DbSet<FotoCadastroFacial> FotosCadastroFacial => Set<FotoCadastroFacial>();
     public DbSet<FalhaReconhecimentoFacial> FalhasReconhecimentoFacial => Set<FalhaReconhecimentoFacial>();
+    public DbSet<RelatorioGerado> RelatoriosGerados => Set<RelatorioGerado>();
+    public DbSet<RelatorioEnvio> RelatorioEnvios => Set<RelatorioEnvio>();
+    public DbSet<DestinatarioRelatorio> DestinatariosRelatorio => Set<DestinatarioRelatorio>();
+    public DbSet<ExecucaoRelatorioAgendado> ExecucoesRelatorioAgendado => Set<ExecucaoRelatorioAgendado>();
 
     public DbSet<IdempotenciaRegistro> IdempotenciaRegistros => Set<IdempotenciaRegistro>();
 
@@ -216,6 +220,10 @@ public class SstDbContext : DbContext, IAppDbContext
             a.Ativo && (_usuarioAtual.TemAcessoGlobal || _usuarioAtual.ObrasPermitidas.Contains(a.ObraId)));
         modelBuilder.Entity<Setor>().HasQueryFilter(s =>
             s.Ativo && (_usuarioAtual.TemAcessoGlobal || _usuarioAtual.ObrasPermitidas.Contains(s.ObraId)));
+        // Relatório de uma obra só aparece para quem tem acesso a ela; o consolidado (ObraId nulo) só para
+        // quem tem acesso global.
+        modelBuilder.Entity<RelatorioGerado>().HasQueryFilter(r =>
+            r.Ativo && (_usuarioAtual.TemAcessoGlobal || (r.ObraId.HasValue && _usuarioAtual.ObrasPermitidas.Contains(r.ObraId.Value))));
         modelBuilder.Entity<FalhaReconhecimentoFacial>().HasQueryFilter(f =>
             f.Ativo && (_usuarioAtual.TemAcessoGlobal || _usuarioAtual.ObrasPermitidas.Contains(f.ObraId)));
         modelBuilder.Entity<Trabalhador>().HasQueryFilter(t =>

@@ -51,6 +51,33 @@ public class TelegramResumoService : ITelegramResumoService
         return true;
     }
 
+    public async Task<bool> EnviarDocumentoAsync(byte[] arquivo, string nomeArquivo, string legenda, CancellationToken ct = default)
+    {
+        var token = _options.Value.BotToken;
+        var chatId = ObterChatId();
+        if (string.IsNullOrWhiteSpace(token) || string.IsNullOrWhiteSpace(chatId))
+        {
+            _logger.LogInformation("Telegram de resumos não configurado (Telegram:BotToken e Telegram:SuporteChatId ou ResumoChatId): documento não enviado.");
+            return false;
+        }
+
+        using var corpo = new MultipartFormDataContent();
+        corpo.Add(new StringContent(chatId), "chat_id");
+        corpo.Add(new StringContent(legenda.Length > 1000 ? legenda[..1000] : legenda), "caption");
+        var documento = new ByteArrayContent(arquivo);
+        documento.Headers.ContentType = new System.Net.Http.Headers.MediaTypeHeaderValue("application/pdf");
+        corpo.Add(documento, "document", nomeArquivo);
+
+        var client = _httpClientFactory.CreateClient();
+        var response = await client.PostAsync($"https://api.telegram.org/bot{token}/sendDocument", corpo, ct);
+        if (!response.IsSuccessStatusCode)
+        {
+            _logger.LogWarning("Falha ao enviar o documento do relatório ao Telegram: {StatusCode}", response.StatusCode);
+            return false;
+        }
+        return true;
+    }
+
     private string? ObterChatId() =>
         string.IsNullOrWhiteSpace(_options.Value.ResumoChatId) ? _options.Value.SuporteChatId : _options.Value.ResumoChatId;
 

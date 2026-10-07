@@ -25,6 +25,8 @@ public class ResumoDdsTelegramTests
             return Task.CompletedTask;
         }
 
+        public Task<bool> EnviarDocumentoAsync(byte[] arquivo, string nomeArquivo, string legenda, CancellationToken ct = default) => Task.FromResult(true);
+
         public Task<bool> EnviarImagemAsync(byte[] imagemPng, string legenda, CancellationToken ct = default)
         {
             if (!ImagemFunciona) return Task.FromResult(false);
