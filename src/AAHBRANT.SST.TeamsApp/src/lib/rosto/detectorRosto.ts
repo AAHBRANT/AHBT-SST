@@ -37,14 +37,24 @@ async function criar(): Promise<FaceDetector | null> {
   }
 }
 
+// Tempo que a câmera espera o detector carregar antes de seguir só com o oval. O carregamento pode
+// travar sem dar erro (rede lenta, WebView do Teams), e sem este limite a tela ficava presa em
+// "Preparando o detector…" para sempre. O carregamento continua em segundo plano: se terminar depois,
+// a próxima abertura da câmera já encontra o detector pronto.
+export const LIMITE_CARREGAMENTO_DETECTOR_MS = 15000;
+
 // Uma instância só para o app inteiro. Se a primeira tentativa falhar, a próxima abertura da câmera
 // tenta de novo (a promessa em cache é descartada).
-export function obterDetectorRosto(): Promise<FaceDetector | null> {
+export function obterDetectorRosto(limiteMs = LIMITE_CARREGAMENTO_DETECTOR_MS): Promise<FaceDetector | null> {
   promessa ??= criar().then((d) => {
     if (!d) promessa = null;
     return d;
   });
-  return promessa;
+  let temporizador: number | undefined;
+  const limite = new Promise<null>((resolver) => {
+    temporizador = window.setTimeout(() => resolver(null), limiteMs);
+  });
+  return Promise.race([promessa, limite]).finally(() => window.clearTimeout(temporizador));
 }
 
 export function detectarRostos(detector: FaceDetector, video: HTMLVideoElement, instanteMs: number): CaixaRosto[] {
