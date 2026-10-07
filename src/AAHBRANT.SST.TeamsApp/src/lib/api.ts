@@ -1882,6 +1882,53 @@ export interface UsuarioPerfilObra {
   obraNome?: string | null;
 }
 
+// Relatórios gerados pelo sistema (lista de presença do DDS, boletim semanal, ocorrência): imagem + PDF, enviados
+// ao Telegram e ao sininho do Teams.
+export const TipoRelatorio = {
+  ListaPresencaDds: 1,
+  BoletimSemanal: 2,
+  Ocorrencia: 3,
+} as const;
+
+export const tipoRelatorioLabel: Record<number, string> = {
+  [TipoRelatorio.ListaPresencaDds]: 'Lista de presença',
+  [TipoRelatorio.BoletimSemanal]: 'Boletim semanal',
+  [TipoRelatorio.Ocorrencia]: 'Ocorrência',
+};
+
+export interface RelatorioLista {
+  id: string;
+  tipo: number;
+  obraId: string | null;
+  obraNome: string | null;
+  titulo: string;
+  resumo: string;
+  geradoEm: string;
+  temPdf: boolean;
+}
+
+export interface DestinatarioRelatorio {
+  id: string;
+  usuarioId: string;
+  usuarioNome: string;
+  usuarioEmail: string | null;
+  // true quando o usuário já entrou no app pelo Teams. O sininho não depende disso (sem ele, vai pelo e-mail).
+  jaEntrouNoApp: boolean;
+  obraId: string | null;
+  obraNome: string | null;
+  listaPresenca: boolean;
+  boletimSemanal: boolean;
+  ocorrencia: boolean;
+}
+
+export interface SalvarDestinatarioRelatorio {
+  usuarioId: string;
+  obraId: string | null;
+  listaPresenca: boolean;
+  boletimSemanal: boolean;
+  ocorrencia: boolean;
+}
+
 export interface Usuario {
   id: string;
   // Nulo até o primeiro login via Teams SSO: é vinculado automaticamente pelo backend
@@ -3281,6 +3328,15 @@ function parsearJsonSeguro<T>(texto: string, response: Response): T {
   }
 }
 
+async function baixarArquivoRelatorio(caminho: string): Promise<Blob> {
+  const response = await fetch(`${API_BASE_URL}${caminho}`, { headers: await montarHeadersAuth() });
+  if (!response.ok) {
+    const corpo = await response.text().catch(() => '');
+    throw new Error(extrairMensagemErro(corpo, response.status, response.statusText));
+  }
+  return response.blob();
+}
+
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
   const authHeaders = await montarHeadersAuth();
   const metodo = (init?.method ?? 'GET').toUpperCase();
@@ -4675,6 +4731,26 @@ export const api = {
       }
       return response.blob();
     },
+  },
+  relatorios: {
+    listar: (tipo?: number, obraId?: string) => {
+      const q = new URLSearchParams();
+      if (tipo) q.set('tipo', String(tipo));
+      if (obraId) q.set('obraId', obraId);
+      const sufixo = q.toString();
+      return request<RelatorioLista[]>(`/api/relatorios${sufixo ? `?${sufixo}` : ''}`);
+    },
+    // Imagem e PDF exigem o cabeçalho de autenticação, então não dá para usar <img src> direto: baixa como blob.
+    baixarImagem: async (id: string): Promise<Blob> => baixarArquivoRelatorio(`/api/relatorios/${id}/imagem`),
+    baixarPdf: async (id: string): Promise<Blob> => baixarArquivoRelatorio(`/api/relatorios/${id}/pdf`),
+  },
+  destinatariosRelatorio: {
+    listar: () => request<DestinatarioRelatorio[]>('/api/destinatarios-relatorio'),
+    salvar: (d: SalvarDestinatarioRelatorio) =>
+      request<{ id: string }>('/api/destinatarios-relatorio', { method: 'POST', body: JSON.stringify(d) }),
+    remover: (id: string) => request<void>(`/api/destinatarios-relatorio/${id}`, { method: 'DELETE' }),
+    // Pré-preenche pelos perfis (Técnico e Engenheiro de Segurança de cada obra). Não mexe em quem já está na lista.
+    sugerirPorPerfil: () => request<{ criados: number }>('/api/destinatarios-relatorio/sugerir-por-perfil', { method: 'POST' }),
   },
   usuarios: {
     eu: () => request<UsuarioLogado>('/api/usuarios/eu'),

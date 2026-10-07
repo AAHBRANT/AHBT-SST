@@ -91,7 +91,7 @@ public class DestinatariosRelatorioTests
     }
 
     [Fact]
-    public async Task Listar_MostraObraETemAcessoTeams_ParaAvisarQuemNaoRecebeOSininho()
+    public async Task Listar_MostraObraEJaEntrouNoApp()
     {
         var (db, sul, _) = await NovoBanco();
         var comTeams = await NovoUsuario(db, "Beatriz", azureAdId: Guid.NewGuid().ToString());
@@ -102,9 +102,9 @@ public class DestinatariosRelatorioTests
         var lista = await new ListarDestinatariosRelatorioQueryHandler(db).Handle(new ListarDestinatariosRelatorioQuery(), CancellationToken.None);
 
         Assert.Equal(new[] { "Beatriz", "Carlos" }, lista.Select(l => l.UsuarioNome));
-        Assert.True(lista[0].TemAcessoTeams);
+        Assert.True(lista[0].JaEntrouNoApp);
         Assert.Equal("Obra Sul", lista[0].ObraNome);
-        Assert.False(lista[1].TemAcessoTeams);
+        Assert.False(lista[1].JaEntrouNoApp);
         Assert.Null(lista[1].ObraNome); // todas as obras
     }
 

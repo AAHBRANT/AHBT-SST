@@ -37,9 +37,11 @@ public class GraphActivityNotificacaoTeamsService : INotificacaoTeamsService
                 "Graph:ClientSecret não configurado — permissão TeamsActivity.Send do Entra ID ainda não provisionada.");
 
         var usuario = await _db.Usuarios.FirstOrDefaultAsync(u => u.Id == usuarioId, ct);
-        if (usuario is null || string.IsNullOrWhiteSpace(usuario.AzureAdObjectId))
+        // Quem ainda não entrou no app pelo Teams não tem AzureAdObjectId: usa o e-mail (UPN), que o Graph também aceita.
+        var identificador = usuario is null ? null : IdentificadorUsuarioGraph.Obter(usuario.AzureAdObjectId, usuario.Email);
+        if (identificador is null)
             throw new InvalidOperationException(
-                $"Usuário {usuarioId} não possui AzureAdObjectId cadastrado — não é possível enviar notificação no Teams.");
+                $"Usuário {usuarioId} não possui AzureAdObjectId nem e-mail válido cadastrado — não é possível enviar notificação no Teams.");
 
         var credential = new ClientSecretCredential(_opcoes.TenantId, _opcoes.ClientId, _opcoes.ClientSecret);
         var token = await credential.GetTokenAsync(
@@ -63,7 +65,7 @@ public class GraphActivityNotificacaoTeamsService : INotificacaoTeamsService
         var httpClient = _httpClientFactory.CreateClient();
         using var requisicao = new HttpRequestMessage(
             HttpMethod.Post,
-            $"https://graph.microsoft.com/v1.0/users/{usuario.AzureAdObjectId}/teamwork/sendActivityNotification")
+            $"https://graph.microsoft.com/v1.0/users/{identificador}/teamwork/sendActivityNotification")
         {
             Content = JsonContent.Create(corpo),
         };

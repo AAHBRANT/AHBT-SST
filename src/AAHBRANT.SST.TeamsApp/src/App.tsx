@@ -27,6 +27,7 @@ import { SuporteIaPage } from './pages/suporte-ia/SuporteIaPage';
 import { SuporteIaDetalhePage } from './pages/suporte-ia/SuporteIaDetalhePage';
 import { NaoConformidadeDetalhePage } from './pages/naoconformidades/NaoConformidadeDetalhePage';
 import { AlertasPage } from './pages/alertas/AlertasPage';
+import { RelatoriosPage } from './pages/relatorios/RelatoriosPage';
 import { CalendarioPage } from './pages/calendario/CalendarioPage';
 import { AcidenteDetalhePage } from './pages/acidentes/AcidenteDetalhePage';
 import { DdsSemanalDetalhePage } from './pages/dds/DdsSemanalDetalhePage';
@@ -198,6 +199,7 @@ function AppRoteado() {
               <Route path="/operacao/cipa/sipat/:id" element={<EventoSipatDetalhePage />} />
 
               <Route path="/alertas" element={<AlertasPage />} />
+              <Route path="/relatorios" element={<RelatoriosPage />} />
               <Route path="/calendario" element={<CalendarioPage />} />
               <Route path="/suporte-ia" element={<SuporteIaPage />} />
               <Route path="/suporte-ia/:id" element={<SuporteIaDetalhePage />} />

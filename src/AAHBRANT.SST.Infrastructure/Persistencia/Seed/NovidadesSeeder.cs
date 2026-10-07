@@ -947,6 +947,29 @@ public static class NovidadesSeeder
                     "O resumo que chegava ao encerrar o DDS era só texto corrido.",
                     "O resumo chega como uma imagem com o cabeçalho da marca, os cards de presença (total, facial e digital), a barra por método, o alerta de falhas do reconhecimento facial e as matrículas que precisam refazer o cadastro, com uma legenda curta. Continua sem nome, CPF ou foto. Se a imagem não puder ser gerada ou enviada, o resumo vai em texto, como antes."),
             }),
+        new(
+            Versao: "5.48.0",
+            Titulo: "Lista de presença diária do DDS e página Relatórios",
+            DataPublicacao: new DateTime(2026, 10, 7, 0, 0, 0, DateTimeKind.Utc),
+            Itens: new[]
+            {
+                new NovidadeSeedItem(CategoriaNovidade.Melhoria,
+                    "Lista de presença do DDS todo dia às 8h, no Telegram e no sininho",
+                    "A presença do DDS só podia ser conferida abrindo o DDS ou o PDF.",
+                    "Todo dia às 08:00 o sistema envia, para cada DDS encerrado ainda não informado, uma imagem no padrão AAHBRANT com quem estava, a hora de cada assinatura e quem faltou (com aviso de falta repetida), mais o PDF do DDS. O mesmo aviso chega no sininho do Teams de quem está cadastrado como destinatário da obra."),
+                new NovidadeSeedItem(CategoriaNovidade.Melhoria,
+                    "Duração do DDS",
+                    "Não havia como saber quanto tempo cada DDS durou.",
+                    "O relatório mostra a duração do DDS (da primeira à última assinatura de participante) e também a hora em que o DDS foi fechado e quanto se demorou para fechar. O fechamento passa a ser registrado a partir desta versão."),
+                new NovidadeSeedItem(CategoriaNovidade.Novidade,
+                    "Página Relatórios e tela Destinatários dos relatórios",
+                    "Os avisos enviados não ficavam guardados em lugar nenhum.",
+                    "A nova página Relatórios guarda cada relatório gerado, com a imagem e o PDF. Em Administração, a aba Destinatários dos relatórios define quem recebe o quê em cada obra (ou em todas, para a diretoria), com o botão Sugerir pelos perfis para começar pelos técnicos e engenheiros de segurança."),
+                new NovidadeSeedItem(CategoriaNovidade.Correcao,
+                    "Sininho do Teams para quem ainda não abriu o app",
+                    "Quem nunca tinha entrado no app pelo Teams ficava sem o aviso no sininho.",
+                    "O aviso agora também chega a quem ainda não entrou no app, usando o e-mail do usuário. O app do SST precisa estar instalado no Teams dessa pessoa."),
+            }),
     };
 
     public static async Task ExecutarAsync(IServiceProvider services, CancellationToken ct = default)

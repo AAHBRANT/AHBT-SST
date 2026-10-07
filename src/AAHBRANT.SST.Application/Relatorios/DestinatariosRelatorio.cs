@@ -12,8 +12,9 @@ public record DestinatarioRelatorioDto(
     Guid UsuarioId,
     string UsuarioNome,
     string? UsuarioEmail,
-    // Sem Acesso Teams (AzureAdObjectId) o sininho não chega a essa pessoa.
-    bool TemAcessoTeams,
+    // true quando o usuário já entrou no app pelo Teams (AzureAdObjectId gravado). O sininho não depende disso: sem
+    // ele, o aviso vai pelo e-mail do usuário. Mas o app precisa estar instalado no Teams dele.
+    bool JaEntrouNoApp,
     Guid? ObraId,
     string? ObraNome,
     bool ListaPresenca,
