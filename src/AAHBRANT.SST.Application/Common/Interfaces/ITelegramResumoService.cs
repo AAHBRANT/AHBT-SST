@@ -6,4 +6,8 @@ namespace AAHBRANT.SST.Application.Common.Interfaces;
 public interface ITelegramResumoService
 {
     Task EnviarAsync(string mensagem, CancellationToken ct = default);
+
+    // Envia uma imagem (PNG) com legenda curta. Devolve false quando não enviou (sem configuração ou o
+    // Telegram recusou), para o chamador cair para o texto.
+    Task<bool> EnviarImagemAsync(byte[] imagemPng, string legenda, CancellationToken ct = default);
 }

@@ -1,10 +1,12 @@
 using AAHBRANT.SST.Application.Common.Interfaces;
+using AAHBRANT.SST.Application.Dds;
 using AAHBRANT.SST.Application.Dds.Commands;
 using AAHBRANT.SST.Application.Tests.TestSupport;
 using AAHBRANT.SST.Application.Trabalhadores.Queries;
 using AAHBRANT.SST.Domain.Entidades;
 using AAHBRANT.SST.Domain.Enums;
 using MediatR;
+using Microsoft.Extensions.Logging.Abstractions;
 using DdsEntidade = AAHBRANT.SST.Domain.Entidades.Dds;
 
 namespace AAHBRANT.SST.Application.Tests.Dds;
@@ -14,10 +16,33 @@ public class ResumoDdsTelegramTests
     private sealed class TelegramFalso : ITelegramResumoService
     {
         public List<string> Mensagens { get; } = new();
+        public List<(byte[] Png, string Legenda)> Imagens { get; } = new();
+        public bool ImagemFunciona { get; init; } = true;
+
         public Task EnviarAsync(string mensagem, CancellationToken ct = default)
         {
             Mensagens.Add(mensagem);
             return Task.CompletedTask;
+        }
+
+        public Task<bool> EnviarImagemAsync(byte[] imagemPng, string legenda, CancellationToken ct = default)
+        {
+            if (!ImagemFunciona) return Task.FromResult(false);
+            Imagens.Add((imagemPng, legenda));
+            return Task.FromResult(true);
+        }
+    }
+
+    private sealed class ImagemFalsa : IImagemResumoDdsService
+    {
+        public bool Falha { get; init; }
+        public ResumoDdsDados? Recebido { get; private set; }
+
+        public byte[] Gerar(ResumoDdsDados dados)
+        {
+            if (Falha) throw new InvalidOperationException("sem fonte");
+            Recebido = dados;
+            return new byte[] { 0x89, 0x50, 0x4E, 0x47 };
         }
     }
 
@@ -35,8 +60,10 @@ public class ResumoDdsTelegramTests
         public Task Publish<TNotification>(TNotification notification, CancellationToken cancellationToken = default) where TNotification : INotification => throw new NotSupportedException();
     }
 
-    [Fact]
-    public async Task Resumo_TemQuantidades_MatriculasENaoTemNomeDeFuncionario()
+    private static EnviarResumoDdsTelegramCommandHandler Handler(Infrastructure.Persistencia.SstDbContext db, IMediator mediator, ITelegramResumoService telegram, IImagemResumoDdsService imagem) =>
+        new(db, mediator, telegram, imagem, NullLogger<EnviarResumoDdsTelegramCommandHandler>.Instance);
+
+    private static async Task<(Infrastructure.Persistencia.SstDbContext Db, DdsEntidade Dds, Trabalhador Ana)> CriarCenarioAsync()
     {
         var db = DbContextFactory.Criar();
         var obra = new Obra { Nome = "Obra Sul", Codigo = "S" };
@@ -54,12 +81,67 @@ public class ResumoDdsTelegramTests
         for (var i = 0; i < 4; i++)
             db.FalhasReconhecimentoFacial.Add(new FalhaReconhecimentoFacial { ObraId = obra.Id, Motivo = MotivoFalhaFacial.ConfiancaBaixa, OcorridaEm = DateTime.UtcNow.AddMinutes(1) });
         await db.SaveChangesAsync();
-        var telegram = new TelegramFalso();
-        var mediator = new MediatorFalso();
-        mediator.Fracos.Add(new CadastroFacialFracoDto(ana.Id, "Ana Segredo", "31", obra.Id, "Obra Sul", 4, "Baixa confiança", DateTime.UtcNow, DateTime.UtcNow.AddDays(-9)));
+        return (db, dds, ana);
+    }
 
-        await new EnviarResumoDdsTelegramCommandHandler(db, mediator, telegram)
-            .Handle(new EnviarResumoDdsTelegramCommand(dds.Id), CancellationToken.None);
+    private static MediatorFalso ComUmCadastroFraco(Trabalhador ana)
+    {
+        var mediator = new MediatorFalso();
+        mediator.Fracos.Add(new CadastroFacialFracoDto(ana.Id, "Ana Segredo", "31", ana.ObraId, "Obra Sul", 4, "Baixa confiança", DateTime.UtcNow, DateTime.UtcNow.AddDays(-9)));
+        return mediator;
+    }
+
+    [Fact]
+    public async Task Resumo_VaiComoImagem_ComLegendaCurta_ESemTexto()
+    {
+        var (db, dds, ana) = await CriarCenarioAsync();
+        var telegram = new TelegramFalso();
+        var imagem = new ImagemFalsa();
+
+        await Handler(db, ComUmCadastroFraco(ana), telegram, imagem).Handle(new EnviarResumoDdsTelegramCommand(dds.Id), CancellationToken.None);
+
+        var enviada = Assert.Single(telegram.Imagens);
+        Assert.Equal(new byte[] { 0x89, 0x50, 0x4E, 0x47 }, enviada.Png);
+        Assert.Equal("DDS encerrado, Obra Sul. 2 de 3 presenças, 4 falhas do facial.", enviada.Legenda);
+        Assert.Empty(telegram.Mensagens); // a imagem chegou: não manda o texto também
+
+        var d = imagem.Recebido!;
+        Assert.Equal("Obra Sul", d.Obra);
+        Assert.Equal((2, 3, 1, 1, 4), (d.Presencas, d.Total, d.Facial, d.Digital, d.Falhas));
+        Assert.Equal(1, d.Pendentes);
+        Assert.Equal(("31", 4), Assert.Single(d.Fracos));
+    }
+
+    [Fact]
+    public async Task SeAImagemNaoForGerada_CaiParaOTexto()
+    {
+        var (db, dds, ana) = await CriarCenarioAsync();
+        var telegram = new TelegramFalso();
+
+        await Handler(db, ComUmCadastroFraco(ana), telegram, new ImagemFalsa { Falha = true }).Handle(new EnviarResumoDdsTelegramCommand(dds.Id), CancellationToken.None);
+
+        Assert.Empty(telegram.Imagens);
+        Assert.Contains("DDS encerrado — Obra Sul", Assert.Single(telegram.Mensagens));
+    }
+
+    [Fact]
+    public async Task SeOTelegramRecusarAImagem_CaiParaOTexto()
+    {
+        var (db, dds, ana) = await CriarCenarioAsync();
+        var telegram = new TelegramFalso { ImagemFunciona = false };
+
+        await Handler(db, ComUmCadastroFraco(ana), telegram, new ImagemFalsa()).Handle(new EnviarResumoDdsTelegramCommand(dds.Id), CancellationToken.None);
+
+        Assert.Contains("Presenças: 2 de 3", Assert.Single(telegram.Mensagens));
+    }
+
+    [Fact]
+    public async Task TextoDeReserva_TemQuantidades_MatriculasENaoTemNomeDeFuncionario()
+    {
+        var (db, dds, ana) = await CriarCenarioAsync();
+        var telegram = new TelegramFalso { ImagemFunciona = false };
+
+        await Handler(db, ComUmCadastroFraco(ana), telegram, new ImagemFalsa()).Handle(new EnviarResumoDdsTelegramCommand(dds.Id), CancellationToken.None);
 
         var msg = Assert.Single(telegram.Mensagens);
         Assert.Contains("DDS encerrado — Obra Sul", msg);
@@ -81,10 +163,9 @@ public class ResumoDdsTelegramTests
         var dds = new DdsEntidade { Obra = obra, ObraId = obra.Id, ResponsavelUsuario = usuario, ResponsavelUsuarioId = usuario.Id, Data = new DateTime(2026, 10, 7) };
         db.AddRange(obra, usuario, dds);
         await db.SaveChangesAsync();
-        var telegram = new TelegramFalso();
+        var telegram = new TelegramFalso { ImagemFunciona = false };
 
-        await new EnviarResumoDdsTelegramCommandHandler(db, new MediatorFalso(), telegram)
-            .Handle(new EnviarResumoDdsTelegramCommand(dds.Id), CancellationToken.None);
+        await Handler(db, new MediatorFalso(), telegram, new ImagemFalsa()).Handle(new EnviarResumoDdsTelegramCommand(dds.Id), CancellationToken.None);
 
         Assert.DoesNotContain("Revisar o cadastro", Assert.Single(telegram.Mensagens));
     }
