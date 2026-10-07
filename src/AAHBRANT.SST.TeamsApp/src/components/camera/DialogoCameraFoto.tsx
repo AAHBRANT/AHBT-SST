@@ -9,12 +9,14 @@ import {
   Field,
   Input,
   Select,
+  Switch,
   Text,
 } from '@fluentui/react-components';
 import { Camera24Regular } from '@fluentui/react-icons';
 import type { UseCapturaFoto } from './useCapturaFoto';
 import { ResumoDadosFoto } from './ResumoDadosFoto';
 import { useDetectorRosto } from './useDetectorRosto';
+import { DURACAO_CAPTURA_AUTOMATICA_MS, useCapturaAutomatica } from './useCapturaAutomatica';
 import { QuadradoRosto, CORES_DETECTOR } from './QuadradoRosto';
 import { pendenciasFoto } from '../../lib/dadosFoto';
 import { FeedbackInline } from '@ui';
@@ -29,6 +31,7 @@ export function DialogoCameraFoto({ captura }: DialogoCameraFotoProps) {
   const {
     stream,
     videoRef,
+    aoMontarVideo,
     modoCamera,
     dispositivosVideo,
     dispositivoAtualId,
@@ -48,6 +51,13 @@ export function DialogoCameraFoto({ captura }: DialogoCameraFotoProps) {
   const avaliacao = detector.situacao === 'ativo' ? detector.avaliacao : null;
   const capturaBloqueadaPeloDetector = detector.situacao === 'ativo' && !avaliacao?.liberaCaptura;
   const corQuadrado = avaliacao ? CORES_DETECTOR[avaliacao.tom] : CORES_DETECTOR.ok;
+  // Captura sozinha depois de 1,5 s com o rosto aprovado (verde) e estável. Só quando o detector está
+  // ativo: sem detector não há como saber se o rosto está bom, e aí vale o botão Capturar.
+  const automatica = useCapturaAutomatica(
+    stream,
+    mostrarGuiaRosto && !!avaliacao?.liberaCaptura && !captura.processando,
+    () => void capturarFoto(),
+  );
 
   return (
     <>
@@ -91,7 +101,7 @@ export function DialogoCameraFoto({ captura }: DialogoCameraFotoProps) {
 
             <div style={{ position: 'relative' }}>
               <video
-                ref={videoRef}
+                ref={aoMontarVideo}
                 autoPlay
                 playsInline
                 muted
@@ -127,12 +137,24 @@ export function DialogoCameraFoto({ captura }: DialogoCameraFotoProps) {
                 </div>
               )}
               {mostrarGuiaRosto && <QuadradoRosto caixa={detector.caixa} cor={corQuadrado} />}
+              {automatica.contando && (
+                <svg
+                  aria-hidden
+                  viewBox="0 0 90 90"
+                  style={{ position: 'absolute', left: '50%', top: '50%', width: 88, height: 88, marginLeft: -44, marginTop: -44, transform: 'rotate(-90deg)', pointerEvents: 'none' }}
+                >
+                  <circle cx="45" cy="45" r="40" fill="rgba(0,0,0,0.35)" stroke="rgba(255,255,255,0.35)" strokeWidth="8" />
+                  <circle cx="45" cy="45" r="40" fill="none" stroke={CORES_DETECTOR.ok} strokeWidth="8" strokeLinecap="round" strokeDasharray="251" strokeDashoffset="251">
+                    <animate attributeName="stroke-dashoffset" from="251" to="0" dur={`${DURACAO_CAPTURA_AUTOMATICA_MS}ms`} fill="freeze" />
+                  </circle>
+                </svg>
+              )}
             </div>
             {mostrarGuiaRosto && (
               <div role="status" aria-live="polite" style={{ marginTop: 8, textAlign: 'center' }}>
                 {avaliacao ? (
                   <Text size={300} weight="semibold" style={{ color: corQuadrado }}>
-                    {avaliacao.mensagem}
+                    {automatica.contando ? 'Fique parado… capturando' : avaliacao.mensagem}
                   </Text>
                 ) : (
                   <Text size={200}>
@@ -142,6 +164,14 @@ export function DialogoCameraFoto({ captura }: DialogoCameraFotoProps) {
                   </Text>
                 )}
               </div>
+            )}
+            {mostrarGuiaRosto && detector.situacao === 'ativo' && (
+              <Switch
+                style={{ marginTop: 4 }}
+                checked={automatica.ligada}
+                onChange={(_, d) => automatica.alternar(d.checked)}
+                label="Captura automática"
+              />
             )}
 
           </DialogContent>

@@ -970,6 +970,21 @@ public static class NovidadesSeeder
                     "Quem nunca tinha entrado no app pelo Teams ficava sem o aviso no sininho.",
                     "O aviso agora também chega a quem ainda não entrou no app, usando o e-mail do usuário. O app do SST precisa estar instalado no Teams dessa pessoa."),
             }),
+        new(
+            Versao: "5.49.0",
+            Titulo: "Câmera do cadastro facial mais confiável e captura automática",
+            DataPublicacao: new DateTime(2026, 10, 7, 0, 0, 0, DateTimeKind.Utc),
+            Itens: new[]
+            {
+                new NovidadeSeedItem(CategoriaNovidade.Correcao,
+                    "Câmera do cadastro facial que abria sem imagem",
+                    "Em alguns computadores a luz da câmera acendia, mas a janela ficava em branco e presa em \"Preparando o detector de rosto\".",
+                    "A imagem agora aparece assim que a janela abre. Se o detector de rosto demorar mais de 15 segundos para carregar, a câmera segue só com o oval, sem travar."),
+                new NovidadeSeedItem(CategoriaNovidade.Melhoria,
+                    "Foto tirada sozinha quando o rosto fica verde",
+                    "O técnico precisava clicar em Capturar depois do rosto ficar aprovado.",
+                    "Quando o rosto fica aprovado (verde) por um segundo e meio seguido, a foto é tirada automaticamente, com um anel de contagem na tela. Se a pessoa se mexer, a contagem recomeça. A chave \"Captura automática\" permite desligar, e o botão Capturar continua disponível."),
+            }),
     };
 
     public static async Task ExecutarAsync(IServiceProvider services, CancellationToken ct = default)

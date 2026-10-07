@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, type ChangeEvent } from 'react';
+import { useCallback, useEffect, useRef, useState, type ChangeEvent } from 'react';
 import { comprimirImagem } from '../../lib/imagem';
 import { localizacaoExpirada, obterLocalizacaoFoto, pendenciasFoto, vincularDadosFoto, type ContextoFoto, type DadosFoto, type LocalizacaoFoto } from '../../lib/dadosFoto';
 
@@ -91,7 +91,7 @@ export function useCapturaFoto({
       obraId: contextoFoto?.obraId, obraNome: contextoFoto?.obraNome, local: localFoto.trim() };
   }
   const inputRef = useRef<HTMLInputElement>(null);
-  const videoRef = useRef<HTMLVideoElement>(null);
+  const videoRef = useRef<HTMLVideoElement | null>(null);
   const [processando, setProcessando] = useState(false);
   const [stream, setStream] = useState<MediaStream | null>(null);
   // Pedido do usuário (22/09): notebook com mais de uma câmera (webcam interna + USB externa, ex.:
@@ -111,12 +111,30 @@ export function useCapturaFoto({
     }
   }
 
-  // Anexa o stream ao <video> só depois que o diálogo (e portanto o elemento) já está montado, e
-  // para as tracks da câmera sempre que o stream muda ou o componente desmonta — sem isso a luz da
+  // O <video> vive dentro do diálogo do Fluent, que monta o conteúdo um instante depois do stream
+  // chegar. Se o stream fosse ligado só no efeito abaixo, o elemento podia ainda não existir: a luz da
+  // câmera acendia e a tela ficava em branco (visto no Teams em 07/10). Por isso o vídeo é ligado de
+  // dois jeitos: aqui, quando o elemento aparece (ref por função), e no efeito, quando o stream muda.
+  function ligarVideo(elemento: HTMLVideoElement, fluxo: MediaStream) {
+    if (elemento.srcObject !== fluxo) elemento.srcObject = fluxo;
+    void elemento.play().catch(() => {
+      // O autoPlay já cobre o caso comum; se o navegador recusar o play() explícito, não há o que fazer.
+    });
+  }
+
+  const aoMontarVideo = useCallback(
+    (elemento: HTMLVideoElement | null) => {
+      videoRef.current = elemento;
+      if (elemento && stream) ligarVideo(elemento, stream);
+    },
+    [stream],
+  );
+
+  // Para as tracks da câmera sempre que o stream muda ou o componente desmonta — sem isso a luz da
   // webcam ficava acesa mesmo depois de fechar o diálogo.
   useEffect(() => {
     if (!stream) return;
-    if (videoRef.current) videoRef.current.srcObject = stream;
+    if (videoRef.current) ligarVideo(videoRef.current, stream);
     return () => {
       stream.getTracks().forEach((track) => track.stop());
     };
@@ -286,6 +304,7 @@ export function useCapturaFoto({
     fotoPendente, salvarFotoPendente, cancelarFotoPendente: () => setFotoPendente(null),
     inputRef,
     videoRef,
+    aoMontarVideo,
     processando,
     stream,
     modoCamera,
