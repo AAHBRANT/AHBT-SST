@@ -902,6 +902,21 @@ public static class NovidadesSeeder
                     "Só o IP e o método ficavam registrados em cada assinatura.",
                     "As novas assinaturas guardam também o equipamento, a geolocalização (quando o usuário permite) e, nas faciais, os dados da validação no Azure. Quem cadastra a digital passa a ter a imagem do cadastro guardada de forma criptografada."),
             }),
+        new(
+            Versao: "5.45.0",
+            Titulo: "Câmera facial com detector de rosto e recadastro pelo técnico",
+            DataPublicacao: new DateTime(2026, 10, 7, 0, 0, 0, DateTimeKind.Utc),
+            Itens: new[]
+            {
+                new NovidadeSeedItem(CategoriaNovidade.Melhoria,
+                    "Detector de rosto na câmera do reconhecimento facial",
+                    "A câmera só mostrava um oval de guia. Foto ruim (rosto longe, de lado, no escuro ou contra a luz) só era recusada depois de enviada, com a mensagem de baixa confiança.",
+                    "Um quadrado acompanha o rosto na tela e avisa na hora: sem rosto, mais de um rosto, rosto longe, fora do centro, pouca luz, luz forte demais ou contraluz. O botão Capturar só libera quando o rosto está bom. Vale no cadastro facial, na presença do DDS e do treinamento e na assinatura. É uma ajuda: a conferência do rosto continua sendo feita pelo Azure."),
+                new NovidadeSeedItem(CategoriaNovidade.Melhoria,
+                    "Técnico pode refazer o cadastro facial do funcionário da sua obra",
+                    "Quando a foto de cadastro saía ruim, não havia como refazer pelo sistema.",
+                    "Na aba Assinatura do funcionário, o botão Refazer cadastro facial apaga o cadastro no Azure e libera uma nova captura. É obrigatório informar o motivo, e fica registrado quem refez e quando. As fotos antigas ficam arquivadas, então as assinaturas já feitas continuam com a prova no log da Ficha de EPI."),
+            }),
     };
 
     public static async Task ExecutarAsync(IServiceProvider services, CancellationToken ct = default)

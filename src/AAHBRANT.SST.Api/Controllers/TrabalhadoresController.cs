@@ -1,3 +1,4 @@
+using AAHBRANT.SST.Api.Autorizacao;
 using AAHBRANT.SST.Application.Assinatura.Commands;
 using AAHBRANT.SST.Application.Trabalhadores.Commands;
 using AAHBRANT.SST.Application.Trabalhadores.Queries;
@@ -13,8 +14,13 @@ namespace AAHBRANT.SST.Api.Controllers;
 public class TrabalhadoresController : ControllerBase
 {
     private readonly IMediator _mediator;
+    private readonly IUsuarioAtualResolver _usuarioAtual;
 
-    public TrabalhadoresController(IMediator mediator) => _mediator = mediator;
+    public TrabalhadoresController(IMediator mediator, IUsuarioAtualResolver usuarioAtual)
+    {
+        _mediator = mediator;
+        _usuarioAtual = usuarioAtual;
+    }
 
     [Authorize(Policy = "trabalhador:ver")]
     [HttpGet]
@@ -152,6 +158,19 @@ public class TrabalhadoresController : ControllerBase
         await using var stream = new MemoryStream();
         await body.Foto.CopyToAsync(stream, ct);
         await _mediator.Send(new CadastrarFacialCommand(id, stream.ToArray()), ct);
+        return NoContent();
+    }
+
+    public record RefazerCadastroFacialRequestBody(string Motivo);
+
+    // Refazer o cadastro facial: mesma permissão do cadastro (técnico), limitado à obra do usuário no
+    // handler. Remove o cadastro no Azure Face, arquiva as fotos e registra na trilha com o motivo.
+    [Authorize(Policy = "trabalhador:assinatura")]
+    [HttpPost("{id:guid}/assinatura/facial/refazer")]
+    public async Task<IActionResult> RefazerCadastroFacial(Guid id, RefazerCadastroFacialRequestBody body, CancellationToken ct)
+    {
+        var usuarioId = await _usuarioAtual.ObterIdAsync(User, ct);
+        await _mediator.Send(new RefazerCadastroFacialCommand(id, usuarioId, body.Motivo ?? string.Empty), ct);
         return NoContent();
     }
 

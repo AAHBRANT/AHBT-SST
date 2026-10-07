@@ -14,6 +14,7 @@ import {
 import { Camera24Regular } from '@fluentui/react-icons';
 import type { UseCapturaFoto } from './useCapturaFoto';
 import { ResumoDadosFoto } from './ResumoDadosFoto';
+import { useDetectorRosto } from './useDetectorRosto';
 import { pendenciasFoto } from '../../lib/dadosFoto';
 import { FeedbackInline } from '@ui';
 
@@ -36,11 +37,17 @@ export function DialogoCameraFoto({ captura }: DialogoCameraFotoProps) {
   } = captura;
 
   // Reconhecimento facial (câmera frontal) ganha uma guia oval sobreposta ao vídeo — pedido do
-  // usuário (22/09): ajuda a pessoa a centralizar o rosto no quadro antes de capturar, melhorando a
-  // qualidade da foto enviada ao Azure Face API. É só uma guia visual (máscara + contorno), não faz
-  // detecção de rosto em tempo real — isso exigiria uma biblioteca de IA extra no navegador; a
-  // validação de qualidade do rosto em si já é feita pelo Azure Face API no cadastro/autenticação.
+  // usuário (22/09): ajuda a pessoa a centralizar o rosto no quadro antes de capturar.
+  // Desde 07/10 há também um detector de rosto ao vivo (useDetectorRosto, roda no aparelho): um
+  // quadrado acompanha o rosto e o botão Capturar só libera com 1 rosto de frente, grande, centrado e
+  // com luz boa. É só ajuda ao operador: a validação real continua sendo a do Azure Face API. Se o
+  // detector não carregar, a câmera funciona como antes e a captura não é bloqueada.
   const mostrarGuiaRosto = modoCamera === 'user';
+  const detector = useDetectorRosto(videoRef, mostrarGuiaRosto && !!stream);
+  const avaliacao = detector.situacao === 'ativo' ? detector.avaliacao : null;
+  const capturaBloqueadaPeloDetector = detector.situacao === 'ativo' && !avaliacao?.liberaCaptura;
+  const corPorTom = { ok: '#1f8a4c', atencao: '#d98a00', alerta: '#d13438' } as const;
+  const corQuadrado = avaliacao ? corPorTom[avaliacao.tom] : corPorTom.ok;
 
   return (
     <>
@@ -119,11 +126,39 @@ export function DialogoCameraFoto({ captura }: DialogoCameraFotoProps) {
                   />
                 </div>
               )}
+              {mostrarGuiaRosto && detector.caixa && (
+                <div
+                  aria-hidden
+                  data-testid="quadrado-rosto"
+                  style={{
+                    position: 'absolute',
+                    // O vídeo da câmera frontal é espelhado (scaleX(-1)): o quadrado espelha junto.
+                    left: `${(1 - detector.caixa.x - detector.caixa.largura) * 100}%`,
+                    top: `${detector.caixa.y * 100}%`,
+                    width: `${detector.caixa.largura * 100}%`,
+                    height: `${detector.caixa.altura * 100}%`,
+                    border: `3px solid ${corQuadrado}`,
+                    borderRadius: 6,
+                    pointerEvents: 'none',
+                    transition: 'all 120ms linear',
+                  }}
+                />
+              )}
             </div>
             {mostrarGuiaRosto && (
-              <Text size={200} style={{ display: 'block', marginTop: 8, textAlign: 'center' }}>
-                Centralize o rosto dentro do círculo antes de capturar.
-              </Text>
+              <div role="status" aria-live="polite" style={{ marginTop: 8, textAlign: 'center' }}>
+                {avaliacao ? (
+                  <Text size={300} weight="semibold" style={{ color: corQuadrado }}>
+                    {avaliacao.mensagem}
+                  </Text>
+                ) : (
+                  <Text size={200}>
+                    {detector.situacao === 'carregando'
+                      ? 'Preparando o detector de rosto… Centralize o rosto dentro do círculo.'
+                      : 'Centralize o rosto dentro do círculo antes de capturar.'}
+                  </Text>
+                )}
+              </div>
             )}
 
           </DialogContent>
@@ -131,7 +166,7 @@ export function DialogoCameraFoto({ captura }: DialogoCameraFotoProps) {
             <Button appearance="secondary" onClick={fecharCamera}>
               Cancelar
             </Button>
-            <Button appearance="primary" icon={<Camera24Regular />} onClick={capturarFoto} disabled={captura.processando}>
+            <Button appearance="primary" icon={<Camera24Regular />} onClick={capturarFoto} disabled={captura.processando || capturaBloqueadaPeloDetector}>
               Capturar
             </Button>
           </DialogActions>

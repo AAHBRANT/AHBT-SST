@@ -20,6 +20,12 @@ public interface IAutenticacaoFacialService
     // conclusão (síncrono — ação administrativa pontual, não precisa ser assíncrona).
     Task CadastrarAsync(Guid trabalhadorId, byte[] fotoJpeg, CancellationToken ct);
 
+    // Apaga a pessoa (e todas as faces dela) do PersonGroup da obra no Azure e retreina o grupo. Usado
+    // ao refazer o cadastro facial. Idempotente: se a pessoa já não existe no Azure, não falha — assim
+    // dá para repetir a operação depois de uma falha parcial. Não mexe no banco; quem chama limpa
+    // AzureFacePersonId e as fotos de cadastro.
+    Task RemoverCadastroAsync(Guid trabalhadorId, CancellationToken ct);
+
     // Identifica quem está na foto dentro do PersonGroup da obra informada. Não recebe TrabalhadorId
     // — ao contrário do Futronic (que já resolveu o match localmente), aqui é o Azure quem descobre
     // quem é, a partir da foto.

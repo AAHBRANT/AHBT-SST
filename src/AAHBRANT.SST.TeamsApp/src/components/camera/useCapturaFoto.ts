@@ -28,6 +28,13 @@ export interface UseCapturaFotoOptions {
 // também pelo visual de slot em quadro (SlotFoto/GradeFotosEvidencia) — mesmo diálogo de câmera ao
 // vivo (getUserMedia) nos dois lugares, em vez de um <input capture> "burro" que o Chrome/Edge de
 // desktop costuma ignorar (só funciona de verdade em navegador mobile).
+// Câmera frontal (reconhecimento facial) pede 1280x720 como ideal: o padrão de muitas webcams é
+// 640x480, onde o rosto dificilmente chega aos 200 px de lado que o servidor exige na foto de cadastro.
+// É só preferência (ideal): se o aparelho não tiver, o navegador entrega o que houver.
+function resolucaoIdeal(modo: 'user' | 'environment'): MediaTrackConstraints {
+  return modo === 'user' ? { width: { ideal: 1280 }, height: { ideal: 720 } } : {};
+}
+
 // Chave única (não por modoCamera): um notebook com webcam USB externa plugada é o mesmo
 // equipamento físico independente de a tela pedir câmera "user" (facial) ou "environment"
 // (evidência) — o usuário só quer escolher uma vez qual câmera o computador deve usar.
@@ -188,7 +195,7 @@ export function useCapturaFoto({
     const preferidaId = lerCameraPreferida();
     if (preferidaId) {
       try {
-        const novoStream = await navigator.mediaDevices.getUserMedia({ video: { deviceId: { exact: preferidaId } } });
+        const novoStream = await navigator.mediaDevices.getUserMedia({ video: { deviceId: { exact: preferidaId }, ...resolucaoIdeal(modoCamera) } });
         setStream(novoStream);
         setDispositivoAtualId(preferidaId);
         await atualizarDispositivos();
@@ -198,7 +205,7 @@ export function useCapturaFoto({
       }
     }
     try {
-      const novoStream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: modoCamera } });
+      const novoStream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: modoCamera, ...resolucaoIdeal(modoCamera) } });
       setStream(novoStream);
       setDispositivoAtualId(novoStream.getVideoTracks()[0]?.getSettings().deviceId ?? null);
       await atualizarDispositivos();
@@ -213,7 +220,7 @@ export function useCapturaFoto({
   async function trocarDispositivo(deviceId: string) {
     if (!navigator.mediaDevices?.getUserMedia) return;
     try {
-      const novoStream = await navigator.mediaDevices.getUserMedia({ video: { deviceId: { exact: deviceId } } });
+      const novoStream = await navigator.mediaDevices.getUserMedia({ video: { deviceId: { exact: deviceId }, ...resolucaoIdeal(modoCamera) } });
       setStream(novoStream);
       setDispositivoAtualId(deviceId);
       salvarCameraPreferida(deviceId);
