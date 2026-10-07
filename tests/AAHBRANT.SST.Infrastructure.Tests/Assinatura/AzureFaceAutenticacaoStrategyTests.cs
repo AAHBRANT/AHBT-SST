@@ -321,6 +321,46 @@ public class AzureFaceAutenticacaoStrategyTests
     }
 
     [Fact]
+    public async Task CadastrarAsync_Concluido_SubstituiAFotoDoPerfilPelaFotoDoCadastro()
+    {
+        var db = CriarDb(nameof(CadastrarAsync_Concluido_SubstituiAFotoDoPerfilPelaFotoDoCadastro));
+        var obra = new Obra { Codigo = "OB1", Nome = "Obra Teste" };
+        db.Obras.Add(obra);
+        await db.SaveChangesAsync();
+        var fotoAntiga = new byte[] { 1, 2, 3 };
+        var trabalhador = new Trabalhador
+        {
+            ObraId = obra.Id, Nome = "Fulano", Cpf = "12345678901", DataAdmissao = DateTime.UtcNow,
+            TermoAceiteAssinaturaEletronicaEm = DateTime.UtcNow, ConsentimentoBiometriaEm = DateTime.UtcNow,
+            FotoConteudo = fotoAntiga, FotoContentType = "image/png",
+        };
+        db.Trabalhadores.Add(trabalhador);
+        await db.SaveChangesAsync();
+
+        var factory = new HttpClientFactoryFalso(req =>
+        {
+            var caminho = req.RequestUri!.AbsolutePath;
+            if (caminho.EndsWith("/detect")) return Json(new[] { RostoBomParaCadastro() });
+            if (req.Method == HttpMethod.Put && caminho.Contains("/persongroups/")) return new HttpResponseMessage(HttpStatusCode.OK);
+            if (caminho.EndsWith("/persons")) return Json(new { personId = "person-novo" });
+            if (caminho.EndsWith("/persistedFaces")) return Json(new { persistedFaceId = "face-1" });
+            if (caminho.EndsWith("/train")) return new HttpResponseMessage(HttpStatusCode.Accepted);
+            if (caminho.EndsWith("/training")) return Json(new { status = "succeeded" });
+            throw new InvalidOperationException("chamada inesperada: " + req.RequestUri);
+        });
+        var servico = new AzureFaceAutenticacaoStrategy(db, factory, Opcoes());
+        var foto = JpegDeCadastro();
+
+        await servico.CadastrarAsync(trabalhador.Id, foto, default);
+
+        var atualizado = await db.Trabalhadores.FirstAsync(t => t.Id == trabalhador.Id);
+        Assert.Equal(foto, atualizado.FotoConteudo);
+        Assert.Equal("image/jpeg", atualizado.FotoContentType);
+        var guardada = await db.FotosCadastroFacial.SingleAsync(f => f.TrabalhadorId == trabalhador.Id);
+        Assert.Equal(foto, guardada.Conteudo);
+    }
+
+    [Fact]
     public async Task CadastrarAsync_ObraComGrupoPersistido_GarantePersonGroupAntesDeAdicionarFace()
     {
         var db = CriarDb(nameof(CadastrarAsync_ObraComGrupoPersistido_GarantePersonGroupAntesDeAdicionarFace));

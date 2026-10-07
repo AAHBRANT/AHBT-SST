@@ -89,6 +89,13 @@ public class AzureFaceAutenticacaoStrategy : IAutenticacaoFacialService
             CapturadaEm = DateTime.UtcNow,
         });
 
+        // Decisão do usuário (07/10): a foto do cadastro/recadastro facial vira a foto do perfil,
+        // substituindo a anterior. É uma cópia (a foto biométrica segue guardada à parte, com hash, para
+        // auditoria) e é gravada no mesmo SaveChanges: ou as duas mudam, ou nenhuma. Obs.: a foto do
+        // perfil também aparece na página pública de identificação e no G-RH.
+        trabalhador.FotoConteudo = fotoJpeg;
+        trabalhador.FotoContentType = "image/jpeg";
+
         await _db.SaveChangesAsync(ct);
 
         await TreinarEAguardarAsync(cliente, personGroupId, ct);
