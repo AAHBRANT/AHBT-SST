@@ -985,6 +985,17 @@ public static class NovidadesSeeder
                     "O técnico precisava clicar em Capturar depois do rosto ficar aprovado.",
                     "Quando o rosto fica aprovado (verde) por um segundo e meio seguido, a foto é tirada automaticamente, com um anel de contagem na tela. Se a pessoa se mexer, a contagem recomeça. A chave \"Captura automática\" permite desligar, e o botão Capturar continua disponível."),
             }),
+        new(
+            Versao: "5.50.0",
+            Titulo: "Foto do cadastro facial vira a foto do perfil",
+            DataPublicacao: new DateTime(2026, 10, 7, 0, 0, 0, DateTimeKind.Utc),
+            Itens: new[]
+            {
+                new NovidadeSeedItem(CategoriaNovidade.Melhoria,
+                    "Foto do perfil atualizada no cadastro e no recadastro facial",
+                    "A foto do perfil do funcionário e a foto do cadastro facial eram duas coisas separadas, e a do perfil ficava desatualizada ou vazia.",
+                    "Quando o cadastro ou o recadastro facial é concluído, a foto aprovada passa a ser também a foto do perfil, substituindo a anterior. A foto biométrica continua guardada à parte, com hash, para auditoria. Quem já tinha facial cadastrado não é alterado agora: a foto só muda no próximo cadastro ou recadastro."),
+            }),
     };
 
     public static async Task ExecutarAsync(IServiceProvider services, CancellationToken ct = default)
