@@ -5,8 +5,9 @@ using Microsoft.Extensions.Options;
 
 namespace AAHBRANT.SST.Infrastructure.Integracao.Telegram;
 
-// Mesmo bot do Suporte IA (Telegram:BotToken), mas chat separado (Telegram:ResumoChatId). O token e o
-// chat são segredos de configuração do ambiente; sem eles o envio é ignorado.
+// Mesmo bot e, por padrão, o mesmo grupo do Suporte IA (Telegram:BotToken e Telegram:SuporteChatId, decisão
+// do usuário em 07/10). Se um dia quiser separar, basta preencher Telegram:ResumoChatId. O token e o chat
+// são segredos de configuração do ambiente; sem eles o envio é ignorado.
 public class TelegramResumoService : ITelegramResumoService
 {
     private readonly IHttpClientFactory _httpClientFactory;
@@ -26,11 +27,11 @@ public class TelegramResumoService : ITelegramResumoService
     public async Task EnviarAsync(string mensagem, CancellationToken ct = default)
     {
         var token = _options.Value.BotToken;
-        var chatId = _options.Value.ResumoChatId;
+        var chatId = string.IsNullOrWhiteSpace(_options.Value.ResumoChatId) ? _options.Value.SuporteChatId : _options.Value.ResumoChatId;
 
         if (string.IsNullOrWhiteSpace(token) || string.IsNullOrWhiteSpace(chatId))
         {
-            _logger.LogInformation("Telegram de resumos não configurado (Telegram:BotToken e Telegram:ResumoChatId): resumo não enviado.");
+            _logger.LogInformation("Telegram de resumos não configurado (Telegram:BotToken e Telegram:SuporteChatId ou ResumoChatId): resumo não enviado.");
             return;
         }
 

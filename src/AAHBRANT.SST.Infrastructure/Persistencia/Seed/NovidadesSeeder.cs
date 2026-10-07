@@ -934,7 +934,7 @@ public static class NovidadesSeeder
                 new NovidadeSeedItem(CategoriaNovidade.Melhoria,
                     "Resumo do DDS no Telegram",
                     "O encerramento do DDS não avisava ninguém sobre as falhas do reconhecimento facial.",
-                    "Ao encerrar o DDS, um resumo vai para um chat separado do Telegram: presenças por facial e digital, quantidade de falhas e as matrículas que precisam refazer o cadastro. Sem nome, sem CPF e sem foto. Só envia quando o chat estiver configurado no ambiente."),
+                    "Ao encerrar o DDS, um resumo vai para o grupo de SST do Telegram: presenças por facial e digital, quantidade de falhas e as matrículas que precisam refazer o cadastro. Sem nome, sem CPF e sem foto. Só envia quando o chat estiver configurado no ambiente."),
             }),
     };
 

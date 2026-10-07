@@ -9,7 +9,7 @@ public class TelegramSuporteOptions
 {
     public string? BotToken { get; set; }
     public string? SuporteChatId { get; set; }
-    // Chat separado para resumos operacionais (ex.: resumo do DDS ao encerrar).
+    // Opcional: chat próprio para resumos operacionais (ex.: resumo do DDS ao encerrar). Vazio = usa SuporteChatId.
     public string? ResumoChatId { get; set; }
 }
 
