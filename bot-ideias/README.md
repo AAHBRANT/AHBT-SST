@@ -29,7 +29,8 @@ Você → Telegram → webhook (/telegram) → Azure OpenAI (analisa e reorganiz
 | `Telegram__ChatIds` | ids dos chats autorizados, separados por vírgula (privado = id do usuário; grupo = número negativo) |
 | `AzureOpenAI__Endpoint` | ex.: `https://oai-gpol-hml-27207f.openai.azure.com` |
 | `AzureOpenAI__ApiKey` | chave do recurso — segredo |
-| `AzureOpenAI__Deployment` | nome do deployment do modelo (ex.: `gpt-4o-mini`) |
+| `AzureOpenAI__Deployment` | nome do deployment do modelo (aqui: `gpt5mini`, modelo gpt-5.4-mini) |
+| `AzureOpenAI__ApiVersion` | opcional; padrão `2025-04-01-preview` |
 | `Storage__ConnectionString` | conexão da conta de armazenamento do bot — segredo |
 
 ## Criar os recursos no Azure (PowerShell, uma vez)

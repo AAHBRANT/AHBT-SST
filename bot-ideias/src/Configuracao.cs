@@ -24,7 +24,7 @@ public class AzureOpenAiOpcoes
     public string? Endpoint { get; set; }
     public string? ApiKey { get; set; }
     public string? Deployment { get; set; }
-    public string ApiVersion { get; set; } = "2024-10-21";
+    public string ApiVersion { get; set; } = "2025-04-01-preview";
 
     public bool Configurado =>
         !string.IsNullOrWhiteSpace(Endpoint) && !string.IsNullOrWhiteSpace(ApiKey) && !string.IsNullOrWhiteSpace(Deployment);

@@ -60,8 +60,9 @@ public class AnalisadorAzureOpenAi : IAnalisadorIdeias
                         new { role = "system", content = InstrucaoSistema },
                         new { role = "user", content = usuario }
                     },
-                    temperature = 0.2,
-                    max_tokens = 1800,
+                    // Modelos da família GPT-5 recusam `temperature` e `max_tokens`: usam o padrão e `max_completion_tokens`
+                    // (que também cobre os tokens de raciocínio interno, por isso o teto generoso).
+                    max_completion_tokens = 6000,
                     response_format = new { type = "json_object" }
                 })
             };
@@ -70,7 +71,9 @@ public class AnalisadorAzureOpenAi : IAnalisadorIdeias
             using var resp = await _http.SendAsync(req, ct);
             if (!resp.IsSuccessStatusCode)
             {
-                _log.LogWarning("Azure OpenAI respondeu {Status}; usando análise local.", (int)resp.StatusCode);
+                var detalhe = await resp.Content.ReadAsStringAsync(ct);
+                _log.LogWarning("Azure OpenAI respondeu {Status}; usando análise local. Detalhe: {Detalhe}",
+                    (int)resp.StatusCode, detalhe.Length > 400 ? detalhe[..400] : detalhe);
                 return await _reserva.AnalisarAsync(texto, existentes, numeroNovo, ct);
             }
 
