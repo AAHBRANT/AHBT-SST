@@ -1,5 +1,5 @@
-import { geoLocation } from '@microsoft/teams-js';
-import { aguardarInicializacaoTeams } from '../teams/teamsInit';
+import { criarRastreadorFoto } from './fontesLocalizacao';
+import type { LeituraLocalizacao } from './rastreadorLocalizacao';
 
 export interface ContextoFoto { obraId: string; obraNome: string; local?: string | null }
 export interface DadosFoto {
@@ -66,53 +66,23 @@ export function formatarDataFoto(d?: DadosFoto | null) {
     + ` (UTC${minutos <= 0 ? '+' : '-'}${String(Math.floor(Math.abs(minutos) / 60)).padStart(2, '0')}:${String(Math.abs(minutos) % 60).padStart(2, '0')})`;
 }
 
-// Margem abaixo do limite de 60 s da validação (front e backend): se a posição já tem mais que isso
-// na hora de capturar, ela é renovada antes de gravar a foto.
-export const IDADE_MAX_LOCALIZACAO_MS = 30_000;
-export function localizacaoExpirada(l: { latitude?: number | null; localizacaoObtidaEm?: string | null }, agora = Date.now()) {
-  const obtida = l.localizacaoObtidaEm ? Date.parse(l.localizacaoObtidaEm) : NaN;
-  return l.latitude == null || !Number.isFinite(obtida) || Math.abs(agora - obtida) > IDADE_MAX_LOCALIZACAO_MS;
-}
-
-const TETO_SDK_TEAMS_MS = 8_000;
-function comTeto<T>(fn: () => Promise<T>, ms: number): Promise<T> {
-  return new Promise<T>((resolve, reject) => {
-    const t = setTimeout(() => reject(new Error('tempo esgotado')), ms);
-    fn().then(v => { clearTimeout(t); resolve(v); }, e => { clearTimeout(t); reject(e); });
-  });
-}
-
 export type LocalizacaoFoto = Pick<DadosFoto, 'latitude' | 'longitude' | 'precisaoMetros' | 'localizacaoObtidaEm' | 'motivoLocalizacao'>;
-export async function obterLocalizacaoFoto(): Promise<LocalizacaoFoto> {
-  let timer: ReturnType<typeof setTimeout> | undefined;
+
+export function leituraParaLocalizacao(l: LeituraLocalizacao): LocalizacaoFoto {
+  return { latitude: l.latitude, longitude: l.longitude, precisaoMetros: l.precisaoMetros, localizacaoObtidaEm: new Date(l.obtidaEm).toISOString() };
+}
+
+// Pedido avulso (ex.: log de assinaturas). A câmera usa o rastreador contínuo direto (useCapturaFoto).
+// Devolve cedo quando há posição boa ou quando todas as fontes falharam; no teto, entrega a melhor
+// posição que tiver, mesmo imprecisa — quem consome decide se a precisão serve.
+export async function obterLocalizacaoFoto(tetoMs = 20_000): Promise<LocalizacaoFoto> {
+  const r = criarRastreadorFoto();
   try {
-    return await Promise.race([
-      (async (): Promise<LocalizacaoFoto> => {
-        // Alguns clientes Teams (ex.: tablet) não expõem a capability geoLocation do SDK; nesses casos
-        // cai para a geolocalização do WebView em vez de encerrar com erro. Se o SDK declara suporte
-        // mas falha ao obter a posição (permissão negada, erro do cliente), também tenta o WebView.
-        try {
-          if (await aguardarInicializacaoTeams() && geoLocation.isSupported()) {
-            // O cliente Teams (iOS em especial) exige a permissão pedida explicitamente antes de
-            // getCurrentLocation; sem isso a chamada pode ficar sem resposta. O SDK tem teto próprio
-            // para sobrar tempo ao fallback do WebView dentro do limite total.
-            const pos = await comTeto(async () => {
-              if (!await geoLocation.hasPermission() && !await geoLocation.requestPermission()) throw new Error('permissão negada');
-              return geoLocation.getCurrentLocation();
-            }, TETO_SDK_TEAMS_MS);
-            return { latitude: pos.latitude, longitude: pos.longitude, precisaoMetros: pos.accuracy, localizacaoObtidaEm: pos.timestamp ? new Date(pos.timestamp).toISOString() : new Date().toISOString() };
-          }
-        } catch { /* segue para o fallback do WebView */ }
-        if (!navigator.geolocation) return { motivoLocalizacao: 'Localização indisponível neste navegador.' };
-        return await new Promise<LocalizacaoFoto>((resolve) => navigator.geolocation.getCurrentPosition(
-          p => resolve({ latitude: p.coords.latitude, longitude: p.coords.longitude, precisaoMetros: p.coords.accuracy, localizacaoObtidaEm: new Date(p.timestamp).toISOString() }),
-          e => resolve({ motivoLocalizacao: e.code === 1 ? 'Permissão de localização bloqueada. Libere nas configurações do aparelho e do aplicativo.' : e.code === 3 ? 'O aparelho demorou para obter a localização. Tente novamente no local.' : 'O aparelho não conseguiu obter a localização. Tente novamente no local.' }),
-          { enableHighAccuracy: true, maximumAge: 0, timeout: 15_000 },
-        ));
-      })(),
-      new Promise<LocalizacaoFoto>(resolve => { timer = setTimeout(() => resolve({ motivoLocalizacao: 'Tempo de localização esgotado. Tente novamente no local.' }), 20_000); }),
-    ]);
+    await r.aguardarPronta(tetoMs);
+    const e = r.estado();
+    if (e.leitura) return leituraParaLocalizacao(e.leitura);
+    return { motivoLocalizacao: e.motivo ?? 'Tempo de localização esgotado. Tente novamente no local.' };
   } catch {
     return { motivoLocalizacao: 'Não foi possível obter a localização. Confira as permissões e tente novamente.' };
-  } finally { clearTimeout(timer); }
+  } finally { r.parar(); }
 }

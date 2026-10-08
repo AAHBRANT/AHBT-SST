@@ -1,6 +1,12 @@
 import { useCallback, useEffect, useRef, useState, type ChangeEvent } from 'react';
 import { comprimirImagem } from '../../lib/imagem';
-import { localizacaoExpirada, obterLocalizacaoFoto, pendenciasFoto, vincularDadosFoto, type ContextoFoto, type DadosFoto, type LocalizacaoFoto } from '../../lib/dadosFoto';
+import { leituraParaLocalizacao, pendenciasFoto, vincularDadosFoto, type ContextoFoto, type DadosFoto, type LocalizacaoFoto } from '../../lib/dadosFoto';
+import { criarRastreadorFoto } from '../../lib/fontesLocalizacao';
+import type { EstadoRastreio, Rastreador } from '../../lib/rastreadorLocalizacao';
+
+// Quanto o clique em "capturar" espera pela posição quando ela ainda não está boa. O quadro já foi
+// congelado no clique; a posição que chegar nesse intervalo fica dentro da janela de 60 s.
+const ESPERA_LOCALIZACAO_NO_CLIQUE_MS = 15_000;
 
 export interface UseCapturaFotoOptions {
   contextoFoto?: ContextoFoto;
@@ -66,23 +72,35 @@ export function useCapturaFoto({
   contextoFoto,
 }: UseCapturaFotoOptions) {
   const [localFoto, setLocalFoto] = useState(contextoFoto?.local ?? '');
-  const [localizacao, setLocalizacao] = useState<LocalizacaoFoto>({});
-  const [localizando, setLocalizando] = useState(false);
+  // Rastreio contínuo (08/10): liga ao abrir a câmera e só desliga ao fechar — a posição fica sempre
+  // fresca e o clique não precisa esperar um GPS "do zero". Ver lib/rastreadorLocalizacao.ts.
+  const rastreador = useRef<Rastreador | null>(null);
+  const [estadoLocalizacao, setEstadoLocalizacao] = useState<EstadoRastreio | null>(null);
+  const localizando = estadoLocalizacao?.status === 'buscando';
+  const localizacao: LocalizacaoFoto = estadoLocalizacao?.leitura ? leituraParaLocalizacao(estadoLocalizacao.leitura)
+    : estadoLocalizacao?.motivo ? { motivoLocalizacao: estadoLocalizacao.motivo } : {};
 
   useEffect(() => {
     setLocalFoto(contextoFoto?.local ?? '');
   }, [contextoFoto?.local]);
   const [fotoPendente, setFotoPendente] = useState<{ arquivo: File; dados: DadosFoto } | null>(null);
-  const pedidoLocalizacao = useRef(0);
-  useEffect(() => () => { pedidoLocalizacao.current++; }, []);
-  async function tentarLocalizacao() {
+  function pararLocalizacao() {
+    rastreador.current?.parar();
+    rastreador.current = null;
+  }
+  useEffect(() => () => pararLocalizacao(), []);
+  // Reavalia a idade da posição mesmo sem leitura nova (ela "vence" após 30 s).
+  useEffect(() => {
+    if (!estadoLocalizacao) return;
+    const t = setInterval(() => { if (rastreador.current) setEstadoLocalizacao(rastreador.current.estado()); }, 5_000);
+    return () => clearInterval(t);
+  }, [estadoLocalizacao !== null]); // eslint-disable-line react-hooks/exhaustive-deps
+  function tentarLocalizacao() {
     if (!contextoFoto) return;
-    const pedido = ++pedidoLocalizacao.current;
-    setLocalizando(true);
-    const resultado = await obterLocalizacaoFoto();
-    if (pedido !== pedidoLocalizacao.current) return;
-    setLocalizacao(resultado);
-    setLocalizando(false);
+    pararLocalizacao();
+    const r = criarRastreadorFoto();
+    rastreador.current = r;
+    r.assinar(e => { if (rastreador.current === r) setEstadoLocalizacao(e); });
   }
   function montarDados(origem: 'camera' | 'arquivo', loc: LocalizacaoFoto = localizacao, capturadaEm = new Date()): DadosFoto {
     return { ...(origem === 'camera' ? loc : {}), origem,
@@ -200,8 +218,7 @@ export function useCapturaFoto({
 
   async function abrirCamera() {
     if (contextoFoto?.local) setLocalFoto(contextoFoto.local);
-    setLocalizacao({});
-    void tentarLocalizacao();
+    tentarLocalizacao();
     if (!permitirCamera || !navigator.mediaDevices?.getUserMedia) {
       falharAbertura();
       return;
@@ -248,8 +265,8 @@ export function useCapturaFoto({
   }
 
   function fecharCamera() {
-    pedidoLocalizacao.current++;
-    setLocalizando(false);
+    pararLocalizacao();
+    setEstadoLocalizacao(null);
     setStream(null);
   }
 
@@ -268,18 +285,20 @@ export function useCapturaFoto({
     canvas.width = video.videoWidth;
     canvas.height = video.videoHeight;
     canvas.getContext('2d')?.drawImage(video, 0, 0);
-    // A posição é pedida ao abrir o diálogo; se o usuário demorou (digitando o local, por exemplo),
-    // ela passa da janela de 60 s da validação. Renova antes de gravar — o quadro já foi congelado
-    // acima, então a hora da captura continua sendo a do clique.
-    let loc = localizacao;
-    if (contextoFoto && localizacaoExpirada(localizacao, capturadaEm.getTime())) {
-      pedidoLocalizacao.current++;
-      setProcessando(true);
-      setLocalizando(true);
-      try {
-        const nova = await obterLocalizacaoFoto();
-        if (nova.latitude != null) { loc = nova; setLocalizacao(nova); }
-      } finally { setLocalizando(false); setProcessando(false); }
+    // O rastreio roda desde a abertura, então a posição normalmente já está pronta. Se ainda não
+    // estiver (GPS frio, precisão ruim), espera um pouco — o quadro já foi congelado acima, então a
+    // hora da captura continua sendo a do clique.
+    let loc: LocalizacaoFoto = {};
+    const r = rastreador.current;
+    if (contextoFoto && r) {
+      let e = r.estado();
+      if (e.status === 'buscando' || e.status === 'imprecisa') {
+        setProcessando(true);
+        try { await r.aguardarPronta(ESPERA_LOCALIZACAO_NO_CLIQUE_MS); } finally { setProcessando(false); }
+        e = r.estado();
+      }
+      loc = e.leitura ? leituraParaLocalizacao(e.leitura)
+        : { motivoLocalizacao: e.motivo ?? 'A localização não chegou a tempo. Tente novamente no local.' };
     }
     const dados = montarDados('camera', loc, capturadaEm);
     fecharCamera();
@@ -300,7 +319,7 @@ export function useCapturaFoto({
   }
 
   return {
-    contextoFoto, localFoto, setLocalFoto, localizacao, localizando, tentarLocalizacao,
+    contextoFoto, localFoto, setLocalFoto, localizacao, localizando, estadoLocalizacao, tentarLocalizacao,
     fotoPendente, salvarFotoPendente, cancelarFotoPendente: () => setFotoPendente(null),
     inputRef,
     videoRef,

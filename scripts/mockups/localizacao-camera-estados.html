@@ -1,0 +1,137 @@
+<title>Localização na Câmera</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow:wght@500;600;700&family=Source+Sans+3:wght@400;600&display=swap">
+<style>
+/* Layout: grade de cartões "diálogo Tirar foto", um por estado do rastreio, lado a lado e empilhando no celular */
+:root {
+  --bg: #f6f4f2; --surface: #ffffff; --fg: #1f1b1b; --muted: #6b6262; --line: #e4dfdc;
+  --accent: #670000; --info-bg: #eef3fb; --info-fg: #1d4f91; --ok-bg: #edf7ef; --ok-fg: #1e6b34;
+  --warn-bg: #fff6e5; --warn-fg: #8a5300; --err-bg: #fdeceb; --err-fg: #a4262c; --btn: #f1efed;
+  --display: "Barlow", "Segoe UI", system-ui, sans-serif; --body: "Source Sans 3", "Segoe UI", system-ui, sans-serif;
+}
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) {
+  --bg: #171313; --surface: #221d1d; --fg: #f1ecea; --muted: #a99f9c; --line: #3a3232;
+  --accent: #d47a7a; --info-bg: #1b2a3f; --info-fg: #9cc3f5; --ok-bg: #16301e; --ok-fg: #8fd5a2;
+  --warn-bg: #3a2b10; --warn-fg: #f0c06a; --err-bg: #3d1b1c; --err-fg: #f3a3a6; --btn: #2d2626; color-scheme: dark } }
+:root[data-theme="dark"] {
+  --bg: #171313; --surface: #221d1d; --fg: #f1ecea; --muted: #a99f9c; --line: #3a3232;
+  --accent: #d47a7a; --info-bg: #1b2a3f; --info-fg: #9cc3f5; --ok-bg: #16301e; --ok-fg: #8fd5a2;
+  --warn-bg: #3a2b10; --warn-fg: #f0c06a; --err-bg: #3d1b1c; --err-fg: #f3a3a6; --btn: #2d2626; color-scheme: dark }
+body { background: var(--bg); color: var(--fg); font: 15px/1.5 var(--body); }
+.wrap { max-width: 1180px; margin: 0 auto; padding-inline: 16px; padding-block: 28px 48px; display: grid; gap: 24px; }
+h1 { font: 700 26px/1.2 var(--display); margin: 0; text-wrap: balance; color: var(--accent); }
+.intro { margin: 0; color: var(--muted); max-width: 70ch; }
+.grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 340px), 1fr)); gap: 18px; align-items: start; }
+.estado { display: grid; gap: 8px; min-width: 0; }
+.rotulo { font: 600 12px/1 var(--display); letter-spacing: .08em; text-transform: uppercase; color: var(--muted); }
+.dialogo { background: var(--surface); border: 1px solid var(--line); border-radius: 8px; padding: 18px; display: grid; gap: 12px; box-shadow: 0 2px 10px rgb(0 0 0 / .06); }
+.dialogo h2 { font: 600 18px/1.2 var(--display); margin: 0; }
+.obra { font-weight: 600; }
+.small { font-size: 13px; color: var(--muted); }
+.campo { display: grid; gap: 4px; font-size: 13px; }
+.campo span { border: 1px solid var(--line); border-radius: 4px; padding: 6px 8px; font-size: 14px; }
+.fb { border-radius: 6px; padding: 9px 11px; font-size: 14px; display: flex; gap: 8px; align-items: flex-start; }
+.fb b { font-weight: 600; }
+.info { background: var(--info-bg); color: var(--info-fg); } .ok { background: var(--ok-bg); color: var(--ok-fg); }
+.warn { background: var(--warn-bg); color: var(--warn-fg); } .err { background: var(--err-bg); color: var(--err-fg); }
+.dot { width: 10px; height: 10px; border-radius: 50%; background: currentColor; flex: none; margin-top: 6px; }
+.pulse { animation: p 1.2s ease-in-out infinite; } @keyframes p { 50% { opacity: .3 } }
+@media (prefers-reduced-motion: reduce) { .pulse { animation: none } }
+.btn { background: var(--btn); border: 1px solid var(--line); border-radius: 4px; padding: 6px 12px; text-align: center; font-weight: 600; font-size: 14px; }
+.btn.prim { background: var(--accent); color: var(--surface); border-color: var(--accent); }
+.btn[aria-disabled="true"] { opacity: .5 }
+.video { aspect-ratio: 4/3; max-width: 100%; border-radius: 6px; background: repeating-linear-gradient(45deg, var(--btn) 0 10px, var(--line) 10px 20px); display: grid; place-items: center; color: var(--muted); font-size: 13px; }
+.acoes { display: flex; gap: 8px; justify-content: flex-end; flex-wrap: wrap; }
+.nota { font-size: 13px; color: var(--muted); margin: 0; }
+.mudou { color: var(--accent); font-weight: 600; }
+</style>
+
+<div class="wrap">
+  <h1>Status da localização na tela "Tirar foto"</h1>
+  <p class="intro">Prévia das mensagens novas. O resto do diálogo não muda (obra, local, câmera, botões). Em <span class="mudou">vermelho-vinho</span>, o que muda em relação a hoje. A localização começa a ser buscada assim que a câmera abre e continua até fechar.</p>
+
+  <div class="grid">
+    <section class="estado">
+      <div class="rotulo">1 · Buscando (primeiros segundos)</div>
+      <div class="dialogo">
+        <h2>Tirar foto</h2>
+        <div class="obra">Obra: Residencial Altiplano</div>
+        <div class="campo">Local da foto *<span>Galpão 2, área de montagem</span></div>
+        <div class="fb info"><i class="dot pulse"></i><div><b>Buscando localização…</b> <span class="mudou">Pode enquadrar a foto. Se ela não chegar até o clique, a captura espera até 15 s.</span></div></div>
+        <div class="btn" aria-disabled="true">Tentar localização novamente</div>
+        <div class="video">câmera ao vivo</div>
+        <div class="acoes"><div class="btn">Cancelar</div><div class="btn prim">Capturar</div></div>
+      </div>
+      <p class="nota">Hoje: "Obtendo localização… aguarde antes de capturar."</p>
+    </section>
+
+    <section class="estado">
+      <div class="rotulo">2 · Posição imprecisa (mais de 100 m)</div>
+      <div class="dialogo">
+        <h2>Tirar foto</h2>
+        <div class="obra">Obra: Residencial Altiplano</div>
+        <div class="campo">Local da foto *<span>Galpão 2, área de montagem</span></div>
+        <div class="fb warn"><i class="dot pulse"></i><div><b class="mudou">Melhorando a precisão: 340 m.</b> <span class="mudou">O limite é 100 m. Aguarde alguns segundos, de preferência em área aberta.</span></div></div>
+        <div class="btn">Tentar localização novamente</div>
+        <div class="video">câmera ao vivo</div>
+        <div class="acoes"><div class="btn">Cancelar</div><div class="btn prim">Capturar</div></div>
+      </div>
+      <p class="nota">Hoje: aparecia "Localização obtida · precisão 340 m" e a foto saía com pendência sem aviso.</p>
+    </section>
+
+    <section class="estado">
+      <div class="rotulo">3 · Pronta</div>
+      <div class="dialogo">
+        <h2>Tirar foto</h2>
+        <div class="obra">Obra: Residencial Altiplano</div>
+        <div class="campo">Local da foto *<span>Galpão 2, área de montagem</span></div>
+        <div class="fb ok"><i class="dot"></i><div><b>Localização obtida · precisão 12 m.</b> <span class="mudou">Atualizando automaticamente.</span></div></div>
+        <div class="btn">Tentar localização novamente</div>
+        <div class="video">câmera ao vivo</div>
+        <div class="acoes"><div class="btn">Cancelar</div><div class="btn prim">Capturar</div></div>
+      </div>
+      <p class="nota">Muda só a cor (verde) e o complemento.</p>
+    </section>
+
+    <section class="estado">
+      <div class="rotulo">4 · Bloqueada no iPhone</div>
+      <div class="dialogo">
+        <h2>Tirar foto</h2>
+        <div class="obra">Obra: Residencial Altiplano</div>
+        <div class="campo">Local da foto *<span>Galpão 2, área de montagem</span></div>
+        <div class="fb err"><i class="dot"></i><div><b>Permissão de localização bloqueada.</b> <span class="mudou">No iPhone: Ajustes › Teams › Localização › "Durante o Uso" e ative "Localização Exata".</span></div></div>
+        <div class="btn">Tentar localização novamente</div>
+        <div class="video">câmera ao vivo</div>
+        <div class="acoes"><div class="btn">Cancelar</div><div class="btn prim">Capturar</div></div>
+      </div>
+      <p class="nota">Hoje: mensagem genérica "libere nas configurações do aparelho".</p>
+    </section>
+
+    <section class="estado">
+      <div class="rotulo">5 · Bloqueada no computador</div>
+      <div class="dialogo">
+        <h2>Tirar foto</h2>
+        <div class="obra">Obra: Residencial Altiplano</div>
+        <div class="campo">Local da foto *<span>Galpão 2, área de montagem</span></div>
+        <div class="fb err"><i class="dot"></i><div><b>Permissão de localização bloqueada.</b> <span class="mudou">No Windows: Configurações › Privacidade e segurança › Localização, ative e permita para o Teams. No Teams: Configurações › Permissões do app › Localização.</span></div></div>
+        <div class="btn">Tentar localização novamente</div>
+        <div class="video">câmera ao vivo</div>
+        <div class="acoes"><div class="btn">Cancelar</div><div class="btn prim">Capturar</div></div>
+      </div>
+      <p class="nota">Se o Windows estiver com a localização desligada, aparece o aviso para ativá-la.</p>
+    </section>
+
+    <section class="estado">
+      <div class="rotulo">6 · Clicou em Capturar sem posição</div>
+      <div class="dialogo">
+        <h2>Tirar foto</h2>
+        <div class="obra">Obra: Residencial Altiplano</div>
+        <div class="campo">Local da foto *<span>Galpão 2, área de montagem</span></div>
+        <div class="fb info"><i class="dot pulse"></i><div><b class="mudou">Foto tirada. Aguardando a localização (até 15 s)…</b></div></div>
+        <div class="btn" aria-disabled="true">Tentar localização novamente</div>
+        <div class="video">quadro congelado no clique</div>
+        <div class="acoes"><div class="btn" aria-disabled="true">Cancelar</div><div class="btn prim" aria-disabled="true">Capturar</div></div>
+      </div>
+      <p class="nota">Se não chegar, a foto é salva com a pendência "geolocalização da captura", como hoje.</p>
+    </section>
+  </div>
+</div>
