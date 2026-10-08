@@ -3767,6 +3767,21 @@ export interface SuporteIaSolicitacao {
   souSolicitante: boolean;
 }
 
+// Sugestão da IA a partir do relato falado — o usuário confere antes de abrir o chamado.
+export interface ChamadoSugeridoSuporteIa {
+  tipo: number;
+  severidade: number;
+  titulo: string;
+  modulo: string | null;
+  descricao: string;
+}
+
+export interface RelatoVozSuporteIa {
+  transcricao: string;
+  // null quando a classificação falhou: só a transcrição volta, para o usuário completar.
+  sugestao: ChamadoSugeridoSuporteIa | null;
+}
+
 export interface NovaSolicitacaoSuporteIa {
   tipo: number;
   severidadeInformada: number;
@@ -5332,6 +5347,22 @@ export const api = {
       return request<SuporteIaSolicitacao[]>(`/api/suporte-ia/admin${query ? `?${query}` : ''}`);
     },
     obterDetalhe: (id: string) => request<SuporteIaSolicitacao>(`/api/suporte-ia/${id}`),
+    // "Relatar por voz" — multipart, fora de request<T> (que força Content-Type: application/json)
+    // e do motor offline (transcrição e classificação dependem do Azure OpenAI, sempre online).
+    relatoVoz: async (audio: Blob, nomeArquivo: string): Promise<RelatoVozSuporteIa> => {
+      const formData = new FormData();
+      formData.append('audio', audio, nomeArquivo);
+      const response = await fetch(`${API_BASE_URL}/api/suporte-ia/relato-voz`, {
+        method: 'POST',
+        headers: await montarHeadersAuth(),
+        body: formData,
+      });
+      if (!response.ok) {
+        const corpo = await response.text().catch(() => '');
+        throw new Error(extrairMensagemErro(corpo, response.status, response.statusText));
+      }
+      return (await response.json()) as RelatoVozSuporteIa;
+    },
     criar: (solicitacao: NovaSolicitacaoSuporteIa) =>
       request<SuporteIaSolicitacao>('/api/suporte-ia', {
         method: 'POST',

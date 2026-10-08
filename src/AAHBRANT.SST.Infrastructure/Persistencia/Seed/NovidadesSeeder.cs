@@ -1037,6 +1037,17 @@ public static class NovidadesSeeder
                     "Para tirar a foto era preciso escrever o local (ex.: galpão 2) e, sem isso, a foto ficava com pendência.",
                     "O campo saiu da tela da câmera e não é mais exigido. Fotos antigas continuam mostrando o local que foi escrito."),
             }),
+        new(
+            Versao: "5.54.0",
+            Titulo: "Suporte IA: abra chamado falando",
+            DataPublicacao: new DateTime(2026, 10, 8, 0, 0, 0, DateTimeKind.Utc),
+            Itens: new[]
+            {
+                new NovidadeSeedItem(CategoriaNovidade.Novidade,
+                    "Relatar por voz na Central de Suporte IA",
+                    "Para abrir um chamado era preciso digitar e escolher tipo, severidade, título, módulo e descrição.",
+                    "Clique em \"Relatar por voz\", fale o problema e clique em \"Parar e preencher\". A IA preenche o chamado inteiro; você confere, corrige se quiser e clica em \"Abrir chamado\". O áudio não é salvo."),
+            }),
     };
 
     public static async Task ExecutarAsync(IServiceProvider services, CancellationToken ct = default)
