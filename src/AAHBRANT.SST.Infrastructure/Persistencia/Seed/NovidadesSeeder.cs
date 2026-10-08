@@ -1024,6 +1024,21 @@ public static class NovidadesSeeder
             }),
         new(
             Versao: "5.53.0",
+            Titulo: "Localização das fotos mais rápida",
+            DataPublicacao: new DateTime(2026, 10, 8, 0, 0, 0, DateTimeKind.Utc),
+            Itens: new[]
+            {
+                new NovidadeSeedItem(CategoriaNovidade.Correcao,
+                    "Localização da foto no iPhone e no computador",
+                    "No iPhone e no computador, a localização da foto demorava e muitas vezes terminava em \"Tempo de localização esgotado\".",
+                    "A localização começa a ser buscada assim que a câmera abre e fica se atualizando sozinha. A tela mostra se ainda está buscando, se a precisão ainda passa de 100 m ou se a localização está pronta, e explica como liberar a permissão no iPhone e no Windows."),
+                new NovidadeSeedItem(CategoriaNovidade.Melhoria,
+                    "Sem o campo \"Local da foto\"",
+                    "Para tirar a foto era preciso escrever o local (ex.: galpão 2) e, sem isso, a foto ficava com pendência.",
+                    "O campo saiu da tela da câmera e não é mais exigido. Fotos antigas continuam mostrando o local que foi escrito."),
+            }),
+        new(
+            Versao: "5.54.0",
             Titulo: "Suporte IA: abra chamado falando",
             DataPublicacao: new DateTime(2026, 10, 8, 0, 0, 0, DateTimeKind.Utc),
             Itens: new[]
