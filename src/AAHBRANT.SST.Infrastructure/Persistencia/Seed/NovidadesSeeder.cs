@@ -676,6 +676,17 @@ public static class NovidadesSeeder
                     "Escolher um tema com descrição muito longa (como o de câncer de mama) gerava \"erro inesperado\" ao criar o DDS.",
                     "O DDS é criado normalmente com temas de descrição longa."),
             }),
+        new(
+            Versao: "5.41.0",
+            Titulo: "Suporte IA: abra chamado falando",
+            DataPublicacao: new DateTime(2026, 10, 8, 0, 0, 0, DateTimeKind.Utc),
+            Itens: new[]
+            {
+                new NovidadeSeedItem(CategoriaNovidade.Novidade,
+                    "Relatar por voz na Central de Suporte IA",
+                    "Para abrir um chamado era preciso digitar e escolher tipo, severidade, título, módulo e descrição.",
+                    "Clique em \"Relatar por voz\", fale o problema e clique em \"Parar e preencher\". A IA preenche o chamado inteiro; você confere, corrige se quiser e clica em \"Abrir chamado\". O áudio não é salvo."),
+            }),
     };
 
     public static async Task ExecutarAsync(IServiceProvider services, CancellationToken ct = default)

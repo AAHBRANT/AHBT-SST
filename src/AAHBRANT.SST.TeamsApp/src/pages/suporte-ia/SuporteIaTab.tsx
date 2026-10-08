@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Input, Textarea, makeStyles, tokens } from '@fluentui/react-components';
-import { Send24Regular } from '@fluentui/react-icons';
+import { Mic24Regular, RecordStop24Filled, Send24Regular } from '@fluentui/react-icons';
 import {
   api,
   ResultadoTriagemSuporteIa,
@@ -12,11 +12,15 @@ import {
   severidadeSolicitacaoSuporteIaLabel,
   statusSolicitacaoSuporteIaLabel,
   tipoSolicitacaoSuporteIaLabel,
+  type RelatoVozSuporteIa,
   type SuporteIaSolicitacao,
 } from '../../lib/api';
-import { Button, FeedbackInline, Legenda, StatusChip } from '@ui';
+import { Button, FeedbackInline, Legenda, Spinner, StatusChip } from '@ui';
 import { EsteiraSuporteIa } from './EsteiraSuporteIa';
 import { etapaAtivaPorStatus } from './statusEtapaSuporteIa';
+import { formatarTempoGravacao, useRelatoVoz } from './useRelatoVoz';
+
+type CampoChamado = 'tipo' | 'severidade' | 'titulo' | 'modulo' | 'descricao';
 
 const STATUS_PENDENTES_RESPONSAVEL: number[] = [
   StatusSolicitacaoSuporteIa.Encaminhada,
@@ -48,6 +52,7 @@ const useStyles = makeStyles({
     background: tokens.colorNeutralBackground1,
     boxShadow: tokens.shadow4,
     overflow: 'hidden',
+    minWidth: 0,
   },
   painelCabecalho: {
     display: 'flex',
@@ -79,6 +84,9 @@ const useStyles = makeStyles({
   form: {
     display: 'grid',
     gap: '12px',
+    // Sem isso o item do grid cresce com mensagem longa (ex.: aviso de microfone bloqueado) em vez
+    // de deixar o MessageBar quebrar linha.
+    '& > *': { minWidth: 0 },
   },
   linha: {
     display: 'grid',
@@ -96,6 +104,116 @@ const useStyles = makeStyles({
     fontSize: '12px',
     fontWeight: 700,
     color: tokens.colorNeutralForeground2,
+  },
+  blocoVoz: {
+    display: 'grid',
+    justifyItems: 'start',
+    gap: '8px',
+    padding: '12px',
+    borderRadius: '8px',
+    border: `1px dashed ${tokens.colorBrandStroke1}`,
+    background: tokens.colorNeutralBackground3,
+  },
+  blocoVozTitulo: {
+    margin: 0,
+    fontSize: '14px',
+    fontWeight: 700,
+    color: tokens.colorNeutralForeground1,
+  },
+  dica: {
+    fontSize: '12px',
+    lineHeight: '16px',
+    color: tokens.colorNeutralForeground2,
+  },
+  ou: {
+    fontSize: '11px',
+    fontWeight: 700,
+    letterSpacing: '0.05em',
+    textTransform: 'uppercase',
+    textAlign: 'center',
+    color: tokens.colorNeutralForeground3,
+  },
+  botaoParar: {
+    backgroundColor: tokens.colorPaletteRedBackground3,
+    color: tokens.colorNeutralForegroundOnBrand,
+    ':hover': {
+      backgroundColor: tokens.colorPaletteRedForeground1,
+      color: tokens.colorNeutralForegroundOnBrand,
+    },
+  },
+  gravando: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: '10px',
+    width: '100%',
+    boxSizing: 'border-box',
+    padding: '8px 10px',
+    borderRadius: '4px',
+    background: tokens.colorNeutralBackground1,
+    color: tokens.colorNeutralForeground1,
+    fontSize: '13px',
+  },
+  pontoGravando: {
+    width: '10px',
+    height: '10px',
+    borderRadius: '50%',
+    flexShrink: 0,
+    background: tokens.colorPaletteRedBackground3,
+    animationName: { '50%': { opacity: 0.3 } },
+    animationDuration: '1.2s',
+    animationIterationCount: 'infinite',
+    '@media (prefers-reduced-motion: reduce)': { animationName: 'none' },
+  },
+  tempoGravando: {
+    fontVariantNumeric: 'tabular-nums',
+    fontWeight: 700,
+  },
+  barrasGravando: {
+    display: 'flex',
+    gap: '2px',
+    alignItems: 'center',
+    height: '16px',
+    flex: 1,
+    minWidth: 0,
+    overflow: 'hidden',
+  },
+  barraGravando: {
+    width: '3px',
+    minHeight: '3px',
+    borderRadius: '2px',
+    background: tokens.colorPaletteRedBackground3,
+    opacity: 0.7,
+  },
+  spinnerInline: {
+    display: 'inline-flex',
+    verticalAlign: 'middle',
+    marginRight: '6px',
+  },
+  avisoIa: {
+    fontSize: '12px',
+    lineHeight: '16px',
+    padding: '8px 10px',
+    borderRadius: '4px',
+    color: tokens.colorNeutralForeground1,
+    background: `color-mix(in srgb, ${tokens.colorPaletteGrapeBackground2} 30%, ${tokens.colorNeutralBackground1})`,
+  },
+  labelComSelo: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: '6px',
+  },
+  seloIa: {
+    fontSize: '10px',
+    lineHeight: '14px',
+    fontWeight: 700,
+    padding: '0 7px',
+    borderRadius: '10px',
+    color: tokens.colorPaletteGrapeForeground2,
+    background: tokens.colorPaletteGrapeBackground2,
+  },
+  // Tom suave do roxo "IA" sobre o fundo do tema — o Fluent não tem uma tonalidade Grape mais clara.
+  campoIa: {
+    backgroundColor: `color-mix(in srgb, ${tokens.colorPaletteGrapeBackground2} 30%, ${tokens.colorNeutralBackground1})`,
   },
   select: {
     minHeight: '32px',
@@ -308,7 +426,52 @@ export function SuporteIaTab() {
   const [resultado, setResultado] = useState<SuporteIaSolicitacao | null>(null);
   const [historico, setHistorico] = useState<SuporteIaSolicitacao[]>([]);
   const [filaResponsavel, setFilaResponsavel] = useState<SuporteIaSolicitacao[] | null>(null);
+  // Campos que a IA preencheu a partir do relato falado — mostram o selo "IA" até o usuário editá-los.
+  const [camposIa, setCamposIa] = useState<Set<CampoChamado>>(new Set());
+  const [avisoIa, setAvisoIa] = useState<string | null>(null);
   const etapaAtual = resultado ? etapaAtivaPorStatus(resultado.status) : 0;
+
+  // "Relatar por voz" substitui o formulário pelo novo relato. Se a IA não conseguir classificar, a
+  // fala transcrita vai para a descrição e o usuário completa o resto.
+  const relatoVoz = useRelatoVoz(
+    (relato: RelatoVozSuporteIa) => {
+      setErro(null);
+      setResultado(null);
+      if (relato.sugestao) {
+        setTipo(relato.sugestao.tipo);
+        setSeveridade(relato.sugestao.severidade);
+        setTitulo(relato.sugestao.titulo);
+        setModulo(relato.sugestao.modulo ?? '');
+        setDescricao(relato.sugestao.descricao);
+        setCamposIa(new Set<CampoChamado>(['tipo', 'severidade', 'titulo', 'modulo', 'descricao']));
+        setAvisoIa('A IA preencheu o chamado. Confira e clique em Abrir chamado. Você pode corrigir qualquer campo.');
+      } else {
+        setDescricao(relato.transcricao);
+        setCamposIa(new Set<CampoChamado>(['descricao']));
+        setAvisoIa('A fala foi transcrita na descrição, mas a IA não conseguiu classificar. Complete os outros campos.');
+      }
+    },
+    (mensagem) => setErro(mensagem),
+  );
+  const ocupadoComVoz = relatoVoz.estado !== 'parado';
+
+  function editadoPeloUsuario(campo: CampoChamado) {
+    setCamposIa((atual) => {
+      if (!atual.has(campo)) return atual;
+      const proximo = new Set(atual);
+      proximo.delete(campo);
+      return proximo;
+    });
+  }
+
+  function rotuloCampo(texto: string, campo: CampoChamado) {
+    return (
+      <span className={`${estilos.label} ${estilos.labelComSelo}`}>
+        {texto}
+        {camposIa.has(campo) && <span className={estilos.seloIa}>IA</span>}
+      </span>
+    );
+  }
 
   const pedidoPreview = useMemo(
     () => ({
@@ -361,6 +524,9 @@ export function SuporteIaTab() {
       setResultado(resposta);
       setTitulo('');
       setDescricao('');
+      setModulo('');
+      setCamposIa(new Set());
+      setAvisoIa(null);
       await Promise.all([carregarHistorico(), carregarFilaResponsavel()]);
     } catch (e) {
       setErro(e instanceof Error ? e.message : 'Falha ao enviar a solicitação ao suporte IA.');
@@ -428,10 +594,60 @@ export function SuporteIaTab() {
                 </FeedbackInline>
               )}
 
+              <div className={estilos.blocoVoz}>
+                {relatoVoz.estado === 'gravando' ? (
+                  <>
+                    <div className={estilos.gravando} role="status">
+                      <span className={estilos.pontoGravando} />
+                      <span>Gravando</span>
+                      <span className={estilos.tempoGravando}>{formatarTempoGravacao(relatoVoz.segundos)}</span>
+                      <span className={estilos.barrasGravando} aria-hidden="true">
+                        {relatoVoz.niveis.map((nivel, i) => (
+                          <i key={i} className={estilos.barraGravando} style={{ height: `${Math.round(3 + nivel * 13)}px` }} />
+                        ))}
+                      </span>
+                    </div>
+                    <Button className={estilos.botaoParar} icon={<RecordStop24Filled />} onClick={relatoVoz.parar}>
+                      Parar e preencher
+                    </Button>
+                    <span className={estilos.dica}>O áudio não é salvo. Só o texto volta para o formulário.</span>
+                  </>
+                ) : relatoVoz.estado === 'transcrevendo' ? (
+                  <span className={estilos.dica} role="status">
+                    <Spinner size="extra-tiny" className={estilos.spinnerInline} />
+                    Áudio enviado. A IA está preenchendo o chamado…
+                  </span>
+                ) : (
+                  <>
+                    <p className={estilos.blocoVozTitulo}>Fale o seu problema</p>
+                    <span className={estilos.dica}>A IA preenche o chamado para você. Até 10 minutos.</span>
+                    <Button appearance="primary" icon={<Mic24Regular />} onClick={relatoVoz.iniciar} disabled={enviando}>
+                      {camposIa.size > 0 ? 'Gravar de novo' : 'Relatar por voz'}
+                    </Button>
+                  </>
+                )}
+              </div>
+
+              {avisoIa && !ocupadoComVoz ? (
+                <span className={estilos.avisoIa} role="status">
+                  {avisoIa}
+                </span>
+              ) : (
+                <span className={estilos.ou}>ou preencha</span>
+              )}
+
               <div className={estilos.linha}>
                 <label className={estilos.campo}>
-                  <span className={estilos.label}>Tipo</span>
-                  <select className={estilos.select} value={tipo} onChange={(e) => setTipo(Number(e.target.value))}>
+                  {rotuloCampo('Tipo', 'tipo')}
+                  <select
+                    className={`${estilos.select} ${camposIa.has('tipo') ? estilos.campoIa : ''}`}
+                    value={tipo}
+                    disabled={ocupadoComVoz}
+                    onChange={(e) => {
+                      setTipo(Number(e.target.value));
+                      editadoPeloUsuario('tipo');
+                    }}
+                  >
                     {Object.entries(tipoSolicitacaoSuporteIaLabel).map(([valor, rotulo]) => (
                       <option key={valor} value={valor}>
                         {rotulo}
@@ -441,11 +657,15 @@ export function SuporteIaTab() {
                 </label>
 
                 <label className={estilos.campo}>
-                  <span className={estilos.label}>Severidade percebida</span>
+                  {rotuloCampo('Severidade percebida', 'severidade')}
                   <select
-                    className={estilos.select}
+                    className={`${estilos.select} ${camposIa.has('severidade') ? estilos.campoIa : ''}`}
                     value={severidade}
-                    onChange={(e) => setSeveridade(Number(e.target.value))}
+                    disabled={ocupadoComVoz}
+                    onChange={(e) => {
+                      setSeveridade(Number(e.target.value));
+                      editadoPeloUsuario('severidade');
+                    }}
                   >
                     {Object.entries(severidadeSolicitacaoSuporteIaLabel).map(([valor, rotulo]) => (
                       <option key={valor} value={valor}>
@@ -457,28 +677,43 @@ export function SuporteIaTab() {
               </div>
 
               <label className={estilos.campo}>
-                <span className={estilos.label}>Título</span>
+                {rotuloCampo('Título', 'titulo')}
                 <Input
+                  className={camposIa.has('titulo') ? estilos.campoIa : undefined}
                   value={titulo}
-                  onChange={(_, data) => setTitulo(data.value)}
+                  disabled={ocupadoComVoz}
+                  onChange={(_, data) => {
+                    setTitulo(data.value);
+                    editadoPeloUsuario('titulo');
+                  }}
                   placeholder="Ex.: Não consigo encerrar inspeção"
                 />
               </label>
 
               <label className={estilos.campo}>
-                <span className={estilos.label}>Módulo ou tela</span>
+                {rotuloCampo('Módulo ou tela', 'modulo')}
                 <Input
+                  className={camposIa.has('modulo') ? estilos.campoIa : undefined}
                   value={modulo}
-                  onChange={(_, data) => setModulo(data.value)}
+                  disabled={ocupadoComVoz}
+                  onChange={(_, data) => {
+                    setModulo(data.value);
+                    editadoPeloUsuario('modulo');
+                  }}
                   placeholder="Ex.: Inspeções, EPI, DDS"
                 />
               </label>
 
               <label className={estilos.campo}>
-                <span className={estilos.label}>Descrição do cliente</span>
+                {rotuloCampo('Descrição do cliente', 'descricao')}
                 <Textarea
+                  className={camposIa.has('descricao') ? estilos.campoIa : undefined}
                   value={descricao}
-                  onChange={(_, data) => setDescricao(data.value)}
+                  disabled={ocupadoComVoz}
+                  onChange={(_, data) => {
+                    setDescricao(data.value);
+                    editadoPeloUsuario('descricao');
+                  }}
                   resize="vertical"
                   rows={8}
                   placeholder="Descreva o que aconteceu, o que esperava ver e quais passos levaram até aqui."
@@ -489,9 +724,9 @@ export function SuporteIaTab() {
                 appearance="primary"
                 icon={<Send24Regular />}
                 onClick={enviar}
-                disabled={enviando || titulo.trim().length === 0 || descricao.trim().length === 0}
+                disabled={enviando || ocupadoComVoz || titulo.trim().length === 0 || descricao.trim().length === 0}
               >
-                {enviando ? 'Triando...' : 'Enviar para triagem'}
+                {enviando ? 'Triando...' : camposIa.size > 0 ? 'Abrir chamado' : 'Enviar para triagem'}
               </Button>
             </div>
           </div>

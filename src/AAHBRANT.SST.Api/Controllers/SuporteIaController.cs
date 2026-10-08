@@ -1,3 +1,4 @@
+using AAHBRANT.SST.Application.SuporteIa;
 using AAHBRANT.SST.Application.SuporteIa.Commands;
 using AAHBRANT.SST.Application.SuporteIa.Queries;
 using AAHBRANT.SST.Application.Common.Interfaces;
@@ -18,13 +19,29 @@ public class SuporteIaController : ControllerBase
     private readonly IAppDbContext _db;
     private readonly IConfiguration _configuracao;
     private readonly IAuthorizationService _autorizacao;
+    private readonly ITranscricaoAudioService _transcricao;
+    private readonly IClassificadorRelatoSuporteIa _classificador;
+    private readonly ILogger<SuporteIaController> _logger;
 
-    public SuporteIaController(IMediator mediator, IAppDbContext db, IConfiguration configuracao, IAuthorizationService autorizacao)
+    // gpt-4o-transcribe aceita até 25 MB por arquivo.
+    private const long TamanhoMaximoAudio = 25_000_000;
+
+    public SuporteIaController(
+        IMediator mediator,
+        IAppDbContext db,
+        IConfiguration configuracao,
+        IAuthorizationService autorizacao,
+        ITranscricaoAudioService transcricao,
+        IClassificadorRelatoSuporteIa classificador,
+        ILogger<SuporteIaController> logger)
     {
         _mediator = mediator;
         _db = db;
         _configuracao = configuracao;
         _autorizacao = autorizacao;
+        _transcricao = transcricao;
+        _classificador = classificador;
+        _logger = logger;
     }
 
     [Authorize(Policy = "suporte-ia:usar")]
@@ -45,6 +62,42 @@ public class SuporteIaController : ControllerBase
             solicitante.Email), ct);
 
         return CreatedAtAction(nameof(Listar), new { id = resultado.Id }, resultado);
+    }
+
+    // "Relatar por voz": o áudio vira texto e a IA sugere tipo, severidade, título, módulo e descrição.
+    // Nada é salvo aqui — o usuário confere a sugestão e só então abre o chamado pelo fluxo normal
+    // (Criar). Se a classificação falhar, devolve só a transcrição para o usuário completar o resto.
+    [Authorize(Policy = "suporte-ia:usar")]
+    [HttpPost("relato-voz")]
+    [RequestSizeLimit(TamanhoMaximoAudio + 1_000_000)]
+    public async Task<IActionResult> RelatoVoz([FromForm] RelatoVozSuporteIaRequestBody body, CancellationToken ct)
+    {
+        if (!_transcricao.Configurado)
+            return StatusCode(StatusCodes.Status503ServiceUnavailable, new { erro = "Transcrição de áudio ainda não está configurada neste ambiente." });
+
+        if (body.Audio is null || body.Audio.Length == 0)
+            return BadRequest(new { erro = "Nenhum áudio recebido." });
+
+        if (body.Audio.Length > TamanhoMaximoAudio)
+            return BadRequest(new { erro = "Áudio muito longo. Grave até cerca de 10 minutos." });
+
+        await using var stream = body.Audio.OpenReadStream();
+        var nomeArquivo = string.IsNullOrWhiteSpace(body.Audio.FileName) ? "audio.webm" : body.Audio.FileName;
+        var transcricao = await _transcricao.TranscreverAsync(stream, nomeArquivo, body.Audio.ContentType, ct);
+        if (string.IsNullOrWhiteSpace(transcricao))
+            return Ok(new { transcricao, sugestao = (ChamadoSugeridoSuporteIa?)null });
+
+        ChamadoSugeridoSuporteIa? sugestao = null;
+        try
+        {
+            sugestao = await _classificador.ClassificarAsync(transcricao, ct);
+        }
+        catch (Exception ex) when (ex is not OperationCanceledException)
+        {
+            _logger.LogWarning(ex, "Relato por voz transcrito, mas a classificação falhou; devolvendo só a transcrição.");
+        }
+
+        return Ok(new { transcricao, sugestao });
     }
 
     [Authorize(Policy = "suporte-ia:usar")]
@@ -173,6 +226,11 @@ public class CriarSuporteIaRequestBody
     public string? UrlContexto { get; set; }
     public string? SolicitanteNome { get; set; }
     public string? SolicitanteEmail { get; set; }
+}
+
+public class RelatoVozSuporteIaRequestBody
+{
+    public IFormFile? Audio { get; set; }
 }
 
 public class ConcluirSuporteIaRequestBody
