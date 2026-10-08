@@ -49,16 +49,15 @@ public record DadosCapturaFoto
         var dados = Ler(json);
         var faltas = new List<string>();
         // Foto anexada da galeria (decisão do usuário, 01/10): não tem como provar data/posição, então
-        // entra marcada como "sem geolocalização" e só exige obra e descrição do local.
+        // entra marcada como "sem geolocalização" e só exige a obra. A descrição do local deixou de
+        // ser exigida (pedido do usuário, 08/10); o campo segue aceito para fotos antigas.
         if (dados?.Origem == "arquivo")
         {
             if (dados.ObraId is null || string.IsNullOrWhiteSpace(dados.ObraNome)) faltas.Add("obra vinculada");
-            if (string.IsNullOrWhiteSpace(dados.Local)) faltas.Add("descrição do local");
             return faltas;
         }
         if (dados?.CapturadaEm is null) faltas.Add("data e hora da captura");
         if (dados?.ObraId is null || string.IsNullOrWhiteSpace(dados.ObraNome)) faltas.Add("obra vinculada");
-        if (string.IsNullOrWhiteSpace(dados?.Local)) faltas.Add("descrição do local");
         if (!LocalizacaoValida(dados)) faltas.Add("geolocalização da captura");
         return faltas;
     }

@@ -7,7 +7,6 @@ import {
   DialogSurface,
   DialogTitle,
   Field,
-  Input,
   Select,
   Switch,
   Text,
@@ -69,18 +68,9 @@ export function DialogoCameraFoto({ captura }: DialogoCameraFotoProps) {
             {captura.contextoFoto && <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr)', gap: 12, marginBottom: 16, overflowWrap: 'anywhere' }}>
               <Text weight="semibold">Obra: {captura.contextoFoto.obraNome || 'não identificada'}</Text>
               <Text size={200}>A data e a hora serão registradas ao capturar.</Text>
-              <Field label="Local da foto" required>
-                <Input value={captura.localFoto} maxLength={200} placeholder="Ex.: galpão 2, área de montagem"
-                  onChange={(_, d) => captura.setLocalFoto(d.value)} />
-              </Field>
-              <FeedbackInline tom={captura.localizando ? 'info' : captura.localizacao.latitude != null ? 'info' : 'aviso'}>
-                {captura.localizando ? 'Obtendo localização… aguarde antes de capturar.'
-                  : captura.localizacao.motivoLocalizacao || (captura.localizacao.latitude != null
-                    ? `Localização obtida${captura.localizacao.precisaoMetros != null ? ` · precisão ${Math.round(captura.localizacao.precisaoMetros)} m` : ' · precisão não informada pelo aparelho'}.`
-                    : 'Localização ainda não obtida. A foto ficará com pendência.')}
-              </FeedbackInline>
+              <StatusLocalizacao captura={captura} />
               <Button onClick={() => void captura.tentarLocalizacao()} disabled={captura.localizando}>Tentar localização novamente</Button>
-              {!captura.exigirCamera && <Button appearance="subtle" onClick={captura.anexarDaGaleria} disabled={!captura.localFoto.trim()}>
+              {!captura.exigirCamera && <Button appearance="subtle" onClick={captura.anexarDaGaleria}>
                 Anexar foto da galeria (sem geolocalização)
               </Button>}
             </div>}
@@ -210,4 +200,27 @@ export function DialogoCameraFoto({ captura }: DialogoCameraFotoProps) {
     </Dialog>
     </>
   );
+}
+
+// Mensagem do rastreio contínuo de localização (08/10) — um texto por estado, ver rastreadorLocalizacao.ts.
+function StatusLocalizacao({ captura }: { captura: UseCapturaFoto }) {
+  const e = captura.estadoLocalizacao;
+  const precisao = e?.leitura?.precisaoMetros;
+  if (captura.aguardandoLocalizacao) {
+    return <FeedbackInline tom="info">Foto tirada. Aguardando a localização (até 15 s)…</FeedbackInline>;
+  }
+  if (!e || e.status === 'buscando') {
+    return <FeedbackInline tom="info">Buscando localização… Pode enquadrar a foto. Se ela não chegar até o clique, a captura espera até 15 s.</FeedbackInline>;
+  }
+  if (e.status === 'imprecisa') {
+    return <FeedbackInline tom="aviso">
+      Melhorando a precisão{precisao != null ? `: ${Math.round(precisao)} m` : ''}. O limite é 100 m. Aguarde alguns segundos, de preferência em área aberta.
+    </FeedbackInline>;
+  }
+  if (e.status === 'pronta') {
+    return <FeedbackInline tom="sucesso">
+      Localização obtida{precisao != null ? ` · precisão ${Math.round(precisao)} m` : ' · precisão não informada pelo aparelho'}. Atualizando automaticamente.
+    </FeedbackInline>;
+  }
+  return <FeedbackInline tom="erro">{e.motivo ?? 'Não foi possível obter a localização. A foto ficará com pendência.'}</FeedbackInline>;
 }
