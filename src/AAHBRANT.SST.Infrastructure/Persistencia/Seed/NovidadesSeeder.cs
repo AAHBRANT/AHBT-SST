@@ -1011,6 +1011,17 @@ public static class NovidadesSeeder
                     "Cada linha da lista tinha botões de foto, Excluir e cadastro de digital.",
                     "Esses botões não aparecem mais na lista, para evitar cliques por engano. A foto e o cadastro de digital ficam no perfil do funcionário."),
             }),
+        new(
+            Versao: "5.52.0",
+            Titulo: "Foto do funcionário na ficha de EPI",
+            DataPublicacao: new DateTime(2026, 10, 8, 0, 0, 0, DateTimeKind.Utc),
+            Itens: new[]
+            {
+                new NovidadeSeedItem(CategoriaNovidade.Melhoria,
+                    "Foto 3x4 na ficha de EPI",
+                    "A ficha de EPI mostrava a foto pequena, dentro de uma moldura e com o texto \"Foto de cadastro\".",
+                    "A foto agora aparece solta, no formato 3x4, sem moldura e sem o texto, ao lado dos dados do trabalhador."),
+            }),
     };
 
     public static async Task ExecutarAsync(IServiceProvider services, CancellationToken ct = default)
