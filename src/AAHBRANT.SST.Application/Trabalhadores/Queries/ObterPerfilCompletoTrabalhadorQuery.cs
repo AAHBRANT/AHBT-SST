@@ -281,7 +281,8 @@ public class ObterPerfilCompletoTrabalhadorQueryHandler : IRequestHandler<ObterP
             .ToListAsync(ct);
 
         var ocorrencias = await _db.Acidentes
-            .Where(a => a.TrabalhadorId == request.Id)
+            .Where(a => a.TrabalhadorId == request.Id
+                || _db.AcidentesEnvolvidos.Any(e => e.AcidenteId == a.Id && e.TrabalhadorId == request.Id))
             .OrderByDescending(a => a.Data)
             .Select(a => new OcorrenciaDto(
                 a.Id,

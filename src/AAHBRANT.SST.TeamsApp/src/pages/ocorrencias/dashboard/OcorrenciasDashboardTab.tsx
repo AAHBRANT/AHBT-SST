@@ -34,7 +34,7 @@ import {
   type Obra,
   type RegistroHhtMensal,
 } from '../../../lib/api';
-import { TaxaGravidadeCard } from '../../../components/dashboard/TaxaGravidadeCard';
+import { TaxaGravidadeKpiCard } from '../../../components/dashboard/TaxaGravidadeKpiCard';
 
 const NOMES_MESES_ABREVIADOS = ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez'];
 
@@ -51,7 +51,7 @@ function ultimosSeisMeses(): Array<{ ano: number; mes: number; rotulo: string }>
 // Dashboard do pilar Ocorrências (pedido do usuário, 03/09) — reúne Acidentes/Incidentes/
 // Quase-acidentes (mesma entidade Acidente, diferenciada por Tipo — ver OcorrenciasPage.tsx) e Não
 // Conformidades num único painel, no mesmo padrão visual dos outros dashboards de módulo (ver
-// NaoConformidadesDashboardTab.tsx). Reaproveita TaxaGravidadeCard (mesmo cálculo NBR 14280 do
+// NaoConformidadesDashboardTab.tsx). Reaproveita TaxaGravidadeKpiCard (mesmo cálculo NBR 14280 do
 // Dashboard principal) em vez de duplicar a fórmula.
 // Onda 2 Task 21 (camada ui/, conversão 8): mesmo formato de AprDashboardTab.tsx (Task 11)/
 // PgrDashboardTab.tsx (Task 8) — KpiCard+Card+usePaletaGraficos, grade CSS Grid simples (spec §4.4).
@@ -217,7 +217,7 @@ export function OcorrenciasDashboardTab() {
       </div>
 
       <div style={{ marginBottom: 16 }}>
-        <TaxaGravidadeCard acidentes={acidentesFiltrados} registrosHht={registrosHhtFiltrados} />
+        <TaxaGravidadeKpiCard acidentes={acidentesFiltrados} registrosHht={registrosHhtFiltrados} />
       </div>
 
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(340px, 1fr))', gap: 16, marginBottom: 16 }}>

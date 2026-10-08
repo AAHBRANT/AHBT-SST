@@ -9,11 +9,15 @@ import {
   Field,
   Input,
   Select,
+  Switch,
   Text,
 } from '@fluentui/react-components';
 import { Camera24Regular } from '@fluentui/react-icons';
 import type { UseCapturaFoto } from './useCapturaFoto';
 import { ResumoDadosFoto } from './ResumoDadosFoto';
+import { useDetectorRosto } from './useDetectorRosto';
+import { DURACAO_CAPTURA_AUTOMATICA_MS, useCapturaAutomatica } from './useCapturaAutomatica';
+import { QuadradoRosto, CORES_DETECTOR } from './QuadradoRosto';
 import { pendenciasFoto } from '../../lib/dadosFoto';
 import { FeedbackInline } from '@ui';
 
@@ -27,6 +31,7 @@ export function DialogoCameraFoto({ captura }: DialogoCameraFotoProps) {
   const {
     stream,
     videoRef,
+    aoMontarVideo,
     modoCamera,
     dispositivosVideo,
     dispositivoAtualId,
@@ -36,11 +41,23 @@ export function DialogoCameraFoto({ captura }: DialogoCameraFotoProps) {
   } = captura;
 
   // Reconhecimento facial (câmera frontal) ganha uma guia oval sobreposta ao vídeo — pedido do
-  // usuário (22/09): ajuda a pessoa a centralizar o rosto no quadro antes de capturar, melhorando a
-  // qualidade da foto enviada ao Azure Face API. É só uma guia visual (máscara + contorno), não faz
-  // detecção de rosto em tempo real — isso exigiria uma biblioteca de IA extra no navegador; a
-  // validação de qualidade do rosto em si já é feita pelo Azure Face API no cadastro/autenticação.
+  // usuário (22/09): ajuda a pessoa a centralizar o rosto no quadro antes de capturar.
+  // Desde 07/10 há também um detector de rosto ao vivo (useDetectorRosto, roda no aparelho): um
+  // quadrado acompanha o rosto e o botão Capturar só libera com 1 rosto de frente, grande, centrado e
+  // com luz boa. É só ajuda ao operador: a validação real continua sendo a do Azure Face API. Se o
+  // detector não carregar, a câmera funciona como antes e a captura não é bloqueada.
   const mostrarGuiaRosto = modoCamera === 'user';
+  const detector = useDetectorRosto(videoRef, mostrarGuiaRosto && !!stream);
+  const avaliacao = detector.situacao === 'ativo' ? detector.avaliacao : null;
+  const capturaBloqueadaPeloDetector = detector.situacao === 'ativo' && !avaliacao?.liberaCaptura;
+  const corQuadrado = avaliacao ? CORES_DETECTOR[avaliacao.tom] : CORES_DETECTOR.ok;
+  // Captura sozinha depois de 1,5 s com o rosto aprovado (verde) e estável. Só quando o detector está
+  // ativo: sem detector não há como saber se o rosto está bom, e aí vale o botão Capturar.
+  const automatica = useCapturaAutomatica(
+    stream,
+    mostrarGuiaRosto && !!avaliacao?.liberaCaptura && !captura.processando,
+    () => void capturarFoto(),
+  );
 
   return (
     <>
@@ -49,7 +66,7 @@ export function DialogoCameraFoto({ captura }: DialogoCameraFotoProps) {
         <DialogBody>
           <DialogTitle>Tirar foto</DialogTitle>
           <DialogContent>
-            {captura.contextoFoto && <div style={{ display: 'grid', gap: 12, marginBottom: 16 }}>
+            {captura.contextoFoto && <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr)', gap: 12, marginBottom: 16, overflowWrap: 'anywhere' }}>
               <Text weight="semibold">Obra: {captura.contextoFoto.obraNome || 'não identificada'}</Text>
               <Text size={200}>A data e a hora serão registradas ao capturar.</Text>
               <Field label="Local da foto" required>
@@ -63,6 +80,9 @@ export function DialogoCameraFoto({ captura }: DialogoCameraFotoProps) {
                     : 'Localização ainda não obtida. A foto ficará com pendência.')}
               </FeedbackInline>
               <Button onClick={() => void captura.tentarLocalizacao()} disabled={captura.localizando}>Tentar localização novamente</Button>
+              {!captura.exigirCamera && <Button appearance="subtle" onClick={captura.anexarDaGaleria} disabled={!captura.localFoto.trim()}>
+                Anexar foto da galeria (sem geolocalização)
+              </Button>}
             </div>}
             {dispositivosVideo.length > 1 && (
               <Field label="Câmera" style={{ marginBottom: 8 }}>
@@ -81,7 +101,7 @@ export function DialogoCameraFoto({ captura }: DialogoCameraFotoProps) {
 
             <div style={{ position: 'relative' }}>
               <video
-                ref={videoRef}
+                ref={aoMontarVideo}
                 autoPlay
                 playsInline
                 muted
@@ -116,11 +136,42 @@ export function DialogoCameraFoto({ captura }: DialogoCameraFotoProps) {
                   />
                 </div>
               )}
+              {mostrarGuiaRosto && <QuadradoRosto caixa={detector.caixa} cor={corQuadrado} />}
+              {automatica.contando && (
+                <svg
+                  aria-hidden
+                  viewBox="0 0 90 90"
+                  style={{ position: 'absolute', left: '50%', top: '50%', width: 88, height: 88, marginLeft: -44, marginTop: -44, transform: 'rotate(-90deg)', pointerEvents: 'none' }}
+                >
+                  <circle cx="45" cy="45" r="40" fill="rgba(0,0,0,0.35)" stroke="rgba(255,255,255,0.35)" strokeWidth="8" />
+                  <circle cx="45" cy="45" r="40" fill="none" stroke={CORES_DETECTOR.ok} strokeWidth="8" strokeLinecap="round" strokeDasharray="251" strokeDashoffset="251">
+                    <animate attributeName="stroke-dashoffset" from="251" to="0" dur={`${DURACAO_CAPTURA_AUTOMATICA_MS}ms`} fill="freeze" />
+                  </circle>
+                </svg>
+              )}
             </div>
             {mostrarGuiaRosto && (
-              <Text size={200} style={{ display: 'block', marginTop: 8, textAlign: 'center' }}>
-                Centralize o rosto dentro do círculo antes de capturar.
-              </Text>
+              <div role="status" aria-live="polite" style={{ marginTop: 8, textAlign: 'center' }}>
+                {avaliacao ? (
+                  <Text size={300} weight="semibold" style={{ color: corQuadrado }}>
+                    {automatica.contando ? 'Fique parado… capturando' : avaliacao.mensagem}
+                  </Text>
+                ) : (
+                  <Text size={200}>
+                    {detector.situacao === 'carregando'
+                      ? 'Preparando o detector de rosto… Centralize o rosto dentro do círculo.'
+                      : 'Centralize o rosto dentro do círculo antes de capturar.'}
+                  </Text>
+                )}
+              </div>
+            )}
+            {mostrarGuiaRosto && detector.situacao === 'ativo' && (
+              <Switch
+                style={{ marginTop: 4 }}
+                checked={automatica.ligada}
+                onChange={(_, d) => automatica.alternar(d.checked)}
+                label="Captura automática"
+              />
             )}
 
           </DialogContent>
@@ -128,7 +179,7 @@ export function DialogoCameraFoto({ captura }: DialogoCameraFotoProps) {
             <Button appearance="secondary" onClick={fecharCamera}>
               Cancelar
             </Button>
-            <Button appearance="primary" icon={<Camera24Regular />} onClick={capturarFoto} disabled={captura.processando}>
+            <Button appearance="primary" icon={<Camera24Regular />} onClick={capturarFoto} disabled={captura.processando || capturaBloqueadaPeloDetector}>
               Capturar
             </Button>
           </DialogActions>

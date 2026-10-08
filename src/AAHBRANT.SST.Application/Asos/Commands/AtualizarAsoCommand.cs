@@ -39,6 +39,11 @@ public class AtualizarAsoCommandHandler : IRequestHandler<AtualizarAsoCommand>
         var aso = await _db.Asos.FirstOrDefaultAsync(a => a.Id == request.Id, ct)
             ?? throw new KeyNotFoundException($"ASO {request.Id} não encontrado.");
 
+        // Trocar o trabalhador do ASO só para um trabalhador visível no escopo de obra do usuário.
+        if (request.TrabalhadorId != aso.TrabalhadorId
+            && !await _db.Trabalhadores.AnyAsync(t => t.Id == request.TrabalhadorId, ct))
+            throw new KeyNotFoundException("Trabalhador não encontrado.");
+
         aso.TrabalhadorId = request.TrabalhadorId;
         aso.Tipo = request.Tipo;
         aso.DataExame = request.DataExame;

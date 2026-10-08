@@ -75,6 +75,7 @@ public class ObterPermissaoTrabalhoDetalheQueryHandler : IRequestHandler<ObterPe
                 ResponsavelSstUsuarioId = pt.ResponsavelSstUsuarioId,
                 ResponsavelSstUsuarioNome = pt.ResponsavelSstUsuario?.Nome,
                 DataAssinaturaSst = pt.DataAssinaturaSst,
+                MetodoAssinatura = pt.MetodoAssinatura,
                 SuspensaPorUsuarioId = pt.SuspensaPorUsuarioId,
                 SuspensaPorUsuarioNome = pt.SuspensaPorUsuario?.Nome,
                 DataSuspensao = pt.DataSuspensao,

@@ -6,7 +6,7 @@ export function ResumoDadosFoto({ dados }: { dados?: DadosFoto | null }) {
   const legado = !dados;
   const pendencias = pendenciasFoto(dados);
   return <div style={{ display: 'flex', flexDirection: 'column', gap: 4, marginTop: 8, overflowWrap: 'anywhere' }}>
-    <Text size={200}>{formatarDataFoto(dados)}</Text>
+    <Text size={200}>{dados?.origem === 'arquivo' ? 'Anexada da galeria — sem data/hora e sem geolocalização comprovadas' : formatarDataFoto(dados)}</Text>
     <Text size={200}>Obra: {dados?.obraNome || 'não registrada'}</Text>
     <Text size={200}>Local: {dados?.local || 'não informado'}</Text>
     {dados?.latitude != null && dados.longitude != null && <Text size={200}>

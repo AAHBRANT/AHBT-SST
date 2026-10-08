@@ -6,7 +6,7 @@ using Microsoft.EntityFrameworkCore;
 
 namespace AAHBRANT.SST.Application.Assinatura.Commands;
 
-public record CadastrarTemplateBiometricoCommand(Guid TrabalhadorId, byte[] TemplateBruto) : IRequest;
+public record CadastrarTemplateBiometricoCommand(Guid TrabalhadorId, byte[] TemplateBruto, byte[]? ImagemCadastroPng = null) : IRequest;
 
 public class CadastrarTemplateBiometricoCommandValidator : AbstractValidator<CadastrarTemplateBiometricoCommand>
 {
@@ -14,6 +14,9 @@ public class CadastrarTemplateBiometricoCommandValidator : AbstractValidator<Cad
     {
         RuleFor(x => x.TrabalhadorId).NotEmpty();
         RuleFor(x => x.TemplateBruto).NotEmpty();
+        // PNG da leitura do cadastro (320x480 em tons de cinza fica bem abaixo de 1 MB).
+        RuleFor(x => x.ImagemCadastroPng).Must(i => i is null || i.Length <= 1_000_000)
+            .WithMessage("Imagem da digital maior que o permitido.");
     }
 }
 
@@ -21,11 +24,14 @@ public class CadastrarTemplateBiometricoCommandHandler : IRequestHandler<Cadastr
 {
     private readonly IAppDbContext _db;
     private readonly ITemplateBiometricoCriptografia _criptografia;
+    private readonly IImagemBiometricaCriptografia? _criptografiaImagem;
 
-    public CadastrarTemplateBiometricoCommandHandler(IAppDbContext db, ITemplateBiometricoCriptografia criptografia)
+    public CadastrarTemplateBiometricoCommandHandler(
+        IAppDbContext db, ITemplateBiometricoCriptografia criptografia, IImagemBiometricaCriptografia? criptografiaImagem = null)
     {
         _db = db;
         _criptografia = criptografia;
+        _criptografiaImagem = criptografiaImagem;
     }
 
     public async Task Handle(CadastrarTemplateBiometricoCommand request, CancellationToken ct)
@@ -53,6 +59,9 @@ public class CadastrarTemplateBiometricoCommandHandler : IRequestHandler<Cadastr
             TrabalhadorId = request.TrabalhadorId,
             TemplateCriptografado = _criptografia.Criptografar(request.TemplateBruto),
             CapturadoEm = DateTime.UtcNow,
+            ImagemCadastroCriptografada = request.ImagemCadastroPng is { Length: > 0 } && _criptografiaImagem is not null
+                ? _criptografiaImagem.Criptografar(request.ImagemCadastroPng)
+                : null,
         };
         _db.TemplatesBiometricoFutronic.Add(template);
         await _db.SaveChangesAsync(ct);

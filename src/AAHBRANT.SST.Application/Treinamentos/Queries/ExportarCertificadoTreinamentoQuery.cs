@@ -47,13 +47,13 @@ public class ExportarCertificadoTreinamentoQueryHandler : IRequestHandler<Export
         // de GarantirAsync) para exibir nome+método+data no corpo do certificado.
         var documento = await _db.DocumentosAssinatura
             .Include(d => d.Signatarios)
-                .ThenInclude(s => s.Trabalhador)
+                .ThenInclude(s => s.Trabalhador).ThenInclude(t => t!.Funcao)
             .Where(d => d.EntidadeTipo == "Treinamento" && d.EntidadeId == request.TreinamentoId)
             .OrderByDescending(d => d.CreatedAtUtc)
             .FirstOrDefaultAsync(ct);
 
         var signatarios = documento?.Signatarios
-            .Select(s => new CertificadoTreinamentoPdfSignatarioModelo(s.Trabalhador?.Nome ?? string.Empty, s.AssinadoEm))
+            .Select(s => new CertificadoTreinamentoPdfSignatarioModelo(s.Trabalhador?.Nome ?? string.Empty, s.AssinadoEm, s.MetodoAutenticacao, s.Trabalhador?.Funcao?.Nome))
             .ToList() ?? new List<CertificadoTreinamentoPdfSignatarioModelo>();
 
         // Rastreabilidade sempre disponível a partir do primeiro export (Motor de Assinatura Task 2) —

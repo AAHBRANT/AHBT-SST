@@ -1,5 +1,6 @@
 using System.Security.Claims;
 using AAHBRANT.SST.Application.Common.Interfaces;
+using AAHBRANT.SST.Application.Common.Seguranca;
 using AAHBRANT.SST.Domain.Enums;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.EntityFrameworkCore;
@@ -31,11 +32,13 @@ public class PermissaoAuthorizationHandler : AuthorizationHandler<PermissaoRequi
 {
     private readonly IAppDbContext _db;
     private readonly IConfiguration _configuracao;
+    private readonly IAcessoPorObraService _acesso;
 
-    public PermissaoAuthorizationHandler(IAppDbContext db, IConfiguration configuracao)
+    public PermissaoAuthorizationHandler(IAppDbContext db, IConfiguration configuracao, IAcessoPorObraService acesso)
     {
         _db = db;
         _configuracao = configuracao;
+        _acesso = acesso;
     }
 
     protected override async Task HandleRequirementAsync(
@@ -107,13 +110,8 @@ public class PermissaoAuthorizationHandler : AuthorizationHandler<PermissaoRequi
             return;
         }
 
-        var temPermissao = await _db.Usuarios
-            .Where(u => u.AzureAdObjectId == azureAdObjectId && u.Status == StatusUsuario.Ativo)
-            .SelectMany(u => u.PerfisPorObra)
-            .Select(vinculo => vinculo.PerfilAcesso)
-            .Where(perfil => perfil != null)
-            .SelectMany(perfil => perfil!.Permissoes)
-            .AnyAsync(pp => pp.Permitido && pp.Permissao != null && pp.Permissao.Codigo == requirement.Codigo);
+        var temPermissao = (await _acesso.ObterEscopoAsync(
+            azureAdObjectId, requirement.Codigo, CancellationToken.None)).TemPermissao;
 
         if (temPermissao)
         {

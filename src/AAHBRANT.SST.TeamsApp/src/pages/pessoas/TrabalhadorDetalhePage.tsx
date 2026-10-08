@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { useParams } from 'react-router-dom';
+import { useLocation, useParams } from 'react-router-dom';
 import {
   Avatar,
   BotaoAcao,
@@ -29,6 +29,7 @@ import { RiscosTab } from './RiscosTab';
 import { OcorrenciasTab } from './OcorrenciasTab';
 import { CofreAssinaturasTab } from './CofreAssinaturasTab';
 import { TerceirizadoTab } from './TerceirizadoTab';
+import { TermoCompromissoEpiCartao } from './TermoCompromissoEpiCartao';
 
 type AbaPerfil = 'geral' | 'epi' | 'treinamentos' | 'riscos' | 'ocorrencias' | 'cofre' | 'terceirizado';
 
@@ -59,7 +60,9 @@ const tomAptidao: Record<string, Tom> = {
 // há `useAbaNaUrl` aqui de propósito, ela é reservada aos dois níveis da página-pilar (spec §4.1).
 export function TrabalhadorDetalhePage() {
   const { id } = useParams<{ id: string }>();
-  const [aba, setAba] = useState<AbaPerfil>('geral');
+  // Quem chega pela lista de cadastros faciais para revisar já cai na aba do cofre (onde fica Assinatura).
+  const abaInicial = (useLocation().state as { aba?: AbaPerfil } | null)?.aba;
+  const [aba, setAba] = useState<AbaPerfil>(abaInicial ?? 'geral');
   const [cpfVisivel, setCpfVisivel] = useState(false);
   const [perfil, setPerfil] = useState<PerfilCompletoTrabalhador | null>(null);
   const [erro, setErro] = useState<string | null>(null);
@@ -224,13 +227,16 @@ export function TrabalhadorDetalhePage() {
             </div>
           )}
           {aba === 'epi' && (
-            <Card titulo="Frequência de trocas por EPI">
-              {dadosFrequenciaEpi.length === 0 ? (
-                <Text>Sem dados de troca de EPI para exibir.</Text>
-              ) : (
-                <RankingBarChart dados={dadosFrequenciaEpi} corPadrao={paleta.marca} sufixo=" trocas" />
-              )}
-            </Card>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+              <TermoCompromissoEpiCartao trabalhadorId={id} trabalhadorNome={perfil.nome} />
+              <Card titulo="Frequência de trocas por EPI">
+                {dadosFrequenciaEpi.length === 0 ? (
+                  <Text>Sem dados de troca de EPI para exibir.</Text>
+                ) : (
+                  <RankingBarChart dados={dadosFrequenciaEpi} corPadrao={paleta.marca} sufixo=" trocas" />
+                )}
+              </Card>
+            </div>
           )}
           {aba === 'treinamentos' && (
             <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>

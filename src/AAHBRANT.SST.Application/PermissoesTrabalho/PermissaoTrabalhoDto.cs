@@ -31,6 +31,7 @@ public class PermissaoTrabalhoDto
     public Guid? ResponsavelSstUsuarioId { get; set; }
     public string? ResponsavelSstUsuarioNome { get; set; }
     public DateTime? DataAssinaturaSst { get; set; }
+    public MetodoAutenticacaoAssinatura MetodoAssinatura { get; set; }
     public Guid? SuspensaPorUsuarioId { get; set; }
     public string? SuspensaPorUsuarioNome { get; set; }
     public DateTime? DataSuspensao { get; set; }

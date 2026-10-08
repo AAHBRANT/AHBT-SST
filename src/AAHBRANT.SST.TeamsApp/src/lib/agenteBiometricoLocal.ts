@@ -11,6 +11,8 @@ export interface DispositivoLocal {
 export interface CapturaLocal {
   trabalhadorId: string;
   score: number;
+  // PNG (base64) da impressão lida pelo leitor — enviado junto da assinatura como evidência visual.
+  imagemPng?: string | null;
 }
 
 async function requisitarAgenteLocal<T>(caminho: string, init?: RequestInit): Promise<T> {
@@ -51,12 +53,18 @@ export function capturarDigitalLocal(): Promise<CapturaLocal> {
 // O agente serializa o byte[] via System.Text.Json, que já o codifica como string base64 — não
 // como array de números — então basta repassar o valor recebido.
 // novoToque: exige tirar o dedo e apoiar de novo (segunda leitura do cadastro).
-export async function capturarDigitalBrutaLocal(novoToque = false): Promise<string> {
-  const resultado = await requisitarAgenteLocal<{ templateBruto: string }>(
+export interface CapturaBruta {
+  templateBruto: string;
+  // PNG (base64) da leitura — guardado criptografado como referência do cadastro (log de assinaturas).
+  imagemPng: string | null;
+}
+
+export async function capturarDigitalBrutaLocal(novoToque = false): Promise<CapturaBruta> {
+  const resultado = await requisitarAgenteLocal<{ templateBruto: string; imagemPng?: string | null }>(
     `/api/capturar-bruto${novoToque ? '?novoToque=true' : ''}`,
     { method: 'POST' },
   );
-  return resultado.templateBruto;
+  return { templateBruto: resultado.templateBruto, imagemPng: resultado.imagemPng ?? null };
 }
 
 export function compararTemplatesLocal(templateA: string, templateB: string): Promise<{ score: number }> {
@@ -72,7 +80,7 @@ export function compararTemplatesLocal(templateA: string, templateB: string): Pr
 // daquele trabalhador — melhor recusar na hora, com ele ainda no leitor.
 export const LIMIAR_CONFIRMACAO_CADASTRO = 50;
 
-export async function capturarDigitalParaCadastro(aoMudarEtapa: (mensagem: string) => void): Promise<string> {
+export async function capturarDigitalParaCadastro(aoMudarEtapa: (mensagem: string) => void): Promise<CapturaBruta> {
   aoMudarEtapa('1ª leitura: apoie o dedo no leitor e mantenha até terminar.');
   const primeira = await capturarDigitalBrutaLocal();
   tocarBipeLeituraDigital();
@@ -81,7 +89,7 @@ export async function capturarDigitalParaCadastro(aoMudarEtapa: (mensagem: strin
   const segunda = await capturarDigitalBrutaLocal(true);
 
   aoMudarEtapa('Comparando as duas leituras…');
-  const { score } = await compararTemplatesLocal(primeira, segunda);
+  const { score } = await compararTemplatesLocal(primeira.templateBruto, segunda.templateBruto);
   if (score < LIMIAR_CONFIRMACAO_CADASTRO) {
     throw new Error(
       'As duas leituras não coincidiram (dedo diferente, mal apoiado ou digital borrada). ' +

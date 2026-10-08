@@ -72,6 +72,9 @@ public static class DependencyInjection
         services.AddHttpClient();
         services.Configure<TelegramSuporteOptions>(configuration.GetSection("Telegram"));
         services.AddScoped<ITelegramSuporteService, TelegramSuporteService>();
+        services.AddScoped<ITelegramResumoService, TelegramResumoService>();
+        services.AddSingleton<AAHBRANT.SST.Application.Dds.IImagemResumoDdsService, AAHBRANT.SST.Infrastructure.Documentos.ImagemResumoDdsService>();
+        services.AddSingleton<AAHBRANT.SST.Application.Relatorios.IImagemListaPresencaService, AAHBRANT.SST.Infrastructure.Documentos.ImagemListaPresencaService>();
         services.AddScoped<ISuporteIaConfiguracao, SuporteIaConfiguracao>();
         services.Configure<AzureOpenAiOptions>(configuration.GetSection("AzureOpenAI"));
         services.AddScoped<AAHBRANT.SST.Application.SuporteIa.ITranscricaoAudioService, AzureOpenAiTranscricaoService>();
@@ -79,6 +82,7 @@ public static class DependencyInjection
 
         services.AddScoped<IDdsPdfService, DdsPdfService>();
         services.AddScoped<IDdsSemanalPdfService, DdsSemanalPdfService>();
+        services.AddScoped<IPdfMesclador, PdfMesclador>();
         services.AddScoped<ICipaPdfService, CipaPdfService>();
         services.AddScoped<IAprPdfService, AprPdfService>();
         services.AddScoped<IFichaEpiPdfService, EntregaEpiPdfService>();
@@ -99,6 +103,7 @@ public static class DependencyInjection
         // (Trabalhador.PinHash, CredenciaisWebAuthn) também foram removidos do schema.
         services.AddScoped<ISegredoDispositivoHasher, SegredoDispositivoHasherService>();
         services.AddScoped<ITemplateBiometricoCriptografia, TemplateBiometricoCriptografiaService>();
+        services.AddScoped<IImagemBiometricaCriptografia, ImagemBiometricaCriptografiaService>();
         services.AddScoped<IDispositivoAgenteAutenticador, DispositivoAgenteAutenticador>();
         services.AddScoped<IAutenticacaoBiometriaLocalService, FutronicAutenticacaoStrategy>();
         services.AddScoped<IAutenticacaoFacialService, AzureFaceAutenticacaoStrategy>();

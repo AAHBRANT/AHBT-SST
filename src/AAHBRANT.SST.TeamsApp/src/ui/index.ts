@@ -12,6 +12,8 @@ export {
   // faltava na lista original da spec §2.2 por não ter uso ainda; achado na Onda 2 Task 18
   // (QuestionarioAplicabilidadeTab.tsx, único consumidor no app hoje).
   Radio, RadioGroup,
+  // Diálogo modal: EntregasTab (canhoto do carrinho) e outras páginas usam as peças de Dialog direto.
+  Dialog, DialogActions, DialogBody, DialogContent, DialogSurface, DialogTitle,
 } from '@fluentui/react-components';
 
 // Exceção pontual (spec §5.1): primitivos de tabela crus, só para grades que genuinamente não são
@@ -45,6 +47,7 @@ export { SstTooltip, type SstTooltipProps } from './primitivos/Tooltip/SstToolti
 
 export { Abas, type AbasProps, type AbaItem } from './compostos/Abas/Abas';
 export { useAbaNaUrl } from './compostos/Abas/useAbaNaUrl';
+export { DashboardTopo } from './compostos/DashboardTopo/DashboardTopo';
 
 export { DataTable, type DataTableProps, type Coluna } from './compostos/DataTable/DataTable';
 

@@ -3,6 +3,8 @@ using AAHBRANT.SST.Domain.Enums;
 
 namespace AAHBRANT.SST.Application.Acidentes;
 
+public record AcidenteEnvolvidoDto(Guid TrabalhadorId, string Nome);
+
 public class AcidenteDto
 {
     public Guid Id { get; set; }
@@ -13,6 +15,7 @@ public class AcidenteDto
 
     public Guid? TrabalhadorId { get; set; }
     public string? TrabalhadorNome { get; set; }
+    public List<AcidenteEnvolvidoDto> Envolvidos { get; set; } = new();
 
     public Guid? AtividadeId { get; set; }
     public string? AtividadeNome { get; set; }

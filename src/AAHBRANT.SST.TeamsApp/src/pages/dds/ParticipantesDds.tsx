@@ -4,15 +4,17 @@ import {
   StatusChip, designTokens, type Coluna,
 } from '@ui';
 import {
-  ArrowDownload24Regular, Checkmark24Regular, Dismiss24Regular,
+  ArrowDownload24Regular, Camera24Regular, Checkmark24Regular, Dismiss24Regular,
   PeopleTeam24Regular, Search24Regular, Stop24Regular,
 } from '@fluentui/react-icons';
 import { api, TipoFotoParticipante, type DdsDetalhe, type DdsFuncionario } from '../../lib/api';
-import { capturarDigitalLocal, obterDispositivoLocal, type DispositivoLocal } from '../../lib/agenteBiometricoLocal';
+import { capturarDigitalLocal, obterDispositivoLocal, type CapturaLocal, type DispositivoLocal } from '../../lib/agenteBiometricoLocal';
+import { formatarHoraBrasilia } from '../../components/assinatura/assinaturaDigital';
 import { tocarBipeAssinaturaAceita } from '../../lib/bipeAssinatura';
 import { SeletorFotoCamera } from '../../components/SeletorFotoCamera';
 import { BotaoBiometriaDigital } from '../../components/assinatura/BotaoBiometriaDigital';
 import { ErroFacialDialog } from '../../components/assinatura/ErroFacialDialog';
+import { FilaFacialDds } from '../../components/dds/FilaFacialDds';
 
 const linhaFlex = { display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' as const };
 // O backend devolve { erro, motivo } no corpo das rejeições; mostra só o texto do erro.
@@ -56,6 +58,8 @@ export function ParticipantesDds({ detalhe, somenteLeitura, aoAtualizar }: Props
   const [verificandoLeitor, setVerificandoLeitor] = useState(false);
   const emOperacao = useRef(false);
   const [filaAberta, setFilaAberta] = useState(false);
+  // Fila facial (modo fila em tela cheia): a câmera captura sozinha, igual à fila da digital.
+  const [filaFacialAberta, setFilaFacialAberta] = useState(false);
   const [resultadoFila, setResultadoFila] = useState<{ tom: 'sucesso' | 'erro' | 'info'; texto: string } | null>(null);
   const filaAtiva = useRef(false);
   const { dds } = detalhe;
@@ -154,7 +158,7 @@ export function ParticipantesDds({ detalhe, somenteLeitura, aoAtualizar }: Props
   const contextoFila = useRef({ detalhe, dispositivo });
   contextoFila.current = { detalhe, dispositivo };
 
-  async function processarLeituraFila(captura: { trabalhadorId: string; score: number }) {
+  async function processarLeituraFila(captura: CapturaLocal) {
     const { detalhe: atual, dispositivo: leitor } = contextoFila.current;
     if (!leitor) return;
     const jaConfirmado = atual.participantes.find((p) => p.trabalhadorId === captura.trabalhadorId);
@@ -162,7 +166,7 @@ export function ParticipantesDds({ detalhe, somenteLeitura, aoAtualizar }: Props
       setResultadoFila({ tom: 'info', texto: `${jaConfirmado.trabalhadorNome} já teve a presença confirmada.` });
       return;
     }
-    await api.dds.registrarParticipante(dds.id, captura.trabalhadorId, leitor.dispositivoId, leitor.segredoDispositivo, captura.score);
+    await api.dds.registrarParticipante(dds.id, captura.trabalhadorId, leitor.dispositivoId, leitor.segredoDispositivo, captura.score, captura.imagemPng);
     const novo = await api.dds.obterDetalhe(dds.id);
     aoAtualizar(novo);
     const nome = novo.participantes.find((p) => p.trabalhadorId === captura.trabalhadorId)?.trabalhadorNome ?? 'Funcionário';
@@ -278,7 +282,7 @@ export function ParticipantesDds({ detalhe, somenteLeitura, aoAtualizar }: Props
     return presenca ? <div style={{ display: 'grid', gap: 4 }}>
       <StatusChip tom="ok">Presença confirmada</StatusChip>
       <Legenda>{presenca.assinadoEm
-        ? `Assinado às ${new Date(presenca.assinadoEm).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}`
+        ? `Assinado às ${formatarHoraBrasilia(presenca.assinadoEm)}`
         : 'Assinatura pendente'}</Legenda>
     </div> : selecionados.has(f.trabalhadorId)
       ? <StatusChip tom="atencao">Selecionado · presença pendente</StatusChip>
@@ -334,9 +338,11 @@ export function ParticipantesDds({ detalhe, somenteLeitura, aoAtualizar }: Props
           {filaAberta
             ? <Button appearance="primary" size="large" icon={<Stop24Regular />} onClick={fecharFila}>Fechar fila</Button>
             : <BotaoBiometriaDigital disabled={!dispositivo || carregando} onClick={abrirFila}>Abrir fila</BotaoBiometriaDigital>}
+          <Button appearance="primary" size="large" icon={<Camera24Regular />} disabled={carregando || filaAberta}
+            onClick={() => setFilaFacialAberta(true)}>Abrir fila facial</Button>
           <Legenda>{filaAberta
             ? 'Leitor aberto: cada funcionário encosta o dedo e a presença é confirmada sozinha.'
-            : 'Abra a fila para o pessoal registrar a presença pela digital, um após o outro.'}</Legenda>
+            : 'Abra a fila para o pessoal registrar a presença pela digital ou pelo rosto, um após o outro.'}</Legenda>
         </div>
         {resultadoFila && <div role={resultadoFila.tom === 'erro' ? 'alert' : 'status'}><FeedbackInline tom={resultadoFila.tom}>
           <strong style={{ fontSize: 18 }}>{resultadoFila.texto}</strong>
@@ -377,5 +383,11 @@ export function ParticipantesDds({ detalhe, somenteLeitura, aoAtualizar }: Props
       {!somenteLeitura && confirmados.size > 0 && <Legenda>Funcionários com presença confirmada permanecem na lista ao limpar a seleção.</Legenda>}
     </div>
     <ErroFacialDialog mensagem={erroFacial} aoFechar={() => setErroFacial(null)} />
+    <FilaFacialDds
+      ddsId={dds.id}
+      aberto={filaFacialAberta}
+      aoFechar={() => setFilaFacialAberta(false)}
+      aoPresencaConfirmada={() => { void api.dds.obterDetalhe(dds.id).then(aoAtualizar).catch(() => undefined); }}
+    />
   </Card>;
 }

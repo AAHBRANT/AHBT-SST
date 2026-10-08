@@ -42,6 +42,7 @@ public class EncerrarDdsCommandHandler : IRequestHandler<EncerrarDdsCommand>
             AAHBRANT.SST.Application.Common.DadosCapturaFoto.ExigirCompletaSeInformada(foto.FotoMetadadosJson, $"Foto {foto.Ordem}");
 
         dds.Status = StatusDds.Concluido;
+        dds.EncerradoEm = DateTime.UtcNow;
         await _db.SaveChangesAsync(ct);
     }
 }

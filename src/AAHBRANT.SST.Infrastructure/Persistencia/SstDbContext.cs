@@ -35,6 +35,7 @@ public class SstDbContext : DbContext, IAppDbContext
     public DbSet<CursoTreinamento> CursosTreinamento => Set<CursoTreinamento>();
     public DbSet<Treinamento> Treinamentos => Set<Treinamento>();
     public DbSet<ArquivoCertificadoTreinamento> ArquivosCertificadoTreinamento => Set<ArquivoCertificadoTreinamento>();
+    public DbSet<TermoCompromissoEpiManual> TermosCompromissoEpiManual => Set<TermoCompromissoEpiManual>();
     public DbSet<MatrizTreinamentoFuncao> MatrizTreinamentoFuncoes => Set<MatrizTreinamentoFuncao>();
     public DbSet<SessaoTreinamento> SessoesTreinamento => Set<SessaoTreinamento>();
     public DbSet<ParticipanteSessaoTreinamento> ParticipantesSessaoTreinamento => Set<ParticipanteSessaoTreinamento>();
@@ -99,6 +100,7 @@ public class SstDbContext : DbContext, IAppDbContext
     public DbSet<Alojamento> Alojamentos => Set<Alojamento>();
     public DbSet<AlojamentoMorador> AlojamentoMoradores => Set<AlojamentoMorador>();
     public DbSet<ConfiguracaoAlojamento> ConfiguracoesAlojamento => Set<ConfiguracaoAlojamento>();
+    public DbSet<Veiculo> Veiculos => Set<Veiculo>();
 
     public DbSet<Dds> Dds => Set<Dds>();
     public DbSet<DdsAtividade> DdsAtividades => Set<DdsAtividade>();
@@ -114,6 +116,7 @@ public class SstDbContext : DbContext, IAppDbContext
 
     public DbSet<Acidente> Acidentes => Set<Acidente>();
     public DbSet<AcidenteFoto> AcidentesFotos => Set<AcidenteFoto>();
+    public DbSet<AcidenteEnvolvido> AcidentesEnvolvidos => Set<AcidenteEnvolvido>();
     public DbSet<RegistroHhtMensal> RegistrosHhtMensais => Set<RegistroHhtMensal>();
 
     public DbSet<AtivoSst> AtivosSst => Set<AtivoSst>();
@@ -123,6 +126,11 @@ public class SstDbContext : DbContext, IAppDbContext
     public DbSet<DispositivoAgenteBiometrico> DispositivosAgenteBiometrico => Set<DispositivoAgenteBiometrico>();
     public DbSet<TemplateBiometricoFutronic> TemplatesBiometricoFutronic => Set<TemplateBiometricoFutronic>();
     public DbSet<FotoCadastroFacial> FotosCadastroFacial => Set<FotoCadastroFacial>();
+    public DbSet<FalhaReconhecimentoFacial> FalhasReconhecimentoFacial => Set<FalhaReconhecimentoFacial>();
+    public DbSet<RelatorioGerado> RelatoriosGerados => Set<RelatorioGerado>();
+    public DbSet<RelatorioEnvio> RelatorioEnvios => Set<RelatorioEnvio>();
+    public DbSet<DestinatarioRelatorio> DestinatariosRelatorio => Set<DestinatarioRelatorio>();
+    public DbSet<ExecucaoRelatorioAgendado> ExecucoesRelatorioAgendado => Set<ExecucaoRelatorioAgendado>();
 
     public DbSet<IdempotenciaRegistro> IdempotenciaRegistros => Set<IdempotenciaRegistro>();
 
@@ -198,6 +206,8 @@ public class SstDbContext : DbContext, IAppDbContext
             i.Ativo && (_usuarioAtual.TemAcessoGlobal || _usuarioAtual.ObrasPermitidas.Contains(i.ObraId)));
         modelBuilder.Entity<AcidenteFoto>().HasQueryFilter(f =>
             f.Ativo && f.Acidente!.Ativo && (_usuarioAtual.TemAcessoGlobal || _usuarioAtual.ObrasPermitidas.Contains(f.Acidente.ObraId)));
+        modelBuilder.Entity<AcidenteEnvolvido>().HasQueryFilter(e =>
+            e.Ativo && e.Acidente!.Ativo && (_usuarioAtual.TemAcessoGlobal || _usuarioAtual.ObrasPermitidas.Contains(e.Acidente.ObraId)));
         modelBuilder.Entity<Acidente>().HasQueryFilter(a =>
             a.Ativo && (_usuarioAtual.TemAcessoGlobal || _usuarioAtual.ObrasPermitidas.Contains(a.ObraId)));
         modelBuilder.Entity<RegistroHhtMensal>().HasQueryFilter(r =>
@@ -210,6 +220,12 @@ public class SstDbContext : DbContext, IAppDbContext
             a.Ativo && (_usuarioAtual.TemAcessoGlobal || _usuarioAtual.ObrasPermitidas.Contains(a.ObraId)));
         modelBuilder.Entity<Setor>().HasQueryFilter(s =>
             s.Ativo && (_usuarioAtual.TemAcessoGlobal || _usuarioAtual.ObrasPermitidas.Contains(s.ObraId)));
+        // Relatório de uma obra só aparece para quem tem acesso a ela; o consolidado (ObraId nulo) só para
+        // quem tem acesso global.
+        modelBuilder.Entity<RelatorioGerado>().HasQueryFilter(r =>
+            r.Ativo && (_usuarioAtual.TemAcessoGlobal || (r.ObraId.HasValue && _usuarioAtual.ObrasPermitidas.Contains(r.ObraId.Value))));
+        modelBuilder.Entity<FalhaReconhecimentoFacial>().HasQueryFilter(f =>
+            f.Ativo && (_usuarioAtual.TemAcessoGlobal || _usuarioAtual.ObrasPermitidas.Contains(f.ObraId)));
         modelBuilder.Entity<Trabalhador>().HasQueryFilter(t =>
             t.Ativo && (_usuarioAtual.TemAcessoGlobal || _usuarioAtual.ObrasPermitidas.Contains(t.ObraId)));
         modelBuilder.Entity<AreaSst>().HasQueryFilter(a =>
@@ -232,7 +248,28 @@ public class SstDbContext : DbContext, IAppDbContext
             e.Ativo && (_usuarioAtual.TemAcessoGlobal || _usuarioAtual.ObrasPermitidas.Contains(e.ObraId)));
         modelBuilder.Entity<Alojamento>().HasQueryFilter(a =>
             a.Ativo && (_usuarioAtual.TemAcessoGlobal || _usuarioAtual.ObrasPermitidas.Contains(a.ObraId)));
-
+        modelBuilder.Entity<Veiculo>().HasQueryFilter(v =>
+            v.Ativo && (_usuarioAtual.TemAcessoGlobal || _usuarioAtual.ObrasPermitidas.Contains(v.ObraId)));
+        // ASO NÃO tem filtro global por obra (tentado em #115 e revertido): o ASO só chega à obra pelo
+        // Trabalhador, e navegar até ele dentro do filtro faz o filtro de Trabalhador (Ativo) valer
+        // também — o ASO de quem foi desligado sumia das telas, até para acesso global (comprovado em
+        // teste no CI). O ASO precisa ser guardado e consultável por anos (fiscalização). O escopo por
+        // obra do ASO exige gravar ObraId no próprio registro (migration + preenchimento) — pendente.
+        // Exame/Aptidão/Treinamento têm a mesma limitação e também ficam sem filtro por enquanto.
+        // Registros que já têm ObraId próprio. Auditoria 06/10/2026 (A2), mesmo padrão dos demais filtros.
+        // Exame/Aptidão/Treinamento NÃO entram aqui de propósito: eles só chegam à obra pelo
+        // Trabalhador, e navegar até ele dentro do filtro faz o filtro de Trabalhador (Ativo) valer
+        // também, escondendo o histórico de quem foi desligado (comprovado em teste). Ver PR #116.
+        modelBuilder.Entity<SessaoTreinamento>().HasQueryFilter(s =>
+            s.Ativo && (_usuarioAtual.TemAcessoGlobal || _usuarioAtual.ObrasPermitidas.Contains(s.ObraId)));
+        modelBuilder.Entity<Contrato>().HasQueryFilter(c =>
+            c.Ativo && (_usuarioAtual.TemAcessoGlobal || _usuarioAtual.ObrasPermitidas.Contains(c.ObraId)));
+        modelBuilder.Entity<InstalacaoEpc>().HasQueryFilter(i =>
+            i.Ativo && (_usuarioAtual.TemAcessoGlobal || _usuarioAtual.ObrasPermitidas.Contains(i.ObraId)));
+        modelBuilder.Entity<EstoqueEpc>().HasQueryFilter(e =>
+            e.Ativo && (_usuarioAtual.TemAcessoGlobal || _usuarioAtual.ObrasPermitidas.Contains(e.ObraId)));
+        modelBuilder.Entity<EstoqueUniforme>().HasQueryFilter(e =>
+            e.Ativo && (_usuarioAtual.TemAcessoGlobal || _usuarioAtual.ObrasPermitidas.Contains(e.ObraId)));
         // ExameComplementar/AptidaoAtividadeEspecifica/EntregaEpi e filhos de entidades escopadas
         // dependem de navegação por Trabalhador/Estoque/Membro/Reunião. Mantêm a proteção nos
         // handlers e nas entidades-raiz já filtradas acima; se virarem listagens amplas, precisam de

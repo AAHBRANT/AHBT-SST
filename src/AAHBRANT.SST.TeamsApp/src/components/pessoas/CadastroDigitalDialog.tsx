@@ -104,8 +104,8 @@ export function CadastroDigitalDialog({
     try {
       setCapturando(true);
       setErro(null);
-      const templateBase64 = await capturarDigitalParaCadastro(setEtapaCaptura);
-      await api.trabalhadores.cadastrarBiometriaLocal(trabalhadorId, templateBase64);
+      const captura = await capturarDigitalParaCadastro(setEtapaCaptura);
+      await api.trabalhadores.cadastrarBiometriaLocal(trabalhadorId, captura.templateBruto, captura.imagemPng);
       setCadastrada(true);
       aoConcluir?.();
     } catch (e) {

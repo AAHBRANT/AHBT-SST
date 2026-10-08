@@ -30,7 +30,9 @@ public class RegistradorAssinaturaFalso : IRegistradorAssinaturaService
         string? ipAddress,
         CancellationToken ct,
         byte[]? fotoEvidenciaConteudo = null,
-        string? fotoEvidenciaContentType = null)
+        string? fotoEvidenciaContentType = null,
+        PapelAssinatura? papel = null,
+        LocalizacaoAssinatura? localizacao = null)
     {
         DocumentoIdRecebido = documentoAssinaturaId;
         IpAddressRecebido = ipAddress;

@@ -12,6 +12,7 @@ using Microsoft.Identity.Web;
 QuestPDF.Settings.License = QuestPDF.Infrastructure.LicenseType.Community;
 
 var builder = WebApplication.CreateBuilder(args);
+ConfiguracaoAutenticacao.Validar(builder.Configuration, builder.Environment.IsDevelopment());
 
 builder.Services.AddApplication();
 builder.Services.AddInfrastructure(builder.Configuration);
@@ -49,6 +50,8 @@ builder.Services.AddAuthorization();
 builder.Services.AddSingleton<IAuthorizationPolicyProvider, PermissaoAuthorizationPolicyProvider>();
 builder.Services.AddScoped<IAuthorizationHandler, PermissaoAuthorizationHandler>();
 builder.Services.AddScoped<IUsuarioAtualResolver, UsuarioAtualResolver>();
+builder.Services.AddHttpContextAccessor();
+builder.Services.AddScoped<AAHBRANT.SST.Application.Common.Interfaces.IClienteIpProvider, ClienteIpProvider>();
 // ICurrentUserService (camada 3 do RBAC) é registrado em AddInfrastructure — ver EscopoPorObraMiddleware.
 
 builder.Services.AddControllers();
@@ -76,7 +79,23 @@ builder.Services.AddCors(options =>
     }
 });
 
+// IP do cliente para a trilha de assinatura (evidência jurídica). A API recebe tráfego direto do
+// ingress do Azure Container Apps (um único proxy), que ACRESCENTA o IP real ao final de
+// X-Forwarded-For. Com ForwardLimit = 1 o ASP.NET usa só esse último valor e ignora o que o cliente
+// tenha enviado antes dele. A rede do ingress não é fixa, então KnownNetworks/KnownProxies são
+// esvaziados — seguro apenas porque a API não é exposta sem esse ingress. Auditoria 06/10/2026 (M3).
+builder.Services.Configure<Microsoft.AspNetCore.Builder.ForwardedHeadersOptions>(opcoes =>
+{
+    opcoes.ForwardedHeaders = Microsoft.AspNetCore.HttpOverrides.ForwardedHeaders.XForwardedFor
+        | Microsoft.AspNetCore.HttpOverrides.ForwardedHeaders.XForwardedProto;
+    opcoes.ForwardLimit = 1;
+    opcoes.KnownNetworks.Clear();
+    opcoes.KnownProxies.Clear();
+});
+
 var app = builder.Build();
+
+app.UseForwardedHeaders();
 
 app.UseMiddleware<TratamentoDeExcecaoMiddleware>();
 
@@ -126,6 +145,7 @@ await RbacSeeder.ExecutarAsync(app.Services);
 await CpfLgpdBackfillSeeder.ExecutarAsync(app.Services);
 await RegraAlertaSeeder.ExecutarAsync(app.Services);
 await ChecklistAlojamentoSeeder.ExecutarAsync(app.Services);
+await ChecklistVeiculoSeeder.ExecutarAsync(app.Services);
 await ConfiguracaoAlojamentoSeeder.ExecutarAsync(app.Services);
 await MateriaisApoioSeeder.ExecutarAsync(app.Services);
 await NovidadesSeeder.ExecutarAsync(app.Services);

@@ -54,6 +54,12 @@ public class CriarInspecaoCommandHandler : IRequestHandler<CriarInspecaoCommand,
             throw new InvalidOperationException(
                 "Inspeções de Alojamento devem ser criadas pela aba Alojamento, não pelo painel genérico de Nova Inspeção.");
 
+        // Idem para Veículos: a inspeção nasce do card do veículo (ObterOuCriarInspecaoVeiculoCommand),
+        // que preenche VeiculoId.
+        if (checklist.TipoInspecao == TipoInspecao.Veiculo)
+            throw new InvalidOperationException(
+                "Inspeções de Veículos devem ser criadas pela aba Veículos, não pelo painel genérico de Nova Inspeção.");
+
         var obraExiste = await _db.Obras.AnyAsync(o => o.Id == request.ObraId, ct);
         if (!obraExiste)
             throw new KeyNotFoundException($"Obra {request.ObraId} não encontrada.");

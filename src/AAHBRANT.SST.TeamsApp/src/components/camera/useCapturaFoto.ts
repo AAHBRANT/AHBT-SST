@@ -1,6 +1,6 @@
-import { useEffect, useRef, useState, type ChangeEvent } from 'react';
+import { useCallback, useEffect, useRef, useState, type ChangeEvent } from 'react';
 import { comprimirImagem } from '../../lib/imagem';
-import { obterLocalizacaoFoto, pendenciasFoto, vincularDadosFoto, type ContextoFoto, type DadosFoto, type LocalizacaoFoto } from '../../lib/dadosFoto';
+import { localizacaoExpirada, obterLocalizacaoFoto, pendenciasFoto, vincularDadosFoto, type ContextoFoto, type DadosFoto, type LocalizacaoFoto } from '../../lib/dadosFoto';
 
 export interface UseCapturaFotoOptions {
   contextoFoto?: ContextoFoto;
@@ -28,6 +28,13 @@ export interface UseCapturaFotoOptions {
 // também pelo visual de slot em quadro (SlotFoto/GradeFotosEvidencia) — mesmo diálogo de câmera ao
 // vivo (getUserMedia) nos dois lugares, em vez de um <input capture> "burro" que o Chrome/Edge de
 // desktop costuma ignorar (só funciona de verdade em navegador mobile).
+// Câmera frontal (reconhecimento facial) pede 1280x720 como ideal: o padrão de muitas webcams é
+// 640x480, onde o rosto dificilmente chega aos 200 px de lado que o servidor exige na foto de cadastro.
+// É só preferência (ideal): se o aparelho não tiver, o navegador entrega o que houver.
+function resolucaoIdeal(modo: 'user' | 'environment'): MediaTrackConstraints {
+  return modo === 'user' ? { width: { ideal: 1280 }, height: { ideal: 720 } } : {};
+}
+
 // Chave única (não por modoCamera): um notebook com webcam USB externa plugada é o mesmo
 // equipamento físico independente de a tela pedir câmera "user" (facial) ou "environment"
 // (evidência) — o usuário só quer escolher uma vez qual câmera o computador deve usar.
@@ -77,14 +84,14 @@ export function useCapturaFoto({
     setLocalizacao(resultado);
     setLocalizando(false);
   }
-  function montarDados(origem: 'camera' | 'arquivo'): DadosFoto {
-    return { ...(origem === 'camera' ? localizacao : {}), origem,
-      capturadaEm: origem === 'camera' ? new Date().toISOString() : null,
+  function montarDados(origem: 'camera' | 'arquivo', loc: LocalizacaoFoto = localizacao, capturadaEm = new Date()): DadosFoto {
+    return { ...(origem === 'camera' ? loc : {}), origem,
+      capturadaEm: origem === 'camera' ? capturadaEm.toISOString() : null,
       fusoMinutos: new Date().getTimezoneOffset(),
       obraId: contextoFoto?.obraId, obraNome: contextoFoto?.obraNome, local: localFoto.trim() };
   }
   const inputRef = useRef<HTMLInputElement>(null);
-  const videoRef = useRef<HTMLVideoElement>(null);
+  const videoRef = useRef<HTMLVideoElement | null>(null);
   const [processando, setProcessando] = useState(false);
   const [stream, setStream] = useState<MediaStream | null>(null);
   // Pedido do usuário (22/09): notebook com mais de uma câmera (webcam interna + USB externa, ex.:
@@ -104,12 +111,30 @@ export function useCapturaFoto({
     }
   }
 
-  // Anexa o stream ao <video> só depois que o diálogo (e portanto o elemento) já está montado, e
-  // para as tracks da câmera sempre que o stream muda ou o componente desmonta — sem isso a luz da
+  // O <video> vive dentro do diálogo do Fluent, que monta o conteúdo um instante depois do stream
+  // chegar. Se o stream fosse ligado só no efeito abaixo, o elemento podia ainda não existir: a luz da
+  // câmera acendia e a tela ficava em branco (visto no Teams em 07/10). Por isso o vídeo é ligado de
+  // dois jeitos: aqui, quando o elemento aparece (ref por função), e no efeito, quando o stream muda.
+  function ligarVideo(elemento: HTMLVideoElement, fluxo: MediaStream) {
+    if (elemento.srcObject !== fluxo) elemento.srcObject = fluxo;
+    void elemento.play().catch(() => {
+      // O autoPlay já cobre o caso comum; se o navegador recusar o play() explícito, não há o que fazer.
+    });
+  }
+
+  const aoMontarVideo = useCallback(
+    (elemento: HTMLVideoElement | null) => {
+      videoRef.current = elemento;
+      if (elemento && stream) ligarVideo(elemento, stream);
+    },
+    [stream],
+  );
+
+  // Para as tracks da câmera sempre que o stream muda ou o componente desmonta — sem isso a luz da
   // webcam ficava acesa mesmo depois de fechar o diálogo.
   useEffect(() => {
     if (!stream) return;
-    if (videoRef.current) videoRef.current.srcObject = stream;
+    if (videoRef.current) ligarVideo(videoRef.current, stream);
     return () => {
       stream.getTracks().forEach((track) => track.stop());
     };
@@ -188,7 +213,7 @@ export function useCapturaFoto({
     const preferidaId = lerCameraPreferida();
     if (preferidaId) {
       try {
-        const novoStream = await navigator.mediaDevices.getUserMedia({ video: { deviceId: { exact: preferidaId } } });
+        const novoStream = await navigator.mediaDevices.getUserMedia({ video: { deviceId: { exact: preferidaId }, ...resolucaoIdeal(modoCamera) } });
         setStream(novoStream);
         setDispositivoAtualId(preferidaId);
         await atualizarDispositivos();
@@ -198,7 +223,7 @@ export function useCapturaFoto({
       }
     }
     try {
-      const novoStream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: modoCamera } });
+      const novoStream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: modoCamera, ...resolucaoIdeal(modoCamera) } });
       setStream(novoStream);
       setDispositivoAtualId(novoStream.getVideoTracks()[0]?.getSettings().deviceId ?? null);
       await atualizarDispositivos();
@@ -213,7 +238,7 @@ export function useCapturaFoto({
   async function trocarDispositivo(deviceId: string) {
     if (!navigator.mediaDevices?.getUserMedia) return;
     try {
-      const novoStream = await navigator.mediaDevices.getUserMedia({ video: { deviceId: { exact: deviceId } } });
+      const novoStream = await navigator.mediaDevices.getUserMedia({ video: { deviceId: { exact: deviceId }, ...resolucaoIdeal(modoCamera) } });
       setStream(novoStream);
       setDispositivoAtualId(deviceId);
       salvarCameraPreferida(deviceId);
@@ -228,14 +253,35 @@ export function useCapturaFoto({
     setStream(null);
   }
 
-  function capturarFoto() {
+  // Anexo da galeria no lugar da câmera (sem geolocalização): fecha o diálogo e abre o seletor
+  // de arquivos; o local digitado no diálogo segue em localFoto.
+  function anexarDaGaleria() {
+    fecharCamera();
+    inputRef.current?.click();
+  }
+
+  async function capturarFoto() {
     const video = videoRef.current;
-    if (!video || !video.videoWidth) return;
+    if (!video || !video.videoWidth || processando) return;
+    const capturadaEm = new Date();
     const canvas = document.createElement('canvas');
     canvas.width = video.videoWidth;
     canvas.height = video.videoHeight;
     canvas.getContext('2d')?.drawImage(video, 0, 0);
-    const dados = montarDados('camera');
+    // A posição é pedida ao abrir o diálogo; se o usuário demorou (digitando o local, por exemplo),
+    // ela passa da janela de 60 s da validação. Renova antes de gravar — o quadro já foi congelado
+    // acima, então a hora da captura continua sendo a do clique.
+    let loc = localizacao;
+    if (contextoFoto && localizacaoExpirada(localizacao, capturadaEm.getTime())) {
+      pedidoLocalizacao.current++;
+      setProcessando(true);
+      setLocalizando(true);
+      try {
+        const nova = await obterLocalizacaoFoto();
+        if (nova.latitude != null) { loc = nova; setLocalizacao(nova); }
+      } finally { setLocalizando(false); setProcessando(false); }
+    }
+    const dados = montarDados('camera', loc, capturadaEm);
     fecharCamera();
     canvas.toBlob(
       (blob) => {
@@ -258,6 +304,7 @@ export function useCapturaFoto({
     fotoPendente, salvarFotoPendente, cancelarFotoPendente: () => setFotoPendente(null),
     inputRef,
     videoRef,
+    aoMontarVideo,
     processando,
     stream,
     modoCamera,
@@ -268,6 +315,7 @@ export function useCapturaFoto({
     abrirCamera,
     fecharCamera,
     capturarFoto,
+    anexarDaGaleria,
     trocarDispositivo,
     onInputChange,
   };

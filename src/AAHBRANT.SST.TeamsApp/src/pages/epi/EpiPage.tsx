@@ -1,4 +1,5 @@
-import { Abas, useAbaNaUrl, PageHeader } from '@ui';
+import { Abas, DashboardTopo, useAbaNaUrl, PageHeader } from '@ui';
+import { EpiDashboardTab } from './dashboard/EpiDashboardTab';
 import { CatalogoTab } from './CatalogoTab';
 import { EntregasTab } from './EntregasTab';
 import { EstoqueTab } from './EstoqueTab';
@@ -20,6 +21,10 @@ export function EpiPage({ mostrarTitulo = true }: { mostrarTitulo?: boolean } = 
   return (
     <div>
       {mostrarTitulo && <PageHeader titulo="EPI — Equipamentos de Proteção Individual" />}
+
+      <DashboardTopo>
+        <EpiDashboardTab />
+      </DashboardTopo>
 
       <Abas
         nivel={mostrarTitulo ? 'pilar' : 'modulo'}

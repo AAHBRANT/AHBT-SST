@@ -27,6 +27,7 @@ public interface IAppDbContext
     DbSet<CursoTreinamento> CursosTreinamento { get; }
     DbSet<Treinamento> Treinamentos { get; }
     DbSet<ArquivoCertificadoTreinamento> ArquivosCertificadoTreinamento { get; }
+    DbSet<TermoCompromissoEpiManual> TermosCompromissoEpiManual { get; }
     DbSet<MatrizTreinamentoFuncao> MatrizTreinamentoFuncoes { get; }
     DbSet<SessaoTreinamento> SessoesTreinamento { get; }
     DbSet<ParticipanteSessaoTreinamento> ParticipantesSessaoTreinamento { get; }
@@ -89,6 +90,7 @@ public interface IAppDbContext
     DbSet<Alojamento> Alojamentos { get; }
     DbSet<AlojamentoMorador> AlojamentoMoradores { get; }
     DbSet<ConfiguracaoAlojamento> ConfiguracoesAlojamento { get; }
+    DbSet<Veiculo> Veiculos { get; }
 
     // Qualificação explícita necessária: "Dds" sem prefixo é ambíguo aqui — a namespace
     // AAHBRANT.SST.Application.Dds (Commands/Queries deste módulo) sombreia o tipo importado por
@@ -107,6 +109,7 @@ public interface IAppDbContext
 
     DbSet<Acidente> Acidentes { get; }
     DbSet<AcidenteFoto> AcidentesFotos { get; }
+    DbSet<AcidenteEnvolvido> AcidentesEnvolvidos { get; }
     DbSet<RegistroHhtMensal> RegistrosHhtMensais { get; }
 
     DbSet<AtivoSst> AtivosSst { get; }
@@ -116,6 +119,11 @@ public interface IAppDbContext
     DbSet<DispositivoAgenteBiometrico> DispositivosAgenteBiometrico { get; }
     DbSet<TemplateBiometricoFutronic> TemplatesBiometricoFutronic { get; }
     DbSet<FotoCadastroFacial> FotosCadastroFacial { get; }
+    DbSet<FalhaReconhecimentoFacial> FalhasReconhecimentoFacial { get; }
+    DbSet<RelatorioGerado> RelatoriosGerados { get; }
+    DbSet<RelatorioEnvio> RelatorioEnvios { get; }
+    DbSet<DestinatarioRelatorio> DestinatariosRelatorio { get; }
+    DbSet<ExecucaoRelatorioAgendado> ExecucoesRelatorioAgendado { get; }
 
     DbSet<IdempotenciaRegistro> IdempotenciaRegistros { get; }
 

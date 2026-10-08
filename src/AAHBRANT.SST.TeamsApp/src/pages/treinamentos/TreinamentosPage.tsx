@@ -1,4 +1,5 @@
-import { Abas, PageHeader, useAbaNaUrl } from '@ui';
+import { Abas, DashboardTopo, PageHeader, useAbaNaUrl } from '@ui';
+import { TreinamentosDashboardTab } from './dashboard/TreinamentosDashboardTab';
 import { CertificadosTab } from './CertificadosTab';
 import { CursosTreinamentoTab } from '../pessoas/CursosTreinamentoTab';
 import { MatrizTreinamentoTab } from '../pessoas/MatrizTreinamentoTab';
@@ -22,6 +23,10 @@ export function TreinamentosPage({ mostrarTitulo = true }: { mostrarTitulo?: boo
   return (
     <div>
       {mostrarTitulo && <PageHeader titulo="Treinamentos" />}
+
+      <DashboardTopo>
+        <TreinamentosDashboardTab />
+      </DashboardTopo>
 
       <Abas
         nivel={mostrarTitulo ? 'pilar' : 'modulo'}

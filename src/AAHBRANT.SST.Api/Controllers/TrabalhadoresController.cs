@@ -1,3 +1,4 @@
+using AAHBRANT.SST.Api.Autorizacao;
 using AAHBRANT.SST.Application.Assinatura.Commands;
 using AAHBRANT.SST.Application.Trabalhadores.Commands;
 using AAHBRANT.SST.Application.Trabalhadores.Queries;
@@ -13,13 +14,24 @@ namespace AAHBRANT.SST.Api.Controllers;
 public class TrabalhadoresController : ControllerBase
 {
     private readonly IMediator _mediator;
+    private readonly IUsuarioAtualResolver _usuarioAtual;
 
-    public TrabalhadoresController(IMediator mediator) => _mediator = mediator;
+    public TrabalhadoresController(IMediator mediator, IUsuarioAtualResolver usuarioAtual)
+    {
+        _mediator = mediator;
+        _usuarioAtual = usuarioAtual;
+    }
 
     [Authorize(Policy = "trabalhador:ver")]
     [HttpGet]
     public async Task<IActionResult> Listar([FromQuery] Guid? obraId, CancellationToken ct)
         => Ok(await _mediator.Send(new ListarTrabalhadoresQuery(obraId), ct));
+
+    // Indicador "Podem trabalhar hoje" do Início: quantos ativos estão liberados e por que os demais não.
+    [Authorize(Policy = "trabalhador:ver")]
+    [HttpGet("liberacao")]
+    public async Task<IActionResult> ObterLiberacao([FromQuery] Guid? obraId, CancellationToken ct)
+        => Ok(await _mediator.Send(new ObterLiberacaoParaTrabalhoQuery(obraId), ct));
 
     [Authorize(Policy = "trabalhador:ver")]
     [HttpGet("{id:guid}")]
@@ -118,18 +130,25 @@ public class TrabalhadoresController : ControllerBase
         return NoContent();
     }
 
+    // Funcionários com 3 ou mais falhas de reconhecimento facial em 30 dias contra o cadastro atual:
+    // candidatos a refazer a foto. O escopo por obra vem dos filtros globais.
+    [Authorize(Policy = "trabalhador:assinatura")]
+    [HttpGet("cadastros-faciais-fracos")]
+    public async Task<IActionResult> ListarCadastrosFaciaisFracos([FromQuery] Guid? obraId, CancellationToken ct)
+        => Ok(await _mediator.Send(new ListarCadastrosFaciaisFracosQuery(obraId), ct));
+
     [Authorize(Policy = "trabalhador:assinatura")]
     [HttpGet("{id:guid}/assinatura/status-cadastro")]
     public async Task<IActionResult> ObterStatusCadastroBiometrico(Guid id, CancellationToken ct)
         => Ok(await _mediator.Send(new ObterStatusCadastroBiometricoQuery(id), ct));
 
-    public record CadastrarBiometriaLocalRequestBody(byte[] TemplateBruto);
+    public record CadastrarBiometriaLocalRequestBody(byte[] TemplateBruto, byte[]? ImagemCadastro = null);
 
     [Authorize(Policy = "trabalhador:assinatura")]
     [HttpPost("{id:guid}/assinatura/biometria-local/cadastro")]
     public async Task<IActionResult> CadastrarBiometriaLocal(Guid id, CadastrarBiometriaLocalRequestBody body, CancellationToken ct)
     {
-        await _mediator.Send(new CadastrarTemplateBiometricoCommand(id, body.TemplateBruto), ct);
+        await _mediator.Send(new CadastrarTemplateBiometricoCommand(id, body.TemplateBruto, body.ImagemCadastro), ct);
         return NoContent();
     }
 
@@ -146,6 +165,19 @@ public class TrabalhadoresController : ControllerBase
         await using var stream = new MemoryStream();
         await body.Foto.CopyToAsync(stream, ct);
         await _mediator.Send(new CadastrarFacialCommand(id, stream.ToArray()), ct);
+        return NoContent();
+    }
+
+    public record RefazerCadastroFacialRequestBody(string Motivo);
+
+    // Refazer o cadastro facial: mesma permissão do cadastro (técnico), limitado à obra do usuário no
+    // handler. Remove o cadastro no Azure Face, arquiva as fotos e registra na trilha com o motivo.
+    [Authorize(Policy = "trabalhador:assinatura")]
+    [HttpPost("{id:guid}/assinatura/facial/refazer")]
+    public async Task<IActionResult> RefazerCadastroFacial(Guid id, RefazerCadastroFacialRequestBody body, CancellationToken ct)
+    {
+        var usuarioId = await _usuarioAtual.ObterIdAsync(User, ct);
+        await _mediator.Send(new RefazerCadastroFacialCommand(id, usuarioId, body.Motivo ?? string.Empty), ct);
         return NoContent();
     }
 

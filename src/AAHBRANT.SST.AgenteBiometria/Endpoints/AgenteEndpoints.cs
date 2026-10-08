@@ -8,10 +8,12 @@ namespace AAHBRANT.SST.AgenteBiometria.Endpoints;
 
 public record DispositivoResponse(Guid DispositivoId, string SegredoDispositivo);
 public record SincronizarResponse(int Total);
-public record CapturaBrutaResponse(byte[] TemplateBruto);
+// ImagemPng: imagem da leitura, guardada (criptografada) como referência do cadastro no log de assinaturas.
+public record CapturaBrutaResponse(byte[] TemplateBruto, byte[]? ImagemPng = null);
 public record CompararTemplatesRequest(byte[] TemplateA, byte[] TemplateB);
 public record CompararTemplatesResponse(double Score);
-public record CapturaResponse(Guid TrabalhadorId, double Score);
+// ImagemPng: imagem da digital lida, guardada como evidência visual da assinatura (Cofre).
+public record CapturaResponse(Guid TrabalhadorId, double Score, byte[]? ImagemPng = null);
 public record ErroResponse(string Erro);
 
 public static class AgenteEndpoints
@@ -38,7 +40,7 @@ public static class AgenteEndpoints
     public static async Task<Ok<CapturaBrutaResponse>> CapturarBruto(IFingerprintReader leitor, IFingerprintMatcher matcher, bool? novoToque, CancellationToken ct)
     {
         var captura = await leitor.CapturarAsync(ct, novoToque ?? false);
-        return TypedResults.Ok(new CapturaBrutaResponse(matcher.ExtrairTemplate(captura)));
+        return TypedResults.Ok(new CapturaBrutaResponse(matcher.ExtrairTemplate(captura), ImagemDigitalPng.Converter(captura)));
     }
 
     // Cadastro com confirmação: duas leituras do mesmo dedo precisam concordar entre si (mesma escala do
@@ -56,7 +58,8 @@ public static class AgenteEndpoints
     public static async Task<Results<Ok<CapturaResponse>, NotFound<ErroResponse>>> Capturar(
         IFingerprintReader leitor, IFingerprintMatcher matcher, TemplateCacheService cache, CancellationToken ct)
     {
-        var captura = matcher.ExtrairTemplate(await leitor.CapturarAsync(ct));
+        var imagemBruta = await leitor.CapturarAsync(ct);
+        var captura = matcher.ExtrairTemplate(imagemBruta);
 
         var melhor = cache.Templates
             .Select(t => new { t.TrabalhadorId, Score = matcher.Comparar(captura, t.TemplateBruto) })
@@ -68,6 +71,6 @@ public static class AgenteEndpoints
             return TypedResults.NotFound(new ErroResponse("Nenhum template cadastrado no cache local. Rode /api/sincronizar primeiro."));
         }
 
-        return TypedResults.Ok(new CapturaResponse(melhor.TrabalhadorId, melhor.Score));
+        return TypedResults.Ok(new CapturaResponse(melhor.TrabalhadorId, melhor.Score, ImagemDigitalPng.Converter(imagemBruta)));
     }
 }

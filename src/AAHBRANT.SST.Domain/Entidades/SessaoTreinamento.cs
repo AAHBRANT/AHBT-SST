@@ -51,6 +51,10 @@ public class ParticipanteSessaoTreinamento : AuditableEntity
     public DateTime? PresencaConfirmadaEm { get; set; }
     public double? ScoreConfianca { get; set; }
 
+    // Como a presença foi confirmada (02/10) — sai na legenda de assinatura da Ata. Nulo nas
+    // presenças anteriores à coluna, quando o método não era gravado: a Ata mostra só data e hora.
+    public MetodoAutenticacaoAssinatura? MetodoPresenca { get; set; }
+
     public Guid? TreinamentoGeradoId { get; set; }
     public Treinamento? TreinamentoGerado { get; set; }
 }

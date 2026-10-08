@@ -27,12 +27,14 @@ import { SuporteIaPage } from './pages/suporte-ia/SuporteIaPage';
 import { SuporteIaDetalhePage } from './pages/suporte-ia/SuporteIaDetalhePage';
 import { NaoConformidadeDetalhePage } from './pages/naoconformidades/NaoConformidadeDetalhePage';
 import { AlertasPage } from './pages/alertas/AlertasPage';
+import { RelatoriosPage } from './pages/relatorios/RelatoriosPage';
 import { CalendarioPage } from './pages/calendario/CalendarioPage';
 import { AcidenteDetalhePage } from './pages/acidentes/AcidenteDetalhePage';
 import { DdsSemanalDetalhePage } from './pages/dds/DdsSemanalDetalhePage';
 import { DdsDetalhePage } from './pages/dds/DdsDetalhePage';
 import { AssinarDdsPage } from './pages/dds/AssinarDdsPage';
 import { AssinarEntregaEpiPage } from './pages/epi/AssinarEntregaEpiPage';
+import { AssinarTermoEpiPage } from './pages/epi/AssinarTermoEpiPage';
 import { SaudeOcupacionalPage } from './pages/saude-ocupacional/SaudeOcupacionalPage';
 import { PcmsoDetalhePage } from './pages/saude-ocupacional/PcmsoDetalhePage';
 import { ProcessoEleitoralCipaDetalhePage } from './pages/cipa/ProcessoEleitoralCipaDetalhePage';
@@ -197,6 +199,7 @@ function AppRoteado() {
               <Route path="/operacao/cipa/sipat/:id" element={<EventoSipatDetalhePage />} />
 
               <Route path="/alertas" element={<AlertasPage />} />
+              <Route path="/relatorios" element={<RelatoriosPage />} />
               <Route path="/calendario" element={<CalendarioPage />} />
               <Route path="/suporte-ia" element={<SuporteIaPage />} />
               <Route path="/suporte-ia/:id" element={<SuporteIaDetalhePage />} />
@@ -221,6 +224,7 @@ function AppRoteado() {
               <Route path="/acidentes/:id" element={<AcidenteDetalhePage />} />
 
               <Route path="/epi/:id/assinar" element={<AssinarEntregaEpiPage />} />
+              <Route path="/epi/termo/:trabalhadorId/assinar" element={<AssinarTermoEpiPage />} />
               <Route path="/treinamentos/:id/assinar" element={<AssinarTreinamentoPage />} />
               <Route path="/administracao" element={<AdministracaoPage />} />
               <Route path="/administracao/suporte-ia" element={<Navigate to="/suporte-ia" replace />} />

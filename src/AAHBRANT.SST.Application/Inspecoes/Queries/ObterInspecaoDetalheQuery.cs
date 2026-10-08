@@ -28,6 +28,10 @@ public class ObterInspecaoDetalheQueryHandler : IRequestHandler<ObterInspecaoDet
         // inner join que sumia com a inspeção inteira ("Not Found" ao continuar — bug 24/09/2026).
         var checklist = await _db.ChecklistModelos.IgnoreQueryFilters()
             .FirstOrDefaultAsync(c => c.Id == inspecao.ChecklistModeloId, ct);
+        // Veículo também sai à parte e ignora o filtro: veículo excluído (soft delete) não pode
+        // derrubar a inspeção histórica dele.
+        var veiculo = inspecao.VeiculoId is null ? null : await _db.Veiculos.IgnoreQueryFilters()
+            .FirstOrDefaultAsync(v => v.Id == inspecao.VeiculoId, ct);
         var responsavelNome = await _db.Usuarios.IgnoreQueryFilters()
             .Where(u => u.Id == inspecao.ResponsavelUsuarioId)
             .Select(u => u.Nome)
@@ -60,6 +64,11 @@ public class ObterInspecaoDetalheQueryHandler : IRequestHandler<ObterInspecaoDet
                 ObraNome = inspecao.Obra?.Nome ?? string.Empty,
                 AtividadeId = inspecao.AtividadeId,
                 AtividadeNome = inspecao.Atividade?.Nome,
+                VeiculoId = inspecao.VeiculoId,
+                VeiculoTipo = veiculo?.Tipo,
+                VeiculoPlacaPrefixo = veiculo?.PlacaPrefixo,
+                VeiculoMarcaModelo = veiculo?.MarcaModelo,
+                VeiculoEmpresa = veiculo?.Empresa,
                 ChecklistModeloId = inspecao.ChecklistModeloId,
                 ChecklistModeloNome = checklist?.Nome ?? string.Empty,
                 ChecklistModeloVersao = checklist?.Versao ?? 0,
