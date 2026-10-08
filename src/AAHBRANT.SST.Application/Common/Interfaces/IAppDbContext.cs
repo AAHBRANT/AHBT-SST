@@ -147,12 +147,6 @@ public interface IAppDbContext
 
     DbSet<ContadorDocumento> ContadoresDocumento { get; }
     DbSet<SuporteIaSolicitacao> SuporteIaSolicitacoes { get; }
-    DbSet<Ideia> Ideias { get; }
-    DbSet<IdeiaComentario> IdeiaComentarios { get; }
-    DbSet<IdeiaHistorico> IdeiaHistoricos { get; }
-    DbSet<IdeiaAnexo> IdeiaAnexos { get; }
-    DbSet<IdeiaRequisito> IdeiaRequisitos { get; }
-    DbSet<DemandaDesenvolvimento> DemandasDesenvolvimento { get; }
     DbSet<Empresa> Empresas { get; }
     DbSet<Contrato> Contratos { get; }
     DbSet<ContratoVagaFuncao> ContratoVagasFuncao { get; }

@@ -77,30 +77,6 @@ public class PermissaoAuthorizationHandler : AuthorizationHandler<PermissaoRequi
             return;
         }
 
-        // Banco de Ideias (08/10/2026, §17): registrar, consultar, comentar e anexar são liberados a qualquer
-        // usuário autenticado; analisar/decidir/desenvolver continuam na matriz RBAC.
-        if (requirement.Codigo == "ideia:usar" && context.User.Identity?.IsAuthenticated == true)
-        {
-            context.Succeed(requirement);
-            return;
-        }
-
-        // Especificação §17: no Banco de Ideias o Administrador tem acesso completo — sem depender de
-        // alguém marcar ideia:analisar/decidir/desenvolver na matriz Perfil x Permissão para ele.
-        if (requirement.Codigo.StartsWith("ideia:", StringComparison.Ordinal))
-        {
-            var administrador = await _db.Usuarios
-                .Where(u => u.AzureAdObjectId == azureAdObjectId && u.Status == StatusUsuario.Ativo)
-                .SelectMany(u => u.PerfisPorObra)
-                .AnyAsync(vinculo => vinculo.PerfilAcesso != null
-                    && vinculo.PerfilAcesso.Tipo == TipoPerfilAcesso.Administrador);
-            if (administrador)
-            {
-                context.Succeed(requirement);
-                return;
-            }
-        }
-
         // Saber quem eu sou e o que eu posso é pré-requisito para a tela decidir o que mostrar —
         // qualquer autenticado consulta o próprio cadastro, e só o próprio (ver
         // ObterUsuarioLogadoQuery, que resolve pelo claim do token, nunca por id vindo da rota).
