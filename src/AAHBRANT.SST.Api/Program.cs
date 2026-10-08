@@ -54,10 +54,7 @@ builder.Services.AddHttpContextAccessor();
 builder.Services.AddScoped<AAHBRANT.SST.Application.Common.Interfaces.IClienteIpProvider, ClienteIpProvider>();
 // ICurrentUserService (camada 3 do RBAC) é registrado em AddInfrastructure — ver EscopoPorObraMiddleware.
 
-var modoHospedagem = AAHBRANT.SST.Api.Hospedagem.ObterModo(builder.Configuration);
-builder.Services.AddControllers()
-    .ConfigureApplicationPartManager(partes =>
-        partes.FeatureProviders.Add(new AAHBRANT.SST.Api.Hospedagem.FiltroControllersPorModo(modoHospedagem)));
+builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
 
@@ -136,29 +133,26 @@ app.UseMiddleware<EscopoPorObraMiddleware>();
 // vazar a resposta de outro usuário sem autenticação nenhuma.
 app.UseMiddleware<IdempotenciaMiddleware>();
 
-if (AAHBRANT.SST.Api.Hospedagem.AplicaMigrationsESeeders(modoHospedagem))
+// Aplica migrations pendentes automaticamente no start — antes não existia isso no código
+// (schema do banco de homologação era atualizado manualmente a cada nova migration).
+using (var escopoMigracao = app.Services.CreateScope())
 {
-    // Aplica migrations pendentes automaticamente no start — antes não existia isso no código
-    // (schema do banco de homologação era atualizado manualmente a cada nova migration).
-    using (var escopoMigracao = app.Services.CreateScope())
-    {
-        var db = escopoMigracao.ServiceProvider.GetRequiredService<SstDbContext>();
-        await db.Database.MigrateAsync();
-    }
+    var db = escopoMigracao.ServiceProvider.GetRequiredService<SstDbContext>();
+    await db.Database.MigrateAsync();
+}
 
-    await RbacSeeder.ExecutarAsync(app.Services);
-    await CpfLgpdBackfillSeeder.ExecutarAsync(app.Services);
-    await RegraAlertaSeeder.ExecutarAsync(app.Services);
-    await ChecklistAlojamentoSeeder.ExecutarAsync(app.Services);
-    await ChecklistVeiculoSeeder.ExecutarAsync(app.Services);
-    await ConfiguracaoAlojamentoSeeder.ExecutarAsync(app.Services);
-    await MateriaisApoioSeeder.ExecutarAsync(app.Services);
-    await NovidadesSeeder.ExecutarAsync(app.Services);
+await RbacSeeder.ExecutarAsync(app.Services);
+await CpfLgpdBackfillSeeder.ExecutarAsync(app.Services);
+await RegraAlertaSeeder.ExecutarAsync(app.Services);
+await ChecklistAlojamentoSeeder.ExecutarAsync(app.Services);
+await ChecklistVeiculoSeeder.ExecutarAsync(app.Services);
+await ConfiguracaoAlojamentoSeeder.ExecutarAsync(app.Services);
+await MateriaisApoioSeeder.ExecutarAsync(app.Services);
+await NovidadesSeeder.ExecutarAsync(app.Services);
 
-    if (app.Environment.IsDevelopment())
-    {
-        await MockObraSeeder.ExecutarAsync(app.Services);
-    }
+if (app.Environment.IsDevelopment())
+{
+    await MockObraSeeder.ExecutarAsync(app.Services);
 }
 
 app.MapControllers();

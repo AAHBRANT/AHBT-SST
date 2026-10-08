@@ -1,6 +1,6 @@
 import { anexarDadosFoto, type DadosFoto } from './dadosFoto';
 import { localizacaoParaCorpo, obterLocalizacaoAssinatura } from './localizacaoAssinatura';
-import { API_BASE_URL, IDEIAS_API_BASE_URL } from './apiBase';
+import { API_BASE_URL } from './apiBase';
 import { montarHeadersAuth } from './authHeaders';
 import { syncFetchBlob, syncFetchJson, syncMutateJson, syncMutateMultipart } from './offline/syncEngine';
 
@@ -3328,8 +3328,8 @@ function parsearJsonSeguro<T>(texto: string, response: Response): T {
   }
 }
 
-async function baixarArquivoRelatorio(caminho: string, baseUrl: string = API_BASE_URL): Promise<Blob> {
-  const response = await fetch(`${baseUrl}${caminho}`, { headers: await montarHeadersAuth() });
+async function baixarArquivoRelatorio(caminho: string): Promise<Blob> {
+  const response = await fetch(`${API_BASE_URL}${caminho}`, { headers: await montarHeadersAuth() });
   if (!response.ok) {
     const corpo = await response.text().catch(() => '');
     throw new Error(extrairMensagemErro(corpo, response.status, response.statusText));
@@ -3337,7 +3337,7 @@ async function baixarArquivoRelatorio(caminho: string, baseUrl: string = API_BAS
   return response.blob();
 }
 
-async function request<T>(path: string, init?: RequestInit, baseUrl: string = API_BASE_URL): Promise<T> {
+async function request<T>(path: string, init?: RequestInit): Promise<T> {
   const authHeaders = await montarHeadersAuth();
   const metodo = (init?.method ?? 'GET').toUpperCase();
 
@@ -3349,7 +3349,7 @@ async function request<T>(path: string, init?: RequestInit, baseUrl: string = AP
     return syncMutateJson<T>(path, metodo as 'POST' | 'PUT' | 'DELETE', corpo, authHeaders);
   }
 
-  const response = await fetch(`${baseUrl}${path}`, {
+  const response = await fetch(`${API_BASE_URL}${path}`, {
     ...init,
     headers: {
       'Content-Type': 'application/json',
@@ -3369,11 +3369,6 @@ async function request<T>(path: string, init?: RequestInit, baseUrl: string = AP
 
   const texto = await response.text();
   return parsearJsonSeguro<T>(texto, response);
-}
-
-// Banco de Ideias roda em API própria (IDEIAS_API_BASE_URL); mesmo token e mesmo tratamento de erro.
-function requestIdeias<T>(path: string, init?: RequestInit): Promise<T> {
-  return request<T>(path, init, IDEIAS_API_BASE_URL);
 }
 
 async function requestPublico<T>(path: string, init?: RequestInit): Promise<T> {
@@ -3780,221 +3775,6 @@ export interface NovaSolicitacaoSuporteIa {
   modulo?: string | null;
   urlContexto?: string | null;
 }
-
-// Banco de Ideias e Evolução do Produto (especificação do usuário, 08/10/2026). Os valores numéricos
-// espelham os enums de Domain/Enums/Ideias.cs.
-export const StatusIdeia = {
-  NovaIdeia: 0,
-  EmAnalise: 1,
-  AguardandoDecisao: 2,
-  Aprovada: 3,
-  Priorizada: 4,
-  EmDesenvolvimento: 5,
-  EmTesteValidacao: 6,
-  Implantada: 7,
-  Adiada: 8,
-  Descartada: 9,
-} as const;
-
-export const statusIdeiaLabel: Record<number, string> = {
-  0: 'Nova ideia',
-  1: 'Em análise',
-  2: 'Aguardando decisão',
-  3: 'Aprovada',
-  4: 'Priorizada',
-  5: 'Em desenvolvimento',
-  6: 'Em teste/validação',
-  7: 'Implantada',
-  8: 'Adiada',
-  9: 'Descartada',
-};
-
-export const nivelIdeiaLabel: Record<number, string> = { 1: 'Baixo', 2: 'Médio', 3: 'Alto' };
-export const viabilidadeIdeiaLabel: Record<number, string> = {
-  0: 'Não avaliada',
-  1: 'Viável',
-  2: 'Viável com restrições',
-  3: 'Inviável',
-};
-export const prioridadeIdeiaLabel: Record<number, string> = { 1: 'P1 — Alta', 2: 'P2 — Média', 3: 'P3 — Baixa' };
-export const canalIdeiaLabel: Record<number, string> = { 1: 'Telegram', 2: 'Aplicativo' };
-export const decisaoIdeiaLabel: Record<number, string> = { 1: 'Aprovada', 2: 'Reprovada', 3: 'Adiada' };
-export const statusRequisitoIdeiaLabel: Record<number, string> = { 0: 'Rascunho', 1: 'Aprovado' };
-export const statusDemandaLabel: Record<number, string> = {
-  0: 'Aberta',
-  1: 'Em desenvolvimento',
-  2: 'Em teste',
-  3: 'Concluída',
-  4: 'Cancelada',
-};
-export const tipoHistoricoIdeiaLabel: Record<number, string> = {
-  1: 'Registro',
-  2: 'Classificação',
-  3: 'Status',
-  4: 'Análise',
-  5: 'Decisão',
-  6: 'Vínculo',
-  7: 'Requisito',
-  8: 'Demanda',
-  9: 'Anexo',
-};
-
-export interface IdeiaResumo {
-  id: string;
-  codigo: string;
-  titulo: string;
-  status: number;
-  modulo?: string | null;
-  categoria?: string | null;
-  prioridade?: number | null;
-  pontuacao?: number | null;
-  canal: number;
-  registradoPorNome?: string | null;
-  responsavelAnaliseNome?: string | null;
-  responsavelDesenvolvimentoNome?: string | null;
-  createdAtUtc: string;
-  ideiaPrincipalId?: string | null;
-  ideiaPrincipalCodigo?: string | null;
-}
-
-export interface IdeiaComentario {
-  id: string;
-  autorNome: string;
-  texto: string;
-  createdAtUtc: string;
-}
-
-export interface IdeiaHistorico {
-  id: string;
-  tipo: number;
-  descricao: string;
-  autorNome: string;
-  ocorridoEmUtc: string;
-}
-
-export interface IdeiaAnexo {
-  id: string;
-  nomeArquivo: string;
-  contentType: string;
-  tamanho: number;
-  enviadoPorNome?: string | null;
-  createdAtUtc: string;
-}
-
-export interface DemandaDesenvolvimento {
-  id: string;
-  codigo: string;
-  ideiaId: string;
-  requisitoId: string;
-  titulo: string;
-  descricao?: string | null;
-  status: number;
-  responsavelNome?: string | null;
-  funcionalidadeEntregue?: string | null;
-  concluidaEmUtc?: string | null;
-}
-
-export interface IdeiaRequisito {
-  id: string;
-  titulo: string;
-  descricao: string;
-  criteriosAceite: string;
-  status: number;
-  aprovadoEmUtc?: string | null;
-  aprovadoPorNome?: string | null;
-  demandas: DemandaDesenvolvimento[];
-}
-
-export interface IdeiaDetalhe extends IdeiaResumo {
-  mensagemOriginal: string;
-  descricao: string;
-  problemaOportunidade?: string | null;
-  objetivo?: string | null;
-  solucaoSugerida?: string | null;
-  submodulo?: string | null;
-  beneficioEsperado?: string | null;
-  possiveisImpactos?: string | null;
-  integracoesNecessarias?: string | null;
-  necessidadeIa?: boolean | null;
-  dependencias?: string | null;
-  informacoesFaltantes?: string | null;
-  estruturadoPor: string;
-  impacto?: number | null;
-  urgencia?: number | null;
-  complexidade?: number | null;
-  esforco?: number | null;
-  valorNegocio?: number | null;
-  esforcoEstimado?: string | null;
-  viabilidadeTecnica: number;
-  viabilidadeOperacional: number;
-  prioridadeSugerida?: number | null;
-  decisao?: number | null;
-  justificativa?: string | null;
-  decididoPorNome?: string | null;
-  dataAprovacaoUtc?: string | null;
-  dataInicioUtc?: string | null;
-  dataConclusaoUtc?: string | null;
-  dataImplantacaoUtc?: string | null;
-  observacoes?: string | null;
-  ideiaSemelhanteId?: string | null;
-  ideiaSemelhanteCodigo?: string | null;
-  telegramUsuarioNome?: string | null;
-  proximosStatus: number[];
-  comentarios: IdeiaComentario[];
-  historico: IdeiaHistorico[];
-  anexos: IdeiaAnexo[];
-  requisitos: IdeiaRequisito[];
-  ideiasVinculadas: IdeiaResumo[];
-}
-
-export interface FiltroIdeias {
-  busca?: string;
-  status?: number;
-  modulo?: string;
-  categoria?: string;
-  prioridade?: number;
-  responsavel?: string;
-  criador?: string;
-  de?: string;
-  ate?: string;
-}
-
-export interface DashboardIdeias {
-  total: number;
-  porStatus: Record<string, number>;
-  porModulo: { nome: string; quantidade: number }[];
-}
-
-export interface SugestoesAnaliseIdeia {
-  pontuacao?: number | null;
-  prioridadeSugerida?: number | null;
-  ideiasSemelhantes: IdeiaResumo[];
-  perguntasAntesDeAprovar: string[];
-  requisitoSugerido: string;
-  criteriosAceiteSugeridos: string[];
-  aviso: string;
-}
-
-export interface RegistroIdeia {
-  id: string;
-  codigo: string;
-  titulo: string;
-  modulo?: string | null;
-  categoria?: string | null;
-  status: number;
-  pergunta: number;
-  ideiaSemelhanteCodigo?: string | null;
-  ideiaSemelhanteTitulo?: string | null;
-}
-
-export type AnaliseIdeia = Pick<
-  IdeiaDetalhe,
-  | 'titulo' | 'descricao' | 'problemaOportunidade' | 'objetivo' | 'solucaoSugerida' | 'modulo' | 'submodulo'
-  | 'categoria' | 'beneficioEsperado' | 'possiveisImpactos' | 'integracoesNecessarias' | 'necessidadeIa'
-  | 'dependencias' | 'informacoesFaltantes' | 'impacto' | 'urgencia' | 'complexidade' | 'esforco' | 'valorNegocio'
-  | 'esforcoEstimado' | 'viabilidadeTecnica' | 'viabilidadeOperacional' | 'responsavelAnaliseNome'
-  | 'responsavelDesenvolvimentoNome' | 'observacoes'
->;
 
 // Pop-up de novidades da versão (requisito do usuário, 18/09) — aparece uma vez por usuário, ao
 // logar, com o que mudou desde o último acesso.
@@ -5573,64 +5353,6 @@ export const api = {
       request<SuporteIaSolicitacao>(`/api/suporte-ia/${id}/validar`, {
         method: 'POST',
         body: JSON.stringify({ confirmado, comentario }),
-      }),
-  },
-  ideias: {
-    listar: (filtro: FiltroIdeias = {}) => {
-      const params = new URLSearchParams();
-      Object.entries(filtro).forEach(([chave, valor]) => {
-        if (valor !== undefined && valor !== null && valor !== '') params.set(chave, String(valor));
-      });
-      const query = params.toString();
-      return requestIdeias<IdeiaResumo[]>(`/api/ideias${query ? `?${query}` : ''}`);
-    },
-    dashboard: () => requestIdeias<DashboardIdeias>('/api/ideias/dashboard'),
-    obter: (id: string) => requestIdeias<IdeiaDetalhe>(`/api/ideias/${id}`),
-    registrar: (mensagem: string) =>
-      requestIdeias<RegistroIdeia>('/api/ideias', { method: 'POST', body: JSON.stringify({ mensagem }) }),
-    atualizarAnalise: (id: string, analise: AnaliseIdeia) =>
-      requestIdeias<IdeiaDetalhe>(`/api/ideias/${id}/analise`, { method: 'PUT', body: JSON.stringify(analise) }),
-    alterarStatus: (id: string, destino: number, justificativa?: string | null, prioridade?: number | null) =>
-      requestIdeias<IdeiaDetalhe>(`/api/ideias/${id}/status`, {
-        method: 'POST',
-        body: JSON.stringify({ destino, justificativa: justificativa || null, prioridade: prioridade ?? null }),
-      }),
-    comentar: (id: string, texto: string) =>
-      requestIdeias<IdeiaComentario>(`/api/ideias/${id}/comentarios`, { method: 'POST', body: JSON.stringify({ texto }) }),
-    anexar: async (id: string, arquivo: File) => {
-      const formData = new FormData();
-      formData.append('Arquivo', arquivo);
-      const response = await fetch(`${IDEIAS_API_BASE_URL}/api/ideias/${id}/anexos`, {
-        method: 'POST',
-        headers: await montarHeadersAuth(),
-        body: formData,
-      });
-      if (!response.ok) {
-        const corpo = await response.text().catch(() => '');
-        throw new Error(extrairMensagemErro(corpo, response.status, response.statusText));
-      }
-    },
-    baixarAnexo: (id: string, anexoId: string): Promise<Blob> =>
-      baixarArquivoRelatorio(`/api/ideias/${id}/anexos/${anexoId}`, IDEIAS_API_BASE_URL),
-    vincular: (id: string, principalId: string) =>
-      requestIdeias<IdeiaDetalhe>(`/api/ideias/${id}/vincular`, { method: 'POST', body: JSON.stringify({ principalId }) }),
-    sugestoes: (id: string) => requestIdeias<SugestoesAnaliseIdeia>(`/api/ideias/${id}/sugestoes`),
-    criarRequisito: (id: string, requisito: { titulo: string; descricao: string; criteriosAceite: string }) =>
-      requestIdeias<IdeiaRequisito>(`/api/ideias/${id}/requisitos`, { method: 'POST', body: JSON.stringify(requisito) }),
-    aprovarRequisito: (requisitoId: string) =>
-      requestIdeias<IdeiaRequisito>(`/api/ideias/requisitos/${requisitoId}/aprovar`, { method: 'POST' }),
-    criarDemanda: (requisitoId: string, demanda: { titulo?: string | null; descricao?: string | null; responsavelNome?: string | null }) =>
-      requestIdeias<DemandaDesenvolvimento>(`/api/ideias/requisitos/${requisitoId}/demanda`, {
-        method: 'POST',
-        body: JSON.stringify(demanda),
-      }),
-    atualizarDemanda: (
-      demandaId: string,
-      demanda: { status: number; responsavelNome?: string | null; funcionalidadeEntregue?: string | null },
-    ) =>
-      requestIdeias<DemandaDesenvolvimento>(`/api/ideias/demandas/${demandaId}`, {
-        method: 'PUT',
-        body: JSON.stringify(demanda),
       }),
   },
   novidades: {

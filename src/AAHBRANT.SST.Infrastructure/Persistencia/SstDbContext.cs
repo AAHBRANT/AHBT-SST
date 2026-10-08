@@ -154,12 +154,6 @@ public class SstDbContext : DbContext, IAppDbContext
 
     public DbSet<ContadorDocumento> ContadoresDocumento => Set<ContadorDocumento>();
     public DbSet<SuporteIaSolicitacao> SuporteIaSolicitacoes => Set<SuporteIaSolicitacao>();
-    public DbSet<Ideia> Ideias => Set<Ideia>();
-    public DbSet<IdeiaComentario> IdeiaComentarios => Set<IdeiaComentario>();
-    public DbSet<IdeiaHistorico> IdeiaHistoricos => Set<IdeiaHistorico>();
-    public DbSet<IdeiaAnexo> IdeiaAnexos => Set<IdeiaAnexo>();
-    public DbSet<IdeiaRequisito> IdeiaRequisitos => Set<IdeiaRequisito>();
-    public DbSet<DemandaDesenvolvimento> DemandasDesenvolvimento => Set<DemandaDesenvolvimento>();
     public DbSet<Empresa> Empresas => Set<Empresa>();
     public DbSet<Contrato> Contratos => Set<Contrato>();
     public DbSet<ContratoVagaFuncao> ContratoVagasFuncao => Set<ContratoVagaFuncao>();
