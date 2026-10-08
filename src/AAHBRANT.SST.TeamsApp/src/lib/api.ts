@@ -1,6 +1,6 @@
 import { anexarDadosFoto, type DadosFoto } from './dadosFoto';
 import { localizacaoParaCorpo, obterLocalizacaoAssinatura } from './localizacaoAssinatura';
-import { API_BASE_URL } from './apiBase';
+import { API_BASE_URL, IDEIAS_API_BASE_URL } from './apiBase';
 import { montarHeadersAuth } from './authHeaders';
 import { syncFetchBlob, syncFetchJson, syncMutateJson, syncMutateMultipart } from './offline/syncEngine';
 
@@ -3328,8 +3328,8 @@ function parsearJsonSeguro<T>(texto: string, response: Response): T {
   }
 }
 
-async function baixarArquivoRelatorio(caminho: string): Promise<Blob> {
-  const response = await fetch(`${API_BASE_URL}${caminho}`, { headers: await montarHeadersAuth() });
+async function baixarArquivoRelatorio(caminho: string, baseUrl: string = API_BASE_URL): Promise<Blob> {
+  const response = await fetch(`${baseUrl}${caminho}`, { headers: await montarHeadersAuth() });
   if (!response.ok) {
     const corpo = await response.text().catch(() => '');
     throw new Error(extrairMensagemErro(corpo, response.status, response.statusText));
@@ -3337,7 +3337,7 @@ async function baixarArquivoRelatorio(caminho: string): Promise<Blob> {
   return response.blob();
 }
 
-async function request<T>(path: string, init?: RequestInit): Promise<T> {
+async function request<T>(path: string, init?: RequestInit, baseUrl: string = API_BASE_URL): Promise<T> {
   const authHeaders = await montarHeadersAuth();
   const metodo = (init?.method ?? 'GET').toUpperCase();
 
@@ -3349,7 +3349,7 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
     return syncMutateJson<T>(path, metodo as 'POST' | 'PUT' | 'DELETE', corpo, authHeaders);
   }
 
-  const response = await fetch(`${API_BASE_URL}${path}`, {
+  const response = await fetch(`${baseUrl}${path}`, {
     ...init,
     headers: {
       'Content-Type': 'application/json',
@@ -3369,6 +3369,11 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
 
   const texto = await response.text();
   return parsearJsonSeguro<T>(texto, response);
+}
+
+// Banco de Ideias roda em API própria (IDEIAS_API_BASE_URL); mesmo token e mesmo tratamento de erro.
+function requestIdeias<T>(path: string, init?: RequestInit): Promise<T> {
+  return request<T>(path, init, IDEIAS_API_BASE_URL);
 }
 
 async function requestPublico<T>(path: string, init?: RequestInit): Promise<T> {
@@ -5577,25 +5582,25 @@ export const api = {
         if (valor !== undefined && valor !== null && valor !== '') params.set(chave, String(valor));
       });
       const query = params.toString();
-      return request<IdeiaResumo[]>(`/api/ideias${query ? `?${query}` : ''}`);
+      return requestIdeias<IdeiaResumo[]>(`/api/ideias${query ? `?${query}` : ''}`);
     },
-    dashboard: () => request<DashboardIdeias>('/api/ideias/dashboard'),
-    obter: (id: string) => request<IdeiaDetalhe>(`/api/ideias/${id}`),
+    dashboard: () => requestIdeias<DashboardIdeias>('/api/ideias/dashboard'),
+    obter: (id: string) => requestIdeias<IdeiaDetalhe>(`/api/ideias/${id}`),
     registrar: (mensagem: string) =>
-      request<RegistroIdeia>('/api/ideias', { method: 'POST', body: JSON.stringify({ mensagem }) }),
+      requestIdeias<RegistroIdeia>('/api/ideias', { method: 'POST', body: JSON.stringify({ mensagem }) }),
     atualizarAnalise: (id: string, analise: AnaliseIdeia) =>
-      request<IdeiaDetalhe>(`/api/ideias/${id}/analise`, { method: 'PUT', body: JSON.stringify(analise) }),
+      requestIdeias<IdeiaDetalhe>(`/api/ideias/${id}/analise`, { method: 'PUT', body: JSON.stringify(analise) }),
     alterarStatus: (id: string, destino: number, justificativa?: string | null, prioridade?: number | null) =>
-      request<IdeiaDetalhe>(`/api/ideias/${id}/status`, {
+      requestIdeias<IdeiaDetalhe>(`/api/ideias/${id}/status`, {
         method: 'POST',
         body: JSON.stringify({ destino, justificativa: justificativa || null, prioridade: prioridade ?? null }),
       }),
     comentar: (id: string, texto: string) =>
-      request<IdeiaComentario>(`/api/ideias/${id}/comentarios`, { method: 'POST', body: JSON.stringify({ texto }) }),
+      requestIdeias<IdeiaComentario>(`/api/ideias/${id}/comentarios`, { method: 'POST', body: JSON.stringify({ texto }) }),
     anexar: async (id: string, arquivo: File) => {
       const formData = new FormData();
       formData.append('Arquivo', arquivo);
-      const response = await fetch(`${API_BASE_URL}/api/ideias/${id}/anexos`, {
+      const response = await fetch(`${IDEIAS_API_BASE_URL}/api/ideias/${id}/anexos`, {
         method: 'POST',
         headers: await montarHeadersAuth(),
         body: formData,
@@ -5606,16 +5611,16 @@ export const api = {
       }
     },
     baixarAnexo: (id: string, anexoId: string): Promise<Blob> =>
-      baixarArquivoRelatorio(`/api/ideias/${id}/anexos/${anexoId}`),
+      baixarArquivoRelatorio(`/api/ideias/${id}/anexos/${anexoId}`, IDEIAS_API_BASE_URL),
     vincular: (id: string, principalId: string) =>
-      request<IdeiaDetalhe>(`/api/ideias/${id}/vincular`, { method: 'POST', body: JSON.stringify({ principalId }) }),
-    sugestoes: (id: string) => request<SugestoesAnaliseIdeia>(`/api/ideias/${id}/sugestoes`),
+      requestIdeias<IdeiaDetalhe>(`/api/ideias/${id}/vincular`, { method: 'POST', body: JSON.stringify({ principalId }) }),
+    sugestoes: (id: string) => requestIdeias<SugestoesAnaliseIdeia>(`/api/ideias/${id}/sugestoes`),
     criarRequisito: (id: string, requisito: { titulo: string; descricao: string; criteriosAceite: string }) =>
-      request<IdeiaRequisito>(`/api/ideias/${id}/requisitos`, { method: 'POST', body: JSON.stringify(requisito) }),
+      requestIdeias<IdeiaRequisito>(`/api/ideias/${id}/requisitos`, { method: 'POST', body: JSON.stringify(requisito) }),
     aprovarRequisito: (requisitoId: string) =>
-      request<IdeiaRequisito>(`/api/ideias/requisitos/${requisitoId}/aprovar`, { method: 'POST' }),
+      requestIdeias<IdeiaRequisito>(`/api/ideias/requisitos/${requisitoId}/aprovar`, { method: 'POST' }),
     criarDemanda: (requisitoId: string, demanda: { titulo?: string | null; descricao?: string | null; responsavelNome?: string | null }) =>
-      request<DemandaDesenvolvimento>(`/api/ideias/requisitos/${requisitoId}/demanda`, {
+      requestIdeias<DemandaDesenvolvimento>(`/api/ideias/requisitos/${requisitoId}/demanda`, {
         method: 'POST',
         body: JSON.stringify(demanda),
       }),
@@ -5623,7 +5628,7 @@ export const api = {
       demandaId: string,
       demanda: { status: number; responsavelNome?: string | null; funcionalidadeEntregue?: string | null },
     ) =>
-      request<DemandaDesenvolvimento>(`/api/ideias/demandas/${demandaId}`, {
+      requestIdeias<DemandaDesenvolvimento>(`/api/ideias/demandas/${demandaId}`, {
         method: 'PUT',
         body: JSON.stringify(demanda),
       }),
