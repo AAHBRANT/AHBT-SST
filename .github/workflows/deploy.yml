@@ -16,6 +16,8 @@ name: Deploy (Azure Container Apps)
 #     CONTAINERAPP_WORKER    -> nome do Container App do Worker
 #     CONTAINERAPP_WEB       -> nome do Container App do frontend (ex.: sst-web-hml)
 #     VITE_API_BASE_URL      -> URL pública da API, usada no build do frontend
+#     VITE_IDEIAS_API_BASE_URL -> (opcional) URL pública da API do Banco de Ideias; vazio = usa a API principal
+#     CONTAINERAPP_IDEIAS    -> (opcional) nome do Container App do Banco de Ideias (mesma imagem da API, Hospedagem__Modo=Ideias)
 #     VITE_ENTRA_CLIENT_ID   -> App Registration usado pelo app Teams/Web
 #     VITE_ENTRA_TENANT_ID   -> Tenant Microsoft Entra ID
 #     VITE_ENTRA_API_SCOPE   -> Escopo exposto pela API para SPA, ex. api://.../access_as_user
@@ -76,6 +78,7 @@ jobs:
             --image "sst-web:latest" \
             --file Dockerfile.web \
             --build-arg VITE_API_BASE_URL="${{ vars.VITE_API_BASE_URL }}" \
+            --build-arg VITE_IDEIAS_API_BASE_URL="${{ vars.VITE_IDEIAS_API_BASE_URL }}" \
             --build-arg VITE_ENTRA_CLIENT_ID="${{ vars.VITE_ENTRA_CLIENT_ID }}" \
             --build-arg VITE_ENTRA_TENANT_ID="${{ vars.VITE_ENTRA_TENANT_ID || secrets.AZURE_TENANT_ID }}" \
             --build-arg VITE_ENTRA_API_SCOPE="${{ vars.VITE_ENTRA_API_SCOPE }}" \
@@ -86,6 +89,14 @@ jobs:
         run: |
           az containerapp update \
             --name "${{ vars.CONTAINERAPP_API }}" \
+            --resource-group "${{ vars.AZURE_RESOURCE_GROUP }}" \
+            --image "${{ vars.AZURE_ACR_NAME }}.azurecr.io/sst-api:${{ github.sha }}"
+
+      - name: Atualizar Container App do Banco de Ideias (opcional)
+        if: ${{ vars.CONTAINERAPP_IDEIAS != '' }}
+        run: |
+          az containerapp update \
+            --name "${{ vars.CONTAINERAPP_IDEIAS }}" \
             --resource-group "${{ vars.AZURE_RESOURCE_GROUP }}" \
             --image "${{ vars.AZURE_ACR_NAME }}.azurecr.io/sst-api:${{ github.sha }}"
 

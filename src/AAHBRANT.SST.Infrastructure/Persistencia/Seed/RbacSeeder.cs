@@ -208,6 +208,14 @@ public static class RbacSeeder
         ("suporte-ia:usar", "SuporteIa", "Usar", "Abrir solicitações e consultar o histórico do suporte com IA"),
         ("suporte-ia:administrar", "SuporteIa", "Administrar", "Ver e tratar todas as solicitações abertas na Central de Suporte IA"),
 
+        // Banco de Ideias e Evolução do Produto (especificação do usuário, 08/10/2026, §17). "usar" vale para
+        // qualquer usuário autenticado (ver PermissaoAuthorizationHandler); as demais entram na matriz Perfil x
+        // Permissão: Analista = analisar, Gestor = decidir, Tecnologia = desenvolver, Administrador = todas.
+        ("ideia:usar", "Ideia", "Usar", "Registrar, consultar, comentar e anexar informações no Banco de Ideias"),
+        ("ideia:analisar", "Ideia", "Analisar", "Analisar ideias: complementar informações, sugerir classificação/prioridade, criar requisitos e vincular duplicadas"),
+        ("ideia:decidir", "Ideia", "Decidir", "Aprovar, adiar ou descartar ideias, definir prioridade, aprovar requisitos e criar demandas de desenvolvimento"),
+        ("ideia:desenvolver", "Ideia", "Desenvolver", "Avaliar viabilidade técnica, estimar esforço e atualizar o andamento do desenvolvimento e da implantação"),
+
         // Motor de Aplicabilidade Legal (requisito do usuário, 2026-08-29) — cadastro restrito a
         // quem tem competência para validar conteúdo jurídico (QSMS/Diretoria); "responder" o
         // questionário de aplicabilidade por obra é uma ação mais operacional, por isso permissão

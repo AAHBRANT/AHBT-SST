@@ -1011,6 +1011,21 @@ public static class NovidadesSeeder
                     "Cada linha da lista tinha botões de foto, Excluir e cadastro de digital.",
                     "Esses botões não aparecem mais na lista, para evitar cliques por engano. A foto e o cadastro de digital ficam no perfil do funcionário."),
             }),
+        new(
+            Versao: "5.52.0",
+            Titulo: "Banco de Ideias",
+            DataPublicacao: new DateTime(2026, 10, 8, 0, 0, 0, DateTimeKind.Utc),
+            Itens: new[]
+            {
+                new NovidadeSeedItem(CategoriaNovidade.Novidade,
+                    "Banco de Ideias e Evolução do Produto",
+                    "Ideias para melhorar o sistema surgiam em reunião, no canteiro ou durante o uso e acabavam se perdendo, sem registro, análise ou resposta.",
+                    "O menu Banco de Ideias (lâmpada, no rodapé da barra lateral) guarda cada ideia com um código (IDEIA-0001, IDEIA-0002...), organiza o texto, evita duplicidades e leva a ideia da análise até a implantação, com comentários, anexos, requisitos, demandas de desenvolvimento e histórico que nunca é apagado. A decisão final é sempre do gestor."),
+                new NovidadeSeedItem(CategoriaNovidade.Novidade,
+                    "Registre ideias pelo Telegram",
+                    "Registrar uma ideia exigia abrir o sistema e preencher campos.",
+                    "Basta enviar a ideia como mensagem no grupo do Telegram: o sistema registra, responde com o código e o módulo identificado e, se faltar algo ou houver uma ideia parecida, faz uma pergunta objetiva. Fotos e arquivos enviados com a mensagem ficam anexados à ideia. Esta função só funciona depois que a equipe de tecnologia configurar o bot do Telegram."),
+            }),
     };
 
     public static async Task ExecutarAsync(IServiceProvider services, CancellationToken ct = default)
