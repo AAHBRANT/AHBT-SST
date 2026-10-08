@@ -76,6 +76,7 @@ export function useCapturaFoto({
   // fresca e o clique não precisa esperar um GPS "do zero". Ver lib/rastreadorLocalizacao.ts.
   const rastreador = useRef<Rastreador | null>(null);
   const [estadoLocalizacao, setEstadoLocalizacao] = useState<EstadoRastreio | null>(null);
+  const [aguardandoLocalizacao, setAguardandoLocalizacao] = useState(false);
   const localizando = estadoLocalizacao?.status === 'buscando';
   const localizacao: LocalizacaoFoto = estadoLocalizacao?.leitura ? leituraParaLocalizacao(estadoLocalizacao.leitura)
     : estadoLocalizacao?.motivo ? { motivoLocalizacao: estadoLocalizacao.motivo } : {};
@@ -294,7 +295,8 @@ export function useCapturaFoto({
       let e = r.estado();
       if (e.status === 'buscando' || e.status === 'imprecisa') {
         setProcessando(true);
-        try { await r.aguardarPronta(ESPERA_LOCALIZACAO_NO_CLIQUE_MS); } finally { setProcessando(false); }
+        setAguardandoLocalizacao(true);
+        try { await r.aguardarPronta(ESPERA_LOCALIZACAO_NO_CLIQUE_MS); } finally { setAguardandoLocalizacao(false); setProcessando(false); }
         e = r.estado();
       }
       loc = e.leitura ? leituraParaLocalizacao(e.leitura)
@@ -319,7 +321,7 @@ export function useCapturaFoto({
   }
 
   return {
-    contextoFoto, localFoto, setLocalFoto, localizacao, localizando, estadoLocalizacao, tentarLocalizacao,
+    contextoFoto, localFoto, setLocalFoto, localizacao, localizando, estadoLocalizacao, aguardandoLocalizacao, tentarLocalizacao,
     fotoPendente, salvarFotoPendente, cancelarFotoPendente: () => setFotoPendente(null),
     inputRef,
     videoRef,

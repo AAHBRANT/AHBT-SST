@@ -30,15 +30,14 @@ export function pendenciasFoto(d?: DadosFoto | null): string[] {
   // serializado pelo servidor, inclusive quando ainda estão pendentes.
   if (!d) return [];
   const pendencias: string[] = [];
-  // Foto anexada da galeria: sem data/posição comprováveis; só exige obra e descrição do local.
+  // Foto anexada da galeria: sem data/posição comprováveis; só exige a obra.
+  // "Local da foto" deixou de ser exigido (pedido do usuário, 08/10) — só aparece em fotos antigas.
   if (d.origem === 'arquivo') {
     if (!d.obraId || !d.obraNome?.trim()) pendencias.push('obra vinculada');
-    if (!d.local?.trim()) pendencias.push('descrição do local');
     return pendencias;
   }
   if (!d?.capturadaEm || !Number.isFinite(Date.parse(d.capturadaEm))) pendencias.push('data e hora da captura');
   if (!d?.obraId || !d.obraNome?.trim()) pendencias.push('obra vinculada');
-  if (!d?.local?.trim()) pendencias.push('descrição do local');
   const lat = d?.latitude, lon = d?.longitude;
   const idade = d?.capturadaEm && d.localizacaoObtidaEm ? Math.abs(Date.parse(d.capturadaEm) - Date.parse(d.localizacaoObtidaEm)) : Infinity;
   if (lat == null || lon == null || !Number.isFinite(lat) || !Number.isFinite(lon)
