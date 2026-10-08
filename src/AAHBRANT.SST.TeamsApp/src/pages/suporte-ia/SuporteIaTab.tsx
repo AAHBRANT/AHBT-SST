@@ -1,6 +1,9 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Input, Textarea, makeStyles, tokens } from '@fluentui/react-components';
+// makeStyles/tokens ainda não têm reexport em @ui (lacuna conhecida, ver passo de lint do ci.yml) —
+// mesma exceção pontual da CalendarioPage. Os componentes (Input/Textarea) já vêm de @ui.
+// oxlint-disable-next-line no-restricted-imports
+import { makeStyles, tokens } from '@fluentui/react-components';
 import { Mic24Regular, RecordStop24Filled, Send24Regular } from '@fluentui/react-icons';
 import {
   api,
@@ -15,7 +18,7 @@ import {
   type RelatoVozSuporteIa,
   type SuporteIaSolicitacao,
 } from '../../lib/api';
-import { Button, FeedbackInline, Legenda, Spinner, StatusChip } from '@ui';
+import { Button, FeedbackInline, Input, Legenda, Spinner, StatusChip, Textarea } from '@ui';
 import { EsteiraSuporteIa } from './EsteiraSuporteIa';
 import { etapaAtivaPorStatus } from './statusEtapaSuporteIa';
 import { formatarTempoGravacao, useRelatoVoz } from './useRelatoVoz';

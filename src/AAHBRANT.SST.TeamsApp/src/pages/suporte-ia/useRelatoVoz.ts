@@ -32,8 +32,11 @@ export function useRelatoVoz(aoTranscrever: (relato: RelatoVozSuporteIa) => void
   const audioContextRef = useRef<AudioContext | null>(null);
   const cronometroRef = useRef<number | null>(null);
   const animacaoRef = useRef<number | null>(null);
+  // Callbacks mais recentes, lidos no onstop do MediaRecorder (que roda fora do render).
   const callbacksRef = useRef({ aoTranscrever, aoErro });
-  callbacksRef.current = { aoTranscrever, aoErro };
+  useEffect(() => {
+    callbacksRef.current = { aoTranscrever, aoErro };
+  }, [aoTranscrever, aoErro]);
 
   const liberarRecursos = useCallback(() => {
     if (cronometroRef.current !== null) window.clearInterval(cronometroRef.current);
