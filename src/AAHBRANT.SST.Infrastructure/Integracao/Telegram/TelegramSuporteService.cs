@@ -11,6 +11,10 @@ public class TelegramSuporteOptions
     public string? SuporteChatId { get; set; }
     // Opcional: chat próprio para resumos operacionais (ex.: resumo do DDS ao encerrar). Vazio = usa SuporteChatId.
     public string? ResumoChatId { get; set; }
+    // Banco de Ideias: chats do Telegram autorizados a registrar ideias (ids separados por vírgula) e
+    // segredo do webhook (setWebhook secret_token). Sem os dois, o webhook rejeita tudo (falha fechada).
+    public string? IdeiasChatIds { get; set; }
+    public string? IdeiasWebhookSecret { get; set; }
 }
 
 public class TelegramSuporteService : ITelegramSuporteService

@@ -76,7 +76,7 @@ public class EscopoPorObraMiddleware
         foreach (var politica in politicas)
         {
             if (politica is PoliticasAutorizacao.SomenteAdministrador
-                or PoliticasAutorizacao.QualquerUsuarioAutenticado or "suporte-ia:usar" or "novidades:usar") continue;
+                or PoliticasAutorizacao.QualquerUsuarioAutenticado or "suporte-ia:usar" or "novidades:usar" or "ideia:usar") continue;
             escopo = escopo.Intersectar(await acesso.ObterEscopoAsync(azureAdObjectId, politica!, contexto.RequestAborted));
         }
         usuarioAtual.DefinirEscopo(escopo.Global, escopo.Obras);

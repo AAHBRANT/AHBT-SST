@@ -44,6 +44,7 @@ import {
   PersonAvailable24Regular,
   Camera20Regular,
   ChatHelp24Regular,
+  Lightbulb24Regular,
   ChatMultiple24Regular,
   HatGraduation24Regular,
   ShieldCheckmark24Regular,
@@ -908,6 +909,13 @@ export function AppShell({ children }: { children: ReactNode }) {
           <ItemRail key={item.rota} {...item} expandido={railExpandido} aoNavegar={() => setRailExpandido(false)} />
         ))}
         <div className={estilos.railRodape}>
+          <ItemRail
+            rota="/ideias"
+            rotulo="Banco de Ideias"
+            icone={Lightbulb24Regular}
+            expandido={railExpandido}
+            aoNavegar={() => setRailExpandido(false)}
+          />
           <ItemRail
             rota="/suporte-ia"
             rotulo="Suporte IA"
