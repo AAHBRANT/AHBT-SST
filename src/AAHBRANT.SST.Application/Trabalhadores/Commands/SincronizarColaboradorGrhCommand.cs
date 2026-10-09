@@ -57,7 +57,7 @@ public record SincronizarColaboradorGrhCommand(
             throw new InvalidOperationException("colaborador sem cargo definido no G-RH.");
 
         return new SincronizarColaboradorGrhCommand(
-            c.Cpf,
+            CpfMascarador.ApenasDigitos(c.Cpf),
             c.Nome,
             c.Pis,
             c.Ctps,

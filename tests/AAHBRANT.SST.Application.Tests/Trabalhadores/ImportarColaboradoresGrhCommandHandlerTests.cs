@@ -115,6 +115,27 @@ public class ImportarColaboradoresGrhCommandHandlerTests
     }
 
     [Fact]
+    public async Task Handle_CpfFormatadoComPontuacao_SincronizaNormalmente()
+    {
+        // Incidente real (09/10): parte do cadastro do G-RH guarda o CPF com máscara
+        // ("380.625.598-90", 14 caracteres) e o validador recusava o colaborador inteiro.
+        var db = DbContextFactory.Criar();
+        db.Obras.Add(new Obra { Codigo = "OBRA-1", Nome = "Ponte Rio Cuiá" });
+        await db.SaveChangesAsync();
+
+        var mediator = CriarMediator(db);
+        var client = new ColaboradorGrhClientFake(new[] { Colaborador("380.625.598-90", "Fulano de Tal") });
+        var handler = new ImportarColaboradoresGrhCommandHandler(client, mediator, db);
+
+        var resultado = await handler.Handle(new ImportarColaboradoresGrhCommand(), default);
+
+        Assert.Empty(resultado.Erros);
+        var trabalhador = Assert.Single(await db.Trabalhadores.ToListAsync());
+        Assert.Equal("38062559890", trabalhador.Cpf);
+        Assert.Equal(new CpfHashService().CalcularHash("38062559890"), trabalhador.CpfHash);
+    }
+
+    [Fact]
     public async Task Handle_ColaboradorSemCargo_RegistraErroSemAbortarLote()
     {
         var db = DbContextFactory.Criar();

@@ -1,3 +1,4 @@
+using AAHBRANT.SST.Application.Common;
 using AAHBRANT.SST.Application.Common.Interfaces;
 using AAHBRANT.SST.Domain.Entidades;
 using AAHBRANT.SST.Domain.Enums;
@@ -29,7 +30,7 @@ public record SincronizarAsoGrhCommand(
     string? MedicoNome) : IRequest<Guid>
 {
     public static SincronizarAsoGrhCommand DoAsoGrh(AsoGrhDto a) =>
-        new(a.GrhAsoId, a.Cpf, a.DataExame, a.DataValidade, a.Aptidao, a.RestricaoClinica, a.MedicoNome);
+        new(a.GrhAsoId, CpfMascarador.ApenasDigitos(a.Cpf), a.DataExame, a.DataValidade, a.Aptidao, a.RestricaoClinica, a.MedicoNome);
 }
 
 public class SincronizarAsoGrhCommandHandler : IRequestHandler<SincronizarAsoGrhCommand, Guid>
