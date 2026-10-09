@@ -1075,6 +1075,25 @@ public static class NovidadesSeeder
                     "O alerta de ação de plano atrasada ia para um responsável fixo do módulo.",
                     "O aviso de prazo das ações de plano (ocorrências e não conformidades) vai para o responsável da própria ação. Ação sem responsável continua avisando o responsável do módulo."),
             }),
+        new(
+            Versao: "5.56.0",
+            Titulo: "Requisitos Legais: texto oficial das NRs pronto para validar",
+            DataPublicacao: new DateTime(2026, 10, 9, 0, 0, 0, DateTimeKind.Utc),
+            Itens: new[]
+            {
+                new NovidadeSeedItem(CategoriaNovidade.Novidade,
+                    "59 requisitos das NRs já carregados para revisão",
+                    "O cadastro de requisitos legais começava vazio e cada item era digitado à mão.",
+                    "Os principais itens das NR-01, 06, 07, 10, 11, 12, 18, 33 e 35 para canteiro de obras já estão cadastrados com o texto oficial do gov.br e o link do PDF. Eles entram como \"Em revisão\" e já vêm ligados aos perigos do PGR correspondentes (ex.: NR-35 ao trabalho em altura)."),
+                new NovidadeSeedItem(CategoriaNovidade.Novidade,
+                    "Validar e ativar requisito legal",
+                    "Não havia como registrar que o QSMS conferiu o requisito.",
+                    "Em Gestão SST › Requisitos Legais, abra o requisito, confira o texto oficial e os perigos ligados e clique em \"Validar e ativar\". Fica registrado quem validou e quando, e só então o requisito passa a ser usado no plano de ação sugerido pela IA nas ocorrências."),
+                new NovidadeSeedItem(CategoriaNovidade.Melhoria,
+                    "Filtro por status e edição do texto do requisito",
+                    "A lista mostrava todos os requisitos juntos e o texto não aparecia na tela.",
+                    "A lista abre filtrada no que falta validar, com filtros por status. Ao abrir um requisito você vê o texto completo e pode ajustá-lo em \"Editar texto\"."),
+            }),
     };
 
     public static async Task ExecutarAsync(IServiceProvider services, CancellationToken ct = default)
