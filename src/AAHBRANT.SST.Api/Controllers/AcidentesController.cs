@@ -1,5 +1,7 @@
 using AAHBRANT.SST.Application.Acidentes.Commands;
+using AAHBRANT.SST.Application.Acidentes.RelatoIa;
 using AAHBRANT.SST.Application.Acidentes.Queries;
+using AAHBRANT.SST.Application.SuporteIa;
 using AAHBRANT.SST.Domain.Enums;
 using MediatR;
 using Microsoft.AspNetCore.Authorization;
@@ -12,8 +14,83 @@ namespace AAHBRANT.SST.Api.Controllers;
 public class AcidentesController : ControllerBase
 {
     private readonly IMediator _mediator;
+    private readonly ITranscricaoAudioService _transcricao;
+    private readonly ILogger<AcidentesController> _logger;
 
-    public AcidentesController(IMediator mediator) => _mediator = mediator;
+    // gpt-4o-transcribe aceita até 25 MB por arquivo.
+    private const long TamanhoMaximoAudio = 25_000_000;
+
+    public AcidentesController(IMediator mediator, ITranscricaoAudioService transcricao, ILogger<AcidentesController> logger)
+    {
+        _mediator = mediator;
+        _transcricao = transcricao;
+        _logger = logger;
+    }
+
+    // Relato da ocorrência escrito pelo técnico → sugestão de preenchimento do formulário (IA).
+    // Nada é gravado: o técnico revisa e registra pelo POST normal.
+    [Authorize(Policy = "acidente:criar")]
+    [HttpPost("relato-texto")]
+    public async Task<IActionResult> RelatoTexto(RelatoTextoOcorrenciaBody body, CancellationToken ct)
+        => Ok(new
+        {
+            transcricao = body.Relato,
+            sugestao = await _mediator.Send(new ClassificarRelatoOcorrenciaCommand(body.Relato, body.ObraId, body.Complementos), ct),
+        });
+
+    // Só transcreve (sem classificar): usado em "Responder por voz" às perguntas da IA — o texto vira
+    // complemento do relato na rodada seguinte de relato-texto.
+    [Authorize(Policy = "acidente:criar")]
+    [HttpPost("transcrever")]
+    [RequestSizeLimit(TamanhoMaximoAudio + 1_000_000)]
+    public async Task<IActionResult> Transcrever([FromForm] RelatoVozOcorrenciaBody body, CancellationToken ct)
+    {
+        if (!_transcricao.Configurado)
+            return StatusCode(StatusCodes.Status503ServiceUnavailable, new { erro = "Transcrição de áudio ainda não está configurada neste ambiente." });
+        if (body.Audio is null || body.Audio.Length == 0)
+            return BadRequest(new { erro = "Nenhum áudio recebido." });
+        if (body.Audio.Length > TamanhoMaximoAudio)
+            return BadRequest(new { erro = "Áudio muito longo. Grave até cerca de 10 minutos." });
+
+        await using var stream = body.Audio.OpenReadStream();
+        var nomeArquivo = string.IsNullOrWhiteSpace(body.Audio.FileName) ? "resposta.webm" : body.Audio.FileName;
+        return Ok(new { transcricao = await _transcricao.TranscreverAsync(stream, nomeArquivo, body.Audio.ContentType, ct) });
+    }
+
+    // Relato falado: transcreve o áudio (não é salvo) e sugere o preenchimento. Se a classificação
+    // falhar, devolve só a transcrição para o técnico completar o formulário.
+    [Authorize(Policy = "acidente:criar")]
+    [HttpPost("relato-voz")]
+    [RequestSizeLimit(TamanhoMaximoAudio + 1_000_000)]
+    public async Task<IActionResult> RelatoVoz([FromForm] RelatoVozOcorrenciaBody body, CancellationToken ct)
+    {
+        if (!_transcricao.Configurado)
+            return StatusCode(StatusCodes.Status503ServiceUnavailable, new { erro = "Transcrição de áudio ainda não está configurada neste ambiente." });
+        if (body.ObraId == Guid.Empty)
+            return BadRequest(new { erro = "Selecione a obra antes de relatar a ocorrência." });
+        if (body.Audio is null || body.Audio.Length == 0)
+            return BadRequest(new { erro = "Nenhum áudio recebido." });
+        if (body.Audio.Length > TamanhoMaximoAudio)
+            return BadRequest(new { erro = "Áudio muito longo. Grave até cerca de 10 minutos." });
+
+        await using var stream = body.Audio.OpenReadStream();
+        var nomeArquivo = string.IsNullOrWhiteSpace(body.Audio.FileName) ? "relato.webm" : body.Audio.FileName;
+        var transcricao = await _transcricao.TranscreverAsync(stream, nomeArquivo, body.Audio.ContentType, ct);
+        if (string.IsNullOrWhiteSpace(transcricao))
+            return Ok(new { transcricao, sugestao = (RelatoOcorrenciaSugestaoDto?)null });
+
+        RelatoOcorrenciaSugestaoDto? sugestao = null;
+        try
+        {
+            sugestao = await _mediator.Send(new ClassificarRelatoOcorrenciaCommand(transcricao, body.ObraId), ct);
+        }
+        catch (Exception ex) when (ex is not OperationCanceledException)
+        {
+            _logger.LogWarning(ex, "Relato de ocorrência transcrito, mas a classificação falhou; devolvendo só a transcrição.");
+        }
+
+        return Ok(new { transcricao, sugestao });
+    }
 
     [Authorize(Policy = "acidente:ver")]
     [HttpGet]
@@ -120,3 +197,17 @@ public record AtualizarAcidenteRequestBody(
     GravidadeAcidente Gravidade,
     int? DiasDebitadosInformados,
     List<Guid>? TrabalhadoresIds = null);
+
+public class RelatoTextoOcorrenciaBody
+{
+    public Guid ObraId { get; set; }
+    public string Relato { get; set; } = string.Empty;
+    // Respostas às perguntas da IA (rodada "Completar com as respostas").
+    public List<RespostaPerguntaRelato>? Complementos { get; set; }
+}
+
+public class RelatoVozOcorrenciaBody
+{
+    public Guid ObraId { get; set; }
+    public IFormFile? Audio { get; set; }
+}

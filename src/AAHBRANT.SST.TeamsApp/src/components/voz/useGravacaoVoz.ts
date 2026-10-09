@@ -1,7 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { api, type RelatoVozSuporteIa } from '../../lib/api';
 
-export type EstadoRelatoVoz = 'parado' | 'gravando' | 'transcrevendo';
+export type EstadoGravacaoVoz = 'parado' | 'gravando' | 'transcrevendo';
 
 // gpt-4o-transcribe aceita até 25 MB; 10 min de opus fica bem abaixo disso.
 const DURACAO_MAXIMA_SEGUNDOS = 600;
@@ -19,11 +18,16 @@ function escolherFormato(): { mimeType: string; extensao: string } | null {
 }
 
 /**
- * Grava a fala do usuário e devolve a transcrição + a sugestão de chamado da IA (Azure OpenAI).
- * O áudio fica só em memória até a transcrição; nada é salvo no servidor.
+ * Grava a fala do usuário e entrega o áudio a `enviar` (que transcreve e, se for o caso, pede à IA
+ * o preenchimento do formulário). O áudio fica só em memória; nada é salvo no servidor. Usado pelo
+ * "Relatar por voz" do Suporte IA e do registro de Ocorrências.
  */
-export function useRelatoVoz(aoTranscrever: (relato: RelatoVozSuporteIa) => void, aoErro: (mensagem: string) => void) {
-  const [estado, setEstado] = useState<EstadoRelatoVoz>('parado');
+export function useGravacaoVoz<T extends { transcricao: string }>(
+  enviar: (audio: Blob, nomeArquivo: string) => Promise<T>,
+  aoTranscrever: (resultado: T) => void,
+  aoErro: (mensagem: string) => void,
+) {
+  const [estado, setEstado] = useState<EstadoGravacaoVoz>('parado');
   const [segundos, setSegundos] = useState(0);
   const [niveis, setNiveis] = useState<number[]>(() => Array(QUANTIDADE_BARRAS).fill(0));
 
@@ -33,10 +37,10 @@ export function useRelatoVoz(aoTranscrever: (relato: RelatoVozSuporteIa) => void
   const cronometroRef = useRef<number | null>(null);
   const animacaoRef = useRef<number | null>(null);
   // Callbacks mais recentes, lidos no onstop do MediaRecorder (que roda fora do render).
-  const callbacksRef = useRef({ aoTranscrever, aoErro });
+  const callbacksRef = useRef({ enviar, aoTranscrever, aoErro });
   useEffect(() => {
-    callbacksRef.current = { aoTranscrever, aoErro };
-  }, [aoTranscrever, aoErro]);
+    callbacksRef.current = { enviar, aoTranscrever, aoErro };
+  }, [enviar, aoTranscrever, aoErro]);
 
   const liberarRecursos = useCallback(() => {
     if (cronometroRef.current !== null) window.clearInterval(cronometroRef.current);
@@ -70,7 +74,7 @@ export function useRelatoVoz(aoTranscrever: (relato: RelatoVozSuporteIa) => void
   const iniciar = useCallback(async () => {
     const formato = escolherFormato();
     if (!formato || !navigator.mediaDevices?.getUserMedia) {
-      callbacksRef.current.aoErro('Este navegador não permite gravar áudio. Digite a descrição.');
+      callbacksRef.current.aoErro('Este navegador não permite gravar áudio. Escreva o relato.');
       return;
     }
 
@@ -100,9 +104,9 @@ export function useRelatoVoz(aoTranscrever: (relato: RelatoVozSuporteIa) => void
       }
       setEstado('transcrevendo');
       try {
-        const relato = await api.suporteIa.relatoVoz(audio, `relato.${formato.extensao}`);
-        if (relato.transcricao.trim()) {
-          callbacksRef.current.aoTranscrever(relato);
+        const resultado = await callbacksRef.current.enviar(audio, `relato.${formato.extensao}`);
+        if (resultado.transcricao.trim()) {
+          callbacksRef.current.aoTranscrever(resultado);
         } else {
           callbacksRef.current.aoErro('Não deu para entender o áudio. Tente falar mais perto do microfone.');
         }

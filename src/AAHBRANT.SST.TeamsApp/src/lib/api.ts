@@ -2849,6 +2849,41 @@ export interface Acidente {
   dataConclusaoInvestigacao?: string | null;
 }
 
+// Relato de ocorrência por IA — sugestão de preenchimento; nada é gravado até o técnico registrar.
+export interface PerguntaRelatoOcorrencia {
+  campo: string;
+  pergunta: string;
+}
+
+export interface RespostaPerguntaRelato {
+  pergunta: string;
+  resposta: string;
+}
+
+export interface RelatoOcorrenciaSugestao {
+  tipo: number;
+  gravidade: number;
+  local: string | null;
+  data: string | null;
+  hora: string | null;
+  descricao: string;
+  lesao: string | null;
+  consequencia: string | null;
+  atendimento: string | null;
+  houveAfastamento: boolean;
+  diasAfastamento: number | null;
+  atividadeId: string | null;
+  trabalhadoresIds: string[];
+  perguntas: PerguntaRelatoOcorrencia[];
+  avisos: string[];
+}
+
+export interface RelatoOcorrenciaResposta {
+  transcricao: string;
+  // null quando a classificação falhou: só a transcrição volta, para o técnico completar.
+  sugestao: RelatoOcorrenciaSugestao | null;
+}
+
 export interface NovoAcidente {
   tipo: number;
   obraId: string;
@@ -3335,6 +3370,22 @@ async function baixarArquivoRelatorio(caminho: string): Promise<Blob> {
     throw new Error(extrairMensagemErro(corpo, response.status, response.statusText));
   }
   return response.blob();
+}
+
+async function enviarAudioAcidente<T>(caminho: string, audio: Blob, nomeArquivo: string, obraId?: string): Promise<T> {
+  const formData = new FormData();
+  formData.append('audio', audio, nomeArquivo);
+  if (obraId) formData.append('obraId', obraId);
+  const response = await fetch(`${API_BASE_URL}${caminho}`, {
+    method: 'POST',
+    headers: await montarHeadersAuth(),
+    body: formData,
+  });
+  if (!response.ok) {
+    const corpo = await response.text().catch(() => '');
+    throw new Error(extrairMensagemErro(corpo, response.status, response.statusText));
+  }
+  return (await response.json()) as T;
 }
 
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
@@ -5270,6 +5321,16 @@ export const api = {
       }),
   },
   acidentes: {
+    relatoTexto: (obraId: string, relato: string, complementos: RespostaPerguntaRelato[] = []) =>
+      request<RelatoOcorrenciaResposta>('/api/acidentes/relato-texto', {
+        method: 'POST',
+        body: JSON.stringify({ obraId, relato, complementos }),
+      }),
+    // Multipart, fora de request<T> (que força JSON) e do motor offline (depende do Azure OpenAI).
+    relatoVoz: (obraId: string) => (audio: Blob, nomeArquivo: string) =>
+      enviarAudioAcidente<RelatoOcorrenciaResposta>('/api/acidentes/relato-voz', audio, nomeArquivo, obraId),
+    transcrever: (audio: Blob, nomeArquivo: string) =>
+      enviarAudioAcidente<{ transcricao: string }>('/api/acidentes/transcrever', audio, nomeArquivo),
     anexarFoto: async (id: string, ordem: number, foto: File) => {
       const form = new FormData();
       form.append('foto', foto); form.append('ordem', String(ordem)); anexarDadosFoto(form, foto);
