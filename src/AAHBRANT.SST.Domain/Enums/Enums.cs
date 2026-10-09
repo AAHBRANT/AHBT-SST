@@ -615,6 +615,14 @@ public enum StatusAcidente
 // Classificação de gravidade do acidente, usada para calcular Dias Debitados na Taxa de
 // Gravidade (NBR 14280, ver TabelaDiasDebitados). Vocabulário não citado literalmente na Base
 // de Conhecimento — proposta própria, mesma natureza de StatusAcidente acima.
+// Reunião de análise de acidente no Teams (ReuniaoAnaliseOcorrencia).
+public enum SituacaoReuniaoTeams
+{
+    Pendente = 1,
+    Criada = 2,
+    NaoCriada = 3
+}
+
 public enum GravidadeAcidente
 {
     SemAfastamento = 1,

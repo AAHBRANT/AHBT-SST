@@ -26,6 +26,12 @@ public class DdsController : ControllerBase
     public async Task<IActionResult> Listar([FromQuery] Guid? obraId, CancellationToken ct)
         => Ok(await _mediator.Send(new ListarDdsQuery(obraId), ct));
 
+    // Temas agendados para o DDS da obra no dia (ex.: gerado por uma ocorrência da véspera).
+    [Authorize(Policy = "dds:ver")]
+    [HttpGet("temas-agendados")]
+    public async Task<IActionResult> TemasAgendados([FromQuery] Guid obraId, [FromQuery] DateTime data, CancellationToken ct)
+        => Ok(await _mediator.Send(new ListarTemasDdsAgendadosQuery(obraId, data), ct));
+
     [Authorize(Policy = "dds:ver")]
     [HttpGet("{id:guid}")]
     public async Task<IActionResult> ObterDetalhe(Guid id, CancellationToken ct)

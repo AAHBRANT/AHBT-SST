@@ -1,15 +1,11 @@
-using System.Net.Http.Json;
-using System.Text.Json;
 using AAHBRANT.SST.Application.SuporteIa;
 using AAHBRANT.SST.Domain.Enums;
-using Microsoft.Extensions.Logging;
-using Microsoft.Extensions.Options;
 
 namespace AAHBRANT.SST.Infrastructure.Integracao.SuporteIa;
 
 /// <summary>
-/// Classificação do relato via deployment gpt5mini (gpt-5.4-mini) do Azure OpenAI, com saída
-/// estruturada (json_schema strict) — o modelo só pode devolver valores válidos dos enums.
+/// Classificação do relato do Suporte IA via gpt5mini, com saída estruturada (json_schema strict)
+/// — o modelo só pode devolver valores válidos dos enums.
 /// </summary>
 public class AzureOpenAiClassificadorRelato : IClassificadorRelatoSuporteIa
 {
@@ -28,97 +24,36 @@ public class AzureOpenAiClassificadorRelato : IClassificadorRelatoSuporteIa
           e sem remover detalhes do que o usuário disse.
         """;
 
-    private static readonly object FormatoResposta = new
+    private static readonly object Schema = new
     {
-        type = "json_schema",
-        json_schema = new
+        type = "object",
+        additionalProperties = false,
+        required = new[] { "tipo", "severidade", "titulo", "modulo", "descricao" },
+        properties = new
         {
-            name = "chamado_suporte",
-            strict = true,
-            schema = new
-            {
-                type = "object",
-                additionalProperties = false,
-                required = new[] { "tipo", "severidade", "titulo", "modulo", "descricao" },
-                properties = new
-                {
-                    tipo = new { type = "string", @enum = new[] { "Erro", "Duvida", "Melhoria" } },
-                    severidade = new { type = "string", @enum = new[] { "Baixa", "Media", "Alta", "Critica" } },
-                    titulo = new { type = "string" },
-                    modulo = new { type = new[] { "string", "null" } },
-                    descricao = new { type = "string" },
-                },
-            },
+            tipo = new { type = "string", @enum = new[] { "Erro", "Duvida", "Melhoria" } },
+            severidade = new { type = "string", @enum = new[] { "Baixa", "Media", "Alta", "Critica" } },
+            titulo = new { type = "string" },
+            modulo = new { type = new[] { "string", "null" } },
+            descricao = new { type = "string" },
         },
     };
 
-    private readonly IHttpClientFactory _httpClientFactory;
-    private readonly IOptions<AzureOpenAiOptions> _options;
-    private readonly ILogger<AzureOpenAiClassificadorRelato> _logger;
+    private readonly AzureOpenAiChatJsonCliente _chat;
 
-    public AzureOpenAiClassificadorRelato(
-        IHttpClientFactory httpClientFactory,
-        IOptions<AzureOpenAiOptions> options,
-        ILogger<AzureOpenAiClassificadorRelato> logger)
-    {
-        _httpClientFactory = httpClientFactory;
-        _options = options;
-        _logger = logger;
-    }
+    public AzureOpenAiClassificadorRelato(AzureOpenAiChatJsonCliente chat) => _chat = chat;
 
     public async Task<ChamadoSugeridoSuporteIa> ClassificarAsync(string relato, CancellationToken ct)
     {
-        var opcoes = _options.Value;
-        if (string.IsNullOrWhiteSpace(opcoes.Endpoint) || string.IsNullOrWhiteSpace(opcoes.ApiKey))
-            throw new InvalidOperationException("Classificação por IA não configurada. Configure AzureOpenAI:Endpoint e AzureOpenAI:ApiKey.");
+        var sugestao = await _chat.ObterAsync<RespostaModelo>(InstrucoesSistema, relato, "chamado_suporte", Schema, ct);
 
-        var url = $"{opcoes.Endpoint.TrimEnd('/')}/openai/deployments/{opcoes.DeploymentChat}/chat/completions?api-version={opcoes.ApiVersionChat}";
-        var corpo = new
-        {
-            messages = new object[]
-            {
-                new { role = "system", content = InstrucoesSistema },
-                new { role = "user", content = relato },
-            },
-            max_completion_tokens = 2000,
-            reasoning_effort = "low",
-            response_format = FormatoResposta,
-        };
-
-        using var requisicao = new HttpRequestMessage(HttpMethod.Post, url) { Content = JsonContent.Create(corpo) };
-        requisicao.Headers.Add("api-key", opcoes.ApiKey);
-
-        var cliente = _httpClientFactory.CreateClient();
-        cliente.Timeout = TimeSpan.FromSeconds(60);
-        using var resposta = await cliente.SendAsync(requisicao, ct);
-
-        if (!resposta.IsSuccessStatusCode)
-        {
-            var erro = await resposta.Content.ReadAsStringAsync(ct);
-            _logger.LogError("Falha na classificação Azure OpenAI ({Status}): {Corpo}", (int)resposta.StatusCode, erro);
-            throw new InvalidOperationException("A IA não conseguiu classificar o relato agora.");
-        }
-
-        using var json = await JsonDocument.ParseAsync(await resposta.Content.ReadAsStreamAsync(ct), cancellationToken: ct);
-        var conteudo = json.RootElement.GetProperty("choices")[0].GetProperty("message").GetProperty("content").GetString()
-            ?? throw new InvalidOperationException("A IA devolveu uma resposta vazia.");
-
-        var sugestao = JsonSerializer.Deserialize<RespostaModelo>(conteudo, new JsonSerializerOptions(JsonSerializerDefaults.Web))
-            ?? throw new InvalidOperationException("A IA devolveu uma resposta inválida.");
-
+        // Mesmos limites do CriarSolicitacaoSuporteIaCommandValidator.
         return new ChamadoSugeridoSuporteIa(
             Enum.TryParse<TipoSolicitacaoSuporteIa>(sugestao.Tipo, out var tipo) ? tipo : TipoSolicitacaoSuporteIa.Duvida,
             Enum.TryParse<SeveridadeSolicitacaoSuporteIa>(sugestao.Severidade, out var severidade) ? severidade : SeveridadeSolicitacaoSuporteIa.Media,
-            Limitar(sugestao.Titulo, 180),
-            string.IsNullOrWhiteSpace(sugestao.Modulo) ? null : Limitar(sugestao.Modulo, 120),
-            Limitar(sugestao.Descricao, 4000));
-    }
-
-    // Mesmos limites do CriarSolicitacaoSuporteIaCommandValidator, para a sugestão nunca ser recusada.
-    private static string Limitar(string? texto, int maximo)
-    {
-        var limpo = (texto ?? string.Empty).Trim();
-        return limpo.Length <= maximo ? limpo : limpo[..maximo].TrimEnd();
+            AzureOpenAiChatJsonCliente.Limitar(sugestao.Titulo, 180),
+            AzureOpenAiChatJsonCliente.LimitarOuNulo(sugestao.Modulo, 120),
+            AzureOpenAiChatJsonCliente.Limitar(sugestao.Descricao, 4000));
     }
 
     private sealed record RespostaModelo(string? Tipo, string? Severidade, string? Titulo, string? Modulo, string? Descricao);

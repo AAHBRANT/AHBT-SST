@@ -1048,6 +1048,33 @@ public static class NovidadesSeeder
                     "Para abrir um chamado era preciso digitar e escolher tipo, severidade, título, módulo e descrição.",
                     "Clique em \"Relatar por voz\", fale o problema e clique em \"Parar e preencher\". A IA preenche o chamado inteiro; você confere, corrige se quiser e clica em \"Abrir chamado\". O áudio não é salvo."),
             }),
+        new(
+            Versao: "5.55.0",
+            Titulo: "Ocorrências: relate e a IA monta o registro e o plano de ação",
+            DataPublicacao: new DateTime(2026, 10, 9, 0, 0, 0, DateTimeKind.Utc),
+            Itens: new[]
+            {
+                new NovidadeSeedItem(CategoriaNovidade.Novidade,
+                    "Relato por voz ou por escrito no registro de ocorrência",
+                    "O registro de acidente ou incidente era preenchido campo a campo.",
+                    "Escolha a obra, clique em \"Relatar por voz\" ou \"Escrever relato\" e conte o que aconteceu. A IA preenche tipo, gravidade, atividade, local, data, hora, lesão, atendimento e afastamento, localiza os funcionários citados no cadastro da obra e pergunta o que faltou. Você revisa e registra."),
+                new NovidadeSeedItem(CategoriaNovidade.Novidade,
+                    "Análise de causas e plano de ação já prontos para revisar",
+                    "A investigação e o plano de ação eram montados à mão depois do registro.",
+                    "A IA sugere a análise preliminar de causas e de 3 a 5 ações com responsável, prazo e a base de cada uma (PGR da obra, requisito legal cadastrado ou hierarquia de prevenção da NR-01). Ação sem base cadastrada aparece marcada para validação."),
+                new NovidadeSeedItem(CategoriaNovidade.Novidade,
+                    "Tema de DDS obrigatório para o dia seguinte",
+                    "Não havia ligação entre a ocorrência e o DDS da obra.",
+                    "Toda ocorrência registrada por relato gera um tema e um roteiro de DDS para o próximo dia útil da obra. No DDS daquele dia o tema já vem fixo, e ao encerrar o DDS a ação do plano é concluída sozinha."),
+                new NovidadeSeedItem(CategoriaNovidade.Novidade,
+                    "Reunião de análise no Teams em todo acidente",
+                    "A reunião de análise do acidente era marcada por fora do sistema.",
+                    "Em todo acidente e doença ocupacional, o sistema marca a reunião de análise no Teams no próximo dia útil, no primeiro horário livre da sua agenda, com o Engenheiro de Segurança, o Gestor de Obra e o Gestor QSMS. O link fica na tela da ocorrência."),
+                new NovidadeSeedItem(CategoriaNovidade.Melhoria,
+                    "Aviso de prazo da ação vai para o responsável",
+                    "O alerta de ação de plano atrasada ia para um responsável fixo do módulo.",
+                    "O aviso de prazo das ações de plano (ocorrências e não conformidades) vai para o responsável da própria ação. Ação sem responsável continua avisando o responsável do módulo."),
+            }),
     };
 
     public static async Task ExecutarAsync(IServiceProvider services, CancellationToken ct = default)

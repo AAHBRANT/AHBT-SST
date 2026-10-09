@@ -2716,6 +2716,8 @@ export interface AcaoPlano {
   origemId: string;
   tipo: number;
   descricao: string;
+  // De onde veio a ação sugerida pela IA (PGR, requisito legal, método ou "sem base, validar").
+  fundamentacao?: string | null;
   responsavelUsuarioId?: string | null;
   responsavelUsuarioNome?: string | null;
   prioridade: number;
@@ -2849,6 +2851,119 @@ export interface Acidente {
   dataConclusaoInvestigacao?: string | null;
 }
 
+// Relato de ocorrência por IA — sugestão de preenchimento; nada é gravado até o técnico registrar.
+export interface PerguntaRelatoOcorrencia {
+  campo: string;
+  pergunta: string;
+}
+
+export interface RespostaPerguntaRelato {
+  pergunta: string;
+  resposta: string;
+}
+
+export interface RelatoOcorrenciaSugestao {
+  tipo: number;
+  gravidade: number;
+  local: string | null;
+  data: string | null;
+  hora: string | null;
+  descricao: string;
+  lesao: string | null;
+  consequencia: string | null;
+  atendimento: string | null;
+  houveAfastamento: boolean;
+  diasAfastamento: number | null;
+  atividadeId: string | null;
+  trabalhadoresIds: string[];
+  perguntas: PerguntaRelatoOcorrencia[];
+  avisos: string[];
+}
+
+export interface RelatoOcorrenciaResposta {
+  transcricao: string;
+  // null quando a classificação falhou: só a transcrição volta, para o técnico completar.
+  sugestao: RelatoOcorrenciaSugestao | null;
+}
+
+// Análise de causas + plano de ação sugeridos pela IA para a ocorrência ainda não registrada.
+export interface AcaoPlanoSugerida {
+  tipo: number;
+  descricao: string;
+  prioridade: number;
+  prazo: string;
+  responsavelUsuarioId: string | null;
+  responsavelNome: string | null;
+  papelResponsavel: string;
+  avisoResponsavel: string | null;
+  fundamentacao: string;
+  baseConfirmada: boolean;
+}
+
+export interface PlanoAcaoSugerido {
+  metodologia: number | null;
+  causas: string | null;
+  acoes: AcaoPlanoSugerida[];
+  // Tema obrigatório do DDS do próximo dia útil da obra.
+  temaDds: { nome: string; roteiro: string; data: string };
+  // Só em Acidente e Doença ocupacional: reunião de análise obrigatória no Teams.
+  reuniao: ReuniaoSugerida | null;
+}
+
+export interface ParticipanteReuniao {
+  usuarioId: string;
+  nome: string;
+  papel: string;
+  organizador: boolean;
+}
+
+export interface ReuniaoSugerida {
+  inicio: string; // horário de Brasília, sem fuso
+  duracaoMinutos: number;
+  participantes: ParticipanteReuniao[];
+  aviso: string | null;
+}
+
+export const SituacaoReuniaoTeams = { Pendente: 1, Criada: 2, NaoCriada: 3 } as const;
+
+export interface ReuniaoAnalise {
+  inicio: string;
+  fim: string;
+  participantes: string[];
+  situacao: number;
+  linkTeams: string | null;
+  motivoFalha: string | null;
+}
+
+export interface TemaDdsAgendado {
+  id: string;
+  catalogoTemaDdsId: string;
+  nome: string;
+  roteiro: string | null;
+  descricaoOrigem: string | null;
+}
+
+export interface PlanoSugeridoOcorrenciaRequisicao {
+  obraId: string;
+  atividadeId: string | null;
+  tipo: number;
+  gravidade: number;
+  descricao: string;
+  lesao: string | null;
+  consequencia: string | null;
+  atendimento: string | null;
+}
+
+// Ação do plano enviada junto com o registro da ocorrência (já revisada pelo técnico).
+export interface AcaoPlanoNovaOcorrencia {
+  tipo: number;
+  descricao: string;
+  prioridade: number;
+  prazo: string | null;
+  responsavelUsuarioId: string | null;
+  fundamentacao: string | null;
+}
+
 export interface NovoAcidente {
   tipo: number;
   obraId: string;
@@ -2870,6 +2985,12 @@ export interface NovoAcidente {
   diasDebitadosInformados?: number | null;
   metodologiaInvestigacao?: number | null;
   causas?: string | null;
+  // Só no registro por relato (IA): plano de ação revisado, criado junto com a ocorrência.
+  acoesPlano?: AcaoPlanoNovaOcorrencia[];
+  // Só no registro por relato (IA): tema obrigatório agendado para o DDS do próximo dia útil.
+  temaDds?: { nome: string; roteiro: string };
+  // Só em acidente por relato: reunião de análise obrigatória no Teams.
+  reuniao?: { inicio: string; duracaoMinutos: number; participantesUsuarioIds: string[] };
 }
 
 export type AtualizarAcidentePayload = NovoAcidente;
@@ -2878,6 +2999,7 @@ export interface AcidenteDetalhe {
   fotos: DdsFotoEvidencia[];
   acidente: Acidente;
   acoesPlano: AcaoPlano[];
+  reuniao?: ReuniaoAnalise | null;
 }
 
 // Lançamento mensal de HHT (Horas-Homem Trabalhadas) por obra, usado no cálculo da Taxa de
@@ -3335,6 +3457,22 @@ async function baixarArquivoRelatorio(caminho: string): Promise<Blob> {
     throw new Error(extrairMensagemErro(corpo, response.status, response.statusText));
   }
   return response.blob();
+}
+
+async function enviarAudioAcidente<T>(caminho: string, audio: Blob, nomeArquivo: string, obraId?: string): Promise<T> {
+  const formData = new FormData();
+  formData.append('audio', audio, nomeArquivo);
+  if (obraId) formData.append('obraId', obraId);
+  const response = await fetch(`${API_BASE_URL}${caminho}`, {
+    method: 'POST',
+    headers: await montarHeadersAuth(),
+    body: formData,
+  });
+  if (!response.ok) {
+    const corpo = await response.text().catch(() => '');
+    throw new Error(extrairMensagemErro(corpo, response.status, response.statusText));
+  }
+  return (await response.json()) as T;
 }
 
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
@@ -4993,6 +5131,8 @@ export const api = {
     excluir: (id: string) => request<void>(`/api/materiaisapoio/${id}`, { method: 'DELETE' }),
   },
   dds: {
+    temasAgendados: (obraId: string, data: string) =>
+      request<TemaDdsAgendado[]>(`/api/dds/temas-agendados?obraId=${obraId}&data=${encodeURIComponent(data.slice(0, 10))}`),
     listar: (obraId?: string) => request<Dds[]>(`/api/dds${obraId ? `?obraId=${obraId}` : ''}`),
     obterDetalhe: (id: string) => request<DdsDetalhe>(`/api/dds/${id}`),
     listarFuncionarios: (id: string) => request<DdsFuncionario[]>(`/api/dds/${id}/funcionarios-disponiveis`),
@@ -5270,6 +5410,18 @@ export const api = {
       }),
   },
   acidentes: {
+    planoSugerido: (dados: PlanoSugeridoOcorrenciaRequisicao) =>
+      request<PlanoAcaoSugerido>('/api/acidentes/plano-sugerido', { method: 'POST', body: JSON.stringify(dados) }),
+    relatoTexto: (obraId: string, relato: string, complementos: RespostaPerguntaRelato[] = []) =>
+      request<RelatoOcorrenciaResposta>('/api/acidentes/relato-texto', {
+        method: 'POST',
+        body: JSON.stringify({ obraId, relato, complementos }),
+      }),
+    // Multipart, fora de request<T> (que força JSON) e do motor offline (depende do Azure OpenAI).
+    relatoVoz: (obraId: string) => (audio: Blob, nomeArquivo: string) =>
+      enviarAudioAcidente<RelatoOcorrenciaResposta>('/api/acidentes/relato-voz', audio, nomeArquivo, obraId),
+    transcrever: (audio: Blob, nomeArquivo: string) =>
+      enviarAudioAcidente<{ transcricao: string }>('/api/acidentes/transcrever', audio, nomeArquivo),
     anexarFoto: async (id: string, ordem: number, foto: File) => {
       const form = new FormData();
       form.append('foto', foto); form.append('ordem', String(ordem)); anexarDadosFoto(form, foto);

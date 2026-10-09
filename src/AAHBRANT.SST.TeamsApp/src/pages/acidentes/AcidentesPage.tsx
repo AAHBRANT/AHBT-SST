@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState, type ReactElement } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import {
   Abas,
@@ -20,6 +20,7 @@ import {
   Textarea,
   type Coluna,
   type Tom,
+  tokensUi,
 } from '@ui';
 import { AddCircle24Regular } from '@fluentui/react-icons';
 import {
@@ -33,9 +34,39 @@ import {
   type Atividade,
   type NovoAcidente,
   type Obra,
+  type RelatoOcorrenciaSugestao,
+  type Usuario,
   type Trabalhador,
 } from '../../lib/api';
 import { HhtMensalTab } from './HhtMensalTab';
+import { RelatoOcorrenciaIa } from './RelatoOcorrenciaIa';
+import {
+  novaChaveAcao,
+  PlanoAcaoOcorrenciaIa,
+  type AcaoPlanoEmEdicao,
+  type ReuniaoEmEdicao,
+  type TemaDdsEmEdicao,
+} from './PlanoAcaoOcorrenciaIa';
+
+// Reunião de análise obrigatória só em Acidente (1) e Doença ocupacional (6).
+const exigeReuniao = (tipo: number) => tipo === 1 || tipo === 6;
+
+// Campos que a IA pode preencher a partir do relato. Mostram o selo "IA" até o técnico editá-los.
+type CampoIa =
+  | 'tipo' | 'atividadeId' | 'local' | 'data' | 'hora' | 'trabalhadoresIds' | 'descricao' | 'lesao'
+  | 'consequencia' | 'atendimento' | 'houveAfastamento' | 'diasAfastamento' | 'gravidade';
+
+const seloIa = {
+  fontSize: 10,
+  fontWeight: 700,
+  lineHeight: '14px',
+  padding: '0 7px',
+  borderRadius: 10,
+  color: tokensUi.status.info.tinta,
+  backgroundColor: tokensUi.status.info.fundo,
+} as const;
+
+const destaqueIa = { backgroundColor: tokensUi.status.info.fundo } as const;
 
 function novaInicial(): NovoAcidente {
   return {
@@ -89,6 +120,163 @@ export function AcidentesPage({ tipoFixo }: { tipoFixo?: number } = {}) {
   const [erro, setErro] = useState<string | null>(null);
   const [carregando, setCarregando] = useState(false);
   const [aba, setAba] = useState<'ocorrencias' | 'hht'>('ocorrencias');
+  const [camposIa, setCamposIa] = useState<Set<CampoIa>>(new Set());
+  const [editados, setEditados] = useState<Set<CampoIa>>(new Set());
+  const [avisosIa, setAvisosIa] = useState<string[]>([]);
+  // Etapa 2 do registro por relato: análise de causas + plano de ação sugeridos pela IA.
+  const [versaoRelato, setVersaoRelato] = useState(0);
+  const [metodologia, setMetodologia] = useState<number | null>(null);
+  const [causas, setCausas] = useState('');
+  const [acoesPlano, setAcoesPlano] = useState<AcaoPlanoEmEdicao[]>([]);
+  const [temaDds, setTemaDds] = useState<TemaDdsEmEdicao | null>(null);
+  const [reuniao, setReuniao] = useState<ReuniaoEmEdicao | null>(null);
+  const [usuarios, setUsuarios] = useState<Usuario[]>([]);
+  const [gerandoPlano, setGerandoPlano] = useState(false);
+
+  // Alteração feita pelo técnico: tira o selo "IA" e protege o campo nas próximas rodadas de perguntas.
+  function alterar(campo: CampoIa, patch: Partial<NovoAcidente>) {
+    setNova((atual) => ({ ...atual, ...patch }));
+    setCamposIa((atual) => {
+      if (!atual.has(campo)) return atual;
+      const proximo = new Set(atual);
+      proximo.delete(campo);
+      return proximo;
+    });
+    setEditados((atual) => new Set(atual).add(campo));
+  }
+
+  const aplicarSugestao = useCallback(
+    (s: RelatoOcorrenciaSugestao, primeiraRodada: boolean) => {
+      const protegidos = primeiraRodada ? new Set<CampoIa>() : editados;
+      const preenchidos = new Set<CampoIa>();
+      setNova((atual) => {
+        const proxima = { ...atual };
+        const definir = <K extends CampoIa>(campo: K, valor: NovoAcidente[K] | null | undefined, vazio: NovoAcidente[K]) => {
+          if (protegidos.has(campo)) return;
+          if (valor === null || valor === undefined || valor === '') {
+            // Relato novo substitui o formulário; nas rodadas de perguntas, "não sei" não apaga nada.
+            if (primeiraRodada) proxima[campo] = vazio;
+            return;
+          }
+          proxima[campo] = valor;
+          preenchidos.add(campo);
+        };
+        definir('tipo', s.tipo, 1);
+        definir('atividadeId', s.atividadeId, '');
+        definir('local', s.local, '');
+        definir('data', s.data, '');
+        definir('hora', s.hora, '');
+        definir('descricao', s.descricao, '');
+        definir('lesao', s.lesao, '');
+        definir('consequencia', s.consequencia, '');
+        definir('atendimento', s.atendimento, '');
+        definir('houveAfastamento', s.houveAfastamento, false);
+        definir('diasAfastamento', s.diasAfastamento ?? undefined, undefined);
+        definir('gravidade', s.gravidade, GravidadeAcidente.SemAfastamento);
+        if (!protegidos.has('trabalhadoresIds') && (primeiraRodada || s.trabalhadoresIds.length > 0)) {
+          proxima.trabalhadoresIds = s.trabalhadoresIds;
+          if (s.trabalhadoresIds.length > 0) preenchidos.add('trabalhadoresIds');
+        }
+        return proxima;
+      });
+      setCamposIa((atual) => {
+        const base = primeiraRodada ? new Set<CampoIa>() : new Set([...atual].filter((c) => !protegidos.has(c)));
+        preenchidos.forEach((c) => base.add(c));
+        return base;
+      });
+      if (primeiraRodada) setEditados(new Set());
+      setAvisosIa(s.avisos);
+      setErro(null);
+      setVersaoRelato((v) => v + 1);
+    },
+    [editados],
+  );
+
+  const aoSoTranscrever = useCallback((transcricao: string) => {
+    setNova((atual) => ({ ...atual, descricao: transcricao }));
+    setCamposIa(new Set<CampoIa>(['descricao']));
+    setAvisosIa(['A fala foi transcrita na descrição, mas a IA não conseguiu classificar. Complete os outros campos.']);
+    setVersaoRelato((v) => v + 1);
+  }, []);
+
+  async function gerarPlano() {
+    if (!nova.obraId || !nova.descricao.trim()) return;
+    try {
+      setGerandoPlano(true);
+      const plano = await api.acidentes.planoSugerido({
+        obraId: nova.obraId,
+        atividadeId: nova.atividadeId || null,
+        tipo: nova.tipo,
+        gravidade: nova.gravidade,
+        descricao: nova.descricao,
+        lesao: nova.lesao || null,
+        consequencia: nova.consequencia || null,
+        atendimento: nova.atendimento || null,
+      });
+      setMetodologia(plano.metodologia);
+      setCausas(plano.causas ?? '');
+      setTemaDds({ nome: plano.temaDds.nome, roteiro: plano.temaDds.roteiro, data: plano.temaDds.data.slice(0, 10) });
+      setReuniao(
+        plano.reuniao
+          ? {
+              data: plano.reuniao.inicio.slice(0, 10),
+              hora: plano.reuniao.inicio.slice(11, 16),
+              duracaoMinutos: plano.reuniao.duracaoMinutos,
+              participantes: plano.reuniao.participantes,
+              aviso: plano.reuniao.aviso,
+            }
+          : null,
+      );
+      setAcoesPlano(
+        plano.acoes.map((a) => ({
+          chave: novaChaveAcao(),
+          tipo: a.tipo,
+          descricao: a.descricao,
+          prioridade: a.prioridade,
+          prazo: a.prazo.slice(0, 10),
+          responsavelUsuarioId: a.responsavelUsuarioId ?? '',
+          papelResponsavel: a.papelResponsavel,
+          avisoResponsavel: a.avisoResponsavel,
+          fundamentacao: a.fundamentacao,
+          baseConfirmada: a.baseConfirmada,
+          sugeridaPelaIa: true,
+        })),
+      );
+    } catch (e) {
+      setErro(e instanceof Error ? e.message : 'A IA não conseguiu montar o plano de ação agora.');
+    } finally {
+      setGerandoPlano(false);
+    }
+  }
+
+  // Cada nova rodada do relato (preenchimento ou respostas às perguntas) refaz a análise com o
+  // formulário já atualizado — o efeito roda depois do render, com o `nova` novo.
+  useEffect(() => {
+    if (versaoRelato > 0) void gerarPlano();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [versaoRelato]);
+
+  useEffect(() => {
+    api.usuarios
+      .listar(1)
+      .then(setUsuarios)
+      .catch(() => setUsuarios([]));
+  }, []);
+
+  function rotulo(texto: string, campo: CampoIa): ReactElement | string {
+    return camposIa.has(campo) ? (
+      <span style={{ display: 'inline-flex', gap: 6, alignItems: 'center' }}>
+        {texto} <span style={seloIa}>IA</span>
+      </span>
+    ) : (
+      texto
+    );
+  }
+
+  const estiloCampo = (campo: CampoIa) => (camposIa.has(campo) ? destaqueIa : undefined);
+  const nomesSelecionados = trabalhadores
+    .filter((t) => nova.trabalhadoresIds?.includes(t.id))
+    .map((t) => (t.matricula ? `${t.nome} (${t.matricula})` : t.nome));
 
   async function carregar() {
     try {
@@ -143,6 +331,20 @@ export function AcidentesPage({ tipoFixo }: { tipoFixo?: number } = {}) {
       setErro('Informe a descrição da ocorrência.');
       return;
     }
+    // Registro por relato: o tema do DDS do dia seguinte é obrigatório (regra do usuário, 08/10/2026).
+    if (versaoRelato > 0 && (!temaDds?.nome.trim() || !temaDds.roteiro.trim())) {
+      setErro(gerandoPlano ? 'Aguarde a IA terminar o plano de ação.' : 'Informe o tema e o roteiro do DDS do dia seguinte.');
+      return;
+    }
+    const enviarReuniao = versaoRelato > 0 && exigeReuniao(nova.tipo);
+    if (enviarReuniao && (!reuniao?.data || !reuniao.hora)) {
+      setErro(
+        reuniao
+          ? 'Informe a data e o horário da reunião de análise do acidente.'
+          : 'Para acidente, gere o plano novamente para sugerir a reunião de análise.',
+      );
+      return;
+    }
     try {
       setCarregando(true);
       setErro(null);
@@ -157,9 +359,38 @@ export function AcidentesPage({ tipoFixo }: { tipoFixo?: number } = {}) {
         atendimento: nova.atendimento || null,
         diasAfastamento: nova.houveAfastamento ? nova.diasAfastamento ?? null : null,
         numeroCat: nova.numeroCat || null,
-        causas: nova.causas || null,
+        causas: versaoRelato > 0 ? causas.trim() || null : nova.causas || null,
+        metodologiaInvestigacao: versaoRelato > 0 ? metodologia : nova.metodologiaInvestigacao ?? null,
+        acoesPlano: acoesPlano
+          .filter((a) => a.descricao.trim())
+          .map((a) => ({
+            tipo: a.tipo,
+            descricao: a.descricao.trim(),
+            prioridade: a.prioridade,
+            prazo: a.prazo || null,
+            responsavelUsuarioId: a.responsavelUsuarioId || null,
+            fundamentacao: a.fundamentacao,
+          })),
+        temaDds: versaoRelato > 0 && temaDds ? { nome: temaDds.nome.trim(), roteiro: temaDds.roteiro.trim() } : undefined,
+        reuniao:
+          enviarReuniao && reuniao
+            ? {
+                inicio: `${reuniao.data}T${reuniao.hora}:00`,
+                duracaoMinutos: reuniao.duracaoMinutos,
+                participantesUsuarioIds: reuniao.participantes.map((p) => p.usuarioId),
+              }
+            : undefined,
       });
       setNova(novaInicial());
+      setCamposIa(new Set());
+      setEditados(new Set());
+      setAvisosIa([]);
+      setVersaoRelato(0);
+      setMetodologia(null);
+      setCausas('');
+      setAcoesPlano([]);
+      setTemaDds(null);
+      setReuniao(null);
       await carregar();
     } catch (e) {
       setErro(e instanceof Error ? e.message : 'Falha ao registrar ocorrência.');
@@ -206,11 +437,46 @@ export function AcidentesPage({ tipoFixo }: { tipoFixo?: number } = {}) {
       {aba === 'ocorrencias' && (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
           <Card titulo="Registrar acidente / incidente">
+            {/* minmax(0, 1fr): sem isso o grid cresce com o texto do aviso em vez de quebrar a linha. */}
+            <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr)', gap: 12, marginBottom: 16 }}>
+              <div style={{ maxWidth: 420 }}>
+                <Field label="Obra" required>
+                  <Select value={nova.obraId} onChange={(_, d) => setNova({ ...nova, obraId: d.value, trabalhadoresIds: [] })}>
+                    <option value="">Selecione</option>
+                    {obras.map((obra) => (
+                      <option key={obra.id} value={obra.id}>
+                        {obra.nome}
+                      </option>
+                    ))}
+                  </Select>
+                </Field>
+              </div>
+              <RelatoOcorrenciaIa
+                obraId={nova.obraId}
+                desabilitado={carregando}
+                aoSugerir={aplicarSugestao}
+                aoSoTranscrever={aoSoTranscrever}
+                aoErro={setErro}
+              />
+              {camposIa.size > 0 && (
+                <FeedbackInline tom="info">
+                  A IA preencheu o registro a partir do relato. Revise cada campo antes de registrar: tipo, gravidade
+                  e afastamento alimentam os indicadores da NBR 14280.
+                </FeedbackInline>
+              )}
+              {avisosIa.length > 0 && (
+                <FeedbackInline tom="aviso" aoFechar={() => setAvisosIa([])}>
+                  {avisosIa.map((a) => (
+                    <div key={a}>{a}</div>
+                  ))}
+                </FeedbackInline>
+              )}
+            </div>
             <FormSection titulo="Dados Gerais da Ocorrência" numero={1} primeira>
               <FormGrid>
                 <Campo span={2}>
-                  <Field label="Tipo" required>
-                    <Select value={String(nova.tipo)} onChange={(_, d) => setNova({ ...nova, tipo: Number(d.value) })}>
+                  <Field label={rotulo('Tipo', 'tipo')} required>
+                    <Select select={{ style: estiloCampo('tipo') }} value={String(nova.tipo)} onChange={(_, d) => alterar('tipo', { tipo: Number(d.value) })}>
                       {Object.entries(tipoOcorrenciaLabel).map(([valor, rotulo]) => (
                         <option key={valor} value={valor}>
                           {rotulo}
@@ -219,23 +485,12 @@ export function AcidentesPage({ tipoFixo }: { tipoFixo?: number } = {}) {
                     </Select>
                   </Field>
                 </Campo>
-                <Campo span={3}>
-                  <Field label="Obra" required>
-                    <Select value={nova.obraId} onChange={(_, d) => setNova({ ...nova, obraId: d.value, trabalhadoresIds: [] })}>
-                      <option value="">Selecione</option>
-                      {obras.map((obra) => (
-                        <option key={obra.id} value={obra.id}>
-                          {obra.nome}
-                        </option>
-                      ))}
-                    </Select>
-                  </Field>
-                </Campo>
                 <Campo span={4}>
-                  <Field label="Atividade">
+                  <Field label={rotulo('Atividade', 'atividadeId')}>
                     <Select
+                      select={{ style: estiloCampo('atividadeId') }}
                       value={nova.atividadeId ?? ''}
-                      onChange={(_, d) => setNova({ ...nova, atividadeId: d.value })}
+                      onChange={(_, d) => alterar('atividadeId', { atividadeId: d.value })}
                     >
                       <option value="">Nenhuma</option>
                       {atividades.map((atividade) => (
@@ -247,31 +502,38 @@ export function AcidentesPage({ tipoFixo }: { tipoFixo?: number } = {}) {
                   </Field>
                 </Campo>
                 <Campo span={4}>
-                  <Field label="Local" required>
-                    <Input value={nova.local} onChange={(_, d) => setNova({ ...nova, local: d.value })} />
+                  <Field label={rotulo('Local', 'local')} required>
+                    <Input style={estiloCampo('local')} value={nova.local} onChange={(_, d) => alterar('local', { local: d.value })} />
                   </Field>
                 </Campo>
                 <Campo span={2}>
-                  <Field label="Data" required>
-                    <CampoData value={nova.data} onChange={(_, d) => setNova({ ...nova, data: d.value })} />
+                  <Field label={rotulo('Data', 'data')} required>
+                    <CampoData style={estiloCampo('data')} value={nova.data} onChange={(_, d) => alterar('data', { data: d.value })} />
                   </Field>
                 </Campo>
                 <Campo span={2}>
-                  <Field label="Hora">
-                    <Input type="time" value={nova.hora ?? ''} onChange={(_, d) => setNova({ ...nova, hora: d.value })} />
+                  <Field label={rotulo('Hora', 'hora')}>
+                    <Input style={estiloCampo('hora')} type="time" value={nova.hora ?? ''} onChange={(_, d) => alterar('hora', { hora: d.value })} />
                   </Field>
                 </Campo>
                 <Campo span={12}>
                   <Field
-                    label={`Funcionários envolvidos${(nova.trabalhadoresIds?.length ?? 0) > 0 ? ` (${nova.trabalhadoresIds?.length})` : ''}`}
-                    hint={nova.obraId ? 'Selecione todos os funcionários envolvidos na ocorrência. Deixe vazio se não houve funcionário envolvido.' : undefined}
+                    label={rotulo(`Funcionários envolvidos${(nova.trabalhadoresIds?.length ?? 0) > 0 ? ` (${nova.trabalhadoresIds?.length})` : ''}`, 'trabalhadoresIds')}
+                    hint={
+                      !nova.obraId
+                        ? undefined
+                        : nomesSelecionados.length > 0
+                          // A lista tem centenas de nomes: sem isso, quem a IA marcou fica escondido no meio dela.
+                          ? `Selecionados: ${nomesSelecionados.join(', ')}`
+                          : 'Selecione todos os funcionários envolvidos na ocorrência. Deixe vazio se não houve funcionário envolvido.'
+                    }
                   >
                     {nova.obraId ? (
                       <ListaSelecaoMultipla
                         aria-label="Funcionários envolvidos"
                         opcoes={trabalhadores.map((t) => ({ id: t.id, rotulo: t.matricula ? `${t.nome} (${t.matricula})` : t.nome }))}
                         selecionados={nova.trabalhadoresIds ?? []}
-                        aoMudar={(atualizar) => setNova((atual) => ({ ...atual, trabalhadoresIds: atualizar(atual.trabalhadoresIds ?? []) }))}
+                        aoMudar={(atualizar) => alterar('trabalhadoresIds', { trabalhadoresIds: atualizar(nova.trabalhadoresIds ?? []) })}
                       />
                     ) : (
                       <Text>Selecione a obra primeiro.</Text>
@@ -284,30 +546,31 @@ export function AcidentesPage({ tipoFixo }: { tipoFixo?: number } = {}) {
             <FormSection titulo="Lesão, Gravidade e Consequências" numero={2}>
               <FormGrid>
                 <Campo span={12}>
-                  <Field label="Descrição" required>
-                    <Textarea value={nova.descricao} onChange={(_, d) => setNova({ ...nova, descricao: d.value })} />
+                  <Field label={rotulo('Descrição', 'descricao')} required>
+                    <Textarea style={estiloCampo('descricao')} resize="vertical" rows={5} value={nova.descricao} onChange={(_, d) => alterar('descricao', { descricao: d.value })} />
                   </Field>
                 </Campo>
                 <Campo span={4}>
-                  <Field label="Lesão">
-                    <Input value={nova.lesao ?? ''} onChange={(_, d) => setNova({ ...nova, lesao: d.value })} />
+                  <Field label={rotulo('Lesão', 'lesao')}>
+                    <Input style={estiloCampo('lesao')} value={nova.lesao ?? ''} onChange={(_, d) => alterar('lesao', { lesao: d.value })} />
                   </Field>
                 </Campo>
                 <Campo span={4}>
-                  <Field label="Consequência">
-                    <Input value={nova.consequencia ?? ''} onChange={(_, d) => setNova({ ...nova, consequencia: d.value })} />
+                  <Field label={rotulo('Consequência', 'consequencia')}>
+                    <Input style={estiloCampo('consequencia')} value={nova.consequencia ?? ''} onChange={(_, d) => alterar('consequencia', { consequencia: d.value })} />
                   </Field>
                 </Campo>
                 <Campo span={4}>
-                  <Field label="Atendimento prestado">
-                    <Input value={nova.atendimento ?? ''} onChange={(_, d) => setNova({ ...nova, atendimento: d.value })} />
+                  <Field label={rotulo('Atendimento prestado', 'atendimento')}>
+                    <Input style={estiloCampo('atendimento')} value={nova.atendimento ?? ''} onChange={(_, d) => alterar('atendimento', { atendimento: d.value })} />
                   </Field>
                 </Campo>
                 <Campo span={3}>
-                  <Field label="Houve afastamento?">
+                  <Field label={rotulo('Houve afastamento?', 'houveAfastamento')}>
                     <Select
+                      select={{ style: estiloCampo('houveAfastamento') }}
                       value={nova.houveAfastamento ? '1' : '0'}
-                      onChange={(_, d) => setNova({ ...nova, houveAfastamento: d.value === '1' })}
+                      onChange={(_, d) => alterar('houveAfastamento', { houveAfastamento: d.value === '1' })}
                     >
                       <option value="0">Não</option>
                       <option value="1">Sim</option>
@@ -316,22 +579,24 @@ export function AcidentesPage({ tipoFixo }: { tipoFixo?: number } = {}) {
                 </Campo>
                 {nova.houveAfastamento && (
                   <Campo span={3}>
-                    <Field label="Dias de afastamento">
+                    <Field label={rotulo('Dias de afastamento', 'diasAfastamento')}>
                       <Input
+                        style={estiloCampo('diasAfastamento')}
                         type="number"
                         min={0}
                         value={nova.diasAfastamento?.toString() ?? ''}
-                        onChange={(_, d) => setNova({ ...nova, diasAfastamento: d.value ? Number(d.value) : undefined })}
+                        onChange={(_, d) => alterar('diasAfastamento', { diasAfastamento: d.value ? Number(d.value) : undefined })}
                       />
                     </Field>
                   </Campo>
                 )}
                 <Campo span={3}>
-                  <Field label="Gravidade" required>
+                  <Field label={rotulo('Gravidade', 'gravidade')} required>
                     <Select
+                      select={{ style: estiloCampo('gravidade') }}
                       value={String(nova.gravidade)}
                       onChange={(_, d) =>
-                        setNova({ ...nova, gravidade: Number(d.value), diasDebitadosInformados: undefined })
+                        alterar('gravidade', { gravidade: Number(d.value), diasDebitadosInformados: undefined })
                       }
                     >
                       {Object.entries(gravidadeAcidenteLabel).map(([valor, rotulo]) => (
@@ -376,8 +641,26 @@ export function AcidentesPage({ tipoFixo }: { tipoFixo?: number } = {}) {
               </FormGrid>
             </FormSection>
 
+            {versaoRelato > 0 && (
+              <PlanoAcaoOcorrenciaIa
+                reuniao={exigeReuniao(nova.tipo) ? reuniao : null}
+                aoMudarReuniao={setReuniao}
+                temaDds={temaDds}
+                aoMudarTemaDds={setTemaDds}
+                metodologia={metodologia}
+                causas={causas}
+                acoes={acoesPlano}
+                usuarios={usuarios}
+                gerando={gerandoPlano}
+                aoMudarMetodologia={setMetodologia}
+                aoMudarCausas={setCausas}
+                aoMudarAcoes={setAcoesPlano}
+                aoGerarNovamente={() => void gerarPlano()}
+              />
+            )}
+
             <FormRodape>
-              <Button appearance="primary" icon={<AddCircle24Regular />} onClick={criar} disabled={carregando}>
+              <Button appearance="primary" icon={<AddCircle24Regular />} onClick={criar} disabled={carregando || gerandoPlano}>
                 Registrar
               </Button>
             </FormRodape>

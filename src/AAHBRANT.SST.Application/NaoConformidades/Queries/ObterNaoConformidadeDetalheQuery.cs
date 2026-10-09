@@ -54,6 +54,7 @@ public class ObterNaoConformidadeDetalheQueryHandler
                 OrigemId = a.OrigemId,
                 Tipo = a.Tipo,
                 Descricao = a.Descricao,
+                Fundamentacao = a.Fundamentacao,
                 ResponsavelUsuarioId = a.ResponsavelUsuarioId,
                 ResponsavelUsuarioNome = a.ResponsavelUsuario != null ? a.ResponsavelUsuario.Nome : null,
                 Prioridade = a.Prioridade,

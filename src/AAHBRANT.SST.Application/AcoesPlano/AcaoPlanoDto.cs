@@ -9,6 +9,7 @@ public class AcaoPlanoDto
     public Guid OrigemId { get; set; }
     public TipoAcaoPlano Tipo { get; set; }
     public string Descricao { get; set; } = string.Empty;
+    public string? Fundamentacao { get; set; }
     public Guid? ResponsavelUsuarioId { get; set; }
     public string? ResponsavelUsuarioNome { get; set; }
     public PrioridadeAcao Prioridade { get; set; }

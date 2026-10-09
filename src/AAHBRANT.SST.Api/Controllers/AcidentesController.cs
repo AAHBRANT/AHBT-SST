@@ -1,9 +1,14 @@
 using AAHBRANT.SST.Application.Acidentes.Commands;
+using AAHBRANT.SST.Application.Acidentes.RelatoIa;
 using AAHBRANT.SST.Application.Acidentes.Queries;
+using AAHBRANT.SST.Application.Common.Interfaces;
+using AAHBRANT.SST.Application.SuporteIa;
 using AAHBRANT.SST.Domain.Enums;
 using MediatR;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
+using System.Security.Claims;
 
 namespace AAHBRANT.SST.Api.Controllers;
 
@@ -12,8 +17,111 @@ namespace AAHBRANT.SST.Api.Controllers;
 public class AcidentesController : ControllerBase
 {
     private readonly IMediator _mediator;
+    private readonly ITranscricaoAudioService _transcricao;
+    private readonly ILogger<AcidentesController> _logger;
+    private readonly IAppDbContext _db;
 
-    public AcidentesController(IMediator mediator) => _mediator = mediator;
+    // gpt-4o-transcribe aceita até 25 MB por arquivo.
+    private const long TamanhoMaximoAudio = 25_000_000;
+
+    public AcidentesController(IMediator mediator, ITranscricaoAudioService transcricao, ILogger<AcidentesController> logger, IAppDbContext db)
+    {
+        _mediator = mediator;
+        _transcricao = transcricao;
+        _logger = logger;
+        _db = db;
+    }
+
+    // Análise preliminar de causas + plano de ação (IA) a partir do formulário já revisado. Nada é
+    // gravado aqui: as ações voltam para o técnico revisar e seguem no POST de criação.
+    [Authorize(Policy = "acidente:criar")]
+    [HttpPost("plano-sugerido")]
+    public async Task<IActionResult> PlanoSugerido(PlanoSugeridoOcorrenciaBody body, CancellationToken ct)
+        => Ok(await _mediator.Send(new SugerirPlanoAcaoOcorrenciaCommand(
+            body.ObraId, body.AtividadeId, body.Tipo, body.Gravidade, body.Descricao,
+            body.Lesao, body.Consequencia, body.Atendimento, await UsuarioAtualIdAsync(ct)), ct));
+
+    // Quem está registrando — responsável natural das ações de Técnico de Segurança. Identidade pelo
+    // token (oid, depois e-mail), nunca por parâmetro; nulo em desenvolvimento sem Entra ID.
+    private async Task<Guid?> UsuarioAtualIdAsync(CancellationToken ct)
+    {
+        var oid = User.FindFirst("oid")?.Value ?? User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+        if (!string.IsNullOrWhiteSpace(oid))
+        {
+            var id = await _db.Usuarios.Where(u => u.AzureAdObjectId == oid).Select(u => (Guid?)u.Id).FirstOrDefaultAsync(ct);
+            if (id is not null) return id;
+        }
+
+        var email = User.FindFirst("preferred_username")?.Value ?? User.FindFirst("email")?.Value;
+        return string.IsNullOrWhiteSpace(email)
+            ? null
+            : await _db.Usuarios.Where(u => u.Email == email).Select(u => (Guid?)u.Id).FirstOrDefaultAsync(ct);
+    }
+
+    // Relato da ocorrência escrito pelo técnico → sugestão de preenchimento do formulário (IA).
+    // Nada é gravado: o técnico revisa e registra pelo POST normal.
+    [Authorize(Policy = "acidente:criar")]
+    [HttpPost("relato-texto")]
+    public async Task<IActionResult> RelatoTexto(RelatoTextoOcorrenciaBody body, CancellationToken ct)
+        => Ok(new
+        {
+            transcricao = body.Relato,
+            sugestao = await _mediator.Send(new ClassificarRelatoOcorrenciaCommand(body.Relato, body.ObraId, body.Complementos), ct),
+        });
+
+    // Só transcreve (sem classificar): usado em "Responder por voz" às perguntas da IA — o texto vira
+    // complemento do relato na rodada seguinte de relato-texto.
+    [Authorize(Policy = "acidente:criar")]
+    [HttpPost("transcrever")]
+    [RequestSizeLimit(TamanhoMaximoAudio + 1_000_000)]
+    public async Task<IActionResult> Transcrever([FromForm] RelatoVozOcorrenciaBody body, CancellationToken ct)
+    {
+        if (!_transcricao.Configurado)
+            return StatusCode(StatusCodes.Status503ServiceUnavailable, new { erro = "Transcrição de áudio ainda não está configurada neste ambiente." });
+        if (body.Audio is null || body.Audio.Length == 0)
+            return BadRequest(new { erro = "Nenhum áudio recebido." });
+        if (body.Audio.Length > TamanhoMaximoAudio)
+            return BadRequest(new { erro = "Áudio muito longo. Grave até cerca de 10 minutos." });
+
+        await using var stream = body.Audio.OpenReadStream();
+        var nomeArquivo = string.IsNullOrWhiteSpace(body.Audio.FileName) ? "resposta.webm" : body.Audio.FileName;
+        return Ok(new { transcricao = await _transcricao.TranscreverAsync(stream, nomeArquivo, body.Audio.ContentType, ct) });
+    }
+
+    // Relato falado: transcreve o áudio (não é salvo) e sugere o preenchimento. Se a classificação
+    // falhar, devolve só a transcrição para o técnico completar o formulário.
+    [Authorize(Policy = "acidente:criar")]
+    [HttpPost("relato-voz")]
+    [RequestSizeLimit(TamanhoMaximoAudio + 1_000_000)]
+    public async Task<IActionResult> RelatoVoz([FromForm] RelatoVozOcorrenciaBody body, CancellationToken ct)
+    {
+        if (!_transcricao.Configurado)
+            return StatusCode(StatusCodes.Status503ServiceUnavailable, new { erro = "Transcrição de áudio ainda não está configurada neste ambiente." });
+        if (body.ObraId == Guid.Empty)
+            return BadRequest(new { erro = "Selecione a obra antes de relatar a ocorrência." });
+        if (body.Audio is null || body.Audio.Length == 0)
+            return BadRequest(new { erro = "Nenhum áudio recebido." });
+        if (body.Audio.Length > TamanhoMaximoAudio)
+            return BadRequest(new { erro = "Áudio muito longo. Grave até cerca de 10 minutos." });
+
+        await using var stream = body.Audio.OpenReadStream();
+        var nomeArquivo = string.IsNullOrWhiteSpace(body.Audio.FileName) ? "relato.webm" : body.Audio.FileName;
+        var transcricao = await _transcricao.TranscreverAsync(stream, nomeArquivo, body.Audio.ContentType, ct);
+        if (string.IsNullOrWhiteSpace(transcricao))
+            return Ok(new { transcricao, sugestao = (RelatoOcorrenciaSugestaoDto?)null });
+
+        RelatoOcorrenciaSugestaoDto? sugestao = null;
+        try
+        {
+            sugestao = await _mediator.Send(new ClassificarRelatoOcorrenciaCommand(transcricao, body.ObraId), ct);
+        }
+        catch (Exception ex) when (ex is not OperationCanceledException)
+        {
+            _logger.LogWarning(ex, "Relato de ocorrência transcrito, mas a classificação falhou; devolvendo só a transcrição.");
+        }
+
+        return Ok(new { transcricao, sugestao });
+    }
 
     [Authorize(Policy = "acidente:ver")]
     [HttpGet]
@@ -33,7 +141,8 @@ public class AcidentesController : ControllerBase
     [HttpPost]
     public async Task<IActionResult> Criar(CriarAcidenteCommand command, CancellationToken ct)
     {
-        var id = await _mediator.Send(command, ct);
+        // Quem registra é o responsável pela ação de DDS do dia seguinte — sempre pelo token.
+        var id = await _mediator.Send(command with { UsuarioAtualId = await UsuarioAtualIdAsync(ct) }, ct);
         return CreatedAtAction(nameof(ObterDetalhe), new { id }, new { id });
     }
 
@@ -120,3 +229,29 @@ public record AtualizarAcidenteRequestBody(
     GravidadeAcidente Gravidade,
     int? DiasDebitadosInformados,
     List<Guid>? TrabalhadoresIds = null);
+
+public class RelatoTextoOcorrenciaBody
+{
+    public Guid ObraId { get; set; }
+    public string Relato { get; set; } = string.Empty;
+    // Respostas às perguntas da IA (rodada "Completar com as respostas").
+    public List<RespostaPerguntaRelato>? Complementos { get; set; }
+}
+
+public class RelatoVozOcorrenciaBody
+{
+    public Guid ObraId { get; set; }
+    public IFormFile? Audio { get; set; }
+}
+
+public class PlanoSugeridoOcorrenciaBody
+{
+    public Guid ObraId { get; set; }
+    public Guid? AtividadeId { get; set; }
+    public TipoOcorrencia Tipo { get; set; }
+    public GravidadeAcidente Gravidade { get; set; }
+    public string Descricao { get; set; } = string.Empty;
+    public string? Lesao { get; set; }
+    public string? Consequencia { get; set; }
+    public string? Atendimento { get; set; }
+}

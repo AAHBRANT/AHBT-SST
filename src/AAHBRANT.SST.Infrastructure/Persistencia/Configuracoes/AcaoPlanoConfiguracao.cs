@@ -10,6 +10,7 @@ public class AcaoPlanoConfiguracao : IEntityTypeConfiguration<AcaoPlano>
     {
         builder.Property(a => a.OrigemTipo).IsRequired().HasMaxLength(100);
         builder.Property(a => a.Descricao).IsRequired().HasMaxLength(500);
+        builder.Property(a => a.Fundamentacao).HasMaxLength(500);
 
         builder.HasOne(a => a.ResponsavelUsuario).WithMany()
             .HasForeignKey(a => a.ResponsavelUsuarioId).OnDelete(DeleteBehavior.Restrict);

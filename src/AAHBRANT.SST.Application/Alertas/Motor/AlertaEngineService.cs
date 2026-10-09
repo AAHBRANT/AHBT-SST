@@ -123,7 +123,7 @@ public class AlertaEngineService : IAlertaEngineService
                         EntidadeOrigemId = item.EntidadeOrigemId,
                         TrabalhadorId = item.TrabalhadorId,
                         ObraId = item.ObraId,
-                        DestinatarioUsuarioId = regraAplicada?.ResponsavelUsuarioId,
+                        DestinatarioUsuarioId = item.DestinatarioUsuarioId ?? regraAplicada?.ResponsavelUsuarioId,
                     };
                     _db.Alertas.Add(novoAlerta);
 

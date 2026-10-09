@@ -21,7 +21,8 @@ import {
 import { Button, FeedbackInline, Input, Legenda, Spinner, StatusChip, Textarea } from '@ui';
 import { EsteiraSuporteIa } from './EsteiraSuporteIa';
 import { etapaAtivaPorStatus } from './statusEtapaSuporteIa';
-import { formatarTempoGravacao, useRelatoVoz } from './useRelatoVoz';
+import { IndicadorGravacao } from '../../components/voz/IndicadorGravacao';
+import { useGravacaoVoz } from '../../components/voz/useGravacaoVoz';
 
 type CampoChamado = 'tipo' | 'severidade' | 'titulo' | 'modulo' | 'descricao';
 
@@ -143,49 +144,6 @@ const useStyles = makeStyles({
       backgroundColor: tokens.colorPaletteRedForeground1,
       color: tokens.colorNeutralForegroundOnBrand,
     },
-  },
-  gravando: {
-    display: 'flex',
-    alignItems: 'center',
-    gap: '10px',
-    width: '100%',
-    boxSizing: 'border-box',
-    padding: '8px 10px',
-    borderRadius: '4px',
-    background: tokens.colorNeutralBackground1,
-    color: tokens.colorNeutralForeground1,
-    fontSize: '13px',
-  },
-  pontoGravando: {
-    width: '10px',
-    height: '10px',
-    borderRadius: '50%',
-    flexShrink: 0,
-    background: tokens.colorPaletteRedBackground3,
-    animationName: { '50%': { opacity: 0.3 } },
-    animationDuration: '1.2s',
-    animationIterationCount: 'infinite',
-    '@media (prefers-reduced-motion: reduce)': { animationName: 'none' },
-  },
-  tempoGravando: {
-    fontVariantNumeric: 'tabular-nums',
-    fontWeight: 700,
-  },
-  barrasGravando: {
-    display: 'flex',
-    gap: '2px',
-    alignItems: 'center',
-    height: '16px',
-    flex: 1,
-    minWidth: 0,
-    overflow: 'hidden',
-  },
-  barraGravando: {
-    width: '3px',
-    minHeight: '3px',
-    borderRadius: '2px',
-    background: tokens.colorPaletteRedBackground3,
-    opacity: 0.7,
   },
   spinnerInline: {
     display: 'inline-flex',
@@ -436,7 +394,8 @@ export function SuporteIaTab() {
 
   // "Relatar por voz" substitui o formulário pelo novo relato. Se a IA não conseguir classificar, a
   // fala transcrita vai para a descrição e o usuário completa o resto.
-  const relatoVoz = useRelatoVoz(
+  const relatoVoz = useGravacaoVoz(
+    api.suporteIa.relatoVoz,
     (relato: RelatoVozSuporteIa) => {
       setErro(null);
       setResultado(null);
@@ -600,16 +559,7 @@ export function SuporteIaTab() {
               <div className={estilos.blocoVoz}>
                 {relatoVoz.estado === 'gravando' ? (
                   <>
-                    <div className={estilos.gravando} role="status">
-                      <span className={estilos.pontoGravando} />
-                      <span>Gravando</span>
-                      <span className={estilos.tempoGravando}>{formatarTempoGravacao(relatoVoz.segundos)}</span>
-                      <span className={estilos.barrasGravando} aria-hidden="true">
-                        {relatoVoz.niveis.map((nivel, i) => (
-                          <i key={i} className={estilos.barraGravando} style={{ height: `${Math.round(3 + nivel * 13)}px` }} />
-                        ))}
-                      </span>
-                    </div>
+                    <IndicadorGravacao segundos={relatoVoz.segundos} niveis={relatoVoz.niveis} />
                     <Button className={estilos.botaoParar} icon={<RecordStop24Filled />} onClick={relatoVoz.parar}>
                       Parar e preencher
                     </Button>
