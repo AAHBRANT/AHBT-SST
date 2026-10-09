@@ -28,6 +28,7 @@ import {
   type Tom,
 } from '@ui';
 import { Delete24Regular, Save24Regular } from '@fluentui/react-icons';
+import { ExamesFuncaoTab } from '../../components/estrutura-sst/ExamesFuncaoTab';
 import {
   api,
   prioridadeAcaoLabel,
@@ -74,7 +75,7 @@ function chipVencimento(data?: string | null) {
 // o fluxo documental de Gestão Documental, "não editável diretamente aqui" (ver footer do form).
 export function PcmsoDetalhePage() {
   const { id } = useParams<{ id: string }>();
-  const [aba, setAba] = useState<'documento' | 'dados'>('documento');
+  const [aba, setAba] = useState<'documento' | 'dados' | 'exames'>('documento');
   const [pcmso, setPcmso] = useState<Pcmso | null>(null);
   const [edicao, setEdicao] = useState<AtualizarPcmsoPayload | null>(null);
   const [obras, setObras] = useState<Obra[]>([]);
@@ -254,6 +255,7 @@ export function PcmsoDetalhePage() {
           abas={[
             { valor: 'documento', rotulo: 'PCMSO' },
             { valor: 'dados', rotulo: 'Dados' },
+            ...(pcmso.obraId ? [{ valor: 'exames' as const, rotulo: 'Exames por função' }] : []),
           ]}
         />
       </div>
@@ -264,6 +266,10 @@ export function PcmsoDetalhePage() {
           obterDocumento={() => api.pcmsos.obterDocumento(id)}
           enviarDocumento={(arquivo) => api.pcmsos.enviarDocumento(id, arquivo)}
         />
+      )}
+
+      {aba === 'exames' && pcmso.obraId && (
+        <ExamesFuncaoTab obraId={pcmso.obraId} pcmsoId={id} pendenteValidacao={pcmso.status !== 3} />
       )}
 
       {aba === 'dados' && (

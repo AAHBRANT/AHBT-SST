@@ -1045,6 +1045,59 @@ export const NivelRisco = {
   Critico: 5,
 } as const;
 
+// Estrutura de SST da obra importada do PGR (GHE → funções → riscos) e do PCMSO (exames por função).
+export interface GheFuncao {
+  funcaoId: string;
+  funcaoNome: string | null;
+  cbo: string | null;
+  quantidadeExpostos: number | null;
+  descricaoAtividades: string | null;
+}
+
+export interface GheRisco {
+  id: string;
+  atividadeId: string;
+  perigo: string | null;
+  tipoAgente: string | null;
+  consequencia: string | null;
+  exposicao: string | null;
+  probabilidade: number;
+  severidade: number;
+  nivelRisco: number;
+  controlesExistentes: string | null;
+  controlesAdicionais: string | null;
+  status: number;
+}
+
+export interface Ghe {
+  id: string;
+  numero: number;
+  setor: string | null;
+  jornadaTrabalho: string | null;
+  descricaoAmbiente: string | null;
+  atividadesCriticas: string | null;
+  fonteGeradora: string | null;
+  medidasProtecaoExistentes: string | null;
+  funcoes: GheFuncao[];
+  riscos: GheRisco[];
+}
+
+export interface ExameFuncaoObra {
+  id: string;
+  funcaoId: string;
+  funcaoNome: string | null;
+  pcmsoDetalheId: string | null;
+  exame: string;
+  codigoExame: string | null;
+  admissional: boolean;
+  periodico: boolean;
+  retornoTrabalho: boolean;
+  mudancaRisco: boolean;
+  demissional: boolean;
+  periodicidadeMeses: number | null;
+  observacao: string | null;
+}
+
 export const nivelRiscoLabel: Record<number, string> = {
   1: 'Trivial',
   2: 'Baixo',
@@ -4265,6 +4318,11 @@ export const api = {
     atualizar: (aptidao: AtualizarAptidaoPayload) =>
       request<void>(`/api/aptidoes/${aptidao.id}`, { method: 'PUT', body: JSON.stringify(aptidao) }),
     excluir: (id: string) => request<void>(`/api/aptidoes/${id}`, { method: 'DELETE' }),
+  },
+  estruturaSst: {
+    listarGhes: (obraId: string) => request<Ghe[]>(`/api/obras/${obraId}/ghes`),
+    listarExamesFuncao: (obraId: string, funcaoId?: string) =>
+      request<ExameFuncaoObra[]>(`/api/obras/${obraId}/exames-funcao${funcaoId ? `?funcaoId=${funcaoId}` : ''}`),
   },
   pcmsos: {
     listar: (obraId?: string) => request<Pcmso[]>(`/api/pcmsos${obraId ? `?obraId=${obraId}` : ''}`),

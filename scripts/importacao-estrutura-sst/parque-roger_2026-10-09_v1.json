@@ -17,7 +17,7 @@
  "ghes": [
   {
    "numero": 1,
-   "setor": "Canteiro De Obra",
+   "setor": "Canteiro de obra",
    "jornadaTrabalho": "44 horas semanais",
    "descricaoAmbiente": "Estrutura com paredes de madeira, piso de concreto, iluminação natural, climatização natural e atividades a céu aberto",
    "atividadesCriticas": "Trabalho em altura",
@@ -228,7 +228,7 @@
   },
   {
    "numero": 2,
-   "setor": "Canteiro De Obra",
+   "setor": "Canteiro de obra",
    "jornadaTrabalho": "44 horas semanais",
    "descricaoAmbiente": "Estrutura com paredes de madeira, piso de concreto, iluminação natural, climatização natural e atividades a céu aberto",
    "atividadesCriticas": "Trabalho em altura e Espaço Confinado",
@@ -416,7 +416,7 @@
   },
   {
    "numero": 3,
-   "setor": "Canteiro De Obra",
+   "setor": "Canteiro de obra",
    "jornadaTrabalho": "44 horas semanais",
    "descricaoAmbiente": "Estrutura com paredes de madeira, piso de concreto, iluminação natural, climatização natural e atividades a céu aberto",
    "atividadesCriticas": "Trabalho em Altura",
@@ -599,7 +599,7 @@
   },
   {
    "numero": 4,
-   "setor": "Canteiro De Obra",
+   "setor": "Canteiro de obra",
    "jornadaTrabalho": "44 horas semanais",
    "descricaoAmbiente": "Estrutura com paredes de madeira, piso de concreto, iluminação natural, climatização natural e atividades a céu",
    "atividadesCriticas": "Trabalho em Altura",
@@ -782,7 +782,7 @@
   },
   {
    "numero": 5,
-   "setor": "Canteiro De Obra",
+   "setor": "Canteiro de obra",
    "jornadaTrabalho": "44 horas semanais",
    "descricaoAmbiente": "Estrutura com paredes de madeira, piso de concreto, iluminação natural, climatização natural e atividades a céu",
    "atividadesCriticas": "Trabalho em Altura",
@@ -982,7 +982,7 @@
   },
   {
    "numero": 6,
-   "setor": "Canteiro De Obra",
+   "setor": "Canteiro de obra",
    "jornadaTrabalho": "44 horas semanais",
    "descricaoAmbiente": "Estrutura com paredes de madeira, piso de concreto, iluminação natural, climatização natural e atividades a céu aberto",
    "atividadesCriticas": "Trabalho em Altura e Espaço Confinado",
@@ -1182,7 +1182,7 @@
   },
   {
    "numero": 7,
-   "setor": "Canteiro De Obra",
+   "setor": "Canteiro de obra",
    "jornadaTrabalho": "44 horas semanais",
    "descricaoAmbiente": "Cabine de metal, iluminação natural, ventilação artificial, piso emborrachado. Atividades a céu aberto",
    "atividadesCriticas": "Trabalho em altura, içamento de carga, escavação, fundação",
@@ -1382,7 +1382,7 @@
   },
   {
    "numero": 8,
-   "setor": "Canteiro De Obra",
+   "setor": "Canteiro de obra",
    "jornadaTrabalho": "44 horas semanais",
    "descricaoAmbiente": "Carro fechado, ventilação natural e artificial.",
    "atividadesCriticas": "Não se aplica",
@@ -1500,7 +1500,7 @@
   },
   {
    "numero": 9,
-   "setor": "Canteiro De Obra",
+   "setor": "Canteiro de obra",
    "jornadaTrabalho": "44 horas semanais",
    "descricaoAmbiente": "Estrutura de container com paredes metálicas, piso de madeira, iluminação artificial e climatização artificial.",
    "atividadesCriticas": "Não se aplica",
@@ -1616,7 +1616,7 @@
   },
   {
    "numero": 10,
-   "setor": "Canteiro De Obra",
+   "setor": "Canteiro de obra",
    "jornadaTrabalho": "44 horas semanais",
    "descricaoAmbiente": "Estrutura com paredes de madeira, piso de concreto, iluminação natural, climatização natural e atividades a céu aberto",
    "atividadesCriticas": "Trabalho em Altura",
@@ -2055,7 +2055,7 @@
   },
   {
    "numero": 13,
-   "setor": "Canteiro De Obra",
+   "setor": "Canteiro de obra",
    "jornadaTrabalho": "44 horas semanais",
    "descricaoAmbiente": "Estrutura com paredes de madeira, piso de concreto, iluminação natural, climatização natural, artificial e atividades a céu aberto",
    "atividadesCriticas": "Trabalho em altura e Espaço Confinado",
@@ -2257,7 +2257,7 @@
   },
   {
    "numero": 14,
-   "setor": "Canteiro De Obra",
+   "setor": "Canteiro de obra",
    "jornadaTrabalho": "44 horas semanais",
    "descricaoAmbiente": "Estrutura com paredes de madeira, piso de concreto, iluminação natural, climatização natural e atividades a céu aberto",
    "atividadesCriticas": "Espaço Confinado",
@@ -2469,7 +2469,7 @@
   },
   {
    "numero": 15,
-   "setor": "Canteiro De Obra",
+   "setor": "Canteiro de obra",
    "jornadaTrabalho": "44 horas semanais",
    "descricaoAmbiente": "Cabine de metal, iluminação natural, ventilação artificial, piso emborrachado. Atividades a céu aberto",
    "atividadesCriticas": "Carregamento de carga",

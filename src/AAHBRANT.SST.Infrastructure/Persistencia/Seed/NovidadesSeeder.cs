@@ -1094,6 +1094,25 @@ public static class NovidadesSeeder
                     "A lista mostrava todos os requisitos juntos e o texto não aparecia na tela.",
                     "A lista abre filtrada no que falta validar, com filtros por status. Ao abrir um requisito você vê o texto completo e pode ajustá-lo em \"Editar texto\"."),
             }),
+        new(
+            Versao: "5.57.0",
+            Titulo: "GHE do PGR e exames por função do PCMSO",
+            DataPublicacao: new DateTime(2026, 10, 9, 0, 0, 0, DateTimeKind.Utc),
+            Itens: new[]
+            {
+                new NovidadeSeedItem(CategoriaNovidade.Novidade,
+                    "Aba GHE no PGR da obra",
+                    "Os grupos homogêneos de exposição só existiam no PDF do PGR.",
+                    "Em Gestão SST › PGR, a nova aba \"GHE\" mostra cada grupo com as funções expostas, o ambiente e os riscos do mais grave ao mais leve, com EPI e EPC. Clique no GHE para abrir os riscos."),
+                new NovidadeSeedItem(CategoriaNovidade.Novidade,
+                    "Exames por função no PCMSO",
+                    "O quadro de exames do PCMSO só podia ser consultado no PDF.",
+                    "No PCMSO da obra, a nova aba \"Exames por função\" mostra cada função com os exames e a periodicidade do periódico. Clique na função para ver em quais ASOs cada exame é pedido."),
+                new NovidadeSeedItem(CategoriaNovidade.Novidade,
+                    "GHE e exames no perfil do trabalhador",
+                    "Era preciso vincular os riscos de cada trabalhador à mão.",
+                    "O perfil do trabalhador mostra o GHE e os exames previstos pela função dele na obra, sem vínculo manual: o GHE na aba \"Riscos & OS\" e os exames na aba \"Geral & ASO\"."),
+            }),
     };
 
     public static async Task ExecutarAsync(IServiceProvider services, CancellationToken ct = default)
