@@ -1,4 +1,5 @@
 using AAHBRANT.SST.Application.Common.Interfaces;
+using AAHBRANT.SST.Application.Common.Seguranca;
 using MediatR;
 using Microsoft.EntityFrameworkCore;
 
@@ -14,7 +15,7 @@ public class ListarExamesComplementaresQueryHandler : IRequestHandler<ListarExam
 
     public async Task<List<ExameComplementarDto>> Handle(ListarExamesComplementaresQuery request, CancellationToken ct)
     {
-        var query = _db.ExamesComplementares.AsQueryable();
+        var query = _db.ExamesComplementares.NoEscopoDoTrabalhador(_db, e => e.TrabalhadorId);
 
         if (request.TrabalhadorId.HasValue)
             query = query.Where(e => e.TrabalhadorId == request.TrabalhadorId.Value);

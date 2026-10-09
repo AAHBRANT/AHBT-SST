@@ -1,4 +1,5 @@
 using AAHBRANT.SST.Application.Common.Interfaces;
+using AAHBRANT.SST.Application.Common.Seguranca;
 using AAHBRANT.SST.Domain.Enums;
 using FluentValidation;
 using MediatR;
@@ -37,8 +38,11 @@ public class AtualizarExameComplementarCommandHandler : IRequestHandler<Atualiza
 
     public async Task Handle(AtualizarExameComplementarCommand request, CancellationToken ct)
     {
-        var exame = await _db.ExamesComplementares.FirstOrDefaultAsync(e => e.Id == request.Id, ct)
+        var exame = await _db.ExamesComplementares.NoEscopoDoTrabalhador(_db, e => e.TrabalhadorId).FirstOrDefaultAsync(e => e.Id == request.Id, ct)
             ?? throw new KeyNotFoundException($"Exame complementar {request.Id} não encontrado.");
+
+        if (request.TrabalhadorId != exame.TrabalhadorId)
+            await _db.GarantirTrabalhadorNoEscopoAsync(request.TrabalhadorId, ct);
 
         exame.TrabalhadorId = request.TrabalhadorId;
         exame.AsoId = request.AsoId;

@@ -1,4 +1,5 @@
 using AAHBRANT.SST.Application.Common.Interfaces;
+using AAHBRANT.SST.Application.Common.Seguranca;
 using AAHBRANT.SST.Domain.Entidades;
 using AAHBRANT.SST.Domain.Enums;
 using FluentValidation;
@@ -35,6 +36,8 @@ public class CriarExameComplementarCommandHandler : IRequestHandler<CriarExameCo
 
     public async Task<Guid> Handle(CriarExameComplementarCommand request, CancellationToken ct)
     {
+        await _db.GarantirTrabalhadorNoEscopoAsync(request.TrabalhadorId, ct);
+
         var exame = new ExameComplementar
         {
             TrabalhadorId = request.TrabalhadorId,

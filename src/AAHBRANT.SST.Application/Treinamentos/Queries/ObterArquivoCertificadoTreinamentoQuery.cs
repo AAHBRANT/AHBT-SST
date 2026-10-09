@@ -1,4 +1,5 @@
 using AAHBRANT.SST.Application.Common.Interfaces;
+using AAHBRANT.SST.Application.Common.Seguranca;
 using MediatR;
 using Microsoft.EntityFrameworkCore;
 
@@ -22,6 +23,9 @@ public class ObterArquivoCertificadoTreinamentoQueryHandler : IRequestHandler<Ob
 
     public async Task<ArquivoCertificadoTreinamentoResultado?> Handle(ObterArquivoCertificadoTreinamentoQuery request, CancellationToken ct)
     {
+        if (!await _db.Treinamentos.NoEscopoDoTrabalhador(_db, t => t.TrabalhadorId).AnyAsync(t => t.Id == request.TreinamentoId, ct))
+            return null;
+
         var arquivo = await _db.ArquivosCertificadoTreinamento
             .AsNoTracking()
             .FirstOrDefaultAsync(a => a.TreinamentoId == request.TreinamentoId, ct);

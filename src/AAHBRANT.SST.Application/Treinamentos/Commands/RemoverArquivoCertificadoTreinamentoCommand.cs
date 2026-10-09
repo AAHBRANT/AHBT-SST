@@ -1,4 +1,5 @@
 using AAHBRANT.SST.Application.Common.Interfaces;
+using AAHBRANT.SST.Application.Common.Seguranca;
 using FluentValidation;
 using MediatR;
 using Microsoft.EntityFrameworkCore;
@@ -24,6 +25,9 @@ public class RemoverArquivoCertificadoTreinamentoCommandHandler : IRequestHandle
 
     public async Task Handle(RemoverArquivoCertificadoTreinamentoCommand request, CancellationToken ct)
     {
+        if (!await _db.Treinamentos.NoEscopoDoTrabalhador(_db, t => t.TrabalhadorId).AnyAsync(t => t.Id == request.TreinamentoId, ct))
+            throw new KeyNotFoundException($"Treinamento {request.TreinamentoId} não encontrado.");
+
         var arquivo = await _db.ArquivosCertificadoTreinamento
             .FirstOrDefaultAsync(a => a.TreinamentoId == request.TreinamentoId, ct)
             ?? throw new KeyNotFoundException($"Treinamento {request.TreinamentoId} não tem certificado anexado.");

@@ -1,4 +1,5 @@
 using AAHBRANT.SST.Application.Common.Interfaces;
+using AAHBRANT.SST.Application.Common.Seguranca;
 using MediatR;
 using Microsoft.EntityFrameworkCore;
 
@@ -15,6 +16,7 @@ public class ObterAptidaoPorIdQueryHandler : IRequestHandler<ObterAptidaoPorIdQu
     public async Task<AptidaoDto?> Handle(ObterAptidaoPorIdQuery request, CancellationToken ct)
     {
         return await _db.AptidoesAtividadeEspecifica
+            .NoEscopoDoTrabalhador(_db, a => a.TrabalhadorId)
             .Where(a => a.Id == request.Id)
             .Select(a => new AptidaoDto
             {

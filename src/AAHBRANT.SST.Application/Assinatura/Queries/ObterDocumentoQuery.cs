@@ -42,6 +42,9 @@ public class ObterDocumentoQueryHandler : IRequestHandler<ObterDocumentoQuery, D
 
     public async Task<DocumentoAssinaturaDto?> Handle(ObterDocumentoQuery request, CancellationToken ct)
     {
+        if (!await EscopoDocumentoAssinatura.PodeVerAsync(_db, request.EntidadeTipo, request.EntidadeId, ct))
+            return null;
+
         var documento = await _db.DocumentosAssinatura
             .Where(d => d.EntidadeTipo == request.EntidadeTipo && d.EntidadeId == request.EntidadeId)
             .OrderByDescending(d => d.CreatedAtUtc)

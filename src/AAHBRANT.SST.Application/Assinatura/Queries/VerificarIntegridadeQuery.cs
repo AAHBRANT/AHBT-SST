@@ -31,7 +31,7 @@ public class VerificarIntegridadeQueryHandler : IRequestHandler<VerificarIntegri
     public async Task<VerificacaoIntegridadeDto> Handle(VerificarIntegridadeQuery request, CancellationToken ct)
     {
         var documento = await _db.DocumentosAssinatura.FirstOrDefaultAsync(d => d.Id == request.DocumentoAssinaturaId, ct);
-        if (documento is null)
+        if (documento is null || !await EscopoDocumentoAssinatura.PodeVerAsync(_db, documento.EntidadeTipo, documento.EntidadeId, ct))
             throw new KeyNotFoundException("Documento de assinatura não encontrado.");
         if (documento.Status != StatusDocumentoAssinatura.Finalizado || documento.ConteudoHash is null)
             throw new InvalidOperationException("Este documento ainda não foi finalizado — nada para verificar.");
