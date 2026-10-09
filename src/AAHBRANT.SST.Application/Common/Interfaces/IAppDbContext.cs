@@ -24,6 +24,7 @@ public interface IAppDbContext
     DbSet<ExameComplementar> ExamesComplementares { get; }
     DbSet<AptidaoAtividadeEspecifica> AptidoesAtividadeEspecifica { get; }
     DbSet<PcmsoDetalhe> PcmsoDetalhes { get; }
+    DbSet<ExameFuncaoObra> ExamesFuncaoObra { get; }
     DbSet<CursoTreinamento> CursosTreinamento { get; }
     DbSet<Treinamento> Treinamentos { get; }
     DbSet<ArquivoCertificadoTreinamento> ArquivosCertificadoTreinamento { get; }
@@ -54,6 +55,8 @@ public interface IAppDbContext
     DbSet<Evidencia> Evidencias { get; }
 
     DbSet<Atividade> Atividades { get; }
+    DbSet<Ghe> Ghes { get; }
+    DbSet<GheFuncao> GheFuncoes { get; }
     DbSet<Perigo> Perigos { get; }
     DbSet<Risco> Riscos { get; }
     DbSet<RiscoTrabalhadorExposto> RiscoTrabalhadorExpostos { get; }

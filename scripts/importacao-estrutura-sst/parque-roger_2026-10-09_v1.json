@@ -1,0 +1,5095 @@
+{
+ "pgr": {
+  "nome": "PGR Parque Roger — Rev. 01 (Eprotenge)",
+  "dataElaboracao": "2024-10-10",
+  "dataProximaRevisao": "2025-10-10",
+  "dataTermino": "2026-10-10",
+  "descricao": "Importado do PDF '3 - PGR -AHBT - PARQUE SOCIOAMBIENTAL.pdf'. Resp.: Fernanda Raquel Roberto Pereira, CREA-PB 162081212-6. Contrato 02.023/2024 UEP/SEGGOV."
+ },
+ "pcmso": {
+  "nome": "PCMSO Parque Roger (EMMA Medicina Ocupacional)",
+  "dataEmissao": "2024-11-11",
+  "validade": null,
+  "versao": null,
+  "medicoNome": "Danila Pinto Nóbrega Gadelha",
+  "medicoCrm": "CRM PB/5371"
+ },
+ "ghes": [
+  {
+   "numero": 1,
+   "setor": "Canteiro De Obra",
+   "jornadaTrabalho": "44 horas semanais",
+   "descricaoAmbiente": "Estrutura com paredes de madeira, piso de concreto, iluminação natural, climatização natural e atividades a céu aberto",
+   "atividadesCriticas": "Trabalho em altura",
+   "fonteGeradora": null,
+   "medidasProtecaoExistentes": null,
+   "funcoes": [
+    {
+     "nome": "Pedreiro",
+     "cbo": "715210",
+     "descricaoAtividades": null,
+     "quantidadeExpostos": 10,
+     "apelidos": []
+    },
+    {
+     "nome": "Ajudante/Servente",
+     "cbo": "717020",
+     "descricaoAtividades": null,
+     "quantidadeExpostos": 16,
+     "apelidos": [
+      "Ajudante",
+      "Servente",
+      "Ajudante (Servente)"
+     ]
+    }
+   ],
+   "riscos": [
+    {
+     "tipo": "Físico",
+     "agente": "Ruído do ambiente",
+     "danos": "Redução da capacidade auditiva, zumbido, irritabilidade, agravo de estresse, prejuízo de concentração e distúrbios do sono",
+     "avaliacao": "Qualitativa",
+     "epc": "Placas de Sinalização, Manutenção preventiva dos equipamentos, Treinamento e conscientização",
+     "epi": "Protetor auricular tipo concha",
+     "probabilidade": 1,
+     "severidade": 3,
+     "classificacaoDocumento": "3 - Baixo Risco",
+     "monitoramento": "Será avaliado através de avaliação qualitativa (dosimetria) e LTCAT"
+    },
+    {
+     "tipo": "Físico",
+     "agente": "Radiação não ionizante (exposição ao sol)",
+     "danos": "Fadiga, desidratação, tonturas, dores de cabeça, queda de pressão, queimaduras de pele, foto envelhecimento e câncer de pele",
+     "avaliacao": "Qualitativa",
+     "epc": "Treinamento e conscientização",
+     "epi": "Protetor solar; Touca árabe; e Fardamento com manga longa",
+     "probabilidade": 2,
+     "severidade": 2,
+     "classificacaoDocumento": "4- Baixo Risco",
+     "monitoramento": "Acompanhamento e controle de EPIs e protetor solar"
+    },
+    {
+     "tipo": "Físico",
+     "agente": "Vibração",
+     "danos": "Doenças vasculares e musculares",
+     "avaliacao": "Qualitativa",
+     "epc": "Placas de Sinalização, Manutenção preventiva dos equipamentos, Treinamento e conscientização quanto o uso de luvas antivibração, Rodizio de funcionários",
+     "epi": "Luvas antivibração",
+     "probabilidade": 2,
+     "severidade": 1,
+     "classificacaoDocumento": "2 - Baixo Risco",
+     "monitoramento": "Será avaliado através de avaliação qualitativa (dosimetria) e LTCAT"
+    },
+    {
+     "tipo": "Químico",
+     "agente": "Poeira",
+     "danos": "Problemas respiratórios, irritação na pele, alergias e danos respiratórios",
+     "avaliacao": "Qualitativa",
+     "epc": "Placas de Sinalização, Treinamento e conscientização, Umectação do local",
+     "epi": "Máscara com respirador",
+     "probabilidade": 2,
+     "severidade": 3,
+     "classificacaoDocumento": "6 - Médio Risco",
+     "monitoramento": "Umidificar locais onde tem maior movimentação de máquinas"
+    },
+    {
+     "tipo": "Químico",
+     "agente": "Produtos Químicos (cimento)",
+     "danos": "Doença de pele, alergias e dermatites",
+     "avaliacao": "Qualitativa",
+     "epc": "Treinamento e conscientização",
+     "epi": "Luvas impermeável (látex ou nitrílica)",
+     "probabilidade": 3,
+     "severidade": 2,
+     "classificacaoDocumento": "6 – Médio Risco",
+     "monitoramento": "Acompanhamento e controle de EPIs"
+    },
+    {
+     "tipo": "Biológico",
+     "agente": "Virus e bactérias",
+     "danos": "Contaminação de pele, boca e olhos",
+     "avaliacao": "Qualitativo",
+     "epc": "Monitoramento de ASOs, procedimentos operacionais; Treinamento e conscientização",
+     "epi": "Macacão, luva impermeável, óculos de segurança, respirador",
+     "probabilidade": 1,
+     "severidade": 2,
+     "classificacaoDocumento": "2- Baixo Risco",
+     "monitoramento": "Acompanhamento dos ASOs"
+    },
+    {
+     "tipo": "Ergonômico",
+     "agente": "Postura Inadequada",
+     "danos": "Distúrbios osteomusculares relacionados ao trabalho (DORT) Lesões por esforço repetitivo (LER)",
+     "avaliacao": "Qualitativa",
+     "epc": "Equipamentos e ferramentas adequadas a atividade",
+     "epi": "Ginastica laboral e pausas durante as atividades",
+     "probabilidade": 2,
+     "severidade": 3,
+     "classificacaoDocumento": "6 - Médio Risco",
+     "monitoramento": "Ferramentas adequadas, Pausas intercaladas para recuperação durante a jornada de trabalho, ginástica laboral e DDS"
+    },
+    {
+     "tipo": "Ergonômico",
+     "agente": "Levantamento e transporte manual de peso",
+     "danos": "Doenças osteomusculares",
+     "avaliacao": "Qualitativa",
+     "epc": "Equipamentos e ferramentas adequadas a atividade",
+     "epi": "Ginastica laboral e pausas durante as atividades",
+     "probabilidade": 2,
+     "severidade": 3,
+     "classificacaoDocumento": "6 - Médio Risco",
+     "monitoramento": "Treinamento sobre ergonomia, ferramentas adequadas para as atividades e DDS"
+    },
+    {
+     "tipo": "Acidentes",
+     "agente": "Queda do mesmo nível",
+     "danos": "Traumatismo diversos",
+     "avaliacao": "Qualitativa",
+     "epc": "Placas de Sinalização, Caminho seguro, Isolamento de áreas, local limpo; Treinamento e conscientização",
+     "epi": "Capacete; bota de segurança",
+     "probabilidade": 3,
+     "severidade": 2,
+     "classificacaoDocumento": "6 - Médio Risco",
+     "monitoramento": "Conscientização sobre os riscos no DDS"
+    },
+    {
+     "tipo": "Acidentes",
+     "agente": "Trabalho com projeção de partículas (sólidas e líquidas)",
+     "danos": "Leões oculares",
+     "avaliacao": "Qualitativa",
+     "epc": "Placas de Sinalização e isolamento de áreas",
+     "epi": "Capacete; e óculos de segurança",
+     "probabilidade": 3,
+     "severidade": 2,
+     "classificacaoDocumento": "6 - Médio Risco",
+     "monitoramento": "Conscientização sobre os riscos no DDS e acompanhamento de EPI (capacete)"
+    },
+    {
+     "tipo": "Acidentes",
+     "agente": "Animais peçonhentos",
+     "danos": "Picadas de insetos e animais diversos, alergias",
+     "avaliacao": "Qualitativa",
+     "epc": "Telas de proteção, tapumes, limpeza de áreas e ambiente de trabalho limpo",
+     "epi": "Perneiras, bota de segurança",
+     "probabilidade": 2,
+     "severidade": 4,
+     "classificacaoDocumento": "8- Médio Risco",
+     "monitoramento": "Conscientização sobre os riscos no DDS e acompanhamento de EPI (perneira)"
+    },
+    {
+     "tipo": "Acidentes",
+     "agente": "Probabilidade de incêndio ou explosões",
+     "danos": "Queimaduras, escoriações, intoxicação ou fraturas",
+     "avaliacao": "Qualitativa",
+     "epc": "Sistema de proteção contra incêndio, treinamentos e procedimentos operacionais",
+     "epi": "N/A",
+     "probabilidade": 1,
+     "severidade": 1,
+     "classificacaoDocumento": "1 - Baixo Risco",
+     "monitoramento": "Conscientização sobre os riscos no DDS e treinamento sobre incêndio anual"
+    },
+    {
+     "tipo": "Acidentes",
+     "agente": "Outras situações que poderão contribuir para ocorrência de acidentes",
+     "danos": "Lesões diversas, fraturas, e esmagamentos",
+     "avaliacao": "Qualitativo",
+     "epc": "Limpeza das áreas e inspeções dos ambientes",
+     "epi": "N/A",
+     "probabilidade": 1,
+     "severidade": 1,
+     "classificacaoDocumento": "1- Baixo Risco",
+     "monitoramento": "Conscientização sobre os riscos no DDS"
+    },
+    {
+     "tipo": "Acidentes",
+     "agente": "Desmoronamento",
+     "danos": "Lesões diversas, fraturas, e esmagamentos",
+     "avaliacao": "Qualitativo",
+     "epc": "Limpeza das áreas, escoramento de áreas e inspeções dos ambientes",
+     "epi": "Escoramento em áreas de riscos",
+     "probabilidade": 1,
+     "severidade": 3,
+     "classificacaoDocumento": "3 - Baixo Risco",
+     "monitoramento": "Conscientização sobre os riscos no DDS"
+    },
+    {
+     "tipo": "Acidentes",
+     "agente": "Trabalho em altura",
+     "danos": "Lesões diversas, parada cardiorespiratória, fraturas, esmagamentos e lesões fatal",
+     "avaliacao": "Qualitativo",
+     "epc": "Manutenção preventiva dos EPIs, análise preliminar de risco (APR) e treinamentos da NR35",
+     "epi": "Cinto de segurança, talabarte",
+     "probabilidade": 3,
+     "severidade": 2,
+     "classificacaoDocumento": "6 - Médio Risco",
+     "monitoramento": "Conscientização sobre os riscos, e treinamentos específicos"
+    }
+   ]
+  },
+  {
+   "numero": 2,
+   "setor": "Canteiro De Obra",
+   "jornadaTrabalho": "44 horas semanais",
+   "descricaoAmbiente": "Estrutura com paredes de madeira, piso de concreto, iluminação natural, climatização natural e atividades a céu aberto",
+   "atividadesCriticas": "Trabalho em altura e Espaço Confinado",
+   "fonteGeradora": null,
+   "medidasProtecaoExistentes": null,
+   "funcoes": [
+    {
+     "nome": "Armador",
+     "cbo": "715315",
+     "descricaoAtividades": null,
+     "quantidadeExpostos": 5,
+     "apelidos": []
+    }
+   ],
+   "riscos": [
+    {
+     "tipo": "Físico",
+     "agente": "Ruído do ambiente",
+     "danos": "Redução da capacidade auditiva, zumbido, irritabilidade, agravo de estresse, prejuízo de concentração e distúrbios do sono",
+     "avaliacao": "Qualitativa",
+     "epc": "Placas de Sinalização, Manutenção preventiva dos equipamentos, Treinamento e conscientização",
+     "epi": "Protetor auricular tipo concha",
+     "probabilidade": 1,
+     "severidade": 3,
+     "classificacaoDocumento": "3 - Baixo Risco",
+     "monitoramento": "Será avaliado através de avaliação qualitativa (dosimetria) e LTCAT"
+    },
+    {
+     "tipo": "Físico",
+     "agente": "Radiação não ionizante (exposição ao sol)",
+     "danos": "Fadiga, desidratação, tonturas, dores de cabeça, queda de pressão, queimaduras de pele, foto envelhecimento e câncer de pele",
+     "avaliacao": "Qualitativa",
+     "epc": "Treinamento e conscientização",
+     "epi": "Protetor solar; Touca árabe; e Fardamento com manga longa",
+     "probabilidade": 2,
+     "severidade": 2,
+     "classificacaoDocumento": "4- Baixo Risco",
+     "monitoramento": "Acompanhamento e controle de EPIs e protetor solar"
+    },
+    {
+     "tipo": "Químico",
+     "agente": "Poeira",
+     "danos": "Problemas respiratórios, irritação na pele, alergias e danos respiratórios",
+     "avaliacao": "Qualitativa",
+     "epc": "Placas de Sinalização, Treinamento e conscientização",
+     "epi": "Máscara com respirador",
+     "probabilidade": 2,
+     "severidade": 1,
+     "classificacaoDocumento": "2 – Baixo Risco",
+     "monitoramento": "Umidificar locais onde tem maior movimentação de máquinas"
+    },
+    {
+     "tipo": "Biológico",
+     "agente": "Virus e bactérias",
+     "danos": "Contaminação de pele, boca e olhos",
+     "avaliacao": "Qualitativo",
+     "epc": "Monitoramento de ASOs, procedimentos operacionais; Treinamento e conscientização",
+     "epi": "Macacão, luva impermeável, óculos de segurança, respirador",
+     "probabilidade": 1,
+     "severidade": 2,
+     "classificacaoDocumento": "2- Baixo Risco",
+     "monitoramento": "Acompanhamento dos ASOs"
+    },
+    {
+     "tipo": "Ergonômico",
+     "agente": "Postura Inadequada",
+     "danos": "Distúrbios osteomusculares relacionados ao trabalho (DORT) Lesões por esforço repetitivo (LER)",
+     "avaliacao": "Qualitativa",
+     "epc": "Equipamentos e ferramentas adequadas a atividade",
+     "epi": "Ginastica laboral e pausas durante as atividades",
+     "probabilidade": 2,
+     "severidade": 3,
+     "classificacaoDocumento": "6 - Médio Risco",
+     "monitoramento": "Ferramentas adequadas, Pausas intercaladas para recuperação durante a jornada de trabalho, ginástica laboral e DDS"
+    },
+    {
+     "tipo": "Ergonômico",
+     "agente": "Levantamento e transporte manual de peso",
+     "danos": "Doenças osteomusculares",
+     "avaliacao": "Qualitativa",
+     "epc": "Equipamentos e ferramentas adequadas a atividade",
+     "epi": "Ginastica laboral e pausas durante as atividades",
+     "probabilidade": 2,
+     "severidade": 3,
+     "classificacaoDocumento": "6 - Médio Risco",
+     "monitoramento": "Treinamento sobre ergonomia, ferramentas adequadas para as atividades e DDS"
+    },
+    {
+     "tipo": "Acidentes",
+     "agente": "Queda do mesmo nível",
+     "danos": "Traumatismo diversos",
+     "avaliacao": "Qualitativa",
+     "epc": "Placas de Sinalização, Caminho seguro, Isolamento de áreas, local limpo; Treinamento e conscientização",
+     "epi": "Capacete; bota de segurança",
+     "probabilidade": 3,
+     "severidade": 2,
+     "classificacaoDocumento": "6 - Médio Risco",
+     "monitoramento": "Conscientização sobre os riscos no DDS"
+    },
+    {
+     "tipo": "Acidentes",
+     "agente": "Trabalho com projeção de partículas (sólidas e líquidas)",
+     "danos": "Leões oculares",
+     "avaliacao": "Qualitativa",
+     "epc": "Placas de Sinalização e isolamento de áreas",
+     "epi": "Capacete; e óculos de segurança",
+     "probabilidade": 3,
+     "severidade": 2,
+     "classificacaoDocumento": "6 - Médio Risco",
+     "monitoramento": "Conscientização sobre os riscos no DDS e acompanhamento de EPI (capacete)"
+    },
+    {
+     "tipo": "Acidentes",
+     "agente": "Animais peçonhentos",
+     "danos": "Picadas de insetos e animais diversos, alergias",
+     "avaliacao": "Qualitativa",
+     "epc": "Telas de proteção, tapumes, limpeza de áreas e ambiente de trabalho limpo",
+     "epi": "Perneiras, bota de segurança",
+     "probabilidade": 2,
+     "severidade": 3,
+     "classificacaoDocumento": "6- Médio Risco",
+     "monitoramento": "Conscientização sobre os riscos no DDS e acompanhamento de EPI (perneira)"
+    },
+    {
+     "tipo": "Acidentes",
+     "agente": "Probabilidade de incêndio ou explosões",
+     "danos": "Queimaduras, escoriações, intoxicação ou fraturas",
+     "avaliacao": "Qualitativa",
+     "epc": "Sistema de proteção contra incêndio, treinamentos e procedimentos operacionais",
+     "epi": "N/A",
+     "probabilidade": 1,
+     "severidade": 1,
+     "classificacaoDocumento": "2 - Baixo Risco",
+     "monitoramento": "Conscientização sobre os riscos no DDS e treinamento sobre incêndio anual"
+    },
+    {
+     "tipo": "Acidentes",
+     "agente": "Outras situações que poderão contribuir para ocorrência de acidentes",
+     "danos": "Lesões diversas, fraturas, e esmagamentos",
+     "avaliacao": "Qualitativo",
+     "epc": "Limpeza das áreas e inspeções dos ambientes",
+     "epi": "N/A",
+     "probabilidade": 1,
+     "severidade": 1,
+     "classificacaoDocumento": "1- Baixo Risco",
+     "monitoramento": "Conscientização sobre os riscos no DDS"
+    },
+    {
+     "tipo": "Acidentes",
+     "agente": "Desmoronamento",
+     "danos": "Lesões diversas, fraturas, e esmagamentos",
+     "avaliacao": "Qualitativo",
+     "epc": "Limpeza das áreas, escoramento de áreas e inspeções dos ambientes",
+     "epi": "Escoramento em áreas de riscos",
+     "probabilidade": 1,
+     "severidade": 3,
+     "classificacaoDocumento": "3 - Baixo Risco",
+     "monitoramento": "Conscientização sobre os riscos no DDS"
+    },
+    {
+     "tipo": "Acidentes",
+     "agente": "Trabalho em altura",
+     "danos": "Lesões diversas, parada cardiorespiratória, fraturas, esmagamentos e lesões fatal",
+     "avaliacao": "Qualitativo",
+     "epc": "Manutenção preventiva dos EPIs, análise preliminar de risco (APR) e treinamentos da NR35",
+     "epi": "Cinto de segurança, talabarte",
+     "probabilidade": 3,
+     "severidade": 2,
+     "classificacaoDocumento": "6 - Médio Risco",
+     "monitoramento": "Conscientização sobre os riscos, e treinamentos específicos"
+    },
+    {
+     "tipo": "Acidentes",
+     "agente": "Espaço Confinado",
+     "danos": "Lesões diversas, parada cardiorespiratória, fraturas, esmagamentos e lesões fatal",
+     "avaliacao": "Qualitativo",
+     "epc": "Monitoramento do ambiente com detector de gases, ventilação, iluminação segura e placas de sinalização na realização das atividades",
+     "epi": "N/A",
+     "probabilidade": 1,
+     "severidade": 2,
+     "classificacaoDocumento": "2 – Baixo Risco",
+     "monitoramento": "Conscientização sobre os riscos, realização de APR, gestão de ASOs e treinamentos específicos (NR 33)"
+    }
+   ]
+  },
+  {
+   "numero": 3,
+   "setor": "Canteiro De Obra",
+   "jornadaTrabalho": "44 horas semanais",
+   "descricaoAmbiente": "Estrutura com paredes de madeira, piso de concreto, iluminação natural, climatização natural e atividades a céu aberto",
+   "atividadesCriticas": "Trabalho em Altura",
+   "fonteGeradora": null,
+   "medidasProtecaoExistentes": null,
+   "funcoes": [
+    {
+     "nome": "Carpinteiro",
+     "cbo": "715525",
+     "descricaoAtividades": null,
+     "quantidadeExpostos": 8,
+     "apelidos": []
+    },
+    {
+     "nome": "Serralheiro",
+     "cbo": "724440",
+     "descricaoAtividades": null,
+     "quantidadeExpostos": 5,
+     "apelidos": []
+    }
+   ],
+   "riscos": [
+    {
+     "tipo": "Físico",
+     "agente": "Ruído do ambiente",
+     "danos": "Redução da capacidade auditiva, zumbido, irritabilidade, agravo de estresse, prejuízo de concentração e distúrbios do sono",
+     "avaliacao": "Qualitativa",
+     "epc": "Placas de Sinalização, Manutenção preventiva dos equipamentos, Treinamento e conscientização",
+     "epi": "Protetor auricular tipo concha",
+     "probabilidade": 2,
+     "severidade": 3,
+     "classificacaoDocumento": "6 – Médio Risco",
+     "monitoramento": "Será avaliado através de avaliação qualitativa (dosimetria) e LTCAT"
+    },
+    {
+     "tipo": "Físico",
+     "agente": "Radiação não ionizante (exposição ao sol)",
+     "danos": "Fadiga, desidratação, tonturas, dores de cabeça, queda de pressão, queimaduras de pele, foto envelhecimento e câncer de pele",
+     "avaliacao": "Qualitativa",
+     "epc": "Treinamento e conscientização",
+     "epi": "Protetor solar; Touca árabe; e Fardamento com manga longa",
+     "probabilidade": 2,
+     "severidade": 2,
+     "classificacaoDocumento": "4- Baixo Risco",
+     "monitoramento": "Acompanhamento e controle de EPIs e protetor solar"
+    },
+    {
+     "tipo": "Químico",
+     "agente": "Poeira Vegetal (madeira)",
+     "danos": "Problemas respiratórios, irritação na pele, alergias e danos respiratórios",
+     "avaliacao": "Qualitativa",
+     "epc": "Sistema coletor de pó, Placas de Sinalização, Treinamento e conscientização",
+     "epi": "Máscara com respirador",
+     "probabilidade": 3,
+     "severidade": 2,
+     "classificacaoDocumento": "6 – Médio Risco",
+     "monitoramento": "Realizar avaliação quantitativa e LTCAT"
+    },
+    {
+     "tipo": "Biológico",
+     "agente": "Virus e bactérias",
+     "danos": "Contaminação de pele, boca e olhos",
+     "avaliacao": "Qualitativo",
+     "epc": "Monitoramento de ASOs, procedimentos operacionais; Treinamento e conscientização",
+     "epi": "Macacão, luva impermeável, óculos de segurança, respirador",
+     "probabilidade": 1,
+     "severidade": 2,
+     "classificacaoDocumento": "2- Baixo Risco",
+     "monitoramento": "Acompanhamento dos ASOs"
+    },
+    {
+     "tipo": "Ergonômico",
+     "agente": "Postura Inadequada",
+     "danos": "Distúrbios osteomusculares relacionados ao trabalho (DORT) Lesões por esforço repetitivo (LER)",
+     "avaliacao": "Qualitativa",
+     "epc": "Equipamentos e ferramentas adequadas a atividade",
+     "epi": "Ginastica laboral e pausas durante as atividades",
+     "probabilidade": 2,
+     "severidade": 3,
+     "classificacaoDocumento": "6 - Médio Risco",
+     "monitoramento": "Ferramentas adequadas, Pausas intercaladas para recuperação durante a jornada de trabalho, ginástica laboral e DDS"
+    },
+    {
+     "tipo": "Ergonômico",
+     "agente": "Levantamento e transporte manual de peso",
+     "danos": "Doenças osteomusculares",
+     "avaliacao": "Qualitativa",
+     "epc": "Equipamentos e ferramentas adequadas a atividade",
+     "epi": "Ginastica laboral e pausas durante as atividades",
+     "probabilidade": 2,
+     "severidade": 3,
+     "classificacaoDocumento": "6 - Médio Risco",
+     "monitoramento": "Treinamento sobre ergonomia, ferramentas adequadas para as atividades e DDS"
+    },
+    {
+     "tipo": "Acidentes",
+     "agente": "Queda do mesmo nível",
+     "danos": "Traumatismo diversos",
+     "avaliacao": "Qualitativa",
+     "epc": "Placas de Sinalização, Caminho seguro, Isolamento de áreas, local limpo; Treinamento e conscientização",
+     "epi": "Capacete; bota de segurança",
+     "probabilidade": 3,
+     "severidade": 2,
+     "classificacaoDocumento": "6 - Médio Risco",
+     "monitoramento": "Conscientização sobre os riscos no DDS"
+    },
+    {
+     "tipo": "Acidentes",
+     "agente": "Trabalho com projeção de partículas (sólidas e líquidas)",
+     "danos": "Leões oculares",
+     "avaliacao": "Qualitativa",
+     "epc": "Placas de Sinalização e isolamento de áreas",
+     "epi": "Capacete; e óculos de segurança",
+     "probabilidade": 3,
+     "severidade": 2,
+     "classificacaoDocumento": "6 - Médio Risco",
+     "monitoramento": "Conscientização sobre os riscos no DDS e acompanhamento de EPI (capacete)"
+    },
+    {
+     "tipo": "Acidentes",
+     "agente": "Animais peçonhentos",
+     "danos": "Picadas de insetos e animais diversos, alergias",
+     "avaliacao": "Qualitativa",
+     "epc": "Telas de proteção, tapumes, limpeza de áreas e ambiente de trabalho limpo",
+     "epi": "Perneiras, bota de segurança",
+     "probabilidade": 4,
+     "severidade": 2,
+     "classificacaoDocumento": "8- Médio Risco",
+     "monitoramento": "Conscientização sobre os riscos no DDS e acompanhamento de EPI (perneira)"
+    },
+    {
+     "tipo": "Acidentes",
+     "agente": "Probabilidade de incêndio ou explosões",
+     "danos": "Queimaduras, escoriações, intoxicação ou fraturas",
+     "avaliacao": "Qualitativa",
+     "epc": "Sistema de proteção contra incêndio, treinamentos e procedimentos operacionais",
+     "epi": "N/A",
+     "probabilidade": 1,
+     "severidade": 1,
+     "classificacaoDocumento": "1 - Baixo Risco",
+     "monitoramento": "Conscientização sobre os riscos no DDS e treinamento sobre incêndio anual"
+    },
+    {
+     "tipo": "Acidentes",
+     "agente": "Outras situações que poderão contribuir para ocorrência de acidentes",
+     "danos": "Lesões diversas, fraturas, e esmagamentos",
+     "avaliacao": "Qualitativo",
+     "epc": "Limpeza das áreas e inspeções dos ambientes",
+     "epi": "N/A",
+     "probabilidade": 1,
+     "severidade": 1,
+     "classificacaoDocumento": "1 - Baixo Risco",
+     "monitoramento": "Conscientização sobre os riscos no DDS"
+    },
+    {
+     "tipo": "Acidentes",
+     "agente": "Desmoronamento",
+     "danos": "Lesões diversas, fraturas, e esmagamentos",
+     "avaliacao": "Qualitativo",
+     "epc": "Limpeza das áreas, escoramento de áreas e inspeções dos ambientes",
+     "epi": "Escoramento em áreas de riscos",
+     "probabilidade": 1,
+     "severidade": 3,
+     "classificacaoDocumento": "3 - Baixo Risco",
+     "monitoramento": "Conscientização sobre os riscos no DDS"
+    },
+    {
+     "tipo": "Acidentes",
+     "agente": "Trabalho em altura",
+     "danos": "Lesões diversas, parada cardiorespiratória, fraturas, esmagamentos e lesões fatal",
+     "avaliacao": "Qualitativo",
+     "epc": "Manutenção preventiva dos EPIs, análise preliminar de risco (APR) e treinamentos da NR35",
+     "epi": "Cinto de segurança, talabarte",
+     "probabilidade": 3,
+     "severidade": 2,
+     "classificacaoDocumento": "6 - Médio Risco",
+     "monitoramento": "Conscientização sobre os riscos, e treinamentos específicos"
+    }
+   ]
+  },
+  {
+   "numero": 4,
+   "setor": "Canteiro De Obra",
+   "jornadaTrabalho": "44 horas semanais",
+   "descricaoAmbiente": "Estrutura com paredes de madeira, piso de concreto, iluminação natural, climatização natural e atividades a céu",
+   "atividadesCriticas": "Trabalho em Altura",
+   "fonteGeradora": null,
+   "medidasProtecaoExistentes": null,
+   "funcoes": [
+    {
+     "nome": "Eletricista",
+     "cbo": "715615",
+     "descricaoAtividades": null,
+     "quantidadeExpostos": 3,
+     "apelidos": []
+    },
+    {
+     "nome": "Ajudante de Eletricista",
+     "cbo": "715615",
+     "descricaoAtividades": null,
+     "quantidadeExpostos": 1,
+     "apelidos": []
+    }
+   ],
+   "riscos": [
+    {
+     "tipo": "Físico",
+     "agente": "Ruído do ambiente",
+     "danos": "Redução da capacidade auditiva, zumbido, irritabilidade, agravo de estresse, prejuízo de concentração e distúrbios do sono",
+     "avaliacao": "Qualitativa",
+     "epc": "Placas de Sinalização, Manutenção preventiva dos equipamentos, Treinamento e conscientização",
+     "epi": "Protetor auricular tipo concha",
+     "probabilidade": 1,
+     "severidade": 2,
+     "classificacaoDocumento": "2 - Baixo Risco",
+     "monitoramento": "Será avaliado através de avaliação qualitativa (dosimetria) e LTCAT"
+    },
+    {
+     "tipo": "Físico",
+     "agente": "Radiação não ionizante (exposição ao sol)",
+     "danos": "Fadiga, desidratação, tonturas, dores de cabeça, queda de pressão, queimaduras de pele, foto envelhecimento e câncer de pele",
+     "avaliacao": "Qualitativa",
+     "epc": "Treinamento e conscientização",
+     "epi": "Protetor solar; Touca árabe; e Fardamento com manga longa",
+     "probabilidade": 2,
+     "severidade": 2,
+     "classificacaoDocumento": "4- Baixo Risco",
+     "monitoramento": "Acompanhamento e controle de EPIs e protetor solar"
+    },
+    {
+     "tipo": "Químico",
+     "agente": "Poeira",
+     "danos": "Problemas respiratórios, irritação na pele, alergias, dermatites e danos respiratórios",
+     "avaliacao": "Qualitativa",
+     "epc": "Placas de Sinalização, Treinamento e conscientização, Umectação do local",
+     "epi": "Máscara com respirador",
+     "probabilidade": 1,
+     "severidade": 1,
+     "classificacaoDocumento": "1 - Baixo Risco",
+     "monitoramento": "Umidificar locais onde tem maior movimentação de máquinas"
+    },
+    {
+     "tipo": "Biológico",
+     "agente": "Virus e bactérias",
+     "danos": "Contaminação de pele, boca e olhos",
+     "avaliacao": "Qualitativo",
+     "epc": "Monitoramento de ASOs, procedimentos operacionais; Treinamento e conscientização",
+     "epi": "Macacão, luva impermeável, óculos de segurança, respirador",
+     "probabilidade": 2,
+     "severidade": 1,
+     "classificacaoDocumento": "2- Baixo Risco",
+     "monitoramento": "Acompanhamento dos ASOs"
+    },
+    {
+     "tipo": "Ergonômico",
+     "agente": "Postura Inadequada",
+     "danos": "Distúrbios osteomusculares relacionados ao trabalho (DORT) Lesões por esforço repetitivo (LER)",
+     "avaliacao": "Qualitativa",
+     "epc": "Equipamentos e ferramentas adequadas a atividade",
+     "epi": "Ginastica laboral e pausas durante as atividades",
+     "probabilidade": 2,
+     "severidade": 2,
+     "classificacaoDocumento": "4 - Baixo Risco",
+     "monitoramento": "Ferramentas adequadas, Pausas intercaladas para recuperação durante a jornada de trabalho, ginástica laboral e DDS"
+    },
+    {
+     "tipo": "Ergonômico",
+     "agente": "Levantamento e transporte manual de peso",
+     "danos": "Doenças osteomusculares",
+     "avaliacao": "Qualitativa",
+     "epc": "Equipamentos e ferramentas adequadas a atividade",
+     "epi": "Ginastica laboral e pausas durante as atividades",
+     "probabilidade": 1,
+     "severidade": 1,
+     "classificacaoDocumento": "1- Baixo Risco",
+     "monitoramento": "Treinamento sobre ergonomia, ferramentas adequadas para as atividades e DDS"
+    },
+    {
+     "tipo": "Acidentes",
+     "agente": "Queda do mesmo nível",
+     "danos": "Traumatismo diversos",
+     "avaliacao": "Qualitativa",
+     "epc": "Placas de Sinalização, Caminho seguro, Isolamento de áreas, local limpo; Treinamento e conscientização",
+     "epi": "Capacete; bota de segurança",
+     "probabilidade": 3,
+     "severidade": 2,
+     "classificacaoDocumento": "6 - Médio Risco",
+     "monitoramento": "Conscientização sobre os riscos no DDS"
+    },
+    {
+     "tipo": "Acidentes",
+     "agente": "Trabalho com projeção de partículas (sólidas e líquidas)",
+     "danos": "Leões oculares",
+     "avaliacao": "Qualitativa",
+     "epc": "Placas de Sinalização e isolamento de áreas",
+     "epi": "Capacete; e óculos de segurança",
+     "probabilidade": 3,
+     "severidade": 2,
+     "classificacaoDocumento": "6 - Médio Risco",
+     "monitoramento": "Conscientização sobre os riscos no DDS e acompanhamento de EPI (capacete)"
+    },
+    {
+     "tipo": "Acidentes",
+     "agente": "Animais peçonhentos",
+     "danos": "Picadas de insetos e animais diversos, alergias",
+     "avaliacao": "Qualitativa",
+     "epc": "Telas de proteção, tapumes, limpeza de áreas e ambiente de trabalho limpo",
+     "epi": "Perneiras, bota de segurança",
+     "probabilidade": 2,
+     "severidade": 3,
+     "classificacaoDocumento": "6- Médio Risco",
+     "monitoramento": "Conscientização sobre os riscos no DDS e acompanhamento de EPI (perneira)"
+    },
+    {
+     "tipo": "Acidentes",
+     "agente": "Probabilidade de incêndio ou explosões",
+     "danos": "Queimaduras, escoriações, intoxicação ou fraturas",
+     "avaliacao": "Qualitativa",
+     "epc": "Sistema de proteção contra incêndio, treinamentos e procedimentos operacionais",
+     "epi": "N/A",
+     "probabilidade": 1,
+     "severidade": 1,
+     "classificacaoDocumento": "1 - Baixo Risco",
+     "monitoramento": "Conscientização sobre os riscos no DDS e treinamento sobre incêndio anual"
+    },
+    {
+     "tipo": "Acidentes",
+     "agente": "Outras situações que poderão contribuir para ocorrência de acidentes",
+     "danos": "Lesões diversas, fraturas, e esmagamentos",
+     "avaliacao": "Qualitativo",
+     "epc": "Limpeza das áreas e inspeções dos ambientes",
+     "epi": "N/A",
+     "probabilidade": 1,
+     "severidade": 1,
+     "classificacaoDocumento": "1 - Baixo Risco",
+     "monitoramento": "Conscientização sobre os riscos no DDS"
+    },
+    {
+     "tipo": "Acidentes",
+     "agente": "Desmoronamento",
+     "danos": "Lesões diversas, fraturas, e esmagamentos",
+     "avaliacao": "Qualitativo",
+     "epc": "Limpeza das áreas, escoramento de áreas e inspeções dos ambientes",
+     "epi": "Escoramento em áreas de riscos",
+     "probabilidade": 1,
+     "severidade": 3,
+     "classificacaoDocumento": "3 - Baixo Risco",
+     "monitoramento": "Conscientização sobre os riscos no DDS"
+    },
+    {
+     "tipo": "Acidentes",
+     "agente": "Trabalho em altura",
+     "danos": "Lesões diversas, parada cardiorespiratória, fraturas, esmagamentos e lesões fatal",
+     "avaliacao": "Qualitativo",
+     "epc": "Manutenção preventiva dos EPIs, análise preliminar de risco (APR) e treinamentos da NR35 e NR 10.",
+     "epi": "Cinto de segurança, talabarte",
+     "probabilidade": 3,
+     "severidade": 2,
+     "classificacaoDocumento": "6 - Médio Risco",
+     "monitoramento": "Conscientização sobre os riscos, e treinamentos específicos (NR 35/NR 10)"
+    }
+   ]
+  },
+  {
+   "numero": 5,
+   "setor": "Canteiro De Obra",
+   "jornadaTrabalho": "44 horas semanais",
+   "descricaoAmbiente": "Estrutura com paredes de madeira, piso de concreto, iluminação natural, climatização natural e atividades a céu",
+   "atividadesCriticas": "Trabalho em Altura",
+   "fonteGeradora": null,
+   "medidasProtecaoExistentes": null,
+   "funcoes": [
+    {
+     "nome": "Soldador",
+     "cbo": "724315",
+     "descricaoAtividades": null,
+     "quantidadeExpostos": 1,
+     "apelidos": []
+    }
+   ],
+   "riscos": [
+    {
+     "tipo": "Físico",
+     "agente": "Ruído do ambiente",
+     "danos": "Redução da capacidade auditiva, zumbido, irritabilidade, agravo de estresse, prejuízo de concentração e distúrbios do sono",
+     "avaliacao": "Qualitativa",
+     "epc": "Placas de Sinalização, Manutenção preventiva dos equipamentos, Treinamento e conscientização",
+     "epi": "Protetor auricular tipo concha",
+     "probabilidade": 2,
+     "severidade": 3,
+     "classificacaoDocumento": "6 - Médio Risco",
+     "monitoramento": "Será avaliado através de avaliação qualitativa (dosimetria) e LTCAT"
+    },
+    {
+     "tipo": "Físico",
+     "agente": "Radiação não ionizante (exposição ao sol)",
+     "danos": "Fadiga, desidratação, tonturas, dores de cabeça, queda de pressão, queimaduras de pele, foto envelhecimento e câncer de pele",
+     "avaliacao": "Qualitativa",
+     "epc": "Treinamento e conscientização",
+     "epi": "Protetor solar; Touca árabe; e Fardamento com manga longa",
+     "probabilidade": 3,
+     "severidade": 2,
+     "classificacaoDocumento": "6- Médio Risco",
+     "monitoramento": "Acompanhamento e controle de EPIs e protetor solar"
+    },
+    {
+     "tipo": "Físico",
+     "agente": "Radiação ionizante (infravermelho e ultravioleta)",
+     "danos": "Queimaduras de pele, foto envelhecimento e câncer de pele",
+     "avaliacao": "Qualitativa",
+     "epc": "Placas de Sinalização, Manutenção preventiva dos equipamentos, Treinamento e conscientização quanto o uso de EPI",
+     "epi": "Protetor solar, uniforme com manga longa, avental para soldador, touca árabe",
+     "probabilidade": 3,
+     "severidade": 2,
+     "classificacaoDocumento": "6 - Médio Risco",
+     "monitoramento": "Conscientização sobre os riscos no DDS e APR"
+    },
+    {
+     "tipo": "Químico",
+     "agente": "Poeira",
+     "danos": "Problemas respiratórios, irritação na pele, alergias, dermatites e danos respiratórios",
+     "avaliacao": "Qualitativa",
+     "epc": "Placas de Sinalização, Treinamento e conscientização, Umectação do local",
+     "epi": "Máscara com respirador",
+     "probabilidade": 1,
+     "severidade": 1,
+     "classificacaoDocumento": "1 - Baixo Risco",
+     "monitoramento": "Umidificar locais onde tem maior movimentação de máquinas"
+    },
+    {
+     "tipo": "Químico",
+     "agente": "Fumos metálicos",
+     "danos": "Doença de pele e danos ao sistema respiratório",
+     "avaliacao": "Qualitativa",
+     "epc": "Manutenção preventiva dos equipamentos, treinamentos quanto as doenças causadas e isolamento e sinalização da área de trabalho",
+     "epi": "Respirador purificador de ar",
+     "probabilidade": 3,
+     "severidade": 2,
+     "classificacaoDocumento": "6 – Médio Risco",
+     "monitoramento": "Será avaliado através de avaliação qualitativa e LTCAT"
+    },
+    {
+     "tipo": "Biológico",
+     "agente": "Virus e bactérias",
+     "danos": "Contaminação de pele, boca e olhos",
+     "avaliacao": "Qualitativo",
+     "epc": "Monitoramento de ASOs, procedimentos operacionais; Treinamento e conscientização",
+     "epi": "Macacão, luva impermeável, óculos de segurança, respirador",
+     "probabilidade": 2,
+     "severidade": 1,
+     "classificacaoDocumento": "2- Baixo Risco",
+     "monitoramento": "Acompanhamento dos ASOs"
+    },
+    {
+     "tipo": "Ergonômico",
+     "agente": "Postura Inadequada",
+     "danos": "Distúrbios osteomusculares relacionados ao trabalho (DORT) Lesões por esforço repetitivo (LER)",
+     "avaliacao": "Qualitativa",
+     "epc": "Equipamentos e ferramentas adequadas a atividade",
+     "epi": "Ginastica laboral e pausas durante as atividades",
+     "probabilidade": 2,
+     "severidade": 2,
+     "classificacaoDocumento": "4 - Baixo Risco",
+     "monitoramento": "Ferramentas adequadas, Pausas intercaladas para recuperação durante a jornada de trabalho, ginástica laboral e DDS"
+    },
+    {
+     "tipo": "Ergonômico",
+     "agente": "Levantamento e transporte manual de peso",
+     "danos": "Doenças osteomusculares",
+     "avaliacao": "Qualitativa",
+     "epc": "Equipamentos e ferramentas adequadas a atividade",
+     "epi": "Ginastica laboral e pausas durante as atividades",
+     "probabilidade": 2,
+     "severidade": 2,
+     "classificacaoDocumento": "4 - Médio Risco",
+     "monitoramento": "Treinamento sobre ergonomia, ferramentas adequadas para as atividades e DDS"
+    },
+    {
+     "tipo": "Acidentes",
+     "agente": "Queda do mesmo nível",
+     "danos": "Traumatismo diversos",
+     "avaliacao": "Qualitativa",
+     "epc": "Placas de Sinalização, Caminho seguro, Isolamento de áreas, local limpo; Treinamento e conscientização",
+     "epi": "Capacete; bota de segurança",
+     "probabilidade": 3,
+     "severidade": 2,
+     "classificacaoDocumento": "6 - Médio Risco",
+     "monitoramento": "Conscientização sobre os riscos no DDS"
+    },
+    {
+     "tipo": "Acidentes",
+     "agente": "Trabalho com projeção de partículas (sólidas e líquidas)",
+     "danos": "Leões oculares",
+     "avaliacao": "Qualitativa",
+     "epc": "Placas de Sinalização e isolamento de áreas",
+     "epi": "Capacete; e óculos de segurança",
+     "probabilidade": 3,
+     "severidade": 2,
+     "classificacaoDocumento": "6 - Médio Risco",
+     "monitoramento": "Conscientização sobre os riscos no DDS e acompanhamento de EPI (capacete)"
+    },
+    {
+     "tipo": "Acidentes",
+     "agente": "Animais peçonhentos",
+     "danos": "Picadas de insetos e animais diversos, alergias",
+     "avaliacao": "Qualitativa",
+     "epc": "Telas de proteção, tapumes, limpeza de áreas e ambiente de trabalho limpo",
+     "epi": "Perneiras, bota de segurança",
+     "probabilidade": 2,
+     "severidade": 3,
+     "classificacaoDocumento": "6- Médio Risco",
+     "monitoramento": "Conscientização sobre os riscos no DDS e acompanhamento de EPI (perneira)"
+    },
+    {
+     "tipo": "Acidentes",
+     "agente": "Probabilidade de incêndio ou explosões",
+     "danos": "Queimaduras, escoriações, intoxicação ou fraturas",
+     "avaliacao": "Qualitativa",
+     "epc": "Sistema de proteção contra incêndio, treinamentos e procedimentos operacionais",
+     "epi": "N/A",
+     "probabilidade": 1,
+     "severidade": 1,
+     "classificacaoDocumento": "1 - Baixo Risco",
+     "monitoramento": "Conscientização sobre os riscos no DDS e treinamento sobre incêndio anual"
+    },
+    {
+     "tipo": "Acidentes",
+     "agente": "Outras situações que poderão contribuir para ocorrência de acidentes",
+     "danos": "Lesões diversas, fraturas, e esmagamentos",
+     "avaliacao": "Qualitativo",
+     "epc": "Limpeza das áreas e inspeções dos ambientes",
+     "epi": "N/A",
+     "probabilidade": 1,
+     "severidade": 1,
+     "classificacaoDocumento": "1 - Baixo Risco",
+     "monitoramento": "Conscientização sobre os riscos no DDS"
+    },
+    {
+     "tipo": "Acidentes",
+     "agente": "Desmoronamento",
+     "danos": "Lesões diversas, fraturas, e esmagamentos",
+     "avaliacao": "Qualitativo",
+     "epc": "Limpeza das áreas, escoramento de áreas e inspeções dos ambientes",
+     "epi": "Escoramento em áreas de riscos",
+     "probabilidade": 1,
+     "severidade": 3,
+     "classificacaoDocumento": "3 - Baixo Risco",
+     "monitoramento": "Conscientização sobre os riscos no DDS"
+    },
+    {
+     "tipo": "Acidentes",
+     "agente": "Trabalho em altura",
+     "danos": "Lesões diversas, parada cardiorespiratória, fraturas, esmagamentos e lesões fatal",
+     "avaliacao": "Qualitativo",
+     "epc": "Manutenção preventiva dos EPIs, análise preliminar de risco (APR) e treinamentos da NR35",
+     "epi": "Cinto de segurança, talabarte",
+     "probabilidade": 3,
+     "severidade": 2,
+     "classificacaoDocumento": "6 - Médio Risco",
+     "monitoramento": "Conscientização sobre os riscos, e treinamentos específicos (NR 35)"
+    }
+   ]
+  },
+  {
+   "numero": 6,
+   "setor": "Canteiro De Obra",
+   "jornadaTrabalho": "44 horas semanais",
+   "descricaoAmbiente": "Estrutura com paredes de madeira, piso de concreto, iluminação natural, climatização natural e atividades a céu aberto",
+   "atividadesCriticas": "Trabalho em Altura e Espaço Confinado",
+   "fonteGeradora": null,
+   "medidasProtecaoExistentes": null,
+   "funcoes": [
+    {
+     "nome": "Pintor",
+     "cbo": "716610",
+     "descricaoAtividades": null,
+     "quantidadeExpostos": 3,
+     "apelidos": []
+    }
+   ],
+   "riscos": [
+    {
+     "tipo": "Físico",
+     "agente": "Ruído do ambiente",
+     "danos": "Redução da capacidade auditiva, zumbido, irritabilidade, agravo de estresse, prejuízo de concentração e distúrbios do sono",
+     "avaliacao": "Qualitativa",
+     "epc": "Placas de Sinalização, Manutenção preventiva dos equipamentos, Treinamento e conscientização",
+     "epi": "Protetor auricular tipo concha",
+     "probabilidade": 1,
+     "severidade": 1,
+     "classificacaoDocumento": "1 - Baixo Risco",
+     "monitoramento": "Será avaliado através de avaliação qualitativa (dosimetria) e LTCAT"
+    },
+    {
+     "tipo": "Físico",
+     "agente": "Radiação não ionizante (exposição ao sol)",
+     "danos": "Fadiga, desidratação, tonturas, dores de cabeça, queda de pressão, queimaduras de pele, foto envelhecimento e câncer de pele",
+     "avaliacao": "Qualitativa",
+     "epc": "Treinamento e conscientização",
+     "epi": "Protetor solar; Touca árabe; e Fardamento com manga longa",
+     "probabilidade": 2,
+     "severidade": 2,
+     "classificacaoDocumento": "4- Baixo Risco",
+     "monitoramento": "Acompanhamento e controle de EPIs e protetor solar"
+    },
+    {
+     "tipo": "Químico",
+     "agente": "Poeira",
+     "danos": "Problemas respiratórios, irritação na pele, alergias e danos respiratórios",
+     "avaliacao": "Qualitativa",
+     "epc": "Placas de Sinalização, Treinamento e conscientização, Umectação do local",
+     "epi": "Máscara com respirador",
+     "probabilidade": 1,
+     "severidade": 1,
+     "classificacaoDocumento": "1 - Baixo Risco",
+     "monitoramento": "Umidificar locais onde tem maior movimentação de máquinas"
+    },
+    {
+     "tipo": "Químico",
+     "agente": "Solventes (tinta, querosene)",
+     "danos": "Problemas respiratórios, irritação na pele, dermatites, alergias e danos respiratórios",
+     "avaliacao": "Qualitativa",
+     "epc": "Monitoramento de ASOs, procedimentos operacionais; Treinamento e conscientização",
+     "epi": "Macacão, luva impermeável, óculos de segurança, máscara com respirador",
+     "probabilidade": 2,
+     "severidade": 3,
+     "classificacaoDocumento": "6 – Médio Risco",
+     "monitoramento": "Acompanhamento dos ASOs e conscientização sobre os riscos no DDS"
+    },
+    {
+     "tipo": "Biológico",
+     "agente": "Virus e bactérias",
+     "danos": "Contaminação de pele, boca e olhos",
+     "avaliacao": "Qualitativo",
+     "epc": "Monitoramento de ASOs, procedimentos operacionais; Treinamento e conscientização",
+     "epi": "Macacão, luva impermeável, óculos de segurança, respirador",
+     "probabilidade": 1,
+     "severidade": 1,
+     "classificacaoDocumento": "1- Baixo Risco",
+     "monitoramento": "Acompanhamento dos ASOs"
+    },
+    {
+     "tipo": "Ergonômico",
+     "agente": "Postura Inadequada",
+     "danos": "Distúrbios osteomusculares relacionados ao trabalho (DORT) Lesões por esforço repetitivo (LER)",
+     "avaliacao": "Qualitativa",
+     "epc": "Equipamentos e ferramentas adequadas a atividade",
+     "epi": "Ginastica laboral e pausas durante as atividades",
+     "probabilidade": 1,
+     "severidade": 2,
+     "classificacaoDocumento": "2- Baixo Risco",
+     "monitoramento": "Ferramentas adequadas, Pausas intercaladas para recuperação durante a jornada de trabalho, ginástica laboral e DDS"
+    },
+    {
+     "tipo": "Ergonômico",
+     "agente": "Levantamento e transporte manual de peso",
+     "danos": "Doenças osteomusculares",
+     "avaliacao": "Qualitativa",
+     "epc": "Equipamentos e ferramentas adequadas a atividade",
+     "epi": "Ginastica laboral e pausas durante as atividades",
+     "probabilidade": 2,
+     "severidade": 2,
+     "classificacaoDocumento": "4 - Baixo Risco",
+     "monitoramento": "Treinamento sobre ergonomia, ferramentas adequadas para as atividades e DDS"
+    },
+    {
+     "tipo": "Acidentes",
+     "agente": "Queda do mesmo nível",
+     "danos": "Traumatismo diversos",
+     "avaliacao": "Qualitativa",
+     "epc": "Placas de Sinalização, Caminho seguro, Isolamento de áreas, local limpo; Treinamento e conscientização",
+     "epi": "Capacete; bota de segurança",
+     "probabilidade": 2,
+     "severidade": 2,
+     "classificacaoDocumento": "4- Médio Risco",
+     "monitoramento": "Conscientização sobre os riscos no DDS"
+    },
+    {
+     "tipo": "Acidentes",
+     "agente": "Trabalho com projeção de partículas (sólidas e líquidas)",
+     "danos": "Leões oculares",
+     "avaliacao": "Qualitativa",
+     "epc": "Placas de Sinalização e isolamento de áreas",
+     "epi": "Capacete; e óculos de segurança",
+     "probabilidade": 1,
+     "severidade": 2,
+     "classificacaoDocumento": "2- Baixo Risco",
+     "monitoramento": "Conscientização sobre os riscos no DDS e acompanhamento de EPI (capacete)"
+    },
+    {
+     "tipo": "Acidentes",
+     "agente": "Animais peçonhentos",
+     "danos": "Picadas de insetos e animais diversos, alergias",
+     "avaliacao": "Qualitativa",
+     "epc": "Telas de proteção, tapumes, limpeza de áreas e ambiente de trabalho limpo",
+     "epi": "Perneiras, bota de segurança",
+     "probabilidade": 1,
+     "severidade": 2,
+     "classificacaoDocumento": "2- Baixo Risco",
+     "monitoramento": "Conscientização sobre os riscos no DDS e acompanhamento de EPI (perneira)"
+    },
+    {
+     "tipo": "Acidentes",
+     "agente": "Probabilidade de incêndio ou explosões",
+     "danos": "Queimaduras, escoriações, intoxicação ou fraturas",
+     "avaliacao": "Qualitativa",
+     "epc": "Sistema de proteção contra incêndio, treinamentos e procedimentos operacionais",
+     "epi": "N/A",
+     "probabilidade": 1,
+     "severidade": 1,
+     "classificacaoDocumento": "1 - Baixo Risco",
+     "monitoramento": "Conscientização sobre os riscos no DDS e treinamento sobre incêndio anual"
+    },
+    {
+     "tipo": "Acidentes",
+     "agente": "Outras situações que poderão contribuir para ocorrência de acidentes",
+     "danos": "Lesões diversas, fraturas, e esmagamentos",
+     "avaliacao": "Qualitativo",
+     "epc": "Limpeza das áreas e inspeções dos ambientes",
+     "epi": "N/A",
+     "probabilidade": 1,
+     "severidade": 1,
+     "classificacaoDocumento": "1 - Baixo Risco",
+     "monitoramento": "Conscientização sobre os riscos no DDS"
+    },
+    {
+     "tipo": "Acidentes",
+     "agente": "Desmoronamento",
+     "danos": "Lesões diversas, fraturas, e esmagamentos",
+     "avaliacao": "Qualitativo",
+     "epc": "Limpeza das áreas, escoramento de áreas e inspeções dos ambientes",
+     "epi": "Escoramento em áreas de riscos",
+     "probabilidade": 1,
+     "severidade": 3,
+     "classificacaoDocumento": "3 - Baixo Risco",
+     "monitoramento": "Conscientização sobre os riscos no DDS"
+    },
+    {
+     "tipo": "Acidentes",
+     "agente": "Trabalho em altura",
+     "danos": "Lesões diversas, parada cardiorespiratória, fraturas, esmagamentos e lesões fatal",
+     "avaliacao": "Qualitativo",
+     "epc": "Manutenção preventiva dos EPIs, análise preliminar de risco (APR) e treinamentos da NR35",
+     "epi": "Cinto de segurança, talabarte",
+     "probabilidade": 1,
+     "severidade": 2,
+     "classificacaoDocumento": "2 - Baixo Risco",
+     "monitoramento": "Conscientização sobre os riscos, e treinamentos específicos (NR 35)"
+    },
+    {
+     "tipo": "Acidentes",
+     "agente": "Espaço Confinado",
+     "danos": "Lesões diversas, parada cardiorespiratória, fraturas, esmagamentos e lesões fatal",
+     "avaliacao": "Qualitativo",
+     "epc": "Monitoramento do ambiente com detector de gases, ventilação, iluminação segura e placas de sinalização na realização das atividades",
+     "epi": "N/A",
+     "probabilidade": 1,
+     "severidade": 1,
+     "classificacaoDocumento": "1 – Baixo Risco",
+     "monitoramento": "Conscientização sobre os riscos, realização de APR, gestão de ASOs e treinamentos específicos (NR 33)"
+    }
+   ]
+  },
+  {
+   "numero": 7,
+   "setor": "Canteiro De Obra",
+   "jornadaTrabalho": "44 horas semanais",
+   "descricaoAmbiente": "Cabine de metal, iluminação natural, ventilação artificial, piso emborrachado. Atividades a céu aberto",
+   "atividadesCriticas": "Trabalho em altura, içamento de carga, escavação, fundação",
+   "fonteGeradora": null,
+   "medidasProtecaoExistentes": null,
+   "funcoes": [
+    {
+     "nome": "Operador de Retroescavadeira",
+     "cbo": "715115",
+     "descricaoAtividades": null,
+     "quantidadeExpostos": 4,
+     "apelidos": []
+    }
+   ],
+   "riscos": [
+    {
+     "tipo": "Físico",
+     "agente": "Ruído do ambiente",
+     "danos": "Redução da capacidade auditiva, zumbido, irritabilidade, agravo de estresse, prejuízo de concentração e distúrbios do sono",
+     "avaliacao": "Qualitativa",
+     "epc": "Placas de Sinalização, Manutenção preventiva dos equipamentos, Treinamento e conscientização",
+     "epi": "Protetor auricular tipo concha",
+     "probabilidade": 2,
+     "severidade": 3,
+     "classificacaoDocumento": "6 - Médio Risco",
+     "monitoramento": "Será avaliado através de avaliação qualitativa (dosimetria) e LTCAT"
+    },
+    {
+     "tipo": "Físico",
+     "agente": "Radiação não ionizante (exposição ao sol)",
+     "danos": "Fadiga, desidratação, tonturas, dores de cabeça, queda de pressão, queimaduras de pele, foto envelhecimento e câncer de pele",
+     "avaliacao": "Qualitativa",
+     "epc": "Treinamento e conscientização",
+     "epi": "Protetor solar; Touca árabe; e Fardamento com manga longa",
+     "probabilidade": 2,
+     "severidade": 3,
+     "classificacaoDocumento": "6- Médio Risco",
+     "monitoramento": "Acompanhamento e controle de EPIs e protetor solar"
+    },
+    {
+     "tipo": "Físico",
+     "agente": "Vibração",
+     "danos": "Doenças vasculares e musculares",
+     "avaliacao": "Qualitativa",
+     "epc": "Placas de Sinalização, Manutenção preventiva dos equipamentos, Treinamento e conscientização quanto o uso de luvas antivibração, Rodizio de funcionários",
+     "epi": "Luvas antivibração",
+     "probabilidade": 2,
+     "severidade": 1,
+     "classificacaoDocumento": "2 - Baixo Risco",
+     "monitoramento": "Será avaliado através de avaliação qualitativa (dosimetria) e LTCAT"
+    },
+    {
+     "tipo": "Químico",
+     "agente": "Poeira mineral",
+     "danos": "Problemas respiratórios, irritação na pele, alergias, dermatites e danos respiratórios",
+     "avaliacao": "Qualitativa",
+     "epc": "Placas de Sinalização, Treinamento e conscientização, Umectação do local",
+     "epi": "Máscara com respirador",
+     "probabilidade": 1,
+     "severidade": 1,
+     "classificacaoDocumento": "1 - Baixo Risco",
+     "monitoramento": "Umidificar locais onde tem maior movimentação de máquinas"
+    },
+    {
+     "tipo": "Químico",
+     "agente": "Produtos Químicos (graxas, óleos)",
+     "danos": "Doença de pele",
+     "avaliacao": "Qualitativa",
+     "epc": "Manutenção preventiva dos equipamentos e treinamentos quanto a doenças de pele",
+     "epi": "Luvas impermeável (látex ou nitrílica)",
+     "probabilidade": 3,
+     "severidade": 2,
+     "classificacaoDocumento": "6- Médio Risco",
+     "monitoramento": "Será avaliado através de avaliação qualitativa (dosimetria) e LTCAT"
+    },
+    {
+     "tipo": "Biológico",
+     "agente": "Virus e bactérias",
+     "danos": "Contaminação de pele, boca e olhos",
+     "avaliacao": "Qualitativo",
+     "epc": "Monitoramento de ASOs, procedimentos operacionais; Treinamento e conscientização",
+     "epi": "Macacão, luva impermeável, óculos de segurança, respirador",
+     "probabilidade": 2,
+     "severidade": 1,
+     "classificacaoDocumento": "2- Baixo Risco",
+     "monitoramento": "Acompanhamento dos ASOs"
+    },
+    {
+     "tipo": "Ergonômico",
+     "agente": "Postura Inadequada",
+     "danos": "Distúrbios osteomusculares relacionados ao trabalho (DORT) Lesões por esforço repetitivo (LER)",
+     "avaliacao": "Qualitativa",
+     "epc": "Equipamentos e ferramentas adequadas a atividade",
+     "epi": "Ginastica laboral e pausas durante as atividades",
+     "probabilidade": 2,
+     "severidade": 2,
+     "classificacaoDocumento": "4 - Baixo Risco",
+     "monitoramento": "Ferramentas adequadas, Pausas intercaladas para recuperação durante a jornada de trabalho, ginástica laboral e DDS"
+    },
+    {
+     "tipo": "Ergonômico",
+     "agente": "Levantamento e transporte manual de peso",
+     "danos": "Doenças osteomusculares",
+     "avaliacao": "Qualitativa",
+     "epc": "Equipamentos e ferramentas adequadas a atividade",
+     "epi": "Ginastica laboral e pausas durante as atividades",
+     "probabilidade": 2,
+     "severidade": 2,
+     "classificacaoDocumento": "4 - Baixo Risco",
+     "monitoramento": "Treinamento sobre ergonomia, ferramentas adequadas para as atividades e DDS"
+    },
+    {
+     "tipo": "Acidentes",
+     "agente": "Queda do mesmo nível",
+     "danos": "Traumatismo diversos",
+     "avaliacao": "Qualitativa",
+     "epc": "Placas de Sinalização, Caminho seguro, Isolamento de áreas, local limpo; Treinamento e conscientização",
+     "epi": "Capacete; bota de segurança",
+     "probabilidade": 3,
+     "severidade": 2,
+     "classificacaoDocumento": "6 - Médio Risco",
+     "monitoramento": "Conscientização sobre os riscos no DDS"
+    },
+    {
+     "tipo": "Acidentes",
+     "agente": "Trabalho com projeção de partículas (sólidas e líquidas)",
+     "danos": "Leões oculares",
+     "avaliacao": "Qualitativa",
+     "epc": "Placas de Sinalização e isolamento de áreas",
+     "epi": "Capacete; e óculos de segurança",
+     "probabilidade": 3,
+     "severidade": 2,
+     "classificacaoDocumento": "6 - Médio Risco",
+     "monitoramento": "Conscientização sobre os riscos no DDS e acompanhamento de EPI (capacete)"
+    },
+    {
+     "tipo": "Acidentes",
+     "agente": "Animais peçonhentos",
+     "danos": "Picadas de insetos e animais diversos, alergias",
+     "avaliacao": "Qualitativa",
+     "epc": "Telas de proteção, tapumes, limpeza de áreas e ambiente de trabalho limpo",
+     "epi": "Perneiras, bota de segurança",
+     "probabilidade": 2,
+     "severidade": 3,
+     "classificacaoDocumento": "6- Médio Risco",
+     "monitoramento": "Conscientização sobre os riscos no DDS e acompanhamento de EPI (perneira)"
+    },
+    {
+     "tipo": "Acidentes",
+     "agente": "Probabilidade de incêndio ou explosões",
+     "danos": "Queimaduras, escoriações, intoxicação ou fraturas",
+     "avaliacao": "Qualitativa",
+     "epc": "Sistema de proteção contra incêndio, treinamentos e procedimentos operacionais",
+     "epi": "N/A",
+     "probabilidade": 1,
+     "severidade": 1,
+     "classificacaoDocumento": "1 - Baixo Risco",
+     "monitoramento": "Conscientização sobre os riscos no DDS e treinamento sobre incêndio anual"
+    },
+    {
+     "tipo": "Acidentes",
+     "agente": "Outras situações que poderão contribuir para ocorrência de acidentes",
+     "danos": "Lesões diversas, fraturas, e esmagamentos",
+     "avaliacao": "Qualitativo",
+     "epc": "Limpeza das áreas e inspeções dos ambientes",
+     "epi": "N/A",
+     "probabilidade": 1,
+     "severidade": 1,
+     "classificacaoDocumento": "1 - Baixo Risco",
+     "monitoramento": "Conscientização sobre os riscos no DDS"
+    },
+    {
+     "tipo": "Acidentes",
+     "agente": "Desmoronamento",
+     "danos": "Lesões diversas, fraturas, e esmagamentos",
+     "avaliacao": "Qualitativo",
+     "epc": "Limpeza das áreas, escoramento de áreas e inspeções dos ambientes",
+     "epi": "Escoramento em áreas de riscos",
+     "probabilidade": 1,
+     "severidade": 3,
+     "classificacaoDocumento": "3 - Baixo Risco",
+     "monitoramento": "Conscientização sobre os riscos no DDS"
+    },
+    {
+     "tipo": "Acidentes",
+     "agente": "Trabalho em altura",
+     "danos": "Lesões diversas, parada cardiorespiratória, fraturas, esmagamentos e lesões fatal",
+     "avaliacao": "Qualitativo",
+     "epc": "Manutenção preventiva dos EPIs, análise preliminar de risco (APR) e treinamentos da NR35",
+     "epi": "Cinto de segurança, talabarte",
+     "probabilidade": 3,
+     "severidade": 2,
+     "classificacaoDocumento": "6 - Médio Risco",
+     "monitoramento": "Conscientização sobre os riscos, e treinamentos específicos (NR 35 e NR 12)"
+    }
+   ]
+  },
+  {
+   "numero": 8,
+   "setor": "Canteiro De Obra",
+   "jornadaTrabalho": "44 horas semanais",
+   "descricaoAmbiente": "Carro fechado, ventilação natural e artificial.",
+   "atividadesCriticas": "Não se aplica",
+   "fonteGeradora": null,
+   "medidasProtecaoExistentes": null,
+   "funcoes": [
+    {
+     "nome": "Motorista de Van",
+     "cbo": "782305",
+     "descricaoAtividades": null,
+     "quantidadeExpostos": 1,
+     "apelidos": [
+      "Motorista"
+     ]
+    }
+   ],
+   "riscos": [
+    {
+     "tipo": "Físico",
+     "agente": "Ruído do ambiente",
+     "danos": "Redução da capacidade auditiva, zumbido, irritabilidade, agravo de estresse, prejuízo de concentração e distúrbios do sono",
+     "avaliacao": "Qualitativa",
+     "epc": "Placas de Sinalização, Manutenção preventiva dos equipamentos, Treinamento e conscientização",
+     "epi": "Protetor auricular tipo concha",
+     "probabilidade": 1,
+     "severidade": 1,
+     "classificacaoDocumento": "1 - Baixo Risco",
+     "monitoramento": "Será avaliado através de avaliação qualitativa (dosimetria) e LTCAT"
+    },
+    {
+     "tipo": "Químico",
+     "agente": "Ausente",
+     "danos": "Ausente",
+     "avaliacao": "Qualitativa",
+     "epc": "N/A",
+     "epi": "N/A",
+     "probabilidade": 0,
+     "severidade": 0,
+     "classificacaoDocumento": "Não há exposição",
+     "monitoramento": "N/A"
+    },
+    {
+     "tipo": "Biológico",
+     "agente": "Ausente",
+     "danos": "Ausente",
+     "avaliacao": "Qualitativa",
+     "epc": "N/A",
+     "epi": "N/A",
+     "probabilidade": 0,
+     "severidade": 0,
+     "classificacaoDocumento": "Não há exposição",
+     "monitoramento": "N/A"
+    },
+    {
+     "tipo": "Ergonômico",
+     "agente": "Postura Inadequada",
+     "danos": "Distúrbios osteomusculares relacionados ao trabalho (DORT) Lesões por esforço repetitivo (LER)",
+     "avaliacao": "Qualitativa",
+     "epc": "Equipamentos e ferramentas adequadas a atividade",
+     "epi": "Ginastica laboral e pausas durante as atividades",
+     "probabilidade": 1,
+     "severidade": 2,
+     "classificacaoDocumento": "2- Baixo Risco",
+     "monitoramento": "Ferramentas adequadas, Pausas intercaladas para recuperação durante a jornada de trabalho, ginástica laboral e DDS"
+    },
+    {
+     "tipo": "Acidentes",
+     "agente": "Queda do mesmo nível",
+     "danos": "Traumatismo diversos",
+     "avaliacao": "Qualitativa",
+     "epc": "Placas de Sinalização, Caminho seguro, Isolamento de áreas, local limpo; Treinamento e conscientização",
+     "epi": "Capacete; bota de segurança",
+     "probabilidade": 2,
+     "severidade": 2,
+     "classificacaoDocumento": "4- Médio Risco",
+     "monitoramento": "Conscientização sobre os riscos no DDS"
+    },
+    {
+     "tipo": "Acidentes",
+     "agente": "Animais peçonhentos",
+     "danos": "Picadas de insetos e animais diversos, alergias",
+     "avaliacao": "Qualitativa",
+     "epc": "Telas de proteção, tapumes, limpeza de áreas e ambiente de trabalho limpo",
+     "epi": "Perneiras, bota de segurança",
+     "probabilidade": 1,
+     "severidade": 2,
+     "classificacaoDocumento": "2- Baixo Risco",
+     "monitoramento": "Conscientização sobre os riscos no DDS e acompanhamento de EPI (perneira)"
+    },
+    {
+     "tipo": "Acidentes",
+     "agente": "Probabilidade de incêndio ou explosões",
+     "danos": "Queimaduras, escoriações, intoxicação ou fraturas",
+     "avaliacao": "Qualitativa",
+     "epc": "Sistema de proteção contra incêndio, treinamentos e procedimentos operacionais",
+     "epi": "N/A",
+     "probabilidade": 1,
+     "severidade": 1,
+     "classificacaoDocumento": "1 - Baixo Risco",
+     "monitoramento": "Conscientização sobre os riscos no DDS e treinamento sobre incêndio anual"
+    },
+    {
+     "tipo": "Acidentes",
+     "agente": "Desmoronamento",
+     "danos": "Lesões diversas, fraturas, e esmagamentos",
+     "avaliacao": "Qualitativo",
+     "epc": "Limpeza das áreas, escoramento de áreas e inspeções dos ambientes",
+     "epi": "Escoramento em áreas de riscos",
+     "probabilidade": 1,
+     "severidade": 1,
+     "classificacaoDocumento": "1 - Baixo Risco",
+     "monitoramento": "Conscientização sobre os riscos no DDS"
+    }
+   ]
+  },
+  {
+   "numero": 9,
+   "setor": "Canteiro De Obra",
+   "jornadaTrabalho": "44 horas semanais",
+   "descricaoAmbiente": "Estrutura de container com paredes metálicas, piso de madeira, iluminação artificial e climatização artificial.",
+   "atividadesCriticas": "Não se aplica",
+   "fonteGeradora": null,
+   "medidasProtecaoExistentes": null,
+   "funcoes": [
+    {
+     "nome": "Auxiliar de Serviços Gerais",
+     "cbo": "514220",
+     "descricaoAtividades": null,
+     "quantidadeExpostos": 1,
+     "apelidos": []
+    }
+   ],
+   "riscos": [
+    {
+     "tipo": "Físico",
+     "agente": "Ruído do ambiente",
+     "danos": "Redução da capacidade auditiva, zumbido, irritabilidade, agravo de estresse, prejuízo de concentração e distúrbios do sono",
+     "avaliacao": "Qualitativa",
+     "epc": "Placas de Sinalização, Manutenção preventiva dos equipamentos, Treinamento e conscientização",
+     "epi": "Protetor auricular tipo concha",
+     "probabilidade": 1,
+     "severidade": 1,
+     "classificacaoDocumento": "1 - Baixo Risco",
+     "monitoramento": "Será avaliado através de avaliação qualitativa (dosimetria) e LTCAT"
+    },
+    {
+     "tipo": "Químico",
+     "agente": "Poeira",
+     "danos": "Problemas respiratórios, irritação na pele, alergias e danos respiratórios",
+     "avaliacao": "Qualitativa",
+     "epc": "Placas de Sinalização, Treinamento e conscientização,",
+     "epi": "Máscara com respirador",
+     "probabilidade": 1,
+     "severidade": 1,
+     "classificacaoDocumento": "1 - Baixo Risco",
+     "monitoramento": "Umidificar locais onde tem maior movimentação de máquinas"
+    },
+    {
+     "tipo": "Biológico",
+     "agente": "Virus e bactérias",
+     "danos": "Contaminação de pele, boca e olhos",
+     "avaliacao": "Qualitativo",
+     "epc": "Monitoramento de ASOs, procedimentos operacionais; Treinamento e conscientização",
+     "epi": "Macacão, luva impermeável, óculos de segurança, respirador",
+     "probabilidade": 1,
+     "severidade": 2,
+     "classificacaoDocumento": "2- Baixo Risco",
+     "monitoramento": "Acompanhamento dos ASOs"
+    },
+    {
+     "tipo": "Ergonômico",
+     "agente": "Postura Inadequada",
+     "danos": "Distúrbios osteomusculares relacionados ao trabalho (DORT) Lesões por esforço repetitivo (LER)",
+     "avaliacao": "Qualitativa",
+     "epc": "Equipamentos e ferramentas adequadas a atividade",
+     "epi": "Ginastica laboral e pausas durante as atividades",
+     "probabilidade": 1,
+     "severidade": 2,
+     "classificacaoDocumento": "2- Baixo Risco",
+     "monitoramento": "Ferramentas adequadas, Pausas intercaladas para recuperação durante a jornada de trabalho, ginástica laboral e DDS"
+    },
+    {
+     "tipo": "Acidentes",
+     "agente": "Queda do mesmo nível",
+     "danos": "Traumatismo diversos",
+     "avaliacao": "Qualitativa",
+     "epc": "Placas de Sinalização, Caminho seguro, Isolamento de áreas, local limpo; Treinamento e conscientização",
+     "epi": "Capacete; bota de segurança",
+     "probabilidade": 2,
+     "severidade": 2,
+     "classificacaoDocumento": "4- Médio Risco",
+     "monitoramento": "Conscientização sobre os riscos no DDS"
+    },
+    {
+     "tipo": "Acidentes",
+     "agente": "Animais peçonhentos",
+     "danos": "Picadas de insetos e animais diversos, alergias",
+     "avaliacao": "Qualitativa",
+     "epc": "Telas de proteção, tapumes, limpeza de áreas e ambiente de trabalho limpo",
+     "epi": "Perneiras, bota de segurança",
+     "probabilidade": 1,
+     "severidade": 2,
+     "classificacaoDocumento": "2- Baixo Risco",
+     "monitoramento": "Conscientização sobre os riscos no DDS e acompanhamento de EPI (perneira)"
+    },
+    {
+     "tipo": "Acidentes",
+     "agente": "Probabilidade de incêndio ou explosões",
+     "danos": "Queimaduras, escoriações, intoxicação ou fraturas",
+     "avaliacao": "Qualitativa",
+     "epc": "Sistema de proteção contra incêndio, treinamentos e procedimentos operacionais",
+     "epi": "N/A",
+     "probabilidade": 1,
+     "severidade": 1,
+     "classificacaoDocumento": "1 - Baixo Risco",
+     "monitoramento": "Conscientização sobre os riscos no DDS e treinamento sobre incêndio anual"
+    },
+    {
+     "tipo": "Acidentes",
+     "agente": "Outras situações que poderão contribuir para ocorrência de acidentes",
+     "danos": "Lesões diversas, fraturas, e esmagamentos",
+     "avaliacao": "Qualitativo",
+     "epc": "Limpeza das áreas e inspeções dos ambientes",
+     "epi": "N/A",
+     "probabilidade": 1,
+     "severidade": 1,
+     "classificacaoDocumento": "1 - Baixo Risco",
+     "monitoramento": "Conscientização sobre os riscos no DDS"
+    }
+   ]
+  },
+  {
+   "numero": 10,
+   "setor": "Canteiro De Obra",
+   "jornadaTrabalho": "44 horas semanais",
+   "descricaoAmbiente": "Estrutura com paredes de madeira, piso de concreto, iluminação natural, climatização natural e atividades a céu aberto",
+   "atividadesCriticas": "Trabalho em Altura",
+   "fonteGeradora": null,
+   "medidasProtecaoExistentes": null,
+   "funcoes": [
+    {
+     "nome": "Topógrafo",
+     "cbo": "312320",
+     "descricaoAtividades": null,
+     "quantidadeExpostos": 1,
+     "apelidos": []
+    },
+    {
+     "nome": "Auxiliar de Topógrafo",
+     "cbo": "312320",
+     "descricaoAtividades": null,
+     "quantidadeExpostos": 1,
+     "apelidos": [
+      "Auxiliar de Topografia"
+     ]
+    }
+   ],
+   "riscos": [
+    {
+     "tipo": "Físico",
+     "agente": "Ruído do ambiente",
+     "danos": "Redução da capacidade auditiva, zumbido, irritabilidade, agravo de estresse, prejuízo de concentração e distúrbios do sono",
+     "avaliacao": "Qualitativa",
+     "epc": "Placas de Sinalização, Manutenção preventiva dos equipamentos, Treinamento e conscientização",
+     "epi": "Protetor auricular tipo concha",
+     "probabilidade": 1,
+     "severidade": 1,
+     "classificacaoDocumento": "1 - Baixo Risco",
+     "monitoramento": "Será avaliado através de avaliação qualitativa (dosimetria) e LTCAT"
+    },
+    {
+     "tipo": "Físico",
+     "agente": "Radiação não ionizante (exposição ao sol)",
+     "danos": "Fadiga, desidratação, tonturas, dores de cabeça, queda de pressão, queimaduras de pele, foto envelhecimento e câncer de pele",
+     "avaliacao": "Qualitativa",
+     "epc": "Treinamento e conscientização",
+     "epi": "Protetor solar; Touca árabe; e Fardamento com manga longa",
+     "probabilidade": 2,
+     "severidade": 2,
+     "classificacaoDocumento": "4- Baixo Risco",
+     "monitoramento": "Acompanhamento e controle de EPIs e protetor solar"
+    },
+    {
+     "tipo": "Químico",
+     "agente": "Poeira",
+     "danos": "Problemas respiratórios, irritação na pele, alergias e danos respiratórios",
+     "avaliacao": "Qualitativa",
+     "epc": "Placas de Sinalização, Treinamento e conscientização, Umectação do local",
+     "epi": "Máscara com respirador; e luva impermeável",
+     "probabilidade": 1,
+     "severidade": 1,
+     "classificacaoDocumento": "1 - Baixo Risco",
+     "monitoramento": "Umidificar locais onde tem maior movimentação de máquinas"
+    },
+    {
+     "tipo": "Biológico",
+     "agente": "Virus e bactérias",
+     "danos": "Contaminação de pele, boca e olhos",
+     "avaliacao": "Qualitativo",
+     "epc": "Monitoramento de ASOs, procedimentos operacionais; Treinamento e conscientização",
+     "epi": "Macacão, luva impermeável, óculos de segurança, respirador",
+     "probabilidade": 1,
+     "severidade": 2,
+     "classificacaoDocumento": "2- Baixo Risco",
+     "monitoramento": "Acompanhamento dos ASOs"
+    },
+    {
+     "tipo": "Ergonômico",
+     "agente": "Postura Inadequada",
+     "danos": "Distúrbios osteomusculares relacionados ao trabalho (DORT) Lesões por esforço repetitivo (LER)",
+     "avaliacao": "Qualitativa",
+     "epc": "Equipamentos e ferramentas adequadas a atividade",
+     "epi": "Ginastica laboral e pausas durante as atividades",
+     "probabilidade": 1,
+     "severidade": 2,
+     "classificacaoDocumento": "2- Baixo Risco",
+     "monitoramento": "Ferramentas adequadas, Pausas intercaladas para recuperação durante a jornada de trabalho, ginástica laboral e DDS"
+    },
+    {
+     "tipo": "Acidentes",
+     "agente": "Queda do mesmo nível",
+     "danos": "Traumatismo diversos",
+     "avaliacao": "Qualitativa",
+     "epc": "Placas de Sinalização, Caminho seguro, Isolamento de áreas, local limpo; Treinamento e conscientização",
+     "epi": "Capacete; bota de segurança",
+     "probabilidade": 2,
+     "severidade": 2,
+     "classificacaoDocumento": "4- Médio Risco",
+     "monitoramento": "Conscientização sobre os riscos no DDS"
+    },
+    {
+     "tipo": "Acidentes",
+     "agente": "Trabalho com projeção de partículas (sólidas e líquidas)",
+     "danos": "Leões oculares",
+     "avaliacao": "Qualitativa",
+     "epc": "Placas de Sinalização e isolamento de áreas",
+     "epi": "Capacete; e óculos de segurança",
+     "probabilidade": 1,
+     "severidade": 2,
+     "classificacaoDocumento": "2- Baixo Risco",
+     "monitoramento": "Conscientização sobre os riscos no DDS e acompanhamento de EPI (capacete)"
+    },
+    {
+     "tipo": "Acidentes",
+     "agente": "Animais peçonhentos",
+     "danos": "Picadas de insetos e animais diversos, alergias",
+     "avaliacao": "Qualitativa",
+     "epc": "Telas de proteção, tapumes, limpeza de áreas e ambiente de trabalho limpo",
+     "epi": "Perneiras, bota de segurança",
+     "probabilidade": 1,
+     "severidade": 2,
+     "classificacaoDocumento": "2- Baixo Risco",
+     "monitoramento": "Conscientização sobre os riscos no DDS e acompanhamento de EPI (perneira)"
+    },
+    {
+     "tipo": "Acidentes",
+     "agente": "Probabilidade de incêndio ou explosões",
+     "danos": "Queimaduras, escoriações, intoxicação ou fraturas",
+     "avaliacao": "Qualitativa",
+     "epc": "Sistema de proteção contra incêndio, treinamentos e procedimentos operacionais",
+     "epi": "N/A",
+     "probabilidade": 1,
+     "severidade": 1,
+     "classificacaoDocumento": "1 - Baixo Risco",
+     "monitoramento": "Conscientização sobre os riscos no DDS e treinamento sobre incêndio anual"
+    },
+    {
+     "tipo": "Acidentes",
+     "agente": "Outras situações que poderão contribuir para ocorrência de acidentes",
+     "danos": "Lesões diversas, fraturas, e esmagamentos",
+     "avaliacao": "Qualitativo",
+     "epc": "Limpeza das áreas e inspeções dos ambientes",
+     "epi": "N/A",
+     "probabilidade": 1,
+     "severidade": 1,
+     "classificacaoDocumento": "1 - Baixo Risco",
+     "monitoramento": "Conscientização sobre os riscos no DDS"
+    },
+    {
+     "tipo": "Acidentes",
+     "agente": "Desmoronamento",
+     "danos": "Lesões diversas, fraturas, e esmagamentos",
+     "avaliacao": "Qualitativo",
+     "epc": "Limpeza das áreas, escoramento de áreas e inspeções dos ambientes",
+     "epi": "Escoramento em áreas de riscos",
+     "probabilidade": 1,
+     "severidade": 3,
+     "classificacaoDocumento": "3 - Baixo Risco",
+     "monitoramento": "Conscientização sobre os riscos no DDS"
+    },
+    {
+     "tipo": "Acidentes",
+     "agente": "Trabalho em altura",
+     "danos": "Lesões diversas, parada cardiorespiratória, fraturas, esmagamentos e lesões fatal",
+     "avaliacao": "Qualitativo",
+     "epc": "Manutenção preventiva dos EPIs, análise preliminar de risco (APR) e treinamentos da NR35",
+     "epi": "Cinto de segurança, talabarte",
+     "probabilidade": 1,
+     "severidade": 2,
+     "classificacaoDocumento": "2 - Baixo Risco",
+     "monitoramento": "Conscientização sobre os riscos, e treinamentos específicos"
+    }
+   ]
+  },
+  {
+   "numero": 11,
+   "setor": "Administrativo",
+   "jornadaTrabalho": "44 horas semanais",
+   "descricaoAmbiente": "Estrutura de container com paredes metálicas, piso de madeira, iluminação artificial e climatização artificial.",
+   "atividadesCriticas": "Não se aplica",
+   "fonteGeradora": null,
+   "medidasProtecaoExistentes": null,
+   "funcoes": [
+    {
+     "nome": "Almoxarife",
+     "cbo": "414105",
+     "descricaoAtividades": null,
+     "quantidadeExpostos": 1,
+     "apelidos": []
+    },
+    {
+     "nome": "Arquiteto",
+     "cbo": "214105",
+     "descricaoAtividades": null,
+     "quantidadeExpostos": 1,
+     "apelidos": []
+    },
+    {
+     "nome": "Administrativo de Obra",
+     "cbo": "411010",
+     "descricaoAtividades": null,
+     "quantidadeExpostos": 1,
+     "apelidos": [
+      "Administrativo da Obra"
+     ]
+    },
+    {
+     "nome": "Assistente de Engenharia",
+     "cbo": "312105",
+     "descricaoAtividades": null,
+     "quantidadeExpostos": 1,
+     "apelidos": []
+    },
+    {
+     "nome": "Gestor de Contrato",
+     "cbo": "141305",
+     "descricaoAtividades": null,
+     "quantidadeExpostos": 1,
+     "apelidos": []
+    },
+    {
+     "nome": "Engenheiro de Produção",
+     "cbo": "214905",
+     "descricaoAtividades": null,
+     "quantidadeExpostos": 1,
+     "apelidos": [
+      "Engenheira de Produção"
+     ]
+    }
+   ],
+   "riscos": [
+    {
+     "tipo": "Físico",
+     "agente": "Ruído do ambiente",
+     "danos": "Redução da capacidade auditiva, zumbido, irritabilidade, agravo de estresse, prejuízo de concentração e distúrbios do sono",
+     "avaliacao": "Qualitativa",
+     "epc": "Placas de Sinalização, Manutenção preventiva dos equipamentos, Treinamento e conscientização",
+     "epi": "Protetor auricular tipo concha",
+     "probabilidade": 1,
+     "severidade": 1,
+     "classificacaoDocumento": "1 - Baixo Risco",
+     "monitoramento": "Será avaliado através de avaliação qualitativa (dosimetria) e LTCAT"
+    },
+    {
+     "tipo": "Químico",
+     "agente": "Ausente",
+     "danos": "Ausente",
+     "avaliacao": "Qualitativa",
+     "epc": "N/A",
+     "epi": "N/A",
+     "probabilidade": 0,
+     "severidade": 0,
+     "classificacaoDocumento": "Não há exposição",
+     "monitoramento": "N/A"
+    },
+    {
+     "tipo": "Biológico",
+     "agente": "Virus e bactérias",
+     "danos": "Contaminação de pele, boca e olhos",
+     "avaliacao": "Qualitativo",
+     "epc": "Monitoramento de ASOs, procedimentos operacionais; Treinamento e conscientização",
+     "epi": "N/A",
+     "probabilidade": 1,
+     "severidade": 1,
+     "classificacaoDocumento": "1- Baixo Risco",
+     "monitoramento": "Acompanhamento"
+    },
+    {
+     "tipo": "Ergonômico",
+     "agente": "Postura Inadequada",
+     "danos": "Distúrbios osteomusculares relacionados ao trabalho (DORT) Lesões por esforço repetitivo (LER)",
+     "avaliacao": "Qualitativa",
+     "epc": "Equipamentos e ferramentas adequadas a atividade",
+     "epi": "Ginastica laboral e pausas durante as atividades",
+     "probabilidade": 2,
+     "severidade": 2,
+     "classificacaoDocumento": "4- Baixo Risco",
+     "monitoramento": "Ferramentas adequadas, Pausas intercaladas para recuperação durante a jornada de trabalho, ginástica laboral e DDS"
+    },
+    {
+     "tipo": "Acidentes",
+     "agente": "Queda do mesmo nível",
+     "danos": "Traumatismo diversos",
+     "avaliacao": "Qualitativa",
+     "epc": "Placas de Sinalização, Caminho seguro, Isolamento de áreas, local limpo; Treinamento e conscientização",
+     "epi": "Capacete; bota de segurança",
+     "probabilidade": 2,
+     "severidade": 2,
+     "classificacaoDocumento": "4- Baixo Risco",
+     "monitoramento": "Conscientização sobre os riscos no DDS"
+    },
+    {
+     "tipo": "Acidentes",
+     "agente": "Animais peçonhentos",
+     "danos": "Picadas de insetos e animais diversos, alergias",
+     "avaliacao": "Qualitativa",
+     "epc": "Telas de proteção, tapumes, limpeza de áreas e ambiente de trabalho limpo",
+     "epi": "Perneiras, bota de segurança",
+     "probabilidade": 1,
+     "severidade": 2,
+     "classificacaoDocumento": "2- Baixo Risco",
+     "monitoramento": "Conscientização sobre os riscos no DDS e acompanhamento de EPI (perneira)"
+    },
+    {
+     "tipo": "Acidentes",
+     "agente": "Probabilidade de incêndio ou explosões",
+     "danos": "Queimaduras, escoriações, intoxicação ou fraturas",
+     "avaliacao": "Qualitativa",
+     "epc": "Sistema de proteção contra incêndio, treinamentos e procedimentos operacionais",
+     "epi": "N/A",
+     "probabilidade": 1,
+     "severidade": 1,
+     "classificacaoDocumento": "1 - Baixo Risco",
+     "monitoramento": "Conscientização sobre os riscos no DDS e treinamento sobre incêndio anual"
+    },
+    {
+     "tipo": "Acidentes",
+     "agente": "Desmoronamento",
+     "danos": "Lesões diversas, fraturas, e esmagamentos",
+     "avaliacao": "Qualitativo",
+     "epc": "Limpeza das áreas, escoramento de áreas e inspeções dos ambientes",
+     "epi": "Escoramento em áreas de riscos",
+     "probabilidade": 1,
+     "severidade": 1,
+     "classificacaoDocumento": "1 - Baixo Risco",
+     "monitoramento": "Conscientização sobre os riscos no DDS"
+    }
+   ]
+  },
+  {
+   "numero": 12,
+   "setor": "Segurança",
+   "jornadaTrabalho": "44 horas semanais",
+   "descricaoAmbiente": "Estrutura de container com paredes metálicas, piso de madeira, iluminação natural e climatização natural.",
+   "atividadesCriticas": "Não se aplica",
+   "fonteGeradora": null,
+   "medidasProtecaoExistentes": null,
+   "funcoes": [
+    {
+     "nome": "Porteiro",
+     "cbo": "517420",
+     "descricaoAtividades": null,
+     "quantidadeExpostos": null,
+     "apelidos": []
+    },
+    {
+     "nome": "Vigia",
+     "cbo": "517420",
+     "descricaoAtividades": null,
+     "quantidadeExpostos": null,
+     "apelidos": []
+    }
+   ],
+   "riscos": [
+    {
+     "tipo": "Físico",
+     "agente": "Ruído do ambiente",
+     "danos": "Redução da capacidade auditiva, zumbido, irritabilidade, agravo de estresse, prejuízo de concentração e distúrbios do sono",
+     "avaliacao": "Qualitativa",
+     "epc": "Placas de Sinalização, Manutenção preventiva dos equipamentos, Treinamento e conscientização",
+     "epi": "Protetor auricular tipo concha",
+     "probabilidade": 1,
+     "severidade": 1,
+     "classificacaoDocumento": "1 - Baixo Risco",
+     "monitoramento": "Será avaliado através de avaliação qualitativa (dosimetria) e LTCAT"
+    },
+    {
+     "tipo": "Químico",
+     "agente": "Ausente",
+     "danos": "Ausente",
+     "avaliacao": "Qualitativa",
+     "epc": "N/A",
+     "epi": "N/A",
+     "probabilidade": 0,
+     "severidade": 0,
+     "classificacaoDocumento": "Não há exposição",
+     "monitoramento": "N/A"
+    },
+    {
+     "tipo": "Biológico",
+     "agente": "Ausente",
+     "danos": "Ausente",
+     "avaliacao": "Qualitativa",
+     "epc": "N/A",
+     "epi": "N/A",
+     "probabilidade": 0,
+     "severidade": 0,
+     "classificacaoDocumento": "Não há exposição",
+     "monitoramento": "N/A"
+    },
+    {
+     "tipo": "Ergonômico",
+     "agente": "Postura Inadequada",
+     "danos": "Distúrbios osteomusculares relacionados ao trabalho (DORT) Lesões por esforço repetitivo (LER)",
+     "avaliacao": "Qualitativa",
+     "epc": "Equipamentos e ferramentas adequadas a atividade",
+     "epi": "Ginastica laboral e pausas durante as atividades",
+     "probabilidade": 1,
+     "severidade": 2,
+     "classificacaoDocumento": "2- Baixo Risco",
+     "monitoramento": "Ferramentas adequadas, Pausas intercaladas para recuperação durante a jornada de trabalho, ginástica laboral e DDS"
+    },
+    {
+     "tipo": "Acidentes",
+     "agente": "Queda do mesmo nível",
+     "danos": "Traumatismo diversos",
+     "avaliacao": "Qualitativa",
+     "epc": "Placas de Sinalização, Caminho seguro, Isolamento de áreas, local limpo; Treinamento e conscientização",
+     "epi": "Capacete; bota de segurança",
+     "probabilidade": 2,
+     "severidade": 2,
+     "classificacaoDocumento": "4- Baixo Risco",
+     "monitoramento": "Conscientização sobre os riscos no DDS"
+    },
+    {
+     "tipo": "Acidentes",
+     "agente": "Animais peçonhentos",
+     "danos": "Picadas de insetos e animais diversos, alergias",
+     "avaliacao": "Qualitativa",
+     "epc": "Telas de proteção, tapumes, limpeza de áreas e ambiente de trabalho limpo",
+     "epi": "Perneiras, bota de segurança",
+     "probabilidade": 1,
+     "severidade": 2,
+     "classificacaoDocumento": "2- Baixo Risco",
+     "monitoramento": "Conscientização sobre os riscos no DDS e acompanhamento de EPI (perneira)"
+    },
+    {
+     "tipo": "Acidentes",
+     "agente": "Probabilidade de incêndio ou explosões",
+     "danos": "Queimaduras, escoriações, intoxicação ou fraturas",
+     "avaliacao": "Qualitativa",
+     "epc": "Sistema de proteção contra incêndio, treinamentos e procedimentos operacionais",
+     "epi": "N/A",
+     "probabilidade": 1,
+     "severidade": 1,
+     "classificacaoDocumento": "1 - Baixo Risco",
+     "monitoramento": "Conscientização sobre os riscos no DDS e treinamento sobre incêndio anual"
+    }
+   ]
+  },
+  {
+   "numero": 13,
+   "setor": "Canteiro De Obra",
+   "jornadaTrabalho": "44 horas semanais",
+   "descricaoAmbiente": "Estrutura com paredes de madeira, piso de concreto, iluminação natural, climatização natural, artificial e atividades a céu aberto",
+   "atividadesCriticas": "Trabalho em altura e Espaço Confinado",
+   "fonteGeradora": null,
+   "medidasProtecaoExistentes": null,
+   "funcoes": [
+    {
+     "nome": "Encarregado",
+     "cbo": "710205",
+     "descricaoAtividades": null,
+     "quantidadeExpostos": 3,
+     "apelidos": [
+      "Mestre de Obras",
+      "Encarregado/Mestre de Obras"
+     ]
+    },
+    {
+     "nome": "Engenheiro Civil",
+     "cbo": "214205",
+     "descricaoAtividades": null,
+     "quantidadeExpostos": 2,
+     "apelidos": []
+    },
+    {
+     "nome": "Engenheiro de Segurança do Trabalho",
+     "cbo": "214915",
+     "descricaoAtividades": null,
+     "quantidadeExpostos": 1,
+     "apelidos": []
+    },
+    {
+     "nome": "Engenheiro Ambiental",
+     "cbo": "214005",
+     "descricaoAtividades": null,
+     "quantidadeExpostos": 1,
+     "apelidos": [
+      "Engenheira Ambiental"
+     ]
+    }
+   ],
+   "riscos": [
+    {
+     "tipo": "Físico",
+     "agente": "Ruído do ambiente",
+     "danos": "Redução da capacidade auditiva, zumbido, irritabilidade, agravo de estresse, prejuízo de concentração e distúrbios do sono",
+     "avaliacao": "Qualitativa",
+     "epc": "Placas de Sinalização, Manutenção preventiva dos equipamentos, Treinamento e conscientização",
+     "epi": "Protetor auricular tipo concha",
+     "probabilidade": 1,
+     "severidade": 3,
+     "classificacaoDocumento": "3 - Baixo Risco",
+     "monitoramento": "Será avaliado através de avaliação qualitativa (dosimetria) e LTCAT"
+    },
+    {
+     "tipo": "Físico",
+     "agente": "Radiação não ionizante (exposição ao sol)",
+     "danos": "Fadiga, desidratação, tonturas, dores de cabeça, queda de pressão, queimaduras de pele, foto envelhecimento e câncer de pele",
+     "avaliacao": "Qualitativa",
+     "epc": "Treinamento e conscientização",
+     "epi": "Protetor solar; Touca árabe; e Fardamento com manga longa",
+     "probabilidade": 2,
+     "severidade": 2,
+     "classificacaoDocumento": "4- Baixo Risco",
+     "monitoramento": "Acompanhamento e controle de EPIs e protetor solar"
+    },
+    {
+     "tipo": "Químico",
+     "agente": "Poeira",
+     "danos": "Problemas respiratórios, irritação na pele, alergias e danos respiratórios",
+     "avaliacao": "Qualitativa",
+     "epc": "Placas de Sinalização, Treinamento e conscientização, Umectação do local",
+     "epi": "Máscara com respirador",
+     "probabilidade": 2,
+     "severidade": 2,
+     "classificacaoDocumento": "4 - Baixo Risco",
+     "monitoramento": "Umidificar locais onde tem maior movimentação de máquinas"
+    },
+    {
+     "tipo": "Biológico",
+     "agente": "Virus e bactérias",
+     "danos": "Contaminação de pele, boca e olhos",
+     "avaliacao": "Qualitativo",
+     "epc": "Monitoramento de ASOs, procedimentos operacionais; Treinamento e conscientização",
+     "epi": "N/A",
+     "probabilidade": 1,
+     "severidade": 2,
+     "classificacaoDocumento": "2- Baixo Risco",
+     "monitoramento": "Acompanhamento dos ASOs"
+    },
+    {
+     "tipo": "Ergonômico",
+     "agente": "Postura Inadequada",
+     "danos": "Distúrbios osteomusculares relacionados ao trabalho (DORT) Lesões por esforço repetitivo (LER)",
+     "avaliacao": "Qualitativa",
+     "epc": "Equipamentos e ferramentas adequadas a atividade",
+     "epi": "Ginastica laboral e pausas durante as atividades",
+     "probabilidade": 2,
+     "severidade": 1,
+     "classificacaoDocumento": "2 - Baixo Risco",
+     "monitoramento": "Pausas intercaladas para recuperação, ginástica laboral e DDS"
+    },
+    {
+     "tipo": "Acidentes",
+     "agente": "Queda do mesmo nível",
+     "danos": "Traumatismo diversos",
+     "avaliacao": "Qualitativa",
+     "epc": "Placas de Sinalização, Caminho seguro, Isolamento de áreas, local limpo; Treinamento e conscientização",
+     "epi": "Capacete; bota de segurança",
+     "probabilidade": 3,
+     "severidade": 2,
+     "classificacaoDocumento": "6 - Médio Risco",
+     "monitoramento": "Conscientização sobre os riscos no DDS"
+    },
+    {
+     "tipo": "Acidentes",
+     "agente": "Trabalho com projeção de partículas (sólidas e líquidas)",
+     "danos": "Leões oculares",
+     "avaliacao": "Qualitativa",
+     "epc": "Placas de Sinalização e isolamento de áreas",
+     "epi": "Capacete; e óculos de segurança",
+     "probabilidade": 3,
+     "severidade": 2,
+     "classificacaoDocumento": "6 - Médio Risco",
+     "monitoramento": "Conscientização sobre os riscos no DDS e acompanhamento de EPI (capacete)"
+    },
+    {
+     "tipo": "Acidentes",
+     "agente": "Animais peçonhentos",
+     "danos": "Picadas de insetos e animais diversos, alergias",
+     "avaliacao": "Qualitativa",
+     "epc": "Telas de proteção, tapumes, limpeza de áreas e ambiente de trabalho limpo",
+     "epi": "Perneiras, bota de segurança",
+     "probabilidade": 2,
+     "severidade": 4,
+     "classificacaoDocumento": "8- Médio Risco",
+     "monitoramento": "Conscientização sobre os riscos no DDS e acompanhamento de EPI (perneira)"
+    },
+    {
+     "tipo": "Acidentes",
+     "agente": "Probabilidade de incêndio ou explosões",
+     "danos": "Queimaduras, escoriações, intoxicação ou fraturas",
+     "avaliacao": "Qualitativa",
+     "epc": "Sistema de proteção contra incêndio, treinamentos e procedimentos operacionais",
+     "epi": "N/A",
+     "probabilidade": 1,
+     "severidade": 1,
+     "classificacaoDocumento": "1 - Baixo Risco",
+     "monitoramento": "Conscientização sobre os riscos no DDS e treinamento sobre incêndio anual"
+    },
+    {
+     "tipo": "Acidentes",
+     "agente": "Outras situações que poderão contribuir para ocorrência de acidentes",
+     "danos": "Lesões diversas, fraturas, e esmagamentos",
+     "avaliacao": "Qualitativo",
+     "epc": "Limpeza das áreas e inspeções dos ambientes",
+     "epi": "N/A",
+     "probabilidade": 1,
+     "severidade": 1,
+     "classificacaoDocumento": "1 - Baixo Risco",
+     "monitoramento": "Conscientização sobre os riscos no DDS"
+    },
+    {
+     "tipo": "Acidentes",
+     "agente": "Desmoronamento",
+     "danos": "Lesões diversas, fraturas, e esmagamentos",
+     "avaliacao": "Qualitativo",
+     "epc": "Limpeza das áreas, escoramento de áreas e inspeções dos ambientes",
+     "epi": "Escoramento em áreas de riscos",
+     "probabilidade": 1,
+     "severidade": 3,
+     "classificacaoDocumento": "3 - Baixo Risco",
+     "monitoramento": "Conscientização sobre os riscos no DDS"
+    },
+    {
+     "tipo": "Acidentes",
+     "agente": "Espaço Confinado",
+     "danos": "Lesões diversas, parada cardiorespiratória, fraturas, esmagamentos e lesões fatal",
+     "avaliacao": "Qualitativo",
+     "epc": "Monitoramento do ambiente com detector de gases, ventilação, iluminação segura e placas de sinalização na realização das atividades",
+     "epi": "N/A",
+     "probabilidade": 1,
+     "severidade": 2,
+     "classificacaoDocumento": "2 – Baixo Risco",
+     "monitoramento": "Conscientização sobre os riscos, realização de APR, gestão de ASOs e treinamentos específicos (NR 33)"
+    },
+    {
+     "tipo": "Acidentes",
+     "agente": "Trabalho em altura",
+     "danos": "Lesões diversas, parada cardiorespiratória, fraturas, esmagamentos e lesões fatal",
+     "avaliacao": "Qualitativo",
+     "epc": "Manutenção preventiva dos EPIs, análise preliminar de risco (APR) e treinamentos da NR35",
+     "epi": "Cinto de segurança, talabarte",
+     "probabilidade": 1,
+     "severidade": 2,
+     "classificacaoDocumento": "2 – Baixo Risco",
+     "monitoramento": "Conscientização sobre os riscos, e treinamentos específicas (NR 35)"
+    }
+   ]
+  },
+  {
+   "numero": 14,
+   "setor": "Canteiro De Obra",
+   "jornadaTrabalho": "44 horas semanais",
+   "descricaoAmbiente": "Estrutura com paredes de madeira, piso de concreto, iluminação natural, climatização natural e atividades a céu aberto",
+   "atividadesCriticas": "Espaço Confinado",
+   "fonteGeradora": null,
+   "medidasProtecaoExistentes": null,
+   "funcoes": [
+    {
+     "nome": "Encanador",
+     "cbo": "724110",
+     "descricaoAtividades": null,
+     "quantidadeExpostos": 3,
+     "apelidos": []
+    }
+   ],
+   "riscos": [
+    {
+     "tipo": "Físico",
+     "agente": "Ruído do ambiente",
+     "danos": "Redução da capacidade auditiva, zumbido, irritabilidade, agravo de estresse, prejuízo de concentração e distúrbios do sono",
+     "avaliacao": "Qualitativa",
+     "epc": "Placas de Sinalização, Manutenção preventiva dos equipamentos, Treinamento e conscientização",
+     "epi": "Protetor auricular tipo concha",
+     "probabilidade": 1,
+     "severidade": 3,
+     "classificacaoDocumento": "3 - Baixo Risco",
+     "monitoramento": "Será avaliado através de avaliação qualitativa (dosimetria) e LTCAT"
+    },
+    {
+     "tipo": "Físico",
+     "agente": "Radiação não ionizante (exposição ao sol)",
+     "danos": "Fadiga, desidratação, tonturas, dores de cabeça, queda de pressão, queimaduras de pele, foto envelhecimento e câncer de pele",
+     "avaliacao": "Qualitativa",
+     "epc": "Treinamento e conscientização",
+     "epi": "Protetor solar; Touca árabe; e Fardamento com manga longa",
+     "probabilidade": 2,
+     "severidade": 2,
+     "classificacaoDocumento": "4- Baixo Risco",
+     "monitoramento": "Acompanhamento e controle de EPIs e protetor solar"
+    },
+    {
+     "tipo": "Físico",
+     "agente": "Vibração",
+     "danos": "Doenças vasculares e musculares",
+     "avaliacao": "Qualitativa",
+     "epc": "Placas de Sinalização, Manutenção preventiva dos equipamentos, Treinamento e conscientização quanto o uso de luvas antivibração, Rodizio de funcionários",
+     "epi": "Luvas antivibração",
+     "probabilidade": 1,
+     "severidade": 1,
+     "classificacaoDocumento": "1 - Baixo Risco",
+     "monitoramento": "Será avaliado através de avaliação qualitativa (dosimetria) e LTCAT"
+    },
+    {
+     "tipo": "Químico",
+     "agente": "Poeira",
+     "danos": "Problemas respiratórios, irritação na pele, alergias e danos respiratórios",
+     "avaliacao": "Qualitativa",
+     "epc": "Placas de Sinalização, Treinamento e conscientização, Umectação do local",
+     "epi": "Máscara com respirador",
+     "probabilidade": 1,
+     "severidade": 1,
+     "classificacaoDocumento": "1 - Baixo Risco",
+     "monitoramento": "Umidificar locais onde tem maior movimentação de máquinas"
+    },
+    {
+     "tipo": "Químico",
+     "agente": "Produtos Químicos (cimento)",
+     "danos": "Doença de pele, alergias e dermatites",
+     "avaliacao": "Qualitativa",
+     "epc": "Treinamento e conscientização",
+     "epi": "Luvas impermeável (látex ou nitrílica)",
+     "probabilidade": 1,
+     "severidade": 1,
+     "classificacaoDocumento": "1 – Baixo Risco",
+     "monitoramento": "Acompanhamento e controle de EPIs"
+    },
+    {
+     "tipo": "Químico",
+     "agente": "Produtos Químicos (pasta, lubrificantes)",
+     "danos": "Dermatites de pele",
+     "avaliacao": "Qualitativa",
+     "epc": "Treinamento e conscientização",
+     "epi": "Luvas impermeável (látex ou nitrílica)",
+     "probabilidade": 3,
+     "severidade": 2,
+     "classificacaoDocumento": "6 – Médio Risco",
+     "monitoramento": "Acompanhamento e controle de EPIs"
+    },
+    {
+     "tipo": "Biológico",
+     "agente": "Virus e bactérias",
+     "danos": "Contaminação de pele, boca e olhos",
+     "avaliacao": "Qualitativo",
+     "epc": "Monitoramento de ASOs, procedimentos operacionais; Treinamento e conscientização",
+     "epi": "Macacão, luva impermeável, óculos de segurança, respirador",
+     "probabilidade": 1,
+     "severidade": 2,
+     "classificacaoDocumento": "2- Baixo Risco",
+     "monitoramento": "Acompanhamento dos ASOs"
+    },
+    {
+     "tipo": "Ergonômico",
+     "agente": "Postura Inadequada",
+     "danos": "Distúrbios osteomusculares relacionados ao trabalho (DORT) Lesões por esforço repetitivo (LER)",
+     "avaliacao": "Qualitativa",
+     "epc": "Equipamentos e ferramentas adequadas a atividade",
+     "epi": "Ginastica laboral e pausas durante as atividades",
+     "probabilidade": 2,
+     "severidade": 3,
+     "classificacaoDocumento": "6 - Médio Risco",
+     "monitoramento": "Ferramentas adequadas, Pausas intercaladas para recuperação durante a jornada de trabalho, ginástica laboral e DDS"
+    },
+    {
+     "tipo": "Ergonômico",
+     "agente": "Levantamento e transporte manual de peso",
+     "danos": "Doenças osteomusculares",
+     "avaliacao": "Qualitativa",
+     "epc": "Equipamentos e ferramentas adequadas a atividade",
+     "epi": "Ginastica laboral e pausas durante as atividades",
+     "probabilidade": 2,
+     "severidade": 3,
+     "classificacaoDocumento": "6 - Médio Risco",
+     "monitoramento": "Treinamento sobre ergonomia, ferramentas adequadas para as atividades e DDS"
+    },
+    {
+     "tipo": "Acidentes",
+     "agente": "Queda do mesmo nível",
+     "danos": "Traumatismo diversos",
+     "avaliacao": "Qualitativa",
+     "epc": "Placas de Sinalização, Caminho seguro, Isolamento de áreas, local limpo; Treinamento e conscientização",
+     "epi": "Capacete; bota de segurança",
+     "probabilidade": 3,
+     "severidade": 2,
+     "classificacaoDocumento": "6 - Médio Risco",
+     "monitoramento": "Conscientização sobre os riscos no DDS"
+    },
+    {
+     "tipo": "Acidentes",
+     "agente": "Trabalho com projeção de partículas (sólidas e líquidas)",
+     "danos": "Leões oculares",
+     "avaliacao": "Qualitativa",
+     "epc": "Placas de Sinalização e isolamento de áreas",
+     "epi": "Capacete; e óculos de segurança",
+     "probabilidade": 3,
+     "severidade": 2,
+     "classificacaoDocumento": "6 - Médio Risco",
+     "monitoramento": "Conscientização sobre os riscos no DDS e acompanhamento de EPI (capacete)"
+    },
+    {
+     "tipo": "Acidentes",
+     "agente": "Animais peçonhentos",
+     "danos": "Picadas de insetos e animais diversos, alergias",
+     "avaliacao": "Qualitativa",
+     "epc": "Telas de proteção, tapumes, limpeza de áreas e ambiente de trabalho limpo",
+     "epi": "Perneiras, bota de segurança",
+     "probabilidade": 3,
+     "severidade": 4,
+     "classificacaoDocumento": "8- Médio Risco",
+     "monitoramento": "Conscientização sobre os riscos no DDS e acompanhamento de EPI (perneira)"
+    },
+    {
+     "tipo": "Acidentes",
+     "agente": "Probabilidade de incêndio ou explosões",
+     "danos": "Queimaduras, escoriações, intoxicação ou fraturas",
+     "avaliacao": "Qualitativa",
+     "epc": "Sistema de proteção contra incêndio, treinamentos e procedimentos operacionais",
+     "epi": "N/A",
+     "probabilidade": 1,
+     "severidade": 1,
+     "classificacaoDocumento": "1 - Baixo Risco",
+     "monitoramento": "Conscientização sobre os riscos no DDS e treinamento sobre incêndio anual"
+    },
+    {
+     "tipo": "Acidentes",
+     "agente": "Outras situações que poderão contribuir para ocorrência de acidentes",
+     "danos": "Lesões diversas, fraturas, e esmagamentos",
+     "avaliacao": "Qualitativo",
+     "epc": "Limpeza das áreas e inspeções dos ambientes",
+     "epi": "N/A",
+     "probabilidade": 1,
+     "severidade": 1,
+     "classificacaoDocumento": "1 - Baixo Risco",
+     "monitoramento": "Conscientização sobre os riscos no DDS"
+    },
+    {
+     "tipo": "Acidentes",
+     "agente": "Desmoronamento",
+     "danos": "Lesões diversas, fraturas, e esmagamentos",
+     "avaliacao": "Qualitativo",
+     "epc": "Limpeza das áreas, escoramento de áreas e inspeções dos ambientes",
+     "epi": "Escoramento em áreas de riscos",
+     "probabilidade": 1,
+     "severidade": 3,
+     "classificacaoDocumento": "3 - Baixo Risco",
+     "monitoramento": "Conscientização sobre os riscos no DDS"
+    },
+    {
+     "tipo": "Acidentes",
+     "agente": "Espaço Confinado",
+     "danos": "Lesões diversas, parada cardiorespiratória, fraturas, esmagamentos e lesões fatal",
+     "avaliacao": "Qualitativo",
+     "epc": "Monitoramento do ambiente com detector de gases, ventilação, iluminação segura e placas de sinalização na realização das atividades",
+     "epi": "N/A",
+     "probabilidade": 3,
+     "severidade": 2,
+     "classificacaoDocumento": "6 – Médio Risco",
+     "monitoramento": "Conscientização sobre os riscos, realização de APR, gestão de ASOs e treinamentos específicos (NR 33)"
+    }
+   ]
+  },
+  {
+   "numero": 15,
+   "setor": "Canteiro De Obra",
+   "jornadaTrabalho": "44 horas semanais",
+   "descricaoAmbiente": "Cabine de metal, iluminação natural, ventilação artificial, piso emborrachado. Atividades a céu aberto",
+   "atividadesCriticas": "Carregamento de carga",
+   "fonteGeradora": null,
+   "medidasProtecaoExistentes": null,
+   "funcoes": [
+    {
+     "nome": "Motorista de Caminhão",
+     "cbo": "782510",
+     "descricaoAtividades": null,
+     "quantidadeExpostos": 4,
+     "apelidos": []
+    }
+   ],
+   "riscos": [
+    {
+     "tipo": "Físico",
+     "agente": "Ruído do ambiente",
+     "danos": "Redução da capacidade auditiva, zumbido, irritabilidade, agravo de estresse, prejuízo de concentração e distúrbios do sono",
+     "avaliacao": "Qualitativa",
+     "epc": "Placas de Sinalização, Manutenção preventiva dos equipamentos, Treinamento e conscientização",
+     "epi": "Protetor auricular tipo concha",
+     "probabilidade": 2,
+     "severidade": 3,
+     "classificacaoDocumento": "6 - Médio Risco",
+     "monitoramento": "Será avaliado através de avaliação qualitativa (dosimetria) e LTCAT"
+    },
+    {
+     "tipo": "Físico",
+     "agente": "Radiação não ionizante (exposição ao sol)",
+     "danos": "Fadiga, desidratação, tonturas, dores de cabeça, queda de pressão, queimaduras de pele, foto envelhecimento e câncer de pele",
+     "avaliacao": "Qualitativa",
+     "epc": "Treinamento e conscientização",
+     "epi": "Protetor solar; Touca árabe; e Fardamento com manga longa",
+     "probabilidade": 2,
+     "severidade": 1,
+     "classificacaoDocumento": "2- Baixo Risco",
+     "monitoramento": "Acompanhamento e controle de EPIs e protetor solar"
+    },
+    {
+     "tipo": "Físico",
+     "agente": "Vibração",
+     "danos": "Doenças vasculares e musculares",
+     "avaliacao": "Qualitativa",
+     "epc": "Placas de Sinalização, Manutenção preventiva dos equipamentos, Treinamento e conscientização quanto o uso de luvas antivibração, Rodizio de funcionários",
+     "epi": "Luvas antivibração",
+     "probabilidade": 2,
+     "severidade": 1,
+     "classificacaoDocumento": "2 - Baixo Risco",
+     "monitoramento": "Será avaliado através de avaliação qualitativa (dosimetria) e LTCAT"
+    },
+    {
+     "tipo": "Químico",
+     "agente": "Poeira",
+     "danos": "Problemas respiratórios, irritação na pele, alergias, dermatites e danos respiratórios",
+     "avaliacao": "Qualitativa",
+     "epc": "Placas de Sinalização, Treinamento e conscientização, Umectação do local",
+     "epi": "Máscara com respirador; e luva impermeável",
+     "probabilidade": 1,
+     "severidade": 1,
+     "classificacaoDocumento": "1 - Baixo Risco",
+     "monitoramento": "Umidificar locais onde tem maior movimentação de máquinas"
+    },
+    {
+     "tipo": "Químico",
+     "agente": "Produtos Químicos (graxas, óleos)",
+     "danos": "Doença de pele",
+     "avaliacao": "Qualitativa",
+     "epc": "Manutenção preventiva dos equipamentos e treinamentos quanto a doenças de pele",
+     "epi": "Luvas impermeável (látex ou nitrílica)",
+     "probabilidade": 3,
+     "severidade": 2,
+     "classificacaoDocumento": "6 – Médio Risco",
+     "monitoramento": "Será avaliado através de avaliação qualitativa (dosimetria) e LTCAT"
+    },
+    {
+     "tipo": "Biológico",
+     "agente": "Virus e bactérias",
+     "danos": "Contaminação de pele, boca e olhos",
+     "avaliacao": "Qualitativo",
+     "epc": "Monitoramento de ASOs, procedimentos operacionais; Treinamento e conscientização",
+     "epi": "Macacão, luva impermeável, óculos de segurança, respirador",
+     "probabilidade": 2,
+     "severidade": 1,
+     "classificacaoDocumento": "2- Baixo Risco",
+     "monitoramento": "Acompanhamento dos ASOs"
+    },
+    {
+     "tipo": "Ergonômico",
+     "agente": "Postura Inadequada",
+     "danos": "Distúrbios osteomusculares relacionados ao trabalho (DORT) Lesões por esforço repetitivo (LER)",
+     "avaliacao": "Qualitativa",
+     "epc": "Equipamentos e ferramentas adequadas a atividade",
+     "epi": "Ginastica laboral e pausas durante as atividades",
+     "probabilidade": 2,
+     "severidade": 2,
+     "classificacaoDocumento": "4 - Baixo Risco",
+     "monitoramento": "Ferramentas adequadas, Pausas intercaladas para recuperação durante a jornada de trabalho, ginástica laboral e DDS"
+    },
+    {
+     "tipo": "Ergonômico",
+     "agente": "Levantamento e transporte manual de peso",
+     "danos": "Doenças osteomusculares",
+     "avaliacao": "Qualitativa",
+     "epc": "Equipamentos e ferramentas adequadas a atividade",
+     "epi": "Ginastica laboral e pausas durante as atividades",
+     "probabilidade": 2,
+     "severidade": 2,
+     "classificacaoDocumento": "4 - Médio Risco",
+     "monitoramento": "Treinamento sobre ergonomia, ferramentas adequadas para as atividades e DDS"
+    },
+    {
+     "tipo": "Acidentes",
+     "agente": "Queda do mesmo nível",
+     "danos": "Traumatismo diversos",
+     "avaliacao": "Qualitativa",
+     "epc": "Placas de Sinalização, Caminho seguro, Isolamento de áreas, local limpo; Treinamento e conscientização",
+     "epi": "Capacete; bota de segurança",
+     "probabilidade": 3,
+     "severidade": 2,
+     "classificacaoDocumento": "6 - Médio Risco",
+     "monitoramento": "Conscientização sobre os riscos no DDS"
+    },
+    {
+     "tipo": "Acidentes",
+     "agente": "Trabalho com projeção de partículas (sólidas e líquidas)",
+     "danos": "Leões oculares",
+     "avaliacao": "Qualitativa",
+     "epc": "Placas de Sinalização e isolamento de áreas",
+     "epi": "Capacete; e óculos de segurança",
+     "probabilidade": 3,
+     "severidade": 2,
+     "classificacaoDocumento": "6 - Médio Risco",
+     "monitoramento": "Conscientização sobre os riscos no DDS e acompanhamento de EPI (capacete)"
+    },
+    {
+     "tipo": "Acidentes",
+     "agente": "Animais peçonhentos",
+     "danos": "Picadas de insetos e animais diversos, alergias",
+     "avaliacao": "Qualitativa",
+     "epc": "Telas de proteção, tapumes, limpeza de áreas e ambiente de trabalho limpo",
+     "epi": "Perneiras, bota de segurança",
+     "probabilidade": 2,
+     "severidade": 3,
+     "classificacaoDocumento": "6- Médio Risco",
+     "monitoramento": "Conscientização sobre os riscos no DDS e acompanhamento de EPI (perneira)"
+    },
+    {
+     "tipo": "Acidentes",
+     "agente": "Probabilidade de incêndio ou explosões",
+     "danos": "Queimaduras, escoriações, intoxicação ou fraturas",
+     "avaliacao": "Qualitativa",
+     "epc": "Sistema de proteção contra incêndio, treinamentos e procedimentos operacionais",
+     "epi": "N/A",
+     "probabilidade": 1,
+     "severidade": 1,
+     "classificacaoDocumento": "1 - Baixo Risco",
+     "monitoramento": "Conscientização sobre os riscos no DDS e treinamento sobre incêndio anual"
+    },
+    {
+     "tipo": "Acidentes",
+     "agente": "Outras situações que poderão contribuir para ocorrência de acidentes",
+     "danos": "Lesões diversas, fraturas, e esmagamentos",
+     "avaliacao": "Qualitativo",
+     "epc": "Limpeza das áreas e inspeções dos ambientes",
+     "epi": "N/A",
+     "probabilidade": 1,
+     "severidade": 1,
+     "classificacaoDocumento": "1 - Baixo Risco",
+     "monitoramento": "Conscientização sobre os riscos no DDS e treinamentos (NR 12)"
+    },
+    {
+     "tipo": "Acidentes",
+     "agente": "Desmoronamento",
+     "danos": "Lesões diversas, fraturas, e esmagamentos",
+     "avaliacao": "Qualitativo",
+     "epc": "Limpeza das áreas, escoramento de áreas e inspeções dos ambientes",
+     "epi": "Escoramento em áreas de riscos",
+     "probabilidade": 1,
+     "severidade": 3,
+     "classificacaoDocumento": "3 - Baixo Risco",
+     "monitoramento": "Conscientização sobre os riscos no DDS"
+    }
+   ]
+  }
+ ],
+ "examesPorFuncao": [
+  {
+   "funcao": "Pedreiro",
+   "exames": [
+    {
+     "exame": "ACUIDADE VISUAL",
+     "codigo": "0296",
+     "admissional": true,
+     "periodico": true,
+     "retornoTrabalho": false,
+     "mudancaRisco": true,
+     "demissional": false,
+     "periodicidadeMeses": 12,
+     "observacao": null
+    },
+    {
+     "exame": "AUDIOMETRIA TONAL",
+     "codigo": "0281",
+     "admissional": true,
+     "periodico": true,
+     "retornoTrabalho": false,
+     "mudancaRisco": true,
+     "demissional": true,
+     "periodicidadeMeses": 12,
+     "observacao": null
+    },
+    {
+     "exame": "AVALIACAO PSICOSSOCIAL",
+     "codigo": "0300",
+     "admissional": true,
+     "periodico": true,
+     "retornoTrabalho": false,
+     "mudancaRisco": true,
+     "demissional": false,
+     "periodicidadeMeses": 12,
+     "observacao": null
+    },
+    {
+     "exame": "ELETROCARDIOGRAMA",
+     "codigo": "0530",
+     "admissional": true,
+     "periodico": true,
+     "retornoTrabalho": false,
+     "mudancaRisco": true,
+     "demissional": false,
+     "periodicidadeMeses": 12,
+     "observacao": null
+    },
+    {
+     "exame": "ELETROENCEFALOGRAMA",
+     "codigo": "0536",
+     "admissional": true,
+     "periodico": true,
+     "retornoTrabalho": false,
+     "mudancaRisco": true,
+     "demissional": false,
+     "periodicidadeMeses": 24,
+     "observacao": null
+    },
+    {
+     "exame": "ESPIROMETRIA",
+     "codigo": "1057",
+     "admissional": true,
+     "periodico": true,
+     "retornoTrabalho": false,
+     "mudancaRisco": true,
+     "demissional": false,
+     "periodicidadeMeses": 24,
+     "observacao": null
+    },
+    {
+     "exame": "EXAME CLINICO",
+     "codigo": "0295",
+     "admissional": true,
+     "periodico": true,
+     "retornoTrabalho": true,
+     "mudancaRisco": true,
+     "demissional": true,
+     "periodicidadeMeses": 12,
+     "observacao": null
+    },
+    {
+     "exame": "GLICEMIA EM JEJUM",
+     "codigo": "0658",
+     "admissional": true,
+     "periodico": true,
+     "retornoTrabalho": false,
+     "mudancaRisco": true,
+     "demissional": false,
+     "periodicidadeMeses": 12,
+     "observacao": null
+    },
+    {
+     "exame": "HEMOGRAMA COMPLETO",
+     "codigo": "0693",
+     "admissional": true,
+     "periodico": true,
+     "retornoTrabalho": false,
+     "mudancaRisco": true,
+     "demissional": false,
+     "periodicidadeMeses": 12,
+     "observacao": null
+    },
+    {
+     "exame": "RAIO-X DE TORAX PADRAO OIT",
+     "codigo": "1415",
+     "admissional": true,
+     "periodico": true,
+     "retornoTrabalho": false,
+     "mudancaRisco": true,
+     "demissional": false,
+     "periodicidadeMeses": 24,
+     "observacao": null
+    }
+   ]
+  },
+  {
+   "funcao": "Ajudante/Servente",
+   "exames": [
+    {
+     "exame": "ACUIDADE VISUAL",
+     "codigo": "0296",
+     "admissional": true,
+     "periodico": true,
+     "retornoTrabalho": false,
+     "mudancaRisco": true,
+     "demissional": false,
+     "periodicidadeMeses": 12,
+     "observacao": null
+    },
+    {
+     "exame": "AUDIOMETRIA TONAL",
+     "codigo": "0281",
+     "admissional": true,
+     "periodico": true,
+     "retornoTrabalho": false,
+     "mudancaRisco": true,
+     "demissional": true,
+     "periodicidadeMeses": 12,
+     "observacao": null
+    },
+    {
+     "exame": "AVALIACAO PSICOSSOCIAL",
+     "codigo": "0300",
+     "admissional": true,
+     "periodico": true,
+     "retornoTrabalho": false,
+     "mudancaRisco": true,
+     "demissional": false,
+     "periodicidadeMeses": 12,
+     "observacao": null
+    },
+    {
+     "exame": "ELETROCARDIOGRAMA",
+     "codigo": "0530",
+     "admissional": true,
+     "periodico": true,
+     "retornoTrabalho": false,
+     "mudancaRisco": true,
+     "demissional": false,
+     "periodicidadeMeses": 12,
+     "observacao": null
+    },
+    {
+     "exame": "ELETROENCEFALOGRAMA",
+     "codigo": "0536",
+     "admissional": true,
+     "periodico": true,
+     "retornoTrabalho": false,
+     "mudancaRisco": true,
+     "demissional": false,
+     "periodicidadeMeses": 24,
+     "observacao": null
+    },
+    {
+     "exame": "ESPIROMETRIA",
+     "codigo": "1057",
+     "admissional": true,
+     "periodico": true,
+     "retornoTrabalho": false,
+     "mudancaRisco": true,
+     "demissional": false,
+     "periodicidadeMeses": 24,
+     "observacao": null
+    },
+    {
+     "exame": "EXAME CLINICO",
+     "codigo": "0295",
+     "admissional": true,
+     "periodico": true,
+     "retornoTrabalho": true,
+     "mudancaRisco": true,
+     "demissional": true,
+     "periodicidadeMeses": 12,
+     "observacao": null
+    },
+    {
+     "exame": "GLICEMIA EM JEJUM",
+     "codigo": "0658",
+     "admissional": true,
+     "periodico": true,
+     "retornoTrabalho": false,
+     "mudancaRisco": true,
+     "demissional": false,
+     "periodicidadeMeses": 12,
+     "observacao": null
+    },
+    {
+     "exame": "HEMOGRAMA COMPLETO",
+     "codigo": "0693",
+     "admissional": true,
+     "periodico": true,
+     "retornoTrabalho": false,
+     "mudancaRisco": true,
+     "demissional": false,
+     "periodicidadeMeses": 12,
+     "observacao": null
+    },
+    {
+     "exame": "RAIO-X DE TORAX PADRAO OIT",
+     "codigo": "1415",
+     "admissional": true,
+     "periodico": true,
+     "retornoTrabalho": false,
+     "mudancaRisco": true,
+     "demissional": false,
+     "periodicidadeMeses": 24,
+     "observacao": null
+    }
+   ]
+  },
+  {
+   "funcao": "Armador",
+   "exames": [
+    {
+     "exame": "ACUIDADE VISUAL",
+     "codigo": "0296",
+     "admissional": true,
+     "periodico": true,
+     "retornoTrabalho": false,
+     "mudancaRisco": true,
+     "demissional": false,
+     "periodicidadeMeses": 12,
+     "observacao": null
+    },
+    {
+     "exame": "AUDIOMETRIA TONAL",
+     "codigo": "0281",
+     "admissional": true,
+     "periodico": true,
+     "retornoTrabalho": false,
+     "mudancaRisco": true,
+     "demissional": true,
+     "periodicidadeMeses": 12,
+     "observacao": null
+    },
+    {
+     "exame": "AVALIACAO PSICOSSOCIAL",
+     "codigo": "0300",
+     "admissional": true,
+     "periodico": true,
+     "retornoTrabalho": false,
+     "mudancaRisco": true,
+     "demissional": false,
+     "periodicidadeMeses": 12,
+     "observacao": null
+    },
+    {
+     "exame": "ELETROCARDIOGRAMA",
+     "codigo": "0530",
+     "admissional": true,
+     "periodico": true,
+     "retornoTrabalho": false,
+     "mudancaRisco": true,
+     "demissional": false,
+     "periodicidadeMeses": 12,
+     "observacao": null
+    },
+    {
+     "exame": "ELETROENCEFALOGRAMA",
+     "codigo": "0536",
+     "admissional": true,
+     "periodico": true,
+     "retornoTrabalho": false,
+     "mudancaRisco": true,
+     "demissional": false,
+     "periodicidadeMeses": 24,
+     "observacao": null
+    },
+    {
+     "exame": "ESPIROMETRIA",
+     "codigo": "1057",
+     "admissional": true,
+     "periodico": true,
+     "retornoTrabalho": false,
+     "mudancaRisco": true,
+     "demissional": false,
+     "periodicidadeMeses": 24,
+     "observacao": null
+    },
+    {
+     "exame": "EXAME CLINICO",
+     "codigo": "0295",
+     "admissional": true,
+     "periodico": true,
+     "retornoTrabalho": true,
+     "mudancaRisco": true,
+     "demissional": true,
+     "periodicidadeMeses": 12,
+     "observacao": null
+    },
+    {
+     "exame": "GLICEMIA EM JEJUM",
+     "codigo": "0658",
+     "admissional": true,
+     "periodico": true,
+     "retornoTrabalho": false,
+     "mudancaRisco": true,
+     "demissional": false,
+     "periodicidadeMeses": 12,
+     "observacao": null
+    },
+    {
+     "exame": "HEMOGRAMA COMPLETO",
+     "codigo": "0693",
+     "admissional": true,
+     "periodico": true,
+     "retornoTrabalho": false,
+     "mudancaRisco": true,
+     "demissional": false,
+     "periodicidadeMeses": 12,
+     "observacao": null
+    },
+    {
+     "exame": "RAIO-X DE TORAX PADRAO OIT",
+     "codigo": "1415",
+     "admissional": true,
+     "periodico": true,
+     "retornoTrabalho": false,
+     "mudancaRisco": true,
+     "demissional": false,
+     "periodicidadeMeses": 24,
+     "observacao": null
+    }
+   ]
+  },
+  {
+   "funcao": "Carpinteiro",
+   "exames": [
+    {
+     "exame": "ACUIDADE VISUAL",
+     "codigo": "0296",
+     "admissional": true,
+     "periodico": true,
+     "retornoTrabalho": false,
+     "mudancaRisco": true,
+     "demissional": false,
+     "periodicidadeMeses": 12,
+     "observacao": null
+    },
+    {
+     "exame": "AUDIOMETRIA TONAL",
+     "codigo": "0281",
+     "admissional": true,
+     "periodico": true,
+     "retornoTrabalho": false,
+     "mudancaRisco": true,
+     "demissional": true,
+     "periodicidadeMeses": 12,
+     "observacao": null
+    },
+    {
+     "exame": "AVALIACAO PSICOSSOCIAL",
+     "codigo": "0300",
+     "admissional": true,
+     "periodico": true,
+     "retornoTrabalho": false,
+     "mudancaRisco": true,
+     "demissional": false,
+     "periodicidadeMeses": 12,
+     "observacao": null
+    },
+    {
+     "exame": "ELETROCARDIOGRAMA",
+     "codigo": "0530",
+     "admissional": true,
+     "periodico": true,
+     "retornoTrabalho": false,
+     "mudancaRisco": true,
+     "demissional": false,
+     "periodicidadeMeses": 12,
+     "observacao": null
+    },
+    {
+     "exame": "ELETROENCEFALOGRAMA",
+     "codigo": "0536",
+     "admissional": true,
+     "periodico": true,
+     "retornoTrabalho": false,
+     "mudancaRisco": true,
+     "demissional": false,
+     "periodicidadeMeses": 24,
+     "observacao": null
+    },
+    {
+     "exame": "ESPIROMETRIA",
+     "codigo": "1057",
+     "admissional": true,
+     "periodico": true,
+     "retornoTrabalho": false,
+     "mudancaRisco": true,
+     "demissional": false,
+     "periodicidadeMeses": 24,
+     "observacao": null
+    },
+    {
+     "exame": "EXAME CLINICO",
+     "codigo": "0295",
+     "admissional": true,
+     "periodico": true,
+     "retornoTrabalho": true,
+     "mudancaRisco": true,
+     "demissional": true,
+     "periodicidadeMeses": 12,
+     "observacao": null
+    },
+    {
+     "exame": "GLICEMIA EM JEJUM",
+     "codigo": "0658",
+     "admissional": true,
+     "periodico": true,
+     "retornoTrabalho": false,
+     "mudancaRisco": true,
+     "demissional": false,
+     "periodicidadeMeses": 12,
+     "observacao": null
+    },
+    {
+     "exame": "HEMOGRAMA COMPLETO",
+     "codigo": "0693",
+     "admissional": true,
+     "periodico": true,
+     "retornoTrabalho": false,
+     "mudancaRisco": true,
+     "demissional": false,
+     "periodicidadeMeses": 12,
+     "observacao": null
+    },
+    {
+     "exame": "RAIO-X DE TORAX PADRAO OIT",
+     "codigo": "1415",
+     "admissional": true,
+     "periodico": true,
+     "retornoTrabalho": false,
+     "mudancaRisco": true,
+     "demissional": false,
+     "periodicidadeMeses": 24,
+     "observacao": null
+    }
+   ]
+  },
+  {
+   "funcao": "Serralheiro",
+   "exames": [
+    {
+     "exame": "ACUIDADE VISUAL",
+     "codigo": "0296",
+     "admissional": true,
+     "periodico": true,
+     "retornoTrabalho": false,
+     "mudancaRisco": true,
+     "demissional": false,
+     "periodicidadeMeses": 12,
+     "observacao": null
+    },
+    {
+     "exame": "AUDIOMETRIA TONAL",
+     "codigo": "0281",
+     "admissional": true,
+     "periodico": true,
+     "retornoTrabalho": false,
+     "mudancaRisco": true,
+     "demissional": true,
+     "periodicidadeMeses": 12,
+     "observacao": null
+    },
+    {
+     "exame": "AVALIACAO PSICOSSOCIAL",
+     "codigo": "0300",
+     "admissional": true,
+     "periodico": true,
+     "retornoTrabalho": false,
+     "mudancaRisco": true,
+     "demissional": false,
+     "periodicidadeMeses": 12,
+     "observacao": null
+    },
+    {
+     "exame": "ELETROCARDIOGRAMA",
+     "codigo": "0530",
+     "admissional": true,
+     "periodico": true,
+     "retornoTrabalho": false,
+     "mudancaRisco": true,
+     "demissional": false,
+     "periodicidadeMeses": 12,
+     "observacao": null
+    },
+    {
+     "exame": "ELETROENCEFALOGRAMA",
+     "codigo": "0536",
+     "admissional": true,
+     "periodico": true,
+     "retornoTrabalho": false,
+     "mudancaRisco": true,
+     "demissional": false,
+     "periodicidadeMeses": 24,
+     "observacao": null
+    },
+    {
+     "exame": "ESPIROMETRIA",
+     "codigo": "1057",
+     "admissional": true,
+     "periodico": true,
+     "retornoTrabalho": false,
+     "mudancaRisco": true,
+     "demissional": false,
+     "periodicidadeMeses": 24,
+     "observacao": null
+    },
+    {
+     "exame": "EXAME CLINICO",
+     "codigo": "0295",
+     "admissional": true,
+     "periodico": true,
+     "retornoTrabalho": true,
+     "mudancaRisco": true,
+     "demissional": true,
+     "periodicidadeMeses": 12,
+     "observacao": null
+    },
+    {
+     "exame": "GLICEMIA EM JEJUM",
+     "codigo": "0658",
+     "admissional": true,
+     "periodico": true,
+     "retornoTrabalho": false,
+     "mudancaRisco": true,
+     "demissional": false,
+     "periodicidadeMeses": 12,
+     "observacao": null
+    },
+    {
+     "exame": "HEMOGRAMA COMPLETO",
+     "codigo": "0693",
+     "admissional": true,
+     "periodico": true,
+     "retornoTrabalho": false,
+     "mudancaRisco": true,
+     "demissional": false,
+     "periodicidadeMeses": 12,
+     "observacao": null
+    },
+    {
+     "exame": "RAIO-X DE TORAX PADRAO OIT",
+     "codigo": "1415",
+     "admissional": true,
+     "periodico": true,
+     "retornoTrabalho": false,
+     "mudancaRisco": true,
+     "demissional": false,
+     "periodicidadeMeses": 24,
+     "observacao": null
+    }
+   ]
+  },
+  {
+   "funcao": "Eletricista",
+   "exames": [
+    {
+     "exame": "ACUIDADE VISUAL",
+     "codigo": "0296",
+     "admissional": true,
+     "periodico": true,
+     "retornoTrabalho": false,
+     "mudancaRisco": true,
+     "demissional": false,
+     "periodicidadeMeses": 12,
+     "observacao": null
+    },
+    {
+     "exame": "AUDIOMETRIA TONAL",
+     "codigo": "0281",
+     "admissional": true,
+     "periodico": true,
+     "retornoTrabalho": false,
+     "mudancaRisco": true,
+     "demissional": true,
+     "periodicidadeMeses": 12,
+     "observacao": null
+    },
+    {
+     "exame": "AVALIACAO PSICOSSOCIAL",
+     "codigo": "0300",
+     "admissional": true,
+     "periodico": true,
+     "retornoTrabalho": false,
+     "mudancaRisco": true,
+     "demissional": false,
+     "periodicidadeMeses": 12,
+     "observacao": null
+    },
+    {
+     "exame": "ELETROCARDIOGRAMA",
+     "codigo": "0530",
+     "admissional": true,
+     "periodico": true,
+     "retornoTrabalho": false,
+     "mudancaRisco": true,
+     "demissional": false,
+     "periodicidadeMeses": 12,
+     "observacao": null
+    },
+    {
+     "exame": "ELETROENCEFALOGRAMA",
+     "codigo": "0536",
+     "admissional": true,
+     "periodico": true,
+     "retornoTrabalho": false,
+     "mudancaRisco": true,
+     "demissional": false,
+     "periodicidadeMeses": 24,
+     "observacao": null
+    },
+    {
+     "exame": "ESPIROMETRIA",
+     "codigo": "1057",
+     "admissional": true,
+     "periodico": true,
+     "retornoTrabalho": false,
+     "mudancaRisco": true,
+     "demissional": false,
+     "periodicidadeMeses": 24,
+     "observacao": null
+    },
+    {
+     "exame": "EXAME CLINICO",
+     "codigo": "0295",
+     "admissional": true,
+     "periodico": true,
+     "retornoTrabalho": true,
+     "mudancaRisco": true,
+     "demissional": true,
+     "periodicidadeMeses": 12,
+     "observacao": null
+    },
+    {
+     "exame": "GLICEMIA EM JEJUM",
+     "codigo": "0658",
+     "admissional": true,
+     "periodico": true,
+     "retornoTrabalho": false,
+     "mudancaRisco": true,
+     "demissional": false,
+     "periodicidadeMeses": 12,
+     "observacao": null
+    },
+    {
+     "exame": "HEMOGRAMA COMPLETO",
+     "codigo": "0693",
+     "admissional": true,
+     "periodico": true,
+     "retornoTrabalho": false,
+     "mudancaRisco": true,
+     "demissional": false,
+     "periodicidadeMeses": 12,
+     "observacao": null
+    },
+    {
+     "exame": "RAIO-X DE TORAX PADRAO OIT",
+     "codigo": "1415",
+     "admissional": true,
+     "periodico": true,
+     "retornoTrabalho": false,
+     "mudancaRisco": true,
+     "demissional": false,
+     "periodicidadeMeses": 24,
+     "observacao": null
+    }
+   ]
+  },
+  {
+   "funcao": "Soldador",
+   "exames": [
+    {
+     "exame": "ACIDO HIPURICO",
+     "codigo": "0109",
+     "admissional": true,
+     "periodico": true,
+     "retornoTrabalho": false,
+     "mudancaRisco": true,
+     "demissional": false,
+     "periodicidadeMeses": 12,
+     "observacao": null
+    },
+    {
+     "exame": "ACIDO METIL HIPURICO",
+     "codigo": "0116",
+     "admissional": true,
+     "periodico": true,
+     "retornoTrabalho": false,
+     "mudancaRisco": true,
+     "demissional": false,
+     "periodicidadeMeses": 12,
+     "observacao": null
+    },
+    {
+     "exame": "ACUIDADE VISUAL",
+     "codigo": "0296",
+     "admissional": true,
+     "periodico": true,
+     "retornoTrabalho": false,
+     "mudancaRisco": true,
+     "demissional": false,
+     "periodicidadeMeses": 12,
+     "observacao": null
+    },
+    {
+     "exame": "AUDIOMETRIA TONAL",
+     "codigo": "0281",
+     "admissional": true,
+     "periodico": true,
+     "retornoTrabalho": false,
+     "mudancaRisco": true,
+     "demissional": true,
+     "periodicidadeMeses": 12,
+     "observacao": null
+    },
+    {
+     "exame": "AVALIACAO PSICOSSOCIAL",
+     "codigo": "0300",
+     "admissional": true,
+     "periodico": true,
+     "retornoTrabalho": false,
+     "mudancaRisco": true,
+     "demissional": false,
+     "periodicidadeMeses": 12,
+     "observacao": null
+    },
+    {
+     "exame": "ELETROCARDIOGRAMA",
+     "codigo": "0530",
+     "admissional": true,
+     "periodico": true,
+     "retornoTrabalho": false,
+     "mudancaRisco": true,
+     "demissional": false,
+     "periodicidadeMeses": 12,
+     "observacao": null
+    },
+    {
+     "exame": "ELETROENCEFALOGRAMA",
+     "codigo": "0536",
+     "admissional": true,
+     "periodico": true,
+     "retornoTrabalho": false,
+     "mudancaRisco": true,
+     "demissional": false,
+     "periodicidadeMeses": 24,
+     "observacao": null
+    },
+    {
+     "exame": "ESPIROMETRIA",
+     "codigo": "1057",
+     "admissional": true,
+     "periodico": true,
+     "retornoTrabalho": false,
+     "mudancaRisco": true,
+     "demissional": false,
+     "periodicidadeMeses": 24,
+     "observacao": null
+    },
+    {
+     "exame": "EXAME CLINICO",
+     "codigo": "0295",
+     "admissional": true,
+     "periodico": true,
+     "retornoTrabalho": true,
+     "mudancaRisco": true,
+     "demissional": true,
+     "periodicidadeMeses": 12,
+     "observacao": null
+    },
+    {
+     "exame": "GLICEMIA EM JEJUM",
+     "codigo": "0658",
+     "admissional": true,
+     "periodico": true,
+     "retornoTrabalho": false,
+     "mudancaRisco": true,
+     "demissional": false,
+     "periodicidadeMeses": 12,
+     "observacao": null
+    },
+    {
+     "exame": "HEMOGRAMA COMPLETO",
+     "codigo": "0693",
+     "admissional": true,
+     "periodico": true,
+     "retornoTrabalho": false,
+     "mudancaRisco": true,
+     "demissional": false,
+     "periodicidadeMeses": 12,
+     "observacao": null
+    },
+    {
+     "exame": "RAIO-X DE TORAX PADRAO OIT",
+     "codigo": "1415",
+     "admissional": true,
+     "periodico": true,
+     "retornoTrabalho": false,
+     "mudancaRisco": true,
+     "demissional": false,
+     "periodicidadeMeses": 24,
+     "observacao": null
+    }
+   ]
+  },
+  {
+   "funcao": "Pintor",
+   "exames": [
+    {
+     "exame": "ACIDO HIPURICO",
+     "codigo": "0109",
+     "admissional": true,
+     "periodico": true,
+     "retornoTrabalho": false,
+     "mudancaRisco": true,
+     "demissional": false,
+     "periodicidadeMeses": 12,
+     "observacao": null
+    },
+    {
+     "exame": "ACIDO METIL HIPURICO",
+     "codigo": "0116",
+     "admissional": true,
+     "periodico": true,
+     "retornoTrabalho": false,
+     "mudancaRisco": true,
+     "demissional": false,
+     "periodicidadeMeses": 12,
+     "observacao": null
+    },
+    {
+     "exame": "ACUIDADE VISUAL",
+     "codigo": "0296",
+     "admissional": true,
+     "periodico": true,
+     "retornoTrabalho": false,
+     "mudancaRisco": true,
+     "demissional": false,
+     "periodicidadeMeses": 12,
+     "observacao": null
+    },
+    {
+     "exame": "AUDIOMETRIA TONAL",
+     "codigo": "0281",
+     "admissional": true,
+     "periodico": true,
+     "retornoTrabalho": false,
+     "mudancaRisco": true,
+     "demissional": true,
+     "periodicidadeMeses": 12,
+     "observacao": null
+    },
+    {
+     "exame": "AVALIACAO PSICOSSOCIAL",
+     "codigo": "0300",
+     "admissional": true,
+     "periodico": true,
+     "retornoTrabalho": false,
+     "mudancaRisco": true,
+     "demissional": false,
+     "periodicidadeMeses": 12,
+     "observacao": null
+    },
+    {
+     "exame": "ELETROCARDIOGRAMA",
+     "codigo": "0530",
+     "admissional": true,
+     "periodico": true,
+     "retornoTrabalho": false,
+     "mudancaRisco": true,
+     "demissional": false,
+     "periodicidadeMeses": 12,
+     "observacao": null
+    },
+    {
+     "exame": "ELETROENCEFALOGRAMA",
+     "codigo": "0536",
+     "admissional": true,
+     "periodico": true,
+     "retornoTrabalho": false,
+     "mudancaRisco": true,
+     "demissional": false,
+     "periodicidadeMeses": 24,
+     "observacao": null
+    },
+    {
+     "exame": "ESPIROMETRIA",
+     "codigo": "1057",
+     "admissional": true,
+     "periodico": true,
+     "retornoTrabalho": false,
+     "mudancaRisco": true,
+     "demissional": false,
+     "periodicidadeMeses": 24,
+     "observacao": null
+    },
+    {
+     "exame": "EXAME CLINICO",
+     "codigo": "0295",
+     "admissional": true,
+     "periodico": true,
+     "retornoTrabalho": true,
+     "mudancaRisco": true,
+     "demissional": true,
+     "periodicidadeMeses": 12,
+     "observacao": null
+    },
+    {
+     "exame": "GLICEMIA EM JEJUM",
+     "codigo": "0658",
+     "admissional": true,
+     "periodico": true,
+     "retornoTrabalho": false,
+     "mudancaRisco": true,
+     "demissional": false,
+     "periodicidadeMeses": 12,
+     "observacao": null
+    },
+    {
+     "exame": "HEMOGRAMA COMPLETO",
+     "codigo": "0693",
+     "admissional": true,
+     "periodico": true,
+     "retornoTrabalho": false,
+     "mudancaRisco": true,
+     "demissional": false,
+     "periodicidadeMeses": 12,
+     "observacao": null
+    },
+    {
+     "exame": "RAIO-X DE TORAX PADRAO OIT",
+     "codigo": "1415",
+     "admissional": true,
+     "periodico": true,
+     "retornoTrabalho": false,
+     "mudancaRisco": true,
+     "demissional": false,
+     "periodicidadeMeses": 24,
+     "observacao": null
+    }
+   ]
+  },
+  {
+   "funcao": "Operador de Retroescavadeira",
+   "exames": [
+    {
+     "exame": "ACUIDADE VISUAL",
+     "codigo": "0296",
+     "admissional": true,
+     "periodico": true,
+     "retornoTrabalho": false,
+     "mudancaRisco": true,
+     "demissional": false,
+     "periodicidadeMeses": 12,
+     "observacao": null
+    },
+    {
+     "exame": "AUDIOMETRIA TONAL",
+     "codigo": "0281",
+     "admissional": true,
+     "periodico": true,
+     "retornoTrabalho": false,
+     "mudancaRisco": true,
+     "demissional": true,
+     "periodicidadeMeses": 12,
+     "observacao": null
+    },
+    {
+     "exame": "AVALIACAO PSICOSSOCIAL",
+     "codigo": "0300",
+     "admissional": true,
+     "periodico": true,
+     "retornoTrabalho": false,
+     "mudancaRisco": true,
+     "demissional": false,
+     "periodicidadeMeses": 12,
+     "observacao": null
+    },
+    {
+     "exame": "ELETROCARDIOGRAMA",
+     "codigo": "0530",
+     "admissional": true,
+     "periodico": true,
+     "retornoTrabalho": false,
+     "mudancaRisco": true,
+     "demissional": false,
+     "periodicidadeMeses": 12,
+     "observacao": null
+    },
+    {
+     "exame": "ELETROENCEFALOGRAMA",
+     "codigo": "0536",
+     "admissional": true,
+     "periodico": true,
+     "retornoTrabalho": false,
+     "mudancaRisco": true,
+     "demissional": false,
+     "periodicidadeMeses": 24,
+     "observacao": null
+    },
+    {
+     "exame": "ESPIROMETRIA",
+     "codigo": "1057",
+     "admissional": true,
+     "periodico": true,
+     "retornoTrabalho": false,
+     "mudancaRisco": true,
+     "demissional": false,
+     "periodicidadeMeses": 24,
+     "observacao": null
+    },
+    {
+     "exame": "EXAME CLINICO",
+     "codigo": "0295",
+     "admissional": true,
+     "periodico": true,
+     "retornoTrabalho": true,
+     "mudancaRisco": true,
+     "demissional": true,
+     "periodicidadeMeses": 12,
+     "observacao": null
+    },
+    {
+     "exame": "GLICEMIA EM JEJUM",
+     "codigo": "0658",
+     "admissional": true,
+     "periodico": true,
+     "retornoTrabalho": false,
+     "mudancaRisco": true,
+     "demissional": false,
+     "periodicidadeMeses": 12,
+     "observacao": null
+    },
+    {
+     "exame": "HEMOGRAMA COMPLETO",
+     "codigo": "0693",
+     "admissional": true,
+     "periodico": true,
+     "retornoTrabalho": false,
+     "mudancaRisco": true,
+     "demissional": false,
+     "periodicidadeMeses": 12,
+     "observacao": null
+    },
+    {
+     "exame": "RAIO-X DE TORAX PADRAO OIT",
+     "codigo": "1415",
+     "admissional": true,
+     "periodico": true,
+     "retornoTrabalho": false,
+     "mudancaRisco": true,
+     "demissional": false,
+     "periodicidadeMeses": 24,
+     "observacao": null
+    }
+   ]
+  },
+  {
+   "funcao": "Motorista de Van",
+   "exames": [
+    {
+     "exame": "ACUIDADE VISUAL",
+     "codigo": "0296",
+     "admissional": true,
+     "periodico": true,
+     "retornoTrabalho": false,
+     "mudancaRisco": true,
+     "demissional": false,
+     "periodicidadeMeses": 12,
+     "observacao": null
+    },
+    {
+     "exame": "AUDIOMETRIA TONAL",
+     "codigo": "0281",
+     "admissional": true,
+     "periodico": true,
+     "retornoTrabalho": false,
+     "mudancaRisco": true,
+     "demissional": true,
+     "periodicidadeMeses": 12,
+     "observacao": null
+    },
+    {
+     "exame": "ELETROCARDIOGRAMA",
+     "codigo": "0530",
+     "admissional": true,
+     "periodico": true,
+     "retornoTrabalho": false,
+     "mudancaRisco": true,
+     "demissional": false,
+     "periodicidadeMeses": 12,
+     "observacao": null
+    },
+    {
+     "exame": "ELETROENCEFALOGRAMA",
+     "codigo": "0536",
+     "admissional": true,
+     "periodico": true,
+     "retornoTrabalho": false,
+     "mudancaRisco": true,
+     "demissional": false,
+     "periodicidadeMeses": 24,
+     "observacao": null
+    },
+    {
+     "exame": "EXAME CLINICO",
+     "codigo": "0295",
+     "admissional": true,
+     "periodico": true,
+     "retornoTrabalho": true,
+     "mudancaRisco": true,
+     "demissional": true,
+     "periodicidadeMeses": 12,
+     "observacao": null
+    },
+    {
+     "exame": "GLICEMIA EM JEJUM",
+     "codigo": "0658",
+     "admissional": true,
+     "periodico": true,
+     "retornoTrabalho": false,
+     "mudancaRisco": true,
+     "demissional": false,
+     "periodicidadeMeses": 12,
+     "observacao": null
+    },
+    {
+     "exame": "HEMOGRAMA COMPLETO",
+     "codigo": "0693",
+     "admissional": true,
+     "periodico": true,
+     "retornoTrabalho": false,
+     "mudancaRisco": true,
+     "demissional": false,
+     "periodicidadeMeses": 12,
+     "observacao": null
+    }
+   ]
+  },
+  {
+   "funcao": "Auxiliar de Serviços Gerais",
+   "exames": [
+    {
+     "exame": "AUDIOMETRIA TONAL",
+     "codigo": "0281",
+     "admissional": true,
+     "periodico": true,
+     "retornoTrabalho": false,
+     "mudancaRisco": true,
+     "demissional": true,
+     "periodicidadeMeses": 12,
+     "observacao": null
+    },
+    {
+     "exame": "ESPIROMETRIA",
+     "codigo": "1057",
+     "admissional": true,
+     "periodico": true,
+     "retornoTrabalho": false,
+     "mudancaRisco": true,
+     "demissional": false,
+     "periodicidadeMeses": 24,
+     "observacao": null
+    },
+    {
+     "exame": "EXAME CLINICO",
+     "codigo": "0295",
+     "admissional": true,
+     "periodico": true,
+     "retornoTrabalho": true,
+     "mudancaRisco": true,
+     "demissional": true,
+     "periodicidadeMeses": 12,
+     "observacao": null
+    },
+    {
+     "exame": "HEMOGRAMA COMPLETO",
+     "codigo": "0693",
+     "admissional": true,
+     "periodico": true,
+     "retornoTrabalho": false,
+     "mudancaRisco": true,
+     "demissional": false,
+     "periodicidadeMeses": 12,
+     "observacao": null
+    },
+    {
+     "exame": "RAIO-X DE TORAX PADRAO OIT",
+     "codigo": "1415",
+     "admissional": true,
+     "periodico": true,
+     "retornoTrabalho": false,
+     "mudancaRisco": true,
+     "demissional": false,
+     "periodicidadeMeses": 24,
+     "observacao": null
+    }
+   ]
+  },
+  {
+   "funcao": "Topógrafo",
+   "exames": [
+    {
+     "exame": "ACUIDADE VISUAL",
+     "codigo": "0296",
+     "admissional": true,
+     "periodico": true,
+     "retornoTrabalho": false,
+     "mudancaRisco": true,
+     "demissional": false,
+     "periodicidadeMeses": 12,
+     "observacao": null
+    },
+    {
+     "exame": "AUDIOMETRIA TONAL",
+     "codigo": "0281",
+     "admissional": true,
+     "periodico": true,
+     "retornoTrabalho": false,
+     "mudancaRisco": true,
+     "demissional": true,
+     "periodicidadeMeses": 12,
+     "observacao": null
+    },
+    {
+     "exame": "AVALIACAO PSICOSSOCIAL",
+     "codigo": "0300",
+     "admissional": true,
+     "periodico": true,
+     "retornoTrabalho": false,
+     "mudancaRisco": true,
+     "demissional": false,
+     "periodicidadeMeses": 12,
+     "observacao": null
+    },
+    {
+     "exame": "ELETROCARDIOGRAMA",
+     "codigo": "0530",
+     "admissional": true,
+     "periodico": true,
+     "retornoTrabalho": false,
+     "mudancaRisco": true,
+     "demissional": false,
+     "periodicidadeMeses": 12,
+     "observacao": null
+    },
+    {
+     "exame": "ELETROENCEFALOGRAMA",
+     "codigo": "0536",
+     "admissional": true,
+     "periodico": true,
+     "retornoTrabalho": false,
+     "mudancaRisco": true,
+     "demissional": false,
+     "periodicidadeMeses": 24,
+     "observacao": null
+    },
+    {
+     "exame": "ESPIROMETRIA",
+     "codigo": "1057",
+     "admissional": true,
+     "periodico": true,
+     "retornoTrabalho": false,
+     "mudancaRisco": true,
+     "demissional": false,
+     "periodicidadeMeses": 24,
+     "observacao": null
+    },
+    {
+     "exame": "EXAME CLINICO",
+     "codigo": "0295",
+     "admissional": true,
+     "periodico": true,
+     "retornoTrabalho": true,
+     "mudancaRisco": true,
+     "demissional": true,
+     "periodicidadeMeses": 12,
+     "observacao": null
+    },
+    {
+     "exame": "GLICEMIA EM JEJUM",
+     "codigo": "0658",
+     "admissional": true,
+     "periodico": true,
+     "retornoTrabalho": false,
+     "mudancaRisco": true,
+     "demissional": false,
+     "periodicidadeMeses": 12,
+     "observacao": null
+    },
+    {
+     "exame": "HEMOGRAMA COMPLETO",
+     "codigo": "0693",
+     "admissional": true,
+     "periodico": true,
+     "retornoTrabalho": false,
+     "mudancaRisco": true,
+     "demissional": false,
+     "periodicidadeMeses": 12,
+     "observacao": null
+    },
+    {
+     "exame": "RAIO-X DE TORAX PADRAO OIT",
+     "codigo": "1415",
+     "admissional": true,
+     "periodico": true,
+     "retornoTrabalho": false,
+     "mudancaRisco": true,
+     "demissional": false,
+     "periodicidadeMeses": 24,
+     "observacao": null
+    }
+   ]
+  },
+  {
+   "funcao": "Auxiliar de Topógrafo",
+   "exames": [
+    {
+     "exame": "ACUIDADE VISUAL",
+     "codigo": "0296",
+     "admissional": true,
+     "periodico": true,
+     "retornoTrabalho": false,
+     "mudancaRisco": true,
+     "demissional": false,
+     "periodicidadeMeses": 12,
+     "observacao": null
+    },
+    {
+     "exame": "AUDIOMETRIA TONAL",
+     "codigo": "0281",
+     "admissional": true,
+     "periodico": true,
+     "retornoTrabalho": false,
+     "mudancaRisco": true,
+     "demissional": true,
+     "periodicidadeMeses": 12,
+     "observacao": null
+    },
+    {
+     "exame": "AVALIACAO PSICOSSOCIAL",
+     "codigo": "0300",
+     "admissional": true,
+     "periodico": true,
+     "retornoTrabalho": false,
+     "mudancaRisco": true,
+     "demissional": false,
+     "periodicidadeMeses": 12,
+     "observacao": null
+    },
+    {
+     "exame": "ELETROCARDIOGRAMA",
+     "codigo": "0530",
+     "admissional": true,
+     "periodico": true,
+     "retornoTrabalho": false,
+     "mudancaRisco": true,
+     "demissional": false,
+     "periodicidadeMeses": 12,
+     "observacao": null
+    },
+    {
+     "exame": "ELETROENCEFALOGRAMA",
+     "codigo": "0536",
+     "admissional": true,
+     "periodico": true,
+     "retornoTrabalho": false,
+     "mudancaRisco": true,
+     "demissional": false,
+     "periodicidadeMeses": 24,
+     "observacao": null
+    },
+    {
+     "exame": "ESPIROMETRIA",
+     "codigo": "1057",
+     "admissional": true,
+     "periodico": true,
+     "retornoTrabalho": false,
+     "mudancaRisco": true,
+     "demissional": false,
+     "periodicidadeMeses": 24,
+     "observacao": null
+    },
+    {
+     "exame": "EXAME CLINICO",
+     "codigo": "0295",
+     "admissional": true,
+     "periodico": true,
+     "retornoTrabalho": true,
+     "mudancaRisco": true,
+     "demissional": true,
+     "periodicidadeMeses": 12,
+     "observacao": null
+    },
+    {
+     "exame": "GLICEMIA EM JEJUM",
+     "codigo": "0658",
+     "admissional": true,
+     "periodico": true,
+     "retornoTrabalho": false,
+     "mudancaRisco": true,
+     "demissional": false,
+     "periodicidadeMeses": 12,
+     "observacao": null
+    },
+    {
+     "exame": "HEMOGRAMA COMPLETO",
+     "codigo": "0693",
+     "admissional": true,
+     "periodico": true,
+     "retornoTrabalho": false,
+     "mudancaRisco": true,
+     "demissional": false,
+     "periodicidadeMeses": 12,
+     "observacao": null
+    },
+    {
+     "exame": "RAIO-X DE TORAX PADRAO OIT",
+     "codigo": "1415",
+     "admissional": true,
+     "periodico": true,
+     "retornoTrabalho": false,
+     "mudancaRisco": true,
+     "demissional": false,
+     "periodicidadeMeses": 24,
+     "observacao": null
+    }
+   ]
+  },
+  {
+   "funcao": "Almoxarife",
+   "exames": [
+    {
+     "exame": "AUDIOMETRIA TONAL",
+     "codigo": "0281",
+     "admissional": true,
+     "periodico": true,
+     "retornoTrabalho": false,
+     "mudancaRisco": true,
+     "demissional": true,
+     "periodicidadeMeses": 12,
+     "observacao": null
+    },
+    {
+     "exame": "EXAME CLINICO",
+     "codigo": "0295",
+     "admissional": true,
+     "periodico": true,
+     "retornoTrabalho": true,
+     "mudancaRisco": true,
+     "demissional": true,
+     "periodicidadeMeses": 12,
+     "observacao": null
+    }
+   ]
+  },
+  {
+   "funcao": "Arquiteto",
+   "exames": [
+    {
+     "exame": "AUDIOMETRIA TONAL",
+     "codigo": "0281",
+     "admissional": true,
+     "periodico": true,
+     "retornoTrabalho": false,
+     "mudancaRisco": true,
+     "demissional": true,
+     "periodicidadeMeses": 12,
+     "observacao": null
+    },
+    {
+     "exame": "EXAME CLINICO",
+     "codigo": "0295",
+     "admissional": true,
+     "periodico": true,
+     "retornoTrabalho": true,
+     "mudancaRisco": true,
+     "demissional": true,
+     "periodicidadeMeses": 12,
+     "observacao": null
+    }
+   ]
+  },
+  {
+   "funcao": "Administrativo de Obra",
+   "exames": [
+    {
+     "exame": "AUDIOMETRIA TONAL",
+     "codigo": "0281",
+     "admissional": true,
+     "periodico": true,
+     "retornoTrabalho": false,
+     "mudancaRisco": true,
+     "demissional": true,
+     "periodicidadeMeses": 12,
+     "observacao": null
+    },
+    {
+     "exame": "EXAME CLINICO",
+     "codigo": "0295",
+     "admissional": true,
+     "periodico": true,
+     "retornoTrabalho": true,
+     "mudancaRisco": true,
+     "demissional": true,
+     "periodicidadeMeses": 12,
+     "observacao": null
+    }
+   ]
+  },
+  {
+   "funcao": "Assistente de Engenharia",
+   "exames": [
+    {
+     "exame": "AUDIOMETRIA TONAL",
+     "codigo": "0281",
+     "admissional": true,
+     "periodico": true,
+     "retornoTrabalho": false,
+     "mudancaRisco": true,
+     "demissional": true,
+     "periodicidadeMeses": 12,
+     "observacao": null
+    },
+    {
+     "exame": "EXAME CLINICO",
+     "codigo": "0295",
+     "admissional": true,
+     "periodico": true,
+     "retornoTrabalho": true,
+     "mudancaRisco": true,
+     "demissional": true,
+     "periodicidadeMeses": 12,
+     "observacao": null
+    }
+   ]
+  },
+  {
+   "funcao": "Gestor de Contrato",
+   "exames": [
+    {
+     "exame": "AUDIOMETRIA TONAL",
+     "codigo": "0281",
+     "admissional": true,
+     "periodico": true,
+     "retornoTrabalho": false,
+     "mudancaRisco": true,
+     "demissional": true,
+     "periodicidadeMeses": 12,
+     "observacao": null
+    },
+    {
+     "exame": "EXAME CLINICO",
+     "codigo": "0295",
+     "admissional": true,
+     "periodico": true,
+     "retornoTrabalho": true,
+     "mudancaRisco": true,
+     "demissional": true,
+     "periodicidadeMeses": 12,
+     "observacao": null
+    }
+   ]
+  },
+  {
+   "funcao": "Engenheiro de Produção",
+   "exames": [
+    {
+     "exame": "AUDIOMETRIA TONAL",
+     "codigo": "0281",
+     "admissional": true,
+     "periodico": true,
+     "retornoTrabalho": false,
+     "mudancaRisco": true,
+     "demissional": true,
+     "periodicidadeMeses": 12,
+     "observacao": null
+    },
+    {
+     "exame": "EXAME CLINICO",
+     "codigo": "0295",
+     "admissional": true,
+     "periodico": true,
+     "retornoTrabalho": true,
+     "mudancaRisco": true,
+     "demissional": true,
+     "periodicidadeMeses": 12,
+     "observacao": null
+    }
+   ]
+  },
+  {
+   "funcao": "Porteiro",
+   "exames": [
+    {
+     "exame": "AUDIOMETRIA TONAL",
+     "codigo": "0281",
+     "admissional": true,
+     "periodico": true,
+     "retornoTrabalho": false,
+     "mudancaRisco": true,
+     "demissional": true,
+     "periodicidadeMeses": 12,
+     "observacao": null
+    },
+    {
+     "exame": "EXAME CLINICO",
+     "codigo": "0295",
+     "admissional": true,
+     "periodico": true,
+     "retornoTrabalho": true,
+     "mudancaRisco": true,
+     "demissional": true,
+     "periodicidadeMeses": 12,
+     "observacao": null
+    }
+   ]
+  },
+  {
+   "funcao": "Vigia",
+   "exames": [
+    {
+     "exame": "AUDIOMETRIA TONAL",
+     "codigo": "0281",
+     "admissional": true,
+     "periodico": true,
+     "retornoTrabalho": false,
+     "mudancaRisco": true,
+     "demissional": true,
+     "periodicidadeMeses": 12,
+     "observacao": null
+    },
+    {
+     "exame": "EXAME CLINICO",
+     "codigo": "0295",
+     "admissional": true,
+     "periodico": true,
+     "retornoTrabalho": true,
+     "mudancaRisco": true,
+     "demissional": true,
+     "periodicidadeMeses": 12,
+     "observacao": null
+    }
+   ]
+  },
+  {
+   "funcao": "Encarregado",
+   "exames": [
+    {
+     "exame": "ACUIDADE VISUAL",
+     "codigo": "0296",
+     "admissional": true,
+     "periodico": true,
+     "retornoTrabalho": false,
+     "mudancaRisco": true,
+     "demissional": false,
+     "periodicidadeMeses": 12,
+     "observacao": null
+    },
+    {
+     "exame": "AUDIOMETRIA TONAL",
+     "codigo": "0281",
+     "admissional": true,
+     "periodico": true,
+     "retornoTrabalho": false,
+     "mudancaRisco": true,
+     "demissional": true,
+     "periodicidadeMeses": 12,
+     "observacao": null
+    },
+    {
+     "exame": "AVALIACAO PSICOSSOCIAL",
+     "codigo": "0300",
+     "admissional": true,
+     "periodico": true,
+     "retornoTrabalho": false,
+     "mudancaRisco": true,
+     "demissional": false,
+     "periodicidadeMeses": 12,
+     "observacao": null
+    },
+    {
+     "exame": "ELETROCARDIOGRAMA",
+     "codigo": "0530",
+     "admissional": true,
+     "periodico": true,
+     "retornoTrabalho": false,
+     "mudancaRisco": true,
+     "demissional": false,
+     "periodicidadeMeses": 12,
+     "observacao": null
+    },
+    {
+     "exame": "ELETROENCEFALOGRAMA",
+     "codigo": "0536",
+     "admissional": true,
+     "periodico": true,
+     "retornoTrabalho": false,
+     "mudancaRisco": true,
+     "demissional": false,
+     "periodicidadeMeses": 24,
+     "observacao": null
+    },
+    {
+     "exame": "ESPIROMETRIA",
+     "codigo": "1057",
+     "admissional": true,
+     "periodico": true,
+     "retornoTrabalho": false,
+     "mudancaRisco": true,
+     "demissional": false,
+     "periodicidadeMeses": 24,
+     "observacao": null
+    },
+    {
+     "exame": "EXAME CLINICO",
+     "codigo": "0295",
+     "admissional": true,
+     "periodico": true,
+     "retornoTrabalho": true,
+     "mudancaRisco": true,
+     "demissional": true,
+     "periodicidadeMeses": 12,
+     "observacao": null
+    },
+    {
+     "exame": "GLICEMIA EM JEJUM",
+     "codigo": "0658",
+     "admissional": true,
+     "periodico": true,
+     "retornoTrabalho": false,
+     "mudancaRisco": true,
+     "demissional": false,
+     "periodicidadeMeses": 12,
+     "observacao": null
+    },
+    {
+     "exame": "HEMOGRAMA COMPLETO",
+     "codigo": "0693",
+     "admissional": true,
+     "periodico": true,
+     "retornoTrabalho": false,
+     "mudancaRisco": true,
+     "demissional": false,
+     "periodicidadeMeses": 12,
+     "observacao": null
+    },
+    {
+     "exame": "RAIO-X DE TORAX PADRAO OIT",
+     "codigo": "1415",
+     "admissional": true,
+     "periodico": true,
+     "retornoTrabalho": false,
+     "mudancaRisco": true,
+     "demissional": false,
+     "periodicidadeMeses": 24,
+     "observacao": null
+    }
+   ]
+  },
+  {
+   "funcao": "Engenheiro Civil",
+   "exames": [
+    {
+     "exame": "ACUIDADE VISUAL",
+     "codigo": "0296",
+     "admissional": true,
+     "periodico": true,
+     "retornoTrabalho": false,
+     "mudancaRisco": true,
+     "demissional": false,
+     "periodicidadeMeses": 12,
+     "observacao": null
+    },
+    {
+     "exame": "AUDIOMETRIA TONAL",
+     "codigo": "0281",
+     "admissional": true,
+     "periodico": true,
+     "retornoTrabalho": false,
+     "mudancaRisco": true,
+     "demissional": true,
+     "periodicidadeMeses": 12,
+     "observacao": null
+    },
+    {
+     "exame": "AVALIACAO PSICOSSOCIAL",
+     "codigo": "0300",
+     "admissional": true,
+     "periodico": true,
+     "retornoTrabalho": false,
+     "mudancaRisco": true,
+     "demissional": false,
+     "periodicidadeMeses": 12,
+     "observacao": null
+    },
+    {
+     "exame": "ELETROCARDIOGRAMA",
+     "codigo": "0530",
+     "admissional": true,
+     "periodico": true,
+     "retornoTrabalho": false,
+     "mudancaRisco": true,
+     "demissional": false,
+     "periodicidadeMeses": 12,
+     "observacao": null
+    },
+    {
+     "exame": "ELETROENCEFALOGRAMA",
+     "codigo": "0536",
+     "admissional": true,
+     "periodico": true,
+     "retornoTrabalho": false,
+     "mudancaRisco": true,
+     "demissional": false,
+     "periodicidadeMeses": 24,
+     "observacao": null
+    },
+    {
+     "exame": "ESPIROMETRIA",
+     "codigo": "1057",
+     "admissional": true,
+     "periodico": true,
+     "retornoTrabalho": false,
+     "mudancaRisco": true,
+     "demissional": false,
+     "periodicidadeMeses": 24,
+     "observacao": null
+    },
+    {
+     "exame": "EXAME CLINICO",
+     "codigo": "0295",
+     "admissional": true,
+     "periodico": true,
+     "retornoTrabalho": true,
+     "mudancaRisco": true,
+     "demissional": true,
+     "periodicidadeMeses": 12,
+     "observacao": null
+    },
+    {
+     "exame": "GLICEMIA EM JEJUM",
+     "codigo": "0658",
+     "admissional": true,
+     "periodico": true,
+     "retornoTrabalho": false,
+     "mudancaRisco": true,
+     "demissional": false,
+     "periodicidadeMeses": 12,
+     "observacao": null
+    },
+    {
+     "exame": "HEMOGRAMA COMPLETO",
+     "codigo": "0693",
+     "admissional": true,
+     "periodico": true,
+     "retornoTrabalho": false,
+     "mudancaRisco": true,
+     "demissional": false,
+     "periodicidadeMeses": 12,
+     "observacao": null
+    },
+    {
+     "exame": "RAIO-X DE TORAX PADRAO OIT",
+     "codigo": "1415",
+     "admissional": true,
+     "periodico": true,
+     "retornoTrabalho": false,
+     "mudancaRisco": true,
+     "demissional": false,
+     "periodicidadeMeses": 24,
+     "observacao": null
+    }
+   ]
+  },
+  {
+   "funcao": "Engenheiro de Segurança do Trabalho",
+   "exames": [
+    {
+     "exame": "ACUIDADE VISUAL",
+     "codigo": "0296",
+     "admissional": true,
+     "periodico": true,
+     "retornoTrabalho": false,
+     "mudancaRisco": true,
+     "demissional": false,
+     "periodicidadeMeses": 12,
+     "observacao": null
+    },
+    {
+     "exame": "AUDIOMETRIA TONAL",
+     "codigo": "0281",
+     "admissional": true,
+     "periodico": true,
+     "retornoTrabalho": false,
+     "mudancaRisco": true,
+     "demissional": true,
+     "periodicidadeMeses": 12,
+     "observacao": null
+    },
+    {
+     "exame": "AVALIACAO PSICOSSOCIAL",
+     "codigo": "0300",
+     "admissional": true,
+     "periodico": true,
+     "retornoTrabalho": false,
+     "mudancaRisco": true,
+     "demissional": false,
+     "periodicidadeMeses": 12,
+     "observacao": null
+    },
+    {
+     "exame": "ELETROCARDIOGRAMA",
+     "codigo": "0530",
+     "admissional": true,
+     "periodico": true,
+     "retornoTrabalho": false,
+     "mudancaRisco": true,
+     "demissional": false,
+     "periodicidadeMeses": 12,
+     "observacao": null
+    },
+    {
+     "exame": "ELETROENCEFALOGRAMA",
+     "codigo": "0536",
+     "admissional": true,
+     "periodico": true,
+     "retornoTrabalho": false,
+     "mudancaRisco": true,
+     "demissional": false,
+     "periodicidadeMeses": 24,
+     "observacao": null
+    },
+    {
+     "exame": "ESPIROMETRIA",
+     "codigo": "1057",
+     "admissional": true,
+     "periodico": true,
+     "retornoTrabalho": false,
+     "mudancaRisco": true,
+     "demissional": false,
+     "periodicidadeMeses": 24,
+     "observacao": null
+    },
+    {
+     "exame": "EXAME CLINICO",
+     "codigo": "0295",
+     "admissional": true,
+     "periodico": true,
+     "retornoTrabalho": true,
+     "mudancaRisco": true,
+     "demissional": true,
+     "periodicidadeMeses": 12,
+     "observacao": null
+    },
+    {
+     "exame": "GLICEMIA EM JEJUM",
+     "codigo": "0658",
+     "admissional": true,
+     "periodico": true,
+     "retornoTrabalho": false,
+     "mudancaRisco": true,
+     "demissional": false,
+     "periodicidadeMeses": 12,
+     "observacao": null
+    },
+    {
+     "exame": "HEMOGRAMA COMPLETO",
+     "codigo": "0693",
+     "admissional": true,
+     "periodico": true,
+     "retornoTrabalho": false,
+     "mudancaRisco": true,
+     "demissional": false,
+     "periodicidadeMeses": 12,
+     "observacao": null
+    },
+    {
+     "exame": "RAIO-X DE TORAX PADRAO OIT",
+     "codigo": "1415",
+     "admissional": true,
+     "periodico": true,
+     "retornoTrabalho": false,
+     "mudancaRisco": true,
+     "demissional": false,
+     "periodicidadeMeses": 24,
+     "observacao": null
+    }
+   ]
+  },
+  {
+   "funcao": "Engenheiro Ambiental",
+   "exames": [
+    {
+     "exame": "ACUIDADE VISUAL",
+     "codigo": "0296",
+     "admissional": true,
+     "periodico": true,
+     "retornoTrabalho": false,
+     "mudancaRisco": true,
+     "demissional": false,
+     "periodicidadeMeses": 12,
+     "observacao": null
+    },
+    {
+     "exame": "AUDIOMETRIA TONAL",
+     "codigo": "0281",
+     "admissional": true,
+     "periodico": true,
+     "retornoTrabalho": false,
+     "mudancaRisco": true,
+     "demissional": true,
+     "periodicidadeMeses": 12,
+     "observacao": null
+    },
+    {
+     "exame": "AVALIACAO PSICOSSOCIAL",
+     "codigo": "0300",
+     "admissional": true,
+     "periodico": true,
+     "retornoTrabalho": false,
+     "mudancaRisco": true,
+     "demissional": false,
+     "periodicidadeMeses": 12,
+     "observacao": null
+    },
+    {
+     "exame": "ELETROCARDIOGRAMA",
+     "codigo": "0530",
+     "admissional": true,
+     "periodico": true,
+     "retornoTrabalho": false,
+     "mudancaRisco": true,
+     "demissional": false,
+     "periodicidadeMeses": 12,
+     "observacao": null
+    },
+    {
+     "exame": "ELETROENCEFALOGRAMA",
+     "codigo": "0536",
+     "admissional": true,
+     "periodico": true,
+     "retornoTrabalho": false,
+     "mudancaRisco": true,
+     "demissional": false,
+     "periodicidadeMeses": 24,
+     "observacao": null
+    },
+    {
+     "exame": "ESPIROMETRIA",
+     "codigo": "1057",
+     "admissional": true,
+     "periodico": true,
+     "retornoTrabalho": false,
+     "mudancaRisco": true,
+     "demissional": false,
+     "periodicidadeMeses": 24,
+     "observacao": null
+    },
+    {
+     "exame": "EXAME CLINICO",
+     "codigo": "0295",
+     "admissional": true,
+     "periodico": true,
+     "retornoTrabalho": true,
+     "mudancaRisco": true,
+     "demissional": true,
+     "periodicidadeMeses": 12,
+     "observacao": null
+    },
+    {
+     "exame": "GLICEMIA EM JEJUM",
+     "codigo": "0658",
+     "admissional": true,
+     "periodico": true,
+     "retornoTrabalho": false,
+     "mudancaRisco": true,
+     "demissional": false,
+     "periodicidadeMeses": 12,
+     "observacao": null
+    },
+    {
+     "exame": "HEMOGRAMA COMPLETO",
+     "codigo": "0693",
+     "admissional": true,
+     "periodico": true,
+     "retornoTrabalho": false,
+     "mudancaRisco": true,
+     "demissional": false,
+     "periodicidadeMeses": 12,
+     "observacao": null
+    },
+    {
+     "exame": "RAIO-X DE TORAX PADRAO OIT",
+     "codigo": "1415",
+     "admissional": true,
+     "periodico": true,
+     "retornoTrabalho": false,
+     "mudancaRisco": true,
+     "demissional": false,
+     "periodicidadeMeses": 24,
+     "observacao": null
+    }
+   ]
+  },
+  {
+   "funcao": "Encanador",
+   "exames": [
+    {
+     "exame": "ACUIDADE VISUAL",
+     "codigo": "0296",
+     "admissional": true,
+     "periodico": true,
+     "retornoTrabalho": false,
+     "mudancaRisco": true,
+     "demissional": false,
+     "periodicidadeMeses": 12,
+     "observacao": null
+    },
+    {
+     "exame": "AUDIOMETRIA TONAL",
+     "codigo": "0281",
+     "admissional": true,
+     "periodico": true,
+     "retornoTrabalho": false,
+     "mudancaRisco": true,
+     "demissional": true,
+     "periodicidadeMeses": 12,
+     "observacao": null
+    },
+    {
+     "exame": "AVALIACAO PSICOSSOCIAL",
+     "codigo": "0300",
+     "admissional": true,
+     "periodico": true,
+     "retornoTrabalho": false,
+     "mudancaRisco": true,
+     "demissional": false,
+     "periodicidadeMeses": 12,
+     "observacao": null
+    },
+    {
+     "exame": "ELETROCARDIOGRAMA",
+     "codigo": "0530",
+     "admissional": true,
+     "periodico": true,
+     "retornoTrabalho": false,
+     "mudancaRisco": true,
+     "demissional": false,
+     "periodicidadeMeses": 12,
+     "observacao": null
+    },
+    {
+     "exame": "ELETROENCEFALOGRAMA",
+     "codigo": "0536",
+     "admissional": true,
+     "periodico": true,
+     "retornoTrabalho": false,
+     "mudancaRisco": true,
+     "demissional": false,
+     "periodicidadeMeses": 24,
+     "observacao": null
+    },
+    {
+     "exame": "ESPIROMETRIA",
+     "codigo": "1057",
+     "admissional": true,
+     "periodico": true,
+     "retornoTrabalho": false,
+     "mudancaRisco": true,
+     "demissional": false,
+     "periodicidadeMeses": 24,
+     "observacao": null
+    },
+    {
+     "exame": "EXAME CLINICO",
+     "codigo": "0295",
+     "admissional": true,
+     "periodico": true,
+     "retornoTrabalho": true,
+     "mudancaRisco": true,
+     "demissional": true,
+     "periodicidadeMeses": 12,
+     "observacao": null
+    },
+    {
+     "exame": "GLICEMIA EM JEJUM",
+     "codigo": "0658",
+     "admissional": true,
+     "periodico": true,
+     "retornoTrabalho": false,
+     "mudancaRisco": true,
+     "demissional": false,
+     "periodicidadeMeses": 12,
+     "observacao": null
+    },
+    {
+     "exame": "HEMOGRAMA COMPLETO",
+     "codigo": "0693",
+     "admissional": true,
+     "periodico": true,
+     "retornoTrabalho": false,
+     "mudancaRisco": true,
+     "demissional": false,
+     "periodicidadeMeses": 12,
+     "observacao": null
+    },
+    {
+     "exame": "RAIO-X DE TORAX PADRAO OIT",
+     "codigo": "1415",
+     "admissional": true,
+     "periodico": true,
+     "retornoTrabalho": false,
+     "mudancaRisco": true,
+     "demissional": false,
+     "periodicidadeMeses": 24,
+     "observacao": null
+    }
+   ]
+  },
+  {
+   "funcao": "Motorista de Caminhão",
+   "exames": [
+    {
+     "exame": "ACUIDADE VISUAL",
+     "codigo": "0296",
+     "admissional": true,
+     "periodico": true,
+     "retornoTrabalho": false,
+     "mudancaRisco": true,
+     "demissional": false,
+     "periodicidadeMeses": 12,
+     "observacao": null
+    },
+    {
+     "exame": "AUDIOMETRIA TONAL",
+     "codigo": "0281",
+     "admissional": true,
+     "periodico": true,
+     "retornoTrabalho": false,
+     "mudancaRisco": true,
+     "demissional": true,
+     "periodicidadeMeses": 12,
+     "observacao": null
+    },
+    {
+     "exame": "ELETROCARDIOGRAMA",
+     "codigo": "0530",
+     "admissional": true,
+     "periodico": true,
+     "retornoTrabalho": false,
+     "mudancaRisco": true,
+     "demissional": false,
+     "periodicidadeMeses": 12,
+     "observacao": null
+    },
+    {
+     "exame": "ELETROENCEFALOGRAMA",
+     "codigo": "0536",
+     "admissional": true,
+     "periodico": true,
+     "retornoTrabalho": false,
+     "mudancaRisco": true,
+     "demissional": false,
+     "periodicidadeMeses": 24,
+     "observacao": null
+    },
+    {
+     "exame": "ESPIROMETRIA",
+     "codigo": "1057",
+     "admissional": true,
+     "periodico": true,
+     "retornoTrabalho": false,
+     "mudancaRisco": true,
+     "demissional": false,
+     "periodicidadeMeses": 24,
+     "observacao": null
+    },
+    {
+     "exame": "EXAME CLINICO",
+     "codigo": "0295",
+     "admissional": true,
+     "periodico": true,
+     "retornoTrabalho": true,
+     "mudancaRisco": true,
+     "demissional": true,
+     "periodicidadeMeses": 12,
+     "observacao": null
+    },
+    {
+     "exame": "GLICEMIA EM JEJUM",
+     "codigo": "0658",
+     "admissional": true,
+     "periodico": true,
+     "retornoTrabalho": false,
+     "mudancaRisco": true,
+     "demissional": false,
+     "periodicidadeMeses": 12,
+     "observacao": null
+    },
+    {
+     "exame": "HEMOGRAMA COMPLETO",
+     "codigo": "0693",
+     "admissional": true,
+     "periodico": true,
+     "retornoTrabalho": false,
+     "mudancaRisco": true,
+     "demissional": false,
+     "periodicidadeMeses": 12,
+     "observacao": null
+    },
+    {
+     "exame": "RAIO-X DE TORAX PADRAO OIT",
+     "codigo": "1415",
+     "admissional": true,
+     "periodico": true,
+     "retornoTrabalho": false,
+     "mudancaRisco": true,
+     "demissional": false,
+     "periodicidadeMeses": 24,
+     "observacao": null
+    }
+   ]
+  }
+ ],
+ "planoAcao": [
+  "Divulgação do PGR",
+  "Fornecimento de EPC",
+  "Acompanhamento de Medidas administrativas",
+  "Fornecimento e treinamento de EPI",
+  "Divulgação do PAE",
+  "Medições de audiometria para todos os GHE",
+  "Elaboração de LTCAT (NR15)",
+  "Realizar manutenções regulares e periódicas das instalações e equipamentos",
+  "Implementar Ginástica laboral",
+  "Realizar palestra sobre ergonomia (NR 17)",
+  "Realizar treinamento para os funcionários sobre primeiros socorros",
+  "Definir um designado da CIPA (NR5)",
+  "Realizar treinamento sobre NR 18 , NR 21 e NR23",
+  "Realizar treinamentos trimestrais sobre os riscos",
+  "Realização de DDS",
+  "Realização de ginástica laboral",
+  "Acompanhamento mensal da sinalização de segurança do trabalho no canteiro de obra",
+  "Acompanhamento mensal das medidas de controle coletivo",
+  "Acompanhamento mensal sobre o uso de EPI",
+  "Atualização do PGR",
+  "Acompanhamento das medidas de controle - EPC",
+  "Acompanhamento das medidas de controle - MA",
+  "Acompanhamento das medidas de controle - EPI",
+  "Treinamentos NRs",
+  "Medições referentes a ruído",
+  "Realização de DDS",
+  "Elaboração de LTCAT",
+  "Implementar Ginástica laboral",
+  "Treinamento sobre NR 17"
+ ],
+ "pendenciasValidacao": [
+  "PGR Rev. 01 termina em 10/10/2026 — solicitar nova revisão à Eng. Fernanda Raquel (Eprotenge).",
+  "PCMSO sem vigência escrita (elaborado 11/11/2024, cronograma até out/2025) e emitido no CNPJ da matriz SP (0001-06); PGR está no CNPJ da filial JP (0002-97). Confirmar com a EMMA.",
+  "PCMSO: coluna de periodicidade desalinhada no PDF. Cadastrado pela leitura em ordem (espirometria e RX OIT 24 meses, hemograma 12 meses). Confirmar com a Dra. Danila Gadelha.",
+  "Ajudante de Eletricista está no PGR (GHE 04) e não tem quadro de exames no PCMSO.",
+  "Matriz do PGR: produto 5 aparece como Médio na matriz, mas a gradação vai de Baixo 1–4 a Médio 6–12.",
+  "GHE 02, Acidentes/Probabilidade de incêndio ou explosões: P=1 x G=1 = 1, mas a classificação impressa é '2 - Baixo Risco' (nos demais GHE o mesmo risco 1x1 é '1 - Baixo Risco').",
+  "GHE 04 (Eletricista/Ajudante de Eletricista): o inventário NÃO lista risco de eletricidade/choque elétrico (NR-10) como agente; a NR-10 só aparece citada no controle do risco 'Trabalho em altura'. Lacuna técnica relevante.",
+  "GHE 05, Ergonômico/Levantamento e transporte manual de peso: P=2 x G=2 = 4 classificado como '4 - Médio Risco', enquanto em todos os outros pontos do inventário o valor 4 é 'Baixo Risco'.",
+  "GHE 05, Físico: agente 'Radiação ionizante (infravermelho e ultravioleta)' — infravermelho e ultravioleta são radiações NÃO ionizantes; erro técnico de nomenclatura no PDF.",
+  "GHE 06, Acidentes/Queda do mesmo nível: P=2 x G=2 = 4 classificado como '4- Médio Risco' (em outros pontos 4 = Baixo Risco).",
+  "GHE 06 (Pintor), Químico/Solventes: o EPC/MA ('Monitoramento de ASOs, procedimentos operacionais; Treinamento e conscientização') é idêntico ao do risco biológico — parece copiado; não há EPC específico (ex.: ventilação/exaustão).",
+  "GHE 06: atividade crítica declarada inclui Trabalho em Altura e Espaço Confinado, mas ambos estão com classificação baixa (Altura 1x2=2; Espaço Confinado 1x1=1) — menores que em outros GHE (Altura 3x2=6 na maioria). Não é erro aritmético, mas é incoerente com a criticidade declarada.",
+  "GHE 07 (Operador de Retroescavadeira): atividades críticas declaradas incluem içamento de carga, escavação e fundação, mas o inventário não traz riscos específicos de operação de máquina (atropelamento, tombamento/capotamento, colisão, soterramento em escavação). Só a NR 12 aparece citada no monitoramento de 'Trabalho em altura'.",
+  "Monitoramento 'Será avaliado através de avaliação qualitativa (dosimetria) e LTCAT' é usado para Ruído, Vibração e até para 'Produtos Químicos (graxas, óleos)' (GHE 07) — dosimetria é avaliação QUANTITATIVA e não se aplica a graxas/óleos nem (como dosimetria de ruído) a vibração. Texto padrão replicado.",
+  "GHE 07: Vibração com EPI 'Luvas antivibração' para operador de retroescavadeira — a exposição típica do operador é vibração de corpo inteiro (assento), não de mãos e braços. Texto parece copiado do GHE 01.",
+  "GHE 08 (Motorista de Van): não há risco de acidente de trânsito/colisão nem de radiação solar; em compensação aparecem 'Desmoronamento' (com EPI 'Escoramento em áreas de riscos') e 'Animais peçonhentos' com perneira — riscos copiados do canteiro, pouco aderentes à função.",
+  "GHE 08, Acidentes/Queda do mesmo nível: P=2 x G=2 = 4 classificado como '4- Médio Risco'.",
+  "GHE 09, Acidentes/Queda do mesmo nível: P=2 x G=2 = 4 classificado como '4- Médio Risco'.",
+  "GHE 09 (Auxiliar de Serviços Gerais): ambiente é container administrativo, mas não há risco químico de produtos de limpeza (saneantes) nem levantamento de peso; biológico mantido 1x2. Possível lacuna.",
+  "GHE 10, Acidentes/Queda do mesmo nível: P=2 x G=2 = 4 classificado como '4- Médio Risco'.",
+  "GHE 11 (Administrativo, container climatizado): constam 'Desmoronamento' (EPI 'Escoramento em áreas de riscos') e 'Animais peçonhentos' (EPI perneira), e 'Queda do mesmo nível' com EPI capacete e bota — riscos/EPIs copiados do canteiro, pouco aderentes ao posto administrativo. Não há risco ergonômico de trabalho com computador/mobiliário específico além de 'Postura Inadequada'.",
+  "Inconsistência de matriz entre GHEs: 'Queda do mesmo nível' 2x2=4 é '4- Baixo Risco' nos GHE 11 e 12, mas '4- Médio Risco' nos GHE 06, 08, 09, 10 (mesmo P, mesmo G).",
+  "GHE 12 (Porteiro/Vigia): não há risco de violência/assalto, trabalho noturno, nem exposição ao sol/intempéries (portaria) no inventário.",
+  "GHE 14, Acidentes/Animais peçonhentos: P=3 x G=4 = 12, mas a classificação impressa é '8- Médio Risco' (valor de 2x4). Ou P está errado (deveria ser 2) ou a classificação está errada.",
+  "GHE 14 (Encanador): atividade crítica é só 'Espaço Confinado' e não há linha de 'Trabalho em altura' — coerente; mas também não há risco de escavação/valas, comum na atividade.",
+  "GHE 15, Ergonômico/Levantamento e transporte manual de peso: P=2 x G=2 = 4 classificado como '4 - Médio Risco'.",
+  "GHE 15 (Motorista de Caminhão): não há risco de acidente de trânsito/colisão/atropelamento, nem de queda de carga/queda da carroceria, apesar da atividade crítica 'Carregamento de carga'. Vibração com 'Luvas antivibração' (exposição típica é de corpo inteiro).",
+  "Plano 20.2, 'Medições referentes a ruído': início OUTUBRO 2024 e término MARÇO 2024 (término antes do início). 'Onde' = 'Secretaria de infraestrutura' — não é GHE/local da obra (parece herdado de outro PGR). 'Como' cita termômetro de globo (calor), mas o objetivo é ruído.",
+  "Plano 20.2, 'Elaboração de LTCAT': início e término ABRIL 2024, anterior à data do documento (outubro/2024) e anterior às medições de ruído que deveriam embasá-lo (out/2024).",
+  "Plano 20.2 é intitulado 'Análise Ergonômica de Risco', mas contém medições de ruído, DDS e LTCAT; Ginástica laboral e Treinamento NR 17 estão restritos ao GHE 11, enquanto o inventário cita ginástica laboral como controle em praticamente todos os GHE.",
+  "Plano de ação não tem ações vinculadas aos riscos classificados como Médio (ex.: Animais peçonhentos 8, Poeira 6, Trabalho em altura 6, Espaço Confinado 6 no GHE 14); as ações são genéricas para 'Todos os GHE'.",
+  "Numeração de seções divergente: o sumário traz '19. INVENTÁRIO DE RISCO' (pág. 37) e '20. CRONOGRAMA' (pág. 84), mas no corpo a seção é '14. INVENTÁRIO DE RISCO' (pág. 38; '14. METODOLOGIA' também existe na pág. 22), o inventário termina na pág. 85 e o cronograma está na pág. 86.",
+  "Seção 18 (Resultados das avaliações preliminares, pág. 36-37): o bloco marcado '→ GHE 14' (Encanador) está titulado 'GHE – 01', e o bloco '→ GHE 15' (Motorista de Caminhão) está titulado 'GHE – 07' — números de GHE trocados no cabeçalho dessas fichas. No inventário os números estão corretos (GHE 14 = Encanador, GHE 15 = Motorista de Caminhão).",
+  "Grafia 'Leões oculares' (deveria ser 'Lesões oculares') em todos os GHE com risco de projeção de partículas; mantida como no PDF.",
+  "Riscos repetidos idênticos entre GHEs: Ruído, Radiação solar, Biológico, Ergonômicos e Acidentes (queda mesmo nível, projeção, animais peçonhentos, incêndio, outras situações, desmoronamento, trabalho em altura) usam o MESMO texto de danos/EPC/EPI/monitoramento em todos os GHE, mudando só P e G — inclusive em GHE administrativo, portaria e motoristas. GHE 01 e GHE 02 são quase idênticos.",
+  "Avaliação marcada como 'Qualitativa' para Ruído/Vibração/Poeira/Fumos em todos os GHE, mas o monitoramento promete 'dosimetria'/'avaliação quantitativa' — não há nenhum resultado quantitativo no inventário.",
+  "Biológico 'Virus e bactérias' com EPI genérico (macacão, luva, óculos, respirador) nos GHE operacionais, sem fonte de exposição descrita (ex.: esgoto para o Encanador).",
+  "[auto] GHE 02, Acidentes/Probabilidade de incêndio ou explosões: P=1 x G=1 = 1, classificação impressa '2 - Baixo Risco'.",
+  "[auto] GHE 14, Acidentes/Animais peçonhentos: P=3 x G=4 = 12, classificação impressa '8- Médio Risco'.",
+  "[auto] Valor de risco 4 aparece com níveis diferentes no inventário: ['Baixo', 'Médio'].",
+  "Funções sem CBO: ASSISTENTE DE ENGENHARIA, AUXILIAR DE SERVIÇOS GERAIS, MOTORISTA DE CAMINHÃO, MOTORISTA DE VAN, PINTOR, SOLDADOR.",
+  "Funções sem descrição de atividades: ASSISTENTE DE ENGENHARIA, PINTOR, SOLDADOR.",
+  "CBO 214105 usado para ARQUITETO e para ENGENHEIRO AMBIENTAL.",
+  "RAIO-X DE TORAX PADRAO OIT [1415] sem periodicidade no periódico em todas as funções do quadro completo (só AUXILIAR DE SERVIÇOS GERAIS traz BIENAL).",
+  "MOTORISTA DE VAN: EEG com 'BIENAL' e 'ANUAL' na mesma célula; HEMOGRAMA sem periodicidade.",
+  "Hemograma BIENAL nos quadros, mas a tabela de atividades críticas (p. 17) indica hemograma anual (leitura pela posição do 'x').",
+  "Ácido hipúrico e ácido metil-hipúrico (PINTOR e SOLDADOR) com periodicidade ANUAL, enquanto o próprio documento diz que exames dos Quadros 1 e 2 do Anexo I da NR-7 são semestrais; confirmar com a médica coordenadora se esses indicadores se enquadram no Quadro 1.",
+  "SOLDADOR: ácido hipúrico/metil-hipúrico prescritos sem risco de solventes listado; risco 'FUMOS METALICOS' sem exame específico correspondente.",
+  "SOLDADOR: infravermelho/ultravioleta classificados como 'RADIAÇÃO IONIZANTE'.",
+  "SERRALHEIRO: risco químico 'POEIRA VEGETAL(MADEIRA)', igual ao Carpinteiro (mesmo GHE 03), sem menção a fumos metálicos.",
+  "ELETRICISTA: risco elétrico não listado entre os riscos ocupacionais.",
+  "MOTORISTA DE CAMINHÃO: sem Avaliação Psicossocial; MOTORISTA DE VAN: sem espirometria, RX e avaliação psicossocial (perfis próprios, sem justificativa no texto).",
+  "Riscos sem lesão/agravo descrito: PEDREIRO (VIBRACAO; PRODUTOS QUÍMICOS (CIMENTO)), PINTOR (SOLVENTES), SOLDADOR (FUMOS METALICOS).",
+  "Numeração de seções repetida: '14. CONTROLE RADIOLÓGICO...' e '14. INDICAÇÃO DE MÉDICO EXAMINADOR'; o título desta última aparece depois da lista de médicos (p. 65).",
+  "Endereço da empresa é a sede em São Paulo-SP; o documento não identifica a obra Parque Roger nem o endereço do canteiro, embora as entidades de saúde sejam de João Pessoa-PB."
+ ]
+}

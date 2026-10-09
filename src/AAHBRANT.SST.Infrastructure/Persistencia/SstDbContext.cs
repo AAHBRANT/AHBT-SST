@@ -32,6 +32,7 @@ public class SstDbContext : DbContext, IAppDbContext
     public DbSet<ExameComplementar> ExamesComplementares => Set<ExameComplementar>();
     public DbSet<AptidaoAtividadeEspecifica> AptidoesAtividadeEspecifica => Set<AptidaoAtividadeEspecifica>();
     public DbSet<PcmsoDetalhe> PcmsoDetalhes => Set<PcmsoDetalhe>();
+    public DbSet<ExameFuncaoObra> ExamesFuncaoObra => Set<ExameFuncaoObra>();
     public DbSet<CursoTreinamento> CursosTreinamento => Set<CursoTreinamento>();
     public DbSet<Treinamento> Treinamentos => Set<Treinamento>();
     public DbSet<ArquivoCertificadoTreinamento> ArquivosCertificadoTreinamento => Set<ArquivoCertificadoTreinamento>();
@@ -64,6 +65,8 @@ public class SstDbContext : DbContext, IAppDbContext
     public DbSet<TrilhaAuditoria> TrilhaAuditoria => Set<TrilhaAuditoria>();
 
     public DbSet<Atividade> Atividades => Set<Atividade>();
+    public DbSet<Ghe> Ghes => Set<Ghe>();
+    public DbSet<GheFuncao> GheFuncoes => Set<GheFuncao>();
     public DbSet<Perigo> Perigos => Set<Perigo>();
     public DbSet<Risco> Riscos => Set<Risco>();
     public DbSet<RiscoTrabalhadorExposto> RiscoTrabalhadorExpostos => Set<RiscoTrabalhadorExposto>();
@@ -224,6 +227,10 @@ public class SstDbContext : DbContext, IAppDbContext
             p.Ativo && (_usuarioAtual.TemAcessoGlobal || (p.ObraId.HasValue && _usuarioAtual.ObrasPermitidas.Contains(p.ObraId.Value))));
         modelBuilder.Entity<Atividade>().HasQueryFilter(a =>
             a.Ativo && (_usuarioAtual.TemAcessoGlobal || _usuarioAtual.ObrasPermitidas.Contains(a.ObraId)));
+        modelBuilder.Entity<Ghe>().HasQueryFilter(g =>
+            g.Ativo && (_usuarioAtual.TemAcessoGlobal || _usuarioAtual.ObrasPermitidas.Contains(g.ObraId)));
+        modelBuilder.Entity<ExameFuncaoObra>().HasQueryFilter(e =>
+            e.Ativo && (_usuarioAtual.TemAcessoGlobal || _usuarioAtual.ObrasPermitidas.Contains(e.ObraId)));
         modelBuilder.Entity<Setor>().HasQueryFilter(s =>
             s.Ativo && (_usuarioAtual.TemAcessoGlobal || _usuarioAtual.ObrasPermitidas.Contains(s.ObraId)));
         // Relatório de uma obra só aparece para quem tem acesso a ela; o consolidado (ObraId nulo) só para
