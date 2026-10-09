@@ -1,0 +1,680 @@
+[
+ {
+  "norma": "NR-01",
+  "artigo": "1.4.1",
+  "categoria": 4,
+  "titulo": "Deveres do empregador em segurança e saúde no trabalho",
+  "descricao": "1.4.1 Cabe ao empregador: a) cumprir e fazer cumprir as disposições legais e regulamentares sobre segurança e saúde no trabalho; b) informar aos trabalhadores: I. os riscos ocupacionais existentes nos locais de trabalho; II. as medidas de prevenção adotadas pela empresa para eliminar ou reduzir tais riscos; III. os resultados dos exames médicos e de exames complementares de diagnóstico aos quais os próprios trabalhadores forem submetidos; e IV. os resultados das avaliações ambientais realizadas nos locais de trabalho. c) elaborar ordens de serviço sobre segurança e saúde no trabalho, dando ciência aos trabalhadores; d) permitir que representantes dos trabalhadores acompanhem a fiscalização dos preceitos legais e regulamentares sobre segurança e saúde no trabalho; e) determinar procedimentos que devem ser adotados em caso de acidente ou doença relacionada ao trabalho, incluindo a análise de suas causas; f) disponibilizar à Inspeção do Trabalho todas as informações relativas à segurança e saúde no trabalho; e g) implementar medidas de prevenção, ouvidos os trabalhadores, de acordo com a seguinte ordem de prioridade: I. eliminação dos fatores de risco; II. minimização e controle dos fatores de risco, com a adoção de medidas de proteção coletiva; III. minimização e controle dos fatores de risco, com a adoção de medidas administrativas ou de organização do trabalho; e IV. adoção de medidas de proteção individual. (...) Texto integral e subitens na fonte oficial.",
+  "fonte": "NR-01 (texto consolidado gov.br, atualizado 2022): https://www.gov.br/trabalho-e-emprego/pt-br/acesso-a-informacao/participacao-social/conselhos-e-orgaos-colegiados/comissao-tripartite-partitaria-permanente/arquivos/normas-regulamentadoras/nr-01-atualizada-2022-1.pdf",
+  "palavrasChavePerigo": []
+ },
+ {
+  "norma": "NR-01",
+  "artigo": "1.4.4",
+  "categoria": 1,
+  "titulo": "Informações sobre riscos na admissão e na mudança de função",
+  "descricao": "1.4.4 Todo trabalhador, ao ser admitido ou quando mudar de função que implique em alteração de risco, deve receber informações sobre: a) os riscos ocupacionais que existam ou possam originar-se nos locais de trabalho; b) os meios para prevenir e controlar tais riscos; c) as medidas adotadas pela organização; d) os procedimentos a serem adotados em situação de emergência; e e) os procedimentos a serem adotados, em conformidade com os subitens 1.4.3 e 1.4.3.1. 1.4.4.1 As informações podem ser transmitidas: f) durante os treinamentos; e g) por meio de diálogos de segurança, documento físico ou eletrônico.",
+  "fonte": "NR-01 (texto consolidado gov.br, atualizado 2022): https://www.gov.br/trabalho-e-emprego/pt-br/acesso-a-informacao/participacao-social/conselhos-e-orgaos-colegiados/comissao-tripartite-partitaria-permanente/arquivos/normas-regulamentadoras/nr-01-atualizada-2022-1.pdf",
+  "palavrasChavePerigo": []
+ },
+ {
+  "norma": "NR-01",
+  "artigo": "1.5.3.1",
+  "categoria": 4,
+  "titulo": "Gerenciamento de riscos ocupacionais por estabelecimento (PGR)",
+  "descricao": "1.5.3.1. A organização deve implementar, por estabelecimento, o gerenciamento de riscos ocupacionais em suas atividades. 1.5.3.1.1 O gerenciamento de riscos ocupacionais deve constituir um Programa de Gerenciamento de Riscos - PGR. 1.5.3.1.1.1 A critério da organização, o PGR pode ser implementado por unidade operacional, setor ou atividade. 1.5.3.1.2 O PGR pode ser atendido por sistemas de gestão, desde que estes cumpram as exigências previstas nesta NR e em dispositivos legais de segurança e saúde no trabalho. 1.5.3.1.3 O PGR deve contemplar ou estar integrado com planos, programas e outros documentos previstos na legislação de segurança e saúde no trabalho.",
+  "fonte": "NR-01 (texto consolidado gov.br, atualizado 2022): https://www.gov.br/trabalho-e-emprego/pt-br/acesso-a-informacao/participacao-social/conselhos-e-orgaos-colegiados/comissao-tripartite-partitaria-permanente/arquivos/normas-regulamentadoras/nr-01-atualizada-2022-1.pdf",
+  "palavrasChavePerigo": []
+ },
+ {
+  "norma": "NR-01",
+  "artigo": "1.5.5.1.1",
+  "categoria": 4,
+  "titulo": "Medidas de prevenção para eliminar, reduzir ou controlar riscos",
+  "descricao": "1.5.5.1.1 A organização deve adotar medidas de prevenção para eliminar, reduzir ou controlar os riscos sempre que: a) exigências previstas em Normas Regulamentadoras e nos dispositivos legais determinarem; b) a classificação dos riscos ocupacionais assim determinar, conforme subitem 1.5.4.4.5; c) houver evidências de associação, por meio do controle médico da saúde, entre as lesões e os agravos à saúde dos trabalhadores com os riscos e as situações de trabalho identificados.",
+  "fonte": "NR-01 (texto consolidado gov.br, atualizado 2022): https://www.gov.br/trabalho-e-emprego/pt-br/acesso-a-informacao/participacao-social/conselhos-e-orgaos-colegiados/comissao-tripartite-partitaria-permanente/arquivos/normas-regulamentadoras/nr-01-atualizada-2022-1.pdf",
+  "palavrasChavePerigo": []
+ },
+ {
+  "norma": "NR-01",
+  "artigo": "1.5.5.2.1",
+  "categoria": 4,
+  "titulo": "Plano de ação do PGR",
+  "descricao": "1.5.5.2.1 A organização deve elaborar plano de ação, indicando as medidas de prevenção a serem introduzidas, aprimoradas ou mantidas, conforme o subitem 1.5.4.4.5.",
+  "fonte": "NR-01 (texto consolidado gov.br, atualizado 2022): https://www.gov.br/trabalho-e-emprego/pt-br/acesso-a-informacao/participacao-social/conselhos-e-orgaos-colegiados/comissao-tripartite-partitaria-permanente/arquivos/normas-regulamentadoras/nr-01-atualizada-2022-1.pdf",
+  "palavrasChavePerigo": []
+ },
+ {
+  "norma": "NR-01",
+  "artigo": "1.5.5.5.2",
+  "categoria": 4,
+  "titulo": "Análise documentada de acidentes e doenças do trabalho",
+  "descricao": "1.5.5.5.2 As análises de acidentes e doenças relacionadas ao trabalho devem ser documentadas e: a) considerar as situações geradoras dos eventos, levando em conta as atividades efetivamente desenvolvidas, ambiente de trabalho, materiais e organização da produção e do trabalho; b) identificar os fatores relacionados com o evento; e c) fornecer evidências para subsidiar e revisar as medidas de prevenção existentes.",
+  "fonte": "NR-01 (texto consolidado gov.br, atualizado 2022): https://www.gov.br/trabalho-e-emprego/pt-br/acesso-a-informacao/participacao-social/conselhos-e-orgaos-colegiados/comissao-tripartite-partitaria-permanente/arquivos/normas-regulamentadoras/nr-01-atualizada-2022-1.pdf",
+  "palavrasChavePerigo": []
+ },
+ {
+  "norma": "NR-01",
+  "artigo": "1.5.7.1",
+  "categoria": 4,
+  "titulo": "Documentos mínimos do PGR",
+  "descricao": "1.5.7.1 O PGR deve conter, no mínimo, os seguintes documentos: a) inventário de riscos; e b) plano de ação.",
+  "fonte": "NR-01 (texto consolidado gov.br, atualizado 2022): https://www.gov.br/trabalho-e-emprego/pt-br/acesso-a-informacao/participacao-social/conselhos-e-orgaos-colegiados/comissao-tripartite-partitaria-permanente/arquivos/normas-regulamentadoras/nr-01-atualizada-2022-1.pdf",
+  "palavrasChavePerigo": []
+ },
+ {
+  "norma": "NR-01",
+  "artigo": "1.7.1",
+  "categoria": 1,
+  "titulo": "Capacitação, treinamento e certificado dos treinamentos das NR",
+  "descricao": "1.7.1 O empregador deve promover capacitação e treinamento dos trabalhadores, em conformidade com o disposto nas NR. 1.7.1.1 Ao término dos treinamentos inicial, periódico ou eventual, previstos nas NR, deve ser emitido certificado contendo o nome e assinatura do trabalhador, conteúdo programático, carga horária, data, local de realização do treinamento, nome e qualificação dos instrutores e assinatura do responsável técnico do treinamento. 1.7.1.2 A capacitação deve incluir: a) treinamento inicial; b) treinamento periódico; e c) treinamento eventual. 1.7.1.2.1 O treinamento inicial deve ocorrer antes de o trabalhador iniciar suas funções ou de acordo com o prazo especificado em NR. 1.7.1.2.2 O treinamento periódico deve ocorrer de acordo com periodicidade estabelecida nas NR ou, quando não estabelecido, em prazo determinado pelo empregador. 1.7.1.2.3 O treinamento eventual deve ocorrer: a) quando houver mudança nos procedimentos, condições ou operações de trabalho, que impliquem em alteração dos riscos ocupacionais; b) na ocorrência de acidente grave ou fatal, que indique a necessidade de novo treinamento; ou c) após retorno de afastamento ao trabalho por período superior a 180 (cento e oitenta) dias. 1.7.1.2.3.1 A carga horária, o prazo para sua realização e o conteúdo programático do treinamento eventual deve atender à situação que o motivou. 1.7.1.3 A capacitação pode incluir: a) estágio prático, prática profissional supervisionada ou orientação em serviço; b) exercícios simulados; ou c) habilitação para operação de veículos, embarcações, máquinas ou equipamentos.",
+  "fonte": "NR-01 (texto consolidado gov.br, atualizado 2022): https://www.gov.br/trabalho-e-emprego/pt-br/acesso-a-informacao/participacao-social/conselhos-e-orgaos-colegiados/comissao-tripartite-partitaria-permanente/arquivos/normas-regulamentadoras/nr-01-atualizada-2022-1.pdf",
+  "palavrasChavePerigo": []
+ },
+ {
+  "norma": "NR-06",
+  "artigo": "6.3",
+  "categoria": 2,
+  "titulo": "Fornecimento gratuito de EPI adequado ao risco",
+  "descricao": "6.3 A empresa é obrigada a fornecer aos empregados, gratuitamente, EPI adequado ao risco, em perfeito estado de conservação e funcionamento, nas seguintes circunstâncias: a) sempre que as medidas de ordem geral não ofereçam completa proteção contra os riscos de acidentes do trabalho ou de doenças profissionais e do trabalho; b) enquanto as medidas de proteção coletiva estiverem sendo implantadas; e, c) para atender a situações de emergência.",
+  "fonte": "NR-06 (texto consolidado gov.br): https://www.gov.br/trabalho-e-emprego/pt-br/acesso-a-informacao/participacao-social/conselhos-e-orgaos-colegiados/comissao-tripartite-partitaria-permanente/arquivos/normas-regulamentadoras/nr-06.pdf",
+  "palavrasChavePerigo": []
+ },
+ {
+  "norma": "NR-06",
+  "artigo": "6.6.1",
+  "categoria": 2,
+  "titulo": "Responsabilidades do empregador quanto ao EPI",
+  "descricao": "6.6.1 Cabe ao empregador quanto ao EPI: a) adquirir o adequado ao risco de cada atividade; b) exigir seu uso; c) fornecer ao trabalhador somente o aprovado pelo órgão nacional competente em matéria de segurança e saúde no trabalho; d) orientar e treinar o trabalhador sobre o uso adequado, guarda e conservação; e) substituir imediatamente, quando danificado ou extraviado; f) responsabilizar-se pela higienização e manutenção periódica; e, g) comunicar ao MTE qualquer irregularidade observada. h) registrar o seu fornecimento ao trabalhador, podendo ser adotados livros, fichas ou sistema eletrônico. (Inserida pela Portaria SIT n.º 107, de 25 de agosto de 2009)",
+  "fonte": "NR-06 (texto consolidado gov.br): https://www.gov.br/trabalho-e-emprego/pt-br/acesso-a-informacao/participacao-social/conselhos-e-orgaos-colegiados/comissao-tripartite-partitaria-permanente/arquivos/normas-regulamentadoras/nr-06.pdf",
+  "palavrasChavePerigo": []
+ },
+ {
+  "norma": "NR-06",
+  "artigo": "6.7.1",
+  "categoria": 2,
+  "titulo": "Responsabilidades do empregado quanto ao EPI",
+  "descricao": "6.7.1 Cabe ao empregado quanto ao EPI: a) usar, utilizando-o apenas para a finalidade a que se destina; b) responsabilizar-se pela guarda e conservação; c) comunicar ao empregador qualquer alteração que o torne impróprio para uso; e, d) cumprir as determinações do empregador sobre o uso adequado.",
+  "fonte": "NR-06 (texto consolidado gov.br): https://www.gov.br/trabalho-e-emprego/pt-br/acesso-a-informacao/participacao-social/conselhos-e-orgaos-colegiados/comissao-tripartite-partitaria-permanente/arquivos/normas-regulamentadoras/nr-06.pdf",
+  "palavrasChavePerigo": []
+ },
+ {
+  "norma": "NR-07",
+  "artigo": "7.4.1",
+  "categoria": 3,
+  "titulo": "Responsabilidades do empregador no PCMSO",
+  "descricao": "7.4.1 Compete ao empregador: a) garantir a elaboração e efetiva implantação do PCMSO; b) custear sem ônus para o empregado todos os procedimentos relacionados ao PCMSO; c) indicar médico do trabalho responsável pelo PCMSO.",
+  "fonte": "NR-07 (texto consolidado gov.br, atualizado 2022): https://www.gov.br/trabalho-e-emprego/pt-br/acesso-a-informacao/participacao-social/conselhos-e-orgaos-colegiados/comissao-tripartite-partitaria-permanente/arquivos/normas-regulamentadoras/nr-07-atualizada-2022-1.pdf",
+  "palavrasChavePerigo": []
+ },
+ {
+  "norma": "NR-07",
+  "artigo": "7.5.6",
+  "categoria": 3,
+  "titulo": "Exames médicos obrigatórios do PCMSO",
+  "descricao": "7.5.6 O PCMSO deve incluir a realização obrigatória dos exames médicos: a) admissional; b) periódico; c) de retorno ao trabalho; d) de mudança de riscos ocupacionais; e) demissional.",
+  "fonte": "NR-07 (texto consolidado gov.br, atualizado 2022): https://www.gov.br/trabalho-e-emprego/pt-br/acesso-a-informacao/participacao-social/conselhos-e-orgaos-colegiados/comissao-tripartite-partitaria-permanente/arquivos/normas-regulamentadoras/nr-07-atualizada-2022-1.pdf",
+  "palavrasChavePerigo": []
+ },
+ {
+  "norma": "NR-07",
+  "artigo": "7.5.8",
+  "categoria": 3,
+  "titulo": "Prazos e periodicidade do exame clínico",
+  "descricao": "7.5.8 O exame clínico deve obedecer aos prazos e à seguinte periodicidade: I - no exame admissional: ser realizado antes que o empregado assuma suas atividades; II - no exame periódico: ser realizado de acordo com os seguintes intervalos: a) para empregados expostos a riscos ocupacionais identificados e classificados no PGR e para portadores de doenças crônicas que aumentem a susceptibilidade a tais riscos: 1. a cada ano ou a intervalos menores, a critério do médico responsável; 2. de acordo com a periodicidade especificada no Anexo IV desta Norma, relativo a empregados expostos a condições hiperbáricas; b) para os demais empregados, o exame clínico deve ser realizado a cada dois anos.",
+  "fonte": "NR-07 (texto consolidado gov.br, atualizado 2022): https://www.gov.br/trabalho-e-emprego/pt-br/acesso-a-informacao/participacao-social/conselhos-e-orgaos-colegiados/comissao-tripartite-partitaria-permanente/arquivos/normas-regulamentadoras/nr-07-atualizada-2022-1.pdf",
+  "palavrasChavePerigo": []
+ },
+ {
+  "norma": "NR-07",
+  "artigo": "7.5.19",
+  "categoria": 3,
+  "titulo": "Atestado de Saúde Ocupacional (ASO)",
+  "descricao": "7.5.19 Para cada exame clínico ocupacional realizado, o médico emitirá Atestado de Saúde Ocupacional - ASO, que deve ser comprovadamente disponibilizado ao empregado, devendo ser fornecido em meio físico quando solicitado. 7.5.19.1 O ASO deve conter no mínimo: a) razão social e CNPJ ou CAEPF da organização; b) nome completo do empregado, o número de seu CPF e sua função; c) a descrição dos perigos ou fatores de risco identificados e classificados no PGR que necessitem de controle médico previsto no PCMSO, ou a sua inexistência; d) indicação e data de realização dos exames ocupacionais clínicos e complementares a que foi submetido o empregado; e) definição de apto ou inapto para a função do empregado; f) o nome e número de registro profissional do médico responsável pelo PCMSO, se houver; g) data, número de registro profissional e assinatura do médico que realizou o exame clínico. 7.5.19.2 A aptidão para trabalho em atividades específicas, quando assim definido em Normas Regulamentadoras e seus Anexos, deve ser consignada no ASO. 7.5.19.3 Quando forem realizados exames complementares sem que tenha ocorrido exame clínico, a organização emitirá recibo de entrega do resultado do exame, devendo o recibo ser fornecido ao empregado em meio físico, quando solicitado. 7.5.19.4 Sendo verificada a possibilidade de exposição excessiva a agentes listados no Quadro 1 do Anexo I desta NR, o médico do trabalho responsável pelo PCMSO deve informar o fato aos responsáveis pelo PGR para reavaliação dos riscos ocupacionais e das medidas de prevenção. (...) Texto integral e subitens na fonte oficial.",
+  "fonte": "NR-07 (texto consolidado gov.br, atualizado 2022): https://www.gov.br/trabalho-e-emprego/pt-br/acesso-a-informacao/participacao-social/conselhos-e-orgaos-colegiados/comissao-tripartite-partitaria-permanente/arquivos/normas-regulamentadoras/nr-07-atualizada-2022-1.pdf",
+  "palavrasChavePerigo": []
+ },
+ {
+  "norma": "NR-10",
+  "artigo": "10.2.3",
+  "categoria": 4,
+  "titulo": "Esquemas unifilares atualizados das instalações elétricas",
+  "descricao": "10.2.3 As empresas estão obrigadas a manter esquemas unifilares atualizados das instalações elétricas dos seus estabelecimentos com as especificações do sistema de aterramento e demais equipamentos e dispositivos de proteção.",
+  "fonte": "NR-10 (texto consolidado gov.br, atualizado 2019): https://www.gov.br/trabalho-e-emprego/pt-br/acesso-a-informacao/participacao-social/conselhos-e-orgaos-colegiados/comissao-tripartite-partitaria-permanente/arquivos/normas-regulamentadoras/nr-10-atualizada-2019-1.pdf",
+  "palavrasChavePerigo": [
+   "elétric",
+   "eletric",
+   "choque"
+  ]
+ },
+ {
+  "norma": "NR-10",
+  "artigo": "10.4.4",
+  "categoria": 5,
+  "titulo": "Instalações elétricas mantidas em condições seguras",
+  "descricao": "10.4.4 As instalações elétricas devem ser mantidas em condições seguras de funcionamento e seus sistemas de proteção devem ser inspecionados e controlados periodicamente, de acordo com as regulamentações existentes e definições de projetos. 10.4.4.1 Os locais de serviços elétricos, compartimentos e invólucros de equipamentos e instalações elétricas são exclusivos para essa finalidade, sendo expressamente proibido utilizá-los para armazenamento ou guarda de quaisquer objetos. 5",
+  "fonte": "NR-10 (texto consolidado gov.br, atualizado 2019): https://www.gov.br/trabalho-e-emprego/pt-br/acesso-a-informacao/participacao-social/conselhos-e-orgaos-colegiados/comissao-tripartite-partitaria-permanente/arquivos/normas-regulamentadoras/nr-10-atualizada-2019-1.pdf",
+  "palavrasChavePerigo": [
+   "elétric",
+   "eletric",
+   "choque"
+  ]
+ },
+ {
+  "norma": "NR-10",
+  "artigo": "10.5.1",
+  "categoria": 5,
+  "titulo": "Condições para considerar a instalação desenergizada",
+  "descricao": "10.5.1 Somente serão consideradas desenergizadas as instalações elétricas liberadas para trabalho, mediante os procedimentos apropriados, obedecida a seqüência abaixo: a) seccionamento; b) impedimento de reenergização; c) constatação da ausência de tensão; d) instalação de aterramento temporário com equipotencialização dos condutores dos circuitos; e) proteção dos elementos energizados existentes na zona controlada (Anexo II); (Alterada pela Portaria MTPS n.º 508, de 29 de abril de 2016) f) instalação da sinalização de impedimento de reenergização.",
+  "fonte": "NR-10 (texto consolidado gov.br, atualizado 2019): https://www.gov.br/trabalho-e-emprego/pt-br/acesso-a-informacao/participacao-social/conselhos-e-orgaos-colegiados/comissao-tripartite-partitaria-permanente/arquivos/normas-regulamentadoras/nr-10-atualizada-2019-1.pdf",
+  "palavrasChavePerigo": [
+   "elétric",
+   "eletric",
+   "choque"
+  ]
+ },
+ {
+  "norma": "NR-10",
+  "artigo": "10.8.4",
+  "categoria": 1,
+  "titulo": "Trabalhadores autorizados a intervir em instalações elétricas",
+  "descricao": "10.8.4 São considerados autorizados os trabalhadores qualificados ou capacitados e os profissionais habilitados, com anuência formal da empresa.",
+  "fonte": "NR-10 (texto consolidado gov.br, atualizado 2019): https://www.gov.br/trabalho-e-emprego/pt-br/acesso-a-informacao/participacao-social/conselhos-e-orgaos-colegiados/comissao-tripartite-partitaria-permanente/arquivos/normas-regulamentadoras/nr-10-atualizada-2019-1.pdf",
+  "palavrasChavePerigo": [
+   "elétric",
+   "eletric",
+   "choque"
+  ]
+ },
+ {
+  "norma": "NR-10",
+  "artigo": "10.8.7",
+  "categoria": 3,
+  "titulo": "Exame de saúde dos trabalhadores autorizados (eletricidade)",
+  "descricao": "10.8.7 Os trabalhadores autorizados a intervir em instalações elétricas devem ser submetidos a exame de saúde compatível com as atividades a serem desenvolvidas, realizado em conformidade com a NR 7 e registrado em seu prontuário médico.",
+  "fonte": "NR-10 (texto consolidado gov.br, atualizado 2019): https://www.gov.br/trabalho-e-emprego/pt-br/acesso-a-informacao/participacao-social/conselhos-e-orgaos-colegiados/comissao-tripartite-partitaria-permanente/arquivos/normas-regulamentadoras/nr-10-atualizada-2019-1.pdf",
+  "palavrasChavePerigo": [
+   "elétric",
+   "eletric",
+   "choque"
+  ]
+ },
+ {
+  "norma": "NR-10",
+  "artigo": "10.8.8",
+  "categoria": 1,
+  "titulo": "Treinamento de segurança em eletricidade",
+  "descricao": "10.8.8 Os trabalhadores autorizados a intervir em instalações elétricas devem possuir treinamento específico sobre os riscos decorrentes do emprego da energia elétrica e as principais medidas de prevenção de acidentes em instalações elétricas, de acordo com o estabelecido no Anexo III desta NR. (Alterado pela Portaria MTPS n.º 508, de 29 de abril de 2016) 10.8.8.1 A empresa concederá autorização na forma desta NR aos trabalhadores capacitados ou qualificados e aos profissionais habilitados que tenham participado com avaliação e aproveitamento satisfatórios dos cursos constantes do Anexo III desta NR. (Alterado pela Portaria MTPS n.º 508, de 29 de abril de 2016) 10.8.8.2 Deve ser realizado um treinamento de reciclagem bienal e sempre que ocorrer alguma das situações a seguir: a) troca de função ou mudança de empresa; b) retorno de afastamento ao trabalho ou inatividade, por período superior a três meses; c) modificações significativas nas instalações elétricas ou troca de métodos, processos e organização do trabalho. 10.8.8.3 A carga horária e o conteúdo programático dos treinamentos de reciclagem destinados ao atendimento das alíneas “a”, “b” e “c” do item 10.8.8.2 devem atender as necessidades da situação que o motivou. 10.8.8.4 Os trabalhos em áreas classificadas devem ser precedidos de treinamento especifico de acordo com risco envolvido.",
+  "fonte": "NR-10 (texto consolidado gov.br, atualizado 2019): https://www.gov.br/trabalho-e-emprego/pt-br/acesso-a-informacao/participacao-social/conselhos-e-orgaos-colegiados/comissao-tripartite-partitaria-permanente/arquivos/normas-regulamentadoras/nr-10-atualizada-2019-1.pdf",
+  "palavrasChavePerigo": [
+   "elétric",
+   "eletric",
+   "choque"
+  ]
+ },
+ {
+  "norma": "NR-11",
+  "artigo": "11.1.3.1",
+  "categoria": 5,
+  "titulo": "Inspeção de cabos, cordas, correntes, roldanas e ganchos",
+  "descricao": "11.1.3.1 Especial atenção será dada aos cabos de aço, cordas, correntes, roldanas e ganchos que deverão ser inspecionados, permanentemente, substituindo-se as suas partes defeituosas.",
+  "fonte": "NR-11 (texto consolidado gov.br): https://www.gov.br/trabalho-e-emprego/pt-br/acesso-a-informacao/participacao-social/conselhos-e-orgaos-colegiados/comissao-tripartite-partitaria-permanente/arquivos/normas-regulamentadoras/nr-11.pdf",
+  "palavrasChavePerigo": [
+   "carga suspensa",
+   "içamento",
+   "icamento",
+   "movimentação de carga",
+   "atropelamento"
+  ]
+ },
+ {
+  "norma": "NR-11",
+  "artigo": "11.1.5",
+  "categoria": 1,
+  "titulo": "Treinamento do operador de equipamento de transporte motorizado",
+  "descricao": "11.1.5 Nos equipamentos de transporte, com força motriz própria, o operador deverá receber treinamento específico, dado pela empresa, que o habilitará nessa função.",
+  "fonte": "NR-11 (texto consolidado gov.br): https://www.gov.br/trabalho-e-emprego/pt-br/acesso-a-informacao/participacao-social/conselhos-e-orgaos-colegiados/comissao-tripartite-partitaria-permanente/arquivos/normas-regulamentadoras/nr-11.pdf",
+  "palavrasChavePerigo": [
+   "carga suspensa",
+   "içamento",
+   "icamento",
+   "movimentação de carga",
+   "atropelamento"
+  ]
+ },
+ {
+  "norma": "NR-11",
+  "artigo": "11.1.6",
+  "categoria": 1,
+  "titulo": "Habilitação e identificação do operador de equipamento de transporte",
+  "descricao": "11.1.6 Os operadores de equipamentos de transporte motorizado deverão ser habilitados e só poderão dirigir se durante o horário de trabalho portarem um cartão de identificação, com o nome e fotografia, em lugar visível. 11.1.6.1 O cartão terá a validade de 1 (um) ano, salvo imprevisto, e, para a revalidação, o empregado deverá passar por exame de saúde completo, por conta do empregador.",
+  "fonte": "NR-11 (texto consolidado gov.br): https://www.gov.br/trabalho-e-emprego/pt-br/acesso-a-informacao/participacao-social/conselhos-e-orgaos-colegiados/comissao-tripartite-partitaria-permanente/arquivos/normas-regulamentadoras/nr-11.pdf",
+  "palavrasChavePerigo": [
+   "carga suspensa",
+   "içamento",
+   "icamento",
+   "movimentação de carga",
+   "atropelamento"
+  ]
+ },
+ {
+  "norma": "NR-12",
+  "artigo": "12.11.1",
+  "categoria": 5,
+  "titulo": "Manutenção de máquinas e equipamentos",
+  "descricao": "12.11.1 As máquinas e equipamentos devem ser submetidos a manutenções na forma e periodicidade determinada pelo fabricante, por profissional legalmente habilitado ou por profissional qualificado, conforme as normas técnicas oficiais ou normas técnicas internacionais aplicáveis.",
+  "fonte": "NR-12 (texto consolidado gov.br, atualizado 2022): https://www.gov.br/trabalho-e-emprego/pt-br/acesso-a-informacao/participacao-social/conselhos-e-orgaos-colegiados/comissao-tripartite-partitaria-permanente/arquivos/normas-regulamentadoras/nr-12-atualizada-2022-1.pdf",
+  "palavrasChavePerigo": [
+   "máquina",
+   "maquina",
+   "prensamento",
+   "esmagamento",
+   "aprisionamento"
+  ]
+ },
+ {
+  "norma": "NR-12",
+  "artigo": "12.11.2",
+  "categoria": 4,
+  "titulo": "Registro das manutenções de máquinas",
+  "descricao": "12.11.2 As manutenções devem ser registradas em livro próprio, ficha ou sistema informatizado interno da empresa, com os seguintes dados: a) intervenções realizadas; b) data da realização de cada intervenção; c) serviço realizado; d) peças reparadas ou substituídas; e) condições de segurança do equipamento; f) indicação conclusiva quanto às condições de segurança da máquina; e g) nome do responsável pela execução das intervenções. 12.11.2.1 O registro das manutenções deve ficar disponível aos trabalhadores envolvidos na operação, manutenção e reparos, bem como à Comissão Interna de Prevenção de Acidentes - CIPA, ao Serviço de Segurança e Medicina do Trabalho - SESMT e à Auditoria Fiscal do Trabalho. (redação vigente até 19 de março de 2023) 12.11.2.1 O registro das manutenções deve ficar disponível aos trabalhadores envolvidos na operação, manutenção e reparos, bem como à Comissão Interna de Prevenção de Acidentes e de Assédio - CIPA, ao Serviço de Segurança e Medicina do Trabalho - SESMT e à Auditoria Fiscal do Trabalho. (Portaria MTP nº 4.219, de 20 de dezembro de 2022 - redação que entra em vigor no dia 20 de março de 2023) 12.11.2.2 As manutenções de itens que influenciem na segurança devem: a) no caso de preventivas, possuir cronograma de execução; b) no caso de preditivas, possuir descrição das técnicas de análise e meios de supervisão centralizados ou de amostragem.",
+  "fonte": "NR-12 (texto consolidado gov.br, atualizado 2022): https://www.gov.br/trabalho-e-emprego/pt-br/acesso-a-informacao/participacao-social/conselhos-e-orgaos-colegiados/comissao-tripartite-partitaria-permanente/arquivos/normas-regulamentadoras/nr-12-atualizada-2022-1.pdf",
+  "palavrasChavePerigo": [
+   "máquina",
+   "maquina",
+   "prensamento",
+   "esmagamento",
+   "aprisionamento"
+  ]
+ },
+ {
+  "norma": "NR-12",
+  "artigo": "12.16.1",
+  "categoria": 1,
+  "titulo": "Intervenção em máquinas somente por trabalhadores capacitados",
+  "descricao": "12.16.1 A operação, manutenção, inspeção e demais intervenções em máquinas e equipamentos devem ser realizadas por trabalhadores habilitados ou qualificados ou capacitados, e autorizados para este fim.",
+  "fonte": "NR-12 (texto consolidado gov.br, atualizado 2022): https://www.gov.br/trabalho-e-emprego/pt-br/acesso-a-informacao/participacao-social/conselhos-e-orgaos-colegiados/comissao-tripartite-partitaria-permanente/arquivos/normas-regulamentadoras/nr-12-atualizada-2022-1.pdf",
+  "palavrasChavePerigo": [
+   "máquina",
+   "maquina",
+   "prensamento",
+   "esmagamento",
+   "aprisionamento"
+  ]
+ },
+ {
+  "norma": "NR-12",
+  "artigo": "12.16.10",
+  "categoria": 1,
+  "titulo": "Cartão de identificação do operador de máquina autopropelida",
+  "descricao": "12.16.10 Os operadores de máquinas autopropelidas devem portar cartão de identificação, com nome, função e fotografia em local visível, renovado com periodicidade máxima de um ano mediante exame médico, conforme disposições constantes da Norma Regulamentadora n.º 07 - Programa de Controle Médico de Saúde Ocupacional - PCMSO e na Norma Regulamentadora n.º 11 - Transporte, Movimentação, Armazenagem e Manuseio de Materiais.",
+  "fonte": "NR-12 (texto consolidado gov.br, atualizado 2022): https://www.gov.br/trabalho-e-emprego/pt-br/acesso-a-informacao/participacao-social/conselhos-e-orgaos-colegiados/comissao-tripartite-partitaria-permanente/arquivos/normas-regulamentadoras/nr-12-atualizada-2022-1.pdf",
+  "palavrasChavePerigo": [
+   "máquina",
+   "maquina",
+   "prensamento",
+   "esmagamento",
+   "aprisionamento"
+  ]
+ },
+ {
+  "norma": "NR-18",
+  "artigo": "18.4.1",
+  "categoria": 4,
+  "titulo": "PGR obrigatório no canteiro de obras",
+  "descricao": "18.4.1 São obrigatórias a elaboração e a implementação do PGR nos canteiros de obras, contemplando os riscos ocupacionais e suas respectivas medidas de prevenção.",
+  "fonte": "NR-18 (texto consolidado gov.br, atualizado 2020): https://www.gov.br/trabalho-e-emprego/pt-br/acesso-a-informacao/participacao-social/conselhos-e-orgaos-colegiados/comissao-tripartite-partitaria-permanente/arquivos/normas-regulamentadoras/nr-18-atualizada-2020.pdf",
+  "palavrasChavePerigo": []
+ },
+ {
+  "norma": "NR-18",
+  "artigo": "18.4.2",
+  "categoria": 4,
+  "titulo": "PGR da obra elaborado por profissional legalmente habilitado",
+  "descricao": "18.4.2 O PGR deve ser elaborado por profissional legalmente habilitado em segurança do trabalho e implementado sob responsabilidade da organização. 18.4.2.1 Em canteiros de obras com até 7 m (sete metros) de altura e com, no máximo, 10 (dez) trabalhadores, o PGR pode ser elaborado por profissional qualificado em segurança do trabalho e implementado sob responsabilidade da organização.",
+  "fonte": "NR-18 (texto consolidado gov.br, atualizado 2020): https://www.gov.br/trabalho-e-emprego/pt-br/acesso-a-informacao/participacao-social/conselhos-e-orgaos-colegiados/comissao-tripartite-partitaria-permanente/arquivos/normas-regulamentadoras/nr-18-atualizada-2020.pdf",
+  "palavrasChavePerigo": []
+ },
+ {
+  "norma": "NR-18",
+  "artigo": "18.5.6",
+  "categoria": 5,
+  "titulo": "Fornecimento de água potável, filtrada e fresca",
+  "descricao": "18.5.6 É obrigatório o fornecimento de água potável, filtrada e fresca para os trabalhadores, no canteiro de obras, nas frentes de trabalho e nos alojamentos, por meio de bebedouro ou outro dispositivo equivalente, na proporção de 1 (uma) unidade para cada grupo de 25 (vinte e cinco) trabalhadores ou fração, sendo vedado o uso de copos coletivos. 18.5.6.1 O fornecimento de água potável deve ser garantido de forma que, do posto de trabalho ao bebedouro ou ao dispositivo equivalente, não haja deslocamento superior a 100 m (cem metros) no plano horizontal e 15 m (quinze metros) no plano vertical. 18.5.6.2 Na impossibilidade de instalação de bebedouro ou de dispositivo equivalente dentro dos limites referidos no subitem anterior, as empresas devem garantir, nos postos de trabalho, suprimento de água potável, filtrada e fresca fornecida em recipientes portáteis herméticos.",
+  "fonte": "NR-18 (texto consolidado gov.br, atualizado 2020): https://www.gov.br/trabalho-e-emprego/pt-br/acesso-a-informacao/participacao-social/conselhos-e-orgaos-colegiados/comissao-tripartite-partitaria-permanente/arquivos/normas-regulamentadoras/nr-18-atualizada-2020.pdf",
+  "palavrasChavePerigo": []
+ },
+ {
+  "norma": "NR-18",
+  "artigo": "18.6.3",
+  "categoria": 1,
+  "titulo": "Serviços em instalações elétricas por trabalhadores autorizados",
+  "descricao": "18.6.3 Os serviços em instalações elétricas devem ser realizados por trabalhadores autorizados conforme NR-10.",
+  "fonte": "NR-18 (texto consolidado gov.br, atualizado 2020): https://www.gov.br/trabalho-e-emprego/pt-br/acesso-a-informacao/participacao-social/conselhos-e-orgaos-colegiados/comissao-tripartite-partitaria-permanente/arquivos/normas-regulamentadoras/nr-18-atualizada-2020.pdf",
+  "palavrasChavePerigo": [
+   "elétric",
+   "eletric",
+   "choque"
+  ]
+ },
+ {
+  "norma": "NR-18",
+  "artigo": "18.6.9",
+  "categoria": 5,
+  "titulo": "Uso obrigatório de dispositivo DR",
+  "descricao": "18.6.9 É obrigatória a utilização do dispositivo Diferencial Residual (DR), como medida de segurança adicional nas instalações elétricas, nas situações previstas nas normas técnicas nacionais vigentes.",
+  "fonte": "NR-18 (texto consolidado gov.br, atualizado 2020): https://www.gov.br/trabalho-e-emprego/pt-br/acesso-a-informacao/participacao-social/conselhos-e-orgaos-colegiados/comissao-tripartite-partitaria-permanente/arquivos/normas-regulamentadoras/nr-18-atualizada-2020.pdf",
+  "palavrasChavePerigo": [
+   "elétric",
+   "eletric",
+   "choque"
+  ]
+ },
+ {
+  "norma": "NR-18",
+  "artigo": "18.7.2.3",
+  "categoria": 5,
+  "titulo": "Escavações com profundidade superior a 1,25 m",
+  "descricao": "18.7.2.3 Toda escavação com profundidade superior a 1,25 m (um metro e vinte e cinco centímetros) somente pode ser iniciada com a liberação e autorização do profissional legalmente habilitado, atendendo o disposto nas normas técnicas nacionais vigentes.",
+  "fonte": "NR-18 (texto consolidado gov.br, atualizado 2020): https://www.gov.br/trabalho-e-emprego/pt-br/acesso-a-informacao/participacao-social/conselhos-e-orgaos-colegiados/comissao-tripartite-partitaria-permanente/arquivos/normas-regulamentadoras/nr-18-atualizada-2020.pdf",
+  "palavrasChavePerigo": [
+   "desmoronamento",
+   "soterramento",
+   "escava",
+   "desabamento"
+  ]
+ },
+ {
+  "norma": "NR-18",
+  "artigo": "18.7.2.8",
+  "categoria": 5,
+  "titulo": "Escadas ou rampas em escavações com mais de 1,25 m",
+  "descricao": "18.7.2.8 As escavações com profundidade superior a 1,25 m (um metro e vinte e cinco centímetros) devem ser protegidas com taludes ou escoramentos definidos em projeto elaborado por profissional legalmente habilitado e devem dispor de escadas ou rampas colocadas próximas aos postos de trabalho, a fim de permitir, em caso de emergência, a saída rápida dos trabalhadores. 18.7.2.8.1 Para escavações com profundidade igual ou inferior a 1,25 m (um metro e vinte e cinco centímetros), deve-se avaliar no local a existência de riscos ocupacionais e, se necessário, adotar as medidas de prevenção.",
+  "fonte": "NR-18 (texto consolidado gov.br, atualizado 2020): https://www.gov.br/trabalho-e-emprego/pt-br/acesso-a-informacao/participacao-social/conselhos-e-orgaos-colegiados/comissao-tripartite-partitaria-permanente/arquivos/normas-regulamentadoras/nr-18-atualizada-2020.pdf",
+  "palavrasChavePerigo": [
+   "desmoronamento",
+   "soterramento",
+   "escava",
+   "desabamento"
+  ]
+ },
+ {
+  "norma": "NR-18",
+  "artigo": "18.7.2.11",
+  "categoria": 5,
+  "titulo": "Inspeção dos escoramentos de escavação",
+  "descricao": "18.7.2.11 Os escoramentos utilizados como medida de prevenção devem ser inspecionados diariamente.",
+  "fonte": "NR-18 (texto consolidado gov.br, atualizado 2020): https://www.gov.br/trabalho-e-emprego/pt-br/acesso-a-informacao/participacao-social/conselhos-e-orgaos-colegiados/comissao-tripartite-partitaria-permanente/arquivos/normas-regulamentadoras/nr-18-atualizada-2020.pdf",
+  "palavrasChavePerigo": [
+   "desmoronamento",
+   "soterramento",
+   "escava",
+   "desabamento"
+  ]
+ },
+ {
+  "norma": "NR-18",
+  "artigo": "18.9.1",
+  "categoria": 5,
+  "titulo": "Proteção coletiva onde houver risco de queda",
+  "descricao": "18.9.1 É obrigatória a instalação de proteção coletiva onde houver risco de queda de trabalhadores ou de projeção de materiais e objetos no entorno da obra, projetada por profissional legalmente habilitado.",
+  "fonte": "NR-18 (texto consolidado gov.br, atualizado 2020): https://www.gov.br/trabalho-e-emprego/pt-br/acesso-a-informacao/participacao-social/conselhos-e-orgaos-colegiados/comissao-tripartite-partitaria-permanente/arquivos/normas-regulamentadoras/nr-18-atualizada-2020.pdf",
+  "palavrasChavePerigo": [
+   "altura"
+  ]
+ },
+ {
+  "norma": "NR-18",
+  "artigo": "18.9.4",
+  "categoria": 5,
+  "titulo": "Proteção contra queda na periferia da edificação",
+  "descricao": "18.9.4 É obrigatória, na periferia da edificação, a instalação de proteção contra queda de trabalhadores e projeção de materiais a partir do início dos serviços necessários à concretagem da primeira laje. 18.9.4.1 A proteção, quando constituída de anteparos rígidos com fechamento total do vão, deve ter altura mínima de 1,2 m (um metro e vinte centímetros). 18.9.4.2 A proteção, quando constituída de anteparos rígidos em sistema de guarda-corpo e rodapé, deve atender aos seguintes requisitos: a) travessão superior a 1,2 m (um metro e vinte centímetros) de altura e resistência à carga horizontal de 90 kgf/m (noventa quilogramas-força por metro), sendo que a deflexão máxima não deve ser superior a 0,076 m (setenta e seis milímetros); b) travessão intermediário a 0,7 m (setenta centímetros) de altura e resistência à carga horizontal de 66 kgf/m (sessenta e seis quilogramas-força por metro); c) rodapé com altura mínima de 0,15 m (quinze centímetros) rente à superfície e resistência à carga horizontal de 22 kgf/m (vinte e dois quilogramas-força por metro); d) ter vãos entre travessas preenchidos com tela ou outro dispositivo que garanta o fechamento seguro da abertura. 18.9.4.3 Quando da utilização de plataformas de proteção primária, secundária ou terciária, essas devem ser projetadas por profissional legalmente habilitado e atender aos seguintes requisitos: a) ser projetada e construída de forma a resistir aos impactos das quedas de objetos; b) ser mantida em adequado estado de conservação; c) ser mantida sem sobrecarga que prejudique a estabilidade de sua estrutura. 18.9.4.4 Quando da utilização de redes de segurança, essas devem ser confeccionadas e instaladas de acordo com os requisitos de segurança e ensaios previstos nas normas EN 1263-1 e EN 1263-2 ou em normas técnicas nacionais vigentes. (...) Texto integral e subitens na fonte oficial.",
+  "fonte": "NR-18 (texto consolidado gov.br, atualizado 2020): https://www.gov.br/trabalho-e-emprego/pt-br/acesso-a-informacao/participacao-social/conselhos-e-orgaos-colegiados/comissao-tripartite-partitaria-permanente/arquivos/normas-regulamentadoras/nr-18-atualizada-2020.pdf",
+  "palavrasChavePerigo": [
+   "altura"
+  ]
+ },
+ {
+  "norma": "NR-18",
+  "artigo": "18.10.1.17",
+  "categoria": 4,
+  "titulo": "Plano de carga para movimentação de carga suspensa",
+  "descricao": "18.10.1.17 O plano de carga para movimentação de carga suspensa deve ser elaborado para cada equipamento e conter as seguintes informações: a) endereço do local onde o equipamento estiver instalado e a duração prevista para sua utilização; b) razão social, endereço e CNPJ do fabricante, importador, locador ou proprietário do equipamento e do responsável pela montagem, desmontagem e serviços de manutenção; c) tipo, modelo, ano de fabricação, capacidade, dimensões e demais dados técnicos; d) conter croquis ou planta baixa, mostrando a área coberta pela operacionalização do equipamento, de todas possíveis interferências dentro e fora dos limites da obra, e os principais locais de carregamento e descarregamento de materiais; e) indicar as medidas previstas para isolamento das áreas sob cargas suspensas e das áreas adjacentes que eventualmente possam estar sob risco de queda de materiais; f) especificar todos os dispositivos e acessórios auxiliares de içamento que devem ser utilizados em cada operação, tais como ganchos, lingas, calços, contenedores especiais, balancins, manilhas, roldanas auxiliares e quaisquer outros necessários; g) detalhar procedimentos especiais que se façam necessários com relação à movimentação de peças de grande porte, quanto à preparação da área de operações, velocidades e percursos previstos na movimentação da carga, sequenciamento de etapas necessárias, utilização conjunta de mais de um equipamento de guindar, ensaios e/ou treinamentos preliminares e qualquer outra situação singular de alto risco; h) conter lista de verificação do equipamento e dos dispositivos auxiliares de movimentação de carga, emitida pelo fabricante, locador ou profissional legalmente habilitado; i) conter lista de verificação para plataforma de carga e descarga, emitida por profissional legalmente habilitado; j) conter medidas preventivas complementares quando no mesmo (...) Texto integral e subitens na fonte oficial.",
+  "fonte": "NR-18 (texto consolidado gov.br, atualizado 2020): https://www.gov.br/trabalho-e-emprego/pt-br/acesso-a-informacao/participacao-social/conselhos-e-orgaos-colegiados/comissao-tripartite-partitaria-permanente/arquivos/normas-regulamentadoras/nr-18-atualizada-2020.pdf",
+  "palavrasChavePerigo": [
+   "carga suspensa",
+   "içamento",
+   "icamento",
+   "movimentação de carga",
+   "atropelamento"
+  ]
+ },
+ {
+  "norma": "NR-18",
+  "artigo": "18.10.1.21",
+  "categoria": 5,
+  "titulo": "Isolamento e sinalização da área sob carga suspensa",
+  "descricao": "18.10.1.21 Devem ser mantidos o isolamento e a sinalização da área sob carga suspensa.",
+  "fonte": "NR-18 (texto consolidado gov.br, atualizado 2020): https://www.gov.br/trabalho-e-emprego/pt-br/acesso-a-informacao/participacao-social/conselhos-e-orgaos-colegiados/comissao-tripartite-partitaria-permanente/arquivos/normas-regulamentadoras/nr-18-atualizada-2020.pdf",
+  "palavrasChavePerigo": [
+   "carga suspensa",
+   "içamento",
+   "icamento",
+   "movimentação de carga",
+   "atropelamento"
+  ]
+ },
+ {
+  "norma": "NR-18",
+  "artigo": "18.10.1.32",
+  "categoria": 5,
+  "titulo": "Inspeções diárias de equipamentos de guindar",
+  "descricao": "18.10.1.32 Devem ser realizadas e registradas as inspeções diárias das condições de segurança: a) no equipamento, pelo seu operador, com lista de verificação emitida e sob a responsabilidade do fabricante, locador ou proprietário do equipamento; b) nos dispositivos auxiliares de movimentação de carga, pelo sinaleiro/amarrador de carga, mediante lista de verificação; c) nas plataformas de carga e descarga, por trabalhador capacitado e autorizado pelo seu empregador, mediante lista de verificação. Gruas",
+  "fonte": "NR-18 (texto consolidado gov.br, atualizado 2020): https://www.gov.br/trabalho-e-emprego/pt-br/acesso-a-informacao/participacao-social/conselhos-e-orgaos-colegiados/comissao-tripartite-partitaria-permanente/arquivos/normas-regulamentadoras/nr-18-atualizada-2020.pdf",
+  "palavrasChavePerigo": [
+   "carga suspensa",
+   "içamento",
+   "icamento",
+   "movimentação de carga",
+   "atropelamento"
+  ]
+ },
+ {
+  "norma": "NR-18",
+  "artigo": "18.12.2",
+  "categoria": 4,
+  "titulo": "Projeto de montagem de andaimes",
+  "descricao": "18.12.2 A montagem de andaimes deve ser executada conforme projeto elaborado por profissional legalmente habilitado. 18.12.2.1 No caso de andaime simplesmente apoiado construído em torre única com altura inferior a 4 (quatro) vezes a menor dimensão da base de apoio, fica dispensado o projeto de montagem, devendo, nesse caso, ser montado de acordo com o manual de instrução. 18.12.2.2 Quando da utilização de andaime simplesmente apoiado com a interligação de pisos de trabalho, independentemente da altura, deve ser elaborado projeto de montagem por profissional legalmente habilitado.",
+  "fonte": "NR-18 (texto consolidado gov.br, atualizado 2020): https://www.gov.br/trabalho-e-emprego/pt-br/acesso-a-informacao/participacao-social/conselhos-e-orgaos-colegiados/comissao-tripartite-partitaria-permanente/arquivos/normas-regulamentadoras/nr-18-atualizada-2020.pdf",
+  "palavrasChavePerigo": [
+   "altura"
+  ]
+ },
+ {
+  "norma": "NR-18",
+  "artigo": "18.12.4",
+  "categoria": 4,
+  "titulo": "Registro formal de liberação de uso do andaime",
+  "descricao": "18.12.4 Os andaimes devem possuir registro formal de liberação de uso assinado por profissional qualificado em segurança do trabalho ou pelo responsável pela frente de trabalho ou da obra.",
+  "fonte": "NR-18 (texto consolidado gov.br, atualizado 2020): https://www.gov.br/trabalho-e-emprego/pt-br/acesso-a-informacao/participacao-social/conselhos-e-orgaos-colegiados/comissao-tripartite-partitaria-permanente/arquivos/normas-regulamentadoras/nr-18-atualizada-2020.pdf",
+  "palavrasChavePerigo": [
+   "altura"
+  ]
+ },
+ {
+  "norma": "NR-18",
+  "artigo": "18.13.2",
+  "categoria": 2,
+  "titulo": "Vestimenta de alta visibilidade",
+  "descricao": "18.13.2 É obrigatório o uso de vestimenta de alta visibilidade, coletes ou quaisquer outros meios, no tórax e costas, quando o trabalhador estiver em serviço em áreas de movimentação de veículos e cargas.",
+  "fonte": "NR-18 (texto consolidado gov.br, atualizado 2020): https://www.gov.br/trabalho-e-emprego/pt-br/acesso-a-informacao/participacao-social/conselhos-e-orgaos-colegiados/comissao-tripartite-partitaria-permanente/arquivos/normas-regulamentadoras/nr-18-atualizada-2020.pdf",
+  "palavrasChavePerigo": [
+   "carga suspensa",
+   "içamento",
+   "icamento",
+   "movimentação de carga",
+   "atropelamento"
+  ]
+ },
+ {
+  "norma": "NR-18",
+  "artigo": "18.14.1.1",
+  "categoria": 1,
+  "titulo": "Carga horária, periodicidade e conteúdo dos treinamentos da construção",
+  "descricao": "18.14.1.1 A carga horária, a periodicidade e o conteúdo dos treinamentos devem obedecer ao Anexo I desta NR.",
+  "fonte": "NR-18 (texto consolidado gov.br, atualizado 2020): https://www.gov.br/trabalho-e-emprego/pt-br/acesso-a-informacao/participacao-social/conselhos-e-orgaos-colegiados/comissao-tripartite-partitaria-permanente/arquivos/normas-regulamentadoras/nr-18-atualizada-2020.pdf",
+  "palavrasChavePerigo": []
+ },
+ {
+  "norma": "NR-18",
+  "artigo": "18.14.3",
+  "categoria": 1,
+  "titulo": "Treinamento básico em segurança do trabalho na construção",
+  "descricao": "18.14.3 O treinamento básico em segurança do trabalho, conforme o Quadro 1 do Anexo I desta NR, deve ser presencial.",
+  "fonte": "NR-18 (texto consolidado gov.br, atualizado 2020): https://www.gov.br/trabalho-e-emprego/pt-br/acesso-a-informacao/participacao-social/conselhos-e-orgaos-colegiados/comissao-tripartite-partitaria-permanente/arquivos/normas-regulamentadoras/nr-18-atualizada-2020.pdf",
+  "palavrasChavePerigo": []
+ },
+ {
+  "norma": "NR-33",
+  "artigo": "33.4.2",
+  "categoria": 4,
+  "titulo": "Cadastro dos espaços confinados",
+  "descricao": "33.4.2 A organização que possuir espaço confinado deve elaborar e manter o cadastro do espaço confinado, contemplando: a) identificação do espaço confinado, podendo para esse fim, ser utilizado código ou número de rastreio; b) volume do espaço confinado; c) número de aberturas de entrada e \"bocas de visita\", e suas dimensões; d) formas de acesso, suas dimensões e geometria; e) condição do espaço confinado (ativo ou inativo); f) croqui do espaço confinado (com previsão de bloqueios e raquetes); e g) utilização e/ou produto armazenado e indicação dos possíveis perigos existentes antes da liberação de entrada.",
+  "fonte": "NR-33 (texto consolidado gov.br, atualizado 2022, retificado): https://www.gov.br/trabalho-e-emprego/pt-br/acesso-a-informacao/participacao-social/conselhos-e-orgaos-colegiados/comissao-tripartite-partitaria-permanente/arquivos/normas-regulamentadoras/nr-33-atualizada-2022-_retificada.pdf",
+  "palavrasChavePerigo": [
+   "confinado"
+  ]
+ },
+ {
+  "norma": "NR-33",
+  "artigo": "33.5.5",
+  "categoria": 4,
+  "titulo": "Permissão de Entrada e Trabalho (PET)",
+  "descricao": "33.5.5 Toda e qualquer entrada e trabalho em espaço confinado deve ser precedida da emissão da PET.",
+  "fonte": "NR-33 (texto consolidado gov.br, atualizado 2022, retificado): https://www.gov.br/trabalho-e-emprego/pt-br/acesso-a-informacao/participacao-social/conselhos-e-orgaos-colegiados/comissao-tripartite-partitaria-permanente/arquivos/normas-regulamentadoras/nr-33-atualizada-2022-_retificada.pdf",
+  "palavrasChavePerigo": [
+   "confinado"
+  ]
+ },
+ {
+  "norma": "NR-33",
+  "artigo": "33.5.9",
+  "categoria": 4,
+  "titulo": "Arquivamento das PET por 5 anos",
+  "descricao": "33.5.9 As PETs emitidas devem ser arquivadas pelo período de 5 (cinco) anos. 33.5.9.1 Durante o período de arquivamento, as PETs emitidas devem estar disponíveis aos trabalhadores, quando solicitado.",
+  "fonte": "NR-33 (texto consolidado gov.br, atualizado 2022, retificado): https://www.gov.br/trabalho-e-emprego/pt-br/acesso-a-informacao/participacao-social/conselhos-e-orgaos-colegiados/comissao-tripartite-partitaria-permanente/arquivos/normas-regulamentadoras/nr-33-atualizada-2022-_retificada.pdf",
+  "palavrasChavePerigo": [
+   "confinado"
+  ]
+ },
+ {
+  "norma": "NR-33",
+  "artigo": "33.5.12",
+  "categoria": 4,
+  "titulo": "Validade da PET limitada a uma jornada",
+  "descricao": "33.5.12 A validade da PET deve ser limitada a uma jornada de trabalho. 33.5.12.1 A PET pode ser prorrogada quando cumprir os seguintes requisitos: a) estar relacionada às mesmas atividades e riscos; b) constar os intervalos de parada e retomada de todas as equipes de trabalho; c) relacionar os trabalhadores autorizados, vigias e supervisores de entrada; d) registrar a continuidade da atividade e a substituição da equipe a cada entrada e saída; e) estiver garantido o monitoramento contínuo de toda a atmosfera do espaço confinado e a manutenção das condições atmosféricas ou realizar nova avaliação da atmosfera a cada entrada; f) estiver garantida a presença contínua do vigia junto ou próximo à entrada do espaço confinado, observado o disposto no subitem 33.3.4.1 desta NR, inclusive durante as pausas e intervalos; e g) estiverem reavaliadas as medidas de prevenção descritas na PET a cada entrada. 33.5.12.1.1 A validade da PET, incluindo as prorrogações, não pode exceder a 24 (vinte e Entra em vigor no dia 03 de outubro de 2022 (Portaria MTP n.º 1.690, de 15 de junho de 2022) quatro) horas.",
+  "fonte": "NR-33 (texto consolidado gov.br, atualizado 2022, retificado): https://www.gov.br/trabalho-e-emprego/pt-br/acesso-a-informacao/participacao-social/conselhos-e-orgaos-colegiados/comissao-tripartite-partitaria-permanente/arquivos/normas-regulamentadoras/nr-33-atualizada-2022-_retificada.pdf",
+  "palavrasChavePerigo": [
+   "confinado"
+  ]
+ },
+ {
+  "norma": "NR-33",
+  "artigo": "33.6.1",
+  "categoria": 1,
+  "titulo": "Capacitação para trabalho em espaço confinado",
+  "descricao": "33.6.1 A capacitação dos trabalhadores designados para trabalhos em espaços confinados deve ser feita de acordo com o estabelecido na NR-01. Entra em vigor no dia 03 de outubro de 2022 (Portaria MTP n.º 1.690, de 15 de junho de 2022)",
+  "fonte": "NR-33 (texto consolidado gov.br, atualizado 2022, retificado): https://www.gov.br/trabalho-e-emprego/pt-br/acesso-a-informacao/participacao-social/conselhos-e-orgaos-colegiados/comissao-tripartite-partitaria-permanente/arquivos/normas-regulamentadoras/nr-33-atualizada-2022-_retificada.pdf",
+  "palavrasChavePerigo": [
+   "confinado"
+  ]
+ },
+ {
+  "norma": "NR-35",
+  "artigo": "35.4.1",
+  "categoria": 1,
+  "titulo": "Trabalho em altura por trabalhador formalmente autorizado",
+  "descricao": "35.4.1 Todo trabalho em altura deve ser realizado por trabalhador formalmente autorizado pela organização. 35.4.1.1 Considera-se trabalhador autorizado para trabalho em altura aquele capacitado cujo estado de saúde foi avaliado, tendo sido considerado apto para executar suas atividades. 35.4.1.2 A autorização para trabalho em altura deve considerar: a) as atividades que serão desenvolvidas pelo trabalhador; b) a capacitação a que o trabalhador foi submetido; e c) a aptidão clínica para desempenhar as atividades. 35.4.1.3 A autorização deve ser consignada nos documentos funcionais do empregado. 35.4.1.3.1 A organização deve estabelecer sistema de identificação que permita a qualquer tempo conhecer a abrangência da autorização de cada trabalhador.",
+  "fonte": "NR-35 (texto consolidado gov.br, atualizado 2023): https://www.gov.br/trabalho-e-emprego/pt-br/acesso-a-informacao/participacao-social/conselhos-e-orgaos-colegiados/comissao-tripartite-partitaria-permanente/arquivos/normas-regulamentadoras/NR35atualizada2023.pdf",
+  "palavrasChavePerigo": [
+   "altura"
+  ]
+ },
+ {
+  "norma": "NR-35",
+  "artigo": "35.4.2",
+  "categoria": 1,
+  "titulo": "Capacitação para trabalho em altura",
+  "descricao": "35.4.2 Considera-se trabalhador capacitado para trabalho em altura aquele que foi submetido e aprovado no processo de capacitação, envolvendo treinamento, teórico e prático, inicial, periódico e eventual, observado o disposto na NR-01. 35.4.2.1 O treinamento inicial, com carga horária mínima de 8 (oito) horas, deve ser realizado antes de o trabalhador iniciar a atividade e contemplar: a) normas e regulamentos aplicáveis ao trabalho em altura; b) AR e condições impeditivas; c) riscos potenciais inerentes ao trabalho em altura e medidas de prevenção e controle; d) sistemas, equipamentos e procedimentos de proteção coletiva; e) EPI para trabalho em altura: seleção, inspeção, conservação e limitação de uso; f) acidentes típicos em trabalhos em altura; e g) condutas em situações de emergência, incluindo noções básicas de técnicas de resgate e de primeiros socorros. 35.4.2.2 O treinamento periódico deve ser realizado a cada dois anos, com carga horária mínima de oito horas, conforme conteúdo programático definido pelo empregador.",
+  "fonte": "NR-35 (texto consolidado gov.br, atualizado 2023): https://www.gov.br/trabalho-e-emprego/pt-br/acesso-a-informacao/participacao-social/conselhos-e-orgaos-colegiados/comissao-tripartite-partitaria-permanente/arquivos/normas-regulamentadoras/NR35atualizada2023.pdf",
+  "palavrasChavePerigo": [
+   "altura"
+  ]
+ },
+ {
+  "norma": "NR-35",
+  "artigo": "35.4.4",
+  "categoria": 3,
+  "titulo": "Avaliação do estado de saúde para trabalho em altura",
+  "descricao": "35.4.4 Cabe à organização avaliar o estado de saúde dos empregados que exercem atividades de trabalho em altura de acordo com o estabelecido na NR-07 (Programa de Controle Médico de Saúde Ocupacional), em especial o item 7.5.3, considerando patologias que poderão originar mal súbito e queda de altura, bem como os fatores psicossociais. 35.4.4.1 A aptidão para trabalho em altura deve ser consignada no atestado de saúde ocupacional do trabalhador.",
+  "fonte": "NR-35 (texto consolidado gov.br, atualizado 2023): https://www.gov.br/trabalho-e-emprego/pt-br/acesso-a-informacao/participacao-social/conselhos-e-orgaos-colegiados/comissao-tripartite-partitaria-permanente/arquivos/normas-regulamentadoras/NR35atualizada2023.pdf",
+  "palavrasChavePerigo": [
+   "altura"
+  ]
+ },
+ {
+  "norma": "NR-35",
+  "artigo": "35.5.5",
+  "categoria": 4,
+  "titulo": "Análise de Risco (AR) antes do trabalho em altura",
+  "descricao": "35.5.5 Todo trabalho em altura deve ser precedido de AR. 35.5.5.1 A AR deve, além dos riscos inerentes ao trabalho em altura, considerar: a) o local em que os serviços serão executados e seu entorno; b) o isolamento e a sinalização no entorno da área de trabalho; c) o estabelecimento dos sistemas e pontos de ancoragem; d) as condições meteorológicas adversas; e) a seleção, inspeção, forma de utilização e limitação de uso dos sistemas de proteção coletiva e individual, atendendo às normas técnicas vigentes, às orientações do fabricante ou projetista e aos princípios da redução do impacto e dos fatores de queda; f) o risco de queda de materiais e ferramentas; g) os trabalhos simultâneos que apresentem riscos específicos; h) o atendimento aos requisitos de segurança e saúde contidos nas demais normas regulamentadoras; i) os riscos adicionais; j) as condições impeditivas; k) as situações de emergência e o planejamento do resgate e primeiros socorros, de forma a reduzir o tempo da suspensão inerte do trabalhador; l) a necessidade de sistema de comunicação; e m) a forma da supervisão.",
+  "fonte": "NR-35 (texto consolidado gov.br, atualizado 2023): https://www.gov.br/trabalho-e-emprego/pt-br/acesso-a-informacao/participacao-social/conselhos-e-orgaos-colegiados/comissao-tripartite-partitaria-permanente/arquivos/normas-regulamentadoras/NR35atualizada2023.pdf",
+  "palavrasChavePerigo": [
+   "altura"
+  ]
+ },
+ {
+  "norma": "NR-35",
+  "artigo": "35.5.7",
+  "categoria": 4,
+  "titulo": "Autorização prévia (PT) de trabalho em altura não rotineiro",
+  "descricao": "35.5.7 As atividades de trabalho em altura não rotineiras devem ser previamente autorizadas mediante PT. 35.5.7.1 Para as atividades não rotineiras as medidas de prevenção devem ser evidenciadas na AR e na PT.",
+  "fonte": "NR-35 (texto consolidado gov.br, atualizado 2023): https://www.gov.br/trabalho-e-emprego/pt-br/acesso-a-informacao/participacao-social/conselhos-e-orgaos-colegiados/comissao-tripartite-partitaria-permanente/arquivos/normas-regulamentadoras/NR35atualizada2023.pdf",
+  "palavrasChavePerigo": [
+   "altura"
+  ]
+ },
+ {
+  "norma": "NR-35",
+  "artigo": "35.6.1",
+  "categoria": 2,
+  "titulo": "Uso obrigatório de Sistema de Proteção contra Quedas (SPQ)",
+  "descricao": "35.6.1 É obrigatória a utilização de SPQ sempre que não for possível evitar o trabalho em altura.",
+  "fonte": "NR-35 (texto consolidado gov.br, atualizado 2023): https://www.gov.br/trabalho-e-emprego/pt-br/acesso-a-informacao/participacao-social/conselhos-e-orgaos-colegiados/comissao-tripartite-partitaria-permanente/arquivos/normas-regulamentadoras/NR35atualizada2023.pdf",
+  "palavrasChavePerigo": [
+   "altura"
+  ]
+ },
+ {
+  "norma": "NR-35",
+  "artigo": "35.6.6",
+  "categoria": 5,
+  "titulo": "Inspeções inicial, rotineira e periódica do SPIQ",
+  "descricao": "35.6.6 Devem ser efetuadas inspeções inicial, rotineira e periódica do SPIQ, observadas as recomendações do fabricante ou projetista, recusando-se os elementos que apresentem defeitos ou deformações. 35.6.6.1 A inspeção inicial é aquela realizada entre o recebimento e a primeira utilização do SPIQ. 35.6.6.2 A inspeção rotineira é aquela realizada antes do início dos trabalhos. 35.6.6.3 A inspeção periódica deve ser realizada no mínimo uma vez a cada doze meses, podendo o intervalo entre as inspeções ser reduzido em função do tipo de utilização, frequência de uso ou exposição a agentes agressivos. 35.6.6.4 Devem ser registradas as inspeções iniciais, periódicas e aquelas rotineiras que tiverem os elementos do SPIQ recusados. 35.6.6.5 Os elementos do SPIQ que apresentarem defeitos, degradação, deformações ou sofrerem impactos de queda devem ser inutilizados e descartados, exceto quando sua restauração for prevista em normas técnicas nacionais ou, na sua ausência, em normas internacionais e de acordo com as recomendações do fabricante.",
+  "fonte": "NR-35 (texto consolidado gov.br, atualizado 2023): https://www.gov.br/trabalho-e-emprego/pt-br/acesso-a-informacao/participacao-social/conselhos-e-orgaos-colegiados/comissao-tripartite-partitaria-permanente/arquivos/normas-regulamentadoras/NR35atualizada2023.pdf",
+  "palavrasChavePerigo": [
+   "altura"
+  ]
+ },
+ {
+  "norma": "NR-35",
+  "artigo": "35.7.1",
+  "categoria": 4,
+  "titulo": "Procedimentos de emergência e salvamento em altura",
+  "descricao": "35.7.1 A organização deve estabelecer, implementar e manter procedimentos de respostas aos cenários de emergências de trabalho em altura, considerando, além do disposto na NR-01: a) os perigos associados à operação de resgate; b) a equipe de emergência e salvamento necessária e o seu dimensionamento; c) o tempo estimado para o resgate; e d) as técnicas apropriadas, equipamentos pessoais e/ou coletivos específicos e sistema de resgate disponível, de forma a reduzir o tempo de suspensão inerte do trabalhador e sua exposição aos perigos existentes. 35.7.1.1 A organização deve realizar AR dos cenários de emergência de trabalho em altura identificados.",
+  "fonte": "NR-35 (texto consolidado gov.br, atualizado 2023): https://www.gov.br/trabalho-e-emprego/pt-br/acesso-a-informacao/participacao-social/conselhos-e-orgaos-colegiados/comissao-tripartite-partitaria-permanente/arquivos/normas-regulamentadoras/NR35atualizada2023.pdf",
+  "palavrasChavePerigo": [
+   "altura"
+  ]
+ }
+]
