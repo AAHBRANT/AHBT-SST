@@ -22,6 +22,12 @@ public class RequisitoLegal : AuditableEntity
     public StatusRequisitoLegal Status { get; set; } = StatusRequisitoLegal.Ativo;
     public string? Fonte { get; set; } // link/referência de onde o requisito foi extraído
 
+    // Validação do QSMS (Em revisão → Ativo): quem conferiu o texto e quando. Sem FK de propósito —
+    // o registro de quem validou não pode sumir se o usuário for desativado.
+    public DateTime? ValidadoEmUtc { get; set; }
+    public Guid? ValidadoPorUsuarioId { get; set; }
+    public string? ValidadoPorNome { get; set; }
+
     public ICollection<RequisitoLegalCriterio> Criterios { get; set; } = new List<RequisitoLegalCriterio>();
 }
 

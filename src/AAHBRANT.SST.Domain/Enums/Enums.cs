@@ -799,7 +799,10 @@ public enum CategoriaRequisitoLegal
 public enum StatusRequisitoLegal
 {
     Ativo = 1,
-    Revogado = 2
+    Revogado = 2,
+    // Carregado do texto oficial da NR (RequisitosLegaisNrSeeder) e ainda não validado por QSMS:
+    // não entra no plano de ação da IA nem no motor de aplicabilidade até virar Ativo.
+    EmRevisao = 3
 }
 
 // Um requisito legal pode ter vários critérios (qualquer um satisfeito já torna aplicável — lógica

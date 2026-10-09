@@ -20,6 +20,9 @@
     <EmbeddedResource Include="Persistencia\Seed\Assets\MateriaisApoio\regras-da-casa-a4.pdf">
       <LogicalName>AAHBRANT.SST.Infrastructure.Persistencia.Seed.Assets.MateriaisApoio.regras-da-casa-a4.pdf</LogicalName>
     </EmbeddedResource>
+    <EmbeddedResource Include="Persistencia\Seed\Assets\RequisitosLegais\requisitos-nr.json">
+      <LogicalName>AAHBRANT.SST.Infrastructure.Persistencia.Seed.Assets.RequisitosLegais.requisitos-nr.json</LogicalName>
+    </EmbeddedResource>
   </ItemGroup>
 
   <ItemGroup>

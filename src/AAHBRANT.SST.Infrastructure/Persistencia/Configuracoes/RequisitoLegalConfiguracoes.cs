@@ -13,6 +13,7 @@ public class RequisitoLegalConfiguracao : IEntityTypeConfiguration<RequisitoLega
         builder.Property(r => r.Titulo).IsRequired().HasMaxLength(300);
         builder.Property(r => r.Descricao).IsRequired().HasMaxLength(2000);
         builder.Property(r => r.Fonte).HasMaxLength(500);
+        builder.Property(r => r.ValidadoPorNome).HasMaxLength(200);
         builder.HasIndex(r => r.Categoria);
         builder.HasQueryFilter(r => r.Ativo);
 

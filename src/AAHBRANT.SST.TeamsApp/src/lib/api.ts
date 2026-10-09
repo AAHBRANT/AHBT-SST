@@ -604,11 +604,14 @@ export const categoriaRequisitoLegalLabel: Record<number, string> = {
 export const StatusRequisitoLegal = {
   Ativo: 1,
   Revogado: 2,
+  // Carregado do texto oficial da NR, aguardando o QSMS validar (não entra no plano da IA).
+  EmRevisao: 3,
 } as const;
 
 export const statusRequisitoLegalLabel: Record<number, string> = {
   1: 'Ativo',
   2: 'Revogado',
+  3: 'Em revisão',
 };
 
 export const TipoCriterioAplicabilidade = {
@@ -634,10 +637,12 @@ export interface RequisitoLegal {
   categoria: number;
   status: number;
   fonte?: string | null;
+  validadoEmUtc?: string | null;
+  validadoPorNome?: string | null;
 }
 
-export type NovoRequisitoLegal = Omit<RequisitoLegal, 'id' | 'status'>;
-export type AtualizarRequisitoLegalPayload = Omit<RequisitoLegal, 'id'>;
+export type NovoRequisitoLegal = Omit<RequisitoLegal, 'id' | 'status' | 'validadoEmUtc' | 'validadoPorNome'>;
+export type AtualizarRequisitoLegalPayload = Omit<RequisitoLegal, 'id' | 'validadoEmUtc' | 'validadoPorNome'>;
 
 export interface CriterioAplicabilidadeInput {
   tipo: number;
@@ -652,6 +657,7 @@ export interface RequisitoLegalCriterio extends CriterioAplicabilidadeInput {
   perigoNome?: string | null;
   funcaoNome?: string | null;
   itemQuestionarioPergunta?: string | null;
+  sugeridoPelaCarga?: boolean;
 }
 
 export interface RequisitoLegalDetalhe {
@@ -4435,6 +4441,7 @@ export const api = {
     atualizar: (id: string, requisito: AtualizarRequisitoLegalPayload) =>
       request<void>(`/api/requisitoslegais/${id}`, { method: 'PUT', body: JSON.stringify({ ...requisito, id }) }),
     excluir: (id: string) => request<void>(`/api/requisitoslegais/${id}`, { method: 'DELETE' }),
+    validar: (id: string) => request<void>(`/api/requisitoslegais/${id}/validar`, { method: 'POST' }),
     definirCriterios: (id: string, criterios: CriterioAplicabilidadeInput[]) =>
       request<void>(`/api/requisitoslegais/${id}/criterios`, { method: 'PUT', body: JSON.stringify({ criterios }) }),
   },
