@@ -277,9 +277,11 @@ public class SstDbContext : DbContext, IAppDbContext
         modelBuilder.Entity<EstoqueUniforme>().HasQueryFilter(e =>
             e.Ativo && (_usuarioAtual.TemAcessoGlobal || _usuarioAtual.ObrasPermitidas.Contains(e.ObraId)));
         // ExameComplementar/AptidaoAtividadeEspecifica/EntregaEpi e filhos de entidades escopadas
-        // dependem de navegação por Trabalhador/Estoque/Membro/Reunião. Mantêm a proteção nos
-        // handlers e nas entidades-raiz já filtradas acima; se virarem listagens amplas, precisam de
-        // filtro explícito por navegação para fechar a mesma regra de obra.
+        // dependem de navegação por Trabalhador/Estoque/Membro/Reunião. A proteção fica nos handlers,
+        // que precisam aplicar o escopo EXPLICITAMENTE com Application/Common/Seguranca/EscopoObra.cs
+        // (e Assinatura/EscopoDocumentoAssinatura.cs para o Motor de Assinatura). A auditoria de
+        // 09/10/2026 achou que nenhum handler fazia isso: ASO/exame/aptidão/documentos corrigidos;
+        // treinamento, entregas, APR/PT (escrita), NC, risco e plano de ação ainda pendentes.
 
         base.OnModelCreating(modelBuilder);
     }
@@ -297,6 +299,9 @@ public class SstDbContext : DbContext, IAppDbContext
     }
 
     public void DescartarAlteracoesPendentes() => ChangeTracker.Clear();
+
+    public bool EscopoObraGlobal => _usuarioAtual.TemAcessoGlobal;
+    public IReadOnlyList<Guid> ObrasNoEscopo => _usuarioAtual.ObrasPermitidas;
 
     private void AplicarAuditoria()
     {

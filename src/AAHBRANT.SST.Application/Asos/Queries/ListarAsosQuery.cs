@@ -1,4 +1,5 @@
 using AAHBRANT.SST.Application.Common.Interfaces;
+using AAHBRANT.SST.Application.Common.Seguranca;
 using MediatR;
 using Microsoft.EntityFrameworkCore;
 
@@ -14,7 +15,7 @@ public class ListarAsosQueryHandler : IRequestHandler<ListarAsosQuery, List<AsoD
 
     public async Task<List<AsoDto>> Handle(ListarAsosQuery request, CancellationToken ct)
     {
-        var query = _db.Asos.AsNoTracking().AsQueryable();
+        var query = _db.Asos.AsNoTracking().NoEscopoDoTrabalhador(_db, a => a.TrabalhadorId);
 
         if (request.TrabalhadorId.HasValue)
             query = query.Where(a => a.TrabalhadorId == request.TrabalhadorId.Value);

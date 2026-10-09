@@ -164,4 +164,13 @@ public interface IAppDbContext
     // onde uma entidade que falhou ao salvar ficaria presa no rastreamento e derrubaria toda tentativa
     // seguinte no mesmo lote.
     void DescartarAlteracoesPendentes();
+
+    // Escopo por obra do usuário atual (o mesmo que o filtro global aplica), exposto para as
+    // entidades que NÃO têm filtro global por ObraId e chegam à obra só pelo Trabalhador (Aso,
+    // ExameComplementar, Aptidão, Treinamento, EntregaEpi...). Ficaram fora do filtro global de
+    // propósito — filtrar pela navegação até Trabalhador esconde o histórico de desligados — e por
+    // isso cada handler precisa aplicar o escopo explicitamente (auditoria de 09/10/2026: nenhum
+    // aplicava). Use as extensões de Common/Seguranca/EscopoObra.cs em vez destes membros direto.
+    bool EscopoObraGlobal { get; }
+    IReadOnlyList<Guid> ObrasNoEscopo { get; }
 }

@@ -1,4 +1,5 @@
 using AAHBRANT.SST.Application.Common.Interfaces;
+using AAHBRANT.SST.Application.Common.Seguranca;
 using FluentValidation;
 using MediatR;
 using Microsoft.EntityFrameworkCore;
@@ -23,7 +24,7 @@ public class ExcluirAsoCommandHandler : IRequestHandler<ExcluirAsoCommand>
 
     public async Task Handle(ExcluirAsoCommand request, CancellationToken ct)
     {
-        var aso = await _db.Asos.FirstOrDefaultAsync(a => a.Id == request.Id, ct)
+        var aso = await _db.Asos.NoEscopoDoTrabalhador(_db, a => a.TrabalhadorId).FirstOrDefaultAsync(a => a.Id == request.Id, ct)
             ?? throw new KeyNotFoundException($"ASO {request.Id} não encontrado.");
 
         _db.Asos.Remove(aso);

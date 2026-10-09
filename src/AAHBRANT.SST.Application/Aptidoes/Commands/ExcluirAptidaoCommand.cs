@@ -1,4 +1,5 @@
 using AAHBRANT.SST.Application.Common.Interfaces;
+using AAHBRANT.SST.Application.Common.Seguranca;
 using FluentValidation;
 using MediatR;
 using Microsoft.EntityFrameworkCore;
@@ -23,7 +24,7 @@ public class ExcluirAptidaoCommandHandler : IRequestHandler<ExcluirAptidaoComman
 
     public async Task Handle(ExcluirAptidaoCommand request, CancellationToken ct)
     {
-        var aptidao = await _db.AptidoesAtividadeEspecifica.FirstOrDefaultAsync(a => a.Id == request.Id, ct)
+        var aptidao = await _db.AptidoesAtividadeEspecifica.NoEscopoDoTrabalhador(_db, a => a.TrabalhadorId).FirstOrDefaultAsync(a => a.Id == request.Id, ct)
             ?? throw new KeyNotFoundException($"Aptidão {request.Id} não encontrada.");
 
         _db.AptidoesAtividadeEspecifica.Remove(aptidao);
