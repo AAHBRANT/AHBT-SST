@@ -1,4 +1,5 @@
 using AAHBRANT.SST.Application.Common.Interfaces;
+using AAHBRANT.SST.Application.Common.Seguranca;
 using MediatR;
 using Microsoft.EntityFrameworkCore;
 
@@ -13,6 +14,7 @@ public class ObterEntregaEpiPorIdQueryHandler : IRequestHandler<ObterEntregaEpiP
 
     public async Task<EntregaEpiDto?> Handle(ObterEntregaEpiPorIdQuery request, CancellationToken ct)
         => await _db.EntregasEpi
+            .NoEscopoDoTrabalhador(_db, x => x.TrabalhadorId)
             .Where(x => x.Id == request.Id)
             .Select(x => new EntregaEpiDto(
                 x.Id,

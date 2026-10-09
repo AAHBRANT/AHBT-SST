@@ -1,4 +1,5 @@
 using AAHBRANT.SST.Application.Common.Interfaces;
+using AAHBRANT.SST.Application.Common.Seguranca;
 using FluentValidation;
 using MediatR;
 using Microsoft.EntityFrameworkCore;
@@ -27,6 +28,8 @@ public class MarcarPermissaoTrabalhoPreRequisitoCommandHandler : IRequestHandler
     {
         var item = await _db.PermissaoTrabalhoPreRequisitos.FirstOrDefaultAsync(r => r.Id == request.Id, ct)
             ?? throw new KeyNotFoundException($"Pré-requisito {request.Id} não encontrado.");
+
+        await _db.GarantirPermissaoTrabalhoNoEscopoAsync(item.PermissaoTrabalhoId, ct);
 
         item.Atendido = request.Atendido;
         await _db.SaveChangesAsync(ct);

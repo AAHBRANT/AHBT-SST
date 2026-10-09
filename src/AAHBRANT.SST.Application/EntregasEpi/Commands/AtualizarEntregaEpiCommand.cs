@@ -1,4 +1,5 @@
 using AAHBRANT.SST.Application.Common.Interfaces;
+using AAHBRANT.SST.Application.Common.Seguranca;
 using AAHBRANT.SST.Domain.Entidades;
 using AAHBRANT.SST.Domain.Enums;
 using FluentValidation;
@@ -44,7 +45,7 @@ public class AtualizarEntregaEpiCommandHandler : IRequestHandler<AtualizarEntreg
 
     public async Task Handle(AtualizarEntregaEpiCommand request, CancellationToken ct)
     {
-        var entrega = await _db.EntregasEpi.FirstOrDefaultAsync(x => x.Id == request.Id, ct)
+        var entrega = await _db.EntregasEpi.NoEscopoDoTrabalhador(_db, x => x.TrabalhadorId).FirstOrDefaultAsync(x => x.Id == request.Id, ct)
             ?? throw new KeyNotFoundException("Entrega de EPI não encontrada.");
 
         // Devolução registrada agora (não tinha DataDevolucao antes): repõe o estoque segmentado por
@@ -74,6 +75,9 @@ public class AtualizarEntregaEpiCommandHandler : IRequestHandler<AtualizarEntreg
                 EntregaEpiId = entrega.Id,
             });
         }
+
+        if (request.TrabalhadorId != entrega.TrabalhadorId)
+            await _db.GarantirTrabalhadorNoEscopoAsync(request.TrabalhadorId, ct);
 
         entrega.TrabalhadorId = request.TrabalhadorId;
         entrega.CatalogoEpiId = request.CatalogoEpiId;

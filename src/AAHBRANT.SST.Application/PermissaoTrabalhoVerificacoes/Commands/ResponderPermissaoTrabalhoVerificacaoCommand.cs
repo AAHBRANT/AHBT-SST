@@ -1,4 +1,5 @@
 using AAHBRANT.SST.Application.Common.Interfaces;
+using AAHBRANT.SST.Application.Common.Seguranca;
 using AAHBRANT.SST.Domain.Enums;
 using FluentValidation;
 using MediatR;
@@ -30,6 +31,8 @@ public class ResponderPermissaoTrabalhoVerificacaoCommandHandler : IRequestHandl
     {
         var item = await _db.PermissaoTrabalhoVerificacoes.FirstOrDefaultAsync(v => v.Id == request.Id, ct)
             ?? throw new KeyNotFoundException($"Verificação {request.Id} não encontrada.");
+
+        await _db.GarantirPermissaoTrabalhoNoEscopoAsync(item.PermissaoTrabalhoId, ct);
 
         item.Resposta = request.Resposta;
         await _db.SaveChangesAsync(ct);

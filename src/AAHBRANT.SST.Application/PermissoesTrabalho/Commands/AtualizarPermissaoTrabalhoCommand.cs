@@ -1,4 +1,5 @@
 using AAHBRANT.SST.Application.Common.Interfaces;
+using AAHBRANT.SST.Application.Common.Seguranca;
 using AAHBRANT.SST.Domain.Entidades;
 using FluentValidation;
 using MediatR;
@@ -46,9 +47,13 @@ public class AtualizarPermissaoTrabalhoCommandHandler : IRequestHandler<Atualiza
     public async Task Handle(AtualizarPermissaoTrabalhoCommand request, CancellationToken ct)
     {
         var pt = await _db.PermissoesTrabalho
+            .NoEscopoDaAtividade(_db, p => p.AtividadeId)
             .Include(p => p.Responsaveis)
             .FirstOrDefaultAsync(p => p.Id == request.Id, ct)
             ?? throw new KeyNotFoundException($"Permissão de Trabalho {request.Id} não encontrada.");
+
+        if (request.AtividadeId != pt.AtividadeId)
+            await _db.GarantirAtividadeNoEscopoAsync(request.AtividadeId, ct);
 
         pt.AtividadeId = request.AtividadeId;
         pt.DescricaoAtividade = request.DescricaoAtividade;

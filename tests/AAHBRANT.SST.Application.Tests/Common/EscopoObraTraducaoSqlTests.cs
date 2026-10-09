@@ -34,6 +34,28 @@ public class EscopoObraTraducaoSqlTests
         Assert.Contains("[Trabalhadores]", sqlFoto);
     }
 
+    [Fact]
+    public void NoEscopoDaAtividade_TraduzParaSqlServer()
+    {
+        using var db = CriarContextoSqlServerRestrito();
+
+        var sqlApr = db.Aprs.NoEscopoDaAtividade(db, a => a.AtividadeId).Where(a => a.Id == Guid.Empty).ToQueryString();
+        var sqlPt = db.PermissoesTrabalho.NoEscopoDaAtividade(db, p => p.AtividadeId).ToQueryString();
+
+        Assert.Contains("[Atividades]", sqlApr);
+        Assert.Contains("[Atividades]", sqlPt);
+    }
+
+    [Fact]
+    public void ListagensDeTreinamentoEEntrega_TraduzemParaSqlServer()
+    {
+        using var db = CriarContextoSqlServerRestrito();
+
+        Assert.Contains("[Trabalhadores]", db.Treinamentos.NoEscopoDoTrabalhador(db, x => x.TrabalhadorId).ToQueryString());
+        Assert.Contains("[Trabalhadores]", db.EntregasEpi.NoEscopoDoTrabalhador(db, x => x.TrabalhadorId).ToQueryString());
+        Assert.Contains("[Trabalhadores]", db.EntregasUniforme.NoEscopoDoTrabalhador(db, x => x.TrabalhadorId).ToQueryString());
+    }
+
     [Theory]
     [InlineData("Dds")]
     [InlineData("DdsSemanal")]

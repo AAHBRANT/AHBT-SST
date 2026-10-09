@@ -1,4 +1,5 @@
 using AAHBRANT.SST.Application.Common.Interfaces;
+using AAHBRANT.SST.Application.Common.Seguranca;
 using MediatR;
 using Microsoft.EntityFrameworkCore;
 
@@ -13,7 +14,7 @@ public class ListarEntregasEpiQueryHandler : IRequestHandler<ListarEntregasEpiQu
 
     public async Task<List<EntregaEpiDto>> Handle(ListarEntregasEpiQuery request, CancellationToken ct)
     {
-        var query = _db.EntregasEpi.AsNoTracking().AsQueryable();
+        var query = _db.EntregasEpi.AsNoTracking().NoEscopoDoTrabalhador(_db, x => x.TrabalhadorId);
         if (request.TrabalhadorId is not null)
             query = query.Where(x => x.TrabalhadorId == request.TrabalhadorId);
 

@@ -1,5 +1,6 @@
 using AAHBRANT.SST.Application.Aprs;
 using AAHBRANT.SST.Application.Common.Interfaces;
+using AAHBRANT.SST.Application.Common.Seguranca;
 using AAHBRANT.SST.Domain.Entidades;
 using FluentValidation;
 using MediatR;
@@ -49,9 +50,13 @@ public class CriarAprEtapaRiscoCommandHandler : IRequestHandler<CriarAprEtapaRis
 
     public async Task<Guid> Handle(CriarAprEtapaRiscoCommand request, CancellationToken ct)
     {
-        var etapaExiste = await _db.AprEtapas.AnyAsync(e => e.Id == request.AprEtapaId, ct);
-        if (!etapaExiste)
-            throw new KeyNotFoundException($"Etapa de APR {request.AprEtapaId} não encontrada.");
+        var etapa = await _db.AprEtapas
+            .Where(e => e.Id == request.AprEtapaId)
+            .Select(e => new { e.AprId })
+            .FirstOrDefaultAsync(ct)
+            ?? throw new KeyNotFoundException($"Etapa de APR {request.AprEtapaId} não encontrada.");
+
+        await _db.GarantirAprNoEscopoAsync(etapa.AprId, ct);
 
         var risco = new AprEtapaRisco
         {

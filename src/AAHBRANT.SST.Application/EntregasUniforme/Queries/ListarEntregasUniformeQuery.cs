@@ -1,4 +1,5 @@
 using AAHBRANT.SST.Application.Common.Interfaces;
+using AAHBRANT.SST.Application.Common.Seguranca;
 using MediatR;
 using Microsoft.EntityFrameworkCore;
 
@@ -13,6 +14,7 @@ public class ListarEntregasUniformeQueryHandler : IRequestHandler<ListarEntregas
 
     public async Task<List<EntregaUniformeDto>> Handle(ListarEntregasUniformeQuery request, CancellationToken ct)
         => await _db.EntregasUniforme
+            .NoEscopoDoTrabalhador(_db, e => e.TrabalhadorId)
             .Where(e => request.TrabalhadorId == null || e.TrabalhadorId == request.TrabalhadorId)
             .OrderByDescending(e => e.DataEntrega)
             .Select(e => new EntregaUniformeDto(e.Id, e.TrabalhadorId, e.CatalogoUniformeId, e.Tamanho, e.Quantidade, e.DataEntrega, e.MotivoTipo, e.Observacoes))

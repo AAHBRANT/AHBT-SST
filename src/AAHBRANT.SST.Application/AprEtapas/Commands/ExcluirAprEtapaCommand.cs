@@ -1,4 +1,5 @@
 using AAHBRANT.SST.Application.Common.Interfaces;
+using AAHBRANT.SST.Application.Common.Seguranca;
 using FluentValidation;
 using MediatR;
 using Microsoft.EntityFrameworkCore;
@@ -25,6 +26,8 @@ public class ExcluirAprEtapaCommandHandler : IRequestHandler<ExcluirAprEtapaComm
     {
         var etapa = await _db.AprEtapas.FirstOrDefaultAsync(e => e.Id == request.Id, ct)
             ?? throw new KeyNotFoundException($"Etapa de APR {request.Id} não encontrada.");
+
+        await _db.GarantirAprNoEscopoAsync(etapa.AprId, ct);
 
         _db.AprEtapas.Remove(etapa);
         await _db.SaveChangesAsync(ct);
