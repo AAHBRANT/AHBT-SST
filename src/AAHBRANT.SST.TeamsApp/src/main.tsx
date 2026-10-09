@@ -5,9 +5,12 @@ import App from './App.tsx'
 
 // Após um deploy, uma aba aberta com o index antigo pede chunks (ex.: pdf-*.js) que não existem
 // mais no servidor. O Vite avisa por este evento; recarregamos uma vez para pegar a versão nova.
+// preventDefault só quando vamos mesmo recarregar: com ele, o import() dinâmico "dá certo" e devolve
+// undefined, e quem chamou quebra com "Cannot read properties of undefined" (09/10, PDF da semana de
+// DDS no Teams). Sem recarregar, o erro original segue para o catch de quem importou.
 window.addEventListener('vite:preloadError', (evento) => {
-  evento.preventDefault()
   if (sessionStorage.getItem('sst-chunk-reload') === '1') return
+  evento.preventDefault()
   sessionStorage.setItem('sst-chunk-reload', '1')
   window.setTimeout(() => sessionStorage.removeItem('sst-chunk-reload'), 30000)
   window.location.reload()

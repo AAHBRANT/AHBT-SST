@@ -40,6 +40,11 @@ export function PaginasPdf({ arquivo, altura = '80vh' }: PaginasPdfProps) {
           import('pdfjs-dist'),
           import('pdfjs-dist/build/pdf.worker.min.mjs?url'),
         ]);
+        // Chunk que não carregou e a página já está recarregando (ver main.tsx): o import volta
+        // undefined. Trata como chunk ausente em vez de estourar "reading 'GlobalWorkerOptions'".
+        if (!pdfjs?.GlobalWorkerOptions || !worker?.default) {
+          throw new Error('Failed to fetch dynamically imported module: pdfjs-dist');
+        }
         pdfjs.GlobalWorkerOptions.workerSrc = worker.default;
 
         const dados = new Uint8Array(await arquivo.arrayBuffer());
