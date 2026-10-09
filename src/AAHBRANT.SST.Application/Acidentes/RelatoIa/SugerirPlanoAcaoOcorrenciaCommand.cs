@@ -27,7 +27,13 @@ public record PlanoAcaoSugeridoDto(
     MetodologiaInvestigacao? Metodologia,
     string? Causas,
     IReadOnlyList<AcaoPlanoSugeridaDto> Acoes,
-    TemaDdsSugeridoDto TemaDds);
+    TemaDdsSugeridoDto TemaDds,
+    // Só em Acidente e Doença ocupacional: reunião de análise obrigatória no Teams.
+    ReuniaoSugeridaDto? Reuniao);
+
+public record ReuniaoSugeridaDto(DateTime Inicio, int DuracaoMinutos, IReadOnlyList<ParticipanteReuniaoDto> Participantes, string? Aviso);
+
+public record ParticipanteReuniaoDto(Guid UsuarioId, string Nome, string Papel, bool Organizador);
 
 // Tema obrigatório do DDS do próximo dia útil da obra (entra no plano como ação de DDS).
 public record TemaDdsSugeridoDto(string Nome, string Roteiro, DateTime Data);
@@ -69,15 +75,21 @@ public class SugerirPlanoAcaoOcorrenciaCommandHandler : IRequestHandler<SugerirP
     private readonly IAppDbContext _db;
     private readonly IAnalistaPlanoOcorrencia _analista;
     private readonly ILogger<SugerirPlanoAcaoOcorrenciaCommandHandler> _logger;
+    private readonly ICalendarioTeamsService? _calendario;
+    private readonly IReuniaoTeamsService? _reuniao;
 
     public SugerirPlanoAcaoOcorrenciaCommandHandler(
         IAppDbContext db,
         IAnalistaPlanoOcorrencia analista,
-        ILogger<SugerirPlanoAcaoOcorrenciaCommandHandler> logger)
+        ILogger<SugerirPlanoAcaoOcorrenciaCommandHandler> logger,
+        ICalendarioTeamsService? calendario = null,
+        IReuniaoTeamsService? reuniao = null)
     {
         _db = db;
         _analista = analista;
         _logger = logger;
+        _calendario = calendario;
+        _reuniao = reuniao;
     }
 
     public async Task<PlanoAcaoSugeridoDto> Handle(SugerirPlanoAcaoOcorrenciaCommand request, CancellationToken ct)
@@ -140,7 +152,8 @@ public class SugerirPlanoAcaoOcorrenciaCommandHandler : IRequestHandler<SugerirP
             new TemaDdsSugeridoDto(
                 Limitar(string.IsNullOrWhiteSpace(analise.TemaDdsNome) ? $"Prevenção: {atividade ?? "lições da ocorrência"}" : analise.TemaDdsNome, 200),
                 Limitar(analise.TemaDdsRoteiro ?? string.Empty, 1000),
-                CalendarioObra.ProximoDiaUtil(CalendarioObra.AgoraEmBrasilia())));
+                CalendarioObra.ProximoDiaUtil(CalendarioObra.AgoraEmBrasilia())),
+            await SugerirReuniaoAsync(request, responsaveis, ct));
     }
 
     private async Task<List<RequisitoLegalResumo>> RequisitosAplicaveisAsync(Guid? atividadeId, CancellationToken ct)
@@ -166,6 +179,53 @@ public class SugerirPlanoAcaoOcorrenciaCommandHandler : IRequestHandler<SugerirP
     }
 
     private sealed record Responsavel(Guid UsuarioId, string Nome, TipoPerfilAcesso Perfil);
+
+    // Reunião de análise obrigatória em todo Acidente e Doença ocupacional (regra do usuário,
+    // 08/10/2026): próximo dia útil, primeiro horário livre na agenda de quem registra. Convidados:
+    // quem registra (organizador), Engenheiro de Segurança e Gestor de Obra da obra e Gestor QSMS.
+    private async Task<ReuniaoSugeridaDto?> SugerirReuniaoAsync(
+        SugerirPlanoAcaoOcorrenciaCommand request, List<Responsavel> responsaveis, CancellationToken ct)
+    {
+        if (request.Tipo is not (TipoOcorrencia.Acidente or TipoOcorrencia.DoencaOcupacional))
+            return null;
+
+        var dia = CalendarioObra.ProximoDiaUtil(CalendarioObra.AgoraEmBrasilia());
+        var participantes = new List<ParticipanteReuniaoDto>();
+        if (request.UsuarioAtualId is { } organizadorId)
+        {
+            var nome = await _db.Usuarios.Where(u => u.Id == organizadorId).Select(u => u.Nome).FirstOrDefaultAsync(ct);
+            participantes.Add(new ParticipanteReuniaoDto(organizadorId, nome ?? "Você", "Organizador", true));
+        }
+        foreach (var r in responsaveis.Where(r => r.Perfil is TipoPerfilAcesso.EngenheiroSeguranca or TipoPerfilAcesso.GestorDeObra or TipoPerfilAcesso.GestorQsms))
+        {
+            if (participantes.All(p => p.UsuarioId != r.UsuarioId))
+                participantes.Add(new ParticipanteReuniaoDto(r.UsuarioId, r.Nome, Papeis.Values.First(v => v.Perfil == r.Perfil).Rotulo, false));
+        }
+
+        string? aviso = null;
+        DateTime? inicio = null;
+        if (request.UsuarioAtualId is null)
+            aviso = "Quem registra não está vinculado a uma conta Microsoft: a reunião será registrada, mas não marcada no Teams.";
+        else if (_reuniao is null || !_reuniao.Configurado || _calendario is null)
+            aviso = "Integração com o Teams não configurada neste ambiente: a reunião será registrada, mas não marcada no Teams.";
+        else
+        {
+            try
+            {
+                var eventos = await _calendario.ListarEventosAsync(request.UsuarioAtualId.Value, dia.AddHours(8), dia.AddHours(17), ct);
+                inicio = HorarioReuniao.PrimeiroLivre(dia, eventos.Select(e => (e.Inicio, e.Fim, e.DiaInteiro)));
+                if (inicio is null)
+                    aviso = "Sua agenda está cheia no próximo dia útil: ajuste o horário da reunião.";
+            }
+            catch (Exception ex) when (ex is not OperationCanceledException)
+            {
+                _logger.LogWarning(ex, "Não foi possível ler a agenda do Teams para sugerir o horário da reunião.");
+                aviso = "Não foi possível consultar sua agenda no Teams: confira o horário sugerido.";
+            }
+        }
+
+        return new ReuniaoSugeridaDto(inicio ?? dia.AddHours(9), (int)HorarioReuniao.Duracao.TotalMinutes, participantes, aviso);
+    }
 
     private async Task<List<Responsavel>> CarregarResponsaveisAsync(Guid obraId, CancellationToken ct)
         => await _db.UsuariosPerfilObra

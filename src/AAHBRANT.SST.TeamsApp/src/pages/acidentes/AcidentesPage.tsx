@@ -40,7 +40,16 @@ import {
 } from '../../lib/api';
 import { HhtMensalTab } from './HhtMensalTab';
 import { RelatoOcorrenciaIa } from './RelatoOcorrenciaIa';
-import { novaChaveAcao, PlanoAcaoOcorrenciaIa, type AcaoPlanoEmEdicao, type TemaDdsEmEdicao } from './PlanoAcaoOcorrenciaIa';
+import {
+  novaChaveAcao,
+  PlanoAcaoOcorrenciaIa,
+  type AcaoPlanoEmEdicao,
+  type ReuniaoEmEdicao,
+  type TemaDdsEmEdicao,
+} from './PlanoAcaoOcorrenciaIa';
+
+// Reunião de análise obrigatória só em Acidente (1) e Doença ocupacional (6).
+const exigeReuniao = (tipo: number) => tipo === 1 || tipo === 6;
 
 // Campos que a IA pode preencher a partir do relato. Mostram o selo "IA" até o técnico editá-los.
 type CampoIa =
@@ -120,6 +129,7 @@ export function AcidentesPage({ tipoFixo }: { tipoFixo?: number } = {}) {
   const [causas, setCausas] = useState('');
   const [acoesPlano, setAcoesPlano] = useState<AcaoPlanoEmEdicao[]>([]);
   const [temaDds, setTemaDds] = useState<TemaDdsEmEdicao | null>(null);
+  const [reuniao, setReuniao] = useState<ReuniaoEmEdicao | null>(null);
   const [usuarios, setUsuarios] = useState<Usuario[]>([]);
   const [gerandoPlano, setGerandoPlano] = useState(false);
 
@@ -206,6 +216,17 @@ export function AcidentesPage({ tipoFixo }: { tipoFixo?: number } = {}) {
       setMetodologia(plano.metodologia);
       setCausas(plano.causas ?? '');
       setTemaDds({ nome: plano.temaDds.nome, roteiro: plano.temaDds.roteiro, data: plano.temaDds.data.slice(0, 10) });
+      setReuniao(
+        plano.reuniao
+          ? {
+              data: plano.reuniao.inicio.slice(0, 10),
+              hora: plano.reuniao.inicio.slice(11, 16),
+              duracaoMinutos: plano.reuniao.duracaoMinutos,
+              participantes: plano.reuniao.participantes,
+              aviso: plano.reuniao.aviso,
+            }
+          : null,
+      );
       setAcoesPlano(
         plano.acoes.map((a) => ({
           chave: novaChaveAcao(),
@@ -315,6 +336,15 @@ export function AcidentesPage({ tipoFixo }: { tipoFixo?: number } = {}) {
       setErro(gerandoPlano ? 'Aguarde a IA terminar o plano de ação.' : 'Informe o tema e o roteiro do DDS do dia seguinte.');
       return;
     }
+    const enviarReuniao = versaoRelato > 0 && exigeReuniao(nova.tipo);
+    if (enviarReuniao && (!reuniao?.data || !reuniao.hora)) {
+      setErro(
+        reuniao
+          ? 'Informe a data e o horário da reunião de análise do acidente.'
+          : 'Para acidente, gere o plano novamente para sugerir a reunião de análise.',
+      );
+      return;
+    }
     try {
       setCarregando(true);
       setErro(null);
@@ -342,6 +372,14 @@ export function AcidentesPage({ tipoFixo }: { tipoFixo?: number } = {}) {
             fundamentacao: a.fundamentacao,
           })),
         temaDds: versaoRelato > 0 && temaDds ? { nome: temaDds.nome.trim(), roteiro: temaDds.roteiro.trim() } : undefined,
+        reuniao:
+          enviarReuniao && reuniao
+            ? {
+                inicio: `${reuniao.data}T${reuniao.hora}:00`,
+                duracaoMinutos: reuniao.duracaoMinutos,
+                participantesUsuarioIds: reuniao.participantes.map((p) => p.usuarioId),
+              }
+            : undefined,
       });
       setNova(novaInicial());
       setCamposIa(new Set());
@@ -352,6 +390,7 @@ export function AcidentesPage({ tipoFixo }: { tipoFixo?: number } = {}) {
       setCausas('');
       setAcoesPlano([]);
       setTemaDds(null);
+      setReuniao(null);
       await carregar();
     } catch (e) {
       setErro(e instanceof Error ? e.message : 'Falha ao registrar ocorrência.');
@@ -604,6 +643,8 @@ export function AcidentesPage({ tipoFixo }: { tipoFixo?: number } = {}) {
 
             {versaoRelato > 0 && (
               <PlanoAcaoOcorrenciaIa
+                reuniao={exigeReuniao(nova.tipo) ? reuniao : null}
+                aoMudarReuniao={setReuniao}
                 temaDds={temaDds}
                 aoMudarTemaDds={setTemaDds}
                 metodologia={metodologia}

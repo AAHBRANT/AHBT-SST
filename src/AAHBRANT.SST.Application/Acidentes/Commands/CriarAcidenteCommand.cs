@@ -35,9 +35,13 @@ public record CriarAcidenteCommand(
     // Tema obrigatório do DDS do próximo dia útil (registro por relato).
     TemaDdsNovaOcorrencia? TemaDds = null,
     // Preenchido pelo controller a partir do token (nunca do corpo): responsável pela ação de DDS.
-    Guid? UsuarioAtualId = null) : IRequest<Guid>;
+    Guid? UsuarioAtualId = null,
+    // Acidente/Doença ocupacional por relato: reunião de análise obrigatória no Teams.
+    ReuniaoAnaliseNovaOcorrencia? Reuniao = null) : IRequest<Guid>;
 
 public record TemaDdsNovaOcorrencia(string Nome, string Roteiro);
+
+public record ReuniaoAnaliseNovaOcorrencia(DateTime Inicio, int DuracaoMinutos, List<Guid> ParticipantesUsuarioIds);
 
 public record AcaoPlanoNovaOcorrencia(
     TipoAcaoPlano Tipo,
@@ -72,6 +76,10 @@ public class CriarAcidenteCommandValidator : AbstractValidator<CriarAcidenteComm
             .When(x => x.TemaDds is not null);
         RuleFor(x => x.TemaDds!.Roteiro).NotEmpty().WithMessage("Informe o roteiro do DDS do dia seguinte.").MaximumLength(1000)
             .When(x => x.TemaDds is not null);
+        RuleFor(x => x.Reuniao)
+            .NotNull().WithMessage("Informe a data e o horário da reunião de análise do acidente.")
+            .When(x => x.AcoesPlano is not null && (x.Tipo is TipoOcorrencia.Acidente or TipoOcorrencia.DoencaOcupacional));
+        RuleFor(x => x.Reuniao!.DuracaoMinutos).InclusiveBetween(15, 240).When(x => x.Reuniao is not null);
         RuleForEach(x => x.AcoesPlano).ChildRules(a =>
         {
             a.RuleFor(x => x.Descricao).NotEmpty().MaximumLength(500);
@@ -84,11 +92,13 @@ public class CriarAcidenteCommandHandler : IRequestHandler<CriarAcidenteCommand,
 {
     private readonly IAppDbContext _db;
     private readonly IPublicadorAcidenteGrh _publicadorGrh;
+    private readonly IReuniaoTeamsService? _reuniaoTeams;
 
-    public CriarAcidenteCommandHandler(IAppDbContext db, IPublicadorAcidenteGrh publicadorGrh)
+    public CriarAcidenteCommandHandler(IAppDbContext db, IPublicadorAcidenteGrh publicadorGrh, IReuniaoTeamsService? reuniaoTeams = null)
     {
         _db = db;
         _publicadorGrh = publicadorGrh;
+        _reuniaoTeams = reuniaoTeams;
     }
 
     public async Task<Guid> Handle(CriarAcidenteCommand request, CancellationToken ct)
@@ -144,8 +154,14 @@ public class CriarAcidenteCommandHandler : IRequestHandler<CriarAcidenteCommand,
 
         if (request.TemaDds is not null)
             AgendarTemaDds(acidente, request.TemaDds, request.UsuarioAtualId);
+
+        (ReuniaoAnaliseOcorrencia Entidade, List<string> Emails)? reuniao = request.Reuniao is null
+            ? null
+            : await RegistrarReuniaoAsync(acidente, request.Reuniao, request.UsuarioAtualId, ct);
         await _db.SaveChangesAsync(ct);
         await _publicadorGrh.PublicarAsync(await AcidenteGrhEventoFactory.CriarAsync(_db, acidente, ct), ct);
+        if (reuniao is not null)
+            await MarcarReuniaoNoTeamsAsync(acidente, reuniao.Value.Entidade, reuniao.Value.Emails, ct);
         return acidente.Id;
     }
 
@@ -180,4 +196,70 @@ public class CriarAcidenteCommandHandler : IRequestHandler<CriarAcidenteCommand,
             AcaoPlanoId = acao.Id,
         });
     }
+
+    // A reunião vira ação do plano e registro próprio; o Teams é chamado só depois do registro gravado.
+    private async Task<(ReuniaoAnaliseOcorrencia Entidade, List<string> Emails)> RegistrarReuniaoAsync(
+        Acidente acidente, ReuniaoAnaliseNovaOcorrencia dados, Guid? organizadorId, CancellationToken ct)
+    {
+        var ids = dados.ParticipantesUsuarioIds.Append(organizadorId ?? Guid.Empty).Where(id => id != Guid.Empty).Distinct().ToList();
+        var pessoas = await _db.Usuarios.Where(u => ids.Contains(u.Id)).Select(u => new { u.Id, u.Nome, u.Email }).ToListAsync(ct);
+
+        var acao = new AcaoPlano
+        {
+            OrigemTipo = nameof(Acidente),
+            OrigemId = acidente.Id,
+            Tipo = TipoAcaoPlano.Corretiva,
+            Prioridade = PrioridadeAcao.Alta,
+            Descricao = "Realizar a reunião de análise do acidente para validar as causas e o plano de ação.",
+            Prazo = dados.Inicio,
+            ResponsavelUsuarioId = organizadorId,
+            Fundamentacao = "Reunião de análise · obrigatória em todo acidente",
+        };
+        var reuniao = new ReuniaoAnaliseOcorrencia
+        {
+            AcidenteId = acidente.Id,
+            AcaoPlanoId = acao.Id,
+            Inicio = dados.Inicio,
+            Fim = dados.Inicio.AddMinutes(dados.DuracaoMinutos),
+            OrganizadorUsuarioId = organizadorId,
+            Participantes = string.Join("\n", pessoas.OrderBy(p => p.Id == organizadorId ? 0 : 1).ThenBy(p => p.Nome).Select(p => p.Nome)),
+        };
+        _db.AcoesPlano.Add(acao);
+        _db.ReunioesAnaliseOcorrencia.Add(reuniao);
+        return (reuniao, pessoas.Select(p => p.Email).ToList());
+    }
+
+    private async Task MarcarReuniaoNoTeamsAsync(Acidente acidente, ReuniaoAnaliseOcorrencia reuniao, List<string> emails, CancellationToken ct)
+    {
+        if (reuniao.OrganizadorUsuarioId is null)
+            reuniao.MotivoFalha = "Quem registrou não está vinculado a uma conta Microsoft. Marque a reunião no Teams manualmente.";
+        else if (_reuniaoTeams is null || !_reuniaoTeams.Configurado)
+            reuniao.MotivoFalha = "Integração com o Teams não configurada neste ambiente. Marque a reunião no Teams manualmente.";
+        else
+        {
+            try
+            {
+                var criada = await _reuniaoTeams.CriarReuniaoAsync(
+                    reuniao.OrganizadorUsuarioId.Value,
+                    $"Análise de acidente · {acidente.Local} · {acidente.Data:dd/MM}",
+                    $"Reunião de análise do acidente registrado em {acidente.Data:dd/MM/yyyy} ({acidente.Local}).\n\n" +
+                    $"Pauta: validar as causas e o plano de ação registrados no sistema SST.\n\nO que aconteceu: {acidente.Descricao}",
+                    reuniao.Inicio, reuniao.Fim, emails, ct);
+                reuniao.GraphEventId = criada.GraphEventId;
+                reuniao.LinkTeams = criada.LinkTeams;
+                reuniao.Situacao = SituacaoReuniaoTeams.Criada;
+            }
+            catch (Exception ex) when (ex is not OperationCanceledException)
+            {
+                // O registro do acidente já foi gravado; falha no Teams não pode desfazê-lo.
+                reuniao.MotivoFalha = Limitar($"O Teams não aceitou a reunião ({ex.Message}). Marque-a manualmente.", 500);
+            }
+        }
+
+        if (reuniao.Situacao != SituacaoReuniaoTeams.Criada)
+            reuniao.Situacao = SituacaoReuniaoTeams.NaoCriada;
+        await _db.SaveChangesAsync(ct);
+    }
+
+    private static string Limitar(string texto, int maximo) => texto.Length <= maximo ? texto : texto[..maximo];
 }

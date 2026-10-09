@@ -5,6 +5,7 @@ import {
   Field,
   FormGrid,
   FormSection,
+  Input,
   Legenda,
   Select,
   Spinner,
@@ -12,11 +13,12 @@ import {
   designTokens,
   tokensUi,
 } from '@ui';
-import { Add24Regular, ArrowClockwise24Regular, Delete24Regular } from '@fluentui/react-icons';
+import { Add24Regular, ArrowClockwise24Regular, Delete24Regular, Dismiss16Regular } from '@fluentui/react-icons';
 import {
   metodologiaInvestigacaoLabel,
   prioridadeAcaoLabel,
   tipoAcaoPlanoLabel,
+  type ParticipanteReuniao,
   type Usuario,
 } from '../../lib/api';
 
@@ -40,7 +42,17 @@ export interface TemaDdsEmEdicao {
   data: string; // yyyy-MM-dd — próximo dia útil, calculado no servidor
 }
 
+export interface ReuniaoEmEdicao {
+  data: string; // yyyy-MM-dd
+  hora: string; // HH:mm
+  duracaoMinutos: number;
+  participantes: ParticipanteReuniao[];
+  aviso: string | null;
+}
+
 interface Props {
+  reuniao: ReuniaoEmEdicao | null;
+  aoMudarReuniao: (reuniao: ReuniaoEmEdicao) => void;
   temaDds: TemaDdsEmEdicao | null;
   aoMudarTemaDds: (tema: TemaDdsEmEdicao) => void;
   metodologia: number | null;
@@ -87,6 +99,8 @@ export const novaChaveAcao = () => `acao-${Date.now()}-${contador++}`;
 // Seções 3 (análise preliminar de causas) e 4 (plano de ação) do registro por relato. Tudo que a
 // IA sugeriu é editável; nada é gravado antes do "Registrar".
 export function PlanoAcaoOcorrenciaIa({
+  reuniao,
+  aoMudarReuniao,
   temaDds,
   aoMudarTemaDds,
   metodologia,
@@ -203,6 +217,64 @@ export function PlanoAcaoOcorrenciaIa({
                 Será agendado para o DDS de <strong>{formatarDia(temaDds.data)}</strong> nesta obra e já virá selecionado
                 quando o técnico abrir o registro do dia. A ação do plano é concluída quando o DDS for encerrado com este tema.
               </Legenda>
+            </div>
+          )}
+          {reuniao && (
+            <div style={cartaoObrigatorio}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+                <strong style={{ fontSize: 13 }}>Reunião de análise do acidente (Teams)</strong>
+                <span style={fundamentacaoEstilo(true)}>Obrigatória · todo acidente</span>
+              </div>
+              <FormGrid>
+                <Campo span={4}>
+                  <Field label="Data" required dica="Próximo dia útil por padrão.">
+                    <CampoData value={reuniao.data} onChange={(_, d) => aoMudarReuniao({ ...reuniao, data: d.value })} />
+                  </Field>
+                </Campo>
+                <Campo span={4}>
+                  <Field label="Início" required dica="Sugerido pelo primeiro horário livre na sua agenda do Teams, entre 8h e 17h.">
+                    <Input type="time" value={reuniao.hora} onChange={(_, d) => aoMudarReuniao({ ...reuniao, hora: d.value })} />
+                  </Field>
+                </Campo>
+                <Campo span={4}>
+                  <Field label="Duração">
+                    <Select
+                      value={String(reuniao.duracaoMinutos)}
+                      onChange={(_, d) => aoMudarReuniao({ ...reuniao, duracaoMinutos: Number(d.value) })}
+                    >
+                      {[30, 60, 90, 120].map((m) => (
+                        <option key={m} value={m}>
+                          {m < 60 ? `${m} minutos` : m === 60 ? '1 hora' : `${m / 60} horas`.replace('.5', ',5')}
+                        </option>
+                      ))}
+                    </Select>
+                  </Field>
+                </Campo>
+                <Campo span={12}>
+                  <Field label="Participantes" dica="Convite com link do Teams enviado por e-mail a cada participante.">
+                    <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+                      {reuniao.participantes.length === 0 && <Legenda>Nenhum participante encontrado para esta obra.</Legenda>}
+                      {reuniao.participantes.map((p) => (
+                        <Button
+                          key={p.usuarioId}
+                          size="small"
+                          appearance="outline"
+                          icon={p.organizador ? undefined : <Dismiss16Regular />}
+                          iconPosition="after"
+                          disabled={p.organizador}
+                          aria-label={p.organizador ? `${p.nome} (organizador)` : `Remover ${p.nome}`}
+                          onClick={() =>
+                            aoMudarReuniao({ ...reuniao, participantes: reuniao.participantes.filter((x) => x.usuarioId !== p.usuarioId) })
+                          }
+                        >
+                          {p.nome} · {p.papel}
+                        </Button>
+                      ))}
+                    </div>
+                  </Field>
+                </Campo>
+              </FormGrid>
+              {reuniao.aviso && <span style={fundamentacaoEstilo(false)}>{reuniao.aviso}</span>}
             </div>
           )}
           {acoes.map((acao, indice) => (

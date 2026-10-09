@@ -25,7 +25,7 @@ import {
   type Tom,
   Legenda,
 } from '@ui';
-import { Save24Regular } from '@fluentui/react-icons';
+import { Save24Regular, Video24Regular } from '@fluentui/react-icons';
 import {
   api,
   metodologiaInvestigacaoLabel,
@@ -40,6 +40,7 @@ import {
   type AcidenteDetalhe,
   type NovaAcaoPlano,
   type Usuario,
+  SituacaoReuniaoTeams,
 } from '../../lib/api';
 
 function novaAcaoInicial(): Omit<NovaAcaoPlano, 'origemTipo' | 'origemId'> {
@@ -470,6 +471,42 @@ export function AcidenteDetalhePage() {
           </Button>
         </FormRodape>
       </Card>
+
+      {detalhe.reuniao && (
+        <Card titulo="Reunião de análise do acidente">
+          <div style={{ display: 'grid', gap: 10 }}>
+            <Text>
+              {new Date(detalhe.reuniao.inicio).toLocaleDateString('pt-BR', { weekday: 'long', day: '2-digit', month: '2-digit' })}
+              {' · '}
+              {detalhe.reuniao.inicio.slice(11, 16)} às {detalhe.reuniao.fim.slice(11, 16)}
+            </Text>
+            <Legenda>Participantes: {detalhe.reuniao.participantes.join(', ') || '—'}</Legenda>
+            {detalhe.reuniao.situacao === SituacaoReuniaoTeams.Criada ? (
+              <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
+                <StatusChip tom="ok">Marcada no Teams</StatusChip>
+                {detalhe.reuniao.linkTeams && (
+                  <Button
+                    appearance="primary"
+                    size="small"
+                    icon={<Video24Regular />}
+                    as="a"
+                    href={detalhe.reuniao.linkTeams}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                  >
+                    Entrar na reunião
+                  </Button>
+                )}
+              </div>
+            ) : (
+              <FeedbackInline tom="aviso">
+                {detalhe.reuniao.motivoFalha ?? 'A reunião não foi marcada no Teams. Marque-a manualmente.'}
+              </FeedbackInline>
+            )}
+            <Legenda>A ação "Realizar a reunião de análise" do plano é concluída pelo técnico depois da reunião.</Legenda>
+          </div>
+        </Card>
+      )}
 
       <Card
         titulo="Ações do plano"

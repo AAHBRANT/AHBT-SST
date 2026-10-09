@@ -18,7 +18,7 @@ namespace AAHBRANT.SST.Infrastructure.Integracao.Teams;
 //
 // Mesmo princípio do Activity Feed: lança exceção em vez de engolir a falha — sempre chamado por um
 // consumidor da fila de retry (ver IFilaCalendarioTeams), que decide o que fazer com o erro.
-public class GraphCalendarioTeamsService : ICalendarioTeamsService
+public class GraphCalendarioTeamsService : ICalendarioTeamsService, IReuniaoTeamsService
 {
     private readonly IAppDbContext _db;
     private readonly GraphOptions _opcoes;
@@ -138,6 +138,49 @@ public class GraphCalendarioTeamsService : ICalendarioTeamsService
         httpClient.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", token.Token);
         return (httpClient, usuario.AzureAdObjectId);
     }
+
+    public bool Configurado => !string.IsNullOrWhiteSpace(_opcoes.ClientSecret);
+
+    // Reunião do Teams com horário, convidados e link (reunião de análise de acidente). Mesma
+    // permissão de aplicativo Calendars.ReadWrite dos eventos de dia inteiro; o link do Teams vem de
+    // isOnlineMeeting + onlineMeetingProvider. O Exchange envia os convites por e-mail aos convidados.
+    public async Task<ReuniaoTeamsCriada> CriarReuniaoAsync(
+        Guid organizadorUsuarioId, string titulo, string descricao, DateTime inicio, DateTime fim,
+        IReadOnlyList<string> emailsConvidados, CancellationToken ct = default)
+    {
+        var (httpClient, aadObjectId) = await PrepararRequisicaoAsync(organizadorUsuarioId, ct);
+
+        using var requisicao = new HttpRequestMessage(
+            HttpMethod.Post, $"https://graph.microsoft.com/v1.0/users/{aadObjectId}/events")
+        {
+            Content = JsonContent.Create(MontarReuniao(titulo, descricao, inicio, fim, emailsConvidados)),
+        };
+
+        var resposta = await httpClient.SendAsync(requisicao, ct);
+        await GarantirSucessoAsync(resposta, organizadorUsuarioId, ct);
+
+        var corpo = await resposta.Content.ReadFromJsonAsync<GraphEventoView>(cancellationToken: ct);
+        return new ReuniaoTeamsCriada(
+            corpo?.Id ?? throw new InvalidOperationException("Graph não retornou o id da reunião criada."),
+            corpo.OnlineMeeting?.JoinUrl);
+    }
+
+    internal static object MontarReuniao(string titulo, string descricao, DateTime inicio, DateTime fim, IReadOnlyList<string> emails)
+        => new
+        {
+            subject = titulo,
+            body = new { contentType = "text", content = descricao },
+            start = new { dateTime = inicio.ToString("yyyy-MM-ddTHH:mm:ss"), timeZone = "America/Sao_Paulo" },
+            end = new { dateTime = fim.ToString("yyyy-MM-ddTHH:mm:ss"), timeZone = "America/Sao_Paulo" },
+            attendees = emails
+                .Where(e => !string.IsNullOrWhiteSpace(e))
+                .Distinct(StringComparer.OrdinalIgnoreCase)
+                .Select(e => new { emailAddress = new { address = e }, type = "required" })
+                .ToArray(),
+            isOnlineMeeting = true,
+            onlineMeetingProvider = "teamsForBusiness",
+            allowNewTimeProposals = true,
+        };
 
     // internal (não private) só para permitir teste direto do cálculo de fronteira de dia e do
     // formato do payload — ver GraphCalendarioTeamsServicePayloadTests. InternalsVisibleTo em

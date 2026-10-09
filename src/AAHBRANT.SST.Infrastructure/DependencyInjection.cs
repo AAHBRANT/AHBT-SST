@@ -129,7 +129,9 @@ public static class DependencyInjection
         // Integração do Motor de Alertas com o Calendário do Teams (docs/superpowers/specs/
         // 2026-08-28-calendario-teams-design.md) — mesmo App Registration/GraphOptions do Activity
         // Feed acima, faltando apenas a permissão de aplicativo Calendars.ReadWrite ser provisionada.
-        services.AddScoped<ICalendarioTeamsService, GraphCalendarioTeamsService>();
+        services.AddScoped<GraphCalendarioTeamsService>();
+        services.AddScoped<ICalendarioTeamsService>(sp => sp.GetRequiredService<GraphCalendarioTeamsService>());
+        services.AddScoped<IReuniaoTeamsService>(sp => sp.GetRequiredService<GraphCalendarioTeamsService>());
 
         // Integração G-RH — carga inicial do cadastro de colaboradores (contrato acordado em
         // 2026-09-09, ver ColaboradorGrhClient). ClientSecret fica vazio até o segredo do App

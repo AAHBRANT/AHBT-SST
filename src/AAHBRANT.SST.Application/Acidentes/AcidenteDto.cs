@@ -57,4 +57,14 @@ public class AcidenteDetalheDto
     public List<AcidenteFotoDto> Fotos { get; set; } = new();
     public AcidenteDto Acidente { get; set; } = null!;
     public List<AcaoPlanoDto> AcoesPlano { get; set; } = new();
+    public ReuniaoAnaliseDto? Reuniao { get; set; }
 }
+
+// Reunião de análise no Teams (só acidentes registrados por relato).
+public record ReuniaoAnaliseDto(
+    DateTime Inicio,
+    DateTime Fim,
+    IReadOnlyList<string> Participantes,
+    SituacaoReuniaoTeams Situacao,
+    string? LinkTeams,
+    string? MotivoFalha);

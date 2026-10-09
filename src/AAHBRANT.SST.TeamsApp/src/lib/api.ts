@@ -2906,6 +2906,33 @@ export interface PlanoAcaoSugerido {
   acoes: AcaoPlanoSugerida[];
   // Tema obrigatório do DDS do próximo dia útil da obra.
   temaDds: { nome: string; roteiro: string; data: string };
+  // Só em Acidente e Doença ocupacional: reunião de análise obrigatória no Teams.
+  reuniao: ReuniaoSugerida | null;
+}
+
+export interface ParticipanteReuniao {
+  usuarioId: string;
+  nome: string;
+  papel: string;
+  organizador: boolean;
+}
+
+export interface ReuniaoSugerida {
+  inicio: string; // horário de Brasília, sem fuso
+  duracaoMinutos: number;
+  participantes: ParticipanteReuniao[];
+  aviso: string | null;
+}
+
+export const SituacaoReuniaoTeams = { Pendente: 1, Criada: 2, NaoCriada: 3 } as const;
+
+export interface ReuniaoAnalise {
+  inicio: string;
+  fim: string;
+  participantes: string[];
+  situacao: number;
+  linkTeams: string | null;
+  motivoFalha: string | null;
 }
 
 export interface TemaDdsAgendado {
@@ -2962,6 +2989,8 @@ export interface NovoAcidente {
   acoesPlano?: AcaoPlanoNovaOcorrencia[];
   // Só no registro por relato (IA): tema obrigatório agendado para o DDS do próximo dia útil.
   temaDds?: { nome: string; roteiro: string };
+  // Só em acidente por relato: reunião de análise obrigatória no Teams.
+  reuniao?: { inicio: string; duracaoMinutos: number; participantesUsuarioIds: string[] };
 }
 
 export type AtualizarAcidentePayload = NovoAcidente;
@@ -2970,6 +2999,7 @@ export interface AcidenteDetalhe {
   fotos: DdsFotoEvidencia[];
   acidente: Acidente;
   acoesPlano: AcaoPlano[];
+  reuniao?: ReuniaoAnalise | null;
 }
 
 // Lançamento mensal de HHT (Horas-Homem Trabalhadas) por obra, usado no cálculo da Taxa de
