@@ -24,7 +24,7 @@ public class DesvincularTagCommandHandler : IRequestHandler<DesvincularTagComman
 
     public async Task Handle(DesvincularTagCommand request, CancellationToken ct)
     {
-        var tag = await _db.TagsIdentificacao.FirstOrDefaultAsync(t => t.Id == request.Id, ct)
+        var tag = await _db.TagsIdentificacao.NoEscopoDaObra(_db).FirstOrDefaultAsync(t => t.Id == request.Id, ct)
             ?? throw new KeyNotFoundException($"Tag {request.Id} não encontrada.");
 
         tag.EntidadeVinculadaTipo = null;

@@ -1,4 +1,5 @@
 using AAHBRANT.SST.Application.Common.Interfaces;
+using AAHBRANT.SST.Application.Common.Seguranca;
 using MediatR;
 using Microsoft.EntityFrameworkCore;
 
@@ -23,6 +24,9 @@ public class ObterFotoEvidenciaDdsQueryHandler : IRequestHandler<ObterFotoEviden
     {
         var foto = await _db.DdsFotosEvidencia.FirstOrDefaultAsync(f => f.Id == request.FotoId, ct);
         if (foto is null) return null;
+        if (!await _db.ObraDoPaiNoEscopoAsync(
+                _db.Dds.IgnoreQueryFilters().Where(d => d.Id == foto.DdsId).Select(d => d.ObraId), ct))
+            return null;
 
         var extensao = foto.FotoContentType == "image/png" ? "png" : "jpg";
         return new FotoEvidenciaDdsResultado

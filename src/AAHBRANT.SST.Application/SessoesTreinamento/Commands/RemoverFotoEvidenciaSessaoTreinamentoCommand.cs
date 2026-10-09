@@ -1,4 +1,5 @@
 using AAHBRANT.SST.Application.Common.Interfaces;
+using AAHBRANT.SST.Application.Common.Seguranca;
 using FluentValidation;
 using MediatR;
 using Microsoft.EntityFrameworkCore;
@@ -26,6 +27,9 @@ public class RemoverFotoEvidenciaSessaoTreinamentoCommandHandler : IRequestHandl
     {
         var foto = await _db.FotosEvidenciaSessaoTreinamento.FirstOrDefaultAsync(f => f.Id == request.FotoId, ct)
             ?? throw new KeyNotFoundException($"Foto de evidência {request.FotoId} não encontrada.");
+        await _db.GarantirObraDoPaiNoEscopoAsync(
+            _db.SessoesTreinamento.IgnoreQueryFilters().Where(s => s.Id == foto.SessaoTreinamentoId).Select(s => s.ObraId),
+            $"Foto de evidência {request.FotoId} não encontrada.", ct);
 
         _db.FotosEvidenciaSessaoTreinamento.Remove(foto);
         await _db.SaveChangesAsync(ct);

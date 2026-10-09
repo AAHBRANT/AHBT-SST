@@ -1,5 +1,6 @@
 using AAHBRANT.SST.Application.Assinatura;
 using AAHBRANT.SST.Application.Common.Seguranca;
+using AAHBRANT.SST.Application.TagsIdentificacao;
 using AAHBRANT.SST.Infrastructure.Persistencia;
 using AAHBRANT.SST.Infrastructure.Seguranca;
 using Microsoft.EntityFrameworkCore;
@@ -54,6 +55,25 @@ public class EscopoObraTraducaoSqlTests
         Assert.Contains("[Trabalhadores]", db.Treinamentos.NoEscopoDoTrabalhador(db, x => x.TrabalhadorId).ToQueryString());
         Assert.Contains("[Trabalhadores]", db.EntregasEpi.NoEscopoDoTrabalhador(db, x => x.TrabalhadorId).ToQueryString());
         Assert.Contains("[Trabalhadores]", db.EntregasUniforme.NoEscopoDoTrabalhador(db, x => x.TrabalhadorId).ToQueryString());
+    }
+
+    [Fact]
+    public void NaoConformidadeEquipePlanoAcao_TraduzemParaSqlServer()
+    {
+        using var db = CriarContextoSqlServerRestrito();
+
+        Assert.Contains("[InspecaoItemRespostas]", db.NaoConformidades.NoEscopoDaObra(db).ToQueryString());
+        Assert.Contains("[Setores]", db.Equipes.NoEscopoDaObra(db).ToQueryString());
+        Assert.Contains("[Pgrs]", db.PlanoAcaoItens.NoEscopoDaObra(db).ToQueryString());
+        Assert.Contains("[Atividades]", db.Riscos.NoEscopoDaAtividade(db, r => r.AtividadeId).ToQueryString());
+    }
+
+    [Fact]
+    public void TagsIdentificacao_TraduzParaSqlServer()
+    {
+        using var db = CriarContextoSqlServerRestrito();
+
+        Assert.Contains("[AreasSst]", db.TagsIdentificacao.NoEscopoDaObra(db).ToQueryString());
     }
 
     [Theory]

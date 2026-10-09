@@ -1,4 +1,5 @@
 using AAHBRANT.SST.Application.Common.Interfaces;
+using AAHBRANT.SST.Application.Common.Seguranca;
 using MediatR;
 using Microsoft.EntityFrameworkCore;
 
@@ -16,6 +17,9 @@ public class ObterFotoDepoisItemInspecaoQueryHandler : IRequestHandler<ObterFoto
     {
         var resposta = await _db.InspecaoItemRespostas.FirstOrDefaultAsync(r => r.Id == request.RespostaId, ct);
         if (resposta is null || resposta.FotoDepoisConteudo is null || resposta.FotoDepoisConteudo.Length == 0) return null;
+        if (!await _db.ObraDoPaiNoEscopoAsync(
+                _db.Inspecoes.IgnoreQueryFilters().Where(i => i.Id == resposta.InspecaoId).Select(i => i.ObraId), ct))
+            return null;
 
         var extensao = resposta.FotoDepoisContentType == "image/png" ? "png" : "jpg";
         return new FotoItemInspecaoResultado

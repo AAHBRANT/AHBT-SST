@@ -1,4 +1,5 @@
 using AAHBRANT.SST.Application.Common.Interfaces;
+using AAHBRANT.SST.Application.Common.Seguranca;
 using FluentValidation;
 using MediatR;
 using Microsoft.EntityFrameworkCore;
@@ -25,7 +26,7 @@ public class AtualizarEquipeCommandHandler : IRequestHandler<AtualizarEquipeComm
 
     public async Task Handle(AtualizarEquipeCommand request, CancellationToken ct)
     {
-        var equipe = await _db.Equipes.FirstOrDefaultAsync(e => e.Id == request.Id, ct)
+        var equipe = await _db.Equipes.NoEscopoDaObra(_db).FirstOrDefaultAsync(e => e.Id == request.Id, ct)
             ?? throw new KeyNotFoundException($"Equipe {request.Id} não encontrada.");
 
         var setorExiste = await _db.Setores.AnyAsync(s => s.Id == request.SetorId, ct);

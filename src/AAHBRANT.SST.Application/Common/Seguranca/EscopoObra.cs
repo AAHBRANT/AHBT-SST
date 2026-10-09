@@ -1,5 +1,6 @@
 using System.Linq.Expressions;
 using AAHBRANT.SST.Application.Common.Interfaces;
+using AAHBRANT.SST.Domain.Entidades;
 using Microsoft.EntityFrameworkCore;
 
 namespace AAHBRANT.SST.Application.Common.Seguranca;
@@ -95,6 +96,93 @@ public static class EscopoObra
     {
         if (!await db.PermissoesTrabalho.NoEscopoDaAtividade(db, p => p.AtividadeId).AnyAsync(p => p.Id == permissaoTrabalhoId, ct))
             throw new KeyNotFoundException($"Permissão de Trabalho {permissaoTrabalhoId} não encontrada.");
+    }
+
+    // NC chega à obra pela atividade, pelo risco (→ atividade) ou pelo item de inspeção (→ inspeção).
+    // NC sem nenhum desses vínculos não tem obra: continua visível como antes (senão sumiria de quem
+    // a registrou), até a NC ganhar ObraId próprio.
+    public static IQueryable<NaoConformidade> NoEscopoDaObra(this IQueryable<NaoConformidade> query, IAppDbContext db)
+    {
+        if (db.EscopoObraGlobal)
+            return query;
+
+        var obras = db.ObrasNoEscopo;
+        var atividades = db.Atividades.IgnoreQueryFilters().Where(a => obras.Contains(a.ObraId)).Select(a => a.Id);
+        var riscos = db.Riscos.IgnoreQueryFilters().Where(r => atividades.Contains(r.AtividadeId)).Select(r => r.Id);
+        var inspecoes = db.Inspecoes.IgnoreQueryFilters().Where(i => obras.Contains(i.ObraId)).Select(i => i.Id);
+        var respostas = db.InspecaoItemRespostas.IgnoreQueryFilters().Where(r => inspecoes.Contains(r.InspecaoId)).Select(r => r.Id);
+
+        return query.Where(n =>
+            (n.AtividadeId == null && n.RiscoId == null && n.InspecaoItemRespostaId == null)
+            || (n.AtividadeId != null && atividades.Contains(n.AtividadeId.Value))
+            || (n.RiscoId != null && riscos.Contains(n.RiscoId.Value))
+            || (n.InspecaoItemRespostaId != null && respostas.Contains(n.InspecaoItemRespostaId.Value)));
+    }
+
+    public static async Task GarantirNaoConformidadeNoEscopoAsync(this IAppDbContext db, Guid naoConformidadeId, CancellationToken ct)
+    {
+        if (!await db.NaoConformidades.NoEscopoDaObra(db).AnyAsync(n => n.Id == naoConformidadeId, ct))
+            throw new KeyNotFoundException($"Não conformidade {naoConformidadeId} não encontrada.");
+    }
+
+    public static async Task GarantirRiscoNoEscopoAsync(this IAppDbContext db, Guid riscoId, CancellationToken ct)
+    {
+        if (!await db.Riscos.NoEscopoDaAtividade(db, r => r.AtividadeId).AnyAsync(r => r.Id == riscoId, ct))
+            throw new KeyNotFoundException($"Risco {riscoId} não encontrado.");
+    }
+
+    // Equipe chega à obra pelo Setor. A listagem lia Setor/Obra com IgnoreQueryFilters (para mostrar
+    // o nome da obra) e por isso devolvia as equipes de todas as obras.
+    public static IQueryable<Equipe> NoEscopoDaObra(this IQueryable<Equipe> query, IAppDbContext db)
+    {
+        if (db.EscopoObraGlobal)
+            return query;
+
+        var obras = db.ObrasNoEscopo;
+        var setores = db.Setores.IgnoreQueryFilters().Where(s => obras.Contains(s.ObraId)).Select(s => s.Id);
+        return query.Where(e => setores.Contains(e.SetorId));
+    }
+
+    // Plano de ação do PGR (PlanoAcaoItem) chega à obra pelo PGR.
+    public static IQueryable<PlanoAcaoItem> NoEscopoDaObra(this IQueryable<PlanoAcaoItem> query, IAppDbContext db)
+    {
+        if (db.EscopoObraGlobal)
+            return query;
+
+        var obras = db.ObrasNoEscopo;
+        var pgrs = db.Pgrs.IgnoreQueryFilters().Where(p => obras.Contains(p.ObraId)).Select(p => p.Id);
+        return query.Where(i => pgrs.Contains(i.PgrId));
+    }
+
+    public static async Task GarantirPgrNoEscopoAsync(this IAppDbContext db, Guid pgrId, CancellationToken ct)
+    {
+        if (db.EscopoObraGlobal)
+            return;
+
+        var obras = db.ObrasNoEscopo;
+        if (!await db.Pgrs.IgnoreQueryFilters().AnyAsync(p => p.Id == pgrId && obras.Contains(p.ObraId), ct))
+            throw new KeyNotFoundException($"PGR {pgrId} não encontrado.");
+    }
+
+    // AcaoPlano é polimórfica (OrigemTipo/OrigemId). Origens em uso: Não Conformidade, Acidente,
+    // Reunião da CIPA e PCMSO. Origem desconhecida fica fechada para usuário restrito.
+    public static async Task GarantirOrigemAcaoPlanoNoEscopoAsync(this IAppDbContext db, string origemTipo, Guid origemId, CancellationToken ct)
+    {
+        if (db.EscopoObraGlobal)
+            return;
+
+        var obras = db.ObrasNoEscopo;
+        var permitido = origemTipo switch
+        {
+            nameof(NaoConformidade) => await db.NaoConformidades.NoEscopoDaObra(db).AnyAsync(n => n.Id == origemId, ct),
+            nameof(Acidente) => await db.Acidentes.IgnoreQueryFilters().AnyAsync(a => a.Id == origemId && obras.Contains(a.ObraId), ct),
+            nameof(ReuniaoCipa) => await db.ReunioesCipa.IgnoreQueryFilters().AnyAsync(r => r.Id == origemId && obras.Contains(r.ObraId), ct),
+            "Pcmso" => await db.PcmsoDetalhes.IgnoreQueryFilters()
+                .AnyAsync(p => p.Id == origemId && p.ObraId != null && obras.Contains(p.ObraId.Value), ct),
+            _ => false,
+        };
+        if (!permitido)
+            throw new KeyNotFoundException("Origem do plano de ação não encontrada.");
     }
 
     public static bool ObraNoEscopo(this IAppDbContext db, Guid? obraId) =>

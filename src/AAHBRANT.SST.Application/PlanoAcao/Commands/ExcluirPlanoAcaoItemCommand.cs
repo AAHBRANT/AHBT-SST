@@ -1,4 +1,5 @@
 using AAHBRANT.SST.Application.Common.Interfaces;
+using AAHBRANT.SST.Application.Common.Seguranca;
 using FluentValidation;
 using MediatR;
 using Microsoft.EntityFrameworkCore;
@@ -23,7 +24,7 @@ public class ExcluirPlanoAcaoItemCommandHandler : IRequestHandler<ExcluirPlanoAc
 
     public async Task Handle(ExcluirPlanoAcaoItemCommand request, CancellationToken ct)
     {
-        var item = await _db.PlanoAcaoItens.FirstOrDefaultAsync(i => i.Id == request.Id, ct)
+        var item = await _db.PlanoAcaoItens.NoEscopoDaObra(_db).FirstOrDefaultAsync(i => i.Id == request.Id, ct)
             ?? throw new KeyNotFoundException($"Item de plano de ação {request.Id} não encontrado.");
 
         _db.PlanoAcaoItens.Remove(item);

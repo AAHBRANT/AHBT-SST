@@ -1,5 +1,6 @@
 using AAHBRANT.SST.Application.Common;
 using AAHBRANT.SST.Application.Common.Interfaces;
+using AAHBRANT.SST.Application.Common.Seguranca;
 using FluentValidation;
 using MediatR;
 using Microsoft.EntityFrameworkCore;
@@ -44,6 +45,9 @@ public class AnexarArquivoTreinamentoCipaCommandHandler : IRequestHandler<Anexar
     {
         var treinamento = await _db.TreinamentosCipa.FirstOrDefaultAsync(t => t.Id == request.TreinamentoId, ct)
             ?? throw new KeyNotFoundException($"Treinamento {request.TreinamentoId} não encontrado.");
+        await _db.GarantirObraDoPaiNoEscopoAsync(
+            _db.MembrosCipa.IgnoreQueryFilters().Where(m => m.Id == treinamento.MembroCipaId).Select(m => m.ObraId),
+            $"Treinamento {request.TreinamentoId} não encontrado.", ct);
 
         if (request.Tipo == TipoArquivoTreinamentoCipa.Certificado)
         {

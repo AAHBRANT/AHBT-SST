@@ -1,4 +1,5 @@
 using AAHBRANT.SST.Application.Common.Interfaces;
+using AAHBRANT.SST.Application.Common.Seguranca;
 using FluentValidation;
 using MediatR;
 using Microsoft.EntityFrameworkCore;
@@ -23,7 +24,7 @@ public class ExcluirEquipeCommandHandler : IRequestHandler<ExcluirEquipeCommand>
 
     public async Task Handle(ExcluirEquipeCommand request, CancellationToken ct)
     {
-        var equipe = await _db.Equipes.FirstOrDefaultAsync(e => e.Id == request.Id, ct)
+        var equipe = await _db.Equipes.NoEscopoDaObra(_db).FirstOrDefaultAsync(e => e.Id == request.Id, ct)
             ?? throw new KeyNotFoundException($"Equipe {request.Id} não encontrada.");
 
         _db.Equipes.Remove(equipe);

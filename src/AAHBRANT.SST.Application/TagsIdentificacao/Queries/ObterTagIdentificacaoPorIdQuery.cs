@@ -15,6 +15,7 @@ public class ObterTagIdentificacaoPorIdQueryHandler : IRequestHandler<ObterTagId
     public async Task<TagIdentificacaoDto?> Handle(ObterTagIdentificacaoPorIdQuery request, CancellationToken ct)
     {
         return await _db.TagsIdentificacao
+            .NoEscopoDaObra(_db)
             .Where(t => t.Id == request.Id)
             .Select(t => new TagIdentificacaoDto
             {

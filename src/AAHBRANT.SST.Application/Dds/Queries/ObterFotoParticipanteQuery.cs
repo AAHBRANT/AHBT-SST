@@ -1,4 +1,5 @@
 using AAHBRANT.SST.Application.Common.Interfaces;
+using AAHBRANT.SST.Application.Common.Seguranca;
 using MediatR;
 using Microsoft.EntityFrameworkCore;
 
@@ -25,6 +26,9 @@ public class ObterFotoParticipanteQueryHandler : IRequestHandler<ObterFotoPartic
             .FirstOrDefaultAsync(p => p.Id == request.ParticipanteId, ct);
 
         if (participante is null || participante.FotoConteudo.Length == 0) return null;
+        if (!await _db.ObraDoPaiNoEscopoAsync(
+                _db.Dds.IgnoreQueryFilters().Where(d => d.Id == participante.DdsId).Select(d => d.ObraId), ct))
+            return null;
 
         var extensao = participante.FotoContentType == "image/png" ? "png" : "jpg";
         return new FotoParticipanteResultado

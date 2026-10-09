@@ -1,4 +1,5 @@
 using AAHBRANT.SST.Application.Common.Interfaces;
+using AAHBRANT.SST.Application.Common.Seguranca;
 using AAHBRANT.SST.Domain.Entidades;
 using AAHBRANT.SST.Domain.Enums;
 using FluentValidation;
@@ -47,6 +48,11 @@ public class CriarPcmsoCommandHandler : IRequestHandler<CriarPcmsoCommand, Guid>
 
     public async Task<Guid> Handle(CriarPcmsoCommand request, CancellationToken ct)
     {
+        // Usuário restrito só grava PCMSO numa obra dele. "Nenhuma obra" (ObraId nulo) só aparece para
+        // acesso global (filtro do SstDbContext), então o restrito perderia o próprio registro.
+        if (!_db.ObraNoEscopo(request.ObraId))
+            throw new KeyNotFoundException("Obra não encontrada. Selecione uma obra à qual você tem acesso.");
+
         var pcmso = new PcmsoDetalhe
         {
             NumeroDocumento = await _geradorNumero.GerarAsync("PCMSO", ct),

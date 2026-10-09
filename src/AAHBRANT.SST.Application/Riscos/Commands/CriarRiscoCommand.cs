@@ -1,4 +1,5 @@
 using AAHBRANT.SST.Application.Common.Interfaces;
+using AAHBRANT.SST.Application.Common.Seguranca;
 using AAHBRANT.SST.Domain.Entidades;
 using AAHBRANT.SST.Domain.Enums;
 using FluentValidation;
@@ -40,6 +41,8 @@ public class CriarRiscoCommandHandler : IRequestHandler<CriarRiscoCommand, Guid>
 
     public async Task<Guid> Handle(CriarRiscoCommand request, CancellationToken ct)
     {
+        await _db.GarantirAtividadeNoEscopoAsync(request.AtividadeId, ct);
+
         var nivelRisco = await NivelRiscoLookup.ResolverAsync(_db, request.AtividadeId, request.Probabilidade, request.Severidade, ct);
 
         var risco = new Risco

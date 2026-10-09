@@ -1,4 +1,5 @@
 using AAHBRANT.SST.Application.Common.Interfaces;
+using AAHBRANT.SST.Application.Common.Seguranca;
 using AAHBRANT.SST.Domain.Entidades;
 using AAHBRANT.SST.Domain.Enums;
 using FluentValidation;
@@ -37,22 +38,24 @@ public class CriarNaoConformidadeDeItemCommandHandler : IRequestHandler<CriarNao
 
     public async Task<Guid> Handle(CriarNaoConformidadeDeItemCommand request, CancellationToken ct)
     {
-        var existente = await _db.NaoConformidades
-            .FirstOrDefaultAsync(n => n.InspecaoItemRespostaId == request.InspecaoItemRespostaId, ct);
-        if (existente is not null)
-            return existente.Id;
-
         var item = await _db.InspecaoItemRespostas
             .Include(i => i.Inspecao)
             .Include(i => i.ChecklistModeloItem)
             .FirstOrDefaultAsync(i => i.Id == request.InspecaoItemRespostaId, ct)
             ?? throw new KeyNotFoundException($"Item de inspeção {request.InspecaoItemRespostaId} não encontrado.");
 
+        // Depois de carregar o item (Include da Inspeção filtrada por obra): devolver o id da NC
+        // existente antes disso respondia sobre item de inspeção de outra obra.
+        var existente = await _db.NaoConformidades
+            .FirstOrDefaultAsync(n => n.InspecaoItemRespostaId == request.InspecaoItemRespostaId, ct);
+        if (existente is not null)
+            return existente.Id;
+
         if (item.StatusItem != StatusItemChecklist.NaoConforme)
             throw new InvalidOperationException(
                 "Só é possível gerar ocorrência a partir de um item marcado como não conforme.");
 
-        if (request.RiscoId.HasValue && !await _db.Riscos.AnyAsync(r => r.Id == request.RiscoId, ct))
+        if (request.RiscoId.HasValue && !await _db.Riscos.NoEscopoDaAtividade(_db, r => r.AtividadeId).AnyAsync(r => r.Id == request.RiscoId, ct))
             throw new KeyNotFoundException($"Risco {request.RiscoId} não encontrado.");
 
         var responsavelId = request.ResponsavelUsuarioId ?? item.ResponsavelUsuarioId;

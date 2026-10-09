@@ -1,4 +1,5 @@
 using AAHBRANT.SST.Application.Common.Interfaces;
+using AAHBRANT.SST.Application.Common.Seguranca;
 using AAHBRANT.SST.Domain.Enums;
 using MediatR;
 using Microsoft.EntityFrameworkCore;
@@ -55,8 +56,11 @@ public class ResolverTrabalhadorPublicoQueryHandler : IRequestHandler<ResolverTr
             .Select(f => f.Nome)
             .FirstOrDefaultAsync(ct);
 
+        // Estar autenticado não basta (auditoria 09/10/2026): o status do ASO só sai para quem tem
+        // acesso à obra do trabalhador. Comparação EM MEMÓRIA com a ObraId já carregada — rota
+        // anônima, nada de JOIN com entidade filtrada aqui (o EF não traduz o filtro sem usuário).
         string? statusAptidao = null;
-        if (request.IncluirDadosSensiveis)
+        if (request.IncluirDadosSensiveis && _db.ObraNoEscopo(trabalhador.ObraId))
         {
             var resultadoAsoMaisRecente = await _db.Asos
                 .Where(a => a.TrabalhadorId == trabalhadorId)
