@@ -1,4 +1,5 @@
 using AAHBRANT.SST.Application.Acidentes;
+using AAHBRANT.SST.Application.Acidentes.RelatoIa;
 using AAHBRANT.SST.Application.AcoesPlano;
 using AAHBRANT.SST.Application.Common.Interfaces;
 using AAHBRANT.SST.Domain.Entidades;
@@ -30,7 +31,13 @@ public record CriarAcidenteCommand(
     int? DiasDebitadosInformados,
     List<Guid>? TrabalhadoresIds = null,
     // Plano de ação revisado pelo técnico no registro por relato (IA). Criado junto com o acidente.
-    List<AcaoPlanoNovaOcorrencia>? AcoesPlano = null) : IRequest<Guid>;
+    List<AcaoPlanoNovaOcorrencia>? AcoesPlano = null,
+    // Tema obrigatório do DDS do próximo dia útil (registro por relato).
+    TemaDdsNovaOcorrencia? TemaDds = null,
+    // Preenchido pelo controller a partir do token (nunca do corpo): responsável pela ação de DDS.
+    Guid? UsuarioAtualId = null) : IRequest<Guid>;
+
+public record TemaDdsNovaOcorrencia(string Nome, string Roteiro);
 
 public record AcaoPlanoNovaOcorrencia(
     TipoAcaoPlano Tipo,
@@ -57,6 +64,14 @@ public class CriarAcidenteCommandValidator : AbstractValidator<CriarAcidenteComm
             .NotNull().WithMessage("Informe os Dias Debitados consultando o Quadro III da NBR 14280.")
             .GreaterThan(0)
             .When(x => x.Gravidade == GravidadeAcidente.IncapacidadePermanenteParcial);
+        // Registro por relato (veio plano de ação): o tema do DDS do dia seguinte é obrigatório.
+        RuleFor(x => x.TemaDds)
+            .NotNull().WithMessage("Informe o tema do DDS do dia seguinte.")
+            .When(x => x.AcoesPlano is not null);
+        RuleFor(x => x.TemaDds!.Nome).NotEmpty().WithMessage("Informe o tema do DDS do dia seguinte.").MaximumLength(200)
+            .When(x => x.TemaDds is not null);
+        RuleFor(x => x.TemaDds!.Roteiro).NotEmpty().WithMessage("Informe o roteiro do DDS do dia seguinte.").MaximumLength(1000)
+            .When(x => x.TemaDds is not null);
         RuleForEach(x => x.AcoesPlano).ChildRules(a =>
         {
             a.RuleFor(x => x.Descricao).NotEmpty().MaximumLength(500);
@@ -126,8 +141,43 @@ public class CriarAcidenteCommandHandler : IRequestHandler<CriarAcidenteCommand,
                 Fundamentacao = string.IsNullOrWhiteSpace(acao.Fundamentacao) ? null : acao.Fundamentacao.Trim(),
             });
         }
+
+        if (request.TemaDds is not null)
+            AgendarTemaDds(acidente, request.TemaDds, request.UsuarioAtualId);
         await _db.SaveChangesAsync(ct);
         await _publicadorGrh.PublicarAsync(await AcidenteGrhEventoFactory.CriarAsync(_db, acidente, ct), ct);
         return acidente.Id;
+    }
+
+    // O tema vira item do catálogo (fica disponível para outras obras também), ação do plano e
+    // agendamento no DDS do próximo dia útil desta obra. A ação é concluída quando o DDS daquele dia
+    // é encerrado com o tema (EncerrarDdsCommand).
+    private void AgendarTemaDds(Acidente acidente, TemaDdsNovaOcorrencia tema, Guid? usuarioAtualId)
+    {
+        var dia = CalendarioObra.ProximoDiaUtil(CalendarioObra.AgoraEmBrasilia());
+        var catalogo = new CatalogoTemaDds { Nome = tema.Nome.Trim(), Descricao = tema.Roteiro.Trim() };
+        var acao = new AcaoPlano
+        {
+            OrigemTipo = nameof(Acidente),
+            OrigemId = acidente.Id,
+            Tipo = TipoAcaoPlano.Preventiva,
+            Prioridade = PrioridadeAcao.Alta,
+            Descricao = $"Realizar o DDS \"{catalogo.Nome}\" com a equipe da obra.",
+            Prazo = dia,
+            ResponsavelUsuarioId = usuarioAtualId,
+            Fundamentacao = "DDS do dia seguinte · tema gerado a partir da ocorrência (obrigatório)",
+        };
+        _db.CatalogosTemaDds.Add(catalogo);
+        _db.AcoesPlano.Add(acao);
+        _db.TemasDdsAgendados.Add(new TemaDdsAgendado
+        {
+            ObraId = acidente.ObraId,
+            Data = dia,
+            CatalogoTemaDdsId = catalogo.Id,
+            OrigemTipo = nameof(Acidente),
+            OrigemId = acidente.Id,
+            DescricaoOrigem = $"ocorrência de {acidente.Data:dd/MM} · {acidente.Local}",
+            AcaoPlanoId = acao.Id,
+        });
     }
 }

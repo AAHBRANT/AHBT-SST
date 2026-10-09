@@ -40,7 +40,7 @@ import {
 } from '../../lib/api';
 import { HhtMensalTab } from './HhtMensalTab';
 import { RelatoOcorrenciaIa } from './RelatoOcorrenciaIa';
-import { novaChaveAcao, PlanoAcaoOcorrenciaIa, type AcaoPlanoEmEdicao } from './PlanoAcaoOcorrenciaIa';
+import { novaChaveAcao, PlanoAcaoOcorrenciaIa, type AcaoPlanoEmEdicao, type TemaDdsEmEdicao } from './PlanoAcaoOcorrenciaIa';
 
 // Campos que a IA pode preencher a partir do relato. Mostram o selo "IA" até o técnico editá-los.
 type CampoIa =
@@ -119,6 +119,7 @@ export function AcidentesPage({ tipoFixo }: { tipoFixo?: number } = {}) {
   const [metodologia, setMetodologia] = useState<number | null>(null);
   const [causas, setCausas] = useState('');
   const [acoesPlano, setAcoesPlano] = useState<AcaoPlanoEmEdicao[]>([]);
+  const [temaDds, setTemaDds] = useState<TemaDdsEmEdicao | null>(null);
   const [usuarios, setUsuarios] = useState<Usuario[]>([]);
   const [gerandoPlano, setGerandoPlano] = useState(false);
 
@@ -204,6 +205,7 @@ export function AcidentesPage({ tipoFixo }: { tipoFixo?: number } = {}) {
       });
       setMetodologia(plano.metodologia);
       setCausas(plano.causas ?? '');
+      setTemaDds({ nome: plano.temaDds.nome, roteiro: plano.temaDds.roteiro, data: plano.temaDds.data.slice(0, 10) });
       setAcoesPlano(
         plano.acoes.map((a) => ({
           chave: novaChaveAcao(),
@@ -308,6 +310,11 @@ export function AcidentesPage({ tipoFixo }: { tipoFixo?: number } = {}) {
       setErro('Informe a descrição da ocorrência.');
       return;
     }
+    // Registro por relato: o tema do DDS do dia seguinte é obrigatório (regra do usuário, 08/10/2026).
+    if (versaoRelato > 0 && (!temaDds?.nome.trim() || !temaDds.roteiro.trim())) {
+      setErro(gerandoPlano ? 'Aguarde a IA terminar o plano de ação.' : 'Informe o tema e o roteiro do DDS do dia seguinte.');
+      return;
+    }
     try {
       setCarregando(true);
       setErro(null);
@@ -334,6 +341,7 @@ export function AcidentesPage({ tipoFixo }: { tipoFixo?: number } = {}) {
             responsavelUsuarioId: a.responsavelUsuarioId || null,
             fundamentacao: a.fundamentacao,
           })),
+        temaDds: versaoRelato > 0 && temaDds ? { nome: temaDds.nome.trim(), roteiro: temaDds.roteiro.trim() } : undefined,
       });
       setNova(novaInicial());
       setCamposIa(new Set());
@@ -343,6 +351,7 @@ export function AcidentesPage({ tipoFixo }: { tipoFixo?: number } = {}) {
       setMetodologia(null);
       setCausas('');
       setAcoesPlano([]);
+      setTemaDds(null);
       await carregar();
     } catch (e) {
       setErro(e instanceof Error ? e.message : 'Falha ao registrar ocorrência.');
@@ -595,6 +604,8 @@ export function AcidentesPage({ tipoFixo }: { tipoFixo?: number } = {}) {
 
             {versaoRelato > 0 && (
               <PlanoAcaoOcorrenciaIa
+                temaDds={temaDds}
+                aoMudarTemaDds={setTemaDds}
                 metodologia={metodologia}
                 causas={causas}
                 acoes={acoesPlano}

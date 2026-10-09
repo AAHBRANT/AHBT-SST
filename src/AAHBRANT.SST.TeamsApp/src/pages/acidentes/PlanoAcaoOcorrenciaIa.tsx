@@ -34,7 +34,15 @@ export interface AcaoPlanoEmEdicao {
   sugeridaPelaIa: boolean;
 }
 
+export interface TemaDdsEmEdicao {
+  nome: string;
+  roteiro: string;
+  data: string; // yyyy-MM-dd — próximo dia útil, calculado no servidor
+}
+
 interface Props {
+  temaDds: TemaDdsEmEdicao | null;
+  aoMudarTemaDds: (tema: TemaDdsEmEdicao) => void;
   metodologia: number | null;
   causas: string;
   acoes: AcaoPlanoEmEdicao[];
@@ -55,6 +63,14 @@ const cartao = {
   backgroundColor: designTokens.colorSurface,
 } as const;
 
+const cartaoObrigatorio = { ...cartao, border: `1px solid ${designTokens.colorPrimary}` } as const;
+
+const formatarDia = (iso: string) => {
+  const [a, m, d] = iso.split('-').map(Number);
+  if (!a || !m || !d) return iso;
+  return new Date(a, m - 1, d).toLocaleDateString('pt-BR', { weekday: 'short', day: '2-digit', month: '2-digit' });
+};
+
 const fundamentacaoEstilo = (confirmada: boolean) =>
   ({
     fontSize: 12,
@@ -71,6 +87,8 @@ export const novaChaveAcao = () => `acao-${Date.now()}-${contador++}`;
 // Seções 3 (análise preliminar de causas) e 4 (plano de ação) do registro por relato. Tudo que a
 // IA sugeriu é editável; nada é gravado antes do "Registrar".
 export function PlanoAcaoOcorrenciaIa({
+  temaDds,
+  aoMudarTemaDds,
   metodologia,
   causas,
   acoes,
@@ -149,6 +167,44 @@ export function PlanoAcaoOcorrenciaIa({
             Cada ação já sai com responsável e prazo (regra de prazo por prioridade da empresa). A base indica de onde
             a ação veio: o PGR da obra, um requisito legal cadastrado ou a hierarquia de prevenção da NR-01.
           </Legenda>
+          {temaDds && (
+            <div style={cartaoObrigatorio}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+                <strong style={{ fontSize: 13 }}>DDS do dia seguinte</strong>
+                <span style={fundamentacaoEstilo(true)}>Obrigatória</span>
+              </div>
+              <FormGrid>
+                <Campo span={12}>
+                  <Field label="Tema" required dica="Tema que o encarregado vai apresentar no DDS. Fica disponível no catálogo de temas.">
+                    <Textarea
+                      value={temaDds.nome}
+                      onChange={(_, d) => aoMudarTemaDds({ ...temaDds, nome: d.value })}
+                      rows={1}
+                      resize="vertical"
+                    />
+                  </Field>
+                </Campo>
+                <Campo span={12}>
+                  <Field
+                    label="Roteiro para o encarregado"
+                    required
+                    dica="Texto para ler em voz alta no DDS: o que aconteceu, por que é perigoso e como prevenir. Sem nomes e sem culpados."
+                  >
+                    <Textarea
+                      value={temaDds.roteiro}
+                      onChange={(_, d) => aoMudarTemaDds({ ...temaDds, roteiro: d.value })}
+                      rows={5}
+                      resize="vertical"
+                    />
+                  </Field>
+                </Campo>
+              </FormGrid>
+              <Legenda>
+                Será agendado para o DDS de <strong>{formatarDia(temaDds.data)}</strong> nesta obra e já virá selecionado
+                quando o técnico abrir o registro do dia. A ação do plano é concluída quando o DDS for encerrado com este tema.
+              </Legenda>
+            </div>
+          )}
           {acoes.map((acao, indice) => (
             <div key={acao.chave} style={cartao}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>

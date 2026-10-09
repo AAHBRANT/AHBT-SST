@@ -102,6 +102,7 @@ public interface IAppDbContext
     DbSet<DdsFuncionarioSelecionado> DdsFuncionariosSelecionados { get; }
     DbSet<DdsSemanal> DdsSemanais { get; }
     DbSet<CatalogoTemaDds> CatalogosTemaDds { get; }
+    DbSet<TemaDdsAgendado> TemasDdsAgendados { get; }
     DbSet<DdsFotoEvidencia> DdsFotosEvidencia { get; }
 
     DbSet<NaoConformidade> NaoConformidades { get; }

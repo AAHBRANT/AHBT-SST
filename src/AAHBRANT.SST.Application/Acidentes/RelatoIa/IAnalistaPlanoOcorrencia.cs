@@ -25,7 +25,12 @@ public record RiscoPgrResumo(string Perigo, int Nivel, string? Consequencia, str
 public record RequisitoLegalResumo(string Norma, string? Item, string Titulo, string Descricao);
 
 /// <summary>Resposta bruta do modelo — enums e papéis como texto, base ainda não conferida.</summary>
-public record AnalisePlanoIa(string? Metodologia, string? Causas, IReadOnlyList<AcaoSugeridaIa> Acoes);
+public record AnalisePlanoIa(
+    string? Metodologia,
+    string? Causas,
+    IReadOnlyList<AcaoSugeridaIa> Acoes,
+    string? TemaDdsNome = null,
+    string? TemaDdsRoteiro = null);
 
 public record AcaoSugeridaIa(
     string? Tipo,

@@ -26,7 +26,11 @@ public record SugerirPlanoAcaoOcorrenciaCommand(
 public record PlanoAcaoSugeridoDto(
     MetodologiaInvestigacao? Metodologia,
     string? Causas,
-    IReadOnlyList<AcaoPlanoSugeridaDto> Acoes);
+    IReadOnlyList<AcaoPlanoSugeridaDto> Acoes,
+    TemaDdsSugeridoDto TemaDds);
+
+// Tema obrigatório do DDS do próximo dia útil da obra (entra no plano como ação de DDS).
+public record TemaDdsSugeridoDto(string Nome, string Roteiro, DateTime Data);
 
 public record AcaoPlanoSugeridaDto(
     TipoAcaoPlano Tipo,
@@ -132,7 +136,11 @@ public class SugerirPlanoAcaoOcorrenciaCommandHandler : IRequestHandler<SugerirP
         return new PlanoAcaoSugeridoDto(
             Enum.TryParse<MetodologiaInvestigacao>(analise.Metodologia, out var m) ? m : null,
             string.IsNullOrWhiteSpace(analise.Causas) ? null : Limitar(analise.Causas, 2000),
-            acoes);
+            acoes,
+            new TemaDdsSugeridoDto(
+                Limitar(string.IsNullOrWhiteSpace(analise.TemaDdsNome) ? $"Prevenção: {atividade ?? "lições da ocorrência"}" : analise.TemaDdsNome, 200),
+                Limitar(analise.TemaDdsRoteiro ?? string.Empty, 1000),
+                CalendarioObra.ProximoDiaUtil(CalendarioObra.AgoraEmBrasilia())));
     }
 
     private async Task<List<RequisitoLegalResumo>> RequisitosAplicaveisAsync(Guid? atividadeId, CancellationToken ct)

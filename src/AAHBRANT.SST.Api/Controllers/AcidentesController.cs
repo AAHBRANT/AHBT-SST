@@ -141,7 +141,8 @@ public class AcidentesController : ControllerBase
     [HttpPost]
     public async Task<IActionResult> Criar(CriarAcidenteCommand command, CancellationToken ct)
     {
-        var id = await _mediator.Send(command, ct);
+        // Quem registra é o responsável pela ação de DDS do dia seguinte — sempre pelo token.
+        var id = await _mediator.Send(command with { UsuarioAtualId = await UsuarioAtualIdAsync(ct) }, ct);
         return CreatedAtAction(nameof(ObterDetalhe), new { id }, new { id });
     }
 

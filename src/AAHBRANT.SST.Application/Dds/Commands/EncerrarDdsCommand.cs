@@ -43,6 +43,23 @@ public class EncerrarDdsCommandHandler : IRequestHandler<EncerrarDdsCommand>
 
         dds.Status = StatusDds.Concluido;
         dds.EncerradoEm = DateTime.UtcNow;
+
+        // DDS realizado com um tema agendado por ocorrência (vinculado na criação do registro do dia):
+        // conclui a ação "DDS do dia seguinte" do plano de ação dela.
+        var agendamento = await _db.TemasDdsAgendados.FirstOrDefaultAsync(t => t.DdsId == dds.Id, ct);
+        if (agendamento is not null)
+        {
+            agendamento.AplicadoEm = dds.EncerradoEm;
+            var acao = agendamento.AcaoPlanoId is null
+                ? null
+                : await _db.AcoesPlano.FirstOrDefaultAsync(a => a.Id == agendamento.AcaoPlanoId, ct);
+            if (acao is not null && acao.Status != StatusControleRisco.Concluido)
+            {
+                acao.Status = StatusControleRisco.Concluido;
+                acao.DataConclusao = dds.EncerradoEm;
+            }
+        }
+
         await _db.SaveChangesAsync(ct);
     }
 }

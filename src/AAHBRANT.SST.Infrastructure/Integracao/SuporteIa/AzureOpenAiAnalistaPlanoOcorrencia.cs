@@ -40,18 +40,30 @@ public class AzureOpenAiAnalistaPlanoOcorrencia : IAnalistaPlanoOcorrencia
           de trabalho; Técnico de Segurança para inspeção, treinamento e DDS; Engenheiro de Segurança
           para procedimento e análise técnica; Gestor de Obra para recursos, compras e estoque;
           Gestor QSMS para padrão corporativo).
-        - Não inclua ações de DDS nem de reunião de análise (são tratadas à parte).
+        - Não inclua ações de DDS nem de reunião de análise nas acoes (são tratadas à parte).
+        - temaDds: tema para o DDS do próximo dia útil na mesma obra, sobre a situação ou a atividade
+          da ocorrência, focado em prevenção. nome: até 60 caracteres. roteiro: até 900 caracteres,
+          texto para o encarregado ler em voz alta, com: o que aconteceu (refira-se como "recentemente
+          tivemos", sem citar nomes de pessoas e sem culpar ninguém), por que é perigoso e 3 a 4
+          medidas preventivas práticas. Não cite número de norma nem item.
         """;
 
     private static readonly object Schema = new
     {
         type = "object",
         additionalProperties = false,
-        required = new[] { "metodologia", "causas", "acoes" },
+        required = new[] { "metodologia", "causas", "acoes", "temaDds" },
         properties = new
         {
             metodologia = new { type = "string", @enum = new[] { "CincoPorques", "FatoresContribuintes", "FalhasDeBarreira", "AnaliseCausaRaiz", "ArvoreDeCausas" } },
             causas = new { type = "string" },
+            temaDds = new
+            {
+                type = "object",
+                additionalProperties = false,
+                required = new[] { "nome", "roteiro" },
+                properties = new { nome = new { type = "string" }, roteiro = new { type = "string" } },
+            },
             acoes = new
             {
                 type = "array",
@@ -112,10 +124,14 @@ public class AzureOpenAiAnalistaPlanoOcorrencia : IAnalistaPlanoOcorrencia
             r2.Causas,
             (r2.Acoes ?? new List<AcaoModelo>())
                 .Select(a => new AcaoSugeridaIa(a.Tipo, a.Descricao, a.Prioridade, a.PapelResponsavel, a.BaseOrigem, a.BasePerigo, a.BaseControle, a.BaseReferencia))
-                .ToList());
+                .ToList(),
+            r2.TemaDds?.Nome,
+            r2.TemaDds?.Roteiro);
     }
 
-    private sealed record RespostaModelo(string? Metodologia, string? Causas, List<AcaoModelo>? Acoes);
+    private sealed record RespostaModelo(string? Metodologia, string? Causas, List<AcaoModelo>? Acoes, TemaModelo? TemaDds);
+
+    private sealed record TemaModelo(string? Nome, string? Roteiro);
 
     private sealed record AcaoModelo(
         string? Tipo, string? Descricao, string? Prioridade, string? PapelResponsavel,

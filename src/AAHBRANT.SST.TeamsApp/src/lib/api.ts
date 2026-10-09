@@ -2904,6 +2904,16 @@ export interface PlanoAcaoSugerido {
   metodologia: number | null;
   causas: string | null;
   acoes: AcaoPlanoSugerida[];
+  // Tema obrigatório do DDS do próximo dia útil da obra.
+  temaDds: { nome: string; roteiro: string; data: string };
+}
+
+export interface TemaDdsAgendado {
+  id: string;
+  catalogoTemaDdsId: string;
+  nome: string;
+  roteiro: string | null;
+  descricaoOrigem: string | null;
 }
 
 export interface PlanoSugeridoOcorrenciaRequisicao {
@@ -2950,6 +2960,8 @@ export interface NovoAcidente {
   causas?: string | null;
   // Só no registro por relato (IA): plano de ação revisado, criado junto com a ocorrência.
   acoesPlano?: AcaoPlanoNovaOcorrencia[];
+  // Só no registro por relato (IA): tema obrigatório agendado para o DDS do próximo dia útil.
+  temaDds?: { nome: string; roteiro: string };
 }
 
 export type AtualizarAcidentePayload = NovoAcidente;
@@ -5089,6 +5101,8 @@ export const api = {
     excluir: (id: string) => request<void>(`/api/materiaisapoio/${id}`, { method: 'DELETE' }),
   },
   dds: {
+    temasAgendados: (obraId: string, data: string) =>
+      request<TemaDdsAgendado[]>(`/api/dds/temas-agendados?obraId=${obraId}&data=${encodeURIComponent(data.slice(0, 10))}`),
     listar: (obraId?: string) => request<Dds[]>(`/api/dds${obraId ? `?obraId=${obraId}` : ''}`),
     obterDetalhe: (id: string) => request<DdsDetalhe>(`/api/dds/${id}`),
     listarFuncionarios: (id: string) => request<DdsFuncionario[]>(`/api/dds/${id}/funcionarios-disponiveis`),
