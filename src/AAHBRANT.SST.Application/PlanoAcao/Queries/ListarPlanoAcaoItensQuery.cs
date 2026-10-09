@@ -1,4 +1,5 @@
 using AAHBRANT.SST.Application.Common.Interfaces;
+using AAHBRANT.SST.Application.Common.Seguranca;
 using AAHBRANT.SST.Application.Pgrs;
 using MediatR;
 using Microsoft.EntityFrameworkCore;
@@ -16,6 +17,7 @@ public class ListarPlanoAcaoItensQueryHandler : IRequestHandler<ListarPlanoAcaoI
     public async Task<List<PlanoAcaoItemDto>> Handle(ListarPlanoAcaoItensQuery request, CancellationToken ct)
     {
         var itens = await _db.PlanoAcaoItens
+            .NoEscopoDaObra(_db)
             .Where(i => i.PgrId == request.PgrId)
             .OrderByDescending(i => i.CreatedAtUtc)
             .ToListAsync(ct);

@@ -1,4 +1,5 @@
 using AAHBRANT.SST.Application.Common.Interfaces;
+using AAHBRANT.SST.Application.Common.Seguranca;
 using AAHBRANT.SST.Domain.Entidades;
 using AAHBRANT.SST.Domain.Enums;
 using FluentValidation;
@@ -37,7 +38,7 @@ public class EnviarNaoConformidadeCommandHandler : IRequestHandler<EnviarNaoConf
 
     public async Task Handle(EnviarNaoConformidadeCommand request, CancellationToken ct)
     {
-        var nc = await _db.NaoConformidades
+        var nc = await _db.NaoConformidades.NoEscopoDaObra(_db)
             .Include(n => n.Atividade)
             .FirstOrDefaultAsync(n => n.Id == request.Id, ct)
             ?? throw new KeyNotFoundException($"Não conformidade {request.Id} não encontrada.");

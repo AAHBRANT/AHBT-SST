@@ -1,4 +1,5 @@
 using AAHBRANT.SST.Application.Common.Interfaces;
+using AAHBRANT.SST.Application.Common.Seguranca;
 using FluentValidation;
 using MediatR;
 using Microsoft.EntityFrameworkCore;
@@ -25,6 +26,9 @@ public class MarcarItemChecklistCommandHandler : IRequestHandler<MarcarItemCheck
     {
         var item = await _db.DdsItensChecklist.FirstOrDefaultAsync(i => i.Id == request.ItemId, ct)
             ?? throw new KeyNotFoundException($"Item de checklist {request.ItemId} não encontrado.");
+        await _db.GarantirObraDoPaiNoEscopoAsync(
+            _db.Dds.IgnoreQueryFilters().Where(d => d.Id == item.DdsId).Select(d => d.ObraId),
+            $"Item de checklist {request.ItemId} não encontrado.", ct);
 
         item.Verificado = request.Verificado;
         await _db.SaveChangesAsync(ct);

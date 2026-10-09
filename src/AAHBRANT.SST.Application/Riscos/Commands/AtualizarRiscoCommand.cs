@@ -1,4 +1,5 @@
 using AAHBRANT.SST.Application.Common.Interfaces;
+using AAHBRANT.SST.Application.Common.Seguranca;
 using AAHBRANT.SST.Domain.Entidades;
 using AAHBRANT.SST.Domain.Enums;
 using FluentValidation;
@@ -44,9 +45,13 @@ public class AtualizarRiscoCommandHandler : IRequestHandler<AtualizarRiscoComman
     public async Task Handle(AtualizarRiscoCommand request, CancellationToken ct)
     {
         var risco = await _db.Riscos
+            .NoEscopoDaAtividade(_db, r => r.AtividadeId)
             .Include(r => r.TrabalhadoresExpostos)
             .FirstOrDefaultAsync(r => r.Id == request.Id, ct)
             ?? throw new KeyNotFoundException($"Risco {request.Id} não encontrado.");
+
+        if (request.AtividadeId != risco.AtividadeId)
+            await _db.GarantirAtividadeNoEscopoAsync(request.AtividadeId, ct);
 
         var nivelRisco = await NivelRiscoLookup.ResolverAsync(_db, request.AtividadeId, request.Probabilidade, request.Severidade, ct);
 

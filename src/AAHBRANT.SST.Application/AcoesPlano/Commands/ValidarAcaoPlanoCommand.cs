@@ -1,4 +1,5 @@
 using AAHBRANT.SST.Application.Common.Interfaces;
+using AAHBRANT.SST.Application.Common.Seguranca;
 using AAHBRANT.SST.Domain.Enums;
 using FluentValidation;
 using MediatR;
@@ -29,6 +30,8 @@ public class ValidarAcaoPlanoCommandHandler : IRequestHandler<ValidarAcaoPlanoCo
     {
         var acao = await _db.AcoesPlano.FirstOrDefaultAsync(a => a.Id == request.Id, ct)
             ?? throw new KeyNotFoundException($"Ação de plano {request.Id} não encontrada.");
+
+        await _db.GarantirOrigemAcaoPlanoNoEscopoAsync(acao.OrigemTipo, acao.OrigemId, ct);
 
         if (acao.DataValidacao != null)
             throw new InvalidOperationException("Esta ação já foi validada.");

@@ -1,4 +1,5 @@
 using AAHBRANT.SST.Application.Common.Interfaces;
+using AAHBRANT.SST.Application.Common.Seguranca;
 using MediatR;
 using Microsoft.EntityFrameworkCore;
 
@@ -15,6 +16,7 @@ public class ObterRiscoPorIdQueryHandler : IRequestHandler<ObterRiscoPorIdQuery,
     public async Task<RiscoDto?> Handle(ObterRiscoPorIdQuery request, CancellationToken ct)
     {
         var r = await _db.Riscos
+            .NoEscopoDaAtividade(_db, r => r.AtividadeId)
             .Include(x => x.TrabalhadoresExpostos)
             .FirstOrDefaultAsync(x => x.Id == request.Id, ct);
 

@@ -15,7 +15,7 @@ public class ListarTagsIdentificacaoQueryHandler : IRequestHandler<ListarTagsIde
 
     public async Task<List<TagIdentificacaoDto>> Handle(ListarTagsIdentificacaoQuery request, CancellationToken ct)
     {
-        var query = _db.TagsIdentificacao.AsQueryable();
+        var query = _db.TagsIdentificacao.NoEscopoDaObra(_db);
 
         if (request.Status.HasValue)
             query = query.Where(t => t.Status == request.Status.Value);

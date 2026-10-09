@@ -1,4 +1,5 @@
 using AAHBRANT.SST.Application.Common.Interfaces;
+using AAHBRANT.SST.Application.Common.Seguranca;
 using AAHBRANT.SST.Domain.Enums;
 using FluentValidation;
 using MediatR;
@@ -27,6 +28,9 @@ public class AvaliarInscricaoCandidatoCipaCommandHandler : IRequestHandler<Avali
     {
         var candidato = await _db.CandidatosCipa.FirstOrDefaultAsync(c => c.Id == request.CandidatoId, ct)
             ?? throw new KeyNotFoundException($"Candidato {request.CandidatoId} não encontrado.");
+        await _db.GarantirObraDoPaiNoEscopoAsync(
+            _db.ProcessosEleitoraisCipa.IgnoreQueryFilters().Where(p => p.Id == candidato.ProcessoEleitoralId).Select(p => p.ObraId),
+            $"Candidato {request.CandidatoId} não encontrado.", ct);
 
         candidato.Status = request.Deferido ? StatusCandidatoCipa.Deferido : StatusCandidatoCipa.Indeferido;
         candidato.MotivoIndeferimento = request.Deferido ? null : request.MotivoIndeferimento;

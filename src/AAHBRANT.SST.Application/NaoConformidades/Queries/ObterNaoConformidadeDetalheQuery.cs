@@ -1,5 +1,6 @@
 using AAHBRANT.SST.Application.AcoesPlano;
 using AAHBRANT.SST.Application.Common.Interfaces;
+using AAHBRANT.SST.Application.Common.Seguranca;
 using MediatR;
 using Microsoft.EntityFrameworkCore;
 
@@ -18,7 +19,7 @@ public class ObterNaoConformidadeDetalheQueryHandler
 
     public async Task<NaoConformidadeDetalheDto> Handle(ObterNaoConformidadeDetalheQuery request, CancellationToken ct)
     {
-        var nc = await _db.NaoConformidades
+        var nc = await _db.NaoConformidades.NoEscopoDaObra(_db)
             .Include(n => n.Atividade)
             .Include(n => n.ResponsavelUsuario)
             .Where(n => n.Id == request.Id)

@@ -1,4 +1,5 @@
 using AAHBRANT.SST.Application.Common.Interfaces;
+using AAHBRANT.SST.Application.Common.Seguranca;
 using AAHBRANT.SST.Domain.Entidades;
 using AAHBRANT.SST.Domain.Enums;
 using FluentValidation;
@@ -33,6 +34,8 @@ public class CriarAcaoPlanoCommandHandler : IRequestHandler<CriarAcaoPlanoComman
 
     public async Task<Guid> Handle(CriarAcaoPlanoCommand request, CancellationToken ct)
     {
+        await _db.GarantirOrigemAcaoPlanoNoEscopoAsync(request.OrigemTipo, request.OrigemId, ct);
+
         // Procedimento de Inspeção Técnica de Campo (§7): quando o prazo não é informado
         // explicitamente, sugere um valor a partir da prioridade (Crítica=24h/Alta=48h/Média=5 dias
         // úteis/Baixa=10 dias úteis) — ver SlaPrioridadeCalculator. O usuário pode ajustar depois via

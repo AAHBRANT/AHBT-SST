@@ -1,4 +1,5 @@
 using AAHBRANT.SST.Application.Common.Interfaces;
+using AAHBRANT.SST.Application.Common.Seguranca;
 using AAHBRANT.SST.Domain.Entidades;
 using AAHBRANT.SST.Domain.Enums;
 using FluentValidation;
@@ -31,6 +32,10 @@ public class CriarPlanoAcaoItemCommandHandler : IRequestHandler<CriarPlanoAcaoIt
 
     public async Task<Guid> Handle(CriarPlanoAcaoItemCommand request, CancellationToken ct)
     {
+        await _db.GarantirPgrNoEscopoAsync(request.PgrId, ct);
+        if (request.RiscoId.HasValue)
+            await _db.GarantirRiscoNoEscopoAsync(request.RiscoId.Value, ct);
+
         var item = new PlanoAcaoItem
         {
             PgrId = request.PgrId,

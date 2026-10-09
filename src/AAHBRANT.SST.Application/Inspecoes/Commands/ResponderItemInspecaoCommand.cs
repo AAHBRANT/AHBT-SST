@@ -1,4 +1,5 @@
 using AAHBRANT.SST.Application.Common.Interfaces;
+using AAHBRANT.SST.Application.Common.Seguranca;
 using AAHBRANT.SST.Domain.Enums;
 using FluentValidation;
 using MediatR;
@@ -38,6 +39,9 @@ public class ResponderItemInspecaoCommandHandler : IRequestHandler<ResponderItem
     {
         var resposta = await _db.InspecaoItemRespostas.FirstOrDefaultAsync(r => r.Id == request.RespostaId, ct)
             ?? throw new KeyNotFoundException($"Resposta {request.RespostaId} não encontrada.");
+        await _db.GarantirObraDoPaiNoEscopoAsync(
+            _db.Inspecoes.IgnoreQueryFilters().Where(i => i.Id == resposta.InspecaoId).Select(i => i.ObraId),
+            $"Resposta {request.RespostaId} não encontrada.", ct);
 
         if (request.ResponsavelUsuarioId.HasValue)
         {

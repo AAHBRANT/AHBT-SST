@@ -1,4 +1,5 @@
 using AAHBRANT.SST.Application.Common.Interfaces;
+using AAHBRANT.SST.Application.Common.Seguranca;
 using AAHBRANT.SST.Domain.Enums;
 using MediatR;
 using Microsoft.EntityFrameworkCore;
@@ -17,7 +18,7 @@ public class ListarNaoConformidadesQueryHandler
 
     public async Task<List<NaoConformidadeDto>> Handle(ListarNaoConformidadesQuery request, CancellationToken ct)
     {
-        var query = _db.NaoConformidades.AsNoTracking().AsQueryable();
+        var query = _db.NaoConformidades.AsNoTracking().NoEscopoDaObra(_db);
 
         if (request.Status.HasValue)
             query = query.Where(n => n.Status == request.Status.Value);
