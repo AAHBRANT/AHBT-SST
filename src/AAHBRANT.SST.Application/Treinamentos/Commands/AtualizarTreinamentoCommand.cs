@@ -1,4 +1,5 @@
 using AAHBRANT.SST.Application.Common.Interfaces;
+using AAHBRANT.SST.Application.Common.Seguranca;
 using AAHBRANT.SST.Domain.Enums;
 using FluentValidation;
 using MediatR;
@@ -39,8 +40,11 @@ public class AtualizarTreinamentoCommandHandler : IRequestHandler<AtualizarTrein
 
     public async Task Handle(AtualizarTreinamentoCommand request, CancellationToken ct)
     {
-        var treinamento = await _db.Treinamentos.FirstOrDefaultAsync(x => x.Id == request.Id, ct)
+        var treinamento = await _db.Treinamentos.NoEscopoDoTrabalhador(_db, x => x.TrabalhadorId).FirstOrDefaultAsync(x => x.Id == request.Id, ct)
             ?? throw new KeyNotFoundException("Treinamento não encontrado.");
+
+        if (request.TrabalhadorId != treinamento.TrabalhadorId)
+            await _db.GarantirTrabalhadorNoEscopoAsync(request.TrabalhadorId, ct);
 
         treinamento.TrabalhadorId = request.TrabalhadorId;
         treinamento.CursoTreinamentoId = request.CursoTreinamentoId;

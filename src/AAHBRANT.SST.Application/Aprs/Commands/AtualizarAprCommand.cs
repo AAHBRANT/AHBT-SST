@@ -1,4 +1,5 @@
 using AAHBRANT.SST.Application.Common.Interfaces;
+using AAHBRANT.SST.Application.Common.Seguranca;
 using AAHBRANT.SST.Domain.Entidades;
 using FluentValidation;
 using MediatR;
@@ -41,9 +42,13 @@ public class AtualizarAprCommandHandler : IRequestHandler<AtualizarAprCommand>
     public async Task Handle(AtualizarAprCommand request, CancellationToken ct)
     {
         var apr = await _db.Aprs
+            .NoEscopoDaAtividade(_db, a => a.AtividadeId)
             .Include(a => a.Responsaveis)
             .FirstOrDefaultAsync(a => a.Id == request.Id, ct)
             ?? throw new KeyNotFoundException($"APR {request.Id} não encontrada.");
+
+        if (request.AtividadeId != apr.AtividadeId)
+            await _db.GarantirAtividadeNoEscopoAsync(request.AtividadeId, ct);
 
         apr.AtividadeId = request.AtividadeId;
         apr.Local = request.Local;

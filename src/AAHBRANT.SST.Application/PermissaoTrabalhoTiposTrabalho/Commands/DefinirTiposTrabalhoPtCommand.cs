@@ -1,4 +1,5 @@
 using AAHBRANT.SST.Application.Common.Interfaces;
+using AAHBRANT.SST.Application.Common.Seguranca;
 using AAHBRANT.SST.Domain.Entidades;
 using AAHBRANT.SST.Domain.Enums;
 using FluentValidation;
@@ -36,6 +37,8 @@ public class DefinirTiposTrabalhoPtCommandHandler : IRequestHandler<DefinirTipos
 
     public async Task Handle(DefinirTiposTrabalhoPtCommand request, CancellationToken ct)
     {
+        await _db.GarantirPermissaoTrabalhoNoEscopoAsync(request.PermissaoTrabalhoId, ct);
+
         var ptExiste = await _db.PermissoesTrabalho.AnyAsync(p => p.Id == request.PermissaoTrabalhoId, ct);
         if (!ptExiste)
             throw new KeyNotFoundException($"Permissão de Trabalho {request.PermissaoTrabalhoId} não encontrada.");

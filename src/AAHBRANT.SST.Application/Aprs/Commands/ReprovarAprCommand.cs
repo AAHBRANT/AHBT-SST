@@ -1,4 +1,5 @@
 using AAHBRANT.SST.Application.Common.Interfaces;
+using AAHBRANT.SST.Application.Common.Seguranca;
 using AAHBRANT.SST.Domain.Enums;
 using FluentValidation;
 using MediatR;
@@ -25,7 +26,9 @@ public class ReprovarAprCommandHandler : IRequestHandler<ReprovarAprCommand>
 
     public async Task Handle(ReprovarAprCommand request, CancellationToken ct)
     {
-        var apr = await _db.Aprs.FirstOrDefaultAsync(a => a.Id == request.Id, ct)
+        var apr = await _db.Aprs
+            .NoEscopoDaAtividade(_db, a => a.AtividadeId)
+            .FirstOrDefaultAsync(a => a.Id == request.Id, ct)
             ?? throw new KeyNotFoundException($"APR {request.Id} não encontrada.");
 
         apr.Status = StatusApr.Reprovada;

@@ -1,4 +1,5 @@
 using AAHBRANT.SST.Application.Common.Interfaces;
+using AAHBRANT.SST.Application.Common.Seguranca;
 using FluentValidation;
 using MediatR;
 using Microsoft.EntityFrameworkCore;
@@ -32,6 +33,8 @@ public class AtualizarPermissaoTrabalhoRiscoCriticoCommandHandler : IRequestHand
     {
         var risco = await _db.PermissaoTrabalhoRiscosCriticos.FirstOrDefaultAsync(r => r.Id == request.Id, ct)
             ?? throw new KeyNotFoundException($"Risco crítico {request.Id} não encontrado.");
+
+        await _db.GarantirPermissaoTrabalhoNoEscopoAsync(risco.PermissaoTrabalhoId, ct);
 
         risco.RiscoCondicao = request.RiscoCondicao;
         risco.ControleComplementar = request.ControleComplementar;

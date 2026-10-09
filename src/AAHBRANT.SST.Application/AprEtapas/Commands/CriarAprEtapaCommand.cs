@@ -1,4 +1,5 @@
 using AAHBRANT.SST.Application.Common.Interfaces;
+using AAHBRANT.SST.Application.Common.Seguranca;
 using AAHBRANT.SST.Domain.Entidades;
 using FluentValidation;
 using MediatR;
@@ -28,6 +29,8 @@ public class CriarAprEtapaCommandHandler : IRequestHandler<CriarAprEtapaCommand,
 
     public async Task<Guid> Handle(CriarAprEtapaCommand request, CancellationToken ct)
     {
+        await _db.GarantirAprNoEscopoAsync(request.AprId, ct);
+
         var aprExiste = await _db.Aprs.AnyAsync(a => a.Id == request.AprId, ct);
         if (!aprExiste)
             throw new KeyNotFoundException($"APR {request.AprId} não encontrada.");

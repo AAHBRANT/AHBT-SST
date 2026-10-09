@@ -1,4 +1,5 @@
 using AAHBRANT.SST.Application.Common.Interfaces;
+using AAHBRANT.SST.Application.Common.Seguranca;
 using AAHBRANT.SST.Domain.Entidades;
 using AAHBRANT.SST.Domain.Enums;
 using FluentValidation;
@@ -24,7 +25,7 @@ public class ExcluirEntregaEpiCommandHandler : IRequestHandler<ExcluirEntregaEpi
 
     public async Task Handle(ExcluirEntregaEpiCommand request, CancellationToken ct)
     {
-        var entrega = await _db.EntregasEpi.FirstOrDefaultAsync(x => x.Id == request.Id, ct)
+        var entrega = await _db.EntregasEpi.NoEscopoDoTrabalhador(_db, x => x.TrabalhadorId).FirstOrDefaultAsync(x => x.Id == request.Id, ct)
             ?? throw new KeyNotFoundException("Entrega de EPI não encontrada.");
 
         await EstornarEstoqueAsync(entrega, ct);

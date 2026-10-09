@@ -1,4 +1,5 @@
 using AAHBRANT.SST.Application.Common.Interfaces;
+using AAHBRANT.SST.Application.Common.Seguranca;
 using AAHBRANT.SST.Domain.Entidades;
 using FluentValidation;
 using MediatR;
@@ -32,6 +33,8 @@ public class CriarPermissaoTrabalhoRiscoCriticoCommandHandler : IRequestHandler<
 
     public async Task<Guid> Handle(CriarPermissaoTrabalhoRiscoCriticoCommand request, CancellationToken ct)
     {
+        await _db.GarantirPermissaoTrabalhoNoEscopoAsync(request.PermissaoTrabalhoId, ct);
+
         var ptExiste = await _db.PermissoesTrabalho.AnyAsync(p => p.Id == request.PermissaoTrabalhoId, ct);
         if (!ptExiste)
             throw new KeyNotFoundException($"Permissão de Trabalho {request.PermissaoTrabalhoId} não encontrada.");

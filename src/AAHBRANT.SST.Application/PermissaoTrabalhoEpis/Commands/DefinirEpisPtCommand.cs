@@ -1,4 +1,5 @@
 using AAHBRANT.SST.Application.Common.Interfaces;
+using AAHBRANT.SST.Application.Common.Seguranca;
 using AAHBRANT.SST.Domain.Entidades;
 using AAHBRANT.SST.Domain.Enums;
 using FluentValidation;
@@ -38,7 +39,9 @@ public class DefinirEpisPtCommandHandler : IRequestHandler<DefinirEpisPtCommand>
 
     public async Task Handle(DefinirEpisPtCommand request, CancellationToken ct)
     {
-        var pt = await _db.PermissoesTrabalho.FirstOrDefaultAsync(p => p.Id == request.PermissaoTrabalhoId, ct)
+        var pt = await _db.PermissoesTrabalho
+            .NoEscopoDaAtividade(_db, p => p.AtividadeId)
+            .FirstOrDefaultAsync(p => p.Id == request.PermissaoTrabalhoId, ct)
             ?? throw new KeyNotFoundException($"Permissão de Trabalho {request.PermissaoTrabalhoId} não encontrada.");
 
         var atuais = await _db.PermissaoTrabalhoEpis

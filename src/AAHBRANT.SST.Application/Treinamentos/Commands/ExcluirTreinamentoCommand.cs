@@ -1,4 +1,5 @@
 using AAHBRANT.SST.Application.Common.Interfaces;
+using AAHBRANT.SST.Application.Common.Seguranca;
 using FluentValidation;
 using MediatR;
 using Microsoft.EntityFrameworkCore;
@@ -22,7 +23,7 @@ public class ExcluirTreinamentoCommandHandler : IRequestHandler<ExcluirTreinamen
 
     public async Task Handle(ExcluirTreinamentoCommand request, CancellationToken ct)
     {
-        var treinamento = await _db.Treinamentos.FirstOrDefaultAsync(x => x.Id == request.Id, ct)
+        var treinamento = await _db.Treinamentos.NoEscopoDoTrabalhador(_db, x => x.TrabalhadorId).FirstOrDefaultAsync(x => x.Id == request.Id, ct)
             ?? throw new KeyNotFoundException("Treinamento não encontrado.");
 
         _db.Treinamentos.Remove(treinamento);
