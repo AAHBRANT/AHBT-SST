@@ -37,6 +37,11 @@ public class AcaoPlano : AuditableEntity
     public PrioridadeAcao Prioridade { get; set; }
     public DateTime? Prazo { get; set; }
 
+    // De onde a ação veio quando sugerida pela IA no relato de ocorrência: o perigo/controle do PGR,
+    // o requisito legal ou o nível da hierarquia de prevenção — ou "sem base, validar". Nulo nas
+    // ações criadas à mão.
+    public string? Fundamentacao { get; set; }
+
     public StatusControleRisco Status { get; set; } = StatusControleRisco.Pendente;
     public DateTime? DataConclusao { get; set; }
 

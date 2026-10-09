@@ -2716,6 +2716,8 @@ export interface AcaoPlano {
   origemId: string;
   tipo: number;
   descricao: string;
+  // De onde veio a ação sugerida pela IA (PGR, requisito legal, método ou "sem base, validar").
+  fundamentacao?: string | null;
   responsavelUsuarioId?: string | null;
   responsavelUsuarioNome?: string | null;
   prioridade: number;
@@ -2884,6 +2886,47 @@ export interface RelatoOcorrenciaResposta {
   sugestao: RelatoOcorrenciaSugestao | null;
 }
 
+// Análise de causas + plano de ação sugeridos pela IA para a ocorrência ainda não registrada.
+export interface AcaoPlanoSugerida {
+  tipo: number;
+  descricao: string;
+  prioridade: number;
+  prazo: string;
+  responsavelUsuarioId: string | null;
+  responsavelNome: string | null;
+  papelResponsavel: string;
+  avisoResponsavel: string | null;
+  fundamentacao: string;
+  baseConfirmada: boolean;
+}
+
+export interface PlanoAcaoSugerido {
+  metodologia: number | null;
+  causas: string | null;
+  acoes: AcaoPlanoSugerida[];
+}
+
+export interface PlanoSugeridoOcorrenciaRequisicao {
+  obraId: string;
+  atividadeId: string | null;
+  tipo: number;
+  gravidade: number;
+  descricao: string;
+  lesao: string | null;
+  consequencia: string | null;
+  atendimento: string | null;
+}
+
+// Ação do plano enviada junto com o registro da ocorrência (já revisada pelo técnico).
+export interface AcaoPlanoNovaOcorrencia {
+  tipo: number;
+  descricao: string;
+  prioridade: number;
+  prazo: string | null;
+  responsavelUsuarioId: string | null;
+  fundamentacao: string | null;
+}
+
 export interface NovoAcidente {
   tipo: number;
   obraId: string;
@@ -2905,6 +2948,8 @@ export interface NovoAcidente {
   diasDebitadosInformados?: number | null;
   metodologiaInvestigacao?: number | null;
   causas?: string | null;
+  // Só no registro por relato (IA): plano de ação revisado, criado junto com a ocorrência.
+  acoesPlano?: AcaoPlanoNovaOcorrencia[];
 }
 
 export type AtualizarAcidentePayload = NovoAcidente;
@@ -5321,6 +5366,8 @@ export const api = {
       }),
   },
   acidentes: {
+    planoSugerido: (dados: PlanoSugeridoOcorrenciaRequisicao) =>
+      request<PlanoAcaoSugerido>('/api/acidentes/plano-sugerido', { method: 'POST', body: JSON.stringify(dados) }),
     relatoTexto: (obraId: string, relato: string, complementos: RespostaPerguntaRelato[] = []) =>
       request<RelatoOcorrenciaResposta>('/api/acidentes/relato-texto', {
         method: 'POST',

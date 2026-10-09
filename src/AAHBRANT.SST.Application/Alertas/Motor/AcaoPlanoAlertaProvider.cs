@@ -12,9 +12,9 @@ namespace AAHBRANT.SST.Application.Alertas.Motor;
 // numa tacada só, em vez de um provider por origem, já que o campo relevante (Prazo) é o mesmo.
 // TipoModuloAlerta.PlanoAcao e TipoAlerta.AcaoAtrasada já estavam reservados no enum para isto.
 //
-// Limitação conhecida e avisada ao usuário (mesma do restante do Motor Central de Alertas): o
-// destinatário do alerta vem de RegraAlerta.ResponsavelUsuarioId, um responsável FIXO por módulo
-// (todo o sistema, não por obra/contrato) — não o ResponsavelUsuarioId da própria AcaoPlano. O
+// Destinatário: o ResponsavelUsuarioId da própria AcaoPlano (08/10/2026, pedido do usuário: "o
+// plano já deve direcionar o responsável"); ação sem responsável cai no responsável FIXO do módulo
+// (RegraAlerta.ResponsavelUsuarioId), como antes. O
 // escalonamento "ao gestor da obra/contrato" (§8) não é reproduzido por esta fatia; a origem em si
 // (NaoConformidade.ResponsavelUsuarioId / Acidente) segue notificada de forma imediata pelos
 // próprios comandos de fluxo (ex. EnviarNaoConformidadeCommand, DevolverNaoConformidadeCommand).
@@ -68,6 +68,8 @@ public class AcaoPlanoAlertaProvider : IAlertaOrigemProvider
                 TipoAlertaVencendo = TipoAlerta.AcaoAtrasada,
                 Titulo = $"Ação de plano atrasada — {acao.Descricao}",
                 ObraId = obraId,
+                // Quem tem que fazer é quem é avisado (antes ia só ao responsável fixo do módulo).
+                DestinatarioUsuarioId = acao.ResponsavelUsuarioId,
             };
         }).ToList();
     }

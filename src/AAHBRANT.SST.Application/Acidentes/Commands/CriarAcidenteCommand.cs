@@ -1,4 +1,5 @@
 using AAHBRANT.SST.Application.Acidentes;
+using AAHBRANT.SST.Application.AcoesPlano;
 using AAHBRANT.SST.Application.Common.Interfaces;
 using AAHBRANT.SST.Domain.Entidades;
 using AAHBRANT.SST.Domain.Enums;
@@ -27,7 +28,17 @@ public record CriarAcidenteCommand(
     string? Causas,
     GravidadeAcidente Gravidade,
     int? DiasDebitadosInformados,
-    List<Guid>? TrabalhadoresIds = null) : IRequest<Guid>;
+    List<Guid>? TrabalhadoresIds = null,
+    // Plano de ação revisado pelo técnico no registro por relato (IA). Criado junto com o acidente.
+    List<AcaoPlanoNovaOcorrencia>? AcoesPlano = null) : IRequest<Guid>;
+
+public record AcaoPlanoNovaOcorrencia(
+    TipoAcaoPlano Tipo,
+    string Descricao,
+    PrioridadeAcao Prioridade,
+    DateTime? Prazo,
+    Guid? ResponsavelUsuarioId,
+    string? Fundamentacao);
 
 public class CriarAcidenteCommandValidator : AbstractValidator<CriarAcidenteCommand>
 {
@@ -46,6 +57,11 @@ public class CriarAcidenteCommandValidator : AbstractValidator<CriarAcidenteComm
             .NotNull().WithMessage("Informe os Dias Debitados consultando o Quadro III da NBR 14280.")
             .GreaterThan(0)
             .When(x => x.Gravidade == GravidadeAcidente.IncapacidadePermanenteParcial);
+        RuleForEach(x => x.AcoesPlano).ChildRules(a =>
+        {
+            a.RuleFor(x => x.Descricao).NotEmpty().MaximumLength(500);
+            a.RuleFor(x => x.Fundamentacao).MaximumLength(500);
+        });
     }
 }
 
@@ -95,6 +111,21 @@ public class CriarAcidenteCommandHandler : IRequestHandler<CriarAcidenteCommand,
 
         _db.Acidentes.Add(acidente);
         await AcidenteEnvolvidosSync.SincronizarAsync(_db, acidente, envolvidos, ct);
+
+        foreach (var acao in request.AcoesPlano ?? new List<AcaoPlanoNovaOcorrencia>())
+        {
+            _db.AcoesPlano.Add(new AcaoPlano
+            {
+                OrigemTipo = nameof(Acidente),
+                OrigemId = acidente.Id,
+                Tipo = acao.Tipo,
+                Descricao = acao.Descricao.Trim(),
+                Prioridade = acao.Prioridade,
+                Prazo = acao.Prazo ?? SlaPrioridadeCalculator.CalcularPrazoSugerido(acao.Prioridade, DateTime.UtcNow),
+                ResponsavelUsuarioId = acao.ResponsavelUsuarioId,
+                Fundamentacao = string.IsNullOrWhiteSpace(acao.Fundamentacao) ? null : acao.Fundamentacao.Trim(),
+            });
+        }
         await _db.SaveChangesAsync(ct);
         await _publicadorGrh.PublicarAsync(await AcidenteGrhEventoFactory.CriarAsync(_db, acidente, ct), ct);
         return acidente.Id;

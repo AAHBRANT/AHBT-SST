@@ -23,6 +23,7 @@ import {
   type AcaoWorkflow,
   type Coluna,
   type Tom,
+  Legenda,
 } from '@ui';
 import { Save24Regular } from '@fluentui/react-icons';
 import {
@@ -250,7 +251,16 @@ export function AcidenteDetalhePage() {
 
   const colunasAcoes: Coluna<AcaoPlano>[] = [
     { chave: 'tipo', rotulo: 'Tipo', render: (acao) => tipoAcaoPlanoLabel[acao.tipo] },
-    { chave: 'descricao', rotulo: 'Descrição' },
+    {
+      chave: 'descricao',
+      rotulo: 'Descrição',
+      render: (acao) => (
+        <div style={{ display: 'grid', gap: 2 }}>
+          <span>{acao.descricao}</span>
+          {acao.fundamentacao && <Legenda>{acao.fundamentacao}</Legenda>}
+        </div>
+      ),
+    },
     { chave: 'responsavel', rotulo: 'Responsável', render: (acao) => acao.responsavelUsuarioNome ?? '—' },
     { chave: 'prioridade', rotulo: 'Prioridade', render: (acao) => prioridadeAcaoLabel[acao.prioridade] },
     { chave: 'prazo', rotulo: 'Prazo', render: (acao) => acao.prazo?.slice(0, 10) ?? '—' },

@@ -35,10 +35,12 @@ import {
   type NovoAcidente,
   type Obra,
   type RelatoOcorrenciaSugestao,
+  type Usuario,
   type Trabalhador,
 } from '../../lib/api';
 import { HhtMensalTab } from './HhtMensalTab';
 import { RelatoOcorrenciaIa } from './RelatoOcorrenciaIa';
+import { novaChaveAcao, PlanoAcaoOcorrenciaIa, type AcaoPlanoEmEdicao } from './PlanoAcaoOcorrenciaIa';
 
 // Campos que a IA pode preencher a partir do relato. Mostram o selo "IA" até o técnico editá-los.
 type CampoIa =
@@ -112,6 +114,13 @@ export function AcidentesPage({ tipoFixo }: { tipoFixo?: number } = {}) {
   const [camposIa, setCamposIa] = useState<Set<CampoIa>>(new Set());
   const [editados, setEditados] = useState<Set<CampoIa>>(new Set());
   const [avisosIa, setAvisosIa] = useState<string[]>([]);
+  // Etapa 2 do registro por relato: análise de causas + plano de ação sugeridos pela IA.
+  const [versaoRelato, setVersaoRelato] = useState(0);
+  const [metodologia, setMetodologia] = useState<number | null>(null);
+  const [causas, setCausas] = useState('');
+  const [acoesPlano, setAcoesPlano] = useState<AcaoPlanoEmEdicao[]>([]);
+  const [usuarios, setUsuarios] = useState<Usuario[]>([]);
+  const [gerandoPlano, setGerandoPlano] = useState(false);
 
   // Alteração feita pelo técnico: tira o selo "IA" e protege o campo nas próximas rodadas de perguntas.
   function alterar(campo: CampoIa, patch: Partial<NovoAcidente>) {
@@ -167,6 +176,7 @@ export function AcidentesPage({ tipoFixo }: { tipoFixo?: number } = {}) {
       if (primeiraRodada) setEditados(new Set());
       setAvisosIa(s.avisos);
       setErro(null);
+      setVersaoRelato((v) => v + 1);
     },
     [editados],
   );
@@ -175,6 +185,59 @@ export function AcidentesPage({ tipoFixo }: { tipoFixo?: number } = {}) {
     setNova((atual) => ({ ...atual, descricao: transcricao }));
     setCamposIa(new Set<CampoIa>(['descricao']));
     setAvisosIa(['A fala foi transcrita na descrição, mas a IA não conseguiu classificar. Complete os outros campos.']);
+    setVersaoRelato((v) => v + 1);
+  }, []);
+
+  async function gerarPlano() {
+    if (!nova.obraId || !nova.descricao.trim()) return;
+    try {
+      setGerandoPlano(true);
+      const plano = await api.acidentes.planoSugerido({
+        obraId: nova.obraId,
+        atividadeId: nova.atividadeId || null,
+        tipo: nova.tipo,
+        gravidade: nova.gravidade,
+        descricao: nova.descricao,
+        lesao: nova.lesao || null,
+        consequencia: nova.consequencia || null,
+        atendimento: nova.atendimento || null,
+      });
+      setMetodologia(plano.metodologia);
+      setCausas(plano.causas ?? '');
+      setAcoesPlano(
+        plano.acoes.map((a) => ({
+          chave: novaChaveAcao(),
+          tipo: a.tipo,
+          descricao: a.descricao,
+          prioridade: a.prioridade,
+          prazo: a.prazo.slice(0, 10),
+          responsavelUsuarioId: a.responsavelUsuarioId ?? '',
+          papelResponsavel: a.papelResponsavel,
+          avisoResponsavel: a.avisoResponsavel,
+          fundamentacao: a.fundamentacao,
+          baseConfirmada: a.baseConfirmada,
+          sugeridaPelaIa: true,
+        })),
+      );
+    } catch (e) {
+      setErro(e instanceof Error ? e.message : 'A IA não conseguiu montar o plano de ação agora.');
+    } finally {
+      setGerandoPlano(false);
+    }
+  }
+
+  // Cada nova rodada do relato (preenchimento ou respostas às perguntas) refaz a análise com o
+  // formulário já atualizado — o efeito roda depois do render, com o `nova` novo.
+  useEffect(() => {
+    if (versaoRelato > 0) void gerarPlano();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [versaoRelato]);
+
+  useEffect(() => {
+    api.usuarios
+      .listar(1)
+      .then(setUsuarios)
+      .catch(() => setUsuarios([]));
   }, []);
 
   function rotulo(texto: string, campo: CampoIa): ReactElement | string {
@@ -259,12 +322,27 @@ export function AcidentesPage({ tipoFixo }: { tipoFixo?: number } = {}) {
         atendimento: nova.atendimento || null,
         diasAfastamento: nova.houveAfastamento ? nova.diasAfastamento ?? null : null,
         numeroCat: nova.numeroCat || null,
-        causas: nova.causas || null,
+        causas: versaoRelato > 0 ? causas.trim() || null : nova.causas || null,
+        metodologiaInvestigacao: versaoRelato > 0 ? metodologia : nova.metodologiaInvestigacao ?? null,
+        acoesPlano: acoesPlano
+          .filter((a) => a.descricao.trim())
+          .map((a) => ({
+            tipo: a.tipo,
+            descricao: a.descricao.trim(),
+            prioridade: a.prioridade,
+            prazo: a.prazo || null,
+            responsavelUsuarioId: a.responsavelUsuarioId || null,
+            fundamentacao: a.fundamentacao,
+          })),
       });
       setNova(novaInicial());
       setCamposIa(new Set());
       setEditados(new Set());
       setAvisosIa([]);
+      setVersaoRelato(0);
+      setMetodologia(null);
+      setCausas('');
+      setAcoesPlano([]);
       await carregar();
     } catch (e) {
       setErro(e instanceof Error ? e.message : 'Falha ao registrar ocorrência.');
@@ -515,8 +593,22 @@ export function AcidentesPage({ tipoFixo }: { tipoFixo?: number } = {}) {
               </FormGrid>
             </FormSection>
 
+            {versaoRelato > 0 && (
+              <PlanoAcaoOcorrenciaIa
+                metodologia={metodologia}
+                causas={causas}
+                acoes={acoesPlano}
+                usuarios={usuarios}
+                gerando={gerandoPlano}
+                aoMudarMetodologia={setMetodologia}
+                aoMudarCausas={setCausas}
+                aoMudarAcoes={setAcoesPlano}
+                aoGerarNovamente={() => void gerarPlano()}
+              />
+            )}
+
             <FormRodape>
-              <Button appearance="primary" icon={<AddCircle24Regular />} onClick={criar} disabled={carregando}>
+              <Button appearance="primary" icon={<AddCircle24Regular />} onClick={criar} disabled={carregando || gerandoPlano}>
                 Registrar
               </Button>
             </FormRodape>

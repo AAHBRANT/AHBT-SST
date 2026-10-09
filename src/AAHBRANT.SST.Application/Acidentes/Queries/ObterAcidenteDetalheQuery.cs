@@ -59,7 +59,9 @@ public class ObterAcidenteDetalheQueryHandler : IRequestHandler<ObterAcidenteDet
             .Where(a => a.OrigemTipo == nameof(Domain.Entidades.Acidente) && a.OrigemId == request.Id)
             .Include(a => a.ResponsavelUsuario)
             .Include(a => a.ValidadoPorUsuario)
-            .OrderByDescending(a => a.CreatedAtUtc)
+            // Plano de ação lido por urgência: Crítica primeiro, depois o prazo mais próximo.
+            .OrderBy(a => a.Prioridade)
+            .ThenBy(a => a.Prazo)
             .Select(a => new AcaoPlanoDto
             {
                 Id = a.Id,
@@ -67,6 +69,7 @@ public class ObterAcidenteDetalheQueryHandler : IRequestHandler<ObterAcidenteDet
                 OrigemId = a.OrigemId,
                 Tipo = a.Tipo,
                 Descricao = a.Descricao,
+                Fundamentacao = a.Fundamentacao,
                 ResponsavelUsuarioId = a.ResponsavelUsuarioId,
                 ResponsavelUsuarioNome = a.ResponsavelUsuario != null ? a.ResponsavelUsuario.Nome : null,
                 Prioridade = a.Prioridade,

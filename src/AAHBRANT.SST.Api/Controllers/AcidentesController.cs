@@ -1,11 +1,14 @@
 using AAHBRANT.SST.Application.Acidentes.Commands;
 using AAHBRANT.SST.Application.Acidentes.RelatoIa;
 using AAHBRANT.SST.Application.Acidentes.Queries;
+using AAHBRANT.SST.Application.Common.Interfaces;
 using AAHBRANT.SST.Application.SuporteIa;
 using AAHBRANT.SST.Domain.Enums;
 using MediatR;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
+using System.Security.Claims;
 
 namespace AAHBRANT.SST.Api.Controllers;
 
@@ -16,15 +19,43 @@ public class AcidentesController : ControllerBase
     private readonly IMediator _mediator;
     private readonly ITranscricaoAudioService _transcricao;
     private readonly ILogger<AcidentesController> _logger;
+    private readonly IAppDbContext _db;
 
     // gpt-4o-transcribe aceita até 25 MB por arquivo.
     private const long TamanhoMaximoAudio = 25_000_000;
 
-    public AcidentesController(IMediator mediator, ITranscricaoAudioService transcricao, ILogger<AcidentesController> logger)
+    public AcidentesController(IMediator mediator, ITranscricaoAudioService transcricao, ILogger<AcidentesController> logger, IAppDbContext db)
     {
         _mediator = mediator;
         _transcricao = transcricao;
         _logger = logger;
+        _db = db;
+    }
+
+    // Análise preliminar de causas + plano de ação (IA) a partir do formulário já revisado. Nada é
+    // gravado aqui: as ações voltam para o técnico revisar e seguem no POST de criação.
+    [Authorize(Policy = "acidente:criar")]
+    [HttpPost("plano-sugerido")]
+    public async Task<IActionResult> PlanoSugerido(PlanoSugeridoOcorrenciaBody body, CancellationToken ct)
+        => Ok(await _mediator.Send(new SugerirPlanoAcaoOcorrenciaCommand(
+            body.ObraId, body.AtividadeId, body.Tipo, body.Gravidade, body.Descricao,
+            body.Lesao, body.Consequencia, body.Atendimento, await UsuarioAtualIdAsync(ct)), ct));
+
+    // Quem está registrando — responsável natural das ações de Técnico de Segurança. Identidade pelo
+    // token (oid, depois e-mail), nunca por parâmetro; nulo em desenvolvimento sem Entra ID.
+    private async Task<Guid?> UsuarioAtualIdAsync(CancellationToken ct)
+    {
+        var oid = User.FindFirst("oid")?.Value ?? User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+        if (!string.IsNullOrWhiteSpace(oid))
+        {
+            var id = await _db.Usuarios.Where(u => u.AzureAdObjectId == oid).Select(u => (Guid?)u.Id).FirstOrDefaultAsync(ct);
+            if (id is not null) return id;
+        }
+
+        var email = User.FindFirst("preferred_username")?.Value ?? User.FindFirst("email")?.Value;
+        return string.IsNullOrWhiteSpace(email)
+            ? null
+            : await _db.Usuarios.Where(u => u.Email == email).Select(u => (Guid?)u.Id).FirstOrDefaultAsync(ct);
     }
 
     // Relato da ocorrência escrito pelo técnico → sugestão de preenchimento do formulário (IA).
@@ -210,4 +241,16 @@ public class RelatoVozOcorrenciaBody
 {
     public Guid ObraId { get; set; }
     public IFormFile? Audio { get; set; }
+}
+
+public class PlanoSugeridoOcorrenciaBody
+{
+    public Guid ObraId { get; set; }
+    public Guid? AtividadeId { get; set; }
+    public TipoOcorrencia Tipo { get; set; }
+    public GravidadeAcidente Gravidade { get; set; }
+    public string Descricao { get; set; } = string.Empty;
+    public string? Lesao { get; set; }
+    public string? Consequencia { get; set; }
+    public string? Atendimento { get; set; }
 }
