@@ -138,6 +138,10 @@ public class AlertaEngineService : IAlertaEngineService
                     alertaExistente.Tipo = tipoAlerta;
                     alertaExistente.Severidade = severidade.Value;
                     alertaExistente.Titulo = titulo;
+                    // Itens cuja descrição muda com o tempo (ex.: a lista de exames vencidos do
+                    // trabalhador) mantêm o texto em dia; os que não mandam descrição não mexem nela.
+                    if (item.Descricao is not null)
+                        alertaExistente.Descricao = item.Descricao;
 
                     if (alertaExistente.DestinatarioUsuarioId.HasValue)
                         alertasAtualizadosComDestinatario.Add((alertaExistente, item.DataVencimento));

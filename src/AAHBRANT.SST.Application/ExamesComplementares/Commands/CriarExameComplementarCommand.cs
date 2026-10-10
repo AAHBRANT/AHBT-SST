@@ -15,7 +15,9 @@ public record CriarExameComplementarCommand(
     DateTime DataValidade,
     string Resultado,
     string? Observacoes,
-    string? ResponsavelTecnico) : IRequest<Guid>;
+    string? ResponsavelTecnico,
+    string? CodigoExame = null,
+    string? NomeExame = null) : IRequest<Guid>;
 
 public class CriarExameComplementarCommandValidator : AbstractValidator<CriarExameComplementarCommand>
 {
@@ -25,6 +27,8 @@ public class CriarExameComplementarCommandValidator : AbstractValidator<CriarExa
         RuleFor(x => x.DataRealizacao).NotEmpty();
         RuleFor(x => x.DataValidade).NotEmpty().GreaterThanOrEqualTo(x => x.DataRealizacao);
         RuleFor(x => x.Resultado).NotEmpty().MaximumLength(300);
+        RuleFor(x => x.CodigoExame).MaximumLength(20);
+        RuleFor(x => x.NomeExame).MaximumLength(200);
     }
 }
 
@@ -47,7 +51,9 @@ public class CriarExameComplementarCommandHandler : IRequestHandler<CriarExameCo
             DataValidade = request.DataValidade,
             Resultado = request.Resultado,
             Observacoes = request.Observacoes,
-            ResponsavelTecnico = request.ResponsavelTecnico
+            ResponsavelTecnico = request.ResponsavelTecnico,
+            CodigoExame = string.IsNullOrWhiteSpace(request.CodigoExame) ? null : request.CodigoExame.Trim(),
+            NomeExame = string.IsNullOrWhiteSpace(request.NomeExame) ? null : request.NomeExame.Trim(),
         };
 
         _db.ExamesComplementares.Add(exame);

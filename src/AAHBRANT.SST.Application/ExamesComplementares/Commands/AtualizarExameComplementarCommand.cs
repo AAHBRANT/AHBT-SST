@@ -16,7 +16,9 @@ public record AtualizarExameComplementarCommand(
     DateTime DataValidade,
     string Resultado,
     string? Observacoes,
-    string? ResponsavelTecnico) : IRequest;
+    string? ResponsavelTecnico,
+    string? CodigoExame = null,
+    string? NomeExame = null) : IRequest;
 
 public class AtualizarExameComplementarCommandValidator : AbstractValidator<AtualizarExameComplementarCommand>
 {
@@ -52,6 +54,12 @@ public class AtualizarExameComplementarCommandHandler : IRequestHandler<Atualiza
         exame.Resultado = request.Resultado;
         exame.Observacoes = request.Observacoes;
         exame.ResponsavelTecnico = request.ResponsavelTecnico;
+        // Nulo = não informado (tela que não conhece o campo): mantém o exame do PCMSO já gravado.
+        // Texto vazio limpa.
+        if (request.CodigoExame is not null)
+            exame.CodigoExame = string.IsNullOrWhiteSpace(request.CodigoExame) ? null : request.CodigoExame.Trim();
+        if (request.NomeExame is not null)
+            exame.NomeExame = string.IsNullOrWhiteSpace(request.NomeExame) ? null : request.NomeExame.Trim();
 
         await _db.SaveChangesAsync(ct);
     }

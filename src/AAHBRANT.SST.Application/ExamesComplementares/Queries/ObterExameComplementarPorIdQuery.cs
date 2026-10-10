@@ -24,6 +24,8 @@ public class ObterExameComplementarPorIdQueryHandler : IRequestHandler<ObterExam
                 TrabalhadorId = e.TrabalhadorId,
                 AsoId = e.AsoId,
                 Tipo = e.Tipo,
+                CodigoExame = e.CodigoExame,
+                NomeExame = e.NomeExame,
                 DataRealizacao = e.DataRealizacao,
                 DataValidade = e.DataValidade,
                 Resultado = e.Resultado,
