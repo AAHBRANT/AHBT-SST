@@ -1,3 +1,4 @@
+using AAHBRANT.SST.Application.Common;
 using AAHBRANT.SST.Application.Common.Interfaces;
 using AAHBRANT.SST.Domain.Enums;
 using MediatR;
@@ -26,8 +27,9 @@ public class ListarGhesObraQueryHandler : IRequestHandler<ListarGhesObraQuery, L
 
     public async Task<List<GheDto>> Handle(ListarGhesObraQuery request, CancellationToken ct)
     {
-        // Nome da função/perigo por subquery com IgnoreQueryFilters, não pela navegação: função ou perigo
-        // excluído (soft delete) viraria INNER JOIN e apagaria a linha do GHE (incidente de 23/09).
+        // Sem navegação para Funcao/Perigo (função ou perigo excluído viraria INNER JOIN e apagaria a
+        // linha — incidente de 23/09) e sem IgnoreQueryFilters na mesma consulta (desligaria os filtros de
+        // Ativo/obra dos GHE): os nomes vêm de NomesPorId, em consulta separada.
         var ghes = await _db.Ghes.AsNoTracking()
             .Where(g => g.ObraId == request.ObraId)
             .OrderBy(g => g.Numero)
@@ -35,11 +37,7 @@ public class ListarGhesObraQueryHandler : IRequestHandler<ListarGhesObraQuery, L
             {
                 g.Id, g.Numero, g.Setor, g.JornadaTrabalho, g.DescricaoAmbiente, g.AtividadesCriticas,
                 g.FonteGeradora, g.MedidasProtecaoExistentes,
-                Funcoes = g.Funcoes.Select(f => new GheFuncaoDto(
-                    f.FuncaoId,
-                    _db.Funcoes.IgnoreQueryFilters().Where(x => x.Id == f.FuncaoId).Select(x => x.Nome).FirstOrDefault(),
-                    _db.Funcoes.IgnoreQueryFilters().Where(x => x.Id == f.FuncaoId).Select(x => x.CboCodigo).FirstOrDefault(),
-                    f.QuantidadeExpostos, f.DescricaoAtividades)).ToList(),
+                Funcoes = g.Funcoes.Select(f => new { f.FuncaoId, f.QuantidadeExpostos, f.DescricaoAtividades }).ToList(),
             })
             .ToListAsync(ct);
 
@@ -47,23 +45,29 @@ public class ListarGhesObraQueryHandler : IRequestHandler<ListarGhesObraQuery, L
         var riscos = await _db.Riscos.AsNoTracking()
             .Join(_db.Atividades.Where(a => a.GheId != null && gheIds.Contains(a.GheId.Value)),
                 r => r.AtividadeId, a => a.Id, (r, a) => new { r, a.GheId })
-            .Select(x => new
-            {
-                x.GheId,
-                Dto = new GheRiscoDto(
-                    x.r.Id, x.r.AtividadeId,
-                    _db.Perigos.IgnoreQueryFilters().Where(p => p.Id == x.r.PerigoId).Select(p => p.Nome).FirstOrDefault(),
-                    _db.Perigos.IgnoreQueryFilters().Where(p => p.Id == x.r.PerigoId).Select(p => p.Agente).FirstOrDefault(),
-                    x.r.Consequencia, x.r.Exposicao, x.r.Probabilidade, x.r.Severidade, x.r.NivelRisco,
-                    x.r.ControlesExistentes, x.r.ControlesAdicionais, x.r.Status),
-            })
             .ToListAsync(ct);
 
-        var porGhe = riscos.ToLookup(x => x.GheId!.Value, x => x.Dto);
+        var funcoes = await NomesPorId.FuncoesAsync(_db, ghes.SelectMany(g => g.Funcoes.Select(f => f.FuncaoId)), ct);
+        var perigos = await NomesPorId.PerigosAsync(_db, riscos.Select(x => x.r.PerigoId), ct);
+
+        var porGhe = riscos.ToLookup(x => x.GheId!.Value, x =>
+        {
+            var temPerigo = perigos.TryGetValue(x.r.PerigoId, out var perigo);
+            return new GheRiscoDto(
+                x.r.Id, x.r.AtividadeId, temPerigo ? perigo.Nome : null, temPerigo ? perigo.Agente : null,
+                x.r.Consequencia, x.r.Exposicao, x.r.Probabilidade, x.r.Severidade, x.r.NivelRisco,
+                x.r.ControlesExistentes, x.r.ControlesAdicionais, x.r.Status);
+        });
+
         return ghes.Select(g => new GheDto(
                 g.Id, g.Numero, g.Setor, g.JornadaTrabalho, g.DescricaoAmbiente, g.AtividadesCriticas,
                 g.FonteGeradora, g.MedidasProtecaoExistentes,
-                g.Funcoes.OrderBy(f => f.FuncaoNome).ToList(),
+                g.Funcoes.Select(f =>
+                    {
+                        var tem = funcoes.TryGetValue(f.FuncaoId, out var funcao);
+                        return new GheFuncaoDto(f.FuncaoId, tem ? funcao.Nome : null, tem ? funcao.Cbo : null, f.QuantidadeExpostos, f.DescricaoAtividades);
+                    })
+                    .OrderBy(f => f.FuncaoNome).ToList(),
                 porGhe[g.Id].OrderByDescending(r => r.NivelRisco).ThenBy(r => r.Perigo).ToList()))
             .ToList();
     }

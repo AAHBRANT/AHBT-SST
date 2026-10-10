@@ -11,6 +11,7 @@ public static partial class MontagemLeituraIa
 {
     public record FuncaoExistente(Guid Id, string Nome);
     public record RiscoAtual(int Ghe, string Perigo, int NivelRisco);
+    public record FuncaoAtual(Guid Id, string Nome);
     public record ExameAtual(string Funcao, string Exame, int? PeriodicidadeMeses);
 
     // ---------- PCMSO ----------
@@ -169,7 +170,8 @@ public static partial class MontagemLeituraIa
                     return new FuncaoLidaIa(primeiro.Nome, cbo, ghes, exames, exata.Id, exata.Nome, "existe");
                 // Parecida: só gênero diferente (Engenheira/Engenheiro) ou uma das partes de "Ajudante/Servente".
                 var parecida = porNomeNeutro.GetValueOrDefault(Neutro(primeiro.Nome))
-                    ?? Partes(primeiro.Nome).Select(p => porNome.GetValueOrDefault(p)).FirstOrDefault(p => p is not null);
+                    ?? Partes(primeiro.Nome).Select(p => porNome.GetValueOrDefault(p)).FirstOrDefault(p => p is not null)
+                    ?? existentes.FirstOrDefault(e => MesmoRadical(primeiro.Nome, e.Nome));
                 return parecida is not null
                     ? new FuncaoLidaIa(primeiro.Nome, cbo, ghes, exames, parecida.Id, parecida.Nome, "parecida")
                     : new FuncaoLidaIa(primeiro.Nome, cbo, ghes, exames, null, null, "nova");
@@ -180,27 +182,36 @@ public static partial class MontagemLeituraIa
 
     // ---------- Comparação com a estrutura atual ----------
 
+    // Funções são comparadas pela função do sistema a que o nome do documento foi ligado (casamento),
+    // não pelo texto: "Auxiliar de Topógrafo" e "Auxiliar de Topografia" ligados à mesma função não são
+    // mudança. Nome sem função ligada (nova) conta como incluída.
     public static List<DiferencaLeituraIa> CompararPgr(
         List<ImportarEstruturaGhe> novos,
-        IReadOnlyDictionary<int, List<string>> funcoesAtuaisPorGhe,
+        IReadOnlyDictionary<int, List<FuncaoAtual>> funcoesAtuaisPorGhe,
         IReadOnlyList<RiscoAtual> riscosAtuais,
-        IReadOnlyDictionary<(int P, int S), int> matriz)
+        IReadOnlyDictionary<(int P, int S), int> matriz,
+        IReadOnlyDictionary<string, Guid?> funcaoLigada)
     {
         var dif = new List<DiferencaLeituraIa>();
         var numerosNovos = novos.Select(g => g.Numero).ToHashSet();
         foreach (var g in novos.Where(g => !funcoesAtuaisPorGhe.ContainsKey(g.Numero)))
             dif.Add(new("incluido", $"GHE {g.Numero:00} · {string.Join(", ", g.Funcoes.Select(f => f.Nome))}", null, "novo"));
         foreach (var (numero, funcoes) in funcoesAtuaisPorGhe.Where(kv => !numerosNovos.Contains(kv.Key)))
-            dif.Add(new("removido", $"GHE {numero:00} · {string.Join(", ", funcoes)}", "existia", null));
+            dif.Add(new("removido", $"GHE {numero:00} · {string.Join(", ", funcoes.Select(f => f.Nome))}", "existia", null));
 
         foreach (var g in novos.Where(g => funcoesAtuaisPorGhe.ContainsKey(g.Numero)))
         {
-            var antes = funcoesAtuaisPorGhe[g.Numero].ToDictionary(FuncaoSstClassifier.Normalizar, f => f);
-            var depois = g.Funcoes.ToDictionary(f => FuncaoSstClassifier.Normalizar(f.Nome), f => f.Nome);
-            foreach (var (k, nome) in depois.Where(kv => !antes.ContainsKey(kv.Key)))
-                dif.Add(new("incluido", $"GHE {g.Numero:00} · função {nome}", null, "incluída"));
-            foreach (var (k, nome) in antes.Where(kv => !depois.ContainsKey(kv.Key)))
-                dif.Add(new("removido", $"GHE {g.Numero:00} · função {nome}", "existia", null));
+            var idsAntes = funcoesAtuaisPorGhe[g.Numero].Select(f => f.Id).ToHashSet();
+            var idsDepois = new HashSet<Guid>();
+            foreach (var f in g.Funcoes)
+            {
+                var id = funcaoLigada.GetValueOrDefault(FuncaoSstClassifier.Normalizar(f.Nome));
+                if (id is { } existente) idsDepois.Add(existente);
+                if (id is null || !idsAntes.Contains(id.Value))
+                    dif.Add(new("incluido", $"GHE {g.Numero:00} · função {f.Nome}", null, "incluída"));
+            }
+            foreach (var f in funcoesAtuaisPorGhe[g.Numero].Where(f => !idsDepois.Contains(f.Id)))
+                dif.Add(new("removido", $"GHE {g.Numero:00} · função {f.Nome}", "existia", null));
 
             var riscosAntes = riscosAtuais.Where(r => r.Ghe == g.Numero)
                 .GroupBy(r => FuncaoSstClassifier.Normalizar(r.Perigo)).ToDictionary(x => x.Key, x => x.First());
@@ -285,6 +296,20 @@ public static partial class MontagemLeituraIa
 
     private static string Neutro(string nome) =>
         string.Join(' ', FuncaoSstClassifier.Normalizar(nome).Split(' ').Select(p => p.EndsWith('a') && p.Length > 4 ? p[..^1] + "o" : p));
+
+    // Mesmas palavras com o mesmo começo (até 6 letras): "Auxiliar de Topógrafo" ~ "Auxiliar de Topografia".
+    private static bool MesmoRadical(string a, string b)
+    {
+        var pa = FuncaoSstClassifier.Normalizar(a).Split(' ');
+        var pb = FuncaoSstClassifier.Normalizar(b).Split(' ');
+        if (pa.Length != pb.Length) return false;
+        for (var i = 0; i < pa.Length; i++)
+        {
+            var n = Math.Min(6, Math.Min(pa[i].Length, pb[i].Length));
+            if (n < 2 || string.CompareOrdinal(pa[i], 0, pb[i], 0, n) != 0) return false;
+        }
+        return true;
+    }
 
     private static IEnumerable<string> Partes(string nome) =>
         nome.Split(new[] { '/', '(', ')', '-' }, StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)

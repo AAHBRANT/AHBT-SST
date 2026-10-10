@@ -69,4 +69,6 @@ public class PgrRevisaoDto
     public string? DocumentoNomeArquivo { get; set; }
     public DateTime CriadoEmUtc { get; set; }
     public string? CriadoPorNome { get; set; }
+    [System.Text.Json.Serialization.JsonIgnore]
+    public Guid? CriadoPorId { get; set; }
 }

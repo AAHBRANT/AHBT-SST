@@ -23,14 +23,21 @@ public class ListarPcmsoRevisoesQueryHandler : IRequestHandler<ListarPcmsoReviso
         if (!await _db.PcmsoDetalhes.AnyAsync(p => p.Id == request.PcmsoId, ct))
             return new List<PcmsoRevisaoDto>();
 
-        return await _db.PcmsoRevisoes
+        var lista = await _db.PcmsoRevisoes
             .Where(r => r.PcmsoDetalheId == request.PcmsoId)
             .OrderByDescending(r => r.NumeroRevisao)
-            .Select(r => new PcmsoRevisaoDto(
+            .Select(r => new
+            {
                 r.Id, r.PcmsoDetalheId, r.NumeroRevisao, r.DataRevisao, r.Motivo,
-                r.DocumentoConteudo != null, r.DocumentoNomeArquivo, r.CreatedAtUtc,
-                _db.Usuarios.IgnoreQueryFilters().Where(u => u.Id == r.CreatedBy).Select(u => u.Nome).FirstOrDefault()))
+                TemPdf = r.DocumentoConteudo != null, r.DocumentoNomeArquivo, r.CreatedAtUtc, r.CreatedBy,
+            })
             .ToListAsync(ct);
+        // Nome em consulta separada (IgnoreQueryFilters na mesma consulta desligaria o filtro de Ativo).
+        var nomes = await Common.NomesPorId.UsuariosAsync(_db, lista.Select(r => r.CreatedBy), ct);
+        return lista.Select(r => new PcmsoRevisaoDto(
+                r.Id, r.PcmsoDetalheId, r.NumeroRevisao, r.DataRevisao, r.Motivo, r.TemPdf, r.DocumentoNomeArquivo,
+                r.CreatedAtUtc, r.CreatedBy is { } u && nomes.TryGetValue(u, out var n) ? n : null))
+            .ToList();
     }
 }
 

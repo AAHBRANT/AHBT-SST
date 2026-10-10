@@ -82,8 +82,14 @@ export function LeituraIaRevisaoPage() {
     const texto = resultado.haEstruturaAtual
       ? `Cadastrar esta leitura substitui a estrutura atual do ${nome} (a anterior fica guardada, sem uso).`
       : `Cadastrar a estrutura lida do ${nome} na obra?`;
-    const aviso = pendentesConfirmacao > 0 ? ` Confira as ${pendentesConfirmacao} funções marcadas "confirme" antes.` : '';
-    if (!(await confirmar(texto + aviso))) return;
+    const aviso =
+      pendentesConfirmacao === 1
+        ? ' Confira antes a função marcada "confirme".'
+        : pendentesConfirmacao > 1
+          ? ` Confira antes as ${pendentesConfirmacao} funções marcadas "confirme".`
+          : '';
+    if (!(await confirmar({ titulo: 'Cadastrar estrutura', mensagem: texto + aviso, rotuloConfirmar: 'Cadastrar', tom: 'neutro' })))
+      return;
     try {
       setSalvando(true);
       setErro(null);
@@ -109,7 +115,16 @@ export function LeituraIaRevisaoPage() {
   }
 
   async function descartar() {
-    if (!leitura || !(await confirmar('Descartar esta leitura? Nada foi cadastrado e você pode ler de novo depois.'))) return;
+    if (
+      !leitura ||
+      !(await confirmar({
+        titulo: 'Descartar leitura',
+        mensagem: 'Descartar esta leitura? Nada foi cadastrado e você pode ler de novo depois.',
+        rotuloConfirmar: 'Descartar',
+        tom: 'neutro',
+      }))
+    )
+      return;
     try {
       await api.leiturasIa.descartar(doc, leitura.id);
       voltar();

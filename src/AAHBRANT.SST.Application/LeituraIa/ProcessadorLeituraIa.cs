@@ -98,9 +98,10 @@ public class ProcessadorLeituraIa
             ? new List<DiferencaLeituraIa>()
             : MontagemLeituraIa.CompararPgr(
                 lida.Ghes,
-                atuais.ToDictionary(g => g.Numero, g => g.Funcoes.Select(f => f.FuncaoNome ?? "").ToList()),
+                atuais.ToDictionary(g => g.Numero, g => g.Funcoes.Select(f => new MontagemLeituraIa.FuncaoAtual(f.FuncaoId, f.FuncaoNome ?? "")).ToList()),
                 atuais.SelectMany(g => g.Riscos.Select(r => new MontagemLeituraIa.RiscoAtual(g.Numero, r.Perigo ?? "", (int)r.NivelRisco))).ToList(),
-                matriz);
+                matriz,
+                funcoes.ToDictionary(f => Common.FuncaoSstClassifier.Normalizar(f.NomeDocumento), f => f.FuncaoIdSugerida));
 
         return new ResultadoLeituraIa("PGR", lida.Cabecalho, null, lida.Ghes, lida.PlanoAcao,
             new List<ImportarEstruturaExamesFuncao>(), funcoes, divergencias, diferencas, atuais.Count > 0);
@@ -110,10 +111,13 @@ public class ProcessadorLeituraIa
     {
         var (exames, divergencias) = MontagemLeituraIa.MontarExamesPcmso(lida);
 
-        var funcoesGhe = await _db.GheFuncoes
+        // Nomes em consulta separada: IgnoreQueryFilters na mesma consulta traria GHE desativados.
+        var idsFuncoesGhe = await _db.GheFuncoes
             .Where(f => _db.Ghes.Any(g => g.Id == f.GheId && g.ObraId == leitura.ObraId))
-            .Select(f => _db.Funcoes.IgnoreQueryFilters().Where(x => x.Id == f.FuncaoId).Select(x => x.Nome).FirstOrDefault() ?? "")
+            .Select(f => f.FuncaoId)
             .ToListAsync(ct);
+        var nomesGhe = await Common.NomesPorId.FuncoesAsync(_db, idsFuncoesGhe, ct);
+        var funcoesGhe = idsFuncoesGhe.Select(id => nomesGhe.TryGetValue(id, out var f) ? f.Nome : "").ToList();
         divergencias.AddRange(MontagemLeituraIa.ConferirPcmso(lida.Cabecalho, exames.Select(e => e.Funcao), funcoesGhe, DateTime.UtcNow.Date));
 
         var gheDaFuncao = lida.Quadros
@@ -126,12 +130,14 @@ public class ProcessadorLeituraIa
             exames.Select(e => (e.Funcao, cboDaFuncao.GetValueOrDefault(e.Funcao), gheDaFuncao.GetValueOrDefault(e.Funcao), e.Exames.Count)),
             await FuncoesExistentesAsync(ct));
 
-        var atuais = await _db.ExamesFuncaoObra
+        var examesAtuais = await _db.ExamesFuncaoObra
             .Where(e => e.ObraId == leitura.ObraId)
-            .Select(e => new MontagemLeituraIa.ExameAtual(
-                _db.Funcoes.IgnoreQueryFilters().Where(f => f.Id == e.FuncaoId).Select(f => f.Nome).FirstOrDefault() ?? "",
-                e.Exame, e.PeriodicidadeMeses))
+            .Select(e => new { e.FuncaoId, e.Exame, e.PeriodicidadeMeses })
             .ToListAsync(ct);
+        var nomesExames = await Common.NomesPorId.FuncoesAsync(_db, examesAtuais.Select(e => e.FuncaoId), ct);
+        var atuais = examesAtuais
+            .Select(e => new MontagemLeituraIa.ExameAtual(nomesExames.TryGetValue(e.FuncaoId, out var f) ? f.Nome : "", e.Exame, e.PeriodicidadeMeses))
+            .ToList();
         var diferencas = atuais.Count == 0 ? new List<DiferencaLeituraIa>() : MontagemLeituraIa.CompararPcmso(exames, atuais);
 
         return new ResultadoLeituraIa("PCMSO", null, lida.Cabecalho, new List<ImportarEstruturaGhe>(), new List<string>(),

@@ -24,13 +24,14 @@ public class ListarExamesFuncaoObraQueryHandler : IRequestHandler<ListarExamesFu
         if (request.FuncaoId is { } funcaoId)
             query = query.Where(e => e.FuncaoId == funcaoId);
 
-        var itens = await query
-            .Select(e => new ExameFuncaoObraDto(
-                e.Id, e.FuncaoId,
-                _db.Funcoes.IgnoreQueryFilters().Where(f => f.Id == e.FuncaoId).Select(f => f.Nome).FirstOrDefault(),
+        var lidos = await query.ToListAsync(ct);
+        // Nome da função em consulta separada: IgnoreQueryFilters aqui desligaria os filtros de Ativo/obra.
+        var funcoes = await Common.NomesPorId.FuncoesAsync(_db, lidos.Select(e => e.FuncaoId), ct);
+        var itens = lidos.Select(e => new ExameFuncaoObraDto(
+                e.Id, e.FuncaoId, funcoes.TryGetValue(e.FuncaoId, out var f) ? f.Nome : null,
                 e.PcmsoDetalheId, e.Exame, e.CodigoExame, e.Admissional, e.Periodico, e.RetornoTrabalho,
                 e.MudancaRisco, e.Demissional, e.PeriodicidadeMeses, e.Observacao))
-            .ToListAsync(ct);
+            .ToList();
 
         return itens.OrderBy(e => e.FuncaoNome).ThenBy(e => e.Exame).ToList();
     }

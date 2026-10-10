@@ -83,6 +83,7 @@ public class MontagemLeituraIaTests
             new(Guid.NewGuid(), "PEDREIRO"),
             new(Guid.NewGuid(), "Servente"),
             new(Guid.NewGuid(), "Engenheiro de Produção"),
+            new(Guid.NewGuid(), "Auxiliar de Topografia"),
         };
 
         var casadas = MontagemLeituraIa.CasarFuncoes(new[]
@@ -91,12 +92,14 @@ public class MontagemLeituraIaTests
             ("Ajudante/Servente", null, 1, 0),
             ("Engenheira de Produção", null, 11, 0),
             ("Ajudante de Eletricista", null, 4, 0),
+            ("Auxiliar de Topógrafo", null, 10, 0),
         }, existentes);
 
         Assert.Equal("existe", casadas.Single(f => f.NomeDocumento == "Pedreiro").Situacao);
         Assert.Equal(("parecida", "Servente"), casadas.Single(f => f.NomeDocumento == "Ajudante/Servente") is var a ? (a.Situacao, a.FuncaoNomeSugerida) : default);
         Assert.Equal("parecida", casadas.Single(f => f.NomeDocumento == "Engenheira de Produção").Situacao);
         Assert.Equal("nova", casadas.Single(f => f.NomeDocumento == "Ajudante de Eletricista").Situacao);
+        Assert.Equal(("parecida", "Auxiliar de Topografia"), casadas.Single(f => f.NomeDocumento == "Auxiliar de Topógrafo") is var t ? (t.Situacao, t.FuncaoNomeSugerida) : default);
     }
 
     [Fact]
@@ -111,10 +114,19 @@ public class MontagemLeituraIaTests
                 new List<ImportarEstruturaFuncao> { new("Operador de Betoneira", null, null, null, null) },
                 new List<ImportarEstruturaRisco>()),
         };
-        var funcoesAtuais = new Dictionary<int, List<string>> { [1] = new() { "Pedreiro", "Servente" }, [12] = new() { "Vigia" } };
+        var pedreiro = Guid.NewGuid();
+        var funcoesAtuais = new Dictionary<int, List<MontagemLeituraIa.FuncaoAtual>>
+        {
+            [1] = new() { new(pedreiro, "PEDREIRO"), new(Guid.NewGuid(), "Servente") },
+            [12] = new() { new(Guid.NewGuid(), "Vigia") },
+        };
         var riscosAtuais = new List<MontagemLeituraIa.RiscoAtual> { new(1, "Trabalho em altura", 3) };
+        // "Pedreiro" do documento ligado à função PEDREIRO do sistema: não é mudança, mesmo com outra grafia.
+        var ligadas = new Dictionary<string, Guid?> { ["pedreiro"] = pedreiro, ["operador de betoneira"] = null };
 
-        var dif = MontagemLeituraIa.CompararPgr(novos, funcoesAtuais, riscosAtuais, Matriz);
+        var dif = MontagemLeituraIa.CompararPgr(novos, funcoesAtuais, riscosAtuais, Matriz, ligadas);
+
+        Assert.DoesNotContain(dif, d => d.Oque.Contains("função Pedreiro"));
 
         Assert.Contains(dif, d => d.Tipo == "incluido" && d.Oque.StartsWith("GHE 16"));
         Assert.Contains(dif, d => d.Tipo == "removido" && d.Oque.StartsWith("GHE 12"));
