@@ -14,6 +14,14 @@ public class ExameComplementar : AuditableEntity
     public Aso? Aso { get; set; }
 
     public TipoExameComplementar Tipo { get; set; }
+
+    // Exame exato do PCMSO (ExameFuncaoObra.CodigoExame/Exame, Tabela 27 do eSocial). Tipo é só a
+    // categoria e não distingue, por exemplo, glicemia de hemograma (ambos "Laboratoriais"); é por
+    // este código que o alerta de exames da função sabe qual exame foi feito. Nulo nos registros
+    // antigos, anteriores ao quadro de exames por função (10/10/2026).
+    public string? CodigoExame { get; set; }
+    public string? NomeExame { get; set; }
+
     public DateTime DataRealizacao { get; set; }
     public DateTime DataValidade { get; set; }
     public string Resultado { get; set; } = string.Empty;

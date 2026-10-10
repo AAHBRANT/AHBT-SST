@@ -134,7 +134,10 @@ public enum TipoAlerta
     // Módulo Terceirizado (docs/superpowers/specs/2026-09-18-modulo-terceirizado-design.md §8) —
     // contrato encerrado no G-Juri com pessoas ainda ativas no SST. Spec: "só alerta, não desliga
     // ninguém automaticamente" — o desligamento continua manual.
-    ContratoTerceirizadoEncerrado = 27
+    ContratoTerceirizadoEncerrado = 27,
+    // Exames periódicos do PCMSO pela função do trabalhador (ExameFuncaoObra), 10/10/2026.
+    ExameFuncaoVencendo = 28,
+    ExameFuncaoVencido = 29
 }
 
 public enum SeveridadeAlerta
@@ -163,7 +166,9 @@ public enum TipoModuloAlerta
     Dds = 9,
     PlanoAcao = 10,
     Outro = 11,
-    Pgr = 12
+    Pgr = 12,
+    // Exames do PCMSO pela função do trabalhador (ExameFuncaoObra), 10/10/2026.
+    ExamesFuncao = 13
 }
 
 public enum StatusAlerta

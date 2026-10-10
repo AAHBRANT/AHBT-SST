@@ -10,6 +10,8 @@ public class ExameComplementarConfiguracao : IEntityTypeConfiguration<ExameCompl
     {
         builder.Property(e => e.Resultado).IsRequired().HasMaxLength(300);
         builder.Property(e => e.ResponsavelTecnico).HasMaxLength(150);
+        builder.Property(e => e.CodigoExame).HasMaxLength(20);
+        builder.Property(e => e.NomeExame).HasMaxLength(200);
         builder.HasOne(e => e.Trabalhador).WithMany(t => t.ExamesComplementares)
             .HasForeignKey(e => e.TrabalhadorId).OnDelete(DeleteBehavior.Restrict);
         builder.HasOne(e => e.Aso).WithMany()
