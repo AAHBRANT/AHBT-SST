@@ -4,6 +4,7 @@ import {
   Button,
   Field,
   Input,
+  Switch,
   Textarea,
   Card,
   PageHeader,
@@ -18,9 +19,8 @@ import {
   useConfirmar,
   type Coluna,
 } from '@ui';
-import { Switch } from '@fluentui/react-components';
 import { Add24Regular, Delete24Regular } from '@fluentui/react-icons';
-import { api, type CursoTreinamento, type NovoCursoTreinamento } from '../../lib/api';
+import { api, type CursoNr6SemMarcador, type CursoTreinamento, type NovoCursoTreinamento } from '../../lib/api';
 import { useSucessoToast } from '../../hooks/useSucessoToast';
 
 const cursoVazio: NovoCursoTreinamento = {
@@ -39,6 +39,7 @@ const cursoVazio: NovoCursoTreinamento = {
 export function CursosTreinamentoTab() {
   const [cursos, setCursos] = useState<CursoTreinamento[]>([]);
   const [novoCurso, setNovoCurso] = useState<NovoCursoTreinamento>(cursoVazio);
+  const [cursosNr6SemMarcador, setCursosNr6SemMarcador] = useState<CursoNr6SemMarcador[]>([]);
   const [erro, setErro] = useState<string | null>(null);
   const [erroPainel, setErroPainel] = useState<string | null>(null);
   const [carregando, setCarregando] = useState(false);
@@ -51,6 +52,8 @@ export function CursosTreinamentoTab() {
     try {
       setErro(null);
       setCursos(await api.cursosTreinamento.listar());
+      // Aviso informativo: se falhar, a tela segue sem ele.
+      api.cursosTreinamento.nr06SemMarcador().then(setCursosNr6SemMarcador).catch(() => setCursosNr6SemMarcador([]));
     } catch (e) {
       setErro(e instanceof Error ? e.message : 'Falha ao carregar cursos de treinamento.');
     } finally {
@@ -148,6 +151,20 @@ export function CursosTreinamentoTab() {
       {erro && (
         <FeedbackInline tom="erro" aoFechar={() => setErro(null)}>
           {erro}
+        </FeedbackInline>
+      )}
+      {cursosNr6SemMarcador.length > 0 && (
+        <FeedbackInline tom="aviso">
+          Estes cursos citam a NR-06, mas o sistema não os reconhece como habilitadores da entrega de EPI — os
+          certificados deles NÃO liberam EPI. Para corrigir, edite o curso e deixe o campo Norma exatamente como
+          &quot;NR-06&quot; (se o curso mistura várias normas, cadastre a NR-06 como um curso separado):{' '}
+          {cursosNr6SemMarcador
+            .map(
+              (c) =>
+                `${c.nome} (norma "${c.normaReferencia ?? ''}"; ${c.trabalhadoresComCertificadoValido} trabalhador(es) com certificado válido)`,
+            )
+            .join('; ')}
+          .
         </FeedbackInline>
       )}
       <div id="painel-novo-curso">

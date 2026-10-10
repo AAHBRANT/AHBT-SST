@@ -7,7 +7,7 @@ export * from './tokens/movimento';
 // Primitivos Fluent que não ganham wrapper (spec §2.2) — re-exportados para a página não precisar
 // importar @fluentui/react-components.
 export {
-  Avatar, Button, Checkbox, Input, Select, Spinner, Text, Textarea, Tooltip,
+  Avatar, Button, Checkbox, Input, Select, Spinner, Switch, Text, Textarea, Tooltip,
   // Radio/RadioGroup: mesmo espírito do resto da lista (a11y já correta, sem hex/estilo próprio) —
   // faltava na lista original da spec §2.2 por não ter uso ainda; achado na Onda 2 Task 18
   // (QuestionarioAplicabilidadeTab.tsx, único consumidor no app hoje).
