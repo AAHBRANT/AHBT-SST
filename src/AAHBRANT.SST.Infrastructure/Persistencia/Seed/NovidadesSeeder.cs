@@ -1113,6 +1113,21 @@ public static class NovidadesSeeder
                     "Era preciso vincular os riscos de cada trabalhador à mão.",
                     "O perfil do trabalhador mostra o GHE e os exames previstos pela função dele na obra, sem vínculo manual: o GHE na aba \"Riscos & OS\" e os exames na aba \"Geral & ASO\"."),
             }),
+        new(
+            Versao: "5.58.0",
+            Titulo: "Alerta de exames do PCMSO pela função",
+            DataPublicacao: new DateTime(2026, 10, 10, 0, 0, 0, DateTimeKind.Utc),
+            Itens: new[]
+            {
+                new NovidadeSeedItem(CategoriaNovidade.Novidade,
+                    "Campo \"Exame do PCMSO\" no exame complementar",
+                    "O exame complementar era registrado só com a categoria (ex.: Laboratoriais), sem dizer qual exame foi feito.",
+                    "Ao registrar um exame complementar, escolha o exame na lista do PCMSO da função do funcionário. O tipo é preenchido e a validade é sugerida pela periodicidade; os dois continuam editáveis."),
+                new NovidadeSeedItem(CategoriaNovidade.Novidade,
+                    "Alerta de exames da função",
+                    "Não havia aviso de exame periódico vencendo pelo PCMSO.",
+                    "A tela de Alertas mostra, por trabalhador, os exames do PCMSO da função que estão vencidos, vencendo ou nunca registrados. Para receber no Teams, escolha o responsável do módulo \"Exames da função (PCMSO)\" em Configurações."),
+            }),
     };
 
     public static async Task ExecutarAsync(IServiceProvider services, CancellationToken ct = default)

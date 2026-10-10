@@ -28,10 +28,12 @@ import {
   tipoExameComplementarLabel,
   type Aso,
   type ExameComplementar,
+  type ExameFuncaoObra,
   type NovoExameComplementar,
   type Trabalhador,
 } from '../../lib/api';
 import { useSucessoToast } from '../../hooks/useSucessoToast';
+import { categoriaDoExame, nomeExame, rotuloPeriodicidade, somarMeses } from '../../components/estrutura-sst/formatacao';
 
 function exameVazio(): NovoExameComplementar {
   return {
@@ -43,6 +45,8 @@ function exameVazio(): NovoExameComplementar {
     resultado: '',
     observacoes: '',
     responsavelTecnico: '',
+    codigoExame: null,
+    nomeExame: null,
   };
 }
 
@@ -64,6 +68,9 @@ export function ExamesComplementaresTab() {
   const [erro, setErro] = useState<string | null>(null);
   const [carregando, setCarregando] = useState(false);
   const [carregandoLista, setCarregandoLista] = useState(true);
+  // Exames do PCMSO da função do funcionário escolhido (vazio quando a obra não tem quadro importado).
+  const [examesPcmso, setExamesPcmso] = useState<ExameFuncaoObra[]>([]);
+  const [examePcmsoId, setExamePcmsoId] = useState('');
   const { confirmar, dialogElement } = useConfirmar();
   const sucessoToast = useSucessoToast();
 
@@ -95,6 +102,55 @@ export function ExamesComplementaresTab() {
 
   const asosDoTrabalhadorSelecionado = asos.filter((a) => a.trabalhadorId === novoExame.trabalhadorId);
 
+  useEffect(() => {
+    let ativo = true;
+    setExamesPcmso([]);
+    setExamePcmsoId('');
+    const trabalhador = trabalhadores.find((t) => t.id === novoExame.trabalhadorId);
+    if (trabalhador) {
+      api.estruturaSst
+        .listarExamesFuncao(trabalhador.obraId, trabalhador.funcaoId)
+        .then((lista) => {
+          if (ativo) setExamesPcmso(lista);
+        })
+        // Sem permissão de PCMSO ou falha de rede: o formulário segue como antes, só com o Tipo.
+        .catch(() => undefined);
+    }
+    return () => {
+      ativo = false;
+    };
+  }, [novoExame.trabalhadorId, trabalhadores]);
+
+  // Escolher o exame do PCMSO preenche Tipo e sugere a Validade (realização + periodicidade); os dois
+  // continuam editáveis.
+  function escolherExamePcmso(id: string) {
+    setExamePcmsoId(id);
+    const exame = examesPcmso.find((e) => e.id === id);
+    if (!exame) {
+      setNovoExame({ ...novoExame, codigoExame: null, nomeExame: null });
+      return;
+    }
+    setNovoExame({
+      ...novoExame,
+      codigoExame: exame.codigoExame,
+      nomeExame: exame.exame,
+      tipo: categoriaDoExame(exame),
+      dataValidade:
+        novoExame.dataRealizacao && exame.periodicidadeMeses
+          ? somarMeses(novoExame.dataRealizacao, exame.periodicidadeMeses)
+          : novoExame.dataValidade,
+    });
+  }
+
+  function mudarRealizacao(data: string) {
+    const exame = examesPcmso.find((e) => e.id === examePcmsoId);
+    setNovoExame({
+      ...novoExame,
+      dataRealizacao: data,
+      dataValidade: data && exame?.periodicidadeMeses ? somarMeses(data, exame.periodicidadeMeses) : novoExame.dataValidade,
+    });
+  }
+
   async function criar() {
     if (!novoExame.trabalhadorId || !novoExame.dataRealizacao || !novoExame.dataValidade || !novoExame.resultado.trim()) {
       setErro('Preencha funcionário, datas e resultado.');
@@ -105,6 +161,7 @@ export function ExamesComplementaresTab() {
       setErro(null);
       await api.examesComplementares.criar({ ...novoExame, asoId: novoExame.asoId || null });
       setNovoExame(exameVazio());
+      setExamePcmsoId('');
       await carregar();
       sucessoToast('Exame complementar registrado com sucesso.');
     } catch (e) {
@@ -163,6 +220,19 @@ export function ExamesComplementaresTab() {
           </Select>
         ) : (
           tipoExameComplementarLabel[ex.tipo]
+        ),
+    },
+    {
+      chave: 'exame',
+      rotulo: 'Exame',
+      render: (ex) =>
+        ex.nomeExame ? (
+          <span>
+            {nomeExame(ex.nomeExame)}
+            {ex.codigoExame && <span style={{ color: designTokens.colorNeutralMedium, fontSize: 12 }}> {ex.codigoExame}</span>}
+          </span>
+        ) : (
+          '—'
         ),
     },
     {
@@ -247,6 +317,22 @@ export function ExamesComplementaresTab() {
                 </Select>
               </Field>
             </Campo>
+            {examesPcmso.length > 0 && (
+              <Campo span={3}>
+                <Field label="Exame do PCMSO" hint="Exames previstos para a função do funcionário na obra">
+                  <Select value={examePcmsoId} onChange={(_, d) => escolherExamePcmso(d.value)}>
+                    <option value="">Outro exame (fora do PCMSO)</option>
+                    {examesPcmso.map((e) => (
+                      <option key={e.id} value={e.id}>
+                        {nomeExame(e.exame)}
+                        {e.codigoExame ? ` · ${e.codigoExame}` : ''}
+                        {e.periodico ? ` · ${rotuloPeriodicidade(e.periodicidadeMeses).toLowerCase()}` : ''}
+                      </option>
+                    ))}
+                  </Select>
+                </Field>
+              </Campo>
+            )}
             <Campo span={3}>
               <Field label="Tipo de exame">
                 <Select value={novoExame.tipo} onChange={(_, d) => setNovoExame({ ...novoExame, tipo: Number(d.value) })}>
@@ -260,10 +346,7 @@ export function ExamesComplementaresTab() {
             </Campo>
             <Campo span={2}>
               <Field label="Data de realização">
-                <CampoData
-                  value={novoExame.dataRealizacao}
-                  onChange={(_, d) => setNovoExame({ ...novoExame, dataRealizacao: d.value })}
-                />
+                <CampoData value={novoExame.dataRealizacao} onChange={(_, d) => mudarRealizacao(d.value)} />
               </Field>
             </Campo>
             <Campo span={2}>

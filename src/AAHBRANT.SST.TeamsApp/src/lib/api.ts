@@ -222,6 +222,9 @@ export interface ExameComplementar {
   trabalhadorId: string;
   asoId?: string | null;
   tipo: number;
+  // Exame exato do PCMSO da função (ExameFuncaoObra); nulo nos registros antigos ou fora do PCMSO.
+  codigoExame?: string | null;
+  nomeExame?: string | null;
   dataRealizacao: string;
   dataValidade: string;
   resultado: string;
@@ -3188,6 +3191,8 @@ export const tipoAlertaLabel: Record<number, string> = {
   18: 'Extintor vencido',
   19: 'Equipamento vencendo',
   20: 'Equipamento vencido',
+  28: 'Exame da função vencendo',
+  29: 'Exame da função vencido',
 };
 
 export const SeveridadeAlerta = {
@@ -3343,6 +3348,8 @@ export const TipoModuloAlerta = {
   Dds: 9,
   PlanoAcao: 10,
   Outro: 11,
+  // Exames do PCMSO pela função do trabalhador (ExamesFuncaoAlertaProvider).
+  ExamesFuncao: 13,
 } as const;
 
 export const moduloAlertaLabel: Record<number, string> = {
@@ -3357,6 +3364,7 @@ export const moduloAlertaLabel: Record<number, string> = {
   9: 'DDS',
   10: 'Plano de ação',
   11: 'Outro',
+  13: 'Exames da função (PCMSO)',
 };
 
 export interface RegraAlerta {
