@@ -1240,9 +1240,151 @@ export interface PgrRevisao {
   dataRevisao: string;
   motivo: string;
   responsavelUsuarioId?: string | null;
+  // PDF da revisão (10/10/2026); o arquivo vem por obterDocumento(id).
+  temDocumento?: boolean;
+  documentoNomeArquivo?: string | null;
+  criadoEmUtc?: string;
+  criadoPorNome?: string | null;
 }
 
-export type NovaPgrRevisao = Omit<PgrRevisao, 'id' | 'numeroRevisao'>;
+export type NovaPgrRevisao = Pick<PgrRevisao, 'pgrId' | 'dataRevisao' | 'motivo' | 'responsavelUsuarioId'>;
+
+export interface PcmsoRevisao {
+  id: string;
+  pcmsoDetalheId: string;
+  numeroRevisao: number;
+  dataRevisao: string;
+  motivo: string;
+  temDocumento: boolean;
+  documentoNomeArquivo: string | null;
+  criadoEmUtc: string;
+  criadoPorNome: string | null;
+}
+
+// "Ler com IA" do PGR/PCMSO (10/10/2026). Status: 1 Pendente, 2 Lendo, 3 Concluída, 4 Falhou,
+// 5 Cadastrada, 6 Descartada.
+export type DocumentoLeituraIa = 'pgr' | 'pcmso';
+
+export const StatusLeituraIa = { Pendente: 1, Lendo: 2, Concluida: 3, Falhou: 4, Cadastrada: 5, Descartada: 6 } as const;
+
+export interface RiscoLidoIa {
+  tipo: string;
+  agente: string;
+  danos: string | null;
+  avaliacao: string | null;
+  epc: string | null;
+  epi: string | null;
+  probabilidade: number;
+  severidade: number;
+  classificacaoDocumento: string | null;
+  monitoramento: string | null;
+}
+
+export interface GheLidoIa {
+  numero: number;
+  setor: string | null;
+  jornadaTrabalho: string | null;
+  descricaoAmbiente: string | null;
+  atividadesCriticas: string | null;
+  funcoes: { nome: string; cbo: string | null; quantidadeExpostos: number | null }[];
+  riscos: RiscoLidoIa[];
+}
+
+export interface ExameLidoIa {
+  exame: string;
+  codigo: string | null;
+  admissional: boolean;
+  periodico: boolean;
+  retornoTrabalho: boolean;
+  mudancaRisco: boolean;
+  demissional: boolean;
+  periodicidadeMeses: number | null;
+}
+
+export interface FuncaoLidaIa {
+  nomeDocumento: string;
+  cbo: string | null;
+  ghes: number[];
+  exames: number;
+  funcaoIdSugerida: string | null;
+  funcaoNomeSugerida: string | null;
+  situacao: 'existe' | 'parecida' | 'nova';
+}
+
+export interface ResultadoLeituraIa {
+  documento: 'PGR' | 'PCMSO';
+  cabecalhoPgr: { responsavel: string | null; registro: string | null; revisao: string | null; inicio: string | null; revisaoSugerida: string | null; termino: string | null } | null;
+  cabecalhoPcmso: { medicoNome: string | null; medicoCrm: string | null; dataElaboracao: string | null; validade: string | null } | null;
+  ghes: GheLidoIa[];
+  planoAcao: string[];
+  examesPorFuncao: { funcao: string; exames: ExameLidoIa[] }[];
+  funcoes: FuncaoLidaIa[];
+  divergencias: { gravidade: 'alta' | 'media'; texto: string }[];
+  diferencas: { tipo: 'incluido' | 'removido' | 'alterado'; oque: string; antes: string | null; depois: string | null }[];
+  haEstruturaAtual: boolean;
+}
+
+export interface LeituraIa {
+  id: string;
+  documento: number;
+  documentoId: string;
+  obraId: string;
+  status: number;
+  etapa: string | null;
+  passosConcluidos: number;
+  passosTotal: number;
+  erro: string | null;
+  criadaEmUtc: string;
+  concluidaEmUtc: string | null;
+  cadastradaEmUtc: string | null;
+  resultado: ResultadoLeituraIa | null;
+}
+
+export interface ResultadoCadastroEstrutura {
+  ghes: number;
+  riscos: number;
+  exames: number;
+  itensPlanoAcao: number;
+  funcoesReaproveitadas: string[];
+  funcoesCriadas: string[];
+}
+
+// "Nova revisão" do PGR/PCMSO: o PDF novo não apaga o anterior.
+export interface DadosNovaRevisao {
+  numeroRevisao: number | null;
+  dataRevisao: string;
+  motivo: string;
+  arquivo: File;
+}
+
+function formularioNovaRevisao(documentoId: string, dados: DadosNovaRevisao): FormData {
+  const formData = new FormData();
+  formData.append('DocumentoId', documentoId);
+  if (dados.numeroRevisao != null) formData.append('NumeroRevisao', String(dados.numeroRevisao));
+  formData.append('DataRevisao', dados.dataRevisao);
+  formData.append('Motivo', dados.motivo);
+  formData.append('Arquivo', dados.arquivo);
+  return formData;
+}
+
+async function enviarFormulario<T>(caminho: string, formData: FormData): Promise<T> {
+  const response = await fetch(`${API_BASE_URL}${caminho}`, { method: 'POST', headers: await montarHeadersAuth(), body: formData });
+  if (!response.ok) {
+    const corpo = await response.text().catch(() => '');
+    throw new Error(extrairMensagemErro(corpo, response.status, response.statusText));
+  }
+  return (await response.json()) as T;
+}
+
+async function baixarBlobOuNulo(caminho: string): Promise<Blob | null> {
+  const response = await fetch(`${API_BASE_URL}${caminho}`, { headers: await montarHeadersAuth() });
+  if (response.status === 404) return null;
+  if (!response.ok) {
+    const corpo = await response.text().catch(() => '');
+    throw new Error(extrairMensagemErro(corpo, response.status, response.statusText));
+  }
+  return response.blob();
+}
 
 export interface PgrDetalhe {
   pgr: Pgr;
@@ -4333,6 +4475,10 @@ export const api = {
       request<ExameFuncaoObra[]>(`/api/obras/${obraId}/exames-funcao${funcaoId ? `?funcaoId=${funcaoId}` : ''}`),
   },
   pcmsos: {
+    listarRevisoes: (id: string) => request<PcmsoRevisao[]>(`/api/pcmsos/${id}/revisoes`),
+    novaRevisao: (id: string, dados: DadosNovaRevisao) =>
+      enviarFormulario<{ id: string }>(`/api/pcmsos/${id}/revisoes`, formularioNovaRevisao(id, dados)),
+    obterDocumentoRevisao: (revisaoId: string) => baixarBlobOuNulo(`/api/pcmsos/revisoes/${revisaoId}/documento`),
     listar: (obraId?: string) => request<Pcmso[]>(`/api/pcmsos${obraId ? `?obraId=${obraId}` : ''}`),
     obterPorId: (id: string) => request<Pcmso>(`/api/pcmsos/${id}`),
     criar: (pcmso: NovoPcmso) => request<{ id: string }>('/api/pcmsos', { method: 'POST', body: JSON.stringify(pcmso) }),
@@ -4772,10 +4918,28 @@ export const api = {
       request<void>(`/api/planoacao/${id}`, { method: 'PUT', body: JSON.stringify(item) }),
     excluir: (id: string) => request<void>(`/api/planoacao/${id}`, { method: 'DELETE' }),
   },
+  leiturasIa: {
+    iniciar: (doc: DocumentoLeituraIa, documentoId: string) =>
+      request<{ id: string }>(`/api/${doc}s/${documentoId}/leituras-ia`, { method: 'POST' }),
+    // undefined quando o documento nunca foi lido (204).
+    ultima: (doc: DocumentoLeituraIa, documentoId: string) =>
+      request<LeituraIa | undefined>(`/api/${doc}s/${documentoId}/leituras-ia/ultima`),
+    obter: (doc: DocumentoLeituraIa, leituraId: string) => request<LeituraIa>(`/api/${doc}s/leituras-ia/${leituraId}`),
+    descartar: (doc: DocumentoLeituraIa, leituraId: string) =>
+      request<void>(`/api/${doc}s/leituras-ia/${leituraId}/descartar`, { method: 'POST' }),
+    cadastrar: (doc: DocumentoLeituraIa, leituraId: string, funcoes: { nomeDocumento: string; funcaoId: string | null }[]) =>
+      request<ResultadoCadastroEstrutura>(`/api/${doc}s/leituras-ia/${leituraId}/cadastrar`, {
+        method: 'POST',
+        body: JSON.stringify({ funcoes }),
+      }),
+  },
   pgrRevisoes: {
     listar: (pgrId: string) => request<PgrRevisao[]>(`/api/pgrrevisoes?pgrId=${pgrId}`),
     criar: (revisao: NovaPgrRevisao) =>
       request<{ id: string }>('/api/pgrrevisoes', { method: 'POST', body: JSON.stringify(revisao) }),
+    nova: (pgrId: string, dados: DadosNovaRevisao) =>
+      enviarFormulario<{ id: string }>('/api/pgrrevisoes/nova', formularioNovaRevisao(pgrId, dados)),
+    obterDocumento: (revisaoId: string) => baixarBlobOuNulo(`/api/pgrrevisoes/${revisaoId}/documento`),
   },
   areasSst: {
     listar: (obraId?: string) => request<AreaSst[]>(`/api/areassst${obraId ? `?obraId=${obraId}` : ''}`),

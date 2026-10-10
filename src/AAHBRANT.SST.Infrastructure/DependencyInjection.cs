@@ -79,6 +79,12 @@ public static class DependencyInjection
         services.Configure<AzureOpenAiOptions>(configuration.GetSection("AzureOpenAI"));
         services.AddScoped<AAHBRANT.SST.Application.SuporteIa.ITranscricaoAudioService, AzureOpenAiTranscricaoService>();
         services.AddScoped<AzureOpenAiChatJsonCliente>();
+        // Leitura de PGR/PCMSO com IA (10/10/2026). O consumidor da fila (LeituraIaBackgroundService) é
+        // registrado só na Api.
+        services.AddSingleton<LeituraIa.FilaLeituraIa>();
+        services.AddSingleton<AAHBRANT.SST.Application.LeituraIa.IFilaLeituraIa>(sp => sp.GetRequiredService<LeituraIa.FilaLeituraIa>());
+        services.AddScoped<AAHBRANT.SST.Application.LeituraIa.IExtratorTextoPdf, LeituraIa.PdfPigExtratorTexto>();
+        services.AddScoped<AAHBRANT.SST.Application.LeituraIa.ILeitorDocumentoSstIa, LeituraIa.AzureOpenAiLeitorDocumentoSst>();
         services.AddScoped<AAHBRANT.SST.Application.SuporteIa.IClassificadorRelatoSuporteIa, AzureOpenAiClassificadorRelato>();
         services.AddScoped<AAHBRANT.SST.Application.Acidentes.RelatoIa.IClassificadorRelatoOcorrencia, AzureOpenAiClassificadorOcorrencia>();
         services.AddScoped<AAHBRANT.SST.Application.Acidentes.RelatoIa.IAnalistaPlanoOcorrencia, AzureOpenAiAnalistaPlanoOcorrencia>();

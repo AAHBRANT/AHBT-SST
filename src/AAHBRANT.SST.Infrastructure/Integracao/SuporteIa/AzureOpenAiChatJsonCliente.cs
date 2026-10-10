@@ -25,7 +25,11 @@ public class AzureOpenAiChatJsonCliente
         _logger = logger;
     }
 
-    public async Task<T> ObterAsync<T>(string instrucoesSistema, string mensagemUsuario, string nomeSchema, object schema, CancellationToken ct)
+    // maxTokens/timeoutSegundos maiores para a leitura de PGR/PCMSO (10/10/2026); os classificadores de
+    // relato continuam com 3000 tokens e 60 s. Limite de taxa (429) e erro do serviço (5xx) são tentados
+    // de novo até 3 vezes — a leitura de um documento faz dezenas de chamadas seguidas.
+    public async Task<T> ObterAsync<T>(string instrucoesSistema, string mensagemUsuario, string nomeSchema, object schema, CancellationToken ct,
+        int maxTokens = 3000, int timeoutSegundos = 60)
     {
         var opcoes = _options.Value;
         if (string.IsNullOrWhiteSpace(opcoes.Endpoint) || string.IsNullOrWhiteSpace(opcoes.ApiKey))
@@ -39,7 +43,7 @@ public class AzureOpenAiChatJsonCliente
                 new { role = "system", content = instrucoesSistema },
                 new { role = "user", content = mensagemUsuario },
             },
-            max_completion_tokens = 3000,
+            max_completion_tokens = maxTokens,
             reasoning_effort = "low",
             response_format = new
             {
@@ -48,12 +52,23 @@ public class AzureOpenAiChatJsonCliente
             },
         };
 
-        using var requisicao = new HttpRequestMessage(HttpMethod.Post, url) { Content = JsonContent.Create(corpo) };
-        requisicao.Headers.Add("api-key", opcoes.ApiKey);
-
         var cliente = _httpClientFactory.CreateClient();
-        cliente.Timeout = TimeSpan.FromSeconds(60);
-        using var resposta = await cliente.SendAsync(requisicao, ct);
+        cliente.Timeout = TimeSpan.FromSeconds(timeoutSegundos);
+
+        HttpResponseMessage resposta;
+        for (var tentativa = 1; ; tentativa++)
+        {
+            using var requisicao = new HttpRequestMessage(HttpMethod.Post, url) { Content = JsonContent.Create(corpo) };
+            requisicao.Headers.Add("api-key", opcoes.ApiKey);
+            resposta = await cliente.SendAsync(requisicao, ct);
+            var temporario = (int)resposta.StatusCode == 429 || (int)resposta.StatusCode >= 500;
+            if (!temporario || tentativa == 3) break;
+            var espera = resposta.Headers.RetryAfter?.Delta ?? TimeSpan.FromSeconds(5 * tentativa);
+            _logger.LogWarning("Azure OpenAI respondeu {Status}; nova tentativa em {Espera}s", (int)resposta.StatusCode, espera.TotalSeconds);
+            resposta.Dispose();
+            await Task.Delay(espera, ct);
+        }
+        using var _ = resposta;
 
         if (!resposta.IsSuccessStatusCode)
         {

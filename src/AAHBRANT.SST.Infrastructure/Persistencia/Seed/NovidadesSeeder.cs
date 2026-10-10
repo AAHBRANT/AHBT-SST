@@ -1128,6 +1128,21 @@ public static class NovidadesSeeder
                     "Não havia aviso de exame periódico vencendo pelo PCMSO.",
                     "A tela de Alertas mostra, por trabalhador, os exames do PCMSO da função que estão vencidos, vencendo ou nunca registrados. Para receber no Teams, escolha o responsável do módulo \"Exames da função (PCMSO)\" em Configurações."),
             }),
+        new(
+            Versao: "5.59.0",
+            Titulo: "PGR e PCMSO: nova revisão e leitura com IA",
+            DataPublicacao: new DateTime(2026, 10, 10, 0, 0, 0, DateTimeKind.Utc),
+            Itens: new[]
+            {
+                new NovidadeSeedItem(CategoriaNovidade.Melhoria,
+                    "Nova revisão guarda o PDF anterior",
+                    "Substituir o PDF do PGR ou do PCMSO apagava o arquivo anterior, sem histórico.",
+                    "O botão \"Substituir documento\" virou \"Nova revisão\": você informa data e motivo, e o PDF anterior fica guardado. A aba \"Revisões\" (agora também no PCMSO) mostra quem registrou cada revisão e abre o PDF de cada uma."),
+                new NovidadeSeedItem(CategoriaNovidade.Novidade,
+                    "Ler PGR e PCMSO com IA",
+                    "A estrutura de SST da obra (GHE, funções, riscos e exames) era digitada à mão a partir do PDF.",
+                    "Com o PDF anexado, clique em \"Ler com IA\". A leitura roda em segundo plano e avisa no sininho quando termina. Na tela de revisão você confere o que foi lido, as divergências encontradas e o que muda em relação à estrutura atual, escolhe a função do sistema para cada função do documento e só então clica em \"Cadastrar estrutura\"."),
+            }),
     };
 
     public static async Task ExecutarAsync(IServiceProvider services, CancellationToken ct = default)

@@ -33,6 +33,8 @@ public class SstDbContext : DbContext, IAppDbContext
     public DbSet<AptidaoAtividadeEspecifica> AptidoesAtividadeEspecifica => Set<AptidaoAtividadeEspecifica>();
     public DbSet<PcmsoDetalhe> PcmsoDetalhes => Set<PcmsoDetalhe>();
     public DbSet<ExameFuncaoObra> ExamesFuncaoObra => Set<ExameFuncaoObra>();
+    public DbSet<PcmsoRevisao> PcmsoRevisoes => Set<PcmsoRevisao>();
+    public DbSet<LeituraDocumentoIa> LeiturasDocumentoIa => Set<LeituraDocumentoIa>();
     public DbSet<CursoTreinamento> CursosTreinamento => Set<CursoTreinamento>();
     public DbSet<Treinamento> Treinamentos => Set<Treinamento>();
     public DbSet<ArquivoCertificadoTreinamento> ArquivosCertificadoTreinamento => Set<ArquivoCertificadoTreinamento>();
@@ -231,6 +233,8 @@ public class SstDbContext : DbContext, IAppDbContext
             g.Ativo && (_usuarioAtual.TemAcessoGlobal || _usuarioAtual.ObrasPermitidas.Contains(g.ObraId)));
         modelBuilder.Entity<ExameFuncaoObra>().HasQueryFilter(e =>
             e.Ativo && (_usuarioAtual.TemAcessoGlobal || _usuarioAtual.ObrasPermitidas.Contains(e.ObraId)));
+        modelBuilder.Entity<LeituraDocumentoIa>().HasQueryFilter(l =>
+            l.Ativo && (_usuarioAtual.TemAcessoGlobal || _usuarioAtual.ObrasPermitidas.Contains(l.ObraId)));
         modelBuilder.Entity<Setor>().HasQueryFilter(s =>
             s.Ativo && (_usuarioAtual.TemAcessoGlobal || _usuarioAtual.ObrasPermitidas.Contains(s.ObraId)));
         // Relatório de uma obra só aparece para quem tem acesso a ela; o consolidado (ObraId nulo) só para

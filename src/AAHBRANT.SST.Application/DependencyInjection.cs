@@ -27,6 +27,7 @@ public static class DependencyInjection
         services.AddScoped<IEligibilityRule, PermissaoTrabalhoValidaRule>();
         services.AddScoped<IEligibilityService, EligibilityService>();
 
+        services.AddScoped<LeituraIa.ProcessadorLeituraIa>();
         services.AddScoped<IAlertaOrigemProvider, AsoAlertaProvider>();
         services.AddScoped<IAlertaOrigemProvider, TreinamentoAlertaProvider>();
         services.AddScoped<IAlertaOrigemProvider, ExtintorAlertaProvider>();

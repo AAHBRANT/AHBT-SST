@@ -80,3 +80,32 @@ public class ExameFuncaoObraConfiguracao : IEntityTypeConfiguration<ExameFuncaoO
         builder.HasQueryFilter(e => e.Ativo);
     }
 }
+
+public class PcmsoRevisaoConfiguracao : IEntityTypeConfiguration<PcmsoRevisao>
+{
+    public void Configure(EntityTypeBuilder<PcmsoRevisao> builder)
+    {
+        // "PcmsoRevisoes" já existe nos bancos: tabela órfã do módulo PCMSO antigo (migration de
+        // 25/08, ligada à tabela Pcmsos) que nunca foi removida — não reaproveitar nem apagar.
+        builder.ToTable("PcmsoDocumentoRevisoes");
+        builder.Property(r => r.Motivo).IsRequired().HasMaxLength(500);
+        builder.Property(r => r.DocumentoContentType).HasMaxLength(100);
+        builder.Property(r => r.DocumentoNomeArquivo).HasMaxLength(260);
+        builder.HasOne(r => r.PcmsoDetalhe).WithMany()
+            .HasForeignKey(r => r.PcmsoDetalheId).OnDelete(DeleteBehavior.Cascade);
+        builder.HasIndex(r => new { r.PcmsoDetalheId, r.NumeroRevisao }).IsUnique();
+        builder.HasQueryFilter(r => r.Ativo);
+    }
+}
+
+public class LeituraDocumentoIaConfiguracao : IEntityTypeConfiguration<LeituraDocumentoIa>
+{
+    public void Configure(EntityTypeBuilder<LeituraDocumentoIa> builder)
+    {
+        builder.ToTable("LeiturasDocumentoIa");
+        builder.Property(l => l.Etapa).HasMaxLength(300);
+        builder.Property(l => l.Erro).HasMaxLength(2000);
+        builder.HasIndex(l => new { l.Documento, l.DocumentoId });
+        builder.HasQueryFilter(l => l.Ativo);
+    }
+}

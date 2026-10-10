@@ -63,4 +63,12 @@ public class PgrRevisaoDto
     public DateTime DataRevisao { get; set; }
     public string Motivo { get; set; } = string.Empty;
     public Guid? ResponsavelUsuarioId { get; set; }
+
+    // PDF da revisão (10/10/2026). O conteúdo em si vem por GET /api/pgrrevisoes/{id}/documento.
+    public bool TemDocumento { get; set; }
+    public string? DocumentoNomeArquivo { get; set; }
+    public DateTime CriadoEmUtc { get; set; }
+    public string? CriadoPorNome { get; set; }
+    [System.Text.Json.Serialization.JsonIgnore]
+    public Guid? CriadoPorId { get; set; }
 }

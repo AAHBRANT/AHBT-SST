@@ -14,6 +14,7 @@ import { OcorrenciasPage } from './pages/ocorrencias/OcorrenciasPage';
 import { PessoasPage } from './pages/pessoas/PessoasPage';
 import { TrabalhadorDetalhePage } from './pages/pessoas/TrabalhadorDetalhePage';
 import { PgrDetalhePage } from './pages/pgr/PgrDetalhePage';
+import { LeituraIaRevisaoPage } from './pages/leitura-ia/LeituraIaRevisaoPage';
 import { AprDetalhePage } from './pages/apr/AprDetalhePage';
 import { PermissaoTrabalhoDetalhePage } from './pages/pt/PermissaoTrabalhoDetalhePage';
 import { AssinarPtPage } from './pages/pt/AssinarPtPage';
@@ -149,6 +150,7 @@ function AppRoteado() {
               <Route path="/prevencao" element={<Navigate to="/gestao-sst?secao=pgr" replace />} />
               <Route path="/prevencao/pgr" element={<RedirecionarParaPilar pilar="/gestao-sst" secao="pgr" />} />
               <Route path="/prevencao/pgr/:id" element={<PgrDetalhePage />} />
+              <Route path="/leituras-ia/:documento/:id" element={<LeituraIaRevisaoPage />} />
               <Route
                 path="/prevencao/inspecoes"
                 element={<RedirecionarParaPilar pilar="/operacao" secao="inspecoes" />}
