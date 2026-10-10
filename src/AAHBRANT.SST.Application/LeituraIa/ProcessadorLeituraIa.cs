@@ -111,15 +111,6 @@ public class ProcessadorLeituraIa
     {
         var (exames, divergencias) = MontagemLeituraIa.MontarExamesPcmso(lida);
 
-        // Nomes em consulta separada: IgnoreQueryFilters na mesma consulta traria GHE desativados.
-        var idsFuncoesGhe = await _db.GheFuncoes
-            .Where(f => _db.Ghes.Any(g => g.Id == f.GheId && g.ObraId == leitura.ObraId))
-            .Select(f => f.FuncaoId)
-            .ToListAsync(ct);
-        var nomesGhe = await Common.NomesPorId.FuncoesAsync(_db, idsFuncoesGhe, ct);
-        var funcoesGhe = idsFuncoesGhe.Select(id => nomesGhe.TryGetValue(id, out var f) ? f.Nome : "").ToList();
-        divergencias.AddRange(MontagemLeituraIa.ConferirPcmso(lida.Cabecalho, exames.Select(e => e.Funcao), funcoesGhe, DateTime.UtcNow.Date));
-
         var gheDaFuncao = lida.Quadros
             .GroupBy(q => q.Funcao.Trim(), StringComparer.OrdinalIgnoreCase)
             .ToDictionary(g => g.Key, g => int.TryParse(new string((g.First().Ghe ?? "").Where(char.IsDigit).ToArray()), out var n) ? n : (int?)null,
@@ -129,6 +120,19 @@ public class ProcessadorLeituraIa
         var funcoes = MontagemLeituraIa.CasarFuncoes(
             exames.Select(e => (e.Funcao, cboDaFuncao.GetValueOrDefault(e.Funcao), gheDaFuncao.GetValueOrDefault(e.Funcao), e.Exames.Count)),
             await FuncoesExistentesAsync(ct));
+
+        // Funções dos GHE da obra (função do sistema), em consulta separada: IgnoreQueryFilters na mesma
+        // consulta traria GHE desativados.
+        var idsFuncoesGhe = await _db.GheFuncoes
+            .Where(f => _db.Ghes.Any(g => g.Id == f.GheId && g.ObraId == leitura.ObraId))
+            .Select(f => f.FuncaoId)
+            .ToListAsync(ct);
+        var nomesGhe = await Common.NomesPorId.FuncoesAsync(_db, idsFuncoesGhe, ct);
+        divergencias.AddRange(MontagemLeituraIa.ConferirPcmso(
+            lida.Cabecalho,
+            funcoes.Select(f => (f.NomeDocumento, f.FuncaoIdSugerida)).ToList(),
+            idsFuncoesGhe.Distinct().Select(id => new MontagemLeituraIa.FuncaoAtual(id, nomesGhe.TryGetValue(id, out var f) ? f.Nome : "")).ToList(),
+            DateTime.UtcNow.Date));
 
         var examesAtuais = await _db.ExamesFuncaoObra
             .Where(e => e.ObraId == leitura.ObraId)

@@ -91,6 +91,8 @@ public class AzureOpenAiLeitorDocumentoSst : ILeitorDocumentoSstIa
                     g.Funcoes.Where(f => !string.IsNullOrWhiteSpace(f.Nome))
                         .Select(f => new ImportarEstruturaFuncao(f.Nome.Trim(), SoDigitos(f.Cbo), null, f.QuantidadeExpostos, null)).ToList(),
                     lidos.Riscos.Where(r => !string.IsNullOrWhiteSpace(r.Agente))
+                        // A IA às vezes repete a mesma linha (tabela quebrada entre páginas).
+                        .GroupBy(r => (Agente: r.Agente.Trim().ToUpperInvariant(), r.Probabilidade, r.Severidade)).Select(x => x.First())
                         .Select(r => new ImportarEstruturaRisco(r.Tipo, r.Agente.Trim(), r.Danos, r.Avaliacao, r.Epc, r.Epi,
                             Math.Max(0, r.Probabilidade), Math.Max(0, r.Severidade), r.Classificacao, r.Monitoramento)).ToList());
                 await Avancar($"Inventário de riscos: {Interlocked.Increment(ref concluidos)} de {ghes.Count} GHE");
@@ -162,24 +164,30 @@ public class AzureOpenAiLeitorDocumentoSst : ILeitorDocumentoSstIa
             await limite.WaitAsync(ct);
             try
             {
+                var trechoQuadro = Trecho(paginas, q.PaginaInicial, q.PaginaFinal);
                 var lido = await _chat.ObterAsync<QuadroLido>(InstrucoesPcmso, $"""
                     Leia o quadro de exames da função "{q.Funcao}" (ignore quadros de outras funções no trecho).
                     - exames: cada exame recomendado UMA vez, na ordem da coluna do periódico (exames que não estão no
                       periódico vêm depois), com o nome sem o código, codigo (número entre colchetes, ex.: 0281) e em quais
                       colunas ele aparece: admissional, periodico, retornoTrabalho, mudancaRisco (mudança de riscos/função),
-                      demissional.
+                      demissional. Atenção: o nome de um exame pode quebrar em duas linhas (ex.: "RAIO-X DE TORAX PADRAO OIT"
+                      numa linha e "[1415] ;" na de baixo) — continua sendo um exame da coluna; marque periodico=true se o nome
+                      aparece na coluna EXAME do periódico.
                     - periodicidadesNaOrdem: os valores da coluna PERIODICIDADE (ANUAL, BIENAL, SEMESTRAL...) exatamente na
                       ordem em que aparecem, um por item, mesmo que pareçam desalinhados das linhas dos exames. Não tente
                       associar cada periodicidade a um exame.
 
-                    {Trecho(paginas, q.PaginaInicial, q.PaginaFinal)}
+                    {trechoQuadro}
                     """, "quadro_pcmso", SchemaQuadro, ct, maxTokens: 8000, timeoutSegundos: 180);
 
                 var quadro = new QuadroPcmsoIa(q.Funcao.Trim(), q.Ghe, SoDigitos(q.Cbo),
-                    lido.Exames.Where(e => !string.IsNullOrWhiteSpace(e.Exame))
-                        .Select(e => new ExameQuadroIa(e.Exame.Trim(), SoDigitos(e.Codigo), e.Admissional, e.Periodico, e.RetornoTrabalho, e.MudancaRisco, e.Demissional))
-                        .ToList(),
-                    lido.PeriodicidadesNaOrdem.Where(p => !string.IsNullOrWhiteSpace(p)).Select(p => p.Trim()).ToList());
+                    MontagemLeituraIa.OrdenarExamesPeloTexto(
+                        lido.Exames.Where(e => !string.IsNullOrWhiteSpace(e.Exame))
+                            .Select(e => new ExameQuadroIa(e.Exame.Trim(), SoDigitos(e.Codigo), e.Admissional, e.Periodico, e.RetornoTrabalho, e.MudancaRisco, e.Demissional))
+                            .ToList(),
+                        trechoQuadro, q.Funcao),
+                    lido.PeriodicidadesNaOrdem.Where(p => !string.IsNullOrWhiteSpace(p)).Select(p => p.Trim()).ToList(),
+                    MontagemLeituraIa.PeriodicidadesNoTexto(trechoQuadro, q.Funcao));
 
                 await trava.WaitAsync(ct);
                 try { await progresso($"Quadros de exames: {++concluidos} de {quadros.Count}", ++feitos, total); }

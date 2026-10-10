@@ -40,15 +40,29 @@ public static partial class MontagemLeituraIa
         {
             var nome = Espacos(q.Funcao);
             if (nome.Length == 0) continue;
-            var periodicos = q.Exames.Where(e => e.Periodico).ToList();
-            var periodicidades = q.PeriodicidadesNaOrdem;
+            var doTexto = q.PeriodicidadesNoTexto ?? new List<string>();
+            var exames0 = q.Exames;
+            var admissionais = exames0.Count(e => e.Admissional);
+            // A IA às vezes deixa fora do periódico um exame cuja linha quebra no PDF (ex.: o código do RX na
+            // linha de baixo). Se a contagem do texto bate com a do admissional e não com a da IA, o
+            // periódico é o admissional (como em todos os quadros do PCMSO do Parque Roger) — com aviso.
+            if (doTexto.Count > 0 && doTexto.Count != exames0.Count(e => e.Periodico) && doTexto.Count == admissionais)
+            {
+                exames0 = exames0.Select(e => e with { Periodico = e.Admissional }).ToList();
+                divergencias.Add(new("media",
+                    $"PCMSO, quadro {nome}: exames do periódico deduzidos dos do admissional (a leitura não fechou a contagem). Confira no PDF."));
+            }
+            var periodicos = exames0.Where(e => e.Periodico).ToList();
+            var periodicidades = doTexto.Count == periodicos.Count ? doTexto
+                : q.PeriodicidadesNaOrdem.Count == periodicos.Count ? q.PeriodicidadesNaOrdem
+                : doTexto.Count > 0 ? doTexto : q.PeriodicidadesNaOrdem;
             if (periodicos.Count != periodicidades.Count)
                 divergencias.Add(new("alta",
                     $"PCMSO, quadro {nome}: {periodicos.Count} exames no periódico e {periodicidades.Count} periodicidades. Confira no PDF."));
 
             var exames = new List<ImportarEstruturaExame>();
             var i = 0;
-            foreach (var e in q.Exames)
+            foreach (var e in exames0)
             {
                 int? meses = null;
                 if (e.Periodico)
@@ -78,7 +92,11 @@ public static partial class MontagemLeituraIa
         return (resultado, divergencias);
     }
 
-    public static List<DivergenciaLeituraIa> ConferirPcmso(CabecalhoPcmsoIa cab, IEnumerable<string> funcoesPcmso, IEnumerable<string> funcoesGheDaObra, DateTime hoje)
+    // funcoesPcmso: nome no documento e função do sistema ligada a ele (casamento); funcoesGheDaObra: função
+    // do sistema de cada GHE. Comparação pela função ligada — "Auxiliar de Topógrafo" (PCMSO) e "Auxiliar de
+    // Topografia" (GHE) ligados à mesma função não são divergência.
+    public static List<DivergenciaLeituraIa> ConferirPcmso(CabecalhoPcmsoIa cab,
+        IReadOnlyList<(string Nome, Guid? FuncaoId)> funcoesPcmso, IReadOnlyList<FuncaoAtual> funcoesGheDaObra, DateTime hoje)
     {
         var d = new List<DivergenciaLeituraIa>();
         if (cab.Validade is { } validade)
@@ -93,17 +111,68 @@ public static partial class MontagemLeituraIa
                 : "PCMSO sem vigência escrita."));
         }
 
-        var pcmso = funcoesPcmso.Select(FuncaoSstClassifier.Normalizar).ToHashSet();
-        var ghe = funcoesGheDaObra.ToList();
-        if (ghe.Count > 0)
+        if (funcoesGheDaObra.Count > 0)
         {
-            foreach (var f in ghe.Where(f => !pcmso.Contains(FuncaoSstClassifier.Normalizar(f))).Distinct())
-                d.Add(new("media", $"{f} está no PGR (GHE) e não tem quadro de exames no PCMSO."));
-            var gheNorm = ghe.Select(FuncaoSstClassifier.Normalizar).ToHashSet();
-            foreach (var f in funcoesPcmso.Where(f => !gheNorm.Contains(FuncaoSstClassifier.Normalizar(f))).Distinct())
-                d.Add(new("media", $"{f} tem quadro no PCMSO e não está em nenhum GHE do PGR."));
+            var idsPcmso = funcoesPcmso.Where(f => f.FuncaoId.HasValue).Select(f => f.FuncaoId!.Value).ToHashSet();
+            var idsGhe = funcoesGheDaObra.Select(f => f.Id).ToHashSet();
+            foreach (var f in funcoesGheDaObra.Where(f => !idsPcmso.Contains(f.Id)).DistinctBy(f => f.Id))
+                d.Add(new("media", $"{f.Nome} está no PGR (GHE) e não tem quadro de exames no PCMSO."));
+            foreach (var f in funcoesPcmso.Where(f => f.FuncaoId is null || !idsGhe.Contains(f.FuncaoId.Value)).DistinctBy(f => f.Nome))
+                d.Add(new("media", $"{f.Nome} tem quadro no PCMSO e não está em nenhum GHE do PGR."));
         }
         return d;
+    }
+
+    // Valores da coluna PERIODICIDADE do quadro de exames da função, na ordem do texto, sem IA. O texto
+    // é dividido em quadros ("QUADRO DE EXAMES"); vale o quadro com "FUNÇÃO: <funcao>" e "EXAMES
+    // RECOMENDADOS". Lista vazia quando o quadro não é achado.
+    public static List<string> PeriodicidadesNoTexto(string texto, string funcao) =>
+        PeriodicidadeRegex().Matches(ExamesDoQuadro(texto, funcao)).Select(m => m.Value.ToUpperInvariant()).ToList();
+
+    // Põe os exames lidos pela IA na ordem em que aparecem no quadro do PDF (pelo código, ou pelo nome) —
+    // o casamento das periodicidades é por ordem, e a IA às vezes devolve a lista em outra ordem (leitura
+    // real de 10/10/2026: ECG e espirometria trocados em 3 quadros, sem nenhum aviso). Exame não achado
+    // no texto vai para o fim, na ordem da IA.
+    public static List<ExameQuadroIa> OrdenarExamesPeloTexto(List<ExameQuadroIa> exames, string texto, string funcao)
+    {
+        var trecho = ExamesDoQuadro(texto, funcao);
+        if (trecho.Length == 0) return exames;
+        // A ordem é a da PRIMEIRA coluna de cada linha (admissional, mesma ordem do periódico): uma linha do
+        // quadro também traz exames de outras colunas (demissional, retorno), então "primeira ocorrência do
+        // exame no texto" erra — foi o que trocou ECG e espirometria em 19 quadros num teste real.
+        static string Limpo(string t) => string.Join(' ', Regex.Replace(FuncaoSstClassifier.Normalizar(t), "[^a-z0-9]+", " ").Split(' ', StringSplitOptions.RemoveEmptyEntries));
+        var linhas = trecho.Split('\n');
+        var linhaDoCodigo = new Dictionary<string, int>();
+        for (var n = 0; n < linhas.Length; n++)
+        {
+            var primeiro = CodigoRegex().Match(linhas[n]);
+            if (primeiro.Success) linhaDoCodigo.TryAdd(primeiro.Groups[1].Value, n);
+        }
+        var linhasLimpas = linhas.Select(Limpo).ToArray();
+        int Posicao(ExameQuadroIa e)
+        {
+            var (nome, codigo) = SepararCodigo(e.Exame, e.Codigo);
+            if (codigo is not null && linhaDoCodigo.TryGetValue(codigo, out var n)) return n;
+            var limpo = Limpo(nome);
+            for (var i = 0; i < linhasLimpas.Length; i++)
+                if (limpo.Length > 0 && linhasLimpas[i].StartsWith(limpo, StringComparison.Ordinal)) return i;
+            return int.MaxValue;
+        }
+        return exames.Select((e, i) => (e, i, p: Posicao(e))).OrderBy(x => x.p).ThenBy(x => x.i).Select(x => x.e).ToList();
+    }
+
+    // Parte do quadro de exames da função a partir de "EXAMES RECOMENDADOS" (vazio se não achar).
+    private static string ExamesDoQuadro(string texto, string funcao)
+    {
+        var alvo = FuncaoSstClassifier.Normalizar(funcao);
+        foreach (var quadro in QuadroRegex().Split(texto ?? ""))
+        {
+            var cabecalho = FuncaoNoQuadroRegex().Match(quadro);
+            var i = quadro.IndexOf("EXAMES RECOMENDADOS", StringComparison.OrdinalIgnoreCase);
+            if (cabecalho.Success && i >= 0 && FuncaoSstClassifier.Normalizar(cabecalho.Groups[1].Value) == alvo)
+                return quadro[i..];
+        }
+        return "";
     }
 
     // ---------- PGR ----------
@@ -320,4 +389,13 @@ public static partial class MontagemLeituraIa
 
     [GeneratedRegex(@"\[(\d{3,5})\]")]
     private static partial Regex CodigoRegex();
+
+    [GeneratedRegex(@"QUADRO\s+DE\s+EXAMES", RegexOptions.IgnoreCase)]
+    private static partial Regex QuadroRegex();
+
+    [GeneratedRegex(@"FUN[ÇC][ÃA]O\s*:\s*(.+?)\s+(?:CBO\s*:|GHE\s*:|$)", RegexOptions.IgnoreCase | RegexOptions.Multiline)]
+    private static partial Regex FuncaoNoQuadroRegex();
+
+    [GeneratedRegex(@"\b(ANUAL|BIENAL|BIANUAL|SEMESTRAL|TRIMESTRAL|TRIENAL)\b", RegexOptions.IgnoreCase)]
+    private static partial Regex PeriodicidadeRegex();
 }

@@ -35,7 +35,11 @@ public record ExameQuadroIa(string Exame, string? Codigo, bool Admissional, bool
 // A coluna de periodicidade do quadro pode vir desalinhada do PDF (caso real do PCMSO do Parque Roger):
 // a IA devolve os exames e as periodicidades cada um na ordem em que aparecem, e o casamento por ordem
 // é feito aqui, de forma determinística (ver MontagemLeituraIa).
-public record QuadroPcmsoIa(string Funcao, string? Ghe, string? Cbo, List<ExameQuadroIa> Exames, List<string> PeriodicidadesNaOrdem);
+// PeriodicidadesNoTexto: os valores da coluna tirados do texto do PDF sem IA (MontagemLeituraIa.
+// PeriodicidadesNoTexto) — na leitura real de 10/10/2026 a IA errou a contagem em 15 dos 27 quadros e o
+// texto acertou todos; a da IA fica como reserva.
+public record QuadroPcmsoIa(string Funcao, string? Ghe, string? Cbo, List<ExameQuadroIa> Exames, List<string> PeriodicidadesNaOrdem,
+    List<string>? PeriodicidadesNoTexto = null);
 
 public record LeituraPcmsoIa(CabecalhoPcmsoIa Cabecalho, List<QuadroPcmsoIa> Quadros);
 

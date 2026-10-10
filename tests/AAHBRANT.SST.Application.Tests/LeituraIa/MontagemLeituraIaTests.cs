@@ -134,4 +134,133 @@ public class MontagemLeituraIaTests
         // 3×4 = 12 continua Moderado: não é alteração.
         Assert.DoesNotContain(dif, d => d.Tipo == "alterado");
     }
+
+    [Fact]
+    public void Periodicidades_do_texto_seguem_a_ordem_da_coluna_do_quadro_da_funcao()
+    {
+        // Trecho real do PCMSO do Parque Roger (pág. 53, texto do PdfPig), com o quadro do Pintor depois.
+        const string texto = """
+            QUADRO DE EXAMES
+            SETOR: CANTEIRO DE OBRAS FUNÇÃO: PEDREIRO CBO: 715210 GHE: GHE 01
+            EXAMES RECOMENDADOS
+            ADMISSIONAL DEMISSIONAL RETORNO AO TRABALHO MUDANÇA DE RISCOS OCUP. EXAME PERIODICIDADE
+            ACUIDADE VISUAL [0296] ; ACUIDADE VISUAL [0296] ; ANUAL AUDIOMETRIA TONAL [0281]  EXAME CLINICO [0295] ;
+            AUDIOMETRIA TONAL [0281] ; AUDIOMETRIA TONAL [0281] ; ANUAL ; AUDIOMETRIA TONAL [0281] ;
+            AVALIACAO PSICOSSOCIAL [0300]  AVALIACAO PSICOSSOCIAL [0300]  ANUAL EXAME CLINICO [0295] ;
+            ELETROCARDIOGRAMA [0530] ; ELETROCARDIOGRAMA [0530] ; ANUAL ELETROCARDIOGRAMA [0530] ;
+            ELETROENCEFALOGRAMA [0536]  ELETROENCEFALOGRAMA [0536]  BIENAL ELETROENCEFALOGRAMA [0536]
+            ; ; BIENAL ;
+            ESPIROMETRIA [1057] ; ESPIROMETRIA [1057] ; ANUAL ESPIROMETRIA [1057] ;
+            EXAME CLINICO [0295] ; EXAME CLINICO [0295] ; ANUAL EXAME CLINICO [0295] ;
+            GLICEMIA EM JEJUM [0658] ; GLICEMIA EM JEJUM [0658] ; ANUAL GLICEMIA EM JEJUM [0658] ;
+            HEMOGRAMA COMPLETO [0693] ; HEMOGRAMA COMPLETO [0693] ; BIENAL HEMOGRAMA COMPLETO [0693] ;
+            RAIO-X DE TORAX PADRAO OIT  RAIO-X DE TORAX PADRAO OIT    RAIO-X DE TORAX PADRAO OIT
+            QUADRO DE EXAMES
+            SETOR: CANTEIRO DE OBRAS FUNÇÃO: PINTOR CBO: GHE: GHE 06
+            EXAMES RECOMENDADOS
+            ACIDO HIPURICO [1234] ; SEMESTRAL
+            """;
+
+        Assert.Equal(new[] { "ANUAL", "ANUAL", "ANUAL", "ANUAL", "BIENAL", "BIENAL", "ANUAL", "ANUAL", "ANUAL", "BIENAL" },
+            MontagemLeituraIa.PeriodicidadesNoTexto(texto, "Pedreiro"));
+        Assert.Equal(new[] { "SEMESTRAL" }, MontagemLeituraIa.PeriodicidadesNoTexto(texto, "PINTOR"));
+        Assert.Empty(MontagemLeituraIa.PeriodicidadesNoTexto(texto, "Soldador"));
+    }
+
+    [Fact]
+    public void Periodicidade_do_texto_tem_preferencia_quando_a_contagem_fecha()
+    {
+        var exames = Enumerable.Range(1, 3).Select(i => new ExameQuadroIa($"EXAME {i}", null, true, true, false, true, false)).ToList();
+        var leitura = new LeituraPcmsoIa(new CabecalhoPcmsoIa(null, null, null, null), new List<QuadroPcmsoIa>
+        {
+            // A IA perdeu um valor; o texto tem os três.
+            new("PEDREIRO", null, null, exames, new List<string> { "ANUAL", "BIENAL" }, new List<string> { "ANUAL", "BIENAL", "BIENAL" }),
+        });
+
+        var (resultado, divergencias) = MontagemLeituraIa.MontarExamesPcmso(leitura);
+
+        Assert.Equal(new int?[] { 12, 24, 24 }, resultado.Single().Exames.Select(e => e.PeriodicidadeMeses));
+        Assert.Empty(divergencias);
+    }
+
+    [Fact]
+    public void Exame_que_a_IA_deixou_fora_do_periodico_volta_quando_o_texto_fecha_com_o_admissional()
+    {
+        // Caso real: a IA marcou o RX (código na linha de baixo do PDF) como fora do periódico.
+        var exames = new List<ExameQuadroIa>
+        {
+            new("ESPIROMETRIA", "1057", true, true, false, true, false),
+            new("HEMOGRAMA COMPLETO", "0693", true, true, false, true, false),
+            new("RAIO-X DE TORAX PADRAO OIT", "1415", true, false, false, true, false),
+        };
+        var leitura = new LeituraPcmsoIa(new CabecalhoPcmsoIa(null, null, null, null), new List<QuadroPcmsoIa>
+        {
+            new("ARMADOR", null, null, exames, new List<string> { "BIENAL", "ANUAL" }, new List<string> { "BIENAL", "ANUAL", "BIENAL" }),
+        });
+
+        var (resultado, divergencias) = MontagemLeituraIa.MontarExamesPcmso(leitura);
+
+        Assert.Equal(new int?[] { 24, 12, 24 }, resultado.Single().Exames.Select(e => e.PeriodicidadeMeses));
+        Assert.Contains(divergencias, d => d.Texto.Contains("deduzidos dos do admissional"));
+    }
+
+    [Fact]
+    public void Exames_ficam_na_ordem_do_quadro_do_PDF()
+    {
+        const string texto = """
+            QUADRO DE EXAMES
+            SETOR: CANTEIRO DE OBRAS FUNÇÃO: SOLDADOR CBO: GHE: GHE 05
+            EXAMES RECOMENDADOS
+            ELETROCARDIOGRAMA [0530] ; ELETROCARDIOGRAMA [0530] ; ANUAL
+            ESPIROMETRIA [1057] ; ESPIROMETRIA [1057] ; BIENAL
+            RAIO-X DE TORAX PADRAO OIT
+            [1415] ; BIENAL
+            """;
+        var daIa = new List<ExameQuadroIa>
+        {
+            new("ESPIROMETRIA", "1057", true, true, false, true, false),
+            new("RAIO-X DE TORAX PADRAO OIT", null, true, true, false, true, false),
+            new("ELETROCARDIOGRAMA", "0530", true, true, false, true, false),
+        };
+
+        var ordenados = MontagemLeituraIa.OrdenarExamesPeloTexto(daIa, texto, "Soldador");
+
+        Assert.Equal(new[] { "ELETROCARDIOGRAMA", "ESPIROMETRIA", "RAIO-X DE TORAX PADRAO OIT" }, ordenados.Select(e => e.Exame));
+    }
+
+    // Texto real do PCMSO do Parque Roger: a 1ª linha traz audiometria e exame clínico das colunas de
+    // demissional/retorno — a ordem tem de vir da 1ª coluna de cada linha, não da 1ª ocorrência.
+    [Fact]
+    public void Ordem_do_quadro_ignora_exames_de_outras_colunas_na_mesma_linha()
+    {
+        const string texto = """
+            QUADRO DE EXAMES
+            SETOR: CANTEIRO DE OBRAS FUNÇÃO: PEDREIRO CBO: 715210 GHE: GHE 02
+            EXAMES RECOMENDADOS
+            ADMISSIONAL DEMISSIONAL RETORNO AO TRABALHO MUDANÇA DE RISCOS OCUP. EXAME PERIODICIDADE
+            ACUIDADE VISUAL [0296] ; ACUIDADE VISUAL [0296] ; ANUAL AUDIOMETRIA TONAL [0281]  EXAME CLINICO [0295] ; ACUIDADE VISUAL [0296] ;
+            AUDIOMETRIA TONAL [0281] ; AUDIOMETRIA TONAL [0281] ; ANUAL ; AUDIOMETRIA TONAL [0281] ;
+            AVALIACAO PSICOSSOCIAL [0300]  AVALIACAO PSICOSSOCIAL [0300]  ANUAL EXAME CLINICO [0295] ; AVALIACAO PSICOSSOCIAL [0300]
+            ; ;   ;
+            ELETROCARDIOGRAMA [0530] ; ELETROCARDIOGRAMA [0530] ; ANUAL ELETROCARDIOGRAMA [0530] ;
+            ELETROENCEFALOGRAMA [0536]  ELETROENCEFALOGRAMA [0536]  BIENAL ELETROENCEFALOGRAMA [0536]
+            ; ; BIENAL ;
+            ESPIROMETRIA [1057] ; ESPIROMETRIA [1057] ; ANUAL ESPIROMETRIA [1057] ;
+            EXAME CLINICO [0295] ; EXAME CLINICO [0295] ; ANUAL EXAME CLINICO [0295] ;
+            GLICEMIA EM JEJUM [0658] ; GLICEMIA EM JEJUM [0658] ; ANUAL GLICEMIA EM JEJUM [0658] ;
+            HEMOGRAMA COMPLETO [0693] ; HEMOGRAMA COMPLETO [0693] ; BIENAL HEMOGRAMA COMPLETO [0693] ;
+            RAIO-X DE TORAX PADRAO OIT  RAIO-X DE TORAX PADRAO OIT    RAIO-X DE TORAX PADRAO OIT
+            [1415] ; [1415] ;  [1415] ;
+            """;
+        var esperado = new[]
+        {
+            "ACUIDADE VISUAL", "AUDIOMETRIA TONAL", "AVALIACAO PSICOSSOCIAL", "ELETROCARDIOGRAMA", "ELETROENCEFALOGRAMA",
+            "ESPIROMETRIA", "EXAME CLINICO", "GLICEMIA EM JEJUM", "HEMOGRAMA COMPLETO", "RAIO-X DE TORAX PADRAO OIT",
+        };
+        var daIa = esperado.Reverse().Select(n => new ExameQuadroIa(n, null, true, true, false, true, false)).ToList();
+
+        var ordenados = MontagemLeituraIa.OrdenarExamesPeloTexto(daIa, texto, "Pedreiro");
+
+        Assert.Equal(esperado, ordenados.Select(e => e.Exame));
+    }
 }
