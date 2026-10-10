@@ -25,6 +25,7 @@ public interface IAppDbContext
     DbSet<AptidaoAtividadeEspecifica> AptidoesAtividadeEspecifica { get; }
     DbSet<PcmsoDetalhe> PcmsoDetalhes { get; }
     DbSet<ExameFuncaoObra> ExamesFuncaoObra { get; }
+    DbSet<PcmsoRevisao> PcmsoRevisoes { get; }
     DbSet<CursoTreinamento> CursosTreinamento { get; }
     DbSet<Treinamento> Treinamentos { get; }
     DbSet<ArquivoCertificadoTreinamento> ArquivosCertificadoTreinamento { get; }

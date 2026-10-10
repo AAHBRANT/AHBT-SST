@@ -39,6 +39,8 @@ public class PgrRevisaoConfiguracao : IEntityTypeConfiguration<PgrRevisao>
     public void Configure(EntityTypeBuilder<PgrRevisao> builder)
     {
         builder.Property(r => r.Motivo).IsRequired().HasMaxLength(500);
+        builder.Property(r => r.DocumentoContentType).HasMaxLength(100);
+        builder.Property(r => r.DocumentoNomeArquivo).HasMaxLength(260);
         builder.HasOne(r => r.Pgr).WithMany(p => p.Revisoes)
             .HasForeignKey(r => r.PgrId).OnDelete(DeleteBehavior.Cascade);
         builder.HasOne(r => r.ResponsavelUsuario).WithMany()

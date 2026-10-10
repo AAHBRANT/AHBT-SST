@@ -82,4 +82,11 @@ public class PgrRevisao : AuditableEntity
 
     public Guid? ResponsavelUsuarioId { get; set; }
     public Usuario? ResponsavelUsuario { get; set; }
+
+    // PDF desta revisão (10/10/2026, "Nova revisão" no lugar de "Substituir PDF"): o anexo novo não
+    // apaga mais o anterior — cada revisão guarda o seu, e Pgr.DocumentoConteudo é a cópia da atual.
+    // Nulo nas revisões digitadas antes disso e nas que não tiveram PDF.
+    public byte[]? DocumentoConteudo { get; set; }
+    public string? DocumentoContentType { get; set; }
+    public string? DocumentoNomeArquivo { get; set; }
 }

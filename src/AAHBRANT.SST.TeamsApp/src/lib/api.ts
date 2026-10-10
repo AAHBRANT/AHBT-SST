@@ -1240,9 +1240,63 @@ export interface PgrRevisao {
   dataRevisao: string;
   motivo: string;
   responsavelUsuarioId?: string | null;
+  // PDF da revisão (10/10/2026); o arquivo vem por obterDocumento(id).
+  temDocumento?: boolean;
+  documentoNomeArquivo?: string | null;
+  criadoEmUtc?: string;
+  criadoPorNome?: string | null;
 }
 
-export type NovaPgrRevisao = Omit<PgrRevisao, 'id' | 'numeroRevisao'>;
+export type NovaPgrRevisao = Pick<PgrRevisao, 'pgrId' | 'dataRevisao' | 'motivo' | 'responsavelUsuarioId'>;
+
+export interface PcmsoRevisao {
+  id: string;
+  pcmsoDetalheId: string;
+  numeroRevisao: number;
+  dataRevisao: string;
+  motivo: string;
+  temDocumento: boolean;
+  documentoNomeArquivo: string | null;
+  criadoEmUtc: string;
+  criadoPorNome: string | null;
+}
+
+// "Nova revisão" do PGR/PCMSO: o PDF novo não apaga o anterior.
+export interface DadosNovaRevisao {
+  numeroRevisao: number | null;
+  dataRevisao: string;
+  motivo: string;
+  arquivo: File;
+}
+
+function formularioNovaRevisao(documentoId: string, dados: DadosNovaRevisao): FormData {
+  const formData = new FormData();
+  formData.append('DocumentoId', documentoId);
+  if (dados.numeroRevisao != null) formData.append('NumeroRevisao', String(dados.numeroRevisao));
+  formData.append('DataRevisao', dados.dataRevisao);
+  formData.append('Motivo', dados.motivo);
+  formData.append('Arquivo', dados.arquivo);
+  return formData;
+}
+
+async function enviarFormulario<T>(caminho: string, formData: FormData): Promise<T> {
+  const response = await fetch(`${API_BASE_URL}${caminho}`, { method: 'POST', headers: await montarHeadersAuth(), body: formData });
+  if (!response.ok) {
+    const corpo = await response.text().catch(() => '');
+    throw new Error(extrairMensagemErro(corpo, response.status, response.statusText));
+  }
+  return (await response.json()) as T;
+}
+
+async function baixarBlobOuNulo(caminho: string): Promise<Blob | null> {
+  const response = await fetch(`${API_BASE_URL}${caminho}`, { headers: await montarHeadersAuth() });
+  if (response.status === 404) return null;
+  if (!response.ok) {
+    const corpo = await response.text().catch(() => '');
+    throw new Error(extrairMensagemErro(corpo, response.status, response.statusText));
+  }
+  return response.blob();
+}
 
 export interface PgrDetalhe {
   pgr: Pgr;
@@ -4333,6 +4387,10 @@ export const api = {
       request<ExameFuncaoObra[]>(`/api/obras/${obraId}/exames-funcao${funcaoId ? `?funcaoId=${funcaoId}` : ''}`),
   },
   pcmsos: {
+    listarRevisoes: (id: string) => request<PcmsoRevisao[]>(`/api/pcmsos/${id}/revisoes`),
+    novaRevisao: (id: string, dados: DadosNovaRevisao) =>
+      enviarFormulario<{ id: string }>(`/api/pcmsos/${id}/revisoes`, formularioNovaRevisao(id, dados)),
+    obterDocumentoRevisao: (revisaoId: string) => baixarBlobOuNulo(`/api/pcmsos/revisoes/${revisaoId}/documento`),
     listar: (obraId?: string) => request<Pcmso[]>(`/api/pcmsos${obraId ? `?obraId=${obraId}` : ''}`),
     obterPorId: (id: string) => request<Pcmso>(`/api/pcmsos/${id}`),
     criar: (pcmso: NovoPcmso) => request<{ id: string }>('/api/pcmsos', { method: 'POST', body: JSON.stringify(pcmso) }),
@@ -4776,6 +4834,9 @@ export const api = {
     listar: (pgrId: string) => request<PgrRevisao[]>(`/api/pgrrevisoes?pgrId=${pgrId}`),
     criar: (revisao: NovaPgrRevisao) =>
       request<{ id: string }>('/api/pgrrevisoes', { method: 'POST', body: JSON.stringify(revisao) }),
+    nova: (pgrId: string, dados: DadosNovaRevisao) =>
+      enviarFormulario<{ id: string }>('/api/pgrrevisoes/nova', formularioNovaRevisao(pgrId, dados)),
+    obterDocumento: (revisaoId: string) => baixarBlobOuNulo(`/api/pgrrevisoes/${revisaoId}/documento`),
   },
   areasSst: {
     listar: (obraId?: string) => request<AreaSst[]>(`/api/areassst${obraId ? `?obraId=${obraId}` : ''}`),

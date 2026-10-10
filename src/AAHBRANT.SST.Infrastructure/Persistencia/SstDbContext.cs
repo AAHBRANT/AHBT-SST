@@ -33,6 +33,7 @@ public class SstDbContext : DbContext, IAppDbContext
     public DbSet<AptidaoAtividadeEspecifica> AptidoesAtividadeEspecifica => Set<AptidaoAtividadeEspecifica>();
     public DbSet<PcmsoDetalhe> PcmsoDetalhes => Set<PcmsoDetalhe>();
     public DbSet<ExameFuncaoObra> ExamesFuncaoObra => Set<ExameFuncaoObra>();
+    public DbSet<PcmsoRevisao> PcmsoRevisoes => Set<PcmsoRevisao>();
     public DbSet<CursoTreinamento> CursosTreinamento => Set<CursoTreinamento>();
     public DbSet<Treinamento> Treinamentos => Set<Treinamento>();
     public DbSet<ArquivoCertificadoTreinamento> ArquivosCertificadoTreinamento => Set<ArquivoCertificadoTreinamento>();

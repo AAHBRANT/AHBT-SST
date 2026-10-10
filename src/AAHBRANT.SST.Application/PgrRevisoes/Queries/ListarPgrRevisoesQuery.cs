@@ -15,19 +15,26 @@ public class ListarPgrRevisoesQueryHandler : IRequestHandler<ListarPgrRevisoesQu
 
     public async Task<List<PgrRevisaoDto>> Handle(ListarPgrRevisoesQuery request, CancellationToken ct)
     {
-        var revisoes = await _db.PgrRevisoes
+        // Pgrs tem filtro por obra; PgrRevisoes não. Projeção explícita para não carregar os PDFs.
+        if (!await _db.Pgrs.AnyAsync(p => p.Id == request.PgrId, ct))
+            return new List<PgrRevisaoDto>();
+
+        return await _db.PgrRevisoes
             .Where(r => r.PgrId == request.PgrId)
             .OrderByDescending(r => r.NumeroRevisao)
+            .Select(r => new PgrRevisaoDto
+            {
+                Id = r.Id,
+                PgrId = r.PgrId,
+                NumeroRevisao = r.NumeroRevisao,
+                DataRevisao = r.DataRevisao,
+                Motivo = r.Motivo,
+                ResponsavelUsuarioId = r.ResponsavelUsuarioId,
+                TemDocumento = r.DocumentoConteudo != null,
+                DocumentoNomeArquivo = r.DocumentoNomeArquivo,
+                CriadoEmUtc = r.CreatedAtUtc,
+                CriadoPorNome = _db.Usuarios.IgnoreQueryFilters().Where(u => u.Id == r.CreatedBy).Select(u => u.Nome).FirstOrDefault(),
+            })
             .ToListAsync(ct);
-
-        return revisoes.Select(r => new PgrRevisaoDto
-        {
-            Id = r.Id,
-            PgrId = r.PgrId,
-            NumeroRevisao = r.NumeroRevisao,
-            DataRevisao = r.DataRevisao,
-            Motivo = r.Motivo,
-            ResponsavelUsuarioId = r.ResponsavelUsuarioId
-        }).ToList();
     }
 }
