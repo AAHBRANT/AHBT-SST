@@ -3,6 +3,7 @@ import { useParams } from 'react-router-dom';
 import { Abas, Button, Card, Carregando, FeedbackInline, PageHeader, StatusChip, Text, type Tom } from '@ui';
 import { DocumentArrowUp24Regular } from '@fluentui/react-icons';
 import { DialogoNovaRevisao } from '../../components/revisoes/DialogoNovaRevisao';
+import { BotaoLerComIa, PainelLeituraIa, useLeituraIa } from '../../components/leitura-ia/PainelLeituraIa';
 import { api, statusPgrLabel, type Obra, type PgrDetalhe } from '../../lib/api';
 import { GhesTab } from '../../components/estrutura-sst/GhesTab';
 import { InventarioTab } from './InventarioTab';
@@ -38,6 +39,7 @@ export function PgrDetalhePage() {
   const [novaRevisaoAberta, setNovaRevisaoAberta] = useState(false);
   // Muda a cada revisão salva para o visualizador e o histórico recarregarem.
   const [versaoDocumento, setVersaoDocumento] = useState(0);
+  const leituraIa = useLeituraIa('pgr', id ?? '');
 
   async function carregar() {
     if (!id) return;
@@ -127,6 +129,7 @@ export function PgrDetalhePage() {
         />
       </div>
 
+      {aba === 'documento' && <PainelLeituraIa documento="pgr" estado={leituraIa} />}
       {aba === 'documento' && (
         <VisualizadorDocumentoPdf
           key={versaoDocumento}
@@ -134,9 +137,12 @@ export function PgrDetalhePage() {
           obterDocumento={() => api.pgrs.obterDocumento(id)}
           enviarDocumento={(arquivo) => api.pgrs.enviarDocumento(id, arquivo)}
           acoes={
-            <Button icon={<DocumentArrowUp24Regular />} onClick={() => setNovaRevisaoAberta(true)}>
-              Nova revisão
-            </Button>
+            <>
+              <Button icon={<DocumentArrowUp24Regular />} onClick={() => setNovaRevisaoAberta(true)}>
+                Nova revisão
+              </Button>
+              <BotaoLerComIa aoClicar={leituraIa.iniciar} desabilitado={leituraIa.lendo || leituraIa.iniciando} />
+            </>
           }
         />
       )}
@@ -152,6 +158,14 @@ export function PgrDetalhePage() {
         aoSalvar={() => {
           setNovaRevisaoAberta(false);
           setVersaoDocumento((v) => v + 1);
+        }}
+        acaoExtra={{
+          rotulo: 'Salvar e ler com IA',
+          aoSalvar: () => {
+            setNovaRevisaoAberta(false);
+            setVersaoDocumento((v) => v + 1);
+            leituraIa.iniciar();
+          },
         }}
       />
     </div>

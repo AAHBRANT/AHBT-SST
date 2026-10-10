@@ -30,6 +30,7 @@ import {
 import { Delete24Regular, DocumentArrowUp24Regular, Save24Regular } from '@fluentui/react-icons';
 import { DialogoNovaRevisao } from '../../components/revisoes/DialogoNovaRevisao';
 import { PcmsoRevisoesTab } from '../../components/revisoes/PcmsoRevisoesTab';
+import { BotaoLerComIa, PainelLeituraIa, useLeituraIa } from '../../components/leitura-ia/PainelLeituraIa';
 import { ExamesFuncaoTab } from '../../components/estrutura-sst/ExamesFuncaoTab';
 import {
   api,
@@ -81,6 +82,7 @@ export function PcmsoDetalhePage() {
   const [novaRevisaoAberta, setNovaRevisaoAberta] = useState(false);
   // Muda a cada revisão salva para o visualizador e o histórico recarregarem.
   const [versaoDocumento, setVersaoDocumento] = useState(0);
+  const leituraIa = useLeituraIa('pcmso', id ?? '');
   const [pcmso, setPcmso] = useState<Pcmso | null>(null);
   const [edicao, setEdicao] = useState<AtualizarPcmsoPayload | null>(null);
   const [obras, setObras] = useState<Obra[]>([]);
@@ -266,6 +268,7 @@ export function PcmsoDetalhePage() {
         />
       </div>
 
+      {aba === 'documento' && pcmso.obraId && <PainelLeituraIa documento="pcmso" estado={leituraIa} />}
       {aba === 'documento' && (
         <VisualizadorDocumentoPdf
           key={versaoDocumento}
@@ -273,9 +276,12 @@ export function PcmsoDetalhePage() {
           obterDocumento={() => api.pcmsos.obterDocumento(id)}
           enviarDocumento={(arquivo) => api.pcmsos.enviarDocumento(id, arquivo)}
           acoes={
-            <Button icon={<DocumentArrowUp24Regular />} onClick={() => setNovaRevisaoAberta(true)}>
-              Nova revisão
-            </Button>
+            <>
+              <Button icon={<DocumentArrowUp24Regular />} onClick={() => setNovaRevisaoAberta(true)}>
+                Nova revisão
+              </Button>
+              {pcmso.obraId && <BotaoLerComIa aoClicar={leituraIa.iniciar} desabilitado={leituraIa.lendo || leituraIa.iniciando} />}
+            </>
           }
         />
       )}
@@ -291,6 +297,19 @@ export function PcmsoDetalhePage() {
           setVersaoDocumento((v) => v + 1);
           carregar();
         }}
+        acaoExtra={
+          pcmso.obraId
+            ? {
+                rotulo: 'Salvar e ler com IA',
+                aoSalvar: () => {
+                  setNovaRevisaoAberta(false);
+                  setVersaoDocumento((v) => v + 1);
+                  carregar();
+                  leituraIa.iniciar();
+                },
+              }
+            : undefined
+        }
       />
 
       {aba === 'exames' && pcmso.obraId && (
