@@ -26,6 +26,7 @@ import { PerfilGeralTab } from './PerfilGeralTab';
 import { TamanhosUniformeSecao } from './TamanhosUniformeSecao';
 import { TreinamentosTab } from './TreinamentosTab';
 import { RiscosTab } from './RiscosTab';
+import { ExamesDaFuncaoCard, GheDaFuncaoCard } from '../../components/estrutura-sst/CardsEstruturaFuncao';
 import { OcorrenciasTab } from './OcorrenciasTab';
 import { CofreAssinaturasTab } from './CofreAssinaturasTab';
 import { TerceirizadoTab } from './TerceirizadoTab';
@@ -223,6 +224,7 @@ export function TrabalhadorDetalhePage() {
           {aba === 'geral' && (
             <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
               <PerfilGeralTab perfil={perfil} />
+              <ExamesDaFuncaoCard obraId={perfil.obraId} funcaoId={perfil.funcaoId} />
               <TamanhosUniformeSecao trabalhadorId={id!} />
             </div>
           )}
@@ -250,7 +252,12 @@ export function TrabalhadorDetalhePage() {
               <TreinamentosTab trabalhadorId={id} obraId={perfil.obraId} />
             </div>
           )}
-          {aba === 'riscos' && <RiscosTab riscos={perfil.riscos} />}
+          {aba === 'riscos' && (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+              <GheDaFuncaoCard obraId={perfil.obraId} funcaoId={perfil.funcaoId} />
+              <RiscosTab riscos={perfil.riscos} />
+            </div>
+          )}
           {aba === 'ocorrencias' && <OcorrenciasTab ocorrencias={perfil.ocorrencias} />}
           {aba === 'cofre' && <CofreAssinaturasTab trabalhadorId={id} assinaturas={perfil.assinaturas} />}
           {aba === 'terceirizado' && <TerceirizadoTab trabalhadorId={id} perfil={perfil} />}

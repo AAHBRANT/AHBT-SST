@@ -60,3 +60,21 @@ public class PcmsoDetalheConfiguracao : IEntityTypeConfiguration<PcmsoDetalhe>
         builder.Property(p => p.RowVersion).IsRowVersion();
     }
 }
+
+public class ExameFuncaoObraConfiguracao : IEntityTypeConfiguration<ExameFuncaoObra>
+{
+    public void Configure(EntityTypeBuilder<ExameFuncaoObra> builder)
+    {
+        builder.Property(e => e.Exame).IsRequired().HasMaxLength(200);
+        builder.Property(e => e.CodigoExame).HasMaxLength(20);
+        builder.Property(e => e.Observacao).HasMaxLength(500);
+        builder.HasOne(e => e.Obra).WithMany()
+            .HasForeignKey(e => e.ObraId).OnDelete(DeleteBehavior.Restrict);
+        builder.HasOne(e => e.Funcao).WithMany()
+            .HasForeignKey(e => e.FuncaoId).OnDelete(DeleteBehavior.Restrict);
+        builder.HasOne(e => e.PcmsoDetalhe).WithMany()
+            .HasForeignKey(e => e.PcmsoDetalheId).OnDelete(DeleteBehavior.Restrict);
+        builder.HasIndex(e => new { e.ObraId, e.FuncaoId });
+        builder.HasQueryFilter(e => e.Ativo);
+    }
+}

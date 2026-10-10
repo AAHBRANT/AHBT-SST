@@ -2,12 +2,13 @@ import { useEffect, useState } from 'react';
 import { useParams } from 'react-router-dom';
 import { Abas, Card, Carregando, FeedbackInline, PageHeader, StatusChip, Text, type Tom } from '@ui';
 import { api, statusPgrLabel, type Obra, type PgrDetalhe } from '../../lib/api';
+import { GhesTab } from '../../components/estrutura-sst/GhesTab';
 import { InventarioTab } from './InventarioTab';
 import { PlanoAcaoTab } from './PlanoAcaoTab';
 import { PgrRevisoesTab } from './PgrRevisoesTab';
 import { VisualizadorDocumentoPdf } from '../../components/VisualizadorDocumentoPdf';
 
-type AbaPgr = 'documento' | 'inventario' | 'planoAcao' | 'revisoes';
+type AbaPgr = 'documento' | 'ghe' | 'inventario' | 'planoAcao' | 'revisoes';
 
 // Mapeamento por julgamento (guia item 5, "não é 1:1 mecânico"): Vigente é o único estado
 // claramente positivo (ok); Em revisão pede atenção (atencao); Encerrado é neutro-informativo, não
@@ -113,6 +114,7 @@ export function PgrDetalhePage() {
           aoMudar={setAba}
           abas={[
             { valor: 'documento', rotulo: 'PGR' },
+            { valor: 'ghe', rotulo: 'GHE' },
             { valor: 'inventario', rotulo: 'Inventário de riscos' },
             { valor: 'planoAcao', rotulo: 'Plano de ação' },
             { valor: 'revisoes', rotulo: 'Revisões' },
@@ -127,6 +129,7 @@ export function PgrDetalhePage() {
           enviarDocumento={(arquivo) => api.pgrs.enviarDocumento(id, arquivo)}
         />
       )}
+      {aba === 'ghe' && <GhesTab obraId={detalhe.pgr.obraId} />}
       {aba === 'inventario' && <InventarioTab atividades={detalhe.atividades} />}
       {aba === 'planoAcao' && <PlanoAcaoTab pgrId={id} riscosDisponiveis={riscosDisponiveis} />}
       {aba === 'revisoes' && <PgrRevisoesTab pgrId={id} />}

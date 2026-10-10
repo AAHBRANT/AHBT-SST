@@ -11,6 +11,8 @@ public class AtividadeConfiguracao : IEntityTypeConfiguration<Atividade>
         builder.Property(a => a.Nome).IsRequired().HasMaxLength(200);
         builder.HasOne(a => a.Obra).WithMany(o => o.Atividades)
             .HasForeignKey(a => a.ObraId).OnDelete(DeleteBehavior.Restrict);
+        builder.HasOne(a => a.Ghe).WithMany(g => g.Atividades)
+            .HasForeignKey(a => a.GheId).OnDelete(DeleteBehavior.Restrict);
         builder.HasIndex(a => a.ObraId);
         builder.HasQueryFilter(a => a.Ativo);
     }
@@ -70,5 +72,32 @@ public class MatrizRiscoCelulaConfiguracao : IEntityTypeConfiguration<MatrizRisc
             .HasForeignKey(c => c.MatrizRiscoConfigId).OnDelete(DeleteBehavior.Cascade);
         builder.HasIndex(c => new { c.MatrizRiscoConfigId, c.Probabilidade, c.Severidade }).IsUnique();
         builder.HasQueryFilter(c => c.Ativo);
+    }
+}
+
+public class GheConfiguracao : IEntityTypeConfiguration<Ghe>
+{
+    public void Configure(EntityTypeBuilder<Ghe> builder)
+    {
+        builder.Property(g => g.Setor).HasMaxLength(200);
+        builder.Property(g => g.JornadaTrabalho).HasMaxLength(200);
+        builder.Property(g => g.AtividadesCriticas).HasMaxLength(500);
+        builder.HasOne(g => g.Obra).WithMany()
+            .HasForeignKey(g => g.ObraId).OnDelete(DeleteBehavior.Restrict);
+        builder.HasIndex(g => new { g.ObraId, g.Numero });
+        builder.HasQueryFilter(g => g.Ativo);
+    }
+}
+
+public class GheFuncaoConfiguracao : IEntityTypeConfiguration<GheFuncao>
+{
+    public void Configure(EntityTypeBuilder<GheFuncao> builder)
+    {
+        builder.HasOne(f => f.Ghe).WithMany(g => g.Funcoes)
+            .HasForeignKey(f => f.GheId).OnDelete(DeleteBehavior.Cascade);
+        builder.HasOne(f => f.Funcao).WithMany()
+            .HasForeignKey(f => f.FuncaoId).OnDelete(DeleteBehavior.Restrict);
+        builder.HasIndex(f => new { f.GheId, f.FuncaoId });
+        builder.HasQueryFilter(f => f.Ativo);
     }
 }
