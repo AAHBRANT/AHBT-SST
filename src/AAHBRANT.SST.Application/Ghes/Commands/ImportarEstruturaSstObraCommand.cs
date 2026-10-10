@@ -14,7 +14,8 @@ namespace AAHBRANT.SST.Application.Ghes.Commands;
 // → Perigo → Risco), quadro de exames por função, plano de ação e pendências de validação técnica.
 // Tudo numa transação: ou entra a estrutura inteira, ou nada. Recusa obra que já tem GHE, para não
 // duplicar inventário — reimportar exige limpar antes.
-public record ImportarEstruturaFuncao(string Nome, string? Cbo, string? DescricaoAtividades, int? QuantidadeExpostos, List<string>? Apelidos);
+// FuncaoId: função escolhida na revisão da leitura com IA (tem precedência sobre o casamento por nome).
+public record ImportarEstruturaFuncao(string Nome, string? Cbo, string? DescricaoAtividades, int? QuantidadeExpostos, List<string>? Apelidos, Guid? FuncaoId = null);
 
 public record ImportarEstruturaRisco(
     string Tipo,
@@ -50,7 +51,7 @@ public record ImportarEstruturaExame(
     int? PeriodicidadeMeses,
     string? Observacao);
 
-public record ImportarEstruturaExamesFuncao(string Funcao, List<ImportarEstruturaExame> Exames);
+public record ImportarEstruturaExamesFuncao(string Funcao, List<ImportarEstruturaExame> Exames, Guid? FuncaoId = null);
 
 public record ImportarEstruturaPgr(string Nome, DateTime DataElaboracao, DateTime? DataProximaRevisao, DateTime? DataTermino, string? Descricao);
 
@@ -63,7 +64,12 @@ public record ImportarEstruturaSstObraCommand(
     List<ImportarEstruturaGhe> Ghes,
     List<ImportarEstruturaExamesFuncao>? ExamesPorFuncao,
     List<string>? PlanoAcao,
-    List<string>? PendenciasValidacao) : IRequest<ImportarEstruturaSstObraResultado>;
+    List<string>? PendenciasValidacao,
+    // Cadastro da leitura com IA (10/10/2026): grava no PGR/PCMSO que já existe em vez de criar um novo
+    // e, numa nova revisão, desativa (não apaga) a estrutura anterior em vez de recusar.
+    Guid? PgrIdExistente = null,
+    Guid? PcmsoIdExistente = null,
+    bool SubstituirEstruturaAtual = false) : IRequest<ImportarEstruturaSstObraResultado>;
 
 public record ImportarEstruturaSstObraResultado(
     Guid? PgrId,
@@ -82,7 +88,8 @@ public class ImportarEstruturaSstObraCommandValidator : AbstractValidator<Import
     public ImportarEstruturaSstObraCommandValidator()
     {
         RuleFor(x => x.ObraId).NotEmpty();
-        RuleFor(x => x.Ghes).NotEmpty();
+        RuleFor(x => x.Ghes).NotEmpty().When(x => x.ExamesPorFuncao is not { Count: > 0 })
+            .WithMessage("Informe os GHE (PGR) ou os exames por função (PCMSO).");
         RuleFor(x => x.Ghes).Must(g => g.Select(x => x.Numero).Distinct().Count() == g.Count)
             .WithMessage("Há GHE com número repetido.");
         RuleForEach(x => x.Ghes).ChildRules(g =>
@@ -127,8 +134,25 @@ public class ImportarEstruturaSstObraCommandHandler : IRequestHandler<ImportarEs
         if (!_db.ObraNoEscopo(request.ObraId) || !await _db.Obras.AnyAsync(o => o.Id == request.ObraId, ct))
             throw new KeyNotFoundException("Obra não encontrada.");
 
-        if (await _db.Ghes.AnyAsync(g => g.ObraId == request.ObraId, ct))
-            throw new InvalidOperationException("Esta obra já tem GHE cadastrado. Exclua a estrutura atual antes de importar de novo.");
+        if (request.Ghes.Count > 0)
+        {
+            var ghesAtuais = await _db.Ghes.Include(g => g.Funcoes).Where(g => g.ObraId == request.ObraId).ToListAsync(ct);
+            if (ghesAtuais.Count > 0 && !request.SubstituirEstruturaAtual)
+                throw new InvalidOperationException("Esta obra já tem GHE cadastrado. Exclua a estrutura atual antes de importar de novo.");
+            // Nova revisão: a estrutura anterior sai de uso sem ser apagada. As atividades/riscos dela
+            // continuam (APR/PT já emitidas apontam para eles) e deixam de aparecer no inventário.
+            foreach (var antigo in ghesAtuais)
+            {
+                antigo.Ativo = false;
+                foreach (var f in antigo.Funcoes) f.Ativo = false;
+            }
+        }
+
+        if (request.ExamesPorFuncao is { Count: > 0 } && request.SubstituirEstruturaAtual)
+        {
+            foreach (var antigo in await _db.ExamesFuncaoObra.Where(e => e.ObraId == request.ObraId).ToListAsync(ct))
+                antigo.Ativo = false;
+        }
 
         var matriz = await _db.MatrizRiscoConfigs.Include(c => c.Celulas).FirstOrDefaultAsync(ct)
             ?? throw new InvalidOperationException("Nenhuma matriz de risco cadastrada.");
@@ -141,8 +165,22 @@ public class ImportarEstruturaSstObraCommandHandler : IRequestHandler<ImportarEs
 
         var reaproveitadas = new SortedSet<string>();
         var criadas = new SortedSet<string>();
-        Funcao ResolverFuncao(string nome, string? cbo, IEnumerable<string>? apelidos)
+        var funcoesPorId = new Dictionary<Guid, Funcao>();
+        foreach (var f in funcoesPorNome.Values) funcoesPorId.TryAdd(f.Id, f);
+
+        Funcao ResolverFuncao(string nome, string? cbo, IEnumerable<string>? apelidos, Guid? funcaoId = null)
         {
+            if (funcaoId is { } id)
+            {
+                var escolhida = funcoesPorId.GetValueOrDefault(id)
+                    ?? throw new KeyNotFoundException($"Função escolhida para \"{nome}\" não encontrada.");
+                if (!criadas.Contains(escolhida.Nome)) reaproveitadas.Add(escolhida.Nome);
+                if (string.IsNullOrWhiteSpace(escolhida.CboCodigo) && !string.IsNullOrWhiteSpace(cbo))
+                    escolhida.CboCodigo = cbo;
+                funcoesPorNome.TryAdd(FuncaoSstClassifier.Normalizar(nome), escolhida);
+                return escolhida;
+            }
+
             foreach (var candidato in new[] { nome }.Concat(apelidos ?? Enumerable.Empty<string>()))
             {
                 if (funcoesPorNome.TryGetValue(FuncaoSstClassifier.Normalizar(candidato), out var existente))
@@ -185,7 +223,7 @@ public class ImportarEstruturaSstObraCommandHandler : IRequestHandler<ImportarEs
             {
                 ghe.Funcoes.Add(new GheFuncao
                 {
-                    Funcao = ResolverFuncao(f.Nome, f.Cbo, f.Apelidos),
+                    Funcao = ResolverFuncao(f.Nome, f.Cbo, f.Apelidos, f.FuncaoId),
                     QuantidadeExpostos = f.QuantidadeExpostos,
                     DescricaoAtividades = f.DescricaoAtividades,
                 });
@@ -242,7 +280,12 @@ public class ImportarEstruturaSstObraCommandHandler : IRequestHandler<ImportarEs
         }
 
         Pgr? pgr = null;
-        if (request.Pgr is { } p)
+        if (request.PgrIdExistente is { } pgrId)
+        {
+            pgr = await _db.Pgrs.FirstOrDefaultAsync(x => x.Id == pgrId && x.ObraId == request.ObraId, ct)
+                ?? throw new KeyNotFoundException("PGR não encontrado nesta obra.");
+        }
+        else if (request.Pgr is { } p)
         {
             pgr = new Pgr
             {
@@ -257,19 +300,13 @@ public class ImportarEstruturaSstObraCommandHandler : IRequestHandler<ImportarEs
             _db.Pgrs.Add(pgr);
         }
 
-        var itensPlano = 0;
-        var descricoesPlano = (request.PlanoAcao ?? new())
-            .Concat((request.PendenciasValidacao ?? new()).Select(x => PrefixoPendencia + x));
-        foreach (var descricao in descricoesPlano)
-        {
-            if (pgr is null)
-                throw new InvalidOperationException("Plano de ação e pendências precisam do PGR na importação.");
-            pgr.PlanoDeAcao.Add(new PlanoAcaoItem { Descricao = Limitar(descricao, 500), Status = StatusControleRisco.Pendente });
-            itensPlano++;
-        }
-
         PcmsoDetalhe? pcmso = null;
-        if (request.Pcmso is { } c)
+        if (request.PcmsoIdExistente is { } pcmsoId)
+        {
+            pcmso = await _db.PcmsoDetalhes.FirstOrDefaultAsync(x => x.Id == pcmsoId && x.ObraId == request.ObraId, ct)
+                ?? throw new KeyNotFoundException("PCMSO não encontrado nesta obra.");
+        }
+        else if (request.Pcmso is { } c)
         {
             pcmso = new PcmsoDetalhe
             {
@@ -286,10 +323,36 @@ public class ImportarEstruturaSstObraCommandHandler : IRequestHandler<ImportarEs
             _db.PcmsoDetalhes.Add(pcmso);
         }
 
+        // Plano de ação e pendências vão para o PGR; leitura só do PCMSO (sem PGR) grava as pendências
+        // como ações do plano do próprio PCMSO (AcaoPlano com origem "Pcmso", mesmo vínculo da tela dele).
+        var itensPlano = 0;
+        var descricoesPlano = (request.PlanoAcao ?? new())
+            .Concat((request.PendenciasValidacao ?? new()).Select(x => PrefixoPendencia + x));
+        foreach (var descricao in descricoesPlano)
+        {
+            // Pelo DbSet, não pela coleção: com o PGR já existente (leitura com IA), item novo com Id
+            // preenchido achado pela coleção seria tratado como existente (UPDATE em linha que não existe).
+            if (pgr is not null)
+                _db.PlanoAcaoItens.Add(new PlanoAcaoItem { Pgr = pgr, Descricao = Limitar(descricao, 500), Status = StatusControleRisco.Pendente });
+            else if (pcmso is not null)
+                _db.AcoesPlano.Add(new AcaoPlano
+                {
+                    OrigemTipo = "Pcmso",
+                    OrigemId = pcmso.Id,
+                    Tipo = TipoAcaoPlano.Preventiva,
+                    Prioridade = PrioridadeAcao.Media,
+                    Descricao = Limitar(descricao, 500),
+                    Status = StatusControleRisco.Pendente,
+                });
+            else
+                throw new InvalidOperationException("Plano de ação e pendências precisam do PGR ou do PCMSO na importação.");
+            itensPlano++;
+        }
+
         var exames = 0;
         foreach (var ef in request.ExamesPorFuncao ?? new())
         {
-            var funcao = ResolverFuncao(ef.Funcao, null, null);
+            var funcao = ResolverFuncao(ef.Funcao, null, null, ef.FuncaoId);
             foreach (var e in ef.Exames)
             {
                 _db.ExamesFuncaoObra.Add(new ExameFuncaoObra

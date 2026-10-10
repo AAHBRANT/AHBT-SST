@@ -97,3 +97,15 @@ public class PcmsoRevisaoConfiguracao : IEntityTypeConfiguration<PcmsoRevisao>
         builder.HasQueryFilter(r => r.Ativo);
     }
 }
+
+public class LeituraDocumentoIaConfiguracao : IEntityTypeConfiguration<LeituraDocumentoIa>
+{
+    public void Configure(EntityTypeBuilder<LeituraDocumentoIa> builder)
+    {
+        builder.ToTable("LeiturasDocumentoIa");
+        builder.Property(l => l.Etapa).HasMaxLength(300);
+        builder.Property(l => l.Erro).HasMaxLength(2000);
+        builder.HasIndex(l => new { l.Documento, l.DocumentoId });
+        builder.HasQueryFilter(l => l.Ativo);
+    }
+}

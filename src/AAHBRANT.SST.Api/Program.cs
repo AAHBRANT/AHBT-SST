@@ -16,6 +16,7 @@ ConfiguracaoAutenticacao.Validar(builder.Configuration, builder.Environment.IsDe
 
 builder.Services.AddApplication();
 builder.Services.AddInfrastructure(builder.Configuration);
+builder.Services.AddHostedService<AAHBRANT.SST.Infrastructure.LeituraIa.LeituraIaBackgroundService>();
 
 // Autenticação Entra ID: só é ativada se a seção "AzureAd" estiver configurada com um
 // App Registration real (TenantId/ClientId). Provisionamento desse recurso no Azure

@@ -1,3 +1,4 @@
+using AAHBRANT.SST.Application.Common;
 using AAHBRANT.SST.Application.Common.Interfaces;
 using MediatR;
 using Microsoft.EntityFrameworkCore;
@@ -34,7 +35,7 @@ public class ObterPgrDetalheQueryHandler : IRequestHandler<ObterPgrDetalheQuery,
             .FirstOrDefaultAsync(ct);
         if (pgr is null) return null;
 
-        var atividades = await _db.Atividades
+        var atividades = await _db.Atividades.EmUso(_db)
             .Where(a => a.ObraId == pgr.ObraId)
             .Include(a => a.Riscos).ThenInclude(r => r.Perigo)
             .OrderBy(a => a.Nome)

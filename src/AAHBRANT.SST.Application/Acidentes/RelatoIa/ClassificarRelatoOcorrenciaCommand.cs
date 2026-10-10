@@ -1,3 +1,4 @@
+using AAHBRANT.SST.Application.Common;
 using AAHBRANT.SST.Application.Common.Interfaces;
 using AAHBRANT.SST.Domain.Enums;
 using FluentValidation;
@@ -61,7 +62,7 @@ public class ClassificarRelatoOcorrenciaCommandHandler : IRequestHandler<Classif
 
     public async Task<RelatoOcorrenciaSugestaoDto> Handle(ClassificarRelatoOcorrenciaCommand request, CancellationToken ct)
     {
-        var atividades = await _db.Atividades
+        var atividades = await _db.Atividades.EmUso(_db)
             .Where(a => a.ObraId == request.ObraId)
             .OrderBy(a => a.Nome)
             .Select(a => new { a.Id, a.Nome })
