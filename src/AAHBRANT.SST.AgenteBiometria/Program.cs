@@ -31,6 +31,8 @@ public static class Program
         builder.Services.AddHttpClient<BackendClient>();
         builder.Services.AddSingleton<TemplateCacheService>();
         builder.Services.AddHostedService<SincronizacaoTemplatesService>();
+        builder.Services.AddSingleton<ChaveAssinaturaAgente>();
+        builder.Services.AddHostedService<RegistroChavePublicaService>();
 
         var agenteOptions = builder.Configuration.GetSection("Agente").Get<AgenteOptions>() ?? new AgenteOptions();
 

@@ -68,7 +68,8 @@ public class DdsController : ControllerBase
     [HttpPost("{id:guid}/participantes")]
     public async Task<IActionResult> RegistrarParticipante(Guid id, RegistrarParticipanteRequestBody body, CancellationToken ct)
     {
-        var command = new RegistrarParticipanteCommand(id, body.TrabalhadorId, body.DispositivoId, body.SegredoDispositivo, body.Score, body.ImagemDigital);
+        var command = new RegistrarParticipanteCommand(id, body.TrabalhadorId, body.DispositivoId, body.SegredoDispositivo, body.Score, body.ImagemDigital,
+            body.Desafio, body.AssinaturaLeitura);
         var participanteId = await _mediator.Send(command, ct);
         return Ok(new { id = participanteId });
     }
@@ -217,6 +218,9 @@ public class RegistrarParticipanteRequestBody
     public double Score { get; set; }
     // PNG da digital lida (base64 no JSON), guardado como evidência visual da assinatura.
     public byte[]? ImagemDigital { get; set; }
+    // Leitura assinada pelo agente (ver FutronicAutenticacaoStrategy).
+    public string? Desafio { get; set; }
+    public string? AssinaturaLeitura { get; set; }
 }
 
 public class AnexarFotoEvidenciaDdsRequestBody

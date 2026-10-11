@@ -16,7 +16,9 @@ public record RegistrarPresencaSessaoTreinamentoCommand(
     Guid TrabalhadorId,
     Guid DispositivoId,
     string SegredoDispositivo,
-    double Score) : IRequest;
+    double Score,
+    string? Desafio = null,
+    string? AssinaturaLeitura = null) : IRequest;
 
 public class RegistrarPresencaSessaoTreinamentoCommandValidator : AbstractValidator<RegistrarPresencaSessaoTreinamentoCommand>
 {
@@ -25,7 +27,9 @@ public class RegistrarPresencaSessaoTreinamentoCommandValidator : AbstractValida
         RuleFor(x => x.SessaoTreinamentoId).NotEmpty();
         RuleFor(x => x.TrabalhadorId).NotEmpty();
         RuleFor(x => x.DispositivoId).NotEmpty();
-        RuleFor(x => x.SegredoDispositivo).NotEmpty();
+        // Com leitura assinada pelo agente o segredo não trafega mais pelo navegador.
+        RuleFor(x => x.SegredoDispositivo).NotEmpty().When(x => string.IsNullOrEmpty(x.Desafio));
+        RuleFor(x => x.AssinaturaLeitura).NotEmpty().When(x => !string.IsNullOrEmpty(x.Desafio));
         RuleFor(x => x.Score).InclusiveBetween(0, 100);
     }
 }
@@ -51,7 +55,8 @@ public class RegistrarPresencaSessaoTreinamentoCommandHandler : IRequestHandler<
             throw new InvalidOperationException("Presença já confirmada para este participante.");
 
         await _autenticacao.AutenticarPorMatchLocalAsync(
-            request.DispositivoId, request.SegredoDispositivo, request.TrabalhadorId, request.Score, ct);
+            request.DispositivoId, request.SegredoDispositivo, request.TrabalhadorId, request.Score,
+            LeituraDo(request.Desafio, request.AssinaturaLeitura), ct);
 
         participante.PresencaConfirmadaEm = DateTime.UtcNow;
         participante.ScoreConfianca = request.Score;
@@ -59,4 +64,7 @@ public class RegistrarPresencaSessaoTreinamentoCommandHandler : IRequestHandler<
 
         await _db.SaveChangesAsync(ct);
     }
+
+    private static LeituraBiometricaAssinada? LeituraDo(string? desafio, string? assinatura) =>
+        string.IsNullOrEmpty(desafio) ? null : new LeituraBiometricaAssinada(desafio, assinatura ?? string.Empty);
 }

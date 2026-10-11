@@ -131,6 +131,7 @@ public class SstDbContext : DbContext, IAppDbContext
     public DbSet<DocumentoAssinatura> DocumentosAssinatura => Set<DocumentoAssinatura>();
     public DbSet<DocumentoSignatario> DocumentoSignatarios => Set<DocumentoSignatario>();
     public DbSet<DispositivoAgenteBiometrico> DispositivosAgenteBiometrico => Set<DispositivoAgenteBiometrico>();
+    public DbSet<DesafioBiometria> DesafiosBiometria => Set<DesafioBiometria>();
     public DbSet<TemplateBiometricoFutronic> TemplatesBiometricoFutronic => Set<TemplateBiometricoFutronic>();
     public DbSet<FotoCadastroFacial> FotosCadastroFacial => Set<FotoCadastroFacial>();
     public DbSet<FalhaReconhecimentoFacial> FalhasReconhecimentoFacial => Set<FalhaReconhecimentoFacial>();

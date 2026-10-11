@@ -44,7 +44,8 @@ public class SessoesTreinamentoController : ControllerBase
     [HttpPost("{id:guid}/presenca")]
     public async Task<IActionResult> RegistrarPresenca(Guid id, RegistrarPresencaSessaoTreinamentoRequestBody body, CancellationToken ct)
     {
-        var command = new RegistrarPresencaSessaoTreinamentoCommand(id, body.TrabalhadorId, body.DispositivoId, body.SegredoDispositivo, body.Score);
+        var command = new RegistrarPresencaSessaoTreinamentoCommand(id, body.TrabalhadorId, body.DispositivoId, body.SegredoDispositivo, body.Score,
+            body.Desafio, body.AssinaturaLeitura);
         await _mediator.Send(command, ct);
         return NoContent();
     }
@@ -124,6 +125,9 @@ public class RegistrarPresencaSessaoTreinamentoRequestBody
     public Guid DispositivoId { get; set; }
     public string SegredoDispositivo { get; set; } = string.Empty;
     public double Score { get; set; }
+    // Leitura assinada pelo agente (ver FutronicAutenticacaoStrategy).
+    public string? Desafio { get; set; }
+    public string? AssinaturaLeitura { get; set; }
 }
 
 public class RegistrarPresencaFacialSessaoTreinamentoRequestBody

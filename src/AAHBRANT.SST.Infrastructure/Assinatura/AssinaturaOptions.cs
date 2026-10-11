@@ -5,6 +5,11 @@ public class AssinaturaOptions
     public string UrlBaseValidacaoPublica { get; set; } = "";
     public double LimiarConfiancaBiometriaLocal { get; set; } = 50;
 
+    // Desligado durante a transição: leitores cujo agente ainda não foi atualizado continuam pelo caminho
+    // antigo (segredo + nota). Ligar (true) depois que todos os agentes das obras estiverem atualizados —
+    // aí qualquer leitura sem assinatura do agente é recusada.
+    public bool ExigirLeituraAssinadaBiometria { get; set; }
+
     // Azure Face API (docs/superpowers/specs/2026-09-04-assinatura-facial-azure-design.md) — tier F0
     // (gratuito): 20 chamadas/minuto, até 30.000 rostos. Migrar para S0 é só trocar a chave.
     public string AzureFaceApiEndpoint { get; set; } = "";

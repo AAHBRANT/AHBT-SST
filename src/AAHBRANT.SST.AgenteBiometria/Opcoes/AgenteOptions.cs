@@ -23,4 +23,7 @@ public class AgenteOptions
 
     // Tempo que o agente espera o dedo em cada leitura (segundos). Aumente se os trabalhadores precisarem de mais tempo.
     public int TempoLimiteDedoSegundos { get; set; } = 15;
+
+    // Onde fica a chave privada de assinatura das leituras. Vazio = %ProgramData%\AAHBRANT\AgenteBiometria.
+    public string CaminhoChaveAssinatura { get; set; } = string.Empty;
 }

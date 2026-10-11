@@ -24,4 +24,16 @@ public class BackendClient
         resposta.EnsureSuccessStatusCode();
         return await resposta.Content.ReadFromJsonAsync<List<TemplateSincronizadoResponse>>(cancellationToken: ct) ?? new();
     }
+
+    // null = registrada (ou já era esta). Recusa do servidor (ex.: leitor já tem outra chave) volta como texto.
+    public async Task<string?> RegistrarChavePublicaAsync(string chavePublica, CancellationToken ct)
+    {
+        var url = $"{_options.BackendBaseUrl}/api/dispositivos-agente/{_options.DispositivoId}/chave-publica";
+        var resposta = await _httpClient.PostAsJsonAsync(url, new { SegredoDispositivo = _options.SegredoDispositivo, ChavePublica = chavePublica }, ct);
+        if (resposta.IsSuccessStatusCode)
+            return null;
+        if ((int)resposta.StatusCode >= 500)
+            resposta.EnsureSuccessStatusCode();
+        return $"{(int)resposta.StatusCode}: {await resposta.Content.ReadAsStringAsync(ct)}";
+    }
 }

@@ -13,7 +13,7 @@ import {
 import { Checkmark24Filled, Warning24Regular } from '@fluentui/react-icons';
 import { BotaoBiometriaDigital } from './BotaoBiometriaDigital';
 import { api, metodoAutenticacaoAssinaturaLabel, type DocumentoAssinatura } from '../../lib/api';
-import { capturarDigitalLocal, estaAgenteLocalDisponivel, obterDispositivoLocal } from '../../lib/agenteBiometricoLocal';
+import { capturarDigitalLocal, credencialLeitura, estaAgenteLocalDisponivel, obterDispositivoLocal, type DispositivoLocal } from '../../lib/agenteBiometricoLocal';
 import { tocarBipeAssinaturaAceita } from '../../lib/bipeAssinatura';
 import { SeletorFotoCamera } from '../SeletorFotoCamera';
 import { formatarAssinaturaDigital } from './assinaturaDigital';
@@ -59,7 +59,7 @@ export function AssinaturaQuiosque({ entidadeTipo, entidadeId, obraId }: Assinat
   const [erroFacial, setErroFacial] = useState<string | null>(null);
   const [ultimoAssinante, setUltimoAssinante] = useState<string | null>(null);
   const [agenteLocalDisponivel, setAgenteLocalDisponivel] = useState(false);
-  const [dispositivoLocal, setDispositivoLocal] = useState<{ dispositivoId: string; segredoDispositivo: string } | null>(null);
+  const [dispositivoLocal, setDispositivoLocal] = useState<DispositivoLocal | null>(null);
   const [pendenteFacial, setPendenteFacial] = useState(false);
 
   useEffect(() => {
@@ -94,11 +94,10 @@ export function AssinaturaQuiosque({ entidadeTipo, entidadeId, obraId }: Assinat
       setProcessando(true);
       setErro(null);
       setUltimoAssinante(null);
-      const captura = await capturarDigitalLocal();
+      const captura = await capturarDigitalLocal(dispositivoLocal.dispositivoId);
       const signatario = await api.assinatura.autenticarBiometriaLocal(
         documento.id,
-        dispositivoLocal.dispositivoId,
-        dispositivoLocal.segredoDispositivo,
+        credencialLeitura(dispositivoLocal, captura.leituras[0]),
         captura.trabalhadorId,
         captura.score,
         captura.imagemPng,

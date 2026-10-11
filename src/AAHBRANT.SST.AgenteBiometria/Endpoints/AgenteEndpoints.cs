@@ -6,14 +6,20 @@ using Microsoft.Extensions.Options;
 
 namespace AAHBRANT.SST.AgenteBiometria.Endpoints;
 
-public record DispositivoResponse(Guid DispositivoId, string SegredoDispositivo);
+// O segredo do dispositivo não sai mais para o navegador (11/10): com ele, quem tivesse acesso ao navegador
+// conseguia "assinar" por qualquer trabalhador. LeituraAssinada avisa a tela que este agente assina as leituras.
+public record DispositivoResponse(Guid DispositivoId, bool LeituraAssinada = true);
 public record SincronizarResponse(int Total);
 // ImagemPng: imagem da leitura, guardada (criptografada) como referência do cadastro no log de assinaturas.
 public record CapturaBrutaResponse(byte[] TemplateBruto, byte[]? ImagemPng = null);
 public record CompararTemplatesRequest(byte[] TemplateA, byte[] TemplateB);
 public record CompararTemplatesResponse(double Score);
 // ImagemPng: imagem da digital lida, guardada como evidência visual da assinatura (Cofre).
-public record CapturaResponse(Guid TrabalhadorId, double Score, byte[]? ImagemPng = null);
+// Desafio/Assinatura: presentes quando a tela mandou um desafio do servidor (ver Capturar). Assinaturas: uma
+// por item de Desafios, na mesma ordem (entrega de EPI em lote: uma leitura assina vários documentos).
+public record CapturaResponse(Guid TrabalhadorId, double Score, byte[]? ImagemPng = null, string? Desafio = null, string? Assinatura = null,
+    List<string>? Assinaturas = null);
+public record CapturarRequest(string? Desafio, List<string>? Desafios = null);
 public record ErroResponse(string Erro);
 
 public static class AgenteEndpoints
@@ -28,7 +34,7 @@ public static class AgenteEndpoints
     }
 
     public static Ok<DispositivoResponse> ObterDispositivo(IOptions<AgenteOptions> options) =>
-        TypedResults.Ok(new DispositivoResponse(options.Value.DispositivoId, options.Value.SegredoDispositivo));
+        TypedResults.Ok(new DispositivoResponse(options.Value.DispositivoId));
 
     public static async Task<Ok<SincronizarResponse>> Sincronizar(TemplateCacheService cache, CancellationToken ct)
     {
@@ -55,8 +61,13 @@ public static class AgenteEndpoints
         return TypedResults.Ok(new CompararTemplatesResponse(matcher.Comparar(corpo.TemplateA, corpo.TemplateB)));
     }
 
+    // Texto assinado de cada leitura. Precisa ser idêntico a LeituraBiometricaAssinada.Conteudo no servidor.
+    public static string ConteudoAssinado(string desafio, Guid trabalhadorId, double score) =>
+        string.Join('|', desafio, trabalhadorId.ToString("D"), score.ToString("F2", System.Globalization.CultureInfo.InvariantCulture));
+
     public static async Task<Results<Ok<CapturaResponse>, NotFound<ErroResponse>>> Capturar(
-        IFingerprintReader leitor, IFingerprintMatcher matcher, TemplateCacheService cache, CancellationToken ct)
+        IFingerprintReader leitor, IFingerprintMatcher matcher, TemplateCacheService cache, ChaveAssinaturaAgente chave,
+        CapturarRequest? corpo, CancellationToken ct)
     {
         var imagemBruta = await leitor.CapturarAsync(ct);
         var captura = matcher.ExtrairTemplate(imagemBruta);
@@ -71,6 +82,12 @@ public static class AgenteEndpoints
             return TypedResults.NotFound(new ErroResponse("Nenhum template cadastrado no cache local. Rode /api/sincronizar primeiro."));
         }
 
-        return TypedResults.Ok(new CapturaResponse(melhor.TrabalhadorId, melhor.Score, ImagemDigitalPng.Converter(imagemBruta)));
+        // Nota arredondada em 2 casas antes de assinar: o servidor confere exatamente o texto assinado, e assim
+        // o número não muda no caminho (JSON do agente -> navegador -> servidor).
+        var score = Math.Round(melhor.Score, 2);
+        var desafio = corpo?.Desafio;
+        var assinatura = string.IsNullOrWhiteSpace(desafio) ? null : chave.Assinar(ConteudoAssinado(desafio, melhor.TrabalhadorId, score));
+        var assinaturas = corpo?.Desafios?.Select(d => chave.Assinar(ConteudoAssinado(d, melhor.TrabalhadorId, score))).ToList();
+        return TypedResults.Ok(new CapturaResponse(melhor.TrabalhadorId, score, ImagemDigitalPng.Converter(imagemBruta), desafio, assinatura, assinaturas));
     }
 }
