@@ -271,6 +271,7 @@ export function ParticipantesDds({ detalhe, somenteLeitura, aoAtualizar }: Props
         variante="facialAzure"
         modoCamera="user"
         exigirCamera
+        permitirCapturaAutomatica
       />
       <Button size="small" appearance="subtle" icon={<Dismiss24Regular />} disabled={ocupado}
         aria-label={`Remover ${f.nome} da seleção`} onClick={() => alternar(f.trabalhadorId)}>Remover</Button>

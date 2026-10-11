@@ -1143,6 +1143,21 @@ public static class NovidadesSeeder
                     "A estrutura de SST da obra (GHE, funções, riscos e exames) era digitada à mão a partir do PDF.",
                     "Com o PDF anexado, clique em \"Ler com IA\". A leitura roda em segundo plano e avisa no sininho quando termina. Na tela de revisão você confere o que foi lido, as divergências encontradas e o que muda em relação à estrutura atual, escolhe a função do sistema para cada função do documento e só então clica em \"Cadastrar estrutura\"."),
             }),
+        new(
+            Versao: "5.60.0",
+            Titulo: "Assinatura facial sem travar o botão Capturar",
+            DataPublicacao: new DateTime(2026, 10, 11, 0, 0, 0, DateTimeKind.Utc),
+            Itens: new[]
+            {
+                new NovidadeSeedItem(CategoriaNovidade.Correcao,
+                    "Botão Capturar sempre disponível na câmera facial",
+                    "Com pouca luz, câmera de baixa resolução ou rosto fora do centro, o quadrado não ficava verde e o botão Capturar continuava bloqueado, impedindo a assinatura.",
+                    "O quadrado e a mensagem continuam orientando (aproximar, centralizar, melhorar a luz), mas o botão Capturar fica sempre liberado. Se a foto não servir, o reconhecimento facial recusa e informa o motivo para tentar de novo."),
+                new NovidadeSeedItem(CategoriaNovidade.Melhoria,
+                    "Captura automática desligada por padrão e só no treinamento e no DDS",
+                    "A foto podia ser tirada sozinha em qualquer tela de assinatura facial.",
+                    "A chave \"Captura automática\" aparece apenas na confirmação de presença do treinamento e do DDS e começa desligada toda vez que a câmera abre. Nas demais telas (entrega de EPI, quiosque e cadastro facial) a foto é tirada só pelo botão Capturar. A fila facial do DDS continua funcionando como antes."),
+            }),
     };
 
     public static async Task ExecutarAsync(IServiceProvider services, CancellationToken ct = default)

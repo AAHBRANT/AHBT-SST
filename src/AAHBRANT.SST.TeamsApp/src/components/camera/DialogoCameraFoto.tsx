@@ -42,19 +42,23 @@ export function DialogoCameraFoto({ captura }: DialogoCameraFotoProps) {
   // Reconhecimento facial (câmera frontal) ganha uma guia oval sobreposta ao vídeo — pedido do
   // usuário (22/09): ajuda a pessoa a centralizar o rosto no quadro antes de capturar.
   // Desde 07/10 há também um detector de rosto ao vivo (useDetectorRosto, roda no aparelho): um
-  // quadrado acompanha o rosto e o botão Capturar só libera com 1 rosto de frente, grande, centrado e
-  // com luz boa. É só ajuda ao operador: a validação real continua sendo a do Azure Face API. Se o
-  // detector não carregar, a câmera funciona como antes e a captura não é bloqueada.
+  // quadrado acompanha o rosto e a mensagem diz o que ajustar (aproximar, centralizar, luz). É só ajuda
+  // ao operador: a validação real continua sendo a do Azure Face API.
+  // Correção (11/10): o detector NÃO bloqueia mais o botão Capturar. Com o bloqueio, quem tinha webcam
+  // de baixa resolução, pouca luz no canteiro ou o rosto um pouco fora do centro nunca chegava ao verde
+  // e não conseguia assinar — e, como a foto nem saía do aparelho, essas tentativas não apareciam no
+  // registro de falhas do servidor. Agora a pessoa sempre pode capturar; se a foto não servir, o Azure
+  // recusa com a mensagem do motivo e ela tenta de novo.
   const mostrarGuiaRosto = modoCamera === 'user';
   const detector = useDetectorRosto(videoRef, mostrarGuiaRosto && !!stream);
   const avaliacao = detector.situacao === 'ativo' ? detector.avaliacao : null;
-  const capturaBloqueadaPeloDetector = detector.situacao === 'ativo' && !avaliacao?.liberaCaptura;
   const corQuadrado = avaliacao ? CORES_DETECTOR[avaliacao.tom] : CORES_DETECTOR.ok;
-  // Captura sozinha depois de 1,5 s com o rosto aprovado (verde) e estável. Só quando o detector está
-  // ativo: sem detector não há como saber se o rosto está bom, e aí vale o botão Capturar.
+  // Captura sozinha depois de 1,5 s com o rosto aprovado (verde) e estável. Só onde a tela permite
+  // (treinamento e DDS) e só quando o detector está ativo; começa desligada a cada abertura.
+  const oferecerAutomatica = mostrarGuiaRosto && captura.permitirCapturaAutomatica;
   const automatica = useCapturaAutomatica(
     stream,
-    mostrarGuiaRosto && !!avaliacao?.liberaCaptura && !captura.processando,
+    oferecerAutomatica && !!avaliacao?.liberaCaptura && !captura.processando,
     () => void capturarFoto(),
   );
 
@@ -155,7 +159,7 @@ export function DialogoCameraFoto({ captura }: DialogoCameraFotoProps) {
                 )}
               </div>
             )}
-            {mostrarGuiaRosto && detector.situacao === 'ativo' && (
+            {oferecerAutomatica && detector.situacao === 'ativo' && (
               <Switch
                 style={{ marginTop: 4 }}
                 checked={automatica.ligada}
@@ -169,7 +173,7 @@ export function DialogoCameraFoto({ captura }: DialogoCameraFotoProps) {
             <Button appearance="secondary" onClick={fecharCamera}>
               Cancelar
             </Button>
-            <Button appearance="primary" icon={<Camera24Regular />} onClick={capturarFoto} disabled={captura.processando || capturaBloqueadaPeloDetector}>
+            <Button appearance="primary" icon={<Camera24Regular />} onClick={capturarFoto} disabled={captura.processando}>
               Capturar
             </Button>
           </DialogActions>

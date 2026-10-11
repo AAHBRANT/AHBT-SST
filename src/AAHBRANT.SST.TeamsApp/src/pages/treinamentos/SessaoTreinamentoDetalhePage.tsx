@@ -451,6 +451,7 @@ export function SessaoTreinamentoDetalhePage() {
                 variante="facialAzure"
                 modoCamera="user"
                 exigirCamera
+                permitirCapturaAutomatica
               />
             </div>
             {mensagemPresenca && (
