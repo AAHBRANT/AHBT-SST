@@ -470,4 +470,74 @@ public class AzureFaceAutenticacaoStrategyTests
         Assert.Equal(2, tentativasFace);
         Assert.Equal("person-recriado", trabalhadorAtualizado.AzureFacePersonId);
     }
+
+    // Funcionário que muda de obra: o rosto precisa ir para o grupo da obra nova, senão ele nunca mais é
+    // reconhecido (o Azure só procura no grupo da obra do documento).
+    [Fact]
+    public async Task RealocarCadastroAsync_TrocaDeObra_CopiaFotoParaGrupoNovoEApagaDoAntigo()
+    {
+        var db = CriarDb(nameof(RealocarCadastroAsync_TrocaDeObra_CopiaFotoParaGrupoNovoEApagaDoAntigo));
+        var obraAntiga = new Obra { Codigo = "OB1", Nome = "Obra Antiga", AzureFacePersonGroupId = "grupo-antigo" };
+        var obraNova = new Obra { Codigo = "OB2", Nome = "Obra Nova" };
+        db.Obras.AddRange(obraAntiga, obraNova);
+        await db.SaveChangesAsync();
+        var trabalhador = new Trabalhador
+        {
+            ObraId = obraNova.Id, Nome = "Fulano", Cpf = "12345678901", DataAdmissao = DateTime.UtcNow,
+            AzureFacePersonId = "person-antigo",
+        };
+        db.Trabalhadores.Add(trabalhador);
+        db.FotosCadastroFacial.Add(new FotoCadastroFacial
+        {
+            TrabalhadorId = trabalhador.Id, Conteudo = new byte[] { 9, 9 }, ContentType = "image/jpeg",
+            HashSha256 = "h", CapturadaEm = DateTime.UtcNow,
+        });
+        await db.SaveChangesAsync();
+
+        var chamadas = new List<string>();
+        var factory = new HttpClientFactoryFalso(req =>
+        {
+            var caminho = req.RequestUri!.AbsolutePath;
+            chamadas.Add($"{req.Method} {caminho}");
+            if (req.Method == HttpMethod.Put && caminho.Contains("/persongroups/"))
+                return new HttpResponseMessage(HttpStatusCode.OK);
+            if (caminho.EndsWith("/persons"))
+                return Json(new { personId = "person-novo" });
+            if (caminho.EndsWith("/persistedFaces"))
+                return Json(new { persistedFaceId = "face-1" });
+            if (req.Method == HttpMethod.Delete)
+                return new HttpResponseMessage(HttpStatusCode.OK);
+            if (caminho.EndsWith("/train"))
+                return new HttpResponseMessage(HttpStatusCode.Accepted);
+            if (caminho.EndsWith("/training"))
+                return Json(new { status = "succeeded" });
+            throw new InvalidOperationException("chamada inesperada: " + req.RequestUri);
+        });
+        var servico = new AzureFaceAutenticacaoStrategy(db, factory, Opcoes());
+
+        await servico.RealocarCadastroAsync(trabalhador.Id, obraAntiga.Id, default);
+
+        var grupoNovo = $"obra-{obraNova.Id:N}";
+        Assert.Equal("person-novo", (await db.Trabalhadores.FirstAsync(t => t.Id == trabalhador.Id)).AzureFacePersonId);
+        Assert.Equal(grupoNovo, (await db.Obras.FirstAsync(o => o.Id == obraNova.Id)).AzureFacePersonGroupId);
+        Assert.Contains($"POST /face/v1.0/persongroups/{grupoNovo}/persons/person-novo/persistedFaces", chamadas);
+        Assert.Contains("DELETE /face/v1.0/persongroups/grupo-antigo/persons/person-antigo", chamadas);
+    }
+
+    [Fact]
+    public async Task RealocarCadastroAsync_SemCadastroFacial_NaoChamaAzure()
+    {
+        var db = CriarDb(nameof(RealocarCadastroAsync_SemCadastroFacial_NaoChamaAzure));
+        var obraAntiga = new Obra { Codigo = "OB1", Nome = "Obra Antiga" };
+        var obraNova = new Obra { Codigo = "OB2", Nome = "Obra Nova" };
+        db.Obras.AddRange(obraAntiga, obraNova);
+        var trabalhador = new Trabalhador { ObraId = obraNova.Id, Nome = "Fulano", Cpf = "12345678901", DataAdmissao = DateTime.UtcNow };
+        db.Trabalhadores.Add(trabalhador);
+        await db.SaveChangesAsync();
+
+        var factory = new HttpClientFactoryFalso(_ => throw new InvalidOperationException("não deveria chamar a rede"));
+        var servico = new AzureFaceAutenticacaoStrategy(db, factory, Opcoes());
+
+        await servico.RealocarCadastroAsync(trabalhador.Id, obraAntiga.Id, default);
+    }
 }

@@ -135,6 +135,64 @@ public class AzureFaceAutenticacaoStrategy : IAutenticacaoFacialService
         }
     }
 
+    public async Task RealocarCadastroAsync(Guid trabalhadorId, Guid obraAnteriorId, CancellationToken ct)
+    {
+        // IgnoreQueryFilters: a troca de obra também chega pela integração com o G-RH, sem usuário com
+        // acesso às duas obras. As fotos arquivadas (Ativo = false) ficam de fora pelo filtro explícito.
+        var trabalhador = await _db.Trabalhadores.IgnoreQueryFilters().FirstOrDefaultAsync(t => t.Id == trabalhadorId, ct);
+        if (trabalhador?.AzureFacePersonId is null || trabalhador.ObraId == obraAnteriorId)
+            return;
+
+        var foto = await _db.FotosCadastroFacial.IgnoreQueryFilters()
+            .Where(f => f.TrabalhadorId == trabalhadorId && f.Ativo)
+            .OrderByDescending(f => f.CapturadaEm)
+            .FirstOrDefaultAsync(ct);
+        if (foto is null)
+            return;
+
+        var obraNova = await _db.Obras.IgnoreQueryFilters().FirstOrDefaultAsync(o => o.Id == trabalhador.ObraId, ct)
+            ?? throw new KeyNotFoundException("Obra do trabalhador não encontrada.");
+        var grupoAnterior = await _db.Obras.IgnoreQueryFilters()
+            .Where(o => o.Id == obraAnteriorId)
+            .Select(o => o.AzureFacePersonGroupId)
+            .FirstOrDefaultAsync(ct);
+
+        using var cliente = CriarCliente();
+
+        // A foto já passou pela validação de qualidade no cadastro original: aqui só é copiada.
+        var grupoNovo = obraNova.AzureFacePersonGroupId;
+        if (grupoNovo is null)
+        {
+            grupoNovo = $"obra-{obraNova.Id:N}";
+            obraNova.AzureFacePersonGroupId = grupoNovo;
+        }
+        await CriarPersonGroupSeNaoExistirAsync(cliente, grupoNovo, obraNova.Nome, ct);
+
+        var personAnterior = trabalhador.AzureFacePersonId;
+        var personNovo = await CriarPersonAsync(cliente, grupoNovo, trabalhador.Nome, ct);
+        var erro = await TentarAdicionarFaceAsync(cliente, grupoNovo, personNovo, foto.Conteudo, ct);
+        if (erro is not null)
+            throw new InvalidOperationException(MontarMensagemErroAzure("Falha ao levar o cadastro facial para a nova obra", erro));
+
+        trabalhador.AzureFacePersonId = personNovo;
+        await _db.SaveChangesAsync(ct);
+        await TreinarEAguardarAsync(cliente, grupoNovo, ct);
+
+        // Limpeza do grupo antigo é melhor esforço: o id antigo não aponta mais para ninguém no banco, então
+        // mesmo que fique no Azure a identificação na obra anterior já não o aceita.
+        if (grupoAnterior is null)
+            return;
+        try
+        {
+            var resposta = await cliente.DeleteAsync($"face/v1.0/persongroups/{grupoAnterior}/persons/{personAnterior}", ct);
+            if (resposta.IsSuccessStatusCode)
+                await TreinarEAguardarAsync(cliente, grupoAnterior, ct);
+        }
+        catch (Exception e) when (e is InvalidOperationException or HttpRequestException)
+        {
+        }
+    }
+
     // Resolução mínima da imagem inteira. Abaixo disto nem vale gastar chamada no Azure: câmera de
     // notebook antigo e print de tela caem aqui.
     private const int LadoMinimoImagemPx = 480;

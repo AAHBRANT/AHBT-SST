@@ -30,6 +30,13 @@ public interface IAutenticacaoFacialService
     // AzureFacePersonId e as fotos de cadastro.
     Task RemoverCadastroAsync(Guid trabalhadorId, CancellationToken ct);
 
+    // Leva o cadastro facial para o PersonGroup da obra ATUAL do trabalhador, usando a foto de cadastro
+    // já aprovada (sem nova captura). Chamar depois de salvar a troca de obra. O Azure procura o rosto só
+    // no grupo da obra do documento, então sem isto quem mudava de obra nunca mais era reconhecido
+    // ("Rosto não reconhecido") e o cadastro aparecia como já feito. Não faz nada se não houver cadastro
+    // ou se a obra não mudou.
+    Task RealocarCadastroAsync(Guid trabalhadorId, Guid obraAnteriorId, CancellationToken ct);
+
     // Identifica quem está na foto dentro do PersonGroup da obra informada. Não recebe TrabalhadorId
     // — ao contrário do Futronic (que já resolveu o match localmente), aqui é o Azure quem descobre
     // quem é, a partir da foto.
