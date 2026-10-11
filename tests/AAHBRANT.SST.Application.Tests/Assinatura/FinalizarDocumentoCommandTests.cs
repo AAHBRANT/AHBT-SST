@@ -161,4 +161,24 @@ public class FinalizarDocumentoCommandTests
 
         Assert.Equal(91.24, db.DocumentoSignatarios.Single(s => s.DocumentoAssinaturaId == documento.Id).ConfiancaAutenticacao);
     }
+
+    // Foto que ficou na fila offline: guarda a hora em que foi tirada. Envio imediato ou hora no futuro: nada.
+    [Theory]
+    [InlineData(-120, true)]
+    [InlineData(0, false)]
+    [InlineData(60, false)]
+    public async Task Registrar_HoraDeclaradaDaCaptura_SoQuandoAFotoFoiEnviadaDepois(int minutos, bool guarda)
+    {
+        var (db, _, trabalhador) = await PrepararAsync();
+        var documento = new DocumentoAssinatura { EntidadeTipo = "Apr", EntidadeId = Guid.NewGuid() };
+        db.DocumentosAssinatura.Add(documento);
+        await db.SaveChangesAsync();
+        var capturada = DateTime.UtcNow.AddMinutes(minutos);
+
+        await new RegistradorAssinaturaService(db, new AuditoriaFalsa()).RegistrarAsync(
+            documento.Id, new ResultadoAutenticacaoAssinatura(trabalhador.Id, MetodoAutenticacaoAssinatura.ReconhecimentoFacial, CapturadaEmDeclarada: capturada), null, default);
+
+        var salvo = db.DocumentoSignatarios.Single(s => s.DocumentoAssinaturaId == documento.Id).CapturadaEmDeclarada;
+        Assert.Equal(guarda, salvo is not null);
+    }
 }

@@ -21,7 +21,7 @@ namespace AAHBRANT.SST.Application.Assinatura;
 public record ResultadoAutenticacaoAssinatura(
     Guid TrabalhadorId, MetodoAutenticacaoAssinatura Metodo, Guid? DispositivoAgenteId = null,
     string? ValidacaoModelo = null, string? ValidacaoGrupoId = null, string? ValidacaoRequisicaoId = null,
-    double? Confianca = null);
+    double? Confianca = null, DateTime? CapturadaEmDeclarada = null);
 
 // Geolocalização declarada pelo aparelho no momento da assinatura (log de assinaturas da Ficha de EPI).
 public record LocalizacaoAssinatura(StatusLocalizacaoAssinatura Status, double? Latitude = null, double? Longitude = null, double? PrecisaoMetros = null)
@@ -145,6 +145,7 @@ public class RegistradorAssinaturaService : IRegistradorAssinaturaService
             ValidacaoGrupoId = Truncar(resultado.ValidacaoGrupoId, 80),
             ValidacaoRequisicaoId = Truncar(resultado.ValidacaoRequisicaoId, 80),
             ConfiancaAutenticacao = resultado.Confianca is { } c ? Math.Round(c, 2) : null,
+            CapturadaEmDeclarada = CapturaDeclaradaRelevante(resultado.CapturadaEmDeclarada),
         };
         var local = (localizacao ?? new LocalizacaoAssinatura(StatusLocalizacaoAssinatura.NaoInformada)).Normalizada();
         signatario.LocalizacaoStatus = local.Status;
@@ -179,6 +180,19 @@ public class RegistradorAssinaturaService : IRegistradorAssinaturaService
             await FinalizacaoAutomaticaDocumento.TentarAsync(_db, _mediator, _logger, documento.Id, ct);
 
         return new DocumentoSignatarioDto(trabalhador.Id, trabalhador.Nome, signatario.MetodoAutenticacao, signatario.AssinadoEm, signatario.IpAddress);
+    }
+
+    // Só guarda a hora declarada quando ela conta algo: foto enviada mais de 1 minuto depois de tirada (fila
+    // offline). Hora no futuro (relógio do aparelho errado) é descartada.
+    private static DateTime? CapturaDeclaradaRelevante(DateTime? declarada)
+    {
+        if (declarada is null)
+            return null;
+        var utc = declarada.Value.Kind == DateTimeKind.Unspecified
+            ? DateTime.SpecifyKind(declarada.Value, DateTimeKind.Utc)
+            : declarada.Value.ToUniversalTime();
+        var agora = DateTime.UtcNow;
+        return utc > agora.AddMinutes(5) || agora - utc < TimeSpan.FromMinutes(1) ? null : utc;
     }
 
     // Nome da Função é texto livre no cadastro (não existe um "tipo de função" fechado no sistema —

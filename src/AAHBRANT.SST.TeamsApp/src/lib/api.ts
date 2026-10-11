@@ -5544,6 +5544,9 @@ export const api = {
       formData.append('obraId', obraId);
       formData.append('foto', foto);
       anexarDadosFoto(formData, foto);
+      // Hora da foto, declarada pelo aparelho: se ela ficar na fila offline, o registro mostra quando foi
+      // tirada, e não só quando chegou ao servidor.
+      formData.append('capturadaEm', new Date().toISOString());
       // Geolocalização no momento da assinatura (log de assinaturas), como campos do formulário.
       const localizacao = await obterLocalizacaoAssinatura();
       formData.append('localizacaoStatus', String(localizacao.status));

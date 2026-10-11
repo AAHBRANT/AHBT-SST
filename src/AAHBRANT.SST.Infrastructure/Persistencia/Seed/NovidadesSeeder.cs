@@ -1174,6 +1174,33 @@ public static class NovidadesSeeder
                     "A foto podia ser tirada sozinha em qualquer tela de assinatura facial.",
                     "A chave \"Captura automática\" aparece apenas na confirmação de presença do treinamento e do DDS e começa desligada toda vez que a câmera abre. Nas demais telas (entrega de EPI, quiosque e cadastro facial) a foto é tirada só pelo botão Capturar. A fila facial do DDS continua funcionando como antes."),
             }),
+        new(
+            Versao: "5.61.0",
+            Titulo: "Assinaturas mais confiáveis sem internet e mensagens mais claras",
+            DataPublicacao: new DateTime(2026, 10, 11, 0, 0, 0, DateTimeKind.Utc),
+            Itens: new[]
+            {
+                new NovidadeSeedItem(CategoriaNovidade.Correcao,
+                    "Fila sem internet não perde mais a foto da assinatura",
+                    "Quando o envio de uma assinatura feita sem internet falhava algumas vezes (login expirado, reconhecimento facial ocupado ou recusa), a ação era descartada e a foto se perdia.",
+                    "Login expirado e falhas temporárias ficam na fila e são reenviados sozinhos. Uma recusa (ex.: rosto não reconhecido) aparece no aviso de sincronização com a mensagem do motivo e os botões \"Tentar de novo\" e \"Descartar\"."),
+                new NovidadeSeedItem(CategoriaNovidade.Melhoria,
+                    "Hora em que a foto foi tirada",
+                    "A assinatura feita sem internet ficava registrada só com a hora em que chegou ao servidor, que podia ser horas depois.",
+                    "O registro guarda também a hora em que a foto foi tirada no aparelho."),
+                new NovidadeSeedItem(CategoriaNovidade.Melhoria,
+                    "Mensagens do reconhecimento facial",
+                    "As recusas não diziam o que fazer, e falhas do serviço apareciam como códigos técnicos (ex.: \"TooManyRequests\").",
+                    "Cada mensagem diz o que fazer a seguir, incluindo usar a digital, e serviço ocupado ou fora do ar aparece com uma mensagem clara."),
+                new NovidadeSeedItem(CategoriaNovidade.Correcao,
+                    "Documento \"adulterado\" por engano",
+                    "Quando quem assinou era desligado ou mudava de obra, a verificação de integridade acusava o documento como adulterado, e a pessoa sumia da página pública de validação.",
+                    "Quem assinou continua contando como signatário mesmo depois de desligado ou transferido."),
+                new NovidadeSeedItem(CategoriaNovidade.Melhoria,
+                    "Confiança de cada assinatura registrada",
+                    "Só as recusas do reconhecimento ficavam registradas, sem saber com que margem as assinaturas aceitas passaram.",
+                    "Cada assinatura guarda a confiança da identificação (facial) ou a nota da leitura (digital)."),
+            }),
     };
 
     public static async Task ExecutarAsync(IServiceProvider services, CancellationToken ct = default)

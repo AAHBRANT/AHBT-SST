@@ -96,6 +96,10 @@ public class DocumentoSignatario : AuditableEntity
     // Confiança da identificação, de 0 a 100: facial = confiança do Azure × 100; digital = nota do agente.
     // Sem isto só ficavam registradas as recusas, e não dava para ver com que margem os acertos passaram (11/10).
     public double? ConfiancaAutenticacao { get; set; }
+    // Hora em que o aparelho tirou a foto, quando ela foi enviada depois (sem internet no momento). AssinadoEm
+    // continua sendo a hora do servidor em que a identidade foi confirmada; esta é a hora declarada pelo
+    // aparelho, guardada à parte para o registro não dizer "assinou às 16h" de uma foto tirada às 7h.
+    public DateTime? CapturadaEmDeclarada { get; set; }
 
     // Geolocalização informada pelo aparelho no momento da assinatura (declarada pelo cliente, ao
     // contrário do IP, que o servidor mede). Precisão em metros.

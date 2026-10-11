@@ -2,6 +2,7 @@ using System.Net.Http.Headers;
 using System.Net.Http.Json;
 using System.Text.Json.Serialization;
 using AAHBRANT.SST.Application.Assinatura;
+using AAHBRANT.SST.Application.Common;
 using AAHBRANT.SST.Application.Common.Interfaces;
 using AAHBRANT.SST.Domain.Entidades;
 using AAHBRANT.SST.Domain.Enums;
@@ -684,15 +685,15 @@ public class AzureFaceAutenticacaoStrategy : IAutenticacaoFacialService
     // Erro do Azure na hora de assinar (cota estourada, serviço fora): a pessoa vê o que fazer, não o código
     // técnico ("TooManyRequests"), que antes aparecia cru na tela. O detalhe vai junto na exceção interna,
     // para o log do servidor.
-    private static async Task<InvalidOperationException> ErroDeIndisponibilidadeAsync(HttpResponseMessage resposta, string chamada, CancellationToken ct)
+    private static async Task<ServicoIndisponivelException> ErroDeIndisponibilidadeAsync(HttpResponseMessage resposta, string chamada, CancellationToken ct)
         => ErroDeIndisponibilidade(resposta.StatusCode, MontarMensagemErroAzure(chamada, await LerErroAzureAsync(resposta, ct)));
 
-    private static InvalidOperationException ErroDeIndisponibilidade(System.Net.HttpStatusCode status, string detalhe)
+    private static ServicoIndisponivelException ErroDeIndisponibilidade(System.Net.HttpStatusCode status, string detalhe)
     {
         var mensagem = (int)status == 429
             ? "O reconhecimento facial está com muitas assinaturas ao mesmo tempo. Aguarde 30 segundos e tente de novo, ou use a digital."
             : "O reconhecimento facial está indisponível no momento. Tente de novo em instantes ou use a digital.";
-        return new InvalidOperationException(mensagem, new HttpRequestException($"Azure Face API: {detalhe}", null, status));
+        return new ServicoIndisponivelException(mensagem, new HttpRequestException($"Azure Face API: {detalhe}", null, status));
     }
 
     private static string MontarMensagemErroAzure(string contexto, AzureFaceErro erro)

@@ -2798,6 +2798,9 @@ namespace AAHBRANT.SST.Infrastructure.Persistencia.Migrations
                     b.Property<bool>("Ativo")
                         .HasColumnType("bit");
 
+                    b.Property<DateTime?>("CapturadaEmDeclarada")
+                        .HasColumnType("datetime2");
+
                     b.Property<double?>("ConfiancaAutenticacao")
                         .HasColumnType("float");
 

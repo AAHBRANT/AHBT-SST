@@ -98,6 +98,8 @@ public class AssinaturaController : ControllerBase
         public double? Latitude { get; set; }
         public double? Longitude { get; set; }
         public double? PrecisaoMetros { get; set; }
+        // Hora em que o aparelho tirou a foto (ISO 8601). Faz diferença quando a foto ficou na fila offline.
+        public DateTime? CapturadaEm { get; set; }
     }
 
     [Authorize(Policy = "assinatura:assinar")]
@@ -111,7 +113,8 @@ public class AssinaturaController : ControllerBase
         {
             var resultado = await _mediator.Send(
                 new RegistrarAssinaturaFacialCommand(id, body.ObraId, stream.ToArray(), body.Foto.ContentType, ObterIpCliente(),
-                    body.LocalizacaoStatus is { } status ? new LocalizacaoAssinatura(status, body.Latitude, body.Longitude, body.PrecisaoMetros) : null), ct);
+                    body.LocalizacaoStatus is { } status ? new LocalizacaoAssinatura(status, body.Latitude, body.Longitude, body.PrecisaoMetros) : null,
+                    body.CapturadaEm), ct);
             return Ok(resultado);
         }
         catch (RejeicaoFacialException ex)

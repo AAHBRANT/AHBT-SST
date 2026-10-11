@@ -12,7 +12,8 @@ public record RegistrarAssinaturaFacialCommand(
     byte[] FotoJpeg,
     string? FotoContentType = null,
     string? IpAddress = null,
-    LocalizacaoAssinatura? Localizacao = null) : IRequest<DocumentoSignatarioDto>;
+    LocalizacaoAssinatura? Localizacao = null,
+    DateTime? CapturadaEm = null) : IRequest<DocumentoSignatarioDto>;
 
 public class RegistrarAssinaturaFacialCommandValidator : AbstractValidator<RegistrarAssinaturaFacialCommand>
 {
@@ -54,7 +55,7 @@ public class RegistrarAssinaturaFacialCommandHandler : IRequestHandler<Registrar
 
         return await _registrador.RegistrarAsync(
             request.DocumentoAssinaturaId,
-            identificacao.Resultado!,
+            identificacao.Resultado! with { CapturadaEmDeclarada = request.CapturadaEm },
             request.IpAddress,
             ct,
             request.FotoJpeg,
