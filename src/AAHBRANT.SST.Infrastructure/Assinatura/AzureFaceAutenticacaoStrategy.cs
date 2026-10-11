@@ -21,6 +21,15 @@ public class AzureFaceAutenticacaoStrategy : IAutenticacaoFacialService
     private readonly IHttpClientFactory _httpClientFactory;
     private readonly AssinaturaOptions _options;
 
+    // Modelo de reconhecimento dos grupos de pessoas. O padrão do Azure (quando não se informa nada) é o
+    // recognition_01, o mais antigo e menos preciso: com ele, quem é a pessoa certa ficava com 70% a 85%
+    // de confiança e era recusado (dados reais de 08/10, Consórcio Ponte Rio Cuiá). O modelo de um grupo
+    // não muda depois de criado; grupos antigos são recriados por MigrarModeloReconhecimentoAsync.
+    public const string ModeloReconhecimentoAtual = "recognition_04";
+    // Modelo de detecção usado nas fotos de assinatura e nas faces cadastradas: acha melhor rostos
+    // pequenos, de lado ou com máscara/capacete do que o detection_01 (padrão).
+    private const string ModeloDeteccao = "detection_03";
+
     public AzureFaceAutenticacaoStrategy(IAppDbContext db, IHttpClientFactory httpClientFactory, IOptions<AssinaturaOptions> options)
     {
         _db = db;
@@ -193,6 +202,136 @@ public class AzureFaceAutenticacaoStrategy : IAutenticacaoFacialService
         }
     }
 
+    public async Task<ResultadoMigracaoModeloFacial?> MigrarModeloReconhecimentoAsync(Guid obraId, CancellationToken ct)
+    {
+        var obra = await _db.Obras.IgnoreQueryFilters().FirstOrDefaultAsync(o => o.Id == obraId, ct)
+            ?? throw new KeyNotFoundException("Obra não encontrada.");
+        var grupoAntigo = obra.AzureFacePersonGroupId;
+        if (grupoAntigo is null)
+            return null;
+
+        using var cliente = CriarCliente();
+
+        // Lido direto do Azure (sem o cache): é o que decide se a obra ainda precisa migrar.
+        var respostaGrupo = await cliente.GetAsync($"face/v1.0/persongroups/{grupoAntigo}", ct);
+        if (respostaGrupo.StatusCode == System.Net.HttpStatusCode.NotFound)
+            return null;
+        if (!respostaGrupo.IsSuccessStatusCode)
+            throw new InvalidOperationException($"Falha ao consultar o grupo {grupoAntigo} no Azure Face API: {respostaGrupo.StatusCode}");
+        var grupo = await respostaGrupo.Content.ReadFromJsonAsync<GrupoPessoasResposta>(cancellationToken: ct);
+        if (string.Equals(grupo?.RecognitionModel, ModeloReconhecimentoAtual, StringComparison.OrdinalIgnoreCase))
+        {
+            ModelosPorGrupo[grupoAntigo] = ModeloReconhecimentoAtual;
+            return null;
+        }
+
+        // Id novo e fixo por obra. Se uma migração anterior parou no meio, o grupo novo é apagado e refeito
+        // do zero, para não ficar com pessoas duplicadas.
+        var grupoNovo = $"obra-{obra.Id:N}-r4";
+        await EnviarComRetryMigracaoAsync(() => cliente.DeleteAsync($"face/v1.0/persongroups/{grupoNovo}", ct), ct);
+        await CriarPersonGroupSeNaoExistirAsync(cliente, grupoNovo, obra.Nome, ct);
+
+        var novosIds = new Dictionary<Guid, string>();
+        var falharam = new List<Guid>();
+
+        // Duas passadas: a segunda pega quem fez cadastro (ou recadastro) enquanto a primeira rodava.
+        for (var passada = 0; passada < 2; passada++)
+        {
+            var jaTratados = novosIds.Keys.Concat(falharam).ToList();
+            var pendentes = await _db.Trabalhadores.IgnoreQueryFilters()
+                .Where(t => t.ObraId == obra.Id && t.AzureFacePersonId != null && !jaTratados.Contains(t.Id))
+                .Select(t => new { t.Id, t.Nome })
+                .ToListAsync(ct);
+            foreach (var t in pendentes)
+            {
+                var foto = await _db.FotosCadastroFacial.IgnoreQueryFilters()
+                    .Where(f => f.TrabalhadorId == t.Id && f.Ativo)
+                    .OrderByDescending(f => f.CapturadaEm)
+                    .Select(f => f.Conteudo)
+                    .FirstOrDefaultAsync(ct);
+                if (foto is null)
+                {
+                    falharam.Add(t.Id);
+                    continue;
+                }
+
+                var respostaPessoa = await EnviarComRetryMigracaoAsync(
+                    () => cliente.PostAsJsonAsync($"face/v1.0/persongroups/{grupoNovo}/persons", new { name = t.Nome }, ct), ct);
+                if (!respostaPessoa.IsSuccessStatusCode)
+                    throw new InvalidOperationException($"Falha ao criar Person na migração do grupo {grupoNovo}: {respostaPessoa.StatusCode}");
+                var personId = (await respostaPessoa.Content.ReadFromJsonAsync<PersonCriadoResposta>(cancellationToken: ct))!.PersonId;
+
+                var respostaFace = await EnviarComRetryMigracaoAsync(async () =>
+                {
+                    using var conteudo = new ByteArrayContent(foto);
+                    conteudo.Headers.ContentType = new MediaTypeHeaderValue("application/octet-stream");
+                    return await cliente.PostAsync(
+                        $"face/v1.0/persongroups/{grupoNovo}/persons/{personId}/persistedFaces?detectionModel={ModeloDeteccao}", conteudo, ct);
+                }, ct);
+                if (respostaFace.IsSuccessStatusCode)
+                    novosIds[t.Id] = personId;
+                else if ((int)respostaFace.StatusCode == 400)
+                    falharam.Add(t.Id); // foto recusada pelo Azure (ex.: rosto não detectado): cadastro precisa ser refeito
+                else
+                    throw new InvalidOperationException($"Falha ao adicionar face na migração do grupo {grupoNovo}: {respostaFace.StatusCode}");
+
+                if (_options.IntervaloMigracaoFacialMs > 0)
+                    await Task.Delay(_options.IntervaloMigracaoFacialMs, ct);
+            }
+        }
+
+        if (novosIds.Count > 0)
+            await TreinarEAguardarAsync(cliente, grupoNovo, ct, tentativas: 300);
+
+        // Troca tudo de uma vez: a obra passa a usar o grupo novo e cada trabalhador o id novo. Quem não pôde
+        // ser migrado fica sem cadastro (fotos arquivadas, como no "Refazer cadastro facial") para poder ser
+        // cadastrado de novo — senão ficaria apontando para um grupo que vai ser apagado.
+        var tratados = novosIds.Keys.Concat(falharam).ToList();
+        var trabalhadores = await _db.Trabalhadores.IgnoreQueryFilters()
+            .Where(t => tratados.Contains(t.Id))
+            .ToListAsync(ct);
+        foreach (var t in trabalhadores)
+            t.AzureFacePersonId = novosIds.TryGetValue(t.Id, out var id) ? id : null;
+        if (falharam.Count > 0)
+        {
+            var fotos = await _db.FotosCadastroFacial.IgnoreQueryFilters()
+                .Where(f => falharam.Contains(f.TrabalhadorId) && f.Ativo)
+                .ToListAsync(ct);
+            _db.FotosCadastroFacial.RemoveRange(fotos);
+        }
+        obra.AzureFacePersonGroupId = grupoNovo;
+        await _db.SaveChangesAsync(ct);
+        ModelosPorGrupo[grupoNovo] = ModeloReconhecimentoAtual;
+
+        // O grupo antigo não é mais usado por ninguém; apagar é só limpeza (melhor esforço).
+        try
+        {
+            await cliente.DeleteAsync($"face/v1.0/persongroups/{grupoAntigo}", ct);
+        }
+        catch (HttpRequestException)
+        {
+        }
+
+        return new ResultadoMigracaoModeloFacial(
+            novosIds.Count,
+            trabalhadores.Where(t => falharam.Contains(t.Id)).Select(t => t.Nome).ToList());
+    }
+
+    // A migração faz muitas chamadas seguidas; no tier F0 (20/min) o 429 é esperado. Espera o tempo que o
+    // Azure pedir (Retry-After) e tenta de novo, por bem mais tempo que o retry curto da assinatura.
+    private static async Task<HttpResponseMessage> EnviarComRetryMigracaoAsync(Func<Task<HttpResponseMessage>> enviar, CancellationToken ct)
+    {
+        for (var tentativa = 0; ; tentativa++)
+        {
+            var resposta = await enviar();
+            if (resposta.StatusCode != (System.Net.HttpStatusCode)429 || tentativa >= 20)
+                return resposta;
+            var espera = resposta.Headers.RetryAfter?.Delta ?? TimeSpan.FromSeconds(10);
+            resposta.Dispose();
+            await Task.Delay(espera, ct);
+        }
+    }
+
     // Resolução mínima da imagem inteira. Abaixo disto nem vale gastar chamada no Azure: câmera de
     // notebook antigo e print de tela caem aqui.
     private const int LadoMinimoImagemPx = 480;
@@ -282,7 +421,10 @@ public class AzureFaceAutenticacaoStrategy : IAutenticacaoFacialService
 
         using var cliente = CriarCliente();
 
-        var faceIds = await DetectarRostosAsync(cliente, fotoJpeg, ct);
+        // O faceId precisa ser gerado com o mesmo modelo do grupo, senão o identify recusa. Enquanto um grupo
+        // antigo (recognition_01) não é migrado, a foto é lida com o modelo dele.
+        var modelo = await ObterModeloReconhecimentoDoGrupoAsync(cliente, obra.AzureFacePersonGroupId, ct);
+        var faceIds = await DetectarRostosAsync(cliente, fotoJpeg, modelo, ct);
         if (faceIds.Count == 0)
             return new ResultadoIdentificacaoFacial(false, null, MotivoRejeicaoFacial.NenhumRostoDetectado, null);
         if (faceIds.Count > 1)
@@ -313,7 +455,6 @@ public class AzureFaceAutenticacaoStrategy : IAutenticacaoFacialService
 
         // Rastro da validação para o log de assinaturas: modelo real do grupo (lido do Azure), grupo e
         // id da requisição. Nunca bloqueia a assinatura: se não vier, o log mostra "não informado".
-        var modelo = await ObterModeloReconhecimentoDoGrupoAsync(cliente, obra.AzureFacePersonGroupId, ct);
         var resultado = new ResultadoAutenticacaoAssinatura(
             trabalhador.Id, MetodoAutenticacaoAssinatura.ReconhecimentoFacial,
             ValidacaoModelo: modelo, ValidacaoGrupoId: obra.AzureFacePersonGroupId, ValidacaoRequisicaoId: candidato.RequisicaoId);
@@ -385,7 +526,7 @@ public class AzureFaceAutenticacaoStrategy : IAutenticacaoFacialService
 
     private static async Task CriarPersonGroupSeNaoExistirAsync(HttpClient cliente, string personGroupId, string nomeObra, CancellationToken ct)
     {
-        var resposta = await cliente.PutAsJsonAsync($"face/v1.0/persongroups/{personGroupId}", new { name = nomeObra }, ct);
+        var resposta = await cliente.PutAsJsonAsync($"face/v1.0/persongroups/{personGroupId}", new { name = nomeObra, recognitionModel = ModeloReconhecimentoAtual }, ct);
         // 409 = já existe (ex.: outra instância criou entre a checagem e aqui) — tratado como sucesso.
         if (!resposta.IsSuccessStatusCode && resposta.StatusCode != System.Net.HttpStatusCode.Conflict)
             throw new InvalidOperationException($"Falha ao criar PersonGroup no Azure Face API: {resposta.StatusCode}");
@@ -404,13 +545,13 @@ public class AzureFaceAutenticacaoStrategy : IAutenticacaoFacialService
     {
         using var conteudo = new ByteArrayContent(fotoJpeg);
         conteudo.Headers.ContentType = new MediaTypeHeaderValue("application/octet-stream");
-        var resposta = await cliente.PostAsync($"face/v1.0/persongroups/{personGroupId}/persons/{personId}/persistedFaces", conteudo, ct);
+        var resposta = await cliente.PostAsync($"face/v1.0/persongroups/{personGroupId}/persons/{personId}/persistedFaces?detectionModel={ModeloDeteccao}", conteudo, ct);
         if (resposta.IsSuccessStatusCode)
             return null;
         return await LerErroAzureAsync(resposta, ct);
     }
 
-    private static async Task TreinarEAguardarAsync(HttpClient cliente, string personGroupId, CancellationToken ct)
+    private static async Task TreinarEAguardarAsync(HttpClient cliente, string personGroupId, CancellationToken ct, int tentativas = 10)
     {
         var respostaTreino = await cliente.PostAsync($"face/v1.0/persongroups/{personGroupId}/train", content: null, ct);
         if (!respostaTreino.IsSuccessStatusCode)
@@ -418,7 +559,7 @@ public class AzureFaceAutenticacaoStrategy : IAutenticacaoFacialService
 
         // Treino é assíncrono no Azure — poll com backoff curto (ação administrativa pontual, ok
         // bloquear por alguns segundos). 10 tentativas de 1s cobre o caso comum (grupo pequeno).
-        for (var tentativa = 0; tentativa < 10; tentativa++)
+        for (var tentativa = 0; tentativa < tentativas; tentativa++)
         {
             await Task.Delay(1000, ct);
             var status = await cliente.GetFromJsonAsync<TreinoStatusResposta>($"face/v1.0/persongroups/{personGroupId}/training", ct);
@@ -445,13 +586,17 @@ public class AzureFaceAutenticacaoStrategy : IAutenticacaoFacialService
         }
     }
 
-    private static async Task<List<string>> DetectarRostosAsync(HttpClient cliente, byte[] fotoJpeg, CancellationToken ct)
+    private static async Task<List<string>> DetectarRostosAsync(HttpClient cliente, byte[] fotoJpeg, string? modeloGrupo, CancellationToken ct)
     {
+        // Sem o modelo do grupo (consulta falhou) segue o padrão do Azure, que é o comportamento antigo.
+        var url = modeloGrupo is null
+            ? $"face/v1.0/detect?returnFaceId=true&detectionModel={ModeloDeteccao}"
+            : $"face/v1.0/detect?returnFaceId=true&detectionModel={ModeloDeteccao}&recognitionModel={modeloGrupo}";
         var resposta = await EnviarComRetry429Async(async () =>
         {
             using var conteudo = new ByteArrayContent(fotoJpeg);
             conteudo.Headers.ContentType = new MediaTypeHeaderValue("application/octet-stream");
-            return await cliente.PostAsync("face/v1.0/detect?returnFaceId=true", conteudo, ct);
+            return await cliente.PostAsync(url, conteudo, ct);
         }, ct);
         if (!resposta.IsSuccessStatusCode)
             throw new InvalidOperationException($"Falha ao detectar rostos no Azure Face API: {resposta.StatusCode}");

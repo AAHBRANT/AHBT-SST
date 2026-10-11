@@ -540,4 +540,129 @@ public class AzureFaceAutenticacaoStrategyTests
 
         await servico.RealocarCadastroAsync(trabalhador.Id, obraAntiga.Id, default);
     }
+
+    private static async Task<(SstDbContext Db, Obra Obra, Trabalhador ComFoto, Trabalhador FotoRecusada)> CenarioMigracao(string nome)
+    {
+        var db = CriarDb(nome);
+        var obra = new Obra { Codigo = "OB1", Nome = "Obra", AzureFacePersonGroupId = "obra-antiga" };
+        db.Obras.Add(obra);
+        await db.SaveChangesAsync();
+        var comFoto = new Trabalhador { ObraId = obra.Id, Nome = "Osvanildo", Cpf = "12345678901", DataAdmissao = DateTime.UtcNow, AzureFacePersonId = "p-antigo-1" };
+        var recusada = new Trabalhador { ObraId = obra.Id, Nome = "Dailton", Cpf = "12345678902", DataAdmissao = DateTime.UtcNow, AzureFacePersonId = "p-antigo-2" };
+        db.Trabalhadores.AddRange(comFoto, recusada);
+        db.FotosCadastroFacial.AddRange(
+            new FotoCadastroFacial { TrabalhadorId = comFoto.Id, Conteudo = new byte[] { 1 }, ContentType = "image/jpeg", HashSha256 = "a", CapturadaEm = DateTime.UtcNow },
+            new FotoCadastroFacial { TrabalhadorId = recusada.Id, Conteudo = new byte[] { 2 }, ContentType = "image/jpeg", HashSha256 = "b", CapturadaEm = DateTime.UtcNow });
+        await db.SaveChangesAsync();
+        return (db, obra, comFoto, recusada);
+    }
+
+    private static IOptions<AssinaturaOptions> OpcoesSemPausa()
+    {
+        var o = Opcoes();
+        o.Value.IntervaloMigracaoFacialMs = 0;
+        return o;
+    }
+
+    // Grupo antigo (recognition_01): recria no recognition_04 com as fotos guardadas, troca o grupo da obra e
+    // o id de cada trabalhador. Quem teve a foto recusada fica sem cadastro, para poder refazer.
+    [Fact]
+    public async Task MigrarModeloReconhecimentoAsync_GrupoAntigo_RecriaNoModeloAtualEArquivaQuemFalhou()
+    {
+        var (db, obra, comFoto, recusada) = await CenarioMigracao(nameof(MigrarModeloReconhecimentoAsync_GrupoAntigo_RecriaNoModeloAtualEArquivaQuemFalhou));
+        var grupoNovo = $"obra-{obra.Id:N}-r4";
+        string? modeloCriado = null;
+        var pessoas = 0;
+        var apagados = new List<string>();
+        var factory = new HttpClientFactoryFalso(req =>
+        {
+            var caminho = req.RequestUri!.AbsolutePath;
+            if (req.Method == HttpMethod.Get && caminho.EndsWith("/persongroups/obra-antiga"))
+                return Json(new { recognitionModel = "recognition_01" });
+            if (req.Method == HttpMethod.Delete)
+            {
+                apagados.Add(caminho);
+                return new HttpResponseMessage(HttpStatusCode.OK);
+            }
+            if (req.Method == HttpMethod.Put && caminho.EndsWith($"/persongroups/{grupoNovo}"))
+            {
+                modeloCriado = JsonDocument.Parse(req.Content!.ReadAsStringAsync().Result).RootElement.GetProperty("recognitionModel").GetString();
+                return new HttpResponseMessage(HttpStatusCode.OK);
+            }
+            if (caminho.EndsWith("/persons"))
+                return Json(new { personId = $"p-novo-{++pessoas}" });
+            if (caminho.EndsWith("/persistedFaces"))
+                return caminho.Contains("p-novo-1")
+                    ? Json(new { persistedFaceId = "f" })
+                    : Json(new { error = new { code = "InvalidImage", message = "No face detected" } }, HttpStatusCode.BadRequest);
+            if (caminho.EndsWith("/train"))
+                return new HttpResponseMessage(HttpStatusCode.Accepted);
+            if (caminho.EndsWith("/training"))
+                return Json(new { status = "succeeded" });
+            throw new InvalidOperationException("chamada inesperada: " + req.Method + " " + req.RequestUri);
+        });
+        var servico = new AzureFaceAutenticacaoStrategy(db, factory, OpcoesSemPausa());
+
+        var resultado = await servico.MigrarModeloReconhecimentoAsync(obra.Id, default);
+
+        Assert.NotNull(resultado);
+        Assert.Equal(1, resultado!.Migrados);
+        Assert.Equal("recognition_04", modeloCriado);
+        Assert.Equal(grupoNovo, (await db.Obras.FirstAsync(o => o.Id == obra.Id)).AzureFacePersonGroupId);
+        var t1 = await db.Trabalhadores.FirstAsync(t => t.Id == comFoto.Id);
+        var t2 = await db.Trabalhadores.FirstAsync(t => t.Id == recusada.Id);
+        Assert.NotNull(t1.AzureFacePersonId);
+        Assert.StartsWith("p-novo-", t1.AzureFacePersonId);
+        Assert.Null(t2.AzureFacePersonId);
+        Assert.Equal(new[] { "Dailton" }, resultado.SemCadastroAposMigracao);
+        Assert.False(await db.FotosCadastroFacial.AnyAsync(f => f.TrabalhadorId == recusada.Id));
+        Assert.True(await db.FotosCadastroFacial.AnyAsync(f => f.TrabalhadorId == comFoto.Id));
+        Assert.Contains("/face/v1.0/persongroups/obra-antiga", apagados);
+    }
+
+    [Fact]
+    public async Task MigrarModeloReconhecimentoAsync_GrupoJaNoModeloAtual_NaoFazNada()
+    {
+        var (db, obra, _, _) = await CenarioMigracao(nameof(MigrarModeloReconhecimentoAsync_GrupoJaNoModeloAtual_NaoFazNada));
+        var factory = new HttpClientFactoryFalso(req =>
+            req.Method == HttpMethod.Get && req.RequestUri!.AbsolutePath.EndsWith("/persongroups/obra-antiga")
+                ? Json(new { recognitionModel = "recognition_04" })
+                : throw new InvalidOperationException("não deveria chamar: " + req.RequestUri));
+        var servico = new AzureFaceAutenticacaoStrategy(db, factory, OpcoesSemPausa());
+
+        Assert.Null(await servico.MigrarModeloReconhecimentoAsync(obra.Id, default));
+        Assert.Equal("obra-antiga", (await db.Obras.FirstAsync(o => o.Id == obra.Id)).AzureFacePersonGroupId);
+    }
+
+    // O faceId da foto de assinatura precisa sair no mesmo modelo do grupo, senão o identify recusa.
+    [Fact]
+    public async Task IdentificarAsync_DetectaComOModeloDoGrupo()
+    {
+        var db = CriarDb(nameof(IdentificarAsync_DetectaComOModeloDoGrupo));
+        var obra = new Obra
+        {
+            Codigo = "OB1", Nome = "Obra Teste", AzureFacePersonGroupId = "grupo-r4-teste",
+            MetodosAutenticacaoHabilitados = MetodoAutenticacaoObra.ReconhecimentoFacial,
+        };
+        db.Obras.Add(obra);
+        await db.SaveChangesAsync();
+        string? consultaDetect = null;
+        var factory = new HttpClientFactoryFalso(req =>
+        {
+            if (req.Method == HttpMethod.Get)
+                return Json(new { recognitionModel = "recognition_04" });
+            if (req.RequestUri!.AbsolutePath.EndsWith("/detect"))
+            {
+                consultaDetect = req.RequestUri.Query;
+                return Json(new List<object>());
+            }
+            throw new InvalidOperationException("chamada inesperada: " + req.RequestUri);
+        });
+        var servico = new AzureFaceAutenticacaoStrategy(db, factory, Opcoes());
+
+        await servico.IdentificarAsync(obra.Id, new byte[] { 1 }, default);
+
+        Assert.Contains("recognitionModel=recognition_04", consultaDetect);
+        Assert.Contains("detectionModel=detection_03", consultaDetect);
+    }
 }

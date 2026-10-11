@@ -16,4 +16,12 @@ public class AssinaturaOptions
     // esta diferença (0 a 1) à frente do segundo, senão a leitura é recusada como ambígua e o
     // operador usa a digital. Evita confirmar o colega parecido.
     public double MargemMinimaIdentificacaoFacial { get; set; } = 0.10;
+
+    // Migração dos grupos para o recognition_04 (MigracaoModeloFacialBackgroundService). Roda só nesta
+    // janela de horário (Brasília), quando ninguém está assinando, porque usa a mesma cota do Azure.
+    public bool MigrarModeloFacialAutomaticamente { get; set; } = true;
+    public int MigracaoFacialHoraInicio { get; set; } = 22;
+    public int MigracaoFacialHoraFim { get; set; } = 5;
+    // Pausa entre um trabalhador e outro (2 chamadas cada). 6,5 s mantém a migração abaixo de 20/min (F0).
+    public int IntervaloMigracaoFacialMs { get; set; } = 6500;
 }
