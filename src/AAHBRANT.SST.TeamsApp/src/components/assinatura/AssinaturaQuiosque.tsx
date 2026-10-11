@@ -1,6 +1,13 @@
 import { useEffect, useState } from 'react';
 import {
   Badge,
+  Button,
+  Dialog,
+  DialogActions,
+  DialogBody,
+  DialogContent,
+  DialogSurface,
+  DialogTitle,
   Table,
   TableBody,
   TableCell,
@@ -10,9 +17,9 @@ import {
   Text,
   tokens,
 } from '@fluentui/react-components';
-import { Checkmark24Filled, Warning24Regular } from '@fluentui/react-icons';
+import { Checkmark24Filled, LockClosed24Regular, Warning24Regular } from '@fluentui/react-icons';
 import { BotaoBiometriaDigital } from './BotaoBiometriaDigital';
-import { api, metodoAutenticacaoAssinaturaLabel, type DocumentoAssinatura } from '../../lib/api';
+import { api, metodoAutenticacaoAssinaturaLabel, StatusDocumentoAssinatura, type DocumentoAssinatura } from '../../lib/api';
 import { capturarDigitalLocal, credencialLeitura, estaAgenteLocalDisponivel, obterDispositivoLocal, type DispositivoLocal } from '../../lib/agenteBiometricoLocal';
 import { tocarBipeAssinaturaAceita } from '../../lib/bipeAssinatura';
 import { SeletorFotoCamera } from '../SeletorFotoCamera';
@@ -61,6 +68,8 @@ export function AssinaturaQuiosque({ entidadeTipo, entidadeId, obraId }: Assinat
   const [agenteLocalDisponivel, setAgenteLocalDisponivel] = useState(false);
   const [dispositivoLocal, setDispositivoLocal] = useState<DispositivoLocal | null>(null);
   const [pendenteFacial, setPendenteFacial] = useState(false);
+  const [confirmandoFinalizacao, setConfirmandoFinalizacao] = useState(false);
+  const [finalizando, setFinalizando] = useState(false);
 
   useEffect(() => {
     estaAgenteLocalDisponivel().then(async (disponivel) => {
@@ -118,6 +127,27 @@ export function AssinaturaQuiosque({ entidadeTipo, entidadeId, obraId }: Assinat
   // novo). Outros documentos (DDS, PT, EPI) continuam com quantas assinaturas forem necessárias.
   const assinaturaUnicaConcluida = entidadeTipo === 'Inspecao' && (documento?.signatarios.length ?? 0) > 0;
 
+  // Finalizado: não aceita mais assinaturas, o comprovante e o hash ficam congelados (11/10). Inspeção e DDS
+  // são finalizados sozinhos (assinatura única / encerramento do DDS) — finalizar um DDS no meio barraria
+  // os participantes que ainda vão chegar, por isso o botão não aparece para eles.
+  const finalizado = documento?.status === StatusDocumentoAssinatura.Finalizado;
+  const podeFinalizar = !finalizado && entidadeTipo !== 'Inspecao' && entidadeTipo !== 'Dds' && (documento?.signatarios.length ?? 0) > 0;
+
+  async function finalizar() {
+    if (!documento) return;
+    try {
+      setFinalizando(true);
+      setErro(null);
+      setDocumento(await api.assinatura.finalizar(documento.id));
+      setConfirmandoFinalizacao(false);
+    } catch (e) {
+      setConfirmandoFinalizacao(false);
+      setErro(extrairMensagemErro(e, 'Não foi possível finalizar o documento.'));
+    } finally {
+      setFinalizando(false);
+    }
+  }
+
   async function assinarComFacial(arquivo: File) {
     if (!documento) return;
     try {
@@ -143,7 +173,17 @@ export function AssinaturaQuiosque({ entidadeTipo, entidadeId, obraId }: Assinat
     <div>
       {erro && <Text className={estilos.erro}>{erro}</Text>}
 
-      {assinaturaUnicaConcluida ? (
+      {finalizado ? (
+        <div className={estilos.card} style={{ marginBottom: 16, maxWidth: 480 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            <LockClosed24Regular style={{ color: tokens.colorPaletteGreenForeground1 }} />
+            <Text weight="semibold">Documento finalizado</Text>
+          </div>
+          <Text style={{ display: 'block', marginTop: 8 }}>
+            Não aceita novas assinaturas. O comprovante com o código de verificação e o QR de validação foram gerados.
+          </Text>
+        </div>
+      ) : assinaturaUnicaConcluida ? (
         <div className={estilos.card} style={{ marginBottom: 16, maxWidth: 480 }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
             <Checkmark24Filled style={{ color: tokens.colorPaletteGreenForeground1 }} />
@@ -206,6 +246,11 @@ export function AssinaturaQuiosque({ entidadeTipo, entidadeId, obraId }: Assinat
       <div className={estilos.card}>
         <div className={estilos.toolbar}>
           <Text weight="semibold">Assinaturas registradas ({documento?.signatarios.length ?? 0})</Text>
+          {podeFinalizar && (
+            <Button appearance="secondary" icon={<LockClosed24Regular />} onClick={() => setConfirmandoFinalizacao(true)}>
+              Finalizar documento
+            </Button>
+          )}
         </div>
         <Table noNativeElements>
           <TableHeader>
@@ -229,6 +274,23 @@ export function AssinaturaQuiosque({ entidadeTipo, entidadeId, obraId }: Assinat
         </Table>
       </div>
       <ErroFacialDialog mensagem={erroFacial} aoFechar={() => setErroFacial(null)} />
+      <Dialog open={confirmandoFinalizacao} onOpenChange={(_, d) => { if (!d.open && !finalizando) setConfirmandoFinalizacao(false); }}>
+        <DialogSurface>
+          <DialogBody>
+            <DialogTitle>Finalizar documento?</DialogTitle>
+            <DialogContent>
+              Depois de finalizado, o documento não aceita mais assinaturas e o comprovante fica congelado como prova,
+              com {documento?.signatarios.length ?? 0} assinatura(s). Confira se todos que precisavam assinar já assinaram.
+            </DialogContent>
+            <DialogActions>
+              <Button appearance="secondary" disabled={finalizando} onClick={() => setConfirmandoFinalizacao(false)}>Cancelar</Button>
+              <Button appearance="primary" disabled={finalizando} onClick={() => void finalizar()}>
+                {finalizando ? 'Finalizando…' : 'Finalizar'}
+              </Button>
+            </DialogActions>
+          </DialogBody>
+        </DialogSurface>
+      </Dialog>
     </div>
   );
 }

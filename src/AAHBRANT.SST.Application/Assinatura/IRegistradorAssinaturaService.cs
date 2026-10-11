@@ -6,7 +6,10 @@ using AAHBRANT.SST.Application.Common;
 using AAHBRANT.SST.Application.Common.Interfaces;
 using AAHBRANT.SST.Domain.Entidades;
 using AAHBRANT.SST.Domain.Enums;
+using MediatR;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Logging.Abstractions;
 
 namespace AAHBRANT.SST.Application.Assinatura;
 
@@ -55,12 +58,17 @@ public class RegistradorAssinaturaService : IRegistradorAssinaturaService
     private readonly IAuditoriaService _auditoria;
 
     private readonly IClienteIpProvider? _clienteIp;
+    private readonly IMediator? _mediator;
+    private readonly ILogger<RegistradorAssinaturaService> _logger;
 
-    public RegistradorAssinaturaService(IAppDbContext db, IAuditoriaService auditoria, IClienteIpProvider? clienteIp = null)
+    public RegistradorAssinaturaService(IAppDbContext db, IAuditoriaService auditoria, IClienteIpProvider? clienteIp = null,
+        IMediator? mediator = null, ILogger<RegistradorAssinaturaService>? logger = null)
     {
         _db = db;
         _auditoria = auditoria;
         _clienteIp = clienteIp;
+        _mediator = mediator;
+        _logger = logger ?? NullLogger<RegistradorAssinaturaService>.Instance;
     }
 
     public async Task<DocumentoSignatarioDto> RegistrarAsync(
@@ -163,6 +171,10 @@ public class RegistradorAssinaturaService : IRegistradorAssinaturaService
             ct);
 
         await _db.SaveChangesAsync(ct);
+
+        // Inspeção aceita uma assinatura só: assinada, está concluída — fecha o documento na hora.
+        if (documento.EntidadeTipo == nameof(Inspecao) && _mediator is not null)
+            await FinalizacaoAutomaticaDocumento.TentarAsync(_db, _mediator, _logger, documento.Id, ct);
 
         return new DocumentoSignatarioDto(trabalhador.Id, trabalhador.Nome, signatario.MetodoAutenticacao, signatario.AssinadoEm, signatario.IpAddress);
     }

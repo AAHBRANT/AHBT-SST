@@ -5498,6 +5498,9 @@ export const api = {
     excluir: (id: string) => request<void>(`/api/catalogotemasdds/${id}`, { method: 'DELETE' }),
   },
   assinatura: {
+    // Fecha o documento para novas assinaturas e gera o comprovante com o hash (permissão assinatura:finalizar).
+    finalizar: (documentoId: string) =>
+      request<DocumentoAssinatura>(`/api/documentos/${documentoId}/finalizar`, { method: 'POST' }),
     obter: async (entidadeTipo: string, entidadeId: string) => {
       const query = new URLSearchParams({ entidadeTipo, entidadeId });
       const response = await fetch(`${API_BASE_URL}/api/documentos?${query.toString()}`, {

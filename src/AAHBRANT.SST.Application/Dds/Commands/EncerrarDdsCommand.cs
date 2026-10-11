@@ -1,8 +1,11 @@
+using AAHBRANT.SST.Application.Assinatura;
 using AAHBRANT.SST.Application.Common.Interfaces;
 using AAHBRANT.SST.Domain.Enums;
 using FluentValidation;
 using MediatR;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Logging.Abstractions;
 
 namespace AAHBRANT.SST.Application.Dds.Commands;
 
@@ -19,8 +22,15 @@ public class EncerrarDdsCommandValidator : AbstractValidator<EncerrarDdsCommand>
 public class EncerrarDdsCommandHandler : IRequestHandler<EncerrarDdsCommand>
 {
     private readonly IAppDbContext _db;
+    private readonly IMediator? _mediator;
+    private readonly ILogger<EncerrarDdsCommandHandler> _logger;
 
-    public EncerrarDdsCommandHandler(IAppDbContext db) => _db = db;
+    public EncerrarDdsCommandHandler(IAppDbContext db, IMediator? mediator = null, ILogger<EncerrarDdsCommandHandler>? logger = null)
+    {
+        _db = db;
+        _mediator = mediator;
+        _logger = logger ?? NullLogger<EncerrarDdsCommandHandler>.Instance;
+    }
 
     private const int TotalFotosObrigatorias = 3;
 
@@ -61,5 +71,9 @@ public class EncerrarDdsCommandHandler : IRequestHandler<EncerrarDdsCommand>
         }
 
         await _db.SaveChangesAsync(ct);
+
+        // DDS encerrado não recebe mais participantes: o documento de assinatura dele é fechado junto.
+        if (_mediator is not null)
+            await FinalizacaoAutomaticaDocumento.TentarAsync(_db, _mediator, _logger, nameof(Domain.Entidades.Dds), dds.Id, ct);
     }
 }

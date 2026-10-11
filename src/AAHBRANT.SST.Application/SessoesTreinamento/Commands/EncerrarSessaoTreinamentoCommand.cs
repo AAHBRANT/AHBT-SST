@@ -135,6 +135,9 @@ public class EncerrarSessaoTreinamentoCommandHandler : IRequestHandler<EncerrarS
                     _logger.LogWarning(ex, "Falha ao registrar a assinatura automática do instrutor no certificado {TreinamentoId}.", treinamentoId);
                 }
             }
+
+            // Certificado com as assinaturas da turma encerrada: fecha o documento.
+            await FinalizacaoAutomaticaDocumento.TentarAsync(_db, _mediator, _logger, documentoId.Value, ct);
         }
     }
 }
