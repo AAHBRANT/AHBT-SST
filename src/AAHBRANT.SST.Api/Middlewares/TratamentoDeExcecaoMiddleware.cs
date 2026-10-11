@@ -41,6 +41,10 @@ public class TratamentoDeExcecaoMiddleware
         }
         catch (InvalidOperationException ex)
         {
+            // Mensagem amigável com causa técnica por baixo (ex.: Azure Face fora ou com cota estourada): a
+            // pessoa vê só a mensagem, e a causa fica no log para quem for investigar.
+            if (ex.InnerException is not null)
+                _logger.LogWarning(ex, "Erro tratado com causa técnica: {Mensagem}", ex.Message);
             await EscreverRespostaAsync(contexto, HttpStatusCode.BadRequest, ex.Message);
         }
         catch (DbUpdateConcurrencyException ex)

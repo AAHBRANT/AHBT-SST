@@ -93,6 +93,9 @@ public class DocumentoSignatario : AuditableEntity
     public string? ValidacaoGrupoId { get; set; }
     // Identificador da requisição devolvido pelo Azure (cabeçalho apim-request-id), para rastreio.
     public string? ValidacaoRequisicaoId { get; set; }
+    // Confiança da identificação, de 0 a 100: facial = confiança do Azure × 100; digital = nota do agente.
+    // Sem isto só ficavam registradas as recusas, e não dava para ver com que margem os acertos passaram (11/10).
+    public double? ConfiancaAutenticacao { get; set; }
 
     // Geolocalização informada pelo aparelho no momento da assinatura (declarada pelo cliente, ao
     // contrário do IP, que o servidor mede). Precisão em metros.

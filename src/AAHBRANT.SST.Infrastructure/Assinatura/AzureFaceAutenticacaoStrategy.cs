@@ -457,7 +457,8 @@ public class AzureFaceAutenticacaoStrategy : IAutenticacaoFacialService
         // id da requisição. Nunca bloqueia a assinatura: se não vier, o log mostra "não informado".
         var resultado = new ResultadoAutenticacaoAssinatura(
             trabalhador.Id, MetodoAutenticacaoAssinatura.ReconhecimentoFacial,
-            ValidacaoModelo: modelo, ValidacaoGrupoId: obra.AzureFacePersonGroupId, ValidacaoRequisicaoId: candidato.RequisicaoId);
+            ValidacaoModelo: modelo, ValidacaoGrupoId: obra.AzureFacePersonGroupId, ValidacaoRequisicaoId: candidato.RequisicaoId,
+            Confianca: candidato.Confidence * 100);
         return new ResultadoIdentificacaoFacial(true, resultado, null, candidato.Confidence);
     }
 
@@ -599,7 +600,7 @@ public class AzureFaceAutenticacaoStrategy : IAutenticacaoFacialService
             return await cliente.PostAsync(url, conteudo, ct);
         }, ct);
         if (!resposta.IsSuccessStatusCode)
-            throw new InvalidOperationException($"Falha ao detectar rostos no Azure Face API: {resposta.StatusCode}");
+            throw await ErroDeIndisponibilidadeAsync(resposta, "detect", ct);
         var rostos = await resposta.Content.ReadFromJsonAsync<List<RostoDetectadoResposta>>(cancellationToken: ct);
         return rostos?.Select(r => r.FaceId).ToList() ?? new List<string>();
     }
@@ -614,7 +615,7 @@ public class AzureFaceAutenticacaoStrategy : IAutenticacaoFacialService
             var erro = await LerErroAzureAsync(resposta, ct);
             if (erro.Code is "PersonGroupNotFound" or "LargePersonGroupNotFound")
                 return (null, null);
-            throw new InvalidOperationException(MontarMensagemErroAzure("Falha ao identificar rosto no Azure Face API", erro));
+            throw ErroDeIndisponibilidade(resposta.StatusCode, MontarMensagemErroAzure("identify", erro));
         }
         var resultados = await resposta.Content.ReadFromJsonAsync<List<IdentificacaoResposta>>(cancellationToken: ct);
         var candidatos = resultados?.FirstOrDefault()?.Candidates.OrderByDescending(c => c.Confidence).ToList() ?? new List<CandidatoResposta>();
@@ -678,6 +679,20 @@ public class AzureFaceAutenticacaoStrategy : IAutenticacaoFacialService
         var codigo = erro?.InnerError?.Code ?? erro?.Code ?? resposta.StatusCode.ToString();
         var mensagem = erro?.InnerError?.Message ?? erro?.Message ?? resposta.ReasonPhrase ?? resposta.StatusCode.ToString();
         return new AzureFaceErro(resposta.StatusCode.ToString(), codigo, mensagem);
+    }
+
+    // Erro do Azure na hora de assinar (cota estourada, serviço fora): a pessoa vê o que fazer, não o código
+    // técnico ("TooManyRequests"), que antes aparecia cru na tela. O detalhe vai junto na exceção interna,
+    // para o log do servidor.
+    private static async Task<InvalidOperationException> ErroDeIndisponibilidadeAsync(HttpResponseMessage resposta, string chamada, CancellationToken ct)
+        => ErroDeIndisponibilidade(resposta.StatusCode, MontarMensagemErroAzure(chamada, await LerErroAzureAsync(resposta, ct)));
+
+    private static InvalidOperationException ErroDeIndisponibilidade(System.Net.HttpStatusCode status, string detalhe)
+    {
+        var mensagem = (int)status == 429
+            ? "O reconhecimento facial está com muitas assinaturas ao mesmo tempo. Aguarde 30 segundos e tente de novo, ou use a digital."
+            : "O reconhecimento facial está indisponível no momento. Tente de novo em instantes ou use a digital.";
+        return new InvalidOperationException(mensagem, new HttpRequestException($"Azure Face API: {detalhe}", null, status));
     }
 
     private static string MontarMensagemErroAzure(string contexto, AzureFaceErro erro)

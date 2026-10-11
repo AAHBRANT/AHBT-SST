@@ -49,7 +49,7 @@ public class FutronicAutenticacaoStrategy : IAutenticacaoBiometriaLocalService
             throw new InvalidOperationException("Confiança do match biométrico abaixo do limiar exigido.");
         }
 
-        return new ResultadoAutenticacaoAssinatura(trabalhador.Id, MetodoAutenticacaoAssinatura.Biometria, dispositivoId);
+        return new ResultadoAutenticacaoAssinatura(trabalhador.Id, MetodoAutenticacaoAssinatura.Biometria, dispositivoId, Confianca: score);
     }
 
     // Leitura assinada: o trabalhador e a nota só valem se a assinatura do agente bater com a chave

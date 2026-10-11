@@ -20,7 +20,8 @@ namespace AAHBRANT.SST.Application.Assinatura;
 // ValidacaoModelo/GrupoId/RequisicaoId: rastro da validação feita pelo Azure AI Face (assinatura facial).
 public record ResultadoAutenticacaoAssinatura(
     Guid TrabalhadorId, MetodoAutenticacaoAssinatura Metodo, Guid? DispositivoAgenteId = null,
-    string? ValidacaoModelo = null, string? ValidacaoGrupoId = null, string? ValidacaoRequisicaoId = null);
+    string? ValidacaoModelo = null, string? ValidacaoGrupoId = null, string? ValidacaoRequisicaoId = null,
+    double? Confianca = null);
 
 // Geolocalização declarada pelo aparelho no momento da assinatura (log de assinaturas da Ficha de EPI).
 public record LocalizacaoAssinatura(StatusLocalizacaoAssinatura Status, double? Latitude = null, double? Longitude = null, double? PrecisaoMetros = null)
@@ -143,6 +144,7 @@ public class RegistradorAssinaturaService : IRegistradorAssinaturaService
             ValidacaoModelo = Truncar(resultado.ValidacaoModelo, 60),
             ValidacaoGrupoId = Truncar(resultado.ValidacaoGrupoId, 80),
             ValidacaoRequisicaoId = Truncar(resultado.ValidacaoRequisicaoId, 80),
+            ConfiancaAutenticacao = resultado.Confianca is { } c ? Math.Round(c, 2) : null,
         };
         var local = (localizacao ?? new LocalizacaoAssinatura(StatusLocalizacaoAssinatura.NaoInformada)).Normalizada();
         signatario.LocalizacaoStatus = local.Status;

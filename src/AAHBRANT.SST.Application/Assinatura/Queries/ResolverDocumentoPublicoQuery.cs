@@ -85,8 +85,8 @@ public class ResolverDocumentoPublicoQueryHandler : IRequestHandler<ResolverDocu
         // então o filtro global de RBAC por obra (Trabalhador.ObraId ∈ ObrasPermitidas do usuário
         // atual) não tem como ser avaliado — e o EF falha ao tentar traduzir a query (erro só visível
         // em produção com autenticação real; em dev, com Entra ID desligado, o filtro degenera para
-        // uma constante e mascara o problema). Ativo é reaplicado manualmente para preservar o
-        // soft-delete. OrderBy antes do Select (não depois) evita depender de ordenar pelo DTO já
+        // uma constante e mascara o problema). Ativo NÃO é reaplicado (11/10): quem assinou e depois foi
+        // desligado continua sendo signatário do documento. OrderBy antes do Select (não depois) evita depender de ordenar pelo DTO já
         // construído, mais uma fonte comum de falha de tradução do EF.
         var signatarios = await CarregarSignatariosAsync(new List<Guid> { documento.Id }, ct);
 
@@ -117,7 +117,7 @@ public class ResolverDocumentoPublicoQueryHandler : IRequestHandler<ResolverDocu
         // Mascaramento em memória (IpMascarador não tem tradução para SQL), depois do OrderBy.
         var linhas = await _db.DocumentoSignatarios
             .Where(s => documentoIds.Contains(s.DocumentoAssinaturaId))
-            .Join(_db.Trabalhadores.IgnoreQueryFilters().Where(t => t.Ativo), s => s.TrabalhadorId, t => t.Id,
+            .Join(_db.Trabalhadores.IgnoreQueryFilters(), s => s.TrabalhadorId, t => t.Id,
                 (s, t) => new
                 {
                     t.Nome,
