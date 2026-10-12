@@ -96,6 +96,8 @@ public class TrabalhadorConfiguracao : IEntityTypeConfiguration<Trabalhador>
 
         builder.Property(t => t.Turno).HasMaxLength(50);
         builder.Property(t => t.FotoContentType).HasMaxLength(100);
+        // Foto do perfil: desde 07/10 é cópia da foto do cadastro facial, então recebe a mesma proteção.
+        builder.Property(t => t.FotoConteudo).HasConversion(new FotoBiometricaCriptografiaConversor(), FotoBiometricaCriptografiaConversor.Comparador);
         builder.Property(t => t.AzureFacePersonId).HasMaxLength(64);
 
         // Campos sincronizados do G-RH — ver disclosure na entidade.

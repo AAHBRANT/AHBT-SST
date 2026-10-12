@@ -19,6 +19,10 @@ builder.Services.AddInfrastructure(builder.Configuration);
 builder.Services.AddHostedService<AAHBRANT.SST.Infrastructure.LeituraIa.LeituraIaBackgroundService>();
 // Migração dos grupos do reconhecimento facial para o recognition_04 (madrugada, uma obra por vez).
 builder.Services.AddHostedService<AAHBRANT.SST.Infrastructure.Assinatura.MigracaoModeloFacialBackgroundService>();
+// Cifra as fotos biométricas gravadas antes da criptografia (LGPD, 12/10). Termina sozinha quando não sobra nada.
+builder.Services.AddHostedService<AAHBRANT.SST.Infrastructure.Seguranca.CriptografiaFotosBackgroundService>();
+// Prazo de guarda das fotos de evidência: desligado até configurar Lgpd:DiasRetencaoFotosEvidencia.
+builder.Services.AddHostedService<AAHBRANT.SST.Infrastructure.Seguranca.RetencaoFotosBiometricasBackgroundService>();
 
 // Autenticação Entra ID: só é ativada se a seção "AzureAd" estiver configurada com um
 // App Registration real (TenantId/ClientId). Provisionamento desse recurso no Azure

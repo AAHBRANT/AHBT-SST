@@ -1,3 +1,4 @@
+using AAHBRANT.SST.Infrastructure.Seguranca;
 using AAHBRANT.SST.Domain.Entidades;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
@@ -154,6 +155,8 @@ public class DdsParticipanteConfiguracao : IEntityTypeConfiguration<DdsParticipa
 {
     public void Configure(EntityTypeBuilder<DdsParticipante> builder)
     {
+        // Foto de presença (rosto ou digital): cifrada no banco (LGPD, ver FotoBiometricaCriptografiaConversor).
+        builder.Property(p => p.FotoConteudo).HasConversion(new FotoBiometricaCriptografiaConversor(), FotoBiometricaCriptografiaConversor.Comparador);
         builder.HasOne(p => p.Dds)
             .WithMany(d => d.Participantes)
             .HasForeignKey(p => p.DdsId)
