@@ -10,6 +10,10 @@ public class StatusCadastroBiometricoDto
     public DateTime? FacialCadastradoEm { get; set; }
     public bool TemDigital => DigitalCadastradaEm is not null;
     public bool TemFacial => FacialCadastradoEm is not null;
+    // Consentimento LGPD da biometria: quando foi dado, em qual versão do termo e se foi revogado.
+    public DateTime? ConsentimentoBiometriaEm { get; set; }
+    public string? ConsentimentoBiometriaVersao { get; set; }
+    public DateTime? ConsentimentoBiometriaRevogadoEm { get; set; }
 }
 
 // Diz se a digital e o facial do trabalhador já foram cadastrados com sucesso — a aba de assinatura
@@ -35,6 +39,18 @@ public class ObterStatusCadastroBiometricoQueryHandler : IRequestHandler<ObterSt
             .Select(f => (DateTime?)f.CapturadaEm)
             .FirstOrDefaultAsync(ct);
 
-        return new StatusCadastroBiometricoDto { DigitalCadastradaEm = digital, FacialCadastradoEm = facial };
+        var consentimento = await _db.Trabalhadores
+            .Where(t => t.Id == request.TrabalhadorId)
+            .Select(t => new { t.ConsentimentoBiometriaEm, t.ConsentimentoBiometriaVersao, t.ConsentimentoBiometriaRevogadoEm })
+            .FirstOrDefaultAsync(ct);
+
+        return new StatusCadastroBiometricoDto
+        {
+            DigitalCadastradaEm = digital,
+            FacialCadastradoEm = facial,
+            ConsentimentoBiometriaEm = consentimento?.ConsentimentoBiometriaEm,
+            ConsentimentoBiometriaVersao = consentimento?.ConsentimentoBiometriaVersao,
+            ConsentimentoBiometriaRevogadoEm = consentimento?.ConsentimentoBiometriaRevogadoEm,
+        };
     }
 }

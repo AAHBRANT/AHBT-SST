@@ -113,12 +113,13 @@ public class AzureFaceAutenticacaoStrategy : IAutenticacaoFacialService
 
     public async Task RemoverCadastroAsync(Guid trabalhadorId, CancellationToken ct)
     {
-        var trabalhador = await _db.Trabalhadores.FirstOrDefaultAsync(t => t.Id == trabalhadorId, ct)
+        // IgnoreQueryFilters: também é chamado no desligamento, quando o trabalhador já está inativo.
+        var trabalhador = await _db.Trabalhadores.IgnoreQueryFilters().FirstOrDefaultAsync(t => t.Id == trabalhadorId, ct)
             ?? throw new KeyNotFoundException("Trabalhador não encontrado.");
         if (trabalhador.AzureFacePersonId is null)
             return;
 
-        var obra = await _db.Obras.FirstOrDefaultAsync(o => o.Id == trabalhador.ObraId, ct)
+        var obra = await _db.Obras.IgnoreQueryFilters().FirstOrDefaultAsync(o => o.Id == trabalhador.ObraId, ct)
             ?? throw new KeyNotFoundException("Obra do trabalhador não encontrada.");
         if (obra.AzureFacePersonGroupId is null)
             return;
@@ -447,6 +448,11 @@ public class AzureFaceAutenticacaoStrategy : IAutenticacaoFacialService
 
         if (trabalhador is null)
             return await RejeitarAsync(obraId, MotivoRejeicaoFacial.RostoNaoReconhecido, candidato.Confidence, null, ct);
+
+        // Consentimento LGPD conferido também na hora de assinar (antes só no cadastro): quem revogou o
+        // consentimento não pode continuar sendo identificado pelo rosto.
+        if (trabalhador.ConsentimentoBiometriaEm is null)
+            throw new InvalidOperationException($"{trabalhador.Nome} não tem consentimento ativo para uso de biometria. Use outro método de assinatura.");
 
         // Fila 1:N: ninguém escolhe a pessoa, então só confirma se o primeiro colocado estiver bem à
         // frente do segundo. Dois candidatos próximos = provável colega parecido, melhor usar a digital.

@@ -49,8 +49,8 @@ public class IdentificacaoFacialMargemTests
             AzureFacePersonGroupId = "grupo-obra",
             MetodosAutenticacaoHabilitados = MetodoAutenticacaoObra.ReconhecimentoFacial,
         };
-        var ana = new Trabalhador { Nome = "Ana", Obra = obra, ObraId = obra.Id, AzureFacePersonId = "p1" };
-        var bruno = new Trabalhador { Nome = "Bruno", Obra = obra, ObraId = obra.Id, AzureFacePersonId = "p2" };
+        var ana = new Trabalhador { Nome = "Ana", Obra = obra, ObraId = obra.Id, AzureFacePersonId = "p1", ConsentimentoBiometriaEm = DateTime.UtcNow };
+        var bruno = new Trabalhador { Nome = "Bruno", Obra = obra, ObraId = obra.Id, AzureFacePersonId = "p2", ConsentimentoBiometriaEm = DateTime.UtcNow };
         db.AddRange(obra, ana, bruno);
         await db.SaveChangesAsync();
 

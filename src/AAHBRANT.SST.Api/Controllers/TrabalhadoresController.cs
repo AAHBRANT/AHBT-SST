@@ -130,6 +130,17 @@ public class TrabalhadoresController : ControllerBase
         return NoContent();
     }
 
+    public record RevogarConsentimentoBiometriaRequestBody(string Motivo);
+
+    // LGPD: o trabalhador retira o consentimento; a biometria dele é desativada (ver o comando).
+    [Authorize(Policy = "trabalhador:assinatura")]
+    [HttpPost("{id:guid}/assinatura/consentimento-biometria/revogar")]
+    public async Task<IActionResult> RevogarConsentimentoBiometria(Guid id, RevogarConsentimentoBiometriaRequestBody body, CancellationToken ct)
+    {
+        await _mediator.Send(new RevogarConsentimentoBiometriaCommand(id, body.Motivo), ct);
+        return NoContent();
+    }
+
     // Funcionários com 3 ou mais falhas de reconhecimento facial em 30 dias contra o cadastro atual:
     // candidatos a refazer a foto. O escopo por obra vem dos filtros globais.
     [Authorize(Policy = "trabalhador:assinatura")]

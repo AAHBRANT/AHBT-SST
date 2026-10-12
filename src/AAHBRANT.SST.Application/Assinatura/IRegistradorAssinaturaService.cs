@@ -129,6 +129,7 @@ public class RegistradorAssinaturaService : IRegistradorAssinaturaService
                 throw new InvalidOperationException("Apenas Técnico de Segurança ou Engenheiro de Segurança podem assinar inspeções.");
         }
 
+        var operadorUsuarioId = await ObterOperadorAsync(ct);
         var signatario = new DocumentoSignatario
         {
             DocumentoAssinaturaId = documento.Id,
@@ -146,6 +147,7 @@ public class RegistradorAssinaturaService : IRegistradorAssinaturaService
             ValidacaoRequisicaoId = Truncar(resultado.ValidacaoRequisicaoId, 80),
             ConfiancaAutenticacao = resultado.Confianca is { } c ? Math.Round(c, 2) : null,
             CapturadaEmDeclarada = CapturaDeclaradaRelevante(resultado.CapturadaEmDeclarada),
+            OperadorUsuarioId = operadorUsuarioId,
         };
         var local = (localizacao ?? new LocalizacaoAssinatura(StatusLocalizacaoAssinatura.NaoInformada)).Normalizada();
         signatario.LocalizacaoStatus = local.Status;
@@ -168,7 +170,7 @@ public class RegistradorAssinaturaService : IRegistradorAssinaturaService
             "Assinatura.Registrada",
             documento.EntidadeTipo,
             documento.EntidadeId,
-            usuarioId: null,
+            usuarioId: operadorUsuarioId,
             trabalhadorId: trabalhador.Id,
             dadosDepois: new { DocumentoAssinaturaId = documento.Id, TrabalhadorId = trabalhador.Id, TrabalhadorNome = trabalhador.Nome, signatario.MetodoAutenticacao, signatario.AssinadoEm },
             ct);
@@ -180,6 +182,14 @@ public class RegistradorAssinaturaService : IRegistradorAssinaturaService
             await FinalizacaoAutomaticaDocumento.TentarAsync(_db, _mediator, _logger, documento.Id, ct);
 
         return new DocumentoSignatarioDto(trabalhador.Id, trabalhador.Nome, signatario.MetodoAutenticacao, signatario.AssinadoEm, signatario.IpAddress);
+    }
+
+    private async Task<Guid?> ObterOperadorAsync(CancellationToken ct)
+    {
+        var oid = _clienteIp?.ObterAzureAdObjectId();
+        if (oid is null)
+            return null;
+        return await _db.Usuarios.Where(u => u.AzureAdObjectId == oid).Select(u => (Guid?)u.Id).FirstOrDefaultAsync(ct);
     }
 
     // Só guarda a hora declarada quando ela conta algo: foto enviada mais de 1 minuto depois de tirada (fila

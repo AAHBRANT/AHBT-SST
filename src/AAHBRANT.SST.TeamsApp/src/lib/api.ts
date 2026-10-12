@@ -69,6 +69,9 @@ export interface StatusCadastroBiometrico {
   temFacial: boolean;
   digitalCadastradaEm: string | null;
   facialCadastradoEm: string | null;
+  consentimentoBiometriaEm?: string | null;
+  consentimentoBiometriaVersao?: string | null;
+  consentimentoBiometriaRevogadoEm?: string | null;
 }
 
 export interface DispositivoAgente {
@@ -4308,6 +4311,12 @@ export const api = {
       request<void>(`/api/trabalhadores/${id}/assinatura/termo-aceite`, { method: 'POST' }),
     registrarConsentimentoBiometria: (id: string) =>
       request<void>(`/api/trabalhadores/${id}/assinatura/consentimento-biometria`, { method: 'POST' }),
+    // LGPD: retira o consentimento; o servidor desativa a digital e o facial do trabalhador.
+    revogarConsentimentoBiometria: (id: string, motivo: string) =>
+      request<void>(`/api/trabalhadores/${id}/assinatura/consentimento-biometria/revogar`, {
+        method: 'POST',
+        body: JSON.stringify({ motivo }),
+      }),
     // Funcionários com 3 ou mais falhas de reconhecimento facial em 30 dias contra o cadastro atual.
     listarCadastrosFaciaisFracos: (obraId?: string) =>
       request<CadastroFacialFraco[]>(`/api/trabalhadores/cadastros-faciais-fracos${obraId ? `?obraId=${obraId}` : ''}`),

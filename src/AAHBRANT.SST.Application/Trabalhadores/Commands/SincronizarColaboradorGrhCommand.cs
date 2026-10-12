@@ -200,7 +200,9 @@ public class SincronizarColaboradorGrhCommandHandler : IRequestHandler<Sincroniz
 
         await TratamentoCpfDuplicado.SalvarAsync(_db, ct);
 
-        if (_facial is not null && obraAnteriorId is { } anterior && anterior != trabalhador.ObraId && trabalhador.AzureFacePersonId is not null)
+        if (request.Situacao == SituacaoTrabalhador.Desligado)
+            await RemocaoBiometriaDesligamento.TentarAsync(_db, _facial, _logger, trabalhador.Id, ct);
+        else if (_facial is not null && obraAnteriorId is { } anterior && anterior != trabalhador.ObraId && trabalhador.AzureFacePersonId is not null)
             await RealocacaoCadastroFacial.TentarAsync(_facial, _logger, trabalhador.Id, anterior, ct);
         return trabalhador.Id;
     }

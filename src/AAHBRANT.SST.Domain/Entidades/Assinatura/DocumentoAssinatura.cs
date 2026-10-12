@@ -100,6 +100,9 @@ public class DocumentoSignatario : AuditableEntity
     // continua sendo a hora do servidor em que a identidade foi confirmada; esta é a hora declarada pelo
     // aparelho, guardada à parte para o registro não dizer "assinou às 16h" de uma foto tirada às 7h.
     public DateTime? CapturadaEmDeclarada { get; set; }
+    // Usuário logado que conduziu a assinatura (ex.: o técnico no quiosque). Nulo em assinatura feita sem
+    // usuário (rotinas automáticas). Antes não ficava registrado quem operou o quiosque (12/10).
+    public Guid? OperadorUsuarioId { get; set; }
 
     // Geolocalização informada pelo aparelho no momento da assinatura (declarada pelo cliente, ao
     // contrário do IP, que o servidor mede). Precisão em metros.
