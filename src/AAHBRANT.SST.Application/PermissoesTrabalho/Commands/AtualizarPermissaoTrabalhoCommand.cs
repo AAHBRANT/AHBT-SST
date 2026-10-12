@@ -1,3 +1,4 @@
+using AAHBRANT.SST.Application.Assinatura;
 using AAHBRANT.SST.Application.Common.Interfaces;
 using AAHBRANT.SST.Application.Common.Seguranca;
 using AAHBRANT.SST.Domain.Entidades;
@@ -46,6 +47,8 @@ public class AtualizarPermissaoTrabalhoCommandHandler : IRequestHandler<Atualiza
 
     public async Task Handle(AtualizarPermissaoTrabalhoCommand request, CancellationToken ct)
     {
+        await ProtecaoDocumentoAssinado.GarantirEditavelAsync(_db, request.Id, ProtecaoDocumentoAssinado.Trava.AposFinalizacao, ct, "PermissaoTrabalho");
+
         var pt = await _db.PermissoesTrabalho
             .NoEscopoDaAtividade(_db, p => p.AtividadeId)
             .Include(p => p.Responsaveis)

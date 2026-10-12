@@ -1,3 +1,4 @@
+using AAHBRANT.SST.Application.Assinatura;
 using AAHBRANT.SST.Application.Common.Interfaces;
 using AAHBRANT.SST.Application.Common.Seguranca;
 using FluentValidation;
@@ -24,6 +25,8 @@ public class ExcluirAprCommandHandler : IRequestHandler<ExcluirAprCommand>
 
     public async Task Handle(ExcluirAprCommand request, CancellationToken ct)
     {
+        await ProtecaoDocumentoAssinado.GarantirEditavelAsync(_db, request.Id, ProtecaoDocumentoAssinado.Trava.AposFinalizacao, ct, "Apr");
+
         var apr = await _db.Aprs
             .NoEscopoDaAtividade(_db, a => a.AtividadeId)
             .FirstOrDefaultAsync(a => a.Id == request.Id, ct)
