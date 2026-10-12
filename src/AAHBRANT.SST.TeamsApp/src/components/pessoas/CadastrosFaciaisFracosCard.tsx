@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Button, Card, DataTable, Legenda, StatusChip, type Coluna } from '@ui';
 import { api, type CadastroFacialFraco } from '../../lib/api';
+import { FalhasReconhecimentoFacialPainel } from './FalhasReconhecimentoFacialPainel';
 
 function formatarData(iso: string): string {
   return new Date(iso).toLocaleDateString('pt-BR', { timeZone: 'America/Sao_Paulo' });
@@ -9,23 +10,45 @@ function formatarData(iso: string): string {
 
 // Funcionários com 3 ou mais falhas de reconhecimento facial em 30 dias contra o cadastro atual: o
 // técnico refaz a foto antes de o problema aparecer de novo no DDS. Some quando não há ninguém para
-// revisar, e também para quem não tem permissão de assinatura (o servidor responde 403).
+// revisar, e também para quem não tem permissão de assinatura (o servidor responde 403). Sem ninguém para
+// revisar, sobra só o atalho para a lista completa de falhas (12/10).
 export function CadastrosFaciaisFracosCard() {
   const navigate = useNavigate();
   const [lista, setLista] = useState<CadastroFacialFraco[]>([]);
+  const [permitido, setPermitido] = useState(false);
+  const [painelAberto, setPainelAberto] = useState(false);
 
   useEffect(() => {
     let cancelado = false;
     api.trabalhadores
       .listarCadastrosFaciaisFracos()
-      .then((l) => !cancelado && setLista(l))
+      .then((l) => {
+        if (cancelado) return;
+        setLista(l);
+        setPermitido(true);
+      })
       .catch(() => undefined);
     return () => {
       cancelado = true;
     };
   }, []);
 
-  if (lista.length === 0) return null;
+  const painel = <FalhasReconhecimentoFacialPainel aberto={painelAberto} aoFechar={() => setPainelAberto(false)} />;
+  const botaoFalhas = (
+    <Button size="small" appearance="secondary" onClick={() => setPainelAberto(true)}>
+      Ver falhas do reconhecimento facial
+    </Button>
+  );
+
+  if (!permitido) return null;
+  if (lista.length === 0) {
+    return (
+      <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 8 }}>
+        {botaoFalhas}
+        {painel}
+      </div>
+    );
+  }
 
   const colunas: Coluna<CadastroFacialFraco>[] = [
     {
@@ -45,7 +68,7 @@ export function CadastrosFaciaisFracosCard() {
   ];
 
   return (
-    <Card titulo={`Cadastros faciais para revisar (${lista.length})`}>
+    <Card titulo={`Cadastros faciais para revisar (${lista.length})`} acoes={botaoFalhas}>
       <Legenda>
         Funcionários com 3 ou mais falhas de reconhecimento facial nos últimos 30 dias. Abra o cadastro e use
         Refazer cadastro facial.
@@ -65,6 +88,7 @@ export function CadastrosFaciaisFracosCard() {
           </Button>
         )}
       />
+      {painel}
     </Card>
   );
 }

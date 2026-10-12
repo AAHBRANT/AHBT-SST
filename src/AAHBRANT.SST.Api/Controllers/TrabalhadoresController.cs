@@ -148,6 +148,12 @@ public class TrabalhadoresController : ControllerBase
     public async Task<IActionResult> ListarCadastrosFaciaisFracos([FromQuery] Guid? obraId, CancellationToken ct)
         => Ok(await _mediator.Send(new ListarCadastrosFaciaisFracosQuery(obraId), ct));
 
+    // Cada falha de reconhecimento facial do período (até 90 dias), com a confiança.
+    [Authorize(Policy = "trabalhador:assinatura")]
+    [HttpGet("falhas-reconhecimento-facial")]
+    public async Task<IActionResult> ListarFalhasReconhecimentoFacial([FromQuery] Guid? obraId, [FromQuery] int dias = 30, CancellationToken ct = default)
+        => Ok(await _mediator.Send(new ListarFalhasReconhecimentoFacialQuery(obraId, dias), ct));
+
     [Authorize(Policy = "trabalhador:assinatura")]
     [HttpGet("{id:guid}/assinatura/status-cadastro")]
     public async Task<IActionResult> ObterStatusCadastroBiometrico(Guid id, CancellationToken ct)

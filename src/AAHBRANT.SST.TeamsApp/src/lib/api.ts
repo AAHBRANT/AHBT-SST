@@ -52,6 +52,17 @@ export interface ResultadoPresencaFacialFila {
   confianca: number | null;
 }
 
+export interface FalhaReconhecimentoFacial {
+  id: string;
+  ocorridaEm: string;
+  obraId: string;
+  obraNome: string;
+  trabalhadorId: string | null;
+  trabalhadorNome: string | null;
+  motivo: string;
+  confiancaPercentual: number | null;
+}
+
 export interface CadastroFacialFraco {
   trabalhadorId: string;
   nome: string;
@@ -3339,6 +3350,7 @@ export const tipoAlertaLabel: Record<number, string> = {
   20: 'Equipamento vencido',
   28: 'Exame da função vencendo',
   29: 'Exame da função vencido',
+  30: 'Cadastro facial para refazer',
 };
 
 export const SeveridadeAlerta = {
@@ -3496,6 +3508,8 @@ export const TipoModuloAlerta = {
   Outro: 11,
   // Exames do PCMSO pela função do trabalhador (ExamesFuncaoAlertaProvider).
   ExamesFuncao: 13,
+  // Cadastros faciais com falhas repetidas de reconhecimento (CadastroFacialAlertaProvider).
+  CadastroFacial: 14,
 } as const;
 
 export const moduloAlertaLabel: Record<number, string> = {
@@ -3511,6 +3525,7 @@ export const moduloAlertaLabel: Record<number, string> = {
   10: 'Plano de ação',
   11: 'Outro',
   13: 'Exames da função (PCMSO)',
+  14: 'Cadastro facial',
 };
 
 export interface RegraAlerta {
@@ -4318,6 +4333,10 @@ export const api = {
         body: JSON.stringify({ motivo }),
       }),
     // Funcionários com 3 ou mais falhas de reconhecimento facial em 30 dias contra o cadastro atual.
+    listarFalhasReconhecimentoFacial: (dias: number, obraId?: string) =>
+      request<FalhaReconhecimentoFacial[]>(
+        `/api/trabalhadores/falhas-reconhecimento-facial?dias=${dias}${obraId ? `&obraId=${obraId}` : ''}`,
+      ),
     listarCadastrosFaciaisFracos: (obraId?: string) =>
       request<CadastroFacialFraco[]>(`/api/trabalhadores/cadastros-faciais-fracos${obraId ? `?obraId=${obraId}` : ''}`),
     obterStatusCadastroBiometrico: (id: string) =>
