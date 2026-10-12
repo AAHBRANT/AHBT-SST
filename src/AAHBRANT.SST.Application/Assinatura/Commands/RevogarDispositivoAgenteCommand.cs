@@ -13,7 +13,13 @@ public class RevogarDispositivoAgenteCommandHandler : IRequestHandler<RevogarDis
 {
     private readonly IAppDbContext _db;
 
-    public RevogarDispositivoAgenteCommandHandler(IAppDbContext db) => _db = db;
+    private readonly IAuditoriaService? _auditoria;
+
+    public RevogarDispositivoAgenteCommandHandler(IAppDbContext db, IAuditoriaService? auditoria = null)
+    {
+        _db = db;
+        _auditoria = auditoria;
+    }
 
     public async Task Handle(RevogarDispositivoAgenteCommand request, CancellationToken ct)
     {
@@ -21,6 +27,10 @@ public class RevogarDispositivoAgenteCommandHandler : IRequestHandler<RevogarDis
             ?? throw new KeyNotFoundException("Dispositivo não encontrado.");
 
         dispositivo.Ativo = false;
+        // Revogar um leitor é evento de segurança: fica na trilha de auditoria (antes não ficava registro).
+        if (_auditoria is not null)
+            await _auditoria.RegistrarAsync("DispositivoAgente.Revogado", "DispositivoAgenteBiometrico", dispositivo.Id,
+                usuarioId: null, trabalhadorId: null, dadosDepois: new { dispositivo.Nome, dispositivo.ObraId }, ct);
         await _db.SaveChangesAsync(ct);
     }
 }

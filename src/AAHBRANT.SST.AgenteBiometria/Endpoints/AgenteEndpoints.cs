@@ -85,9 +85,13 @@ public static class AgenteEndpoints
         // Nota arredondada em 2 casas antes de assinar: o servidor confere exatamente o texto assinado, e assim
         // o número não muda no caminho (JSON do agente -> navegador -> servidor).
         var score = Math.Round(melhor.Score, 2);
-        var desafio = corpo?.Desafio;
+        // Leitor simulado (testes, sem hardware) nunca assina: com a exigência de leitura assinada ligada no
+        // servidor, uma instalação esquecida em "Simulado" não consegue assinar documento de verdade.
+        var desafio = leitor is SimuladoFingerprintReader ? null : corpo?.Desafio;
         var assinatura = string.IsNullOrWhiteSpace(desafio) ? null : chave.Assinar(ConteudoAssinado(desafio, melhor.TrabalhadorId, score));
-        var assinaturas = corpo?.Desafios?.Select(d => chave.Assinar(ConteudoAssinado(d, melhor.TrabalhadorId, score))).ToList();
+        var assinaturas = leitor is SimuladoFingerprintReader
+            ? null
+            : corpo?.Desafios?.Select(d => chave.Assinar(ConteudoAssinado(d, melhor.TrabalhadorId, score))).ToList();
         return TypedResults.Ok(new CapturaResponse(melhor.TrabalhadorId, score, ImagemDigitalPng.Converter(imagemBruta), desafio, assinatura, assinaturas));
     }
 }

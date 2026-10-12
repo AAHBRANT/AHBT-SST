@@ -46,6 +46,7 @@ public class DispositivosAgenteController : ControllerBase
     // manualmente dentro do handler via IDispositivoAgenteAutenticador — nunca em query string.
     [HttpPost("{id:guid}/templates/sincronizar")]
     [AllowAnonymous]
+    [Microsoft.AspNetCore.RateLimiting.EnableRateLimiting("agente-anonimo")]
     public async Task<ActionResult<List<TemplateSincronizadoDto>>> Sincronizar(Guid id, SincronizarTemplatesRequestBody body, CancellationToken ct)
     {
         var templates = await _mediator.Send(new SincronizarTemplatesQuery(id, body.SegredoDispositivo), ct);
@@ -64,6 +65,7 @@ public class DispositivosAgenteController : ControllerBase
     // AllowAnonymous pelo mesmo motivo da sincronização: quem chama é o agente, autenticado pelo segredo.
     [HttpPost("{id:guid}/chave-publica")]
     [AllowAnonymous]
+    [Microsoft.AspNetCore.RateLimiting.EnableRateLimiting("agente-anonimo")]
     public async Task<IActionResult> RegistrarChavePublica(Guid id, RegistrarChavePublicaRequestBody body, CancellationToken ct)
     {
         await _mediator.Send(new RegistrarChavePublicaDispositivoCommand(id, body.SegredoDispositivo, body.ChavePublica), ct);
