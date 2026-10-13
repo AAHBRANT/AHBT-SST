@@ -1217,6 +1217,21 @@ public static class NovidadesSeeder
                     "Fotos de rosto e de digital ficavam sem criptografia no banco, e o cadastro facial de quem era desligado continuava ativo.",
                     "As fotos passam a ser guardadas criptografadas, inclusive as antigas. Funcionário desligado ou excluído tem o cadastro facial removido e as digitais e fotos de cadastro arquivadas. Cada assinatura também registra o usuário que conduziu a assinatura."),
             }),
+        new(
+            Versao: "5.62.0",
+            Titulo: "ASOs: situação de hoje separada do parecer do médico",
+            DataPublicacao: new DateTime(2026, 10, 13, 0, 0, 0, DateTimeKind.Utc),
+            Itens: new[]
+            {
+                new NovidadeSeedItem(CategoriaNovidade.Melhoria,
+                    "Coluna \"Situação hoje\" na lista de ASOs",
+                    "A linha mostrava \"Vencido\" na validade e \"Apto\" no resultado lado a lado, e parecia que o trabalhador estava liberado.",
+                    "A nova coluna \"Situação hoje\" diz se o trabalhador pode trabalhar: Vencido, Não liberado, Aguardando parecer, Vence em X dias, Liberado com restrição ou Liberado. A coluna \"Resultado\" passou a se chamar \"Parecer do médico\" e, quando o exame venceu, aparece apagada com a data do exame."),
+                new NovidadeSeedItem(CategoriaNovidade.Melhoria,
+                    "ASOs repetidos do G-RH numa linha só",
+                    "Quando o G-RH tinha o mesmo ASO em vários documentos, a lista mostrava uma linha igual para cada um.",
+                    "O mesmo exame (mesmo funcionário, tipo, data e validade) aparece numa linha só, com a indicação de quantos documentos iguais existem. Nenhum registro é apagado."),
+            }),
     };
 
     public static async Task ExecutarAsync(IServiceProvider services, CancellationToken ct = default)
