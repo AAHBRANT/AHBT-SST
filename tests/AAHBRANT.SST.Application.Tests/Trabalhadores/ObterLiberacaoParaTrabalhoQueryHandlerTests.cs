@@ -129,21 +129,27 @@ public class ObterLiberacaoParaTrabalhoQueryHandlerTests
     }
 
     [Fact]
-    public async Task Handle_AsoComRestricaoDentroDaValidadeLibera_InaptoOuPendenteNao()
+    // ASO dentro da validade é apto (regra do usuário, 13/10/2026): Pendente (G-RH sem aptidão) libera,
+    // só Inapto bloqueia.
+    public async Task Handle_AsoComRestricaoOuPendenteDentroDaValidadeLibera_InaptoNao()
     {
         var c = await Preparar();
         var comRestricao = NovoTrabalhador(c.Funcao, c.Obra, "Com restrição");
+        var pendente = NovoTrabalhador(c.Funcao, c.Obra, "Pendente");
         var inapto = NovoTrabalhador(c.Funcao, c.Obra, "Inapto");
-        c.Db.Trabalhadores.AddRange(comRestricao, inapto);
+        c.Db.Trabalhadores.AddRange(comRestricao, pendente, inapto);
         await c.Db.SaveChangesAsync();
-        c.Db.Asos.AddRange(AsoApto(comRestricao, 100, ResultadoAso.AptoComRestricao), AsoApto(inapto, 100, ResultadoAso.Inapto));
-        c.Db.Treinamentos.AddRange(Curso(comRestricao, c.Curso, 300), Curso(inapto, c.Curso, 300));
-        c.Db.EntregasEpi.AddRange(Entrega(comRestricao, c.Epi), Entrega(inapto, c.Epi));
+        c.Db.Asos.AddRange(
+            AsoApto(comRestricao, 100, ResultadoAso.AptoComRestricao),
+            AsoApto(pendente, 100, ResultadoAso.Pendente),
+            AsoApto(inapto, 100, ResultadoAso.Inapto));
+        c.Db.Treinamentos.AddRange(Curso(comRestricao, c.Curso, 300), Curso(pendente, c.Curso, 300), Curso(inapto, c.Curso, 300));
+        c.Db.EntregasEpi.AddRange(Entrega(comRestricao, c.Epi), Entrega(pendente, c.Epi), Entrega(inapto, c.Epi));
         await c.Db.SaveChangesAsync();
 
         var r = await Consultar(c.Db);
 
-        Assert.Equal(1, r.Liberados);
+        Assert.Equal(2, r.Liberados);
         Assert.Equal(1, r.SemAsoValido);
     }
 

@@ -116,7 +116,8 @@ export function PessoasDashboardTab() {
     let pendentes = 0;
     for (const trabalhador of trabalhadoresFiltrados) {
       const aso = asoMaisRecentePorTrabalhador.get(trabalhador.id);
-      if (!aso || aso.resultadoStatus === ResultadoAso.Pendente) pendentes += 1;
+      // ASO "Pendente" conta como apto (regra do usuário, 13/10): o G-RH não manda a aptidão.
+      if (!aso) pendentes += 1;
       else if (aso.resultadoStatus === ResultadoAso.Inapto) inaptos += 1;
       else if (aso.resultadoStatus === ResultadoAso.AptoComRestricao) restricao += 1;
       else aptos += 1;
