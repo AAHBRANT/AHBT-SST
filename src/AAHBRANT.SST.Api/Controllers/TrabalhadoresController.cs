@@ -130,12 +130,29 @@ public class TrabalhadoresController : ControllerBase
         return NoContent();
     }
 
+    public record RevogarConsentimentoBiometriaRequestBody(string Motivo);
+
+    // LGPD: o trabalhador retira o consentimento; a biometria dele é desativada (ver o comando).
+    [Authorize(Policy = "trabalhador:assinatura")]
+    [HttpPost("{id:guid}/assinatura/consentimento-biometria/revogar")]
+    public async Task<IActionResult> RevogarConsentimentoBiometria(Guid id, RevogarConsentimentoBiometriaRequestBody body, CancellationToken ct)
+    {
+        await _mediator.Send(new RevogarConsentimentoBiometriaCommand(id, body.Motivo), ct);
+        return NoContent();
+    }
+
     // Funcionários com 3 ou mais falhas de reconhecimento facial em 30 dias contra o cadastro atual:
     // candidatos a refazer a foto. O escopo por obra vem dos filtros globais.
     [Authorize(Policy = "trabalhador:assinatura")]
     [HttpGet("cadastros-faciais-fracos")]
     public async Task<IActionResult> ListarCadastrosFaciaisFracos([FromQuery] Guid? obraId, CancellationToken ct)
         => Ok(await _mediator.Send(new ListarCadastrosFaciaisFracosQuery(obraId), ct));
+
+    // Cada falha de reconhecimento facial do período (até 90 dias), com a confiança.
+    [Authorize(Policy = "trabalhador:assinatura")]
+    [HttpGet("falhas-reconhecimento-facial")]
+    public async Task<IActionResult> ListarFalhasReconhecimentoFacial([FromQuery] Guid? obraId, [FromQuery] int dias = 30, CancellationToken ct = default)
+        => Ok(await _mediator.Send(new ListarFalhasReconhecimentoFacialQuery(obraId, dias), ct));
 
     [Authorize(Policy = "trabalhador:assinatura")]
     [HttpGet("{id:guid}/assinatura/status-cadastro")]

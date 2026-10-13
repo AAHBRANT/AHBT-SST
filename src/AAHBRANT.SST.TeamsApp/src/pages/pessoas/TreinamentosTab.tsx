@@ -27,6 +27,7 @@ import { api, type CursoTreinamento, type NovoTreinamento, type Treinamento } fr
 import { useSucessoToast } from '../../hooks/useSucessoToast';
 import { AssinaturaCertificadoTreinamentoDialog } from '../../components/assinatura/AssinaturaCertificadoTreinamentoDialog';
 import { useSouAdministrador } from '../../lib/UsuarioLogadoContext';
+import { useRegistrosTravados } from '../../hooks/useRegistrosTravados';
 import { salvarBlob, useVisualizadorPdf } from '../../components/useVisualizadorPdf';
 
 function treinamentoVazio(trabalhadorId: string): NovoTreinamento {
@@ -56,6 +57,8 @@ export function TreinamentosTab({ trabalhadorId, obraId }: { trabalhadorId: stri
   const souAdministrador = useSouAdministrador();
   const navigate = useNavigate();
   const [treinamentos, setTreinamentos] = useState<Treinamento[]>([]);
+  // Finalizados não podem ser excluídos (o servidor recusa): o botão some deles.
+  const travados = useRegistrosTravados('Treinamento', treinamentos.map((t) => t.id));
   const [cursos, setCursos] = useState<CursoTreinamento[]>([]);
   const [novoTreinamento, setNovoTreinamento] = useState<NovoTreinamento>(() => treinamentoVazio(trabalhadorId));
   const [erro, setErro] = useState<string | null>(null);
@@ -323,7 +326,7 @@ export function TreinamentosTab({ trabalhadorId, obraId }: { trabalhadorId: stri
                 title="Baixar certificado em PDF"
               />
               {/* Exclusão é privilégio de Administrador (o servidor recusa os demais) — ver PoliticasAutorizacao. */}
-              {souAdministrador && (
+              {souAdministrador && !travados.has(t.id) && (
                 <BotaoAcao
                   tom="excluir"
                   icon={<Delete24Regular />}

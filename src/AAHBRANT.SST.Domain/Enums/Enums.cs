@@ -137,7 +137,9 @@ public enum TipoAlerta
     ContratoTerceirizadoEncerrado = 27,
     // Exames periódicos do PCMSO pela função do trabalhador (ExameFuncaoObra), 10/10/2026.
     ExameFuncaoVencendo = 28,
-    ExameFuncaoVencido = 29
+    ExameFuncaoVencido = 29,
+    // Cadastro facial com falhas repetidas de reconhecimento (CadastroFacialAlertaProvider), 12/10/2026.
+    CadastroFacialFraco = 30
 }
 
 public enum SeveridadeAlerta
@@ -168,7 +170,9 @@ public enum TipoModuloAlerta
     Outro = 11,
     Pgr = 12,
     // Exames do PCMSO pela função do trabalhador (ExameFuncaoObra), 10/10/2026.
-    ExamesFuncao = 13
+    ExamesFuncao = 13,
+    // Cadastros faciais com falhas repetidas: o técnico refaz a foto (CadastroFacialAlertaProvider), 12/10/2026.
+    CadastroFacial = 14
 }
 
 public enum StatusAlerta

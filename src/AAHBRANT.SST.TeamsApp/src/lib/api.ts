@@ -52,6 +52,17 @@ export interface ResultadoPresencaFacialFila {
   confianca: number | null;
 }
 
+export interface FalhaReconhecimentoFacial {
+  id: string;
+  ocorridaEm: string;
+  obraId: string;
+  obraNome: string;
+  trabalhadorId: string | null;
+  trabalhadorNome: string | null;
+  motivo: string;
+  confiancaPercentual: number | null;
+}
+
 export interface CadastroFacialFraco {
   trabalhadorId: string;
   nome: string;
@@ -69,6 +80,9 @@ export interface StatusCadastroBiometrico {
   temFacial: boolean;
   digitalCadastradaEm: string | null;
   facialCadastradoEm: string | null;
+  consentimentoBiometriaEm?: string | null;
+  consentimentoBiometriaVersao?: string | null;
+  consentimentoBiometriaRevogadoEm?: string | null;
 }
 
 export interface DispositivoAgente {
@@ -2710,6 +2724,8 @@ export interface TermoCompromissoEpi {
   arquivoNome?: string | null;
 }
 
+export type TipoRegistroTravavel = 'EntregaEpi' | 'EntregaUniforme' | 'Inspecao' | 'Apr' | 'PermissaoTrabalho' | 'Treinamento' | 'Dds';
+
 export interface DocumentoAssinatura {
   id: string;
   entidadeTipo: string;
@@ -3336,6 +3352,7 @@ export const tipoAlertaLabel: Record<number, string> = {
   20: 'Equipamento vencido',
   28: 'Exame da função vencendo',
   29: 'Exame da função vencido',
+  30: 'Cadastro facial para refazer',
 };
 
 export const SeveridadeAlerta = {
@@ -3493,6 +3510,8 @@ export const TipoModuloAlerta = {
   Outro: 11,
   // Exames do PCMSO pela função do trabalhador (ExamesFuncaoAlertaProvider).
   ExamesFuncao: 13,
+  // Cadastros faciais com falhas repetidas de reconhecimento (CadastroFacialAlertaProvider).
+  CadastroFacial: 14,
 } as const;
 
 export const moduloAlertaLabel: Record<number, string> = {
@@ -3508,6 +3527,7 @@ export const moduloAlertaLabel: Record<number, string> = {
   10: 'Plano de ação',
   11: 'Outro',
   13: 'Exames da função (PCMSO)',
+  14: 'Cadastro facial',
 };
 
 export interface RegraAlerta {
@@ -4308,7 +4328,17 @@ export const api = {
       request<void>(`/api/trabalhadores/${id}/assinatura/termo-aceite`, { method: 'POST' }),
     registrarConsentimentoBiometria: (id: string) =>
       request<void>(`/api/trabalhadores/${id}/assinatura/consentimento-biometria`, { method: 'POST' }),
+    // LGPD: retira o consentimento; o servidor desativa a digital e o facial do trabalhador.
+    revogarConsentimentoBiometria: (id: string, motivo: string) =>
+      request<void>(`/api/trabalhadores/${id}/assinatura/consentimento-biometria/revogar`, {
+        method: 'POST',
+        body: JSON.stringify({ motivo }),
+      }),
     // Funcionários com 3 ou mais falhas de reconhecimento facial em 30 dias contra o cadastro atual.
+    listarFalhasReconhecimentoFacial: (dias: number, obraId?: string) =>
+      request<FalhaReconhecimentoFacial[]>(
+        `/api/trabalhadores/falhas-reconhecimento-facial?dias=${dias}${obraId ? `&obraId=${obraId}` : ''}`,
+      ),
     listarCadastrosFaciaisFracos: (obraId?: string) =>
       request<CadastroFacialFraco[]>(`/api/trabalhadores/cadastros-faciais-fracos${obraId ? `?obraId=${obraId}` : ''}`),
     obterStatusCadastroBiometrico: (id: string) =>
@@ -5498,6 +5528,13 @@ export const api = {
     excluir: (id: string) => request<void>(`/api/catalogotemasdds/${id}`, { method: 'DELETE' }),
   },
   assinatura: {
+    // Dos ids da lista, quais já estão travados pela assinatura (editar/excluir somem da tela). Mesma regra
+    // do servidor (ProtecaoDocumentoAssinado): EPI/uniforme/inspeção na 1ª assinatura; APR/PT/treinamento/DDS
+    // ao finalizar.
+    listarRegistrosTravados: (entidadeTipo: TipoRegistroTravavel, ids: string[]) =>
+      ids.length === 0
+        ? Promise.resolve<string[]>([])
+        : request<string[]>('/api/documentos/registros-travados', { method: 'POST', body: JSON.stringify({ entidadeTipo, ids }) }),
     // Fecha o documento para novas assinaturas e gera o comprovante com o hash (permissão assinatura:finalizar).
     finalizar: (documentoId: string) =>
       request<DocumentoAssinatura>(`/api/documentos/${documentoId}/finalizar`, { method: 'POST' }),
@@ -5544,6 +5581,9 @@ export const api = {
       formData.append('obraId', obraId);
       formData.append('foto', foto);
       anexarDadosFoto(formData, foto);
+      // Hora da foto, declarada pelo aparelho: se ela ficar na fila offline, o registro mostra quando foi
+      // tirada, e não só quando chegou ao servidor.
+      formData.append('capturadaEm', new Date().toISOString());
       // Geolocalização no momento da assinatura (log de assinaturas), como campos do formulário.
       const localizacao = await obterLocalizacaoAssinatura();
       formData.append('localizacaoStatus', String(localizacao.status));

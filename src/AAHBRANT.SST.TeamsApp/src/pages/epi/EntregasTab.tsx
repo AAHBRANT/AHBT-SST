@@ -32,6 +32,7 @@ import { TermoCompromissoEpiDialog } from '../../components/assinatura/TermoComp
 import { AssinaturaDevolucaoEpiDialog } from '../../components/assinatura/AssinaturaDevolucaoEpiDialog';
 import { FotoCatalogoEpi } from './FotoCatalogoEpi';
 import { SeletorItensEpi, type ItemCarrinhoEpi } from './SeletorItensEpi';
+import { useRegistrosTravados } from '../../hooks/useRegistrosTravados';
 import { CarrinhoEntregaEpi } from './CarrinhoEntregaEpi';
 
 // Campos aplicados a todas as entregas do carrinho de uma vez (mesmo funcionário, mesma data,
@@ -132,6 +133,8 @@ interface EntregasTabProps {
 export function EntregasTab({ aoNavegarParaMatriz }: EntregasTabProps) {
   const navigate = useNavigate();
   const [entregas, setEntregas] = useState<EntregaEpi[]>([]);
+  // Entregas já assinadas não podem ser excluídas (o servidor recusa): o botão some delas.
+  const travadas = useRegistrosTravados('EntregaEpi', entregas.map((e) => e.id));
   const [epis, setEpis] = useState<CatalogoEpi[]>([]);
   const [episPermitidos, setEpisPermitidos] = useState<CatalogoEpi[]>([]);
   const [obras, setObras] = useState<Obra[]>([]);
@@ -1014,7 +1017,7 @@ export function EntregasTab({ aoNavegarParaMatriz }: EntregasTabProps) {
               />
               {/* Só Administrador (pedido do usuário, 23/09): o servidor recusa a exclusão de quem
                   não for, então mostrar o botão para os outros só geraria erro na cara do técnico. */}
-              {souAdministrador && (
+              {souAdministrador && !travadas.has(e.id) && (
                 <BotaoAcao
                   tom="excluir"
                   icon={<Delete24Regular />}

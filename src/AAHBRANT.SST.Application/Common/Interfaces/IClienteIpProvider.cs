@@ -10,4 +10,8 @@ public interface IClienteIpProvider
 
     // Cabeçalho User-Agent da requisição (navegador/sistema do aparelho), para o log de assinaturas.
     string? ObterUserAgent();
+
+    // Object Id (Entra ID) de quem está logado e conduzindo a assinatura — o técnico no quiosque, por exemplo.
+    // Vira o "operador" da assinatura (DocumentoSignatario.OperadorUsuarioId) e o usuário da trilha de auditoria.
+    string? ObterAzureAdObjectId() => null;
 }

@@ -70,6 +70,8 @@ public static class Program
             serverOptions.Listen(System.Net.IPAddress.Loopback, 5251));
 
         var app = builder.Build();
+        if (!string.Equals(agenteOptions.Leitor, "Futronic", StringComparison.OrdinalIgnoreCase))
+            app.Logger.LogWarning("Agente em modo SIMULADO: qualquer dedo é aceito e as leituras não são assinadas. Use \"Leitor\": \"Futronic\" em produção.");
         app.UseAcessoRedePrivada(agenteOptions.OrigemPermitida);
         app.UseCors(PoliticaCorsKiosk);
         app.UseTraducaoDeErros();

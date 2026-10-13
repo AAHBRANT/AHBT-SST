@@ -1,3 +1,4 @@
+using AAHBRANT.SST.Infrastructure.Seguranca;
 using AAHBRANT.SST.Domain.Entidades;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
@@ -26,6 +27,8 @@ public class DocumentoSignatarioConfiguracao : IEntityTypeConfiguration<Document
 {
     public void Configure(EntityTypeBuilder<DocumentoSignatario> builder)
     {
+        // Foto do rosto / imagem da digital da assinatura: cifrada no banco (LGPD, ver o conversor).
+        builder.Property(s => s.FotoEvidenciaConteudo).HasConversion(new FotoBiometricaCriptografiaConversor(), FotoBiometricaCriptografiaConversor.Comparador);
         builder.Property(s => s.FotoEvidenciaContentType).HasMaxLength(80);
         builder.Property(s => s.FotoEvidenciaHash).HasMaxLength(64);
         builder.Property(s => s.UserAgent).HasMaxLength(300);
@@ -97,7 +100,7 @@ public class FotoCadastroFacialConfiguracao : IEntityTypeConfiguration<FotoCadas
 {
     public void Configure(EntityTypeBuilder<FotoCadastroFacial> builder)
     {
-        builder.Property(f => f.Conteudo).IsRequired();
+        builder.Property(f => f.Conteudo).IsRequired().HasConversion(new FotoBiometricaCriptografiaConversor(), FotoBiometricaCriptografiaConversor.Comparador);
         builder.Property(f => f.ContentType).IsRequired().HasMaxLength(100);
         builder.Property(f => f.HashSha256).IsRequired().HasMaxLength(64);
 

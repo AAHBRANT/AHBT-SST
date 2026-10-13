@@ -19,6 +19,10 @@ builder.Services.AddInfrastructure(builder.Configuration);
 builder.Services.AddHostedService<AAHBRANT.SST.Infrastructure.LeituraIa.LeituraIaBackgroundService>();
 // Migração dos grupos do reconhecimento facial para o recognition_04 (madrugada, uma obra por vez).
 builder.Services.AddHostedService<AAHBRANT.SST.Infrastructure.Assinatura.MigracaoModeloFacialBackgroundService>();
+// Cifra as fotos biométricas gravadas antes da criptografia (LGPD, 12/10). Termina sozinha quando não sobra nada.
+builder.Services.AddHostedService<AAHBRANT.SST.Infrastructure.Seguranca.CriptografiaFotosBackgroundService>();
+// Prazo de guarda das fotos de evidência: desligado até configurar Lgpd:DiasRetencaoFotosEvidencia.
+builder.Services.AddHostedService<AAHBRANT.SST.Infrastructure.Seguranca.RetencaoFotosBiometricasBackgroundService>();
 
 // Autenticação Entra ID: só é ativada se a seção "AzureAd" estiver configurada com um
 // App Registration real (TenantId/ClientId). Provisionamento desse recurso no Azure
@@ -58,6 +62,20 @@ builder.Services.AddScoped<AAHBRANT.SST.Application.Common.Interfaces.IClienteIp
 // ICurrentUserService (camada 3 do RBAC) é registrado em AddInfrastructure — ver EscopoPorObraMiddleware.
 
 builder.Services.AddControllers();
+
+// Limite de requisições nas rotas sem login (12/10): o agente do leitor (autenticado só pelo segredo no
+// corpo) e as páginas públicas de validação/identificação. Sem isso dava para tentar segredos ou tokens
+// sem parar. Por IP, janela de 1 minuto; os valores cobrem com folga o uso normal (o agente sincroniza a
+// cada 2 min; uma obra inteira escaneando QR atrás do mesmo IP).
+builder.Services.AddRateLimiter(opcoes =>
+{
+    opcoes.RejectionStatusCode = StatusCodes.Status429TooManyRequests;
+    static string ChaveIp(HttpContext c) => c.Connection.RemoteIpAddress?.ToString() ?? "sem-ip";
+    opcoes.AddPolicy("agente-anonimo", c => System.Threading.RateLimiting.RateLimitPartition.GetFixedWindowLimiter(ChaveIp(c),
+        _ => new System.Threading.RateLimiting.FixedWindowRateLimiterOptions { PermitLimit = 30, Window = TimeSpan.FromMinutes(1) }));
+    opcoes.AddPolicy("publico", c => System.Threading.RateLimiting.RateLimitPartition.GetFixedWindowLimiter(ChaveIp(c),
+        _ => new System.Threading.RateLimiting.FixedWindowRateLimiterOptions { PermitLimit = 120, Window = TimeSpan.FromMinutes(1) }));
+});
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
 
@@ -135,6 +153,8 @@ app.UseMiddleware<EscopoPorObraMiddleware>();
 // caso contrário um Idempotency-Key adivinhado (improvável, é um GUID, mas por princípio) poderia
 // vazar a resposta de outro usuário sem autenticação nenhuma.
 app.UseMiddleware<IdempotenciaMiddleware>();
+
+app.UseRateLimiter();
 
 // Aplica migrations pendentes automaticamente no start — antes não existia isso no código
 // (schema do banco de homologação era atualizado manualmente a cada nova migration).

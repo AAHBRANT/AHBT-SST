@@ -44,6 +44,7 @@ import {
 import { useSucessoToast } from '../../hooks/useSucessoToast';
 import { SeletorFotoCamera } from '../../components/SeletorFotoCamera';
 import { salvarBlob, useVisualizadorPdf } from '../../components/useVisualizadorPdf';
+import { useRegistrosTravados } from '../../hooks/useRegistrosTravados';
 import { useSouAdministrador } from '../../lib/UsuarioLogadoContext';
 
 // Sub-aba "Certificados" (pedido do usuário, 22/09). As obras já estavam em andamento quando o
@@ -107,6 +108,8 @@ function formatarData(valor?: string | null): string {
 export function CertificadosTab() {
   const souAdministrador = useSouAdministrador();
   const [certificados, setCertificados] = useState<CertificadoTreinamento[]>([]);
+  // Finalizados não podem ser excluídos (o servidor recusa): o botão some deles.
+  const travados = useRegistrosTravados('Treinamento', certificados.map((c) => c.id));
   const [cursos, setCursos] = useState<CursoTreinamento[]>([]);
   const [trabalhadores, setTrabalhadores] = useState<Trabalhador[]>([]);
   const [obras, setObras] = useState<Obra[]>([]);
@@ -711,7 +714,7 @@ export function CertificadosTab() {
                 />
               )}
               {/* Exclusão é privilégio de Administrador (o servidor recusa os demais) — ver PoliticasAutorizacao. */}
-              {souAdministrador && (
+              {souAdministrador && !travados.has(c.id) && (
                 <BotaoAcao
                   tom="excluir"
                   icon={<Delete24Regular />}

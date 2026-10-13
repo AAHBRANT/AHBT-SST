@@ -1,3 +1,4 @@
+using AAHBRANT.SST.Application.Assinatura;
 using AAHBRANT.SST.Application.Common.Interfaces;
 using AAHBRANT.SST.Application.Common.Seguranca;
 using AAHBRANT.SST.Domain.Entidades;
@@ -41,6 +42,8 @@ public class AtualizarAprCommandHandler : IRequestHandler<AtualizarAprCommand>
 
     public async Task Handle(AtualizarAprCommand request, CancellationToken ct)
     {
+        await ProtecaoDocumentoAssinado.GarantirEditavelAsync(_db, "Apr", request.Id, ct);
+
         var apr = await _db.Aprs
             .NoEscopoDaAtividade(_db, a => a.AtividadeId)
             .Include(a => a.Responsaveis)

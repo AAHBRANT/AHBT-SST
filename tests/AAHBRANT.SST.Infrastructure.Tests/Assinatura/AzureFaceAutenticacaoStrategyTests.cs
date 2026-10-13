@@ -189,7 +189,7 @@ public class AzureFaceAutenticacaoStrategyTests
         var trabalhador = new Trabalhador
         {
             ObraId = obra.Id, Nome = "Fulano", Cpf = "12345678901", DataAdmissao = DateTime.UtcNow,
-            AzureFacePersonId = "person-1",
+            AzureFacePersonId = "person-1", ConsentimentoBiometriaEm = DateTime.UtcNow,
         };
         db.Trabalhadores.Add(trabalhador);
         await db.SaveChangesAsync();
@@ -228,6 +228,7 @@ public class AzureFaceAutenticacaoStrategyTests
         db.Trabalhadores.Add(new Trabalhador
         {
             ObraId = obra.Id, Nome = "Fulano", Cpf = "12345678901", DataAdmissao = DateTime.UtcNow, AzureFacePersonId = "person-1",
+            ConsentimentoBiometriaEm = DateTime.UtcNow,
         });
         await db.SaveChangesAsync();
 
@@ -664,5 +665,32 @@ public class AzureFaceAutenticacaoStrategyTests
 
         Assert.Contains("recognitionModel=recognition_04", consultaDetect);
         Assert.Contains("detectionModel=detection_03", consultaDetect);
+    }
+
+    // Consentimento revogado: o rosto até é reconhecido, mas a pessoa não pode mais assinar pela biometria.
+    [Fact]
+    public async Task IdentificarAsync_SemConsentimentoAtivo_Recusa()
+    {
+        var db = CriarDb(nameof(IdentificarAsync_SemConsentimentoAtivo_Recusa));
+        var obra = new Obra
+        {
+            Codigo = "OB1", Nome = "Obra Teste", AzureFacePersonGroupId = "grupo-sem-consentimento",
+            MetodosAutenticacaoHabilitados = MetodoAutenticacaoObra.ReconhecimentoFacial,
+        };
+        db.Obras.Add(obra);
+        db.Trabalhadores.Add(new Trabalhador { ObraId = obra.Id, Nome = "Fulano", Cpf = "12345678901", DataAdmissao = DateTime.UtcNow, AzureFacePersonId = "person-1" });
+        await db.SaveChangesAsync();
+        var factory = new HttpClientFactoryFalso(req =>
+        {
+            var caminho = req.RequestUri!.AbsolutePath;
+            if (req.Method == HttpMethod.Get) return Json(new { recognitionModel = "recognition_04" });
+            if (caminho.EndsWith("/detect")) return Json(new[] { new { faceId = "face-1" } });
+            if (caminho.EndsWith("/identify")) return Json(new[] { new { faceId = "face-1", candidates = new[] { new { personId = "person-1", confidence = 0.95 } } } });
+            throw new InvalidOperationException("chamada inesperada: " + req.RequestUri);
+        });
+
+        var erro = await Assert.ThrowsAsync<InvalidOperationException>(() =>
+            new AzureFaceAutenticacaoStrategy(db, factory, Opcoes()).IdentificarAsync(obra.Id, new byte[] { 1 }, default));
+        Assert.Contains("consentimento", erro.Message);
     }
 }

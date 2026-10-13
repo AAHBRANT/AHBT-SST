@@ -15,6 +15,7 @@ namespace AAHBRANT.SST.Api.Controllers;
 // ResolverTrabalhadorPublicoQuery.
 [ApiController]
 [AllowAnonymous]
+[Microsoft.AspNetCore.RateLimiting.EnableRateLimiting("publico")]
 [Route("sst/p")]
 public class IdentificacaoPublicaController : ControllerBase
 {

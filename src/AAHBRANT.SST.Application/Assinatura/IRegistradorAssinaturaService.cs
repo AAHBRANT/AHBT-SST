@@ -20,7 +20,8 @@ namespace AAHBRANT.SST.Application.Assinatura;
 // ValidacaoModelo/GrupoId/RequisicaoId: rastro da validação feita pelo Azure AI Face (assinatura facial).
 public record ResultadoAutenticacaoAssinatura(
     Guid TrabalhadorId, MetodoAutenticacaoAssinatura Metodo, Guid? DispositivoAgenteId = null,
-    string? ValidacaoModelo = null, string? ValidacaoGrupoId = null, string? ValidacaoRequisicaoId = null);
+    string? ValidacaoModelo = null, string? ValidacaoGrupoId = null, string? ValidacaoRequisicaoId = null,
+    double? Confianca = null, DateTime? CapturadaEmDeclarada = null);
 
 // Geolocalização declarada pelo aparelho no momento da assinatura (log de assinaturas da Ficha de EPI).
 public record LocalizacaoAssinatura(StatusLocalizacaoAssinatura Status, double? Latitude = null, double? Longitude = null, double? PrecisaoMetros = null)
@@ -128,6 +129,7 @@ public class RegistradorAssinaturaService : IRegistradorAssinaturaService
                 throw new InvalidOperationException("Apenas Técnico de Segurança ou Engenheiro de Segurança podem assinar inspeções.");
         }
 
+        var operadorUsuarioId = await ObterOperadorAsync(ct);
         var signatario = new DocumentoSignatario
         {
             DocumentoAssinaturaId = documento.Id,
@@ -143,6 +145,9 @@ public class RegistradorAssinaturaService : IRegistradorAssinaturaService
             ValidacaoModelo = Truncar(resultado.ValidacaoModelo, 60),
             ValidacaoGrupoId = Truncar(resultado.ValidacaoGrupoId, 80),
             ValidacaoRequisicaoId = Truncar(resultado.ValidacaoRequisicaoId, 80),
+            ConfiancaAutenticacao = resultado.Confianca is { } c ? Math.Round(c, 2) : null,
+            CapturadaEmDeclarada = CapturaDeclaradaRelevante(resultado.CapturadaEmDeclarada),
+            OperadorUsuarioId = operadorUsuarioId,
         };
         var local = (localizacao ?? new LocalizacaoAssinatura(StatusLocalizacaoAssinatura.NaoInformada)).Normalizada();
         signatario.LocalizacaoStatus = local.Status;
@@ -165,7 +170,7 @@ public class RegistradorAssinaturaService : IRegistradorAssinaturaService
             "Assinatura.Registrada",
             documento.EntidadeTipo,
             documento.EntidadeId,
-            usuarioId: null,
+            usuarioId: operadorUsuarioId,
             trabalhadorId: trabalhador.Id,
             dadosDepois: new { DocumentoAssinaturaId = documento.Id, TrabalhadorId = trabalhador.Id, TrabalhadorNome = trabalhador.Nome, signatario.MetodoAutenticacao, signatario.AssinadoEm },
             ct);
@@ -177,6 +182,27 @@ public class RegistradorAssinaturaService : IRegistradorAssinaturaService
             await FinalizacaoAutomaticaDocumento.TentarAsync(_db, _mediator, _logger, documento.Id, ct);
 
         return new DocumentoSignatarioDto(trabalhador.Id, trabalhador.Nome, signatario.MetodoAutenticacao, signatario.AssinadoEm, signatario.IpAddress);
+    }
+
+    private async Task<Guid?> ObterOperadorAsync(CancellationToken ct)
+    {
+        var oid = _clienteIp?.ObterAzureAdObjectId();
+        if (oid is null)
+            return null;
+        return await _db.Usuarios.Where(u => u.AzureAdObjectId == oid).Select(u => (Guid?)u.Id).FirstOrDefaultAsync(ct);
+    }
+
+    // Só guarda a hora declarada quando ela conta algo: foto enviada mais de 1 minuto depois de tirada (fila
+    // offline). Hora no futuro (relógio do aparelho errado) é descartada.
+    private static DateTime? CapturaDeclaradaRelevante(DateTime? declarada)
+    {
+        if (declarada is null)
+            return null;
+        var utc = declarada.Value.Kind == DateTimeKind.Unspecified
+            ? DateTime.SpecifyKind(declarada.Value, DateTimeKind.Utc)
+            : declarada.Value.ToUniversalTime();
+        var agora = DateTime.UtcNow;
+        return utc > agora.AddMinutes(5) || agora - utc < TimeSpan.FromMinutes(1) ? null : utc;
     }
 
     // Nome da Função é texto livre no cadastro (não existe um "tipo de função" fechado no sistema —

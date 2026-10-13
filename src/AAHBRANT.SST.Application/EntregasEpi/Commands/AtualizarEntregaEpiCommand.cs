@@ -1,3 +1,4 @@
+using AAHBRANT.SST.Application.Assinatura;
 using AAHBRANT.SST.Application.Common.Interfaces;
 using AAHBRANT.SST.Application.Common.Seguranca;
 using AAHBRANT.SST.Domain.Entidades;
@@ -48,6 +49,14 @@ public class AtualizarEntregaEpiCommandHandler : IRequestHandler<AtualizarEntreg
         var entrega = await _db.EntregasEpi.NoEscopoDoTrabalhador(_db, x => x.TrabalhadorId).FirstOrDefaultAsync(x => x.Id == request.Id, ct)
             ?? throw new KeyNotFoundException("Entrega de EPI não encontrada.");
 
+        // Entrega assinada (12/10): os dados da entrega ficam travados, mas a devolução continua podendo ser
+        // registrada — é por este mesmo comando que a tela registra a devolução, quase sempre depois de a
+        // entrega ter sido assinada. Depois que a devolução é assinada, trava tudo.
+        const ProtecaoDocumentoAssinado.Trava naAssinatura = ProtecaoDocumentoAssinado.Trava.AposPrimeiraAssinatura;
+        await ProtecaoDocumentoAssinado.GarantirEditavelAsync(_db, request.Id, naAssinatura, ct, "DevolucaoEpi");
+        if (await ProtecaoDocumentoAssinado.EstaTravadoAsync(_db, request.Id, naAssinatura, ct, "EntregaEpi") && MudouDadosDaEntrega(entrega, request))
+            throw new InvalidOperationException("Esta entrega já foi assinada: só é possível registrar a devolução. Para corrigir a entrega, registre uma nova.");
+
         // Devolução registrada agora (não tinha DataDevolucao antes): repõe o estoque segmentado por
         // Obra (Fase 3) com a quantidade devolvida. Usa a Obra do trabalhador ANTES da atualização
         // abaixo (entrega.TrabalhadorId), já que foi essa Obra que teve o item físico saindo do estoque.
@@ -95,4 +104,19 @@ public class AtualizarEntregaEpiCommandHandler : IRequestHandler<AtualizarEntreg
 
         await _db.SaveChangesAsync(ct);
     }
+
+    // Tudo menos os campos da devolução. Datas comparadas pelo dia (a tela reenvia a data sem hora); motivo
+    // vazio nas entregas antigas é reenviado pela tela como "Inicial" e não conta como alteração.
+    private static bool MudouDadosDaEntrega(EntregaEpi entrega, AtualizarEntregaEpiCommand r) =>
+        r.TrabalhadorId != entrega.TrabalhadorId
+        || r.CatalogoEpiId != entrega.CatalogoEpiId
+        || r.DataEntrega.Date != entrega.DataEntrega.Date
+        || r.DataValidade?.Date != entrega.DataValidade?.Date
+        || r.Quantidade != entrega.Quantidade
+        || (r.VistoConsorcioResponsavel ?? "") != (entrega.VistoConsorcioResponsavel ?? "")
+        || (r.Motivo ?? "") != (entrega.Motivo ?? "")
+        || (r.Observacoes ?? "") != (entrega.Observacoes ?? "")
+        || r.MotivoTipo != (entrega.MotivoTipo ?? MotivoEntregaEpi.Inicial)
+        || (r.NumeroListaPresencaNr6 ?? "") != (entrega.NumeroListaPresencaNr6 ?? "")
+        || r.DataTreinamentoNr6?.Date != entrega.DataTreinamentoNr6?.Date;
 }

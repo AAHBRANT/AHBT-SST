@@ -32,8 +32,12 @@ public class FinalizarDocumentoCommandHandler : IRequestHandler<FinalizarDocumen
     private readonly IDocumentoAssinaturaPdfService _pdf;
     private readonly IQrCodeDocumentoService _qrCode;
 
-    public FinalizarDocumentoCommandHandler(IAppDbContext db, IAuditoriaService auditoria, IMediator mediator, IDocumentoAssinaturaPdfService pdf, IQrCodeDocumentoService qrCode)
+    private readonly IClienteIpProvider? _cliente;
+
+    public FinalizarDocumentoCommandHandler(IAppDbContext db, IAuditoriaService auditoria, IMediator mediator, IDocumentoAssinaturaPdfService pdf, IQrCodeDocumentoService qrCode,
+        IClienteIpProvider? cliente = null)
     {
+        _cliente = cliente;
         _db = db;
         _auditoria = auditoria;
         _mediator = mediator;
@@ -89,14 +93,15 @@ public class FinalizarDocumentoCommandHandler : IRequestHandler<FinalizarDocumen
         documento.HashPdf = HashArquivoCalculador.Calcular(documento.PdfConteudo);
         documento.ArquivoAtualizadoEm = documento.FinalizadoEm;
 
-        // usuarioId/trabalhadorId nulos: não há ICurrentUserService no projeto hoje para capturar quem
-        // disparou a finalização (ver docs/Motor-Assinatura-Eletronica.md — nota da etapa 8); quando o
-        // botão de finalizar existir no frontend, reavaliar se vale adicionar.
+        // Quem finalizou: o usuário logado (botão "Finalizar documento" ou quem encerrou o DDS/a turma).
+        var oid = _cliente?.ObterAzureAdObjectId();
+        var usuarioId = oid is null ? null
+            : await _db.Usuarios.Where(u => u.AzureAdObjectId == oid).Select(u => (Guid?)u.Id).FirstOrDefaultAsync(ct);
         await _auditoria.RegistrarAsync(
             "Documento.Finalizado",
             documento.EntidadeTipo,
             documento.EntidadeId,
-            usuarioId: null,
+            usuarioId: usuarioId,
             trabalhadorId: null,
             dadosDepois: new { DocumentoAssinaturaId = documento.Id, ConteudoHash = hash, QuantidadeSignatarios = signatarios.Count },
             ct);

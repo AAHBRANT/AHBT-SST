@@ -38,7 +38,9 @@ public class VerificarIntegridadeQueryHandler : IRequestHandler<VerificarIntegri
 
         var signatarios = await _db.DocumentoSignatarios
             .Where(s => s.DocumentoAssinaturaId == documento.Id)
-            .Join(_db.Trabalhadores, s => s.TrabalhadorId, t => t.Id,
+            // IgnoreQueryFilters: signatário desligado ou transferido de obra continua no documento. Com o filtro
+            // ele sumia do recálculo e o documento aparecia como "adulterado" sem ter sido (11/10).
+            .Join(_db.Trabalhadores.IgnoreQueryFilters(), s => s.TrabalhadorId, t => t.Id,
                 (s, t) => new DocumentoSignatarioDto(t.Id, t.Nome, s.MetodoAutenticacao, s.AssinadoEm, s.IpAddress))
             .ToListAsync(ct);
 

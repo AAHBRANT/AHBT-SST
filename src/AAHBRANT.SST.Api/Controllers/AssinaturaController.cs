@@ -98,6 +98,8 @@ public class AssinaturaController : ControllerBase
         public double? Latitude { get; set; }
         public double? Longitude { get; set; }
         public double? PrecisaoMetros { get; set; }
+        // Hora em que o aparelho tirou a foto (ISO 8601). Faz diferença quando a foto ficou na fila offline.
+        public DateTime? CapturadaEm { get; set; }
     }
 
     [Authorize(Policy = "assinatura:assinar")]
@@ -111,7 +113,8 @@ public class AssinaturaController : ControllerBase
         {
             var resultado = await _mediator.Send(
                 new RegistrarAssinaturaFacialCommand(id, body.ObraId, stream.ToArray(), body.Foto.ContentType, ObterIpCliente(),
-                    body.LocalizacaoStatus is { } status ? new LocalizacaoAssinatura(status, body.Latitude, body.Longitude, body.PrecisaoMetros) : null), ct);
+                    body.LocalizacaoStatus is { } status ? new LocalizacaoAssinatura(status, body.Latitude, body.Longitude, body.PrecisaoMetros) : null,
+                    body.CapturadaEm), ct);
             return Ok(resultado);
         }
         catch (RejeicaoFacialException ex)
@@ -126,6 +129,15 @@ public class AssinaturaController : ControllerBase
     // IP acrescentado pelo ingress em RemoteIpAddress.
     private string? ObterIpCliente()
         => HttpContext.Connection.RemoteIpAddress?.ToString();
+
+    public record ListarRegistrosTravadosRequestBody(string EntidadeTipo, List<Guid> Ids);
+
+    // Quais registros da lista já estão travados pela assinatura (a tela esconde editar/excluir deles). Só
+    // devolve ids que o próprio chamador mandou: não expõe nada além de "travado ou não".
+    [Authorize]
+    [HttpPost("registros-travados")]
+    public async Task<ActionResult<List<Guid>>> ListarRegistrosTravados(ListarRegistrosTravadosRequestBody body, CancellationToken ct)
+        => Ok(await _mediator.Send(new ListarRegistrosTravadosQuery(body.EntidadeTipo, body.Ids ?? new List<Guid>()), ct));
 
     [Authorize(Policy = "assinatura:finalizar")]
     [HttpPost("{id:guid}/finalizar")]

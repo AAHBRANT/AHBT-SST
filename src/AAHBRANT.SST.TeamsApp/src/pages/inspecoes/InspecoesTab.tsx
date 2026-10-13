@@ -23,6 +23,7 @@ import {
 import { Add24Regular, Delete24Regular } from '@fluentui/react-icons';
 import { useSouAdministrador } from '../../lib/UsuarioLogadoContext';
 import { hojeIso } from '../../lib/datas';
+import { useRegistrosTravados } from '../../hooks/useRegistrosTravados';
 import {
   api,
   statusInspecaoLabel,
@@ -60,6 +61,8 @@ const tomPorStatusInspecao: Record<number, Tom> = {
 export function InspecoesTab() {
   const navigate = useNavigate();
   const [inspecoes, setInspecoes] = useState<Inspecao[]>([]);
+  // Já assinados não podem ser excluídos (o servidor recusa): o botão some deles.
+  const travados = useRegistrosTravados('Inspecao', inspecoes.map((i) => i.id));
   const [obras, setObras] = useState<Obra[]>([]);
   const [atividades, setAtividades] = useState<Atividade[]>([]);
   const [checklists, setChecklists] = useState<ChecklistModelo[]>([]);
@@ -305,7 +308,7 @@ export function InspecoesTab() {
           acoesLinha={(i) => (
             <>
               {/* Exclusão é privilégio de Administrador (o servidor recusa os demais) — ver PoliticasAutorizacao. */}
-              {souAdministrador && (
+              {souAdministrador && !travados.has(i.id) && (
                 <BotaoAcao
                   tom="excluir"
                   icon={<Delete24Regular />}

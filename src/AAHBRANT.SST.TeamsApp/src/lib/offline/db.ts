@@ -39,6 +39,9 @@ export interface ItemConflito {
   dadosServidor?: string;
   criadoEm: number;
   lido: boolean;
+  // Ação recusada pelo servidor, guardada inteira (inclusive a foto) para o botão "Tentar de novo" — antes
+  // ficava só o texto "[multipart]" e a foto da assinatura se perdia. Campo sem índice: não muda o schema.
+  item?: Omit<ItemFilaSaida, 'id'>;
 }
 
 class SstOfflineDb extends Dexie {

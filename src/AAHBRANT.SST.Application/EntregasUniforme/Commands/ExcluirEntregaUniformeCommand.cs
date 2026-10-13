@@ -1,3 +1,4 @@
+using AAHBRANT.SST.Application.Assinatura;
 using AAHBRANT.SST.Application.Common.Interfaces;
 using AAHBRANT.SST.Application.Common.Seguranca;
 using AAHBRANT.SST.Domain.Entidades;
@@ -28,6 +29,8 @@ public class ExcluirEntregaUniformeCommandHandler : IRequestHandler<ExcluirEntre
 
     public async Task Handle(ExcluirEntregaUniformeCommand request, CancellationToken ct)
     {
+        await ProtecaoDocumentoAssinado.GarantirEditavelAsync(_db, "EntregaUniforme", request.Id, ct);
+
         var entrega = await _db.EntregasUniforme.NoEscopoDoTrabalhador(_db, x => x.TrabalhadorId).FirstOrDefaultAsync(x => x.Id == request.Id, ct)
             ?? throw new KeyNotFoundException("Entrega de uniforme não encontrada.");
 

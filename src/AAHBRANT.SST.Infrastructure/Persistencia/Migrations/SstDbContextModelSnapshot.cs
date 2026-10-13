@@ -2798,6 +2798,12 @@ namespace AAHBRANT.SST.Infrastructure.Persistencia.Migrations
                     b.Property<bool>("Ativo")
                         .HasColumnType("bit");
 
+                    b.Property<DateTime?>("CapturadaEmDeclarada")
+                        .HasColumnType("datetime2");
+
+                    b.Property<double?>("ConfiancaAutenticacao")
+                        .HasColumnType("float");
+
                     b.Property<DateTime>("CreatedAtUtc")
                         .HasColumnType("datetime2");
 
@@ -2835,6 +2841,9 @@ namespace AAHBRANT.SST.Infrastructure.Persistencia.Migrations
 
                     b.Property<int>("MetodoAutenticacao")
                         .HasColumnType("int");
+
+                    b.Property<Guid?>("OperadorUsuarioId")
+                        .HasColumnType("uniqueidentifier");
 
                     b.Property<int>("Origem")
                         .HasColumnType("int");
@@ -8015,6 +8024,12 @@ namespace AAHBRANT.SST.Infrastructure.Persistencia.Migrations
 
                     b.Property<DateTime?>("ConsentimentoBiometriaEm")
                         .HasColumnType("datetime2");
+
+                    b.Property<DateTime?>("ConsentimentoBiometriaRevogadoEm")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("ConsentimentoBiometriaVersao")
+                        .HasColumnType("nvarchar(max)");
 
                     b.Property<Guid?>("ContratoId")
                         .HasColumnType("uniqueidentifier");

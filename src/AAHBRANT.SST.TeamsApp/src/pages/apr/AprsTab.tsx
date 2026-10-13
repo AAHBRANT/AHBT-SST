@@ -24,6 +24,7 @@ import { Add24Regular, Delete24Regular, PeopleTeamAdd24Regular } from '@fluentui
 import { api, StatusApr, statusAprLabel, type Apr, type Atividade, type Equipe, type NovaApr, type Trabalhador } from '../../lib/api';
 import { useSucessoToast } from '../../hooks/useSucessoToast';
 import { hojeIso } from '../../lib/datas';
+import { useRegistrosTravados } from '../../hooks/useRegistrosTravados';
 import { useSouAdministrador } from '../../lib/UsuarioLogadoContext';
 
 function aprVazia(): NovaApr {
@@ -57,6 +58,8 @@ export function AprsTab() {
   const souAdministrador = useSouAdministrador();
   const navigate = useNavigate();
   const [aprs, setAprs] = useState<Apr[]>([]);
+  // Finalizados não podem ser excluídos (o servidor recusa): o botão some deles.
+  const travados = useRegistrosTravados('Apr', aprs.map((a) => a.id));
   const [atividades, setAtividades] = useState<Atividade[]>([]);
   const [trabalhadores, setTrabalhadores] = useState<Trabalhador[]>([]);
   const [equipes, setEquipes] = useState<Equipe[]>([]);
@@ -356,7 +359,7 @@ export function AprsTab() {
           acoesLinha={(a) => (
             <>
               {/* Exclusão é privilégio de Administrador (o servidor recusa os demais) — ver PoliticasAutorizacao. */}
-              {souAdministrador && (
+              {souAdministrador && !travados.has(a.id) && (
                 <BotaoAcao tom="excluir" icon={<Delete24Regular />} onClick={() => excluir(a.id)} aria-label="Excluir" />
               )}
             </>

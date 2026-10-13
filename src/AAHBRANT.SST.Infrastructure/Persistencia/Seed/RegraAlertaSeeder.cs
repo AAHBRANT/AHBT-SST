@@ -24,6 +24,7 @@ public static class RegraAlertaSeeder
         // no Teams até alguém escolher o responsável em Configurações — evita a rajada do primeiro
         // processamento numa obra com quadro de exames recém-importado.
         TipoModuloAlerta.ExamesFuncao,
+        TipoModuloAlerta.CadastroFacial,
     };
 
     public static async Task ExecutarAsync(IServiceProvider services, CancellationToken ct = default)
