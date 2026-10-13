@@ -130,6 +130,15 @@ public class AssinaturaController : ControllerBase
     private string? ObterIpCliente()
         => HttpContext.Connection.RemoteIpAddress?.ToString();
 
+    public record ListarRegistrosTravadosRequestBody(string EntidadeTipo, List<Guid> Ids);
+
+    // Quais registros da lista já estão travados pela assinatura (a tela esconde editar/excluir deles). Só
+    // devolve ids que o próprio chamador mandou: não expõe nada além de "travado ou não".
+    [Authorize]
+    [HttpPost("registros-travados")]
+    public async Task<ActionResult<List<Guid>>> ListarRegistrosTravados(ListarRegistrosTravadosRequestBody body, CancellationToken ct)
+        => Ok(await _mediator.Send(new ListarRegistrosTravadosQuery(body.EntidadeTipo, body.Ids ?? new List<Guid>()), ct));
+
     [Authorize(Policy = "assinatura:finalizar")]
     [HttpPost("{id:guid}/finalizar")]
     public async Task<IActionResult> Finalizar(Guid id, CancellationToken ct)

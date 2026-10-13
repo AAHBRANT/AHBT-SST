@@ -25,7 +25,7 @@ public class ExcluirAprCommandHandler : IRequestHandler<ExcluirAprCommand>
 
     public async Task Handle(ExcluirAprCommand request, CancellationToken ct)
     {
-        await ProtecaoDocumentoAssinado.GarantirEditavelAsync(_db, request.Id, ProtecaoDocumentoAssinado.Trava.AposFinalizacao, ct, "Apr");
+        await ProtecaoDocumentoAssinado.GarantirEditavelAsync(_db, "Apr", request.Id, ct);
 
         var apr = await _db.Aprs
             .NoEscopoDaAtividade(_db, a => a.AtividadeId)

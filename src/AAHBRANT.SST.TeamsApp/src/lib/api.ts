@@ -2724,6 +2724,8 @@ export interface TermoCompromissoEpi {
   arquivoNome?: string | null;
 }
 
+export type TipoRegistroTravavel = 'EntregaEpi' | 'EntregaUniforme' | 'Inspecao' | 'Apr' | 'PermissaoTrabalho' | 'Treinamento' | 'Dds';
+
 export interface DocumentoAssinatura {
   id: string;
   entidadeTipo: string;
@@ -5526,6 +5528,13 @@ export const api = {
     excluir: (id: string) => request<void>(`/api/catalogotemasdds/${id}`, { method: 'DELETE' }),
   },
   assinatura: {
+    // Dos ids da lista, quais já estão travados pela assinatura (editar/excluir somem da tela). Mesma regra
+    // do servidor (ProtecaoDocumentoAssinado): EPI/uniforme/inspeção na 1ª assinatura; APR/PT/treinamento/DDS
+    // ao finalizar.
+    listarRegistrosTravados: (entidadeTipo: TipoRegistroTravavel, ids: string[]) =>
+      ids.length === 0
+        ? Promise.resolve<string[]>([])
+        : request<string[]>('/api/documentos/registros-travados', { method: 'POST', body: JSON.stringify({ entidadeTipo, ids }) }),
     // Fecha o documento para novas assinaturas e gera o comprovante com o hash (permissão assinatura:finalizar).
     finalizar: (documentoId: string) =>
       request<DocumentoAssinatura>(`/api/documentos/${documentoId}/finalizar`, { method: 'POST' }),

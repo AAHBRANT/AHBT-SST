@@ -28,7 +28,7 @@ public class RemoverFotoEvidenciaDdsCommandHandler : IRequestHandler<RemoverFoto
     {
         var foto = await _db.DdsFotosEvidencia.FirstOrDefaultAsync(f => f.Id == request.FotoId, ct)
             ?? throw new KeyNotFoundException($"Foto de evidência {request.FotoId} não encontrada.");
-        await ProtecaoDocumentoAssinado.GarantirEditavelAsync(_db, foto.DdsId, ProtecaoDocumentoAssinado.Trava.AposFinalizacao, ct, "Dds");
+        await ProtecaoDocumentoAssinado.GarantirEditavelAsync(_db, "Dds", foto.DdsId, ct);
         await _db.GarantirObraDoPaiNoEscopoAsync(
             _db.Dds.IgnoreQueryFilters().Where(d => d.Id == foto.DdsId).Select(d => d.ObraId),
             $"Foto de evidência {request.FotoId} não encontrada.", ct);

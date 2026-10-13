@@ -33,6 +33,7 @@ import {
 } from '../../lib/api';
 import { useSucessoToast } from '../../hooks/useSucessoToast';
 import { hojeIso } from '../../lib/datas';
+import { useRegistrosTravados } from '../../hooks/useRegistrosTravados';
 import { useSouAdministrador } from '../../lib/UsuarioLogadoContext';
 
 function ptVazia(): NovaPermissaoTrabalho {
@@ -67,6 +68,8 @@ export function PermissoesTrabalhoTab() {
   const souAdministrador = useSouAdministrador();
   const navigate = useNavigate();
   const [permissoes, setPermissoes] = useState<PermissaoTrabalho[]>([]);
+  // Finalizados não podem ser excluídos (o servidor recusa): o botão some deles.
+  const travados = useRegistrosTravados('PermissaoTrabalho', permissoes.map((pt) => pt.id));
   const [atividades, setAtividades] = useState<Atividade[]>([]);
   const [trabalhadores, setTrabalhadores] = useState<Trabalhador[]>([]);
   const [equipes, setEquipes] = useState<Equipe[]>([]);
@@ -316,7 +319,7 @@ export function PermissoesTrabalhoTab() {
           acoesLinha={(pt) => (
             <>
               {/* Exclusão é privilégio de Administrador (o servidor recusa os demais) — ver PoliticasAutorizacao. */}
-              {souAdministrador && (
+              {souAdministrador && !travados.has(pt.id) && (
                 <BotaoAcao tom="excluir" icon={<Delete24Regular />} onClick={() => excluir(pt.id)} aria-label="Excluir" />
               )}
             </>

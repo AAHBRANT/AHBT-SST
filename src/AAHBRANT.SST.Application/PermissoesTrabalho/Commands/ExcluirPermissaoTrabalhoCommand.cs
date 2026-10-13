@@ -25,7 +25,7 @@ public class ExcluirPermissaoTrabalhoCommandHandler : IRequestHandler<ExcluirPer
 
     public async Task Handle(ExcluirPermissaoTrabalhoCommand request, CancellationToken ct)
     {
-        await ProtecaoDocumentoAssinado.GarantirEditavelAsync(_db, request.Id, ProtecaoDocumentoAssinado.Trava.AposFinalizacao, ct, "PermissaoTrabalho");
+        await ProtecaoDocumentoAssinado.GarantirEditavelAsync(_db, "PermissaoTrabalho", request.Id, ct);
 
         var pt = await _db.PermissoesTrabalho
             .NoEscopoDaAtividade(_db, p => p.AtividadeId)

@@ -41,7 +41,7 @@ public class AtualizarTreinamentoCommandHandler : IRequestHandler<AtualizarTrein
 
     public async Task Handle(AtualizarTreinamentoCommand request, CancellationToken ct)
     {
-        await ProtecaoDocumentoAssinado.GarantirEditavelAsync(_db, request.Id, ProtecaoDocumentoAssinado.Trava.AposFinalizacao, ct, "Treinamento");
+        await ProtecaoDocumentoAssinado.GarantirEditavelAsync(_db, "Treinamento", request.Id, ct);
 
         var treinamento = await _db.Treinamentos.NoEscopoDoTrabalhador(_db, x => x.TrabalhadorId).FirstOrDefaultAsync(x => x.Id == request.Id, ct)
             ?? throw new KeyNotFoundException("Treinamento não encontrado.");

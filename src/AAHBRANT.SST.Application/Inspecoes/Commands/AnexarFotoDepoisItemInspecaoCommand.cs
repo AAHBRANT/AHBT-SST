@@ -42,7 +42,7 @@ public class AnexarFotoDepoisItemInspecaoCommandHandler : IRequestHandler<Anexar
     {
         var resposta = await _db.InspecaoItemRespostas.Include(r => r.Inspecao).FirstOrDefaultAsync(r => r.Id == request.RespostaId, ct)
             ?? throw new KeyNotFoundException($"Resposta {request.RespostaId} não encontrada.");
-        await ProtecaoDocumentoAssinado.GarantirEditavelAsync(_db, resposta.InspecaoId, ProtecaoDocumentoAssinado.Trava.AposPrimeiraAssinatura, ct, "Inspecao");
+        await ProtecaoDocumentoAssinado.GarantirEditavelAsync(_db, "Inspecao", resposta.InspecaoId, ct);
 
         resposta.FotoDepoisConteudo = request.FotoConteudo;
         resposta.FotoDepoisContentType = request.FotoContentType;

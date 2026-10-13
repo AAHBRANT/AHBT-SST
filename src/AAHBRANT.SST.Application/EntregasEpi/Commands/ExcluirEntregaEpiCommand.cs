@@ -26,7 +26,7 @@ public class ExcluirEntregaEpiCommandHandler : IRequestHandler<ExcluirEntregaEpi
 
     public async Task Handle(ExcluirEntregaEpiCommand request, CancellationToken ct)
     {
-        await ProtecaoDocumentoAssinado.GarantirEditavelAsync(_db, request.Id, ProtecaoDocumentoAssinado.Trava.AposPrimeiraAssinatura, ct, "EntregaEpi", "DevolucaoEpi");
+        await ProtecaoDocumentoAssinado.GarantirEditavelAsync(_db, "EntregaEpi", request.Id, ct);
 
         var entrega = await _db.EntregasEpi.NoEscopoDoTrabalhador(_db, x => x.TrabalhadorId).FirstOrDefaultAsync(x => x.Id == request.Id, ct)
             ?? throw new KeyNotFoundException("Entrega de EPI não encontrada.");

@@ -32,6 +32,7 @@ import {
 } from '../../lib/api';
 import { useSouAdministrador } from '../../lib/UsuarioLogadoContext';
 import { AssinaturaEntregaUniformeDialog } from '../../components/assinatura/AssinaturaEntregaUniformeDialog';
+import { useRegistrosTravados } from '../../hooks/useRegistrosTravados';
 import { FotoCatalogoUniforme } from './FotoCatalogoUniforme';
 
 function entregaVazia(): NovaEntregaUniforme {
@@ -58,6 +59,8 @@ interface EntregaUniformeTabProps {
 export function EntregaUniformeTab({ aoNavegarParaMatriz }: EntregaUniformeTabProps) {
   const navigate = useNavigate();
   const [entregas, setEntregas] = useState<EntregaUniforme[]>([]);
+  // Já assinados não podem ser excluídos (o servidor recusa): o botão some deles.
+  const travados = useRegistrosTravados('EntregaUniforme', entregas.map((e) => e.id));
   const [itensCatalogo, setItensCatalogo] = useState<CatalogoUniforme[]>([]);
   const [itensPermitidos, setItensPermitidos] = useState<CatalogoUniforme[]>([]);
   const [tamanhosTrabalhador, setTamanhosTrabalhador] = useState<TamanhoUniformeTrabalhador[]>([]);
@@ -347,7 +350,7 @@ export function EntregaUniformeTab({ aoNavegarParaMatriz }: EntregaUniformeTabPr
           acoesLinha={(e) => (
             <>
               {/* Exclusão é privilégio de Administrador (o servidor recusa os demais) — ver PoliticasAutorizacao. */}
-              {souAdministrador && (
+              {souAdministrador && !travados.has(e.id) && (
                 <BotaoAcao
                   tom="excluir"
                   icon={<Delete24Regular />}

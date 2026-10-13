@@ -47,7 +47,7 @@ public class AtualizarPermissaoTrabalhoCommandHandler : IRequestHandler<Atualiza
 
     public async Task Handle(AtualizarPermissaoTrabalhoCommand request, CancellationToken ct)
     {
-        await ProtecaoDocumentoAssinado.GarantirEditavelAsync(_db, request.Id, ProtecaoDocumentoAssinado.Trava.AposFinalizacao, ct, "PermissaoTrabalho");
+        await ProtecaoDocumentoAssinado.GarantirEditavelAsync(_db, "PermissaoTrabalho", request.Id, ct);
 
         var pt = await _db.PermissoesTrabalho
             .NoEscopoDaAtividade(_db, p => p.AtividadeId)
