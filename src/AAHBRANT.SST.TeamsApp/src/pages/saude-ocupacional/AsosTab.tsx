@@ -40,7 +40,7 @@ function asoVazio(): NovoAso {
     tipo: 1,
     dataExame: '',
     dataValidade: '',
-    resultadoStatus: ResultadoAso.Pendente,
+    resultadoStatus: ResultadoAso.Apto,
     medicoNome: '',
     medicoCrm: '',
     observacoesClinicas: '',
@@ -66,6 +66,12 @@ function formatarData(iso: string) {
   return `${dia}/${mes}/${ano}`;
 }
 
+// ASO dentro da validade é apto (regra do usuário, 13/10): o G-RH manda o ASO sem o campo de
+// aptidão, então "Pendente" é só falta do dado e é mostrado como Apto nesta lista.
+function parecerExibido(resultado: number) {
+  return resultado === ResultadoAso.Pendente ? ResultadoAso.Apto : resultado;
+}
+
 // "Situação hoje" cruza validade e parecer (pedido do usuário, 13/10): antes a linha mostrava
 // "Vencido" na validade e "Apto" no resultado lado a lado, e quem lia entendia que o trabalhador
 // estava liberado. Vencimento vence qualquer parecer; parecer só decide quando o exame ainda vale.
@@ -75,8 +81,6 @@ function situacaoHoje(aso: Aso): { tom: Tom; rotulo: string; detalhe?: string } 
     return { tom: 'alerta', rotulo: 'Vencido', detalhe: `Refazer exame · venceu há ${-dias} ${-dias === 1 ? 'dia' : 'dias'}` };
   if (aso.resultadoStatus === ResultadoAso.Inapto)
     return { tom: 'alerta', rotulo: 'Não liberado', detalhe: 'Inapto no exame' };
-  if (aso.resultadoStatus === ResultadoAso.Pendente)
-    return { tom: 'info', rotulo: 'Aguardando parecer', detalhe: 'Exame válido, resultado não lançado' };
   if (dias <= LIMIAR_ALERTA_DIAS)
     return { tom: 'atencao', rotulo: dias === 0 ? 'Vence hoje' : `Vence em ${dias} ${dias === 1 ? 'dia' : 'dias'}`, detalhe: 'Agendar periódico' };
   if (aso.resultadoStatus === ResultadoAso.AptoComRestricao) return { tom: 'atencao', rotulo: 'Liberado com restrição' };
@@ -286,14 +290,12 @@ export function AsosTab() {
         ) : diasAteValidade(a.dataValidade) < 0 ? (
           // Exame vencido: o parecer é só histórico, então fica apagado e sem pulsar.
           <>
-            <StatusChip tom="neutro">
-              {a.resultadoStatus === ResultadoAso.Pendente ? 'Sem parecer' : resultadoAsoLabel[a.resultadoStatus]}
-            </StatusChip>
+            <StatusChip tom="neutro">{resultadoAsoLabel[parecerExibido(a.resultadoStatus)]}</StatusChip>
             <span style={estiloLinhaApoio}>no exame de {formatarData(a.dataExame)}</span>
           </>
         ) : (
-          <StatusChip tom={tomPorResultadoAso[a.resultadoStatus] ?? 'neutro'}>
-            {resultadoAsoLabel[a.resultadoStatus]}
+          <StatusChip tom={tomPorResultadoAso[parecerExibido(a.resultadoStatus)] ?? 'neutro'}>
+            {resultadoAsoLabel[parecerExibido(a.resultadoStatus)]}
           </StatusChip>
         ),
     },

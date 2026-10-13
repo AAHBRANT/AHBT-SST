@@ -1232,6 +1232,17 @@ public static class NovidadesSeeder
                     "Quando o G-RH tinha o mesmo ASO em vários documentos, a lista mostrava uma linha igual para cada um.",
                     "O mesmo exame (mesmo funcionário, tipo, data e validade) aparece numa linha só, com a indicação de quantos documentos iguais existem. Nenhum registro é apagado."),
             }),
+        new(
+            Versao: "5.63.0",
+            Titulo: "ASO dentro da validade aparece como Apto",
+            DataPublicacao: new DateTime(2026, 10, 13, 0, 0, 0, DateTimeKind.Utc),
+            Itens: new[]
+            {
+                new NovidadeSeedItem(CategoriaNovidade.Correcao,
+                    "ASO do G-RH sem aptidão não fica mais \"Pendente\"",
+                    "ASOs vindos do G-RH sem o campo de aptidão apareciam como \"Pendente\" ou \"Aguardando parecer\", mesmo dentro da validade.",
+                    "Na lista de ASOs, esses exames aparecem como \"Apto\", e a situação de hoje mostra \"Liberado\" enquanto o ASO estiver válido. O cadastro manual de ASO também começa com o resultado \"Apto\"."),
+            }),
     };
 
     public static async Task ExecutarAsync(IServiceProvider services, CancellationToken ct = default)
