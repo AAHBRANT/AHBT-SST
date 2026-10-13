@@ -46,9 +46,10 @@ public class ObterLiberacaoParaTrabalhoQueryHandler : IRequestHandler<ObterLiber
             .Select(f => f.Id)
             .ToHashSet();
 
+        // ASO dentro da validade é apto (regra do usuário, 13/10/2026): o G-RH não manda a aptidão e o
+        // ASO chega como Pendente, então só Inapto bloqueia.
         var idsComAsoValido = (await _db.Asos
-                .Where(a => ids.Contains(a.TrabalhadorId)
-                    && (a.ResultadoStatus == ResultadoAso.Apto || a.ResultadoStatus == ResultadoAso.AptoComRestricao))
+                .Where(a => ids.Contains(a.TrabalhadorId) && a.ResultadoStatus != ResultadoAso.Inapto)
                 .Select(a => new { a.TrabalhadorId, a.DataValidade })
                 .ToListAsync(ct))
             .Where(a => a.DataValidade.Date >= hoje)

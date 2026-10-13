@@ -400,12 +400,14 @@ export function DashboardPage() {
   }, [trabalhadoresAtivos, asosFiltrados]);
 
   // Já considera a validade: um ASO "apto" que venceu deixa de contar como apto (antes aparecia como apto).
+  // ASO "Pendente" conta como apto (regra do usuário, 13/10): o G-RH não manda a aptidão, e ASO dentro
+  // da validade é apto.
   const statusAsoGeral = useMemo(() => {
     const contagem = { aptos: 0, vencem: 0, vencidos: 0, inaptos: 0, restricao: 0, pendentes: 0 };
     const hojeMs = new Date(hojeISO).getTime();
     for (const trabalhador of trabalhadoresAtivos) {
       const aso = asoMaisRecentePorTrabalhador.get(trabalhador.id);
-      if (!aso || aso.resultadoStatus === ResultadoAso.Pendente) contagem.pendentes += 1;
+      if (!aso) contagem.pendentes += 1;
       else if (aso.resultadoStatus === ResultadoAso.Inapto) contagem.inaptos += 1;
       else if (aso.dataValidade.slice(0, 10) < hojeISO) contagem.vencidos += 1;
       else if (aso.resultadoStatus === ResultadoAso.AptoComRestricao) contagem.restricao += 1;
@@ -421,13 +423,13 @@ export function DashboardPage() {
     { rotulo: 'Vencidos', valor: statusAsoGeral.vencidos, cor: paleta.alerta },
     { rotulo: 'Inaptos', valor: statusAsoGeral.inaptos, cor: paleta.marca },
     { rotulo: 'Restrição temporária', valor: statusAsoGeral.restricao, cor: paleta.info },
-    { rotulo: 'Sem ASO ou pendente', valor: statusAsoGeral.pendentes, cor: paleta.neutro },
+    { rotulo: 'Sem ASO', valor: statusAsoGeral.pendentes, cor: paleta.neutro },
   ];
 
   // ---------- Conformidade por obra ----------
   // Só faz sentido comparando obras, então some quando uma obra está filtrada. Usa as mesmas fórmulas
   // provisórias dos KPIs (EPI e treinamentos não vencidos) e, no ASO, conta o trabalhador ativo cujo
-  // ASO mais recente é apto (com ou sem restrição) e está dentro da validade.
+  // ASO mais recente não é inapto e está dentro da validade (Pendente conta como apto, regra de 13/10).
   const conformidadePorObra: ConformidadeObra[] = useMemo(() => {
     if (obraSelecionadaId) return [];
     const pct = (ok: number, total: number) => (total > 0 ? Math.round((ok / total) * 100) : null);
@@ -448,7 +450,6 @@ export function DashboardPage() {
         const aso = asoMaisRecente.get(t.id);
         return (
           !!aso &&
-          aso.resultadoStatus !== ResultadoAso.Pendente &&
           aso.resultadoStatus !== ResultadoAso.Inapto &&
           aso.dataValidade >= hojeISO
         );
