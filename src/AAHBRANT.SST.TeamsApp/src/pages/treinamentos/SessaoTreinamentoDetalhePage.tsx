@@ -32,7 +32,7 @@ import {
   type SessaoTreinamentoDetalhe,
   type ParticipanteSessaoTreinamento,
 } from '../../lib/api';
-import { capturarDigitalLocal, estaAgenteLocalDisponivel, obterDispositivoLocal } from '../../lib/agenteBiometricoLocal';
+import { capturarDigitalLocal, credencialLeitura, estaAgenteLocalDisponivel, obterDispositivoLocal, type DispositivoLocal } from '../../lib/agenteBiometricoLocal';
 import { tocarBipeAssinaturaAceita } from '../../lib/bipeAssinatura';
 import { GradeFotosEvidencia } from '../../components/GradeFotosEvidencia';
 import { SeletorFotoCamera } from '../../components/SeletorFotoCamera';
@@ -88,7 +88,7 @@ export function SessaoTreinamentoDetalhePage() {
   const navigate = useNavigate();
   const [detalhe, setDetalhe] = useState<SessaoTreinamentoDetalhe | null>(null);
   const [agenteDisponivel, setAgenteDisponivel] = useState<boolean | null>(null);
-  const [dispositivoLocal, setDispositivoLocal] = useState<{ dispositivoId: string; segredoDispositivo: string } | null>(null);
+  const [dispositivoLocal, setDispositivoLocal] = useState<DispositivoLocal | null>(null);
   const [lendoDigital, setLendoDigital] = useState(false);
   const [lendoFacial, setLendoFacial] = useState(false);
   const [mensagemPresenca, setMensagemPresenca] = useState<{ tipo: 'success' | 'info' | 'erro'; texto: string } | null>(null);
@@ -169,7 +169,7 @@ export function SessaoTreinamentoDetalhePage() {
       setLendoDigital(true);
       setErro(null);
       setMensagemPresenca(null);
-      const captura = await capturarDigitalLocal();
+      const captura = await capturarDigitalLocal(dispositivoLocal.dispositivoId);
 
       const participante = detalhe?.participantes.find((p) => p.trabalhadorId === captura.trabalhadorId);
       if (!participante) {
@@ -184,8 +184,7 @@ export function SessaoTreinamentoDetalhePage() {
       await api.sessoesTreinamento.registrarPresenca(
         id,
         captura.trabalhadorId,
-        dispositivoLocal.dispositivoId,
-        dispositivoLocal.segredoDispositivo,
+        credencialLeitura(dispositivoLocal, captura.leituras[0]),
         captura.score,
       );
       setMensagemPresenca({ tipo: 'success', texto: `Presença de ${participante.trabalhadorNome} confirmada.` });
@@ -451,6 +450,7 @@ export function SessaoTreinamentoDetalhePage() {
                 variante="facialAzure"
                 modoCamera="user"
                 exigirCamera
+                permitirCapturaAutomatica
               />
             </div>
             {mensagemPresenca && (

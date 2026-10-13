@@ -1,4 +1,5 @@
 import { anexarDadosFoto, type DadosFoto } from './dadosFoto';
+import type { CredencialLeitura } from './agenteBiometricoLocal';
 import { localizacaoParaCorpo, obterLocalizacaoAssinatura } from './localizacaoAssinatura';
 import { API_BASE_URL } from './apiBase';
 import { montarHeadersAuth } from './authHeaders';
@@ -4367,6 +4368,9 @@ export const api = {
         body: JSON.stringify({ obraId, nome }),
       }),
     revogar: (id: string) => request<void>(`/api/dispositivos-agente/${id}`, { method: 'DELETE' }),
+    // Desafio de uso único para cada leitura de digital (o agente o assina junto com o resultado).
+    emitirDesafio: async (id: string) =>
+      (await request<{ desafio: string }>(`/api/dispositivos-agente/${id}/desafios`, { method: 'POST' })).desafio,
   },
   funcoes: {
     listar: () => request<Funcao[]>('/api/funcoes'),
@@ -4595,10 +4599,10 @@ export const api = {
     // Presença exclusivamente por biometria (mesmo padrão de api.dds.registrarParticipante) —
     // dispositivoId/segredoDispositivo vêm do agente local, score é o resultado do match 1:N já
     // feito por ele (ver capturarDigitalLocal).
-    registrarPresenca: (sessaoId: string, trabalhadorId: string, dispositivoId: string, segredoDispositivo: string, score: number) =>
+    registrarPresenca: (sessaoId: string, trabalhadorId: string, credencial: CredencialLeitura, score: number) =>
       request<void>(`/api/sessoestreinamento/${sessaoId}/presenca`, {
         method: 'POST',
-        body: JSON.stringify({ trabalhadorId, dispositivoId, segredoDispositivo, score }),
+        body: JSON.stringify({ trabalhadorId, ...credencial, score }),
       }),
     registrarPresencaFacial: async (sessaoId: string, obraId: string, foto: File) => {
       const formData = new FormData();
@@ -5388,10 +5392,10 @@ export const api = {
     // Presença exclusivamente por biometria (2026-08-31, pedido do usuário) — dispositivoId/
     // segredoDispositivo vêm do agente local (fetch a /api/dispositivo), nunca de localStorage;
     // score é o resultado do match 1:N já feito pelo agente (ver capturarDigitalLocal).
-    registrarParticipante: (ddsId: string, trabalhadorId: string, dispositivoId: string, segredoDispositivo: string, score: number, imagemDigital?: string | null) =>
+    registrarParticipante: (ddsId: string, trabalhadorId: string, credencial: CredencialLeitura, score: number, imagemDigital?: string | null) =>
       request<{ id: string }>(`/api/dds/${ddsId}/participantes`, {
         method: 'POST',
-        body: JSON.stringify({ trabalhadorId, dispositivoId, segredoDispositivo, score, imagemDigital: imagemDigital ?? null }),
+        body: JSON.stringify({ trabalhadorId, ...credencial, score, imagemDigital: imagemDigital ?? null }),
       }),
     // Presença por reconhecimento facial: a foto é identificada no servidor (grupo da obra do DDS) e o
     // rosto precisa ser do funcionário informado. Erros de rejeição vêm como { erro, motivo } no corpo.
@@ -5494,6 +5498,9 @@ export const api = {
     excluir: (id: string) => request<void>(`/api/catalogotemasdds/${id}`, { method: 'DELETE' }),
   },
   assinatura: {
+    // Fecha o documento para novas assinaturas e gera o comprovante com o hash (permissão assinatura:finalizar).
+    finalizar: (documentoId: string) =>
+      request<DocumentoAssinatura>(`/api/documentos/${documentoId}/finalizar`, { method: 'POST' }),
     obter: async (entidadeTipo: string, entidadeId: string) => {
       const query = new URLSearchParams({ entidadeTipo, entidadeId });
       const response = await fetch(`${API_BASE_URL}/api/documentos?${query.toString()}`, {
@@ -5523,11 +5530,11 @@ export const api = {
     },
     // Autenticação via biometria digital local (Futronic FS80H) — dispositivoId/segredoDispositivo
     // vêm do agente local (fetch a /api/dispositivo), nunca de localStorage.
-    autenticarBiometriaLocal: async (documentoId: string, dispositivoId: string, segredoDispositivo: string, trabalhadorId: string, score: number, imagemDigital?: string | null) => {
+    autenticarBiometriaLocal: async (documentoId: string, credencial: CredencialLeitura, trabalhadorId: string, score: number, imagemDigital?: string | null) => {
       const localizacao = localizacaoParaCorpo(await obterLocalizacaoAssinatura());
       return request<DocumentoSignatario>(`/api/documentos/${documentoId}/autenticacao/biometria-local`, {
         method: 'POST',
-        body: JSON.stringify({ dispositivoId, segredoDispositivo, trabalhadorId, score, imagemDigital: imagemDigital ?? null, localizacao }),
+        body: JSON.stringify({ ...credencial, trabalhadorId, score, imagemDigital: imagemDigital ?? null, localizacao }),
       });
     },
     // Assinatura via reconhecimento facial (Azure Face API) — multipart e offline-aware, mesmo

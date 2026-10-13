@@ -8,7 +8,7 @@ import {
   PeopleTeam24Regular, Search24Regular, Stop24Regular,
 } from '@fluentui/react-icons';
 import { api, TipoFotoParticipante, type DdsDetalhe, type DdsFuncionario } from '../../lib/api';
-import { capturarDigitalLocal, obterDispositivoLocal, type CapturaLocal, type DispositivoLocal } from '../../lib/agenteBiometricoLocal';
+import { capturarDigitalLocal, credencialLeitura, obterDispositivoLocal, type CapturaLocal, type DispositivoLocal } from '../../lib/agenteBiometricoLocal';
 import { formatarHoraBrasilia } from '../../components/assinatura/assinaturaDigital';
 import { tocarBipeAssinaturaAceita } from '../../lib/bipeAssinatura';
 import { SeletorFotoCamera } from '../../components/SeletorFotoCamera';
@@ -166,7 +166,7 @@ export function ParticipantesDds({ detalhe, somenteLeitura, aoAtualizar }: Props
       setResultadoFila({ tom: 'info', texto: `${jaConfirmado.trabalhadorNome} já teve a presença confirmada.` });
       return;
     }
-    await api.dds.registrarParticipante(dds.id, captura.trabalhadorId, leitor.dispositivoId, leitor.segredoDispositivo, captura.score, captura.imagemPng);
+    await api.dds.registrarParticipante(dds.id, captura.trabalhadorId, credencialLeitura(leitor, captura.leituras[0]), captura.score, captura.imagemPng);
     const novo = await api.dds.obterDetalhe(dds.id);
     aoAtualizar(novo);
     const nome = novo.participantes.find((p) => p.trabalhadorId === captura.trabalhadorId)?.trabalhadorNome ?? 'Funcionário';
@@ -177,7 +177,9 @@ export function ParticipantesDds({ detalhe, somenteLeitura, aoAtualizar }: Props
   async function lacoFila() {
     while (filaAtiva.current) {
       try {
-        const captura = await capturarDigitalLocal();
+        const leitor = contextoFila.current.dispositivo;
+        if (!leitor) break;
+        const captura = await capturarDigitalLocal(leitor.dispositivoId);
         if (!filaAtiva.current) break;
         await processarLeituraFila(captura);
         await new Promise((r) => setTimeout(r, 1200));
@@ -271,6 +273,7 @@ export function ParticipantesDds({ detalhe, somenteLeitura, aoAtualizar }: Props
         variante="facialAzure"
         modoCamera="user"
         exigirCamera
+        permitirCapturaAutomatica
       />
       <Button size="small" appearance="subtle" icon={<Dismiss24Regular />} disabled={ocupado}
         aria-label={`Remover ${f.nome} da seleção`} onClick={() => alternar(f.trabalhadorId)}>Remover</Button>

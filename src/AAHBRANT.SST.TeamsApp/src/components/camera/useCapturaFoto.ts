@@ -28,6 +28,9 @@ export interface UseCapturaFotoOptions {
   // permissão, sem hardware, navegador sem suporte) o fluxo termina em erro em vez de cair no
   // seletor de arquivos nativo — vale pra qualquer dispositivo (PC/notebook/celular/tablet).
   exigirCamera?: boolean;
+  // Mostra a chave "Captura automática" na câmera frontal (sempre começa desligada). Pedido do
+  // usuário (11/10): só no treinamento e no DDS, onde várias pessoas confirmam presença em sequência.
+  permitirCapturaAutomatica?: boolean;
 }
 
 // Lógica de captura/seleção de foto extraída de SeletorFotoCamera (14/09) para ser reaproveitada
@@ -69,6 +72,7 @@ export function useCapturaFoto({
   modoCamera = 'environment',
   permitirCamera = true,
   exigirCamera = false,
+  permitirCapturaAutomatica = false,
   contextoFoto,
 }: UseCapturaFotoOptions) {
   const [localFoto, setLocalFoto] = useState(contextoFoto?.local ?? '');
@@ -331,6 +335,7 @@ export function useCapturaFoto({
     modoCamera,
     permitirCamera,
     exigirCamera,
+    permitirCapturaAutomatica,
     dispositivosVideo,
     dispositivoAtualId,
     abrirCamera,

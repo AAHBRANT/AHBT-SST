@@ -63,7 +63,17 @@ public class DispositivoAgenteBiometricoConfiguracao : IEntityTypeConfiguration<
 
         builder.Property(d => d.Nome).IsRequired().HasMaxLength(120);
         builder.Property(d => d.SegredoHash).IsRequired().HasMaxLength(128);
+        builder.Property(d => d.ChavePublicaAssinatura).HasMaxLength(512);
 
+        builder.HasQueryFilter(d => d.Ativo);
+    }
+}
+
+public class DesafioBiometriaConfiguracao : IEntityTypeConfiguration<DesafioBiometria>
+{
+    public void Configure(EntityTypeBuilder<DesafioBiometria> builder)
+    {
+        builder.HasIndex(d => d.ExpiraEm);
         builder.HasQueryFilter(d => d.Ativo);
     }
 }

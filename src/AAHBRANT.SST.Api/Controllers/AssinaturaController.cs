@@ -74,16 +74,18 @@ public class AssinaturaController : ControllerBase
 
     public record AssinarSessaoRequestBody(LocalizacaoAssinaturaBody? Localizacao = null);
 
-    public record AutenticarBiometriaLocalRequestBody(Guid DispositivoId, string SegredoDispositivo, Guid TrabalhadorId, double Score,
-        byte[]? ImagemDigital = null, LocalizacaoAssinaturaBody? Localizacao = null);
+    // Desafio + AssinaturaLeitura: leitura assinada pelo agente (o segredo não vem mais do navegador). Agentes
+    // ainda não atualizados mandam SegredoDispositivo sem os dois (ver FutronicAutenticacaoStrategy).
+    public record AutenticarBiometriaLocalRequestBody(Guid DispositivoId, string? SegredoDispositivo, Guid TrabalhadorId, double Score,
+        byte[]? ImagemDigital = null, LocalizacaoAssinaturaBody? Localizacao = null, string? Desafio = null, string? AssinaturaLeitura = null);
 
     [Authorize(Policy = "assinatura:assinar")]
     [HttpPost("{id:guid}/autenticacao/biometria-local")]
     public async Task<ActionResult<DocumentoSignatarioDto>> AutenticarBiometriaLocal(Guid id, AutenticarBiometriaLocalRequestBody body, CancellationToken ct)
     {
         var resultado = await _mediator.Send(
-            new RegistrarAssinaturaBiometriaLocalCommand(id, body.DispositivoId, body.SegredoDispositivo, body.TrabalhadorId, body.Score, ObterIpCliente(), body.ImagemDigital,
-                body.Localizacao?.ParaDominio()), ct);
+            new RegistrarAssinaturaBiometriaLocalCommand(id, body.DispositivoId, body.SegredoDispositivo ?? string.Empty, body.TrabalhadorId, body.Score, ObterIpCliente(), body.ImagemDigital,
+                body.Localizacao?.ParaDominio(), body.Desafio, body.AssinaturaLeitura), ct);
         return Ok(resultado);
     }
 

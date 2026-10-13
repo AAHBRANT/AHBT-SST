@@ -1,5 +1,6 @@
 using System.Globalization;
 using System.Text;
+using AAHBRANT.SST.Application.Assinatura;
 using AAHBRANT.SST.Application.Common;
 using AAHBRANT.SST.Application.Common.Interfaces;
 using AAHBRANT.SST.Domain.Entidades;
@@ -7,6 +8,8 @@ using AAHBRANT.SST.Domain.Enums;
 using FluentValidation;
 using MediatR;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Logging.Abstractions;
 
 namespace AAHBRANT.SST.Application.Trabalhadores.Commands;
 
@@ -102,11 +105,16 @@ public class SincronizarColaboradorGrhCommandHandler : IRequestHandler<Sincroniz
 {
     private readonly IAppDbContext _db;
     private readonly ICpfHashService _cpfHash;
+    private readonly IAutenticacaoFacialService? _facial;
+    private readonly ILogger<SincronizarColaboradorGrhCommandHandler> _logger;
 
-    public SincronizarColaboradorGrhCommandHandler(IAppDbContext db, ICpfHashService cpfHash)
+    public SincronizarColaboradorGrhCommandHandler(IAppDbContext db, ICpfHashService cpfHash,
+        IAutenticacaoFacialService? facial = null, ILogger<SincronizarColaboradorGrhCommandHandler>? logger = null)
     {
         _db = db;
         _cpfHash = cpfHash;
+        _facial = facial;
+        _logger = logger ?? NullLogger<SincronizarColaboradorGrhCommandHandler>.Instance;
     }
 
     public async Task<Guid> Handle(SincronizarColaboradorGrhCommand request, CancellationToken ct)
@@ -139,6 +147,7 @@ public class SincronizarColaboradorGrhCommandHandler : IRequestHandler<Sincroniz
             obra = todasObras.FirstOrDefault(o => NormalizarNomeObra(o.Nome) == nomeNormalizado);
         }
 
+        var obraAnteriorId = trabalhador?.ObraId;
         if (trabalhador is null)
         {
             if (obra is null)
@@ -190,6 +199,9 @@ public class SincronizarColaboradorGrhCommandHandler : IRequestHandler<Sincroniz
             trabalhador.Ativo = false;
 
         await TratamentoCpfDuplicado.SalvarAsync(_db, ct);
+
+        if (_facial is not null && obraAnteriorId is { } anterior && anterior != trabalhador.ObraId && trabalhador.AzureFacePersonId is not null)
+            await RealocacaoCadastroFacial.TentarAsync(_facial, _logger, trabalhador.Id, anterior, ct);
         return trabalhador.Id;
     }
 

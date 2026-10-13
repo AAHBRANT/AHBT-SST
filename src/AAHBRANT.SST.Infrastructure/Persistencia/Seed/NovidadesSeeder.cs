@@ -1143,6 +1143,37 @@ public static class NovidadesSeeder
                     "A estrutura de SST da obra (GHE, funções, riscos e exames) era digitada à mão a partir do PDF.",
                     "Com o PDF anexado, clique em \"Ler com IA\". A leitura roda em segundo plano e avisa no sininho quando termina. Na tela de revisão você confere o que foi lido, as divergências encontradas e o que muda em relação à estrutura atual, escolhe a função do sistema para cada função do documento e só então clica em \"Cadastrar estrutura\"."),
             }),
+        new(
+            Versao: "5.60.0",
+            Titulo: "Assinatura facial sem travar o botão Capturar",
+            DataPublicacao: new DateTime(2026, 10, 11, 0, 0, 0, DateTimeKind.Utc),
+            Itens: new[]
+            {
+                new NovidadeSeedItem(CategoriaNovidade.Correcao,
+                    "Botão Capturar sempre disponível na câmera facial",
+                    "Com pouca luz, câmera de baixa resolução ou rosto fora do centro, o quadrado não ficava verde e o botão Capturar continuava bloqueado, impedindo a assinatura.",
+                    "O quadrado e a mensagem continuam orientando (aproximar, centralizar, melhorar a luz), mas o botão Capturar fica sempre liberado. Se a foto não servir, o reconhecimento facial recusa e informa o motivo para tentar de novo."),
+                new NovidadeSeedItem(CategoriaNovidade.Correcao,
+                    "Reconhecimento facial de quem muda de obra",
+                    "Quando o funcionário era transferido de obra (pela edição do cadastro ou pelo G-RH), o rosto dele continuava cadastrado só na obra antiga e a assinatura facial respondia \"Rosto não reconhecido\" na obra nova.",
+                    "Na troca de obra, o cadastro facial agora é levado para a obra nova com a mesma foto já aprovada, sem nova captura. Para quem foi transferido antes desta versão, use \"Refazer cadastro facial\" no perfil do funcionário."),
+                new NovidadeSeedItem(CategoriaNovidade.Correcao,
+                    "Documentos assinados passam a ser finalizados",
+                    "Nenhum documento era fechado na prática: continuava aceitando assinaturas para sempre, e o comprovante e o código de verificação eram refeitos a cada exportação.",
+                    "A inspeção é finalizada assim que é assinada, o DDS ao ser encerrado e o certificado de treinamento ao encerrar a turma. Nos demais documentos (entrega e devolução de EPI, uniforme, APR, PT, termo) aparece o botão \"Finalizar documento\" na tela de assinatura. Ao finalizar, o comprovante é gerado com todas as assinaturas, com o código de verificação do arquivo, e o QR de validação já impresso continua valendo. Quem assinou e depois foi desligado continua no comprovante."),
+                new NovidadeSeedItem(CategoriaNovidade.Correcao,
+                    "Leitura de digital protegida contra falsificação",
+                    "O resultado da leitura de digital (quem foi reconhecido e com que nota) passava pelo navegador sem proteção e podia ser alterado antes de chegar ao servidor.",
+                    "Cada leitura agora é assinada pelo próprio Agente Biométrico do computador da obra, com uma chave que nunca sai daquele computador, e vale uma única vez. O servidor confere essa assinatura antes de aceitar. É preciso atualizar o Agente Biométrico em cada computador com leitor; enquanto isso, os leitores ainda não atualizados continuam funcionando como antes."),
+                new NovidadeSeedItem(CategoriaNovidade.Melhoria,
+                    "Reconhecimento facial com modelo mais preciso",
+                    "O reconhecimento usava o modelo mais antigo do Azure, e funcionários com cadastro válido ficavam abaixo da confiança exigida e precisavam tentar várias vezes.",
+                    "Os cadastros faciais passam para o modelo mais recente do Azure automaticamente, de madrugada, usando as fotos de cadastro já aprovadas — ninguém precisa ser fotografado de novo. Se a foto de algum funcionário não for aceita pelo modelo novo, o cadastro dele fica liberado para ser refeito."),
+                new NovidadeSeedItem(CategoriaNovidade.Melhoria,
+                    "Captura automática desligada por padrão e só no treinamento e no DDS",
+                    "A foto podia ser tirada sozinha em qualquer tela de assinatura facial.",
+                    "A chave \"Captura automática\" aparece apenas na confirmação de presença do treinamento e do DDS e começa desligada toda vez que a câmera abre. Nas demais telas (entrega de EPI, quiosque e cadastro facial) a foto é tirada só pelo botão Capturar. A fila facial do DDS continua funcionando como antes."),
+            }),
     };
 
     public static async Task ExecutarAsync(IServiceProvider services, CancellationToken ct = default)
