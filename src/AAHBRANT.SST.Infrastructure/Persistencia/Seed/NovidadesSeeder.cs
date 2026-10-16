@@ -1254,6 +1254,17 @@ public static class NovidadesSeeder
                     "O card \"Podem trabalhar hoje\" mostrava só o total \"sem ASO válido\", sem dizer o que faltava.",
                     "Agora o card separa em: ASO sem aptidão no G-RH, ASO vencido, inaptos e sem ASO. Cada funcionário entra em um só motivo."),
             }),
+        new(
+            Versao: "5.65.0",
+            Titulo: "PGR e PCMSO preenchidos pela IA",
+            DataPublicacao: new DateTime(2026, 10, 16, 0, 0, 0, DateTimeKind.Utc),
+            Itens: new[]
+            {
+                new NovidadeSeedItem(CategoriaNovidade.Melhoria,
+                    "Envie o PDF e a IA preenche o cadastro",
+                    "Para cadastrar um PGR ou PCMSO era preciso digitar nome, datas e responsáveis à mão e só depois anexar o PDF.",
+                    "Agora o primeiro passo é enviar o PDF: a IA lê a capa e preenche obra, nome, datas, revisão e responsável (no PCMSO, médico e CRM). Confira os campos marcados e clique em Adicionar — o PDF já fica salvo e a leitura completa começa sozinha."),
+            }),
     };
 
     public static async Task ExecutarAsync(IServiceProvider services, CancellationToken ct = default)

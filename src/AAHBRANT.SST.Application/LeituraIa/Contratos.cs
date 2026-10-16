@@ -73,3 +73,18 @@ public record ResultadoLeituraIa(
     // Vazio na primeira leitura da obra (não há estrutura anterior para comparar).
     List<DiferencaLeituraIa> Diferencas,
     bool HaEstruturaAtual);
+
+// ---- Preenchimento do cadastro pelo PDF (16/10/2026) ----
+// Leitura rápida só das primeiras páginas, antes de o PGR/PCMSO existir: devolve os campos do formulário
+// de cadastro para o técnico conferir. A leitura completa (GHE, riscos, exames) continua sendo a de cima.
+public interface ILeitorCabecalhoDocumentoIa
+{
+    Task<CabecalhoCadastroPgrIa> LerCabecalhoPgrAsync(IReadOnlyList<string> paginas, CancellationToken ct);
+    Task<CabecalhoCadastroPcmsoIa> LerCabecalhoPcmsoAsync(IReadOnlyList<string> paginas, CancellationToken ct);
+}
+
+public record CabecalhoCadastroPgrIa(string? Nome, string? Obra, string? Responsavel, string? Registro, string? Revisao,
+    DateTime? DataElaboracao, DateTime? ProximaRevisao, DateTime? Termino);
+
+public record CabecalhoCadastroPcmsoIa(string? Nome, string? Obra, string? Versao, DateTime? DataEmissao, DateTime? Validade,
+    string? MedicoNome, string? MedicoCrm);

@@ -20,6 +20,7 @@ import {
 import { Add24Regular, Delete24Regular } from '@fluentui/react-icons';
 import { api, statusPgrLabel, StatusPgr, type NovoPgr, type Obra, type Pgr } from '../../lib/api';
 import { useSucessoToast } from '../../hooks/useSucessoToast';
+import { DICA_IA, EnvioPdfComIa, dataCampo, sugerirObra } from '../../components/leitura-ia/EnvioPdfComIa';
 
 const pgrVazio: NovoPgr = {
   obraId: '',
@@ -45,6 +46,10 @@ export function PgrsTab() {
   const [erro, setErro] = useState<string | null>(null);
   const [carregando, setCarregando] = useState(false);
   const [carregandoLista, setCarregandoLista] = useState(true);
+  // Preenchimento pelo PDF (16/10/2026): campos que vieram da IA ganham a dica "confira".
+  const [arquivo, setArquivo] = useState<File | null>(null);
+  const [lendoIa, setLendoIa] = useState(false);
+  const [camposIa, setCamposIa] = useState<Set<keyof NovoPgr>>(new Set());
   const { confirmar, dialogElement } = useConfirmar();
   const sucessoToast = useSucessoToast();
 
@@ -69,16 +74,64 @@ export function PgrsTab() {
     return obras.find((o) => o.id === id)?.nome ?? id;
   }
 
+  async function lerPdf(f: File) {
+    setArquivo(f);
+    setCamposIa(new Set());
+    try {
+      setLendoIa(true);
+      setErro(null);
+      const c = await api.leiturasIa.cabecalhoPgr(f);
+      const novo: Partial<NovoPgr> = {};
+      const obraId = sugerirObra(`${c.obra ?? ''} ${c.nome ?? ''}`, obras);
+      if (obraId) novo.obraId = obraId;
+      if (c.nome) novo.nome = c.nome;
+      const descricao = [c.revisao && `Revisão ${c.revisao}`, c.responsavel && `Resp. técnico: ${c.responsavel}${c.registro ? ` (${c.registro})` : ''}`]
+        .filter(Boolean)
+        .join(' — ');
+      if (descricao) novo.descricao = descricao;
+      if (c.dataElaboracao) novo.dataElaboracao = dataCampo(c.dataElaboracao);
+      if (c.proximaRevisao) novo.dataProximaRevisao = dataCampo(c.proximaRevisao);
+      if (c.termino) novo.dataTermino = dataCampo(c.termino);
+      // Vigente quando hoje está dentro da vigência escrita no documento.
+      const hoje = new Date().toISOString().slice(0, 10);
+      if (c.dataElaboracao && dataCampo(c.dataElaboracao) <= hoje && (!c.termino || dataCampo(c.termino) >= hoje))
+        novo.status = StatusPgr.Vigente;
+      setNovoPgr((atual) => ({ ...atual, ...novo }));
+      setCamposIa(new Set(Object.keys(novo) as (keyof NovoPgr)[]));
+    } catch (e) {
+      setErro(e instanceof Error ? e.message : 'Falha ao ler o PDF com IA. Preencha os campos manualmente.');
+    } finally {
+      setLendoIa(false);
+    }
+  }
+
+  const dica = (campo: keyof NovoPgr) => (camposIa.has(campo) ? DICA_IA : undefined);
+
+  function limpar() {
+    setNovoPgr(pgrVazio);
+    setArquivo(null);
+    setCamposIa(new Set());
+  }
+
   async function criar() {
     try {
       setCarregando(true);
       setErro(null);
-      await api.pgrs.criar({
+      const { id } = await api.pgrs.criar({
         ...novoPgr,
         dataProximaRevisao: novoPgr.dataProximaRevisao || null,
         dataTermino: novoPgr.dataTermino || null,
       });
-      setNovoPgr(pgrVazio);
+      if (arquivo) {
+        // O PDF fica no PGR e já entra na fila da leitura completa (GHE, riscos, plano de ação).
+        await api.pgrs.enviarDocumento(id, arquivo);
+        await api.leiturasIa.iniciar('pgr', id).catch(() => undefined);
+        limpar();
+        sucessoToast('PGR criado. A IA está lendo o documento completo.');
+        navigate(`/prevencao/pgr/${id}`);
+        return;
+      }
+      limpar();
       await carregar();
       sucessoToast('PGR criado com sucesso.');
     } catch (e) {
@@ -117,10 +170,13 @@ export function PgrsTab() {
       )}
 
       <Card titulo="Programas de Gerenciamento de Riscos (PGR)">
-        <FormSection titulo="Dados do PGR" numero={1} primeira>
+        <FormSection titulo="Enviar o PDF do PGR" numero={1} primeira>
+          <EnvioPdfComIa arquivo={arquivo} lendo={lendoIa} lido={camposIa.size > 0} aoEscolher={lerPdf} aoRemover={() => setArquivo(null)} />
+        </FormSection>
+        <FormSection titulo="Dados do PGR" numero={2}>
           <FormGrid>
             <Campo span={3}>
-              <Field label="Obra">
+              <Field label="Obra" hint={dica('obraId')}>
                 <Select value={novoPgr.obraId} onChange={(_, d) => setNovoPgr({ ...novoPgr, obraId: d.value })}>
                   <option value="">Selecione</option>
                   {obras.map((obra) => (
@@ -132,12 +188,12 @@ export function PgrsTab() {
               </Field>
             </Campo>
             <Campo span={4}>
-              <Field label="Nome do PGR">
+              <Field label="Nome do PGR" hint={dica('nome')}>
                 <Input value={novoPgr.nome} onChange={(_, d) => setNovoPgr({ ...novoPgr, nome: d.value })} />
               </Field>
             </Campo>
             <Campo span={5}>
-              <Field label="Descrição">
+              <Field label="Descrição" hint={dica('descricao')}>
                 <Input
                   value={novoPgr.descricao ?? ''}
                   onChange={(_, d) => setNovoPgr({ ...novoPgr, descricao: d.value })}
@@ -145,7 +201,7 @@ export function PgrsTab() {
               </Field>
             </Campo>
             <Campo span={3}>
-              <Field label="Data de elaboração">
+              <Field label="Data de elaboração" hint={dica('dataElaboracao')}>
                 <CampoData
                   value={novoPgr.dataElaboracao}
                   onChange={(_, d) => setNovoPgr({ ...novoPgr, dataElaboracao: d.value })}
@@ -153,7 +209,7 @@ export function PgrsTab() {
               </Field>
             </Campo>
             <Campo span={3}>
-              <Field label="Próxima revisão">
+              <Field label="Próxima revisão" hint={dica('dataProximaRevisao')}>
                 <CampoData
                   value={novoPgr.dataProximaRevisao ?? ''}
                   onChange={(_, d) => setNovoPgr({ ...novoPgr, dataProximaRevisao: d.value || null })}
@@ -161,7 +217,7 @@ export function PgrsTab() {
               </Field>
             </Campo>
             <Campo span={3}>
-              <Field label="Término da vigência">
+              <Field label="Término da vigência" hint={dica('dataTermino')}>
                 <CampoData
                   value={novoPgr.dataTermino ?? ''}
                   onChange={(_, d) => setNovoPgr({ ...novoPgr, dataTermino: d.value || null })}
@@ -169,7 +225,7 @@ export function PgrsTab() {
               </Field>
             </Campo>
             <Campo span={3}>
-              <Field label="Status">
+              <Field label="Status" hint={dica('status')}>
                 <Select
                   value={novoPgr.status}
                   onChange={(_, d) => setNovoPgr({ ...novoPgr, status: Number(d.value) })}
@@ -184,7 +240,10 @@ export function PgrsTab() {
             </Campo>
           </FormGrid>
           <FormRodape>
-            <Button appearance="primary" icon={<Add24Regular />} onClick={criar} disabled={carregando}>
+            <Button onClick={limpar} disabled={carregando || lendoIa}>
+              Limpar
+            </Button>
+            <Button appearance="primary" icon={<Add24Regular />} onClick={criar} disabled={carregando || lendoIa}>
               Adicionar PGR
             </Button>
           </FormRodape>

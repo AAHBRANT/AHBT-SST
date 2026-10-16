@@ -1368,6 +1368,28 @@ export interface ResultadoCadastroEstrutura {
   funcoesCriadas: string[];
 }
 
+// Preenchimento do cadastro pelo PDF (16/10/2026): só a identificação do documento, para conferir.
+export interface CabecalhoCadastroPgrIa {
+  nome: string | null;
+  obra: string | null;
+  responsavel: string | null;
+  registro: string | null;
+  revisao: string | null;
+  dataElaboracao: string | null;
+  proximaRevisao: string | null;
+  termino: string | null;
+}
+
+export interface CabecalhoCadastroPcmsoIa {
+  nome: string | null;
+  obra: string | null;
+  versao: string | null;
+  dataEmissao: string | null;
+  validade: string | null;
+  medicoNome: string | null;
+  medicoCrm: string | null;
+}
+
 // "Nova revisão" do PGR/PCMSO: o PDF novo não apaga o anterior.
 export interface DadosNovaRevisao {
   numeroRevisao: number | null;
@@ -4957,6 +4979,16 @@ export const api = {
     excluir: (id: string) => request<void>(`/api/planoacao/${id}`, { method: 'DELETE' }),
   },
   leiturasIa: {
+    cabecalhoPgr: (arquivo: File) => {
+      const formData = new FormData();
+      formData.append('Arquivo', arquivo);
+      return enviarFormulario<CabecalhoCadastroPgrIa>('/api/pgrs/leituras-ia/cabecalho', formData);
+    },
+    cabecalhoPcmso: (arquivo: File) => {
+      const formData = new FormData();
+      formData.append('Arquivo', arquivo);
+      return enviarFormulario<CabecalhoCadastroPcmsoIa>('/api/pcmsos/leituras-ia/cabecalho', formData);
+    },
     iniciar: (doc: DocumentoLeituraIa, documentoId: string) =>
       request<{ id: string }>(`/api/${doc}s/${documentoId}/leituras-ia`, { method: 'POST' }),
     // undefined quando o documento nunca foi lido (204).

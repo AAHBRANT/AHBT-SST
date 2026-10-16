@@ -17,6 +17,31 @@ public class LeiturasIaController : ControllerBase
 
     public record CadastrarLeituraBody(List<MapeamentoFuncaoLeituraIa> Funcoes);
 
+    public class ArquivoCabecalhoBody
+    {
+        public IFormFile Arquivo { get; set; } = null!;
+    }
+
+    // Preenche o formulário de cadastro a partir do PDF, antes de o documento existir (16/10/2026).
+    private static async Task<byte[]> Bytes(IFormFile arquivo, CancellationToken ct)
+    {
+        await using var stream = new MemoryStream();
+        await arquivo.CopyToAsync(stream, ct);
+        return stream.ToArray();
+    }
+
+    [Authorize(Policy = "pgr:criar")]
+    [HttpPost("api/pgrs/leituras-ia/cabecalho")]
+    [RequestSizeLimit(21_000_000)]
+    public async Task<IActionResult> CabecalhoPgr([FromForm] ArquivoCabecalhoBody body, CancellationToken ct)
+        => Ok(await _mediator.Send(new LerCabecalhoPgrQuery(await Bytes(body.Arquivo, ct)), ct));
+
+    [Authorize(Policy = "pcmso:criar")]
+    [HttpPost("api/pcmsos/leituras-ia/cabecalho")]
+    [RequestSizeLimit(21_000_000)]
+    public async Task<IActionResult> CabecalhoPcmso([FromForm] ArquivoCabecalhoBody body, CancellationToken ct)
+        => Ok(await _mediator.Send(new LerCabecalhoPcmsoQuery(await Bytes(body.Arquivo, ct)), ct));
+
     // ---------- PGR ----------
 
     [Authorize(Policy = "pgr:criar")]
