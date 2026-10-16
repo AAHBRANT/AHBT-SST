@@ -82,7 +82,7 @@ export function PgrsTab() {
       setErro(null);
       const c = await api.leiturasIa.cabecalhoPgr(f);
       const novo: Partial<NovoPgr> = {};
-      const obraId = sugerirObra(c.obra ?? c.nome, obras);
+      const obraId = sugerirObra(`${c.obra ?? ''} ${c.nome ?? ''}`, obras);
       if (obraId) novo.obraId = obraId;
       if (c.nome) novo.nome = c.nome;
       const descricao = [c.revisao && `Revisão ${c.revisao}`, c.responsavel && `Resp. técnico: ${c.responsavel}${c.registro ? ` (${c.registro})` : ''}`]

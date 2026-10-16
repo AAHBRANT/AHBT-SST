@@ -215,35 +215,58 @@ public class AzureOpenAiLeitorDocumentoSst : ILeitorDocumentoSstIa, ILeitorCabec
 
     public async Task<CabecalhoCadastroPgrIa> LerCabecalhoPgrAsync(IReadOnlyList<string> paginas, CancellationToken ct)
     {
-        var l = await _chat.ObterAsync<CabecalhoPgrLido>(InstrucoesPgr, $"""
+        var l = await ComUmaNovaTentativa(() => _chat.ObterAsync<CabecalhoPgrLido>(InstrucoesPgr, $"""
             Estas são as primeiras páginas de um PGR. Devolva só a identificação do documento:
             - nome: título do documento como escrito na capa (ex.: "PROGRAMA DE GERENCIAMENTO DE RISCOS - ...");
-            - obra: nome da obra/empreendimento/contrato/consórcio a que o PGR se refere, como escrito;
+            - obra: nome do empreendimento/obra/local a que o PGR se refere (ex.: "Parque Socioambiental Roger", "Ponte Rio Cuiá"),
+              como escrito; NÃO use o nome da empresa contratada nem só o número do contrato;
             - responsavel e registro (CREA/registro profissional) do responsável técnico pela elaboração;
             - revisao: número/identificação da revisão do documento;
             - dataElaboracao (data de elaboração/emissão ou início da vigência), proximaRevisao (data prevista da
               próxima revisão) e termino (fim da vigência).
 
             {Juntar(paginas, 1, paginas.Count)}
-            """, "cabecalho_pgr", SchemaCabecalhoPgr, ct, maxTokens: 2000, timeoutSegundos: 90);
+            """, "cabecalho_pgr", SchemaCabecalhoPgr, ct, maxTokens: 2000, timeoutSegundos: 60));
         return new CabecalhoCadastroPgrIa(Limpo(l.Nome), Limpo(l.Obra), Limpo(l.Responsavel), Limpo(l.Registro), Limpo(l.Revisao),
             Data(l.DataElaboracao), Data(l.ProximaRevisao), Data(l.Termino));
     }
 
     public async Task<CabecalhoCadastroPcmsoIa> LerCabecalhoPcmsoAsync(IReadOnlyList<string> paginas, CancellationToken ct)
     {
-        var l = await _chat.ObterAsync<CabecalhoPcmsoLido>(InstrucoesPcmso, $"""
+        var l = await ComUmaNovaTentativa(() => _chat.ObterAsync<CabecalhoPcmsoLido>(InstrucoesPcmso, $"""
             Estas são as primeiras páginas de um PCMSO. Devolva só a identificação do documento:
             - nome: título do documento como escrito na capa;
-            - obra: nome da obra/empreendimento/contrato/consórcio a que o PCMSO se refere, como escrito;
+            - obra: nome do empreendimento/obra/local a que o PCMSO se refere (ex.: "Parque Socioambiental Roger", "Ponte Rio Cuiá"),
+              como escrito; NÃO use o nome da empresa contratada nem só o número do contrato;
             - versao: número/identificação da revisão ou versão;
             - dataEmissao (data de elaboração/emissão) e validade (fim da vigência, se escrita);
             - medicoNome e medicoCrm (com a UF, como escrito) do médico responsável/coordenador.
 
             {Juntar(paginas, 1, paginas.Count)}
-            """, "cabecalho_pcmso", SchemaCabecalhoPcmso, ct, maxTokens: 2000, timeoutSegundos: 90);
+            """, "cabecalho_pcmso", SchemaCabecalhoPcmso, ct, maxTokens: 2000, timeoutSegundos: 60));
         return new CabecalhoCadastroPcmsoIa(Limpo(l.Nome), Limpo(l.Obra), Limpo(l.Versao), Data(l.DataEmissao), Data(l.Validade),
             Limpo(l.MedicoNome), Limpo(l.MedicoCrm));
+    }
+
+    // A leitura leva ~8 s, mas o Azure às vezes trava uma chamada (16/10/2026: 90 s sem resposta e a
+    // seguinte em 8 s). Uma nova tentativa resolve; esgotada, o técnico vê a mensagem e preenche à mão.
+    private static async Task<T> ComUmaNovaTentativa<T>(Func<Task<T>> chamada)
+    {
+        try
+        {
+            return await chamada();
+        }
+        catch (TaskCanceledException)
+        {
+            try
+            {
+                return await chamada();
+            }
+            catch (TaskCanceledException)
+            {
+                throw new InvalidOperationException("A IA demorou demais para ler o PDF. Tente de novo ou preencha os campos manualmente.");
+            }
+        }
     }
 
     private static string? Limpo(string? s) => string.IsNullOrWhiteSpace(s) ? null : s.Trim();

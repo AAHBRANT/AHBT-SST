@@ -108,7 +108,7 @@ export function PcmsoTab() {
       setErro(null);
       const c = await api.leiturasIa.cabecalhoPcmso(f);
       const novo: Partial<NovoPcmso> = {};
-      const obraId = sugerirObra(c.obra ?? c.nome, obras);
+      const obraId = sugerirObra(`${c.obra ?? ''} ${c.nome ?? ''}`, obras);
       if (obraId) novo.obraId = obraId;
       if (c.nome) novo.nome = c.nome;
       if (c.versao) novo.versao = c.versao;
