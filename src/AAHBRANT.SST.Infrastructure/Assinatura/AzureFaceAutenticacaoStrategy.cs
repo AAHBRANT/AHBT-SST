@@ -432,7 +432,33 @@ public class AzureFaceAutenticacaoStrategy : IAutenticacaoFacialService
         if (faceIds.Count > 1)
             return new ResultadoIdentificacaoFacial(false, null, MotivoRejeicaoFacial.MultiplosRostosDetectados, null);
 
-        var (candidato, confiancaSegundo) = await IdentificarRostoAsync(cliente, obra.AzureFacePersonGroupId, faceIds[0], ct);
+        CandidatoIdentificacao? candidato;
+        double? confiancaSegundo;
+        try
+        {
+            (candidato, confiancaSegundo) = await IdentificarRostoAsync(cliente, obra.AzureFacePersonGroupId, faceIds[0], ct);
+        }
+        catch (ModeloReconhecimentoIncompativelException)
+        {
+            // O modelo guardado (ou o padrão, quando a consulta do grupo falhou) não bate com o do grupo —
+            // ex.: grupo migrado para recognition_04 ou consulta que falhou e caiu no recognition_01.
+            // Relê o modelo direto do Azure e refaz detect + identify uma vez.
+            ModelosPorGrupo.TryRemove(obra.AzureFacePersonGroupId, out _);
+            modelo = await ObterModeloReconhecimentoDoGrupoAsync(cliente, obra.AzureFacePersonGroupId, ct) ?? ModeloReconhecimentoAtual;
+            faceIds = await DetectarRostosAsync(cliente, fotoJpeg, modelo, ct);
+            if (faceIds.Count != 1)
+                return new ResultadoIdentificacaoFacial(false, null,
+                    faceIds.Count == 0 ? MotivoRejeicaoFacial.NenhumRostoDetectado : MotivoRejeicaoFacial.MultiplosRostosDetectados, null);
+            try
+            {
+                (candidato, confiancaSegundo) = await IdentificarRostoAsync(cliente, obra.AzureFacePersonGroupId, faceIds[0], ct);
+            }
+            catch (ModeloReconhecimentoIncompativelException)
+            {
+                throw ErroDeIndisponibilidade(System.Net.HttpStatusCode.BadRequest,
+                    $"identify: recognitionModel incompatível mesmo após reler o modelo do grupo {obra.AzureFacePersonGroupId} ({modelo})");
+            }
+        }
         if (candidato is null)
             return await RejeitarAsync(obraId, MotivoRejeicaoFacial.RostoNaoReconhecido, null, null, ct);
 
@@ -622,6 +648,8 @@ public class AzureFaceAutenticacaoStrategy : IAutenticacaoFacialService
             var erro = await LerErroAzureAsync(resposta, ct);
             if (erro.Code is "PersonGroupNotFound" or "LargePersonGroupNotFound")
                 return (null, null);
+            if (erro.Message.Contains("recognitionModel", StringComparison.OrdinalIgnoreCase))
+                throw new ModeloReconhecimentoIncompativelException();
             throw ErroDeIndisponibilidade(resposta.StatusCode, MontarMensagemErroAzure("identify", erro));
         }
         var resultados = await resposta.Content.ReadFromJsonAsync<List<IdentificacaoResposta>>(cancellationToken: ct);
@@ -707,6 +735,7 @@ public class AzureFaceAutenticacaoStrategy : IAutenticacaoFacialService
 
     private record CandidatoIdentificacao(string PersonId, double Confidence, string? RequisicaoId = null);
     private record AzureFaceErro(string Status, string Code, string Message);
+    private sealed class ModeloReconhecimentoIncompativelException : Exception;
 
     private class AzureFaceErroResposta
     {
