@@ -3534,10 +3534,13 @@ export const TipoModuloAlerta = {
   Dds: 9,
   PlanoAcao: 10,
   Outro: 11,
+  Pgr: 12,
   // Exames do PCMSO pela função do trabalhador (ExamesFuncaoAlertaProvider).
   ExamesFuncao: 13,
   // Cadastros faciais com falhas repetidas de reconhecimento (CadastroFacialAlertaProvider).
   CadastroFacial: 14,
+  // Validade do PCMSO (PcmsoAlertaProvider).
+  Pcmso: 15,
 } as const;
 
 export const moduloAlertaLabel: Record<number, string> = {
@@ -3552,8 +3555,10 @@ export const moduloAlertaLabel: Record<number, string> = {
   9: 'DDS',
   10: 'Plano de ação',
   11: 'Outro',
+  12: 'PGR',
   13: 'Exames da função (PCMSO)',
   14: 'Cadastro facial',
+  15: 'PCMSO',
 };
 
 export interface RegraAlerta {

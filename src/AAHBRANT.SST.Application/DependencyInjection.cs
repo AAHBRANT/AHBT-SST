@@ -36,6 +36,7 @@ public static class DependencyInjection
         services.AddScoped<IAlertaOrigemProvider, DocumentoAlertaProvider>();
         services.AddScoped<IAlertaOrigemProvider, AcaoPlanoAlertaProvider>();
         services.AddScoped<IAlertaOrigemProvider, PgrAlertaProvider>();
+        services.AddScoped<IAlertaOrigemProvider, PcmsoAlertaProvider>();
         services.AddScoped<IAlertaOrigemProvider, ExamesFuncaoAlertaProvider>();
         services.AddScoped<IAlertaOrigemProvider, CadastroFacialAlertaProvider>();
         services.AddScoped<IAlertaEngineService, AlertaEngineService>();

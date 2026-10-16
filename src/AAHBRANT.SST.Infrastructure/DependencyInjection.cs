@@ -132,6 +132,7 @@ public static class DependencyInjection
         // ver GraphActivityNotificacaoTeamsService, que lança exceção graciosamente enquanto isso.
         services.Configure<GraphOptions>(configuration.GetSection("Graph"));
         services.AddScoped<INotificacaoTeamsService, GraphActivityNotificacaoTeamsService>();
+        services.AddScoped<IEmailService, GraphEmailService>();
 
         // Integração do Motor de Alertas com o Calendário do Teams (docs/superpowers/specs/
         // 2026-08-28-calendario-teams-design.md) — mesmo App Registration/GraphOptions do Activity
