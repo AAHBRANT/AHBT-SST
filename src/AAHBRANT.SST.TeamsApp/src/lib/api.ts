@@ -125,6 +125,10 @@ export interface LiberacaoTrabalho {
   liberados: number;
   bloqueados: number;
   semAsoValido: number;
+  asoSemResultado: number;
+  asoInapto: number;
+  asoVencido: number;
+  semAso: number;
   treinamentoPendente: number;
 }
 

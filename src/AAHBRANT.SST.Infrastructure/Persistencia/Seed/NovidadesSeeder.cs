@@ -1243,6 +1243,17 @@ public static class NovidadesSeeder
                     "ASOs vindos do G-RH sem o campo de aptidão apareciam como \"Pendente\" ou \"Aguardando parecer\", mesmo dentro da validade.",
                     "Na lista de ASOs, esses exames aparecem como \"Apto\", e a situação de hoje mostra \"Liberado\" enquanto o ASO estiver válido. O cadastro manual de ASO também começa com o resultado \"Apto\"."),
             }),
+        new(
+            Versao: "5.64.0",
+            Titulo: "Motivo do bloqueio por ASO no Início",
+            DataPublicacao: new DateTime(2026, 10, 16, 0, 0, 0, DateTimeKind.Utc),
+            Itens: new[]
+            {
+                new NovidadeSeedItem(CategoriaNovidade.Melhoria,
+                    "Por que o funcionário está sem ASO válido",
+                    "O card \"Podem trabalhar hoje\" mostrava só o total \"sem ASO válido\", sem dizer o que faltava.",
+                    "Agora o card separa em: ASO sem aptidão no G-RH, ASO vencido, inaptos e sem ASO. Cada funcionário entra em um só motivo."),
+            }),
     };
 
     public static async Task ExecutarAsync(IServiceProvider services, CancellationToken ct = default)
