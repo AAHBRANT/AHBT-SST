@@ -10,6 +10,8 @@ public enum TipoRelatorio
     BoletimSemanal = 2,
     // Aviso de ocorrência registrada (na hora).
     Ocorrencia = 3,
+    // PGR/PCMSO vencido: e-mail + sininho para os responsáveis da obra (segunda a sexta, 07:00), 16/10/2026.
+    AvisoDocumentosVencidos = 4,
 }
 
 public enum CanalEnvioRelatorio

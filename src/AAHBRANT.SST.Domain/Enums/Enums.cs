@@ -139,7 +139,10 @@ public enum TipoAlerta
     ExameFuncaoVencendo = 28,
     ExameFuncaoVencido = 29,
     // Cadastro facial com falhas repetidas de reconhecimento (CadastroFacialAlertaProvider), 12/10/2026.
-    CadastroFacialFraco = 30
+    CadastroFacialFraco = 30,
+    // Validade do PCMSO (PcmsoAlertaProvider) — aviso diário de documento vencido, 16/10/2026.
+    PcmsoVencendo = 31,
+    PcmsoVencido = 32
 }
 
 public enum SeveridadeAlerta
@@ -172,7 +175,9 @@ public enum TipoModuloAlerta
     // Exames do PCMSO pela função do trabalhador (ExameFuncaoObra), 10/10/2026.
     ExamesFuncao = 13,
     // Cadastros faciais com falhas repetidas: o técnico refaz a foto (CadastroFacialAlertaProvider), 12/10/2026.
-    CadastroFacial = 14
+    CadastroFacial = 14,
+    // Validade do PCMSO (PcmsoAlertaProvider), 16/10/2026.
+    Pcmso = 15
 }
 
 public enum StatusAlerta
