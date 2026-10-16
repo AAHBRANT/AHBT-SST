@@ -15,6 +15,7 @@ import {
 import { DocumentLock24Regular, CheckmarkCircle24Regular, Edit24Regular, Warning24Regular } from '@fluentui/react-icons';
 import { api, StatusPt, statusPtLabel, type Atividade, type Obra, type PermissaoTrabalho } from '../../../lib/api';
 import { PtVencidaPanel, type PtComContexto } from './PtVencidaPanel';
+import { FaixaKpis } from '../../../components/dashboard/FaixaKpis';
 
 const hojeISO = new Date().toISOString().slice(0, 10);
 
@@ -158,12 +159,12 @@ export function PtDashboardTab() {
         </FeedbackInline>
       )}
 
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(185px, 1fr))', gap: 16, marginBottom: 16 }}>
+      <FaixaKpis>
         <KpiCard rotulo="Total de PTs" valor={permissoesFiltradas.length} tom="info" indice={0} icone={<DocumentLock24Regular />} />
         <KpiCard rotulo="Autorizadas" valor={autorizadas} tom="ok" indice={1} icone={<CheckmarkCircle24Regular />} />
         <KpiCard rotulo="Em elaboração" valor={emElaboracao} tom="neutro" indice={2} icone={<Edit24Regular />} />
         <KpiCard rotulo="Com validade vencida" valor={vencidas} tom="alerta" indice={3} icone={<Warning24Regular />} />
-      </div>
+      </FaixaKpis>
 
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(340px, 1fr))', gap: 16, marginBottom: 16 }}>
         <Card titulo="Status das PTs" subtitulo="Situação atual de cada Permissão de Trabalho">

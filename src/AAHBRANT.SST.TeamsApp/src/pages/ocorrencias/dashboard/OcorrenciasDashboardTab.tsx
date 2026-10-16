@@ -35,6 +35,7 @@ import {
   type RegistroHhtMensal,
 } from '../../../lib/api';
 import { TaxaGravidadeKpiCard } from '../../../components/dashboard/TaxaGravidadeKpiCard';
+import { FaixaKpis } from '../../../components/dashboard/FaixaKpis';
 
 const NOMES_MESES_ABREVIADOS = ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez'];
 
@@ -207,14 +208,14 @@ export function OcorrenciasDashboardTab() {
         </FeedbackInline>
       )}
 
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(185px, 1fr))', gap: 16, marginBottom: 16 }}>
+      <FaixaKpis>
         <KpiCard rotulo="Total de ocorrências" valor={acidentesFiltrados.length} tom="info" indice={0} icone={<ClipboardTaskListLtr24Regular />} />
         <KpiCard rotulo="Acidentes" valor={totalAcidentes} tom="alerta" indice={1} icone={<Alert24Regular />} />
         <KpiCard rotulo="Incidentes" valor={totalIncidentes} tom="atencao" indice={2} icone={<ShieldError24Regular />} />
         <KpiCard rotulo="Quase-acidentes" valor={totalQuaseAcidentes} tom="info" indice={3} icone={<Warning24Regular />} />
         <KpiCard rotulo="Com afastamento" valor={comAfastamento} tom="alerta" indice={4} icone={<PersonSubtract24Regular />} />
         <KpiCard rotulo="Não conformidades abertas" valor={naoConformidadesAbertas} tom="atencao" indice={5} icone={<DocumentError24Regular />} />
-      </div>
+      </FaixaKpis>
 
       <div style={{ marginBottom: 16 }}>
         <TaxaGravidadeKpiCard acidentes={acidentesFiltrados} registrosHht={registrosHhtFiltrados} />
