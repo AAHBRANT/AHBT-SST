@@ -1265,6 +1265,17 @@ public static class NovidadesSeeder
                     "Para cadastrar um PGR ou PCMSO era preciso digitar nome, datas e responsáveis à mão e só depois anexar o PDF.",
                     "Agora o primeiro passo é enviar o PDF: a IA lê a capa e preenche obra, nome, datas, revisão e responsável (no PCMSO, médico e CRM). Confira os campos marcados e clique em Adicionar — o PDF já fica salvo e a leitura completa começa sozinha."),
             }),
+        new(
+            Versao: "5.66.0",
+            Titulo: "Painéis dos módulos com o mesmo visual da tela Início",
+            DataPublicacao: new DateTime(2026, 10, 16, 0, 0, 0, DateTimeKind.Utc),
+            Itens: new[]
+            {
+                new NovidadeSeedItem(CategoriaNovidade.Melhoria,
+                    "Indicadores numa faixa única",
+                    "Nos painéis de APR, PT, Inspeções, Ocorrências, Não conformidades, Riscos, PGR, Pessoas, Alertas e Identificação, cada indicador era um card separado com borda vinho.",
+                    "Os indicadores agora ficam juntos numa faixa única, igual à tela Início. Nenhum número ou gráfico mudou."),
+            }),
     };
 
     public static async Task ExecutarAsync(IServiceProvider services, CancellationToken ct = default)

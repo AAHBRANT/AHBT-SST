@@ -26,6 +26,7 @@ import {
 } from '../../../lib/api';
 import { AptitudeEnginePanel } from './AptitudeEnginePanel';
 import { NR_POR_FUNCAO_NOME, normalizarNomeFuncao } from './nrPorFuncao';
+import { FaixaKpis } from '../../../components/dashboard/FaixaKpis';
 
 const hojeISO = new Date().toISOString().slice(0, 10);
 
@@ -221,12 +222,12 @@ export function PessoasDashboardTab() {
         </FeedbackInline>
       )}
 
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(185px, 1fr))', gap: 16, marginBottom: 16 }}>
+      <FaixaKpis>
         <KpiCard rotulo="Total na força de trabalho" valor={trabalhadoresFiltrados.length} tom="info" indice={0} icone={<People24Regular />} />
         <KpiCard rotulo="Aptos" valor={statusGeral.aptos} tom="ok" indice={1} icone={<CheckmarkCircle24Regular />} />
         <KpiCard rotulo="Bloqueados" valor={bloqueados} tom="alerta" indice={2} icone={<DismissCircle24Regular />} />
         <KpiCard rotulo="ASOs vencendo em 30 dias" valor={asosVencendo30Dias} tom="atencao" indice={3} icone={<Warning24Regular />} />
-      </div>
+      </FaixaKpis>
 
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(340px, 1fr))', gap: 16, marginBottom: 16 }}>
         <Card titulo="Status geral da força de trabalho" subtitulo="Situação clínica do ASO mais recente de cada funcionário">
