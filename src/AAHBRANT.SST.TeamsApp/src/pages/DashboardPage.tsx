@@ -350,7 +350,10 @@ export function DashboardPage() {
       deltas: liberacao
         ? [
             { texto: `de ${liberacao.ativos} · ${liberacao.bloqueados} bloqueados`, tom: liberacao.bloqueados > 0 ? 'alerta' : 'ok' },
-            ...(liberacao.semAsoValido > 0 ? [{ texto: `${liberacao.semAsoValido} sem ASO válido`, tom: 'atencao' as const }] : []),
+            ...(liberacao.asoSemResultado > 0 ? [{ texto: `${liberacao.asoSemResultado} ASO sem aptidão no G-RH`, tom: 'info' as const }] : []),
+            ...(liberacao.asoVencido > 0 ? [{ texto: `${liberacao.asoVencido} ASO vencido`, tom: 'alerta' as const }] : []),
+            ...(liberacao.asoInapto > 0 ? [{ texto: `${liberacao.asoInapto} inaptos`, tom: 'alerta' as const }] : []),
+            ...(liberacao.semAso > 0 ? [{ texto: `${liberacao.semAso} sem ASO`, tom: 'neutro' as const }] : []),
             ...(liberacao.treinamentoPendente > 0 ? [{ texto: `${liberacao.treinamentoPendente} com treinamento pendente`, tom: 'atencao' as const }] : []),
           ]
         : [],
