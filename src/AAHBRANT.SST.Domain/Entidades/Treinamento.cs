@@ -37,6 +37,20 @@ public class CursoTreinamento : AuditableEntity
         return norma is "NR-06" or "NR-6" or "NR06" or "NR6";
     }
 
+    // Detecta norma que CITA a NR-06 sem ser exatamente ela (ex.: "NR-06 e NR-18", "NR 06/NR 35").
+    // Serve só para diagnóstico (cursos que a tela ainda reconhece pelo texto mas que NormaHabilitaEpi
+    // — a regra do servidor — não reconhece). Espelha normaMencionaNr6 de EntregasTab.tsx.
+    // "NR-16"/"NR-36" ficam de fora: o 6 tem que ser o número da norma, não o fim dele.
+    public static bool NormaMencionaNr6(string? normaReferencia)
+    {
+        var texto = normaReferencia?.Trim();
+        if (string.IsNullOrEmpty(texto)) return false;
+        var digitos = new string(texto.Where(char.IsDigit).ToArray());
+        if (digitos.Length > 0 && digitos.TrimStart('0') == "6") return true;
+        return System.Text.RegularExpressions.Regex.IsMatch(
+            texto, @"\bn\.?r\.?\s*-?\s*0*6\b", System.Text.RegularExpressions.RegexOptions.IgnoreCase);
+    }
+
     public ICollection<Treinamento> Realizacoes { get; set; } = new List<Treinamento>();
 }
 

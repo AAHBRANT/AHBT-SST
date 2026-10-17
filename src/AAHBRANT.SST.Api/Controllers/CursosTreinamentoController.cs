@@ -26,6 +26,12 @@ public class CursosTreinamentoController : ControllerBase
     public async Task<IActionResult> ObterAptidao([FromQuery] Guid? obraId, CancellationToken ct)
         => Ok(await _mediator.Send(new ObterAptidaoPorCursoQuery(obraId), ct));
 
+    // Cursos cuja norma cita a NR-06 mas não habilitam a entrega de EPI no servidor (ver a query).
+    [Authorize(Policy = "treinamento:ver")]
+    [HttpGet("nr06-sem-marcador")]
+    public async Task<IActionResult> ListarNr06SemMarcador(CancellationToken ct)
+        => Ok(await _mediator.Send(new ListarCursosNr6SemMarcadorQuery(), ct));
+
     [Authorize(Policy = "treinamento:ver")]
     [HttpGet("{id:guid}")]
     public async Task<IActionResult> ObterPorId(Guid id, CancellationToken ct)
