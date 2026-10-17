@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { lazy, Suspense, useEffect, useState } from 'react';
 import { FluentProvider } from '@fluentui/react-components';
 import { MotionConfig } from 'framer-motion';
 import { HashRouter, Navigate, Outlet, Route, Routes, useLocation, useParams } from 'react-router-dom';
@@ -7,54 +7,62 @@ import { ThemeModeProvider, useThemeMode } from './theme/ThemeModeContext';
 import { UsuarioLogadoProvider } from './lib/UsuarioLogadoContext';
 import { processarLoginNavegadorPendente } from './lib/browserAuth';
 import { AppShell } from './layout/AppShell';
-import { DashboardPage } from './pages/DashboardPage';
-import { GestaoSstPage } from './pages/gestao-sst/GestaoSstPage';
-import { OperacaoPage } from './pages/operacao/OperacaoPage';
-import { OcorrenciasPage } from './pages/ocorrencias/OcorrenciasPage';
-import { PessoasPage } from './pages/pessoas/PessoasPage';
-import { TrabalhadorDetalhePage } from './pages/pessoas/TrabalhadorDetalhePage';
-import { PgrDetalhePage } from './pages/pgr/PgrDetalhePage';
-import { LeituraIaRevisaoPage } from './pages/leitura-ia/LeituraIaRevisaoPage';
-import { AprDetalhePage } from './pages/apr/AprDetalhePage';
-import { PermissaoTrabalhoDetalhePage } from './pages/pt/PermissaoTrabalhoDetalhePage';
-import { AssinarPtPage } from './pages/pt/AssinarPtPage';
-import { AssinarAprPage } from './pages/apr/AssinarAprPage';
-import { InspecaoDetalhePage } from './pages/inspecoes/InspecaoDetalhePage';
-import { AssinarInspecaoPage } from './pages/inspecoes/AssinarInspecaoPage';
-import { IdentificacaoPublicaPage } from './pages/identificacao/IdentificacaoPublicaPage';
-import { ValidarDocumentoPage } from './pages/validacao/ValidarDocumentoPage';
-import { AdministracaoPage } from './pages/administracao/AdministracaoPage';
-import { SuporteIaPage } from './pages/suporte-ia/SuporteIaPage';
-import { SuporteIaDetalhePage } from './pages/suporte-ia/SuporteIaDetalhePage';
-import { NaoConformidadeDetalhePage } from './pages/naoconformidades/NaoConformidadeDetalhePage';
-import { AlertasPage } from './pages/alertas/AlertasPage';
-import { RelatoriosPage } from './pages/relatorios/RelatoriosPage';
-import { CalendarioPage } from './pages/calendario/CalendarioPage';
-import { AcidenteDetalhePage } from './pages/acidentes/AcidenteDetalhePage';
-import { DdsSemanalDetalhePage } from './pages/dds/DdsSemanalDetalhePage';
-import { DdsDetalhePage } from './pages/dds/DdsDetalhePage';
-import { AssinarDdsPage } from './pages/dds/AssinarDdsPage';
-import { AssinarEntregaEpiPage } from './pages/epi/AssinarEntregaEpiPage';
-import { AssinarTermoEpiPage } from './pages/epi/AssinarTermoEpiPage';
-import { SaudeOcupacionalPage } from './pages/saude-ocupacional/SaudeOcupacionalPage';
-import { PcmsoDetalhePage } from './pages/saude-ocupacional/PcmsoDetalhePage';
-import { ProcessoEleitoralCipaDetalhePage } from './pages/cipa/ProcessoEleitoralCipaDetalhePage';
-import { MembroCipaDetalhePage } from './pages/cipa/MembroCipaDetalhePage';
-import { ReuniaoCipaDetalhePage } from './pages/cipa/ReuniaoCipaDetalhePage';
-import { EventoSipatDetalhePage } from './pages/cipa/EventoSipatDetalhePage';
-import { AssinarTreinamentoPage } from './pages/treinamentos/AssinarTreinamentoPage';
-import { SessaoTreinamentoDetalhePage } from './pages/treinamentos/SessaoTreinamentoDetalhePage';
-import { GaleriaPage } from './ui/galeria/GaleriaPage';
-import { TerceirizadoPage } from './pages/terceirizados/TerceirizadoPage';
-import { EmpresaDetalhePage } from './pages/terceirizados/EmpresaDetalhePage';
-import { ContratoDetalhePage } from './pages/terceirizados/ContratoDetalhePage';
+import { Carregando } from '@ui';
+
+// Cada tela vira um chunk próprio, baixado só quando a rota é aberta — antes o app inteiro
+// (todas as páginas + recharts) saía num único JS de ~2,9 MB, encostando no limite de 3 MiB do
+// precache do service worker (vite.config.ts). O shell (AppShell) continua no bundle inicial.
+const DashboardPage = lazy(() => import('./pages/DashboardPage').then((m) => ({ default: m.DashboardPage })));
+const GestaoSstPage = lazy(() => import('./pages/gestao-sst/GestaoSstPage').then((m) => ({ default: m.GestaoSstPage })));
+const OperacaoPage = lazy(() => import('./pages/operacao/OperacaoPage').then((m) => ({ default: m.OperacaoPage })));
+const OcorrenciasPage = lazy(() => import('./pages/ocorrencias/OcorrenciasPage').then((m) => ({ default: m.OcorrenciasPage })));
+const PessoasPage = lazy(() => import('./pages/pessoas/PessoasPage').then((m) => ({ default: m.PessoasPage })));
+const TrabalhadorDetalhePage = lazy(() => import('./pages/pessoas/TrabalhadorDetalhePage').then((m) => ({ default: m.TrabalhadorDetalhePage })));
+const PgrDetalhePage = lazy(() => import('./pages/pgr/PgrDetalhePage').then((m) => ({ default: m.PgrDetalhePage })));
+const LeituraIaRevisaoPage = lazy(() => import('./pages/leitura-ia/LeituraIaRevisaoPage').then((m) => ({ default: m.LeituraIaRevisaoPage })));
+const AprDetalhePage = lazy(() => import('./pages/apr/AprDetalhePage').then((m) => ({ default: m.AprDetalhePage })));
+const PermissaoTrabalhoDetalhePage = lazy(() => import('./pages/pt/PermissaoTrabalhoDetalhePage').then((m) => ({ default: m.PermissaoTrabalhoDetalhePage })));
+const AssinarPtPage = lazy(() => import('./pages/pt/AssinarPtPage').then((m) => ({ default: m.AssinarPtPage })));
+const AssinarAprPage = lazy(() => import('./pages/apr/AssinarAprPage').then((m) => ({ default: m.AssinarAprPage })));
+const InspecaoDetalhePage = lazy(() => import('./pages/inspecoes/InspecaoDetalhePage').then((m) => ({ default: m.InspecaoDetalhePage })));
+const AssinarInspecaoPage = lazy(() => import('./pages/inspecoes/AssinarInspecaoPage').then((m) => ({ default: m.AssinarInspecaoPage })));
+const IdentificacaoPublicaPage = lazy(() => import('./pages/identificacao/IdentificacaoPublicaPage').then((m) => ({ default: m.IdentificacaoPublicaPage })));
+const ValidarDocumentoPage = lazy(() => import('./pages/validacao/ValidarDocumentoPage').then((m) => ({ default: m.ValidarDocumentoPage })));
+const AdministracaoPage = lazy(() => import('./pages/administracao/AdministracaoPage').then((m) => ({ default: m.AdministracaoPage })));
+const SuporteIaPage = lazy(() => import('./pages/suporte-ia/SuporteIaPage').then((m) => ({ default: m.SuporteIaPage })));
+const SuporteIaDetalhePage = lazy(() => import('./pages/suporte-ia/SuporteIaDetalhePage').then((m) => ({ default: m.SuporteIaDetalhePage })));
+const NaoConformidadeDetalhePage = lazy(() => import('./pages/naoconformidades/NaoConformidadeDetalhePage').then((m) => ({ default: m.NaoConformidadeDetalhePage })));
+const AlertasPage = lazy(() => import('./pages/alertas/AlertasPage').then((m) => ({ default: m.AlertasPage })));
+const RelatoriosPage = lazy(() => import('./pages/relatorios/RelatoriosPage').then((m) => ({ default: m.RelatoriosPage })));
+const CalendarioPage = lazy(() => import('./pages/calendario/CalendarioPage').then((m) => ({ default: m.CalendarioPage })));
+const AcidenteDetalhePage = lazy(() => import('./pages/acidentes/AcidenteDetalhePage').then((m) => ({ default: m.AcidenteDetalhePage })));
+const DdsSemanalDetalhePage = lazy(() => import('./pages/dds/DdsSemanalDetalhePage').then((m) => ({ default: m.DdsSemanalDetalhePage })));
+const DdsDetalhePage = lazy(() => import('./pages/dds/DdsDetalhePage').then((m) => ({ default: m.DdsDetalhePage })));
+const AssinarDdsPage = lazy(() => import('./pages/dds/AssinarDdsPage').then((m) => ({ default: m.AssinarDdsPage })));
+const AssinarEntregaEpiPage = lazy(() => import('./pages/epi/AssinarEntregaEpiPage').then((m) => ({ default: m.AssinarEntregaEpiPage })));
+const AssinarTermoEpiPage = lazy(() => import('./pages/epi/AssinarTermoEpiPage').then((m) => ({ default: m.AssinarTermoEpiPage })));
+const SaudeOcupacionalPage = lazy(() => import('./pages/saude-ocupacional/SaudeOcupacionalPage').then((m) => ({ default: m.SaudeOcupacionalPage })));
+const PcmsoDetalhePage = lazy(() => import('./pages/saude-ocupacional/PcmsoDetalhePage').then((m) => ({ default: m.PcmsoDetalhePage })));
+const ProcessoEleitoralCipaDetalhePage = lazy(() => import('./pages/cipa/ProcessoEleitoralCipaDetalhePage').then((m) => ({ default: m.ProcessoEleitoralCipaDetalhePage })));
+const MembroCipaDetalhePage = lazy(() => import('./pages/cipa/MembroCipaDetalhePage').then((m) => ({ default: m.MembroCipaDetalhePage })));
+const ReuniaoCipaDetalhePage = lazy(() => import('./pages/cipa/ReuniaoCipaDetalhePage').then((m) => ({ default: m.ReuniaoCipaDetalhePage })));
+const EventoSipatDetalhePage = lazy(() => import('./pages/cipa/EventoSipatDetalhePage').then((m) => ({ default: m.EventoSipatDetalhePage })));
+const AssinarTreinamentoPage = lazy(() => import('./pages/treinamentos/AssinarTreinamentoPage').then((m) => ({ default: m.AssinarTreinamentoPage })));
+const SessaoTreinamentoDetalhePage = lazy(() => import('./pages/treinamentos/SessaoTreinamentoDetalhePage').then((m) => ({ default: m.SessaoTreinamentoDetalhePage })));
+const GaleriaPage = lazy(() => import('./ui/galeria/GaleriaPage').then((m) => ({ default: m.GaleriaPage })));
+const TerceirizadoPage = lazy(() => import('./pages/terceirizados/TerceirizadoPage').then((m) => ({ default: m.TerceirizadoPage })));
+const EmpresaDetalhePage = lazy(() => import('./pages/terceirizados/EmpresaDetalhePage').then((m) => ({ default: m.EmpresaDetalhePage })));
+const ContratoDetalhePage = lazy(() => import('./pages/terceirizados/ContratoDetalhePage').then((m) => ({ default: m.ContratoDetalhePage })));
 
 // Envolve as rotas internas do app com o AppShell (sidebar/header do Teams). As rotas públicas
 // /p/:codigoOuUid e /validar/:token ficam de fora dessa camada — ver IdentificacaoPublicaPage/ValidarDocumentoPage.
 function LayoutComTeams() {
   return (
     <AppShell>
-      <Outlet />
+      {/* Suspense dentro do shell: sidebar/header ficam na tela enquanto o chunk da página chega. */}
+      <Suspense fallback={<Carregando variante="detalhe" linhas={6} />}>
+        <Outlet />
+      </Suspense>
     </AppShell>
   );
 }
@@ -122,7 +130,9 @@ function AppRoteado() {
               path="/p/:codigoOuUid"
               element={
                 <FluentProvider theme={aahbrantLightTheme}>
-                  <IdentificacaoPublicaPage />
+                  <Suspense fallback={<Carregando variante="detalhe" linhas={6} />}>
+                    <IdentificacaoPublicaPage />
+                  </Suspense>
                 </FluentProvider>
               }
             />
@@ -130,7 +140,9 @@ function AppRoteado() {
               path="/validar/:token"
               element={
                 <FluentProvider theme={aahbrantLightTheme}>
-                  <ValidarDocumentoPage />
+                  <Suspense fallback={<Carregando variante="detalhe" linhas={6} />}>
+                    <ValidarDocumentoPage />
+                  </Suspense>
                 </FluentProvider>
               }
             />
