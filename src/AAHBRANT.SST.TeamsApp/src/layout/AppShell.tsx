@@ -28,7 +28,6 @@ import {
   Grid24Regular,
   Add24Regular,
   CalendarLtr24Regular,
-  DocumentText24Regular,
   ClipboardTaskListLtr24Regular,
   Settings24Regular,
   Alert24Regular,
@@ -662,7 +661,7 @@ const itensPilares: Array<ItemNav & { icone: IconeNav }> = [
   { rota: '/ocorrencias', rotulo: 'Ocorrências', icone: BriefcaseMedical24Regular },
   { rota: '/terceirizados', rotulo: 'Terceirizado', icone: Building24Regular },
   { rota: '/calendario', rotulo: 'Calendário', icone: CalendarLtr24Regular },
-  { rota: '/relatorios', rotulo: 'Relatórios', icone: DocumentText24Regular },
+  // Relatórios oculto da sidebar (pedido do usuário, 17/10) — rota /relatorios segue ativa no App.tsx.
 ];
 
 // Administração fica fixa no rodapé do rail (mesmo padrão do mockup Hub Gênesis SST) — item único,
