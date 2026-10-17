@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { chaves, queryClient, useAsos, useErroCarga, useFuncoes, useObras, useTrabalhadores } from '../../lib/consultas';
 import {
   Avatar,
   Button,
@@ -30,9 +31,7 @@ import {
   tipoVinculoLabel,
   TipoVinculo,
   type Aso,
-  type Funcao,
   type NovoTrabalhador,
-  type Obra,
   type Trabalhador,
 } from '../../lib/api';
 import { formatarCpf } from '../../lib/cpf';
@@ -74,16 +73,23 @@ const trabalhadorVazio: NovoTrabalhador = {
 // acima da lista até a altura do próprio formulário, em vez de cobrir a tela com uma gaveta larga.
 export function TrabalhadoresTab() {
   const navigate = useNavigate();
-  const [trabalhadores, setTrabalhadores] = useState<Trabalhador[]>([]);
-  const [obras, setObras] = useState<Obra[]>([]);
-  const [funcoes, setFuncoes] = useState<Funcao[]>([]);
-  const [asos, setAsos] = useState<Aso[]>([]);
+  // Listas vêm do cache compartilhado (lib/consultas): voltar para esta aba mostra o último dado na
+  // hora e revalida em segundo plano, em vez de esperar as 4 chamadas de novo.
+  const consultaTrabalhadores = useTrabalhadores();
+  const consultaObras = useObras();
+  const consultaFuncoes = useFuncoes();
+  const consultaAsos = useAsos();
+  const trabalhadores = consultaTrabalhadores.lista;
+  const obras = consultaObras.lista;
+  const funcoes = consultaFuncoes.lista;
+  const asos = consultaAsos.lista;
+  const consultas = [consultaTrabalhadores, consultaObras, consultaFuncoes, consultaAsos];
+  const carregandoLista = consultas.some((c) => c.isPending);
+  const { erro, dispensar: dispensarErro } = useErroCarga(consultas, 'Falha ao carregar funcionários.');
   const [busca, setBusca] = useState('');
   const [novoTrabalhador, setNovoTrabalhador] = useState<NovoTrabalhador>(trabalhadorVazio);
-  const [erro, setErro] = useState<string | null>(null);
   const [erroPainel, setErroPainel] = useState<string | null>(null);
   const [carregando, setCarregando] = useState(false);
-  const [carregandoLista, setCarregandoLista] = useState(true);
   const [painelAberto, setPainelAberto] = useState(false);
   const [fotoUrls, setFotoUrls] = useState<Record<string, string>>({});
   const [trabalhadorDigitalAlvo, setTrabalhadorDigitalAlvo] = useState<{ id: string; nome: string } | null>(
@@ -98,29 +104,10 @@ export function TrabalhadoresTab() {
   const { dialogElement } = useConfirmar();
   const sucessoToast = useSucessoToast();
 
+  // Depois de criar/cadastrar digital: marca as listas como desatualizadas e espera a recarga.
   async function carregar() {
-    try {
-      setErro(null);
-      const [trabs, obs, funcs, asosResp] = await Promise.all([
-        api.trabalhadores.listar(),
-        api.obras.listar(),
-        api.funcoes.listar(),
-        api.asos.listar(),
-      ]);
-      setTrabalhadores(trabs);
-      setObras(obs);
-      setFuncoes(funcs);
-      setAsos(asosResp);
-    } catch (e) {
-      setErro(e instanceof Error ? e.message : 'Falha ao carregar funcionários.');
-    } finally {
-      setCarregandoLista(false);
-    }
+    await Promise.all([chaves.trabalhadores, chaves.asos].map((queryKey) => queryClient.invalidateQueries({ queryKey })));
   }
-
-  useEffect(() => {
-    carregar();
-  }, []);
 
   // Miniaturas da foto são baixadas sob demanda (só para trabalhadores com temFoto) e mantidas como
   // object URL até a página ser desmontada — mesmo padrão de ObrasPage.baixarLogo.
@@ -287,7 +274,7 @@ export function TrabalhadoresTab() {
       <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
         <PageHeader titulo="Funcionários cadastrados" subtitulo="Selecione uma obra para ver os funcionários dela." />
 
-        {erro && <FeedbackInline tom="erro" aoFechar={() => setErro(null)}>{erro}</FeedbackInline>}
+        {erro && <FeedbackInline tom="erro" aoFechar={dispensarErro}>{erro}</FeedbackInline>}
 
         {!carregandoLista && obras.length === 0 && (
           <Card>
@@ -363,7 +350,7 @@ export function TrabalhadoresTab() {
         }
       />
 
-      {erro && <FeedbackInline tom="erro" aoFechar={() => setErro(null)}>{erro}</FeedbackInline>}
+      {erro && <FeedbackInline tom="erro" aoFechar={dispensarErro}>{erro}</FeedbackInline>}
 
       <div id="painel-novo-funcionario">
         <PainelCriacaoInline aberto={painelAberto} titulo="Novo funcionário">
