@@ -337,6 +337,15 @@ export interface Contrato {
   dataInicioVigencia: string;
   dataFimVigencia: string;
   status: 'Validado' | 'Encerrado' | 'Cancelado';
+  // true = veio do G-Juri (só leitura no SST); false = cadastrado à mão pelo técnico.
+  origemGJuri: boolean;
+}
+
+export interface DadosContrato {
+  numeroContrato: string;
+  dataInicioVigencia: string;
+  dataFimVigencia: string;
+  vagas: { funcaoId: string; quantidade: number }[];
 }
 
 export interface VagaFuncao {
@@ -6078,6 +6087,15 @@ export const api = {
     contratos: {
       listarPorEmpresa: (empresaId: string) => request<Contrato[]>(`/api/contratos?empresaId=${empresaId}`),
       obterDetalhe: (id: string) => request<ContratoDetalhe>(`/api/contratos/${id}`),
+      criar: (dados: DadosContrato & { empresaId: string; obraId: string }) =>
+        request<{ id: string }>('/api/contratos', { method: 'POST', body: JSON.stringify(dados) }),
+      atualizar: (id: string, dados: DadosContrato) =>
+        request<void>(`/api/contratos/${id}`, { method: 'PUT', body: JSON.stringify({ id, ...dados }) }),
+      encerrar: (id: string, dataEncerramento: string) =>
+        request<{ pessoasAtivas: number }>(`/api/contratos/${id}/encerrar`, {
+          method: 'POST',
+          body: JSON.stringify({ dataEncerramento }),
+        }),
       cadastrarPessoaNaVaga: (
         contratoId: string,
         funcaoId: string,

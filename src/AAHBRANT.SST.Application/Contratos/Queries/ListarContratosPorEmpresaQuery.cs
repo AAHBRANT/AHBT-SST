@@ -17,6 +17,6 @@ public class ListarContratosPorEmpresaQueryHandler : IRequestHandler<ListarContr
             .OrderByDescending(c => c.DataInicioVigencia)
             .Select(c => new ContratoDto(
                 c.Id, c.EmpresaId, c.ObraId, c.Obra!.Nome, c.NumeroContrato,
-                c.DataInicioVigencia, c.DataFimVigencia, c.Status.ToString()))
+                c.DataInicioVigencia, c.DataFimVigencia, c.Status.ToString(), c.GJuriContratoId != null))
             .ToListAsync(ct);
 }

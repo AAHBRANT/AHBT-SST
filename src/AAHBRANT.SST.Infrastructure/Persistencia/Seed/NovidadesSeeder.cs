@@ -1276,6 +1276,21 @@ public static class NovidadesSeeder
                     "Nos painéis de APR, PT, Inspeções, Ocorrências, Não conformidades, Riscos, PGR, Pessoas, Alertas e Identificação, cada indicador era um card separado com borda vinho.",
                     "Os indicadores agora ficam juntos numa faixa única, igual à tela Início. Nenhum número ou gráfico mudou."),
             }),
+        new(
+            Versao: "5.67.0",
+            Titulo: "Contrato de empresa terceirizada cadastrado pelo técnico",
+            DataPublicacao: new DateTime(2026, 10, 18, 0, 0, 0, DateTimeKind.Utc),
+            Itens: new[]
+            {
+                new NovidadeSeedItem(CategoriaNovidade.Novidade,
+                    "Novo contrato na ficha da empresa",
+                    "O contrato da empresa terceirizada só chegava pelo G-Juri. Sem contrato, não havia vagas e ninguém conseguia cadastrar as pessoas da empresa.",
+                    "Na ficha da empresa, o botão Novo contrato abre o cadastro com obra, número, vigência e vagas por função. Depois é só cadastrar as pessoas em cada vaga."),
+                new NovidadeSeedItem(CategoriaNovidade.Novidade,
+                    "Editar e encerrar o contrato",
+                    "Não havia como corrigir vigência, ajustar vagas ou encerrar um contrato pelo SST.",
+                    "O contrato cadastrado no SST pode ser editado e encerrado na tela do contrato. Encerrar não desliga ninguém: o sistema avisa quantas pessoas continuam ativas. Contratos vindos do G-Juri continuam só para consulta."),
+            }),
     };
 
     public static async Task ExecutarAsync(IServiceProvider services, CancellationToken ct = default)

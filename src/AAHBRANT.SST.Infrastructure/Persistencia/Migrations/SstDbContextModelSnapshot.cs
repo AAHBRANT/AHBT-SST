@@ -1899,7 +1899,6 @@ namespace AAHBRANT.SST.Infrastructure.Persistencia.Migrations
                         .HasColumnType("uniqueidentifier");
 
                     b.Property<string>("GJuriContratoId")
-                        .IsRequired()
                         .HasMaxLength(100)
                         .HasColumnType("nvarchar(100)");
 
@@ -1933,7 +1932,8 @@ namespace AAHBRANT.SST.Infrastructure.Persistencia.Migrations
                     b.HasIndex("EmpresaId");
 
                     b.HasIndex("GJuriContratoId")
-                        .IsUnique();
+                        .IsUnique()
+                        .HasFilter("[GJuriContratoId] IS NOT NULL");
 
                     b.HasIndex("ObraId");
 
