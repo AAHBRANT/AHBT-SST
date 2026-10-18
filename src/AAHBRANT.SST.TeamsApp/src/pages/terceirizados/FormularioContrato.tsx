@@ -65,7 +65,7 @@ export function FormularioContrato({
           {obras && (
             <Campo span={6}>
               <Field label="Obra" required>
-                <Select value={valor.obraId} onChange={(_, d) => setValor({ ...valor, obraId: d.value })}>
+                <Select style={{ width: '100%' }} value={valor.obraId} onChange={(_, d) => setValor({ ...valor, obraId: d.value })}>
                   <option value="">Selecione</option>
                   {obras.map((obra) => (
                     <option key={obra.id} value={obra.id}>
@@ -114,35 +114,38 @@ export function FormularioContrato({
             return (
               <Campo span={12} key={indice}>
                 <div style={{ display: 'flex', gap: 12, alignItems: 'flex-end', flexWrap: 'wrap' }}>
-                  <Field label="Função" required style={{ flex: '1 1 260px' }}>
-                    <Select
-                      value={vaga.funcaoId}
-                      disabled={preenchidas > 0}
-                      onChange={(_, d) => alterarVaga(indice, 'funcaoId', d.value)}
+                  <div style={{ flex: '1 1 260px', minWidth: 0 }}>
+                    <Field label="Função" required>
+                      <Select style={{ width: '100%' }}
+                        value={vaga.funcaoId}
+                        disabled={preenchidas > 0}
+                        onChange={(_, d) => alterarVaga(indice, 'funcaoId', d.value)}
+                      >
+                        <option value="">Selecione</option>
+                        {funcoes
+                          .filter((f) => f.id === vaga.funcaoId || !funcoesUsadas.has(f.id))
+                          .map((f) => (
+                            <option key={f.id} value={f.id}>
+                              {f.nome}
+                            </option>
+                          ))}
+                      </Select>
+                    </Field>
+                  </div>
+                  <div style={{ flex: '0 0 140px', minWidth: 0 }}>
+                    <Field
+                      label="Quantidade"
+                      required
+                      hint={preenchidas > 0 ? `${preenchidas} já cadastrada(s)` : undefined}
                     >
-                      <option value="">Selecione</option>
-                      {funcoes
-                        .filter((f) => f.id === vaga.funcaoId || !funcoesUsadas.has(f.id))
-                        .map((f) => (
-                          <option key={f.id} value={f.id}>
-                            {f.nome}
-                          </option>
-                        ))}
-                    </Select>
-                  </Field>
-                  <Field
-                    label="Quantidade"
-                    required
-                    hint={preenchidas > 0 ? `${preenchidas} já cadastrada(s)` : undefined}
-                    style={{ flex: '0 0 140px' }}
-                  >
-                    <Input
-                      type="number"
-                      min={Math.max(1, preenchidas)}
-                      value={vaga.quantidade}
-                      onChange={(_, d) => alterarVaga(indice, 'quantidade', d.value)}
-                    />
-                  </Field>
+                      <Input
+                        type="number"
+                        min={Math.max(1, preenchidas)}
+                        value={vaga.quantidade}
+                        onChange={(_, d) => alterarVaga(indice, 'quantidade', d.value)}
+                      />
+                    </Field>
+                  </div>
                   <BotaoAcao
                     tom="excluir"
                     icon={<Delete24Regular />}

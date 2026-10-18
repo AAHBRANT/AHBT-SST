@@ -1,5 +1,6 @@
 using AAHBRANT.SST.Application.Contratos.Commands;
 using AAHBRANT.SST.Application.Contratos.Queries;
+using AAHBRANT.SST.Application.LeituraIa;
 using AAHBRANT.SST.Application.Terceirizados.Commands;
 using MediatR;
 using Microsoft.AspNetCore.Authorization;
@@ -37,6 +38,18 @@ public class ContratosController : ControllerBase
         return CreatedAtAction(nameof(ObterDetalhe), new { id }, new { id });
     }
 
+    // Cadastro pelo PDF do contrato (18/10/2026): a IA lê empresa, contrato, vagas e pessoas e a tela
+    // preenche o cadastro para o técnico conferir. Nada é gravado nesta rota.
+    [Authorize(Policy = "terceirizado:criar")]
+    [HttpPost("leitura-ia")]
+    [RequestSizeLimit(21_000_000)]
+    public async Task<IActionResult> LerComIa([FromForm] LerContratoComIaRequest body, CancellationToken ct)
+    {
+        await using var stream = new MemoryStream();
+        await body.Arquivo.CopyToAsync(stream, ct);
+        return Ok(await _mediator.Send(new LerContratoTerceirizadoQuery(stream.ToArray()), ct));
+    }
+
     [Authorize(Policy = "terceirizado:editar")]
     [HttpPut("{id:guid}")]
     public async Task<IActionResult> Atualizar(Guid id, AtualizarContratoCommand command, CancellationToken ct)
@@ -69,3 +82,8 @@ public class ContratosController : ControllerBase
 public record CadastrarPessoaNaVagaRequest(string Nome, string Matricula, string Cpf, DateTime DataAdmissao);
 
 public record EncerrarContratoRequest(DateOnly DataEncerramento);
+
+public class LerContratoComIaRequest
+{
+    public IFormFile Arquivo { get; set; } = null!;
+}

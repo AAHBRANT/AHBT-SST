@@ -1290,6 +1290,10 @@ public static class NovidadesSeeder
                     "Editar e encerrar o contrato",
                     "Não havia como corrigir vigência, ajustar vagas ou encerrar um contrato pelo SST.",
                     "O contrato cadastrado no SST pode ser editado e encerrado na tela do contrato. Encerrar não desliga ninguém: o sistema avisa quantas pessoas continuam ativas. Contratos vindos do G-Juri continuam só para consulta."),
+                new NovidadeSeedItem(CategoriaNovidade.Novidade,
+                    "Cadastro pelo contrato em PDF, lido pela IA",
+                    "Cadastrar uma terceirizada exigia digitar empresa, contrato, vagas e cada pessoa à mão.",
+                    "Em Terceirizado > Empresas, o botão Cadastrar pelo contrato (PDF) lê o contrato com IA e preenche empresa, contrato, vagas e as pessoas listadas. O técnico confere, completa o que faltar e cadastra tudo de uma vez. Contrato digitalizado (sem texto) continua sendo preenchido à mão."),
             }),
     };
 
