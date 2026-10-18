@@ -23,11 +23,10 @@ public class ListarNaoConformidadesQueryHandler
         if (request.Status.HasValue)
             query = query.Where(n => n.Status == request.Status.Value);
 
-        // NC não tem ObraId direto, só via Atividade (nullable) — mesmo critério já usado pelo
-        // Dashboard no filtro client-side (naoConformidade.atividadeId ? ... : false): NC sem
-        // atividade vinculada fica de fora quando uma obra é selecionada.
+        // Obra própria da NC; registro antigo sem ObraId ainda é achado pela atividade.
         if (request.ObraId.HasValue)
-            query = query.Where(n => n.AtividadeId != null && n.Atividade != null && n.Atividade.ObraId == request.ObraId.Value);
+            query = query.Where(n => n.ObraId == request.ObraId.Value
+                || (n.ObraId == null && n.Atividade != null && n.Atividade.ObraId == request.ObraId.Value));
 
         return await query
             .Include(n => n.Atividade)
@@ -40,6 +39,8 @@ public class ListarNaoConformidadesQueryHandler
                 RequisitoRelacionado = n.RequisitoRelacionado,
                 Descricao = n.Descricao,
                 Local = n.Local,
+                ObraId = n.ObraId,
+                ObraNome = n.Obra != null ? n.Obra.Nome : null,
                 AtividadeId = n.AtividadeId,
                 AtividadeNome = n.Atividade != null ? n.Atividade.Nome : null,
                 RiscoId = n.RiscoId,

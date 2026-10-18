@@ -3309,6 +3309,72 @@ namespace AAHBRANT.SST.Infrastructure.Persistencia.Migrations
                     b.ToTable("EstoquesUniforme");
                 });
 
+            modelBuilder.Entity("AAHBRANT.SST.Domain.Entidades.EventoNcGQuali", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTime>("CriadoEmUtc")
+                        .HasColumnType("datetime2");
+
+                    b.Property<DateTime?>("EnviadoEmUtc")
+                        .HasColumnType("datetime2");
+
+                    b.Property<DateTime?>("EnviandoDesdeUtc")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("EventId")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
+                    b.Property<Guid>("NaoConformidadeId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("Payload")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<DateTime>("ProximaTentativaEmUtc")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("RespostaGQuali")
+                        .HasMaxLength(20)
+                        .HasColumnType("nvarchar(20)");
+
+                    b.Property<long>("Revisao")
+                        .HasColumnType("bigint");
+
+                    b.Property<string>("Situacao")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("nvarchar(20)");
+
+                    b.Property<int>("Tentativas")
+                        .HasColumnType("int");
+
+                    b.Property<string>("Tipo")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("nvarchar(20)");
+
+                    b.Property<string>("UltimoErro")
+                        .HasMaxLength(1000)
+                        .HasColumnType("nvarchar(1000)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("EventId")
+                        .IsUnique();
+
+                    b.HasIndex("NaoConformidadeId");
+
+                    b.HasIndex("Situacao", "ProximaTentativaEmUtc");
+
+                    b.ToTable("EventosNcGQuali", (string)null);
+                });
+
             modelBuilder.Entity("AAHBRANT.SST.Domain.Entidades.EventoSipat", b =>
                 {
                     b.Property<Guid>("Id")
@@ -5334,6 +5400,9 @@ namespace AAHBRANT.SST.Infrastructure.Persistencia.Migrations
                         .HasMaxLength(1000)
                         .HasColumnType("nvarchar(1000)");
 
+                    b.Property<Guid?>("ObraId")
+                        .HasColumnType("uniqueidentifier");
+
                     b.Property<string>("ObservacoesEncerramento")
                         .HasMaxLength(1000)
                         .HasColumnType("nvarchar(1000)");
@@ -5378,6 +5447,8 @@ namespace AAHBRANT.SST.Infrastructure.Persistencia.Migrations
                     b.HasIndex("InspecaoItemRespostaId")
                         .IsUnique()
                         .HasFilter("[InspecaoItemRespostaId] IS NOT NULL");
+
+                    b.HasIndex("ObraId");
 
                     b.HasIndex("ResponsavelUsuarioId");
 
@@ -9842,6 +9913,11 @@ namespace AAHBRANT.SST.Infrastructure.Persistencia.Migrations
                         .HasForeignKey("InspecaoItemRespostaId")
                         .OnDelete(DeleteBehavior.Restrict);
 
+                    b.HasOne("AAHBRANT.SST.Domain.Entidades.Obra", "Obra")
+                        .WithMany()
+                        .HasForeignKey("ObraId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
                     b.HasOne("AAHBRANT.SST.Domain.Entidades.Usuario", "ResponsavelUsuario")
                         .WithMany()
                         .HasForeignKey("ResponsavelUsuarioId")
@@ -9855,6 +9931,8 @@ namespace AAHBRANT.SST.Infrastructure.Persistencia.Migrations
                     b.Navigation("Atividade");
 
                     b.Navigation("InspecaoItemResposta");
+
+                    b.Navigation("Obra");
 
                     b.Navigation("ResponsavelUsuario");
 

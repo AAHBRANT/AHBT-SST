@@ -16,7 +16,9 @@ public record AtualizarNaoConformidadeCommand(
     Guid? AtividadeId,
     Guid? RiscoId,
     Guid? ResponsavelUsuarioId,
-    DateTime? Prazo) : IRequest;
+    DateTime? Prazo,
+    // Null mantém a obra atual (ou herda da atividade/risco quando a NC antiga ainda não tem obra).
+    Guid? ObraId = null) : IRequest;
 
 public class AtualizarNaoConformidadeCommandValidator : AbstractValidator<AtualizarNaoConformidadeCommand>
 {
@@ -52,6 +54,7 @@ public class AtualizarNaoConformidadeCommandHandler : IRequestHandler<AtualizarN
             !await _db.Usuarios.AnyAsync(u => u.Id == request.ResponsavelUsuarioId, ct))
             throw new KeyNotFoundException($"Usuário {request.ResponsavelUsuarioId} não encontrado.");
 
+        nc.ObraId = await ObraDaNaoConformidade.ResolverAsync(_db, request.ObraId ?? nc.ObraId, request.AtividadeId, request.RiscoId, ct);
         nc.OrigemDeteccao = request.OrigemDeteccao;
         nc.RequisitoRelacionado = request.RequisitoRelacionado;
         nc.Descricao = request.Descricao;

@@ -30,6 +30,8 @@ public class ObterNaoConformidadeDetalheQueryHandler
                 RequisitoRelacionado = n.RequisitoRelacionado,
                 Descricao = n.Descricao,
                 Local = n.Local,
+                ObraId = n.ObraId,
+                ObraNome = n.Obra != null ? n.Obra.Nome : null,
                 AtividadeId = n.AtividadeId,
                 AtividadeNome = n.Atividade != null ? n.Atividade.Nome : null,
                 RiscoId = n.RiscoId,

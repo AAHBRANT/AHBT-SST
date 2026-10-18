@@ -69,6 +69,7 @@ public class CriarNaoConformidadeDeItemCommandHandler : IRequestHandler<CriarNao
         var nc = new NaoConformidade
         {
             OrigemDeteccao = OrigemNaoConformidade.Inspecao,
+            ObraId = item.Inspecao?.ObraId,
             RequisitoRelacionado = request.RequisitoRelacionado,
             Descricao = descricao,
             Local = request.Local,
