@@ -49,7 +49,8 @@ public class GerarNaoConformidadeDeInspecaoCipaCommandHandler : IRequestHandler<
             null,
             null,
             request.ResponsavelUsuarioId,
-            request.Prazo), ct);
+            request.Prazo,
+            inspecao.ObraId), ct);
 
         inspecao.NaoConformidadeId = ncId;
         await _db.SaveChangesAsync(ct);

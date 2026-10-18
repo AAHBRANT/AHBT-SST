@@ -1,4 +1,4 @@
-using AAHBRANT.SST.Application.Aprs;
+﻿using AAHBRANT.SST.Application.Aprs;
 using AAHBRANT.SST.Application.Assinatura;
 using AAHBRANT.SST.Application.Cipa;
 using AAHBRANT.SST.Application.Common.Interfaces;
@@ -146,6 +146,8 @@ public static class DependencyInjection
         // Registration ser gerado e provisionado; até lá, ImportarColaboradoresGrhCommand lança
         // exceção graciosamente (mesmo padrão de GraphActivityNotificacaoTeamsService).
         services.Configure<GrhOptions>(configuration.GetSection("Grh"));
+        // Envio das NCs ao G-QUALI (fila de saída). Sem a seção "GQuali" preenchida, o serviço não envia nada.
+        services.Configure<AAHBRANT.SST.Infrastructure.Integracao.GQuali.GQualiOptions>(configuration.GetSection("GQuali"));
         services.AddScoped<IColaboradorGrhClient, ColaboradorGrhClient>();
 
         // Integração G-RH — Alojamento e ASO (2026-09-16): o time do G-RH concordou em construir os

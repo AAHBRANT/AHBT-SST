@@ -30,6 +30,7 @@ import {
   type Atividade,
   type NaoConformidade,
   type NovaNaoConformidade,
+  type Obra,
   type Risco,
   type Usuario,
 } from '../../lib/api';
@@ -41,6 +42,7 @@ function novaInicial(): NovaNaoConformidade {
     requisitoRelacionado: '',
     descricao: '',
     local: '',
+    obraId: '',
     atividadeId: '',
     riscoId: '',
     responsavelUsuarioId: '',
@@ -72,6 +74,7 @@ const tomStatus: Record<number, Tom> = {
 export function NaoConformidadesTab() {
   const navigate = useNavigate();
   const [naoConformidades, setNaoConformidades] = useState<NaoConformidade[]>([]);
+  const [obras, setObras] = useState<Obra[]>([]);
   const [atividades, setAtividades] = useState<Atividade[]>([]);
   const [riscos, setRiscos] = useState<Risco[]>([]);
   const [usuarios, setUsuarios] = useState<Usuario[]>([]);
@@ -88,16 +91,18 @@ export function NaoConformidadesTab() {
   async function carregar() {
     try {
       setErro(null);
-      const [listaNc, listaAtividades, listaRiscos, listaUsuarios] = await Promise.all([
+      const [listaNc, listaAtividades, listaRiscos, listaUsuarios, listaObras] = await Promise.all([
         api.naoConformidades.listar(),
         api.atividades.listar(),
         api.riscos.listar(),
         api.usuarios.listar(),
+        api.obras.listar(),
       ]);
       setNaoConformidades(listaNc);
       setAtividades(listaAtividades);
       setRiscos(listaRiscos);
       setUsuarios(listaUsuarios);
+      setObras(listaObras);
     } catch (e) {
       setErro(e instanceof Error ? e.message : 'Falha ao carregar não conformidades.');
     } finally {
@@ -122,6 +127,11 @@ export function NaoConformidadesTab() {
       setErroPainel('Informe a descrição da não conformidade.');
       return;
     }
+    // A obra é obrigatória (vai junto ao G-QUALI); sem escolha, o servidor usa a obra da atividade/risco.
+    if (!nova.obraId && !nova.atividadeId && !nova.riscoId) {
+      setErroPainel('Informe a obra da não conformidade.');
+      return;
+    }
     try {
       setCarregando(true);
       setErroPainel(null);
@@ -129,6 +139,7 @@ export function NaoConformidadesTab() {
         ...nova,
         requisitoRelacionado: nova.requisitoRelacionado || null,
         local: nova.local || null,
+        obraId: nova.obraId || null,
         atividadeId: nova.atividadeId || null,
         riscoId: nova.riscoId || null,
         responsavelUsuarioId: nova.responsavelUsuarioId || null,
@@ -147,6 +158,7 @@ export function NaoConformidadesTab() {
   const colunas: Coluna<NaoConformidade>[] = [
     { chave: 'origem', rotulo: 'Origem', render: (nc) => origemNaoConformidadeLabel[nc.origemDeteccao] },
     { chave: 'descricao', rotulo: 'Descrição' },
+    { chave: 'obra', rotulo: 'Obra', render: (nc) => nc.obraNome ?? '—' },
     { chave: 'atividade', rotulo: 'Atividade', render: (nc) => nc.atividadeNome ?? '—' },
     { chave: 'responsavel', rotulo: 'Responsável', render: (nc) => nc.responsavelUsuarioNome ?? '—' },
     { chave: 'prazo', rotulo: 'Prazo', largura: '108px', render: (nc) => nc.prazo?.slice(0, 10) ?? '—' },
@@ -241,10 +253,28 @@ export function NaoConformidadesTab() {
                 </Field>
               </Campo>
               <Campo span={3}>
+                <Field label="Obra" required>
+                  <Select value={nova.obraId ?? ''} onChange={(_, d) => setNova({ ...nova, obraId: d.value })}>
+                    <option value="">Selecione</option>
+                    {obras.map((obra) => (
+                      <option key={obra.id} value={obra.id}>
+                        {obra.codigo} — {obra.nome}
+                      </option>
+                    ))}
+                  </Select>
+                </Field>
+              </Campo>
+              <Campo span={3}>
                 <Field label="Atividade">
                   <Select
                     value={nova.atividadeId ?? ''}
-                    onChange={(_, d) => setNova({ ...nova, atividadeId: d.value })}
+                    onChange={(_, d) =>
+                      setNova({
+                        ...nova,
+                        atividadeId: d.value,
+                        obraId: nova.obraId || atividades.find((a) => a.id === d.value)?.obraId || '',
+                      })
+                    }
                   >
                     <option value="">Nenhuma</option>
                     {atividades.map((atividade) => (

@@ -1,4 +1,6 @@
 ﻿using AAHBRANT.SST.Application.Common.Interfaces;
+using AAHBRANT.SST.Application.NaoConformidades;
+using AAHBRANT.SST.Domain.Enums;
 using AAHBRANT.SST.Domain.Common;
 using AAHBRANT.SST.Domain.Entidades;
 using AAHBRANT.SST.Infrastructure.Seguranca;
@@ -119,6 +121,7 @@ public class SstDbContext : DbContext, IAppDbContext
     public DbSet<DdsFotoEvidencia> DdsFotosEvidencia => Set<DdsFotoEvidencia>();
 
     public DbSet<NaoConformidade> NaoConformidades => Set<NaoConformidade>();
+    public DbSet<EventoNcGQuali> EventosNcGQuali => Set<EventoNcGQuali>();
     public DbSet<AcaoPlano> AcoesPlano => Set<AcaoPlano>();
 
     public DbSet<Acidente> Acidentes => Set<Acidente>();
@@ -300,12 +303,14 @@ public class SstDbContext : DbContext, IAppDbContext
 
     public override int SaveChanges()
     {
+        RegistrarEventosNcGQuali();
         AplicarAuditoria();
         return base.SaveChanges();
     }
 
     public override Task<int> SaveChangesAsync(CancellationToken cancellationToken = default)
     {
+        RegistrarEventosNcGQuali();
         AplicarAuditoria();
         return base.SaveChangesAsync(cancellationToken);
     }
@@ -314,6 +319,35 @@ public class SstDbContext : DbContext, IAppDbContext
 
     public bool EscopoObraGlobal => _usuarioAtual.TemAcessoGlobal;
     public IReadOnlyList<Guid> ObrasNoEscopo => _usuarioAtual.ObrasPermitidas;
+
+    // Integração com o G-QUALI: toda mudança de NC com obra vira um evento na fila de saída, na MESMA gravação
+    // (se a NC não for salva, o evento também não é). Exclusão (física ou lógica) = cancelada.
+    private void RegistrarEventosNcGQuali()
+    {
+        ChangeTracker.DetectChanges();
+        var mudancas = ChangeTracker.Entries<NaoConformidade>()
+            .Where(e => (e.State is EntityState.Added or EntityState.Modified or EntityState.Deleted) && e.Entity.ObraId != null)
+            .ToList();
+        if (mudancas.Count == 0) return;
+        var obras = mudancas.Select(e => e.Entity.ObraId!.Value).Distinct().ToList();
+        var codigos = Set<Obra>().IgnoreQueryFilters().AsNoTracking()
+            .Where(o => obras.Contains(o.Id)).ToDictionary(o => o.Id, o => o.Codigo);
+        var agora = DateTime.UtcNow;
+        foreach (var e in mudancas)
+        {
+            if (!codigos.TryGetValue(e.Entity.ObraId!.Value, out var codigo) || string.IsNullOrWhiteSpace(codigo)) continue;
+            var tipo = e.State switch
+            {
+                EntityState.Added => EventoNcGQualiFactory.Criada,
+                EntityState.Deleted => EventoNcGQualiFactory.Cancelada,
+                _ when !e.Entity.Ativo => EventoNcGQualiFactory.Cancelada,
+                _ when e.Entity.Status == StatusNaoConformidade.Encerrada
+                    && e.Property(n => n.Status).OriginalValue != StatusNaoConformidade.Encerrada => EventoNcGQualiFactory.Encerrada,
+                _ => EventoNcGQualiFactory.Atualizada,
+            };
+            EventosNcGQuali.Add(EventoNcGQualiFactory.Criar(e.Entity, codigo, tipo, agora));
+        }
+    }
 
     private void AplicarAuditoria()
     {

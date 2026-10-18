@@ -112,6 +112,7 @@ public interface IAppDbContext
     DbSet<DdsFotoEvidencia> DdsFotosEvidencia { get; }
 
     DbSet<NaoConformidade> NaoConformidades { get; }
+    DbSet<EventoNcGQuali> EventosNcGQuali { get; }
     DbSet<AcaoPlano> AcoesPlano { get; }
 
     DbSet<Acidente> Acidentes { get; }

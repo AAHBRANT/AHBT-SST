@@ -2931,6 +2931,8 @@ export interface NaoConformidade {
   requisitoRelacionado?: string | null;
   descricao: string;
   local?: string | null;
+  obraId?: string | null;
+  obraNome?: string | null;
   atividadeId?: string | null;
   atividadeNome?: string | null;
   riscoId?: string | null;
@@ -2946,6 +2948,7 @@ export interface NaoConformidade {
 
 export interface NovaNaoConformidade {
   origemDeteccao: number;
+  obraId?: string | null;
   requisitoRelacionado?: string | null;
   descricao: string;
   local?: string | null;
