@@ -1,4 +1,4 @@
-using AAHBRANT.SST.Application.Common.Interfaces;
+﻿using AAHBRANT.SST.Application.Common.Interfaces;
 using AAHBRANT.SST.Application.Common.Seguranca;
 using AAHBRANT.SST.Domain.Entidades;
 using AAHBRANT.SST.Domain.Enums;
@@ -62,26 +62,33 @@ public class CriarNaoConformidadeDeItemCommandHandler : IRequestHandler<CriarNao
         if (responsavelId.HasValue && !await _db.Usuarios.AnyAsync(u => u.Id == responsavelId, ct))
             throw new KeyNotFoundException($"Usuário {responsavelId} não encontrado.");
 
-        var descricao = string.IsNullOrWhiteSpace(item.Observacao)
-            ? item.ChecklistModeloItem?.Descricao ?? "Item de checklist não conforme"
-            : $"{item.ChecklistModeloItem?.Descricao} — {item.Observacao}";
-
-        var nc = new NaoConformidade
-        {
-            OrigemDeteccao = OrigemNaoConformidade.Inspecao,
-            ObraId = item.Inspecao?.ObraId,
-            RequisitoRelacionado = request.RequisitoRelacionado,
-            Descricao = descricao,
-            Local = request.Local,
-            AtividadeId = item.Inspecao?.AtividadeId,
-            RiscoId = request.RiscoId,
-            InspecaoItemRespostaId = item.Id,
-            ResponsavelUsuarioId = responsavelId,
-            Prazo = request.Prazo ?? item.Prazo,
-        };
+        var nc = NovaDoItem(item);
+        nc.RequisitoRelacionado = request.RequisitoRelacionado;
+        nc.Local = request.Local ?? item.Local;
+        nc.RiscoId = request.RiscoId;
+        nc.ResponsavelUsuarioId = responsavelId;
+        nc.Prazo = request.Prazo ?? item.Prazo;
 
         _db.NaoConformidades.Add(nc);
         await _db.SaveChangesAsync(ct);
         return nc.Id;
+    }
+
+    // NC a partir de um item Não Conforme — usada aqui (botão "Gerar ocorrência") e no encerramento
+    // da inspeção, que gera automaticamente a NC dos itens que ainda não têm (decisão do usuário, 17/10).
+    public static NaoConformidade NovaDoItem(InspecaoItemResposta item)
+    {
+        var textoItem = item.DescricaoPersonalizada ?? item.ChecklistModeloItem?.Descricao ?? "Item de checklist não conforme";
+        return new NaoConformidade
+        {
+            OrigemDeteccao = OrigemNaoConformidade.Inspecao,
+            ObraId = item.Inspecao?.ObraId,
+            Descricao = string.IsNullOrWhiteSpace(item.Observacao) ? textoItem : $"{textoItem} — {item.Observacao}",
+            Local = item.Local,
+            AtividadeId = item.Inspecao?.AtividadeId,
+            InspecaoItemRespostaId = item.Id,
+            ResponsavelUsuarioId = item.ResponsavelUsuarioId,
+            Prazo = item.Prazo,
+        };
     }
 }
