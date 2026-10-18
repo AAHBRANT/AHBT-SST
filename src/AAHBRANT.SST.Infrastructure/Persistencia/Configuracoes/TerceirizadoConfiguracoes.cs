@@ -53,3 +53,52 @@ public class ContratoVagaFuncaoConfiguracao : IEntityTypeConfiguration<ContratoV
         builder.Property(v => v.RowVersion).IsRowVersion();
     }
 }
+
+public class AcessoPortalTerceiroConfiguracao : IEntityTypeConfiguration<AcessoPortalTerceiro>
+{
+    public void Configure(EntityTypeBuilder<AcessoPortalTerceiro> builder)
+    {
+        builder.Property(a => a.Email).IsRequired().HasMaxLength(200);
+        builder.Property(a => a.TokenHash).IsRequired().HasMaxLength(64);
+        builder.Property(a => a.CodigoHash).HasMaxLength(64);
+        builder.Property(a => a.SessaoHash).HasMaxLength(64);
+        builder.Property(a => a.TermoVersaoAceita).HasMaxLength(20);
+        builder.HasIndex(a => a.TokenHash).IsUnique();
+        builder.HasIndex(a => a.SessaoHash).HasFilter("[SessaoHash] IS NOT NULL");
+        builder.HasIndex(a => a.ContratoId);
+
+        builder.HasOne(a => a.Contrato).WithMany()
+            .HasForeignKey(a => a.ContratoId).OnDelete(DeleteBehavior.Restrict);
+
+        builder.HasQueryFilter(a => a.Ativo);
+        builder.Property(a => a.RowVersion).IsRowVersion();
+    }
+}
+
+public class DocumentoEnviadoTerceiroConfiguracao : IEntityTypeConfiguration<DocumentoEnviadoTerceiro>
+{
+    public void Configure(EntityTypeBuilder<DocumentoEnviadoTerceiro> builder)
+    {
+        builder.Property(d => d.NomeArquivo).IsRequired().HasMaxLength(260);
+        builder.Property(d => d.ContentType).IsRequired().HasMaxLength(100);
+        builder.Property(d => d.Conteudo).IsRequired();
+        builder.Property(d => d.HashSha256).IsRequired().HasMaxLength(64);
+        builder.Property(d => d.InstituicaoInstrutor).HasMaxLength(200);
+        builder.Property(d => d.NumeroCertificado).HasMaxLength(100);
+        builder.Property(d => d.MotivoRecusa).HasMaxLength(500);
+        builder.HasIndex(d => new { d.ContratoId, d.Status });
+        builder.HasIndex(d => d.TrabalhadorId);
+
+        builder.HasOne(d => d.AcessoPortalTerceiro).WithMany()
+            .HasForeignKey(d => d.AcessoPortalTerceiroId).OnDelete(DeleteBehavior.Restrict);
+        builder.HasOne(d => d.Contrato).WithMany()
+            .HasForeignKey(d => d.ContratoId).OnDelete(DeleteBehavior.Restrict);
+        builder.HasOne(d => d.Trabalhador).WithMany()
+            .HasForeignKey(d => d.TrabalhadorId).OnDelete(DeleteBehavior.Restrict);
+        builder.HasOne(d => d.CursoTreinamento).WithMany()
+            .HasForeignKey(d => d.CursoTreinamentoId).OnDelete(DeleteBehavior.Restrict);
+
+        builder.HasQueryFilter(d => d.Ativo);
+        builder.Property(d => d.RowVersion).IsRowVersion();
+    }
+}

@@ -77,6 +77,10 @@ builder.Services.AddRateLimiter(opcoes =>
         _ => new System.Threading.RateLimiting.FixedWindowRateLimiterOptions { PermitLimit = 30, Window = TimeSpan.FromMinutes(1) }));
     opcoes.AddPolicy("publico", c => System.Threading.RateLimiting.RateLimitPartition.GetFixedWindowLimiter(ChaveIp(c),
         _ => new System.Threading.RateLimiting.FixedWindowRateLimiterOptions { PermitLimit = 120, Window = TimeSpan.FromMinutes(1) }));
+    // Portal de terceiros: pedir/conferir código por e-mail. Bem mais apertado que "publico" — cada
+    // pedido pode disparar um e-mail e cada conferência é uma tentativa contra um código de 6 dígitos.
+    opcoes.AddPolicy("portal-codigo", c => System.Threading.RateLimiting.RateLimitPartition.GetFixedWindowLimiter(ChaveIp(c),
+        _ => new System.Threading.RateLimiting.FixedWindowRateLimiterOptions { PermitLimit = 10, Window = TimeSpan.FromMinutes(1) }));
 });
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();

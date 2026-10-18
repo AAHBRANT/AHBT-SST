@@ -3382,6 +3382,7 @@ export const tipoAlertaLabel: Record<number, string> = {
   28: 'Exame da função vencendo',
   29: 'Exame da função vencido',
   30: 'Cadastro facial para refazer',
+  33: 'Documento de terceiro para conferir',
 };
 
 export const SeveridadeAlerta = {

@@ -43,6 +43,17 @@ public class ContratoEncerradoWebhookCommandHandler : IRequestHandler<ContratoEn
         contrato.Status = StatusContrato.Encerrado;
         contrato.DataEncerramento = request.DataEncerramento;
 
+        // Portal de terceiros: contrato encerrado não recebe mais cadastro nem documento da empresa.
+        var acessosPortal = await _db.AcessosPortalTerceiro
+            .Where(a => a.ContratoId == contrato.Id && a.RevogadoEmUtc == null)
+            .ToListAsync(ct);
+        foreach (var acesso in acessosPortal)
+        {
+            acesso.RevogadoEmUtc = DateTime.UtcNow;
+            acesso.SessaoHash = null;
+            acesso.CodigoHash = null;
+        }
+
         var pessoasAtivas = await _db.Trabalhadores
             .Where(t => t.ContratoId == contrato.Id && t.DataDemissao == null)
             .ToListAsync(ct);

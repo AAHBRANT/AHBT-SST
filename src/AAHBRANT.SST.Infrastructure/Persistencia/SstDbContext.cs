@@ -168,6 +168,8 @@ public class SstDbContext : DbContext, IAppDbContext
     public DbSet<Empresa> Empresas => Set<Empresa>();
     public DbSet<Contrato> Contratos => Set<Contrato>();
     public DbSet<ContratoVagaFuncao> ContratoVagasFuncao => Set<ContratoVagaFuncao>();
+    public DbSet<AcessoPortalTerceiro> AcessosPortalTerceiro => Set<AcessoPortalTerceiro>();
+    public DbSet<DocumentoEnviadoTerceiro> DocumentosEnviadosTerceiro => Set<DocumentoEnviadoTerceiro>();
 
     public DbSet<NovidadeVersao> NovidadesVersao => Set<NovidadeVersao>();
     public DbSet<NovidadeVersaoItem> NovidadesVersaoItens => Set<NovidadeVersaoItem>();

@@ -159,6 +159,8 @@ public interface IAppDbContext
     DbSet<Empresa> Empresas { get; }
     DbSet<Contrato> Contratos { get; }
     DbSet<ContratoVagaFuncao> ContratoVagasFuncao { get; }
+    DbSet<AcessoPortalTerceiro> AcessosPortalTerceiro { get; }
+    DbSet<DocumentoEnviadoTerceiro> DocumentosEnviadosTerceiro { get; }
 
     DbSet<NovidadeVersao> NovidadesVersao { get; }
     DbSet<NovidadeVersaoItem> NovidadesVersaoItens { get; }

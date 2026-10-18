@@ -142,7 +142,10 @@ public enum TipoAlerta
     CadastroFacialFraco = 30,
     // Validade do PCMSO (PcmsoAlertaProvider) — aviso diário de documento vencido, 16/10/2026.
     PcmsoVencendo = 31,
-    PcmsoVencido = 32
+    PcmsoVencido = 32,
+    // Portal de terceiros (18/10/2026): a empresa terceirizada enviou ASO/certificado pelo portal e o
+    // documento aguarda conferência do técnico de segurança da obra antes de contar na liberação.
+    DocumentoTerceiroAguardandoValidacao = 33
 }
 
 public enum SeveridadeAlerta
@@ -932,4 +935,20 @@ public enum OrigemCertificadoTreinamento
 {
     Aahbrant = 1,
     Externo = 2
+}
+
+// Portal de terceiros (18/10/2026) — documento enviado pela própria empresa terceirizada.
+public enum TipoDocumentoTerceiro
+{
+    Aso = 1,
+    CertificadoTreinamento = 2
+}
+
+// Nada enviado pelo portal conta para a liberação enquanto estiver AguardandoValidacao: só a
+// aprovação do técnico de segurança gera o Aso/Treinamento de verdade.
+public enum StatusDocumentoTerceiro
+{
+    AguardandoValidacao = 1,
+    Aprovado = 2,
+    Recusado = 3
 }

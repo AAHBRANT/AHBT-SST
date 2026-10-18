@@ -76,6 +76,7 @@ public static class DependencyInjection
         services.AddSingleton<AAHBRANT.SST.Application.Dds.IImagemResumoDdsService, AAHBRANT.SST.Infrastructure.Documentos.ImagemResumoDdsService>();
         services.AddSingleton<AAHBRANT.SST.Application.Relatorios.IImagemListaPresencaService, AAHBRANT.SST.Infrastructure.Documentos.ImagemListaPresencaService>();
         services.AddScoped<ISuporteIaConfiguracao, SuporteIaConfiguracao>();
+        services.AddScoped<AAHBRANT.SST.Application.Terceirizados.Portal.IPortalTerceiroConfiguracao, AAHBRANT.SST.Infrastructure.Integracao.PortalTerceiros.PortalTerceiroConfiguracao>();
         services.Configure<AzureOpenAiOptions>(configuration.GetSection("AzureOpenAI"));
         services.AddScoped<AAHBRANT.SST.Application.SuporteIa.ITranscricaoAudioService, AzureOpenAiTranscricaoService>();
         services.AddScoped<AzureOpenAiChatJsonCliente>();
