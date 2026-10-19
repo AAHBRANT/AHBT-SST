@@ -1,4 +1,5 @@
 using AAHBRANT.SST.Application.Common.Interfaces;
+using AAHBRANT.SST.Application.Tests.TestSupport;
 using AAHBRANT.SST.Application.Trabalhadores.Queries;
 using AAHBRANT.SST.Domain.Entidades;
 using AAHBRANT.SST.Infrastructure.Persistencia;
@@ -9,6 +10,10 @@ namespace AAHBRANT.SST.Application.Tests;
 
 public class FotosCadastroFacialQueriesTests
 {
+    // A cifragem das fotos precisa da chave LGPD; sem isto o teste só passava quando outra classe a
+    // configurava antes (dependia da ordem de execução).
+    static FotosCadastroFacialQueriesTests() => ChavesCpfDeTeste.Configurar();
+
     private static IAppDbContext CriarDb(string nome)
     {
         var options = new DbContextOptionsBuilder<SstDbContext>().UseInMemoryDatabase(nome).Options;

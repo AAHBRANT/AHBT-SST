@@ -15,10 +15,10 @@ import {
   Campo,
   FeedbackInline,
   StatusChip,
+  Switch,
   useConfirmar,
   type Coluna,
 } from '@ui';
-import { Switch } from '@fluentui/react-components';
 import { Add24Regular, Delete24Regular } from '@fluentui/react-icons';
 import { api, type CursoTreinamento, type NovoCursoTreinamento, type PadraoNr } from '../../lib/api';
 import { useSucessoToast } from '../../hooks/useSucessoToast';
