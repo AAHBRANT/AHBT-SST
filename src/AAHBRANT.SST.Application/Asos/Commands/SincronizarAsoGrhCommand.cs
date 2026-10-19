@@ -18,8 +18,11 @@ namespace AAHBRANT.SST.Application.Asos.Commands;
 //   polling pega automaticamente assim que a validade existir lá.
 // - ResultadoStatus/MedicoNome/Restricoes só são sobrescritos quando o G-RH manda valor preenchido —
 //   nunca apagam uma avaliação clínica que o médico do trabalho já lançou manualmente no SST.
-// - Tipo não existe como campo distinto no G-RH (a tabela `documentos` não separa admissional/
-//   periódico/demissional) — mapeado como Periodico por padrão até o G-RH passar a distinguir.
+// - Tipo vem de `classificacao_exame` do G-RH (ADMISSIONAL/PERIODICO/...). Registro antigo sem
+//   classificação fica como Periodico (novo) ou mantém o tipo que já tinha no SST.
+// - O G-RH cadastra exames complementares (Audiometria, Espirometria...) com o tipo de documento ASO,
+//   sem aptidão. Eles não são ASO: não entram no SST, e um que já tinha entrado é inativado (Ativo =
+//   false, reversível) — senão vira um ASO "Pendente" na mesma data do ASO real e esconde o resultado.
 public record SincronizarAsoGrhCommand(
     string GrhAsoId,
     string Cpf,
@@ -27,10 +30,13 @@ public record SincronizarAsoGrhCommand(
     DateTime? DataValidade,
     string? Aptidao,
     string? RestricaoClinica,
-    string? MedicoNome) : IRequest<Guid>
+    string? MedicoNome,
+    string? Numero = null,
+    string? ClassificacaoExame = null) : IRequest<Guid>
 {
     public static SincronizarAsoGrhCommand DoAsoGrh(AsoGrhDto a) =>
-        new(a.GrhAsoId, CpfMascarador.ApenasDigitos(a.Cpf), a.DataExame, a.DataValidade, a.Aptidao, a.RestricaoClinica, a.MedicoNome);
+        new(a.GrhAsoId, CpfMascarador.ApenasDigitos(a.Cpf), a.DataExame, a.DataValidade, a.Aptidao, a.RestricaoClinica, a.MedicoNome,
+            a.Numero, a.ClassificacaoExame);
 }
 
 public class SincronizarAsoGrhCommandHandler : IRequestHandler<SincronizarAsoGrhCommand, Guid>
@@ -46,6 +52,9 @@ public class SincronizarAsoGrhCommandHandler : IRequestHandler<SincronizarAsoGrh
 
     public async Task<Guid> Handle(SincronizarAsoGrhCommand request, CancellationToken ct)
     {
+        if (EhExameComplementar(request.Numero))
+            return await InativarExameComplementarAsync(request.GrhAsoId, ct);
+
         if (request.DataValidade is null)
             throw new InvalidOperationException(
                 "ASO ainda sem validade preenchida no G-RH — sincronização adiada até o campo existir lá.");
@@ -69,7 +78,7 @@ public class SincronizarAsoGrhCommandHandler : IRequestHandler<SincronizarAsoGrh
             {
                 TrabalhadorId = trabalhador.Id,
                 GrhAsoId = request.GrhAsoId,
-                Tipo = TipoExameAso.Periodico,
+                Tipo = MapearClassificacao(request.ClassificacaoExame) ?? TipoExameAso.Periodico,
                 ResultadoStatus = ResultadoAso.Pendente,
             };
             _db.Asos.Add(aso);
@@ -78,6 +87,10 @@ public class SincronizarAsoGrhCommandHandler : IRequestHandler<SincronizarAsoGrh
         {
             aso.Ativo = true; // reativa se alguém excluiu manualmente pela tela
         }
+
+        var tipo = MapearClassificacao(request.ClassificacaoExame);
+        if (tipo is not null)
+            aso.Tipo = tipo.Value;
 
         aso.DataExame = request.DataExame;
         aso.DataValidade = request.DataValidade.Value;
@@ -101,6 +114,42 @@ public class SincronizarAsoGrhCommandHandler : IRequestHandler<SincronizarAsoGrh
         await _db.SaveChangesAsync(ct);
         return aso.Id;
     }
+
+    // "ASO", "ASO Periódico" etc. são ASO; vazio também (registro antigo sem nome). Qualquer outro
+    // nome ("Audiometria Tonal", "Espirometria") é exame complementar.
+    public static bool EhExameComplementar(string? numero) =>
+        !string.IsNullOrWhiteSpace(numero)
+        && !numero.Trim().StartsWith("ASO", StringComparison.OrdinalIgnoreCase);
+
+    private async Task<Guid> InativarExameComplementarAsync(string grhAsoId, CancellationToken ct)
+    {
+        var existente = await _db.Asos.IgnoreQueryFilters()
+            .FirstOrDefaultAsync(a => a.GrhAsoId == grhAsoId, ct);
+        if (existente is null) return Guid.Empty;
+
+        if (existente.Ativo)
+        {
+            existente.Ativo = false;
+            existente.DataUltimaSincronizacao = DateTime.UtcNow;
+            await _db.SaveChangesAsync(ct);
+        }
+        return existente.Id;
+    }
+
+    private static TipoExameAso? MapearClassificacao(string? classificacao) =>
+        RemoverAcentos(classificacao?.Trim().ToUpperInvariant()) switch
+        {
+            "ADMISSIONAL" => TipoExameAso.Admissional,
+            "PERIODICO" => TipoExameAso.Periodico,
+            "RETORNO AO TRABALHO" or "RETORNO_AO_TRABALHO" or "RETORNO" => TipoExameAso.RetornoAoTrabalho,
+            "MUDANCA DE FUNCAO" or "MUDANCA_DE_FUNCAO" or "MUDANCA DE RISCO" => TipoExameAso.MudancaDeFuncao,
+            "DEMISSIONAL" => TipoExameAso.Demissional,
+            _ => null,
+        };
+
+    private static string? RemoverAcentos(string? texto) => texto?
+        .Replace('Á', 'A').Replace('Ã', 'A').Replace('Â', 'A').Replace('É', 'E').Replace('Ê', 'E')
+        .Replace('Í', 'I').Replace('Ó', 'O').Replace('Õ', 'O').Replace('Ô', 'O').Replace('Ú', 'U').Replace('Ç', 'C');
 
     private static ResultadoAso? MapearAptidao(string? aptidao) => aptidao?.Trim().ToUpperInvariant() switch
     {

@@ -1276,6 +1276,21 @@ public static class NovidadesSeeder
                     "Nos painéis de APR, PT, Inspeções, Ocorrências, Não conformidades, Riscos, PGR, Pessoas, Alertas e Identificação, cada indicador era um card separado com borda vinho.",
                     "Os indicadores agora ficam juntos numa faixa única, igual à tela Início. Nenhum número ou gráfico mudou."),
             }),
+        new(
+            Versao: "5.67.0",
+            Titulo: "ASOs do G-RH com a classificação certa",
+            DataPublicacao: new DateTime(2026, 10, 19, 0, 0, 0, DateTimeKind.Utc),
+            Itens: new[]
+            {
+                new NovidadeSeedItem(CategoriaNovidade.Correcao,
+                    "Admissional, periódico e demissional vindos do G-RH",
+                    "Todo ASO importado do G-RH aparecia como Periódico, mesmo quando era admissional ou demissional.",
+                    "O SST agora usa a classificação do exame cadastrada no G-RH. ASOs antigos sem classificação continuam como estavam."),
+                new NovidadeSeedItem(CategoriaNovidade.Correcao,
+                    "Funcionário apto não aparece mais como \"Pendente\"",
+                    "Exames complementares (como a Audiometria Tonal) cadastrados no G-RH junto com o ASO entravam no SST como um segundo ASO sem resultado, e o funcionário aparecia como \"Pendente\" mesmo estando apto.",
+                    "Esses exames não contam mais como ASO. A lista de Pessoas e os painéis passam a mostrar o resultado do ASO de verdade."),
+            }),
     };
 
     public static async Task ExecutarAsync(IServiceProvider services, CancellationToken ct = default)
