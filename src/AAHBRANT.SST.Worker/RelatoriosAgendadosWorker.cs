@@ -39,9 +39,12 @@ public class RelatoriosAgendadosWorker : BackgroundService
                     _logger.LogInformation("Relatórios agendados: {Quantidade} publicado(s).", publicados);
 
                 // Aviso de itens vencidos das obras (segunda a sexta, 08:00) — escopo próprio para uma falha não afetar o outro.
-                // Desligado até AvisoDocumentosVencidos:Habilitado=true: antes de ligar, conferir a prévia em
-                // GET /api/alertas/aviso-documentos-vencidos/previa (combinado com o usuário em 16/10/2026).
-                if (_configuration.GetValue<bool>("AvisoDocumentosVencidos:Habilitado"))
+                // Liga com AvisoDocumentosVencidos:Habilitado=true (prévia em GET /api/alertas/aviso-documentos-vencidos/previa).
+                // InicioEm (opcional) segura o primeiro disparo até a data: ligado depois das 08:00, o aviso do dia sairia na
+                // hora (ligado pelo usuário em 19/10/2026 às 23h, com início em 20/10).
+                var inicioAviso = _configuration.GetValue<DateTime?>("AvisoDocumentosVencidos:InicioEm");
+                if (_configuration.GetValue<bool>("AvisoDocumentosVencidos:Habilitado")
+                    && (inicioAviso is null || FusoBrasilia.Hoje() >= inicioAviso.Value.Date))
                 {
                     using var escopoAviso = _services.CreateScope();
                     var avisos = await escopoAviso.ServiceProvider.GetRequiredService<IMediator>()
