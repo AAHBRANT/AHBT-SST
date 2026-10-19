@@ -178,4 +178,44 @@ public class AvisoDocumentosVencidosTests
         Assert.Equal(TipoAlerta.PcmsoVencido, item.TipoAlertaVencido);
         Assert.Contains("Vigente", item.Titulo);
     }
+
+    [Theory]
+    [InlineData("2026-10-19 06:59", "2026-10-19")] // segunda antes das 7h: sai hoje
+    [InlineData("2026-10-19 07:00", "2026-10-20")] // segunda depois das 7h: terça
+    [InlineData("2026-10-16 10:00", "2026-10-19")] // sexta depois das 7h: segunda
+    [InlineData("2026-10-17 09:00", "2026-10-19")] // sábado: segunda
+    public void ProximoEnvio_PulaFimDeSemanaEHorarioJaPassado(string agora, string esperado)
+    {
+        Assert.Equal(DateTime.Parse(esperado), PreviaAvisoDocumentosVencidosQueryHandler.ProximoEnvio(DateTime.Parse(agora)));
+    }
+
+    [Fact]
+    public async Task Previa_ListaDestinatariosComMotivoESininho_SemEnviarNada()
+    {
+        var c = await MontarAsync(nameof(Previa_ListaDestinatariosComMotivoESininho_SemEnviarNada));
+
+        var previa = await new PreviaAvisoDocumentosVencidosQueryHandler(c.Db)
+            .Handle(new PreviaAvisoDocumentosVencidosQuery(SextaAs7), default);
+
+        Assert.Equal(new DateTime(2026, 10, 19), previa.DataEnvio);
+        Assert.Equal(new[] { "Eng Empresa", "Gestor A", "Téc A" }, previa.Destinatarios.Select(d => d.Nome));
+        var tecnico = previa.Destinatarios.Single(d => d.Nome == "Téc A");
+        Assert.Equal(new[] { "Técnico de Segurança — Parque Roger" }, tecnico.Motivos);
+        Assert.Equal("Engenheiro de Segurança da empresa (todas as obras)", previa.Destinatarios.Single(d => d.Nome == "Eng Empresa").Motivos.Single());
+        Assert.False(tecnico.RecebeSininho);
+        Assert.Equal("PGR", Assert.Single(tecnico.Documentos).Tipo);
+        Assert.Empty(c.Email.Enviados);
+        Assert.Empty(c.Db.ExecucoesRelatorioAgendado);
+
+        c.Db.Alertas.Add(new Alerta
+        {
+            Tipo = TipoAlerta.PgrVencido, Severidade = SeveridadeAlerta.Critico, Titulo = "VENCIDO",
+            EntidadeOrigemTipo = "PgrTermino", EntidadeOrigemId = c.PgrA.Id, ObraId = c.ObraA.Id,
+        });
+        await c.Db.SaveChangesAsync();
+
+        previa = await new PreviaAvisoDocumentosVencidosQueryHandler(c.Db)
+            .Handle(new PreviaAvisoDocumentosVencidosQuery(SextaAs7), default);
+        Assert.All(previa.Destinatarios, d => Assert.True(d.RecebeSininho));
+    }
 }

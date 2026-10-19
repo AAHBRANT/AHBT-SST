@@ -3439,6 +3439,30 @@ export interface SaudeEnvioTeams {
   ultimoErro: string | null;
 }
 
+// Prévia do próximo aviso diário de PGR/PCMSO vencido (GET /api/alertas/aviso-documentos-vencidos/previa).
+export interface PreviaAvisoDocumento {
+  tipo: string;
+  nome: string;
+  obra: string;
+  vencimento: string;
+  diasVencido: number;
+  divergencias: number;
+}
+
+export interface PreviaAvisoDestinatario {
+  nome: string;
+  email: string;
+  motivos: string[];
+  recebeSininho: boolean;
+  motivoSemSininho: string | null;
+  documentos: PreviaAvisoDocumento[];
+}
+
+export interface PreviaAvisoDocumentosVencidos {
+  dataEnvio: string;
+  destinatarios: PreviaAvisoDestinatario[];
+}
+
 export interface Alerta {
   id: string;
   tipo: number;
@@ -5799,6 +5823,8 @@ export const api = {
     },
     obterPorId: (id: string) => request<Alerta>(`/api/alertas/${id}`),
     saudeEnvioTeams: () => request<SaudeEnvioTeams>('/api/alertas/saude-envio-teams'),
+    previaAvisoDocumentosVencidos: () =>
+      request<PreviaAvisoDocumentosVencidos>('/api/alertas/aviso-documentos-vencidos/previa'),
     criar: (alerta: NovoAlerta) =>
       request<{ id: string }>('/api/alertas', { method: 'POST', body: JSON.stringify(alerta) }),
     atualizar: (id: string, alerta: AtualizarAlertaPayload) =>

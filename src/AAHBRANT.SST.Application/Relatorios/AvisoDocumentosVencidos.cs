@@ -28,7 +28,7 @@ public class EnviarAvisoDocumentosVencidosCommandHandler : IRequestHandler<Envia
 {
     public static readonly TimeSpan Horario = new(7, 0, 0);
 
-    private static readonly TipoPerfilAcesso[] PerfisDaObra =
+    internal static readonly TipoPerfilAcesso[] PerfisDaObra =
         { TipoPerfilAcesso.TecnicoSeguranca, TipoPerfilAcesso.EngenheiroSeguranca, TipoPerfilAcesso.GestorDeObra };
 
     private readonly IAppDbContext _db;
@@ -268,31 +268,89 @@ public class EnviarAvisoDocumentosVencidosCommandHandler : IRequestHandler<Envia
     }
 }
 
-// Prévia (só leitura) do que o aviso diário enviaria hoje: quem recebe e quais documentos. Usada para conferir
-// antes de ligar AvisoDocumentosVencidos:Habilitado no Worker.
-public record PreviaAvisoDocumentosVencidosQuery : IRequest<List<PreviaAvisoDestinatarioDto>>;
+// Prévia (só leitura) do próximo disparo do aviso diário: quem recebe, por quê e quais documentos. Tela em
+// Alertas › Prévia do aviso (pedido do usuário, 19/10/2026), para conferir antes de ligar
+// AvisoDocumentosVencidos:Habilitado no Worker.
+public record PreviaAvisoDocumentosVencidosQuery(DateTime? AgoraBrasilia = null) : IRequest<PreviaAvisoDocumentosVencidosDto>;
 
 public record PreviaAvisoDocumentoDto(string Tipo, string Nome, string Obra, DateTime Vencimento, int DiasVencido, int Divergencias);
-public record PreviaAvisoDestinatarioDto(string Nome, string Email, List<PreviaAvisoDocumentoDto> Documentos);
+public record PreviaAvisoDestinatarioDto(
+    string Nome, string Email, List<string> Motivos, bool RecebeSininho, string? MotivoSemSininho,
+    List<PreviaAvisoDocumentoDto> Documentos);
+public record PreviaAvisoDocumentosVencidosDto(DateTime DataEnvio, List<PreviaAvisoDestinatarioDto> Destinatarios);
 
 public class PreviaAvisoDocumentosVencidosQueryHandler
-    : IRequestHandler<PreviaAvisoDocumentosVencidosQuery, List<PreviaAvisoDestinatarioDto>>
+    : IRequestHandler<PreviaAvisoDocumentosVencidosQuery, PreviaAvisoDocumentosVencidosDto>
 {
     private readonly IAppDbContext _db;
 
     public PreviaAvisoDocumentosVencidosQueryHandler(IAppDbContext db) => _db = db;
 
-    public async Task<List<PreviaAvisoDestinatarioDto>> Handle(PreviaAvisoDocumentosVencidosQuery request, CancellationToken ct)
+    // Próximo dia útil em que o aviso sai às 07:00: hoje, se ainda não deu 07:00 num dia útil; senão o próximo dia útil.
+    public static DateTime ProximoEnvio(DateTime agora)
     {
-        var hoje = FusoBrasilia.Agora().Date;
-        var documentos = await EnviarAvisoDocumentosVencidosCommandHandler.ListarDocumentosVencidosAsync(_db, hoje, ct);
+        var dia = agora.Date;
+        if (agora.TimeOfDay >= EnviarAvisoDocumentosVencidosCommandHandler.Horario) dia = dia.AddDays(1);
+        while (dia.DayOfWeek is DayOfWeek.Saturday or DayOfWeek.Sunday) dia = dia.AddDays(1);
+        return dia;
+    }
+
+    public async Task<PreviaAvisoDocumentosVencidosDto> Handle(PreviaAvisoDocumentosVencidosQuery request, CancellationToken ct)
+    {
+        var dataEnvio = ProximoEnvio(request.AgoraBrasilia ?? FusoBrasilia.Agora());
+        var documentos = await EnviarAvisoDocumentosVencidosCommandHandler.ListarDocumentosVencidosAsync(_db, dataEnvio, ct);
         var porUsuario = await EnviarAvisoDocumentosVencidosCommandHandler.AgruparPorResponsavelAsync(_db, documentos, ct);
-        return porUsuario
-            .Select(kv => new PreviaAvisoDestinatarioDto(kv.Key.Nome, kv.Key.Email, kv.Value
-                .OrderByDescending(d => d.DiasVencido)
-                .Select(d => new PreviaAvisoDocumentoDto(d.Tipo, d.Nome, d.ObraNome, d.Vencimento, d.DiasVencido, d.Divergencias.Count))
-                .ToList()))
+        if (porUsuario.Count == 0) return new PreviaAvisoDocumentosVencidosDto(dataEnvio, new());
+
+        // Por que cada pessoa recebe (perfil + obra), para conferir vínculos antigos ou faltando.
+        var usuarioIds = porUsuario.Keys.Select(u => u.Id).ToList();
+        var obraIds = documentos.Where(d => d.ObraId.HasValue).Select(d => d.ObraId!.Value).Distinct().ToList();
+        var vinculos = await _db.UsuariosPerfilObra
+            .Where(v => usuarioIds.Contains(v.UsuarioId))
+            .Where(v =>
+                (v.ObraId != null && obraIds.Contains(v.ObraId.Value)
+                    && EnviarAvisoDocumentosVencidosCommandHandler.PerfisDaObra.Contains(v.PerfilAcesso!.Tipo!.Value))
+                || (v.ObraId == null && v.PerfilAcesso!.Tipo == TipoPerfilAcesso.EngenheiroSeguranca))
+            .Select(v => new { v.UsuarioId, Tipo = v.PerfilAcesso!.Tipo, ObraNome = v.Obra != null ? v.Obra.Nome : null })
+            .ToListAsync(ct);
+
+        // Mesma regra do envio: o sininho só sai se o Motor já abriu um alerta para algum dos documentos.
+        var docIds = documentos.Select(d => d.DocumentoId).ToList();
+        var alertas = await _db.Alertas
+            .Where(a => docIds.Contains(a.EntidadeOrigemId) && a.Status != StatusAlerta.Resolvido)
+            .Select(a => new { a.EntidadeOrigemTipo, a.EntidadeOrigemId })
+            .ToListAsync(ct);
+        bool TemAlerta(DocumentoVencido d) =>
+            alertas.Any(a => a.EntidadeOrigemId == d.DocumentoId && a.EntidadeOrigemTipo == d.EntidadeOrigemTipo);
+
+        var destinatarios = porUsuario
+            .Select(kv =>
+            {
+                var motivos = vinculos
+                    .Where(v => v.UsuarioId == kv.Key.Id)
+                    .Select(v => v.ObraNome is null
+                        ? $"{RotuloPerfil(v.Tipo)} da empresa (todas as obras)"
+                        : $"{RotuloPerfil(v.Tipo)} — {v.ObraNome}")
+                    .Distinct()
+                    .OrderBy(m => m)
+                    .ToList();
+                var semSininho = kv.Value.Any(TemAlerta) ? null : "Motor de Alertas ainda não abriu o alerta destes documentos";
+                return new PreviaAvisoDestinatarioDto(kv.Key.Nome, kv.Key.Email, motivos, semSininho is null, semSininho, kv.Value
+                    .OrderByDescending(d => d.DiasVencido)
+                    .Select(d => new PreviaAvisoDocumentoDto(d.Tipo, d.Nome, d.ObraNome, d.Vencimento, d.DiasVencido, d.Divergencias.Count))
+                    .ToList());
+            })
             .OrderBy(d => d.Nome)
             .ToList();
+
+        return new PreviaAvisoDocumentosVencidosDto(dataEnvio, destinatarios);
     }
+
+    private static string RotuloPerfil(TipoPerfilAcesso? tipo) => tipo switch
+    {
+        TipoPerfilAcesso.TecnicoSeguranca => "Técnico de Segurança",
+        TipoPerfilAcesso.EngenheiroSeguranca => "Engenheiro de Segurança",
+        TipoPerfilAcesso.GestorDeObra => "Gestor de Obra",
+        _ => tipo?.ToString() ?? "Perfil",
+    };
 }
