@@ -978,7 +978,8 @@ export function AppShell({ children }: { children: ReactNode }) {
             title={modo === 'dark' ? 'Modo claro' : 'Modo escuro'}
             onClick={alternarModo}
           />
-          <div className={mergeClasses(estilos.sinoAlertas, estilos.acoesMobileOcultas)}>
+          {/* Sininho fica visível também no celular (pedido do usuário, 19/10/2026): é o único caminho para Alertas. */}
+          <div className={estilos.sinoAlertas}>
             <Button
               appearance="subtle"
               icon={<Alert24Regular />}

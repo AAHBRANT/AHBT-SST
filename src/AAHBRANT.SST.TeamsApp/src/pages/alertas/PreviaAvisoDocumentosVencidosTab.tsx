@@ -13,15 +13,15 @@ function formatarDataEnvio(iso: string) {
   return new Date(ano, mes - 1, dia).toLocaleDateString('pt-BR', { weekday: 'long', day: '2-digit', month: '2-digit', year: 'numeric' });
 }
 
-// CSV com ";" e BOM: abre direto no Excel em português com acentos corretos. Uma linha por pessoa × documento.
+// CSV com ";" e BOM: abre direto no Excel em português com acentos corretos. Uma linha por pessoa × item.
 function baixarCsv(previa: PreviaAvisoDocumentosVencidos) {
   const celula = (v: string) => `"${v.replace(/"/g, '""')}"`;
   const conteudo = [
-    ['Destinatário', 'E-mail', 'Por que recebe', 'Aviso no Teams', 'Documento', 'Nome do documento', 'Obra', 'Vencimento', 'Dias vencido']
+    ['Destinatário', 'E-mail', 'Por que recebe', 'Aviso no Teams', 'Tipo', 'Item', 'Obra', 'Vencimento', 'Dias vencido']
       .map(celula)
       .join(';'),
     ...previa.destinatarios.flatMap((d) =>
-      d.documentos.map((doc) =>
+      d.itens.map((doc) =>
         [
           d.nome,
           d.email,
@@ -41,13 +41,14 @@ function baixarCsv(previa: PreviaAvisoDocumentosVencidos) {
   const url = URL.createObjectURL(new Blob(['﻿' + conteudo], { type: 'text/csv;charset=utf-8' }));
   const link = document.createElement('a');
   link.href = url;
-  link.download = `previa-aviso-documentos-vencidos-${previa.dataEnvio.slice(0, 10)}.csv`;
+  link.download = `previa-aviso-itens-vencidos-${previa.dataEnvio.slice(0, 10)}.csv`;
   link.click();
   URL.revokeObjectURL(url);
 }
 
-// Prévia do aviso diário de PGR/PCMSO vencido (pedido do usuário, 19/10/2026): quem recebe no próximo disparo
-// (seg–sex, 07:00), por qual vínculo e quais documentos — para conferir antes de ligar o envio no Worker.
+// Prévia do aviso diário de itens vencidos das obras (pedido do usuário, 19/10/2026): quem recebe no próximo disparo
+// (seg–sex, 08:00), por qual vínculo e quais itens (PGR, PCMSO, ASO, treinamentos...) — para conferir antes de ligar
+// o envio no Worker.
 // Só leitura: nada é enviado daqui.
 export function PreviaAvisoDocumentosVencidosTab() {
   const [previa, setPrevia] = useState<PreviaAvisoDocumentosVencidos | null>(null);
@@ -72,7 +73,7 @@ export function PreviaAvisoDocumentosVencidosTab() {
   }, []);
 
   const destinatarios = previa?.destinatarios ?? [];
-  const totalDocumentos = new Set(destinatarios.flatMap((d) => d.documentos.map((doc) => `${doc.tipo}|${doc.nome}|${doc.obra}`))).size;
+  const totalItens = new Set(destinatarios.flatMap((d) => d.itens.map((doc) => `${doc.tipo}|${doc.nome}|${doc.obra}`))).size;
   const semSininho = destinatarios.filter((d) => !d.recebeSininho).length;
 
   const colunas: Coluna<PreviaAvisoDestinatario>[] = [
@@ -96,11 +97,11 @@ export function PreviaAvisoDocumentosVencidosTab() {
       ),
     },
     {
-      chave: 'documentos',
-      rotulo: 'Documentos',
+      chave: 'itens',
+      rotulo: 'Itens',
       alinhar: 'centro',
       largura: '110px',
-      render: (d) => <StatusChip tom="neutro">{d.documentos.length}</StatusChip>,
+      render: (d) => <StatusChip tom="neutro">{d.itens.length}</StatusChip>,
     },
     {
       chave: 'canais',
@@ -127,7 +128,7 @@ export function PreviaAvisoDocumentosVencidosTab() {
 
       <FeedbackInline tom="info">
         Esta tela só mostra quem <strong>receberia</strong> o aviso. Nada é enviado daqui. O envio automático (segunda a
-        sexta, às 7h) só começa depois que o suporte técnico ligar o aviso no servidor.
+        sexta, às 8h) só começa depois que o suporte técnico ligar o aviso no servidor.
       </FeedbackInline>
 
       <div
@@ -139,7 +140,7 @@ export function PreviaAvisoDocumentosVencidosTab() {
         }}
       >
         <KpiCard indice={0} tom="info" icone={<Mail24Regular />} rotulo="Destinatários" valor={destinatarios.length} carregando={carregando} />
-        <KpiCard indice={1} tom="alerta" icone={<DocumentError24Regular />} rotulo="Documentos vencidos" valor={totalDocumentos} carregando={carregando} />
+        <KpiCard indice={1} tom="alerta" icone={<DocumentError24Regular />} rotulo="Itens vencidos" valor={totalItens} carregando={carregando} />
         <KpiCard
           indice={2}
           tom={semSininho > 0 ? 'atencao' : 'ok'}
@@ -152,8 +153,8 @@ export function PreviaAvisoDocumentosVencidosTab() {
 
       <Card
         densidade="compacta"
-        titulo={previa ? `Próximo envio: ${formatarDataEnvio(previa.dataEnvio)}, às 7h` : 'Próximo envio'}
-        subtitulo="Clique numa pessoa para ver os documentos que vão no e-mail dela."
+        titulo={previa ? `Próximo envio: ${formatarDataEnvio(previa.dataEnvio)}, às 8h` : 'Próximo envio'}
+        subtitulo="Clique numa pessoa para ver os itens que vão no e-mail dela."
         acoes={
           <div style={{ display: 'flex', gap: tokensUi.espaco.sm }}>
             <Button icon={<ArrowClockwise24Regular />} onClick={carregar} disabled={carregando}>
@@ -171,7 +172,7 @@ export function PreviaAvisoDocumentosVencidosTab() {
         }
       >
         <DataTable
-          aria-label="Destinatários do aviso de documentos vencidos"
+          aria-label="Destinatários do aviso de itens vencidos"
           densidade="compacta"
           colunas={colunas}
           linhas={destinatarios}
@@ -179,7 +180,7 @@ export function PreviaAvisoDocumentosVencidosTab() {
           carregando={carregando}
           vazio={{
             titulo: 'Ninguém recebe aviso no próximo envio',
-            descricao: 'Não há PGR nem PCMSO vencido em obra ativa, ou as obras com documento vencido não têm técnico, engenheiro ou gestor vinculado.',
+            descricao: 'Não há item vencido (PGR, PCMSO, ASO, treinamento, EPI...) em obra ativa, ou as obras com item vencido não têm técnico, engenheiro ou gestor vinculado.',
           }}
           aoClicarLinha={(d) => setExpandido((atual) => (atual === d.email ? null : d.email))}
           expansivel={{
@@ -192,13 +193,13 @@ export function PreviaAvisoDocumentosVencidosTab() {
                   </div>
                 )}
                 <DataTable
-                  aria-label={`Documentos do aviso de ${d.nome}`}
+                  aria-label={`Itens do aviso de ${d.nome}`}
                   densidade="compacta"
-                  linhas={d.documentos}
+                  linhas={d.itens}
                   chaveLinha={(doc) => `${doc.tipo}|${doc.nome}|${doc.obra}`}
                   colunas={[
-                    { chave: 'tipo', rotulo: 'Documento', largura: '100px', render: (doc) => <strong>{doc.tipo}</strong> },
-                    { chave: 'nome', rotulo: 'Nome' },
+                    { chave: 'tipo', rotulo: 'Tipo', largura: '140px', render: (doc) => <strong>{doc.tipo}</strong> },
+                    { chave: 'nome', rotulo: 'Item' },
                     { chave: 'obra', rotulo: 'Obra' },
                     { chave: 'vencimento', rotulo: 'Venceu em', largura: '120px', render: (doc) => formatarData(doc.vencimento) },
                     {

@@ -3439,8 +3439,8 @@ export interface SaudeEnvioTeams {
   ultimoErro: string | null;
 }
 
-// Prévia do próximo aviso diário de PGR/PCMSO vencido (GET /api/alertas/aviso-documentos-vencidos/previa).
-export interface PreviaAvisoDocumento {
+// Prévia do próximo aviso diário de itens vencidos das obras (GET /api/alertas/aviso-documentos-vencidos/previa).
+export interface PreviaAvisoItem {
   tipo: string;
   nome: string;
   obra: string;
@@ -3455,7 +3455,7 @@ export interface PreviaAvisoDestinatario {
   motivos: string[];
   recebeSininho: boolean;
   motivoSemSininho: string | null;
-  documentos: PreviaAvisoDocumento[];
+  itens: PreviaAvisoItem[];
 }
 
 export interface PreviaAvisoDocumentosVencidos {
