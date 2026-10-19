@@ -31,7 +31,7 @@ public class AlertasController : ControllerBase
     public async Task<IActionResult> SaudeEnvioTeams(CancellationToken ct)
         => Ok(await _mediator.Send(new ObterSaudeEnvioTeamsQuery(), ct));
 
-    // Prévia do aviso diário de PGR/PCMSO vencido (segunda a sexta, 07:00): quem receberia e o quê, sem enviar nada.
+    // Prévia do aviso diário de itens vencidos das obras (segunda a sexta, 08:00): quem receberia e o quê, sem enviar nada.
     [Authorize(Policy = "alerta:ver")]
     [HttpGet("aviso-documentos-vencidos/previa")]
     public async Task<IActionResult> PreviaAvisoDocumentosVencidos(CancellationToken ct)
