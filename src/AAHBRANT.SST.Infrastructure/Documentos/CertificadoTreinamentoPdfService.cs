@@ -12,8 +12,9 @@ namespace AAHBRANT.SST.Infrastructure.Documentos;
 // scripts/mockups/certificado-modelo-nr_2026-10-19_v1.html): moldura vinho/ouro com cantos
 // vinho/preto/bege, frente centralizada com o colaborador e a NR em destaque (número + título, via
 // CatalogoNormasRegulamentadoras) e verso com o conteúdo programático em 2 colunas e a faixa de
-// carga horária, data e local. Continua valendo: logo só a cadastrada na Obra (04/09), instrutor =
-// responsável técnico numa assinatura só (06/09) e o rodapé padrão de rastreabilidade com QR.
+// carga horária, data e local. Por decisão do usuário (19/10, "deixar o original como eu mandei"),
+// o certificado volta a ter a logo AAHBRANT fixa (exceção à regra de 04/09, só logo da Obra). São só 2
+// espaços de assinatura: o Técnico de Segurança (instrutor e responsável técnico) e o colaborador.
 public class CertificadoTreinamentoPdfService : ICertificadoTreinamentoPdfService
 {
     private const string CorMarca = "#670000";
@@ -85,11 +86,22 @@ public class CertificadoTreinamentoPdfService : ICertificadoTreinamentoPdfServic
             coluna, "Certificado", modelo.NumeroCertificado, null, modelo.ConteudoHash, modelo.UrlValidacaoPublica, modelo.QrCodePng, modelo.TemAssinatura));
     }
 
-    // Única logo permitida é a cadastrada na própria Obra (04/09); sem logo, só reserva o espaço.
+    private const string RecursoLogo = "AAHBRANT.SST.Infrastructure.Documentos.Assets.logo-aahbrant.png";
+    private static readonly Lazy<byte[]?> LogoAahbrant = new(() =>
+    {
+        using var stream = typeof(CertificadoTreinamentoPdfService).Assembly.GetManifestResourceStream(RecursoLogo);
+        if (stream is null) return null;
+        using var memoria = new MemoryStream();
+        stream.CopyTo(memoria);
+        return memoria.ToArray();
+    });
+
+    // Logo AAHBRANT fixa, como no modelo enviado pelo usuário (19/10).
     private static void Logo(IContainer container, CertificadoTreinamentoPdfModelo modelo)
     {
-        if (modelo.ObraLogoConteudo is not null)
-            container.AlignCenter().Height(40).Width(190).Image(modelo.ObraLogoConteudo).FitArea();
+        var logo = LogoAahbrant.Value;
+        if (logo is not null)
+            container.AlignCenter().Height(44).Width(210).Image(logo).FitArea();
         else
             container.Height(12);
     }
@@ -325,37 +337,67 @@ public class CertificadoTreinamentoPdfService : ICertificadoTreinamentoPdfServic
         return saida.ToArray();
     }
 
+    // Só 2 espaços de assinatura (usuário, 19/10): o Técnico de Segurança do Trabalho, que é instrutor
+    // e responsável técnico ao mesmo tempo, e o colaborador. Assinaturas eletrônicas existentes entram
+    // no bloco de quem assinou (pelo nome).
     private static void Assinaturas(IContainer container, CertificadoTreinamentoPdfModelo modelo)
     {
+        var instrutorNome = modelo.InstituicaoInstrutor ?? string.Empty;
+        var assinaturaColaborador = modelo.Signatarios.FirstOrDefault(s => MesmoNome(s.TrabalhadorNome, modelo.TrabalhadorNome));
+        var assinaturaInstrutor = modelo.Signatarios.FirstOrDefault(s => MesmoNome(s.TrabalhadorNome, instrutorNome));
+        var nomeTecnico = string.IsNullOrWhiteSpace(instrutorNome) ? null : instrutorNome;
+        var registro = string.IsNullOrWhiteSpace(modelo.InstrutorRegistroProfissional) ? null : $"Registro: {modelo.InstrutorRegistroProfissional}";
+
         container.ShowEntire().Row(linha =>
         {
-            // O instrutor é sempre o Técnico de Segurança do Trabalho responsável, que também assina
-            // como Responsável Técnico — uma assinatura só (pedido do usuário, 06/09).
-            linha.RelativeItem().Column(bloco =>
+            linha.RelativeItem();
+            linha.RelativeItem(2).Element(c => BlocoAssinatura(c, nomeTecnico, "Técnico de Segurança do Trabalho", registro is null ? "Instrutor e Responsável Técnico" : $"Instrutor e Responsável Técnico · {registro}", assinaturaInstrutor));
+            linha.ConstantItem(60);
+            linha.RelativeItem(2).Element(c => BlocoAssinatura(c,
+                modelo.TrabalhadorNome,
+                "Participante",
+                $"Matrícula: {(string.IsNullOrWhiteSpace(modelo.TrabalhadorMatricula) ? "—" : modelo.TrabalhadorMatricula)}",
+                assinaturaColaborador));
+            linha.RelativeItem();
+        });
+    }
+
+    private static bool MesmoNome(string a, string b)
+        => !string.IsNullOrWhiteSpace(a) && string.Equals(a.Trim(), b.Trim(), StringComparison.OrdinalIgnoreCase);
+
+    // Selo de assinatura digital (pedido do usuário, 19/10: "assinatura profissional, assinada
+    // digitalmente"): carimbo com borda vinho acima da linha, com quem assinou, quando (Brasília) e
+    // o método; sem assinatura ainda, o selo fica tracejado em cinza com "Aguardando assinatura".
+    private static void BlocoAssinatura(IContainer container, string? nome, string papel, string? detalhe, CertificadoTreinamentoPdfSignatarioModelo? assinatura)
+    {
+        container.Column(bloco =>
+        {
+            bloco.Item().PaddingHorizontal(8).MinHeight(44).Element(selo =>
             {
-                bloco.Item().PaddingTop(14).AlignCenter().Text((modelo.InstituicaoInstrutor ?? "Instrutor responsável").ToUpperInvariant()).FontSize(9).SemiBold();
-                bloco.Item().PaddingTop(2).LineHorizontal(0.75f).LineColor(CorTexto);
-                bloco.Item().PaddingTop(2).AlignCenter().Text("Instrutor e Responsável Técnico pelo Treinamento").FontSize(7.5f).SemiBold();
-                bloco.Item().AlignCenter().Text("Técnico de Segurança do Trabalho").FontSize(7).FontColor(CorTextoSuave);
-                if (!string.IsNullOrWhiteSpace(modelo.InstrutorRegistroProfissional))
-                    bloco.Item().AlignCenter().Text($"Registro: {modelo.InstrutorRegistroProfissional}").FontSize(7).FontColor(CorTextoSuave);
+                if (assinatura is null)
+                {
+                    selo.MinHeight(44).Border(0.6f).BorderColor(Colors.Grey.Lighten1).CornerRadius(4).AlignCenter().AlignMiddle()
+                        .Text("Aguardando assinatura").FontSize(7.5f).Italic().FontColor(Colors.Grey.Darken1);
+                    return;
+                }
+
+                selo.Border(0.8f).BorderColor(CorMarca).CornerRadius(4).Background("#ffffff").Row(linha =>
+                {
+                    linha.ConstantItem(5).Background(CorMarca);
+                    linha.RelativeItem().PaddingVertical(4).PaddingHorizontal(8).Column(texto =>
+                    {
+                        texto.Item().Text("ASSINADO DIGITALMENTE").FontSize(6.5f).Bold().FontColor(CorMarca).LetterSpacing(0.08f);
+                        texto.Item().PaddingTop(1).Text(assinatura.TrabalhadorNome.ToUpperInvariant()).FontSize(8).SemiBold().ClampLines(1);
+                        texto.Item().Text(DescricaoMetodoAssinatura.Legenda(HorarioBrasilia.De(assinatura.AssinadoEm), assinatura.Metodo))
+                            .FontSize(6).FontColor(CorTextoSuave).ClampLines(1);
+                    });
+                });
             });
-
-            // Sem nenhuma assinatura ainda, mostra o trabalhador como "Aguardando".
-            if (modelo.Signatarios.Count == 0)
-            {
-                linha.ConstantItem(40);
-                linha.RelativeItem().Element(c => AssinaturaPdfPadrao.Bloco(c, null, modelo.TrabalhadorNome, "Participante", null, null));
-            }
-
-            foreach (var signatario in modelo.Signatarios)
-            {
-                linha.ConstantItem(40);
-                linha.RelativeItem().Element(c => AssinaturaPdfPadrao.Bloco(
-                    c, null, signatario.TrabalhadorNome,
-                    string.IsNullOrWhiteSpace(signatario.Funcao) ? "Participante" : signatario.Funcao,
-                    signatario.AssinadoEm, signatario.Metodo));
-            }
+            bloco.Item().PaddingTop(4).LineHorizontal(0.75f).LineColor(CorTexto);
+            bloco.Item().PaddingTop(3).AlignCenter().Text(string.IsNullOrWhiteSpace(nome) ? "Nome:" : nome.ToUpperInvariant()).FontSize(9).SemiBold();
+            bloco.Item().AlignCenter().Text(papel).FontSize(7.5f);
+            if (detalhe is not null)
+                bloco.Item().AlignCenter().Text(detalhe).FontSize(7).FontColor(CorTextoSuave);
         });
     }
 }
