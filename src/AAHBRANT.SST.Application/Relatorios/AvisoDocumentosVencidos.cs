@@ -299,7 +299,7 @@ public class EnviarAvisoDocumentosVencidosCommandHandler : IRequestHandler<Envia
 
         // Resumo por categoria.
         sb.Append("<table role=\"presentation\" width=\"100%\" cellspacing=\"0\" cellpadding=\"0\" style=\"border-collapse:collapse;margin:0 0 22px;font-size:13px;\">");
-        foreach (var (categoria, _) in Modulos)
+        foreach (var (_, categoria) in Modulos)
         {
             var quantidade = itens.Count(i => i.Categoria == categoria);
             if (quantidade == 0) continue;
