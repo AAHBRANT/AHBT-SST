@@ -1291,6 +1291,21 @@ public static class NovidadesSeeder
                     "Exames complementares (como a Audiometria Tonal) cadastrados no G-RH junto com o ASO entravam no SST como um segundo ASO sem resultado, e o funcionário aparecia como \"Pendente\" mesmo estando apto.",
                     "Esses exames não contam mais como ASO. A lista de Pessoas e os painéis passam a mostrar o resultado do ASO de verdade."),
             }),
+        new(
+            Versao: "5.68.0",
+            Titulo: "Novo modelo de certificado por NR",
+            DataPublicacao: new DateTime(2026, 10, 19, 0, 0, 0, DateTimeKind.Utc),
+            Itens: new[]
+            {
+                new NovidadeSeedItem(CategoriaNovidade.Melhoria,
+                    "Certificado de treinamento com novo visual",
+                    "O certificado tinha cabeçalho de documento e a norma num selo azul no canto.",
+                    "Agora tem moldura AAHBRANT, o nome do colaborador e a NR em destaque (número e nome da norma) e, no verso, o conteúdo programático com carga horária, data e local."),
+                new NovidadeSeedItem(CategoriaNovidade.Melhoria,
+                    "Conteúdo programático padrão para cada NR",
+                    "Curso sem conteúdo programático cadastrado gerava certificado sem verso.",
+                    "Ao digitar a NR no cadastro do curso (NR-05, 06, 10, 12, 18, 33 e 35), o sistema preenche o conteúdo, a carga horária e a validade da norma. Cursos já cadastrados sem conteúdo usam o padrão da NR no certificado."),
+            }),
     };
 
     public static async Task ExecutarAsync(IServiceProvider services, CancellationToken ct = default)

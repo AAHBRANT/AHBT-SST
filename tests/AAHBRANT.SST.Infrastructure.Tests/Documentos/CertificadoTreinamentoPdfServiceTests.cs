@@ -34,6 +34,47 @@ public class CertificadoTreinamentoPdfServiceTests
         Assert.Equal(2, ContarPaginas(pdf));
     }
 
+    // NR-10 tem o conteúdo padrão mais longo do catálogo (15 tópicos) — tem que caber no verso.
+    [Fact]
+    public void Gerar_ComConteudoPadraoDaNr10_SaiEmDuasPaginas()
+    {
+        var nr10 = AAHBRANT.SST.Domain.Entidades.CatalogoNormasRegulamentadoras.Obter("NR-10")!;
+        var modelo = CriarModelo() with
+        {
+            NormaReferencia = "NR-10",
+            NormaNumero = nr10.Numero,
+            NormaTitulo = nr10.Titulo,
+            ConteudoProgramatico = nr10.ConteudoProgramaticoTexto,
+            CargaHorariaRealizada = 40,
+        };
+
+        var pdf = new CertificadoTreinamentoPdfService().Gerar(modelo);
+        SalvarExemplo(pdf, "nr10");
+
+        Assert.Equal(2, ContarPaginas(pdf));
+    }
+
+    [Fact]
+    public void Gerar_ComNormaNumeroETitulo_SaiEmDuasPaginas()
+    {
+        var pdf = new CertificadoTreinamentoPdfService().Gerar(CriarModelo() with
+        {
+            NormaNumero = "NR-35",
+            NormaTitulo = "Trabalho em Altura",
+        });
+        SalvarExemplo(pdf, "nr35");
+
+        Assert.Equal(2, ContarPaginas(pdf));
+    }
+
+    // Para inspeção visual local: CERTIFICADO_EXEMPLO_DIR=<pasta> dotnet test ...
+    private static void SalvarExemplo(byte[] pdf, string nome)
+    {
+        var pasta = Environment.GetEnvironmentVariable("CERTIFICADO_EXEMPLO_DIR");
+        if (!string.IsNullOrWhiteSpace(pasta))
+            File.WriteAllBytes(Path.Combine(pasta, $"certificado-{nome}.pdf"), pdf);
+    }
+
     // O PDF traz "/Count N" na árvore de páginas — suficiente para afirmar o número de páginas sem
     // trazer uma dependência de leitor de PDF só para o teste.
     private static int ContarPaginas(byte[] pdf)

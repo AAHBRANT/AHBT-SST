@@ -1,6 +1,7 @@
 using AAHBRANT.SST.Application.Assinatura;
 using AAHBRANT.SST.Application.Common;
 using AAHBRANT.SST.Application.Common.Interfaces;
+using AAHBRANT.SST.Domain.Entidades;
 using AAHBRANT.SST.Domain.Enums;
 using MediatR;
 using Microsoft.EntityFrameworkCore;
@@ -74,6 +75,13 @@ public class ExportarCertificadoTreinamentoQueryHandler : IRequestHandler<Export
                 .FirstOrDefaultAsync(ct);
         }
 
+        // Padrão da NR do curso (19/10): sem conteúdo programático próprio cadastrado, o verso usa o
+        // conteúdo mínimo da norma do catálogo.
+        var padraoNr = CatalogoNormasRegulamentadoras.Obter(treinamento.CursoTreinamento.NormaReferencia);
+        var conteudoProgramatico = string.IsNullOrWhiteSpace(treinamento.CursoTreinamento.ConteudoProgramatico)
+            ? padraoNr?.ConteudoProgramaticoTexto
+            : treinamento.CursoTreinamento.ConteudoProgramatico;
+
         var modelo = new CertificadoTreinamentoPdfModelo(
             treinamento.Trabalhador.Obra?.Nome ?? string.Empty,
             treinamento.Trabalhador.Obra?.LogoConteudo,
@@ -96,14 +104,16 @@ public class ExportarCertificadoTreinamentoQueryHandler : IRequestHandler<Export
             treinamento.InstrutorRegistroProfissional,
             treinamento.NumeroCertificado,
             treinamento.Local,
-            treinamento.CursoTreinamento.ConteudoProgramatico,
+            conteudoProgramatico,
             signatarios,
             qrCodePng,
             fotoTurma,
             rastreio.ConteudoHash,
             rastreio.UrlValidacaoPublica,
             rastreio.QrCodePng,
-            rastreio.TemAssinatura);
+            rastreio.TemAssinatura,
+            CatalogoNormasRegulamentadoras.NormalizarNumero(treinamento.CursoTreinamento.NormaReferencia),
+            padraoNr?.Titulo);
 
         var pdf = _pdf.Gerar(modelo);
         // Guarda a cópia exata emitida e o SHA-256 dela — é o que permite conferir, depois,

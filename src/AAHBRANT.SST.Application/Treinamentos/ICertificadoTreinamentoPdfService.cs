@@ -39,7 +39,11 @@ public record CertificadoTreinamentoPdfModelo(
     string ConteudoHash,
     string UrlValidacaoPublica,
     byte[] QrCodePng,
-    bool TemAssinatura);
+    bool TemAssinatura,
+    // Número normalizado ("NR-35") e título da norma vindos de CatalogoNormasRegulamentadoras —
+    // destaque da frente no modelo de certificado de 19/10.
+    string? NormaNumero = null,
+    string? NormaTitulo = null);
 
 public interface ICertificadoTreinamentoPdfService
 {

@@ -462,6 +462,15 @@ export interface CursoTreinamento {
 
 export type NovoCursoTreinamento = Omit<CursoTreinamento, 'id'>;
 
+// Padrão de cada NR (catálogo do backend, 19/10) — preenche o cadastro de curso.
+export interface PadraoNr {
+  numero: string;
+  titulo: string;
+  cargaHorariaMinima: number | null;
+  validadeEmMeses: number | null;
+  conteudoProgramatico: string;
+}
+
 // Trabalhadores ativos que precisam do curso (pela matriz de função) e a situação de cada um.
 // "Apto" = treinamento válido hoje = emDia + vencemEm30Dias.
 export interface AptidaoCurso {
@@ -4612,6 +4621,7 @@ export const api = {
     // Card "Aptidão por treinamento" do Início: por curso exigido na matriz de funções.
     aptidao: (obraId?: string) =>
       request<AptidaoCurso[]>(`/api/cursostreinamento/aptidao${obraId ? `?obraId=${obraId}` : ''}`),
+    padroesNr: () => request<PadraoNr[]>('/api/cursostreinamento/padroes-nr'),
   },
   treinamentos: {
     listar: (trabalhadorId?: string, obraId?: string) => {
