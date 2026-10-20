@@ -16,8 +16,26 @@ namespace AAHBRANT.SST.Api.Controllers;
 public class SessoesTreinamentoController : ControllerBase
 {
     private readonly IMediator _mediator;
+    private readonly IConfiguration _configuracao;
 
-    public SessoesTreinamentoController(IMediator mediator) => _mediator = mediator;
+    public SessoesTreinamentoController(IMediator mediator, IConfiguration configuracao)
+    {
+        _mediator = mediator;
+        _configuracao = configuracao;
+    }
+
+    // Mesma flag de UsuariosController.Eu: com o Entra ID desligado (desenvolvimento) não há perfil.
+    private bool AutenticacaoHabilitada => !string.IsNullOrWhiteSpace(_configuracao["AzureAd:TenantId"]);
+    private string? AzureAdObjectId => User.FindFirst("oid")?.Value ?? User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+
+    // Padrão da turma para o curso escolhido (19/10) + se quem está logado pode editar.
+    [Authorize(Policy = "treinamento:ver")]
+    [HttpGet("padrao")]
+    public async Task<IActionResult> ObterPadrao([FromQuery] Guid cursoTreinamentoId, [FromQuery] Guid? obraId, CancellationToken ct)
+    {
+        var padrao = await _mediator.Send(new ObterPadraoTurmaTreinamentoQuery(cursoTreinamentoId, obraId, AzureAdObjectId, AutenticacaoHabilitada), ct);
+        return padrao is null ? NotFound() : Ok(padrao);
+    }
 
     [Authorize(Policy = "treinamento:ver")]
     [HttpGet]
@@ -36,7 +54,7 @@ public class SessoesTreinamentoController : ControllerBase
     [HttpPost]
     public async Task<IActionResult> Criar(CriarSessaoTreinamentoCommand command, CancellationToken ct)
     {
-        var id = await _mediator.Send(command, ct);
+        var id = await _mediator.Send(command with { AzureAdObjectId = AzureAdObjectId, AutenticacaoHabilitada = AutenticacaoHabilitada }, ct);
         return CreatedAtAction(nameof(ObterDetalhe), new { id }, new { id });
     }
 

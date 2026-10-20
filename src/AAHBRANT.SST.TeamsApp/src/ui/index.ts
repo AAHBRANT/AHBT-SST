@@ -14,6 +14,8 @@ export {
   Radio, RadioGroup,
   // Diálogo modal: EntregasTab (canhoto do carrinho) e outras páginas usam as peças de Dialog direto.
   Dialog, DialogActions, DialogBody, DialogContent, DialogSurface, DialogTitle,
+  // Switch: liga/desliga simples (CursosTreinamentoTab — curso de Integração de Segurança).
+  Switch,
 } from '@fluentui/react-components';
 
 // Exceção pontual (spec §5.1): primitivos de tabela crus, só para grades que genuinamente não são

@@ -7598,6 +7598,9 @@ namespace AAHBRANT.SST.Infrastructure.Persistencia.Migrations
                     b.Property<int>("CargaHorariaRealizada")
                         .HasColumnType("int");
 
+                    b.Property<string>("ConteudoProgramatico")
+                        .HasColumnType("nvarchar(max)");
+
                     b.Property<DateTime>("CreatedAtUtc")
                         .HasColumnType("datetime2");
 
@@ -7614,6 +7617,12 @@ namespace AAHBRANT.SST.Infrastructure.Persistencia.Migrations
                         .HasColumnType("datetime2");
 
                     b.Property<string>("InstituicaoInstrutor")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("InstrutorRegistroProfissional")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("Local")
                         .HasColumnType("nvarchar(max)");
 
                     b.Property<string>("NumeroCertificado")
@@ -7638,6 +7647,9 @@ namespace AAHBRANT.SST.Infrastructure.Persistencia.Migrations
 
                     b.Property<Guid?>("UpdatedBy")
                         .HasColumnType("uniqueidentifier");
+
+                    b.Property<int>("ValidadeEmMeses")
+                        .HasColumnType("int");
 
                     b.HasKey("Id");
 
@@ -8320,6 +8332,9 @@ namespace AAHBRANT.SST.Infrastructure.Persistencia.Migrations
 
                     b.Property<int>("CargaHorariaRealizada")
                         .HasColumnType("int");
+
+                    b.Property<string>("ConteudoProgramatico")
+                        .HasColumnType("nvarchar(max)");
 
                     b.Property<DateTime>("CreatedAtUtc")
                         .HasColumnType("datetime2");

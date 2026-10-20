@@ -6,8 +6,16 @@ import { tocarBipeAssinaturaAceita } from '../../lib/bipeAssinatura';
 import { QuadradoRosto, CORES_DETECTOR } from '../camera/QuadradoRosto';
 import { useDetectorRosto } from '../camera/useDetectorRosto';
 
+export interface ResultadoFilaFacial {
+  trabalhadorNome: string;
+  jaConfirmado: boolean;
+}
+
 interface FilaFacialDdsProps {
-  ddsId: string;
+  ddsId?: string;
+  // Envio próprio da foto (19/10): a turma de treinamento reaproveita esta mesma fila em tela cheia.
+  // Sem ele, usa o endpoint de fila do DDS.
+  enviarFoto?: (foto: File) => Promise<ResultadoFilaFacial>;
   aberto: boolean;
   aoFechar: () => void;
   // Chamado a cada presença nova confirmada, para a tela do DDS recarregar a lista de participantes.
@@ -43,12 +51,14 @@ function mensagemDoErro(e: unknown): string {
 // funcionário só olha para ela e a presença é confirmada sozinha, com bipe (igual à fila da digital).
 // O detector de rosto decide quando capturar (um rosto bom e estável); quem identifica é o Azure, no
 // servidor, que recusa leituras ambíguas. Ver RegistrarParticipanteFacialFilaCommand.
-export function FilaFacialDds({ ddsId, aberto, aoFechar, aoPresencaConfirmada }: FilaFacialDdsProps) {
+export function FilaFacialDds({ ddsId, enviarFoto, aberto, aoFechar, aoPresencaConfirmada }: FilaFacialDdsProps) {
   const videoRef = useRef<HTMLVideoElement>(null);
   // Guardado em ref para que a identidade de capturarEEnviar não mude a cada render da tela do DDS (o
   // efeito do detector contaria um "ciclo bom" a mais a cada render).
   const aoConfirmadaRef = useRef(aoPresencaConfirmada);
   aoConfirmadaRef.current = aoPresencaConfirmada;
+  const enviarRef = useRef(enviarFoto);
+  enviarRef.current = enviarFoto;
   const [stream, setStream] = useState<MediaStream | null>(null);
   const [erroCamera, setErroCamera] = useState<string | null>(null);
   const [resultado, setResultado] = useState<Resultado | null>(null);
@@ -121,7 +131,9 @@ export function FilaFacialDds({ ddsId, aberto, aoFechar, aoPresencaConfirmada }:
       const blob = await new Promise<Blob | null>((r) => canvas.toBlob(r, 'image/jpeg', 0.92));
       if (!blob) throw new Error('Não consegui capturar a foto.');
       const foto = new File([blob], 'fila-facial.jpg', { type: 'image/jpeg' });
-      const r = await api.dds.registrarParticipanteFacialFila(ddsId, foto);
+      const r = enviarRef.current
+        ? await enviarRef.current(foto)
+        : await api.dds.registrarParticipanteFacialFila(ddsId ?? '', foto);
       if (r.jaConfirmado) {
         novo = { tom: 'info', texto: `${r.trabalhadorNome} já teve a presença confirmada.` };
       } else {
