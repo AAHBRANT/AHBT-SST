@@ -37,8 +37,23 @@ public class RiscoConfiguracao : IEntityTypeConfiguration<Risco>
             .HasForeignKey(r => r.PerigoId).OnDelete(DeleteBehavior.Restrict);
         builder.HasOne(r => r.ResponsavelUsuario).WithMany()
             .HasForeignKey(r => r.ResponsavelUsuarioId).OnDelete(DeleteBehavior.Restrict);
+        builder.Property(r => r.AvaliadoPorNome).HasMaxLength(200);
         builder.HasIndex(r => new { r.AtividadeId, r.NivelRisco });
         builder.HasQueryFilter(r => r.Ativo);
+    }
+}
+
+public class MedidaPrevencaoConfiguracao : IEntityTypeConfiguration<MedidaPrevencao>
+{
+    public void Configure(EntityTypeBuilder<MedidaPrevencao> builder)
+    {
+        builder.ToTable("MedidasPrevencao");
+        builder.Property(m => m.Texto).IsRequired().HasMaxLength(1000);
+        builder.Property(m => m.ValidadoPorNome).HasMaxLength(200);
+        builder.HasOne(m => m.Risco).WithMany(r => r.Medidas)
+            .HasForeignKey(m => m.RiscoId).OnDelete(DeleteBehavior.Cascade);
+        builder.HasIndex(m => new { m.RiscoId, m.Fase, m.Ordem });
+        builder.HasQueryFilter(m => m.Ativo);
     }
 }
 

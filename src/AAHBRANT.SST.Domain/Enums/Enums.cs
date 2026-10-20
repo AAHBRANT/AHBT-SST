@@ -262,6 +262,28 @@ public enum StatusControleRisco
     Concluido = 3
 }
 
+// Fase do trabalho em que a medida de prevenção é aplicada (Ordem de Serviço).
+public enum FaseMedidaPrevencao
+{
+    Antes = 1,
+    Durante = 2,
+    Apos = 3
+}
+
+public enum OrigemMedidaPrevencao
+{
+    Pgr = 1,
+    SugestaoIa = 2,
+    Manual = 3
+}
+
+public enum StatusMedidaPrevencao
+{
+    Validada = 1,
+    Pendente = 2,
+    Descartada = 3
+}
+
 // Não há fluxo literal no documento para o "status" do PGR (§16) — proposta própria (avisar o
 // usuário se ele quiser outro fluxo, ex. um vocabulário alinhado à NR-01).
 public enum StatusPgr

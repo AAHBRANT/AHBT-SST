@@ -89,6 +89,7 @@ public static class DependencyInjection
         services.AddScoped<AAHBRANT.SST.Application.SuporteIa.IClassificadorRelatoSuporteIa, AzureOpenAiClassificadorRelato>();
         services.AddScoped<AAHBRANT.SST.Application.Acidentes.RelatoIa.IClassificadorRelatoOcorrencia, AzureOpenAiClassificadorOcorrencia>();
         services.AddScoped<AAHBRANT.SST.Application.Acidentes.RelatoIa.IAnalistaPlanoOcorrencia, AzureOpenAiAnalistaPlanoOcorrencia>();
+        services.AddScoped<AAHBRANT.SST.Application.Riscos.Medidas.IAnalistaMedidasPrevencao, AzureOpenAiAnalistaMedidasPrevencao>();
 
         services.AddScoped<IDdsPdfService, DdsPdfService>();
         services.AddScoped<IDdsSemanalPdfService, DdsSemanalPdfService>();

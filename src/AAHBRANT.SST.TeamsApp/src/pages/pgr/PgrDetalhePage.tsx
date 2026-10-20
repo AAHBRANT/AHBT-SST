@@ -147,7 +147,7 @@ export function PgrDetalhePage() {
         />
       )}
       {aba === 'ghe' && <GhesTab obraId={detalhe.pgr.obraId} />}
-      {aba === 'inventario' && <InventarioTab atividades={detalhe.atividades} />}
+      {aba === 'inventario' && <InventarioTab atividades={detalhe.atividades} aoAlterar={carregar} />}
       {aba === 'planoAcao' && <PlanoAcaoTab pgrId={id} riscosDisponiveis={riscosDisponiveis} />}
       {aba === 'revisoes' && <PgrRevisoesTab key={versaoDocumento} pgrId={id} />}
       <DialogoNovaRevisao

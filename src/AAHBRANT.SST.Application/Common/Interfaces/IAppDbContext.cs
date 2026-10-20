@@ -61,6 +61,7 @@ public interface IAppDbContext
     DbSet<GheFuncao> GheFuncoes { get; }
     DbSet<Perigo> Perigos { get; }
     DbSet<Risco> Riscos { get; }
+    DbSet<MedidaPrevencao> MedidasPrevencao { get; }
     DbSet<RiscoTrabalhadorExposto> RiscoTrabalhadorExpostos { get; }
     DbSet<MatrizRiscoConfig> MatrizRiscoConfigs { get; }
     DbSet<MatrizRiscoCelula> MatrizRiscoCelulas { get; }

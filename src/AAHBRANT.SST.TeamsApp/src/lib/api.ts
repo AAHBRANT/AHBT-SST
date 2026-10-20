@@ -1255,6 +1255,24 @@ export interface RiscoClassificado {
   controlesExistentes?: string | null;
   controlesAdicionais?: string | null;
   status: number;
+  // Ordem de Serviço (20/10/2026): avaliação confirmada e medidas por fase.
+  probabilidade: number;
+  severidade: number;
+  consequencia?: string | null;
+  avaliadoEmUtc?: string | null;
+  avaliadoPorNome?: string | null;
+  medidas: MedidaPrevencao[];
+}
+
+// Fase: 1 Antes, 2 Durante, 3 Após. Origem: 1 PGR, 2 Sugestão da IA, 3 Manual. Status: 1 Validada, 2 Pendente.
+export interface MedidaPrevencao {
+  id: string;
+  fase: 1 | 2 | 3;
+  texto: string;
+  origem: 1 | 2 | 3;
+  status: 1 | 2 | 3;
+  validadoPorNome?: string | null;
+  validadoEmUtc?: string | null;
 }
 
 export interface AtividadeCaracterizada {
@@ -4991,6 +5009,17 @@ export const api = {
     listar: (atividadeId?: string) => request<Risco[]>(`/api/riscos${atividadeId ? `?atividadeId=${atividadeId}` : ''}`),
     criar: (risco: NovoRisco) => request<{ id: string }>('/api/riscos', { method: 'POST', body: JSON.stringify(risco) }),
     excluir: (id: string) => request<void>(`/api/riscos/${id}`, { method: 'DELETE' }),
+    confirmarAvaliacao: (riscoId: string) =>
+      request<void>(`/api/riscos/${riscoId}/confirmar-avaliacao`, { method: 'POST' }),
+    separarMedidasComIa: (riscoId: string) =>
+      request<{ medidas: number }>(`/api/riscos/${riscoId}/medidas/separar-com-ia`, { method: 'POST' }),
+    adicionarMedida: (riscoId: string, fase: 1 | 2 | 3, texto: string) =>
+      request<{ id: string }>(`/api/riscos/${riscoId}/medidas`, { method: 'POST', body: JSON.stringify({ fase, texto }) }),
+    decidirMedida: (medidaId: string, aceitar: boolean, textoEditado?: string) =>
+      request<void>(`/api/medidas-prevencao/${medidaId}/decidir`, {
+        method: 'POST',
+        body: JSON.stringify({ aceitar, textoEditado: textoEditado ?? null }),
+      }),
     importarLote: (obraId: string, itens: RiscoLoteItem[]) =>
       request<ImportarRiscosLoteResultado>('/api/riscos/importar-lote', {
         method: 'POST',

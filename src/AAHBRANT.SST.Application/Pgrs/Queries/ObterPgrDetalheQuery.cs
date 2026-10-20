@@ -38,6 +38,7 @@ public class ObterPgrDetalheQueryHandler : IRequestHandler<ObterPgrDetalheQuery,
         var atividades = await _db.Atividades.EmUso(_db)
             .Where(a => a.ObraId == pgr.ObraId)
             .Include(a => a.Riscos).ThenInclude(r => r.Perigo)
+            .Include(a => a.Riscos).ThenInclude(r => r.Medidas)
             .OrderBy(a => a.Nome)
             .ToListAsync(ct);
 
@@ -65,7 +66,25 @@ public class ObterPgrDetalheQueryHandler : IRequestHandler<ObterPgrDetalheQuery,
                     NivelRisco = r.NivelRisco,
                     ControlesExistentes = r.ControlesExistentes,
                     ControlesAdicionais = r.ControlesAdicionais,
-                    Status = r.Status
+                    Status = r.Status,
+                    Probabilidade = r.Probabilidade,
+                    Severidade = r.Severidade,
+                    Consequencia = r.Consequencia,
+                    AvaliadoEmUtc = r.AvaliadoEmUtc,
+                    AvaliadoPorNome = r.AvaliadoPorNome,
+                    Medidas = r.Medidas
+                        .Where(m => m.Status != Domain.Enums.StatusMedidaPrevencao.Descartada)
+                        .OrderBy(m => m.Fase).ThenBy(m => m.Ordem)
+                        .Select(m => new MedidaPrevencaoDto
+                        {
+                            Id = m.Id,
+                            Fase = m.Fase,
+                            Texto = m.Texto,
+                            Origem = m.OrigemMedida,
+                            Status = m.Status,
+                            ValidadoPorNome = m.ValidadoPorNome,
+                            ValidadoEmUtc = m.ValidadoEmUtc
+                        }).ToList()
                 }).ToList()
             }).ToList(),
             PlanoDeAcao = planoDeAcao.Select(i => new PlanoAcaoItemDto

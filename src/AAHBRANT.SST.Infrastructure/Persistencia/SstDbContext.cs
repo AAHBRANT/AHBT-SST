@@ -73,6 +73,7 @@ public class SstDbContext : DbContext, IAppDbContext
     public DbSet<GheFuncao> GheFuncoes => Set<GheFuncao>();
     public DbSet<Perigo> Perigos => Set<Perigo>();
     public DbSet<Risco> Riscos => Set<Risco>();
+    public DbSet<MedidaPrevencao> MedidasPrevencao => Set<MedidaPrevencao>();
     public DbSet<RiscoTrabalhadorExposto> RiscoTrabalhadorExpostos => Set<RiscoTrabalhadorExposto>();
     public DbSet<MatrizRiscoConfig> MatrizRiscoConfigs => Set<MatrizRiscoConfig>();
     public DbSet<MatrizRiscoCelula> MatrizRiscoCelulas => Set<MatrizRiscoCelula>();
