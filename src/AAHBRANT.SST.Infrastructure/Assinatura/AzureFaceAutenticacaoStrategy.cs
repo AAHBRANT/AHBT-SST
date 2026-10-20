@@ -359,7 +359,7 @@ public class AzureFaceAutenticacaoStrategy : IAutenticacaoFacialService
     // mede a foto, quem cadastra de fato é o TentarAdicionarFaceAsync logo depois.
     private static async Task ValidarQualidadeParaCadastroAsync(HttpClient cliente, byte[] fotoJpeg, CancellationToken ct)
     {
-        using (var imagem = SixLabors.ImageSharp.Image.Load(fotoJpeg))
+        using (var imagem = AAHBRANT.SST.Infrastructure.Imagens.ImagemSegura.Carregar(fotoJpeg))
         {
             if (Math.Min(imagem.Width, imagem.Height) < LadoMinimoImagemPx)
                 throw new InvalidOperationException(
