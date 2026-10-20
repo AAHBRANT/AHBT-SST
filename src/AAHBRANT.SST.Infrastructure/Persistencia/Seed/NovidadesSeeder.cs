@@ -1305,6 +1305,18 @@ public static class NovidadesSeeder
                     "Conteúdo programático padrão para cada NR",
                     "Curso sem conteúdo programático cadastrado gerava certificado sem verso.",
                     "Ao digitar a NR no cadastro do curso (NR-05, 06, 10, 12, 18, 33 e 35), o sistema preenche o conteúdo, a carga horária e a validade da norma. Cursos já cadastrados sem conteúdo usam o padrão da NR no certificado."),
+                new NovidadeSeedItem(CategoriaNovidade.Melhoria,
+                    "Turma já vem preenchida com o padrão da NR",
+                    "Na nova turma era preciso digitar data, carga horária e instrutor, e qualquer perfil podia mudar esses dados.",
+                    "Ao escolher o curso, a turma já vem com a data do dia, carga horária mínima, validade, conteúdo e local. Só o Técnico de Segurança altera, e a carga horária nunca fica abaixo do mínimo da NR."),
+                new NovidadeSeedItem(CategoriaNovidade.Melhoria,
+                    "Fila contínua de presença na turma",
+                    "Na turma era preciso clicar a cada participante para ler a digital.",
+                    "Agora tem Abrir fila (digital) e Abrir fila facial, igual ao DDS: cada participante registra a presença um após o outro, sozinho."),
+                new NovidadeSeedItem(CategoriaNovidade.Correcao,
+                    "Número de certificado próprio para cada participante",
+                    "Todos os participantes da turma recebiam o mesmo número de certificado.",
+                    "Cada certificado tem número único, com a NR no prefixo (ex.: AAH-NR35-2026-0001), e mostra o hash de cada assinatura."),
             }),
     };
 

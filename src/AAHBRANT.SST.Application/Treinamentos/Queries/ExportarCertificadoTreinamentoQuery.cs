@@ -80,9 +80,13 @@ public class ExportarCertificadoTreinamentoQueryHandler : IRequestHandler<Export
         // Padrão da NR do curso (19/10): sem conteúdo programático próprio cadastrado, o verso usa o
         // conteúdo mínimo da norma do catálogo.
         var padraoNr = CatalogoNormasRegulamentadoras.Obter(treinamento.CursoTreinamento.NormaReferencia);
-        var conteudoProgramatico = string.IsNullOrWhiteSpace(treinamento.CursoTreinamento.ConteudoProgramatico)
-            ? padraoNr?.ConteudoProgramaticoTexto
-            : treinamento.CursoTreinamento.ConteudoProgramatico;
+        // Ordem (19/10): o conteúdo gravado no próprio treinamento (o que foi ministrado na turma),
+        // depois o do curso, por fim o padrão da NR.
+        var conteudoProgramatico = !string.IsNullOrWhiteSpace(treinamento.ConteudoProgramatico)
+            ? treinamento.ConteudoProgramatico
+            : string.IsNullOrWhiteSpace(treinamento.CursoTreinamento.ConteudoProgramatico)
+                ? padraoNr?.ConteudoProgramaticoTexto
+                : treinamento.CursoTreinamento.ConteudoProgramatico;
 
         var modelo = new CertificadoTreinamentoPdfModelo(
             treinamento.Trabalhador.Obra?.Nome ?? string.Empty,

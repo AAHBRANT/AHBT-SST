@@ -583,6 +583,21 @@ export interface NovaSessaoTreinamento {
   cargaHorariaRealizada: number;
   instituicaoInstrutor?: string | null;
   trabalhadoresIds: string[];
+  // Dados do certificado gravados na turma (19/10) — só o Técnico de Segurança altera.
+  conteudoProgramatico?: string | null;
+  local?: string | null;
+  instrutorRegistroProfissional?: string | null;
+  validadeEmMeses?: number | null;
+}
+
+// Padrão da turma para o curso escolhido + se quem está logado pode editar (19/10).
+export interface PadraoTurmaTreinamento {
+  norma: string | null;
+  cargaHorariaMinima: number;
+  validadeEmMeses: number;
+  conteudoProgramatico: string | null;
+  local: string | null;
+  podeEditar: boolean;
 }
 
 export interface ParticipanteSessaoTreinamento {
@@ -4692,6 +4707,10 @@ export const api = {
   sessoesTreinamento: {
     listar: (obraId?: string) => request<SessaoTreinamento[]>(`/api/sessoestreinamento${obraId ? `?obraId=${obraId}` : ''}`),
     obterDetalhe: (id: string) => request<SessaoTreinamentoDetalhe>(`/api/sessoestreinamento/${id}`),
+    padrao: (cursoTreinamentoId: string, obraId?: string) =>
+      request<PadraoTurmaTreinamento>(
+        `/api/sessoestreinamento/padrao?cursoTreinamentoId=${cursoTreinamentoId}${obraId ? `&obraId=${obraId}` : ''}`,
+      ),
     criar: (sessao: NovaSessaoTreinamento) =>
       request<{ id: string }>('/api/sessoestreinamento', { method: 'POST', body: JSON.stringify(sessao) }),
     // Presença exclusivamente por biometria (mesmo padrão de api.dds.registrarParticipante) —
