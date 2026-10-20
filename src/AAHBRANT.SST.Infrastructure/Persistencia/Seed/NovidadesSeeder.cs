@@ -1318,6 +1318,17 @@ public static class NovidadesSeeder
                     "Todos os participantes da turma recebiam o mesmo número de certificado.",
                     "Cada certificado tem número único, com a NR no prefixo (ex.: AAH-NR35-2026-0001), e mostra o hash de cada assinatura."),
             }),
+        new(
+            Versao: "5.69.0",
+            Titulo: "DDS com próprios e terceirizados na mesma semana",
+            DataPublicacao: new DateTime(2026, 10, 20, 0, 0, 0, DateTimeKind.Utc),
+            Itens: new[]
+            {
+                new NovidadeSeedItem(CategoriaNovidade.Melhoria,
+                    "Nova opção \"Empregados Próprios e Terceirizados\" no DDS semanal",
+                    "Ao abrir a semana de DDS era preciso escolher entre empregados próprios ou terceirizados.",
+                    "Agora dá para escolher os dois ao mesmo tempo no campo Tipo. Basta informar a empresa terceirizada na abertura e o responsável dela no encerramento."),
+            }),
     };
 
     public static async Task ExecutarAsync(IServiceProvider services, CancellationToken ct = default)

@@ -38,7 +38,7 @@ import {
   StatusDdsSemanal,
   statusDdsSemanalLabel,
   tipoDdsSemanalLabel,
-  TipoDdsSemanal,
+  tipoDdsSemanalIncluiTerceirizados,
   type Atividade,
   type CatalogoTemaDds,
   type TemaDdsAgendado,
@@ -307,7 +307,7 @@ export function DdsSemanalDetalhePage() {
     !somenteLeitura &&
     detalhe.dias.length === 5 &&
     detalhe.dias.every((d) => d.status === StatusDds.Concluido) &&
-    (semanal.tipo !== TipoDdsSemanal.Terceirizados || (responsavelTerceirizadaNome.trim() && responsavelTerceirizadaFuncao.trim()));
+    (!tipoDdsSemanalIncluiTerceirizados(semanal.tipo) || (responsavelTerceirizadaNome.trim() && responsavelTerceirizadaFuncao.trim()));
 
   return (
     <div>
@@ -386,7 +386,7 @@ export function DdsSemanalDetalhePage() {
       {!somenteLeitura && (
         <div style={{ marginBottom: 16 }}>
           <Card titulo="Encerramento da semana" densidade="compacta">
-            {semanal.tipo === TipoDdsSemanal.Terceirizados && (
+            {tipoDdsSemanalIncluiTerceirizados(semanal.tipo) && (
               <FormSection titulo="Responsável da Empresa Terceirizada" numero={1} primeira>
                 <FormGrid>
                   <Campo span={6}>

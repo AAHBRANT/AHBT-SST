@@ -49,7 +49,7 @@ public class EncerrarDdsSemanalCommandHandler : IRequestHandler<EncerrarDdsSeman
             throw new InvalidOperationException(
                 "Todos os 5 dias precisam estar encerrados (checklist, 3 fotos de evidência e presenças) antes de encerrar a semana.");
 
-        if (semanal.Tipo == TipoDdsSemanal.Terceirizados)
+        if (semanal.Tipo.IncluiTerceirizados())
         {
             if (string.IsNullOrWhiteSpace(request.ResponsavelEmpresaTerceirizadaNome) || string.IsNullOrWhiteSpace(request.ResponsavelEmpresaTerceirizadaFuncao))
                 throw new InvalidOperationException("Informe nome e função do responsável da empresa terceirizada para encerrar.");
@@ -64,8 +64,8 @@ public class EncerrarDdsSemanalCommandHandler : IRequestHandler<EncerrarDdsSeman
 
         semanal.Status = StatusDdsSemanal.Concluida;
         semanal.ResponsavelObraSstUsuarioId = usuario.Id;
-        semanal.ResponsavelEmpresaTerceirizadaNome = semanal.Tipo == TipoDdsSemanal.Terceirizados ? request.ResponsavelEmpresaTerceirizadaNome : null;
-        semanal.ResponsavelEmpresaTerceirizadaFuncao = semanal.Tipo == TipoDdsSemanal.Terceirizados ? request.ResponsavelEmpresaTerceirizadaFuncao : null;
+        semanal.ResponsavelEmpresaTerceirizadaNome = semanal.Tipo.IncluiTerceirizados() ? request.ResponsavelEmpresaTerceirizadaNome : null;
+        semanal.ResponsavelEmpresaTerceirizadaFuncao = semanal.Tipo.IncluiTerceirizados() ? request.ResponsavelEmpresaTerceirizadaFuncao : null;
         semanal.EncerradaEm = DateTime.UtcNow;
 
         await _db.SaveChangesAsync(ct);
