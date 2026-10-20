@@ -390,6 +390,8 @@ public class CertificadoTreinamentoPdfService : ICertificadoTreinamentoPdfServic
                         texto.Item().PaddingTop(1).Text(assinatura.TrabalhadorNome.ToUpperInvariant()).FontSize(8).SemiBold().ClampLines(1);
                         texto.Item().Text(DescricaoMetodoAssinatura.Legenda(HorarioBrasilia.De(assinatura.AssinadoEm), assinatura.Metodo))
                             .FontSize(6).FontColor(CorTextoSuave).ClampLines(1);
+                        if (!string.IsNullOrWhiteSpace(assinatura.Hash))
+                            texto.Item().Text($"Hash SHA-256: {HashCurto(assinatura.Hash)}").FontSize(5.5f).FontColor(CorTextoSuave).ClampLines(1);
                     });
                 });
             });
@@ -399,5 +401,13 @@ public class CertificadoTreinamentoPdfService : ICertificadoTreinamentoPdfServic
             if (detalhe is not null)
                 bloco.Item().AlignCenter().Text(detalhe).FontSize(7).FontColor(CorTextoSuave);
         });
+    }
+
+    // 16 primeiros caracteres em blocos de 4 (ex.: 3F9A-12C4-88B0-7D1E) — legível no selo.
+    private static string HashCurto(string hash)
+    {
+        var h = hash.ToUpperInvariant();
+        var n = Math.Min(16, h.Length);
+        return string.Join('-', Enumerable.Range(0, (n + 3) / 4).Select(i => h.Substring(i * 4, Math.Min(4, n - i * 4))));
     }
 }

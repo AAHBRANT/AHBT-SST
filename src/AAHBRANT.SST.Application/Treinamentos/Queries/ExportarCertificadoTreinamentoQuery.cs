@@ -53,13 +53,15 @@ public class ExportarCertificadoTreinamentoQueryHandler : IRequestHandler<Export
             .OrderByDescending(d => d.CreatedAtUtc)
             .FirstOrDefaultAsync(ct);
 
-        var signatarios = documento?.Signatarios
-            .Select(s => new CertificadoTreinamentoPdfSignatarioModelo(s.Trabalhador?.Nome ?? string.Empty, s.AssinadoEm, s.MetodoAutenticacao, s.Trabalhador?.Funcao?.Nome))
-            .ToList() ?? new List<CertificadoTreinamentoPdfSignatarioModelo>();
-
         // Rastreabilidade sempre disponível a partir do primeiro export (Motor de Assinatura Task 2) —
         // antes disto, o QR só existia depois de uma finalização que, para Treinamento, nada nunca dispara.
         var rastreio = await _rastreabilidade.GarantirAsync("Treinamento", request.TreinamentoId, ct);
+
+        var signatarios = documento?.Signatarios
+            .Select(s => new CertificadoTreinamentoPdfSignatarioModelo(
+                s.Trabalhador?.Nome ?? string.Empty, s.AssinadoEm, s.MetodoAutenticacao, s.Trabalhador?.Funcao?.Nome,
+                HashAssinatura(s.Id, s.TrabalhadorId, s.AssinadoEm, s.MetodoAutenticacao, rastreio.ConteudoHash)))
+            .ToList() ?? new List<CertificadoTreinamentoPdfSignatarioModelo>();
         var qrCodePng = rastreio.QrCodePng;
 
         // Foto da turma (item 6 da proposta) — só existe quando este Treinamento foi gerado pelo
@@ -120,5 +122,13 @@ public class ExportarCertificadoTreinamentoQueryHandler : IRequestHandler<Export
         // que o arquivo em mãos não foi adulterado (ver HashArquivoCalculador).
         await _rastreabilidade.RegistrarArquivoAsync(rastreio.DocumentoId, pdf, ct);
         return pdf;
+    }
+
+    // Hash determinístico da assinatura: recalculável a partir dos dados gravados no cofre, então
+    // serve de prova de que o selo corresponde àquela assinatura daquele documento.
+    private static string HashAssinatura(Guid signatarioId, Guid trabalhadorId, DateTime assinadoEm, MetodoAutenticacaoAssinatura metodo, string hashDocumento)
+    {
+        var entrada = $"{signatarioId:N}|{trabalhadorId:N}|{assinadoEm:O}|{(int)metodo}|{hashDocumento}";
+        return Convert.ToHexString(System.Security.Cryptography.SHA256.HashData(System.Text.Encoding.UTF8.GetBytes(entrada)));
     }
 }
