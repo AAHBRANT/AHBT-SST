@@ -8,7 +8,8 @@ namespace AAHBRANT.SST.AgenteBiometria.Endpoints;
 
 // O segredo do dispositivo não sai mais para o navegador (11/10): com ele, quem tivesse acesso ao navegador
 // conseguia "assinar" por qualquer trabalhador. LeituraAssinada avisa a tela que este agente assina as leituras.
-public record DispositivoResponse(Guid DispositivoId, bool LeituraAssinada = true);
+// Versao: versão do agente instalado no posto (para conferir quem ainda não atualizou).
+public record DispositivoResponse(Guid DispositivoId, bool LeituraAssinada = true, string? Versao = null);
 public record SincronizarResponse(int Total);
 // ImagemPng: imagem da leitura, guardada (criptografada) como referência do cadastro no log de assinaturas.
 public record CapturaBrutaResponse(byte[] TemplateBruto, byte[]? ImagemPng = null);
@@ -34,7 +35,8 @@ public static class AgenteEndpoints
     }
 
     public static Ok<DispositivoResponse> ObterDispositivo(IOptions<AgenteOptions> options) =>
-        TypedResults.Ok(new DispositivoResponse(options.Value.DispositivoId));
+        TypedResults.Ok(new DispositivoResponse(options.Value.DispositivoId,
+            Versao: Atualizacao.VerificadorAtualizacao.VersaoAtual().ToString(3)));
 
     public static async Task<Ok<SincronizarResponse>> Sincronizar(TemplateCacheService cache, CancellationToken ct)
     {

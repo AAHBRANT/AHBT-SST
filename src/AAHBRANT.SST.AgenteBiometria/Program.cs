@@ -1,3 +1,4 @@
+using AAHBRANT.SST.AgenteBiometria.Atualizacao;
 using AAHBRANT.SST.AgenteBiometria.Endpoints;
 using AAHBRANT.SST.AgenteBiometria.Leitores;
 using AAHBRANT.SST.AgenteBiometria.Opcoes;
@@ -33,6 +34,9 @@ public static class Program
         builder.Services.AddHostedService<SincronizacaoTemplatesService>();
         builder.Services.AddSingleton<ChaveAssinaturaAgente>();
         builder.Services.AddHostedService<RegistroChavePublicaService>();
+        builder.Services.AddSingleton<AtividadeAgente>();
+        builder.Services.AddHttpClient<AtualizacaoAgenteService>(c => c.Timeout = TimeSpan.FromMinutes(5));
+        builder.Services.AddHostedService(sp => sp.GetRequiredService<AtualizacaoAgenteService>());
 
         var agenteOptions = builder.Configuration.GetSection("Agente").Get<AgenteOptions>() ?? new AgenteOptions();
 
@@ -74,6 +78,12 @@ public static class Program
             app.Logger.LogWarning("Agente em modo SIMULADO: qualquer dedo é aceito e as leituras não são assinadas. Use \"Leitor\": \"Futronic\" em produção.");
         app.UseAcessoRedePrivada(agenteOptions.OrigemPermitida);
         app.UseCors(PoliticaCorsKiosk);
+        // Toda chamada da tela conta como "em uso": a atualização automática espera o quiosque ficar parado.
+        app.Use((contexto, proximo) =>
+        {
+            contexto.RequestServices.GetRequiredService<AtividadeAgente>().Registrar();
+            return proximo(contexto);
+        });
         app.UseTraducaoDeErros();
         AgenteEndpoints.Mapear(app, PoliticaCorsKiosk);
 
