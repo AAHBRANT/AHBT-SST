@@ -69,6 +69,9 @@ public class SstDbContext : DbContext, IAppDbContext
     public DbSet<TrilhaAuditoria> TrilhaAuditoria => Set<TrilhaAuditoria>();
 
     public DbSet<Atividade> Atividades => Set<Atividade>();
+    public DbSet<AtividadeEpc> AtividadeEpcs => Set<AtividadeEpc>();
+    public DbSet<AtividadeDocumento> AtividadeDocumentos => Set<AtividadeDocumento>();
+    public DbSet<AtividadeItemOs> AtividadeItensOs => Set<AtividadeItemOs>();
     public DbSet<Ghe> Ghes => Set<Ghe>();
     public DbSet<GheFuncao> GheFuncoes => Set<GheFuncao>();
     public DbSet<Perigo> Perigos => Set<Perigo>();

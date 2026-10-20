@@ -1333,6 +1333,21 @@ public static class NovidadesSeeder
                     "Não havia registro de quem conferiu a probabilidade e a severidade de um risco.",
                     "Riscos lançados à mão ganham o botão \"Confirmar avaliação\", que registra quem confirmou e quando. Riscos vindos da leitura do PGR já entram como avaliados. Se a probabilidade, a severidade ou a consequência mudarem, a confirmação é apagada."),
             }),
+        new(
+            Versao: "5.70.0",
+            Titulo: "Procedimentos, políticas e detalhes da atividade para a Ordem de Serviço",
+            DataPublicacao: new DateTime(2026, 10, 20, 0, 0, 0, DateTimeKind.Utc),
+            Itens: new[]
+            {
+                new NovidadeSeedItem(CategoriaNovidade.Novidade,
+                    "Procedimentos, instruções de trabalho e políticas em Documentos & Procedimentos",
+                    "A tela só guardava materiais de apoio, sem código, revisão ou situação.",
+                    "Ao enviar um documento, escolha o tipo (procedimento, instrução de trabalho, política ou material de apoio) e informe o código SGI, a revisão e a situação. Só documentos vigentes vão para a Ordem de Serviço, e a política marcada com \"Incluir em todas as Ordens de Serviço\" entra em todas. Os materiais de apoio que já existiam continuam iguais."),
+                new NovidadeSeedItem(CategoriaNovidade.Novidade,
+                    "Detalhes da atividade para a Ordem de Serviço",
+                    "Não havia onde registrar as condições, ferramentas, EPCs, procedimentos e situações de parada de cada atividade.",
+                    "Em PGR › Inventário de riscos, clique em \"Detalhes para a OS\" na atividade. As condições já vêm do GHE do PGR e os treinamentos da Matriz de Treinamento. Você vincula EPCs e procedimentos vigentes e registra quando interromper o trabalho, o que não fazer sem autorização e as liberações exigidas. A IA pode sugerir esses itens, que aparecem em amarelo até a SST aceitar, editar ou descartar."),
+            }),
     };
 
     public static async Task ExecutarAsync(IServiceProvider services, CancellationToken ct = default)

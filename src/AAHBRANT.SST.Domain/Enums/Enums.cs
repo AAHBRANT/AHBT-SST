@@ -284,6 +284,29 @@ public enum StatusMedidaPrevencao
     Descartada = 3
 }
 
+public enum TipoDocumentoSst
+{
+    MaterialApoio = 1,
+    Procedimento = 2,
+    InstrucaoTrabalho = 3,
+    Politica = 4
+}
+
+public enum SituacaoDocumentoSst
+{
+    Vigente = 1,
+    EmRevisao = 2,
+    Obsoleto = 3
+}
+
+// Item da atividade para a Ordem de Serviço que não é medida de risco.
+public enum TipoItemAtividadeOs
+{
+    InterromperQuando = 1,
+    Restricao = 2,
+    Autorizacao = 3
+}
+
 // Não há fluxo literal no documento para o "status" do PGR (§16) — proposta própria (avisar o
 // usuário se ele quiser outro fluxo, ex. um vocabulário alinhado à NR-01).
 public enum StatusPgr

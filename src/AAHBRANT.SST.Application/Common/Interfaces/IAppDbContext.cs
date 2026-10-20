@@ -57,6 +57,9 @@ public interface IAppDbContext
     DbSet<Evidencia> Evidencias { get; }
 
     DbSet<Atividade> Atividades { get; }
+    DbSet<AtividadeEpc> AtividadeEpcs { get; }
+    DbSet<AtividadeDocumento> AtividadeDocumentos { get; }
+    DbSet<AtividadeItemOs> AtividadeItensOs { get; }
     DbSet<Ghe> Ghes { get; }
     DbSet<GheFuncao> GheFuncoes { get; }
     DbSet<Perigo> Perigos { get; }

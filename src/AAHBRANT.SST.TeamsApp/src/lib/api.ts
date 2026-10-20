@@ -1278,6 +1278,7 @@ export interface MedidaPrevencao {
 export interface AtividadeCaracterizada {
   atividadeId: string;
   atividadeNome: string;
+  itensOsPendentes: number;
   riscos: RiscoClassificado[];
 }
 
@@ -2545,6 +2546,48 @@ export interface MaterialApoio {
   contentType: string;
   tamanhoBytes: number;
   createdAtUtc: string;
+  // Ordem de Serviço (20/10/2026). Tipo: 1 Material de apoio, 2 Procedimento, 3 Instrução de trabalho,
+  // 4 Política. Situação: 1 Vigente, 2 Em revisão, 3 Obsoleto.
+  tipo: 1 | 2 | 3 | 4;
+  codigo?: string | null;
+  revisao?: string | null;
+  situacao?: 1 | 2 | 3 | null;
+  formaConsulta?: string | null;
+  incluirEmTodasOs: boolean;
+  atividades: number;
+}
+
+export interface DadosDocumentoSst {
+  tipo: 1 | 2 | 3 | 4;
+  codigo?: string | null;
+  revisao?: string | null;
+  situacao?: 1 | 2 | 3 | null;
+  formaConsulta?: string | null;
+  incluirEmTodasOs: boolean;
+}
+
+// Tipo do item: 1 Interromper quando, 2 Não executar sem, 3 Autorização.
+export interface ItemAtividadeOs {
+  id: string;
+  tipo: 1 | 2 | 3;
+  texto: string;
+  requisito?: string | null;
+  origem: 1 | 2 | 3;
+  status: 1 | 2 | 3;
+  validadoPorNome?: string | null;
+  validadoEmUtc?: string | null;
+}
+
+export interface DetalhesOsAtividade {
+  atividadeId: string;
+  atividadeNome: string;
+  condicoes?: string | null;
+  condicoesDoPgr: boolean;
+  ferramentas: string[];
+  epcs: { id: string; nome: string }[];
+  documentos: { id: string; tipo: number; codigo?: string | null; titulo: string; revisao?: string | null; situacao?: number | null }[];
+  treinamentos: { curso: string; norma?: string | null; funcao: string }[];
+  itens: ItemAtividadeOs[];
 }
 
 export const StatusDds = {
@@ -5015,6 +5058,18 @@ export const api = {
       request<{ medidas: number }>(`/api/riscos/${riscoId}/medidas/separar-com-ia`, { method: 'POST' }),
     adicionarMedida: (riscoId: string, fase: 1 | 2 | 3, texto: string) =>
       request<{ id: string }>(`/api/riscos/${riscoId}/medidas`, { method: 'POST', body: JSON.stringify({ fase, texto }) }),
+    obterDetalhesOs: (atividadeId: string) => request<DetalhesOsAtividade>(`/api/atividades/${atividadeId}/detalhes-os`),
+    salvarDetalhesOs: (atividadeId: string, dados: { condicoes: string | null; ferramentas: string[]; epcIds: string[]; documentoIds: string[] }) =>
+      request<void>(`/api/atividades/${atividadeId}/detalhes-os`, { method: 'PUT', body: JSON.stringify(dados) }),
+    adicionarItemOs: (atividadeId: string, tipo: 1 | 2 | 3, texto: string, requisito?: string) =>
+      request<{ id: string }>(`/api/atividades/${atividadeId}/itens-os`, { method: 'POST', body: JSON.stringify({ tipo, texto, requisito: requisito ?? null }) }),
+    sugerirItensOs: (atividadeId: string) =>
+      request<{ itens: number }>(`/api/atividades/${atividadeId}/itens-os/sugerir-com-ia`, { method: 'POST' }),
+    decidirItemOs: (itemId: string, aceitar: boolean, textoEditado?: string, requisitoEditado?: string) =>
+      request<void>(`/api/itens-os/${itemId}/decidir`, {
+        method: 'POST',
+        body: JSON.stringify({ aceitar, textoEditado: textoEditado ?? null, requisitoEditado: requisitoEditado ?? null }),
+      }),
     decidirMedida: (medidaId: string, aceitar: boolean, textoEditado?: string) =>
       request<void>(`/api/medidas-prevencao/${medidaId}/decidir`, {
         method: 'POST',
@@ -5509,10 +5564,18 @@ export const api = {
       }
       return response.blob();
     },
-    criar: async (nome: string, categoria: string | null, arquivo: File) => {
+    criar: async (nome: string, categoria: string | null, arquivo: File, dados?: DadosDocumentoSst) => {
       const formData = new FormData();
       formData.append('nome', nome);
       if (categoria) formData.append('categoria', categoria);
+      if (dados) {
+        formData.append('tipo', String(dados.tipo));
+        if (dados.codigo) formData.append('codigo', dados.codigo);
+        if (dados.revisao) formData.append('revisao', dados.revisao);
+        if (dados.situacao) formData.append('situacao', String(dados.situacao));
+        if (dados.formaConsulta) formData.append('formaConsulta', dados.formaConsulta);
+        formData.append('incluirEmTodasOs', String(dados.incluirEmTodasOs));
+      }
       formData.append('arquivo', arquivo);
       const response = await fetch(`${API_BASE_URL}/api/materiaisapoio`, {
         method: 'POST',
@@ -5526,6 +5589,8 @@ export const api = {
       return response.json() as Promise<{ id: string }>;
     },
     excluir: (id: string) => request<void>(`/api/materiaisapoio/${id}`, { method: 'DELETE' }),
+    atualizar: (id: string, nome: string, dados: Omit<DadosDocumentoSst, 'tipo'>) =>
+      request<void>(`/api/materiaisapoio/${id}`, { method: 'PUT', body: JSON.stringify({ id, nome, ...dados }) }),
   },
   dds: {
     temasAgendados: (obraId: string, data: string) =>
