@@ -39,6 +39,7 @@ import { CofreAssinaturasTab } from './CofreAssinaturasTab';
 import { TerceirizadoTab } from './TerceirizadoTab';
 import { TermoCompromissoEpiCartao } from './TermoCompromissoEpiCartao';
 import { FichaTrabalhadorLateral } from './FichaTrabalhadorLateral';
+import { BiometriaDigitalCartao } from './BiometriaDigitalCartao';
 
 type AbaPerfil = 'geral' | 'epi' | 'treinamentos' | 'riscos' | 'ocorrencias' | 'cofre' | 'terceirizado';
 
@@ -206,8 +207,20 @@ export function TrabalhadorDetalhePage() {
             alignItems: 'start',
           }}
         >
+          {/* A coluna fixa ganhou o cartão de biometria (21/10); com os dois cartões ela pode passar da
+              altura da tela, então rola por dentro em vez de cortar o fim. */}
           <aside
-            style={telaEstreita ? undefined : { position: 'sticky', top: tokensUi.espaco.lg }}
+            style={
+              telaEstreita
+                ? estiloPilha
+                : {
+                    ...estiloPilha,
+                    position: 'sticky',
+                    top: tokensUi.espaco.lg,
+                    maxHeight: `calc(100vh - ${tokensUi.espaco.xxl})`,
+                    overflowY: 'auto',
+                  }
+            }
             aria-label="Identificação do trabalhador"
           >
             <FichaTrabalhadorLateral
@@ -217,6 +230,7 @@ export function TrabalhadorDetalhePage() {
               aoVisualizarRelatorio={visualizarRelatorio}
               aoBaixarRelatorio={baixarRelatorio}
             />
+            <BiometriaDigitalCartao trabalhadorId={perfil.id} trabalhadorNome={perfil.nome} aoAlterar={carregar} />
           </aside>
 
           <div style={{ ...estiloPilha, minWidth: 0 }}>
