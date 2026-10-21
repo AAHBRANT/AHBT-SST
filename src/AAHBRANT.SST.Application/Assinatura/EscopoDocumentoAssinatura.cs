@@ -55,27 +55,42 @@ public static class EscopoDocumentoAssinatura
     // Público só para o teste de tradução SQL (o InMemory dos testes não pega consulta que o SQL
     // Server não sabe traduzir — ver EscopoObraTraducaoSqlTests).
     public static IQueryable<Guid>? ConsultaEntidadesNoEscopo(IAppDbContext db, string entidadeTipo, IReadOnlyCollection<Guid> ids)
+        => Consulta(db, entidadeTipo, ids, todasAsObras: false);
+
+    // Tipos que o motor sabe resolver até a obra. Documento de outro tipo não pode ser criado
+    // (auditoria 19/10, A14: aceitava qualquer texto e qualquer id).
+    public static bool TipoConhecido(IAppDbContext db, string entidadeTipo)
+        => Consulta(db, entidadeTipo, Array.Empty<Guid>(), todasAsObras: true) is not null;
+
+    // A origem existe (ainda que excluída logicamente) — sem olhar a obra do usuário.
+    public static async Task<bool> OrigemExisteAsync(IAppDbContext db, string entidadeTipo, Guid entidadeId, CancellationToken ct)
+    {
+        var consulta = Consulta(db, entidadeTipo, new[] { entidadeId }, todasAsObras: true);
+        return consulta is not null && await consulta.AnyAsync(ct);
+    }
+
+    private static IQueryable<Guid>? Consulta(IAppDbContext db, string entidadeTipo, IReadOnlyCollection<Guid> ids, bool todasAsObras)
     {
         var obras = db.ObrasNoEscopo;
         var trabalhadores = db.Trabalhadores.IgnoreQueryFilters()
-            .Where(t => obras.Contains(t.ObraId)).Select(t => t.Id);
+            .Where(t => todasAsObras || obras.Contains(t.ObraId)).Select(t => t.Id);
         var atividades = db.Atividades.IgnoreQueryFilters()
-            .Where(a => obras.Contains(a.ObraId)).Select(a => a.Id);
+            .Where(a => todasAsObras || obras.Contains(a.ObraId)).Select(a => a.Id);
 
         return entidadeTipo.ToLowerInvariant() switch
         {
             "dds" => db.Dds.IgnoreQueryFilters()
-                .Where(x => ids.Contains(x.Id) && obras.Contains(x.ObraId)).Select(x => x.Id),
+                .Where(x => ids.Contains(x.Id) && (todasAsObras || obras.Contains(x.ObraId))).Select(x => x.Id),
             "ddssemanal" => db.DdsSemanais.IgnoreQueryFilters()
-                .Where(x => ids.Contains(x.Id) && obras.Contains(x.ObraId)).Select(x => x.Id),
+                .Where(x => ids.Contains(x.Id) && (todasAsObras || obras.Contains(x.ObraId))).Select(x => x.Id),
             "inspecao" => db.Inspecoes.IgnoreQueryFilters()
-                .Where(x => ids.Contains(x.Id) && obras.Contains(x.ObraId)).Select(x => x.Id),
+                .Where(x => ids.Contains(x.Id) && (todasAsObras || obras.Contains(x.ObraId))).Select(x => x.Id),
             "sessaotreinamento" => db.SessoesTreinamento.IgnoreQueryFilters()
-                .Where(x => ids.Contains(x.Id) && obras.Contains(x.ObraId)).Select(x => x.Id),
+                .Where(x => ids.Contains(x.Id) && (todasAsObras || obras.Contains(x.ObraId))).Select(x => x.Id),
             "processoeleitoralcipa" => db.ProcessosEleitoraisCipa.IgnoreQueryFilters()
-                .Where(x => ids.Contains(x.Id) && obras.Contains(x.ObraId)).Select(x => x.Id),
+                .Where(x => ids.Contains(x.Id) && (todasAsObras || obras.Contains(x.ObraId))).Select(x => x.Id),
             "reuniaocipa" => db.ReunioesCipa.IgnoreQueryFilters()
-                .Where(x => ids.Contains(x.Id) && obras.Contains(x.ObraId)).Select(x => x.Id),
+                .Where(x => ids.Contains(x.Id) && (todasAsObras || obras.Contains(x.ObraId))).Select(x => x.Id),
             "apr" => db.Aprs.IgnoreQueryFilters()
                 .Where(x => ids.Contains(x.Id) && atividades.Contains(x.AtividadeId)).Select(x => x.Id),
             "permissaotrabalho" => db.PermissoesTrabalho.IgnoreQueryFilters()
@@ -88,7 +103,7 @@ public static class EscopoDocumentoAssinatura
                         .Any(r => r.Id == x.RiscoId.Value && atividades.Contains(r.AtividadeId)))
                     || (x.InspecaoItemRespostaId.HasValue && db.InspecaoItemRespostas.IgnoreQueryFilters()
                         .Any(r => r.Id == x.InspecaoItemRespostaId.Value && db.Inspecoes.IgnoreQueryFilters()
-                            .Any(i => i.Id == r.InspecaoId && obras.Contains(i.ObraId))))))
+                            .Any(i => i.Id == r.InspecaoId && (todasAsObras || obras.Contains(i.ObraId)))))))
                 .Select(x => x.Id),
             "treinamento" => db.Treinamentos.IgnoreQueryFilters()
                 .Where(x => ids.Contains(x.Id) && trabalhadores.Contains(x.TrabalhadorId)).Select(x => x.Id),

@@ -1,3 +1,4 @@
+using AAHBRANT.SST.AgenteBiometria.Atualizacao;
 using AAHBRANT.SST.AgenteBiometria.Endpoints;
 using AAHBRANT.SST.AgenteBiometria.Leitores;
 using AAHBRANT.SST.AgenteBiometria.Opcoes;
@@ -33,8 +34,20 @@ public static class Program
         builder.Services.AddHostedService<SincronizacaoTemplatesService>();
         builder.Services.AddSingleton<ChaveAssinaturaAgente>();
         builder.Services.AddHostedService<RegistroChavePublicaService>();
+        builder.Services.AddSingleton<AtividadeAgente>();
+        builder.Services.AddHttpClient<AtualizacaoAgenteService>(c => c.Timeout = TimeSpan.FromMinutes(5));
+        builder.Services.AddHostedService(sp => sp.GetRequiredService<AtualizacaoAgenteService>());
 
         var agenteOptions = builder.Configuration.GetSection("Agente").Get<AgenteOptions>() ?? new AgenteOptions();
+
+        // Auditoria 19/10 (A12): erro de digitação no "Leitor" caía no simulador sem aviso. Agora só
+        // "Futronic" ou "Simulado" valem, e o simulador só sobe em Development.
+        var ehFutronic = string.Equals(agenteOptions.Leitor, "Futronic", StringComparison.OrdinalIgnoreCase);
+        var ehSimulado = string.Equals(agenteOptions.Leitor, "Simulado", StringComparison.OrdinalIgnoreCase);
+        if (!ehFutronic && !ehSimulado)
+            throw new InvalidOperationException($"Agente:Leitor inválido (\"{agenteOptions.Leitor}\"). Use \"Futronic\".");
+        if (ehSimulado && !builder.Environment.IsDevelopment())
+            throw new InvalidOperationException("Leitor simulado só é permitido em Development. Configure \"Agente:Leitor\": \"Futronic\".");
 
         // Leitor real só quando configurado ("Leitor": "Futronic") — exige ftrScanAPI.dll ao lado do
         // executável e processo x86. O match usa SourceAFIS (código aberto) até haver o SDK ANSI da Futronic.
@@ -74,6 +87,12 @@ public static class Program
             app.Logger.LogWarning("Agente em modo SIMULADO: qualquer dedo é aceito e as leituras não são assinadas. Use \"Leitor\": \"Futronic\" em produção.");
         app.UseAcessoRedePrivada(agenteOptions.OrigemPermitida);
         app.UseCors(PoliticaCorsKiosk);
+        // Toda chamada da tela conta como "em uso": a atualização automática espera o quiosque ficar parado.
+        app.Use((contexto, proximo) =>
+        {
+            contexto.RequestServices.GetRequiredService<AtividadeAgente>().Registrar();
+            return proximo(contexto);
+        });
         app.UseTraducaoDeErros();
         AgenteEndpoints.Mapear(app, PoliticaCorsKiosk);
 

@@ -16,6 +16,9 @@ export interface ItemFilaSaida {
   criadoEm: number;
   tentativas: number;
   ultimoErro?: string;
+  // Conta (tenant:oid do token) que registrou a ação. Só ela reenvia: outra pessoa logada no mesmo
+  // navegador não manda a ação em nome dela (auditoria 19/10, A04). Ausente em itens antigos.
+  conta?: string;
 }
 
 export interface ItemCacheJson {

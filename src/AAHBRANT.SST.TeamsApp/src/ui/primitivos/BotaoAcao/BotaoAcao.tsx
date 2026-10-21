@@ -18,13 +18,21 @@ const MARCA_WASH = 'var(--sst-acao-marca-wash)';
 export type TomBotaoAcao = 'ver' | 'baixar' | 'excluir' | 'atencao';
 
 const useStyles = makeStyles({
+  // Formato do padrão de botão (Proposta B, 21/10/2026): pílula e Montserrat. O BotaoAcao fica fora do
+  // gancho global (data-botao="livre") porque define as próprias cores por tom; aqui ele só repete a forma.
   base: {
-    minWidth: '32px',
-    borderRadius: tokensUi.raio.sm,
+    minWidth: '34px',
+    minHeight: '34px',
+    borderRadius: tokensUi.raio.full,
+    fontFamily: "'Montserrat', 'Segoe UI', -apple-system, BlinkMacSystemFont, sans-serif",
+    fontWeight: 600,
+    letterSpacing: '0.005em',
+    paddingLeft: '16px',
+    paddingRight: '16px',
     transitionProperty: 'background-color, filter',
     transitionDuration: tokensUi.duracao.rapido,
   },
-  soIcone: { width: '32px', height: '32px', padding: 0 },
+  soIcone: { width: '34px', height: '34px', maxWidth: '34px', padding: 0 },
   ver: {
     backgroundColor: 'transparent',
     color: MARCA_TINTA,
@@ -71,7 +79,7 @@ export interface BotaoAcaoProps {
   'aria-controls'?: string;
 }
 
-// Botão de ação de linha/documento. Sem children vira quadrado 32×32 só com ícone (title = rótulo);
+// Botão de ação de linha/documento. Sem children vira círculo 34×34 só com ícone (title = rótulo);
 // com children vira botão com texto, na mesma cor. Substitui <Button appearance="subtle" icon=…>.
 export function BotaoAcao({ tom, className, children, title, disabled, ...resto }: BotaoAcaoProps) {
   const e = useStyles();
@@ -81,6 +89,7 @@ export function BotaoAcao({ tom, className, children, title, disabled, ...resto 
       disabled={disabled}
       title={title ?? resto['aria-label']}
       appearance="secondary"
+      data-botao="livre"
       className={mergeClasses(e.base, !children && e.soIcone, e[tom], disabled && e.desabilitado, className)}
     >
       {children}

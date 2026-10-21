@@ -110,7 +110,7 @@ public class EntregaEpiPdfService : IFichaEpiPdfService
     {
         try
         {
-            using var imagem = SixLabors.ImageSharp.Image.Load(bytes);
+            using var imagem = AAHBRANT.SST.Infrastructure.Imagens.ImagemSegura.Carregar(bytes);
             imagem.Mutate(x => x.AutoOrient());
             const double alvo = 3.0 / 4.0;
             int largura = imagem.Width, altura = imagem.Height;
@@ -131,17 +131,8 @@ public class EntregaEpiPdfService : IFichaEpiPdfService
     }
 
     private static bool FotoValida(byte[] bytes)
-    {
-        try
-        {
-            using var ms = new MemoryStream(bytes);
-            return SixLabors.ImageSharp.Image.Identify(ms) is not null;
-        }
-        catch
-        {
-            return false;
-        }
-    }
+        // Mesma régua de formato/tamanho do resto do sistema (ver ImagemSegura).
+        => AAHBRANT.SST.Infrastructure.Imagens.ImagemSegura.EhValida(bytes);
 
     private static void CelulaIdentificacao(TableDescriptor tabela, string rotulo, string valor, uint colSpan = 1)
     {

@@ -50,6 +50,8 @@ public class SstDbContext : DbContext, IAppDbContext
     public DbSet<MatrizEpiFuncao> MatrizEpiFuncoes => Set<MatrizEpiFuncao>();
     public DbSet<EstoqueEpi> EstoquesEpi => Set<EstoqueEpi>();
     public DbSet<MovimentacaoEstoqueEpi> MovimentacoesEstoqueEpi => Set<MovimentacaoEstoqueEpi>();
+    public DbSet<ReservaEpi> ReservasEpi => Set<ReservaEpi>();
+    public DbSet<PlanoIntegracao> PlanosIntegracao => Set<PlanoIntegracao>();
     public DbSet<CatalogoEpc> CatalogoEpcs => Set<CatalogoEpc>();
     public DbSet<InstalacaoEpc> InstalacoesEpc => Set<InstalacaoEpc>();
     public DbSet<EstoqueEpc> EstoquesEpc => Set<EstoqueEpc>();
@@ -270,6 +272,8 @@ public class SstDbContext : DbContext, IAppDbContext
             e.Ativo && (_usuarioAtual.TemAcessoGlobal || _usuarioAtual.ObrasPermitidas.Contains(e.ObraId)));
         modelBuilder.Entity<Alojamento>().HasQueryFilter(a =>
             a.Ativo && (_usuarioAtual.TemAcessoGlobal || _usuarioAtual.ObrasPermitidas.Contains(a.ObraId)));
+        modelBuilder.Entity<PlanoIntegracao>().HasQueryFilter(p =>
+            p.Ativo && (_usuarioAtual.TemAcessoGlobal || _usuarioAtual.ObrasPermitidas.Contains(p.ObraId)));
         modelBuilder.Entity<Veiculo>().HasQueryFilter(v =>
             v.Ativo && (_usuarioAtual.TemAcessoGlobal || _usuarioAtual.ObrasPermitidas.Contains(v.ObraId)));
         // ASO NÃO tem filtro global por obra (tentado em #115 e revertido): o ASO só chega à obra pelo

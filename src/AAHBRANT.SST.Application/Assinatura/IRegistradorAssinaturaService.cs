@@ -253,6 +253,12 @@ public class RegistradorAssinaturaService : IRegistradorAssinaturaService
             _ => null,
         };
 
+        // Documento pessoal cuja origem sumiu (excluída ou nunca existiu): antes virava "qualquer um assina"
+        // (auditoria 19/10, A14). Agora recusa.
+        var ehDocumentoPessoal = documento.EntidadeTipo is "EntregaEpi" or "DevolucaoEpi" or "EntregaUniforme" or "Treinamento";
+        if (trabalhadorEsperadoId is null && ehDocumentoPessoal)
+            throw new KeyNotFoundException("Registro de origem do documento não encontrado.");
+
         if (trabalhadorEsperadoId is null || trabalhadorEsperadoId == identificado.Id)
             return;
 

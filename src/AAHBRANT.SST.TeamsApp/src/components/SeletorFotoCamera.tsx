@@ -42,7 +42,6 @@ const useEstilosBotaoCamera = makeStyles({
     minHeight: '52px',
     minWidth: '148px',
     border: '1px solid transparent',
-    borderRadius: '5px',
     backgroundColor: '#0b5c32',
     color: '#ffffff',
     fontWeight: 800,

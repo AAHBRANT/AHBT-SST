@@ -1,7 +1,7 @@
 import { useEffect } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
-import { Button, DashboardTopo, PageHeader, useAbaNaUrl } from '@ui';
-import { ArrowLeft16Regular, Settings24Regular } from '@fluentui/react-icons';
+import { BotaoVoltar, Button, DashboardTopo, PageHeader, useAbaNaUrl } from '@ui';
+import { Settings24Regular } from '@fluentui/react-icons';
 import { PessoasDashboardTab } from './dashboard/PessoasDashboardTab';
 import { TrabalhadoresTab } from './TrabalhadoresTab';
 import { CadastrosFaciaisFracosCard } from '../../components/pessoas/CadastrosFaciaisFracosCard';
@@ -42,9 +42,7 @@ export function PessoasPage({ mostrarTitulo = true }: { mostrarTitulo?: boolean 
 
   const emFuncoes = aba === 'funcoes';
   const botaoFuncoes = emFuncoes ? (
-    <Button appearance="subtle" icon={<ArrowLeft16Regular />} onClick={() => setAba('trabalhadores')}>
-      Voltar para funcionários
-    </Button>
+    <BotaoVoltar rotulo="Voltar para funcionários" onClick={() => setAba('trabalhadores')} />
   ) : (
     <Button appearance="secondary" icon={<Settings24Regular />} onClick={() => setAba('funcoes')}>
       Funções

@@ -33,6 +33,16 @@ public class ExcluirEntregaEpiCommandHandler : IRequestHandler<ExcluirEntregaEpi
 
         await EstornarEstoqueAsync(entrega, ct);
 
+        // Entrega que tinha consumido o kit separado: o item volta a ficar separado para ele, no mesmo
+        // lugar da fila (a reserva mantém a data de criação original).
+        var reservas = await _db.ReservasEpi.Where(r => r.EntregaEpiId == entrega.Id).ToListAsync(ct);
+        foreach (var reserva in reservas)
+        {
+            reserva.Status = StatusReservaEpi.Ativa;
+            reserva.EntregaEpiId = null;
+            reserva.EncerradaEm = null;
+        }
+
         _db.EntregasEpi.Remove(entrega);
         await _db.SaveChangesAsync(ct);
     }

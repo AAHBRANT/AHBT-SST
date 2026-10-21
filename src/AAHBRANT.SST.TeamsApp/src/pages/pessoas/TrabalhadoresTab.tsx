@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   Avatar,
-  Button,
+  BotaoVoltar, Button,
   Card,
   PageHeader,
   DataTable,
@@ -22,7 +22,7 @@ import {
   type Coluna,
   type Tom,
 } from '@ui';
-import { Add24Regular, ArrowLeft24Regular, PeopleTeam24Regular, Search24Regular } from '@fluentui/react-icons';
+import { Add24Regular, PeopleTeam24Regular, Search24Regular } from '@fluentui/react-icons';
 import {
   api,
   resultadoAsoLabel,
@@ -353,9 +353,7 @@ export function TrabalhadoresTab() {
         }
         filtros={
           <>
-            <Button appearance="subtle" icon={<ArrowLeft24Regular />} onClick={voltarParaObras}>
-              Voltar às obras
-            </Button>
+            <BotaoVoltar rotulo="Voltar às obras" onClick={voltarParaObras} />
             <Field label="Buscar por nome ou matrícula">
               <Input contentBefore={<Search24Regular />} value={busca} onChange={(_, d) => setBusca(d.value)} />
             </Field>

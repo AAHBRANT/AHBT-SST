@@ -69,7 +69,12 @@ public class ExportarDdsSemanalPdfQueryHandler : IRequestHandler<ExportarDdsSema
         var modelo = new DdsSemanalPdfModelo(
             detalhe.Semanal.ObraNome,
             logoConteudo,
-            detalhe.Semanal.Tipo == TipoDdsSemanal.Terceirizados ? "Empregados Terceirizados" : "Empregados Próprios",
+            detalhe.Semanal.Tipo switch
+            {
+                TipoDdsSemanal.Terceirizados => "Empregados Terceirizados",
+                TipoDdsSemanal.ProprioseTerceirizados => "Empregados Próprios e Terceirizados",
+                _ => "Empregados Próprios",
+            },
             detalhe.Semanal.EmpresaTerceirizada,
             detalhe.Semanal.NumeroDocumento,
             detalhe.Semanal.LocalFrenteServico,

@@ -88,6 +88,12 @@ public class AzureFaceAutenticacaoStrategy : IAutenticacaoFacialService
         if (erroAdicionarFace is not null)
             throw new InvalidOperationException(MontarMensagemErroAzure("Falha ao adicionar foto ao Person no Azure Face API", erroAdicionarFace));
 
+        // Grupo e Person gravados antes do treino: se o treino falhar, a próxima tentativa reaproveita o
+        // mesmo Person em vez de deixar um órfão no grupo. A foto só é gravada depois do treino concluído,
+        // porque existir foto = cadastro pronto (auditoria 19/10, A09: treino falho travava o recadastro).
+        await _db.SaveChangesAsync(ct);
+        await TreinarEAguardarAsync(cliente, personGroupId, ct);
+
         // Só chega aqui com a foto já aprovada na validação de qualidade e aceita pelo Azure: é essa
         // foto (a referência do reconhecimento) que fica guardada no perfil do trabalhador.
         _db.FotosCadastroFacial.Add(new FotoCadastroFacial
@@ -107,8 +113,6 @@ public class AzureFaceAutenticacaoStrategy : IAutenticacaoFacialService
         trabalhador.FotoContentType = "image/jpeg";
 
         await _db.SaveChangesAsync(ct);
-
-        await TreinarEAguardarAsync(cliente, personGroupId, ct);
     }
 
     public async Task RemoverCadastroAsync(Guid trabalhadorId, CancellationToken ct)
@@ -355,7 +359,7 @@ public class AzureFaceAutenticacaoStrategy : IAutenticacaoFacialService
     // mede a foto, quem cadastra de fato é o TentarAdicionarFaceAsync logo depois.
     private static async Task ValidarQualidadeParaCadastroAsync(HttpClient cliente, byte[] fotoJpeg, CancellationToken ct)
     {
-        using (var imagem = SixLabors.ImageSharp.Image.Load(fotoJpeg))
+        using (var imagem = AAHBRANT.SST.Infrastructure.Imagens.ImagemSegura.Carregar(fotoJpeg))
         {
             if (Math.Min(imagem.Width, imagem.Height) < LadoMinimoImagemPx)
                 throw new InvalidOperationException(
@@ -410,7 +414,7 @@ public class AzureFaceAutenticacaoStrategy : IAutenticacaoFacialService
         _ => qualidade,
     };
 
-    public async Task<ResultadoIdentificacaoFacial> IdentificarAsync(Guid obraId, byte[] fotoJpeg, CancellationToken ct, bool exigirMargemSobreSegundoColocado = false)
+    public async Task<ResultadoIdentificacaoFacial> IdentificarAsync(Guid obraId, byte[] fotoJpeg, CancellationToken ct, bool exigirMargemSobreSegundoColocado = true)
     {
         var obra = await _db.Obras.FirstOrDefaultAsync(o => o.Id == obraId, ct)
             ?? throw new KeyNotFoundException("Obra não encontrada.");
@@ -477,8 +481,8 @@ public class AzureFaceAutenticacaoStrategy : IAutenticacaoFacialService
 
         // Consentimento LGPD conferido também na hora de assinar (antes só no cadastro): quem revogou o
         // consentimento não pode continuar sendo identificado pelo rosto.
-        if (trabalhador.ConsentimentoBiometriaEm is null)
-            throw new InvalidOperationException($"{trabalhador.Nome} não tem consentimento ativo para uso de biometria. Use outro método de assinatura.");
+        if (trabalhador.TermoAceiteAssinaturaEletronicaEm is null || trabalhador.ConsentimentoBiometriaEm is null)
+            throw new InvalidOperationException($"{trabalhador.Nome} não tem o Termo de Aceite e o consentimento de biometria ativos. Use outro método de assinatura.");
 
         // Fila 1:N: ninguém escolhe a pessoa, então só confirma se o primeiro colocado estiver bem à
         // frente do segundo. Dois candidatos próximos = provável colega parecido, melhor usar a digital.
