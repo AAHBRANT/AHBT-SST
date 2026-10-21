@@ -4298,6 +4298,8 @@ export interface PassoPlanoIntegracao {
   situacao: SituacaoPassoIntegracao;
   detalhe?: string | null;
   rota?: string | null;
+  sessaoTreinamentoId?: string | null;
+  dataTurma?: string | null;
 }
 export interface ItemKitEpi {
   catalogoEpiId: string;
@@ -5969,6 +5971,11 @@ export const api = {
     pendentes: () => request<PlanoIntegracao[]>('/api/planos-integracao/pendentes'),
     obter: (id: string) => request<PlanoIntegracao>(`/api/planos-integracao/${id}`),
     assumir: (id: string) => request<void>(`/api/planos-integracao/${id}/assumir`, { method: 'POST' }),
+    alterarDataTurma: (sessaoTreinamentoId: string, dataRealizacao: string) =>
+      request<void>(`/api/sessoestreinamento/${sessaoTreinamentoId}/data`, {
+        method: 'PUT',
+        body: JSON.stringify({ dataRealizacao }),
+      }),
   },
   novidades: {
     listar: () => request<NovidadeVersao[]>('/api/novidades'),

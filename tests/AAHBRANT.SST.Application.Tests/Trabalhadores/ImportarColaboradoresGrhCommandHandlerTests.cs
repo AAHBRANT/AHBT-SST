@@ -27,6 +27,8 @@ public class ImportarColaboradoresGrhCommandHandlerTests
         // Composição real da Api/Worker sempre registra a fila do Teams (AddInfrastructure); o plano de
         // integração do funcionário novo depende dela.
         servicos.AddSingleton<IFilaNotificacaoTeams>(new AAHBRANT.SST.Application.Tests.Alertas.FilaNotificacaoTeamsFalsa());
+        servicos.AddSingleton<IFilaCalendarioTeams>(new AAHBRANT.SST.Application.Tests.Alertas.FilaCalendarioTeamsFalsa());
+        servicos.AddSingleton<IGeradorNumeroDocumentoService>(new AAHBRANT.SST.Application.Tests.PlanosIntegracao.GeradorNumeroSequencialFalso());
         return servicos.BuildServiceProvider().GetRequiredService<IMediator>();
     }
 

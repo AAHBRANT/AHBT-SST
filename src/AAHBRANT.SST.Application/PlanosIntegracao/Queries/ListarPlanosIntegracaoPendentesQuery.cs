@@ -17,7 +17,10 @@ public static class SituacaoPasso
     public const string NaoConfigurado = "naoConfigurado";
 }
 
-public record PassoPlanoIntegracaoDto(string Codigo, string Titulo, string Situacao, string? Detalhe, string? Rota);
+// SessaoTreinamentoId/DataTurma: preenchidos quando o passo é uma turma agendada — o pop-up deixa
+// ajustar a data dali mesmo.
+public record PassoPlanoIntegracaoDto(string Codigo, string Titulo, string Situacao, string? Detalhe, string? Rota,
+    Guid? SessaoTreinamentoId = null, DateTime? DataTurma = null);
 public record ItemKitEpiDto(Guid CatalogoEpiId, string Nome, string? Tamanho, string Situacao);
 public record PlanoIntegracaoDto(
     Guid Id, Guid TrabalhadorId, string Nome, string? Matricula, string Funcao, Guid ObraId, string ObraNome,
@@ -111,7 +114,8 @@ public class ListarPlanosIntegracaoPendentesQueryHandler : IRequestHandler<Lista
                     return new(codigo, titulo, SituacaoPasso.Feito, null, rotaPerfil);
                 var turma = turmasAbertas.Where(x => idsCurso.Contains(x.CursoTreinamentoId)).OrderBy(x => x.DataRealizacao).FirstOrDefault();
                 return turma is not null
-                    ? new(codigo, titulo, SituacaoPasso.Agendado, $"Turma em {turma.DataRealizacao:dd/MM/yyyy}.", $"/treinamentos/turma/{turma.SessaoTreinamentoId}")
+                    ? new(codigo, titulo, SituacaoPasso.Agendado, $"Turma em {turma.DataRealizacao:dd/MM/yyyy}.", $"/treinamentos/turma/{turma.SessaoTreinamentoId}",
+                        turma.SessaoTreinamentoId, turma.DataRealizacao)
                     : new(codigo, titulo, SituacaoPasso.Pendente, "Ainda sem turma.", "/gestao-sst?secao=treinamentos");
             }
 
