@@ -39,6 +39,7 @@ public class ObterPgrDetalheQueryHandler : IRequestHandler<ObterPgrDetalheQuery,
             .Where(a => a.ObraId == pgr.ObraId)
             .Include(a => a.Riscos).ThenInclude(r => r.Perigo)
             .Include(a => a.Riscos).ThenInclude(r => r.Medidas)
+            .Include(a => a.ItensOs)
             .OrderBy(a => a.Nome)
             .ToListAsync(ct);
 
@@ -59,6 +60,7 @@ public class ObterPgrDetalheQueryHandler : IRequestHandler<ObterPgrDetalheQuery,
             {
                 AtividadeId = a.Id,
                 AtividadeNome = a.Nome,
+                ItensOsPendentes = a.ItensOs.Count(i => i.Status == Domain.Enums.StatusMedidaPrevencao.Pendente),
                 Riscos = a.Riscos.Select(r => new RiscoClassificadoDto
                 {
                     RiscoId = r.Id,

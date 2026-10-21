@@ -1,4 +1,5 @@
 using AAHBRANT.SST.Api.Autorizacao;
+using AAHBRANT.SST.Application.Atividades.DetalhesOs;
 using AAHBRANT.SST.Application.Riscos.Medidas;
 using AAHBRANT.SST.Domain.Enums;
 using MediatR;
@@ -25,6 +26,12 @@ public class MedidasPrevencaoController : ControllerBase
     public record AdicionarMedidaRequest(FaseMedidaPrevencao Fase, string Texto);
 
     public record DecidirMedidaRequest(bool Aceitar, string? TextoEditado);
+
+    public record SalvarDetalhesOsRequest(string? Condicoes, List<string> Ferramentas, List<Guid> EpcIds, List<Guid> DocumentoIds);
+
+    public record AdicionarItemOsRequest(TipoItemAtividadeOs Tipo, string Texto, string? Requisito);
+
+    public record DecidirItemOsRequest(bool Aceitar, string? TextoEditado, string? RequisitoEditado);
 
     [Authorize(Policy = "risco:editar")]
     [HttpPost("riscos/{riscoId:guid}/confirmar-avaliacao")]
@@ -55,6 +62,47 @@ public class MedidasPrevencaoController : ControllerBase
     {
         var usuarioId = await _usuarioAtual.ObterIdAsync(User, ct);
         await _mediator.Send(new DecidirMedidaPrevencaoCommand(id, corpo.Aceitar, corpo.TextoEditado, usuarioId, User.FindFirst("name")?.Value), ct);
+        return NoContent();
+    }
+
+    // ---- Detalhes da atividade para a OS ----
+
+    [Authorize(Policy = "risco:ver")]
+    [HttpGet("atividades/{atividadeId:guid}/detalhes-os")]
+    public async Task<IActionResult> ObterDetalhesOs(Guid atividadeId, CancellationToken ct)
+    {
+        var dto = await _mediator.Send(new ObterDetalhesOsAtividadeQuery(atividadeId), ct);
+        return dto is null ? NotFound() : Ok(dto);
+    }
+
+    [Authorize(Policy = "risco:editar")]
+    [HttpPut("atividades/{atividadeId:guid}/detalhes-os")]
+    public async Task<IActionResult> SalvarDetalhesOs(Guid atividadeId, SalvarDetalhesOsRequest corpo, CancellationToken ct)
+    {
+        await _mediator.Send(new SalvarDetalhesOsAtividadeCommand(atividadeId, corpo.Condicoes, corpo.Ferramentas, corpo.EpcIds, corpo.DocumentoIds), ct);
+        return NoContent();
+    }
+
+    [Authorize(Policy = "risco:editar")]
+    [HttpPost("atividades/{atividadeId:guid}/itens-os")]
+    public async Task<IActionResult> AdicionarItemOs(Guid atividadeId, AdicionarItemOsRequest corpo, CancellationToken ct)
+    {
+        var usuarioId = await _usuarioAtual.ObterIdAsync(User, ct);
+        var id = await _mediator.Send(new AdicionarItemAtividadeOsCommand(atividadeId, corpo.Tipo, corpo.Texto, corpo.Requisito, usuarioId, User.FindFirst("name")?.Value), ct);
+        return Ok(new { id });
+    }
+
+    [Authorize(Policy = "risco:editar")]
+    [HttpPost("atividades/{atividadeId:guid}/itens-os/sugerir-com-ia")]
+    public async Task<IActionResult> SugerirItensOs(Guid atividadeId, CancellationToken ct)
+        => Ok(new { itens = await _mediator.Send(new SugerirItensAtividadeOsCommand(atividadeId), ct) });
+
+    [Authorize(Policy = "risco:editar")]
+    [HttpPost("itens-os/{id:guid}/decidir")]
+    public async Task<IActionResult> DecidirItemOs(Guid id, DecidirItemOsRequest corpo, CancellationToken ct)
+    {
+        var usuarioId = await _usuarioAtual.ObterIdAsync(User, ct);
+        await _mediator.Send(new DecidirItemAtividadeOsCommand(id, corpo.Aceitar, corpo.TextoEditado, corpo.RequisitoEditado, usuarioId, User.FindFirst("name")?.Value), ct);
         return NoContent();
     }
 }

@@ -10,8 +10,12 @@ import {
   FormGrid,
   FormRodape,
   FormSection,
+  Abas,
+  Checkbox,
   Input,
   PageHeader,
+  Select,
+  StatusChip,
   PainelCriacaoInline,
   useConfirmar,
   type Coluna,
@@ -26,6 +30,18 @@ import {
   Image24Regular,
 } from '@fluentui/react-icons';
 import { api, type MaterialApoio } from '../../lib/api';
+
+// Ordem de Serviço (20/10/2026): procedimentos, ITs e políticas também moram aqui, com código SGI,
+// revisão e situação. Só documento Vigente entra na OS; política com o selo entra em todas.
+const rotuloTipo: Record<number, string> = { 1: 'Material de apoio', 2: 'Procedimento', 3: 'Instrução de trabalho', 4: 'Política' };
+const rotuloSituacao: Record<number, string> = { 1: 'Vigente', 2: 'Em revisão', 3: 'Obsoleto' };
+type Filtro = 'todos' | 'procedimentos' | 'politicas' | 'apoio';
+const passaNoFiltro: Record<Filtro, (m: MaterialApoio) => boolean> = {
+  todos: () => true,
+  procedimentos: (m) => m.tipo === 2 || m.tipo === 3,
+  politicas: (m) => m.tipo === 4,
+  apoio: (m) => m.tipo === 1,
+};
 import { useSucessoToast } from '../../hooks/useSucessoToast';
 import { salvarBlob, useVisualizadorPdf } from '../../components/useVisualizadorPdf';
 
@@ -62,6 +78,13 @@ export function MateriaisApoioTab() {
   const [nome, setNome] = useState('');
   const [categoria, setCategoria] = useState('');
   const [arquivo, setArquivo] = useState<File | null>(null);
+  const [tipo, setTipo] = useState<1 | 2 | 3 | 4>(2);
+  const [codigo, setCodigo] = useState('');
+  const [revisao, setRevisao] = useState('');
+  const [situacao, setSituacao] = useState<1 | 2 | 3>(1);
+  const [formaConsulta, setFormaConsulta] = useState('');
+  const [todasOs, setTodasOs] = useState(false);
+  const [filtro, setFiltro] = useState<Filtro>('todos');
   const [enviando, setEnviando] = useState(false);
   const [erroPainel, setErroPainel] = useState<string | null>(null);
 
@@ -92,11 +115,21 @@ export function MateriaisApoioTab() {
     setNome('');
     setCategoria('');
     setArquivo(null);
+    setTipo(2);
+    setCodigo('');
+    setRevisao('');
+    setSituacao(1);
+    setFormaConsulta('');
+    setTodasOs(false);
   }
 
   async function enviar() {
     if (!nome.trim()) {
-      setErroPainel('Informe o nome do material.');
+      setErroPainel('Informe o título do documento.');
+      return;
+    }
+    if (tipo !== 1 && (!codigo.trim() || !revisao.trim())) {
+      setErroPainel('Informe o código SGI e a revisão do documento.');
       return;
     }
     if (!arquivo) {
@@ -106,7 +139,14 @@ export function MateriaisApoioTab() {
     try {
       setEnviando(true);
       setErroPainel(null);
-      await api.materiaisApoio.criar(nome, categoria.trim() || null, arquivo);
+      await api.materiaisApoio.criar(nome, categoria.trim() || null, arquivo, {
+        tipo,
+        codigo: tipo === 1 ? null : codigo.trim(),
+        revisao: tipo === 1 ? null : revisao.trim(),
+        situacao: tipo === 1 ? null : situacao,
+        formaConsulta: formaConsulta.trim() || null,
+        incluirEmTodasOs: tipo === 4 && todasOs,
+      });
       fecharPainelUpload();
       await carregar();
       sucessoToast('Material enviado com sucesso.');
@@ -150,9 +190,44 @@ export function MateriaisApoioTab() {
     }
   }
 
+  async function mudarSituacao(m: MaterialApoio, nova: 1 | 2 | 3) {
+    try {
+      await api.materiaisApoio.atualizar(m.id, m.nome, {
+        codigo: m.codigo, revisao: m.revisao, situacao: nova, formaConsulta: m.formaConsulta, incluirEmTodasOs: m.incluirEmTodasOs,
+      });
+      await carregar();
+    } catch (e) {
+      setErro(e instanceof Error ? e.message : 'Falha ao atualizar o documento.');
+    }
+  }
+
   const colunas: Coluna<MaterialApoio>[] = [
-    { chave: 'tipo', rotulo: '', render: (m) => <IconePorTipo contentType={m.contentType} /> },
-    { chave: 'nome', rotulo: 'Nome' },
+    { chave: 'icone', rotulo: '', render: (m) => <IconePorTipo contentType={m.contentType} /> },
+    { chave: 'tipoDoc', rotulo: 'Tipo', render: (m) => <StatusChip tom={m.tipo === 1 ? 'neutro' : 'info'}>{rotuloTipo[m.tipo]}</StatusChip> },
+    { chave: 'codigo', rotulo: 'Código', render: (m) => m.codigo || '—' },
+    { chave: 'nome', rotulo: 'Título' },
+    { chave: 'revisao', rotulo: 'Revisão', render: (m) => m.revisao || '—' },
+    {
+      chave: 'situacao',
+      rotulo: 'Situação',
+      render: (m) =>
+        m.situacao ? (
+          <Select
+            size="small"
+            value={String(m.situacao)}
+            aria-label={`Situação de ${m.nome}`}
+            onClick={(e) => e.stopPropagation()}
+            onChange={(_, d) => void mudarSituacao(m, Number(d.value) as 1 | 2 | 3)}
+          >
+            {[1, 2, 3].map((s) => <option key={s} value={s}>{rotuloSituacao[s]}</option>)}
+          </Select>
+        ) : '—',
+    },
+    {
+      chave: 'usadoEm',
+      rotulo: 'Usado em',
+      render: (m) => (m.incluirEmTodasOs ? 'Todas as OS' : m.atividades > 0 ? `${m.atividades} atividade(s)` : '—'),
+    },
     { chave: 'categoria', rotulo: 'Categoria', render: (m) => m.categoria || '—' },
     { chave: 'tamanhoBytes', rotulo: 'Tamanho', render: (m) => formatarTamanho(m.tamanhoBytes) },
     { chave: 'createdAtUtc', rotulo: 'Enviado em', render: (m) => new Date(m.createdAtUtc).toLocaleDateString('pt-BR') },
@@ -164,7 +239,7 @@ export function MateriaisApoioTab() {
       {dialogoVisualizador}
       <PageHeader
         titulo="Documentos & Procedimentos"
-        subtitulo="Materiais de apoio (sinalização, instruções técnicas) disponíveis para consulta e download."
+        subtitulo="Procedimentos, instruções de trabalho, políticas e materiais de apoio. Só documentos vigentes entram na Ordem de Serviço."
         acoes={
           <Button
             appearance="primary"
@@ -173,7 +248,7 @@ export function MateriaisApoioTab() {
             aria-expanded={painelUploadAberto}
             aria-controls="painel-novo-material-apoio"
           >
-            {painelUploadAberto ? 'Fechar' : 'Enviar material'}
+            {painelUploadAberto ? 'Fechar' : 'Enviar documento'}
           </Button>
         }
       />
@@ -185,19 +260,59 @@ export function MateriaisApoioTab() {
       )}
 
       <div id="painel-novo-material-apoio">
-        <PainelCriacaoInline aberto={painelUploadAberto} titulo="Novo material de apoio">
-          <FormSection titulo="Dados do material" numero={1} primeira>
+        <PainelCriacaoInline aberto={painelUploadAberto} titulo="Novo documento">
+          <FormSection titulo="Dados do documento" numero={1} primeira>
             {erroPainel && (
               <FeedbackInline tom="erro" aoFechar={() => setErroPainel(null)}>
                 {erroPainel}
               </FeedbackInline>
             )}
             <FormGrid>
+              <Campo span={6}>
+                <Field label="Tipo" required>
+                  <Select value={String(tipo)} onChange={(_, d) => setTipo(Number(d.value) as 1 | 2 | 3 | 4)}>
+                    {[2, 3, 4, 1].map((t) => <option key={t} value={t}>{rotuloTipo[t]}</option>)}
+                  </Select>
+                </Field>
+              </Campo>
+              {tipo !== 1 && (
+                <Campo span={6}>
+                  <Field label="Código SGI" required>
+                    <Input value={codigo} onChange={(_, d) => setCodigo(d.value)} placeholder="[ORG]-[TD]-[AR]-[SEQ]" />
+                  </Field>
+                </Campo>
+              )}
               <Campo span={12}>
-                <Field label="Nome">
+                <Field label="Título" required>
                   <Input value={nome} onChange={(_, d) => setNome(d.value)} />
                 </Field>
               </Campo>
+              {tipo !== 1 && (
+                <>
+                  <Campo span={6}>
+                    <Field label="Revisão" required>
+                      <Input value={revisao} onChange={(_, d) => setRevisao(d.value)} placeholder="00" />
+                    </Field>
+                  </Campo>
+                  <Campo span={6}>
+                    <Field label="Situação" required>
+                      <Select value={String(situacao)} onChange={(_, d) => setSituacao(Number(d.value) as 1 | 2 | 3)}>
+                        {[1, 2, 3].map((s) => <option key={s} value={s}>{rotuloSituacao[s]}</option>)}
+                      </Select>
+                    </Field>
+                  </Campo>
+                  <Campo span={12}>
+                    <Field label="Forma de consulta (aparece na Ordem de Serviço)">
+                      <Input value={formaConsulta} onChange={(_, d) => setFormaConsulta(d.value)} placeholder="Ex.: Sistema SST › Documentos e quadro de avisos da obra" />
+                    </Field>
+                  </Campo>
+                </>
+              )}
+              {tipo === 4 && (
+                <Campo span={12}>
+                  <Checkbox checked={todasOs} onChange={(_, d) => setTodasOs(!!d.checked)} label="Incluir em todas as Ordens de Serviço" />
+                </Campo>
+              )}
               <Campo span={12}>
                 <Field label="Categoria (opcional)">
                   <Input value={categoria} onChange={(_, d) => setCategoria(d.value)} placeholder="Ex.: Sinalização - Alojamento" />
@@ -223,11 +338,24 @@ export function MateriaisApoioTab() {
         </PainelCriacaoInline>
       </div>
 
+      <Abas
+        nivel="interno"
+        aria-label="Filtrar documentos"
+        valor={filtro}
+        aoMudar={setFiltro}
+        abas={[
+          { valor: 'todos', rotulo: 'Todos' },
+          { valor: 'procedimentos', rotulo: 'Procedimentos e ITs' },
+          { valor: 'politicas', rotulo: 'Políticas' },
+          { valor: 'apoio', rotulo: 'Materiais de apoio' },
+        ]}
+      />
+
       <Card>
         <DataTable
-          aria-label="Materiais de apoio cadastrados"
+          aria-label="Documentos cadastrados"
           colunas={colunas}
-          linhas={materiais}
+          linhas={materiais.filter(passaNoFiltro[filtro])}
           chaveLinha={(m) => m.id}
           carregando={carregandoLista}
           aoClicarLinha={(m) => (podeVisualizar(m) ? visualizar(m) : baixar(m))}

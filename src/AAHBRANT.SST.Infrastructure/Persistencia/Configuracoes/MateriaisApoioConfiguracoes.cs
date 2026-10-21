@@ -12,7 +12,11 @@ public class MaterialApoioConfiguracao : IEntityTypeConfiguration<MaterialApoio>
         builder.Property(m => m.Categoria).HasMaxLength(100);
         builder.Property(m => m.NomeArquivo).IsRequired().HasMaxLength(260);
         builder.Property(m => m.ContentType).IsRequired().HasMaxLength(150);
+        builder.Property(m => m.Codigo).HasMaxLength(60);
+        builder.Property(m => m.Revisao).HasMaxLength(20);
+        builder.Property(m => m.FormaConsulta).HasMaxLength(300);
         builder.HasIndex(m => m.Categoria);
+        builder.HasIndex(m => m.Tipo);
         builder.HasQueryFilter(m => m.Ativo);
     }
 }

@@ -7,6 +7,7 @@ import {
   api, nivelRiscoLabel, statusControleRiscoLabel,
   type AtividadeCaracterizada, type MedidaPrevencao, type RiscoClassificado,
 } from '../../lib/api';
+import { DetalhesOsAtividadePainel } from './DetalhesOsAtividadePainel';
 
 // Guia de conversão item 5 (mapeamento 1:1 pelo nome semântico do Fluent, preservando as mesmas
 // cores da versão anterior): success→ok, informative→info, warning→atencao, severe→alerta,
@@ -72,6 +73,7 @@ export function InventarioTab({ atividades, aoAlterar }: { atividades: Atividade
   const [soPendencias, setSoPendencias] = useState(false);
   const [erro, setErro] = useState<string | null>(null);
   const [progresso, setProgresso] = useState<string | null>(null);
+  const [detalhesAberto, setDetalhesAberto] = useState<string | null>(null);
 
   if (atividades.length === 0) {
     return <EstadoVazio titulo="Nenhuma atividade com avaliação de risco cadastrada para a obra deste PGR." />;
@@ -126,9 +128,31 @@ export function InventarioTab({ atividades, aoAlterar }: { atividades: Atividade
 
       {atividades.map((atividade) => {
         const linhas = soPendencias ? atividade.riscos.filter(temPendencia) : atividade.riscos;
-        if (soPendencias && linhas.length === 0) return null;
+        if (soPendencias && linhas.length === 0 && atividade.itensOsPendentes === 0) return null;
+        const detalhesAbertos = detalhesAberto === atividade.atividadeId;
         return (
-          <Card key={atividade.atividadeId} titulo={atividade.atividadeNome}>
+          <Card
+            key={atividade.atividadeId}
+            titulo={atividade.atividadeNome}
+            acoes={
+              <span style={{ display: 'inline-flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
+                {atividade.itensOsPendentes > 0 && (
+                  <StatusChip tom="atencao">{atividade.itensOsPendentes} itens aguardando validação</StatusChip>
+                )}
+                <Button
+                  aria-expanded={detalhesAbertos}
+                  onClick={() => setDetalhesAberto(detalhesAbertos ? null : atividade.atividadeId)}
+                >
+                  Detalhes para a OS {detalhesAbertos ? '▲' : '▼'}
+                </Button>
+              </span>
+            }
+          >
+            {detalhesAbertos && (
+              <div style={{ marginBottom: 16 }}>
+                <DetalhesOsAtividadePainel atividadeId={atividade.atividadeId} aoAlterar={aoAlterar} />
+              </div>
+            )}
             <DataTable
               aria-label={`Riscos da atividade ${atividade.atividadeNome}`}
               colunas={colunasRiscos}
