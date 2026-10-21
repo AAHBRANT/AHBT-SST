@@ -1434,6 +1434,17 @@ public static class NovidadesSeeder
                     "Não havia como dizer ao sistema quando uma NR passa a ser obrigatória.",
                     "Em Treinamentos › Regras por NR fica a tabela: NR-06 e NR-18 para todas as funções e, para as demais, as palavras do PGR que tornam o curso obrigatório (altura → NR-35, choque elétrico → NR-10 e outras)."),
             }),
+        new(
+            Versao: "5.77.0",
+            Titulo: "Escopo do PCMSO para o médico, a partir do PGR",
+            DataPublicacao: new DateTime(2026, 10, 21, 0, 0, 0, DateTimeKind.Utc),
+            Itens: new[]
+            {
+                new NovidadeSeedItem(CategoriaNovidade.Novidade,
+                    "Escopo para o médico elaborar o PCMSO",
+                    "Para o médico começar o PCMSO era preciso juntar à mão as funções, os GHE e os riscos do PGR da obra.",
+                    "Em Saúde Ocupacional › Escopo para o médico, escolha a obra: o sistema monta o documento com a identificação da obra, as funções por GHE, o inventário de riscos e as atividades críticas. Dá para visualizar, baixar o PDF ou enviar ao médico por e-mail. Exames, periodicidade e critérios de aptidão ficam com o médico."),
+            }),
     };
 
     public static async Task ExecutarAsync(IServiceProvider services, CancellationToken ct = default)
