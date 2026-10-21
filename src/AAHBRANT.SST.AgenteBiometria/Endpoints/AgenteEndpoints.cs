@@ -8,7 +8,8 @@ namespace AAHBRANT.SST.AgenteBiometria.Endpoints;
 
 // O segredo do dispositivo não sai mais para o navegador (11/10): com ele, quem tivesse acesso ao navegador
 // conseguia "assinar" por qualquer trabalhador. LeituraAssinada avisa a tela que este agente assina as leituras.
-public record DispositivoResponse(Guid DispositivoId, bool LeituraAssinada = true);
+// Versao: versão do agente instalado no posto (para conferir quem ainda não atualizou).
+public record DispositivoResponse(Guid DispositivoId, bool LeituraAssinada = true, string? Versao = null);
 public record SincronizarResponse(int Total);
 // ImagemPng: imagem da leitura, guardada (criptografada) como referência do cadastro no log de assinaturas.
 public record CapturaBrutaResponse(byte[] TemplateBruto, byte[]? ImagemPng = null);
@@ -34,7 +35,8 @@ public static class AgenteEndpoints
     }
 
     public static Ok<DispositivoResponse> ObterDispositivo(IOptions<AgenteOptions> options) =>
-        TypedResults.Ok(new DispositivoResponse(options.Value.DispositivoId));
+        TypedResults.Ok(new DispositivoResponse(options.Value.DispositivoId,
+            Versao: Atualizacao.VerificadorAtualizacao.VersaoAtual().ToString(3)));
 
     public static async Task<Ok<SincronizarResponse>> Sincronizar(TemplateCacheService cache, CancellationToken ct)
     {
@@ -61,6 +63,21 @@ public static class AgenteEndpoints
         return TypedResults.Ok(new CompararTemplatesResponse(matcher.Comparar(corpo.TemplateA, corpo.TemplateB)));
     }
 
+    // Um template corrompido ou de outra versão do SourceAFIS não pode derrubar a leitura de todo mundo
+    // (auditoria 19/10, A08): vale score 0 e fica no log para recadastrar.
+    private static double CompararSemDerrubar(IFingerprintMatcher matcher, byte[] captura, TemplateCacheado candidato)
+    {
+        try
+        {
+            return matcher.Comparar(captura, candidato.TemplateBruto);
+        }
+        catch (Exception ex)
+        {
+            Console.Error.WriteLine($"Template inválido ignorado (trabalhador {candidato.TrabalhadorId}): {ex.GetType().Name}");
+            return 0;
+        }
+    }
+
     // Texto assinado de cada leitura. Precisa ser idêntico a LeituraBiometricaAssinada.Conteudo no servidor.
     public static string ConteudoAssinado(string desafio, Guid trabalhadorId, double score) =>
         string.Join('|', desafio, trabalhadorId.ToString("D"), score.ToString("F2", System.Globalization.CultureInfo.InvariantCulture));
@@ -73,7 +90,7 @@ public static class AgenteEndpoints
         var captura = matcher.ExtrairTemplate(imagemBruta);
 
         var melhor = cache.Templates
-            .Select(t => new { t.TrabalhadorId, Score = matcher.Comparar(captura, t.TemplateBruto) })
+            .Select(t => new { t.TrabalhadorId, Score = CompararSemDerrubar(matcher, captura, t) })
             .OrderByDescending(r => r.Score)
             .FirstOrDefault();
 

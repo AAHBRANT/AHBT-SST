@@ -142,7 +142,9 @@ public enum TipoAlerta
     CadastroFacialFraco = 30,
     // Validade do PCMSO (PcmsoAlertaProvider) — aviso diário de documento vencido, 16/10/2026.
     PcmsoVencendo = 31,
-    PcmsoVencido = 32
+    PcmsoVencido = 32,
+    // Plano de integração do funcionário (admissão, troca de função, transferência), 21/10/2026.
+    IntegracaoFuncionarioNovo = 33
 }
 
 public enum SeveridadeAlerta
@@ -681,10 +683,19 @@ public enum TipoFotoParticipante
 // e, quando aplicável, outro para terceirizados — nunca misturados no mesmo documento (o papel já
 // separa por página/formulário inteiro, com bloco de assinatura da empresa terceirizada só na
 // segunda versão).
+// Pedido do usuário (20/10): opção "Próprios e Terceirizados" para registrar as duas equipes na mesma
+// semana — segue as regras de terceirizado (empresa na abertura, responsável da empresa no encerramento).
 public enum TipoDdsSemanal
 {
     Proprios = 1,
-    Terceirizados = 2
+    Terceirizados = 2,
+    ProprioseTerceirizados = 3
+}
+
+public static class TipoDdsSemanalExtensions
+{
+    public static bool IncluiTerceirizados(this TipoDdsSemanal tipo) =>
+        tipo is TipoDdsSemanal.Terceirizados or TipoDdsSemanal.ProprioseTerceirizados;
 }
 
 public enum StatusDdsSemanal
@@ -932,4 +943,25 @@ public enum OrigemCertificadoTreinamento
 {
     Aahbrant = 1,
     Externo = 2
+}
+
+public enum MotivoPlanoIntegracao
+{
+    Admissao = 1,
+    TrocaFuncao = 2,
+    TransferenciaObra = 3
+}
+
+public enum StatusPlanoIntegracao
+{
+    Aberto = 1,
+    Concluido = 2,
+    Cancelado = 3
+}
+
+public enum StatusReservaEpi
+{
+    Ativa = 1,
+    Entregue = 2,
+    Cancelada = 3
 }

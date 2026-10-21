@@ -23,7 +23,11 @@ public class RevogarDispositivoAgenteCommandHandler : IRequestHandler<RevogarDis
 
     public async Task Handle(RevogarDispositivoAgenteCommand request, CancellationToken ct)
     {
-        var dispositivo = await _db.DispositivosAgenteBiometrico.FirstOrDefaultAsync(d => d.Id == request.DispositivoId, ct)
+        // Só revoga leitor de obra que o usuário enxerga (auditoria 19/10, A02).
+        var obras = _db.ObrasNoEscopo;
+        var global = _db.EscopoObraGlobal;
+        var dispositivo = await _db.DispositivosAgenteBiometrico
+                .FirstOrDefaultAsync(d => d.Id == request.DispositivoId && (global || obras.Contains(d.ObraId)), ct)
             ?? throw new KeyNotFoundException("Dispositivo não encontrado.");
 
         dispositivo.Ativo = false;

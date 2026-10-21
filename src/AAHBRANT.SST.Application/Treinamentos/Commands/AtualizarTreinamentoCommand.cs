@@ -49,6 +49,13 @@ public class AtualizarTreinamentoCommandHandler : IRequestHandler<AtualizarTrein
         if (request.TrabalhadorId != treinamento.TrabalhadorId)
             await _db.GarantirTrabalhadorNoEscopoAsync(request.TrabalhadorId, ct);
 
+        // Só quando a edição mexe no que a regra olha: registros antigos abaixo do mínimo continuam
+        // editáveis nos outros campos (ex.: corrigir o nº do certificado).
+        if (request.CargaHorariaRealizada != treinamento.CargaHorariaRealizada
+            || request.CursoTreinamentoId != treinamento.CursoTreinamentoId
+            || request.OrigemCertificado != treinamento.OrigemCertificado)
+            await CargaHorariaMinimaTreinamento.GarantirAsync(_db, request.CursoTreinamentoId, request.CargaHorariaRealizada, request.OrigemCertificado, ct);
+
         treinamento.TrabalhadorId = request.TrabalhadorId;
         treinamento.CursoTreinamentoId = request.CursoTreinamentoId;
         treinamento.DataRealizacao = request.DataRealizacao;

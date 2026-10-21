@@ -67,15 +67,6 @@ public static class GradeIdentificacaoFiscalizacaoPdf
     }
 
     private static bool FotoValida(byte[] bytes)
-    {
-        try
-        {
-            using var ms = new MemoryStream(bytes);
-            return SixLabors.ImageSharp.Image.Identify(ms) is not null;
-        }
-        catch
-        {
-            return false;
-        }
-    }
+        // Mesma régua de formato/tamanho do resto do sistema (ver ImagemSegura).
+        => AAHBRANT.SST.Infrastructure.Imagens.ImagemSegura.EhValida(bytes);
 }

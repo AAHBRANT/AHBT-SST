@@ -143,7 +143,7 @@ public class AtaSessaoTreinamentoPdfService : IAtaSessaoTreinamentoPdfService
     // proporção da foto original não bate com a do slot.
     private static byte[] RecortarParaPreencherSlot(byte[] foto)
     {
-        using var imagem = SixLabors.ImageSharp.Image.Load(foto);
+        using var imagem = AAHBRANT.SST.Infrastructure.Imagens.ImagemSegura.Carregar(foto);
         imagem.Mutate(x => x.Resize(new ResizeOptions
         {
             Size = new SixLabors.ImageSharp.Size(500, 380),

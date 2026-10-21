@@ -15,12 +15,12 @@ import {
   Campo,
   FeedbackInline,
   StatusChip,
+  Switch,
   useConfirmar,
   type Coluna,
 } from '@ui';
-import { Switch } from '@fluentui/react-components';
 import { Add24Regular, Delete24Regular } from '@fluentui/react-icons';
-import { api, type CursoTreinamento, type NovoCursoTreinamento } from '../../lib/api';
+import { api, type CursoTreinamento, type NovoCursoTreinamento, type PadraoNr } from '../../lib/api';
 import { useSucessoToast } from '../../hooks/useSucessoToast';
 
 const cursoVazio: NovoCursoTreinamento = {
@@ -33,6 +33,12 @@ const cursoVazio: NovoCursoTreinamento = {
   atendeNr6: false,
 };
 
+// Mesma normalização do backend (CatalogoNormasRegulamentadoras): "nr 35", "NR35" → "NR-35".
+function numeroNr(norma: string | null | undefined): string | null {
+  const m = norma?.match(/NR\s*[-–.]?\s*0*(\d{1,2})/i);
+  return m ? `NR-${m[1].padStart(2, '0')}` : null;
+}
+
 // Migração do formulário inline (spec 2026-09-11): o PainelLateral (drawer) saiu — mesmo padrão de
 // AtividadesTab.tsx/InspecoesTab.tsx. Agora é um PainelCriacaoInline, que cresce acima da lista até
 // a altura do próprio formulário, em vez de cobrir a tela com uma gaveta.
@@ -44,6 +50,8 @@ export function CursosTreinamentoTab() {
   const [carregando, setCarregando] = useState(false);
   const [carregandoLista, setCarregandoLista] = useState(true);
   const [painelAberto, setPainelAberto] = useState(false);
+  const [padroesNr, setPadroesNr] = useState<PadraoNr[]>([]);
+  const [padraoAplicado, setPadraoAplicado] = useState<string | null>(null);
   const { confirmar, dialogElement } = useConfirmar();
   const sucessoToast = useSucessoToast();
 
@@ -60,10 +68,34 @@ export function CursosTreinamentoTab() {
 
   useEffect(() => {
     carregar();
+    api.cursosTreinamento.padroesNr().then(setPadroesNr).catch(() => setPadroesNr([]));
   }, []);
+
+  // Ao reconhecer a NR digitada, preenche só o que ainda está vazio (nome, carga horária,
+  // validade, conteúdo) com o padrão da norma — o técnico revisa antes de salvar.
+  function alterarNorma(valor: string) {
+    const padrao = padroesNr.find((p) => p.numero === numeroNr(valor));
+    if (!padrao) {
+      setNovoCurso({ ...novoCurso, normaReferencia: valor });
+      setPadraoAplicado(null);
+      return;
+    }
+    setNovoCurso({
+      ...novoCurso,
+      normaReferencia: valor,
+      nome: novoCurso.nome.trim() ? novoCurso.nome : `${padrao.numero} ${padrao.titulo}`,
+      cargaHorariaMinima: novoCurso.cargaHorariaMinima || padrao.cargaHorariaMinima || 0,
+      validadeEmMeses: padrao.validadeEmMeses ?? novoCurso.validadeEmMeses,
+      conteudoProgramatico: novoCurso.conteudoProgramatico?.trim()
+        ? novoCurso.conteudoProgramatico
+        : padrao.conteudoProgramatico,
+    });
+    setPadraoAplicado(padrao.numero);
+  }
 
   function fecharPainel() {
     setPainelAberto(false);
+    setPadraoAplicado(null);
     setErroPainel(null);
   }
 
@@ -165,10 +197,10 @@ export function CursosTreinamentoTab() {
                 </Field>
               </Campo>
               <Campo span={6}>
-                <Field label="Norma de referência">
+                <Field label="Norma de referência" hint="Ex.: NR-35. Liga o curso ao modelo de certificado da norma.">
                   <Input
                     value={novoCurso.normaReferencia ?? ''}
-                    onChange={(_, d) => setNovoCurso({ ...novoCurso, normaReferencia: d.value })}
+                    onChange={(_, d) => alterarNorma(d.value)}
                   />
                 </Field>
               </Campo>
@@ -190,6 +222,14 @@ export function CursosTreinamentoTab() {
                   />
                 </Field>
               </Campo>
+              {padraoAplicado && (
+                <Campo span={12}>
+                  <FeedbackInline tom="info">
+                    Conteúdo programático, carga horária e validade preenchidos com o padrão da {padraoAplicado}. Revise
+                    e valide com o QSMS antes de salvar.
+                  </FeedbackInline>
+                </Campo>
+              )}
               <Campo span={12}>
                 <Field label="Conteúdo programático (um tópico por linha — vira o verso do certificado)">
                   <Textarea

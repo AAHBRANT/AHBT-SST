@@ -492,6 +492,15 @@ export interface CursoTreinamento {
 
 export type NovoCursoTreinamento = Omit<CursoTreinamento, 'id'>;
 
+// Padrão de cada NR (catálogo do backend, 19/10) — preenche o cadastro de curso.
+export interface PadraoNr {
+  numero: string;
+  titulo: string;
+  cargaHorariaMinima: number | null;
+  validadeEmMeses: number | null;
+  conteudoProgramatico: string;
+}
+
 // Trabalhadores ativos que precisam do curso (pela matriz de função) e a situação de cada um.
 // "Apto" = treinamento válido hoje = emDia + vencemEm30Dias.
 export interface AptidaoCurso {
@@ -604,6 +613,21 @@ export interface NovaSessaoTreinamento {
   cargaHorariaRealizada: number;
   instituicaoInstrutor?: string | null;
   trabalhadoresIds: string[];
+  // Dados do certificado gravados na turma (19/10) — só o Técnico de Segurança altera.
+  conteudoProgramatico?: string | null;
+  local?: string | null;
+  instrutorRegistroProfissional?: string | null;
+  validadeEmMeses?: number | null;
+}
+
+// Padrão da turma para o curso escolhido + se quem está logado pode editar (19/10).
+export interface PadraoTurmaTreinamento {
+  norma: string | null;
+  cargaHorariaMinima: number;
+  validadeEmMeses: number;
+  conteudoProgramatico: string | null;
+  local: string | null;
+  podeEditar: boolean;
 }
 
 export interface ParticipanteSessaoTreinamento {
@@ -2645,12 +2669,19 @@ export interface DdsFuncionario {
 export const TipoDdsSemanal = {
   Proprios: 1,
   Terceirizados: 2,
+  ProprioseTerceirizados: 3,
 } as const;
 
 export const tipoDdsSemanalLabel: Record<number, string> = {
   1: 'Empregados Próprios',
   2: 'Empregados Terceirizados',
+  3: 'Empregados Próprios e Terceirizados',
 };
+
+// Espelha TipoDdsSemanalExtensions.IncluiTerceirizados do backend.
+export function tipoDdsSemanalIncluiTerceirizados(tipo: number): boolean {
+  return tipo === TipoDdsSemanal.Terceirizados || tipo === TipoDdsSemanal.ProprioseTerceirizados;
+}
 
 export const StatusDdsSemanal = {
   EmAndamento: 1,
@@ -3412,6 +3443,7 @@ export const tipoAlertaLabel: Record<number, string> = {
   28: 'Exame da função vencendo',
   29: 'Exame da função vencido',
   30: 'Cadastro facial para refazer',
+  33: 'Funcionário novo',
 };
 
 export const SeveridadeAlerta = {
@@ -3467,6 +3499,30 @@ export interface SaudeEnvioTeams {
   ultimaFalhaEmUtc: string | null;
   ultimoSucessoEmUtc: string | null;
   ultimoErro: string | null;
+}
+
+// Prévia do próximo aviso diário de itens vencidos das obras (GET /api/alertas/aviso-documentos-vencidos/previa).
+export interface PreviaAvisoItem {
+  tipo: string;
+  nome: string;
+  obra: string;
+  vencimento: string;
+  diasVencido: number;
+  divergencias: number;
+}
+
+export interface PreviaAvisoDestinatario {
+  nome: string;
+  email: string;
+  motivos: string[];
+  recebeSininho: boolean;
+  motivoSemSininho: string | null;
+  itens: PreviaAvisoItem[];
+}
+
+export interface PreviaAvisoDocumentosVencidos {
+  dataEnvio: string;
+  destinatarios: PreviaAvisoDestinatario[];
 }
 
 export interface Alerta {
@@ -4263,6 +4319,49 @@ export interface NovaNovidadeVersao {
   itens: NovidadeVersaoItemInput[];
 }
 
+// Plano de integração do funcionário novo (especificação 21/10/2026, Módulo 1) — pop-up que aparece
+// depois das Novidades para o Técnico de Segurança e o Administrador.
+export type SituacaoPassoIntegracao = 'feito' | 'pendente' | 'agendado' | 'aguardando' | 'naoConfigurado';
+export type SituacaoItemKit = 'separado' | 'emFalta' | 'entregue';
+export const MotivoPlanoIntegracao = {
+  Admissao: 1,
+  TrocaFuncao: 2,
+  TransferenciaObra: 3,
+} as const;
+export type MotivoPlanoIntegracao = (typeof MotivoPlanoIntegracao)[keyof typeof MotivoPlanoIntegracao];
+export interface PassoPlanoIntegracao {
+  codigo: string;
+  titulo: string;
+  situacao: SituacaoPassoIntegracao;
+  detalhe?: string | null;
+  rota?: string | null;
+}
+export interface ItemKitEpi {
+  catalogoEpiId: string;
+  nome: string;
+  tamanho?: string | null;
+  situacao: SituacaoItemKit;
+}
+export interface PlanoIntegracao {
+  id: string;
+  trabalhadorId: string;
+  nome: string;
+  matricula?: string | null;
+  funcao: string;
+  obraId: string;
+  obraNome: string;
+  equipeNome?: string | null;
+  dataAdmissao: string;
+  temFoto: boolean;
+  motivo: MotivoPlanoIntegracao;
+  abertoEm: string;
+  responsavelNome?: string | null;
+  assumidoEm?: string | null;
+  passosConcluidos: number;
+  passos: PassoPlanoIntegracao[];
+  kit: ItemKitEpi[];
+}
+
 export const api = {
   catalogo: {
     atividades: (obraId?: string) =>
@@ -4618,6 +4717,7 @@ export const api = {
     // Card "Aptidão por treinamento" do Início: por curso exigido na matriz de funções.
     aptidao: (obraId?: string) =>
       request<AptidaoCurso[]>(`/api/cursostreinamento/aptidao${obraId ? `?obraId=${obraId}` : ''}`),
+    padroesNr: () => request<PadraoNr[]>('/api/cursostreinamento/padroes-nr'),
   },
   treinamentos: {
     listar: (trabalhadorId?: string, obraId?: string) => {
@@ -4688,6 +4788,10 @@ export const api = {
   sessoesTreinamento: {
     listar: (obraId?: string) => request<SessaoTreinamento[]>(`/api/sessoestreinamento${obraId ? `?obraId=${obraId}` : ''}`),
     obterDetalhe: (id: string) => request<SessaoTreinamentoDetalhe>(`/api/sessoestreinamento/${id}`),
+    padrao: (cursoTreinamentoId: string, obraId?: string) =>
+      request<PadraoTurmaTreinamento>(
+        `/api/sessoestreinamento/padrao?cursoTreinamentoId=${cursoTreinamentoId}${obraId ? `&obraId=${obraId}` : ''}`,
+      ),
     criar: (sessao: NovaSessaoTreinamento) =>
       request<{ id: string }>('/api/sessoestreinamento', { method: 'POST', body: JSON.stringify(sessao) }),
     // Presença exclusivamente por biometria (mesmo padrão de api.dds.registrarParticipante) —
@@ -5829,6 +5933,8 @@ export const api = {
     },
     obterPorId: (id: string) => request<Alerta>(`/api/alertas/${id}`),
     saudeEnvioTeams: () => request<SaudeEnvioTeams>('/api/alertas/saude-envio-teams'),
+    previaAvisoDocumentosVencidos: () =>
+      request<PreviaAvisoDocumentosVencidos>('/api/alertas/aviso-documentos-vencidos/previa'),
     criar: (alerta: NovoAlerta) =>
       request<{ id: string }>('/api/alertas', { method: 'POST', body: JSON.stringify(alerta) }),
     atualizar: (id: string, alerta: AtualizarAlertaPayload) =>
@@ -5895,6 +6001,11 @@ export const api = {
         method: 'POST',
         body: JSON.stringify({ confirmado, comentario }),
       }),
+  },
+  planosIntegracao: {
+    pendentes: () => request<PlanoIntegracao[]>('/api/planos-integracao/pendentes'),
+    obter: (id: string) => request<PlanoIntegracao>(`/api/planos-integracao/${id}`),
+    assumir: (id: string) => request<void>(`/api/planos-integracao/${id}/assumir`, { method: 'POST' }),
   },
   novidades: {
     listar: () => request<NovidadeVersao[]>('/api/novidades'),

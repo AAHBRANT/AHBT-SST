@@ -12,7 +12,9 @@ namespace AAHBRANT.SST.Infrastructure.Integracao.Grh;
 // Schema confirmado por inspeção manual em 2026-09-16: `aptidao`/`restricao_clinica`/
 // `medico_responsavel` vêm nulos na maioria dos registros hoje (upload em andamento pelo usuário) —
 // isso é esperado, ver SincronizarAsoGrhCommand pra regra de não sobrescrever dado clínico já
-// lançado no SST. `documentos` não distingue subtipo de ASO (admissional/periódico/demissional).
+// lançado no SST. `classificacao_exame` (ADMISSIONAL/PERIODICO/...) foi criada depois no G-RH e vem nula
+// nos registros antigos; `numero` traz o nome do exame ("ASO", "Audiometria Tonal"...), porque o G-RH
+// também cadastra exames complementares com o tipo ASO.
 public class AsoGrhDbClient : IAsoGrhClient
 {
     private readonly GrhDbOptions _opcoes;
@@ -32,7 +34,7 @@ public class AsoGrhDbClient : IAsoGrhClient
         await conexao.OpenAsync(ct);
 
         const string sql = """
-            SELECT d.id, c.cpf, d.numero, d.emissao, d.validade, d.aptidao, d.restricao_clinica, d.medico_responsavel
+            SELECT d.id, c.cpf, d.numero, d.emissao, d.validade, d.aptidao, d.restricao_clinica, d.medico_responsavel, d.classificacao_exame
             FROM documentos d
             JOIN tipos_documento t ON t.id = d.tipo_id
             JOIN colaboradores c ON c.id = d.colaborador_id
@@ -56,7 +58,8 @@ public class AsoGrhDbClient : IAsoGrhClient
                 DataValidade: GrhSqlDateParser.LerColuna(leitor, 4),
                 Aptidao: leitor.IsDBNull(5) ? null : leitor.GetString(5),
                 RestricaoClinica: leitor.IsDBNull(6) ? null : leitor.GetString(6),
-                MedicoNome: leitor.IsDBNull(7) ? null : leitor.GetString(7)));
+                MedicoNome: leitor.IsDBNull(7) ? null : leitor.GetString(7),
+                ClassificacaoExame: leitor.IsDBNull(8) ? null : leitor.GetString(8)));
         }
 
         return resultado;

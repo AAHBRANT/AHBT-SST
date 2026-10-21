@@ -22,11 +22,17 @@ public class SessaoTreinamento : AuditableEntity
     public int CargaHorariaRealizada { get; set; }
     public string? InstituicaoInstrutor { get; set; }
 
-    // Nº do certificado/registro é externo e manual (mesma decisão já tomada para Treinamento —
-    // não é gerado automaticamente para não inventar dado sensível a compliance). Preenchido uma
-    // vez para a turma inteira e copiado para cada Treinamento gerado no encerramento; pode ser
-    // ajustado depois por participante via AtualizarTreinamentoCommand se precisar de números
-    // individuais distintos.
+    // Dados do certificado gravados na turma (19/10): vêm preenchidos com o padrão da NR do curso,
+    // só o Técnico de Segurança altera, e são copiados para cada Treinamento no encerramento — o
+    // certificado mostra o que foi ministrado naquele dia, mesmo que o curso mude depois.
+    public string? ConteudoProgramatico { get; set; }
+    public string? Local { get; set; }
+    public string? InstrutorRegistroProfissional { get; set; }
+    // 0 = usa a validade do curso (turmas criadas antes desta coluna).
+    public int ValidadeEmMeses { get; set; }
+
+    // Nº da turma (CERT-ANO-NNNN). Desde 19/10 cada participante recebe o próprio número de
+    // certificado no encerramento (AAH-NRxx-ANO-NNNN); este fica só como identificação da turma.
     public string? NumeroCertificado { get; set; }
 
     public StatusSessaoTreinamento Status { get; set; } = StatusSessaoTreinamento.EmAndamento;

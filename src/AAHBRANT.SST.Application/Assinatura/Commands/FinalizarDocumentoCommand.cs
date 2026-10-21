@@ -48,7 +48,8 @@ public class FinalizarDocumentoCommandHandler : IRequestHandler<FinalizarDocumen
     public async Task<DocumentoAssinaturaDto> Handle(FinalizarDocumentoCommand request, CancellationToken ct)
     {
         var documento = await _db.DocumentosAssinatura.FirstOrDefaultAsync(d => d.Id == request.DocumentoAssinaturaId, ct);
-        if (documento is null)
+        if (documento is null
+            || !await EscopoDocumentoAssinatura.PodeVerAsync(_db, documento.EntidadeTipo, documento.EntidadeId, ct))
             throw new KeyNotFoundException("Documento de assinatura não encontrado.");
         if (documento.Status != StatusDocumentoAssinatura.EmAndamento)
             throw new InvalidOperationException("Este documento já foi finalizado ou cancelado.");

@@ -1,0 +1,30 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!-- Setup-AgenteBiometria-<versão>.exe: instala, atualiza e (para quem publica) assina o manifesto.
+       O pacote do agente (zip gerado por publicar.ps1) vai embutido no executável. -->
+  <PropertyGroup>
+    <TargetFramework>net8.0-windows</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <UseWindowsForms>true</UseWindowsForms>
+    <OutputType>WinExe</OutputType>
+    <AssemblyName>Setup-AgenteBiometria</AssemblyName>
+    <RootNamespace>AAHBRANT.SST.AgenteBiometria.Instalador</RootNamespace>
+    <Version>1.1.0</Version>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <!-- Mesmo cálculo de assinatura do agente: um arquivo só, sem risco de os dois divergirem. -->
+    <Compile Include="..\AAHBRANT.SST.AgenteBiometria\Atualizacao\ManifestoAtualizacao.cs" Link="Atualizacao\ManifestoAtualizacao.cs" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- URL do manifesto que vem preenchida na tela de instalação (publicar.ps1 -UrlManifesto). -->
+    <AssemblyMetadata Include="UrlManifestoAtualizacao" Value="$(UrlManifestoAtualizacao)" />
+  </ItemGroup>
+
+  <ItemGroup Condition="'$(PacoteAgente)' != ''">
+    <EmbeddedResource Include="$(PacoteAgente)" LogicalName="pacote-agente.zip" />
+  </ItemGroup>
+
+</Project>

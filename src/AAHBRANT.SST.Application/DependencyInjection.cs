@@ -42,6 +42,7 @@ public static class DependencyInjection
         services.AddScoped<IAlertaEngineService, AlertaEngineService>();
         services.AddScoped<ISuporteIaTriagemService, HeuristicaSuporteIaTriagemService>();
         services.AddScoped<ITecnicosSegurancaPorObraService, TecnicosSegurancaPorObraService>();
+        services.AddScoped<PlanosIntegracao.IPlanoIntegracaoService, PlanosIntegracao.PlanoIntegracaoService>();
         services.AddScoped<Common.Seguranca.IAcessoPorObraService, Common.Seguranca.AcessoPorObraService>();
 
         return services;
