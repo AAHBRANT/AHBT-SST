@@ -61,6 +61,21 @@ public static class AgenteEndpoints
         return TypedResults.Ok(new CompararTemplatesResponse(matcher.Comparar(corpo.TemplateA, corpo.TemplateB)));
     }
 
+    // Um template corrompido ou de outra versão do SourceAFIS não pode derrubar a leitura de todo mundo
+    // (auditoria 19/10, A08): vale score 0 e fica no log para recadastrar.
+    private static double CompararSemDerrubar(IFingerprintMatcher matcher, byte[] captura, TemplateCacheado candidato)
+    {
+        try
+        {
+            return matcher.Comparar(captura, candidato.TemplateBruto);
+        }
+        catch (Exception ex)
+        {
+            Console.Error.WriteLine($"Template inválido ignorado (trabalhador {candidato.TrabalhadorId}): {ex.GetType().Name}");
+            return 0;
+        }
+    }
+
     // Texto assinado de cada leitura. Precisa ser idêntico a LeituraBiometricaAssinada.Conteudo no servidor.
     public static string ConteudoAssinado(string desafio, Guid trabalhadorId, double score) =>
         string.Join('|', desafio, trabalhadorId.ToString("D"), score.ToString("F2", System.Globalization.CultureInfo.InvariantCulture));
@@ -73,7 +88,7 @@ public static class AgenteEndpoints
         var captura = matcher.ExtrairTemplate(imagemBruta);
 
         var melhor = cache.Templates
-            .Select(t => new { t.TrabalhadorId, Score = matcher.Comparar(captura, t.TemplateBruto) })
+            .Select(t => new { t.TrabalhadorId, Score = CompararSemDerrubar(matcher, captura, t) })
             .OrderByDescending(r => r.Score)
             .FirstOrDefault();
 

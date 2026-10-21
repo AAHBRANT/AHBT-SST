@@ -36,6 +36,15 @@ public static class Program
 
         var agenteOptions = builder.Configuration.GetSection("Agente").Get<AgenteOptions>() ?? new AgenteOptions();
 
+        // Auditoria 19/10 (A12): erro de digitação no "Leitor" caía no simulador sem aviso. Agora só
+        // "Futronic" ou "Simulado" valem, e o simulador só sobe em Development.
+        var ehFutronic = string.Equals(agenteOptions.Leitor, "Futronic", StringComparison.OrdinalIgnoreCase);
+        var ehSimulado = string.Equals(agenteOptions.Leitor, "Simulado", StringComparison.OrdinalIgnoreCase);
+        if (!ehFutronic && !ehSimulado)
+            throw new InvalidOperationException($"Agente:Leitor inválido (\"{agenteOptions.Leitor}\"). Use \"Futronic\".");
+        if (ehSimulado && !builder.Environment.IsDevelopment())
+            throw new InvalidOperationException("Leitor simulado só é permitido em Development. Configure \"Agente:Leitor\": \"Futronic\".");
+
         // Leitor real só quando configurado ("Leitor": "Futronic") — exige ftrScanAPI.dll ao lado do
         // executável e processo x86. O match usa SourceAFIS (código aberto) até haver o SDK ANSI da Futronic.
         if (string.Equals(agenteOptions.Leitor, "Futronic", StringComparison.OrdinalIgnoreCase))

@@ -6,7 +6,9 @@ using Microsoft.EntityFrameworkCore;
 
 namespace AAHBRANT.SST.Application.Assinatura.Queries;
 
-public record VerificacaoIntegridadeDto(bool Integro, string HashArmazenado, string HashRecalculado);
+// PdfIntegro: null quando o documento não tem PDF/hash gravado (finalizado antes do HashPdf existir).
+public record VerificacaoIntegridadeDto(bool Integro, string HashArmazenado, string HashRecalculado,
+    bool ConteudoIntegro = true, bool? PdfIntegro = null);
 
 // Recalcula o hash do conteúdo (mesmo algoritmo de FinalizarDocumentoCommand, via
 // HashConteudoDocumentoCalculador) e compara com o que foi gravado na finalização. Divergência = alguém
@@ -46,6 +48,14 @@ public class VerificarIntegridadeQueryHandler : IRequestHandler<VerificarIntegri
 
         var hashRecalculado = HashConteudoDocumentoCalculador.Calcular(documento.EntidadeTipo, documento.EntidadeId, signatarios);
 
-        return new VerificacaoIntegridadeDto(hashRecalculado == documento.ConteudoHash, documento.ConteudoHash, hashRecalculado);
+        var conteudoIntegro = hashRecalculado == documento.ConteudoHash;
+        // Os bytes do PDF também entram (auditoria 19/10, A07): antes, trocar o arquivo guardado mantendo
+        // a lista de signatários passava como "íntegro".
+        bool? pdfIntegro = documento.HashPdf is not null && documento.PdfConteudo is not null
+            ? string.Equals(HashArquivoCalculador.Calcular(documento.PdfConteudo), documento.HashPdf, StringComparison.OrdinalIgnoreCase)
+            : null;
+
+        return new VerificacaoIntegridadeDto(conteudoIntegro && pdfIntegro != false, documento.ConteudoHash, hashRecalculado,
+            conteudoIntegro, pdfIntegro);
     }
 }

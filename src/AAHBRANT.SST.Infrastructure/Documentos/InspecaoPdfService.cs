@@ -206,7 +206,7 @@ public class InspecaoPdfService : IInspecaoPdfService
     // risco maior do que o necessário só pra recortar uma foto.
     private static byte[] RecortarParaPreencherSlot(byte[] foto)
     {
-        using var imagem = SixLabors.ImageSharp.Image.Load(foto);
+        using var imagem = AAHBRANT.SST.Infrastructure.Imagens.ImagemSegura.Carregar(foto);
         imagem.Mutate(x => x.Resize(new ResizeOptions
         {
             Size = new SixLabors.ImageSharp.Size(800, 450), // ~16:9, próximo da proporção real do slot

@@ -14,6 +14,10 @@ public class CadastrarTemplateBiometricoCommandValidator : AbstractValidator<Cad
     {
         RuleFor(x => x.TrabalhadorId).NotEmpty();
         RuleFor(x => x.TemplateBruto).NotEmpty();
+        // Template do SourceAFIS fica na casa de 1-20 KB. Fora disso é lixo ou outro formato e só atrapalharia
+        // o reconhecimento no agente (auditoria 19/10, A08: aceitava [1,2,3]).
+        RuleFor(x => x.TemplateBruto).Must(t => t is null || (t.Length >= 64 && t.Length <= 200_000))
+            .WithMessage("Template de digital inválido. Refaça a leitura no leitor.");
         // PNG da leitura do cadastro (320x480 em tons de cinza fica bem abaixo de 1 MB).
         RuleFor(x => x.ImagemCadastroPng).Must(i => i is null || i.Length <= 1_000_000)
             .WithMessage("Imagem da digital maior que o permitido.");

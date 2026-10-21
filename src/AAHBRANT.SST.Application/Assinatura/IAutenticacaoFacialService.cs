@@ -51,8 +51,8 @@ public interface IAutenticacaoFacialService
     // — ao contrário do Futronic (que já resolveu o match localmente), aqui é o Azure quem descobre
     // quem é, a partir da foto.
     //
-    // exigirMargemSobreSegundoColocado: usar na fila (ninguém escolhe a pessoa). Recusa quando o
-    // segundo candidato está perto demais do primeiro (ver AssinaturaOptions.MargemMinima...).
+    // exigirMargemSobreSegundoColocado: recusa quando o segundo candidato está perto demais do primeiro
+    // (ver AssinaturaOptions.MargemMinima...). Ligado por padrão em todo fluxo 1:N (auditoria 19/10, A10).
     // Toda falha (confiança baixa, não reconhecido, ambíguo) é registrada para a lista de cadastros fracos.
-    Task<ResultadoIdentificacaoFacial> IdentificarAsync(Guid obraId, byte[] fotoJpeg, CancellationToken ct, bool exigirMargemSobreSegundoColocado = false);
+    Task<ResultadoIdentificacaoFacial> IdentificarAsync(Guid obraId, byte[] fotoJpeg, CancellationToken ct, bool exigirMargemSobreSegundoColocado = true);
 }
