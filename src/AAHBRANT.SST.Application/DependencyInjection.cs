@@ -43,6 +43,7 @@ public static class DependencyInjection
         services.AddScoped<ISuporteIaTriagemService, HeuristicaSuporteIaTriagemService>();
         services.AddScoped<ITecnicosSegurancaPorObraService, TecnicosSegurancaPorObraService>();
         services.AddScoped<PlanosIntegracao.IPlanoIntegracaoService, PlanosIntegracao.PlanoIntegracaoService>();
+        services.AddScoped<EstoquesEpi.Minimo.IVerificacaoEstoqueMinimoService, EstoquesEpi.Minimo.VerificacaoEstoqueMinimoService>();
         services.AddScoped<Common.Seguranca.IAcessoPorObraService, Common.Seguranca.AcessoPorObraService>();
 
         return services;

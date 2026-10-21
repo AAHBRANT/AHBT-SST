@@ -1,5 +1,6 @@
 using AAHBRANT.SST.Application.Assinatura;
 using AAHBRANT.SST.Application.Common.Interfaces;
+using AAHBRANT.SST.Application.EstoquesEpi.Minimo;
 using AAHBRANT.SST.Application.Common.Seguranca;
 using AAHBRANT.SST.Domain.Entidades;
 using AAHBRANT.SST.Domain.Enums;
@@ -22,7 +23,13 @@ public class ExcluirEntregaEpiCommandValidator : AbstractValidator<ExcluirEntreg
 public class ExcluirEntregaEpiCommandHandler : IRequestHandler<ExcluirEntregaEpiCommand>
 {
     private readonly IAppDbContext _db;
-    public ExcluirEntregaEpiCommandHandler(IAppDbContext db) => _db = db;
+    private readonly IVerificacaoEstoqueMinimoService? _verificacaoMinimo;
+
+    public ExcluirEntregaEpiCommandHandler(IAppDbContext db, IVerificacaoEstoqueMinimoService? verificacaoMinimo = null)
+    {
+        _db = db;
+        _verificacaoMinimo = verificacaoMinimo;
+    }
 
     public async Task Handle(ExcluirEntregaEpiCommand request, CancellationToken ct)
     {
@@ -45,6 +52,14 @@ public class ExcluirEntregaEpiCommandHandler : IRequestHandler<ExcluirEntregaEpi
 
         _db.EntregasEpi.Remove(entrega);
         await _db.SaveChangesAsync(ct);
+
+        // Alerta de estoque mínimo da obra (especificação 21/10/2026, Módulo 2).
+        if (_verificacaoMinimo is not null)
+        {
+            var obraId = await _db.Trabalhadores.IgnoreQueryFilters()
+                .Where(t => t.Id == entrega.TrabalhadorId).Select(t => (Guid?)t.ObraId).FirstOrDefaultAsync(ct);
+            if (obraId is not null) await _verificacaoMinimo.VerificarAsync(obraId, ct);
+        }
     }
 
     // Registrar a entrega baixa o estoque da obra (CriarEntregaEpiCommand), mas excluir não devolvia

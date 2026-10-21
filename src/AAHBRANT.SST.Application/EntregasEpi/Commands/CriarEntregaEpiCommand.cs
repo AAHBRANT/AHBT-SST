@@ -1,5 +1,6 @@
 using AAHBRANT.SST.Application.Common;
 using AAHBRANT.SST.Application.Common.Interfaces;
+using AAHBRANT.SST.Application.EstoquesEpi.Minimo;
 using AAHBRANT.SST.Application.PlanosIntegracao;
 using AAHBRANT.SST.Domain.Entidades;
 using AAHBRANT.SST.Domain.Enums;
@@ -39,7 +40,13 @@ public class CriarEntregaEpiCommandValidator : AbstractValidator<CriarEntregaEpi
 public class CriarEntregaEpiCommandHandler : IRequestHandler<CriarEntregaEpiCommand, Guid>
 {
     private readonly IAppDbContext _db;
-    public CriarEntregaEpiCommandHandler(IAppDbContext db) => _db = db;
+    private readonly IVerificacaoEstoqueMinimoService? _verificacaoMinimo;
+
+    public CriarEntregaEpiCommandHandler(IAppDbContext db, IVerificacaoEstoqueMinimoService? verificacaoMinimo = null)
+    {
+        _db = db;
+        _verificacaoMinimo = verificacaoMinimo;
+    }
 
     public async Task<Guid> Handle(CriarEntregaEpiCommand request, CancellationToken ct)
     {
@@ -115,6 +122,9 @@ public class CriarEntregaEpiCommandHandler : IRequestHandler<CriarEntregaEpiComm
         });
 
         await _db.SaveChangesAsync(ct);
+
+        // Alerta de estoque mínimo da obra (especificação 21/10/2026, Módulo 2).
+        if (_verificacaoMinimo is not null) await _verificacaoMinimo.VerificarAsync(trabalhador.ObraId, ct);
         return entrega.Id;
     }
 

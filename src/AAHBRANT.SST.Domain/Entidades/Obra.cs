@@ -7,6 +7,10 @@ public class Obra : AuditableEntity
 {
     public string Codigo { get; set; } = string.Empty;
     public string Nome { get; set; } = string.Empty;
+
+    // Prazo de reposição de EPI desta obra, em dias (especificação 21/10/2026, Módulo 2) — entra na
+    // sugestão de estoque mínimo. Configurável por obra; 15 até existir pedido integrado ao GSUPRI.
+    public int PrazoReposicaoEpiDias { get; set; } = 15;
     public string? Cliente { get; set; }
     public StatusObra Status { get; set; } = StatusObra.Planejada;
 

@@ -144,7 +144,9 @@ public enum TipoAlerta
     PcmsoVencendo = 31,
     PcmsoVencido = 32,
     // Plano de integração do funcionário (admissão, troca de função, transferência), 21/10/2026.
-    IntegracaoFuncionarioNovo = 33
+    IntegracaoFuncionarioNovo = 33,
+    // Disponível do EPI na obra abaixo do estoque mínimo definido (especificação 21/10/2026, Módulo 2).
+    EstoqueEpiAbaixoMinimo = 34
 }
 
 public enum SeveridadeAlerta
@@ -788,6 +790,9 @@ public enum TipoMovimentacaoEstoqueEpi
     DevolucaoEntrada = 2,
     AjusteManual = 3,
     IntegracaoGsupri = 4,
+    // Transferência entre obras (especificação 21/10/2026): sai de uma obra e entra na outra.
+    TransferenciaSaida = 5,
+    TransferenciaEntrada = 6,
 }
 
 // EPC (pedido do usuário, 04/09) — mesmo vocabulário de TipoMovimentacaoEstoqueEpi, só que
