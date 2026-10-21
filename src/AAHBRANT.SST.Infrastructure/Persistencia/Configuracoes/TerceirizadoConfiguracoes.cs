@@ -26,8 +26,9 @@ public class ContratoConfiguracao : IEntityTypeConfiguration<Contrato>
     public void Configure(EntityTypeBuilder<Contrato> builder)
     {
         builder.Property(c => c.NumeroContrato).IsRequired().HasMaxLength(50);
-        builder.Property(c => c.GJuriContratoId).IsRequired().HasMaxLength(100);
-        builder.HasIndex(c => c.GJuriContratoId).IsUnique();
+        builder.Property(c => c.GJuriContratoId).HasMaxLength(100);
+        builder.HasIndex(c => c.GJuriContratoId).IsUnique().HasFilter("[GJuriContratoId] IS NOT NULL");
+        builder.Ignore(c => c.VeioDoGJuri);
 
         builder.HasOne(c => c.Empresa).WithMany(e => e.Contratos)
             .HasForeignKey(c => c.EmpresaId).OnDelete(DeleteBehavior.Restrict);

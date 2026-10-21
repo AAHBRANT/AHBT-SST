@@ -349,6 +349,36 @@ export interface Contrato {
   dataInicioVigencia: string;
   dataFimVigencia: string;
   status: 'Validado' | 'Encerrado' | 'Cancelado';
+  // true = veio do G-Juri (só leitura no SST); false = cadastrado à mão pelo técnico.
+  origemGJuri: boolean;
+}
+
+export interface DadosContrato {
+  numeroContrato: string;
+  dataInicioVigencia: string;
+  dataFimVigencia: string;
+  vagas: { funcaoId: string; quantidade: number }[];
+}
+
+// Leitura do PDF do contrato pela IA (18/10/2026): nada é gravado, só preenche o cadastro.
+export interface ContratoTerceirizadoLidoIa {
+  empresa: {
+    razaoSocial: string | null;
+    nomeFantasia: string | null;
+    cnpj: string | null;
+    tipoServicoPrestado: string | null;
+    contatoNome: string | null;
+    contatoTelefone: string | null;
+    contatoEmail: string | null;
+  };
+  numeroContrato: string | null;
+  obra: string | null;
+  dataInicioVigencia: string | null;
+  dataFimVigencia: string | null;
+  vagas: { funcao: string; quantidade: number | null }[];
+  pessoas: { nome: string; cpf: string | null; funcao: string | null; matricula: string | null }[];
+  empresaExistenteId: string | null;
+  empresaExistenteRazaoSocial: string | null;
 }
 
 export interface VagaFuncao {
@@ -6205,6 +6235,20 @@ export const api = {
     contratos: {
       listarPorEmpresa: (empresaId: string) => request<Contrato[]>(`/api/contratos?empresaId=${empresaId}`),
       obterDetalhe: (id: string) => request<ContratoDetalhe>(`/api/contratos/${id}`),
+      criar: (dados: DadosContrato & { empresaId: string; obraId: string }) =>
+        request<{ id: string }>('/api/contratos', { method: 'POST', body: JSON.stringify(dados) }),
+      lerComIa: (arquivo: File) => {
+        const formData = new FormData();
+        formData.append('Arquivo', arquivo);
+        return enviarFormulario<ContratoTerceirizadoLidoIa>('/api/contratos/leitura-ia', formData);
+      },
+      atualizar: (id: string, dados: DadosContrato) =>
+        request<void>(`/api/contratos/${id}`, { method: 'PUT', body: JSON.stringify({ id, ...dados }) }),
+      encerrar: (id: string, dataEncerramento: string) =>
+        request<{ pessoasAtivas: number }>(`/api/contratos/${id}/encerrar`, {
+          method: 'POST',
+          body: JSON.stringify({ dataEncerramento }),
+        }),
       cadastrarPessoaNaVaga: (
         contratoId: string,
         funcaoId: string,

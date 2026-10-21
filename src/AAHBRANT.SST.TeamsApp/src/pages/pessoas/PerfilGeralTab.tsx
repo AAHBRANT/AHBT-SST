@@ -6,9 +6,11 @@ import {
   Text,
   Legenda,
   BarraProgresso,
-  usePaletaGraficos,
-  StatusDonutChart,
-  type FatiaDonut,
+  designTokens,
+  tokensUi,
+  useTipografia,
+  nivelVencimento,
+  tomDeVencimento,
   type Tom,
 } from '@ui';
 import {
@@ -16,15 +18,17 @@ import {
   People24Regular,
   ArrowSync24Regular,
   DocumentCheckmark24Regular,
+  Checkmark20Regular,
+  Warning20Regular,
 } from '@fluentui/react-icons';
 import {
   api,
-  motivoEntregaEpiLabel,
   resultadoAsoLabel,
   tipoExameAsoLabel,
   type CursoTreinamento,
   type PerfilCompletoTrabalhador,
 } from '../../lib/api';
+import { AnelProgresso } from './AnelProgresso';
 
 const tomResultadoAso: Record<number, Tom> = {
   1: 'ok',
@@ -33,22 +37,47 @@ const tomResultadoAso: Record<number, Tom> = {
   4: 'info',
 };
 
+// Ciclo usado pelo anel do ASO: o periódico mais comum no PCMSO é anual.
+const DIAS_CICLO_ASO = 365;
+
 function diasAte(data: string): number {
   return Math.round((new Date(data).getTime() - new Date(new Date().toDateString()).getTime()) / 86_400_000);
 }
 
-// Janela de "vencendo" pro donut de EPI — não veio especificada no pedido; assumido 30 dias, mesmo
-// horizonte já usado pros alertas de vencimento em outras telas do sistema.
-const DIAS_ALERTA_VENCIMENTO_EPI = 30;
+function dataBr(iso?: string | null): string {
+  return iso ? iso.slice(0, 10).split('-').reverse().join('/') : '—';
+}
 
-// Dashboard do Trabalhador (pedido do usuário, 03/09, réplica de mockup) — substitui a tabela plana
-// de histórico de ASO que existia antes nesta aba. "PTs Liberadas"/"Atividades Habilitadas" não tem
-// motor de elegibilidade próprio no sistema hoje (não existe vínculo Atividade→CursoTreinamento) —
-// interpretado aqui como "treinamentos de NR do trabalhador com validade em dia", que é o dado real
-// que o sistema tem e é exatamente o que libera ou bloqueia uma PT na prática.
+// Fração do período de validade já consumida (0 a 1) — base da barra de prazo de cada NR.
+function consumoValidade(inicio: string, fim: string): number {
+  const i = new Date(inicio).getTime();
+  const f = new Date(fim).getTime();
+  if (!(f > i)) return 1;
+  return Math.max(0, Math.min(1, (Date.now() - i) / (f - i)));
+}
+
+function textoPrazo(dias: number): string {
+  if (dias < 0) return `vencido há ${-dias} ${-dias === 1 ? 'dia' : 'dias'}`;
+  if (dias === 0) return 'vence hoje';
+  return `faltam ${dias} ${dias === 1 ? 'dia' : 'dias'}`;
+}
+
+const estiloRotuloDado = {
+  fontSize: 11,
+  fontWeight: 700,
+  letterSpacing: '0.06em',
+  textTransform: 'uppercase',
+  color: designTokens.colorNeutralMedium,
+} as const;
+
+// Dashboard do Trabalhador — Proposta 1 de cards (pedido do usuário, 21/10): cada card mostra o
+// estado primeiro (KPIs, ASO com anel de validade, NRs com barra de prazo), sem card dentro de card.
+// Status dos EPIs e motivos de troca foram para a aba EPI (ver EpiPerfilSecao). "PTs Liberadas" segue
+// interpretado como "treinamentos de NR do trabalhador com validade em dia" — não existe vínculo
+// Atividade→CursoTreinamento no sistema hoje.
 export function PerfilGeralTab({ perfil }: { perfil: PerfilCompletoTrabalhador }) {
   const [cursos, setCursos] = useState<CursoTreinamento[]>([]);
-  const paleta = usePaletaGraficos();
+  const tipo = useTipografia();
 
   useEffect(() => {
     api.cursosTreinamento
@@ -59,28 +88,16 @@ export function PerfilGeralTab({ perfil }: { perfil: PerfilCompletoTrabalhador }
 
   const cursoPorId = useMemo(() => new Map(cursos.map((c) => [c.id, c])), [cursos]);
 
-  const statusEpis = useMemo(() => {
-    let emDia = 0;
+  const epis = useMemo(() => {
+    let vencidos = 0;
     let vencendo = 0;
-    let vencido = 0;
     for (const epi of perfil.episAtivos) {
-      if (!epi.dataValidade) {
-        emDia++;
-        continue;
-      }
-      const dias = diasAte(epi.dataValidade);
-      if (dias < 0) vencido++;
-      else if (dias <= DIAS_ALERTA_VENCIMENTO_EPI) vencendo++;
-      else emDia++;
+      const nivel = nivelVencimento(epi.dataValidade);
+      if (nivel === 'vencido') vencidos++;
+      else if (nivel === 'alerta') vencendo++;
     }
-    return { emDia, vencendo, vencido };
+    return { vencidos, vencendo };
   }, [perfil.episAtivos]);
-
-  const dadosDonutEpi: FatiaDonut[] = [
-    { rotulo: 'Em dia', valor: statusEpis.emDia, cor: paleta.ok },
-    { rotulo: 'Vencendo', valor: statusEpis.vencendo, cor: paleta.atencao },
-    { rotulo: 'Vencido', valor: statusEpis.vencido, cor: paleta.alerta },
-  ];
 
   const percentualDds =
     perfil.assiduidadeDds.totalRealizados > 0
@@ -88,12 +105,15 @@ export function PerfilGeralTab({ perfil }: { perfil: PerfilCompletoTrabalhador }
       : null;
 
   const treinamentosValidos = perfil.treinamentos.filter((t) => diasAte(t.dataValidade) >= 0);
+  const treinamentosBloqueando = perfil.treinamentos.length - treinamentosValidos.length;
+  const treinamentosOrdenados = useMemo(
+    () => [...perfil.treinamentos].sort((a, b) => a.dataValidade.localeCompare(b.dataValidade)),
+    [perfil.treinamentos],
+  );
 
-  // Campos novos (03/09) — defensivo contra API e web momentaneamente fora de sincronia num
-  // rolling deploy (são dois Container Apps separados, ver ObterPerfilCompletoTrabalhadorQuery.cs).
-  const motivosTroca = perfil.motivosTroca ?? [];
+  // Defensivo contra API e web momentaneamente fora de sincronia num rolling deploy (são dois
+  // Container Apps separados, ver ObterPerfilCompletoTrabalhadorQuery.cs).
   const trocasNoAno = perfil.trocasNoAno ?? 0;
-  const totalMotivos = motivosTroca.reduce((soma, m) => soma + m.quantidade, 0);
 
   // asos vem do backend ordenado por DataValidade desc; o "ativo" pra fins de aptidão é o mais
   // recente por DataExame (mesmo critério que o backend usa pro badge statusAptidao do cabeçalho —
@@ -102,134 +122,185 @@ export function PerfilGeralTab({ perfil }: { perfil: PerfilCompletoTrabalhador }
     () => (perfil.asos.length === 0 ? undefined : [...perfil.asos].sort((a, b) => b.dataExame.localeCompare(a.dataExame))[0]),
     [perfil.asos],
   );
+  const diasAso = asoAtivo ? diasAte(asoAtivo.dataValidade) : 0;
+  const nivelAso = asoAtivo ? nivelVencimento(asoAtivo.dataValidade) : null;
 
-  const kpis: Array<{ rotulo: string; valor: string; icone: ReactElement; tom: Tom }> = [
+  const kpis: Array<{ rotulo: string; valor: string; icone: ReactElement; tom: Tom; detalhe?: { texto: string; tom: Tom } }> = [
     {
-      rotulo: 'EPIs Ativos',
-      valor: `${perfil.episAtivos.length} ${perfil.episAtivos.length === 1 ? 'item' : 'itens'}`,
+      rotulo: 'EPIs em posse',
+      valor: `${perfil.episAtivos.length}`,
       icone: <ShieldCheckmark24Regular />,
       tom: 'info',
+      detalhe:
+        epis.vencidos + epis.vencendo > 0
+          ? { texto: `${epis.vencidos} vencido · ${epis.vencendo} vencendo`, tom: epis.vencidos > 0 ? 'alerta' : 'atencao' }
+          : { texto: 'Todos em dia', tom: 'ok' },
     },
     {
       rotulo: 'Presença em DDS',
-      valor:
-        percentualDds === null
-          ? '—'
-          : `${perfil.assiduidadeDds.totalParticipados}/${perfil.assiduidadeDds.totalRealizados} (${percentualDds}%)`,
+      valor: percentualDds === null ? '—' : `${percentualDds}%`,
       icone: <People24Regular />,
       tom: 'ok',
+      detalhe:
+        percentualDds === null
+          ? undefined
+          : { texto: `${perfil.assiduidadeDds.totalParticipados} de ${perfil.assiduidadeDds.totalRealizados} realizados`, tom: 'neutro' },
     },
     {
-      rotulo: 'Trocas de EPI (ano)',
-      valor: `${trocasNoAno} ${trocasNoAno === 1 ? 'solicitação' : 'solicitações'}`,
+      rotulo: 'Trocas de EPI no ano',
+      valor: `${trocasNoAno}`,
       icone: <ArrowSync24Regular />,
       tom: 'atencao',
+      detalhe: { texto: trocasNoAno === 1 ? '1 solicitação' : `${trocasNoAno} solicitações`, tom: 'neutro' },
     },
     {
-      rotulo: 'Treinamentos válidos',
-      valor: `${treinamentosValidos.length} ${treinamentosValidos.length === 1 ? 'curso' : 'cursos'}`,
+      rotulo: 'NRs válidas',
+      valor: `${treinamentosValidos.length}`,
       icone: <DocumentCheckmark24Regular />,
-      tom: 'info',
+      tom: treinamentosBloqueando > 0 ? 'atencao' : 'ok',
+      detalhe: { texto: `de ${perfil.treinamentos.length} registradas`, tom: 'neutro' },
     },
   ];
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(185px, 1fr))', gap: 16 }}>
+    <div style={{ display: 'flex', flexDirection: 'column', gap: tokensUi.espaco.lg }}>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(185px, 1fr))', gap: tokensUi.espaco.lg }}>
         {kpis.map((kpi, i) => (
-          <KpiCard key={kpi.rotulo} rotulo={kpi.rotulo} valor={kpi.valor} tom={kpi.tom} icone={kpi.icone} indice={i} />
+          <KpiCard
+            key={kpi.rotulo}
+            rotulo={kpi.rotulo}
+            valor={kpi.valor}
+            tom={kpi.tom}
+            icone={kpi.icone}
+            indice={i}
+            deltas={kpi.detalhe ? [kpi.detalhe] : undefined}
+          />
         ))}
       </div>
 
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 2fr', gap: 16 }}>
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-          <Card titulo="Status dos EPIs" subtitulo="Validade dos itens em posse do trabalhador">
-            {perfil.episAtivos.length === 0 ? (
-              <Text>Nenhum EPI ativo.</Text>
-            ) : (
-              <StatusDonutChart dados={dadosDonutEpi} legendaCentral="EPIs ativos" />
-            )}
-          </Card>
-
-          <Card titulo="Motivo das trocas (ano)" subtitulo={`Reposições de EPI em ${new Date().getFullYear()}`}>
-            {motivosTroca.length === 0 ? (
-              <Text>Nenhuma troca registrada este ano.</Text>
-            ) : (
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 12, marginTop: 10 }}>
-                {motivosTroca.map((m) => {
-                  const pct = totalMotivos > 0 ? Math.round((m.quantidade / totalMotivos) * 100) : 0;
-                  return (
-                    <div key={m.motivo}>
-                      <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4 }}>
-                        <Text size={200} weight="semibold">{motivoEntregaEpiLabel[m.motivo]}</Text>
-                        <Legenda>
-                          {pct}% ({m.quantidade})
-                        </Legenda>
-                      </div>
-                      <BarraProgresso percentual={pct} aria-label={`${motivoEntregaEpiLabel[m.motivo]}, ${pct}%`} />
-                    </div>
-                  );
-                })}
-              </div>
-            )}
-          </Card>
-        </div>
-
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-          <Card titulo="Treinamentos de NR — base para liberação de PT">
-            {perfil.treinamentos.length === 0 ? (
-              <Text>Nenhum treinamento registrado.</Text>
-            ) : (
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 10 }}>
-                {perfil.treinamentos.map((t) => {
-                  const curso = cursoPorId.get(t.cursoTreinamentoId);
-                  const valido = diasAte(t.dataValidade) >= 0;
-                  return (
-                    <Card key={t.id} densidade="compacta">
-                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
-                        <div style={{ minWidth: 0 }}>
-                          <Text weight="semibold" size={200} style={{ display: 'block' }}>
-                            {curso?.nome ?? 'Curso não encontrado'}
-                          </Text>
-                          <Legenda>
-                            {valido ? 'Válido até' : 'Vencido em'} {t.dataValidade.slice(0, 10)}
-                          </Legenda>
-                        </div>
-                        <StatusChip tom={valido ? 'ok' : 'alerta'}>{valido ? 'APTO' : 'BLOQUEADO'}</StatusChip>
-                      </div>
-                    </Card>
-                  );
-                })}
-              </div>
-            )}
-          </Card>
-
-          <Card titulo="ASO ativo">
-            {!asoAtivo ? (
-              <Text>Nenhum ASO registrado.</Text>
-            ) : (
-              <div style={{ display: 'flex', gap: 20, flexWrap: 'wrap', alignItems: 'center' }}>
-                <Text>
-                  <strong>Tipo:</strong> {tipoExameAsoLabel[asoAtivo.tipo]}
-                </Text>
-                <Text>
-                  <strong>Exame:</strong> {asoAtivo.dataExame.slice(0, 10)}
-                </Text>
-                <Text>
-                  <strong>Validade:</strong> {asoAtivo.dataValidade.slice(0, 10)}
-                </Text>
+      {!asoAtivo ? (
+        <Card titulo="ASO ativo">
+          <Text>Nenhum ASO registrado.</Text>
+        </Card>
+      ) : (
+        <Card>
+          <div style={{ display: 'flex', gap: tokensUi.espaco.xl, alignItems: 'center', flexWrap: 'wrap' }}>
+            <AnelProgresso
+              fracao={Math.max(0, diasAso) / DIAS_CICLO_ASO}
+              tom={nivelAso ? tomDeVencimento(nivelAso) : 'neutro'}
+              centro={Math.max(0, diasAso)}
+              legenda={diasAso < 0 ? 'ASO vencido' : 'dias de validade'}
+              aria-label={`ASO ${textoPrazo(diasAso)}`}
+            />
+            <div style={{ flex: '1 1 260px', minWidth: 0, display: 'flex', flexDirection: 'column', gap: tokensUi.espaco.md }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: tokensUi.espaco.sm }}>
+                <div>
+                  <div className={tipo.micro} style={{ color: designTokens.colorNeutralMedium }}>
+                    ASO ativo
+                  </div>
+                  <div className={tipo.titulo}>{tipoExameAsoLabel[asoAtivo.tipo]}</div>
+                </div>
                 <StatusChip tom={tomResultadoAso[asoAtivo.resultadoStatus] ?? 'info'}>
                   {resultadoAsoLabel[asoAtivo.resultadoStatus]}
                 </StatusChip>
+              </div>
+              <dl
+                style={{
+                  display: 'grid',
+                  gridTemplateColumns: 'repeat(auto-fit, minmax(120px, 1fr))',
+                  gap: `${tokensUi.espaco.sm} ${tokensUi.espaco.lg}`,
+                  margin: 0,
+                }}
+              >
+                {[
+                  ['Exame', dataBr(asoAtivo.dataExame)],
+                  ['Validade', dataBr(asoAtivo.dataValidade)],
+                  ['Médico', asoAtivo.medicoNome ?? '—'],
+                  ['CRM', asoAtivo.medicoCrm ?? '—'],
+                ].map(([rotulo, valor]) => (
+                  <div key={rotulo} style={{ minWidth: 0 }}>
+                    <dt style={estiloRotuloDado}>{rotulo}</dt>
+                    <dd style={{ margin: '2px 0 0', fontWeight: 600, fontVariantNumeric: 'tabular-nums' }}>{valor}</dd>
+                  </div>
+                ))}
+              </dl>
+              <div style={{ paddingTop: tokensUi.espaco.md, borderTop: `1px solid ${designTokens.colorCardBorder}` }}>
                 <Legenda>
-                  {asoAtivo.medicoNome ?? '—'}
-                  {asoAtivo.medicoCrm ? ` (CRM ${asoAtivo.medicoCrm})` : ''}
+                  {diasAso < 0
+                    ? `Vencido em ${dataBr(asoAtivo.dataValidade)} — novo exame necessário`
+                    : `Próximo exame até ${dataBr(asoAtivo.dataValidade)}`}
                 </Legenda>
               </div>
-            )}
-          </Card>
-        </div>
-      </div>
+            </div>
+          </div>
+        </Card>
+      )}
+
+      <Card
+        titulo="Treinamentos de NR"
+        subtitulo="Base para liberação de Permissão de Trabalho"
+        acoes={
+          perfil.treinamentos.length > 0 ? (
+            <StatusChip tom={treinamentosBloqueando > 0 ? 'alerta' : 'ok'}>
+              {treinamentosBloqueando > 0 ? `${treinamentosBloqueando} bloqueando` : 'Todos válidos'}
+            </StatusChip>
+          ) : undefined
+        }
+      >
+        {perfil.treinamentos.length === 0 ? (
+          <Text>Nenhum treinamento registrado.</Text>
+        ) : (
+          <ul style={{ listStyle: 'none', margin: 0, padding: 0 }}>
+            {treinamentosOrdenados.map((t, i) => {
+              const curso = cursoPorId.get(t.cursoTreinamentoId);
+              const dias = diasAte(t.dataValidade);
+              const nivel = nivelVencimento(t.dataValidade) ?? 'valido';
+              const tom = tomDeVencimento(nivel);
+              const bloqueado = dias < 0;
+              return (
+                <li
+                  key={t.id}
+                  style={{
+                    display: 'grid',
+                    gridTemplateColumns: 'auto minmax(0, 1fr) auto',
+                    gap: tokensUi.espaco.md,
+                    alignItems: 'center',
+                    padding: '11px 0',
+                    borderTop: i === 0 ? 'none' : `1px solid ${designTokens.colorCardBorder}`,
+                  }}
+                >
+                  <span
+                    aria-hidden="true"
+                    style={{
+                      width: 32,
+                      height: 32,
+                      borderRadius: tokensUi.raio.sm,
+                      display: 'grid',
+                      placeItems: 'center',
+                      backgroundColor: tokensUi.status[tom].fundo,
+                      color: tokensUi.status[tom].tinta,
+                    }}
+                  >
+                    {bloqueado ? <Warning20Regular /> : <Checkmark20Regular />}
+                  </span>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 6, minWidth: 0 }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', gap: tokensUi.espaco.sm, flexWrap: 'wrap' }}>
+                      <Text weight="semibold">{curso?.nome ?? 'Curso não encontrado'}</Text>
+                      <Legenda>{textoPrazo(dias)}</Legenda>
+                    </div>
+                    <BarraProgresso
+                      percentual={consumoValidade(t.dataRealizacao, t.dataValidade) * 100}
+                      tom={tom}
+                      aria-label={`${curso?.nome ?? 'Treinamento'}: ${textoPrazo(dias)}`}
+                    />
+                  </div>
+                  <StatusChip tom={bloqueado ? 'alerta' : tom}>{bloqueado ? 'BLOQUEADO' : 'APTO'}</StatusChip>
+                </li>
+              );
+            })}
+          </ul>
+        )}
+      </Card>
     </div>
   );
 }
