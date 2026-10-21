@@ -23,7 +23,9 @@ import { useSucessoToast } from '../../hooks/useSucessoToast';
 // Cadastro da empresa terceirizada pelo PDF do contrato (18/10/2026) — mesmo modelo do PGR/PCMSO: a IA
 // lê o contrato e preenche empresa, contrato, vagas e pessoas; o técnico confere e confirma. Ao
 // confirmar, a tela usa as mesmas rotas do cadastro manual, nesta ordem: empresa (se ainda não existe),
-// contrato com as vagas e, por fim, cada pessoa na vaga da função dela.
+// contrato com as vagas, o PDF guardado junto do contrato (21/10/2026) e, por fim, cada pessoa na vaga
+// da função dela. Aberto de dentro de uma empresa ("Subir contrato"), a empresa vem fixa e o PDF só
+// confere se o CNPJ lido bate com o dela.
 
 interface VagaForm {
   funcaoId: string;
@@ -60,7 +62,23 @@ interface Falha {
   motivo: string;
 }
 
-export function CadastroPorContratoPdf({ aoCancelar, aoConcluir }: { aoCancelar: () => void; aoConcluir: () => void }) {
+export interface EmpresaFixaContrato {
+  id: string;
+  razaoSocial: string;
+  cnpj: string;
+}
+
+const somenteDigitos = (valor: string | null | undefined) => (valor ?? '').replace(/\D/g, '');
+
+export function CadastroPorContratoPdf({
+  aoCancelar,
+  aoConcluir,
+  empresaFixa,
+}: {
+  aoCancelar: () => void;
+  aoConcluir: () => void;
+  empresaFixa?: EmpresaFixaContrato;
+}) {
   const navigate = useNavigate();
   const sucessoToast = useSucessoToast();
   const [obras, setObras] = useState<Obra[]>([]);
@@ -72,7 +90,11 @@ export function CadastroPorContratoPdf({ aoCancelar, aoConcluir }: { aoCancelar:
   const [salvando, setSalvando] = useState(false);
 
   const [empresa, setEmpresa] = useState<NovaEmpresa>(empresaVazia);
-  const [empresaExistente, setEmpresaExistente] = useState<{ id: string; razaoSocial: string } | null>(null);
+  const [empresaExistente, setEmpresaExistente] = useState<{ id: string; razaoSocial: string } | null>(
+    empresaFixa ? { id: empresaFixa.id, razaoSocial: empresaFixa.razaoSocial } : null,
+  );
+  // CNPJ lido no PDF quando ele não bate com o da empresa fixa: provável contrato de outra empresa.
+  const [cnpjDivergente, setCnpjDivergente] = useState<string | null>(null);
   const [obraId, setObraId] = useState('');
   const [obraLida, setObraLida] = useState<string | null>(null);
   const [numeroContrato, setNumeroContrato] = useState('');
@@ -83,6 +105,7 @@ export function CadastroPorContratoPdf({ aoCancelar, aoConcluir }: { aoCancelar:
 
   // Depois de criar empresa/contrato, uma nova tentativa não pode duplicar o que já foi gravado.
   const [contratoCriadoId, setContratoCriadoId] = useState<string | null>(null);
+  const [falhaArquivo, setFalhaArquivo] = useState<string | null>(null);
   const [falhas, setFalhas] = useState<Falha[]>([]);
 
   // A leitura espera as listas: sem elas não há como sugerir a obra e as funções do que o contrato diz.
@@ -110,9 +133,14 @@ export function CadastroPorContratoPdf({ aoCancelar, aoConcluir }: { aoCancelar:
       contatoTelefone: e.contatoTelefone ?? '',
       contatoEmail: e.contatoEmail ?? '',
     });
-    setEmpresaExistente(
-      l.empresaExistenteId ? { id: l.empresaExistenteId, razaoSocial: l.empresaExistenteRazaoSocial ?? '' } : null,
-    );
+    if (empresaFixa) {
+      const cnpjLido = somenteDigitos(e.cnpj);
+      setCnpjDivergente(cnpjLido.length === 14 && cnpjLido !== somenteDigitos(empresaFixa.cnpj) ? cnpjLido : null);
+    } else {
+      setEmpresaExistente(
+        l.empresaExistenteId ? { id: l.empresaExistenteId, razaoSocial: l.empresaExistenteRazaoSocial ?? '' } : null,
+      );
+    }
     setObraLida(l.obra);
     setObraId(sugerirObra(l.obra, obras) ?? '');
     setNumeroContrato(l.numeroContrato ?? '');
@@ -228,6 +256,14 @@ export function CadastroPorContratoPdf({ aoCancelar, aoConcluir }: { aoCancelar:
           })
         ).id;
         setContratoCriadoId(contratoId);
+        // O PDF fica guardado com o contrato. Se falhar, o cadastro segue: dá para subir de novo no contrato.
+        if (arquivo) {
+          try {
+            await api.terceirizados.contratos.anexarArquivo(contratoId, arquivo);
+          } catch (e) {
+            setFalhaArquivo(e instanceof Error ? e.message : 'Falha ao guardar o PDF.');
+          }
+        }
       }
 
       const novasFalhas: Falha[] = [];
@@ -251,7 +287,11 @@ export function CadastroPorContratoPdf({ aoCancelar, aoConcluir }: { aoCancelar:
       }
       aoConcluir();
       if (novasFalhas.length === 0) {
-        sucessoToast('Empresa, contrato e pessoas cadastrados. Confira EPI e treinamentos pendentes de cada pessoa.');
+        sucessoToast(
+          empresaFixa
+            ? 'Contrato e pessoas cadastrados. Confira EPI e treinamentos pendentes de cada pessoa.'
+            : 'Empresa, contrato e pessoas cadastrados. Confira EPI e treinamentos pendentes de cada pessoa.',
+        );
         navigate(`/terceirizados/contratos/${contratoId}`);
         return;
       }
@@ -288,8 +328,19 @@ export function CadastroPorContratoPdf({ aoCancelar, aoConcluir }: { aoCancelar:
             setLido(false);
           }}
           rotulo="Envie o contrato (PDF) para a IA preencher o cadastro"
-          detalheComArquivo="Confira os campos preenchidos antes de cadastrar. O PDF não é guardado."
+          detalheComArquivo="Confira os campos preenchidos antes de cadastrar. O PDF fica guardado junto do contrato."
         />
+        {cnpjDivergente && empresaFixa && (
+          <FeedbackInline tom="aviso">
+            O CNPJ lido no PDF ({cnpjDivergente}) é diferente do CNPJ de <strong>{empresaFixa.razaoSocial}</strong>. Confira se
+            este contrato é mesmo desta empresa antes de cadastrar.
+          </FeedbackInline>
+        )}
+        {falhaArquivo && (
+          <FeedbackInline tom="aviso" aoFechar={() => setFalhaArquivo(null)}>
+            O contrato foi cadastrado, mas o PDF não foi guardado ({falhaArquivo}). Suba o arquivo de novo na tela do contrato.
+          </FeedbackInline>
+        )}
         {erro && (
           <FeedbackInline tom="erro" aoFechar={() => setErro(null)}>
             {erro}
@@ -309,7 +360,8 @@ export function CadastroPorContratoPdf({ aoCancelar, aoConcluir }: { aoCancelar:
       <FormSection titulo="Empresa" numero={2}>
         {empresaExistente ? (
           <FeedbackInline tom="info">
-            Empresa já cadastrada: <strong>{empresaExistente.razaoSocial}</strong>. O contrato será vinculado a ela.
+            {empresaFixa ? 'Contrato da empresa' : 'Empresa já cadastrada:'} <strong>{empresaExistente.razaoSocial}</strong>. O
+            contrato será vinculado a ela.
           </FeedbackInline>
         ) : (
           <FormGrid>
@@ -549,7 +601,7 @@ export function CadastroPorContratoPdf({ aoCancelar, aoConcluir }: { aoCancelar:
           <Button appearance="primary" onClick={() => void cadastrar()} disabled={salvando || lendo}>
             {bloqueadoAposContrato
               ? `Cadastrar ${incluidas.length} pessoa(s) restante(s)`
-              : `Cadastrar empresa, contrato${incluidas.length > 0 ? ` e ${incluidas.length} pessoa(s)` : ''}`}
+              : `Cadastrar ${empresaFixa ? '' : 'empresa, '}contrato${incluidas.length > 0 ? ` e ${incluidas.length} pessoa(s)` : ''}`}
           </Button>
         </FormRodape>
       </FormSection>

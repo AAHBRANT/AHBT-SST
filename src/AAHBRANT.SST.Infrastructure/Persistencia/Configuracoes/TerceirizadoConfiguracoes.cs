@@ -21,6 +21,22 @@ public class EmpresaConfiguracao : IEntityTypeConfiguration<Empresa>
     }
 }
 
+public class ArquivoContratoConfiguracao : IEntityTypeConfiguration<ArquivoContrato>
+{
+    public void Configure(EntityTypeBuilder<ArquivoContrato> builder)
+    {
+        builder.ToTable("ArquivosContrato");
+        builder.Property(a => a.NomeArquivo).IsRequired().HasMaxLength(260);
+        builder.Property(a => a.ContentType).IsRequired().HasMaxLength(150);
+        // Um arquivo por contrato; enviar de novo substitui. Cascade: o arquivo não tem vida própria.
+        builder.HasOne(a => a.Contrato).WithOne(c => c.Arquivo)
+            .HasForeignKey<ArquivoContrato>(a => a.ContratoId)
+            .OnDelete(DeleteBehavior.Cascade);
+        builder.HasIndex(a => a.ContratoId).IsUnique();
+        builder.HasQueryFilter(a => a.Ativo);
+    }
+}
+
 public class ContratoConfiguracao : IEntityTypeConfiguration<Contrato>
 {
     public void Configure(EntityTypeBuilder<Contrato> builder)
