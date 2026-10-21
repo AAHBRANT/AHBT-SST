@@ -25,6 +25,7 @@ import { salvarBlob, useVisualizadorPdf } from '../../components/useVisualizador
 import { PerfilGeralTab } from './PerfilGeralTab';
 import { TamanhosUniformeSecao } from './TamanhosUniformeSecao';
 import { TreinamentosTab } from './TreinamentosTab';
+import { OrdemServicoTab } from './OrdemServicoTab';
 import { RiscosTab } from './RiscosTab';
 import { ExamesDaFuncaoCard, GheDaFuncaoCard } from '../../components/estrutura-sst/CardsEstruturaFuncao';
 import { OcorrenciasTab } from './OcorrenciasTab';
@@ -32,13 +33,14 @@ import { CofreAssinaturasTab } from './CofreAssinaturasTab';
 import { TerceirizadoTab } from './TerceirizadoTab';
 import { TermoCompromissoEpiCartao } from './TermoCompromissoEpiCartao';
 
-type AbaPerfil = 'geral' | 'epi' | 'treinamentos' | 'riscos' | 'ocorrencias' | 'cofre' | 'terceirizado';
+type AbaPerfil = 'geral' | 'epi' | 'treinamentos' | 'riscos' | 'ordem-servico' | 'ocorrencias' | 'cofre' | 'terceirizado';
 
 const ABAS_PERFIL_BASE = [
   { valor: 'geral', rotulo: 'Geral & ASO' },
   { valor: 'epi', rotulo: 'EPI & Matriz' },
   { valor: 'treinamentos', rotulo: 'Treinamentos & DDS' },
-  { valor: 'riscos', rotulo: 'Riscos & OS' },
+  { valor: 'riscos', rotulo: 'Riscos' },
+  { valor: 'ordem-servico', rotulo: 'Ordem de Serviço' },
   { valor: 'ocorrencias', rotulo: 'Ocorrências' },
   { valor: 'cofre', rotulo: 'Cofre de Assinaturas' },
 ] as const satisfies readonly { valor: AbaPerfil; rotulo: string }[];
@@ -258,6 +260,7 @@ export function TrabalhadorDetalhePage() {
               <RiscosTab riscos={perfil.riscos} />
             </div>
           )}
+          {aba === 'ordem-servico' && <OrdemServicoTab trabalhadorId={id!} aoIrParaAba={setAba} />}
           {aba === 'ocorrencias' && <OcorrenciasTab ocorrencias={perfil.ocorrencias} />}
           {aba === 'cofre' && <CofreAssinaturasTab trabalhadorId={id} assinaturas={perfil.assinaturas} />}
           {aba === 'terceirizado' && <TerceirizadoTab trabalhadorId={id} perfil={perfil} />}
