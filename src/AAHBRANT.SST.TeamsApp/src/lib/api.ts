@@ -799,7 +799,54 @@ export const tipoMovimentacaoEstoqueEpiLabel: Record<number, string> = {
   1: 'Saída (entrega)',
   2: 'Devolução',
   3: 'Ajuste manual',
+  5: 'Transferência (saída)',
+  6: 'Transferência (entrada)',
 };
+
+// Painel da aba Estoque (especificação 21/10/2026, Módulos 2 e 3) — tudo calculado no servidor
+// (CalculadoraEstoqueEpi), para a tela, o alerta e a solicitação de reposição nunca divergirem.
+export type SituacaoEstoqueEpi = 'emDia' | 'atencao' | 'abaixoMinimo' | 'zerado' | 'semMinimo';
+export interface SugestaoTransferenciaEpi {
+  obraId: string;
+  obraNome: string;
+  quantidade: number;
+}
+export interface EstoqueEpiPainelItem {
+  catalogoEpiId: string;
+  estoqueEpiId?: string | null;
+  nome: string;
+  fabricante?: string | null;
+  certificadoAprovacaoNumero?: string | null;
+  certificadoAprovacaoValidade?: string | null;
+  temFoto: boolean;
+  saldo: number;
+  reservado: number;
+  disponivel: number;
+  estoqueMinimo?: number | null;
+  minimoSugerido: number;
+  consumoUltimos90Dias: number;
+  situacao: SituacaoEstoqueEpi;
+  reservasEmFalta: number;
+  tamanhosEmFalta: string[];
+  quantidadeSugeridaCompra: number;
+  estoqueMinimoDefinidoEm?: string | null;
+  estoqueMinimoDefinidoPor?: string | null;
+  transferencias: SugestaoTransferenciaEpi[];
+}
+export interface EstoqueEpiPainel {
+  obraId: string;
+  obraNome: string;
+  prazoReposicaoEpiDias: number;
+  itens: EstoqueEpiPainelItem[];
+}
+export interface SolicitacaoReposicaoEpiResumo {
+  id: string;
+  numeroDocumento: string;
+  criadaEm: string;
+  solicitanteNome: string;
+  totalItens: number;
+  assinada: boolean;
+}
 
 export interface EstoqueEpiPorObra {
   catalogoEpiId: string;
@@ -3566,6 +3613,7 @@ export const tipoAlertaLabel: Record<number, string> = {
   29: 'Exame da função vencido',
   30: 'Cadastro facial para refazer',
   33: 'Funcionário novo',
+  34: 'EPI abaixo do mínimo',
 };
 
 export const SeveridadeAlerta = {
@@ -5088,6 +5136,26 @@ export const api = {
       request<void>('/api/estoquesepi/entrada', { method: 'POST', body: JSON.stringify(dados) }),
     ajustar: (dados: AjustarEstoqueEpi) =>
       request<void>('/api/estoquesepi/ajuste', { method: 'POST', body: JSON.stringify(dados) }),
+    painel: (obraId: string) => request<EstoqueEpiPainel>(`/api/estoquesepi/obra/${obraId}/painel`),
+    definirMinimo: (obraId: string, catalogoEpiId: string, estoqueMinimo: number | null) =>
+      request<void>(`/api/estoquesepi/obra/${obraId}/epi/${catalogoEpiId}/minimo`, {
+        method: 'PUT',
+        body: JSON.stringify({ estoqueMinimo }),
+      }),
+    aplicarSugestoes: (obraId: string) =>
+      request<{ aplicados: number }>(`/api/estoquesepi/obra/${obraId}/minimos/aplicar-sugestoes`, { method: 'POST' }),
+    definirPrazoReposicao: (obraId: string, dias: number) =>
+      request<void>(`/api/estoquesepi/obra/${obraId}/prazo-reposicao`, { method: 'PUT', body: JSON.stringify({ dias }) }),
+    transferir: (dados: { catalogoEpiId: string; obraOrigemId: string; obraDestinoId: string; quantidade: number; observacao?: string | null }) =>
+      request<void>('/api/estoquesepi/transferencia', { method: 'POST', body: JSON.stringify(dados) }),
+    listarSolicitacoesReposicao: (obraId: string) =>
+      request<SolicitacaoReposicaoEpiResumo[]>(`/api/estoquesepi/obra/${obraId}/solicitacoes-reposicao`),
+    criarSolicitacaoReposicao: (obraId: string, observacao: string | null) =>
+      request<{ id: string }>(`/api/estoquesepi/obra/${obraId}/solicitacoes-reposicao`, {
+        method: 'POST',
+        body: JSON.stringify({ observacao }),
+      }),
+    baixarSolicitacaoReposicao: (id: string) => baixarArquivoRelatorio(`/api/estoquesepi/solicitacoes-reposicao/${id}/pdf`),
   },
   estoquesUniforme: {
     listarPorObra: (obraId: string) => request<EstoqueUniformePorObra[]>(`/api/estoquesuniforme/obra/${obraId}`),
