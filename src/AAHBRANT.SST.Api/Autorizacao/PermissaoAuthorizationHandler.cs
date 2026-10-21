@@ -101,6 +101,18 @@ public class PermissaoAuthorizationHandler : AuthorizationHandler<PermissaoRequi
             return;
         }
 
+        if (requirement.Codigo == PoliticasAutorizacao.SomenteEngenheiroSeguranca)
+        {
+            var ehEngenheiro = await _db.Usuarios
+                .Where(u => u.AzureAdObjectId == azureAdObjectId && u.Status == StatusUsuario.Ativo)
+                .SelectMany(u => u.PerfisPorObra)
+                .AnyAsync(vinculo => vinculo.PerfilAcesso != null
+                    && vinculo.PerfilAcesso.Tipo == TipoPerfilAcesso.EngenheiroSeguranca);
+
+            if (ehEngenheiro) context.Succeed(requirement);
+            return;
+        }
+
         // Pop-up de novidades da versão (requisito do usuário, 18/09): ver e cadastrar são liberados
         // para qualquer usuário autenticado, sem checagem de RBAC — decisão explícita do usuário ao
         // aprovar o design, já que hoje só ele mesmo usa a tela de cadastro.
