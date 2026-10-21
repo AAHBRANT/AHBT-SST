@@ -16,11 +16,29 @@ public class LerContratoTerceirizadoQueryTests
     private sealed class LeitorFalso(ContratoTerceirizadoLidoIa resposta) : ILeitorContratoTerceirizadoIa
     {
         public int PaginasRecebidas { get; private set; }
+        public IReadOnlyList<string> Paginas { get; private set; } = Array.Empty<string>();
 
         public Task<ContratoTerceirizadoLidoIa> LerContratoAsync(IReadOnlyList<string> paginas, CancellationToken ct)
         {
             PaginasRecebidas = paginas.Count;
+            Paginas = paginas;
             return Task.FromResult(resposta);
+        }
+    }
+
+    // OCR falso: troca cada página sem texto por "ocr <n>" (até o limite pedido) e guarda o limite.
+    private sealed class OcrFalso(bool leAlgo = true) : IOcrPaginasPdf
+    {
+        public int? LimitePedido { get; private set; }
+
+        public Task<IReadOnlyList<string>> CompletarAsync(byte[] pdf, IReadOnlyList<string> paginas, int maxPaginasOcr, CancellationToken ct)
+        {
+            LimitePedido = maxPaginasOcr;
+            var feitas = 0;
+            IReadOnlyList<string> resultado = paginas
+                .Select((p, i) => leAlgo && PaginasDigitalizadas.SemTexto(p) && feitas++ < maxPaginasOcr ? $"ocr {i + 1} {new string('x', 50)}" : p)
+                .ToList();
+            return Task.FromResult(resultado);
         }
     }
 
@@ -70,7 +88,7 @@ public class LerContratoTerceirizadoQueryTests
         var erro = await Assert.ThrowsAsync<InvalidOperationException>(() =>
             new LerContratoTerceirizadoQueryHandler(new ExtratorFalso("", "  "), new LeitorFalso(Lido()), db)
                 .Handle(new LerContratoTerceirizadoQuery(new byte[] { 1 }), default));
-        Assert.Contains("digitalizado", erro.Message);
+        Assert.Contains("Preencha os campos manualmente", erro.Message);
     }
 
     [Fact]
@@ -83,5 +101,43 @@ public class LerContratoTerceirizadoQueryTests
             .Handle(new LerContratoTerceirizadoQuery(new byte[] { 1 }), default);
 
         Assert.Equal(40, leitor.PaginasRecebidas);
+    }
+
+    [Fact]
+    public async Task Ler_PdfDigitalizado_UsaOTextoDoOcr()
+    {
+        var db = CriarDb(nameof(Ler_PdfDigitalizado_UsaOTextoDoOcr));
+        var leitor = new LeitorFalso(Lido());
+        var ocr = new OcrFalso();
+
+        await new LerContratoTerceirizadoQueryHandler(new ExtratorFalso("", "  "), leitor, db, ocr)
+            .Handle(new LerContratoTerceirizadoQuery(new byte[] { 1 }), default);
+
+        Assert.Equal(15, ocr.LimitePedido);
+        Assert.StartsWith("ocr 1", leitor.Paginas[0]);
+        Assert.StartsWith("ocr 2", leitor.Paginas[1]);
+    }
+
+    [Fact]
+    public async Task Ler_PdfComTexto_NaoChamaOcr()
+    {
+        var db = CriarDb(nameof(Ler_PdfComTexto_NaoChamaOcr));
+        var ocr = new OcrFalso();
+
+        await new LerContratoTerceirizadoQueryHandler(new ExtratorFalso(new string('t', 200)), new LeitorFalso(Lido()), db, ocr)
+            .Handle(new LerContratoTerceirizadoQuery(new byte[] { 1 }), default);
+
+        Assert.Null(ocr.LimitePedido);
+    }
+
+    [Fact]
+    public async Task Ler_OcrNaoLeuNada_PedePreenchimentoManual()
+    {
+        var db = CriarDb(nameof(Ler_OcrNaoLeuNada_PedePreenchimentoManual));
+
+        var erro = await Assert.ThrowsAsync<InvalidOperationException>(() =>
+            new LerContratoTerceirizadoQueryHandler(new ExtratorFalso("", ""), new LeitorFalso(Lido()), db, new OcrFalso(leAlgo: false))
+                .Handle(new LerContratoTerceirizadoQuery(new byte[] { 1 }), default));
+        Assert.Contains("nem pelas imagens das páginas", erro.Message);
     }
 }

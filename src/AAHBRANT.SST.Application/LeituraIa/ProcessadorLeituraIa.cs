@@ -20,16 +20,22 @@ public class ProcessadorLeituraIa
     private readonly ILeitorDocumentoSstIa _leitor;
     private readonly INotificacaoTeamsService _notificacao;
     private readonly ILogger<ProcessadorLeituraIa> _logger;
+    private readonly IOcrPaginasPdf? _ocr;
+
+    // PGR/PCMSO digitalizado: até 80 páginas por OCR (os maiores PCMSO de obra têm ~60). Roda em segundo
+    // plano, então o tempo não é problema; o custo é uma chamada da IA por página digitalizada.
+    public const int PaginasOcr = 80;
 
     public ProcessadorLeituraIa(
         IAppDbContext db, IExtratorTextoPdf extrator, ILeitorDocumentoSstIa leitor,
-        INotificacaoTeamsService notificacao, ILogger<ProcessadorLeituraIa> logger)
+        INotificacaoTeamsService notificacao, ILogger<ProcessadorLeituraIa> logger, IOcrPaginasPdf? ocr = null)
     {
         _db = db;
         _extrator = extrator;
         _leitor = leitor;
         _notificacao = notificacao;
         _logger = logger;
+        _ocr = ocr;
     }
 
     public async Task ProcessarAsync(Guid leituraId, CancellationToken ct)
@@ -51,8 +57,14 @@ public class ProcessadorLeituraIa
                 throw new LeituraIaException("O documento não tem PDF anexado.");
 
             var paginas = _extrator.ExtrairPaginas(pdf);
+            if (_ocr is not null && paginas.Any(PaginasDigitalizadas.SemTexto))
+            {
+                leitura.Etapa = "Lendo as páginas digitalizadas (OCR)";
+                await _db.SaveChangesAsync(ct);
+                paginas = await _ocr.CompletarAsync(pdf, paginas, PaginasOcr, ct);
+            }
             if (paginas.Sum(p => p.Trim().Length) < 500)
-                throw new LeituraIaException("O PDF não tem texto legível (provavelmente foi digitalizado como imagem). Anexe o PDF original do documento.");
+                throw new LeituraIaException("Não foi possível ler o texto do PDF, nem pelas imagens das páginas. Anexe um PDF com melhor qualidade ou o original do documento.");
 
             async Task Progresso(string etapa, int feito, int total)
             {

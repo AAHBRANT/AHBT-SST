@@ -8,6 +8,23 @@ public interface IExtratorTextoPdf
     IReadOnlyList<string> ExtrairPaginas(byte[] pdf);
 }
 
+// OCR das páginas digitalizadas (21/10/2026): página sem texto (PDF escaneado ou foto) tem a imagem lida
+// pela IA, que transcreve o texto; o resto da leitura segue igual. Implementado em Infrastructure sobre o
+// mesmo deployment do Azure OpenAI. Devolve a lista de páginas com o texto das digitalizadas preenchido
+// (no máximo maxPaginasOcr páginas, as primeiras); página que não deu para ler continua vazia.
+public interface IOcrPaginasPdf
+{
+    Task<IReadOnlyList<string>> CompletarAsync(byte[] pdf, IReadOnlyList<string> paginas, int maxPaginasOcr, CancellationToken ct);
+}
+
+public static class PaginasDigitalizadas
+{
+    // Menos que isto numa página = só número de página, carimbo ou rodapé: trata como imagem.
+    public const int MinimoCaracteresTexto = 40;
+
+    public static bool SemTexto(string? pagina) => (pagina ?? string.Empty).Trim().Length < MinimoCaracteresTexto;
+}
+
 // Leitura do PGR/PCMSO pela IA, em partes (uma chamada por GHE / por quadro de exames). Implementado em
 // Infrastructure sobre o Azure OpenAI. "progresso" é chamado em sequência (nunca em paralelo).
 public interface ILeitorDocumentoSstIa

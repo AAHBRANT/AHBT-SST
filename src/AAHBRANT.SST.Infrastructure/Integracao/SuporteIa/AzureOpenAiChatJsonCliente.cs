@@ -28,8 +28,10 @@ public class AzureOpenAiChatJsonCliente
     // maxTokens/timeoutSegundos maiores para a leitura de PGR/PCMSO (10/10/2026); os classificadores de
     // relato continuam com 3000 tokens e 60 s. Limite de taxa (429) e erro do serviço (5xx) são tentados
     // de novo até 3 vezes — a leitura de um documento faz dezenas de chamadas seguidas.
+    // imagens (21/10/2026, OCR de PDF digitalizado): data URLs ("data:image/jpeg;base64,...") enviadas junto
+    // com o texto na mesma mensagem do usuário, em alta resolução para a IA ler letra miúda.
     public async Task<T> ObterAsync<T>(string instrucoesSistema, string mensagemUsuario, string nomeSchema, object schema, CancellationToken ct,
-        int maxTokens = 3000, int timeoutSegundos = 60)
+        int maxTokens = 3000, int timeoutSegundos = 60, IReadOnlyList<string>? imagens = null)
     {
         var opcoes = _options.Value;
         if (string.IsNullOrWhiteSpace(opcoes.Endpoint) || string.IsNullOrWhiteSpace(opcoes.ApiKey))
@@ -41,7 +43,7 @@ public class AzureOpenAiChatJsonCliente
             messages = new object[]
             {
                 new { role = "system", content = instrucoesSistema },
-                new { role = "user", content = mensagemUsuario },
+                new { role = "user", content = ConteudoUsuario(mensagemUsuario, imagens) },
             },
             max_completion_tokens = maxTokens,
             reasoning_effort = "low",
@@ -83,6 +85,14 @@ public class AzureOpenAiChatJsonCliente
 
         return JsonSerializer.Deserialize<T>(conteudo, new JsonSerializerOptions(JsonSerializerDefaults.Web))
             ?? throw new InvalidOperationException("A IA devolveu uma resposta inválida.");
+    }
+
+    private static object ConteudoUsuario(string texto, IReadOnlyList<string>? imagens)
+    {
+        if (imagens is not { Count: > 0 }) return texto;
+        var partes = new List<object> { new { type = "text", text = texto } };
+        partes.AddRange(imagens.Select(url => (object)new { type = "image_url", image_url = new { url, detail = "high" } }));
+        return partes;
     }
 
     // Corta no limite da coluna para a sugestão nunca ser recusada pelo validador do comando.
