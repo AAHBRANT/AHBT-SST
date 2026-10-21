@@ -12,4 +12,13 @@ public class MaterialApoioDto
     public string ContentType { get; set; } = string.Empty;
     public long TamanhoBytes { get; set; }
     public DateTime CreatedAtUtc { get; set; }
+
+    public Domain.Enums.TipoDocumentoSst Tipo { get; set; }
+    public string? Codigo { get; set; }
+    public string? Revisao { get; set; }
+    public Domain.Enums.SituacaoDocumentoSst? Situacao { get; set; }
+    public string? FormaConsulta { get; set; }
+    public bool IncluirEmTodasOs { get; set; }
+    // Quantas atividades usam o documento (só procedimento/IT).
+    public int Atividades { get; set; }
 }

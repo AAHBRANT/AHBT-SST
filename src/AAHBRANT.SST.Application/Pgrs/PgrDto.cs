@@ -30,6 +30,8 @@ public class AtividadeCaracterizadaDto
 {
     public Guid AtividadeId { get; set; }
     public string AtividadeNome { get; set; } = string.Empty;
+    // Itens da OS sugeridos pela IA que ainda aguardam a SST (detalhes da atividade).
+    public int ItensOsPendentes { get; set; }
     public List<RiscoClassificadoDto> Riscos { get; set; } = new();
 }
 
