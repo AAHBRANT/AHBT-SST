@@ -3,6 +3,7 @@ using System.Text;
 using AAHBRANT.SST.Application.Assinatura;
 using AAHBRANT.SST.Application.Common;
 using AAHBRANT.SST.Application.Common.Interfaces;
+using AAHBRANT.SST.Application.PlanosIntegracao;
 using AAHBRANT.SST.Domain.Entidades;
 using AAHBRANT.SST.Domain.Enums;
 using FluentValidation;
@@ -107,14 +108,17 @@ public class SincronizarColaboradorGrhCommandHandler : IRequestHandler<Sincroniz
     private readonly ICpfHashService _cpfHash;
     private readonly IAutenticacaoFacialService? _facial;
     private readonly ILogger<SincronizarColaboradorGrhCommandHandler> _logger;
+    private readonly IPlanoIntegracaoService? _planoIntegracao;
 
     public SincronizarColaboradorGrhCommandHandler(IAppDbContext db, ICpfHashService cpfHash,
-        IAutenticacaoFacialService? facial = null, ILogger<SincronizarColaboradorGrhCommandHandler>? logger = null)
+        IAutenticacaoFacialService? facial = null, ILogger<SincronizarColaboradorGrhCommandHandler>? logger = null,
+        IPlanoIntegracaoService? planoIntegracao = null)
     {
         _db = db;
         _cpfHash = cpfHash;
         _facial = facial;
         _logger = logger ?? NullLogger<SincronizarColaboradorGrhCommandHandler>.Instance;
+        _planoIntegracao = planoIntegracao;
     }
 
     public async Task<Guid> Handle(SincronizarColaboradorGrhCommand request, CancellationToken ct)
@@ -148,6 +152,9 @@ public class SincronizarColaboradorGrhCommandHandler : IRequestHandler<Sincroniz
         }
 
         var obraAnteriorId = trabalhador?.ObraId;
+        var funcaoAnteriorId = trabalhador?.FuncaoId;
+        var estavaDesligado = trabalhador is not null && (!trabalhador.Ativo || trabalhador.Situacao == SituacaoTrabalhador.Desligado);
+        var ehNovo = trabalhador is null;
         if (trabalhador is null)
         {
             if (obra is null)
@@ -204,6 +211,21 @@ public class SincronizarColaboradorGrhCommandHandler : IRequestHandler<Sincroniz
             await RemocaoBiometriaDesligamento.TentarAsync(_db, _facial, _logger, trabalhador.Id, ct);
         else if (_facial is not null && obraAnteriorId is { } anterior && anterior != trabalhador.ObraId && trabalhador.AzureFacePersonId is not null)
             await RealocacaoCadastroFacial.TentarAsync(_facial, _logger, trabalhador.Id, anterior, ct);
+
+        // A carga do G-RH roda de novo a cada ciclo para todos os colaboradores: o plano de integração só
+        // reage ao que de fato mudou, senão cada ciclo reabriria planos e repetiria os avisos no Teams.
+        if (_planoIntegracao is not null)
+        {
+            var desligadoAgora = request.Situacao == SituacaoTrabalhador.Desligado;
+            MotivoPlanoIntegracao? motivo = desligadoAgora ? null
+                : ehNovo || estavaDesligado
+                    ? (PlanoIntegracaoService.AdmissaoRecente(request.DataAdmissao) ? MotivoPlanoIntegracao.Admissao : null)
+                : funcaoAnteriorId != trabalhador.FuncaoId ? MotivoPlanoIntegracao.TrocaFuncao
+                : obraAnteriorId != trabalhador.ObraId ? MotivoPlanoIntegracao.TransferenciaObra
+                : null;
+            if (motivo is not null || (desligadoAgora && !estavaDesligado))
+                await _planoIntegracao.SincronizarAsync(trabalhador.Id, motivo, ct);
+        }
         return trabalhador.Id;
     }
 
