@@ -142,7 +142,9 @@ public enum TipoAlerta
     CadastroFacialFraco = 30,
     // Validade do PCMSO (PcmsoAlertaProvider) — aviso diário de documento vencido, 16/10/2026.
     PcmsoVencendo = 31,
-    PcmsoVencido = 32
+    PcmsoVencido = 32,
+    // Plano de integração do funcionário (admissão, troca de função, transferência), 21/10/2026.
+    IntegracaoFuncionarioNovo = 33
 }
 
 public enum SeveridadeAlerta
@@ -932,4 +934,25 @@ public enum OrigemCertificadoTreinamento
 {
     Aahbrant = 1,
     Externo = 2
+}
+
+public enum MotivoPlanoIntegracao
+{
+    Admissao = 1,
+    TrocaFuncao = 2,
+    TransferenciaObra = 3
+}
+
+public enum StatusPlanoIntegracao
+{
+    Aberto = 1,
+    Concluido = 2,
+    Cancelado = 3
+}
+
+public enum StatusReservaEpi
+{
+    Ativa = 1,
+    Entregue = 2,
+    Cancelada = 3
 }

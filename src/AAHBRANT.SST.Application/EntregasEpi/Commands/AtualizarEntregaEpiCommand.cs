@@ -1,6 +1,7 @@
 using AAHBRANT.SST.Application.Assinatura;
 using AAHBRANT.SST.Application.Common.Interfaces;
 using AAHBRANT.SST.Application.Common.Seguranca;
+using AAHBRANT.SST.Application.PlanosIntegracao;
 using AAHBRANT.SST.Domain.Entidades;
 using AAHBRANT.SST.Domain.Enums;
 using FluentValidation;
@@ -144,6 +145,9 @@ public class AtualizarEntregaEpiCommandHandler : IRequestHandler<AtualizarEntreg
             var saldoAtual = estoqueNovo?.Saldo ?? 0;
             if (saldoAtual < baixarDoNovo)
                 throw new InvalidOperationException($"Estoque insuficiente para este EPI nesta obra (saldo atual: {saldoAtual}).");
+            var reservadoParaOutros = await SituacaoReservasEpi.ReservadoParaOutrosAsync(_db, obraNova, catalogoNovo, entrega.TrabalhadorId, ct);
+            if (saldoAtual - reservadoParaOutros < baixarDoNovo)
+                throw new InvalidOperationException(SituacaoReservasEpi.MensagemSaldoComprometido(saldoAtual, reservadoParaOutros));
 
             estoqueNovo!.Saldo -= baixarDoNovo;
             _db.MovimentacoesEstoqueEpi.Add(new MovimentacaoEstoqueEpi

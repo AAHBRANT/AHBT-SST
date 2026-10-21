@@ -24,6 +24,9 @@ public class ImportarColaboradoresGrhCommandHandlerTests
         servicos.AddApplication();
         servicos.AddSingleton<IAppDbContext>(db);
         servicos.AddSingleton<ICpfHashService>(new CpfHashServiceReal());
+        // Composição real da Api/Worker sempre registra a fila do Teams (AddInfrastructure); o plano de
+        // integração do funcionário novo depende dela.
+        servicos.AddSingleton<IFilaNotificacaoTeams>(new AAHBRANT.SST.Application.Tests.Alertas.FilaNotificacaoTeamsFalsa());
         return servicos.BuildServiceProvider().GetRequiredService<IMediator>();
     }
 
