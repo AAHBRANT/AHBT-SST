@@ -1,5 +1,6 @@
 using AAHBRANT.SST.Application.Common;
 using AAHBRANT.SST.Application.Common.Interfaces;
+using AAHBRANT.SST.Domain.Enums;
 using MediatR;
 using Microsoft.EntityFrameworkCore;
 
@@ -9,6 +10,8 @@ namespace AAHBRANT.SST.Application.CursosTreinamento.Queries;
 /// Para cada curso exigido por alguma função (MatrizTreinamentoFuncao), quantos trabalhadores ativos
 /// precisam dele e em que situação estão. Alimenta o card "Aptidão por treinamento" do Início.
 /// "Apto" é só o treinamento do curso válido hoje — o ASO e o EPI não entram (decisão do usuário, 04/10).
+/// Desde 21/10 o "precisa" vem dos cursos obrigatórios APROVADOS da obra (gerados a partir do PGR);
+/// a obra que ainda não tem nenhum aprovado continua usando a matriz global por função.
 /// </summary>
 public record ObterAptidaoPorCursoQuery(Guid? ObraId = null) : IRequest<List<AptidaoCursoDto>>;
 
@@ -43,7 +46,7 @@ public class ObterAptidaoPorCursoQueryHandler : IRequestHandler<ObterAptidaoPorC
         // (soft delete), que é exatamente o erro que já derrubou a entrega de EPI.
         var trabalhadoresQuery = _db.Trabalhadores.Where(t => t.DataDemissao == null);
         if (request.ObraId is { } obraId) trabalhadoresQuery = trabalhadoresQuery.Where(t => t.ObraId == obraId);
-        var trabalhadores = await trabalhadoresQuery.Select(t => new { t.Id, t.FuncaoId }).ToListAsync(ct);
+        var trabalhadores = await trabalhadoresQuery.Select(t => new { t.Id, t.ObraId, t.FuncaoId }).ToListAsync(ct);
 
         var funcoesIsentas = (await _db.Funcoes.Select(f => new { f.Id, f.Nome }).ToListAsync(ct))
             .Where(f => FuncaoSstClassifier.EhTecnicoSeguranca(f.Nome))
@@ -62,7 +65,22 @@ public class ObterAptidaoPorCursoQueryHandler : IRequestHandler<ObterAptidaoPorC
             .GroupBy(m => m.FuncaoId)
             .ToDictionary(g => g.Key, g => g.Select(m => m.CursoTreinamentoId).Distinct().ToList());
 
-        var idsCursosExigidos = exigenciasPorFuncao.Values.SelectMany(c => c).Distinct().ToList();
+        var idsObras = trabalhadores.Select(t => t.ObraId).Distinct().ToList();
+        var exigenciasPorObraFuncao = (await _db.CursosObrigatoriosFuncaoObra
+                .Where(c => idsObras.Contains(c.ObraId) && c.Status == StatusCursoObrigatorio.Aprovado)
+                .Select(c => new { c.ObraId, c.FuncaoId, c.CursoTreinamentoId })
+                .ToListAsync(ct))
+            .Where(c => cursoPorId.ContainsKey(c.CursoTreinamentoId))
+            .GroupBy(c => (c.ObraId, c.FuncaoId))
+            .ToDictionary(g => g.Key, g => g.Select(c => c.CursoTreinamentoId).Distinct().ToList());
+        var obrasComCursosAprovados = exigenciasPorObraFuncao.Keys.Select(k => k.ObraId).ToHashSet();
+
+        List<Guid>? Exigidos(Guid obraId, Guid funcaoId) => obrasComCursosAprovados.Contains(obraId)
+            ? exigenciasPorObraFuncao.GetValueOrDefault((obraId, funcaoId))
+            : exigenciasPorFuncao.GetValueOrDefault(funcaoId);
+
+        var idsCursosExigidos = exigenciasPorFuncao.Values.SelectMany(c => c)
+            .Concat(exigenciasPorObraFuncao.Values.SelectMany(c => c)).Distinct().ToList();
         var idsTrabalhadores = trabalhadores.Select(t => t.Id).ToList();
 
         // Validade mais recente por (trabalhador, curso): renovar o curso não pode deixar o registro
@@ -78,7 +96,7 @@ public class ObterAptidaoPorCursoQueryHandler : IRequestHandler<ObterAptidaoPorC
         foreach (var trabalhador in trabalhadores)
         {
             if (funcoesIsentas.Contains(trabalhador.FuncaoId)) continue;
-            if (!exigenciasPorFuncao.TryGetValue(trabalhador.FuncaoId, out var exigidos)) continue;
+            if (Exigidos(trabalhador.ObraId, trabalhador.FuncaoId) is not { } exigidos) continue;
 
             foreach (var cursoId in exigidos)
             {

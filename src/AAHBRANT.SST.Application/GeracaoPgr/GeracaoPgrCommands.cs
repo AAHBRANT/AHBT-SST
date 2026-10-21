@@ -533,6 +533,9 @@ public class AprovarGeracaoPgrCommandHandler : IRequestHandler<AprovarGeracaoPgr
         g.AprovadoPorNome = aprovador;
         g.Pgr = pgr;
         await _db.SaveChangesAsync(ct);
+        // Cursos obrigatórios por função saem do PGR recém-aprovado, como sugestão para o engenheiro
+        // revisar na obra (21/10). Só acrescenta: nada aprovado ou recusado antes é tocado.
+        await CursosObrigatorios.GeradorCursosObrigatorios.GerarAsync(_db, g.ObraId, ct);
         return pgr.Id;
     }
 
