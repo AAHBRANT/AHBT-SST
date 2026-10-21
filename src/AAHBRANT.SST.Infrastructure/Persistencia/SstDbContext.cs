@@ -53,6 +53,7 @@ public class SstDbContext : DbContext, IAppDbContext
     public DbSet<ReservaEpi> ReservasEpi => Set<ReservaEpi>();
     public DbSet<PlanoIntegracao> PlanosIntegracao => Set<PlanoIntegracao>();
     public DbSet<SolicitacaoReposicaoEpi> SolicitacoesReposicaoEpi => Set<SolicitacaoReposicaoEpi>();
+    public DbSet<ArquivoContrato> ArquivosContrato => Set<ArquivoContrato>();
     public DbSet<CatalogoEpc> CatalogoEpcs => Set<CatalogoEpc>();
     public DbSet<InstalacaoEpc> InstalacoesEpc => Set<InstalacaoEpc>();
     public DbSet<EstoqueEpc> EstoquesEpc => Set<EstoqueEpc>();

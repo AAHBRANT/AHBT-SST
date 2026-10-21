@@ -55,6 +55,27 @@ public class ContratoValidadoWebhookCommandHandler : IRequestHandler<ContratoVal
             .Include(c => c.Vagas)
             .FirstOrDefaultAsync(c => c.GJuriContratoId == request.GJuriContratoId, ct);
 
+        // Contrato cadastrado antes no SST (manual ou pelo PDF lido com IA) com o mesmo número e o mesmo
+        // CNPJ: o G-Juri prevalece (especificação 21/10/2026) e passa a ser a origem desse contrato, em vez
+        // de criar um segundo. Com gente já alocada, só o vínculo muda — mesma regra do contrato travado.
+        if (contratoExistente is null)
+        {
+            var numero = request.NumeroContrato.Trim();
+            var manual = await _db.Contratos
+                .Include(c => c.Vagas)
+                .FirstOrDefaultAsync(c => c.GJuriContratoId == null && c.NumeroContrato == numero && c.Empresa!.Cnpj == request.Empresa.Cnpj, ct);
+            if (manual is not null)
+            {
+                manual.GJuriContratoId = request.GJuriContratoId;
+                if (manual.Vagas.Any(v => v.QuantidadePreenchidas > 0))
+                {
+                    await _db.SaveChangesAsync(ct);
+                    return manual.Id;
+                }
+                contratoExistente = manual;
+            }
+        }
+
         // Contrato já travado (qualquer vaga com gente alocada) é imutável: reenvio é no-op puro,
         // o conteúdo do payload deixa de importar. Esse check precisa vir ANTES da resolução de
         // FuncaoNome — achado da revisão (2026-09-18): resolver nome de função antes desse check

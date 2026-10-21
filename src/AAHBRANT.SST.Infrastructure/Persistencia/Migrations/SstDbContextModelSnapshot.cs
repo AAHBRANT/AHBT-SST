@@ -1063,6 +1063,63 @@ namespace AAHBRANT.SST.Infrastructure.Persistencia.Migrations
                     b.ToTable("ArquivosCertificadoTreinamento");
                 });
 
+            modelBuilder.Entity("AAHBRANT.SST.Domain.Entidades.ArquivoContrato", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<bool>("Ativo")
+                        .HasColumnType("bit");
+
+                    b.Property<string>("ContentType")
+                        .IsRequired()
+                        .HasMaxLength(150)
+                        .HasColumnType("nvarchar(150)");
+
+                    b.Property<byte[]>("Conteudo")
+                        .IsRequired()
+                        .HasColumnType("varbinary(max)");
+
+                    b.Property<Guid>("ContratoId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTime>("CreatedAtUtc")
+                        .HasColumnType("datetime2");
+
+                    b.Property<Guid?>("CreatedBy")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("NomeArquivo")
+                        .IsRequired()
+                        .HasMaxLength(260)
+                        .HasColumnType("nvarchar(260)");
+
+                    b.Property<int>("Origem")
+                        .HasColumnType("int");
+
+                    b.Property<byte[]>("RowVersion")
+                        .IsConcurrencyToken()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("rowversion");
+
+                    b.Property<long>("TamanhoBytes")
+                        .HasColumnType("bigint");
+
+                    b.Property<DateTime?>("UpdatedAtUtc")
+                        .HasColumnType("datetime2");
+
+                    b.Property<Guid?>("UpdatedBy")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ContratoId")
+                        .IsUnique();
+
+                    b.ToTable("ArquivosContrato", (string)null);
+                });
+
             modelBuilder.Entity("AAHBRANT.SST.Domain.Entidades.Aso", b =>
                 {
                     b.Property<Guid>("Id")
@@ -9636,6 +9693,17 @@ namespace AAHBRANT.SST.Infrastructure.Persistencia.Migrations
                     b.Navigation("Treinamento");
                 });
 
+            modelBuilder.Entity("AAHBRANT.SST.Domain.Entidades.ArquivoContrato", b =>
+                {
+                    b.HasOne("AAHBRANT.SST.Domain.Entidades.Contrato", "Contrato")
+                        .WithOne("Arquivo")
+                        .HasForeignKey("AAHBRANT.SST.Domain.Entidades.ArquivoContrato", "ContratoId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Contrato");
+                });
+
             modelBuilder.Entity("AAHBRANT.SST.Domain.Entidades.Aso", b =>
                 {
                     b.HasOne("AAHBRANT.SST.Domain.Entidades.Trabalhador", "Trabalhador")
@@ -11621,6 +11689,8 @@ namespace AAHBRANT.SST.Infrastructure.Persistencia.Migrations
 
             modelBuilder.Entity("AAHBRANT.SST.Domain.Entidades.Contrato", b =>
                 {
+                    b.Navigation("Arquivo");
+
                     b.Navigation("Trabalhadores");
 
                     b.Navigation("Vagas");
