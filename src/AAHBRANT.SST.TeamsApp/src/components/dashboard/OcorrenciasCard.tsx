@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { motion } from 'framer-motion';
 import { Bar, BarChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
 import { makeStyles, mergeClasses } from '@fluentui/react-components';
-import { Card, designTokens, tokensUi } from '@ui';
+import { Button, Card, designTokens, tokensUi } from '@ui';
 import { RotuloEscopo } from './RotuloEscopo';
 
 export interface TipoOcorrenciaResumo {
@@ -66,18 +66,8 @@ const useStyles = makeStyles({
   valor: { fontSize: '18px', fontWeight: 800, lineHeight: '22px', fontVariantNumeric: 'tabular-nums', color: 'inherit' },
   valorNeutro: { color: designTokens.colorNeutralDark },
   rotulo: { fontSize: '12px', fontWeight: 600, lineHeight: '15px' },
-  botaoLink: {
-    border: 'none',
-    background: 'none',
-    padding: 0,
-    cursor: 'pointer',
-    fontSize: '12.5px',
-    fontWeight: 700,
-    color: designTokens.colorPrimary,
-    whiteSpace: 'nowrap',
-  },
   recentes: { marginTop: '14px', borderTop: `1px solid ${designTokens.colorCardBorder}`, paddingTop: '12px' },
-  recentesTopo: { display: 'flex', justifyContent: 'space-between', gap: '8px', marginBottom: '6px' },
+  recentesTopo: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '8px', marginBottom: '6px' },
   recentesTitulo: { fontSize: '13px', fontWeight: 700, color: designTokens.colorNeutralDark },
   registro: {
     display: 'grid',
@@ -131,9 +121,9 @@ export function OcorrenciasCard({ tipos, serie, recentes, subtitulo, aoAbrirOcor
           : subtitulo
       }
       acoes={
-        <button type="button" className={estilos.botaoLink} onClick={aoAbrirOcorrencias}>
+        <Button appearance="subtle" size="small" onClick={aoAbrirOcorrencias}>
           {tipoSelecionado ? `Abrir ${tipoSelecionado.rotulo.toLowerCase()} em Ocorrências` : 'Abrir Ocorrências'}
-        </button>
+        </Button>
       }
     >
       <div className={estilos.resumo} role="group" aria-label="Filtrar ocorrências por tipo">
@@ -202,9 +192,9 @@ export function OcorrenciasCard({ tipos, serie, recentes, subtitulo, aoAbrirOcor
           <span className={estilos.recentesTitulo}>
             {tipoSelecionado ? `Últimos registros: ${tipoSelecionado.rotulo.toLowerCase()}` : 'Últimos registros'}
           </span>
-          <button type="button" className={estilos.botaoLink} onClick={aoAbrirOcorrencias}>
+          <Button appearance="subtle" size="small" onClick={aoAbrirOcorrencias}>
             {tipoSelecionado ? `Ver todos (${tipoSelecionado.total})` : 'Ver todos'}
-          </button>
+          </Button>
         </div>
         {registros.length === 0 ? (
           <div className={estilos.vazio}>Nenhum registro{tipoSelecionado ? ' deste tipo' : ''}.</div>

@@ -1,5 +1,6 @@
 import { lazy, Suspense, useEffect, useState } from 'react';
 import { FluentProvider } from '@fluentui/react-components';
+import { ganchosEstiloBotao } from './ui/primitivos/Botao/estiloBotao';
 import { MotionConfig } from 'framer-motion';
 import { HashRouter, Navigate, Outlet, Route, Routes, useLocation, useParams } from 'react-router-dom';
 import { aahbrantTheme, aahbrantLightTheme } from './theme';
@@ -111,14 +112,14 @@ function AppRoteado() {
 
   if (!loginProcessado) {
     return (
-      <FluentProvider theme={modo === 'dark' ? aahbrantTheme : aahbrantLightTheme}>
+      <FluentProvider theme={modo === 'dark' ? aahbrantTheme : aahbrantLightTheme} customStyleHooks_unstable={ganchosEstiloBotao}>
         <div style={{ padding: 24 }}>Entrando...</div>
       </FluentProvider>
     );
   }
 
   return (
-    <FluentProvider theme={modo === 'dark' ? aahbrantTheme : aahbrantLightTheme}>
+    <FluentProvider theme={modo === 'dark' ? aahbrantTheme : aahbrantLightTheme} customStyleHooks_unstable={ganchosEstiloBotao}>
       {/* Com 'reduzir movimento' no SO, o framer-motion desliga animações de transform/opacity
           (spec §1.5); o CSS em index.css cuida das keyframes/transições. */}
       <MotionConfig reducedMotion="user">

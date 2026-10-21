@@ -510,15 +510,11 @@ const useStyles = makeStyles({
       display: 'none',
     },
   },
+  // Altura e pílula vêm do padrão de botão (size="small" = 34 px); aqui só o que é próprio do topo.
   botaoAcaoTopo: {
-    height: '32px',
-    minWidth: '32px',
-    borderRadius: '8px',
     fontWeight: 700,
   },
   botaoCriarTopo: {
-    height: '32px',
-    borderRadius: '8px',
     backgroundColor: '#16a34a',
     color: '#ffffff',
     fontWeight: 800,
@@ -942,7 +938,7 @@ export function AppShell({ children }: { children: ReactNode }) {
         <div className={estilos.acoesTopo} aria-label="Ações globais">
           <MenuAtalhos
             botao={
-              <Button className={estilos.botaoCriarTopo} appearance="primary" icon={<Add24Regular />}>
+              <Button className={estilos.botaoCriarTopo} appearance="primary" size="small" icon={<Add24Regular />}>
                 Atalhos
               </Button>
             }
@@ -958,6 +954,7 @@ export function AppShell({ children }: { children: ReactNode }) {
                 <Button
                   className={estilos.botaoAcaoTopo}
                   appearance="primary"
+                  size="small"
                   icon={<Add24Regular />}
                   aria-label="Atalhos"
                   title="Atalhos"
