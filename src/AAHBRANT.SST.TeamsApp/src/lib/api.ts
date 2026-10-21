@@ -2639,12 +2639,19 @@ export interface DdsFuncionario {
 export const TipoDdsSemanal = {
   Proprios: 1,
   Terceirizados: 2,
+  ProprioseTerceirizados: 3,
 } as const;
 
 export const tipoDdsSemanalLabel: Record<number, string> = {
   1: 'Empregados Próprios',
   2: 'Empregados Terceirizados',
+  3: 'Empregados Próprios e Terceirizados',
 };
+
+// Espelha TipoDdsSemanalExtensions.IncluiTerceirizados do backend.
+export function tipoDdsSemanalIncluiTerceirizados(tipo: number): boolean {
+  return tipo === TipoDdsSemanal.Terceirizados || tipo === TipoDdsSemanal.ProprioseTerceirizados;
+}
 
 export const StatusDdsSemanal = {
   EmAndamento: 1,

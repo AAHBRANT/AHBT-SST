@@ -683,10 +683,19 @@ public enum TipoFotoParticipante
 // e, quando aplicável, outro para terceirizados — nunca misturados no mesmo documento (o papel já
 // separa por página/formulário inteiro, com bloco de assinatura da empresa terceirizada só na
 // segunda versão).
+// Pedido do usuário (20/10): opção "Próprios e Terceirizados" para registrar as duas equipes na mesma
+// semana — segue as regras de terceirizado (empresa na abertura, responsável da empresa no encerramento).
 public enum TipoDdsSemanal
 {
     Proprios = 1,
-    Terceirizados = 2
+    Terceirizados = 2,
+    ProprioseTerceirizados = 3
+}
+
+public static class TipoDdsSemanalExtensions
+{
+    public static bool IncluiTerceirizados(this TipoDdsSemanal tipo) =>
+        tipo is TipoDdsSemanal.Terceirizados or TipoDdsSemanal.ProprioseTerceirizados;
 }
 
 public enum StatusDdsSemanal
