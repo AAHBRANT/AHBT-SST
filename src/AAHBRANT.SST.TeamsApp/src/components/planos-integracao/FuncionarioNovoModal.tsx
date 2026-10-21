@@ -19,6 +19,7 @@ import {
   ArrowLeft20Regular,
   PersonAvailable20Regular,
 } from '@fluentui/react-icons';
+import { CampoData } from '../CampoData';
 import {
   api,
   MotivoPlanoIntegracao,
@@ -182,6 +183,15 @@ const useStyles = makeStyles({
   },
   progresso: { fontSize: tokens.fontSizeBase200, color: tokens.colorNeutralForeground3, whiteSpace: 'nowrap' },
   acoes: { gridColumn: '1 / -1', justifySelf: 'end', flexWrap: 'wrap', '& button': { whiteSpace: 'nowrap' } },
+  ajusteData: {
+    display: 'flex',
+    alignItems: 'center',
+    flexWrap: 'wrap',
+    gap: '8px',
+    padding: '6px 10px 2px 48px',
+    fontSize: tokens.fontSizeBase200,
+  },
+  campoData: { width: '140px' },
 });
 
 const ROTULO_PASSO: Record<SituacaoPassoIntegracao, string> = {
@@ -254,6 +264,10 @@ export function FuncionarioNovoModal({ planos, aoFechar }: Props) {
   const [planosAtuais, setPlanosAtuais] = useState(planos);
   const [assumindo, setAssumindo] = useState(false);
   const [erroAssumir, setErroAssumir] = useState<string | null>(null);
+  const [editandoData, setEditandoData] = useState<string | null>(null);
+  const [novaData, setNovaData] = useState('');
+  const [salvandoData, setSalvandoData] = useState(false);
+  const [erroData, setErroData] = useState<string | null>(null);
   const selecionado = planosAtuais.find((p) => p.id === selecionadoId) ?? null;
 
   function irPara(rota?: string | null) {
@@ -273,6 +287,25 @@ export function FuncionarioNovoModal({ planos, aoFechar }: Props) {
       setErroAssumir(e instanceof Error ? e.message : 'Não foi possível assumir agora.');
     } finally {
       setAssumindo(false);
+    }
+  }
+
+  async function salvarData(plano: PlanoIntegracao, sessaoId: string) {
+    if (!novaData) {
+      setErroData('Informe a data no formato dd/mm/aaaa.');
+      return;
+    }
+    setSalvandoData(true);
+    setErroData(null);
+    try {
+      await api.planosIntegracao.alterarDataTurma(sessaoId, novaData);
+      const atualizado = await api.planosIntegracao.obter(plano.id);
+      setPlanosAtuais((lista) => lista.map((p) => (p.id === plano.id ? atualizado : p)));
+      setEditandoData(null);
+    } catch (e) {
+      setErroData(e instanceof Error ? e.message : 'Não foi possível mudar a data agora.');
+    } finally {
+      setSalvandoData(false);
     }
   }
 
@@ -376,6 +409,45 @@ export function FuncionarioNovoModal({ planos, aoFechar }: Props) {
                           {i === primeiroPendente ? 'Fazer agora' : ROTULO_PASSO[passo.situacao]}
                         </span>
                       </button>
+                      {passo.situacao === 'agendado' && passo.sessaoTreinamentoId && (
+                        <div className={estilos.ajusteData}>
+                          {editandoData === passo.codigo ? (
+                            <>
+                              <CampoData
+                                className={estilos.campoData}
+                                size="small"
+                                aria-label={`Nova data da turma de ${passo.titulo}`}
+                                value={novaData}
+                                onChange={(_, d) => setNovaData(d.value)}
+                              />
+                              <Button
+                                size="small"
+                                appearance="primary"
+                                disabled={salvandoData}
+                                onClick={() => salvarData(selecionado, passo.sessaoTreinamentoId!)}
+                              >
+                                {salvandoData ? 'Salvando…' : 'Salvar data'}
+                              </Button>
+                              <Button size="small" appearance="subtle" onClick={() => setEditandoData(null)}>
+                                Cancelar
+                              </Button>
+                              {erroData && <span role="alert">{erroData}</span>}
+                            </>
+                          ) : (
+                            <Button
+                              size="small"
+                              appearance="transparent"
+                              onClick={() => {
+                                setEditandoData(passo.codigo);
+                                setNovaData((passo.dataTurma ?? '').slice(0, 10));
+                                setErroData(null);
+                              }}
+                            >
+                              Alterar data da turma
+                            </Button>
+                          )}
+                        </div>
+                      )}
                     </li>
                   ))}
                 </ol>
