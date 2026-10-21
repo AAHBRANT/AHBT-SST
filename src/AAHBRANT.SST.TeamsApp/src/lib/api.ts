@@ -4282,6 +4282,49 @@ export interface NovaNovidadeVersao {
   itens: NovidadeVersaoItemInput[];
 }
 
+// Plano de integração do funcionário novo (especificação 21/10/2026, Módulo 1) — pop-up que aparece
+// depois das Novidades para o Técnico de Segurança e o Administrador.
+export type SituacaoPassoIntegracao = 'feito' | 'pendente' | 'agendado' | 'aguardando' | 'naoConfigurado';
+export type SituacaoItemKit = 'separado' | 'emFalta' | 'entregue';
+export const MotivoPlanoIntegracao = {
+  Admissao: 1,
+  TrocaFuncao: 2,
+  TransferenciaObra: 3,
+} as const;
+export type MotivoPlanoIntegracao = (typeof MotivoPlanoIntegracao)[keyof typeof MotivoPlanoIntegracao];
+export interface PassoPlanoIntegracao {
+  codigo: string;
+  titulo: string;
+  situacao: SituacaoPassoIntegracao;
+  detalhe?: string | null;
+  rota?: string | null;
+}
+export interface ItemKitEpi {
+  catalogoEpiId: string;
+  nome: string;
+  tamanho?: string | null;
+  situacao: SituacaoItemKit;
+}
+export interface PlanoIntegracao {
+  id: string;
+  trabalhadorId: string;
+  nome: string;
+  matricula?: string | null;
+  funcao: string;
+  obraId: string;
+  obraNome: string;
+  equipeNome?: string | null;
+  dataAdmissao: string;
+  temFoto: boolean;
+  motivo: MotivoPlanoIntegracao;
+  abertoEm: string;
+  responsavelNome?: string | null;
+  assumidoEm?: string | null;
+  passosConcluidos: number;
+  passos: PassoPlanoIntegracao[];
+  kit: ItemKitEpi[];
+}
+
 export const api = {
   catalogo: {
     atividades: (obraId?: string) =>
@@ -5921,6 +5964,11 @@ export const api = {
         method: 'POST',
         body: JSON.stringify({ confirmado, comentario }),
       }),
+  },
+  planosIntegracao: {
+    pendentes: () => request<PlanoIntegracao[]>('/api/planos-integracao/pendentes'),
+    obter: (id: string) => request<PlanoIntegracao>(`/api/planos-integracao/${id}`),
+    assumir: (id: string) => request<void>(`/api/planos-integracao/${id}/assumir`, { method: 'POST' }),
   },
   novidades: {
     listar: () => request<NovidadeVersao[]>('/api/novidades'),
