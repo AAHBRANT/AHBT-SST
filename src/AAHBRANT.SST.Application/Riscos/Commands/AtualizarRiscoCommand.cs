@@ -55,6 +55,15 @@ public class AtualizarRiscoCommandHandler : IRequestHandler<AtualizarRiscoComman
 
         var nivelRisco = await NivelRiscoLookup.ResolverAsync(_db, request.AtividadeId, request.Probabilidade, request.Severidade, ct);
 
+        // Avaliação confirmada vale para os valores que foram conferidos: mudou, precisa confirmar de novo.
+        if (risco.Probabilidade != request.Probabilidade || risco.Severidade != request.Severidade
+            || (risco.Consequencia ?? string.Empty) != (request.Consequencia ?? string.Empty))
+        {
+            risco.AvaliadoEmUtc = null;
+            risco.AvaliadoPorUsuarioId = null;
+            risco.AvaliadoPorNome = null;
+        }
+
         risco.AtividadeId = request.AtividadeId;
         risco.PerigoId = request.PerigoId;
         risco.Ambiente = request.Ambiente;

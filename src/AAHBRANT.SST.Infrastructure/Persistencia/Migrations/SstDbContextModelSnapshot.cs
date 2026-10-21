@@ -5127,6 +5127,72 @@ namespace AAHBRANT.SST.Infrastructure.Persistencia.Migrations
                     b.ToTable("MatrizUniformeFuncoes");
                 });
 
+            modelBuilder.Entity("AAHBRANT.SST.Domain.Entidades.MedidaPrevencao", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<bool>("Ativo")
+                        .HasColumnType("bit");
+
+                    b.Property<DateTime>("CreatedAtUtc")
+                        .HasColumnType("datetime2");
+
+                    b.Property<Guid?>("CreatedBy")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<int>("Fase")
+                        .HasColumnType("int");
+
+                    b.Property<int>("Ordem")
+                        .HasColumnType("int");
+
+                    b.Property<int>("Origem")
+                        .HasColumnType("int");
+
+                    b.Property<int>("OrigemMedida")
+                        .HasColumnType("int");
+
+                    b.Property<Guid>("RiscoId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<byte[]>("RowVersion")
+                        .IsConcurrencyToken()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("rowversion");
+
+                    b.Property<int>("Status")
+                        .HasColumnType("int");
+
+                    b.Property<string>("Texto")
+                        .IsRequired()
+                        .HasMaxLength(1000)
+                        .HasColumnType("nvarchar(1000)");
+
+                    b.Property<DateTime?>("UpdatedAtUtc")
+                        .HasColumnType("datetime2");
+
+                    b.Property<Guid?>("UpdatedBy")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTime?>("ValidadoEmUtc")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("ValidadoPorNome")
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)");
+
+                    b.Property<Guid?>("ValidadoPorUsuarioId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("RiscoId", "Fase", "Ordem");
+
+                    b.ToTable("MedidasPrevencao", (string)null);
+                });
+
             modelBuilder.Entity("AAHBRANT.SST.Domain.Entidades.MembroCipa", b =>
                 {
                     b.Property<Guid>("Id")
@@ -7614,6 +7680,16 @@ namespace AAHBRANT.SST.Infrastructure.Persistencia.Migrations
                     b.Property<bool>("Ativo")
                         .HasColumnType("bit");
 
+                    b.Property<DateTime?>("AvaliadoEmUtc")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("AvaliadoPorNome")
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)");
+
+                    b.Property<Guid?>("AvaliadoPorUsuarioId")
+                        .HasColumnType("uniqueidentifier");
+
                     b.Property<string>("Consequencia")
                         .HasColumnType("nvarchar(max)");
 
@@ -9970,6 +10046,17 @@ namespace AAHBRANT.SST.Infrastructure.Persistencia.Migrations
                     b.Navigation("Funcao");
                 });
 
+            modelBuilder.Entity("AAHBRANT.SST.Domain.Entidades.MedidaPrevencao", b =>
+                {
+                    b.HasOne("AAHBRANT.SST.Domain.Entidades.Risco", "Risco")
+                        .WithMany("Medidas")
+                        .HasForeignKey("RiscoId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Risco");
+                });
+
             modelBuilder.Entity("AAHBRANT.SST.Domain.Entidades.MembroCipa", b =>
                 {
                     b.HasOne("AAHBRANT.SST.Domain.Entidades.CandidatoCipa", "CandidatoCipa")
@@ -11165,6 +11252,8 @@ namespace AAHBRANT.SST.Infrastructure.Persistencia.Migrations
 
             modelBuilder.Entity("AAHBRANT.SST.Domain.Entidades.Risco", b =>
                 {
+                    b.Navigation("Medidas");
+
                     b.Navigation("TrabalhadoresExpostos");
                 });
 

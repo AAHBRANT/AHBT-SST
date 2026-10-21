@@ -274,6 +274,9 @@ public class ImportarEstruturaSstObraCommandHandler : IRequestHandler<ImportarEs
                     NivelRisco = celula.NivelRisco,
                     ControlesExistentes = Juntar(("EPC", r.Epc), ("EPI", r.Epi)),
                     ControlesAdicionais = Juntar(("Monitoramento", r.Monitoramento)),
+                    // Veio do PGR já aprovado pelo engenheiro: a avaliação conta como confirmada.
+                    AvaliadoEmUtc = DateTime.UtcNow,
+                    AvaliadoPorNome = "Importado do PGR",
                 });
                 riscos++;
             }

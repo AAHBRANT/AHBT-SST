@@ -1348,6 +1348,21 @@ public static class NovidadesSeeder
                     "Cadastrar uma terceirizada exigia digitar empresa, contrato, vagas e cada pessoa à mão.",
                     "Em Terceirizado > Empresas, o botão Cadastrar pelo contrato (PDF) lê o contrato com IA e preenche empresa, contrato, vagas e as pessoas listadas. O técnico confere, completa o que faltar e cadastra tudo de uma vez. Contrato digitalizado (sem texto) continua sendo preenchido à mão."),
             }),
+        new(
+            Versao: "5.71.0",
+            Titulo: "Avaliação dos riscos e medidas de prevenção por fase no PGR",
+            DataPublicacao: new DateTime(2026, 10, 20, 0, 0, 0, DateTimeKind.Utc),
+            Itens: new[]
+            {
+                new NovidadeSeedItem(CategoriaNovidade.Novidade,
+                    "Medidas de prevenção separadas em antes, durante e após o trabalho",
+                    "Os controles de cada risco do PGR ficavam num texto corrido, sem dizer em que momento do trabalho cada um se aplica.",
+                    "Em PGR › Inventário de riscos, clique no risco e em \"Separar em antes / durante / após\". O que já estava escrito no PGR entra validado; o que a IA acrescentar aparece em amarelo como sugestão, para a SST aceitar, editar ou descartar. O texto original do PGR continua guardado."),
+                new NovidadeSeedItem(CategoriaNovidade.Novidade,
+                    "Confirmação da avaliação do risco",
+                    "Não havia registro de quem conferiu a probabilidade e a severidade de um risco.",
+                    "Riscos lançados à mão ganham o botão \"Confirmar avaliação\", que registra quem confirmou e quando. Riscos vindos da leitura do PGR já entram como avaliados. Se a probabilidade, a severidade ou a consequência mudarem, a confirmação é apagada."),
+            }),
     };
 
     public static async Task ExecutarAsync(IServiceProvider services, CancellationToken ct = default)
