@@ -4,6 +4,12 @@ import {
   BotaoAcao,
   Button,
   Card,
+  Dialog,
+  DialogActions,
+  DialogBody,
+  DialogContent,
+  DialogSurface,
+  DialogTitle,
   StatusChip,
   designTokens,
   tokensUi,
@@ -79,6 +85,7 @@ export function FichaTrabalhadorLateral({
 }: FichaTrabalhadorLateralProps) {
   const tipo = useTipografia();
   const [cpfVisivel, setCpfVisivel] = useState(false);
+  const [fotoAmpliada, setFotoAmpliada] = useState(false);
   const pendencias = contarPendencias(perfil);
   const tomLiberacao: Tom = pendencias === 0 ? 'ok' : 'alerta';
 
@@ -111,14 +118,33 @@ export function FichaTrabalhadorLateral({
   return (
     <Card>
       <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', textAlign: 'center', gap: tokensUi.espaco.sm }}>
-        <Avatar
-          name={perfil.nome}
-          image={fotoUrl ? { src: fotoUrl } : undefined}
-          color="brand"
-          size={96}
-          active={pendencias === 0 ? 'active' : 'unset'}
-          activeAppearance="ring"
-        />
+        {/* Com foto, o avatar abre a foto ampliada (pedido do usuário, 21/10); sem foto fica só as iniciais. */}
+        {fotoUrl ? (
+          <button
+            type="button"
+            onClick={() => setFotoAmpliada(true)}
+            aria-label={`Ampliar foto de ${perfil.nome}`}
+            title="Ampliar foto"
+            style={{ border: 0, padding: 0, background: 'none', borderRadius: '50%', cursor: 'zoom-in' }}
+          >
+            <Avatar
+              name={perfil.nome}
+              image={{ src: fotoUrl }}
+              color="brand"
+              size={96}
+              active={pendencias === 0 ? 'active' : 'unset'}
+              activeAppearance="ring"
+            />
+          </button>
+        ) : (
+          <Avatar
+            name={perfil.nome}
+            color="brand"
+            size={96}
+            active={pendencias === 0 ? 'active' : 'unset'}
+            activeAppearance="ring"
+          />
+        )}
         <div>
           <h1 className={tipo.titulo} style={{ margin: `${tokensUi.espaco.xs} 0 0`, textWrap: 'balance' }}>
             {perfil.nome}
@@ -183,6 +209,35 @@ export function FichaTrabalhadorLateral({
           Emitir relatório de fiscalização
         </BotaoAcao>
       </div>
+
+      {fotoUrl && (
+        <Dialog open={fotoAmpliada} onOpenChange={(_, dados) => setFotoAmpliada(dados.open)}>
+          <DialogSurface style={{ maxWidth: 560 }}>
+            <DialogBody>
+              <DialogTitle>{perfil.nome}</DialogTitle>
+              <DialogContent>
+                <img
+                  src={fotoUrl}
+                  alt={`Foto de ${perfil.nome}`}
+                  style={{
+                    display: 'block',
+                    width: '100%',
+                    maxHeight: '70vh',
+                    objectFit: 'contain',
+                    borderRadius: tokensUi.raio.lg,
+                    backgroundColor: designTokens.colorNeutralLight,
+                  }}
+                />
+              </DialogContent>
+              <DialogActions>
+                <Button appearance="primary" onClick={() => setFotoAmpliada(false)}>
+                  Fechar
+                </Button>
+              </DialogActions>
+            </DialogBody>
+          </DialogSurface>
+        </Dialog>
+      )}
     </Card>
   );
 }
