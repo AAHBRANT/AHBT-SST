@@ -18,6 +18,13 @@ interface PaginasPdfProps {
 // O pdf.js (~400 KB) e o worker dele só são baixados quando alguém abre um documento — import
 // dinâmico — para não inflar o bundle principal (que também tem limite no precache do service
 // worker, ver vite.config.ts).
+//
+// Build "legacy" do pdf.js, não o padrão: o 6.x chama Map/WeakMap.prototype.getOrInsertComputed
+// (proposta "upsert" do TC39), que o Chromium 141 e WebViews mais antigos do Teams (desktop com
+// WebView2 desatualizado, iOS/WKWebView) não têm — o visualizador mostrava
+// "this[#methodPromises].getOrInsertComputed is not a function" e a página em branco (21/10). O
+// legacy embute os polyfills (core-js) tanto no pdf.mjs quanto no worker, que roda em escopo
+// próprio e também usa esses métodos; um polyfill só no main.tsx não alcançaria o worker.
 export function PaginasPdf({ arquivo, altura = '80vh' }: PaginasPdfProps) {
   const estilos = usePageStyles();
   const paginasRef = useRef<HTMLDivElement>(null);
@@ -37,8 +44,8 @@ export function PaginasPdf({ arquivo, altura = '80vh' }: PaginasPdfProps) {
         container.replaceChildren();
 
         const [pdfjs, worker] = await Promise.all([
-          import('pdfjs-dist'),
-          import('pdfjs-dist/build/pdf.worker.min.mjs?url'),
+          import('pdfjs-dist/legacy/build/pdf.mjs'),
+          import('pdfjs-dist/legacy/build/pdf.worker.min.mjs?url'),
         ]);
         // Chunk que não carregou e a página já está recarregando (ver main.tsx): o import volta
         // undefined. Trata como chunk ausente em vez de estourar "reading 'GlobalWorkerOptions'".
