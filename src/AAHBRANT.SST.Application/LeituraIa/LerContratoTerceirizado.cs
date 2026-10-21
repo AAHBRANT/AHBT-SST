@@ -40,15 +40,22 @@ public class LerContratoTerceirizadoQueryHandler : IRequestHandler<LerContratoTe
     // cadastro precisa está no preâmbulo, nas cláusulas de objeto/vigência e na relação de pessoas.
     private const int PaginasLidas = 40;
 
+    // Contrato digitalizado: OCR só das primeiras páginas sem texto. A leitura do contrato é síncrona (o
+    // técnico espera na tela), e 15 páginas em 4 chamadas paralelas cabem em menos de um minuto.
+    private const int PaginasOcr = 15;
+
     private readonly IExtratorTextoPdf _extrator;
     private readonly ILeitorContratoTerceirizadoIa _leitor;
     private readonly IAppDbContext _db;
+    private readonly IOcrPaginasPdf? _ocr;
 
-    public LerContratoTerceirizadoQueryHandler(IExtratorTextoPdf extrator, ILeitorContratoTerceirizadoIa leitor, IAppDbContext db)
+    public LerContratoTerceirizadoQueryHandler(IExtratorTextoPdf extrator, ILeitorContratoTerceirizadoIa leitor, IAppDbContext db,
+        IOcrPaginasPdf? ocr = null)
     {
         _extrator = extrator;
         _leitor = leitor;
         _db = db;
+        _ocr = ocr;
     }
 
     public async Task<ContratoTerceirizadoLidoIa> Handle(LerContratoTerceirizadoQuery request, CancellationToken ct)
@@ -62,9 +69,11 @@ public class LerContratoTerceirizadoQueryHandler : IRequestHandler<LerContratoTe
         {
             throw new InvalidOperationException("Não foi possível abrir o PDF. Confira se o arquivo é um PDF válido.");
         }
-        var lidas = paginas.Take(PaginasLidas).ToList();
+        IReadOnlyList<string> lidas = paginas.Take(PaginasLidas).ToList();
+        if (_ocr is not null && lidas.Any(PaginasDigitalizadas.SemTexto))
+            lidas = await _ocr.CompletarAsync(request.Pdf, lidas, PaginasOcr, ct);
         if (lidas.All(string.IsNullOrWhiteSpace))
-            throw new InvalidOperationException("O PDF não tem texto (parece digitalizado). Preencha os campos manualmente.");
+            throw new InvalidOperationException("Não foi possível ler o texto do PDF, nem pelas imagens das páginas. Preencha os campos manualmente.");
 
         var lido = await _leitor.LerContratoAsync(lidas, ct);
 
