@@ -77,6 +77,7 @@ public interface IAppDbContext
     DbSet<MatrizRiscoCelula> MatrizRiscoCelulas { get; }
 
     DbSet<Pgr> Pgrs { get; }
+    DbSet<GeracaoPgrEap> GeracoesPgrEap { get; }
     DbSet<PlanoAcaoItem> PlanoAcaoItens { get; }
     DbSet<PgrRevisao> PgrRevisoes { get; }
 

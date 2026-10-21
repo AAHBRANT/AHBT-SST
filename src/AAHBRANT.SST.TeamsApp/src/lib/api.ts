@@ -2755,6 +2755,25 @@ export interface MinutaOrdemServico {
   pendencias: PendenciaOs[];
 }
 
+// Gerador de PGR pela EAP (21/10/2026). Status: 1 Rascunho, 2 Aguardando aprovação, 3 Aprovado, 4 Devolvido.
+export interface ItemEapGerado { codigo: string; nome: string; nivel: number; periodo?: string | null; usar: boolean; conferir: boolean }
+export interface MedidaGerada { fase: 1 | 2 | 3; texto: string; decisao: 'Pendente' | 'Aceita' | 'Descartada' }
+export interface RiscoGerado {
+  id: string; tipo: string; perigo: string; danos?: string | null; probabilidade: number; severidade: number;
+  base: string[]; medidas: MedidaGerada[]; revisado: boolean; excluido: boolean;
+}
+export interface AtividadeGerada { codigoEap: string; nome: string; riscosGerados: boolean; riscos: RiscoGerado[] }
+export interface FuncaoGerada { funcaoId?: string | null; nome: string; descricao?: string | null; sugeridaPelaIa: boolean }
+export interface GheGerado { numero: number; nome: string; ambiente?: string | null; jornada?: string | null; funcoes: FuncaoGerada[]; atividades: AtividadeGerada[] }
+export interface EstruturaGeracaoPgr { itens: ItemEapGerado[]; ghes: GheGerado[]; planoAcao: string[] }
+export interface GeracaoPgrEap {
+  id: string; obraId: string; obraNome: string; nome: string; dataElaboracao: string; dataProximaRevisao?: string | null;
+  elaboradoPorNome?: string | null; nomeArquivoEap: string; status: 1 | 2 | 3 | 4; passo: number; motivoDevolucao?: string | null;
+  aprovadoPorNome?: string | null; aprovadoEmUtc?: string | null; pgrId?: string | null; estrutura: EstruturaGeracaoPgr;
+  pendenciasAprovacao: string[]; funcoesCadastradas: { id: string; nome: string }[]; maxProbabilidade: number; maxSeveridade: number;
+}
+export interface ResumoGeracaoPgrEap { id: string; nome: string; obraNome: string; status: 1 | 2 | 3 | 4; passo: number; criadoEmUtc: string }
+
 export interface DadosDocumentoSst {
   tipo: 1 | 2 | 3 | 4;
   codigo?: string | null;
@@ -5363,6 +5382,33 @@ export const api = {
       }),
     limparPorObra: (obraId: string) =>
       request<{ riscosRemovidos: number }>(`/api/riscos/obra/${obraId}`, { method: 'DELETE' }),
+  },
+  geracoesPgrEap: {
+    listar: (obraId?: string) => request<ResumoGeracaoPgrEap[]>(`/api/geracoes-pgr-eap${obraId ? `?obraId=${obraId}` : ''}`),
+    obter: (id: string) => request<GeracaoPgrEap>(`/api/geracoes-pgr-eap/${id}`),
+    criar: async (dados: { obraId: string; nome: string; dataElaboracao: string; dataProximaRevisao?: string | null }, arquivo: File) => {
+      const formData = new FormData();
+      formData.append('obraId', dados.obraId);
+      formData.append('nome', dados.nome);
+      formData.append('dataElaboracao', dados.dataElaboracao);
+      if (dados.dataProximaRevisao) formData.append('dataProximaRevisao', dados.dataProximaRevisao);
+      formData.append('arquivo', arquivo);
+      const response = await fetch(`${API_BASE_URL}/api/geracoes-pgr-eap`, { method: 'POST', headers: await montarHeadersAuth(), body: formData });
+      if (!response.ok) {
+        const corpo = await response.text().catch(() => '');
+        throw new Error(extrairMensagemErro(corpo, response.status, response.statusText));
+      }
+      return response.json() as Promise<{ id: string }>;
+    },
+    salvar: (id: string, passo: number, estrutura: EstruturaGeracaoPgr) =>
+      request<void>(`/api/geracoes-pgr-eap/${id}`, { method: 'PUT', body: JSON.stringify({ passo, estrutura }) }),
+    sugerirGhes: (id: string) => request<void>(`/api/geracoes-pgr-eap/${id}/sugerir-ghes`, { method: 'POST' }),
+    gerarRiscos: (id: string, gheNumero: number, codigoEap: string) =>
+      request<{ riscos: number }>(`/api/geracoes-pgr-eap/${id}/gerar-riscos`, { method: 'POST', body: JSON.stringify({ gheNumero, codigoEap }) }),
+    enviarAprovacao: (id: string) => request<void>(`/api/geracoes-pgr-eap/${id}/enviar-aprovacao`, { method: 'POST' }),
+    devolver: (id: string, motivo: string) =>
+      request<void>(`/api/geracoes-pgr-eap/${id}/devolver`, { method: 'POST', body: JSON.stringify({ motivo }) }),
+    aprovar: (id: string) => request<{ pgrId: string }>(`/api/geracoes-pgr-eap/${id}/aprovar`, { method: 'POST' }),
   },
   pgrs: {
     listar: (obraId?: string) => request<Pgr[]>(`/api/pgrs${obraId ? `?obraId=${obraId}` : ''}`),

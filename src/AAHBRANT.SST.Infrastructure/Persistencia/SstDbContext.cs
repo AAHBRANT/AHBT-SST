@@ -89,6 +89,7 @@ public class SstDbContext : DbContext, IAppDbContext
     public DbSet<MatrizRiscoCelula> MatrizRiscoCelulas => Set<MatrizRiscoCelula>();
 
     public DbSet<Pgr> Pgrs => Set<Pgr>();
+    public DbSet<GeracaoPgrEap> GeracoesPgrEap => Set<GeracaoPgrEap>();
     public DbSet<PlanoAcaoItem> PlanoAcaoItens => Set<PlanoAcaoItem>();
     public DbSet<PgrRevisao> PgrRevisoes => Set<PgrRevisao>();
 

@@ -264,6 +264,14 @@ public enum NivelRisco
 
 // Não há fluxo literal no documento para o "status" do controle de risco (§14) — proposta
 // própria (a diferir do fluxo literal de Não Conformidade, que será citado quando implementado).
+public enum StatusGeracaoPgrEap
+{
+    Rascunho = 1,
+    AguardandoAprovacao = 2,
+    Aprovado = 3,
+    Devolvido = 4
+}
+
 public enum StatusControleRisco
 {
     Pendente = 1,

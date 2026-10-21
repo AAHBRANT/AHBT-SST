@@ -1393,6 +1393,21 @@ public static class NovidadesSeeder
                     "Não havia como saber o que faltava para orientar o trabalhador por escrito.",
                     "Enquanto faltar algo (risco sem avaliação, sugestão da IA sem validação, procedimento não vinculado, treinamento vencido ou ASO sem aptidão), a OS fica como minuta e um pop-up explica cada pendência, por que ela bloqueia, quem resolve e onde corrigir."),
             }),
+        new(
+            Versao: "5.74.0",
+            Titulo: "Gerar o PGR pela EAP da obra",
+            DataPublicacao: new DateTime(2026, 10, 21, 0, 0, 0, DateTimeKind.Utc),
+            Itens: new[]
+            {
+                new NovidadeSeedItem(CategoriaNovidade.Novidade,
+                    "PGR montado a partir da EAP",
+                    "O PGR só entrava no sistema pelo PDF da consultoria.",
+                    "Em Gestão SST › PGR, clique em \"Gerar pela EAP\" e envie a EAP da obra (Excel, XML do MS Project ou PDF). A IA lê as etapas, agrupa as atividades em GHE com as funções do cadastro, escreve a descrição das atividades de cada função e monta o inventário de riscos com as medidas antes, durante e após o trabalho. Você confere e ajusta em 5 passos."),
+                new NovidadeSeedItem(CategoriaNovidade.Novidade,
+                    "Aprovação do Engenheiro de Segurança",
+                    "Não havia uma etapa formal de aprovação do PGR dentro do sistema.",
+                    "Tudo o que a IA gera fica como sugestão até o Engenheiro de Segurança aprovar ou devolver para ajustes. Na aprovação, o PGR passa a vigente, com os riscos avaliados e as medidas validadas, e começa a alimentar a Ordem de Serviço. O PGR pelo PDF da consultoria continua funcionando igual."),
+            }),
     };
 
     public static async Task ExecutarAsync(IServiceProvider services, CancellationToken ct = default)
