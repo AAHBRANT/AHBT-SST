@@ -1,5 +1,6 @@
 using AAHBRANT.SST.Application.Common;
 using AAHBRANT.SST.Application.Common.Interfaces;
+using AAHBRANT.SST.Application.PlanosIntegracao;
 using AAHBRANT.SST.Domain.Entidades;
 using AAHBRANT.SST.Domain.Enums;
 using FluentValidation;
@@ -36,8 +37,13 @@ public class CriarTrabalhadorCommandValidator : AbstractValidator<CriarTrabalhad
 public class CriarTrabalhadorCommandHandler : IRequestHandler<CriarTrabalhadorCommand, Guid>
 {
     private readonly IAppDbContext _db;
+    private readonly IPlanoIntegracaoService? _planoIntegracao;
 
-    public CriarTrabalhadorCommandHandler(IAppDbContext db) => _db = db;
+    public CriarTrabalhadorCommandHandler(IAppDbContext db, IPlanoIntegracaoService? planoIntegracao = null)
+    {
+        _db = db;
+        _planoIntegracao = planoIntegracao;
+    }
 
     public async Task<Guid> Handle(CriarTrabalhadorCommand request, CancellationToken ct)
     {
@@ -57,6 +63,10 @@ public class CriarTrabalhadorCommandHandler : IRequestHandler<CriarTrabalhadorCo
 
         _db.Trabalhadores.Add(trabalhador);
         await TratamentoCpfDuplicado.SalvarAsync(_db, ct);
+
+        // Cadastro manual é admissão na obra: separa o kit da função e abre o plano de integração.
+        if (_planoIntegracao is not null)
+            await _planoIntegracao.SincronizarAsync(trabalhador.Id, MotivoPlanoIntegracao.Admissao, ct);
         return trabalhador.Id;
     }
 }

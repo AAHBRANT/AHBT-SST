@@ -216,6 +216,45 @@ public class EstoqueEpiConfiguracao : IEntityTypeConfiguration<EstoqueEpi>
     }
 }
 
+public class ReservaEpiConfiguracao : IEntityTypeConfiguration<ReservaEpi>
+{
+    public void Configure(EntityTypeBuilder<ReservaEpi> builder)
+    {
+        builder.Property(r => r.Tamanho).HasMaxLength(20);
+        builder.Property(r => r.MotivoCancelamento).HasMaxLength(300);
+        builder.HasOne(r => r.Trabalhador).WithMany()
+            .HasForeignKey(r => r.TrabalhadorId).OnDelete(DeleteBehavior.Restrict);
+        builder.HasOne(r => r.CatalogoEpi).WithMany()
+            .HasForeignKey(r => r.CatalogoEpiId).OnDelete(DeleteBehavior.Restrict);
+        builder.HasOne(r => r.Obra).WithMany()
+            .HasForeignKey(r => r.ObraId).OnDelete(DeleteBehavior.Restrict);
+        builder.HasOne(r => r.EntregaEpi).WithMany()
+            .HasForeignKey(r => r.EntregaEpiId).OnDelete(DeleteBehavior.Restrict);
+        // Fila de separação: (obra, EPI, status) na ordem de criação.
+        builder.HasIndex(r => new { r.ObraId, r.CatalogoEpiId, r.Status, r.CreatedAtUtc });
+        builder.HasIndex(r => new { r.TrabalhadorId, r.Status });
+        builder.HasQueryFilter(r => r.Ativo);
+    }
+}
+
+public class PlanoIntegracaoConfiguracao : IEntityTypeConfiguration<PlanoIntegracao>
+{
+    public void Configure(EntityTypeBuilder<PlanoIntegracao> builder)
+    {
+        builder.HasOne(p => p.Trabalhador).WithMany()
+            .HasForeignKey(p => p.TrabalhadorId).OnDelete(DeleteBehavior.Restrict);
+        builder.HasOne(p => p.Obra).WithMany()
+            .HasForeignKey(p => p.ObraId).OnDelete(DeleteBehavior.Restrict);
+        builder.HasOne(p => p.Funcao).WithMany()
+            .HasForeignKey(p => p.FuncaoId).OnDelete(DeleteBehavior.Restrict);
+        builder.HasOne(p => p.ResponsavelUsuario).WithMany()
+            .HasForeignKey(p => p.ResponsavelUsuarioId).OnDelete(DeleteBehavior.Restrict);
+        builder.HasIndex(p => new { p.ObraId, p.Status });
+        builder.HasIndex(p => new { p.TrabalhadorId, p.Status });
+        // Filtro (Ativo + escopo por obra) registrado em SstDbContext, camada 3 do RBAC.
+    }
+}
+
 public class MovimentacaoEstoqueEpiConfiguracao : IEntityTypeConfiguration<MovimentacaoEstoqueEpi>
 {
     public void Configure(EntityTypeBuilder<MovimentacaoEstoqueEpi> builder)

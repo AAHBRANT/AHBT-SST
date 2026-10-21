@@ -674,6 +674,7 @@ export function ControleAcessoTab() {
                                 size="small"
                                 icon={aberto ? <ChevronDown20Regular /> : <ChevronRight20Regular />}
                                 onClick={() => alternarModuloAberto(modulo)}
+                                data-botao="livre"
                                 style={{ height: 'auto', whiteSpace: 'normal', textAlign: 'left' }}
                               >
                                 <Text weight="semibold">{modulo}</Text>

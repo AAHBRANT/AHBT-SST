@@ -201,6 +201,7 @@ export function SlotFoto({
             <Button
               className={mergeClasses(estilos.botaoOverlay, compacta && estilos.botaoOverlayCompacto)}
               appearance="transparent"
+              data-botao="livre"
               size="small"
               icon={modo === 'remover' ? <Dismiss16Regular /> : <Edit16Regular />}
               aria-label={modo === 'remover' ? `Remover ${rotulo}` : `Trocar ${rotulo}`}
@@ -242,6 +243,7 @@ export function SlotFoto({
             <Button
               className={estilos.botaoFecharAmpliada}
               appearance="transparent"
+              data-botao="livre"
               size="small"
               icon={<Dismiss24Regular />}
               aria-label="Fechar"

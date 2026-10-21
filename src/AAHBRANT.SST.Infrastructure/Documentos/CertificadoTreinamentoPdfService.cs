@@ -325,7 +325,7 @@ public class CertificadoTreinamentoPdfService : ICertificadoTreinamentoPdfServic
 
     private static byte[] RecortarFotoTurma(byte[] foto)
     {
-        using var imagem = SixLabors.ImageSharp.Image.Load(foto);
+        using var imagem = AAHBRANT.SST.Infrastructure.Imagens.ImagemSegura.Carregar(foto);
         imagem.Mutate(x => x.Resize(new ResizeOptions
         {
             Size = new SixLabors.ImageSharp.Size(440, 300),

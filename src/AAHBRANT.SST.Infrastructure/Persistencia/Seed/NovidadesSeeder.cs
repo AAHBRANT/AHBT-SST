@@ -1320,6 +1320,17 @@ public static class NovidadesSeeder
             }),
         new(
             Versao: "5.69.0",
+            Titulo: "DDS com próprios e terceirizados na mesma semana",
+            DataPublicacao: new DateTime(2026, 10, 20, 0, 0, 0, DateTimeKind.Utc),
+            Itens: new[]
+            {
+                new NovidadeSeedItem(CategoriaNovidade.Melhoria,
+                    "Nova opção \"Empregados Próprios e Terceirizados\" no DDS semanal",
+                    "Ao abrir a semana de DDS era preciso escolher entre empregados próprios ou terceirizados.",
+                    "Agora dá para escolher os dois ao mesmo tempo no campo Tipo. Basta informar a empresa terceirizada na abertura e o responsável dela no encerramento."),
+            }),
+        new(
+            Versao: "5.70.0",
             Titulo: "Avaliação dos riscos e medidas de prevenção por fase no PGR",
             DataPublicacao: new DateTime(2026, 10, 20, 0, 0, 0, DateTimeKind.Utc),
             Itens: new[]

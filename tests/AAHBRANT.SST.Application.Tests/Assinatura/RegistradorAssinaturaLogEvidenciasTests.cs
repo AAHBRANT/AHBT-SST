@@ -33,7 +33,7 @@ public class RegistradorAssinaturaLogEvidenciasTests
     {
         var db = DbContextFactory.Criar();
         var trabalhador = new Trabalhador { Nome = "Alan", Cpf = "11122233344", Funcao = new Funcao { Nome = "Ajudante" } };
-        var documento = new DocumentoAssinatura { EntidadeTipo = "EntregaEpi", EntidadeId = Guid.NewGuid() };
+        var documento = new DocumentoAssinatura { EntidadeTipo = "Dds", EntidadeId = Guid.NewGuid() };
         db.Trabalhadores.Add(trabalhador);
         db.DocumentosAssinatura.Add(documento);
         await db.SaveChangesAsync();

@@ -19,7 +19,7 @@ public class TrayApplicationContext : ApplicationContext
             Icon = System.Drawing.SystemIcons.Application,
             ContextMenuStrip = menu,
             Visible = true,
-            Text = "AAHBRANT — Agente Biometria",
+            Text = $"AAHBRANT — Agente Biometria {Atualizacao.VerificadorAtualizacao.VersaoAtual().ToString(3)}",
         };
     }
 

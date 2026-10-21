@@ -7105,6 +7105,72 @@ namespace AAHBRANT.SST.Infrastructure.Persistencia.Migrations
                     b.ToTable("PlanoAcaoItens");
                 });
 
+            modelBuilder.Entity("AAHBRANT.SST.Domain.Entidades.PlanoIntegracao", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTime?>("AssumidoEm")
+                        .HasColumnType("datetime2");
+
+                    b.Property<bool>("Ativo")
+                        .HasColumnType("bit");
+
+                    b.Property<DateTime>("CreatedAtUtc")
+                        .HasColumnType("datetime2");
+
+                    b.Property<Guid?>("CreatedBy")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTime?>("EncerradoEm")
+                        .HasColumnType("datetime2");
+
+                    b.Property<Guid>("FuncaoId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<int>("Motivo")
+                        .HasColumnType("int");
+
+                    b.Property<Guid>("ObraId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<int>("Origem")
+                        .HasColumnType("int");
+
+                    b.Property<Guid?>("ResponsavelUsuarioId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<byte[]>("RowVersion")
+                        .IsConcurrencyToken()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("rowversion");
+
+                    b.Property<int>("Status")
+                        .HasColumnType("int");
+
+                    b.Property<Guid>("TrabalhadorId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTime?>("UpdatedAtUtc")
+                        .HasColumnType("datetime2");
+
+                    b.Property<Guid?>("UpdatedBy")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("FuncaoId");
+
+                    b.HasIndex("ResponsavelUsuarioId");
+
+                    b.HasIndex("ObraId", "Status");
+
+                    b.HasIndex("TrabalhadorId", "Status");
+
+                    b.ToTable("PlanosIntegracao");
+                });
+
             modelBuilder.Entity("AAHBRANT.SST.Domain.Entidades.ProcessoEleitoralCipa", b =>
                 {
                     b.Property<Guid>("Id")
@@ -7535,6 +7601,77 @@ namespace AAHBRANT.SST.Infrastructure.Persistencia.Migrations
                     b.HasIndex("RequisitoLegalId");
 
                     b.ToTable("RequisitoLegalCriterios");
+                });
+
+            modelBuilder.Entity("AAHBRANT.SST.Domain.Entidades.ReservaEpi", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<bool>("Ativo")
+                        .HasColumnType("bit");
+
+                    b.Property<Guid>("CatalogoEpiId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTime>("CreatedAtUtc")
+                        .HasColumnType("datetime2");
+
+                    b.Property<Guid?>("CreatedBy")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTime?>("EncerradaEm")
+                        .HasColumnType("datetime2");
+
+                    b.Property<Guid?>("EntregaEpiId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("MotivoCancelamento")
+                        .HasMaxLength(300)
+                        .HasColumnType("nvarchar(300)");
+
+                    b.Property<Guid>("ObraId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<int>("Origem")
+                        .HasColumnType("int");
+
+                    b.Property<int>("Quantidade")
+                        .HasColumnType("int");
+
+                    b.Property<byte[]>("RowVersion")
+                        .IsConcurrencyToken()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("rowversion");
+
+                    b.Property<int>("Status")
+                        .HasColumnType("int");
+
+                    b.Property<string>("Tamanho")
+                        .HasMaxLength(20)
+                        .HasColumnType("nvarchar(20)");
+
+                    b.Property<Guid>("TrabalhadorId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTime?>("UpdatedAtUtc")
+                        .HasColumnType("datetime2");
+
+                    b.Property<Guid?>("UpdatedBy")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("CatalogoEpiId");
+
+                    b.HasIndex("EntregaEpiId");
+
+                    b.HasIndex("TrabalhadorId", "Status");
+
+                    b.HasIndex("ObraId", "CatalogoEpiId", "Status", "CreatedAtUtc");
+
+                    b.ToTable("ReservasEpi");
                 });
 
             modelBuilder.Entity("AAHBRANT.SST.Domain.Entidades.RespostaQuestionarioAplicabilidade", b =>
@@ -10619,6 +10756,40 @@ namespace AAHBRANT.SST.Infrastructure.Persistencia.Migrations
                     b.Navigation("Risco");
                 });
 
+            modelBuilder.Entity("AAHBRANT.SST.Domain.Entidades.PlanoIntegracao", b =>
+                {
+                    b.HasOne("AAHBRANT.SST.Domain.Entidades.Funcao", "Funcao")
+                        .WithMany()
+                        .HasForeignKey("FuncaoId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("AAHBRANT.SST.Domain.Entidades.Obra", "Obra")
+                        .WithMany()
+                        .HasForeignKey("ObraId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("AAHBRANT.SST.Domain.Entidades.Usuario", "ResponsavelUsuario")
+                        .WithMany()
+                        .HasForeignKey("ResponsavelUsuarioId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.HasOne("AAHBRANT.SST.Domain.Entidades.Trabalhador", "Trabalhador")
+                        .WithMany()
+                        .HasForeignKey("TrabalhadorId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("Funcao");
+
+                    b.Navigation("Obra");
+
+                    b.Navigation("ResponsavelUsuario");
+
+                    b.Navigation("Trabalhador");
+                });
+
             modelBuilder.Entity("AAHBRANT.SST.Domain.Entidades.ProcessoEleitoralCipa", b =>
                 {
                     b.HasOne("AAHBRANT.SST.Domain.Entidades.Obra", "Obra")
@@ -10692,6 +10863,40 @@ namespace AAHBRANT.SST.Infrastructure.Persistencia.Migrations
                     b.Navigation("Perigo");
 
                     b.Navigation("RequisitoLegal");
+                });
+
+            modelBuilder.Entity("AAHBRANT.SST.Domain.Entidades.ReservaEpi", b =>
+                {
+                    b.HasOne("AAHBRANT.SST.Domain.Entidades.CatalogoEpi", "CatalogoEpi")
+                        .WithMany()
+                        .HasForeignKey("CatalogoEpiId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("AAHBRANT.SST.Domain.Entidades.EntregaEpi", "EntregaEpi")
+                        .WithMany()
+                        .HasForeignKey("EntregaEpiId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.HasOne("AAHBRANT.SST.Domain.Entidades.Obra", "Obra")
+                        .WithMany()
+                        .HasForeignKey("ObraId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("AAHBRANT.SST.Domain.Entidades.Trabalhador", "Trabalhador")
+                        .WithMany()
+                        .HasForeignKey("TrabalhadorId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("CatalogoEpi");
+
+                    b.Navigation("EntregaEpi");
+
+                    b.Navigation("Obra");
+
+                    b.Navigation("Trabalhador");
                 });
 
             modelBuilder.Entity("AAHBRANT.SST.Domain.Entidades.RespostaQuestionarioAplicabilidade", b =>
