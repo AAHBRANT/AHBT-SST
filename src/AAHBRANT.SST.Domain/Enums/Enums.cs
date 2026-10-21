@@ -146,7 +146,10 @@ public enum TipoAlerta
     // Plano de integração do funcionário (admissão, troca de função, transferência), 21/10/2026.
     IntegracaoFuncionarioNovo = 33,
     // Disponível do EPI na obra abaixo do estoque mínimo definido (especificação 21/10/2026, Módulo 2).
-    EstoqueEpiAbaixoMinimo = 34
+    EstoqueEpiAbaixoMinimo = 34,
+    // Documento exigido da empresa terceirizada (PGR, PCMSO...) perto de vencer ou vencido (21/10/2026).
+    DocumentoTerceirizadoVencendo = 35,
+    DocumentoTerceirizadoVencido = 36
 }
 
 public enum SeveridadeAlerta
@@ -181,7 +184,9 @@ public enum TipoModuloAlerta
     // Cadastros faciais com falhas repetidas: o técnico refaz a foto (CadastroFacialAlertaProvider), 12/10/2026.
     CadastroFacial = 14,
     // Validade do PCMSO (PcmsoAlertaProvider), 16/10/2026.
-    Pcmso = 15
+    Pcmso = 15,
+    // Documentos da empresa terceirizada (DocumentoEmpresaTerceirizadaAlertaProvider), 21/10/2026.
+    DocumentoTerceirizado = 16
 }
 
 public enum StatusAlerta

@@ -1120,6 +1120,50 @@ namespace AAHBRANT.SST.Infrastructure.Persistencia.Migrations
                     b.ToTable("ArquivosContrato", (string)null);
                 });
 
+            modelBuilder.Entity("AAHBRANT.SST.Domain.Entidades.ArquivoDocumentoEmpresaTerceirizada", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<bool>("Ativo")
+                        .HasColumnType("bit");
+
+                    b.Property<byte[]>("Conteudo")
+                        .IsRequired()
+                        .HasColumnType("varbinary(max)");
+
+                    b.Property<DateTime>("CreatedAtUtc")
+                        .HasColumnType("datetime2");
+
+                    b.Property<Guid?>("CreatedBy")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<Guid>("DocumentoEmpresaTerceirizadaId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<int>("Origem")
+                        .HasColumnType("int");
+
+                    b.Property<byte[]>("RowVersion")
+                        .IsConcurrencyToken()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("rowversion");
+
+                    b.Property<DateTime?>("UpdatedAtUtc")
+                        .HasColumnType("datetime2");
+
+                    b.Property<Guid?>("UpdatedBy")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("DocumentoEmpresaTerceirizadaId")
+                        .IsUnique();
+
+                    b.ToTable("ArquivosDocumentoEmpresaTerceirizada", (string)null);
+                });
+
             modelBuilder.Entity("AAHBRANT.SST.Domain.Entidades.Aso", b =>
                 {
                     b.Property<Guid>("Id")
@@ -3006,6 +3050,116 @@ namespace AAHBRANT.SST.Infrastructure.Persistencia.Migrations
                     b.HasIndex("EntidadeTipo", "EntidadeId");
 
                     b.ToTable("DocumentosAssinatura");
+                });
+
+            modelBuilder.Entity("AAHBRANT.SST.Domain.Entidades.DocumentoEmpresaTerceirizada", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<bool>("Ativo")
+                        .HasColumnType("bit");
+
+                    b.Property<string>("ContentType")
+                        .IsRequired()
+                        .HasMaxLength(150)
+                        .HasColumnType("nvarchar(150)");
+
+                    b.Property<DateTime>("CreatedAtUtc")
+                        .HasColumnType("datetime2");
+
+                    b.Property<Guid?>("CreatedBy")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateOnly?>("DataValidade")
+                        .HasColumnType("date");
+
+                    b.Property<Guid>("DocumentoExigidoEmpresaId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<Guid>("EmpresaId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("NomeArquivo")
+                        .IsRequired()
+                        .HasMaxLength(260)
+                        .HasColumnType("nvarchar(260)");
+
+                    b.Property<int>("Origem")
+                        .HasColumnType("int");
+
+                    b.Property<byte[]>("RowVersion")
+                        .IsConcurrencyToken()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("rowversion");
+
+                    b.Property<long>("TamanhoBytes")
+                        .HasColumnType("bigint");
+
+                    b.Property<DateTime?>("UpdatedAtUtc")
+                        .HasColumnType("datetime2");
+
+                    b.Property<Guid?>("UpdatedBy")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("DocumentoExigidoEmpresaId");
+
+                    b.HasIndex("EmpresaId", "DocumentoExigidoEmpresaId")
+                        .IsUnique();
+
+                    b.ToTable("DocumentosEmpresaTerceirizada", (string)null);
+                });
+
+            modelBuilder.Entity("AAHBRANT.SST.Domain.Entidades.DocumentoExigidoEmpresa", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<bool>("Ativo")
+                        .HasColumnType("bit");
+
+                    b.Property<DateTime>("CreatedAtUtc")
+                        .HasColumnType("datetime2");
+
+                    b.Property<Guid?>("CreatedBy")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("Descricao")
+                        .HasMaxLength(500)
+                        .HasColumnType("nvarchar(500)");
+
+                    b.Property<bool>("ExigeValidade")
+                        .HasColumnType("bit");
+
+                    b.Property<string>("Nome")
+                        .IsRequired()
+                        .HasMaxLength(120)
+                        .HasColumnType("nvarchar(120)");
+
+                    b.Property<int>("Ordem")
+                        .HasColumnType("int");
+
+                    b.Property<int>("Origem")
+                        .HasColumnType("int");
+
+                    b.Property<byte[]>("RowVersion")
+                        .IsConcurrencyToken()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("rowversion");
+
+                    b.Property<DateTime?>("UpdatedAtUtc")
+                        .HasColumnType("datetime2");
+
+                    b.Property<Guid?>("UpdatedBy")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.HasKey("Id");
+
+                    b.ToTable("DocumentosExigidosEmpresa", (string)null);
                 });
 
             modelBuilder.Entity("AAHBRANT.SST.Domain.Entidades.DocumentoSignatario", b =>
@@ -9608,6 +9762,17 @@ namespace AAHBRANT.SST.Infrastructure.Persistencia.Migrations
                     b.Navigation("Contrato");
                 });
 
+            modelBuilder.Entity("AAHBRANT.SST.Domain.Entidades.ArquivoDocumentoEmpresaTerceirizada", b =>
+                {
+                    b.HasOne("AAHBRANT.SST.Domain.Entidades.DocumentoEmpresaTerceirizada", "Documento")
+                        .WithOne("Arquivo")
+                        .HasForeignKey("AAHBRANT.SST.Domain.Entidades.ArquivoDocumentoEmpresaTerceirizada", "DocumentoEmpresaTerceirizadaId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Documento");
+                });
+
             modelBuilder.Entity("AAHBRANT.SST.Domain.Entidades.Aso", b =>
                 {
                     b.HasOne("AAHBRANT.SST.Domain.Entidades.Trabalhador", "Trabalhador")
@@ -9991,6 +10156,25 @@ namespace AAHBRANT.SST.Infrastructure.Persistencia.Migrations
                         .IsRequired();
 
                     b.Navigation("Obra");
+                });
+
+            modelBuilder.Entity("AAHBRANT.SST.Domain.Entidades.DocumentoEmpresaTerceirizada", b =>
+                {
+                    b.HasOne("AAHBRANT.SST.Domain.Entidades.DocumentoExigidoEmpresa", "DocumentoExigido")
+                        .WithMany()
+                        .HasForeignKey("DocumentoExigidoEmpresaId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("AAHBRANT.SST.Domain.Entidades.Empresa", "Empresa")
+                        .WithMany("Documentos")
+                        .HasForeignKey("EmpresaId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("DocumentoExigido");
+
+                    b.Navigation("Empresa");
                 });
 
             modelBuilder.Entity("AAHBRANT.SST.Domain.Entidades.DocumentoSignatario", b =>
@@ -11608,9 +11792,16 @@ namespace AAHBRANT.SST.Infrastructure.Persistencia.Migrations
                     b.Navigation("Signatarios");
                 });
 
+            modelBuilder.Entity("AAHBRANT.SST.Domain.Entidades.DocumentoEmpresaTerceirizada", b =>
+                {
+                    b.Navigation("Arquivo");
+                });
+
             modelBuilder.Entity("AAHBRANT.SST.Domain.Entidades.Empresa", b =>
                 {
                     b.Navigation("Contratos");
+
+                    b.Navigation("Documentos");
                 });
 
             modelBuilder.Entity("AAHBRANT.SST.Domain.Entidades.EntregaEpi", b =>

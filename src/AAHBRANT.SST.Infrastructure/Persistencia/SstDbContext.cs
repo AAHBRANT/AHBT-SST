@@ -54,6 +54,9 @@ public class SstDbContext : DbContext, IAppDbContext
     public DbSet<PlanoIntegracao> PlanosIntegracao => Set<PlanoIntegracao>();
     public DbSet<SolicitacaoReposicaoEpi> SolicitacoesReposicaoEpi => Set<SolicitacaoReposicaoEpi>();
     public DbSet<ArquivoContrato> ArquivosContrato => Set<ArquivoContrato>();
+    public DbSet<DocumentoExigidoEmpresa> DocumentosExigidosEmpresa => Set<DocumentoExigidoEmpresa>();
+    public DbSet<DocumentoEmpresaTerceirizada> DocumentosEmpresaTerceirizada => Set<DocumentoEmpresaTerceirizada>();
+    public DbSet<ArquivoDocumentoEmpresaTerceirizada> ArquivosDocumentoEmpresaTerceirizada => Set<ArquivoDocumentoEmpresaTerceirizada>();
     public DbSet<CatalogoEpc> CatalogoEpcs => Set<CatalogoEpc>();
     public DbSet<InstalacaoEpc> InstalacoesEpc => Set<InstalacaoEpc>();
     public DbSet<EstoqueEpc> EstoquesEpc => Set<EstoqueEpc>();

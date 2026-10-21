@@ -336,6 +336,63 @@ export interface Empresa {
   status: 'Ativa' | 'Inativa';
 }
 export type NovaEmpresa = Omit<Empresa, 'id' | 'status'>;
+
+// Checklist e percentual de adequação da empresa terceirizada (21/10/2026). Situação do item: ok,
+// vence (atende, mas vence em até 30 dias), vencido ou pendente. Faixa: apta (100%), quase (80–99%),
+// parcial (< 80%) ou sem-itens.
+export type NivelConformidade = 'empresa' | 'funcoes' | 'pessoas';
+export type SituacaoItemConformidade = 'ok' | 'vence' | 'vencido' | 'pendente';
+export type FaixaConformidade = 'apta' | 'quase' | 'parcial' | 'sem-itens';
+
+export interface ItemConformidade {
+  nivel: NivelConformidade;
+  titulo: string;
+  atendido: boolean;
+  situacao: SituacaoItemConformidade;
+  detalhe: string | null;
+  documentoExigidoId: string | null;
+  documentoId: string | null;
+  dataValidade: string | null;
+  arquivoNome: string | null;
+  funcaoId: string | null;
+  trabalhadorId: string | null;
+  exigeValidade: boolean;
+}
+
+export interface NivelConformidadeResumo {
+  chave: NivelConformidade;
+  titulo: string;
+  atendidos: number;
+  exigidos: number;
+  percentual: number | null;
+}
+
+export interface ResumoConformidadeEmpresa {
+  empresaId: string;
+  razaoSocial: string;
+  cnpj: string;
+  empresaAtiva: boolean;
+  atendidos: number;
+  exigidos: number;
+  percentual: number | null;
+  faixa: FaixaConformidade;
+  niveis: NivelConformidadeResumo[];
+}
+
+export interface ConformidadeEmpresa extends ResumoConformidadeEmpresa {
+  itens: ItemConformidade[];
+}
+
+export interface DocumentoExigidoEmpresa {
+  id: string;
+  nome: string;
+  descricao: string | null;
+  exigeValidade: boolean;
+  ativo: boolean;
+  ordem: number;
+}
+
+export type DadosDocumentoExigidoEmpresa = Pick<DocumentoExigidoEmpresa, 'nome' | 'descricao' | 'exigeValidade' | 'ativo'>;
 export type AtualizarEmpresa = Pick<Empresa, 'id' | 'razaoSocial' | 'nomeFantasia' | 'cnpj' | 'tipoServicoPrestado' | 'contatoNome' | 'contatoTelefone' | 'contatoEmail'> & {
   status: 1 | 2; // StatusEmpresa: Ativa=1, Inativa=2 (backend não tem JsonStringEnumConverter)
 };
@@ -3617,6 +3674,8 @@ export const tipoAlertaLabel: Record<number, string> = {
   30: 'Cadastro facial para refazer',
   33: 'Funcionário novo',
   34: 'EPI abaixo do mínimo',
+  35: 'Documento de terceirizado vencendo',
+  36: 'Documento de terceirizado vencido',
 };
 
 export const SeveridadeAlerta = {
@@ -3803,6 +3862,8 @@ export const TipoModuloAlerta = {
   CadastroFacial: 14,
   // Validade do PCMSO (PcmsoAlertaProvider).
   Pcmso: 15,
+  // Documentos da empresa terceirizada (DocumentoEmpresaTerceirizadaAlertaProvider).
+  DocumentoTerceirizado: 16,
 } as const;
 
 export const moduloAlertaLabel: Record<number, string> = {
@@ -3821,6 +3882,7 @@ export const moduloAlertaLabel: Record<number, string> = {
   13: 'Exames da função (PCMSO)',
   14: 'Cadastro facial',
   15: 'PCMSO',
+  16: 'Documentos de terceirizados',
 };
 
 export interface RegraAlerta {
@@ -6455,6 +6517,27 @@ export const api = {
       atualizar: (empresa: AtualizarEmpresa) =>
         request<void>(`/api/empresas/${empresa.id}`, { method: 'PUT', body: JSON.stringify(empresa) }),
       excluir: (id: string) => request<void>(`/api/empresas/${id}`, { method: 'DELETE' }),
+      listarConformidade: () => request<ResumoConformidadeEmpresa[]>('/api/empresas/conformidade'),
+      obterConformidade: (id: string) => request<ConformidadeEmpresa>(`/api/empresas/${id}/conformidade`),
+      // Envia (ou substitui) o documento da empresa para um item exigido; validade em yyyy-MM-dd.
+      enviarDocumento: (empresaId: string, documentoExigidoId: string, dataValidade: string | null, arquivo: File) => {
+        const formData = new FormData();
+        formData.append('DocumentoExigidoId', documentoExigidoId);
+        if (dataValidade) formData.append('DataValidade', dataValidade);
+        formData.append('Arquivo', arquivo);
+        return enviarFormulario<{ id: string }>(`/api/empresas/${empresaId}/documentos`, formData);
+      },
+      baixarDocumento: (empresaId: string, documentoId: string) =>
+        baixarBlobOuNulo(`/api/empresas/${empresaId}/documentos/${documentoId}/arquivo`),
+      removerDocumento: (empresaId: string, documentoId: string) =>
+        request<void>(`/api/empresas/${empresaId}/documentos/${documentoId}`, { method: 'DELETE' }),
+    },
+    documentosExigidos: {
+      listar: () => request<DocumentoExigidoEmpresa[]>('/api/empresas/documentos-exigidos'),
+      criar: (dados: DadosDocumentoExigidoEmpresa) =>
+        request<{ id: string }>('/api/empresas/documentos-exigidos', { method: 'POST', body: JSON.stringify(dados) }),
+      atualizar: (id: string, dados: DadosDocumentoExigidoEmpresa) =>
+        request<void>(`/api/empresas/documentos-exigidos/${id}`, { method: 'PUT', body: JSON.stringify(dados) }),
     },
     contratos: {
       listarPorEmpresa: (empresaId: string) => request<Contrato[]>(`/api/contratos?empresaId=${empresaId}`),
