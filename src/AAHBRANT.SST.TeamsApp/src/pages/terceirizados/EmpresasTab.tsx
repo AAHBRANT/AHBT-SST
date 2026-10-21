@@ -17,9 +17,10 @@ import {
   useConfirmar,
   type Coluna,
 } from '@ui';
-import { Add24Regular, Delete24Regular, Eye24Regular } from '@fluentui/react-icons';
+import { Add24Regular, Delete24Regular, DocumentPdf24Regular, Eye24Regular } from '@fluentui/react-icons';
 import { api, type Empresa, type NovaEmpresa } from '../../lib/api';
 import { useSucessoToast } from '../../hooks/useSucessoToast';
+import { CadastroPorContratoPdf } from './CadastroPorContratoPdf';
 
 const empresaVazia: NovaEmpresa = {
   razaoSocial: '', nomeFantasia: '', cnpj: '', tipoServicoPrestado: '',
@@ -37,6 +38,7 @@ export function EmpresasTab() {
   const [carregando, setCarregando] = useState(false);
   const [carregandoLista, setCarregandoLista] = useState(true);
   const [painelAberto, setPainelAberto] = useState(false);
+  const [painelPdfAberto, setPainelPdfAberto] = useState(false);
   const { confirmar, dialogElement } = useConfirmar();
   const sucessoToast = useSucessoToast();
 
@@ -100,15 +102,32 @@ export function EmpresasTab() {
       <PageHeader
         titulo="Empresas terceirizadas"
         acoes={
-          <Button
-            appearance="primary"
-            icon={<Add24Regular />}
-            onClick={() => (painelAberto ? fecharPainel() : setPainelAberto(true))}
-            aria-expanded={painelAberto}
-            aria-controls="painel-nova-empresa"
-          >
-            {painelAberto ? 'Fechar' : 'Cadastrar empresa'}
-          </Button>
+          <>
+            <Button
+              icon={<DocumentPdf24Regular />}
+              onClick={() => {
+                fecharPainel();
+                setPainelPdfAberto(!painelPdfAberto);
+              }}
+              aria-expanded={painelPdfAberto}
+              aria-controls="painel-cadastro-contrato-pdf"
+            >
+              {painelPdfAberto ? 'Fechar' : 'Cadastrar pelo contrato (PDF)'}
+            </Button>
+            <Button
+              appearance="primary"
+              icon={<Add24Regular />}
+              onClick={() => {
+                setPainelPdfAberto(false);
+                if (painelAberto) fecharPainel();
+                else setPainelAberto(true);
+              }}
+              aria-expanded={painelAberto}
+              aria-controls="painel-nova-empresa"
+            >
+              {painelAberto ? 'Fechar' : 'Cadastrar empresa'}
+            </Button>
+          </>
         }
       />
       {erro && (
@@ -116,6 +135,13 @@ export function EmpresasTab() {
           {erro}
         </FeedbackInline>
       )}
+      <div id="painel-cadastro-contrato-pdf">
+        <PainelCriacaoInline aberto={painelPdfAberto} titulo="Cadastro pelo contrato">
+          {painelPdfAberto && (
+            <CadastroPorContratoPdf aoCancelar={() => setPainelPdfAberto(false)} aoConcluir={() => void carregar()} />
+          )}
+        </PainelCriacaoInline>
+      </div>
       <div id="painel-nova-empresa">
         <PainelCriacaoInline aberto={painelAberto} titulo="Nova empresa terceirizada">
           <FormSection titulo="Dados da empresa" numero={1} primeira>
