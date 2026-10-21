@@ -1,10 +1,8 @@
 import { useEffect } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
-import { BotaoVoltar, Button, DashboardTopo, PageHeader, useAbaNaUrl } from '@ui';
+import { BotaoVoltar, Button, PageHeader, useAbaNaUrl } from '@ui';
 import { Settings24Regular } from '@fluentui/react-icons';
-import { PessoasDashboardTab } from './dashboard/PessoasDashboardTab';
 import { TrabalhadoresTab } from './TrabalhadoresTab';
-import { CadastrosFaciaisFracosCard } from '../../components/pessoas/CadastrosFaciaisFracosCard';
 import { FuncoesTab } from './FuncoesTab';
 
 // Setores e Equipes removidos da navegação por pedido do usuário (30/08) — não são necessários por
@@ -49,25 +47,21 @@ export function PessoasPage({ mostrarTitulo = true }: { mostrarTitulo?: boolean 
     </Button>
   );
 
+  // Lista de funcionários (21/10): um só cabeçalho, o da própria lista — o botão Funções vai junto com
+  // "Novo funcionário". Dashboard e cadastros faciais viraram "Ver análise" e um aviso compacto
+  // dentro de TrabalhadoresTab, abaixo da busca.
+  if (!emFuncoes) {
+    return <TrabalhadoresTab mostrarTitulo={mostrarTitulo} acoesCabecalho={botaoFuncoes} />;
+  }
+
   return (
     <div>
       {mostrarTitulo ? (
-        <PageHeader titulo={emFuncoes ? 'Pessoas · Funções' : 'Pessoas'} acoes={botaoFuncoes} />
+        <PageHeader titulo="Pessoas · Funções" acoes={botaoFuncoes} />
       ) : (
         <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 12 }}>{botaoFuncoes}</div>
       )}
-
-      {emFuncoes ? (
-        <FuncoesTab />
-      ) : (
-        <>
-          <DashboardTopo>
-            <PessoasDashboardTab />
-          </DashboardTopo>
-          <CadastrosFaciaisFracosCard />
-          <TrabalhadoresTab />
-        </>
-      )}
+      <FuncoesTab />
     </div>
   );
 }
