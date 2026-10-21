@@ -19,7 +19,7 @@ public class ObterContratoDetalheQueryHandler : IRequestHandler<ObterContratoDet
             {
                 c.Id, c.EmpresaId, EmpresaRazaoSocial = c.Empresa!.RazaoSocial,
                 c.ObraId, ObraNome = c.Obra!.Nome, c.NumeroContrato,
-                c.DataInicioVigencia, c.DataFimVigencia, c.Status,
+                c.DataInicioVigencia, c.DataFimVigencia, c.Status, OrigemGJuri = c.GJuriContratoId != null,
             })
             .FirstOrDefaultAsync(ct);
         if (contrato is null) return null;
@@ -33,6 +33,6 @@ public class ObterContratoDetalheQueryHandler : IRequestHandler<ObterContratoDet
         return new ContratoDetalheDto(
             contrato.Id, contrato.EmpresaId, contrato.EmpresaRazaoSocial, contrato.ObraId, contrato.ObraNome,
             contrato.NumeroContrato, contrato.DataInicioVigencia, contrato.DataFimVigencia,
-            contrato.Status.ToString(), vagas);
+            contrato.Status.ToString(), vagas, contrato.OrigemGJuri);
     }
 }

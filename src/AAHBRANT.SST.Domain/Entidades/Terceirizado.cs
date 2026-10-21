@@ -23,8 +23,10 @@ public class Empresa : AuditableEntity
 }
 
 // Um contrato cobre sempre uma única Obra (decisão do brainstorming, simplifica porque
-// EstoqueEpi/MatrizEpiFuncao já resolvem por Obra). Nasce só via webhook do G-Juri
-// (ContratoValidadoWebhookCommand, Task 10) — não existe tela de criação manual de Contrato.
+// EstoqueEpi/MatrizEpiFuncao já resolvem por Obra). Nasce pelo webhook do G-Juri
+// (ContratoValidadoWebhookCommand) OU cadastrado à mão pelo técnico de segurança
+// (CriarContratoCommand, 18/10/2026 — a integração do G-Juri ainda não existe e, sem contrato, não
+// havia como cadastrar pessoa terceirizada).
 public class Contrato : AuditableEntity
 {
     public Guid EmpresaId { get; set; }
@@ -40,8 +42,10 @@ public class Contrato : AuditableEntity
     public DateOnly? DataEncerramento { get; set; }
 
     // Chave de idempotência do webhook (Task 10/11) — único; um evento repetido do G-Juri nunca
-    // duplica o Contrato.
-    public string GJuriContratoId { get; set; } = string.Empty;
+    // duplica o Contrato. Nulo no contrato cadastrado à mão no SST.
+    public string? GJuriContratoId { get; set; }
+
+    public bool VeioDoGJuri => GJuriContratoId is not null;
 
     public ICollection<ContratoVagaFuncao> Vagas { get; set; } = new List<ContratoVagaFuncao>();
     public ICollection<Trabalhador> Trabalhadores { get; set; } = new List<Trabalhador>();
