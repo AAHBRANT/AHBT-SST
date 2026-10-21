@@ -1408,6 +1408,17 @@ public static class NovidadesSeeder
                     "Não havia uma etapa formal de aprovação do PGR dentro do sistema.",
                     "Tudo o que a IA gera fica como sugestão até o Engenheiro de Segurança aprovar ou devolver para ajustes. Na aprovação, o PGR passa a vigente, com os riscos avaliados e as medidas validadas, e começa a alimentar a Ordem de Serviço. O PGR pelo PDF da consultoria continua funcionando igual."),
             }),
+        new(
+            Versao: "5.75.0",
+            Titulo: "Logo da AAHBRANT no topo do sistema",
+            DataPublicacao: new DateTime(2026, 10, 21, 0, 0, 0, DateTimeKind.Utc),
+            Itens: new[]
+            {
+                new NovidadeSeedItem(CategoriaNovidade.Melhoria,
+                    "Cabeçalho com a marca AAHBRANT",
+                    "O topo mostrava só o ícone do colete e o nome \"SST\", sem a logo da empresa.",
+                    "Agora o canto esquerdo mostra a logo oficial da AAHBRANT e o nome G-SST, no mesmo padrão do G-QUALI. Clique na marca para voltar ao Início."),
+            }),
     };
 
     public static async Task ExecutarAsync(IServiceProvider services, CancellationToken ct = default)
