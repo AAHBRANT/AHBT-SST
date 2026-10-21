@@ -1364,7 +1364,7 @@ public static class NovidadesSeeder
                     "Riscos lançados à mão ganham o botão \"Confirmar avaliação\", que registra quem confirmou e quando. Riscos vindos da leitura do PGR já entram como avaliados. Se a probabilidade, a severidade ou a consequência mudarem, a confirmação é apagada."),
             }),
         new(
-            Versao: "5.71.0",
+            Versao: "5.72.0",
             Titulo: "Procedimentos, políticas e detalhes da atividade para a Ordem de Serviço",
             DataPublicacao: new DateTime(2026, 10, 20, 0, 0, 0, DateTimeKind.Utc),
             Itens: new[]
@@ -1379,7 +1379,7 @@ public static class NovidadesSeeder
                     "Em PGR › Inventário de riscos, clique em \"Detalhes para a OS\" na atividade. As condições já vêm do GHE do PGR e os treinamentos da Matriz de Treinamento. Você vincula EPCs e procedimentos vigentes e registra quando interromper o trabalho, o que não fazer sem autorização e as liberações exigidas. A IA pode sugerir esses itens, que aparecem em amarelo até a SST aceitar, editar ou descartar."),
             }),
         new(
-            Versao: "5.72.0",
+            Versao: "5.73.0",
             Titulo: "Ordem de Serviço no perfil do trabalhador",
             DataPublicacao: new DateTime(2026, 10, 20, 0, 0, 0, DateTimeKind.Utc),
             Itens: new[]
