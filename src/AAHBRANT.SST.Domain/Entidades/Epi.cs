@@ -87,6 +87,13 @@ public class EstoqueEpi : AuditableEntity
     public Obra? Obra { get; set; }
     public int Saldo { get; set; }
 
+    // Estoque mínimo inteligente (especificação 21/10/2026, Módulo 2): definido pelo técnico na aba
+    // Estoque, com a sugestão do sistema ao lado. Nulo = ainda não definido (sem alerta de mínimo).
+    public int? EstoqueMinimo { get; set; }
+    public DateTime? EstoqueMinimoDefinidoEm { get; set; }
+    public Guid? EstoqueMinimoDefinidoPorUsuarioId { get; set; }
+    public Usuario? EstoqueMinimoDefinidoPorUsuario { get; set; }
+
     public ICollection<MovimentacaoEstoqueEpi> Movimentacoes { get; set; } = new List<MovimentacaoEstoqueEpi>();
 }
 

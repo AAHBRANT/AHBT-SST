@@ -52,6 +52,7 @@ public class SstDbContext : DbContext, IAppDbContext
     public DbSet<MovimentacaoEstoqueEpi> MovimentacoesEstoqueEpi => Set<MovimentacaoEstoqueEpi>();
     public DbSet<ReservaEpi> ReservasEpi => Set<ReservaEpi>();
     public DbSet<PlanoIntegracao> PlanosIntegracao => Set<PlanoIntegracao>();
+    public DbSet<SolicitacaoReposicaoEpi> SolicitacoesReposicaoEpi => Set<SolicitacaoReposicaoEpi>();
     public DbSet<CatalogoEpc> CatalogoEpcs => Set<CatalogoEpc>();
     public DbSet<InstalacaoEpc> InstalacoesEpc => Set<InstalacaoEpc>();
     public DbSet<EstoqueEpc> EstoquesEpc => Set<EstoqueEpc>();
@@ -275,6 +276,8 @@ public class SstDbContext : DbContext, IAppDbContext
             e.Ativo && (_usuarioAtual.TemAcessoGlobal || _usuarioAtual.ObrasPermitidas.Contains(e.ObraId)));
         modelBuilder.Entity<Alojamento>().HasQueryFilter(a =>
             a.Ativo && (_usuarioAtual.TemAcessoGlobal || _usuarioAtual.ObrasPermitidas.Contains(a.ObraId)));
+        modelBuilder.Entity<SolicitacaoReposicaoEpi>().HasQueryFilter(s =>
+            s.Ativo && (_usuarioAtual.TemAcessoGlobal || _usuarioAtual.ObrasPermitidas.Contains(s.ObraId)));
         modelBuilder.Entity<PlanoIntegracao>().HasQueryFilter(p =>
             p.Ativo && (_usuarioAtual.TemAcessoGlobal || _usuarioAtual.ObrasPermitidas.Contains(p.ObraId)));
         modelBuilder.Entity<Veiculo>().HasQueryFilter(v =>

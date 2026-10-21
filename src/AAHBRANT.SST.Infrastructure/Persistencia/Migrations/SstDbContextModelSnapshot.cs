@@ -3391,6 +3391,15 @@ namespace AAHBRANT.SST.Infrastructure.Persistencia.Migrations
                     b.Property<Guid?>("CreatedBy")
                         .HasColumnType("uniqueidentifier");
 
+                    b.Property<int?>("EstoqueMinimo")
+                        .HasColumnType("int");
+
+                    b.Property<DateTime?>("EstoqueMinimoDefinidoEm")
+                        .HasColumnType("datetime2");
+
+                    b.Property<Guid?>("EstoqueMinimoDefinidoPorUsuarioId")
+                        .HasColumnType("uniqueidentifier");
+
                     b.Property<Guid>("ObraId")
                         .HasColumnType("uniqueidentifier");
 
@@ -3412,6 +3421,8 @@ namespace AAHBRANT.SST.Infrastructure.Persistencia.Migrations
                         .HasColumnType("uniqueidentifier");
 
                     b.HasKey("Id");
+
+                    b.HasIndex("EstoqueMinimoDefinidoPorUsuarioId");
 
                     b.HasIndex("ObraId");
 
@@ -5932,6 +5943,11 @@ namespace AAHBRANT.SST.Infrastructure.Persistencia.Migrations
                     b.Property<int>("Origem")
                         .HasColumnType("int");
 
+                    b.Property<int>("PrazoReposicaoEpiDias")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int")
+                        .HasDefaultValue(15);
+
                     b.Property<byte[]>("RowVersion")
                         .IsConcurrencyToken()
                         .ValueGeneratedOnAddOrUpdate()
@@ -8105,6 +8121,134 @@ namespace AAHBRANT.SST.Infrastructure.Persistencia.Migrations
                     b.ToTable("Setores");
                 });
 
+            modelBuilder.Entity("AAHBRANT.SST.Domain.Entidades.SolicitacaoReposicaoEpi", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<bool>("Ativo")
+                        .HasColumnType("bit");
+
+                    b.Property<DateTime>("CreatedAtUtc")
+                        .HasColumnType("datetime2");
+
+                    b.Property<Guid?>("CreatedBy")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("NumeroDocumento")
+                        .IsRequired()
+                        .HasMaxLength(40)
+                        .HasColumnType("nvarchar(40)");
+
+                    b.Property<Guid>("ObraId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("Observacao")
+                        .HasMaxLength(500)
+                        .HasColumnType("nvarchar(500)");
+
+                    b.Property<int>("Origem")
+                        .HasColumnType("int");
+
+                    b.Property<int>("PrazoReposicaoDias")
+                        .HasColumnType("int");
+
+                    b.Property<byte[]>("RowVersion")
+                        .IsConcurrencyToken()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("rowversion");
+
+                    b.Property<string>("SolicitanteNome")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)");
+
+                    b.Property<Guid?>("SolicitanteUsuarioId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTime?>("UpdatedAtUtc")
+                        .HasColumnType("datetime2");
+
+                    b.Property<Guid?>("UpdatedBy")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("SolicitanteUsuarioId");
+
+                    b.HasIndex("ObraId", "CreatedAtUtc");
+
+                    b.ToTable("SolicitacoesReposicaoEpi");
+                });
+
+            modelBuilder.Entity("AAHBRANT.SST.Domain.Entidades.SolicitacaoReposicaoEpiItem", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<bool>("Ativo")
+                        .HasColumnType("bit");
+
+                    b.Property<Guid>("CatalogoEpiId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("CertificadoAprovacaoNumero")
+                        .HasMaxLength(50)
+                        .HasColumnType("nvarchar(50)");
+
+                    b.Property<DateTime>("CreatedAtUtc")
+                        .HasColumnType("datetime2");
+
+                    b.Property<Guid?>("CreatedBy")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("EpiNome")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)");
+
+                    b.Property<int>("EstoqueMinimo")
+                        .HasColumnType("int");
+
+                    b.Property<int>("Origem")
+                        .HasColumnType("int");
+
+                    b.Property<int>("QuantidadeSugerida")
+                        .HasColumnType("int");
+
+                    b.Property<int>("Reservado")
+                        .HasColumnType("int");
+
+                    b.Property<byte[]>("RowVersion")
+                        .IsConcurrencyToken()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("rowversion");
+
+                    b.Property<int>("Saldo")
+                        .HasColumnType("int");
+
+                    b.Property<Guid>("SolicitacaoReposicaoEpiId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("TamanhosEmFalta")
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)");
+
+                    b.Property<DateTime?>("UpdatedAtUtc")
+                        .HasColumnType("datetime2");
+
+                    b.Property<Guid?>("UpdatedBy")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("SolicitacaoReposicaoEpiId");
+
+                    b.ToTable("SolicitacoesReposicaoEpiItens", (string)null);
+                });
+
             modelBuilder.Entity("AAHBRANT.SST.Domain.Entidades.SuporteIaSolicitacao", b =>
                 {
                     b.Property<Guid>("Id")
@@ -9883,6 +10027,11 @@ namespace AAHBRANT.SST.Infrastructure.Persistencia.Migrations
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
 
+                    b.HasOne("AAHBRANT.SST.Domain.Entidades.Usuario", "EstoqueMinimoDefinidoPorUsuario")
+                        .WithMany()
+                        .HasForeignKey("EstoqueMinimoDefinidoPorUsuarioId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
                     b.HasOne("AAHBRANT.SST.Domain.Entidades.Obra", "Obra")
                         .WithMany()
                         .HasForeignKey("ObraId")
@@ -9890,6 +10039,8 @@ namespace AAHBRANT.SST.Infrastructure.Persistencia.Migrations
                         .IsRequired();
 
                     b.Navigation("CatalogoEpi");
+
+                    b.Navigation("EstoqueMinimoDefinidoPorUsuario");
 
                     b.Navigation("Obra");
                 });
@@ -11018,6 +11169,35 @@ namespace AAHBRANT.SST.Infrastructure.Persistencia.Migrations
                     b.Navigation("Obra");
                 });
 
+            modelBuilder.Entity("AAHBRANT.SST.Domain.Entidades.SolicitacaoReposicaoEpi", b =>
+                {
+                    b.HasOne("AAHBRANT.SST.Domain.Entidades.Obra", "Obra")
+                        .WithMany()
+                        .HasForeignKey("ObraId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("AAHBRANT.SST.Domain.Entidades.Usuario", "SolicitanteUsuario")
+                        .WithMany()
+                        .HasForeignKey("SolicitanteUsuarioId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.Navigation("Obra");
+
+                    b.Navigation("SolicitanteUsuario");
+                });
+
+            modelBuilder.Entity("AAHBRANT.SST.Domain.Entidades.SolicitacaoReposicaoEpiItem", b =>
+                {
+                    b.HasOne("AAHBRANT.SST.Domain.Entidades.SolicitacaoReposicaoEpi", "SolicitacaoReposicaoEpi")
+                        .WithMany("Itens")
+                        .HasForeignKey("SolicitacaoReposicaoEpiId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("SolicitacaoReposicaoEpi");
+                });
+
             modelBuilder.Entity("AAHBRANT.SST.Domain.Entidades.SuporteIaSolicitacao", b =>
                 {
                     b.HasOne("AAHBRANT.SST.Domain.Entidades.Alerta", "Alerta")
@@ -11510,6 +11690,11 @@ namespace AAHBRANT.SST.Infrastructure.Persistencia.Migrations
             modelBuilder.Entity("AAHBRANT.SST.Domain.Entidades.Setor", b =>
                 {
                     b.Navigation("Equipes");
+                });
+
+            modelBuilder.Entity("AAHBRANT.SST.Domain.Entidades.SolicitacaoReposicaoEpi", b =>
+                {
+                    b.Navigation("Itens");
                 });
 
             modelBuilder.Entity("AAHBRANT.SST.Domain.Entidades.Trabalhador", b =>

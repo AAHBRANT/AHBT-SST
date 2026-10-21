@@ -30,9 +30,13 @@ public class PlanoIntegracaoService : IPlanoIntegracaoService
     private readonly IFilaCalendarioTeams _filaCalendario;
     private readonly IGeradorNumeroDocumentoService _geradorNumero;
 
+    private readonly EstoquesEpi.Minimo.IVerificacaoEstoqueMinimoService? _verificacaoMinimo;
+
     public PlanoIntegracaoService(IAppDbContext db, ITecnicosSegurancaPorObraService tecnicos, IFilaNotificacaoTeams filaTeams,
-        IFilaCalendarioTeams filaCalendario, IGeradorNumeroDocumentoService geradorNumero)
+        IFilaCalendarioTeams filaCalendario, IGeradorNumeroDocumentoService geradorNumero,
+        EstoquesEpi.Minimo.IVerificacaoEstoqueMinimoService? verificacaoMinimo = null)
     {
+        _verificacaoMinimo = verificacaoMinimo;
         _db = db;
         _tecnicos = tecnicos;
         _filaTeams = filaTeams;
@@ -66,6 +70,7 @@ public class PlanoIntegracaoService : IPlanoIntegracaoService
             foreach (var reserva in reservasAtivas) Cancelar(reserva, "Funcionário desligado.", agora);
             foreach (var plano in planosAbertos) Encerrar(plano, StatusPlanoIntegracao.Cancelado, agora);
             await _db.SaveChangesAsync(ct);
+            if (_verificacaoMinimo is not null && reservasAtivas.Count > 0) await _verificacaoMinimo.VerificarAsync(trabalhador.ObraId, ct);
             return;
         }
 
@@ -133,6 +138,9 @@ public class PlanoIntegracaoService : IPlanoIntegracaoService
 
         if (planoNovo is not null)
             await AvisarTecnicosAsync(trabalhador, planoNovo, turmas, ct);
+
+        // Separar ou cancelar kit muda o disponível da obra (alerta de estoque mínimo, Módulo 2).
+        if (_verificacaoMinimo is not null) await _verificacaoMinimo.VerificarAsync(trabalhador.ObraId, ct);
     }
 
     private async Task AvisarTecnicosAsync(Trabalhador trabalhador, PlanoIntegracao plano, List<TurmaAgendada> turmas, CancellationToken ct)

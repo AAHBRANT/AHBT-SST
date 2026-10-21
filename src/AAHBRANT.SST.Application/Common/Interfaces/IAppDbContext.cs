@@ -42,6 +42,7 @@ public interface IAppDbContext
     DbSet<MovimentacaoEstoqueEpi> MovimentacoesEstoqueEpi { get; }
     DbSet<ReservaEpi> ReservasEpi { get; }
     DbSet<PlanoIntegracao> PlanosIntegracao { get; }
+    DbSet<SolicitacaoReposicaoEpi> SolicitacoesReposicaoEpi { get; }
     DbSet<CatalogoEpc> CatalogoEpcs { get; }
     DbSet<InstalacaoEpc> InstalacoesEpc { get; }
     DbSet<EstoqueEpc> EstoquesEpc { get; }
