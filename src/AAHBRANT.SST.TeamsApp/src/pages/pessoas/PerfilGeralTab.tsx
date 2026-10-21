@@ -1,7 +1,6 @@
 import { useEffect, useMemo, useState, type ReactElement } from 'react';
 import {
   Card,
-  KpiCard,
   StatusChip,
   Text,
   Legenda,
@@ -14,10 +13,10 @@ import {
   type Tom,
 } from '@ui';
 import {
-  ShieldCheckmark24Regular,
-  People24Regular,
-  ArrowSync24Regular,
-  DocumentCheckmark24Regular,
+  ShieldCheckmark20Regular,
+  People20Regular,
+  ArrowSync20Regular,
+  DocumentCheckmark20Regular,
   Checkmark20Regular,
   Warning20Regular,
 } from '@fluentui/react-icons';
@@ -29,6 +28,7 @@ import {
   type PerfilCompletoTrabalhador,
 } from '../../lib/api';
 import { AnelProgresso } from './AnelProgresso';
+import { KpiFichaCartao } from './KpiFichaCartao';
 
 const tomResultadoAso: Record<number, Tom> = {
   1: 'ok',
@@ -129,7 +129,7 @@ export function PerfilGeralTab({ perfil }: { perfil: PerfilCompletoTrabalhador }
     {
       rotulo: 'EPIs em posse',
       valor: `${perfil.episAtivos.length}`,
-      icone: <ShieldCheckmark24Regular />,
+      icone: <ShieldCheckmark20Regular />,
       tom: 'info',
       detalhe:
         epis.vencidos + epis.vencendo > 0
@@ -139,7 +139,7 @@ export function PerfilGeralTab({ perfil }: { perfil: PerfilCompletoTrabalhador }
     {
       rotulo: 'Presença em DDS',
       valor: percentualDds === null ? '—' : `${percentualDds}%`,
-      icone: <People24Regular />,
+      icone: <People20Regular />,
       tom: 'ok',
       detalhe:
         percentualDds === null
@@ -149,14 +149,14 @@ export function PerfilGeralTab({ perfil }: { perfil: PerfilCompletoTrabalhador }
     {
       rotulo: 'Trocas de EPI no ano',
       valor: `${trocasNoAno}`,
-      icone: <ArrowSync24Regular />,
+      icone: <ArrowSync20Regular />,
       tom: 'atencao',
       detalhe: { texto: trocasNoAno === 1 ? '1 solicitação' : `${trocasNoAno} solicitações`, tom: 'neutro' },
     },
     {
       rotulo: 'NRs válidas',
       valor: `${treinamentosValidos.length}`,
-      icone: <DocumentCheckmark24Regular />,
+      icone: <DocumentCheckmark20Regular />,
       tom: treinamentosBloqueando > 0 ? 'atencao' : 'ok',
       detalhe: { texto: `de ${perfil.treinamentos.length} registradas`, tom: 'neutro' },
     },
@@ -166,14 +166,16 @@ export function PerfilGeralTab({ perfil }: { perfil: PerfilCompletoTrabalhador }
     <div style={{ display: 'flex', flexDirection: 'column', gap: tokensUi.espaco.lg }}>
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(185px, 1fr))', gap: tokensUi.espaco.lg }}>
         {kpis.map((kpi, i) => (
-          <KpiCard
+          <KpiFichaCartao
             key={kpi.rotulo}
             rotulo={kpi.rotulo}
             valor={kpi.valor}
             tom={kpi.tom}
             icone={kpi.icone}
             indice={i}
-            deltas={kpi.detalhe ? [kpi.detalhe] : undefined}
+            destaque={i === 0}
+            detalhe={kpi.detalhe?.texto}
+            tomDetalhe={kpi.detalhe?.tom}
           />
         ))}
       </div>
