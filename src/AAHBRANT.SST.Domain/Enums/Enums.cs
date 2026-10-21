@@ -965,3 +965,14 @@ public enum StatusReservaEpi
     Entregue = 2,
     Cancelada = 3
 }
+
+// Dedo de cada digital cadastrada no leitor Futronic (pedido do usuário, 21/10): a ficha do
+// trabalhador cadastra o polegar direito e o polegar esquerdo em botões separados, e cada um só pode
+// ser cadastrado uma vez. NaoInformado cobre os cadastros feitos antes desta separação (um só
+// template por trabalhador, sem registro do dedo) e o fluxo antigo pós-criação do funcionário.
+public enum DedoBiometria
+{
+    NaoInformado = 0,
+    PolegarDireito = 1,
+    PolegarEsquerdo = 2,
+}

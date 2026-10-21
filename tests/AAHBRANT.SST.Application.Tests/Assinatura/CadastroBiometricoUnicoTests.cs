@@ -3,6 +3,7 @@ using AAHBRANT.SST.Application.Common.Interfaces;
 using AAHBRANT.SST.Application.Tests.TestSupport;
 using AAHBRANT.SST.Application.Trabalhadores.Queries;
 using AAHBRANT.SST.Domain.Entidades;
+using AAHBRANT.SST.Domain.Enums;
 using Microsoft.EntityFrameworkCore;
 
 namespace AAHBRANT.SST.Application.Tests.Assinatura;
@@ -80,5 +81,54 @@ public class CadastroBiometricoUnicoTests
         Assert.True(status.TemFacial);
         Assert.Equal(quando, status.DigitalCadastradaEm);
         Assert.Equal(quando, status.FacialCadastradoEm);
+    }
+
+    [Fact]
+    public async Task CadastrarPolegares_DireitoEEsquerdo_SaoAceitos()
+    {
+        var db = DbContextFactory.Criar();
+        var trabalhador = await CriarTrabalhadorComTermosAsync(db);
+        var handler = new CadastrarTemplateBiometricoCommandHandler(db, new CriptografiaFalsa());
+
+        await handler.Handle(new CadastrarTemplateBiometricoCommand(trabalhador.Id, new byte[] { 1 }, Dedo: DedoBiometria.PolegarDireito), CancellationToken.None);
+        await handler.Handle(new CadastrarTemplateBiometricoCommand(trabalhador.Id, new byte[] { 2 }, Dedo: DedoBiometria.PolegarEsquerdo), CancellationToken.None);
+
+        var dedos = await db.TemplatesBiometricoFutronic.Where(tb => tb.TrabalhadorId == trabalhador.Id).Select(tb => tb.Dedo).ToListAsync();
+        Assert.Equal(2, dedos.Count);
+        Assert.Contains(DedoBiometria.PolegarDireito, dedos);
+        Assert.Contains(DedoBiometria.PolegarEsquerdo, dedos);
+    }
+
+    [Fact]
+    public async Task CadastrarMesmoPolegar_SegundaVez_EhRecusado()
+    {
+        var db = DbContextFactory.Criar();
+        var trabalhador = await CriarTrabalhadorComTermosAsync(db);
+        var handler = new CadastrarTemplateBiometricoCommandHandler(db, new CriptografiaFalsa());
+
+        await handler.Handle(new CadastrarTemplateBiometricoCommand(trabalhador.Id, new byte[] { 1 }, Dedo: DedoBiometria.PolegarEsquerdo), CancellationToken.None);
+        var erro = await Assert.ThrowsAsync<InvalidOperationException>(() =>
+            handler.Handle(new CadastrarTemplateBiometricoCommand(trabalhador.Id, new byte[] { 2 }, Dedo: DedoBiometria.PolegarEsquerdo), CancellationToken.None));
+
+        Assert.Contains("polegar esquerdo", erro.Message);
+        Assert.Equal(1, await db.TemplatesBiometricoFutronic.CountAsync(tb => tb.TrabalhadorId == trabalhador.Id));
+    }
+
+    [Fact]
+    public async Task Status_ComPolegares_ListaCadaDedo()
+    {
+        var db = DbContextFactory.Criar();
+        var trabalhador = await CriarTrabalhadorComTermosAsync(db);
+        var primeiro = new DateTime(2026, 10, 21, 9, 0, 0, DateTimeKind.Utc);
+        db.TemplatesBiometricoFutronic.Add(new TemplateBiometricoFutronic { TrabalhadorId = trabalhador.Id, TemplateCriptografado = "a", CapturadoEm = primeiro, Dedo = DedoBiometria.PolegarDireito });
+        db.TemplatesBiometricoFutronic.Add(new TemplateBiometricoFutronic { TrabalhadorId = trabalhador.Id, TemplateCriptografado = "b", CapturadoEm = primeiro.AddMinutes(2), Dedo = DedoBiometria.PolegarEsquerdo });
+        await db.SaveChangesAsync();
+
+        var status = await new ObterStatusCadastroBiometricoQueryHandler(db)
+            .Handle(new ObterStatusCadastroBiometricoQuery(trabalhador.Id), CancellationToken.None);
+
+        Assert.True(status.TemDigital);
+        Assert.Equal(primeiro, status.DigitalCadastradaEm);
+        Assert.Equal(new[] { DedoBiometria.PolegarDireito, DedoBiometria.PolegarEsquerdo }, status.Digitais.Select(d => d.Dedo));
     }
 }

@@ -1,13 +1,18 @@
 using AAHBRANT.SST.Application.Common.Interfaces;
+using AAHBRANT.SST.Domain.Enums;
 using MediatR;
 using Microsoft.EntityFrameworkCore;
 
 namespace AAHBRANT.SST.Application.Trabalhadores.Queries;
 
+public record DigitalCadastradaDto(DedoBiometria Dedo, DateTime CadastradaEm);
+
 public class StatusCadastroBiometricoDto
 {
     public DateTime? DigitalCadastradaEm { get; set; }
     public DateTime? FacialCadastradoEm { get; set; }
+    // Uma linha por digital cadastrada, com o dedo (21/10: polegar direito e esquerdo separados).
+    public List<DigitalCadastradaDto> Digitais { get; set; } = new();
     public bool TemDigital => DigitalCadastradaEm is not null;
     public bool TemFacial => FacialCadastradoEm is not null;
     // Consentimento LGPD da biometria: quando foi dado, em qual versão do termo e se foi revogado.
@@ -28,11 +33,11 @@ public class ObterStatusCadastroBiometricoQueryHandler : IRequestHandler<ObterSt
 
     public async Task<StatusCadastroBiometricoDto> Handle(ObterStatusCadastroBiometricoQuery request, CancellationToken ct)
     {
-        var digital = await _db.TemplatesBiometricoFutronic
+        var digitais = await _db.TemplatesBiometricoFutronic
             .Where(tb => tb.TrabalhadorId == request.TrabalhadorId)
             .OrderBy(tb => tb.CapturadoEm)
-            .Select(tb => (DateTime?)tb.CapturadoEm)
-            .FirstOrDefaultAsync(ct);
+            .Select(tb => new DigitalCadastradaDto(tb.Dedo, tb.CapturadoEm))
+            .ToListAsync(ct);
         var facial = await _db.FotosCadastroFacial
             .Where(f => f.TrabalhadorId == request.TrabalhadorId)
             .OrderBy(f => f.CapturadaEm)
@@ -46,7 +51,8 @@ public class ObterStatusCadastroBiometricoQueryHandler : IRequestHandler<ObterSt
 
         return new StatusCadastroBiometricoDto
         {
-            DigitalCadastradaEm = digital,
+            DigitalCadastradaEm = digitais.Count > 0 ? digitais[0].CadastradaEm : null,
+            Digitais = digitais,
             FacialCadastradoEm = facial,
             ConsentimentoBiometriaEm = consentimento?.ConsentimentoBiometriaEm,
             ConsentimentoBiometriaVersao = consentimento?.ConsentimentoBiometriaVersao,

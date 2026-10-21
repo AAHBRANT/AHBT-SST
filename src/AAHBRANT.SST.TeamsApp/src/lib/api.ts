@@ -75,6 +75,16 @@ export interface CadastroFacialFraco {
   cadastroEm: string;
 }
 
+// Dedo de cada digital cadastrada — espelha DedoBiometria (backend). NaoInformado = cadastros
+// anteriores à separação por polegar (21/10) e o cadastro pós-criação do funcionário.
+export const DedoBiometria = { NaoInformado: 0, PolegarDireito: 1, PolegarEsquerdo: 2 } as const;
+export type DedoBiometria = (typeof DedoBiometria)[keyof typeof DedoBiometria];
+
+export interface DigitalCadastrada {
+  dedo: DedoBiometria;
+  cadastradaEm: string;
+}
+
 export interface StatusCadastroBiometrico {
   temDigital: boolean;
   temFacial: boolean;
@@ -83,6 +93,8 @@ export interface StatusCadastroBiometrico {
   consentimentoBiometriaEm?: string | null;
   consentimentoBiometriaVersao?: string | null;
   consentimentoBiometriaRevogadoEm?: string | null;
+  // Opcional: a API antiga (antes de 21/10) não devolve a lista por dedo.
+  digitais?: DigitalCadastrada[];
 }
 
 export interface DispositivoAgente {
@@ -4518,10 +4530,14 @@ export const api = {
     },
     // Cadastro de digital via agente local (Futronic FS80H) — templateBruto vem em base64 do
     // agente (fetch local a /api/capturar-bruto); o backend criptografa antes de persistir.
-    cadastrarBiometriaLocal: (id: string, templateBrutoBase64: string, imagemCadastroBase64?: string | null) =>
+    cadastrarBiometriaLocal: (id: string, templateBrutoBase64: string, imagemCadastroBase64?: string | null, dedo?: DedoBiometria) =>
       request<void>(`/api/trabalhadores/${id}/assinatura/biometria-local/cadastro`, {
         method: 'POST',
-        body: JSON.stringify({ templateBruto: templateBrutoBase64, imagemCadastro: imagemCadastroBase64 ?? null }),
+        body: JSON.stringify({
+          templateBruto: templateBrutoBase64,
+          imagemCadastro: imagemCadastroBase64 ?? null,
+          dedo: dedo ?? null,
+        }),
       }),
     // Cadastro de reconhecimento facial (Azure Face API) — multipart, não passa por request<T>
     // (que sempre força Content-Type: application/json, incompatível com FormData) nem pelo motor

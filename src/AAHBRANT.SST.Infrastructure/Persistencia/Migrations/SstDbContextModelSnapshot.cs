@@ -8126,6 +8126,9 @@ namespace AAHBRANT.SST.Infrastructure.Persistencia.Migrations
                     b.Property<Guid?>("CreatedBy")
                         .HasColumnType("uniqueidentifier");
 
+                    b.Property<int>("Dedo")
+                        .HasColumnType("int");
+
                     b.Property<string>("ImagemCadastroCriptografada")
                         .HasColumnType("nvarchar(max)");
 
