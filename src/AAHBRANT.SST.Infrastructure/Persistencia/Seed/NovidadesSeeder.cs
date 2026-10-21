@@ -1345,7 +1345,7 @@ public static class NovidadesSeeder
                     "Riscos lançados à mão ganham o botão \"Confirmar avaliação\", que registra quem confirmou e quando. Riscos vindos da leitura do PGR já entram como avaliados. Se a probabilidade, a severidade ou a consequência mudarem, a confirmação é apagada."),
             }),
         new(
-            Versao: "5.70.0",
+            Versao: "5.71.0",
             Titulo: "Procedimentos, políticas e detalhes da atividade para a Ordem de Serviço",
             DataPublicacao: new DateTime(2026, 10, 20, 0, 0, 0, DateTimeKind.Utc),
             Itens: new[]
