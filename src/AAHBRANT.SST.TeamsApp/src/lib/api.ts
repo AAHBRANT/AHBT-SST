@@ -620,6 +620,24 @@ export interface RegraCursoObrigatorio {
 
 export type SalvarRegraCursoObrigatorio = Omit<RegraCursoObrigatorio, 'id' | 'cursoNome'> & { id?: string | null };
 
+// Escopo para o médico elaborar o PCMSO (21/10), montado a partir do PGR vigente da obra.
+export interface EscopoPcmso {
+  obraId: string;
+  obraNome: string;
+  cnpj?: string | null;
+  endereco?: string | null;
+  dataInicio?: string | null;
+  dataPrevisaoTermino?: string | null;
+  trabalhadoresAtivos: number;
+  pgrNome?: string | null;
+  pgrDataElaboracao?: string | null;
+  geradoEmUtc: string;
+  pendencias: string[];
+  funcoes: { gheNumero: number; gheSetor?: string | null; funcao: string; trabalhadores: number; atividades?: string | null }[];
+  riscos: { gheNumero: number; tipo?: string | null; perigo: string; fonte?: string | null; atividade: string; nivel: number }[];
+  atividadesCriticas: { descricao: string; funcoes: string[] }[];
+}
+
 export interface AptidaoCurso {
   cursoId: string;
   nome: string;
@@ -5023,6 +5041,15 @@ export const api = {
     aptidao: (obraId?: string) =>
       request<AptidaoCurso[]>(`/api/cursostreinamento/aptidao${obraId ? `?obraId=${obraId}` : ''}`),
     padroesNr: () => request<PadraoNr[]>('/api/cursostreinamento/padroes-nr'),
+  },
+  escopoPcmso: {
+    obter: (obraId: string) => request<EscopoPcmso>(`/api/escopo-pcmso/obras/${obraId}`),
+    pdf: (obraId: string) => baixarArquivoRelatorio(`/api/escopo-pcmso/obras/${obraId}/pdf`),
+    enviar: (obraId: string, emailMedico: string, nomeMedico?: string, mensagem?: string) =>
+      request<void>(`/api/escopo-pcmso/obras/${obraId}/enviar`, {
+        method: 'POST',
+        body: JSON.stringify({ emailMedico, nomeMedico: nomeMedico || null, mensagem: mensagem || null }),
+      }),
   },
   cursosObrigatorios: {
     listar: (obraId: string) => request<CursosObrigatoriosObra>(`/api/cursos-obrigatorios/obras/${obraId}`),
