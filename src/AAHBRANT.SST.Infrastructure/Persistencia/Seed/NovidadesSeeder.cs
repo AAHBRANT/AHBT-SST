@@ -1331,6 +1331,25 @@ public static class NovidadesSeeder
             }),
         new(
             Versao: "5.70.0",
+            Titulo: "Contrato de empresa terceirizada cadastrado pelo técnico",
+            DataPublicacao: new DateTime(2026, 10, 21, 0, 0, 0, DateTimeKind.Utc),
+            Itens: new[]
+            {
+                new NovidadeSeedItem(CategoriaNovidade.Novidade,
+                    "Novo contrato na ficha da empresa",
+                    "O contrato da empresa terceirizada só chegava pelo G-Juri. Sem contrato, não havia vagas e ninguém conseguia cadastrar as pessoas da empresa.",
+                    "Na ficha da empresa, o botão Novo contrato abre o cadastro com obra, número, vigência e vagas por função. Depois é só cadastrar as pessoas em cada vaga."),
+                new NovidadeSeedItem(CategoriaNovidade.Novidade,
+                    "Editar e encerrar o contrato",
+                    "Não havia como corrigir vigência, ajustar vagas ou encerrar um contrato pelo SST.",
+                    "O contrato cadastrado no SST pode ser editado e encerrado na tela do contrato. Encerrar não desliga ninguém: o sistema avisa quantas pessoas continuam ativas. Contratos vindos do G-Juri continuam só para consulta."),
+                new NovidadeSeedItem(CategoriaNovidade.Novidade,
+                    "Cadastro pelo contrato em PDF, lido pela IA",
+                    "Cadastrar uma terceirizada exigia digitar empresa, contrato, vagas e cada pessoa à mão.",
+                    "Em Terceirizado > Empresas, o botão Cadastrar pelo contrato (PDF) lê o contrato com IA e preenche empresa, contrato, vagas e as pessoas listadas. O técnico confere, completa o que faltar e cadastra tudo de uma vez. Contrato digitalizado (sem texto) continua sendo preenchido à mão."),
+            }),
+        new(
+            Versao: "5.71.0",
             Titulo: "Avaliação dos riscos e medidas de prevenção por fase no PGR",
             DataPublicacao: new DateTime(2026, 10, 20, 0, 0, 0, DateTimeKind.Utc),
             Itens: new[]

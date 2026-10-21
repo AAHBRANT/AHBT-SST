@@ -19,9 +19,11 @@ import {
   Input,
   type Coluna,
 } from '@ui';
-import { Open24Regular, Edit24Regular } from '@fluentui/react-icons';
-import { api, type Empresa, type Contrato, type AtualizarEmpresa } from '../../lib/api';
+import { Open24Regular, Edit24Regular, DocumentAdd24Regular } from '@fluentui/react-icons';
+import { api, type Empresa, type Contrato, type AtualizarEmpresa, type Obra, type Funcao } from '../../lib/api';
 import { useSucessoToast } from '../../hooks/useSucessoToast';
+import { FormularioContrato } from './FormularioContrato';
+import { formularioContratoVazio, paraDadosContrato, type ValorFormularioContrato } from './valorFormularioContrato';
 
 type EdicaoEmpresa = Omit<AtualizarEmpresa, 'id' | 'status'>;
 
@@ -48,6 +50,11 @@ export function EmpresaDetalhePage() {
   const [painelAberto, setPainelAberto] = useState(false);
   const [salvando, setSalvando] = useState(false);
   const [edicao, setEdicao] = useState<EdicaoEmpresa | null>(null);
+  const [novoContratoAberto, setNovoContratoAberto] = useState(false);
+  const [erroContrato, setErroContrato] = useState<string | null>(null);
+  const [salvandoContrato, setSalvandoContrato] = useState(false);
+  const [obras, setObras] = useState<Obra[]>([]);
+  const [funcoes, setFuncoes] = useState<Funcao[]>([]);
   const sucessoToast = useSucessoToast();
 
   async function carregar() {
@@ -105,9 +112,42 @@ export function EmpresaDetalhePage() {
     }
   }
 
+  async function abrirNovoContrato() {
+    setErroContrato(null);
+    setNovoContratoAberto(true);
+    if (obras.length > 0 && funcoes.length > 0) return;
+    try {
+      const [listaObras, listaFuncoes] = await Promise.all([api.obras.listar(), api.funcoes.listar()]);
+      setObras(listaObras);
+      setFuncoes([...listaFuncoes].sort((a, b) => a.nome.localeCompare(b.nome)));
+    } catch (e) {
+      setErroContrato(e instanceof Error ? e.message : 'Falha ao carregar obras e funções.');
+    }
+  }
+
+  async function criarContrato(valor: ValorFormularioContrato) {
+    if (!empresa) return;
+    try {
+      setSalvandoContrato(true);
+      setErroContrato(null);
+      const { id: contratoId } = await api.terceirizados.contratos.criar({
+        empresaId: empresa.id,
+        obraId: valor.obraId,
+        ...paraDadosContrato(valor),
+      });
+      sucessoToast('Contrato cadastrado. Agora cadastre as pessoas em cada vaga.');
+      navigate(`/terceirizados/contratos/${contratoId}`);
+    } catch (e) {
+      setErroContrato(e instanceof Error ? e.message : 'Falha ao cadastrar o contrato.');
+    } finally {
+      setSalvandoContrato(false);
+    }
+  }
+
   const colunas: Coluna<Contrato>[] = [
     { chave: 'numeroContrato', rotulo: 'Nº do contrato' },
     { chave: 'obraNome', rotulo: 'Obra' },
+    { chave: 'origem', rotulo: 'Origem', render: (c) => (c.origemGJuri ? 'G-Juri' : 'Cadastro manual') },
     { chave: 'vigencia', rotulo: 'Vigência', render: (c) => `${c.dataInicioVigencia} a ${c.dataFimVigencia}` },
     {
       chave: 'status',
@@ -246,14 +286,38 @@ export function EmpresaDetalhePage() {
         </div>
       </Card>
 
-      <Card titulo="Contratos">
+      <Card
+        titulo="Contratos"
+        acoes={
+          empresa.status === 'Ativa' && !novoContratoAberto ? (
+            <Button appearance="primary" icon={<DocumentAdd24Regular />} onClick={() => void abrirNovoContrato()}>
+              Novo contrato
+            </Button>
+          ) : undefined
+        }
+      >
+        <PainelCriacaoInline aberto={novoContratoAberto} titulo="Novo contrato">
+          {novoContratoAberto && (
+            <FormularioContrato
+              valorInicial={formularioContratoVazio}
+              obras={obras}
+              funcoes={funcoes}
+              erro={erroContrato}
+              aoFecharErro={() => setErroContrato(null)}
+              salvando={salvandoContrato}
+              rotuloSalvar="Cadastrar contrato"
+              aoSalvar={(valor) => void criarContrato(valor)}
+              aoCancelar={() => setNovoContratoAberto(false)}
+            />
+          )}
+        </PainelCriacaoInline>
         <DataTable
           aria-label="Contratos da empresa"
           colunas={colunas}
           linhas={contratos}
           chaveLinha={(c) => c.id}
           carregando={carregando}
-          vazio={{ titulo: 'Nenhum contrato recebido do G-Juri ainda para esta empresa' }}
+          vazio={{ titulo: 'Nenhum contrato cadastrado para esta empresa', descricao: 'Use "Novo contrato" para abrir as vagas e cadastrar as pessoas.' }}
           acoesLinha={(c) => (
             <BotaoAcao
               tom="ver"

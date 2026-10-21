@@ -31,12 +31,16 @@ export function EnvioPdfComIa({
   lido,
   aoEscolher,
   aoRemover,
+  rotulo = 'Envie o PDF para a IA preencher os campos',
+  detalheComArquivo = 'O PDF também fica salvo no documento ao adicionar.',
 }: {
   arquivo: File | null;
   lendo: boolean;
   lido: boolean;
   aoEscolher: (arquivo: File) => void;
   aoRemover: () => void;
+  rotulo?: string;
+  detalheComArquivo?: string;
 }) {
   const styles = useStyles();
   const input = useRef<HTMLInputElement>(null);
@@ -68,9 +72,9 @@ export function EnvioPdfComIa({
     >
       <DocumentPdf24Regular className={styles.icone} />
       <div className={styles.texto}>
-        <Text weight="semibold">{arquivo ? arquivo.name : 'Envie o PDF para a IA preencher os campos'}</Text>
+        <Text weight="semibold">{arquivo ? arquivo.name : rotulo}</Text>
         <Text size={200}>
-          {arquivo ? 'O PDF também fica salvo no documento ao adicionar.' : 'Arraste o arquivo ou clique para escolher. Sem PDF, preencha manualmente.'}
+          {arquivo ? detalheComArquivo : 'Arraste o arquivo ou clique para escolher. Sem PDF, preencha manualmente.'}
         </Text>
       </div>
       {lendo && (
@@ -116,16 +120,21 @@ function normalizar(s: string) {
     .filter((p) => p.length > 2 && !['consorcio', 'obra', 'fase', 'ltda', 'para', 'das', 'dos'].includes(p));
 }
 
-// Obra cadastrada com mais palavras em comum com o nome escrito no PDF (nenhuma em comum = sem sugestão).
-export function sugerirObra(textoDocumento: string | null, obras: Obra[]): string | null {
+// Item cadastrado (obra, função...) com mais palavras em comum com o nome escrito no PDF (nenhuma em
+// comum = sem sugestão).
+export function sugerirPorNome(textoDocumento: string | null, itens: { id: string; nome: string }[]): string | null {
   if (!textoDocumento) return null;
   const doc = new Set(normalizar(textoDocumento));
   let melhor: { id: string; pontos: number } | null = null;
-  for (const o of obras) {
-    const pontos = normalizar(o.nome).filter((p) => doc.has(p)).length;
-    if (pontos > 0 && (!melhor || pontos > melhor.pontos)) melhor = { id: o.id, pontos };
+  for (const item of itens) {
+    const pontos = normalizar(item.nome).filter((p) => doc.has(p)).length;
+    if (pontos > 0 && (!melhor || pontos > melhor.pontos)) melhor = { id: item.id, pontos };
   }
   return melhor?.id ?? null;
+}
+
+export function sugerirObra(textoDocumento: string | null, obras: Obra[]): string | null {
+  return sugerirPorNome(textoDocumento, obras);
 }
 
 // "2026-03-01T00:00:00Z" → "2026-03-01" (formato do CampoData).

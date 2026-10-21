@@ -10,7 +10,7 @@ namespace AAHBRANT.SST.Infrastructure.LeituraIa;
 // manual do Parque Roger (09/10/2026): primeiro um índice do documento (GHE ou quadros de exames, com as
 // páginas de cada um), depois uma chamada por GHE / por quadro só com as páginas dele. Cada resposta é
 // pequena, o que cabe no limite de saída do modelo e deixa as chamadas em paralelo.
-public class AzureOpenAiLeitorDocumentoSst : ILeitorDocumentoSstIa, ILeitorCabecalhoDocumentoIa
+public class AzureOpenAiLeitorDocumentoSst : ILeitorDocumentoSstIa, ILeitorCabecalhoDocumentoIa, ILeitorContratoTerceirizadoIa
 {
     private const int Paralelismo = 4;
     private const int MaxPaginasPorParte = 10;
@@ -247,6 +247,68 @@ public class AzureOpenAiLeitorDocumentoSst : ILeitorDocumentoSstIa, ILeitorCabec
         return new CabecalhoCadastroPcmsoIa(Limpo(l.Nome), Limpo(l.Obra), Limpo(l.Versao), Data(l.DataEmissao), Data(l.Validade),
             Limpo(l.MedicoNome), Limpo(l.MedicoCrm));
     }
+
+    // ===================== Contrato de terceirizada (18/10/2026) =====================
+
+    private const string InstrucoesContrato = """
+        Você lê contratos de prestação de serviço (empreitada/subempreitada) de obras de construção civil no
+        Brasil, em que a AAHBRANT é a CONTRATANTE e outra empresa é a CONTRATADA. O texto foi extraído de um
+        PDF e vem marcado com "=== PÁGINA n ===". Responda SOMENTE com o que está escrito no documento: não
+        invente, não corrija, não complete. Campo ausente ou ilegível = null. Datas no formato AAAA-MM-DD.
+        """;
+
+    private record EmpresaContratoLida(string? RazaoSocial, string? NomeFantasia, string? Cnpj, string? TipoServicoPrestado,
+        string? ContatoNome, string? ContatoTelefone, string? ContatoEmail);
+    private record VagaContratoLida(string Funcao, int? Quantidade);
+    private record PessoaContratoLida(string Nome, string? Cpf, string? Funcao, string? Matricula);
+    private record ContratoLido(EmpresaContratoLida Empresa, string? NumeroContrato, string? Obra, string? DataInicioVigencia,
+        string? DataFimVigencia, List<VagaContratoLida> Vagas, List<PessoaContratoLida> Pessoas);
+
+    public async Task<ContratoTerceirizadoLidoIa> LerContratoAsync(IReadOnlyList<string> paginas, CancellationToken ct)
+    {
+        var l = await ComUmaNovaTentativa(() => _chat.ObterAsync<ContratoLido>(InstrucoesContrato, $"""
+            Devolva os dados para cadastrar a empresa CONTRATADA e o contrato:
+            - empresa: dados da CONTRATADA (nunca da AAHBRANT/contratante): razaoSocial, nomeFantasia, cnpj (como
+              escrito), tipoServicoPrestado (resumo curto do objeto do contrato, ex.: "Alvenaria e reboco"),
+              contatoNome, contatoTelefone e contatoEmail do representante/preposto da contratada;
+            - numeroContrato: número/identificação do contrato;
+            - obra: nome do empreendimento/obra/local onde o serviço será executado, como escrito;
+            - dataInicioVigencia e dataFimVigencia: início e fim do prazo/vigência. Se só houver o prazo em dias ou
+              meses, calcule o fim a partir do início; sem início escrito, deixe os dois null;
+            - vagas: efetivo/mão de obra previsto por função (ex.: 5 pedreiros, 3 serventes), com quantidade; só o
+              que estiver escrito — sem efetivo no contrato, lista vazia;
+            - pessoas: trabalhadores da contratada nomeados no contrato ou em anexo (relação de empregados), com
+              nome, cpf (como escrito), funcao e matricula (registro do empregado), se houver. Não inclua os
+              representantes legais, testemunhas nem fiscais do contrato. Sem relação de pessoas, lista vazia.
+
+            {Juntar(paginas, 1, paginas.Count)}
+            """, "contrato_terceirizado", SchemaContrato, ct, maxTokens: 6000, timeoutSegundos: 90));
+
+        var e = l.Empresa;
+        return new ContratoTerceirizadoLidoIa(
+            new EmpresaLidaIa(Limpo(e.RazaoSocial), Limpo(e.NomeFantasia), Limpo(e.Cnpj), Limpo(e.TipoServicoPrestado),
+                Limpo(e.ContatoNome), Limpo(e.ContatoTelefone), Limpo(e.ContatoEmail)),
+            Limpo(l.NumeroContrato), Limpo(l.Obra), Data(l.DataInicioVigencia), Data(l.DataFimVigencia),
+            l.Vagas.Where(v => !string.IsNullOrWhiteSpace(v.Funcao))
+                .Select(v => new VagaLidaIa(v.Funcao.Trim(), v.Quantidade is > 0 ? v.Quantidade : null)).ToList(),
+            l.Pessoas.Where(p => !string.IsNullOrWhiteSpace(p.Nome))
+                .Select(p => new PessoaLidaIa(p.Nome.Trim(), Limpo(p.Cpf), Limpo(p.Funcao), Limpo(p.Matricula))).ToList());
+    }
+
+    private static readonly object SchemaContrato = Objeto(new()
+    {
+        ["empresa"] = Objeto(new()
+        {
+            ["razaoSocial"] = Texto(), ["nomeFantasia"] = Texto(), ["cnpj"] = Texto(), ["tipoServicoPrestado"] = Texto(),
+            ["contatoNome"] = Texto(), ["contatoTelefone"] = Texto(), ["contatoEmail"] = Texto(),
+        }),
+        ["numeroContrato"] = Texto(), ["obra"] = Texto(), ["dataInicioVigencia"] = Texto(), ["dataFimVigencia"] = Texto(),
+        ["vagas"] = Lista(Objeto(new() { ["funcao"] = Texto(nulo: false), ["quantidade"] = Inteiro() })),
+        ["pessoas"] = Lista(Objeto(new()
+        {
+            ["nome"] = Texto(nulo: false), ["cpf"] = Texto(), ["funcao"] = Texto(), ["matricula"] = Texto(),
+        })),
+    });
 
     // A leitura leva ~8 s, mas o Azure às vezes trava uma chamada (16/10/2026: 90 s sem resposta e a
     // seguinte em 8 s). Uma nova tentativa resolve; esgotada, o técnico vê a mensagem e preenche à mão.
