@@ -2557,6 +2557,55 @@ export interface MaterialApoio {
   atividades: number;
 }
 
+// Minuta da Ordem de Serviço do trabalhador (20/10/2026). Só traz conteúdo validado; o que falta vem
+// em `pendencias` e bloqueia a emissão.
+export interface PendenciaOs {
+  tipo: string;
+  titulo: string;
+  porQueBloqueia: string;
+  quemResolve: 'SST' | 'RH';
+  destino?: 'pgr' | 'treinamentos' | 'aso' | null;
+  destinoId?: string | null;
+}
+
+export interface RiscoOs {
+  id: string;
+  perigo: string;
+  nivel: number;
+  consequencia?: string | null;
+  antes: string[];
+  durante: string[];
+  apos: string[];
+}
+
+export interface AtividadeOs {
+  id: string;
+  nome: string;
+  condicoes?: string | null;
+  ferramentas: string[];
+  epcs: string[];
+  procedimentos: string[];
+  riscos: RiscoOs[];
+  interromperQuando: string[];
+  restricoes: { texto: string; requisito?: string | null }[];
+  autorizacoes: string[];
+}
+
+export interface MinutaOrdemServico {
+  trabalhadorId: string;
+  podeEmitir: boolean;
+  obra: { id: string; nome: string; cliente?: string | null; cnpj?: string | null; endereco?: string | null };
+  trabalhador: { nome: string; matricula?: string | null; cpfMascarado: string; funcao: string; cbo?: string | null; dataAdmissao: string };
+  pgr?: { id: string; nome: string; dataElaboracao: string; revisao?: number | null } | null;
+  ghes: { numero: number; descricaoAtividades?: string | null }[];
+  atividades: AtividadeOs[];
+  epis: { nome: string; ca?: string | null }[];
+  treinamentos: { curso: string; norma?: string | null; validade?: string | null; situacao: 'Valido' | 'Vencido' | 'NaoRealizado' }[];
+  aso?: { resultado: number; validade?: string | null; valido: boolean } | null;
+  politicas: { titulo: string; codigo?: string | null; revisao?: string | null; formaConsulta?: string | null }[];
+  pendencias: PendenciaOs[];
+}
+
 export interface DadosDocumentoSst {
   tipo: 1 | 2 | 3 | 4;
   codigo?: string | null;
@@ -5598,6 +5647,9 @@ export const api = {
     excluir: (id: string) => request<void>(`/api/veiculos/${id}`, { method: 'DELETE' }),
     obterOuCriarInspecaoAtual: (veiculoId: string) =>
       request<InspecaoAtual>(`/api/veiculos/${veiculoId}/inspecao-atual`, { method: 'POST' }),
+  },
+  ordensServico: {
+    obterMinuta: (trabalhadorId: string) => request<MinutaOrdemServico>(`/api/trabalhadores/${trabalhadorId}/ordem-servico/minuta`),
   },
   materiaisApoio: {
     listar: (categoria?: string) =>
