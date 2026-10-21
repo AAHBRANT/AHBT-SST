@@ -27,10 +27,14 @@ export default defineConfig({
         name: 'AAHBRANT SST',
         short_name: 'AAHBRANT SST',
         description: 'Gestão de Saúde e Segurança do Trabalho',
-        theme_color: '#670000',
+        theme_color: '#ffffff',
         background_color: '#ffffff',
         display: 'standalone',
-        icons: [{ src: '/favicon.svg', sizes: 'any', type: 'image/svg+xml' }],
+        icons: [
+          { src: '/pwa-192.png', sizes: '192x192', type: 'image/png' },
+          { src: '/pwa-512.png', sizes: '512x512', type: 'image/png' },
+          { src: '/pwa-maskable-512.png', sizes: '512x512', type: 'image/png', purpose: 'maskable' },
+        ],
       },
       workbox: {
         // Chamadas de API não entram no cache do service worker — quem decide o que fica
