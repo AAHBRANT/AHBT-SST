@@ -1419,6 +1419,21 @@ public static class NovidadesSeeder
                     "O topo mostrava só o ícone do colete e o nome \"SST\", sem a logo da empresa.",
                     "Agora o canto esquerdo mostra a logo oficial da AAHBRANT e o nome G-SST, no mesmo padrão do G-QUALI. Clique na marca para voltar ao Início."),
             }),
+        new(
+            Versao: "5.76.0",
+            Titulo: "Cursos obrigatórios por função saem do PGR",
+            DataPublicacao: new DateTime(2026, 10, 21, 0, 0, 0, DateTimeKind.Utc),
+            Itens: new[]
+            {
+                new NovidadeSeedItem(CategoriaNovidade.Novidade,
+                    "Cursos obrigatórios por obra, a partir do PGR",
+                    "Os cursos obrigatórios eram marcados à mão, função por função, e valiam igual para todas as obras.",
+                    "Em Treinamentos › Cursos obrigatórios por obra, o sistema lê os riscos e atividades do PGR e sugere os cursos pelas NRs, com o motivo de cada um. O Engenheiro de Segurança aprova ou recusa com justificativa. Só o aprovado conta na Aptidão por treinamento do Início."),
+                new NovidadeSeedItem(CategoriaNovidade.Novidade,
+                    "Regras por NR editáveis pelo QSMS",
+                    "Não havia como dizer ao sistema quando uma NR passa a ser obrigatória.",
+                    "Em Treinamentos › Regras por NR fica a tabela: NR-06 e NR-18 para todas as funções e, para as demais, as palavras do PGR que tornam o curso obrigatório (altura → NR-35, choque elétrico → NR-10 e outras)."),
+            }),
     };
 
     public static async Task ExecutarAsync(IServiceProvider services, CancellationToken ct = default)

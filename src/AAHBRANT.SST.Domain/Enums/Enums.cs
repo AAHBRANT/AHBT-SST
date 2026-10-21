@@ -1039,3 +1039,17 @@ public enum DedoBiometria
     PolegarDireito = 1,
     PolegarEsquerdo = 2,
 }
+
+// Cursos obrigatórios por função a partir do PGR (21/10): só Aprovado conta para a aptidão.
+public enum StatusCursoObrigatorio
+{
+    Sugerido = 1,
+    Aprovado = 2,
+    Recusado = 3,
+}
+
+public enum OrigemCursoObrigatorio
+{
+    Pgr = 1,
+    Manual = 2,
+}

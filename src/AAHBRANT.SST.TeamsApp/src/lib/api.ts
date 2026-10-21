@@ -575,6 +575,51 @@ export interface PadraoNr {
 
 // Trabalhadores ativos que precisam do curso (pela matriz de função) e a situação de cada um.
 // "Apto" = treinamento válido hoje = emDia + vencemEm30Dias.
+// Cursos obrigatórios por função a partir do PGR (21/10): por obra, sugeridos pelas regras e
+// aprovados/recusados pelo Engenheiro de Segurança. Só Aprovado conta para a aptidão.
+export const StatusCursoObrigatorio = { Sugerido: 1, Aprovado: 2, Recusado: 3 } as const;
+export const OrigemCursoObrigatorio = { Pgr: 1, Manual: 2 } as const;
+
+export interface CursoObrigatorio {
+  id: string;
+  funcaoId: string;
+  funcaoNome: string;
+  gheNumero?: number | null;
+  gheSetor?: string | null;
+  trabalhadores: number;
+  cursoTreinamentoId: string;
+  cursoNome: string;
+  normaReferencia?: string | null;
+  status: number;
+  origem: number;
+  motivo?: string | null;
+  justificativaRecusa?: string | null;
+  decididoPorNome?: string | null;
+  decididoEmUtc?: string | null;
+}
+
+export interface CursosObrigatoriosObra {
+  pgrNome?: string | null;
+  pgrDataElaboracao?: string | null;
+  funcoesNoPgr: number;
+  itens: CursoObrigatorio[];
+}
+
+export interface ResultadoGeracaoCursosObrigatorios { sugeridos: number; normasSemCurso: string[] }
+
+export interface RegraCursoObrigatorio {
+  id: string;
+  norma: string;
+  cursoTreinamentoId?: string | null;
+  cursoNome?: string | null;
+  descricao: string;
+  aplicaTodasFuncoes: boolean;
+  palavrasChave?: string | null;
+  ativo: boolean;
+}
+
+export type SalvarRegraCursoObrigatorio = Omit<RegraCursoObrigatorio, 'id' | 'cursoNome'> & { id?: string | null };
+
 export interface AptidaoCurso {
   cursoId: string;
   nome: string;
@@ -4978,6 +5023,26 @@ export const api = {
     aptidao: (obraId?: string) =>
       request<AptidaoCurso[]>(`/api/cursostreinamento/aptidao${obraId ? `?obraId=${obraId}` : ''}`),
     padroesNr: () => request<PadraoNr[]>('/api/cursostreinamento/padroes-nr'),
+  },
+  cursosObrigatorios: {
+    listar: (obraId: string) => request<CursosObrigatoriosObra>(`/api/cursos-obrigatorios/obras/${obraId}`),
+    gerar: (obraId: string) =>
+      request<ResultadoGeracaoCursosObrigatorios>(`/api/cursos-obrigatorios/obras/${obraId}/gerar`, { method: 'POST' }),
+    aprovarSugestoes: (obraId: string) =>
+      request<{ aprovados: number }>(`/api/cursos-obrigatorios/obras/${obraId}/aprovar-sugestoes`, { method: 'POST' }),
+    adicionar: (obraId: string, funcaoId: string, cursoTreinamentoId: string) =>
+      request<{ id: string }>(`/api/cursos-obrigatorios/obras/${obraId}`, {
+        method: 'POST',
+        body: JSON.stringify({ funcaoId, cursoTreinamentoId }),
+      }),
+    decidir: (id: string, aprovar: boolean, justificativa?: string) =>
+      request<void>(`/api/cursos-obrigatorios/${id}/decidir`, {
+        method: 'POST',
+        body: JSON.stringify({ aprovar, justificativa: justificativa ?? null }),
+      }),
+    regras: () => request<RegraCursoObrigatorio[]>('/api/cursos-obrigatorios/regras'),
+    salvarRegra: (regra: SalvarRegraCursoObrigatorio) =>
+      request<{ id: string }>('/api/cursos-obrigatorios/regras', { method: 'POST', body: JSON.stringify(regra) }),
   },
   treinamentos: {
     listar: (trabalhadorId?: string, obraId?: string) => {
