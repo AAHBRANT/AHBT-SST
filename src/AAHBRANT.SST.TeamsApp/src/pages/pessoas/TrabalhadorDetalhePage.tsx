@@ -10,12 +10,7 @@ import {
   designTokens,
   tokensUi,
   useTipografia,
-  usePaletaGraficos,
-  RankingBarChart,
-  StatusDonutChart,
   type AbaItem,
-  type ItemRanking,
-  type FatiaDonut,
 } from '@ui';
 import {
   ArrowLeft16Regular,
@@ -39,6 +34,8 @@ import { CofreAssinaturasTab } from './CofreAssinaturasTab';
 import { TerceirizadoTab } from './TerceirizadoTab';
 import { TermoCompromissoEpiCartao } from './TermoCompromissoEpiCartao';
 import { FichaTrabalhadorLateral } from './FichaTrabalhadorLateral';
+import { EpiPerfilSecao } from './EpiPerfilSecao';
+import { AnelProgresso } from './AnelProgresso';
 
 type AbaPerfil = 'geral' | 'epi' | 'treinamentos' | 'riscos' | 'ocorrencias' | 'cofre' | 'terceirizado';
 
@@ -73,7 +70,6 @@ export function TrabalhadorDetalhePage() {
   const [erro, setErro] = useState<string | null>(null);
   const [baixandoRelatorio, setBaixandoRelatorio] = useState(false);
   const [fotoUrl, setFotoUrl] = useState<string | null>(null);
-  const paleta = usePaletaGraficos();
   const { visualizar, dialogoVisualizador } = useVisualizadorPdf();
   const navigate = useNavigate();
   const tipo = useTipografia();
@@ -151,9 +147,6 @@ export function TrabalhadorDetalhePage() {
     return <FeedbackInline tom="erro">Funcionário não encontrado.</FeedbackInline>;
   }
 
-  const dadosFrequenciaEpi: ItemRanking[] =
-    perfil?.frequenciaTrocas.map((f) => ({ rotulo: f.catalogoEpiNome, valor: f.quantidadeTrocas })) ?? [];
-
   const contadorPorAba: Partial<Record<AbaPerfil, number>> = perfil
     ? {
         epi: perfil.episAtivos.length,
@@ -169,16 +162,6 @@ export function TrabalhadorDetalhePage() {
   ).map((a) => ({ valor: a.valor, rotulo: a.rotulo, icone: a.icone, contador: contadorPorAba[a.valor] }));
   const abaAtual = ABAS_PERFIL.find((a) => a.valor === aba) ?? ABAS_PERFIL[0];
 
-  const dadosAssiduidadeDds: FatiaDonut[] = perfil
-    ? [
-        { rotulo: 'Participou', valor: perfil.assiduidadeDds.totalParticipados, cor: paleta.ok },
-        {
-          rotulo: 'Não participou',
-          valor: Math.max(perfil.assiduidadeDds.totalRealizados - perfil.assiduidadeDds.totalParticipados, 0),
-          cor: paleta.alerta,
-        },
-      ]
-    : [];
 
   return (
     <div>
@@ -242,22 +225,33 @@ export function TrabalhadorDetalhePage() {
             {aba === 'epi' && (
               <div style={estiloPilha}>
                 <TermoCompromissoEpiCartao trabalhadorId={id} trabalhadorNome={perfil.nome} />
-                <Card titulo="Frequência de trocas por EPI">
-                  {dadosFrequenciaEpi.length === 0 ? (
-                    <Text>Sem dados de troca de EPI para exibir.</Text>
-                  ) : (
-                    <RankingBarChart dados={dadosFrequenciaEpi} corPadrao={paleta.marca} sufixo=" trocas" />
-                  )}
-                </Card>
+                <EpiPerfilSecao perfil={perfil} />
               </div>
             )}
             {aba === 'treinamentos' && (
               <div style={estiloPilha}>
-                <Card titulo="Assiduidade em DDS">
+                <Card>
                   {perfil.assiduidadeDds.totalRealizados === 0 ? (
                     <Text>Nenhum DDS realizado na obra desde a admissão.</Text>
                   ) : (
-                    <StatusDonutChart dados={dadosAssiduidadeDds} legendaCentral="DDS realizados" />
+                    <div style={{ display: 'flex', alignItems: 'center', gap: tokensUi.espaco.xl, flexWrap: 'wrap' }}>
+                      <AnelProgresso
+                        fracao={perfil.assiduidadeDds.totalParticipados / perfil.assiduidadeDds.totalRealizados}
+                        tom="ok"
+                        centro={`${Math.round((perfil.assiduidadeDds.totalParticipados / perfil.assiduidadeDds.totalRealizados) * 100)}%`}
+                        legenda="presença"
+                        aria-label="Presença em DDS"
+                      />
+                      <div>
+                        <div className={tipo.micro} style={{ color: designTokens.colorNeutralMedium }}>
+                          Assiduidade em DDS
+                        </div>
+                        <div className={tipo.titulo}>
+                          {perfil.assiduidadeDds.totalParticipados} de {perfil.assiduidadeDds.totalRealizados} DDS
+                        </div>
+                        <Text style={{ color: designTokens.colorNeutralMedium }}>Desde a admissão na obra</Text>
+                      </div>
+                    </div>
                   )}
                 </Card>
                 <TreinamentosTab trabalhadorId={id} obraId={perfil.obraId} />
