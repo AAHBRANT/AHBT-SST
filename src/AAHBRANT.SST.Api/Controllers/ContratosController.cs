@@ -67,6 +67,26 @@ public class ContratosController : ControllerBase
         return Ok(new { pessoasAtivas });
     }
 
+    // PDF do contrato ("Subir contrato", 21/10/2026): guardado junto do contrato; enviar de novo substitui.
+    [Authorize(Policy = "terceirizado:criar")]
+    [HttpPost("{id:guid}/arquivo")]
+    [RequestSizeLimit(21_000_000)]
+    public async Task<IActionResult> AnexarArquivo(Guid id, [FromForm] LerContratoComIaRequest body, CancellationToken ct)
+    {
+        using var memoria = new MemoryStream();
+        await body.Arquivo.CopyToAsync(memoria, ct);
+        await _mediator.Send(new AnexarArquivoContratoCommand(id, body.Arquivo.FileName, body.Arquivo.ContentType, memoria.ToArray()), ct);
+        return NoContent();
+    }
+
+    [Authorize(Policy = "terceirizado:ver")]
+    [HttpGet("{id:guid}/arquivo")]
+    public async Task<IActionResult> ObterArquivo(Guid id, CancellationToken ct)
+    {
+        var arquivo = await _mediator.Send(new ObterArquivoContratoQuery(id), ct);
+        return arquivo is null ? NotFound() : File(arquivo.Conteudo, arquivo.ContentType, arquivo.NomeArquivo);
+    }
+
     [Authorize(Policy = "terceirizado:criar")]
     [HttpPost("{contratoId:guid}/vagas/{funcaoId:guid}/pessoas")]
     public async Task<IActionResult> CadastrarPessoaNaVaga(

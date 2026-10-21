@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useParams } from 'react-router-dom';
 import {
   Button,
@@ -17,11 +17,12 @@ import {
   useConfirmar,
   type Coluna,
 } from '@ui';
-import { PersonAdd24Regular, Edit24Regular, DocumentDismiss24Regular } from '@fluentui/react-icons';
+import { PersonAdd24Regular, Edit24Regular, DocumentDismiss24Regular, DocumentPdf24Regular, ArrowUpload24Regular } from '@fluentui/react-icons';
 import { api, type ContratoDetalhe, type Funcao, type VagaFuncao } from '../../lib/api';
 import { useSucessoToast } from '../../hooks/useSucessoToast';
 import { formatarCpf } from '../../lib/cpf';
 import { FormularioContrato } from './FormularioContrato';
+import { useVisualizadorPdf } from '../../components/useVisualizadorPdf';
 import { paraDadosContrato, type ValorFormularioContrato } from './valorFormularioContrato';
 
 function hojeIso() {
@@ -49,6 +50,12 @@ export function ContratoDetalhePage() {
   const [funcoes, setFuncoes] = useState<Funcao[]>([]);
   const [erroEdicao, setErroEdicao] = useState<string | null>(null);
   const [salvandoEdicao, setSalvandoEdicao] = useState(false);
+  // PDF do contrato guardado no SST: ver e subir/substituir (vale também para contrato do G-Juri,
+  // que não traz o arquivo).
+  const { visualizar, dialogoVisualizador } = useVisualizadorPdf();
+  const entradaPdf = useRef<HTMLInputElement>(null);
+  const [enviandoPdf, setEnviandoPdf] = useState(false);
+  const [erroPdf, setErroPdf] = useState<string | null>(null);
 
   async function carregar() {
     if (!id) return;
@@ -60,6 +67,35 @@ export function ContratoDetalhePage() {
       setErro(e instanceof Error ? e.message : 'Falha ao carregar o contrato.');
     } finally {
       setCarregando(false);
+    }
+  }
+
+  function verPdf() {
+    if (!contrato) return;
+    const { id: contratoId, numeroContrato } = contrato;
+    void visualizar({
+      titulo: `Contrato ${numeroContrato}`,
+      nomeArquivo: contrato.arquivoNome ?? `contrato-${numeroContrato}.pdf`,
+      obter: async () => {
+        const arquivo = await api.terceirizados.contratos.baixarArquivo(contratoId);
+        if (!arquivo) throw new Error('O PDF deste contrato não foi encontrado.');
+        return arquivo;
+      },
+    });
+  }
+
+  async function enviarPdf(arquivo: File) {
+    if (!id) return;
+    try {
+      setEnviandoPdf(true);
+      setErroPdf(null);
+      await api.terceirizados.contratos.anexarArquivo(id, arquivo);
+      sucessoToast('PDF do contrato guardado.');
+      await carregar();
+    } catch (e) {
+      setErroPdf(e instanceof Error ? e.message : 'Falha ao guardar o PDF.');
+    } finally {
+      setEnviandoPdf(false);
     }
   }
 
@@ -168,19 +204,48 @@ export function ContratoDetalhePage() {
         voltarPara={`/terceirizados/empresas/${contrato.empresaId}`}
         rotuloVoltar="Voltar para a empresa"
         acoes={
-          !contrato.origemGJuri && contrato.status === 'Validado' && !editando ? (
-            <>
-              <Button icon={<DocumentDismiss24Regular />} onClick={() => void encerrarContrato()}>
-                Encerrar contrato
+          <>
+            {contrato.temArquivo && (
+              <Button icon={<DocumentPdf24Regular />} onClick={verPdf}>
+                Ver contrato (PDF)
               </Button>
-              <Button appearance="primary" icon={<Edit24Regular />} onClick={() => void abrirEdicao()}>
-                Editar contrato
+            )}
+            {contrato.status === 'Validado' && !editando && (
+              <Button icon={<ArrowUpload24Regular />} disabled={enviandoPdf} onClick={() => entradaPdf.current?.click()}>
+                {enviandoPdf ? 'Enviando…' : contrato.temArquivo ? 'Substituir PDF' : 'Anexar PDF'}
               </Button>
-            </>
-          ) : undefined
+            )}
+            {!contrato.origemGJuri && contrato.status === 'Validado' && !editando && (
+              <>
+                <Button icon={<DocumentDismiss24Regular />} onClick={() => void encerrarContrato()}>
+                  Encerrar contrato
+                </Button>
+                <Button appearance="primary" icon={<Edit24Regular />} onClick={() => void abrirEdicao()}>
+                  Editar contrato
+                </Button>
+              </>
+            )}
+          </>
         }
       />
+      <input
+        ref={entradaPdf}
+        type="file"
+        accept="application/pdf,.pdf"
+        hidden
+        onChange={(e) => {
+          const arquivo = e.target.files?.[0];
+          e.target.value = '';
+          if (arquivo) void enviarPdf(arquivo);
+        }}
+      />
+      {erroPdf && (
+        <FeedbackInline tom="erro" aoFechar={() => setErroPdf(null)}>
+          {erroPdf}
+        </FeedbackInline>
+      )}
       {dialogElement}
+      {dialogoVisualizador}
       {contrato.origemGJuri && (
         <FeedbackInline tom="info">Contrato recebido do G-Juri. Alterações e encerramento são feitos no G-Juri.</FeedbackInline>
       )}

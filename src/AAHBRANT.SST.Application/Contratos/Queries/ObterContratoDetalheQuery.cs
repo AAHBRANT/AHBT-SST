@@ -30,9 +30,11 @@ public class ObterContratoDetalheQueryHandler : IRequestHandler<ObterContratoDet
             .Select(v => new VagaFuncaoDto(v.Id, v.FuncaoId, v.Funcao!.Nome, v.QuantidadeVagas, v.QuantidadePreenchidas))
             .ToListAsync(ct);
 
+        var arquivoNome = await _db.ArquivosContrato.Where(a => a.ContratoId == request.Id).Select(a => a.NomeArquivo).FirstOrDefaultAsync(ct);
+
         return new ContratoDetalheDto(
             contrato.Id, contrato.EmpresaId, contrato.EmpresaRazaoSocial, contrato.ObraId, contrato.ObraNome,
             contrato.NumeroContrato, contrato.DataInicioVigencia, contrato.DataFimVigencia,
-            contrato.Status.ToString(), vagas, contrato.OrigemGJuri);
+            contrato.Status.ToString(), vagas, contrato.OrigemGJuri, arquivoNome is not null, arquivoNome);
     }
 }

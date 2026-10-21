@@ -351,6 +351,8 @@ export interface Contrato {
   status: 'Validado' | 'Encerrado' | 'Cancelado';
   // true = veio do G-Juri (só leitura no SST); false = cadastrado à mão pelo técnico.
   origemGJuri: boolean;
+  // PDF do contrato guardado no SST (subido pelo técnico); baixado sob demanda via baixarArquivo.
+  temArquivo: boolean;
 }
 
 export interface DadosContrato {
@@ -392,6 +394,7 @@ export interface VagaFuncao {
 export interface ContratoDetalhe extends Contrato {
   empresaRazaoSocial: string;
   vagas: VagaFuncao[];
+  arquivoNome: string | null;
 }
 
 export interface PessoaTerceirizada {
@@ -6463,6 +6466,21 @@ export const api = {
         formData.append('Arquivo', arquivo);
         return enviarFormulario<ContratoTerceirizadoLidoIa>('/api/contratos/leitura-ia', formData);
       },
+      // Guarda o PDF do contrato (substitui o anterior, se houver).
+      anexarArquivo: async (id: string, arquivo: File) => {
+        const formData = new FormData();
+        formData.append('Arquivo', arquivo);
+        const response = await fetch(`${API_BASE_URL}/api/contratos/${id}/arquivo`, {
+          method: 'POST',
+          headers: await montarHeadersAuth(),
+          body: formData,
+        });
+        if (!response.ok) {
+          const corpo = await response.text().catch(() => '');
+          throw new Error(extrairMensagemErro(corpo, response.status, response.statusText));
+        }
+      },
+      baixarArquivo: (id: string) => baixarBlobOuNulo(`/api/contratos/${id}/arquivo`),
       atualizar: (id: string, dados: DadosContrato) =>
         request<void>(`/api/contratos/${id}`, { method: 'PUT', body: JSON.stringify({ id, ...dados }) }),
       encerrar: (id: string, dataEncerramento: string) =>

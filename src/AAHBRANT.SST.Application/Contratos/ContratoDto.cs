@@ -10,7 +10,9 @@ public record ContratoDto(
     DateOnly DataFimVigencia,
     string Status,
     // true = veio do webhook do G-Juri (só leitura no SST); false = cadastrado à mão pelo técnico.
-    bool OrigemGJuri);
+    bool OrigemGJuri,
+    // PDF do contrato guardado no SST ("Subir contrato", 21/10/2026).
+    bool TemArquivo = false);
 
 public record VagaFuncaoDto(
     Guid Id,
@@ -30,4 +32,6 @@ public record ContratoDetalheDto(
     DateOnly DataFimVigencia,
     string Status,
     List<VagaFuncaoDto> Vagas,
-    bool OrigemGJuri);
+    bool OrigemGJuri,
+    bool TemArquivo = false,
+    string? ArquivoNome = null);

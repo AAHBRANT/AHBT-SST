@@ -49,6 +49,21 @@ public class Contrato : AuditableEntity
 
     public ICollection<ContratoVagaFuncao> Vagas { get; set; } = new List<ContratoVagaFuncao>();
     public ICollection<Trabalhador> Trabalhadores { get; set; } = new List<Trabalhador>();
+
+    // PDF do contrato enviado pelo técnico ("Subir contrato", especificação 21/10/2026). Tabela à parte,
+    // mesmo padrão de ArquivoCertificadoTreinamento: as listagens nunca carregam os bytes.
+    public ArquivoContrato? Arquivo { get; set; }
+}
+
+public class ArquivoContrato : AuditableEntity
+{
+    public Guid ContratoId { get; set; }
+    public Contrato? Contrato { get; set; }
+
+    public string NomeArquivo { get; set; } = string.Empty;
+    public string ContentType { get; set; } = string.Empty;
+    public byte[] Conteudo { get; set; } = Array.Empty<byte>();
+    public long TamanhoBytes { get; set; }
 }
 
 // "5 pedreiros, 3 eletricistas" — o contrato chega do G-Juri só com quantidade por função, nunca
