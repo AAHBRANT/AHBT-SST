@@ -87,11 +87,12 @@ public class OcrPaginasPdfTests
         {
             lock (corpos) corpos.Add(req.Content!.ReadAsStringAsync().Result);
             var conteudo = System.Text.Json.JsonSerializer.Serialize(new { texto = textoResposta });
-            var json = System.Text.Json.JsonSerializer.Serialize(new { choices = new[] { new { message = new { content = conteudo } } } });
+            var json = System.Text.Json.JsonSerializer.Serialize(new { content = new[] { new { type = "text", text = conteudo } } });
             return new HttpResponseMessage(status) { Content = new StringContent(json, Encoding.UTF8, "application/json") };
         });
         var chat = new AzureOpenAiChatJsonCliente(fabrica,
-            Options.Create(new AzureOpenAiOptions { Endpoint = "https://exemplo.openai.azure.com", ApiKey = "chave-de-teste" }),
+            Options.Create(new AzureOpenAiOptions()),
+            Options.Create(new ClaudeOptions { ApiKey = "chave-de-teste" }),
             NullLogger<AzureOpenAiChatJsonCliente>.Instance);
         return (new AzureOpenAiOcrPaginasPdf(chat, NullLogger<AzureOpenAiOcrPaginasPdf>.Instance), corpos);
     }
@@ -108,9 +109,8 @@ public class OcrPaginasPdfTests
         Assert.Equal(textoPagina1, paginas[0]); // página com texto não passa pela IA.
         Assert.StartsWith("CLÁUSULA 1", paginas[1]);
         var corpo = Assert.Single(corpos);
-        Assert.Contains("\"image_url\"", corpo);
-        Assert.Contains("data:image/jpeg;base64,", corpo);
-        Assert.Contains("\"detail\":\"high\"", corpo);
+        Assert.Contains("\"type\":\"image\"", corpo);
+        Assert.Contains("\"media_type\":\"image/jpeg\"", corpo);
     }
 
     [Fact]
