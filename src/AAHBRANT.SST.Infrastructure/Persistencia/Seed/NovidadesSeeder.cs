@@ -1456,6 +1456,17 @@ public static class NovidadesSeeder
                     "No Suporte IA e nas Ocorrências, a fala era gravada e enviada ao servidor para virar texto.",
                     "Agora o próprio Teams/navegador transforma a fala em texto enquanto você fala; o áudio não sai do aparelho. A IA continua preenchendo o formulário a partir do texto. Se o seu aparelho não tiver ditado, escreva o relato."),
             }),
+        new(
+            Versao: "5.79.0",
+            Titulo: "Câmera do reconhecimento facial mais simples",
+            DataPublicacao: new DateTime(2026, 10, 23, 0, 0, 0, DateTimeKind.Utc),
+            Itens: new[]
+            {
+                new NovidadeSeedItem(CategoriaNovidade.Melhoria,
+                    "Clique e capture, sem posicionamento",
+                    "A câmera do facial mostrava círculo, quadrado verde e avisos de luz e posição, capturava sozinha e tinha uma fila facial no DDS e no Treinamento.",
+                    "Agora a câmera abre, você clica em Capturar e pronto. A fila facial saiu: cada funcionário confirma a presença pelo próprio botão. O sistema continua conferindo o rosto depois da foto; se não servir, é só tirar outra. A fila da digital continua igual."),
+            }),
     };
 
     public static async Task ExecutarAsync(IServiceProvider services, CancellationToken ct = default)
