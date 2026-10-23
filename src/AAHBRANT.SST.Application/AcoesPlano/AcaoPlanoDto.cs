@@ -19,4 +19,12 @@ public class AcaoPlanoDto
     public DateTime? DataValidacao { get; set; }
     public Guid? ValidadoPorUsuarioId { get; set; }
     public string? ValidadoPorUsuarioNome { get; set; }
+
+    public string? ConcluidoPorUsuarioNome { get; set; }
+    public string? DescricaoConclusao { get; set; }
+
+    // Preenchidos só no detalhe da ocorrência: ação que o sistema conclui sozinho ("Dds"/"Reuniao")
+    // e o texto de como ("Ao encerrar o DDS de 24/10 com este tema"). Nulos = ação manual.
+    public string? TipoResolucaoAutomatica { get; set; }
+    public string? ResolucaoAutomatica { get; set; }
 }

@@ -1,0 +1,99 @@
+<title>Plano de Ação da Ocorrência</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<style>
+/* Layout: tabela do plano de ação na tela da ocorrência, antes/depois, + diálogos de confirmação. */
+:root{--bg:#f3f1ef;--sup:#fff;--fg:#1f1d1c;--suave:#625b57;--linha:#dcd6d1;--marca:#670000;--marca-fg:#fff;
+--ok-bg:#dff0df;--ok-fg:#1e5a1e;--at-bg:#fff4ce;--at-fg:#6b4e00;--er-bg:#fde7e9;--er-fg:#8a1c24;--auto-bg:#e6eefc;--auto-fg:#1d3f7a;--f:"Segoe UI",system-ui,sans-serif}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#1b1a19;--sup:#262423;--fg:#f0ece9;--suave:#b3aba6;--linha:#3d3936;--marca:#c25b5b;
+--ok-bg:#1f3b22;--ok-fg:#a9e0ad;--at-bg:#4a3b10;--at-fg:#ffe08a;--er-bg:#4a1c20;--er-fg:#ffb3b9;--auto-bg:#1c2b47;--auto-fg:#a9c4ff;color-scheme:dark}}
+:root[data-theme="dark"]{--bg:#1b1a19;--sup:#262423;--fg:#f0ece9;--suave:#b3aba6;--linha:#3d3936;--marca:#c25b5b;
+--ok-bg:#1f3b22;--ok-fg:#a9e0ad;--at-bg:#4a3b10;--at-fg:#ffe08a;--er-bg:#4a1c20;--er-fg:#ffb3b9;--auto-bg:#1c2b47;--auto-fg:#a9c4ff;color-scheme:dark}
+body{background:var(--bg);color:var(--fg);font-family:var(--f);font-size:14px;line-height:1.45;padding-block:24px;
+padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
+.wrap{max-width:1100px;margin:0 auto;display:grid;gap:22px}
+h1{font-size:20px;margin:0}h2{font-size:15px;margin:0}
+.intro{color:var(--suave);margin:4px 0 0;max-width:80ch}
+.card{background:var(--sup);border:1px solid var(--linha);border-radius:8px;padding:14px;display:grid;gap:10px;min-width:0}
+.rot{font-size:11px;text-transform:uppercase;letter-spacing:.07em;color:var(--suave);font-weight:600}
+.tab{overflow-x:auto}
+table{width:100%;border-collapse:collapse;font-size:13px;min-width:720px}
+th,td{text-align:left;padding:8px;border-bottom:1px solid var(--linha);vertical-align:top}
+th{font-size:11px;text-transform:uppercase;color:var(--suave);letter-spacing:.05em}
+.chip{display:inline-block;font-size:11px;font-weight:700;padding:2px 9px;border-radius:10px;white-space:nowrap}
+.ok{background:var(--ok-bg);color:var(--ok-fg)}.at{background:var(--at-bg);color:var(--at-fg)}.er{background:var(--er-bg);color:var(--er-fg)}.auto{background:var(--auto-bg);color:var(--auto-fg)}
+.leg{font-size:12px;color:var(--suave)}
+.btn{border:1px solid var(--linha);background:var(--sup);color:var(--fg);border-radius:4px;padding:5px 10px;font:600 12px var(--f);white-space:nowrap}
+.btn.pri{background:var(--marca);border-color:var(--marca);color:var(--marca-fg)}
+.riscado{text-decoration:line-through;color:var(--suave)}
+.grid2{display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:16px;align-items:start}
+.dlg{border:1px solid var(--linha);border-radius:8px;background:var(--sup);padding:16px;display:grid;gap:10px;box-shadow:0 6px 24px rgba(0,0,0,.12)}
+.campo{display:grid;gap:4px}.campo label{font-size:12px;font-weight:600;color:var(--suave)}
+.in{border:1px solid var(--linha);border-radius:4px;padding:6px 8px;min-height:54px;font-size:13px}
+.lista li{margin:3px 0}
+</style>
+<div class="wrap">
+  <header>
+    <h1>Plano de ação da ocorrência</h1>
+    <p class="intro">Desenho para aprovação. Objetivo: ninguém conclui uma ação sem querer, quem errou consegue desfazer, e as ações que o sistema consegue comprovar se resolvem sozinhas. Dados de exemplo.</p>
+  </header>
+
+  <div class="card">
+    <span class="rot">Hoje — o problema</span>
+    <div class="tab"><table>
+      <tr><th>Ação</th><th>Status</th><th></th></tr>
+      <tr><td>Instalar rodapé no andaime</td><td><span class="chip at">Pendente</span></td><td><span class="btn">Validar</span> <span class="leg">← um clique conclui e valida, sem perguntar nada</span></td></tr>
+    </table></div>
+  </div>
+
+  <div class="card">
+    <span class="rot">Proposta — tabela "Ações do plano"</span>
+    <div class="tab"><table>
+      <tr><th>Ação</th><th>Como se resolve</th><th>Responsável · prazo</th><th>Status</th><th></th></tr>
+      <tr><td>Realizar o DDS "Queda de materiais"</td><td><span class="chip auto">Automática</span><div class="leg">Ao encerrar o DDS de 24/10 com este tema</div></td><td>Técnico · 24/10</td><td><span class="chip at">Aguardando DDS</span></td><td></td></tr>
+      <tr><td>Reunião de análise</td><td><span class="chip auto">Automática</span><div class="leg">Ao registrar a reunião como realizada</div></td><td>Técnico · 26/10</td><td><span class="chip ok">Concluída 26/10</span></td><td></td></tr>
+      <tr><td>Inspecionar andaimes da obra</td><td><span class="chip auto">Automática</span><div class="leg">Ao finalizar uma inspeção de Andaimes nesta obra</div></td><td>Técnico · 28/10</td><td><span class="chip at">Pendente</span></td><td></td></tr>
+      <tr><td>Reciclar NR-35 dos envolvidos</td><td><span class="chip auto">Automática</span><div class="leg">Ao concluir uma turma de <b>NR-35</b> com os 2 envolvidos presentes</div></td><td>Técnico · 30/10</td><td><span class="chip at">Aguardando treinamento NR-35</span><div class="leg">0 de 2 envolvidos treinados</div></td><td></td></tr>
+      <tr><td>Instalar rodapé em todas as plataformas</td><td><span class="chip">Manual</span><div class="leg">Com descrição do que foi feito</div></td><td>Encarregado · 25/10</td><td><span class="chip at">Pendente</span></td><td><span class="btn pri">Marcar como concluída</span></td></tr>
+      <tr><td>Isolar a área abaixo de serviços em altura</td><td><span class="chip">Manual</span><div class="leg">"Isolamento com fita zebrada e placa"</div></td><td>Encarregado · 25/10</td><td><span class="chip ok">Concluída 25/10</span><div class="leg">por Técnico Exemplo</div></td><td><span class="btn">Reabrir</span></td></tr>
+    </table></div>
+    <ul class="lista leg">
+      <li>O botão <b>Validar</b> e o campo "Validar como" saem da tela. Quem conclui fica registrado automaticamente, pelo login.</li>
+      <li>Ações <b>automáticas</b> não têm botão: o sistema conclui quando o fato acontece (DDS encerrado, reunião registrada, inspeção finalizada).</li>
+      <li><b>Reabrir</b> volta a ação para Pendente, enquanto a investigação estiver aberta. É assim que o técnico desfaz o que validou sem querer.</li>
+    </ul>
+  </div>
+
+  <div class="grid2">
+    <div class="dlg">
+      <span class="rot">Ao criar ou revisar uma ação (manual ou sugerida pela IA)</span>
+      <h2>Nova ação do plano</h2>
+      <div class="campo"><label>Descrição *</label><div class="in" style="min-height:0">Reciclar NR-35 dos envolvidos</div></div>
+      <div class="campo"><label>Como se resolve *</label><div class="in" style="min-height:0">Treinamento concluído ▾</div>
+        <span class="leg">Opções: Manual · Treinamento concluído · Inspeção finalizada · Entrega de EPI assinada</span></div>
+      <div class="campo"><label>Curso *</label><div class="in" style="min-height:0">NR-35 — Trabalho em altura (reciclagem) ▾</div></div>
+      <span class="leg">Só uma turma deste curso, concluída com os envolvidos presentes, resolve a ação. Treinamento de outro curso não conta.</span>
+    </div>
+    <div class="dlg">
+      <span class="rot">Ao clicar "Marcar como concluída"</span>
+      <h2>Concluir ação do plano?</h2>
+      <p style="margin:0">"Instalar rodapé em todas as plataformas"</p>
+      <div class="campo"><label>O que foi feito *</label><div class="in">Rodapés instalados nos 4 níveis do andaime da fachada norte.</div></div>
+      <span class="leg">Só conclua se a ação foi executada de fato. Ela sai do pendente e libera a finalização da investigação.</span>
+      <div><span class="btn pri">Concluir ação</span> <span class="btn">Cancelar</span></div>
+    </div>
+    <div class="dlg">
+      <span class="rot">Ao clicar "Reabrir"</span>
+      <h2>Reabrir ação?</h2>
+      <p style="margin:0">A ação volta para <b>Pendente</b> e o registro de conclusão é apagado. Use quando ela foi concluída por engano.</p>
+      <div><span class="btn pri">Reabrir ação</span> <span class="btn">Cancelar</span></div>
+    </div>
+  </div>
+
+  <div class="card">
+    <h2>Entrega em duas etapas</h2>
+    <ul class="lista">
+      <li><b>Agora (rápido):</b> tirar o "Validar", criar "Marcar como concluída" com confirmação + descrição, "Reabrir", e a coluna "Como se resolve" para DDS e reunião, que já são automáticos. O técnico já consegue corrigir a ocorrência de hoje.</li>
+      <li><b>Em seguida:</b> o campo "Como se resolve" na criação da ação e as automáticas novas, uma por vez: <b>treinamento</b> (turma concluída do curso escolhido, com os envolvidos), <b>inspeção</b> (tipo escolhido, finalizada na obra), <b>entrega de EPI</b>. Depois APR/PT, OS e revisão do PGR.</li>
+    </ul>
+  </div>
+</div>

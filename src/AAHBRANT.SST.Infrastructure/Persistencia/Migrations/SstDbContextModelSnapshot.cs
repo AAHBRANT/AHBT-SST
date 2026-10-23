@@ -31,6 +31,9 @@ namespace AAHBRANT.SST.Infrastructure.Persistencia.Migrations
                     b.Property<bool>("Ativo")
                         .HasColumnType("bit");
 
+                    b.Property<Guid?>("ConcluidoPorUsuarioId")
+                        .HasColumnType("uniqueidentifier");
+
                     b.Property<DateTime>("CreatedAtUtc")
                         .HasColumnType("datetime2");
 
@@ -47,6 +50,10 @@ namespace AAHBRANT.SST.Infrastructure.Persistencia.Migrations
                         .IsRequired()
                         .HasMaxLength(500)
                         .HasColumnType("nvarchar(500)");
+
+                    b.Property<string>("DescricaoConclusao")
+                        .HasMaxLength(1000)
+                        .HasColumnType("nvarchar(1000)");
 
                     b.Property<string>("Fundamentacao")
                         .HasMaxLength(500)
@@ -93,6 +100,8 @@ namespace AAHBRANT.SST.Infrastructure.Persistencia.Migrations
                         .HasColumnType("uniqueidentifier");
 
                     b.HasKey("Id");
+
+                    b.HasIndex("ConcluidoPorUsuarioId");
 
                     b.HasIndex("ResponsavelUsuarioId");
 
@@ -9792,6 +9801,11 @@ namespace AAHBRANT.SST.Infrastructure.Persistencia.Migrations
 
             modelBuilder.Entity("AAHBRANT.SST.Domain.Entidades.AcaoPlano", b =>
                 {
+                    b.HasOne("AAHBRANT.SST.Domain.Entidades.Usuario", "ConcluidoPorUsuario")
+                        .WithMany()
+                        .HasForeignKey("ConcluidoPorUsuarioId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
                     b.HasOne("AAHBRANT.SST.Domain.Entidades.Usuario", "ResponsavelUsuario")
                         .WithMany()
                         .HasForeignKey("ResponsavelUsuarioId")
@@ -9801,6 +9815,8 @@ namespace AAHBRANT.SST.Infrastructure.Persistencia.Migrations
                         .WithMany()
                         .HasForeignKey("ValidadoPorUsuarioId")
                         .OnDelete(DeleteBehavior.Restrict);
+
+                    b.Navigation("ConcluidoPorUsuario");
 
                     b.Navigation("ResponsavelUsuario");
 

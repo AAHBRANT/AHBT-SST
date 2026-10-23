@@ -3375,6 +3375,12 @@ export interface AcaoPlano {
   dataValidacao?: string | null;
   validadoPorUsuarioId?: string | null;
   validadoPorUsuarioNome?: string | null;
+  // Conclusão manual: quem concluiu (pelo login) e o que foi feito.
+  concluidoPorUsuarioNome?: string | null;
+  descricaoConclusao?: string | null;
+  // Só no detalhe da ocorrência: ação que o sistema conclui sozinho e como.
+  tipoResolucaoAutomatica?: 'Dds' | 'Reuniao' | null;
+  resolucaoAutomatica?: string | null;
 }
 
 export interface NaoConformidadeDetalhe {
@@ -6377,6 +6383,10 @@ export const api = {
       request<void>(`/api/acidentes/${id}`, { method: 'PUT', body: JSON.stringify(acidente) }),
     excluir: (id: string) => request<void>(`/api/acidentes/${id}`, { method: 'DELETE' }),
     avancarStatus: (id: string) => request<void>(`/api/acidentes/${id}/avancar-status`, { method: 'POST' }),
+    // Ações do plano da ocorrência: concluir com descrição (quem conclui vem do login) e reabrir.
+    concluirAcao: (acaoId: string, descricaoConclusao: string) =>
+      request<void>(`/api/acidentes/acoes-plano/${acaoId}/concluir`, { method: 'POST', body: JSON.stringify({ descricaoConclusao }) }),
+    reabrirAcao: (acaoId: string) => request<void>(`/api/acidentes/acoes-plano/${acaoId}/reabrir`, { method: 'POST' }),
     // Reunião de análise pela tela da ocorrência. Horários em Brasília, sem fuso ("2026-10-24T14:00:00").
     agendarReuniao: (id: string, dados: { inicio: string; duracaoMinutos: number; participantesUsuarioIds: string[] }) =>
       request<void>(`/api/acidentes/${id}/reuniao-analise`, { method: 'POST', body: JSON.stringify(dados) }),
