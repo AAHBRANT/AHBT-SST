@@ -395,7 +395,7 @@ export function SuporteIaTab() {
   // "Relatar por voz" substitui o formulário pelo novo relato. Se a IA não conseguir classificar, a
   // fala transcrita vai para a descrição e o usuário completa o resto.
   const relatoVoz = useGravacaoVoz(
-    api.suporteIa.relatoVoz,
+    api.suporteIa.relatoTexto,
     (relato: RelatoVozSuporteIa) => {
       setErro(null);
       setResultado(null);

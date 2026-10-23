@@ -77,6 +77,7 @@ public static class DependencyInjection
         services.AddSingleton<AAHBRANT.SST.Application.Relatorios.IImagemListaPresencaService, AAHBRANT.SST.Infrastructure.Documentos.ImagemListaPresencaService>();
         services.AddScoped<ISuporteIaConfiguracao, SuporteIaConfiguracao>();
         services.Configure<AzureOpenAiOptions>(configuration.GetSection("AzureOpenAI"));
+        services.Configure<ClaudeOptions>(configuration.GetSection("Claude"));
         services.AddScoped<AAHBRANT.SST.Application.SuporteIa.ITranscricaoAudioService, AzureOpenAiTranscricaoService>();
         services.AddScoped<AzureOpenAiChatJsonCliente>();
         // Leitura de PGR/PCMSO com IA (10/10/2026). O consumidor da fila (LeituraIaBackgroundService) é

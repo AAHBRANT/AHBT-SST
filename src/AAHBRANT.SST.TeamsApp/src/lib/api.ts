@@ -6400,6 +6400,9 @@ export const api = {
     obterDetalhe: (id: string) => request<SuporteIaSolicitacao>(`/api/suporte-ia/${id}`),
     // "Relatar por voz" — multipart, fora de request<T> (que força Content-Type: application/json)
     // e do motor offline (transcrição e classificação dependem do Azure OpenAI, sempre online).
+    // Texto ditado no navegador (Web Speech API) → a IA classifica. Substitui o envio de áudio.
+    relatoTexto: (relato: string) =>
+      request<RelatoVozSuporteIa>('/api/suporte-ia/relato-texto', { method: 'POST', body: JSON.stringify({ relato }) }),
     relatoVoz: async (audio: Blob, nomeArquivo: string): Promise<RelatoVozSuporteIa> => {
       const formData = new FormData();
       formData.append('audio', audio, nomeArquivo);

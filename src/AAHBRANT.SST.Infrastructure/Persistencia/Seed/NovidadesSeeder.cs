@@ -1445,6 +1445,17 @@ public static class NovidadesSeeder
                     "Para o médico começar o PCMSO era preciso juntar à mão as funções, os GHE e os riscos do PGR da obra.",
                     "Em Saúde Ocupacional › Escopo para o médico, escolha a obra: o sistema monta o documento com a identificação da obra, as funções por GHE, o inventário de riscos e as atividades críticas. Dá para visualizar, baixar o PDF ou enviar ao médico por e-mail. Exames, periodicidade e critérios de aptidão ficam com o médico."),
             }),
+        new(
+            Versao: "5.78.0",
+            Titulo: "Relatar por voz com o ditado do próprio aparelho",
+            DataPublicacao: new DateTime(2026, 10, 22, 0, 0, 0, DateTimeKind.Utc),
+            Itens: new[]
+            {
+                new NovidadeSeedItem(CategoriaNovidade.Melhoria,
+                    "Ditado por voz direto no navegador",
+                    "No Suporte IA e nas Ocorrências, a fala era gravada e enviada ao servidor para virar texto.",
+                    "Agora o próprio Teams/navegador transforma a fala em texto enquanto você fala; o áudio não sai do aparelho. A IA continua preenchendo o formulário a partir do texto. Se o seu aparelho não tiver ditado, escreva o relato."),
+            }),
     };
 
     public static async Task ExecutarAsync(IServiceProvider services, CancellationToken ct = default)
