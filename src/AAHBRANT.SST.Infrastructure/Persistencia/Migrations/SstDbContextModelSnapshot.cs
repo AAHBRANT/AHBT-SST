@@ -76,6 +76,15 @@ namespace AAHBRANT.SST.Infrastructure.Persistencia.Migrations
                     b.Property<int>("Prioridade")
                         .HasColumnType("int");
 
+                    b.Property<Guid?>("ResolucaoCatalogoEpiId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<Guid?>("ResolucaoCursoTreinamentoId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<int?>("ResolucaoTipoInspecao")
+                        .HasColumnType("int");
+
                     b.Property<Guid?>("ResponsavelUsuarioId")
                         .HasColumnType("uniqueidentifier");
 
@@ -90,6 +99,9 @@ namespace AAHBRANT.SST.Infrastructure.Persistencia.Migrations
                     b.Property<int>("Tipo")
                         .HasColumnType("int");
 
+                    b.Property<int?>("TipoResolucao")
+                        .HasColumnType("int");
+
                     b.Property<DateTime?>("UpdatedAtUtc")
                         .HasColumnType("datetime2");
 
@@ -102,6 +114,10 @@ namespace AAHBRANT.SST.Infrastructure.Persistencia.Migrations
                     b.HasKey("Id");
 
                     b.HasIndex("ConcluidoPorUsuarioId");
+
+                    b.HasIndex("ResolucaoCatalogoEpiId");
+
+                    b.HasIndex("ResolucaoCursoTreinamentoId");
 
                     b.HasIndex("ResponsavelUsuarioId");
 
@@ -9806,6 +9822,16 @@ namespace AAHBRANT.SST.Infrastructure.Persistencia.Migrations
                         .HasForeignKey("ConcluidoPorUsuarioId")
                         .OnDelete(DeleteBehavior.Restrict);
 
+                    b.HasOne("AAHBRANT.SST.Domain.Entidades.CatalogoEpi", "ResolucaoCatalogoEpi")
+                        .WithMany()
+                        .HasForeignKey("ResolucaoCatalogoEpiId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.HasOne("AAHBRANT.SST.Domain.Entidades.CursoTreinamento", "ResolucaoCursoTreinamento")
+                        .WithMany()
+                        .HasForeignKey("ResolucaoCursoTreinamentoId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
                     b.HasOne("AAHBRANT.SST.Domain.Entidades.Usuario", "ResponsavelUsuario")
                         .WithMany()
                         .HasForeignKey("ResponsavelUsuarioId")
@@ -9817,6 +9843,10 @@ namespace AAHBRANT.SST.Infrastructure.Persistencia.Migrations
                         .OnDelete(DeleteBehavior.Restrict);
 
                     b.Navigation("ConcluidoPorUsuario");
+
+                    b.Navigation("ResolucaoCatalogoEpi");
+
+                    b.Navigation("ResolucaoCursoTreinamento");
 
                     b.Navigation("ResponsavelUsuario");
 

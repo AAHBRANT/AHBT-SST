@@ -14,7 +14,12 @@ public record CriarAcaoPlanoCommand(
     string Descricao,
     Guid? ResponsavelUsuarioId,
     PrioridadeAcao Prioridade,
-    DateTime? Prazo) : IRequest<Guid>;
+    DateTime? Prazo,
+    // "Como se resolve" (só ocorrências usam hoje): nulo = manual.
+    TipoResolucaoAcaoPlano? TipoResolucao = null,
+    Guid? ResolucaoCursoTreinamentoId = null,
+    TipoInspecao? ResolucaoTipoInspecao = null,
+    Guid? ResolucaoCatalogoEpiId = null) : IRequest<Guid>;
 
 public class CriarAcaoPlanoCommandValidator : AbstractValidator<CriarAcaoPlanoCommand>
 {
@@ -54,8 +59,16 @@ public class CriarAcaoPlanoCommandHandler : IRequestHandler<CriarAcaoPlanoComman
             Prazo = prazo,
         };
 
+        if (request.TipoResolucao is not null)
+            await VinculoResolucaoAcaoPlano.AplicarAsync(_db, acao, request.TipoResolucao, request.ResolucaoCursoTreinamentoId,
+                request.ResolucaoTipoInspecao, request.ResolucaoCatalogoEpiId, ct);
+
         _db.AcoesPlano.Add(acao);
         await _db.SaveChangesAsync(ct);
+
+        // Fato já aconteceu (ex.: turma do curso já concluída depois da ocorrência): conclui na hora.
+        if (acao.TipoResolucao is not null && acao.OrigemTipo == nameof(Acidente))
+            await ResolucaoVinculadaAcaoPlano.ConcluirAtendidasAsync(_db, new[] { acao.OrigemId }, ct);
         return acao.Id;
     }
 }

@@ -35,6 +35,7 @@ import {
 } from '@ui';
 import { ArrowDownload24Regular, Eye24Regular, Save24Regular } from '@fluentui/react-icons';
 import { CartaoReuniaoAnalise } from './CartaoReuniaoAnalise';
+import { CampoComoSeResolve, payloadResolucao, pendenciaResolucao, resolucaoManual, type ResolucaoEmEdicao } from './CampoComoSeResolve';
 import { useVisualizadorPdf } from '../../components/useVisualizadorPdf';
 import {
   api,
@@ -48,6 +49,8 @@ import {
   StatusAcidente,
   type AcaoPlano,
   type AcidenteDetalhe,
+  type CatalogoEpi,
+  type CursoTreinamento,
   type NovaAcaoPlano,
   type Usuario,
 } from '../../lib/api';
@@ -93,6 +96,12 @@ export function AcidenteDetalhePage() {
   const [acaoConcluindo, setAcaoConcluindo] = useState<AcaoPlano | null>(null);
   const [descricaoConclusao, setDescricaoConclusao] = useState('');
   const { confirmar, dialogElement: dialogoConfirmacao } = useConfirmar();
+  // "Como se resolve" (etapa 2): na nova ação e no Alterar de uma ação existente.
+  const [cursos, setCursos] = useState<CursoTreinamento[]>([]);
+  const [epis, setEpis] = useState<CatalogoEpi[]>([]);
+  const [resolucaoNova, setResolucaoNova] = useState<ResolucaoEmEdicao>(resolucaoManual());
+  const [acaoAlterando, setAcaoAlterando] = useState<AcaoPlano | null>(null);
+  const [resolucaoAlterando, setResolucaoAlterando] = useState<ResolucaoEmEdicao>(resolucaoManual());
   const [erro, setErro] = useState<string | null>(null);
   const [processando, setProcessando] = useState(false);
   const [baixandoPdf, setBaixandoPdf] = useState(false);
@@ -116,9 +125,16 @@ export function AcidenteDetalhePage() {
     if (!id) return;
     try {
       setErro(null);
-      const [det, listaUsuarios] = await Promise.all([api.acidentes.obterDetalhe(id), api.usuarios.listar()]);
+      const [det, listaUsuarios, listaCursos, listaEpis] = await Promise.all([
+        api.acidentes.obterDetalhe(id),
+        api.usuarios.listar(),
+        api.cursosTreinamento.listar().catch(() => [] as CursoTreinamento[]),
+        api.catalogosEpi.listar().catch(() => [] as CatalogoEpi[]),
+      ]);
       setDetalhe(det);
       setUsuarios(listaUsuarios);
+      setCursos(listaCursos);
+      setEpis(listaEpis);
       setMetodologia(det.acidente.metodologiaInvestigacao ? String(det.acidente.metodologiaInvestigacao) : '');
       setCausas(det.acidente.causas ?? '');
     } catch (e) {
@@ -193,6 +209,12 @@ export function AcidenteDetalhePage() {
       setErro('Informe a descrição da ação do plano.');
       return;
     }
+    const pendencia = pendenciaResolucao(resolucaoNova);
+    if (pendencia) {
+      setErro(pendencia);
+      return;
+    }
+    const resolucao = payloadResolucao(resolucaoNova);
     try {
       setProcessando(true);
       setErro(null);
@@ -202,8 +224,13 @@ export function AcidenteDetalhePage() {
         ...novaAcao,
         responsavelUsuarioId: novaAcao.responsavelUsuarioId || null,
         prazo: novaAcao.prazo || null,
+        tipoResolucao: resolucao.tipoResolucao,
+        resolucaoCursoTreinamentoId: resolucao.cursoTreinamentoId,
+        resolucaoTipoInspecao: resolucao.tipoInspecao,
+        resolucaoCatalogoEpiId: resolucao.catalogoEpiId,
       });
       setNovaAcao(novaAcaoInicial());
+      setResolucaoNova(resolucaoManual());
       await carregar();
     } catch (e) {
       setErro(e instanceof Error ? e.message : 'Falha ao criar ação do plano.');
@@ -226,6 +253,37 @@ export function AcidenteDetalhePage() {
       await carregar();
     } catch (e) {
       setErro(e instanceof Error ? e.message : 'Falha ao concluir a ação do plano.');
+    } finally {
+      setProcessando(false);
+    }
+  }
+
+  function abrirAlterarResolucao(acao: AcaoPlano) {
+    setErro(null);
+    setResolucaoAlterando({
+      tipoResolucao: acao.tipoResolucao ?? null,
+      cursoTreinamentoId: acao.resolucaoCursoTreinamentoId ?? '',
+      tipoInspecao: acao.resolucaoTipoInspecao ? String(acao.resolucaoTipoInspecao) : '',
+      catalogoEpiId: acao.resolucaoCatalogoEpiId ?? '',
+    });
+    setAcaoAlterando(acao);
+  }
+
+  async function salvarResolucao() {
+    if (!acaoAlterando) return;
+    const pendencia = pendenciaResolucao(resolucaoAlterando);
+    if (pendencia) {
+      setErro(pendencia);
+      return;
+    }
+    try {
+      setProcessando(true);
+      setErro(null);
+      await api.acidentes.definirResolucaoAcao(acaoAlterando.id, payloadResolucao(resolucaoAlterando));
+      setAcaoAlterando(null);
+      await carregar();
+    } catch (e) {
+      setErro(e instanceof Error ? e.message : 'Falha ao alterar como a ação se resolve.');
     } finally {
       setProcessando(false);
     }
@@ -355,7 +413,14 @@ export function AcidenteDetalhePage() {
         const concluida = acao.status === StatusAcaoPlano.Concluido;
         const quem = acao.concluidoPorUsuarioNome ?? acao.validadoPorUsuarioNome;
         if (!concluida && acao.tipoResolucaoAutomatica)
-          return <StatusChip tom="atencao">{acao.tipoResolucaoAutomatica === 'Dds' ? 'Aguardando DDS' : 'Aguardando reunião'}</StatusChip>;
+          return (
+            <div style={{ display: 'grid', gap: 2 }}>
+              <span>
+                <StatusChip tom="atencao">{acao.rotuloAguardando ?? 'Aguardando'}</StatusChip>
+              </span>
+              {acao.progressoResolucao && <Legenda>{acao.progressoResolucao}</Legenda>}
+            </div>
+          );
         return (
           <div style={{ display: 'grid', gap: 2 }}>
             <span>
@@ -581,6 +646,7 @@ export function AcidenteDetalhePage() {
                 />
               </Field>
             </Campo>
+            <CampoComoSeResolve valor={resolucaoNova} aoMudar={setResolucaoNova} cursos={cursos} epis={epis} />
           </FormGrid>
         </FormSection>
         <FormRodape>
@@ -606,21 +672,55 @@ export function AcidenteDetalhePage() {
                   Reabrir
                 </Button>
               );
-            if (acao.tipoResolucaoAutomatica) return null;
-            return (
-              <Button
-                appearance="primary"
-                size="small"
-                onClick={() => { setDescricaoConclusao(''); setErro(null); setAcaoConcluindo(acao); }}
-                disabled={processando}
-              >
-                Marcar como concluída
+            // DDS e reunião se resolvem pelo próprio fluxo; não têm botão.
+            if (acao.tipoResolucaoAutomatica === 'Dds' || acao.tipoResolucaoAutomatica === 'Reuniao') return null;
+            const alterar = (
+              <Button appearance="subtle" size="small" onClick={() => abrirAlterarResolucao(acao)} disabled={processando}>
+                Alterar
               </Button>
+            );
+            if (acao.tipoResolucao) return alterar;
+            return (
+              <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap' }}>
+                <Button
+                  appearance="primary"
+                  size="small"
+                  onClick={() => { setDescricaoConclusao(''); setErro(null); setAcaoConcluindo(acao); }}
+                  disabled={processando}
+                >
+                  Marcar como concluída
+                </Button>
+                {alterar}
+              </div>
             );
           }}
         />
       </Card>
       {dialogoConfirmacao}
+      <Dialog open={!!acaoAlterando} onOpenChange={(_, d) => { if (!d.open) setAcaoAlterando(null); }}>
+        <DialogSurface>
+          <DialogBody>
+            <DialogTitle>Como esta ação se resolve?</DialogTitle>
+            <DialogContent>
+              <div style={{ display: 'grid', gap: 10 }}>
+                <Text>"{acaoAlterando?.descricao}"</Text>
+                <FormGrid>
+                  <CampoComoSeResolve valor={resolucaoAlterando} aoMudar={setResolucaoAlterando} cursos={cursos} epis={epis} />
+                </FormGrid>
+                {erro && acaoAlterando && <FeedbackInline tom="erro">{erro}</FeedbackInline>}
+              </div>
+            </DialogContent>
+            <DialogActions>
+              <Button appearance="secondary" onClick={() => setAcaoAlterando(null)} disabled={processando}>
+                Cancelar
+              </Button>
+              <Button appearance="primary" onClick={() => void salvarResolucao()} disabled={processando}>
+                Salvar
+              </Button>
+            </DialogActions>
+          </DialogBody>
+        </DialogSurface>
+      </Dialog>
       <Dialog open={!!acaoConcluindo} onOpenChange={(_, d) => { if (!d.open) setAcaoConcluindo(null); }}>
         <DialogSurface>
           <DialogBody>

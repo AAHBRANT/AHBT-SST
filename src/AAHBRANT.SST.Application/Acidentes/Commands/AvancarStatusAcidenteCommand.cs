@@ -59,6 +59,7 @@ public class AvancarStatusAcidenteCommandHandler : IRequestHandler<AvancarStatus
                 throw new InvalidOperationException(
                     "Registre a reunião de análise como realizada antes de finalizar a investigação.");
 
+            await AAHBRANT.SST.Application.AcoesPlano.ResolucaoVinculadaAcaoPlano.ConcluirAtendidasAsync(_db, new[] { acidente.Id }, ct);
             var existeAcaoPendente = await _db.AcoesPlano.AnyAsync(
                 a => a.OrigemTipo == nameof(Domain.Entidades.Acidente) &&
                      a.OrigemId == acidente.Id &&

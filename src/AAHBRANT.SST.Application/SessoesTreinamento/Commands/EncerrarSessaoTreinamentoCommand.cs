@@ -111,6 +111,10 @@ public class EncerrarSessaoTreinamentoCommandHandler : IRequestHandler<EncerrarS
 
         await _db.SaveChangesAsync(ct);
 
+        // Ações do plano de ocorrências que se resolvem com uma turma deste curso.
+        var ocorrencias = await AAHBRANT.SST.Application.AcoesPlano.ResolucaoVinculadaAcaoPlano.OcorrenciasComTreinamentoAsync(_db, sessao.CursoTreinamentoId, ct);
+        await AAHBRANT.SST.Application.AcoesPlano.ResolucaoVinculadaAcaoPlano.ConcluirAtendidasAsync(_db, ocorrencias, ct);
+
         foreach (var (treinamentoId, trabalhadorId) in geradosParaAssinar)
         {
             Guid? documentoId = null;
