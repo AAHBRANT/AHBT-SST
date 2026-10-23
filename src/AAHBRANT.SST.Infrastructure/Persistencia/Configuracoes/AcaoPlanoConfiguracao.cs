@@ -16,6 +16,9 @@ public class AcaoPlanoConfiguracao : IEntityTypeConfiguration<AcaoPlano>
             .HasForeignKey(a => a.ResponsavelUsuarioId).OnDelete(DeleteBehavior.Restrict);
         builder.HasOne(a => a.ValidadoPorUsuario).WithMany()
             .HasForeignKey(a => a.ValidadoPorUsuarioId).OnDelete(DeleteBehavior.Restrict);
+        builder.HasOne(a => a.ConcluidoPorUsuario).WithMany()
+            .HasForeignKey(a => a.ConcluidoPorUsuarioId).OnDelete(DeleteBehavior.Restrict);
+        builder.Property(a => a.DescricaoConclusao).HasMaxLength(1000);
 
         // Índice composto é o principal caminho de acesso: "todas as ações desta NC/Acidente/...".
         builder.HasIndex(a => new { a.OrigemTipo, a.OrigemId });

@@ -1,3 +1,4 @@
+using AAHBRANT.SST.Application.AcoesPlano.Commands;
 using AAHBRANT.SST.Application.Acidentes.Commands;
 using AAHBRANT.SST.Application.Acidentes.RelatoIa;
 using AAHBRANT.SST.Application.Acidentes.Queries;
@@ -172,6 +173,24 @@ public class AcidentesController : ControllerBase
         return NoContent();
     }
 
+    // Conclusão manual (com descrição) e Reabrir das ações do plano da ocorrência. Quem concluiu vem
+    // do token, nunca do corpo.
+    [Authorize(Policy = "acidente:editar")]
+    [HttpPost("acoes-plano/{acaoId:guid}/concluir")]
+    public async Task<IActionResult> ConcluirAcao(Guid acaoId, ConcluirAcaoPlanoBody body, CancellationToken ct)
+    {
+        await _mediator.Send(new ConcluirAcaoPlanoCommand(acaoId, body.DescricaoConclusao ?? string.Empty, await UsuarioAtualIdAsync(ct)), ct);
+        return NoContent();
+    }
+
+    [Authorize(Policy = "acidente:editar")]
+    [HttpPost("acoes-plano/{acaoId:guid}/reabrir")]
+    public async Task<IActionResult> ReabrirAcao(Guid acaoId, CancellationToken ct)
+    {
+        await _mediator.Send(new ReabrirAcaoPlanoCommand(acaoId), ct);
+        return NoContent();
+    }
+
     // Relatório de Investigação de Ocorrência (PDF) — mesma permissão de quem vê a ocorrência.
     [Authorize(Policy = "acidente:ver")]
     [HttpGet("{id:guid}/pdf")]
@@ -306,3 +325,5 @@ public record AgendarReuniaoAnaliseBody(DateTime Inicio, int DuracaoMinutos, Lis
 public record RemarcarReuniaoAnaliseBody(DateTime Inicio, int DuracaoMinutos);
 
 public record ReuniaoAnaliseRealizadaBody(DateTime RealizadaEm, List<string>? Presentes, string? Ata);
+
+public record ConcluirAcaoPlanoBody(string? DescricaoConclusao);

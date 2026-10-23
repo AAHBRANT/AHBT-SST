@@ -1537,6 +1537,17 @@ public static class NovidadesSeeder
                     "A investigação de acidentes, incidentes e quase acidentes ficava só na tela, sem um documento para imprimir ou arquivar.",
                     "Abra a ocorrência e clique em Visualizar relatório ou Baixar PDF. Sai tudo num documento só: identificação, descrição, consequências, causas, plano de ação, reunião de análise com a ata, fotos e espaço para as assinaturas do técnico e do engenheiro."),
             }),
+        new(
+            Versao: "5.86.0",
+            Titulo: "Plano de ação da ocorrência: concluir com confirmação e reabrir",
+            DataPublicacao: new DateTime(2026, 10, 23, 0, 0, 0, DateTimeKind.Utc),
+            Itens: new[]
+            {
+                new NovidadeSeedItem(CategoriaNovidade.Melhoria,
+                    "Nada é concluído sem querer",
+                    "O botão Validar das ações do plano concluía a ação com um clique, sem perguntar, e não havia como desfazer.",
+                    "Agora cada ação manual tem Marcar como concluída, que pede para descrever o que foi feito e registra quem concluiu. Ações concluídas por engano podem ser reabertas com o botão Reabrir. A coluna Como se resolve mostra as ações que o sistema conclui sozinho, como o DDS do tema e a reunião de análise."),
+            }),
     };
 
     public static async Task ExecutarAsync(IServiceProvider services, CancellationToken ct = default)

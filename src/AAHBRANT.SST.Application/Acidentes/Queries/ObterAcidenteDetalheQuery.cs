@@ -59,6 +59,7 @@ public class ObterAcidenteDetalheQueryHandler : IRequestHandler<ObterAcidenteDet
             .Where(a => a.OrigemTipo == nameof(Domain.Entidades.Acidente) && a.OrigemId == request.Id)
             .Include(a => a.ResponsavelUsuario)
             .Include(a => a.ValidadoPorUsuario)
+            .Include(a => a.ConcluidoPorUsuario)
             // Plano de ação lido por urgência: Crítica primeiro, depois o prazo mais próximo.
             .OrderBy(a => a.Prioridade)
             .ThenBy(a => a.Prazo)
@@ -79,8 +80,18 @@ public class ObterAcidenteDetalheQueryHandler : IRequestHandler<ObterAcidenteDet
                 DataValidacao = a.DataValidacao,
                 ValidadoPorUsuarioId = a.ValidadoPorUsuarioId,
                 ValidadoPorUsuarioNome = a.ValidadoPorUsuario != null ? a.ValidadoPorUsuario.Nome : null,
+                ConcluidoPorUsuarioNome = a.ConcluidoPorUsuario != null ? a.ConcluidoPorUsuario.Nome : null,
+                DescricaoConclusao = a.DescricaoConclusao,
             })
             .ToListAsync(ct);
+
+        var automaticas = await AcoesPlano.Commands.ResolucaoAutomaticaAcaoPlano.CarregarAsync(_db, acoesPlano.Select(a => a.Id).ToList(), ct);
+        foreach (var acao in acoesPlano)
+        {
+            if (!automaticas.TryGetValue(acao.Id, out var resolucao)) continue;
+            acao.TipoResolucaoAutomatica = resolucao.Tipo;
+            acao.ResolucaoAutomatica = resolucao.Texto;
+        }
 
         var fotos = await _db.AcidentesFotos.Where(f => f.AcidenteId == request.Id).OrderBy(f => f.Ordem).ToListAsync(ct);
 

@@ -45,6 +45,12 @@ public class AcaoPlano : AuditableEntity
     public StatusControleRisco Status { get; set; } = StatusControleRisco.Pendente;
     public DateTime? DataConclusao { get; set; }
 
+    // Conclusão manual pela tela da ocorrência (23/10/2026): quem marcou como concluída (pelo login)
+    // e o que foi feito. Nulos nas ações concluídas sozinhas (DDS encerrado, reunião registrada).
+    public Guid? ConcluidoPorUsuarioId { get; set; }
+    public Usuario? ConcluidoPorUsuario { get; set; }
+    public string? DescricaoConclusao { get; set; }
+
     public DateTime? DataValidacao { get; set; }
     public Guid? ValidadoPorUsuarioId { get; set; }
     public Usuario? ValidadoPorUsuario { get; set; }

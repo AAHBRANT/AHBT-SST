@@ -4,6 +4,13 @@ import { useEffect, useState } from 'react';
 import { useParams } from 'react-router-dom';
 import {
   BotaoAcao,
+  Dialog,
+  DialogActions,
+  DialogBody,
+  DialogContent,
+  DialogSurface,
+  DialogTitle,
+  useConfirmar,
   Button,
   Campo,
   Card,
@@ -81,7 +88,11 @@ export function AcidenteDetalhePage() {
   const [metodologia, setMetodologia] = useState<string>('');
   const [causas, setCausas] = useState<string>('');
   const [novaAcao, setNovaAcao] = useState(novaAcaoInicial());
-  const [usuarioValidador, setUsuarioValidador] = useState('');
+  // Conclusão manual com confirmação + descrição, e Reabrir (23/10/2026, docs/mockups/plano-acao-conclusao-v1.html):
+  // substitui o antigo "Validar", que concluía a ação num clique sem perguntar.
+  const [acaoConcluindo, setAcaoConcluindo] = useState<AcaoPlano | null>(null);
+  const [descricaoConclusao, setDescricaoConclusao] = useState('');
+  const { confirmar, dialogElement: dialogoConfirmacao } = useConfirmar();
   const [erro, setErro] = useState<string | null>(null);
   const [processando, setProcessando] = useState(false);
   const [baixandoPdf, setBaixandoPdf] = useState(false);
@@ -201,18 +212,40 @@ export function AcidenteDetalhePage() {
     }
   }
 
-  async function validarAcao(acaoId: string) {
-    if (!usuarioValidador) {
-      setErro('Selecione o usuário responsável pela validação.');
+  async function concluirAcao() {
+    if (!acaoConcluindo) return;
+    if (!descricaoConclusao.trim()) {
+      setErro('Descreva o que foi feito para concluir a ação.');
       return;
     }
     try {
       setProcessando(true);
       setErro(null);
-      await api.acoesPlano.validar(acaoId, usuarioValidador);
+      await api.acidentes.concluirAcao(acaoConcluindo.id, descricaoConclusao);
+      setAcaoConcluindo(null);
       await carregar();
     } catch (e) {
-      setErro(e instanceof Error ? e.message : 'Falha ao validar ação do plano.');
+      setErro(e instanceof Error ? e.message : 'Falha ao concluir a ação do plano.');
+    } finally {
+      setProcessando(false);
+    }
+  }
+
+  async function reabrirAcao(acao: AcaoPlano) {
+    const ok = await confirmar({
+      titulo: 'Reabrir ação?',
+      mensagem: `"${acao.descricao}" volta para Pendente e o registro de conclusão é apagado. Use quando ela foi concluída por engano.`,
+      rotuloConfirmar: 'Reabrir ação',
+      tom: 'neutro',
+    });
+    if (!ok) return;
+    try {
+      setProcessando(true);
+      setErro(null);
+      await api.acidentes.reabrirAcao(acao.id);
+      await carregar();
+    } catch (e) {
+      setErro(e instanceof Error ? e.message : 'Falha ao reabrir a ação do plano.');
     } finally {
       setProcessando(false);
     }
@@ -296,15 +329,46 @@ export function AcidenteDetalhePage() {
         </div>
       ),
     },
+    {
+      chave: 'resolucao',
+      rotulo: 'Como se resolve',
+      render: (acao) => (
+        <div style={{ display: 'grid', gap: 2 }}>
+          <span>
+            <StatusChip tom={acao.tipoResolucaoAutomatica ? 'info' : 'neutro'}>{acao.tipoResolucaoAutomatica ? 'Automática' : 'Manual'}</StatusChip>
+          </span>
+          {acao.tipoResolucaoAutomatica ? (
+            <Legenda>{acao.resolucaoAutomatica}</Legenda>
+          ) : (
+            acao.descricaoConclusao && <Legenda>"{acao.descricaoConclusao}"</Legenda>
+          )}
+        </div>
+      ),
+    },
     { chave: 'responsavel', rotulo: 'Responsável', render: (acao) => acao.responsavelUsuarioNome ?? '—' },
     { chave: 'prioridade', rotulo: 'Prioridade', render: (acao) => prioridadeAcaoLabel[acao.prioridade] },
     { chave: 'prazo', rotulo: 'Prazo', render: (acao) => acao.prazo?.slice(0, 10) ?? '—' },
     {
       chave: 'status',
       rotulo: 'Status',
-      render: (acao) => (
-        <StatusChip tom={tomPorStatusAcaoPlano[acao.status] ?? 'neutro'}>{statusAcaoPlanoLabel[acao.status]}</StatusChip>
-      ),
+      render: (acao) => {
+        const concluida = acao.status === StatusAcaoPlano.Concluido;
+        const quem = acao.concluidoPorUsuarioNome ?? acao.validadoPorUsuarioNome;
+        if (!concluida && acao.tipoResolucaoAutomatica)
+          return <StatusChip tom="atencao">{acao.tipoResolucaoAutomatica === 'Dds' ? 'Aguardando DDS' : 'Aguardando reunião'}</StatusChip>;
+        return (
+          <div style={{ display: 'grid', gap: 2 }}>
+            <span>
+              <StatusChip tom={tomPorStatusAcaoPlano[acao.status] ?? 'neutro'}>
+                {concluida && acao.dataConclusao
+                  ? `Concluída ${acao.dataConclusao.slice(8, 10)}/${acao.dataConclusao.slice(5, 7)}`
+                  : statusAcaoPlanoLabel[acao.status]}
+              </StatusChip>
+            </span>
+            {concluida && quem && <Legenda>por {quem}</Legenda>}
+          </div>
+        );
+      },
     },
   ];
 
@@ -526,36 +590,62 @@ export function AcidenteDetalhePage() {
         </FormRodape>
       </Card>
 
-      <Card
-        titulo="Ações do plano"
-        acoes={
-          <Field label="Validar como">
-            <Select value={usuarioValidador} onChange={(_, d) => setUsuarioValidador(d.value)}>
-              <option value="">Selecione um usuário</option>
-              {usuarios.map((usuario) => (
-                <option key={usuario.id} value={usuario.id}>
-                  {usuario.nome}
-                </option>
-              ))}
-            </Select>
-          </Field>
-        }
-      >
+      <Card titulo="Ações do plano">
         <DataTable
           aria-label="Ações do plano"
           colunas={colunasAcoes}
           linhas={detalhe.acoesPlano}
           chaveLinha={(acao) => acao.id}
           vazio={{ titulo: 'Nenhuma ação do plano cadastrada ainda.' }}
-          acoesLinha={(acao) =>
-            acao.status !== StatusAcaoPlano.Concluido && !acao.dataValidacao ? (
-              <Button appearance="subtle" onClick={() => validarAcao(acao.id)} disabled={processando}>
-                Validar
+          acoesLinha={(acao) => {
+            if (a.status === StatusAcidente.Concluido) return null;
+            const concluida = acao.status === StatusAcaoPlano.Concluido || !!acao.dataValidacao;
+            if (concluida)
+              return (
+                <Button appearance="subtle" onClick={() => void reabrirAcao(acao)} disabled={processando}>
+                  Reabrir
+                </Button>
+              );
+            if (acao.tipoResolucaoAutomatica) return null;
+            return (
+              <Button
+                appearance="primary"
+                size="small"
+                onClick={() => { setDescricaoConclusao(''); setErro(null); setAcaoConcluindo(acao); }}
+                disabled={processando}
+              >
+                Marcar como concluída
               </Button>
-            ) : null
-          }
+            );
+          }}
         />
       </Card>
+      {dialogoConfirmacao}
+      <Dialog open={!!acaoConcluindo} onOpenChange={(_, d) => { if (!d.open) setAcaoConcluindo(null); }}>
+        <DialogSurface>
+          <DialogBody>
+            <DialogTitle>Concluir ação do plano?</DialogTitle>
+            <DialogContent>
+              <div style={{ display: 'grid', gap: 10 }}>
+                <Text>"{acaoConcluindo?.descricao}"</Text>
+                <Field label="O que foi feito" required>
+                  <Textarea value={descricaoConclusao} onChange={(_, d) => setDescricaoConclusao(d.value)} rows={3} maxLength={1000} />
+                </Field>
+                <Legenda>Só conclua se a ação foi executada de fato. Ela sai do pendente e libera a finalização da investigação.</Legenda>
+                {erro && acaoConcluindo && <FeedbackInline tom="erro">{erro}</FeedbackInline>}
+              </div>
+            </DialogContent>
+            <DialogActions>
+              <Button appearance="secondary" onClick={() => setAcaoConcluindo(null)} disabled={processando}>
+                Cancelar
+              </Button>
+              <Button appearance="primary" onClick={() => void concluirAcao()} disabled={processando}>
+                Concluir ação
+              </Button>
+            </DialogActions>
+          </DialogBody>
+        </DialogSurface>
+      </Dialog>
     </DetailPageLayout>
   );
 }
