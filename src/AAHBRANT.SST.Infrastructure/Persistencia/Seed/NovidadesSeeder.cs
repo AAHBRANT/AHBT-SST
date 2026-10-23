@@ -1500,6 +1500,17 @@ public static class NovidadesSeeder
                     "O ditado feito pelo próprio navegador errava muitas palavras.",
                     "O Relatar por voz voltou a gravar o áudio e transcrever no servidor, que entende melhor a fala. Grave, clique em parar e a IA preenche o formulário."),
             }),
+        new(
+            Versao: "5.83.0",
+            Titulo: "Leitura do contrato de terceirizada pela IA voltou",
+            DataPublicacao: new DateTime(2026, 10, 23, 0, 0, 0, DateTimeKind.Utc),
+            Itens: new[]
+            {
+                new NovidadeSeedItem(CategoriaNovidade.Correcao,
+                    "Cadastro pelo contrato preenche de novo",
+                    "Ao enviar o PDF do contrato no Terceirizado, aparecia \"A IA não conseguiu analisar o relato agora\" e nada era preenchido.",
+                    "Agora a IA volta a ler o contrato e preencher empresa, vigência, efetivo e pessoas. Confira os campos antes de cadastrar."),
+            }),
     };
 
     public static async Task ExecutarAsync(IServiceProvider services, CancellationToken ct = default)
