@@ -2846,7 +2846,8 @@ export interface MinutaOrdemServico {
 
 // Gerador de PGR pela EAP (21/10/2026). Status: 1 Rascunho, 2 Aguardando aprovação, 3 Aprovado, 4 Devolvido.
 export interface ItemEapGerado { codigo: string; nome: string; nivel: number; periodo?: string | null; usar: boolean; conferir: boolean }
-export interface MedidaGerada { fase: 1 | 2 | 3; texto: string; decisao: 'Pendente' | 'Aceita' | 'Descartada' }
+export type CategoriaMedida = 'Eliminação' | 'EPC' | 'Administrativa' | 'EPI';
+export interface MedidaGerada { fase: 1 | 2 | 3; texto: string; categoria?: CategoriaMedida | null; decisao: 'Pendente' | 'Aceita' | 'Descartada' }
 export interface RiscoGerado {
   id: string; tipo: string; perigo: string; danos?: string | null; probabilidade: number; severidade: number;
   base: string[]; medidas: MedidaGerada[]; revisado: boolean; excluido: boolean;
@@ -2854,7 +2855,12 @@ export interface RiscoGerado {
 export interface AtividadeGerada { codigoEap: string; nome: string; riscosGerados: boolean; riscos: RiscoGerado[] }
 export interface FuncaoGerada { funcaoId?: string | null; nome: string; descricao?: string | null; sugeridaPelaIa: boolean }
 export interface GheGerado { numero: number; nome: string; ambiente?: string | null; jornada?: string | null; funcoes: FuncaoGerada[]; atividades: AtividadeGerada[] }
-export interface EstruturaGeracaoPgr { itens: ItemEapGerado[]; ghes: GheGerado[]; planoAcao: string[] }
+export interface AcaoPlanoGerada { descricao: string; responsavelUsuarioId?: string | null; responsavelNome?: string | null; prazo?: string | null }
+export interface EstruturaGeracaoPgr {
+  itens: ItemEapGerado[]; ghes: GheGerado[]; dataTermino?: string | null; acoesPlano: AcaoPlanoGerada[];
+  // Formato antigo (uma ação por linha); o servidor já converte para acoesPlano ao ler.
+  planoAcao: string[];
+}
 export interface GeracaoPgrEap {
   id: string; obraId: string; obraNome: string; nome: string; dataElaboracao: string; dataProximaRevisao?: string | null;
   elaboradoPorNome?: string | null; nomeArquivoEap: string; status: 1 | 2 | 3 | 4; passo: number; motivoDevolucao?: string | null;

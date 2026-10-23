@@ -40,6 +40,36 @@ public class GerarPdfGeracaoPgrEapTests
     }
 
     [Fact]
+    public async Task GeraPdf_ComCboDoCadastro_EExpostosSoDosTrabalhadoresAtivosDaObra()
+    {
+        var (db, geracao) = await CriarAsync(StatusGeracaoPgrEap.Aprovado, "{}");
+        var armador = new Funcao { Nome = "ARMADOR", CboCodigo = "715210" };
+        db.Funcoes.Add(armador);
+        await db.SaveChangesAsync();
+        db.Trabalhadores.AddRange(
+            new Trabalhador { Nome = "A", Cpf = "11111111111", ObraId = geracao.ObraId, FuncaoId = armador.Id, DataAdmissao = DateTime.UtcNow.AddYears(-1) },
+            new Trabalhador { Nome = "B", Cpf = "22222222222", ObraId = geracao.ObraId, FuncaoId = armador.Id, DataAdmissao = DateTime.UtcNow.AddYears(-1) },
+            new Trabalhador { Nome = "C", Cpf = "33333333333", ObraId = geracao.ObraId, FuncaoId = armador.Id, DataAdmissao = DateTime.UtcNow.AddYears(-1), DataDemissao = DateTime.UtcNow.AddDays(-5) });
+        geracao.EstruturaJson = $$"""
+            {"Ghes":[{"Numero":1,"Nome":"Estrutura","Funcoes":[{"FuncaoId":"{{armador.Id}}","Nome":"ARMADOR","Descricao":"x"},{"Nome":"Soldador","Descricao":"y"}],"Atividades":[]}]}
+            """;
+        await db.SaveChangesAsync();
+        var pdf = new PdfFalso();
+
+        await new GerarPdfGeracaoPgrEapQueryHandler(db, pdf).Handle(new GerarPdfGeracaoPgrEapQuery(geracao.Id), default);
+
+        var funcoes = pdf.Dados!.Funcoes!;
+        var linhaArmador = Assert.Single(funcoes, f => f.Nome == "ARMADOR");
+        Assert.Equal("715210", linhaArmador.Cbo);
+        Assert.Equal(2, linhaArmador.Expostos); // o demitido não conta
+        var linhaSoldador = Assert.Single(funcoes, f => f.Nome == "Soldador"); // função nova, ainda fora do cadastro
+        Assert.Null(linhaSoldador.Cbo);
+        Assert.Equal(0, linhaSoldador.Expostos);
+        var revisao = Assert.Single(pdf.Dados.Revisoes!);
+        Assert.Equal(0, revisao.Numero); // sem revisões registradas: emissão inicial
+    }
+
+    [Fact]
     public async Task NaoGera_PdfEnquantoNaoAprovado()
     {
         var (db, geracao) = await CriarAsync(StatusGeracaoPgrEap.AguardandoAprovacao, "{}");
@@ -68,6 +98,7 @@ public class GerarPdfGeracaoPgrEapTests
         Assert.Equal("00.000.000/0001-00", pdf.Dados.ObraCnpj);
         Assert.Equal("Eng. Carlos", pdf.Dados.AprovadoPorNome);
         Assert.Equal("Concretagem de laje", pdf.Dados.Estrutura.Ghes.Single().Atividades.Single().Nome);
-        Assert.Equal("Instalar linha de vida", pdf.Dados.Estrutura.PlanoAcao.Single());
+        // Plano no formato antigo (uma ação por linha) é lido como ação sem responsável nem prazo.
+        Assert.Equal("Instalar linha de vida", pdf.Dados.Estrutura.AcoesPlano.Single().Descricao);
     }
 }

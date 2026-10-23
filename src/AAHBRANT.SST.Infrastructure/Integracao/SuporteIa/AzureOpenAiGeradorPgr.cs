@@ -170,6 +170,9 @@ public class AzureOpenAiGeradorPgr : IGeradorPgrIa
           trabalhador entenda, seguindo a hierarquia da NR-01 (eliminação, proteção coletiva,
           administrativa, EPI por último). fase: "Antes" (preparação, inspeção, liberação, PT/APR),
           "Durante" (execução) ou "Apos" (desmobilização, limpeza, guarda). 2 a 6 medidas por perigo.
+          categoria: "Eliminacao" (elimina o perigo), "EPC" (proteção coletiva), "Administrativa"
+          (procedimento, treinamento, sinalização, inspeção) ou "EPI" (equipamento de proteção individual).
+          Cada medida tem uma única categoria; não misture EPC e EPI no mesmo texto.
         Não invente procedimento interno nem nome de documento da empresa.
         """;
 
@@ -203,11 +206,12 @@ public class AzureOpenAiGeradorPgr : IGeradorPgrIa
                             {
                                 type = "object",
                                 additionalProperties = false,
-                                required = new[] { "fase", "texto" },
+                                required = new[] { "fase", "texto", "categoria" },
                                 properties = new
                                 {
                                     fase = new { type = "string", @enum = new[] { "Antes", "Durante", "Apos" } },
                                     texto = new { type = "string" },
+                                    categoria = new { type = "string", @enum = new[] { "Eliminacao", "EPC", "Administrativa", "EPI" } },
                                 },
                             },
                         },
@@ -242,6 +246,7 @@ public class AzureOpenAiGeradorPgr : IGeradorPgrIa
             {
                 Fase = m.Fase == "Antes" ? 1 : m.Fase == "Apos" ? 3 : 2,
                 Texto = (m.Texto ?? "").Trim(),
+                Categoria = CategoriasMedida.Normalizar(m.Categoria),
             }).ToList(),
         }).ToList();
     }
@@ -253,5 +258,5 @@ public class AzureOpenAiGeradorPgr : IGeradorPgrIa
     private sealed record FuncaoModelo(string? Nome, string? Descricao);
     private sealed record RespostaRiscos(List<RiscoModelo>? Riscos);
     private sealed record RiscoModelo(string? Tipo, string? Perigo, string? Danos, int Probabilidade, int Severidade, List<string>? Base, List<MedidaModelo>? Medidas);
-    private sealed record MedidaModelo(string? Fase, string? Texto);
+    private sealed record MedidaModelo(string? Fase, string? Texto, string? Categoria);
 }
