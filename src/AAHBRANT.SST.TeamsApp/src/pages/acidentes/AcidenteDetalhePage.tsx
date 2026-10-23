@@ -3,6 +3,7 @@ import { GradeFotosEvidencia } from '../../components/GradeFotosEvidencia';
 import { useEffect, useState } from 'react';
 import { useParams } from 'react-router-dom';
 import {
+  BotaoAcao,
   Button,
   Campo,
   Card,
@@ -25,7 +26,9 @@ import {
   type Tom,
   Legenda,
 } from '@ui';
-import { Save24Regular, Video24Regular } from '@fluentui/react-icons';
+import { ArrowDownload24Regular, Eye24Regular, Save24Regular } from '@fluentui/react-icons';
+import { CartaoReuniaoAnalise } from './CartaoReuniaoAnalise';
+import { useVisualizadorPdf } from '../../components/useVisualizadorPdf';
 import {
   api,
   metodologiaInvestigacaoLabel,
@@ -40,7 +43,6 @@ import {
   type AcidenteDetalhe,
   type NovaAcaoPlano,
   type Usuario,
-  SituacaoReuniaoTeams,
 } from '../../lib/api';
 
 function novaAcaoInicial(): Omit<NovaAcaoPlano, 'origemTipo' | 'origemId'> {
@@ -82,6 +84,8 @@ export function AcidenteDetalhePage() {
   const [usuarioValidador, setUsuarioValidador] = useState('');
   const [erro, setErro] = useState<string | null>(null);
   const [processando, setProcessando] = useState(false);
+  const [baixandoPdf, setBaixandoPdf] = useState(false);
+  const { visualizar, dialogoVisualizador } = useVisualizadorPdf();
 
   useEffect(() => {
     let ativo = true;
@@ -214,6 +218,35 @@ export function AcidenteDetalhePage() {
     }
   }
 
+  function nomeArquivoPdf(det: AcidenteDetalhe) {
+    return `investigacao-${tipoOcorrenciaLabel[det.acidente.tipo].toLowerCase().replace(/\s+/g, '-')}-${det.acidente.data?.slice(0, 10)}.pdf`;
+  }
+
+  // Relatório de Investigação de Ocorrência — sai a qualquer momento; o próprio PDF mostra a situação.
+  async function baixarPdf() {
+    if (!id || !detalhe) return;
+    try {
+      setBaixandoPdf(true);
+      setErro(null);
+      const blob = await api.acidentes.baixarPdf(id);
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = nomeArquivoPdf(detalhe);
+      link.click();
+      URL.revokeObjectURL(url);
+    } catch (e) {
+      setErro(e instanceof Error ? e.message : 'Falha ao gerar o relatório de investigação.');
+    } finally {
+      setBaixandoPdf(false);
+    }
+  }
+
+  function visualizarPdf() {
+    if (!id || !detalhe) return;
+    void visualizar({ titulo: 'Relatório de investigação', nomeArquivo: nomeArquivoPdf(detalhe), obter: () => api.acidentes.baixarPdf(id) });
+  }
+
   if (!id) return <FeedbackInline tom="erro">Acidente não encontrado.</FeedbackInline>;
 
   // Erro na carga inicial precisa aparecer aqui: sem isso o skeleton ficaria para sempre e a falha
@@ -241,6 +274,7 @@ export function AcidenteDetalhePage() {
       finalizacao: a.status === StatusAcidente.EmInvestigacao,
       pendencias: a.status === StatusAcidente.EmInvestigacao ? [
         ...(a.tipo === 1 ? pendenciasGrade(detalhe.fotos ?? []) : []),
+        ...(detalhe.reuniao?.realizadaEm ? [] : ['Registre a reunião de análise como realizada.']),
         ...(detalhe.acoesPlano.some(acao => acao.status !== StatusAcaoPlano.Concluido) ? ['Conclua as ações do plano que estão pendentes.'] : []),
       ] : [],
       descricao: 'Confira se as ações do plano em aberto já foram concluídas antes de avançar.',
@@ -283,6 +317,17 @@ export function AcidenteDetalhePage() {
         ),
         voltarPara: `/ocorrencias?secao=${secaoOcorrencia}`,
         rotuloVoltar: 'Voltar para Ocorrências',
+        acoes: (
+          <>
+            <BotaoAcao tom="ver" icon={<Eye24Regular />} onClick={visualizarPdf} aria-label="Visualizar relatório de investigação">
+              Visualizar relatório
+            </BotaoAcao>
+            <BotaoAcao tom="baixar" icon={<ArrowDownload24Regular />} onClick={baixarPdf} disabled={baixandoPdf} aria-label="Baixar relatório de investigação em PDF">
+              Baixar PDF
+            </BotaoAcao>
+            {dialogoVisualizador}
+          </>
+        ),
       }}
       lateral={
         <>
@@ -362,6 +407,14 @@ export function AcidenteDetalhePage() {
           {erro}
         </FeedbackInline>
       )}
+
+      <CartaoReuniaoAnalise
+        acidenteId={a.id}
+        reuniao={detalhe.reuniao ?? null}
+        usuarios={usuarios}
+        somenteLeitura={a.status === StatusAcidente.Concluido}
+        aoAtualizar={carregar}
+      />
 
       <Card titulo={a.tipo === 1 ? 'Fotos do local do acidente' : 'Fotos do local'}>
         <GradeFotosEvidencia titulo={a.tipo === 1 ? 'Três fotos obrigatórias' : 'Até três fotos (opcionais)'} total={3}
@@ -472,42 +525,6 @@ export function AcidenteDetalhePage() {
           </Button>
         </FormRodape>
       </Card>
-
-      {detalhe.reuniao && (
-        <Card titulo="Reunião de análise do acidente">
-          <div style={{ display: 'grid', gap: 10 }}>
-            <Text>
-              {new Date(detalhe.reuniao.inicio).toLocaleDateString('pt-BR', { weekday: 'long', day: '2-digit', month: '2-digit' })}
-              {' · '}
-              {detalhe.reuniao.inicio.slice(11, 16)} às {detalhe.reuniao.fim.slice(11, 16)}
-            </Text>
-            <Legenda>Participantes: {detalhe.reuniao.participantes.join(', ') || '—'}</Legenda>
-            {detalhe.reuniao.situacao === SituacaoReuniaoTeams.Criada ? (
-              <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
-                <StatusChip tom="ok">Marcada no Teams</StatusChip>
-                {detalhe.reuniao.linkTeams && (
-                  <Button
-                    appearance="primary"
-                    size="small"
-                    icon={<Video24Regular />}
-                    as="a"
-                    href={detalhe.reuniao.linkTeams}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                  >
-                    Entrar na reunião
-                  </Button>
-                )}
-              </div>
-            ) : (
-              <FeedbackInline tom="aviso">
-                {detalhe.reuniao.motivoFalha ?? 'A reunião não foi marcada no Teams. Marque-a manualmente.'}
-              </FeedbackInline>
-            )}
-            <Legenda>A ação "Realizar a reunião de análise" do plano é concluída pelo técnico depois da reunião.</Legenda>
-          </div>
-        </Card>
-      )}
 
       <Card
         titulo="Ações do plano"
