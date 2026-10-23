@@ -137,6 +137,15 @@ public class AcidentesController : ControllerBase
     public async Task<IActionResult> ObterDetalhe(Guid id, CancellationToken ct)
         => Ok(await _mediator.Send(new ObterAcidenteDetalheQuery(id), ct));
 
+    // Relatório de Investigação de Ocorrência (PDF) — mesma permissão de quem vê a ocorrência.
+    [Authorize(Policy = "acidente:ver")]
+    [HttpGet("{id:guid}/pdf")]
+    public async Task<IActionResult> ExportarPdf(Guid id, CancellationToken ct)
+    {
+        var pdf = await _mediator.Send(new ExportarInvestigacaoOcorrenciaPdfQuery(id), ct);
+        return File(pdf, "application/pdf", $"investigacao-ocorrencia-{id}.pdf");
+    }
+
     [Authorize(Policy = "acidente:criar")]
     [HttpPost]
     public async Task<IActionResult> Criar(CriarAcidenteCommand command, CancellationToken ct)

@@ -1522,6 +1522,17 @@ public static class NovidadesSeeder
                     "Cada documento da terceirizada (contrato, PGR, ASO, certificados) era cadastrado um por um.",
                     "Em Terceirizado > Empresas, clique em Importar pasta e arraste a pasta da empresa, mesmo misturada. A IA separa o contrato, os documentos da empresa e o ASO e os certificados de cada funcionário. Você confere tudo e clica em Cadastrar tudo. O ASO agora também guarda o PDF."),
             }),
+        new(
+            Versao: "5.85.0",
+            Titulo: "Relatório de investigação da ocorrência em PDF",
+            DataPublicacao: new DateTime(2026, 10, 23, 0, 0, 0, DateTimeKind.Utc),
+            Itens: new[]
+            {
+                new NovidadeSeedItem(CategoriaNovidade.Novidade,
+                    "A investigação vira documento",
+                    "A investigação de acidentes, incidentes e quase acidentes ficava só na tela, sem um documento para imprimir ou arquivar.",
+                    "Abra a ocorrência e clique em Visualizar relatório ou Baixar PDF. Sai tudo num documento só: identificação, descrição, consequências, causas, plano de ação, reunião de análise, fotos e espaço para as assinaturas do técnico e do engenheiro."),
+            }),
     };
 
     public static async Task ExecutarAsync(IServiceProvider services, CancellationToken ct = default)

@@ -6373,6 +6373,15 @@ export const api = {
       request<void>(`/api/acidentes/${id}`, { method: 'PUT', body: JSON.stringify(acidente) }),
     excluir: (id: string) => request<void>(`/api/acidentes/${id}`, { method: 'DELETE' }),
     avancarStatus: (id: string) => request<void>(`/api/acidentes/${id}/avancar-status`, { method: 'POST' }),
+    // Relatório de Investigação de Ocorrência (PDF), mesmo padrão de inspecoes.baixarPdf.
+    baixarPdf: async (id: string) => {
+      const response = await fetch(`${API_BASE_URL}/api/acidentes/${id}/pdf`, { headers: await montarHeadersAuth() });
+      if (!response.ok) {
+        const corpo = await response.text().catch(() => '');
+        throw new Error(extrairMensagemErro(corpo, response.status, response.statusText));
+      }
+      return response.blob();
+    },
   },
   registrosHht: {
     listar: (filtros?: { obraId?: string; ano?: number }) => {
