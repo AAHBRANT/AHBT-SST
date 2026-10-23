@@ -27,4 +27,13 @@ public class AcaoPlanoDto
     // e o texto de como ("Ao encerrar o DDS de 24/10 com este tema"). Nulos = ação manual.
     public string? TipoResolucaoAutomatica { get; set; }
     public string? ResolucaoAutomatica { get; set; }
+
+    // Vínculo de conclusão automática (treinamento/inspeção/EPI) e o andamento ("1 de 2 envolvidos
+    // treinados"), também só no detalhe da ocorrência.
+    public TipoResolucaoAcaoPlano? TipoResolucao { get; set; }
+    public Guid? ResolucaoCursoTreinamentoId { get; set; }
+    public TipoInspecao? ResolucaoTipoInspecao { get; set; }
+    public Guid? ResolucaoCatalogoEpiId { get; set; }
+    public string? ProgressoResolucao { get; set; }
+    public string? RotuloAguardando { get; set; }
 }

@@ -55,6 +55,10 @@ public class ObterAcidenteDetalheQueryHandler : IRequestHandler<ObterAcidenteDet
         var envolvidos = await AcidenteEnvolvidosSync.CarregarAsync(_db, new[] { request.Id }, ct);
         acidente.Envolvidos = envolvidos.GetValueOrDefault(request.Id) ?? new();
 
+        // Recupera conclusões automáticas que ainda não rodaram (ex.: entrega de EPI assinada, que não
+        // tem gancho próprio) — idempotente; só grava quando há o que concluir.
+        await AcoesPlano.ResolucaoVinculadaAcaoPlano.ConcluirAtendidasAsync(_db, new[] { request.Id }, ct);
+
         var acoesPlano = await _db.AcoesPlano
             .Where(a => a.OrigemTipo == nameof(Domain.Entidades.Acidente) && a.OrigemId == request.Id)
             .Include(a => a.ResponsavelUsuario)
@@ -82,6 +86,10 @@ public class ObterAcidenteDetalheQueryHandler : IRequestHandler<ObterAcidenteDet
                 ValidadoPorUsuarioNome = a.ValidadoPorUsuario != null ? a.ValidadoPorUsuario.Nome : null,
                 ConcluidoPorUsuarioNome = a.ConcluidoPorUsuario != null ? a.ConcluidoPorUsuario.Nome : null,
                 DescricaoConclusao = a.DescricaoConclusao,
+                TipoResolucao = a.TipoResolucao,
+                ResolucaoCursoTreinamentoId = a.ResolucaoCursoTreinamentoId,
+                ResolucaoTipoInspecao = a.ResolucaoTipoInspecao,
+                ResolucaoCatalogoEpiId = a.ResolucaoCatalogoEpiId,
             })
             .ToListAsync(ct);
 
@@ -91,6 +99,17 @@ public class ObterAcidenteDetalheQueryHandler : IRequestHandler<ObterAcidenteDet
             if (!automaticas.TryGetValue(acao.Id, out var resolucao)) continue;
             acao.TipoResolucaoAutomatica = resolucao.Tipo;
             acao.ResolucaoAutomatica = resolucao.Texto;
+            acao.RotuloAguardando = resolucao.Tipo == "Dds" ? "Aguardando DDS" : "Aguardando reunião";
+        }
+
+        var vinculadas = await AcoesPlano.ResolucaoVinculadaAcaoPlano.AvaliarAsync(_db, new[] { request.Id }, ct);
+        foreach (var acao in acoesPlano)
+        {
+            if (!vinculadas.TryGetValue(acao.Id, out var avaliacao)) continue;
+            acao.TipoResolucaoAutomatica = acao.TipoResolucao.ToString();
+            acao.ResolucaoAutomatica = avaliacao.Texto;
+            acao.RotuloAguardando = avaliacao.Aguardando;
+            acao.ProgressoResolucao = avaliacao.Progresso;
         }
 
         var fotos = await _db.AcidentesFotos.Where(f => f.AcidenteId == request.Id).OrderBy(f => f.Ordem).ToListAsync(ct);

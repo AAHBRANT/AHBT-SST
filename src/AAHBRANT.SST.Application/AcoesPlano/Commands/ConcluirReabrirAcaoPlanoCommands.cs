@@ -81,6 +81,8 @@ public class ConcluirAcaoPlanoCommandHandler : IRequestHandler<ConcluirAcaoPlano
         if (acao.Status == StatusControleRisco.Concluido)
             throw new InvalidOperationException("Esta ação já está concluída.");
 
+        if (acao.TipoResolucao is not null)
+            throw new InvalidOperationException("Esta ação é concluída automaticamente pelo treinamento, inspeção ou entrega de EPI vinculado. Use Alterar para torná-la manual.");
         var automatica = await ResolucaoAutomaticaAcaoPlano.CarregarAsync(_db, new[] { acao.Id }, ct);
         if (automatica.TryGetValue(acao.Id, out var resolucao))
             throw new InvalidOperationException($"Esta ação é concluída automaticamente: {resolucao.Texto.ToLowerInvariant()}.");

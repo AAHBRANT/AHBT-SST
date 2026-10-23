@@ -51,6 +51,15 @@ public class AcaoPlano : AuditableEntity
     public Usuario? ConcluidoPorUsuario { get; set; }
     public string? DescricaoConclusao { get; set; }
 
+    // Vínculo que conclui a ação automaticamente (ver TipoResolucaoAcaoPlano). Só um dos três
+    // alvos é preenchido, conforme o tipo.
+    public TipoResolucaoAcaoPlano? TipoResolucao { get; set; }
+    public Guid? ResolucaoCursoTreinamentoId { get; set; }
+    public CursoTreinamento? ResolucaoCursoTreinamento { get; set; }
+    public TipoInspecao? ResolucaoTipoInspecao { get; set; }
+    public Guid? ResolucaoCatalogoEpiId { get; set; }
+    public CatalogoEpi? ResolucaoCatalogoEpi { get; set; }
+
     public DateTime? DataValidacao { get; set; }
     public Guid? ValidadoPorUsuarioId { get; set; }
     public Usuario? ValidadoPorUsuario { get; set; }

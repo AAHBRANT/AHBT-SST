@@ -554,6 +554,16 @@ public enum ItemEpcPt
 // Alojamento (14) não está nessa lista literal, mas é citado explicitamente como "Inspeção
 // Específica" em REFORMULAÇÃO.md §PR-SST-005 — adicionado para o checklist de estrutura de
 // alojamento (NR-18 18.5 / NR-24), pedido do usuário em 2026-09-09.
+// Como uma ação do plano se conclui sozinha (23/10/2026, etapa 2): só o fato real a conclui —
+// turma do curso escolhido concluída com os envolvidos, inspeção do tipo escolhido finalizada na
+// obra, entrega do EPI escolhido assinada pelos envolvidos. Nulo = ação manual.
+public enum TipoResolucaoAcaoPlano
+{
+    Treinamento = 1,
+    Inspecao = 2,
+    EntregaEpi = 3
+}
+
 public enum TipoInspecao
 {
     Obra = 1,

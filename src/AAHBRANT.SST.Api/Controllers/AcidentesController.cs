@@ -184,6 +184,14 @@ public class AcidentesController : ControllerBase
     }
 
     [Authorize(Policy = "acidente:editar")]
+    [HttpPut("acoes-plano/{acaoId:guid}/resolucao")]
+    public async Task<IActionResult> DefinirResolucaoAcao(Guid acaoId, DefinirResolucaoAcaoPlanoBody body, CancellationToken ct)
+    {
+        await _mediator.Send(new DefinirResolucaoAcaoPlanoCommand(acaoId, body.TipoResolucao, body.CursoTreinamentoId, body.TipoInspecao, body.CatalogoEpiId), ct);
+        return NoContent();
+    }
+
+    [Authorize(Policy = "acidente:editar")]
     [HttpPost("acoes-plano/{acaoId:guid}/reabrir")]
     public async Task<IActionResult> ReabrirAcao(Guid acaoId, CancellationToken ct)
     {
@@ -327,3 +335,5 @@ public record RemarcarReuniaoAnaliseBody(DateTime Inicio, int DuracaoMinutos);
 public record ReuniaoAnaliseRealizadaBody(DateTime RealizadaEm, List<string>? Presentes, string? Ata);
 
 public record ConcluirAcaoPlanoBody(string? DescricaoConclusao);
+
+public record DefinirResolucaoAcaoPlanoBody(TipoResolucaoAcaoPlano? TipoResolucao, Guid? CursoTreinamentoId, TipoInspecao? TipoInspecao, Guid? CatalogoEpiId);

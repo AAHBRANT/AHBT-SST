@@ -3379,9 +3379,19 @@ export interface AcaoPlano {
   concluidoPorUsuarioNome?: string | null;
   descricaoConclusao?: string | null;
   // Só no detalhe da ocorrência: ação que o sistema conclui sozinho e como.
-  tipoResolucaoAutomatica?: 'Dds' | 'Reuniao' | null;
+  tipoResolucaoAutomatica?: 'Dds' | 'Reuniao' | 'Treinamento' | 'Inspecao' | 'EntregaEpi' | null;
   resolucaoAutomatica?: string | null;
+  // Vínculo que conclui sozinho (treinamento/inspeção/EPI), o andamento e o rótulo de espera.
+  tipoResolucao?: number | null;
+  resolucaoCursoTreinamentoId?: string | null;
+  resolucaoTipoInspecao?: number | null;
+  resolucaoCatalogoEpiId?: string | null;
+  progressoResolucao?: string | null;
+  rotuloAguardando?: string | null;
 }
+
+// Como uma ação do plano se conclui sozinha (nulo = manual).
+export const TipoResolucaoAcaoPlano = { Treinamento: 1, Inspecao: 2, EntregaEpi: 3 } as const;
 
 export interface NaoConformidadeDetalhe {
   naoConformidade: NaoConformidade;
@@ -3396,6 +3406,11 @@ export interface NovaAcaoPlano {
   responsavelUsuarioId?: string | null;
   prioridade: number;
   prazo?: string | null;
+  // "Como se resolve" (ocorrências): nulo = manual.
+  tipoResolucao?: number | null;
+  resolucaoCursoTreinamentoId?: string | null;
+  resolucaoTipoInspecao?: number | null;
+  resolucaoCatalogoEpiId?: string | null;
 }
 
 export interface AtualizarAcaoPlanoPayload {
@@ -6387,6 +6402,10 @@ export const api = {
     concluirAcao: (acaoId: string, descricaoConclusao: string) =>
       request<void>(`/api/acidentes/acoes-plano/${acaoId}/concluir`, { method: 'POST', body: JSON.stringify({ descricaoConclusao }) }),
     reabrirAcao: (acaoId: string) => request<void>(`/api/acidentes/acoes-plano/${acaoId}/reabrir`, { method: 'POST' }),
+    definirResolucaoAcao: (
+      acaoId: string,
+      dados: { tipoResolucao: number | null; cursoTreinamentoId: string | null; tipoInspecao: number | null; catalogoEpiId: string | null },
+    ) => request<void>(`/api/acidentes/acoes-plano/${acaoId}/resolucao`, { method: 'PUT', body: JSON.stringify(dados) }),
     // Reunião de análise pela tela da ocorrência. Horários em Brasília, sem fuso ("2026-10-24T14:00:00").
     agendarReuniao: (id: string, dados: { inicio: string; duracaoMinutos: number; participantesUsuarioIds: string[] }) =>
       request<void>(`/api/acidentes/${id}/reuniao-analise`, { method: 'POST', body: JSON.stringify(dados) }),
