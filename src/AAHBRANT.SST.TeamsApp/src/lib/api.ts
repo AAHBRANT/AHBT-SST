@@ -5510,6 +5510,11 @@ export const api = {
   geracoesPgrEap: {
     listar: (obraId?: string) => request<ResumoGeracaoPgrEap[]>(`/api/geracoes-pgr-eap${obraId ? `?obraId=${obraId}` : ''}`),
     obter: (id: string) => request<GeracaoPgrEap>(`/api/geracoes-pgr-eap/${id}`),
+    baixarPdf: async (id: string): Promise<Blob> => {
+      const response = await fetch(`${API_BASE_URL}/api/geracoes-pgr-eap/${id}/pdf`, { headers: await montarHeadersAuth() });
+      if (!response.ok) throw new Error('Não foi possível gerar o PDF do PGR.');
+      return response.blob();
+    },
     criar: async (dados: { obraId: string; nome: string; dataElaboracao: string; dataProximaRevisao?: string | null }, arquivo: File) => {
       const formData = new FormData();
       formData.append('obraId', dados.obraId);

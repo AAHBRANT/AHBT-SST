@@ -278,6 +278,15 @@ function Assistente({ id }: { id: string }) {
             const { pgrId } = await api.geracoesPgrEap.aprovar(id);
             navigate(`/prevencao/pgr/${pgrId}`);
           })}
+          baixarPdf={() => void executar('Gerando o PDF…', async () => {
+            const blob = await api.geracoesPgrEap.baixarPdf(id);
+            const url = URL.createObjectURL(blob);
+            const link = document.createElement('a');
+            link.href = url;
+            link.download = `${g.nome.replace(/[\\/:*?"<>|]/g, '-')}.pdf`;
+            link.click();
+            URL.revokeObjectURL(url);
+          })}
         />
       )}
     </div>
@@ -497,11 +506,12 @@ function NovaMedida({ aoAdicionar }: { aoAdicionar: (fase: 1 | 2 | 3, texto: str
   );
 }
 
-function Aprovacao({ g, ocupado, devolver, aprovar }: {
+function Aprovacao({ g, ocupado, devolver, aprovar, baixarPdf }: {
   g: GeracaoPgrEap;
   ocupado: boolean;
   devolver: (motivo: string) => void;
   aprovar: () => void;
+  baixarPdf: () => void;
 }) {
   const [motivo, setMotivo] = useState('');
   const navigate = useNavigate();
@@ -543,9 +553,16 @@ function Aprovacao({ g, ocupado, devolver, aprovar }: {
         )}
       </Card>
       <Card titulo="Documento PGR">
-        <Text size={200}>
-          O PDF do PGR gerado pelo sistema entra na próxima etapa. Até lá, depois de aprovado, o PGR fica completo no sistema (GHE, inventário, medidas e plano de ação) e o PDF da consultoria pode ser anexado na aba PGR, como hoje.
-        </Text>
+        {g.status === 3 ? (
+          <>
+            <Text size={200} style={{ display: 'block', marginBottom: 8 }}>
+              PDF do PGR com identificação, GHE, funções, inventário de riscos, medidas aceitas, plano de ação e registro da aprovação.
+            </Text>
+            <Button appearance="primary" disabled={ocupado} onClick={baixarPdf}>Baixar PDF do PGR</Button>
+          </>
+        ) : (
+          <Text size={200}>O PDF do PGR fica disponível depois da aprovação do Engenheiro de Segurança.</Text>
+        )}
       </Card>
     </div>
   );
