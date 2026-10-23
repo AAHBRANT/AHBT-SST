@@ -1511,6 +1511,17 @@ public static class NovidadesSeeder
                     "Ao enviar o PDF do contrato no Terceirizado, aparecia \"A IA não conseguiu analisar o relato agora\" e nada era preenchido.",
                     "Agora a IA volta a ler o contrato e preencher empresa, vigência, efetivo e pessoas. Confira os campos antes de cadastrar."),
             }),
+        new(
+            Versao: "5.84.0",
+            Titulo: "Importar a pasta inteira da terceirizada",
+            DataPublicacao: new DateTime(2026, 10, 23, 0, 0, 0, DateTimeKind.Utc),
+            Itens: new[]
+            {
+                new NovidadeSeedItem(CategoriaNovidade.Novidade,
+                    "Uma pasta, tudo cadastrado",
+                    "Cada documento da terceirizada (contrato, PGR, ASO, certificados) era cadastrado um por um.",
+                    "Em Terceirizado > Empresas, clique em Importar pasta e arraste a pasta da empresa, mesmo misturada. A IA separa o contrato, os documentos da empresa e o ASO e os certificados de cada funcionário. Você confere tudo e clica em Cadastrar tudo. O ASO agora também guarda o PDF."),
+            }),
     };
 
     public static async Task ExecutarAsync(IServiceProvider services, CancellationToken ct = default)

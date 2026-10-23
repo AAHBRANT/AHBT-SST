@@ -440,6 +440,32 @@ export interface ContratoTerceirizadoLidoIa {
   empresaExistenteRazaoSocial: string | null;
 }
 
+// Importação da pasta da terceirizada (23/10/2026): o que a IA disse de UM arquivo. Nada é gravado.
+export type TipoArquivoTerceirizado = 'contrato' | 'documento_empresa' | 'aso' | 'certificado' | 'ficha_epi' | 'outro';
+
+export interface ArquivoTerceirizadoClassificado {
+  nomeArquivo: string;
+  tipo: TipoArquivoTerceirizado;
+  documentoExigidoId: string | null;
+  documentoExigidoNome: string | null;
+  cursoTreinamentoId: string | null;
+  cursoNome: string | null;
+  pessoaNome: string | null;
+  pessoaCpf: string | null;
+  pessoaFuncao: string | null;
+  empresaRazaoSocial: string | null;
+  empresaCnpj: string | null;
+  dataDocumento: string | null;
+  dataValidade: string | null;
+  asoTipo: number | null;
+  asoResultado: number | null;
+  medicoNome: string | null;
+  medicoCrm: string | null;
+  cargaHoraria: number | null;
+  instituicao: string | null;
+  resumo: string | null;
+}
+
 export interface VagaFuncao {
   id: string;
   funcaoId: string;
@@ -4968,6 +4994,12 @@ export const api = {
     atualizar: (aso: Aso) => request<void>(`/api/asos/${aso.id}`, { method: 'PUT', body: JSON.stringify(aso) }),
     excluir: (id: string) => request<void>(`/api/asos/${id}`, { method: 'DELETE' }),
     importarGrh: () => request<ImportarAsoGrhResultado>('/api/asos/importar-grh', { method: 'POST' }),
+    // PDF/foto do ASO (23/10/2026). Reenviar substitui.
+    anexarArquivo: (id: string, arquivo: File) => {
+      const formData = new FormData();
+      formData.append('Arquivo', arquivo);
+      return enviarFormulario<{ id: string }>(`/api/asos/${id}/arquivo`, formData);
+    },
   },
   examesComplementares: {
     listar: (trabalhadorId?: string) =>
@@ -6735,6 +6767,13 @@ export const api = {
     },
     pendencias: {
       listar: () => request<PainelPendenciasTerceirizado>('/api/terceirizados/pendencias'),
+    },
+    importacao: {
+      classificar: (arquivo: File) => {
+        const formData = new FormData();
+        formData.append('Arquivo', arquivo);
+        return enviarFormulario<ArquivoTerceirizadoClassificado>('/api/terceirizados/importacao/classificar', formData);
+      },
     },
   },
 };
