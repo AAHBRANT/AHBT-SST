@@ -87,7 +87,7 @@ public class ObterAcidenteDetalheQueryHandler : IRequestHandler<ObterAcidenteDet
         var reuniao = await _db.ReunioesAnaliseOcorrencia
             .Where(r => r.AcidenteId == request.Id)
             .OrderByDescending(r => r.CreatedAtUtc)
-            .Select(r => new { r.Inicio, r.Fim, r.Participantes, r.Situacao, r.LinkTeams, r.MotivoFalha })
+            .Select(r => new { r.Inicio, r.Fim, r.Participantes, r.Situacao, r.LinkTeams, r.MotivoFalha, r.RealizadaEm, r.Presentes, r.Ata })
             .FirstOrDefaultAsync(ct);
 
         return new AcidenteDetalheDto
@@ -96,7 +96,10 @@ public class ObterAcidenteDetalheQueryHandler : IRequestHandler<ObterAcidenteDet
                 ? null
                 : new ReuniaoAnaliseDto(reuniao.Inicio, reuniao.Fim,
                     reuniao.Participantes.Split('\n', StringSplitOptions.RemoveEmptyEntries),
-                    reuniao.Situacao, reuniao.LinkTeams, reuniao.MotivoFalha),
+                    reuniao.Situacao, reuniao.LinkTeams, reuniao.MotivoFalha,
+                    reuniao.RealizadaEm,
+                    (reuniao.Presentes ?? string.Empty).Split('\n', StringSplitOptions.RemoveEmptyEntries),
+                    reuniao.Ata),
             Acidente = acidente,
             Fotos = fotos.Select(f => new AcidenteFotoDto { Id = f.Id, Ordem = f.Ordem, DadosFoto = AAHBRANT.SST.Application.Common.DadosCapturaFoto.Ler(f.FotoMetadadosJson) }).ToList(),
             AcoesPlano = acoesPlano,

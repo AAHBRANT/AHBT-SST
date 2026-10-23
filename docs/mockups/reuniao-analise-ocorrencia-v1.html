@@ -1,0 +1,177 @@
+<title>Reunião de Análise da Ocorrência</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<style>
+/* Layout: estados do cartão "Reunião de análise" na tela da ocorrência, lado a lado, + trecho do PDF. Tema claro e escuro. */
+:root{
+  --bg:#f3f1ef; --sup:#ffffff; --fg:#1f1d1c; --suave:#625b57; --linha:#dcd6d1;
+  --marca:#670000; --marca-fg:#ffffff; --bege:#ebe9ad;
+  --atencao-bg:#fff4ce; --atencao-fg:#6b4e00; --ok-bg:#dff0df; --ok-fg:#1e5a1e; --erro-bg:#fde7e9; --erro-fg:#8a1c24;
+  --f:"Segoe UI","Source Sans 3",system-ui,sans-serif;
+}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
+  --bg:#1b1a19; --sup:#262423; --fg:#f0ece9; --suave:#b3aba6; --linha:#3d3936;
+  --marca:#c25b5b; --marca-fg:#ffffff; --bege:#4a4826;
+  --atencao-bg:#4a3b10; --atencao-fg:#ffe08a; --ok-bg:#1f3b22; --ok-fg:#a9e0ad; --erro-bg:#4a1c20; --erro-fg:#ffb3b9; color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#1b1a19; --sup:#262423; --fg:#f0ece9; --suave:#b3aba6; --linha:#3d3936;
+  --marca:#c25b5b; --marca-fg:#ffffff; --bege:#4a4826;
+  --atencao-bg:#4a3b10; --atencao-fg:#ffe08a; --ok-bg:#1f3b22; --ok-fg:#a9e0ad; --erro-bg:#4a1c20; --erro-fg:#ffb3b9; color-scheme:dark}
+body{background:var(--bg);color:var(--fg);font-family:var(--f);font-size:14px;line-height:1.45;padding-block:24px;
+  padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
+.wrap{max-width:1180px;margin:0 auto;display:grid;gap:22px}
+h1{font-size:20px;margin:0;text-wrap:balance}
+.intro{color:var(--suave);max-width:75ch;margin:4px 0 0}
+.estados{display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:16px;align-items:start}
+.estado{display:grid;gap:8px;min-width:0}
+.rotulo{font-size:11px;text-transform:uppercase;letter-spacing:.07em;color:var(--suave);font-weight:600}
+.card{background:var(--sup);border:1px solid var(--linha);border-radius:8px;padding:14px;display:grid;gap:10px;min-width:0}
+.card h3{margin:0;font-size:15px;display:flex;justify-content:space-between;gap:8px;align-items:center;flex-wrap:wrap}
+.chip{font-size:11px;font-weight:700;padding:2px 9px;border-radius:10px;white-space:nowrap}
+.chip.atencao{background:var(--atencao-bg);color:var(--atencao-fg)}
+.chip.ok{background:var(--ok-bg);color:var(--ok-fg)}
+.chip.erro{background:var(--erro-bg);color:var(--erro-fg)}
+.aviso{background:var(--atencao-bg);color:var(--atencao-fg);border-radius:6px;padding:8px 10px;font-size:13px}
+.aviso.erro{background:var(--erro-bg);color:var(--erro-fg)}
+.campos{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.campo{display:grid;gap:3px;min-width:0}
+.campo.l2{grid-column:span 2}
+label,.lb{font-size:12px;color:var(--suave);font-weight:600}
+.input{border:1px solid var(--linha);border-radius:4px;padding:6px 8px;background:var(--sup);color:var(--fg);font-size:13px;min-height:20px}
+.area{min-height:74px}
+.pessoas{display:flex;flex-wrap:wrap;gap:6px}
+.pessoa{border:1px solid var(--linha);border-radius:12px;padding:2px 9px;font-size:12px}
+.pessoa.sim::before{content:"✓ ";color:var(--ok-fg);font-weight:700}
+.pessoa.nao{opacity:.55;text-decoration:line-through}
+.botoes{display:flex;gap:8px;flex-wrap:wrap}
+.btn{border:1px solid var(--linha);background:var(--sup);color:var(--fg);border-radius:4px;padding:6px 12px;font:600 13px var(--f)}
+.btn.pri{background:var(--marca);border-color:var(--marca);color:var(--marca-fg)}
+.info{display:grid;gap:4px;font-size:13px}
+.info b{font-weight:600}
+.legenda{font-size:12px;color:var(--suave)}
+.link{color:var(--marca);font-weight:600}
+.secao2{display:grid;grid-template-columns:repeat(auto-fit,minmax(320px,1fr));gap:16px;align-items:start}
+.fluxo li{margin:2px 0}
+.pdf{background:#fff;color:#1b1b1b;border:1px solid #cfc9c4;padding:14px;font-size:12px;display:grid;gap:0}
+.pdf .faixa{background:#670000;color:#fff;font-weight:700;font-size:11px;letter-spacing:.05em;padding:4px 8px}
+.pdf .g{display:grid;grid-template-columns:1fr 1fr;border:1px solid #cfc9c4;border-top:0}
+.pdf .g div{padding:5px 8px;border-right:1px solid #cfc9c4;border-bottom:1px solid #cfc9c4;min-width:0}
+.pdf .g div:nth-child(2n){border-right:0}
+.pdf .l{display:block;font-size:9px;text-transform:uppercase;color:#5c5652;letter-spacing:.05em}
+.pdf .t{border:1px solid #cfc9c4;border-top:0;padding:7px 9px;text-align:justify}
+.nota{font-size:12px;color:var(--suave)}
+</style>
+
+<div class="wrap">
+  <header>
+    <h1>Reunião de análise na tela da ocorrência</h1>
+    <p class="intro">Desenho para aprovação. O cartão fica no topo da coluna principal da ocorrência, logo abaixo do resumo, em todos os tipos (acidente, incidente, quase acidente, condição insegura, ato inseguro e doença ocupacional). Nomes e datas são de exemplo.</p>
+  </header>
+
+  <section class="estados">
+    <div class="estado">
+      <span class="rotulo">1 · Ainda sem reunião</span>
+      <div class="card">
+        <h3>Reunião de análise <span class="chip atencao">Pendente</span></h3>
+        <div class="aviso">Obrigatória em toda ocorrência. A investigação só pode ser finalizada depois que a reunião for registrada como realizada.</div>
+        <div class="botoes"><button class="btn pri" type="button">Agendar reunião de análise</button></div>
+      </div>
+    </div>
+
+    <div class="estado">
+      <span class="rotulo">2 · Agendando (abre no próprio cartão)</span>
+      <div class="card">
+        <h3>Agendar reunião de análise</h3>
+        <div class="campos">
+          <div class="campo"><label for="d1">Data</label><div class="input" id="d1">24/10/2026</div></div>
+          <div class="campo"><label for="h1">Hora</label><div class="input" id="h1">14:00</div></div>
+          <div class="campo l2"><label for="du1">Duração</label><div class="input" id="du1">1 hora</div></div>
+          <div class="campo l2"><span class="lb">Participantes</span>
+            <div class="pessoas"><span class="pessoa">Engenheiro Exemplo</span><span class="pessoa">Encarregado Exemplo</span><span class="pessoa">+ adicionar</span></div>
+            <span class="legenda">Você entra como organizador. O convite chega pelo Teams/Outlook de cada um.</span>
+          </div>
+        </div>
+        <div class="botoes"><button class="btn pri" type="button">Agendar no Teams</button><button class="btn" type="button">Cancelar</button></div>
+      </div>
+    </div>
+
+    <div class="estado">
+      <span class="rotulo">3 · Agendada</span>
+      <div class="card">
+        <h3>Reunião de análise <span class="chip atencao">Agendada</span></h3>
+        <div class="info">
+          <span><b>Sexta, 24/10</b> · 14:00 às 15:00</span>
+          <span class="legenda">Participantes: Técnico Exemplo (organizador), Engenheiro Exemplo, Encarregado Exemplo</span>
+          <span><a class="link" href="#">Entrar na reunião do Teams</a></span>
+        </div>
+        <div class="botoes"><button class="btn pri" type="button">Registrar que aconteceu</button><button class="btn" type="button">Remarcar</button></div>
+        <span class="legenda">Remarcar muda a data/hora e atualiza o convite no Teams de todos.</span>
+      </div>
+    </div>
+
+    <div class="estado">
+      <span class="rotulo">3b · Agendada, mas o Teams falhou</span>
+      <div class="card">
+        <h3>Reunião de análise <span class="chip erro">Fora do Teams</span></h3>
+        <div class="info"><span><b>Sexta, 24/10</b> · 14:00 às 15:00</span></div>
+        <div class="aviso erro">O Teams não aceitou a reunião. Tente de novo ou marque por fora e depois registre que aconteceu.</div>
+        <div class="botoes"><button class="btn pri" type="button">Tentar de novo no Teams</button><button class="btn" type="button">Registrar que aconteceu</button></div>
+      </div>
+    </div>
+
+    <div class="estado">
+      <span class="rotulo">4 · Registrando que aconteceu</span>
+      <div class="card">
+        <h3>Registrar reunião realizada</h3>
+        <div class="campos">
+          <div class="campo"><label for="d2">Data</label><div class="input" id="d2">24/10/2026</div></div>
+          <div class="campo"><label for="h2">Hora</label><div class="input" id="h2">14:00</div></div>
+          <div class="campo l2"><span class="lb">Quem participou</span>
+            <div class="pessoas"><span class="pessoa sim">Técnico Exemplo</span><span class="pessoa sim">Engenheiro Exemplo</span><span class="pessoa nao">Encarregado Exemplo</span></div>
+            <span class="legenda">Toque no nome para marcar presença ou ausência.</span>
+          </div>
+          <div class="campo l2"><label for="ata">Ata · o que foi discutido e decidido</label><div class="input area" id="ata">Causas confirmadas: falta de rodapé e área sem isolamento. Mantidas as 2 ações do plano; prazo do isolamento antecipado para 25/10.</div></div>
+        </div>
+        <div class="botoes"><button class="btn pri" type="button">Salvar reunião realizada</button><button class="btn" type="button">Cancelar</button></div>
+      </div>
+    </div>
+
+    <div class="estado">
+      <span class="rotulo">5 · Realizada</span>
+      <div class="card">
+        <h3>Reunião de análise <span class="chip ok">Realizada</span></h3>
+        <div class="info">
+          <span><b>24/10/2026</b> · 14:00</span>
+          <span class="legenda">Presentes: Técnico Exemplo, Engenheiro Exemplo</span>
+        </div>
+        <div class="input area">Causas confirmadas: falta de rodapé e área sem isolamento. Mantidas as 2 ações do plano; prazo do isolamento antecipado para 25/10.</div>
+        <div class="botoes"><button class="btn" type="button">Editar ata</button></div>
+      </div>
+    </div>
+  </section>
+
+  <section class="secao2">
+    <div class="card">
+      <h3>O que acontece por trás</h3>
+      <ul class="fluxo">
+        <li>Ao agendar, a reunião vira uma <b>ação do plano</b> ("Realizar a reunião de análise"), com o prazo na data marcada.</li>
+        <li>Ao registrar que aconteceu, essa ação é <b>concluída sozinha</b>.</li>
+        <li>No botão <b>Finalizar investigação</b>, entra a pendência: <i>"Registre a reunião de análise como realizada."</i></li>
+        <li>O relato com IA de acidente e doença ocupacional continua sugerindo a reunião no cadastro, como hoje.</li>
+        <li>Ocorrências antigas sem reunião, como o quase acidente do CAC, mostram o estado 1 e podem agendar a partir de agora.</li>
+      </ul>
+    </div>
+
+    <div>
+      <span class="rotulo">Seção 6 do PDF de investigação, com a ata</span>
+      <div class="pdf">
+        <div class="faixa">6. REUNIÃO DE ANÁLISE</div>
+        <div class="g">
+          <div><span class="l">Realizada em</span><b>24/10/2026 · 14:00</b></div>
+          <div><span class="l">Presentes</span><b>Técnico Exemplo; Engenheiro Exemplo</b></div>
+        </div>
+        <div class="t">Causas confirmadas: falta de rodapé e área sem isolamento. Mantidas as 2 ações do plano; prazo do isolamento antecipado para 25/10.</div>
+      </div>
+      <p class="nota">Se a reunião ainda estiver só agendada, a seção mostra "Agendada para 24/10/2026 · 14:00–15:00 (Teams)" e os convidados, sem a ata.</p>
+    </div>
+  </section>
+</div>

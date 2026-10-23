@@ -67,8 +67,9 @@ public class ExportarInvestigacaoOcorrenciaPdfQueryHandler : IRequestHandler<Exp
                 acao.Descricao, acao.Fundamentacao, DescreverTipoAcao(acao.Tipo), acao.ResponsavelUsuarioNome, acao.Prazo, situacao, concluida);
         }).ToList();
 
-        var reuniao = detalhe.Reuniao is { Situacao: SituacaoReuniaoTeams.Criada } r
-            ? new InvestigacaoOcorrenciaPdfReuniaoModelo(r.Inicio, r.Fim, r.Participantes)
+        var reuniao = detalhe.Reuniao is { } r
+            ? new InvestigacaoOcorrenciaPdfReuniaoModelo(r.Inicio, r.Fim, r.Participantes, r.Situacao == SituacaoReuniaoTeams.Criada,
+                r.RealizadaEm, r.Presentes, r.Ata)
             : null;
 
         var rastreio = await _rastreabilidade.GarantirAsync(nameof(Acidente), request.Id, ct);
@@ -76,7 +77,7 @@ public class ExportarInvestigacaoOcorrenciaPdfQueryHandler : IRequestHandler<Exp
         var modelo = new InvestigacaoOcorrenciaPdfModelo(
             a.ObraNome,
             obraLogoConteudo,
-            DescreverTipo(a.Tipo),
+            TipoOcorrenciaRotulo.Descrever(a.Tipo),
             a.Data,
             a.Hora,
             a.Local,
@@ -108,18 +109,7 @@ public class ExportarInvestigacaoOcorrenciaPdfQueryHandler : IRequestHandler<Exp
         return pdf;
     }
 
-    // Mesmos rótulos da tela (lib/api.ts: tipoOcorrenciaLabel, statusAcidenteLabel etc.).
-    private static string DescreverTipo(TipoOcorrencia tipo) => tipo switch
-    {
-        TipoOcorrencia.Acidente => "Acidente",
-        TipoOcorrencia.Incidente => "Incidente",
-        TipoOcorrencia.QuaseAcidente => "Quase acidente",
-        TipoOcorrencia.CondicaoInsegura => "Condição insegura",
-        TipoOcorrencia.AtoInseguro => "Ato inseguro",
-        TipoOcorrencia.DoencaOcupacional => "Doença ocupacional",
-        _ => tipo.ToString(),
-    };
-
+    // Mesmos rótulos da tela (lib/api.ts: statusAcidenteLabel etc.).
     private static string DescreverStatus(StatusAcidente status) => status switch
     {
         StatusAcidente.Registrado => "Registrada",

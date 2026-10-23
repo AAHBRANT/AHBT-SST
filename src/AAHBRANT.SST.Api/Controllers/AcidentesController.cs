@@ -137,6 +137,41 @@ public class AcidentesController : ControllerBase
     public async Task<IActionResult> ObterDetalhe(Guid id, CancellationToken ct)
         => Ok(await _mediator.Send(new ObterAcidenteDetalheQuery(id), ct));
 
+    // Reunião de análise pela tela da ocorrência — obrigatória em todo tipo; quem agenda é o
+    // organizador no Teams (identidade pelo token, nunca do corpo).
+    [Authorize(Policy = "acidente:editar")]
+    [HttpPost("{id:guid}/reuniao-analise")]
+    public async Task<IActionResult> AgendarReuniao(Guid id, AgendarReuniaoAnaliseBody body, CancellationToken ct)
+    {
+        await _mediator.Send(new AgendarReuniaoAnaliseCommand(
+            id, body.Inicio, body.DuracaoMinutos, body.ParticipantesUsuarioIds ?? new List<Guid>(), await UsuarioAtualIdAsync(ct)), ct);
+        return NoContent();
+    }
+
+    [Authorize(Policy = "acidente:editar")]
+    [HttpPut("{id:guid}/reuniao-analise/horario")]
+    public async Task<IActionResult> RemarcarReuniao(Guid id, RemarcarReuniaoAnaliseBody body, CancellationToken ct)
+    {
+        await _mediator.Send(new RemarcarReuniaoAnaliseCommand(id, body.Inicio, body.DuracaoMinutos), ct);
+        return NoContent();
+    }
+
+    [Authorize(Policy = "acidente:editar")]
+    [HttpPost("{id:guid}/reuniao-analise/teams")]
+    public async Task<IActionResult> TentarReuniaoNoTeams(Guid id, CancellationToken ct)
+    {
+        await _mediator.Send(new TentarReuniaoAnaliseNoTeamsCommand(id), ct);
+        return NoContent();
+    }
+
+    [Authorize(Policy = "acidente:editar")]
+    [HttpPut("{id:guid}/reuniao-analise/realizada")]
+    public async Task<IActionResult> RegistrarReuniaoRealizada(Guid id, ReuniaoAnaliseRealizadaBody body, CancellationToken ct)
+    {
+        await _mediator.Send(new RegistrarReuniaoAnaliseRealizadaCommand(id, body.RealizadaEm, body.Presentes ?? new List<string>(), body.Ata ?? string.Empty), ct);
+        return NoContent();
+    }
+
     // Relatório de Investigação de Ocorrência (PDF) — mesma permissão de quem vê a ocorrência.
     [Authorize(Policy = "acidente:ver")]
     [HttpGet("{id:guid}/pdf")]
@@ -264,3 +299,10 @@ public class PlanoSugeridoOcorrenciaBody
     public string? Consequencia { get; set; }
     public string? Atendimento { get; set; }
 }
+
+// Horários em Brasília (sem fuso), igual à reunião criada pelo relato.
+public record AgendarReuniaoAnaliseBody(DateTime Inicio, int DuracaoMinutos, List<Guid>? ParticipantesUsuarioIds);
+
+public record RemarcarReuniaoAnaliseBody(DateTime Inicio, int DuracaoMinutos);
+
+public record ReuniaoAnaliseRealizadaBody(DateTime RealizadaEm, List<string>? Presentes, string? Ata);

@@ -75,14 +75,7 @@ public class InvestigacaoOcorrenciaPdfService : IInvestigacaoOcorrenciaPdfServic
                     coluna.Item().Element(c => Secao(c, "5. Plano de ação", corpo => PlanoAcao(corpo, modelo.Acoes)));
 
                     if (modelo.Reuniao is not null)
-                    {
-                        var reuniao = modelo.Reuniao;
-                        coluna.Item().Element(c => Secao(c, "6. Reunião de análise", corpo => Grade(corpo, new[]
-                        {
-                            ("Data / horário", $"{reuniao.Inicio:dd/MM/yyyy} · {reuniao.Inicio:HH:mm}–{reuniao.Fim:HH:mm} (Teams)", 2),
-                            ("Participantes", reuniao.Participantes.Count > 0 ? string.Join("; ", reuniao.Participantes) : "—", 2),
-                        })));
-                    }
+                        coluna.Item().Element(c => Secao(c, "6. Reunião de análise", corpo => Reuniao(corpo, modelo.Reuniao)));
 
                     // Numeração segue sem buraco quando não houve reunião.
                     var n = modelo.Reuniao is null ? 6 : 7;
@@ -150,6 +143,30 @@ public class InvestigacaoOcorrenciaPdfService : IInvestigacaoOcorrenciaPdfServic
     private static void Texto(IContainer container, string texto)
     {
         container.Border(0.5f).BorderColor(CorLinha).Padding(6).Text(texto).Justify();
+    }
+
+    private static void Reuniao(IContainer container, InvestigacaoOcorrenciaPdfReuniaoModelo reuniao)
+    {
+        if (reuniao.RealizadaEm is { } realizada)
+        {
+            container.Column(c =>
+            {
+                c.Item().Element(g => Grade(g, new[]
+                {
+                    ("Realizada em", $"{realizada:dd/MM/yyyy} · {realizada:HH:mm}", 2),
+                    ("Presentes", reuniao.Presentes is { Count: > 0 } p ? string.Join("; ", p) : "—", 2),
+                }));
+                c.Item().Element(t => Texto(t, Valor(reuniao.Ata, "Ata não registrada.")));
+            });
+            return;
+        }
+
+        var onde = reuniao.NoTeams ? "Teams" : "fora do Teams";
+        Grade(container, new[]
+        {
+            ("Agendada para", $"{reuniao.Inicio:dd/MM/yyyy} · {reuniao.Inicio:HH:mm}–{reuniao.Fim:HH:mm} ({onde})", 2),
+            ("Convidados", reuniao.Participantes.Count > 0 ? string.Join("; ", reuniao.Participantes) : "—", 2),
+        });
     }
 
     private static void PlanoAcao(IContainer container, IReadOnlyList<InvestigacaoOcorrenciaPdfAcaoModelo> acoes)

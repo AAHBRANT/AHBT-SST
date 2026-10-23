@@ -20,10 +20,15 @@ public record InvestigacaoOcorrenciaPdfFotoModelo(
     double? Latitude,
     double? Longitude);
 
+// Reunião realizada: sai data, presentes e ata. Só agendada: sai o horário e os convidados.
 public record InvestigacaoOcorrenciaPdfReuniaoModelo(
     DateTime Inicio,
     DateTime Fim,
-    IReadOnlyList<string> Participantes);
+    IReadOnlyList<string> Participantes,
+    bool NoTeams,
+    DateTime? RealizadaEm = null,
+    IReadOnlyList<string>? Presentes = null,
+    string? Ata = null);
 
 public record InvestigacaoOcorrenciaPdfModelo(
     string? ObraNome,

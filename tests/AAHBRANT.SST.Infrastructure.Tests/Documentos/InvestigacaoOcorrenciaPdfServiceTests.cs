@@ -52,7 +52,8 @@ public class InvestigacaoOcorrenciaPdfServiceTests
                 new InvestigacaoOcorrenciaPdfAcaoModelo("Isolar e sinalizar a área abaixo de serviços em altura", null, "Preventiva", "Encarregado Exemplo", new DateTime(2026, 10, 20), "Vencida", false),
             }
             : Array.Empty<InvestigacaoOcorrenciaPdfAcaoModelo>(),
-        completo ? new InvestigacaoOcorrenciaPdfReuniaoModelo(new DateTime(2026, 10, 22, 14, 0, 0), new DateTime(2026, 10, 22, 15, 0, 0), new[] { "Engenheiro Exemplo", "Técnico Exemplo" }) : null,
+        completo ? new InvestigacaoOcorrenciaPdfReuniaoModelo(new DateTime(2026, 10, 22, 14, 0, 0), new DateTime(2026, 10, 22, 15, 0, 0), new[] { "Engenheiro Exemplo", "Técnico Exemplo" }, true,
+            new DateTime(2026, 10, 22, 14, 5, 0), new[] { "Engenheiro Exemplo", "Técnico Exemplo" }, "Causas confirmadas: falta de rodapé e área sem isolamento. Mantidas as 2 ações do plano; prazo do isolamento antecipado para 25/10.") : null,
         completo
             ? new[]
             {

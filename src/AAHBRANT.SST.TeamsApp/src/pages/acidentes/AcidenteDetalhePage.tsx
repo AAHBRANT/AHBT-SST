@@ -26,7 +26,8 @@ import {
   type Tom,
   Legenda,
 } from '@ui';
-import { ArrowDownload24Regular, Eye24Regular, Save24Regular, Video24Regular } from '@fluentui/react-icons';
+import { ArrowDownload24Regular, Eye24Regular, Save24Regular } from '@fluentui/react-icons';
+import { CartaoReuniaoAnalise } from './CartaoReuniaoAnalise';
 import { useVisualizadorPdf } from '../../components/useVisualizadorPdf';
 import {
   api,
@@ -42,7 +43,6 @@ import {
   type AcidenteDetalhe,
   type NovaAcaoPlano,
   type Usuario,
-  SituacaoReuniaoTeams,
 } from '../../lib/api';
 
 function novaAcaoInicial(): Omit<NovaAcaoPlano, 'origemTipo' | 'origemId'> {
@@ -274,6 +274,7 @@ export function AcidenteDetalhePage() {
       finalizacao: a.status === StatusAcidente.EmInvestigacao,
       pendencias: a.status === StatusAcidente.EmInvestigacao ? [
         ...(a.tipo === 1 ? pendenciasGrade(detalhe.fotos ?? []) : []),
+        ...(detalhe.reuniao?.realizadaEm ? [] : ['Registre a reunião de análise como realizada.']),
         ...(detalhe.acoesPlano.some(acao => acao.status !== StatusAcaoPlano.Concluido) ? ['Conclua as ações do plano que estão pendentes.'] : []),
       ] : [],
       descricao: 'Confira se as ações do plano em aberto já foram concluídas antes de avançar.',
@@ -407,6 +408,14 @@ export function AcidenteDetalhePage() {
         </FeedbackInline>
       )}
 
+      <CartaoReuniaoAnalise
+        acidenteId={a.id}
+        reuniao={detalhe.reuniao ?? null}
+        usuarios={usuarios}
+        somenteLeitura={a.status === StatusAcidente.Concluido}
+        aoAtualizar={carregar}
+      />
+
       <Card titulo={a.tipo === 1 ? 'Fotos do local do acidente' : 'Fotos do local'}>
         <GradeFotosEvidencia titulo={a.tipo === 1 ? 'Três fotos obrigatórias' : 'Até três fotos (opcionais)'} total={3}
           opcional={a.tipo !== 1}
@@ -516,42 +525,6 @@ export function AcidenteDetalhePage() {
           </Button>
         </FormRodape>
       </Card>
-
-      {detalhe.reuniao && (
-        <Card titulo="Reunião de análise do acidente">
-          <div style={{ display: 'grid', gap: 10 }}>
-            <Text>
-              {new Date(detalhe.reuniao.inicio).toLocaleDateString('pt-BR', { weekday: 'long', day: '2-digit', month: '2-digit' })}
-              {' · '}
-              {detalhe.reuniao.inicio.slice(11, 16)} às {detalhe.reuniao.fim.slice(11, 16)}
-            </Text>
-            <Legenda>Participantes: {detalhe.reuniao.participantes.join(', ') || '—'}</Legenda>
-            {detalhe.reuniao.situacao === SituacaoReuniaoTeams.Criada ? (
-              <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
-                <StatusChip tom="ok">Marcada no Teams</StatusChip>
-                {detalhe.reuniao.linkTeams && (
-                  <Button
-                    appearance="primary"
-                    size="small"
-                    icon={<Video24Regular />}
-                    as="a"
-                    href={detalhe.reuniao.linkTeams}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                  >
-                    Entrar na reunião
-                  </Button>
-                )}
-              </div>
-            ) : (
-              <FeedbackInline tom="aviso">
-                {detalhe.reuniao.motivoFalha ?? 'A reunião não foi marcada no Teams. Marque-a manualmente.'}
-              </FeedbackInline>
-            )}
-            <Legenda>A ação "Realizar a reunião de análise" do plano é concluída pelo técnico depois da reunião.</Legenda>
-          </div>
-        </Card>
-      )}
 
       <Card
         titulo="Ações do plano"

@@ -12,7 +12,8 @@ namespace AAHBRANT.SST.Application.Acidentes.Commands;
 // Bloqueio de negócio (decisão própria, mesmo padrão de "bloqueio preventivo" usado em
 // AvancarStatusNaoConformidadeCommand/EncerrarInspecaoCommand): o último passo (EmInvestigacao →
 // Concluido) só é permitido se todo AcaoPlano vinculado (via OrigemTipo=nameof(Acidente)/OrigemId)
-// já estiver com Status == Concluido.
+// já estiver com Status == Concluido. Desde 23/10/2026 também exige a reunião de análise registrada
+// como realizada, em qualquer tipo de ocorrência.
 public record AvancarStatusAcidenteCommand(Guid Id) : IRequest;
 
 public class AvancarStatusAcidenteCommandValidator : AbstractValidator<AvancarStatusAcidenteCommand>
@@ -52,6 +53,12 @@ public class AvancarStatusAcidenteCommandHandler : IRequestHandler<AvancarStatus
                 foreach (var foto in fotos)
                     AAHBRANT.SST.Application.Common.DadosCapturaFoto.ExigirCompleta(foto.FotoMetadadosJson, $"Foto {foto.Ordem}");
             }
+            var reuniaoRealizada = await _db.ReunioesAnaliseOcorrencia.AnyAsync(
+                r => r.AcidenteId == acidente.Id && r.RealizadaEm != null, ct);
+            if (!reuniaoRealizada)
+                throw new InvalidOperationException(
+                    "Registre a reunião de análise como realizada antes de finalizar a investigação.");
+
             var existeAcaoPendente = await _db.AcoesPlano.AnyAsync(
                 a => a.OrigemTipo == nameof(Domain.Entidades.Acidente) &&
                      a.OrigemId == acidente.Id &&

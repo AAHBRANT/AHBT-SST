@@ -3581,6 +3581,10 @@ export interface ReuniaoAnalise {
   situacao: number;
   linkTeams: string | null;
   motivoFalha: string | null;
+  // Preenchidos quando a reunião foi registrada como realizada (horário de Brasília, sem fuso).
+  realizadaEm: string | null;
+  presentes: string[] | null;
+  ata: string | null;
 }
 
 export interface TemaDdsAgendado {
@@ -6373,6 +6377,14 @@ export const api = {
       request<void>(`/api/acidentes/${id}`, { method: 'PUT', body: JSON.stringify(acidente) }),
     excluir: (id: string) => request<void>(`/api/acidentes/${id}`, { method: 'DELETE' }),
     avancarStatus: (id: string) => request<void>(`/api/acidentes/${id}/avancar-status`, { method: 'POST' }),
+    // Reunião de análise pela tela da ocorrência. Horários em Brasília, sem fuso ("2026-10-24T14:00:00").
+    agendarReuniao: (id: string, dados: { inicio: string; duracaoMinutos: number; participantesUsuarioIds: string[] }) =>
+      request<void>(`/api/acidentes/${id}/reuniao-analise`, { method: 'POST', body: JSON.stringify(dados) }),
+    remarcarReuniao: (id: string, dados: { inicio: string; duracaoMinutos: number }) =>
+      request<void>(`/api/acidentes/${id}/reuniao-analise/horario`, { method: 'PUT', body: JSON.stringify(dados) }),
+    tentarReuniaoNoTeams: (id: string) => request<void>(`/api/acidentes/${id}/reuniao-analise/teams`, { method: 'POST' }),
+    registrarReuniaoRealizada: (id: string, dados: { realizadaEm: string; presentes: string[]; ata: string }) =>
+      request<void>(`/api/acidentes/${id}/reuniao-analise/realizada`, { method: 'PUT', body: JSON.stringify(dados) }),
     // Relatório de Investigação de Ocorrência (PDF), mesmo padrão de inspecoes.baixarPdf.
     baixarPdf: async (id: string) => {
       const response = await fetch(`${API_BASE_URL}/api/acidentes/${id}/pdf`, { headers: await montarHeadersAuth() });
