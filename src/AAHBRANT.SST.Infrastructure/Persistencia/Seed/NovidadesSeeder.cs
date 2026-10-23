@@ -1489,6 +1489,17 @@ public static class NovidadesSeeder
                     "No Relatar por voz, uma pausa na fala fazia o ditado se desligar sozinho.",
                     "Agora o ditado segue ouvindo mesmo com pausas e só termina quando você clica em parar."),
             }),
+        new(
+            Versao: "5.82.0",
+            Titulo: "Relato por voz volta a gravar o áudio",
+            DataPublicacao: new DateTime(2026, 10, 23, 0, 0, 0, DateTimeKind.Utc),
+            Itens: new[]
+            {
+                new NovidadeSeedItem(CategoriaNovidade.Melhoria,
+                    "Transcrição mais precisa",
+                    "O ditado feito pelo próprio navegador errava muitas palavras.",
+                    "O Relatar por voz voltou a gravar o áudio e transcrever no servidor, que entende melhor a fala. Grave, clique em parar e a IA preenche o formulário."),
+            }),
     };
 
     public static async Task ExecutarAsync(IServiceProvider services, CancellationToken ct = default)
