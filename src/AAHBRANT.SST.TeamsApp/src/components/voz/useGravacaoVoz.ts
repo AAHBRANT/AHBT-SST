@@ -2,35 +2,28 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 
 export type EstadoGravacaoVoz = 'parado' | 'gravando' | 'transcrevendo';
 
+// gpt-4o-transcribe aceita até 25 MB; 10 min de opus fica bem abaixo disso.
 const DURACAO_MAXIMA_SEGUNDOS = 600;
 const QUANTIDADE_BARRAS = 15;
 
-// Web Speech API: Chrome/Edge/Teams desktop expõem com prefixo webkit; o Safari (iPhone) também.
-type ReconhecimentoFala = {
-  lang: string;
-  continuous: boolean;
-  interimResults: boolean;
-  onresult: ((e: { resultIndex: number; results: ArrayLike<ArrayLike<{ transcript: string }> & { isFinal: boolean }> }) => void) | null;
-  onerror: ((e: { error: string }) => void) | null;
-  onend: (() => void) | null;
-  start: () => void;
-  stop: () => void;
-  abort: () => void;
-};
-
-function criarReconhecimento(): ReconhecimentoFala | null {
-  const w = window as unknown as Record<string, (new () => ReconhecimentoFala) | undefined>;
-  const Construtor = w.SpeechRecognition ?? w.webkitSpeechRecognition;
-  return Construtor ? new Construtor() : null;
+// Chrome/Edge/Teams desktop gravam webm/opus; Safari (Teams no iPhone) só grava mp4.
+function escolherFormato(): { mimeType: string; extensao: string } | null {
+  if (typeof MediaRecorder === 'undefined') return null;
+  const candidatos = [
+    { mimeType: 'audio/webm;codecs=opus', extensao: 'webm' },
+    { mimeType: 'audio/webm', extensao: 'webm' },
+    { mimeType: 'audio/mp4', extensao: 'mp4' },
+  ];
+  return candidatos.find((c) => MediaRecorder.isTypeSupported(c.mimeType)) ?? { mimeType: '', extensao: 'webm' };
 }
 
 /**
- * Dita a fala do usuário pelo reconhecimento de voz do próprio navegador (sem custo, nenhum áudio
- * sai do aparelho para o SST) e entrega o texto a `enviar` (que, se for o caso, pede à IA o
- * preenchimento do formulário). Usado pelo "Relatar por voz" do Suporte IA e do registro de Ocorrências.
+ * Grava a fala do usuário e entrega o áudio a `enviar` (que transcreve e, se for o caso, pede à IA
+ * o preenchimento do formulário). O áudio fica só em memória; nada é salvo no servidor. Usado pelo
+ * "Relatar por voz" do Suporte IA e do registro de Ocorrências.
  */
 export function useGravacaoVoz<T extends { transcricao: string }>(
-  enviar: (texto: string) => Promise<T>,
+  enviar: (audio: Blob, nomeArquivo: string) => Promise<T>,
   aoTranscrever: (resultado: T) => void,
   aoErro: (mensagem: string) => void,
 ) {
@@ -38,15 +31,12 @@ export function useGravacaoVoz<T extends { transcricao: string }>(
   const [segundos, setSegundos] = useState(0);
   const [niveis, setNiveis] = useState<number[]>(() => Array(QUANTIDADE_BARRAS).fill(0));
 
-  const reconhecimentoRef = useRef<ReconhecimentoFala | null>(null);
+  const gravadorRef = useRef<MediaRecorder | null>(null);
   const streamRef = useRef<MediaStream | null>(null);
   const audioContextRef = useRef<AudioContext | null>(null);
   const cronometroRef = useRef<number | null>(null);
-  // O reconhecimento do navegador encerra sozinho após alguns segundos de silêncio (e o do Teams/Edge
-  // também a cada ~1 min). Só termina o ditado de verdade quando o usuário clica em parar.
-  const usuarioParouRef = useRef(false);
   const animacaoRef = useRef<number | null>(null);
-  // Callbacks mais recentes, lidos no onend do reconhecimento (que roda fora do render).
+  // Callbacks mais recentes, lidos no onstop do MediaRecorder (que roda fora do render).
   const callbacksRef = useRef({ enviar, aoTranscrever, aoErro });
   useEffect(() => {
     callbacksRef.current = { enviar, aoTranscrever, aoErro };
@@ -66,12 +56,11 @@ export function useGravacaoVoz<T extends { transcricao: string }>(
 
   useEffect(
     () => () => {
-      // Saiu da tela no meio do ditado: descarta sem enviar.
-      const r = reconhecimentoRef.current;
-      if (r) {
-        r.onend = null;
-        r.onresult = null;
-        r.abort();
+      // Saiu da tela no meio da gravação: descarta sem transcrever.
+      if (gravadorRef.current) gravadorRef.current.ondataavailable = null;
+      if (gravadorRef.current?.state === 'recording') {
+        gravadorRef.current.onstop = null;
+        gravadorRef.current.stop();
       }
       liberarRecursos();
     },
@@ -79,90 +68,58 @@ export function useGravacaoVoz<T extends { transcricao: string }>(
   );
 
   const parar = useCallback(() => {
-    usuarioParouRef.current = true;
-    reconhecimentoRef.current?.stop();
+    if (gravadorRef.current?.state === 'recording') gravadorRef.current.stop();
   }, []);
 
   const iniciar = useCallback(async () => {
-    const reconhecimento = criarReconhecimento();
-    if (!reconhecimento) {
-      callbacksRef.current.aoErro('Este navegador não tem ditado por voz. Use o Chrome/Edge ou escreva o relato.');
+    const formato = escolherFormato();
+    if (!formato || !navigator.mediaDevices?.getUserMedia) {
+      callbacksRef.current.aoErro('Este navegador não permite gravar áudio. Escreva o relato.');
       return;
     }
 
-    reconhecimento.lang = 'pt-BR';
-    reconhecimento.continuous = true;
-    reconhecimento.interimResults = false;
+    let stream: MediaStream;
+    try {
+      stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+    } catch {
+      callbacksRef.current.aoErro(
+        'Não foi possível acessar o microfone. Libere a permissão no Teams ou no navegador, ou digite a descrição.',
+      );
+      return;
+    }
+    streamRef.current = stream;
 
-    const trechos: string[] = [];
-    let erro: string | null = null;
-    let inicioSessao = Date.now();
-    let encerramentosRapidos = 0;
-    usuarioParouRef.current = false;
-    reconhecimento.onresult = (e) => {
-      for (let i = e.resultIndex; i < e.results.length; i++) {
-        const resultado = e.results[i];
-        if (resultado.isFinal) trechos.push(resultado[0].transcript.trim());
-      }
+    const gravador = new MediaRecorder(stream, formato.mimeType ? { mimeType: formato.mimeType } : undefined);
+    const partes: Blob[] = [];
+    gravador.ondataavailable = (e) => {
+      if (e.data.size > 0) partes.push(e.data);
     };
-    reconhecimento.onerror = (e) => {
-      console.error('[ditado] erro do reconhecimento de voz:', e.error);
-      if (e.error === 'not-allowed' || e.error === 'service-not-allowed') {
-        erro = 'Não foi possível acessar o microfone. Libere a permissão no Teams ou no navegador, ou digite a descrição.';
-      } else if (e.error !== 'no-speech' && e.error !== 'aborted') {
-        erro = `O ditado por voz falhou (código: ${e.error}). Tente de novo ou digite a descrição.`;
-      }
-    };
-    reconhecimento.onend = async () => {
-      if (!usuarioParouRef.current && !erro) {
-        // Encerrou por silêncio/tempo: retoma. Se encerrar logo após iniciar várias vezes seguidas,
-        // o navegador não está conseguindo ouvir — desiste para não ficar em laço.
-        encerramentosRapidos = Date.now() - inicioSessao < 1500 ? encerramentosRapidos + 1 : 0;
-        if (encerramentosRapidos < 3) {
-          try {
-            inicioSessao = Date.now();
-            reconhecimento.start();
-            return;
-          } catch {
-            // Não reiniciou: segue o encerramento normal com o que já foi ditado.
-          }
-        }
-      }
+    gravador.onstop = async () => {
       liberarRecursos();
-      reconhecimentoRef.current = null;
-      const texto = trechos.filter(Boolean).join(' ').trim();
-      if (erro) {
+      gravadorRef.current = null;
+      const audio = new Blob(partes, { type: gravador.mimeType || formato.mimeType || 'audio/webm' });
+      if (audio.size === 0) {
         setEstado('parado');
-        callbacksRef.current.aoErro(erro);
-        return;
-      }
-      if (!texto) {
-        setEstado('parado');
-        callbacksRef.current.aoErro('Não deu para entender a fala. Tente falar mais perto do microfone.');
         return;
       }
       setEstado('transcrevendo');
       try {
-        callbacksRef.current.aoTranscrever(await callbacksRef.current.enviar(texto));
+        const resultado = await callbacksRef.current.enviar(audio, `relato.${formato.extensao}`);
+        if (resultado.transcricao.trim()) {
+          callbacksRef.current.aoTranscrever(resultado);
+        } else {
+          callbacksRef.current.aoErro('Não deu para entender o áudio. Tente falar mais perto do microfone.');
+        }
       } catch (e) {
-        callbacksRef.current.aoErro(e instanceof Error ? e.message : 'Falha ao analisar o relato.');
+        callbacksRef.current.aoErro(e instanceof Error ? e.message : 'Falha ao transcrever o áudio.');
       } finally {
         setEstado('parado');
       }
     };
-
-    try {
-      reconhecimento.start();
-    } catch {
-      callbacksRef.current.aoErro('Não foi possível iniciar o ditado. Tente novamente ou digite a descrição.');
-      return;
-    }
-    reconhecimentoRef.current = reconhecimento;
+    gravadorRef.current = gravador;
 
     // Medidor de volume só para dar retorno visual de que o microfone está captando.
     try {
-      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-      streamRef.current = stream;
       const contexto = new AudioContext();
       const analisador = contexto.createAnalyser();
       analisador.fftSize = 64;
@@ -177,7 +134,7 @@ export function useGravacaoVoz<T extends { transcricao: string }>(
       };
       desenhar();
     } catch {
-      // Sem medidor as barras ficam paradas; o ditado segue normal.
+      // Sem AudioContext o medidor fica parado; a gravação segue normal.
     }
 
     setSegundos(0);
@@ -188,6 +145,7 @@ export function useGravacaoVoz<T extends { transcricao: string }>(
       });
     }, 1000);
 
+    gravador.start(1000);
     setEstado('gravando');
   }, [liberarRecursos, parar]);
 

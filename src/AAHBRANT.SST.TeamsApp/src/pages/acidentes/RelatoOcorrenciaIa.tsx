@@ -72,12 +72,12 @@ export function RelatoOcorrenciaIa({ obraId, desabilitado, aoSugerir, aoSoTransc
     [aoSugerir, aoSoTranscrever],
   );
 
-  const enviarRelatoFalado = useMemo(() => (texto: string) => api.acidentes.relatoTexto(obraId, texto), [obraId]);
+  const enviarRelatoFalado = useMemo(() => api.acidentes.relatoVoz(obraId), [obraId]);
   const relatoVoz = useGravacaoVoz(enviarRelatoFalado, (r) => receber(r, true), aoErro);
 
   // Responder por voz: a fala vira a resposta de todas as perguntas abertas de uma vez.
   const respostaVoz = useGravacaoVoz(
-    async (texto: string) => ({ transcricao: texto }),
+    api.acidentes.transcrever,
     (r) => void completar([{ pergunta: perguntas.map((p) => p.pergunta).join(' '), resposta: r.transcricao }]),
     aoErro,
   );
