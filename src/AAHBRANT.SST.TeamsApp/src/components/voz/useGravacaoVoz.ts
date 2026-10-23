@@ -42,6 +42,9 @@ export function useGravacaoVoz<T extends { transcricao: string }>(
   const streamRef = useRef<MediaStream | null>(null);
   const audioContextRef = useRef<AudioContext | null>(null);
   const cronometroRef = useRef<number | null>(null);
+  // O reconhecimento do navegador encerra sozinho após alguns segundos de silêncio (e o do Teams/Edge
+  // também a cada ~1 min). Só termina o ditado de verdade quando o usuário clica em parar.
+  const usuarioParouRef = useRef(false);
   const animacaoRef = useRef<number | null>(null);
   // Callbacks mais recentes, lidos no onend do reconhecimento (que roda fora do render).
   const callbacksRef = useRef({ enviar, aoTranscrever, aoErro });
@@ -76,6 +79,7 @@ export function useGravacaoVoz<T extends { transcricao: string }>(
   );
 
   const parar = useCallback(() => {
+    usuarioParouRef.current = true;
     reconhecimentoRef.current?.stop();
   }, []);
 
@@ -92,6 +96,9 @@ export function useGravacaoVoz<T extends { transcricao: string }>(
 
     const trechos: string[] = [];
     let erro: string | null = null;
+    let inicioSessao = Date.now();
+    let encerramentosRapidos = 0;
+    usuarioParouRef.current = false;
     reconhecimento.onresult = (e) => {
       for (let i = e.resultIndex; i < e.results.length; i++) {
         const resultado = e.results[i];
@@ -107,6 +114,20 @@ export function useGravacaoVoz<T extends { transcricao: string }>(
       }
     };
     reconhecimento.onend = async () => {
+      if (!usuarioParouRef.current && !erro) {
+        // Encerrou por silêncio/tempo: retoma. Se encerrar logo após iniciar várias vezes seguidas,
+        // o navegador não está conseguindo ouvir — desiste para não ficar em laço.
+        encerramentosRapidos = Date.now() - inicioSessao < 1500 ? encerramentosRapidos + 1 : 0;
+        if (encerramentosRapidos < 3) {
+          try {
+            inicioSessao = Date.now();
+            reconhecimento.start();
+            return;
+          } catch {
+            // Não reiniciou: segue o encerramento normal com o que já foi ditado.
+          }
+        }
+      }
       liberarRecursos();
       reconhecimentoRef.current = null;
       const texto = trechos.filter(Boolean).join(' ').trim();

@@ -1478,6 +1478,17 @@ public static class NovidadesSeeder
                     "Só o acidente tinha espaço para fotos do local.",
                     "Agora incidentes e quase-acidentes também aceitam até três fotos do local, com data e localização. Nesses dois tipos as fotos são opcionais e não travam o encerramento. No acidente continuam as três fotos obrigatórias."),
             }),
+        new(
+            Versao: "5.81.0",
+            Titulo: "Relato por voz não para mais sozinho",
+            DataPublicacao: new DateTime(2026, 10, 23, 0, 0, 0, DateTimeKind.Utc),
+            Itens: new[]
+            {
+                new NovidadeSeedItem(CategoriaNovidade.Correcao,
+                    "Ditado continua até você clicar em parar",
+                    "No Relatar por voz, uma pausa na fala fazia o ditado se desligar sozinho.",
+                    "Agora o ditado segue ouvindo mesmo com pausas e só termina quando você clica em parar."),
+            }),
     };
 
     public static async Task ExecutarAsync(IServiceProvider services, CancellationToken ct = default)
