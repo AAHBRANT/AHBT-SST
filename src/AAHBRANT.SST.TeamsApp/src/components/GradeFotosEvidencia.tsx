@@ -25,6 +25,8 @@ interface GradeFotosEvidenciaProps {
   total: number;
   fotos: FotoEvidenciaSlot[];
   somenteLeitura?: boolean;
+  /** Fotos opcionais: não mostra o aviso de pendência. */
+  opcional?: boolean;
   onSelecionarFoto: (ordem: number, arquivo: File) => void | Promise<void>;
   onRemoverFoto: (fotoId: string) => void | Promise<void>;
   onErroValidacao?: (mensagem: string) => void;
@@ -45,6 +47,7 @@ export function GradeFotosEvidencia({
   total,
   fotos,
   somenteLeitura = false,
+  opcional = false,
   onSelecionarFoto,
   onRemoverFoto,
   onErroValidacao,
@@ -64,7 +67,7 @@ export function GradeFotosEvidencia({
         </Text>
       )}
 
-      {contextoFoto && !somenteLeitura && pendenciasGrade(fotos, total).length > 0 && <FeedbackInline tom="aviso">
+      {contextoFoto && !somenteLeitura && !opcional && pendenciasGrade(fotos, total).length > 0 && <FeedbackInline tom="aviso">
         <strong>Confira as fotos antes de sair do local.</strong> Há dados pendentes. A finalização será liberada quando as fotos estiverem completas.
       </FeedbackInline>}
       <div className={estilos.grade}>
