@@ -1,5 +1,6 @@
 using System.Net.Http.Json;
 using System.Text.Json;
+using System.Text.Json.Nodes;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 
@@ -106,13 +107,16 @@ public class AzureOpenAiChatJsonCliente
         int maxTokens, int timeoutSegundos, IReadOnlyList<string>? imagens)
     {
         var opcoes = _claude.Value;
+        var (schemaEnviado, textosVaziosComoNulo) = ReduzirUnioes(schema);
+        if (textosVaziosComoNulo.Count > 0)
+            instrucoesSistema += "\n\nCampo de texto ausente ou ilegível: devolva string vazia (\"\").";
         var corpo = new
         {
             model = opcoes.Modelo,
             max_tokens = maxTokens,
             system = instrucoesSistema,
             messages = new object[] { new { role = "user", content = ConteudoUsuarioClaude(mensagemUsuario, imagens) } },
-            output_config = new { format = new { type = "json_schema", schema } },
+            output_config = new { format = new { type = "json_schema", schema = schemaEnviado } },
         };
         var url = $"{opcoes.Endpoint.TrimEnd('/')}/v1/messages";
 
@@ -151,8 +155,86 @@ public class AzureOpenAiChatJsonCliente
             .FirstOrDefault()
             ?? throw new InvalidOperationException("A IA devolveu uma resposta vazia.");
 
+        if (textosVaziosComoNulo.Count > 0)
+        {
+            var raiz = JsonNode.Parse(conteudo);
+            foreach (var caminho in textosVaziosComoNulo) VazioParaNulo(raiz, caminho, 0);
+            conteudo = raiz?.ToJsonString() ?? conteudo;
+        }
+
         return JsonSerializer.Deserialize<T>(conteudo, new JsonSerializerOptions(JsonSerializerDefaults.Web))
             ?? throw new InvalidOperationException("A IA devolveu uma resposta inválida.");
+    }
+
+    // O Claude recusa schema com mais de 16 campos "tipo ou null" (23/10/2026: leitura do contrato de
+    // terceirizada, erro 400 "too many parameters with union types"). Acima do limite, os textos opcionais
+    // viram string simples e o "" devolvido volta a null antes de desserializar — quem consome não muda.
+    private const int LimiteUnioesClaude = 16;
+
+    private static (JsonNode Schema, List<string[]> TextosVaziosComoNulo) ReduzirUnioes(object schema)
+    {
+        var raiz = JsonSerializer.SerializeToNode(schema)!;
+        TipoUnicoSemLista(raiz);
+        var caminhos = new List<string[]>();
+        if (ContarUnioes(raiz) <= LimiteUnioesClaude) return (raiz, caminhos);
+
+        void Visitar(JsonNode? no, List<string> caminho)
+        {
+            if (no is not JsonObject obj) return;
+            if (obj["properties"] is JsonObject props)
+                foreach (var (nome, filho) in props.ToList())
+                {
+                    var filhoCaminho = new List<string>(caminho) { nome };
+                    if (filho is JsonObject f && f["type"] is JsonArray tipos && tipos.Count == 2
+                        && tipos.Any(t => t?.GetValue<string>() == "string") && tipos.Any(t => t?.GetValue<string>() == "null"))
+                    {
+                        f["type"] = "string";
+                        caminhos.Add(filhoCaminho.ToArray());
+                    }
+                    Visitar(filho, filhoCaminho);
+                }
+            if (obj["items"] is JsonObject itens) Visitar(itens, new List<string>(caminho) { "*" });
+        }
+
+        Visitar(raiz, new List<string>());
+        return (raiz, caminhos);
+    }
+
+    // {"type": ["string"]} conta como união para o Claude; vira {"type": "string"} (mesmo significado).
+    private static void TipoUnicoSemLista(JsonNode? no)
+    {
+        if (no is JsonObject obj)
+        {
+            if (obj["type"] is JsonArray tipos && tipos.Count == 1) obj["type"] = tipos[0]!.GetValue<string>();
+            foreach (var p in obj.ToList()) TipoUnicoSemLista(p.Value);
+        }
+        else if (no is JsonArray arr)
+            foreach (var item in arr.ToList()) TipoUnicoSemLista(item);
+    }
+
+    private static int ContarUnioes(JsonNode? no) => no switch
+    {
+        JsonObject obj => (obj["type"] is JsonArray || obj.ContainsKey("anyOf") ? 1 : 0)
+            + obj.Sum(p => ContarUnioes(p.Value)),
+        JsonArray arr => arr.Sum(ContarUnioes),
+        _ => 0,
+    };
+
+    private static void VazioParaNulo(JsonNode? no, string[] caminho, int i)
+    {
+        if (i == caminho.Length - 1)
+        {
+            if (no is JsonObject obj && obj[caminho[i]] is JsonValue v && v.TryGetValue<string>(out var texto)
+                && string.IsNullOrWhiteSpace(texto))
+                obj[caminho[i]] = null;
+            return;
+        }
+        if (caminho[i] == "*")
+        {
+            if (no is JsonArray arr) foreach (var item in arr) VazioParaNulo(item, caminho, i + 1);
+            return;
+        }
+        if (no is JsonObject o) VazioParaNulo(o[caminho[i]], caminho, i + 1);
     }
 
     // Data URL "data:image/jpeg;base64,..." → bloco de imagem base64 do Claude.
