@@ -125,6 +125,8 @@ public class AzureOpenAiChatJsonCliente
             using var requisicao = new HttpRequestMessage(HttpMethod.Post, url) { Content = JsonContent.Create(corpo) };
             requisicao.Headers.Add("x-api-key", opcoes.ApiKey);
             requisicao.Headers.Add("anthropic-version", "2023-06-01");
+            if (!string.IsNullOrWhiteSpace(opcoes.WorkspaceId))
+                requisicao.Headers.Add("anthropic-workspace-id", opcoes.WorkspaceId);
             resposta = await cliente.SendAsync(requisicao, ct);
             var temporario = (int)resposta.StatusCode == 429 || (int)resposta.StatusCode >= 500;
             if (!temporario || tentativa == 3) break;

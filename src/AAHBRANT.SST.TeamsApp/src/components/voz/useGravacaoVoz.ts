@@ -99,10 +99,11 @@ export function useGravacaoVoz<T extends { transcricao: string }>(
       }
     };
     reconhecimento.onerror = (e) => {
+      console.error('[ditado] erro do reconhecimento de voz:', e.error);
       if (e.error === 'not-allowed' || e.error === 'service-not-allowed') {
         erro = 'Não foi possível acessar o microfone. Libere a permissão no Teams ou no navegador, ou digite a descrição.';
       } else if (e.error !== 'no-speech' && e.error !== 'aborted') {
-        erro = 'O ditado por voz falhou. Tente de novo ou digite a descrição.';
+        erro = `O ditado por voz falhou (código: ${e.error}). Tente de novo ou digite a descrição.`;
       }
     };
     reconhecimento.onend = async () => {
