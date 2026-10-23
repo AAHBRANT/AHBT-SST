@@ -1,4 +1,4 @@
-using System.Diagnostics;
+﻿using System.Diagnostics;
 using System.IO.Compression;
 using System.Security.AccessControl;
 using System.Security.Principal;
@@ -119,6 +119,12 @@ public class InstaladorAgente
         },
     };
 
+    private static readonly (string Chave, string Antigo, string Novo)[] EnderecosCorrigidos =
+    [
+        ("BackendBaseUrl", "https://sst-api-hml.azurewebsites.net", "https://sst-api-hml.kindground-7a44c4f0.brazilsouth.azurecontainerapps.io"),
+        ("OrigemPermitida", "https://sst-web-hml.azurewebsites.net", "https://sst-web-hml.kindground-7a44c4f0.brazilsouth.azurecontainerapps.io"),
+    ];
+
     // Mantém tudo que o posto já tem e só acrescenta o que esta versão passou a usar.
     public static string Completar(string jsonExistente, string? urlManifestoPadrao)
     {
@@ -128,6 +134,10 @@ public class InstaladorAgente
             agente = new JsonObject();
             raiz["Agente"] = agente;
         }
+        // Postos das versões até 1.1.0 vieram com endereços *.azurewebsites.net, que não existem.
+        foreach (var (chave, antigo, novo) in EnderecosCorrigidos)
+            if (agente[chave]?.GetValue<string>()?.TrimEnd('/') == antigo)
+                agente[chave] = novo;
         if (!agente.ContainsKey("UrlManifestoAtualizacao") && !string.IsNullOrWhiteSpace(urlManifestoPadrao))
             agente["UrlManifestoAtualizacao"] = urlManifestoPadrao;
         return raiz.ToJsonString(new JsonSerializerOptions { WriteIndented = true });
