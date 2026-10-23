@@ -1,6 +1,5 @@
 import { useEffect, useRef, useState, type DragEvent } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { makeStyles, tokens } from '@fluentui/react-components';
 import { FolderOpen24Regular, DocumentMultiple24Regular } from '@fluentui/react-icons';
 import {
   BarraProgresso,
@@ -16,6 +15,8 @@ import {
   Select,
   StatusChip,
   Text,
+  designTokens,
+  tokensUi,
 } from '@ui';
 import {
   api,
@@ -44,38 +45,39 @@ import { useSucessoToast } from '../../hooks/useSucessoToast';
 // contrato, documentos da empresa, cada pessoa na vaga da função e, para cada pessoa, ASO e certificados
 // com o arquivo anexado. Ficha de EPI enviada pela empresa ainda não tem onde ser guardada no SST.
 
-const useStyles = makeStyles({
+// Estilos inline com os tokens do @ui (páginas não importam @fluentui/react-components direto).
+const estilos = {
   area: {
     display: 'flex',
     alignItems: 'center',
-    gap: '14px',
+    gap: 14,
     flexWrap: 'wrap',
-    padding: '16px',
-    borderRadius: tokens.borderRadiusLarge,
-    border: `2px dashed ${tokens.colorBrandStroke1}`,
-    backgroundColor: tokens.colorNeutralBackground2,
+    padding: 16,
+    borderRadius: tokensUi.raio.lg,
+    border: `2px dashed ${designTokens.colorPrimary}`,
+    backgroundColor: designTokens.colorPageBackground,
   },
-  arrastando: { backgroundColor: tokens.colorBrandBackground2 },
-  icone: { color: tokens.colorBrandForeground1, flexShrink: 0 },
-  texto: { display: 'flex', flexDirection: 'column', minWidth: 0, flex: 1 },
+  arrastando: { backgroundColor: designTokens.colorInfoWash },
+  icone: { color: designTokens.colorPrimary, flexShrink: 0 },
+  texto: { display: 'flex', flexDirection: 'column', minWidth: 0, flex: 1, gap: 4 },
   bloco: {
-    border: `1px solid ${tokens.colorNeutralStroke2}`,
-    borderRadius: tokens.borderRadiusMedium,
-    padding: '12px',
+    border: `1px solid ${designTokens.colorCardBorder}`,
+    borderRadius: tokensUi.raio.md,
+    padding: 12,
     display: 'flex',
     flexDirection: 'column',
-    gap: '10px',
+    gap: 10,
   },
-  cabecalhoBloco: { display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' },
+  cabecalhoBloco: { display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' },
   arquivo: {
-    borderTop: `1px solid ${tokens.colorNeutralStroke3}`,
-    paddingTop: '10px',
+    borderTop: `1px solid ${tokensUi.bordaSuave}`,
+    paddingTop: 10,
     display: 'flex',
     flexDirection: 'column',
-    gap: '6px',
+    gap: 6,
   },
-  nomeArquivo: { fontWeight: tokens.fontWeightSemibold, wordBreak: 'break-all' },
-});
+  nomeArquivo: { fontWeight: 600, wordBreak: 'break-all' },
+} as const;
 
 const linha = { display: 'flex', gap: 12, alignItems: 'flex-start', flexWrap: 'wrap' } as const;
 const coluna = (base: number) => ({ flex: `1 1 ${base}px`, minWidth: 0 }) as const;
@@ -235,7 +237,6 @@ async function arquivosDaEntrada(entrada: Entrada): Promise<File[]> {
 }
 
 export function ImportarPastaTerceirizado({ aoCancelar, aoConcluir }: { aoCancelar: () => void; aoConcluir: () => void }) {
-  const estilos = useStyles();
   const navigate = useNavigate();
   const sucessoToast = useSucessoToast();
   const entradaPasta = useRef<HTMLInputElement>(null);
@@ -625,7 +626,7 @@ export function ImportarPastaTerceirizado({ aoCancelar, aoConcluir }: { aoCancel
     return (
       <FormSection titulo="Pasta da empresa" numero={1} primeira>
         <div
-          className={`${estilos.area} ${arrastando ? estilos.arrastando : ''}`}
+          style={{ ...estilos.area, ...(arrastando ? estilos.arrastando : {}) }}
           onDragOver={(e) => {
             e.preventDefault();
             setArrastando(true);
@@ -633,8 +634,8 @@ export function ImportarPastaTerceirizado({ aoCancelar, aoConcluir }: { aoCancel
           onDragLeave={() => setArrastando(false)}
           onDrop={(e) => void soltar(e)}
         >
-          <FolderOpen24Regular className={estilos.icone} />
-          <div className={estilos.texto}>
+          <FolderOpen24Regular style={estilos.icone} />
+          <div style={estilos.texto}>
             {etapa === 'lendo' ? (
               <>
                 <Text weight="semibold">
@@ -727,9 +728,9 @@ export function ImportarPastaTerceirizado({ aoCancelar, aoConcluir }: { aoCancel
 
   function camposArquivo(i: ItemArquivo, comPessoa: boolean) {
     return (
-      <div className={estilos.arquivo} key={i.id}>
-        <div className={estilos.cabecalhoBloco}>
-          <Text className={estilos.nomeArquivo}>{i.arquivo.name}</Text>
+      <div style={estilos.arquivo} key={i.id}>
+        <div style={estilos.cabecalhoBloco}>
+          <Text style={estilos.nomeArquivo}>{i.arquivo.name}</Text>
           {i.gravado && <StatusChip tom="ok">Gravado</StatusChip>}
           {i.situacao === 'erro' && <StatusChip tom="alerta">Não lido</StatusChip>}
         </div>
@@ -981,8 +982,8 @@ export function ImportarPastaTerceirizado({ aoCancelar, aoConcluir }: { aoCancel
         {pessoas.map((p) => {
           const docs = docsPessoa(p.chave);
           return (
-            <div className={estilos.bloco} key={p.chave}>
-              <div className={estilos.cabecalhoBloco}>
+            <div style={estilos.bloco} key={p.chave}>
+              <div style={estilos.cabecalhoBloco}>
                 <Checkbox
                   checked={p.incluir}
                   onChange={(_, d) => alterarPessoa(p.chave, { incluir: !!d.checked })}
