@@ -100,6 +100,28 @@ public class SuporteIaController : ControllerBase
         return Ok(new { transcricao, sugestao });
     }
 
+    // Fala já transcrita pelo ditado do navegador (sem custo): a IA só classifica o texto.
+    [Authorize(Policy = "suporte-ia:usar")]
+    [HttpPost("relato-texto")]
+    public async Task<IActionResult> RelatoTexto(RelatoTextoSuporteIaRequestBody body, CancellationToken ct)
+    {
+        var transcricao = (body.Relato ?? string.Empty).Trim();
+        if (transcricao.Length == 0)
+            return BadRequest(new { erro = "Nenhum relato recebido." });
+
+        ChamadoSugeridoSuporteIa? sugestao = null;
+        try
+        {
+            sugestao = await _classificador.ClassificarAsync(transcricao, ct);
+        }
+        catch (Exception ex) when (ex is not OperationCanceledException)
+        {
+            _logger.LogWarning(ex, "Relato ditado recebido, mas a classificação falhou; devolvendo só o texto.");
+        }
+
+        return Ok(new { transcricao, sugestao });
+    }
+
     [Authorize(Policy = "suporte-ia:usar")]
     [HttpGet]
     public async Task<IActionResult> Listar([FromQuery] StatusSolicitacaoSuporteIa? status, CancellationToken ct)
@@ -227,6 +249,8 @@ public class CriarSuporteIaRequestBody
     public string? SolicitanteNome { get; set; }
     public string? SolicitanteEmail { get; set; }
 }
+
+public record RelatoTextoSuporteIaRequestBody(string? Relato);
 
 public class RelatoVozSuporteIaRequestBody
 {

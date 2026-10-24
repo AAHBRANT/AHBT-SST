@@ -20,6 +20,7 @@ const OcorrenciasPage = lazy(() => import('./pages/ocorrencias/OcorrenciasPage')
 const PessoasPage = lazy(() => import('./pages/pessoas/PessoasPage').then((m) => ({ default: m.PessoasPage })));
 const TrabalhadorDetalhePage = lazy(() => import('./pages/pessoas/TrabalhadorDetalhePage').then((m) => ({ default: m.TrabalhadorDetalhePage })));
 const PgrDetalhePage = lazy(() => import('./pages/pgr/PgrDetalhePage').then((m) => ({ default: m.PgrDetalhePage })));
+const GeracaoPgrEapPage = lazy(() => import('./pages/pgr/GeracaoPgrEapPage').then((m) => ({ default: m.GeracaoPgrEapPage })));
 const LeituraIaRevisaoPage = lazy(() => import('./pages/leitura-ia/LeituraIaRevisaoPage').then((m) => ({ default: m.LeituraIaRevisaoPage })));
 const AprDetalhePage = lazy(() => import('./pages/apr/AprDetalhePage').then((m) => ({ default: m.AprDetalhePage })));
 const PermissaoTrabalhoDetalhePage = lazy(() => import('./pages/pt/PermissaoTrabalhoDetalhePage').then((m) => ({ default: m.PermissaoTrabalhoDetalhePage })));
@@ -162,6 +163,8 @@ function AppRoteado() {
               <Route path="/gestao-sst" element={<GestaoSstPage />} />
               <Route path="/prevencao" element={<Navigate to="/gestao-sst?secao=pgr" replace />} />
               <Route path="/prevencao/pgr" element={<RedirecionarParaPilar pilar="/gestao-sst" secao="pgr" />} />
+              <Route path="/prevencao/pgr/gerar-eap" element={<GeracaoPgrEapPage />} />
+              <Route path="/prevencao/pgr/gerar-eap/:geracaoId" element={<GeracaoPgrEapPage />} />
               <Route path="/prevencao/pgr/:id" element={<PgrDetalhePage />} />
               <Route path="/leituras-ia/:documento/:id" element={<LeituraIaRevisaoPage />} />
               <Route

@@ -25,7 +25,10 @@ public class GraphEmailService : IEmailService
         _httpClientFactory = httpClientFactory;
     }
 
-    public async Task EnviarAsync(string para, string assunto, string corpoHtml, CancellationToken ct = default)
+    public Task EnviarAsync(string para, string assunto, string corpoHtml, CancellationToken ct = default)
+        => EnviarAsync(para, assunto, corpoHtml, Array.Empty<AnexoEmail>(), ct);
+
+    public async Task EnviarAsync(string para, string assunto, string corpoHtml, IReadOnlyList<AnexoEmail> anexos, CancellationToken ct = default)
     {
         if (string.IsNullOrWhiteSpace(_opcoes.ClientSecret) || string.IsNullOrWhiteSpace(_opcoes.RemetenteEmail))
             throw new InvalidOperationException("Graph:ClientSecret ou Graph:RemetenteEmail não configurado — e-mail não enviado.");
@@ -52,7 +55,13 @@ public class GraphEmailService : IEmailService
                         ["isInline"] = true,
                         ["contentBytes"] = LogoBase64.Value,
                     },
-                },
+                }.Concat(anexos.Select(a => (object)new Dictionary<string, object>
+                {
+                    ["@odata.type"] = "#microsoft.graph.fileAttachment",
+                    ["name"] = a.NomeArquivo,
+                    ["contentType"] = a.ContentType,
+                    ["contentBytes"] = Convert.ToBase64String(a.Conteudo),
+                })).ToArray(),
             },
             saveToSentItems = true,
         };

@@ -17,10 +17,11 @@ import {
   useConfirmar,
   type Coluna,
 } from '@ui';
-import { Add24Regular, Delete24Regular, DocumentPdf24Regular, DocumentBulletList24Regular, Eye24Regular } from '@fluentui/react-icons';
+import { Add24Regular, Delete24Regular, DocumentPdf24Regular, DocumentBulletList24Regular, Eye24Regular, FolderOpen24Regular } from '@fluentui/react-icons';
 import { api, type Empresa, type NovaEmpresa, type ResumoConformidadeEmpresa } from '../../lib/api';
 import { useSucessoToast } from '../../hooks/useSucessoToast';
 import { CadastroPorContratoPdf } from './CadastroPorContratoPdf';
+import { ImportarPastaTerceirizado } from './ImportarPastaTerceirizado';
 import { ChipFaixa } from './ConformidadeEmpresa';
 import { DocumentosExigidosPainel } from './DocumentosExigidosPainel';
 
@@ -41,6 +42,8 @@ export function EmpresasTab() {
   const [carregandoLista, setCarregandoLista] = useState(true);
   const [painelAberto, setPainelAberto] = useState(false);
   const [painelPdfAberto, setPainelPdfAberto] = useState(false);
+  // Importação da pasta inteira da terceirizada (23/10/2026).
+  const [painelPastaAberto, setPainelPastaAberto] = useState(false);
   const [documentosExigidosAberto, setDocumentosExigidosAberto] = useState(false);
   // Percentual de adequação por empresa (checklist, 21/10/2026). Se o cálculo falhar, a lista
   // continua aparecendo — só sem a coluna preenchida.
@@ -134,9 +137,22 @@ export function EmpresasTab() {
               Documentos exigidos
             </Button>
             <Button
+              icon={<FolderOpen24Regular />}
+              onClick={() => {
+                fecharPainel();
+                setPainelPdfAberto(false);
+                setPainelPastaAberto(!painelPastaAberto);
+              }}
+              aria-expanded={painelPastaAberto}
+              aria-controls="painel-importar-pasta"
+            >
+              {painelPastaAberto ? 'Fechar' : 'Importar pasta'}
+            </Button>
+            <Button
               icon={<DocumentPdf24Regular />}
               onClick={() => {
                 fecharPainel();
+                setPainelPastaAberto(false);
                 setPainelPdfAberto(!painelPdfAberto);
               }}
               aria-expanded={painelPdfAberto}
@@ -149,6 +165,7 @@ export function EmpresasTab() {
               icon={<Add24Regular />}
               onClick={() => {
                 setPainelPdfAberto(false);
+                setPainelPastaAberto(false);
                 if (painelAberto) fecharPainel();
                 else setPainelAberto(true);
               }}
@@ -165,6 +182,13 @@ export function EmpresasTab() {
           {erro}
         </FeedbackInline>
       )}
+      <div id="painel-importar-pasta">
+        <PainelCriacaoInline aberto={painelPastaAberto} titulo="Importar pasta da empresa">
+          {painelPastaAberto && (
+            <ImportarPastaTerceirizado aoCancelar={() => setPainelPastaAberto(false)} aoConcluir={() => void carregar()} />
+          )}
+        </PainelCriacaoInline>
+      </div>
       <div id="painel-cadastro-contrato-pdf">
         <PainelCriacaoInline aberto={painelPdfAberto} titulo="Cadastro pelo contrato">
           {painelPdfAberto && (

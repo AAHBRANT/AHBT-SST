@@ -440,6 +440,32 @@ export interface ContratoTerceirizadoLidoIa {
   empresaExistenteRazaoSocial: string | null;
 }
 
+// Importação da pasta da terceirizada (23/10/2026): o que a IA disse de UM arquivo. Nada é gravado.
+export type TipoArquivoTerceirizado = 'contrato' | 'documento_empresa' | 'aso' | 'certificado' | 'ficha_epi' | 'outro';
+
+export interface ArquivoTerceirizadoClassificado {
+  nomeArquivo: string;
+  tipo: TipoArquivoTerceirizado;
+  documentoExigidoId: string | null;
+  documentoExigidoNome: string | null;
+  cursoTreinamentoId: string | null;
+  cursoNome: string | null;
+  pessoaNome: string | null;
+  pessoaCpf: string | null;
+  pessoaFuncao: string | null;
+  empresaRazaoSocial: string | null;
+  empresaCnpj: string | null;
+  dataDocumento: string | null;
+  dataValidade: string | null;
+  asoTipo: number | null;
+  asoResultado: number | null;
+  medicoNome: string | null;
+  medicoCrm: string | null;
+  cargaHoraria: number | null;
+  instituicao: string | null;
+  resumo: string | null;
+}
+
 export interface VagaFuncao {
   id: string;
   funcaoId: string;
@@ -575,6 +601,69 @@ export interface PadraoNr {
 
 // Trabalhadores ativos que precisam do curso (pela matriz de função) e a situação de cada um.
 // "Apto" = treinamento válido hoje = emDia + vencemEm30Dias.
+// Cursos obrigatórios por função a partir do PGR (21/10): por obra, sugeridos pelas regras e
+// aprovados/recusados pelo Engenheiro de Segurança. Só Aprovado conta para a aptidão.
+export const StatusCursoObrigatorio = { Sugerido: 1, Aprovado: 2, Recusado: 3 } as const;
+export const OrigemCursoObrigatorio = { Pgr: 1, Manual: 2 } as const;
+
+export interface CursoObrigatorio {
+  id: string;
+  funcaoId: string;
+  funcaoNome: string;
+  gheNumero?: number | null;
+  gheSetor?: string | null;
+  trabalhadores: number;
+  cursoTreinamentoId: string;
+  cursoNome: string;
+  normaReferencia?: string | null;
+  status: number;
+  origem: number;
+  motivo?: string | null;
+  justificativaRecusa?: string | null;
+  decididoPorNome?: string | null;
+  decididoEmUtc?: string | null;
+}
+
+export interface CursosObrigatoriosObra {
+  pgrNome?: string | null;
+  pgrDataElaboracao?: string | null;
+  funcoesNoPgr: number;
+  itens: CursoObrigatorio[];
+}
+
+export interface ResultadoGeracaoCursosObrigatorios { sugeridos: number; normasSemCurso: string[] }
+
+export interface RegraCursoObrigatorio {
+  id: string;
+  norma: string;
+  cursoTreinamentoId?: string | null;
+  cursoNome?: string | null;
+  descricao: string;
+  aplicaTodasFuncoes: boolean;
+  palavrasChave?: string | null;
+  ativo: boolean;
+}
+
+export type SalvarRegraCursoObrigatorio = Omit<RegraCursoObrigatorio, 'id' | 'cursoNome'> & { id?: string | null };
+
+// Escopo para o médico elaborar o PCMSO (21/10), montado a partir do PGR vigente da obra.
+export interface EscopoPcmso {
+  obraId: string;
+  obraNome: string;
+  cnpj?: string | null;
+  endereco?: string | null;
+  dataInicio?: string | null;
+  dataPrevisaoTermino?: string | null;
+  trabalhadoresAtivos: number;
+  pgrNome?: string | null;
+  pgrDataElaboracao?: string | null;
+  geradoEmUtc: string;
+  pendencias: string[];
+  funcoes: { gheNumero: number; gheSetor?: string | null; funcao: string; trabalhadores: number; atividades?: string | null }[];
+  riscos: { gheNumero: number; tipo?: string | null; perigo: string; fonte?: string | null; atividade: string; nivel: number }[];
+  atividadesCriticas: { descricao: string; funcoes: string[] }[];
+}
+
 export interface AptidaoCurso {
   cursoId: string;
   nome: string;
@@ -2755,6 +2844,25 @@ export interface MinutaOrdemServico {
   pendencias: PendenciaOs[];
 }
 
+// Gerador de PGR pela EAP (21/10/2026). Status: 1 Rascunho, 2 Aguardando aprovação, 3 Aprovado, 4 Devolvido.
+export interface ItemEapGerado { codigo: string; nome: string; nivel: number; periodo?: string | null; usar: boolean; conferir: boolean }
+export interface MedidaGerada { fase: 1 | 2 | 3; texto: string; decisao: 'Pendente' | 'Aceita' | 'Descartada' }
+export interface RiscoGerado {
+  id: string; tipo: string; perigo: string; danos?: string | null; probabilidade: number; severidade: number;
+  base: string[]; medidas: MedidaGerada[]; revisado: boolean; excluido: boolean;
+}
+export interface AtividadeGerada { codigoEap: string; nome: string; riscosGerados: boolean; riscos: RiscoGerado[] }
+export interface FuncaoGerada { funcaoId?: string | null; nome: string; descricao?: string | null; sugeridaPelaIa: boolean }
+export interface GheGerado { numero: number; nome: string; ambiente?: string | null; jornada?: string | null; funcoes: FuncaoGerada[]; atividades: AtividadeGerada[] }
+export interface EstruturaGeracaoPgr { itens: ItemEapGerado[]; ghes: GheGerado[]; planoAcao: string[] }
+export interface GeracaoPgrEap {
+  id: string; obraId: string; obraNome: string; nome: string; dataElaboracao: string; dataProximaRevisao?: string | null;
+  elaboradoPorNome?: string | null; nomeArquivoEap: string; status: 1 | 2 | 3 | 4; passo: number; motivoDevolucao?: string | null;
+  aprovadoPorNome?: string | null; aprovadoEmUtc?: string | null; pgrId?: string | null; estrutura: EstruturaGeracaoPgr;
+  pendenciasAprovacao: string[]; funcoesCadastradas: { id: string; nome: string }[]; maxProbabilidade: number; maxSeveridade: number;
+}
+export interface ResumoGeracaoPgrEap { id: string; nome: string; obraNome: string; status: 1 | 2 | 3 | 4; passo: number; criadoEmUtc: string }
+
 export interface DadosDocumentoSst {
   tipo: 1 | 2 | 3 | 4;
   codigo?: string | null;
@@ -3267,7 +3375,23 @@ export interface AcaoPlano {
   dataValidacao?: string | null;
   validadoPorUsuarioId?: string | null;
   validadoPorUsuarioNome?: string | null;
+  // Conclusão manual: quem concluiu (pelo login) e o que foi feito.
+  concluidoPorUsuarioNome?: string | null;
+  descricaoConclusao?: string | null;
+  // Só no detalhe da ocorrência: ação que o sistema conclui sozinho e como.
+  tipoResolucaoAutomatica?: 'Dds' | 'Reuniao' | 'Treinamento' | 'Inspecao' | 'EntregaEpi' | null;
+  resolucaoAutomatica?: string | null;
+  // Vínculo que conclui sozinho (treinamento/inspeção/EPI), o andamento e o rótulo de espera.
+  tipoResolucao?: number | null;
+  resolucaoCursoTreinamentoId?: string | null;
+  resolucaoTipoInspecao?: number | null;
+  resolucaoCatalogoEpiId?: string | null;
+  progressoResolucao?: string | null;
+  rotuloAguardando?: string | null;
 }
+
+// Como uma ação do plano se conclui sozinha (nulo = manual).
+export const TipoResolucaoAcaoPlano = { Treinamento: 1, Inspecao: 2, EntregaEpi: 3 } as const;
 
 export interface NaoConformidadeDetalhe {
   naoConformidade: NaoConformidade;
@@ -3282,6 +3406,11 @@ export interface NovaAcaoPlano {
   responsavelUsuarioId?: string | null;
   prioridade: number;
   prazo?: string | null;
+  // "Como se resolve" (ocorrências): nulo = manual.
+  tipoResolucao?: number | null;
+  resolucaoCursoTreinamentoId?: string | null;
+  resolucaoTipoInspecao?: number | null;
+  resolucaoCatalogoEpiId?: string | null;
 }
 
 export interface AtualizarAcaoPlanoPayload {
@@ -3473,6 +3602,10 @@ export interface ReuniaoAnalise {
   situacao: number;
   linkTeams: string | null;
   motivoFalha: string | null;
+  // Preenchidos quando a reunião foi registrada como realizada (horário de Brasília, sem fuso).
+  realizadaEm: string | null;
+  presentes: string[] | null;
+  ata: string | null;
 }
 
 export interface TemaDdsAgendado {
@@ -4886,6 +5019,12 @@ export const api = {
     atualizar: (aso: Aso) => request<void>(`/api/asos/${aso.id}`, { method: 'PUT', body: JSON.stringify(aso) }),
     excluir: (id: string) => request<void>(`/api/asos/${id}`, { method: 'DELETE' }),
     importarGrh: () => request<ImportarAsoGrhResultado>('/api/asos/importar-grh', { method: 'POST' }),
+    // PDF/foto do ASO (23/10/2026). Reenviar substitui.
+    anexarArquivo: (id: string, arquivo: File) => {
+      const formData = new FormData();
+      formData.append('Arquivo', arquivo);
+      return enviarFormulario<{ id: string }>(`/api/asos/${id}/arquivo`, formData);
+    },
   },
   examesComplementares: {
     listar: (trabalhadorId?: string) =>
@@ -4959,6 +5098,35 @@ export const api = {
     aptidao: (obraId?: string) =>
       request<AptidaoCurso[]>(`/api/cursostreinamento/aptidao${obraId ? `?obraId=${obraId}` : ''}`),
     padroesNr: () => request<PadraoNr[]>('/api/cursostreinamento/padroes-nr'),
+  },
+  escopoPcmso: {
+    obter: (obraId: string) => request<EscopoPcmso>(`/api/escopo-pcmso/obras/${obraId}`),
+    pdf: (obraId: string) => baixarArquivoRelatorio(`/api/escopo-pcmso/obras/${obraId}/pdf`),
+    enviar: (obraId: string, emailMedico: string, nomeMedico?: string, mensagem?: string) =>
+      request<void>(`/api/escopo-pcmso/obras/${obraId}/enviar`, {
+        method: 'POST',
+        body: JSON.stringify({ emailMedico, nomeMedico: nomeMedico || null, mensagem: mensagem || null }),
+      }),
+  },
+  cursosObrigatorios: {
+    listar: (obraId: string) => request<CursosObrigatoriosObra>(`/api/cursos-obrigatorios/obras/${obraId}`),
+    gerar: (obraId: string) =>
+      request<ResultadoGeracaoCursosObrigatorios>(`/api/cursos-obrigatorios/obras/${obraId}/gerar`, { method: 'POST' }),
+    aprovarSugestoes: (obraId: string) =>
+      request<{ aprovados: number }>(`/api/cursos-obrigatorios/obras/${obraId}/aprovar-sugestoes`, { method: 'POST' }),
+    adicionar: (obraId: string, funcaoId: string, cursoTreinamentoId: string) =>
+      request<{ id: string }>(`/api/cursos-obrigatorios/obras/${obraId}`, {
+        method: 'POST',
+        body: JSON.stringify({ funcaoId, cursoTreinamentoId }),
+      }),
+    decidir: (id: string, aprovar: boolean, justificativa?: string) =>
+      request<void>(`/api/cursos-obrigatorios/${id}/decidir`, {
+        method: 'POST',
+        body: JSON.stringify({ aprovar, justificativa: justificativa ?? null }),
+      }),
+    regras: () => request<RegraCursoObrigatorio[]>('/api/cursos-obrigatorios/regras'),
+    salvarRegra: (regra: SalvarRegraCursoObrigatorio) =>
+      request<{ id: string }>('/api/cursos-obrigatorios/regras', { method: 'POST', body: JSON.stringify(regra) }),
   },
   treinamentos: {
     listar: (trabalhadorId?: string, obraId?: string) => {
@@ -5363,6 +5531,33 @@ export const api = {
       }),
     limparPorObra: (obraId: string) =>
       request<{ riscosRemovidos: number }>(`/api/riscos/obra/${obraId}`, { method: 'DELETE' }),
+  },
+  geracoesPgrEap: {
+    listar: (obraId?: string) => request<ResumoGeracaoPgrEap[]>(`/api/geracoes-pgr-eap${obraId ? `?obraId=${obraId}` : ''}`),
+    obter: (id: string) => request<GeracaoPgrEap>(`/api/geracoes-pgr-eap/${id}`),
+    criar: async (dados: { obraId: string; nome: string; dataElaboracao: string; dataProximaRevisao?: string | null }, arquivo: File) => {
+      const formData = new FormData();
+      formData.append('obraId', dados.obraId);
+      formData.append('nome', dados.nome);
+      formData.append('dataElaboracao', dados.dataElaboracao);
+      if (dados.dataProximaRevisao) formData.append('dataProximaRevisao', dados.dataProximaRevisao);
+      formData.append('arquivo', arquivo);
+      const response = await fetch(`${API_BASE_URL}/api/geracoes-pgr-eap`, { method: 'POST', headers: await montarHeadersAuth(), body: formData });
+      if (!response.ok) {
+        const corpo = await response.text().catch(() => '');
+        throw new Error(extrairMensagemErro(corpo, response.status, response.statusText));
+      }
+      return response.json() as Promise<{ id: string }>;
+    },
+    salvar: (id: string, passo: number, estrutura: EstruturaGeracaoPgr) =>
+      request<void>(`/api/geracoes-pgr-eap/${id}`, { method: 'PUT', body: JSON.stringify({ passo, estrutura }) }),
+    sugerirGhes: (id: string) => request<void>(`/api/geracoes-pgr-eap/${id}/sugerir-ghes`, { method: 'POST' }),
+    gerarRiscos: (id: string, gheNumero: number, codigoEap: string) =>
+      request<{ riscos: number }>(`/api/geracoes-pgr-eap/${id}/gerar-riscos`, { method: 'POST', body: JSON.stringify({ gheNumero, codigoEap }) }),
+    enviarAprovacao: (id: string) => request<void>(`/api/geracoes-pgr-eap/${id}/enviar-aprovacao`, { method: 'POST' }),
+    devolver: (id: string, motivo: string) =>
+      request<void>(`/api/geracoes-pgr-eap/${id}/devolver`, { method: 'POST', body: JSON.stringify({ motivo }) }),
+    aprovar: (id: string) => request<{ pgrId: string }>(`/api/geracoes-pgr-eap/${id}/aprovar`, { method: 'POST' }),
   },
   pgrs: {
     listar: (obraId?: string) => request<Pgr[]>(`/api/pgrs${obraId ? `?obraId=${obraId}` : ''}`),
@@ -6203,6 +6398,31 @@ export const api = {
       request<void>(`/api/acidentes/${id}`, { method: 'PUT', body: JSON.stringify(acidente) }),
     excluir: (id: string) => request<void>(`/api/acidentes/${id}`, { method: 'DELETE' }),
     avancarStatus: (id: string) => request<void>(`/api/acidentes/${id}/avancar-status`, { method: 'POST' }),
+    // Ações do plano da ocorrência: concluir com descrição (quem conclui vem do login) e reabrir.
+    concluirAcao: (acaoId: string, descricaoConclusao: string) =>
+      request<void>(`/api/acidentes/acoes-plano/${acaoId}/concluir`, { method: 'POST', body: JSON.stringify({ descricaoConclusao }) }),
+    reabrirAcao: (acaoId: string) => request<void>(`/api/acidentes/acoes-plano/${acaoId}/reabrir`, { method: 'POST' }),
+    definirResolucaoAcao: (
+      acaoId: string,
+      dados: { tipoResolucao: number | null; cursoTreinamentoId: string | null; tipoInspecao: number | null; catalogoEpiId: string | null },
+    ) => request<void>(`/api/acidentes/acoes-plano/${acaoId}/resolucao`, { method: 'PUT', body: JSON.stringify(dados) }),
+    // Reunião de análise pela tela da ocorrência. Horários em Brasília, sem fuso ("2026-10-24T14:00:00").
+    agendarReuniao: (id: string, dados: { inicio: string; duracaoMinutos: number; participantesUsuarioIds: string[] }) =>
+      request<void>(`/api/acidentes/${id}/reuniao-analise`, { method: 'POST', body: JSON.stringify(dados) }),
+    remarcarReuniao: (id: string, dados: { inicio: string; duracaoMinutos: number }) =>
+      request<void>(`/api/acidentes/${id}/reuniao-analise/horario`, { method: 'PUT', body: JSON.stringify(dados) }),
+    tentarReuniaoNoTeams: (id: string) => request<void>(`/api/acidentes/${id}/reuniao-analise/teams`, { method: 'POST' }),
+    registrarReuniaoRealizada: (id: string, dados: { realizadaEm: string; presentes: string[]; ata: string }) =>
+      request<void>(`/api/acidentes/${id}/reuniao-analise/realizada`, { method: 'PUT', body: JSON.stringify(dados) }),
+    // Relatório de Investigação de Ocorrência (PDF), mesmo padrão de inspecoes.baixarPdf.
+    baixarPdf: async (id: string) => {
+      const response = await fetch(`${API_BASE_URL}/api/acidentes/${id}/pdf`, { headers: await montarHeadersAuth() });
+      if (!response.ok) {
+        const corpo = await response.text().catch(() => '');
+        throw new Error(extrairMensagemErro(corpo, response.status, response.statusText));
+      }
+      return response.blob();
+    },
   },
   registrosHht: {
     listar: (filtros?: { obraId?: string; ano?: number }) => {
@@ -6262,6 +6482,9 @@ export const api = {
     obterDetalhe: (id: string) => request<SuporteIaSolicitacao>(`/api/suporte-ia/${id}`),
     // "Relatar por voz" — multipart, fora de request<T> (que força Content-Type: application/json)
     // e do motor offline (transcrição e classificação dependem do Azure OpenAI, sempre online).
+    // Texto ditado no navegador (Web Speech API) → a IA classifica. Substitui o envio de áudio.
+    relatoTexto: (relato: string) =>
+      request<RelatoVozSuporteIa>('/api/suporte-ia/relato-texto', { method: 'POST', body: JSON.stringify({ relato }) }),
     relatoVoz: async (audio: Blob, nomeArquivo: string): Promise<RelatoVozSuporteIa> => {
       const formData = new FormData();
       formData.append('audio', audio, nomeArquivo);
@@ -6594,6 +6817,13 @@ export const api = {
     },
     pendencias: {
       listar: () => request<PainelPendenciasTerceirizado>('/api/terceirizados/pendencias'),
+    },
+    importacao: {
+      classificar: (arquivo: File) => {
+        const formData = new FormData();
+        formData.append('Arquivo', arquivo);
+        return enviarFormulario<ArquivoTerceirizadoClassificado>('/api/terceirizados/importacao/classificar', formData);
+      },
     },
   },
 };

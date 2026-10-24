@@ -4,7 +4,7 @@ import {
   StatusChip, designTokens, type Coluna,
 } from '@ui';
 import {
-  ArrowDownload24Regular, Camera24Regular, Checkmark24Regular, Dismiss24Regular,
+  ArrowDownload24Regular, Checkmark24Regular, Dismiss24Regular,
   PeopleTeam24Regular, Search24Regular, Stop24Regular,
 } from '@fluentui/react-icons';
 import { api, TipoFotoParticipante, type DdsDetalhe, type DdsFuncionario } from '../../lib/api';
@@ -14,7 +14,6 @@ import { tocarBipeAssinaturaAceita } from '../../lib/bipeAssinatura';
 import { SeletorFotoCamera } from '../../components/SeletorFotoCamera';
 import { BotaoBiometriaDigital } from '../../components/assinatura/BotaoBiometriaDigital';
 import { ErroFacialDialog } from '../../components/assinatura/ErroFacialDialog';
-import { FilaFacialDds } from '../../components/dds/FilaFacialDds';
 
 const linhaFlex = { display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' as const };
 // O backend devolve { erro, motivo } no corpo das rejeições; mostra só o texto do erro.
@@ -58,8 +57,6 @@ export function ParticipantesDds({ detalhe, somenteLeitura, aoAtualizar }: Props
   const [verificandoLeitor, setVerificandoLeitor] = useState(false);
   const emOperacao = useRef(false);
   const [filaAberta, setFilaAberta] = useState(false);
-  // Fila facial (modo fila em tela cheia): a câmera captura sozinha, igual à fila da digital.
-  const [filaFacialAberta, setFilaFacialAberta] = useState(false);
   const [resultadoFila, setResultadoFila] = useState<{ tom: 'sucesso' | 'erro' | 'info'; texto: string } | null>(null);
   const filaAtiva = useRef(false);
   const { dds } = detalhe;
@@ -273,7 +270,6 @@ export function ParticipantesDds({ detalhe, somenteLeitura, aoAtualizar }: Props
         variante="facialAzure"
         modoCamera="user"
         exigirCamera
-        permitirCapturaAutomatica
       />
       <Button size="small" appearance="subtle" icon={<Dismiss24Regular />} disabled={ocupado}
         aria-label={`Remover ${f.nome} da seleção`} onClick={() => alternar(f.trabalhadorId)}>Remover</Button>
@@ -341,11 +337,9 @@ export function ParticipantesDds({ detalhe, somenteLeitura, aoAtualizar }: Props
           {filaAberta
             ? <Button appearance="primary" size="large" icon={<Stop24Regular />} onClick={fecharFila}>Fechar fila</Button>
             : <BotaoBiometriaDigital disabled={!dispositivo || carregando} onClick={abrirFila}>Abrir fila</BotaoBiometriaDigital>}
-          <Button appearance="primary" size="large" icon={<Camera24Regular />} disabled={carregando || filaAberta}
-            onClick={() => setFilaFacialAberta(true)}>Abrir fila facial</Button>
           <Legenda>{filaAberta
             ? 'Leitor aberto: cada funcionário encosta o dedo e a presença é confirmada sozinha.'
-            : 'Abra a fila para o pessoal registrar a presença pela digital ou pelo rosto, um após o outro.'}</Legenda>
+            : 'Abra a fila para o pessoal registrar a presença pela digital, um após o outro. Pelo rosto, use o botão de cada funcionário.'}</Legenda>
         </div>
         {resultadoFila && <div role={resultadoFila.tom === 'erro' ? 'alert' : 'status'}><FeedbackInline tom={resultadoFila.tom}>
           <strong style={{ fontSize: 18 }}>{resultadoFila.texto}</strong>
@@ -386,11 +380,5 @@ export function ParticipantesDds({ detalhe, somenteLeitura, aoAtualizar }: Props
       {!somenteLeitura && confirmados.size > 0 && <Legenda>Funcionários com presença confirmada permanecem na lista ao limpar a seleção.</Legenda>}
     </div>
     <ErroFacialDialog mensagem={erroFacial} aoFechar={() => setErroFacial(null)} />
-    <FilaFacialDds
-      ddsId={dds.id}
-      aberto={filaFacialAberta}
-      aoFechar={() => setFilaFacialAberta(false)}
-      aoPresencaConfirmada={() => { void api.dds.obterDetalhe(dds.id).then(aoAtualizar).catch(() => undefined); }}
-    />
   </Card>;
 }

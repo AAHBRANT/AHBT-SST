@@ -264,6 +264,14 @@ public enum NivelRisco
 
 // Não há fluxo literal no documento para o "status" do controle de risco (§14) — proposta
 // própria (a diferir do fluxo literal de Não Conformidade, que será citado quando implementado).
+public enum StatusGeracaoPgrEap
+{
+    Rascunho = 1,
+    AguardandoAprovacao = 2,
+    Aprovado = 3,
+    Devolvido = 4
+}
+
 public enum StatusControleRisco
 {
     Pendente = 1,
@@ -546,6 +554,16 @@ public enum ItemEpcPt
 // Alojamento (14) não está nessa lista literal, mas é citado explicitamente como "Inspeção
 // Específica" em REFORMULAÇÃO.md §PR-SST-005 — adicionado para o checklist de estrutura de
 // alojamento (NR-18 18.5 / NR-24), pedido do usuário em 2026-09-09.
+// Como uma ação do plano se conclui sozinha (23/10/2026, etapa 2): só o fato real a conclui —
+// turma do curso escolhido concluída com os envolvidos, inspeção do tipo escolhido finalizada na
+// obra, entrega do EPI escolhido assinada pelos envolvidos. Nulo = ação manual.
+public enum TipoResolucaoAcaoPlano
+{
+    Treinamento = 1,
+    Inspecao = 2,
+    EntregaEpi = 3
+}
+
 public enum TipoInspecao
 {
     Obra = 1,
@@ -1030,4 +1048,18 @@ public enum DedoBiometria
     NaoInformado = 0,
     PolegarDireito = 1,
     PolegarEsquerdo = 2,
+}
+
+// Cursos obrigatórios por função a partir do PGR (21/10): só Aprovado conta para a aptidão.
+public enum StatusCursoObrigatorio
+{
+    Sugerido = 1,
+    Aprovado = 2,
+    Recusado = 3,
+}
+
+public enum OrigemCursoObrigatorio
+{
+    Pgr = 1,
+    Manual = 2,
 }

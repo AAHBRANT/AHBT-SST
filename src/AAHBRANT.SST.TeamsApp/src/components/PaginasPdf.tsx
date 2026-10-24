@@ -43,6 +43,8 @@ export function PaginasPdf({ arquivo, altura = '80vh' }: PaginasPdfProps) {
         setErro(null);
         container.replaceChildren();
 
+        // Build legacy: o WebView do Teams não tem o global Iterator usado pelo build moderno do
+        // pdf.js 6 ("Iterator is not defined" ao abrir os PDFs do DDS da semana).
         const [pdfjs, worker] = await Promise.all([
           import('pdfjs-dist/legacy/build/pdf.mjs'),
           import('pdfjs-dist/legacy/build/pdf.worker.min.mjs?url'),

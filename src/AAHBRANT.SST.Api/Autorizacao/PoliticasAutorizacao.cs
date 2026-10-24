@@ -18,4 +18,8 @@ public static class PoliticasAutorizacao
     // próprias permissões de quem está logado, e é ele que a tela usa para decidir o que mostrar.
     // Mesmo tratamento já dado a "suporte-ia:usar" e "novidades:usar".
     public const string QualquerUsuarioAutenticado = "usuario:eu";
+
+    // Aprovar o PGR gerado pela EAP é do Engenheiro de Segurança (decisão do usuário, 21/10/2026).
+    // Regra fixa por PerfilAcesso.Tipo, pelo mesmo motivo de SomenteAdministrador.
+    public const string SomenteEngenheiroSeguranca = "perfil:engenheiro-seguranca";
 }

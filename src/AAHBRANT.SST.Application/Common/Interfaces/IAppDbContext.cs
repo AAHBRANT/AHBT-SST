@@ -30,8 +30,11 @@ public interface IAppDbContext
     DbSet<CursoTreinamento> CursosTreinamento { get; }
     DbSet<Treinamento> Treinamentos { get; }
     DbSet<ArquivoCertificadoTreinamento> ArquivosCertificadoTreinamento { get; }
+    DbSet<ArquivoAso> ArquivosAso { get; }
     DbSet<TermoCompromissoEpiManual> TermosCompromissoEpiManual { get; }
     DbSet<MatrizTreinamentoFuncao> MatrizTreinamentoFuncoes { get; }
+    DbSet<RegraCursoObrigatorio> RegrasCursoObrigatorio { get; }
+    DbSet<CursoObrigatorioFuncaoObra> CursosObrigatoriosFuncaoObra { get; }
     DbSet<SessaoTreinamento> SessoesTreinamento { get; }
     DbSet<ParticipanteSessaoTreinamento> ParticipantesSessaoTreinamento { get; }
     DbSet<FotoEvidenciaSessaoTreinamento> FotosEvidenciaSessaoTreinamento { get; }
@@ -77,6 +80,7 @@ public interface IAppDbContext
     DbSet<MatrizRiscoCelula> MatrizRiscoCelulas { get; }
 
     DbSet<Pgr> Pgrs { get; }
+    DbSet<GeracaoPgrEap> GeracoesPgrEap { get; }
     DbSet<PlanoAcaoItem> PlanoAcaoItens { get; }
     DbSet<PgrRevisao> PgrRevisoes { get; }
 

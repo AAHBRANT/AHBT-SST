@@ -26,11 +26,20 @@ export default defineConfig({
       manifest: {
         name: 'AAHBRANT SST',
         short_name: 'AAHBRANT SST',
+        lang: 'pt-BR',
         description: 'Gestão de Saúde e Segurança do Trabalho',
         theme_color: '#670000',
         background_color: '#ffffff',
         display: 'standalone',
-        icons: [{ src: '/favicon.svg', sizes: 'any', type: 'image/svg+xml' }],
+        // Ícone do colete (mesma arte do app do Teams, manifest/color.png). O Android usa o de
+        // 512 px na tela inicial e aplica a própria máscara (círculo/squircle) via "maskable" —
+        // a arte já preenche o quadrado inteiro com o colete centralizado, então o recorte não
+        // come o desenho. Antes apontava para o favicon.svg padrão do Vite (raio roxo).
+        icons: [
+          { src: '/icons/icon-192.png', sizes: '192x192', type: 'image/png', purpose: 'any' },
+          { src: '/icons/icon-512.png', sizes: '512x512', type: 'image/png', purpose: 'any' },
+          { src: '/icons/icon-512.png', sizes: '512x512', type: 'image/png', purpose: 'maskable' },
+        ],
       },
       workbox: {
         // Chamadas de API não entram no cache do service worker — quem decide o que fica

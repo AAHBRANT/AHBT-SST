@@ -1,4 +1,5 @@
 ﻿using AAHBRANT.SST.Application.Aprs;
+using AAHBRANT.SST.Application.Acidentes;
 using AAHBRANT.SST.Application.Assinatura;
 using AAHBRANT.SST.Application.Cipa;
 using AAHBRANT.SST.Application.Common.Interfaces;
@@ -77,6 +78,7 @@ public static class DependencyInjection
         services.AddSingleton<AAHBRANT.SST.Application.Relatorios.IImagemListaPresencaService, AAHBRANT.SST.Infrastructure.Documentos.ImagemListaPresencaService>();
         services.AddScoped<ISuporteIaConfiguracao, SuporteIaConfiguracao>();
         services.Configure<AzureOpenAiOptions>(configuration.GetSection("AzureOpenAI"));
+        services.Configure<ClaudeOptions>(configuration.GetSection("Claude"));
         services.AddScoped<AAHBRANT.SST.Application.SuporteIa.ITranscricaoAudioService, AzureOpenAiTranscricaoService>();
         services.AddScoped<AzureOpenAiChatJsonCliente>();
         // Leitura de PGR/PCMSO com IA (10/10/2026). O consumidor da fila (LeituraIaBackgroundService) é
@@ -84,19 +86,24 @@ public static class DependencyInjection
         services.AddSingleton<LeituraIa.FilaLeituraIa>();
         services.AddSingleton<AAHBRANT.SST.Application.LeituraIa.IFilaLeituraIa>(sp => sp.GetRequiredService<LeituraIa.FilaLeituraIa>());
         services.AddScoped<AAHBRANT.SST.Application.LeituraIa.IExtratorTextoPdf, LeituraIa.PdfPigExtratorTexto>();
+        services.AddScoped<AAHBRANT.SST.Application.LeituraIa.IOcrPaginasPdf, LeituraIa.AzureOpenAiOcrPaginasPdf>();
         services.AddScoped<AAHBRANT.SST.Application.LeituraIa.ILeitorDocumentoSstIa, LeituraIa.AzureOpenAiLeitorDocumentoSst>();
         services.AddScoped<AAHBRANT.SST.Application.LeituraIa.ILeitorCabecalhoDocumentoIa, LeituraIa.AzureOpenAiLeitorDocumentoSst>();
         services.AddScoped<AAHBRANT.SST.Application.LeituraIa.ILeitorContratoTerceirizadoIa, LeituraIa.AzureOpenAiLeitorDocumentoSst>();
+        services.AddScoped<AAHBRANT.SST.Application.LeituraIa.IClassificadorDocumentoTerceirizadoIa, LeituraIa.ClaudeClassificadorDocumentoTerceirizado>();
         services.AddScoped<AAHBRANT.SST.Application.SuporteIa.IClassificadorRelatoSuporteIa, AzureOpenAiClassificadorRelato>();
         services.AddScoped<AAHBRANT.SST.Application.Acidentes.RelatoIa.IClassificadorRelatoOcorrencia, AzureOpenAiClassificadorOcorrencia>();
         services.AddScoped<AAHBRANT.SST.Application.Acidentes.RelatoIa.IAnalistaPlanoOcorrencia, AzureOpenAiAnalistaPlanoOcorrencia>();
         services.AddScoped<AAHBRANT.SST.Application.Riscos.Medidas.IAnalistaMedidasPrevencao, AzureOpenAiAnalistaMedidasPrevencao>();
+        services.AddScoped<AAHBRANT.SST.Application.GeracaoPgr.IGeradorPgrIa, AzureOpenAiGeradorPgr>();
+        services.AddScoped<AAHBRANT.SST.Application.GeracaoPgr.IExtratorTextoEap, GeracaoPgr.ExtratorTextoEap>();
         services.AddScoped<AAHBRANT.SST.Application.Atividades.DetalhesOs.IAnalistaItensAtividadeOs, AzureOpenAiAnalistaItensAtividadeOs>();
 
         services.AddScoped<IDdsPdfService, DdsPdfService>();
         services.AddScoped<IDdsSemanalPdfService, DdsSemanalPdfService>();
         services.AddScoped<IPdfMesclador, PdfMesclador>();
         services.AddScoped<ICipaPdfService, CipaPdfService>();
+        services.AddScoped<AAHBRANT.SST.Application.EscopoPcmso.IEscopoPcmsoPdfService, EscopoPcmsoPdfService>();
         services.AddScoped<AAHBRANT.SST.Application.EstoquesEpi.Reposicao.ISolicitacaoReposicaoEpiPdfService, SolicitacaoReposicaoEpiPdfService>();
         services.AddScoped<IAprPdfService, AprPdfService>();
         services.AddScoped<IFichaEpiPdfService, EntregaEpiPdfService>();
@@ -105,6 +112,7 @@ public static class DependencyInjection
         services.AddScoped<IAtaSessaoTreinamentoPdfService, AtaSessaoTreinamentoPdfService>();
         services.AddScoped<IRelatorioFiscalizacaoPdfService, RelatorioFiscalizacaoPdfService>();
         services.AddScoped<IInspecaoPdfService, InspecaoPdfService>();
+        services.AddScoped<IInvestigacaoOcorrenciaPdfService, InvestigacaoOcorrenciaPdfService>();
         services.AddScoped<IGeradorNumeroDocumentoService, GeradorNumeroDocumentoService>();
 
         // Motor de Assinatura Eletrônica (docs/Motor-Assinatura-Eletronica.md §5) — PIN/crachá-QR

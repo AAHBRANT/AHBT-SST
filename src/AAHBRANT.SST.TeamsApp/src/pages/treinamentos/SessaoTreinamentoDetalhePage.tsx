@@ -22,7 +22,6 @@ import {
 } from '@ui';
 import {
   ArrowDownload24Regular,
-  Camera24Regular,
   Checkmark24Filled,
   Eye24Regular,
   Signature24Regular,
@@ -36,7 +35,6 @@ import {
   type ParticipanteSessaoTreinamento,
 } from '../../lib/api';
 import { capturarDigitalLocal, credencialLeitura, estaAgenteLocalDisponivel, obterDispositivoLocal, type DispositivoLocal } from '../../lib/agenteBiometricoLocal';
-import { FilaFacialDds, type ResultadoFilaFacial } from '../../components/dds/FilaFacialDds';
 import { tocarBipeAssinaturaAceita } from '../../lib/bipeAssinatura';
 import { GradeFotosEvidencia } from '../../components/GradeFotosEvidencia';
 import { SeletorFotoCamera } from '../../components/SeletorFotoCamera';
@@ -103,7 +101,6 @@ export function SessaoTreinamentoDetalhePage() {
   // Fila contínua (19/10, igual ao DDS): aberta, cada participante encosta o dedo ou olha para a
   // câmera e a presença é confirmada sozinha, um após o outro, até alguém fechar a fila.
   const [filaAberta, setFilaAberta] = useState(false);
-  const [filaFacialAberta, setFilaFacialAberta] = useState(false);
   const filaAtiva = useRef(false);
   const contextoFila = useRef<{ detalhe: SessaoTreinamentoDetalhe | null; dispositivo: DispositivoLocal | null }>({ detalhe: null, dispositivo: null });
   contextoFila.current = { detalhe, dispositivo: dispositivoLocal };
@@ -229,21 +226,6 @@ export function SessaoTreinamentoDetalhePage() {
   }
 
   useEffect(() => () => { filaAtiva.current = false; }, []);
-
-  // Envio da fila facial em tela cheia: o servidor identifica a pessoa na obra e confere a inscrição.
-  async function enviarFotoFila(foto: File): Promise<ResultadoFilaFacial> {
-    const atual = contextoFila.current.detalhe;
-    if (!id || !atual) throw new Error('Turma não carregada.');
-    try {
-      const r = await api.sessoesTreinamento.registrarPresencaFacial(id, atual.sessao.obraId, foto);
-      const nome = atual.participantes.find((p) => p.trabalhadorId === r.trabalhadorId)?.trabalhadorNome ?? 'Participante';
-      return { trabalhadorNome: nome, jaConfirmado: false };
-    } catch (e) {
-      // Já confirmado não é erro na fila: mostra como aviso e segue para o próximo.
-      if (e instanceof Error && /já confirmada/i.test(e.message)) return { trabalhadorNome: 'Este participante', jaConfirmado: true };
-      throw e;
-    }
-  }
 
   async function confirmarPresencaFacial(arquivo: File) {
     if (!id || !detalhe) return;
@@ -496,15 +478,6 @@ export function SessaoTreinamentoDetalhePage() {
                   Abrir fila
                 </BotaoBiometriaDigital>
               )}
-              <Button
-                appearance="primary"
-                size="large"
-                icon={<Camera24Regular />}
-                disabled={filaAberta || lendoFacial}
-                onClick={() => setFilaFacialAberta(true)}
-              >
-                Abrir fila facial
-              </Button>
               <SeletorFotoCamera
                 aoSelecionarArquivo={confirmarPresencaFacial}
                 aoErroValidacao={setErroFacial}
@@ -514,7 +487,6 @@ export function SessaoTreinamentoDetalhePage() {
                 variante="facialAzure"
                 modoCamera="user"
                 exigirCamera
-                permitirCapturaAutomatica
               />
             </div>
             {mensagemPresenca && (
@@ -569,12 +541,6 @@ export function SessaoTreinamentoDetalhePage() {
           }
         />
       </Card>
-      <FilaFacialDds
-        enviarFoto={enviarFotoFila}
-        aberto={filaFacialAberta}
-        aoFechar={() => setFilaFacialAberta(false)}
-        aoPresencaConfirmada={() => { void carregar(); }}
-      />
       <ErroFacialDialog mensagem={erroFacial} aoFechar={() => setErroFacial(null)} />
       {dialogoVisualizador}
     </DetailPageLayout>
