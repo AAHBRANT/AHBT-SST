@@ -47,7 +47,8 @@ public class RegistrarAssinaturaSessaoLogadaCommandTests
             CancellationToken ct,
             byte[]? fotoEvidenciaConteudo = null,
             string? fotoEvidenciaContentType = null,
-            PapelAssinatura? papel = null)
+            PapelAssinatura? papel = null,
+            LocalizacaoAssinatura? localizacao = null)
         {
             IpRecebido = ipAddress;
             ResultadoRecebido = resultado;

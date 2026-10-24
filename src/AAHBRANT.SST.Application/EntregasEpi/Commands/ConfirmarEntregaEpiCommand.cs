@@ -1,4 +1,5 @@
 using AAHBRANT.SST.Application.Common.Interfaces;
+using AAHBRANT.SST.Application.Common.Seguranca;
 using FluentValidation;
 using MediatR;
 using Microsoft.EntityFrameworkCore;
@@ -22,7 +23,7 @@ public class ConfirmarEntregaEpiCommandHandler : IRequestHandler<ConfirmarEntreg
 
     public async Task Handle(ConfirmarEntregaEpiCommand request, CancellationToken ct)
     {
-        var entrega = await _db.EntregasEpi.FirstOrDefaultAsync(x => x.Id == request.EntregaEpiId, ct)
+        var entrega = await _db.EntregasEpi.NoEscopoDoTrabalhador(_db, x => x.TrabalhadorId).FirstOrDefaultAsync(x => x.Id == request.EntregaEpiId, ct)
             ?? throw new KeyNotFoundException("Entrega de EPI não encontrada.");
 
         if (entrega.Confirmada)

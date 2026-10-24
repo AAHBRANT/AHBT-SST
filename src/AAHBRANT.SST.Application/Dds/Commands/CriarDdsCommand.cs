@@ -77,9 +77,21 @@ public class CriarDdsCommandHandler : IRequestHandler<CriarDdsCommand, Guid>
             NumeroDocumento = await _geradorNumero.GerarAsync("DDS-D", ct),
         };
 
-        if (request.CatalogoTemaDdsId.HasValue)
+        // Tema agendado por ocorrência (TemaDdsAgendado) é obrigatório e fixo: entra no primeiro DDS da
+        // obra a partir do dia previsto, mesmo que a tela mande outro tema (regra do usuário, 09/10/2026).
+        // Agendamento de dia anterior sem DDS (ex.: sem expediente) segue pendente e entra aqui.
+        var agendado = await _db.TemasDdsAgendados
+            .Where(t => t.ObraId == semanal.ObraId && t.DdsId == null && t.Data <= request.Data.Date)
+            .OrderBy(t => t.Data)
+            .ThenBy(t => t.CreatedAtUtc)
+            .FirstOrDefaultAsync(ct);
+        var catalogoTemaDdsId = agendado?.CatalogoTemaDdsId ?? request.CatalogoTemaDdsId;
+        if (agendado is not null)
+            agendado.DdsId = dds.Id; // vincula já na criação: o tema não pode ir para outro DDS
+
+        if (catalogoTemaDdsId.HasValue)
         {
-            var catalogo = await _db.CatalogosTemaDds.FirstOrDefaultAsync(c => c.Id == request.CatalogoTemaDdsId.Value, ct)
+            var catalogo = await _db.CatalogosTemaDds.FirstOrDefaultAsync(c => c.Id == catalogoTemaDdsId.Value, ct)
                 ?? throw new KeyNotFoundException("Tema do catálogo não encontrado.");
             dds.CatalogoTemaDdsId = catalogo.Id;
             dds.TemaLivreNome = catalogo.Nome;

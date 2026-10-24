@@ -1,4 +1,5 @@
 using AAHBRANT.SST.Application.Common.Interfaces;
+using AAHBRANT.SST.Application.Common.Seguranca;
 using MediatR;
 using Microsoft.EntityFrameworkCore;
 
@@ -18,6 +19,7 @@ public class ObterEquipePorIdQueryHandler : IRequestHandler<ObterEquipePorIdQuer
         // ainda maior que na lista — com o setor excluído, o INNER JOIN não devolvia linha nenhuma
         // e abrir a equipe dava 404, como se ela não existisse.
         var equipe = await _db.Equipes
+            .NoEscopoDaObra(_db)
             .Where(e => e.Id == request.Id)
             .Select(e => new
             {

@@ -1,4 +1,5 @@
 using AAHBRANT.SST.Application.Common.Interfaces;
+using AAHBRANT.SST.Application.Common.Seguranca;
 using FluentValidation;
 using MediatR;
 using Microsoft.EntityFrameworkCore;
@@ -30,6 +31,8 @@ public class RemoverTermoManualEpiCommandHandler : IRequestHandler<RemoverTermoM
 
     public async Task Handle(RemoverTermoManualEpiCommand request, CancellationToken ct)
     {
+        await _db.GarantirTrabalhadorNoEscopoAsync(request.TrabalhadorId, ct);
+
         var termo = await _db.TermosCompromissoEpiManual.FirstOrDefaultAsync(t => t.TrabalhadorId == request.TrabalhadorId, ct)
             ?? throw new KeyNotFoundException("Este funcionário não tem termo registrado como assinado manualmente.");
 

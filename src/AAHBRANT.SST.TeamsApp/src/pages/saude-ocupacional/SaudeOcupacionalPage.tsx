@@ -3,10 +3,11 @@ import { AsosTab } from './AsosTab';
 import { PcmsoTab } from './PcmsoTab';
 import { ExamesComplementaresTab } from './ExamesComplementaresTab';
 import { AptidoesTab } from './AptidoesTab';
+import { EscopoPcmsoTab } from './EscopoPcmsoTab';
 
-type AbaSaudeOcupacional = 'aso' | 'pcmso' | 'exames' | 'aptidoes';
+type AbaSaudeOcupacional = 'aso' | 'pcmso' | 'escopo-pcmso' | 'exames' | 'aptidoes';
 
-const ABAS_VALIDAS: AbaSaudeOcupacional[] = ['aso', 'pcmso', 'exames', 'aptidoes'];
+const ABAS_VALIDAS: AbaSaudeOcupacional[] = ['aso', 'pcmso', 'escopo-pcmso', 'exames', 'aptidoes'];
 
 // Módulo "Saúde Ocupacional" (PR-SST-003), item de 1º nível próprio na sidebar (saiu do pilar
 // Operação em 02/09 — cada item da sidebar deve abrir só o que é dele, ver AppShell.tsx). ASO/
@@ -36,6 +37,8 @@ export function SaudeOcupacionalPage({
         aria-label="Seções de Saúde Ocupacional"
         abas={[
           { valor: 'pcmso', rotulo: 'PCMSO' },
+          // Escopo montado do PGR para o médico elaborar o PCMSO (21/10).
+          { valor: 'escopo-pcmso', rotulo: 'Escopo para o médico' },
           { valor: 'aso', rotulo: 'ASO' },
           { valor: 'exames', rotulo: 'Exames Complementares' },
           { valor: 'aptidoes', rotulo: 'Aptidões' },
@@ -43,6 +46,7 @@ export function SaudeOcupacionalPage({
       />
 
       {aba === 'pcmso' && <PcmsoTab />}
+      {aba === 'escopo-pcmso' && <EscopoPcmsoTab />}
       {aba === 'aso' && <AsosTab />}
       {aba === 'exames' && <ExamesComplementaresTab />}
       {aba === 'aptidoes' && <AptidoesTab />}

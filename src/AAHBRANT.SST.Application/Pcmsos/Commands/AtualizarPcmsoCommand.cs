@@ -1,4 +1,5 @@
 using AAHBRANT.SST.Application.Common.Interfaces;
+using AAHBRANT.SST.Application.Common.Seguranca;
 using FluentValidation;
 using MediatR;
 using Microsoft.EntityFrameworkCore;
@@ -51,6 +52,9 @@ public class AtualizarPcmsoCommandHandler : IRequestHandler<AtualizarPcmsoComman
         pcmso.Validade = request.Validade;
         pcmso.DataEmissao = request.DataEmissao;
         pcmso.ResponsavelUsuarioId = request.ResponsavelUsuarioId;
+        if (request.ObraId != pcmso.ObraId && !_db.ObraNoEscopo(request.ObraId))
+            throw new KeyNotFoundException("Obra não encontrada. Selecione uma obra à qual você tem acesso.");
+
         pcmso.ObraId = request.ObraId;
         pcmso.SetorId = request.SetorId;
         pcmso.MedicoResponsavelNome = request.MedicoResponsavelNome;

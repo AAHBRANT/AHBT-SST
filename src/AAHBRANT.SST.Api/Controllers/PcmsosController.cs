@@ -1,5 +1,6 @@
 using AAHBRANT.SST.Application.Pcmsos.Commands;
 using AAHBRANT.SST.Application.Pcmsos.Queries;
+using AAHBRANT.SST.Application.Pcmsos.Revisoes;
 using MediatR;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
@@ -63,6 +64,33 @@ public class PcmsosController : ControllerBase
     {
         var documento = await _mediator.Send(new ObterDocumentoPcmsoQuery(id), ct);
         return documento is null ? NotFound() : File(documento.Conteudo, documento.ContentType);
+    }
+
+    [Authorize(Policy = "pcmso:ver")]
+    [HttpGet("{id:guid}/revisoes")]
+    public async Task<IActionResult> ListarRevisoes(Guid id, CancellationToken ct)
+        => Ok(await _mediator.Send(new ListarPcmsoRevisoesQuery(id), ct));
+
+    // "Nova revisão" (10/10/2026): anexa o PDF de uma revisão nova sem apagar o anterior.
+    [Authorize(Policy = "pcmso:editar")]
+    [HttpPost("{id:guid}/revisoes")]
+    [RequestSizeLimit(21_000_000)]
+    public async Task<IActionResult> NovaRevisao(Guid id, [FromForm] NovaRevisaoRequestBody body, CancellationToken ct)
+    {
+        await using var stream = new MemoryStream();
+        await body.Arquivo.CopyToAsync(stream, ct);
+        var revisaoId = await _mediator.Send(new NovaRevisaoPcmsoCommand(
+            id, body.NumeroRevisao, body.DataRevisao, body.Motivo,
+            stream.ToArray(), body.Arquivo.ContentType, body.Arquivo.FileName), ct);
+        return Ok(new { id = revisaoId });
+    }
+
+    [Authorize(Policy = "pcmso:ver")]
+    [HttpGet("revisoes/{revisaoId:guid}/documento")]
+    public async Task<IActionResult> ObterDocumentoRevisao(Guid revisaoId, CancellationToken ct)
+    {
+        var documento = await _mediator.Send(new ObterDocumentoRevisaoPcmsoQuery(revisaoId), ct);
+        return documento is null ? NotFound() : File(documento.Conteudo, documento.ContentType, documento.NomeArquivo);
     }
 
     [Authorize(Policy = "pcmso:editar")]

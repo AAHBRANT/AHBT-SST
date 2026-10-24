@@ -34,6 +34,10 @@ public class AlertaOrigemItem
     public Guid? TrabalhadorId { get; set; }
     public Guid? ObraId { get; set; }
 
+    // Destinatário próprio do item (ex.: o responsável de uma ação de plano). Tem precedência sobre o
+    // responsável fixo do módulo (RegraAlerta.ResponsavelUsuarioId), que segue valendo quando nulo.
+    public Guid? DestinatarioUsuarioId { get; set; }
+
     // Registro já renovado por outro mais recente (ex.: ASO antigo de quem fez ASO novo). Nunca gera
     // alerta, e o motor encerra o que já estiver em aberto: o vencimento dele não importa mais.
     public bool Substituido { get; set; }

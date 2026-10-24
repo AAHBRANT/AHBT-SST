@@ -1,4 +1,5 @@
 using AAHBRANT.SST.Application.Common.Interfaces;
+using AAHBRANT.SST.Application.Common.Seguranca;
 using FluentValidation;
 using MediatR;
 using Microsoft.EntityFrameworkCore;
@@ -25,6 +26,8 @@ public class ExcluirAcaoPlanoCommandHandler : IRequestHandler<ExcluirAcaoPlanoCo
     {
         var acao = await _db.AcoesPlano.FirstOrDefaultAsync(a => a.Id == request.Id, ct)
             ?? throw new KeyNotFoundException($"Ação de plano {request.Id} não encontrada.");
+
+        await _db.GarantirOrigemAcaoPlanoNoEscopoAsync(acao.OrigemTipo, acao.OrigemId, ct);
 
         _db.AcoesPlano.Remove(acao);
         await _db.SaveChangesAsync(ct);

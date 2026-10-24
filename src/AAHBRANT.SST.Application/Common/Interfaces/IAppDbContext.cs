@@ -24,11 +24,17 @@ public interface IAppDbContext
     DbSet<ExameComplementar> ExamesComplementares { get; }
     DbSet<AptidaoAtividadeEspecifica> AptidoesAtividadeEspecifica { get; }
     DbSet<PcmsoDetalhe> PcmsoDetalhes { get; }
+    DbSet<ExameFuncaoObra> ExamesFuncaoObra { get; }
+    DbSet<PcmsoRevisao> PcmsoRevisoes { get; }
+    DbSet<LeituraDocumentoIa> LeiturasDocumentoIa { get; }
     DbSet<CursoTreinamento> CursosTreinamento { get; }
     DbSet<Treinamento> Treinamentos { get; }
     DbSet<ArquivoCertificadoTreinamento> ArquivosCertificadoTreinamento { get; }
+    DbSet<ArquivoAso> ArquivosAso { get; }
     DbSet<TermoCompromissoEpiManual> TermosCompromissoEpiManual { get; }
     DbSet<MatrizTreinamentoFuncao> MatrizTreinamentoFuncoes { get; }
+    DbSet<RegraCursoObrigatorio> RegrasCursoObrigatorio { get; }
+    DbSet<CursoObrigatorioFuncaoObra> CursosObrigatoriosFuncaoObra { get; }
     DbSet<SessaoTreinamento> SessoesTreinamento { get; }
     DbSet<ParticipanteSessaoTreinamento> ParticipantesSessaoTreinamento { get; }
     DbSet<FotoEvidenciaSessaoTreinamento> FotosEvidenciaSessaoTreinamento { get; }
@@ -37,6 +43,13 @@ public interface IAppDbContext
     DbSet<MatrizEpiFuncao> MatrizEpiFuncoes { get; }
     DbSet<EstoqueEpi> EstoquesEpi { get; }
     DbSet<MovimentacaoEstoqueEpi> MovimentacoesEstoqueEpi { get; }
+    DbSet<ReservaEpi> ReservasEpi { get; }
+    DbSet<PlanoIntegracao> PlanosIntegracao { get; }
+    DbSet<SolicitacaoReposicaoEpi> SolicitacoesReposicaoEpi { get; }
+    DbSet<ArquivoContrato> ArquivosContrato { get; }
+    DbSet<DocumentoExigidoEmpresa> DocumentosExigidosEmpresa { get; }
+    DbSet<DocumentoEmpresaTerceirizada> DocumentosEmpresaTerceirizada { get; }
+    DbSet<ArquivoDocumentoEmpresaTerceirizada> ArquivosDocumentoEmpresaTerceirizada { get; }
     DbSet<CatalogoEpc> CatalogoEpcs { get; }
     DbSet<InstalacaoEpc> InstalacoesEpc { get; }
     DbSet<EstoqueEpc> EstoquesEpc { get; }
@@ -54,13 +67,20 @@ public interface IAppDbContext
     DbSet<Evidencia> Evidencias { get; }
 
     DbSet<Atividade> Atividades { get; }
+    DbSet<AtividadeEpc> AtividadeEpcs { get; }
+    DbSet<AtividadeDocumento> AtividadeDocumentos { get; }
+    DbSet<AtividadeItemOs> AtividadeItensOs { get; }
+    DbSet<Ghe> Ghes { get; }
+    DbSet<GheFuncao> GheFuncoes { get; }
     DbSet<Perigo> Perigos { get; }
     DbSet<Risco> Riscos { get; }
+    DbSet<MedidaPrevencao> MedidasPrevencao { get; }
     DbSet<RiscoTrabalhadorExposto> RiscoTrabalhadorExpostos { get; }
     DbSet<MatrizRiscoConfig> MatrizRiscoConfigs { get; }
     DbSet<MatrizRiscoCelula> MatrizRiscoCelulas { get; }
 
     DbSet<Pgr> Pgrs { get; }
+    DbSet<GeracaoPgrEap> GeracoesPgrEap { get; }
     DbSet<PlanoAcaoItem> PlanoAcaoItens { get; }
     DbSet<PgrRevisao> PgrRevisoes { get; }
 
@@ -102,9 +122,12 @@ public interface IAppDbContext
     DbSet<DdsFuncionarioSelecionado> DdsFuncionariosSelecionados { get; }
     DbSet<DdsSemanal> DdsSemanais { get; }
     DbSet<CatalogoTemaDds> CatalogosTemaDds { get; }
+    DbSet<TemaDdsAgendado> TemasDdsAgendados { get; }
+    DbSet<ReuniaoAnaliseOcorrencia> ReunioesAnaliseOcorrencia { get; }
     DbSet<DdsFotoEvidencia> DdsFotosEvidencia { get; }
 
     DbSet<NaoConformidade> NaoConformidades { get; }
+    DbSet<EventoNcGQuali> EventosNcGQuali { get; }
     DbSet<AcaoPlano> AcoesPlano { get; }
 
     DbSet<Acidente> Acidentes { get; }
@@ -117,8 +140,14 @@ public interface IAppDbContext
     DbSet<DocumentoAssinatura> DocumentosAssinatura { get; }
     DbSet<DocumentoSignatario> DocumentoSignatarios { get; }
     DbSet<DispositivoAgenteBiometrico> DispositivosAgenteBiometrico { get; }
+    DbSet<DesafioBiometria> DesafiosBiometria { get; }
     DbSet<TemplateBiometricoFutronic> TemplatesBiometricoFutronic { get; }
     DbSet<FotoCadastroFacial> FotosCadastroFacial { get; }
+    DbSet<FalhaReconhecimentoFacial> FalhasReconhecimentoFacial { get; }
+    DbSet<RelatorioGerado> RelatoriosGerados { get; }
+    DbSet<RelatorioEnvio> RelatorioEnvios { get; }
+    DbSet<DestinatarioRelatorio> DestinatariosRelatorio { get; }
+    DbSet<ExecucaoRelatorioAgendado> ExecucoesRelatorioAgendado { get; }
 
     DbSet<IdempotenciaRegistro> IdempotenciaRegistros { get; }
 
@@ -157,4 +186,13 @@ public interface IAppDbContext
     // onde uma entidade que falhou ao salvar ficaria presa no rastreamento e derrubaria toda tentativa
     // seguinte no mesmo lote.
     void DescartarAlteracoesPendentes();
+
+    // Escopo por obra do usuário atual (o mesmo que o filtro global aplica), exposto para as
+    // entidades que NÃO têm filtro global por ObraId e chegam à obra só pelo Trabalhador (Aso,
+    // ExameComplementar, Aptidão, Treinamento, EntregaEpi...). Ficaram fora do filtro global de
+    // propósito — filtrar pela navegação até Trabalhador esconde o histórico de desligados — e por
+    // isso cada handler precisa aplicar o escopo explicitamente (auditoria de 09/10/2026: nenhum
+    // aplicava). Use as extensões de Common/Seguranca/EscopoObra.cs em vez destes membros direto.
+    bool EscopoObraGlobal { get; }
+    IReadOnlyList<Guid> ObrasNoEscopo { get; }
 }

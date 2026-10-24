@@ -1,4 +1,5 @@
 using AAHBRANT.SST.Application.Common.Interfaces;
+using AAHBRANT.SST.Application.Common.Seguranca;
 using AAHBRANT.SST.Domain.Entidades;
 using AAHBRANT.SST.Domain.Enums;
 using FluentValidation;
@@ -33,6 +34,8 @@ public class CriarAprAssinaturaCommandHandler : IRequestHandler<CriarAprAssinatu
 
     public async Task<Guid> Handle(CriarAprAssinaturaCommand request, CancellationToken ct)
     {
+        await _db.GarantirAprNoEscopoAsync(request.AprId, ct);
+
         var aprExiste = await _db.Aprs.AnyAsync(a => a.Id == request.AprId, ct);
         if (!aprExiste)
             throw new KeyNotFoundException($"APR {request.AprId} não encontrada.");

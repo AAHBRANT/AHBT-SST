@@ -1,4 +1,5 @@
 using AAHBRANT.SST.Application.Common.Interfaces;
+using AAHBRANT.SST.Application.Common.Seguranca;
 using MediatR;
 using Microsoft.EntityFrameworkCore;
 
@@ -14,7 +15,7 @@ public class ListarRiscosQueryHandler : IRequestHandler<ListarRiscosQuery, List<
 
     public async Task<List<RiscoDto>> Handle(ListarRiscosQuery request, CancellationToken ct)
     {
-        var query = _db.Riscos.Include(r => r.TrabalhadoresExpostos).AsQueryable();
+        var query = _db.Riscos.Include(r => r.TrabalhadoresExpostos).NoEscopoDaAtividade(_db, r => r.AtividadeId);
 
         if (request.AtividadeId.HasValue)
             query = query.Where(r => r.AtividadeId == request.AtividadeId.Value);

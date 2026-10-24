@@ -75,10 +75,8 @@ public class DdsSemanalController : ControllerBase
         if (papelAssinatura is null)
             return BadRequest(new { erro = "Campo de assinatura inválido." });
 
-        var forwardedFor = Request.Headers["X-Forwarded-For"].FirstOrDefault();
-        var ip = !string.IsNullOrWhiteSpace(forwardedFor)
-            ? forwardedFor.Split(',')[0].Trim()
-            : HttpContext.Connection.RemoteIpAddress?.ToString();
+        // IP já normalizado por UseForwardedHeaders (Program.cs); o cabeçalho cru é controlado pelo cliente.
+        var ip = HttpContext.Connection.RemoteIpAddress?.ToString();
 
         var signatario = await _mediator.Send(new AssinarDdsSemanalCommand(id, papelAssinatura.Value, ObterAzureAdObjectId(), ip), ct);
         return Ok(signatario);

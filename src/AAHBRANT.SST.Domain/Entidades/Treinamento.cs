@@ -74,6 +74,9 @@ public class Treinamento : AuditableEntity
     // profissional (CREA/MTE) do instrutor — sempre o Técnico de Segurança do Trabalho responsável,
     // que também assina como Responsável Técnico (decisão do usuário: uma assinatura só, não três).
     public string? Local { get; set; }
+    // Conteúdo programático ministrado, gravado no treinamento (19/10). Nulo nos antigos: o
+    // certificado cai no conteúdo do curso e, se vazio, no padrão da NR.
+    public string? ConteudoProgramatico { get; set; }
     public string? InstrutorRegistroProfissional { get; set; }
 
     // Preenchido só quando este Treinamento foi gerado pelo encerramento de uma turma (04/09) —

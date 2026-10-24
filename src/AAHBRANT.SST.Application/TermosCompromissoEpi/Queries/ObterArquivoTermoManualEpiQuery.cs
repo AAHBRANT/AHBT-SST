@@ -1,4 +1,5 @@
 using AAHBRANT.SST.Application.Common.Interfaces;
+using AAHBRANT.SST.Application.Common.Seguranca;
 using MediatR;
 using Microsoft.EntityFrameworkCore;
 
@@ -15,6 +16,9 @@ public class ObterArquivoTermoManualEpiQueryHandler : IRequestHandler<ObterArqui
 
     public async Task<ArquivoTermoManualEpiDto?> Handle(ObterArquivoTermoManualEpiQuery request, CancellationToken ct)
     {
+        if (!await _db.TrabalhadorNoEscopoAsync(request.TrabalhadorId, ct))
+            return null;
+
         var arquivo = await _db.TermosCompromissoEpiManual
             .Where(t => t.TrabalhadorId == request.TrabalhadorId && t.ArquivoConteudo != null)
             .Select(t => new { t.ArquivoNome, t.ArquivoContentType, t.ArquivoConteudo })

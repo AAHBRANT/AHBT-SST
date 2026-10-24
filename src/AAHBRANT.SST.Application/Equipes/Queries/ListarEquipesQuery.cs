@@ -1,4 +1,5 @@
 using AAHBRANT.SST.Application.Common.Interfaces;
+using AAHBRANT.SST.Application.Common.Seguranca;
 using MediatR;
 using Microsoft.EntityFrameworkCore;
 
@@ -14,7 +15,7 @@ public class ListarEquipesQueryHandler : IRequestHandler<ListarEquipesQuery, Lis
 
     public async Task<List<EquipeDto>> Handle(ListarEquipesQuery request, CancellationToken ct)
     {
-        var query = _db.Equipes.AsQueryable();
+        var query = _db.Equipes.NoEscopoDaObra(_db);
         if (request.SetorId.HasValue)
         {
             query = query.Where(e => e.SetorId == request.SetorId.Value);

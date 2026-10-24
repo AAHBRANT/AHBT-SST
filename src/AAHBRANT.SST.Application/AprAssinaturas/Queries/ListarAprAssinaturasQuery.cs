@@ -1,5 +1,6 @@
 using AAHBRANT.SST.Application.Aprs;
 using AAHBRANT.SST.Application.Common.Interfaces;
+using AAHBRANT.SST.Application.Common.Seguranca;
 using MediatR;
 using Microsoft.EntityFrameworkCore;
 
@@ -15,6 +16,8 @@ public class ListarAprAssinaturasQueryHandler : IRequestHandler<ListarAprAssinat
 
     public async Task<List<AprAssinaturaDto>> Handle(ListarAprAssinaturasQuery request, CancellationToken ct)
     {
+        await _db.GarantirAprNoEscopoAsync(request.AprId, ct);
+
         var assinaturas = await _db.AprAssinaturas
             .Where(s => s.AprId == request.AprId)
             .Include(s => s.Trabalhador)

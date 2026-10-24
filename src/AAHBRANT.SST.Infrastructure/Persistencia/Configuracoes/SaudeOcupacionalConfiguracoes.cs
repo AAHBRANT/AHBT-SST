@@ -10,6 +10,8 @@ public class ExameComplementarConfiguracao : IEntityTypeConfiguration<ExameCompl
     {
         builder.Property(e => e.Resultado).IsRequired().HasMaxLength(300);
         builder.Property(e => e.ResponsavelTecnico).HasMaxLength(150);
+        builder.Property(e => e.CodigoExame).HasMaxLength(20);
+        builder.Property(e => e.NomeExame).HasMaxLength(200);
         builder.HasOne(e => e.Trabalhador).WithMany(t => t.ExamesComplementares)
             .HasForeignKey(e => e.TrabalhadorId).OnDelete(DeleteBehavior.Restrict);
         builder.HasOne(e => e.Aso).WithMany()
@@ -58,5 +60,52 @@ public class PcmsoDetalheConfiguracao : IEntityTypeConfiguration<PcmsoDetalhe>
         builder.HasQueryFilter(p => p.Ativo);
 
         builder.Property(p => p.RowVersion).IsRowVersion();
+    }
+}
+
+public class ExameFuncaoObraConfiguracao : IEntityTypeConfiguration<ExameFuncaoObra>
+{
+    public void Configure(EntityTypeBuilder<ExameFuncaoObra> builder)
+    {
+        builder.Property(e => e.Exame).IsRequired().HasMaxLength(200);
+        builder.Property(e => e.CodigoExame).HasMaxLength(20);
+        builder.Property(e => e.Observacao).HasMaxLength(500);
+        builder.HasOne(e => e.Obra).WithMany()
+            .HasForeignKey(e => e.ObraId).OnDelete(DeleteBehavior.Restrict);
+        builder.HasOne(e => e.Funcao).WithMany()
+            .HasForeignKey(e => e.FuncaoId).OnDelete(DeleteBehavior.Restrict);
+        builder.HasOne(e => e.PcmsoDetalhe).WithMany()
+            .HasForeignKey(e => e.PcmsoDetalheId).OnDelete(DeleteBehavior.Restrict);
+        builder.HasIndex(e => new { e.ObraId, e.FuncaoId });
+        builder.HasQueryFilter(e => e.Ativo);
+    }
+}
+
+public class PcmsoRevisaoConfiguracao : IEntityTypeConfiguration<PcmsoRevisao>
+{
+    public void Configure(EntityTypeBuilder<PcmsoRevisao> builder)
+    {
+        // "PcmsoRevisoes" já existe nos bancos: tabela órfã do módulo PCMSO antigo (migration de
+        // 25/08, ligada à tabela Pcmsos) que nunca foi removida — não reaproveitar nem apagar.
+        builder.ToTable("PcmsoDocumentoRevisoes");
+        builder.Property(r => r.Motivo).IsRequired().HasMaxLength(500);
+        builder.Property(r => r.DocumentoContentType).HasMaxLength(100);
+        builder.Property(r => r.DocumentoNomeArquivo).HasMaxLength(260);
+        builder.HasOne(r => r.PcmsoDetalhe).WithMany()
+            .HasForeignKey(r => r.PcmsoDetalheId).OnDelete(DeleteBehavior.Cascade);
+        builder.HasIndex(r => new { r.PcmsoDetalheId, r.NumeroRevisao }).IsUnique();
+        builder.HasQueryFilter(r => r.Ativo);
+    }
+}
+
+public class LeituraDocumentoIaConfiguracao : IEntityTypeConfiguration<LeituraDocumentoIa>
+{
+    public void Configure(EntityTypeBuilder<LeituraDocumentoIa> builder)
+    {
+        builder.ToTable("LeiturasDocumentoIa");
+        builder.Property(l => l.Etapa).HasMaxLength(300);
+        builder.Property(l => l.Erro).HasMaxLength(2000);
+        builder.HasIndex(l => new { l.Documento, l.DocumentoId });
+        builder.HasQueryFilter(l => l.Ativo);
     }
 }

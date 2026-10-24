@@ -16,7 +16,7 @@ public static class FuncaoSstClassifier
             || normalizado.StartsWith("tecnico de seguranca ", StringComparison.Ordinal);
     }
 
-    private static string Normalizar(string valor)
+    public static string Normalizar(string valor)
     {
         var semAcentos = valor.Trim().Normalize(NormalizationForm.FormD);
         var sb = new StringBuilder(semAcentos.Length);

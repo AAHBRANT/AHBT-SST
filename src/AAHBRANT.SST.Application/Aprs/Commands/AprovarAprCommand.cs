@@ -1,4 +1,5 @@
 using AAHBRANT.SST.Application.Common.Interfaces;
+using AAHBRANT.SST.Application.Common.Seguranca;
 using AAHBRANT.SST.Domain.Enums;
 using FluentValidation;
 using MediatR;
@@ -27,7 +28,9 @@ public class AprovarAprCommandHandler : IRequestHandler<AprovarAprCommand>
 
     public async Task Handle(AprovarAprCommand request, CancellationToken ct)
     {
-        var apr = await _db.Aprs.FirstOrDefaultAsync(a => a.Id == request.Id, ct)
+        var apr = await _db.Aprs
+            .NoEscopoDaAtividade(_db, a => a.AtividadeId)
+            .FirstOrDefaultAsync(a => a.Id == request.Id, ct)
             ?? throw new KeyNotFoundException($"APR {request.Id} não encontrada.");
 
         var usuarioExiste = await _db.Usuarios.AnyAsync(u => u.Id == request.AprovadoPorUsuarioId, ct);

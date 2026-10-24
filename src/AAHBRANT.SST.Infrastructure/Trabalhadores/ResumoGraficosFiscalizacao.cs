@@ -1,0 +1,291 @@
+using System.Globalization;
+using System.Text;
+using AAHBRANT.SST.Application.Trabalhadores.Queries;
+using AAHBRANT.SST.Domain.Enums;
+using QuestPDF.Fluent;
+using QuestPDF.Helpers;
+using QuestPDF.Infrastructure;
+
+namespace AAHBRANT.SST.Infrastructure.Trabalhadores;
+
+// Página de resumo do Relatório de Fiscalização (pedido do usuário, 06/10): os 4 cards e os gráficos
+// do perfil do trabalhador (aba Geral + EPI + Treinamentos) passam a sair também no PDF. Usa os mesmos
+// números e regras da tela (PerfilGeralTab.tsx) — nada novo é consultado no banco. As roscas são SVG
+// só com traços (sem texto, para não depender de fonte); os números do centro e as barras são
+// elementos nativos do QuestPDF.
+public static class ResumoGraficosFiscalizacao
+{
+    private const string CorMarca = "#670000";
+    private const string CorOk = "#2e7d4f";
+    private const string CorAtencao = "#c08a12";
+    private const string CorAlerta = "#b3261e";
+    private const string CorInfo = "#3a5a80";
+    private const string CorTrilho = "#eee9e2";
+    private const string CorLinha = "#e4dfd6";
+    private const string CorTextoSuave = "#6f6666";
+    private const string FundoInfo = "#e4eaf2";
+    private const string FundoOk = "#e0f0e6";
+    private const string FundoAtencao = "#f7ecd2";
+
+    // Ícones (viewBox 24, só traços) dos selos dos cards.
+    private const string IconeEscudo = "<path d=\"M12 3l7 3v5c0 5-3.2 8.2-7 10-3.8-1.8-7-5-7-10V6l7-3z\"/><path d=\"M9 12l2 2 4-4\"/>";
+    private const string IconePessoas = "<circle cx=\"9\" cy=\"8\" r=\"3\"/><path d=\"M3 20c0-3.3 2.7-6 6-6s6 2.7 6 6\"/><circle cx=\"17\" cy=\"9\" r=\"2.4\"/><path d=\"M17 14c2.5 0 4.5 2 4.5 4.5\"/>";
+    private const string IconeTroca = "<path d=\"M20 11a8 8 0 0 0-14.5-3.5L4 9\"/><path d=\"M4 4v5h5\"/><path d=\"M4 13a8 8 0 0 0 14.5 3.5L20 15\"/><path d=\"M20 20v-5h-5\"/>";
+    private const string IconeDocumento = "<path d=\"M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z\"/><path d=\"M14 3v5h5\"/><path d=\"M9 14l2 2 4-4\"/>";
+
+    private static string IconeSvg(string caminhos, string cor) =>
+        $"<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"{cor}\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\">{caminhos}</svg>";
+
+    // Mesmo limiar de PerfilGeralTab.tsx (DIAS_ALERTA_VENCIMENTO_EPI).
+    public const int DiasAlertaVencimentoEpi = 30;
+    private const int MaximoItensRanking = 6;
+
+    public record FatiaRosca(string Rotulo, int Valor, string Cor);
+
+    public static (int EmDia, int Vencendo, int Vencido) ContarStatusEpis(PerfilCompletoTrabalhadorDto perfil, DateTime hoje)
+    {
+        int emDia = 0, vencendo = 0, vencido = 0;
+        foreach (var epi in perfil.EpisAtivos)
+        {
+            if (epi.DataValidade is null) { emDia++; continue; }
+            var dias = (epi.DataValidade.Value.Date - hoje.Date).Days;
+            if (dias < 0) vencido++;
+            else if (dias <= DiasAlertaVencimentoEpi) vencendo++;
+            else emDia++;
+        }
+        return (emDia, vencendo, vencido);
+    }
+
+    public static string DescreverMotivo(MotivoEntregaEpi motivo) => motivo switch
+    {
+        MotivoEntregaEpi.Inicial => "Entrega inicial",
+        MotivoEntregaEpi.Dano => "Dano",
+        MotivoEntregaEpi.Extravio => "Extravio",
+        MotivoEntregaEpi.Vencimento => "Vencimento",
+        MotivoEntregaEpi.TrocaDeFuncao => "Troca de função",
+        _ => motivo.ToString(),
+    };
+
+    public static void Desenhar(IContainer container, PerfilCompletoTrabalhadorDto perfil, DateTime hoje)
+    {
+        var (emDia, vencendo, vencido) = ContarStatusEpis(perfil, hoje);
+        var assiduidade = perfil.AssiduidadeDds;
+        var percentualDds = assiduidade.TotalRealizados > 0
+            ? (int)Math.Round(assiduidade.TotalParticipados * 100.0 / assiduidade.TotalRealizados, MidpointRounding.AwayFromZero)
+            : (int?)null;
+        var treinamentosValidos = perfil.Treinamentos.Count(t => t.DataValidade.Date >= hoje.Date);
+        var episAtivos = perfil.EpisAtivos.Count;
+
+        container.Column(coluna =>
+        {
+            coluna.Spacing(8);
+            coluna.Item().Text("Resumo").FontSize(13).Bold().FontColor(CorMarca);
+
+            coluna.Item().Row(linha =>
+            {
+                linha.Spacing(6);
+                linha.RelativeItem().Element(c => Card(c, "EPIs ativos", $"{episAtivos} {(episAtivos == 1 ? "item" : "itens")}", CorInfo, FundoInfo, IconeEscudo));
+                linha.RelativeItem().Element(c => Card(c, "Presença em DDS",
+                    percentualDds is null ? "—" : $"{assiduidade.TotalParticipados}/{assiduidade.TotalRealizados} ({percentualDds}%)", CorOk, FundoOk, IconePessoas));
+                linha.RelativeItem().Element(c => Card(c, "Trocas de EPI (ano)",
+                    $"{perfil.TrocasNoAno} {(perfil.TrocasNoAno == 1 ? "solicitação" : "solicitações")}", CorAtencao, FundoAtencao, IconeTroca));
+                linha.RelativeItem().Element(c => Card(c, "Treinamentos válidos",
+                    $"{treinamentosValidos} {(treinamentosValidos == 1 ? "curso" : "cursos")}", CorInfo, FundoInfo, IconeDocumento));
+            });
+
+            coluna.Item().Row(linha =>
+            {
+                linha.Spacing(6);
+                linha.RelativeItem().Element(c => Painel(c, "Status dos EPIs", "Validade dos itens em posse do trabalhador", p =>
+                {
+                    if (episAtivos == 0) { Vazio(p, "Nenhum EPI ativo."); return; }
+                    Rosca(p, "EPIs ativos", episAtivos, new[]
+                    {
+                        new FatiaRosca("Em dia", emDia, CorOk),
+                        new FatiaRosca("Vencendo", vencendo, CorAtencao),
+                        new FatiaRosca("Vencido", vencido, CorAlerta),
+                    });
+                }));
+                linha.RelativeItem().Element(c => Painel(c, "Assiduidade em DDS", "Desde a admissão, na obra", p =>
+                {
+                    if (assiduidade.TotalRealizados == 0) { Vazio(p, "Nenhum DDS realizado na obra desde a admissão."); return; }
+                    Rosca(p, "DDS realizados", assiduidade.TotalRealizados, new[]
+                    {
+                        new FatiaRosca("Participou", assiduidade.TotalParticipados, CorOk),
+                        new FatiaRosca("Não participou", Math.Max(assiduidade.TotalRealizados - assiduidade.TotalParticipados, 0), CorAlerta),
+                    });
+                }));
+            });
+
+            coluna.Item().Row(linha =>
+            {
+                linha.Spacing(6);
+                linha.RelativeItem().Element(c => Painel(c, "Motivo das trocas (ano)", $"Reposições de EPI em {hoje.Year}", p =>
+                {
+                    var total = perfil.MotivosTroca.Sum(m => m.Quantidade);
+                    if (perfil.MotivosTroca.Count == 0 || total == 0) { Vazio(p, "Nenhuma troca registrada este ano."); return; }
+                    p.Column(col =>
+                    {
+                        col.Spacing(5);
+                        foreach (var m in perfil.MotivosTroca)
+                        {
+                            var pct = (int)Math.Round(m.Quantidade * 100.0 / total, MidpointRounding.AwayFromZero);
+                            col.Item().Element(b => Barra(b, DescreverMotivo(m.Motivo), $"{pct}% ({m.Quantidade})", pct));
+                        }
+                    });
+                }));
+                linha.RelativeItem().Element(c => Painel(c, "Frequência de trocas por EPI", "Entregas por item do catálogo", p =>
+                {
+                    var itens = perfil.FrequenciaTrocas.OrderByDescending(f => f.QuantidadeTrocas).ThenBy(f => f.CatalogoEpiNome).ToList();
+                    if (itens.Count == 0) { Vazio(p, "Sem dados de troca de EPI para exibir."); return; }
+                    var maximo = Math.Max(itens[0].QuantidadeTrocas, 1);
+                    p.Column(col =>
+                    {
+                        col.Spacing(5);
+                        foreach (var item in itens.Take(MaximoItensRanking))
+                        {
+                            var pct = (int)Math.Round(item.QuantidadeTrocas * 100.0 / maximo, MidpointRounding.AwayFromZero);
+                            col.Item().Element(b => Barra(b, item.CatalogoEpiNome,
+                                $"{item.QuantidadeTrocas} {(item.QuantidadeTrocas == 1 ? "troca" : "trocas")}", pct));
+                        }
+                        if (itens.Count > MaximoItensRanking)
+                            col.Item().Text($"+ {itens.Count - MaximoItensRanking} item(ns) com menos trocas").FontSize(8).FontColor(CorTextoSuave);
+                    });
+                }));
+            });
+        });
+    }
+
+    // Mesmo padrão dos cards do app (Início / Pessoas): linha de destaque no topo, número grande,
+    // rótulo pequeno e ícone em selo colorido à direita.
+    private static void Card(IContainer container, string rotulo, string valor, string cor, string fundoSelo, string icone)
+    {
+        container.Border(0.7f).BorderColor(CorLinha).Column(col =>
+        {
+            col.Item().Height(2.5f).Background(CorMarca);
+            col.Item().Padding(7).Row(r =>
+            {
+                r.RelativeItem().Column(c =>
+                {
+                    c.Spacing(2);
+                    c.Item().Text(valor).FontSize(11.5f).Bold();
+                    c.Item().Text(rotulo).FontSize(8).FontColor(CorTextoSuave);
+                });
+                r.ConstantItem(6);
+                r.ConstantItem(24).Height(24).Background(fundoSelo).Padding(5).Svg(IconeSvg(icone, cor));
+            });
+        });
+    }
+
+    // Painel com barra de destaque ao lado do título e subtítulo, separador e corpo — igual aos
+    // cards de gráfico do app.
+    private static void Painel(IContainer container, string titulo, string legenda, Action<IContainer> conteudo)
+    {
+        container.Border(0.7f).BorderColor(CorLinha).Column(col =>
+        {
+            col.Item().Padding(8).Row(cab =>
+            {
+                cab.ConstantItem(2.5f).Background(CorMarca);
+                cab.ConstantItem(7);
+                cab.RelativeItem().Column(t =>
+                {
+                    t.Item().Text(titulo).FontSize(10).Bold();
+                    t.Item().Text(legenda).FontSize(8).FontColor(CorTextoSuave);
+                });
+            });
+            col.Item().LineHorizontal(0.7f).LineColor(CorLinha);
+            col.Item().Padding(10).Element(conteudo);
+        });
+    }
+
+    private static void Vazio(IContainer container, string texto) =>
+        container.Text(texto).FontSize(9).Italic().FontColor(CorTextoSuave);
+
+    private static void Barra(IContainer container, string rotulo, string valor, int percentual)
+    {
+        var pct = Math.Clamp(percentual, 0, 100);
+        container.Column(col =>
+        {
+            col.Spacing(2);
+            col.Item().Row(r =>
+            {
+                r.RelativeItem().Text(rotulo).FontSize(9);
+                r.AutoItem().Text(valor).FontSize(9).FontColor(CorTextoSuave);
+            });
+            col.Item().Height(6).Background(CorTrilho).Row(r =>
+            {
+                if (pct > 0) r.RelativeItem(pct).Background(CorMarca);
+                if (pct < 100) r.RelativeItem(100 - pct);
+            });
+        });
+    }
+
+    private static void Rosca(IContainer container, string legendaCentral, int total, IReadOnlyList<FatiaRosca> fatias)
+    {
+        container.Column(coluna =>
+        {
+            coluna.Spacing(8);
+            coluna.Item().AlignCenter().Width(104).Height(104).Layers(camadas =>
+            {
+                camadas.Layer().Svg(GerarSvgRosca(fatias));
+                camadas.PrimaryLayer().AlignCenter().AlignMiddle().Column(c =>
+                {
+                    c.Item().AlignCenter().Text(total.ToString(CultureInfo.InvariantCulture)).FontSize(17).Bold();
+                    c.Item().AlignCenter().Text(legendaCentral).FontSize(7).FontColor(CorTextoSuave);
+                });
+            });
+            coluna.Item().AlignCenter().Text(t =>
+            {
+                for (var i = 0; i < fatias.Count; i++)
+                {
+                    if (i > 0) t.Span("   ");
+                    t.Span($"• {fatias[i].Rotulo}: {fatias[i].Valor}").FontSize(8.5f).SemiBold().FontColor(fatias[i].Cor);
+                }
+            });
+        });
+    }
+
+    // SVG da rosca só com traços (arcos). Sem texto: números e rótulos ficam no QuestPDF.
+    public static string GerarSvgRosca(IReadOnlyList<FatiaRosca> fatias)
+    {
+        const double raio = 15.9;
+        const double espessura = 6;
+        var inv = CultureInfo.InvariantCulture;
+        var total = fatias.Sum(f => f.Valor);
+
+        var svg = new StringBuilder();
+        svg.Append("<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 42 42\">");
+        svg.Append(string.Format(inv, "<circle cx=\"21\" cy=\"21\" r=\"{0}\" fill=\"none\" stroke=\"{1}\" stroke-width=\"{2}\"/>", raio, CorTrilho, espessura));
+
+        var visiveis = fatias.Where(f => f.Valor > 0).ToList();
+        if (total > 0 && visiveis.Count == 1)
+        {
+            svg.Append(string.Format(inv, "<circle cx=\"21\" cy=\"21\" r=\"{0}\" fill=\"none\" stroke=\"{1}\" stroke-width=\"{2}\"/>", raio, visiveis[0].Cor, espessura));
+        }
+        else if (total > 0)
+        {
+            var anguloInicial = -90.0;
+            foreach (var fatia in visiveis)
+            {
+                var varredura = 360.0 * fatia.Valor / total;
+                var anguloFinal = anguloInicial + varredura;
+                var (x1, y1) = Ponto(raio, anguloInicial);
+                var (x2, y2) = Ponto(raio, anguloFinal);
+                var grande = varredura > 180 ? 1 : 0;
+                svg.Append(string.Format(inv,
+                    "<path d=\"M {0:0.###} {1:0.###} A {2} {2} 0 {3} 1 {4:0.###} {5:0.###}\" fill=\"none\" stroke=\"{6}\" stroke-width=\"{7}\"/>",
+                    x1, y1, raio, grande, x2, y2, fatia.Cor, espessura));
+                anguloInicial = anguloFinal;
+            }
+        }
+
+        svg.Append("</svg>");
+        return svg.ToString();
+    }
+
+    private static (double X, double Y) Ponto(double raio, double graus)
+    {
+        var rad = graus * Math.PI / 180.0;
+        return (21 + raio * Math.Cos(rad), 21 + raio * Math.Sin(rad));
+    }
+}

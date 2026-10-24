@@ -18,6 +18,7 @@ import {
   ListaSelecaoMultipla,
   Textarea,
   type Tom,
+  designTokens,
 } from '@ui';
 import {
   Add24Regular,
@@ -28,6 +29,7 @@ import {
   Eye24Regular,
   LockClosed24Regular,
   Signature24Regular,
+  LockClosed16Regular,
 } from '@fluentui/react-icons';
 import {
   api,
@@ -36,9 +38,10 @@ import {
   StatusDdsSemanal,
   statusDdsSemanalLabel,
   tipoDdsSemanalLabel,
-  TipoDdsSemanal,
+  tipoDdsSemanalIncluiTerceirizados,
   type Atividade,
   type CatalogoTemaDds,
+  type TemaDdsAgendado,
   type DdsSemanalDetalhe,
 } from '../../lib/api';
 import { useVisualizadorPdf } from '../../components/useVisualizadorPdf';
@@ -83,6 +86,9 @@ export function DdsSemanalDetalhePage() {
   const [detalhe, setDetalhe] = useState<DdsSemanalDetalhe | null>(null);
   const [atividades, setAtividades] = useState<Atividade[]>([]);
   const [catalogoTemas, setCatalogoTemas] = useState<CatalogoTemaDds[]>([]);
+  // Temas agendados para este dia na obra (ex.: gerado por ocorrência da véspera) — o primeiro já
+  // vem selecionado, com a origem à vista.
+  const [temasAgendados, setTemasAgendados] = useState<TemaDdsAgendado[]>([]);
   const [diaEmCriacao, setDiaEmCriacao] = useState<string | null>(null);
   const [novoDia, setNovoDia] = useState(novoDiaVazio());
   const [diaMarcandoSemExpediente, setDiaMarcandoSemExpediente] = useState<string | null>(null);
@@ -122,6 +128,26 @@ export function DdsSemanalDetalhePage() {
     setDiaEmCriacao(data);
     setDiaMarcandoSemExpediente(null);
     setNovoDia(novoDiaVazio());
+    setTemasAgendados([]);
+    if (!detalhe) return;
+    api.dds
+      .temasAgendados(detalhe.semanal.obraId, data)
+      .then((lista) => {
+        setTemasAgendados(lista);
+        if (lista.length === 0) return;
+        // O tema foi criado depois que a página carregou o catálogo? Inclui para o seletor mostrá-lo.
+        setCatalogoTemas((atuais) =>
+          lista.reduce(
+            (acc, t) =>
+              acc.some((c) => c.id === t.catalogoTemaDdsId)
+                ? acc
+                : [...acc, { id: t.catalogoTemaDdsId, nome: t.nome, descricao: t.roteiro }],
+            atuais,
+          ),
+        );
+        setNovoDia((atual) => (atual.catalogoTemaDdsId ? atual : { ...atual, catalogoTemaDdsId: lista[0].catalogoTemaDdsId }));
+      })
+      .catch(() => setTemasAgendados([]));
   }
 
   function abrirSemExpediente(data: string) {
@@ -281,7 +307,7 @@ export function DdsSemanalDetalhePage() {
     !somenteLeitura &&
     detalhe.dias.length === 5 &&
     detalhe.dias.every((d) => d.status === StatusDds.Concluido) &&
-    (semanal.tipo !== TipoDdsSemanal.Terceirizados || (responsavelTerceirizadaNome.trim() && responsavelTerceirizadaFuncao.trim()));
+    (!tipoDdsSemanalIncluiTerceirizados(semanal.tipo) || (responsavelTerceirizadaNome.trim() && responsavelTerceirizadaFuncao.trim()));
 
   return (
     <div>
@@ -360,7 +386,7 @@ export function DdsSemanalDetalhePage() {
       {!somenteLeitura && (
         <div style={{ marginBottom: 16 }}>
           <Card titulo="Encerramento da semana" densidade="compacta">
-            {semanal.tipo === TipoDdsSemanal.Terceirizados && (
+            {tipoDdsSemanalIncluiTerceirizados(semanal.tipo) && (
               <FormSection titulo="Responsável da Empresa Terceirizada" numero={1} primeira>
                 <FormGrid>
                   <Campo span={6}>
@@ -469,17 +495,56 @@ export function DdsSemanalDetalhePage() {
                     </Field>
                   </Campo>
                   <Campo span={12}>
-                    <Field label="Tema livre (opcional)" hint="Temas criados pela equipe, como campanhas do mês. Só um por registro.">
-                      <SeletorTemaLivre
-                        temas={catalogoTemas}
-                        selecionadoId={novoDia.catalogoTemaDdsId}
-                        aoSelecionar={(idTema) => setNovoDia((atual) => ({ ...atual, catalogoTemaDdsId: idTema }))}
-                        aoCriar={(tema) => {
-                          setCatalogoTemas((atuais) => [...atuais, tema].sort((a, b) => a.nome.localeCompare(b.nome, 'pt-BR')));
-                          setNovoDia((atual) => ({ ...atual, catalogoTemaDdsId: tema.id }));
-                        }}
-                      />
-                    </Field>
+                    {temasAgendados.length > 0 ? (
+                      // Tema gerado por ocorrência: obrigatório e fixo neste registro (regra do usuário,
+                      // 09/10/2026) — o servidor aplica o mesmo tema mesmo que a tela mande outro.
+                      <Field label="Tema do dia (obrigatório)" hint="Gerado a partir de uma ocorrência na obra. Não pode ser trocado nem removido.">
+                        <div style={{ display: 'grid', gap: 8 }}>
+                          <div
+                            style={{
+                              display: 'grid',
+                              gap: 6,
+                              padding: '10px 12px',
+                              borderRadius: 8,
+                              border: `1px solid ${designTokens.colorPrimary}`,
+                              backgroundColor: designTokens.colorNeutralLight,
+                            }}
+                          >
+                            <strong style={{ fontSize: 14, display: 'inline-flex', gap: 6, alignItems: 'center' }}>
+                              <LockClosed16Regular aria-label="Tema fixo" /> {temasAgendados[0].nome}
+                            </strong>
+                            <Legenda>Sugerido a partir da {temasAgendados[0].descricaoOrigem ?? 'ocorrência registrada na obra'}.</Legenda>
+                            {temasAgendados[0].roteiro && (
+                              <details>
+                                <summary style={{ cursor: 'pointer', fontSize: 12 }}>Ver roteiro</summary>
+                                <p style={{ margin: '6px 0 0', fontSize: 13, lineHeight: '20px', whiteSpace: 'pre-wrap' }}>
+                                  {temasAgendados[0].roteiro}
+                                </p>
+                              </details>
+                            )}
+                          </div>
+                          {temasAgendados.length > 1 && (
+                            <Legenda>
+                              {temasAgendados.length - 1 === 1
+                                ? 'Há mais 1 tema de ocorrência pendente nesta obra: ele entra no próximo DDS.'
+                                : `Há mais ${temasAgendados.length - 1} temas de ocorrência pendentes nesta obra: eles entram nos próximos DDS.`}
+                            </Legenda>
+                          )}
+                        </div>
+                      </Field>
+                    ) : (
+                      <Field label="Tema livre (opcional)" hint="Temas criados pela equipe, como campanhas do mês. Só um por registro.">
+                        <SeletorTemaLivre
+                          temas={catalogoTemas}
+                          selecionadoId={novoDia.catalogoTemaDdsId}
+                          aoSelecionar={(idTema) => setNovoDia((atual) => ({ ...atual, catalogoTemaDdsId: idTema }))}
+                          aoCriar={(tema) => {
+                            setCatalogoTemas((atuais) => [...atuais, tema].sort((a, b) => a.nome.localeCompare(b.nome, 'pt-BR')));
+                            setNovoDia((atual) => ({ ...atual, catalogoTemaDdsId: tema.id }));
+                          }}
+                        />
+                      </Field>
+                    )}
                   </Campo>
                 </FormGrid>
                 <FormRodape>

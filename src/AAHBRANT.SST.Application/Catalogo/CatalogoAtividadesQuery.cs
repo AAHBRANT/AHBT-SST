@@ -1,3 +1,4 @@
+using AAHBRANT.SST.Application.Common;
 using AAHBRANT.SST.Application.Common.Interfaces;
 using AAHBRANT.SST.Domain.Enums;
 using MediatR;
@@ -35,7 +36,7 @@ public class ObterCatalogoAtividadesQueryHandler
 
     public async Task<List<CatalogoAtividadeDto>> Handle(ObterCatalogoAtividadesQuery request, CancellationToken ct)
     {
-        var atividades = await _db.Atividades.AsNoTracking()
+        var atividades = await _db.Atividades.AsNoTracking().EmUso(_db)
             .Where(a => request.ObraId == null || a.ObraId == request.ObraId)
             .Select(a => new { a.Id, a.Nome, a.Descricao, a.ObraId })
             .ToListAsync(ct);

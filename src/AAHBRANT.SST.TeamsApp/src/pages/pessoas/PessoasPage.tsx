@@ -1,8 +1,7 @@
 import { useEffect } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
-import { Abas, PageHeader, useAbaNaUrl } from '@ui';
-import { Grid24Regular, People24Regular, Settings24Regular } from '@fluentui/react-icons';
-import { PessoasDashboardTab } from './dashboard/PessoasDashboardTab';
+import { BotaoVoltar, Button, PageHeader, useAbaNaUrl } from '@ui';
+import { Settings24Regular } from '@fluentui/react-icons';
 import { TrabalhadoresTab } from './TrabalhadoresTab';
 import { FuncoesTab } from './FuncoesTab';
 
@@ -17,7 +16,9 @@ import { FuncoesTab } from './FuncoesTab';
 // Onda 2 Task 3 (camada ui/): página-pilar sem aninhamento (só um nível de abas, igual EpiPage) —
 // `Abas` + `useAbaNaUrl('aba', ...)` sincroniza a aba com a URL nos dois sentidos (spec §3), mesmo
 // param que a página já lia (`?aba=`) antes da migração, preservando os links antigos.
-const ABAS = ['trabalhadores', 'funcoes', 'dashboard'] as const;
+// Dashboard virou faixa no topo e a lista de Funcionários virou a própria página (pedido do usuário,
+// 05/10): sem barra de abas. "Funções" abre pelo botão do cabeçalho (?aba=funcoes).
+const ABAS = ['trabalhadores', 'funcoes'] as const;
 type AbaPessoas = (typeof ABAS)[number];
 
 const ABAS_MOVIDAS_PARA_TREINAMENTOS = ['cursos', 'matrizTreinamento'];
@@ -37,25 +38,30 @@ export function PessoasPage({ mostrarTitulo = true }: { mostrarTitulo?: boolean 
 
   const [aba, setAba] = useAbaNaUrl<AbaPessoas>('aba', ABAS, 'trabalhadores');
 
+  const emFuncoes = aba === 'funcoes';
+  const botaoFuncoes = emFuncoes ? (
+    <BotaoVoltar rotulo="Voltar para funcionários" onClick={() => setAba('trabalhadores')} />
+  ) : (
+    <Button appearance="secondary" icon={<Settings24Regular />} onClick={() => setAba('funcoes')}>
+      Funções
+    </Button>
+  );
+
+  // Lista de funcionários (21/10): um só cabeçalho, o da própria lista — o botão Funções vai junto com
+  // "Novo funcionário". Dashboard e cadastros faciais viraram "Ver análise" e um aviso compacto
+  // dentro de TrabalhadoresTab, abaixo da busca.
+  if (!emFuncoes) {
+    return <TrabalhadoresTab mostrarTitulo={mostrarTitulo} acoesCabecalho={botaoFuncoes} />;
+  }
+
   return (
     <div>
-      {mostrarTitulo && <PageHeader titulo="Pessoas" />}
-
-      <Abas
-        nivel={mostrarTitulo ? 'pilar' : 'modulo'}
-        valor={aba}
-        aoMudar={setAba}
-        aria-label="Seções de Pessoas"
-        abas={[
-          { valor: 'trabalhadores', rotulo: 'Funcionários', icone: <People24Regular /> },
-          { valor: 'funcoes', rotulo: 'Funções', icone: <Settings24Regular /> },
-          { valor: 'dashboard', rotulo: 'Dashboard', icone: <Grid24Regular /> },
-        ]}
-      />
-
-      {aba === 'trabalhadores' && <TrabalhadoresTab />}
-      {aba === 'funcoes' && <FuncoesTab />}
-      {aba === 'dashboard' && <PessoasDashboardTab />}
+      {mostrarTitulo ? (
+        <PageHeader titulo="Pessoas · Funções" acoes={botaoFuncoes} />
+      ) : (
+        <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 12 }}>{botaoFuncoes}</div>
+      )}
+      <FuncoesTab />
     </div>
   );
 }

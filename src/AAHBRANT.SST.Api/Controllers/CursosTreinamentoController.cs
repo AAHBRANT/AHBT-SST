@@ -32,6 +32,20 @@ public class CursosTreinamentoController : ControllerBase
     public async Task<IActionResult> ListarNr06SemMarcador(CancellationToken ct)
         => Ok(await _mediator.Send(new ListarCursosNr6SemMarcadorQuery(), ct));
 
+    // Padrão de cada NR (19/10): título, carga horária mínima, validade e conteúdo programático
+    // mínimo — o cadastro de curso preenche o formulário com isso ao reconhecer a NR digitada.
+    [Authorize(Policy = "treinamento:ver")]
+    [HttpGet("padroes-nr")]
+    public IActionResult ListarPadroesNr()
+        => Ok(Domain.Entidades.CatalogoNormasRegulamentadoras.Todos.Select(p => new
+        {
+            p.Numero,
+            p.Titulo,
+            p.CargaHorariaMinima,
+            p.ValidadeEmMeses,
+            ConteudoProgramatico = p.ConteudoProgramaticoTexto,
+        }));
+
     [Authorize(Policy = "treinamento:ver")]
     [HttpGet("{id:guid}")]
     public async Task<IActionResult> ObterPorId(Guid id, CancellationToken ct)

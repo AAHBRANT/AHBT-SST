@@ -1,4 +1,5 @@
 using AAHBRANT.SST.Application.Common.Interfaces;
+using AAHBRANT.SST.Application.Common.Seguranca;
 using MediatR;
 using Microsoft.EntityFrameworkCore;
 
@@ -15,6 +16,7 @@ public class ListarAprsQueryHandler : IRequestHandler<ListarAprsQuery, List<AprD
     public async Task<List<AprDto>> Handle(ListarAprsQuery request, CancellationToken ct)
     {
         var query = _db.Aprs
+            .NoEscopoDaAtividade(_db, a => a.AtividadeId)
             .Include(a => a.Atividade!).ThenInclude(at => at.Obra)
             .Include(a => a.Equipe)
             .Include(a => a.AprovadoPorUsuario)

@@ -1,3 +1,4 @@
+using AAHBRANT.SST.Application.Assinatura;
 using AAHBRANT.SST.Application.Common.Interfaces;
 using FluentValidation;
 using MediatR;
@@ -33,6 +34,8 @@ public class ExcluirInspecaoCommandHandler : IRequestHandler<ExcluirInspecaoComm
 
     public async Task Handle(ExcluirInspecaoCommand request, CancellationToken ct)
     {
+        await ProtecaoDocumentoAssinado.GarantirEditavelAsync(_db, "Inspecao", request.Id, ct);
+
         var inspecao = await _db.Inspecoes.FirstOrDefaultAsync(x => x.Id == request.Id, ct)
             ?? throw new KeyNotFoundException("Inspeção não encontrada.");
 

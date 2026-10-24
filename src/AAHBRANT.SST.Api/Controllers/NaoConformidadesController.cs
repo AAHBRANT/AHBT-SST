@@ -40,7 +40,7 @@ public class NaoConformidadesController : ControllerBase
     {
         await _mediator.Send(new AtualizarNaoConformidadeCommand(
             id, body.OrigemDeteccao, body.RequisitoRelacionado, body.Descricao, body.Local,
-            body.AtividadeId, body.RiscoId, body.ResponsavelUsuarioId, body.Prazo), ct);
+            body.AtividadeId, body.RiscoId, body.ResponsavelUsuarioId, body.Prazo, body.ObraId), ct);
         return NoContent();
     }
 
@@ -104,7 +104,8 @@ public record AtualizarNaoConformidadeRequestBody(
     Guid? AtividadeId,
     Guid? RiscoId,
     Guid? ResponsavelUsuarioId,
-    DateTime? Prazo);
+    DateTime? Prazo,
+    Guid? ObraId = null);
 
 public record ResponderNaoConformidadeRequestBody(
     string DescricaoAcao,

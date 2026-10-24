@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { Input, makeStyles } from '@fluentui/react-components';
+import { Button, Input, makeStyles } from '@fluentui/react-components';
 import type { Acidente, RegistroHhtMensal } from '../../lib/api';
 import { Card, Legenda, StatusChip, designTokens, usePaletaGraficos } from '@ui';
 import { RotuloEscopo } from './RotuloEscopo';
@@ -41,16 +41,6 @@ const useStyles = makeStyles({
     color: designTokens.colorNeutralMedium,
   },
   linhaValor: { fontWeight: 700, color: designTokens.colorNeutralDark, fontVariantNumeric: 'tabular-nums' },
-  botaoMeta: {
-    border: 'none',
-    background: 'none',
-    padding: 0,
-    cursor: 'pointer',
-    fontSize: '12.5px',
-    fontWeight: 700,
-    color: designTokens.colorPrimary,
-    whiteSpace: 'nowrap',
-  },
   semAcidente: {
     display: 'flex',
     alignItems: 'center',
@@ -192,16 +182,16 @@ export function TaxaGravidadeCard({ acidentes, registrosHht, escopo, className }
             style={{ width: 90 }}
           />
         ) : (
-          <button
-            type="button"
-            className={estilos.botaoMeta}
+          <Button
+            appearance="subtle"
+            size="small"
             onClick={() => {
               setRascunhoMeta(meta !== null ? String(meta) : '');
               setEditandoMeta(true);
             }}
           >
             {meta !== null ? 'Alterar meta' : 'Definir meta'}
-          </button>
+          </Button>
         )
       }
     >

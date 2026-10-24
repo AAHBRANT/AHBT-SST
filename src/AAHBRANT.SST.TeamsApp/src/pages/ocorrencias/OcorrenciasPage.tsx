@@ -1,11 +1,11 @@
-import { Abas, useAbaNaUrl } from '@ui';
+import { Abas, DashboardTopo, useAbaNaUrl } from '@ui';
 import { AcidentesPage } from '../acidentes/AcidentesPage';
 import { NaoConformidadesPage } from '../naoconformidades/NaoConformidadesPage';
 import { OcorrenciasDashboardTab } from './dashboard/OcorrenciasDashboardTab';
 
-type SecaoOcorrencias = 'acidentes' | 'nao-conformidades' | 'dashboard';
+type SecaoOcorrencias = 'acidentes' | 'nao-conformidades';
 
-const SECOES_VALIDAS: SecaoOcorrencias[] = ['acidentes', 'nao-conformidades', 'dashboard'];
+const SECOES_VALIDAS: SecaoOcorrencias[] = ['acidentes', 'nao-conformidades'];
 
 // Item "Ocorrências" da sidebar (pedido do usuário, 02/09, réplica de mockup, com fusão pedida em
 // 03/09): Acidentes/Incidentes/Quase-acidentes eram 3 abas separadas apontando pra mesma tela
@@ -21,6 +21,10 @@ export function OcorrenciasPage() {
 
   return (
     <div>
+      <DashboardTopo>
+        <OcorrenciasDashboardTab />
+      </DashboardTopo>
+
       <Abas
         nivel="pilar"
         valor={secao}
@@ -29,13 +33,11 @@ export function OcorrenciasPage() {
         abas={[
           { valor: 'acidentes', rotulo: 'Acidentes / Incidentes / Quase-acidentes' },
           { valor: 'nao-conformidades', rotulo: 'Não conformidades' },
-          { valor: 'dashboard', rotulo: 'Dashboard' },
         ]}
       />
 
       {secao === 'acidentes' && <AcidentesPage />}
       {secao === 'nao-conformidades' && <NaoConformidadesPage mostrarTitulo={false} />}
-      {secao === 'dashboard' && <OcorrenciasDashboardTab />}
     </div>
   );
 }

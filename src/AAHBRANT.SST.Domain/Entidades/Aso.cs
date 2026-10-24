@@ -27,6 +27,21 @@ public class Aso : AuditableEntity
 
     public ICollection<AsoRestricao> Restricoes { get; set; } = new List<AsoRestricao>();
     public ICollection<Evidencia> Evidencias { get; set; } = new List<Evidencia>();
+
+    // PDF/foto do ASO (23/10/2026, importação da pasta da terceirizada). Um arquivo por ASO.
+    public ArquivoAso? Arquivo { get; set; }
+}
+
+// Mesmo padrão de ArquivoCertificadoTreinamento: o arquivo fica no banco, um por ASO, reenviar substitui.
+public class ArquivoAso : AuditableEntity
+{
+    public Guid AsoId { get; set; }
+    public Aso? Aso { get; set; }
+
+    public string NomeArquivo { get; set; } = string.Empty;
+    public string ContentType { get; set; } = string.Empty;
+    public byte[] Conteudo { get; set; } = Array.Empty<byte>();
+    public long TamanhoBytes { get; set; }
 }
 
 public class AsoRestricao : AuditableEntity

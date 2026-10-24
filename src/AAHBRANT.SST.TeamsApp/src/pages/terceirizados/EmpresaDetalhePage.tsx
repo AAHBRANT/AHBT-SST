@@ -19,9 +19,14 @@ import {
   Input,
   type Coluna,
 } from '@ui';
-import { Open24Regular, Edit24Regular } from '@fluentui/react-icons';
-import { api, type Empresa, type Contrato, type AtualizarEmpresa } from '../../lib/api';
+import { Open24Regular, Edit24Regular, DocumentAdd24Regular, DocumentPdf24Regular, ArrowUpload24Regular } from '@fluentui/react-icons';
+import { api, type Empresa, type Contrato, type AtualizarEmpresa, type Obra, type Funcao } from '../../lib/api';
 import { useSucessoToast } from '../../hooks/useSucessoToast';
+import { FormularioContrato } from './FormularioContrato';
+import { CadastroPorContratoPdf } from './CadastroPorContratoPdf';
+import { CardConformidade } from './ConformidadeEmpresa';
+import { useVisualizadorPdf } from '../../components/useVisualizadorPdf';
+import { formularioContratoVazio, paraDadosContrato, type ValorFormularioContrato } from './valorFormularioContrato';
 
 type EdicaoEmpresa = Omit<AtualizarEmpresa, 'id' | 'status'>;
 
@@ -48,6 +53,14 @@ export function EmpresaDetalhePage() {
   const [painelAberto, setPainelAberto] = useState(false);
   const [salvando, setSalvando] = useState(false);
   const [edicao, setEdicao] = useState<EdicaoEmpresa | null>(null);
+  const [novoContratoAberto, setNovoContratoAberto] = useState(false);
+  // "Subir contrato (PDF)": a IA lê o contrato desta empresa e o PDF fica guardado junto dele.
+  const [contratoPdfAberto, setContratoPdfAberto] = useState(false);
+  const { visualizar, dialogoVisualizador } = useVisualizadorPdf();
+  const [erroContrato, setErroContrato] = useState<string | null>(null);
+  const [salvandoContrato, setSalvandoContrato] = useState(false);
+  const [obras, setObras] = useState<Obra[]>([]);
+  const [funcoes, setFuncoes] = useState<Funcao[]>([]);
   const sucessoToast = useSucessoToast();
 
   async function carregar() {
@@ -105,9 +118,42 @@ export function EmpresaDetalhePage() {
     }
   }
 
+  async function abrirNovoContrato() {
+    setErroContrato(null);
+    setNovoContratoAberto(true);
+    if (obras.length > 0 && funcoes.length > 0) return;
+    try {
+      const [listaObras, listaFuncoes] = await Promise.all([api.obras.listar(), api.funcoes.listar()]);
+      setObras(listaObras);
+      setFuncoes([...listaFuncoes].sort((a, b) => a.nome.localeCompare(b.nome)));
+    } catch (e) {
+      setErroContrato(e instanceof Error ? e.message : 'Falha ao carregar obras e funções.');
+    }
+  }
+
+  async function criarContrato(valor: ValorFormularioContrato) {
+    if (!empresa) return;
+    try {
+      setSalvandoContrato(true);
+      setErroContrato(null);
+      const { id: contratoId } = await api.terceirizados.contratos.criar({
+        empresaId: empresa.id,
+        obraId: valor.obraId,
+        ...paraDadosContrato(valor),
+      });
+      sucessoToast('Contrato cadastrado. Agora cadastre as pessoas em cada vaga.');
+      navigate(`/terceirizados/contratos/${contratoId}`);
+    } catch (e) {
+      setErroContrato(e instanceof Error ? e.message : 'Falha ao cadastrar o contrato.');
+    } finally {
+      setSalvandoContrato(false);
+    }
+  }
+
   const colunas: Coluna<Contrato>[] = [
     { chave: 'numeroContrato', rotulo: 'Nº do contrato' },
     { chave: 'obraNome', rotulo: 'Obra' },
+    { chave: 'origem', rotulo: 'Origem', render: (c) => (c.origemGJuri ? 'G-Juri' : 'Cadastro manual') },
     { chave: 'vigencia', rotulo: 'Vigência', render: (c) => `${c.dataInicioVigencia} a ${c.dataFimVigencia}` },
     {
       chave: 'status',
@@ -119,6 +165,18 @@ export function EmpresaDetalhePage() {
       ),
     },
   ];
+
+  function verPdfContrato(c: Contrato) {
+    void visualizar({
+      titulo: `Contrato ${c.numeroContrato}`,
+      nomeArquivo: `contrato-${c.numeroContrato}.pdf`,
+      obter: async () => {
+        const arquivo = await api.terceirizados.contratos.baixarArquivo(c.id);
+        if (!arquivo) throw new Error('O PDF deste contrato não foi encontrado.');
+        return arquivo;
+      },
+    });
+  }
 
   if (!empresa) {
     return erro ? (
@@ -246,24 +304,75 @@ export function EmpresaDetalhePage() {
         </div>
       </Card>
 
-      <Card titulo="Contratos">
+      <CardConformidade key={contratos.length} empresaId={empresa.id} podeEditar={empresa.status === 'Ativa'} />
+
+      <Card
+        titulo="Contratos"
+        acoes={
+          empresa.status === 'Ativa' && !novoContratoAberto && !contratoPdfAberto ? (
+            <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+              <Button icon={<DocumentAdd24Regular />} onClick={() => void abrirNovoContrato()}>
+                Novo contrato
+              </Button>
+              <Button appearance="primary" icon={<ArrowUpload24Regular />} onClick={() => setContratoPdfAberto(true)}>
+                Subir contrato (PDF)
+              </Button>
+            </div>
+          ) : undefined
+        }
+      >
+        <PainelCriacaoInline aberto={contratoPdfAberto} titulo="Subir contrato (PDF)">
+          {contratoPdfAberto && (
+            <CadastroPorContratoPdf
+              empresaFixa={{ id: empresa.id, razaoSocial: empresa.razaoSocial, cnpj: empresa.cnpj }}
+              aoCancelar={() => setContratoPdfAberto(false)}
+              aoConcluir={() => void carregar()}
+            />
+          )}
+        </PainelCriacaoInline>
+        <PainelCriacaoInline aberto={novoContratoAberto} titulo="Novo contrato">
+          {novoContratoAberto && (
+            <FormularioContrato
+              valorInicial={formularioContratoVazio}
+              obras={obras}
+              funcoes={funcoes}
+              erro={erroContrato}
+              aoFecharErro={() => setErroContrato(null)}
+              salvando={salvandoContrato}
+              rotuloSalvar="Cadastrar contrato"
+              aoSalvar={(valor) => void criarContrato(valor)}
+              aoCancelar={() => setNovoContratoAberto(false)}
+            />
+          )}
+        </PainelCriacaoInline>
         <DataTable
           aria-label="Contratos da empresa"
           colunas={colunas}
           linhas={contratos}
           chaveLinha={(c) => c.id}
           carregando={carregando}
-          vazio={{ titulo: 'Nenhum contrato recebido do G-Juri ainda para esta empresa' }}
+          vazio={{ titulo: 'Nenhum contrato cadastrado para esta empresa', descricao: 'Use "Subir contrato (PDF)" para a IA preencher tudo, ou "Novo contrato" para cadastrar à mão.' }}
           acoesLinha={(c) => (
-            <BotaoAcao
-              tom="ver"
-              icon={<Open24Regular />}
-              onClick={() => navigate(`/terceirizados/contratos/${c.id}`)}
-              aria-label="Ver vagas do contrato"
-            />
+            <>
+              {c.temArquivo && (
+                <BotaoAcao
+                  tom="ver"
+                  icon={<DocumentPdf24Regular />}
+                  onClick={() => verPdfContrato(c)}
+                  aria-label="Ver PDF do contrato"
+                />
+              )}
+              <BotaoAcao
+                tom="ver"
+                icon={<Open24Regular />}
+                onClick={() => navigate(`/terceirizados/contratos/${c.id}`)}
+                aria-label="Ver vagas do contrato"
+              />
+            </>
           )}
         />
       </Card>
+      {dialogoVisualizador}
     </div>
   );
 }

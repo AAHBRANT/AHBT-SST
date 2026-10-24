@@ -1,4 +1,4 @@
-using AAHBRANT.SST.Application.Common.Interfaces;
+﻿using AAHBRANT.SST.Application.Common.Interfaces;
 using AAHBRANT.SST.Domain.Entidades;
 using AAHBRANT.SST.Domain.Enums;
 using FluentValidation;
@@ -91,6 +91,22 @@ public class EncerrarInspecaoCommandHandler : IRequestHandler<EncerrarInspecaoCo
 
         inspecao.Status = StatusInspecao.Concluida;
 
+        // Item Não Conforme sem NC vira NC automaticamente no encerramento (decisão do usuário, 17/10):
+        // basta um item para gerar; uma NC por item. Itens que já tiveram "Gerar ocorrência" não duplicam.
+        var naoConformes = inspecao.Respostas.Where(r => r.Ativo && r.StatusItem == StatusItemChecklist.NaoConforme).ToList();
+        if (naoConformes.Count > 0)
+        {
+            var ids = naoConformes.Select(r => r.Id).ToList();
+            var jaTemNc = await _db.NaoConformidades.IgnoreQueryFilters()
+                .Where(n => n.InspecaoItemRespostaId != null && ids.Contains(n.InspecaoItemRespostaId.Value))
+                .Select(n => n.InspecaoItemRespostaId!.Value).ToListAsync(ct);
+            foreach (var r in naoConformes.Where(r => !jaTemNc.Contains(r.Id)))
+            {
+                r.Inspecao = inspecao;
+                _db.NaoConformidades.Add(NaoConformidades.Commands.CriarNaoConformidadeDeItemCommandHandler.NovaDoItem(r));
+            }
+        }
+
         var documentoExistente = await _db.DocumentosAssinatura.FirstOrDefaultAsync(
             d => d.EntidadeTipo == nameof(Domain.Entidades.Inspecao) && d.EntidadeId == inspecao.Id, ct);
         if (documentoExistente is null)
@@ -101,5 +117,9 @@ public class EncerrarInspecaoCommandHandler : IRequestHandler<EncerrarInspecaoCo
             });
 
         await _db.SaveChangesAsync(ct);
+
+        // Ações do plano de ocorrências desta obra que se resolvem com uma inspeção deste tipo.
+        var ocorrencias = await AAHBRANT.SST.Application.AcoesPlano.ResolucaoVinculadaAcaoPlano.OcorrenciasComInspecaoAsync(_db, inspecao.ObraId, inspecao.TipoInspecao, ct);
+        await AAHBRANT.SST.Application.AcoesPlano.ResolucaoVinculadaAcaoPlano.ConcluirAtendidasAsync(_db, ocorrencias, ct);
     }
 }

@@ -14,8 +14,10 @@ public class GeradorNumeroDocumentoService : IGeradorNumeroDocumentoService
     {
         var ano = DateTime.UtcNow.Year;
 
-        var contador = await _db.ContadoresDocumento
-            .FirstOrDefaultAsync(c => c.Prefixo == prefixo && c.Ano == ano, ct);
+        // Local primeiro: várias chamadas antes do SaveChanges (ex.: um número por participante no
+        // encerramento da turma) precisam enxergar o contador recém-criado e ainda não salvo.
+        var contador = _db.ContadoresDocumento.Local.FirstOrDefault(c => c.Prefixo == prefixo && c.Ano == ano)
+            ?? await _db.ContadoresDocumento.FirstOrDefaultAsync(c => c.Prefixo == prefixo && c.Ano == ano, ct);
         if (contador is null)
         {
             contador = new ContadorDocumento { Prefixo = prefixo, Ano = ano, UltimoNumero = 0 };

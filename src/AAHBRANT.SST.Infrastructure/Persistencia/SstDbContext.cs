@@ -1,4 +1,6 @@
 ﻿using AAHBRANT.SST.Application.Common.Interfaces;
+using AAHBRANT.SST.Application.NaoConformidades;
+using AAHBRANT.SST.Domain.Enums;
 using AAHBRANT.SST.Domain.Common;
 using AAHBRANT.SST.Domain.Entidades;
 using AAHBRANT.SST.Infrastructure.Seguranca;
@@ -32,11 +34,17 @@ public class SstDbContext : DbContext, IAppDbContext
     public DbSet<ExameComplementar> ExamesComplementares => Set<ExameComplementar>();
     public DbSet<AptidaoAtividadeEspecifica> AptidoesAtividadeEspecifica => Set<AptidaoAtividadeEspecifica>();
     public DbSet<PcmsoDetalhe> PcmsoDetalhes => Set<PcmsoDetalhe>();
+    public DbSet<ExameFuncaoObra> ExamesFuncaoObra => Set<ExameFuncaoObra>();
+    public DbSet<PcmsoRevisao> PcmsoRevisoes => Set<PcmsoRevisao>();
+    public DbSet<LeituraDocumentoIa> LeiturasDocumentoIa => Set<LeituraDocumentoIa>();
     public DbSet<CursoTreinamento> CursosTreinamento => Set<CursoTreinamento>();
     public DbSet<Treinamento> Treinamentos => Set<Treinamento>();
     public DbSet<ArquivoCertificadoTreinamento> ArquivosCertificadoTreinamento => Set<ArquivoCertificadoTreinamento>();
+    public DbSet<ArquivoAso> ArquivosAso => Set<ArquivoAso>();
     public DbSet<TermoCompromissoEpiManual> TermosCompromissoEpiManual => Set<TermoCompromissoEpiManual>();
     public DbSet<MatrizTreinamentoFuncao> MatrizTreinamentoFuncoes => Set<MatrizTreinamentoFuncao>();
+    public DbSet<RegraCursoObrigatorio> RegrasCursoObrigatorio => Set<RegraCursoObrigatorio>();
+    public DbSet<CursoObrigatorioFuncaoObra> CursosObrigatoriosFuncaoObra => Set<CursoObrigatorioFuncaoObra>();
     public DbSet<SessaoTreinamento> SessoesTreinamento => Set<SessaoTreinamento>();
     public DbSet<ParticipanteSessaoTreinamento> ParticipantesSessaoTreinamento => Set<ParticipanteSessaoTreinamento>();
     public DbSet<FotoEvidenciaSessaoTreinamento> FotosEvidenciaSessaoTreinamento => Set<FotoEvidenciaSessaoTreinamento>();
@@ -45,6 +53,13 @@ public class SstDbContext : DbContext, IAppDbContext
     public DbSet<MatrizEpiFuncao> MatrizEpiFuncoes => Set<MatrizEpiFuncao>();
     public DbSet<EstoqueEpi> EstoquesEpi => Set<EstoqueEpi>();
     public DbSet<MovimentacaoEstoqueEpi> MovimentacoesEstoqueEpi => Set<MovimentacaoEstoqueEpi>();
+    public DbSet<ReservaEpi> ReservasEpi => Set<ReservaEpi>();
+    public DbSet<PlanoIntegracao> PlanosIntegracao => Set<PlanoIntegracao>();
+    public DbSet<SolicitacaoReposicaoEpi> SolicitacoesReposicaoEpi => Set<SolicitacaoReposicaoEpi>();
+    public DbSet<ArquivoContrato> ArquivosContrato => Set<ArquivoContrato>();
+    public DbSet<DocumentoExigidoEmpresa> DocumentosExigidosEmpresa => Set<DocumentoExigidoEmpresa>();
+    public DbSet<DocumentoEmpresaTerceirizada> DocumentosEmpresaTerceirizada => Set<DocumentoEmpresaTerceirizada>();
+    public DbSet<ArquivoDocumentoEmpresaTerceirizada> ArquivosDocumentoEmpresaTerceirizada => Set<ArquivoDocumentoEmpresaTerceirizada>();
     public DbSet<CatalogoEpc> CatalogoEpcs => Set<CatalogoEpc>();
     public DbSet<InstalacaoEpc> InstalacoesEpc => Set<InstalacaoEpc>();
     public DbSet<EstoqueEpc> EstoquesEpc => Set<EstoqueEpc>();
@@ -64,13 +79,20 @@ public class SstDbContext : DbContext, IAppDbContext
     public DbSet<TrilhaAuditoria> TrilhaAuditoria => Set<TrilhaAuditoria>();
 
     public DbSet<Atividade> Atividades => Set<Atividade>();
+    public DbSet<AtividadeEpc> AtividadeEpcs => Set<AtividadeEpc>();
+    public DbSet<AtividadeDocumento> AtividadeDocumentos => Set<AtividadeDocumento>();
+    public DbSet<AtividadeItemOs> AtividadeItensOs => Set<AtividadeItemOs>();
+    public DbSet<Ghe> Ghes => Set<Ghe>();
+    public DbSet<GheFuncao> GheFuncoes => Set<GheFuncao>();
     public DbSet<Perigo> Perigos => Set<Perigo>();
     public DbSet<Risco> Riscos => Set<Risco>();
+    public DbSet<MedidaPrevencao> MedidasPrevencao => Set<MedidaPrevencao>();
     public DbSet<RiscoTrabalhadorExposto> RiscoTrabalhadorExpostos => Set<RiscoTrabalhadorExposto>();
     public DbSet<MatrizRiscoConfig> MatrizRiscoConfigs => Set<MatrizRiscoConfig>();
     public DbSet<MatrizRiscoCelula> MatrizRiscoCelulas => Set<MatrizRiscoCelula>();
 
     public DbSet<Pgr> Pgrs => Set<Pgr>();
+    public DbSet<GeracaoPgrEap> GeracoesPgrEap => Set<GeracaoPgrEap>();
     public DbSet<PlanoAcaoItem> PlanoAcaoItens => Set<PlanoAcaoItem>();
     public DbSet<PgrRevisao> PgrRevisoes => Set<PgrRevisao>();
 
@@ -109,9 +131,12 @@ public class SstDbContext : DbContext, IAppDbContext
     public DbSet<DdsFuncionarioSelecionado> DdsFuncionariosSelecionados => Set<DdsFuncionarioSelecionado>();
     public DbSet<DdsSemanal> DdsSemanais => Set<DdsSemanal>();
     public DbSet<CatalogoTemaDds> CatalogosTemaDds => Set<CatalogoTemaDds>();
+    public DbSet<TemaDdsAgendado> TemasDdsAgendados => Set<TemaDdsAgendado>();
+    public DbSet<ReuniaoAnaliseOcorrencia> ReunioesAnaliseOcorrencia => Set<ReuniaoAnaliseOcorrencia>();
     public DbSet<DdsFotoEvidencia> DdsFotosEvidencia => Set<DdsFotoEvidencia>();
 
     public DbSet<NaoConformidade> NaoConformidades => Set<NaoConformidade>();
+    public DbSet<EventoNcGQuali> EventosNcGQuali => Set<EventoNcGQuali>();
     public DbSet<AcaoPlano> AcoesPlano => Set<AcaoPlano>();
 
     public DbSet<Acidente> Acidentes => Set<Acidente>();
@@ -124,8 +149,14 @@ public class SstDbContext : DbContext, IAppDbContext
     public DbSet<DocumentoAssinatura> DocumentosAssinatura => Set<DocumentoAssinatura>();
     public DbSet<DocumentoSignatario> DocumentoSignatarios => Set<DocumentoSignatario>();
     public DbSet<DispositivoAgenteBiometrico> DispositivosAgenteBiometrico => Set<DispositivoAgenteBiometrico>();
+    public DbSet<DesafioBiometria> DesafiosBiometria => Set<DesafioBiometria>();
     public DbSet<TemplateBiometricoFutronic> TemplatesBiometricoFutronic => Set<TemplateBiometricoFutronic>();
     public DbSet<FotoCadastroFacial> FotosCadastroFacial => Set<FotoCadastroFacial>();
+    public DbSet<FalhaReconhecimentoFacial> FalhasReconhecimentoFacial => Set<FalhaReconhecimentoFacial>();
+    public DbSet<RelatorioGerado> RelatoriosGerados => Set<RelatorioGerado>();
+    public DbSet<RelatorioEnvio> RelatorioEnvios => Set<RelatorioEnvio>();
+    public DbSet<DestinatarioRelatorio> DestinatariosRelatorio => Set<DestinatarioRelatorio>();
+    public DbSet<ExecucaoRelatorioAgendado> ExecucoesRelatorioAgendado => Set<ExecucaoRelatorioAgendado>();
 
     public DbSet<IdempotenciaRegistro> IdempotenciaRegistros => Set<IdempotenciaRegistro>();
 
@@ -193,6 +224,10 @@ public class SstDbContext : DbContext, IAppDbContext
             a.Ativo && (_usuarioAtual.TemAcessoGlobal || _usuarioAtual.ObrasPermitidas.Contains(a.ObraId)));
         modelBuilder.Entity<Dds>().HasQueryFilter(d =>
             d.Ativo && (_usuarioAtual.TemAcessoGlobal || _usuarioAtual.ObrasPermitidas.Contains(d.ObraId)));
+        modelBuilder.Entity<TemaDdsAgendado>().HasQueryFilter(t =>
+            t.Ativo && (_usuarioAtual.TemAcessoGlobal || _usuarioAtual.ObrasPermitidas.Contains(t.ObraId)));
+        modelBuilder.Entity<ReuniaoAnaliseOcorrencia>().HasQueryFilter(r =>
+            r.Ativo && r.Acidente!.Ativo && (_usuarioAtual.TemAcessoGlobal || _usuarioAtual.ObrasPermitidas.Contains(r.Acidente.ObraId)));
         modelBuilder.Entity<DdsFuncionarioSelecionado>().HasQueryFilter(s =>
             s.Ativo && s.Dds!.Ativo && (_usuarioAtual.TemAcessoGlobal || _usuarioAtual.ObrasPermitidas.Contains(s.Dds.ObraId)));
         modelBuilder.Entity<DdsSemanal>().HasQueryFilter(d =>
@@ -213,8 +248,22 @@ public class SstDbContext : DbContext, IAppDbContext
             p.Ativo && (_usuarioAtual.TemAcessoGlobal || (p.ObraId.HasValue && _usuarioAtual.ObrasPermitidas.Contains(p.ObraId.Value))));
         modelBuilder.Entity<Atividade>().HasQueryFilter(a =>
             a.Ativo && (_usuarioAtual.TemAcessoGlobal || _usuarioAtual.ObrasPermitidas.Contains(a.ObraId)));
+        modelBuilder.Entity<Ghe>().HasQueryFilter(g =>
+            g.Ativo && (_usuarioAtual.TemAcessoGlobal || _usuarioAtual.ObrasPermitidas.Contains(g.ObraId)));
+        modelBuilder.Entity<CursoObrigatorioFuncaoObra>().HasQueryFilter(c =>
+            c.Ativo && (_usuarioAtual.TemAcessoGlobal || _usuarioAtual.ObrasPermitidas.Contains(c.ObraId)));
+        modelBuilder.Entity<ExameFuncaoObra>().HasQueryFilter(e =>
+            e.Ativo && (_usuarioAtual.TemAcessoGlobal || _usuarioAtual.ObrasPermitidas.Contains(e.ObraId)));
+        modelBuilder.Entity<LeituraDocumentoIa>().HasQueryFilter(l =>
+            l.Ativo && (_usuarioAtual.TemAcessoGlobal || _usuarioAtual.ObrasPermitidas.Contains(l.ObraId)));
         modelBuilder.Entity<Setor>().HasQueryFilter(s =>
             s.Ativo && (_usuarioAtual.TemAcessoGlobal || _usuarioAtual.ObrasPermitidas.Contains(s.ObraId)));
+        // Relatório de uma obra só aparece para quem tem acesso a ela; o consolidado (ObraId nulo) só para
+        // quem tem acesso global.
+        modelBuilder.Entity<RelatorioGerado>().HasQueryFilter(r =>
+            r.Ativo && (_usuarioAtual.TemAcessoGlobal || (r.ObraId.HasValue && _usuarioAtual.ObrasPermitidas.Contains(r.ObraId.Value))));
+        modelBuilder.Entity<FalhaReconhecimentoFacial>().HasQueryFilter(f =>
+            f.Ativo && (_usuarioAtual.TemAcessoGlobal || _usuarioAtual.ObrasPermitidas.Contains(f.ObraId)));
         modelBuilder.Entity<Trabalhador>().HasQueryFilter(t =>
             t.Ativo && (_usuarioAtual.TemAcessoGlobal || _usuarioAtual.ObrasPermitidas.Contains(t.ObraId)));
         modelBuilder.Entity<AreaSst>().HasQueryFilter(a =>
@@ -237,30 +286,89 @@ public class SstDbContext : DbContext, IAppDbContext
             e.Ativo && (_usuarioAtual.TemAcessoGlobal || _usuarioAtual.ObrasPermitidas.Contains(e.ObraId)));
         modelBuilder.Entity<Alojamento>().HasQueryFilter(a =>
             a.Ativo && (_usuarioAtual.TemAcessoGlobal || _usuarioAtual.ObrasPermitidas.Contains(a.ObraId)));
+        modelBuilder.Entity<SolicitacaoReposicaoEpi>().HasQueryFilter(s =>
+            s.Ativo && (_usuarioAtual.TemAcessoGlobal || _usuarioAtual.ObrasPermitidas.Contains(s.ObraId)));
+        modelBuilder.Entity<PlanoIntegracao>().HasQueryFilter(p =>
+            p.Ativo && (_usuarioAtual.TemAcessoGlobal || _usuarioAtual.ObrasPermitidas.Contains(p.ObraId)));
         modelBuilder.Entity<Veiculo>().HasQueryFilter(v =>
             v.Ativo && (_usuarioAtual.TemAcessoGlobal || _usuarioAtual.ObrasPermitidas.Contains(v.ObraId)));
-
+        // ASO NÃO tem filtro global por obra (tentado em #115 e revertido): o ASO só chega à obra pelo
+        // Trabalhador, e navegar até ele dentro do filtro faz o filtro de Trabalhador (Ativo) valer
+        // também — o ASO de quem foi desligado sumia das telas, até para acesso global (comprovado em
+        // teste no CI). O ASO precisa ser guardado e consultável por anos (fiscalização). O escopo por
+        // obra do ASO exige gravar ObraId no próprio registro (migration + preenchimento) — pendente.
+        // Exame/Aptidão/Treinamento têm a mesma limitação e também ficam sem filtro por enquanto.
+        // Registros que já têm ObraId próprio. Auditoria 06/10/2026 (A2), mesmo padrão dos demais filtros.
+        // Exame/Aptidão/Treinamento NÃO entram aqui de propósito: eles só chegam à obra pelo
+        // Trabalhador, e navegar até ele dentro do filtro faz o filtro de Trabalhador (Ativo) valer
+        // também, escondendo o histórico de quem foi desligado (comprovado em teste). Ver PR #116.
+        modelBuilder.Entity<SessaoTreinamento>().HasQueryFilter(s =>
+            s.Ativo && (_usuarioAtual.TemAcessoGlobal || _usuarioAtual.ObrasPermitidas.Contains(s.ObraId)));
+        modelBuilder.Entity<Contrato>().HasQueryFilter(c =>
+            c.Ativo && (_usuarioAtual.TemAcessoGlobal || _usuarioAtual.ObrasPermitidas.Contains(c.ObraId)));
+        modelBuilder.Entity<InstalacaoEpc>().HasQueryFilter(i =>
+            i.Ativo && (_usuarioAtual.TemAcessoGlobal || _usuarioAtual.ObrasPermitidas.Contains(i.ObraId)));
+        modelBuilder.Entity<EstoqueEpc>().HasQueryFilter(e =>
+            e.Ativo && (_usuarioAtual.TemAcessoGlobal || _usuarioAtual.ObrasPermitidas.Contains(e.ObraId)));
+        modelBuilder.Entity<EstoqueUniforme>().HasQueryFilter(e =>
+            e.Ativo && (_usuarioAtual.TemAcessoGlobal || _usuarioAtual.ObrasPermitidas.Contains(e.ObraId)));
         // ExameComplementar/AptidaoAtividadeEspecifica/EntregaEpi e filhos de entidades escopadas
-        // dependem de navegação por Trabalhador/Estoque/Membro/Reunião. Mantêm a proteção nos
-        // handlers e nas entidades-raiz já filtradas acima; se virarem listagens amplas, precisam de
-        // filtro explícito por navegação para fechar a mesma regra de obra.
+        // dependem de navegação por Trabalhador/Estoque/Membro/Reunião. A proteção fica nos handlers,
+        // que precisam aplicar o escopo EXPLICITAMENTE com Application/Common/Seguranca/EscopoObra.cs
+        // (e Assinatura/EscopoDocumentoAssinatura.cs para o Motor de Assinatura). A auditoria de
+        // 09/10/2026 achou que nenhum handler fazia isso: ASO/exame/aptidão/documentos corrigidos;
+        // treinamento, entregas, APR/PT (escrita), NC, risco e plano de ação ainda pendentes.
 
         base.OnModelCreating(modelBuilder);
     }
 
     public override int SaveChanges()
     {
+        RegistrarEventosNcGQuali();
         AplicarAuditoria();
         return base.SaveChanges();
     }
 
     public override Task<int> SaveChangesAsync(CancellationToken cancellationToken = default)
     {
+        RegistrarEventosNcGQuali();
         AplicarAuditoria();
         return base.SaveChangesAsync(cancellationToken);
     }
 
     public void DescartarAlteracoesPendentes() => ChangeTracker.Clear();
+
+    public bool EscopoObraGlobal => _usuarioAtual.TemAcessoGlobal;
+    public IReadOnlyList<Guid> ObrasNoEscopo => _usuarioAtual.ObrasPermitidas;
+
+    // Integração com o G-QUALI: toda mudança de NC com obra vira um evento na fila de saída, na MESMA gravação
+    // (se a NC não for salva, o evento também não é). Exclusão (física ou lógica) = cancelada.
+    private void RegistrarEventosNcGQuali()
+    {
+        ChangeTracker.DetectChanges();
+        var mudancas = ChangeTracker.Entries<NaoConformidade>()
+            .Where(e => (e.State is EntityState.Added or EntityState.Modified or EntityState.Deleted) && e.Entity.ObraId != null)
+            .ToList();
+        if (mudancas.Count == 0) return;
+        var obras = mudancas.Select(e => e.Entity.ObraId!.Value).Distinct().ToList();
+        var codigos = Set<Obra>().IgnoreQueryFilters().AsNoTracking()
+            .Where(o => obras.Contains(o.Id)).ToDictionary(o => o.Id, o => o.Codigo);
+        var agora = DateTime.UtcNow;
+        foreach (var e in mudancas)
+        {
+            if (!codigos.TryGetValue(e.Entity.ObraId!.Value, out var codigo) || string.IsNullOrWhiteSpace(codigo)) continue;
+            var tipo = e.State switch
+            {
+                EntityState.Added => EventoNcGQualiFactory.Criada,
+                EntityState.Deleted => EventoNcGQualiFactory.Cancelada,
+                _ when !e.Entity.Ativo => EventoNcGQualiFactory.Cancelada,
+                _ when e.Entity.Status == StatusNaoConformidade.Encerrada
+                    && e.Property(n => n.Status).OriginalValue != StatusNaoConformidade.Encerrada => EventoNcGQualiFactory.Encerrada,
+                _ => EventoNcGQualiFactory.Atualizada,
+            };
+            EventosNcGQuali.Add(EventoNcGQualiFactory.Criar(e.Entity, codigo, tipo, agora));
+        }
+    }
 
     private void AplicarAuditoria()
     {

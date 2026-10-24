@@ -260,7 +260,7 @@ export function TermoCompromissoEpiDialog({ open, onClose, trabalhadorId, trabal
                       <Button appearance="primary" disabled={salvando} onClick={registrarPapel}>
                         {salvando ? 'Registrando…' : 'Registrar assinatura em papel'}
                       </Button>
-                      <Button appearance="subtle" disabled={salvando} onClick={() => setModoPapel(false)}>
+                      <Button appearance="outline" disabled={salvando} onClick={() => setModoPapel(false)}>
                         Voltar
                       </Button>
                     </div>

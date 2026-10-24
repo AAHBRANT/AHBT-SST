@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { BotaoAcao, Button, Card, EstadoVazio, FeedbackInline, PageHeader, StatusChip, type Tom } from '@ui';
-import { ArrowDownload24Regular, ArrowLeft24Regular, ClipboardTaskListLtr24Regular, Eye24Regular, Home24Regular, Open24Regular, Send24Regular } from '@fluentui/react-icons';
+import { BotaoAcao, BotaoVoltar, Button, Card, EstadoVazio, FeedbackInline, PageHeader, StatusChip, type Tom } from '@ui';
+import { ArrowDownload24Regular, ClipboardTaskListLtr24Regular, Eye24Regular, Home24Regular, Open24Regular, Send24Regular } from '@fluentui/react-icons';
 import {
   api,
   StatusDocumentoAssinatura,
@@ -184,9 +184,7 @@ export function AlojamentoTab() {
         <PageHeader
           titulo={`Alojamento — ${obraAtual.obra.nome}`}
           filtros={
-            <Button appearance="subtle" icon={<ArrowLeft24Regular />} onClick={voltarParaObras}>
-              Voltar às obras
-            </Button>
+            <BotaoVoltar rotulo="Voltar às obras" onClick={voltarParaObras} />
           }
         />
 

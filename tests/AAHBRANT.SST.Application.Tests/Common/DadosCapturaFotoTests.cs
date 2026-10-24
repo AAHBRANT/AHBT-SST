@@ -41,7 +41,7 @@ public class DadosCapturaFotoTests
     }
 
     [Fact]
-    public void ExigirCompleta_FotoDaGaleriaSemLocal_InformaSoDescricaoDoLocal()
+    public void ExigirCompleta_FotoDaGaleriaSemLocal_NaoExigeDescricaoDoLocal()
     {
         var json = JsonSerializer.Serialize(new DadosCapturaFoto
         {
@@ -50,10 +50,26 @@ public class DadosCapturaFotoTests
             ObraNome = "Obra Centro",
         });
 
-        var ex = Assert.Throws<InvalidOperationException>(() => DadosCapturaFoto.ExigirCompleta(json, "Foto 3"));
+        DadosCapturaFoto.ExigirCompleta(json, "Foto 3");
+    }
 
-        Assert.Contains("descrição do local", ex.Message);
-        Assert.DoesNotContain("geolocalização", ex.Message);
+    [Fact]
+    public void Pendencias_FotoDaCameraSemLocal_NaoListaDescricaoDoLocal()
+    {
+        var captura = DateTimeOffset.UtcNow;
+        var json = JsonSerializer.Serialize(new DadosCapturaFoto
+        {
+            Origem = "camera",
+            CapturadaEm = captura,
+            ObraId = Guid.NewGuid(),
+            ObraNome = "Obra Centro",
+            Latitude = -7.1,
+            Longitude = -34.8,
+            PrecisaoMetros = 12,
+            LocalizacaoObtidaEm = captura.AddSeconds(-4),
+        });
+
+        Assert.Empty(DadosCapturaFoto.Pendencias(json));
     }
 
     [Fact]

@@ -1,4 +1,5 @@
 using AAHBRANT.SST.Application.Common.Interfaces;
+using AAHBRANT.SST.Application.Common.Seguranca;
 using MediatR;
 using Microsoft.EntityFrameworkCore;
 
@@ -14,6 +15,8 @@ public class ListarAcoesPlanoQueryHandler : IRequestHandler<ListarAcoesPlanoQuer
 
     public async Task<List<AcaoPlanoDto>> Handle(ListarAcoesPlanoQuery request, CancellationToken ct)
     {
+        await _db.GarantirOrigemAcaoPlanoNoEscopoAsync(request.OrigemTipo, request.OrigemId, ct);
+
         return await _db.AcoesPlano
             .Where(a => a.OrigemTipo == request.OrigemTipo && a.OrigemId == request.OrigemId)
             .Include(a => a.ResponsavelUsuario)
@@ -26,6 +29,7 @@ public class ListarAcoesPlanoQueryHandler : IRequestHandler<ListarAcoesPlanoQuer
                 OrigemId = a.OrigemId,
                 Tipo = a.Tipo,
                 Descricao = a.Descricao,
+                Fundamentacao = a.Fundamentacao,
                 ResponsavelUsuarioId = a.ResponsavelUsuarioId,
                 ResponsavelUsuarioNome = a.ResponsavelUsuario != null ? a.ResponsavelUsuario.Nome : null,
                 Prioridade = a.Prioridade,

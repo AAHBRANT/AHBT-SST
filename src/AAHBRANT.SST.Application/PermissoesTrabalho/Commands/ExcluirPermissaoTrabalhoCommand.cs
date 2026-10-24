@@ -1,4 +1,6 @@
+using AAHBRANT.SST.Application.Assinatura;
 using AAHBRANT.SST.Application.Common.Interfaces;
+using AAHBRANT.SST.Application.Common.Seguranca;
 using FluentValidation;
 using MediatR;
 using Microsoft.EntityFrameworkCore;
@@ -23,7 +25,11 @@ public class ExcluirPermissaoTrabalhoCommandHandler : IRequestHandler<ExcluirPer
 
     public async Task Handle(ExcluirPermissaoTrabalhoCommand request, CancellationToken ct)
     {
-        var pt = await _db.PermissoesTrabalho.FirstOrDefaultAsync(p => p.Id == request.Id, ct)
+        await ProtecaoDocumentoAssinado.GarantirEditavelAsync(_db, "PermissaoTrabalho", request.Id, ct);
+
+        var pt = await _db.PermissoesTrabalho
+            .NoEscopoDaAtividade(_db, p => p.AtividadeId)
+            .FirstOrDefaultAsync(p => p.Id == request.Id, ct)
             ?? throw new KeyNotFoundException($"Permissão de Trabalho {request.Id} não encontrada.");
 
         _db.PermissoesTrabalho.Remove(pt);

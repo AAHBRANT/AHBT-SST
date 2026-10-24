@@ -27,6 +27,11 @@ public class NaoConformidade : AuditableEntity
     public string Descricao { get; set; } = string.Empty;
     public string? Local { get; set; }
 
+    // Obra da NC (17/10/2026, integração com o G-QUALI): obrigatória nas NCs novas — informada na tela ou
+    // herdada da atividade/risco/inspeção. Nula só em registros antigos sem nenhum vínculo de obra.
+    public Guid? ObraId { get; set; }
+    public Obra? Obra { get; set; }
+
     public Guid? AtividadeId { get; set; }
     public Atividade? Atividade { get; set; }
 

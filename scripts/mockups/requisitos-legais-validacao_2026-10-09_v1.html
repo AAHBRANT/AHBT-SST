@@ -1,0 +1,125 @@
+<title>Validação dos Requisitos Legais</title>
+<style>
+/* Layout: réplica da aba Requisitos Legais do app SST (Fluent/Teams), com as 3 mudanças marcadas como NOVO */
+:root{
+  --bg:#f5f5f5; --card:#ffffff; --fg:#242424; --muted:#616161; --line:#e0e0e0;
+  --brand:#670000; --brand-fg:#ffffff; --novo:#b4009e;
+  --ok-bg:#e9f5e9; --ok-fg:#0e700e; --warn-bg:#fff4ce; --warn-fg:#835b00; --err-bg:#fde7e9; --err-fg:#a4262c;
+  --neutro-bg:#f0f0f0; --neutro-fg:#424242; --quote:#fafafa;
+  --f-ui:"Segoe UI","Segoe UI Web (West European)",-apple-system,BlinkMacSystemFont,Roboto,"Helvetica Neue",sans-serif;
+}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
+  --bg:#1f1f1f; --card:#292929; --fg:#f0f0f0; --muted:#adadad; --line:#3d3d3d;
+  --brand:#c45a5a; --brand-fg:#ffffff; --novo:#f08ce4;
+  --ok-bg:#0e3a0e; --ok-fg:#9fd89f; --warn-bg:#463100; --warn-fg:#f8d22a; --err-bg:#3f1011; --err-fg:#f1bbbc;
+  --neutro-bg:#383838; --neutro-fg:#d6d6d6; --quote:#242424; color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#1f1f1f; --card:#292929; --fg:#f0f0f0; --muted:#adadad; --line:#3d3d3d;
+  --brand:#c45a5a; --brand-fg:#ffffff; --novo:#f08ce4;
+  --ok-bg:#0e3a0e; --ok-fg:#9fd89f; --warn-bg:#463100; --warn-fg:#f8d22a; --err-bg:#3f1011; --err-fg:#f1bbbc;
+  --neutro-bg:#383838; --neutro-fg:#d6d6d6; --quote:#242424; color-scheme:dark}
+*{box-sizing:border-box}
+body{background:var(--bg);color:var(--fg);font-family:var(--f-ui);font-size:14px;line-height:1.45;padding-block:24px;padding-inline:16px}
+.wrap{max-width:1100px;margin:0 auto;display:flex;flex-direction:column;gap:16px}
+h1{font-size:20px;font-weight:600;margin:0}
+.legenda{color:var(--muted);font-size:13px;max-width:80ch;margin:0}
+.novo{display:inline-block;font-size:10px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--novo);border:1px solid var(--novo);border-radius:4px;padding:0 5px;margin-left:6px;vertical-align:middle}
+.aviso{display:flex;gap:12px;align-items:flex-start;flex-wrap:wrap;background:var(--warn-bg);color:var(--warn-fg);border-radius:6px;padding:12px 14px}
+.aviso p{margin:0;flex:1 1 320px;min-width:0}
+.aviso strong{color:inherit}
+.btn{font:inherit;font-weight:600;border-radius:4px;padding:5px 12px;border:1px solid var(--line);background:var(--card);color:var(--fg);cursor:pointer}
+.btn:focus-visible{outline:2px solid var(--brand);outline-offset:2px}
+.btn.prim{background:var(--brand);border-color:var(--brand);color:var(--brand-fg)}
+.btn.sub{border-color:transparent;background:transparent;color:var(--brand);padding-inline:6px}
+.card{background:var(--card);border-radius:8px;box-shadow:0 1px 2px rgba(0,0,0,.12);padding:16px;display:flex;flex-direction:column;gap:12px;min-width:0}
+.card h2{font-size:16px;margin:0}
+.filtros{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+.pill{border:1px solid var(--line);border-radius:999px;padding:3px 12px;background:var(--card);color:var(--fg);font:inherit;cursor:pointer}
+.pill[aria-pressed="true"]{background:var(--brand);border-color:var(--brand);color:var(--brand-fg)}
+.tabela{overflow-x:auto}
+table{width:100%;border-collapse:collapse;min-width:640px}
+th{text-align:left;font-weight:600;color:var(--muted);font-size:12px;padding:8px;border-bottom:1px solid var(--line)}
+td{padding:9px 8px;border-bottom:1px solid var(--line);vertical-align:top}
+tr.linha{cursor:pointer}
+tr.linha:hover td{background:var(--quote)}
+.chip{display:inline-block;border-radius:999px;padding:1px 10px;font-size:12px;font-weight:600;white-space:nowrap}
+.chip.ok{background:var(--ok-bg);color:var(--ok-fg)}
+.chip.warn{background:var(--warn-bg);color:var(--warn-fg)}
+.chip.err{background:var(--err-bg);color:var(--err-fg)}
+.chip.neutro{background:var(--neutro-bg);color:var(--neutro-fg);font-weight:500}
+.exp td{background:var(--quote);padding:16px}
+.exp-grid{display:grid;grid-template-columns:minmax(0,3fr) minmax(0,2fr);gap:20px}
+@media (max-width:760px){.exp-grid{grid-template-columns:1fr}}
+.rot{font-size:12px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.04em;margin:0 0 6px}
+blockquote{margin:0;border-left:3px solid var(--line);padding:2px 0 2px 12px;max-width:72ch;white-space:normal}
+.fonte{font-size:12px;color:var(--muted);margin:8px 0 0;overflow-wrap:anywhere}
+.fonte a{color:var(--brand)}
+.crit{display:flex;flex-direction:column;gap:6px}
+.crit div{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.acoes{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-top:14px;padding-top:12px;border-top:1px solid var(--line)}
+.dica{font-size:12px;color:var(--muted);flex:1 1 220px}
+.num{font-variant-numeric:tabular-nums}
+.toast{background:var(--ok-bg);color:var(--ok-fg);border-radius:6px;padding:8px 12px;font-weight:600}
+</style>
+
+<div class="wrap">
+  <h1>Requisitos Legais</h1>
+  <p class="legenda">Cadastro estruturado dos requisitos legais e de seus critérios de aplicabilidade. O conteúdo jurídico deve ser validado por QSMS/jurídico antes de publicar.</p>
+
+  <div class="aviso" role="status">
+    <p><span class="novo">novo</span><br><strong class="num">59 requisitos carregados do texto oficial das NRs aguardam validação.</strong> Enquanto estiverem <em>Em revisão</em>, não entram no plano de ação sugerido pela IA. Abra cada um, confira o texto e os perigos ligados e clique em <strong>Validar e ativar</strong>.</p>
+    <button class="btn" type="button" id="btn-ver-revisao">Ver só os em revisão</button>
+  </div>
+
+  <div class="card">
+    <h2>Requisitos legais cadastrados</h2>
+    <p class="legenda" style="margin:-4px 0 0">(O formulário "Cadastrar requisito" continua acima da tabela, sem mudança. Omitido aqui.)</p>
+    <div class="filtros" aria-label="Filtrar por status">
+      <span class="rot" style="margin:0">Status <span class="novo">novo</span></span>
+      <button class="pill" type="button" id="f-todos" aria-pressed="false">Todos <span class="num">(61)</span></button>
+      <button class="pill" type="button" id="f-rev" aria-pressed="true">Em revisão <span class="num">(59)</span></button>
+      <button class="pill" type="button" id="f-ativo" aria-pressed="false">Ativos <span class="num">(2)</span></button>
+      <button class="pill" type="button" id="f-revog" aria-pressed="false">Revogados <span class="num">(0)</span></button>
+    </div>
+
+    <div class="tabela">
+    <table>
+      <thead><tr><th>Norma/Artigo</th><th>Título</th><th>Categoria</th><th>Status</th><th aria-label="Ações"></th></tr></thead>
+      <tbody>
+        <tr class="linha"><td class="num">NR-35 — 35.5.5</td><td>Análise de Risco (AR) antes do trabalho em altura</td><td>Documento</td><td><span class="chip warn">Em revisão</span> <span class="novo">novo</span></td><td>🗑</td></tr>
+        <tr class="exp"><td colspan="5">
+          <div class="exp-grid">
+            <div>
+              <p class="rot">Texto oficial da norma <span class="novo">novo</span></p>
+              <blockquote>35.5.5 Todo trabalho em altura deve ser precedido de AR. 35.5.5.1 A AR deve, além dos riscos inerentes ao trabalho em altura, considerar: a) o local em que os serviços serão executados e seu entorno; b) o isolamento e a sinalização no entorno da área de trabalho; c) o estabelecimento dos sistemas e pontos de ancoragem; (...)</blockquote>
+              <p class="fonte">Fonte: NR-35 (texto consolidado gov.br, atualizado 2023) · <a href="https://www.gov.br/trabalho-e-emprego/pt-br/acesso-a-informacao/participacao-social/conselhos-e-orgaos-colegiados/comissao-tripartite-partitaria-permanente/arquivos/normas-regulamentadoras/NR35atualizada2023.pdf" rel="noopener">abrir PDF oficial</a></p>
+            </div>
+            <div>
+              <p class="rot">Critérios de aplicabilidade</p>
+              <div class="crit">
+                <div><span class="chip neutro">Perigo</span> Perigo: Trabalho em altura <span class="chip neutro" style="font-size:11px">sugerido pela carga</span> <button class="btn sub" type="button">Remover</button></div>
+              </div>
+              <p class="dica" style="margin:8px 0 0">(Adicionar critério e Salvar critérios continuam como hoje.)</p>
+            </div>
+          </div>
+          <div class="acoes">
+            <button class="btn prim" type="button" id="btn-validar">Validar e ativar</button>
+            <button class="btn" type="button">Editar texto</button>
+            <span class="dica">Ao ativar, o requisito passa a valer para o plano de ação da IA nas atividades com o perigo ligado. Fica registrado quem validou e quando.</span>
+          </div>
+          <div class="toast" id="toast" hidden>Requisito ativado. Já vale para o plano de ação da IA.</div>
+        </td></tr>
+        <tr class="linha"><td class="num">NR-35 — 35.6.1</td><td>Uso obrigatório de Sistema de Proteção contra Quedas (SPQ)</td><td>EPI</td><td><span class="chip warn">Em revisão</span></td><td>🗑</td></tr>
+        <tr class="linha"><td class="num">NR-18 — 18.7.2.11</td><td>Inspeção dos escoramentos de escavação</td><td>Inspeção</td><td><span class="chip warn">Em revisão</span></td><td>🗑</td></tr>
+        <tr class="linha"><td class="num">NR-10 — 10.8.8</td><td>Treinamento de segurança em eletricidade</td><td>Treinamento</td><td><span class="chip warn">Em revisão</span></td><td>🗑</td></tr>
+        <tr class="linha"><td class="num">NR-06 — 6.3</td><td>Fornecimento gratuito de EPI adequado ao risco</td><td>EPI</td><td><span class="chip warn">Em revisão</span></td><td>🗑</td></tr>
+        <tr class="linha"><td class="num">NR-07 — 7.5.19</td><td>Atestado de Saúde Ocupacional (ASO)</td><td>Exame</td><td><span class="chip warn">Em revisão</span></td><td>🗑</td></tr>
+      </tbody>
+    </table>
+    </div>
+  </div>
+</div>
+<script>
+document.getElementById('btn-validar').addEventListener('click',function(){document.getElementById('toast').hidden=false;});
+document.querySelectorAll('.pill').forEach(function(p){p.addEventListener('click',function(){document.querySelectorAll('.pill').forEach(function(o){o.setAttribute('aria-pressed','false')});p.setAttribute('aria-pressed','true');});});
+</script>

@@ -1,4 +1,5 @@
 using AAHBRANT.SST.Application.Common.Interfaces;
+using AAHBRANT.SST.Application.Common.Seguranca;
 using AAHBRANT.SST.Domain.Enums;
 using FluentValidation;
 using MediatR;
@@ -34,6 +35,7 @@ public class AutorizarPermissaoTrabalhoCommandHandler : IRequestHandler<Autoriza
     public async Task Handle(AutorizarPermissaoTrabalhoCommand request, CancellationToken ct)
     {
         var pt = await _db.PermissoesTrabalho
+            .NoEscopoDaAtividade(_db, p => p.AtividadeId)
             .Include(p => p.PreRequisitos)
             .Include(p => p.Verificacoes)
             .FirstOrDefaultAsync(p => p.Id == request.Id, ct)

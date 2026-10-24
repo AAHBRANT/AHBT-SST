@@ -3,6 +3,7 @@ using AAHBRANT.SST.Application.EntregasEpi;
 using AAHBRANT.SST.Application.TermosCompromissoEpi;
 using AAHBRANT.SST.Domain.Enums;
 using QuestPDF.Fluent;
+using SixLabors.ImageSharp.Processing;
 using QuestPDF.Helpers;
 using QuestPDF.Infrastructure;
 
@@ -44,6 +45,10 @@ public class EntregaEpiPdfService : IFichaEpiPdfService
                 pagina.Footer().Column(coluna => RodapeDocumentoPadrao.Desenhar(
                     coluna, "Ficha de EPI", protocolo: null, null, modelo.ConteudoHash, modelo.UrlValidacaoPublica, modelo.QrCodePng, temAssinatura: false));
             });
+
+            // Páginas finais: log de assinaturas de EPI do funcionário (as páginas acima não mudam).
+            if (modelo.Log is { Itens.Count: > 0 } log)
+                LogAssinaturasEpiPdf.Adicionar(container, modelo, log);
         });
 
         return documento.GeneratePdf();
@@ -57,27 +62,77 @@ public class EntregaEpiPdfService : IFichaEpiPdfService
 
             // Grade de 3 colunas, cada campo numa caixa com o rótulo pequeno em cima e o valor embaixo
             // (mesmo desenho do cabeçalho do DDS semanal) — linhas alinhadas e sem quebra irregular.
-            coluna.Item().PaddingTop(2).Table(tabela =>
+            // À direita, a foto de cadastro do funcionário (pedido de 06/10); o turno saiu da grade e o
+            // CPF passou a sair completo (liberado pelo jurídico).
+            coluna.Item().PaddingTop(2).Row(linha =>
             {
-                tabela.ColumnsDefinition(columns =>
+                linha.RelativeItem().Table(tabela =>
                 {
-                    columns.RelativeColumn();
-                    columns.RelativeColumn();
-                    columns.RelativeColumn();
+                    tabela.ColumnsDefinition(columns =>
+                    {
+                        columns.RelativeColumn();
+                        columns.RelativeColumn();
+                        columns.RelativeColumn();
+                    });
+
+                    CelulaIdentificacao(tabela, "Nome completo", modelo.TrabalhadorNome, colSpan: 2);
+                    CelulaIdentificacao(tabela, "CPF", modelo.TrabalhadorCpf ?? modelo.TrabalhadorCpfMascarado);
+                    CelulaIdentificacao(tabela, "Matrícula", modelo.TrabalhadorMatricula);
+                    CelulaIdentificacao(tabela, "Função", modelo.TrabalhadorFuncaoNome);
+                    CelulaIdentificacao(tabela, "Data de admissão", modelo.TrabalhadorDataAdmissao.ToString("dd/MM/yyyy"));
+                    CelulaIdentificacao(tabela, "Obra / Frente de trabalho", modelo.ObraNome, colSpan: 3);
+                    CelulaIdentificacao(tabela, "Empresa contratante", modelo.ObraNome, colSpan: 2);
+                    CelulaIdentificacao(tabela, "CNPJ da contratada", modelo.ObraCnpj ?? "não informado");
                 });
 
-                CelulaIdentificacao(tabela, "Nome completo", modelo.TrabalhadorNome, colSpan: 2);
-                CelulaIdentificacao(tabela, "CPF", modelo.TrabalhadorCpfMascarado);
-                CelulaIdentificacao(tabela, "Matrícula", modelo.TrabalhadorMatricula);
-                CelulaIdentificacao(tabela, "Função", modelo.TrabalhadorFuncaoNome);
-                CelulaIdentificacao(tabela, "Turno", modelo.TrabalhadorTurno ?? "não informado");
-                CelulaIdentificacao(tabela, "Data de admissão", modelo.TrabalhadorDataAdmissao.ToString("dd/MM/yyyy"));
-                CelulaIdentificacao(tabela, "Obra / Frente de trabalho", modelo.ObraNome, colSpan: 2);
-                CelulaIdentificacao(tabela, "Empresa contratante", modelo.ObraNome, colSpan: 2);
-                CelulaIdentificacao(tabela, "CNPJ da contratada", modelo.ObraCnpj ?? "não informado");
+                // Foto solta no formato 3x4 (3 cm x 4 cm = 85 x 113 pt), sem moldura nem legenda (pedido de
+                // 08/10). A imagem é recortada para 3:4 antes de entrar, assim preenche o quadro inteiro
+                // sem faixas brancas e sem distorcer.
+                linha.ConstantItem(FotoLarguraPt + 10).PaddingLeft(10).Height(FotoAlturaPt).Element(foto =>
+                {
+                    var recortada = modelo.TrabalhadorFoto is { Length: > 0 } bytes ? RecortarFoto3x4(bytes) : null;
+                    if (recortada is not null)
+                        foto.Image(recortada).FitArea();
+                    else
+                        foto.Border(0.5f).BorderColor(Colors.Grey.Lighten1)
+                            .AlignCenter().AlignMiddle().Text("Sem foto cadastrada").FontSize(7).FontColor(Colors.Grey.Darken1).AlignCenter();
+                });
             });
         });
     }
+
+    private const float FotoLarguraPt = 85f;   // 3 cm
+    private const float FotoAlturaPt = 113.4f; // 4 cm
+
+    // Recorta ao centro na proporção 3:4, puxando o corte para cima (rosto fica no terço superior).
+    // Devolve null se os bytes não forem uma imagem válida.
+    private static byte[]? RecortarFoto3x4(byte[] bytes)
+    {
+        try
+        {
+            using var imagem = AAHBRANT.SST.Infrastructure.Imagens.ImagemSegura.Carregar(bytes);
+            imagem.Mutate(x => x.AutoOrient());
+            const double alvo = 3.0 / 4.0;
+            int largura = imagem.Width, altura = imagem.Height;
+            int cw = largura, ch = altura;
+            if ((double)largura / altura > alvo) cw = (int)Math.Round(altura * alvo);
+            else ch = (int)Math.Round(largura / alvo);
+            var x0 = (largura - cw) / 2;
+            var y0 = (int)Math.Round((altura - ch) * 0.25);
+            imagem.Mutate(x => x.Crop(new SixLabors.ImageSharp.Rectangle(x0, y0, cw, ch)));
+            using var saida = new MemoryStream();
+            imagem.Save(saida, new SixLabors.ImageSharp.Formats.Jpeg.JpegEncoder { Quality = 90 });
+            return saida.ToArray();
+        }
+        catch
+        {
+            return null;
+        }
+    }
+
+    private static bool FotoValida(byte[] bytes)
+        // Mesma régua de formato/tamanho do resto do sistema (ver ImagemSegura).
+        => AAHBRANT.SST.Infrastructure.Imagens.ImagemSegura.EhValida(bytes);
 
     private static void CelulaIdentificacao(TableDescriptor tabela, string rotulo, string valor, uint colSpan = 1)
     {

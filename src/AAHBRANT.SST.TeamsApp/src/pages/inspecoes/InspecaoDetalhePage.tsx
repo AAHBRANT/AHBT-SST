@@ -43,6 +43,7 @@ import {
 } from '../../lib/api';
 import { SlotFoto } from '../../components/camera/SlotFoto';
 import { SeletorStatusItemChecklist } from '../../components/inspecoes/SeletorStatusItemChecklist';
+import { useRegistrosTravados } from '../../hooks/useRegistrosTravados';
 import { useVisualizadorPdf } from '../../components/useVisualizadorPdf';
 
 interface EdicaoResposta {
@@ -99,6 +100,8 @@ function DadoResumo({ rotulo, valor }: { rotulo: string; valor: string }) {
 // revisado em AprDetalhePage.tsx/PgrDetalhePage.tsx).
 export function InspecaoDetalhePage() {
   const { id } = useParams<{ id: string }>();
+  // Inspeção assinada não aceita mais respostas nem fotos (o servidor recusa): os campos ficam só para leitura.
+  const inspecaoAssinada = useRegistrosTravados('Inspecao', id ? [id] : []).has(id ?? '');
   const navigate = useNavigate();
   const location = useLocation();
   // Task 9 (2026-09-15): quando AlojamentoTab retoma (em vez de criar) a inspeção do dia, o aviso
@@ -464,7 +467,7 @@ export function InspecaoDetalhePage() {
       <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
         {detalhe.respostas.map((resposta, indice) => {
           const edicao = edicoes[resposta.id] ?? edicaoInicial();
-          const somenteLeitura = inspecao.status !== StatusInspecao.EmAndamento;
+          const somenteLeitura = inspecao.status !== StatusInspecao.EmAndamento || inspecaoAssinada;
           // Cabeçalho de seção só aparece na fronteira entre seções diferentes — checklists sem
           // Secao preenchida (todos os anteriores ao campo existir) continuam em lista corrida.
           const secaoAnterior = indice > 0 ? detalhe.respostas[indice - 1].secao : undefined;

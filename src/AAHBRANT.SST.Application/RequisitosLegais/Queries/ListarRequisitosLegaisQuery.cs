@@ -21,7 +21,7 @@ public class ListarRequisitosLegaisQueryHandler : IRequestHandler<ListarRequisit
 
         return await query
             .OrderBy(r => r.Norma).ThenBy(r => r.Artigo)
-            .Select(r => new RequisitoLegalDto(r.Id, r.Norma, r.Artigo, r.Titulo, r.Descricao, r.Categoria, r.Status, r.Fonte))
+            .Select(r => new RequisitoLegalDto(r.Id, r.Norma, r.Artigo, r.Titulo, r.Descricao, r.Categoria, r.Status, r.Fonte, r.ValidadoEmUtc, r.ValidadoPorNome))
             .ToListAsync(ct);
     }
 }

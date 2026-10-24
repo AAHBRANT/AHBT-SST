@@ -33,6 +33,8 @@ public class RegistrarConsentimentoBiometriaCommandHandler : IRequestHandler<Reg
             ?? throw new KeyNotFoundException($"Trabalhador {request.TrabalhadorId} não encontrado.");
 
         trabalhador.ConsentimentoBiometriaEm = DateTime.UtcNow;
+        trabalhador.ConsentimentoBiometriaVersao = TermoConsentimentoBiometria.VersaoAtual;
+        trabalhador.ConsentimentoBiometriaRevogadoEm = null;
         await _db.SaveChangesAsync(ct);
     }
 }

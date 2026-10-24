@@ -33,6 +33,7 @@ async function preparar(page: Page, opcoes: { confirmado?: boolean; concluido?: 
       return route.fulfill({ json: path === '/api/capturar' ? { trabalhadorId: capturaId, score: 95 }
         : { dispositivoId: 'dispositivo-teste', segredoDispositivo: 'somente-teste' } });
     }
+    if (path.endsWith('/desafios')) return route.fulfill({ json: { desafio: 'desafio-teste' } });
     if (path === '/api/dds/dds-a/funcionarios-disponiveis') return route.fulfill({ json: funcionarios });
     if (path === '/api/dds/dds-a/funcionarios-selecionados') {
       const ids = route.request().postDataJSON().trabalhadoresIds as string[];

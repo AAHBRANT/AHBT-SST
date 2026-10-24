@@ -42,14 +42,7 @@ public class RegistrarPresencaFacialSessaoTreinamentoCommandHandler : IRequestHa
         var identificacao = await _autenticacaoFacial.IdentificarAsync(request.ObraId, request.FotoJpeg, ct);
         if (!identificacao.Aceito)
         {
-            var mensagem = identificacao.Motivo switch
-            {
-                MotivoRejeicaoFacial.NenhumRostoDetectado => "Nenhum rosto detectado na foto.",
-                MotivoRejeicaoFacial.MultiplosRostosDetectados => "Mais de uma pessoa detectada na câmera — aproxime-se sozinho.",
-                MotivoRejeicaoFacial.ConfiancaBaixa => "Rosto reconhecido com baixa confiança — tente novamente com melhor iluminação.",
-                _ => "Rosto não reconhecido.",
-            };
-            throw new RejeicaoFacialException(identificacao.Motivo!.Value, mensagem);
+            throw new RejeicaoFacialException(identificacao.Motivo!.Value, MensagemRejeicaoFacial.Para(identificacao.Motivo));
         }
 
         var trabalhadorId = identificacao.Resultado!.TrabalhadorId;

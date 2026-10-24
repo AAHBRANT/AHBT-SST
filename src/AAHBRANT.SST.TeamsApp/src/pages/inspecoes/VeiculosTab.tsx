@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   BotaoAcao,
-  Button,
+  BotaoVoltar, Button,
   Campo,
   Card,
   EstadoVazio,
@@ -22,7 +22,6 @@ import {
 import {
   Add24Regular,
   ArrowDownload24Regular,
-  ArrowLeft24Regular,
   ClipboardTaskListLtr24Regular,
   Delete24Regular,
   Edit24Regular,
@@ -415,9 +414,7 @@ export function VeiculosTab() {
         <PageHeader
           titulo={`${tipoVeiculoLabelPlural[tipoSelecionado]} — ${obraAtual.nome}`}
           filtros={
-            <Button appearance="subtle" icon={<ArrowLeft24Regular />} onClick={() => setTipoSelecionado(null)}>
-              Voltar aos tipos
-            </Button>
+            <BotaoVoltar rotulo="Voltar aos tipos" onClick={() => setTipoSelecionado(null)} />
           }
           acoes={
             <Button appearance="primary" icon={<Add24Regular />} onClick={painelAberto ? fecharPainel : abrirCadastro}>
@@ -637,9 +634,7 @@ export function VeiculosTab() {
           titulo={`Veículos — ${obraAtual.nome}`}
           subtitulo="Selecione o tipo de veículo para ver os veículos da obra."
           filtros={
-            <Button appearance="subtle" icon={<ArrowLeft24Regular />} onClick={() => setObraSelecionadaId(null)}>
-              Voltar às obras
-            </Button>
+            <BotaoVoltar rotulo="Voltar às obras" onClick={() => setObraSelecionadaId(null)} />
           }
           acoes={
             <Button appearance="primary" icon={<Add24Regular />} onClick={painelAberto ? fecharPainel : abrirCadastro}>

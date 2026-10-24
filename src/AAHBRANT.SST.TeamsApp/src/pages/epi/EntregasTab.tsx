@@ -32,6 +32,7 @@ import { TermoCompromissoEpiDialog } from '../../components/assinatura/TermoComp
 import { AssinaturaDevolucaoEpiDialog } from '../../components/assinatura/AssinaturaDevolucaoEpiDialog';
 import { FotoCatalogoEpi } from './FotoCatalogoEpi';
 import { SeletorItensEpi, type ItemCarrinhoEpi } from './SeletorItensEpi';
+import { useRegistrosTravados } from '../../hooks/useRegistrosTravados';
 import { CarrinhoEntregaEpi } from './CarrinhoEntregaEpi';
 
 // Campos aplicados a todas as entregas do carrinho de uma vez (mesmo funcionário, mesma data,
@@ -43,7 +44,8 @@ interface CamposComunsEntrega {
   vistoConsorcioResponsavel: string;
   motivo: string;
   observacoes: string;
-  motivoTipo: number;
+  // null = técnico ainda não escolheu a observação (select começa vazio e é obrigatório).
+  motivoTipo: number | null;
   numeroListaPresencaNr6: string;
   dataTreinamentoNr6: string;
 }
@@ -55,7 +57,7 @@ function camposComunsVazios(): CamposComunsEntrega {
     vistoConsorcioResponsavel: '',
     motivo: '',
     observacoes: '',
-    motivoTipo: MotivoEntregaEpi.Inicial,
+    motivoTipo: null,
     numeroListaPresencaNr6: '',
     dataTreinamentoNr6: '',
   };
@@ -132,6 +134,8 @@ interface EntregasTabProps {
 export function EntregasTab({ aoNavegarParaMatriz }: EntregasTabProps) {
   const navigate = useNavigate();
   const [entregas, setEntregas] = useState<EntregaEpi[]>([]);
+  // Entregas já assinadas não podem ser excluídas (o servidor recusa): o botão some delas.
+  const travadas = useRegistrosTravados('EntregaEpi', entregas.map((e) => e.id));
   const [epis, setEpis] = useState<CatalogoEpi[]>([]);
   const [episPermitidos, setEpisPermitidos] = useState<CatalogoEpi[]>([]);
   const [obras, setObras] = useState<Obra[]>([]);
@@ -442,6 +446,13 @@ export function EntregasTab({ aoNavegarParaMatriz }: EntregasTabProps) {
       setErroPainel('Adicione ao menos um EPI ao carrinho antes de confirmar.');
       return;
     }
+    // A observação (antigo "Motivo") não vem mais pré-selecionada: técnicos pulavam o campo e tudo
+    // era gravado como "Entrega inicial". Agora é escolha ativa e obrigatória.
+    const motivoTipo = dadosComuns.motivoTipo;
+    if (motivoTipo === null) {
+      setErroPainel('Selecione a Observação da entrega (entrega inicial, dano, extravio, vencimento ou troca de função).');
+      return;
+    }
     // Pedido do usuário (22/09): nº da lista de presença e data do treinamento de NR-06 deixaram de
     // ser digitáveis (só vêm do treinamento cadastrado, ver useEffect sincronizarDadosTrabalhador
     // acima) — sem essa checagem aqui, um funcionário sem NR-06 cadastrada geraria uma ficha de EPI
@@ -479,7 +490,7 @@ export function EntregasTab({ aoNavegarParaMatriz }: EntregasTabProps) {
           vistoConsorcioResponsavel: dadosComuns.vistoConsorcioResponsavel || null,
           motivo: dadosComuns.motivo || null,
           observacoes: dadosComuns.observacoes || null,
-          motivoTipo: dadosComuns.motivoTipo,
+          motivoTipo,
           numeroListaPresencaNr6: dadosComuns.numeroListaPresencaNr6 || null,
           dataTreinamentoNr6: dadosComuns.dataTreinamentoNr6 || null,
         };
@@ -555,7 +566,7 @@ export function EntregasTab({ aoNavegarParaMatriz }: EntregasTabProps) {
     const dataFmt = dadosComuns.dataEntrega ? dadosComuns.dataEntrega.split('-').reverse().join('/') : '—';
     const dataTreinamentoFmt = dadosComuns.dataTreinamentoNr6 ? dadosComuns.dataTreinamentoNr6.split('-').reverse().join('/') : '—';
     const emitidoEm = new Date().toLocaleString('pt-BR');
-    const motivo = motivoEntregaEpiLabel[dadosComuns.motivoTipo] ?? '—';
+    const motivo = (dadosComuns.motivoTipo === null ? undefined : motivoEntregaEpiLabel[dadosComuns.motivoTipo]) ?? '—';
     const observacaoMotivo = dadosComuns.motivo || '—';
     const observacoes = dadosComuns.observacoes || '—';
     const vistoResponsavel = dadosComuns.vistoConsorcioResponsavel || '—';
@@ -612,8 +623,8 @@ export function EntregasTab({ aoNavegarParaMatriz }: EntregasTabProps) {
         ${linhas}
 
         <h2>Documentação e motivo</h2>
-        <div class="campo"><b>Motivo</b><span>${escapeHtml(motivo)}</span></div>
-        <div class="campo"><b>Obs. motivo</b><span>${escapeHtml(observacaoMotivo)}</span></div>
+        <div class="campo"><b>Observação</b><span>${escapeHtml(motivo)}</span></div>
+        <div class="campo"><b>Detalhes</b><span>${escapeHtml(observacaoMotivo)}</span></div>
         <div class="campo"><b>Lista NR-6</b><span>${escapeHtml(numeroLista)}</span></div>
         <div class="campo"><b>Trein. NR-6</b><span>${dataTreinamentoFmt}</span></div>
         <div class="campo"><b>Responsável</b><span>${escapeHtml(vistoResponsavel)}</span></div>
@@ -868,11 +879,16 @@ export function EntregasTab({ aoNavegarParaMatriz }: EntregasTabProps) {
 
                 <FormGrid>
                   <Campo span={6}>
-                    <Field label="Motivo">
+                    <Field label="Observação" required>
                       <Select
-                        value={dadosComuns.motivoTipo}
-                        onChange={(_, d) => setDadosComuns({ ...dadosComuns, motivoTipo: Number(d.value) })}
+                        value={dadosComuns.motivoTipo === null ? '' : String(dadosComuns.motivoTipo)}
+                        onChange={(_, d) =>
+                          setDadosComuns({ ...dadosComuns, motivoTipo: d.value === '' ? null : Number(d.value) })
+                        }
                       >
+                        <option value="" disabled>
+                          Selecione...
+                        </option>
                         {Object.entries(motivoEntregaEpiLabel).map(([valor, rotulo]) => (
                           <option key={valor} value={valor}>
                             {rotulo}
@@ -882,7 +898,7 @@ export function EntregasTab({ aoNavegarParaMatriz }: EntregasTabProps) {
                     </Field>
                   </Campo>
                   <Campo span={6}>
-                    <Field label="Observação do motivo">
+                    <Field label="Detalhes da observação (opcional)">
                       <Input
                         value={dadosComuns.motivo}
                         onChange={(_, d) => setDadosComuns({ ...dadosComuns, motivo: d.value })}
@@ -1014,7 +1030,7 @@ export function EntregasTab({ aoNavegarParaMatriz }: EntregasTabProps) {
               />
               {/* Só Administrador (pedido do usuário, 23/09): o servidor recusa a exclusão de quem
                   não for, então mostrar o botão para os outros só geraria erro na cara do técnico. */}
-              {souAdministrador && (
+              {souAdministrador && !travadas.has(e.id) && (
                 <BotaoAcao
                   tom="excluir"
                   icon={<Delete24Regular />}

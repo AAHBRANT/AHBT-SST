@@ -9,8 +9,9 @@ namespace AAHBRANT.SST.AgenteBiometria.Tests.Endpoints;
 
 public class AgenteEndpointsTests
 {
+    // O segredo do dispositivo não pode mais sair para o navegador: com ele dava para "assinar" por qualquer um.
     [Fact]
-    public void ObterDispositivo_DeveRetornarDispositivoIdESegredoDasOpcoes()
+    public void ObterDispositivo_DeveRetornarDispositivoIdSemOSegredo()
     {
         var dispositivoId = Guid.NewGuid();
         var options = Options.Create(new AgenteOptions { DispositivoId = dispositivoId, SegredoDispositivo = "segredo-x" });
@@ -19,7 +20,38 @@ public class AgenteEndpointsTests
 
         var ok = Assert.IsType<Ok<DispositivoResponse>>(resultado);
         Assert.Equal(dispositivoId, ok.Value!.DispositivoId);
-        Assert.Equal("segredo-x", ok.Value.SegredoDispositivo);
+        Assert.True(ok.Value.LeituraAssinada);
+        Assert.DoesNotContain("segredo-x", System.Text.Json.JsonSerializer.Serialize(ok.Value));
+    }
+
+    private static ChaveAssinaturaAgente NovaChave() =>
+        new(Options.Create(new AgenteOptions { CaminhoChaveAssinatura = Path.Combine(Path.GetTempPath(), $"chave-teste-{Guid.NewGuid():N}.bin") }));
+
+    // A chave fica gravada: reiniciar o agente não pode trocar a chave (o servidor recusaria a nova).
+    [Fact]
+    public void ChaveAssinatura_ReabertaDoMesmoArquivo_MantemAMesmaChavePublica()
+    {
+        var caminho = Path.Combine(Path.GetTempPath(), $"chave-teste-{Guid.NewGuid():N}.bin");
+        var opcoes = Options.Create(new AgenteOptions { CaminhoChaveAssinatura = caminho });
+        using var primeira = new ChaveAssinaturaAgente(opcoes);
+        using var segunda = new ChaveAssinaturaAgente(opcoes);
+
+        Assert.Equal(primeira.ChavePublicaBase64, segunda.ChavePublicaBase64);
+    }
+
+    [Fact]
+    public void ChaveAssinatura_AssinaturaConfereComAChavePublica()
+    {
+        using var chave = NovaChave();
+        var conteudo = AgenteEndpoints.ConteudoAssinado("desafio1", Guid.NewGuid(), 87.5);
+
+        var assinatura = chave.Assinar(conteudo);
+
+        using var verificador = System.Security.Cryptography.ECDsa.Create();
+        verificador.ImportSubjectPublicKeyInfo(Convert.FromBase64String(chave.ChavePublicaBase64), out _);
+        Assert.True(verificador.VerifyData(System.Text.Encoding.UTF8.GetBytes(conteudo), Convert.FromBase64String(assinatura),
+            System.Security.Cryptography.HashAlgorithmName.SHA256));
+        Assert.EndsWith("|87.50", conteudo);
     }
 
     [Fact]
@@ -34,7 +66,8 @@ public class AgenteEndpointsTests
         // TemplateCacheService.Templates é populado só via SincronizarAsync (que chama o backend);
         // para testar Capturar isoladamente, este teste cobre o caminho "cache vazio" abaixo e o
         // caminho "com match" fica coberto pelo teste de integração manual descrito na Task 21.
-        var resultado = await AgenteEndpoints.Capturar(leitor, matcher, cache, CancellationToken.None);
+        using var chave = NovaChave();
+        var resultado = await AgenteEndpoints.Capturar(leitor, matcher, cache, chave, null, CancellationToken.None);
 
         Assert.IsType<NotFound<ErroResponse>>(resultado.Result);
     }

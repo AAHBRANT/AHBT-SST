@@ -50,10 +50,11 @@ import {
 import { designTokens } from '@ui';
 import { useThemeMode } from '../theme/ThemeModeContext';
 import { useTeamsContext } from '../teams/useTeamsContext';
-import { api, StatusAlerta, type NovidadeVersao } from '../lib/api';
-import logoSst from '../assets/logo-sst.png';
+import { api, StatusAlerta, type NovidadeVersao, type PlanoIntegracao } from '../lib/api';
+import { LogoAahbrant } from './MarcaAahbrant';
 import { SyncStatusBadge } from '../components/SyncStatusBadge';
 import { NovidadesModal } from '../components/novidades/NovidadesModal';
+import { FuncionarioNovoModal } from '../components/planos-integracao/FuncionarioNovoModal';
 import { ID_TOASTER_GLOBAL } from '../lib/toaster';
 
 // Rail de navegação (Hub Gênesis SST — design decidido em sessão anterior): faixa fina só com
@@ -510,15 +511,11 @@ const useStyles = makeStyles({
       display: 'none',
     },
   },
+  // Altura e pílula vêm do padrão de botão (size="small" = 34 px); aqui só o que é próprio do topo.
   botaoAcaoTopo: {
-    height: '32px',
-    minWidth: '32px',
-    borderRadius: '8px',
     fontWeight: 700,
   },
   botaoCriarTopo: {
-    height: '32px',
-    borderRadius: '8px',
     backgroundColor: '#16a34a',
     color: '#ffffff',
     fontWeight: 800,
@@ -661,6 +658,7 @@ const itensPilares: Array<ItemNav & { icone: IconeNav }> = [
   { rota: '/ocorrencias', rotulo: 'Ocorrências', icone: BriefcaseMedical24Regular },
   { rota: '/terceirizados', rotulo: 'Terceirizado', icone: Building24Regular },
   { rota: '/calendario', rotulo: 'Calendário', icone: CalendarLtr24Regular },
+  // Relatórios oculto da sidebar (pedido do usuário, 17/10) — rota /relatorios segue ativa no App.tsx.
 ];
 
 // Administração fica fixa no rodapé do rail (mesmo padrão do mockup Hub Gênesis SST) — item único,
@@ -862,17 +860,23 @@ export function AppShell({ children }: { children: ReactNode }) {
   // shell autenticado, e só mostra se o backend confirmar que há algo ainda não visto por este
   // usuário (204 sem corpo quando não há pendência, ver ObterNovidadePendenteQuery).
   const [novidadePendente, setNovidadePendente] = useState<NovidadeVersao | null>(null);
+  // O pop-up de funcionário novo só entra depois que o de novidades saiu de cena (resolvido = não
+  // havia novidade, a busca falhou ou o usuário fechou).
+  const [novidadesResolvidas, setNovidadesResolvidas] = useState(false);
   useEffect(() => {
     if (carregando) return;
     let cancelado = false;
     api.novidades
       .obterPendente()
       .then((novidade) => {
-        if (!cancelado && novidade) setNovidadePendente(novidade);
+        if (cancelado) return;
+        if (novidade) setNovidadePendente(novidade);
+        else setNovidadesResolvidas(true);
       })
       .catch(() => {
         // Falha ao buscar novidades não deve incomodar o usuário — mesmo princípio de "nice to
         // have" já aplicado a outras integrações opcionais do AppShell.
+        if (!cancelado) setNovidadesResolvidas(true);
       });
     return () => {
       cancelado = true;
@@ -883,9 +887,37 @@ export function AppShell({ children }: { children: ReactNode }) {
     if (!novidadePendente) return;
     const id = novidadePendente.id;
     setNovidadePendente(null);
+    setNovidadesResolvidas(true);
     api.novidades.marcarVisto(id).catch(() => {
       // Idem: se a marcação falhar, o pop-up pode reaparecer no próximo login — inofensivo.
     });
+  }
+
+  // Pop-up "Funcionário novo" (especificação 21/10/2026): o servidor só devolve planos para Técnico de
+  // Segurança e Administrador. Reaparece enquanto houver passo pendente, no máximo uma vez por dia por
+  // funcionário — o "visto hoje" fica neste navegador (conveniência de quem vê, não dado do sistema).
+  const [planosIntegracao, setPlanosIntegracao] = useState<PlanoIntegracao[]>([]);
+  useEffect(() => {
+    if (!novidadesResolvidas) return;
+    let cancelado = false;
+    api.planosIntegracao
+      .pendentes()
+      .then((planos) => {
+        if (cancelado) return;
+        const vistos = lerPlanosVistosHoje();
+        setPlanosIntegracao(planos.filter((p) => !vistos.includes(p.id)));
+      })
+      .catch(() => {
+        // Opcional como as novidades: sem o pop-up, o técnico ainda tem o alerta e o aviso no Teams.
+      });
+    return () => {
+      cancelado = true;
+    };
+  }, [novidadesResolvidas]);
+
+  function fecharPlanosIntegracao() {
+    marcarPlanosVistosHoje(planosIntegracao.map((p) => p.id));
+    setPlanosIntegracao([]);
   }
 
   return (
@@ -929,19 +961,20 @@ export function AppShell({ children }: { children: ReactNode }) {
               onClick={() => setRailExpandido((atual) => !atual)}
             />
           </div>
-          <div className={estilos.marcaBloco}>
-            <img src={logoSst} alt="AAHBRANT SST" className={estilos.marcaTopo} />
-            <div className={estilos.marcaTexto}>
-              <span className={estilos.marcaNome}>SST</span>
+          <NavLink to="/" end className="gs-marca-link" aria-label="AAHBRANT · G-SST — ir para o Início">
+            <LogoAahbrant altura={30} />
+            <span className="gs-marca-divisor" aria-hidden />
+            <span className={estilos.marcaTexto}>
+              <span className={estilos.marcaNome}>G-SST</span>
               <span className={estilos.marcaSubtitulo}>Hub Gênesis SST</span>
-            </div>
-          </div>
+            </span>
+          </NavLink>
         </div>
 
         <div className={estilos.acoesTopo} aria-label="Ações globais">
           <MenuAtalhos
             botao={
-              <Button className={estilos.botaoCriarTopo} appearance="primary" icon={<Add24Regular />}>
+              <Button className={estilos.botaoCriarTopo} appearance="primary" size="small" icon={<Add24Regular />}>
                 Atalhos
               </Button>
             }
@@ -957,6 +990,7 @@ export function AppShell({ children }: { children: ReactNode }) {
                 <Button
                   className={estilos.botaoAcaoTopo}
                   appearance="primary"
+                  size="small"
                   icon={<Add24Regular />}
                   aria-label="Atalhos"
                   title="Atalhos"
@@ -977,7 +1011,8 @@ export function AppShell({ children }: { children: ReactNode }) {
             title={modo === 'dark' ? 'Modo claro' : 'Modo escuro'}
             onClick={alternarModo}
           />
-          <div className={mergeClasses(estilos.sinoAlertas, estilos.acoesMobileOcultas)}>
+          {/* Sininho fica visível também no celular (pedido do usuário, 19/10/2026): é o único caminho para Alertas. */}
+          <div className={estilos.sinoAlertas}>
             <Button
               appearance="subtle"
               icon={<Alert24Regular />}
@@ -1153,6 +1188,10 @@ export function AppShell({ children }: { children: ReactNode }) {
         />
       )}
 
+      {!novidadePendente && planosIntegracao.length > 0 && (
+        <FuncionarioNovoModal planos={planosIntegracao} aoFechar={fecharPlanosIntegracao} />
+      )}
+
       <main className={estilos.content}>{children}</main>
       <Toaster toasterId={ID_TOASTER_GLOBAL} />
     </div>
@@ -1162,6 +1201,31 @@ export function AppShell({ children }: { children: ReactNode }) {
 export function CardGrid({ children }: { children: ReactNode }) {
   const estilos = useStyles();
   return <div className={estilos.cardGrid}>{children}</div>;
+}
+
+const CHAVE_PLANOS_VISTOS = 'sst.planosIntegracao.vistos';
+
+function hojeLocal() {
+  const d = new Date();
+  return `${d.getFullYear()}-${d.getMonth() + 1}-${d.getDate()}`;
+}
+
+function lerPlanosVistosHoje(): string[] {
+  try {
+    const salvo = JSON.parse(localStorage.getItem(CHAVE_PLANOS_VISTOS) ?? 'null') as { dia?: string; ids?: string[] } | null;
+    return salvo?.dia === hojeLocal() && Array.isArray(salvo.ids) ? salvo.ids : [];
+  } catch {
+    return [];
+  }
+}
+
+function marcarPlanosVistosHoje(ids: string[]) {
+  try {
+    const atuais = lerPlanosVistosHoje();
+    localStorage.setItem(CHAVE_PLANOS_VISTOS, JSON.stringify({ dia: hojeLocal(), ids: [...new Set([...atuais, ...ids])] }));
+  } catch {
+    // Sem armazenamento (janela anônima, Teams com dados bloqueados): o pop-up volta na próxima abertura.
+  }
 }
 
 function obterIniciais(nome: string) {

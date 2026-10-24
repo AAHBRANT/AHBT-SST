@@ -26,11 +26,20 @@ export default defineConfig({
       manifest: {
         name: 'AAHBRANT SST',
         short_name: 'AAHBRANT SST',
+        lang: 'pt-BR',
         description: 'Gestão de Saúde e Segurança do Trabalho',
-        theme_color: '#670000',
+        theme_color: '#ffffff',
         background_color: '#ffffff',
         display: 'standalone',
-        icons: [{ src: '/favicon.svg', sizes: 'any', type: 'image/svg+xml' }],
+        // Ícone do colete sobre fundo branco (PR #184). O Android usa o de 512 px na tela inicial e
+        // aplica a própria máscara (círculo/squircle) via "maskable" — a versão maskable tem margem
+        // para o recorte não comer o desenho. A versão sobre fundo vinho (mesma arte do app do
+        // Teams) continua em public/icons/.
+        icons: [
+          { src: '/pwa-192.png', sizes: '192x192', type: 'image/png' },
+          { src: '/pwa-512.png', sizes: '512x512', type: 'image/png' },
+          { src: '/pwa-maskable-512.png', sizes: '512x512', type: 'image/png', purpose: 'maskable' },
+        ],
       },
       workbox: {
         // Chamadas de API não entram no cache do service worker — quem decide o que fica
@@ -57,7 +66,21 @@ export default defineConfig({
         importScripts: ['sw-atualizacao.js'],
         // Fora do precache: ele é buscado pelo próprio navegador ao instalar o SW (com os
         // cabeçalhos no-cache do nginx), não pela página.
-        globIgnores: ['**/sw-atualizacao.js'],
+        // O detector de rosto (MediaPipe) tem um .wasm de ~13 MB: ficaria no precache de TODOS os
+        // usuários, mesmo dos que nunca abrem a câmera facial. Fica fora e entra no cache só no
+        // primeiro uso (runtimeCaching abaixo).
+        globIgnores: ['**/sw-atualizacao.js', '**/vision_bundle-*', '**/vision_wasm_*', '**/blaze_face_*'],
+        runtimeCaching: [
+          {
+            urlPattern: /\/assets\/(vision_bundle|vision_wasm|blaze_face)[^/]*$/,
+            handler: 'CacheFirst',
+            options: {
+              cacheName: 'detector-rosto',
+              expiration: { maxEntries: 12 },
+              cacheableResponse: { statuses: [200] },
+            },
+          },
+        ],
       },
     }),
   ],

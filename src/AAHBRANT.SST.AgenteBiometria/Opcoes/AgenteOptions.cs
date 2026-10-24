@@ -23,4 +23,14 @@ public class AgenteOptions
 
     // Tempo que o agente espera o dedo em cada leitura (segundos). Aumente se os trabalhadores precisarem de mais tempo.
     public int TempoLimiteDedoSegundos { get; set; } = 15;
+
+    // Onde fica a chave privada de assinatura das leituras. Vazio = %ProgramData%\AAHBRANT\AgenteBiometria.
+    public string CaminhoChaveAssinatura { get; set; } = string.Empty;
+
+    // Endereço HTTPS do manifesto de atualização (manifesto.json publicado por publicar.ps1). Vazio desliga
+    // a atualização automática.
+    public string UrlManifestoAtualizacao { get; set; } = string.Empty;
+
+    // De quantas em quantas horas o agente procura versão nova (1 a 168).
+    public int IntervaloVerificacaoAtualizacaoHoras { get; set; } = 6;
 }
