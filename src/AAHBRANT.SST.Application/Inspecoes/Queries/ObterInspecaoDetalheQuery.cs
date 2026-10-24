@@ -32,6 +32,11 @@ public class ObterInspecaoDetalheQueryHandler : IRequestHandler<ObterInspecaoDet
         // derrubar a inspeção histórica dele.
         var veiculo = inspecao.VeiculoId is null ? null : await _db.Veiculos.IgnoreQueryFilters()
             .FirstOrDefaultAsync(v => v.Id == inspecao.VeiculoId, ct);
+        // Mesma razão do veículo: item/tema excluídos (soft delete) não podem derrubar a inspeção histórica.
+        var itemTema = inspecao.ItemInspecionavelId is null ? null : await _db.ItensInspecionaveis.IgnoreQueryFilters()
+            .Where(i => i.Id == inspecao.ItemInspecionavelId)
+            .Select(i => new { i.Identificacao, i.TemaInspecaoId, TemaNome = i.TemaInspecao != null ? i.TemaInspecao.Nome : null })
+            .FirstOrDefaultAsync(ct);
         var responsavelNome = await _db.Usuarios.IgnoreQueryFilters()
             .Where(u => u.Id == inspecao.ResponsavelUsuarioId)
             .Select(u => u.Nome)
@@ -70,6 +75,10 @@ public class ObterInspecaoDetalheQueryHandler : IRequestHandler<ObterInspecaoDet
                 VeiculoPlacaPrefixo = veiculo?.PlacaPrefixo,
                 VeiculoMarcaModelo = veiculo?.MarcaModelo,
                 VeiculoEmpresa = veiculo?.Empresa,
+                ItemInspecionavelId = inspecao.ItemInspecionavelId,
+                ItemInspecionavelIdentificacao = itemTema?.Identificacao,
+                TemaInspecaoId = itemTema?.TemaInspecaoId,
+                TemaInspecaoNome = itemTema?.TemaNome,
                 ChecklistModeloId = inspecao.ChecklistModeloId,
                 ChecklistModeloNome = checklist?.Nome ?? string.Empty,
                 ChecklistModeloVersao = checklist?.Versao ?? 0,

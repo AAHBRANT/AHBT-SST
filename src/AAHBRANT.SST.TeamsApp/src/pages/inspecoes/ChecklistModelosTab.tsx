@@ -244,7 +244,7 @@ export function ChecklistModelosTab() {
                     }}
                     disabled={!!versionandoId}
                   >
-                    {Object.entries(tipoInspecaoLabel).map(([valor, rotulo]) => (
+                    {Object.entries(tipoInspecaoLabel).filter(([valor]) => Number(valor) !== TipoInspecao.Tema).map(([valor, rotulo]) => (
                       <option key={valor} value={valor}>
                         {rotulo}
                       </option>

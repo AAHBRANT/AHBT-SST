@@ -28,6 +28,7 @@ public class ListarChecklistModelosQueryHandler : IRequestHandler<ListarChecklis
             Nome = c.Nome,
             TipoInspecao = c.TipoInspecao,
             TipoVeiculo = c.TipoVeiculo,
+            TemaInspecaoId = c.TemaInspecaoId,
             Versao = c.Versao,
             ChecklistModeloAnteriorId = c.ChecklistModeloAnteriorId,
             QuantidadeItens = c.Itens.Count(i => i.Ativo)

@@ -246,7 +246,7 @@ export function InspecoesTab() {
                     onChange={(_, d) => setNovaInspecao({ ...novaInspecao, checklistModeloId: d.value })}
                   >
                     <option value="">Selecione</option>
-                    {checklists.filter((c) => c.tipoInspecao !== TipoInspecao.Veiculo && c.tipoInspecao !== TipoInspecao.Alojamento).map((c) => (
+                    {checklists.filter((c) => c.tipoInspecao !== TipoInspecao.Veiculo && c.tipoInspecao !== TipoInspecao.Alojamento && c.tipoInspecao !== TipoInspecao.Tema).map((c) => (
                       <option key={c.id} value={c.id}>
                         {c.nome} (v{c.versao} — {tipoInspecaoLabel[c.tipoInspecao]})
                       </option>

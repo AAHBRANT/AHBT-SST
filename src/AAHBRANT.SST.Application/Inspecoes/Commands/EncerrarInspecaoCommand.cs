@@ -55,9 +55,9 @@ public class EncerrarInspecaoCommandHandler : IRequestHandler<EncerrarInspecaoCo
             throw new InvalidOperationException(
                 $"Não é possível encerrar: os seguintes itens exigem foto e ainda não têm: {string.Join("; ", itensSemFotoObrigatoria)}");
 
-        // Veículos: 1 foto, obrigatória APENAS nos itens marcados como Não Conforme (decisão do
-        // usuário, 02/10/2026). Item Conforme/Não Aplicável não exige nem usa foto.
-        if (inspecao.TipoInspecao == TipoInspecao.Veiculo)
+        // Veículos e temas criados pelo usuário: 1 foto, obrigatória APENAS nos itens marcados como Não
+        // Conforme (decisão do usuário, 02/10/2026). Item Conforme/Não Aplicável não exige nem usa foto.
+        if (inspecao.TipoInspecao is TipoInspecao.Veiculo or TipoInspecao.Tema)
         {
             var ncSemFoto = inspecao.Respostas
                 .Where(r => r.Ativo && r.StatusItem == StatusItemChecklist.NaoConforme && r.FotoConteudo.Length == 0)

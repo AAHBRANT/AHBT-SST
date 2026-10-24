@@ -1,11 +1,11 @@
 import { Abas, DashboardTopo, PageHeader, useAbaNaUrl } from '@ui';
 import { InspecoesDashboardTab } from './dashboard/InspecoesDashboardTab';
 import { ChecklistModelosTab } from './ChecklistModelosTab';
-import { InspecoesTab } from './InspecoesTab';
-import { AlojamentoTab } from './AlojamentoTab';
-import { VeiculosTab } from './VeiculosTab';
+import { CartoesInspecoes } from './CartoesInspecoes';
 
-const ABAS = ['execucoes', 'checklists', 'alojamento', 'veiculos'] as const;
+// 'alojamento' e 'veiculos' deixaram de ser sub-abas: viraram cards dentro de "Inspeções" (?cartao=...).
+// Links antigos com ?aba=alojamento|veiculos caem na aba "Inspeções" (valor inválido volta ao padrão).
+const ABAS = ['execucoes', 'checklists'] as const;
 type AbaInspecoes = (typeof ABAS)[number];
 
 // Onda 2 Task 10 (camada ui/): página-pilar de Inspeções — mesmo padrão de EpiPage.tsx (piloto 1):
@@ -29,14 +29,11 @@ export function InspecoesPage({ mostrarTitulo = true }: { mostrarTitulo?: boolea
         abas={[
           { valor: 'execucoes', rotulo: 'Inspeções' },
           { valor: 'checklists', rotulo: 'Catálogo de inspeções' },
-          { valor: 'alojamento', rotulo: 'Alojamento' },
-          { valor: 'veiculos', rotulo: 'Veículos' },
         ]}
       />
 
-      {aba === 'execucoes' && <InspecoesTab />}
+      {aba === 'execucoes' && <CartoesInspecoes />}
       {aba === 'checklists' && <ChecklistModelosTab />}
-      {aba === 'alojamento' && <AlojamentoTab />}
-      {aba === 'veiculos' && <VeiculosTab />}    </div>
+    </div>
   );
 }

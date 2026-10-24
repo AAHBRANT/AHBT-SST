@@ -17,6 +17,11 @@ public class InspecaoDto
     public string? VeiculoPlacaPrefixo { get; set; }
     public string? VeiculoMarcaModelo { get; set; }
     public string? VeiculoEmpresa { get; set; }
+    // Preenchidos só nas inspeções de temas criados pelo usuário (ex.: um andaime do tema "Andaime").
+    public Guid? ItemInspecionavelId { get; set; }
+    public string? ItemInspecionavelIdentificacao { get; set; }
+    public Guid? TemaInspecaoId { get; set; }
+    public string? TemaInspecaoNome { get; set; }
     public Guid ChecklistModeloId { get; set; }
     public string ChecklistModeloNome { get; set; } = string.Empty;
     public int ChecklistModeloVersao { get; set; }
