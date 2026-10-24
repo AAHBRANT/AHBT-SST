@@ -23,6 +23,7 @@ public class AcidenteConfiguracao : IEntityTypeConfiguration<Acidente>
         builder.Property(a => a.Local).IsRequired().HasMaxLength(200);
         builder.Property(a => a.Descricao).IsRequired().HasMaxLength(2000);
         builder.Property(a => a.Lesao).HasMaxLength(500);
+        builder.Property(a => a.RegioesCorpo).HasMaxLength(2000);
         builder.Property(a => a.Consequencia).HasMaxLength(500);
         builder.Property(a => a.Atendimento).HasMaxLength(500);
         builder.Property(a => a.NumeroCat).HasMaxLength(50);

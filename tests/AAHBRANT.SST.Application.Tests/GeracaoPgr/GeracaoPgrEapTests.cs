@@ -113,6 +113,40 @@ public class GeracaoPgrEapTests
     }
 
     [Fact]
+    public void Pendencias_ExigemTermino_ResponsavelEPrazoDaAcao_ECategoriaDaMedidaAceita()
+    {
+        var estrutura = new EstruturaGeracaoPgr
+        {
+            Ghes = new()
+            {
+                new GheGerado
+                {
+                    Numero = 1, Nome = "Estrutura",
+                    Funcoes = new() { new FuncaoGerada { Nome = "ARMADOR", Descricao = "Monta armaduras" } },
+                    Atividades = new() { new AtividadeGerada { CodigoEap = "1.1", Nome = "Laje", RiscosGerados = true, Riscos = new() {
+                        new RiscoGerado { Perigo = "Queda", Probabilidade = 2, Severidade = 2, Revisado = true,
+                            Medidas = new() { new MedidaGerada { Texto = "Guarda-corpo", Decisao = "Aceita" } } } } } },
+                },
+            },
+            // Formato antigo: uma ação por linha, sem responsável nem prazo.
+            PlanoAcao = new() { "Instalar linha de vida" },
+        }.Normalizar();
+
+        var pendencias = PendenciasGeracaoPgr.Calcular(estrutura, 5, 5);
+
+        Assert.Contains(pendencias, p => p.Contains("término da vigência"));
+        Assert.Contains(pendencias, p => p.Contains("sem responsável"));
+        Assert.Contains(pendencias, p => p.Contains("sem prazo"));
+        Assert.Contains(pendencias, p => p.Contains("sem classificação"));
+
+        estrutura.DataTermino = new DateTime(2027, 1, 1);
+        estrutura.AcoesPlano[0].ResponsavelNome = "Téc. Ana";
+        estrutura.AcoesPlano[0].Prazo = new DateTime(2026, 12, 1);
+        estrutura.Ghes[0].Atividades[0].Riscos[0].Medidas[0].Categoria = CategoriasMedida.Epi;
+        Assert.Empty(PendenciasGeracaoPgr.Calcular(estrutura, 5, 5));
+    }
+
+    [Fact]
     public async Task Aprovar_ComPendencia_Recusa_ESemPendencia_CriaPgrVigenteComEstruturaEMedidasValidadas()
     {
         var (db, obra, armador) = await CriarAsync();
@@ -137,14 +171,15 @@ public class GeracaoPgrEapTests
                             Riscos = new()
                             {
                                 new RiscoGerado { Tipo = "Acidente", Perigo = "Queda de altura", Probabilidade = 4, Severidade = 5, Revisado = true,
-                                    Medidas = new() { new MedidaGerada { Fase = 1, Texto = "Instale guarda-corpo", Decisao = "Aceita" }, new MedidaGerada { Texto = "Descartar", Decisao = "Descartada" } } },
+                                    Medidas = new() { new MedidaGerada { Fase = 1, Texto = "Instale guarda-corpo", Categoria = CategoriasMedida.Epc, Decisao = "Aceita" }, new MedidaGerada { Texto = "Descartar", Decisao = "Descartada" } } },
                                 new RiscoGerado { Perigo = "Excluído", Probabilidade = 1, Severidade = 1, Excluido = true },
                             },
                         },
                     },
                 },
             },
-            PlanoAcao = new() { "Instalar linha de vida" },
+            DataTermino = new DateTime(2027, 10, 21),
+            AcoesPlano = new() { new AcaoPlanoGerada { Descricao = "Instalar linha de vida", ResponsavelNome = "Téc. Ana", Prazo = new DateTime(2026, 12, 15) } },
         };
 
         // Com medida pendente, nem envia nem aprova sem resolver.
@@ -175,7 +210,9 @@ public class GeracaoPgrEapTests
         var medida = await db.MedidasPrevencao.SingleAsync();
         Assert.Equal(StatusMedidaPrevencao.Validada, medida.Status);
         Assert.Equal(FaseMedidaPrevencao.Antes, medida.Fase);
-        Assert.Single(await db.PlanoAcaoItens.Where(i => i.PgrId == pgrId).ToListAsync());
+        Assert.Equal(new DateTime(2027, 10, 21), pgr.DataTermino);
+        var acao = Assert.Single(await db.PlanoAcaoItens.Where(i => i.PgrId == pgrId).ToListAsync());
+        Assert.Equal(new DateTime(2026, 12, 15), acao.Prazo);
         var g = await db.GeracoesPgrEap.SingleAsync();
         Assert.Equal(StatusGeracaoPgrEap.Aprovado, g.Status);
         await Assert.ThrowsAsync<InvalidOperationException>(() =>

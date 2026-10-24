@@ -102,7 +102,8 @@ public class ExportarInvestigacaoOcorrenciaPdfQueryHandler : IRequestHandler<Exp
             rastreio.ConteudoHash,
             rastreio.UrlValidacaoPublica,
             rastreio.QrCodePng,
-            rastreio.TemAssinatura);
+            rastreio.TemAssinatura,
+            a.RegioesCorpo);
 
         var pdf = _pdf.Gerar(modelo);
         await _rastreabilidade.RegistrarArquivoAsync(rastreio.DocumentoId, pdf, ct);

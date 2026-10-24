@@ -1,0 +1,466 @@
+{
+ "_gerado_por": "scripts/mapa-corporal/gerar_mapa_corporal.py — não edite à mão",
+ "viewBox": "40 0 120 440",
+ "silhueta": "M100,8 C113,8 122,18 122,33 C125.5,31 127,41 122.5,45 C121,52 118,58 113,62 C112.5,66 113,70 113.5,74 C119,80 130,82 138,85 C147,88 151.5,96 151.5,107 C152.5,119 154,134 152.5,148 C152.5,154 153.5,160 154,166 C158.5,177 158,194 155,210 C157.5,218 159.5,228 159,238 C158.5,246 153,250 148.5,247 C145,240 143,230 143.5,220 C144,216 144,214 144,212 C143,200 141,185 140,170 C139.5,165 139,162 139,158 C137.5,145 137,128 135,117 C133,115 131,117 131.5,120 C133,135 128,150 127,165 C126.5,178 134,190 136,205 C139.5,222 139.5,252 134,282 C131.5,296 132,306 131,318 C135,333 135.5,351 129.5,372 C126,386 125.5,397 126,404 C128.5,412 130,420 127,426 C122,430.5 112,430.5 109.5,426 C107.5,420 108.5,410 110,404 C111,388 106.5,366 108.5,345 C109.5,330 110,320 109,310 C106,282 104,246 103,228 C102.5,221 101,217 100,216 C99,217 97.5,221 97,228 C96,246 94,282 91,310 C90,320 90.5,330 91.5,345 C93.5,366 89,388 90,404 C91.5,410 92.5,420 90.5,426 C88,430.5 78,430.5 73,426 C70,420 71.5,412 74,404 C74.5,397 74,386 70.5,372 C64.5,351 65,333 69,318 C68,306 68.5,296 66,282 C60.5,252 60.5,222 64,205 C66,190 73.5,178 73,165 C72,150 67,135 68.5,120 C69,117 67,115 65,117 C63,128 62.5,145 61,158 C61,162 60.5,165 60,170 C59,185 57,200 56,212 C56,214 56,216 56.5,220 C57,230 55,240 51.5,247 C47,250 41.5,246 41,238 C40.5,228 42.5,218 45,210 C42,194 41.5,177 46,166 C46.5,160 47.5,154 47.5,148 C46,134 47.5,119 48.5,107 C48.5,96 53,88 62,85 C70,82 81,80 86.5,74 C87,70 87.5,66 87,62 C82,58 79,52 77.5,45 C73,41 74.5,31 78,33 C78,18 87,8 100,8 Z",
+ "vistas": [
+  {
+   "id": "F",
+   "titulo": "Vista anterior (frente)",
+   "detalhes": [
+    "M100,82 L100,120",
+    "M100,128 L100,186",
+    "M98.4,178 A1.6,2 0 1,0 101.6,178 A1.6,2 0 1,0 98.4,178 Z",
+    "M100,40 C99,46 97,50 98,52 C99.5,53.2 100.5,53.2 102,52",
+    "M94,57.5 C98,59 102,59 106,57.5",
+    "M113,78 C122,80 130,80 138,84",
+    "M87,78 C78,80 70,80 62,84",
+    "M101.5,119 C109,124.5 122,125 134,113",
+    "M98.5,119 C91,124.5 78,125 66,113",
+    "M118,89 C124,93 129,100 133,108",
+    "M82,89 C76,93 71,100 67,108",
+    "M101,140 C108,139 115,140 119,142",
+    "M99,140 C92,139 85,140 81,142",
+    "M101,156 C108,155 114,156 118,158",
+    "M99,156 C92,155 86,156 82,158",
+    "M101,171 C107,170 113,171 117,172",
+    "M99,171 C93,170 87,171 83,172",
+    "M119,128 C121,150 120,170 116,188",
+    "M81,128 C79,150 80,170 84,188",
+    "M127,182 C122,192 113,203 106,212",
+    "M73,182 C78,192 87,203 94,212",
+    "M138,86 C136,95 136,104 140,112",
+    "M62,86 C64,95 64,104 60,112",
+    "M146,118 C144,130 144,142 147,152",
+    "M54,118 C56,130 56,142 53,152",
+    "M147,172 C148,185 149,197 150,208",
+    "M53,172 C52,185 51,197 50,208",
+    "M112,64 C109,70 105,76 102,80",
+    "M88,64 C91,70 95,76 98,80",
+    "M120,228 C123,250 126,272 126,292",
+    "M80,228 C77,250 74,272 74,292",
+    "M108,276 C112,290 116,298 120,300",
+    "M92,276 C88,290 84,298 80,300",
+    "M118,330 C118,350 117,370 117,395",
+    "M82,330 C82,350 83,370 83,395",
+    "M150,238 L150,246.5",
+    "M50,238 L50,246.5",
+    "M154,237 L154.5,245",
+    "M46,237 L45.5,245",
+    "M146.5,236.5 L146.5,244",
+    "M53.5,236.5 L53.5,244",
+    "M114,424 L114,429.3",
+    "M86,424 L86,429.3",
+    "M118.5,424 L118.5,429.8",
+    "M81.5,424 L81.5,429.8",
+    "M123,423 L123,428.5",
+    "M77,423 L77,428.5",
+    "M88,36 C91,34 95,34 97,36",
+    "M112,36 C109,34 105,34 103,36",
+    "M115.5,312 A5.5,7 0 1,0 126.5,312 A5.5,7 0 1,0 115.5,312 Z",
+    "M73.5,312 A5.5,7 0 1,0 84.5,312 A5.5,7 0 1,0 73.5,312 Z",
+    "M87.5,41 A4,2 0 1,0 95.5,41 A4,2 0 1,0 87.5,41 Z",
+    "M104.5,41 A4,2 0 1,0 112.5,41 A4,2 0 1,0 104.5,41 Z"
+   ],
+   "regioes": [
+    {
+     "codigo": "F:cabeca",
+     "rotulo": "Cabeça (crânio)",
+     "d": "M70,0 L130,0 L130,28 L70,28 Z"
+    },
+    {
+     "codigo": "F:face",
+     "rotulo": "Face",
+     "d": "M79.5,28 L120.5,28 L120.5,64 L79.5,64 Z"
+    },
+    {
+     "codigo": "F:olho-dir",
+     "rotulo": "Olho direito",
+     "d": "M86.7,41 A4.8,2.8 0 1,0 96.3,41 A4.8,2.8 0 1,0 86.7,41 Z"
+    },
+    {
+     "codigo": "F:olho-esq",
+     "rotulo": "Olho esquerdo",
+     "d": "M103.7,41 A4.8,2.8 0 1,0 113.3,41 A4.8,2.8 0 1,0 103.7,41 Z"
+    },
+    {
+     "codigo": "F:pescoco",
+     "rotulo": "Pescoço",
+     "d": "M70,64 L130,64 L130,79 L70,79 Z"
+    },
+    {
+     "codigo": "F:orelha-dir",
+     "rotulo": "Orelha direita",
+     "d": "M79.5,50 L68,50 L68,28 L79.5,28 Z"
+    },
+    {
+     "codigo": "F:orelha-esq",
+     "rotulo": "Orelha esquerda",
+     "d": "M120.5,28 L132,28 L132,50 L120.5,50 Z"
+    },
+    {
+     "codigo": "F:ombro-dir",
+     "rotulo": "Ombro direito",
+     "d": "M69,97 L62.5,116 L35,116 L35,79 L83,79 Z"
+    },
+    {
+     "codigo": "F:ombro-esq",
+     "rotulo": "Ombro esquerdo",
+     "d": "M117,79 L165,79 L165,116 L137.5,116 L131,97 Z"
+    },
+    {
+     "codigo": "F:torax-dir",
+     "rotulo": "Tórax (lado direito)",
+     "d": "M100,150 L62.5,150 L62.5,116 L69,97 L83,79 L100,79 Z"
+    },
+    {
+     "codigo": "F:torax-esq",
+     "rotulo": "Tórax (lado esquerdo)",
+     "d": "M100,79 L117,79 L131,97 L137.5,116 L137.5,150 L100,150 Z"
+    },
+    {
+     "codigo": "F:abdome-dir",
+     "rotulo": "Abdome (lado direito)",
+     "d": "M100,192 L62.5,192 L62.5,150 L100,150 Z"
+    },
+    {
+     "codigo": "F:abdome-esq",
+     "rotulo": "Abdome (lado esquerdo)",
+     "d": "M100,150 L137.5,150 L137.5,192 L100,192 Z"
+    },
+    {
+     "codigo": "F:quadril-dir",
+     "rotulo": "Quadril / virilha (lado direito)",
+     "d": "M100,230 L76,230 L62.2,212 L62.2,192 L100,192 Z"
+    },
+    {
+     "codigo": "F:quadril-esq",
+     "rotulo": "Quadril / virilha (lado esquerdo)",
+     "d": "M100,192 L137.8,192 L137.8,212 L124,230 L100,230 Z"
+    },
+    {
+     "codigo": "F:braco-dir",
+     "rotulo": "Braço direito",
+     "d": "M62.5,157 L35,157 L35,116 L62.5,116 Z"
+    },
+    {
+     "codigo": "F:braco-esq",
+     "rotulo": "Braço esquerdo",
+     "d": "M137.5,116 L165,116 L165,157 L137.5,157 Z"
+    },
+    {
+     "codigo": "F:cotovelo-dir",
+     "rotulo": "Cotovelo direito",
+     "d": "M62.5,170 L35,170 L35,157 L62.5,157 Z"
+    },
+    {
+     "codigo": "F:cotovelo-esq",
+     "rotulo": "Cotovelo esquerdo",
+     "d": "M137.5,157 L165,157 L165,170 L137.5,170 Z"
+    },
+    {
+     "codigo": "F:antebraco-dir",
+     "rotulo": "Antebraço direito",
+     "d": "M62.2,206 L35,206 L35,170 L62.2,170 Z"
+    },
+    {
+     "codigo": "F:antebraco-esq",
+     "rotulo": "Antebraço esquerdo",
+     "d": "M137.8,170 L165,170 L165,206 L137.8,206 Z"
+    },
+    {
+     "codigo": "F:punho-dir",
+     "rotulo": "Punho direito",
+     "d": "M60.5,217 L35,217 L35,206 L60.5,206 Z"
+    },
+    {
+     "codigo": "F:punho-esq",
+     "rotulo": "Punho esquerdo",
+     "d": "M139.5,206 L165,206 L165,217 L139.5,217 Z"
+    },
+    {
+     "codigo": "F:mao-dir",
+     "rotulo": "Mão direita (palma)",
+     "d": "M60.5,238 L35,238 L35,217 L60.5,217 Z"
+    },
+    {
+     "codigo": "F:mao-esq",
+     "rotulo": "Mão esquerda (palma)",
+     "d": "M139.5,217 L165,217 L165,238 L139.5,238 Z"
+    },
+    {
+     "codigo": "F:dedos-mao-dir",
+     "rotulo": "Dedos da mão direita",
+     "d": "M60.5,256 L35,256 L35,238 L60.5,238 Z"
+    },
+    {
+     "codigo": "F:dedos-mao-esq",
+     "rotulo": "Dedos da mão esquerda",
+     "d": "M139.5,238 L165,238 L165,256 L139.5,256 Z"
+    },
+    {
+     "codigo": "F:coxa-dir",
+     "rotulo": "Coxa direita",
+     "d": "M100,300 L50,300 L50,252 L60.5,252 L60.5,212 L62.2,212 L76,230 L100,230 Z"
+    },
+    {
+     "codigo": "F:coxa-esq",
+     "rotulo": "Coxa esquerda",
+     "d": "M100,230 L124,230 L137.8,212 L139.5,212 L139.5,252 L150,252 L150,300 L100,300 Z"
+    },
+    {
+     "codigo": "F:joelho-dir",
+     "rotulo": "Joelho direito",
+     "d": "M100,330 L50,330 L50,300 L100,300 Z"
+    },
+    {
+     "codigo": "F:joelho-esq",
+     "rotulo": "Joelho esquerdo",
+     "d": "M100,300 L150,300 L150,330 L100,330 Z"
+    },
+    {
+     "codigo": "F:tornozelo-dir",
+     "rotulo": "Tornozelo direito",
+     "d": "M100,408 L50,408 L50,392 L100,392 Z"
+    },
+    {
+     "codigo": "F:tornozelo-esq",
+     "rotulo": "Tornozelo esquerdo",
+     "d": "M100,392 L150,392 L150,408 L100,408 Z"
+    },
+    {
+     "codigo": "F:perna-dir",
+     "rotulo": "Perna direita (canela)",
+     "d": "M100,392 L50,392 L50,330 L100,330 Z"
+    },
+    {
+     "codigo": "F:perna-esq",
+     "rotulo": "Perna esquerda (canela)",
+     "d": "M100,330 L150,330 L150,392 L100,392 Z"
+    },
+    {
+     "codigo": "F:pe-dir",
+     "rotulo": "Pé direito",
+     "d": "M100,422 L50,422 L50,408 L100,408 Z"
+    },
+    {
+     "codigo": "F:pe-esq",
+     "rotulo": "Pé esquerdo",
+     "d": "M100,408 L150,408 L150,422 L100,422 Z"
+    },
+    {
+     "codigo": "F:dedos-pe-dir",
+     "rotulo": "Dedos do pé direito",
+     "d": "M100,440 L50,440 L50,422 L100,422 Z"
+    },
+    {
+     "codigo": "F:dedos-pe-esq",
+     "rotulo": "Dedos do pé esquerdo",
+     "d": "M100,422 L150,422 L150,440 L100,440 Z"
+    }
+   ]
+  },
+  {
+   "id": "C",
+   "titulo": "Vista posterior (costas)",
+   "detalhes": [
+    "M100,80 L100,196",
+    "M100,200 L100,226",
+    "M106,92 C116,90 126,94 128,104 C126,118 118,126 108,128",
+    "M94,92 C84,90 74,94 72,104 C74,118 82,126 92,128",
+    "M113,76 C116,96 110,116 100,132",
+    "M87,76 C84,96 90,116 100,132",
+    "M131,122 C126,140 118,158 106,168",
+    "M69,122 C74,140 82,158 94,168",
+    "M104,192 C115,188 128,190 135,200",
+    "M96,192 C85,188 72,190 65,200",
+    "M102,230 C110,236 124,236 134,226",
+    "M98,230 C90,236 76,236 66,226",
+    "M138,86 C134,96 135,106 139,113",
+    "M62,86 C66,96 65,106 61,113",
+    "M141,160 C144,163 148,163 151,160",
+    "M59,160 C56,163 52,163 49,160",
+    "M120,240 C120,262 120,282 119,300",
+    "M80,240 C80,262 80,282 81,300",
+    "M110,312 C116,314 124,314 130,312",
+    "M90,312 C84,314 76,314 70,312",
+    "M119,330 C114,342 113,356 117,368",
+    "M81,330 C86,342 87,356 83,368",
+    "M121,330 C127,342 129,356 125,368",
+    "M79,330 C73,342 71,356 75,368",
+    "M118,372 C118,385 118,395 118,402",
+    "M82,372 C82,385 82,395 82,402",
+    "M150,238 L150,246.5",
+    "M50,238 L50,246.5",
+    "M154,237 L154.5,245",
+    "M46,237 L45.5,245",
+    "M146.5,236.5 L146.5,244",
+    "M53.5,236.5 L53.5,244",
+    "M86,52 C95,56 105,56 114,52",
+    "M106.7,198 A1.3,1.3 0 1,0 109.3,198 A1.3,1.3 0 1,0 106.7,198 Z",
+    "M90.7,198 A1.3,1.3 0 1,0 93.3,198 A1.3,1.3 0 1,0 90.7,198 Z"
+   ],
+   "regioes": [
+    {
+     "codigo": "C:cabeca",
+     "rotulo": "Cabeça (parte posterior)",
+     "d": "M70,0 L130,0 L130,64 L70,64 Z"
+    },
+    {
+     "codigo": "C:pescoco",
+     "rotulo": "Pescoço (nuca / cervical)",
+     "d": "M70,64 L130,64 L130,79 L70,79 Z"
+    },
+    {
+     "codigo": "C:ombro-esq",
+     "rotulo": "Ombro / escápula esquerdo (costas)",
+     "d": "M69,97 L62.5,116 L35,116 L35,79 L83,79 Z"
+    },
+    {
+     "codigo": "C:ombro-dir",
+     "rotulo": "Ombro / escápula direito (costas)",
+     "d": "M117,79 L165,79 L165,116 L137.5,116 L131,97 Z"
+    },
+    {
+     "codigo": "C:dorso-esq",
+     "rotulo": "Costas – região dorsal (lado esquerdo)",
+     "d": "M100,150 L62.5,150 L62.5,116 L69,97 L83,79 L100,79 Z"
+    },
+    {
+     "codigo": "C:dorso-dir",
+     "rotulo": "Costas – região dorsal (lado direito)",
+     "d": "M100,79 L117,79 L131,97 L137.5,116 L137.5,150 L100,150 Z"
+    },
+    {
+     "codigo": "C:lombar-esq",
+     "rotulo": "Região lombar (lado esquerdo)",
+     "d": "M100,192 L62.5,192 L62.5,150 L100,150 Z"
+    },
+    {
+     "codigo": "C:lombar-dir",
+     "rotulo": "Região lombar (lado direito)",
+     "d": "M100,150 L137.5,150 L137.5,192 L100,192 Z"
+    },
+    {
+     "codigo": "C:gluteo-esq",
+     "rotulo": "Glúteo esquerdo",
+     "d": "M100,236 L60.5,236 L60.5,212 L62.2,212 L62.2,192 L100,192 Z"
+    },
+    {
+     "codigo": "C:gluteo-dir",
+     "rotulo": "Glúteo direito",
+     "d": "M100,192 L137.8,192 L137.8,212 L139.5,212 L139.5,236 L100,236 Z"
+    },
+    {
+     "codigo": "C:braco-esq",
+     "rotulo": "Braço esquerdo (costas)",
+     "d": "M62.5,157 L35,157 L35,116 L62.5,116 Z"
+    },
+    {
+     "codigo": "C:braco-dir",
+     "rotulo": "Braço direito (costas)",
+     "d": "M137.5,116 L165,116 L165,157 L137.5,157 Z"
+    },
+    {
+     "codigo": "C:cotovelo-esq",
+     "rotulo": "Cotovelo esquerdo (costas)",
+     "d": "M62.5,170 L35,170 L35,157 L62.5,157 Z"
+    },
+    {
+     "codigo": "C:cotovelo-dir",
+     "rotulo": "Cotovelo direito (costas)",
+     "d": "M137.5,157 L165,157 L165,170 L137.5,170 Z"
+    },
+    {
+     "codigo": "C:antebraco-esq",
+     "rotulo": "Antebraço esquerdo (costas)",
+     "d": "M62.2,206 L35,206 L35,170 L62.2,170 Z"
+    },
+    {
+     "codigo": "C:antebraco-dir",
+     "rotulo": "Antebraço direito (costas)",
+     "d": "M137.8,170 L165,170 L165,206 L137.8,206 Z"
+    },
+    {
+     "codigo": "C:punho-esq",
+     "rotulo": "Punho esquerdo (costas)",
+     "d": "M60.5,217 L35,217 L35,206 L60.5,206 Z"
+    },
+    {
+     "codigo": "C:punho-dir",
+     "rotulo": "Punho direito (costas)",
+     "d": "M139.5,206 L165,206 L165,217 L139.5,217 Z"
+    },
+    {
+     "codigo": "C:mao-esq",
+     "rotulo": "Mão esquerda (dorso)",
+     "d": "M60.5,238 L35,238 L35,217 L60.5,217 Z"
+    },
+    {
+     "codigo": "C:mao-dir",
+     "rotulo": "Mão direita (dorso)",
+     "d": "M139.5,217 L165,217 L165,238 L139.5,238 Z"
+    },
+    {
+     "codigo": "C:dedos-mao-esq",
+     "rotulo": "Dedos da mão esquerda (costas)",
+     "d": "M60.5,256 L35,256 L35,238 L60.5,238 Z"
+    },
+    {
+     "codigo": "C:dedos-mao-dir",
+     "rotulo": "Dedos da mão direita (costas)",
+     "d": "M139.5,238 L165,238 L165,256 L139.5,256 Z"
+    },
+    {
+     "codigo": "C:coxa-esq",
+     "rotulo": "Coxa esquerda (posterior)",
+     "d": "M100,300 L50,300 L50,252 L60.5,252 L60.5,236 L100,236 Z"
+    },
+    {
+     "codigo": "C:coxa-dir",
+     "rotulo": "Coxa direita (posterior)",
+     "d": "M100,236 L139.5,236 L139.5,252 L150,252 L150,300 L100,300 Z"
+    },
+    {
+     "codigo": "C:joelho-esq",
+     "rotulo": "Joelho esquerdo (costas)",
+     "d": "M100,330 L50,330 L50,300 L100,300 Z"
+    },
+    {
+     "codigo": "C:joelho-dir",
+     "rotulo": "Joelho direito (costas)",
+     "d": "M100,300 L150,300 L150,330 L100,330 Z"
+    },
+    {
+     "codigo": "C:tornozelo-esq",
+     "rotulo": "Tornozelo esquerdo (costas)",
+     "d": "M100,408 L50,408 L50,392 L100,392 Z"
+    },
+    {
+     "codigo": "C:tornozelo-dir",
+     "rotulo": "Tornozelo direito (costas)",
+     "d": "M100,392 L150,392 L150,408 L100,408 Z"
+    },
+    {
+     "codigo": "C:perna-esq",
+     "rotulo": "Panturrilha esquerda",
+     "d": "M100,392 L50,392 L50,330 L100,330 Z"
+    },
+    {
+     "codigo": "C:perna-dir",
+     "rotulo": "Panturrilha direita",
+     "d": "M100,330 L150,330 L150,392 L100,392 Z"
+    },
+    {
+     "codigo": "C:pe-esq",
+     "rotulo": "Calcanhar / pé esquerdo",
+     "d": "M100,440 L50,440 L50,408 L100,408 Z"
+    },
+    {
+     "codigo": "C:pe-dir",
+     "rotulo": "Calcanhar / pé direito",
+     "d": "M100,408 L150,408 L150,440 L100,440 Z"
+    }
+   ]
+  }
+ ]
+}

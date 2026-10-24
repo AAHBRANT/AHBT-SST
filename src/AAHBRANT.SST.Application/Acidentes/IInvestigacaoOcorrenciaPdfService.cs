@@ -58,7 +58,9 @@ public record InvestigacaoOcorrenciaPdfModelo(
     string ConteudoHash,
     string UrlValidacaoPublica,
     byte[] QrCodePng,
-    bool TemAssinatura);
+    bool TemAssinatura,
+    // Códigos do mapa corporal (RegioesCorpoAcidente): o serviço desenha o mapa e lista os rótulos.
+    IReadOnlyList<string>? RegioesCorpo = null);
 
 public interface IInvestigacaoOcorrenciaPdfService
 {

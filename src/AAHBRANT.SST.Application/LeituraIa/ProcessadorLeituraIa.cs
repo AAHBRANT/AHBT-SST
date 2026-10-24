@@ -56,6 +56,10 @@ public class ProcessadorLeituraIa
             if (pdf is not { Length: > 0 })
                 throw new LeituraIaException("O documento não tem PDF anexado.");
 
+            // Matriz antes de qualquer chamada à IA (OCR incluído): sem ela a leitura do PGR só falhava na
+            // montagem, depois de pagar a leitura inteira.
+            var matriz = leitura.Documento == DocumentoLeituraIa.Pgr ? await MatrizAsync(ct) : null;
+
             var paginas = _extrator.ExtrairPaginas(pdf);
             if (_ocr is not null && paginas.Any(PaginasDigitalizadas.SemTexto))
             {
@@ -75,7 +79,7 @@ public class ProcessadorLeituraIa
             }
 
             var resultado = leitura.Documento == DocumentoLeituraIa.Pgr
-                ? await MontarPgrAsync(leitura, await _leitor.LerPgrAsync(paginas, Progresso, ct), ct)
+                ? await MontarPgrAsync(leitura, matriz!, await _leitor.LerPgrAsync(paginas, Progresso, ct), ct)
                 : await MontarPcmsoAsync(leitura, await _leitor.LerPcmsoAsync(paginas, Progresso, ct), ct);
 
             leitura.ResultadoJson = JsonSerializer.Serialize(resultado, Json);
@@ -97,9 +101,9 @@ public class ProcessadorLeituraIa
         }
     }
 
-    private async Task<ResultadoLeituraIa> MontarPgrAsync(LeituraDocumentoIa leitura, LeituraPgrIa lida, CancellationToken ct)
+    private async Task<ResultadoLeituraIa> MontarPgrAsync(LeituraDocumentoIa leitura, Dictionary<(int P, int S), int> matriz,
+        LeituraPgrIa lida, CancellationToken ct)
     {
-        var matriz = await MatrizAsync(ct);
         var divergencias = MontagemLeituraIa.ConferirPgr(lida, matriz, DateTime.UtcNow.Date);
         var funcoes = MontagemLeituraIa.CasarFuncoes(
             lida.Ghes.SelectMany(g => g.Funcoes.Select(f => (f.Nome, f.Cbo, (int?)g.Numero, 0))),

@@ -34,6 +34,18 @@ public class InvestigacaoOcorrenciaPdfServiceTests
         Assert.True(pdf.Length > 0);
     }
 
+    // Mapa corporal da lesão (24/10): partes marcadas saem desenhadas e listadas na seção de consequências.
+    [Fact]
+    public void Gerar_ComPartesDoCorpoMarcadas_GeraPdfMaiorQueSemMapa()
+    {
+        var servico = new InvestigacaoOcorrenciaPdfService();
+        var semMapa = servico.Gerar(CriarModelo(completo: true));
+        var comMapa = servico.Gerar(CriarModelo(completo: true) with { RegioesCorpo = new[] { "F:mao-esq", "F:olho-dir", "C:lombar-dir" } });
+
+        Assert.StartsWith("%PDF", System.Text.Encoding.ASCII.GetString(comMapa, 0, 4));
+        Assert.True(comMapa.Length > semMapa.Length);
+    }
+
     private static InvestigacaoOcorrenciaPdfModelo CriarModelo(bool completo) => new(
         "Obra Exemplo", null, "Quase acidente", new DateTime(2026, 10, 21), new TimeSpan(9, 40, 0),
         "Bloco B, pavimento 2, fachada norte", completo ? "Montagem de andaime fachadeiro" : null,

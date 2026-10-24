@@ -55,15 +55,21 @@ public class InvestigacaoOcorrenciaPdfService : IInvestigacaoOcorrenciaPdfServic
 
                     coluna.Item().Element(c => Secao(c, "2. Descrição da ocorrência", corpo => Texto(corpo, modelo.Descricao)));
 
-                    coluna.Item().Element(c => Secao(c, "3. Consequências", corpo => Grade(corpo, new[]
+                    coluna.Item().Element(c => Secao(c, "3. Consequências", corpo => corpo.Column(consequencias =>
                     {
-                        ("Gravidade", modelo.Gravidade, 1),
-                        ("Afastamento", modelo.HouveAfastamento ? (modelo.DiasAfastamento is { } d ? $"Sim — {d} dia(s)" : "Sim") : "Não", 1),
-                        ("Nº da CAT", Valor(modelo.NumeroCat, "—"), 1),
-                        ("Dias debitados", modelo.DiasDebitados.ToString(PtBr), 1),
-                        ("Lesão", Valor(modelo.Lesao, "Não houve"), 2),
-                        ("Atendimento", Valor(modelo.Atendimento, "Não houve"), 2),
-                        ("Consequência", Valor(modelo.Consequencia), 4),
+                        consequencias.Item().Element(g => Grade(g, new[]
+                        {
+                            ("Gravidade", modelo.Gravidade, 1),
+                            ("Afastamento", modelo.HouveAfastamento ? (modelo.DiasAfastamento is { } d ? $"Sim — {d} dia(s)" : "Sim") : "Não", 1),
+                            ("Nº da CAT", Valor(modelo.NumeroCat, "—"), 1),
+                            ("Dias debitados", modelo.DiasDebitados.ToString(PtBr), 1),
+                            ("Lesão", Valor(modelo.Lesao, "Não houve"), 2),
+                            ("Atendimento", Valor(modelo.Atendimento, "Não houve"), 2),
+                            ("Consequência", Valor(modelo.Consequencia), 4),
+                        }));
+                        // Mapa corporal: só quando a lesão foi marcada (acidente com lesão ou doença ocupacional).
+                        if (modelo.RegioesCorpo is { Count: > 0 })
+                            consequencias.Item().PaddingTop(6).ShowEntire().Element(m => MapaCorporal(m, modelo.RegioesCorpo));
                     })));
 
                     coluna.Item().Element(c => Secao(c, "4. Análise e causas", corpo => corpo.Column(analise =>
@@ -118,6 +124,40 @@ public class InvestigacaoOcorrenciaPdfService : IInvestigacaoOcorrenciaPdfServic
             coluna.Item().Element(corpo);
         });
     }
+
+    // Frente e costas com as partes atingidas em vermelho e, ao lado, a lista por extenso — o mapa sozinho
+    // não basta para quem lê impresso. O desenho é o mesmo da tela (MapaCorporalSvg).
+    private static void MapaCorporal(IContainer container, IReadOnlyList<string> regioes) =>
+        container.Border(0.5f).BorderColor(CorLinha).Padding(6).Row(linha =>
+        {
+            foreach (var vista in MapaCorporalSvg.Desenhar(regioes))
+            {
+                linha.ConstantItem(112).Column(figura =>
+                {
+                    figura.Item().AlignCenter().Text(vista.Titulo.ToUpper(PtBr)).FontSize(6.5f).SemiBold().FontColor(CorRotulo);
+                    figura.Item().PaddingTop(2).Height(250).AlignCenter().Svg(vista.Svg).FitArea();
+                    // Lado do trabalhador: na frente, o direito fica à esquerda de quem lê.
+                    figura.Item().Row(lados =>
+                    {
+                        lados.RelativeItem().AlignLeft().PaddingLeft(12).Text(vista.Id == "F" ? "D" : "E").FontSize(7).Bold().FontColor(CorRotulo);
+                        lados.RelativeItem().AlignRight().PaddingRight(12).Text(vista.Id == "F" ? "E" : "D").FontSize(7).Bold().FontColor(CorRotulo);
+                    });
+                });
+                linha.ConstantItem(6);
+            }
+
+            linha.RelativeItem().PaddingLeft(8).Column(lista =>
+            {
+                lista.Spacing(3);
+                lista.Item().Text("Partes do corpo atingidas").FontSize(8).SemiBold().FontColor(CorRotulo);
+                foreach (var codigo in MapaCorporalSvg.Ordenar(regioes))
+                    lista.Item().Row(item =>
+                    {
+                        item.ConstantItem(8).PaddingTop(3).Height(5).Width(5).Background("#C4262E").CornerRadius(1);
+                        item.RelativeItem().Text(MapaCorporalSvg.Rotulo(codigo)).FontSize(8.5f);
+                    });
+            });
+        });
 
     // Grade de 4 colunas com rótulo miúdo em cima e valor em negrito — cada campo ocupa 1, 2 ou 4.
     private static void Grade(IContainer container, IReadOnlyList<(string Rotulo, string Valor, int Colunas)> campos)
