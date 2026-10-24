@@ -23,6 +23,8 @@ export interface RegistroRecente {
   titulo: string;
   meta: string;
   quando: string;
+  /** Rota do registro (ex.: /acidentes/:id) aberta ao clicar na linha. */
+  destino: string;
 }
 
 interface OcorrenciasCardProps {
@@ -32,6 +34,7 @@ interface OcorrenciasCardProps {
   recentes: RegistroRecente[];
   subtitulo: string;
   aoAbrirOcorrencias: () => void;
+  aoAbrirRegistro?: (destino: string) => void;
 }
 
 const useStyles = makeStyles({
@@ -78,6 +81,12 @@ const useStyles = makeStyles({
     alignItems: 'start',
     ':first-of-type': { borderTop: 'none' },
   },
+  registroAcionavel: {
+    cursor: 'pointer',
+    borderRadius: tokensUi.raio.md,
+    ':hover': { backgroundColor: designTokens.colorNeutralLight },
+    ':focus-visible': { outline: `2px solid ${designTokens.colorPrimary}`, outlineOffset: '2px' },
+  },
   registroPonto: { width: '9px', height: '9px', borderRadius: '3px', marginTop: '5px' },
   registroTitulo: {
     fontSize: '13px',
@@ -96,7 +105,7 @@ const useStyles = makeStyles({
 // que também fazem papel de legenda e de filtro — e a evolução dos últimos 6 meses empilhada por tipo.
 // Clicar num tipo filtra o gráfico e a lista de registros no próprio card; só o link do topo e o
 // "Ver todos" abrem a tela de Ocorrências.
-export function OcorrenciasCard({ tipos, serie, recentes, subtitulo, aoAbrirOcorrencias }: OcorrenciasCardProps) {
+export function OcorrenciasCard({ tipos, serie, recentes, subtitulo, aoAbrirOcorrencias, aoAbrirRegistro }: OcorrenciasCardProps) {
   const estilos = useStyles();
   const [selecionada, setSelecionada] = useState<string | null>(null);
 
@@ -200,7 +209,23 @@ export function OcorrenciasCard({ tipos, serie, recentes, subtitulo, aoAbrirOcor
           <div className={estilos.vazio}>Nenhum registro{tipoSelecionado ? ' deste tipo' : ''}.</div>
         ) : (
           registros.map((registro) => (
-            <div key={registro.id} className={estilos.registro}>
+            <div
+              key={registro.id}
+              className={mergeClasses(estilos.registro, aoAbrirRegistro && estilos.registroAcionavel)}
+              role={aoAbrirRegistro ? 'button' : undefined}
+              tabIndex={aoAbrirRegistro ? 0 : undefined}
+              onClick={aoAbrirRegistro ? () => aoAbrirRegistro(registro.destino) : undefined}
+              onKeyDown={
+                aoAbrirRegistro
+                  ? (e) => {
+                      if (e.key === 'Enter' || e.key === ' ') {
+                        e.preventDefault();
+                        aoAbrirRegistro(registro.destino);
+                      }
+                    }
+                  : undefined
+              }
+            >
               <span className={estilos.registroPonto} style={{ backgroundColor: corDoTipo(registro.chave) }} />
               <div style={{ minWidth: 0 }}>
                 <div className={estilos.registroTitulo} title={registro.titulo}>
