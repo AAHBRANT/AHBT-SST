@@ -35,6 +35,7 @@ import {
   type NovoAcidente,
   type Obra,
   type RelatoOcorrenciaSugestao,
+  type RespostaPerguntaRelato,
   type Usuario,
   type Trabalhador,
 } from '../../lib/api';
@@ -143,6 +144,30 @@ export function AcidentesPage({ tipoFixo }: { tipoFixo?: number } = {}) {
       return proximo;
     });
     setEditados((atual) => new Set(atual).add(campo));
+  }
+
+  // O que o técnico preencheu à mão vai para a IA junto das respostas, para ela não perguntar de novo.
+  // Tipo, gravidade e descrição ficam de fora: não viram perguntas.
+  function camposPreenchidosAMao(): RespostaPerguntaRelato[] {
+    const rotulos: Partial<Record<CampoIa, string>> = {
+      local: 'Local', data: 'Data', hora: 'Hora', lesao: 'Lesão', consequencia: 'Consequência',
+      atendimento: 'Atendimento', atividadeId: 'Atividade', trabalhadoresIds: 'Funcionários envolvidos',
+      houveAfastamento: 'Houve afastamento', diasAfastamento: 'Dias de afastamento',
+    };
+    const valor = (campo: CampoIa): string => {
+      switch (campo) {
+        case 'atividadeId': return atividades.find((a) => a.id === nova.atividadeId)?.nome ?? '';
+        case 'trabalhadoresIds':
+          return (nova.trabalhadoresIds ?? []).map((id) => trabalhadores.find((t) => t.id === id)?.nome).filter(Boolean).join(', ');
+        case 'houveAfastamento': return nova.houveAfastamento ? 'sim' : 'não';
+        case 'diasAfastamento': return nova.diasAfastamento != null ? String(nova.diasAfastamento) : '';
+        default: return String(nova[campo] ?? '');
+      }
+    };
+    return [...editados]
+      .filter((campo) => rotulos[campo])
+      .map((campo) => ({ pergunta: `${rotulos[campo]} (preenchido pelo técnico no formulário)`, resposta: valor(campo).trim() }))
+      .filter((c) => c.resposta);
   }
 
   const aplicarSugestao = useCallback(
@@ -457,6 +482,7 @@ export function AcidentesPage({ tipoFixo }: { tipoFixo?: number } = {}) {
                 aoSugerir={aplicarSugestao}
                 aoSoTranscrever={aoSoTranscrever}
                 aoErro={setErro}
+                camposPreenchidos={camposPreenchidosAMao}
               />
               {camposIa.size > 0 && (
                 <FeedbackInline tom="info">

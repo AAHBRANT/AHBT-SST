@@ -21,7 +21,9 @@ public class AzureOpenAiClassificadorOcorrencia : IClassificadorRelatoOcorrencia
           funcionários envolvidos, atividade). Uma pergunta por informação. Nunca pergunte o que o
           relato ou as informações complementares já respondem. 'campo' indica o que a resposta
           preenche; use "outro" para circunstâncias úteis à análise (ex.: condição do local).
-        - Informações complementares (perguntas já respondidas pelo técnico) valem como parte do relato.
+        - Informações complementares valem como parte do relato: são as respostas do técnico em todas
+          as rodadas anteriores e os campos que ele já preencheu no formulário. Nunca repita uma
+          pergunta já respondida ali, nem com outras palavras; se a resposta foi "não sei", não insista.
         - tipo: Acidente (houve lesão ou doença no trabalhador), Incidente (dano material ou ao
           processo, sem lesão), QuaseAcidente (poderia ter causado lesão, ninguém se feriu),
           CondicaoInsegura (situação de risco no ambiente, sem evento), AtoInseguro (comportamento

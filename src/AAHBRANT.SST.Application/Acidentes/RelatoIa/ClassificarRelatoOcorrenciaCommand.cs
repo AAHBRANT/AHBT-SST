@@ -93,8 +93,13 @@ public class ClassificarRelatoOcorrenciaCommandHandler : IRequestHandler<Classif
         var houveAfastamento = sugestao.HouveAfastamento ?? false;
 
         // Até 4 perguntas, sem repetir — o técnico responde ali mesmo e o relato é reclassificado.
+        // A IA às vezes volta a perguntar o que já foi respondido (visto ao vivo com o técnico): pergunta
+        // sobre campo que esta sugestão já preenche, ou igual a uma já respondida, não volta para a tela.
+        var jaRespondidas = complementos.Select(c => c.Pergunta.Trim()).ToHashSet(StringComparer.OrdinalIgnoreCase);
         var perguntas = sugestao.Perguntas
             .Where(p => !string.IsNullOrWhiteSpace(p.Pergunta))
+            .Where(p => !jaRespondidas.Contains(p.Pergunta.Trim()))
+            .Where(p => !CampoJaPreenchido(p.Campo, sugestao, atividadeId, correspondencia.Localizados.Count))
             .GroupBy(p => p.Pergunta.Trim(), StringComparer.OrdinalIgnoreCase)
             .Select(g => new PerguntaRelatoOcorrencia(g.First().Campo, LimitarOuNulo(g.Key, 300)!))
             .Take(4)
@@ -123,6 +128,22 @@ public class ClassificarRelatoOcorrenciaCommandHandler : IRequestHandler<Classif
             perguntas,
             avisos);
     }
+
+    // "outro" (circunstâncias da análise) não corresponde a um campo do formulário: sempre passa.
+    private static bool CampoJaPreenchido(string? campo, OcorrenciaSugeridaIa s, Guid? atividadeId, int trabalhadoresLocalizados)
+        => campo switch
+        {
+            "local" => !string.IsNullOrWhiteSpace(s.Local),
+            "data" => !string.IsNullOrWhiteSpace(s.Data),
+            "hora" => !string.IsNullOrWhiteSpace(s.Hora),
+            "lesao" => !string.IsNullOrWhiteSpace(s.Lesao),
+            "consequencia" => !string.IsNullOrWhiteSpace(s.Consequencia),
+            "atendimento" => !string.IsNullOrWhiteSpace(s.Atendimento),
+            "afastamento" => s.HouveAfastamento is not null,
+            "funcionarios" => trabalhadoresLocalizados > 0,
+            "atividade" => atividadeId is not null,
+            _ => false,
+        };
 
     private static string? LimitarOuNulo(string? texto, int maximo)
     {
