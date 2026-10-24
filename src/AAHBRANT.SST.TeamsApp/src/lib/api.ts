@@ -4138,6 +4138,12 @@ function ehRotaOffline(path: string): boolean {
   return PREFIXOS_OFFLINE.some((prefixo) => path.startsWith(prefixo));
 }
 
+// Listas de apoio dos formulários de campo: cache só de leitura. Alterações administrativas
+// continuam exigindo rede. Sem isso, Promise.all com /obras derrubava até o DDS já salvo localmente.
+function ehLeituraDeApoioOffline(path: string): boolean {
+  return /^\/api\/(obras|atividades|usuarios|catalogotemasdds)(\?|$)/.test(path);
+}
+
 // O backend só deveria responder JSON, mas em falhas de infraestrutura (proxy/ingress
 // devolvendo a página estática do próprio front em vez da API, por exemplo) um 200 pode chegar
 // com corpo HTML. `JSON.parse`/`response.json()` cru nesse caso lança um SyntaxError críptico
@@ -4205,7 +4211,7 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
   const authHeaders = await montarHeadersAuth();
   const metodo = (init?.method ?? 'GET').toUpperCase();
 
-  if (ehRotaOffline(path)) {
+  if (ehRotaOffline(path) || (metodo === 'GET' && ehLeituraDeApoioOffline(path))) {
     if (metodo === 'GET') {
       return syncFetchJson<T>(path, init, authHeaders);
     }
