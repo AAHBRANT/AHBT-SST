@@ -1,4 +1,5 @@
 using AAHBRANT.SST.Application.Common.Interfaces;
+using AAHBRANT.SST.Application.Common.Seguranca;
 using MediatR;
 using Microsoft.EntityFrameworkCore;
 
@@ -15,6 +16,7 @@ public class ObterAprDetalheQueryHandler : IRequestHandler<ObterAprDetalheQuery,
     public async Task<AprDetalheDto?> Handle(ObterAprDetalheQuery request, CancellationToken ct)
     {
         var apr = await _db.Aprs
+            .NoEscopoDaAtividade(_db, a => a.AtividadeId)
             .Include(a => a.Atividade!).ThenInclude(at => at.Obra)
             .Include(a => a.Equipe)
             .Include(a => a.AprovadoPorUsuario)
@@ -34,7 +36,7 @@ public class ObterAprDetalheQueryHandler : IRequestHandler<ObterAprDetalheQuery,
 
         var assinaturas = await _db.AprAssinaturas
             .Where(s => s.AprId == apr.Id)
-            .Include(s => s.Trabalhador)
+            .Include(s => s.Trabalhador!).ThenInclude(t => t.Funcao)
             .OrderByDescending(s => s.DataAssinatura)
             .ToListAsync(ct);
 
@@ -99,8 +101,10 @@ public class ObterAprDetalheQueryHandler : IRequestHandler<ObterAprDetalheQuery,
                 AprId = s.AprId,
                 TrabalhadorId = s.TrabalhadorId,
                 TrabalhadorNome = s.Trabalhador?.Nome ?? string.Empty,
+                TrabalhadorFuncaoNome = s.Trabalhador?.Funcao?.Nome,
                 Papel = s.Papel,
-                DataAssinatura = s.DataAssinatura
+                DataAssinatura = s.DataAssinatura,
+                MetodoAutenticacao = s.MetodoAutenticacao
             }).ToList()
         };
     }

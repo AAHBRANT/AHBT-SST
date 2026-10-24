@@ -16,7 +16,6 @@ public record CriarDdsSemanalCommand(
     Guid ObraId,
     TipoDdsSemanal Tipo,
     string? EmpresaTerceirizada,
-    string? NumeroDocumento,
     string? LocalFrenteServico,
     DateTime DataInicioSemana,
     string? AzureAdObjectId) : IRequest<Guid>;
@@ -27,11 +26,11 @@ public class CriarDdsSemanalCommandValidator : AbstractValidator<CriarDdsSemanal
     {
         RuleFor(x => x.ObraId).NotEmpty();
         RuleFor(x => x.DataInicioSemana).NotEmpty();
+        RuleFor(x => x.Tipo).IsInEnum();
         RuleFor(x => x.EmpresaTerceirizada)
-            .NotEmpty().When(x => x.Tipo == TipoDdsSemanal.Terceirizados)
+            .NotEmpty().When(x => x.Tipo.IncluiTerceirizados())
             .WithMessage("Informe a empresa terceirizada.")
             .MaximumLength(200);
-        RuleFor(x => x.NumeroDocumento).MaximumLength(50);
         RuleFor(x => x.LocalFrenteServico).MaximumLength(200);
     }
 }
@@ -39,8 +38,13 @@ public class CriarDdsSemanalCommandValidator : AbstractValidator<CriarDdsSemanal
 public class CriarDdsSemanalCommandHandler : IRequestHandler<CriarDdsSemanalCommand, Guid>
 {
     private readonly IAppDbContext _db;
+    private readonly IGeradorNumeroDocumentoService _geradorNumero;
 
-    public CriarDdsSemanalCommandHandler(IAppDbContext db) => _db = db;
+    public CriarDdsSemanalCommandHandler(IAppDbContext db, IGeradorNumeroDocumentoService geradorNumero)
+    {
+        _db = db;
+        _geradorNumero = geradorNumero;
+    }
 
     public async Task<Guid> Handle(CriarDdsSemanalCommand request, CancellationToken ct)
     {
@@ -61,8 +65,8 @@ public class CriarDdsSemanalCommandHandler : IRequestHandler<CriarDdsSemanalComm
         {
             ObraId = request.ObraId,
             Tipo = request.Tipo,
-            EmpresaTerceirizada = request.Tipo == TipoDdsSemanal.Terceirizados ? request.EmpresaTerceirizada : null,
-            NumeroDocumento = request.NumeroDocumento,
+            EmpresaTerceirizada = request.Tipo.IncluiTerceirizados() ? request.EmpresaTerceirizada : null,
+            NumeroDocumento = await _geradorNumero.GerarAsync("DDS", ct),
             LocalFrenteServico = request.LocalFrenteServico,
             ResponsavelUsuarioId = usuario.Id,
             DataInicioSemana = segunda,

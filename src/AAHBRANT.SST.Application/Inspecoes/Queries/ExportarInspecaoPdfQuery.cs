@@ -1,4 +1,6 @@
+using AAHBRANT.SST.Application.Assinatura;
 using AAHBRANT.SST.Application.Common.Interfaces;
+using AAHBRANT.SST.Domain.Entidades;
 using AAHBRANT.SST.Domain.Enums;
 using MediatR;
 using Microsoft.EntityFrameworkCore;
@@ -12,12 +14,14 @@ public class ExportarInspecaoPdfQueryHandler : IRequestHandler<ExportarInspecaoP
     private readonly IMediator _mediator;
     private readonly IAppDbContext _db;
     private readonly IInspecaoPdfService _pdf;
+    private readonly IRegistradorRastreabilidadeService _rastreabilidade;
 
-    public ExportarInspecaoPdfQueryHandler(IMediator mediator, IAppDbContext db, IInspecaoPdfService pdf)
+    public ExportarInspecaoPdfQueryHandler(IMediator mediator, IAppDbContext db, IInspecaoPdfService pdf, IRegistradorRastreabilidadeService rastreabilidade)
     {
         _mediator = mediator;
         _db = db;
         _pdf = pdf;
+        _rastreabilidade = rastreabilidade;
     }
 
     public async Task<byte[]?> Handle(ExportarInspecaoPdfQuery request, CancellationToken ct)
@@ -32,12 +36,18 @@ public class ExportarInspecaoPdfQueryHandler : IRequestHandler<ExportarInspecaoP
             .Select(r => new { r.Id, r.FotoConteudo, r.FotoDepoisConteudo })
             .ToDictionaryAsync(r => r.Id, ct);
 
+        var obraLogoConteudo = await _db.Obras
+            .Where(o => o.Id == detalhe.Inspecao.ObraId)
+            .Select(o => o.LogoConteudo)
+            .FirstOrDefaultAsync(ct);
+
         var itens = detalhe.Respostas.Select(r =>
         {
             fotosPorResposta.TryGetValue(r.Id, out var fotos);
             return new InspecaoPdfItemModelo(
                 r.Ordem,
                 r.Descricao,
+                r.Secao,
                 r.Local,
                 r.StatusItem,
                 r.Observacao,
@@ -48,17 +58,91 @@ public class ExportarInspecaoPdfQueryHandler : IRequestHandler<ExportarInspecaoP
                 fotos?.FotoDepoisConteudo is { Length: > 0 } depois ? depois : null);
         }).ToList();
 
+        var inspecao = await _db.Inspecoes.FirstAsync(i => i.Id == request.Id, ct);
+        var rastreio = await _rastreabilidade.GarantirAsync(nameof(Inspecao), request.Id, ct);
+        var assinatura = await ObterAssinaturaFinalizada(request.Id, ct);
+
+        List<string>? identificacaoVeiculo = null;
+        if (detalhe.Inspecao.VeiculoId is not null)
+        {
+            var i = detalhe.Inspecao;
+            identificacaoVeiculo = new List<string>
+            {
+                $"Tipo: {DescreverTipoVeiculo(i.VeiculoTipo)}",
+                $"Placa/Prefixo: {i.VeiculoPlacaPrefixo}",
+            };
+            if (!string.IsNullOrWhiteSpace(i.VeiculoMarcaModelo)) identificacaoVeiculo.Add($"Marca/Modelo: {i.VeiculoMarcaModelo}");
+            if (!string.IsNullOrWhiteSpace(i.VeiculoEmpresa)) identificacaoVeiculo.Add($"Subcontratada: {i.VeiculoEmpresa}");
+        }
+
         var modelo = new InspecaoPdfModelo(
             detalhe.Inspecao.ObraNome,
+            obraLogoConteudo,
             DescreverTipoInspecao(detalhe.Inspecao.TipoInspecao),
             detalhe.Inspecao.ChecklistModeloNome,
             detalhe.Inspecao.ChecklistModeloVersao,
             detalhe.Inspecao.Data,
             detalhe.Inspecao.ResponsavelUsuarioNome,
             detalhe.Inspecao.Status == StatusInspecao.Concluida ? "Concluída" : "Em andamento",
-            itens);
+            itens,
+            inspecao.NumeroDocumento,
+            assinatura?.ConteudoHash ?? rastreio.ConteudoHash,
+            assinatura?.UrlValidacaoPublica ?? rastreio.UrlValidacaoPublica,
+            assinatura?.QrCodePng ?? rastreio.QrCodePng,
+            assinatura is not null || rastreio.TemAssinatura,
+            assinatura,
+            identificacaoVeiculo,
+            detalhe.Inspecao.TipoInspecao == TipoInspecao.Veiculo);
 
-        return _pdf.Gerar(modelo);
+        var pdf = _pdf.Gerar(modelo);
+        // Guarda a cópia exata emitida e o SHA-256 dela — é o que permite conferir, depois,
+        // que o arquivo em mãos não foi adulterado (ver HashArquivoCalculador).
+        await _rastreabilidade.RegistrarArquivoAsync(rastreio.DocumentoId, pdf, ct);
+        return pdf;
+    }
+
+    private async Task<InspecaoPdfAssinaturaModelo?> ObterAssinaturaFinalizada(Guid inspecaoId, CancellationToken ct)
+    {
+        var documento = await _db.DocumentosAssinatura
+            .Where(d => d.EntidadeTipo == nameof(Inspecao)
+                && d.EntidadeId == inspecaoId
+                && d.Status == StatusDocumentoAssinatura.Finalizado
+                && d.FinalizadoEm != null
+                && d.ConteudoHash != null
+                && d.TokenValidacaoPublica != null)
+            .OrderByDescending(d => d.FinalizadoEm)
+            .Select(d => new
+            {
+                d.Id,
+                d.FinalizadoEm,
+                d.ConteudoHash,
+                d.TokenValidacaoPublica,
+            })
+            .FirstOrDefaultAsync(ct);
+
+        if (documento is null)
+            return null;
+
+        var signatarios = await _db.DocumentoSignatarios
+            .Where(s => s.DocumentoAssinaturaId == documento.Id)
+            .OrderBy(s => s.AssinadoEm)
+            .Join(_db.Trabalhadores, s => s.TrabalhadorId, t => t.Id,
+                (s, t) => new InspecaoPdfSignatarioModelo(
+                    t.Nome,
+                    DescreverMetodoAssinatura(s.MetodoAutenticacao),
+                    s.AssinadoEm,
+                    t.Funcao != null ? t.Funcao.Nome : null,
+                    s.MetodoAutenticacao))
+            .ToListAsync(ct);
+
+        var finalizadoEm = documento.FinalizadoEm!.Value;
+        var qrCode = await _rastreabilidade.GarantirAsync(nameof(Inspecao), inspecaoId, ct);
+        return new InspecaoPdfAssinaturaModelo(
+            finalizadoEm,
+            documento.ConteudoHash!,
+            qrCode.UrlValidacaoPublica,
+            qrCode.QrCodePng,
+            signatarios);
     }
 
     private static string DescreverTipoInspecao(TipoInspecao tipo) => tipo switch
@@ -76,6 +160,26 @@ public class ExportarInspecaoPdfQueryHandler : IRequestHandler<ExportarInspecaoP
         TipoInspecao.EspacoConfinado => "Espaço confinado",
         TipoInspecao.Comportamental => "Comportamental",
         TipoInspecao.Terceiros => "Terceiros",
+        TipoInspecao.Alojamento => "Alojamento",
+        TipoInspecao.Veiculo => "Veículo",
         _ => tipo.ToString(),
+    };
+
+    private static string DescreverTipoVeiculo(TipoVeiculo? tipo) => tipo switch
+    {
+        TipoVeiculo.CaminhaoBasculante => "Caminhão basculante",
+        TipoVeiculo.Retroescavadeira => "Retroescavadeira",
+        TipoVeiculo.EscavadeiraHidraulica => "Escavadeira hidráulica",
+        TipoVeiculo.CaminhaoCarroceria => "Caminhão carroceria",
+        TipoVeiculo.CaminhaoMunck => "Caminhão munck",
+        _ => "Veículo",
+    };
+
+    private static string DescreverMetodoAssinatura(MetodoAutenticacaoAssinatura metodo) => metodo switch
+    {
+        MetodoAutenticacaoAssinatura.Biometria => "Digital (leitor Futronic FS80H)",
+        MetodoAutenticacaoAssinatura.SessaoLogada => "Sessão logada",
+        MetodoAutenticacaoAssinatura.ReconhecimentoFacial => "Reconhecimento facial",
+        _ => metodo.ToString(),
     };
 }

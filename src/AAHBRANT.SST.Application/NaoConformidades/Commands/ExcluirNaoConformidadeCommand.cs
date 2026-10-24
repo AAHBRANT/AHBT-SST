@@ -1,4 +1,5 @@
 using AAHBRANT.SST.Application.Common.Interfaces;
+using AAHBRANT.SST.Application.Common.Seguranca;
 using FluentValidation;
 using MediatR;
 using Microsoft.EntityFrameworkCore;
@@ -23,7 +24,7 @@ public class ExcluirNaoConformidadeCommandHandler : IRequestHandler<ExcluirNaoCo
 
     public async Task Handle(ExcluirNaoConformidadeCommand request, CancellationToken ct)
     {
-        var nc = await _db.NaoConformidades.FirstOrDefaultAsync(n => n.Id == request.Id, ct)
+        var nc = await _db.NaoConformidades.NoEscopoDaObra(_db).FirstOrDefaultAsync(n => n.Id == request.Id, ct)
             ?? throw new KeyNotFoundException($"Não conformidade {request.Id} não encontrada.");
 
         _db.NaoConformidades.Remove(nc);

@@ -17,8 +17,13 @@ namespace AAHBRANT.SST.Api.Controllers;
 public class DdsSemanalController : ControllerBase
 {
     private readonly IMediator _mediator;
+    private readonly IWebHostEnvironment _environment;
 
-    public DdsSemanalController(IMediator mediator) => _mediator = mediator;
+    public DdsSemanalController(IMediator mediator, IWebHostEnvironment environment)
+    {
+        _mediator = mediator;
+        _environment = environment;
+    }
 
     [Authorize(Policy = "dds:ver")]
     [HttpGet]
@@ -39,7 +44,7 @@ public class DdsSemanalController : ControllerBase
     {
         var azureAdObjectId = ObterAzureAdObjectId();
         var command = new CriarDdsSemanalCommand(
-            body.ObraId, body.Tipo, body.EmpresaTerceirizada, body.NumeroDocumento, body.LocalFrenteServico,
+            body.ObraId, body.Tipo, body.EmpresaTerceirizada, body.LocalFrenteServico,
             body.DataInicioSemana, azureAdObjectId);
         var id = await _mediator.Send(command, ct);
         return CreatedAtAction(nameof(ObterDetalhe), new { id }, new { id });
@@ -55,6 +60,28 @@ public class DdsSemanalController : ControllerBase
         return NoContent();
     }
 
+    // Assinatura com um clique (sessão logada) de um dos dois campos do documento semanal — um botão
+    // para cada: "responsavel-dds" e "responsavel-obra-sst". O IP vem da conexão, nunca do cliente.
+    [Authorize(Policy = "assinatura:assinar")]
+    [HttpPost("{id:guid}/assinar/{papel}")]
+    public async Task<IActionResult> Assinar(Guid id, string papel, CancellationToken ct)
+    {
+        PapelAssinatura? papelAssinatura = papel switch
+        {
+            "responsavel-dds" => PapelAssinatura.ResponsavelDds,
+            "responsavel-obra-sst" => PapelAssinatura.ResponsavelObraSst,
+            _ => null,
+        };
+        if (papelAssinatura is null)
+            return BadRequest(new { erro = "Campo de assinatura inválido." });
+
+        // IP já normalizado por UseForwardedHeaders (Program.cs); o cabeçalho cru é controlado pelo cliente.
+        var ip = HttpContext.Connection.RemoteIpAddress?.ToString();
+
+        var signatario = await _mediator.Send(new AssinarDdsSemanalCommand(id, papelAssinatura.Value, ObterAzureAdObjectId(), ip), ct);
+        return Ok(signatario);
+    }
+
     [Authorize(Policy = "dds:exportar")]
     [HttpGet("{id:guid}/pdf")]
     public async Task<IActionResult> ExportarPdf(Guid id, CancellationToken ct)
@@ -63,15 +90,28 @@ public class DdsSemanalController : ControllerBase
         return pdf is null ? NotFound() : File(pdf, "application/pdf", $"dds-semanal-{id}.pdf");
     }
 
+    // "Baixar semana": DDS semanal + o DDS diário (com lista de presença) de cada dia, num PDF só.
+    [Authorize(Policy = "dds:exportar")]
+    [HttpGet("{id:guid}/pdf-completo")]
+    public async Task<IActionResult> ExportarPdfCompleto(Guid id, CancellationToken ct)
+    {
+        var pdf = await _mediator.Send(new ExportarDdsSemanaCompletaPdfQuery(id), ct);
+        return pdf is null ? NotFound() : File(pdf, "application/pdf", $"dds-semana-completa-{id}.pdf");
+    }
+
+    // Em desenvolvimento o Entra ID está desligado e não há claim "oid": cai no usuário de dev, como
+    // AlojamentosController.ObterOuCriarInspecaoAtual. Nunca vale fora de Development.
     private string? ObterAzureAdObjectId()
-        => User.FindFirst("oid")?.Value ?? User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+    {
+        var id = User.FindFirst("oid")?.Value ?? User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+        return string.IsNullOrWhiteSpace(id) && _environment.IsDevelopment() ? "dev-local-user" : id;
+    }
 }
 
 public record CriarDdsSemanalRequestBody(
     Guid ObraId,
     TipoDdsSemanal Tipo,
     string? EmpresaTerceirizada,
-    string? NumeroDocumento,
     string? LocalFrenteServico,
     DateTime DataInicioSemana);
 

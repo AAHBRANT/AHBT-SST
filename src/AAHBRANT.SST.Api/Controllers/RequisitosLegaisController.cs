@@ -1,3 +1,4 @@
+using AAHBRANT.SST.Api.Autorizacao;
 using AAHBRANT.SST.Application.RequisitosLegais.Commands;
 using AAHBRANT.SST.Application.RequisitosLegais.Queries;
 using AAHBRANT.SST.Domain.Enums;
@@ -12,8 +13,13 @@ namespace AAHBRANT.SST.Api.Controllers;
 public class RequisitosLegaisController : ControllerBase
 {
     private readonly IMediator _mediator;
+    private readonly IUsuarioAtualResolver _usuarioAtual;
 
-    public RequisitosLegaisController(IMediator mediator) => _mediator = mediator;
+    public RequisitosLegaisController(IMediator mediator, IUsuarioAtualResolver usuarioAtual)
+    {
+        _mediator = mediator;
+        _usuarioAtual = usuarioAtual;
+    }
 
     [Authorize(Policy = "requisitolegal:ver")]
     [HttpGet]
@@ -43,6 +49,16 @@ public class RequisitosLegaisController : ControllerBase
     {
         if (id != command.Id) return BadRequest("Id da rota difere do corpo da requisição.");
         await _mediator.Send(command, ct);
+        return NoContent();
+    }
+
+    // QSMS conferiu o texto oficial e ativa o requisito (Em revisão → Ativo), registrando quem validou.
+    [Authorize(Policy = "requisitolegal:editar")]
+    [HttpPost("{id:guid}/validar")]
+    public async Task<IActionResult> Validar(Guid id, CancellationToken ct)
+    {
+        var usuarioId = await _usuarioAtual.ObterIdAsync(User, ct);
+        await _mediator.Send(new ValidarRequisitoLegalCommand(id, usuarioId, User.FindFirst("name")?.Value), ct);
         return NoContent();
     }
 

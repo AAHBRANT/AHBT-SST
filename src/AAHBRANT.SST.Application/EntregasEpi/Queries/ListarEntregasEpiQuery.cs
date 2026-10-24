@@ -1,10 +1,11 @@
 using AAHBRANT.SST.Application.Common.Interfaces;
+using AAHBRANT.SST.Application.Common.Seguranca;
 using MediatR;
 using Microsoft.EntityFrameworkCore;
 
 namespace AAHBRANT.SST.Application.EntregasEpi.Queries;
 
-public record ListarEntregasEpiQuery(Guid? TrabalhadorId = null) : IRequest<List<EntregaEpiDto>>;
+public record ListarEntregasEpiQuery(Guid? TrabalhadorId = null, Guid? ObraId = null) : IRequest<List<EntregaEpiDto>>;
 
 public class ListarEntregasEpiQueryHandler : IRequestHandler<ListarEntregasEpiQuery, List<EntregaEpiDto>>
 {
@@ -13,9 +14,13 @@ public class ListarEntregasEpiQueryHandler : IRequestHandler<ListarEntregasEpiQu
 
     public async Task<List<EntregaEpiDto>> Handle(ListarEntregasEpiQuery request, CancellationToken ct)
     {
-        var query = _db.EntregasEpi.AsQueryable();
+        var query = _db.EntregasEpi.AsNoTracking().NoEscopoDoTrabalhador(_db, x => x.TrabalhadorId);
         if (request.TrabalhadorId is not null)
             query = query.Where(x => x.TrabalhadorId == request.TrabalhadorId);
+
+        // Filtro por obra via Trabalhador.ObraId — usado pelo Dashboard (ver ListarAsosQuery).
+        if (request.ObraId is not null)
+            query = query.Where(x => x.Trabalhador != null && x.Trabalhador.ObraId == request.ObraId.Value);
 
         return await query
             .OrderByDescending(x => x.DataEntrega)

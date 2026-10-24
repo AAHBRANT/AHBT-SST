@@ -7,8 +7,8 @@ public record PtPdfTipoTrabalho(string Rotulo, string? DescricaoOutro);
 public record PtPdfVerificacao(string Rotulo, RespostaVerificacaoPt? Resposta);
 public record PtPdfEpi(string Rotulo, string? Complemento);
 public record PtPdfRiscoCritico(string RiscoCondicao, string? ControleComplementar, string? ResponsavelEvidencia);
-public record PtPdfEnvolvido(string Nome, string? Funcao, bool Assinou);
-public record PtPdfAssinatura(string? Nome, DateTime? Data);
+public record PtPdfEnvolvido(string Nome, string? Funcao, bool Assinou, DateTime? AssinadoEm = null, MetodoAutenticacaoAssinatura? Metodo = null);
+public record PtPdfAssinatura(string? Nome, DateTime? Data, MetodoAutenticacaoAssinatura? Metodo = null, string? Funcao = null);
 public record PtPdfSuspensao(string? Nome, DateTime? Data, string? Motivo);
 public record PtPdfEncerramento(string? Nome, DateTime? Data, string? Observacoes);
 
@@ -38,7 +38,11 @@ public record PtPdfModelo(
     PtPdfAssinatura? Sst,
     PtPdfSuspensao? Suspensao,
     PtPdfEncerramento? Encerramento,
-    List<PtPdfEnvolvido> Envolvidos);
+    List<PtPdfEnvolvido> Envolvidos,
+    string ConteudoHash,
+    string UrlValidacaoPublica,
+    byte[] QrCodePng,
+    bool TemAssinatura);
 
 public interface IPtPdfService
 {

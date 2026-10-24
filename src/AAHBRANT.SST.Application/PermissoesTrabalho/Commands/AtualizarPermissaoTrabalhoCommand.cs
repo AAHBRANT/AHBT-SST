@@ -1,4 +1,6 @@
+using AAHBRANT.SST.Application.Assinatura;
 using AAHBRANT.SST.Application.Common.Interfaces;
+using AAHBRANT.SST.Application.Common.Seguranca;
 using AAHBRANT.SST.Domain.Entidades;
 using FluentValidation;
 using MediatR;
@@ -7,10 +9,11 @@ using Microsoft.EntityFrameworkCore;
 namespace AAHBRANT.SST.Application.PermissoesTrabalho.Commands;
 
 // Edição de dados de cadastro (cabeçalho/responsáveis) — não altera Status/autorização/suspensão/
-// revalidação/encerramento, que passam por seus próprios comandos dedicados.
+// revalidação/encerramento, que passam por seus próprios comandos dedicados. NumeroPt não é
+// editável (gerado uma única vez na criação, ver CriarPermissaoTrabalhoCommand) — permanece
+// intocado aqui.
 public record AtualizarPermissaoTrabalhoCommand(
     Guid Id,
-    string? NumeroPt,
     Guid AtividadeId,
     string DescricaoAtividade,
     string Local,
@@ -29,7 +32,6 @@ public class AtualizarPermissaoTrabalhoCommandValidator : AbstractValidator<Atua
     public AtualizarPermissaoTrabalhoCommandValidator()
     {
         RuleFor(x => x.Id).NotEmpty();
-        RuleFor(x => x.NumeroPt).MaximumLength(60);
         RuleFor(x => x.AtividadeId).NotEmpty();
         RuleFor(x => x.DescricaoAtividade).NotEmpty().MaximumLength(500);
         RuleFor(x => x.Local).NotEmpty().MaximumLength(200);
@@ -45,12 +47,17 @@ public class AtualizarPermissaoTrabalhoCommandHandler : IRequestHandler<Atualiza
 
     public async Task Handle(AtualizarPermissaoTrabalhoCommand request, CancellationToken ct)
     {
+        await ProtecaoDocumentoAssinado.GarantirEditavelAsync(_db, "PermissaoTrabalho", request.Id, ct);
+
         var pt = await _db.PermissoesTrabalho
+            .NoEscopoDaAtividade(_db, p => p.AtividadeId)
             .Include(p => p.Responsaveis)
             .FirstOrDefaultAsync(p => p.Id == request.Id, ct)
             ?? throw new KeyNotFoundException($"Permissão de Trabalho {request.Id} não encontrada.");
 
-        pt.NumeroPt = request.NumeroPt;
+        if (request.AtividadeId != pt.AtividadeId)
+            await _db.GarantirAtividadeNoEscopoAsync(request.AtividadeId, ct);
+
         pt.AtividadeId = request.AtividadeId;
         pt.DescricaoAtividade = request.DescricaoAtividade;
         pt.Local = request.Local;

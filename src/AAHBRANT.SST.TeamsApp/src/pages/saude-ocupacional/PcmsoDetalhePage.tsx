@@ -1,6 +1,8 @@
-import { useEffect, useState } from 'react';
+﻿import { useEffect, useState } from 'react';
 import { useParams } from 'react-router-dom';
 import {
+  Abas,
+  BotaoAcao,
   Button,
   Campo,
   Card,
@@ -25,7 +27,11 @@ import {
   type Coluna,
   type Tom,
 } from '@ui';
-import { Delete24Regular, Save24Regular } from '@fluentui/react-icons';
+import { Delete24Regular, DocumentArrowUp24Regular, Save24Regular } from '@fluentui/react-icons';
+import { DialogoNovaRevisao } from '../../components/revisoes/DialogoNovaRevisao';
+import { PcmsoRevisoesTab } from '../../components/revisoes/PcmsoRevisoesTab';
+import { BotaoLerComIa, PainelLeituraIa, useLeituraIa } from '../../components/leitura-ia/PainelLeituraIa';
+import { ExamesFuncaoTab } from '../../components/estrutura-sst/ExamesFuncaoTab';
 import {
   api,
   prioridadeAcaoLabel,
@@ -42,6 +48,7 @@ import {
   type Usuario,
 } from '../../lib/api';
 import { useSucessoToast } from '../../hooks/useSucessoToast';
+import { VisualizadorDocumentoPdf } from '../../components/VisualizadorDocumentoPdf';
 
 function novaAcaoInicial(): Omit<NovaAcaoPlano, 'origemTipo' | 'origemId'> {
   return { tipo: 1, descricao: '', responsavelUsuarioId: '', prioridade: 3, prazo: '' };
@@ -71,6 +78,11 @@ function chipVencimento(data?: string | null) {
 // o fluxo documental de Gestão Documental, "não editável diretamente aqui" (ver footer do form).
 export function PcmsoDetalhePage() {
   const { id } = useParams<{ id: string }>();
+  const [aba, setAba] = useState<'documento' | 'dados' | 'exames' | 'revisoes'>('documento');
+  const [novaRevisaoAberta, setNovaRevisaoAberta] = useState(false);
+  // Muda a cada revisão salva para o visualizador e o histórico recarregarem.
+  const [versaoDocumento, setVersaoDocumento] = useState(0);
+  const leituraIa = useLeituraIa('pcmso', id ?? '');
   const [pcmso, setPcmso] = useState<Pcmso | null>(null);
   const [edicao, setEdicao] = useState<AtualizarPcmsoPayload | null>(null);
   const [obras, setObras] = useState<Obra[]>([]);
@@ -222,7 +234,7 @@ export function PcmsoDetalhePage() {
   return (
     <DetailPageLayout
       cabecalho={{
-        titulo: pcmso.nome,
+        titulo: `${pcmso.numeroDocumento ? `${pcmso.numeroDocumento} — ` : ''}${pcmso.nome}`,
         status: (
           <>
             <StatusChip tom={tomPorStatusPcmso[pcmso.status] ?? 'neutro'}>
@@ -241,6 +253,71 @@ export function PcmsoDetalhePage() {
         </FeedbackInline>
       )}
 
+      <div style={{ marginBottom: 16 }}>
+        <Abas
+          nivel="modulo"
+          aria-label="Seções do PCMSO"
+          valor={aba}
+          aoMudar={setAba}
+          abas={[
+            { valor: 'documento', rotulo: 'PCMSO' },
+            { valor: 'dados', rotulo: 'Dados' },
+            ...(pcmso.obraId ? [{ valor: 'exames' as const, rotulo: 'Exames por função' }] : []),
+            { valor: 'revisoes', rotulo: 'Revisões' },
+          ]}
+        />
+      </div>
+
+      {aba === 'documento' && pcmso.obraId && <PainelLeituraIa documento="pcmso" estado={leituraIa} />}
+      {aba === 'documento' && (
+        <VisualizadorDocumentoPdf
+          key={versaoDocumento}
+          id={id}
+          obterDocumento={() => api.pcmsos.obterDocumento(id)}
+          enviarDocumento={(arquivo) => api.pcmsos.enviarDocumento(id, arquivo)}
+          acoes={
+            <>
+              <Button icon={<DocumentArrowUp24Regular />} onClick={() => setNovaRevisaoAberta(true)}>
+                Nova revisão
+              </Button>
+              {pcmso.obraId && <BotaoLerComIa aoClicar={leituraIa.iniciar} desabilitado={leituraIa.lendo || leituraIa.iniciando} />}
+            </>
+          }
+        />
+      )}
+
+      {aba === 'revisoes' && <PcmsoRevisoesTab key={versaoDocumento} pcmsoId={id} />}
+      <DialogoNovaRevisao
+        aberto={novaRevisaoAberta}
+        documento="PCMSO"
+        aoFechar={() => setNovaRevisaoAberta(false)}
+        salvar={(dados) => api.pcmsos.novaRevisao(id, dados)}
+        aoSalvar={() => {
+          setNovaRevisaoAberta(false);
+          setVersaoDocumento((v) => v + 1);
+          carregar();
+        }}
+        acaoExtra={
+          pcmso.obraId
+            ? {
+                rotulo: 'Salvar e ler com IA',
+                aoSalvar: () => {
+                  setNovaRevisaoAberta(false);
+                  setVersaoDocumento((v) => v + 1);
+                  carregar();
+                  leituraIa.iniciar();
+                },
+              }
+            : undefined
+        }
+      />
+
+      {aba === 'exames' && pcmso.obraId && (
+        <ExamesFuncaoTab obraId={pcmso.obraId} pcmsoId={id} pendenteValidacao={pcmso.status !== 3} />
+      )}
+
+      {aba === 'dados' && (
+        <>
       <Card>
         <FormSection titulo="Dados gerais do documento" numero={1} primeira>
           <FormGrid>
@@ -481,8 +558,8 @@ export function PcmsoDetalhePage() {
                   Validar
                 </Button>
               )}
-              <Button
-                appearance="subtle"
+              <BotaoAcao
+                tom="excluir"
                 icon={<Delete24Regular />}
                 onClick={() => excluirAcao(a.id)}
                 aria-label="Excluir"
@@ -491,6 +568,8 @@ export function PcmsoDetalhePage() {
           )}
         />
       </Card>
+      </>
+      )}
       {dialogElement}
     </DetailPageLayout>
   );

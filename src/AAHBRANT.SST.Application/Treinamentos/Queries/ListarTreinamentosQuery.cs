@@ -1,10 +1,11 @@
 using AAHBRANT.SST.Application.Common.Interfaces;
+using AAHBRANT.SST.Application.Common.Seguranca;
 using MediatR;
 using Microsoft.EntityFrameworkCore;
 
 namespace AAHBRANT.SST.Application.Treinamentos.Queries;
 
-public record ListarTreinamentosQuery(Guid? TrabalhadorId = null) : IRequest<List<TreinamentoDto>>;
+public record ListarTreinamentosQuery(Guid? TrabalhadorId = null, Guid? ObraId = null) : IRequest<List<TreinamentoDto>>;
 
 public class ListarTreinamentosQueryHandler : IRequestHandler<ListarTreinamentosQuery, List<TreinamentoDto>>
 {
@@ -13,9 +14,13 @@ public class ListarTreinamentosQueryHandler : IRequestHandler<ListarTreinamentos
 
     public async Task<List<TreinamentoDto>> Handle(ListarTreinamentosQuery request, CancellationToken ct)
     {
-        var query = _db.Treinamentos.AsQueryable();
+        var query = _db.Treinamentos.AsNoTracking().NoEscopoDoTrabalhador(_db, x => x.TrabalhadorId);
         if (request.TrabalhadorId is not null)
             query = query.Where(x => x.TrabalhadorId == request.TrabalhadorId);
+
+        // Filtro por obra via Trabalhador.ObraId — usado pelo Dashboard (ver ListarAsosQuery).
+        if (request.ObraId is not null)
+            query = query.Where(x => x.Trabalhador != null && x.Trabalhador.ObraId == request.ObraId.Value);
 
         return await query
             .OrderByDescending(x => x.DataValidade)
@@ -27,7 +32,9 @@ public class ListarTreinamentosQueryHandler : IRequestHandler<ListarTreinamentos
                 x.DataValidade,
                 x.CargaHorariaRealizada,
                 x.InstituicaoInstrutor,
-                x.NumeroCertificado))
+                x.NumeroCertificado,
+                x.Local,
+                x.InstrutorRegistroProfissional))
             .ToListAsync(ct);
     }
 }

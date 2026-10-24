@@ -1,4 +1,5 @@
-using AAHBRANT.SST.Application.Common.Interfaces;
+﻿using AAHBRANT.SST.Application.Common.Interfaces;
+using AAHBRANT.SST.Application.Common.Seguranca;
 using AAHBRANT.SST.Domain.Entidades;
 using AAHBRANT.SST.Domain.Enums;
 using FluentValidation;
@@ -37,47 +38,57 @@ public class CriarNaoConformidadeDeItemCommandHandler : IRequestHandler<CriarNao
 
     public async Task<Guid> Handle(CriarNaoConformidadeDeItemCommand request, CancellationToken ct)
     {
-        var existente = await _db.NaoConformidades
-            .FirstOrDefaultAsync(n => n.InspecaoItemRespostaId == request.InspecaoItemRespostaId, ct);
-        if (existente is not null)
-            return existente.Id;
-
         var item = await _db.InspecaoItemRespostas
             .Include(i => i.Inspecao)
             .Include(i => i.ChecklistModeloItem)
             .FirstOrDefaultAsync(i => i.Id == request.InspecaoItemRespostaId, ct)
             ?? throw new KeyNotFoundException($"Item de inspeção {request.InspecaoItemRespostaId} não encontrado.");
 
+        // Depois de carregar o item (Include da Inspeção filtrada por obra): devolver o id da NC
+        // existente antes disso respondia sobre item de inspeção de outra obra.
+        var existente = await _db.NaoConformidades
+            .FirstOrDefaultAsync(n => n.InspecaoItemRespostaId == request.InspecaoItemRespostaId, ct);
+        if (existente is not null)
+            return existente.Id;
+
         if (item.StatusItem != StatusItemChecklist.NaoConforme)
             throw new InvalidOperationException(
                 "Só é possível gerar ocorrência a partir de um item marcado como não conforme.");
 
-        if (request.RiscoId.HasValue && !await _db.Riscos.AnyAsync(r => r.Id == request.RiscoId, ct))
+        if (request.RiscoId.HasValue && !await _db.Riscos.NoEscopoDaAtividade(_db, r => r.AtividadeId).AnyAsync(r => r.Id == request.RiscoId, ct))
             throw new KeyNotFoundException($"Risco {request.RiscoId} não encontrado.");
 
         var responsavelId = request.ResponsavelUsuarioId ?? item.ResponsavelUsuarioId;
         if (responsavelId.HasValue && !await _db.Usuarios.AnyAsync(u => u.Id == responsavelId, ct))
             throw new KeyNotFoundException($"Usuário {responsavelId} não encontrado.");
 
-        var descricao = string.IsNullOrWhiteSpace(item.Observacao)
-            ? item.ChecklistModeloItem?.Descricao ?? "Item de checklist não conforme"
-            : $"{item.ChecklistModeloItem?.Descricao} — {item.Observacao}";
-
-        var nc = new NaoConformidade
-        {
-            OrigemDeteccao = OrigemNaoConformidade.Inspecao,
-            RequisitoRelacionado = request.RequisitoRelacionado,
-            Descricao = descricao,
-            Local = request.Local,
-            AtividadeId = item.Inspecao?.AtividadeId,
-            RiscoId = request.RiscoId,
-            InspecaoItemRespostaId = item.Id,
-            ResponsavelUsuarioId = responsavelId,
-            Prazo = request.Prazo ?? item.Prazo,
-        };
+        var nc = NovaDoItem(item);
+        nc.RequisitoRelacionado = request.RequisitoRelacionado;
+        nc.Local = request.Local ?? item.Local;
+        nc.RiscoId = request.RiscoId;
+        nc.ResponsavelUsuarioId = responsavelId;
+        nc.Prazo = request.Prazo ?? item.Prazo;
 
         _db.NaoConformidades.Add(nc);
         await _db.SaveChangesAsync(ct);
         return nc.Id;
+    }
+
+    // NC a partir de um item Não Conforme — usada aqui (botão "Gerar ocorrência") e no encerramento
+    // da inspeção, que gera automaticamente a NC dos itens que ainda não têm (decisão do usuário, 17/10).
+    public static NaoConformidade NovaDoItem(InspecaoItemResposta item)
+    {
+        var textoItem = item.DescricaoPersonalizada ?? item.ChecklistModeloItem?.Descricao ?? "Item de checklist não conforme";
+        return new NaoConformidade
+        {
+            OrigemDeteccao = OrigemNaoConformidade.Inspecao,
+            ObraId = item.Inspecao?.ObraId,
+            Descricao = string.IsNullOrWhiteSpace(item.Observacao) ? textoItem : $"{textoItem} — {item.Observacao}",
+            Local = item.Local,
+            AtividadeId = item.Inspecao?.AtividadeId,
+            InspecaoItemRespostaId = item.Id,
+            ResponsavelUsuarioId = item.ResponsavelUsuarioId,
+            Prazo = item.Prazo,
+        };
     }
 }

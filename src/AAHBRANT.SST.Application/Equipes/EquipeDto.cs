@@ -11,4 +11,6 @@ public class EquipeDto
     public Guid? EncarregadoId { get; set; }
     public string? EncarregadoNome { get; set; }
     public int QuantidadeTrabalhadores { get; set; }
+    // Membros ativos — a APR usa para marcar os responsáveis ao escolher a equipe (24/09/2026).
+    public List<Guid> TrabalhadorIds { get; set; } = new();
 }

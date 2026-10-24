@@ -1,5 +1,6 @@
 using AAHBRANT.SST.Application.Common.Interfaces;
 using AAHBRANT.SST.Domain.Entidades;
+using AAHBRANT.SST.Domain.Enums;
 using FluentValidation;
 using MediatR;
 using Microsoft.EntityFrameworkCore;
@@ -29,8 +30,13 @@ public class CriarInspecaoCommandValidator : AbstractValidator<CriarInspecaoComm
 public class CriarInspecaoCommandHandler : IRequestHandler<CriarInspecaoCommand, Guid>
 {
     private readonly IAppDbContext _db;
+    private readonly IGeradorNumeroDocumentoService _geradorNumero;
 
-    public CriarInspecaoCommandHandler(IAppDbContext db) => _db = db;
+    public CriarInspecaoCommandHandler(IAppDbContext db, IGeradorNumeroDocumentoService geradorNumero)
+    {
+        _db = db;
+        _geradorNumero = geradorNumero;
+    }
 
     public async Task<Guid> Handle(CriarInspecaoCommand request, CancellationToken ct)
     {
@@ -38,6 +44,21 @@ public class CriarInspecaoCommandHandler : IRequestHandler<CriarInspecaoCommand,
             .Include(c => c.Itens)
             .FirstOrDefaultAsync(c => c.Id == request.ChecklistModeloId, ct)
             ?? throw new KeyNotFoundException($"Checklist {request.ChecklistModeloId} não encontrado.");
+
+        // Inspeção de Alojamento tem fluxo próprio (aba Alojamento ->
+        // ObterOuCriarInspecaoAlojamentoCommandHandler), que exige AlojamentoId e resolve o
+        // responsável pelo usuário logado. Este handler genérico não sabe preencher AlojamentoId —
+        // deixar passar criaria uma Inspecao órfã (AlojamentoId nulo) que nunca aparece em nenhum
+        // card de alojamento, porque a query de status filtra por AlojamentoId.
+        if (checklist.TipoInspecao == TipoInspecao.Alojamento)
+            throw new InvalidOperationException(
+                "Inspeções de Alojamento devem ser criadas pela aba Alojamento, não pelo painel genérico de Nova Inspeção.");
+
+        // Idem para Veículos: a inspeção nasce do card do veículo (ObterOuCriarInspecaoVeiculoCommand),
+        // que preenche VeiculoId.
+        if (checklist.TipoInspecao == TipoInspecao.Veiculo)
+            throw new InvalidOperationException(
+                "Inspeções de Veículos devem ser criadas pela aba Veículos, não pelo painel genérico de Nova Inspeção.");
 
         var obraExiste = await _db.Obras.AnyAsync(o => o.Id == request.ObraId, ct);
         if (!obraExiste)
@@ -55,6 +76,7 @@ public class CriarInspecaoCommandHandler : IRequestHandler<CriarInspecaoCommand,
             ChecklistModeloId = checklist.Id,
             Data = request.Data,
             ResponsavelUsuarioId = request.ResponsavelUsuarioId,
+            NumeroDocumento = await _geradorNumero.GerarAsync("INSP", ct),
         };
 
         foreach (var item in checklist.Itens.Where(i => i.Ativo))

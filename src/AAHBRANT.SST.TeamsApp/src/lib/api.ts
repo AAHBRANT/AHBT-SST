@@ -1,3 +1,6 @@
+import { anexarDadosFoto, type DadosFoto } from './dadosFoto';
+import type { CredencialLeitura } from './agenteBiometricoLocal';
+import { localizacaoParaCorpo, obterLocalizacaoAssinatura } from './localizacaoAssinatura';
 import { API_BASE_URL } from './apiBase';
 import { montarHeadersAuth } from './authHeaders';
 import { syncFetchBlob, syncFetchJson, syncMutateJson, syncMutateMultipart } from './offline/syncEngine';
@@ -32,9 +35,86 @@ export interface Obra {
   uf?: string | null;
   cnpj?: string | null;
   temLogo: boolean;
+  // Flags de MetodoAutenticacaoObra (ver MetodoAssinaturaObra abaixo).
+  metodosAssinatura: number;
 }
 
-export type NovaObra = Omit<Obra, 'id' | 'dataTerminoReal' | 'temLogo'>;
+export interface FotoCadastroFacial {
+  id: string;
+  capturadaEm: string;
+  hashSha256: string;
+}
+
+export interface ResultadoPresencaFacialFila {
+  trabalhadorId: string;
+  trabalhadorNome: string;
+  jaConfirmado: boolean;
+  confianca: number | null;
+}
+
+export interface FalhaReconhecimentoFacial {
+  id: string;
+  ocorridaEm: string;
+  obraId: string;
+  obraNome: string;
+  trabalhadorId: string | null;
+  trabalhadorNome: string | null;
+  motivo: string;
+  confiancaPercentual: number | null;
+}
+
+export interface CadastroFacialFraco {
+  trabalhadorId: string;
+  nome: string;
+  matricula: string | null;
+  obraId: string;
+  obraNome: string;
+  falhas: number;
+  ultimoMotivo: string;
+  ultimaFalhaEm: string;
+  cadastroEm: string;
+}
+
+// Dedo de cada digital cadastrada — espelha DedoBiometria (backend). NaoInformado = cadastros
+// anteriores à separação por polegar (21/10) e o cadastro pós-criação do funcionário.
+export const DedoBiometria = { NaoInformado: 0, PolegarDireito: 1, PolegarEsquerdo: 2 } as const;
+export type DedoBiometria = (typeof DedoBiometria)[keyof typeof DedoBiometria];
+
+export interface DigitalCadastrada {
+  dedo: DedoBiometria;
+  cadastradaEm: string;
+}
+
+export interface StatusCadastroBiometrico {
+  temDigital: boolean;
+  temFacial: boolean;
+  digitalCadastradaEm: string | null;
+  facialCadastradoEm: string | null;
+  consentimentoBiometriaEm?: string | null;
+  consentimentoBiometriaVersao?: string | null;
+  consentimentoBiometriaRevogadoEm?: string | null;
+  // Opcional: a API antiga (antes de 21/10) não devolve a lista por dedo.
+  digitais?: DigitalCadastrada[];
+}
+
+export interface DispositivoAgente {
+  id: string;
+  obraId: string;
+  obraNome: string;
+  nome: string;
+  ultimaSincronizacaoEm?: string | null;
+  registradoEm: string;
+}
+
+// O segredo só vem nesta resposta (no banco fica o hash): a tela o mostra uma única vez.
+export interface RegistroDispositivoAgente {
+  dispositivoId: string;
+  segredo: string;
+}
+
+export const MetodoAssinaturaObra = { Biometria: 1, ReconhecimentoFacial: 2 } as const;
+
+export type NovaObra = Omit<Obra, 'id' | 'dataTerminoReal' | 'temLogo' | 'metodosAssinatura'>;
 
 export const TipoVinculo = {
   Clt: 1,
@@ -50,6 +130,20 @@ export const tipoVinculoLabel: Record<number, string> = {
   4: 'Estagiário',
 };
 
+// Quantos trabalhadores ativos podem trabalhar hoje (ASO e treinamentos da função em dia) e por que os demais não.
+// Uma pessoa pode ter mais de um motivo, então os motivos não somam o total de bloqueados.
+export interface LiberacaoTrabalho {
+  ativos: number;
+  liberados: number;
+  bloqueados: number;
+  semAsoValido: number;
+  asoSemResultado: number;
+  asoInapto: number;
+  asoVencido: number;
+  semAso: number;
+  treinamentoPendente: number;
+}
+
 export interface Trabalhador {
   id: string;
   obraId: string;
@@ -57,13 +151,11 @@ export interface Trabalhador {
   equipeId?: string | null;
   funcaoId: string;
   nome: string;
-  matricula: string;
+  matricula: string | null;
   cpf: string;
   vinculo: number;
   dataAdmissao: string;
   dataDemissao?: string | null;
-  telegramVinculado: boolean;
-  telegramCodigoVinculo?: string | null;
   turno?: string | null;
   temFoto: boolean;
   temBiometria: boolean;
@@ -71,12 +163,25 @@ export interface Trabalhador {
 
 export type NovoTrabalhador = Omit<
   Trabalhador,
-  'id' | 'dataDemissao' | 'telegramVinculado' | 'telegramCodigoVinculo' | 'temFoto' | 'temBiometria'
+  'id' | 'dataDemissao' | 'temFoto' | 'temBiometria'
 >;
 
-export interface GerarVinculoTelegramResultado {
-  codigo: string;
-  linkTelegram: string;
+export interface ImportarColaboradoresGrhResultado {
+  totalRecebidos: number;
+  totalSincronizados: number;
+  erros: string[];
+}
+
+export interface ImportarAlojamentosGrhResultado {
+  totalRecebidos: number;
+  totalSincronizados: number;
+  erros: string[];
+}
+
+export interface ImportarAsoGrhResultado {
+  totalRecebidos: number;
+  totalSincronizados: number;
+  erros: string[];
 }
 
 export const TipoExameAso = {
@@ -148,6 +253,9 @@ export interface ExameComplementar {
   trabalhadorId: string;
   asoId?: string | null;
   tipo: number;
+  // Exame exato do PCMSO da função (ExameFuncaoObra); nulo nos registros antigos ou fora do PCMSO.
+  codigoExame?: string | null;
+  nomeExame?: string | null;
   dataRealizacao: string;
   dataValidade: string;
   resultado: string;
@@ -183,6 +291,243 @@ export interface Funcao {
 
 export type NovaFuncao = Omit<Funcao, 'id'>;
 
+export interface FuncaoDuplicada {
+  id: string;
+  nome: string;
+  cboCodigo?: string | null;
+  quantidadeTrabalhadores: number;
+}
+
+export interface GrupoFuncaoDuplicada {
+  nome: string;
+  manter: FuncaoDuplicada;
+  remover: FuncaoDuplicada[];
+}
+
+export interface FuncaoOrfa {
+  id: string;
+  nome: string;
+}
+
+export interface FuncaoInativaComTrabalhador {
+  id: string;
+  nome: string;
+  quantidadeTrabalhadores: number;
+}
+
+export interface FuncaoSemTrabalhador {
+  id: string;
+  nome: string;
+  cboCodigo?: string | null;
+  temEpiNaMatriz: boolean;
+  temTreinamentoNaMatriz: boolean;
+  temUniformeNaMatriz: boolean;
+}
+
+export interface Empresa {
+  id: string;
+  razaoSocial: string;
+  nomeFantasia?: string | null;
+  cnpj: string;
+  tipoServicoPrestado?: string | null;
+  contatoNome?: string | null;
+  contatoTelefone?: string | null;
+  contatoEmail?: string | null;
+  status: 'Ativa' | 'Inativa';
+}
+export type NovaEmpresa = Omit<Empresa, 'id' | 'status'>;
+
+// Checklist e percentual de adequação da empresa terceirizada (21/10/2026). Situação do item: ok,
+// vence (atende, mas vence em até 30 dias), vencido ou pendente. Faixa: apta (100%), quase (80–99%),
+// parcial (< 80%) ou sem-itens.
+export type NivelConformidade = 'empresa' | 'funcoes' | 'pessoas';
+export type SituacaoItemConformidade = 'ok' | 'vence' | 'vencido' | 'pendente';
+export type FaixaConformidade = 'apta' | 'quase' | 'parcial' | 'sem-itens';
+
+export interface ItemConformidade {
+  nivel: NivelConformidade;
+  titulo: string;
+  atendido: boolean;
+  situacao: SituacaoItemConformidade;
+  detalhe: string | null;
+  documentoExigidoId: string | null;
+  documentoId: string | null;
+  dataValidade: string | null;
+  arquivoNome: string | null;
+  funcaoId: string | null;
+  trabalhadorId: string | null;
+  exigeValidade: boolean;
+}
+
+export interface NivelConformidadeResumo {
+  chave: NivelConformidade;
+  titulo: string;
+  atendidos: number;
+  exigidos: number;
+  percentual: number | null;
+}
+
+export interface ResumoConformidadeEmpresa {
+  empresaId: string;
+  razaoSocial: string;
+  cnpj: string;
+  empresaAtiva: boolean;
+  atendidos: number;
+  exigidos: number;
+  percentual: number | null;
+  faixa: FaixaConformidade;
+  niveis: NivelConformidadeResumo[];
+}
+
+export interface ConformidadeEmpresa extends ResumoConformidadeEmpresa {
+  itens: ItemConformidade[];
+}
+
+export interface DocumentoExigidoEmpresa {
+  id: string;
+  nome: string;
+  descricao: string | null;
+  exigeValidade: boolean;
+  ativo: boolean;
+  ordem: number;
+}
+
+export type DadosDocumentoExigidoEmpresa = Pick<DocumentoExigidoEmpresa, 'nome' | 'descricao' | 'exigeValidade' | 'ativo'>;
+export type AtualizarEmpresa = Pick<Empresa, 'id' | 'razaoSocial' | 'nomeFantasia' | 'cnpj' | 'tipoServicoPrestado' | 'contatoNome' | 'contatoTelefone' | 'contatoEmail'> & {
+  status: 1 | 2; // StatusEmpresa: Ativa=1, Inativa=2 (backend não tem JsonStringEnumConverter)
+};
+
+export interface Contrato {
+  id: string;
+  empresaId: string;
+  obraId: string;
+  obraNome: string;
+  numeroContrato: string;
+  dataInicioVigencia: string;
+  dataFimVigencia: string;
+  status: 'Validado' | 'Encerrado' | 'Cancelado';
+  // true = veio do G-Juri (só leitura no SST); false = cadastrado à mão pelo técnico.
+  origemGJuri: boolean;
+  // PDF do contrato guardado no SST (subido pelo técnico); baixado sob demanda via baixarArquivo.
+  temArquivo: boolean;
+}
+
+export interface DadosContrato {
+  numeroContrato: string;
+  dataInicioVigencia: string;
+  dataFimVigencia: string;
+  vagas: { funcaoId: string; quantidade: number }[];
+}
+
+// Leitura do PDF do contrato pela IA (18/10/2026): nada é gravado, só preenche o cadastro.
+export interface ContratoTerceirizadoLidoIa {
+  empresa: {
+    razaoSocial: string | null;
+    nomeFantasia: string | null;
+    cnpj: string | null;
+    tipoServicoPrestado: string | null;
+    contatoNome: string | null;
+    contatoTelefone: string | null;
+    contatoEmail: string | null;
+  };
+  numeroContrato: string | null;
+  obra: string | null;
+  dataInicioVigencia: string | null;
+  dataFimVigencia: string | null;
+  vagas: { funcao: string; quantidade: number | null }[];
+  pessoas: { nome: string; cpf: string | null; funcao: string | null; matricula: string | null }[];
+  empresaExistenteId: string | null;
+  empresaExistenteRazaoSocial: string | null;
+}
+
+// Importação da pasta da terceirizada (23/10/2026): o que a IA disse de UM arquivo. Nada é gravado.
+export type TipoArquivoTerceirizado = 'contrato' | 'documento_empresa' | 'aso' | 'certificado' | 'ficha_epi' | 'outro';
+
+export interface ArquivoTerceirizadoClassificado {
+  nomeArquivo: string;
+  tipo: TipoArquivoTerceirizado;
+  documentoExigidoId: string | null;
+  documentoExigidoNome: string | null;
+  cursoTreinamentoId: string | null;
+  cursoNome: string | null;
+  pessoaNome: string | null;
+  pessoaCpf: string | null;
+  pessoaFuncao: string | null;
+  empresaRazaoSocial: string | null;
+  empresaCnpj: string | null;
+  dataDocumento: string | null;
+  dataValidade: string | null;
+  asoTipo: number | null;
+  asoResultado: number | null;
+  medicoNome: string | null;
+  medicoCrm: string | null;
+  cargaHoraria: number | null;
+  instituicao: string | null;
+  resumo: string | null;
+}
+
+export interface VagaFuncao {
+  id: string;
+  funcaoId: string;
+  funcaoNome: string;
+  quantidadeVagas: number;
+  quantidadePreenchidas: number;
+}
+
+export interface ContratoDetalhe extends Contrato {
+  empresaRazaoSocial: string;
+  vagas: VagaFuncao[];
+  arquivoNome: string | null;
+}
+
+export interface PessoaTerceirizada {
+  trabalhadorId: string;
+  nome: string;
+  matricula?: string | null;
+  empresaId: string;
+  empresaRazaoSocial: string;
+  contratoId: string;
+  numeroContrato: string;
+  funcaoId: string;
+  funcaoNome: string;
+  status: 'Pendente' | 'Liberada';
+  pendencias: string[];
+}
+
+export interface StatusLiberacaoTrabalhador {
+  trabalhadorId: string;
+  status: 'Pendente' | 'Liberada';
+  pendencias: string[];
+}
+
+export interface PendenciaPessoa {
+  trabalhadorId: string;
+  nome: string;
+  empresaId: string;
+  empresaRazaoSocial: string;
+  pendencias: string[];
+}
+
+export interface ContratoEncerradoComPessoasAtivas {
+  contratoId: string;
+  numeroContrato: string;
+  empresaRazaoSocial: string;
+  quantidadePessoasAtivas: number;
+}
+
+export interface AlertaEstoqueInsuficiente {
+  alertaId: string;
+  titulo: string;
+  descricao?: string | null;
+  criadoEmUtc: string;
+}
+
+export interface PainelPendenciasTerceirizado {
+  pessoasBloqueadas: PendenciaPessoa[];
+  contratosEncerradosComPessoasAtivas: ContratoEncerradoComPessoasAtivas[];
+  alertasEstoqueInsuficiente: AlertaEstoqueInsuficiente[];
+}
+
 export interface Setor {
   id: string;
   obraId: string;
@@ -202,9 +547,32 @@ export interface Equipe {
   encarregadoId?: string | null;
   encarregadoNome?: string | null;
   quantidadeTrabalhadores: number;
+  trabalhadorIds: string[];
 }
 
-export type NovaEquipe = Omit<Equipe, 'id' | 'setorNome' | 'obraId' | 'obraNome' | 'encarregadoNome' | 'quantidadeTrabalhadores'>;
+export type NovaEquipe = Omit<
+  Equipe,
+  'id' | 'setorNome' | 'obraId' | 'obraNome' | 'encarregadoNome' | 'quantidadeTrabalhadores' | 'trabalhadorIds'
+>;
+
+// Equipe montada dentro da APR (24/09/2026): vai para o setor "Geral" da obra.
+export interface NovaEquipeComMembros {
+  obraId: string;
+  nome: string;
+  encarregadoId: string | null;
+  trabalhadorIds: string[];
+}
+
+// "Quem sou eu" (23/09): o app passou a saber quem está logado e o que essa pessoa pode fazer, para
+// não oferecer ação que o servidor vai recusar. Ver UsuarioLogadoContext.
+export interface UsuarioLogado {
+  nome: string;
+  email?: string | null;
+  // Administrador é o único que pode excluir registro operacional (regra fixa no servidor, não
+  // configurável pela matriz de permissões — ver PoliticasAutorizacao no backend).
+  ehAdministrador: boolean;
+  permissoes: string[];
+}
 
 export interface CursoTreinamento {
   id: string;
@@ -213,9 +581,99 @@ export interface CursoTreinamento {
   cargaHorariaMinima: number;
   validadeEmMeses: number;
   conteudoProgramatico?: string | null;
+  ehIntegracaoSeguranca: boolean;
+  // Marcador explícito "este curso atende à NR-06 (uso de EPI)" (22/09). Substitui a adivinhação
+  // pelo texto de normaReferencia, que era campo livre: bastava digitar a norma de um jeito
+  // diferente para a entrega de EPI deixar de reconhecer o curso e travar a obra inteira.
+  atendeNr6?: boolean;
 }
 
 export type NovoCursoTreinamento = Omit<CursoTreinamento, 'id'>;
+
+// Padrão de cada NR (catálogo do backend, 19/10) — preenche o cadastro de curso.
+export interface PadraoNr {
+  numero: string;
+  titulo: string;
+  cargaHorariaMinima: number | null;
+  validadeEmMeses: number | null;
+  conteudoProgramatico: string;
+}
+
+// Trabalhadores ativos que precisam do curso (pela matriz de função) e a situação de cada um.
+// "Apto" = treinamento válido hoje = emDia + vencemEm30Dias.
+// Cursos obrigatórios por função a partir do PGR (21/10): por obra, sugeridos pelas regras e
+// aprovados/recusados pelo Engenheiro de Segurança. Só Aprovado conta para a aptidão.
+export const StatusCursoObrigatorio = { Sugerido: 1, Aprovado: 2, Recusado: 3 } as const;
+export const OrigemCursoObrigatorio = { Pgr: 1, Manual: 2 } as const;
+
+export interface CursoObrigatorio {
+  id: string;
+  funcaoId: string;
+  funcaoNome: string;
+  gheNumero?: number | null;
+  gheSetor?: string | null;
+  trabalhadores: number;
+  cursoTreinamentoId: string;
+  cursoNome: string;
+  normaReferencia?: string | null;
+  status: number;
+  origem: number;
+  motivo?: string | null;
+  justificativaRecusa?: string | null;
+  decididoPorNome?: string | null;
+  decididoEmUtc?: string | null;
+}
+
+export interface CursosObrigatoriosObra {
+  pgrNome?: string | null;
+  pgrDataElaboracao?: string | null;
+  funcoesNoPgr: number;
+  itens: CursoObrigatorio[];
+}
+
+export interface ResultadoGeracaoCursosObrigatorios { sugeridos: number; normasSemCurso: string[] }
+
+export interface RegraCursoObrigatorio {
+  id: string;
+  norma: string;
+  cursoTreinamentoId?: string | null;
+  cursoNome?: string | null;
+  descricao: string;
+  aplicaTodasFuncoes: boolean;
+  palavrasChave?: string | null;
+  ativo: boolean;
+}
+
+export type SalvarRegraCursoObrigatorio = Omit<RegraCursoObrigatorio, 'id' | 'cursoNome'> & { id?: string | null };
+
+// Escopo para o médico elaborar o PCMSO (21/10), montado a partir do PGR vigente da obra.
+export interface EscopoPcmso {
+  obraId: string;
+  obraNome: string;
+  cnpj?: string | null;
+  endereco?: string | null;
+  dataInicio?: string | null;
+  dataPrevisaoTermino?: string | null;
+  trabalhadoresAtivos: number;
+  pgrNome?: string | null;
+  pgrDataElaboracao?: string | null;
+  geradoEmUtc: string;
+  pendencias: string[];
+  funcoes: { gheNumero: number; gheSetor?: string | null; funcao: string; trabalhadores: number; atividades?: string | null }[];
+  riscos: { gheNumero: number; tipo?: string | null; perigo: string; fonte?: string | null; atividade: string; nivel: number }[];
+  atividadesCriticas: { descricao: string; funcoes: string[] }[];
+}
+
+export interface AptidaoCurso {
+  cursoId: string;
+  nome: string;
+  normaReferencia?: string | null;
+  exigidos: number;
+  emDia: number;
+  vencemEm30Dias: number;
+  vencidos: number;
+  semCurso: number;
+}
 
 export interface Treinamento {
   id: string;
@@ -226,10 +684,139 @@ export interface Treinamento {
   cargaHorariaRealizada: number;
   instituicaoInstrutor?: string | null;
   numeroCertificado?: string | null;
+  // Local/instalações e registro profissional do instrutor (CREA/MTE) no certificado (pedido do
+  // usuário, 06/09). Sem preencher Local, o certificado usa o nome da Obra do trabalhador.
+  local?: string | null;
+  instrutorRegistroProfissional?: string | null;
+  // Lançamento retroativo (22/09): Aahbrant = curso ministrado pela empresa, o sistema emite o
+  // certificado no modelo próprio. Externo = curso feito por terceiro, só registrado aqui — a
+  // emissão do modelo AAHBRANT é recusada pela API e o que se baixa é o arquivo anexado.
+  origemCertificado?: OrigemCertificadoTreinamento;
 }
+
+export const OrigemCertificadoTreinamento = {
+  Aahbrant: 1,
+  Externo: 2,
+} as const;
+export type OrigemCertificadoTreinamento =
+  (typeof OrigemCertificadoTreinamento)[keyof typeof OrigemCertificadoTreinamento];
+
+export const origemCertificadoTreinamentoLabel: Record<number, string> = {
+  1: 'AAHBRANT',
+  2: 'Externo',
+};
 
 export type NovoTreinamento = Omit<Treinamento, 'id'>;
 export type AtualizarTreinamento = Treinamento;
+
+// Linha da sub-aba "Certificados" (22/09) — lista central com trabalhador/obra/curso já resolvidos,
+// para lançar e conferir certificados sem entrar no perfil de um trabalhador por vez. NUNCA traz o
+// conteúdo do arquivo, só se existe: a lista pode ter centenas de linhas.
+export interface CertificadoTreinamento {
+  id: string;
+  trabalhadorId: string;
+  trabalhadorNome: string;
+  funcaoNome?: string | null;
+  obraId: string;
+  obraNome?: string | null;
+  cursoTreinamentoId: string;
+  cursoNome: string;
+  normaReferencia?: string | null;
+  atendeNr6: boolean;
+  dataRealizacao: string;
+  dataValidade: string;
+  cargaHorariaRealizada: number;
+  instituicaoInstrutor?: string | null;
+  numeroCertificado?: string | null;
+  local?: string | null;
+  instrutorRegistroProfissional?: string | null;
+  origemCertificado: OrigemCertificadoTreinamento;
+  temArquivo: boolean;
+  nomeArquivo?: string | null;
+  contentTypeArquivo?: string | null;
+}
+
+// Sessão/Turma de Treinamento (pedido do usuário, 04/09) — reformulação do fluxo: o responsável
+// abre a turma já com os participantes selecionados, registra presença de cada um por biometria
+// durante a aula, anexa as 3 fotos obrigatórias e encerra — o encerramento gera 1 Treinamento (e
+// certificado, com dupla assinatura já existente) por participante que confirmou presença.
+export const StatusSessaoTreinamento = {
+  EmAndamento: 1,
+  Concluida: 2,
+} as const;
+
+export const statusSessaoTreinamentoLabel: Record<number, string> = {
+  1: 'Em andamento',
+  2: 'Concluída',
+};
+
+export interface SessaoTreinamento {
+  id: string;
+  obraId: string;
+  obraNome: string;
+  cursoTreinamentoId: string;
+  cursoTreinamentoNome: string;
+  dataRealizacao: string;
+  cargaHorariaRealizada: number;
+  instituicaoInstrutor?: string | null;
+  numeroCertificado?: string | null;
+  status: number;
+  dataEncerramento?: string | null;
+  totalParticipantes: number;
+  totalPresencasConfirmadas: number;
+  totalFotosEvidencia: number;
+}
+
+export interface NovaSessaoTreinamento {
+  obraId: string;
+  cursoTreinamentoId: string;
+  dataRealizacao: string;
+  cargaHorariaRealizada: number;
+  instituicaoInstrutor?: string | null;
+  trabalhadoresIds: string[];
+  // Dados do certificado gravados na turma (19/10) — só o Técnico de Segurança altera.
+  conteudoProgramatico?: string | null;
+  local?: string | null;
+  instrutorRegistroProfissional?: string | null;
+  validadeEmMeses?: number | null;
+}
+
+// Padrão da turma para o curso escolhido + se quem está logado pode editar (19/10).
+export interface PadraoTurmaTreinamento {
+  norma: string | null;
+  cargaHorariaMinima: number;
+  validadeEmMeses: number;
+  conteudoProgramatico: string | null;
+  local: string | null;
+  podeEditar: boolean;
+}
+
+export interface ParticipanteSessaoTreinamento {
+  id: string;
+  trabalhadorId: string;
+  trabalhadorNome: string;
+  trabalhadorMatricula?: string | null;
+  presencaConfirmadaEm?: string | null;
+  scoreConfianca?: number | null;
+  treinamentoGeradoId?: string | null;
+  // Assinatura do certificado (04/09) — a mesma digital da presença já vale como assinatura do
+  // trabalhador; a do instrutor é automática ao encerrar. Nulos até o encerramento ou se a
+  // assinatura automática falhou (a tela oferece "Assinar" manual como reforço nesse caso).
+  certificadoAssinadoPeloTrabalhadorEm?: string | null;
+  certificadoAssinadoPeloInstrutorEm?: string | null;
+}
+
+export interface FotoEvidenciaSessaoTreinamento {
+  dadosFoto?: DadosFoto | null;
+  id: string;
+  ordem: number;
+}
+
+export interface SessaoTreinamentoDetalhe {
+  sessao: SessaoTreinamento;
+  participantes: ParticipanteSessaoTreinamento[];
+  fotosEvidencia: FotoEvidenciaSessaoTreinamento[];
+}
 
 // Módulo de Requisitos Legais — Motor de Aplicabilidade Legal (requisito do usuário, 2026-08-29).
 // Fase 1 (fundação de dados): cadastro do requisito e seus critérios de aplicabilidade, catálogo do
@@ -254,11 +841,14 @@ export const categoriaRequisitoLegalLabel: Record<number, string> = {
 export const StatusRequisitoLegal = {
   Ativo: 1,
   Revogado: 2,
+  // Carregado do texto oficial da NR, aguardando o QSMS validar (não entra no plano da IA).
+  EmRevisao: 3,
 } as const;
 
 export const statusRequisitoLegalLabel: Record<number, string> = {
   1: 'Ativo',
   2: 'Revogado',
+  3: 'Em revisão',
 };
 
 export const TipoCriterioAplicabilidade = {
@@ -284,10 +874,12 @@ export interface RequisitoLegal {
   categoria: number;
   status: number;
   fonte?: string | null;
+  validadoEmUtc?: string | null;
+  validadoPorNome?: string | null;
 }
 
-export type NovoRequisitoLegal = Omit<RequisitoLegal, 'id' | 'status'>;
-export type AtualizarRequisitoLegalPayload = Omit<RequisitoLegal, 'id'>;
+export type NovoRequisitoLegal = Omit<RequisitoLegal, 'id' | 'status' | 'validadoEmUtc' | 'validadoPorNome'>;
+export type AtualizarRequisitoLegalPayload = Omit<RequisitoLegal, 'id' | 'validadoEmUtc' | 'validadoPorNome'>;
 
 export interface CriterioAplicabilidadeInput {
   tipo: number;
@@ -302,6 +894,7 @@ export interface RequisitoLegalCriterio extends CriterioAplicabilidadeInput {
   perigoNome?: string | null;
   funcaoNome?: string | null;
   itemQuestionarioPergunta?: string | null;
+  sugeridoPelaCarga?: boolean;
 }
 
 export interface RequisitoLegalDetalhe {
@@ -350,11 +943,59 @@ export const TipoMovimentacaoEstoqueEpi = {
 } as const;
 
 export const tipoMovimentacaoEstoqueEpiLabel: Record<number, string> = {
+  4: 'Integração G-SUPRI',
   0: 'Entrada manual',
   1: 'Saída (entrega)',
   2: 'Devolução',
   3: 'Ajuste manual',
+  5: 'Transferência (saída)',
+  6: 'Transferência (entrada)',
 };
+
+// Painel da aba Estoque (especificação 21/10/2026, Módulos 2 e 3) — tudo calculado no servidor
+// (CalculadoraEstoqueEpi), para a tela, o alerta e a solicitação de reposição nunca divergirem.
+export type SituacaoEstoqueEpi = 'emDia' | 'atencao' | 'abaixoMinimo' | 'zerado' | 'semMinimo';
+export interface SugestaoTransferenciaEpi {
+  obraId: string;
+  obraNome: string;
+  quantidade: number;
+}
+export interface EstoqueEpiPainelItem {
+  catalogoEpiId: string;
+  estoqueEpiId?: string | null;
+  nome: string;
+  fabricante?: string | null;
+  certificadoAprovacaoNumero?: string | null;
+  certificadoAprovacaoValidade?: string | null;
+  temFoto: boolean;
+  saldo: number;
+  reservado: number;
+  disponivel: number;
+  estoqueMinimo?: number | null;
+  minimoSugerido: number;
+  consumoUltimos90Dias: number;
+  situacao: SituacaoEstoqueEpi;
+  reservasEmFalta: number;
+  tamanhosEmFalta: string[];
+  quantidadeSugeridaCompra: number;
+  estoqueMinimoDefinidoEm?: string | null;
+  estoqueMinimoDefinidoPor?: string | null;
+  transferencias: SugestaoTransferenciaEpi[];
+}
+export interface EstoqueEpiPainel {
+  obraId: string;
+  obraNome: string;
+  prazoReposicaoEpiDias: number;
+  itens: EstoqueEpiPainelItem[];
+}
+export interface SolicitacaoReposicaoEpiResumo {
+  id: string;
+  numeroDocumento: string;
+  criadaEm: string;
+  solicitanteNome: string;
+  totalItens: number;
+  assinada: boolean;
+}
 
 export interface EstoqueEpiPorObra {
   catalogoEpiId: string;
@@ -418,10 +1059,226 @@ export interface EntregaEpi {
   motivoTipo: number | null;
   numeroListaPresencaNr6?: string | null;
   dataTreinamentoNr6?: string | null;
+  confirmada: boolean;
+  dataConfirmacao?: string | null;
 }
 
-export type NovaEntregaEpi = Omit<EntregaEpi, 'id'> & { motivoTipo: number };
+export type NovaEntregaEpi = Omit<EntregaEpi, 'id' | 'confirmada' | 'dataConfirmacao'> & { motivoTipo: number };
 export type AtualizarEntregaEpi = EntregaEpi & { motivoTipo: number };
+
+// EPC — Equipamento de Proteção Coletiva (aba própria, separada de EPI, pedido do usuário 04/09).
+// Diferente do EPI: não é entregue/assinado por um trabalhador, e sim instalado numa Obra, com
+// validade e inspeções periódicas. Não existe Matriz de EPC (decisão confirmada: só catálogo e
+// estoque).
+export interface CatalogoEpc {
+  id: string;
+  nome: string;
+  fabricante?: string | null;
+  certificadoAprovacaoNumero?: string | null;
+  certificadoAprovacaoValidade?: string | null;
+  vidaUtilEmMeses: number;
+  saldoTotal: number;
+  temFoto: boolean;
+}
+
+export type NovoCatalogoEpc = Omit<CatalogoEpc, 'id' | 'saldoTotal' | 'temFoto'>;
+export type AtualizarCatalogoEpc = Omit<CatalogoEpc, 'saldoTotal' | 'temFoto'>;
+
+export const TipoMovimentacaoEstoqueEpc = {
+  EntradaManual: 0,
+  SaidaInstalacao: 1,
+  RetornoRemocao: 2,
+  AjusteManual: 3,
+} as const;
+
+export const tipoMovimentacaoEstoqueEpcLabel: Record<number, string> = {
+  4: 'Integração G-SUPRI',
+  0: 'Entrada manual',
+  1: 'Saída (instalação)',
+  2: 'Retorno (remoção)',
+  3: 'Ajuste manual',
+};
+
+export interface EstoqueEpcPorObra {
+  catalogoEpcId: string;
+  catalogoEpcNome: string;
+  fabricante?: string | null;
+  saldo: number;
+}
+
+export interface MovimentacaoEstoqueEpc {
+  id: string;
+  tipo: number;
+  quantidade: number;
+  saldoResultante: number;
+  createdAtUtc: string;
+  observacao?: string | null;
+  instalacaoEpcId?: string | null;
+}
+
+export interface RegistrarEntradaEstoqueEpc {
+  catalogoEpcId: string;
+  obraId: string;
+  quantidade: number;
+  observacao?: string | null;
+}
+
+export interface AjustarEstoqueEpc {
+  catalogoEpcId: string;
+  obraId: string;
+  novoSaldo: number;
+  observacao: string;
+}
+
+export const StatusInspecaoEpc = {
+  Conforme: 1,
+  NaoConforme: 2,
+} as const;
+
+export const statusInspecaoEpcLabel: Record<number, string> = {
+  1: 'Conforme',
+  2: 'Não conforme',
+};
+
+export interface InstalacaoEpc {
+  id: string;
+  catalogoEpcId: string;
+  obraId: string;
+  localInstalacao?: string | null;
+  quantidade: number;
+  dataInstalacao: string;
+  dataValidade?: string | null;
+  dataUltimaInspecao?: string | null;
+  statusUltimaInspecao?: number | null;
+  observacoesInspecao?: string | null;
+  dataRemocao?: string | null;
+  observacoes?: string | null;
+}
+
+export type NovaInstalacaoEpc = Omit<
+  InstalacaoEpc,
+  'id' | 'dataUltimaInspecao' | 'statusUltimaInspecao' | 'observacoesInspecao' | 'dataRemocao' | 'observacoes'
+>;
+
+export interface RegistrarInspecaoEpc {
+  dataInspecao: string;
+  status: number;
+  observacoes?: string | null;
+}
+
+export interface RegistrarRemocaoEpc {
+  dataRemocao: string;
+  observacoes?: string | null;
+}
+
+export interface CatalogoUniforme {
+  id: string;
+  nome: string;
+  categoria?: string | null;
+  temFoto: boolean;
+}
+
+export type NovoCatalogoUniforme = Omit<CatalogoUniforme, 'id' | 'temFoto'>;
+export type AtualizarCatalogoUniforme = Omit<CatalogoUniforme, 'temFoto'>;
+
+export const MotivoEntregaUniforme = {
+  Inicial: 0,
+  Desgaste: 1,
+  Extravio: 2,
+  TrocaDeFuncao: 3,
+} as const;
+
+export const motivoEntregaUniformeLabel: Record<number, string> = {
+  0: 'Entrega inicial',
+  1: 'Desgaste',
+  2: 'Extravio',
+  3: 'Troca de função',
+};
+
+export interface EntregaUniforme {
+  id: string;
+  trabalhadorId: string;
+  catalogoUniformeId: string;
+  tamanho: string;
+  quantidade: number;
+  dataEntrega: string;
+  motivoTipo: number;
+  observacoes?: string | null;
+}
+
+export type NovaEntregaUniforme = Omit<EntregaUniforme, 'id' | 'tamanho'>;
+
+export const TipoMovimentacaoEstoqueUniforme = {
+  EntradaManual: 0,
+  SaidaEntrega: 1,
+  AjusteManual: 2,
+} as const;
+
+export const tipoMovimentacaoEstoqueUniformeLabel: Record<number, string> = {
+  4: 'Integração G-SUPRI',
+  0: 'Entrada manual',
+  1: 'Saída (entrega)',
+  2: 'Ajuste manual',
+};
+
+export interface EstoqueUniformePorObra {
+  catalogoUniformeId: string;
+  catalogoUniformeNome: string;
+  tamanho: string;
+  saldo: number;
+}
+
+export interface MovimentacaoEstoqueUniforme {
+  id: string;
+  tipo: number;
+  quantidade: number;
+  saldoResultante: number;
+  createdAtUtc: string;
+  observacao?: string | null;
+  entregaUniformeId?: string | null;
+}
+
+export interface TamanhoUniformeTrabalhador {
+  catalogoUniformeId: string;
+  catalogoUniformeNome: string;
+  tamanho: string;
+}
+
+export interface ItemTamanhoUniforme {
+  catalogoUniformeId: string;
+  tamanho: string;
+}
+
+// Catálogo de APR/PT por atividade da obra (29/09): "modelo" = atividade + riscos do PGR.
+export interface CatalogoDocumento {
+  id: string;
+  numero?: string | null;
+  status: number;
+  data: string;
+  validade?: string | null;
+  vigente: boolean;
+}
+
+export interface CatalogoAtividade {
+  atividadeId: string;
+  nome: string;
+  descricao?: string | null;
+  obraId: string;
+  obraNome: string;
+  pgrNome?: string | null;
+  quantidadeRiscos: number;
+  maiorNivelRisco?: number | null;
+  aprs: CatalogoDocumento[];
+  pts: CatalogoDocumento[];
+}
+
+export interface GerarDocumentoDaAtividade {
+  atividadeId: string;
+  local: string;
+  equipeId: string | null;
+  data: string;
+  validade: string | null;
+}
 
 export interface Atividade {
   id: string;
@@ -471,6 +1328,59 @@ export const NivelRisco = {
   Alto: 4,
   Critico: 5,
 } as const;
+
+// Estrutura de SST da obra importada do PGR (GHE → funções → riscos) e do PCMSO (exames por função).
+export interface GheFuncao {
+  funcaoId: string;
+  funcaoNome: string | null;
+  cbo: string | null;
+  quantidadeExpostos: number | null;
+  descricaoAtividades: string | null;
+}
+
+export interface GheRisco {
+  id: string;
+  atividadeId: string;
+  perigo: string | null;
+  tipoAgente: string | null;
+  consequencia: string | null;
+  exposicao: string | null;
+  probabilidade: number;
+  severidade: number;
+  nivelRisco: number;
+  controlesExistentes: string | null;
+  controlesAdicionais: string | null;
+  status: number;
+}
+
+export interface Ghe {
+  id: string;
+  numero: number;
+  setor: string | null;
+  jornadaTrabalho: string | null;
+  descricaoAmbiente: string | null;
+  atividadesCriticas: string | null;
+  fonteGeradora: string | null;
+  medidasProtecaoExistentes: string | null;
+  funcoes: GheFuncao[];
+  riscos: GheRisco[];
+}
+
+export interface ExameFuncaoObra {
+  id: string;
+  funcaoId: string;
+  funcaoNome: string | null;
+  pcmsoDetalheId: string | null;
+  exame: string;
+  codigoExame: string | null;
+  admissional: boolean;
+  periodico: boolean;
+  retornoTrabalho: boolean;
+  mudancaRisco: boolean;
+  demissional: boolean;
+  periodicidadeMeses: number | null;
+  observacao: string | null;
+}
 
 export const nivelRiscoLabel: Record<number, string> = {
   1: 'Trivial',
@@ -583,11 +1493,30 @@ export interface RiscoClassificado {
   controlesExistentes?: string | null;
   controlesAdicionais?: string | null;
   status: number;
+  // Ordem de Serviço (20/10/2026): avaliação confirmada e medidas por fase.
+  probabilidade: number;
+  severidade: number;
+  consequencia?: string | null;
+  avaliadoEmUtc?: string | null;
+  avaliadoPorNome?: string | null;
+  medidas: MedidaPrevencao[];
+}
+
+// Fase: 1 Antes, 2 Durante, 3 Após. Origem: 1 PGR, 2 Sugestão da IA, 3 Manual. Status: 1 Validada, 2 Pendente.
+export interface MedidaPrevencao {
+  id: string;
+  fase: 1 | 2 | 3;
+  texto: string;
+  origem: 1 | 2 | 3;
+  status: 1 | 2 | 3;
+  validadoPorNome?: string | null;
+  validadoEmUtc?: string | null;
 }
 
 export interface AtividadeCaracterizada {
   atividadeId: string;
   atividadeNome: string;
+  itensOsPendentes: number;
   riscos: RiscoClassificado[];
 }
 
@@ -611,9 +1540,173 @@ export interface PgrRevisao {
   dataRevisao: string;
   motivo: string;
   responsavelUsuarioId?: string | null;
+  // PDF da revisão (10/10/2026); o arquivo vem por obterDocumento(id).
+  temDocumento?: boolean;
+  documentoNomeArquivo?: string | null;
+  criadoEmUtc?: string;
+  criadoPorNome?: string | null;
 }
 
-export type NovaPgrRevisao = Omit<PgrRevisao, 'id' | 'numeroRevisao'>;
+export type NovaPgrRevisao = Pick<PgrRevisao, 'pgrId' | 'dataRevisao' | 'motivo' | 'responsavelUsuarioId'>;
+
+export interface PcmsoRevisao {
+  id: string;
+  pcmsoDetalheId: string;
+  numeroRevisao: number;
+  dataRevisao: string;
+  motivo: string;
+  temDocumento: boolean;
+  documentoNomeArquivo: string | null;
+  criadoEmUtc: string;
+  criadoPorNome: string | null;
+}
+
+// "Ler com IA" do PGR/PCMSO (10/10/2026). Status: 1 Pendente, 2 Lendo, 3 Concluída, 4 Falhou,
+// 5 Cadastrada, 6 Descartada.
+export type DocumentoLeituraIa = 'pgr' | 'pcmso';
+
+export const StatusLeituraIa = { Pendente: 1, Lendo: 2, Concluida: 3, Falhou: 4, Cadastrada: 5, Descartada: 6 } as const;
+
+export interface RiscoLidoIa {
+  tipo: string;
+  agente: string;
+  danos: string | null;
+  avaliacao: string | null;
+  epc: string | null;
+  epi: string | null;
+  probabilidade: number;
+  severidade: number;
+  classificacaoDocumento: string | null;
+  monitoramento: string | null;
+}
+
+export interface GheLidoIa {
+  numero: number;
+  setor: string | null;
+  jornadaTrabalho: string | null;
+  descricaoAmbiente: string | null;
+  atividadesCriticas: string | null;
+  funcoes: { nome: string; cbo: string | null; quantidadeExpostos: number | null }[];
+  riscos: RiscoLidoIa[];
+}
+
+export interface ExameLidoIa {
+  exame: string;
+  codigo: string | null;
+  admissional: boolean;
+  periodico: boolean;
+  retornoTrabalho: boolean;
+  mudancaRisco: boolean;
+  demissional: boolean;
+  periodicidadeMeses: number | null;
+}
+
+export interface FuncaoLidaIa {
+  nomeDocumento: string;
+  cbo: string | null;
+  ghes: number[];
+  exames: number;
+  funcaoIdSugerida: string | null;
+  funcaoNomeSugerida: string | null;
+  situacao: 'existe' | 'parecida' | 'nova';
+}
+
+export interface ResultadoLeituraIa {
+  documento: 'PGR' | 'PCMSO';
+  cabecalhoPgr: { responsavel: string | null; registro: string | null; revisao: string | null; inicio: string | null; revisaoSugerida: string | null; termino: string | null } | null;
+  cabecalhoPcmso: { medicoNome: string | null; medicoCrm: string | null; dataElaboracao: string | null; validade: string | null } | null;
+  ghes: GheLidoIa[];
+  planoAcao: string[];
+  examesPorFuncao: { funcao: string; exames: ExameLidoIa[] }[];
+  funcoes: FuncaoLidaIa[];
+  divergencias: { gravidade: 'alta' | 'media'; texto: string }[];
+  diferencas: { tipo: 'incluido' | 'removido' | 'alterado'; oque: string; antes: string | null; depois: string | null }[];
+  haEstruturaAtual: boolean;
+}
+
+export interface LeituraIa {
+  id: string;
+  documento: number;
+  documentoId: string;
+  obraId: string;
+  status: number;
+  etapa: string | null;
+  passosConcluidos: number;
+  passosTotal: number;
+  erro: string | null;
+  criadaEmUtc: string;
+  concluidaEmUtc: string | null;
+  cadastradaEmUtc: string | null;
+  resultado: ResultadoLeituraIa | null;
+}
+
+export interface ResultadoCadastroEstrutura {
+  ghes: number;
+  riscos: number;
+  exames: number;
+  itensPlanoAcao: number;
+  funcoesReaproveitadas: string[];
+  funcoesCriadas: string[];
+}
+
+// Preenchimento do cadastro pelo PDF (16/10/2026): só a identificação do documento, para conferir.
+export interface CabecalhoCadastroPgrIa {
+  nome: string | null;
+  obra: string | null;
+  responsavel: string | null;
+  registro: string | null;
+  revisao: string | null;
+  dataElaboracao: string | null;
+  proximaRevisao: string | null;
+  termino: string | null;
+}
+
+export interface CabecalhoCadastroPcmsoIa {
+  nome: string | null;
+  obra: string | null;
+  versao: string | null;
+  dataEmissao: string | null;
+  validade: string | null;
+  medicoNome: string | null;
+  medicoCrm: string | null;
+}
+
+// "Nova revisão" do PGR/PCMSO: o PDF novo não apaga o anterior.
+export interface DadosNovaRevisao {
+  numeroRevisao: number | null;
+  dataRevisao: string;
+  motivo: string;
+  arquivo: File;
+}
+
+function formularioNovaRevisao(documentoId: string, dados: DadosNovaRevisao): FormData {
+  const formData = new FormData();
+  formData.append('DocumentoId', documentoId);
+  if (dados.numeroRevisao != null) formData.append('NumeroRevisao', String(dados.numeroRevisao));
+  formData.append('DataRevisao', dados.dataRevisao);
+  formData.append('Motivo', dados.motivo);
+  formData.append('Arquivo', dados.arquivo);
+  return formData;
+}
+
+async function enviarFormulario<T>(caminho: string, formData: FormData): Promise<T> {
+  const response = await fetch(`${API_BASE_URL}${caminho}`, { method: 'POST', headers: await montarHeadersAuth(), body: formData });
+  if (!response.ok) {
+    const corpo = await response.text().catch(() => '');
+    throw new Error(extrairMensagemErro(corpo, response.status, response.statusText));
+  }
+  return (await response.json()) as T;
+}
+
+async function baixarBlobOuNulo(caminho: string): Promise<Blob | null> {
+  const response = await fetch(`${API_BASE_URL}${caminho}`, { headers: await montarHeadersAuth() });
+  if (response.status === 404) return null;
+  if (!response.ok) {
+    const corpo = await response.text().catch(() => '');
+    throw new Error(extrairMensagemErro(corpo, response.status, response.statusText));
+  }
+  return response.blob();
+}
 
 export interface PgrDetalhe {
   pgr: Pgr;
@@ -640,12 +1733,14 @@ export const TipoArea = {
   AreaDeTrabalho: 1,
   ZonaDeRisco: 2,
   Armazenamento: 3,
+  Alojamento: 4,
 } as const;
 
 export const tipoAreaLabel: Record<number, string> = {
   1: 'Área de trabalho',
   2: 'Zona de risco',
   3: 'Armazenamento',
+  4: 'Alojamento',
 };
 
 export const StatusArea = {
@@ -756,22 +1851,44 @@ export interface TreinamentoPublico {
   dataValidade: string;
 }
 
-// Crachá digital público de um trabalhador (NTAG215/QR do capacete) — mesma rota de AreaPublicaDto,
+export interface DdsPublico {
+  data: string;
+  obraNome: string;
+  tema?: string | null;
+}
+
+// Crachá digital de um trabalhador (NTAG215/QR do capacete) — mesma rota de AreaPublicaDto,
 // distinguido pelo campo tipoRecurso. Ver ResolverTrabalhadorPublicoQuery.cs: nunca inclui CPF/RG/
 // admissão/ocorrências — só o suficiente pra um fiscal em campo checar aptidão/EPI/treinamento.
 export interface TrabalhadorPublicoDto {
   tipoRecurso: 'trabalhador';
+  trabalhadorId: string;
   nome: string;
   matricula: string;
   funcaoNome: string;
   obraNome: string;
   temFoto: boolean;
-  statusAptidao: string;
+  // Ausente na leitura anônima da tag (dado de saúde só sai autenticado) — ver
+  // ResolverTrabalhadorPublicoQuery.IncluirDadosSensiveis.
+  statusAptidao?: string | null;
   episAtivos: EpiAtivoPublico[];
   treinamentos: TreinamentoPublico[];
+  historicoDds: DdsPublico[];
 }
 
 export type RecursoPublico = AreaPublicaDto | TrabalhadorPublicoDto;
+
+export interface QrCodeTrabalhador {
+  trabalhadorId: string;
+  trabalhadorNome: string;
+  matricula: string;
+  obraId: string;
+  obraNome: string;
+  tagId: string;
+  uid: string;
+  urlPerfil: string;
+  jaExistia: boolean;
+}
 
 export const StatusApr = {
   EmElaboracao: 1,
@@ -834,6 +1951,7 @@ export interface Apr {
   numeroApr?: string | null;
   atividadeId: string;
   atividadeNome: string;
+  obraId?: string | null;
   obraNome?: string | null;
   local: string;
   maquinasEquipamentos?: string | null;
@@ -850,7 +1968,6 @@ export interface Apr {
 }
 
 export interface NovaApr {
-  numeroApr?: string | null;
   atividadeId: string;
   local: string;
   maquinasEquipamentos?: string | null;
@@ -1092,6 +2209,7 @@ export interface PermissaoTrabalho {
   numeroPt?: string | null;
   atividadeId: string;
   atividadeNome: string;
+  obraId?: string | null;
   obraNome?: string | null;
   descricaoAtividade: string;
   local: string;
@@ -1130,7 +2248,6 @@ export interface PermissaoTrabalho {
 }
 
 export interface NovaPermissaoTrabalho {
-  numeroPt?: string | null;
   atividadeId: string;
   descricaoAtividade: string;
   local: string;
@@ -1291,6 +2408,53 @@ export interface UsuarioPerfilObra {
   obraNome?: string | null;
 }
 
+// Relatórios gerados pelo sistema (lista de presença do DDS, boletim semanal, ocorrência): imagem + PDF, enviados
+// ao Telegram e ao sininho do Teams.
+export const TipoRelatorio = {
+  ListaPresencaDds: 1,
+  BoletimSemanal: 2,
+  Ocorrencia: 3,
+} as const;
+
+export const tipoRelatorioLabel: Record<number, string> = {
+  [TipoRelatorio.ListaPresencaDds]: 'Lista de presença',
+  [TipoRelatorio.BoletimSemanal]: 'Boletim semanal',
+  [TipoRelatorio.Ocorrencia]: 'Ocorrência',
+};
+
+export interface RelatorioLista {
+  id: string;
+  tipo: number;
+  obraId: string | null;
+  obraNome: string | null;
+  titulo: string;
+  resumo: string;
+  geradoEm: string;
+  temPdf: boolean;
+}
+
+export interface DestinatarioRelatorio {
+  id: string;
+  usuarioId: string;
+  usuarioNome: string;
+  usuarioEmail: string | null;
+  // true quando o usuário já entrou no app pelo Teams. O sininho não depende disso (sem ele, vai pelo e-mail).
+  jaEntrouNoApp: boolean;
+  obraId: string | null;
+  obraNome: string | null;
+  listaPresenca: boolean;
+  boletimSemanal: boolean;
+  ocorrencia: boolean;
+}
+
+export interface SalvarDestinatarioRelatorio {
+  usuarioId: string;
+  obraId: string | null;
+  listaPresenca: boolean;
+  boletimSemanal: boolean;
+  ocorrencia: boolean;
+}
+
 export interface Usuario {
   id: string;
   // Nulo até o primeiro login via Teams SSO: é vinculado automaticamente pelo backend
@@ -1369,6 +2533,8 @@ export const TipoInspecao = {
   EspacoConfinado: 11,
   Comportamental: 12,
   Terceiros: 13,
+  Alojamento: 14,
+  Veiculo: 15,
 } as const;
 
 export const tipoInspecaoLabel: Record<number, string> = {
@@ -1385,6 +2551,34 @@ export const tipoInspecaoLabel: Record<number, string> = {
   11: 'Espaço confinado',
   12: 'Comportamental',
   13: 'Terceiros',
+  14: 'Alojamento',
+  15: 'Veículo',
+};
+
+// Tipos de veículo/equipamento com checklist próprio (planilha CHECK LIST - AT CUIA, 02/10/2026).
+export const TipoVeiculo = {
+  CaminhaoBasculante: 1,
+  Retroescavadeira: 2,
+  EscavadeiraHidraulica: 3,
+  CaminhaoCarroceria: 4,
+  CaminhaoMunck: 5,
+} as const;
+
+export const tipoVeiculoLabel: Record<number, string> = {
+  1: 'Caminhão basculante',
+  2: 'Retroescavadeira',
+  3: 'Escavadeira hidráulica',
+  4: 'Caminhão carroceria',
+  5: 'Caminhão munck',
+};
+
+// Rótulo no plural, usado nos cards de tipo ("Retroescavadeiras").
+export const tipoVeiculoLabelPlural: Record<number, string> = {
+  1: 'Caminhões basculantes',
+  2: 'Retroescavadeiras',
+  3: 'Escavadeiras hidráulicas',
+  4: 'Caminhões carroceria',
+  5: 'Caminhões munck',
 };
 
 export const StatusItemChecklist = {
@@ -1413,6 +2607,7 @@ export interface ChecklistModelo {
   id: string;
   nome: string;
   tipoInspecao: number;
+  tipoVeiculo?: number | null;
   versao: number;
   checklistModeloAnteriorId?: string | null;
   quantidadeItens: number;
@@ -1423,6 +2618,7 @@ export interface ChecklistModeloItem {
   checklistModeloId: string;
   ordem: number;
   descricao: string;
+  secao?: string | null;
   exigeFotografia: boolean;
   exigeResponsavel: boolean;
   exigePrazo: boolean;
@@ -1430,6 +2626,7 @@ export interface ChecklistModeloItem {
 
 export interface NovoChecklistModeloItem {
   descricao: string;
+  secao?: string | null;
   exigeFotografia: boolean;
   exigeResponsavel: boolean;
   exigePrazo: boolean;
@@ -1438,6 +2635,7 @@ export interface NovoChecklistModeloItem {
 export interface NovoChecklistModelo {
   nome: string;
   tipoInspecao: number;
+  tipoVeiculo?: number | null;
   itens: NovoChecklistModeloItem[];
 }
 
@@ -1453,6 +2651,11 @@ export interface Inspecao {
   obraNome: string;
   atividadeId?: string | null;
   atividadeNome?: string | null;
+  veiculoId?: string | null;
+  veiculoTipo?: number | null;
+  veiculoPlacaPrefixo?: string | null;
+  veiculoMarcaModelo?: string | null;
+  veiculoEmpresa?: string | null;
   checklistModeloId: string;
   checklistModeloNome: string;
   checklistModeloVersao: number;
@@ -1474,11 +2677,14 @@ export interface NovaInspecao {
 }
 
 export interface InspecaoItemResposta {
+  dadosFoto?: DadosFoto | null;
+  dadosFotoDepois?: DadosFoto | null;
   id: string;
   inspecaoId: string;
   checklistModeloItemId: string;
   ordem: number;
   descricao: string;
+  secao?: string | null;
   exigeFotografia: boolean;
   exigeResponsavel: boolean;
   exigePrazo: boolean;
@@ -1497,6 +2703,197 @@ export interface InspecaoItemResposta {
 export interface InspecaoDetalhe {
   inspecao: Inspecao;
   respostas: InspecaoItemResposta[];
+}
+
+// Alojamento em Inspeções (Tasks 2-5, 2026-09-15): módulo de alojamentos de obra, com
+// moradores e inspeção "obter ou criar" atômica.
+export interface AlojamentoResumo {
+  id: string;
+  obraId: string;
+  nome: string;
+  endereco: string | null;
+  totalMoradores: number;
+  statusUltimaInspecao: 'nunca' | 'em-dia' | 'atrasada';
+  diasDesdeUltimaInspecao: number | null;
+  inspecaoEmAndamento: AlojamentoInspecaoResumo | null;
+  ultimaInspecaoConcluida: AlojamentoInspecaoResumo | null;
+  historicoInspecoes: AlojamentoInspecaoResumo[];
+}
+
+export interface AlojamentoInspecaoResumo {
+  id: string;
+  data: string;
+  status: number;
+  totalItens: number;
+  itensRespondidos: number;
+  itensNaoConformes: number;
+  documentoAssinatura: AlojamentoDocumentoAssinaturaResumo | null;
+}
+
+export interface AlojamentoDocumentoAssinaturaResumo {
+  id: string;
+  status: number;
+  temPdf: boolean;
+  finalizadoEm?: string | null;
+}
+
+// Veículos em Inspeções (02/10/2026): cadastro manual por obra (sem integração), checklist por tipo,
+// inspeção "obter ou criar" atômica. O resumo de cada inspeção reaproveita AlojamentoInspecaoResumo.
+export interface VeiculoResumo {
+  id: string;
+  obraId: string;
+  tipo: number;
+  placaPrefixo: string;
+  marcaModelo: string | null;
+  ano: number | null;
+  cor: string | null;
+  empresa: string | null;
+  responsavel: string | null;
+  statusUltimaInspecao: 'nunca' | 'inspecionado';
+  diasDesdeUltimaInspecao: number | null;
+  inspecaoEmAndamento: AlojamentoInspecaoResumo | null;
+  ultimaInspecaoConcluida: AlojamentoInspecaoResumo | null;
+  historicoInspecoes: AlojamentoInspecaoResumo[];
+}
+
+export interface DadosVeiculo {
+  obraId: string;
+  tipo: number;
+  placaPrefixo: string;
+  marcaModelo?: string | null;
+  ano?: number | null;
+  cor?: string | null;
+  empresa?: string | null;
+  responsavel?: string | null;
+}
+
+export interface InspecaoAtual {
+  inspecaoId: string;
+  foiCriadaAgora: boolean;
+  responsavelUsuarioId: string;
+  criadaEm: string;
+}
+
+// Catálogo global de materiais de apoio (pôsteres de sinalização, instruções técnicas) — aba
+// "Documentos & Procedimentos" de Gestão de SST, pedido do usuário em 2026-09-09.
+export interface MaterialApoio {
+  id: string;
+  nome: string;
+  categoria?: string | null;
+  nomeArquivo: string;
+  contentType: string;
+  tamanhoBytes: number;
+  createdAtUtc: string;
+  // Ordem de Serviço (20/10/2026). Tipo: 1 Material de apoio, 2 Procedimento, 3 Instrução de trabalho,
+  // 4 Política. Situação: 1 Vigente, 2 Em revisão, 3 Obsoleto.
+  tipo: 1 | 2 | 3 | 4;
+  codigo?: string | null;
+  revisao?: string | null;
+  situacao?: 1 | 2 | 3 | null;
+  formaConsulta?: string | null;
+  incluirEmTodasOs: boolean;
+  atividades: number;
+}
+
+// Minuta da Ordem de Serviço do trabalhador (20/10/2026). Só traz conteúdo validado; o que falta vem
+// em `pendencias` e bloqueia a emissão.
+export interface PendenciaOs {
+  tipo: string;
+  titulo: string;
+  porQueBloqueia: string;
+  quemResolve: 'SST' | 'RH';
+  destino?: 'pgr' | 'treinamentos' | 'aso' | null;
+  destinoId?: string | null;
+}
+
+export interface RiscoOs {
+  id: string;
+  perigo: string;
+  nivel: number;
+  consequencia?: string | null;
+  antes: string[];
+  durante: string[];
+  apos: string[];
+}
+
+export interface AtividadeOs {
+  id: string;
+  nome: string;
+  condicoes?: string | null;
+  ferramentas: string[];
+  epcs: string[];
+  procedimentos: string[];
+  riscos: RiscoOs[];
+  interromperQuando: string[];
+  restricoes: { texto: string; requisito?: string | null }[];
+  autorizacoes: string[];
+}
+
+export interface MinutaOrdemServico {
+  trabalhadorId: string;
+  podeEmitir: boolean;
+  obra: { id: string; nome: string; cliente?: string | null; cnpj?: string | null; endereco?: string | null };
+  trabalhador: { nome: string; matricula?: string | null; cpfMascarado: string; funcao: string; cbo?: string | null; dataAdmissao: string };
+  pgr?: { id: string; nome: string; dataElaboracao: string; revisao?: number | null } | null;
+  ghes: { numero: number; descricaoAtividades?: string | null }[];
+  atividades: AtividadeOs[];
+  epis: { nome: string; ca?: string | null }[];
+  treinamentos: { curso: string; norma?: string | null; validade?: string | null; situacao: 'Valido' | 'Vencido' | 'NaoRealizado' }[];
+  aso?: { resultado: number; validade?: string | null; valido: boolean } | null;
+  politicas: { titulo: string; codigo?: string | null; revisao?: string | null; formaConsulta?: string | null }[];
+  pendencias: PendenciaOs[];
+}
+
+// Gerador de PGR pela EAP (21/10/2026). Status: 1 Rascunho, 2 Aguardando aprovação, 3 Aprovado, 4 Devolvido.
+export interface ItemEapGerado { codigo: string; nome: string; nivel: number; periodo?: string | null; usar: boolean; conferir: boolean }
+export interface MedidaGerada { fase: 1 | 2 | 3; texto: string; decisao: 'Pendente' | 'Aceita' | 'Descartada' }
+export interface RiscoGerado {
+  id: string; tipo: string; perigo: string; danos?: string | null; probabilidade: number; severidade: number;
+  base: string[]; medidas: MedidaGerada[]; revisado: boolean; excluido: boolean;
+}
+export interface AtividadeGerada { codigoEap: string; nome: string; riscosGerados: boolean; riscos: RiscoGerado[] }
+export interface FuncaoGerada { funcaoId?: string | null; nome: string; descricao?: string | null; sugeridaPelaIa: boolean }
+export interface GheGerado { numero: number; nome: string; ambiente?: string | null; jornada?: string | null; funcoes: FuncaoGerada[]; atividades: AtividadeGerada[] }
+export interface EstruturaGeracaoPgr { itens: ItemEapGerado[]; ghes: GheGerado[]; planoAcao: string[] }
+export interface GeracaoPgrEap {
+  id: string; obraId: string; obraNome: string; nome: string; dataElaboracao: string; dataProximaRevisao?: string | null;
+  elaboradoPorNome?: string | null; nomeArquivoEap: string; status: 1 | 2 | 3 | 4; passo: number; motivoDevolucao?: string | null;
+  aprovadoPorNome?: string | null; aprovadoEmUtc?: string | null; pgrId?: string | null; estrutura: EstruturaGeracaoPgr;
+  pendenciasAprovacao: string[]; funcoesCadastradas: { id: string; nome: string }[]; maxProbabilidade: number; maxSeveridade: number;
+}
+export interface ResumoGeracaoPgrEap { id: string; nome: string; obraNome: string; status: 1 | 2 | 3 | 4; passo: number; criadoEmUtc: string }
+
+export interface DadosDocumentoSst {
+  tipo: 1 | 2 | 3 | 4;
+  codigo?: string | null;
+  revisao?: string | null;
+  situacao?: 1 | 2 | 3 | null;
+  formaConsulta?: string | null;
+  incluirEmTodasOs: boolean;
+}
+
+// Tipo do item: 1 Interromper quando, 2 Não executar sem, 3 Autorização.
+export interface ItemAtividadeOs {
+  id: string;
+  tipo: 1 | 2 | 3;
+  texto: string;
+  requisito?: string | null;
+  origem: 1 | 2 | 3;
+  status: 1 | 2 | 3;
+  validadoPorNome?: string | null;
+  validadoEmUtc?: string | null;
+}
+
+export interface DetalhesOsAtividade {
+  atividadeId: string;
+  atividadeNome: string;
+  condicoes?: string | null;
+  condicoesDoPgr: boolean;
+  ferramentas: string[];
+  epcs: { id: string; nome: string }[];
+  documentos: { id: string; tipo: number; codigo?: string | null; titulo: string; revisao?: string | null; situacao?: number | null }[];
+  treinamentos: { curso: string; norma?: string | null; funcao: string }[];
+  itens: ItemAtividadeOs[];
 }
 
 export const StatusDds = {
@@ -1562,12 +2959,14 @@ export const TipoFotoParticipante = {
   Pessoa: 1,
   DocumentoAssinado: 2,
   Biometria: 3,
+  Facial: 4,
 } as const;
 
 export const tipoFotoParticipanteLabel: Record<number, string> = {
   1: 'Foto da pessoa',
   2: 'Documento assinado',
   3: 'Biometria Validada',
+  4: 'Reconhecimento facial',
 };
 
 export interface DdsParticipante {
@@ -1576,11 +2975,13 @@ export interface DdsParticipante {
   trabalhadorNome: string;
   fotoTipo: number;
   scoreConfianca?: number | null;
-  telegramEnviadoEm?: string | null;
-  telegramConfirmadoEm?: string | null;
+  // Assinatura do DDS (04/09) — a mesma digital da presença já vale como assinatura eletrônica,
+  // sem precisar ler de novo na tela "Assinar DDS".
+  assinadoEm?: string | null;
 }
 
 export interface DdsFotoEvidencia {
+  dadosFoto?: DadosFoto | null;
   id: string;
   ordem: number;
 }
@@ -1589,13 +2990,14 @@ export interface DdsDetalhe {
   dds: Dds;
   itensChecklist: DdsItemChecklist[];
   participantes: DdsParticipante[];
+  funcionariosSelecionados: DdsFuncionario[];
   fotosEvidencia: DdsFotoEvidencia[];
 }
 
-export interface EnviarDdsTelegramResultado {
-  totalParticipantes: number;
-  enviados: number;
-  semVinculo: number;
+export interface DdsFuncionario {
+  trabalhadorId: string;
+  nome: string;
+  matricula: string | null;
 }
 
 // DDS Semanal (31/08) — contêiner que agrupa os 5 registros diários (Seg-Sex) de uma semana, seguindo
@@ -1604,12 +3006,19 @@ export interface EnviarDdsTelegramResultado {
 export const TipoDdsSemanal = {
   Proprios: 1,
   Terceirizados: 2,
+  ProprioseTerceirizados: 3,
 } as const;
 
 export const tipoDdsSemanalLabel: Record<number, string> = {
   1: 'Empregados Próprios',
   2: 'Empregados Terceirizados',
+  3: 'Empregados Próprios e Terceirizados',
 };
+
+// Espelha TipoDdsSemanalExtensions.IncluiTerceirizados do backend.
+export function tipoDdsSemanalIncluiTerceirizados(tipo: number): boolean {
+  return tipo === TipoDdsSemanal.Terceirizados || tipo === TipoDdsSemanal.ProprioseTerceirizados;
+}
 
 export const StatusDdsSemanal = {
   EmAndamento: 1,
@@ -1646,7 +3055,6 @@ export interface NovaDdsSemanal {
   obraId: string;
   tipo: number;
   empresaTerceirizada?: string | null;
-  numeroDocumento?: string | null;
   localFrenteServico?: string | null;
   dataInicioSemana: string;
 }
@@ -1664,9 +3072,17 @@ export interface DdsSemanalDia {
   motivoSemExpediente?: string | null;
 }
 
+// Quem assinou um dos dois campos do documento semanal e quando (null = ainda não assinado).
+export interface DdsSemanalAssinatura {
+  nome: string;
+  assinadoEm: string;
+}
+
 export interface DdsSemanalDetalhe {
   semanal: DdsSemanal;
   dias: DdsSemanalDia[];
+  assinaturaResponsavelDds?: DdsSemanalAssinatura | null;
+  assinaturaResponsavelObraSst?: DdsSemanalAssinatura | null;
 }
 
 export interface CatalogoTemaDds {
@@ -1684,11 +3100,17 @@ export interface CatalogoTemaDds {
 export const MetodoAutenticacaoAssinatura = {
   Biometria: 1,
   SessaoLogada: 5,
+  // Faltava aqui (só existia no enum do backend, Enums.cs) — sem isso, qualquer tela que precisasse
+  // distinguir "assinatura do receptor" por valor de enum (em vez de só listar o histórico) tratava
+  // uma assinatura por reconhecimento facial como se não tivesse assinado (achado ao implementar
+  // AssinaturaEntregaEpiLoteDialog.tsx, 21/09).
+  ReconhecimentoFacial: 6,
 } as const;
 
 export const metodoAutenticacaoAssinaturaLabel: Record<number, string> = {
   1: 'Digital (Futronic FS80H)',
   5: 'Sessão logada',
+  6: 'Reconhecimento facial',
 };
 
 export const StatusDocumentoAssinatura = {
@@ -1710,6 +3132,24 @@ export interface DocumentoSignatario {
   assinadoEm: string;
 }
 
+// Termo de Recebimento e Compromisso de Uso do EPI (03/10): um por funcionário. Digital = assinou
+// no Motor (digital/facial); Manual = já assinou em papel e alguém registrou isso no sistema.
+export const SituacaoTermoCompromissoEpi = { Pendente: 0, Digital: 1, Manual: 2 } as const;
+
+export interface TermoCompromissoEpi {
+  situacao: number;
+  // Digital: instante da assinatura (UTC). Manual: dia que consta no papel.
+  dataAssinatura?: string | null;
+  metodo?: number | null;
+  registradoPorNome?: string | null;
+  registradoEm?: string | null;
+  observacao?: string | null;
+  temArquivo: boolean;
+  arquivoNome?: string | null;
+}
+
+export type TipoRegistroTravavel = 'EntregaEpi' | 'EntregaUniforme' | 'Inspecao' | 'Apr' | 'PermissaoTrabalho' | 'Treinamento' | 'Dds';
+
 export interface DocumentoAssinatura {
   id: string;
   entidadeTipo: string;
@@ -1722,15 +3162,32 @@ export interface DocumentoAssinatura {
 // (ver DocumentoPublicoDto no backend: "nunca expor Id/EntidadeId/dado pessoal na página pública").
 export interface DocumentoPublicoSignatario {
   trabalhadorNome: string;
+  trabalhadorCpfMascarado?: string | null;
+  trabalhadorFuncaoNome?: string | null;
   metodoAutenticacao: number;
   assinadoEm: string;
+  // Origem de rede da assinatura, já mascarada pelo backend (IpMascarador) — a página é anônima,
+  // então o endereço completo nunca sai daqui.
+  origemRede?: string | null;
 }
 
 export interface DocumentoPublico {
   entidadeTipo: string;
-  finalizadoEm: string;
+  emitidoEm: string;
   conteudoHash: string;
+  assinado: boolean;
   signatarios: DocumentoPublicoSignatario[];
+  // Rótulo institucional do tipo, resolvido no backend (TipoDocumentoAssinatura) — nome técnico da
+  // entidade nunca aparece para quem escaneia o QR.
+  entidadeTipoRotulo: string;
+  // Documento que agrega N registros individuais (Ficha de EPI, Ata de Sessão, DDS Semanal): não
+  // recebe assinatura própria, e `signatarios` vem dos registros agregados.
+  consolidado: boolean;
+  origemAssinaturas?: string | null;
+  // SHA-256 do PDF exato que foi emitido — é o que prova que o conteúdo não mudou. `conteudoHash`
+  // acima cobre apenas a lista de signatários.
+  hashPdf?: string | null;
+  arquivoAtualizadoEm?: string | null;
 }
 
 // Painel administrativo (etapa 12) — ao contrário de DocumentoPublico, aqui o consumidor já está
@@ -1739,6 +3196,7 @@ export interface DocumentoPublico {
 export interface DocumentoAssinaturaResumo {
   id: string;
   entidadeTipo: string;
+  entidadeTipoRotulo: string;
   entidadeId: string;
   status: number;
   criadoEm: string;
@@ -1871,6 +3329,8 @@ export interface NaoConformidade {
   requisitoRelacionado?: string | null;
   descricao: string;
   local?: string | null;
+  obraId?: string | null;
+  obraNome?: string | null;
   atividadeId?: string | null;
   atividadeNome?: string | null;
   riscoId?: string | null;
@@ -1886,6 +3346,7 @@ export interface NaoConformidade {
 
 export interface NovaNaoConformidade {
   origemDeteccao: number;
+  obraId?: string | null;
   requisitoRelacionado?: string | null;
   descricao: string;
   local?: string | null;
@@ -1903,6 +3364,8 @@ export interface AcaoPlano {
   origemId: string;
   tipo: number;
   descricao: string;
+  // De onde veio a ação sugerida pela IA (PGR, requisito legal, método ou "sem base, validar").
+  fundamentacao?: string | null;
   responsavelUsuarioId?: string | null;
   responsavelUsuarioNome?: string | null;
   prioridade: number;
@@ -1912,7 +3375,23 @@ export interface AcaoPlano {
   dataValidacao?: string | null;
   validadoPorUsuarioId?: string | null;
   validadoPorUsuarioNome?: string | null;
+  // Conclusão manual: quem concluiu (pelo login) e o que foi feito.
+  concluidoPorUsuarioNome?: string | null;
+  descricaoConclusao?: string | null;
+  // Só no detalhe da ocorrência: ação que o sistema conclui sozinho e como.
+  tipoResolucaoAutomatica?: 'Dds' | 'Reuniao' | 'Treinamento' | 'Inspecao' | 'EntregaEpi' | null;
+  resolucaoAutomatica?: string | null;
+  // Vínculo que conclui sozinho (treinamento/inspeção/EPI), o andamento e o rótulo de espera.
+  tipoResolucao?: number | null;
+  resolucaoCursoTreinamentoId?: string | null;
+  resolucaoTipoInspecao?: number | null;
+  resolucaoCatalogoEpiId?: string | null;
+  progressoResolucao?: string | null;
+  rotuloAguardando?: string | null;
 }
+
+// Como uma ação do plano se conclui sozinha (nulo = manual).
+export const TipoResolucaoAcaoPlano = { Treinamento: 1, Inspecao: 2, EntregaEpi: 3 } as const;
 
 export interface NaoConformidadeDetalhe {
   naoConformidade: NaoConformidade;
@@ -1927,6 +3406,11 @@ export interface NovaAcaoPlano {
   responsavelUsuarioId?: string | null;
   prioridade: number;
   prazo?: string | null;
+  // "Como se resolve" (ocorrências): nulo = manual.
+  tipoResolucao?: number | null;
+  resolucaoCursoTreinamentoId?: string | null;
+  resolucaoTipoInspecao?: number | null;
+  resolucaoCatalogoEpiId?: string | null;
 }
 
 export interface AtualizarAcaoPlanoPayload {
@@ -2015,6 +3499,7 @@ export interface Acidente {
   obraNome?: string | null;
   trabalhadorId?: string | null;
   trabalhadorNome?: string | null;
+  envolvidos: { trabalhadorId: string; nome: string }[];
   atividadeId?: string | null;
   atividadeNome?: string | null;
   local: string;
@@ -2035,10 +3520,129 @@ export interface Acidente {
   dataConclusaoInvestigacao?: string | null;
 }
 
+// Relato de ocorrência por IA — sugestão de preenchimento; nada é gravado até o técnico registrar.
+export interface PerguntaRelatoOcorrencia {
+  campo: string;
+  pergunta: string;
+}
+
+export interface RespostaPerguntaRelato {
+  pergunta: string;
+  resposta: string;
+}
+
+export interface RelatoOcorrenciaSugestao {
+  tipo: number;
+  gravidade: number;
+  local: string | null;
+  data: string | null;
+  hora: string | null;
+  descricao: string;
+  lesao: string | null;
+  consequencia: string | null;
+  atendimento: string | null;
+  houveAfastamento: boolean;
+  diasAfastamento: number | null;
+  atividadeId: string | null;
+  trabalhadoresIds: string[];
+  perguntas: PerguntaRelatoOcorrencia[];
+  avisos: string[];
+}
+
+export interface RelatoOcorrenciaResposta {
+  transcricao: string;
+  // null quando a classificação falhou: só a transcrição volta, para o técnico completar.
+  sugestao: RelatoOcorrenciaSugestao | null;
+}
+
+// Análise de causas + plano de ação sugeridos pela IA para a ocorrência ainda não registrada.
+export interface AcaoPlanoSugerida {
+  tipo: number;
+  descricao: string;
+  prioridade: number;
+  prazo: string;
+  responsavelUsuarioId: string | null;
+  responsavelNome: string | null;
+  papelResponsavel: string;
+  avisoResponsavel: string | null;
+  fundamentacao: string;
+  baseConfirmada: boolean;
+}
+
+export interface PlanoAcaoSugerido {
+  metodologia: number | null;
+  causas: string | null;
+  acoes: AcaoPlanoSugerida[];
+  // Tema obrigatório do DDS do próximo dia útil da obra.
+  temaDds: { nome: string; roteiro: string; data: string };
+  // Só em Acidente e Doença ocupacional: reunião de análise obrigatória no Teams.
+  reuniao: ReuniaoSugerida | null;
+}
+
+export interface ParticipanteReuniao {
+  usuarioId: string;
+  nome: string;
+  papel: string;
+  organizador: boolean;
+}
+
+export interface ReuniaoSugerida {
+  inicio: string; // horário de Brasília, sem fuso
+  duracaoMinutos: number;
+  participantes: ParticipanteReuniao[];
+  aviso: string | null;
+}
+
+export const SituacaoReuniaoTeams = { Pendente: 1, Criada: 2, NaoCriada: 3 } as const;
+
+export interface ReuniaoAnalise {
+  inicio: string;
+  fim: string;
+  participantes: string[];
+  situacao: number;
+  linkTeams: string | null;
+  motivoFalha: string | null;
+  // Preenchidos quando a reunião foi registrada como realizada (horário de Brasília, sem fuso).
+  realizadaEm: string | null;
+  presentes: string[] | null;
+  ata: string | null;
+}
+
+export interface TemaDdsAgendado {
+  id: string;
+  catalogoTemaDdsId: string;
+  nome: string;
+  roteiro: string | null;
+  descricaoOrigem: string | null;
+}
+
+export interface PlanoSugeridoOcorrenciaRequisicao {
+  obraId: string;
+  atividadeId: string | null;
+  tipo: number;
+  gravidade: number;
+  descricao: string;
+  lesao: string | null;
+  consequencia: string | null;
+  atendimento: string | null;
+}
+
+// Ação do plano enviada junto com o registro da ocorrência (já revisada pelo técnico).
+export interface AcaoPlanoNovaOcorrencia {
+  tipo: number;
+  descricao: string;
+  prioridade: number;
+  prazo: string | null;
+  responsavelUsuarioId: string | null;
+  fundamentacao: string | null;
+}
+
 export interface NovoAcidente {
   tipo: number;
   obraId: string;
   trabalhadorId?: string | null;
+  // Funcionários envolvidos; o primeiro vira o principal (trabalhadorId) no backend.
+  trabalhadoresIds?: string[];
   atividadeId?: string | null;
   local: string;
   data: string;
@@ -2054,13 +3658,21 @@ export interface NovoAcidente {
   diasDebitadosInformados?: number | null;
   metodologiaInvestigacao?: number | null;
   causas?: string | null;
+  // Só no registro por relato (IA): plano de ação revisado, criado junto com a ocorrência.
+  acoesPlano?: AcaoPlanoNovaOcorrencia[];
+  // Só no registro por relato (IA): tema obrigatório agendado para o DDS do próximo dia útil.
+  temaDds?: { nome: string; roteiro: string };
+  // Só em acidente por relato: reunião de análise obrigatória no Teams.
+  reuniao?: { inicio: string; duracaoMinutos: number; participantesUsuarioIds: string[] };
 }
 
 export type AtualizarAcidentePayload = NovoAcidente;
 
 export interface AcidenteDetalhe {
+  fotos: DdsFotoEvidencia[];
   acidente: Acidente;
   acoesPlano: AcaoPlano[];
+  reuniao?: ReuniaoAnalise | null;
 }
 
 // Lançamento mensal de HHT (Horas-Homem Trabalhadas) por obra, usado no cálculo da Taxa de
@@ -2083,6 +3695,7 @@ export type AtualizarRegistroHhtMensalPayload = NovoRegistroHhtMensal;
 // documentoGestaoId aponta para o DocumentoGestao vinculado (edição/exclusão usam este último).
 export interface Pcmso {
   id: string;
+  numeroDocumento?: string | null;
   nome: string;
   versao?: string | null;
   validade?: string | null;
@@ -2091,7 +3704,6 @@ export interface Pcmso {
   responsavelUsuarioNome?: string | null;
   obraId?: string | null;
   setorId?: string | null;
-  arquivo?: string | null;
   status: number;
   medicoResponsavelNome?: string | null;
   medicoResponsavelCrm?: string | null;
@@ -2110,7 +3722,6 @@ export interface NovoPcmso {
   responsavelUsuarioId?: string | null;
   obraId?: string | null;
   setorId?: string | null;
-  arquivo?: string | null;
   medicoResponsavelNome?: string | null;
   medicoResponsavelCrm?: string | null;
   funcoesContempladas?: string | null;
@@ -2191,6 +3802,13 @@ export const tipoAlertaLabel: Record<number, string> = {
   18: 'Extintor vencido',
   19: 'Equipamento vencendo',
   20: 'Equipamento vencido',
+  28: 'Exame da função vencendo',
+  29: 'Exame da função vencido',
+  30: 'Cadastro facial para refazer',
+  33: 'Funcionário novo',
+  34: 'EPI abaixo do mínimo',
+  35: 'Documento de terceirizado vencendo',
+  36: 'Documento de terceirizado vencido',
 };
 
 export const SeveridadeAlerta = {
@@ -2237,6 +3855,39 @@ export const categoriaAlertaLabel: Record<string, string> = {
 
 export function categoriaAlertaRotulo(entidadeOrigemTipo: string): string {
   return categoriaAlertaLabel[entidadeOrigemTipo] ?? entidadeOrigemTipo;
+}
+
+// Estado do envio ao sininho do Teams (GET /api/alertas/saude-envio-teams) — ver ObterSaudeEnvioTeamsQuery.
+export interface SaudeEnvioTeams {
+  falhando: boolean;
+  falhasDesdeUltimoSucesso: number;
+  ultimaFalhaEmUtc: string | null;
+  ultimoSucessoEmUtc: string | null;
+  ultimoErro: string | null;
+}
+
+// Prévia do próximo aviso diário de itens vencidos das obras (GET /api/alertas/aviso-documentos-vencidos/previa).
+export interface PreviaAvisoItem {
+  tipo: string;
+  nome: string;
+  obra: string;
+  vencimento: string;
+  diasVencido: number;
+  divergencias: number;
+}
+
+export interface PreviaAvisoDestinatario {
+  nome: string;
+  email: string;
+  motivos: string[];
+  recebeSininho: boolean;
+  motivoSemSininho: string | null;
+  itens: PreviaAvisoItem[];
+}
+
+export interface PreviaAvisoDocumentosVencidos {
+  dataEnvio: string;
+  destinatarios: PreviaAvisoDestinatario[];
 }
 
 export interface Alerta {
@@ -2337,6 +3988,15 @@ export const TipoModuloAlerta = {
   Dds: 9,
   PlanoAcao: 10,
   Outro: 11,
+  Pgr: 12,
+  // Exames do PCMSO pela função do trabalhador (ExamesFuncaoAlertaProvider).
+  ExamesFuncao: 13,
+  // Cadastros faciais com falhas repetidas de reconhecimento (CadastroFacialAlertaProvider).
+  CadastroFacial: 14,
+  // Validade do PCMSO (PcmsoAlertaProvider).
+  Pcmso: 15,
+  // Documentos da empresa terceirizada (DocumentoEmpresaTerceirizadaAlertaProvider).
+  DocumentoTerceirizado: 16,
 } as const;
 
 export const moduloAlertaLabel: Record<number, string> = {
@@ -2351,6 +4011,11 @@ export const moduloAlertaLabel: Record<number, string> = {
   9: 'DDS',
   10: 'Plano de ação',
   11: 'Outro',
+  12: 'PGR',
+  13: 'Exames da função (PCMSO)',
+  14: 'Cadastro facial',
+  15: 'PCMSO',
+  16: 'Documentos de terceirizados',
 };
 
 export interface RegraAlerta {
@@ -2413,6 +4078,7 @@ export interface OcorrenciaPerfil {
 }
 
 export interface AssinaturaPerfil {
+  signatarioId: string;
   documentoAssinaturaId: string;
   entidadeTipo: string;
   entidadeId: string;
@@ -2420,6 +4086,8 @@ export interface AssinaturaPerfil {
   assinadoEm: string;
   ipAddress?: string | null;
   temPdf: boolean;
+  temFotoEvidencia: boolean;
+  fotoEvidenciaHash?: string | null;
 }
 
 export interface PerfilCompletoTrabalhador {
@@ -2447,6 +4115,10 @@ export interface PerfilCompletoTrabalhador {
   assinaturas: AssinaturaPerfil[];
   trocasNoAno: number;
   motivosTroca: MotivoTrocaEpi[];
+  empresaId?: string | null;
+  empresaRazaoSocial?: string | null;
+  contratoId?: string | null;
+  numeroContrato?: string | null;
 }
 
 // Módulos com suporte a uso offline (piloto acordado com o usuário em 24/08: módulos de campo,
@@ -2468,6 +4140,9 @@ function ehRotaOffline(path: string): boolean {
 // ASP.NET Core, {"title": "Not Found", ...}. Sem isso, o usuário via literalmente
 // "400 Bad Request: {\"erro\":\"O campo Local é obrigatório.\"}" na tela em vez da mensagem limpa.
 function extrairMensagemErro(corpo: string, status: number, statusText: string): string {
+  if (status === 401) {
+    return 'Sessão não autenticada (401). Entre com sua conta Microsoft/Entra para acessar o sistema.';
+  }
   if (corpo) {
     try {
       const json = JSON.parse(corpo) as { erro?: string; title?: string };
@@ -2493,6 +4168,31 @@ function parsearJsonSeguro<T>(texto: string, response: Response): T {
   }
 }
 
+async function baixarArquivoRelatorio(caminho: string): Promise<Blob> {
+  const response = await fetch(`${API_BASE_URL}${caminho}`, { headers: await montarHeadersAuth() });
+  if (!response.ok) {
+    const corpo = await response.text().catch(() => '');
+    throw new Error(extrairMensagemErro(corpo, response.status, response.statusText));
+  }
+  return response.blob();
+}
+
+async function enviarAudioAcidente<T>(caminho: string, audio: Blob, nomeArquivo: string, obraId?: string): Promise<T> {
+  const formData = new FormData();
+  formData.append('audio', audio, nomeArquivo);
+  if (obraId) formData.append('obraId', obraId);
+  const response = await fetch(`${API_BASE_URL}${caminho}`, {
+    method: 'POST',
+    headers: await montarHeadersAuth(),
+    body: formData,
+  });
+  if (!response.ok) {
+    const corpo = await response.text().catch(() => '');
+    throw new Error(extrairMensagemErro(corpo, response.status, response.statusText));
+  }
+  return (await response.json()) as T;
+}
+
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
   const authHeaders = await montarHeadersAuth();
   const metodo = (init?.method ?? 'GET').toUpperCase();
@@ -2510,6 +4210,28 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
     headers: {
       'Content-Type': 'application/json',
       ...authHeaders,
+      ...init?.headers,
+    },
+  });
+
+  if (!response.ok) {
+    const corpo = await response.text().catch(() => '');
+    throw new Error(extrairMensagemErro(corpo, response.status, response.statusText));
+  }
+
+  if (response.status === 204) {
+    return undefined as T;
+  }
+
+  const texto = await response.text();
+  return parsearJsonSeguro<T>(texto, response);
+}
+
+async function requestPublico<T>(path: string, init?: RequestInit): Promise<T> {
+  const response = await fetch(`${API_BASE_URL}${path}`, {
+    ...init,
+    headers: {
+      'Content-Type': 'application/json',
       ...init?.headers,
     },
   });
@@ -2666,7 +4388,6 @@ export interface ProcessoEleitoralCipa {
 
 export interface NovoProcessoEleitoralCipa {
   obraId: string;
-  numeroDocumento?: string | null;
   dataConvocacao: string;
   dataInicioInscricoes: string;
   dataFimInscricoes: string;
@@ -2812,7 +4533,214 @@ export interface EventoSipatDetalhe {
   atividades: AtividadeSipat[];
 }
 
+export const TipoSolicitacaoSuporteIa = {
+  Erro: 1,
+  Duvida: 2,
+  Melhoria: 3,
+} as const;
+
+export const tipoSolicitacaoSuporteIaLabel: Record<number, string> = {
+  1: 'Erro',
+  2: 'Dúvida',
+  3: 'Melhoria',
+};
+
+export const SeveridadeSolicitacaoSuporteIa = {
+  Baixa: 1,
+  Media: 2,
+  Alta: 3,
+  Critica: 4,
+} as const;
+
+export const severidadeSolicitacaoSuporteIaLabel: Record<number, string> = {
+  1: 'Baixa',
+  2: 'Média',
+  3: 'Alta',
+  4: 'Crítica',
+};
+
+export const ResultadoTriagemSuporteIa = {
+  RespostaAoUsuario: 1,
+  DemandaTecnica: 2,
+} as const;
+
+export const resultadoTriagemSuporteIaLabel: Record<number, string> = {
+  1: 'Resposta ao usuário',
+  2: 'Demanda técnica',
+};
+
+export const StatusSolicitacaoSuporteIa = {
+  Recebida: 1,
+  Respondida: 2,
+  Encaminhada: 3,
+  EmAnaliseTecnica: 4,
+  Resolvida: 5,
+  Cancelada: 6,
+  AguardandoValidacao: 7,
+  Reaberta: 8,
+} as const;
+
+export const statusSolicitacaoSuporteIaLabel: Record<number, string> = {
+  1: 'Recebida',
+  2: 'Respondida',
+  3: 'Encaminhada',
+  4: 'Em análise técnica',
+  5: 'Resolvida',
+  6: 'Cancelada',
+  7: 'Aguardando validação',
+  8: 'Reaberta',
+};
+
+export interface SuporteIaSolicitacao {
+  id: string;
+  tipo: number;
+  severidadeInformada: number;
+  status: number;
+  titulo: string;
+  descricao: string;
+  modulo?: string | null;
+  urlContexto?: string | null;
+  solicitanteUsuarioId?: string | null;
+  solicitanteNome?: string | null;
+  solicitanteEmail?: string | null;
+  resultadoTriagem: number;
+  requerAlteracaoCodigo: boolean;
+  respostaAoUsuario: string;
+  demandaReduzida: string;
+  solucaoProposta: string;
+  evidenciasTecnicas?: string | null;
+  createdAtUtc: string;
+  triadoEmUtc: string;
+  encaminhadoEmUtc?: string | null;
+  responsavelUsuarioId?: string | null;
+  responsavelNome?: string | null;
+  aprovadoEmUtc?: string | null;
+  notaFechamento?: string | null;
+  concluidoEmUtc?: string | null;
+  validacaoConfirmada?: boolean | null;
+  comentarioValidacao?: string | null;
+  validadoEmUtc?: string | null;
+  souSolicitante: boolean;
+}
+
+// Sugestão da IA a partir do relato falado — o usuário confere antes de abrir o chamado.
+export interface ChamadoSugeridoSuporteIa {
+  tipo: number;
+  severidade: number;
+  titulo: string;
+  modulo: string | null;
+  descricao: string;
+}
+
+export interface RelatoVozSuporteIa {
+  transcricao: string;
+  // null quando a classificação falhou: só a transcrição volta, para o usuário completar.
+  sugestao: ChamadoSugeridoSuporteIa | null;
+}
+
+export interface NovaSolicitacaoSuporteIa {
+  tipo: number;
+  severidadeInformada: number;
+  titulo: string;
+  descricao: string;
+  modulo?: string | null;
+  urlContexto?: string | null;
+}
+
+// Pop-up de novidades da versão (requisito do usuário, 18/09) — aparece uma vez por usuário, ao
+// logar, com o que mudou desde o último acesso.
+export const CategoriaNovidade = {
+  Correcao: 1,
+  Melhoria: 2,
+  Novidade: 3,
+} as const;
+
+export interface NovidadeVersaoItem {
+  id: string;
+  categoria: number;
+  descricao: string;
+  antes?: string | null;
+  agora?: string | null;
+  ordem: number;
+}
+
+export interface NovidadeVersao {
+  id: string;
+  titulo: string;
+  versao: string;
+  dataPublicacao: string;
+  itens: NovidadeVersaoItem[];
+  nomeUsuario?: string | null;
+}
+
+export interface NovidadeVersaoItemInput {
+  categoria: number;
+  descricao: string;
+  antes?: string | null;
+  agora?: string | null;
+}
+
+export interface NovaNovidadeVersao {
+  titulo: string;
+  versao: string;
+  dataPublicacao: string;
+  itens: NovidadeVersaoItemInput[];
+}
+
+// Plano de integração do funcionário novo (especificação 21/10/2026, Módulo 1) — pop-up que aparece
+// depois das Novidades para o Técnico de Segurança e o Administrador.
+export type SituacaoPassoIntegracao = 'feito' | 'pendente' | 'agendado' | 'aguardando' | 'naoConfigurado';
+export type SituacaoItemKit = 'separado' | 'emFalta' | 'entregue';
+export const MotivoPlanoIntegracao = {
+  Admissao: 1,
+  TrocaFuncao: 2,
+  TransferenciaObra: 3,
+} as const;
+export type MotivoPlanoIntegracao = (typeof MotivoPlanoIntegracao)[keyof typeof MotivoPlanoIntegracao];
+export interface PassoPlanoIntegracao {
+  codigo: string;
+  titulo: string;
+  situacao: SituacaoPassoIntegracao;
+  detalhe?: string | null;
+  rota?: string | null;
+  sessaoTreinamentoId?: string | null;
+  dataTurma?: string | null;
+}
+export interface ItemKitEpi {
+  catalogoEpiId: string;
+  nome: string;
+  tamanho?: string | null;
+  situacao: SituacaoItemKit;
+}
+export interface PlanoIntegracao {
+  id: string;
+  trabalhadorId: string;
+  nome: string;
+  matricula?: string | null;
+  funcao: string;
+  obraId: string;
+  obraNome: string;
+  equipeNome?: string | null;
+  dataAdmissao: string;
+  temFoto: boolean;
+  motivo: MotivoPlanoIntegracao;
+  abertoEm: string;
+  responsavelNome?: string | null;
+  assumidoEm?: string | null;
+  passosConcluidos: number;
+  passos: PassoPlanoIntegracao[];
+  kit: ItemKitEpi[];
+}
+
 export const api = {
+  catalogo: {
+    atividades: (obraId?: string) =>
+      request<CatalogoAtividade[]>(`/api/catalogo/atividades${obraId ? `?obraId=${obraId}` : ''}`),
+    gerarApr: (dados: GerarDocumentoDaAtividade) =>
+      request<{ id: string }>('/api/catalogo/apr', { method: 'POST', body: JSON.stringify(dados) }),
+    gerarPt: (dados: GerarDocumentoDaAtividade) =>
+      request<{ id: string }>('/api/catalogo/pt', { method: 'POST', body: JSON.stringify(dados) }),
+  },
   obras: {
     listar: () => request<Obra[]>('/api/obras'),
     // Logomarca obrigatória no cadastro (decisão do usuário, 31/08) — a criação passa a ser
@@ -2843,6 +4771,27 @@ export const api = {
       return response.json() as Promise<{ id: string }>;
     },
     excluir: (id: string) => request<void>(`/api/obras/${id}`, { method: 'DELETE' }),
+    atualizarMetodosAssinatura: (id: string, metodos: { biometria: boolean; reconhecimentoFacial: boolean }) =>
+      request<void>(`/api/obras/${id}/metodos-assinatura`, { method: 'PUT', body: JSON.stringify(metodos) }),
+    // CNPJ não entra aqui de propósito — o endpoint de edição (AtualizarObraCommand) não o inclui;
+    // trocar de CNPJ é raro o bastante que ficou de fora da primeira versão desta tela.
+    atualizar: (id: string, obra: NovaObra & { dataTerminoReal?: string | null }) =>
+      request<void>(`/api/obras/${id}`, {
+        method: 'PUT',
+        body: JSON.stringify({
+          id,
+          codigo: obra.codigo,
+          nome: obra.nome,
+          cliente: obra.cliente || null,
+          status: obra.status,
+          dataInicio: obra.dataInicio || null,
+          dataPrevisaoTermino: obra.dataPrevisaoTermino || null,
+          dataTerminoReal: obra.dataTerminoReal || null,
+          endereco: obra.endereco || null,
+          cidade: obra.cidade || null,
+          uf: obra.uf || null,
+        }),
+      }),
     anexarLogo: async (id: string, arquivo: File) => {
       const formData = new FormData();
       formData.append('Logo', arquivo);
@@ -2866,6 +4815,8 @@ export const api = {
     },
   },
   trabalhadores: {
+    liberacao: (obraId?: string) =>
+      request<LiberacaoTrabalho>(`/api/trabalhadores/liberacao${obraId ? `?obraId=${obraId}` : ''}`),
     listar: (obraId?: string) =>
       request<Trabalhador[]>(`/api/trabalhadores${obraId ? `?obraId=${obraId}` : ''}`),
     criar: (trabalhador: NovoTrabalhador) =>
@@ -2894,12 +4845,37 @@ export const api = {
       }
       return response.blob();
     },
-    gerarVinculoTelegram: (id: string) =>
-      request<GerarVinculoTelegramResultado>(`/api/trabalhadores/${id}/telegram/vinculo`, { method: 'POST' }),
+    listarFotosCadastroFacial: (id: string) =>
+      request<FotoCadastroFacial[]>(`/api/trabalhadores/${id}/assinatura/facial/fotos`),
+    baixarFotoCadastroFacial: async (id: string, fotoId: string) => {
+      const response = await fetch(`${API_BASE_URL}/api/trabalhadores/${id}/assinatura/facial/fotos/${fotoId}`, {
+        headers: await montarHeadersAuth(),
+      });
+      if (!response.ok) {
+        const corpo = await response.text().catch(() => '');
+        throw new Error(extrairMensagemErro(corpo, response.status, response.statusText));
+      }
+      return response.blob();
+    },
     registrarTermoAceiteAssinatura: (id: string) =>
       request<void>(`/api/trabalhadores/${id}/assinatura/termo-aceite`, { method: 'POST' }),
     registrarConsentimentoBiometria: (id: string) =>
       request<void>(`/api/trabalhadores/${id}/assinatura/consentimento-biometria`, { method: 'POST' }),
+    // LGPD: retira o consentimento; o servidor desativa a digital e o facial do trabalhador.
+    revogarConsentimentoBiometria: (id: string, motivo: string) =>
+      request<void>(`/api/trabalhadores/${id}/assinatura/consentimento-biometria/revogar`, {
+        method: 'POST',
+        body: JSON.stringify({ motivo }),
+      }),
+    // Funcionários com 3 ou mais falhas de reconhecimento facial em 30 dias contra o cadastro atual.
+    listarFalhasReconhecimentoFacial: (dias: number, obraId?: string) =>
+      request<FalhaReconhecimentoFacial[]>(
+        `/api/trabalhadores/falhas-reconhecimento-facial?dias=${dias}${obraId ? `&obraId=${obraId}` : ''}`,
+      ),
+    listarCadastrosFaciaisFracos: (obraId?: string) =>
+      request<CadastroFacialFraco[]>(`/api/trabalhadores/cadastros-faciais-fracos${obraId ? `?obraId=${obraId}` : ''}`),
+    obterStatusCadastroBiometrico: (id: string) =>
+      request<StatusCadastroBiometrico>(`/api/trabalhadores/${id}/assinatura/status-cadastro`),
     obterPerfilCompleto: (id: string) =>
       request<PerfilCompletoTrabalhador>(`/api/trabalhadores/${id}/perfil-completo`),
     baixarRelatorioFiscalizacao: async (id: string) => {
@@ -2912,17 +4888,78 @@ export const api = {
     },
     // Cadastro de digital via agente local (Futronic FS80H) — templateBruto vem em base64 do
     // agente (fetch local a /api/capturar-bruto); o backend criptografa antes de persistir.
-    cadastrarBiometriaLocal: (id: string, templateBrutoBase64: string) =>
+    cadastrarBiometriaLocal: (id: string, templateBrutoBase64: string, imagemCadastroBase64?: string | null, dedo?: DedoBiometria) =>
       request<void>(`/api/trabalhadores/${id}/assinatura/biometria-local/cadastro`, {
         method: 'POST',
-        body: JSON.stringify({ templateBruto: templateBrutoBase64 }),
+        body: JSON.stringify({
+          templateBruto: templateBrutoBase64,
+          imagemCadastro: imagemCadastroBase64 ?? null,
+          dedo: dedo ?? null,
+        }),
       }),
+    // Cadastro de reconhecimento facial (Azure Face API) — multipart, não passa por request<T>
+    // (que sempre força Content-Type: application/json, incompatível com FormData) nem pelo motor
+    // de sincronização offline (cadastro é ação administrativa, sempre com internet).
+    cadastrarFacial: async (id: string, foto: File): Promise<void> => {
+      const formData = new FormData();
+      formData.append('foto', foto);
+      anexarDadosFoto(formData, foto);
+      const response = await fetch(`${API_BASE_URL}/api/trabalhadores/${id}/assinatura/facial/cadastro`, {
+        method: 'POST',
+        headers: await montarHeadersAuth(),
+        body: formData,
+      });
+      if (!response.ok) {
+        const corpo = await response.text().catch(() => '');
+        throw new Error(`${response.status} ${response.statusText}: ${corpo}`);
+      }
+    },
+    // Só Administrador (o backend recusa os demais): apaga a foto e o cadastro no Azure Face para o
+    // trabalhador poder capturar uma foto nova. O motivo é obrigatório e fica na trilha de auditoria.
+    refazerCadastroFacial: (id: string, motivo: string) =>
+      request<void>(`/api/trabalhadores/${id}/assinatura/facial/refazer`, { method: 'POST', body: JSON.stringify({ motivo }) }),
+    // Carga inicial única do cadastro do G-RH (Integração G-RH) — a atualização contínua depois
+    // disso é automática, via evento de Service Bus; não faz sentido rodar isto repetidamente.
+    importarGrh: () =>
+      request<ImportarColaboradoresGrhResultado>('/api/trabalhadores/importar-grh', { method: 'POST' }),
+    listarTamanhosUniforme: (id: string) => request<TamanhoUniformeTrabalhador[]>(`/api/trabalhadores/${id}/uniformes`),
+    definirTamanhosUniforme: (id: string, itens: ItemTamanhoUniforme[]) =>
+      request<void>(`/api/trabalhadores/${id}/uniformes`, { method: 'PUT', body: JSON.stringify({ itens }) }),
+  },
+  dispositivosAgente: {
+    listar: (obraId?: string) =>
+      request<DispositivoAgente[]>(`/api/dispositivos-agente${obraId ? `?obraId=${obraId}` : ''}`),
+    registrar: (obraId: string, nome: string) =>
+      request<RegistroDispositivoAgente>('/api/dispositivos-agente', {
+        method: 'POST',
+        body: JSON.stringify({ obraId, nome }),
+      }),
+    revogar: (id: string) => request<void>(`/api/dispositivos-agente/${id}`, { method: 'DELETE' }),
+    // Desafio de uso único para cada leitura de digital (o agente o assina junto com o resultado).
+    emitirDesafio: async (id: string) =>
+      (await request<{ desafio: string }>(`/api/dispositivos-agente/${id}/desafios`, { method: 'POST' })).desafio,
   },
   funcoes: {
     listar: () => request<Funcao[]>('/api/funcoes'),
     criar: (funcao: NovaFuncao) =>
       request<{ id: string }>('/api/funcoes', { method: 'POST', body: JSON.stringify(funcao) }),
     excluir: (id: string) => request<void>(`/api/funcoes/${id}`, { method: 'DELETE' }),
+    listarDuplicadas: () => request<GrupoFuncaoDuplicada[]>('/api/funcoes/duplicadas'),
+    mesclarDuplicada: (funcaoManterId: string, funcaoRemoverId: string) =>
+      request<void>('/api/funcoes/duplicadas/mesclar', {
+        method: 'POST',
+        body: JSON.stringify({ funcaoManterId, funcaoRemoverId }),
+      }),
+    listarOrfas: () => request<FuncaoOrfa[]>('/api/funcoes/orfas'),
+    excluirOrfas: (funcaoIds: string[]) =>
+      request<{ quantidadeExcluida: number }>('/api/funcoes/orfas/excluir', {
+        method: 'POST',
+        body: JSON.stringify({ funcaoIds }),
+      }),
+    listarInativasComTrabalhador: () =>
+      request<FuncaoInativaComTrabalhador[]>('/api/funcoes/inativas-com-trabalhador'),
+    reativar: (id: string) => request<void>(`/api/funcoes/${id}/reativar`, { method: 'POST' }),
+    listarSemTrabalhador: () => request<FuncaoSemTrabalhador[]>('/api/funcoes/sem-trabalhador'),
     listarEpis: (funcaoId: string) => request<CatalogoEpi[]>(`/api/funcoes/${funcaoId}/epis`),
     definirEpis: (funcaoId: string, catalogoEpiIds: string[]) =>
       request<void>(`/api/funcoes/${funcaoId}/epis`, {
@@ -2935,6 +4972,18 @@ export const api = {
       request<void>(`/api/funcoes/${funcaoId}/treinamentos-obrigatorios`, {
         method: 'PUT',
         body: JSON.stringify({ cursoTreinamentoIds }),
+      }),
+    listarUniformes: (funcaoId: string) => request<CatalogoUniforme[]>(`/api/funcoes/${funcaoId}/uniformes`),
+    definirUniformes: (funcaoId: string, catalogoUniformeIds: string[]) =>
+      request<void>(`/api/funcoes/${funcaoId}/uniformes`, {
+        method: 'PUT',
+        body: JSON.stringify({ catalogoUniformeIds }),
+      }),
+    listarEpcs: (funcaoId: string) => request<CatalogoEpc[]>(`/api/funcoes/${funcaoId}/epcs`),
+    definirEpcs: (funcaoId: string, catalogoEpcIds: string[]) =>
+      request<void>(`/api/funcoes/${funcaoId}/epcs`, {
+        method: 'PUT',
+        body: JSON.stringify({ catalogoEpcIds }),
       }),
   },
   setores: {
@@ -2953,15 +5002,29 @@ export const api = {
     },
     criar: (equipe: NovaEquipe) =>
       request<{ id: string }>('/api/equipes', { method: 'POST', body: JSON.stringify(equipe) }),
+    criarComMembros: (equipe: NovaEquipeComMembros) =>
+      request<{ id: string }>('/api/equipes/com-membros', { method: 'POST', body: JSON.stringify(equipe) }),
     excluir: (id: string) => request<void>(`/api/equipes/${id}`, { method: 'DELETE' }),
   },
   asos: {
-    listar: (trabalhadorId?: string) =>
-      request<Aso[]>(`/api/asos${trabalhadorId ? `?trabalhadorId=${trabalhadorId}` : ''}`),
+    listar: (trabalhadorId?: string, obraId?: string) => {
+      const params = new URLSearchParams();
+      if (trabalhadorId) params.set('trabalhadorId', trabalhadorId);
+      if (obraId) params.set('obraId', obraId);
+      const query = params.toString();
+      return request<Aso[]>(`/api/asos${query ? `?${query}` : ''}`);
+    },
     obterPorId: (id: string) => request<Aso>(`/api/asos/${id}`),
     criar: (aso: NovoAso) => request<{ id: string }>('/api/asos', { method: 'POST', body: JSON.stringify(aso) }),
     atualizar: (aso: Aso) => request<void>(`/api/asos/${aso.id}`, { method: 'PUT', body: JSON.stringify(aso) }),
     excluir: (id: string) => request<void>(`/api/asos/${id}`, { method: 'DELETE' }),
+    importarGrh: () => request<ImportarAsoGrhResultado>('/api/asos/importar-grh', { method: 'POST' }),
+    // PDF/foto do ASO (23/10/2026). Reenviar substitui.
+    anexarArquivo: (id: string, arquivo: File) => {
+      const formData = new FormData();
+      formData.append('Arquivo', arquivo);
+      return enviarFormulario<{ id: string }>(`/api/asos/${id}/arquivo`, formData);
+    },
   },
   examesComplementares: {
     listar: (trabalhadorId?: string) =>
@@ -2983,13 +5046,46 @@ export const api = {
       request<void>(`/api/aptidoes/${aptidao.id}`, { method: 'PUT', body: JSON.stringify(aptidao) }),
     excluir: (id: string) => request<void>(`/api/aptidoes/${id}`, { method: 'DELETE' }),
   },
+  estruturaSst: {
+    listarGhes: (obraId: string) => request<Ghe[]>(`/api/obras/${obraId}/ghes`),
+    listarExamesFuncao: (obraId: string, funcaoId?: string) =>
+      request<ExameFuncaoObra[]>(`/api/obras/${obraId}/exames-funcao${funcaoId ? `?funcaoId=${funcaoId}` : ''}`),
+  },
   pcmsos: {
+    listarRevisoes: (id: string) => request<PcmsoRevisao[]>(`/api/pcmsos/${id}/revisoes`),
+    novaRevisao: (id: string, dados: DadosNovaRevisao) =>
+      enviarFormulario<{ id: string }>(`/api/pcmsos/${id}/revisoes`, formularioNovaRevisao(id, dados)),
+    obterDocumentoRevisao: (revisaoId: string) => baixarBlobOuNulo(`/api/pcmsos/revisoes/${revisaoId}/documento`),
     listar: (obraId?: string) => request<Pcmso[]>(`/api/pcmsos${obraId ? `?obraId=${obraId}` : ''}`),
     obterPorId: (id: string) => request<Pcmso>(`/api/pcmsos/${id}`),
     criar: (pcmso: NovoPcmso) => request<{ id: string }>('/api/pcmsos', { method: 'POST', body: JSON.stringify(pcmso) }),
     atualizar: (id: string, pcmso: AtualizarPcmsoPayload) =>
       request<void>(`/api/pcmsos/${id}`, { method: 'PUT', body: JSON.stringify({ ...pcmso, id }) }),
     excluir: (id: string) => request<void>(`/api/pcmsos/${id}`, { method: 'DELETE' }),
+    obterDocumento: async (id: string): Promise<Blob | null> => {
+      const response = await fetch(`${API_BASE_URL}/api/pcmsos/${id}/documento`, {
+        headers: await montarHeadersAuth(),
+      });
+      if (response.status === 404) return null;
+      if (!response.ok) {
+        const corpo = await response.text().catch(() => '');
+        throw new Error(extrairMensagemErro(corpo, response.status, response.statusText));
+      }
+      return response.blob();
+    },
+    enviarDocumento: async (id: string, arquivo: File) => {
+      const formData = new FormData();
+      formData.append('Arquivo', arquivo);
+      const response = await fetch(`${API_BASE_URL}/api/pcmsos/${id}/documento`, {
+        method: 'POST',
+        headers: await montarHeadersAuth(),
+        body: formData,
+      });
+      if (!response.ok) {
+        const corpo = await response.text().catch(() => '');
+        throw new Error(extrairMensagemErro(corpo, response.status, response.statusText));
+      }
+    },
   },
   cursosTreinamento: {
     listar: () => request<CursoTreinamento[]>('/api/cursostreinamento'),
@@ -2998,10 +5094,48 @@ export const api = {
     atualizar: (id: string, curso: CursoTreinamento) =>
       request<void>(`/api/cursostreinamento/${id}`, { method: 'PUT', body: JSON.stringify(curso) }),
     excluir: (id: string) => request<void>(`/api/cursostreinamento/${id}`, { method: 'DELETE' }),
+    // Card "Aptidão por treinamento" do Início: por curso exigido na matriz de funções.
+    aptidao: (obraId?: string) =>
+      request<AptidaoCurso[]>(`/api/cursostreinamento/aptidao${obraId ? `?obraId=${obraId}` : ''}`),
+    padroesNr: () => request<PadraoNr[]>('/api/cursostreinamento/padroes-nr'),
+  },
+  escopoPcmso: {
+    obter: (obraId: string) => request<EscopoPcmso>(`/api/escopo-pcmso/obras/${obraId}`),
+    pdf: (obraId: string) => baixarArquivoRelatorio(`/api/escopo-pcmso/obras/${obraId}/pdf`),
+    enviar: (obraId: string, emailMedico: string, nomeMedico?: string, mensagem?: string) =>
+      request<void>(`/api/escopo-pcmso/obras/${obraId}/enviar`, {
+        method: 'POST',
+        body: JSON.stringify({ emailMedico, nomeMedico: nomeMedico || null, mensagem: mensagem || null }),
+      }),
+  },
+  cursosObrigatorios: {
+    listar: (obraId: string) => request<CursosObrigatoriosObra>(`/api/cursos-obrigatorios/obras/${obraId}`),
+    gerar: (obraId: string) =>
+      request<ResultadoGeracaoCursosObrigatorios>(`/api/cursos-obrigatorios/obras/${obraId}/gerar`, { method: 'POST' }),
+    aprovarSugestoes: (obraId: string) =>
+      request<{ aprovados: number }>(`/api/cursos-obrigatorios/obras/${obraId}/aprovar-sugestoes`, { method: 'POST' }),
+    adicionar: (obraId: string, funcaoId: string, cursoTreinamentoId: string) =>
+      request<{ id: string }>(`/api/cursos-obrigatorios/obras/${obraId}`, {
+        method: 'POST',
+        body: JSON.stringify({ funcaoId, cursoTreinamentoId }),
+      }),
+    decidir: (id: string, aprovar: boolean, justificativa?: string) =>
+      request<void>(`/api/cursos-obrigatorios/${id}/decidir`, {
+        method: 'POST',
+        body: JSON.stringify({ aprovar, justificativa: justificativa ?? null }),
+      }),
+    regras: () => request<RegraCursoObrigatorio[]>('/api/cursos-obrigatorios/regras'),
+    salvarRegra: (regra: SalvarRegraCursoObrigatorio) =>
+      request<{ id: string }>('/api/cursos-obrigatorios/regras', { method: 'POST', body: JSON.stringify(regra) }),
   },
   treinamentos: {
-    listar: (trabalhadorId?: string) =>
-      request<Treinamento[]>(`/api/treinamentos${trabalhadorId ? `?trabalhadorId=${trabalhadorId}` : ''}`),
+    listar: (trabalhadorId?: string, obraId?: string) => {
+      const params = new URLSearchParams();
+      if (trabalhadorId) params.set('trabalhadorId', trabalhadorId);
+      if (obraId) params.set('obraId', obraId);
+      const query = params.toString();
+      return request<Treinamento[]>(`/api/treinamentos${query ? `?${query}` : ''}`);
+    },
     obterPorId: (id: string) => request<Treinamento>(`/api/treinamentos/${id}`),
     criar: (treinamento: NovoTreinamento) =>
       request<{ id: string }>('/api/treinamentos', { method: 'POST', body: JSON.stringify(treinamento) }),
@@ -3014,7 +5148,104 @@ export const api = {
       });
       if (!response.ok) {
         const corpo = await response.text().catch(() => '');
-        throw new Error(`${response.status} ${response.statusText}: ${corpo}`);
+        throw new Error(extrairMensagemErro(corpo, response.status, response.statusText));
+      }
+      return response.blob();
+    },
+    listarCertificados: (filtros?: { obraId?: string; cursoTreinamentoId?: string; trabalhadorId?: string }) => {
+      const params = new URLSearchParams();
+      if (filtros?.obraId) params.set('obraId', filtros.obraId);
+      if (filtros?.cursoTreinamentoId) params.set('cursoTreinamentoId', filtros.cursoTreinamentoId);
+      if (filtros?.trabalhadorId) params.set('trabalhadorId', filtros.trabalhadorId);
+      const query = params.toString();
+      return request<CertificadoTreinamento[]>(`/api/treinamentos/certificados${query ? `?${query}` : ''}`);
+    },
+    // Certificado digitalizado do lançamento retroativo (22/09): PDF original ou foto do papel.
+    // Reenviar substitui o anterior — é o caminho quando a primeira foto sai ilegível.
+    anexarArquivoCertificado: async (id: string, arquivo: File) => {
+      const formData = new FormData();
+      formData.append('arquivo', arquivo);
+      const authHeaders = await montarHeadersAuth();
+      return syncMutateMultipart<{ id: string }>(`/api/treinamentos/${id}/certificado/arquivo`, formData, authHeaders);
+    },
+    baixarArquivoCertificado: async (id: string) => {
+      const authHeaders = await montarHeadersAuth();
+      return syncFetchBlob(`/api/treinamentos/${id}/certificado/arquivo`, authHeaders);
+    },
+    removerArquivoCertificado: (id: string) =>
+      request<void>(`/api/treinamentos/${id}/certificado/arquivo`, { method: 'DELETE' }),
+  },
+  termosCompromissoEpi: {
+    obter: (trabalhadorId: string) => request<TermoCompromissoEpi>(`/api/termoscompromissoepi/${trabalhadorId}`),
+    // Registra que o funcionário já assinou o termo em papel. dataAssinaturaPapel em yyyy-MM-dd;
+    // foto/PDF do papel é opcional.
+    registrarManual: async (trabalhadorId: string, dataAssinaturaPapel: string, observacao: string, arquivo?: File | null) => {
+      const formData = new FormData();
+      formData.append('dataAssinaturaPapel', dataAssinaturaPapel);
+      if (observacao.trim()) formData.append('observacao', observacao.trim());
+      if (arquivo) formData.append('arquivo', arquivo);
+      const authHeaders = await montarHeadersAuth();
+      return syncMutateMultipart<{ id: string }>(`/api/termoscompromissoepi/${trabalhadorId}/manual`, formData, authHeaders);
+    },
+    baixarArquivoManual: async (trabalhadorId: string) => {
+      const authHeaders = await montarHeadersAuth();
+      return syncFetchBlob(`/api/termoscompromissoepi/${trabalhadorId}/manual/arquivo`, authHeaders);
+    },
+    removerManual: (trabalhadorId: string) =>
+      request<void>(`/api/termoscompromissoepi/${trabalhadorId}/manual`, { method: 'DELETE' }),
+  },
+  sessoesTreinamento: {
+    listar: (obraId?: string) => request<SessaoTreinamento[]>(`/api/sessoestreinamento${obraId ? `?obraId=${obraId}` : ''}`),
+    obterDetalhe: (id: string) => request<SessaoTreinamentoDetalhe>(`/api/sessoestreinamento/${id}`),
+    padrao: (cursoTreinamentoId: string, obraId?: string) =>
+      request<PadraoTurmaTreinamento>(
+        `/api/sessoestreinamento/padrao?cursoTreinamentoId=${cursoTreinamentoId}${obraId ? `&obraId=${obraId}` : ''}`,
+      ),
+    criar: (sessao: NovaSessaoTreinamento) =>
+      request<{ id: string }>('/api/sessoestreinamento', { method: 'POST', body: JSON.stringify(sessao) }),
+    // Presença exclusivamente por biometria (mesmo padrão de api.dds.registrarParticipante) —
+    // dispositivoId/segredoDispositivo vêm do agente local, score é o resultado do match 1:N já
+    // feito por ele (ver capturarDigitalLocal).
+    registrarPresenca: (sessaoId: string, trabalhadorId: string, credencial: CredencialLeitura, score: number) =>
+      request<void>(`/api/sessoestreinamento/${sessaoId}/presenca`, {
+        method: 'POST',
+        body: JSON.stringify({ trabalhadorId, ...credencial, score }),
+      }),
+    registrarPresencaFacial: async (sessaoId: string, obraId: string, foto: File) => {
+      const formData = new FormData();
+      formData.append('obraId', obraId);
+      formData.append('foto', foto);
+      anexarDadosFoto(formData, foto);
+      const authHeaders = await montarHeadersAuth();
+      return syncMutateMultipart<{ trabalhadorId: string }>(
+        `/api/sessoestreinamento/${sessaoId}/presenca/facial`,
+        formData,
+        authHeaders,
+      );
+    },
+    encerrar: (id: string) => request<void>(`/api/sessoestreinamento/${id}/encerrar`, { method: 'POST' }),
+    // Slot fixo por ordem (04/09) — reanexar no mesmo quadro substitui a foto existente.
+    anexarFotoEvidencia: async (sessaoId: string, ordem: number, foto: File) => {
+      const formData = new FormData();
+      formData.append('foto', foto);
+      anexarDadosFoto(formData, foto);
+      formData.append('ordem', String(ordem));
+      const authHeaders = await montarHeadersAuth();
+      return syncMutateMultipart<{ id: string }>(`/api/sessoestreinamento/${sessaoId}/fotos-evidencia`, formData, authHeaders);
+    },
+    baixarFotoEvidencia: async (fotoId: string) => {
+      const authHeaders = await montarHeadersAuth();
+      return syncFetchBlob(`/api/sessoestreinamento/fotos-evidencia/${fotoId}`, authHeaders);
+    },
+    removerFotoEvidencia: (fotoId: string) =>
+      request<void>(`/api/sessoestreinamento/fotos-evidencia/${fotoId}`, { method: 'DELETE' }),
+    baixarAta: async (id: string) => {
+      const response = await fetch(`${API_BASE_URL}/api/sessoestreinamento/${id}/ata/pdf`, {
+        headers: await montarHeadersAuth(),
+      });
+      if (!response.ok) {
+        const corpo = await response.text().catch(() => '');
+        throw new Error(extrairMensagemErro(corpo, response.status, response.statusText));
       }
       return response.blob();
     },
@@ -3033,6 +5264,7 @@ export const api = {
     atualizar: (id: string, requisito: AtualizarRequisitoLegalPayload) =>
       request<void>(`/api/requisitoslegais/${id}`, { method: 'PUT', body: JSON.stringify({ ...requisito, id }) }),
     excluir: (id: string) => request<void>(`/api/requisitoslegais/${id}`, { method: 'DELETE' }),
+    validar: (id: string) => request<void>(`/api/requisitoslegais/${id}/validar`, { method: 'POST' }),
     definirCriterios: (id: string, criterios: CriterioAplicabilidadeInput[]) =>
       request<void>(`/api/requisitoslegais/${id}/criterios`, { method: 'PUT', body: JSON.stringify({ criterios }) }),
   },
@@ -3088,6 +5320,47 @@ export const api = {
       return response.blob();
     },
   },
+  catalogosUniforme: {
+    listar: () => request<CatalogoUniforme[]>('/api/catalogosuniforme'),
+    criar: (item: NovoCatalogoUniforme) =>
+      request<{ id: string }>('/api/catalogosuniforme', { method: 'POST', body: JSON.stringify(item) }),
+    atualizar: (item: AtualizarCatalogoUniforme) =>
+      request<void>(`/api/catalogosuniforme/${item.id}`, { method: 'PUT', body: JSON.stringify(item) }),
+    excluir: (id: string) => request<void>(`/api/catalogosuniforme/${id}`, { method: 'DELETE' }),
+    anexarFoto: async (id: string, arquivo: File) => {
+      const formData = new FormData();
+      formData.append('Foto', arquivo);
+      const response = await fetch(`${API_BASE_URL}/api/catalogosuniforme/${id}/foto`, {
+        method: 'POST',
+        headers: await montarHeadersAuth(),
+        body: formData,
+      });
+      if (!response.ok) {
+        const corpo = await response.text().catch(() => '');
+        throw new Error(extrairMensagemErro(corpo, response.status, response.statusText));
+      }
+    },
+    baixarFoto: async (id: string) => {
+      const response = await fetch(`${API_BASE_URL}/api/catalogosuniforme/${id}/foto`, {
+        headers: await montarHeadersAuth(),
+      });
+      if (!response.ok) {
+        const corpo = await response.text().catch(() => '');
+        throw new Error(extrairMensagemErro(corpo, response.status, response.statusText));
+      }
+      return response.blob();
+    },
+  },
+  entregasUniforme: {
+    listar: (trabalhadorId?: string) =>
+      request<EntregaUniforme[]>(`/api/entregasuniforme${trabalhadorId ? `?trabalhadorId=${trabalhadorId}` : ''}`),
+    obterPorId: (id: string) => request<EntregaUniforme>(`/api/entregasuniforme/${id}`),
+    criar: (dados: NovaEntregaUniforme) =>
+      request<{ id: string }>('/api/entregasuniforme', { method: 'POST', body: JSON.stringify(dados) }),
+    // Só Administrador (o servidor recusa os demais). Devolve a peça ao estoque do bucket
+    // peça+tamanho da obra — ver ExcluirEntregaUniformeCommand.
+    excluir: (id: string) => request<void>(`/api/entregasuniforme/${id}`, { method: 'DELETE' }),
+  },
   estoquesEpi: {
     listarPorObra: (obraId: string) => request<EstoqueEpiPorObra[]>(`/api/estoquesepi/obra/${obraId}`),
     listarMovimentacoes: (obraId: string, catalogoEpiId: string) =>
@@ -3096,16 +5369,53 @@ export const api = {
       request<void>('/api/estoquesepi/entrada', { method: 'POST', body: JSON.stringify(dados) }),
     ajustar: (dados: AjustarEstoqueEpi) =>
       request<void>('/api/estoquesepi/ajuste', { method: 'POST', body: JSON.stringify(dados) }),
+    painel: (obraId: string) => request<EstoqueEpiPainel>(`/api/estoquesepi/obra/${obraId}/painel`),
+    definirMinimo: (obraId: string, catalogoEpiId: string, estoqueMinimo: number | null) =>
+      request<void>(`/api/estoquesepi/obra/${obraId}/epi/${catalogoEpiId}/minimo`, {
+        method: 'PUT',
+        body: JSON.stringify({ estoqueMinimo }),
+      }),
+    aplicarSugestoes: (obraId: string) =>
+      request<{ aplicados: number }>(`/api/estoquesepi/obra/${obraId}/minimos/aplicar-sugestoes`, { method: 'POST' }),
+    definirPrazoReposicao: (obraId: string, dias: number) =>
+      request<void>(`/api/estoquesepi/obra/${obraId}/prazo-reposicao`, { method: 'PUT', body: JSON.stringify({ dias }) }),
+    transferir: (dados: { catalogoEpiId: string; obraOrigemId: string; obraDestinoId: string; quantidade: number; observacao?: string | null }) =>
+      request<void>('/api/estoquesepi/transferencia', { method: 'POST', body: JSON.stringify(dados) }),
+    listarSolicitacoesReposicao: (obraId: string) =>
+      request<SolicitacaoReposicaoEpiResumo[]>(`/api/estoquesepi/obra/${obraId}/solicitacoes-reposicao`),
+    criarSolicitacaoReposicao: (obraId: string, observacao: string | null) =>
+      request<{ id: string }>(`/api/estoquesepi/obra/${obraId}/solicitacoes-reposicao`, {
+        method: 'POST',
+        body: JSON.stringify({ observacao }),
+      }),
+    baixarSolicitacaoReposicao: (id: string) => baixarArquivoRelatorio(`/api/estoquesepi/solicitacoes-reposicao/${id}/pdf`),
+  },
+  estoquesUniforme: {
+    listarPorObra: (obraId: string) => request<EstoqueUniformePorObra[]>(`/api/estoquesuniforme/obra/${obraId}`),
+    listarMovimentacoes: (obraId: string, catalogoUniformeId: string, tamanho: string) =>
+      request<MovimentacaoEstoqueUniforme[]>(
+        `/api/estoquesuniforme/obra/${obraId}/peca/${catalogoUniformeId}/tamanho/${encodeURIComponent(tamanho)}/movimentacoes`,
+      ),
+    registrarEntrada: (dados: { catalogoUniformeId: string; obraId: string; tamanho: string; quantidade: number; observacao?: string | null }) =>
+      request<void>('/api/estoquesuniforme/entrada', { method: 'POST', body: JSON.stringify(dados) }),
+    ajustar: (dados: { catalogoUniformeId: string; obraId: string; tamanho: string; novoSaldo: number; observacao: string }) =>
+      request<void>('/api/estoquesuniforme/ajuste', { method: 'POST', body: JSON.stringify(dados) }),
   },
   entregasEpi: {
-    listar: (trabalhadorId?: string) =>
-      request<EntregaEpi[]>(`/api/entregasepi${trabalhadorId ? `?trabalhadorId=${trabalhadorId}` : ''}`),
+    listar: (trabalhadorId?: string, obraId?: string) => {
+      const params = new URLSearchParams();
+      if (trabalhadorId) params.set('trabalhadorId', trabalhadorId);
+      if (obraId) params.set('obraId', obraId);
+      const query = params.toString();
+      return request<EntregaEpi[]>(`/api/entregasepi${query ? `?${query}` : ''}`);
+    },
     obterPorId: (id: string) => request<EntregaEpi>(`/api/entregasepi/${id}`),
     criar: (entrega: NovaEntregaEpi) =>
       request<{ id: string }>('/api/entregasepi', { method: 'POST', body: JSON.stringify(entrega) }),
     atualizar: (entrega: AtualizarEntregaEpi) =>
       request<void>(`/api/entregasepi/${entrega.id}`, { method: 'PUT', body: JSON.stringify(entrega) }),
     excluir: (id: string) => request<void>(`/api/entregasepi/${id}`, { method: 'DELETE' }),
+    confirmar: (id: string) => request<void>(`/api/entregasepi/${id}/confirmar`, { method: 'PUT' }),
     baixarFichaTrabalhador: async (trabalhadorId: string) => {
       const response = await fetch(`${API_BASE_URL}/api/entregasepi/ficha-trabalhador/${trabalhadorId}/pdf`, {
         headers: await montarHeadersAuth(),
@@ -3116,6 +5426,58 @@ export const api = {
       }
       return response.blob();
     },
+  },
+  catalogosEpc: {
+    listar: () => request<CatalogoEpc[]>('/api/catalogosepc'),
+    criar: (epc: NovoCatalogoEpc) =>
+      request<{ id: string }>('/api/catalogosepc', { method: 'POST', body: JSON.stringify(epc) }),
+    atualizar: (epc: AtualizarCatalogoEpc) =>
+      request<void>(`/api/catalogosepc/${epc.id}`, { method: 'PUT', body: JSON.stringify(epc) }),
+    excluir: (id: string) => request<void>(`/api/catalogosepc/${id}`, { method: 'DELETE' }),
+    anexarFoto: async (id: string, arquivo: File) => {
+      const formData = new FormData();
+      formData.append('Foto', arquivo);
+      const response = await fetch(`${API_BASE_URL}/api/catalogosepc/${id}/foto`, {
+        method: 'POST',
+        headers: await montarHeadersAuth(),
+        body: formData,
+      });
+      if (!response.ok) {
+        const corpo = await response.text().catch(() => '');
+        throw new Error(extrairMensagemErro(corpo, response.status, response.statusText));
+      }
+    },
+    baixarFoto: async (id: string) => {
+      const response = await fetch(`${API_BASE_URL}/api/catalogosepc/${id}/foto`, {
+        headers: await montarHeadersAuth(),
+      });
+      if (!response.ok) {
+        const corpo = await response.text().catch(() => '');
+        throw new Error(extrairMensagemErro(corpo, response.status, response.statusText));
+      }
+      return response.blob();
+    },
+  },
+  estoquesEpc: {
+    listarPorObra: (obraId: string) => request<EstoqueEpcPorObra[]>(`/api/estoquesepc/obra/${obraId}`),
+    listarMovimentacoes: (obraId: string, catalogoEpcId: string) =>
+      request<MovimentacaoEstoqueEpc[]>(`/api/estoquesepc/obra/${obraId}/epc/${catalogoEpcId}/movimentacoes`),
+    registrarEntrada: (dados: RegistrarEntradaEstoqueEpc) =>
+      request<void>('/api/estoquesepc/entrada', { method: 'POST', body: JSON.stringify(dados) }),
+    ajustar: (dados: AjustarEstoqueEpc) =>
+      request<void>('/api/estoquesepc/ajuste', { method: 'POST', body: JSON.stringify(dados) }),
+  },
+  instalacoesEpc: {
+    listar: (obraId?: string) =>
+      request<InstalacaoEpc[]>(`/api/instalacoesepc${obraId ? `?obraId=${obraId}` : ''}`),
+    obterPorId: (id: string) => request<InstalacaoEpc>(`/api/instalacoesepc/${id}`),
+    criar: (instalacao: NovaInstalacaoEpc) =>
+      request<{ id: string }>('/api/instalacoesepc', { method: 'POST', body: JSON.stringify(instalacao) }),
+    registrarInspecao: (id: string, dados: RegistrarInspecaoEpc) =>
+      request<void>(`/api/instalacoesepc/${id}/inspecao`, { method: 'POST', body: JSON.stringify(dados) }),
+    registrarRemocao: (id: string, dados: RegistrarRemocaoEpc) =>
+      request<void>(`/api/instalacoesepc/${id}/remocao`, { method: 'POST', body: JSON.stringify(dados) }),
+    excluir: (id: string) => request<void>(`/api/instalacoesepc/${id}`, { method: 'DELETE' }),
   },
   atividades: {
     listar: (obraId?: string) => request<Atividade[]>(`/api/atividades${obraId ? `?obraId=${obraId}` : ''}`),
@@ -3139,6 +5501,29 @@ export const api = {
     listar: (atividadeId?: string) => request<Risco[]>(`/api/riscos${atividadeId ? `?atividadeId=${atividadeId}` : ''}`),
     criar: (risco: NovoRisco) => request<{ id: string }>('/api/riscos', { method: 'POST', body: JSON.stringify(risco) }),
     excluir: (id: string) => request<void>(`/api/riscos/${id}`, { method: 'DELETE' }),
+    confirmarAvaliacao: (riscoId: string) =>
+      request<void>(`/api/riscos/${riscoId}/confirmar-avaliacao`, { method: 'POST' }),
+    separarMedidasComIa: (riscoId: string) =>
+      request<{ medidas: number }>(`/api/riscos/${riscoId}/medidas/separar-com-ia`, { method: 'POST' }),
+    adicionarMedida: (riscoId: string, fase: 1 | 2 | 3, texto: string) =>
+      request<{ id: string }>(`/api/riscos/${riscoId}/medidas`, { method: 'POST', body: JSON.stringify({ fase, texto }) }),
+    obterDetalhesOs: (atividadeId: string) => request<DetalhesOsAtividade>(`/api/atividades/${atividadeId}/detalhes-os`),
+    salvarDetalhesOs: (atividadeId: string, dados: { condicoes: string | null; ferramentas: string[]; epcIds: string[]; documentoIds: string[] }) =>
+      request<void>(`/api/atividades/${atividadeId}/detalhes-os`, { method: 'PUT', body: JSON.stringify(dados) }),
+    adicionarItemOs: (atividadeId: string, tipo: 1 | 2 | 3, texto: string, requisito?: string) =>
+      request<{ id: string }>(`/api/atividades/${atividadeId}/itens-os`, { method: 'POST', body: JSON.stringify({ tipo, texto, requisito: requisito ?? null }) }),
+    sugerirItensOs: (atividadeId: string) =>
+      request<{ itens: number }>(`/api/atividades/${atividadeId}/itens-os/sugerir-com-ia`, { method: 'POST' }),
+    decidirItemOs: (itemId: string, aceitar: boolean, textoEditado?: string, requisitoEditado?: string) =>
+      request<void>(`/api/itens-os/${itemId}/decidir`, {
+        method: 'POST',
+        body: JSON.stringify({ aceitar, textoEditado: textoEditado ?? null, requisitoEditado: requisitoEditado ?? null }),
+      }),
+    decidirMedida: (medidaId: string, aceitar: boolean, textoEditado?: string) =>
+      request<void>(`/api/medidas-prevencao/${medidaId}/decidir`, {
+        method: 'POST',
+        body: JSON.stringify({ aceitar, textoEditado: textoEditado ?? null }),
+      }),
     importarLote: (obraId: string, itens: RiscoLoteItem[]) =>
       request<ImportarRiscosLoteResultado>('/api/riscos/importar-lote', {
         method: 'POST',
@@ -3147,6 +5532,33 @@ export const api = {
     limparPorObra: (obraId: string) =>
       request<{ riscosRemovidos: number }>(`/api/riscos/obra/${obraId}`, { method: 'DELETE' }),
   },
+  geracoesPgrEap: {
+    listar: (obraId?: string) => request<ResumoGeracaoPgrEap[]>(`/api/geracoes-pgr-eap${obraId ? `?obraId=${obraId}` : ''}`),
+    obter: (id: string) => request<GeracaoPgrEap>(`/api/geracoes-pgr-eap/${id}`),
+    criar: async (dados: { obraId: string; nome: string; dataElaboracao: string; dataProximaRevisao?: string | null }, arquivo: File) => {
+      const formData = new FormData();
+      formData.append('obraId', dados.obraId);
+      formData.append('nome', dados.nome);
+      formData.append('dataElaboracao', dados.dataElaboracao);
+      if (dados.dataProximaRevisao) formData.append('dataProximaRevisao', dados.dataProximaRevisao);
+      formData.append('arquivo', arquivo);
+      const response = await fetch(`${API_BASE_URL}/api/geracoes-pgr-eap`, { method: 'POST', headers: await montarHeadersAuth(), body: formData });
+      if (!response.ok) {
+        const corpo = await response.text().catch(() => '');
+        throw new Error(extrairMensagemErro(corpo, response.status, response.statusText));
+      }
+      return response.json() as Promise<{ id: string }>;
+    },
+    salvar: (id: string, passo: number, estrutura: EstruturaGeracaoPgr) =>
+      request<void>(`/api/geracoes-pgr-eap/${id}`, { method: 'PUT', body: JSON.stringify({ passo, estrutura }) }),
+    sugerirGhes: (id: string) => request<void>(`/api/geracoes-pgr-eap/${id}/sugerir-ghes`, { method: 'POST' }),
+    gerarRiscos: (id: string, gheNumero: number, codigoEap: string) =>
+      request<{ riscos: number }>(`/api/geracoes-pgr-eap/${id}/gerar-riscos`, { method: 'POST', body: JSON.stringify({ gheNumero, codigoEap }) }),
+    enviarAprovacao: (id: string) => request<void>(`/api/geracoes-pgr-eap/${id}/enviar-aprovacao`, { method: 'POST' }),
+    devolver: (id: string, motivo: string) =>
+      request<void>(`/api/geracoes-pgr-eap/${id}/devolver`, { method: 'POST', body: JSON.stringify({ motivo }) }),
+    aprovar: (id: string) => request<{ pgrId: string }>(`/api/geracoes-pgr-eap/${id}/aprovar`, { method: 'POST' }),
+  },
   pgrs: {
     listar: (obraId?: string) => request<Pgr[]>(`/api/pgrs${obraId ? `?obraId=${obraId}` : ''}`),
     obterDetalhe: (id: string) => request<PgrDetalhe>(`/api/pgrs/${id}`),
@@ -3154,6 +5566,30 @@ export const api = {
     atualizar: (id: string, pgr: Pgr) =>
       request<void>(`/api/pgrs/${id}`, { method: 'PUT', body: JSON.stringify(pgr) }),
     excluir: (id: string) => request<void>(`/api/pgrs/${id}`, { method: 'DELETE' }),
+    obterDocumento: async (id: string): Promise<Blob | null> => {
+      const response = await fetch(`${API_BASE_URL}/api/pgrs/${id}/documento`, {
+        headers: await montarHeadersAuth(),
+      });
+      if (response.status === 404) return null;
+      if (!response.ok) {
+        const corpo = await response.text().catch(() => '');
+        throw new Error(extrairMensagemErro(corpo, response.status, response.statusText));
+      }
+      return response.blob();
+    },
+    enviarDocumento: async (id: string, arquivo: File) => {
+      const formData = new FormData();
+      formData.append('Arquivo', arquivo);
+      const response = await fetch(`${API_BASE_URL}/api/pgrs/${id}/documento`, {
+        method: 'POST',
+        headers: await montarHeadersAuth(),
+        body: formData,
+      });
+      if (!response.ok) {
+        const corpo = await response.text().catch(() => '');
+        throw new Error(extrairMensagemErro(corpo, response.status, response.statusText));
+      }
+    },
   },
   planoAcao: {
     listar: (pgrId: string) => request<PlanoAcaoItem[]>(`/api/planoacao?pgrId=${pgrId}`),
@@ -3163,10 +5599,38 @@ export const api = {
       request<void>(`/api/planoacao/${id}`, { method: 'PUT', body: JSON.stringify(item) }),
     excluir: (id: string) => request<void>(`/api/planoacao/${id}`, { method: 'DELETE' }),
   },
+  leiturasIa: {
+    cabecalhoPgr: (arquivo: File) => {
+      const formData = new FormData();
+      formData.append('Arquivo', arquivo);
+      return enviarFormulario<CabecalhoCadastroPgrIa>('/api/pgrs/leituras-ia/cabecalho', formData);
+    },
+    cabecalhoPcmso: (arquivo: File) => {
+      const formData = new FormData();
+      formData.append('Arquivo', arquivo);
+      return enviarFormulario<CabecalhoCadastroPcmsoIa>('/api/pcmsos/leituras-ia/cabecalho', formData);
+    },
+    iniciar: (doc: DocumentoLeituraIa, documentoId: string) =>
+      request<{ id: string }>(`/api/${doc}s/${documentoId}/leituras-ia`, { method: 'POST' }),
+    // undefined quando o documento nunca foi lido (204).
+    ultima: (doc: DocumentoLeituraIa, documentoId: string) =>
+      request<LeituraIa | undefined>(`/api/${doc}s/${documentoId}/leituras-ia/ultima`),
+    obter: (doc: DocumentoLeituraIa, leituraId: string) => request<LeituraIa>(`/api/${doc}s/leituras-ia/${leituraId}`),
+    descartar: (doc: DocumentoLeituraIa, leituraId: string) =>
+      request<void>(`/api/${doc}s/leituras-ia/${leituraId}/descartar`, { method: 'POST' }),
+    cadastrar: (doc: DocumentoLeituraIa, leituraId: string, funcoes: { nomeDocumento: string; funcaoId: string | null }[]) =>
+      request<ResultadoCadastroEstrutura>(`/api/${doc}s/leituras-ia/${leituraId}/cadastrar`, {
+        method: 'POST',
+        body: JSON.stringify({ funcoes }),
+      }),
+  },
   pgrRevisoes: {
     listar: (pgrId: string) => request<PgrRevisao[]>(`/api/pgrrevisoes?pgrId=${pgrId}`),
     criar: (revisao: NovaPgrRevisao) =>
       request<{ id: string }>('/api/pgrrevisoes', { method: 'POST', body: JSON.stringify(revisao) }),
+    nova: (pgrId: string, dados: DadosNovaRevisao) =>
+      enviarFormulario<{ id: string }>('/api/pgrrevisoes/nova', formularioNovaRevisao(pgrId, dados)),
+    obterDocumento: (revisaoId: string) => baixarBlobOuNulo(`/api/pgrrevisoes/${revisaoId}/documento`),
   },
   areasSst: {
     listar: (obraId?: string) => request<AreaSst[]>(`/api/areassst${obraId ? `?obraId=${obraId}` : ''}`),
@@ -3185,6 +5649,22 @@ export const api = {
     },
     criar: (tag: NovaTagIdentificacao) =>
       request<{ id: string }>('/api/tagsidentificacao', { method: 'POST', body: JSON.stringify(tag) }),
+    gerarQrCodesTrabalhadores: (obraId?: string) =>
+      request<QrCodeTrabalhador[]>('/api/tagsidentificacao/trabalhadores/qr-codes', {
+        method: 'POST',
+        body: JSON.stringify({ obraId: obraId || null }),
+      }),
+    baixarQrCodeTrabalhador: async (uid: string) => {
+      const response = await fetch(
+        `${API_BASE_URL}/api/tagsidentificacao/trabalhadores/qr-codes/${encodeURIComponent(uid)}/png`,
+        { headers: await montarHeadersAuth() },
+      );
+      if (!response.ok) {
+        const corpo = await response.text().catch(() => '');
+        throw new Error(extrairMensagemErro(corpo, response.status, response.statusText));
+      }
+      return response.blob();
+    },
     vincular: (id: string, entidadeVinculadaTipo: number, entidadeVinculadaId: string) =>
       request<void>(`/api/tagsidentificacao/${id}/vincular`, {
         method: 'POST',
@@ -3203,9 +5683,10 @@ export const api = {
   },
   identificacaoPublica: {
     resolver: (codigoOuUid: string) => request<RecursoPublico>(`/sst/p/${encodeURIComponent(codigoOuUid)}`),
-    // Sem auth de propósito — rota [AllowAnonymous], só acessível pra quem já tem o Uid da tag.
     baixarFotoTrabalhador: async (uid: string) => {
-      const response = await fetch(`${API_BASE_URL}/sst/p/${encodeURIComponent(uid)}/foto`);
+      const response = await fetch(`${API_BASE_URL}/sst/p/${encodeURIComponent(uid)}/foto`, {
+        headers: await montarHeadersAuth(),
+      });
       if (!response.ok) {
         const corpo = await response.text().catch(() => '');
         throw new Error(extrairMensagemErro(corpo, response.status, response.statusText));
@@ -3214,7 +5695,7 @@ export const api = {
     },
   },
   validacaoPublica: {
-    resolver: (token: string) => request<DocumentoPublico>(`/sst/validar/${encodeURIComponent(token)}`),
+    resolver: (token: string) => requestPublico<DocumentoPublico>(`/sst/validar/${encodeURIComponent(token)}`),
   },
   aprs: {
     listar: (atividadeId?: string) => request<Apr[]>(`/api/aprs${atividadeId ? `?atividadeId=${atividadeId}` : ''}`),
@@ -3223,8 +5704,8 @@ export const api = {
     atualizar: (id: string, apr: AtualizarAprPayload) =>
       request<void>(`/api/aprs/${id}`, { method: 'PUT', body: JSON.stringify(apr) }),
     excluir: (id: string) => request<void>(`/api/aprs/${id}`, { method: 'DELETE' }),
-    aprovar: (id: string, aprovadoPorUsuarioId: string) =>
-      request<void>(`/api/aprs/${id}/aprovar`, { method: 'POST', body: JSON.stringify({ aprovadoPorUsuarioId }) }),
+    // Quem aprova é o usuário logado: o servidor resolve pelo token, nunca pelo corpo.
+    aprovar: (id: string) => request<void>(`/api/aprs/${id}/aprovar`, { method: 'POST' }),
     reprovar: (id: string, motivo: string) =>
       request<void>(`/api/aprs/${id}/reprovar`, { method: 'POST', body: JSON.stringify({ motivo }) }),
     exportarPdf: async (id: string) => {
@@ -3269,26 +5750,18 @@ export const api = {
     atualizar: (id: string, pt: AtualizarPermissaoTrabalhoPayload) =>
       request<void>(`/api/permissoesTrabalho/${id}`, { method: 'PUT', body: JSON.stringify(pt) }),
     excluir: (id: string) => request<void>(`/api/permissoesTrabalho/${id}`, { method: 'DELETE' }),
-    autorizar: (id: string, autorizadoPorUsuarioId: string, responsavelSstUsuarioId?: string | null) =>
-      request<void>(`/api/permissoesTrabalho/${id}/autorizar`, {
-        method: 'POST',
-        body: JSON.stringify({ autorizadoPorUsuarioId, responsavelSstUsuarioId: responsavelSstUsuarioId || null }),
-      }),
-    suspender: (id: string, motivo: string, suspensaPorUsuarioId: string) =>
-      request<void>(`/api/permissoesTrabalho/${id}/suspender`, {
-        method: 'POST',
-        body: JSON.stringify({ motivo, suspensaPorUsuarioId }),
-      }),
-    revalidar: (id: string, novaValidade: string, novoHorarioFim: string | null, revalidadaPorUsuarioId: string) =>
+    // Quem libera/suspende/revalida/encerra é o usuário logado: o servidor resolve pelo token.
+    autorizar: (id: string) =>
+      request<void>(`/api/permissoesTrabalho/${id}/autorizar`, { method: 'POST', body: JSON.stringify({}) }),
+    suspender: (id: string, motivo: string) =>
+      request<void>(`/api/permissoesTrabalho/${id}/suspender`, { method: 'POST', body: JSON.stringify({ motivo }) }),
+    revalidar: (id: string, novaValidade: string, novoHorarioFim: string | null) =>
       request<void>(`/api/permissoesTrabalho/${id}/revalidar`, {
         method: 'POST',
-        body: JSON.stringify({ novaValidade, novoHorarioFim, revalidadaPorUsuarioId }),
+        body: JSON.stringify({ novaValidade, novoHorarioFim }),
       }),
-    encerrar: (id: string, encerradaPorUsuarioId: string, observacoes?: string | null) =>
-      request<void>(`/api/permissoesTrabalho/${id}/encerrar`, {
-        method: 'POST',
-        body: JSON.stringify({ encerradaPorUsuarioId, observacoes }),
-      }),
+    encerrar: (id: string, observacoes?: string | null) =>
+      request<void>(`/api/permissoesTrabalho/${id}/encerrar`, { method: 'POST', body: JSON.stringify({ observacoes }) }),
     marcarPreRequisito: (id: string, itemId: string, atendido: boolean) =>
       request<void>(`/api/permissoesTrabalho/${id}/pre-requisitos/${itemId}/marcar`, {
         method: 'POST',
@@ -3340,7 +5813,28 @@ export const api = {
       return response.blob();
     },
   },
+  relatorios: {
+    listar: (tipo?: number, obraId?: string) => {
+      const q = new URLSearchParams();
+      if (tipo) q.set('tipo', String(tipo));
+      if (obraId) q.set('obraId', obraId);
+      const sufixo = q.toString();
+      return request<RelatorioLista[]>(`/api/relatorios${sufixo ? `?${sufixo}` : ''}`);
+    },
+    // Imagem e PDF exigem o cabeçalho de autenticação, então não dá para usar <img src> direto: baixa como blob.
+    baixarImagem: async (id: string): Promise<Blob> => baixarArquivoRelatorio(`/api/relatorios/${id}/imagem`),
+    baixarPdf: async (id: string): Promise<Blob> => baixarArquivoRelatorio(`/api/relatorios/${id}/pdf`),
+  },
+  destinatariosRelatorio: {
+    listar: () => request<DestinatarioRelatorio[]>('/api/destinatarios-relatorio'),
+    salvar: (d: SalvarDestinatarioRelatorio) =>
+      request<{ id: string }>('/api/destinatarios-relatorio', { method: 'POST', body: JSON.stringify(d) }),
+    remover: (id: string) => request<void>(`/api/destinatarios-relatorio/${id}`, { method: 'DELETE' }),
+    // Pré-preenche pelos perfis (Técnico e Engenheiro de Segurança de cada obra). Não mexe em quem já está na lista.
+    sugerirPorPerfil: () => request<{ criados: number }>('/api/destinatarios-relatorio/sugerir-por-perfil', { method: 'POST' }),
+  },
   usuarios: {
+    eu: () => request<UsuarioLogado>('/api/usuarios/eu'),
     listar: (status?: number) => request<Usuario[]>(`/api/usuarios${status ? `?status=${status}` : ''}`),
     obterPorId: (id: string) => request<Usuario>(`/api/usuarios/${id}`),
     criar: (usuario: NovoUsuario) =>
@@ -3390,6 +5884,9 @@ export const api = {
     obterDetalhe: (id: string) => request<InspecaoDetalhe>(`/api/inspecoes/${id}`),
     criar: (inspecao: NovaInspecao) =>
       request<{ id: string }>('/api/inspecoes', { method: 'POST', body: JSON.stringify(inspecao) }),
+    // Só Administrador. Recusada quando a inspeção já gerou não conformidade — a mensagem do
+    // servidor explica quantas e o que fazer (ver ExcluirInspecaoCommand).
+    excluir: (id: string) => request<void>(`/api/inspecoes/${id}`, { method: 'DELETE' }),
     responderItem: (
       respostaId: string,
       statusItem: number,
@@ -3415,6 +5912,7 @@ export const api = {
     anexarFoto: async (respostaId: string, foto: File) => {
       const formData = new FormData();
       formData.append('foto', foto);
+      anexarDadosFoto(formData, foto);
       const response = await fetch(`${API_BASE_URL}/api/inspecoes/respostas/${respostaId}/foto`, {
         method: 'POST',
         headers: await montarHeadersAuth(),
@@ -3440,6 +5938,7 @@ export const api = {
     anexarFotoDepois: async (respostaId: string, foto: File) => {
       const formData = new FormData();
       formData.append('foto', foto);
+      anexarDadosFoto(formData, foto);
       const response = await fetch(`${API_BASE_URL}/api/inspecoes/respostas/${respostaId}/foto-depois`, {
         method: 'POST',
         headers: await montarHeadersAuth(),
@@ -3481,9 +5980,105 @@ export const api = {
         body: JSON.stringify(body),
       }),
   },
+  // Alojamento em Inspeções (Tasks 2-5, 2026-09-15). adicionarMorador envia só o Guid cru como
+  // corpo (o endpoint recebe `[FromBody] Guid trabalhadorId`, não um objeto envolvendo o campo).
+  alojamentos: {
+    listar: (obraId?: string) => request<AlojamentoResumo[]>(`/api/alojamentos${obraId ? `?obraId=${obraId}` : ''}`),
+    criar: (nome: string, endereco: string | null, obraId: string) =>
+      request<{ id: string }>('/api/alojamentos', {
+        method: 'POST',
+        body: JSON.stringify({ nome, endereco, obraId }),
+      }),
+    adicionarMorador: (alojamentoId: string, trabalhadorId: string) =>
+      request<{ id: string }>(`/api/alojamentos/${alojamentoId}/moradores`, {
+        method: 'POST',
+        body: JSON.stringify(trabalhadorId),
+      }),
+    removerMorador: (alojamentoMoradorId: string) =>
+      request<void>(`/api/alojamentos/moradores/${alojamentoMoradorId}`, { method: 'DELETE' }),
+    obterConfiguracao: () => request<{ diasParaInspecaoAtrasada: number }>('/api/alojamentos/configuracao'),
+    atualizarConfiguracao: (diasParaInspecaoAtrasada: number) =>
+      request<void>('/api/alojamentos/configuracao', {
+        method: 'PUT',
+        body: JSON.stringify({ diasParaInspecaoAtrasada }),
+      }),
+    obterOuCriarInspecaoAtual: (alojamentoId: string) =>
+      request<InspecaoAtual>(`/api/alojamentos/${alojamentoId}/inspecao-atual`, { method: 'POST' }),
+    importarGrh: () =>
+      request<ImportarAlojamentosGrhResultado>('/api/alojamentos/importar-grh', { method: 'POST' }),
+  },
+  veiculos: {
+    listar: (obraId?: string, tipo?: number) => {
+      const params = new URLSearchParams();
+      if (obraId) params.set('obraId', obraId);
+      if (tipo) params.set('tipo', String(tipo));
+      const qs = params.toString();
+      return request<VeiculoResumo[]>(`/api/veiculos${qs ? `?${qs}` : ''}`);
+    },
+    criar: (dados: DadosVeiculo) =>
+      request<{ id: string }>('/api/veiculos', { method: 'POST', body: JSON.stringify(dados) }),
+    atualizar: (id: string, dados: DadosVeiculo) =>
+      request<void>(`/api/veiculos/${id}`, { method: 'PUT', body: JSON.stringify({ id, ...dados }) }),
+    // Só Administrador (exclusão lógica; o histórico de inspeções é preservado).
+    excluir: (id: string) => request<void>(`/api/veiculos/${id}`, { method: 'DELETE' }),
+    obterOuCriarInspecaoAtual: (veiculoId: string) =>
+      request<InspecaoAtual>(`/api/veiculos/${veiculoId}/inspecao-atual`, { method: 'POST' }),
+  },
+  ordensServico: {
+    obterMinuta: (trabalhadorId: string) => request<MinutaOrdemServico>(`/api/trabalhadores/${trabalhadorId}/ordem-servico/minuta`),
+  },
+  materiaisApoio: {
+    listar: (categoria?: string) =>
+      request<MaterialApoio[]>(`/api/materiaisapoio${categoria ? `?categoria=${encodeURIComponent(categoria)}` : ''}`),
+    // Retorna o Blob (não uma URL direta): o endpoint exige autenticação, então uma tag <img src>
+    // apontando pra API não carregaria os headers — a página busca o blob via fetch autenticado e
+    // monta um object URL local pra pré-visualização/download (mesmo padrão de baixarFoto acima).
+    baixarConteudo: async (id: string) => {
+      const response = await fetch(`${API_BASE_URL}/api/materiaisapoio/${id}/conteudo`, {
+        headers: await montarHeadersAuth(),
+      });
+      if (!response.ok) {
+        const corpo = await response.text().catch(() => '');
+        throw new Error(extrairMensagemErro(corpo, response.status, response.statusText));
+      }
+      return response.blob();
+    },
+    criar: async (nome: string, categoria: string | null, arquivo: File, dados?: DadosDocumentoSst) => {
+      const formData = new FormData();
+      formData.append('nome', nome);
+      if (categoria) formData.append('categoria', categoria);
+      if (dados) {
+        formData.append('tipo', String(dados.tipo));
+        if (dados.codigo) formData.append('codigo', dados.codigo);
+        if (dados.revisao) formData.append('revisao', dados.revisao);
+        if (dados.situacao) formData.append('situacao', String(dados.situacao));
+        if (dados.formaConsulta) formData.append('formaConsulta', dados.formaConsulta);
+        formData.append('incluirEmTodasOs', String(dados.incluirEmTodasOs));
+      }
+      formData.append('arquivo', arquivo);
+      const response = await fetch(`${API_BASE_URL}/api/materiaisapoio`, {
+        method: 'POST',
+        headers: await montarHeadersAuth(),
+        body: formData,
+      });
+      if (!response.ok) {
+        const corpo = await response.text().catch(() => '');
+        throw new Error(extrairMensagemErro(corpo, response.status, response.statusText));
+      }
+      return response.json() as Promise<{ id: string }>;
+    },
+    excluir: (id: string) => request<void>(`/api/materiaisapoio/${id}`, { method: 'DELETE' }),
+    atualizar: (id: string, nome: string, dados: Omit<DadosDocumentoSst, 'tipo'>) =>
+      request<void>(`/api/materiaisapoio/${id}`, { method: 'PUT', body: JSON.stringify({ id, nome, ...dados }) }),
+  },
   dds: {
+    temasAgendados: (obraId: string, data: string) =>
+      request<TemaDdsAgendado[]>(`/api/dds/temas-agendados?obraId=${obraId}&data=${encodeURIComponent(data.slice(0, 10))}`),
     listar: (obraId?: string) => request<Dds[]>(`/api/dds${obraId ? `?obraId=${obraId}` : ''}`),
     obterDetalhe: (id: string) => request<DdsDetalhe>(`/api/dds/${id}`),
+    listarFuncionarios: (id: string) => request<DdsFuncionario[]>(`/api/dds/${id}/funcionarios-disponiveis`),
+    atualizarFuncionarios: (id: string, trabalhadoresIds: string[]) =>
+      request<DdsDetalhe>(`/api/dds/${id}/funcionarios-selecionados`, { method: 'PUT', body: JSON.stringify({ trabalhadoresIds }) }),
     criar: (dds: NovaDds) => request<{ id: string }>('/api/dds', { method: 'POST', body: JSON.stringify(dds) }),
     // Dia sem expediente — feriado, folga, obra parada (pedido do usuário, 03/09): registra o dia
     // com a justificativa do responsável em vez de forçar um DDS ou deixar o dia em branco.
@@ -3497,11 +6092,44 @@ export const api = {
     // Presença exclusivamente por biometria (2026-08-31, pedido do usuário) — dispositivoId/
     // segredoDispositivo vêm do agente local (fetch a /api/dispositivo), nunca de localStorage;
     // score é o resultado do match 1:N já feito pelo agente (ver capturarDigitalLocal).
-    registrarParticipante: (ddsId: string, trabalhadorId: string, dispositivoId: string, segredoDispositivo: string, score: number) =>
+    registrarParticipante: (ddsId: string, trabalhadorId: string, credencial: CredencialLeitura, score: number, imagemDigital?: string | null) =>
       request<{ id: string }>(`/api/dds/${ddsId}/participantes`, {
         method: 'POST',
-        body: JSON.stringify({ trabalhadorId, dispositivoId, segredoDispositivo, score }),
+        body: JSON.stringify({ trabalhadorId, ...credencial, score, imagemDigital: imagemDigital ?? null }),
       }),
+    // Presença por reconhecimento facial: a foto é identificada no servidor (grupo da obra do DDS) e o
+    // rosto precisa ser do funcionário informado. Erros de rejeição vêm como { erro, motivo } no corpo.
+    registrarParticipanteFacial: async (ddsId: string, trabalhadorId: string, foto: File) => {
+      const formData = new FormData();
+      formData.append('TrabalhadorId', trabalhadorId);
+      formData.append('Foto', foto);
+      const response = await fetch(`${API_BASE_URL}/api/dds/${ddsId}/participantes/facial`, {
+        method: 'POST',
+        headers: await montarHeadersAuth(),
+        body: formData,
+      });
+      if (!response.ok) {
+        const corpo = await response.text().catch(() => '');
+        throw new Error(`${response.status} ${response.statusText}: ${corpo}`);
+      }
+      return (await response.json()) as { id: string };
+    },
+    // Fila facial: só a foto vai; o servidor descobre quem é (1:N, dentro da obra do DDS) e recusa
+    // leituras ambíguas. Devolve jaConfirmado quando a presença já tinha sido registrada.
+    registrarParticipanteFacialFila: async (ddsId: string, foto: File) => {
+      const formData = new FormData();
+      formData.append('Foto', foto);
+      const response = await fetch(`${API_BASE_URL}/api/dds/${ddsId}/participantes/facial-fila`, {
+        method: 'POST',
+        headers: await montarHeadersAuth(),
+        body: formData,
+      });
+      if (!response.ok) {
+        const corpo = await response.text().catch(() => '');
+        throw new Error(`${response.status} ${response.statusText}: ${corpo}`);
+      }
+      return (await response.json()) as ResultadoPresencaFacialFila;
+    },
     encerrar: (id: string) => request<void>(`/api/dds/${id}/encerrar`, { method: 'POST' }),
     // PDF gerado sob demanda no servidor a partir do estado atual — não faz sentido cachear para
     // uso offline (ficaria sempre desatualizado assim que o DDS mudasse). Segue fetch direto.
@@ -3517,12 +6145,13 @@ export const api = {
       const authHeaders = await montarHeadersAuth();
       return syncFetchBlob(`/api/dds/participantes/${participanteId}/foto`, authHeaders);
     },
-    enviarTelegram: (id: string) =>
-      request<EnviarDdsTelegramResultado>(`/api/dds/${id}/telegram/enviar`, { method: 'POST' }),
     // Evidências fotográficas do registro diário (3 obrigatórias para encerrar, ver EncerrarDdsCommand).
-    anexarFotoEvidencia: async (ddsId: string, foto: File) => {
+    // Slot fixo por ordem (04/09) — reanexar no mesmo quadro substitui a foto existente.
+    anexarFotoEvidencia: async (ddsId: string, ordem: number, foto: File) => {
       const formData = new FormData();
       formData.append('foto', foto);
+      anexarDadosFoto(formData, foto);
+      formData.append('ordem', String(ordem));
       const authHeaders = await montarHeadersAuth();
       return syncMutateMultipart<{ id: string }>(`/api/dds/${ddsId}/fotos-evidencia`, formData, authHeaders);
     },
@@ -3530,6 +6159,7 @@ export const api = {
       const authHeaders = await montarHeadersAuth();
       return syncFetchBlob(`/api/dds/fotos-evidencia/${fotoId}`, authHeaders);
     },
+    removerFotoEvidencia: (fotoId: string) => request<void>(`/api/dds/fotos-evidencia/${fotoId}`, { method: 'DELETE' }),
   },
   ddsSemanal: {
     listar: (obraId?: string) => request<DdsSemanal[]>(`/api/ddssemanal${obraId ? `?obraId=${obraId}` : ''}`),
@@ -3538,8 +6168,20 @@ export const api = {
       request<{ id: string }>('/api/ddssemanal', { method: 'POST', body: JSON.stringify(semanal) }),
     encerrar: (id: string, body?: { responsavelEmpresaTerceirizadaNome?: string | null; responsavelEmpresaTerceirizadaFuncao?: string | null }) =>
       request<void>(`/api/ddssemanal/${id}/encerrar`, { method: 'POST', body: JSON.stringify(body ?? {}) }),
+    // Assinatura com um clique do usuário logado em um dos dois campos do documento semanal.
+    assinar: (id: string, campo: 'responsavel-dds' | 'responsavel-obra-sst') =>
+      request<void>(`/api/ddssemanal/${id}/assinar/${campo}`, { method: 'POST' }),
     baixarPdf: async (id: string) => {
       const response = await fetch(`${API_BASE_URL}/api/ddssemanal/${id}/pdf`, { headers: await montarHeadersAuth() });
+      if (!response.ok) {
+        const corpo = await response.text().catch(() => '');
+        throw new Error(extrairMensagemErro(corpo, response.status, response.statusText));
+      }
+      return response.blob();
+    },
+    // "Baixar semana": DDS semanal + os diários com lista de presença, num PDF só.
+    baixarSemanaCompleta: async (id: string) => {
+      const response = await fetch(`${API_BASE_URL}/api/ddssemanal/${id}/pdf-completo`, { headers: await montarHeadersAuth() });
       if (!response.ok) {
         const corpo = await response.text().catch(() => '');
         throw new Error(extrairMensagemErro(corpo, response.status, response.statusText));
@@ -3556,6 +6198,16 @@ export const api = {
     excluir: (id: string) => request<void>(`/api/catalogotemasdds/${id}`, { method: 'DELETE' }),
   },
   assinatura: {
+    // Dos ids da lista, quais já estão travados pela assinatura (editar/excluir somem da tela). Mesma regra
+    // do servidor (ProtecaoDocumentoAssinado): EPI/uniforme/inspeção na 1ª assinatura; APR/PT/treinamento/DDS
+    // ao finalizar.
+    listarRegistrosTravados: (entidadeTipo: TipoRegistroTravavel, ids: string[]) =>
+      ids.length === 0
+        ? Promise.resolve<string[]>([])
+        : request<string[]>('/api/documentos/registros-travados', { method: 'POST', body: JSON.stringify({ entidadeTipo, ids }) }),
+    // Fecha o documento para novas assinaturas e gera o comprovante com o hash (permissão assinatura:finalizar).
+    finalizar: (documentoId: string) =>
+      request<DocumentoAssinatura>(`/api/documentos/${documentoId}/finalizar`, { method: 'POST' }),
     obter: async (entidadeTipo: string, entidadeId: string) => {
       const query = new URLSearchParams({ entidadeTipo, entidadeId });
       const response = await fetch(`${API_BASE_URL}/api/documentos?${query.toString()}`, {
@@ -3575,15 +6227,44 @@ export const api = {
       }),
     // Assinatura em um clique do usuário logado (entregador) — sem uid/pin, o backend resolve o
     // trabalhador a partir da sessão autenticada (claim "oid" do Entra ID).
-    assinarComSessao: (documentoId: string) =>
-      request<DocumentoSignatario>(`/api/documentos/${documentoId}/assinar/sessao`, { method: 'POST' }),
+    // A geolocalização do aparelho vai junto (log de assinaturas); nunca bloqueia a assinatura.
+    assinarComSessao: async (documentoId: string) => {
+      const localizacao = localizacaoParaCorpo(await obterLocalizacaoAssinatura());
+      return request<DocumentoSignatario>(`/api/documentos/${documentoId}/assinar/sessao`, {
+        method: 'POST',
+        body: JSON.stringify({ localizacao }),
+      });
+    },
     // Autenticação via biometria digital local (Futronic FS80H) — dispositivoId/segredoDispositivo
     // vêm do agente local (fetch a /api/dispositivo), nunca de localStorage.
-    autenticarBiometriaLocal: (documentoId: string, dispositivoId: string, segredoDispositivo: string, trabalhadorId: string, score: number) =>
-      request<DocumentoSignatario>(`/api/documentos/${documentoId}/autenticacao/biometria-local`, {
+    autenticarBiometriaLocal: async (documentoId: string, credencial: CredencialLeitura, trabalhadorId: string, score: number, imagemDigital?: string | null) => {
+      const localizacao = localizacaoParaCorpo(await obterLocalizacaoAssinatura());
+      return request<DocumentoSignatario>(`/api/documentos/${documentoId}/autenticacao/biometria-local`, {
         method: 'POST',
-        body: JSON.stringify({ dispositivoId, segredoDispositivo, trabalhadorId, score }),
-      }),
+        body: JSON.stringify({ ...credencial, trabalhadorId, score, imagemDigital: imagemDigital ?? null, localizacao }),
+      });
+    },
+    // Assinatura via reconhecimento facial (Azure Face API) — multipart e offline-aware, mesmo
+    // padrão de anexarFotoEvidencia (DDS): syncMutateMultipart enfileira sozinho se faltar conexão.
+    autenticarFacial: async (documentoAssinaturaId: string, obraId: string, foto: File) => {
+      const formData = new FormData();
+      formData.append('obraId', obraId);
+      formData.append('foto', foto);
+      anexarDadosFoto(formData, foto);
+      // Hora da foto, declarada pelo aparelho: se ela ficar na fila offline, o registro mostra quando foi
+      // tirada, e não só quando chegou ao servidor.
+      formData.append('capturadaEm', new Date().toISOString());
+      // Geolocalização no momento da assinatura (log de assinaturas), como campos do formulário.
+      const localizacao = await obterLocalizacaoAssinatura();
+      formData.append('localizacaoStatus', String(localizacao.status));
+      if (localizacao.latitude != null) formData.append('latitude', String(localizacao.latitude));
+      if (localizacao.longitude != null) formData.append('longitude', String(localizacao.longitude));
+      if (localizacao.precisaoMetros != null) formData.append('precisaoMetros', String(localizacao.precisaoMetros));
+      const authHeaders = await montarHeadersAuth();
+      return syncMutateMultipart<DocumentoSignatario>(
+        `/api/documentos/${documentoAssinaturaId}/autenticacao/facial`, formData, authHeaders,
+      );
+    },
     listar: (filtros?: { entidadeTipo?: string; status?: number; dataInicio?: string; dataFim?: string }) => {
       const query = new URLSearchParams();
       if (filtros?.entidadeTipo) query.set('entidadeTipo', filtros.entidadeTipo);
@@ -3595,6 +6276,14 @@ export const api = {
     },
     baixarPdf: async (id: string) => {
       const response = await fetch(`${API_BASE_URL}/api/documentos/${id}/pdf`, { headers: await montarHeadersAuth() });
+      if (!response.ok) {
+        const corpo = await response.text().catch(() => '');
+        throw new Error(extrairMensagemErro(corpo, response.status, response.statusText));
+      }
+      return response.blob();
+    },
+    baixarFotoEvidencia: async (signatarioId: string) => {
+      const response = await fetch(`${API_BASE_URL}/api/documentos/signatarios/${signatarioId}/foto`, { headers: await montarHeadersAuth() });
       if (!response.ok) {
         const corpo = await response.text().catch(() => '');
         throw new Error(extrairMensagemErro(corpo, response.status, response.statusText));
@@ -3618,8 +6307,13 @@ export const api = {
     excluir: (id: string) => request<void>(`/api/ativos/${id}`, { method: 'DELETE' }),
   },
   naoConformidades: {
-    listar: (status?: number) =>
-      request<NaoConformidade[]>(`/api/naoconformidades${status ? `?status=${status}` : ''}`),
+    listar: (status?: number, obraId?: string) => {
+      const params = new URLSearchParams();
+      if (status) params.set('status', String(status));
+      if (obraId) params.set('obraId', obraId);
+      const query = params.toString();
+      return request<NaoConformidade[]>(`/api/naoconformidades${query ? `?${query}` : ''}`);
+    },
     obterDetalhe: (id: string) => request<NaoConformidadeDetalhe>(`/api/naoconformidades/${id}`),
     criar: (nc: NovaNaoConformidade) =>
       request<{ id: string }>('/api/naoconformidades', { method: 'POST', body: JSON.stringify(nc) }),
@@ -3670,6 +6364,25 @@ export const api = {
       }),
   },
   acidentes: {
+    planoSugerido: (dados: PlanoSugeridoOcorrenciaRequisicao) =>
+      request<PlanoAcaoSugerido>('/api/acidentes/plano-sugerido', { method: 'POST', body: JSON.stringify(dados) }),
+    relatoTexto: (obraId: string, relato: string, complementos: RespostaPerguntaRelato[] = []) =>
+      request<RelatoOcorrenciaResposta>('/api/acidentes/relato-texto', {
+        method: 'POST',
+        body: JSON.stringify({ obraId, relato, complementos }),
+      }),
+    // Multipart, fora de request<T> (que força JSON) e do motor offline (depende do Azure OpenAI).
+    relatoVoz: (obraId: string) => (audio: Blob, nomeArquivo: string) =>
+      enviarAudioAcidente<RelatoOcorrenciaResposta>('/api/acidentes/relato-voz', audio, nomeArquivo, obraId),
+    transcrever: (audio: Blob, nomeArquivo: string) =>
+      enviarAudioAcidente<{ transcricao: string }>('/api/acidentes/transcrever', audio, nomeArquivo),
+    anexarFoto: async (id: string, ordem: number, foto: File) => {
+      const form = new FormData();
+      form.append('foto', foto); form.append('ordem', String(ordem)); anexarDadosFoto(form, foto);
+      return syncMutateMultipart<{ id: string }>('/api/acidentes/' + id + '/fotos', form, await montarHeadersAuth());
+    },
+    baixarFoto: async (id: string) => syncFetchBlob('/api/acidentes/fotos/' + id, await montarHeadersAuth()),
+    removerFoto: (id: string) => request<void>('/api/acidentes/fotos/' + id, { method: 'DELETE' }),
     listar: (filtros?: { tipo?: number; status?: number; obraId?: string }) => {
       const params = new URLSearchParams();
       if (filtros?.tipo) params.set('tipo', String(filtros.tipo));
@@ -3685,6 +6398,31 @@ export const api = {
       request<void>(`/api/acidentes/${id}`, { method: 'PUT', body: JSON.stringify(acidente) }),
     excluir: (id: string) => request<void>(`/api/acidentes/${id}`, { method: 'DELETE' }),
     avancarStatus: (id: string) => request<void>(`/api/acidentes/${id}/avancar-status`, { method: 'POST' }),
+    // Ações do plano da ocorrência: concluir com descrição (quem conclui vem do login) e reabrir.
+    concluirAcao: (acaoId: string, descricaoConclusao: string) =>
+      request<void>(`/api/acidentes/acoes-plano/${acaoId}/concluir`, { method: 'POST', body: JSON.stringify({ descricaoConclusao }) }),
+    reabrirAcao: (acaoId: string) => request<void>(`/api/acidentes/acoes-plano/${acaoId}/reabrir`, { method: 'POST' }),
+    definirResolucaoAcao: (
+      acaoId: string,
+      dados: { tipoResolucao: number | null; cursoTreinamentoId: string | null; tipoInspecao: number | null; catalogoEpiId: string | null },
+    ) => request<void>(`/api/acidentes/acoes-plano/${acaoId}/resolucao`, { method: 'PUT', body: JSON.stringify(dados) }),
+    // Reunião de análise pela tela da ocorrência. Horários em Brasília, sem fuso ("2026-10-24T14:00:00").
+    agendarReuniao: (id: string, dados: { inicio: string; duracaoMinutos: number; participantesUsuarioIds: string[] }) =>
+      request<void>(`/api/acidentes/${id}/reuniao-analise`, { method: 'POST', body: JSON.stringify(dados) }),
+    remarcarReuniao: (id: string, dados: { inicio: string; duracaoMinutos: number }) =>
+      request<void>(`/api/acidentes/${id}/reuniao-analise/horario`, { method: 'PUT', body: JSON.stringify(dados) }),
+    tentarReuniaoNoTeams: (id: string) => request<void>(`/api/acidentes/${id}/reuniao-analise/teams`, { method: 'POST' }),
+    registrarReuniaoRealizada: (id: string, dados: { realizadaEm: string; presentes: string[]; ata: string }) =>
+      request<void>(`/api/acidentes/${id}/reuniao-analise/realizada`, { method: 'PUT', body: JSON.stringify(dados) }),
+    // Relatório de Investigação de Ocorrência (PDF), mesmo padrão de inspecoes.baixarPdf.
+    baixarPdf: async (id: string) => {
+      const response = await fetch(`${API_BASE_URL}/api/acidentes/${id}/pdf`, { headers: await montarHeadersAuth() });
+      if (!response.ok) {
+        const corpo = await response.text().catch(() => '');
+        throw new Error(extrairMensagemErro(corpo, response.status, response.statusText));
+      }
+      return response.blob();
+    },
   },
   registrosHht: {
     listar: (filtros?: { obraId?: string; ano?: number }) => {
@@ -3711,6 +6449,9 @@ export const api = {
       return request<Alerta[]>(`/api/alertas${query ? `?${query}` : ''}`);
     },
     obterPorId: (id: string) => request<Alerta>(`/api/alertas/${id}`),
+    saudeEnvioTeams: () => request<SaudeEnvioTeams>('/api/alertas/saude-envio-teams'),
+    previaAvisoDocumentosVencidos: () =>
+      request<PreviaAvisoDocumentosVencidos>('/api/alertas/aviso-documentos-vencidos/previa'),
     criar: (alerta: NovoAlerta) =>
       request<{ id: string }>('/api/alertas', { method: 'POST', body: JSON.stringify(alerta) }),
     atualizar: (id: string, alerta: AtualizarAlertaPayload) =>
@@ -3724,6 +6465,82 @@ export const api = {
       }),
     resolver: (id: string) => request<void>(`/api/alertas/${id}/resolver`, { method: 'POST' }),
     ignorar: (id: string) => request<void>(`/api/alertas/${id}/ignorar`, { method: 'POST' }),
+  },
+  suporteIa: {
+    listar: (status?: number) => {
+      const params = new URLSearchParams();
+      if (status !== undefined) params.set('status', String(status));
+      const query = params.toString();
+      return request<SuporteIaSolicitacao[]>(`/api/suporte-ia${query ? `?${query}` : ''}`);
+    },
+    listarTodos: (status?: number) => {
+      const params = new URLSearchParams();
+      if (status !== undefined) params.set('status', String(status));
+      const query = params.toString();
+      return request<SuporteIaSolicitacao[]>(`/api/suporte-ia/admin${query ? `?${query}` : ''}`);
+    },
+    obterDetalhe: (id: string) => request<SuporteIaSolicitacao>(`/api/suporte-ia/${id}`),
+    // "Relatar por voz" — multipart, fora de request<T> (que força Content-Type: application/json)
+    // e do motor offline (transcrição e classificação dependem do Azure OpenAI, sempre online).
+    // Texto ditado no navegador (Web Speech API) → a IA classifica. Substitui o envio de áudio.
+    relatoTexto: (relato: string) =>
+      request<RelatoVozSuporteIa>('/api/suporte-ia/relato-texto', { method: 'POST', body: JSON.stringify({ relato }) }),
+    relatoVoz: async (audio: Blob, nomeArquivo: string): Promise<RelatoVozSuporteIa> => {
+      const formData = new FormData();
+      formData.append('audio', audio, nomeArquivo);
+      const response = await fetch(`${API_BASE_URL}/api/suporte-ia/relato-voz`, {
+        method: 'POST',
+        headers: await montarHeadersAuth(),
+        body: formData,
+      });
+      if (!response.ok) {
+        const corpo = await response.text().catch(() => '');
+        throw new Error(extrairMensagemErro(corpo, response.status, response.statusText));
+      }
+      return (await response.json()) as RelatoVozSuporteIa;
+    },
+    criar: (solicitacao: NovaSolicitacaoSuporteIa) =>
+      request<SuporteIaSolicitacao>('/api/suporte-ia', {
+        method: 'POST',
+        body: JSON.stringify(solicitacao),
+      }),
+    aprovar: (id: string) =>
+      request<SuporteIaSolicitacao>(`/api/suporte-ia/${id}/aprovar`, { method: 'POST' }),
+    concluir: (id: string, notaFechamento: string | null) =>
+      request<SuporteIaSolicitacao>(`/api/suporte-ia/${id}/concluir`, {
+        method: 'POST',
+        body: JSON.stringify({ notaFechamento }),
+      }),
+    recusar: (id: string, notaFechamento: string) =>
+      request<SuporteIaSolicitacao>(`/api/suporte-ia/${id}/recusar`, {
+        method: 'POST',
+        body: JSON.stringify({ notaFechamento }),
+      }),
+    validar: (id: string, confirmado: boolean, comentario: string | null) =>
+      request<SuporteIaSolicitacao>(`/api/suporte-ia/${id}/validar`, {
+        method: 'POST',
+        body: JSON.stringify({ confirmado, comentario }),
+      }),
+  },
+  planosIntegracao: {
+    pendentes: () => request<PlanoIntegracao[]>('/api/planos-integracao/pendentes'),
+    obter: (id: string) => request<PlanoIntegracao>(`/api/planos-integracao/${id}`),
+    assumir: (id: string) => request<void>(`/api/planos-integracao/${id}/assumir`, { method: 'POST' }),
+    alterarDataTurma: (sessaoTreinamentoId: string, dataRealizacao: string) =>
+      request<void>(`/api/sessoestreinamento/${sessaoTreinamentoId}/data`, {
+        method: 'PUT',
+        body: JSON.stringify({ dataRealizacao }),
+      }),
+  },
+  novidades: {
+    listar: () => request<NovidadeVersao[]>('/api/novidades'),
+    criar: (novidade: NovaNovidadeVersao) =>
+      request<NovidadeVersao>('/api/novidades', { method: 'POST', body: JSON.stringify(novidade) }),
+    atualizar: (id: string, novidade: NovaNovidadeVersao) =>
+      request<NovidadeVersao>(`/api/novidades/${id}`, { method: 'PUT', body: JSON.stringify(novidade) }),
+    excluir: (id: string) => request<void>(`/api/novidades/${id}`, { method: 'DELETE' }),
+    obterPendente: () => request<NovidadeVersao | undefined>('/api/novidades/pendente'),
+    marcarVisto: (id: string) => request<void>(`/api/novidades/${id}/marcar-visto`, { method: 'POST' }),
   },
   regrasAlerta: {
     listar: () => request<RegraAlerta[]>('/api/regrasalerta'),
@@ -3754,15 +6571,6 @@ export const api = {
       const query = params.toString();
       return request<TrilhaAuditoria[]>(`/api/trilhaauditoria${query ? `?${query}` : ''}`);
     },
-  },
-  dispositivosAgente: {
-    // Chamado uma vez na configuração inicial de cada totem/quiosque (tela administrativa,
-    // fora de escopo deste plano) — retorna o segredo em claro, exibido uma única vez.
-    registrar: (obraId: string, nome: string) =>
-      request<string>('/api/dispositivos-agente', {
-        method: 'POST',
-        body: JSON.stringify({ obraId, nome }),
-      }),
   },
   cipa: {
     dimensionamento: {
@@ -3921,6 +6729,101 @@ export const api = {
           method: 'POST',
           body: JSON.stringify({ data, horario, temaPalestra, palestrante }),
         }),
+    },
+  },
+  terceirizados: {
+    empresas: {
+      listar: () => request<Empresa[]>('/api/empresas'),
+      obterPorId: (id: string) => request<Empresa>(`/api/empresas/${id}`),
+      criar: (empresa: NovaEmpresa) =>
+        request<{ id: string }>('/api/empresas', { method: 'POST', body: JSON.stringify(empresa) }),
+      atualizar: (empresa: AtualizarEmpresa) =>
+        request<void>(`/api/empresas/${empresa.id}`, { method: 'PUT', body: JSON.stringify(empresa) }),
+      excluir: (id: string) => request<void>(`/api/empresas/${id}`, { method: 'DELETE' }),
+      listarConformidade: () => request<ResumoConformidadeEmpresa[]>('/api/empresas/conformidade'),
+      obterConformidade: (id: string) => request<ConformidadeEmpresa>(`/api/empresas/${id}/conformidade`),
+      // Envia (ou substitui) o documento da empresa para um item exigido; validade em yyyy-MM-dd.
+      enviarDocumento: (empresaId: string, documentoExigidoId: string, dataValidade: string | null, arquivo: File) => {
+        const formData = new FormData();
+        formData.append('DocumentoExigidoId', documentoExigidoId);
+        if (dataValidade) formData.append('DataValidade', dataValidade);
+        formData.append('Arquivo', arquivo);
+        return enviarFormulario<{ id: string }>(`/api/empresas/${empresaId}/documentos`, formData);
+      },
+      baixarDocumento: (empresaId: string, documentoId: string) =>
+        baixarBlobOuNulo(`/api/empresas/${empresaId}/documentos/${documentoId}/arquivo`),
+      removerDocumento: (empresaId: string, documentoId: string) =>
+        request<void>(`/api/empresas/${empresaId}/documentos/${documentoId}`, { method: 'DELETE' }),
+    },
+    documentosExigidos: {
+      listar: () => request<DocumentoExigidoEmpresa[]>('/api/empresas/documentos-exigidos'),
+      criar: (dados: DadosDocumentoExigidoEmpresa) =>
+        request<{ id: string }>('/api/empresas/documentos-exigidos', { method: 'POST', body: JSON.stringify(dados) }),
+      atualizar: (id: string, dados: DadosDocumentoExigidoEmpresa) =>
+        request<void>(`/api/empresas/documentos-exigidos/${id}`, { method: 'PUT', body: JSON.stringify(dados) }),
+    },
+    contratos: {
+      listarPorEmpresa: (empresaId: string) => request<Contrato[]>(`/api/contratos?empresaId=${empresaId}`),
+      obterDetalhe: (id: string) => request<ContratoDetalhe>(`/api/contratos/${id}`),
+      criar: (dados: DadosContrato & { empresaId: string; obraId: string }) =>
+        request<{ id: string }>('/api/contratos', { method: 'POST', body: JSON.stringify(dados) }),
+      lerComIa: (arquivo: File) => {
+        const formData = new FormData();
+        formData.append('Arquivo', arquivo);
+        return enviarFormulario<ContratoTerceirizadoLidoIa>('/api/contratos/leitura-ia', formData);
+      },
+      // Guarda o PDF do contrato (substitui o anterior, se houver).
+      anexarArquivo: async (id: string, arquivo: File) => {
+        const formData = new FormData();
+        formData.append('Arquivo', arquivo);
+        const response = await fetch(`${API_BASE_URL}/api/contratos/${id}/arquivo`, {
+          method: 'POST',
+          headers: await montarHeadersAuth(),
+          body: formData,
+        });
+        if (!response.ok) {
+          const corpo = await response.text().catch(() => '');
+          throw new Error(extrairMensagemErro(corpo, response.status, response.statusText));
+        }
+      },
+      baixarArquivo: (id: string) => baixarBlobOuNulo(`/api/contratos/${id}/arquivo`),
+      atualizar: (id: string, dados: DadosContrato) =>
+        request<void>(`/api/contratos/${id}`, { method: 'PUT', body: JSON.stringify({ id, ...dados }) }),
+      encerrar: (id: string, dataEncerramento: string) =>
+        request<{ pessoasAtivas: number }>(`/api/contratos/${id}/encerrar`, {
+          method: 'POST',
+          body: JSON.stringify({ dataEncerramento }),
+        }),
+      cadastrarPessoaNaVaga: (
+        contratoId: string,
+        funcaoId: string,
+        dados: { nome: string; matricula: string; cpf: string; dataAdmissao: string },
+      ) =>
+        request<{ trabalhadorId: string }>(`/api/contratos/${contratoId}/vagas/${funcaoId}/pessoas`, {
+          method: 'POST',
+          body: JSON.stringify(dados),
+        }),
+    },
+    pessoas: {
+      listar: (filtro: { empresaId?: string; contratoId?: string } = {}) => {
+        const params = new URLSearchParams();
+        if (filtro.empresaId) params.set('empresaId', filtro.empresaId);
+        if (filtro.contratoId) params.set('contratoId', filtro.contratoId);
+        const query = params.toString();
+        return request<PessoaTerceirizada[]>(`/api/terceirizados/pessoas${query ? `?${query}` : ''}`);
+      },
+      obterStatus: (trabalhadorId: string) =>
+        request<StatusLiberacaoTrabalhador>(`/api/terceirizados/pessoas/${trabalhadorId}/status`),
+    },
+    pendencias: {
+      listar: () => request<PainelPendenciasTerceirizado>('/api/terceirizados/pendencias'),
+    },
+    importacao: {
+      classificar: (arquivo: File) => {
+        const formData = new FormData();
+        formData.append('Arquivo', arquivo);
+        return enviarFormulario<ArquivoTerceirizadoClassificado>('/api/terceirizados/importacao/classificar', formData);
+      },
     },
   },
 };

@@ -4,11 +4,6 @@ import { Avatar, Card, designTokens, Legenda, Spinner, StatusChip, Text, type To
 import { ShieldError24Regular } from '@fluentui/react-icons';
 import { api, StatusArea, tipoAreaLabel, statusAreaLabel, type RecursoPublico } from '../../lib/api';
 
-// NTAG.md §3.B.4 — página pública aberta ao escanear o QR/NFC de uma Área OU de um Trabalhador
-// (crachá digital). Fica fora do AppShell (sem sidebar/header do Teams) e sempre em tema claro —
-// ambos já garantidos em App.tsx (rota /p/:codigoOuUid fora de LayoutComTeams, FluentProvider
-// próprio com aahbrantLightTheme). Onda 2 Task 9 (camada ui/), template §4.6 "Público": Card
-// centralizado com largura máx. 480px, Avatar grande, Badge→StatusChip (item 3, 5 do Guia).
 const raiz: CSSProperties = {
   minHeight: '100vh',
   display: 'flex',
@@ -39,8 +34,6 @@ const tomAptidao: Record<string, Tom> = {
   Inapto: 'alerta',
 };
 
-// Mesma janela de "vencendo" usada no Dashboard do Trabalhador (PerfilGeralTab.tsx) — consistência
-// entre a visão interna (autenticada) e a visão pública do mesmo dado.
 const DIAS_ALERTA_VENCIMENTO_EPI = 30;
 
 function diasAte(data: string): number {
@@ -55,6 +48,16 @@ function statusEpi(dataValidade?: string | null): { rotulo: string; tom: Tom } {
   return { rotulo: 'Em dia', tom: 'ok' };
 }
 
+// NTAG.md §1/§3.B.4 — "crachá digital" público: quem encosta o celular na tag em campo (fiscal,
+// auditor, o próprio trabalhador) não está no Teams e não tem token — a página inteira PRECISA
+// funcionar sem login. Por isso só consome api.identificacaoPublica.* aqui: qualquer outra chamada
+// (api.entregasEpi, api.trabalhadores.obterPerfilCompleto etc.) exige autenticação e, sem sessão
+// Microsoft no aparelho, dispara um login redirect nesta tela — foi exatamente isso que quebrou o
+// crachá de campo em 18/09 (AADSTS50011: o pathname da leitura anônima não bate com nenhum redirect
+// URI cadastrado no App Registration). Todo o dado exibido abaixo já vem de
+// ResolverTrabalhadorPublicoQuery, que deliberadamente omite o que é sensível demais pra leitura
+// anônima (status de aptidão do ASO, evidência de presença em DDS) — não adicione de volta uma
+// chamada autenticada aqui sem antes criar um endpoint público equivalente no backend.
 export function IdentificacaoPublicaPage() {
   const { codigoOuUid } = useParams<{ codigoOuUid: string }>();
   const [recurso, setRecurso] = useState<RecursoPublico | null>(null);
@@ -85,7 +88,7 @@ export function IdentificacaoPublicaPage() {
         urlCriada = URL.createObjectURL(blob);
         setFotoUrl(urlCriada);
       } catch {
-        // Sem foto não impede a leitura do crachá — Avatar cai para as iniciais do nome.
+        // Sem foto não impede a leitura do crachá; Avatar cai para as iniciais do nome.
       }
     })();
     return () => {
@@ -95,12 +98,6 @@ export function IdentificacaoPublicaPage() {
   }, [codigoOuUid, recurso]);
 
   return (
-    // data-theme="light" no wrapper (não só no FluentProvider do App.tsx): os tokens --sst-* que
-    // Card/StatusChip/Legenda consomem (spec §1.6) são custom properties de index.css escopadas por
-    // [data-theme] em QUALQUER elemento, não só :root — sem isso, um dispositivo que já usou o app
-    // interno em modo escuro (ThemeModeContext, localStorage global) escurecia junto o crachá público,
-    // ficando ilegível (achado real ao migrar para Card, item 3 do Guia — corrigido aqui, na raiz da
-    // página, e não dentro de Card, porque só a página "Público" precisa deste forçamento).
     <div style={raiz} data-theme="light">
       <div style={{ width: '100%', maxWidth: 480 }}>
         {carregando && (
@@ -115,7 +112,7 @@ export function IdentificacaoPublicaPage() {
           <Card>
             <ShieldError24Regular />
             <Text as="p" weight="semibold" style={{ marginTop: 8 }}>
-              Código ou tag não encontrada.
+              Código ou tag não encontrada ou sem acesso.
             </Text>
             <Text as="p">Verifique se o QR Code/NFC está correto e vinculado a uma área ou funcionário ativo.</Text>
           </Card>
@@ -187,7 +184,11 @@ export function IdentificacaoPublicaPage() {
               </div>
             }
             acoes={
-              <StatusChip tom={tomAptidao[recurso.statusAptidao] ?? 'info'}>{recurso.statusAptidao}</StatusChip>
+              // Vem ausente na leitura anônima da tag: o status de aptidão sai do ASO (dado de
+              // saúde) e só é retornado a chamador autenticado — ver ResolverTrabalhadorPublicoQuery.
+              recurso.statusAptidao ? (
+                <StatusChip tom={tomAptidao[recurso.statusAptidao] ?? 'info'}>{recurso.statusAptidao}</StatusChip>
+              ) : undefined
             }
           >
             <div style={{ marginTop: 16 }}>
@@ -228,6 +229,26 @@ export function IdentificacaoPublicaPage() {
                     </div>
                   );
                 })
+              )}
+            </div>
+
+            <div style={{ marginTop: 16 }}>
+              <Text weight="semibold">Histórico de DDS</Text>
+              {recurso.historicoDds.length === 0 ? (
+                <Legenda>Nenhuma participação em DDS registrada.</Legenda>
+              ) : (
+                recurso.historicoDds.map((d, indice) => (
+                  <div key={`${d.data}-${indice}`} style={linhaItem}>
+                    <div>
+                      <Text weight="semibold" size={200} style={{ display: 'block' }}>
+                        {d.tema ?? 'DDS do dia'}
+                      </Text>
+                      <Legenda>
+                        {d.data.slice(0, 10)} · {d.obraNome}
+                      </Legenda>
+                    </div>
+                  </div>
+                ))
               )}
             </div>
           </Card>

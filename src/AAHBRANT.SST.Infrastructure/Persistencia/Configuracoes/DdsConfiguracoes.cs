@@ -1,15 +1,28 @@
+using AAHBRANT.SST.Infrastructure.Seguranca;
 using AAHBRANT.SST.Domain.Entidades;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
 
 namespace AAHBRANT.SST.Infrastructure.Persistencia.Configuracoes;
 
+public class DdsFuncionarioSelecionadoConfiguracao : IEntityTypeConfiguration<DdsFuncionarioSelecionado>
+{
+    public void Configure(EntityTypeBuilder<DdsFuncionarioSelecionado> builder)
+    {
+        builder.HasOne(s => s.Dds).WithMany().HasForeignKey(s => s.DdsId).OnDelete(DeleteBehavior.Cascade);
+        builder.HasOne(s => s.Trabalhador).WithMany().HasForeignKey(s => s.TrabalhadorId).OnDelete(DeleteBehavior.Restrict);
+        builder.HasIndex(s => new { s.DdsId, s.TrabalhadorId }).IsUnique().HasFilter("[Ativo] = 1");
+        builder.HasQueryFilter(s => s.Ativo);
+    }
+}
+
 public class DdsConfiguracao : IEntityTypeConfiguration<Dds>
 {
     public void Configure(EntityTypeBuilder<Dds> builder)
     {
         builder.Property(d => d.TemaLivreNome).HasMaxLength(200);
-        builder.Property(d => d.TemaLivreDescricao).HasMaxLength(500);
+        builder.Property(d => d.TemaLivreDescricao).HasMaxLength(1000);
+        builder.Property(d => d.NumeroDocumento).HasMaxLength(50);
         builder.Property(d => d.MotivoSemExpediente).HasMaxLength(500);
 
         builder.HasOne(d => d.Obra)
@@ -142,6 +155,8 @@ public class DdsParticipanteConfiguracao : IEntityTypeConfiguration<DdsParticipa
 {
     public void Configure(EntityTypeBuilder<DdsParticipante> builder)
     {
+        // Foto de presença (rosto ou digital): cifrada no banco (LGPD, ver FotoBiometricaCriptografiaConversor).
+        builder.Property(p => p.FotoConteudo).HasConversion(new FotoBiometricaCriptografiaConversor(), FotoBiometricaCriptografiaConversor.Comparador);
         builder.HasOne(p => p.Dds)
             .WithMany(d => d.Participantes)
             .HasForeignKey(p => p.DdsId)
@@ -154,24 +169,5 @@ public class DdsParticipanteConfiguracao : IEntityTypeConfiguration<DdsParticipa
 
         builder.HasIndex(p => new { p.DdsId, p.TrabalhadorId });
         builder.HasQueryFilter(p => p.Ativo);
-    }
-}
-
-public class DdsTelegramEnvioConfiguracao : IEntityTypeConfiguration<DdsTelegramEnvio>
-{
-    public void Configure(EntityTypeBuilder<DdsTelegramEnvio> builder)
-    {
-        builder.HasOne(e => e.Dds)
-            .WithMany()
-            .HasForeignKey(e => e.DdsId)
-            .OnDelete(DeleteBehavior.Cascade);
-
-        builder.HasOne(e => e.Trabalhador)
-            .WithMany()
-            .HasForeignKey(e => e.TrabalhadorId)
-            .OnDelete(DeleteBehavior.Restrict);
-
-        builder.HasIndex(e => new { e.DdsId, e.TrabalhadorId });
-        builder.HasQueryFilter(e => e.Ativo);
     }
 }

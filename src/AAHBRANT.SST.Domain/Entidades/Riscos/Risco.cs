@@ -34,6 +34,14 @@ public class Risco : AuditableEntity
     public DateTime? Prazo { get; set; }
     public StatusControleRisco Status { get; set; } = StatusControleRisco.Pendente;
 
+    // Confirmação da avaliação pelo responsável de SST (Ordem de Serviço): sem ela a OS da função fica
+    // como minuta. Mudar probabilidade, severidade ou consequência apaga a confirmação.
+    public Guid? AvaliadoPorUsuarioId { get; set; }
+    public string? AvaliadoPorNome { get; set; }
+    public DateTime? AvaliadoEmUtc { get; set; }
+
+    public ICollection<MedidaPrevencao> Medidas { get; set; } = new List<MedidaPrevencao>();
+
     public ICollection<RiscoTrabalhadorExposto> TrabalhadoresExpostos { get; set; } = new List<RiscoTrabalhadorExposto>();
 }
 

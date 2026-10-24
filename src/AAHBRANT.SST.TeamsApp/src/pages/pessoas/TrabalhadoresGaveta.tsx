@@ -88,7 +88,7 @@ export function TrabalhadoresGaveta({
     const termo = busca.trim().toLowerCase();
     if (!termo) return trabalhadores;
     return trabalhadores.filter((t) =>
-      `${t.nome} ${nomeFuncao(t.funcaoId)} ${nomeObra(t.obraId)} ${t.matricula}`.toLowerCase().includes(termo),
+      `${t.nome} ${nomeFuncao(t.funcaoId)} ${nomeObra(t.obraId)} ${t.matricula ?? ''}`.toLowerCase().includes(termo),
     );
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [trabalhadores, busca, obras, funcoes]);
@@ -121,7 +121,7 @@ export function TrabalhadoresGaveta({
         const aso = asoMaisRecentePorTrabalhador.get(t.id);
         return (
           <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 4 }}>
-            <span style={{ fontSize: 11 }}>Mat. {t.matricula}</span>
+            {t.matricula && <span style={{ fontSize: 11 }}>Mat. {t.matricula}</span>}
             <StatusChip tom={aso ? tomAso[aso.resultadoStatus] ?? 'info' : 'neutro'}>
               {aso ? resultadoAsoLabel[aso.resultadoStatus] : 'Sem ASO'}
             </StatusChip>

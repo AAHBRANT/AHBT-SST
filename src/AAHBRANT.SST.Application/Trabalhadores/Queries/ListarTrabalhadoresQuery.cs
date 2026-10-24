@@ -14,7 +14,7 @@ public class ListarTrabalhadoresQueryHandler : IRequestHandler<ListarTrabalhador
 
     public async Task<List<TrabalhadorDto>> Handle(ListarTrabalhadoresQuery request, CancellationToken ct)
     {
-        var query = _db.Trabalhadores.AsQueryable();
+        var query = _db.Trabalhadores.AsNoTracking().AsQueryable();
 
         if (request.ObraId.HasValue)
         {
@@ -37,8 +37,6 @@ public class ListarTrabalhadoresQueryHandler : IRequestHandler<ListarTrabalhador
                 DataAdmissao = t.DataAdmissao,
                 DataDemissao = t.DataDemissao,
                 Turno = t.Turno,
-                TelegramVinculado = t.TelegramChatId != null,
-                TelegramCodigoVinculo = t.TelegramCodigoVinculo,
                 TemFoto = t.FotoConteudo != null,
                 TemBiometria = _db.TemplatesBiometricoFutronic.Any(tb => tb.TrabalhadorId == t.Id)
             })

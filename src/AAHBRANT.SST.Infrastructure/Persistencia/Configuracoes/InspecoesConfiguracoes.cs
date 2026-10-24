@@ -12,6 +12,7 @@ public class ChecklistModeloConfiguracao : IEntityTypeConfiguration<ChecklistMod
         builder.HasOne(c => c.ChecklistModeloAnterior).WithMany()
             .HasForeignKey(c => c.ChecklistModeloAnteriorId).OnDelete(DeleteBehavior.Restrict);
         builder.HasIndex(c => c.TipoInspecao);
+        builder.HasIndex(c => c.TipoVeiculo);
         builder.HasQueryFilter(c => c.Ativo);
     }
 }
@@ -21,6 +22,7 @@ public class ChecklistModeloItemConfiguracao : IEntityTypeConfiguration<Checklis
     public void Configure(EntityTypeBuilder<ChecklistModeloItem> builder)
     {
         builder.Property(i => i.Descricao).IsRequired().HasMaxLength(500);
+        builder.Property(i => i.Secao).HasMaxLength(150);
         builder.HasOne(i => i.ChecklistModelo).WithMany(c => c.Itens)
             .HasForeignKey(i => i.ChecklistModeloId).OnDelete(DeleteBehavior.Cascade);
         builder.HasIndex(i => i.ChecklistModeloId);
@@ -32,16 +34,33 @@ public class InspecaoConfiguracao : IEntityTypeConfiguration<Inspecao>
 {
     public void Configure(EntityTypeBuilder<Inspecao> builder)
     {
+        builder.Property(i => i.NumeroDocumento).HasMaxLength(50);
         builder.HasOne(i => i.Obra).WithMany()
             .HasForeignKey(i => i.ObraId).OnDelete(DeleteBehavior.Restrict);
         builder.HasOne(i => i.Atividade).WithMany()
             .HasForeignKey(i => i.AtividadeId).OnDelete(DeleteBehavior.Restrict);
+        builder.HasOne(i => i.Alojamento).WithMany()
+            .HasForeignKey(i => i.AlojamentoId).OnDelete(DeleteBehavior.Restrict);
+        builder.HasOne(i => i.Veiculo).WithMany()
+            .HasForeignKey(i => i.VeiculoId).OnDelete(DeleteBehavior.Restrict);
         builder.HasOne(i => i.ChecklistModelo).WithMany()
             .HasForeignKey(i => i.ChecklistModeloId).OnDelete(DeleteBehavior.Restrict);
         builder.HasOne(i => i.ResponsavelUsuario).WithMany()
             .HasForeignKey(i => i.ResponsavelUsuarioId).OnDelete(DeleteBehavior.Restrict);
         builder.HasIndex(i => i.ObraId);
         builder.HasIndex(i => i.ChecklistModeloId);
+        // Só uma inspeção em andamento por alojamento — garantia no banco, não só na aplicação
+        // (evita duas inspeções abertas se dois técnicos clicarem ao mesmo tempo no mesmo
+        // alojamento). StatusInspecao.EmAndamento = 1 (ver Enums.cs). "Ativo = 1" é obrigatório:
+        // excluir inspeção é soft delete e mantém Status = 1; sem isso a linha excluída ocupava a
+        // vaga e impedia abrir uma nova inspeção (duplicate key → 500, 05/10/2026).
+        builder.HasIndex(i => i.AlojamentoId)
+            .IsUnique()
+            .HasFilter("[AlojamentoId] IS NOT NULL AND [Status] = 1 AND [Ativo] = 1");
+        // Idem para veículos: uma única inspeção em andamento por veículo, garantida no banco.
+        builder.HasIndex(i => i.VeiculoId)
+            .IsUnique()
+            .HasFilter("[VeiculoId] IS NOT NULL AND [Status] = 1 AND [Ativo] = 1");
         builder.HasQueryFilter(i => i.Ativo);
     }
 }

@@ -20,8 +20,22 @@ public class Inspecao : AuditableEntity
     public Guid? AtividadeId { get; set; }
     public Atividade? Atividade { get; set; }
 
+    // Sub-aba de Inspeções (feature Alojamento) — preenchida quando esta inspeção é a checklist de
+    // um alojamento específico. Nullable pelo mesmo motivo de AtividadeId acima: nem toda inspeção
+    // é de alojamento.
+    public Guid? AlojamentoId { get; set; }
+    public Alojamento? Alojamento { get; set; }
+
+    // Inspeção de Veículos (retro, escavadeira, caminhões) — preenchida quando a checklist é de um
+    // veículo cadastrado. Nullable pelo mesmo motivo de AlojamentoId.
+    public Guid? VeiculoId { get; set; }
+    public Veiculo? Veiculo { get; set; }
+
     public Guid ChecklistModeloId { get; set; }
     public ChecklistModelo? ChecklistModelo { get; set; }
+
+    // Protocolo automático (prefixo "INSP"), gerado uma única vez na criação (CriarInspecaoCommand).
+    public string? NumeroDocumento { get; set; }
 
     public DateTime Data { get; set; }
 
@@ -46,6 +60,8 @@ public class Inspecao : AuditableEntity
 // NC gerada — a FK fica do lado da NC, que é sempre opcional/posterior ao item).
 public class InspecaoItemResposta : AuditableEntity
 {
+    public string? FotoMetadadosJson { get; set; }
+    public string? FotoDepoisMetadadosJson { get; set; }
     public Guid InspecaoId { get; set; }
     public Inspecao? Inspecao { get; set; }
 

@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import {
   Button,
   Campo,
@@ -12,7 +13,7 @@ import {
   Select,
   type Coluna,
 } from '@ui';
-import { Add24Regular } from '@fluentui/react-icons';
+import { Add24Regular, Fingerprint24Regular } from '@fluentui/react-icons';
 import {
   api,
   papelAssinaturaAprLabel,
@@ -30,6 +31,7 @@ function assinaturaVazia(aprId: string): NovaAprAssinatura {
 // exclusão, mesmo padrão de PgrRevisoesTab. Não é assinatura criptográfica/ICP-Brasil (ver disclosure
 // em Apr.cs).
 export function AprAssinaturasTab({ aprId }: { aprId: string }) {
+  const navigate = useNavigate();
   const [assinaturas, setAssinaturas] = useState<AprAssinatura[]>([]);
   const [trabalhadores, setTrabalhadores] = useState<Trabalhador[]>([]);
   const [novaAssinatura, setNovaAssinatura] = useState<NovaAprAssinatura>(() => assinaturaVazia(aprId));
@@ -83,6 +85,13 @@ export function AprAssinaturasTab({ aprId }: { aprId: string }) {
           {erro}
         </FeedbackInline>
       )}
+
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap', marginBottom: 16 }}>
+        <span>Assine a APR com a digital (leitor) ou o reconhecimento facial; o registro de ciência abaixo continua disponível.</span>
+        <Button appearance="primary" icon={<Fingerprint24Regular />} onClick={() => navigate(`/operacao/apr/${aprId}/assinar`)}>
+          Assinar com digital ou facial
+        </Button>
+      </div>
 
       <FormSection titulo="Nova assinatura" numero={1} primeira>
         <FormGrid>

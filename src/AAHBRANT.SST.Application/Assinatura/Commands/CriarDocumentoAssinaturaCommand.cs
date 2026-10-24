@@ -33,6 +33,14 @@ public class CriarDocumentoAssinaturaCommandHandler : IRequestHandler<CriarDocum
 
     public async Task<Guid> Handle(CriarDocumentoAssinaturaCommand request, CancellationToken ct)
     {
+        // Auditoria 19/10 (A02/A14): o documento só nasce para uma origem que existe, de tipo conhecido,
+        // e da obra de quem pede. Sem isso dava para criar e assinar um "DDS" que não existe.
+        if (!EscopoDocumentoAssinatura.TipoConhecido(_db, request.EntidadeTipo))
+            throw new ValidationException($"Tipo de documento não suportado: {request.EntidadeTipo}.");
+        if (!await EscopoDocumentoAssinatura.OrigemExisteAsync(_db, request.EntidadeTipo, request.EntidadeId, ct)
+            || !await EscopoDocumentoAssinatura.PodeVerAsync(_db, request.EntidadeTipo, request.EntidadeId, ct))
+            throw new KeyNotFoundException("Registro de origem não encontrado.");
+
         var existente = await _db.DocumentosAssinatura.FirstOrDefaultAsync(
             d => d.EntidadeTipo == request.EntidadeTipo && d.EntidadeId == request.EntidadeId,
             ct);

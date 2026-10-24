@@ -1,3 +1,4 @@
+using AAHBRANT.SST.Api.Autorizacao;
 using AAHBRANT.SST.Application.EntregasEpi.Commands;
 using AAHBRANT.SST.Application.EntregasEpi.Queries;
 using MediatR;
@@ -16,8 +17,8 @@ public class EntregasEpiController : ControllerBase
 
     [Authorize(Policy = "epi:ver")]
     [HttpGet]
-    public async Task<IActionResult> Listar([FromQuery] Guid? trabalhadorId, CancellationToken ct)
-        => Ok(await _mediator.Send(new ListarEntregasEpiQuery(trabalhadorId), ct));
+    public async Task<IActionResult> Listar([FromQuery] Guid? trabalhadorId, [FromQuery] Guid? obraId, CancellationToken ct)
+        => Ok(await _mediator.Send(new ListarEntregasEpiQuery(trabalhadorId, obraId), ct));
 
     [Authorize(Policy = "epi:ver")]
     [HttpGet("{id:guid}")]
@@ -44,11 +45,21 @@ public class EntregasEpiController : ControllerBase
         return NoContent();
     }
 
-    [Authorize(Policy = "epi:editar")]
+    // Excluir entrega registrada é privilégio de Administrador (pedido do usuário, 23/09) — quem
+    // tem "epi:editar" corrige uma entrega, mas não a apaga. Ver PoliticasAutorizacao.
+    [Authorize(Policy = PoliticasAutorizacao.SomenteAdministrador)]
     [HttpDelete("{id:guid}")]
     public async Task<IActionResult> Excluir(Guid id, CancellationToken ct)
     {
         await _mediator.Send(new ExcluirEntregaEpiCommand(id), ct);
+        return NoContent();
+    }
+
+    [Authorize(Policy = "epi:editar")]
+    [HttpPut("{id:guid}/confirmar")]
+    public async Task<IActionResult> Confirmar(Guid id, CancellationToken ct)
+    {
+        await _mediator.Send(new ConfirmarEntregaEpiCommand(id), ct);
         return NoContent();
     }
 

@@ -1,4 +1,5 @@
 using AAHBRANT.SST.Application.Common.Interfaces;
+using AAHBRANT.SST.Application.Common.Seguranca;
 using AAHBRANT.SST.Domain.Enums;
 using FluentValidation;
 using MediatR;
@@ -15,7 +16,9 @@ public record AtualizarExameComplementarCommand(
     DateTime DataValidade,
     string Resultado,
     string? Observacoes,
-    string? ResponsavelTecnico) : IRequest;
+    string? ResponsavelTecnico,
+    string? CodigoExame = null,
+    string? NomeExame = null) : IRequest;
 
 public class AtualizarExameComplementarCommandValidator : AbstractValidator<AtualizarExameComplementarCommand>
 {
@@ -37,8 +40,11 @@ public class AtualizarExameComplementarCommandHandler : IRequestHandler<Atualiza
 
     public async Task Handle(AtualizarExameComplementarCommand request, CancellationToken ct)
     {
-        var exame = await _db.ExamesComplementares.FirstOrDefaultAsync(e => e.Id == request.Id, ct)
+        var exame = await _db.ExamesComplementares.NoEscopoDoTrabalhador(_db, e => e.TrabalhadorId).FirstOrDefaultAsync(e => e.Id == request.Id, ct)
             ?? throw new KeyNotFoundException($"Exame complementar {request.Id} não encontrado.");
+
+        if (request.TrabalhadorId != exame.TrabalhadorId)
+            await _db.GarantirTrabalhadorNoEscopoAsync(request.TrabalhadorId, ct);
 
         exame.TrabalhadorId = request.TrabalhadorId;
         exame.AsoId = request.AsoId;
@@ -48,6 +54,12 @@ public class AtualizarExameComplementarCommandHandler : IRequestHandler<Atualiza
         exame.Resultado = request.Resultado;
         exame.Observacoes = request.Observacoes;
         exame.ResponsavelTecnico = request.ResponsavelTecnico;
+        // Nulo = não informado (tela que não conhece o campo): mantém o exame do PCMSO já gravado.
+        // Texto vazio limpa.
+        if (request.CodigoExame is not null)
+            exame.CodigoExame = string.IsNullOrWhiteSpace(request.CodigoExame) ? null : request.CodigoExame.Trim();
+        if (request.NomeExame is not null)
+            exame.NomeExame = string.IsNullOrWhiteSpace(request.NomeExame) ? null : request.NomeExame.Trim();
 
         await _db.SaveChangesAsync(ct);
     }

@@ -12,6 +12,13 @@ public class Aso : AuditableEntity
     public DateTime DataExame { get; set; }
     public DateTime DataValidade { get; set; }
 
+    // Chave de sincronização com o G-RH (fonte do documento "ASO" na tabela `documentos` deles) —
+    // nulo pra ASOs cadastrados manualmente no SST. Ver SincronizarAsoGrhCommand: campos clínicos
+    // (ResultadoStatus/Restricoes/MedicoNome) só são sobrescritos quando o G-RH manda valor
+    // preenchido, nunca apagam o que o médico do trabalho já lançou no SST.
+    public string? GrhAsoId { get; set; }
+    public DateTime? DataUltimaSincronizacao { get; set; }
+
     // Conteúdo clínico — visível apenas ao perfil Médico do Trabalho (docs/RBAC-Matrix.md); demais perfis veem só ResultadoStatus.
     public ResultadoAso ResultadoStatus { get; set; } = ResultadoAso.Pendente;
     public string? MedicoNome { get; set; }
@@ -20,6 +27,21 @@ public class Aso : AuditableEntity
 
     public ICollection<AsoRestricao> Restricoes { get; set; } = new List<AsoRestricao>();
     public ICollection<Evidencia> Evidencias { get; set; } = new List<Evidencia>();
+
+    // PDF/foto do ASO (23/10/2026, importação da pasta da terceirizada). Um arquivo por ASO.
+    public ArquivoAso? Arquivo { get; set; }
+}
+
+// Mesmo padrão de ArquivoCertificadoTreinamento: o arquivo fica no banco, um por ASO, reenviar substitui.
+public class ArquivoAso : AuditableEntity
+{
+    public Guid AsoId { get; set; }
+    public Aso? Aso { get; set; }
+
+    public string NomeArquivo { get; set; } = string.Empty;
+    public string ContentType { get; set; } = string.Empty;
+    public byte[] Conteudo { get; set; } = Array.Empty<byte>();
+    public long TamanhoBytes { get; set; }
 }
 
 public class AsoRestricao : AuditableEntity

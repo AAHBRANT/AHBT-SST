@@ -1,10 +1,10 @@
 import { useEffect, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import {
+  BotaoAcao,
   Button,
   Field,
   Input,
-  Select,
   Card,
   PageHeader,
   StatusChip,
@@ -15,16 +15,21 @@ import {
   FormGrid,
   Campo,
   FormRodape,
-  ChipCheckboxGroup,
+  ListaSelecaoMultipla,
   Textarea,
   type Tom,
+  designTokens,
 } from '@ui';
 import {
   Add24Regular,
   ArrowDownload24Regular,
   CalendarCancel24Regular,
   ChevronRight24Regular,
+  Dismiss16Regular,
+  Eye24Regular,
   LockClosed24Regular,
+  Signature24Regular,
+  LockClosed16Regular,
 } from '@fluentui/react-icons';
 import {
   api,
@@ -33,11 +38,20 @@ import {
   StatusDdsSemanal,
   statusDdsSemanalLabel,
   tipoDdsSemanalLabel,
-  TipoDdsSemanal,
+  tipoDdsSemanalIncluiTerceirizados,
   type Atividade,
   type CatalogoTemaDds,
+  type TemaDdsAgendado,
   type DdsSemanalDetalhe,
 } from '../../lib/api';
+import { useVisualizadorPdf } from '../../components/useVisualizadorPdf';
+import { SeletorTemaLivre } from './SeletorTemaLivre';
+
+// A API devolve o instante em UTC (às vezes sem o "Z") — mostra no horário de Brasília.
+function formatarDataHoraBrasilia(iso: string) {
+  const utc = /[zZ]|[+-]\d{2}:\d{2}$/.test(iso) ? iso : `${iso}Z`;
+  return new Date(utc).toLocaleString('pt-BR', { timeZone: 'America/Sao_Paulo', dateStyle: 'short', timeStyle: 'short' });
+}
 
 const NOMES_DIAS = ['Segunda-feira', 'Terça-feira', 'Quarta-feira', 'Quinta-feira', 'Sexta-feira'];
 
@@ -72,6 +86,9 @@ export function DdsSemanalDetalhePage() {
   const [detalhe, setDetalhe] = useState<DdsSemanalDetalhe | null>(null);
   const [atividades, setAtividades] = useState<Atividade[]>([]);
   const [catalogoTemas, setCatalogoTemas] = useState<CatalogoTemaDds[]>([]);
+  // Temas agendados para este dia na obra (ex.: gerado por ocorrência da véspera) — o primeiro já
+  // vem selecionado, com a origem à vista.
+  const [temasAgendados, setTemasAgendados] = useState<TemaDdsAgendado[]>([]);
   const [diaEmCriacao, setDiaEmCriacao] = useState<string | null>(null);
   const [novoDia, setNovoDia] = useState(novoDiaVazio());
   const [diaMarcandoSemExpediente, setDiaMarcandoSemExpediente] = useState<string | null>(null);
@@ -81,6 +98,9 @@ export function DdsSemanalDetalhePage() {
   const [erro, setErro] = useState<string | null>(null);
   const [processando, setProcessando] = useState(false);
   const [baixandoPdf, setBaixandoPdf] = useState(false);
+  const [baixandoSemana, setBaixandoSemana] = useState(false);
+  const [assinando, setAssinando] = useState<string | null>(null);
+  const { visualizar, dialogoVisualizador } = useVisualizadorPdf();
 
   async function carregar() {
     if (!id) return;
@@ -106,10 +126,32 @@ export function DdsSemanalDetalhePage() {
 
   function abrirCriacaoDia(data: string) {
     setDiaEmCriacao(data);
+    setDiaMarcandoSemExpediente(null);
     setNovoDia(novoDiaVazio());
+    setTemasAgendados([]);
+    if (!detalhe) return;
+    api.dds
+      .temasAgendados(detalhe.semanal.obraId, data)
+      .then((lista) => {
+        setTemasAgendados(lista);
+        if (lista.length === 0) return;
+        // O tema foi criado depois que a página carregou o catálogo? Inclui para o seletor mostrá-lo.
+        setCatalogoTemas((atuais) =>
+          lista.reduce(
+            (acc, t) =>
+              acc.some((c) => c.id === t.catalogoTemaDdsId)
+                ? acc
+                : [...acc, { id: t.catalogoTemaDdsId, nome: t.nome, descricao: t.roteiro }],
+            atuais,
+          ),
+        );
+        setNovoDia((atual) => (atual.catalogoTemaDdsId ? atual : { ...atual, catalogoTemaDdsId: lista[0].catalogoTemaDdsId }));
+      })
+      .catch(() => setTemasAgendados([]));
   }
 
   function abrirSemExpediente(data: string) {
+    setDiaEmCriacao(null);
     setDiaMarcandoSemExpediente(data);
     setMotivoSemExpediente('');
   }
@@ -182,7 +224,7 @@ export function DdsSemanalDetalhePage() {
       const url = URL.createObjectURL(blob);
       const link = document.createElement('a');
       link.href = url;
-      link.download = `dds-semanal-${id}.pdf`;
+      link.download = nomeArquivoPdf(id);
       link.click();
       URL.revokeObjectURL(url);
     } catch (e) {
@@ -190,6 +232,58 @@ export function DdsSemanalDetalhePage() {
     } finally {
       setBaixandoPdf(false);
     }
+  }
+
+  // "Baixar semana": um PDF com o DDS semanal e todos os diários (listas de presença).
+  async function baixarSemanaCompleta() {
+    if (!id) return;
+    try {
+      setBaixandoSemana(true);
+      setErro(null);
+      const blob = await api.ddsSemanal.baixarSemanaCompleta(id);
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = `dds-semana-completa-${id}.pdf`;
+      link.click();
+      URL.revokeObjectURL(url);
+    } catch (e) {
+      setErro(e instanceof Error ? e.message : 'Falha ao gerar o PDF da semana completa.');
+    } finally {
+      setBaixandoSemana(false);
+    }
+  }
+
+  // Assinatura com um clique (sessão logada) de um dos dois campos do documento — o técnico assina
+  // cada um no seu botão; o PDF só mostra assinado o campo que de fato foi assinado.
+  async function assinarCampo(campo: 'responsavel-dds' | 'responsavel-obra-sst') {
+    if (!id) return;
+    try {
+      setAssinando(campo);
+      setErro(null);
+      await api.ddsSemanal.assinar(id, campo);
+      await carregar();
+    } catch (e) {
+      setErro(e instanceof Error ? e.message : 'Falha ao registrar a assinatura.');
+    } finally {
+      setAssinando(null);
+    }
+  }
+
+  function nomeArquivoPdf(semanalId: string) {
+    return `dds-semanal-${semanalId}.pdf`;
+  }
+
+  // Abre o mesmo PDF do "Baixar PDF da semana" numa janela, sem baixar.
+  // "Visualizar semana": mostra na tela o mesmo pacote de "Baixar semana" (semanal + diários).
+  function visualizarSemanaCompleta() {
+    if (!id) return;
+    void visualizar({ titulo: 'Semana completa de DDS', nomeArquivo: `dds-semana-completa-${id}.pdf`, obter: () => api.ddsSemanal.baixarSemanaCompleta(id) });
+  }
+
+  function visualizarPdf() {
+    if (!id) return;
+    void visualizar({ titulo: 'PDF da semana de DDS', nomeArquivo: nomeArquivoPdf(id), obter: () => api.ddsSemanal.baixarPdf(id) });
   }
 
   if (!id) return <FeedbackInline tom="erro">Semana de DDS não encontrada.</FeedbackInline>;
@@ -213,12 +307,12 @@ export function DdsSemanalDetalhePage() {
     !somenteLeitura &&
     detalhe.dias.length === 5 &&
     detalhe.dias.every((d) => d.status === StatusDds.Concluido) &&
-    (semanal.tipo !== TipoDdsSemanal.Terceirizados || (responsavelTerceirizadaNome.trim() && responsavelTerceirizadaFuncao.trim()));
+    (!tipoDdsSemanalIncluiTerceirizados(semanal.tipo) || (responsavelTerceirizadaNome.trim() && responsavelTerceirizadaFuncao.trim()));
 
   return (
     <div>
       <PageHeader
-        titulo={`${tipoDdsSemanalLabel[semanal.tipo]} — ${semanal.obraNome}`}
+        titulo={`${semanal.numeroDocumento ? `${semanal.numeroDocumento} — ` : ''}${tipoDdsSemanalLabel[semanal.tipo]} — ${semanal.obraNome}`}
         subtitulo={[
           `Semana: ${semanal.dataInicioSemana?.slice(0, 10)} a ${semanal.dataFimSemana?.slice(0, 10)}`,
           `Responsável/Treinador: ${semanal.responsavelUsuarioNome}`,
@@ -231,11 +325,23 @@ export function DdsSemanalDetalhePage() {
         voltarPara="/prevencao/dds"
         rotuloVoltar="Semanas de DDS"
         acoes={
-          <Button icon={<ArrowDownload24Regular />} onClick={baixarPdf} disabled={baixandoPdf}>
-            Baixar PDF da semana
-          </Button>
+          <>
+            <BotaoAcao tom="ver" icon={<Eye24Regular />} onClick={visualizarPdf} aria-label="Visualizar PDF da semana">
+              Visualizar PDF da semana
+            </BotaoAcao>
+            <BotaoAcao tom="baixar" icon={<ArrowDownload24Regular />} onClick={baixarPdf} disabled={baixandoPdf} aria-label="Baixar PDF da semana">
+              Baixar PDF da semana
+            </BotaoAcao>
+            <BotaoAcao tom="ver" icon={<Eye24Regular />} onClick={visualizarSemanaCompleta} aria-label="Visualizar semana completa">
+              Visualizar semana
+            </BotaoAcao>
+            <BotaoAcao tom="baixar" icon={<ArrowDownload24Regular />} onClick={baixarSemanaCompleta} disabled={baixandoSemana} aria-label="Baixar semana completa">
+              {baixandoSemana ? 'Gerando…' : 'Baixar semana'}
+            </BotaoAcao>
+          </>
         }
       />
+      {dialogoVisualizador}
 
       {erro && (
         <FeedbackInline tom="erro" aoFechar={() => setErro(null)}>
@@ -243,10 +349,44 @@ export function DdsSemanalDetalhePage() {
         </FeedbackInline>
       )}
 
+      <div style={{ marginBottom: 16 }}>
+        <Card titulo="Assinaturas do documento" densidade="compacta">
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: 16 }}>
+            {(
+              [
+                { campo: 'responsavel-dds', rotulo: 'Responsável / Treinador pelo DDS', assinatura: detalhe.assinaturaResponsavelDds },
+                { campo: 'responsavel-obra-sst', rotulo: 'Responsável da Obra / SST', assinatura: detalhe.assinaturaResponsavelObraSst },
+              ] as const
+            ).map(({ campo, rotulo, assinatura }) => (
+              <div key={campo} style={{ display: 'grid', gap: 8, alignContent: 'start' }}>
+                <strong>{rotulo}</strong>
+                {assinatura ? (
+                  <>
+                    <StatusChip tom="ok">Assinado</StatusChip>
+                    <Legenda>
+                      {assinatura.nome} — {formatarDataHoraBrasilia(assinatura.assinadoEm)}
+                    </Legenda>
+                  </>
+                ) : (
+                  <Button
+                    appearance="primary"
+                    icon={<Signature24Regular />}
+                    onClick={() => assinarCampo(campo)}
+                    disabled={assinando !== null}
+                  >
+                    {assinando === campo ? 'Assinando…' : `Assinar como ${rotulo}`}
+                  </Button>
+                )}
+              </div>
+            ))}
+          </div>
+        </Card>
+      </div>
+
       {!somenteLeitura && (
         <div style={{ marginBottom: 16 }}>
           <Card titulo="Encerramento da semana" densidade="compacta">
-            {semanal.tipo === TipoDdsSemanal.Terceirizados && (
+            {tipoDdsSemanalIncluiTerceirizados(semanal.tipo) && (
               <FormSection titulo="Responsável da Empresa Terceirizada" numero={1} primeira>
                 <FormGrid>
                   <Campo span={6}>
@@ -277,7 +417,9 @@ export function DdsSemanalDetalhePage() {
             {dia.ddsId && dia.semExpediente ? (
               <>
                 <div style={{ marginBottom: 8 }}>
-                  <StatusChip tom="info">Sem expediente</StatusChip>
+                  <StatusChip tom="info" icone={<CalendarCancel24Regular />}>
+                    Sem expediente
+                  </StatusChip>
                 </div>
                 <Legenda>{dia.motivoSemExpediente}</Legenda>
               </>
@@ -301,56 +443,108 @@ export function DdsSemanalDetalhePage() {
             ) : somenteLeitura ? (
               <Legenda>Nenhum registro criado para este dia.</Legenda>
             ) : diaMarcandoSemExpediente === dia.data ? (
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-                <Field label="Motivo (feriado, folga, obra parada etc.)">
-                  <Textarea value={motivoSemExpediente} onChange={(_, d) => setMotivoSemExpediente(d.value)} />
-                </Field>
-                <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
+              <FormSection titulo="Dia sem expediente" primeira>
+                <FormGrid>
+                  <Campo span={12}>
+                    <Field label="Motivo (feriado, folga, obra parada etc.)">
+                      <Textarea
+                        value={motivoSemExpediente}
+                        onChange={(_, d) => setMotivoSemExpediente(d.value)}
+                      />
+                    </Field>
+                  </Campo>
+                </FormGrid>
+                <FormRodape>
                   <Button appearance="subtle" onClick={() => setDiaMarcandoSemExpediente(null)}>
                     Cancelar
                   </Button>
                   <Button appearance="primary" icon={<CalendarCancel24Regular />} onClick={confirmarSemExpediente} disabled={processando}>
                     Confirmar
                   </Button>
-                </div>
-              </div>
+                </FormRodape>
+              </FormSection>
             ) : diaEmCriacao === dia.data ? (
               <FormSection titulo="Registro do dia" primeira>
                 <FormGrid>
                   <Campo span={12}>
-                    {atividades.length === 0 ? (
-                      <Legenda>Nenhuma atividade cadastrada para esta obra.</Legenda>
+                    <Field label="Atividades do dia" hint="Cada atividade marcada entra como um tema do dia, com perigo, consequência e controles da Matriz de Riscos.">
+                      {atividades.length === 0 ? (
+                        <Legenda>Nenhuma atividade cadastrada para esta obra.</Legenda>
+                      ) : (
+                        <div style={{ display: 'grid', gap: 8 }}>
+                          {novoDia.atividadesIds.length > 0 && (
+                            <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }} aria-label="Atividades escolhidas">
+                              {novoDia.atividadesIds.map((idAtividade) => (
+                                <Button key={idAtividade} size="small" appearance="outline" icon={<Dismiss16Regular />} iconPosition="after"
+                                  aria-label={`Remover ${atividades.find((a) => a.id === idAtividade)?.nome ?? 'atividade'}`}
+                                  onClick={() => setNovoDia((atual) => ({ ...atual, atividadesIds: atual.atividadesIds.filter((x) => x !== idAtividade) }))}>
+                                  {atividades.find((a) => a.id === idAtividade)?.nome ?? 'Atividade'}
+                                </Button>
+                              ))}
+                            </div>
+                          )}
+                          <ListaSelecaoMultipla
+                            aria-label="Atividades do dia"
+                            placeholderBusca="Buscar atividade"
+                            opcoes={atividades.map((a) => ({ id: a.id, rotulo: a.nome }))}
+                            selecionados={novoDia.atividadesIds}
+                            aoMudar={(atualizar) => setNovoDia((atual) => ({ ...atual, atividadesIds: atualizar(atual.atividadesIds) }))}
+                          />
+                        </div>
+                      )}
+                    </Field>
+                  </Campo>
+                  <Campo span={12}>
+                    {temasAgendados.length > 0 ? (
+                      // Tema gerado por ocorrência: obrigatório e fixo neste registro (regra do usuário,
+                      // 09/10/2026) — o servidor aplica o mesmo tema mesmo que a tela mande outro.
+                      <Field label="Tema do dia (obrigatório)" hint="Gerado a partir de uma ocorrência na obra. Não pode ser trocado nem removido.">
+                        <div style={{ display: 'grid', gap: 8 }}>
+                          <div
+                            style={{
+                              display: 'grid',
+                              gap: 6,
+                              padding: '10px 12px',
+                              borderRadius: 8,
+                              border: `1px solid ${designTokens.colorPrimary}`,
+                              backgroundColor: designTokens.colorNeutralLight,
+                            }}
+                          >
+                            <strong style={{ fontSize: 14, display: 'inline-flex', gap: 6, alignItems: 'center' }}>
+                              <LockClosed16Regular aria-label="Tema fixo" /> {temasAgendados[0].nome}
+                            </strong>
+                            <Legenda>Sugerido a partir da {temasAgendados[0].descricaoOrigem ?? 'ocorrência registrada na obra'}.</Legenda>
+                            {temasAgendados[0].roteiro && (
+                              <details>
+                                <summary style={{ cursor: 'pointer', fontSize: 12 }}>Ver roteiro</summary>
+                                <p style={{ margin: '6px 0 0', fontSize: 13, lineHeight: '20px', whiteSpace: 'pre-wrap' }}>
+                                  {temasAgendados[0].roteiro}
+                                </p>
+                              </details>
+                            )}
+                          </div>
+                          {temasAgendados.length > 1 && (
+                            <Legenda>
+                              {temasAgendados.length - 1 === 1
+                                ? 'Há mais 1 tema de ocorrência pendente nesta obra: ele entra no próximo DDS.'
+                                : `Há mais ${temasAgendados.length - 1} temas de ocorrência pendentes nesta obra: eles entram nos próximos DDS.`}
+                            </Legenda>
+                          )}
+                        </div>
+                      </Field>
                     ) : (
-                      <Field label="Atividades do dia">
-                        <ChipCheckboxGroup
-                          aria-label="Atividades do dia"
-                          opcoes={atividades.map((a) => ({ id: a.id, rotulo: a.nome }))}
-                          selecionados={novoDia.atividadesIds}
-                          aoMudar={(ids) => setNovoDia((atual) => ({ ...atual, atividadesIds: ids }))}
+                      <Field label="Tema livre (opcional)" hint="Temas criados pela equipe, como campanhas do mês. Só um por registro.">
+                        <SeletorTemaLivre
+                          temas={catalogoTemas}
+                          selecionadoId={novoDia.catalogoTemaDdsId}
+                          aoSelecionar={(idTema) => setNovoDia((atual) => ({ ...atual, catalogoTemaDdsId: idTema }))}
+                          aoCriar={(tema) => {
+                            setCatalogoTemas((atuais) => [...atuais, tema].sort((a, b) => a.nome.localeCompare(b.nome, 'pt-BR')));
+                            setNovoDia((atual) => ({ ...atual, catalogoTemaDdsId: tema.id }));
+                          }}
                         />
                       </Field>
                     )}
-                  </Campo>
-                  <Campo span={12}>
-                    <Legenda>
-                      Cada atividade marcada acima entra automaticamente como um tema do dia (perigo, consequência e
-                      controles já cadastrados na Matriz de Riscos dela).
-                    </Legenda>
-                  </Campo>
-                  <Campo span={6}>
-                    <Field label="Tema livre (opcional)">
-                      <Select
-                        value={novoDia.catalogoTemaDdsId}
-                        onChange={(_, d) => setNovoDia((atual) => ({ ...atual, catalogoTemaDdsId: d.value }))}
-                      >
-                        <option value="">Nenhum</option>
-                        {catalogoTemas.map((tema) => (
-                          <option key={tema.id} value={tema.id}>
-                            {tema.nome}
-                          </option>
-                        ))}
-                      </Select>
-                    </Field>
                   </Campo>
                 </FormGrid>
                 <FormRodape>

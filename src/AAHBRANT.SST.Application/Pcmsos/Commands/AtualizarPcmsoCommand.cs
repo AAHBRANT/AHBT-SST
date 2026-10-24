@@ -1,4 +1,5 @@
 using AAHBRANT.SST.Application.Common.Interfaces;
+using AAHBRANT.SST.Application.Common.Seguranca;
 using FluentValidation;
 using MediatR;
 using Microsoft.EntityFrameworkCore;
@@ -14,7 +15,6 @@ public record AtualizarPcmsoCommand(
     Guid? ResponsavelUsuarioId,
     Guid? ObraId,
     Guid? SetorId,
-    string? Arquivo,
     string? MedicoResponsavelNome,
     string? MedicoResponsavelCrm,
     string? FuncoesContempladas,
@@ -30,7 +30,6 @@ public class AtualizarPcmsoCommandValidator : AbstractValidator<AtualizarPcmsoCo
         RuleFor(x => x.Id).NotEmpty();
         RuleFor(x => x.Nome).NotEmpty().MaximumLength(200);
         RuleFor(x => x.Versao).MaximumLength(50);
-        RuleFor(x => x.Arquivo).MaximumLength(500);
         RuleFor(x => x.MedicoResponsavelNome).MaximumLength(150);
         RuleFor(x => x.MedicoResponsavelCrm).MaximumLength(30);
         RuleFor(x => x.DataEmissao).NotEmpty();
@@ -53,9 +52,11 @@ public class AtualizarPcmsoCommandHandler : IRequestHandler<AtualizarPcmsoComman
         pcmso.Validade = request.Validade;
         pcmso.DataEmissao = request.DataEmissao;
         pcmso.ResponsavelUsuarioId = request.ResponsavelUsuarioId;
+        if (request.ObraId != pcmso.ObraId && !_db.ObraNoEscopo(request.ObraId))
+            throw new KeyNotFoundException("Obra não encontrada. Selecione uma obra à qual você tem acesso.");
+
         pcmso.ObraId = request.ObraId;
         pcmso.SetorId = request.SetorId;
-        pcmso.Arquivo = request.Arquivo;
         pcmso.MedicoResponsavelNome = request.MedicoResponsavelNome;
         pcmso.MedicoResponsavelCrm = request.MedicoResponsavelCrm;
         pcmso.FuncoesContempladas = request.FuncoesContempladas;

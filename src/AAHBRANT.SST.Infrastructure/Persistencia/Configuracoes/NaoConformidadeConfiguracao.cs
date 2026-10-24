@@ -14,6 +14,9 @@ public class NaoConformidadeConfiguracao : IEntityTypeConfiguration<NaoConformid
         builder.Property(n => n.ObservacoesEncerramento).HasMaxLength(1000);
         builder.Property(n => n.MotivoDevolucao).HasMaxLength(1000);
 
+        builder.HasOne(n => n.Obra).WithMany()
+            .HasForeignKey(n => n.ObraId).OnDelete(DeleteBehavior.Restrict);
+        builder.HasIndex(n => n.ObraId);
         builder.HasOne(n => n.Atividade).WithMany()
             .HasForeignKey(n => n.AtividadeId).OnDelete(DeleteBehavior.Restrict);
         builder.HasOne(n => n.Risco).WithMany()

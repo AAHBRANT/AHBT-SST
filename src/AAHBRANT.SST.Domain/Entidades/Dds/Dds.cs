@@ -21,8 +21,17 @@ public class Dds : AuditableEntity
 
     public DateTime Data { get; set; }
 
+    // Momento (UTC) em que o DDS foi encerrado (botão Encerrar). Gravado a partir de 07/10/2026: DDS
+    // anteriores ficam sem esse dado. A duração do DDS NÃO usa este campo (vai da 1ª à última assinatura);
+    // ele mostra quando o DDS foi fechado e quanto se demorou para fechar.
+    public DateTime? EncerradoEm { get; set; }
+
     public Guid ResponsavelUsuarioId { get; set; }
     public Usuario? ResponsavelUsuario { get; set; }
+
+    // Protocolo automático (prefixo "DDS-D" — "DDS" já pertence ao DdsSemanal), gerado uma única vez
+    // na criação (CriarDdsCommand), mesmo padrão de DdsSemanal/Cipa/Pcmso/Certificado.
+    public string? NumeroDocumento { get; set; }
 
     // Tema livre (opcional, aditivo — não substitui os temas das atividades abaixo). Nome/
     // descrição são uma cópia do CatalogoTemaDds no momento da criação (mesmo princípio de
@@ -96,6 +105,7 @@ public class CatalogoTemaDds : AuditableEntity
 // (1 a 3) só identifica qual das 3 fotos obrigatórias é essa — sem significado além de UI.
 public class DdsFotoEvidencia : AuditableEntity
 {
+    public string? FotoMetadadosJson { get; set; }
     public Guid DdsId { get; set; }
     public Dds? Dds { get; set; }
 
@@ -146,21 +156,4 @@ public class DdsParticipante : AuditableEntity
     public byte[] FotoConteudo { get; set; } = Array.Empty<byte>();
     public string FotoContentType { get; set; } = string.Empty;
     public double? ScoreConfianca { get; set; }
-}
-
-// Um envio de Telegram por trabalhador — dobra como log de envio e como registro de confirmação de
-// ciência (botão inline "Confirmo ciência" no chat). Id (Guid gerado no client, ver AuditableEntity)
-// é usado como callback_data do botão para correlacionar o clique a este envio.
-public class DdsTelegramEnvio : AuditableEntity
-{
-    public Guid DdsId { get; set; }
-    public Dds? Dds { get; set; }
-
-    public Guid TrabalhadorId { get; set; }
-    public Trabalhador? Trabalhador { get; set; }
-
-    public long ChatId { get; set; }
-    public DateTime EnviadoEm { get; set; }
-    public int? MessageId { get; set; }
-    public DateTime? ConfirmadoEm { get; set; }
 }

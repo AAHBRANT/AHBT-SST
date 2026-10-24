@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import {
+  BotaoAcao,
   Button,
   Campo,
   Card,
@@ -207,7 +208,7 @@ export function QuestionarioAplicabilidadeTab() {
             carregando={carregandoLista}
             vazio={{ titulo: 'Nenhuma pergunta cadastrada ainda.' }}
             acoesLinha={(i) => (
-              <Button appearance="subtle" icon={<Delete24Regular />} aria-label="Excluir" onClick={() => excluirItem(i.id)} />
+              <BotaoAcao tom="excluir" icon={<Delete24Regular />} aria-label="Excluir" onClick={() => excluirItem(i.id)} />
             )}
           />
         </Card>

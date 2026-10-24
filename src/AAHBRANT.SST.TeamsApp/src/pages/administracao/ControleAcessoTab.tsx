@@ -1,5 +1,6 @@
 import { Fragment, useEffect, useMemo, useState } from 'react';
 import {
+  BotaoAcao,
   Button,
   Campo,
   Card,
@@ -86,6 +87,7 @@ export function ControleAcessoTab() {
   const [usuarioSelecionadoId, setUsuarioSelecionadoId] = useState<string | null>(null);
   const [nomeEdicao, setNomeEdicao] = useState('');
   const [statusEdicao, setStatusEdicao] = useState<number>(StatusUsuario.Ativo);
+  const [trabalhadorIdEdicao, setTrabalhadorIdEdicao] = useState('');
   const [perfilParaAtribuir, setPerfilParaAtribuir] = useState('');
   const [obraParaAtribuir, setObraParaAtribuir] = useState('');
 
@@ -191,6 +193,7 @@ export function ControleAcessoTab() {
     setUsuarioSelecionadoId(usuario.id);
     setNomeEdicao(usuario.nome);
     setStatusEdicao(usuario.status);
+    setTrabalhadorIdEdicao(usuario.trabalhadorId ?? '');
     setPerfilParaAtribuir('');
     setObraParaAtribuir('');
   }
@@ -230,7 +233,7 @@ export function ControleAcessoTab() {
         id: usuarioSelecionado.id,
         nome: nomeEdicao,
         status: statusEdicao,
-        trabalhadorId: usuarioSelecionado.trabalhadorId,
+        trabalhadorId: trabalhadorIdEdicao || null,
       });
       await carregar();
       sucessoToast('Usuário atualizado com sucesso.');
@@ -434,8 +437,8 @@ export function ControleAcessoTab() {
             vazio={{ titulo: 'Nenhum usuário cadastrado ainda.' }}
             aoClicarLinha={selecionarUsuario}
             acoesLinha={(usuario) => (
-              <Button
-                appearance="subtle"
+              <BotaoAcao
+                tom="excluir"
                 icon={<Delete24Regular />}
                 onClick={() => excluirUsuario(usuario.id)}
                 aria-label="Excluir"
@@ -465,6 +468,18 @@ export function ControleAcessoTab() {
                       </Select>
                     </Field>
                   </Campo>
+                  <Campo span={3}>
+                    <Field label="Funcionário vinculado">
+                      <Select value={trabalhadorIdEdicao} onChange={(_, d) => setTrabalhadorIdEdicao(d.value)}>
+                        <option value="">Nenhum</option>
+                        {trabalhadores.map((t) => (
+                          <option key={t.id} value={t.id}>
+                            {t.nome}
+                          </option>
+                        ))}
+                      </Select>
+                    </Field>
+                  </Campo>
                 </FormGrid>
                 <FormRodape>
                   <Button appearance="primary" icon={<Save24Regular />} onClick={salvarEdicaoUsuario}>
@@ -483,8 +498,8 @@ export function ControleAcessoTab() {
                 chaveLinha={(v) => v.id}
                 vazio={{ titulo: 'Nenhum perfil atribuído ainda.' }}
                 acoesLinha={(vinculo) => (
-                  <Button
-                    appearance="subtle"
+                  <BotaoAcao
+                    tom="excluir"
                     icon={<Delete24Regular />}
                     onClick={() => removerPerfilObra(vinculo.id)}
                     aria-label="Remover"
@@ -576,8 +591,8 @@ export function ControleAcessoTab() {
               aoClicarLinha={selecionarPerfil}
               acoesLinha={(perfil) =>
                 !perfil.ehSistema ? (
-                  <Button
-                    appearance="subtle"
+                  <BotaoAcao
+                    tom="excluir"
                     icon={<Delete24Regular />}
                     onClick={() => excluirPerfil(perfil.id)}
                     aria-label="Excluir"
@@ -659,6 +674,7 @@ export function ControleAcessoTab() {
                                 size="small"
                                 icon={aberto ? <ChevronDown20Regular /> : <ChevronRight20Regular />}
                                 onClick={() => alternarModuloAberto(modulo)}
+                                data-botao="livre"
                                 style={{ height: 'auto', whiteSpace: 'normal', textAlign: 'left' }}
                               >
                                 <Text weight="semibold">{modulo}</Text>
@@ -673,6 +689,7 @@ export function ControleAcessoTab() {
                                 <TableCell key={escopo}>
                                   <input
                                     type="checkbox"
+                                    aria-label={`Marcar ou desmarcar todas as permissões do módulo ${modulo} no escopo ${escopoAcessoLabel[escopo]}`}
                                     checked={todosMarcadosNoEscopo}
                                     onChange={() => alternarColunaModulo(lista, escopo, !todosMarcadosNoEscopo)}
                                     title={`Marcar/desmarcar toda a coluna "${escopoAcessoLabel[escopo]}" deste módulo`}
@@ -691,6 +708,7 @@ export function ControleAcessoTab() {
                                   <TableCell key={escopo}>
                                     <input
                                       type="checkbox"
+                                      aria-label={`${permissao.acao} - ${escopoAcessoLabel[escopo]}`}
                                       checked={marcados.has(chave(permissao.id, escopo))}
                                       onChange={() => alternarPermissao(permissao.id, escopo)}
                                     />

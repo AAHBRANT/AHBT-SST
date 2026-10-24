@@ -54,12 +54,16 @@ public class DdsParticipanteDto
     public string TrabalhadorNome { get; set; } = string.Empty;
     public TipoFotoParticipante FotoTipo { get; set; }
     public double? ScoreConfianca { get; set; }
-    public DateTime? TelegramEnviadoEm { get; set; }
-    public DateTime? TelegramConfirmadoEm { get; set; }
+    // Preenchido quando a presença já valeu como assinatura eletrônica deste DDS (04/09) — a mesma
+    // digital da presença é reaproveitada pelo Motor de Assinatura (ver RegistrarParticipanteCommand),
+    // sem exigir uma segunda leitura na tela "Assinar DDS".
+    public DateTime? AssinadoEm { get; set; }
+    public MetodoAutenticacaoAssinatura? MetodoAssinatura { get; set; }
 }
 
 public class DdsFotoEvidenciaDto
 {
+    public AAHBRANT.SST.Application.Common.DadosCapturaFoto? DadosFoto { get; set; }
     public Guid Id { get; set; }
     public int Ordem { get; set; }
 }
@@ -70,5 +74,8 @@ public class DdsDetalheDto
     public DdsDto Dds { get; set; } = null!;
     public List<DdsItemChecklistDto> ItensChecklist { get; set; } = new();
     public List<DdsParticipanteDto> Participantes { get; set; } = new();
+    public List<DdsFuncionarioDto> FuncionariosSelecionados { get; set; } = new();
     public List<DdsFotoEvidenciaDto> FotosEvidencia { get; set; } = new();
 }
+
+public record DdsFuncionarioDto(Guid TrabalhadorId, string Nome, string? Matricula);

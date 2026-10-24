@@ -16,8 +16,8 @@ public class AsosController : ControllerBase
 
     [Authorize(Policy = "aso:ver_status")]
     [HttpGet]
-    public async Task<IActionResult> Listar([FromQuery] Guid? trabalhadorId, CancellationToken ct)
-        => Ok(await _mediator.Send(new ListarAsosQuery(trabalhadorId), ct));
+    public async Task<IActionResult> Listar([FromQuery] Guid? trabalhadorId, [FromQuery] Guid? obraId, CancellationToken ct)
+        => Ok(await _mediator.Send(new ListarAsosQuery(trabalhadorId, obraId), ct));
 
     [Authorize(Policy = "aso:ver_status")]
     [HttpGet("{id:guid}")]
@@ -33,6 +33,27 @@ public class AsosController : ControllerBase
     {
         var id = await _mediator.Send(command, ct);
         return CreatedAtAction(nameof(ObterPorId), new { id }, new { id });
+    }
+
+    // PDF/foto do ASO (23/10/2026, importação da pasta da terceirizada). Reenviar substitui.
+    [Authorize(Policy = "aso:editar")]
+    [HttpPost("{id:guid}/arquivo")]
+    [RequestSizeLimit(12 * 1024 * 1024)]
+    public async Task<IActionResult> AnexarArquivo(Guid id, [FromForm] AnexarArquivoAsoRequest body, CancellationToken ct)
+    {
+        using var stream = new MemoryStream();
+        await body.Arquivo.CopyToAsync(stream, ct);
+        var arquivoId = await _mediator.Send(new AnexarArquivoAsoCommand(id, body.Arquivo.FileName, stream.ToArray(), body.Arquivo.ContentType), ct);
+        return Ok(new { id = arquivoId });
+    }
+
+    [Authorize(Policy = "aso:ver_status")]
+    [HttpGet("{id:guid}/arquivo")]
+    public async Task<IActionResult> ObterArquivo(Guid id, [FromQuery] bool inline, CancellationToken ct)
+    {
+        var arquivo = await _mediator.Send(new ObterArquivoAsoQuery(id), ct);
+        if (arquivo is null) return NotFound();
+        return inline ? File(arquivo.Conteudo, arquivo.ContentType) : File(arquivo.Conteudo, arquivo.ContentType, arquivo.NomeArquivo);
     }
 
     [Authorize(Policy = "aso:editar")]
@@ -51,4 +72,17 @@ public class AsosController : ControllerBase
         await _mediator.Send(new ExcluirAsoCommand(id), ct);
         return NoContent();
     }
+
+    // Sincronização manual sob demanda (Integração G-RH, 2026-09-16) — a rotina normal é o polling
+    // automático (GrhDbPollingService); este endpoint só força uma rodada agora, útil pra testar ou
+    // pra não esperar o próximo ciclo depois de completar o cadastro no G-RH.
+    [Authorize(Policy = "aso:criar")]
+    [HttpPost("importar-grh")]
+    public async Task<IActionResult> ImportarDoGrh(CancellationToken ct)
+        => Ok(await _mediator.Send(new ImportarAsoGrhCommand(), ct));
+}
+
+public class AnexarArquivoAsoRequest
+{
+    public IFormFile Arquivo { get; set; } = null!;
 }

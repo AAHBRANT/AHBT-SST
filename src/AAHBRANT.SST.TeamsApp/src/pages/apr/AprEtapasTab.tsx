@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import {
+  BotaoAcao,
   Button,
   Campo,
   Card,
@@ -252,8 +253,8 @@ export function AprEtapasTab({ aprId }: { aprId: string }) {
           vazio={{ titulo: 'Nenhuma etapa cadastrada ainda.' }}
           aoClicarLinha={expandir}
           acoesLinha={(e) => (
-            <Button
-              appearance="subtle"
+            <BotaoAcao
+              tom="excluir"
               icon={<Delete24Regular />}
               aria-label="Excluir etapa"
               onClick={() => excluirEtapa(e.id)}
@@ -274,16 +275,14 @@ export function AprEtapasTab({ aprId }: { aprId: string }) {
                     chaveLinha={(r) => r.id}
                     acoesLinha={(r) => (
                       <>
-                        <Button
-                          appearance="subtle"
-                          size="small"
+                        <BotaoAcao
+                          tom="ver"
                           icon={<Edit24Regular />}
                           aria-label="Editar"
                           onClick={() => editarRisco(r)}
                         />
-                        <Button
-                          appearance="subtle"
-                          size="small"
+                        <BotaoAcao
+                          tom="excluir"
                           icon={<Delete24Regular />}
                           aria-label="Excluir"
                           onClick={() => excluirRisco(r.id, etapa.id)}

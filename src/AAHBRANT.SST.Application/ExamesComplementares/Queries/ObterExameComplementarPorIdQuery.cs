@@ -1,4 +1,5 @@
 using AAHBRANT.SST.Application.Common.Interfaces;
+using AAHBRANT.SST.Application.Common.Seguranca;
 using MediatR;
 using Microsoft.EntityFrameworkCore;
 
@@ -15,6 +16,7 @@ public class ObterExameComplementarPorIdQueryHandler : IRequestHandler<ObterExam
     public async Task<ExameComplementarDto?> Handle(ObterExameComplementarPorIdQuery request, CancellationToken ct)
     {
         return await _db.ExamesComplementares
+            .NoEscopoDoTrabalhador(_db, e => e.TrabalhadorId)
             .Where(e => e.Id == request.Id)
             .Select(e => new ExameComplementarDto
             {
@@ -22,6 +24,8 @@ public class ObterExameComplementarPorIdQueryHandler : IRequestHandler<ObterExam
                 TrabalhadorId = e.TrabalhadorId,
                 AsoId = e.AsoId,
                 Tipo = e.Tipo,
+                CodigoExame = e.CodigoExame,
+                NomeExame = e.NomeExame,
                 DataRealizacao = e.DataRealizacao,
                 DataValidade = e.DataValidade,
                 Resultado = e.Resultado,

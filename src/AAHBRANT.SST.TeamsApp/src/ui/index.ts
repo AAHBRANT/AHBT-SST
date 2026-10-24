@@ -7,11 +7,15 @@ export * from './tokens/movimento';
 // Primitivos Fluent que não ganham wrapper (spec §2.2) — re-exportados para a página não precisar
 // importar @fluentui/react-components.
 export {
-  Avatar, Button, Checkbox, Field, Input, Select, Spinner, Text, Textarea, Tooltip,
+  Avatar, Button, Checkbox, Input, Select, Spinner, Text, Textarea, Tooltip,
   // Radio/RadioGroup: mesmo espírito do resto da lista (a11y já correta, sem hex/estilo próprio) —
   // faltava na lista original da spec §2.2 por não ter uso ainda; achado na Onda 2 Task 18
   // (QuestionarioAplicabilidadeTab.tsx, único consumidor no app hoje).
   Radio, RadioGroup,
+  // Diálogo modal: EntregasTab (canhoto do carrinho) e outras páginas usam as peças de Dialog direto.
+  Dialog, DialogActions, DialogBody, DialogContent, DialogSurface, DialogTitle,
+  // Switch: liga/desliga simples (CursosTreinamentoTab — curso de Integração de Segurança).
+  Switch,
 } from '@fluentui/react-components';
 
 // Exceção pontual (spec §5.1): primitivos de tabela crus, só para grades que genuinamente não são
@@ -40,20 +44,27 @@ export { Carregando, type CarregandoProps } from './primitivos/Carregando/Carreg
 export { FeedbackInline, type FeedbackInlineProps } from './primitivos/FeedbackInline/FeedbackInline';
 export { Legenda, type LegendaProps } from './primitivos/Legenda/Legenda';
 export { BarraProgresso, type BarraProgressoProps } from './primitivos/BarraProgresso/BarraProgresso';
+export { Field, type FieldProps } from './primitivos/Field/Field';
+export { SstTooltip, type SstTooltipProps } from './primitivos/Tooltip/SstTooltip';
 
 export { Abas, type AbasProps, type AbaItem } from './compostos/Abas/Abas';
 export { useAbaNaUrl } from './compostos/Abas/useAbaNaUrl';
+export { DashboardTopo } from './compostos/DashboardTopo/DashboardTopo';
 
 export { DataTable, type DataTableProps, type Coluna } from './compostos/DataTable/DataTable';
 
 export { FormSection, FormRodape } from './compostos/Formulario/FormSection';
 export { FormGrid, Campo } from './compostos/Formulario/FormGrid';
 export { ChipCheckboxGroup, type ChipCheckboxGroupProps } from './primitivos/ChipCheckboxGroup/ChipCheckboxGroup';
+export { ListaSelecaoMultipla, type ListaSelecaoMultiplaProps } from './primitivos/ListaSelecaoMultipla/ListaSelecaoMultipla';
 
 export { SeletorPesquisavel, type SeletorPesquisavelProps, type OpcaoSeletor } from './primitivos/SeletorPesquisavel/SeletorPesquisavel';
 export { useConfirmar, type OpcoesConfirmacao } from './primitivos/ConfirmDialog/useConfirmar';
+export { BotaoAcao, type BotaoAcaoProps, type TomBotaoAcao } from './primitivos/BotaoAcao/BotaoAcao';
+export { BotaoVoltar, type BotaoVoltarProps } from './primitivos/BotaoVoltar/BotaoVoltar';
 
 export { PainelLateral, type PainelLateralProps } from './compostos/PainelLateral/PainelLateral';
+export { PainelCriacaoInline, type PainelCriacaoInlineProps } from './compostos/PainelCriacaoInline/PainelCriacaoInline';
 export { KpiCard, type KpiCardProps } from './compostos/KpiCard/KpiCard';
 
 export { DetailPageLayout, type DetailPageLayoutProps } from './layout/DetailPageLayout/DetailPageLayout';

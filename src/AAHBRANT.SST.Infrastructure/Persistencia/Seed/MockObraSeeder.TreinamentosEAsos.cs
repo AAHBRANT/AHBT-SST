@@ -16,6 +16,9 @@ public static partial class MockObraSeeder
                 NormaReferencia = c.NormaReferencia,
                 CargaHorariaMinima = c.CargaHorariaMinima,
                 ValidadeEmMeses = c.ValidadeEmMeses,
+                // Marcador explícito (22/09) — o que libera a entrega de EPI. Sem isto, o banco
+                // semeado do zero nasceria sem nenhum curso de NR-06 marcado e travaria a entrega.
+                AtendeNr6 = c.NormaReferencia == "NR-06",
             })
             .ToList();
 

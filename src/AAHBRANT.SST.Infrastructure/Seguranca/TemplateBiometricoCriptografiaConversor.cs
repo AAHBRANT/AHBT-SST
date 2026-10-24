@@ -41,7 +41,8 @@ public static class TemplateBiometricoCriptografiaConversor
         return Convert.ToBase64String(resultado);
     }
 
-    // Só usado em testes de round-trip — nenhum código de produção do backend chama isto.
+    // Templates nunca são descriptografados no backend (só no agente). Quem chama isto em produção é
+    // ImagemBiometricaCriptografiaService, só para imagens de referência do log de assinaturas.
     public static byte[] Descriptografar(string cifradoBase64)
     {
         var chave = TemplateBiometricoCriptografiaContexto.ObterChave();

@@ -3,12 +3,14 @@ using AAHBRANT.SST.Domain.Enums;
 namespace AAHBRANT.SST.Application.Inspecoes;
 
 // Layout inspirado na planilha "Patrulha de Segurança do Trabalho" do usuário (31/08): um bloco por
-// achado, com evidência anterior/posterior lado a lado. Cabeçalho próprio (não usa
-// CabecalhoDocumentoPadrao — decisão do usuário, 01/09): slot de logo sempre em branco neste
-// documento, ver InspecaoPdfService.CabecalhoInspecao.
+// achado, com evidência anterior/posterior lado a lado. Cabeçalho: CabecalhoDocumentoPadrao, mesmo
+// componente usado por APR/PT/DDS/CIPA/etc. — a exceção que mantinha o slot de logo em branco só
+// para este documento (decisão de 01/09) foi revertida a pedido do usuário em 2026-09-09, pra
+// manter o visual padronizado entre todos os documentos gerados pelo sistema.
 public record InspecaoPdfItemModelo(
     int Ordem,
     string Descricao,
+    string? Secao,
     string? Local,
     StatusItemChecklist? StatusItem,
     string? Observacao,
@@ -18,15 +20,40 @@ public record InspecaoPdfItemModelo(
     byte[]? FotoAntesConteudo,
     byte[]? FotoDepoisConteudo);
 
+public record InspecaoPdfSignatarioModelo(
+    string Nome,
+    string Metodo,
+    DateTime AssinadoEm,
+    string? Funcao = null,
+    AAHBRANT.SST.Domain.Enums.MetodoAutenticacaoAssinatura? MetodoAutenticacao = null);
+
+public record InspecaoPdfAssinaturaModelo(
+    DateTime FinalizadoEm,
+    string ConteudoHash,
+    string UrlValidacaoPublica,
+    byte[] QrCodePng,
+    IReadOnlyList<InspecaoPdfSignatarioModelo> Signatarios);
+
 public record InspecaoPdfModelo(
     string? ObraNome,
+    byte[]? ObraLogoConteudo,
     string TipoInspecao,
     string ChecklistNome,
     int ChecklistVersao,
     DateTime Data,
     string ResponsavelNome,
     string Status,
-    IReadOnlyList<InspecaoPdfItemModelo> Itens);
+    IReadOnlyList<InspecaoPdfItemModelo> Itens,
+    string? Protocolo,
+    string ConteudoHash,
+    string UrlValidacaoPublica,
+    byte[] QrCodePng,
+    bool TemAssinatura,
+    InspecaoPdfAssinaturaModelo? Assinatura = null,
+    // Inspeção de Veículos: linhas de identificação (tipo, placa/prefixo, modelo, empresa) e layout
+    // compacto — 1 foto por item, só nos Não Conformes, sem local/responsável/prazo por item.
+    IReadOnlyList<string>? IdentificacaoVeiculo = null,
+    bool EvidenciaUnicaSoNaoConforme = false);
 
 public interface IInspecaoPdfService
 {

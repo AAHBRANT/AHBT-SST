@@ -1,3 +1,4 @@
+using AAHBRANT.SST.Application.Common;
 using AAHBRANT.SST.Application.Common.Interfaces;
 using AAHBRANT.SST.Domain.Interfaces;
 using Microsoft.EntityFrameworkCore;
@@ -19,6 +20,22 @@ public class TreinamentoValidoRule : IEligibilityRule
 
     public async Task<EligibilityCheckItem> AvaliarAsync(EligibilityRequest request, CancellationToken ct = default)
     {
+        var funcaoNome = await _db.Trabalhadores
+            .Where(t => t.Id == request.TrabalhadorId)
+            .Select(t => t.Funcao != null ? t.Funcao.Nome : null)
+            .FirstOrDefaultAsync(ct);
+
+        if (FuncaoSstClassifier.EhTecnicoSeguranca(funcaoNome))
+        {
+            return new EligibilityCheckItem
+            {
+                Requisito = NomeRequisito,
+                Atendido = true,
+                Critico = true,
+                Detalhe = "Dispensado - Técnico de Segurança"
+            };
+        }
+
         var possuiTreinamentoValido = await _db.Treinamentos
             .Where(t => t.TrabalhadorId == request.TrabalhadorId && t.DataValidade.Date >= DateTime.UtcNow.Date)
             .AnyAsync(ct);

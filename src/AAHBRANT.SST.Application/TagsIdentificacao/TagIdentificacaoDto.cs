@@ -25,3 +25,24 @@ public class ResolverTagDto
     public Guid? EntidadeVinculadaId { get; set; }
     public string? EntidadeVinculadaNome { get; set; }
 }
+
+public record QrCodePerfilPublicoResultado(byte[] Png, string UrlPerfil);
+
+public interface IQrCodePerfilPublicoService
+{
+    QrCodePerfilPublicoResultado Gerar(string uid);
+    string MontarUrl(string uid);
+}
+
+public class QrCodeTrabalhadorDto
+{
+    public Guid TrabalhadorId { get; set; }
+    public string TrabalhadorNome { get; set; } = string.Empty;
+    public string Matricula { get; set; } = string.Empty;
+    public Guid ObraId { get; set; }
+    public string ObraNome { get; set; } = string.Empty;
+    public Guid TagId { get; set; }
+    public string Uid { get; set; } = string.Empty;
+    public string UrlPerfil { get; set; } = string.Empty;
+    public bool JaExistia { get; set; }
+}

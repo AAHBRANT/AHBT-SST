@@ -20,6 +20,51 @@ public class FuncoesController : ControllerBase
         => Ok(await _mediator.Send(new ListarFuncoesQuery(), ct));
 
     [Authorize(Policy = "organizacional:ver")]
+    [HttpGet("duplicadas")]
+    public async Task<IActionResult> ListarDuplicadas(CancellationToken ct)
+        => Ok(await _mediator.Send(new ListarFuncoesDuplicadasQuery(), ct));
+
+    [Authorize(Policy = "organizacional:excluir")]
+    [HttpPost("duplicadas/mesclar")]
+    public async Task<IActionResult> MesclarDuplicada(MesclarFuncaoDuplicadaCommand command, CancellationToken ct)
+    {
+        await _mediator.Send(command, ct);
+        return NoContent();
+    }
+
+    [Authorize(Policy = "organizacional:ver")]
+    [HttpGet("orfas")]
+    public async Task<IActionResult> ListarOrfas(CancellationToken ct)
+        => Ok(await _mediator.Send(new ListarFuncoesOrfasQuery(), ct));
+
+    [Authorize(Policy = "organizacional:excluir")]
+    [HttpPost("orfas/excluir")]
+    public async Task<IActionResult> ExcluirOrfas(ExcluirFuncoesOrfasCommand command, CancellationToken ct)
+        => Ok(new { quantidadeExcluida = await _mediator.Send(command, ct) });
+
+    // Diagnóstico/correção de emergência (22/09) — ver comentário em
+    // ListarFuncoesInativasComTrabalhadorQuery/ReativarFuncaoCommand.
+    [Authorize(Policy = "organizacional:ver")]
+    [HttpGet("inativas-com-trabalhador")]
+    public async Task<IActionResult> ListarInativasComTrabalhador(CancellationToken ct)
+        => Ok(await _mediator.Send(new ListarFuncoesInativasComTrabalhadorQuery(), ct));
+
+    [Authorize(Policy = "organizacional:editar")]
+    [HttpPost("{id:guid}/reativar")]
+    public async Task<IActionResult> Reativar(Guid id, CancellationToken ct)
+    {
+        await _mediator.Send(new ReativarFuncaoCommand(id), ct);
+        return NoContent();
+    }
+
+    // Pedido do usuário (22/09): visão ampla pra revisão manual — ver comentário em
+    // ListarFuncoesSemTrabalhadorQuery.
+    [Authorize(Policy = "organizacional:ver")]
+    [HttpGet("sem-trabalhador")]
+    public async Task<IActionResult> ListarSemTrabalhador(CancellationToken ct)
+        => Ok(await _mediator.Send(new ListarFuncoesSemTrabalhadorQuery(), ct));
+
+    [Authorize(Policy = "organizacional:ver")]
     [HttpGet("{id:guid}")]
     public async Task<IActionResult> ObterPorId(Guid id, CancellationToken ct)
     {
@@ -66,6 +111,19 @@ public class FuncoesController : ControllerBase
     }
 
     [Authorize(Policy = "organizacional:ver")]
+    [HttpGet("{id:guid}/uniformes")]
+    public async Task<IActionResult> ListarUniformes(Guid id, CancellationToken ct)
+        => Ok(await _mediator.Send(new ListarUniformesPorFuncaoQuery(id), ct));
+
+    [Authorize(Policy = "organizacional:editar")]
+    [HttpPut("{id:guid}/uniformes")]
+    public async Task<IActionResult> DefinirUniformes(Guid id, DefinirUniformesRequest request, CancellationToken ct)
+    {
+        await _mediator.Send(new DefinirMatrizUniformeFuncaoCommand(id, request.CatalogoUniformeIds), ct);
+        return NoContent();
+    }
+
+    [Authorize(Policy = "organizacional:ver")]
     [HttpGet("{id:guid}/treinamentos-obrigatorios")]
     public async Task<IActionResult> ListarTreinamentosObrigatorios(Guid id, CancellationToken ct)
         => Ok(await _mediator.Send(new ListarTreinamentosObrigatoriosPorFuncaoQuery(id), ct));
@@ -81,3 +139,4 @@ public class FuncoesController : ControllerBase
 
 public record DefinirEpisRequest(List<Guid> CatalogoEpiIds);
 public record DefinirTreinamentosObrigatoriosRequest(List<Guid> CursoTreinamentoIds);
+public record DefinirUniformesRequest(List<Guid> CatalogoUniformeIds);

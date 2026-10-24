@@ -1,4 +1,6 @@
+using AAHBRANT.SST.Application.Assinatura;
 using AAHBRANT.SST.Application.Common.Interfaces;
+using AAHBRANT.SST.Application.Common.Seguranca;
 using AAHBRANT.SST.Domain.Entidades;
 using FluentValidation;
 using MediatR;
@@ -7,10 +9,10 @@ using Microsoft.EntityFrameworkCore;
 namespace AAHBRANT.SST.Application.Aprs.Commands;
 
 // Edição de dados de cadastro (cabeçalho/responsáveis) — não altera Status/aprovação, que passam
-// por AprovarAprCommand/ReprovarAprCommand.
+// por AprovarAprCommand/ReprovarAprCommand. NumeroApr não é editável (gerado uma única vez na
+// criação, ver CriarAprCommand) — permanece intocado aqui.
 public record AtualizarAprCommand(
     Guid Id,
-    string? NumeroApr,
     Guid AtividadeId,
     string Local,
     string? MaquinasEquipamentos,
@@ -25,7 +27,6 @@ public class AtualizarAprCommandValidator : AbstractValidator<AtualizarAprComman
     public AtualizarAprCommandValidator()
     {
         RuleFor(x => x.Id).NotEmpty();
-        RuleFor(x => x.NumeroApr).MaximumLength(60);
         RuleFor(x => x.AtividadeId).NotEmpty();
         RuleFor(x => x.Local).NotEmpty().MaximumLength(200);
         RuleFor(x => x.MaquinasEquipamentos).MaximumLength(500);
@@ -41,12 +42,17 @@ public class AtualizarAprCommandHandler : IRequestHandler<AtualizarAprCommand>
 
     public async Task Handle(AtualizarAprCommand request, CancellationToken ct)
     {
+        await ProtecaoDocumentoAssinado.GarantirEditavelAsync(_db, "Apr", request.Id, ct);
+
         var apr = await _db.Aprs
+            .NoEscopoDaAtividade(_db, a => a.AtividadeId)
             .Include(a => a.Responsaveis)
             .FirstOrDefaultAsync(a => a.Id == request.Id, ct)
             ?? throw new KeyNotFoundException($"APR {request.Id} não encontrada.");
 
-        apr.NumeroApr = request.NumeroApr;
+        if (request.AtividadeId != apr.AtividadeId)
+            await _db.GarantirAtividadeNoEscopoAsync(request.AtividadeId, ct);
+
         apr.AtividadeId = request.AtividadeId;
         apr.Local = request.Local;
         apr.MaquinasEquipamentos = request.MaquinasEquipamentos;

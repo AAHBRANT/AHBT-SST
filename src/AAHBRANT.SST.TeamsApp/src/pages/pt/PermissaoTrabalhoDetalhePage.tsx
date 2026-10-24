@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import {
   Abas,
+  BotaoAcao,
   Button,
   Campo,
   Card,
@@ -18,13 +19,14 @@ import {
   type Tom,
 } from '@ui';
 import { CampoData } from '../../components/CampoData';
-import { ArrowDownload24Regular, Signature24Regular } from '@fluentui/react-icons';
+import { ArrowDownload24Regular, Eye24Regular, Signature24Regular } from '@fluentui/react-icons';
 import { api, StatusPt, statusPtLabel, type PermissaoTrabalhoDetalhe } from '../../lib/api';
 import { PreRequisitosPtTab } from './PreRequisitosPtTab';
 import { TiposTrabalhoPtTab } from './TiposTrabalhoPtTab';
 import { VerificacoesPtTab } from './VerificacoesPtTab';
 import { EpiEpcPtTab } from './EpiEpcPtTab';
 import { RiscosCriticosPtTab } from './RiscosCriticosPtTab';
+import { useVisualizadorPdf } from '../../components/useVisualizadorPdf';
 
 const ABAS_PT = ['preRequisitos', 'tiposTrabalho', 'verificacoes', 'episEpcs', 'riscosCriticos'] as const;
 type AbaPt = (typeof ABAS_PT)[number];
@@ -52,14 +54,10 @@ export function PermissaoTrabalhoDetalhePage() {
   const [detalhe, setDetalhe] = useState<PermissaoTrabalhoDetalhe | null>(null);
   const [erro, setErro] = useState<string | null>(null);
   const [exportando, setExportando] = useState(false);
+  const { visualizar, dialogoVisualizador } = useVisualizadorPdf();
 
-  const [autorizadoPorUsuarioId, setAutorizadoPorUsuarioId] = useState('');
-  const [responsavelSstUsuarioId, setResponsavelSstUsuarioId] = useState('');
-  const [suspensaPorUsuarioId, setSuspensaPorUsuarioId] = useState('');
   const [motivoSuspensao, setMotivoSuspensao] = useState('');
-  const [revalidadaPorUsuarioId, setRevalidadaPorUsuarioId] = useState('');
   const [novaValidade, setNovaValidade] = useState('');
-  const [encerradaPorUsuarioId, setEncerradaPorUsuarioId] = useState('');
   const [observacoesEncerramento, setObservacoesEncerramento] = useState('');
   const [processando, setProcessando] = useState(false);
 
@@ -82,11 +80,11 @@ export function PermissaoTrabalhoDetalhePage() {
   // `false` mantém o formulário aberto — tanto a guarda local (campo vazio) quanto a falha da API
   // devolvem `false`, senão o acordeão fecharia e a mensagem de erro ficaria fora da vista.
   async function autorizar() {
-    if (!id || !autorizadoPorUsuarioId) return false;
+    if (!id) return false;
     try {
       setProcessando(true);
       setErro(null);
-      await api.permissoesTrabalho.autorizar(id, autorizadoPorUsuarioId, responsavelSstUsuarioId || null);
+      await api.permissoesTrabalho.autorizar(id);
       await carregar();
     } catch (e) {
       setErro(e instanceof Error ? e.message : 'Falha ao liberar PT.');
@@ -97,11 +95,11 @@ export function PermissaoTrabalhoDetalhePage() {
   }
 
   async function suspender() {
-    if (!id || !suspensaPorUsuarioId || !motivoSuspensao) return false;
+    if (!id || !motivoSuspensao) return false;
     try {
       setProcessando(true);
       setErro(null);
-      await api.permissoesTrabalho.suspender(id, motivoSuspensao, suspensaPorUsuarioId);
+      await api.permissoesTrabalho.suspender(id, motivoSuspensao);
       setMotivoSuspensao('');
       await carregar();
     } catch (e) {
@@ -113,11 +111,11 @@ export function PermissaoTrabalhoDetalhePage() {
   }
 
   async function revalidar() {
-    if (!id || !revalidadaPorUsuarioId || !novaValidade) return false;
+    if (!id || !novaValidade) return false;
     try {
       setProcessando(true);
       setErro(null);
-      await api.permissoesTrabalho.revalidar(id, novaValidade, null, revalidadaPorUsuarioId);
+      await api.permissoesTrabalho.revalidar(id, novaValidade, null);
       setNovaValidade('');
       await carregar();
     } catch (e) {
@@ -129,11 +127,11 @@ export function PermissaoTrabalhoDetalhePage() {
   }
 
   async function encerrar() {
-    if (!id || !encerradaPorUsuarioId) return false;
+    if (!id) return false;
     try {
       setProcessando(true);
       setErro(null);
-      await api.permissoesTrabalho.encerrar(id, encerradaPorUsuarioId, observacoesEncerramento || null);
+      await api.permissoesTrabalho.encerrar(id, observacoesEncerramento || null);
       setObservacoesEncerramento('');
       await carregar();
     } catch (e) {
@@ -153,7 +151,7 @@ export function PermissaoTrabalhoDetalhePage() {
       const url = URL.createObjectURL(blob);
       const link = document.createElement('a');
       link.href = url;
-      link.download = `pt-${id}.pdf`;
+      link.download = nomeArquivoPdf(id);
       link.click();
       URL.revokeObjectURL(url);
     } catch (e) {
@@ -161,6 +159,20 @@ export function PermissaoTrabalhoDetalhePage() {
     } finally {
       setExportando(false);
     }
+  }
+
+  function nomeArquivoPdf(ptId: string) {
+    return `pt-${ptId}.pdf`;
+  }
+
+  // Abre o mesmo PDF do "Exportar PDF" numa janela, sem baixar.
+  function visualizarPdf() {
+    if (!id) return;
+    void visualizar({
+      titulo: 'PDF da Permissão de Trabalho',
+      nomeArquivo: nomeArquivoPdf(id),
+      obter: () => api.permissoesTrabalho.exportarPdf(id),
+    });
   }
 
   if (!id) return <FeedbackInline tom="erro">Permissão de Trabalho não encontrada.</FeedbackInline>;
@@ -188,14 +200,7 @@ export function PermissaoTrabalhoDetalhePage() {
       habilitada: true,
       aoExecutar: autorizar,
       formulario: (
-        <>
-          <Field label="ID do usuário emitente/liberador (GUID)" required>
-            <Input value={autorizadoPorUsuarioId} onChange={(_, d) => setAutorizadoPorUsuarioId(d.value)} />
-          </Field>
-          <Field label="ID do responsável SST (opcional)">
-            <Input value={responsavelSstUsuarioId} onChange={(_, d) => setResponsavelSstUsuarioId(d.value)} />
-          </Field>
-        </>
+<p style={{ margin: 0 }}>A liberação será registrada com o seu usuário (emitente/liberador), na data e hora atuais.</p>
       ),
     });
   }
@@ -208,9 +213,6 @@ export function PermissaoTrabalhoDetalhePage() {
       aoExecutar: suspender,
       formulario: (
         <>
-          <Field label="ID do usuário (GUID)" required>
-            <Input value={suspensaPorUsuarioId} onChange={(_, d) => setSuspensaPorUsuarioId(d.value)} />
-          </Field>
           <Field label="Motivo da suspensão" required>
             <Textarea value={motivoSuspensao} onChange={(_, d) => setMotivoSuspensao(d.value)} />
           </Field>
@@ -227,9 +229,6 @@ export function PermissaoTrabalhoDetalhePage() {
       aoExecutar: revalidar,
       formulario: (
         <>
-          <Field label="ID do usuário (GUID)" required>
-            <Input value={revalidadaPorUsuarioId} onChange={(_, d) => setRevalidadaPorUsuarioId(d.value)} />
-          </Field>
           <Field label="Nova validade" required>
             <CampoData value={novaValidade} onChange={(_, d) => setNovaValidade(d.value)} />
           </Field>
@@ -238,15 +237,13 @@ export function PermissaoTrabalhoDetalhePage() {
     });
     acoes.push({
       chave: 'encerrar',
-      rotulo: 'Encerrar',
+      rotulo: 'Finalizar permissão de trabalho',
+      finalizacao: true,
       tom: 'primario',
       habilitada: true,
       aoExecutar: encerrar,
       formulario: (
         <>
-          <Field label="ID do usuário que encerra (GUID)" required>
-            <Input value={encerradaPorUsuarioId} onChange={(_, d) => setEncerradaPorUsuarioId(d.value)} />
-          </Field>
           <Field label="Observações">
             <Textarea value={observacoesEncerramento} onChange={(_, d) => setObservacoesEncerramento(d.value)} />
           </Field>
@@ -271,14 +268,19 @@ export function PermissaoTrabalhoDetalhePage() {
             >
               Assinar PT (ciência da equipe)
             </Button>
-            <Button
-              appearance="secondary"
+            <BotaoAcao tom="ver" icon={<Eye24Regular />} onClick={visualizarPdf} aria-label="Visualizar PDF">
+              Visualizar PDF
+            </BotaoAcao>
+            <BotaoAcao
+              tom="baixar"
               icon={<ArrowDownload24Regular />}
               onClick={exportarPdf}
               disabled={exportando}
+              aria-label="Exportar PDF"
             >
               Exportar PDF
-            </Button>
+            </BotaoAcao>
+            {dialogoVisualizador}
           </>
         ),
       }}

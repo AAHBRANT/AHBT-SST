@@ -1,6 +1,8 @@
+import { pendenciasFoto } from '../../lib/dadosFoto';
 import { useEffect, useState } from 'react';
-import { useNavigate, useParams } from 'react-router-dom';
+import { useLocation, useNavigate, useParams } from 'react-router-dom';
 import {
+  BotaoAcao,
   Button,
   Campo,
   Card,
@@ -21,6 +23,8 @@ import {
 } from '@ui';
 import {
   ArrowDownload24Regular,
+  Eye24Regular,
+  Open24Regular,
   Save24Regular,
   Signature24Regular,
   Warning24Regular,
@@ -31,11 +35,16 @@ import {
   StatusItemChecklist,
   statusInspecaoLabel,
   statusItemChecklistLabel,
+  TipoInspecao,
   tipoInspecaoLabel,
+  tipoVeiculoLabel,
   type InspecaoDetalhe,
   type Usuario,
 } from '../../lib/api';
-import { SeletorFotoCamera } from '../../components/SeletorFotoCamera';
+import { SlotFoto } from '../../components/camera/SlotFoto';
+import { SeletorStatusItemChecklist } from '../../components/inspecoes/SeletorStatusItemChecklist';
+import { useRegistrosTravados } from '../../hooks/useRegistrosTravados';
+import { useVisualizadorPdf } from '../../components/useVisualizadorPdf';
 
 interface EdicaoResposta {
   descricao: string;
@@ -58,13 +67,30 @@ const tomPorStatusInspecao: Record<number, Tom> = {
   [StatusInspecao.Concluida]: 'ok',
 };
 
-// Cor do status do achado — mesmo esquema verde/amarelo da planilha "Patrulha de Segurança do
+// Cor do status do ponto verificado — mesmo esquema verde/amarelo da planilha "Patrulha de Segurança do
 // Trabalho" (pendente = ainda não conforme, resolvido = já corrigido e reavaliado como conforme).
 const tomPorStatusItem: Record<number, Tom> = {
   [StatusItemChecklist.Conforme]: 'ok',
   [StatusItemChecklist.NaoConforme]: 'atencao',
   [StatusItemChecklist.NaoAplicavel]: 'info',
 };
+
+function formatarDataIso(data?: string | null) {
+  if (!data) return '';
+  const [ano, mes, dia] = data.slice(0, 10).split('-');
+  return dia && mes && ano ? `${dia}/${mes}/${ano}` : data;
+}
+
+function DadoResumo({ rotulo, valor }: { rotulo: string; valor: string }) {
+  return (
+    <div style={{ borderBottom: '1px solid rgba(0, 0, 0, 0.08)', padding: '0 0 10px' }}>
+      <Text size={200} style={{ display: 'block', color: '#667085', marginBottom: 4 }}>
+        {rotulo}
+      </Text>
+      <Text weight="semibold">{valor}</Text>
+    </div>
+  );
+}
 
 // Onda 2 Task 10 (camada ui/): detalhe de uma execução de inspeção. DetailPageLayout com resumo e a
 // única ação de fluxo (encerrar) na lateral — "Baixar PDF" e "Assinar inspeção" ficam no cabeçalho
@@ -74,16 +100,26 @@ const tomPorStatusItem: Record<number, Tom> = {
 // revisado em AprDetalhePage.tsx/PgrDetalhePage.tsx).
 export function InspecaoDetalhePage() {
   const { id } = useParams<{ id: string }>();
+  // Inspeção assinada não aceita mais respostas nem fotos (o servidor recusa): os campos ficam só para leitura.
+  const inspecaoAssinada = useRegistrosTravados('Inspecao', id ? [id] : []).has(id ?? '');
   const navigate = useNavigate();
+  const location = useLocation();
+  // Task 9 (2026-09-15): quando AlojamentoTab retoma (em vez de criar) a inspeção do dia, o aviso
+  // vem via location.state — lido só na primeira renderização; navegar de novo pra cá sem esse
+  // estado (ex. F5) não deve reexibir um aviso obsoleto.
+  const [avisoRetomada, setAvisoRetomada] = useState<string | null>(
+    (location.state as { avisoRetomada?: string } | null)?.avisoRetomada ?? null,
+  );
   const [detalhe, setDetalhe] = useState<InspecaoDetalhe | null>(null);
   const [usuarios, setUsuarios] = useState<Usuario[]>([]);
   const [edicoes, setEdicoes] = useState<Record<string, EdicaoResposta>>({});
   const [erro, setErro] = useState<string | null>(null);
   const [processando, setProcessando] = useState(false);
-  const [baixandoFotoId, setBaixandoFotoId] = useState<string | null>(null);
-  const [baixandoFotoDepoisId, setBaixandoFotoDepoisId] = useState<string | null>(null);
   const [gerandoOcorrenciaId, setGerandoOcorrenciaId] = useState<string | null>(null);
   const [baixandoPdf, setBaixandoPdf] = useState(false);
+  const { visualizar, dialogoVisualizador } = useVisualizadorPdf();
+  const [fotoUrls, setFotoUrls] = useState<Record<string, string>>({});
+  const [fotoDepoisUrls, setFotoDepoisUrls] = useState<Record<string, string>>({});
 
   async function carregar() {
     if (!id) return;
@@ -117,6 +153,48 @@ export function InspecaoDetalhePage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id]);
 
+  // Miniaturas das evidências (antes/depois) são baixadas sob demanda (só para respostas com
+  // temFoto/temFotoDepois) e mantidas como object URL até a página ser desmontada — mesmo padrão de
+  // TrabalhadoresTab.baixarFoto/ObrasPage.baixarLogo.
+  useEffect(() => {
+    let cancelado = false;
+    (async () => {
+      if (!detalhe) return;
+      for (const resposta of detalhe.respostas) {
+        if (resposta.temFoto && !fotoUrls[resposta.id]) {
+          try {
+            const blob = await api.inspecoes.baixarFoto(resposta.id);
+            if (cancelado) return;
+            setFotoUrls((atual) => ({ ...atual, [resposta.id]: URL.createObjectURL(blob) }));
+          } catch {
+            // Falha ao carregar miniatura não impede o uso da página; o slot fica vazio.
+          }
+        }
+        if (resposta.temFotoDepois && !fotoDepoisUrls[resposta.id]) {
+          try {
+            const blob = await api.inspecoes.baixarFotoDepois(resposta.id);
+            if (cancelado) return;
+            setFotoDepoisUrls((atual) => ({ ...atual, [resposta.id]: URL.createObjectURL(blob) }));
+          } catch {
+            // Falha ao carregar miniatura não impede o uso da página; o slot fica vazio.
+          }
+        }
+      }
+    })();
+    return () => {
+      cancelado = true;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [detalhe]);
+
+  useEffect(() => {
+    return () => {
+      Object.values(fotoUrls).forEach((url) => URL.revokeObjectURL(url));
+      Object.values(fotoDepoisUrls).forEach((url) => URL.revokeObjectURL(url));
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   function atualizarEdicao(respostaId: string, campos: Partial<EdicaoResposta>) {
     setEdicoes((atual) => ({
       ...atual,
@@ -127,7 +205,7 @@ export function InspecaoDetalhePage() {
   async function salvarResposta(respostaId: string, descricaoOriginal: string) {
     const edicao = edicoes[respostaId];
     if (!edicao?.statusItem) {
-      setErro('Selecione o status do achado antes de salvar.');
+      setErro('Selecione o status do ponto verificado antes de salvar.');
       return;
     }
     try {
@@ -145,7 +223,7 @@ export function InspecaoDetalhePage() {
       );
       await carregar();
     } catch (e) {
-      setErro(e instanceof Error ? e.message : 'Falha ao salvar o achado.');
+      setErro(e instanceof Error ? e.message : 'Falha ao salvar o ponto verificado.');
     } finally {
       setProcessando(false);
     }
@@ -161,24 +239,6 @@ export function InspecaoDetalhePage() {
     }
   }
 
-  async function baixarFoto(respostaId: string) {
-    try {
-      setBaixandoFotoId(respostaId);
-      setErro(null);
-      const blob = await api.inspecoes.baixarFoto(respostaId);
-      const url = URL.createObjectURL(blob);
-      const link = document.createElement('a');
-      link.href = url;
-      link.download = `inspecao-item-${respostaId}-antes`;
-      link.click();
-      URL.revokeObjectURL(url);
-    } catch (e) {
-      setErro(e instanceof Error ? e.message : 'Falha ao baixar a evidência anterior.');
-    } finally {
-      setBaixandoFotoId(null);
-    }
-  }
-
   async function enviarFotoDepois(respostaId: string, arquivo: File) {
     try {
       setErro(null);
@@ -186,24 +246,6 @@ export function InspecaoDetalhePage() {
       await carregar();
     } catch (e) {
       setErro(e instanceof Error ? e.message : 'Falha ao enviar a evidência posterior.');
-    }
-  }
-
-  async function baixarFotoDepois(respostaId: string) {
-    try {
-      setBaixandoFotoDepoisId(respostaId);
-      setErro(null);
-      const blob = await api.inspecoes.baixarFotoDepois(respostaId);
-      const url = URL.createObjectURL(blob);
-      const link = document.createElement('a');
-      link.href = url;
-      link.download = `inspecao-item-${respostaId}-depois`;
-      link.click();
-      URL.revokeObjectURL(url);
-    } catch (e) {
-      setErro(e instanceof Error ? e.message : 'Falha ao baixar a evidência posterior.');
-    } finally {
-      setBaixandoFotoDepoisId(null);
     }
   }
 
@@ -248,7 +290,7 @@ export function InspecaoDetalhePage() {
       const url = URL.createObjectURL(blob);
       const link = document.createElement('a');
       link.href = url;
-      link.download = `inspecao-${detalhe.inspecao.data?.slice(0, 10)}.pdf`;
+      link.download = nomeArquivoPdf(detalhe);
       link.click();
       URL.revokeObjectURL(url);
     } catch (e) {
@@ -256,6 +298,16 @@ export function InspecaoDetalhePage() {
     } finally {
       setBaixandoPdf(false);
     }
+  }
+
+  function nomeArquivoPdf(det: InspecaoDetalhe) {
+    return `inspecao-${det.inspecao.data?.slice(0, 10)}.pdf`;
+  }
+
+  // Abre o mesmo PDF do "Baixar PDF" numa janela, sem baixar.
+  function visualizarPdf() {
+    if (!id || !detalhe) return;
+    void visualizar({ titulo: 'PDF da inspeção', nomeArquivo: nomeArquivoPdf(detalhe), obter: () => api.inspecoes.baixarPdf(id) });
   }
 
   if (!id) return <FeedbackInline tom="erro">Inspeção não encontrada.</FeedbackInline>;
@@ -273,12 +325,26 @@ export function InspecaoDetalhePage() {
   }
 
   const inspecao = detalhe.inspecao;
+  const ehInspecaoAlojamento = inspecao.tipoInspecao === TipoInspecao.Alojamento;
+  // Veículos: 1 foto por item, obrigatória só quando o item é Não Conforme (decisão de 02/10/2026).
+  const ehInspecaoVeiculo = inspecao.tipoInspecao === TipoInspecao.Veiculo;
 
   const acoes: AcaoWorkflow[] = [];
   if (inspecao.status === StatusInspecao.EmAndamento) {
     acoes.push({
       chave: 'encerrar',
-      rotulo: 'Encerrar inspeção',
+      rotulo: 'Finalizar inspeção',
+      finalizacao: true,
+      pendencias: detalhe.respostas.flatMap(r => {
+        const p: string[] = [];
+        if (r.statusItem == null) p.push('resposta do checklist');
+        if (r.exigeFotografia && !r.temFoto) p.push('foto anterior obrigatória');
+        if (ehInspecaoAlojamento && r.exigeFotografia && !r.temFotoDepois) p.push('foto posterior obrigatória');
+        if (ehInspecaoVeiculo && r.statusItem === StatusItemChecklist.NaoConforme && !r.temFoto) p.push('foto da não conformidade obrigatória');
+        if (r.temFoto && r.dadosFoto) p.push(...pendenciasFoto(r.dadosFoto).map(d => 'foto anterior: ' + d));
+        if (r.temFotoDepois && r.dadosFotoDepois) p.push(...pendenciasFoto(r.dadosFotoDepois).map(d => 'foto posterior: ' + d));
+        return p.length ? [r.descricao + ': ' + p.join('; ')] : [];
+      }),
       descricao: 'Confira se todos os itens foram respondidos antes de encerrar.',
       tom: 'primario',
       habilitada: true,
@@ -299,9 +365,13 @@ export function InspecaoDetalhePage() {
         rotuloVoltar: 'Voltar para Inspeções',
         acoes: (
           <>
-            <Button appearance="secondary" icon={<ArrowDownload24Regular />} onClick={baixarPdf} disabled={baixandoPdf}>
+            <BotaoAcao tom="ver" icon={<Eye24Regular />} onClick={visualizarPdf} aria-label="Visualizar PDF">
+              Visualizar PDF
+            </BotaoAcao>
+            <BotaoAcao tom="baixar" icon={<ArrowDownload24Regular />} onClick={baixarPdf} disabled={baixandoPdf} aria-label="Baixar PDF">
               Baixar PDF
-            </Button>
+            </BotaoAcao>
+            {dialogoVisualizador}
             {inspecao.status === StatusInspecao.Concluida && (
               <Button
                 appearance="primary"
@@ -317,35 +387,55 @@ export function InspecaoDetalhePage() {
       lateral={
         <>
           <Card densidade="compacta" titulo="Resumo">
-            <FormGrid>
-              <Campo span={12}>
-                <Field label="Obra">
-                  <Input value={inspecao.obraNome} readOnly />
-                </Field>
-              </Campo>
-              {inspecao.atividadeNome && (
+            {ehInspecaoVeiculo ? (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+                <DadoResumo rotulo="Placa/Prefixo" valor={inspecao.veiculoPlacaPrefixo ?? '—'} />
+                <DadoResumo rotulo="Tipo de veículo" valor={inspecao.veiculoTipo ? tipoVeiculoLabel[inspecao.veiculoTipo] : '—'} />
+                {inspecao.veiculoMarcaModelo && <DadoResumo rotulo="Marca/Modelo" valor={inspecao.veiculoMarcaModelo} />}
+                {inspecao.veiculoEmpresa && <DadoResumo rotulo="Subcontratada" valor={inspecao.veiculoEmpresa} />}
+                <DadoResumo rotulo="Obra" valor={inspecao.obraNome} />
+                <DadoResumo rotulo="Data do preenchimento" valor={formatarDataIso(inspecao.data)} />
+                <DadoResumo rotulo="Responsável" valor={inspecao.responsavelUsuarioNome} />
+                <DadoResumo rotulo="Itens respondidos" valor={`${inspecao.itensRespondidos}/${inspecao.totalItens}`} />
+              </div>
+            ) : ehInspecaoAlojamento ? (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+                <DadoResumo rotulo="Obra vinculada ao alojamento" valor={inspecao.obraNome} />
+                <DadoResumo rotulo="Data do preenchimento" valor={formatarDataIso(inspecao.data)} />
+                <DadoResumo rotulo="Responsável" valor={inspecao.responsavelUsuarioNome} />
+                <DadoResumo rotulo="Itens respondidos" valor={`${inspecao.itensRespondidos}/${inspecao.totalItens}`} />
+              </div>
+            ) : (
+              <FormGrid>
                 <Campo span={12}>
-                  <Field label="Atividade">
-                    <Input value={inspecao.atividadeNome} readOnly />
+                  <Field label="Obra">
+                    <Input value={inspecao.obraNome} readOnly />
                   </Field>
                 </Campo>
-              )}
-              <Campo span={12}>
-                <Field label="Data">
-                  <Input value={inspecao.data?.slice(0, 10) ?? ''} readOnly />
-                </Field>
-              </Campo>
-              <Campo span={12}>
-                <Field label="Responsável">
-                  <Input value={inspecao.responsavelUsuarioNome} readOnly />
-                </Field>
-              </Campo>
-              <Campo span={12}>
-                <Field label="Achados respondidos">
-                  <Input value={`${inspecao.itensRespondidos}/${inspecao.totalItens}`} readOnly />
-                </Field>
-              </Campo>
-            </FormGrid>
+                {inspecao.atividadeNome && (
+                  <Campo span={12}>
+                    <Field label="Atividade">
+                      <Input value={inspecao.atividadeNome} readOnly />
+                    </Field>
+                  </Campo>
+                )}
+                <Campo span={12}>
+                  <Field label="Data">
+                    <Input value={inspecao.data?.slice(0, 10) ?? ''} readOnly />
+                  </Field>
+                </Campo>
+                <Campo span={12}>
+                  <Field label="Responsável">
+                    <Input value={inspecao.responsavelUsuarioNome} readOnly />
+                  </Field>
+                </Campo>
+                <Campo span={12}>
+                  <Field label="Pontos verificados respondidos">
+                    <Input value={`${inspecao.itensRespondidos}/${inspecao.totalItens}`} readOnly />
+                  </Field>
+                </Campo>
+              </FormGrid>
+            )}
             {inspecao.itensNaoConformes > 0 && (
               <div style={{ marginTop: 12 }}>
                 <StatusChip tom="atencao">{inspecao.itensNaoConformes} pendente(s)</StatusChip>
@@ -354,50 +444,201 @@ export function InspecaoDetalhePage() {
           </Card>
           {acoes.length > 0 && (
             <Card densidade="compacta" titulo="Ações disponíveis">
-              <WorkflowActions acoes={acoes} processando={processando} />
+              <WorkflowActions acoes={acoes} processando={processando} erro={erro} />
             </Card>
           )}
         </>
       }
     >
+      {avisoRetomada && (
+        <FeedbackInline tom="info" aoFechar={() => setAvisoRetomada(null)}>
+          {avisoRetomada}
+        </FeedbackInline>
+      )}
+
       {erro && (
         <FeedbackInline tom="erro" aoFechar={() => setErro(null)}>
           {erro}
         </FeedbackInline>
       )}
 
-      <Text weight="semibold">Achados</Text>
+      <Text weight="semibold">Pontos verificados</Text>
 
       <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-        {detalhe.respostas.map((resposta) => {
+        {detalhe.respostas.map((resposta, indice) => {
           const edicao = edicoes[resposta.id] ?? edicaoInicial();
-          const somenteLeitura = inspecao.status !== StatusInspecao.EmAndamento;
+          const somenteLeitura = inspecao.status !== StatusInspecao.EmAndamento || inspecaoAssinada;
+          // Cabeçalho de seção só aparece na fronteira entre seções diferentes — checklists sem
+          // Secao preenchida (todos os anteriores ao campo existir) continuam em lista corrida.
+          const secaoAnterior = indice > 0 ? detalhe.respostas[indice - 1].secao : undefined;
+          const mostrarCabecalhoSecao = !!resposta.secao && resposta.secao !== secaoAnterior;
           return (
-            <Card key={resposta.id} densidade="compacta">
+            <div key={resposta.id}>
+              {mostrarCabecalhoSecao && (
+                <Text weight="semibold" style={{ display: 'block', margin: '16px 0 8px' }}>
+                  {resposta.secao}
+                </Text>
+              )}
+              <Card densidade="compacta">
+              {ehInspecaoVeiculo ? (
+                <>
+                  <div style={{ display: 'grid', gridTemplateColumns: 'minmax(260px, 1fr) minmax(220px, 320px)', gap: 16, alignItems: 'start' }}>
+                    <div>
+                      <Text weight="semibold" style={{ display: 'block', marginBottom: 8 }}>
+                        Item {resposta.ordem}
+                      </Text>
+                      <Text style={{ display: 'block', lineHeight: 1.45 }}>
+                        {resposta.descricao}
+                      </Text>
+                    </div>
+                    <Field label="Status do item">
+                      <SeletorStatusItemChecklist
+                        value={edicao.statusItem ? Number(edicao.statusItem) : null}
+                        onChange={(valor) => atualizarEdicao(resposta.id, { statusItem: String(valor) })}
+                        disabled={somenteLeitura}
+                      />
+                    </Field>
+                  </div>
+
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: 16, marginTop: 16, alignItems: 'start' }}>
+                    <Field label="Observação (opcional)">
+                      <Textarea
+                        value={edicao.observacao}
+                        onChange={(_, d) => atualizarEdicao(resposta.id, { observacao: d.value })}
+                        disabled={somenteLeitura}
+                        rows={2}
+                      />
+                    </Field>
+
+                    {edicao.statusItem === String(StatusItemChecklist.NaoConforme) && (
+                      <Field label="Foto da não conformidade (obrigatória)">
+                        <div style={{ maxWidth: 180 }}>
+                          <SlotFoto
+                            rotulo="Foto da não conformidade"
+                            contextoFoto={{ obraId: inspecao.obraId, obraNome: inspecao.obraNome, local: inspecao.veiculoPlacaPrefixo }}
+                            dadosFoto={resposta.dadosFoto}
+                            url={fotoUrls[resposta.id]}
+                            carregandoMiniatura={resposta.temFoto && !fotoUrls[resposta.id]}
+                            somenteLeitura={somenteLeitura}
+                            aoSelecionarArquivo={(arquivo) => enviarFoto(resposta.id, arquivo)}
+                            aoErroValidacao={setErro}
+                          />
+                        </div>
+                      </Field>
+                    )}
+                  </div>
+
+                  {!somenteLeitura && (
+                    <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: 16 }}>
+                      <Button
+                        appearance="primary"
+                        icon={<Save24Regular />}
+                        onClick={() => salvarResposta(resposta.id, resposta.descricao)}
+                        disabled={processando}
+                      >
+                        Salvar item
+                      </Button>
+                    </div>
+                  )}
+                </>
+              ) : ehInspecaoAlojamento ? (
+                <>
+                  <div style={{ display: 'grid', gridTemplateColumns: 'minmax(260px, 1fr) minmax(220px, 320px)', gap: 16, alignItems: 'start' }}>
+                    <div>
+                      <Text weight="semibold" style={{ display: 'block', marginBottom: 8 }}>
+                        Item {resposta.ordem}
+                      </Text>
+                      <Text style={{ display: 'block', lineHeight: 1.45 }}>
+                        {resposta.descricao}
+                      </Text>
+                    </div>
+                    <Field label="Status do item">
+                      <SeletorStatusItemChecklist
+                        value={edicao.statusItem ? Number(edicao.statusItem) : null}
+                        onChange={(valor) => atualizarEdicao(resposta.id, { statusItem: String(valor) })}
+                        disabled={somenteLeitura}
+                      />
+                    </Field>
+                  </div>
+
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: 16, marginTop: 16 }}>
+                    <Field label="Evidência anterior obrigatória">
+                      <div style={{ maxWidth: 180 }}>
+                        <SlotFoto
+                          rotulo="Evidência anterior"
+                          contextoFoto={{ obraId: inspecao.obraId, obraNome: inspecao.obraNome, local: resposta.local }}
+                          dadosFoto={resposta.dadosFoto}
+                          url={fotoUrls[resposta.id]}
+                          carregandoMiniatura={resposta.temFoto && !fotoUrls[resposta.id]}
+                          somenteLeitura={somenteLeitura}
+                          aoSelecionarArquivo={(arquivo) => enviarFoto(resposta.id, arquivo)}
+                          aoErroValidacao={setErro}
+                        />
+                      </div>
+                    </Field>
+
+                    <Field label="Evidência posterior obrigatória">
+                      <div style={{ maxWidth: 180 }}>
+                        <SlotFoto
+                          rotulo="Evidência posterior"
+                          contextoFoto={{ obraId: inspecao.obraId, obraNome: inspecao.obraNome, local: resposta.local }}
+                          dadosFoto={resposta.dadosFotoDepois}
+                          url={fotoDepoisUrls[resposta.id]}
+                          carregandoMiniatura={resposta.temFotoDepois && !fotoDepoisUrls[resposta.id]}
+                          somenteLeitura={somenteLeitura}
+                          aoSelecionarArquivo={(arquivo) => enviarFotoDepois(resposta.id, arquivo)}
+                          aoErroValidacao={setErro}
+                        />
+                      </div>
+                    </Field>
+                  </div>
+
+                  {!somenteLeitura && (
+                    <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: 16 }}>
+                      <Button
+                        appearance="primary"
+                        icon={<Save24Regular />}
+                        onClick={() => salvarResposta(resposta.id, resposta.descricao)}
+                        disabled={processando}
+                      >
+                        Salvar item
+                      </Button>
+                    </div>
+                  )}
+                </>
+              ) : (
+                <>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 12, flexWrap: 'wrap' }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 8, flex: 1, minWidth: 260 }}>
-                  <Text weight="semibold">{resposta.ordem}.</Text>
-                  <Input
-                    value={edicao.descricao}
-                    onChange={(_, d) => atualizarEdicao(resposta.id, { descricao: d.value })}
-                    disabled={somenteLeitura}
-                    style={{ flex: 1 }}
-                    placeholder="Descrição do achado / irregularidade encontrada"
-                  />
+                <div style={{ flex: 1, minWidth: 260 }}>
+                  <Text weight="semibold" style={{ display: 'block', marginBottom: 8 }}>
+                    Ponto verificado {resposta.ordem}
+                  </Text>
+                  <Field label="Descrição do ponto verificado">
+                    <Input
+                      value={edicao.descricao}
+                      onChange={(_, d) => atualizarEdicao(resposta.id, { descricao: d.value })}
+                      disabled={somenteLeitura}
+                      placeholder="Descreva a irregularidade encontrada"
+                    />
+                  </Field>
                 </div>
-                <Select
-                  value={edicao.statusItem}
-                  onChange={(_, d) => atualizarEdicao(resposta.id, { statusItem: d.value })}
-                  disabled={somenteLeitura}
-                  style={{ minWidth: 160 }}
-                >
-                  <option value="">Selecione o status</option>
-                  {Object.entries(statusItemChecklistLabel).map(([valor, rotulo]) => (
-                    <option key={valor} value={valor}>
-                      {rotulo}
-                    </option>
-                  ))}
-                </Select>
+                <div style={{ minWidth: 180 }}>
+                  <Field label="Status do ponto verificado">
+                    <Select
+                      value={edicao.statusItem}
+                      onChange={(_, d) => atualizarEdicao(resposta.id, { statusItem: d.value })}
+                      disabled={somenteLeitura}
+                      style={{ width: '100%' }}
+                    >
+                      <option value="">Selecione o status</option>
+                      {Object.entries(statusItemChecklistLabel).map(([valor, rotulo]) => (
+                        <option key={valor} value={valor}>
+                          {rotulo}
+                        </option>
+                      ))}
+                    </Select>
+                  </Field>
+                </div>
                 {resposta.statusItem != null && (
                   <StatusChip tom={tomPorStatusItem[resposta.statusItem] ?? 'neutro'}>
                     {statusItemChecklistLabel[resposta.statusItem]}
@@ -465,67 +706,54 @@ export function InspecaoDetalhePage() {
                 </Field>
               </div>
 
-              <div style={{ display: 'flex', gap: 24, marginTop: 12, flexWrap: 'wrap' }}>
-                <div>
-                  <Text weight="semibold" style={{ display: 'block', marginBottom: 4 }}>Evidência anterior</Text>
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: 4, alignItems: 'flex-start' }}>
-                    {!somenteLeitura && (
-                      <SeletorFotoCamera
-                        rotulo="Tirar foto"
-                        aoSelecionarArquivo={(arquivo) => enviarFoto(resposta.id, arquivo)}
-                        aoErroValidacao={setErro}
-                      />
-                    )}
-                    {resposta.temFoto && (
-                      <Button
-                        appearance="subtle"
-                        size="small"
-                        icon={<ArrowDownload24Regular />}
-                        onClick={() => baixarFoto(resposta.id)}
-                        disabled={baixandoFotoId === resposta.id}
-                      >
-                        Ver foto
-                      </Button>
-                    )}
+              {/* Evidências no mesmo padrão de quadro/miniatura usado em todo o sistema (pedido do
+                  usuário, 14/09) — ver components/camera/SlotFoto.tsx. */}
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: 16, marginTop: 12 }}>
+                <Field label="Evidência anterior">
+                  <div style={{ maxWidth: 160 }}>
+                    <SlotFoto
+                      rotulo="Evidência anterior"
+                      contextoFoto={{ obraId: inspecao.obraId, obraNome: inspecao.obraNome, local: resposta.local }}
+                      dadosFoto={resposta.dadosFoto}
+                      url={fotoUrls[resposta.id]}
+                      carregandoMiniatura={resposta.temFoto && !fotoUrls[resposta.id]}
+                      somenteLeitura={somenteLeitura}
+                      aoSelecionarArquivo={(arquivo) => enviarFoto(resposta.id, arquivo)}
+                      aoErroValidacao={setErro}
+                    />
                   </div>
-                </div>
+                </Field>
 
-                <div>
-                  <Text weight="semibold" style={{ display: 'block', marginBottom: 4 }}>Evidência posterior</Text>
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: 4, alignItems: 'flex-start' }}>
-                    {!somenteLeitura && (
-                      <SeletorFotoCamera
-                        rotulo="Tirar foto"
-                        aoSelecionarArquivo={(arquivo) => enviarFotoDepois(resposta.id, arquivo)}
-                        aoErroValidacao={setErro}
-                      />
-                    )}
-                    {resposta.temFotoDepois && (
-                      <Button
-                        appearance="subtle"
-                        size="small"
-                        icon={<ArrowDownload24Regular />}
-                        onClick={() => baixarFotoDepois(resposta.id)}
-                        disabled={baixandoFotoDepoisId === resposta.id}
-                      >
-                        Ver foto
-                      </Button>
-                    )}
+                <Field label="Evidência posterior">
+                  <div style={{ maxWidth: 160 }}>
+                    <SlotFoto
+                      rotulo="Evidência posterior"
+                      contextoFoto={{ obraId: inspecao.obraId, obraNome: inspecao.obraNome, local: resposta.local }}
+                      dadosFoto={resposta.dadosFotoDepois}
+                      url={fotoDepoisUrls[resposta.id]}
+                      carregandoMiniatura={resposta.temFotoDepois && !fotoDepoisUrls[resposta.id]}
+                      somenteLeitura={somenteLeitura}
+                      aoSelecionarArquivo={(arquivo) => enviarFotoDepois(resposta.id, arquivo)}
+                      aoErroValidacao={setErro}
+                    />
                   </div>
-                </div>
+                </Field>
               </div>
 
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 12 }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12, flexWrap: 'wrap', marginTop: 16 }}>
                 <div>
                   {resposta.naoConformidadeId ? (
-                    <Button appearance="subtle" size="small" onClick={() => navigate(`/nao-conformidades/${resposta.naoConformidadeId}`)}>
+                    <Button
+                      appearance="secondary"
+                      icon={<Open24Regular />}
+                      onClick={() => navigate(`/nao-conformidades/${resposta.naoConformidadeId}`)}
+                    >
                       Ver ocorrência
                     </Button>
                   ) : (
                     resposta.statusItem === StatusItemChecklist.NaoConforme && (
                       <Button
-                        appearance="subtle"
-                        size="small"
+                        appearance="secondary"
                         icon={<Warning24Regular />}
                         onClick={() => gerarOcorrencia(resposta.id)}
                         disabled={gerandoOcorrenciaId === resposta.id}
@@ -542,11 +770,14 @@ export function InspecaoDetalhePage() {
                     onClick={() => salvarResposta(resposta.id, resposta.descricao)}
                     disabled={processando}
                   >
-                    Salvar achado
+                    Salvar ponto verificado
                   </Button>
                 )}
               </div>
-            </Card>
+              </>
+              )}
+              </Card>
+            </div>
           );
         })}
       </div>

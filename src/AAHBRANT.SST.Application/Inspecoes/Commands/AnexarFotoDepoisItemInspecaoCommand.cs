@@ -1,3 +1,4 @@
+using AAHBRANT.SST.Application.Assinatura;
 using AAHBRANT.SST.Application.Common;
 using AAHBRANT.SST.Application.Common.Interfaces;
 using FluentValidation;
@@ -11,7 +12,7 @@ namespace AAHBRANT.SST.Application.Inspecoes.Commands;
 public record AnexarFotoDepoisItemInspecaoCommand(
     Guid RespostaId,
     byte[] FotoConteudo,
-    string FotoContentType) : IRequest;
+    string FotoContentType, string? Metadados = null) : IRequest;
 
 public class AnexarFotoDepoisItemInspecaoCommandValidator : AbstractValidator<AnexarFotoDepoisItemInspecaoCommand>
 {
@@ -39,12 +40,16 @@ public class AnexarFotoDepoisItemInspecaoCommandHandler : IRequestHandler<Anexar
 
     public async Task Handle(AnexarFotoDepoisItemInspecaoCommand request, CancellationToken ct)
     {
-        var resposta = await _db.InspecaoItemRespostas.FirstOrDefaultAsync(r => r.Id == request.RespostaId, ct)
+        var resposta = await _db.InspecaoItemRespostas.Include(r => r.Inspecao).FirstOrDefaultAsync(r => r.Id == request.RespostaId, ct)
             ?? throw new KeyNotFoundException($"Resposta {request.RespostaId} não encontrada.");
+        await ProtecaoDocumentoAssinado.GarantirEditavelAsync(_db, "Inspecao", resposta.InspecaoId, ct);
 
         resposta.FotoDepoisConteudo = request.FotoConteudo;
         resposta.FotoDepoisContentType = request.FotoContentType;
 
+        if (resposta.Inspecao!.Status == AAHBRANT.SST.Domain.Enums.StatusInspecao.Concluida)
+            throw new InvalidOperationException("A inspeção já foi finalizada.");
+        resposta.FotoDepoisMetadadosJson = await DadosCapturaFoto.PrepararAsync(request.Metadados, resposta.Inspecao.ObraId, _db, ct);
         await _db.SaveChangesAsync(ct);
     }
 }

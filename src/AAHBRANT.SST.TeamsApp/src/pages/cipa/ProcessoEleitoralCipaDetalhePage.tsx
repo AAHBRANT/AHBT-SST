@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useParams } from 'react-router-dom';
 import {
+  BotaoAcao,
   Button,
   Campo,
   CampoData,
@@ -20,7 +21,7 @@ import {
   type Coluna,
   type Tom,
 } from '@ui';
-import { DocumentPdf24Regular } from '@fluentui/react-icons';
+import { DocumentPdf24Regular, Eye24Regular } from '@fluentui/react-icons';
 import {
   api,
   statusCandidatoCipaLabel,
@@ -32,6 +33,7 @@ import {
   type Trabalhador,
   type VotoApuradoCipa,
 } from '../../lib/api';
+import { salvarBlob, useVisualizadorPdf } from '../../components/useVisualizadorPdf';
 
 const tomPorStatusProcesso: Record<number, Tom> = {
   [StatusProcessoEleitoralCipa.Convocado]: 'neutro',
@@ -65,6 +67,7 @@ export function ProcessoEleitoralCipaDetalhePage() {
   const [erro, setErro] = useState<string | null>(null);
   const [processando, setProcessando] = useState(false);
   const [baixandoPdf, setBaixandoPdf] = useState(false);
+  const { visualizar, dialogoVisualizador } = useVisualizadorPdf();
 
   async function carregar() {
     if (!id) return;
@@ -144,18 +147,22 @@ export function ProcessoEleitoralCipaDetalhePage() {
     try {
       setBaixandoPdf(true);
       setErro(null);
-      const blob = await api.cipa.processosEleitorais.baixarAtaPdf(id);
-      const url = URL.createObjectURL(blob);
-      const link = document.createElement('a');
-      link.href = url;
-      link.download = `ata-eleicao-cipa-${id}.pdf`;
-      link.click();
-      URL.revokeObjectURL(url);
+      salvarBlob(await api.cipa.processosEleitorais.baixarAtaPdf(id), `ata-eleicao-cipa-${id}.pdf`);
     } catch (e) {
       setErro(e instanceof Error ? e.message : 'Falha ao gerar a ata em PDF.');
     } finally {
       setBaixandoPdf(false);
     }
+  }
+
+  // Mesma ata do "Baixar", aberta na janela sem baixar.
+  function visualizarAta() {
+    if (!id) return;
+    void visualizar({
+      titulo: 'Ata da eleição da CIPA',
+      nomeArquivo: `ata-eleicao-cipa-${id}.pdf`,
+      obter: () => api.cipa.processosEleitorais.baixarAtaPdf(id),
+    });
   }
 
   if (!id) return <FeedbackInline tom="erro">Processo eleitoral não encontrado.</FeedbackInline>;
@@ -203,6 +210,7 @@ export function ProcessoEleitoralCipaDetalhePage() {
 
   return (
     <div>
+      {dialogoVisualizador}
       <PageHeader titulo="Processo eleitoral" voltarPara="/operacao/cipa" rotuloVoltar="Voltar para CIPA" />
 
       {erro && (
@@ -235,9 +243,12 @@ export function ProcessoEleitoralCipaDetalhePage() {
           >
             {jaApurado && (
               <FormRodape>
-                <Button appearance="primary" icon={<DocumentPdf24Regular />} onClick={baixarAta} disabled={baixandoPdf}>
+                <BotaoAcao tom="ver" aria-label="Visualizar ata" icon={<Eye24Regular />} onClick={visualizarAta}>
+                  Visualizar ata
+                </BotaoAcao>
+                <BotaoAcao tom="baixar" aria-label="Baixar ata em PDF" icon={<DocumentPdf24Regular />} onClick={baixarAta} disabled={baixandoPdf}>
                   Baixar ata em PDF
-                </Button>
+                </BotaoAcao>
               </FormRodape>
             )}
           </Card>
@@ -252,7 +263,7 @@ export function ProcessoEleitoralCipaDetalhePage() {
                         <option value="">Selecione</option>
                         {trabalhadores.map((t) => (
                           <option key={t.id} value={t.id}>
-                            {t.nome} ({t.matricula})
+                            {t.matricula ? `${t.nome} (${t.matricula})` : t.nome}
                           </option>
                         ))}
                       </Select>

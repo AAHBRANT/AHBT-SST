@@ -1,11 +1,12 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
+  BotaoAcao,
   Button,
   Campo,
   Card,
   CampoData,
-  ChipCheckboxGroup,
+  ListaSelecaoMultipla,
   DataTable,
   Field,
   FeedbackInline,
@@ -31,22 +32,26 @@ import {
   type Usuario,
 } from '../../lib/api';
 import { useSucessoToast } from '../../hooks/useSucessoToast';
+import { hojeIso } from '../../lib/datas';
+import { useRegistrosTravados } from '../../hooks/useRegistrosTravados';
+import { useSouAdministrador } from '../../lib/UsuarioLogadoContext';
 
-const ptVazia: NovaPermissaoTrabalho = {
-  numeroPt: '',
-  atividadeId: '',
-  descricaoAtividade: '',
-  local: '',
-  empresaExecutante: '',
-  equipeId: null,
-  data: '',
-  horarioInicio: null,
-  horarioFim: null,
-  validade: null,
-  responsavelExecucaoUsuarioId: null,
-  responsavelAreaUsuarioId: null,
-  responsaveisIds: [],
-};
+function ptVazia(): NovaPermissaoTrabalho {
+  return {
+    atividadeId: '',
+    descricaoAtividade: '',
+    local: '',
+    empresaExecutante: '',
+    equipeId: null,
+    data: hojeIso(),
+    horarioInicio: null,
+    horarioFim: null,
+    validade: null,
+    responsavelExecucaoUsuarioId: null,
+    responsavelAreaUsuarioId: null,
+    responsaveisIds: [],
+  };
+}
 
 // Mapeamento 1:1 pelo nome semântico do Fluent (Guia de conversão item 5), preservando as mesmas
 // cores da versão anterior (Badge color=): subtle→neutro, success→ok, warning→atencao, informative→info.
@@ -60,13 +65,16 @@ const tomPorStatusPt: Record<number, Tom> = {
 // Onda 2 Task 6 (camada ui/): lista + formulário de criação de Permissão de Trabalho. Mesmo padrão
 // de AprsTab.tsx (Task 11) — Card + FormSection + DataTable, seleção de responsáveis em ChipCheckboxGroup.
 export function PermissoesTrabalhoTab() {
+  const souAdministrador = useSouAdministrador();
   const navigate = useNavigate();
   const [permissoes, setPermissoes] = useState<PermissaoTrabalho[]>([]);
+  // Finalizados não podem ser excluídos (o servidor recusa): o botão some deles.
+  const travados = useRegistrosTravados('PermissaoTrabalho', permissoes.map((pt) => pt.id));
   const [atividades, setAtividades] = useState<Atividade[]>([]);
   const [trabalhadores, setTrabalhadores] = useState<Trabalhador[]>([]);
   const [equipes, setEquipes] = useState<Equipe[]>([]);
   const [usuarios, setUsuarios] = useState<Usuario[]>([]);
-  const [novaPt, setNovaPt] = useState<NovaPermissaoTrabalho>(ptVazia);
+  const [novaPt, setNovaPt] = useState<NovaPermissaoTrabalho>(ptVazia());
   const [erro, setErro] = useState<string | null>(null);
   const [carregando, setCarregando] = useState(false);
   const [carregandoLista, setCarregandoLista] = useState(true);
@@ -110,7 +118,6 @@ export function PermissoesTrabalhoTab() {
       setErro(null);
       await api.permissoesTrabalho.criar({
         ...novaPt,
-        numeroPt: novaPt.numeroPt || null,
         empresaExecutante: novaPt.empresaExecutante || null,
         equipeId: novaPt.equipeId || null,
         horarioInicio: novaPt.horarioInicio ? `${novaPt.horarioInicio}:00` : null,
@@ -119,7 +126,7 @@ export function PermissoesTrabalhoTab() {
         responsavelExecucaoUsuarioId: novaPt.responsavelExecucaoUsuarioId || null,
         responsavelAreaUsuarioId: novaPt.responsavelAreaUsuarioId || null,
       });
-      setNovaPt(ptVazia);
+      setNovaPt(ptVazia());
       await carregar();
       sucessoToast('Permissão de Trabalho criada com sucesso.');
     } catch (e) {
@@ -164,11 +171,6 @@ export function PermissoesTrabalhoTab() {
       <Card titulo="Permissão de Trabalho (PT)">
         <FormSection titulo="Dados Gerais" numero={1} primeira>
           <FormGrid>
-            <Campo span={2}>
-              <Field label="Nº PT">
-                <Input value={novaPt.numeroPt ?? ''} onChange={(_, d) => setNovaPt({ ...novaPt, numeroPt: d.value })} />
-              </Field>
-            </Campo>
             <Campo span={3}>
               <Field label="Atividade">
                 <Select value={novaPt.atividadeId} onChange={(_, d) => setNovaPt({ ...novaPt, atividadeId: d.value })}>
@@ -285,11 +287,11 @@ export function PermissoesTrabalhoTab() {
             </Campo>
             <Campo span={12}>
               <Field label="Equipe executante (responsáveis)">
-                <ChipCheckboxGroup
+                <ListaSelecaoMultipla
                   aria-label="Equipe executante (responsáveis)"
                   opcoes={trabalhadores.map((t) => ({ id: t.id, rotulo: t.nome }))}
                   selecionados={novaPt.responsaveisIds}
-                  aoMudar={(ids) => setNovaPt({ ...novaPt, responsaveisIds: ids })}
+                  aoMudar={(atualizar) => setNovaPt((atual) => ({ ...atual, responsaveisIds: atualizar(atual.responsaveisIds) }))}
                 />
               </Field>
             </Campo>
@@ -315,7 +317,12 @@ export function PermissoesTrabalhoTab() {
           vazio={{ titulo: 'Nenhuma Permissão de Trabalho cadastrada ainda.' }}
           aoClicarLinha={(pt) => navigate(`/operacao/pt/${pt.id}`)}
           acoesLinha={(pt) => (
-            <Button appearance="subtle" icon={<Delete24Regular />} onClick={() => excluir(pt.id)} aria-label="Excluir" />
+            <>
+              {/* Exclusão é privilégio de Administrador (o servidor recusa os demais) — ver PoliticasAutorizacao. */}
+              {souAdministrador && !travados.has(pt.id) && (
+                <BotaoAcao tom="excluir" icon={<Delete24Regular />} onClick={() => excluir(pt.id)} aria-label="Excluir" />
+              )}
+            </>
           )}
         />
       </Card>

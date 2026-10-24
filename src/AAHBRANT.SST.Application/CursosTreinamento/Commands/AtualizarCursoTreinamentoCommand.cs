@@ -11,7 +11,9 @@ public record AtualizarCursoTreinamentoCommand(
     string? NormaReferencia,
     int CargaHorariaMinima,
     int ValidadeEmMeses,
-    string? ConteudoProgramatico = null) : IRequest;
+    string? ConteudoProgramatico = null,
+    bool EhIntegracaoSeguranca = false,
+    bool AtendeNr6 = false) : IRequest;
 
 public class AtualizarCursoTreinamentoCommandValidator : AbstractValidator<AtualizarCursoTreinamentoCommand>
 {
@@ -39,6 +41,16 @@ public class AtualizarCursoTreinamentoCommandHandler : IRequestHandler<Atualizar
         curso.CargaHorariaMinima = request.CargaHorariaMinima;
         curso.ValidadeEmMeses = request.ValidadeEmMeses;
         curso.ConteudoProgramatico = request.ConteudoProgramatico;
+        curso.AtendeNr6 = Domain.Entidades.CursoTreinamento.NormaHabilitaEpi(request.NormaReferencia);
+
+        if (request.EhIntegracaoSeguranca && !curso.EhIntegracaoSeguranca)
+        {
+            var outrosMarcados = await _db.CursosTreinamento
+                .Where(c => c.EhIntegracaoSeguranca && c.Id != curso.Id)
+                .ToListAsync(ct);
+            foreach (var c in outrosMarcados) c.EhIntegracaoSeguranca = false;
+        }
+        curso.EhIntegracaoSeguranca = request.EhIntegracaoSeguranca;
 
         await _db.SaveChangesAsync(ct);
     }

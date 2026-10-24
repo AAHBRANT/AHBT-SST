@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Button, DataTable, Field, FeedbackInline, Input, Select, Text, useConfirmar, type Coluna } from '@ui';
+import { BotaoAcao, Button, DataTable, Field, FeedbackInline, Input, Select, Text, useConfirmar, type Coluna } from '@ui';
 import { Add24Regular, Delete24Regular } from '@fluentui/react-icons';
 import {
   api,
@@ -122,7 +122,7 @@ export function AreasSstTab() {
         </FeedbackInline>
       )}
 
-      <div className={`${estilos.sectionTitle} ${estilos.sectionTitleFirst}`}>Dados da Área</div>
+      <div className={`${estilos.sectionTitle} ${estilos.sectionTitleFirst}`}>Informações da área</div>
       <div className={estilos.formGrid}>
         <div className={estilos.col2}>
           <Field label="Código">
@@ -193,7 +193,7 @@ export function AreasSstTab() {
         carregando={carregandoLista}
         vazio={{ titulo: 'Nenhuma área cadastrada ainda.' }}
         acoesLinha={(a) => (
-          <Button appearance="subtle" icon={<Delete24Regular />} onClick={() => excluir(a.id)} aria-label="Excluir" />
+          <BotaoAcao tom="excluir" icon={<Delete24Regular />} onClick={() => excluir(a.id)} aria-label="Excluir" />
         )}
       />
     </div>

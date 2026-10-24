@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { useParams } from 'react-router-dom';
 import {
   Abas,
-  Button,
+  BotaoAcao,
   Campo,
   Card,
   Carregando,
@@ -17,10 +17,11 @@ import {
   type AcaoWorkflow,
   type Tom,
 } from '@ui';
-import { ArrowDownload24Regular } from '@fluentui/react-icons';
+import { ArrowDownload24Regular, Eye24Regular } from '@fluentui/react-icons';
 import { api, StatusApr, statusAprLabel, type AprDetalhe } from '../../lib/api';
 import { AprAssinaturasTab } from './AprAssinaturasTab';
 import { AprEtapasTab } from './AprEtapasTab';
+import { useVisualizadorPdf } from '../../components/useVisualizadorPdf';
 
 const ABAS_APR = ['etapas', 'assinaturas'] as const;
 type AbaApr = (typeof ABAS_APR)[number];
@@ -44,10 +45,10 @@ export function AprDetalhePage() {
   const [aba, setAba] = useState<AbaApr>('etapas');
   const [detalhe, setDetalhe] = useState<AprDetalhe | null>(null);
   const [erro, setErro] = useState<string | null>(null);
-  const [aprovadoPorUsuarioId, setAprovadoPorUsuarioId] = useState('');
   const [motivoReprovacao, setMotivoReprovacao] = useState('');
   const [processando, setProcessando] = useState(false);
   const [exportando, setExportando] = useState(false);
+  const { visualizar, dialogoVisualizador } = useVisualizadorPdf();
 
   async function carregar() {
     if (!id) return;
@@ -68,11 +69,11 @@ export function AprDetalhePage() {
   // `false` mantém o formulário aberto — tanto a guarda local (campo vazio) quanto a falha da API
   // devolvem `false`, senão o acordeão fecharia e a mensagem de erro ficaria fora da vista.
   async function aprovar() {
-    if (!id || !aprovadoPorUsuarioId) return false;
+    if (!id) return false;
     try {
       setProcessando(true);
       setErro(null);
-      await api.aprs.aprovar(id, aprovadoPorUsuarioId);
+      await api.aprs.aprovar(id);
       await carregar();
     } catch (e) {
       setErro(e instanceof Error ? e.message : 'Falha ao aprovar APR.');
@@ -107,7 +108,7 @@ export function AprDetalhePage() {
       const url = URL.createObjectURL(blob);
       const link = document.createElement('a');
       link.href = url;
-      link.download = `apr-${id}.pdf`;
+      link.download = nomeArquivoPdf(id);
       link.click();
       URL.revokeObjectURL(url);
     } catch (e) {
@@ -115,6 +116,16 @@ export function AprDetalhePage() {
     } finally {
       setExportando(false);
     }
+  }
+
+  function nomeArquivoPdf(aprId: string) {
+    return `apr-${aprId}.pdf`;
+  }
+
+  // Abre o mesmo PDF do "Exportar PDF" numa janela, sem baixar.
+  function visualizarPdf() {
+    if (!id) return;
+    void visualizar({ titulo: 'PDF da APR', nomeArquivo: nomeArquivoPdf(id), obter: () => api.aprs.exportarPdf(id) });
   }
 
   if (!id) return <FeedbackInline tom="erro">APR não encontrada.</FeedbackInline>;
@@ -142,11 +153,7 @@ export function AprDetalhePage() {
       tom: 'primario',
       habilitada: true,
       aoExecutar: aprovar,
-      formulario: (
-        <Field label="ID do usuário aprovador (GUID)" required>
-          <Input value={aprovadoPorUsuarioId} onChange={(_, d) => setAprovadoPorUsuarioId(d.value)} />
-        </Field>
-      ),
+      formulario: <p style={{ margin: 0 }}>A aprovação será registrada com o seu usuário, na data e hora atuais.</p>,
     });
     acoes.push({
       chave: 'reprovar',
@@ -174,9 +181,15 @@ export function AprDetalhePage() {
         voltarPara: '/operacao/apr',
         rotuloVoltar: 'Voltar para APR',
         acoes: (
-          <Button appearance="secondary" icon={<ArrowDownload24Regular />} onClick={exportarPdf} disabled={exportando}>
-            Exportar PDF
-          </Button>
+          <>
+            <BotaoAcao tom="ver" icon={<Eye24Regular />} onClick={visualizarPdf} aria-label="Visualizar PDF">
+              Visualizar PDF
+            </BotaoAcao>
+            <BotaoAcao tom="baixar" icon={<ArrowDownload24Regular />} onClick={exportarPdf} disabled={exportando} aria-label="Exportar PDF">
+              Exportar PDF
+            </BotaoAcao>
+            {dialogoVisualizador}
+          </>
         ),
       }}
       lateral={

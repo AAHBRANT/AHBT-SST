@@ -20,6 +20,13 @@ public static class RegraAlertaSeeder
         TipoModuloAlerta.Equipamento,
         TipoModuloAlerta.Epi,
         TipoModuloAlerta.Pgr,
+        // Sem responsável (só severidade), como os demais: o alerta aparece na tela, mas ninguém recebe
+        // no Teams até alguém escolher o responsável em Configurações — evita a rajada do primeiro
+        // processamento numa obra com quadro de exames recém-importado.
+        TipoModuloAlerta.ExamesFuncao,
+        TipoModuloAlerta.CadastroFacial,
+        // Documentos da empresa terceirizada (PGR, PCMSO...), 21/10/2026.
+        TipoModuloAlerta.DocumentoTerceirizado,
     };
 
     public static async Task ExecutarAsync(IServiceProvider services, CancellationToken ct = default)

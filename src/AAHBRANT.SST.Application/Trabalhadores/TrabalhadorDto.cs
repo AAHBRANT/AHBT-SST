@@ -10,14 +10,12 @@ public class TrabalhadorDto
     public Guid? EquipeId { get; set; }
     public Guid FuncaoId { get; set; }
     public string Nome { get; set; } = string.Empty;
-    public string Matricula { get; set; } = string.Empty;
+    public string? Matricula { get; set; }
     public string Cpf { get; set; } = string.Empty;
     public TipoVinculo Vinculo { get; set; }
     public DateTime DataAdmissao { get; set; }
     public DateTime? DataDemissao { get; set; }
     public string? Turno { get; set; }
-    public bool TelegramVinculado { get; set; }
-    public string? TelegramCodigoVinculo { get; set; }
     public bool TemFoto { get; set; }
     public bool TemBiometria { get; set; }
 }

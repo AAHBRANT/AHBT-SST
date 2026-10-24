@@ -11,7 +11,7 @@ public class AutenticacaoBiometriaLocalFalsa : IAutenticacaoBiometriaLocalServic
     public double? ScoreRecebido { get; private set; }
 
     public Task<ResultadoAutenticacaoAssinatura> AutenticarPorMatchLocalAsync(
-        Guid dispositivoId, string segredoDispositivo, Guid trabalhadorId, double score, CancellationToken ct)
+        Guid dispositivoId, string segredoDispositivo, Guid trabalhadorId, double score, LeituraBiometricaAssinada? leitura, CancellationToken ct)
     {
         DispositivoIdRecebido = dispositivoId;
         ScoreRecebido = score;
@@ -24,7 +24,15 @@ public class RegistradorAssinaturaFalso : IRegistradorAssinaturaService
     public Guid? DocumentoIdRecebido { get; private set; }
     public string? IpAddressRecebido { get; private set; }
 
-    public Task<DocumentoSignatarioDto> RegistrarAsync(Guid documentoAssinaturaId, ResultadoAutenticacaoAssinatura resultado, string? ipAddress, CancellationToken ct)
+    public Task<DocumentoSignatarioDto> RegistrarAsync(
+        Guid documentoAssinaturaId,
+        ResultadoAutenticacaoAssinatura resultado,
+        string? ipAddress,
+        CancellationToken ct,
+        byte[]? fotoEvidenciaConteudo = null,
+        string? fotoEvidenciaContentType = null,
+        PapelAssinatura? papel = null,
+        LocalizacaoAssinatura? localizacao = null)
     {
         DocumentoIdRecebido = documentoAssinaturaId;
         IpAddressRecebido = ipAddress;

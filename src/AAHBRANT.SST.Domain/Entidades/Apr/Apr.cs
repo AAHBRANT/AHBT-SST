@@ -9,8 +9,9 @@ namespace AAHBRANT.SST.Domain.Entidades;
 // residual e sem os campos de texto do formulário). Sem dado real cadastrado no seeder para migrar.
 public class Apr : AuditableEntity
 {
-    // Campo "Nº APR:" do cabeçalho — texto livre preenchido manualmente, sem numeração automática
-    // (o documento não define uma regra de numeração).
+    // Campo "Nº APR:" do cabeçalho — gerado automaticamente pelo sistema na criação (formato
+    // "APR-{ano}-{sequencial}", ver GeradorNumeroDocumentoService; pedido do usuário, 03/09), não editável
+    // depois. O documento original não definia uma regra de numeração — decisão própria.
     public string? NumeroApr { get; set; }
 
     public Guid AtividadeId { get; set; }
@@ -123,4 +124,10 @@ public class AprAssinatura : AuditableEntity
 
     public PapelAssinaturaApr Papel { get; set; }
     public DateTime DataAssinatura { get; set; }
+
+    // Como a pessoa foi identificada (02/10) — sai na legenda miúda de assinatura do PDF. Este
+    // registro é sempre uma confirmação de ciência com o usuário logado; a assinatura por
+    // digital/facial passa pelo Motor de Assinatura (DocumentoSignatario). Linhas anteriores à
+    // coluna foram preenchidas com SessaoLogada pela migration, que é o que de fato aconteceu.
+    public MetodoAutenticacaoAssinatura MetodoAutenticacao { get; set; } = MetodoAutenticacaoAssinatura.SessaoLogada;
 }

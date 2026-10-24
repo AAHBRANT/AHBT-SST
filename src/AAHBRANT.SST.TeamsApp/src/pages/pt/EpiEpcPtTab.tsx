@@ -106,6 +106,7 @@ export function EpiEpcPtTab({
                 />
                 {episSelecionados.has(Number(valor)) && (
                   <Input
+                    aria-label={`Complemento opcional para ${rotulo}`}
                     placeholder="Complemento (opcional)"
                     size="small"
                     value={episSelecionados.get(Number(valor)) ?? ''}
@@ -117,9 +118,11 @@ export function EpiEpcPtTab({
               </div>
             ))}
           </div>
+          <Text size={200} weight="semibold" style={{ display: 'block', marginTop: 8, marginBottom: 4 }}>
+            Outros EPIs
+          </Text>
           <Textarea
-            style={{ marginTop: 8 }}
-            placeholder="Outros EPIs"
+            aria-label="Outros EPIs"
             value={outrosEpis}
             onChange={(_, d) => setOutrosEpis(d.value)}
           />
@@ -137,9 +140,11 @@ export function EpiEpcPtTab({
               />
             ))}
           </div>
+          <Text size={200} weight="semibold" style={{ display: 'block', marginTop: 8, marginBottom: 4 }}>
+            Outros EPCs
+          </Text>
           <Textarea
-            style={{ marginTop: 8 }}
-            placeholder="Outros EPCs"
+            aria-label="Outros EPCs"
             value={outrosEpcs}
             onChange={(_, d) => setOutrosEpcs(d.value)}
           />

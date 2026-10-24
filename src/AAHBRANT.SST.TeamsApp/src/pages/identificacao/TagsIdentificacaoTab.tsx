@@ -1,10 +1,13 @@
 import { useEffect, useState } from 'react';
-import { Button, DataTable, Field, FeedbackInline, Input, Select, Text, useConfirmar, type Coluna } from '@ui';
+import { BotaoAcao, Button, DataTable, Field, FeedbackInline, Input, Select, Text, useConfirmar, type Coluna } from '@ui';
 import {
   Add24Regular,
+  ArrowDownload24Regular,
+  Copy24Regular,
   Delete24Regular,
   Link24Regular,
   LinkDismiss24Regular,
+  Open24Regular,
   QrCode24Regular,
   Search24Regular,
 } from '@fluentui/react-icons';
@@ -20,6 +23,7 @@ import {
   type AreaSst,
   type Trabalhador,
   type ResolverTagDto,
+  type QrCodeTrabalhador,
 } from '../../lib/api';
 import { usePageStyles } from '../pageStyles';
 import { ResolverTagResultado } from './ResolverTagResultado';
@@ -39,7 +43,9 @@ export function TagsIdentificacaoTab() {
   const [novaTag, setNovaTag] = useState<NovaTagIdentificacao>(tagVazia);
   const [erro, setErro] = useState<string | null>(null);
   const [carregando, setCarregando] = useState(false);
+  const [gerandoQrFuncionarios, setGerandoQrFuncionarios] = useState(false);
   const [carregandoLista, setCarregandoLista] = useState(true);
+  const [qrFuncionarios, setQrFuncionarios] = useState<QrCodeTrabalhador[]>([]);
   const { confirmar, dialogElement } = useConfirmar();
   const sucessoToast = useSucessoToast();
 
@@ -175,6 +181,49 @@ export function TagsIdentificacaoTab() {
     { chave: 'vinculada', rotulo: 'Vinculada a', render: (t) => nomeEntidadeVinculada(t) },
   ];
 
+  const colunasQrFuncionarios: Coluna<QrCodeTrabalhador>[] = [
+    { chave: 'trabalhadorNome', rotulo: 'Funcionário' },
+    { chave: 'matricula', rotulo: 'Matrícula' },
+    { chave: 'obraNome', rotulo: 'Obra' },
+    { chave: 'status', rotulo: 'Status', render: (qr) => (qr.jaExistia ? 'Reutilizado' : 'Criado agora') },
+  ];
+
+  async function gerarQrFuncionarios() {
+    try {
+      setGerandoQrFuncionarios(true);
+      setErro(null);
+      const resultado = await api.tagsIdentificacao.gerarQrCodesTrabalhadores();
+      setQrFuncionarios(resultado);
+      await carregar();
+      sucessoToast(`QR Codes prontos para ${resultado.length} funcionário(s).`);
+    } catch (e) {
+      setErro(e instanceof Error ? e.message : 'Falha ao gerar QR Codes dos funcionários.');
+    } finally {
+      setGerandoQrFuncionarios(false);
+    }
+  }
+
+  async function copiarLink(url: string) {
+    await navigator.clipboard.writeText(url);
+    sucessoToast('Link copiado.');
+  }
+
+  async function baixarQrFuncionario(qr: QrCodeTrabalhador) {
+    try {
+      const blob = await api.tagsIdentificacao.baixarQrCodeTrabalhador(qr.uid);
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = `qr-${qr.matricula || qr.uid}.png`;
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      URL.revokeObjectURL(url);
+    } catch (e) {
+      setErro(e instanceof Error ? e.message : 'Falha ao baixar QR Code.');
+    }
+  }
+
   return (
     <>
       {dialogElement}
@@ -254,7 +303,50 @@ export function TagsIdentificacaoTab() {
           </FeedbackInline>
         )}
 
-        <div className={`${estilos.sectionTitle} ${estilos.sectionTitleFirst}`}>Nova Tag</div>
+        <div className={`${estilos.sectionTitle} ${estilos.sectionTitleFirst}`}>QR dos funcionários</div>
+        <div className={estilos.formActions}>
+          <Button
+            appearance="primary"
+            icon={<QrCode24Regular />}
+            onClick={gerarQrFuncionarios}
+            disabled={gerandoQrFuncionarios}
+          >
+            Gerar ou atualizar QR Codes
+          </Button>
+        </div>
+
+        {qrFuncionarios.length > 0 && (
+          <DataTable
+            aria-label="QR Codes dos funcionários"
+            colunas={colunasQrFuncionarios}
+            linhas={qrFuncionarios}
+            chaveLinha={(qr) => qr.tagId}
+            acoesLinha={(qr) => (
+              <>
+                <BotaoAcao
+                  tom="ver"
+                  icon={<Open24Regular />}
+                  onClick={() => window.open(qr.urlPerfil, '_blank')}
+                  aria-label="Abrir perfil"
+                />
+                <BotaoAcao
+                  tom="ver"
+                  icon={<Copy24Regular />}
+                  onClick={() => copiarLink(qr.urlPerfil)}
+                  aria-label="Copiar link"
+                />
+                <BotaoAcao
+                  tom="baixar"
+                  icon={<ArrowDownload24Regular />}
+                  onClick={() => baixarQrFuncionario(qr)}
+                  aria-label="Baixar QR Code"
+                />
+              </>
+            )}
+          />
+        )}
+
+        <div className={estilos.sectionTitle}>Nova Tag</div>
         <div className={estilos.formGrid}>
           <div className={estilos.col4}>
             <Field label="UID da tag">
@@ -332,8 +424,8 @@ export function TagsIdentificacaoTab() {
           acoesLinha={(tag) => (
             <>
               {tag.status === StatusTag.Disponivel && (
-                <Button
-                  appearance="subtle"
+                <BotaoAcao
+                  tom="ver"
                   icon={<Link24Regular />}
                   onClick={() => iniciarVinculo(tag.id)}
                   aria-label="Vincular"
@@ -341,23 +433,30 @@ export function TagsIdentificacaoTab() {
               )}
               {tag.status === StatusTag.Vinculada && (
                 <>
-                  <Button
-                    appearance="subtle"
+                  <BotaoAcao
+                    tom="ver"
                     icon={<QrCode24Regular />}
-                    onClick={() => window.open(`${window.location.origin}${window.location.pathname}#/p/${tag.uid}`, '_blank')}
+                    // Nunca usar window.location.pathname aqui: se essa tela for aberta de dentro do
+                    // Teams (cujo manifesto costuma apontar direto pra ".../index.html"), o link
+                    // gravado na tag física herdava esse "/index.html" — e como o MSAL calcula o
+                    // redirectUri de login a partir do pathname da página (ver browserAuth.ts), quem
+                    // escaneasse a tag fora do Teams caía num redirect_uri nunca cadastrado no App
+                    // Registration (erro AADSTS50011). A raiz sempre serve o index.html (nginx.conf),
+                    // então basta a origem — sem depender de onde este botão foi clicado.
+                    onClick={() => window.open(`${window.location.origin}/#/p/${tag.uid}`, '_blank')}
                     aria-label="Abrir crachá/card público desta tag"
                     title="Abrir crachá/card público (o link para gravar na NTAG215 ou gerar o QR Code)"
                   />
-                  <Button
-                    appearance="subtle"
+                  <BotaoAcao
+                    tom="ver"
                     icon={<LinkDismiss24Regular />}
                     onClick={() => desvincular(tag.id)}
                     aria-label="Desvincular"
                   />
                 </>
               )}
-              <Button
-                appearance="subtle"
+              <BotaoAcao
+                tom="excluir"
                 icon={<Delete24Regular />}
                 onClick={() => excluir(tag.id)}
                 aria-label="Excluir"

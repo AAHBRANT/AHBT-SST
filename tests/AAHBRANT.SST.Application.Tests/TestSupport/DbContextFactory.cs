@@ -17,9 +17,7 @@ public static class DbContextFactory
         // appsettings, que os testes não executam). Sem isto, qualquer SaveChanges envolvendo
         // Trabalhador lança InvalidOperationException. Chave fixa e óbvia de teste — nunca usar
         // fora deste projeto.
-        CpfCriptografiaContexto.Configurar(
-            chaveCriptografia: Enumerable.Repeat((byte)1, 32).ToArray(),
-            chaveHash: Enumerable.Repeat((byte)2, 32).ToArray());
+        ChavesCpfDeTeste.Configurar();
     }
 
     public static SstDbContext Criar()

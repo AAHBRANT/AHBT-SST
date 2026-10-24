@@ -1,5 +1,6 @@
 using AAHBRANT.SST.Application.Aprs;
 using AAHBRANT.SST.Application.Common.Interfaces;
+using AAHBRANT.SST.Application.Common.Seguranca;
 using MediatR;
 using Microsoft.EntityFrameworkCore;
 
@@ -15,6 +16,8 @@ public class ListarAprEtapasQueryHandler : IRequestHandler<ListarAprEtapasQuery,
 
     public async Task<List<AprEtapaDto>> Handle(ListarAprEtapasQuery request, CancellationToken ct)
     {
+        await _db.GarantirAprNoEscopoAsync(request.AprId, ct);
+
         var etapas = await _db.AprEtapas
             .Where(e => e.AprId == request.AprId)
             .Include(e => e.Riscos)

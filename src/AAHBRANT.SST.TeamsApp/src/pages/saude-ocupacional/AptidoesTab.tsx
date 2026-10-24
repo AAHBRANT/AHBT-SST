@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import {
+  BotaoAcao,
   Button,
   Campo,
   Card,
@@ -224,7 +225,7 @@ export function AptidoesTab() {
                   <option value="">Selecione</option>
                   {trabalhadores.map((t) => (
                     <option key={t.id} value={t.id}>
-                      {t.nome} ({t.matricula})
+                      {t.matricula ? `${t.nome} (${t.matricula})` : t.nome}
                     </option>
                   ))}
                 </Select>
@@ -313,7 +314,7 @@ export function AptidoesTab() {
                 aria-label="Salvar"
               />
             ) : (
-              <Button appearance="subtle" icon={<Delete24Regular />} onClick={() => excluir(a.id)} aria-label="Excluir" />
+              <BotaoAcao tom="excluir" icon={<Delete24Regular />} onClick={() => excluir(a.id)} aria-label="Excluir" />
             )
           }
         />

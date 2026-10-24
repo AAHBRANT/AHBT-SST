@@ -25,6 +25,11 @@ public static partial class CpfMascarador
         return $"***.***.***-{digitos[^2..]}";
     }
 
+    // Integrações externas (G-RH) mandam o CPF às vezes com máscara ("000.000.000-00") — o SST grava
+    // e calcula o hash sempre só com os 11 dígitos, então toda entrada externa passa por aqui.
+    public static string ApenasDigitos(string? valor) =>
+        valor is null ? string.Empty : SomenteDigitos().Replace(valor, string.Empty);
+
     [GeneratedRegex(@"\D")]
     private static partial Regex SomenteDigitos();
 }

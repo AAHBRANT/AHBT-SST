@@ -10,7 +10,9 @@ namespace AAHBRANT.SST.Domain.Entidades;
 // seeder para migrar.
 public class PermissaoTrabalho : AuditableEntity
 {
-    // "Nº PT:" do cabeçalho — texto livre, sem numeração automática (documento não define regra).
+    // "Nº PT:" do cabeçalho — gerado automaticamente pelo sistema na criação (formato
+    // "PT-{ano}-{sequencial}", ver GeradorNumeroDocumentoService; pedido do usuário, 03/09), não editável
+    // depois. O documento original não definia uma regra de numeração — decisão própria.
     public string? NumeroPt { get; set; }
 
     public Guid AtividadeId { get; set; }
@@ -58,6 +60,11 @@ public class PermissaoTrabalho : AuditableEntity
     public Guid? ResponsavelSstUsuarioId { get; set; }
     public Usuario? ResponsavelSstUsuario { get; set; }
     public DateTime? DataAssinaturaSst { get; set; }
+
+    // Como as três assinaturas acima foram feitas (02/10), para a legenda miúda do PDF. Hoje a
+    // liberação é sempre o clique do usuário logado (AutorizarPermissaoTrabalhoCommand); linhas
+    // anteriores à coluna foram preenchidas com SessaoLogada pela migration.
+    public MetodoAutenticacaoAssinatura MetodoAssinatura { get; set; } = MetodoAutenticacaoAssinatura.SessaoLogada;
 
     // §8 "Suspensão" — SuspenderPermissaoTrabalhoCommand.
     public Guid? SuspensaPorUsuarioId { get; set; }

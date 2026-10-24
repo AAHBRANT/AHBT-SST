@@ -8,15 +8,32 @@
     <EmbeddedResource Include="Documentos\Assets\logo-aahbrant.png">
       <LogicalName>AAHBRANT.SST.Infrastructure.Documentos.Assets.logo-aahbrant.png</LogicalName>
     </EmbeddedResource>
+    <EmbeddedResource Include="Persistencia\Seed\Assets\MateriaisApoio\regras-da-casa.jpeg">
+      <LogicalName>AAHBRANT.SST.Infrastructure.Persistencia.Seed.Assets.MateriaisApoio.regras-da-casa.jpeg</LogicalName>
+    </EmbeddedResource>
+    <EmbeddedResource Include="Persistencia\Seed\Assets\MateriaisApoio\higiene.jpeg">
+      <LogicalName>AAHBRANT.SST.Infrastructure.Persistencia.Seed.Assets.MateriaisApoio.higiene.jpeg</LogicalName>
+    </EmbeddedResource>
+    <EmbeddedResource Include="Persistencia\Seed\Assets\MateriaisApoio\instrucao-tecnica-alojamento.docx">
+      <LogicalName>AAHBRANT.SST.Infrastructure.Persistencia.Seed.Assets.MateriaisApoio.instrucao-tecnica-alojamento.docx</LogicalName>
+    </EmbeddedResource>
+    <EmbeddedResource Include="Persistencia\Seed\Assets\MateriaisApoio\regras-da-casa-a4.pdf">
+      <LogicalName>AAHBRANT.SST.Infrastructure.Persistencia.Seed.Assets.MateriaisApoio.regras-da-casa-a4.pdf</LogicalName>
+    </EmbeddedResource>
+    <EmbeddedResource Include="Persistencia\Seed\Assets\RequisitosLegais\requisitos-nr.json">
+      <LogicalName>AAHBRANT.SST.Infrastructure.Persistencia.Seed.Assets.RequisitosLegais.requisitos-nr.json</LogicalName>
+    </EmbeddedResource>
   </ItemGroup>
 
   <ItemGroup>
     <PackageReference Include="Azure.Identity" Version="1.21.0" />
     <PackageReference Include="Azure.Messaging.ServiceBus" Version="7.20.2" />
+    <PackageReference Include="ClosedXML" Version="0.104.2" />
     <PackageReference Include="Microsoft.EntityFrameworkCore.Design" Version="8.0.11">
       <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
       <PrivateAssets>all</PrivateAssets>
     </PackageReference>
+    <PackageReference Include="Microsoft.Data.SqlClient" Version="5.2.2" />
     <PackageReference Include="Microsoft.EntityFrameworkCore.SqlServer" Version="8.0.11" />
     <PackageReference Include="Microsoft.EntityFrameworkCore.Tools" Version="8.0.11">
       <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
@@ -25,9 +42,10 @@
     <PackageReference Include="Microsoft.Extensions.Hosting.Abstractions" Version="10.0.11" />
     <PackageReference Include="Microsoft.Extensions.Http" Version="10.0.11" />
     <PackageReference Include="Microsoft.Extensions.Options.ConfigurationExtensions" Version="10.0.11" />
+    <PackageReference Include="PdfPig" Version="0.1.11" />
     <PackageReference Include="QRCoder" Version="1.6.0" />
     <PackageReference Include="QuestPDF" Version="2026.7.3" />
-    <PackageReference Include="SixLabors.ImageSharp" Version="3.1.11" />
+    <PackageReference Include="SixLabors.ImageSharp" Version="3.1.12" />
   </ItemGroup>
 
   <PropertyGroup>

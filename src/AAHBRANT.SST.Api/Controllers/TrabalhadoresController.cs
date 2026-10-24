@@ -1,3 +1,4 @@
+using AAHBRANT.SST.Api.Autorizacao;
 using AAHBRANT.SST.Application.Assinatura.Commands;
 using AAHBRANT.SST.Application.Trabalhadores.Commands;
 using AAHBRANT.SST.Application.Trabalhadores.Queries;
@@ -13,13 +14,24 @@ namespace AAHBRANT.SST.Api.Controllers;
 public class TrabalhadoresController : ControllerBase
 {
     private readonly IMediator _mediator;
+    private readonly IUsuarioAtualResolver _usuarioAtual;
 
-    public TrabalhadoresController(IMediator mediator) => _mediator = mediator;
+    public TrabalhadoresController(IMediator mediator, IUsuarioAtualResolver usuarioAtual)
+    {
+        _mediator = mediator;
+        _usuarioAtual = usuarioAtual;
+    }
 
     [Authorize(Policy = "trabalhador:ver")]
     [HttpGet]
     public async Task<IActionResult> Listar([FromQuery] Guid? obraId, CancellationToken ct)
         => Ok(await _mediator.Send(new ListarTrabalhadoresQuery(obraId), ct));
+
+    // Indicador "Podem trabalhar hoje" do Início: quantos ativos estão liberados e por que os demais não.
+    [Authorize(Policy = "trabalhador:ver")]
+    [HttpGet("liberacao")]
+    public async Task<IActionResult> ObterLiberacao([FromQuery] Guid? obraId, CancellationToken ct)
+        => Ok(await _mediator.Send(new ObterLiberacaoParaTrabalhoQuery(obraId), ct));
 
     [Authorize(Policy = "trabalhador:ver")]
     [HttpGet("{id:guid}")]
@@ -55,6 +67,14 @@ public class TrabalhadoresController : ControllerBase
         var id = await _mediator.Send(command, ct);
         return CreatedAtAction(nameof(ObterPorId), new { id }, new { id });
     }
+
+    // Carga inicial única do cadastro vindo do G-RH (Integração G-RH) — chamado manualmente uma vez
+    // pela tela de Administração depois que "Grh:ClientSecret" estiver configurado. A atualização
+    // contínua depois disso é automática, via evento do Service Bus.
+    [Authorize(Policy = "trabalhador:criar")]
+    [HttpPost("importar-grh")]
+    public async Task<IActionResult> ImportarDoGrh(CancellationToken ct)
+        => Ok(await _mediator.Send(new ImportarColaboradoresGrhCommand(), ct));
 
     [Authorize(Policy = "trabalhador:editar")]
     [HttpPut("{id:guid}")]
@@ -94,11 +114,6 @@ public class TrabalhadoresController : ControllerBase
         return foto is null ? NotFound() : File(foto.Conteudo, foto.ContentType, foto.NomeArquivo);
     }
 
-    [Authorize(Policy = "trabalhador:telegram")]
-    [HttpPost("{id:guid}/telegram/vinculo")]
-    public async Task<IActionResult> GerarVinculoTelegram(Guid id, CancellationToken ct)
-        => Ok(await _mediator.Send(new GerarVinculoTelegramCommand(id), ct));
-
     [Authorize(Policy = "trabalhador:assinatura")]
     [HttpPost("{id:guid}/assinatura/termo-aceite")]
     public async Task<IActionResult> RegistrarTermoAceiteAssinatura(Guid id, CancellationToken ct)
@@ -115,13 +130,98 @@ public class TrabalhadoresController : ControllerBase
         return NoContent();
     }
 
-    public record CadastrarBiometriaLocalRequestBody(byte[] TemplateBruto);
+    public record RevogarConsentimentoBiometriaRequestBody(string Motivo);
+
+    // LGPD: o trabalhador retira o consentimento; a biometria dele é desativada (ver o comando).
+    [Authorize(Policy = "trabalhador:assinatura")]
+    [HttpPost("{id:guid}/assinatura/consentimento-biometria/revogar")]
+    public async Task<IActionResult> RevogarConsentimentoBiometria(Guid id, RevogarConsentimentoBiometriaRequestBody body, CancellationToken ct)
+    {
+        await _mediator.Send(new RevogarConsentimentoBiometriaCommand(id, body.Motivo), ct);
+        return NoContent();
+    }
+
+    // Funcionários com 3 ou mais falhas de reconhecimento facial em 30 dias contra o cadastro atual:
+    // candidatos a refazer a foto. O escopo por obra vem dos filtros globais.
+    [Authorize(Policy = "trabalhador:assinatura")]
+    [HttpGet("cadastros-faciais-fracos")]
+    public async Task<IActionResult> ListarCadastrosFaciaisFracos([FromQuery] Guid? obraId, CancellationToken ct)
+        => Ok(await _mediator.Send(new ListarCadastrosFaciaisFracosQuery(obraId), ct));
+
+    // Cada falha de reconhecimento facial do período (até 90 dias), com a confiança.
+    [Authorize(Policy = "trabalhador:assinatura")]
+    [HttpGet("falhas-reconhecimento-facial")]
+    public async Task<IActionResult> ListarFalhasReconhecimentoFacial([FromQuery] Guid? obraId, [FromQuery] int dias = 30, CancellationToken ct = default)
+        => Ok(await _mediator.Send(new ListarFalhasReconhecimentoFacialQuery(obraId, dias), ct));
+
+    [Authorize(Policy = "trabalhador:assinatura")]
+    [HttpGet("{id:guid}/assinatura/status-cadastro")]
+    public async Task<IActionResult> ObterStatusCadastroBiometrico(Guid id, CancellationToken ct)
+        => Ok(await _mediator.Send(new ObterStatusCadastroBiometricoQuery(id), ct));
+
+    // Dedo é opcional: sem ele, vale o cadastro único por trabalhador do fluxo pós-criação.
+    public record CadastrarBiometriaLocalRequestBody(byte[] TemplateBruto, byte[]? ImagemCadastro = null, DedoBiometria? Dedo = null);
 
     [Authorize(Policy = "trabalhador:assinatura")]
     [HttpPost("{id:guid}/assinatura/biometria-local/cadastro")]
     public async Task<IActionResult> CadastrarBiometriaLocal(Guid id, CadastrarBiometriaLocalRequestBody body, CancellationToken ct)
     {
-        await _mediator.Send(new CadastrarTemplateBiometricoCommand(id, body.TemplateBruto), ct);
+        await _mediator.Send(new CadastrarTemplateBiometricoCommand(id, body.TemplateBruto, body.ImagemCadastro, body.Dedo ?? DedoBiometria.NaoInformado), ct);
+        return NoContent();
+    }
+
+    public class CadastrarFacialRequestBody
+    {
+        public IFormFile Foto { get; set; } = null!;
+    }
+
+    [Authorize(Policy = "trabalhador:assinatura")]
+    [HttpPost("{id:guid}/assinatura/facial/cadastro")]
+    [RequestSizeLimit(6_000_000)]
+    public async Task<IActionResult> CadastrarFacial(Guid id, [FromForm] CadastrarFacialRequestBody body, CancellationToken ct)
+    {
+        await using var stream = new MemoryStream();
+        await body.Foto.CopyToAsync(stream, ct);
+        await _mediator.Send(new CadastrarFacialCommand(id, stream.ToArray()), ct);
+        return NoContent();
+    }
+
+    public record RefazerCadastroFacialRequestBody(string Motivo);
+
+    // Refazer o cadastro facial: mesma permissão do cadastro (técnico), limitado à obra do usuário no
+    // handler. Remove o cadastro no Azure Face, arquiva as fotos e registra na trilha com o motivo.
+    [Authorize(Policy = "trabalhador:assinatura")]
+    [HttpPost("{id:guid}/assinatura/facial/refazer")]
+    public async Task<IActionResult> RefazerCadastroFacial(Guid id, RefazerCadastroFacialRequestBody body, CancellationToken ct)
+    {
+        var usuarioId = await _usuarioAtual.ObterIdAsync(User, ct);
+        await _mediator.Send(new RefazerCadastroFacialCommand(id, usuarioId, body.Motivo ?? string.Empty), ct);
+        return NoContent();
+    }
+
+    [Authorize(Policy = "trabalhador:assinatura")]
+    [HttpGet("{id:guid}/assinatura/facial/fotos")]
+    public async Task<IActionResult> ListarFotosCadastroFacial(Guid id, CancellationToken ct)
+        => Ok(await _mediator.Send(new ListarFotosCadastroFacialQuery(id), ct));
+
+    [Authorize(Policy = "trabalhador:assinatura")]
+    [HttpGet("{id:guid}/assinatura/facial/fotos/{fotoId:guid}")]
+    public async Task<IActionResult> ObterFotoCadastroFacial(Guid id, Guid fotoId, CancellationToken ct)
+    {
+        var foto = await _mediator.Send(new ObterFotoCadastroFacialQuery(id, fotoId), ct);
+        return foto is null ? NotFound() : File(foto.Conteudo, foto.ContentType, foto.NomeArquivo);
+    }
+
+    [Authorize(Policy = "trabalhador:ver")]
+    [HttpGet("{id:guid}/uniformes")]
+    public async Task<IActionResult> ListarTamanhosUniforme(Guid id, CancellationToken ct)
+        => Ok(await _mediator.Send(new ListarTamanhosUniformeTrabalhadorQuery(id), ct));
+
+    [Authorize(Policy = "trabalhador:editar")]
+    [HttpPut("{id:guid}/uniformes")]
+    public async Task<IActionResult> DefinirTamanhosUniforme(Guid id, DefinirTamanhosUniformeRequest request, CancellationToken ct)
+    {
+        await _mediator.Send(new DefinirTamanhosUniformeTrabalhadorCommand(id, request.Itens), ct);
         return NoContent();
     }
 }
@@ -130,3 +230,5 @@ public class AnexarFotoTrabalhadorRequestBody
 {
     public IFormFile Foto { get; set; } = null!;
 }
+
+public record DefinirTamanhosUniformeRequest(List<ItemTamanhoUniforme> Itens);

@@ -1,6 +1,13 @@
 namespace AAHBRANT.SST.Application.Treinamentos;
 
-public record CertificadoTreinamentoPdfSignatarioModelo(string TrabalhadorNome, DateTime AssinadoEm);
+public record CertificadoTreinamentoPdfSignatarioModelo(
+    string TrabalhadorNome,
+    DateTime AssinadoEm,
+    AAHBRANT.SST.Domain.Enums.MetodoAutenticacaoAssinatura? Metodo = null,
+    string? Funcao = null,
+    // SHA-256 da assinatura (signatário + trabalhador + data/hora + método + hash do documento),
+    // mostrado no selo do certificado (pedido do usuário, 19/10).
+    string? Hash = null);
 
 // Certificado individual de conclusão de treinamento/NR (PR-SST-002, item 4). Distinto do
 // comprovante genérico de DocumentoAssinaturaPdfService (que só atesta quem assinou o quê) — este
@@ -8,6 +15,7 @@ public record CertificadoTreinamentoPdfSignatarioModelo(string TrabalhadorNome, 
 // padrão visual AAHBRANT (#670000) usado em EntregaEpiPdfService/DdsPdfService.
 public record CertificadoTreinamentoPdfModelo(
     string ObraNome,
+    byte[]? ObraLogoConteudo,
     string? ObraCnpj,
     string? ObraEndereco,
     string? ObraCidade,
@@ -15,6 +23,7 @@ public record CertificadoTreinamentoPdfModelo(
     string TrabalhadorNome,
     string TrabalhadorCpfMascarado,
     string? TrabalhadorRg,
+    string TrabalhadorMatricula,
     string TrabalhadorFuncaoNome,
     string CursoNome,
     string? NormaReferencia,
@@ -23,9 +32,21 @@ public record CertificadoTreinamentoPdfModelo(
     DateTime DataRealizacao,
     DateTime DataValidade,
     string? InstituicaoInstrutor,
+    string? InstrutorRegistroProfissional,
     string? NumeroCertificado,
+    string? Local,
     string? ConteudoProgramatico,
-    IReadOnlyList<CertificadoTreinamentoPdfSignatarioModelo> Signatarios);
+    IReadOnlyList<CertificadoTreinamentoPdfSignatarioModelo> Signatarios,
+    byte[]? QrCodeValidacaoPng,
+    byte[]? FotoTurma,
+    string ConteudoHash,
+    string UrlValidacaoPublica,
+    byte[] QrCodePng,
+    bool TemAssinatura,
+    // Número normalizado ("NR-35") e título da norma vindos de CatalogoNormasRegulamentadoras —
+    // destaque da frente no modelo de certificado de 19/10.
+    string? NormaNumero = null,
+    string? NormaTitulo = null);
 
 public interface ICertificadoTreinamentoPdfService
 {

@@ -1,8 +1,16 @@
-import { Abas, EstadoVazio, useAbaNaUrl } from '@ui';
+import { Abas, useAbaNaUrl } from '@ui';
+import {
+  ClipboardTaskListLtr24Regular,
+  DocumentCheckmark24Regular,
+  DocumentText24Regular,
+  HeartPulse24Regular,
+  ShieldCheckmark24Regular,
+} from '@fluentui/react-icons';
 import { PgrRiscosPage } from '../pgr/PgrRiscosPage';
 import { SaudeOcupacionalPage } from '../saude-ocupacional/SaudeOcupacionalPage';
 import { TreinamentosPage } from '../treinamentos/TreinamentosPage';
 import { RequisitosLegaisPage } from '../requisitoslegais/RequisitosLegaisPage';
+import { MateriaisApoioTab } from './MateriaisApoioTab';
 
 type SecaoGestaoSst = 'pgr' | 'pcmso' | 'treinamentos' | 'documentos' | 'requisitos-legais';
 
@@ -29,24 +37,18 @@ export function GestaoSstPage() {
         aoMudar={setSecao}
         aria-label="Seções de Gestão de SST"
         abas={[
-          { valor: 'pgr', rotulo: 'PGR / GRO' },
-          { valor: 'pcmso', rotulo: 'PCMSO' },
-          { valor: 'treinamentos', rotulo: 'Treinamentos' },
-          { valor: 'documentos', rotulo: 'Documentos & Procedimentos' },
-          { valor: 'requisitos-legais', rotulo: 'Requisitos Legais' },
+          { valor: 'pgr', rotulo: 'PGR / GRO', icone: <ShieldCheckmark24Regular /> },
+          { valor: 'pcmso', rotulo: 'PCMSO', icone: <HeartPulse24Regular /> },
+          { valor: 'treinamentos', rotulo: 'Treinamentos', icone: <ClipboardTaskListLtr24Regular /> },
+          { valor: 'documentos', rotulo: 'Documentos & Procedimentos', icone: <DocumentText24Regular /> },
+          { valor: 'requisitos-legais', rotulo: 'Requisitos Legais', icone: <DocumentCheckmark24Regular /> },
         ]}
       />
 
       {secao === 'pgr' && <PgrRiscosPage mostrarTitulo={false} />}
       {secao === 'pcmso' && <SaudeOcupacionalPage abaInicial="pcmso" mostrarTitulo={false} />}
       {secao === 'treinamentos' && <TreinamentosPage mostrarTitulo={false} />}
-      {secao === 'documentos' && (
-        <EstadoVazio
-          variante="em-construcao"
-          titulo="Documentos & Procedimentos"
-          descricao="O módulo de Gestão Documental foi removido do sistema em 28/08 (junto com a Matriz Legal antiga). Esse item está reservado no menu, mas precisa ser reconstruído do zero."
-        />
-      )}
+      {secao === 'documentos' && <MateriaisApoioTab />}
       {secao === 'requisitos-legais' && <RequisitosLegaisPage mostrarTitulo={false} />}
     </div>
   );

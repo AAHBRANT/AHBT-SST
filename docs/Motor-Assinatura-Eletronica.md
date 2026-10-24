@@ -585,7 +585,7 @@ redação jurídica em si.
    API e integração com a tela do DDS — ficam para a etapa 6.
 5. ~~Fluxo de aceite/consentimento no cadastro do trabalhador~~ (concluído
    2026-08-25): três comandos CQRS novos em `Application/Trabalhadores/Commands/`
-   (mesmo módulo de `GerarVinculoTelegramCommand`, não `Application/Assinatura/` —
+   (não `Application/Assinatura/` —
    são ações sobre o cadastro do trabalhador, não sobre uma transação de
    assinatura): `DefinirPinAssinaturaCommand` (define/troca o PIN do método de
    reserva — sem isso ninguém consegue assinar por crachá+PIN, gap que não
@@ -739,7 +739,7 @@ redação jurídica em si.
     `appsettings.json`, reaproveitando o mesmo valor de `Cors:AllowedOrigin`
     hoje, mas como chave própria — pode divergir no futuro, ex. domínio
     customizado). Config vazia não derruba a finalização (mesmo espírito de
-    tolerância usado em Telegram/Graph/ServiceBus): o QR cai para um caminho
+    tolerância usado em Graph/ServiceBus): o QR cai para um caminho
     relativo. Novo `Application/Assinatura/TokenValidacaoPublicaGerador.cs`
     (32 chars hex via `RandomNumberGenerator`, cabe em
     `TokenValidacaoPublica` nvarchar(64) único). `FinalizarDocumentoCommand`
@@ -828,7 +828,7 @@ redação jurídica em si.
     (`ServerDomain: "localhost"`, `Origins` apontando para as portas locais
     da API/TeamsApp) — `Fido2Options.ServerDomain`/`Origins` seguem
     propositalmente vazios em `appsettings.json` (produção), pelo mesmo
-    padrão já usado em `GraphOptions`/`TelegramOptions`, até o domínio de
+    padrão já usado em `GraphOptions`, até o domínio de
     produção e o hardware do leitor serem confirmados. **Não copiar esse
     bloco para produção.**
 14. ~~Preparação para reuso em Treinamento/EPI/APR/PT/Inspeções~~ —

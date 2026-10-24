@@ -1,14 +1,17 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
+  BotaoAcao,
   Button,
   Field,
   Input,
   CampoData,
   Card,
   DataTable,
-  PainelLateral,
+  PainelCriacaoInline,
   FormGrid,
+  FormRodape,
+  FormSection,
   Campo,
   FeedbackInline,
   SeletorPesquisavel,
@@ -19,10 +22,13 @@ import {
   useConfirmar,
   type Coluna,
 } from '@ui';
-import { Add24Regular, ArrowDownload24Regular, Delete24Regular, Signature24Regular } from '@fluentui/react-icons';
+import { Add24Regular, ArrowDownload24Regular, Delete24Regular, Eye24Regular, Signature24Regular } from '@fluentui/react-icons';
 import { api, type CursoTreinamento, type NovoTreinamento, type Treinamento } from '../../lib/api';
 import { useSucessoToast } from '../../hooks/useSucessoToast';
 import { AssinaturaCertificadoTreinamentoDialog } from '../../components/assinatura/AssinaturaCertificadoTreinamentoDialog';
+import { useSouAdministrador } from '../../lib/UsuarioLogadoContext';
+import { useRegistrosTravados } from '../../hooks/useRegistrosTravados';
+import { salvarBlob, useVisualizadorPdf } from '../../components/useVisualizadorPdf';
 
 function treinamentoVazio(trabalhadorId: string): NovoTreinamento {
   return {
@@ -33,19 +39,26 @@ function treinamentoVazio(trabalhadorId: string): NovoTreinamento {
     cargaHorariaRealizada: 0,
     instituicaoInstrutor: '',
     numeroCertificado: '',
+    local: '',
+    instrutorRegistroProfissional: '',
   };
 }
 
-// Sub-aba de TrabalhadorDetalhePage (aba "Treinamentos & DDS"). Camada ui/ (Onda 2, Task 1): Card com
-// título de seção + botão "Adicionar treinamento" no `acoes` do Card (não PageHeader — conteúdo
-// aninhado); formulário de criação foi para PainelLateral. A situação de vencimento (antes calculada
-// à mão em situacaoTreinamento(), mesma regra de 30 dias) passa a usar os helpers
+// Sub-aba de TrabalhadorDetalhePage (aba "Treinamentos & DDS"). Card com título de seção + botão
+// "Adicionar treinamento" no `acoes` do Card (não PageHeader — conteúdo aninhado). Migração do
+// formulário inline (spec 2026-09-11): o PainelLateral (drawer) saiu — mesmo padrão de
+// AtividadesTab.tsx/InspecoesTab.tsx. Agora é um PainelCriacaoInline, que cresce acima da lista até a
+// altura do próprio formulário. A situação de vencimento (antes calculada à mão em
+// situacaoTreinamento(), mesma regra de 30 dias) usa os helpers
 // nivelVencimento/tomDeVencimento/rotuloDeVencimento de @ui (guia de conversão, "Badge→StatusChip"),
 // mantendo a data crua ao lado do chip (aprendizado do piloto 1: chip nunca substitui sozinho um
-// valor de auditoria).
-export function TreinamentosTab({ trabalhadorId }: { trabalhadorId: string }) {
+// valor de auditoria). obraId propaga pro AssinaturaCertificadoTreinamentoDialog (AssinaturaQuiosque).
+export function TreinamentosTab({ trabalhadorId, obraId }: { trabalhadorId: string; obraId: string }) {
+  const souAdministrador = useSouAdministrador();
   const navigate = useNavigate();
   const [treinamentos, setTreinamentos] = useState<Treinamento[]>([]);
+  // Finalizados não podem ser excluídos (o servidor recusa): o botão some deles.
+  const travados = useRegistrosTravados('Treinamento', treinamentos.map((t) => t.id));
   const [cursos, setCursos] = useState<CursoTreinamento[]>([]);
   const [novoTreinamento, setNovoTreinamento] = useState<NovoTreinamento>(() => treinamentoVazio(trabalhadorId));
   const [erro, setErro] = useState<string | null>(null);
@@ -54,6 +67,7 @@ export function TreinamentosTab({ trabalhadorId }: { trabalhadorId: string }) {
   const [carregandoLista, setCarregandoLista] = useState(true);
   const [painelAberto, setPainelAberto] = useState(false);
   const { confirmar, dialogElement } = useConfirmar();
+  const { visualizar, dialogoVisualizador } = useVisualizadorPdf();
   const sucessoToast = useSucessoToast();
   const [baixandoId, setBaixandoId] = useState<string | null>(null);
   const [assinaturaAberta, setAssinaturaAberta] = useState<{
@@ -86,18 +100,21 @@ export function TreinamentosTab({ trabalhadorId }: { trabalhadorId: string }) {
   async function baixarCertificado(id: string) {
     try {
       setBaixandoId(id);
-      const blob = await api.treinamentos.baixarCertificado(id);
-      const url = URL.createObjectURL(blob);
-      const link = document.createElement('a');
-      link.href = url;
-      link.download = `certificado-treinamento-${id}.pdf`;
-      link.click();
-      URL.revokeObjectURL(url);
+      salvarBlob(await api.treinamentos.baixarCertificado(id), `certificado-treinamento-${id}.pdf`);
     } catch (e) {
       setErro(e instanceof Error ? e.message : 'Falha ao baixar o certificado em PDF.');
     } finally {
       setBaixandoId(null);
     }
+  }
+
+  // Mesmo certificado do "Baixar", aberto na janela de visualização.
+  function visualizarCertificado(t: Treinamento) {
+    void visualizar({
+      titulo: `Certificado — ${nomeCurso(t.cursoTreinamentoId)}`,
+      nomeArquivo: `certificado-treinamento-${t.id}.pdf`,
+      obter: () => api.treinamentos.baixarCertificado(t.id),
+    });
   }
 
   useEffect(() => {
@@ -168,11 +185,106 @@ export function TreinamentosTab({ trabalhadorId }: { trabalhadorId: string }) {
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
       {dialogElement}
+      {dialogoVisualizador}
+      <div id="painel-novo-treinamento">
+        <PainelCriacaoInline aberto={painelAberto} titulo="Novo treinamento">
+          <FormSection titulo="Dados do treinamento" numero={1} primeira>
+            {erroPainel && (
+              <FeedbackInline tom="erro" aoFechar={() => setErroPainel(null)}>
+                {erroPainel}
+              </FeedbackInline>
+            )}
+            <FormGrid>
+              <Campo span={12}>
+                <Field label="Curso">
+                  <SeletorPesquisavel
+                    placeholder="Selecione um curso"
+                    opcaoVazia="Selecione um curso"
+                    opcoes={opcoesCursos}
+                    valor={novoTreinamento.cursoTreinamentoId}
+                    aoMudar={(id) => setNovoTreinamento({ ...novoTreinamento, cursoTreinamentoId: id })}
+                  />
+                </Field>
+              </Campo>
+              <Campo span={6}>
+                <Field label="Data de realização">
+                  <CampoData
+                    value={novoTreinamento.dataRealizacao}
+                    onChange={(_, d) => setNovoTreinamento({ ...novoTreinamento, dataRealizacao: d.value })}
+                  />
+                </Field>
+              </Campo>
+              <Campo span={6}>
+                <Field label="Validade">
+                  <CampoData
+                    value={novoTreinamento.dataValidade}
+                    onChange={(_, d) => setNovoTreinamento({ ...novoTreinamento, dataValidade: d.value })}
+                  />
+                </Field>
+              </Campo>
+              <Campo span={6}>
+                <Field label="Carga horária realizada (h)">
+                  <Input
+                    type="number"
+                    value={String(novoTreinamento.cargaHorariaRealizada)}
+                    onChange={(_, d) => setNovoTreinamento({ ...novoTreinamento, cargaHorariaRealizada: Number(d.value) })}
+                  />
+                </Field>
+              </Campo>
+              <Campo span={6}>
+                <Field label="Número do certificado">
+                  <Input
+                    value={novoTreinamento.numeroCertificado ?? ''}
+                    onChange={(_, d) => setNovoTreinamento({ ...novoTreinamento, numeroCertificado: d.value })}
+                  />
+                </Field>
+              </Campo>
+              <Campo span={6}>
+                <Field label="Técnico de Segurança do Trabalho (Instrutor/Resp. Técnico)">
+                  <Input
+                    value={novoTreinamento.instituicaoInstrutor ?? ''}
+                    onChange={(_, d) => setNovoTreinamento({ ...novoTreinamento, instituicaoInstrutor: d.value })}
+                  />
+                </Field>
+              </Campo>
+              <Campo span={6}>
+                <Field label="Registro profissional do instrutor (CREA/MTE)">
+                  <Input
+                    value={novoTreinamento.instrutorRegistroProfissional ?? ''}
+                    onChange={(_, d) => setNovoTreinamento({ ...novoTreinamento, instrutorRegistroProfissional: d.value })}
+                  />
+                </Field>
+              </Campo>
+              <Campo span={12}>
+                <Field label="Local / Instalações (opcional — sem preencher, usa a Obra)">
+                  <Input
+                    value={novoTreinamento.local ?? ''}
+                    onChange={(_, d) => setNovoTreinamento({ ...novoTreinamento, local: d.value })}
+                  />
+                </Field>
+              </Campo>
+            </FormGrid>
+            <FormRodape>
+              <Button onClick={fecharPainel}>Cancelar</Button>
+              <Button appearance="primary" onClick={criar} disabled={carregando}>
+                Adicionar treinamento
+              </Button>
+            </FormRodape>
+          </FormSection>
+        </PainelCriacaoInline>
+      </div>
+
       <Card
         titulo="Treinamentos do funcionário"
         acoes={
-          <Button appearance="primary" icon={<Add24Regular />} onClick={() => setPainelAberto(true)}>
-            Adicionar treinamento
+          <Button
+            appearance="primary"
+            icon={<Add24Regular />}
+            onClick={() => (painelAberto ? fecharPainel() : setPainelAberto(true))}
+            aria-expanded={painelAberto}
+            aria-controls="painel-novo-treinamento"
+          >
+            {painelAberto ? 'Fechar' : 'Adicionar treinamento'}
           </Button>
         }
       >
@@ -193,108 +305,39 @@ export function TreinamentosTab({ trabalhadorId }: { trabalhadorId: string }) {
           }}
           acoesLinha={(t) => (
             <>
-              <Button
-                appearance="subtle"
-                size="small"
+              <BotaoAcao
+                tom="ver"
                 icon={<Signature24Regular />}
                 onClick={() => navigate(`/treinamentos/${t.id}/assinar`)}
                 aria-label="Assinar certificado"
-                title="Assinar certificado"
               />
-              <Button
-                appearance="subtle"
-                size="small"
+              <BotaoAcao
+                tom="ver"
+                icon={<Eye24Regular />}
+                onClick={() => visualizarCertificado(t)}
+                aria-label="Visualizar certificado"
+              />
+              <BotaoAcao
+                tom="baixar"
                 icon={<ArrowDownload24Regular />}
                 onClick={() => baixarCertificado(t.id)}
                 disabled={baixandoId === t.id}
                 aria-label="Baixar certificado"
                 title="Baixar certificado em PDF"
               />
-              <Button
-                appearance="subtle"
-                size="small"
-                icon={<Delete24Regular />}
-                onClick={() => excluir(t.id)}
-                aria-label="Excluir"
-              />
+              {/* Exclusão é privilégio de Administrador (o servidor recusa os demais) — ver PoliticasAutorizacao. */}
+              {souAdministrador && !travados.has(t.id) && (
+                <BotaoAcao
+                  tom="excluir"
+                  icon={<Delete24Regular />}
+                  onClick={() => excluir(t.id)}
+                  aria-label="Excluir"
+                />
+              )}
             </>
           )}
         />
       </Card>
-
-      <PainelLateral
-        aberto={painelAberto}
-        aoFechar={fecharPainel}
-        titulo="Novo treinamento"
-        rodape={
-          <>
-            <Button onClick={fecharPainel}>Cancelar</Button>
-            <Button appearance="primary" onClick={criar} disabled={carregando}>
-              Adicionar treinamento
-            </Button>
-          </>
-        }
-      >
-        {erroPainel && (
-          <FeedbackInline tom="erro" aoFechar={() => setErroPainel(null)}>
-            {erroPainel}
-          </FeedbackInline>
-        )}
-        <FormGrid>
-          <Campo span={12}>
-            <Field label="Curso">
-              <SeletorPesquisavel
-                placeholder="Selecione um curso"
-                opcaoVazia="Selecione um curso"
-                opcoes={opcoesCursos}
-                valor={novoTreinamento.cursoTreinamentoId}
-                aoMudar={(id) => setNovoTreinamento({ ...novoTreinamento, cursoTreinamentoId: id })}
-              />
-            </Field>
-          </Campo>
-          <Campo span={6}>
-            <Field label="Data de realização">
-              <CampoData
-                value={novoTreinamento.dataRealizacao}
-                onChange={(_, d) => setNovoTreinamento({ ...novoTreinamento, dataRealizacao: d.value })}
-              />
-            </Field>
-          </Campo>
-          <Campo span={6}>
-            <Field label="Validade">
-              <CampoData
-                value={novoTreinamento.dataValidade}
-                onChange={(_, d) => setNovoTreinamento({ ...novoTreinamento, dataValidade: d.value })}
-              />
-            </Field>
-          </Campo>
-          <Campo span={6}>
-            <Field label="Carga horária realizada (h)">
-              <Input
-                type="number"
-                value={String(novoTreinamento.cargaHorariaRealizada)}
-                onChange={(_, d) => setNovoTreinamento({ ...novoTreinamento, cargaHorariaRealizada: Number(d.value) })}
-              />
-            </Field>
-          </Campo>
-          <Campo span={6}>
-            <Field label="Número do certificado">
-              <Input
-                value={novoTreinamento.numeroCertificado ?? ''}
-                onChange={(_, d) => setNovoTreinamento({ ...novoTreinamento, numeroCertificado: d.value })}
-              />
-            </Field>
-          </Campo>
-          <Campo span={12}>
-            <Field label="Instituição / instrutor">
-              <Input
-                value={novoTreinamento.instituicaoInstrutor ?? ''}
-                onChange={(_, d) => setNovoTreinamento({ ...novoTreinamento, instituicaoInstrutor: d.value })}
-              />
-            </Field>
-          </Campo>
-        </FormGrid>
-      </PainelLateral>
 
       {assinaturaAberta && (
         <AssinaturaCertificadoTreinamentoDialog
@@ -304,6 +347,7 @@ export function TreinamentosTab({ trabalhadorId }: { trabalhadorId: string }) {
           cursoNome={assinaturaAberta.cursoNome}
           dataRealizacao={assinaturaAberta.dataRealizacao}
           cargaHorariaRealizada={assinaturaAberta.cargaHorariaRealizada}
+          obraId={obraId}
         />
       )}
     </div>

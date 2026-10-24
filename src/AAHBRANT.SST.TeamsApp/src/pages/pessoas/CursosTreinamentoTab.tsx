@@ -1,20 +1,26 @@
 import { useEffect, useState } from 'react';
 import {
+  BotaoAcao,
   Button,
   Field,
   Input,
+  Textarea,
   Card,
   PageHeader,
   DataTable,
-  PainelLateral,
+  PainelCriacaoInline,
   FormGrid,
+  FormRodape,
+  FormSection,
   Campo,
   FeedbackInline,
+  StatusChip,
+  Switch,
   useConfirmar,
   type Coluna,
 } from '@ui';
 import { Add24Regular, Delete24Regular } from '@fluentui/react-icons';
-import { api, type CursoTreinamento, type NovoCursoTreinamento } from '../../lib/api';
+import { api, type CursoTreinamento, type NovoCursoTreinamento, type PadraoNr } from '../../lib/api';
 import { useSucessoToast } from '../../hooks/useSucessoToast';
 
 const cursoVazio: NovoCursoTreinamento = {
@@ -22,10 +28,20 @@ const cursoVazio: NovoCursoTreinamento = {
   normaReferencia: '',
   cargaHorariaMinima: 0,
   validadeEmMeses: 12,
+  conteudoProgramatico: '',
+  ehIntegracaoSeguranca: false,
+  atendeNr6: false,
 };
 
-// Camada ui/ (Onda 2, Task 1): formulário de criação foi para um PainelLateral, mesmo padrão dos
-// demais cadastros deste módulo.
+// Mesma normalização do backend (CatalogoNormasRegulamentadoras): "nr 35", "NR35" → "NR-35".
+function numeroNr(norma: string | null | undefined): string | null {
+  const m = norma?.match(/NR\s*[-–.]?\s*0*(\d{1,2})/i);
+  return m ? `NR-${m[1].padStart(2, '0')}` : null;
+}
+
+// Migração do formulário inline (spec 2026-09-11): o PainelLateral (drawer) saiu — mesmo padrão de
+// AtividadesTab.tsx/InspecoesTab.tsx. Agora é um PainelCriacaoInline, que cresce acima da lista até
+// a altura do próprio formulário, em vez de cobrir a tela com uma gaveta.
 export function CursosTreinamentoTab() {
   const [cursos, setCursos] = useState<CursoTreinamento[]>([]);
   const [novoCurso, setNovoCurso] = useState<NovoCursoTreinamento>(cursoVazio);
@@ -34,6 +50,8 @@ export function CursosTreinamentoTab() {
   const [carregando, setCarregando] = useState(false);
   const [carregandoLista, setCarregandoLista] = useState(true);
   const [painelAberto, setPainelAberto] = useState(false);
+  const [padroesNr, setPadroesNr] = useState<PadraoNr[]>([]);
+  const [padraoAplicado, setPadraoAplicado] = useState<string | null>(null);
   const { confirmar, dialogElement } = useConfirmar();
   const sucessoToast = useSucessoToast();
 
@@ -50,10 +68,34 @@ export function CursosTreinamentoTab() {
 
   useEffect(() => {
     carregar();
+    api.cursosTreinamento.padroesNr().then(setPadroesNr).catch(() => setPadroesNr([]));
   }, []);
+
+  // Ao reconhecer a NR digitada, preenche só o que ainda está vazio (nome, carga horária,
+  // validade, conteúdo) com o padrão da norma — o técnico revisa antes de salvar.
+  function alterarNorma(valor: string) {
+    const padrao = padroesNr.find((p) => p.numero === numeroNr(valor));
+    if (!padrao) {
+      setNovoCurso({ ...novoCurso, normaReferencia: valor });
+      setPadraoAplicado(null);
+      return;
+    }
+    setNovoCurso({
+      ...novoCurso,
+      normaReferencia: valor,
+      nome: novoCurso.nome.trim() ? novoCurso.nome : `${padrao.numero} ${padrao.titulo}`,
+      cargaHorariaMinima: novoCurso.cargaHorariaMinima || padrao.cargaHorariaMinima || 0,
+      validadeEmMeses: padrao.validadeEmMeses ?? novoCurso.validadeEmMeses,
+      conteudoProgramatico: novoCurso.conteudoProgramatico?.trim()
+        ? novoCurso.conteudoProgramatico
+        : padrao.conteudoProgramatico,
+    });
+    setPadraoAplicado(padrao.numero);
+  }
 
   function fecharPainel() {
     setPainelAberto(false);
+    setPadraoAplicado(null);
     setErroPainel(null);
   }
 
@@ -84,21 +126,54 @@ export function CursosTreinamentoTab() {
     }
   }
 
+  async function marcarComoIntegracaoSeguranca(curso: CursoTreinamento) {
+    try {
+      await api.cursosTreinamento.atualizar(curso.id, { ...curso, ehIntegracaoSeguranca: true });
+      await carregar();
+      sucessoToast(`"${curso.nome}" agora é o curso de Integração de Segurança.`);
+    } catch (e) {
+      setErro(e instanceof Error ? e.message : 'Falha ao marcar curso como Integração de Segurança.');
+    }
+  }
+
+  // O marcador "Habilita EPI" não é editável pela tela: o backend o deriva da norma (só NR-06
+  // habilita a entrega de EPI — regra fixa, 02/10).
+
   const colunas: Coluna<CursoTreinamento>[] = [
     { chave: 'nome', rotulo: 'Nome' },
-    { chave: 'normaReferencia', rotulo: 'Norma' },
+    {
+      chave: 'normaReferencia',
+      rotulo: 'Norma',
+      render: (c) => (
+        <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+          <span>{c.normaReferencia ?? '—'}</span>
+          {c.atendeNr6 && <StatusChip tom="info">Habilita EPI</StatusChip>}
+        </div>
+      ),
+    },
     { chave: 'cargaHorariaMinima', rotulo: 'CH mínima', render: (c) => `${c.cargaHorariaMinima}h` },
     { chave: 'validadeEmMeses', rotulo: 'Validade (meses)' },
+    {
+      chave: 'integracaoSeguranca',
+      rotulo: 'Integração de Segurança',
+      render: (c) => (c.ehIntegracaoSeguranca ? <StatusChip tom="ok">Sim</StatusChip> : '—'),
+    },
   ];
 
   return (
-    <div>
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
       {dialogElement}
       <PageHeader
         titulo="Cursos de treinamento (catálogo)"
         acoes={
-          <Button appearance="primary" icon={<Add24Regular />} onClick={() => setPainelAberto(true)}>
-            Adicionar curso
+          <Button
+            appearance="primary"
+            icon={<Add24Regular />}
+            onClick={() => (painelAberto ? fecharPainel() : setPainelAberto(true))}
+            aria-expanded={painelAberto}
+            aria-controls="painel-novo-curso"
+          >
+            {painelAberto ? 'Fechar' : 'Adicionar curso'}
           </Button>
         }
       />
@@ -107,6 +182,80 @@ export function CursosTreinamentoTab() {
           {erro}
         </FeedbackInline>
       )}
+      <div id="painel-novo-curso">
+        <PainelCriacaoInline aberto={painelAberto} titulo="Novo curso de treinamento">
+          <FormSection titulo="Dados do curso" numero={1} primeira>
+            {erroPainel && (
+              <FeedbackInline tom="erro" aoFechar={() => setErroPainel(null)}>
+                {erroPainel}
+              </FeedbackInline>
+            )}
+            <FormGrid>
+              <Campo span={6}>
+                <Field label="Nome">
+                  <Input value={novoCurso.nome} onChange={(_, d) => setNovoCurso({ ...novoCurso, nome: d.value })} />
+                </Field>
+              </Campo>
+              <Campo span={6}>
+                <Field label="Norma de referência" hint="Ex.: NR-35. Liga o curso ao modelo de certificado da norma.">
+                  <Input
+                    value={novoCurso.normaReferencia ?? ''}
+                    onChange={(_, d) => alterarNorma(d.value)}
+                  />
+                </Field>
+              </Campo>
+              <Campo span={6}>
+                <Field label="Carga horária mínima (h)">
+                  <Input
+                    type="number"
+                    value={String(novoCurso.cargaHorariaMinima)}
+                    onChange={(_, d) => setNovoCurso({ ...novoCurso, cargaHorariaMinima: Number(d.value) })}
+                  />
+                </Field>
+              </Campo>
+              <Campo span={6}>
+                <Field label="Validade (meses)">
+                  <Input
+                    type="number"
+                    value={String(novoCurso.validadeEmMeses)}
+                    onChange={(_, d) => setNovoCurso({ ...novoCurso, validadeEmMeses: Number(d.value) })}
+                  />
+                </Field>
+              </Campo>
+              {padraoAplicado && (
+                <Campo span={12}>
+                  <FeedbackInline tom="info">
+                    Conteúdo programático, carga horária e validade preenchidos com o padrão da {padraoAplicado}. Revise
+                    e valide com o QSMS antes de salvar.
+                  </FeedbackInline>
+                </Campo>
+              )}
+              <Campo span={12}>
+                <Field label="Conteúdo programático (um tópico por linha — vira o verso do certificado)">
+                  <Textarea
+                    rows={6}
+                    value={novoCurso.conteudoProgramatico ?? ''}
+                    onChange={(_, d) => setNovoCurso({ ...novoCurso, conteudoProgramatico: d.value })}
+                  />
+                </Field>
+              </Campo>
+              <Campo span={12}>
+                <Switch
+                  label="Este é o curso de Integração de Segurança obrigatório para todo terceirizado"
+                  checked={novoCurso.ehIntegracaoSeguranca}
+                  onChange={(_, d) => setNovoCurso({ ...novoCurso, ehIntegracaoSeguranca: d.checked })}
+                />
+              </Campo>
+            </FormGrid>
+            <FormRodape>
+              <Button onClick={fecharPainel}>Cancelar</Button>
+              <Button appearance="primary" onClick={criar} disabled={carregando}>
+                Adicionar curso
+              </Button>
+            </FormRodape>
+          </FormSection>
+        </PainelCriacaoInline>
+      </div>
       <Card>
         <DataTable
           aria-label="Cursos de treinamento"
@@ -119,62 +268,17 @@ export function CursosTreinamentoTab() {
             acao: { rotulo: 'Adicionar curso', aoClicar: () => setPainelAberto(true) },
           }}
           acoesLinha={(c) => (
-            <Button appearance="subtle" icon={<Delete24Regular />} onClick={() => excluir(c.id)} aria-label="Excluir" />
+            <>
+              {!c.ehIntegracaoSeguranca && (
+                <Button appearance="subtle" onClick={() => marcarComoIntegracaoSeguranca(c)}>
+                  Marcar como Integração de Segurança
+                </Button>
+              )}
+              <BotaoAcao tom="excluir" icon={<Delete24Regular />} onClick={() => excluir(c.id)} aria-label="Excluir" />
+            </>
           )}
         />
       </Card>
-      <PainelLateral
-        aberto={painelAberto}
-        aoFechar={fecharPainel}
-        titulo="Novo curso de treinamento"
-        rodape={
-          <>
-            <Button onClick={fecharPainel}>Cancelar</Button>
-            <Button appearance="primary" onClick={criar} disabled={carregando}>
-              Adicionar curso
-            </Button>
-          </>
-        }
-      >
-        {erroPainel && (
-          <FeedbackInline tom="erro" aoFechar={() => setErroPainel(null)}>
-            {erroPainel}
-          </FeedbackInline>
-        )}
-        <FormGrid>
-          <Campo span={6}>
-            <Field label="Nome">
-              <Input value={novoCurso.nome} onChange={(_, d) => setNovoCurso({ ...novoCurso, nome: d.value })} />
-            </Field>
-          </Campo>
-          <Campo span={6}>
-            <Field label="Norma de referência">
-              <Input
-                value={novoCurso.normaReferencia ?? ''}
-                onChange={(_, d) => setNovoCurso({ ...novoCurso, normaReferencia: d.value })}
-              />
-            </Field>
-          </Campo>
-          <Campo span={6}>
-            <Field label="Carga horária mínima (h)">
-              <Input
-                type="number"
-                value={String(novoCurso.cargaHorariaMinima)}
-                onChange={(_, d) => setNovoCurso({ ...novoCurso, cargaHorariaMinima: Number(d.value) })}
-              />
-            </Field>
-          </Campo>
-          <Campo span={6}>
-            <Field label="Validade (meses)">
-              <Input
-                type="number"
-                value={String(novoCurso.validadeEmMeses)}
-                onChange={(_, d) => setNovoCurso({ ...novoCurso, validadeEmMeses: Number(d.value) })}
-              />
-            </Field>
-          </Campo>
-        </FormGrid>
-      </PainelLateral>
     </div>
   );
 }

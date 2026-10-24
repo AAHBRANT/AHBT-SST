@@ -5,6 +5,7 @@ using AAHBRANT.SST.Application.Treinamentos;
 using AAHBRANT.SST.Domain.Enums;
 using MediatR;
 using Microsoft.EntityFrameworkCore;
+using System.Text.Json.Serialization;
 
 namespace AAHBRANT.SST.Application.Trabalhadores.Queries;
 
@@ -39,7 +40,11 @@ public record PerfilCompletoTrabalhadorDto(
     List<OcorrenciaDto> Ocorrencias,
     List<AssinaturaPerfilDto> Assinaturas,
     int TrocasNoAno,
-    List<MotivoTrocaEpiDto> MotivosTroca);
+    List<MotivoTrocaEpiDto> MotivosTroca,
+    Guid? EmpresaId,
+    string? EmpresaRazaoSocial,
+    Guid? ContratoId,
+    string? NumeroContrato);
 
 public record FrequenciaTrocaEpiDto(Guid CatalogoEpiId, string CatalogoEpiNome, int QuantidadeTrocas);
 
@@ -76,13 +81,18 @@ public record OcorrenciaDto(
     StatusAcidente Status);
 
 public record AssinaturaPerfilDto(
+    Guid SignatarioId,
     Guid DocumentoAssinaturaId,
     string EntidadeTipo,
     Guid EntidadeId,
     MetodoAutenticacaoAssinatura Metodo,
     DateTime AssinadoEm,
     string? IpAddress,
-    bool TemPdf);
+    bool TemPdf,
+    bool TemFotoEvidencia,
+    string? FotoEvidenciaHash,
+    [property: JsonIgnore] byte[]? FotoEvidenciaConteudo,
+    [property: JsonIgnore] string? FotoEvidenciaContentType);
 
 public record ObterPerfilCompletoTrabalhadorQuery(Guid Id) : IRequest<PerfilCompletoTrabalhadorDto?>;
 
@@ -113,6 +123,8 @@ public class ObterPerfilCompletoTrabalhadorQueryHandler : IRequestHandler<ObterP
                 t.FuncaoId,
                 t.Vinculo,
                 t.DataAdmissao,
+                t.EmpresaId,
+                t.ContratoId,
                 TemFoto = t.FotoConteudo != null,
                 TemBiometria = _db.TemplatesBiometricoFutronic.Any(tb => tb.TrabalhadorId == t.Id),
             })
@@ -129,6 +141,22 @@ public class ObterPerfilCompletoTrabalhadorQueryHandler : IRequestHandler<ObterP
             .Where(f => f.Id == trabalhador.FuncaoId)
             .Select(f => f.Nome)
             .FirstOrDefaultAsync(ct);
+
+        // Empresa/Contrato só existem para Terceirizado — mesmo motivo do IgnoreQueryFilters() acima
+        // para Obra/Funcao: a empresa/contrato pode ter sido inativada depois, o perfil ainda deve abrir.
+        string? empresaRazaoSocial = null;
+        string? numeroContrato = null;
+        if (trabalhador.EmpresaId is not null)
+        {
+            empresaRazaoSocial = await _db.Empresas.IgnoreQueryFilters()
+                .Where(e => e.Id == trabalhador.EmpresaId)
+                .Select(e => e.RazaoSocial)
+                .FirstOrDefaultAsync(ct);
+            numeroContrato = await _db.Contratos.IgnoreQueryFilters()
+                .Where(c => c.Id == trabalhador.ContratoId)
+                .Select(c => c.NumeroContrato)
+                .FirstOrDefaultAsync(ct);
+        }
 
         var asos = await _db.Asos
             .Where(a => a.TrabalhadorId == request.Id)
@@ -223,7 +251,9 @@ public class ObterPerfilCompletoTrabalhadorQueryHandler : IRequestHandler<ObterP
                 x.DataValidade,
                 x.CargaHorariaRealizada,
                 x.InstituicaoInstrutor,
-                x.NumeroCertificado))
+                x.NumeroCertificado,
+                x.Local,
+                x.InstrutorRegistroProfissional))
             .ToListAsync(ct);
 
         var totalDdsRealizados = await _db.Dds
@@ -251,7 +281,8 @@ public class ObterPerfilCompletoTrabalhadorQueryHandler : IRequestHandler<ObterP
             .ToListAsync(ct);
 
         var ocorrencias = await _db.Acidentes
-            .Where(a => a.TrabalhadorId == request.Id)
+            .Where(a => a.TrabalhadorId == request.Id
+                || _db.AcidentesEnvolvidos.Any(e => e.AcidenteId == a.Id && e.TrabalhadorId == request.Id))
             .OrderByDescending(a => a.Data)
             .Select(a => new OcorrenciaDto(
                 a.Id,
@@ -269,19 +300,24 @@ public class ObterPerfilCompletoTrabalhadorQueryHandler : IRequestHandler<ObterP
             .Where(s => s.TrabalhadorId == request.Id)
             .OrderByDescending(s => s.AssinadoEm)
             .Select(s => new AssinaturaPerfilDto(
+                s.Id,
                 s.DocumentoAssinaturaId,
                 s.DocumentoAssinatura!.EntidadeTipo,
                 s.DocumentoAssinatura.EntidadeId,
                 s.MetodoAutenticacao,
                 s.AssinadoEm,
                 s.IpAddress,
-                s.DocumentoAssinatura.PdfConteudo != null))
+                s.DocumentoAssinatura.PdfConteudo != null,
+                s.FotoEvidenciaConteudo != null,
+                s.FotoEvidenciaHash,
+                s.FotoEvidenciaConteudo,
+                s.FotoEvidenciaContentType))
             .ToListAsync(ct);
 
         return new PerfilCompletoTrabalhadorDto(
             trabalhador.Id,
             trabalhador.Nome,
-            trabalhador.Matricula,
+            trabalhador.Matricula ?? string.Empty,
             trabalhador.Cpf,
             trabalhador.Rg,
             trabalhador.ObraId,
@@ -303,6 +339,10 @@ public class ObterPerfilCompletoTrabalhadorQueryHandler : IRequestHandler<ObterP
             ocorrencias,
             assinaturas,
             trocasDoAno.Count,
-            motivosTroca);
+            motivosTroca,
+            trabalhador.EmpresaId,
+            empresaRazaoSocial,
+            trabalhador.ContratoId,
+            numeroContrato);
     }
 }

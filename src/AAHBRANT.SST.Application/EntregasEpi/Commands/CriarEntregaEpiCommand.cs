@@ -1,4 +1,7 @@
+using AAHBRANT.SST.Application.Common;
 using AAHBRANT.SST.Application.Common.Interfaces;
+using AAHBRANT.SST.Application.EstoquesEpi.Minimo;
+using AAHBRANT.SST.Application.PlanosIntegracao;
 using AAHBRANT.SST.Domain.Entidades;
 using AAHBRANT.SST.Domain.Enums;
 using FluentValidation;
@@ -37,15 +40,29 @@ public class CriarEntregaEpiCommandValidator : AbstractValidator<CriarEntregaEpi
 public class CriarEntregaEpiCommandHandler : IRequestHandler<CriarEntregaEpiCommand, Guid>
 {
     private readonly IAppDbContext _db;
-    public CriarEntregaEpiCommandHandler(IAppDbContext db) => _db = db;
+    private readonly IVerificacaoEstoqueMinimoService? _verificacaoMinimo;
+
+    public CriarEntregaEpiCommandHandler(IAppDbContext db, IVerificacaoEstoqueMinimoService? verificacaoMinimo = null)
+    {
+        _db = db;
+        _verificacaoMinimo = verificacaoMinimo;
+    }
 
     public async Task<Guid> Handle(CriarEntregaEpiCommand request, CancellationToken ct)
     {
         var catalogo = await _db.CatalogoEpis.FirstOrDefaultAsync(x => x.Id == request.CatalogoEpiId, ct)
             ?? throw new KeyNotFoundException("EPI de catálogo não encontrado.");
 
-        var trabalhador = await _db.Trabalhadores.FirstOrDefaultAsync(x => x.Id == request.TrabalhadorId, ct)
+        var trabalhador = await _db.Trabalhadores
+            .Include(x => x.Funcao)
+            .FirstOrDefaultAsync(x => x.Id == request.TrabalhadorId, ct)
             ?? throw new KeyNotFoundException("Trabalhador não encontrado.");
+
+        // 02/10: decisão do usuário — a ÚNICA exigência de treinamento para entregar EPI é a NR-06.
+        // A trava de Integração de Segurança (21/09) foi desativada aqui; o método abaixo fica
+        // preservado caso a regra volte, mas não é mais chamado.
+        // if (!FuncaoSstClassifier.EhTecnicoSeguranca(trabalhador.Funcao?.Nome))
+        //     await GarantirIntegracaoSegurancaAssinadaAsync(_db, request.TrabalhadorId, ct);
 
         // Bloqueio de entrega com CA vencido e de estoque insuficiente: decisões confirmadas com o
         // usuário — não apenas um aviso, a entrega não é registrada.
@@ -60,6 +77,13 @@ public class CriarEntregaEpiCommandHandler : IRequestHandler<CriarEntregaEpiComm
 
         if (saldoAtual < request.Quantidade)
             throw new InvalidOperationException($"Estoque insuficiente para este EPI nesta obra (saldo atual: {saldoAtual}).");
+
+        // Kit separado para funcionário novo (plano de integração) é promessa: uma entrega avulsa não
+        // pode levar a unidade de outra pessoa. A reserva do próprio trabalhador, essa sim, é usada aqui.
+        var reservadoParaOutros = await SituacaoReservasEpi.ReservadoParaOutrosAsync(
+            _db, trabalhador.ObraId, request.CatalogoEpiId, request.TrabalhadorId, ct);
+        if (saldoAtual - reservadoParaOutros < request.Quantidade)
+            throw new InvalidOperationException(SituacaoReservasEpi.MensagemSaldoComprometido(saldoAtual, reservadoParaOutros));
 
         var entrega = new EntregaEpi
         {
@@ -78,6 +102,15 @@ public class CriarEntregaEpiCommandHandler : IRequestHandler<CriarEntregaEpiComm
         };
         _db.EntregasEpi.Add(entrega);
 
+        var reserva = await _db.ReservasEpi.FirstOrDefaultAsync(r => r.TrabalhadorId == request.TrabalhadorId
+            && r.CatalogoEpiId == request.CatalogoEpiId && r.Status == StatusReservaEpi.Ativa, ct);
+        if (reserva is not null)
+        {
+            reserva.Status = StatusReservaEpi.Entregue;
+            reserva.EntregaEpiId = entrega.Id;
+            reserva.EncerradaEm = DateTime.UtcNow;
+        }
+
         estoque!.Saldo -= request.Quantidade;
         _db.MovimentacoesEstoqueEpi.Add(new MovimentacaoEstoqueEpi
         {
@@ -89,6 +122,63 @@ public class CriarEntregaEpiCommandHandler : IRequestHandler<CriarEntregaEpiComm
         });
 
         await _db.SaveChangesAsync(ct);
+
+        // Alerta de estoque mínimo da obra (especificação 21/10/2026, Módulo 2).
+        if (_verificacaoMinimo is not null) await _verificacaoMinimo.VerificarAsync(trabalhador.ObraId, ct);
         return entrega.Id;
+    }
+
+    // Bloqueio pedido pelo usuário (21/09): sem a Integração de Segurança assinada, o trabalhador
+    // não recebe EPI — mesmo espírito de CalculadoraLiberacaoTerceirizado (Terceirizados/), que já
+    // usa CursoTreinamento.EhIntegracaoSeguranca como a regra fixa de "curso obrigatório para todo
+    // mundo, independente da função". Diferença proposital em relação àquela calculadora: aqui não
+    // basta o registro de Treinamento existir com validade em dia — exige que o próprio trabalhador
+    // tenha assinado o certificado (DocumentoAssinatura EntidadeTipo="Treinamento"), a prova de que
+    // ele de fato recebeu a integração, não só que alguém digitou a data no sistema.
+    // Sem nenhum curso marcado como Integração de Segurança no catálogo ainda, não bloqueia nada —
+    // evita travar obras que não configuraram esse curso.
+    //
+    // Exceção do lançamento retroativo (decisão do usuário, 23/09): obra que já está em andamento
+    // tem gente treinada ANTES de o sistema existir, e essa assinatura nunca vai existir aqui. Um
+    // certificado lançado como Externo E com o arquivo anexado vale como prova no lugar da
+    // assinatura — o documento digitalizado é a evidência. Sem arquivo não vale: sobraria só a
+    // palavra de quem digitou, e é justamente a evidência que a fiscalização pede.
+    private static async Task GarantirIntegracaoSegurancaAssinadaAsync(IAppDbContext db, Guid trabalhadorId, CancellationToken ct)
+    {
+        var cursoIntegracao = await db.CursosTreinamento.FirstOrDefaultAsync(c => c.EhIntegracaoSeguranca, ct);
+        if (cursoIntegracao is null) return;
+
+        var hoje = DateTime.UtcNow.Date;
+        // Todos os registros válidos, não só o mais recente: com lançamento retroativo o trabalhador
+        // pode ter um certificado externo anexado E um registro interno ainda sem assinatura, e
+        // olhar só o de data de realização mais recente bloquearia quem já tem a prova no sistema.
+        var treinamentosValidos = await db.Treinamentos
+            .Where(t => t.TrabalhadorId == trabalhadorId && t.CursoTreinamentoId == cursoIntegracao.Id && t.DataValidade.Date >= hoje)
+            .Select(t => new
+            {
+                t.Id,
+                t.OrigemCertificado,
+                TemArquivo = t.ArquivoCertificado != null,
+            })
+            .ToListAsync(ct);
+        if (treinamentosValidos.Count == 0)
+            throw new InvalidOperationException($"Este funcionário ainda não tem o treinamento de Integração de Segurança (\"{cursoIntegracao.Nome}\") em dia — não é possível registrar a entrega de EPI.");
+
+        if (treinamentosValidos.Any(t => t.OrigemCertificado == OrigemCertificadoTreinamento.Externo && t.TemArquivo))
+            return;
+
+        var idsValidos = treinamentosValidos.Select(t => t.Id).ToList();
+        var documentoIds = await db.DocumentosAssinatura
+            .Where(d => d.EntidadeTipo == "Treinamento" && idsValidos.Contains(d.EntidadeId))
+            .Select(d => d.Id)
+            .ToListAsync(ct);
+        // O próprio trabalhador precisa ter assinado (Biometria ou ReconhecimentoFacial) — a
+        // assinatura do instrutor (SessaoLogada) sozinha não comprova que ele recebeu a integração.
+        var trabalhadorAssinou = documentoIds.Count > 0 && await db.DocumentoSignatarios
+            .AnyAsync(s => documentoIds.Contains(s.DocumentoAssinaturaId) && s.MetodoAutenticacao != MetodoAutenticacaoAssinatura.SessaoLogada, ct);
+        if (!trabalhadorAssinou)
+            throw new InvalidOperationException(
+                $"Este funcionário tem o treinamento de Integração de Segurança (\"{cursoIntegracao.Nome}\") registrado, mas ainda não o assinou — não é possível registrar a entrega de EPI até a assinatura ser feita. " +
+                "Se o treinamento foi feito antes de a obra entrar no sistema, lance-o em Treinamentos › Certificados como certificado externo e anexe o arquivo digitalizado.");
     }
 }

@@ -1,3 +1,4 @@
+using AAHBRANT.SST.Application.Assinatura;
 using AAHBRANT.SST.Application.Common.Interfaces;
 using AAHBRANT.SST.Domain.Enums;
 using MediatR;
@@ -12,12 +13,14 @@ public class ExportarAprPdfQueryHandler : IRequestHandler<ExportarAprPdfQuery, b
     private readonly IMediator _mediator;
     private readonly IAppDbContext _db;
     private readonly IAprPdfService _pdf;
+    private readonly IRegistradorRastreabilidadeService _rastreabilidade;
 
-    public ExportarAprPdfQueryHandler(IMediator mediator, IAppDbContext db, IAprPdfService pdf)
+    public ExportarAprPdfQueryHandler(IMediator mediator, IAppDbContext db, IAprPdfService pdf, IRegistradorRastreabilidadeService rastreabilidade)
     {
         _mediator = mediator;
         _db = db;
         _pdf = pdf;
+        _rastreabilidade = rastreabilidade;
     }
 
     public async Task<byte[]?> Handle(ExportarAprPdfQuery request, CancellationToken ct)
@@ -29,18 +32,27 @@ public class ExportarAprPdfQueryHandler : IRequestHandler<ExportarAprPdfQuery, b
             ? await _db.Obras.Where(o => o.Id == obraId).Select(o => o.LogoConteudo).FirstOrDefaultAsync(ct)
             : null;
 
-        return _pdf.Gerar(MontarModelo(detalhe, logoConteudo));
+        var rastreio = await _rastreabilidade.GarantirAsync(nameof(Domain.Entidades.Apr), request.Id, ct);
+
+        var pdf = _pdf.Gerar(MontarModelo(detalhe, logoConteudo, rastreio));
+        // Guarda a cópia exata emitida e o SHA-256 dela — é o que permite conferir, depois,
+        // que o arquivo em mãos não foi adulterado (ver HashArquivoCalculador).
+        await _rastreabilidade.RegistrarArquivoAsync(rastreio.DocumentoId, pdf, ct);
+        return pdf;
     }
 
-    public static AprPdfModelo MontarModelo(AprDetalheDto detalhe, byte[]? obraLogoConteudo = null)
+    public static AprPdfModelo MontarModelo(AprDetalheDto detalhe, byte[]? obraLogoConteudo, RastreabilidadeDocumentoResultado rastreio)
     {
+        // Mais recente por trabalhador (a lista já vem da mais nova para a mais antiga).
         var assinaturasPorTrabalhador = detalhe.Assinaturas
             .Where(a => a.Papel == PapelAssinaturaApr.Envolvido)
-            .Select(a => a.TrabalhadorId)
-            .ToHashSet();
+            .GroupBy(a => a.TrabalhadorId)
+            .ToDictionary(g => g.Key, g => g.First());
 
         var envolvidos = detalhe.Responsaveis
-            .Select(r => new AprPdfEnvolvido(r.TrabalhadorNome, r.TrabalhadorFuncaoNome, assinaturasPorTrabalhador.Contains(r.TrabalhadorId)))
+            .Select(r => assinaturasPorTrabalhador.TryGetValue(r.TrabalhadorId, out var ass)
+                ? new AprPdfEnvolvido(r.TrabalhadorNome, r.TrabalhadorFuncaoNome, true, ass.DataAssinatura, ass.MetodoAutenticacao)
+                : new AprPdfEnvolvido(r.TrabalhadorNome, r.TrabalhadorFuncaoNome, false))
             .ToList();
 
         var riscos = detalhe.Etapas
@@ -76,7 +88,13 @@ public class ExportarAprPdfQueryHandler : IRequestHandler<ExportarAprPdfQuery, b
             detalhe.Apr.Data,
             envolvidos,
             riscos,
-            new AprPdfAssinatura(elaboracao?.TrabalhadorNome, null, elaboracao?.DataAssinatura),
-            new AprPdfAssinatura(supervisao?.TrabalhadorNome, null, supervisao?.DataAssinatura));
+            new AprPdfAssinatura(elaboracao?.TrabalhadorNome, elaboracao?.TrabalhadorFuncaoNome, elaboracao?.DataAssinatura, elaboracao?.MetodoAutenticacao),
+            new AprPdfAssinatura(supervisao?.TrabalhadorNome, supervisao?.TrabalhadorFuncaoNome, supervisao?.DataAssinatura, supervisao?.MetodoAutenticacao),
+            rastreio.ConteudoHash,
+            rastreio.UrlValidacaoPublica,
+            rastreio.QrCodePng,
+            // TemAssinatura vem da tabela própria AprAssinatura (Motor de Assinatura Eletrônica não é
+            // usado pela APR) — rastreio.TemAssinatura é deliberadamente ignorado aqui.
+            detalhe.Assinaturas.Count > 0);
     }
 }

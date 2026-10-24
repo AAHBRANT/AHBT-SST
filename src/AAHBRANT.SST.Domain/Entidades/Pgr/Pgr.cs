@@ -39,6 +39,11 @@ public class Pgr : AuditableEntity
 
     public ICollection<PlanoAcaoItem> PlanoDeAcao { get; set; } = new List<PlanoAcaoItem>();
     public ICollection<PgrRevisao> Revisoes { get; set; } = new List<PgrRevisao>();
+
+    // Documento PDF original do PGR (consulta na aba "PGR" da tela de detalhe) — binário direto na
+    // linha, mesmo padrão já usado por Trabalhador.FotoConteudo/FotoContentType.
+    public byte[]? DocumentoConteudo { get; set; }
+    public string? DocumentoContentType { get; set; }
 }
 
 // "Plano de ação" (§16) — reaproveita StatusControleRisco (Pendente/EmAndamento/Concluido) em vez
@@ -77,4 +82,11 @@ public class PgrRevisao : AuditableEntity
 
     public Guid? ResponsavelUsuarioId { get; set; }
     public Usuario? ResponsavelUsuario { get; set; }
+
+    // PDF desta revisão (10/10/2026, "Nova revisão" no lugar de "Substituir PDF"): o anexo novo não
+    // apaga mais o anterior — cada revisão guarda o seu, e Pgr.DocumentoConteudo é a cópia da atual.
+    // Nulo nas revisões digitadas antes disso e nas que não tiveram PDF.
+    public byte[]? DocumentoConteudo { get; set; }
+    public string? DocumentoContentType { get; set; }
+    public string? DocumentoNomeArquivo { get; set; }
 }

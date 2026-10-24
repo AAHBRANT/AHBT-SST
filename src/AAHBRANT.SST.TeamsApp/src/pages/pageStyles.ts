@@ -1,13 +1,14 @@
 import { makeStyles, shorthands, tokens } from '@fluentui/react-components';
-import { designTokens } from '../theme';
+import { designTokens } from '@ui';
 
 export const usePageStyles = makeStyles({
   card: {
     backgroundColor: designTokens.colorSurface,
-    borderRadius: '16px',
+    borderRadius: '14px',
     border: `1px solid ${designTokens.colorCardBorder}`,
     boxShadow: designTokens.cardShadow,
-    padding: '24px 28px',
+    padding: '24px',
+    overflow: 'hidden',
   },
   toolbar: {
     display: 'flex',
@@ -32,7 +33,7 @@ export const usePageStyles = makeStyles({
     marginBottom: '12px',
   },
   // Rótulo de seção (pedido do usuário, 03/09, réplica de mockup): divide um formulário longo em
-  // blocos nomeados ("1. Dados gerais do documento", "2. Abrangência, riscos e exames" etc.) — mesmo
+  // blocos nomeados ("Etapa 1 - Informações principais do documento", "Etapa 2 - Abrangência..." etc.) — mesmo
   // texto pequeno em versalete usado por toda referência de mockup deste app (ver usePillTabStyles
   // acima para o mesmo princípio aplicado a abas). Primeiro da lista não herda a margem superior.
   sectionTitle: {
@@ -62,9 +63,7 @@ export const usePageStyles = makeStyles({
       gridTemplateColumns: 'repeat(1, 1fr)',
     },
   },
-  col12: { gridColumn: 'span 12' },
   col6: { gridColumn: 'span 6' },
-  col5: { gridColumn: 'span 5' },
   col4: { gridColumn: 'span 4' },
   col3: { gridColumn: 'span 3' },
   col2: { gridColumn: 'span 2' },

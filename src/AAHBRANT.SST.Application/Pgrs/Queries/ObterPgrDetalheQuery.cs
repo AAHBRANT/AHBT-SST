@@ -1,3 +1,4 @@
+using AAHBRANT.SST.Application.Common;
 using AAHBRANT.SST.Application.Common.Interfaces;
 using MediatR;
 using Microsoft.EntityFrameworkCore;
@@ -17,12 +18,28 @@ public class ObterPgrDetalheQueryHandler : IRequestHandler<ObterPgrDetalheQuery,
 
     public async Task<PgrDetalheDto?> Handle(ObterPgrDetalheQuery request, CancellationToken ct)
     {
-        var pgr = await _db.Pgrs.FirstOrDefaultAsync(p => p.Id == request.Id, ct);
+        var pgr = await _db.Pgrs
+            .Where(p => p.Id == request.Id)
+            .Select(p => new PgrDto
+            {
+                Id = p.Id,
+                ObraId = p.ObraId,
+                Nome = p.Nome,
+                Descricao = p.Descricao,
+                DataElaboracao = p.DataElaboracao,
+                DataProximaRevisao = p.DataProximaRevisao,
+                DataTermino = p.DataTermino,
+                ResponsavelUsuarioId = p.ResponsavelUsuarioId,
+                Status = p.Status
+            })
+            .FirstOrDefaultAsync(ct);
         if (pgr is null) return null;
 
-        var atividades = await _db.Atividades
+        var atividades = await _db.Atividades.EmUso(_db)
             .Where(a => a.ObraId == pgr.ObraId)
             .Include(a => a.Riscos).ThenInclude(r => r.Perigo)
+            .Include(a => a.Riscos).ThenInclude(r => r.Medidas)
+            .Include(a => a.ItensOs)
             .OrderBy(a => a.Nome)
             .ToListAsync(ct);
 
@@ -38,22 +55,12 @@ public class ObterPgrDetalheQueryHandler : IRequestHandler<ObterPgrDetalheQuery,
 
         return new PgrDetalheDto
         {
-            Pgr = new PgrDto
-            {
-                Id = pgr.Id,
-                ObraId = pgr.ObraId,
-                Nome = pgr.Nome,
-                Descricao = pgr.Descricao,
-                DataElaboracao = pgr.DataElaboracao,
-                DataProximaRevisao = pgr.DataProximaRevisao,
-                DataTermino = pgr.DataTermino,
-                ResponsavelUsuarioId = pgr.ResponsavelUsuarioId,
-                Status = pgr.Status
-            },
+            Pgr = pgr,
             Atividades = atividades.Select(a => new AtividadeCaracterizadaDto
             {
                 AtividadeId = a.Id,
                 AtividadeNome = a.Nome,
+                ItensOsPendentes = a.ItensOs.Count(i => i.Status == Domain.Enums.StatusMedidaPrevencao.Pendente),
                 Riscos = a.Riscos.Select(r => new RiscoClassificadoDto
                 {
                     RiscoId = r.Id,
@@ -61,7 +68,25 @@ public class ObterPgrDetalheQueryHandler : IRequestHandler<ObterPgrDetalheQuery,
                     NivelRisco = r.NivelRisco,
                     ControlesExistentes = r.ControlesExistentes,
                     ControlesAdicionais = r.ControlesAdicionais,
-                    Status = r.Status
+                    Status = r.Status,
+                    Probabilidade = r.Probabilidade,
+                    Severidade = r.Severidade,
+                    Consequencia = r.Consequencia,
+                    AvaliadoEmUtc = r.AvaliadoEmUtc,
+                    AvaliadoPorNome = r.AvaliadoPorNome,
+                    Medidas = r.Medidas
+                        .Where(m => m.Status != Domain.Enums.StatusMedidaPrevencao.Descartada)
+                        .OrderBy(m => m.Fase).ThenBy(m => m.Ordem)
+                        .Select(m => new MedidaPrevencaoDto
+                        {
+                            Id = m.Id,
+                            Fase = m.Fase,
+                            Texto = m.Texto,
+                            Origem = m.OrigemMedida,
+                            Status = m.Status,
+                            ValidadoPorNome = m.ValidadoPorNome,
+                            ValidadoEmUtc = m.ValidadoEmUtc
+                        }).ToList()
                 }).ToList()
             }).ToList(),
             PlanoDeAcao = planoDeAcao.Select(i => new PlanoAcaoItemDto

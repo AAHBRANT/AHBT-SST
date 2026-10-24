@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import {
+  BotaoAcao,
   Button,
   Campo,
   Card,
@@ -210,6 +211,7 @@ export function MatrizRiscoTab() {
                     return (
                       <TableCell key={s} style={{ backgroundColor: tokensUi.status[tom].fundo }}>
                         <Select
+                          aria-label={`Nível de risco para probabilidade ${p} e severidade ${s}`}
                           value={String(nivelDaCelula(p, s))}
                           onChange={(_, d) => definirCelula(p, s, Number(d.value))}
                         >
@@ -239,7 +241,7 @@ export function MatrizRiscoTab() {
             carregando={carregandoLista}
             vazio={{ titulo: 'Nenhuma matriz de risco cadastrada ainda.' }}
             acoesLinha={(c) => (
-              <Button appearance="subtle" icon={<Delete24Regular />} onClick={() => excluir(c.id)} aria-label="Excluir" />
+              <BotaoAcao tom="excluir" icon={<Delete24Regular />} onClick={() => excluir(c.id)} aria-label="Excluir" />
             )}
           />
         </Card>

@@ -1,4 +1,5 @@
 using AAHBRANT.SST.Application.Common.Interfaces;
+using AAHBRANT.SST.Application.Common.Seguranca;
 using AAHBRANT.SST.Domain.Enums;
 using FluentValidation;
 using MediatR;
@@ -36,8 +37,11 @@ public class AtualizarAptidaoCommandHandler : IRequestHandler<AtualizarAptidaoCo
 
     public async Task Handle(AtualizarAptidaoCommand request, CancellationToken ct)
     {
-        var aptidao = await _db.AptidoesAtividadeEspecifica.FirstOrDefaultAsync(a => a.Id == request.Id, ct)
+        var aptidao = await _db.AptidoesAtividadeEspecifica.NoEscopoDoTrabalhador(_db, a => a.TrabalhadorId).FirstOrDefaultAsync(a => a.Id == request.Id, ct)
             ?? throw new KeyNotFoundException($"Aptidão {request.Id} não encontrada.");
+
+        if (request.TrabalhadorId != aptidao.TrabalhadorId)
+            await _db.GarantirTrabalhadorNoEscopoAsync(request.TrabalhadorId, ct);
 
         aptidao.TrabalhadorId = request.TrabalhadorId;
         aptidao.AtividadeCritica = request.AtividadeCritica;

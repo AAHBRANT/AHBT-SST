@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import {
-  Button,
+  BotaoAcao,
   Card,
   Field,
   FeedbackInline,
@@ -34,6 +34,7 @@ import {
   type Alerta,
   type Obra,
 } from '../../../lib/api';
+import { FaixaKpis } from '../../../components/dashboard/FaixaKpis';
 
 // Mesmo mapa de tons de AlertasListaTab.tsx/AlertasConfiguracaoTab.tsx (Guia de conversão item 5) —
 // as três telas do módulo leem severidade igual (status não vira StatusChip nesta tela, só texto
@@ -195,13 +196,13 @@ export function AlertasDashboardTab() {
         </FeedbackInline>
       )}
 
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(185px, 1fr))', gap: 16, marginBottom: 16 }}>
+      <FaixaKpis>
         <KpiCard rotulo="Abertos" valor={abertos} tom="atencao" indice={0} icone={<Alert24Regular />} />
         <KpiCard rotulo="Em tratamento" valor={emTratamento} tom="info" indice={1} icone={<PlayCircle24Regular />} />
         <KpiCard rotulo="Escalonados" valor={escalonados} tom="alerta" indice={2} icone={<ArrowUpload24Regular />} />
         <KpiCard rotulo="Resolvidos" valor={resolvidos} tom="ok" indice={3} icone={<CheckmarkCircle24Regular />} />
         <KpiCard rotulo="Ignorados" valor={ignorados} tom="neutro" indice={4} icone={<EyeOff24Regular />} />
-      </div>
+      </FaixaKpis>
 
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(340px, 1fr))', gap: 16, marginBottom: 16 }}>
         <Card titulo="Severidade dos alertas ativos" subtitulo="Abertos, em tratamento e escalonados">
@@ -239,27 +240,27 @@ export function AlertasDashboardTab() {
                   {alerta.dataLimiteTratamento ? ` · prazo ${alerta.dataLimiteTratamento.slice(0, 10)}` : ''}
                 </Legenda>
               </div>
-              <div style={{ display: 'flex', gap: 4 }}>
+              <div style={{ display: 'flex', gap: 6 }}>
                 {alerta.status === StatusAlerta.Aberto && (
-                  <Button
-                    appearance="subtle"
+                  <BotaoAcao
+                    tom="ver"
                     icon={<PlayCircle24Regular />}
-                    title="Iniciar tratamento"
+                    aria-label="Iniciar tratamento"
                     disabled={processandoId === alerta.id}
                     onClick={() => executar(api.alertas.iniciarTratamento, alerta.id, 'Falha ao iniciar tratamento.')}
                   />
                 )}
-                <Button
-                  appearance="subtle"
+                <BotaoAcao
+                  tom="ver"
                   icon={<CheckmarkCircle24Regular />}
-                  title="Resolver"
+                  aria-label="Resolver"
                   disabled={processandoId === alerta.id}
                   onClick={() => executar(api.alertas.resolver, alerta.id, 'Falha ao resolver alerta.')}
                 />
-                <Button
-                  appearance="subtle"
+                <BotaoAcao
+                  tom="ver"
                   icon={<DismissCircle24Regular />}
-                  title="Ignorar"
+                  aria-label="Ignorar"
                   disabled={processandoId === alerta.id}
                   onClick={() => executar(api.alertas.ignorar, alerta.id, 'Falha ao ignorar alerta.')}
                 />

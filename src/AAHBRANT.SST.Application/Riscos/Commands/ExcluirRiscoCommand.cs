@@ -1,4 +1,5 @@
 using AAHBRANT.SST.Application.Common.Interfaces;
+using AAHBRANT.SST.Application.Common.Seguranca;
 using FluentValidation;
 using MediatR;
 using Microsoft.EntityFrameworkCore;
@@ -23,7 +24,7 @@ public class ExcluirRiscoCommandHandler : IRequestHandler<ExcluirRiscoCommand>
 
     public async Task Handle(ExcluirRiscoCommand request, CancellationToken ct)
     {
-        var risco = await _db.Riscos.FirstOrDefaultAsync(r => r.Id == request.Id, ct)
+        var risco = await _db.Riscos.NoEscopoDaAtividade(_db, r => r.AtividadeId).FirstOrDefaultAsync(r => r.Id == request.Id, ct)
             ?? throw new KeyNotFoundException($"Risco {request.Id} não encontrado.");
 
         _db.Riscos.Remove(risco);

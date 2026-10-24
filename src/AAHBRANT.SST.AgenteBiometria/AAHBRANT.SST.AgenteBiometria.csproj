@@ -6,6 +6,24 @@
     <Nullable>enable</Nullable>
     <UseWindowsForms>true</UseWindowsForms>
     <OutputType>WinExe</OutputType>
+    <!-- Versão do agente: o atualizador compara com o manifesto. publicar.ps1 sobrescreve com -Versao. -->
+    <Version>1.1.0</Version>
   </PropertyGroup>
+
+  <!-- Chave pública da atualização automática (gerada por publicar.ps1 -GerarChave). Sem o arquivo, o
+       build sai com a atualização automática desligada. -->
+  <ItemGroup Condition="Exists('Atualizacao\chave-publica-atualizacao.pem')">
+    <EmbeddedResource Include="Atualizacao\chave-publica-atualizacao.pem" LogicalName="AAHBRANT.SST.AgenteBiometria.Atualizacao.chave-publica-atualizacao.pem" />
+  </ItemGroup>
+
+  <!-- DLLs do SDK Futronic (32 bits) não são versionadas — copie ftrScanAPI.dll para Native/ (ver Native/LEIAME.md).
+       Para rodar com o leitor real: dotnet publish com RID win-x86 e self-contained. -->
+  <ItemGroup>
+    <None Include="Native\*.dll" CopyToOutputDirectory="PreserveNewest" Link="%(Filename)%(Extension)" />
+  </ItemGroup>
+  <ItemGroup>
+    <PackageReference Include="SourceAFIS" Version="3.14.0" />
+    <PackageReference Include="System.Security.Cryptography.ProtectedData" Version="8.0.0" />
+  </ItemGroup>
 
 </Project>

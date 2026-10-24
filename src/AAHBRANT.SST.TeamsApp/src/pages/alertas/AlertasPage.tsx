@@ -1,9 +1,11 @@
-import { Abas, PageHeader, useAbaNaUrl } from '@ui';
+import { Abas, DashboardTopo, PageHeader, useAbaNaUrl } from '@ui';
 import { AlertasDashboardTab } from './dashboard/AlertasDashboardTab';
 import { AlertasListaTab } from './AlertasListaTab';
 import { AlertasConfiguracaoTab } from './AlertasConfiguracaoTab';
+import { AvisoEnvioTeams } from './AvisoEnvioTeams';
+import { PreviaAvisoDocumentosVencidosTab } from './PreviaAvisoDocumentosVencidosTab';
 
-const ABAS_ALERTAS = ['lista', 'configuracao', 'dashboard'] as const;
+const ABAS_ALERTAS = ['lista', 'previa-aviso', 'configuracao'] as const;
 type AbaAlertas = (typeof ABAS_ALERTAS)[number];
 
 // Onda 2 Task 16 (camada ui/): item de 1º nível próprio na sidebar, rota direta `/alertas` (sem
@@ -16,6 +18,12 @@ export function AlertasPage() {
     <div>
       <PageHeader titulo="Alertas" />
 
+      <AvisoEnvioTeams />
+
+      <DashboardTopo>
+        <AlertasDashboardTab />
+      </DashboardTopo>
+
       <Abas
         nivel="pilar"
         valor={aba}
@@ -23,14 +31,14 @@ export function AlertasPage() {
         aria-label="Seções de Alertas"
         abas={[
           { valor: 'lista', rotulo: 'Lista' },
+          { valor: 'previa-aviso', rotulo: 'Prévia do aviso' },
           { valor: 'configuracao', rotulo: 'Configurações' },
-          { valor: 'dashboard', rotulo: 'Dashboard' },
         ]}
       />
 
       {aba === 'lista' && <AlertasListaTab />}
+      {aba === 'previa-aviso' && <PreviaAvisoDocumentosVencidosTab />}
       {aba === 'configuracao' && <AlertasConfiguracaoTab />}
-      {aba === 'dashboard' && <AlertasDashboardTab />}
     </div>
   );
 }

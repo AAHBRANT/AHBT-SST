@@ -5,7 +5,8 @@ using MediatR;
 namespace AAHBRANT.SST.Application.Assinatura.Commands;
 
 public record RegistrarAssinaturaBiometriaLocalCommand(
-    Guid DocumentoAssinaturaId, Guid DispositivoId, string SegredoDispositivo, Guid TrabalhadorId, double Score, string? IpAddress = null) : IRequest<DocumentoSignatarioDto>;
+    Guid DocumentoAssinaturaId, Guid DispositivoId, string SegredoDispositivo, Guid TrabalhadorId, double Score, string? IpAddress = null, byte[]? ImagemDigital = null,
+    LocalizacaoAssinatura? Localizacao = null, string? Desafio = null, string? AssinaturaLeitura = null) : IRequest<DocumentoSignatarioDto>;
 
 public class RegistrarAssinaturaBiometriaLocalCommandValidator : AbstractValidator<RegistrarAssinaturaBiometriaLocalCommand>
 {
@@ -13,7 +14,9 @@ public class RegistrarAssinaturaBiometriaLocalCommandValidator : AbstractValidat
     {
         RuleFor(x => x.DocumentoAssinaturaId).NotEmpty();
         RuleFor(x => x.DispositivoId).NotEmpty();
-        RuleFor(x => x.SegredoDispositivo).NotEmpty();
+        // Com leitura assinada pelo agente o segredo não trafega mais pelo navegador.
+        RuleFor(x => x.SegredoDispositivo).NotEmpty().When(x => string.IsNullOrEmpty(x.Desafio));
+        RuleFor(x => x.AssinaturaLeitura).NotEmpty().When(x => !string.IsNullOrEmpty(x.Desafio));
         RuleFor(x => x.TrabalhadorId).NotEmpty();
         RuleFor(x => x.Score).InclusiveBetween(0, 100);
     }
@@ -33,7 +36,14 @@ public class RegistrarAssinaturaBiometriaLocalCommandHandler : IRequestHandler<R
     public async Task<DocumentoSignatarioDto> Handle(RegistrarAssinaturaBiometriaLocalCommand request, CancellationToken ct)
     {
         var resultado = await _autenticacao.AutenticarPorMatchLocalAsync(
-            request.DispositivoId, request.SegredoDispositivo, request.TrabalhadorId, request.Score, ct);
-        return await _registrador.RegistrarAsync(request.DocumentoAssinaturaId, resultado, request.IpAddress, ct);
+            request.DispositivoId, request.SegredoDispositivo, request.TrabalhadorId, request.Score,
+            LeituraDo(request.Desafio, request.AssinaturaLeitura), ct);
+        return await _registrador.RegistrarAsync(
+            request.DocumentoAssinaturaId, resultado, request.IpAddress, ct,
+            request.ImagemDigital, request.ImagemDigital is null ? null : "image/png",
+            localizacao: request.Localizacao);
     }
+
+    private static LeituraBiometricaAssinada? LeituraDo(string? desafio, string? assinatura) =>
+        string.IsNullOrEmpty(desafio) ? null : new LeituraBiometricaAssinada(desafio, assinatura ?? string.Empty);
 }

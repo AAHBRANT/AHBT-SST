@@ -1,4 +1,5 @@
 using AAHBRANT.SST.Application.Common.Interfaces;
+using AAHBRANT.SST.Application.Common.Seguranca;
 using MediatR;
 using Microsoft.EntityFrameworkCore;
 
@@ -13,6 +14,7 @@ public class ObterTreinamentoPorIdQueryHandler : IRequestHandler<ObterTreinament
 
     public async Task<TreinamentoDto?> Handle(ObterTreinamentoPorIdQuery request, CancellationToken ct)
         => await _db.Treinamentos
+            .NoEscopoDoTrabalhador(_db, x => x.TrabalhadorId)
             .Where(x => x.Id == request.Id)
             .Select(x => new TreinamentoDto(
                 x.Id,
@@ -22,6 +24,8 @@ public class ObterTreinamentoPorIdQueryHandler : IRequestHandler<ObterTreinament
                 x.DataValidade,
                 x.CargaHorariaRealizada,
                 x.InstituicaoInstrutor,
-                x.NumeroCertificado))
+                x.NumeroCertificado,
+                x.Local,
+                x.InstrutorRegistroProfissional))
             .FirstOrDefaultAsync(ct);
 }

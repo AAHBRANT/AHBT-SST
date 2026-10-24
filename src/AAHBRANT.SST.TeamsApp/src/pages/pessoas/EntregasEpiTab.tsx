@@ -1,8 +1,9 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Button, Card, DataTable, StatusChip, FeedbackInline, type Coluna } from '@ui';
-import { ArrowDownload24Regular, Open24Regular } from '@fluentui/react-icons';
+import { BotaoAcao, Button, Card, DataTable, StatusChip, FeedbackInline, type Coluna } from '@ui';
+import { ArrowDownload24Regular, Eye24Regular, Open24Regular } from '@fluentui/react-icons';
 import { api, type CatalogoEpi, type EntregaEpi } from '../../lib/api';
+import { salvarBlob, useVisualizadorPdf } from '../../components/useVisualizadorPdf';
 
 // Histórico somente-leitura das entregas de EPI deste trabalhador. O registro de novas entregas,
 // devoluções e a assinatura da ficha passaram a viver no módulo dedicado /epi (sidebar fixa "EPI",
@@ -15,6 +16,7 @@ export function EntregasEpiTab({ trabalhadorId }: { trabalhadorId: string }) {
   const [erro, setErro] = useState<string | null>(null);
   const [carregando, setCarregando] = useState(true);
   const [baixando, setBaixando] = useState(false);
+  const { visualizar, dialogoVisualizador } = useVisualizadorPdf();
 
   async function carregar() {
     try {
@@ -50,17 +52,29 @@ export function EntregasEpiTab({ trabalhadorId }: { trabalhadorId: string }) {
   async function baixarFicha() {
     try {
       setBaixando(true);
-      const blob = await api.entregasEpi.baixarFichaTrabalhador(trabalhadorId);
-      const url = URL.createObjectURL(blob);
-      const link = document.createElement('a');
-      link.href = url;
-      link.download = `ficha-epi-${trabalhadorId}.pdf`;
-      link.click();
-      URL.revokeObjectURL(url);
+      salvarBlob(await api.entregasEpi.baixarFichaTrabalhador(trabalhadorId), `ficha-epi-${trabalhadorId}.pdf`);
     } catch (e) {
       setErro(e instanceof Error ? e.message : 'Falha ao baixar a ficha em PDF.');
     } finally {
       setBaixando(false);
+    }
+  }
+
+  // Mesma ficha do "Baixar", aberta na janela de visualização.
+  function visualizarFicha() {
+    void visualizar({
+      titulo: 'Ficha de EPI do funcionário',
+      nomeArquivo: `ficha-epi-${trabalhadorId}.pdf`,
+      obter: () => api.entregasEpi.baixarFichaTrabalhador(trabalhadorId),
+    });
+  }
+
+  async function confirmar(id: string) {
+    try {
+      await api.entregasEpi.confirmar(id);
+      await carregar();
+    } catch (e) {
+      setErro(e instanceof Error ? e.message : 'Falha ao confirmar a entrega.');
     }
   }
 
@@ -79,6 +93,16 @@ export function EntregasEpiTab({ trabalhadorId }: { trabalhadorId: string }) {
       ),
     },
     { chave: 'devolucao', rotulo: 'Devolução', render: (e) => e.dataDevolucao?.slice(0, 10) ?? '—' },
+    {
+      chave: 'confirmacao',
+      rotulo: 'Confirmação',
+      render: (e) =>
+        e.confirmada ? (
+          <StatusChip tom="ok">Confirmada</StatusChip>
+        ) : (
+          <StatusChip tom="atencao">Pendente</StatusChip>
+        ),
+    },
   ];
 
   return (
@@ -86,14 +110,24 @@ export function EntregasEpiTab({ trabalhadorId }: { trabalhadorId: string }) {
       titulo="Entregas de EPI do funcionário"
       acoes={
         <div style={{ display: 'flex', gap: 8 }}>
-          <Button
-            appearance="subtle"
+          <BotaoAcao
+            tom="ver"
+            icon={<Eye24Regular />}
+            onClick={visualizarFicha}
+            disabled={entregas.length === 0}
+            aria-label="Visualizar ficha"
+          >
+            Visualizar ficha
+          </BotaoAcao>
+          <BotaoAcao
+            tom="baixar"
             icon={<ArrowDownload24Regular />}
             onClick={baixarFicha}
             disabled={baixando || entregas.length === 0}
+            aria-label="Baixar ficha (PDF)"
           >
             Baixar ficha (PDF)
-          </Button>
+          </BotaoAcao>
           <Button appearance="primary" icon={<Open24Regular />} onClick={() => navigate('/epi')}>
             Registrar nova entrega
           </Button>
@@ -101,6 +135,7 @@ export function EntregasEpiTab({ trabalhadorId }: { trabalhadorId: string }) {
       }
     >
       {erro && <FeedbackInline tom="erro" aoFechar={() => setErro(null)}>{erro}</FeedbackInline>}
+      {dialogoVisualizador}
 
       <DataTable
         aria-label="Entregas de EPI do funcionário"
@@ -113,6 +148,13 @@ export function EntregasEpiTab({ trabalhadorId }: { trabalhadorId: string }) {
           descricao: 'Registre a entrega no módulo EPI.',
           acao: { rotulo: 'Ir para EPI', aoClicar: () => navigate('/epi') },
         }}
+        acoesLinha={(e) =>
+          !e.confirmada && (
+            <Button appearance="subtle" onClick={() => confirmar(e.id)}>
+              Confirmar entrega
+            </Button>
+          )
+        }
       />
     </Card>
   );

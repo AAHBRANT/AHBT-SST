@@ -6,20 +6,28 @@ using MediatR;
 
 namespace AAHBRANT.SST.Application.ChecklistModelos.Commands;
 
-public record CriarChecklistModeloItemInput(string Descricao, bool ExigeFotografia, bool ExigeResponsavel, bool ExigePrazo);
+public record CriarChecklistModeloItemInput(string Descricao, bool ExigeFotografia, bool ExigeResponsavel, bool ExigePrazo, string? Secao = null);
 
 // Todo checklist nasce na versão 1 (§24 "diferentes versões" é tratado por
 // CriarNovaVersaoChecklistModeloCommand, que encadeia a partir desta).
 public record CriarChecklistModeloCommand(
     string Nome,
     TipoInspecao TipoInspecao,
-    List<CriarChecklistModeloItemInput> Itens) : IRequest<Guid>;
+    List<CriarChecklistModeloItemInput> Itens,
+    TipoVeiculo? TipoVeiculo = null) : IRequest<Guid>;
 
 public class CriarChecklistModeloCommandValidator : AbstractValidator<CriarChecklistModeloCommand>
 {
     public CriarChecklistModeloCommandValidator()
     {
         RuleFor(x => x.Nome).NotEmpty().MaximumLength(200);
+        // Checklist de Veículos é um por tipo de veículo; os demais tipos não usam TipoVeiculo.
+        RuleFor(x => x.TipoVeiculo).NotNull().IsInEnum()
+            .When(x => x.TipoInspecao == TipoInspecao.Veiculo)
+            .WithMessage("Informe o tipo de veículo do checklist.");
+        RuleFor(x => x.TipoVeiculo).Null()
+            .When(x => x.TipoInspecao != TipoInspecao.Veiculo)
+            .WithMessage("O tipo de veículo só se aplica a checklists de Veículos.");
         RuleFor(x => x.Itens).NotEmpty();
         RuleForEach(x => x.Itens).ChildRules(item =>
         {
@@ -40,6 +48,7 @@ public class CriarChecklistModeloCommandHandler : IRequestHandler<CriarChecklist
         {
             Nome = request.Nome,
             TipoInspecao = request.TipoInspecao,
+            TipoVeiculo = request.TipoVeiculo,
             Versao = 1,
         };
 
@@ -50,6 +59,7 @@ public class CriarChecklistModeloCommandHandler : IRequestHandler<CriarChecklist
             {
                 Ordem = ordem++,
                 Descricao = item.Descricao,
+                Secao = item.Secao,
                 ExigeFotografia = item.ExigeFotografia,
                 ExigeResponsavel = item.ExigeResponsavel,
                 ExigePrazo = item.ExigePrazo,
