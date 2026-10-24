@@ -42,6 +42,7 @@ import { MutacaoEnfileiradaOfflineError } from '../../lib/offline/syncEngine';
 import { ErroFacialDialog } from '../../components/assinatura/ErroFacialDialog';
 import { BotaoBiometriaDigital } from '../../components/assinatura/BotaoBiometriaDigital';
 import { salvarBlob, useVisualizadorPdf } from '../../components/useVisualizadorPdf';
+import { formatarHoraBrasilia } from '../../components/assinatura/assinaturaDigital';
 
 const TOTAL_FOTOS_EVIDENCIA_OBRIGATORIAS = 3;
 
@@ -57,7 +58,7 @@ function tomPresenca(p: ParticipanteSessaoTreinamento, somenteLeitura: boolean):
 
 function rotuloPresenca(p: ParticipanteSessaoTreinamento, somenteLeitura: boolean): string {
   if (p.presencaConfirmadaEm) {
-    return `Confirmada às ${new Date(p.presencaConfirmadaEm).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}`;
+    return `Confirmada às ${formatarHoraBrasilia(p.presencaConfirmadaEm)}`;
   }
   return somenteLeitura ? 'Ausente' : 'Aguardando';
 }
