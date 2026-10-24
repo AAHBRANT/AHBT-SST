@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { chaves, queryClient, useErroCarga, useFuncoes } from '../../lib/consultas';
 import {
   BotaoAcao,
   Button,
@@ -39,12 +40,17 @@ const funcaoVazia: NovaFuncao = { nome: '', cboCodigo: '', descricao: '' };
 // virou o `info` do FormRodape (mesmo uso: texto de ajuda à esquerda das ações). Erro do formulário
 // fica em estado próprio, separado do erro de carga da lista.
 export function FuncoesTab() {
-  const [funcoes, setFuncoes] = useState<Funcao[]>([]);
+  // Lista do cache compartilhado (lib/consultas) — a mesma que a aba Funcionários usa.
+  const consultaFuncoes = useFuncoes();
+  const funcoes = consultaFuncoes.lista;
+  const carregandoLista = consultaFuncoes.isPending;
+  const { erro: erroCarga, dispensar: dispensarErroCarga } = useErroCarga([consultaFuncoes], 'Falha ao carregar funções.');
   const [novaFuncao, setNovaFuncao] = useState<NovaFuncao>(funcaoVazia);
-  const [erro, setErro] = useState<string | null>(null);
+  // Erro de ação na lista (ex.: excluir); o de carga vem de useErroCarga.
+  const [erroAcao, setErroAcao] = useState<string | null>(null);
+  const erro = erroAcao ?? erroCarga;
   const [erroPainel, setErroPainel] = useState<string | null>(null);
   const [carregando, setCarregando] = useState(false);
-  const [carregandoLista, setCarregandoLista] = useState(true);
   const [painelAberto, setPainelAberto] = useState(false);
   const { confirmar, dialogElement } = useConfirmar();
   const sucessoToast = useSucessoToast();
@@ -67,16 +73,9 @@ export function FuncoesTab() {
   const [erroSemTrabalhador, setErroSemTrabalhador] = useState<string | null>(null);
   const [excluindoSemTrabalhadorId, setExcluindoSemTrabalhadorId] = useState<string | null>(null);
 
+  // Recarrega a lista depois de uma mutação (invalidar também atualiza a aba Funcionários).
   async function carregar() {
-    try {
-      setErro(null);
-      const listaFuncoes = await api.funcoes.listar();
-      setFuncoes(listaFuncoes);
-    } catch (e) {
-      setErro(e instanceof Error ? e.message : 'Falha ao carregar funções.');
-    } finally {
-      setCarregandoLista(false);
-    }
+    await queryClient.invalidateQueries({ queryKey: chaves.funcoes });
   }
 
   // Pedido do usuário (22/09): detecta funções duplicadas (mesmo nome — uma com CBO vindo do G-RH,
@@ -119,7 +118,6 @@ export function FuncoesTab() {
   }
 
   useEffect(() => {
-    carregar();
     carregarDuplicadas();
     carregarOrfas();
     carregarInativasComTrabalhador();
@@ -261,7 +259,7 @@ export function FuncoesTab() {
       await Promise.all([carregar(), carregarDuplicadas(), carregarOrfas(), carregarInativasComTrabalhador()]);
       sucessoToast('Função excluída com sucesso.');
     } catch (e) {
-      setErro(e instanceof Error ? e.message : 'Falha ao excluir função.');
+      setErroAcao(e instanceof Error ? e.message : 'Falha ao excluir função.');
     }
   }
 
@@ -294,7 +292,7 @@ export function FuncoesTab() {
         }
       />
       {erro && (
-        <FeedbackInline tom="erro" aoFechar={() => setErro(null)}>
+        <FeedbackInline tom="erro" aoFechar={() => (erroAcao ? setErroAcao(null) : dispensarErroCarga())}>
           {erro}
         </FeedbackInline>
       )}

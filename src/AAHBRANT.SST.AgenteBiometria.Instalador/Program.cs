@@ -1,4 +1,4 @@
-using System.Diagnostics;
+﻿using System.Diagnostics;
 using System.Reflection;
 
 namespace AAHBRANT.SST.AgenteBiometria.Instalador;
@@ -11,8 +11,8 @@ namespace AAHBRANT.SST.AgenteBiometria.Instalador;
 public static class Program
 {
     // Valores sugeridos na tela da primeira instalação (o técnico pode trocar).
-    private const string BackendPadrao = "https://sst-api-hml.azurewebsites.net";
-    private const string OrigemPadrao = "https://sst-web-hml.azurewebsites.net";
+    private const string BackendPadrao = "https://sst-api-hml.kindground-7a44c4f0.brazilsouth.azurecontainerapps.io";
+    private const string OrigemPadrao = "https://sst-web-hml.kindground-7a44c4f0.brazilsouth.azurecontainerapps.io";
 
     // Endereço do manifesto que vem preenchido. publicar.ps1 grava aqui via -UrlManifesto.
     private static string ManifestoPadrao =>

@@ -1,5 +1,6 @@
 import { lazy, Suspense, useEffect, useState } from 'react';
 import { FluentProvider } from '@fluentui/react-components';
+import { QueryClientProvider } from '@tanstack/react-query';
 import { ganchosEstiloBotao } from './ui/primitivos/Botao/estiloBotao';
 import { MotionConfig } from 'framer-motion';
 import { HashRouter, Navigate, Outlet, Route, Routes, useLocation, useParams } from 'react-router-dom';
@@ -7,6 +8,7 @@ import { aahbrantTheme, aahbrantLightTheme } from './theme';
 import { ThemeModeProvider, useThemeMode } from './theme/ThemeModeContext';
 import { UsuarioLogadoProvider } from './lib/UsuarioLogadoContext';
 import { processarLoginNavegadorPendente } from './lib/browserAuth';
+import { queryClient } from './lib/consultas';
 import { AppShell } from './layout/AppShell';
 import { Carregando } from '@ui';
 
@@ -89,13 +91,16 @@ function RedirecionarParaPilar({ pilar, secao }: { pilar: string; secao: string 
 // HashRouter evita depender de configuração de rota no servidor durante o sideload no Teams.
 function App() {
   return (
-    <ThemeModeProvider>
-      {/* Quem está logado e o que pode fazer — uma chamada por sessão, no topo da árvore, para
-          qualquer tela decidir se mostra uma ação restrita (ver UsuarioLogadoContext). */}
-      <UsuarioLogadoProvider>
-        <AppRoteado />
-      </UsuarioLogadoProvider>
-    </ThemeModeProvider>
+    // Cache de leituras compartilhado entre telas — ver lib/consultas.ts.
+    <QueryClientProvider client={queryClient}>
+      <ThemeModeProvider>
+        {/* Quem está logado e o que pode fazer — uma chamada por sessão, no topo da árvore, para
+            qualquer tela decidir se mostra uma ação restrita (ver UsuarioLogadoContext). */}
+        <UsuarioLogadoProvider>
+          <AppRoteado />
+        </UsuarioLogadoProvider>
+      </ThemeModeProvider>
+    </QueryClientProvider>
   );
 }
 

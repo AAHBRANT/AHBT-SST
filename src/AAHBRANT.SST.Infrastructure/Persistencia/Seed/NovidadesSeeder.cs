@@ -1522,6 +1522,43 @@ public static class NovidadesSeeder
                     "Cada documento da terceirizada (contrato, PGR, ASO, certificados) era cadastrado um por um.",
                     "Em Terceirizado > Empresas, clique em Importar pasta e arraste a pasta da empresa, mesmo misturada. A IA separa o contrato, os documentos da empresa e o ASO e os certificados de cada funcionário. Você confere tudo e clica em Cadastrar tudo. O ASO agora também guarda o PDF."),
             }),
+        new(
+            Versao: "5.85.0",
+            Titulo: "Reunião de análise em toda ocorrência e relatório em PDF",
+            DataPublicacao: new DateTime(2026, 10, 23, 0, 0, 0, DateTimeKind.Utc),
+            Itens: new[]
+            {
+                new NovidadeSeedItem(CategoriaNovidade.Novidade,
+                    "Reunião de análise na tela da ocorrência",
+                    "A reunião de análise só aparecia no relato com IA de acidente e doença ocupacional. Num quase acidente, por exemplo, não havia onde marcar.",
+                    "Toda ocorrência agora tem o cartão Reunião de análise. Agende pelo Teams, remarque se precisar e, depois, registre que aconteceu com os presentes e a ata. A investigação só pode ser finalizada com a reunião realizada."),
+                new NovidadeSeedItem(CategoriaNovidade.Novidade,
+                    "A investigação vira documento",
+                    "A investigação de acidentes, incidentes e quase acidentes ficava só na tela, sem um documento para imprimir ou arquivar.",
+                    "Abra a ocorrência e clique em Visualizar relatório ou Baixar PDF. Sai tudo num documento só: identificação, descrição, consequências, causas, plano de ação, reunião de análise com a ata, fotos e espaço para as assinaturas do técnico e do engenheiro."),
+            }),
+        new(
+            Versao: "5.86.0",
+            Titulo: "Plano de ação da ocorrência: concluir com confirmação e reabrir",
+            DataPublicacao: new DateTime(2026, 10, 23, 0, 0, 0, DateTimeKind.Utc),
+            Itens: new[]
+            {
+                new NovidadeSeedItem(CategoriaNovidade.Melhoria,
+                    "Nada é concluído sem querer",
+                    "O botão Validar das ações do plano concluía a ação com um clique, sem perguntar, e não havia como desfazer.",
+                    "Agora cada ação manual tem Marcar como concluída, que pede para descrever o que foi feito e registra quem concluiu. Ações concluídas por engano podem ser reabertas com o botão Reabrir. A coluna Como se resolve mostra as ações que o sistema conclui sozinho, como o DDS do tema e a reunião de análise."),
+            }),
+        new(
+            Versao: "5.87.0",
+            Titulo: "Ações do plano que se resolvem sozinhas",
+            DataPublicacao: new DateTime(2026, 10, 23, 0, 0, 0, DateTimeKind.Utc),
+            Itens: new[]
+            {
+                new NovidadeSeedItem(CategoriaNovidade.Novidade,
+                    "Treinamento, inspeção e EPI concluem a ação",
+                    "Ações como \"reciclar NR-35 dos envolvidos\" dependiam de alguém lembrar de marcar como concluída.",
+                    "Ao criar uma ação na ocorrência, escolha Como se resolve: Treinamento concluído (curso), Inspeção finalizada (tipo) ou Entrega de EPI assinada (EPI). A ação só se conclui quando aquele fato acontece — turma do curso com os envolvidos presentes, inspeção do tipo na obra ou entrega assinada por cada envolvido. Ações já criadas podem ser vinculadas pelo botão Alterar."),
+            }),
     };
 
     public static async Task ExecutarAsync(IServiceProvider services, CancellationToken ct = default)

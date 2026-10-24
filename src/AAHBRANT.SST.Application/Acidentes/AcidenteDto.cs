@@ -69,4 +69,7 @@ public record ReuniaoAnaliseDto(
     IReadOnlyList<string> Participantes,
     SituacaoReuniaoTeams Situacao,
     string? LinkTeams,
-    string? MotivoFalha);
+    string? MotivoFalha,
+    DateTime? RealizadaEm = null,
+    IReadOnlyList<string>? Presentes = null,
+    string? Ata = null);

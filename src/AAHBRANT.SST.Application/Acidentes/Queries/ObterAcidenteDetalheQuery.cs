@@ -56,10 +56,15 @@ public class ObterAcidenteDetalheQueryHandler : IRequestHandler<ObterAcidenteDet
         var envolvidos = await AcidenteEnvolvidosSync.CarregarAsync(_db, new[] { request.Id }, ct);
         acidente.Envolvidos = envolvidos.GetValueOrDefault(request.Id) ?? new();
 
+        // Recupera conclusões automáticas que ainda não rodaram (ex.: entrega de EPI assinada, que não
+        // tem gancho próprio) — idempotente; só grava quando há o que concluir.
+        await AcoesPlano.ResolucaoVinculadaAcaoPlano.ConcluirAtendidasAsync(_db, new[] { request.Id }, ct);
+
         var acoesPlano = await _db.AcoesPlano
             .Where(a => a.OrigemTipo == nameof(Domain.Entidades.Acidente) && a.OrigemId == request.Id)
             .Include(a => a.ResponsavelUsuario)
             .Include(a => a.ValidadoPorUsuario)
+            .Include(a => a.ConcluidoPorUsuario)
             // Plano de ação lido por urgência: Crítica primeiro, depois o prazo mais próximo.
             .OrderBy(a => a.Prioridade)
             .ThenBy(a => a.Prazo)
@@ -80,15 +85,40 @@ public class ObterAcidenteDetalheQueryHandler : IRequestHandler<ObterAcidenteDet
                 DataValidacao = a.DataValidacao,
                 ValidadoPorUsuarioId = a.ValidadoPorUsuarioId,
                 ValidadoPorUsuarioNome = a.ValidadoPorUsuario != null ? a.ValidadoPorUsuario.Nome : null,
+                ConcluidoPorUsuarioNome = a.ConcluidoPorUsuario != null ? a.ConcluidoPorUsuario.Nome : null,
+                DescricaoConclusao = a.DescricaoConclusao,
+                TipoResolucao = a.TipoResolucao,
+                ResolucaoCursoTreinamentoId = a.ResolucaoCursoTreinamentoId,
+                ResolucaoTipoInspecao = a.ResolucaoTipoInspecao,
+                ResolucaoCatalogoEpiId = a.ResolucaoCatalogoEpiId,
             })
             .ToListAsync(ct);
+
+        var automaticas = await AcoesPlano.Commands.ResolucaoAutomaticaAcaoPlano.CarregarAsync(_db, acoesPlano.Select(a => a.Id).ToList(), ct);
+        foreach (var acao in acoesPlano)
+        {
+            if (!automaticas.TryGetValue(acao.Id, out var resolucao)) continue;
+            acao.TipoResolucaoAutomatica = resolucao.Tipo;
+            acao.ResolucaoAutomatica = resolucao.Texto;
+            acao.RotuloAguardando = resolucao.Tipo == "Dds" ? "Aguardando DDS" : "Aguardando reunião";
+        }
+
+        var vinculadas = await AcoesPlano.ResolucaoVinculadaAcaoPlano.AvaliarAsync(_db, new[] { request.Id }, ct);
+        foreach (var acao in acoesPlano)
+        {
+            if (!vinculadas.TryGetValue(acao.Id, out var avaliacao)) continue;
+            acao.TipoResolucaoAutomatica = acao.TipoResolucao.ToString();
+            acao.ResolucaoAutomatica = avaliacao.Texto;
+            acao.RotuloAguardando = avaliacao.Aguardando;
+            acao.ProgressoResolucao = avaliacao.Progresso;
+        }
 
         var fotos = await _db.AcidentesFotos.Where(f => f.AcidenteId == request.Id).OrderBy(f => f.Ordem).ToListAsync(ct);
 
         var reuniao = await _db.ReunioesAnaliseOcorrencia
             .Where(r => r.AcidenteId == request.Id)
             .OrderByDescending(r => r.CreatedAtUtc)
-            .Select(r => new { r.Inicio, r.Fim, r.Participantes, r.Situacao, r.LinkTeams, r.MotivoFalha })
+            .Select(r => new { r.Inicio, r.Fim, r.Participantes, r.Situacao, r.LinkTeams, r.MotivoFalha, r.RealizadaEm, r.Presentes, r.Ata })
             .FirstOrDefaultAsync(ct);
 
         return new AcidenteDetalheDto
@@ -97,7 +127,10 @@ public class ObterAcidenteDetalheQueryHandler : IRequestHandler<ObterAcidenteDet
                 ? null
                 : new ReuniaoAnaliseDto(reuniao.Inicio, reuniao.Fim,
                     reuniao.Participantes.Split('\n', StringSplitOptions.RemoveEmptyEntries),
-                    reuniao.Situacao, reuniao.LinkTeams, reuniao.MotivoFalha),
+                    reuniao.Situacao, reuniao.LinkTeams, reuniao.MotivoFalha,
+                    reuniao.RealizadaEm,
+                    (reuniao.Presentes ?? string.Empty).Split('\n', StringSplitOptions.RemoveEmptyEntries),
+                    reuniao.Ata),
             Acidente = acidente,
             Fotos = fotos.Select(f => new AcidenteFotoDto { Id = f.Id, Ordem = f.Ordem, DadosFoto = AAHBRANT.SST.Application.Common.DadosCapturaFoto.Ler(f.FotoMetadadosJson) }).ToList(),
             AcoesPlano = acoesPlano,

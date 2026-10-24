@@ -1,4 +1,5 @@
 ﻿using AAHBRANT.SST.Application.Aprs;
+using AAHBRANT.SST.Application.Acidentes;
 using AAHBRANT.SST.Application.Assinatura;
 using AAHBRANT.SST.Application.Cipa;
 using AAHBRANT.SST.Application.Common.Interfaces;
@@ -112,7 +113,7 @@ public static class DependencyInjection
         services.AddScoped<IAtaSessaoTreinamentoPdfService, AtaSessaoTreinamentoPdfService>();
         services.AddScoped<IRelatorioFiscalizacaoPdfService, RelatorioFiscalizacaoPdfService>();
         services.AddScoped<IInspecaoPdfService, InspecaoPdfService>();
-        services.AddScoped<AAHBRANT.SST.Application.Acidentes.IAcidentePdfService, AcidentePdfService>();
+        services.AddScoped<IInvestigacaoOcorrenciaPdfService, InvestigacaoOcorrenciaPdfService>();
         services.AddScoped<IGeradorNumeroDocumentoService, GeradorNumeroDocumentoService>();
 
         // Motor de Assinatura Eletrônica (docs/Motor-Assinatura-Eletronica.md §5) — PIN/crachá-QR
