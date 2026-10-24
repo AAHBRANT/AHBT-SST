@@ -136,7 +136,7 @@ export function DadosComplementaresPgr({ geracaoId, e, editavel, alterar }: {
             <Text size={200} style={{ display: 'block' }}>
               Local da obra no mapa: <strong>{sugestao.enderecoEncontrado ?? '—'}</strong>
             </Text>
-            {sugestao.avisos.map((a) => <FeedbackInline key={a} tom="atencao">{a}</FeedbackInline>)}
+            {sugestao.avisos.map((a) => <FeedbackInline key={a} tom="aviso">{a}</FeedbackInline>)}
             {(['hospital', 'bombeiros', 'pm'] as const).map((chave) => {
               const ops = opcoesPorTipo(chave);
               if (ops.length === 0) return null;
