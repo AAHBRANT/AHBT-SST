@@ -25,7 +25,9 @@ import {
   type Tom,
   Legenda,
 } from '@ui';
-import { Save24Regular, Video24Regular } from '@fluentui/react-icons';
+import { DocumentPdf24Regular, Save24Regular, Video24Regular } from '@fluentui/react-icons';
+import { MapaCorporal } from '../../components/mapaCorporal/MapaCorporal';
+import { useVisualizadorPdf } from '../../components/useVisualizadorPdf';
 import {
   api,
   metodologiaInvestigacaoLabel,
@@ -36,8 +38,11 @@ import {
   tipoOcorrenciaLabel,
   StatusAcaoPlano,
   StatusAcidente,
+  TipoOcorrencia,
   type AcaoPlano,
+  type Acidente,
   type AcidenteDetalhe,
+  type AtualizarAcidentePayload,
   type NovaAcaoPlano,
   type Usuario,
   SituacaoReuniaoTeams,
@@ -80,8 +85,10 @@ export function AcidenteDetalhePage() {
   const [causas, setCausas] = useState<string>('');
   const [novaAcao, setNovaAcao] = useState(novaAcaoInicial());
   const [usuarioValidador, setUsuarioValidador] = useState('');
+  const [regioesCorpo, setRegioesCorpo] = useState<string[]>([]);
   const [erro, setErro] = useState<string | null>(null);
   const [processando, setProcessando] = useState(false);
+  const { visualizar, dialogoVisualizador } = useVisualizadorPdf();
 
   useEffect(() => {
     let ativo = true;
@@ -106,6 +113,7 @@ export function AcidenteDetalhePage() {
       setUsuarios(listaUsuarios);
       setMetodologia(det.acidente.metodologiaInvestigacao ? String(det.acidente.metodologiaInvestigacao) : '');
       setCausas(det.acidente.causas ?? '');
+      setRegioesCorpo(det.acidente.regioesCorpo ?? []);
     } catch (e) {
       setErro(e instanceof Error ? e.message : 'Falha ao carregar acidente.');
     }
@@ -116,35 +124,60 @@ export function AcidenteDetalhePage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id]);
 
+  // O PUT regrava a ocorrência inteira: parte do que está gravado e troca só o que a tela editou.
+  // Sem regioesCorpo no corpo, a API mantém o mapa corporal gravado.
+  function dadosGravados(a: Acidente): AtualizarAcidentePayload {
+    return {
+      tipo: a.tipo,
+      obraId: a.obraId,
+      trabalhadorId: a.trabalhadorId,
+      trabalhadoresIds: a.envolvidos.map((e) => e.trabalhadorId),
+      atividadeId: a.atividadeId,
+      local: a.local,
+      data: a.data,
+      hora: a.hora,
+      descricao: a.descricao,
+      lesao: a.lesao,
+      consequencia: a.consequencia,
+      atendimento: a.atendimento,
+      houveAfastamento: a.houveAfastamento,
+      diasAfastamento: a.diasAfastamento,
+      numeroCat: a.numeroCat,
+      gravidade: a.gravidade,
+      // Exigido na incapacidade permanente parcial; nos demais casos a API recalcula pela tabela.
+      diasDebitadosInformados: a.diasDebitados || null,
+      metodologiaInvestigacao: a.metodologiaInvestigacao,
+      causas: a.causas,
+    };
+  }
+
   async function salvarInvestigacao() {
     if (!id || !detalhe) return;
     try {
       setProcessando(true);
       setErro(null);
-      const a = detalhe.acidente;
       await api.acidentes.atualizar(id, {
-        tipo: a.tipo,
-        obraId: a.obraId,
-        trabalhadorId: a.trabalhadorId,
-        trabalhadoresIds: a.envolvidos.map((e) => e.trabalhadorId),
-        atividadeId: a.atividadeId,
-        local: a.local,
-        data: a.data,
-        hora: a.hora,
-        descricao: a.descricao,
-        lesao: a.lesao,
-        consequencia: a.consequencia,
-        atendimento: a.atendimento,
-        houveAfastamento: a.houveAfastamento,
-        diasAfastamento: a.diasAfastamento,
-        numeroCat: a.numeroCat,
-        gravidade: a.gravidade,
+        ...dadosGravados(detalhe.acidente),
         metodologiaInvestigacao: metodologia ? Number(metodologia) : null,
         causas: causas || null,
       });
       await carregar();
     } catch (e) {
       setErro(e instanceof Error ? e.message : 'Falha ao salvar dados da investigação.');
+    } finally {
+      setProcessando(false);
+    }
+  }
+
+  async function salvarRegioesCorpo() {
+    if (!id || !detalhe) return;
+    try {
+      setProcessando(true);
+      setErro(null);
+      await api.acidentes.atualizar(id, { ...dadosGravados(detalhe.acidente), regioesCorpo });
+      await carregar();
+    } catch (e) {
+      setErro(e instanceof Error ? e.message : 'Falha ao salvar as partes do corpo atingidas.');
     } finally {
       setProcessando(false);
     }
@@ -354,9 +387,24 @@ export function AcidenteDetalhePage() {
               <WorkflowActions acoes={acoes} processando={processando} erro={erro} />
             </Card>
           )}
+          <Card densidade="compacta" titulo="Relatório">
+            <Button
+              icon={<DocumentPdf24Regular />}
+              onClick={() =>
+                void visualizar({
+                  titulo: 'Relatório da ocorrência',
+                  nomeArquivo: `ocorrencia-${a.data?.slice(0, 10) ?? ''}-${a.local}.pdf`,
+                  obter: () => api.acidentes.baixarPdf(a.id),
+                })
+              }
+            >
+              Relatório da ocorrência (PDF)
+            </Button>
+          </Card>
         </>
       }
     >
+      {dialogoVisualizador}
       {erro && (
         <FeedbackInline tom="erro" aoFechar={() => setErro(null)}>
           {erro}
@@ -375,6 +423,27 @@ export function AcidenteDetalhePage() {
           onErroValidacao={setErro} />
       </Card>
       <Text style={{ display: 'block' }}>{a.descricao}</Text>
+
+      {(a.tipo === TipoOcorrencia.Acidente || a.tipo === TipoOcorrencia.DoencaOcupacional || Boolean(a.lesao) || regioesCorpo.length > 0) && (
+        <Card titulo="Partes do corpo atingidas" subtitulo="Saem no relatório da ocorrência, junto com a lesão.">
+          <MapaCorporal
+            selecionadas={regioesCorpo}
+            aoAlterar={a.status === StatusAcidente.Concluido ? undefined : setRegioesCorpo}
+          />
+          {a.status !== StatusAcidente.Concluido && (
+            <FormRodape>
+              <Button
+                appearance="primary"
+                icon={<Save24Regular />}
+                onClick={salvarRegioesCorpo}
+                disabled={processando || [...regioesCorpo].sort().join() === [...(a.regioesCorpo ?? [])].sort().join()}
+              >
+                Salvar partes do corpo
+              </Button>
+            </FormRodape>
+          )}
+        </Card>
+      )}
 
       <Card titulo="Investigação (Seção 28 — análise de causas)">
         <FormSection titulo="Dados da Investigação" numero={1} primeira>

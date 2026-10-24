@@ -29,6 +29,7 @@ import {
   gravidadeAcidenteLabel,
   StatusAcidente,
   statusAcidenteLabel,
+  TipoOcorrencia,
   tipoOcorrenciaLabel,
   type Acidente,
   type Atividade,
@@ -41,6 +42,7 @@ import {
 } from '../../lib/api';
 import { HhtMensalTab } from './HhtMensalTab';
 import { RelatoOcorrenciaIa } from './RelatoOcorrenciaIa';
+import { MapaCorporal } from '../../components/mapaCorporal/MapaCorporal';
 import {
   novaChaveAcao,
   PlanoAcaoOcorrenciaIa,
@@ -591,6 +593,17 @@ export function AcidentesPage({ tipoFixo }: { tipoFixo?: number } = {}) {
                     <Input style={estiloCampo('atendimento')} value={nova.atendimento ?? ''} onChange={(_, d) => alterar('atendimento', { atendimento: d.value })} />
                   </Field>
                 </Campo>
+                {/* Mapa corporal: só quando há lesão (acidente, doença ocupacional ou lesão informada). */}
+                {(nova.tipo === TipoOcorrencia.Acidente || nova.tipo === TipoOcorrencia.DoencaOcupacional || Boolean(nova.lesao?.trim())) && (
+                  <Campo span={12}>
+                    <Field label="Partes do corpo atingidas">
+                      <MapaCorporal
+                        selecionadas={nova.regioesCorpo ?? []}
+                        aoAlterar={(regioesCorpo) => setNova((atual) => ({ ...atual, regioesCorpo }))}
+                      />
+                    </Field>
+                  </Campo>
+                )}
                 <Campo span={3}>
                   <Field label={rotulo('Houve afastamento?', 'houveAfastamento')}>
                     <Select

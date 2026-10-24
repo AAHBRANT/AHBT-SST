@@ -8,6 +8,10 @@
     <EmbeddedResource Include="Documentos\Assets\logo-aahbrant.png">
       <LogicalName>AAHBRANT.SST.Infrastructure.Documentos.Assets.logo-aahbrant.png</LogicalName>
     </EmbeddedResource>
+    <!-- Mapa corporal: fonte única no TeamsApp (a tela usa o mesmo arquivo). Ver MapaCorporalSvg. -->
+    <EmbeddedResource Include="..\AAHBRANT.SST.TeamsApp\src\components\mapaCorporal\mapaCorporal.json">
+      <LogicalName>AAHBRANT.SST.Infrastructure.Documentos.Assets.mapaCorporal.json</LogicalName>
+    </EmbeddedResource>
     <EmbeddedResource Include="Persistencia\Seed\Assets\MateriaisApoio\regras-da-casa.jpeg">
       <LogicalName>AAHBRANT.SST.Infrastructure.Persistencia.Seed.Assets.MateriaisApoio.regras-da-casa.jpeg</LogicalName>
     </EmbeddedResource>

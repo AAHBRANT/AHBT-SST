@@ -137,6 +137,12 @@ public class AcidentesController : ControllerBase
     public async Task<IActionResult> ObterDetalhe(Guid id, CancellationToken ct)
         => Ok(await _mediator.Send(new ObterAcidenteDetalheQuery(id), ct));
 
+    // Relatório da ocorrência (com o mapa corporal da lesão).
+    [Authorize(Policy = "acidente:ver")]
+    [HttpGet("{id:guid}/pdf")]
+    public async Task<IActionResult> BaixarPdf(Guid id, CancellationToken ct)
+        => File(await _mediator.Send(new ExportarAcidentePdfQuery(id), ct), "application/pdf", $"ocorrencia-{id.ToString()[..8]}.pdf");
+
     [Authorize(Policy = "acidente:criar")]
     [HttpPost]
     public async Task<IActionResult> Criar(CriarAcidenteCommand command, CancellationToken ct)
@@ -154,7 +160,7 @@ public class AcidentesController : ControllerBase
             id, body.Tipo, body.ObraId, body.TrabalhadorId, body.AtividadeId, body.Local, body.Data,
             body.Hora, body.Descricao, body.Lesao, body.Consequencia, body.Atendimento,
             body.HouveAfastamento, body.DiasAfastamento, body.NumeroCat, body.MetodologiaInvestigacao,
-            body.Causas, body.Gravidade, body.DiasDebitadosInformados, body.TrabalhadoresIds), ct);
+            body.Causas, body.Gravidade, body.DiasDebitadosInformados, body.TrabalhadoresIds, body.RegioesCorpo), ct);
         return NoContent();
     }
 
@@ -228,7 +234,8 @@ public record AtualizarAcidenteRequestBody(
     string? Causas,
     GravidadeAcidente Gravidade,
     int? DiasDebitadosInformados,
-    List<Guid>? TrabalhadoresIds = null);
+    List<Guid>? TrabalhadoresIds = null,
+    List<string>? RegioesCorpo = null);
 
 public class RelatoTextoOcorrenciaBody
 {
