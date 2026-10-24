@@ -1,9 +1,10 @@
-import type { InspecaoDetalhe, InspecaoItemResposta } from '../api';
+import { TipoInspecao, type InspecaoDetalhe, type InspecaoItemResposta, type Inspecao,
+  type NovaInspecao, type ChecklistModelo, type Obra, type Atividade, type Usuario } from '../api';
 import { API_BASE_URL } from '../apiBase';
 import { montarHeadersAuth } from '../authHeaders';
 import { anexarDadosFoto, obterDadosFoto, pendenciasFoto } from '../dadosFoto';
 import { contaOffline, identificarConta } from './conta';
-import { offlineDb, type InspecaoLocal, type ItemFilaSaida, type RascunhoItemInspecao } from './db';
+import { offlineDb, type InspecaoLocal, type ItemFilaSaida, type RascunhoItemInspecao, type PreparacaoInspecoes } from './db';
 import { aplicarAcaoInspecao as aplicar, ehEncerramentoInspecao } from './inspecaoEstado';
 import { estaOnline, notificarMudanca, sincronizarFilaSaida } from './syncEngine';
 
@@ -27,6 +28,7 @@ export async function obterInspecaoLocal(id: string): Promise<InspecaoLocal> {
   const { conta, headers } = await identidade();
   const chave = chaveLocal(conta, id);
   const local = await offlineDb.inspecoesLocais.get(chave);
+  if (local?.criadaLocalmente) return recompor(local);
   if (!navigator.onLine) {
     if (local) return recompor(local);
     throw new Error('Esta inspeção ainda não está disponível neste dispositivo. Abra-a com internet antes de ir a campo.');
@@ -53,6 +55,90 @@ export async function obterInspecaoLocal(id: string): Promise<InspecaoLocal> {
     await offlineDb.inspecoesLocais.put(registro);
     return registro;
   });
+}
+
+export async function obterPreparacaoInspecoes() {
+  return offlineDb.preparacaoInspecoes.get(contaOffline());
+}
+
+export async function prepararInspecoesOffline() {
+  const { conta, headers } = await identidade();
+  async function ler<T>(path: string): Promise<T> {
+    const response = await fetch(`${API_BASE_URL}${path}`, { headers });
+    if (!response.ok) throw new Error(`Não foi possível preparar as inspeções (${response.status}). Confira a conexão e o login.`);
+    return response.json();
+  }
+  // Referências são baixadas da API autenticada, sem reaproveitar cache de outra conta.
+  const [modelos, obras, atividades, usuarios] = await Promise.all([
+    ler<ChecklistModelo[]>('/api/checklistmodelos'), ler<Obra[]>('/api/obras'),
+    ler<Atividade[]>('/api/atividades'), ler<Usuario[]>('/api/usuarios'),
+  ]);
+  const anterior = await offlineDb.preparacaoInspecoes.get(conta);
+  const genericos = modelos.filter(m => m.tipoInspecao !== TipoInspecao.Alojamento && m.tipoInspecao !== TipoInspecao.Veiculo);
+  const detalhes: PreparacaoInspecoes['modelos'] = {};
+  // Lotes pequenos: preparar a obra não deve disparar centenas de requisições de uma vez.
+  for (let i = 0; i < genericos.length; i += 3) {
+    const lote = genericos.slice(i, i + 3);
+    const resultados = await Promise.allSettled(lote.map(m => ler<PreparacaoInspecoes['modelos'][string]>(`/api/checklistmodelos/${m.id}`)));
+    resultados.forEach((resultado, indice) => {
+      const modelo = lote[indice];
+      if (resultado.status === 'fulfilled') detalhes[modelo.id] = resultado.value;
+      else if (anterior?.modelos[modelo.id]?.checklistModelo.versao === modelo.versao) detalhes[modelo.id] = anterior.modelos[modelo.id];
+    });
+  }
+  if (conta !== contaOffline()) throw new Error('A conta mudou durante a preparação. Reabra a tela com a conta que usará no campo.');
+  const preparacao = { conta, modelos: detalhes, totalModelos: genericos.length, obras, atividades, usuarios, atualizadoEm: Date.now() };
+  await offlineDb.preparacaoInspecoes.put(preparacao);
+  return { preparacao, preparados: Object.keys(detalhes).length, total: genericos.length };
+}
+
+export async function criarInspecaoCampo(nova: NovaInspecao): Promise<{ id: string }> {
+  const conta = contaOffline();
+  const preparacao = await offlineDb.preparacaoInspecoes.get(conta);
+  const modelo = preparacao?.modelos[nova.checklistModeloId];
+  const obra = preparacao?.obras.find(o => o.id === nova.obraId);
+  const usuario = preparacao?.usuarios.find(u => u.id === nova.responsavelUsuarioId);
+  const atividade = preparacao?.atividades.find(a => a.id === nova.atividadeId);
+  if (!modelo || !obra || !usuario) throw new Error('Prepare o modelo, a obra e os responsáveis com internet antes de criar esta inspeção no campo.');
+  if (!modelo.itens.length) throw new Error('O modelo de checklist não tem itens disponíveis. Confira o cadastro com internet.');
+  if (modelo.checklistModelo.tipoInspecao === TipoInspecao.Alojamento || modelo.checklistModelo.tipoInspecao === TipoInspecao.Veiculo)
+    throw new Error('Alojamentos e veículos usam a criação específica de suas abas, com internet.');
+  if (nova.atividadeId && (!atividade || atividade.obraId !== nova.obraId)) throw new Error('A atividade não pertence à obra preparada.');
+  const id = crypto.randomUUID();
+  const respostas = modelo.itens.map(item => ({ ...item, id: crypto.randomUUID(), inspecaoId: id, checklistModeloItemId: item.id,
+    statusItem: null, observacao: null, temFoto: false, temFotoDepois: false }));
+  const detalhe: InspecaoDetalhe = { inspecao: { id, ...nova, obraNome: obra.nome, responsavelUsuarioNome: usuario.nome,
+    atividadeNome: atividade?.nome, tipoInspecao: modelo.checklistModelo.tipoInspecao, checklistModeloNome: modelo.checklistModelo.nome,
+    checklistModeloVersao: modelo.checklistModelo.versao, status: 1, totalItens: respostas.length, itensRespondidos: 0, itensNaoConformes: 0 }, respostas };
+  const registro: InspecaoLocal = { chave: chaveLocal(conta, id), conta, id, criadaLocalmente: true, detalhe,
+    confirmado: structuredClone(detalhe), revisaoServidor: 0, rascunhos: {}, fotos: {}, atualizadoEm: Date.now() };
+  const acao: ItemFilaSaida = { conta, inspecaoId: id, url: '/api/inspecoes', metodo: 'POST', isFormData: false,
+    idempotencyKey: crypto.randomUUID(), criadoEm: Date.now(), tentativas: 0,
+    corpoJson: JSON.stringify({ ...nova, idCliente: id, versaoChecklistEsperada: modelo.checklistModelo.versao,
+      respostasCliente: respostas.map(r => ({ id: r.id, checklistModeloItemId: r.checklistModeloItemId })) }) };
+  await offlineDb.transaction('rw', offlineDb.inspecoesLocais, offlineDb.filaSaida, async () => {
+    await offlineDb.inspecoesLocais.add(registro);
+    await offlineDb.filaSaida.add(acao);
+  });
+  notificarMudanca();
+  void sincronizarFilaSaida().catch(() => undefined);
+  return { id };
+}
+
+export type InspecaoCampo = Inspecao & { criacaoPendente?: boolean };
+export async function mesclarInspecoesLocais(remotas: Inspecao[]): Promise<InspecaoCampo[]> {
+  const conta = contaOffline();
+  const locais = await offlineDb.inspecoesLocais.where('conta').equals(conta).toArray();
+  const fila = await offlineDb.filaSaida.toArray();
+  const mapa = new Map<string, InspecaoCampo>(remotas.map(i => [i.id, i]));
+  for (const local of locais) {
+    const pendente = fila.some(i => i.conta === conta && i.inspecaoId === local.id);
+    if (local.criadaLocalmente || !navigator.onLine || !estaOnline() || (mapa.has(local.id) && pendente)) {
+      const atual = await recompor(local);
+      mapa.set(local.id, { ...atual.detalhe.inspecao, criacaoPendente: Boolean(local.criadaLocalmente) });
+    }
+  }
+  return [...mapa.values()];
 }
 
 export async function salvarRascunhoInspecao(id: string, respostaId: string, campos: Partial<RascunhoItemInspecao>) {
@@ -147,8 +233,9 @@ export async function estadoSyncInspecao(id: string) {
   const conta = contaOffline();
   const fila = (await offlineDb.filaSaida.toArray()).filter(i => i.inspecaoId === id && i.conta === conta);
   const conflitos = (await offlineDb.conflitos.toArray()).filter(c => !c.lido && c.item?.inspecaoId === id && c.item.conta === conta);
+  const local = await offlineDb.inspecoesLocais.get(chaveLocal(conta, id));
   const itensPendentes = fila.map(i => /^\/api\/inspecoes\/respostas\/([^/]+)/.exec(i.url)?.[1]).filter((id): id is string => Boolean(id));
-  return { pendentes: fila.length, finalizacaoPendente: fila.some(ehEncerramentoInspecao), conflitos: conflitos.length, itensPendentes };
+  return { pendentes: fila.length, criacaoPendente: Boolean(local?.criadaLocalmente), finalizacaoPendente: fila.some(ehEncerramentoInspecao), conflitos: conflitos.length, itensPendentes };
 }
 
 export async function fotoLocalInspecao(id: string, respostaId: string, depois = false) {

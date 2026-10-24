@@ -2653,6 +2653,7 @@ export interface ChecklistModeloDetalhe {
 }
 
 export interface Inspecao {
+  numeroDocumento?: string | null;
   id: string;
   tipoInspecao: number;
   obraId: string;

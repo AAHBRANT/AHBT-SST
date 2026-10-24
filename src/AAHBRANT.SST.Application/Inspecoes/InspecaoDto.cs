@@ -4,6 +4,7 @@ namespace AAHBRANT.SST.Application.Inspecoes;
 
 public class InspecaoDto
 {
+    public string? NumeroDocumento { get; set; }
     public Guid Id { get; set; }
     public TipoInspecao TipoInspecao { get; set; }
     public Guid ObraId { get; set; }

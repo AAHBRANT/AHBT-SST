@@ -59,6 +59,7 @@ public class ObterInspecaoDetalheQueryHandler : IRequestHandler<ObterInspecaoDet
             Inspecao = new InspecaoDto
             {
                 Id = inspecao.Id,
+                NumeroDocumento = inspecao.NumeroDocumento,
                 TipoInspecao = inspecao.TipoInspecao,
                 ObraId = inspecao.ObraId,
                 ObraNome = inspecao.Obra?.Nome ?? string.Empty,
