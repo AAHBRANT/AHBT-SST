@@ -37,7 +37,9 @@ public record CriarAcidenteCommand(
     // Preenchido pelo controller a partir do token (nunca do corpo): responsável pela ação de DDS.
     Guid? UsuarioAtualId = null,
     // Acidente/Doença ocupacional por relato: reunião de análise obrigatória no Teams.
-    ReuniaoAnaliseNovaOcorrencia? Reuniao = null) : IRequest<Guid>;
+    ReuniaoAnaliseNovaOcorrencia? Reuniao = null,
+    // Partes do corpo atingidas, marcadas no mapa corporal (ver RegioesCorpoAcidente).
+    List<string>? RegioesCorpo = null) : IRequest<Guid>;
 
 public record TemaDdsNovaOcorrencia(string Nome, string Roteiro);
 
@@ -68,6 +70,9 @@ public class CriarAcidenteCommandValidator : AbstractValidator<CriarAcidenteComm
             .NotNull().WithMessage("Informe os Dias Debitados consultando o Quadro III da NBR 14280.")
             .GreaterThan(0)
             .When(x => x.Gravidade == GravidadeAcidente.IncapacidadePermanenteParcial);
+        RuleFor(x => x.RegioesCorpo!.Count).LessThanOrEqualTo(RegioesCorpoAcidente.MaximoRegioes)
+            .When(x => x.RegioesCorpo is not null);
+        RuleForEach(x => x.RegioesCorpo).Must(RegioesCorpoAcidente.CodigoValido).WithMessage("Parte do corpo inválida: {PropertyValue}.");
         // Registro por relato (veio plano de ação): o tema do DDS do dia seguinte é obrigatório.
         RuleFor(x => x.TemaDds)
             .NotNull().WithMessage("Informe o tema do DDS do dia seguinte.")
@@ -123,6 +128,7 @@ public class CriarAcidenteCommandHandler : IRequestHandler<CriarAcidenteCommand,
             Hora = request.Hora,
             Descricao = request.Descricao,
             Lesao = request.Lesao,
+            RegioesCorpo = RegioesCorpoAcidente.Gravar(request.RegioesCorpo),
             Consequencia = request.Consequencia,
             Atendimento = request.Atendimento,
             HouveAfastamento = request.HouveAfastamento,

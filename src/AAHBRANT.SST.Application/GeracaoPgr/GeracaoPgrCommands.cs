@@ -46,7 +46,7 @@ internal static class SerializacaoGeracao
     private static readonly JsonSerializerOptions Opcoes = new(JsonSerializerDefaults.Web);
 
     public static EstruturaGeracaoPgr Ler(string json) =>
-        string.IsNullOrWhiteSpace(json) ? new() : JsonSerializer.Deserialize<EstruturaGeracaoPgr>(json, Opcoes) ?? new();
+        (string.IsNullOrWhiteSpace(json) ? new() : JsonSerializer.Deserialize<EstruturaGeracaoPgr>(json, Opcoes) ?? new()).Normalizar();
 
     public static string Gravar(EstruturaGeracaoPgr e) => JsonSerializer.Serialize(e, Opcoes);
 
@@ -79,6 +79,13 @@ public static class PendenciasGeracaoPgr
     public static List<string> Calcular(EstruturaGeracaoPgr e, int maxP, int maxS)
     {
         var p = new List<string>();
+        if (e.DataTermino is null) p.Add("Informe o término da vigência do PGR.");
+        foreach (var a in e.AcoesPlano.Where(a => !string.IsNullOrWhiteSpace(a.Descricao)))
+        {
+            var resumo = a.Descricao.Length <= 40 ? a.Descricao : a.Descricao[..40] + "…";
+            if (a.ResponsavelUsuarioId is null && string.IsNullOrWhiteSpace(a.ResponsavelNome)) p.Add($"Plano de ação \"{resumo}\" sem responsável.");
+            if (a.Prazo is null) p.Add($"Plano de ação \"{resumo}\" sem prazo.");
+        }
         if (e.Ghes.Count == 0) p.Add("Nenhum GHE definido.");
         foreach (var g in e.Ghes)
         {
@@ -95,6 +102,8 @@ public static class PendenciasGeracaoPgr
             if (naoRevisados > 0) p.Add($"{nome}: {naoRevisados} risco(s) não revisado(s).");
             var medidas = riscos.SelectMany(r => r.Medidas).Count(m => m.Decisao == "Pendente");
             if (medidas > 0) p.Add($"{nome}: {medidas} medida(s) sem decisão.");
+            var semCategoria = riscos.SelectMany(r => r.Medidas).Count(m => m.Decisao == "Aceita" && !CategoriasMedida.Valida(m.Categoria));
+            if (semCategoria > 0) p.Add($"{nome}: {semCategoria} medida(s) aceita(s) sem classificação (eliminação, EPC, administrativa ou EPI).");
             foreach (var r in riscos.Where(r => r.Probabilidade < 1 || r.Probabilidade > maxP || r.Severidade < 1 || r.Severidade > maxS))
                 p.Add($"{nome}: {r.Perigo} com probabilidade/severidade fora da matriz.");
         }
@@ -436,6 +445,7 @@ public class AprovarGeracaoPgrCommandHandler : IRequestHandler<AprovarGeracaoPgr
             Descricao = $"Gerado pela EAP da obra ({g.NomeArquivoEap}) e aprovado por {aprovador}.",
             DataElaboracao = g.DataElaboracao,
             DataProximaRevisao = g.DataProximaRevisao,
+            DataTermino = e.DataTermino,
             ResponsavelUsuarioId = request.UsuarioId,
             Status = StatusPgr.Vigente,
         };
@@ -524,8 +534,15 @@ public class AprovarGeracaoPgrCommandHandler : IRequestHandler<AprovarGeracaoPgr
             }
         }
 
-        foreach (var item in e.PlanoAcao.Where(x => !string.IsNullOrWhiteSpace(x)))
-            _db.PlanoAcaoItens.Add(new PlanoAcaoItem { Pgr = pgr, Descricao = Limitar(item.Trim(), 500), Status = StatusControleRisco.Pendente });
+        foreach (var item in e.AcoesPlano.Where(x => !string.IsNullOrWhiteSpace(x.Descricao)))
+            _db.PlanoAcaoItens.Add(new PlanoAcaoItem
+            {
+                Pgr = pgr,
+                Descricao = Limitar(item.Descricao.Trim(), 500),
+                ResponsavelUsuarioId = item.ResponsavelUsuarioId,
+                Prazo = item.Prazo,
+                Status = StatusControleRisco.Pendente,
+            });
 
         g.Status = StatusGeracaoPgrEap.Aprovado;
         g.AprovadoEmUtc = agora;

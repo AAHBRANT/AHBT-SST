@@ -37,6 +37,7 @@ public class ObterAcidenteDetalheQueryHandler : IRequestHandler<ObterAcidenteDet
                 Hora = a.Hora,
                 Descricao = a.Descricao,
                 Lesao = a.Lesao,
+                RegioesCorpo = RegioesCorpoAcidente.Ler(a.RegioesCorpo),
                 Consequencia = a.Consequencia,
                 Atendimento = a.Atendimento,
                 HouveAfastamento = a.HouveAfastamento,

@@ -64,6 +64,8 @@ interface ItemFeed {
   titulo: string;
   meta: string;
   dataISO: string;
+  /** Rota do item de origem (ex.: /prevencao/dds/dia/:id). */
+  destino: string;
 }
 
 const NOMES_MESES_ABREVIADOS = [
@@ -491,6 +493,7 @@ export function DashboardPage() {
           titulo: a.descricao,
           meta: a.obraNome ?? nomeObra(a.obraId),
           quando: formatarDataRelativa(a.data),
+          destino: `/acidentes/${a.id}`,
         })),
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [acidentesFiltrados, tiposOcorrencia, obras],
@@ -533,6 +536,7 @@ export function DashboardPage() {
         titulo: `DDS registrado — ${registro.atividadesNomes.join(', ') || 'DDS do dia'}`,
         meta: registro.obraNome,
         dataISO: registro.data,
+        destino: `/prevencao/dds/dia/${registro.id}`,
       });
     }
     for (const inspecao of inspecoesFiltradas) {
@@ -544,6 +548,7 @@ export function DashboardPage() {
         titulo: `Inspeção concluída — ${inspecao.checklistModeloNome}`,
         meta: inspecao.obraNome,
         dataISO: inspecao.data,
+        destino: `/prevencao/inspecoes/${inspecao.id}`,
       });
     }
     for (const naoConformidade of naoConformidadesFiltradas) {
@@ -555,6 +560,7 @@ export function DashboardPage() {
         titulo: 'Não conformidade encerrada',
         meta: naoConformidade.descricao,
         dataISO: naoConformidade.dataConclusao,
+        destino: `/nao-conformidades/${naoConformidade.id}`,
       });
     }
     for (const trabalhador of trabalhadoresAtivos) {
@@ -565,6 +571,7 @@ export function DashboardPage() {
         titulo: `Novo funcionário admitido: ${trabalhador.nome}`,
         meta: nomeObra(trabalhador.obraId),
         dataISO: trabalhador.dataAdmissao,
+        destino: `/pessoas/${trabalhador.id}`,
       });
     }
 
@@ -669,6 +676,7 @@ export function DashboardPage() {
           recentes={recentesOcorrencias}
           subtitulo={`Totais por tipo no período selecionado e evolução mensal, ${escopoIndicadores}`}
           aoAbrirOcorrencias={() => navigate('/ocorrencias?secao=acidentes')}
+          aoAbrirRegistro={(destino) => navigate(destino)}
         />
         <div className={dashEstilos.colunaDireita}>
           <div
@@ -753,7 +761,21 @@ export function DashboardPage() {
         <Card titulo="Atividade recente" subtitulo="Últimos registros nos módulos de campo">
           <div className={dashEstilos.feed}>
             {atividadeRecente.map((item) => (
-              <div key={item.id} className={dashEstilos.feedItem}>
+              <div
+                key={item.id}
+                className={`${dashEstilos.feedItem} ${dashEstilos.feedItemAcionavel}`}
+                role="button"
+                tabIndex={0}
+                onClick={(evento) => {
+                  // Sem stopPropagation o clique sobe até o cartão pai e abre /operacao em vez do item.
+                  evento.stopPropagation();
+                  navigate(item.destino);
+                }}
+                onKeyDown={(evento) => {
+                  evento.stopPropagation();
+                  abrirComTeclado(evento, item.destino);
+                }}
+              >
                 <div className={`${dashEstilos.feedIcone} ${classeIconeFeed[item.variante]}`}>
                   {item.icone}
                 </div>

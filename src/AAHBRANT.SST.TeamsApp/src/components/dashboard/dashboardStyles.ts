@@ -306,6 +306,11 @@ export const useDashboardStyles = makeStyles({
       borderBottom: 'none',
     },
   },
+  feedItemAcionavel: {
+    cursor: 'pointer',
+    ':hover': { backgroundColor: designTokens.colorNeutralLight },
+    ':focus-visible': { outline: `2px solid ${designTokens.colorPrimary}`, outlineOffset: '-2px' },
+  },
   feedIcone: {
     width: '34px',
     height: '34px',

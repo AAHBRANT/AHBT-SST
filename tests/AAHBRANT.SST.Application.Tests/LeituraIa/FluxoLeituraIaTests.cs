@@ -46,9 +46,11 @@ public class FluxoLeituraIaTests
     {
         public LeituraPgrIa Pgr { get; set; } = null!;
         public Exception? Falha { get; set; }
+        public int Chamadas { get; private set; }
 
         public async Task<LeituraPgrIa> LerPgrAsync(IReadOnlyList<string> paginas, Func<string, int, int, Task> progresso, CancellationToken ct)
         {
+            Chamadas++;
             await progresso("lendo", 1, 2);
             if (Falha is not null) throw Falha;
             return Pgr;
@@ -205,5 +207,28 @@ public class FluxoLeituraIaTests
         var leitura = await db.LeiturasDocumentoIa.SingleAsync(l => l.Id == id);
         Assert.Equal(StatusLeituraIa.Falhou, leitura.Status);
         Assert.Contains("nem pelas imagens das páginas", leitura.Erro);
+    }
+
+    // Sem matriz a leitura não serviria para nada: falha antes de gastar a IA (OCR e leitura).
+    [Fact]
+    public async Task Pgr_sem_matriz_de_risco_falha_antes_de_chamar_a_ia()
+    {
+        var db = CriarDb(nameof(Pgr_sem_matriz_de_risco_falha_antes_de_chamar_a_ia));
+        var pgr = new Pgr { Obra = new Obra { Codigo = "R", Nome = "Roger" }, Nome = "PGR", DataElaboracao = new DateTime(2024, 10, 10),
+            DocumentoConteudo = new byte[] { 1 }, DocumentoContentType = "application/pdf" };
+        db.Add(pgr);
+        await db.SaveChangesAsync();
+        var id = await new IniciarLeituraIaCommandHandler(db, new FilaFalsa()).Handle(new IniciarLeituraIaCommand(DocumentoLeituraIa.Pgr, pgr.Id), CancellationToken.None);
+        var leitor = new LeitorFalso { Pgr = Pgr((1, "Pedreiro", "Altura", 3, 4)) };
+        var ocr = new OcrFalso(new string('t', 300));
+
+        await new ProcessadorLeituraIa(db, new ExtratorDigitalizado(), leitor, new NotificacaoFalsa(), NullLogger<ProcessadorLeituraIa>.Instance, ocr)
+            .ProcessarAsync(id, CancellationToken.None);
+
+        var leitura = await db.LeiturasDocumentoIa.SingleAsync(l => l.Id == id);
+        Assert.Equal(StatusLeituraIa.Falhou, leitura.Status);
+        Assert.Contains("Nenhuma matriz de risco cadastrada", leitura.Erro);
+        Assert.Null(ocr.LimitePedido);
+        Assert.Equal(0, leitor.Chamadas);
     }
 }

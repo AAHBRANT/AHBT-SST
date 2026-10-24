@@ -88,6 +88,15 @@ public class GeracoesPgrEapController : ControllerBase
         return NoContent();
     }
 
+    // PDF do PGR aprovado (só depois da aprovação do Engenheiro de Segurança).
+    [Authorize(Policy = "pgr:ver")]
+    [HttpGet("{id:guid}/pdf")]
+    public async Task<IActionResult> BaixarPdf(Guid id, CancellationToken ct)
+    {
+        var arquivo = await _mediator.Send(new GerarPdfGeracaoPgrEapQuery(id), ct);
+        return File(arquivo.Conteudo, "application/pdf", arquivo.NomeArquivo);
+    }
+
     [Authorize(Policy = PoliticasAutorizacao.SomenteEngenheiroSeguranca)]
     [HttpPost("{id:guid}/aprovar")]
     public async Task<IActionResult> Aprovar(Guid id, CancellationToken ct)

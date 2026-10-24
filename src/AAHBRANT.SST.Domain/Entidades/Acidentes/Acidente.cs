@@ -27,6 +27,9 @@ public class Acidente : AuditableEntity
 
     public string Descricao { get; set; } = string.Empty;
     public string? Lesao { get; set; }
+    // Partes do corpo atingidas, marcadas no mapa corporal: códigos do mapaCorporal.json (ex.:
+    // "F:mao-esq") separados por ";". Ler/gravar só por RegioesCorpoAcidente.
+    public string? RegioesCorpo { get; set; }
     public string? Consequencia { get; set; }
     public string? Atendimento { get; set; }
 

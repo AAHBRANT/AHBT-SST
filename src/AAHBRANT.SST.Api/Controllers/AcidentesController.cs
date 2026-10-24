@@ -225,7 +225,7 @@ public class AcidentesController : ControllerBase
             id, body.Tipo, body.ObraId, body.TrabalhadorId, body.AtividadeId, body.Local, body.Data,
             body.Hora, body.Descricao, body.Lesao, body.Consequencia, body.Atendimento,
             body.HouveAfastamento, body.DiasAfastamento, body.NumeroCat, body.MetodologiaInvestigacao,
-            body.Causas, body.Gravidade, body.DiasDebitadosInformados, body.TrabalhadoresIds), ct);
+            body.Causas, body.Gravidade, body.DiasDebitadosInformados, body.TrabalhadoresIds, body.RegioesCorpo), ct);
         return NoContent();
     }
 
@@ -299,7 +299,8 @@ public record AtualizarAcidenteRequestBody(
     string? Causas,
     GravidadeAcidente Gravidade,
     int? DiasDebitadosInformados,
-    List<Guid>? TrabalhadoresIds = null);
+    List<Guid>? TrabalhadoresIds = null,
+    List<string>? RegioesCorpo = null);
 
 public class RelatoTextoOcorrenciaBody
 {

@@ -104,6 +104,7 @@ public static class DependencyInjection
         services.AddScoped<IPdfMesclador, PdfMesclador>();
         services.AddScoped<ICipaPdfService, CipaPdfService>();
         services.AddScoped<AAHBRANT.SST.Application.EscopoPcmso.IEscopoPcmsoPdfService, EscopoPcmsoPdfService>();
+        services.AddScoped<AAHBRANT.SST.Application.GeracaoPgr.IPgrPdfService, PgrPdfService>();
         services.AddScoped<AAHBRANT.SST.Application.EstoquesEpi.Reposicao.ISolicitacaoReposicaoEpiPdfService, SolicitacaoReposicaoEpiPdfService>();
         services.AddScoped<IAprPdfService, AprPdfService>();
         services.AddScoped<IFichaEpiPdfService, EntregaEpiPdfService>();

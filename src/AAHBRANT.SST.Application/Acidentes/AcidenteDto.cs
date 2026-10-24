@@ -26,6 +26,8 @@ public class AcidenteDto
 
     public string Descricao { get; set; } = string.Empty;
     public string? Lesao { get; set; }
+    // Preenchido só no detalhe (ObterAcidenteDetalheQuery).
+    public List<string> RegioesCorpo { get; set; } = new();
     public string? Consequencia { get; set; }
     public string? Atendimento { get; set; }
 
