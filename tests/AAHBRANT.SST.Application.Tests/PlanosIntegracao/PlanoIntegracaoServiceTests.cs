@@ -140,6 +140,7 @@ public class PlanoIntegracaoServiceTests
         var joao = await c.TrabalhadorAsync(c.Armador);
         await c.Servico.SincronizarAsync(joao.Id, MotivoPlanoIntegracao.Admissao);
         var outro = await c.TrabalhadorAsync(c.Servente, "Outro");
+        await Nr6DeTeste.SemearAsync(c.Db, outro.Id);
 
         var ex = await Assert.ThrowsAsync<InvalidOperationException>(() =>
             new CriarEntregaEpiCommandHandler(c.Db).Handle(Entrega(outro, c.Bota), default));
@@ -154,6 +155,7 @@ public class PlanoIntegracaoServiceTests
         var c = await MontarAsync();
         var joao = await c.TrabalhadorAsync(c.Armador);
         await c.Servico.SincronizarAsync(joao.Id, MotivoPlanoIntegracao.Admissao);
+        await Nr6DeTeste.SemearAsync(c.Db, joao.Id);
 
         var entregaId = await new CriarEntregaEpiCommandHandler(c.Db).Handle(Entrega(joao, c.Bota), default);
 
@@ -169,6 +171,7 @@ public class PlanoIntegracaoServiceTests
         var c = await MontarAsync();
         var joao = await c.TrabalhadorAsync(c.Armador);
         await c.Servico.SincronizarAsync(joao.Id, MotivoPlanoIntegracao.Admissao);
+        await Nr6DeTeste.SemearAsync(c.Db, joao.Id);
         var entregaId = await new CriarEntregaEpiCommandHandler(c.Db).Handle(Entrega(joao, c.Bota), default);
 
         await new ExcluirEntregaEpiCommandHandler(c.Db).Handle(new ExcluirEntregaEpiCommand(entregaId), default);

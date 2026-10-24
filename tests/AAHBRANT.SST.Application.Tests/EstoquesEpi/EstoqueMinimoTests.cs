@@ -169,6 +169,7 @@ public class EstoqueMinimoTests
         (await c.EstoqueAsync(c.Obra)).EstoqueMinimo = 5;
         await c.Db.SaveChangesAsync();
         var t = await c.TrabalhadorAsync();
+        await Nr6DeTeste.SemearAsync(c.Db, t.Id);
 
         await new CriarEntregaEpiCommandHandler(c.Db, c.Verificacao).Handle(
             new CriarEntregaEpiCommand(t.Id, c.Luva.Id, DateTime.UtcNow.Date, null, null, 1, null, null, null, MotivoEntregaEpi.Inicial, null, null), default);
