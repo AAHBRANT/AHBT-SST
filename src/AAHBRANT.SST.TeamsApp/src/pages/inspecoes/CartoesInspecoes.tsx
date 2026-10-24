@@ -82,6 +82,7 @@ export function CartoesInspecoes() {
   const [erroPainel, setErroPainel] = useState<string | null>(null);
   const [painelAberto, setPainelAberto] = useState(false);
   const [nome, setNome] = useState('');
+  const [periodicidadePadrao, setPeriodicidadePadrao] = useState('');
   const [itens, setItens] = useState<ItemRascunho[]>([{ chave: 1, descricao: '' }]);
   const [salvando, setSalvando] = useState(false);
   // Item recém-adicionado: recebe o foco para que o Enter encadeie a digitação do próximo item.
@@ -116,6 +117,7 @@ export function CartoesInspecoes() {
 
   function abrirPainel() {
     setNome('');
+    setPeriodicidadePadrao('');
     setItens([{ chave: 1, descricao: '' }]);
     setErroPainel(null);
     setPainelAberto(true);
@@ -139,10 +141,13 @@ export function CartoesInspecoes() {
     const descricoes = itens.map((i) => i.descricao.trim()).filter(Boolean);
     if (!nome.trim()) return setErroPainel('Informe o nome do tema (ex.: Andaime).');
     if (descricoes.length === 0) return setErroPainel('Adicione ao menos um item ao checklist.');
+    const diasPadrao = periodicidadePadrao.trim() ? Number(periodicidadePadrao) : null;
+    if (diasPadrao !== null && (!Number.isInteger(diasPadrao) || diasPadrao < 1 || diasPadrao > 365))
+      return setErroPainel('A periodicidade deve ficar entre 1 e 365 dias.');
     try {
       setSalvando(true);
       setErroPainel(null);
-      const { id } = await api.temasInspecao.criar(nome.trim(), descricoes.map((descricao) => ({ descricao })));
+      const { id } = await api.temasInspecao.criar(nome.trim(), descricoes.map((descricao) => ({ descricao })), diasPadrao);
       sucessoToast('Tema criado com sucesso.');
       setPainelAberto(false);
       await carregarTemas();
@@ -234,6 +239,18 @@ export function CartoesInspecoes() {
             <Campo span={12}>
               <Field label="Nome do tema" required hint="É o nome do card. Depois você cadastra cada item dentro dele (ex.: cada andaime).">
                 <Input value={nome} maxLength={120} placeholder="Ex.: Andaime" onChange={(_, d) => setNome(d.value)} />
+              </Field>
+            </Campo>
+            <Campo span={12}>
+              <Field label="Inspecionar a cada (dias)" hint="Opcional. Vira o padrão de cada item cadastrado neste tema (ex.: 30). Cada item pode ter o seu e o seu responsável.">
+                <Input
+                  type="number"
+                  min={1}
+                  max={365}
+                  value={periodicidadePadrao}
+                  placeholder="Ex.: 30"
+                  onChange={(_, d) => setPeriodicidadePadrao(d.value)}
+                />
               </Field>
             </Campo>
             <Campo span={12}>

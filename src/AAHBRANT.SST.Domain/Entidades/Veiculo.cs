@@ -22,4 +22,11 @@ public class Veiculo : AuditableEntity
     // Subcontratada/locadora dona do veículo (ex.: "AAHBRANT", "PATROLL LOCAÇÕES").
     public string? Empresa { get; set; }
     public string? Responsavel { get; set; }
+
+    // Inspeção periódica (24/10/2026): a cada N dias desde a última inspeção concluída (ou, se nunca
+    // houve, desde o cadastro). O responsável é quem recebe o aviso do Motor de Alertas — diferente do
+    // "Responsavel" acima, que é texto livre (motorista/contato da locadora).
+    public int? PeriodicidadeInspecaoDias { get; set; }
+    public Guid? ResponsavelInspecaoUsuarioId { get; set; }
+    public Usuario? ResponsavelInspecaoUsuario { get; set; }
 }

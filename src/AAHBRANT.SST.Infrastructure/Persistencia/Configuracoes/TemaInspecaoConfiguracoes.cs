@@ -26,6 +26,8 @@ public class ItemInspecionavelConfiguracao : IEntityTypeConfiguration<ItemInspec
             .HasForeignKey(i => i.TemaInspecaoId).OnDelete(DeleteBehavior.Restrict);
         builder.HasOne(i => i.Obra).WithMany()
             .HasForeignKey(i => i.ObraId).OnDelete(DeleteBehavior.Restrict);
+        builder.HasOne(i => i.ResponsavelInspecaoUsuario).WithMany()
+            .HasForeignKey(i => i.ResponsavelInspecaoUsuarioId).OnDelete(DeleteBehavior.Restrict);
         builder.HasIndex(i => new { i.TemaInspecaoId, i.ObraId });
         // Mesma identificação duas vezes no mesmo tema e obra seria o mesmo item cadastrado em duplicidade.
         builder.HasIndex(i => new { i.TemaInspecaoId, i.ObraId, i.Identificacao }).IsUnique().HasFilter("[Ativo] = 1");

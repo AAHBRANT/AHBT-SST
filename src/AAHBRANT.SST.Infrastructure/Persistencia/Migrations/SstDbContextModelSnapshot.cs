@@ -5412,6 +5412,12 @@ namespace AAHBRANT.SST.Infrastructure.Persistencia.Migrations
                     b.Property<int>("Origem")
                         .HasColumnType("int");
 
+                    b.Property<int?>("PeriodicidadeInspecaoDias")
+                        .HasColumnType("int");
+
+                    b.Property<Guid?>("ResponsavelInspecaoUsuarioId")
+                        .HasColumnType("uniqueidentifier");
+
                     b.Property<byte[]>("RowVersion")
                         .IsConcurrencyToken()
                         .ValueGeneratedOnAddOrUpdate()
@@ -5429,6 +5435,8 @@ namespace AAHBRANT.SST.Infrastructure.Persistencia.Migrations
                     b.HasKey("Id");
 
                     b.HasIndex("ObraId");
+
+                    b.HasIndex("ResponsavelInspecaoUsuarioId");
 
                     b.HasIndex("TemaInspecaoId", "ObraId");
 
@@ -9154,6 +9162,9 @@ namespace AAHBRANT.SST.Infrastructure.Persistencia.Migrations
                     b.Property<int>("Origem")
                         .HasColumnType("int");
 
+                    b.Property<int?>("PeriodicidadeDiasPadrao")
+                        .HasColumnType("int");
+
                     b.Property<byte[]>("RowVersion")
                         .IsConcurrencyToken()
                         .ValueGeneratedOnAddOrUpdate()
@@ -9906,6 +9917,9 @@ namespace AAHBRANT.SST.Infrastructure.Persistencia.Migrations
                     b.Property<int>("Origem")
                         .HasColumnType("int");
 
+                    b.Property<int?>("PeriodicidadeInspecaoDias")
+                        .HasColumnType("int");
+
                     b.Property<string>("PlacaPrefixo")
                         .IsRequired()
                         .HasMaxLength(60)
@@ -9914,6 +9928,9 @@ namespace AAHBRANT.SST.Infrastructure.Persistencia.Migrations
                     b.Property<string>("Responsavel")
                         .HasMaxLength(150)
                         .HasColumnType("nvarchar(150)");
+
+                    b.Property<Guid?>("ResponsavelInspecaoUsuarioId")
+                        .HasColumnType("uniqueidentifier");
 
                     b.Property<byte[]>("RowVersion")
                         .IsConcurrencyToken()
@@ -9930,6 +9947,8 @@ namespace AAHBRANT.SST.Infrastructure.Persistencia.Migrations
                         .HasColumnType("uniqueidentifier");
 
                     b.HasKey("Id");
+
+                    b.HasIndex("ResponsavelInspecaoUsuarioId");
 
                     b.HasIndex("ObraId", "Tipo");
 
@@ -11171,6 +11190,11 @@ namespace AAHBRANT.SST.Infrastructure.Persistencia.Migrations
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
 
+                    b.HasOne("AAHBRANT.SST.Domain.Entidades.Usuario", "ResponsavelInspecaoUsuario")
+                        .WithMany()
+                        .HasForeignKey("ResponsavelInspecaoUsuarioId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
                     b.HasOne("AAHBRANT.SST.Domain.Entidades.TemaInspecao", "TemaInspecao")
                         .WithMany()
                         .HasForeignKey("TemaInspecaoId")
@@ -11178,6 +11202,8 @@ namespace AAHBRANT.SST.Infrastructure.Persistencia.Migrations
                         .IsRequired();
 
                     b.Navigation("Obra");
+
+                    b.Navigation("ResponsavelInspecaoUsuario");
 
                     b.Navigation("TemaInspecao");
                 });
@@ -12260,7 +12286,14 @@ namespace AAHBRANT.SST.Infrastructure.Persistencia.Migrations
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
 
+                    b.HasOne("AAHBRANT.SST.Domain.Entidades.Usuario", "ResponsavelInspecaoUsuario")
+                        .WithMany()
+                        .HasForeignKey("ResponsavelInspecaoUsuarioId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
                     b.Navigation("Obra");
+
+                    b.Navigation("ResponsavelInspecaoUsuario");
                 });
 
             modelBuilder.Entity("AAHBRANT.SST.Domain.Entidades.Alerta", b =>

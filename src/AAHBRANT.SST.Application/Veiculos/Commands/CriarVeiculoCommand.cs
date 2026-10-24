@@ -1,4 +1,5 @@
 using AAHBRANT.SST.Application.Common.Interfaces;
+using AAHBRANT.SST.Application.Inspecoes;
 using AAHBRANT.SST.Domain.Entidades;
 using AAHBRANT.SST.Domain.Enums;
 using FluentValidation;
@@ -17,7 +18,9 @@ public record CriarVeiculoCommand(
     int? Ano,
     string? Cor,
     string? Empresa,
-    string? Responsavel) : IRequest<Guid>;
+    string? Responsavel,
+    int? PeriodicidadeInspecaoDias = null,
+    Guid? ResponsavelInspecaoUsuarioId = null) : IRequest<Guid>;
 
 public class CriarVeiculoCommandValidator : AbstractValidator<CriarVeiculoCommand>
 {
@@ -31,6 +34,13 @@ public class CriarVeiculoCommandValidator : AbstractValidator<CriarVeiculoComman
         RuleFor(x => x.Cor).MaximumLength(40);
         RuleFor(x => x.Empresa).MaximumLength(150);
         RuleFor(x => x.Responsavel).MaximumLength(150);
+        RuleFor(x => x.PeriodicidadeInspecaoDias)
+            .InclusiveBetween(PeriodicidadeInspecao.MinimoDias, PeriodicidadeInspecao.MaximoDias)
+            .When(x => x.PeriodicidadeInspecaoDias.HasValue)
+            .WithMessage($"A periodicidade deve ficar entre {PeriodicidadeInspecao.MinimoDias} e {PeriodicidadeInspecao.MaximoDias} dias.");
+        RuleFor(x => x.ResponsavelInspecaoUsuarioId).NotEmpty()
+            .When(x => x.PeriodicidadeInspecaoDias.HasValue)
+            .WithMessage("Designe quem será avisado da inspeção periódica.");
     }
 }
 
@@ -43,6 +53,8 @@ public class CriarVeiculoCommandHandler : IRequestHandler<CriarVeiculoCommand, G
     {
         if (!await _db.Obras.AnyAsync(o => o.Id == request.ObraId, ct))
             throw new KeyNotFoundException($"Obra {request.ObraId} não encontrada.");
+        if (request.ResponsavelInspecaoUsuarioId is { } responsavelId && !await _db.Usuarios.AnyAsync(u => u.Id == responsavelId, ct))
+            throw new KeyNotFoundException($"Usuário {responsavelId} não encontrado.");
 
         var placa = request.PlacaPrefixo.Trim();
         if (await _db.Veiculos.AnyAsync(v => v.PlacaPrefixo == placa, ct))
@@ -58,6 +70,8 @@ public class CriarVeiculoCommandHandler : IRequestHandler<CriarVeiculoCommand, G
             Cor = request.Cor?.Trim(),
             Empresa = request.Empresa?.Trim(),
             Responsavel = request.Responsavel?.Trim(),
+            PeriodicidadeInspecaoDias = request.PeriodicidadeInspecaoDias,
+            ResponsavelInspecaoUsuarioId = request.PeriodicidadeInspecaoDias.HasValue ? request.ResponsavelInspecaoUsuarioId : null,
         };
         _db.Veiculos.Add(veiculo);
         await _db.SaveChangesAsync(ct);

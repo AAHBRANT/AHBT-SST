@@ -8,6 +8,9 @@ namespace AAHBRANT.SST.Domain.Entidades;
 public class TemaInspecao : AuditableEntity
 {
     public string Nome { get; set; } = string.Empty;
+
+    // Periodicidade sugerida para os itens novos deste tema (cada item pode ter a sua).
+    public int? PeriodicidadeDiasPadrao { get; set; }
 }
 
 // Item concreto a inspecionar dentro de um tema (ex.: "Andaime fachada norte"). Mudar de obra é
@@ -23,4 +26,9 @@ public class ItemInspecionavel : AuditableEntity
     // Como o item é reconhecido em campo (ex.: "Andaime A-03 — fachada norte").
     public string Identificacao { get; set; } = string.Empty;
     public string? Descricao { get; set; }
+
+    // Inspeção periódica: ver Veiculo.PeriodicidadeInspecaoDias.
+    public int? PeriodicidadeInspecaoDias { get; set; }
+    public Guid? ResponsavelInspecaoUsuarioId { get; set; }
+    public Usuario? ResponsavelInspecaoUsuario { get; set; }
 }

@@ -42,8 +42,16 @@ import {
   type AlojamentoInspecaoResumo,
   type DadosVeiculo,
   type Obra,
+  type Usuario,
   type VeiculoResumo,
 } from '../../lib/api';
+import {
+  CamposPeriodicidadeInspecao,
+  PERIODICIDADE_PADRAO_VEICULO,
+  payloadPeriodicidade,
+  pendenciaPeriodicidade,
+  SeloProximaInspecao,
+} from './PeriodicidadeInspecao';
 import { useVisualizadorPdf } from '../../components/useVisualizadorPdf';
 import { useSouAdministrador } from '../../lib/UsuarioLogadoContext';
 import { useSucessoToast } from '../../hooks/useSucessoToast';
@@ -89,10 +97,16 @@ interface FormularioVeiculo {
   cor: string;
   empresa: string;
   responsavel: string;
+  // Inspeção periódica: veículo novo já nasce com 30 dias (editável ou vazio para não avisar).
+  periodicidadeDias: string;
+  responsavelInspecaoId: string;
 }
 
 function formularioVazio(obraId = '', tipo = 0): FormularioVeiculo {
-  return { obraId, tipo, placaPrefixo: '', marcaModelo: '', ano: '', cor: '', empresa: '', responsavel: '' };
+  return {
+    obraId, tipo, placaPrefixo: '', marcaModelo: '', ano: '', cor: '', empresa: '', responsavel: '',
+    periodicidadeDias: PERIODICIDADE_PADRAO_VEICULO, responsavelInspecaoId: '',
+  };
 }
 
 // Sub-aba "Veículos" (02/10/2026): obra → tipo de veículo → veículos daquele tipo na obra. Mesmo
@@ -106,6 +120,7 @@ export function VeiculosTab() {
   const sucessoToast = useSucessoToast();
   const [obras, setObras] = useState<Obra[]>([]);
   const [veiculos, setVeiculos] = useState<VeiculoResumo[]>([]);
+  const [usuarios, setUsuarios] = useState<Usuario[]>([]);
   const [erro, setErro] = useState<string | null>(null);
   const [erroPainel, setErroPainel] = useState<string | null>(null);
   const [carregandoLista, setCarregandoLista] = useState(true);
@@ -123,8 +138,13 @@ export function VeiculosTab() {
   async function carregar() {
     try {
       setErro(null);
-      const [obs, lista] = await Promise.all([api.obras.listar(), api.veiculos.listar()]);
+      const [obs, lista, listaUsuarios] = await Promise.all([
+        api.obras.listar(),
+        api.veiculos.listar(),
+        api.usuarios.listar().catch(() => [] as Usuario[]),
+      ]);
       setObras(obs);
+      setUsuarios(listaUsuarios);
       setVeiculos(lista);
     } catch (e) {
       setErro(e instanceof Error ? e.message : 'Falha ao carregar veículos.');
@@ -234,6 +254,8 @@ export function VeiculosTab() {
       cor: veiculo.cor ?? '',
       empresa: veiculo.empresa ?? '',
       responsavel: veiculo.responsavel ?? '',
+      periodicidadeDias: veiculo.periodicidadeInspecaoDias ? String(veiculo.periodicidadeInspecaoDias) : '',
+      responsavelInspecaoId: veiculo.responsavelInspecaoUsuarioId ?? '',
     });
     setErroPainel(null);
     setPainelAberto(true);
@@ -251,6 +273,9 @@ export function VeiculosTab() {
     if (!formulario.placaPrefixo.trim()) return setErroPainel('Informe a placa ou o prefixo do veículo.');
     const ano = formulario.ano.trim() ? Number(formulario.ano) : null;
     if (ano !== null && (!Number.isInteger(ano) || ano < 1950 || ano > 2100)) return setErroPainel('Ano inválido.');
+    const periodicidade = { dias: formulario.periodicidadeDias, responsavelId: formulario.responsavelInspecaoId };
+    const pendencia = pendenciaPeriodicidade(periodicidade);
+    if (pendencia) return setErroPainel(pendencia);
 
     const dados: DadosVeiculo = {
       obraId: formulario.obraId,
@@ -261,6 +286,7 @@ export function VeiculosTab() {
       cor: formulario.cor.trim() || null,
       empresa: formulario.empresa.trim() || null,
       responsavel: formulario.responsavel.trim() || null,
+      ...payloadPeriodicidade(periodicidade),
     };
     try {
       setSalvando(true);
@@ -393,6 +419,11 @@ export function VeiculosTab() {
               />
             </Field>
           </Campo>
+          <CamposPeriodicidadeInspecao
+            valor={{ dias: formulario.periodicidadeDias, responsavelId: formulario.responsavelInspecaoId }}
+            aoMudar={(v) => setFormulario({ ...formulario, periodicidadeDias: v.dias, responsavelInspecaoId: v.responsavelId })}
+            usuarios={usuarios}
+          />
         </FormGrid>
         <FormRodape>
           <Button onClick={fecharPainel}>Cancelar</Button>
@@ -471,6 +502,11 @@ export function VeiculosTab() {
                     </StatusChip>
                     {veiculo.inspecaoEmAndamento && <StatusChip tom="info">Inspeção em andamento</StatusChip>}
                   </div>
+                  <SeloProximaInspecao
+                    proximaEm={veiculo.proximaInspecaoEm}
+                    dias={veiculo.periodicidadeInspecaoDias}
+                    responsavelNome={veiculo.responsavelInspecaoNome}
+                  />
 
                   {ultima && (
                     <div style={{ fontSize: 12 }}>

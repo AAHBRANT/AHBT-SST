@@ -1,4 +1,5 @@
 using AAHBRANT.SST.Application.Common.Interfaces;
+using AAHBRANT.SST.Application.Inspecoes;
 using AAHBRANT.SST.Domain.Enums;
 using FluentValidation;
 using MediatR;
@@ -19,7 +20,9 @@ public record AtualizarVeiculoCommand(
     int? Ano,
     string? Cor,
     string? Empresa,
-    string? Responsavel) : IRequest;
+    string? Responsavel,
+    int? PeriodicidadeInspecaoDias = null,
+    Guid? ResponsavelInspecaoUsuarioId = null) : IRequest;
 
 public class AtualizarVeiculoCommandValidator : AbstractValidator<AtualizarVeiculoCommand>
 {
@@ -34,6 +37,13 @@ public class AtualizarVeiculoCommandValidator : AbstractValidator<AtualizarVeicu
         RuleFor(x => x.Cor).MaximumLength(40);
         RuleFor(x => x.Empresa).MaximumLength(150);
         RuleFor(x => x.Responsavel).MaximumLength(150);
+        RuleFor(x => x.PeriodicidadeInspecaoDias)
+            .InclusiveBetween(PeriodicidadeInspecao.MinimoDias, PeriodicidadeInspecao.MaximoDias)
+            .When(x => x.PeriodicidadeInspecaoDias.HasValue)
+            .WithMessage($"A periodicidade deve ficar entre {PeriodicidadeInspecao.MinimoDias} e {PeriodicidadeInspecao.MaximoDias} dias.");
+        RuleFor(x => x.ResponsavelInspecaoUsuarioId).NotEmpty()
+            .When(x => x.PeriodicidadeInspecaoDias.HasValue)
+            .WithMessage("Designe quem será avisado da inspeção periódica.");
     }
 }
 
@@ -73,6 +83,10 @@ public class AtualizarVeiculoCommandHandler : IRequestHandler<AtualizarVeiculoCo
         veiculo.Cor = request.Cor?.Trim();
         veiculo.Empresa = request.Empresa?.Trim();
         veiculo.Responsavel = request.Responsavel?.Trim();
+        if (request.ResponsavelInspecaoUsuarioId is { } responsavelId && !await _db.Usuarios.AnyAsync(u => u.Id == responsavelId, ct))
+            throw new KeyNotFoundException($"Usuário {responsavelId} não encontrado.");
+        veiculo.PeriodicidadeInspecaoDias = request.PeriodicidadeInspecaoDias;
+        veiculo.ResponsavelInspecaoUsuarioId = request.PeriodicidadeInspecaoDias.HasValue ? request.ResponsavelInspecaoUsuarioId : null;
 
         await _db.SaveChangesAsync(ct);
     }
