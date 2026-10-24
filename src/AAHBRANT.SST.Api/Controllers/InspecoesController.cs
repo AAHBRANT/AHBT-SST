@@ -34,8 +34,9 @@ public class InspecoesController : ControllerBase
     [HttpPost]
     public async Task<IActionResult> Criar(CriarInspecaoCommand command, CancellationToken ct)
     {
-        var id = await _mediator.Send(command, ct);
-        return CreatedAtAction(nameof(ObterDetalhe), new { id }, new { id });
+        var criada = await _mediator.Send(command, ct);
+        return CreatedAtAction(nameof(ObterDetalhe), new { id = criada.Id },
+            new { id = criada.Id, numeroDocumento = criada.NumeroDocumento, versoesRespostas = criada.VersoesRespostas });
     }
 
     [Authorize(Policy = "inspecao:responder")]

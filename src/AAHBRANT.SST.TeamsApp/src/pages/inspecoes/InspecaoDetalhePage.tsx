@@ -123,7 +123,7 @@ export function InspecaoDetalhePage() {
   const { visualizar, dialogoVisualizador } = useVisualizadorPdf();
   const [fotoUrls, setFotoUrls] = useState<Record<string, string>>({});
   const [fotoDepoisUrls, setFotoDepoisUrls] = useState<Record<string, string>>({});
-  const [sync, setSync] = useState({ pendentes: 0, conflitos: 0, finalizacaoPendente: false, itensPendentes: [] as string[] });
+  const [sync, setSync] = useState({ pendentes: 0, conflitos: 0, criacaoPendente: false, finalizacaoPendente: false, itensPendentes: [] as string[] });
   const [rascunhos, setRascunhos] = useState<string[]>([]);
   const [salvandoRascunho, setSalvandoRascunho] = useState(false);
   const gravacoes = useRef(0);
@@ -394,7 +394,7 @@ export function InspecaoDetalhePage() {
           : `${tipoInspecaoLabel[inspecao.tipoInspecao]} — ${inspecao.checklistModeloNome} (v${inspecao.checklistModeloVersao})`,
         status: (
           <StatusChip tom={tomPorStatusInspecao[inspecao.status] ?? 'neutro'}>
-            {sync.finalizacaoPendente ? 'Finalização pendente' : statusInspecaoLabel[inspecao.status]}
+            {sync.finalizacaoPendente ? 'Finalização pendente' : sync.criacaoPendente ? 'Criada no tablet' : statusInspecaoLabel[inspecao.status]}
           </StatusChip>
         ),
         voltarPara,
@@ -423,6 +423,7 @@ export function InspecaoDetalhePage() {
       lateral={
         <>
           <Card densidade="compacta" titulo="Resumo">
+            <DadoResumo rotulo="Protocolo" valor={inspecao.numeroDocumento ?? (sync.criacaoPendente ? 'Aguardando confirmação do servidor' : '—')} />
             {ehInspecaoTema ? (
               <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
                 <DadoResumo rotulo="Tema" valor={inspecao.temaInspecaoNome ?? '—'} />
@@ -513,6 +514,7 @@ export function InspecaoDetalhePage() {
           {sync.finalizacaoPendente && ' A inspeção só aparecerá como concluída após a confirmação do servidor.'}
         </FeedbackInline>
       )}
+      {sync.criacaoPendente && <FeedbackInline tom="info">Inspeção criada neste tablet. Você pode preencher os itens e guardar as fotos sem internet. O protocolo será gerado quando o servidor confirmar a criação.</FeedbackInline>}
       {sync.conflitos > 0 && (
         <FeedbackInline tom="aviso">Há envios recusados desta inspeção. Abra o indicador de sincronização para conferir o motivo e tentar novamente ou descartar. A finalização aguarda a resolução dessas pendências.</FeedbackInline>
       )}
