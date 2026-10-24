@@ -16,6 +16,9 @@ public interface IGeradorPgrIa
     Task<List<GheGerado>> SugerirGhesAsync(IReadOnlyList<ItemEapGerado> atividades, IReadOnlyList<string> funcoesCadastradas, CancellationToken ct);
 
     Task<List<RiscoGerado>> GerarRiscosAsync(ContextoRiscosAtividade contexto, CancellationToken ct);
+
+    // Escolhe, entre os locais reais que o mapa devolveu, o mais adequado a cada tipo e explica o caminho.
+    Task<SugestaoEmergenciaIa> SugerirEmergenciaAsync(ContextoEmergenciaIa contexto, CancellationToken ct);
 }
 
 public record ContextoRiscosAtividade(

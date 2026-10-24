@@ -8,6 +8,7 @@ import {
   type GheGerado, type Obra, type RiscoGerado, type Usuario,
 } from '../../lib/api';
 import { rotuloStatusGeracao } from './GeracoesPgrEapCard';
+import { DadosComplementaresPgr } from './DadosComplementaresPgr';
 
 const PASSOS = ['Enviar a EAP', 'Conferir a leitura', 'Funções e GHE', 'Inventário de riscos', 'Aprovar'];
 const FASES: Record<number, string> = { 1: 'Antes', 2: 'Durante', 3: 'Após' };
@@ -438,6 +439,8 @@ function Inventario({ g, e, editavel, ocupado, alterar, gerarAtividade, salvar, 
           É a data em que o PGR vence. Sem ela, o alerta de PGR vencido não funciona.
         </Text>
       </Card>
+
+      <DadosComplementaresPgr geracaoId={g.id} e={e} editavel={editavel} alterar={alterar} />
 
       <Card titulo="Plano de ação">
         {(e.acoesPlano ?? []).map((a, i) => (

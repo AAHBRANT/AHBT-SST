@@ -1,3 +1,4 @@
+using System.Globalization;
 using AAHBRANT.SST.Application.GeracaoPgr;
 using AAHBRANT.SST.Domain.Enums;
 using QuestPDF.Fluent;
@@ -112,6 +113,7 @@ public class PgrPdfService : IPgrPdfService
             {
                 c.Spacing(7);
                 var ghes = d.Estrutura.Ghes.OrderBy(g => g.Numero).ToList();
+                var comp = d.Estrutura.Complementares ?? new DadosComplementaresPgr();
 
                 // 1. Informações gerais
                 Titulo(c, Secoes[0]);
@@ -121,12 +123,16 @@ public class PgrPdfService : IPgrPdfService
                     Campo(t, "Empresa / unidade", d.ObraNome);
                     Campo(t, "CNPJ", d.ObraCnpj);
                     Campo(t, "Endereço", d.ObraEndereco);
-                    Campo(t, "CNAE e grau de risco", null);
+                    Campo(t, "CEP", comp.Cep);
+                    Campo(t, "CNAE", comp.Cnae);
+                    Campo(t, "Grau de risco (NR-04)", comp.GrauRisco?.ToString());
+                    Campo(t, "Trabalhadores ativos na obra", d.NumeroFuncionarios?.ToString());
                     Campo(t, "Revisão atual", (d.Revisoes is { Count: > 0 } revisoes ? revisoes.Max(r => r.Numero) : 0).ToString("00"));
                     Campo(t, "Início da vigência", d.DataElaboracao.ToString("dd/MM/yyyy"));
                     Campo(t, "Revisão prevista", d.DataProximaRevisao?.ToString("dd/MM/yyyy"));
                     Campo(t, "Término da vigência", d.Estrutura.DataTermino?.ToString("dd/MM/yyyy"));
                     Campo(t, "Responsável técnico", d.AprovadoPorNome);
+                    Campo(t, "Registro profissional (CREA)", comp.ResponsavelTecnicoRegistro);
                     Campo(t, "Elaborado por", d.ElaboradoPorNome);
                     Campo(t, "EAP de referência", d.NomeArquivoEap);
                 });
@@ -268,23 +274,39 @@ public class PgrPdfService : IPgrPdfService
 
                 // 10. Plano de emergência
                 Titulo(c, Secoes[9]);
-                Paragrafo(c, "A organização manterá um Plano de Emergência que oriente os trabalhadores sobre como agir em acidentes e anormalidades. Trabalhadores devem ser treinados periodicamente e visitantes devem receber instruções gerais. Cenários mínimos a contemplar:");
-                Lista(c, new[]
+                Paragrafo(c, "A organização manterá um Plano de Emergência que oriente os trabalhadores sobre como agir em acidentes e anormalidades. Trabalhadores devem ser treinados periodicamente e visitantes devem receber instruções gerais. Cenários a contemplar:");
+                Lista(c, comp.CenariosEmergencia.Count > 0 ? comp.CenariosEmergencia : CenariosEmergenciaPgr.Padrao);
+                Subtitulo(c, "Contatos de emergência");
+                Tabela(c, new[] { ("Local / setor", 2.6f), ("Endereço", 3f), ("Telefone", 1.5f), ("Distância e tempo", 1.8f) },
+                    comp.ContatosEmergencia.Select(x => new[]
+                    {
+                        x.Recomendado ? $"{x.Local} (recomendado)" : x.Local,
+                        string.IsNullOrWhiteSpace(x.Endereco) ? "—" : x.Endereco!,
+                        string.IsNullOrWhiteSpace(x.Telefone) ? "—" : x.Telefone!,
+                        x.TempoMinutos is { } min ? $"{(x.DistanciaKm ?? 0).ToString("0.0", CultureInfo.InvariantCulture).Replace('.', ',')} km · {min} min" : "—",
+                    }),
+                    "Nenhum contato de emergência informado.");
+
+                var comRota = comp.ContatosEmergencia.Where(x => !string.IsNullOrWhiteSpace(x.Rota)).ToList();
+                if (comRota.Count > 0)
                 {
-                    "acidente pessoal ou mal súbito;",
-                    "incêndio e explosão;",
-                    "vazamento ou derrame de óleos, graxas e líquidos combustíveis ou inflamáveis;",
-                    "acidente com eletricidade;",
-                    "acidente de trajeto.",
-                });
-                Subtitulo(c, "Telefones úteis");
-                Tabela(c, new[] { ("Local / setor", 2.4f), ("Endereço", 3f), ("Telefone", 1.6f) }, new[]
-                {
-                    new[] { "Hospital", " ", " " },
-                    new[] { "Corpo de Bombeiros", " ", " " },
-                    new[] { "Polícia Militar", " ", " " },
-                    new[] { "Segurança do trabalho da obra", " ", " " },
-                }, "");
+                    Subtitulo(c, "Como chegar a partir da obra");
+                    foreach (var x in comRota)
+                        c.Item().ShowEntire().Column(rc =>
+                        {
+                            rc.Item().PaddingTop(2).Text(x.Local).SemiBold();
+                            var passos = x.Rota!.Split('\n', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+                            for (var i = 0; i < passos.Length; i++)
+                                rc.Item().PaddingLeft(6).Row(pr =>
+                                {
+                                    pr.ConstantItem(18).Text($"{i + 1}.").FontSize(8.5f).FontColor(Secundario);
+                                    pr.RelativeItem().Text(passos[i]).FontSize(8.5f);
+                                });
+                        });
+                    var calculadoEm = comp.RotasCalculadasEmUtc is { } quando ? $" em {HorarioBrasilia.De(quando):dd/MM/yyyy}" : string.Empty;
+                    c.Item().PaddingTop(2).Text($"Rotas de carro calculadas com {comp.RotasFonte ?? "mapa online"}{calculadoEm}. Confirme o trajeto e os telefones no local antes de usar; trânsito e obras na via podem alterar o caminho.")
+                        .FontSize(8).FontColor(Secundario).Italic();
+                }
 
                 // 11. Considerações finais
                 Titulo(c, Secoes[10]);
@@ -297,9 +319,11 @@ public class PgrPdfService : IPgrPdfService
                 });
                 c.Item().ShowEntire().PaddingTop(34).Row(r =>
                 {
-                    Assinatura(r, d.AprovadoPorNome ?? "Engenheiro de Segurança do Trabalho", "Responsável técnico pela elaboração do PGR");
+                    Assinatura(r, d.AprovadoPorNome ?? "Engenheiro de Segurança do Trabalho",
+                        "Responsável técnico pela elaboração do PGR" + (string.IsNullOrWhiteSpace(comp.ResponsavelTecnicoRegistro) ? "" : $" · {comp.ResponsavelTecnicoRegistro}"));
                     r.ConstantItem(36);
-                    Assinatura(r, " ", "Responsável pela implantação do PGR");
+                    Assinatura(r, string.IsNullOrWhiteSpace(comp.ResponsavelImplantacaoNome) ? " " : comp.ResponsavelImplantacaoNome,
+                        "Responsável pela implantação do PGR" + (string.IsNullOrWhiteSpace(comp.ResponsavelImplantacaoCargo) ? "" : $" · {comp.ResponsavelImplantacaoCargo}"));
                 });
             });
             Rodape(p);
@@ -399,7 +423,7 @@ public class PgrPdfService : IPgrPdfService
             });
             foreach (var linha in lista)
                 foreach (var valor in linha)
-                    t.Cell().BorderBottom(0.5f).BorderColor(Linha).PaddingVertical(5).PaddingRight(6).Text(valor).FontSize(9);
+                    t.Cell().ShowEntire().BorderBottom(0.5f).BorderColor(Linha).PaddingVertical(5).PaddingRight(6).Text(valor).FontSize(9);
         });
     }
 

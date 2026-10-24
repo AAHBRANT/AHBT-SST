@@ -80,6 +80,13 @@ public static class PendenciasGeracaoPgr
     {
         var p = new List<string>();
         if (e.DataTermino is null) p.Add("Informe o término da vigência do PGR.");
+        var comp = e.Complementares;
+        if (string.IsNullOrWhiteSpace(comp.Cnae)) p.Add("Informe o CNAE da obra.");
+        if (comp.GrauRisco is not (>= 1 and <= 4)) p.Add("Informe o grau de risco da obra (1 a 4, NR-04).");
+        if (string.IsNullOrWhiteSpace(comp.ResponsavelTecnicoRegistro)) p.Add("Informe o registro profissional (CREA) do responsável técnico.");
+        if (string.IsNullOrWhiteSpace(comp.ResponsavelImplantacaoNome)) p.Add("Informe o responsável pela implantação do PGR.");
+        if (string.IsNullOrWhiteSpace(comp.ContatosEmergencia.FirstOrDefault(x => x.Chave == "hospital")?.Telefone))
+            p.Add("Informe o telefone do hospital de referência no plano de emergência.");
         foreach (var a in e.AcoesPlano.Where(a => !string.IsNullOrWhiteSpace(a.Descricao)))
         {
             var resumo = a.Descricao.Length <= 40 ? a.Descricao : a.Descricao[..40] + "…";
@@ -215,6 +222,15 @@ public class CriarGeracaoPgrEapCommandHandler : IRequestHandler<CriarGeracaoPgrE
         if (itens.Count == 0)
             throw new InvalidOperationException("A IA não encontrou pacotes ou atividades na EAP enviada.");
 
+        // Dados da obra (emergência, CNAE, CREA...) já preenchidos na última geração aprovada seguem para esta.
+        var estrutura = new EstruturaGeracaoPgr { Itens = itens };
+        var anterior = await _db.GeracoesPgrEap
+            .Where(x => x.ObraId == request.ObraId && x.Status == StatusGeracaoPgrEap.Aprovado)
+            .OrderByDescending(x => x.AprovadoEmUtc)
+            .Select(x => x.EstruturaJson)
+            .FirstOrDefaultAsync(ct);
+        if (anterior is not null) estrutura.Complementares = SerializacaoGeracao.Ler(anterior).Complementares;
+
         var g = new GeracaoPgrEap
         {
             ObraId = request.ObraId,
@@ -225,7 +241,7 @@ public class CriarGeracaoPgrEapCommandHandler : IRequestHandler<CriarGeracaoPgrE
             ElaboradoPorNome = await SerializacaoGeracao.NomeUsuarioAsync(_db, request.UsuarioId, request.NomeUsuario, ct),
             NomeArquivoEap = request.NomeArquivo,
             Passo = 2,
-            EstruturaJson = SerializacaoGeracao.Gravar(new EstruturaGeracaoPgr { Itens = itens }),
+            EstruturaJson = SerializacaoGeracao.Gravar(estrutura),
         };
         _db.GeracoesPgrEap.Add(g);
         await _db.SaveChangesAsync(ct);
