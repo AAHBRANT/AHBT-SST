@@ -46,8 +46,16 @@ public class TemasInspecaoController : ControllerBase
     [HttpPost("{temaId:guid}/itens")]
     public async Task<IActionResult> CriarItem(Guid temaId, CriarItemInspecionavelRequestBody body, CancellationToken ct)
     {
-        var id = await _mediator.Send(new CriarItemInspecionavelCommand(temaId, body.ObraId, body.Identificacao, body.Descricao), ct);
+        var id = await _mediator.Send(new CriarItemInspecionavelCommand(temaId, body.ObraId, body.Identificacao, body.Descricao, body.PeriodicidadeInspecaoDias, body.ResponsavelInspecaoUsuarioId), ct);
         return CreatedAtAction(nameof(ListarItens), new { temaId }, new { id });
+    }
+
+    [Authorize(Policy = "inspecao:criar")]
+    [HttpPut("itens/{itemId:guid}")]
+    public async Task<IActionResult> AtualizarItem(Guid itemId, AtualizarItemInspecionavelRequestBody body, CancellationToken ct)
+    {
+        await _mediator.Send(new AtualizarItemInspecionavelCommand(itemId, body.Descricao, body.PeriodicidadeInspecaoDias, body.ResponsavelInspecaoUsuarioId), ct);
+        return NoContent();
     }
 
     [Authorize(Policy = PoliticasAutorizacao.SomenteAdministrador)]
@@ -72,4 +80,7 @@ public class TemasInspecaoController : ControllerBase
     }
 }
 
-public record CriarItemInspecionavelRequestBody(Guid ObraId, string Identificacao, string? Descricao);
+public record CriarItemInspecionavelRequestBody(
+    Guid ObraId, string Identificacao, string? Descricao, int? PeriodicidadeInspecaoDias = null, Guid? ResponsavelInspecaoUsuarioId = null);
+
+public record AtualizarItemInspecionavelRequestBody(string? Descricao, int? PeriodicidadeInspecaoDias, Guid? ResponsavelInspecaoUsuarioId);

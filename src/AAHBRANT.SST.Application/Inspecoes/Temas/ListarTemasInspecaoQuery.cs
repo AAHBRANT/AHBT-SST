@@ -14,7 +14,8 @@ public record TemaInspecaoResumoDto(
     int ItensComInspecaoEmAndamento,
     int TotalInspecoes,
     Guid? ChecklistModeloId,
-    int TotalItensChecklist);
+    int TotalItensChecklist,
+    int? PeriodicidadeDiasPadrao = null);
 
 public record ListarTemasInspecaoQuery : IRequest<List<TemaInspecaoResumoDto>>;
 
@@ -25,7 +26,7 @@ public class ListarTemasInspecaoQueryHandler : IRequestHandler<ListarTemasInspec
 
     public async Task<List<TemaInspecaoResumoDto>> Handle(ListarTemasInspecaoQuery request, CancellationToken ct)
     {
-        var temas = await _db.TemasInspecao.AsNoTracking().OrderBy(t => t.Nome).Select(t => new { t.Id, t.Nome }).ToListAsync(ct);
+        var temas = await _db.TemasInspecao.AsNoTracking().OrderBy(t => t.Nome).Select(t => new { t.Id, t.Nome, t.PeriodicidadeDiasPadrao }).ToListAsync(ct);
         var itens = await _db.ItensInspecionaveis.AsNoTracking().Select(i => new { i.Id, i.TemaInspecaoId }).ToListAsync(ct);
         var inspecoes = await _db.Inspecoes.AsNoTracking()
             .Where(i => i.ItemInspecionavelId != null)
@@ -45,7 +46,7 @@ public class ListarTemasInspecaoQueryHandler : IRequestHandler<ListarTemasInspec
                 t.Id, t.Nome, idsDoTema.Count,
                 doTema.Where(i => i.Status == StatusInspecao.EmAndamento).Select(i => i.ItemId).Distinct().Count(),
                 doTema.Count,
-                vigente?.Id, vigente?.Itens ?? 0);
+                vigente?.Id, vigente?.Itens ?? 0, t.PeriodicidadeDiasPadrao);
         }).ToList();
     }
 }

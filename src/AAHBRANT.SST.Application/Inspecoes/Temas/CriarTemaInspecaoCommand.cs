@@ -12,13 +12,17 @@ public record CriarTemaInspecaoItemInput(string Descricao, string? Secao = null)
 // Tema de inspeção criado pelo usuário (ex.: "Andaime"): nasce com o checklist próprio, versão 1.
 // Como nos Veículos, o item do checklist só exige foto quando marcado Não Conforme (ver
 // EncerrarInspecaoCommand), por isso ExigeFotografia fica falso no modelo.
-public record CriarTemaInspecaoCommand(string Nome, List<CriarTemaInspecaoItemInput> Itens) : IRequest<Guid>;
+public record CriarTemaInspecaoCommand(string Nome, List<CriarTemaInspecaoItemInput> Itens, int? PeriodicidadeDiasPadrao = null) : IRequest<Guid>;
 
 public class CriarTemaInspecaoCommandValidator : AbstractValidator<CriarTemaInspecaoCommand>
 {
     public CriarTemaInspecaoCommandValidator()
     {
         RuleFor(x => x.Nome).NotEmpty().WithMessage("Informe o nome do tema (ex.: Andaime).").MaximumLength(120);
+        RuleFor(x => x.PeriodicidadeDiasPadrao)
+            .InclusiveBetween(PeriodicidadeInspecao.MinimoDias, PeriodicidadeInspecao.MaximoDias)
+            .When(x => x.PeriodicidadeDiasPadrao.HasValue)
+            .WithMessage($"A periodicidade deve ficar entre {PeriodicidadeInspecao.MinimoDias} e {PeriodicidadeInspecao.MaximoDias} dias.");
         RuleFor(x => x.Itens).NotEmpty().WithMessage("Adicione ao menos um item ao checklist.");
         RuleForEach(x => x.Itens).ChildRules(item =>
         {
@@ -47,7 +51,7 @@ public class CriarTemaInspecaoCommandHandler : IRequestHandler<CriarTemaInspecao
         if (existentes.Any(n => string.Equals(n, nome, StringComparison.OrdinalIgnoreCase)))
             throw new InvalidOperationException($"Já existe um tema chamado \"{nome}\".");
 
-        var tema = new TemaInspecao { Nome = nome };
+        var tema = new TemaInspecao { Nome = nome, PeriodicidadeDiasPadrao = request.PeriodicidadeDiasPadrao };
         var checklist = new ChecklistModelo
         {
             Nome = $"Checklist de {nome}",

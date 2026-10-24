@@ -2774,6 +2774,11 @@ export interface VeiculoResumo {
   inspecaoEmAndamento: AlojamentoInspecaoResumo | null;
   ultimaInspecaoConcluida: AlojamentoInspecaoResumo | null;
   historicoInspecoes: AlojamentoInspecaoResumo[];
+  // Inspeção periódica: a cada N dias; o responsável recebe o aviso.
+  periodicidadeInspecaoDias?: number | null;
+  responsavelInspecaoUsuarioId?: string | null;
+  responsavelInspecaoNome?: string | null;
+  proximaInspecaoEm?: string | null;
 }
 
 export interface DadosVeiculo {
@@ -2785,6 +2790,8 @@ export interface DadosVeiculo {
   cor?: string | null;
   empresa?: string | null;
   responsavel?: string | null;
+  periodicidadeInspecaoDias?: number | null;
+  responsavelInspecaoUsuarioId?: string | null;
 }
 
 // Tema de inspeção criado pelo usuário (ex.: Andaime): um card ao lado de Alojamento e Veículos.
@@ -2796,6 +2803,8 @@ export interface TemaInspecaoResumo {
   totalInspecoes: number;
   checklistModeloId?: string | null;
   totalItensChecklist: number;
+  // Periodicidade sugerida para os itens novos do tema.
+  periodicidadeDiasPadrao?: number | null;
 }
 
 export interface ItemInspecionavelResumo {
@@ -2810,6 +2819,10 @@ export interface ItemInspecionavelResumo {
   inspecaoEmAndamento?: AlojamentoInspecaoResumo | null;
   ultimaInspecaoConcluida?: AlojamentoInspecaoResumo | null;
   historicoInspecoes: AlojamentoInspecaoResumo[];
+  periodicidadeInspecaoDias?: number | null;
+  responsavelInspecaoUsuarioId?: string | null;
+  responsavelInspecaoNome?: string | null;
+  proximaInspecaoEm?: string | null;
 }
 
 export interface NovoTemaInspecaoItem {
@@ -6141,12 +6154,24 @@ export const api = {
   // Temas de inspeção criados pelo usuário (card "+" da aba Inspeções).
   temasInspecao: {
     listar: () => request<TemaInspecaoResumo[]>('/api/temas-inspecao'),
-    criar: (nome: string, itens: NovoTemaInspecaoItem[]) =>
-      request<{ id: string }>('/api/temas-inspecao', { method: 'POST', body: JSON.stringify({ nome, itens }) }),
+    criar: (nome: string, itens: NovoTemaInspecaoItem[], periodicidadeDiasPadrao?: number | null) =>
+      request<{ id: string }>('/api/temas-inspecao', { method: 'POST', body: JSON.stringify({ nome, itens, periodicidadeDiasPadrao: periodicidadeDiasPadrao ?? null }) }),
     listarItens: (temaId: string, obraId?: string) =>
       request<ItemInspecionavelResumo[]>(`/api/temas-inspecao/${temaId}/itens${obraId ? `?obraId=${obraId}` : ''}`),
-    criarItem: (temaId: string, dados: { obraId: string; identificacao: string; descricao?: string | null }) =>
-      request<{ id: string }>(`/api/temas-inspecao/${temaId}/itens`, { method: 'POST', body: JSON.stringify(dados) }),
+    criarItem: (
+      temaId: string,
+      dados: {
+        obraId: string;
+        identificacao: string;
+        descricao?: string | null;
+        periodicidadeInspecaoDias?: number | null;
+        responsavelInspecaoUsuarioId?: string | null;
+      },
+    ) => request<{ id: string }>(`/api/temas-inspecao/${temaId}/itens`, { method: 'POST', body: JSON.stringify(dados) }),
+    atualizarItem: (
+      itemId: string,
+      dados: { descricao?: string | null; periodicidadeInspecaoDias: number | null; responsavelInspecaoUsuarioId: string | null },
+    ) => request<void>(`/api/temas-inspecao/itens/${itemId}`, { method: 'PUT', body: JSON.stringify(dados) }),
     // Só Administrador (exclusão lógica; o histórico de inspeções é preservado).
     excluirItem: (itemId: string) => request<void>(`/api/temas-inspecao/itens/${itemId}`, { method: 'DELETE' }),
     obterOuCriarInspecaoAtual: (itemId: string) =>

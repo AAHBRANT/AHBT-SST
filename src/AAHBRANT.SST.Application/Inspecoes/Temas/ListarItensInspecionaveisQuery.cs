@@ -1,5 +1,6 @@
 using AAHBRANT.SST.Application.Alojamentos.Queries;
 using AAHBRANT.SST.Application.Common.Interfaces;
+using AAHBRANT.SST.Application.Inspecoes;
 using AAHBRANT.SST.Domain.Enums;
 using MediatR;
 using Microsoft.EntityFrameworkCore;
@@ -20,7 +21,11 @@ public record ItemInspecionavelResumoDto(
     int? DiasDesdeUltimaInspecao,
     AlojamentoInspecaoResumoDto? InspecaoEmAndamento,
     AlojamentoInspecaoResumoDto? UltimaInspecaoConcluida,
-    List<AlojamentoInspecaoResumoDto> HistoricoInspecoes);
+    List<AlojamentoInspecaoResumoDto> HistoricoInspecoes,
+    int? PeriodicidadeInspecaoDias = null,
+    Guid? ResponsavelInspecaoUsuarioId = null,
+    string? ResponsavelInspecaoNome = null,
+    DateTime? ProximaInspecaoEm = null);
 
 public record ListarItensInspecionaveisQuery(Guid TemaInspecaoId, Guid? ObraId) : IRequest<List<ItemInspecionavelResumoDto>>;
 
@@ -46,6 +51,10 @@ public class ListarItensInspecionaveisQueryHandler : IRequestHandler<ListarItens
                 ObraNome = i.Obra != null ? i.Obra.Nome : string.Empty,
                 i.Identificacao,
                 i.Descricao,
+                i.PeriodicidadeInspecaoDias,
+                i.ResponsavelInspecaoUsuarioId,
+                ResponsavelInspecaoNome = i.ResponsavelInspecaoUsuario != null ? i.ResponsavelInspecaoUsuario.Nome : null,
+                i.CreatedAtUtc,
                 Inspecoes = _db.Inspecoes
                     .Where(x => x.ItemInspecionavelId == i.Id)
                     .OrderByDescending(x => x.Data)
@@ -76,7 +85,9 @@ public class ListarItensInspecionaveisQueryHandler : IRequestHandler<ListarItens
                 i.Id, i.TemaInspecaoId, i.ObraId, i.ObraNome, i.Identificacao, i.Descricao,
                 ultimaConcluida is null ? "nunca" : "inspecionado",
                 ultimaConcluida is null ? null : (int)(hoje - ultimaConcluida.Data).TotalDays,
-                emAndamento, ultimaConcluida, i.Inspecoes);
+                emAndamento, ultimaConcluida, i.Inspecoes,
+                i.PeriodicidadeInspecaoDias, i.ResponsavelInspecaoUsuarioId, i.ResponsavelInspecaoNome,
+                PeriodicidadeInspecao.ProximaEm(i.PeriodicidadeInspecaoDias, ultimaConcluida?.Data, i.CreatedAtUtc));
         }).ToList();
     }
 }

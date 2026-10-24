@@ -25,6 +25,7 @@ import {
   ArrowDownload24Regular,
   ClipboardTaskListLtr24Regular,
   Delete24Regular,
+  Edit24Regular,
   Eye24Regular,
   Open24Regular,
 } from '@fluentui/react-icons';
@@ -36,7 +37,9 @@ import {
   type ItemInspecionavelResumo,
   type Obra,
   type TemaInspecaoResumo,
+  type Usuario,
 } from '../../lib/api';
+import { CamposPeriodicidadeInspecao, payloadPeriodicidade, pendenciaPeriodicidade, SeloProximaInspecao } from './PeriodicidadeInspecao';
 import { useVisualizadorPdf } from '../../components/useVisualizadorPdf';
 import { useSouAdministrador } from '../../lib/UsuarioLogadoContext';
 import { useSucessoToast } from '../../hooks/useSucessoToast';
@@ -88,21 +91,28 @@ export function TemaInspecaoView({
   const sucessoToast = useSucessoToast();
   const { visualizar, dialogoVisualizador } = useVisualizadorPdf();
   const [obras, setObras] = useState<Obra[]>([]);
+  const [usuarios, setUsuarios] = useState<Usuario[]>([]);
+  const [editandoId, setEditandoId] = useState<string | null>(null);
   const [itens, setItens] = useState<ItemInspecionavelResumo[]>([]);
   const [obraFiltro, setObraFiltro] = useState('');
   const [erro, setErro] = useState<string | null>(null);
   const [erroPainel, setErroPainel] = useState<string | null>(null);
   const [carregando, setCarregando] = useState(true);
   const [painelAberto, setPainelAberto] = useState(false);
-  const [formulario, setFormulario] = useState({ obraId: '', identificacao: '', descricao: '' });
+  const [formulario, setFormulario] = useState({ obraId: '', identificacao: '', descricao: '', periodicidadeDias: '', responsavelInspecaoId: '' });
   const [salvando, setSalvando] = useState(false);
   const [baixandoId, setBaixandoId] = useState<string | null>(null);
 
   async function carregar() {
     try {
       setErro(null);
-      const [obs, lista] = await Promise.all([api.obras.listar(), api.temasInspecao.listarItens(tema.id)]);
+      const [obs, lista, listaUsuarios] = await Promise.all([
+        api.obras.listar(),
+        api.temasInspecao.listarItens(tema.id),
+        api.usuarios.listar().catch(() => [] as Usuario[]),
+      ]);
       setObras(obs);
+      setUsuarios(listaUsuarios);
       setItens(lista);
     } catch (e) {
       setErro(e instanceof Error ? e.message : 'Falha ao carregar os itens do tema.');
@@ -119,7 +129,23 @@ export function TemaInspecaoView({
   const visiveis = useMemo(() => (obraFiltro ? itens.filter((i) => i.obraId === obraFiltro) : itens), [itens, obraFiltro]);
 
   function abrirCadastro() {
-    setFormulario({ obraId: obraFiltro, identificacao: '', descricao: '' });
+    // O item novo herda a periodicidade padrão do tema (editável).
+    setEditandoId(null);
+    setFormulario({
+      obraId: obraFiltro, identificacao: '', descricao: '',
+      periodicidadeDias: tema.periodicidadeDiasPadrao ? String(tema.periodicidadeDiasPadrao) : '', responsavelInspecaoId: '',
+    });
+    setErroPainel(null);
+    setPainelAberto(true);
+  }
+
+  function abrirEdicao(item: ItemInspecionavelResumo) {
+    setEditandoId(item.id);
+    setFormulario({
+      obraId: item.obraId, identificacao: item.identificacao, descricao: item.descricao ?? '',
+      periodicidadeDias: item.periodicidadeInspecaoDias ? String(item.periodicidadeInspecaoDias) : '',
+      responsavelInspecaoId: item.responsavelInspecaoUsuarioId ?? '',
+    });
     setErroPainel(null);
     setPainelAberto(true);
   }
@@ -127,15 +153,23 @@ export function TemaInspecaoView({
   async function salvarItem() {
     if (!formulario.obraId) return setErroPainel('Selecione a obra do item.');
     if (!formulario.identificacao.trim()) return setErroPainel(`Informe como o item é identificado (ex.: ${tema.nome} A-03).`);
+    const periodicidade = { dias: formulario.periodicidadeDias, responsavelId: formulario.responsavelInspecaoId };
+    const pendencia = pendenciaPeriodicidade(periodicidade);
+    if (pendencia) return setErroPainel(pendencia);
     try {
       setSalvando(true);
       setErroPainel(null);
-      await api.temasInspecao.criarItem(tema.id, {
-        obraId: formulario.obraId,
-        identificacao: formulario.identificacao.trim(),
-        descricao: formulario.descricao.trim() || null,
-      });
-      sucessoToast('Item cadastrado.');
+      if (editandoId) {
+        await api.temasInspecao.atualizarItem(editandoId, { descricao: formulario.descricao.trim() || null, ...payloadPeriodicidade(periodicidade) });
+      } else {
+        await api.temasInspecao.criarItem(tema.id, {
+          obraId: formulario.obraId,
+          identificacao: formulario.identificacao.trim(),
+          descricao: formulario.descricao.trim() || null,
+          ...payloadPeriodicidade(periodicidade),
+        });
+      }
+      sucessoToast(editandoId ? 'Item atualizado.' : 'Item cadastrado.');
       setPainelAberto(false);
       await carregar();
       aoAlterado();
@@ -211,13 +245,13 @@ export function TemaInspecaoView({
 
       {erro && <FeedbackInline tom="erro" aoFechar={() => setErro(null)}>{erro}</FeedbackInline>}
 
-      <PainelCriacaoInline aberto={painelAberto} titulo={`Cadastrar ${tema.nome.toLowerCase()}`}>
+      <PainelCriacaoInline aberto={painelAberto} titulo={editandoId ? `Editar ${tema.nome.toLowerCase()}` : `Cadastrar ${tema.nome.toLowerCase()}`}>
         <FormSection titulo="Dados do item" numero={1} primeira>
           {erroPainel && <FeedbackInline tom="erro" aoFechar={() => setErroPainel(null)}>{erroPainel}</FeedbackInline>}
           <FormGrid>
             <Campo span={6}>
               <Field label="Obra" required>
-                <Select value={formulario.obraId} onChange={(_, d) => setFormulario({ ...formulario, obraId: d.value })}>
+                <Select value={formulario.obraId} disabled={!!editandoId} onChange={(_, d) => setFormulario({ ...formulario, obraId: d.value })}>
                   <option value="">Selecione</option>
                   {obras.map((obra) => (
                     <option key={obra.id} value={obra.id}>{obra.nome}</option>
@@ -229,6 +263,7 @@ export function TemaInspecaoView({
               <Field label="Identificação" required>
                 <Input
                   value={formulario.identificacao}
+                  disabled={!!editandoId}
                   maxLength={150}
                   placeholder={`Ex.: ${tema.nome} A-03 — fachada norte`}
                   onChange={(_, d) => setFormulario({ ...formulario, identificacao: d.value })}
@@ -244,10 +279,15 @@ export function TemaInspecaoView({
                 />
               </Field>
             </Campo>
+            <CamposPeriodicidadeInspecao
+              valor={{ dias: formulario.periodicidadeDias, responsavelId: formulario.responsavelInspecaoId }}
+              aoMudar={(v) => setFormulario({ ...formulario, periodicidadeDias: v.dias, responsavelInspecaoId: v.responsavelId })}
+              usuarios={usuarios}
+            />
           </FormGrid>
           <FormRodape>
             <Button onClick={() => setPainelAberto(false)}>Cancelar</Button>
-            <Button appearance="primary" onClick={salvarItem} disabled={salvando}>Cadastrar</Button>
+            <Button appearance="primary" onClick={salvarItem} disabled={salvando}>{editandoId ? 'Salvar alterações' : 'Cadastrar'}</Button>
           </FormRodape>
         </FormSection>
       </PainelCriacaoInline>
@@ -284,9 +324,12 @@ export function TemaInspecaoView({
                     <div style={{ fontSize: 12 }}>{item.obraNome}</div>
                     {item.descricao && <div style={{ fontSize: 12 }}>{item.descricao}</div>}
                   </div>
-                  {souAdministrador && (
-                    <BotaoAcao tom="excluir" icon={<Delete24Regular />} onClick={() => excluirItem(item)} aria-label="Excluir item" />
-                  )}
+                  <div style={{ display: 'flex', gap: 4 }}>
+                    <BotaoAcao tom="ver" icon={<Edit24Regular />} onClick={() => abrirEdicao(item)} aria-label="Editar item" />
+                    {souAdministrador && (
+                      <BotaoAcao tom="excluir" icon={<Delete24Regular />} onClick={() => excluirItem(item)} aria-label="Excluir item" />
+                    )}
+                  </div>
                 </div>
 
                 <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
@@ -295,6 +338,11 @@ export function TemaInspecaoView({
                   </StatusChip>
                   {item.inspecaoEmAndamento && <StatusChip tom="info">Inspeção em andamento</StatusChip>}
                 </div>
+                <SeloProximaInspecao
+                  proximaEm={item.proximaInspecaoEm}
+                  dias={item.periodicidadeInspecaoDias}
+                  responsavelNome={item.responsavelInspecaoNome}
+                />
 
                 {ultima && (
                   <div style={{ fontSize: 12 }}>

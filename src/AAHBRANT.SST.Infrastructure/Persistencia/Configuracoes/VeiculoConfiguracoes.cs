@@ -15,6 +15,8 @@ public class VeiculoConfiguracao : IEntityTypeConfiguration<Veiculo>
         builder.Property(v => v.Responsavel).HasMaxLength(150);
         builder.HasOne(v => v.Obra).WithMany()
             .HasForeignKey(v => v.ObraId).OnDelete(DeleteBehavior.Restrict);
+        builder.HasOne(v => v.ResponsavelInspecaoUsuario).WithMany()
+            .HasForeignKey(v => v.ResponsavelInspecaoUsuarioId).OnDelete(DeleteBehavior.Restrict);
         builder.HasIndex(v => new { v.ObraId, v.Tipo });
         builder.HasQueryFilter(v => v.Ativo);
     }
