@@ -47,13 +47,12 @@ import {
   type Aso,
   type CursoTreinamento,
   type EntregaEpi,
-  type Funcao,
   type NovoTrabalhador,
-  type Obra,
   type Trabalhador,
   type Treinamento,
 } from '../../lib/api';
 import { formatarCpf } from '../../lib/cpf';
+import { chaves, queryClient, useAsos, useErroCarga, useFuncoes, useObras, useTrabalhadores } from '../../lib/consultas';
 import { CadastroDigitalDialog } from '../../components/pessoas/CadastroDigitalDialog';
 import { RequisitosFuncaoDialog } from '../../components/pessoas/RequisitosFuncaoDialog';
 import { CadastrosFaciaisFracosCard } from '../../components/pessoas/CadastrosFaciaisFracosCard';
@@ -158,10 +157,19 @@ export function TrabalhadoresTab({
 }: { acoesCabecalho?: ReactNode; mostrarTitulo?: boolean } = {}) {
   const navigate = useNavigate();
   const tipo = useTipografia();
-  const [trabalhadores, setTrabalhadores] = useState<Trabalhador[]>([]);
-  const [obras, setObras] = useState<Obra[]>([]);
-  const [funcoes, setFuncoes] = useState<Funcao[]>([]);
-  const [asos, setAsos] = useState<Aso[]>([]);
+  // Listas vêm do cache compartilhado (lib/consultas): voltar para esta aba mostra o último dado na
+  // hora e revalida em segundo plano, em vez de esperar as 4 chamadas de novo.
+  const consultaTrabalhadores = useTrabalhadores();
+  const consultaObras = useObras();
+  const consultaFuncoes = useFuncoes();
+  const consultaAsos = useAsos();
+  const trabalhadores = consultaTrabalhadores.lista;
+  const obras = consultaObras.lista;
+  const funcoes = consultaFuncoes.lista;
+  const asos = consultaAsos.lista;
+  const consultas = [consultaTrabalhadores, consultaObras, consultaFuncoes, consultaAsos];
+  const carregandoLista = consultas.some((c) => c.isPending);
+  const { erro, dispensar: dispensarErro } = useErroCarga(consultas, 'Falha ao carregar funcionários.');
   const [treinamentos, setTreinamentos] = useState<Treinamento[] | null>(null);
   const [cursos, setCursos] = useState<CursoTreinamento[]>([]);
   const [entregasEpi, setEntregasEpi] = useState<EntregaEpi[] | null>(null);
@@ -173,10 +181,8 @@ export function TrabalhadoresTab({
   const [limite, setLimite] = useState(PASSO_PAGINA);
   const [telaEstreita, setTelaEstreita] = useState(() => window.matchMedia(CONSULTA_TELA_ESTREITA).matches);
   const [novoTrabalhador, setNovoTrabalhador] = useState<NovoTrabalhador>(trabalhadorVazio);
-  const [erro, setErro] = useState<string | null>(null);
   const [erroPainel, setErroPainel] = useState<string | null>(null);
   const [carregando, setCarregando] = useState(false);
-  const [carregandoLista, setCarregandoLista] = useState(true);
   const [painelAberto, setPainelAberto] = useState(false);
   const [fotoUrls, setFotoUrls] = useState<Record<string, string>>({});
   const [trabalhadorDigitalAlvo, setTrabalhadorDigitalAlvo] = useState<{ id: string; nome: string } | null>(
@@ -197,26 +203,9 @@ export function TrabalhadoresTab({
     return () => media.removeEventListener('change', atualizar);
   }, []);
 
-  async function carregar() {
-    try {
-      setErro(null);
-      const [trabs, obs, funcs, asosResp] = await Promise.all([
-        api.trabalhadores.listar(),
-        api.obras.listar(),
-        api.funcoes.listar(),
-        api.asos.listar(),
-      ]);
-      setTrabalhadores(trabs);
-      setObras(obs);
-      setFuncoes(funcs);
-      setAsos(asosResp);
-    } catch (e) {
-      setErro(e instanceof Error ? e.message : 'Falha ao carregar funcionários.');
-    } finally {
-      setCarregandoLista(false);
-    }
-    // NR e EPI da linha são complementares: se o perfil do usuário não puder listar um deles, a lista
-    // continua funcionando e só o ponto correspondente some.
+  // NR e EPI da linha são complementares: se o perfil do usuário não puder listar um deles, a lista
+  // continua funcionando e só o ponto correspondente some.
+  async function carregarComplementos() {
     const [trein, cursosResp, entregas] = await Promise.allSettled([
       api.treinamentos.listar(),
       api.cursosTreinamento.listar(),
@@ -227,8 +216,14 @@ export function TrabalhadoresTab({
     setEntregasEpi(entregas.status === 'fulfilled' ? entregas.value : null);
   }
 
+  // Depois de criar/cadastrar digital: marca as listas do cache como desatualizadas e recarrega.
+  async function carregar() {
+    await Promise.all([chaves.trabalhadores, chaves.asos].map((queryKey) => queryClient.invalidateQueries({ queryKey })));
+    await carregarComplementos();
+  }
+
   useEffect(() => {
-    carregar();
+    carregarComplementos();
   }, []);
 
   // Miniaturas da foto são baixadas sob demanda (só para trabalhadores com temFoto) e mantidas como
@@ -566,7 +561,7 @@ export function TrabalhadoresTab({
         <div style={{ display: 'flex', justifyContent: 'flex-end' }}>{acoes}</div>
       )}
 
-      {erro && <FeedbackInline tom="erro" aoFechar={() => setErro(null)}>{erro}</FeedbackInline>}
+      {erro && <FeedbackInline tom="erro" aoFechar={dispensarErro}>{erro}</FeedbackInline>}
 
       <div id="painel-novo-funcionario">
         <PainelCriacaoInline aberto={painelAberto} titulo="Novo funcionário">
