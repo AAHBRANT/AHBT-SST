@@ -53,8 +53,10 @@ function Perguntar($valor, $rotulo, [switch]$Secreto) {
 $DispositivoId = Perguntar $DispositivoId 'Id do dispositivo (gerado ao registrar o agente na obra)'
 $SegredoDispositivo = Perguntar $SegredoDispositivo 'Segredo do dispositivo' -Secreto
 $ChaveCriptografiaBiometriaBase64 = Perguntar $ChaveCriptografiaBiometriaBase64 'Chave de criptografia de biometria (base64)' -Secreto
-$BackendBaseUrl = Perguntar $BackendBaseUrl 'URL da API (ex.: https://sst-api-hml...)'
-$OrigemPermitida = Perguntar $OrigemPermitida 'URL do app web que abre o quiosque (origem permitida no CORS)'
+$BackendBaseUrl = Perguntar $BackendBaseUrl 'URL da API (Enter = homologacao)'
+if (-not $BackendBaseUrl) { $BackendBaseUrl = 'https://sst-api-hml.kindground-7a44c4f0.brazilsouth.azurecontainerapps.io' }
+$OrigemPermitida = Perguntar $OrigemPermitida 'URL do app web que abre o quiosque (Enter = homologacao)'
+if (-not $OrigemPermitida) { $OrigemPermitida = 'https://sst-web-hml.kindground-7a44c4f0.brazilsouth.azurecontainerapps.io' }
 
 Parar-Agente
 New-Item -ItemType Directory -Path $Destino -Force | Out-Null
