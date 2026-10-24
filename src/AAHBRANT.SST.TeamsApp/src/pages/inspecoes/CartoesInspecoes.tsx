@@ -189,6 +189,17 @@ export function CartoesInspecoes() {
       {erro && <FeedbackInline tom="erro" aoFechar={() => setErro(null)}>{erro}</FeedbackInline>}
 
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: 16 }}>
+        {/* Fixo: sempre o primeiro card da fila, antes de Alojamento, Veículos e dos temas. */}
+        <CartaoAcionavel
+          tracejado
+          rotuloAria="Criar novo tema de inspeção"
+          aoAbrir={painelAberto ? () => setPainelAberto(false) : abrirPainel}
+        >
+          <Add24Regular />
+          <div style={{ fontWeight: 600 }}>{painelAberto ? 'Fechar' : 'Novo tema de inspeção'}</div>
+          <Legenda>Ex.: Andaime, Escada, Extintor…</Legenda>
+        </CartaoAcionavel>
+
         <CartaoAcionavel rotuloAria="Abrir Alojamento" aoAbrir={() => abrir('alojamento')}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontWeight: 600 }}>
             <Home24Regular /> Alojamento
@@ -214,16 +225,6 @@ export function CartoesInspecoes() {
             {tema.itensComInspecaoEmAndamento > 0 && <StatusChip tom="info">{tema.itensComInspecaoEmAndamento} em andamento</StatusChip>}
           </CartaoAcionavel>
         ))}
-
-        <CartaoAcionavel
-          tracejado
-          rotuloAria="Criar novo tema de inspeção"
-          aoAbrir={painelAberto ? () => setPainelAberto(false) : abrirPainel}
-        >
-          <Add24Regular />
-          <div style={{ fontWeight: 600 }}>{painelAberto ? 'Fechar' : 'Novo tema de inspeção'}</div>
-          <Legenda>Ex.: Andaime, Escada, Extintor…</Legenda>
-        </CartaoAcionavel>
       </div>
 
       <PainelCriacaoInline aberto={painelAberto} titulo="Novo tema de inspeção">
