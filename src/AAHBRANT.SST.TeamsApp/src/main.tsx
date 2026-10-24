@@ -27,7 +27,7 @@ if ('serviceWorker' in navigator) {
   navigator.serviceWorker.addEventListener('controllerchange', recarregarQuandoServiceWorkerAtualizar)
 
   // Pede ao navegador para comparar o sw.js do servidor com o instalado. Se houver versão nova,
-  // ela instala, assume e (via public/sw-atualizacao.js) recarrega esta janela sozinha.
+  // ela instala e assume; o listener de controllerchange acima recarrega esta janela.
   const verificarAtualizacaoDoApp = () =>
     navigator.serviceWorker
       .getRegistration()
