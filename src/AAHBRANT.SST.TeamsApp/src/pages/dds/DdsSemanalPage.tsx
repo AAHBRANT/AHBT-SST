@@ -58,15 +58,20 @@ export function DdsSemanalPage() {
   const [erroPainel, setErroPainel] = useState<string | null>(null);
   const [carregando, setCarregando] = useState(false);
   const [carregandoLista, setCarregandoLista] = useState(true);
+  const [listaCarregada, setListaCarregada] = useState(false);
+  const [obrasIndisponiveis, setObrasIndisponiveis] = useState(false);
   const [painelAberto, setPainelAberto] = useState(false);
 
   async function carregar() {
     try {
       setErro(null);
       setCarregandoLista(true);
-      const [lista, listaObras] = await Promise.all([api.ddsSemanal.listar(), api.obras.listar()]);
-      setRegistros(lista);
-      setObras(listaObras);
+      const [lista, listaObras] = await Promise.allSettled([api.ddsSemanal.listar(), api.obras.listar()]);
+      if (lista.status === 'rejected') throw lista.reason;
+      setRegistros(lista.value);
+      setListaCarregada(true);
+      setObrasIndisponiveis(listaObras.status === 'rejected');
+      if (listaObras.status === 'fulfilled') setObras(listaObras.value);
     } catch (e) {
       setErro(e instanceof Error ? e.message : 'Falha ao carregar as semanas de DDS.');
     } finally {
@@ -150,6 +155,9 @@ export function DdsSemanalPage() {
 
       <div id="painel-nova-semana-dds">
         <PainelCriacaoInline aberto={painelAberto} titulo="Nova semana de DDS">
+          {obrasIndisponiveis && (
+            <FeedbackInline tom="aviso">A lista de obras não está disponível neste dispositivo. Conecte-se à internet e reabra esta tela para carregar as opções.</FeedbackInline>
+          )}
           <FormSection titulo="Dados da Semana" numero={1} primeira>
             {erroPainel && (
               <FeedbackInline tom="erro" aoFechar={() => setErroPainel(null)}>
@@ -224,9 +232,13 @@ export function DdsSemanalPage() {
           linhas={registros}
           chaveLinha={(s) => s.id}
           carregando={carregandoLista}
-          vazio={{
+          vazio={listaCarregada ? {
             titulo: 'Nenhuma semana de DDS registrada ainda.',
             acao: { rotulo: 'Nova semana', aoClicar: () => setPainelAberto(true) },
+          } : {
+            titulo: 'Lista indisponível neste dispositivo.',
+            descricao: 'Conecte-se à internet e carregue as semanas de DDS antes de usá-las offline.',
+            acao: { rotulo: 'Tentar novamente', aoClicar: () => void carregar() },
           }}
           aoClicarLinha={(s) => navigate(`/prevencao/dds/semana/${s.id}`)}
         />

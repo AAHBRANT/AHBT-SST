@@ -75,23 +75,28 @@ export function InspecoesTab() {
   const [erroPainel, setErroPainel] = useState<string | null>(null);
   const [carregando, setCarregando] = useState(false);
   const [carregandoLista, setCarregandoLista] = useState(true);
+  const [listaCarregada, setListaCarregada] = useState(false);
+  const [apoioIndisponivel, setApoioIndisponivel] = useState(false);
   const [painelAberto, setPainelAberto] = useState(false);
 
   async function carregar() {
     try {
       setErro(null);
-      const [lista, listaObras, listaAtividades, listaChecklists, listaUsuarios] = await Promise.all([
+      const [lista, listaObras, listaAtividades, listaChecklists, listaUsuarios] = await Promise.allSettled([
         api.inspecoes.listar(),
         api.obras.listar(),
         api.atividades.listar(),
         api.checklistModelos.listar(),
         api.usuarios.listar(),
       ]);
-      setInspecoes(lista);
-      setObras(listaObras);
-      setAtividades(listaAtividades);
-      setChecklists(listaChecklists);
-      setUsuarios(listaUsuarios);
+      if (lista.status === 'rejected') throw lista.reason;
+      setInspecoes(lista.value);
+      setListaCarregada(true);
+      setApoioIndisponivel([listaObras, listaAtividades, listaChecklists, listaUsuarios].some((r) => r.status === 'rejected'));
+      if (listaObras.status === 'fulfilled') setObras(listaObras.value);
+      if (listaAtividades.status === 'fulfilled') setAtividades(listaAtividades.value);
+      if (listaChecklists.status === 'fulfilled') setChecklists(listaChecklists.value);
+      if (listaUsuarios.status === 'fulfilled') setUsuarios(listaUsuarios.value);
     } catch (e) {
       setErro(e instanceof Error ? e.message : 'Falha ao carregar inspeções.');
     } finally {
@@ -210,6 +215,9 @@ export function InspecoesTab() {
 
       <div id="painel-nova-inspecao">
         <PainelCriacaoInline aberto={painelAberto} titulo="Nova inspeção">
+          {apoioIndisponivel && (
+            <FeedbackInline tom="aviso">Algumas opções do formulário não estão disponíveis neste dispositivo. Conecte-se à internet e reabra esta tela para carregá-las.</FeedbackInline>
+          )}
           <FormSection titulo="Dados da inspeção" numero={1} primeira>
             {erroPainel && (
               <FeedbackInline tom="erro" aoFechar={() => setErroPainel(null)}>
@@ -323,10 +331,14 @@ export function InspecoesTab() {
               )}
             </>
           )}
-          vazio={{
+          vazio={listaCarregada ? {
             titulo: 'Nenhuma inspeção iniciada ainda.',
             descricao: 'Inicie a primeira inspeção para começar.',
             acao: { rotulo: 'Nova inspeção', aoClicar: () => setPainelAberto(true) },
+          } : {
+            titulo: 'Lista indisponível neste dispositivo.',
+            descricao: 'Conecte-se à internet e carregue as inspeções antes de usá-las offline.',
+            acao: { rotulo: 'Tentar novamente', aoClicar: () => void carregar() },
           }}
         />
       </Card>
