@@ -1,5 +1,5 @@
 import Dexie, { type Table } from 'dexie';
-import type { InspecaoDetalhe } from '../api';
+import type { InspecaoDetalhe, ChecklistModeloDetalhe, Obra, Atividade, Usuario } from '../api';
 import type { DadosFoto } from '../dadosFoto';
 
 // Banco local (IndexedDB) do modo offline. Um por dispositivo/navegador — não é compartilhado
@@ -33,6 +33,7 @@ export interface RascunhoItemInspecao {
 }
 
 export interface InspecaoLocal {
+  criadaLocalmente?: boolean;
   chave: string;
   conta: string;
   id: string;
@@ -41,6 +42,16 @@ export interface InspecaoLocal {
   revisaoServidor: number;
   rascunhos: Record<string, RascunhoItemInspecao>;
   fotos: Record<string, { blob: Blob; dados?: DadosFoto; rascunho?: boolean }>;
+  atualizadoEm: number;
+}
+
+export interface PreparacaoInspecoes {
+  totalModelos?: number;
+  conta: string;
+  modelos: Record<string, ChecklistModeloDetalhe>;
+  obras: Obra[];
+  atividades: Atividade[];
+  usuarios: Usuario[];
   atualizadoEm: number;
 }
 
@@ -76,6 +87,7 @@ class SstOfflineDb extends Dexie {
   cacheBlob!: Table<ItemCacheBlob, string>;
   conflitos!: Table<ItemConflito, number>;
   inspecoesLocais!: Table<InspecaoLocal, string>;
+  preparacaoInspecoes!: Table<PreparacaoInspecoes, string>;
 
   constructor() {
     super('aahbrant-sst-offline');
@@ -86,6 +98,7 @@ class SstOfflineDb extends Dexie {
       conflitos: '++id, criadoEm',
     });
     this.version(2).stores({ inspecoesLocais: 'chave, conta, id' });
+    this.version(3).stores({ preparacaoInspecoes: 'conta' });
   }
 }
 

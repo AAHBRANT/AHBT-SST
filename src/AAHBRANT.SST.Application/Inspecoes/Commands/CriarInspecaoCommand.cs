@@ -15,7 +15,13 @@ public record CriarInspecaoCommand(
     Guid ObraId,
     Guid? AtividadeId,
     DateTime Data,
-    Guid ResponsavelUsuarioId) : IRequest<Guid>;
+    Guid ResponsavelUsuarioId,
+    Guid? IdCliente = null,
+    List<RespostaInspecaoCliente>? RespostasCliente = null,
+    int? VersaoChecklistEsperada = null) : IRequest<InspecaoCriadaResultado>;
+
+public record RespostaInspecaoCliente(Guid ChecklistModeloItemId, Guid Id);
+public record InspecaoCriadaResultado(Guid Id, string? NumeroDocumento, Dictionary<Guid, string?> VersoesRespostas);
 
 public class CriarInspecaoCommandValidator : AbstractValidator<CriarInspecaoCommand>
 {
@@ -27,7 +33,7 @@ public class CriarInspecaoCommandValidator : AbstractValidator<CriarInspecaoComm
     }
 }
 
-public class CriarInspecaoCommandHandler : IRequestHandler<CriarInspecaoCommand, Guid>
+public class CriarInspecaoCommandHandler : IRequestHandler<CriarInspecaoCommand, InspecaoCriadaResultado>
 {
     private readonly IAppDbContext _db;
     private readonly IGeradorNumeroDocumentoService _geradorNumero;
@@ -38,7 +44,7 @@ public class CriarInspecaoCommandHandler : IRequestHandler<CriarInspecaoCommand,
         _geradorNumero = geradorNumero;
     }
 
-    public async Task<Guid> Handle(CriarInspecaoCommand request, CancellationToken ct)
+    public async Task<InspecaoCriadaResultado> Handle(CriarInspecaoCommand request, CancellationToken ct)
     {
         var checklist = await _db.ChecklistModelos
             .Include(c => c.Itens)
@@ -73,8 +79,29 @@ public class CriarInspecaoCommandHandler : IRequestHandler<CriarInspecaoCommand,
         if (!usuarioExiste)
             throw new KeyNotFoundException($"Usuário {request.ResponsavelUsuarioId} não encontrado.");
 
+        if (request.AtividadeId.HasValue && !await _db.Atividades.AnyAsync(a => a.Id == request.AtividadeId && a.ObraId == request.ObraId, ct))
+            throw new InvalidOperationException("A atividade não pertence à obra selecionada ou não está disponível.");
+        if (request.VersaoChecklistEsperada.HasValue && checklist.Versao != request.VersaoChecklistEsperada)
+            throw new DbUpdateConcurrencyException("O modelo de checklist mudou. Revise a inspeção preparada offline.");
+
+        var itensAtivos = checklist.Itens.Where(i => i.Ativo).ToList();
+        var idsCliente = request.RespostasCliente;
+        if (request.IdCliente.HasValue || idsCliente is not null)
+        {
+            if (!request.IdCliente.HasValue || request.IdCliente == Guid.Empty || idsCliente is null
+                || idsCliente.Count != itensAtivos.Count || idsCliente.Any(i => i.Id == Guid.Empty)
+                || idsCliente.Select(i => i.Id).Distinct().Count() != idsCliente.Count
+                || !idsCliente.Select(i => i.ChecklistModeloItemId).Order().SequenceEqual(itensAtivos.Select(i => i.Id).Order()))
+                throw new InvalidOperationException("O checklist preparado offline está incompleto ou contém identificadores inválidos.");
+            var ids = idsCliente.Select(i => i.Id).ToList();
+            if (await _db.Inspecoes.IgnoreQueryFilters().AnyAsync(i => i.Id == request.IdCliente, ct)
+                || await _db.InspecaoItemRespostas.IgnoreQueryFilters().AnyAsync(r => ids.Contains(r.Id), ct))
+                throw new InvalidOperationException("Os identificadores desta criação já estão em uso. Confira a sincronização antes de tentar criar novamente.");
+        }
+
         var inspecao = new Inspecao
         {
+            Id = request.IdCliente ?? Guid.NewGuid(),
             TipoInspecao = checklist.TipoInspecao,
             ObraId = request.ObraId,
             AtividadeId = request.AtividadeId,
@@ -84,16 +111,18 @@ public class CriarInspecaoCommandHandler : IRequestHandler<CriarInspecaoCommand,
             NumeroDocumento = await _geradorNumero.GerarAsync("INSP", ct),
         };
 
-        foreach (var item in checklist.Itens.Where(i => i.Ativo))
+        foreach (var item in itensAtivos)
         {
             inspecao.Respostas.Add(new InspecaoItemResposta
             {
+                Id = idsCliente?.Single(i => i.ChecklistModeloItemId == item.Id).Id ?? Guid.NewGuid(),
                 ChecklistModeloItemId = item.Id,
             });
         }
 
         _db.Inspecoes.Add(inspecao);
         await _db.SaveChangesAsync(ct);
-        return inspecao.Id;
+        return new(inspecao.Id, inspecao.NumeroDocumento, inspecao.Respostas.ToDictionary(r => r.Id,
+            r => r.RowVersion is null ? null : Convert.ToBase64String(r.RowVersion)));
     }
 }

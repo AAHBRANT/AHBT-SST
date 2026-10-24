@@ -30,6 +30,7 @@ public class ListarInspecoesQueryHandler : IRequestHandler<ListarInspecoesQuery,
             .Select(i => new InspecaoDto
             {
                 Id = i.Id,
+                NumeroDocumento = i.NumeroDocumento,
                 TipoInspecao = i.TipoInspecao,
                 ObraId = i.ObraId,
                 ObraNome = i.Obra != null ? i.Obra.Nome : string.Empty,

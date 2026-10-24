@@ -5,6 +5,10 @@ export function ehEncerramentoInspecao(item: ItemFilaSaida) {
   return /^\/api\/inspecoes\/[^/]+\/encerrar$/.test(item.url);
 }
 
+export function ehCriacaoInspecao(item: ItemFilaSaida) {
+  return Boolean(item.inspecaoId && item.url === '/api/inspecoes' && item.metodo === 'POST');
+}
+
 export function aplicarAcaoInspecao(item: ItemFilaSaida, detalhe: InspecaoDetalhe, confirmado = false) {
   if (ehEncerramentoInspecao(item)) {
     if (confirmado) detalhe.inspecao.status = 2;

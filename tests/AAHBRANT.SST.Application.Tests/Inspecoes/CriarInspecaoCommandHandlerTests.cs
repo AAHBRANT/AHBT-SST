@@ -29,7 +29,8 @@ public class CriarInspecaoCommandHandlerTests
         await db.SaveChangesAsync();
 
         var handler = new CriarInspecaoCommandHandler(db, new GeradorNumeroDocumentoService(db));
-        var id = await handler.Handle(new CriarInspecaoCommand(checklist.Id, obra.Id, null, DateTime.UtcNow, usuario.Id), default);
+        var resultado = await handler.Handle(new CriarInspecaoCommand(checklist.Id, obra.Id, null, DateTime.UtcNow, usuario.Id), default);
+        var id = resultado.Id;
 
         var inspecao = await db.Inspecoes.FirstAsync(i => i.Id == id);
         Assert.StartsWith("INSP-", inspecao.NumeroDocumento);

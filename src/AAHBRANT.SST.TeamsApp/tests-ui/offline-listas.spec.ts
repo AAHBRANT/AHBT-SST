@@ -31,7 +31,8 @@ async function limparCache(page: Page, tudo = false) {
       abertura.onerror = () => reject(abertura.error);
       abertura.onsuccess = () => {
         const db = abertura.result;
-        const tx = db.transaction('cacheJson', 'readwrite');
+        const tx = db.transaction(['cacheJson', 'preparacaoInspecoes'], 'readwrite');
+        tx.objectStore('preparacaoInspecoes').clear();
         const store = tx.objectStore('cacheJson');
         if (limparTudo) store.clear();
         else for (const path of ['/api/obras', '/api/atividades', '/api/usuarios', '/api/checklistmodelos']) store.delete(path);

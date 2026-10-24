@@ -2,7 +2,7 @@ import { API_BASE_URL } from '../apiBase';
 import { montarHeadersAuth } from '../authHeaders';
 import { offlineDb, type ItemFilaSaida } from './db';
 import { contaOffline } from './conta';
-import { aplicarAcaoInspecao, ehEncerramentoInspecao } from './inspecaoEstado';
+import { aplicarAcaoInspecao, ehEncerramentoInspecao, ehCriacaoInspecao } from './inspecaoEstado';
 
 // Motor de sincronização offline — piloto nos módulos de campo (DDS, Inspeções, Checklists, APRs).
 //
@@ -80,6 +80,20 @@ export async function listarConflitosNaoLidos() {
 
 // "Marcar como visto" também descarta a ação guardada (e a foto), liberando o espaço do aparelho.
 export async function marcarConflitoComoLido(id: number) {
+  const conflito = await offlineDb.conflitos.get(id);
+  if (conflito?.item && ehCriacaoInspecao(conflito.item)) {
+    // A interface confirma explicitamente o descarte de toda a criação local e dos seus anexos.
+    const item = conflito.item;
+    await offlineDb.transaction('rw', offlineDb.conflitos, offlineDb.filaSaida, offlineDb.inspecoesLocais, async () => {
+      const fila = (await offlineDb.filaSaida.toArray()).filter(i => i.inspecaoId === item.inspecaoId && i.conta === item.conta);
+      await offlineDb.filaSaida.bulkDelete(fila.map(i => i.id!));
+      const conflitos = (await offlineDb.conflitos.toArray()).filter(c => c.item?.inspecaoId === item.inspecaoId && c.item?.conta === item.conta);
+      await offlineDb.conflitos.bulkDelete(conflitos.map(c => c.id!));
+      await offlineDb.inspecoesLocais.delete(`${item.conta}|${item.inspecaoId}`);
+    });
+    notificarMudanca();
+    return;
+  }
   await offlineDb.conflitos.update(id, { lido: true, item: undefined });
   notificarMudanca();
 }
@@ -93,11 +107,13 @@ export async function reenviarConflito(id: number) {
     const headers = await montarHeadersAuth();
     const conta = contaDoHeader(headers) ?? (import.meta.env.DEV ? 'desenvolvimento' : undefined);
     if (conta !== conflito.item.conta) throw new Error('Entre com a conta que registrou esta inspeção para reenviar.');
+    if (!ehCriacaoInspecao(conflito.item)) {
     const response = await fetch(`${API_BASE_URL}/api/inspecoes/${conflito.item.inspecaoId}`, { headers });
     if (!response.ok) throw new Error('Não foi possível conferir a versão atual da inspeção. Tente novamente com internet e login ativo.');
     const detalhe = await response.json();
     const respostaId = /^\/api\/inspecoes\/respostas\/([^/]+)/.exec(conflito.item.url)?.[1];
     conflito.item.versaoResposta = detalhe.respostas.find((r: { id: string }) => r.id === respostaId)?.versaoResposta;
+    }
   }
   await offlineDb.filaSaida.add({ ...conflito.item, idempotencyKey: crypto.randomUUID(), criadoEm: Date.now(), tentativas: 0, ultimoErro: undefined });
   await offlineDb.conflitos.delete(id);
@@ -107,6 +123,7 @@ export async function reenviarConflito(id: number) {
 
 // Nome da ação para a pessoa (em vez de "POST /api/documentos/…/autenticacao/facial").
 export function descreverAcaoOffline(url: string, metodo: string): string {
+  if (url === '/api/inspecoes' && metodo === 'POST') return 'Criação da inspeção';
   if (/\/inspecoes\/[^/]+\/encerrar$/.test(url)) return 'Finalização da inspeção';
   if (url.includes('/inspecoes/respostas/')) return url.endsWith('/foto') || url.endsWith('/foto-depois') ? 'Foto da inspeção' : 'Resposta do checklist';
   if (url.includes('/autenticacao/facial')) return 'Assinatura por reconhecimento facial';
@@ -406,6 +423,7 @@ export async function syncMutateMultipart<T>(
 // ---------- Esvaziamento da fila ----------
 
 let sincronizando = false;
+let novaSincronizacaoSolicitada = false;
 
 function reconstruirFormData(item: ItemFilaSaida): FormData {
   const formData = new FormData();
@@ -415,14 +433,18 @@ function reconstruirFormData(item: ItemFilaSaida): FormData {
 }
 
 export async function sincronizarFilaSaida(): Promise<void> {
-  if (sincronizando || !navigator.onLine) {
+  if (sincronizando) {
+    novaSincronizacaoSolicitada = true;
+    return;
+  }
+  if (!navigator.onLine) {
     return;
   }
   sincronizando = true;
 
   try {
     const itens = (await offlineDb.filaSaida.orderBy('criadoEm').toArray())
-      .sort((a, b) => Number(ehEncerramentoInspecao(a)) - Number(ehEncerramentoInspecao(b)));
+      .sort((a, b) => (ehCriacaoInspecao(a) ? -1 : Number(ehEncerramentoInspecao(a))) - (ehCriacaoInspecao(b) ? -1 : Number(ehEncerramentoInspecao(b))));
     const bloqueadas = new Set((await offlineDb.conflitos.toArray())
       .filter(c => !c.lido && c.item?.inspecaoId).map(c => `${c.item!.conta}|${c.item!.inspecaoId}`));
     for (const planejado of itens) {
@@ -474,13 +496,25 @@ export async function sincronizarFilaSaida(): Promise<void> {
         }
 
         if (response.ok) {
-          const novaVersao: string | null | undefined = item.inspecaoId && !ehEncerramentoInspecao(item)
-            ? (await response.json().catch(() => ({}))).versaoResposta : undefined;
+          const retorno = item.inspecaoId && !ehEncerramentoInspecao(item) ? await response.json().catch(() => ({})) : {};
+          const novaVersao: string | null | undefined = retorno.versaoResposta;
           await offlineDb.transaction('rw', offlineDb.filaSaida, offlineDb.inspecoesLocais, async () => {
             if (item.inspecaoId) {
               const chave = `${item.conta}|${item.inspecaoId}`;
               const local = await offlineDb.inspecoesLocais.get(chave);
               if (local) {
+                if (ehCriacaoInspecao(item)) {
+                  if (retorno.id !== item.inspecaoId || !retorno.versoesRespostas) throw new Error('A criação ainda não foi confirmada pelo servidor. Mantenha a inspeção neste dispositivo e tente novamente após a atualização.');
+                  local.criadaLocalmente = false;
+                  local.confirmado.inspecao.numeroDocumento = retorno.numeroDocumento;
+                  const seguintes = (await offlineDb.filaSaida.toArray()).filter(i => i.inspecaoId === item.inspecaoId && i.conta === item.conta && i.id !== item.id);
+                  for (const r of local.confirmado.respostas) {
+                    r.versaoResposta = retorno.versoesRespostas[r.id];
+                    if (local.rascunhos[r.id] && local.rascunhos[r.id].versaoResposta == null) local.rascunhos[r.id].versaoResposta = r.versaoResposta;
+                    for (const acao of seguintes.filter(i => /^\/api\/inspecoes\/respostas\/([^/]+)/.exec(i.url)?.[1] === r.id))
+                      await offlineDb.filaSaida.update(acao.id!, { versaoResposta: r.versaoResposta });
+                  }
+                }
                 aplicarAcaoInspecao(item, local.confirmado, true);
                 const respostaId = /^\/api\/inspecoes\/respostas\/([^/]+)/.exec(item.url)?.[1];
                 const resposta = local.confirmado.respostas.find(r => r.id === respostaId);
@@ -549,6 +583,10 @@ export async function sincronizarFilaSaida(): Promise<void> {
   } finally {
     sincronizando = false;
     notificarMudanca();
+    if (novaSincronizacaoSolicitada) {
+      novaSincronizacaoSolicitada = false;
+      void sincronizarFilaSaida().catch(() => undefined);
+    }
   }
 }
 
