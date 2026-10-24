@@ -2864,8 +2864,30 @@ export interface AtividadeGerada { codigoEap: string; nome: string; riscosGerado
 export interface FuncaoGerada { funcaoId?: string | null; nome: string; descricao?: string | null; sugeridaPelaIa: boolean }
 export interface GheGerado { numero: number; nome: string; ambiente?: string | null; jornada?: string | null; funcoes: FuncaoGerada[]; atividades: AtividadeGerada[] }
 export interface AcaoPlanoGerada { descricao: string; responsavelUsuarioId?: string | null; responsavelNome?: string | null; prazo?: string | null }
+export interface ContatoEmergencia {
+  chave?: 'hospital' | 'samu' | 'bombeiros' | 'pm' | 'seguranca' | null;
+  local: string; endereco?: string | null; telefone?: string | null;
+  distanciaKm?: number | null; tempoMinutos?: number | null; rota?: string | null; recomendado: boolean;
+}
+// Dados da obra que o PGR exige e o sistema não tem em outro lugar: o técnico preenche uma vez.
+export interface DadosComplementaresPgr {
+  cnae?: string | null; grauRisco?: number | null; cep?: string | null;
+  responsavelTecnicoRegistro?: string | null; responsavelImplantacaoNome?: string | null; responsavelImplantacaoCargo?: string | null;
+  contatosEmergencia: ContatoEmergencia[]; cenariosEmergencia: string[];
+  rotasCalculadasEmUtc?: string | null; rotasFonte?: string | null;
+}
+export interface OpcaoEmergencia {
+  id: string; chave: 'hospital' | 'bombeiros' | 'pm'; nome: string; endereco?: string | null; telefone?: string | null;
+  atendeUrgencia: boolean; distanciaKm: number; tempoMinutos: number; rota: string; recomendado: boolean;
+  justificativa?: string | null; linkMapa: string;
+}
+export interface SugestaoEmergencia {
+  fonte: string; calculadoEmUtc: string; enderecoEncontrado?: string | null; localizacaoAproximada: boolean; usouIa: boolean;
+  opcoes: OpcaoEmergencia[]; cenariosSugeridos: string[]; avisos: string[];
+}
 export interface EstruturaGeracaoPgr {
   itens: ItemEapGerado[]; ghes: GheGerado[]; dataTermino?: string | null; acoesPlano: AcaoPlanoGerada[];
+  complementares: DadosComplementaresPgr;
   // Formato antigo (uma ação por linha); o servidor já converte para acoesPlano ao ler.
   planoAcao: string[];
 }
@@ -5582,6 +5604,8 @@ export const api = {
     salvar: (id: string, passo: number, estrutura: EstruturaGeracaoPgr) =>
       request<void>(`/api/geracoes-pgr-eap/${id}`, { method: 'PUT', body: JSON.stringify({ passo, estrutura }) }),
     sugerirGhes: (id: string) => request<void>(`/api/geracoes-pgr-eap/${id}/sugerir-ghes`, { method: 'POST' }),
+    // Locais, rotas e recomendação da IA a partir do endereço da obra; não grava nada.
+    sugerirEmergencia: (id: string) => request<SugestaoEmergencia>(`/api/geracoes-pgr-eap/${id}/sugerir-emergencia`, { method: 'POST' }),
     gerarRiscos: (id: string, gheNumero: number, codigoEap: string) =>
       request<{ riscos: number }>(`/api/geracoes-pgr-eap/${id}/gerar-riscos`, { method: 'POST', body: JSON.stringify({ gheNumero, codigoEap }) }),
     enviarAprovacao: (id: string) => request<void>(`/api/geracoes-pgr-eap/${id}/enviar-aprovacao`, { method: 'POST' }),

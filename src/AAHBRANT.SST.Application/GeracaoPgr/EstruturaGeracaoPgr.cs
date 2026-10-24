@@ -10,6 +10,8 @@ public class EstruturaGeracaoPgr
     // Fim da vigência do programa (23/10/2026): vira Pgr.DataTermino na aprovação e liga o alerta de PGR vencido.
     public DateTime? DataTermino { get; set; }
     public List<AcaoPlanoGerada> AcoesPlano { get; set; } = new();
+    // Dados da obra que o PGR exige e o sistema não tem em outro lugar (24/10/2026): emergência, CNAE, CREA...
+    public DadosComplementaresPgr Complementares { get; set; } = new();
     // Formato antigo (uma ação por linha, sem responsável nem prazo). Só existe para ler rascunhos feitos
     // antes de 23/10/2026: Normalizar() passa as linhas para AcoesPlano.
     public List<string> PlanoAcao { get; set; } = new();
@@ -19,8 +21,81 @@ public class EstruturaGeracaoPgr
         foreach (var texto in PlanoAcao.Where(t => !string.IsNullOrWhiteSpace(t)))
             AcoesPlano.Add(new AcaoPlanoGerada { Descricao = texto.Trim() });
         PlanoAcao = new();
+        Complementares ??= new();
+        Complementares.SemearPadroes();
         return this;
     }
+}
+
+// Dados complementares do PGR: o técnico preenche uma vez e a tela já abre preenchida nas próximas gerações
+// da mesma obra. Obrigatórios para aprovar, como o término da vigência.
+public class DadosComplementaresPgr
+{
+    // Número e descrição, como no documento (ex.: "4211-1/01 — Construção de rodovias e ferrovias").
+    public string? Cnae { get; set; }
+    // Grau de risco da atividade, de 1 a 4 (NR-04).
+    public int? GrauRisco { get; set; }
+    public string? Cep { get; set; }
+    // Registro profissional (CREA) de quem assina como responsável técnico.
+    public string? ResponsavelTecnicoRegistro { get; set; }
+    public string? ResponsavelImplantacaoNome { get; set; }
+    public string? ResponsavelImplantacaoCargo { get; set; }
+    public List<ContatoEmergencia> ContatosEmergencia { get; set; } = new();
+    public List<string> CenariosEmergencia { get; set; } = new();
+    // Quando e de onde as rotas foram calculadas (sugestão por mapa): vai no rodapé do plano de emergência.
+    public DateTime? RotasCalculadasEmUtc { get; set; }
+    public string? RotasFonte { get; set; }
+
+    // Linhas e cenários iniciais, para a tela nunca abrir vazia. Só entram quando a lista está vazia.
+    public void SemearPadroes()
+    {
+        if (ContatosEmergencia.Count == 0)
+            ContatosEmergencia = new()
+            {
+                new() { Chave = "hospital", Local = "Hospital" },
+                new() { Chave = "samu", Local = "SAMU", Telefone = "192" },
+                new() { Chave = "bombeiros", Local = "Corpo de Bombeiros", Telefone = "193" },
+                new() { Chave = "pm", Local = "Polícia Militar", Telefone = "190" },
+                new() { Chave = "seguranca", Local = "Segurança do trabalho da obra" },
+            };
+        if (CenariosEmergencia.Count == 0)
+            CenariosEmergencia = CenariosEmergenciaPgr.Padrao.ToList();
+    }
+}
+
+public class ContatoEmergencia
+{
+    // "hospital", "samu", "bombeiros", "pm" ou "seguranca" nas linhas iniciais; nulo nas linhas que o técnico acrescenta.
+    public string? Chave { get; set; }
+    public string Local { get; set; } = string.Empty;
+    public string? Endereco { get; set; }
+    public string? Telefone { get; set; }
+    // Rota até o local, calculada a partir da obra (sugestão por mapa). O técnico confere antes de aprovar.
+    public double? DistanciaKm { get; set; }
+    public int? TempoMinutos { get; set; }
+    // Caminho em linguagem simples, um passo por linha.
+    public string? Rota { get; set; }
+    // Local que a IA recomenda entre as opções próximas (ex.: hospital mais adequado aos riscos da obra).
+    public bool Recomendado { get; set; }
+}
+
+public static class CenariosEmergenciaPgr
+{
+    public static readonly string[] Todos =
+    {
+        "Acidente pessoal ou mal súbito",
+        "Incêndio e explosão",
+        "Vazamento ou derrame de óleos, graxas e líquidos combustíveis ou inflamáveis",
+        "Acidente com eletricidade",
+        "Acidente de trajeto",
+        "Resgate em trabalho em altura",
+        "Resgate em espaço confinado",
+        "Soterramento ou deslizamento de talude",
+        "Atropelamento ou acidente com máquinas",
+    };
+
+    // Os cinco cenários mínimos do modelo da obra; os demais o técnico marca quando se aplicam.
+    public static readonly string[] Padrao = Todos.Take(5).ToArray();
 }
 
 // Categorias de medida de prevenção na ordem de prioridade da NR-01.

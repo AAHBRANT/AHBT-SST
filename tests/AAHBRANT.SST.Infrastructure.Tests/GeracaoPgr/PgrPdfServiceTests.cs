@@ -74,6 +74,29 @@ public class PgrPdfServiceTests
     }
 
     [Fact]
+    public void Gerar_ComContatosDeEmergenciaERotas_DevolvePdfComOsTextosDaFicha()
+    {
+        var dados = DadosCompletos();
+        var comp = dados.Estrutura.Complementares;
+        comp.Cnae = "4211-1/01 — Construção de rodovias";
+        comp.GrauRisco = 3;
+        comp.ResponsavelTecnicoRegistro = "CREA 12345";
+        comp.ResponsavelImplantacaoNome = "Enc. João";
+        comp.ContatosEmergencia = new()
+        {
+            new() { Chave = "hospital", Local = "Hospital — Pronto-Socorro Central", Endereco = "Av. B, 200", Telefone = "(31) 3333-0000", DistanciaKm = 5.2, TempoMinutos = 12, Rota = "Saia da obra e siga pela Rua da Obra por 300 m.\nChegue ao destino.", Recomendado = true },
+            new() { Chave = "bombeiros", Local = "Corpo de Bombeiros", Telefone = "193" },
+        };
+        comp.RotasCalculadasEmUtc = new DateTime(2026, 10, 24, 12, 0, 0, DateTimeKind.Utc);
+        comp.RotasFonte = "OpenStreetMap";
+
+        var pdf = new PgrPdfService().Gerar(dados, null);
+
+        Assert.Equal("%PDF", System.Text.Encoding.ASCII.GetString(pdf, 0, 4));
+        Assert.True(pdf.Length > 1000);
+    }
+
+    [Fact]
     public void Gerar_SemLogo_DevolvePdfValido()
     {
         var pdf = new PgrPdfService().Gerar(DadosCompletos(), null);

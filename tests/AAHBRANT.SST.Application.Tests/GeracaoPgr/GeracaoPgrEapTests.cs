@@ -23,6 +23,9 @@ public class GeracaoPgrEapTests
             ContextoRiscos = contexto;
             return Task.FromResult(Riscos);
         }
+
+        public Task<SugestaoEmergenciaIa> SugerirEmergenciaAsync(ContextoEmergenciaIa contexto, CancellationToken ct) =>
+            Task.FromResult(new SugestaoEmergenciaIa(new List<RecomendacaoEmergenciaIa>(), new List<string>()));
     }
 
     private sealed class ExtratorFalso : IExtratorTextoEap
@@ -112,6 +115,57 @@ public class GeracaoPgrEapTests
         Assert.False(r.Revisado);
     }
 
+    private static DadosComplementaresPgr ComplementaresCompletos()
+    {
+        var c = new DadosComplementaresPgr
+        {
+            Cnae = "4211-1/01 — Construção de rodovias", GrauRisco = 3,
+            ResponsavelTecnicoRegistro = "CREA 12345", ResponsavelImplantacaoNome = "Enc. João",
+        };
+        c.SemearPadroes();
+        c.ContatosEmergencia.Single(x => x.Chave == "hospital").Telefone = "(31) 3333-4444";
+        return c;
+    }
+
+    [Fact]
+    public void Complementares_NascemComContatosENumerosNacionais_ENaoSaoReSemeadosDepoisDeEditados()
+    {
+        var e = new EstruturaGeracaoPgr().Normalizar();
+
+        Assert.Equal("192", e.Complementares.ContatosEmergencia.Single(x => x.Chave == "samu").Telefone);
+        Assert.Equal("193", e.Complementares.ContatosEmergencia.Single(x => x.Chave == "bombeiros").Telefone);
+        Assert.Equal("190", e.Complementares.ContatosEmergencia.Single(x => x.Chave == "pm").Telefone);
+        Assert.Null(e.Complementares.ContatosEmergencia.Single(x => x.Chave == "hospital").Telefone); // o técnico informa
+        Assert.Equal(5, e.Complementares.CenariosEmergencia.Count);
+
+        e.Complementares.ContatosEmergencia.Single(x => x.Chave == "hospital").Telefone = "(31) 3333-4444";
+        e.Complementares.CenariosEmergencia.RemoveAt(0);
+        e.Normalizar();
+        Assert.Equal("(31) 3333-4444", e.Complementares.ContatosEmergencia.Single(x => x.Chave == "hospital").Telefone);
+        Assert.Equal(4, e.Complementares.CenariosEmergencia.Count);
+    }
+
+    [Fact]
+    public async Task NovaGeracao_HerdaOsDadosComplementaresDaUltimaAprovadaDaObra()
+    {
+        var (db, obra, _) = await CriarAsync();
+        var anterior = new EstruturaGeracaoPgr { Complementares = ComplementaresCompletos() };
+        db.GeracoesPgrEap.Add(new GeracaoPgrEap
+        {
+            ObraId = obra.Id, Nome = "PGR anterior", DataElaboracao = DateTime.UtcNow.AddYears(-1), NomeArquivoEap = "a.xlsx",
+            Status = StatusGeracaoPgrEap.Aprovado, AprovadoEmUtc = DateTime.UtcNow.AddMonths(-3),
+            EstruturaJson = System.Text.Json.JsonSerializer.Serialize(anterior, new System.Text.Json.JsonSerializerOptions(System.Text.Json.JsonSerializerDefaults.Web)),
+        });
+        await db.SaveChangesAsync();
+
+        var id = await CriarGeracaoAsync(db, obra, new IaFalsa());
+
+        var dto = await new ObterGeracaoPgrEapQueryHandler(db).Handle(new ObterGeracaoPgrEapQuery(id), default);
+        Assert.Equal("CREA 12345", dto.Estrutura.Complementares.ResponsavelTecnicoRegistro);
+        Assert.Equal("(31) 3333-4444", dto.Estrutura.Complementares.ContatosEmergencia.Single(x => x.Chave == "hospital").Telefone);
+        Assert.Null(dto.Estrutura.DataTermino); // a vigência é nova a cada geração
+    }
+
     [Fact]
     public void Pendencias_ExigemTermino_ResponsavelEPrazoDaAcao_ECategoriaDaMedidaAceita()
     {
@@ -138,7 +192,13 @@ public class GeracaoPgrEapTests
         Assert.Contains(pendencias, p => p.Contains("sem responsável"));
         Assert.Contains(pendencias, p => p.Contains("sem prazo"));
         Assert.Contains(pendencias, p => p.Contains("sem classificação"));
+        Assert.Contains(pendencias, p => p.Contains("CNAE"));
+        Assert.Contains(pendencias, p => p.Contains("grau de risco"));
+        Assert.Contains(pendencias, p => p.Contains("CREA"));
+        Assert.Contains(pendencias, p => p.Contains("implantação"));
+        Assert.Contains(pendencias, p => p.Contains("hospital"));
 
+        estrutura.Complementares = ComplementaresCompletos();
         estrutura.DataTermino = new DateTime(2027, 1, 1);
         estrutura.AcoesPlano[0].ResponsavelNome = "Téc. Ana";
         estrutura.AcoesPlano[0].Prazo = new DateTime(2026, 12, 1);
@@ -180,6 +240,7 @@ public class GeracaoPgrEapTests
             },
             DataTermino = new DateTime(2027, 10, 21),
             AcoesPlano = new() { new AcaoPlanoGerada { Descricao = "Instalar linha de vida", ResponsavelNome = "Téc. Ana", Prazo = new DateTime(2026, 12, 15) } },
+            Complementares = ComplementaresCompletos(),
         };
 
         // Com medida pendente, nem envia nem aprova sem resolver.

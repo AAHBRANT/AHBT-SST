@@ -36,7 +36,8 @@ public record DadosPgrPdf(
     string? ObraCidade = null,
     string? ObraUf = null,
     IReadOnlyList<LinhaFuncaoPdf>? Funcoes = null,
-    IReadOnlyList<RevisaoPdf>? Revisoes = null);
+    IReadOnlyList<RevisaoPdf>? Revisoes = null,
+    int? NumeroFuncionarios = null);
 
 // Função de um GHE com o CBO do cadastro e a quantidade de expostos (trabalhadores ativos da obra na função).
 public record LinhaFuncaoPdf(int GheNumero, string Nome, string? Cbo, int Expostos);
@@ -127,7 +128,8 @@ public class GerarPdfGeracaoPgrEapQueryHandler : IRequestHandler<GerarPdfGeracao
             obra.Cidade,
             obra.Uf,
             linhasFuncao,
-            revisoes);
+            revisoes,
+            expostosPorFuncao.Values.Sum());
 
         var nomeArquivo = $"PGR - {obra.Nome} - {g.DataElaboracao:yyyyMMdd}.pdf";
         return new ArquivoPgrPdf(_pdf.Gerar(dados, obra.LogoConteudo), nomeArquivo);
