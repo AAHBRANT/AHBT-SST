@@ -43,6 +43,11 @@ export function SyncStatusBadge() {
   const [online, setOnline] = useState(estaOnline());
   const [pendentes, setPendentes] = useState(0);
   const [conflitos, setConflitos] = useState<ItemConflito[]>([]);
+  const [erroAcao, setErroAcao] = useState<string | null>(null);
+  async function executar(acao: () => Promise<unknown>) {
+    setErroAcao(null);
+    try { await acao(); } catch (e) { setErroAcao(e instanceof Error ? e.message : 'Não foi possível executar a ação.'); }
+  }
 
   useEffect(() => {
     const atualizar = () => {
@@ -86,6 +91,7 @@ export function SyncStatusBadge() {
       </PopoverTrigger>
       <PopoverSurface className={estilos.painel}>
         <Text weight="semibold">{online ? 'Conectado' : 'Sem conexão'}</Text>
+        {erroAcao && <Text role="alert">{erroAcao}</Text>}
 
         {pendentes > 0 && (
           <div>
@@ -93,7 +99,7 @@ export function SyncStatusBadge() {
               {pendentes} ação{pendentes > 1 ? 'ões' : ''} aguardando conexão para sincronizar automaticamente.
             </Text>
             {online && (
-              <Button appearance="secondary" size="small" onClick={() => void sincronizarFilaSaida()}>
+              <Button appearance="secondary" size="small" onClick={() => void executar(sincronizarFilaSaida)}>
                 Sincronizar agora
               </Button>
             )}
@@ -112,14 +118,14 @@ export function SyncStatusBadge() {
             <Text size={200}>{conflito.mensagem}</Text>
             <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
               {conflito.item && online && (
-                <Button appearance="secondary" size="small" onClick={() => conflito.id && void reenviarConflito(conflito.id)}>
+                <Button appearance="secondary" size="small" onClick={() => conflito.id && void executar(() => reenviarConflito(conflito.id!))}>
                   Tentar de novo
                 </Button>
               )}
               <Button
                 appearance="transparent"
                 size="small"
-                onClick={() => conflito.id && void marcarConflitoComoLido(conflito.id)}
+                onClick={() => conflito.id && void executar(() => marcarConflitoComoLido(conflito.id!))}
               >
                 {conflito.item ? 'Descartar' : 'Marcar como visto'}
               </Button>

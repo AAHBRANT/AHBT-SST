@@ -1,6 +1,7 @@
 import { authentication } from '@microsoft/teams-js';
 import { obterTokenAutenticacaoNavegador } from './browserAuth';
 import { aguardarInicializacaoTeams } from '../teams/teamsInit';
+import { contaOffline, lembrarConta } from './offline/conta';
 
 // Espera a mesma promise de app.initialize() usada por useTeamsContext antes de tentar obter o
 // token: chamar getAuthToken() antes do SDK terminar de assentar falha rápido ("library not
@@ -27,11 +28,19 @@ async function obterTokenAutenticacaoTeams(): Promise<string | null> {
 // momento do enfileiramento já pode ter expirado. api.ts importa este módulo (não o contrário) para
 // evitar import circular com syncEngine.ts.
 export async function montarHeadersAuth(): Promise<Record<string, string>> {
+  if (!navigator.onLine) {
+    contaOffline();
+    return {};
+  }
   const tokenTeams = await obterTokenAutenticacaoTeams();
   if (tokenTeams) {
-    return { Authorization: `Bearer ${tokenTeams}` };
+    const headers = { Authorization: `Bearer ${tokenTeams}` };
+    lembrarConta(headers);
+    return headers;
   }
 
   const token = await obterTokenAutenticacaoNavegador();
-  return token ? { Authorization: `Bearer ${token}` } : {};
+  const headers: Record<string, string> = token ? { Authorization: `Bearer ${token}` } : {};
+  lembrarConta(headers);
+  return headers;
 }

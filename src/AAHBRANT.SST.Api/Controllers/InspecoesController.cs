@@ -42,10 +42,10 @@ public class InspecoesController : ControllerBase
     [HttpPost("respostas/{respostaId:guid}")]
     public async Task<IActionResult> ResponderItem(Guid respostaId, ResponderItemInspecaoRequestBody body, CancellationToken ct)
     {
-        await _mediator.Send(new ResponderItemInspecaoCommand(
+        var versao = await _mediator.Send(new ResponderItemInspecaoCommand(
             respostaId, body.StatusItem, body.Observacao, body.ResponsavelUsuarioId, body.Prazo,
-            body.DescricaoPersonalizada, body.Local, body.PlanoDeAcao), ct);
-        return NoContent();
+            body.DescricaoPersonalizada, body.Local, body.PlanoDeAcao, body.VersaoEsperada), ct);
+        return Ok(new { versaoResposta = versao });
     }
 
     [Authorize(Policy = "inspecao:responder")]
@@ -56,8 +56,8 @@ public class InspecoesController : ControllerBase
         await using var stream = new MemoryStream();
         await body.Foto.CopyToAsync(stream, ct);
 
-        await _mediator.Send(new AnexarFotoItemInspecaoCommand(respostaId, stream.ToArray(), body.Foto.ContentType, body.Metadados), ct);
-        return NoContent();
+        var versao = await _mediator.Send(new AnexarFotoItemInspecaoCommand(respostaId, stream.ToArray(), body.Foto.ContentType, body.Metadados, body.VersaoEsperada), ct);
+        return Ok(new { versaoResposta = versao });
     }
 
     [Authorize(Policy = "inspecao:ver")]
@@ -78,8 +78,8 @@ public class InspecoesController : ControllerBase
         await using var stream = new MemoryStream();
         await body.Foto.CopyToAsync(stream, ct);
 
-        await _mediator.Send(new AnexarFotoDepoisItemInspecaoCommand(respostaId, stream.ToArray(), body.Foto.ContentType, body.Metadados), ct);
-        return NoContent();
+        var versao = await _mediator.Send(new AnexarFotoDepoisItemInspecaoCommand(respostaId, stream.ToArray(), body.Foto.ContentType, body.Metadados, body.VersaoEsperada), ct);
+        return Ok(new { versaoResposta = versao });
     }
 
     [Authorize(Policy = "inspecao:ver")]
@@ -137,7 +137,8 @@ public record ResponderItemInspecaoRequestBody(
     DateTime? Prazo,
     string? DescricaoPersonalizada,
     string? Local,
-    string? PlanoDeAcao);
+    string? PlanoDeAcao,
+    string? VersaoEsperada = null);
 
 public record GerarOcorrenciaRequestBody(
     string? RequisitoRelacionado,
@@ -148,6 +149,7 @@ public record GerarOcorrenciaRequestBody(
 
 public class AnexarFotoItemInspecaoRequestBody
 {
+    public string? VersaoEsperada { get; set; }
     public string? Metadados { get; set; }
     public IFormFile Foto { get; set; } = null!;
 }

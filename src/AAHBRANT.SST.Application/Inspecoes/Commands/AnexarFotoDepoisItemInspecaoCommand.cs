@@ -12,7 +12,7 @@ namespace AAHBRANT.SST.Application.Inspecoes.Commands;
 public record AnexarFotoDepoisItemInspecaoCommand(
     Guid RespostaId,
     byte[] FotoConteudo,
-    string FotoContentType, string? Metadados = null) : IRequest;
+    string FotoContentType, string? Metadados = null, string? VersaoEsperada = null) : IRequest<string?>;
 
 public class AnexarFotoDepoisItemInspecaoCommandValidator : AbstractValidator<AnexarFotoDepoisItemInspecaoCommand>
 {
@@ -32,17 +32,19 @@ public class AnexarFotoDepoisItemInspecaoCommandValidator : AbstractValidator<An
     }
 }
 
-public class AnexarFotoDepoisItemInspecaoCommandHandler : IRequestHandler<AnexarFotoDepoisItemInspecaoCommand>
+public class AnexarFotoDepoisItemInspecaoCommandHandler : IRequestHandler<AnexarFotoDepoisItemInspecaoCommand, string?>
 {
     private readonly IAppDbContext _db;
 
     public AnexarFotoDepoisItemInspecaoCommandHandler(IAppDbContext db) => _db = db;
 
-    public async Task Handle(AnexarFotoDepoisItemInspecaoCommand request, CancellationToken ct)
+    public async Task<string?> Handle(AnexarFotoDepoisItemInspecaoCommand request, CancellationToken ct)
     {
         var resposta = await _db.InspecaoItemRespostas.Include(r => r.Inspecao).FirstOrDefaultAsync(r => r.Id == request.RespostaId, ct)
             ?? throw new KeyNotFoundException($"Resposta {request.RespostaId} não encontrada.");
         await ProtecaoDocumentoAssinado.GarantirEditavelAsync(_db, "Inspecao", resposta.InspecaoId, ct);
+        if (request.VersaoEsperada is not null && request.VersaoEsperada != Convert.ToBase64String(resposta.RowVersion ?? []))
+            throw new DbUpdateConcurrencyException("O item foi alterado enquanto o dispositivo estava offline.");
 
         resposta.FotoDepoisConteudo = request.FotoConteudo;
         resposta.FotoDepoisContentType = request.FotoContentType;
@@ -51,5 +53,6 @@ public class AnexarFotoDepoisItemInspecaoCommandHandler : IRequestHandler<Anexar
             throw new InvalidOperationException("A inspeção já foi finalizada.");
         resposta.FotoDepoisMetadadosJson = await DadosCapturaFoto.PrepararAsync(request.Metadados, resposta.Inspecao.ObraId, _db, ct);
         await _db.SaveChangesAsync(ct);
+        return resposta.RowVersion is null ? null : Convert.ToBase64String(resposta.RowVersion);
     }
 }

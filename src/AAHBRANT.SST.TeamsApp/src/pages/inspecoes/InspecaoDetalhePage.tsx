@@ -1,5 +1,5 @@
 import { pendenciasFoto } from '../../lib/dadosFoto';
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { useLocation, useNavigate, useParams } from 'react-router-dom';
 import {
   BotaoAcao,
@@ -45,6 +45,9 @@ import { SlotFoto } from '../../components/camera/SlotFoto';
 import { SeletorStatusItemChecklist } from '../../components/inspecoes/SeletorStatusItemChecklist';
 import { useRegistrosTravados } from '../../hooks/useRegistrosTravados';
 import { useVisualizadorPdf } from '../../components/useVisualizadorPdf';
+import { assinarMudancasSync, estaOnline } from '../../lib/offline/syncEngine';
+import { obterInspecaoLocal, salvarRascunhoInspecao, salvarRespostaInspecao, salvarFotoInspecao,
+  finalizarInspecaoLocal, estadoSyncInspecao, baixarFotoInspecaoLocal, edicaoDaResposta } from '../../lib/offline/inspecoes';
 
 interface EdicaoResposta {
   descricao: string;
@@ -120,38 +123,44 @@ export function InspecaoDetalhePage() {
   const { visualizar, dialogoVisualizador } = useVisualizadorPdf();
   const [fotoUrls, setFotoUrls] = useState<Record<string, string>>({});
   const [fotoDepoisUrls, setFotoDepoisUrls] = useState<Record<string, string>>({});
+  const [sync, setSync] = useState({ pendentes: 0, conflitos: 0, finalizacaoPendente: false, itensPendentes: [] as string[] });
+  const [rascunhos, setRascunhos] = useState<string[]>([]);
+  const [salvandoRascunho, setSalvandoRascunho] = useState(false);
+  const gravacoes = useRef(0);
+  const escritaRascunhos = useRef<Promise<void>>(Promise.resolve());
+  const versaoEdicao = useRef(0);
+  const versaoCarga = useRef(0);
+  const urlsCriadas = useRef(new Set<string>());
+  const criarUrl = (blob: Blob) => { const url = URL.createObjectURL(blob); urlsCriadas.current.add(url); return url; };
 
-  async function carregar() {
+  const carregar = useCallback(async () => {
     if (!id) return;
+    const versao = ++versaoCarga.current;
+    const edicaoNoInicio = versaoEdicao.current;
     try {
       setErro(null);
-      const [det, listaUsuarios] = await Promise.all([api.inspecoes.obterDetalhe(id), api.usuarios.listar()]);
-      setDetalhe(det);
+      await escritaRascunhos.current;
+      const [local, listaUsuarios] = await Promise.all([obterInspecaoLocal(id), api.usuarios.listar().catch(() => [] as Usuario[])]);
+      const estado = await estadoSyncInspecao(id);
+      if (versao !== versaoCarga.current) return;
+      setDetalhe(local.detalhe);
       setUsuarios(listaUsuarios);
-      setEdicoes((atual) => {
-        const novo: Record<string, EdicaoResposta> = {};
-        for (const resposta of det.respostas) {
-          novo[resposta.id] = atual[resposta.id] ?? {
-            descricao: resposta.descricao,
-            statusItem: resposta.statusItem != null ? String(resposta.statusItem) : '',
-            observacao: resposta.observacao ?? '',
-            local: resposta.local ?? '',
-            planoDeAcao: resposta.planoDeAcao ?? '',
-            responsavelUsuarioId: resposta.responsavelUsuarioId ?? '',
-            prazo: resposta.prazo?.slice(0, 10) ?? '',
-          };
-        }
-        return novo;
-      });
+      setSync(estado);
+      // Uma atualização de rede iniciada antes do toque não pode apagar o que acabou de ser digitado.
+      if (versaoEdicao.current === edicaoNoInicio) {
+        setRascunhos(Object.keys(local.rascunhos));
+        setEdicoes(Object.fromEntries(local.detalhe.respostas.map(r => [r.id, local.rascunhos[r.id] ?? edicaoDaResposta(r)])));
+      }
     } catch (e) {
-      setErro(e instanceof Error ? e.message : 'Falha ao carregar inspeção.');
+      if (versao === versaoCarga.current) setErro(e instanceof Error ? e.message : 'Falha ao carregar inspeção.');
     }
-  }
+  }, [id]);
 
   useEffect(() => {
-    carregar();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [id]);
+    void carregar();
+    const cancelar = assinarMudancasSync(() => void carregar());
+    return () => { cancelar(); versaoCarga.current += 1; };
+  }, [carregar]);
 
   // Miniaturas das evidências (antes/depois) são baixadas sob demanda (só para respostas com
   // temFoto/temFotoDepois) e mantidas como object URL até a página ser desmontada — mesmo padrão de
@@ -163,18 +172,18 @@ export function InspecaoDetalhePage() {
       for (const resposta of detalhe.respostas) {
         if (resposta.temFoto && !fotoUrls[resposta.id]) {
           try {
-            const blob = await api.inspecoes.baixarFoto(resposta.id);
+            const blob = await baixarFotoInspecaoLocal(detalhe.inspecao.id, resposta.id);
             if (cancelado) return;
-            setFotoUrls((atual) => ({ ...atual, [resposta.id]: URL.createObjectURL(blob) }));
+            setFotoUrls((atual) => ({ ...atual, [resposta.id]: criarUrl(blob) }));
           } catch {
             // Falha ao carregar miniatura não impede o uso da página; o slot fica vazio.
           }
         }
         if (resposta.temFotoDepois && !fotoDepoisUrls[resposta.id]) {
           try {
-            const blob = await api.inspecoes.baixarFotoDepois(resposta.id);
+            const blob = await baixarFotoInspecaoLocal(detalhe.inspecao.id, resposta.id, true);
             if (cancelado) return;
-            setFotoDepoisUrls((atual) => ({ ...atual, [resposta.id]: URL.createObjectURL(blob) }));
+            setFotoDepoisUrls((atual) => ({ ...atual, [resposta.id]: criarUrl(blob) }));
           } catch {
             // Falha ao carregar miniatura não impede o uso da página; o slot fica vazio.
           }
@@ -188,21 +197,33 @@ export function InspecaoDetalhePage() {
   }, [detalhe]);
 
   useEffect(() => {
+    const urls = urlsCriadas.current;
     return () => {
-      Object.values(fotoUrls).forEach((url) => URL.revokeObjectURL(url));
-      Object.values(fotoDepoisUrls).forEach((url) => URL.revokeObjectURL(url));
+      urls.forEach((url) => URL.revokeObjectURL(url));
+      urls.clear();
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   function atualizarEdicao(respostaId: string, campos: Partial<EdicaoResposta>) {
+    versaoEdicao.current += 1;
     setEdicoes((atual) => ({
       ...atual,
       [respostaId]: { ...(atual[respostaId] ?? edicaoInicial()), ...campos },
     }));
+    if (!id) return;
+    gravacoes.current += 1;
+    setSalvandoRascunho(true);
+    setRascunhos(atual => atual.includes(respostaId) ? atual : [...atual, respostaId]);
+    escritaRascunhos.current = escritaRascunhos.current.then(() => salvarRascunhoInspecao(id, respostaId, campos)).catch((e) => {
+      setErro(`O rascunho não foi salvo: ${e instanceof Error ? e.message : 'verifique o armazenamento do dispositivo'}`);
+    }).finally(() => {
+      gravacoes.current -= 1;
+      if (gravacoes.current === 0) setSalvandoRascunho(false);
+    });
   }
 
-  async function salvarResposta(respostaId: string, descricaoOriginal: string) {
+  async function salvarResposta(respostaId: string) {
     const edicao = edicoes[respostaId];
     if (!edicao?.statusItem) {
       setErro('Selecione o status do ponto verificado antes de salvar.');
@@ -211,16 +232,9 @@ export function InspecaoDetalhePage() {
     try {
       setProcessando(true);
       setErro(null);
-      await api.inspecoes.responderItem(
-        respostaId,
-        Number(edicao.statusItem),
-        edicao.observacao || null,
-        edicao.responsavelUsuarioId || null,
-        edicao.prazo || null,
-        edicao.descricao !== descricaoOriginal ? edicao.descricao || null : undefined,
-        edicao.local || null,
-        edicao.planoDeAcao || null,
-      );
+      if (!id) return;
+      await escritaRascunhos.current;
+      await salvarRespostaInspecao(id, respostaId, edicao);
       await carregar();
     } catch (e) {
       setErro(e instanceof Error ? e.message : 'Falha ao salvar o ponto verificado.');
@@ -232,7 +246,9 @@ export function InspecaoDetalhePage() {
   async function enviarFoto(respostaId: string, arquivo: File) {
     try {
       setErro(null);
-      await api.inspecoes.anexarFoto(respostaId, arquivo);
+      if (!id) return;
+      await salvarFotoInspecao(id, respostaId, arquivo);
+      setFotoUrls(atual => ({ ...atual, [respostaId]: criarUrl(arquivo) }));
       await carregar();
     } catch (e) {
       setErro(e instanceof Error ? e.message : 'Falha ao enviar a evidência anterior.');
@@ -242,7 +258,9 @@ export function InspecaoDetalhePage() {
   async function enviarFotoDepois(respostaId: string, arquivo: File) {
     try {
       setErro(null);
-      await api.inspecoes.anexarFotoDepois(respostaId, arquivo);
+      if (!id) return;
+      await salvarFotoInspecao(id, respostaId, arquivo, true);
+      setFotoDepoisUrls(atual => ({ ...atual, [respostaId]: criarUrl(arquivo) }));
       await carregar();
     } catch (e) {
       setErro(e instanceof Error ? e.message : 'Falha ao enviar a evidência posterior.');
@@ -250,6 +268,10 @@ export function InspecaoDetalhePage() {
   }
 
   async function gerarOcorrencia(respostaId: string) {
+    if (!navigator.onLine || !estaOnline()) {
+      setErro('Gerar ocorrência exige conexão. As não conformidades também serão geradas pelo servidor ao finalizar a inspeção.');
+      return;
+    }
     try {
       setGerandoOcorrenciaId(respostaId);
       setErro(null);
@@ -271,7 +293,7 @@ export function InspecaoDetalhePage() {
     try {
       setProcessando(true);
       setErro(null);
-      await api.inspecoes.encerrar(id);
+      await finalizarInspecaoLocal(id);
       await carregar();
     } catch (e) {
       setErro(e instanceof Error ? e.message : 'Falha ao encerrar inspeção. Confira se todos os itens foram respondidos.');
@@ -330,12 +352,12 @@ export function InspecaoDetalhePage() {
   const ehInspecaoVeiculo = inspecao.tipoInspecao === TipoInspecao.Veiculo;
 
   const acoes: AcaoWorkflow[] = [];
-  if (inspecao.status === StatusInspecao.EmAndamento) {
+  if (inspecao.status === StatusInspecao.EmAndamento && !sync.finalizacaoPendente) {
     acoes.push({
       chave: 'encerrar',
       rotulo: 'Finalizar inspeção',
       finalizacao: true,
-      pendencias: detalhe.respostas.flatMap(r => {
+      pendencias: [...(rascunhos.length ? ['Salve os itens em rascunho antes de finalizar.'] : []), ...detalhe.respostas.flatMap(r => {
         const p: string[] = [];
         if (r.statusItem == null) p.push('resposta do checklist');
         if (r.exigeFotografia && !r.temFoto) p.push('foto anterior obrigatória');
@@ -344,7 +366,7 @@ export function InspecaoDetalhePage() {
         if (r.temFoto && r.dadosFoto) p.push(...pendenciasFoto(r.dadosFoto).map(d => 'foto anterior: ' + d));
         if (r.temFotoDepois && r.dadosFotoDepois) p.push(...pendenciasFoto(r.dadosFotoDepois).map(d => 'foto posterior: ' + d));
         return p.length ? [r.descricao + ': ' + p.join('; ')] : [];
-      }),
+      })],
       descricao: 'Confira se todos os itens foram respondidos antes de encerrar.',
       tom: 'primario',
       habilitada: true,
@@ -358,7 +380,7 @@ export function InspecaoDetalhePage() {
         titulo: `${tipoInspecaoLabel[inspecao.tipoInspecao]} — ${inspecao.checklistModeloNome} (v${inspecao.checklistModeloVersao})`,
         status: (
           <StatusChip tom={tomPorStatusInspecao[inspecao.status] ?? 'neutro'}>
-            {statusInspecaoLabel[inspecao.status]}
+            {sync.finalizacaoPendente ? 'Finalização pendente' : statusInspecaoLabel[inspecao.status]}
           </StatusChip>
         ),
         voltarPara: '/prevencao/inspecoes',
@@ -462,12 +484,25 @@ export function InspecaoDetalhePage() {
         </FeedbackInline>
       )}
 
+      {sync.pendentes > 0 && (
+        <FeedbackInline tom="info">
+          Salvo no tablet — aguardando sincronização. {sync.pendentes} ação(ões) pendente(s).
+          {sync.finalizacaoPendente && ' A inspeção só aparecerá como concluída após a confirmação do servidor.'}
+        </FeedbackInline>
+      )}
+      {sync.conflitos > 0 && (
+        <FeedbackInline tom="aviso">Há envios recusados desta inspeção. Abra o indicador de sincronização para conferir o motivo e tentar novamente ou descartar. A finalização aguarda a resolução dessas pendências.</FeedbackInline>
+      )}
+      {rascunhos.length > 0 && (
+        <FeedbackInline tom="info">{salvandoRascunho ? 'Salvando rascunho no tablet…' : 'Rascunho salvo no tablet. Use Salvar item para incluir as respostas na sincronização.'}</FeedbackInline>
+      )}
+
       <Text weight="semibold">Pontos verificados</Text>
 
       <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
         {detalhe.respostas.map((resposta, indice) => {
           const edicao = edicoes[resposta.id] ?? edicaoInicial();
-          const somenteLeitura = inspecao.status !== StatusInspecao.EmAndamento || inspecaoAssinada;
+          const somenteLeitura = inspecao.status !== StatusInspecao.EmAndamento || inspecaoAssinada || processando || (sync.finalizacaoPendente && sync.conflitos === 0);
           // Cabeçalho de seção só aparece na fronteira entre seções diferentes — checklists sem
           // Secao preenchida (todos os anteriores ao campo existir) continuam em lista corrida.
           const secaoAnterior = indice > 0 ? detalhe.respostas[indice - 1].secao : undefined;
@@ -480,6 +515,7 @@ export function InspecaoDetalhePage() {
                 </Text>
               )}
               <Card densidade="compacta">
+              {sync.itensPendentes.includes(resposta.id) && <StatusChip tom="atencao">Item salvo no tablet — envio pendente</StatusChip>}
               {ehInspecaoVeiculo ? (
                 <>
                   <div style={{ display: 'grid', gridTemplateColumns: 'minmax(260px, 1fr) minmax(220px, 320px)', gap: 16, alignItems: 'start' }}>
@@ -533,8 +569,8 @@ export function InspecaoDetalhePage() {
                       <Button
                         appearance="primary"
                         icon={<Save24Regular />}
-                        onClick={() => salvarResposta(resposta.id, resposta.descricao)}
-                        disabled={processando}
+                        onClick={() => salvarResposta(resposta.id)}
+                        disabled={processando || salvandoRascunho}
                       >
                         Salvar item
                       </Button>
@@ -598,8 +634,8 @@ export function InspecaoDetalhePage() {
                       <Button
                         appearance="primary"
                         icon={<Save24Regular />}
-                        onClick={() => salvarResposta(resposta.id, resposta.descricao)}
-                        disabled={processando}
+                        onClick={() => salvarResposta(resposta.id)}
+                        disabled={processando || salvandoRascunho}
                       >
                         Salvar item
                       </Button>
@@ -767,8 +803,8 @@ export function InspecaoDetalhePage() {
                   <Button
                     appearance="primary"
                     icon={<Save24Regular />}
-                    onClick={() => salvarResposta(resposta.id, resposta.descricao)}
-                    disabled={processando}
+                    onClick={() => salvarResposta(resposta.id)}
+                    disabled={processando || salvandoRascunho}
                   >
                     Salvar ponto verificado
                   </Button>
