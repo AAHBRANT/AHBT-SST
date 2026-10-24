@@ -24,6 +24,8 @@ import { Add24Regular, Delete24Regular } from '@fluentui/react-icons';
 import { useSouAdministrador } from '../../lib/UsuarioLogadoContext';
 import { hojeIso } from '../../lib/datas';
 import { useRegistrosTravados } from '../../hooks/useRegistrosTravados';
+import { assinarMudancasSync } from '../../lib/offline/syncEngine';
+import { criarInspecaoCampo, mesclarInspecoesLocais, obterPreparacaoInspecoes, prepararInspecoesOffline, type InspecaoCampo } from '../../lib/offline/inspecoes';
 import {
   api,
   statusInspecaoLabel,
@@ -60,7 +62,7 @@ const tomPorStatusInspecao: Record<number, Tom> = {
 // só repetia a navegação da linha (guia item 1) sai — a linha inteira já navega via aoClicarLinha.
 export function InspecoesTab() {
   const navigate = useNavigate();
-  const [inspecoes, setInspecoes] = useState<Inspecao[]>([]);
+  const [inspecoes, setInspecoes] = useState<InspecaoCampo[]>([]);
   // Já assinados não podem ser excluídos (o servidor recusa): o botão some deles.
   const travados = useRegistrosTravados('Inspecao', inspecoes.map((i) => i.id));
   const [obras, setObras] = useState<Obra[]>([]);
@@ -78,34 +80,42 @@ export function InspecoesTab() {
   const [listaCarregada, setListaCarregada] = useState(false);
   const [apoioIndisponivel, setApoioIndisponivel] = useState(false);
   const [painelAberto, setPainelAberto] = useState(false);
+  const [preparando, setPreparando] = useState(false);
+  const [modelosPreparados, setModelosPreparados] = useState(0);
+  const [totalModelos, setTotalModelos] = useState(0);
 
   async function carregar() {
     try {
       setErro(null);
-      const [lista, listaObras, listaAtividades, listaChecklists, listaUsuarios] = await Promise.allSettled([
-        api.inspecoes.listar(),
-        api.obras.listar(),
-        api.atividades.listar(),
-        api.checklistModelos.listar(),
-        api.usuarios.listar(),
+      setPreparando(navigator.onLine);
+      const [lista, preparada] = await Promise.allSettled([
+        api.inspecoes.listar(), navigator.onLine ? prepararInspecoesOffline().then(r => r.preparacao) : obterPreparacaoInspecoes(),
       ]);
-      if (lista.status === 'rejected') throw lista.reason;
-      setInspecoes(lista.value);
+      const mescladas = await mesclarInspecoesLocais(lista.status === 'fulfilled' ? lista.value : []);
+      if (lista.status === 'rejected' && !mescladas.length) throw lista.reason;
+      setInspecoes(mescladas);
       setListaCarregada(true);
-      setApoioIndisponivel([listaObras, listaAtividades, listaChecklists, listaUsuarios].some((r) => r.status === 'rejected'));
-      if (listaObras.status === 'fulfilled') setObras(listaObras.value);
-      if (listaAtividades.status === 'fulfilled') setAtividades(listaAtividades.value);
-      if (listaChecklists.status === 'fulfilled') setChecklists(listaChecklists.value);
-      if (listaUsuarios.status === 'fulfilled') setUsuarios(listaUsuarios.value);
+      const preparo = preparada.status === 'fulfilled' ? preparada.value : await obterPreparacaoInspecoes();
+      setApoioIndisponivel(!preparo || preparada.status === 'rejected');
+      if (preparo) {
+        setObras(preparo.obras); setAtividades(preparo.atividades); setUsuarios(preparo.usuarios);
+        setChecklists(Object.values(preparo.modelos).map(m => m.checklistModelo));
+        setModelosPreparados(Object.keys(preparo.modelos).length);
+        setTotalModelos(preparo.totalModelos ?? Object.keys(preparo.modelos).length);
+      }
     } catch (e) {
       setErro(e instanceof Error ? e.message : 'Falha ao carregar inspeções.');
     } finally {
       setCarregandoLista(false);
+      setPreparando(false);
     }
   }
 
   useEffect(() => {
-    carregar();
+    void carregar();
+    return assinarMudancasSync(() => {
+      void api.inspecoes.listar().then(mesclarInspecoesLocais).then(setInspecoes).catch(() => undefined);
+    });
   }, []);
 
   const atividadesDaObra = atividades.filter((a) => a.obraId === novaInspecao.obraId);
@@ -124,12 +134,12 @@ export function InspecoesTab() {
     try {
       setCarregando(true);
       setErroPainel(null);
-      await api.inspecoes.criar({
+      const criada = await criarInspecaoCampo({
         ...novaInspecao,
         atividadeId: novaInspecao.atividadeId || null,
       });
       fecharPainel();
-      await carregar();
+      navigate(`/prevencao/inspecoes/${criada.id}`);
     } catch (e) {
       setErroPainel(e instanceof Error ? e.message : 'Falha ao criar inspeção.');
     } finally {
@@ -137,7 +147,7 @@ export function InspecoesTab() {
     }
   }
 
-  const colunas: Coluna<Inspecao>[] = [
+  const colunas: Coluna<InspecaoCampo>[] = [
     { chave: 'tipoInspecao', rotulo: 'Tipo', render: (i) => tipoInspecaoLabel[i.tipoInspecao] },
     { chave: 'obraNome', rotulo: 'Obra' },
     {
@@ -162,7 +172,7 @@ export function InspecoesTab() {
     {
       chave: 'status',
       rotulo: 'Status',
-      render: (i) => <StatusChip tom={tomPorStatusInspecao[i.status] ?? 'neutro'}>{statusInspecaoLabel[i.status]}</StatusChip>,
+      render: (i) => <StatusChip tom={tomPorStatusInspecao[i.status] ?? 'neutro'}>{i.criacaoPendente ? 'Criação pendente' : statusInspecaoLabel[i.status]}</StatusChip>,
     },
   ];
 
@@ -212,6 +222,10 @@ export function InspecoesTab() {
           {erro}
         </FeedbackInline>
       )}
+      <FeedbackInline tom={modelosPreparados < totalModelos ? 'aviso' : 'info'}>
+        {preparando ? 'Preparando modelos e dados para uso offline…' : `${modelosPreparados} de ${totalModelos} modelo(s) preparado(s) neste dispositivo para criar inspeções sem internet.`}
+        {!preparando && modelosPreparados < totalModelos && ' Alguns modelos não puderam ser baixados. Reabra esta tela com internet para tentar novamente.'}
+      </FeedbackInline>
 
       <div id="painel-nova-inspecao">
         <PainelCriacaoInline aberto={painelAberto} titulo="Nova inspeção">
@@ -232,7 +246,7 @@ export function InspecoesTab() {
                     onChange={(_, d) => setNovaInspecao({ ...novaInspecao, checklistModeloId: d.value })}
                   >
                     <option value="">Selecione</option>
-                    {checklists.filter((c) => c.tipoInspecao !== TipoInspecao.Veiculo).map((c) => (
+                    {checklists.filter((c) => c.tipoInspecao !== TipoInspecao.Veiculo && c.tipoInspecao !== TipoInspecao.Alojamento).map((c) => (
                       <option key={c.id} value={c.id}>
                         {c.nome} (v{c.versao} — {tipoInspecaoLabel[c.tipoInspecao]})
                       </option>
@@ -297,7 +311,7 @@ export function InspecoesTab() {
             </FormGrid>
             <FormRodape>
               <Button onClick={fecharPainel}>Cancelar</Button>
-              <Button appearance="primary" onClick={criar} disabled={carregando}>
+              <Button appearance="primary" onClick={criar} disabled={carregando || preparando}>
                 Iniciar inspeção
               </Button>
             </FormRodape>
@@ -320,7 +334,7 @@ export function InspecoesTab() {
                 <BotaoAcao
                   tom="excluir"
                   icon={<Delete24Regular />}
-                  disabled={excluindoId === i.id}
+                  disabled={excluindoId === i.id || i.criacaoPendente}
                   onClick={(evento) => {
                     evento.stopPropagation();
                     excluir(i);
