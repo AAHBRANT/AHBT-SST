@@ -42,6 +42,7 @@ import {
 } from '../../lib/api';
 import { HhtMensalTab } from './HhtMensalTab';
 import { RelatoOcorrenciaIa } from './RelatoOcorrenciaIa';
+import { payloadAcaoOcorrencia, pendenciaResolucao, resolucaoDoVinculo } from './CampoComoSeResolve';
 import { MapaCorporal } from '../../components/mapaCorporal/MapaCorporal';
 import {
   novaChaveAcao,
@@ -267,6 +268,7 @@ export function AcidentesPage({ tipoFixo }: { tipoFixo?: number } = {}) {
           fundamentacao: a.fundamentacao,
           baseConfirmada: a.baseConfirmada,
           sugeridaPelaIa: true,
+          resolucao: resolucaoDoVinculo(a.vinculo),
         })),
       );
     } catch (e) {
@@ -363,6 +365,14 @@ export function AcidentesPage({ tipoFixo }: { tipoFixo?: number } = {}) {
       setErro(gerandoPlano ? 'Aguarde a IA terminar o plano de ação.' : 'Informe o tema e o roteiro do DDS do dia seguinte.');
       return;
     }
+    // Sem conclusão manual: cada ação do plano precisa de responsável e de "como se resolve".
+    for (const a of acoesPlano.filter((x) => x.descricao.trim())) {
+      const pendencia = !a.responsavelUsuarioId ? 'Designe quem vai resolver a ação' : pendenciaResolucao(a.resolucao);
+      if (pendencia) {
+        setErro(`Ação "${a.descricao.trim().slice(0, 60)}": ${pendencia.charAt(0).toLowerCase()}${pendencia.slice(1)}`);
+        return;
+      }
+    }
     const enviarReuniao = versaoRelato > 0 && exigeReuniao(nova.tipo);
     if (enviarReuniao && (!reuniao?.data || !reuniao.hora)) {
       setErro(
@@ -397,6 +407,7 @@ export function AcidentesPage({ tipoFixo }: { tipoFixo?: number } = {}) {
             prazo: a.prazo || null,
             responsavelUsuarioId: a.responsavelUsuarioId || null,
             fundamentacao: a.fundamentacao,
+            ...payloadAcaoOcorrencia(a.resolucao),
           })),
         temaDds: versaoRelato > 0 && temaDds ? { nome: temaDds.nome.trim(), roteiro: temaDds.roteiro.trim() } : undefined,
         reuniao:

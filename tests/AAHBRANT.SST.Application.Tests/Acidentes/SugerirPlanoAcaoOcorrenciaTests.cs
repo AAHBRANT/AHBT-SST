@@ -83,6 +83,40 @@ public class SugerirPlanoAcaoOcorrenciaTests
         Assert.True(r.Acoes[0].Prazo > DateTime.UtcNow);
     }
 
+    // 24/10/2026: sem conclusão manual, a IA diz como cada ação se resolve; só vale item que existe no sistema.
+    [Fact]
+    public async Task Handle_VinculoDaIa_SoAceitaItemExistenteNoCatalogo()
+    {
+        var db = DbContextFactory.Criar();
+        var obra = new Obra { Codigo = "OB1", Nome = "Obra" };
+        var tema = new TemaInspecao { Nome = "Andaime" };
+        var curso = new CursoTreinamento { Nome = "NR-35 Trabalho em Altura" };
+        var epi = new CatalogoEpi { Nome = "Cinto paraquedista" };
+        db.AddRange(obra, tema, curso, epi);
+        await db.SaveChangesAsync();
+
+        AcaoSugeridaIa Com(string? tipo, string? alvo) => new("Preventiva", "d", "Alta", "TecnicoSeguranca", "Metodo", null, null, "Administrativo", tipo, alvo);
+        var analista = new AnalistaFalso(new AnalisePlanoIa("CincoPorques", "causas", new[]
+        {
+            Com("Inspecao", "andaime"),                    // tema do usuário (sem diferenciar maiúsculas)
+            Com("Inspecao", "Andaimes"),                   // tipo fixo
+            Com("Treinamento", "NR-35 Trabalho em Altura"),
+            Com("EntregaEpi", "Cinto paraquedista"),
+            Com("Treinamento", "Curso que não existe"),    // inventado → sem vínculo
+        }));
+
+        var r = await new SugerirPlanoAcaoOcorrenciaCommandHandler(db, analista, NullLogger<SugerirPlanoAcaoOcorrenciaCommandHandler>.Instance)
+            .Handle(new SugerirPlanoAcaoOcorrenciaCommand(obra.Id, null, TipoOcorrencia.Acidente, GravidadeAcidente.SemAfastamento,
+                "desc", null, null, null, null), default);
+
+        Assert.Equal(TipoInspecao.Tema, r.Acoes[0].Vinculo!.TipoInspecao);
+        Assert.Equal(tema.Id, r.Acoes[0].Vinculo!.TemaInspecaoId);
+        Assert.Equal(TipoInspecao.Andaimes, r.Acoes[1].Vinculo!.TipoInspecao);
+        Assert.Equal(curso.Id, r.Acoes[2].Vinculo!.CursoTreinamentoId);
+        Assert.Equal(epi.Id, r.Acoes[3].Vinculo!.CatalogoEpiId);
+        Assert.Null(r.Acoes[4].Vinculo);
+    }
+
     private static AcaoSugeridaIa Acao(string origem, string? perigo = null, string? controle = null, string? referencia = null)
         => new("Corretiva", "d", "Alta", "Encarregado", origem, perigo, controle, referencia);
 

@@ -33,6 +33,9 @@ public static class ResolucaoVinculadaAcaoPlano
             .Select(a => new
             {
                 a.Id, a.OrigemId, a.TipoResolucao, a.ResolucaoCursoTreinamentoId, a.ResolucaoTipoInspecao, a.ResolucaoCatalogoEpiId,
+                a.ResolucaoTemaInspecaoId, a.ResponsavelUsuarioId, a.CreatedAtUtc,
+                Tema = a.ResolucaoTemaInspecao != null ? a.ResolucaoTemaInspecao.Nome : null,
+                Responsavel = a.ResponsavelUsuario != null ? a.ResponsavelUsuario.Nome : null,
                 Curso = a.ResolucaoCursoTreinamento != null ? a.ResolucaoCursoTreinamento.Nome : null,
                 Epi = a.ResolucaoCatalogoEpi != null ? a.ResolucaoCatalogoEpi.Nome : null,
             })
@@ -83,13 +86,24 @@ public static class ResolucaoVinculadaAcaoPlano
                 }
                 case TipoResolucaoAcaoPlano.Inspecao:
                 {
-                    var tipo = DescreverTipoInspecao(acao.ResolucaoTipoInspecao);
-                    var feita = await db.Inspecoes.AnyAsync(i =>
+                    var tipo = acao.ResolucaoTipoInspecao == TipoInspecao.Tema
+                        ? acao.Tema ?? "o tema escolhido"
+                        : DescreverTipoInspecao(acao.ResolucaoTipoInspecao);
+                    var responsavel = acao.Responsavel ?? "o responsável designado";
+                    // Só vale a inspeção finalizada PELO responsável designado na ação e DEPOIS de a ação existir:
+                    // inspeção antiga ou de outra pessoa não resolve (um técnico já concluiu o plano inteiro por engano).
+                    var desdeAcao = acao.CreatedAtUtc > desde ? acao.CreatedAtUtc : desde;
+                    var consulta = db.Inspecoes.Where(i =>
                         i.ObraId == ocorrencia.ObraId
                         && i.TipoInspecao == acao.ResolucaoTipoInspecao
                         && i.Status == StatusInspecao.Concluida
-                        && i.Data >= desde, ct);
-                    avaliacao = new Avaliacao(feita, $"Ao finalizar uma inspeção de {tipo} nesta obra", $"Aguardando inspeção de {tipo}", null);
+                        && i.Data >= desdeAcao
+                        && acao.ResponsavelUsuarioId != null
+                        && i.ResponsavelUsuarioId == acao.ResponsavelUsuarioId);
+                    if (acao.ResolucaoTipoInspecao == TipoInspecao.Tema)
+                        consulta = consulta.Where(i => i.ItemInspecionavel != null && i.ItemInspecionavel.TemaInspecaoId == acao.ResolucaoTemaInspecaoId);
+                    var feita = await consulta.AnyAsync(ct);
+                    avaliacao = new Avaliacao(feita, $"Quando {responsavel} finalizar a inspeção de {tipo} nesta obra", $"Aguardando inspeção de {tipo} por {responsavel}", null);
                     break;
                 }
                 case TipoResolucaoAcaoPlano.EntregaEpi:
@@ -140,7 +154,9 @@ public static class ResolucaoVinculadaAcaoPlano
             acao.Status = StatusControleRisco.Concluido;
             acao.DataConclusao = DateTime.UtcNow;
             var texto = avaliacoes[acao.Id].Texto;
-            acao.DescricaoConclusao = "Concluída automaticamente ao " + (texto.StartsWith("Ao ", StringComparison.Ordinal) ? texto[3..] : texto) + ".";
+            acao.DescricaoConclusao = texto.StartsWith("Ao ", StringComparison.Ordinal)
+                ? "Concluída automaticamente ao " + texto[3..] + "."
+                : "Concluída automaticamente: " + char.ToLowerInvariant(texto[0]) + texto[1..] + ".";
         }
         if (acoes.Count > 0) await db.SaveChangesAsync(ct);
         return acoes.Count;
@@ -154,10 +170,11 @@ public static class ResolucaoVinculadaAcaoPlano
                 && a.ResolucaoCursoTreinamentoId == cursoId && a.Status != StatusControleRisco.Concluido)
             .Select(a => a.OrigemId).Distinct().ToListAsync(ct);
 
-    public static Task<List<Guid>> OcorrenciasComInspecaoAsync(IAppDbContext db, Guid obraId, TipoInspecao tipo, CancellationToken ct)
+    public static Task<List<Guid>> OcorrenciasComInspecaoAsync(IAppDbContext db, Guid obraId, TipoInspecao tipo, Guid? temaId, CancellationToken ct)
         => db.AcoesPlano
             .Where(a => a.OrigemTipo == nameof(Acidente) && a.TipoResolucao == TipoResolucaoAcaoPlano.Inspecao
                 && a.ResolucaoTipoInspecao == tipo && a.Status != StatusControleRisco.Concluido
+                && (tipo != TipoInspecao.Tema || a.ResolucaoTemaInspecaoId == temaId)
                 && db.Acidentes.Any(x => x.Id == a.OrigemId && x.ObraId == obraId))
             .Select(a => a.OrigemId).Distinct().ToListAsync(ct);
 

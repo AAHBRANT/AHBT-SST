@@ -373,7 +373,8 @@ export function InspecaoDetalhePage() {
         if (r.statusItem == null) p.push('resposta do checklist');
         if (r.exigeFotografia && !r.temFoto) p.push('foto anterior obrigatória');
         if (ehInspecaoAlojamento && r.exigeFotografia && !r.temFotoDepois) p.push('foto posterior obrigatória');
-        if (usaLayoutCompacto && r.statusItem === StatusItemChecklist.NaoConforme && !r.temFoto) p.push('foto da não conformidade obrigatória');
+        if (ehInspecaoTema && !r.temFoto) p.push('foto do item obrigatória');
+        else if (ehInspecaoVeiculo && r.statusItem === StatusItemChecklist.NaoConforme && !r.temFoto) p.push('foto da não conformidade obrigatória');
         if (r.temFoto && r.dadosFoto) p.push(...pendenciasFoto(r.dadosFoto).map(d => 'foto anterior: ' + d));
         if (r.temFotoDepois && r.dadosFotoDepois) p.push(...pendenciasFoto(r.dadosFotoDepois).map(d => 'foto posterior: ' + d));
         return p.length ? [r.descricao + ': ' + p.join('; ')] : [];
@@ -570,11 +571,11 @@ export function InspecaoDetalhePage() {
                       />
                     </Field>
 
-                    {edicao.statusItem === String(StatusItemChecklist.NaoConforme) && (
-                      <Field label="Foto da não conformidade (obrigatória)">
+                    {(ehInspecaoTema || edicao.statusItem === String(StatusItemChecklist.NaoConforme)) && (
+                      <Field label={ehInspecaoTema ? 'Foto do item (obrigatória)' : 'Foto da não conformidade (obrigatória)'}>
                         <div style={{ maxWidth: 180 }}>
                           <SlotFoto
-                            rotulo="Foto da não conformidade"
+                            rotulo={ehInspecaoTema ? 'Foto do item' : 'Foto da não conformidade'}
                             contextoFoto={{ obraId: inspecao.obraId, obraNome: inspecao.obraNome, local: inspecao.veiculoPlacaPrefixo }}
                             dadosFoto={resposta.dadosFoto}
                             url={fotoUrls[resposta.id]}

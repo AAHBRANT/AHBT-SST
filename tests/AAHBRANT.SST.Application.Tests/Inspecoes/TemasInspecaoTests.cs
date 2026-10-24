@@ -35,7 +35,7 @@ public class TemasInspecaoTests
         Assert.Equal(TipoInspecao.Tema, checklist.TipoInspecao);
         Assert.Equal(1, checklist.Versao);
         Assert.Equal(new[] { "Guarda-corpo instalado", "Piso completo", "Rodapé" }, checklist.Itens.OrderBy(i => i.Ordem).Select(i => i.Descricao));
-        // Foto só é exigida nos itens Não Conforme (regra do encerramento), nunca em todos.
+        // A foto de cada item vem da regra do encerramento (todos os itens do tema), não do modelo.
         Assert.All(checklist.Itens, i => Assert.False(i.ExigeFotografia));
     }
 
@@ -103,7 +103,7 @@ public class TemasInspecaoTests
         var emAndamento = (await listar.Handle(new ListarItensInspecionaveisQuery(temaId, null), default)).Single();
         Assert.NotNull(emAndamento.InspecaoEmAndamento);
 
-        foreach (var r in db.InspecaoItemRespostas.Where(r => r.InspecaoId == atual.InspecaoId)) r.StatusItem = StatusItemChecklist.Conforme;
+        foreach (var r in db.InspecaoItemRespostas.Where(r => r.InspecaoId == atual.InspecaoId)) { r.StatusItem = StatusItemChecklist.Conforme; r.FotoConteudo = new byte[] { 1 }; }
         await db.SaveChangesAsync();
         await new EncerrarInspecaoCommandHandler(db).Handle(new EncerrarInspecaoCommand(atual.InspecaoId), default);
 
@@ -142,18 +142,22 @@ public class TemasInspecaoTests
             .Handle(new ObterOuCriarInspecaoItemCommand(itemId, "oid-desconhecido"), default));
     }
 
-    // Mesma regra dos Veículos: foto obrigatória só no item Não Conforme.
+    // 24/10/2026: nos temas a foto é obrigatória em TODOS os itens, não só no Não Conforme.
     [Theory]
-    [InlineData(StatusItemChecklist.NaoConforme, false)]
-    [InlineData(StatusItemChecklist.Conforme, true)]
-    [InlineData(StatusItemChecklist.NaoAplicavel, true)]
-    public async Task Encerrar_FotoSoEhExigidaNoItemNaoConforme(StatusItemChecklist status, bool conclui)
+    [InlineData(StatusItemChecklist.NaoConforme, false, false)]
+    [InlineData(StatusItemChecklist.Conforme, false, false)]
+    [InlineData(StatusItemChecklist.NaoAplicavel, false, false)]
+    [InlineData(StatusItemChecklist.Conforme, true, true)]
+    [InlineData(StatusItemChecklist.NaoConforme, true, true)]
+    public async Task Encerrar_FotoEhExigidaEmTodosOsItens(StatusItemChecklist status, bool comFoto, bool conclui)
     {
         var (db, obra, temaId) = await CenarioAsync("Guarda-corpo instalado");
         var itemId = await new CriarItemInspecionavelCommandHandler(db).Handle(new CriarItemInspecionavelCommand(temaId, obra.Id, "Andaime A-03", null), default);
         var atual = await new ObterOuCriarInspecaoItemCommandHandler(db, new GeradorNumeroDocumentoService(db))
             .Handle(new ObterOuCriarInspecaoItemCommand(itemId, AzureAdObjectId), default);
-        (await db.InspecaoItemRespostas.SingleAsync(r => r.InspecaoId == atual.InspecaoId)).StatusItem = status;
+        var resposta = await db.InspecaoItemRespostas.SingleAsync(r => r.InspecaoId == atual.InspecaoId);
+        resposta.StatusItem = status;
+        if (comFoto) resposta.FotoConteudo = new byte[] { 1 };
         await db.SaveChangesAsync();
 
         var encerrar = () => new EncerrarInspecaoCommandHandler(db).Handle(new EncerrarInspecaoCommand(atual.InspecaoId), default);

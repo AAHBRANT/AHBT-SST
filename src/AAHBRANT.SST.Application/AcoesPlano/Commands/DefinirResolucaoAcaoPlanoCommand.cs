@@ -7,23 +7,27 @@ using Microsoft.EntityFrameworkCore;
 
 namespace AAHBRANT.SST.Application.AcoesPlano.Commands;
 
-// "Como se resolve" de uma ação já existente (Alterar, na tela da ocorrência): Manual (tudo nulo) ou
-// vinculada a treinamento/inspeção/EPI. Se o fato já aconteceu, a ação conclui na hora.
+// "Como se resolve" de uma ação já existente (Alterar, na tela da ocorrência): sempre vinculada a
+// treinamento, inspeção ou entrega de EPI — não existe mais resolução manual (24/10/2026). Se o fato
+// já aconteceu, a ação conclui na hora.
 public record DefinirResolucaoAcaoPlanoCommand(
     Guid Id,
     TipoResolucaoAcaoPlano? TipoResolucao,
     Guid? CursoTreinamentoId,
     TipoInspecao? TipoInspecao,
-    Guid? CatalogoEpiId) : IRequest;
+    Guid? CatalogoEpiId,
+    Guid? TemaInspecaoId = null) : IRequest;
 
 public static class VinculoResolucaoAcaoPlano
 {
     // Confere que o alvo do tipo escolhido veio preenchido e existe, e aplica na ação (zerando os outros).
     public static async Task AplicarAsync(IAppDbContext db, AcaoPlano acao, TipoResolucaoAcaoPlano? tipo,
-        Guid? cursoId, TipoInspecao? tipoInspecao, Guid? epiId, CancellationToken ct)
+        Guid? cursoId, TipoInspecao? tipoInspecao, Guid? epiId, CancellationToken ct, Guid? temaId = null)
     {
         switch (tipo)
         {
+            case null:
+                throw new InvalidOperationException("Escolha como a ação se resolve: treinamento, inspeção ou entrega de EPI. A conclusão manual não existe mais.");
             case TipoResolucaoAcaoPlano.Treinamento:
                 if (cursoId is null || !await db.CursosTreinamento.AnyAsync(c => c.Id == cursoId, ct))
                     throw new InvalidOperationException("Escolha o curso do treinamento que resolve esta ação.");
@@ -31,6 +35,8 @@ public static class VinculoResolucaoAcaoPlano
             case TipoResolucaoAcaoPlano.Inspecao:
                 if (tipoInspecao is null)
                     throw new InvalidOperationException("Escolha o tipo de inspeção que resolve esta ação.");
+                if (tipoInspecao == TipoInspecao.Tema && (temaId is null || !await db.TemasInspecao.AnyAsync(t => t.Id == temaId, ct)))
+                    throw new InvalidOperationException("Escolha o tema de inspeção (ex.: Andaime) que resolve esta ação.");
                 break;
             case TipoResolucaoAcaoPlano.EntregaEpi:
                 if (epiId is null || !await db.CatalogoEpis.AnyAsync(c => c.Id == epiId, ct))
@@ -41,6 +47,7 @@ public static class VinculoResolucaoAcaoPlano
         acao.TipoResolucao = tipo;
         acao.ResolucaoCursoTreinamentoId = tipo == TipoResolucaoAcaoPlano.Treinamento ? cursoId : null;
         acao.ResolucaoTipoInspecao = tipo == TipoResolucaoAcaoPlano.Inspecao ? tipoInspecao : null;
+        acao.ResolucaoTemaInspecaoId = tipo == TipoResolucaoAcaoPlano.Inspecao && tipoInspecao == TipoInspecao.Tema ? temaId : null;
         acao.ResolucaoCatalogoEpiId = tipo == TipoResolucaoAcaoPlano.EntregaEpi ? epiId : null;
     }
 }
@@ -64,7 +71,9 @@ public class DefinirResolucaoAcaoPlanoCommandHandler : IRequestHandler<DefinirRe
             throw new InvalidOperationException("Esta ação já se resolve pelo DDS ou pela reunião de análise.");
 
         await VinculoResolucaoAcaoPlano.AplicarAsync(_db, acao, request.TipoResolucao, request.CursoTreinamentoId,
-            request.TipoInspecao, request.CatalogoEpiId, ct);
+            request.TipoInspecao, request.CatalogoEpiId, ct, request.TemaInspecaoId);
+        if (acao.ResponsavelUsuarioId is null)
+            throw new InvalidOperationException("Designe o responsável por esta ação antes de definir como ela se resolve.");
         await _db.SaveChangesAsync(ct);
 
         if (acao.OrigemTipo == nameof(Acidente))

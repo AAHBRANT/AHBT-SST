@@ -57,6 +57,9 @@ public class AcaoPlano : AuditableEntity
     public Guid? ResolucaoCursoTreinamentoId { get; set; }
     public CursoTreinamento? ResolucaoCursoTreinamento { get; set; }
     public TipoInspecao? ResolucaoTipoInspecao { get; set; }
+    // Inspeção de um tema criado pelo usuário (ex.: Andaime): ResolucaoTipoInspecao = Tema e este é o tema.
+    public Guid? ResolucaoTemaInspecaoId { get; set; }
+    public TemaInspecao? ResolucaoTemaInspecao { get; set; }
     public Guid? ResolucaoCatalogoEpiId { get; set; }
     public CatalogoEpi? ResolucaoCatalogoEpi { get; set; }
 

@@ -15,11 +15,12 @@ public record CriarAcaoPlanoCommand(
     Guid? ResponsavelUsuarioId,
     PrioridadeAcao Prioridade,
     DateTime? Prazo,
-    // "Como se resolve" (só ocorrências usam hoje): nulo = manual.
+    // "Como se resolve": obrigatório nas ações de ocorrência (não há mais conclusão manual).
     TipoResolucaoAcaoPlano? TipoResolucao = null,
     Guid? ResolucaoCursoTreinamentoId = null,
     TipoInspecao? ResolucaoTipoInspecao = null,
-    Guid? ResolucaoCatalogoEpiId = null) : IRequest<Guid>;
+    Guid? ResolucaoCatalogoEpiId = null,
+    Guid? ResolucaoTemaInspecaoId = null) : IRequest<Guid>;
 
 public class CriarAcaoPlanoCommandValidator : AbstractValidator<CriarAcaoPlanoCommand>
 {
@@ -59,9 +60,13 @@ public class CriarAcaoPlanoCommandHandler : IRequestHandler<CriarAcaoPlanoComman
             Prazo = prazo,
         };
 
-        if (request.TipoResolucao is not null)
+        // Plano de ocorrência: toda ação tem responsável designado e se resolve por um fato do sistema
+        // (treinamento, inspeção ou entrega de EPI). Quem concluía "à mão" validou um plano inteiro por engano.
+        if (request.OrigemTipo == nameof(Acidente) && request.ResponsavelUsuarioId is null)
+            throw new InvalidOperationException("Designe quem vai resolver esta ação.");
+        if (request.TipoResolucao is not null || request.OrigemTipo == nameof(Acidente))
             await VinculoResolucaoAcaoPlano.AplicarAsync(_db, acao, request.TipoResolucao, request.ResolucaoCursoTreinamentoId,
-                request.ResolucaoTipoInspecao, request.ResolucaoCatalogoEpiId, ct);
+                request.ResolucaoTipoInspecao, request.ResolucaoCatalogoEpiId, ct, request.ResolucaoTemaInspecaoId);
 
         _db.AcoesPlano.Add(acao);
         await _db.SaveChangesAsync(ct);
