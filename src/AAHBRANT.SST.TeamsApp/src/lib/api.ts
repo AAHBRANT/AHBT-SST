@@ -75,6 +75,16 @@ export interface CadastroFacialFraco {
   cadastroEm: string;
 }
 
+// Dedo de cada digital cadastrada — espelha DedoBiometria (backend). NaoInformado = cadastros
+// anteriores à separação por polegar (21/10) e o cadastro pós-criação do funcionário.
+export const DedoBiometria = { NaoInformado: 0, PolegarDireito: 1, PolegarEsquerdo: 2 } as const;
+export type DedoBiometria = (typeof DedoBiometria)[keyof typeof DedoBiometria];
+
+export interface DigitalCadastrada {
+  dedo: DedoBiometria;
+  cadastradaEm: string;
+}
+
 export interface StatusCadastroBiometrico {
   temDigital: boolean;
   temFacial: boolean;
@@ -83,6 +93,8 @@ export interface StatusCadastroBiometrico {
   consentimentoBiometriaEm?: string | null;
   consentimentoBiometriaVersao?: string | null;
   consentimentoBiometriaRevogadoEm?: string | null;
+  // Opcional: a API antiga (antes de 21/10) não devolve a lista por dedo.
+  digitais?: DigitalCadastrada[];
 }
 
 export interface DispositivoAgente {
@@ -324,6 +336,63 @@ export interface Empresa {
   status: 'Ativa' | 'Inativa';
 }
 export type NovaEmpresa = Omit<Empresa, 'id' | 'status'>;
+
+// Checklist e percentual de adequação da empresa terceirizada (21/10/2026). Situação do item: ok,
+// vence (atende, mas vence em até 30 dias), vencido ou pendente. Faixa: apta (100%), quase (80–99%),
+// parcial (< 80%) ou sem-itens.
+export type NivelConformidade = 'empresa' | 'funcoes' | 'pessoas';
+export type SituacaoItemConformidade = 'ok' | 'vence' | 'vencido' | 'pendente';
+export type FaixaConformidade = 'apta' | 'quase' | 'parcial' | 'sem-itens';
+
+export interface ItemConformidade {
+  nivel: NivelConformidade;
+  titulo: string;
+  atendido: boolean;
+  situacao: SituacaoItemConformidade;
+  detalhe: string | null;
+  documentoExigidoId: string | null;
+  documentoId: string | null;
+  dataValidade: string | null;
+  arquivoNome: string | null;
+  funcaoId: string | null;
+  trabalhadorId: string | null;
+  exigeValidade: boolean;
+}
+
+export interface NivelConformidadeResumo {
+  chave: NivelConformidade;
+  titulo: string;
+  atendidos: number;
+  exigidos: number;
+  percentual: number | null;
+}
+
+export interface ResumoConformidadeEmpresa {
+  empresaId: string;
+  razaoSocial: string;
+  cnpj: string;
+  empresaAtiva: boolean;
+  atendidos: number;
+  exigidos: number;
+  percentual: number | null;
+  faixa: FaixaConformidade;
+  niveis: NivelConformidadeResumo[];
+}
+
+export interface ConformidadeEmpresa extends ResumoConformidadeEmpresa {
+  itens: ItemConformidade[];
+}
+
+export interface DocumentoExigidoEmpresa {
+  id: string;
+  nome: string;
+  descricao: string | null;
+  exigeValidade: boolean;
+  ativo: boolean;
+  ordem: number;
+}
+
+export type DadosDocumentoExigidoEmpresa = Pick<DocumentoExigidoEmpresa, 'nome' | 'descricao' | 'exigeValidade' | 'ativo'>;
 export type AtualizarEmpresa = Pick<Empresa, 'id' | 'razaoSocial' | 'nomeFantasia' | 'cnpj' | 'tipoServicoPrestado' | 'contatoNome' | 'contatoTelefone' | 'contatoEmail'> & {
   status: 1 | 2; // StatusEmpresa: Ativa=1, Inativa=2 (backend não tem JsonStringEnumConverter)
 };
@@ -337,6 +406,64 @@ export interface Contrato {
   dataInicioVigencia: string;
   dataFimVigencia: string;
   status: 'Validado' | 'Encerrado' | 'Cancelado';
+  // true = veio do G-Juri (só leitura no SST); false = cadastrado à mão pelo técnico.
+  origemGJuri: boolean;
+  // PDF do contrato guardado no SST (subido pelo técnico); baixado sob demanda via baixarArquivo.
+  temArquivo: boolean;
+}
+
+export interface DadosContrato {
+  numeroContrato: string;
+  dataInicioVigencia: string;
+  dataFimVigencia: string;
+  vagas: { funcaoId: string; quantidade: number }[];
+}
+
+// Leitura do PDF do contrato pela IA (18/10/2026): nada é gravado, só preenche o cadastro.
+export interface ContratoTerceirizadoLidoIa {
+  empresa: {
+    razaoSocial: string | null;
+    nomeFantasia: string | null;
+    cnpj: string | null;
+    tipoServicoPrestado: string | null;
+    contatoNome: string | null;
+    contatoTelefone: string | null;
+    contatoEmail: string | null;
+  };
+  numeroContrato: string | null;
+  obra: string | null;
+  dataInicioVigencia: string | null;
+  dataFimVigencia: string | null;
+  vagas: { funcao: string; quantidade: number | null }[];
+  pessoas: { nome: string; cpf: string | null; funcao: string | null; matricula: string | null }[];
+  empresaExistenteId: string | null;
+  empresaExistenteRazaoSocial: string | null;
+}
+
+// Importação da pasta da terceirizada (23/10/2026): o que a IA disse de UM arquivo. Nada é gravado.
+export type TipoArquivoTerceirizado = 'contrato' | 'documento_empresa' | 'aso' | 'certificado' | 'ficha_epi' | 'outro';
+
+export interface ArquivoTerceirizadoClassificado {
+  nomeArquivo: string;
+  tipo: TipoArquivoTerceirizado;
+  documentoExigidoId: string | null;
+  documentoExigidoNome: string | null;
+  cursoTreinamentoId: string | null;
+  cursoNome: string | null;
+  pessoaNome: string | null;
+  pessoaCpf: string | null;
+  pessoaFuncao: string | null;
+  empresaRazaoSocial: string | null;
+  empresaCnpj: string | null;
+  dataDocumento: string | null;
+  dataValidade: string | null;
+  asoTipo: number | null;
+  asoResultado: number | null;
+  medicoNome: string | null;
+  medicoCrm: string | null;
+  cargaHoraria: number | null;
+  instituicao: string | null;
+  resumo: string | null;
 }
 
 export interface VagaFuncao {
@@ -350,6 +477,7 @@ export interface VagaFuncao {
 export interface ContratoDetalhe extends Contrato {
   empresaRazaoSocial: string;
   vagas: VagaFuncao[];
+  arquivoNome: string | null;
 }
 
 export interface PessoaTerceirizada {
@@ -462,8 +590,80 @@ export interface CursoTreinamento {
 
 export type NovoCursoTreinamento = Omit<CursoTreinamento, 'id'>;
 
+// Padrão de cada NR (catálogo do backend, 19/10) — preenche o cadastro de curso.
+export interface PadraoNr {
+  numero: string;
+  titulo: string;
+  cargaHorariaMinima: number | null;
+  validadeEmMeses: number | null;
+  conteudoProgramatico: string;
+}
+
 // Trabalhadores ativos que precisam do curso (pela matriz de função) e a situação de cada um.
 // "Apto" = treinamento válido hoje = emDia + vencemEm30Dias.
+// Cursos obrigatórios por função a partir do PGR (21/10): por obra, sugeridos pelas regras e
+// aprovados/recusados pelo Engenheiro de Segurança. Só Aprovado conta para a aptidão.
+export const StatusCursoObrigatorio = { Sugerido: 1, Aprovado: 2, Recusado: 3 } as const;
+export const OrigemCursoObrigatorio = { Pgr: 1, Manual: 2 } as const;
+
+export interface CursoObrigatorio {
+  id: string;
+  funcaoId: string;
+  funcaoNome: string;
+  gheNumero?: number | null;
+  gheSetor?: string | null;
+  trabalhadores: number;
+  cursoTreinamentoId: string;
+  cursoNome: string;
+  normaReferencia?: string | null;
+  status: number;
+  origem: number;
+  motivo?: string | null;
+  justificativaRecusa?: string | null;
+  decididoPorNome?: string | null;
+  decididoEmUtc?: string | null;
+}
+
+export interface CursosObrigatoriosObra {
+  pgrNome?: string | null;
+  pgrDataElaboracao?: string | null;
+  funcoesNoPgr: number;
+  itens: CursoObrigatorio[];
+}
+
+export interface ResultadoGeracaoCursosObrigatorios { sugeridos: number; normasSemCurso: string[] }
+
+export interface RegraCursoObrigatorio {
+  id: string;
+  norma: string;
+  cursoTreinamentoId?: string | null;
+  cursoNome?: string | null;
+  descricao: string;
+  aplicaTodasFuncoes: boolean;
+  palavrasChave?: string | null;
+  ativo: boolean;
+}
+
+export type SalvarRegraCursoObrigatorio = Omit<RegraCursoObrigatorio, 'id' | 'cursoNome'> & { id?: string | null };
+
+// Escopo para o médico elaborar o PCMSO (21/10), montado a partir do PGR vigente da obra.
+export interface EscopoPcmso {
+  obraId: string;
+  obraNome: string;
+  cnpj?: string | null;
+  endereco?: string | null;
+  dataInicio?: string | null;
+  dataPrevisaoTermino?: string | null;
+  trabalhadoresAtivos: number;
+  pgrNome?: string | null;
+  pgrDataElaboracao?: string | null;
+  geradoEmUtc: string;
+  pendencias: string[];
+  funcoes: { gheNumero: number; gheSetor?: string | null; funcao: string; trabalhadores: number; atividades?: string | null }[];
+  riscos: { gheNumero: number; tipo?: string | null; perigo: string; fonte?: string | null; atividade: string; nivel: number }[];
+  atividadesCriticas: { descricao: string; funcoes: string[] }[];
+}
+
 export interface AptidaoCurso {
   cursoId: string;
   nome: string;
@@ -574,6 +774,21 @@ export interface NovaSessaoTreinamento {
   cargaHorariaRealizada: number;
   instituicaoInstrutor?: string | null;
   trabalhadoresIds: string[];
+  // Dados do certificado gravados na turma (19/10) — só o Técnico de Segurança altera.
+  conteudoProgramatico?: string | null;
+  local?: string | null;
+  instrutorRegistroProfissional?: string | null;
+  validadeEmMeses?: number | null;
+}
+
+// Padrão da turma para o curso escolhido + se quem está logado pode editar (19/10).
+export interface PadraoTurmaTreinamento {
+  norma: string | null;
+  cargaHorariaMinima: number;
+  validadeEmMeses: number;
+  conteudoProgramatico: string | null;
+  local: string | null;
+  podeEditar: boolean;
 }
 
 export interface ParticipanteSessaoTreinamento {
@@ -733,7 +948,54 @@ export const tipoMovimentacaoEstoqueEpiLabel: Record<number, string> = {
   1: 'Saída (entrega)',
   2: 'Devolução',
   3: 'Ajuste manual',
+  5: 'Transferência (saída)',
+  6: 'Transferência (entrada)',
 };
+
+// Painel da aba Estoque (especificação 21/10/2026, Módulos 2 e 3) — tudo calculado no servidor
+// (CalculadoraEstoqueEpi), para a tela, o alerta e a solicitação de reposição nunca divergirem.
+export type SituacaoEstoqueEpi = 'emDia' | 'atencao' | 'abaixoMinimo' | 'zerado' | 'semMinimo';
+export interface SugestaoTransferenciaEpi {
+  obraId: string;
+  obraNome: string;
+  quantidade: number;
+}
+export interface EstoqueEpiPainelItem {
+  catalogoEpiId: string;
+  estoqueEpiId?: string | null;
+  nome: string;
+  fabricante?: string | null;
+  certificadoAprovacaoNumero?: string | null;
+  certificadoAprovacaoValidade?: string | null;
+  temFoto: boolean;
+  saldo: number;
+  reservado: number;
+  disponivel: number;
+  estoqueMinimo?: number | null;
+  minimoSugerido: number;
+  consumoUltimos90Dias: number;
+  situacao: SituacaoEstoqueEpi;
+  reservasEmFalta: number;
+  tamanhosEmFalta: string[];
+  quantidadeSugeridaCompra: number;
+  estoqueMinimoDefinidoEm?: string | null;
+  estoqueMinimoDefinidoPor?: string | null;
+  transferencias: SugestaoTransferenciaEpi[];
+}
+export interface EstoqueEpiPainel {
+  obraId: string;
+  obraNome: string;
+  prazoReposicaoEpiDias: number;
+  itens: EstoqueEpiPainelItem[];
+}
+export interface SolicitacaoReposicaoEpiResumo {
+  id: string;
+  numeroDocumento: string;
+  criadaEm: string;
+  solicitanteNome: string;
+  totalItens: number;
+  assinada: boolean;
+}
 
 export interface EstoqueEpiPorObra {
   catalogoEpiId: string;
@@ -1231,11 +1493,30 @@ export interface RiscoClassificado {
   controlesExistentes?: string | null;
   controlesAdicionais?: string | null;
   status: number;
+  // Ordem de Serviço (20/10/2026): avaliação confirmada e medidas por fase.
+  probabilidade: number;
+  severidade: number;
+  consequencia?: string | null;
+  avaliadoEmUtc?: string | null;
+  avaliadoPorNome?: string | null;
+  medidas: MedidaPrevencao[];
+}
+
+// Fase: 1 Antes, 2 Durante, 3 Após. Origem: 1 PGR, 2 Sugestão da IA, 3 Manual. Status: 1 Validada, 2 Pendente.
+export interface MedidaPrevencao {
+  id: string;
+  fase: 1 | 2 | 3;
+  texto: string;
+  origem: 1 | 2 | 3;
+  status: 1 | 2 | 3;
+  validadoPorNome?: string | null;
+  validadoEmUtc?: string | null;
 }
 
 export interface AtividadeCaracterizada {
   atividadeId: string;
   atividadeNome: string;
+  itensOsPendentes: number;
   riscos: RiscoClassificado[];
 }
 
@@ -2503,6 +2784,116 @@ export interface MaterialApoio {
   contentType: string;
   tamanhoBytes: number;
   createdAtUtc: string;
+  // Ordem de Serviço (20/10/2026). Tipo: 1 Material de apoio, 2 Procedimento, 3 Instrução de trabalho,
+  // 4 Política. Situação: 1 Vigente, 2 Em revisão, 3 Obsoleto.
+  tipo: 1 | 2 | 3 | 4;
+  codigo?: string | null;
+  revisao?: string | null;
+  situacao?: 1 | 2 | 3 | null;
+  formaConsulta?: string | null;
+  incluirEmTodasOs: boolean;
+  atividades: number;
+}
+
+// Minuta da Ordem de Serviço do trabalhador (20/10/2026). Só traz conteúdo validado; o que falta vem
+// em `pendencias` e bloqueia a emissão.
+export interface PendenciaOs {
+  tipo: string;
+  titulo: string;
+  porQueBloqueia: string;
+  quemResolve: 'SST' | 'RH';
+  destino?: 'pgr' | 'treinamentos' | 'aso' | null;
+  destinoId?: string | null;
+}
+
+export interface RiscoOs {
+  id: string;
+  perigo: string;
+  nivel: number;
+  consequencia?: string | null;
+  antes: string[];
+  durante: string[];
+  apos: string[];
+}
+
+export interface AtividadeOs {
+  id: string;
+  nome: string;
+  condicoes?: string | null;
+  ferramentas: string[];
+  epcs: string[];
+  procedimentos: string[];
+  riscos: RiscoOs[];
+  interromperQuando: string[];
+  restricoes: { texto: string; requisito?: string | null }[];
+  autorizacoes: string[];
+}
+
+export interface MinutaOrdemServico {
+  trabalhadorId: string;
+  podeEmitir: boolean;
+  obra: { id: string; nome: string; cliente?: string | null; cnpj?: string | null; endereco?: string | null };
+  trabalhador: { nome: string; matricula?: string | null; cpfMascarado: string; funcao: string; cbo?: string | null; dataAdmissao: string };
+  pgr?: { id: string; nome: string; dataElaboracao: string; revisao?: number | null } | null;
+  ghes: { numero: number; descricaoAtividades?: string | null }[];
+  atividades: AtividadeOs[];
+  epis: { nome: string; ca?: string | null }[];
+  treinamentos: { curso: string; norma?: string | null; validade?: string | null; situacao: 'Valido' | 'Vencido' | 'NaoRealizado' }[];
+  aso?: { resultado: number; validade?: string | null; valido: boolean } | null;
+  politicas: { titulo: string; codigo?: string | null; revisao?: string | null; formaConsulta?: string | null }[];
+  pendencias: PendenciaOs[];
+}
+
+// Gerador de PGR pela EAP (21/10/2026). Status: 1 Rascunho, 2 Aguardando aprovação, 3 Aprovado, 4 Devolvido.
+export interface ItemEapGerado { codigo: string; nome: string; nivel: number; periodo?: string | null; usar: boolean; conferir: boolean }
+export interface MedidaGerada { fase: 1 | 2 | 3; texto: string; decisao: 'Pendente' | 'Aceita' | 'Descartada' }
+export interface RiscoGerado {
+  id: string; tipo: string; perigo: string; danos?: string | null; probabilidade: number; severidade: number;
+  base: string[]; medidas: MedidaGerada[]; revisado: boolean; excluido: boolean;
+}
+export interface AtividadeGerada { codigoEap: string; nome: string; riscosGerados: boolean; riscos: RiscoGerado[] }
+export interface FuncaoGerada { funcaoId?: string | null; nome: string; descricao?: string | null; sugeridaPelaIa: boolean }
+export interface GheGerado { numero: number; nome: string; ambiente?: string | null; jornada?: string | null; funcoes: FuncaoGerada[]; atividades: AtividadeGerada[] }
+export interface EstruturaGeracaoPgr { itens: ItemEapGerado[]; ghes: GheGerado[]; planoAcao: string[] }
+export interface GeracaoPgrEap {
+  id: string; obraId: string; obraNome: string; nome: string; dataElaboracao: string; dataProximaRevisao?: string | null;
+  elaboradoPorNome?: string | null; nomeArquivoEap: string; status: 1 | 2 | 3 | 4; passo: number; motivoDevolucao?: string | null;
+  aprovadoPorNome?: string | null; aprovadoEmUtc?: string | null; pgrId?: string | null; estrutura: EstruturaGeracaoPgr;
+  pendenciasAprovacao: string[]; funcoesCadastradas: { id: string; nome: string }[]; maxProbabilidade: number; maxSeveridade: number;
+}
+export interface ResumoGeracaoPgrEap { id: string; nome: string; obraNome: string; status: 1 | 2 | 3 | 4; passo: number; criadoEmUtc: string }
+
+export interface DadosDocumentoSst {
+  tipo: 1 | 2 | 3 | 4;
+  codigo?: string | null;
+  revisao?: string | null;
+  situacao?: 1 | 2 | 3 | null;
+  formaConsulta?: string | null;
+  incluirEmTodasOs: boolean;
+}
+
+// Tipo do item: 1 Interromper quando, 2 Não executar sem, 3 Autorização.
+export interface ItemAtividadeOs {
+  id: string;
+  tipo: 1 | 2 | 3;
+  texto: string;
+  requisito?: string | null;
+  origem: 1 | 2 | 3;
+  status: 1 | 2 | 3;
+  validadoPorNome?: string | null;
+  validadoEmUtc?: string | null;
+}
+
+export interface DetalhesOsAtividade {
+  atividadeId: string;
+  atividadeNome: string;
+  condicoes?: string | null;
+  condicoesDoPgr: boolean;
+  ferramentas: string[];
+  epcs: { id: string; nome: string }[];
+  documentos: { id: string; tipo: number; codigo?: string | null; titulo: string; revisao?: string | null; situacao?: number | null }[];
+  treinamentos: { curso: string; norma?: string | null; funcao: string }[];
+  itens: ItemAtividadeOs[];
 }
 
 export const StatusDds = {
@@ -2615,12 +3006,19 @@ export interface DdsFuncionario {
 export const TipoDdsSemanal = {
   Proprios: 1,
   Terceirizados: 2,
+  ProprioseTerceirizados: 3,
 } as const;
 
 export const tipoDdsSemanalLabel: Record<number, string> = {
   1: 'Empregados Próprios',
   2: 'Empregados Terceirizados',
+  3: 'Empregados Próprios e Terceirizados',
 };
+
+// Espelha TipoDdsSemanalExtensions.IncluiTerceirizados do backend.
+export function tipoDdsSemanalIncluiTerceirizados(tipo: number): boolean {
+  return tipo === TipoDdsSemanal.Terceirizados || tipo === TipoDdsSemanal.ProprioseTerceirizados;
+}
 
 export const StatusDdsSemanal = {
   EmAndamento: 1,
@@ -2931,6 +3329,8 @@ export interface NaoConformidade {
   requisitoRelacionado?: string | null;
   descricao: string;
   local?: string | null;
+  obraId?: string | null;
+  obraNome?: string | null;
   atividadeId?: string | null;
   atividadeNome?: string | null;
   riscoId?: string | null;
@@ -2946,6 +3346,7 @@ export interface NaoConformidade {
 
 export interface NovaNaoConformidade {
   origemDeteccao: number;
+  obraId?: string | null;
   requisitoRelacionado?: string | null;
   descricao: string;
   local?: string | null;
@@ -2974,7 +3375,23 @@ export interface AcaoPlano {
   dataValidacao?: string | null;
   validadoPorUsuarioId?: string | null;
   validadoPorUsuarioNome?: string | null;
+  // Conclusão manual: quem concluiu (pelo login) e o que foi feito.
+  concluidoPorUsuarioNome?: string | null;
+  descricaoConclusao?: string | null;
+  // Só no detalhe da ocorrência: ação que o sistema conclui sozinho e como.
+  tipoResolucaoAutomatica?: 'Dds' | 'Reuniao' | 'Treinamento' | 'Inspecao' | 'EntregaEpi' | null;
+  resolucaoAutomatica?: string | null;
+  // Vínculo que conclui sozinho (treinamento/inspeção/EPI), o andamento e o rótulo de espera.
+  tipoResolucao?: number | null;
+  resolucaoCursoTreinamentoId?: string | null;
+  resolucaoTipoInspecao?: number | null;
+  resolucaoCatalogoEpiId?: string | null;
+  progressoResolucao?: string | null;
+  rotuloAguardando?: string | null;
 }
+
+// Como uma ação do plano se conclui sozinha (nulo = manual).
+export const TipoResolucaoAcaoPlano = { Treinamento: 1, Inspecao: 2, EntregaEpi: 3 } as const;
 
 export interface NaoConformidadeDetalhe {
   naoConformidade: NaoConformidade;
@@ -2989,6 +3406,11 @@ export interface NovaAcaoPlano {
   responsavelUsuarioId?: string | null;
   prioridade: number;
   prazo?: string | null;
+  // "Como se resolve" (ocorrências): nulo = manual.
+  tipoResolucao?: number | null;
+  resolucaoCursoTreinamentoId?: string | null;
+  resolucaoTipoInspecao?: number | null;
+  resolucaoCatalogoEpiId?: string | null;
 }
 
 export interface AtualizarAcaoPlanoPayload {
@@ -3180,6 +3602,10 @@ export interface ReuniaoAnalise {
   situacao: number;
   linkTeams: string | null;
   motivoFalha: string | null;
+  // Preenchidos quando a reunião foi registrada como realizada (horário de Brasília, sem fuso).
+  realizadaEm: string | null;
+  presentes: string[] | null;
+  ata: string | null;
 }
 
 export interface TemaDdsAgendado {
@@ -3379,6 +3805,10 @@ export const tipoAlertaLabel: Record<number, string> = {
   28: 'Exame da função vencendo',
   29: 'Exame da função vencido',
   30: 'Cadastro facial para refazer',
+  33: 'Funcionário novo',
+  34: 'EPI abaixo do mínimo',
+  35: 'Documento de terceirizado vencendo',
+  36: 'Documento de terceirizado vencido',
 };
 
 export const SeveridadeAlerta = {
@@ -3434,6 +3864,30 @@ export interface SaudeEnvioTeams {
   ultimaFalhaEmUtc: string | null;
   ultimoSucessoEmUtc: string | null;
   ultimoErro: string | null;
+}
+
+// Prévia do próximo aviso diário de itens vencidos das obras (GET /api/alertas/aviso-documentos-vencidos/previa).
+export interface PreviaAvisoItem {
+  tipo: string;
+  nome: string;
+  obra: string;
+  vencimento: string;
+  diasVencido: number;
+  divergencias: number;
+}
+
+export interface PreviaAvisoDestinatario {
+  nome: string;
+  email: string;
+  motivos: string[];
+  recebeSininho: boolean;
+  motivoSemSininho: string | null;
+  itens: PreviaAvisoItem[];
+}
+
+export interface PreviaAvisoDocumentosVencidos {
+  dataEnvio: string;
+  destinatarios: PreviaAvisoDestinatario[];
 }
 
 export interface Alerta {
@@ -3541,6 +3995,8 @@ export const TipoModuloAlerta = {
   CadastroFacial: 14,
   // Validade do PCMSO (PcmsoAlertaProvider).
   Pcmso: 15,
+  // Documentos da empresa terceirizada (DocumentoEmpresaTerceirizadaAlertaProvider).
+  DocumentoTerceirizado: 16,
 } as const;
 
 export const moduloAlertaLabel: Record<number, string> = {
@@ -3559,6 +4015,7 @@ export const moduloAlertaLabel: Record<number, string> = {
   13: 'Exames da função (PCMSO)',
   14: 'Cadastro facial',
   15: 'PCMSO',
+  16: 'Documentos de terceirizados',
 };
 
 export interface RegraAlerta {
@@ -4230,6 +4687,51 @@ export interface NovaNovidadeVersao {
   itens: NovidadeVersaoItemInput[];
 }
 
+// Plano de integração do funcionário novo (especificação 21/10/2026, Módulo 1) — pop-up que aparece
+// depois das Novidades para o Técnico de Segurança e o Administrador.
+export type SituacaoPassoIntegracao = 'feito' | 'pendente' | 'agendado' | 'aguardando' | 'naoConfigurado';
+export type SituacaoItemKit = 'separado' | 'emFalta' | 'entregue';
+export const MotivoPlanoIntegracao = {
+  Admissao: 1,
+  TrocaFuncao: 2,
+  TransferenciaObra: 3,
+} as const;
+export type MotivoPlanoIntegracao = (typeof MotivoPlanoIntegracao)[keyof typeof MotivoPlanoIntegracao];
+export interface PassoPlanoIntegracao {
+  codigo: string;
+  titulo: string;
+  situacao: SituacaoPassoIntegracao;
+  detalhe?: string | null;
+  rota?: string | null;
+  sessaoTreinamentoId?: string | null;
+  dataTurma?: string | null;
+}
+export interface ItemKitEpi {
+  catalogoEpiId: string;
+  nome: string;
+  tamanho?: string | null;
+  situacao: SituacaoItemKit;
+}
+export interface PlanoIntegracao {
+  id: string;
+  trabalhadorId: string;
+  nome: string;
+  matricula?: string | null;
+  funcao: string;
+  obraId: string;
+  obraNome: string;
+  equipeNome?: string | null;
+  dataAdmissao: string;
+  temFoto: boolean;
+  motivo: MotivoPlanoIntegracao;
+  abertoEm: string;
+  responsavelNome?: string | null;
+  assumidoEm?: string | null;
+  passosConcluidos: number;
+  passos: PassoPlanoIntegracao[];
+  kit: ItemKitEpi[];
+}
+
 export const api = {
   catalogo: {
     atividades: (obraId?: string) =>
@@ -4386,10 +4888,14 @@ export const api = {
     },
     // Cadastro de digital via agente local (Futronic FS80H) — templateBruto vem em base64 do
     // agente (fetch local a /api/capturar-bruto); o backend criptografa antes de persistir.
-    cadastrarBiometriaLocal: (id: string, templateBrutoBase64: string, imagemCadastroBase64?: string | null) =>
+    cadastrarBiometriaLocal: (id: string, templateBrutoBase64: string, imagemCadastroBase64?: string | null, dedo?: DedoBiometria) =>
       request<void>(`/api/trabalhadores/${id}/assinatura/biometria-local/cadastro`, {
         method: 'POST',
-        body: JSON.stringify({ templateBruto: templateBrutoBase64, imagemCadastro: imagemCadastroBase64 ?? null }),
+        body: JSON.stringify({
+          templateBruto: templateBrutoBase64,
+          imagemCadastro: imagemCadastroBase64 ?? null,
+          dedo: dedo ?? null,
+        }),
       }),
     // Cadastro de reconhecimento facial (Azure Face API) — multipart, não passa por request<T>
     // (que sempre força Content-Type: application/json, incompatível com FormData) nem pelo motor
@@ -4513,6 +5019,12 @@ export const api = {
     atualizar: (aso: Aso) => request<void>(`/api/asos/${aso.id}`, { method: 'PUT', body: JSON.stringify(aso) }),
     excluir: (id: string) => request<void>(`/api/asos/${id}`, { method: 'DELETE' }),
     importarGrh: () => request<ImportarAsoGrhResultado>('/api/asos/importar-grh', { method: 'POST' }),
+    // PDF/foto do ASO (23/10/2026). Reenviar substitui.
+    anexarArquivo: (id: string, arquivo: File) => {
+      const formData = new FormData();
+      formData.append('Arquivo', arquivo);
+      return enviarFormulario<{ id: string }>(`/api/asos/${id}/arquivo`, formData);
+    },
   },
   examesComplementares: {
     listar: (trabalhadorId?: string) =>
@@ -4585,6 +5097,36 @@ export const api = {
     // Card "Aptidão por treinamento" do Início: por curso exigido na matriz de funções.
     aptidao: (obraId?: string) =>
       request<AptidaoCurso[]>(`/api/cursostreinamento/aptidao${obraId ? `?obraId=${obraId}` : ''}`),
+    padroesNr: () => request<PadraoNr[]>('/api/cursostreinamento/padroes-nr'),
+  },
+  escopoPcmso: {
+    obter: (obraId: string) => request<EscopoPcmso>(`/api/escopo-pcmso/obras/${obraId}`),
+    pdf: (obraId: string) => baixarArquivoRelatorio(`/api/escopo-pcmso/obras/${obraId}/pdf`),
+    enviar: (obraId: string, emailMedico: string, nomeMedico?: string, mensagem?: string) =>
+      request<void>(`/api/escopo-pcmso/obras/${obraId}/enviar`, {
+        method: 'POST',
+        body: JSON.stringify({ emailMedico, nomeMedico: nomeMedico || null, mensagem: mensagem || null }),
+      }),
+  },
+  cursosObrigatorios: {
+    listar: (obraId: string) => request<CursosObrigatoriosObra>(`/api/cursos-obrigatorios/obras/${obraId}`),
+    gerar: (obraId: string) =>
+      request<ResultadoGeracaoCursosObrigatorios>(`/api/cursos-obrigatorios/obras/${obraId}/gerar`, { method: 'POST' }),
+    aprovarSugestoes: (obraId: string) =>
+      request<{ aprovados: number }>(`/api/cursos-obrigatorios/obras/${obraId}/aprovar-sugestoes`, { method: 'POST' }),
+    adicionar: (obraId: string, funcaoId: string, cursoTreinamentoId: string) =>
+      request<{ id: string }>(`/api/cursos-obrigatorios/obras/${obraId}`, {
+        method: 'POST',
+        body: JSON.stringify({ funcaoId, cursoTreinamentoId }),
+      }),
+    decidir: (id: string, aprovar: boolean, justificativa?: string) =>
+      request<void>(`/api/cursos-obrigatorios/${id}/decidir`, {
+        method: 'POST',
+        body: JSON.stringify({ aprovar, justificativa: justificativa ?? null }),
+      }),
+    regras: () => request<RegraCursoObrigatorio[]>('/api/cursos-obrigatorios/regras'),
+    salvarRegra: (regra: SalvarRegraCursoObrigatorio) =>
+      request<{ id: string }>('/api/cursos-obrigatorios/regras', { method: 'POST', body: JSON.stringify(regra) }),
   },
   treinamentos: {
     listar: (trabalhadorId?: string, obraId?: string) => {
@@ -4655,6 +5197,10 @@ export const api = {
   sessoesTreinamento: {
     listar: (obraId?: string) => request<SessaoTreinamento[]>(`/api/sessoestreinamento${obraId ? `?obraId=${obraId}` : ''}`),
     obterDetalhe: (id: string) => request<SessaoTreinamentoDetalhe>(`/api/sessoestreinamento/${id}`),
+    padrao: (cursoTreinamentoId: string, obraId?: string) =>
+      request<PadraoTurmaTreinamento>(
+        `/api/sessoestreinamento/padrao?cursoTreinamentoId=${cursoTreinamentoId}${obraId ? `&obraId=${obraId}` : ''}`,
+      ),
     criar: (sessao: NovaSessaoTreinamento) =>
       request<{ id: string }>('/api/sessoestreinamento', { method: 'POST', body: JSON.stringify(sessao) }),
     // Presença exclusivamente por biometria (mesmo padrão de api.dds.registrarParticipante) —
@@ -4823,6 +5369,26 @@ export const api = {
       request<void>('/api/estoquesepi/entrada', { method: 'POST', body: JSON.stringify(dados) }),
     ajustar: (dados: AjustarEstoqueEpi) =>
       request<void>('/api/estoquesepi/ajuste', { method: 'POST', body: JSON.stringify(dados) }),
+    painel: (obraId: string) => request<EstoqueEpiPainel>(`/api/estoquesepi/obra/${obraId}/painel`),
+    definirMinimo: (obraId: string, catalogoEpiId: string, estoqueMinimo: number | null) =>
+      request<void>(`/api/estoquesepi/obra/${obraId}/epi/${catalogoEpiId}/minimo`, {
+        method: 'PUT',
+        body: JSON.stringify({ estoqueMinimo }),
+      }),
+    aplicarSugestoes: (obraId: string) =>
+      request<{ aplicados: number }>(`/api/estoquesepi/obra/${obraId}/minimos/aplicar-sugestoes`, { method: 'POST' }),
+    definirPrazoReposicao: (obraId: string, dias: number) =>
+      request<void>(`/api/estoquesepi/obra/${obraId}/prazo-reposicao`, { method: 'PUT', body: JSON.stringify({ dias }) }),
+    transferir: (dados: { catalogoEpiId: string; obraOrigemId: string; obraDestinoId: string; quantidade: number; observacao?: string | null }) =>
+      request<void>('/api/estoquesepi/transferencia', { method: 'POST', body: JSON.stringify(dados) }),
+    listarSolicitacoesReposicao: (obraId: string) =>
+      request<SolicitacaoReposicaoEpiResumo[]>(`/api/estoquesepi/obra/${obraId}/solicitacoes-reposicao`),
+    criarSolicitacaoReposicao: (obraId: string, observacao: string | null) =>
+      request<{ id: string }>(`/api/estoquesepi/obra/${obraId}/solicitacoes-reposicao`, {
+        method: 'POST',
+        body: JSON.stringify({ observacao }),
+      }),
+    baixarSolicitacaoReposicao: (id: string) => baixarArquivoRelatorio(`/api/estoquesepi/solicitacoes-reposicao/${id}/pdf`),
   },
   estoquesUniforme: {
     listarPorObra: (obraId: string) => request<EstoqueUniformePorObra[]>(`/api/estoquesuniforme/obra/${obraId}`),
@@ -4935,6 +5501,29 @@ export const api = {
     listar: (atividadeId?: string) => request<Risco[]>(`/api/riscos${atividadeId ? `?atividadeId=${atividadeId}` : ''}`),
     criar: (risco: NovoRisco) => request<{ id: string }>('/api/riscos', { method: 'POST', body: JSON.stringify(risco) }),
     excluir: (id: string) => request<void>(`/api/riscos/${id}`, { method: 'DELETE' }),
+    confirmarAvaliacao: (riscoId: string) =>
+      request<void>(`/api/riscos/${riscoId}/confirmar-avaliacao`, { method: 'POST' }),
+    separarMedidasComIa: (riscoId: string) =>
+      request<{ medidas: number }>(`/api/riscos/${riscoId}/medidas/separar-com-ia`, { method: 'POST' }),
+    adicionarMedida: (riscoId: string, fase: 1 | 2 | 3, texto: string) =>
+      request<{ id: string }>(`/api/riscos/${riscoId}/medidas`, { method: 'POST', body: JSON.stringify({ fase, texto }) }),
+    obterDetalhesOs: (atividadeId: string) => request<DetalhesOsAtividade>(`/api/atividades/${atividadeId}/detalhes-os`),
+    salvarDetalhesOs: (atividadeId: string, dados: { condicoes: string | null; ferramentas: string[]; epcIds: string[]; documentoIds: string[] }) =>
+      request<void>(`/api/atividades/${atividadeId}/detalhes-os`, { method: 'PUT', body: JSON.stringify(dados) }),
+    adicionarItemOs: (atividadeId: string, tipo: 1 | 2 | 3, texto: string, requisito?: string) =>
+      request<{ id: string }>(`/api/atividades/${atividadeId}/itens-os`, { method: 'POST', body: JSON.stringify({ tipo, texto, requisito: requisito ?? null }) }),
+    sugerirItensOs: (atividadeId: string) =>
+      request<{ itens: number }>(`/api/atividades/${atividadeId}/itens-os/sugerir-com-ia`, { method: 'POST' }),
+    decidirItemOs: (itemId: string, aceitar: boolean, textoEditado?: string, requisitoEditado?: string) =>
+      request<void>(`/api/itens-os/${itemId}/decidir`, {
+        method: 'POST',
+        body: JSON.stringify({ aceitar, textoEditado: textoEditado ?? null, requisitoEditado: requisitoEditado ?? null }),
+      }),
+    decidirMedida: (medidaId: string, aceitar: boolean, textoEditado?: string) =>
+      request<void>(`/api/medidas-prevencao/${medidaId}/decidir`, {
+        method: 'POST',
+        body: JSON.stringify({ aceitar, textoEditado: textoEditado ?? null }),
+      }),
     importarLote: (obraId: string, itens: RiscoLoteItem[]) =>
       request<ImportarRiscosLoteResultado>('/api/riscos/importar-lote', {
         method: 'POST',
@@ -4942,6 +5531,33 @@ export const api = {
       }),
     limparPorObra: (obraId: string) =>
       request<{ riscosRemovidos: number }>(`/api/riscos/obra/${obraId}`, { method: 'DELETE' }),
+  },
+  geracoesPgrEap: {
+    listar: (obraId?: string) => request<ResumoGeracaoPgrEap[]>(`/api/geracoes-pgr-eap${obraId ? `?obraId=${obraId}` : ''}`),
+    obter: (id: string) => request<GeracaoPgrEap>(`/api/geracoes-pgr-eap/${id}`),
+    criar: async (dados: { obraId: string; nome: string; dataElaboracao: string; dataProximaRevisao?: string | null }, arquivo: File) => {
+      const formData = new FormData();
+      formData.append('obraId', dados.obraId);
+      formData.append('nome', dados.nome);
+      formData.append('dataElaboracao', dados.dataElaboracao);
+      if (dados.dataProximaRevisao) formData.append('dataProximaRevisao', dados.dataProximaRevisao);
+      formData.append('arquivo', arquivo);
+      const response = await fetch(`${API_BASE_URL}/api/geracoes-pgr-eap`, { method: 'POST', headers: await montarHeadersAuth(), body: formData });
+      if (!response.ok) {
+        const corpo = await response.text().catch(() => '');
+        throw new Error(extrairMensagemErro(corpo, response.status, response.statusText));
+      }
+      return response.json() as Promise<{ id: string }>;
+    },
+    salvar: (id: string, passo: number, estrutura: EstruturaGeracaoPgr) =>
+      request<void>(`/api/geracoes-pgr-eap/${id}`, { method: 'PUT', body: JSON.stringify({ passo, estrutura }) }),
+    sugerirGhes: (id: string) => request<void>(`/api/geracoes-pgr-eap/${id}/sugerir-ghes`, { method: 'POST' }),
+    gerarRiscos: (id: string, gheNumero: number, codigoEap: string) =>
+      request<{ riscos: number }>(`/api/geracoes-pgr-eap/${id}/gerar-riscos`, { method: 'POST', body: JSON.stringify({ gheNumero, codigoEap }) }),
+    enviarAprovacao: (id: string) => request<void>(`/api/geracoes-pgr-eap/${id}/enviar-aprovacao`, { method: 'POST' }),
+    devolver: (id: string, motivo: string) =>
+      request<void>(`/api/geracoes-pgr-eap/${id}/devolver`, { method: 'POST', body: JSON.stringify({ motivo }) }),
+    aprovar: (id: string) => request<{ pgrId: string }>(`/api/geracoes-pgr-eap/${id}/aprovar`, { method: 'POST' }),
   },
   pgrs: {
     listar: (obraId?: string) => request<Pgr[]>(`/api/pgrs${obraId ? `?obraId=${obraId}` : ''}`),
@@ -5408,6 +6024,9 @@ export const api = {
     obterOuCriarInspecaoAtual: (veiculoId: string) =>
       request<InspecaoAtual>(`/api/veiculos/${veiculoId}/inspecao-atual`, { method: 'POST' }),
   },
+  ordensServico: {
+    obterMinuta: (trabalhadorId: string) => request<MinutaOrdemServico>(`/api/trabalhadores/${trabalhadorId}/ordem-servico/minuta`),
+  },
   materiaisApoio: {
     listar: (categoria?: string) =>
       request<MaterialApoio[]>(`/api/materiaisapoio${categoria ? `?categoria=${encodeURIComponent(categoria)}` : ''}`),
@@ -5424,10 +6043,18 @@ export const api = {
       }
       return response.blob();
     },
-    criar: async (nome: string, categoria: string | null, arquivo: File) => {
+    criar: async (nome: string, categoria: string | null, arquivo: File, dados?: DadosDocumentoSst) => {
       const formData = new FormData();
       formData.append('nome', nome);
       if (categoria) formData.append('categoria', categoria);
+      if (dados) {
+        formData.append('tipo', String(dados.tipo));
+        if (dados.codigo) formData.append('codigo', dados.codigo);
+        if (dados.revisao) formData.append('revisao', dados.revisao);
+        if (dados.situacao) formData.append('situacao', String(dados.situacao));
+        if (dados.formaConsulta) formData.append('formaConsulta', dados.formaConsulta);
+        formData.append('incluirEmTodasOs', String(dados.incluirEmTodasOs));
+      }
       formData.append('arquivo', arquivo);
       const response = await fetch(`${API_BASE_URL}/api/materiaisapoio`, {
         method: 'POST',
@@ -5441,6 +6068,8 @@ export const api = {
       return response.json() as Promise<{ id: string }>;
     },
     excluir: (id: string) => request<void>(`/api/materiaisapoio/${id}`, { method: 'DELETE' }),
+    atualizar: (id: string, nome: string, dados: Omit<DadosDocumentoSst, 'tipo'>) =>
+      request<void>(`/api/materiaisapoio/${id}`, { method: 'PUT', body: JSON.stringify({ id, nome, ...dados }) }),
   },
   dds: {
     temasAgendados: (obraId: string, data: string) =>
@@ -5769,6 +6398,31 @@ export const api = {
       request<void>(`/api/acidentes/${id}`, { method: 'PUT', body: JSON.stringify(acidente) }),
     excluir: (id: string) => request<void>(`/api/acidentes/${id}`, { method: 'DELETE' }),
     avancarStatus: (id: string) => request<void>(`/api/acidentes/${id}/avancar-status`, { method: 'POST' }),
+    // Ações do plano da ocorrência: concluir com descrição (quem conclui vem do login) e reabrir.
+    concluirAcao: (acaoId: string, descricaoConclusao: string) =>
+      request<void>(`/api/acidentes/acoes-plano/${acaoId}/concluir`, { method: 'POST', body: JSON.stringify({ descricaoConclusao }) }),
+    reabrirAcao: (acaoId: string) => request<void>(`/api/acidentes/acoes-plano/${acaoId}/reabrir`, { method: 'POST' }),
+    definirResolucaoAcao: (
+      acaoId: string,
+      dados: { tipoResolucao: number | null; cursoTreinamentoId: string | null; tipoInspecao: number | null; catalogoEpiId: string | null },
+    ) => request<void>(`/api/acidentes/acoes-plano/${acaoId}/resolucao`, { method: 'PUT', body: JSON.stringify(dados) }),
+    // Reunião de análise pela tela da ocorrência. Horários em Brasília, sem fuso ("2026-10-24T14:00:00").
+    agendarReuniao: (id: string, dados: { inicio: string; duracaoMinutos: number; participantesUsuarioIds: string[] }) =>
+      request<void>(`/api/acidentes/${id}/reuniao-analise`, { method: 'POST', body: JSON.stringify(dados) }),
+    remarcarReuniao: (id: string, dados: { inicio: string; duracaoMinutos: number }) =>
+      request<void>(`/api/acidentes/${id}/reuniao-analise/horario`, { method: 'PUT', body: JSON.stringify(dados) }),
+    tentarReuniaoNoTeams: (id: string) => request<void>(`/api/acidentes/${id}/reuniao-analise/teams`, { method: 'POST' }),
+    registrarReuniaoRealizada: (id: string, dados: { realizadaEm: string; presentes: string[]; ata: string }) =>
+      request<void>(`/api/acidentes/${id}/reuniao-analise/realizada`, { method: 'PUT', body: JSON.stringify(dados) }),
+    // Relatório de Investigação de Ocorrência (PDF), mesmo padrão de inspecoes.baixarPdf.
+    baixarPdf: async (id: string) => {
+      const response = await fetch(`${API_BASE_URL}/api/acidentes/${id}/pdf`, { headers: await montarHeadersAuth() });
+      if (!response.ok) {
+        const corpo = await response.text().catch(() => '');
+        throw new Error(extrairMensagemErro(corpo, response.status, response.statusText));
+      }
+      return response.blob();
+    },
   },
   registrosHht: {
     listar: (filtros?: { obraId?: string; ano?: number }) => {
@@ -5796,6 +6450,8 @@ export const api = {
     },
     obterPorId: (id: string) => request<Alerta>(`/api/alertas/${id}`),
     saudeEnvioTeams: () => request<SaudeEnvioTeams>('/api/alertas/saude-envio-teams'),
+    previaAvisoDocumentosVencidos: () =>
+      request<PreviaAvisoDocumentosVencidos>('/api/alertas/aviso-documentos-vencidos/previa'),
     criar: (alerta: NovoAlerta) =>
       request<{ id: string }>('/api/alertas', { method: 'POST', body: JSON.stringify(alerta) }),
     atualizar: (id: string, alerta: AtualizarAlertaPayload) =>
@@ -5826,6 +6482,9 @@ export const api = {
     obterDetalhe: (id: string) => request<SuporteIaSolicitacao>(`/api/suporte-ia/${id}`),
     // "Relatar por voz" — multipart, fora de request<T> (que força Content-Type: application/json)
     // e do motor offline (transcrição e classificação dependem do Azure OpenAI, sempre online).
+    // Texto ditado no navegador (Web Speech API) → a IA classifica. Substitui o envio de áudio.
+    relatoTexto: (relato: string) =>
+      request<RelatoVozSuporteIa>('/api/suporte-ia/relato-texto', { method: 'POST', body: JSON.stringify({ relato }) }),
     relatoVoz: async (audio: Blob, nomeArquivo: string): Promise<RelatoVozSuporteIa> => {
       const formData = new FormData();
       formData.append('audio', audio, nomeArquivo);
@@ -5861,6 +6520,16 @@ export const api = {
       request<SuporteIaSolicitacao>(`/api/suporte-ia/${id}/validar`, {
         method: 'POST',
         body: JSON.stringify({ confirmado, comentario }),
+      }),
+  },
+  planosIntegracao: {
+    pendentes: () => request<PlanoIntegracao[]>('/api/planos-integracao/pendentes'),
+    obter: (id: string) => request<PlanoIntegracao>(`/api/planos-integracao/${id}`),
+    assumir: (id: string) => request<void>(`/api/planos-integracao/${id}/assumir`, { method: 'POST' }),
+    alterarDataTurma: (sessaoTreinamentoId: string, dataRealizacao: string) =>
+      request<void>(`/api/sessoestreinamento/${sessaoTreinamentoId}/data`, {
+        method: 'PUT',
+        body: JSON.stringify({ dataRealizacao }),
       }),
   },
   novidades: {
@@ -6071,10 +6740,60 @@ export const api = {
       atualizar: (empresa: AtualizarEmpresa) =>
         request<void>(`/api/empresas/${empresa.id}`, { method: 'PUT', body: JSON.stringify(empresa) }),
       excluir: (id: string) => request<void>(`/api/empresas/${id}`, { method: 'DELETE' }),
+      listarConformidade: () => request<ResumoConformidadeEmpresa[]>('/api/empresas/conformidade'),
+      obterConformidade: (id: string) => request<ConformidadeEmpresa>(`/api/empresas/${id}/conformidade`),
+      // Envia (ou substitui) o documento da empresa para um item exigido; validade em yyyy-MM-dd.
+      enviarDocumento: (empresaId: string, documentoExigidoId: string, dataValidade: string | null, arquivo: File) => {
+        const formData = new FormData();
+        formData.append('DocumentoExigidoId', documentoExigidoId);
+        if (dataValidade) formData.append('DataValidade', dataValidade);
+        formData.append('Arquivo', arquivo);
+        return enviarFormulario<{ id: string }>(`/api/empresas/${empresaId}/documentos`, formData);
+      },
+      baixarDocumento: (empresaId: string, documentoId: string) =>
+        baixarBlobOuNulo(`/api/empresas/${empresaId}/documentos/${documentoId}/arquivo`),
+      removerDocumento: (empresaId: string, documentoId: string) =>
+        request<void>(`/api/empresas/${empresaId}/documentos/${documentoId}`, { method: 'DELETE' }),
+    },
+    documentosExigidos: {
+      listar: () => request<DocumentoExigidoEmpresa[]>('/api/empresas/documentos-exigidos'),
+      criar: (dados: DadosDocumentoExigidoEmpresa) =>
+        request<{ id: string }>('/api/empresas/documentos-exigidos', { method: 'POST', body: JSON.stringify(dados) }),
+      atualizar: (id: string, dados: DadosDocumentoExigidoEmpresa) =>
+        request<void>(`/api/empresas/documentos-exigidos/${id}`, { method: 'PUT', body: JSON.stringify(dados) }),
     },
     contratos: {
       listarPorEmpresa: (empresaId: string) => request<Contrato[]>(`/api/contratos?empresaId=${empresaId}`),
       obterDetalhe: (id: string) => request<ContratoDetalhe>(`/api/contratos/${id}`),
+      criar: (dados: DadosContrato & { empresaId: string; obraId: string }) =>
+        request<{ id: string }>('/api/contratos', { method: 'POST', body: JSON.stringify(dados) }),
+      lerComIa: (arquivo: File) => {
+        const formData = new FormData();
+        formData.append('Arquivo', arquivo);
+        return enviarFormulario<ContratoTerceirizadoLidoIa>('/api/contratos/leitura-ia', formData);
+      },
+      // Guarda o PDF do contrato (substitui o anterior, se houver).
+      anexarArquivo: async (id: string, arquivo: File) => {
+        const formData = new FormData();
+        formData.append('Arquivo', arquivo);
+        const response = await fetch(`${API_BASE_URL}/api/contratos/${id}/arquivo`, {
+          method: 'POST',
+          headers: await montarHeadersAuth(),
+          body: formData,
+        });
+        if (!response.ok) {
+          const corpo = await response.text().catch(() => '');
+          throw new Error(extrairMensagemErro(corpo, response.status, response.statusText));
+        }
+      },
+      baixarArquivo: (id: string) => baixarBlobOuNulo(`/api/contratos/${id}/arquivo`),
+      atualizar: (id: string, dados: DadosContrato) =>
+        request<void>(`/api/contratos/${id}`, { method: 'PUT', body: JSON.stringify({ id, ...dados }) }),
+      encerrar: (id: string, dataEncerramento: string) =>
+        request<{ pessoasAtivas: number }>(`/api/contratos/${id}/encerrar`, {
+          method: 'POST',
+          body: JSON.stringify({ dataEncerramento }),
+        }),
       cadastrarPessoaNaVaga: (
         contratoId: string,
         funcaoId: string,
@@ -6098,6 +6817,13 @@ export const api = {
     },
     pendencias: {
       listar: () => request<PainelPendenciasTerceirizado>('/api/terceirizados/pendencias'),
+    },
+    importacao: {
+      classificar: (arquivo: File) => {
+        const formData = new FormData();
+        formData.append('Arquivo', arquivo);
+        return enviarFormulario<ArquivoTerceirizadoClassificado>('/api/terceirizados/importacao/classificar', formData);
+      },
     },
   },
 };

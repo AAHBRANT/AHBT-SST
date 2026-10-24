@@ -1,6 +1,7 @@
 using AAHBRANT.SST.Application.Assinatura;
 using AAHBRANT.SST.Application.Common;
 using AAHBRANT.SST.Application.Common.Interfaces;
+using AAHBRANT.SST.Domain.Entidades;
 using AAHBRANT.SST.Domain.Enums;
 using MediatR;
 using Microsoft.EntityFrameworkCore;
@@ -52,13 +53,15 @@ public class ExportarCertificadoTreinamentoQueryHandler : IRequestHandler<Export
             .OrderByDescending(d => d.CreatedAtUtc)
             .FirstOrDefaultAsync(ct);
 
-        var signatarios = documento?.Signatarios
-            .Select(s => new CertificadoTreinamentoPdfSignatarioModelo(s.Trabalhador?.Nome ?? string.Empty, s.AssinadoEm, s.MetodoAutenticacao, s.Trabalhador?.Funcao?.Nome))
-            .ToList() ?? new List<CertificadoTreinamentoPdfSignatarioModelo>();
-
         // Rastreabilidade sempre disponível a partir do primeiro export (Motor de Assinatura Task 2) —
         // antes disto, o QR só existia depois de uma finalização que, para Treinamento, nada nunca dispara.
         var rastreio = await _rastreabilidade.GarantirAsync("Treinamento", request.TreinamentoId, ct);
+
+        var signatarios = documento?.Signatarios
+            .Select(s => new CertificadoTreinamentoPdfSignatarioModelo(
+                s.Trabalhador?.Nome ?? string.Empty, s.AssinadoEm, s.MetodoAutenticacao, s.Trabalhador?.Funcao?.Nome,
+                HashAssinatura(s.Id, s.TrabalhadorId, s.AssinadoEm, s.MetodoAutenticacao, rastreio.ConteudoHash)))
+            .ToList() ?? new List<CertificadoTreinamentoPdfSignatarioModelo>();
         var qrCodePng = rastreio.QrCodePng;
 
         // Foto da turma (item 6 da proposta) — só existe quando este Treinamento foi gerado pelo
@@ -73,6 +76,17 @@ public class ExportarCertificadoTreinamentoQueryHandler : IRequestHandler<Export
                 .Select(f => f.FotoConteudo)
                 .FirstOrDefaultAsync(ct);
         }
+
+        // Padrão da NR do curso (19/10): sem conteúdo programático próprio cadastrado, o verso usa o
+        // conteúdo mínimo da norma do catálogo.
+        var padraoNr = CatalogoNormasRegulamentadoras.Obter(treinamento.CursoTreinamento.NormaReferencia);
+        // Ordem (19/10): o conteúdo gravado no próprio treinamento (o que foi ministrado na turma),
+        // depois o do curso, por fim o padrão da NR.
+        var conteudoProgramatico = !string.IsNullOrWhiteSpace(treinamento.ConteudoProgramatico)
+            ? treinamento.ConteudoProgramatico
+            : string.IsNullOrWhiteSpace(treinamento.CursoTreinamento.ConteudoProgramatico)
+                ? padraoNr?.ConteudoProgramaticoTexto
+                : treinamento.CursoTreinamento.ConteudoProgramatico;
 
         var modelo = new CertificadoTreinamentoPdfModelo(
             treinamento.Trabalhador.Obra?.Nome ?? string.Empty,
@@ -96,19 +110,29 @@ public class ExportarCertificadoTreinamentoQueryHandler : IRequestHandler<Export
             treinamento.InstrutorRegistroProfissional,
             treinamento.NumeroCertificado,
             treinamento.Local,
-            treinamento.CursoTreinamento.ConteudoProgramatico,
+            conteudoProgramatico,
             signatarios,
             qrCodePng,
             fotoTurma,
             rastreio.ConteudoHash,
             rastreio.UrlValidacaoPublica,
             rastreio.QrCodePng,
-            rastreio.TemAssinatura);
+            rastreio.TemAssinatura,
+            CatalogoNormasRegulamentadoras.NormalizarNumero(treinamento.CursoTreinamento.NormaReferencia),
+            padraoNr?.Titulo);
 
         var pdf = _pdf.Gerar(modelo);
         // Guarda a cópia exata emitida e o SHA-256 dela — é o que permite conferir, depois,
         // que o arquivo em mãos não foi adulterado (ver HashArquivoCalculador).
         await _rastreabilidade.RegistrarArquivoAsync(rastreio.DocumentoId, pdf, ct);
         return pdf;
+    }
+
+    // Hash determinístico da assinatura: recalculável a partir dos dados gravados no cofre, então
+    // serve de prova de que o selo corresponde àquela assinatura daquele documento.
+    private static string HashAssinatura(Guid signatarioId, Guid trabalhadorId, DateTime assinadoEm, MetodoAutenticacaoAssinatura metodo, string hashDocumento)
+    {
+        var entrada = $"{signatarioId:N}|{trabalhadorId:N}|{assinadoEm:O}|{(int)metodo}|{hashDocumento}";
+        return Convert.ToHexString(System.Security.Cryptography.SHA256.HashData(System.Text.Encoding.UTF8.GetBytes(entrada)));
     }
 }

@@ -49,8 +49,8 @@ public class IdentificacaoFacialMargemTests
             AzureFacePersonGroupId = "grupo-obra",
             MetodosAutenticacaoHabilitados = MetodoAutenticacaoObra.ReconhecimentoFacial,
         };
-        var ana = new Trabalhador { Nome = "Ana", Obra = obra, ObraId = obra.Id, AzureFacePersonId = "p1", ConsentimentoBiometriaEm = DateTime.UtcNow };
-        var bruno = new Trabalhador { Nome = "Bruno", Obra = obra, ObraId = obra.Id, AzureFacePersonId = "p2", ConsentimentoBiometriaEm = DateTime.UtcNow };
+        var ana = new Trabalhador { Nome = "Ana", Obra = obra, ObraId = obra.Id, AzureFacePersonId = "p1", ConsentimentoBiometriaEm = DateTime.UtcNow, TermoAceiteAssinaturaEletronicaEm = DateTime.UtcNow };
+        var bruno = new Trabalhador { Nome = "Bruno", Obra = obra, ObraId = obra.Id, AzureFacePersonId = "p2", ConsentimentoBiometriaEm = DateTime.UtcNow, TermoAceiteAssinaturaEletronicaEm = DateTime.UtcNow };
         db.AddRange(obra, ana, bruno);
         await db.SaveChangesAsync();
 
@@ -82,14 +82,15 @@ public class IdentificacaoFacialMargemTests
     }
 
     [Fact]
-    public async Task SemFila_MesmaSituacao_EhAceita()
+    public async Task SemInformarFila_MesmaSituacao_TambemEhRecusada()
     {
-        var (estrategia, obraId, anaId, _) = await CriarAsync("[{\"personId\":\"p1\",\"confidence\":0.92},{\"personId\":\"p2\",\"confidence\":0.88}]");
+        // Auditoria 19/10 (A10): a margem vale por padrão em todo fluxo 1:N, não só na fila do DDS.
+        var (estrategia, obraId, _, _) = await CriarAsync("[{\"personId\":\"p1\",\"confidence\":0.92},{\"personId\":\"p2\",\"confidence\":0.88}]");
 
         var r = await estrategia.IdentificarAsync(obraId, Foto, CancellationToken.None);
 
-        Assert.True(r.Aceito);
-        Assert.Equal(anaId, r.Resultado!.TrabalhadorId);
+        Assert.False(r.Aceito);
+        Assert.Equal(MotivoRejeicaoFacial.RostoAmbiguo, r.Motivo);
     }
 
     [Fact]

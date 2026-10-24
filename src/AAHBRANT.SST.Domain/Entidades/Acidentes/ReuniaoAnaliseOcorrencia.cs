@@ -6,6 +6,9 @@ namespace AAHBRANT.SST.Domain.Entidades;
 // Reunião de análise de acidente no Teams (09/10/2026, pedido do usuário: "o plano de ação já marca
 // reunião sobre o assunto?"). Obrigatória em todo Acidente e Doença ocupacional registrado por
 // relato. É também uma ação do plano (AcaoPlanoId), concluída pelo técnico depois da reunião.
+// 23/10/2026: passa a ser obrigatória em TODA ocorrência (qualquer tipo) — agendada também pela tela
+// da ocorrência, remarcável, e só libera a finalização da investigação depois de registrada como
+// realizada, com presentes e ata (docs/mockups/reuniao-analise-ocorrencia-v1.html).
 public class ReuniaoAnaliseOcorrencia : AuditableEntity
 {
     public Guid AcidenteId { get; set; }
@@ -22,6 +25,16 @@ public class ReuniaoAnaliseOcorrencia : AuditableEntity
     // "Nome · papel" de cada convidado, uma linha por pessoa — só para exibição; o convite em si
     // vai por e-mail pelo Teams.
     public string Participantes { get; set; } = string.Empty;
+
+    // Ids dos usuários convidados (um por linha) — para reenviar ao Teams quando a criação falhou.
+    // Nulo nas reuniões criadas antes de 23/10.
+    public string? ParticipantesUsuarioIds { get; set; }
+
+    // Registro de que a reunião aconteceu (horário de Brasília), quem esteve presente (um nome por
+    // linha) e a ata. RealizadaEm preenchido = reunião realizada.
+    public DateTime? RealizadaEm { get; set; }
+    public string? Presentes { get; set; }
+    public string? Ata { get; set; }
 
     public SituacaoReuniaoTeams Situacao { get; set; } = SituacaoReuniaoTeams.Pendente;
     public string? GraphEventId { get; set; }

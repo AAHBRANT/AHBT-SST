@@ -1,0 +1,120 @@
+<title>Relatório de Investigação de Ocorrência</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<style>
+/* Layout: prévia de folha A4 sobre mesa cinza, espelhando o cabeçalho/rodapé padrão dos PDFs do SST. Tema único (papel) por escolha. */
+:root{
+  --mesa:#d9d6d2; --papel:#ffffff; --tinta:#1b1b1b; --suave:#5c5652; --linha:#cfc9c4;
+  --marca:#670000; --bege:#ebe9ad; --faixa:#f4f1f0;
+  --f-corpo:"Source Sans 3", "Segoe UI", Arial, sans-serif;
+  color-scheme:light;
+}
+body{background:var(--mesa);color:var(--tinta);font-family:var(--f-corpo);padding-block:24px;
+  padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
+.aviso{max-width:794px;margin:0 auto 14px;background:var(--bege);color:#3a3500;border:1px solid #c9c47a;padding:10px 14px;font-size:13px;border-radius:4px}
+.folha{max-width:794px;margin:0 auto;background:var(--papel);box-shadow:0 2px 14px rgba(0,0,0,.18);padding:36px 40px;font-size:12px;line-height:1.45}
+.cab{display:grid;grid-template-columns:56px 1fr 56px;align-items:center;gap:8px}
+.logo{width:50px;height:50px;border:1px dashed var(--linha);display:grid;place-items:center;font-size:8px;color:var(--suave);text-align:center}
+.cab .centro{text-align:center}
+.obra{color:var(--marca);font-weight:700;font-size:20px}
+.titulo{font-weight:600;font-size:15px}
+.meta{display:flex;justify-content:center;gap:14px;flex-wrap:wrap;font-size:10px;font-weight:600;color:var(--suave);margin-top:2px}
+.regua{height:2px;background:var(--marca);margin:6px 0 14px}
+h2{font-size:11.5px;text-transform:uppercase;letter-spacing:.06em;background:var(--marca);color:#fff;padding:4px 8px;margin:16px 0 0}
+.grade{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));border:1px solid var(--linha);border-top:0}
+.grade>div{padding:5px 8px;border-right:1px solid var(--linha);border-bottom:1px solid var(--linha);min-width:0}
+.grade>div:nth-child(4n){border-right:0}
+.grade .l{display:block;font-size:9px;text-transform:uppercase;letter-spacing:.05em;color:var(--suave)}
+.grade .v{font-weight:600}
+.span2{grid-column:span 2}.span4{grid-column:span 4;border-right:0!important}
+.texto{border:1px solid var(--linha);border-top:0;padding:8px 10px;text-align:justify}
+.selo{display:inline-block;padding:1px 8px;border-radius:10px;font-size:10px;font-weight:700;background:var(--bege);color:#3a3500}
+.selo.ok{background:#e3efe3;color:#1e5a1e}
+.tab{overflow-x:auto;border:1px solid var(--linha);border-top:0}
+table{width:100%;border-collapse:collapse;font-size:11px}
+th,td{border-bottom:1px solid var(--linha);padding:5px 7px;text-align:left;vertical-align:top}
+th{background:var(--faixa);font-size:9.5px;text-transform:uppercase;letter-spacing:.04em;color:var(--suave)}
+td.num{font-variant-numeric:tabular-nums;white-space:nowrap}
+.fotos{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;border:1px solid var(--linha);border-top:0;padding:8px}
+.foto{aspect-ratio:4/3;max-width:100%;background:repeating-linear-gradient(45deg,#eee,#eee 6px,#e4e4e4 6px,#e4e4e4 12px);display:grid;place-items:center;color:var(--suave);font-size:10px}
+.foto-leg{font-size:9px;color:var(--suave);margin-top:2px}
+.ass{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:28px;border:1px solid var(--linha);border-top:0;padding:30px 20px 12px}
+.ass div{border-top:1px solid var(--tinta);text-align:center;padding-top:4px;font-size:11px}
+.ass small{display:block;color:var(--suave)}
+.rodape{margin-top:22px;border-top:1px solid var(--linha);padding-top:6px;display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap;font-size:9px;color:var(--suave)}
+@media (max-width:560px){.folha{padding:20px 14px}.grade{grid-template-columns:repeat(2,minmax(0,1fr))}.grade>div:nth-child(2n){border-right:0}.span4{grid-column:span 2}.fotos{grid-template-columns:repeat(2,minmax(0,1fr))}.ass{grid-template-columns:1fr}}
+</style>
+
+<div class="aviso"><strong>Desenho para aprovação.</strong> Os dados abaixo são de exemplo, só para mostrar o layout. No PDF real, tudo vem do registro da ocorrência no app.</div>
+
+<div class="folha">
+  <div class="cab">
+    <div class="logo">logo da obra</div>
+    <div class="centro">
+      <div class="obra">CAC CENTRO DE ARTES E CULTURA</div>
+      <div class="titulo">Relatório de Investigação de Ocorrência</div>
+      <div class="meta"><span>Tipo: Quase acidente</span><span>Data: 21/10/2026 · 09:40</span><span>Situação: Concluída em 22/10/2026</span></div>
+    </div>
+    <div></div>
+  </div>
+  <div class="regua"></div>
+
+  <h2>1. Identificação</h2>
+  <div class="grade">
+    <div><span class="l">Tipo</span><span class="v">Quase acidente</span></div>
+    <div><span class="l">Data / hora</span><span class="v">21/10/2026 · 09:40</span></div>
+    <div class="span2"><span class="l">Local</span><span class="v">Bloco B — pavimento 2, fachada norte</span></div>
+    <div class="span2"><span class="l">Atividade</span><span class="v">Montagem de andaime fachadeiro</span></div>
+    <div class="span2"><span class="l">Envolvidos</span><span class="v">Exemplo Trabalhador A; Exemplo Trabalhador B</span></div>
+  </div>
+
+  <h2>2. Descrição da ocorrência</h2>
+  <div class="texto">Texto do relato registrado na ocorrência (campo Descrição). Exemplo: durante a montagem do andaime, uma peça de travamento escorregou do pavimento superior e caiu na área de circulação, sem atingir ninguém. A área estava sem isolamento no momento.</div>
+
+  <h2>3. Consequências</h2>
+  <div class="grade">
+    <div><span class="l">Gravidade</span><span class="v">Sem afastamento</span></div>
+    <div><span class="l">Afastamento</span><span class="v">Não</span></div>
+    <div><span class="l">Nº da CAT</span><span class="v">—</span></div>
+    <div><span class="l">Dias debitados</span><span class="v">0</span></div>
+    <div class="span2"><span class="l">Lesão</span><span class="v">Não houve</span></div>
+    <div class="span2"><span class="l">Atendimento</span><span class="v">Não houve</span></div>
+    <div class="span4"><span class="l">Consequência</span><span class="v">Potencial de lesão grave por queda de material</span></div>
+  </div>
+
+  <h2>4. Análise e causas</h2>
+  <div class="grade">
+    <div class="span4"><span class="l">Metodologia</span><span class="v">5 Porquês</span></div>
+  </div>
+  <div class="texto">Texto das causas registrado na investigação (campo Causas). Exemplo: ausência de rodapé no andaime; material solto sobre a plataforma; área inferior sem isolamento.</div>
+
+  <h2>5. Plano de ação</h2>
+  <div class="tab"><table>
+    <thead><tr><th>#</th><th>Ação</th><th>Tipo</th><th>Responsável</th><th>Prazo</th><th>Situação</th></tr></thead>
+    <tbody>
+      <tr><td class="num">1</td><td>Instalar rodapé em todas as plataformas do andaime<br><small style="color:var(--suave)">Fundamentação: NR-18</small></td><td>Corretiva</td><td>Exemplo Técnico</td><td class="num">24/10/2026</td><td><span class="selo ok">Concluída</span></td></tr>
+      <tr><td class="num">2</td><td>Isolar e sinalizar a área abaixo de serviços em altura</td><td>Preventiva</td><td>Exemplo Encarregado</td><td class="num">25/10/2026</td><td><span class="selo">Em andamento</span></td></tr>
+    </tbody>
+  </table></div>
+
+  <h2>6. Reunião de análise</h2>
+  <div class="grade">
+    <div class="span2"><span class="l">Data / horário</span><span class="v">22/10/2026 · 14:00–15:00 (Teams)</span></div>
+    <div class="span2"><span class="l">Participantes</span><span class="v">Exemplo Engenheiro; Exemplo Técnico; Exemplo Encarregado</span></div>
+  </div>
+  <p style="font-size:10px;color:var(--suave);margin:3px 0 0">Esta seção só aparece quando houve reunião agendada.</p>
+
+  <h2>7. Registro fotográfico</h2>
+  <div class="fotos">
+    <div><div class="foto">Foto 1</div><div class="foto-leg">21/10/2026 09:52 · coordenadas GPS</div></div>
+    <div><div class="foto">Foto 2</div><div class="foto-leg">21/10/2026 09:53 · coordenadas GPS</div></div>
+    <div><div class="foto">Foto 3</div><div class="foto-leg">21/10/2026 09:55 · coordenadas GPS</div></div>
+  </div>
+
+  <h2>8. Responsáveis pela investigação</h2>
+  <div class="ass">
+    <div>Técnico de Segurança do Trabalho<small>Nome · registro</small></div>
+    <div>Engenheiro de Segurança / Responsável da obra<small>Nome · CREA</small></div>
+  </div>
+
+  <div class="rodape"><span>Gerado pelo SST AAHBRANT em 23/10/2026 às 10:15</span><span>Página 1 de 1</span></div>
+</div>

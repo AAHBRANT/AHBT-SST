@@ -30,8 +30,11 @@ public interface IAppDbContext
     DbSet<CursoTreinamento> CursosTreinamento { get; }
     DbSet<Treinamento> Treinamentos { get; }
     DbSet<ArquivoCertificadoTreinamento> ArquivosCertificadoTreinamento { get; }
+    DbSet<ArquivoAso> ArquivosAso { get; }
     DbSet<TermoCompromissoEpiManual> TermosCompromissoEpiManual { get; }
     DbSet<MatrizTreinamentoFuncao> MatrizTreinamentoFuncoes { get; }
+    DbSet<RegraCursoObrigatorio> RegrasCursoObrigatorio { get; }
+    DbSet<CursoObrigatorioFuncaoObra> CursosObrigatoriosFuncaoObra { get; }
     DbSet<SessaoTreinamento> SessoesTreinamento { get; }
     DbSet<ParticipanteSessaoTreinamento> ParticipantesSessaoTreinamento { get; }
     DbSet<FotoEvidenciaSessaoTreinamento> FotosEvidenciaSessaoTreinamento { get; }
@@ -40,6 +43,13 @@ public interface IAppDbContext
     DbSet<MatrizEpiFuncao> MatrizEpiFuncoes { get; }
     DbSet<EstoqueEpi> EstoquesEpi { get; }
     DbSet<MovimentacaoEstoqueEpi> MovimentacoesEstoqueEpi { get; }
+    DbSet<ReservaEpi> ReservasEpi { get; }
+    DbSet<PlanoIntegracao> PlanosIntegracao { get; }
+    DbSet<SolicitacaoReposicaoEpi> SolicitacoesReposicaoEpi { get; }
+    DbSet<ArquivoContrato> ArquivosContrato { get; }
+    DbSet<DocumentoExigidoEmpresa> DocumentosExigidosEmpresa { get; }
+    DbSet<DocumentoEmpresaTerceirizada> DocumentosEmpresaTerceirizada { get; }
+    DbSet<ArquivoDocumentoEmpresaTerceirizada> ArquivosDocumentoEmpresaTerceirizada { get; }
     DbSet<CatalogoEpc> CatalogoEpcs { get; }
     DbSet<InstalacaoEpc> InstalacoesEpc { get; }
     DbSet<EstoqueEpc> EstoquesEpc { get; }
@@ -57,15 +67,20 @@ public interface IAppDbContext
     DbSet<Evidencia> Evidencias { get; }
 
     DbSet<Atividade> Atividades { get; }
+    DbSet<AtividadeEpc> AtividadeEpcs { get; }
+    DbSet<AtividadeDocumento> AtividadeDocumentos { get; }
+    DbSet<AtividadeItemOs> AtividadeItensOs { get; }
     DbSet<Ghe> Ghes { get; }
     DbSet<GheFuncao> GheFuncoes { get; }
     DbSet<Perigo> Perigos { get; }
     DbSet<Risco> Riscos { get; }
+    DbSet<MedidaPrevencao> MedidasPrevencao { get; }
     DbSet<RiscoTrabalhadorExposto> RiscoTrabalhadorExpostos { get; }
     DbSet<MatrizRiscoConfig> MatrizRiscoConfigs { get; }
     DbSet<MatrizRiscoCelula> MatrizRiscoCelulas { get; }
 
     DbSet<Pgr> Pgrs { get; }
+    DbSet<GeracaoPgrEap> GeracoesPgrEap { get; }
     DbSet<PlanoAcaoItem> PlanoAcaoItens { get; }
     DbSet<PgrRevisao> PgrRevisoes { get; }
 
@@ -112,6 +127,7 @@ public interface IAppDbContext
     DbSet<DdsFotoEvidencia> DdsFotosEvidencia { get; }
 
     DbSet<NaoConformidade> NaoConformidades { get; }
+    DbSet<EventoNcGQuali> EventosNcGQuali { get; }
     DbSet<AcaoPlano> AcoesPlano { get; }
 
     DbSet<Acidente> Acidentes { get; }

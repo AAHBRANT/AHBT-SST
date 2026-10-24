@@ -17,20 +17,22 @@ public class LerCabecalhoDocumentoHandler :
 
     private readonly IExtratorTextoPdf _extrator;
     private readonly ILeitorCabecalhoDocumentoIa _leitor;
+    private readonly IOcrPaginasPdf? _ocr;
 
-    public LerCabecalhoDocumentoHandler(IExtratorTextoPdf extrator, ILeitorCabecalhoDocumentoIa leitor)
+    public LerCabecalhoDocumentoHandler(IExtratorTextoPdf extrator, ILeitorCabecalhoDocumentoIa leitor, IOcrPaginasPdf? ocr = null)
     {
         _extrator = extrator;
         _leitor = leitor;
+        _ocr = ocr;
     }
 
-    public Task<CabecalhoCadastroPgrIa> Handle(LerCabecalhoPgrQuery request, CancellationToken ct)
-        => _leitor.LerCabecalhoPgrAsync(Paginas(request.Pdf), ct);
+    public async Task<CabecalhoCadastroPgrIa> Handle(LerCabecalhoPgrQuery request, CancellationToken ct)
+        => await _leitor.LerCabecalhoPgrAsync(await PaginasAsync(request.Pdf, ct), ct);
 
-    public Task<CabecalhoCadastroPcmsoIa> Handle(LerCabecalhoPcmsoQuery request, CancellationToken ct)
-        => _leitor.LerCabecalhoPcmsoAsync(Paginas(request.Pdf), ct);
+    public async Task<CabecalhoCadastroPcmsoIa> Handle(LerCabecalhoPcmsoQuery request, CancellationToken ct)
+        => await _leitor.LerCabecalhoPcmsoAsync(await PaginasAsync(request.Pdf, ct), ct);
 
-    private IReadOnlyList<string> Paginas(byte[] pdf)
+    private async Task<IReadOnlyList<string>> PaginasAsync(byte[] pdf, CancellationToken ct)
     {
         IReadOnlyList<string> paginas;
         try
@@ -41,9 +43,12 @@ public class LerCabecalhoDocumentoHandler :
         {
             throw new InvalidOperationException("Não foi possível abrir o PDF. Confira se o arquivo é um PDF válido.");
         }
-        var primeiras = paginas.Take(PaginasLidas).ToList();
+        IReadOnlyList<string> primeiras = paginas.Take(PaginasLidas).ToList();
+        // PDF digitalizado: a IA lê as imagens das páginas (OCR) antes de ler o cabeçalho.
+        if (_ocr is not null && primeiras.Any(PaginasDigitalizadas.SemTexto))
+            primeiras = await _ocr.CompletarAsync(pdf, primeiras, PaginasLidas, ct);
         if (primeiras.All(string.IsNullOrWhiteSpace))
-            throw new InvalidOperationException("O PDF não tem texto (parece digitalizado). Preencha os campos manualmente.");
+            throw new InvalidOperationException("Não foi possível ler o texto do PDF, nem pelas imagens das páginas. Preencha os campos manualmente.");
         return primeiras;
     }
 }

@@ -25,6 +25,7 @@ import {
   statusDdsSemanalLabel,
   StatusDdsSemanal,
   tipoDdsSemanalLabel,
+  tipoDdsSemanalIncluiTerceirizados,
   TipoDdsSemanal,
   type DdsSemanal,
   type NovaDdsSemanal,
@@ -84,7 +85,7 @@ export function DdsSemanalPage() {
   }
 
   async function criar() {
-    if (!nova.obraId || !nova.dataInicioSemana || (nova.tipo === TipoDdsSemanal.Terceirizados && !nova.empresaTerceirizada)) {
+    if (!nova.obraId || !nova.dataInicioSemana || (tipoDdsSemanalIncluiTerceirizados(nova.tipo) && !nova.empresaTerceirizada)) {
       setErroPainel('Preencha obra, data de início da semana e, se terceirizado, a empresa.');
       return;
     }
@@ -173,6 +174,9 @@ export function DdsSemanalPage() {
                   <Select value={String(nova.tipo)} onChange={(_, d) => setNova({ ...nova, tipo: Number(d.value) })}>
                     <option value={String(TipoDdsSemanal.Proprios)}>{tipoDdsSemanalLabel[TipoDdsSemanal.Proprios]}</option>
                     <option value={String(TipoDdsSemanal.Terceirizados)}>{tipoDdsSemanalLabel[TipoDdsSemanal.Terceirizados]}</option>
+                    <option value={String(TipoDdsSemanal.ProprioseTerceirizados)}>
+                      {tipoDdsSemanalLabel[TipoDdsSemanal.ProprioseTerceirizados]}
+                    </option>
                   </Select>
                 </Field>
               </Campo>
@@ -184,7 +188,7 @@ export function DdsSemanalPage() {
                   />
                 </Field>
               </Campo>
-              {nova.tipo === TipoDdsSemanal.Terceirizados && (
+              {tipoDdsSemanalIncluiTerceirizados(nova.tipo) && (
                 <Campo span={4}>
                   <Field label="Empresa terceirizada" required>
                     <Input

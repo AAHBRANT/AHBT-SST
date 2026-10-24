@@ -239,6 +239,30 @@ export async function syncFetchBlob(path: string, authHeaders?: Record<string, s
   }
 }
 
+// ---------- Conta dona da ação ----------
+
+// Lê tid/oid do Bearer (sem validar: só separa as filas por pessoa; quem valida é o servidor).
+function contaDoHeader(authHeaders?: Record<string, string>): string | undefined {
+  const token = authHeaders?.Authorization?.replace(/^Bearer\s+/i, '');
+  const payload = token?.split('.')[1];
+  if (!payload) return undefined;
+  try {
+    const json = JSON.parse(atob(payload.replace(/-/g, '+').replace(/_/g, '/')));
+    return json.oid ? `${json.tid ?? ''}:${json.oid}` : undefined;
+  } catch {
+    return undefined;
+  }
+}
+
+async function contaAtual(authHeaders?: Record<string, string>): Promise<string | undefined> {
+  if (authHeaders?.Authorization) return contaDoHeader(authHeaders);
+  try {
+    return contaDoHeader(await montarHeadersAuth());
+  } catch {
+    return undefined;
+  }
+}
+
 // ---------- Mutação JSON (POST/PUT/DELETE) ----------
 
 export async function syncMutateJson<T>(
@@ -282,7 +306,14 @@ export async function syncMutateJson<T>(
     }
   }
 
+  // Credencial do leitor de digital nunca vai para o IndexedDB (auditoria 19/10, A04): sem internet a
+  // leitura de digital falha e é refeita depois.
+  if (corpo && typeof corpo === 'object' && 'segredoDispositivo' in corpo) {
+    throw new Error('Sem internet: a assinatura por digital precisa de conexão. Tente de novo quando a rede voltar.');
+  }
+
   await offlineDb.filaSaida.add({
+    conta: await contaAtual(authHeaders),
     idempotencyKey,
     url: path,
     metodo,
@@ -343,6 +374,7 @@ export async function syncMutateMultipart<T>(
   });
 
   await offlineDb.filaSaida.add({
+    conta: await contaAtual(authHeaders),
     idempotencyKey,
     url: path,
     metodo: 'POST',
@@ -381,6 +413,11 @@ export async function sincronizarFilaSaida(): Promise<void> {
         // a fila pode ficar dias esperando a internet voltar, e o token capturado offline já
         // estaria expirado.
         const authHeaders = await montarHeadersAuth();
+        // Ação de outra conta fica guardada até a dona dela entrar de novo neste navegador.
+        if (item.conta && contaDoHeader(authHeaders) !== item.conta) {
+          await offlineDb.filaSaida.update(item.id!, { ultimoErro: 'Aguardando a pessoa que registrou entrar para enviar.' });
+          continue;
+        }
         const response = await fetch(`${API_BASE_URL}${item.url}`, {
           method: item.metodo,
           headers: item.isFormData

@@ -1276,6 +1276,289 @@ public static class NovidadesSeeder
                     "Nos painéis de APR, PT, Inspeções, Ocorrências, Não conformidades, Riscos, PGR, Pessoas, Alertas e Identificação, cada indicador era um card separado com borda vinho.",
                     "Os indicadores agora ficam juntos numa faixa única, igual à tela Início. Nenhum número ou gráfico mudou."),
             }),
+        new(
+            Versao: "5.67.0",
+            Titulo: "ASOs do G-RH com a classificação certa",
+            DataPublicacao: new DateTime(2026, 10, 19, 0, 0, 0, DateTimeKind.Utc),
+            Itens: new[]
+            {
+                new NovidadeSeedItem(CategoriaNovidade.Correcao,
+                    "Admissional, periódico e demissional vindos do G-RH",
+                    "Todo ASO importado do G-RH aparecia como Periódico, mesmo quando era admissional ou demissional.",
+                    "O SST agora usa a classificação do exame cadastrada no G-RH. ASOs antigos sem classificação continuam como estavam."),
+                new NovidadeSeedItem(CategoriaNovidade.Correcao,
+                    "Funcionário apto não aparece mais como \"Pendente\"",
+                    "Exames complementares (como a Audiometria Tonal) cadastrados no G-RH junto com o ASO entravam no SST como um segundo ASO sem resultado, e o funcionário aparecia como \"Pendente\" mesmo estando apto.",
+                    "Esses exames não contam mais como ASO. A lista de Pessoas e os painéis passam a mostrar o resultado do ASO de verdade."),
+            }),
+        new(
+            Versao: "5.68.0",
+            Titulo: "Novo modelo de certificado por NR",
+            DataPublicacao: new DateTime(2026, 10, 19, 0, 0, 0, DateTimeKind.Utc),
+            Itens: new[]
+            {
+                new NovidadeSeedItem(CategoriaNovidade.Melhoria,
+                    "Certificado de treinamento com novo visual",
+                    "O certificado tinha cabeçalho de documento e a norma num selo azul no canto.",
+                    "Agora tem moldura AAHBRANT, o nome do colaborador e a NR em destaque (número e nome da norma) e, no verso, o conteúdo programático com carga horária, data e local."),
+                new NovidadeSeedItem(CategoriaNovidade.Melhoria,
+                    "Conteúdo programático padrão para cada NR",
+                    "Curso sem conteúdo programático cadastrado gerava certificado sem verso.",
+                    "Ao digitar a NR no cadastro do curso (NR-05, 06, 10, 12, 18, 33 e 35), o sistema preenche o conteúdo, a carga horária e a validade da norma. Cursos já cadastrados sem conteúdo usam o padrão da NR no certificado."),
+                new NovidadeSeedItem(CategoriaNovidade.Melhoria,
+                    "Turma já vem preenchida com o padrão da NR",
+                    "Na nova turma era preciso digitar data, carga horária e instrutor, e qualquer perfil podia mudar esses dados.",
+                    "Ao escolher o curso, a turma já vem com a data do dia, carga horária mínima, validade, conteúdo e local. Só o Técnico de Segurança altera, e a carga horária nunca fica abaixo do mínimo da NR."),
+                new NovidadeSeedItem(CategoriaNovidade.Melhoria,
+                    "Fila contínua de presença na turma",
+                    "Na turma era preciso clicar a cada participante para ler a digital.",
+                    "Agora tem Abrir fila (digital) e Abrir fila facial, igual ao DDS: cada participante registra a presença um após o outro, sozinho."),
+                new NovidadeSeedItem(CategoriaNovidade.Correcao,
+                    "Número de certificado próprio para cada participante",
+                    "Todos os participantes da turma recebiam o mesmo número de certificado.",
+                    "Cada certificado tem número único, com a NR no prefixo (ex.: AAH-NR35-2026-0001), e mostra o hash de cada assinatura."),
+            }),
+        new(
+            Versao: "5.69.0",
+            Titulo: "DDS com próprios e terceirizados na mesma semana",
+            DataPublicacao: new DateTime(2026, 10, 20, 0, 0, 0, DateTimeKind.Utc),
+            Itens: new[]
+            {
+                new NovidadeSeedItem(CategoriaNovidade.Melhoria,
+                    "Nova opção \"Empregados Próprios e Terceirizados\" no DDS semanal",
+                    "Ao abrir a semana de DDS era preciso escolher entre empregados próprios ou terceirizados.",
+                    "Agora dá para escolher os dois ao mesmo tempo no campo Tipo. Basta informar a empresa terceirizada na abertura e o responsável dela no encerramento."),
+            }),
+        new(
+            Versao: "5.70.0",
+            Titulo: "Contrato de empresa terceirizada cadastrado pelo técnico",
+            DataPublicacao: new DateTime(2026, 10, 21, 0, 0, 0, DateTimeKind.Utc),
+            Itens: new[]
+            {
+                new NovidadeSeedItem(CategoriaNovidade.Novidade,
+                    "Novo contrato na ficha da empresa",
+                    "O contrato da empresa terceirizada só chegava pelo G-Juri. Sem contrato, não havia vagas e ninguém conseguia cadastrar as pessoas da empresa.",
+                    "Na ficha da empresa, o botão Novo contrato abre o cadastro com obra, número, vigência e vagas por função. Depois é só cadastrar as pessoas em cada vaga."),
+                new NovidadeSeedItem(CategoriaNovidade.Novidade,
+                    "Editar e encerrar o contrato",
+                    "Não havia como corrigir vigência, ajustar vagas ou encerrar um contrato pelo SST.",
+                    "O contrato cadastrado no SST pode ser editado e encerrado na tela do contrato. Encerrar não desliga ninguém: o sistema avisa quantas pessoas continuam ativas. Contratos vindos do G-Juri continuam só para consulta."),
+                new NovidadeSeedItem(CategoriaNovidade.Novidade,
+                    "Cadastro pelo contrato em PDF, lido pela IA",
+                    "Cadastrar uma terceirizada exigia digitar empresa, contrato, vagas e cada pessoa à mão.",
+                    "Em Terceirizado > Empresas, o botão Cadastrar pelo contrato (PDF) lê o contrato com IA e preenche empresa, contrato, vagas e as pessoas listadas. O técnico confere, completa o que faltar e cadastra tudo de uma vez. Contrato digitalizado (sem texto) continua sendo preenchido à mão."),
+            }),
+        new(
+            Versao: "5.71.0",
+            Titulo: "Avaliação dos riscos e medidas de prevenção por fase no PGR",
+            DataPublicacao: new DateTime(2026, 10, 20, 0, 0, 0, DateTimeKind.Utc),
+            Itens: new[]
+            {
+                new NovidadeSeedItem(CategoriaNovidade.Novidade,
+                    "Medidas de prevenção separadas em antes, durante e após o trabalho",
+                    "Os controles de cada risco do PGR ficavam num texto corrido, sem dizer em que momento do trabalho cada um se aplica.",
+                    "Em PGR › Inventário de riscos, clique no risco e em \"Separar em antes / durante / após\". O que já estava escrito no PGR entra validado; o que a IA acrescentar aparece em amarelo como sugestão, para a SST aceitar, editar ou descartar. O texto original do PGR continua guardado."),
+                new NovidadeSeedItem(CategoriaNovidade.Novidade,
+                    "Confirmação da avaliação do risco",
+                    "Não havia registro de quem conferiu a probabilidade e a severidade de um risco.",
+                    "Riscos lançados à mão ganham o botão \"Confirmar avaliação\", que registra quem confirmou e quando. Riscos vindos da leitura do PGR já entram como avaliados. Se a probabilidade, a severidade ou a consequência mudarem, a confirmação é apagada."),
+            }),
+        new(
+            Versao: "5.72.0",
+            Titulo: "Procedimentos, políticas e detalhes da atividade para a Ordem de Serviço",
+            DataPublicacao: new DateTime(2026, 10, 20, 0, 0, 0, DateTimeKind.Utc),
+            Itens: new[]
+            {
+                new NovidadeSeedItem(CategoriaNovidade.Novidade,
+                    "Procedimentos, instruções de trabalho e políticas em Documentos & Procedimentos",
+                    "A tela só guardava materiais de apoio, sem código, revisão ou situação.",
+                    "Ao enviar um documento, escolha o tipo (procedimento, instrução de trabalho, política ou material de apoio) e informe o código SGI, a revisão e a situação. Só documentos vigentes vão para a Ordem de Serviço, e a política marcada com \"Incluir em todas as Ordens de Serviço\" entra em todas. Os materiais de apoio que já existiam continuam iguais."),
+                new NovidadeSeedItem(CategoriaNovidade.Novidade,
+                    "Detalhes da atividade para a Ordem de Serviço",
+                    "Não havia onde registrar as condições, ferramentas, EPCs, procedimentos e situações de parada de cada atividade.",
+                    "Em PGR › Inventário de riscos, clique em \"Detalhes para a OS\" na atividade. As condições já vêm do GHE do PGR e os treinamentos da Matriz de Treinamento. Você vincula EPCs e procedimentos vigentes e registra quando interromper o trabalho, o que não fazer sem autorização e as liberações exigidas. A IA pode sugerir esses itens, que aparecem em amarelo até a SST aceitar, editar ou descartar."),
+            }),
+        new(
+            Versao: "5.73.0",
+            Titulo: "Ordem de Serviço no perfil do trabalhador",
+            DataPublicacao: new DateTime(2026, 10, 20, 0, 0, 0, DateTimeKind.Utc),
+            Itens: new[]
+            {
+                new NovidadeSeedItem(CategoriaNovidade.Novidade,
+                    "Aba Ordem de Serviço no perfil do trabalhador",
+                    "O sistema não montava a Ordem de Serviço de SST exigida pela NR-01.",
+                    "No perfil do trabalhador, a aba \"Ordem de Serviço\" monta a OS da obra dele com as atividades da função conforme o PGR, os riscos e as medidas validadas, os EPIs, os treinamentos, o ASO e as políticas. Clique em \"Ver prévia\" para ler a OS completa."),
+                new NovidadeSeedItem(CategoriaNovidade.Novidade,
+                    "Pendências que impedem a emissão",
+                    "Não havia como saber o que faltava para orientar o trabalhador por escrito.",
+                    "Enquanto faltar algo (risco sem avaliação, sugestão da IA sem validação, procedimento não vinculado, treinamento vencido ou ASO sem aptidão), a OS fica como minuta e um pop-up explica cada pendência, por que ela bloqueia, quem resolve e onde corrigir."),
+            }),
+        new(
+            Versao: "5.74.0",
+            Titulo: "Gerar o PGR pela EAP da obra",
+            DataPublicacao: new DateTime(2026, 10, 21, 0, 0, 0, DateTimeKind.Utc),
+            Itens: new[]
+            {
+                new NovidadeSeedItem(CategoriaNovidade.Novidade,
+                    "PGR montado a partir da EAP",
+                    "O PGR só entrava no sistema pelo PDF da consultoria.",
+                    "Em Gestão SST › PGR, clique em \"Gerar pela EAP\" e envie a EAP da obra (Excel, XML do MS Project ou PDF). A IA lê as etapas, agrupa as atividades em GHE com as funções do cadastro, escreve a descrição das atividades de cada função e monta o inventário de riscos com as medidas antes, durante e após o trabalho. Você confere e ajusta em 5 passos."),
+                new NovidadeSeedItem(CategoriaNovidade.Novidade,
+                    "Aprovação do Engenheiro de Segurança",
+                    "Não havia uma etapa formal de aprovação do PGR dentro do sistema.",
+                    "Tudo o que a IA gera fica como sugestão até o Engenheiro de Segurança aprovar ou devolver para ajustes. Na aprovação, o PGR passa a vigente, com os riscos avaliados e as medidas validadas, e começa a alimentar a Ordem de Serviço. O PGR pelo PDF da consultoria continua funcionando igual."),
+            }),
+        new(
+            Versao: "5.75.0",
+            Titulo: "Logo da AAHBRANT no topo do sistema",
+            DataPublicacao: new DateTime(2026, 10, 21, 0, 0, 0, DateTimeKind.Utc),
+            Itens: new[]
+            {
+                new NovidadeSeedItem(CategoriaNovidade.Melhoria,
+                    "Cabeçalho com a marca AAHBRANT",
+                    "O topo mostrava só o ícone do colete e o nome \"SST\", sem a logo da empresa.",
+                    "Agora o canto esquerdo mostra a logo oficial da AAHBRANT e o nome G-SST, no mesmo padrão do G-QUALI. Clique na marca para voltar ao Início."),
+            }),
+        new(
+            Versao: "5.76.0",
+            Titulo: "Cursos obrigatórios por função saem do PGR",
+            DataPublicacao: new DateTime(2026, 10, 21, 0, 0, 0, DateTimeKind.Utc),
+            Itens: new[]
+            {
+                new NovidadeSeedItem(CategoriaNovidade.Novidade,
+                    "Cursos obrigatórios por obra, a partir do PGR",
+                    "Os cursos obrigatórios eram marcados à mão, função por função, e valiam igual para todas as obras.",
+                    "Em Treinamentos › Cursos obrigatórios por obra, o sistema lê os riscos e atividades do PGR e sugere os cursos pelas NRs, com o motivo de cada um. O Engenheiro de Segurança aprova ou recusa com justificativa. Só o aprovado conta na Aptidão por treinamento do Início."),
+                new NovidadeSeedItem(CategoriaNovidade.Novidade,
+                    "Regras por NR editáveis pelo QSMS",
+                    "Não havia como dizer ao sistema quando uma NR passa a ser obrigatória.",
+                    "Em Treinamentos › Regras por NR fica a tabela: NR-06 e NR-18 para todas as funções e, para as demais, as palavras do PGR que tornam o curso obrigatório (altura → NR-35, choque elétrico → NR-10 e outras)."),
+            }),
+        new(
+            Versao: "5.77.0",
+            Titulo: "Escopo do PCMSO para o médico, a partir do PGR",
+            DataPublicacao: new DateTime(2026, 10, 21, 0, 0, 0, DateTimeKind.Utc),
+            Itens: new[]
+            {
+                new NovidadeSeedItem(CategoriaNovidade.Novidade,
+                    "Escopo para o médico elaborar o PCMSO",
+                    "Para o médico começar o PCMSO era preciso juntar à mão as funções, os GHE e os riscos do PGR da obra.",
+                    "Em Saúde Ocupacional › Escopo para o médico, escolha a obra: o sistema monta o documento com a identificação da obra, as funções por GHE, o inventário de riscos e as atividades críticas. Dá para visualizar, baixar o PDF ou enviar ao médico por e-mail. Exames, periodicidade e critérios de aptidão ficam com o médico."),
+            }),
+        new(
+            Versao: "5.78.0",
+            Titulo: "Relatar por voz com o ditado do próprio aparelho",
+            DataPublicacao: new DateTime(2026, 10, 22, 0, 0, 0, DateTimeKind.Utc),
+            Itens: new[]
+            {
+                new NovidadeSeedItem(CategoriaNovidade.Melhoria,
+                    "Ditado por voz direto no navegador",
+                    "No Suporte IA e nas Ocorrências, a fala era gravada e enviada ao servidor para virar texto.",
+                    "Agora o próprio Teams/navegador transforma a fala em texto enquanto você fala; o áudio não sai do aparelho. A IA continua preenchendo o formulário a partir do texto. Se o seu aparelho não tiver ditado, escreva o relato."),
+            }),
+        new(
+            Versao: "5.79.0",
+            Titulo: "Câmera do reconhecimento facial mais simples",
+            DataPublicacao: new DateTime(2026, 10, 23, 0, 0, 0, DateTimeKind.Utc),
+            Itens: new[]
+            {
+                new NovidadeSeedItem(CategoriaNovidade.Melhoria,
+                    "Clique e capture, sem posicionamento",
+                    "A câmera do facial mostrava círculo, quadrado verde e avisos de luz e posição, capturava sozinha e tinha uma fila facial no DDS e no Treinamento.",
+                    "Agora a câmera abre, você clica em Capturar e pronto. A fila facial saiu: cada funcionário confirma a presença pelo próprio botão. O sistema continua conferindo o rosto depois da foto; se não servir, é só tirar outra. A fila da digital continua igual."),
+            }),
+        new(
+            Versao: "5.80.0",
+            Titulo: "Fotos também em incidentes e quase-acidentes",
+            DataPublicacao: new DateTime(2026, 10, 23, 0, 0, 0, DateTimeKind.Utc),
+            Itens: new[]
+            {
+                new NovidadeSeedItem(CategoriaNovidade.Melhoria,
+                    "Fotos do local em todas as ocorrências",
+                    "Só o acidente tinha espaço para fotos do local.",
+                    "Agora incidentes e quase-acidentes também aceitam até três fotos do local, com data e localização. Nesses dois tipos as fotos são opcionais e não travam o encerramento. No acidente continuam as três fotos obrigatórias."),
+            }),
+        new(
+            Versao: "5.81.0",
+            Titulo: "Relato por voz não para mais sozinho",
+            DataPublicacao: new DateTime(2026, 10, 23, 0, 0, 0, DateTimeKind.Utc),
+            Itens: new[]
+            {
+                new NovidadeSeedItem(CategoriaNovidade.Correcao,
+                    "Ditado continua até você clicar em parar",
+                    "No Relatar por voz, uma pausa na fala fazia o ditado se desligar sozinho.",
+                    "Agora o ditado segue ouvindo mesmo com pausas e só termina quando você clica em parar."),
+            }),
+        new(
+            Versao: "5.82.0",
+            Titulo: "Relato por voz volta a gravar o áudio",
+            DataPublicacao: new DateTime(2026, 10, 23, 0, 0, 0, DateTimeKind.Utc),
+            Itens: new[]
+            {
+                new NovidadeSeedItem(CategoriaNovidade.Melhoria,
+                    "Transcrição mais precisa",
+                    "O ditado feito pelo próprio navegador errava muitas palavras.",
+                    "O Relatar por voz voltou a gravar o áudio e transcrever no servidor, que entende melhor a fala. Grave, clique em parar e a IA preenche o formulário."),
+            }),
+        new(
+            Versao: "5.83.0",
+            Titulo: "Leitura do contrato de terceirizada pela IA voltou",
+            DataPublicacao: new DateTime(2026, 10, 23, 0, 0, 0, DateTimeKind.Utc),
+            Itens: new[]
+            {
+                new NovidadeSeedItem(CategoriaNovidade.Correcao,
+                    "Cadastro pelo contrato preenche de novo",
+                    "Ao enviar o PDF do contrato no Terceirizado, aparecia \"A IA não conseguiu analisar o relato agora\" e nada era preenchido.",
+                    "Agora a IA volta a ler o contrato e preencher empresa, vigência, efetivo e pessoas. Confira os campos antes de cadastrar."),
+            }),
+        new(
+            Versao: "5.84.0",
+            Titulo: "Importar a pasta inteira da terceirizada",
+            DataPublicacao: new DateTime(2026, 10, 23, 0, 0, 0, DateTimeKind.Utc),
+            Itens: new[]
+            {
+                new NovidadeSeedItem(CategoriaNovidade.Novidade,
+                    "Uma pasta, tudo cadastrado",
+                    "Cada documento da terceirizada (contrato, PGR, ASO, certificados) era cadastrado um por um.",
+                    "Em Terceirizado > Empresas, clique em Importar pasta e arraste a pasta da empresa, mesmo misturada. A IA separa o contrato, os documentos da empresa e o ASO e os certificados de cada funcionário. Você confere tudo e clica em Cadastrar tudo. O ASO agora também guarda o PDF."),
+            }),
+        new(
+            Versao: "5.85.0",
+            Titulo: "Reunião de análise em toda ocorrência e relatório em PDF",
+            DataPublicacao: new DateTime(2026, 10, 23, 0, 0, 0, DateTimeKind.Utc),
+            Itens: new[]
+            {
+                new NovidadeSeedItem(CategoriaNovidade.Novidade,
+                    "Reunião de análise na tela da ocorrência",
+                    "A reunião de análise só aparecia no relato com IA de acidente e doença ocupacional. Num quase acidente, por exemplo, não havia onde marcar.",
+                    "Toda ocorrência agora tem o cartão Reunião de análise. Agende pelo Teams, remarque se precisar e, depois, registre que aconteceu com os presentes e a ata. A investigação só pode ser finalizada com a reunião realizada."),
+                new NovidadeSeedItem(CategoriaNovidade.Novidade,
+                    "A investigação vira documento",
+                    "A investigação de acidentes, incidentes e quase acidentes ficava só na tela, sem um documento para imprimir ou arquivar.",
+                    "Abra a ocorrência e clique em Visualizar relatório ou Baixar PDF. Sai tudo num documento só: identificação, descrição, consequências, causas, plano de ação, reunião de análise com a ata, fotos e espaço para as assinaturas do técnico e do engenheiro."),
+            }),
+        new(
+            Versao: "5.86.0",
+            Titulo: "Plano de ação da ocorrência: concluir com confirmação e reabrir",
+            DataPublicacao: new DateTime(2026, 10, 23, 0, 0, 0, DateTimeKind.Utc),
+            Itens: new[]
+            {
+                new NovidadeSeedItem(CategoriaNovidade.Melhoria,
+                    "Nada é concluído sem querer",
+                    "O botão Validar das ações do plano concluía a ação com um clique, sem perguntar, e não havia como desfazer.",
+                    "Agora cada ação manual tem Marcar como concluída, que pede para descrever o que foi feito e registra quem concluiu. Ações concluídas por engano podem ser reabertas com o botão Reabrir. A coluna Como se resolve mostra as ações que o sistema conclui sozinho, como o DDS do tema e a reunião de análise."),
+            }),
+        new(
+            Versao: "5.87.0",
+            Titulo: "Ações do plano que se resolvem sozinhas",
+            DataPublicacao: new DateTime(2026, 10, 23, 0, 0, 0, DateTimeKind.Utc),
+            Itens: new[]
+            {
+                new NovidadeSeedItem(CategoriaNovidade.Novidade,
+                    "Treinamento, inspeção e EPI concluem a ação",
+                    "Ações como \"reciclar NR-35 dos envolvidos\" dependiam de alguém lembrar de marcar como concluída.",
+                    "Ao criar uma ação na ocorrência, escolha Como se resolve: Treinamento concluído (curso), Inspeção finalizada (tipo) ou Entrega de EPI assinada (EPI). A ação só se conclui quando aquele fato acontece — turma do curso com os envolvidos presentes, inspeção do tipo na obra ou entrega assinada por cada envolvido. Ações já criadas podem ser vinculadas pelo botão Alterar."),
+            }),
     };
 
     public static async Task ExecutarAsync(IServiceProvider services, CancellationToken ct = default)

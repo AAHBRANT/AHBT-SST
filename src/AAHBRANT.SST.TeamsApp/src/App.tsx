@@ -1,6 +1,7 @@
 import { lazy, Suspense, useEffect, useState } from 'react';
 import { FluentProvider } from '@fluentui/react-components';
 import { QueryClientProvider } from '@tanstack/react-query';
+import { ganchosEstiloBotao } from './ui/primitivos/Botao/estiloBotao';
 import { MotionConfig } from 'framer-motion';
 import { HashRouter, Navigate, Outlet, Route, Routes, useLocation, useParams } from 'react-router-dom';
 import { aahbrantTheme, aahbrantLightTheme } from './theme';
@@ -21,6 +22,7 @@ const OcorrenciasPage = lazy(() => import('./pages/ocorrencias/OcorrenciasPage')
 const PessoasPage = lazy(() => import('./pages/pessoas/PessoasPage').then((m) => ({ default: m.PessoasPage })));
 const TrabalhadorDetalhePage = lazy(() => import('./pages/pessoas/TrabalhadorDetalhePage').then((m) => ({ default: m.TrabalhadorDetalhePage })));
 const PgrDetalhePage = lazy(() => import('./pages/pgr/PgrDetalhePage').then((m) => ({ default: m.PgrDetalhePage })));
+const GeracaoPgrEapPage = lazy(() => import('./pages/pgr/GeracaoPgrEapPage').then((m) => ({ default: m.GeracaoPgrEapPage })));
 const LeituraIaRevisaoPage = lazy(() => import('./pages/leitura-ia/LeituraIaRevisaoPage').then((m) => ({ default: m.LeituraIaRevisaoPage })));
 const AprDetalhePage = lazy(() => import('./pages/apr/AprDetalhePage').then((m) => ({ default: m.AprDetalhePage })));
 const PermissaoTrabalhoDetalhePage = lazy(() => import('./pages/pt/PermissaoTrabalhoDetalhePage').then((m) => ({ default: m.PermissaoTrabalhoDetalhePage })));
@@ -116,14 +118,14 @@ function AppRoteado() {
 
   if (!loginProcessado) {
     return (
-      <FluentProvider theme={modo === 'dark' ? aahbrantTheme : aahbrantLightTheme}>
+      <FluentProvider theme={modo === 'dark' ? aahbrantTheme : aahbrantLightTheme} customStyleHooks_unstable={ganchosEstiloBotao}>
         <div style={{ padding: 24 }}>Entrando...</div>
       </FluentProvider>
     );
   }
 
   return (
-    <FluentProvider theme={modo === 'dark' ? aahbrantTheme : aahbrantLightTheme}>
+    <FluentProvider theme={modo === 'dark' ? aahbrantTheme : aahbrantLightTheme} customStyleHooks_unstable={ganchosEstiloBotao}>
       {/* Com 'reduzir movimento' no SO, o framer-motion desliga animações de transform/opacity
           (spec §1.5); o CSS em index.css cuida das keyframes/transições. */}
       <MotionConfig reducedMotion="user">
@@ -166,6 +168,8 @@ function AppRoteado() {
               <Route path="/gestao-sst" element={<GestaoSstPage />} />
               <Route path="/prevencao" element={<Navigate to="/gestao-sst?secao=pgr" replace />} />
               <Route path="/prevencao/pgr" element={<RedirecionarParaPilar pilar="/gestao-sst" secao="pgr" />} />
+              <Route path="/prevencao/pgr/gerar-eap" element={<GeracaoPgrEapPage />} />
+              <Route path="/prevencao/pgr/gerar-eap/:geracaoId" element={<GeracaoPgrEapPage />} />
               <Route path="/prevencao/pgr/:id" element={<PgrDetalhePage />} />
               <Route path="/leituras-ia/:documento/:id" element={<LeituraIaRevisaoPage />} />
               <Route

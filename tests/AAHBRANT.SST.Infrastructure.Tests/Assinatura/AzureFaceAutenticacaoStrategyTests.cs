@@ -189,7 +189,7 @@ public class AzureFaceAutenticacaoStrategyTests
         var trabalhador = new Trabalhador
         {
             ObraId = obra.Id, Nome = "Fulano", Cpf = "12345678901", DataAdmissao = DateTime.UtcNow,
-            AzureFacePersonId = "person-1", ConsentimentoBiometriaEm = DateTime.UtcNow,
+            AzureFacePersonId = "person-1", TermoAceiteAssinaturaEletronicaEm = DateTime.UtcNow, ConsentimentoBiometriaEm = DateTime.UtcNow,
         };
         db.Trabalhadores.Add(trabalhador);
         await db.SaveChangesAsync();
@@ -228,7 +228,7 @@ public class AzureFaceAutenticacaoStrategyTests
         db.Trabalhadores.Add(new Trabalhador
         {
             ObraId = obra.Id, Nome = "Fulano", Cpf = "12345678901", DataAdmissao = DateTime.UtcNow, AzureFacePersonId = "person-1",
-            ConsentimentoBiometriaEm = DateTime.UtcNow,
+            TermoAceiteAssinaturaEletronicaEm = DateTime.UtcNow, ConsentimentoBiometriaEm = DateTime.UtcNow,
         });
         await db.SaveChangesAsync();
 

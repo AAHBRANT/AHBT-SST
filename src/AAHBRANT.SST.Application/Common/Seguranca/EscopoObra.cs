@@ -98,9 +98,8 @@ public static class EscopoObra
             throw new KeyNotFoundException($"Permissão de Trabalho {permissaoTrabalhoId} não encontrada.");
     }
 
-    // NC chega à obra pela atividade, pelo risco (→ atividade) ou pelo item de inspeção (→ inspeção).
-    // NC sem nenhum desses vínculos não tem obra: continua visível como antes (senão sumiria de quem
-    // a registrou), até a NC ganhar ObraId próprio.
+    // NC com obra própria (ObraId, 17/10/2026) usa ela. Registro antigo sem ObraId chega à obra pela atividade,
+    // pelo risco (→ atividade) ou pelo item de inspeção (→ inspeção); sem nenhum vínculo continua visível.
     public static IQueryable<NaoConformidade> NoEscopoDaObra(this IQueryable<NaoConformidade> query, IAppDbContext db)
     {
         if (db.EscopoObraGlobal)
@@ -112,11 +111,13 @@ public static class EscopoObra
         var inspecoes = db.Inspecoes.IgnoreQueryFilters().Where(i => obras.Contains(i.ObraId)).Select(i => i.Id);
         var respostas = db.InspecaoItemRespostas.IgnoreQueryFilters().Where(r => inspecoes.Contains(r.InspecaoId)).Select(r => r.Id);
 
+        // Com obra própria vale ela; sem (registro antigo), o critério anterior pelos vínculos.
         return query.Where(n =>
-            (n.AtividadeId == null && n.RiscoId == null && n.InspecaoItemRespostaId == null)
-            || (n.AtividadeId != null && atividades.Contains(n.AtividadeId.Value))
-            || (n.RiscoId != null && riscos.Contains(n.RiscoId.Value))
-            || (n.InspecaoItemRespostaId != null && respostas.Contains(n.InspecaoItemRespostaId.Value)));
+            (n.ObraId != null && obras.Contains(n.ObraId.Value))
+            || (n.ObraId == null && n.AtividadeId == null && n.RiscoId == null && n.InspecaoItemRespostaId == null)
+            || (n.ObraId == null && n.AtividadeId != null && atividades.Contains(n.AtividadeId.Value))
+            || (n.ObraId == null && n.RiscoId != null && riscos.Contains(n.RiscoId.Value))
+            || (n.ObraId == null && n.InspecaoItemRespostaId != null && respostas.Contains(n.InspecaoItemRespostaId.Value)));
     }
 
     public static async Task GarantirNaoConformidadeNoEscopoAsync(this IAppDbContext db, Guid naoConformidadeId, CancellationToken ct)

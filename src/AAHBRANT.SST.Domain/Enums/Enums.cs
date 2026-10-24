@@ -142,7 +142,14 @@ public enum TipoAlerta
     CadastroFacialFraco = 30,
     // Validade do PCMSO (PcmsoAlertaProvider) — aviso diário de documento vencido, 16/10/2026.
     PcmsoVencendo = 31,
-    PcmsoVencido = 32
+    PcmsoVencido = 32,
+    // Plano de integração do funcionário (admissão, troca de função, transferência), 21/10/2026.
+    IntegracaoFuncionarioNovo = 33,
+    // Disponível do EPI na obra abaixo do estoque mínimo definido (especificação 21/10/2026, Módulo 2).
+    EstoqueEpiAbaixoMinimo = 34,
+    // Documento exigido da empresa terceirizada (PGR, PCMSO...) perto de vencer ou vencido (21/10/2026).
+    DocumentoTerceirizadoVencendo = 35,
+    DocumentoTerceirizadoVencido = 36
 }
 
 public enum SeveridadeAlerta
@@ -177,7 +184,9 @@ public enum TipoModuloAlerta
     // Cadastros faciais com falhas repetidas: o técnico refaz a foto (CadastroFacialAlertaProvider), 12/10/2026.
     CadastroFacial = 14,
     // Validade do PCMSO (PcmsoAlertaProvider), 16/10/2026.
-    Pcmso = 15
+    Pcmso = 15,
+    // Documentos da empresa terceirizada (DocumentoEmpresaTerceirizadaAlertaProvider), 21/10/2026.
+    DocumentoTerceirizado = 16
 }
 
 public enum StatusAlerta
@@ -255,11 +264,64 @@ public enum NivelRisco
 
 // Não há fluxo literal no documento para o "status" do controle de risco (§14) — proposta
 // própria (a diferir do fluxo literal de Não Conformidade, que será citado quando implementado).
+public enum StatusGeracaoPgrEap
+{
+    Rascunho = 1,
+    AguardandoAprovacao = 2,
+    Aprovado = 3,
+    Devolvido = 4
+}
+
 public enum StatusControleRisco
 {
     Pendente = 1,
     EmAndamento = 2,
     Concluido = 3
+}
+
+// Fase do trabalho em que a medida de prevenção é aplicada (Ordem de Serviço).
+public enum FaseMedidaPrevencao
+{
+    Antes = 1,
+    Durante = 2,
+    Apos = 3
+}
+
+public enum OrigemMedidaPrevencao
+{
+    Pgr = 1,
+    SugestaoIa = 2,
+    Manual = 3
+}
+
+public enum StatusMedidaPrevencao
+{
+    Validada = 1,
+    Pendente = 2,
+    Descartada = 3
+}
+
+public enum TipoDocumentoSst
+{
+    MaterialApoio = 1,
+    Procedimento = 2,
+    InstrucaoTrabalho = 3,
+    Politica = 4
+}
+
+public enum SituacaoDocumentoSst
+{
+    Vigente = 1,
+    EmRevisao = 2,
+    Obsoleto = 3
+}
+
+// Item da atividade para a Ordem de Serviço que não é medida de risco.
+public enum TipoItemAtividadeOs
+{
+    InterromperQuando = 1,
+    Restricao = 2,
+    Autorizacao = 3
 }
 
 // Não há fluxo literal no documento para o "status" do PGR (§16) — proposta própria (avisar o
@@ -492,6 +554,16 @@ public enum ItemEpcPt
 // Alojamento (14) não está nessa lista literal, mas é citado explicitamente como "Inspeção
 // Específica" em REFORMULAÇÃO.md §PR-SST-005 — adicionado para o checklist de estrutura de
 // alojamento (NR-18 18.5 / NR-24), pedido do usuário em 2026-09-09.
+// Como uma ação do plano se conclui sozinha (23/10/2026, etapa 2): só o fato real a conclui —
+// turma do curso escolhido concluída com os envolvidos, inspeção do tipo escolhido finalizada na
+// obra, entrega do EPI escolhido assinada pelos envolvidos. Nulo = ação manual.
+public enum TipoResolucaoAcaoPlano
+{
+    Treinamento = 1,
+    Inspecao = 2,
+    EntregaEpi = 3
+}
+
 public enum TipoInspecao
 {
     Obra = 1,
@@ -681,10 +753,19 @@ public enum TipoFotoParticipante
 // e, quando aplicável, outro para terceirizados — nunca misturados no mesmo documento (o papel já
 // separa por página/formulário inteiro, com bloco de assinatura da empresa terceirizada só na
 // segunda versão).
+// Pedido do usuário (20/10): opção "Próprios e Terceirizados" para registrar as duas equipes na mesma
+// semana — segue as regras de terceirizado (empresa na abertura, responsável da empresa no encerramento).
 public enum TipoDdsSemanal
 {
     Proprios = 1,
-    Terceirizados = 2
+    Terceirizados = 2,
+    ProprioseTerceirizados = 3
+}
+
+public static class TipoDdsSemanalExtensions
+{
+    public static bool IncluiTerceirizados(this TipoDdsSemanal tipo) =>
+        tipo is TipoDdsSemanal.Terceirizados or TipoDdsSemanal.ProprioseTerceirizados;
 }
 
 public enum StatusDdsSemanal
@@ -777,6 +858,9 @@ public enum TipoMovimentacaoEstoqueEpi
     DevolucaoEntrada = 2,
     AjusteManual = 3,
     IntegracaoGsupri = 4,
+    // Transferência entre obras (especificação 21/10/2026): sai de uma obra e entra na outra.
+    TransferenciaSaida = 5,
+    TransferenciaEntrada = 6,
 }
 
 // EPC (pedido do usuário, 04/09) — mesmo vocabulário de TipoMovimentacaoEstoqueEpi, só que
@@ -932,4 +1016,50 @@ public enum OrigemCertificadoTreinamento
 {
     Aahbrant = 1,
     Externo = 2
+}
+
+public enum MotivoPlanoIntegracao
+{
+    Admissao = 1,
+    TrocaFuncao = 2,
+    TransferenciaObra = 3
+}
+
+public enum StatusPlanoIntegracao
+{
+    Aberto = 1,
+    Concluido = 2,
+    Cancelado = 3
+}
+
+public enum StatusReservaEpi
+{
+    Ativa = 1,
+    Entregue = 2,
+    Cancelada = 3
+}
+
+// Dedo de cada digital cadastrada no leitor Futronic (pedido do usuário, 21/10): a ficha do
+// trabalhador cadastra o polegar direito e o polegar esquerdo em botões separados, e cada um só pode
+// ser cadastrado uma vez. NaoInformado cobre os cadastros feitos antes desta separação (um só
+// template por trabalhador, sem registro do dedo) e o fluxo antigo pós-criação do funcionário.
+public enum DedoBiometria
+{
+    NaoInformado = 0,
+    PolegarDireito = 1,
+    PolegarEsquerdo = 2,
+}
+
+// Cursos obrigatórios por função a partir do PGR (21/10): só Aprovado conta para a aptidão.
+public enum StatusCursoObrigatorio
+{
+    Sugerido = 1,
+    Aprovado = 2,
+    Recusado = 3,
+}
+
+public enum OrigemCursoObrigatorio
+{
+    Pgr = 1,
+    Manual = 2,
 }

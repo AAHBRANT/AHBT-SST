@@ -109,5 +109,8 @@ public class ReuniaoAnaliseOcorrenciaTests
             Convidados.AddRange(emailsConvidados);
             return Task.FromResult(new ReuniaoTeamsCriada("evt-1", "https://teams/link"));
         }
+
+        public Task RemarcarReuniaoAsync(Guid organizadorUsuarioId, string graphEventId, DateTime inicio, DateTime fim, CancellationToken ct = default)
+            => Task.CompletedTask;
     }
 }

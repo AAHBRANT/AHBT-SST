@@ -39,9 +39,12 @@ public static class DependencyInjection
         services.AddScoped<IAlertaOrigemProvider, PcmsoAlertaProvider>();
         services.AddScoped<IAlertaOrigemProvider, ExamesFuncaoAlertaProvider>();
         services.AddScoped<IAlertaOrigemProvider, CadastroFacialAlertaProvider>();
+        services.AddScoped<IAlertaOrigemProvider, DocumentoEmpresaTerceirizadaAlertaProvider>();
         services.AddScoped<IAlertaEngineService, AlertaEngineService>();
         services.AddScoped<ISuporteIaTriagemService, HeuristicaSuporteIaTriagemService>();
         services.AddScoped<ITecnicosSegurancaPorObraService, TecnicosSegurancaPorObraService>();
+        services.AddScoped<PlanosIntegracao.IPlanoIntegracaoService, PlanosIntegracao.PlanoIntegracaoService>();
+        services.AddScoped<EstoquesEpi.Minimo.IVerificacaoEstoqueMinimoService, EstoquesEpi.Minimo.VerificacaoEstoqueMinimoService>();
         services.AddScoped<Common.Seguranca.IAcessoPorObraService, Common.Seguranca.AcessoPorObraService>();
 
         return services;

@@ -1,5 +1,6 @@
 using AAHBRANT.SST.Application.Assinatura;
 using AAHBRANT.SST.Application.Common.Interfaces;
+using AAHBRANT.SST.Application.PlanosIntegracao;
 using FluentValidation;
 using MediatR;
 using Microsoft.EntityFrameworkCore;
@@ -23,12 +24,15 @@ public class ExcluirTrabalhadorCommandHandler : IRequestHandler<ExcluirTrabalhad
     private readonly IAppDbContext _db;
     private readonly IAutenticacaoFacialService? _facial;
     private readonly ILogger<ExcluirTrabalhadorCommandHandler> _logger;
+    private readonly IPlanoIntegracaoService? _planoIntegracao;
 
-    public ExcluirTrabalhadorCommandHandler(IAppDbContext db, IAutenticacaoFacialService? facial = null, ILogger<ExcluirTrabalhadorCommandHandler>? logger = null)
+    public ExcluirTrabalhadorCommandHandler(IAppDbContext db, IAutenticacaoFacialService? facial = null, ILogger<ExcluirTrabalhadorCommandHandler>? logger = null,
+        IPlanoIntegracaoService? planoIntegracao = null)
     {
         _db = db;
         _facial = facial;
         _logger = logger ?? NullLogger<ExcluirTrabalhadorCommandHandler>.Instance;
+        _planoIntegracao = planoIntegracao;
     }
 
     public async Task Handle(ExcluirTrabalhadorCommand request, CancellationToken ct)
@@ -43,5 +47,9 @@ public class ExcluirTrabalhadorCommandHandler : IRequestHandler<ExcluirTrabalhad
 
         trabalhador.Ativo = false;
         await _db.SaveChangesAsync(ct);
+
+        // Devolve ao disponível o kit de EPI que estava separado para ele.
+        if (_planoIntegracao is not null)
+            await _planoIntegracao.SincronizarAsync(trabalhador.Id, null, ct);
     }
 }

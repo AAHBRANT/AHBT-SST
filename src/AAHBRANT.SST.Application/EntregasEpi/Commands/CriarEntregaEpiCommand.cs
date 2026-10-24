@@ -1,5 +1,7 @@
 using AAHBRANT.SST.Application.Common;
 using AAHBRANT.SST.Application.Common.Interfaces;
+using AAHBRANT.SST.Application.EstoquesEpi.Minimo;
+using AAHBRANT.SST.Application.PlanosIntegracao;
 using AAHBRANT.SST.Domain.Entidades;
 using AAHBRANT.SST.Domain.Enums;
 using FluentValidation;
@@ -38,7 +40,13 @@ public class CriarEntregaEpiCommandValidator : AbstractValidator<CriarEntregaEpi
 public class CriarEntregaEpiCommandHandler : IRequestHandler<CriarEntregaEpiCommand, Guid>
 {
     private readonly IAppDbContext _db;
-    public CriarEntregaEpiCommandHandler(IAppDbContext db) => _db = db;
+    private readonly IVerificacaoEstoqueMinimoService? _verificacaoMinimo;
+
+    public CriarEntregaEpiCommandHandler(IAppDbContext db, IVerificacaoEstoqueMinimoService? verificacaoMinimo = null)
+    {
+        _db = db;
+        _verificacaoMinimo = verificacaoMinimo;
+    }
 
     public async Task<Guid> Handle(CriarEntregaEpiCommand request, CancellationToken ct)
     {
@@ -70,6 +78,13 @@ public class CriarEntregaEpiCommandHandler : IRequestHandler<CriarEntregaEpiComm
         if (saldoAtual < request.Quantidade)
             throw new InvalidOperationException($"Estoque insuficiente para este EPI nesta obra (saldo atual: {saldoAtual}).");
 
+        // Kit separado para funcionário novo (plano de integração) é promessa: uma entrega avulsa não
+        // pode levar a unidade de outra pessoa. A reserva do próprio trabalhador, essa sim, é usada aqui.
+        var reservadoParaOutros = await SituacaoReservasEpi.ReservadoParaOutrosAsync(
+            _db, trabalhador.ObraId, request.CatalogoEpiId, request.TrabalhadorId, ct);
+        if (saldoAtual - reservadoParaOutros < request.Quantidade)
+            throw new InvalidOperationException(SituacaoReservasEpi.MensagemSaldoComprometido(saldoAtual, reservadoParaOutros));
+
         var entrega = new EntregaEpi
         {
             TrabalhadorId = request.TrabalhadorId,
@@ -87,6 +102,15 @@ public class CriarEntregaEpiCommandHandler : IRequestHandler<CriarEntregaEpiComm
         };
         _db.EntregasEpi.Add(entrega);
 
+        var reserva = await _db.ReservasEpi.FirstOrDefaultAsync(r => r.TrabalhadorId == request.TrabalhadorId
+            && r.CatalogoEpiId == request.CatalogoEpiId && r.Status == StatusReservaEpi.Ativa, ct);
+        if (reserva is not null)
+        {
+            reserva.Status = StatusReservaEpi.Entregue;
+            reserva.EntregaEpiId = entrega.Id;
+            reserva.EncerradaEm = DateTime.UtcNow;
+        }
+
         estoque!.Saldo -= request.Quantidade;
         _db.MovimentacoesEstoqueEpi.Add(new MovimentacaoEstoqueEpi
         {
@@ -98,6 +122,9 @@ public class CriarEntregaEpiCommandHandler : IRequestHandler<CriarEntregaEpiComm
         });
 
         await _db.SaveChangesAsync(ct);
+
+        // Alerta de estoque mínimo da obra (especificação 21/10/2026, Módulo 2).
+        if (_verificacaoMinimo is not null) await _verificacaoMinimo.VerificarAsync(trabalhador.ObraId, ct);
         return entrega.Id;
     }
 

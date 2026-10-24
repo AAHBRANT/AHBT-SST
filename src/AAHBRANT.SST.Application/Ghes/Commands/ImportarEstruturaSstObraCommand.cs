@@ -274,6 +274,9 @@ public class ImportarEstruturaSstObraCommandHandler : IRequestHandler<ImportarEs
                     NivelRisco = celula.NivelRisco,
                     ControlesExistentes = Juntar(("EPC", r.Epc), ("EPI", r.Epi)),
                     ControlesAdicionais = Juntar(("Monitoramento", r.Monitoramento)),
+                    // Veio do PGR já aprovado pelo engenheiro: a avaliação conta como confirmada.
+                    AvaliadoEmUtc = DateTime.UtcNow,
+                    AvaliadoPorNome = "Importado do PGR",
                 });
                 riscos++;
             }
@@ -375,6 +378,8 @@ public class ImportarEstruturaSstObraCommandHandler : IRequestHandler<ImportarEs
         }
 
         await _db.SaveChangesAsync(ct);
+        // Mesmo efeito da aprovação do PGR gerado pela EAP: sugere os cursos obrigatórios por função.
+        await CursosObrigatorios.GeradorCursosObrigatorios.GerarAsync(_db, request.ObraId, ct);
 
         return new ImportarEstruturaSstObraResultado(
             pgr?.Id, pcmso?.Id, request.Ghes.Count, riscos, semExposicao, perigosCriados, exames, itensPlano,

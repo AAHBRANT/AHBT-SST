@@ -104,6 +104,50 @@ public class ContratoValidadoWebhookCommandHandlerTests
     }
 
     [Fact]
+    public async Task Handle_ContratoManualComMesmoNumeroECnpj_AdotaContratoEmVezDeDuplicar()
+    {
+        var db = CriarDb(nameof(Handle_ContratoManualComMesmoNumeroECnpj_AdotaContratoEmVezDeDuplicar));
+        var (obra, funcao) = await SemearAsync(db);
+        var empresa = new Empresa { RazaoSocial = "XPTO", Cnpj = "12345678000199" };
+        var manual = new Contrato
+        {
+            Empresa = empresa, ObraId = obra.Id, NumeroContrato = "CT-001",
+            DataInicioVigencia = DateOnly.FromDateTime(DateTime.UtcNow), DataFimVigencia = DateOnly.FromDateTime(DateTime.UtcNow.AddMonths(3)),
+        };
+        db.Contratos.Add(manual);
+        await db.SaveChangesAsync();
+        var handler = new ContratoValidadoWebhookCommandHandler(db);
+
+        var contratoId = await handler.Handle(CriarCommand(obra.Id, funcao.Nome, "gjuri-adota", quantidadeVagas: 4), default);
+
+        Assert.Equal(manual.Id, contratoId);
+        Assert.Equal(1, await db.Contratos.CountAsync());
+        var adotado = await db.Contratos.SingleAsync();
+        Assert.Equal("gjuri-adota", adotado.GJuriContratoId); // daqui em diante o G-Juri prevalece.
+        Assert.Equal(4, (await db.ContratoVagasFuncao.SingleAsync(v => v.ContratoId == manual.Id)).QuantidadeVagas);
+    }
+
+    [Fact]
+    public async Task Handle_ContratoManualComMesmoNumeroDeOutraEmpresa_NaoAdota()
+    {
+        var db = CriarDb(nameof(Handle_ContratoManualComMesmoNumeroDeOutraEmpresa_NaoAdota));
+        var (obra, funcao) = await SemearAsync(db);
+        var outraEmpresa = new Empresa { RazaoSocial = "Outra", Cnpj = "99999999000199" };
+        db.Contratos.Add(new Contrato
+        {
+            Empresa = outraEmpresa, ObraId = obra.Id, NumeroContrato = "CT-001",
+            DataInicioVigencia = DateOnly.FromDateTime(DateTime.UtcNow), DataFimVigencia = DateOnly.FromDateTime(DateTime.UtcNow.AddMonths(3)),
+        });
+        await db.SaveChangesAsync();
+        var handler = new ContratoValidadoWebhookCommandHandler(db);
+
+        await handler.Handle(CriarCommand(obra.Id, funcao.Nome, "gjuri-outra"), default);
+
+        Assert.Equal(2, await db.Contratos.CountAsync());
+        Assert.Equal(1, await db.Contratos.CountAsync(c => c.GJuriContratoId == null));
+    }
+
+    [Fact]
     public async Task Handle_ObraInexistente_LancaKeyNotFoundException()
     {
         var db = CriarDb(nameof(Handle_ObraInexistente_LancaKeyNotFoundException));

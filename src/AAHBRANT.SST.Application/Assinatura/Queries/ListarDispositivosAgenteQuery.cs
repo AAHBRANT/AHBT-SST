@@ -25,8 +25,11 @@ public class ListarDispositivosAgenteQueryHandler : IRequestHandler<ListarDispos
 
     public async Task<List<DispositivoAgenteDto>> Handle(ListarDispositivosAgenteQuery request, CancellationToken ct)
     {
+        var obras = _db.ObrasNoEscopo;
+        var global = _db.EscopoObraGlobal;
         var dispositivos = await _db.DispositivosAgenteBiometrico
             .Where(d => request.ObraId == null || d.ObraId == request.ObraId)
+            .Where(d => global || obras.Contains(d.ObraId))
             .OrderBy(d => d.Obra!.Nome).ThenBy(d => d.Nome)
             .Select(d => new { d.Id, d.ObraId, ObraNome = d.Obra!.Nome, d.Nome, d.UltimaSincronizacaoEm, Registrado = d.CreatedAtUtc })
             .ToListAsync(ct);

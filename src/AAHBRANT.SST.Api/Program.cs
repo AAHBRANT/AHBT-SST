@@ -1,4 +1,4 @@
-using AAHBRANT.SST.Api.Autorizacao;
+﻿using AAHBRANT.SST.Api.Autorizacao;
 using AAHBRANT.SST.Api.Middlewares;
 using AAHBRANT.SST.Application;
 using AAHBRANT.SST.Infrastructure;
@@ -23,6 +23,8 @@ builder.Services.AddHostedService<AAHBRANT.SST.Infrastructure.Assinatura.Migraca
 builder.Services.AddHostedService<AAHBRANT.SST.Infrastructure.Seguranca.CriptografiaFotosBackgroundService>();
 // Prazo de guarda das fotos de evidência: desligado até configurar Lgpd:DiasRetencaoFotosEvidencia.
 builder.Services.AddHostedService<AAHBRANT.SST.Infrastructure.Seguranca.RetencaoFotosBiometricasBackgroundService>();
+// Envio das NCs com obra ao G-QUALI (espelho). Desligado sem a seção GQuali.
+builder.Services.AddHostedService<AAHBRANT.SST.Infrastructure.Integracao.GQuali.EnvioNcGQualiService>();
 
 // Autenticação Entra ID: só é ativada se a seção "AzureAd" estiver configurada com um
 // App Registration real (TenantId/ClientId). Provisionamento desse recurso no Azure
@@ -167,11 +169,13 @@ using (var escopoMigracao = app.Services.CreateScope())
 await RbacSeeder.ExecutarAsync(app.Services);
 await CpfLgpdBackfillSeeder.ExecutarAsync(app.Services);
 await RegraAlertaSeeder.ExecutarAsync(app.Services);
+await DocumentoExigidoEmpresaSeeder.ExecutarAsync(app.Services);
 await ChecklistAlojamentoSeeder.ExecutarAsync(app.Services);
 await ChecklistVeiculoSeeder.ExecutarAsync(app.Services);
 await ConfiguracaoAlojamentoSeeder.ExecutarAsync(app.Services);
 await MateriaisApoioSeeder.ExecutarAsync(app.Services);
 await RequisitosLegaisNrSeeder.ExecutarAsync(app.Services);
+await RegrasCursoObrigatorioSeeder.ExecutarAsync(app.Services);
 await NovidadesSeeder.ExecutarAsync(app.Services);
 
 if (app.Environment.IsDevelopment())

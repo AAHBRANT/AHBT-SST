@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Button, Card, DataTable, Legenda, StatusChip, type Coluna } from '@ui';
+import { Warning24Regular } from '@fluentui/react-icons';
 import { api, type CadastroFacialFraco } from '../../lib/api';
 import { FalhasReconhecimentoFacialPainel } from './FalhasReconhecimentoFacialPainel';
 
@@ -12,11 +13,15 @@ function formatarData(iso: string): string {
 // técnico refaz a foto antes de o problema aparecer de novo no DDS. Some quando não há ninguém para
 // revisar, e também para quem não tem permissão de assinatura (o servidor responde 403). Sem ninguém para
 // revisar, sobra só o atalho para a lista completa de falhas (12/10).
-export function CadastrosFaciaisFracosCard() {
+//
+// `compacto` (lista de Pessoas, 21/10): em vez do card com a tabela, mostra só um botão-aviso com a
+// contagem; a tabela abre embaixo, ocupando a linha inteira, quando o técnico clica.
+export function CadastrosFaciaisFracosCard({ compacto = false }: { compacto?: boolean } = {}) {
   const navigate = useNavigate();
   const [lista, setLista] = useState<CadastroFacialFraco[]>([]);
   const [permitido, setPermitido] = useState(false);
   const [painelAberto, setPainelAberto] = useState(false);
+  const [expandido, setExpandido] = useState(false);
 
   useEffect(() => {
     let cancelado = false;
@@ -41,6 +46,14 @@ export function CadastrosFaciaisFracosCard() {
   );
 
   if (!permitido) return null;
+  if (lista.length === 0 && compacto) {
+    return (
+      <>
+        {botaoFalhas}
+        {painel}
+      </>
+    );
+  }
   if (lista.length === 0) {
     return (
       <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 8 }}>
@@ -67,7 +80,7 @@ export function CadastrosFaciaisFracosCard() {
     { chave: 'cadastro', rotulo: 'Cadastro de', render: (f) => formatarData(f.cadastroEm) },
   ];
 
-  return (
+  const cartao = (
     <Card titulo={`Cadastros faciais para revisar (${lista.length})`} acoes={botaoFalhas}>
       <Legenda>
         Funcionários com 3 ou mais falhas de reconhecimento facial nos últimos 30 dias. Abra o cadastro e use
@@ -90,5 +103,26 @@ export function CadastrosFaciaisFracosCard() {
       />
       {painel}
     </Card>
+  );
+
+  if (!compacto) return cartao;
+
+  return (
+    <>
+      <Button
+        appearance="secondary"
+        icon={<Warning24Regular />}
+        onClick={() => setExpandido((v) => !v)}
+        aria-expanded={expandido}
+        aria-controls="cadastros-faciais-revisar"
+      >
+        {lista.length} {lista.length === 1 ? 'cadastro facial para revisar' : 'cadastros faciais para revisar'}
+      </Button>
+      {expandido && (
+        <div id="cadastros-faciais-revisar" style={{ flexBasis: '100%', order: 1 }}>
+          {cartao}
+        </div>
+      )}
+    </>
   );
 }

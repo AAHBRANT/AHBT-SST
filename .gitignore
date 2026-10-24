@@ -41,3 +41,6 @@ Thumbs.db
 tmp/
 .codex-artifacts/
 .playwright-mcp/
+
+# Chave privada da atualização automática do agente: nunca no git (ver scripts/agente-biometria/publicar.ps1).
+*chave-privada*.pem

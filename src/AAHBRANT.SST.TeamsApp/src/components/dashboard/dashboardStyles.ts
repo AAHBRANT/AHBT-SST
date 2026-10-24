@@ -38,16 +38,17 @@ export const useDashboardStyles = makeStyles({
     padding: '3px',
     backgroundColor: designTokens.colorSurface,
     border: `1px solid ${designTokens.colorCardBorder}`,
-    borderRadius: '10px',
+    borderRadius: '999px',
     '@media (max-width: 520px)': {
       display: 'grid',
+      borderRadius: '18px',
       gridTemplateColumns: 'repeat(2, minmax(0, 1fr))',
     },
   },
   botaoPeriodo: {
     minWidth: 'auto',
-    height: '30px',
-    borderRadius: '7px',
+    height: '32px',
+    minHeight: '32px',
     fontWeight: 600,
     color: designTokens.colorNeutralMedium,
     '@media (max-width: 520px)': {
@@ -58,8 +59,8 @@ export const useDashboardStyles = makeStyles({
   },
   botaoPeriodoSelecionado: {
     minWidth: 'auto',
-    height: '30px',
-    borderRadius: '7px',
+    height: '32px',
+    minHeight: '32px',
     fontWeight: 600,
     '@media (max-width: 520px)': {
       width: '100%',
@@ -67,14 +68,14 @@ export const useDashboardStyles = makeStyles({
       paddingRight: '4px',
     },
     color: '#ffffff',
-    backgroundColor: designTokens.colorPrimary,
+    backgroundColor: 'var(--sst-botao-marca)',
     '& .fui-Button__content': {
       color: '#ffffff',
       fontWeight: 700,
     },
     ':hover': {
       color: '#ffffff',
-      backgroundColor: designTokens.colorPrimary,
+      backgroundColor: 'var(--sst-botao-marca)',
       filter: 'brightness(1.15)',
     },
   },
