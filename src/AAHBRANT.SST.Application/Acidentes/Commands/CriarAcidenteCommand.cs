@@ -1,6 +1,7 @@
 using AAHBRANT.SST.Application.Acidentes;
 using AAHBRANT.SST.Application.Acidentes.RelatoIa;
 using AAHBRANT.SST.Application.AcoesPlano;
+using AAHBRANT.SST.Application.AcoesPlano.Commands;
 using AAHBRANT.SST.Application.Common.Interfaces;
 using AAHBRANT.SST.Domain.Entidades;
 using AAHBRANT.SST.Domain.Enums;
@@ -51,7 +52,13 @@ public record AcaoPlanoNovaOcorrencia(
     PrioridadeAcao Prioridade,
     DateTime? Prazo,
     Guid? ResponsavelUsuarioId,
-    string? Fundamentacao);
+    string? Fundamentacao,
+    // "Como se resolve": obrigatório (sem conclusão manual). Ver VinculoResolucaoAcaoPlano.
+    TipoResolucaoAcaoPlano? TipoResolucao = null,
+    Guid? ResolucaoCursoTreinamentoId = null,
+    TipoInspecao? ResolucaoTipoInspecao = null,
+    Guid? ResolucaoCatalogoEpiId = null,
+    Guid? ResolucaoTemaInspecaoId = null);
 
 public class CriarAcidenteCommandValidator : AbstractValidator<CriarAcidenteCommand>
 {
@@ -145,7 +152,9 @@ public class CriarAcidenteCommandHandler : IRequestHandler<CriarAcidenteCommand,
 
         foreach (var acao in request.AcoesPlano ?? new List<AcaoPlanoNovaOcorrencia>())
         {
-            _db.AcoesPlano.Add(new AcaoPlano
+            if (acao.ResponsavelUsuarioId is null)
+                throw new InvalidOperationException($"Designe quem vai resolver a ação \"{acao.Descricao.Trim()}\".");
+            var nova = new AcaoPlano
             {
                 OrigemTipo = nameof(Acidente),
                 OrigemId = acidente.Id,
@@ -155,7 +164,10 @@ public class CriarAcidenteCommandHandler : IRequestHandler<CriarAcidenteCommand,
                 Prazo = acao.Prazo ?? SlaPrioridadeCalculator.CalcularPrazoSugerido(acao.Prioridade, DateTime.UtcNow),
                 ResponsavelUsuarioId = acao.ResponsavelUsuarioId,
                 Fundamentacao = string.IsNullOrWhiteSpace(acao.Fundamentacao) ? null : acao.Fundamentacao.Trim(),
-            });
+            };
+            await VinculoResolucaoAcaoPlano.AplicarAsync(_db, nova, acao.TipoResolucao, acao.ResolucaoCursoTreinamentoId,
+                acao.ResolucaoTipoInspecao, acao.ResolucaoCatalogoEpiId, ct, acao.ResolucaoTemaInspecaoId);
+            _db.AcoesPlano.Add(nova);
         }
 
         if (request.TemaDds is not null)

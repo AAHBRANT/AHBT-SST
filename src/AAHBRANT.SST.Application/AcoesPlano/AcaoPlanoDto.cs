@@ -33,6 +33,7 @@ public class AcaoPlanoDto
     public TipoResolucaoAcaoPlano? TipoResolucao { get; set; }
     public Guid? ResolucaoCursoTreinamentoId { get; set; }
     public TipoInspecao? ResolucaoTipoInspecao { get; set; }
+    public Guid? ResolucaoTemaInspecaoId { get; set; }
     public Guid? ResolucaoCatalogoEpiId { get; set; }
     public string? ProgressoResolucao { get; set; }
     public string? RotuloAguardando { get; set; }

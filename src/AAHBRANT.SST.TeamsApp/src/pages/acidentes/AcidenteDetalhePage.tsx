@@ -36,7 +36,7 @@ import {
 import { ArrowDownload24Regular, Eye24Regular, Save24Regular } from '@fluentui/react-icons';
 import { MapaCorporal } from '../../components/mapaCorporal/MapaCorporal';
 import { CartaoReuniaoAnalise } from './CartaoReuniaoAnalise';
-import { CampoComoSeResolve, payloadResolucao, pendenciaResolucao, resolucaoManual, type ResolucaoEmEdicao } from './CampoComoSeResolve';
+import { CampoComoSeResolve, payloadResolucao, pendenciaResolucao, resolucaoVazia, type ResolucaoEmEdicao } from './CampoComoSeResolve';
 import { useVisualizadorPdf } from '../../components/useVisualizadorPdf';
 import {
   api,
@@ -53,8 +53,6 @@ import {
   type Acidente,
   type AcidenteDetalhe,
   type AtualizarAcidentePayload,
-  type CatalogoEpi,
-  type CursoTreinamento,
   type NovaAcaoPlano,
   type Usuario,
 } from '../../lib/api';
@@ -96,17 +94,13 @@ export function AcidenteDetalhePage() {
   const [causas, setCausas] = useState<string>('');
   const [regioesCorpo, setRegioesCorpo] = useState<string[]>([]);
   const [novaAcao, setNovaAcao] = useState(novaAcaoInicial());
-  // Conclusão manual com confirmação + descrição, e Reabrir (23/10/2026, docs/mockups/plano-acao-conclusao-v1.html):
-  // substitui o antigo "Validar", que concluía a ação num clique sem perguntar.
-  const [acaoConcluindo, setAcaoConcluindo] = useState<AcaoPlano | null>(null);
-  const [descricaoConclusao, setDescricaoConclusao] = useState('');
+  // Reabrir desfaz uma conclusão feita por engano. Não existe mais conclusão manual (24/10/2026): a ação
+  // conclui quando o fato vinculado acontece (treinamento, inspeção pelo responsável designado, EPI, DDS, reunião).
   const { confirmar, dialogElement: dialogoConfirmacao } = useConfirmar();
-  // "Como se resolve" (etapa 2): na nova ação e no Alterar de uma ação existente.
-  const [cursos, setCursos] = useState<CursoTreinamento[]>([]);
-  const [epis, setEpis] = useState<CatalogoEpi[]>([]);
-  const [resolucaoNova, setResolucaoNova] = useState<ResolucaoEmEdicao>(resolucaoManual());
+  // "Como se resolve": na nova ação e no Alterar de uma ação existente.
+  const [resolucaoNova, setResolucaoNova] = useState<ResolucaoEmEdicao>(resolucaoVazia());
   const [acaoAlterando, setAcaoAlterando] = useState<AcaoPlano | null>(null);
-  const [resolucaoAlterando, setResolucaoAlterando] = useState<ResolucaoEmEdicao>(resolucaoManual());
+  const [resolucaoAlterando, setResolucaoAlterando] = useState<ResolucaoEmEdicao>(resolucaoVazia());
   const [erro, setErro] = useState<string | null>(null);
   const [processando, setProcessando] = useState(false);
   const [baixandoPdf, setBaixandoPdf] = useState(false);
@@ -130,16 +124,9 @@ export function AcidenteDetalhePage() {
     if (!id) return;
     try {
       setErro(null);
-      const [det, listaUsuarios, listaCursos, listaEpis] = await Promise.all([
-        api.acidentes.obterDetalhe(id),
-        api.usuarios.listar(),
-        api.cursosTreinamento.listar().catch(() => [] as CursoTreinamento[]),
-        api.catalogosEpi.listar().catch(() => [] as CatalogoEpi[]),
-      ]);
+      const [det, listaUsuarios] = await Promise.all([api.acidentes.obterDetalhe(id), api.usuarios.listar()]);
       setDetalhe(det);
       setUsuarios(listaUsuarios);
-      setCursos(listaCursos);
-      setEpis(listaEpis);
       setMetodologia(det.acidente.metodologiaInvestigacao ? String(det.acidente.metodologiaInvestigacao) : '');
       setCausas(det.acidente.causas ?? '');
       setRegioesCorpo(det.acidente.regioesCorpo ?? []);
@@ -240,6 +227,10 @@ export function AcidenteDetalhePage() {
       setErro('Informe a descrição da ação do plano.');
       return;
     }
+    if (!novaAcao.responsavelUsuarioId) {
+      setErro('Designe quem vai resolver a ação.');
+      return;
+    }
     const pendencia = pendenciaResolucao(resolucaoNova);
     if (pendencia) {
       setErro(pendencia);
@@ -258,32 +249,14 @@ export function AcidenteDetalhePage() {
         tipoResolucao: resolucao.tipoResolucao,
         resolucaoCursoTreinamentoId: resolucao.cursoTreinamentoId,
         resolucaoTipoInspecao: resolucao.tipoInspecao,
+        resolucaoTemaInspecaoId: resolucao.temaInspecaoId,
         resolucaoCatalogoEpiId: resolucao.catalogoEpiId,
       });
       setNovaAcao(novaAcaoInicial());
-      setResolucaoNova(resolucaoManual());
+      setResolucaoNova(resolucaoVazia());
       await carregar();
     } catch (e) {
       setErro(e instanceof Error ? e.message : 'Falha ao criar ação do plano.');
-    } finally {
-      setProcessando(false);
-    }
-  }
-
-  async function concluirAcao() {
-    if (!acaoConcluindo) return;
-    if (!descricaoConclusao.trim()) {
-      setErro('Descreva o que foi feito para concluir a ação.');
-      return;
-    }
-    try {
-      setProcessando(true);
-      setErro(null);
-      await api.acidentes.concluirAcao(acaoConcluindo.id, descricaoConclusao);
-      setAcaoConcluindo(null);
-      await carregar();
-    } catch (e) {
-      setErro(e instanceof Error ? e.message : 'Falha ao concluir a ação do plano.');
     } finally {
       setProcessando(false);
     }
@@ -295,6 +268,7 @@ export function AcidenteDetalhePage() {
       tipoResolucao: acao.tipoResolucao ?? null,
       cursoTreinamentoId: acao.resolucaoCursoTreinamentoId ?? '',
       tipoInspecao: acao.resolucaoTipoInspecao ? String(acao.resolucaoTipoInspecao) : '',
+      temaInspecaoId: acao.resolucaoTemaInspecaoId ?? '',
       catalogoEpiId: acao.resolucaoCatalogoEpiId ?? '',
     });
     setAcaoAlterando(acao);
@@ -424,12 +398,14 @@ export function AcidenteDetalhePage() {
       render: (acao) => (
         <div style={{ display: 'grid', gap: 2 }}>
           <span>
-            <StatusChip tom={acao.tipoResolucaoAutomatica ? 'info' : 'neutro'}>{acao.tipoResolucaoAutomatica ? 'Automática' : 'Manual'}</StatusChip>
+            <StatusChip tom={acao.tipoResolucaoAutomatica ? 'info' : 'atencao'}>{acao.tipoResolucaoAutomatica ? 'Automática' : 'Sem vínculo'}</StatusChip>
           </span>
           {acao.tipoResolucaoAutomatica ? (
             <Legenda>{acao.resolucaoAutomatica}</Legenda>
-          ) : (
+          ) : acao.status === StatusAcaoPlano.Concluido ? (
             acao.descricaoConclusao && <Legenda>"{acao.descricaoConclusao}"</Legenda>
+          ) : (
+            <Legenda>Defina como se resolve (Alterar). Sem isso a ação não conclui.</Legenda>
           )}
         </div>
       ),
@@ -662,12 +638,12 @@ export function AcidenteDetalhePage() {
               </Field>
             </Campo>
             <Campo span={3}>
-              <Field label="Responsável">
+              <Field label="Responsável" required dica="Quem vai resolver a ação. Para inspeção, só vale a inspeção finalizada por esta pessoa.">
                 <Select
                   value={novaAcao.responsavelUsuarioId ?? ''}
                   onChange={(_, d) => setNovaAcao({ ...novaAcao, responsavelUsuarioId: d.value })}
                 >
-                  <option value="">Nenhum</option>
+                  <option value="">Selecione</option>
                   {usuarios.map((usuario) => (
                     <option key={usuario.id} value={usuario.id}>
                       {usuario.nome}
@@ -698,7 +674,7 @@ export function AcidenteDetalhePage() {
                 />
               </Field>
             </Campo>
-            <CampoComoSeResolve valor={resolucaoNova} aoMudar={setResolucaoNova} cursos={cursos} epis={epis} />
+            <CampoComoSeResolve valor={resolucaoNova} aoMudar={setResolucaoNova} />
           </FormGrid>
         </FormSection>
         <FormRodape>
@@ -726,24 +702,15 @@ export function AcidenteDetalhePage() {
               );
             // DDS e reunião se resolvem pelo próprio fluxo; não têm botão.
             if (acao.tipoResolucaoAutomatica === 'Dds' || acao.tipoResolucaoAutomatica === 'Reuniao') return null;
-            const alterar = (
-              <Button appearance="subtle" size="small" onClick={() => abrirAlterarResolucao(acao)} disabled={processando}>
-                Alterar
-              </Button>
-            );
-            if (acao.tipoResolucao) return alterar;
             return (
-              <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap' }}>
-                <Button
-                  appearance="primary"
-                  size="small"
-                  onClick={() => { setDescricaoConclusao(''); setErro(null); setAcaoConcluindo(acao); }}
-                  disabled={processando}
-                >
-                  Marcar como concluída
-                </Button>
-                {alterar}
-              </div>
+              <Button
+                appearance={acao.tipoResolucao ? 'subtle' : 'primary'}
+                size="small"
+                onClick={() => abrirAlterarResolucao(acao)}
+                disabled={processando}
+              >
+                {acao.tipoResolucao ? 'Alterar' : 'Definir como se resolve'}
+              </Button>
             );
           }}
         />
@@ -757,7 +724,7 @@ export function AcidenteDetalhePage() {
               <div style={{ display: 'grid', gap: 10 }}>
                 <Text>"{acaoAlterando?.descricao}"</Text>
                 <FormGrid>
-                  <CampoComoSeResolve valor={resolucaoAlterando} aoMudar={setResolucaoAlterando} cursos={cursos} epis={epis} />
+                  <CampoComoSeResolve valor={resolucaoAlterando} aoMudar={setResolucaoAlterando} />
                 </FormGrid>
                 {erro && acaoAlterando && <FeedbackInline tom="erro">{erro}</FeedbackInline>}
               </div>
@@ -768,31 +735,6 @@ export function AcidenteDetalhePage() {
               </Button>
               <Button appearance="primary" onClick={() => void salvarResolucao()} disabled={processando}>
                 Salvar
-              </Button>
-            </DialogActions>
-          </DialogBody>
-        </DialogSurface>
-      </Dialog>
-      <Dialog open={!!acaoConcluindo} onOpenChange={(_, d) => { if (!d.open) setAcaoConcluindo(null); }}>
-        <DialogSurface>
-          <DialogBody>
-            <DialogTitle>Concluir ação do plano?</DialogTitle>
-            <DialogContent>
-              <div style={{ display: 'grid', gap: 10 }}>
-                <Text>"{acaoConcluindo?.descricao}"</Text>
-                <Field label="O que foi feito" required>
-                  <Textarea value={descricaoConclusao} onChange={(_, d) => setDescricaoConclusao(d.value)} rows={3} maxLength={1000} />
-                </Field>
-                <Legenda>Só conclua se a ação foi executada de fato. Ela sai do pendente e libera a finalização da investigação.</Legenda>
-                {erro && acaoConcluindo && <FeedbackInline tom="erro">{erro}</FeedbackInline>}
-              </div>
-            </DialogContent>
-            <DialogActions>
-              <Button appearance="secondary" onClick={() => setAcaoConcluindo(null)} disabled={processando}>
-                Cancelar
-              </Button>
-              <Button appearance="primary" onClick={() => void concluirAcao()} disabled={processando}>
-                Concluir ação
               </Button>
             </DialogActions>
           </DialogBody>

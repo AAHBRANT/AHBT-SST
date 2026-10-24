@@ -82,6 +82,9 @@ namespace AAHBRANT.SST.Infrastructure.Persistencia.Migrations
                     b.Property<Guid?>("ResolucaoCursoTreinamentoId")
                         .HasColumnType("uniqueidentifier");
 
+                    b.Property<Guid?>("ResolucaoTemaInspecaoId")
+                        .HasColumnType("uniqueidentifier");
+
                     b.Property<int?>("ResolucaoTipoInspecao")
                         .HasColumnType("int");
 
@@ -118,6 +121,8 @@ namespace AAHBRANT.SST.Infrastructure.Persistencia.Migrations
                     b.HasIndex("ResolucaoCatalogoEpiId");
 
                     b.HasIndex("ResolucaoCursoTreinamentoId");
+
+                    b.HasIndex("ResolucaoTemaInspecaoId");
 
                     b.HasIndex("ResponsavelUsuarioId");
 
@@ -9948,6 +9953,11 @@ namespace AAHBRANT.SST.Infrastructure.Persistencia.Migrations
                         .HasForeignKey("ResolucaoCursoTreinamentoId")
                         .OnDelete(DeleteBehavior.Restrict);
 
+                    b.HasOne("AAHBRANT.SST.Domain.Entidades.TemaInspecao", "ResolucaoTemaInspecao")
+                        .WithMany()
+                        .HasForeignKey("ResolucaoTemaInspecaoId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
                     b.HasOne("AAHBRANT.SST.Domain.Entidades.Usuario", "ResponsavelUsuario")
                         .WithMany()
                         .HasForeignKey("ResponsavelUsuarioId")
@@ -9963,6 +9973,8 @@ namespace AAHBRANT.SST.Infrastructure.Persistencia.Migrations
                     b.Navigation("ResolucaoCatalogoEpi");
 
                     b.Navigation("ResolucaoCursoTreinamento");
+
+                    b.Navigation("ResolucaoTemaInspecao");
 
                     b.Navigation("ResponsavelUsuario");
 

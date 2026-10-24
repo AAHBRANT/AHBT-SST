@@ -11,17 +11,15 @@ namespace AAHBRANT.SST.Application.Tests.AcoesPlano;
 public class ConcluirReabrirAcaoPlanoTests
 {
     [Fact]
-    public async Task Concluir_Manual_RegistraQuemEOQueFoiFeito()
+    public async Task Concluir_Manual_NaOcorrencia_Recusa()
     {
         var (db, acao, tecnico, _) = await CenarioAsync();
 
-        await new ConcluirAcaoPlanoCommandHandler(db).Handle(new ConcluirAcaoPlanoCommand(acao.Id, "  Rodapés instalados.  ", tecnico.Id), default);
+        var erro = await Assert.ThrowsAsync<InvalidOperationException>(() =>
+            new ConcluirAcaoPlanoCommandHandler(db).Handle(new ConcluirAcaoPlanoCommand(acao.Id, "Rodapés instalados.", tecnico.Id), default));
 
-        var salva = await db.AcoesPlano.SingleAsync(a => a.Id == acao.Id);
-        Assert.Equal(StatusControleRisco.Concluido, salva.Status);
-        Assert.NotNull(salva.DataConclusao);
-        Assert.Equal(tecnico.Id, salva.ConcluidoPorUsuarioId);
-        Assert.Equal("Rodapés instalados.", salva.DescricaoConclusao);
+        Assert.Contains("não existe mais", erro.Message);
+        Assert.Equal(StatusControleRisco.Pendente, (await db.AcoesPlano.SingleAsync(a => a.Id == acao.Id)).Status);
     }
 
     [Fact]

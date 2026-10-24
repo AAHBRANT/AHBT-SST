@@ -35,6 +35,7 @@ public class EncerrarInspecaoCommandHandler : IRequestHandler<EncerrarInspecaoCo
     {
         var inspecao = await _db.Inspecoes
             .Include(i => i.Respostas).ThenInclude(r => r.ChecklistModeloItem)
+            .Include(i => i.ItemInspecionavel)
             .FirstOrDefaultAsync(i => i.Id == request.Id, ct)
             ?? throw new KeyNotFoundException($"Inspeção {request.Id} não encontrada.");
 
@@ -119,7 +120,7 @@ public class EncerrarInspecaoCommandHandler : IRequestHandler<EncerrarInspecaoCo
         await _db.SaveChangesAsync(ct);
 
         // Ações do plano de ocorrências desta obra que se resolvem com uma inspeção deste tipo.
-        var ocorrencias = await AAHBRANT.SST.Application.AcoesPlano.ResolucaoVinculadaAcaoPlano.OcorrenciasComInspecaoAsync(_db, inspecao.ObraId, inspecao.TipoInspecao, ct);
+        var ocorrencias = await AAHBRANT.SST.Application.AcoesPlano.ResolucaoVinculadaAcaoPlano.OcorrenciasComInspecaoAsync(_db, inspecao.ObraId, inspecao.TipoInspecao, inspecao.ItemInspecionavel?.TemaInspecaoId, ct);
         await AAHBRANT.SST.Application.AcoesPlano.ResolucaoVinculadaAcaoPlano.ConcluirAtendidasAsync(_db, ocorrencias, ct);
     }
 }

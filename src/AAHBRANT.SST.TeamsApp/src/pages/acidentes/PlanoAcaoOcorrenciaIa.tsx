@@ -21,6 +21,7 @@ import {
   type ParticipanteReuniao,
   type Usuario,
 } from '../../lib/api';
+import { CampoComoSeResolve, resolucaoVazia, type ResolucaoEmEdicao } from './CampoComoSeResolve';
 
 export interface AcaoPlanoEmEdicao {
   chave: string;
@@ -34,6 +35,8 @@ export interface AcaoPlanoEmEdicao {
   fundamentacao: string | null;
   baseConfirmada: boolean;
   sugeridaPelaIa: boolean;
+  // Como a ação se resolve (obrigatório para registrar): a IA sugere; o técnico confirma ou troca.
+  resolucao: ResolucaoEmEdicao;
 }
 
 export interface TemaDdsEmEdicao {
@@ -131,6 +134,7 @@ export function PlanoAcaoOcorrenciaIa({
         fundamentacao: null,
         baseConfirmada: false,
         sugeridaPelaIa: false,
+        resolucao: resolucaoVazia(),
       },
     ]);
 
@@ -332,12 +336,12 @@ export function PlanoAcaoOcorrenciaIa({
                   </Field>
                 </Campo>
                 <Campo span={3}>
-                  <Field label={acao.papelResponsavel ? `Responsável (${acao.papelResponsavel})` : 'Responsável'}>
+                  <Field label={acao.papelResponsavel ? `Responsável (${acao.papelResponsavel})` : 'Responsável'} required>
                     <Select
                       value={acao.responsavelUsuarioId}
                       onChange={(_, d) => alterarAcao(acao.chave, { responsavelUsuarioId: d.value })}
                     >
-                      <option value="">A definir</option>
+                      <option value="">Selecione</option>
                       {usuarios.map((u) => (
                         <option key={u.id} value={u.id}>
                           {u.nome}
@@ -346,6 +350,7 @@ export function PlanoAcaoOcorrenciaIa({
                     </Select>
                   </Field>
                 </Campo>
+                <CampoComoSeResolve valor={acao.resolucao} aoMudar={(resolucao) => alterarAcao(acao.chave, { resolucao })} />
               </FormGrid>
               {acao.avisoResponsavel && <span style={fundamentacaoEstilo(false)}>{acao.avisoResponsavel}</span>}
               {acao.fundamentacao && (

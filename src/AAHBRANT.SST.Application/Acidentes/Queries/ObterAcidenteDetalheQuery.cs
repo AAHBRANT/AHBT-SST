@@ -90,6 +90,7 @@ public class ObterAcidenteDetalheQueryHandler : IRequestHandler<ObterAcidenteDet
                 TipoResolucao = a.TipoResolucao,
                 ResolucaoCursoTreinamentoId = a.ResolucaoCursoTreinamentoId,
                 ResolucaoTipoInspecao = a.ResolucaoTipoInspecao,
+                ResolucaoTemaInspecaoId = a.ResolucaoTemaInspecaoId,
                 ResolucaoCatalogoEpiId = a.ResolucaoCatalogoEpiId,
             })
             .ToListAsync(ct);

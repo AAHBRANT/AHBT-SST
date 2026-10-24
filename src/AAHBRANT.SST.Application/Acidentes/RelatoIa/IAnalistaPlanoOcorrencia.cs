@@ -18,7 +18,15 @@ public record ContextoAnaliseOcorrencia(
     string? Atendimento,
     string? Atividade,
     IReadOnlyList<RiscoPgrResumo> RiscosPgr,
-    IReadOnlyList<RequisitoLegalResumo> RequisitosLegais);
+    IReadOnlyList<RequisitoLegalResumo> RequisitosLegais,
+    // Catálogos reais do sistema: o vínculo "como se resolve" de cada ação precisa citar um deles.
+    VinculosDisponiveisIa? Vinculos = null);
+
+public record VinculosDisponiveisIa(
+    IReadOnlyList<string> TiposInspecao,
+    IReadOnlyList<string> TemasInspecao,
+    IReadOnlyList<string> Cursos,
+    IReadOnlyList<string> Epis);
 
 public record RiscoPgrResumo(string Perigo, int Nivel, string? Consequencia, string? ControlesExistentes, string? ControlesAdicionais);
 
@@ -40,4 +48,7 @@ public record AcaoSugeridaIa(
     string? BaseOrigem,
     string? BasePerigo,
     string? BaseControle,
-    string? BaseReferencia);
+    string? BaseReferencia,
+    // "Inspecao" | "Treinamento" | "EntregaEpi" e o nome EXATO do item escolhido na lista fornecida.
+    string? VinculoTipo = null,
+    string? VinculoAlvo = null);

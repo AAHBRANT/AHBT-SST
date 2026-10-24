@@ -21,6 +21,8 @@ public class AcaoPlanoConfiguracao : IEntityTypeConfiguration<AcaoPlano>
         builder.Property(a => a.DescricaoConclusao).HasMaxLength(1000);
         builder.HasOne(a => a.ResolucaoCursoTreinamento).WithMany()
             .HasForeignKey(a => a.ResolucaoCursoTreinamentoId).OnDelete(DeleteBehavior.Restrict);
+        builder.HasOne(a => a.ResolucaoTemaInspecao).WithMany()
+            .HasForeignKey(a => a.ResolucaoTemaInspecaoId).OnDelete(DeleteBehavior.Restrict);
         builder.HasOne(a => a.ResolucaoCatalogoEpi).WithMany()
             .HasForeignKey(a => a.ResolucaoCatalogoEpiId).OnDelete(DeleteBehavior.Restrict);
 

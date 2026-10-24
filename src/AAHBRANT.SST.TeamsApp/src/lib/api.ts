@@ -3462,6 +3462,7 @@ export interface AcaoPlano {
   tipoResolucao?: number | null;
   resolucaoCursoTreinamentoId?: string | null;
   resolucaoTipoInspecao?: number | null;
+  resolucaoTemaInspecaoId?: string | null;
   resolucaoCatalogoEpiId?: string | null;
   progressoResolucao?: string | null;
   rotuloAguardando?: string | null;
@@ -3483,10 +3484,11 @@ export interface NovaAcaoPlano {
   responsavelUsuarioId?: string | null;
   prioridade: number;
   prazo?: string | null;
-  // "Como se resolve" (ocorrências): nulo = manual.
+  // "Como se resolve": obrigatório nas ações de ocorrência (não existe mais conclusão manual).
   tipoResolucao?: number | null;
   resolucaoCursoTreinamentoId?: string | null;
   resolucaoTipoInspecao?: number | null;
+  resolucaoTemaInspecaoId?: string | null;
   resolucaoCatalogoEpiId?: string | null;
 }
 
@@ -3646,6 +3648,17 @@ export interface AcaoPlanoSugerida {
   avisoResponsavel: string | null;
   fundamentacao: string;
   baseConfirmada: boolean;
+  // Como a ação se resolve; nulo quando a IA não achou item que case (o técnico escolhe).
+  vinculo?: VinculoSugerido | null;
+}
+
+export interface VinculoSugerido {
+  tipoResolucao: number;
+  cursoTreinamentoId: string | null;
+  tipoInspecao: number | null;
+  temaInspecaoId: string | null;
+  catalogoEpiId: string | null;
+  rotulo: string;
 }
 
 export interface PlanoAcaoSugerido {
@@ -3714,6 +3727,11 @@ export interface AcaoPlanoNovaOcorrencia {
   prazo: string | null;
   responsavelUsuarioId: string | null;
   fundamentacao: string | null;
+  tipoResolucao: number | null;
+  resolucaoCursoTreinamentoId: string | null;
+  resolucaoTipoInspecao: number | null;
+  resolucaoTemaInspecaoId: string | null;
+  resolucaoCatalogoEpiId: string | null;
 }
 
 export interface NovoAcidente {
@@ -6513,7 +6531,7 @@ export const api = {
     reabrirAcao: (acaoId: string) => request<void>(`/api/acidentes/acoes-plano/${acaoId}/reabrir`, { method: 'POST' }),
     definirResolucaoAcao: (
       acaoId: string,
-      dados: { tipoResolucao: number | null; cursoTreinamentoId: string | null; tipoInspecao: number | null; catalogoEpiId: string | null },
+      dados: { tipoResolucao: number | null; cursoTreinamentoId: string | null; tipoInspecao: number | null; temaInspecaoId: string | null; catalogoEpiId: string | null },
     ) => request<void>(`/api/acidentes/acoes-plano/${acaoId}/resolucao`, { method: 'PUT', body: JSON.stringify(dados) }),
     // Reunião de análise pela tela da ocorrência. Horários em Brasília, sem fuso ("2026-10-24T14:00:00").
     agendarReuniao: (id: string, dados: { inicio: string; duracaoMinutos: number; participantesUsuarioIds: string[] }) =>
