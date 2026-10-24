@@ -1,4 +1,5 @@
 using AAHBRANT.SST.Domain.Common;
+using AAHBRANT.SST.Domain.Enums;
 
 namespace AAHBRANT.SST.Domain.Entidades;
 
@@ -17,4 +18,15 @@ public class MaterialApoio : AuditableEntity
     public string NomeArquivo { get; set; } = string.Empty;
     public string ContentType { get; set; } = string.Empty;
     public byte[] Conteudo { get; set; } = Array.Empty<byte>();
+
+    // Ordem de Serviço (20/10/2026): procedimentos, ITs e políticas corporativas moram aqui também,
+    // com código SGI, revisão e situação. Só documento Vigente entra na OS. Material de apoio antigo
+    // continua com Tipo = MaterialApoio e os campos abaixo vazios.
+    public TipoDocumentoSst Tipo { get; set; } = TipoDocumentoSst.MaterialApoio;
+    public string? Codigo { get; set; }
+    public string? Revisao { get; set; }
+    public SituacaoDocumentoSst? Situacao { get; set; }
+    public string? FormaConsulta { get; set; }
+    // Só para política: entra em todas as Ordens de Serviço.
+    public bool IncluirEmTodasOs { get; set; }
 }

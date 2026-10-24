@@ -1,6 +1,7 @@
 using System.Globalization;
 using System.Text;
 using AAHBRANT.SST.Application.Alertas;
+using AAHBRANT.SST.Application.Alertas.Motor;
 using AAHBRANT.SST.Application.Common.Interfaces;
 using AAHBRANT.SST.Domain.Entidades;
 using AAHBRANT.SST.Domain.Enums;
@@ -26,12 +27,21 @@ public class PlanoIntegracaoService : IPlanoIntegracaoService
     private readonly IAppDbContext _db;
     private readonly ITecnicosSegurancaPorObraService _tecnicos;
     private readonly IFilaNotificacaoTeams _filaTeams;
+    private readonly IFilaCalendarioTeams _filaCalendario;
+    private readonly IGeradorNumeroDocumentoService _geradorNumero;
 
-    public PlanoIntegracaoService(IAppDbContext db, ITecnicosSegurancaPorObraService tecnicos, IFilaNotificacaoTeams filaTeams)
+    private readonly EstoquesEpi.Minimo.IVerificacaoEstoqueMinimoService? _verificacaoMinimo;
+
+    public PlanoIntegracaoService(IAppDbContext db, ITecnicosSegurancaPorObraService tecnicos, IFilaNotificacaoTeams filaTeams,
+        IFilaCalendarioTeams filaCalendario, IGeradorNumeroDocumentoService geradorNumero,
+        EstoquesEpi.Minimo.IVerificacaoEstoqueMinimoService? verificacaoMinimo = null)
     {
+        _verificacaoMinimo = verificacaoMinimo;
         _db = db;
         _tecnicos = tecnicos;
         _filaTeams = filaTeams;
+        _filaCalendario = filaCalendario;
+        _geradorNumero = geradorNumero;
     }
 
     public static bool AdmissaoRecente(DateTime dataAdmissao) =>
@@ -60,6 +70,7 @@ public class PlanoIntegracaoService : IPlanoIntegracaoService
             foreach (var reserva in reservasAtivas) Cancelar(reserva, "Funcionário desligado.", agora);
             foreach (var plano in planosAbertos) Encerrar(plano, StatusPlanoIntegracao.Cancelado, agora);
             await _db.SaveChangesAsync(ct);
+            if (_verificacaoMinimo is not null && reservasAtivas.Count > 0) await _verificacaoMinimo.VerificarAsync(trabalhador.ObraId, ct);
             return;
         }
 
@@ -108,8 +119,10 @@ public class PlanoIntegracaoService : IPlanoIntegracaoService
         }
 
         PlanoIntegracao? planoNovo = null;
+        var turmas = new List<TurmaAgendada>();
         if (motivo is not null)
         {
+            turmas = await AgendaTreinamentosIntegracao.AgendarAsync(_db, _geradorNumero, trabalhador, ct);
             foreach (var plano in planosAbertos) Encerrar(plano, StatusPlanoIntegracao.Cancelado, agora);
             planoNovo = new PlanoIntegracao
             {
@@ -124,10 +137,13 @@ public class PlanoIntegracaoService : IPlanoIntegracaoService
         await _db.SaveChangesAsync(ct);
 
         if (planoNovo is not null)
-            await AvisarTecnicosAsync(trabalhador, planoNovo, ct);
+            await AvisarTecnicosAsync(trabalhador, planoNovo, turmas, ct);
+
+        // Separar ou cancelar kit muda o disponível da obra (alerta de estoque mínimo, Módulo 2).
+        if (_verificacaoMinimo is not null) await _verificacaoMinimo.VerificarAsync(trabalhador.ObraId, ct);
     }
 
-    private async Task AvisarTecnicosAsync(Trabalhador trabalhador, PlanoIntegracao plano, CancellationToken ct)
+    private async Task AvisarTecnicosAsync(Trabalhador trabalhador, PlanoIntegracao plano, List<TurmaAgendada> turmas, CancellationToken ct)
     {
         var tecnicos = await _tecnicos.ObterUsuarioIdsAsync(trabalhador.ObraId, ct);
         if (tecnicos.Count == 0) return;
@@ -154,7 +170,10 @@ public class PlanoIntegracaoService : IPlanoIntegracaoService
             : emFalta.Count == 0
                 ? $"Kit de EPI: {reservas.Count} item(ns) separado(s)."
                 : $"Kit de EPI: {reservas.Count - emFalta.Count} separado(s), {emFalta.Count} em falta ({string.Join(", ", emFalta)}).";
-        var descricao = $"{kit} Abra o plano de integração para ver os próximos passos.";
+        var treinamentos = turmas.Count == 0
+            ? ""
+            : $" Treinamentos agendados: {string.Join(", ", turmas.Select(t => $"{t.CursoNome} em {t.Data:dd/MM}"))}.";
+        var descricao = $"{kit}{treinamentos} Abra o plano de integração para ver os próximos passos.";
 
         var alertas = tecnicos.Select(usuarioId => new Alerta
         {
@@ -175,6 +194,15 @@ public class PlanoIntegracaoService : IPlanoIntegracaoService
         foreach (var alerta in alertas)
             await _filaTeams.EnfileirarAsync(
                 new NotificacaoTeamsMensagem(alerta.Id, alerta.DestinatarioUsuarioId!.Value, alerta.Titulo, alerta.Descricao), ct);
+
+        // Evento no calendário do Teams de cada técnico, na data da primeira turma. Pertence ao alerta
+        // (mesma origem "Alerta" do Motor de Alertas): resolver ou ignorar o alerta tira o evento.
+        if (turmas.Count == 0) return;
+        var primeiraTurma = turmas.Min(t => t.Data);
+        foreach (var alerta in alertas)
+            await _filaCalendario.EnfileirarAsync(new CalendarioTeamsMensagem(
+                AlertaEngineService.OrigemCalendarioAlerta, alerta.Id, OperacaoCalendarioTeams.Criar,
+                alerta.DestinatarioUsuarioId!.Value, $"Integração: {trabalhador.Nome} · {funcao}", alerta.Descricao, primeiraTurma), ct);
     }
 
     private static void Cancelar(ReservaEpi reserva, string motivo, DateTime agora)

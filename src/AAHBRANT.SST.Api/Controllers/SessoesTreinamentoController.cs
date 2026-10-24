@@ -58,6 +58,15 @@ public class SessoesTreinamentoController : ControllerBase
         return CreatedAtAction(nameof(ObterDetalhe), new { id }, new { id });
     }
 
+    // Ajuste da data de turma ainda sem presença (agendamento automático do funcionário novo, 21/10).
+    [Authorize(Policy = "treinamento:editar")]
+    [HttpPut("{id:guid}/data")]
+    public async Task<IActionResult> AlterarData(Guid id, AlterarDataSessaoTreinamentoRequestBody body, CancellationToken ct)
+    {
+        await _mediator.Send(new AlterarDataSessaoTreinamentoCommand(id, body.DataRealizacao), ct);
+        return NoContent();
+    }
+
     [Authorize(Policy = "treinamento:criar")]
     [HttpPost("{id:guid}/presenca")]
     public async Task<IActionResult> RegistrarPresenca(Guid id, RegistrarPresencaSessaoTreinamentoRequestBody body, CancellationToken ct)
@@ -160,3 +169,5 @@ public class AnexarFotoEvidenciaSessaoTreinamentoRequestBody
     public IFormFile Foto { get; set; } = null!;
     public int Ordem { get; set; }
 }
+
+public record AlterarDataSessaoTreinamentoRequestBody(DateTime DataRealizacao);

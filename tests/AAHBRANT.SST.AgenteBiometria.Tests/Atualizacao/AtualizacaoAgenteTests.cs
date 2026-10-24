@@ -1,4 +1,4 @@
-extern alias instalador;
+﻿extern alias instalador;
 
 using System.IO.Compression;
 using System.Security.Cryptography;
@@ -163,5 +163,16 @@ public class InstaladorAgenteTests : IDisposable
         var novo = JsonNode.Parse(InstaladorAgente.Completar(antigo, "https://padrao"))!;
 
         Assert.Equal("https://minha", novo["Agente"]!["UrlManifestoAtualizacao"]!.GetValue<string>());
+    }
+
+    [Fact]
+    public void Completar_corrige_enderecos_azurewebsites_antigos()
+    {
+        var antigo = "{\"Agente\":{\"BackendBaseUrl\":\"https://sst-api-hml.azurewebsites.net\",\"OrigemPermitida\":\"https://sst-web-hml.azurewebsites.net/\"}}";
+
+        var novo = JsonNode.Parse(InstaladorAgente.Completar(antigo, null))!;
+
+        Assert.Equal("https://sst-api-hml.kindground-7a44c4f0.brazilsouth.azurecontainerapps.io", novo["Agente"]!["BackendBaseUrl"]!.GetValue<string>());
+        Assert.Equal("https://sst-web-hml.kindground-7a44c4f0.brazilsouth.azurecontainerapps.io", novo["Agente"]!["OrigemPermitida"]!.GetValue<string>());
     }
 }

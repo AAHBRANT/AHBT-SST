@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { GeracoesPgrEapCard } from './GeracoesPgrEapCard';
 import {
   BotaoAcao,
   Button,
@@ -168,6 +169,8 @@ export function PgrsTab() {
           {erro}
         </FeedbackInline>
       )}
+
+      <GeracoesPgrEapCard />
 
       <Card titulo="Programas de Gerenciamento de Riscos (PGR)">
         <FormSection titulo="Enviar o PDF do PGR" numero={1} primeira>

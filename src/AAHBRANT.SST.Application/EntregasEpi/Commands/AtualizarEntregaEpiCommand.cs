@@ -1,5 +1,6 @@
 using AAHBRANT.SST.Application.Assinatura;
 using AAHBRANT.SST.Application.Common.Interfaces;
+using AAHBRANT.SST.Application.EstoquesEpi.Minimo;
 using AAHBRANT.SST.Application.Common.Seguranca;
 using AAHBRANT.SST.Application.PlanosIntegracao;
 using AAHBRANT.SST.Domain.Entidades;
@@ -43,7 +44,13 @@ public class AtualizarEntregaEpiCommandValidator : AbstractValidator<AtualizarEn
 public class AtualizarEntregaEpiCommandHandler : IRequestHandler<AtualizarEntregaEpiCommand>
 {
     private readonly IAppDbContext _db;
-    public AtualizarEntregaEpiCommandHandler(IAppDbContext db) => _db = db;
+    private readonly IVerificacaoEstoqueMinimoService? _verificacaoMinimo;
+
+    public AtualizarEntregaEpiCommandHandler(IAppDbContext db, IVerificacaoEstoqueMinimoService? verificacaoMinimo = null)
+    {
+        _db = db;
+        _verificacaoMinimo = verificacaoMinimo;
+    }
 
     public async Task Handle(AtualizarEntregaEpiCommand request, CancellationToken ct)
     {
@@ -127,6 +134,11 @@ public class AtualizarEntregaEpiCommandHandler : IRequestHandler<AtualizarEntreg
         entrega.DataTreinamentoNr6 = request.DataTreinamentoNr6;
 
         await _db.SaveChangesAsync(ct);
+
+        // Alerta de estoque mínimo da obra (especificação 21/10/2026, Módulo 2).
+        if (_verificacaoMinimo is not null) await _verificacaoMinimo.VerificarAsync(obraEstoque, ct);
+        if (_verificacaoMinimo is not null && obraEstoque != trabalhadorOriginal.ObraId)
+            await _verificacaoMinimo.VerificarAsync(trabalhadorOriginal.ObraId, ct);
     }
 
     // Mesmo EPI na mesma obra: movimenta só a diferença. EPI ou obra diferente: estorna tudo no estoque

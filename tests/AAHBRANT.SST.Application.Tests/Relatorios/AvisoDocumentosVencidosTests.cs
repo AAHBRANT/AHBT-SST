@@ -24,6 +24,9 @@ public class AvisoDocumentosVencidosTests
             Enviados.Add((para, assunto, corpoHtml));
             return Task.CompletedTask;
         }
+
+        public Task EnviarAsync(string para, string assunto, string corpoHtml, IReadOnlyList<AnexoEmail> anexos, CancellationToken ct = default)
+            => EnviarAsync(para, assunto, corpoHtml, ct);
     }
 
     private sealed class FilaFalsa : IFilaNotificacaoTeams

@@ -51,7 +51,7 @@ import { designTokens } from '@ui';
 import { useThemeMode } from '../theme/ThemeModeContext';
 import { useTeamsContext } from '../teams/useTeamsContext';
 import { api, StatusAlerta, type NovidadeVersao, type PlanoIntegracao } from '../lib/api';
-import logoSst from '../assets/logo-sst.png';
+import { LogoAahbrant } from './MarcaAahbrant';
 import { SyncStatusBadge } from '../components/SyncStatusBadge';
 import { NovidadesModal } from '../components/novidades/NovidadesModal';
 import { FuncionarioNovoModal } from '../components/planos-integracao/FuncionarioNovoModal';
@@ -961,13 +961,14 @@ export function AppShell({ children }: { children: ReactNode }) {
               onClick={() => setRailExpandido((atual) => !atual)}
             />
           </div>
-          <div className={estilos.marcaBloco}>
-            <img src={logoSst} alt="AAHBRANT SST" className={estilos.marcaTopo} />
-            <div className={estilos.marcaTexto}>
-              <span className={estilos.marcaNome}>SST</span>
+          <NavLink to="/" end className="gs-marca-link" aria-label="AAHBRANT · G-SST — ir para o Início">
+            <LogoAahbrant altura={30} />
+            <span className="gs-marca-divisor" aria-hidden />
+            <span className={estilos.marcaTexto}>
+              <span className={estilos.marcaNome}>G-SST</span>
               <span className={estilos.marcaSubtitulo}>Hub Gênesis SST</span>
-            </div>
-          </div>
+            </span>
+          </NavLink>
         </div>
 
         <div className={estilos.acoesTopo} aria-label="Ações globais">

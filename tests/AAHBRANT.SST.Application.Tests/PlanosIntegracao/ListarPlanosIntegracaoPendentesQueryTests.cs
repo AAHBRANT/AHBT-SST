@@ -32,7 +32,7 @@ public class ListarPlanosIntegracaoPendentesQueryTests
         var joao = new Trabalhador { ObraId = obra.Id, FuncaoId = funcao.Id, Nome = "João da Silva", Cpf = "00000000000", DataAdmissao = DateTime.UtcNow.Date, TamanhoCalcadoEpi = "42" };
         db.Trabalhadores.Add(joao);
         await db.SaveChangesAsync();
-        await new PlanoIntegracaoService(db, new TecnicosSegurancaPorObraServiceFalso(), new FilaNotificacaoTeamsFalsa())
+        await new PlanoIntegracaoService(db, new TecnicosSegurancaPorObraServiceFalso(), new FilaNotificacaoTeamsFalsa(), new FilaCalendarioTeamsFalsa(), new GeradorNumeroSequencialFalso())
             .SincronizarAsync(joao.Id, MotivoPlanoIntegracao.Admissao);
         return (db, joao, integracao, nr6, nr35, bota);
     }
@@ -47,7 +47,7 @@ public class ListarPlanosIntegracaoPendentesQueryTests
     };
 
     [Fact]
-    public async Task FuncionarioRecemChegado_TudoPendente_NaOrdemCerta_E_KitSeparado()
+    public async Task FuncionarioRecemChegado_PassosNaOrdemCerta_TurmasAgendadas_E_KitSeparado()
     {
         var (db, _, _, _, _, _) = await MontarAsync();
 
@@ -56,6 +56,11 @@ public class ListarPlanosIntegracaoPendentesQueryTests
         Assert.Equal(new[] { "aso", "biometria", "integracao", "nr06", "cursos", "kit" }, plano.Passos.Select(p => p.Codigo));
         Assert.Equal(SituacaoPasso.Pendente, plano.Passos[0].Situacao);
         Assert.Contains("Facial pendente · digital pendente", plano.Passos[1].Detalhe);
+        // A admissão já agendou as turmas (etapa 3).
+        Assert.Equal(SituacaoPasso.Agendado, plano.Passos[2].Situacao);
+        Assert.Equal(SituacaoPasso.Agendado, plano.Passos[3].Situacao);
+        Assert.NotNull(plano.Passos[3].SessaoTreinamentoId);
+        Assert.Equal(SituacaoPasso.Agendado, plano.Passos[4].Situacao);
         Assert.Contains("NR-35", plano.Passos[4].Detalhe);
         // Kit só é liberado depois da NR-06.
         Assert.Equal(SituacaoPasso.Aguardando, plano.Passos[5].Situacao);

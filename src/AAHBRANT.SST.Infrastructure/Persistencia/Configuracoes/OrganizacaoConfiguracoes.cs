@@ -9,6 +9,8 @@ public class ObraConfiguracao : IEntityTypeConfiguration<Obra>
 {
     public void Configure(EntityTypeBuilder<Obra> builder)
     {
+        // Obras já cadastradas recebem o padrão de 15 dias de reposição de EPI (especificação 21/10/2026).
+        builder.Property(o => o.PrazoReposicaoEpiDias).HasDefaultValue(15);
         builder.Property(o => o.Codigo).IsRequired().HasMaxLength(30);
         builder.Property(o => o.Nome).IsRequired().HasMaxLength(200);
         builder.HasIndex(o => o.Codigo).IsUnique();

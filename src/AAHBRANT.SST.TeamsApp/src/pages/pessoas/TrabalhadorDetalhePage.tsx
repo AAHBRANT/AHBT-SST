@@ -21,12 +21,14 @@ import {
   ShieldTask24Regular,
   Signature24Regular,
   Warning24Regular,
+  DocumentBulletList24Regular,
 } from '@fluentui/react-icons';
 import { api, TipoVinculo, type PerfilCompletoTrabalhador } from '../../lib/api';
 import { salvarBlob, useVisualizadorPdf } from '../../components/useVisualizadorPdf';
 import { PerfilGeralTab } from './PerfilGeralTab';
 import { TamanhosUniformeSecao } from './TamanhosUniformeSecao';
 import { TreinamentosTab } from './TreinamentosTab';
+import { OrdemServicoTab } from './OrdemServicoTab';
 import { RiscosTab } from './RiscosTab';
 import { ExamesDaFuncaoCard, GheDaFuncaoCard } from '../../components/estrutura-sst/CardsEstruturaFuncao';
 import { OcorrenciasTab } from './OcorrenciasTab';
@@ -38,7 +40,7 @@ import { BiometriaDigitalCartao } from './BiometriaDigitalCartao';
 import { EpiPerfilSecao } from './EpiPerfilSecao';
 import { AnelProgresso } from './AnelProgresso';
 
-type AbaPerfil = 'geral' | 'epi' | 'treinamentos' | 'riscos' | 'ocorrencias' | 'cofre' | 'terceirizado';
+type AbaPerfil = 'geral' | 'epi' | 'treinamentos' | 'riscos' | 'ordem-servico' | 'ocorrencias' | 'cofre' | 'terceirizado';
 
 // Rótulos curtos (Modelo A, 21/10): o "& ASO", "& Matriz" etc. saiu do nome e foi para a descrição,
 // que aparece como título da seção logo abaixo das abas.
@@ -46,7 +48,8 @@ const ABAS_PERFIL: ReadonlyArray<{ valor: AbaPerfil; rotulo: string; descricao: 
   { valor: 'geral', rotulo: 'Geral', descricao: 'Situação atual, ASO, exames da função e uniforme', icone: <Home24Regular /> },
   { valor: 'epi', rotulo: 'EPI', descricao: 'Termo de compromisso e frequência de trocas', icone: <ShieldTask24Regular /> },
   { valor: 'treinamentos', rotulo: 'Treinamentos', descricao: 'NRs, certificados e presença em DDS', icone: <HatGraduation24Regular /> },
-  { valor: 'riscos', rotulo: 'Riscos', descricao: 'GHE da função, riscos expostos e Ordem de Serviço', icone: <Warning24Regular /> },
+  { valor: 'riscos', rotulo: 'Riscos', descricao: 'GHE da função e riscos expostos', icone: <Warning24Regular /> },
+  { valor: 'ordem-servico', rotulo: 'Ordem de Serviço', descricao: 'Minuta da OS de SST e pendências para a emissão', icone: <DocumentBulletList24Regular /> },
   { valor: 'ocorrencias', rotulo: 'Ocorrências', descricao: 'Histórico de eventos do trabalhador', icone: <Flag24Regular /> },
   { valor: 'cofre', rotulo: 'Assinaturas', descricao: 'Cofre de documentos assinados', icone: <Signature24Regular /> },
   { valor: 'terceirizado', rotulo: 'Terceirizado', descricao: 'Empresa contratada, contrato e documentos', icone: <Building24Regular /> },
@@ -277,6 +280,7 @@ export function TrabalhadorDetalhePage() {
                 <RiscosTab riscos={perfil.riscos} />
               </div>
             )}
+            {aba === 'ordem-servico' && <OrdemServicoTab trabalhadorId={id!} aoIrParaAba={setAba} />}
             {aba === 'ocorrencias' && <OcorrenciasTab ocorrencias={perfil.ocorrencias} />}
             {aba === 'cofre' && <CofreAssinaturasTab trabalhadorId={id} assinaturas={perfil.assinaturas} />}
             {aba === 'terceirizado' && <TerceirizadoTab trabalhadorId={id} perfil={perfil} />}

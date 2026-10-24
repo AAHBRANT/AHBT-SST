@@ -117,5 +117,9 @@ public class EncerrarInspecaoCommandHandler : IRequestHandler<EncerrarInspecaoCo
             });
 
         await _db.SaveChangesAsync(ct);
+
+        // Ações do plano de ocorrências desta obra que se resolvem com uma inspeção deste tipo.
+        var ocorrencias = await AAHBRANT.SST.Application.AcoesPlano.ResolucaoVinculadaAcaoPlano.OcorrenciasComInspecaoAsync(_db, inspecao.ObraId, inspecao.TipoInspecao, ct);
+        await AAHBRANT.SST.Application.AcoesPlano.ResolucaoVinculadaAcaoPlano.ConcluirAtendidasAsync(_db, ocorrencias, ct);
     }
 }

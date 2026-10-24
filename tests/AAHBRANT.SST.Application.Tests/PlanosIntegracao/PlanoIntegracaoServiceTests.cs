@@ -27,7 +27,8 @@ public class PlanoIntegracaoServiceTests
         public required CatalogoEpi Luva { get; init; }
         public FilaNotificacaoTeamsFalsa Fila { get; } = new();
         public TecnicosSegurancaPorObraServiceFalso Tecnicos { get; } = new() { UsuarioIdsARetornar = { Guid.NewGuid(), Guid.NewGuid() } };
-        public PlanoIntegracaoService Servico => new(Db, Tecnicos, Fila);
+        public FilaCalendarioTeamsFalsa Calendario { get; } = new();
+        public PlanoIntegracaoService Servico => new(Db, Tecnicos, Fila, Calendario, new GeradorNumeroSequencialFalso());
 
         public async Task<Trabalhador> TrabalhadorAsync(Funcao funcao, string nome = "João da Silva", string? calcado = "42")
         {

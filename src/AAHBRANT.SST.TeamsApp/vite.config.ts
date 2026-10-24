@@ -26,10 +26,15 @@ export default defineConfig({
       manifest: {
         name: 'AAHBRANT SST',
         short_name: 'AAHBRANT SST',
+        lang: 'pt-BR',
         description: 'Gestão de Saúde e Segurança do Trabalho',
         theme_color: '#ffffff',
         background_color: '#ffffff',
         display: 'standalone',
+        // Ícone do colete sobre fundo branco (PR #184). O Android usa o de 512 px na tela inicial e
+        // aplica a própria máscara (círculo/squircle) via "maskable" — a versão maskable tem margem
+        // para o recorte não comer o desenho. A versão sobre fundo vinho (mesma arte do app do
+        // Teams) continua em public/icons/.
         icons: [
           { src: '/pwa-192.png', sizes: '192x192', type: 'image/png' },
           { src: '/pwa-512.png', sizes: '512x512', type: 'image/png' },

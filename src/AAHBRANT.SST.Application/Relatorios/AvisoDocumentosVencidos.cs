@@ -41,6 +41,7 @@ public class EnviarAvisoDocumentosVencidosCommandHandler : IRequestHandler<Envia
     {
         (TipoModuloAlerta.Pgr, "PGR"),
         (TipoModuloAlerta.Pcmso, "PCMSO"),
+        (TipoModuloAlerta.DocumentoTerceirizado, "Documento de terceirizado"),
         (TipoModuloAlerta.Aso, "ASO"),
         (TipoModuloAlerta.ExamesFuncao, "Exames da função"),
         (TipoModuloAlerta.Treinamento, "Treinamento"),

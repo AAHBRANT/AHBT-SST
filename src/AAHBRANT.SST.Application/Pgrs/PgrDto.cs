@@ -30,6 +30,8 @@ public class AtividadeCaracterizadaDto
 {
     public Guid AtividadeId { get; set; }
     public string AtividadeNome { get; set; } = string.Empty;
+    // Itens da OS sugeridos pela IA que ainda aguardam a SST (detalhes da atividade).
+    public int ItensOsPendentes { get; set; }
     public List<RiscoClassificadoDto> Riscos { get; set; } = new();
 }
 
@@ -41,6 +43,25 @@ public class RiscoClassificadoDto
     public string? ControlesExistentes { get; set; }
     public string? ControlesAdicionais { get; set; }
     public StatusControleRisco Status { get; set; }
+
+    // Ordem de Serviço (20/10/2026): avaliação confirmada e medidas por fase.
+    public int Probabilidade { get; set; }
+    public int Severidade { get; set; }
+    public string? Consequencia { get; set; }
+    public DateTime? AvaliadoEmUtc { get; set; }
+    public string? AvaliadoPorNome { get; set; }
+    public List<MedidaPrevencaoDto> Medidas { get; set; } = new();
+}
+
+public class MedidaPrevencaoDto
+{
+    public Guid Id { get; set; }
+    public FaseMedidaPrevencao Fase { get; set; }
+    public string Texto { get; set; } = string.Empty;
+    public OrigemMedidaPrevencao Origem { get; set; }
+    public StatusMedidaPrevencao Status { get; set; }
+    public string? ValidadoPorNome { get; set; }
+    public DateTime? ValidadoEmUtc { get; set; }
 }
 
 public class PlanoAcaoItemDto

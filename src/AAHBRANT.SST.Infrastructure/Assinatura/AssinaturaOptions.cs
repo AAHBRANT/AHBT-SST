@@ -14,7 +14,7 @@ public class AssinaturaOptions
     // (gratuito): 20 chamadas/minuto, até 30.000 rostos. Migrar para S0 é só trocar a chave.
     public string AzureFaceApiEndpoint { get; set; } = "";
     public string AzureFaceApiKey { get; set; } = "";
-    public double LimiarConfiancaFacial { get; set; } = 0.85;
+    public double LimiarConfiancaFacial { get; set; } = 0.70;
     public double LimiarConfiancaFacialMinimo { get; set; } = 0.60;
 
     // Fila facial (identificação 1:N sem escolher a pessoa): o melhor candidato precisa estar pelo menos
