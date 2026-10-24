@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
+  BotaoAcao,
   Button,
   Campo,
   CampoData,
@@ -203,7 +204,7 @@ export function SipatTab() {
           }}
           aoClicarLinha={(e) => navigate(`/operacao/cipa/sipat/${e.id}`)}
           acoesLinha={(e) => (
-            <Button appearance="subtle" icon={<Delete24Regular />} onClick={() => excluir(e.id)} aria-label="Excluir" />
+            <BotaoAcao tom="excluir" icon={<Delete24Regular />} onClick={() => excluir(e.id)} aria-label="Excluir" />
           )}
         />
       </Card>

@@ -292,6 +292,13 @@ Nunca reaproveitar uma tag já publicada. `CACHEBUST` é obrigatório no build d
    Container Apps NÃO sincronizam automaticamente.** Toda config obrigatória nova precisa ser
    copiada manualmente para os secrets do Worker também — comparar `env` via
    `az containerapp show ... --query "properties.template.containers[0].env"`.
+5. **Toda mudança visível que vai para deploy (nova tela, novo botão, novo comportamento, correção
+   perceptível pelo usuário) ganha uma entrada em
+   `src/AAHBRANT.SST.Infrastructure/Persistencia/Seed/NovidadesSeeder.cs` (categoria `Novidade` ou
+   `Correcao`) ANTES do commit que sobe/mergeia — sem precisar que o usuário peça.** O seeder roda
+   automaticamente no startup da API e popula o pop-up "Bem-vindo de volta" (changelog por versão)
+   que todo usuário vê ao entrar. Esquecer essa entrada não quebra o deploy, mas o usuário nunca
+   fica sabendo do que mudou — já aconteceu mais de uma vez nesta base de código.
 
 ### 7.1 Deploy a partir de uma sessão Claude Code on the web (sandbox remoto)
 

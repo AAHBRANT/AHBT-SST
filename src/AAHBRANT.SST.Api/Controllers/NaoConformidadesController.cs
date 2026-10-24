@@ -4,6 +4,7 @@ using AAHBRANT.SST.Domain.Enums;
 using MediatR;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using AAHBRANT.SST.Api.Autorizacao;
 
 namespace AAHBRANT.SST.Api.Controllers;
 
@@ -17,8 +18,8 @@ public class NaoConformidadesController : ControllerBase
 
     [Authorize(Policy = "nc:ver")]
     [HttpGet]
-    public async Task<IActionResult> Listar([FromQuery] StatusNaoConformidade? status, CancellationToken ct)
-        => Ok(await _mediator.Send(new ListarNaoConformidadesQuery(status), ct));
+    public async Task<IActionResult> Listar([FromQuery] StatusNaoConformidade? status, [FromQuery] Guid? obraId, CancellationToken ct)
+        => Ok(await _mediator.Send(new ListarNaoConformidadesQuery(status, obraId), ct));
 
     [Authorize(Policy = "nc:ver")]
     [HttpGet("{id:guid}")]
@@ -39,11 +40,13 @@ public class NaoConformidadesController : ControllerBase
     {
         await _mediator.Send(new AtualizarNaoConformidadeCommand(
             id, body.OrigemDeteccao, body.RequisitoRelacionado, body.Descricao, body.Local,
-            body.AtividadeId, body.RiscoId, body.ResponsavelUsuarioId, body.Prazo), ct);
+            body.AtividadeId, body.RiscoId, body.ResponsavelUsuarioId, body.Prazo, body.ObraId), ct);
         return NoContent();
     }
 
-    [Authorize(Policy = "nc:editar")]
+    // Exclusao definitiva e privilegio de Administrador (pedido do usuario, 23/09): quem tem
+    // permissao de editar corrige o registro, mas nao o apaga. Ver PoliticasAutorizacao.
+    [Authorize(Policy = PoliticasAutorizacao.SomenteAdministrador)]
     [HttpDelete("{id:guid}")]
     public async Task<IActionResult> Excluir(Guid id, CancellationToken ct)
     {
@@ -101,7 +104,8 @@ public record AtualizarNaoConformidadeRequestBody(
     Guid? AtividadeId,
     Guid? RiscoId,
     Guid? ResponsavelUsuarioId,
-    DateTime? Prazo);
+    DateTime? Prazo,
+    Guid? ObraId = null);
 
 public record ResponderNaoConformidadeRequestBody(
     string DescricaoAcao,

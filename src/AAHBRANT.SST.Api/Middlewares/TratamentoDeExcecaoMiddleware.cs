@@ -1,6 +1,8 @@
+using AAHBRANT.SST.Application.Common;
 using System.Net;
 using System.Text.Json;
 using FluentValidation;
+using AAHBRANT.SST.Application.Common.Seguranca;
 using Microsoft.EntityFrameworkCore;
 
 namespace AAHBRANT.SST.Api.Middlewares;
@@ -25,6 +27,10 @@ public class TratamentoDeExcecaoMiddleware
         {
             await _proximo(contexto);
         }
+        catch (AcessoNegadoException ex)
+        {
+            await EscreverRespostaAsync(contexto, HttpStatusCode.Forbidden, ex.Message);
+        }
         catch (ValidationException ex)
         {
             await EscreverRespostaAsync(contexto, HttpStatusCode.BadRequest,
@@ -33,6 +39,13 @@ public class TratamentoDeExcecaoMiddleware
         catch (KeyNotFoundException ex)
         {
             await EscreverRespostaAsync(contexto, HttpStatusCode.NotFound, ex.Message);
+        }
+        catch (ServicoIndisponivelException ex)
+        {
+            // Temporário (Azure Face fora ou com cota estourada): 503 para a fila offline tentar de novo. A
+            // pessoa vê só a mensagem; a causa técnica fica no log.
+            _logger.LogWarning(ex, "Serviço externo indisponível em {Metodo} {Caminho}", contexto.Request.Method, contexto.Request.Path);
+            await EscreverRespostaAsync(contexto, HttpStatusCode.ServiceUnavailable, ex.Message);
         }
         catch (InvalidOperationException ex)
         {

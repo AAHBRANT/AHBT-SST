@@ -25,6 +25,7 @@ import {
 } from '../../../lib/api';
 import { RiscosCriticosPanel } from './RiscosCriticosPanel';
 import { ListaRiscosPanel } from './ListaRiscosPanel';
+import { FaixaKpis } from '../../../components/dashboard/FaixaKpis';
 
 const hojeISO = new Date().toISOString().slice(0, 10);
 
@@ -183,12 +184,12 @@ export function RiscosDashboardTab() {
         </FeedbackInline>
       )}
 
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(185px, 1fr))', gap: 16, marginBottom: 16 }}>
+      <FaixaKpis>
         <KpiCard rotulo="Riscos avaliados" valor={riscosFiltrados.length} tom="info" indice={0} icone={<ShieldCheckmark24Regular />} />
         <KpiCard rotulo="Alto/Crítico" valor={criticosAltos} tom="alerta" indice={1} icone={<Warning24Regular />} />
         <KpiCard rotulo="Controle pendente" valor={controlePendente} tom="atencao" indice={2} icone={<ClipboardTaskListLtr24Regular />} />
         <KpiCard rotulo="Com prazo vencido" valor={prazoVencido} tom="alerta" indice={3} icone={<Alert24Regular />} />
-      </div>
+      </FaixaKpis>
 
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(340px, 1fr))', gap: 16, marginBottom: 16 }}>
         <Card titulo="Status de controle dos riscos" subtitulo="Situação do plano de ação de cada avaliação de risco">

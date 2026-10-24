@@ -18,7 +18,7 @@ public record AnexarFotoEvidenciaDdsCommand(
     Guid DdsId,
     int Ordem,
     byte[] FotoConteudo,
-    string FotoContentType) : IRequest<Guid>;
+    string FotoContentType, string? Metadados = null) : IRequest<Guid>;
 
 public class AnexarFotoEvidenciaDdsCommandValidator : AbstractValidator<AnexarFotoEvidenciaDdsCommand>
 {
@@ -48,20 +48,16 @@ public class AnexarFotoEvidenciaDdsCommandHandler : IRequestHandler<AnexarFotoEv
 
     public async Task<Guid> Handle(AnexarFotoEvidenciaDdsCommand request, CancellationToken ct)
     {
-        var ddsExiste = await _db.Dds.AnyAsync(d => d.Id == request.DdsId, ct);
-        if (!ddsExiste)
-            throw new KeyNotFoundException($"DDS {request.DdsId} não encontrado.");
+        var registro = await _db.Dds.FirstOrDefaultAsync(x => x.Id == request.DdsId, ct)
+            ?? throw new KeyNotFoundException("Registro não encontrado.");
+        if (registro.Status == AAHBRANT.SST.Domain.Enums.StatusDds.Concluido)
+            throw new InvalidOperationException("O registro já foi finalizado. As fotos não podem ser alteradas.");
+        var metadados = await DadosCapturaFoto.PrepararAsync(request.Metadados, registro.ObraId, _db, ct);
 
         var fotoExistente = await _db.DdsFotosEvidencia
             .FirstOrDefaultAsync(f => f.DdsId == request.DdsId && f.Ordem == request.Ordem && f.Ativo, ct);
 
-        if (fotoExistente is not null)
-        {
-            fotoExistente.FotoConteudo = request.FotoConteudo;
-            fotoExistente.FotoContentType = request.FotoContentType;
-            await _db.SaveChangesAsync(ct);
-            return fotoExistente.Id;
-        }
+        if (fotoExistente is not null) fotoExistente.Ativo = false;
 
         var foto = new DdsFotoEvidencia
         {
@@ -69,6 +65,7 @@ public class AnexarFotoEvidenciaDdsCommandHandler : IRequestHandler<AnexarFotoEv
             Ordem = request.Ordem,
             FotoConteudo = request.FotoConteudo,
             FotoContentType = request.FotoContentType,
+            FotoMetadadosJson = metadados,
         };
         _db.DdsFotosEvidencia.Add(foto);
         await _db.SaveChangesAsync(ct);

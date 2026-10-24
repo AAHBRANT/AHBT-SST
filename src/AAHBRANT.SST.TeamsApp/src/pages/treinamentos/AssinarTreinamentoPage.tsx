@@ -1,9 +1,8 @@
 import { useEffect, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import { ArrowLeft24Regular } from '@fluentui/react-icons';
 import { api, type CursoTreinamento, type Trabalhador, type Treinamento } from '../../lib/api';
 import { AssinaturaQuiosque } from '../../components/assinatura/AssinaturaQuiosque';
-import { Button, FeedbackInline, PageHeader } from '@ui';
+import { BotaoVoltar, FeedbackInline, PageHeader } from '@ui';
 
 // Tela de quiosque para o certificado de treinamento, mesmo padrão de AssinarEntregaEpiPage.tsx/
 // AssinarPtPage.tsx (Motor de Assinatura Eletrônica): só resolve cabeçalho e navegação; o quiosque em
@@ -39,14 +38,9 @@ export function AssinarTreinamentoPage() {
 
   return (
     <div>
-      <Button
-        appearance="subtle"
-        icon={<ArrowLeft24Regular />}
-        onClick={() => navigate(-1)}
-        style={{ marginBottom: 12 }}
-      >
-        Voltar
-      </Button>
+      <div style={{ marginBottom: 12 }}>
+        <BotaoVoltar onClick={() => navigate(-1)} />
+      </div>
 
       <PageHeader
         titulo={`Assinatura eletrônica — ${curso?.nome ?? 'Carregando...'}`}

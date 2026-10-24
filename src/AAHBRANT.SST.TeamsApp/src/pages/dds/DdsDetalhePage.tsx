@@ -1,9 +1,10 @@
-﻿import { useEffect, useState } from 'react';
+﻿import { pendenciasGrade } from '../../lib/dadosFoto';
+import { useEffect, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import {
+  BotaoAcao,
   Button,
   Field,
-  Select,
   Input,
   Card,
   DetailPageLayout,
@@ -11,33 +12,25 @@ import {
   StatusChip,
   FeedbackInline,
   Carregando,
-  Legenda,
-  DataTable,
   FormGrid,
   Campo,
   type AcaoWorkflow,
-  type Coluna,
   type Tom,
 } from '@ui';
 import {
   ArrowDownload24Regular,
-  Checkmark24Filled,
-  Fingerprint24Regular,
-  PersonAdd24Regular,
+  Eye24Regular,
   Signature24Regular,
 } from '@fluentui/react-icons';
 import {
   api,
   StatusDds,
   statusDdsLabel,
-  TipoFotoParticipante,
-  tipoFotoParticipanteLabel,
   type DdsDetalhe,
-  type DdsParticipante,
-  type Trabalhador,
 } from '../../lib/api';
-import { capturarDigitalLocal, estaAgenteLocalDisponivel, obterDispositivoLocal } from '../../lib/agenteBiometricoLocal';
+import { ParticipantesDds } from './ParticipantesDds';
 import { GradeFotosEvidencia } from '../../components/GradeFotosEvidencia';
+import { useVisualizadorPdf } from '../../components/useVisualizadorPdf';
 
 const TOTAL_FOTOS_EVIDENCIA_OBRIGATORIAS = 3;
 
@@ -46,37 +39,15 @@ const tomStatusDia: Record<number, Tom> = {
   [StatusDds.Concluido]: 'ok',
 };
 
-// A mesma digital da presença já vale como assinatura eletrônica do DDS (04/09) — sem precisar ler
-// de novo na tela "Assinar DDS". Coluna própria de assinatura.
-function tomAssinatura(p: DdsParticipante): Tom {
-  return p.assinadoEm ? 'ok' : 'info';
-}
-
-function rotuloAssinatura(p: DdsParticipante): string {
-  if (!p.assinadoEm) return 'Pendente';
-  return `Assinado às ${new Date(p.assinadoEm).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}`;
-}
-
-// Onda 2 (Task 14) — candidata a DetailPageLayout (conversões 1, 2, 3, 4, 5): cabeçalho com
-// voltar/título/status/ações utilitárias (assinar/baixar); lateral com o resumo e a única
-// transição de estado real (Encerrar DDS) em WorkflowActions — as demais ações (assinar, baixar)
-// não são transição de estado, ficam no cabeçalho. Participantes é o único <Table> cru
-// do arquivo → DataTable; badge de status → StatusChip.
 export function DdsDetalhePage() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const [detalhe, setDetalhe] = useState<DdsDetalhe | null>(null);
-  const [trabalhadores, setTrabalhadores] = useState<Trabalhador[]>([]);
-  const [participanteSelecionado, setParticipanteSelecionado] = useState('');
-  const [agenteDisponivel, setAgenteDisponivel] = useState<boolean | null>(null);
-  const [dispositivoLocal, setDispositivoLocal] = useState<{ dispositivoId: string; segredoDispositivo: string } | null>(null);
-  const [validandoBiometria, setValidandoBiometria] = useState(false);
-  const [biometriaValidada, setBiometriaValidada] = useState<{ trabalhadorId: string; score: number } | null>(null);
   const [fotosEvidenciaPreview, setFotosEvidenciaPreview] = useState<Record<string, string>>({});
   const [erro, setErro] = useState<string | null>(null);
   const [processando, setProcessando] = useState(false);
   const [baixandoPdf, setBaixandoPdf] = useState(false);
-  const [baixandoFotoId, setBaixandoFotoId] = useState<string | null>(null);
+  const { visualizar, dialogoVisualizador } = useVisualizadorPdf();
 
   async function carregar() {
     if (!id) return;
@@ -84,8 +55,6 @@ export function DdsDetalhePage() {
       setErro(null);
       const det = await api.dds.obterDetalhe(id);
       setDetalhe(det);
-      const listaTrabalhadores = await api.trabalhadores.listar(det.dds.obraId);
-      setTrabalhadores(listaTrabalhadores);
 
       const previews = await Promise.all(
         det.fotosEvidencia.map(async (foto) => {
@@ -129,82 +98,6 @@ export function DdsDetalhePage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id]);
 
-  useEffect(() => {
-    estaAgenteLocalDisponivel().then(async (disponivel) => {
-      setAgenteDisponivel(disponivel);
-      if (disponivel) {
-        const dispositivo = await obterDispositivoLocal();
-        setDispositivoLocal(dispositivo);
-      }
-    });
-  }, []);
-
-  // A validação biométrica é por participante selecionado — trocar a seleção invalida a
-  // captura anterior, evitando registrar a presença de outra pessoa por engano.
-  useEffect(() => {
-    setBiometriaValidada(null);
-  }, [participanteSelecionado]);
-
-  async function validarBiometria() {
-    if (!participanteSelecionado) return;
-    try {
-      setValidandoBiometria(true);
-      setErro(null);
-      const captura = await capturarDigitalLocal();
-      if (captura.trabalhadorId !== participanteSelecionado) {
-        setBiometriaValidada(null);
-        setErro('A digital capturada não corresponde ao participante selecionado.');
-        return;
-      }
-      setBiometriaValidada({ trabalhadorId: captura.trabalhadorId, score: captura.score });
-    } catch (e) {
-      setErro(e instanceof Error ? e.message : 'Falha na validação biométrica.');
-    } finally {
-      setValidandoBiometria(false);
-    }
-  }
-
-  async function registrarParticipante() {
-    if (!id || !participanteSelecionado || !dispositivoLocal) return;
-    if (!biometriaValidada || biometriaValidada.trabalhadorId !== participanteSelecionado) return;
-    try {
-      setProcessando(true);
-      setErro(null);
-      await api.dds.registrarParticipante(
-        id,
-        participanteSelecionado,
-        dispositivoLocal.dispositivoId,
-        dispositivoLocal.segredoDispositivo,
-        biometriaValidada.score,
-      );
-      setParticipanteSelecionado('');
-      setBiometriaValidada(null);
-      await carregar();
-    } catch (e) {
-      setErro(e instanceof Error ? e.message : 'Falha ao registrar participante.');
-    } finally {
-      setProcessando(false);
-    }
-  }
-
-  async function baixarFotoParticipante(participanteId: string, trabalhadorNome: string) {
-    try {
-      setBaixandoFotoId(participanteId);
-      setErro(null);
-      const blob = await api.dds.baixarFotoParticipante(participanteId);
-      const url = URL.createObjectURL(blob);
-      const link = document.createElement('a');
-      link.href = url;
-      link.download = `dds-${trabalhadorNome.replace(/\s+/g, '-').toLowerCase()}`;
-      link.click();
-      URL.revokeObjectURL(url);
-    } catch (e) {
-      setErro(e instanceof Error ? e.message : 'Falha ao baixar a foto do participante.');
-    } finally {
-      setBaixandoFotoId(null);
-    }
-  }
-
   async function encerrar() {
     if (!id) return;
     try {
@@ -229,7 +122,7 @@ export function DdsDetalhePage() {
       const url = URL.createObjectURL(blob);
       const link = document.createElement('a');
       link.href = url;
-      link.download = `dds-${detalhe.dds.data?.slice(0, 10)}.pdf`;
+      link.download = nomeArquivoPdf(detalhe);
       link.click();
       URL.revokeObjectURL(url);
     } catch (e) {
@@ -237,6 +130,16 @@ export function DdsDetalhePage() {
     } finally {
       setBaixandoPdf(false);
     }
+  }
+
+  function nomeArquivoPdf(det: DdsDetalhe) {
+    return `dds-${det.dds.data?.slice(0, 10)}.pdf`;
+  }
+
+  // Abre o mesmo PDF do "Baixar PDF" numa janela, sem baixar.
+  function visualizarPdf() {
+    if (!id || !detalhe) return;
+    void visualizar({ titulo: 'PDF do DDS', nomeArquivo: nomeArquivoPdf(detalhe), obter: () => api.dds.baixarPdf(id) });
   }
 
   if (!id) return <FeedbackInline tom="erro">DDS não encontrado.</FeedbackInline>;
@@ -253,11 +156,10 @@ export function DdsDetalhePage() {
 
   const dds = detalhe.dds;
   const somenteLeitura = dds.status !== StatusDds.EmAndamento;
-  const participantesRegistrados = new Set(detalhe.participantes.map((p) => p.trabalhadorId));
-  const trabalhadoresDisponiveis = trabalhadores.filter((t) => !participantesRegistrados.has(t.id));
   const totalFotosEvidencia = detalhe.fotosEvidencia.length;
   const faltamFotosEvidencia = Math.max(0, TOTAL_FOTOS_EVIDENCIA_OBRIGATORIAS - totalFotosEvidencia);
-  const biometriaConfirmada = !!biometriaValidada && biometriaValidada.trabalhadorId === participanteSelecionado;
+  const ausentes = detalhe.funcionariosSelecionados ?? [];
+  const nomesAusentes = ausentes.slice(0, 5).map((f) => f.nome).join(', ') + (ausentes.length > 5 ? ` e mais ${ausentes.length - 5}` : '');
 
   const tituloDds =
     dds.temasAtividades.length > 0
@@ -272,27 +174,19 @@ export function DdsDetalhePage() {
   if (!somenteLeitura) {
     acoesWorkflow.push({
       chave: 'encerrar',
-      rotulo: 'Encerrar DDS',
-      descricao: faltamFotosEvidencia > 0 ? `Faltam ${faltamFotosEvidencia} foto(s) de evidência.` : undefined,
+      rotulo: 'Finalizar DDS',
+      finalizacao: true,
+      pendencias: pendenciasGrade(detalhe.fotosEvidencia),
+      descricao: [
+        faltamFotosEvidencia > 0 ? `Faltam ${faltamFotosEvidencia} foto(s) de evidência.` : null,
+        // Aviso, não bloqueio: quem não assinou fica sem presença no DDS.
+        ausentes.length > 0 ? `Atenção: ${ausentes.length} funcionário(s) da lista ainda sem presença confirmada (${nomesAusentes}). Se finalizar agora, eles ficam como ausentes.` : null,
+      ].filter(Boolean).join(' ') || undefined,
       tom: 'primario',
-      habilitada: faltamFotosEvidencia === 0,
+      habilitada: true,
       aoExecutar: encerrar,
     });
   }
-
-  const colunasParticipantes: Coluna<DdsParticipante>[] = [
-    { chave: 'nome', rotulo: 'Nome', render: (p) => p.trabalhadorNome },
-    { chave: 'evidencia', rotulo: 'Evidência', render: (p) => tipoFotoParticipanteLabel[p.fotoTipo] },
-    {
-      chave: 'assinatura',
-      rotulo: 'Assinatura',
-      render: (p) => (
-        <StatusChip tom={tomAssinatura(p)} icone={p.assinadoEm ? <Checkmark24Filled /> : undefined}>
-          {rotuloAssinatura(p)}
-        </StatusChip>
-      ),
-    },
-  ];
 
   return (
     <DetailPageLayout
@@ -307,9 +201,13 @@ export function DdsDetalhePage() {
             <Button icon={<Signature24Regular />} onClick={() => navigate(`/prevencao/dds/dia/${id}/assinar`)}>
               Assinar DDS
             </Button>
-            <Button icon={<ArrowDownload24Regular />} onClick={baixarPdf} disabled={baixandoPdf}>
+            <BotaoAcao tom="ver" icon={<Eye24Regular />} onClick={visualizarPdf} aria-label="Visualizar PDF">
+              Visualizar PDF
+            </BotaoAcao>
+            <BotaoAcao tom="baixar" icon={<ArrowDownload24Regular />} onClick={baixarPdf} disabled={baixandoPdf} aria-label="Baixar PDF">
               Baixar PDF
-            </Button>
+            </BotaoAcao>
+            {dialogoVisualizador}
           </>
         ),
       }}
@@ -321,7 +219,7 @@ export function DdsDetalhePage() {
                 <Field label="Atividades do dia"><Input value={dds.atividadesNomes.join(', ') || 'DDS do dia'} readOnly /></Field>
               </Campo>
               <Campo span={12}>
-                <Field label="Participantes"><Input value={String(dds.totalParticipantes)} readOnly /></Field>
+                <Field label="Presenças confirmadas"><Input value={String(dds.totalParticipantes)} readOnly /></Field>
               </Campo>
               <Campo span={12}>
                 <Field label="Evidências fotográficas"><Input value={`${totalFotosEvidencia}/${TOTAL_FOTOS_EVIDENCIA_OBRIGATORIAS}`} readOnly /></Field>
@@ -330,7 +228,7 @@ export function DdsDetalhePage() {
           </Card>
           {acoesWorkflow.length > 0 && (
             <Card densidade="compacta" titulo="Ações disponíveis">
-              <WorkflowActions acoes={acoesWorkflow} processando={processando} />
+              <WorkflowActions acoes={acoesWorkflow} processando={processando} erro={erro} />
             </Card>
           )}
         </>
@@ -342,15 +240,17 @@ export function DdsDetalhePage() {
         </FeedbackInline>
       )}
 
+      <ParticipantesDds key={dds.id} detalhe={detalhe} somenteLeitura={somenteLeitura} aoAtualizar={setDetalhe} />
+
       <Card>
         <GradeFotosEvidencia
+          contextoFoto={{ obraId: dds.obraId, obraNome: dds.obraNome }}
           titulo="Evidências fotográficas"
           subtitulo={`${TOTAL_FOTOS_EVIDENCIA_OBRIGATORIAS} fotos são obrigatórias para liberar o encerramento deste registro diário.`}
           total={TOTAL_FOTOS_EVIDENCIA_OBRIGATORIAS}
           fotos={
             detalhe.fotosEvidencia
-              .filter((f) => fotosEvidenciaPreview[f.id])
-              .map((f) => ({ ordem: f.ordem, id: f.id, url: fotosEvidenciaPreview[f.id] }))
+              .map((f) => ({ ordem: f.ordem, id: f.id, dadosFoto: f.dadosFoto, url: fotosEvidenciaPreview[f.id] }))
           }
           somenteLeitura={somenteLeitura}
           onSelecionarFoto={anexarFotoEvidencia}
@@ -359,80 +259,6 @@ export function DdsDetalhePage() {
         />
       </Card>
 
-      <Card titulo="Participantes">
-        {!somenteLeitura && (
-          <div style={{ marginBottom: 12, display: 'flex', flexDirection: 'column', gap: 8 }}>
-            <FormGrid>
-              <Campo span={6}>
-                <Field label="Funcionário">
-                  <Select
-                    value={participanteSelecionado}
-                    onChange={(_, d) => setParticipanteSelecionado(d.value)}
-                  >
-                    <option value="">Selecione um funcionário</option>
-                    {trabalhadoresDisponiveis.map((trabalhador) => (
-                      <option key={trabalhador.id} value={trabalhador.id}>
-                        {trabalhador.matricula ? `${trabalhador.nome} (${trabalhador.matricula})` : trabalhador.nome}
-                      </option>
-                    ))}
-                  </Select>
-                </Field>
-              </Campo>
-            </FormGrid>
-            {agenteDisponivel === false && (
-              <FeedbackInline tom="aviso">
-                Leitor Futronic não encontrado nesta máquina. Verifique se o leitor está conectado e se o
-                Agente Biométrico está em execução, depois recarregue esta página.
-              </FeedbackInline>
-            )}
-            <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
-              <Button
-                appearance="primary"
-                icon={<Fingerprint24Regular />}
-                onClick={validarBiometria}
-                disabled={!agenteDisponivel || !dispositivoLocal || !participanteSelecionado || validandoBiometria}
-              >
-                {validandoBiometria ? 'Validando biometria...' : 'Validar Biometria'}
-              </Button>
-              {biometriaConfirmada && (
-                <StatusChip tom="ok" icone={<Checkmark24Filled />}>
-                  Biometria validada
-                </StatusChip>
-              )}
-              <Button
-                appearance="primary"
-                icon={<PersonAdd24Regular />}
-                onClick={registrarParticipante}
-                disabled={processando || !participanteSelecionado || !biometriaConfirmada}
-              >
-                Registrar presença
-              </Button>
-            </div>
-            <Legenda>A validação biométrica do participante selecionado é obrigatória para registrar a presença.</Legenda>
-          </div>
-        )}
-
-        <DataTable
-          aria-label="Participantes do DDS"
-          colunas={colunasParticipantes}
-          linhas={detalhe.participantes}
-          chaveLinha={(p) => p.id}
-          vazio={{ titulo: 'Nenhum participante registrado ainda.' }}
-          acoesLinha={(p) =>
-            p.fotoTipo !== TipoFotoParticipante.Biometria ? (
-              <Button
-                appearance="subtle"
-                size="small"
-                icon={<ArrowDownload24Regular />}
-                onClick={() => baixarFotoParticipante(p.id, p.trabalhadorNome)}
-                disabled={baixandoFotoId === p.id}
-              >
-                Baixar foto
-              </Button>
-            ) : null
-          }
-        />
-      </Card>
     </DetailPageLayout>
   );
 }

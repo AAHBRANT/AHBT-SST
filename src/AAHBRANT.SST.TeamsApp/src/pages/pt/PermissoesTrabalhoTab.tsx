@@ -1,11 +1,12 @@
-﻿import { useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
+  BotaoAcao,
   Button,
   Campo,
   Card,
   CampoData,
-  ChipCheckboxGroup,
+  ListaSelecaoMultipla,
   DataTable,
   Field,
   FeedbackInline,
@@ -32,6 +33,8 @@ import {
 } from '../../lib/api';
 import { useSucessoToast } from '../../hooks/useSucessoToast';
 import { hojeIso } from '../../lib/datas';
+import { useRegistrosTravados } from '../../hooks/useRegistrosTravados';
+import { useSouAdministrador } from '../../lib/UsuarioLogadoContext';
 
 function ptVazia(): NovaPermissaoTrabalho {
   return {
@@ -62,13 +65,16 @@ const tomPorStatusPt: Record<number, Tom> = {
 // Onda 2 Task 6 (camada ui/): lista + formulário de criação de Permissão de Trabalho. Mesmo padrão
 // de AprsTab.tsx (Task 11) — Card + FormSection + DataTable, seleção de responsáveis em ChipCheckboxGroup.
 export function PermissoesTrabalhoTab() {
+  const souAdministrador = useSouAdministrador();
   const navigate = useNavigate();
   const [permissoes, setPermissoes] = useState<PermissaoTrabalho[]>([]);
+  // Finalizados não podem ser excluídos (o servidor recusa): o botão some deles.
+  const travados = useRegistrosTravados('PermissaoTrabalho', permissoes.map((pt) => pt.id));
   const [atividades, setAtividades] = useState<Atividade[]>([]);
   const [trabalhadores, setTrabalhadores] = useState<Trabalhador[]>([]);
   const [equipes, setEquipes] = useState<Equipe[]>([]);
   const [usuarios, setUsuarios] = useState<Usuario[]>([]);
-  const [novaPt, setNovaPt] = useState<NovaPermissaoTrabalho>(ptVazia);
+  const [novaPt, setNovaPt] = useState<NovaPermissaoTrabalho>(ptVazia());
   const [erro, setErro] = useState<string | null>(null);
   const [carregando, setCarregando] = useState(false);
   const [carregandoLista, setCarregandoLista] = useState(true);
@@ -120,7 +126,7 @@ export function PermissoesTrabalhoTab() {
         responsavelExecucaoUsuarioId: novaPt.responsavelExecucaoUsuarioId || null,
         responsavelAreaUsuarioId: novaPt.responsavelAreaUsuarioId || null,
       });
-      setNovaPt(ptVazia);
+      setNovaPt(ptVazia());
       await carregar();
       sucessoToast('Permissão de Trabalho criada com sucesso.');
     } catch (e) {
@@ -281,7 +287,7 @@ export function PermissoesTrabalhoTab() {
             </Campo>
             <Campo span={12}>
               <Field label="Equipe executante (responsáveis)">
-                <ChipCheckboxGroup
+                <ListaSelecaoMultipla
                   aria-label="Equipe executante (responsáveis)"
                   opcoes={trabalhadores.map((t) => ({ id: t.id, rotulo: t.nome }))}
                   selecionados={novaPt.responsaveisIds}
@@ -311,7 +317,12 @@ export function PermissoesTrabalhoTab() {
           vazio={{ titulo: 'Nenhuma Permissão de Trabalho cadastrada ainda.' }}
           aoClicarLinha={(pt) => navigate(`/operacao/pt/${pt.id}`)}
           acoesLinha={(pt) => (
-            <Button appearance="subtle" icon={<Delete24Regular />} onClick={() => excluir(pt.id)} aria-label="Excluir" />
+            <>
+              {/* Exclusão é privilégio de Administrador (o servidor recusa os demais) — ver PoliticasAutorizacao. */}
+              {souAdministrador && !travados.has(pt.id) && (
+                <BotaoAcao tom="excluir" icon={<Delete24Regular />} onClick={() => excluir(pt.id)} aria-label="Excluir" />
+              )}
+            </>
           )}
         />
       </Card>

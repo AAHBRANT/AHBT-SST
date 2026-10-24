@@ -5,7 +5,7 @@ import {
   Campo,
   Card,
   CampoData,
-  ChipCheckboxGroup,
+  ListaSelecaoMultipla,
   DataTable,
   Field,
   FeedbackInline,
@@ -17,6 +17,7 @@ import {
   PainelCriacaoInline,
   Select,
   StatusChip,
+  Textarea,
   type Coluna,
   type Tom,
 } from '@ui';
@@ -28,19 +29,26 @@ import {
   type CursoTreinamento,
   type NovaSessaoTreinamento,
   type Obra,
+  type PadraoTurmaTreinamento,
   type SessaoTreinamento,
   type Trabalhador,
 } from '../../lib/api';
 import { useSucessoToast } from '../../hooks/useSucessoToast';
+import { hoje } from '../../lib/valoresPadrao';
 
 function turmaVazia(): NovaSessaoTreinamento {
   return {
     obraId: '',
     cursoTreinamentoId: '',
-    dataRealizacao: '',
+    // Data do dia por padrão (19/10); o técnico pode trocar.
+    dataRealizacao: hoje(),
     cargaHorariaRealizada: 0,
     instituicaoInstrutor: '',
     trabalhadoresIds: [],
+    conteudoProgramatico: '',
+    local: '',
+    instrutorRegistroProfissional: '',
+    validadeEmMeses: null,
   };
 }
 
@@ -73,7 +81,11 @@ export function TurmasTab() {
   const [carregando, setCarregando] = useState(false);
   const [carregandoLista, setCarregandoLista] = useState(true);
   const [painelAberto, setPainelAberto] = useState(false);
+  const [padrao, setPadrao] = useState<PadraoTurmaTreinamento | null>(null);
+  const [nomeUsuario, setNomeUsuario] = useState('');
   const sucessoToast = useSucessoToast();
+  // Sem padrão carregado ainda, trava: o servidor decide quem edita (Técnico de Segurança/Admin).
+  const podeEditar = padrao?.podeEditar ?? false;
 
   async function carregar() {
     try {
@@ -95,7 +107,41 @@ export function TurmasTab() {
 
   useEffect(() => {
     carregar();
+    api.usuarios
+      .eu()
+      .then((u) => setNomeUsuario(u.nome))
+      .catch(() => setNomeUsuario(''));
   }, []);
+
+  // Ao escolher curso (ou trocar a obra), puxa o padrão da NR: carga horária mínima, validade,
+  // conteúdo programático e local. O instrutor sugerido é quem está logado.
+  useEffect(() => {
+    if (!novaTurma.cursoTreinamentoId) {
+      setPadrao(null);
+      return;
+    }
+    let ativo = true;
+    api.sessoesTreinamento
+      .padrao(novaTurma.cursoTreinamentoId, novaTurma.obraId || undefined)
+      .then((p) => {
+        if (!ativo) return;
+        setPadrao(p);
+        setNovaTurma((atual) => ({
+          ...atual,
+          cargaHorariaRealizada: p.cargaHorariaMinima,
+          validadeEmMeses: p.validadeEmMeses,
+          conteudoProgramatico: p.conteudoProgramatico ?? '',
+          local: p.local ?? '',
+          instituicaoInstrutor: p.podeEditar ? atual.instituicaoInstrutor || nomeUsuario : '',
+        }));
+      })
+      .catch(() => {
+        if (ativo) setPadrao(null);
+      });
+    return () => {
+      ativo = false;
+    };
+  }, [novaTurma.cursoTreinamentoId, novaTurma.obraId, nomeUsuario]);
 
   useEffect(() => {
     if (!novaTurma.obraId) {
@@ -112,6 +158,7 @@ export function TurmasTab() {
     setPainelAberto(false);
     setErroPainel(null);
     setNovaTurma(turmaVazia());
+    setPadrao(null);
   }
 
   async function criar() {
@@ -135,11 +182,16 @@ export function TurmasTab() {
     return cursos.find((c) => c.id === id)?.nome ?? id;
   }
 
+  const minimo = padrao?.cargaHorariaMinima ?? 0;
+  const abaixoDoMinimo = !!padrao && novaTurma.cargaHorariaRealizada < minimo;
+  const rotuloNorma = padrao?.norma ?? 'curso';
+
   const podeCriar =
     !!novaTurma.obraId &&
     !!novaTurma.cursoTreinamentoId &&
     !!novaTurma.dataRealizacao &&
     novaTurma.cargaHorariaRealizada > 0 &&
+    !abaixoDoMinimo &&
     novaTurma.trabalhadoresIds.length > 0;
 
   const colunas: Coluna<SessaoTreinamento>[] = [
@@ -229,26 +281,88 @@ export function TurmasTab() {
                 />
               </Field>
             </Campo>
-            <Campo span={6}>
-              <Field label="Carga horária (h)">
+            <Campo span={3}>
+              <Field
+                label="Carga horária (h)"
+                validationState={abaixoDoMinimo ? 'error' : 'none'}
+                validationMessage={
+                  abaixoDoMinimo
+                    ? `A ${rotuloNorma} exige no mínimo ${minimo}h. Abaixo disso o certificado não tem validade legal.`
+                    : padrao
+                      ? `Mínimo ${rotuloNorma}: ${minimo}h. Pode aumentar.`
+                      : undefined
+                }
+              >
                 <Input
                   type="number"
+                  min={minimo}
+                  disabled={!podeEditar}
                   value={String(novaTurma.cargaHorariaRealizada)}
                   onChange={(_, d) => setNovaTurma({ ...novaTurma, cargaHorariaRealizada: Number(d.value) })}
                 />
               </Field>
             </Campo>
-            <Campo span={12}>
-              <Field label="Instituição / instrutor">
+            <Campo span={3}>
+              <Field label="Validade (meses)">
                 <Input
+                  type="number"
+                  min={1}
+                  disabled={!podeEditar}
+                  value={novaTurma.validadeEmMeses ? String(novaTurma.validadeEmMeses) : ''}
+                  onChange={(_, d) => setNovaTurma({ ...novaTurma, validadeEmMeses: Number(d.value) || null })}
+                />
+              </Field>
+            </Campo>
+            <Campo span={6}>
+              <Field label="Instrutor (Técnico de Segurança)">
+                <Input
+                  disabled={!podeEditar}
                   value={novaTurma.instituicaoInstrutor ?? ''}
                   onChange={(_, d) => setNovaTurma({ ...novaTurma, instituicaoInstrutor: d.value })}
                 />
               </Field>
             </Campo>
+            <Campo span={3}>
+              <Field label="Registro profissional">
+                <Input
+                  placeholder="Ex.: MTE 12345/PB"
+                  disabled={!podeEditar}
+                  value={novaTurma.instrutorRegistroProfissional ?? ''}
+                  onChange={(_, d) => setNovaTurma({ ...novaTurma, instrutorRegistroProfissional: d.value })}
+                />
+              </Field>
+            </Campo>
+            <Campo span={3}>
+              <Field label="Local de realização">
+                <Input
+                  disabled={!podeEditar}
+                  value={novaTurma.local ?? ''}
+                  onChange={(_, d) => setNovaTurma({ ...novaTurma, local: d.value })}
+                />
+              </Field>
+            </Campo>
+            {padrao && (
+              <Campo span={12}>
+                <FeedbackInline tom="info">
+                  Preenchido com o padrão {padrao.norma ? `da ${padrao.norma}` : 'do curso'}. O conteúdo fica gravado nesta turma: se o
+                  curso mudar depois, os certificados desta turma continuam com este conteúdo.
+                  {!podeEditar && ' Só o Técnico de Segurança pode alterar carga horária, validade, instrutor, local e conteúdo.'}
+                </FeedbackInline>
+              </Campo>
+            )}
+            <Campo span={12}>
+              <Field label="Conteúdo programático (um tópico por linha — vai no verso do certificado)">
+                <Textarea
+                  rows={7}
+                  disabled={!podeEditar}
+                  value={novaTurma.conteudoProgramatico ?? ''}
+                  onChange={(_, d) => setNovaTurma({ ...novaTurma, conteudoProgramatico: d.value })}
+                />
+              </Field>
+            </Campo>
             <Campo span={12}>
               <Legenda>
-                Nada é salvo até você criar a turma. O número do certificado é gerado automaticamente ao criar a turma.
+                Nada é salvo até você criar a turma. Cada participante recebe o próprio número de certificado ao encerrar a turma.
               </Legenda>
             </Campo>
             <Campo span={12}>
@@ -258,7 +372,7 @@ export function TurmasTab() {
                 ) : trabalhadoresDaObra.length === 0 ? (
                   <Legenda>Nenhum funcionário cadastrado nesta obra.</Legenda>
                 ) : (
-                  <ChipCheckboxGroup
+                  <ListaSelecaoMultipla
                     aria-label="Participantes"
                     opcoes={trabalhadoresDaObra.map((t) => ({
                       id: t.id,

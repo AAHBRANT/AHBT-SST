@@ -1,3 +1,4 @@
+using AAHBRANT.SST.Application.Assinatura;
 using AAHBRANT.SST.Application.Assinatura.Commands;
 using AAHBRANT.SST.Application.Assinatura.Queries;
 using AAHBRANT.SST.Domain.Enums;
@@ -57,21 +58,34 @@ public class AssinaturaController : ControllerBase
     // em dev com Entra ID desligado o claim não existe e o handler falha com mensagem amigável).
     [Authorize(Policy = "assinatura:assinar")]
     [HttpPost("{id:guid}/assinar/sessao")]
-    public async Task<IActionResult> AssinarComSessaoLogada(Guid id, CancellationToken ct)
+    public async Task<IActionResult> AssinarComSessaoLogada(Guid id, [FromBody] AssinarSessaoRequestBody? body, CancellationToken ct)
     {
         var azureAdObjectId = User.FindFirst("oid")?.Value ?? User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
-        var signatario = await _mediator.Send(new RegistrarAssinaturaSessaoLogadaCommand(id, azureAdObjectId), ct);
+        var signatario = await _mediator.Send(new RegistrarAssinaturaSessaoLogadaCommand(id, azureAdObjectId, ObterIpCliente(), body?.Localizacao?.ParaDominio()), ct);
         return Ok(signatario);
     }
 
-    public record AutenticarBiometriaLocalRequestBody(Guid DispositivoId, string SegredoDispositivo, Guid TrabalhadorId, double Score);
+    // Geolocalização declarada pelo aparelho no momento da assinatura (log de assinaturas). Opcional:
+    // clientes antigos não enviam e o log mostra "não informada".
+    public record LocalizacaoAssinaturaBody(StatusLocalizacaoAssinatura Status, double? Latitude = null, double? Longitude = null, double? PrecisaoMetros = null)
+    {
+        public LocalizacaoAssinatura ParaDominio() => new(Status, Latitude, Longitude, PrecisaoMetros);
+    }
+
+    public record AssinarSessaoRequestBody(LocalizacaoAssinaturaBody? Localizacao = null);
+
+    // Desafio + AssinaturaLeitura: leitura assinada pelo agente (o segredo não vem mais do navegador). Agentes
+    // ainda não atualizados mandam SegredoDispositivo sem os dois (ver FutronicAutenticacaoStrategy).
+    public record AutenticarBiometriaLocalRequestBody(Guid DispositivoId, string? SegredoDispositivo, Guid TrabalhadorId, double Score,
+        byte[]? ImagemDigital = null, LocalizacaoAssinaturaBody? Localizacao = null, string? Desafio = null, string? AssinaturaLeitura = null);
 
     [Authorize(Policy = "assinatura:assinar")]
     [HttpPost("{id:guid}/autenticacao/biometria-local")]
     public async Task<ActionResult<DocumentoSignatarioDto>> AutenticarBiometriaLocal(Guid id, AutenticarBiometriaLocalRequestBody body, CancellationToken ct)
     {
         var resultado = await _mediator.Send(
-            new RegistrarAssinaturaBiometriaLocalCommand(id, body.DispositivoId, body.SegredoDispositivo, body.TrabalhadorId, body.Score, ObterIpCliente()), ct);
+            new RegistrarAssinaturaBiometriaLocalCommand(id, body.DispositivoId, body.SegredoDispositivo ?? string.Empty, body.TrabalhadorId, body.Score, ObterIpCliente(), body.ImagemDigital,
+                body.Localizacao?.ParaDominio(), body.Desafio, body.AssinaturaLeitura), ct);
         return Ok(resultado);
     }
 
@@ -79,6 +93,13 @@ public class AssinaturaController : ControllerBase
     {
         public Guid ObraId { get; set; }
         public IFormFile Foto { get; set; } = null!;
+        // Geolocalização (campos de formulário, mesmo padrão de "metadados" das fotos de DDS).
+        public StatusLocalizacaoAssinatura? LocalizacaoStatus { get; set; }
+        public double? Latitude { get; set; }
+        public double? Longitude { get; set; }
+        public double? PrecisaoMetros { get; set; }
+        // Hora em que o aparelho tirou a foto (ISO 8601). Faz diferença quando a foto ficou na fila offline.
+        public DateTime? CapturadaEm { get; set; }
     }
 
     [Authorize(Policy = "assinatura:assinar")]
@@ -91,7 +112,9 @@ public class AssinaturaController : ControllerBase
         try
         {
             var resultado = await _mediator.Send(
-                new RegistrarAssinaturaFacialCommand(id, body.ObraId, stream.ToArray(), ObterIpCliente()), ct);
+                new RegistrarAssinaturaFacialCommand(id, body.ObraId, stream.ToArray(), body.Foto.ContentType, ObterIpCliente(),
+                    body.LocalizacaoStatus is { } status ? new LocalizacaoAssinatura(status, body.Latitude, body.Longitude, body.PrecisaoMetros) : null,
+                    body.CapturadaEm), ct);
             return Ok(resultado);
         }
         catch (RejeicaoFacialException ex)
@@ -101,16 +124,20 @@ public class AssinaturaController : ControllerBase
     }
 
     // IP para o audit trail jurídico do Cofre de Assinaturas — nunca aceito do corpo da requisição
-    // (evidência não pode ser controlada pelo cliente). Preferimos X-Forwarded-For porque a API roda
-    // atrás de reverse proxy no Azure App Service; RemoteIpAddress é o fallback direto.
+    // (evidência não pode ser controlada pelo cliente). Não lê X-Forwarded-For na mão: o primeiro
+    // valor do cabeçalho é controlado pelo cliente. O UseForwardedHeaders (Program.cs) já aplica o
+    // IP acrescentado pelo ingress em RemoteIpAddress.
     private string? ObterIpCliente()
-    {
-        var forwardedFor = Request.Headers["X-Forwarded-For"].FirstOrDefault();
-        if (!string.IsNullOrWhiteSpace(forwardedFor))
-            return forwardedFor.Split(',')[0].Trim();
+        => HttpContext.Connection.RemoteIpAddress?.ToString();
 
-        return HttpContext.Connection.RemoteIpAddress?.ToString();
-    }
+    public record ListarRegistrosTravadosRequestBody(string EntidadeTipo, List<Guid> Ids);
+
+    // Quais registros da lista já estão travados pela assinatura (a tela esconde editar/excluir deles). Só
+    // devolve ids que o próprio chamador mandou: não expõe nada além de "travado ou não".
+    [Authorize]
+    [HttpPost("registros-travados")]
+    public async Task<ActionResult<List<Guid>>> ListarRegistrosTravados(ListarRegistrosTravadosRequestBody body, CancellationToken ct)
+        => Ok(await _mediator.Send(new ListarRegistrosTravadosQuery(body.EntidadeTipo, body.Ids ?? new List<Guid>()), ct));
 
     [Authorize(Policy = "assinatura:finalizar")]
     [HttpPost("{id:guid}/finalizar")]
@@ -126,6 +153,14 @@ public class AssinaturaController : ControllerBase
     {
         var verificacao = await _mediator.Send(new VerificarIntegridadeQuery(id), ct);
         return Ok(verificacao);
+    }
+
+    [Authorize(Policy = "assinatura:ver")]
+    [HttpGet("signatarios/{signatarioId:guid}/foto")]
+    public async Task<IActionResult> ObterFotoEvidencia(Guid signatarioId, CancellationToken ct)
+    {
+        var foto = await _mediator.Send(new ObterFotoEvidenciaAssinaturaQuery(signatarioId), ct);
+        return foto is null ? NotFound() : File(foto.Conteudo, foto.ContentType, foto.NomeArquivo);
     }
 
     [Authorize(Policy = "assinatura:ver")]

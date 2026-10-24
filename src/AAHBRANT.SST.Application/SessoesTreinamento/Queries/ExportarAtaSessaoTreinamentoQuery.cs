@@ -33,7 +33,7 @@ public class ExportarAtaSessaoTreinamentoQueryHandler : IRequestHandler<Exportar
             .Include(p => p.Trabalhador)
             .OrderBy(p => p.Trabalhador!.Nome)
             .Select(p => new AtaSessaoTreinamentoPdfParticipanteModelo(
-                p.Trabalhador!.Nome, p.Trabalhador.Matricula, p.PresencaConfirmadaEm))
+                p.Trabalhador!.Nome, p.Trabalhador.Matricula, p.PresencaConfirmadaEm, p.MetodoPresenca))
             .ToListAsync(ct);
 
         var fotos = await _db.FotosEvidenciaSessaoTreinamento
@@ -64,6 +64,10 @@ public class ExportarAtaSessaoTreinamentoQueryHandler : IRequestHandler<Exportar
             rastreio.UrlValidacaoPublica,
             rastreio.QrCodePng);
 
-        return _pdf.Gerar(modelo);
+        var pdf = _pdf.Gerar(modelo);
+        // Guarda a cópia exata emitida e o SHA-256 dela — é o que permite conferir, depois,
+        // que o arquivo em mãos não foi adulterado (ver HashArquivoCalculador).
+        await _rastreabilidade.RegistrarArquivoAsync(rastreio.DocumentoId, pdf, ct);
+        return pdf;
     }
 }

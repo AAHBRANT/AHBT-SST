@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
+  BotaoAcao,
   Button,
   Campo,
   Card,
@@ -15,9 +16,10 @@ import {
   Legenda,
   PageHeader,
   Select,
+  useConfirmar,
   type Coluna,
 } from '@ui';
-import { Add24Regular } from '@fluentui/react-icons';
+import { Add24Regular, Delete24Regular } from '@fluentui/react-icons';
 import {
   api,
   motivoEntregaUniformeLabel,
@@ -28,7 +30,9 @@ import {
   type TamanhoUniformeTrabalhador,
   type Trabalhador,
 } from '../../lib/api';
+import { useSouAdministrador } from '../../lib/UsuarioLogadoContext';
 import { AssinaturaEntregaUniformeDialog } from '../../components/assinatura/AssinaturaEntregaUniformeDialog';
+import { useRegistrosTravados } from '../../hooks/useRegistrosTravados';
 import { FotoCatalogoUniforme } from './FotoCatalogoUniforme';
 
 function entregaVazia(): NovaEntregaUniforme {
@@ -55,12 +59,17 @@ interface EntregaUniformeTabProps {
 export function EntregaUniformeTab({ aoNavegarParaMatriz }: EntregaUniformeTabProps) {
   const navigate = useNavigate();
   const [entregas, setEntregas] = useState<EntregaUniforme[]>([]);
+  // Já assinados não podem ser excluídos (o servidor recusa): o botão some deles.
+  const travados = useRegistrosTravados('EntregaUniforme', entregas.map((e) => e.id));
   const [itensCatalogo, setItensCatalogo] = useState<CatalogoUniforme[]>([]);
   const [itensPermitidos, setItensPermitidos] = useState<CatalogoUniforme[]>([]);
   const [tamanhosTrabalhador, setTamanhosTrabalhador] = useState<TamanhoUniformeTrabalhador[]>([]);
   const [trabalhadores, setTrabalhadores] = useState<Trabalhador[]>([]);
   const [novaEntrega, setNovaEntrega] = useState<NovaEntregaUniforme>(entregaVazia());
   const [erro, setErro] = useState<string | null>(null);
+  const [excluindoId, setExcluindoId] = useState<string | null>(null);
+  const souAdministrador = useSouAdministrador();
+  const { confirmar, dialogElement } = useConfirmar();
   const [carregando, setCarregando] = useState(false);
   const [entregaParaAssinar, setEntregaParaAssinar] = useState<EntregaUniforme | null>(null);
 
@@ -182,8 +191,33 @@ export function EntregaUniformeTab({ aoNavegarParaMatriz }: EntregaUniformeTabPr
     { chave: 'motivo', rotulo: 'Motivo', render: (e) => motivoEntregaUniformeLabel[e.motivoTipo] },
   ];
 
+  // Exclusão definitiva, só para Administrador (o servidor recusa os demais — ver
+  // PoliticasAutorizacao). A peça volta para o estoque do tamanho correspondente na obra.
+  async function excluir(entrega: EntregaUniforme) {
+    const confirmado = await confirmar({
+      titulo: 'Excluir entrega de uniforme',
+      mensagem:
+        `Excluir a entrega de ${nomeItem(entrega.catalogoUniformeId)} (tamanho ${entrega.tamanho})` +
+        ` para ${nomeTrabalhador(entrega.trabalhadorId)}?` +
+        ` ${entrega.quantidade} unidade(s) voltam para o estoque da obra. Esta ação não pode ser desfeita.`,
+      rotuloConfirmar: 'Excluir',
+    });
+    if (!confirmado) return;
+    try {
+      setExcluindoId(entrega.id);
+      setErro(null);
+      await api.entregasUniforme.excluir(entrega.id);
+      await carregar();
+    } catch (e) {
+      setErro(e instanceof Error ? e.message : 'Falha ao excluir a entrega de uniforme.');
+    } finally {
+      setExcluindoId(null);
+    }
+  }
+
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+      {dialogElement}
       <PageHeader titulo="Entrega de Uniforme" />
 
       {erro && (
@@ -313,6 +347,21 @@ export function EntregaUniformeTab({ aoNavegarParaMatriz }: EntregaUniformeTabPr
           linhas={entregas}
           chaveLinha={(e) => e.id}
           vazio={{ titulo: 'Nenhuma entrega de uniforme registrada ainda.' }}
+          acoesLinha={(e) => (
+            <>
+              {/* Exclusão é privilégio de Administrador (o servidor recusa os demais) — ver PoliticasAutorizacao. */}
+              {souAdministrador && !travados.has(e.id) && (
+                <BotaoAcao
+                  tom="excluir"
+                  icon={<Delete24Regular />}
+                  disabled={excluindoId === e.id}
+                  onClick={() => excluir(e)}
+                  aria-label="Excluir entrega de uniforme"
+                  title="Excluir esta entrega (somente administrador)"
+                />
+              )}
+            </>
+          )}
         />
       </Card>
 

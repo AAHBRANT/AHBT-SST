@@ -19,7 +19,10 @@ public record DocumentoAssinaturaResumoDto(
     DateTime? FinalizadoEm,
     int QuantidadeSignatarios,
     bool TemPdf,
-    string? TokenValidacaoPublica);
+    string? TokenValidacaoPublica,
+    // Rótulo institucional do tipo (TipoDocumentoAssinatura) — mesma fonte usada na página pública,
+    // para o painel não exibir o nome técnico da entidade.
+    string EntidadeTipoRotulo);
 
 public record ListarDocumentosAssinaturaQuery(
     string? EntidadeTipo = null,
@@ -49,11 +52,21 @@ public class ListarDocumentosAssinaturaQueryHandler
         if (request.DataFim.HasValue)
             query = query.Where(d => d.CreatedAtUtc <= request.DataFim.Value);
 
-        return await query
+        // O rótulo é resolvido em memória (dicionário estático não tem tradução para SQL), depois da
+        // materialização — mesma razão de não usar TipoDocumentoAssinatura dentro do Select.
+        var documentos = await query
             .OrderByDescending(d => d.CreatedAtUtc)
             .Select(d => new DocumentoAssinaturaResumoDto(
                 d.Id, d.EntidadeTipo, d.EntidadeId, d.Status, d.CreatedAtUtc, d.FinalizadoEm,
-                d.Signatarios.Count, d.PdfConteudo != null, d.TokenValidacaoPublica))
+                d.Signatarios.Count, d.PdfConteudo != null, d.TokenValidacaoPublica, string.Empty))
             .ToListAsync(ct);
+
+        // Escopo por obra (auditoria 09/10/2026): sem isto, o painel listava documentos e tokens
+        // públicos de todas as obras para qualquer usuário com "assinatura:ver".
+        documentos = await EscopoDocumentoAssinatura.FiltrarAsync(_db, documentos, d => d.EntidadeTipo, d => d.EntidadeId, ct);
+
+        return documentos
+            .Select(d => d with { EntidadeTipoRotulo = TipoDocumentoAssinatura.Rotulo(d.EntidadeTipo) })
+            .ToList();
     }
 }

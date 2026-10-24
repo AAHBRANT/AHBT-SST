@@ -39,14 +39,17 @@ public class EncerrarSessaoTreinamentoCommandHandler : IRequestHandler<EncerrarS
     private readonly IAppDbContext _db;
     private readonly IMediator _mediator;
     private readonly IRegistradorAssinaturaService _registrador;
+    private readonly IGeradorNumeroDocumentoService _geradorNumero;
     private readonly ILogger<EncerrarSessaoTreinamentoCommandHandler> _logger;
 
     public EncerrarSessaoTreinamentoCommandHandler(
         IAppDbContext db,
         IMediator mediator,
         IRegistradorAssinaturaService registrador,
-        ILogger<EncerrarSessaoTreinamentoCommandHandler> logger)
+        ILogger<EncerrarSessaoTreinamentoCommandHandler> logger,
+        IGeradorNumeroDocumentoService geradorNumero)
     {
+        _geradorNumero = geradorNumero;
         _db = db;
         _mediator = mediator;
         _registrador = registrador;
@@ -68,11 +71,19 @@ public class EncerrarSessaoTreinamentoCommandHandler : IRequestHandler<EncerrarS
             throw new InvalidOperationException(
                 $"São necessárias {TotalFotosObrigatorias} fotos de evidência para encerrar a turma (faltam {TotalFotosObrigatorias - totalFotos}).");
 
+        var fotos = await _db.FotosEvidenciaSessaoTreinamento.Where(f => f.SessaoTreinamentoId == sessao.Id && f.Ativo).OrderBy(f => f.Ordem).ToListAsync(ct);
+        foreach (var foto in fotos)
+            AAHBRANT.SST.Application.Common.DadosCapturaFoto.ExigirCompletaSeInformada(foto.FotoMetadadosJson, $"Foto {foto.Ordem}");
+
         var participantes = await _db.ParticipantesSessaoTreinamento
             .Where(p => p.SessaoTreinamentoId == sessao.Id && p.Ativo)
             .ToListAsync(ct);
 
-        var validadeEmMeses = sessao.CursoTreinamento!.ValidadeEmMeses;
+        var validadeEmMeses = sessao.ValidadeEmMeses > 0 ? sessao.ValidadeEmMeses : sessao.CursoTreinamento!.ValidadeEmMeses;
+        // Número de certificado próprio por participante (19/10) — antes a turma inteira saía com o
+        // mesmo número. Prefixo pela NR (AAH-NR35-2026-0001) para identificar de qual norma é.
+        var nr = CatalogoNormasRegulamentadoras.NormalizarNumero(sessao.CursoTreinamento!.NormaReferencia);
+        var prefixoCertificado = nr is null ? "AAH-CERT" : $"AAH-{nr.Replace("-", string.Empty)}";
         var geradosParaAssinar = new List<(Guid TreinamentoId, Guid TrabalhadorId)>();
         foreach (var participante in participantes.Where(p => p.PresencaConfirmadaEm is not null && p.TreinamentoGeradoId is null))
         {
@@ -84,7 +95,10 @@ public class EncerrarSessaoTreinamentoCommandHandler : IRequestHandler<EncerrarS
                 DataValidade = sessao.DataRealizacao.AddMonths(validadeEmMeses),
                 CargaHorariaRealizada = sessao.CargaHorariaRealizada,
                 InstituicaoInstrutor = sessao.InstituicaoInstrutor,
-                NumeroCertificado = sessao.NumeroCertificado,
+                InstrutorRegistroProfissional = sessao.InstrutorRegistroProfissional,
+                Local = sessao.Local,
+                ConteudoProgramatico = sessao.ConteudoProgramatico,
+                NumeroCertificado = await _geradorNumero.GerarAsync(prefixoCertificado, ct),
                 SessaoTreinamentoId = sessao.Id,
             };
             _db.Treinamentos.Add(treinamento);
@@ -96,6 +110,10 @@ public class EncerrarSessaoTreinamentoCommandHandler : IRequestHandler<EncerrarS
         sessao.DataEncerramento = DateTime.UtcNow;
 
         await _db.SaveChangesAsync(ct);
+
+        // Ações do plano de ocorrências que se resolvem com uma turma deste curso.
+        var ocorrencias = await AAHBRANT.SST.Application.AcoesPlano.ResolucaoVinculadaAcaoPlano.OcorrenciasComTreinamentoAsync(_db, sessao.CursoTreinamentoId, ct);
+        await AAHBRANT.SST.Application.AcoesPlano.ResolucaoVinculadaAcaoPlano.ConcluirAtendidasAsync(_db, ocorrencias, ct);
 
         foreach (var (treinamentoId, trabalhadorId) in geradosParaAssinar)
         {
@@ -131,6 +149,9 @@ public class EncerrarSessaoTreinamentoCommandHandler : IRequestHandler<EncerrarS
                     _logger.LogWarning(ex, "Falha ao registrar a assinatura automática do instrutor no certificado {TreinamentoId}.", treinamentoId);
                 }
             }
+
+            // Certificado com as assinaturas da turma encerrada: fecha o documento.
+            await FinalizacaoAutomaticaDocumento.TentarAsync(_db, _mediator, _logger, documentoId.Value, ct);
         }
     }
 }

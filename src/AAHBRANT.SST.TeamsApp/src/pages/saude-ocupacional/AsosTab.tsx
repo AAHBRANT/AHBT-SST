@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import {
+  BotaoAcao,
   Button,
   Campo,
   Card,
@@ -16,9 +17,7 @@ import {
   Text,
   Textarea,
   designTokens,
-  nivelVencimento,
-  rotuloDeVencimento,
-  tomDeVencimento,
+  LIMIAR_ALERTA_DIAS,
   useConfirmar,
   type Coluna,
   type Tom,
@@ -41,7 +40,7 @@ function asoVazio(): NovoAso {
     tipo: 1,
     dataExame: '',
     dataValidade: '',
-    resultadoStatus: ResultadoAso.Pendente,
+    resultadoStatus: ResultadoAso.Apto,
     medicoNome: '',
     medicoCrm: '',
     observacoesClinicas: '',
@@ -52,9 +51,63 @@ function asoVazio(): NovoAso {
 // AptidoesTab.tsx, mesma tabela de tons.
 const tomPorResultadoAso: Record<number, Tom> = { 1: 'ok', 2: 'atencao', 3: 'alerta', 4: 'info' };
 
-function chipVencimento(data?: string | null) {
-  const nivel = nivelVencimento(data);
-  return nivel ? <StatusChip tom={tomDeVencimento(nivel)}>{rotuloDeVencimento(nivel)}</StatusChip> : null;
+const estiloLinhaApoio = { display: 'block', fontSize: 12, marginTop: 2, color: designTokens.colorNeutralMedium };
+
+// Compara só o dia do calendário: a API manda a validade com hora, e somar a hora/fuso fazia a
+// contagem errar por 1 dia.
+function diasAteValidade(dataValidade: string) {
+  const [ano, mes, dia] = dataValidade.slice(0, 10).split('-').map(Number);
+  const hoje = new Date(new Date().toDateString());
+  return Math.round((new Date(ano, mes - 1, dia).getTime() - hoje.getTime()) / 86_400_000);
+}
+
+function formatarData(iso: string) {
+  const [ano, mes, dia] = iso.slice(0, 10).split('-');
+  return `${dia}/${mes}/${ano}`;
+}
+
+// ASO dentro da validade é apto (regra do usuário, 13/10): o G-RH manda o ASO sem o campo de
+// aptidão, então "Pendente" é só falta do dado e é mostrado como Apto nesta lista.
+function parecerExibido(resultado: number) {
+  return resultado === ResultadoAso.Pendente ? ResultadoAso.Apto : resultado;
+}
+
+// "Situação hoje" cruza validade e parecer (pedido do usuário, 13/10): antes a linha mostrava
+// "Vencido" na validade e "Apto" no resultado lado a lado, e quem lia entendia que o trabalhador
+// estava liberado. Vencimento vence qualquer parecer; parecer só decide quando o exame ainda vale.
+function situacaoHoje(aso: Aso): { tom: Tom; rotulo: string; detalhe?: string } {
+  const dias = diasAteValidade(aso.dataValidade);
+  if (dias < 0)
+    return { tom: 'alerta', rotulo: 'Vencido', detalhe: `Refazer exame · venceu há ${-dias} ${-dias === 1 ? 'dia' : 'dias'}` };
+  if (aso.resultadoStatus === ResultadoAso.Inapto)
+    return { tom: 'alerta', rotulo: 'Não liberado', detalhe: 'Inapto no exame' };
+  if (dias <= LIMIAR_ALERTA_DIAS)
+    return { tom: 'atencao', rotulo: dias === 0 ? 'Vence hoje' : `Vence em ${dias} ${dias === 1 ? 'dia' : 'dias'}`, detalhe: 'Agendar periódico' };
+  if (aso.resultadoStatus === ResultadoAso.AptoComRestricao) return { tom: 'atencao', rotulo: 'Liberado com restrição' };
+  return { tom: 'ok', rotulo: 'Liberado' };
+}
+
+// O G-RH às vezes tem o mesmo ASO em vários documentos (ex.: 9 linhas iguais de um trabalhador em
+// 13/10), e o SST cria um registro por documento. Mostra uma linha por exame — mesmo trabalhador,
+// tipo, data e validade — sem apagar nada do banco; prefere a cópia que já tem parecer lançado.
+interface AsoAgrupado extends Aso {
+  copias: number;
+}
+
+function agruparRepetidos(lista: Aso[]): AsoAgrupado[] {
+  const grupos = new Map<string, AsoAgrupado>();
+  for (const aso of lista) {
+    const chave = [aso.trabalhadorId, aso.tipo, aso.dataExame?.slice(0, 10), aso.dataValidade?.slice(0, 10)].join('|');
+    const atual = grupos.get(chave);
+    if (!atual) {
+      grupos.set(chave, { ...aso, copias: 1 });
+    } else if (atual.resultadoStatus === ResultadoAso.Pendente && aso.resultadoStatus !== ResultadoAso.Pendente) {
+      grupos.set(chave, { ...aso, copias: atual.copias + 1 });
+    } else {
+      atual.copias += 1;
+    }
+  }
+  return [...grupos.values()];
 }
 
 // Onda 2 Task 12 (camada ui/): cross-worker (todos os trabalhadores) — a versão somente-leitura
@@ -62,7 +115,7 @@ function chipVencimento(data?: string | null) {
 // continua inalterada. Edição inline por linha: clicar na linha abre os campos editáveis nela mesma;
 // clicar de novo enquanto já está em edição não reinicia a edição (guarda em aoClicarLinha).
 export function AsosTab() {
-  const [asos, setAsos] = useState<Aso[]>([]);
+  const [asos, setAsos] = useState<AsoAgrupado[]>([]);
   const [trabalhadores, setTrabalhadores] = useState<Trabalhador[]>([]);
   const [novoAso, setNovoAso] = useState<NovoAso>(asoVazio());
   const [edicaoId, setEdicaoId] = useState<string | null>(null);
@@ -77,7 +130,7 @@ export function AsosTab() {
     try {
       setErro(null);
       const [lista, listaTrabalhadores] = await Promise.all([api.asos.listar(), api.trabalhadores.listar()]);
-      setAsos(lista);
+      setAsos(agruparRepetidos(lista));
       setTrabalhadores(listaTrabalhadores);
     } catch (e) {
       setErro(e instanceof Error ? e.message : 'Falha ao carregar ASOs.');
@@ -146,8 +199,24 @@ export function AsosTab() {
     }
   }
 
-  const colunas: Coluna<Aso>[] = [
-    { chave: 'trabalhador', rotulo: 'Funcionário', render: (a) => nomeTrabalhador(a.trabalhadorId) },
+  const colunas: Coluna<AsoAgrupado>[] = [
+    {
+      chave: 'trabalhador',
+      rotulo: 'Funcionário',
+      render: (a) => (
+        <>
+          {nomeTrabalhador(a.trabalhadorId)}
+          {a.copias > 1 && (
+            <span
+              style={estiloLinhaApoio}
+              title={`O mesmo exame foi recebido ${a.copias} vezes do G-RH. Excluir remove uma cópia por vez.`}
+            >
+              {a.copias} documentos iguais
+            </span>
+          )}
+        </>
+      ),
+    },
     {
       chave: 'tipo',
       rotulo: 'Tipo',
@@ -187,14 +256,25 @@ export function AsosTab() {
             onChange={(_, d) => setEdicao({ ...edicao, dataValidade: d.value })}
           />
         ) : (
-          <>
-            {a.dataValidade?.slice(0, 10)} {chipVencimento(a.dataValidade)}
-          </>
+          a.dataValidade?.slice(0, 10)
         ),
     },
     {
+      chave: 'situacao',
+      rotulo: 'Situação hoje',
+      render: (a) => {
+        const situacao = situacaoHoje(a);
+        return (
+          <>
+            <StatusChip tom={situacao.tom}>{situacao.rotulo}</StatusChip>
+            {situacao.detalhe && <span style={estiloLinhaApoio}>{situacao.detalhe}</span>}
+          </>
+        );
+      },
+    },
+    {
       chave: 'resultado',
-      rotulo: 'Resultado',
+      rotulo: 'Parecer do médico',
       render: (a) =>
         edicaoId === a.id && edicao ? (
           <Select
@@ -207,9 +287,15 @@ export function AsosTab() {
               </option>
             ))}
           </Select>
+        ) : diasAteValidade(a.dataValidade) < 0 ? (
+          // Exame vencido: o parecer é só histórico, então fica apagado e sem pulsar.
+          <>
+            <StatusChip tom="neutro">{resultadoAsoLabel[parecerExibido(a.resultadoStatus)]}</StatusChip>
+            <span style={estiloLinhaApoio}>no exame de {formatarData(a.dataExame)}</span>
+          </>
         ) : (
-          <StatusChip tom={tomPorResultadoAso[a.resultadoStatus] ?? 'neutro'}>
-            {resultadoAsoLabel[a.resultadoStatus]}
+          <StatusChip tom={tomPorResultadoAso[parecerExibido(a.resultadoStatus)] ?? 'neutro'}>
+            {resultadoAsoLabel[parecerExibido(a.resultadoStatus)]}
           </StatusChip>
         ),
     },
@@ -334,7 +420,7 @@ export function AsosTab() {
                 aria-label="Salvar"
               />
             ) : (
-              <Button appearance="subtle" icon={<Delete24Regular />} onClick={() => excluir(a.id)} aria-label="Excluir" />
+              <BotaoAcao tom="excluir" icon={<Delete24Regular />} onClick={() => excluir(a.id)} aria-label="Excluir" />
             )
           }
         />

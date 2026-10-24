@@ -1,5 +1,6 @@
 using System.Security.Claims;
 using AAHBRANT.SST.Application.Common.Interfaces;
+using AAHBRANT.SST.Application.Common.Seguranca;
 using AAHBRANT.SST.Domain.Enums;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.EntityFrameworkCore;
@@ -31,11 +32,13 @@ public class PermissaoAuthorizationHandler : AuthorizationHandler<PermissaoRequi
 {
     private readonly IAppDbContext _db;
     private readonly IConfiguration _configuracao;
+    private readonly IAcessoPorObraService _acesso;
 
-    public PermissaoAuthorizationHandler(IAppDbContext db, IConfiguration configuracao)
+    public PermissaoAuthorizationHandler(IAppDbContext db, IConfiguration configuracao, IAcessoPorObraService acesso)
     {
         _db = db;
         _configuracao = configuracao;
+        _acesso = acesso;
     }
 
     protected override async Task HandleRequirementAsync(
@@ -66,13 +69,61 @@ public class PermissaoAuthorizationHandler : AuthorizationHandler<PermissaoRequi
             return;
         }
 
-        var temPermissao = await _db.Usuarios
-            .Where(u => u.AzureAdObjectId == azureAdObjectId && u.Status == StatusUsuario.Ativo)
-            .SelectMany(u => u.PerfisPorObra)
-            .Select(vinculo => vinculo.PerfilAcesso)
-            .Where(perfil => perfil != null)
-            .SelectMany(perfil => perfil!.Permissoes)
-            .AnyAsync(pp => pp.Permitido && pp.Permissao != null && pp.Permissao.Codigo == requirement.Codigo);
+        // A Central de Suporte IA é um canal de atendimento para qualquer usuário autenticado.
+        // A visão administrativa continua protegida por suporte-ia:administrar e pela matriz RBAC.
+        if (requirement.Codigo == "suporte-ia:usar" && context.User.Identity?.IsAuthenticated == true)
+        {
+            context.Succeed(requirement);
+            return;
+        }
+
+        // Saber quem eu sou e o que eu posso é pré-requisito para a tela decidir o que mostrar —
+        // qualquer autenticado consulta o próprio cadastro, e só o próprio (ver
+        // ObterUsuarioLogadoQuery, que resolve pelo claim do token, nunca por id vindo da rota).
+        if (requirement.Codigo == PoliticasAutorizacao.QualquerUsuarioAutenticado && context.User.Identity?.IsAuthenticated == true)
+        {
+            context.Succeed(requirement);
+            return;
+        }
+
+        // Regra fixa de Administrador (23/09) — não passa pela matriz Perfil x Permissão. Fica
+        // depois de AppRolesReconhecidas de propósito: token de serviço (client-credentials do
+        // G-RH) não apaga registro, isso é ação de gente.
+        if (requirement.Codigo == PoliticasAutorizacao.SomenteAdministrador)
+        {
+            var ehAdministrador = await _db.Usuarios
+                .Where(u => u.AzureAdObjectId == azureAdObjectId && u.Status == StatusUsuario.Ativo)
+                .SelectMany(u => u.PerfisPorObra)
+                .AnyAsync(vinculo => vinculo.PerfilAcesso != null
+                    && vinculo.PerfilAcesso.Tipo == TipoPerfilAcesso.Administrador);
+
+            if (ehAdministrador) context.Succeed(requirement);
+            return;
+        }
+
+        if (requirement.Codigo == PoliticasAutorizacao.SomenteEngenheiroSeguranca)
+        {
+            var ehEngenheiro = await _db.Usuarios
+                .Where(u => u.AzureAdObjectId == azureAdObjectId && u.Status == StatusUsuario.Ativo)
+                .SelectMany(u => u.PerfisPorObra)
+                .AnyAsync(vinculo => vinculo.PerfilAcesso != null
+                    && vinculo.PerfilAcesso.Tipo == TipoPerfilAcesso.EngenheiroSeguranca);
+
+            if (ehEngenheiro) context.Succeed(requirement);
+            return;
+        }
+
+        // Pop-up de novidades da versão (requisito do usuário, 18/09): ver e cadastrar são liberados
+        // para qualquer usuário autenticado, sem checagem de RBAC — decisão explícita do usuário ao
+        // aprovar o design, já que hoje só ele mesmo usa a tela de cadastro.
+        if (requirement.Codigo == "novidades:usar" && context.User.Identity?.IsAuthenticated == true)
+        {
+            context.Succeed(requirement);
+            return;
+        }
+
+        var temPermissao = (await _acesso.ObterEscopoAsync(
+            azureAdObjectId, requirement.Codigo, CancellationToken.None)).TemPermissao;
 
         if (temPermissao)
         {

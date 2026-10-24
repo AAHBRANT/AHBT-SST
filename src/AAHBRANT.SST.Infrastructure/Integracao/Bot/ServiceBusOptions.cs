@@ -16,4 +16,9 @@ public class ServiceBusOptions
     // G-RH (ServiceBusPublicadorAcidenteGrh) — nomes definidos em conjunto com o time do G-RH.
     public string FilaColaboradorGrh { get; set; } = "colaborador-grh";
     public string FilaAcidenteGrh { get; set; } = "acidente-grh";
+
+    // Integração G-RH — Alojamento (2026-09-16): mesmo esquema de "colaborador-grh", publicada pelo
+    // G-RH e consumida aqui (ServiceBusAlojamentoGrhProcessor). Nome ainda sujeito a confirmação do
+    // time do G-RH (ver docs/superpowers/2026-09-15-pedido-integracao-alojamento-grh.md).
+    public string FilaAlojamentoGrh { get; set; } = "alojamento-grh";
 }

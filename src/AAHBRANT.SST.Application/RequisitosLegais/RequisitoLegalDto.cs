@@ -10,7 +10,9 @@ public record RequisitoLegalDto(
     string Descricao,
     CategoriaRequisitoLegal Categoria,
     StatusRequisitoLegal Status,
-    string? Fonte);
+    string? Fonte,
+    DateTime? ValidadoEmUtc = null,
+    string? ValidadoPorNome = null);
 
 public record RequisitoLegalCriterioDto(
     Guid Id,
@@ -21,6 +23,8 @@ public record RequisitoLegalCriterioDto(
     string? FuncaoNome,
     TipoAtivo? TipoEquipamento,
     Guid? ItemQuestionarioAplicabilidadeId,
-    string? ItemQuestionarioPergunta);
+    string? ItemQuestionarioPergunta,
+    // Ligado automaticamente pela carga das NRs (palavra-chave do perigo) — QSMS confere.
+    bool SugeridoPelaCarga = false);
 
 public record RequisitoLegalDetalheDto(RequisitoLegalDto Requisito, List<RequisitoLegalCriterioDto> Criterios);

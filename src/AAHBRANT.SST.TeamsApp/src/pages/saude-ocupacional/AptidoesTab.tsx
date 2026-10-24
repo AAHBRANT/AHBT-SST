@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import {
+  BotaoAcao,
   Button,
   Campo,
   Card,
@@ -313,7 +314,7 @@ export function AptidoesTab() {
                 aria-label="Salvar"
               />
             ) : (
-              <Button appearance="subtle" icon={<Delete24Regular />} onClick={() => excluir(a.id)} aria-label="Excluir" />
+              <BotaoAcao tom="excluir" icon={<Delete24Regular />} onClick={() => excluir(a.id)} aria-label="Excluir" />
             )
           }
         />

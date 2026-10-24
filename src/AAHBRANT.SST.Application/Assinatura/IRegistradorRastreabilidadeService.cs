@@ -6,7 +6,15 @@ using Microsoft.EntityFrameworkCore;
 
 namespace AAHBRANT.SST.Application.Assinatura;
 
-public record RastreabilidadeDocumentoResultado(string ConteudoHash, string UrlValidacaoPublica, byte[] QrCodePng, bool TemAssinatura);
+public record RastreabilidadeDocumentoResultado(
+    // Id do registro garantido nesta chamada — o exportador devolve este mesmo id em
+    // RegistrarArquivoAsync, em vez de repetir (entidadeTipo, entidadeId) e correr o risco de
+    // gravar o arquivo no documento errado.
+    Guid DocumentoId,
+    string ConteudoHash,
+    string UrlValidacaoPublica,
+    byte[] QrCodePng,
+    bool TemAssinatura);
 
 // Rastreabilidade (hash+token+QR) desacoplada de finalização — deliberadamente NÃO usa
 // FinalizarDocumentoCommand (ver docs/superpowers/specs/2026-09-04-rodape-validacao-documentos-design.md
@@ -15,6 +23,11 @@ public record RastreabilidadeDocumentoResultado(string ConteudoHash, string UrlV
 public interface IRegistradorRastreabilidadeService
 {
     Task<RastreabilidadeDocumentoResultado> GarantirAsync(string entidadeTipo, Guid entidadeId, CancellationToken ct);
+
+    // Guarda o PDF recém-emitido e o SHA-256 dos seus bytes. Chamado DEPOIS da geração, por isso o
+    // hash do arquivo não cabe no rodapé do próprio arquivo (seria circular) — quem confere baixa o
+    // PDF pela página pública e compara o SHA-256 com o exibido lá.
+    Task RegistrarArquivoAsync(Guid documentoId, byte[] pdf, CancellationToken ct);
 }
 
 public class RegistradorRastreabilidadeService : IRegistradorRastreabilidadeService
@@ -60,6 +73,27 @@ public class RegistradorRastreabilidadeService : IRegistradorRastreabilidadeServ
         await _db.SaveChangesAsync(ct);
 
         var qr = _qrCode.Gerar(documento.TokenValidacaoPublica);
-        return new RastreabilidadeDocumentoResultado(documento.ConteudoHash!, qr.UrlValidacao, qr.Png, documento.Signatarios.Count > 0);
+        return new RastreabilidadeDocumentoResultado(documento.Id, documento.ConteudoHash!, qr.UrlValidacao, qr.Png, documento.Signatarios.Count > 0);
+    }
+
+    public async Task RegistrarArquivoAsync(Guid documentoId, byte[] pdf, CancellationToken ct)
+    {
+        var documento = await _db.DocumentosAssinatura.FirstOrDefaultAsync(d => d.Id == documentoId, ct);
+
+        // Sem registro de rastreabilidade não há o que guardar — GarantirAsync sempre roda antes, na
+        // mesma exportação, então este caminho só ocorreria se alguém chamasse fora de ordem.
+        if (documento is null)
+            return;
+
+        // Documento finalizado é prova congelada: a cópia guardada na finalização não é substituída
+        // por uma reimpressão posterior, nem que o conteúdo de origem tenha mudado no banco.
+        if (documento.Status == StatusDocumentoAssinatura.Finalizado && documento.HashPdf is not null)
+            return;
+
+        documento.PdfConteudo = pdf;
+        documento.HashPdf = HashArquivoCalculador.Calcular(pdf);
+        documento.ArquivoAtualizadoEm = DateTime.UtcNow;
+
+        await _db.SaveChangesAsync(ct);
     }
 }

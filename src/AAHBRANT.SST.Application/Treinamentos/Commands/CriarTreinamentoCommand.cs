@@ -1,5 +1,7 @@
 using AAHBRANT.SST.Application.Common.Interfaces;
+using AAHBRANT.SST.Application.Common.Seguranca;
 using AAHBRANT.SST.Domain.Entidades;
+using AAHBRANT.SST.Domain.Enums;
 using FluentValidation;
 using MediatR;
 
@@ -14,7 +16,10 @@ public record CriarTreinamentoCommand(
     string? InstituicaoInstrutor,
     string? NumeroCertificado,
     string? Local,
-    string? InstrutorRegistroProfissional) : IRequest<Guid>;
+    string? InstrutorRegistroProfissional,
+    // Default Aahbrant: todas as chamadas anteriores a 22/09 (aba do perfil do trabalhador, testes,
+    // encerramento de turma) continuam criando treinamento interno sem precisar informar nada.
+    OrigemCertificadoTreinamento OrigemCertificado = OrigemCertificadoTreinamento.Aahbrant) : IRequest<Guid>;
 
 public class CriarTreinamentoCommandValidator : AbstractValidator<CriarTreinamentoCommand>
 {
@@ -24,6 +29,7 @@ public class CriarTreinamentoCommandValidator : AbstractValidator<CriarTreinamen
         RuleFor(x => x.CursoTreinamentoId).NotEmpty();
         RuleFor(x => x.DataRealizacao).NotEmpty();
         RuleFor(x => x.DataValidade).NotEmpty().GreaterThanOrEqualTo(x => x.DataRealizacao);
+        RuleFor(x => x.OrigemCertificado).IsInEnum();
     }
 }
 
@@ -34,6 +40,9 @@ public class CriarTreinamentoCommandHandler : IRequestHandler<CriarTreinamentoCo
 
     public async Task<Guid> Handle(CriarTreinamentoCommand request, CancellationToken ct)
     {
+        await _db.GarantirTrabalhadorNoEscopoAsync(request.TrabalhadorId, ct);
+        await CargaHorariaMinimaTreinamento.GarantirAsync(_db, request.CursoTreinamentoId, request.CargaHorariaRealizada, request.OrigemCertificado, ct);
+
         var treinamento = new Treinamento
         {
             TrabalhadorId = request.TrabalhadorId,
@@ -45,6 +54,7 @@ public class CriarTreinamentoCommandHandler : IRequestHandler<CriarTreinamentoCo
             NumeroCertificado = request.NumeroCertificado,
             Local = request.Local,
             InstrutorRegistroProfissional = request.InstrutorRegistroProfissional,
+            OrigemCertificado = request.OrigemCertificado,
         };
         _db.Treinamentos.Add(treinamento);
         await _db.SaveChangesAsync(ct);

@@ -7,13 +7,13 @@ namespace AAHBRANT.SST.Application.Tests.Elegibilidade;
 
 public class TreinamentoValidoRuleTests
 {
-    private static Trabalhador CriarTrabalhador() => new()
+    private static Trabalhador CriarTrabalhador(string nomeFuncao = "Pedreiro") => new()
     {
         Nome = "Trabalhador Teste",
         Matricula = "MAT-0002",
         Cpf = "11111111111",
         ObraId = Guid.NewGuid(),
-        FuncaoId = Guid.NewGuid(),
+        Funcao = new Funcao { Nome = nomeFuncao },
     };
 
     private static CursoTreinamento CriarCurso() => new()
@@ -82,5 +82,20 @@ public class TreinamentoValidoRuleTests
         var resultado = await regra.AvaliarAsync(new EligibilityRequest { TrabalhadorId = trabalhador.Id, ObraId = trabalhador.ObraId });
 
         Assert.False(resultado.Atendido);
+    }
+
+    [Fact]
+    public async Task Tecnico_de_seguranca_sem_treinamento_e_dispensado()
+    {
+        using var db = DbContextFactory.Criar();
+        var trabalhador = CriarTrabalhador("Técnico de Segurança");
+        db.Trabalhadores.Add(trabalhador);
+        await db.SaveChangesAsync();
+
+        var regra = new TreinamentoValidoRule(db);
+        var resultado = await regra.AvaliarAsync(new EligibilityRequest { TrabalhadorId = trabalhador.Id, ObraId = trabalhador.ObraId });
+
+        Assert.True(resultado.Atendido);
+        Assert.Equal("Dispensado - Técnico de Segurança", resultado.Detalhe);
     }
 }

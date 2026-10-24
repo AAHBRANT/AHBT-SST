@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import {
+  BotaoAcao,
   Button,
   Campo,
   Card,
@@ -204,7 +205,7 @@ export function PlanoAcaoTab({ pgrId, riscosDisponiveis }: { pgrId: string; risc
           carregando={carregandoLista}
           vazio={{ titulo: 'Nenhum item cadastrado no plano de ação ainda.' }}
           acoesLinha={(item) => (
-            <Button appearance="subtle" icon={<Delete24Regular />} onClick={() => excluir(item.id)} aria-label="Excluir" />
+            <BotaoAcao tom="excluir" icon={<Delete24Regular />} onClick={() => excluir(item.id)} aria-label="Excluir" />
           )}
         />
       </Card>

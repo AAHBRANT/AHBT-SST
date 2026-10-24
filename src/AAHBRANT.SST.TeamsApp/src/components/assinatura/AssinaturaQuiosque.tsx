@@ -2,6 +2,12 @@ import { useEffect, useState } from 'react';
 import {
   Badge,
   Button,
+  Dialog,
+  DialogActions,
+  DialogBody,
+  DialogContent,
+  DialogSurface,
+  DialogTitle,
   Table,
   TableBody,
   TableCell,
@@ -11,12 +17,16 @@ import {
   Text,
   tokens,
 } from '@fluentui/react-components';
-import { Checkmark24Filled, Fingerprint24Regular, Warning24Regular } from '@fluentui/react-icons';
-import { api, metodoAutenticacaoAssinaturaLabel, type DocumentoAssinatura } from '../../lib/api';
-import { capturarDigitalLocal, estaAgenteLocalDisponivel, obterDispositivoLocal } from '../../lib/agenteBiometricoLocal';
+import { Checkmark24Filled, LockClosed24Regular, Warning24Regular } from '@fluentui/react-icons';
+import { BotaoBiometriaDigital } from './BotaoBiometriaDigital';
+import { api, metodoAutenticacaoAssinaturaLabel, StatusDocumentoAssinatura, type DocumentoAssinatura } from '../../lib/api';
+import { capturarDigitalLocal, credencialLeitura, estaAgenteLocalDisponivel, obterDispositivoLocal, type DispositivoLocal } from '../../lib/agenteBiometricoLocal';
+import { tocarBipeAssinaturaAceita } from '../../lib/bipeAssinatura';
 import { SeletorFotoCamera } from '../SeletorFotoCamera';
+import { formatarAssinaturaDigital } from './assinaturaDigital';
 import { MutacaoEnfileiradaOfflineError } from '../../lib/offline/syncEngine';
 import { usePageStyles } from '../../pages/pageStyles';
+import { ErroFacialDialog } from './ErroFacialDialog';
 
 function extrairMensagemErro(e: unknown, fallback: string): string {
   if (!(e instanceof Error)) return fallback;
@@ -53,10 +63,13 @@ export function AssinaturaQuiosque({ entidadeTipo, entidadeId, obraId }: Assinat
   const [documento, setDocumento] = useState<DocumentoAssinatura | null>(null);
   const [processando, setProcessando] = useState(false);
   const [erro, setErro] = useState<string | null>(null);
+  const [erroFacial, setErroFacial] = useState<string | null>(null);
   const [ultimoAssinante, setUltimoAssinante] = useState<string | null>(null);
   const [agenteLocalDisponivel, setAgenteLocalDisponivel] = useState(false);
-  const [dispositivoLocal, setDispositivoLocal] = useState<{ dispositivoId: string; segredoDispositivo: string } | null>(null);
+  const [dispositivoLocal, setDispositivoLocal] = useState<DispositivoLocal | null>(null);
   const [pendenteFacial, setPendenteFacial] = useState(false);
+  const [confirmandoFinalizacao, setConfirmandoFinalizacao] = useState(false);
+  const [finalizando, setFinalizando] = useState(false);
 
   useEffect(() => {
     estaAgenteLocalDisponivel().then(async (disponivel) => {
@@ -90,15 +103,16 @@ export function AssinaturaQuiosque({ entidadeTipo, entidadeId, obraId }: Assinat
       setProcessando(true);
       setErro(null);
       setUltimoAssinante(null);
-      const captura = await capturarDigitalLocal();
+      const captura = await capturarDigitalLocal(dispositivoLocal.dispositivoId);
       const signatario = await api.assinatura.autenticarBiometriaLocal(
         documento.id,
-        dispositivoLocal.dispositivoId,
-        dispositivoLocal.segredoDispositivo,
+        credencialLeitura(dispositivoLocal, captura.leituras[0]),
         captura.trabalhadorId,
         captura.score,
+        captura.imagemPng,
       );
       setUltimoAssinante(signatario.trabalhadorNome);
+      tocarBipeAssinaturaAceita();
       const doc = await api.assinatura.obter(entidadeTipo, entidadeId);
       setDocumento(doc);
     } catch (e) {
@@ -113,14 +127,37 @@ export function AssinaturaQuiosque({ entidadeTipo, entidadeId, obraId }: Assinat
   // novo). Outros documentos (DDS, PT, EPI) continuam com quantas assinaturas forem necessárias.
   const assinaturaUnicaConcluida = entidadeTipo === 'Inspecao' && (documento?.signatarios.length ?? 0) > 0;
 
+  // Finalizado: não aceita mais assinaturas, o comprovante e o hash ficam congelados (11/10). Inspeção e DDS
+  // são finalizados sozinhos (assinatura única / encerramento do DDS) — finalizar um DDS no meio barraria
+  // os participantes que ainda vão chegar, por isso o botão não aparece para eles.
+  const finalizado = documento?.status === StatusDocumentoAssinatura.Finalizado;
+  const podeFinalizar = !finalizado && entidadeTipo !== 'Inspecao' && entidadeTipo !== 'Dds' && (documento?.signatarios.length ?? 0) > 0;
+
+  async function finalizar() {
+    if (!documento) return;
+    try {
+      setFinalizando(true);
+      setErro(null);
+      setDocumento(await api.assinatura.finalizar(documento.id));
+      setConfirmandoFinalizacao(false);
+    } catch (e) {
+      setConfirmandoFinalizacao(false);
+      setErro(extrairMensagemErro(e, 'Não foi possível finalizar o documento.'));
+    } finally {
+      setFinalizando(false);
+    }
+  }
+
   async function assinarComFacial(arquivo: File) {
     if (!documento) return;
     try {
       setErro(null);
+      setErroFacial(null);
       setPendenteFacial(false);
       setUltimoAssinante(null);
       const signatario = await api.assinatura.autenticarFacial(documento.id, obraId, arquivo);
       setUltimoAssinante(signatario.trabalhadorNome);
+      tocarBipeAssinaturaAceita();
       const doc = await api.assinatura.obter(entidadeTipo, entidadeId);
       setDocumento(doc);
     } catch (e) {
@@ -128,7 +165,7 @@ export function AssinaturaQuiosque({ entidadeTipo, entidadeId, obraId }: Assinat
         setPendenteFacial(true);
         return;
       }
-      setErro(extrairMensagemErro(e, 'Falha na autenticação facial.'));
+      setErroFacial(extrairMensagemErro(e, 'Falha na autenticação facial.'));
     }
   }
 
@@ -136,7 +173,17 @@ export function AssinaturaQuiosque({ entidadeTipo, entidadeId, obraId }: Assinat
     <div>
       {erro && <Text className={estilos.erro}>{erro}</Text>}
 
-      {assinaturaUnicaConcluida ? (
+      {finalizado ? (
+        <div className={estilos.card} style={{ marginBottom: 16, maxWidth: 480 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            <LockClosed24Regular style={{ color: tokens.colorPaletteGreenForeground1 }} />
+            <Text weight="semibold">Documento finalizado</Text>
+          </div>
+          <Text style={{ display: 'block', marginTop: 8 }}>
+            Não aceita novas assinaturas. O comprovante com o código de verificação e o QR de validação foram gerados.
+          </Text>
+        </div>
+      ) : assinaturaUnicaConcluida ? (
         <div className={estilos.card} style={{ marginBottom: 16, maxWidth: 480 }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
             <Checkmark24Filled style={{ color: tokens.colorPaletteGreenForeground1 }} />
@@ -146,20 +193,24 @@ export function AssinaturaQuiosque({ entidadeTipo, entidadeId, obraId }: Assinat
             A Patrulha de Segurança aceita apenas uma assinatura, já registrada abaixo.
           </Text>
         </div>
-      ) : agenteLocalDisponivel && dispositivoLocal ? (
+      ) : (
         <div className={estilos.card} style={{ marginBottom: 16, maxWidth: 480 }}>
           <Text weight="semibold" style={{ display: 'block', marginBottom: 12 }}>
             Digital (leitor local — Futronic FS80H)
           </Text>
-          <Button
-            appearance="primary"
-            size="large"
-            icon={<Fingerprint24Regular />}
+          <BotaoBiometriaDigital
             onClick={assinarComBiometriaLocal}
-            disabled={processando || !documento}
-          >
-            Autenticar com digital
-          </Button>
+            disabled={processando || !documento || !agenteLocalDisponivel || !dispositivoLocal}
+          />
+          {!(agenteLocalDisponivel && dispositivoLocal) && (
+            <div style={{ display: 'flex', alignItems: 'flex-start', gap: 8, marginTop: 12 }}>
+              <Warning24Regular />
+              <Text>
+                Leitor Futronic não encontrado nesta máquina. Verifique se o leitor está conectado e se o Agente
+                Biométrico está em execução, depois recarregue esta página — ou use o reconhecimento facial abaixo.
+              </Text>
+            </div>
+          )}
           {ultimoAssinante && (
             <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 12 }}>
               <Checkmark24Filled style={{ color: tokens.colorPaletteGreenForeground1 }} />
@@ -167,23 +218,12 @@ export function AssinaturaQuiosque({ entidadeTipo, entidadeId, obraId }: Assinat
             </div>
           )}
         </div>
-      ) : (
-        <div className={estilos.card} style={{ marginBottom: 16, maxWidth: 480 }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-            <Warning24Regular />
-            <Text weight="semibold">Leitor Futronic não encontrado nesta máquina</Text>
-          </div>
-          <Text style={{ display: 'block', marginTop: 8 }}>
-            Verifique se o leitor está conectado e se o Agente Biométrico está em execução, depois
-            recarregue esta página — ou use o reconhecimento facial abaixo.
-          </Text>
-        </div>
       )}
 
       {!assinaturaUnicaConcluida && (
         <div className={estilos.card} style={{ marginBottom: 16, maxWidth: 480 }}>
           <Text weight="semibold" style={{ display: 'block', marginBottom: 12 }}>
-            Reconhecimento Facial (Azure)
+            Facial Azure
           </Text>
           {pendenteFacial && (
             <Text style={{ display: 'block', marginBottom: 8 }}>
@@ -192,9 +232,13 @@ export function AssinaturaQuiosque({ entidadeTipo, entidadeId, obraId }: Assinat
           )}
           <SeletorFotoCamera
             aoSelecionarArquivo={assinarComFacial}
-            rotulo="Assinar com reconhecimento facial"
+            aoErroValidacao={setErroFacial}
+            rotulo="Facial Azure"
             desabilitado={!documento}
+            tamanho="medium"
+            variante="facialAzure"
             modoCamera="user"
+            exigirCamera
           />
         </div>
       )}
@@ -202,13 +246,18 @@ export function AssinaturaQuiosque({ entidadeTipo, entidadeId, obraId }: Assinat
       <div className={estilos.card}>
         <div className={estilos.toolbar}>
           <Text weight="semibold">Assinaturas registradas ({documento?.signatarios.length ?? 0})</Text>
+          {podeFinalizar && (
+            <Button appearance="secondary" icon={<LockClosed24Regular />} onClick={() => setConfirmandoFinalizacao(true)}>
+              Finalizar documento
+            </Button>
+          )}
         </div>
         <Table noNativeElements>
           <TableHeader>
             <TableRow>
               <TableHeaderCell>Nome</TableHeaderCell>
               <TableHeaderCell>Método</TableHeaderCell>
-              <TableHeaderCell>Horário</TableHeaderCell>
+              <TableHeaderCell>Assinatura</TableHeaderCell>
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -218,12 +267,30 @@ export function AssinaturaQuiosque({ entidadeTipo, entidadeId, obraId }: Assinat
                 <TableCell>
                   <Badge appearance="tint">{metodoAutenticacaoAssinaturaLabel[signatario.metodoAutenticacao]}</Badge>
                 </TableCell>
-                <TableCell>{new Date(signatario.assinadoEm).toLocaleTimeString('pt-BR')}</TableCell>
+                <TableCell>{formatarAssinaturaDigital(signatario.assinadoEm)}</TableCell>
               </TableRow>
             ))}
           </TableBody>
         </Table>
       </div>
+      <ErroFacialDialog mensagem={erroFacial} aoFechar={() => setErroFacial(null)} />
+      <Dialog open={confirmandoFinalizacao} onOpenChange={(_, d) => { if (!d.open && !finalizando) setConfirmandoFinalizacao(false); }}>
+        <DialogSurface>
+          <DialogBody>
+            <DialogTitle>Finalizar documento?</DialogTitle>
+            <DialogContent>
+              Depois de finalizado, o documento não aceita mais assinaturas e o comprovante fica congelado como prova,
+              com {documento?.signatarios.length ?? 0} assinatura(s). Confira se todos que precisavam assinar já assinaram.
+            </DialogContent>
+            <DialogActions>
+              <Button appearance="secondary" disabled={finalizando} onClick={() => setConfirmandoFinalizacao(false)}>Cancelar</Button>
+              <Button appearance="primary" disabled={finalizando} onClick={() => void finalizar()}>
+                {finalizando ? 'Finalizando…' : 'Finalizar'}
+              </Button>
+            </DialogActions>
+          </DialogBody>
+        </DialogSurface>
+      </Dialog>
     </div>
   );
 }

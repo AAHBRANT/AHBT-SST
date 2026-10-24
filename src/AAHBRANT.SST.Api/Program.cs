@@ -1,4 +1,4 @@
-using AAHBRANT.SST.Api.Autorizacao;
+﻿using AAHBRANT.SST.Api.Autorizacao;
 using AAHBRANT.SST.Api.Middlewares;
 using AAHBRANT.SST.Application;
 using AAHBRANT.SST.Infrastructure;
@@ -12,9 +12,19 @@ using Microsoft.Identity.Web;
 QuestPDF.Settings.License = QuestPDF.Infrastructure.LicenseType.Community;
 
 var builder = WebApplication.CreateBuilder(args);
+ConfiguracaoAutenticacao.Validar(builder.Configuration, builder.Environment.IsDevelopment());
 
 builder.Services.AddApplication();
 builder.Services.AddInfrastructure(builder.Configuration);
+builder.Services.AddHostedService<AAHBRANT.SST.Infrastructure.LeituraIa.LeituraIaBackgroundService>();
+// Migração dos grupos do reconhecimento facial para o recognition_04 (madrugada, uma obra por vez).
+builder.Services.AddHostedService<AAHBRANT.SST.Infrastructure.Assinatura.MigracaoModeloFacialBackgroundService>();
+// Cifra as fotos biométricas gravadas antes da criptografia (LGPD, 12/10). Termina sozinha quando não sobra nada.
+builder.Services.AddHostedService<AAHBRANT.SST.Infrastructure.Seguranca.CriptografiaFotosBackgroundService>();
+// Prazo de guarda das fotos de evidência: desligado até configurar Lgpd:DiasRetencaoFotosEvidencia.
+builder.Services.AddHostedService<AAHBRANT.SST.Infrastructure.Seguranca.RetencaoFotosBiometricasBackgroundService>();
+// Envio das NCs com obra ao G-QUALI (espelho). Desligado sem a seção GQuali.
+builder.Services.AddHostedService<AAHBRANT.SST.Infrastructure.Integracao.GQuali.EnvioNcGQualiService>();
 
 // Autenticação Entra ID: só é ativada se a seção "AzureAd" estiver configurada com um
 // App Registration real (TenantId/ClientId). Provisionamento desse recurso no Azure
@@ -48,9 +58,26 @@ if (autenticacaoEntraIdHabilitada)
 builder.Services.AddAuthorization();
 builder.Services.AddSingleton<IAuthorizationPolicyProvider, PermissaoAuthorizationPolicyProvider>();
 builder.Services.AddScoped<IAuthorizationHandler, PermissaoAuthorizationHandler>();
+builder.Services.AddScoped<IUsuarioAtualResolver, UsuarioAtualResolver>();
+builder.Services.AddHttpContextAccessor();
+builder.Services.AddScoped<AAHBRANT.SST.Application.Common.Interfaces.IClienteIpProvider, ClienteIpProvider>();
 // ICurrentUserService (camada 3 do RBAC) é registrado em AddInfrastructure — ver EscopoPorObraMiddleware.
 
 builder.Services.AddControllers();
+
+// Limite de requisições nas rotas sem login (12/10): o agente do leitor (autenticado só pelo segredo no
+// corpo) e as páginas públicas de validação/identificação. Sem isso dava para tentar segredos ou tokens
+// sem parar. Por IP, janela de 1 minuto; os valores cobrem com folga o uso normal (o agente sincroniza a
+// cada 2 min; uma obra inteira escaneando QR atrás do mesmo IP).
+builder.Services.AddRateLimiter(opcoes =>
+{
+    opcoes.RejectionStatusCode = StatusCodes.Status429TooManyRequests;
+    static string ChaveIp(HttpContext c) => c.Connection.RemoteIpAddress?.ToString() ?? "sem-ip";
+    opcoes.AddPolicy("agente-anonimo", c => System.Threading.RateLimiting.RateLimitPartition.GetFixedWindowLimiter(ChaveIp(c),
+        _ => new System.Threading.RateLimiting.FixedWindowRateLimiterOptions { PermitLimit = 30, Window = TimeSpan.FromMinutes(1) }));
+    opcoes.AddPolicy("publico", c => System.Threading.RateLimiting.RateLimitPartition.GetFixedWindowLimiter(ChaveIp(c),
+        _ => new System.Threading.RateLimiting.FixedWindowRateLimiterOptions { PermitLimit = 120, Window = TimeSpan.FromMinutes(1) }));
+});
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
 
@@ -75,7 +102,23 @@ builder.Services.AddCors(options =>
     }
 });
 
+// IP do cliente para a trilha de assinatura (evidência jurídica). A API recebe tráfego direto do
+// ingress do Azure Container Apps (um único proxy), que ACRESCENTA o IP real ao final de
+// X-Forwarded-For. Com ForwardLimit = 1 o ASP.NET usa só esse último valor e ignora o que o cliente
+// tenha enviado antes dele. A rede do ingress não é fixa, então KnownNetworks/KnownProxies são
+// esvaziados — seguro apenas porque a API não é exposta sem esse ingress. Auditoria 06/10/2026 (M3).
+builder.Services.Configure<Microsoft.AspNetCore.Builder.ForwardedHeadersOptions>(opcoes =>
+{
+    opcoes.ForwardedHeaders = Microsoft.AspNetCore.HttpOverrides.ForwardedHeaders.XForwardedFor
+        | Microsoft.AspNetCore.HttpOverrides.ForwardedHeaders.XForwardedProto;
+    opcoes.ForwardLimit = 1;
+    opcoes.KnownNetworks.Clear();
+    opcoes.KnownProxies.Clear();
+});
+
 var app = builder.Build();
+
+app.UseForwardedHeaders();
 
 app.UseMiddleware<TratamentoDeExcecaoMiddleware>();
 
@@ -113,6 +156,8 @@ app.UseMiddleware<EscopoPorObraMiddleware>();
 // vazar a resposta de outro usuário sem autenticação nenhuma.
 app.UseMiddleware<IdempotenciaMiddleware>();
 
+app.UseRateLimiter();
+
 // Aplica migrations pendentes automaticamente no start — antes não existia isso no código
 // (schema do banco de homologação era atualizado manualmente a cada nova migration).
 using (var escopoMigracao = app.Services.CreateScope())
@@ -124,8 +169,14 @@ using (var escopoMigracao = app.Services.CreateScope())
 await RbacSeeder.ExecutarAsync(app.Services);
 await CpfLgpdBackfillSeeder.ExecutarAsync(app.Services);
 await RegraAlertaSeeder.ExecutarAsync(app.Services);
+await DocumentoExigidoEmpresaSeeder.ExecutarAsync(app.Services);
 await ChecklistAlojamentoSeeder.ExecutarAsync(app.Services);
+await ChecklistVeiculoSeeder.ExecutarAsync(app.Services);
+await ConfiguracaoAlojamentoSeeder.ExecutarAsync(app.Services);
 await MateriaisApoioSeeder.ExecutarAsync(app.Services);
+await RequisitosLegaisNrSeeder.ExecutarAsync(app.Services);
+await RegrasCursoObrigatorioSeeder.ExecutarAsync(app.Services);
+await NovidadesSeeder.ExecutarAsync(app.Services);
 
 if (app.Environment.IsDevelopment())
 {

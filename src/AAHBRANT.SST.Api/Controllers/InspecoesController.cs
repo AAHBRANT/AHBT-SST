@@ -1,3 +1,4 @@
+using AAHBRANT.SST.Api.Autorizacao;
 using AAHBRANT.SST.Application.Inspecoes.Commands;
 using AAHBRANT.SST.Application.Inspecoes.Queries;
 using AAHBRANT.SST.Application.NaoConformidades.Commands;
@@ -55,7 +56,7 @@ public class InspecoesController : ControllerBase
         await using var stream = new MemoryStream();
         await body.Foto.CopyToAsync(stream, ct);
 
-        await _mediator.Send(new AnexarFotoItemInspecaoCommand(respostaId, stream.ToArray(), body.Foto.ContentType), ct);
+        await _mediator.Send(new AnexarFotoItemInspecaoCommand(respostaId, stream.ToArray(), body.Foto.ContentType, body.Metadados), ct);
         return NoContent();
     }
 
@@ -77,7 +78,7 @@ public class InspecoesController : ControllerBase
         await using var stream = new MemoryStream();
         await body.Foto.CopyToAsync(stream, ct);
 
-        await _mediator.Send(new AnexarFotoDepoisItemInspecaoCommand(respostaId, stream.ToArray(), body.Foto.ContentType), ct);
+        await _mediator.Send(new AnexarFotoDepoisItemInspecaoCommand(respostaId, stream.ToArray(), body.Foto.ContentType, body.Metadados), ct);
         return NoContent();
     }
 
@@ -117,6 +118,16 @@ public class InspecoesController : ControllerBase
             respostaId, body.RequisitoRelacionado, body.Local, body.RiscoId, body.ResponsavelUsuarioId, body.Prazo), ct);
         return Ok(new { id });
     }
+
+    // Exclusao definitiva e privilegio de Administrador (pedido do usuario, 23/09). Recusada
+    // enquanto a inspecao tiver nao conformidade gerada — ver ExcluirInspecaoCommand.
+    [Authorize(Policy = PoliticasAutorizacao.SomenteAdministrador)]
+    [HttpDelete("{id:guid}")]
+    public async Task<IActionResult> Excluir(Guid id, CancellationToken ct)
+    {
+        await _mediator.Send(new ExcluirInspecaoCommand(id), ct);
+        return NoContent();
+    }
 }
 
 public record ResponderItemInspecaoRequestBody(
@@ -137,5 +148,6 @@ public record GerarOcorrenciaRequestBody(
 
 public class AnexarFotoItemInspecaoRequestBody
 {
+    public string? Metadados { get; set; }
     public IFormFile Foto { get; set; } = null!;
 }

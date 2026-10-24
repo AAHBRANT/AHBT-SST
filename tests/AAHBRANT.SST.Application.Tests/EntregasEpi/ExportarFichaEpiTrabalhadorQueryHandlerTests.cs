@@ -1,4 +1,3 @@
-using System.Security.Cryptography;
 using AAHBRANT.SST.Application.Assinatura;
 using AAHBRANT.SST.Application.Common.Interfaces;
 using AAHBRANT.SST.Application.EntregasEpi;
@@ -9,6 +8,7 @@ using AAHBRANT.SST.Infrastructure.Assinatura;
 using AAHBRANT.SST.Infrastructure.Persistencia;
 using AAHBRANT.SST.Infrastructure.Seguranca;
 using Microsoft.EntityFrameworkCore;
+using AAHBRANT.SST.Application.Tests.TestSupport;
 
 namespace AAHBRANT.SST.Application.Tests.EntregasEpi;
 
@@ -20,7 +20,7 @@ public class ExportarFichaEpiTrabalhadorQueryHandlerTests
     // de teste, igual ao que qualquer outro teste que grave um Trabalhador precisaria fazer.
     static ExportarFichaEpiTrabalhadorQueryHandlerTests()
     {
-        CpfCriptografiaContexto.Configurar(RandomNumberGenerator.GetBytes(32), RandomNumberGenerator.GetBytes(32));
+        ChavesCpfDeTeste.Configurar();
     }
 
     private class FichaEpiPdfServiceFake : IFichaEpiPdfService
@@ -105,12 +105,16 @@ public class ExportarFichaEpiTrabalhadorQueryHandlerTests
         db.EntregasEpi.AddRange(entregaComDevolucao, entregaSemDevolucao);
         await db.SaveChangesAsync();
 
+        var assinadoEmpregadoEm = new DateTime(2024, 2, 1, 13, 45, 0, DateTimeKind.Utc);
+        var assinadoResponsavelEm = new DateTime(2024, 2, 1, 13, 50, 0, DateTimeKind.Utc);
+        var assinadoDevolucaoEm = new DateTime(2024, 6, 1, 18, 10, 0, DateTimeKind.Utc);
+
         var docEntrega = new DocumentoAssinatura { EntidadeTipo = "EntregaEpi", EntidadeId = entregaComDevolucao.Id };
-        docEntrega.Signatarios.Add(new DocumentoSignatario { TrabalhadorId = trabalhador.Id, MetodoAutenticacao = MetodoAutenticacaoAssinatura.Biometria, AssinadoEm = DateTime.UtcNow });
-        docEntrega.Signatarios.Add(new DocumentoSignatario { TrabalhadorId = Guid.NewGuid(), MetodoAutenticacao = MetodoAutenticacaoAssinatura.SessaoLogada, AssinadoEm = DateTime.UtcNow });
+        docEntrega.Signatarios.Add(new DocumentoSignatario { TrabalhadorId = trabalhador.Id, MetodoAutenticacao = MetodoAutenticacaoAssinatura.Biometria, AssinadoEm = assinadoEmpregadoEm });
+        docEntrega.Signatarios.Add(new DocumentoSignatario { TrabalhadorId = Guid.NewGuid(), MetodoAutenticacao = MetodoAutenticacaoAssinatura.SessaoLogada, AssinadoEm = assinadoResponsavelEm });
 
         var docDevolucao = new DocumentoAssinatura { EntidadeTipo = "DevolucaoEpi", EntidadeId = entregaComDevolucao.Id };
-        docDevolucao.Signatarios.Add(new DocumentoSignatario { TrabalhadorId = trabalhador.Id, MetodoAutenticacao = MetodoAutenticacaoAssinatura.Biometria, AssinadoEm = DateTime.UtcNow });
+        docDevolucao.Signatarios.Add(new DocumentoSignatario { TrabalhadorId = trabalhador.Id, MetodoAutenticacao = MetodoAutenticacaoAssinatura.Biometria, AssinadoEm = assinadoDevolucaoEm });
 
         db.DocumentosAssinatura.AddRange(docEntrega, docDevolucao);
         await db.SaveChangesAsync();
@@ -130,14 +134,78 @@ public class ExportarFichaEpiTrabalhadorQueryHandlerTests
         var linhaComDevolucao = modelo.Entregas.Single(e => e.Numero == 1);
         Assert.True(linhaComDevolucao.AssinadoPeloEmpregado);
         Assert.True(linhaComDevolucao.AssinadoPeloResponsavel);
+        Assert.Equal(assinadoEmpregadoEm, linhaComDevolucao.AssinadoPeloEmpregadoEm);
+        Assert.Equal(assinadoResponsavelEm, linhaComDevolucao.AssinadoPeloResponsavelEm);
 
         var linhaSemDevolucao = modelo.Entregas.Single(e => e.Numero == 2);
         Assert.False(linhaSemDevolucao.AssinadoPeloEmpregado);
         Assert.False(linhaSemDevolucao.AssinadoPeloResponsavel);
+        Assert.Null(linhaSemDevolucao.AssinadoPeloEmpregadoEm);
+        Assert.Null(linhaSemDevolucao.AssinadoPeloResponsavelEm);
 
         var devolucao = Assert.Single(modelo.Devolucoes);
         Assert.Equal(1, devolucao.NumeroReferenciaEntrega);
         Assert.True(devolucao.AssinadoPeloEmpregado);
+        Assert.Equal(assinadoDevolucaoEm, devolucao.AssinadoPeloEmpregadoEm);
         Assert.Equal("Visto do encarregado", devolucao.VistoResponsavel);
+    }
+
+    [Fact]
+    public async Task Handle_EntregaNaoConfirmada_NaoAparecerNaFicha()
+    {
+        var db = CriarDb(nameof(Handle_EntregaNaoConfirmada_NaoAparecerNaFicha));
+
+        var obra = new Obra { Codigo = "OB2", Nome = "Obra Norte", Cliente = "Cliente X", Cnpj = "12.345.678/0001-90" };
+        var funcao = new Funcao { Nome = "Eletricista" };
+        var trabalhador = new Trabalhador
+        {
+            Obra = obra,
+            Funcao = funcao,
+            Nome = "Maria Souza",
+            Matricula = "MAT-002",
+            Cpf = "98765432100",
+            DataAdmissao = new DateTime(2024, 3, 1),
+            Turno = "Noturno",
+        };
+        var epi = new CatalogoEpi { Nome = "Luva isolante", VidaUtilEmMeses = 6, CertificadoAprovacaoNumero = "CA-456" };
+
+        var entregaConfirmada = new EntregaEpi
+        {
+            Trabalhador = trabalhador,
+            CatalogoEpi = epi,
+            DataEntrega = new DateTime(2024, 4, 1),
+            Quantidade = 1,
+            MotivoTipo = MotivoEntregaEpi.Inicial,
+            Confirmada = true,
+        };
+        // Reserva automática do módulo Terceirizado (Confirmada=false, entrega ainda não confirmada
+        // fisicamente) — nunca deve aparecer na ficha NR-6, que tem valor de prova em fiscalização.
+        var entregaReservada = new EntregaEpi
+        {
+            Trabalhador = trabalhador,
+            CatalogoEpi = epi,
+            DataEntrega = new DateTime(2024, 5, 1),
+            Quantidade = 1,
+            MotivoTipo = MotivoEntregaEpi.Inicial,
+            Confirmada = false,
+        };
+
+        db.Obras.Add(obra);
+        db.Funcoes.Add(funcao);
+        db.Trabalhadores.Add(trabalhador);
+        db.CatalogoEpis.Add(epi);
+        db.EntregasEpi.AddRange(entregaConfirmada, entregaReservada);
+        await db.SaveChangesAsync();
+
+        var pdf = new FichaEpiPdfServiceFake();
+        var handler = new ExportarFichaEpiTrabalhadorQueryHandler(db, pdf, new RegistradorRastreabilidadeService(db, new QrCodeDocumentoServiceFalso()));
+
+        var resultado = await handler.Handle(new ExportarFichaEpiTrabalhadorQuery(trabalhador.Id), default);
+
+        Assert.NotNull(resultado);
+        var modelo = pdf.UltimoModelo!;
+
+        var linha = Assert.Single(modelo.Entregas);
+        Assert.Equal(new DateTime(2024, 4, 1), linha.DataEntrega);
     }
 }

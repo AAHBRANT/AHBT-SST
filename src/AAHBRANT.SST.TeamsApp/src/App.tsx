@@ -1,50 +1,72 @@
-import { useEffect, useState } from 'react';
+import { lazy, Suspense, useEffect, useState } from 'react';
 import { FluentProvider } from '@fluentui/react-components';
+import { QueryClientProvider } from '@tanstack/react-query';
+import { ganchosEstiloBotao } from './ui/primitivos/Botao/estiloBotao';
 import { MotionConfig } from 'framer-motion';
 import { HashRouter, Navigate, Outlet, Route, Routes, useLocation, useParams } from 'react-router-dom';
 import { aahbrantTheme, aahbrantLightTheme } from './theme';
 import { ThemeModeProvider, useThemeMode } from './theme/ThemeModeContext';
+import { UsuarioLogadoProvider } from './lib/UsuarioLogadoContext';
 import { processarLoginNavegadorPendente } from './lib/browserAuth';
+import { queryClient } from './lib/consultas';
 import { AppShell } from './layout/AppShell';
-import { DashboardPage } from './pages/DashboardPage';
-import { GestaoSstPage } from './pages/gestao-sst/GestaoSstPage';
-import { OperacaoPage } from './pages/operacao/OperacaoPage';
-import { OcorrenciasPage } from './pages/ocorrencias/OcorrenciasPage';
-import { PessoasPage } from './pages/pessoas/PessoasPage';
-import { TrabalhadorDetalhePage } from './pages/pessoas/TrabalhadorDetalhePage';
-import { PgrDetalhePage } from './pages/pgr/PgrDetalhePage';
-import { AprDetalhePage } from './pages/apr/AprDetalhePage';
-import { PermissaoTrabalhoDetalhePage } from './pages/pt/PermissaoTrabalhoDetalhePage';
-import { AssinarPtPage } from './pages/pt/AssinarPtPage';
-import { InspecaoDetalhePage } from './pages/inspecoes/InspecaoDetalhePage';
-import { AssinarInspecaoPage } from './pages/inspecoes/AssinarInspecaoPage';
-import { IdentificacaoPublicaPage } from './pages/identificacao/IdentificacaoPublicaPage';
-import { ValidarDocumentoPage } from './pages/validacao/ValidarDocumentoPage';
-import { AdministracaoPage } from './pages/administracao/AdministracaoPage';
-import { NaoConformidadeDetalhePage } from './pages/naoconformidades/NaoConformidadeDetalhePage';
-import { AlertasPage } from './pages/alertas/AlertasPage';
-import { CalendarioPage } from './pages/calendario/CalendarioPage';
-import { AcidenteDetalhePage } from './pages/acidentes/AcidenteDetalhePage';
-import { DdsSemanalDetalhePage } from './pages/dds/DdsSemanalDetalhePage';
-import { DdsDetalhePage } from './pages/dds/DdsDetalhePage';
-import { AssinarDdsPage } from './pages/dds/AssinarDdsPage';
-import { AssinarEntregaEpiPage } from './pages/epi/AssinarEntregaEpiPage';
-import { SaudeOcupacionalPage } from './pages/saude-ocupacional/SaudeOcupacionalPage';
-import { PcmsoDetalhePage } from './pages/saude-ocupacional/PcmsoDetalhePage';
-import { ProcessoEleitoralCipaDetalhePage } from './pages/cipa/ProcessoEleitoralCipaDetalhePage';
-import { MembroCipaDetalhePage } from './pages/cipa/MembroCipaDetalhePage';
-import { ReuniaoCipaDetalhePage } from './pages/cipa/ReuniaoCipaDetalhePage';
-import { EventoSipatDetalhePage } from './pages/cipa/EventoSipatDetalhePage';
-import { AssinarTreinamentoPage } from './pages/treinamentos/AssinarTreinamentoPage';
-import { SessaoTreinamentoDetalhePage } from './pages/treinamentos/SessaoTreinamentoDetalhePage';
-import { GaleriaPage } from './ui/galeria/GaleriaPage';
+import { Carregando } from '@ui';
+
+// Cada tela vira um chunk próprio, baixado só quando a rota é aberta — antes o app inteiro
+// (todas as páginas + recharts) saía num único JS de ~2,9 MB, encostando no limite de 3 MiB do
+// precache do service worker (vite.config.ts). O shell (AppShell) continua no bundle inicial.
+const DashboardPage = lazy(() => import('./pages/DashboardPage').then((m) => ({ default: m.DashboardPage })));
+const GestaoSstPage = lazy(() => import('./pages/gestao-sst/GestaoSstPage').then((m) => ({ default: m.GestaoSstPage })));
+const OperacaoPage = lazy(() => import('./pages/operacao/OperacaoPage').then((m) => ({ default: m.OperacaoPage })));
+const OcorrenciasPage = lazy(() => import('./pages/ocorrencias/OcorrenciasPage').then((m) => ({ default: m.OcorrenciasPage })));
+const PessoasPage = lazy(() => import('./pages/pessoas/PessoasPage').then((m) => ({ default: m.PessoasPage })));
+const TrabalhadorDetalhePage = lazy(() => import('./pages/pessoas/TrabalhadorDetalhePage').then((m) => ({ default: m.TrabalhadorDetalhePage })));
+const PgrDetalhePage = lazy(() => import('./pages/pgr/PgrDetalhePage').then((m) => ({ default: m.PgrDetalhePage })));
+const GeracaoPgrEapPage = lazy(() => import('./pages/pgr/GeracaoPgrEapPage').then((m) => ({ default: m.GeracaoPgrEapPage })));
+const LeituraIaRevisaoPage = lazy(() => import('./pages/leitura-ia/LeituraIaRevisaoPage').then((m) => ({ default: m.LeituraIaRevisaoPage })));
+const AprDetalhePage = lazy(() => import('./pages/apr/AprDetalhePage').then((m) => ({ default: m.AprDetalhePage })));
+const PermissaoTrabalhoDetalhePage = lazy(() => import('./pages/pt/PermissaoTrabalhoDetalhePage').then((m) => ({ default: m.PermissaoTrabalhoDetalhePage })));
+const AssinarPtPage = lazy(() => import('./pages/pt/AssinarPtPage').then((m) => ({ default: m.AssinarPtPage })));
+const AssinarAprPage = lazy(() => import('./pages/apr/AssinarAprPage').then((m) => ({ default: m.AssinarAprPage })));
+const InspecaoDetalhePage = lazy(() => import('./pages/inspecoes/InspecaoDetalhePage').then((m) => ({ default: m.InspecaoDetalhePage })));
+const AssinarInspecaoPage = lazy(() => import('./pages/inspecoes/AssinarInspecaoPage').then((m) => ({ default: m.AssinarInspecaoPage })));
+const IdentificacaoPublicaPage = lazy(() => import('./pages/identificacao/IdentificacaoPublicaPage').then((m) => ({ default: m.IdentificacaoPublicaPage })));
+const ValidarDocumentoPage = lazy(() => import('./pages/validacao/ValidarDocumentoPage').then((m) => ({ default: m.ValidarDocumentoPage })));
+const AdministracaoPage = lazy(() => import('./pages/administracao/AdministracaoPage').then((m) => ({ default: m.AdministracaoPage })));
+const SuporteIaPage = lazy(() => import('./pages/suporte-ia/SuporteIaPage').then((m) => ({ default: m.SuporteIaPage })));
+const SuporteIaDetalhePage = lazy(() => import('./pages/suporte-ia/SuporteIaDetalhePage').then((m) => ({ default: m.SuporteIaDetalhePage })));
+const NaoConformidadeDetalhePage = lazy(() => import('./pages/naoconformidades/NaoConformidadeDetalhePage').then((m) => ({ default: m.NaoConformidadeDetalhePage })));
+const AlertasPage = lazy(() => import('./pages/alertas/AlertasPage').then((m) => ({ default: m.AlertasPage })));
+const RelatoriosPage = lazy(() => import('./pages/relatorios/RelatoriosPage').then((m) => ({ default: m.RelatoriosPage })));
+const CalendarioPage = lazy(() => import('./pages/calendario/CalendarioPage').then((m) => ({ default: m.CalendarioPage })));
+const AcidenteDetalhePage = lazy(() => import('./pages/acidentes/AcidenteDetalhePage').then((m) => ({ default: m.AcidenteDetalhePage })));
+const DdsSemanalDetalhePage = lazy(() => import('./pages/dds/DdsSemanalDetalhePage').then((m) => ({ default: m.DdsSemanalDetalhePage })));
+const DdsDetalhePage = lazy(() => import('./pages/dds/DdsDetalhePage').then((m) => ({ default: m.DdsDetalhePage })));
+const AssinarDdsPage = lazy(() => import('./pages/dds/AssinarDdsPage').then((m) => ({ default: m.AssinarDdsPage })));
+const AssinarEntregaEpiPage = lazy(() => import('./pages/epi/AssinarEntregaEpiPage').then((m) => ({ default: m.AssinarEntregaEpiPage })));
+const AssinarTermoEpiPage = lazy(() => import('./pages/epi/AssinarTermoEpiPage').then((m) => ({ default: m.AssinarTermoEpiPage })));
+const SaudeOcupacionalPage = lazy(() => import('./pages/saude-ocupacional/SaudeOcupacionalPage').then((m) => ({ default: m.SaudeOcupacionalPage })));
+const PcmsoDetalhePage = lazy(() => import('./pages/saude-ocupacional/PcmsoDetalhePage').then((m) => ({ default: m.PcmsoDetalhePage })));
+const ProcessoEleitoralCipaDetalhePage = lazy(() => import('./pages/cipa/ProcessoEleitoralCipaDetalhePage').then((m) => ({ default: m.ProcessoEleitoralCipaDetalhePage })));
+const MembroCipaDetalhePage = lazy(() => import('./pages/cipa/MembroCipaDetalhePage').then((m) => ({ default: m.MembroCipaDetalhePage })));
+const ReuniaoCipaDetalhePage = lazy(() => import('./pages/cipa/ReuniaoCipaDetalhePage').then((m) => ({ default: m.ReuniaoCipaDetalhePage })));
+const EventoSipatDetalhePage = lazy(() => import('./pages/cipa/EventoSipatDetalhePage').then((m) => ({ default: m.EventoSipatDetalhePage })));
+const AssinarTreinamentoPage = lazy(() => import('./pages/treinamentos/AssinarTreinamentoPage').then((m) => ({ default: m.AssinarTreinamentoPage })));
+const SessaoTreinamentoDetalhePage = lazy(() => import('./pages/treinamentos/SessaoTreinamentoDetalhePage').then((m) => ({ default: m.SessaoTreinamentoDetalhePage })));
+const GaleriaPage = lazy(() => import('./ui/galeria/GaleriaPage').then((m) => ({ default: m.GaleriaPage })));
+const TerceirizadoPage = lazy(() => import('./pages/terceirizados/TerceirizadoPage').then((m) => ({ default: m.TerceirizadoPage })));
+const EmpresaDetalhePage = lazy(() => import('./pages/terceirizados/EmpresaDetalhePage').then((m) => ({ default: m.EmpresaDetalhePage })));
+const ContratoDetalhePage = lazy(() => import('./pages/terceirizados/ContratoDetalhePage').then((m) => ({ default: m.ContratoDetalhePage })));
 
 // Envolve as rotas internas do app com o AppShell (sidebar/header do Teams). As rotas públicas
 // /p/:codigoOuUid e /validar/:token ficam de fora dessa camada — ver IdentificacaoPublicaPage/ValidarDocumentoPage.
 function LayoutComTeams() {
   return (
     <AppShell>
-      <Outlet />
+      {/* Suspense dentro do shell: sidebar/header ficam na tela enquanto o chunk da página chega. */}
+      <Suspense fallback={<Carregando variante="detalhe" linhas={6} />}>
+        <Outlet />
+      </Suspense>
     </AppShell>
   );
 }
@@ -69,9 +91,16 @@ function RedirecionarParaPilar({ pilar, secao }: { pilar: string; secao: string 
 // HashRouter evita depender de configuração de rota no servidor durante o sideload no Teams.
 function App() {
   return (
-    <ThemeModeProvider>
-      <AppRoteado />
-    </ThemeModeProvider>
+    // Cache de leituras compartilhado entre telas — ver lib/consultas.ts.
+    <QueryClientProvider client={queryClient}>
+      <ThemeModeProvider>
+        {/* Quem está logado e o que pode fazer — uma chamada por sessão, no topo da árvore, para
+            qualquer tela decidir se mostra uma ação restrita (ver UsuarioLogadoContext). */}
+        <UsuarioLogadoProvider>
+          <AppRoteado />
+        </UsuarioLogadoProvider>
+      </ThemeModeProvider>
+    </QueryClientProvider>
   );
 }
 
@@ -89,14 +118,14 @@ function AppRoteado() {
 
   if (!loginProcessado) {
     return (
-      <FluentProvider theme={modo === 'dark' ? aahbrantTheme : aahbrantLightTheme}>
+      <FluentProvider theme={modo === 'dark' ? aahbrantTheme : aahbrantLightTheme} customStyleHooks_unstable={ganchosEstiloBotao}>
         <div style={{ padding: 24 }}>Entrando...</div>
       </FluentProvider>
     );
   }
 
   return (
-    <FluentProvider theme={modo === 'dark' ? aahbrantTheme : aahbrantLightTheme}>
+    <FluentProvider theme={modo === 'dark' ? aahbrantTheme : aahbrantLightTheme} customStyleHooks_unstable={ganchosEstiloBotao}>
       {/* Com 'reduzir movimento' no SO, o framer-motion desliga animações de transform/opacity
           (spec §1.5); o CSS em index.css cuida das keyframes/transições. */}
       <MotionConfig reducedMotion="user">
@@ -108,7 +137,9 @@ function AppRoteado() {
               path="/p/:codigoOuUid"
               element={
                 <FluentProvider theme={aahbrantLightTheme}>
-                  <IdentificacaoPublicaPage />
+                  <Suspense fallback={<Carregando variante="detalhe" linhas={6} />}>
+                    <IdentificacaoPublicaPage />
+                  </Suspense>
                 </FluentProvider>
               }
             />
@@ -116,7 +147,9 @@ function AppRoteado() {
               path="/validar/:token"
               element={
                 <FluentProvider theme={aahbrantLightTheme}>
-                  <ValidarDocumentoPage />
+                  <Suspense fallback={<Carregando variante="detalhe" linhas={6} />}>
+                    <ValidarDocumentoPage />
+                  </Suspense>
                 </FluentProvider>
               }
             />
@@ -135,7 +168,10 @@ function AppRoteado() {
               <Route path="/gestao-sst" element={<GestaoSstPage />} />
               <Route path="/prevencao" element={<Navigate to="/gestao-sst?secao=pgr" replace />} />
               <Route path="/prevencao/pgr" element={<RedirecionarParaPilar pilar="/gestao-sst" secao="pgr" />} />
+              <Route path="/prevencao/pgr/gerar-eap" element={<GeracaoPgrEapPage />} />
+              <Route path="/prevencao/pgr/gerar-eap/:geracaoId" element={<GeracaoPgrEapPage />} />
               <Route path="/prevencao/pgr/:id" element={<PgrDetalhePage />} />
+              <Route path="/leituras-ia/:documento/:id" element={<LeituraIaRevisaoPage />} />
               <Route
                 path="/prevencao/inspecoes"
                 element={<RedirecionarParaPilar pilar="/operacao" secao="inspecoes" />}
@@ -169,6 +205,7 @@ function AppRoteado() {
               <Route path="/operacao" element={<OperacaoPage />} />
               <Route path="/operacao/apr" element={<RedirecionarParaPilar pilar="/operacao" secao="apr" />} />
               <Route path="/operacao/apr/:id" element={<AprDetalhePage />} />
+              <Route path="/operacao/apr/:id/assinar" element={<AssinarAprPage />} />
               <Route path="/operacao/pt" element={<RedirecionarParaPilar pilar="/operacao" secao="pt" />} />
               <Route path="/operacao/pt/:id" element={<PermissaoTrabalhoDetalhePage />} />
               <Route path="/operacao/pt/:id/assinar" element={<AssinarPtPage />} />
@@ -185,7 +222,10 @@ function AppRoteado() {
               <Route path="/operacao/cipa/sipat/:id" element={<EventoSipatDetalhePage />} />
 
               <Route path="/alertas" element={<AlertasPage />} />
+              <Route path="/relatorios" element={<RelatoriosPage />} />
               <Route path="/calendario" element={<CalendarioPage />} />
+              <Route path="/suporte-ia" element={<SuporteIaPage />} />
+              <Route path="/suporte-ia/:id" element={<SuporteIaDetalhePage />} />
 
               {/* Item "Pessoas" da sidebar: Funcionários/Funções/Dashboard são abas de PessoasPage.
                   "ASO & Exames" chegou a ser uma 2ª aba aqui (via PessoasPillarPage, réplica de
@@ -193,6 +233,10 @@ function AppRoteado() {
                   do usuário) por duplicar a mesma tela já acessível em Gestão de SST → PCMSO. */}
               <Route path="/pessoas" element={<PessoasPage />} />
               <Route path="/pessoas/:id" element={<TrabalhadorDetalhePage />} />
+
+              <Route path="/terceirizados" element={<TerceirizadoPage />} />
+              <Route path="/terceirizados/empresas/:id" element={<EmpresaDetalhePage />} />
+              <Route path="/terceirizados/contratos/:id" element={<ContratoDetalhePage />} />
 
               {/* Item "Ocorrências" da sidebar: Acidentes/Incidentes/Quase-acidentes (já eram a mesma
                   tela filtrada por tipo) e Não Conformidades viraram abas de OcorrenciasPage. */}
@@ -203,8 +247,10 @@ function AppRoteado() {
               <Route path="/acidentes/:id" element={<AcidenteDetalhePage />} />
 
               <Route path="/epi/:id/assinar" element={<AssinarEntregaEpiPage />} />
+              <Route path="/epi/termo/:trabalhadorId/assinar" element={<AssinarTermoEpiPage />} />
               <Route path="/treinamentos/:id/assinar" element={<AssinarTreinamentoPage />} />
               <Route path="/administracao" element={<AdministracaoPage />} />
+              <Route path="/administracao/suporte-ia" element={<Navigate to="/suporte-ia" replace />} />
 
               {/* Redirecionamentos legados: caminhos antigos (pré-consolidação de 24/08 e pré-reforma
                   de 02/09) apontando pras páginas-pilar atuais — preserva links/favoritos antigos. */}

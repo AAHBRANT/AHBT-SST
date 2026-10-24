@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import {
+  BotaoAcao,
   Button,
   Campo,
   Card,
@@ -30,6 +31,7 @@ import {
   type Obra,
 } from '../../lib/api';
 import { useSucessoToast } from '../../hooks/useSucessoToast';
+import { useSouAdministrador } from '../../lib/UsuarioLogadoContext';
 
 const hoje = () => new Date().toISOString().slice(0, 10);
 
@@ -52,6 +54,7 @@ const instalacaoVazia = (obraId: string): NovaInstalacaoEpc => ({
 // (mesmo mecanismo do histórico de movimentações em EstoqueTab.tsx/EstoqueEpcTab.tsx), só que o
 // conteúdo expandido é um formulário em vez de uma tabela aninhada.
 export function InstalacoesTab() {
+  const souAdministrador = useSouAdministrador();
   const [obras, setObras] = useState<Obra[]>([]);
   const [obraId, setObraId] = useState('');
   const [epcs, setEpcs] = useState<CatalogoEpc[]>([]);
@@ -320,32 +323,32 @@ export function InstalacoesTab() {
               carregando={carregandoLista}
               vazio={{ titulo: 'Nenhuma instalação de EPC registrada nesta obra ainda.' }}
               acoesLinha={(inst) => (
-                <div style={{ display: 'flex', gap: 4 }}>
+                <div style={{ display: 'flex', gap: 6 }}>
                   {!inst.dataRemocao && (
                     <>
-                      <Button
-                        appearance="subtle"
-                        size="small"
+                      <BotaoAcao
+                        tom="ver"
                         icon={<SearchInfo24Regular />}
                         onClick={() => abrirInspecao(inst)}
                         aria-label="Registrar inspeção"
                       />
-                      <Button
-                        appearance="subtle"
-                        size="small"
+                      <BotaoAcao
+                        tom="ver"
                         icon={<ArrowExit24Regular />}
                         onClick={() => abrirRemocao(inst)}
                         aria-label="Registrar remoção"
                       />
                     </>
                   )}
-                  <Button
-                    appearance="subtle"
-                    size="small"
-                    icon={<Delete24Regular />}
-                    onClick={() => excluir(inst.id)}
-                    aria-label="Excluir"
-                  />
+                  {/* Exclusão é privilégio de Administrador (o servidor recusa os demais) — ver PoliticasAutorizacao. */}
+                  {souAdministrador && (
+                    <BotaoAcao
+                      tom="excluir"
+                      icon={<Delete24Regular />}
+                      onClick={() => excluir(inst.id)}
+                      aria-label="Excluir"
+                    />
+                  )}
                 </div>
               )}
               expansivel={{

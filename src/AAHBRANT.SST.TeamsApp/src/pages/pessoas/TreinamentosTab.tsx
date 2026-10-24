@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
+  BotaoAcao,
   Button,
   Field,
   Input,
@@ -21,10 +22,13 @@ import {
   useConfirmar,
   type Coluna,
 } from '@ui';
-import { Add24Regular, ArrowDownload24Regular, Delete24Regular, Signature24Regular } from '@fluentui/react-icons';
+import { Add24Regular, ArrowDownload24Regular, Delete24Regular, Eye24Regular, Signature24Regular } from '@fluentui/react-icons';
 import { api, type CursoTreinamento, type NovoTreinamento, type Treinamento } from '../../lib/api';
 import { useSucessoToast } from '../../hooks/useSucessoToast';
 import { AssinaturaCertificadoTreinamentoDialog } from '../../components/assinatura/AssinaturaCertificadoTreinamentoDialog';
+import { useSouAdministrador } from '../../lib/UsuarioLogadoContext';
+import { useRegistrosTravados } from '../../hooks/useRegistrosTravados';
+import { salvarBlob, useVisualizadorPdf } from '../../components/useVisualizadorPdf';
 
 function treinamentoVazio(trabalhadorId: string): NovoTreinamento {
   return {
@@ -50,8 +54,11 @@ function treinamentoVazio(trabalhadorId: string): NovoTreinamento {
 // mantendo a data crua ao lado do chip (aprendizado do piloto 1: chip nunca substitui sozinho um
 // valor de auditoria). obraId propaga pro AssinaturaCertificadoTreinamentoDialog (AssinaturaQuiosque).
 export function TreinamentosTab({ trabalhadorId, obraId }: { trabalhadorId: string; obraId: string }) {
+  const souAdministrador = useSouAdministrador();
   const navigate = useNavigate();
   const [treinamentos, setTreinamentos] = useState<Treinamento[]>([]);
+  // Finalizados não podem ser excluídos (o servidor recusa): o botão some deles.
+  const travados = useRegistrosTravados('Treinamento', treinamentos.map((t) => t.id));
   const [cursos, setCursos] = useState<CursoTreinamento[]>([]);
   const [novoTreinamento, setNovoTreinamento] = useState<NovoTreinamento>(() => treinamentoVazio(trabalhadorId));
   const [erro, setErro] = useState<string | null>(null);
@@ -60,6 +67,7 @@ export function TreinamentosTab({ trabalhadorId, obraId }: { trabalhadorId: stri
   const [carregandoLista, setCarregandoLista] = useState(true);
   const [painelAberto, setPainelAberto] = useState(false);
   const { confirmar, dialogElement } = useConfirmar();
+  const { visualizar, dialogoVisualizador } = useVisualizadorPdf();
   const sucessoToast = useSucessoToast();
   const [baixandoId, setBaixandoId] = useState<string | null>(null);
   const [assinaturaAberta, setAssinaturaAberta] = useState<{
@@ -92,18 +100,21 @@ export function TreinamentosTab({ trabalhadorId, obraId }: { trabalhadorId: stri
   async function baixarCertificado(id: string) {
     try {
       setBaixandoId(id);
-      const blob = await api.treinamentos.baixarCertificado(id);
-      const url = URL.createObjectURL(blob);
-      const link = document.createElement('a');
-      link.href = url;
-      link.download = `certificado-treinamento-${id}.pdf`;
-      link.click();
-      URL.revokeObjectURL(url);
+      salvarBlob(await api.treinamentos.baixarCertificado(id), `certificado-treinamento-${id}.pdf`);
     } catch (e) {
       setErro(e instanceof Error ? e.message : 'Falha ao baixar o certificado em PDF.');
     } finally {
       setBaixandoId(null);
     }
+  }
+
+  // Mesmo certificado do "Baixar", aberto na janela de visualização.
+  function visualizarCertificado(t: Treinamento) {
+    void visualizar({
+      titulo: `Certificado — ${nomeCurso(t.cursoTreinamentoId)}`,
+      nomeArquivo: `certificado-treinamento-${t.id}.pdf`,
+      obter: () => api.treinamentos.baixarCertificado(t.id),
+    });
   }
 
   useEffect(() => {
@@ -174,6 +185,7 @@ export function TreinamentosTab({ trabalhadorId, obraId }: { trabalhadorId: stri
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
       {dialogElement}
+      {dialogoVisualizador}
       <div id="painel-novo-treinamento">
         <PainelCriacaoInline aberto={painelAberto} titulo="Novo treinamento">
           <FormSection titulo="Dados do treinamento" numero={1} primeira>
@@ -293,30 +305,35 @@ export function TreinamentosTab({ trabalhadorId, obraId }: { trabalhadorId: stri
           }}
           acoesLinha={(t) => (
             <>
-              <Button
-                appearance="subtle"
-                size="small"
+              <BotaoAcao
+                tom="ver"
                 icon={<Signature24Regular />}
                 onClick={() => navigate(`/treinamentos/${t.id}/assinar`)}
                 aria-label="Assinar certificado"
-                title="Assinar certificado"
               />
-              <Button
-                appearance="subtle"
-                size="small"
+              <BotaoAcao
+                tom="ver"
+                icon={<Eye24Regular />}
+                onClick={() => visualizarCertificado(t)}
+                aria-label="Visualizar certificado"
+              />
+              <BotaoAcao
+                tom="baixar"
                 icon={<ArrowDownload24Regular />}
                 onClick={() => baixarCertificado(t.id)}
                 disabled={baixandoId === t.id}
                 aria-label="Baixar certificado"
                 title="Baixar certificado em PDF"
               />
-              <Button
-                appearance="subtle"
-                size="small"
-                icon={<Delete24Regular />}
-                onClick={() => excluir(t.id)}
-                aria-label="Excluir"
-              />
+              {/* Exclusão é privilégio de Administrador (o servidor recusa os demais) — ver PoliticasAutorizacao. */}
+              {souAdministrador && !travados.has(t.id) && (
+                <BotaoAcao
+                  tom="excluir"
+                  icon={<Delete24Regular />}
+                  onClick={() => excluir(t.id)}
+                  aria-label="Excluir"
+                />
+              )}
             </>
           )}
         />

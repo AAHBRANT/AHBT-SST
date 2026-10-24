@@ -1,4 +1,7 @@
+using AAHBRANT.SST.Application.Assinatura;
 using AAHBRANT.SST.Application.Common.Interfaces;
+using AAHBRANT.SST.Application.Common.Seguranca;
+using AAHBRANT.SST.Domain.Enums;
 using FluentValidation;
 using MediatR;
 using Microsoft.EntityFrameworkCore;
@@ -15,7 +18,8 @@ public record AtualizarTreinamentoCommand(
     string? InstituicaoInstrutor,
     string? NumeroCertificado,
     string? Local,
-    string? InstrutorRegistroProfissional) : IRequest;
+    string? InstrutorRegistroProfissional,
+    OrigemCertificadoTreinamento OrigemCertificado = OrigemCertificadoTreinamento.Aahbrant) : IRequest;
 
 public class AtualizarTreinamentoCommandValidator : AbstractValidator<AtualizarTreinamentoCommand>
 {
@@ -26,6 +30,7 @@ public class AtualizarTreinamentoCommandValidator : AbstractValidator<AtualizarT
         RuleFor(x => x.CursoTreinamentoId).NotEmpty();
         RuleFor(x => x.DataRealizacao).NotEmpty();
         RuleFor(x => x.DataValidade).NotEmpty().GreaterThanOrEqualTo(x => x.DataRealizacao);
+        RuleFor(x => x.OrigemCertificado).IsInEnum();
     }
 }
 
@@ -36,8 +41,20 @@ public class AtualizarTreinamentoCommandHandler : IRequestHandler<AtualizarTrein
 
     public async Task Handle(AtualizarTreinamentoCommand request, CancellationToken ct)
     {
-        var treinamento = await _db.Treinamentos.FirstOrDefaultAsync(x => x.Id == request.Id, ct)
+        await ProtecaoDocumentoAssinado.GarantirEditavelAsync(_db, "Treinamento", request.Id, ct);
+
+        var treinamento = await _db.Treinamentos.NoEscopoDoTrabalhador(_db, x => x.TrabalhadorId).FirstOrDefaultAsync(x => x.Id == request.Id, ct)
             ?? throw new KeyNotFoundException("Treinamento não encontrado.");
+
+        if (request.TrabalhadorId != treinamento.TrabalhadorId)
+            await _db.GarantirTrabalhadorNoEscopoAsync(request.TrabalhadorId, ct);
+
+        // Só quando a edição mexe no que a regra olha: registros antigos abaixo do mínimo continuam
+        // editáveis nos outros campos (ex.: corrigir o nº do certificado).
+        if (request.CargaHorariaRealizada != treinamento.CargaHorariaRealizada
+            || request.CursoTreinamentoId != treinamento.CursoTreinamentoId
+            || request.OrigemCertificado != treinamento.OrigemCertificado)
+            await CargaHorariaMinimaTreinamento.GarantirAsync(_db, request.CursoTreinamentoId, request.CargaHorariaRealizada, request.OrigemCertificado, ct);
 
         treinamento.TrabalhadorId = request.TrabalhadorId;
         treinamento.CursoTreinamentoId = request.CursoTreinamentoId;
@@ -48,6 +65,7 @@ public class AtualizarTreinamentoCommandHandler : IRequestHandler<AtualizarTrein
         treinamento.NumeroCertificado = request.NumeroCertificado;
         treinamento.Local = request.Local;
         treinamento.InstrutorRegistroProfissional = request.InstrutorRegistroProfissional;
+        treinamento.OrigemCertificado = request.OrigemCertificado;
 
         await _db.SaveChangesAsync(ct);
     }

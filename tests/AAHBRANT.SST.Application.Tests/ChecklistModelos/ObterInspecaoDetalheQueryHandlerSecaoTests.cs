@@ -49,4 +49,50 @@ public class ObterInspecaoDetalheQueryHandlerSecaoTests
         var resposta = Assert.Single(detalhe!.Respostas);
         Assert.Equal("Dormitórios", resposta.Secao);
     }
+
+    // Bug 24/09/2026: criar nova versão do checklist no Catálogo (CriarNovaVersaoChecklistModelo)
+    // marca a versão anterior como Ativo = false. Inspeções em andamento que apontavam pra ela
+    // davam "Not Found" ao clicar "Continuar inspeção" — o Include(ChecklistModelo) virava inner
+    // join filtrado e sumia com a inspeção inteira. O mesmo vale para responsável desativado.
+    [Fact]
+    public async Task Handle_ChecklistVersaoAnteriorEResponsavelInativos_AindaDevolveInspecao()
+    {
+        var db = DbContextFactory.Criar();
+
+        var obra = new Obra { Codigo = "OBRA-001", Nome = "Obra Teste" };
+        var usuario = new Usuario { Email = "responsavel@teste.com", Nome = "Responsável Teste" };
+        db.Obras.Add(obra);
+        db.Usuarios.Add(usuario);
+
+        var checklist = new ChecklistModelo { Nome = "Checklist de Alojamento", TipoInspecao = TipoInspecao.Alojamento, Versao = 1 };
+        var item = new ChecklistModeloItem { ChecklistModelo = checklist, Ordem = 1, Descricao = "Cama individual" };
+        checklist.Itens.Add(item);
+        db.ChecklistModelos.Add(checklist);
+
+        var inspecao = new Inspecao
+        {
+            TipoInspecao = TipoInspecao.Alojamento,
+            ObraId = obra.Id,
+            ChecklistModeloId = checklist.Id,
+            Data = DateTime.UtcNow,
+            ResponsavelUsuarioId = usuario.Id,
+        };
+        inspecao.Respostas.Add(new InspecaoItemResposta { Inspecao = inspecao, ChecklistModeloItemId = item.Id });
+        db.Inspecoes.Add(inspecao);
+        await db.SaveChangesAsync();
+
+        checklist.Ativo = false;
+        usuario.Ativo = false;
+        await db.SaveChangesAsync();
+        db.ChangeTracker.Clear();
+
+        var handler = new ObterInspecaoDetalheQueryHandler(db);
+        var detalhe = await handler.Handle(new ObterInspecaoDetalheQuery(inspecao.Id), default);
+
+        Assert.NotNull(detalhe);
+        Assert.Equal("Checklist de Alojamento", detalhe!.Inspecao.ChecklistModeloNome);
+        Assert.Equal("Responsável Teste", detalhe.Inspecao.ResponsavelUsuarioNome);
+        var resposta = Assert.Single(detalhe.Respostas);
+        Assert.Equal("Cama individual", resposta.Descricao);
+    }
 }

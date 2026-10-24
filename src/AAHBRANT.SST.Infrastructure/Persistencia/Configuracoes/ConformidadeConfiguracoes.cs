@@ -11,6 +11,8 @@ public class AsoConfiguracao : IEntityTypeConfiguration<Aso>
         builder.HasOne(a => a.Trabalhador).WithMany(t => t.Asos)
             .HasForeignKey(a => a.TrabalhadorId).OnDelete(DeleteBehavior.Restrict);
         builder.HasIndex(a => new { a.TrabalhadorId, a.DataValidade });
+        builder.Property(a => a.GrhAsoId).HasMaxLength(100);
+        builder.HasIndex(a => a.GrhAsoId).IsUnique().HasFilter("[GrhAsoId] IS NOT NULL");
         builder.HasQueryFilter(a => a.Ativo);
 
         // Mesmo bug já corrigido para Acidentes (ver migration CorrigirRowVersionAcidentes): sem
@@ -60,6 +62,37 @@ public class TreinamentoConfiguracao : IEntityTypeConfiguration<Treinamento>
         // IsRowVersion() o EF tenta INSERT com valor explícito na coluna RowVersion, e o SQL Server
         // rejeita. A migration seguinte recria a coluna física como "rowversion" de fato.
         builder.Property(t => t.RowVersion).IsRowVersion();
+    }
+}
+
+public class ArquivoCertificadoTreinamentoConfiguracao : IEntityTypeConfiguration<ArquivoCertificadoTreinamento>
+{
+    public void Configure(EntityTypeBuilder<ArquivoCertificadoTreinamento> builder)
+    {
+        builder.Property(a => a.NomeArquivo).IsRequired().HasMaxLength(260);
+        builder.Property(a => a.ContentType).IsRequired().HasMaxLength(150);
+
+        // Um arquivo por treinamento (decisão do usuário, 22/09: um anexo só, PDF ou foto). Cascade
+        // porque o arquivo não tem vida própria — excluído o treinamento, o certificado vai junto.
+        builder.HasOne(a => a.Treinamento).WithOne(t => t.ArquivoCertificado)
+            .HasForeignKey<ArquivoCertificadoTreinamento>(a => a.TreinamentoId)
+            .OnDelete(DeleteBehavior.Cascade);
+        builder.HasIndex(a => a.TreinamentoId).IsUnique();
+        builder.HasQueryFilter(a => a.Ativo);
+    }
+}
+
+public class ArquivoAsoConfiguracao : IEntityTypeConfiguration<ArquivoAso>
+{
+    public void Configure(EntityTypeBuilder<ArquivoAso> builder)
+    {
+        builder.Property(a => a.NomeArquivo).IsRequired().HasMaxLength(260);
+        builder.Property(a => a.ContentType).IsRequired().HasMaxLength(150);
+        builder.HasOne(a => a.Aso).WithOne(a => a.Arquivo)
+            .HasForeignKey<ArquivoAso>(a => a.AsoId)
+            .OnDelete(DeleteBehavior.Cascade);
+        builder.HasIndex(a => a.AsoId).IsUnique();
+        builder.HasQueryFilter(a => a.Ativo);
     }
 }
 
@@ -189,11 +222,82 @@ public class EstoqueEpiConfiguracao : IEntityTypeConfiguration<EstoqueEpi>
         builder.HasOne(e => e.Obra).WithMany()
             .HasForeignKey(e => e.ObraId).OnDelete(DeleteBehavior.Restrict);
         builder.HasIndex(e => new { e.CatalogoEpiId, e.ObraId }).IsUnique();
+        builder.HasOne(e => e.EstoqueMinimoDefinidoPorUsuario).WithMany()
+            .HasForeignKey(e => e.EstoqueMinimoDefinidoPorUsuarioId).OnDelete(DeleteBehavior.Restrict);
         builder.HasQueryFilter(e => e.Ativo);
 
         // Entidade nova — mesmo padrão de MatrizEpiFuncaoConfiguracao acima: sem coluna varbinary
         // legada, então IsRowVersion() já gera a coluna "rowversion" corretamente na primeira migration.
         builder.Property(e => e.RowVersion).IsRowVersion();
+    }
+}
+
+public class ReservaEpiConfiguracao : IEntityTypeConfiguration<ReservaEpi>
+{
+    public void Configure(EntityTypeBuilder<ReservaEpi> builder)
+    {
+        builder.Property(r => r.Tamanho).HasMaxLength(20);
+        builder.Property(r => r.MotivoCancelamento).HasMaxLength(300);
+        builder.HasOne(r => r.Trabalhador).WithMany()
+            .HasForeignKey(r => r.TrabalhadorId).OnDelete(DeleteBehavior.Restrict);
+        builder.HasOne(r => r.CatalogoEpi).WithMany()
+            .HasForeignKey(r => r.CatalogoEpiId).OnDelete(DeleteBehavior.Restrict);
+        builder.HasOne(r => r.Obra).WithMany()
+            .HasForeignKey(r => r.ObraId).OnDelete(DeleteBehavior.Restrict);
+        builder.HasOne(r => r.EntregaEpi).WithMany()
+            .HasForeignKey(r => r.EntregaEpiId).OnDelete(DeleteBehavior.Restrict);
+        // Fila de separação: (obra, EPI, status) na ordem de criação.
+        builder.HasIndex(r => new { r.ObraId, r.CatalogoEpiId, r.Status, r.CreatedAtUtc });
+        builder.HasIndex(r => new { r.TrabalhadorId, r.Status });
+        builder.HasQueryFilter(r => r.Ativo);
+    }
+}
+
+public class SolicitacaoReposicaoEpiConfiguracao : IEntityTypeConfiguration<SolicitacaoReposicaoEpi>
+{
+    public void Configure(EntityTypeBuilder<SolicitacaoReposicaoEpi> builder)
+    {
+        builder.Property(s => s.NumeroDocumento).IsRequired().HasMaxLength(40);
+        builder.Property(s => s.SolicitanteNome).IsRequired().HasMaxLength(200);
+        builder.Property(s => s.Observacao).HasMaxLength(500);
+        builder.HasOne(s => s.Obra).WithMany()
+            .HasForeignKey(s => s.ObraId).OnDelete(DeleteBehavior.Restrict);
+        builder.HasOne(s => s.SolicitanteUsuario).WithMany()
+            .HasForeignKey(s => s.SolicitanteUsuarioId).OnDelete(DeleteBehavior.Restrict);
+        builder.HasMany(s => s.Itens).WithOne(i => i.SolicitacaoReposicaoEpi)
+            .HasForeignKey(i => i.SolicitacaoReposicaoEpiId).OnDelete(DeleteBehavior.Cascade);
+        builder.HasIndex(s => new { s.ObraId, s.CreatedAtUtc });
+        // Filtro (Ativo + escopo por obra) registrado em SstDbContext, camada 3 do RBAC.
+    }
+}
+
+public class SolicitacaoReposicaoEpiItemConfiguracao : IEntityTypeConfiguration<SolicitacaoReposicaoEpiItem>
+{
+    public void Configure(EntityTypeBuilder<SolicitacaoReposicaoEpiItem> builder)
+    {
+        builder.ToTable("SolicitacoesReposicaoEpiItens");
+        builder.Property(i => i.EpiNome).IsRequired().HasMaxLength(200);
+        builder.Property(i => i.CertificadoAprovacaoNumero).HasMaxLength(50);
+        builder.Property(i => i.TamanhosEmFalta).HasMaxLength(200);
+        builder.HasQueryFilter(i => i.Ativo);
+    }
+}
+
+public class PlanoIntegracaoConfiguracao : IEntityTypeConfiguration<PlanoIntegracao>
+{
+    public void Configure(EntityTypeBuilder<PlanoIntegracao> builder)
+    {
+        builder.HasOne(p => p.Trabalhador).WithMany()
+            .HasForeignKey(p => p.TrabalhadorId).OnDelete(DeleteBehavior.Restrict);
+        builder.HasOne(p => p.Obra).WithMany()
+            .HasForeignKey(p => p.ObraId).OnDelete(DeleteBehavior.Restrict);
+        builder.HasOne(p => p.Funcao).WithMany()
+            .HasForeignKey(p => p.FuncaoId).OnDelete(DeleteBehavior.Restrict);
+        builder.HasOne(p => p.ResponsavelUsuario).WithMany()
+            .HasForeignKey(p => p.ResponsavelUsuarioId).OnDelete(DeleteBehavior.Restrict);
+        builder.HasIndex(p => new { p.ObraId, p.Status });
+        builder.HasIndex(p => new { p.TrabalhadorId, p.Status });
+        // Filtro (Ativo + escopo por obra) registrado em SstDbContext, camada 3 do RBAC.
     }
 }
 

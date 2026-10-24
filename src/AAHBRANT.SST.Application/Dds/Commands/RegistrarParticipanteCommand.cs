@@ -25,7 +25,10 @@ public record RegistrarParticipanteCommand(
     Guid TrabalhadorId,
     Guid DispositivoId,
     string SegredoDispositivo,
-    double Score) : IRequest<Guid>;
+    double Score,
+    byte[]? ImagemDigital = null,
+    string? Desafio = null,
+    string? AssinaturaLeitura = null) : IRequest<Guid>;
 
 public class RegistrarParticipanteCommandValidator : AbstractValidator<RegistrarParticipanteCommand>
 {
@@ -34,7 +37,9 @@ public class RegistrarParticipanteCommandValidator : AbstractValidator<Registrar
         RuleFor(x => x.DdsId).NotEmpty();
         RuleFor(x => x.TrabalhadorId).NotEmpty();
         RuleFor(x => x.DispositivoId).NotEmpty();
-        RuleFor(x => x.SegredoDispositivo).NotEmpty();
+        // Com leitura assinada pelo agente o segredo não trafega mais pelo navegador.
+        RuleFor(x => x.SegredoDispositivo).NotEmpty().When(x => string.IsNullOrEmpty(x.Desafio));
+        RuleFor(x => x.AssinaturaLeitura).NotEmpty().When(x => !string.IsNullOrEmpty(x.Desafio));
         RuleFor(x => x.Score).InclusiveBetween(0, 100);
     }
 }
@@ -63,9 +68,12 @@ public class RegistrarParticipanteCommandHandler : IRequestHandler<RegistrarPart
 
     public async Task<Guid> Handle(RegistrarParticipanteCommand request, CancellationToken ct)
     {
-        var ddsExiste = await _db.Dds.AnyAsync(d => d.Id == request.DdsId, ct);
-        if (!ddsExiste)
-            throw new KeyNotFoundException($"DDS {request.DdsId} não encontrado.");
+        var dds = await _db.Dds.Include(d => d.DdsSemanal).FirstOrDefaultAsync(d => d.Id == request.DdsId, ct)
+            ?? throw new KeyNotFoundException($"DDS {request.DdsId} não encontrado.");
+        if (dds.SemExpediente || dds.Status != StatusDds.EmAndamento || dds.DdsSemanal?.Status == StatusDdsSemanal.Concluida)
+            throw new InvalidOperationException("Só é possível registrar presença em um DDS em andamento.");
+        if (!await _db.Trabalhadores.AnyAsync(t => t.Id == request.TrabalhadorId && t.ObraId == dds.ObraId && t.Ativo, ct))
+            throw new InvalidOperationException("O funcionário deve pertencer à obra deste DDS.");
 
         var jaParticipa = await _db.DdsParticipantes
             .AnyAsync(p => p.DdsId == request.DdsId && p.TrabalhadorId == request.TrabalhadorId, ct);
@@ -73,7 +81,8 @@ public class RegistrarParticipanteCommandHandler : IRequestHandler<RegistrarPart
             throw new InvalidOperationException("Este trabalhador já está registrado como participante deste DDS.");
 
         var resultado = await _autenticacao.AutenticarPorMatchLocalAsync(
-            request.DispositivoId, request.SegredoDispositivo, request.TrabalhadorId, request.Score, ct);
+            request.DispositivoId, request.SegredoDispositivo, request.TrabalhadorId, request.Score,
+            LeituraDo(request.Desafio, request.AssinaturaLeitura), ct);
 
         var participante = new Domain.Entidades.DdsParticipante
         {
@@ -83,6 +92,9 @@ public class RegistrarParticipanteCommandHandler : IRequestHandler<RegistrarPart
             ScoreConfianca = request.Score,
         };
         _db.DdsParticipantes.Add(participante);
+        var selecao = await _db.DdsFuncionariosSelecionados
+            .Where(s => s.DdsId == dds.Id && s.TrabalhadorId == participante.TrabalhadorId).ToListAsync(ct);
+        _db.DdsFuncionariosSelecionados.RemoveRange(selecao);
         await _db.SaveChangesAsync(ct);
 
         // Melhor esforço: a presença já registrada acima é o que importa de verdade — se o Motor de
@@ -92,7 +104,8 @@ public class RegistrarParticipanteCommandHandler : IRequestHandler<RegistrarPart
         try
         {
             var documentoId = await _mediator.Send(new CriarDocumentoAssinaturaCommand(nameof(Domain.Entidades.Dds), request.DdsId), ct);
-            await _registrador.RegistrarAsync(documentoId, resultado, ipAddress: null, ct);
+            await _registrador.RegistrarAsync(documentoId, resultado, ipAddress: null, ct,
+                request.ImagemDigital, request.ImagemDigital is null ? null : "image/png");
         }
         catch (Exception ex)
         {
@@ -101,4 +114,7 @@ public class RegistrarParticipanteCommandHandler : IRequestHandler<RegistrarPart
 
         return participante.Id;
     }
+
+    private static LeituraBiometricaAssinada? LeituraDo(string? desafio, string? assinatura) =>
+        string.IsNullOrEmpty(desafio) ? null : new LeituraBiometricaAssinada(desafio, assinatura ?? string.Empty);
 }

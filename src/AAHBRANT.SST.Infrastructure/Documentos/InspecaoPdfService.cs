@@ -48,13 +48,33 @@ public class InspecaoPdfService : IInspecaoPdfService
                             coluna.Item().Text(item.Secao).FontSize(11).Bold().FontColor(CorMarca);
                         secaoAnterior = item.Secao;
 
-                        coluna.Item().Element(c => SecaoItem(c, item));
+                        coluna.Item().Element(c => SecaoItem(c, item, modelo.EvidenciaUnicaSoNaoConforme));
                     }
+
                 });
 
                 pagina.Footer().Column(coluna => RodapeDocumentoPadrao.Desenhar(
                     coluna, "Inspeção", modelo.Protocolo, null, modelo.ConteudoHash, modelo.UrlValidacaoPublica, modelo.QrCodePng, modelo.TemAssinatura));
             });
+
+            if (modelo.Assinatura is not null)
+            {
+                container.Page(pagina =>
+                {
+                    pagina.Size(PageSizes.A4);
+                    pagina.Margin(1.5f, Unit.Centimetre);
+                    pagina.DefaultTextStyle(estilo => estilo.FontSize(9));
+
+                    pagina.Header().Column(coluna =>
+                        CabecalhoDocumentoPadrao.Desenhar(coluna, "Assinaturas e validação", modelo.ObraNome, modelo.ObraLogoConteudo));
+
+                    pagina.Content().PaddingVertical(10).Element(c => SecaoAssinaturas(c, modelo.Assinatura));
+
+                    pagina.Footer().Column(coluna => RodapeDocumentoPadrao.Desenhar(
+                        coluna, "Inspeção assinada", modelo.Protocolo, null, modelo.Assinatura.ConteudoHash,
+                        modelo.Assinatura.UrlValidacaoPublica, modelo.Assinatura.QrCodePng, temAssinatura: true));
+                });
+            }
         });
 
         return documento.GeneratePdf();
@@ -64,6 +84,8 @@ public class InspecaoPdfService : IInspecaoPdfService
     {
         container.Column(coluna =>
         {
+            if (modelo.IdentificacaoVeiculo is { Count: > 0 })
+                coluna.Item().Text(string.Join("   |   ", modelo.IdentificacaoVeiculo)).SemiBold();
             coluna.Item().Row(linha =>
             {
                 linha.RelativeItem().Text(t => { t.Span("Checklist: ").SemiBold(); t.Span($"{modelo.ChecklistNome} (v{modelo.ChecklistVersao})"); });
@@ -77,7 +99,7 @@ public class InspecaoPdfService : IInspecaoPdfService
         });
     }
 
-    private static void SecaoItem(IContainer container, InspecaoPdfItemModelo item)
+    private static void SecaoItem(IContainer container, InspecaoPdfItemModelo item, bool evidenciaUnicaSoNaoConforme)
     {
         container.Border(1).BorderColor(Colors.Grey.Lighten1).Padding(8).Column(coluna =>
         {
@@ -87,8 +109,19 @@ public class InspecaoPdfService : IInspecaoPdfService
             {
                 linha.RelativeItem().Text($"{item.Ordem}. {item.Descricao}").FontSize(10).Bold().FontColor(CorMarca);
                 linha.ConstantItem(90).Element(CelulaStatus(item.StatusItem)).AlignCenter()
-                    .Text(RotuloStatus(item.StatusItem)).FontSize(8).Bold();
+                    .Text(RotuloStatus(item.StatusItem, evidenciaUnicaSoNaoConforme)).FontSize(8).Bold();
             });
+
+            if (evidenciaUnicaSoNaoConforme)
+            {
+                if (!string.IsNullOrWhiteSpace(item.Observacao))
+                    coluna.Item().Text(t => { t.Span("OBS: ").SemiBold(); t.Span(item.Observacao); });
+
+                // Veículos: a foto só existe (e só sai no PDF) quando o item foi marcado Não Conforme.
+                if (item.StatusItem == StatusItemChecklist.NaoConforme && item.FotoAntesConteudo is not null)
+                    coluna.Item().PaddingTop(4).Width(220).Element(c => BlocoEvidencia(c, "Evidência da não conformidade", item.FotoAntesConteudo));
+                return;
+            }
 
             coluna.Item().Row(linha =>
             {
@@ -125,6 +158,42 @@ public class InspecaoPdfService : IInspecaoPdfService
         });
     }
 
+    private static void SecaoAssinaturas(IContainer container, InspecaoPdfAssinaturaModelo assinatura)
+    {
+        container.Column(coluna =>
+        {
+            coluna.Spacing(10);
+
+            coluna.Item().Text("Assinaturas eletrônicas").FontSize(14).Bold().FontColor(CorMarca);
+            coluna.Item().Text($"Documento finalizado em {assinatura.FinalizadoEm:dd/MM/yyyy HH:mm}.").FontSize(10);
+
+            foreach (var signatario in assinatura.Signatarios)
+            {
+                // Padrão único de assinatura: nome, linha, cargo e a legenda miúda (pedido de 02/10).
+                coluna.Item().Element(c => AssinaturaPdfPadrao.Bloco(
+                    c, null, signatario.Nome, signatario.Funcao, signatario.AssinadoEm, signatario.MetodoAutenticacao));
+            }
+
+            coluna.Item().PaddingTop(6).Text("Validação do documento").FontSize(12).Bold().FontColor(CorMarca);
+            coluna.Item().Text(t =>
+            {
+                t.Span("Hash de integridade (SHA-256): ").SemiBold();
+                t.Span(assinatura.ConteudoHash);
+            });
+
+            coluna.Item().Row(linha =>
+            {
+                linha.ConstantItem(90).Image(assinatura.QrCodePng);
+                linha.RelativeItem().PaddingLeft(10).Column(info =>
+                {
+                    info.Spacing(4);
+                    info.Item().Text("A autenticidade deste documento pode ser conferida pelo QR Code ou pelo endereço abaixo.");
+                    info.Item().Text(assinatura.UrlValidacaoPublica).FontSize(8);
+                });
+            });
+        });
+    }
+
     // Proporção aproximada do slot de evidência (largura da coluna ÷ Height(140) acima) — fotos de
     // celular vêm em proporções variadas e o antigo Image(foto).FitArea() só "contém" a imagem
     // (letterbox), deixando faixas vazias quando a proporção não bate com a do slot. Recorta pelo
@@ -137,7 +206,7 @@ public class InspecaoPdfService : IInspecaoPdfService
     // risco maior do que o necessário só pra recortar uma foto.
     private static byte[] RecortarParaPreencherSlot(byte[] foto)
     {
-        using var imagem = SixLabors.ImageSharp.Image.Load(foto);
+        using var imagem = AAHBRANT.SST.Infrastructure.Imagens.ImagemSegura.Carregar(foto);
         imagem.Mutate(x => x.Resize(new ResizeOptions
         {
             Size = new SixLabors.ImageSharp.Size(800, 450), // ~16:9, próximo da proporção real do slot
@@ -160,6 +229,18 @@ public class InspecaoPdfService : IInspecaoPdfService
         };
         return container => container.Background(cor).Padding(4).CornerRadius(4);
     }
+
+    // Veículos usam a legenda da planilha (C / NC / NA): Conforme, Não conforme, Não aplicável —
+    // "Resolvido/Pendente" só faz sentido nas patrulhas, onde o achado é depois resolvido.
+    private static string RotuloStatus(StatusItemChecklist? status, bool legendaVeiculo) => legendaVeiculo
+        ? status switch
+        {
+            StatusItemChecklist.Conforme => "CONFORME",
+            StatusItemChecklist.NaoConforme => "NÃO CONFORME",
+            StatusItemChecklist.NaoAplicavel => "NÃO APLICÁVEL",
+            _ => "NÃO RESPONDIDO",
+        }
+        : RotuloStatus(status);
 
     private static string RotuloStatus(StatusItemChecklist? status) => status switch
     {

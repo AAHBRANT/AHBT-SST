@@ -1,8 +1,9 @@
-import { Abas, useAbaNaUrl, PageHeader } from '@ui';
+import { Abas, DashboardTopo, useAbaNaUrl, PageHeader } from '@ui';
+import { CatalogoAtividadesTab } from '../catalogo/CatalogoAtividadesTab';
 import { AprDashboardTab } from './dashboard/AprDashboardTab';
 import { AprsTab } from './AprsTab';
 
-const ABAS_APRS = ['registros', 'dashboard'] as const;
+const ABAS_APRS = ['registros', 'catalogo'] as const;
 type AbaAprs = (typeof ABAS_APRS)[number];
 
 // Onda 2 Task 11 (camada ui/): página-pilar de APR — mesmo padrão de EpiPage/piloto 1 (spec §5.1):
@@ -14,6 +15,10 @@ export function AprsPage({ mostrarTitulo = true }: { mostrarTitulo?: boolean } =
     <div>
       {mostrarTitulo && <PageHeader titulo="APR" />}
 
+      <DashboardTopo>
+        <AprDashboardTab />
+      </DashboardTopo>
+
       <Abas
         nivel={mostrarTitulo ? 'pilar' : 'modulo'}
         valor={aba}
@@ -21,12 +26,12 @@ export function AprsPage({ mostrarTitulo = true }: { mostrarTitulo?: boolean } =
         aria-label="Seções de APR"
         abas={[
           { valor: 'registros', rotulo: 'APRs' },
-          { valor: 'dashboard', rotulo: 'Dashboard' },
+          { valor: 'catalogo', rotulo: 'Catálogo' },
         ]}
       />
 
       {aba === 'registros' && <AprsTab />}
-      {aba === 'dashboard' && <AprDashboardTab />}
+      {aba === 'catalogo' && <CatalogoAtividadesTab tipo="apr" />}
     </div>
   );
 }

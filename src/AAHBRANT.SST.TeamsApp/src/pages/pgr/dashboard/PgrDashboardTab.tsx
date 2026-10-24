@@ -28,6 +28,7 @@ import {
   type PlanoAcaoItem,
 } from '../../../lib/api';
 import { PgrPlanoAcaoVencidoPanel, type AcaoPlanoComContexto } from './PgrPlanoAcaoVencidoPanel';
+import { FaixaKpis } from '../../../components/dashboard/FaixaKpis';
 
 const hojeISO = new Date().toISOString().slice(0, 10);
 
@@ -151,12 +152,12 @@ export function PgrDashboardTab() {
         </FeedbackInline>
       )}
 
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(185px, 1fr))', gap: 16, marginBottom: 16 }}>
+      <FaixaKpis>
         <KpiCard rotulo="Total de PGRs" valor={pgrsFiltrados.length} tom="info" indice={0} icone={<ShieldCheckmark24Regular />} />
         <KpiCard rotulo="Vigentes" valor={vigentes} tom="ok" indice={1} icone={<CheckmarkCircle24Regular />} />
         <KpiCard rotulo="Com revisão vencida" valor={comRevisaoVencida} tom="alerta" indice={2} icone={<Warning24Regular />} />
         <KpiCard rotulo="Ações do plano em aberto" valor={acoesEmAberto} tom="atencao" indice={3} icone={<ClipboardTaskListLtr24Regular />} />
-      </div>
+      </FaixaKpis>
 
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(340px, 1fr))', gap: 16, marginBottom: 16 }}>
         <Card titulo="Status dos PGRs" subtitulo="Situação atual de cada Programa de Gerenciamento de Riscos">

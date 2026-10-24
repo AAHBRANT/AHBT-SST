@@ -14,7 +14,9 @@ import {
   contarPendentes,
   estaOnline,
   listarConflitosNaoLidos,
+  descreverAcaoOffline,
   marcarConflitoComoLido,
+  reenviarConflito,
   sincronizarFilaSaida,
 } from '../lib/offline/syncEngine';
 import type { ItemConflito } from '../lib/offline/db';
@@ -105,16 +107,23 @@ export function SyncStatusBadge() {
         {conflitos.map((conflito) => (
           <div key={conflito.id} className={estilos.conflito}>
             <Text size={200} weight="semibold">
-              {conflito.metodo} {conflito.url}
+              {descreverAcaoOffline(conflito.url, conflito.metodo)}
             </Text>
             <Text size={200}>{conflito.mensagem}</Text>
-            <Button
-              appearance="transparent"
-              size="small"
-              onClick={() => conflito.id && void marcarConflitoComoLido(conflito.id)}
-            >
-              Marcar como visto
-            </Button>
+            <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+              {conflito.item && online && (
+                <Button appearance="secondary" size="small" onClick={() => conflito.id && void reenviarConflito(conflito.id)}>
+                  Tentar de novo
+                </Button>
+              )}
+              <Button
+                appearance="transparent"
+                size="small"
+                onClick={() => conflito.id && void marcarConflitoComoLido(conflito.id)}
+              >
+                {conflito.item ? 'Descartar' : 'Marcar como visto'}
+              </Button>
+            </div>
           </div>
         ))}
       </PopoverSurface>

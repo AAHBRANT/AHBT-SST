@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import {
+  BotaoAcao,
   Button,
   Card,
   Campo,
@@ -224,7 +225,7 @@ export function DimensionamentoCipaTab() {
             acao: { rotulo: 'Adicionar dimensionamento', aoClicar: () => setPainelAberto(true) },
           }}
           acoesLinha={(d) => (
-            <Button appearance="subtle" icon={<Delete24Regular />} onClick={() => excluir(d.id)} aria-label="Excluir" />
+            <BotaoAcao tom="excluir" icon={<Delete24Regular />} onClick={() => excluir(d.id)} aria-label="Excluir" />
           )}
         />
       </Card>

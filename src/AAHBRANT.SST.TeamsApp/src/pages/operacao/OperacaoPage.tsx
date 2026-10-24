@@ -1,4 +1,15 @@
 import { Abas, useAbaNaUrl } from '@ui';
+import {
+  Box24Regular,
+  ClipboardTaskListLtr24Regular,
+  DocumentLock24Regular,
+  Home24Regular,
+  PeopleCommunity24Regular,
+  ShieldCheckmark24Regular,
+  Signature24Regular,
+  Tag24Regular,
+  VehicleTruckProfile24Regular,
+} from '@fluentui/react-icons';
 import { AprsPage } from '../apr/AprsPage';
 import { PermissoesTrabalhoPage } from '../pt/PermissoesTrabalhoPage';
 import { InspecoesPage } from '../inspecoes/InspecoesPage';
@@ -34,15 +45,15 @@ export function OperacaoPage() {
         aoMudar={setSecao}
         aria-label="Seções de Operação"
         abas={[
-          { valor: 'apr', rotulo: 'APR' },
-          { valor: 'pt', rotulo: 'PT' },
-          { valor: 'inspecoes', rotulo: 'Inspeções' },
-          { valor: 'cipa', rotulo: 'CIPA' },
-          { valor: 'epi', rotulo: 'EPI' },
-          { valor: 'uniforme', rotulo: 'Uniforme' },
-          { valor: 'epc', rotulo: 'EPC' },
-          { valor: 'dds', rotulo: 'DDS' },
-          { valor: 'identificacao', rotulo: 'Outros controles operacionais' },
+          { valor: 'apr', rotulo: 'APR', icone: <Signature24Regular /> },
+          { valor: 'pt', rotulo: 'PT', icone: <DocumentLock24Regular /> },
+          { valor: 'inspecoes', rotulo: 'Inspeções', icone: <ClipboardTaskListLtr24Regular /> },
+          { valor: 'cipa', rotulo: 'CIPA', icone: <PeopleCommunity24Regular /> },
+          { valor: 'epi', rotulo: 'EPI', icone: <ShieldCheckmark24Regular /> },
+          { valor: 'uniforme', rotulo: 'Uniforme', icone: <Box24Regular /> },
+          { valor: 'epc', rotulo: 'EPC', icone: <Home24Regular /> },
+          { valor: 'dds', rotulo: 'DDS', icone: <VehicleTruckProfile24Regular /> },
+          { valor: 'identificacao', rotulo: 'Outros controles operacionais', icone: <Tag24Regular /> },
         ]}
       />
 

@@ -59,6 +59,25 @@ public class SincronizarColaboradorGrhCommandHandlerTests
     }
 
     [Fact]
+    public async Task Handle_NomeDaObraDivergeSoNoAcentoEMaiuscula_AindaAssimEncontraAObra()
+    {
+        // Incidente real (22/09): SST tinha "CONSORCIO PONTE RIO CUIA" (sem acento, caixa alta) e
+        // o G-RH mandava "Consórcio Ponte Rio Cuiá" — comparação exata nunca batia, e vários
+        // colaboradores (incluindo Hamilton Costa Gomes) ficavam de fora só por causa disso.
+        var db = DbContextFactory.Criar();
+        var obra = new Obra { Codigo = "01", Nome = "CONSORCIO PONTE RIO CUIA" };
+        db.Obras.Add(obra);
+        await db.SaveChangesAsync();
+
+        var handler = new SincronizarColaboradorGrhCommandHandler(db, CpfHash);
+        var id = await handler.Handle(
+            Comando("38062559890", "Hamilton Costa Gomes", "Consórcio Ponte Rio Cuiá", "Pedreiro"), default);
+
+        var trabalhador = await db.Trabalhadores.SingleAsync(t => t.Id == id);
+        Assert.Equal(obra.Id, trabalhador.ObraId);
+    }
+
+    [Fact]
     public async Task Handle_ObraInexistente_TrabalhadorNovo_Falha()
     {
         var db = DbContextFactory.Criar();

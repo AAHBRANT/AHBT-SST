@@ -1,10 +1,12 @@
 import { Text, makeStyles } from '@fluentui/react-components';
 import { SlotFoto } from './camera/SlotFoto';
+import { FeedbackInline } from '@ui';
+import { pendenciasGrade, type ContextoFoto, type DadosFoto } from '../lib/dadosFoto';
 
 const useEstilos = makeStyles({
   grade: {
     display: 'grid',
-    gridTemplateColumns: 'repeat(3, minmax(96px, 160px))',
+    gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))',
     gap: '12px',
   },
 });
@@ -13,14 +15,18 @@ export interface FotoEvidenciaSlot {
   ordem: number;
   id: string;
   url: string;
+  dadosFoto?: DadosFoto | null;
 }
 
 interface GradeFotosEvidenciaProps {
+  contextoFoto?: ContextoFoto;
   titulo: string;
   subtitulo?: string;
   total: number;
   fotos: FotoEvidenciaSlot[];
   somenteLeitura?: boolean;
+  /** Fotos opcionais: não mostra o aviso de pendência. */
+  opcional?: boolean;
   onSelecionarFoto: (ordem: number, arquivo: File) => void | Promise<void>;
   onRemoverFoto: (fotoId: string) => void | Promise<void>;
   onErroValidacao?: (mensagem: string) => void;
@@ -36,10 +42,12 @@ interface GradeFotosEvidenciaProps {
 // SlotFoto (components/camera/), reaproveitado aqui e em qualquer outro lugar com foto única.
 export function GradeFotosEvidencia({
   titulo,
+  contextoFoto,
   subtitulo,
   total,
   fotos,
   somenteLeitura = false,
+  opcional = false,
   onSelecionarFoto,
   onRemoverFoto,
   onErroValidacao,
@@ -59,6 +67,9 @@ export function GradeFotosEvidencia({
         </Text>
       )}
 
+      {contextoFoto && !somenteLeitura && !opcional && pendenciasGrade(fotos, total).length > 0 && <FeedbackInline tom="aviso">
+        <strong>Confira as fotos antes de sair do local.</strong> Há dados pendentes. A finalização será liberada quando as fotos estiverem completas.
+      </FeedbackInline>}
       <div className={estilos.grade}>
         {Array.from({ length: total }, (_, i) => i + 1).map((ordem) => {
           const foto = porOrdem.get(ordem);
@@ -66,6 +77,8 @@ export function GradeFotosEvidencia({
             <SlotFoto
               key={ordem}
               rotulo={`Foto ${ordem}`}
+              contextoFoto={contextoFoto}
+              dadosFoto={foto?.dadosFoto}
               url={foto?.url}
               somenteLeitura={somenteLeitura}
               modo="remover"

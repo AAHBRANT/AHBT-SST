@@ -27,6 +27,7 @@ import {
 } from '../../../lib/api';
 import { AreasBloqueadasPanel, type AreaComContexto } from './AreasBloqueadasPanel';
 import { TagsPerdidasPanel } from './TagsPerdidasPanel';
+import { FaixaKpis } from '../../../components/dashboard/FaixaKpis';
 
 // Onda 2 Task 9 (camada ui/): dashboard de Identificação — KpiCard + gráficos com cores lidas de
 // usePaletaGraficos (paleta.ts, spec §1.6), grade CSS Grid simples (spec §4.4, sem componente de
@@ -177,12 +178,12 @@ export function IdentificacaoDashboardTab() {
         </FeedbackInline>
       )}
 
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(185px, 1fr))', gap: 16, marginBottom: 16 }}>
+      <FaixaKpis>
         <KpiCard rotulo="Total de áreas" valor={areasFiltradas.length} tom="info" indice={0} icone={<Location24Regular />} />
         <KpiCard rotulo="Áreas bloqueadas" valor={areasBloqueadas} tom="alerta" indice={1} icone={<LockClosed24Regular />} />
         <KpiCard rotulo="Total de tags" valor={tagsFiltradas.length} tom="info" indice={2} icone={<ScanObject24Regular />} />
         <KpiCard rotulo="Tags perdidas" valor={tagsPerdidas.length} tom="alerta" indice={3} icone={<Search24Regular />} />
-      </div>
+      </FaixaKpis>
 
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(340px, 1fr))', gap: 16, marginBottom: 16 }}>
         <Card titulo="Status das áreas" subtitulo="Situação atual de cada área de SST cadastrada">

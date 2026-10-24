@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import {
+  BotaoAcao,
   Button,
   Campo,
   Card,
@@ -339,9 +340,8 @@ export function CatalogoEpcTab() {
                 aria-label="Salvar"
               />
             ) : (
-              <Button
-                appearance="subtle"
-                size="small"
+              <BotaoAcao
+                tom="excluir"
                 icon={<Delete24Regular />}
                 onClick={() => excluir(epc.id)}
                 aria-label="Excluir"

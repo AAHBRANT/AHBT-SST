@@ -1,8 +1,20 @@
-import { Button, Spinner, Text, makeStyles, mergeClasses, tokens } from '@fluentui/react-components';
-import { Camera24Regular, Dismiss16Regular, Edit16Regular } from '@fluentui/react-icons';
+import { useState } from 'react';
+import {
+  Button,
+  Dialog,
+  DialogSurface,
+  Spinner,
+  Text,
+  makeStyles,
+  mergeClasses,
+  tokens,
+} from '@fluentui/react-components';
+import { Camera24Regular, Dismiss16Regular, Dismiss24Regular, Edit16Regular } from '@fluentui/react-icons';
 import { designTokens } from '@ui';
 import { useCapturaFoto, type UseCapturaFotoOptions } from './useCapturaFoto';
 import { DialogoCameraFoto } from './DialogoCameraFoto';
+import { ResumoDadosFoto } from './ResumoDadosFoto';
+import type { DadosFoto } from '../../lib/dadosFoto';
 
 const useEstilos = makeStyles({
   slotVazio: {
@@ -60,6 +72,41 @@ const useEstilos = makeStyles({
     objectFit: 'cover',
     display: 'block',
   },
+  botaoImagem: {
+    display: 'block',
+    width: '100%',
+    height: '100%',
+    padding: 0,
+    margin: 0,
+    border: 'none',
+    background: 'transparent',
+    cursor: 'pointer',
+  },
+  imagemAmpliada: {
+    display: 'block',
+    maxWidth: '90vw',
+    maxHeight: '85vh',
+    objectFit: 'contain',
+    margin: '0 auto',
+  },
+  superficieAmpliada: {
+    position: 'relative',
+    padding: 0,
+    background: 'transparent',
+    boxShadow: 'none',
+    maxWidth: 'none',
+  },
+  botaoFecharAmpliada: {
+    position: 'absolute',
+    top: '8px',
+    right: '8px',
+    minWidth: 'auto',
+    backgroundColor: 'rgba(0, 0, 0, 0.55)',
+    color: tokens.colorNeutralBackground1,
+    ':hover': {
+      backgroundColor: 'rgba(0, 0, 0, 0.75)',
+    },
+  },
   botaoOverlay: {
     position: 'absolute',
     top: '4px',
@@ -82,6 +129,7 @@ const useEstilos = makeStyles({
 });
 
 export interface SlotFotoProps extends UseCapturaFotoOptions {
+  dadosFoto?: DadosFoto | null;
   /** Texto mostrado dentro do quadro vazio (ex.: "Foto 1", "Antes", "Depois", "Funcionário"). */
   rotulo: string;
   /** URL da miniatura já carregada, se houver. */
@@ -123,12 +171,16 @@ export function SlotFoto({
   tamanhoMaximoMb,
   modoCamera,
   permitirCamera,
+  exigirCamera,
+  contextoFoto,
+  dadosFoto,
 }: SlotFotoProps) {
   const estilos = useEstilos();
-  const captura = useCapturaFoto({ aoSelecionarArquivo, aoErroValidacao, tamanhoMaximoMb, modoCamera, permitirCamera });
+  const captura = useCapturaFoto({ contextoFoto, exigirCamera, aoSelecionarArquivo, aoErroValidacao, tamanhoMaximoMb, modoCamera, permitirCamera });
   const { inputRef, processando, abrirCamera, onInputChange } = captura;
   const compacta = tamanho === 'compacta';
   const ocupado = processando || carregandoMiniatura;
+  const [ampliada, setAmpliada] = useState(false);
 
   return (
     <div>
@@ -136,11 +188,20 @@ export function SlotFoto({
 
       {url ? (
         <div className={mergeClasses(estilos.slotPreenchido, compacta && estilos.slotPreenchidoCompacto)}>
-          <img src={url} alt={rotulo} className={estilos.imagemSlot} />
+          <button
+            type="button"
+            className={estilos.botaoImagem}
+            onClick={() => setAmpliada(true)}
+            aria-label={`Ampliar ${rotulo}`}
+            title="Clique para ampliar"
+          >
+            <img src={url} alt={rotulo} className={estilos.imagemSlot} />
+          </button>
           {!somenteLeitura && (
             <Button
               className={mergeClasses(estilos.botaoOverlay, compacta && estilos.botaoOverlayCompacto)}
               appearance="transparent"
+              data-botao="livre"
               size="small"
               icon={modo === 'remover' ? <Dismiss16Regular /> : <Edit16Regular />}
               aria-label={modo === 'remover' ? `Remover ${rotulo}` : `Trocar ${rotulo}`}
@@ -173,7 +234,25 @@ export function SlotFoto({
         </button>
       )}
 
+      {url && contextoFoto && <ResumoDadosFoto dados={dadosFoto} />}
       <DialogoCameraFoto captura={captura} />
+
+      {url && (
+        <Dialog open={ampliada} onOpenChange={(_, data) => setAmpliada(data.open)}>
+          <DialogSurface className={estilos.superficieAmpliada}>
+            <Button
+              className={estilos.botaoFecharAmpliada}
+              appearance="transparent"
+              data-botao="livre"
+              size="small"
+              icon={<Dismiss24Regular />}
+              aria-label="Fechar"
+              onClick={() => setAmpliada(false)}
+            />
+            <img src={url} alt={rotulo} className={estilos.imagemAmpliada} />
+          </DialogSurface>
+        </Dialog>
+      )}
     </div>
   );
 }

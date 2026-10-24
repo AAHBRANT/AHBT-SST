@@ -1,4 +1,5 @@
 using AAHBRANT.SST.Application.Common.Interfaces;
+using AAHBRANT.SST.Application.Common.Seguranca;
 using AAHBRANT.SST.Domain.Entidades;
 using AAHBRANT.SST.Domain.Enums;
 using FluentValidation;
@@ -47,7 +48,7 @@ public class EncerrarNaoConformidadeCommandHandler : IRequestHandler<EncerrarNao
 
     public async Task Handle(EncerrarNaoConformidadeCommand request, CancellationToken ct)
     {
-        var nc = await _db.NaoConformidades.FirstOrDefaultAsync(n => n.Id == request.Id, ct)
+        var nc = await _db.NaoConformidades.NoEscopoDaObra(_db).FirstOrDefaultAsync(n => n.Id == request.Id, ct)
             ?? throw new KeyNotFoundException($"Não conformidade {request.Id} não encontrada.");
 
         if (nc.Status != StatusNaoConformidade.AguardandoValidacao)

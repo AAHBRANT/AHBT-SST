@@ -1,4 +1,6 @@
+using AAHBRANT.SST.Application.Common;
 using AAHBRANT.SST.Application.Common.Interfaces;
+using AAHBRANT.SST.Application.Common.Seguranca;
 using AAHBRANT.SST.Domain.Entidades;
 using AAHBRANT.SST.Domain.Enums;
 using FluentValidation;
@@ -10,7 +12,8 @@ namespace AAHBRANT.SST.Application.PermissoesTrabalho.Commands;
 // A PT sempre nasce em elaboração ("autorização" é uma etapa distinta do cadastro, mesmo padrão de
 // CriarAprCommand). Nasce já com os 6 PreRequisitos (§2) e os 15 Verificacoes (§4) do formulário —
 // todos "em branco" (Atendido=false / Resposta=null) — mesmo princípio de CriarInspecaoCommand
-// gerando uma InspecaoItemResposta em branco por item do checklist.
+// gerando uma InspecaoItemResposta em branco por item do checklist. NumeroPt não é mais informado
+// por quem cadastra (pedido do usuário, 03/09): o sistema gera sozinho, ver GeradorNumeroDocumentoService.
 public record CriarPermissaoTrabalhoCommand(
     Guid AtividadeId,
     string DescricaoAtividade,
@@ -49,6 +52,8 @@ public class CriarPermissaoTrabalhoCommandHandler : IRequestHandler<CriarPermiss
 
     public async Task<Guid> Handle(CriarPermissaoTrabalhoCommand request, CancellationToken ct)
     {
+        await _db.GarantirAtividadeNoEscopoAsync(request.AtividadeId, ct);
+
         var atividadeExiste = await _db.Atividades.AnyAsync(a => a.Id == request.AtividadeId, ct);
         if (!atividadeExiste)
             throw new KeyNotFoundException($"Atividade {request.AtividadeId} não encontrada.");

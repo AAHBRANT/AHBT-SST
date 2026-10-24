@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import {
+  BotaoAcao,
   Button,
   Card,
   Campo,
@@ -22,6 +23,8 @@ import { Add24Regular, ArrowSync24Regular, Delete24Regular } from '@fluentui/rea
 import {
   api,
   tipoInspecaoLabel,
+  tipoVeiculoLabel,
+  TipoInspecao,
   type ChecklistModelo,
   type NovoChecklistModeloItem,
 } from '../../lib/api';
@@ -44,7 +47,9 @@ const itemVazio: NovoChecklistModeloItem = {
 export function ChecklistModelosTab() {
   const [checklists, setChecklists] = useState<ChecklistModelo[]>([]);
   const [nome, setNome] = useState('');
-  const [tipoInspecao, setTipoInspecao] = useState(1);
+  const [tipoInspecao, setTipoInspecao] = useState<number>(1);
+  // Só usado quando o tipo de inspeção é Veículo: cada tipo de veículo tem o seu checklist.
+  const [tipoVeiculo, setTipoVeiculo] = useState<number | null>(null);
   const [itens, setItens] = useState<NovoChecklistModeloItem[]>([]);
   const [itemAtual, setItemAtual] = useState<NovoChecklistModeloItem>(itemVazio);
   const [versionandoId, setVersionandoId] = useState<string | null>(null);
@@ -88,6 +93,7 @@ export function ChecklistModelosTab() {
     setErroPainel(null);
     setNome('');
     setTipoInspecao(1);
+    setTipoVeiculo(null);
     setItens([]);
     setItemAtual(itemVazio);
     setVersionandoId(null);
@@ -100,6 +106,7 @@ export function ChecklistModelosTab() {
       setVersionandoId(checklist.id);
       setNome(detalhe.checklistModelo.nome);
       setTipoInspecao(detalhe.checklistModelo.tipoInspecao);
+      setTipoVeiculo(detalhe.checklistModelo.tipoVeiculo ?? null);
       setItens(
         detalhe.itens.map((i) => ({
           descricao: i.descricao,
@@ -134,7 +141,17 @@ export function ChecklistModelosTab() {
           setCarregando(false);
           return;
         }
-        await api.checklistModelos.criar({ nome, tipoInspecao, itens });
+        if (tipoInspecao === TipoInspecao.Veiculo && !tipoVeiculo) {
+          setErroPainel('Informe o tipo de veículo do checklist.');
+          setCarregando(false);
+          return;
+        }
+        await api.checklistModelos.criar({
+          nome,
+          tipoInspecao,
+          tipoVeiculo: tipoInspecao === TipoInspecao.Veiculo ? tipoVeiculo : null,
+          itens,
+        });
         fecharPainel();
         await carregar();
         sucessoToast('Checklist criado com sucesso.');
@@ -167,7 +184,14 @@ export function ChecklistModelosTab() {
 
   const colunasChecklists: Coluna<ChecklistModelo>[] = [
     { chave: 'nome', rotulo: 'Nome' },
-    { chave: 'tipo', rotulo: 'Tipo', render: (c) => tipoInspecaoLabel[c.tipoInspecao] },
+    {
+      chave: 'tipo',
+      rotulo: 'Tipo',
+      render: (c) =>
+        c.tipoVeiculo
+          ? `${tipoInspecaoLabel[c.tipoInspecao]} — ${tipoVeiculoLabel[c.tipoVeiculo]}`
+          : tipoInspecaoLabel[c.tipoInspecao],
+    },
     { chave: 'versao', rotulo: 'Versão', render: (c) => <StatusChip tom="neutro">v{c.versao}</StatusChip> },
     { chave: 'quantidadeItens', rotulo: 'Itens' },
   ];
@@ -214,7 +238,10 @@ export function ChecklistModelosTab() {
                 <Field label="Tipo de inspeção">
                   <Select
                     value={String(tipoInspecao)}
-                    onChange={(_, d) => setTipoInspecao(Number(d.value))}
+                    onChange={(_, d) => {
+                      setTipoInspecao(Number(d.value));
+                      setTipoVeiculo(null);
+                    }}
                     disabled={!!versionandoId}
                   >
                     {Object.entries(tipoInspecaoLabel).map(([valor, rotulo]) => (
@@ -225,6 +252,24 @@ export function ChecklistModelosTab() {
                   </Select>
                 </Field>
               </Campo>
+              {tipoInspecao === TipoInspecao.Veiculo && (
+                <Campo span={6}>
+                  <Field label="Tipo de veículo">
+                    <Select
+                      value={tipoVeiculo ? String(tipoVeiculo) : ''}
+                      onChange={(_, d) => setTipoVeiculo(d.value ? Number(d.value) : null)}
+                      disabled={!!versionandoId}
+                    >
+                      <option value="">Selecione</option>
+                      {Object.entries(tipoVeiculoLabel).map(([valor, rotulo]) => (
+                        <option key={valor} value={valor}>
+                          {rotulo}
+                        </option>
+                      ))}
+                    </Select>
+                  </Field>
+                </Campo>
+              )}
             </FormGrid>
           </FormSection>
 
@@ -284,9 +329,8 @@ export function ChecklistModelosTab() {
               vazio={{ titulo: 'Nenhum item adicionado ainda.' }}
               densidade="compacta"
               acoesLinha={(i) => (
-                <Button
-                  appearance="subtle"
-                  size="small"
+                <BotaoAcao
+                  tom="excluir"
                   icon={<Delete24Regular />}
                   onClick={() => removerItem(i.indice)}
                   aria-label="Remover item"
@@ -316,9 +360,9 @@ export function ChecklistModelosTab() {
             acao: { rotulo: 'Novo checklist', aoClicar: () => setPainelAberto(true) },
           }}
           acoesLinha={(c) => (
-            <div style={{ display: 'flex', gap: 4 }}>
-              <Button
-                appearance="subtle"
+            <div style={{ display: 'flex', gap: 6 }}>
+              <BotaoAcao
+                tom="ver"
                 icon={<ArrowSync24Regular />}
                 onClick={(evento) => {
                   evento.stopPropagation();
@@ -326,8 +370,8 @@ export function ChecklistModelosTab() {
                 }}
                 aria-label="Nova versão"
               />
-              <Button
-                appearance="subtle"
+              <BotaoAcao
+                tom="excluir"
                 icon={<Delete24Regular />}
                 onClick={(evento) => {
                   evento.stopPropagation();

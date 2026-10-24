@@ -6,7 +6,14 @@ namespace AAHBRANT.SST.Application.Assinatura.Commands;
 
 // Diferente de RegistrarAssinaturaBiometriaLocalCommand: não recebe TrabalhadorId — quem está na
 // foto é descoberto pelo Azure (Identify), não resolvido antes pelo cliente.
-public record RegistrarAssinaturaFacialCommand(Guid DocumentoAssinaturaId, Guid ObraId, byte[] FotoJpeg, string? IpAddress = null) : IRequest<DocumentoSignatarioDto>;
+public record RegistrarAssinaturaFacialCommand(
+    Guid DocumentoAssinaturaId,
+    Guid ObraId,
+    byte[] FotoJpeg,
+    string? FotoContentType = null,
+    string? IpAddress = null,
+    LocalizacaoAssinatura? Localizacao = null,
+    DateTime? CapturadaEm = null) : IRequest<DocumentoSignatarioDto>;
 
 public class RegistrarAssinaturaFacialCommandValidator : AbstractValidator<RegistrarAssinaturaFacialCommand>
 {
@@ -43,16 +50,16 @@ public class RegistrarAssinaturaFacialCommandHandler : IRequestHandler<Registrar
         var identificacao = await _autenticacaoFacial.IdentificarAsync(request.ObraId, request.FotoJpeg, ct);
         if (!identificacao.Aceito)
         {
-            var mensagem = identificacao.Motivo switch
-            {
-                MotivoRejeicaoFacial.NenhumRostoDetectado => "Nenhum rosto detectado na foto.",
-                MotivoRejeicaoFacial.MultiplosRostosDetectados => "Mais de uma pessoa detectada na câmera — aproxime-se sozinho.",
-                MotivoRejeicaoFacial.ConfiancaBaixa => "Rosto reconhecido com baixa confiança — tente novamente com melhor iluminação.",
-                _ => "Rosto não reconhecido.",
-            };
-            throw new RejeicaoFacialException(identificacao.Motivo!.Value, mensagem);
+            throw new RejeicaoFacialException(identificacao.Motivo!.Value, MensagemRejeicaoFacial.Para(identificacao.Motivo));
         }
 
-        return await _registrador.RegistrarAsync(request.DocumentoAssinaturaId, identificacao.Resultado!, request.IpAddress, ct);
+        return await _registrador.RegistrarAsync(
+            request.DocumentoAssinaturaId,
+            identificacao.Resultado! with { CapturadaEmDeclarada = request.CapturadaEm },
+            request.IpAddress,
+            ct,
+            request.FotoJpeg,
+            request.FotoContentType,
+            localizacao: request.Localizacao);
     }
 }

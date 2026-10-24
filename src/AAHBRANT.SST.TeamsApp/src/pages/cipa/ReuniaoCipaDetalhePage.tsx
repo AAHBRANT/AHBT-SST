@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useParams } from 'react-router-dom';
 import {
+  BotaoAcao,
   Button,
   Campo,
   CampoData,
@@ -23,7 +24,7 @@ import {
   type Coluna,
   type Tom,
 } from '@ui';
-import { Delete24Regular, DocumentPdf24Regular } from '@fluentui/react-icons';
+import { Delete24Regular, DocumentPdf24Regular, Eye24Regular } from '@fluentui/react-icons';
 import {
   api,
   prioridadeAcaoLabel,
@@ -39,6 +40,7 @@ import {
   type Trabalhador,
   type Usuario,
 } from '../../lib/api';
+import { salvarBlob, useVisualizadorPdf } from '../../components/useVisualizadorPdf';
 import { useSucessoToast } from '../../hooks/useSucessoToast';
 
 function novaAcaoInicial(): Omit<NovaAcaoPlano, 'origemTipo' | 'origemId'> {
@@ -78,6 +80,7 @@ export function ReuniaoCipaDetalhePage() {
   const [salvando, setSalvando] = useState(false);
   const [baixandoPdf, setBaixandoPdf] = useState(false);
   const { confirmar, dialogElement } = useConfirmar();
+  const { visualizar, dialogoVisualizador } = useVisualizadorPdf();
   const sucessoToast = useSucessoToast();
 
   async function carregar() {
@@ -152,18 +155,22 @@ export function ReuniaoCipaDetalhePage() {
     try {
       setBaixandoPdf(true);
       setErro(null);
-      const blob = await api.cipa.reunioes.baixarAtaPdf(id);
-      const url = URL.createObjectURL(blob);
-      const link = document.createElement('a');
-      link.href = url;
-      link.download = `ata-reuniao-cipa-${id}.pdf`;
-      link.click();
-      URL.revokeObjectURL(url);
+      salvarBlob(await api.cipa.reunioes.baixarAtaPdf(id), `ata-reuniao-cipa-${id}.pdf`);
     } catch (e) {
       setErro(e instanceof Error ? e.message : 'Falha ao gerar a ata em PDF.');
     } finally {
       setBaixandoPdf(false);
     }
+  }
+
+  // Mesma ata do "Baixar", aberta na janela sem baixar.
+  function visualizarAta() {
+    if (!id) return;
+    void visualizar({
+      titulo: 'Ata da reunião da CIPA',
+      nomeArquivo: `ata-reuniao-cipa-${id}.pdf`,
+      obter: () => api.cipa.reunioes.baixarAtaPdf(id),
+    });
   }
 
   async function criarAcao() {
@@ -239,6 +246,7 @@ export function ReuniaoCipaDetalhePage() {
   return (
     <div>
       {dialogElement}
+      {dialogoVisualizador}
       <PageHeader titulo="Reunião da CIPA" voltarPara="/operacao/cipa" rotuloVoltar="Voltar para CIPA" />
 
       {erro && (
@@ -264,9 +272,12 @@ export function ReuniaoCipaDetalhePage() {
             subtitulo={detalhe.reuniao.pauta ? `Pauta: ${detalhe.reuniao.pauta}` : undefined}
           >
             <FormRodape>
-              <Button appearance="primary" icon={<DocumentPdf24Regular />} onClick={baixarAta} disabled={baixandoPdf}>
+              <BotaoAcao tom="ver" aria-label="Visualizar ata" icon={<Eye24Regular />} onClick={visualizarAta}>
+                Visualizar ata
+              </BotaoAcao>
+              <BotaoAcao tom="baixar" aria-label="Baixar ata em PDF" icon={<DocumentPdf24Regular />} onClick={baixarAta} disabled={baixandoPdf}>
                 Baixar ata em PDF
-              </Button>
+              </BotaoAcao>
             </FormRodape>
           </Card>
 
@@ -421,13 +432,13 @@ export function ReuniaoCipaDetalhePage() {
               chaveLinha={(a) => a.id}
               vazio={{ titulo: 'Nenhuma ação registrada no plano ainda.' }}
               acoesLinha={(acao) => (
-                <div style={{ display: 'flex', gap: 4 }}>
+                <div style={{ display: 'flex', gap: 6 }}>
                   {!acao.dataValidacao && (
                     <Button appearance="subtle" onClick={() => validarAcao(acao.id)} disabled={salvando}>
                       Validar
                     </Button>
                   )}
-                  <Button appearance="subtle" icon={<Delete24Regular />} onClick={() => excluirAcao(acao.id)} aria-label="Excluir" />
+                  <BotaoAcao tom="excluir" icon={<Delete24Regular />} onClick={() => excluirAcao(acao.id)} aria-label="Excluir" />
                 </div>
               )}
             />

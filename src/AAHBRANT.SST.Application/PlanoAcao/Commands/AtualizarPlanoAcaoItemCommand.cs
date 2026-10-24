@@ -1,4 +1,5 @@
 using AAHBRANT.SST.Application.Common.Interfaces;
+using AAHBRANT.SST.Application.Common.Seguranca;
 using AAHBRANT.SST.Domain.Enums;
 using FluentValidation;
 using MediatR;
@@ -32,8 +33,11 @@ public class AtualizarPlanoAcaoItemCommandHandler : IRequestHandler<AtualizarPla
 
     public async Task Handle(AtualizarPlanoAcaoItemCommand request, CancellationToken ct)
     {
-        var item = await _db.PlanoAcaoItens.FirstOrDefaultAsync(i => i.Id == request.Id, ct)
+        var item = await _db.PlanoAcaoItens.NoEscopoDaObra(_db).FirstOrDefaultAsync(i => i.Id == request.Id, ct)
             ?? throw new KeyNotFoundException($"Item de plano de ação {request.Id} não encontrado.");
+
+        if (request.RiscoId.HasValue && request.RiscoId != item.RiscoId)
+            await _db.GarantirRiscoNoEscopoAsync(request.RiscoId.Value, ct);
 
         item.RiscoId = request.RiscoId;
         item.Descricao = request.Descricao;

@@ -17,7 +17,7 @@ public class ResolverTagPorUidQueryHandler : IRequestHandler<ResolverTagPorUidQu
 
     public async Task<ResolverTagDto?> Handle(ResolverTagPorUidQuery request, CancellationToken ct)
     {
-        var tag = await _db.TagsIdentificacao.FirstOrDefaultAsync(t => t.Uid == request.Uid, ct);
+        var tag = await _db.TagsIdentificacao.NoEscopoDaObra(_db).FirstOrDefaultAsync(t => t.Uid == request.Uid, ct);
         if (tag is null)
             return null;
 

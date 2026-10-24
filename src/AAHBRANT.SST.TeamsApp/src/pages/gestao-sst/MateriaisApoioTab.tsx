@@ -1,17 +1,21 @@
 import { useEffect, useState } from 'react';
 import {
+  BotaoAcao,
   Button,
   Card,
   Campo,
-  Carregando,
   DataTable,
   Field,
   FeedbackInline,
   FormGrid,
   FormRodape,
   FormSection,
+  Abas,
+  Checkbox,
   Input,
   PageHeader,
+  Select,
+  StatusChip,
   PainelCriacaoInline,
   useConfirmar,
   type Coluna,
@@ -26,7 +30,20 @@ import {
   Image24Regular,
 } from '@fluentui/react-icons';
 import { api, type MaterialApoio } from '../../lib/api';
+
+// Ordem de Serviço (20/10/2026): procedimentos, ITs e políticas também moram aqui, com código SGI,
+// revisão e situação. Só documento Vigente entra na OS; política com o selo entra em todas.
+const rotuloTipo: Record<number, string> = { 1: 'Material de apoio', 2: 'Procedimento', 3: 'Instrução de trabalho', 4: 'Política' };
+const rotuloSituacao: Record<number, string> = { 1: 'Vigente', 2: 'Em revisão', 3: 'Obsoleto' };
+type Filtro = 'todos' | 'procedimentos' | 'politicas' | 'apoio';
+const passaNoFiltro: Record<Filtro, (m: MaterialApoio) => boolean> = {
+  todos: () => true,
+  procedimentos: (m) => m.tipo === 2 || m.tipo === 3,
+  politicas: (m) => m.tipo === 4,
+  apoio: (m) => m.tipo === 1,
+};
 import { useSucessoToast } from '../../hooks/useSucessoToast';
+import { salvarBlob, useVisualizadorPdf } from '../../components/useVisualizadorPdf';
 
 function formatarTamanho(bytes: number): string {
   if (bytes < 1024) return `${bytes} B`;
@@ -38,6 +55,11 @@ function IconePorTipo({ contentType }: { contentType: string }) {
   if (contentType.startsWith('image/')) return <Image24Regular />;
   if (contentType === 'application/pdf') return <DocumentPdf24Regular />;
   return <Document24Regular />;
+}
+
+// A janela de visualização só desenha PDF (pdf.js) ou imagem; Word e demais tipos ficam só com "Baixar".
+function podeVisualizar(material: MaterialApoio) {
+  return material.contentType.startsWith('image/') || material.contentType === 'application/pdf';
 }
 
 // Aba "Documentos & Procedimentos" de Gestão de SST (pedido do usuário, 2026-09-09): catálogo
@@ -56,15 +78,20 @@ export function MateriaisApoioTab() {
   const [nome, setNome] = useState('');
   const [categoria, setCategoria] = useState('');
   const [arquivo, setArquivo] = useState<File | null>(null);
+  const [tipo, setTipo] = useState<1 | 2 | 3 | 4>(2);
+  const [codigo, setCodigo] = useState('');
+  const [revisao, setRevisao] = useState('');
+  const [situacao, setSituacao] = useState<1 | 2 | 3>(1);
+  const [formaConsulta, setFormaConsulta] = useState('');
+  const [todasOs, setTodasOs] = useState(false);
+  const [filtro, setFiltro] = useState<Filtro>('todos');
   const [enviando, setEnviando] = useState(false);
   const [erroPainel, setErroPainel] = useState<string | null>(null);
 
-  const [materialPreview, setMaterialPreview] = useState<MaterialApoio | null>(null);
-  const [urlPreview, setUrlPreview] = useState<string | null>(null);
-  const [carregandoPreview, setCarregandoPreview] = useState(false);
   const [baixandoId, setBaixandoId] = useState<string | null>(null);
 
   const { confirmar, dialogElement } = useConfirmar();
+  const { visualizar: abrirVisualizador, dialogoVisualizador } = useVisualizadorPdf();
   const sucessoToast = useSucessoToast();
 
   async function carregar() {
@@ -88,11 +115,21 @@ export function MateriaisApoioTab() {
     setNome('');
     setCategoria('');
     setArquivo(null);
+    setTipo(2);
+    setCodigo('');
+    setRevisao('');
+    setSituacao(1);
+    setFormaConsulta('');
+    setTodasOs(false);
   }
 
   async function enviar() {
     if (!nome.trim()) {
-      setErroPainel('Informe o nome do material.');
+      setErroPainel('Informe o título do documento.');
+      return;
+    }
+    if (tipo !== 1 && (!codigo.trim() || !revisao.trim())) {
+      setErroPainel('Informe o código SGI e a revisão do documento.');
       return;
     }
     if (!arquivo) {
@@ -102,7 +139,14 @@ export function MateriaisApoioTab() {
     try {
       setEnviando(true);
       setErroPainel(null);
-      await api.materiaisApoio.criar(nome, categoria.trim() || null, arquivo);
+      await api.materiaisApoio.criar(nome, categoria.trim() || null, arquivo, {
+        tipo,
+        codigo: tipo === 1 ? null : codigo.trim(),
+        revisao: tipo === 1 ? null : revisao.trim(),
+        situacao: tipo === 1 ? null : situacao,
+        formaConsulta: formaConsulta.trim() || null,
+        incluirEmTodasOs: tipo === 4 && todasOs,
+      });
       fecharPainelUpload();
       await carregar();
       sucessoToast('Material enviado com sucesso.');
@@ -124,39 +168,21 @@ export function MateriaisApoioTab() {
     }
   }
 
-  // Abre o painel de pré-visualização e busca o conteúdo sob demanda (endpoint exige autenticação,
-  // então <img src> direto pra API não funcionaria — mesmo raciocínio de baixarFoto em Inspeções).
-  async function visualizar(material: MaterialApoio) {
-    setMaterialPreview(material);
-    setUrlPreview(null);
-    setCarregandoPreview(true);
-    try {
-      const blob = await api.materiaisApoio.baixarConteudo(material.id);
-      setUrlPreview(URL.createObjectURL(blob));
-    } catch (e) {
-      setErro(e instanceof Error ? e.message : 'Falha ao carregar pré-visualização.');
-      setMaterialPreview(null);
-    } finally {
-      setCarregandoPreview(false);
-    }
-  }
-
-  function fecharPreview() {
-    if (urlPreview) URL.revokeObjectURL(urlPreview);
-    setMaterialPreview(null);
-    setUrlPreview(null);
+  // Janela única de visualização (useVisualizadorPdf): o <iframe> do antigo painel de preview
+  // ficava em branco no Teams. Busca sob demanda porque o endpoint exige autenticação.
+  function visualizar(material: MaterialApoio) {
+    if (!podeVisualizar(material)) return;
+    void abrirVisualizador({
+      titulo: material.nome,
+      nomeArquivo: material.nomeArquivo,
+      obter: () => api.materiaisApoio.baixarConteudo(material.id),
+    });
   }
 
   async function baixar(material: MaterialApoio) {
     try {
       setBaixandoId(material.id);
-      const blob = await api.materiaisApoio.baixarConteudo(material.id);
-      const url = URL.createObjectURL(blob);
-      const link = document.createElement('a');
-      link.href = url;
-      link.download = material.nomeArquivo;
-      link.click();
-      URL.revokeObjectURL(url);
+      salvarBlob(await api.materiaisApoio.baixarConteudo(material.id), material.nomeArquivo);
     } catch (e) {
       setErro(e instanceof Error ? e.message : 'Falha ao baixar o material.');
     } finally {
@@ -164,22 +190,56 @@ export function MateriaisApoioTab() {
     }
   }
 
+  async function mudarSituacao(m: MaterialApoio, nova: 1 | 2 | 3) {
+    try {
+      await api.materiaisApoio.atualizar(m.id, m.nome, {
+        codigo: m.codigo, revisao: m.revisao, situacao: nova, formaConsulta: m.formaConsulta, incluirEmTodasOs: m.incluirEmTodasOs,
+      });
+      await carregar();
+    } catch (e) {
+      setErro(e instanceof Error ? e.message : 'Falha ao atualizar o documento.');
+    }
+  }
+
   const colunas: Coluna<MaterialApoio>[] = [
-    { chave: 'tipo', rotulo: '', render: (m) => <IconePorTipo contentType={m.contentType} /> },
-    { chave: 'nome', rotulo: 'Nome' },
+    { chave: 'icone', rotulo: '', render: (m) => <IconePorTipo contentType={m.contentType} /> },
+    { chave: 'tipoDoc', rotulo: 'Tipo', render: (m) => <StatusChip tom={m.tipo === 1 ? 'neutro' : 'info'}>{rotuloTipo[m.tipo]}</StatusChip> },
+    { chave: 'codigo', rotulo: 'Código', render: (m) => m.codigo || '—' },
+    { chave: 'nome', rotulo: 'Título' },
+    { chave: 'revisao', rotulo: 'Revisão', render: (m) => m.revisao || '—' },
+    {
+      chave: 'situacao',
+      rotulo: 'Situação',
+      render: (m) =>
+        m.situacao ? (
+          <Select
+            size="small"
+            value={String(m.situacao)}
+            aria-label={`Situação de ${m.nome}`}
+            onClick={(e) => e.stopPropagation()}
+            onChange={(_, d) => void mudarSituacao(m, Number(d.value) as 1 | 2 | 3)}
+          >
+            {[1, 2, 3].map((s) => <option key={s} value={s}>{rotuloSituacao[s]}</option>)}
+          </Select>
+        ) : '—',
+    },
+    {
+      chave: 'usadoEm',
+      rotulo: 'Usado em',
+      render: (m) => (m.incluirEmTodasOs ? 'Todas as OS' : m.atividades > 0 ? `${m.atividades} atividade(s)` : '—'),
+    },
     { chave: 'categoria', rotulo: 'Categoria', render: (m) => m.categoria || '—' },
     { chave: 'tamanhoBytes', rotulo: 'Tamanho', render: (m) => formatarTamanho(m.tamanhoBytes) },
     { chave: 'createdAtUtc', rotulo: 'Enviado em', render: (m) => new Date(m.createdAtUtc).toLocaleDateString('pt-BR') },
   ];
 
-  const podePreVisualizar = materialPreview?.contentType.startsWith('image/') || materialPreview?.contentType === 'application/pdf';
-
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
       {dialogElement}
+      {dialogoVisualizador}
       <PageHeader
         titulo="Documentos & Procedimentos"
-        subtitulo="Materiais de apoio (sinalização, instruções técnicas) disponíveis para consulta e download."
+        subtitulo="Procedimentos, instruções de trabalho, políticas e materiais de apoio. Só documentos vigentes entram na Ordem de Serviço."
         acoes={
           <Button
             appearance="primary"
@@ -188,7 +248,7 @@ export function MateriaisApoioTab() {
             aria-expanded={painelUploadAberto}
             aria-controls="painel-novo-material-apoio"
           >
-            {painelUploadAberto ? 'Fechar' : 'Enviar material'}
+            {painelUploadAberto ? 'Fechar' : 'Enviar documento'}
           </Button>
         }
       />
@@ -200,19 +260,59 @@ export function MateriaisApoioTab() {
       )}
 
       <div id="painel-novo-material-apoio">
-        <PainelCriacaoInline aberto={painelUploadAberto} titulo="Novo material de apoio">
-          <FormSection titulo="Dados do material" numero={1} primeira>
+        <PainelCriacaoInline aberto={painelUploadAberto} titulo="Novo documento">
+          <FormSection titulo="Dados do documento" numero={1} primeira>
             {erroPainel && (
               <FeedbackInline tom="erro" aoFechar={() => setErroPainel(null)}>
                 {erroPainel}
               </FeedbackInline>
             )}
             <FormGrid>
+              <Campo span={6}>
+                <Field label="Tipo" required>
+                  <Select value={String(tipo)} onChange={(_, d) => setTipo(Number(d.value) as 1 | 2 | 3 | 4)}>
+                    {[2, 3, 4, 1].map((t) => <option key={t} value={t}>{rotuloTipo[t]}</option>)}
+                  </Select>
+                </Field>
+              </Campo>
+              {tipo !== 1 && (
+                <Campo span={6}>
+                  <Field label="Código SGI" required>
+                    <Input value={codigo} onChange={(_, d) => setCodigo(d.value)} placeholder="[ORG]-[TD]-[AR]-[SEQ]" />
+                  </Field>
+                </Campo>
+              )}
               <Campo span={12}>
-                <Field label="Nome">
+                <Field label="Título" required>
                   <Input value={nome} onChange={(_, d) => setNome(d.value)} />
                 </Field>
               </Campo>
+              {tipo !== 1 && (
+                <>
+                  <Campo span={6}>
+                    <Field label="Revisão" required>
+                      <Input value={revisao} onChange={(_, d) => setRevisao(d.value)} placeholder="00" />
+                    </Field>
+                  </Campo>
+                  <Campo span={6}>
+                    <Field label="Situação" required>
+                      <Select value={String(situacao)} onChange={(_, d) => setSituacao(Number(d.value) as 1 | 2 | 3)}>
+                        {[1, 2, 3].map((s) => <option key={s} value={s}>{rotuloSituacao[s]}</option>)}
+                      </Select>
+                    </Field>
+                  </Campo>
+                  <Campo span={12}>
+                    <Field label="Forma de consulta (aparece na Ordem de Serviço)">
+                      <Input value={formaConsulta} onChange={(_, d) => setFormaConsulta(d.value)} placeholder="Ex.: Sistema SST › Documentos e quadro de avisos da obra" />
+                    </Field>
+                  </Campo>
+                </>
+              )}
+              {tipo === 4 && (
+                <Campo span={12}>
+                  <Checkbox checked={todasOs} onChange={(_, d) => setTodasOs(!!d.checked)} label="Incluir em todas as Ordens de Serviço" />
+                </Campo>
+              )}
               <Campo span={12}>
                 <Field label="Categoria (opcional)">
                   <Input value={categoria} onChange={(_, d) => setCategoria(d.value)} placeholder="Ex.: Sinalização - Alojamento" />
@@ -238,66 +338,48 @@ export function MateriaisApoioTab() {
         </PainelCriacaoInline>
       </div>
 
-      <div id="painel-preview-material-apoio">
-        <PainelCriacaoInline aberto={!!materialPreview} titulo={materialPreview?.nome ?? ''}>
-          {carregandoPreview && <Carregando variante="detalhe" linhas={4} />}
-          {!carregandoPreview && urlPreview && materialPreview && (
-            <>
-              {materialPreview.contentType.startsWith('image/') && (
-                <img src={urlPreview} alt={materialPreview.nome} style={{ maxWidth: '100%', borderRadius: 8 }} />
-              )}
-              {materialPreview.contentType === 'application/pdf' && (
-                <iframe src={urlPreview} title={materialPreview.nome} style={{ width: '100%', height: '70vh', border: 'none' }} />
-              )}
-              {!podePreVisualizar && (
-                <FeedbackInline tom="info">
-                  Pré-visualização não disponível para este tipo de arquivo. Use o botão "Baixar" abaixo.
-                </FeedbackInline>
-              )}
-            </>
-          )}
-          <FormRodape>
-            <Button onClick={fecharPreview}>Fechar</Button>
-            {materialPreview && (
-              <Button
-                appearance="primary"
-                icon={<ArrowDownload24Regular />}
-                onClick={() => baixar(materialPreview)}
-                disabled={baixandoId === materialPreview.id}
-              >
-                Baixar
-              </Button>
-            )}
-          </FormRodape>
-        </PainelCriacaoInline>
-      </div>
+      <Abas
+        nivel="interno"
+        aria-label="Filtrar documentos"
+        valor={filtro}
+        aoMudar={setFiltro}
+        abas={[
+          { valor: 'todos', rotulo: 'Todos' },
+          { valor: 'procedimentos', rotulo: 'Procedimentos e ITs' },
+          { valor: 'politicas', rotulo: 'Políticas' },
+          { valor: 'apoio', rotulo: 'Materiais de apoio' },
+        ]}
+      />
 
       <Card>
         <DataTable
-          aria-label="Materiais de apoio cadastrados"
+          aria-label="Documentos cadastrados"
           colunas={colunas}
-          linhas={materiais}
+          linhas={materiais.filter(passaNoFiltro[filtro])}
           chaveLinha={(m) => m.id}
           carregando={carregandoLista}
-          aoClicarLinha={visualizar}
+          aoClicarLinha={(m) => (podeVisualizar(m) ? visualizar(m) : baixar(m))}
           vazio={{
             titulo: 'Nenhum material cadastrado ainda.',
             descricao: 'Envie o primeiro material de apoio para começar.',
             acao: { rotulo: 'Enviar material', aoClicar: () => setPainelUploadAberto(true) },
           }}
           acoesLinha={(m) => (
-            <div style={{ display: 'flex', gap: 4 }}>
-              <Button
-                appearance="subtle"
-                icon={<Eye24Regular />}
-                onClick={(evento) => {
-                  evento.stopPropagation();
-                  visualizar(m);
-                }}
-                aria-label="Visualizar"
-              />
-              <Button
-                appearance="subtle"
+            <div style={{ display: 'flex', gap: 6 }}>
+              {podeVisualizar(m) && (
+                <BotaoAcao
+                  tom="ver"
+                  icon={<Eye24Regular />}
+                  onClick={(evento) => {
+                    evento.stopPropagation();
+                    visualizar(m);
+                  }}
+                  aria-label="Visualizar"
+                  title="Visualizar"
+                />
+              )}
+              <BotaoAcao
+                tom="baixar"
                 icon={<ArrowDownload24Regular />}
                 onClick={(evento) => {
                   evento.stopPropagation();
@@ -306,8 +388,8 @@ export function MateriaisApoioTab() {
                 disabled={baixandoId === m.id}
                 aria-label="Baixar"
               />
-              <Button
-                appearance="subtle"
+              <BotaoAcao
+                tom="excluir"
                 icon={<Delete24Regular />}
                 onClick={(evento) => {
                   evento.stopPropagation();

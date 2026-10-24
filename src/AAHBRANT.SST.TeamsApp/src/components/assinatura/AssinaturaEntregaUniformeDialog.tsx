@@ -56,9 +56,9 @@ export interface AssinaturaEntregaUniformeDialogProps {
 // (uniforme não exige treinamento NR-6). Fora esses 2 pontos, cada cláusula é a mesma frase do
 // EPI. Por ter alterado a redação institucional (mesmo que a partir de um modelo já aprovado),
 // recomenda-se uma checagem rápida do time jurídico/QSMS antes do uso real em produção.
-function clausulasTermoRecebimento(): string[] {
+function clausulasTermoRecebimento(nomeObra?: string | null): string[] {
   return [
-    'Declaro ter recebido do Consórcio Ponte Rio Cuiá a(s) peça(s) de uniforme relacionada(s) nesta ficha, nas datas e quantidades ali indicadas, todas em perfeitas condições de uso.',
+    `Declaro ter recebido do ${nomeObra || 'empregador'} a(s) peça(s) de uniforme relacionada(s) nesta ficha, nas datas e quantidades ali indicadas, todas em perfeitas condições de uso.`,
     'Comprometo-me a utilizar o(s) uniforme(s) exclusivamente para a finalidade a que se destina(m), durante toda a execução das minhas atividades laborais, zelando por sua guarda, conservação e higienização adequadas, e a comunicar imediatamente ao Setor de Segurança do Trabalho qualquer dano, extravio ou alteração que o(s) torne impróprio(s) para uso.',
     'Comprometo-me a devolver o(s) uniforme(s) sempre que solicitado, inclusive nos casos de substituição, troca de função, mudança de atividade ou rescisão do meu contrato de trabalho.',
     'Estou ciente de que o descumprimento das obrigações aqui assumidas constitui falta funcional, passível de sanções disciplinares que poderão variar, a critério do empregador, de advertência por escrito até a rescisão contratual por justa causa, sem prejuízo de demais medidas legais cabíveis, conforme disposto no Art. 158 da CLT.',
@@ -80,6 +80,7 @@ export function AssinaturaEntregaUniformeDialog({
 }: AssinaturaEntregaUniformeDialogProps) {
   const estilos = usePageStyles();
   const [documento, setDocumento] = useState<DocumentoAssinatura | null>(null);
+  const [nomeObra, setNomeObra] = useState<string | null>(null);
   const [assinandoEntregador, setAssinandoEntregador] = useState(false);
   const [erroEntregador, setErroEntregador] = useState<string | null>(null);
 
@@ -98,6 +99,7 @@ export function AssinaturaEntregaUniformeDialog({
     setDocumento(null);
     setErroEntregador(null);
     carregarDocumento();
+    api.obras.listar().then((obras) => setNomeObra(obras.find((o) => o.id === obraId)?.nome ?? null)).catch(() => undefined);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open, entregaId]);
 
@@ -171,7 +173,7 @@ export function AssinaturaEntregaUniformeDialog({
                 Termo de Recebimento e Compromisso de Uso
               </Text>
               <ol style={{ margin: 0, paddingLeft: 20 }}>
-                {clausulasTermoRecebimento().map((clausula, indice) => (
+                {clausulasTermoRecebimento(nomeObra).map((clausula, indice) => (
                   <li key={indice} style={{ marginBottom: 6 }}>
                     <Text size={200}>{clausula}</Text>
                   </li>

@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import {
+  BotaoAcao,
   Button,
   Campo,
   Card,
@@ -127,7 +128,7 @@ export function RiscosCriticosPtTab({
           chaveLinha={(item) => item.id}
           vazio={{ titulo: 'Nenhum risco crítico cadastrado ainda.' }}
           acoesLinha={(item) => (
-            <Button appearance="subtle" icon={<Delete24Regular />} onClick={() => excluir(item.id)} aria-label="Excluir" />
+            <BotaoAcao tom="excluir" icon={<Delete24Regular />} onClick={() => excluir(item.id)} aria-label="Excluir" />
           )}
         />
       </Card>

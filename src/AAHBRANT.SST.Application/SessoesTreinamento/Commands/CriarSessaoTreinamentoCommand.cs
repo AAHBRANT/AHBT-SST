@@ -23,7 +23,16 @@ public record CriarSessaoTreinamentoCommand(
     DateTime DataRealizacao,
     int CargaHorariaRealizada,
     string? InstituicaoInstrutor,
-    List<Guid> TrabalhadoresIds) : IRequest<Guid>;
+    List<Guid> TrabalhadoresIds,
+    // Dados do certificado (19/10). Nulos = padrão do curso/NR. Só o Técnico de Segurança (ou o
+    // Administrador) pode mudar: para os demais perfis o servidor ignora o que vier e grava o padrão.
+    string? ConteudoProgramatico = null,
+    string? Local = null,
+    string? InstrutorRegistroProfissional = null,
+    int? ValidadeEmMeses = null,
+    // Preenchidos pelo controller a partir do token, nunca pelo corpo da requisição.
+    string? AzureAdObjectId = null,
+    bool AutenticacaoHabilitada = false) : IRequest<Guid>;
 
 public class CriarSessaoTreinamentoCommandValidator : AbstractValidator<CriarSessaoTreinamentoCommand>
 {
@@ -32,7 +41,7 @@ public class CriarSessaoTreinamentoCommandValidator : AbstractValidator<CriarSes
         RuleFor(x => x.ObraId).NotEmpty();
         RuleFor(x => x.CursoTreinamentoId).NotEmpty();
         RuleFor(x => x.DataRealizacao).NotEmpty();
-        RuleFor(x => x.CargaHorariaRealizada).GreaterThan(0);
+        RuleFor(x => x.CargaHorariaRealizada).GreaterThanOrEqualTo(0);
         RuleFor(x => x.TrabalhadoresIds).NotEmpty().WithMessage("Selecione ao menos um participante.");
     }
 }
@@ -53,16 +62,33 @@ public class CriarSessaoTreinamentoCommandHandler : IRequestHandler<CriarSessaoT
         if (!await _db.Obras.AnyAsync(o => o.Id == request.ObraId, ct))
             throw new KeyNotFoundException("Obra não encontrada.");
 
-        if (!await _db.CursosTreinamento.AnyAsync(c => c.Id == request.CursoTreinamentoId, ct))
-            throw new KeyNotFoundException("Curso de treinamento não encontrado.");
+        var curso = await _db.CursosTreinamento.FirstOrDefaultAsync(c => c.Id == request.CursoTreinamentoId, ct)
+            ?? throw new KeyNotFoundException("Curso de treinamento não encontrado.");
+        var obraNome = await _db.Obras.Where(o => o.Id == request.ObraId).Select(o => o.Nome).FirstAsync(ct);
+
+        var padrao = PadraoTurmaTreinamento.De(curso, obraNome);
+        var podeEditar = await PerfilTecnicoSeguranca.PodeEditarDadosTreinamentoAsync(_db, request.AzureAdObjectId, request.AutenticacaoHabilitada, ct);
+
+        // Carga horária nunca abaixo do mínimo da NR/curso (19/10): abaixo disso o certificado não
+        // tem validade legal. Para quem não é técnico, vale sempre o mínimo.
+        var cargaHoraria = podeEditar ? request.CargaHorariaRealizada : padrao.CargaHorariaMinima;
+        if (cargaHoraria < padrao.CargaHorariaMinima)
+            throw new InvalidOperationException(
+                $"A carga horária mínima de {padrao.Norma ?? curso.Nome} é {padrao.CargaHorariaMinima}h. Abaixo disso o certificado não tem validade legal.");
+        if (cargaHoraria <= 0)
+            throw new InvalidOperationException("Informe a carga horária da turma.");
 
         var sessao = new SessaoTreinamento
         {
             ObraId = request.ObraId,
             CursoTreinamentoId = request.CursoTreinamentoId,
             DataRealizacao = request.DataRealizacao,
-            CargaHorariaRealizada = request.CargaHorariaRealizada,
-            InstituicaoInstrutor = request.InstituicaoInstrutor,
+            CargaHorariaRealizada = cargaHoraria,
+            InstituicaoInstrutor = podeEditar ? Limpar(request.InstituicaoInstrutor) : null,
+            InstrutorRegistroProfissional = podeEditar ? Limpar(request.InstrutorRegistroProfissional) : null,
+            ConteudoProgramatico = podeEditar ? Limpar(request.ConteudoProgramatico) ?? padrao.ConteudoProgramatico : padrao.ConteudoProgramatico,
+            Local = podeEditar ? Limpar(request.Local) ?? padrao.Local : padrao.Local,
+            ValidadeEmMeses = podeEditar && request.ValidadeEmMeses is > 0 ? request.ValidadeEmMeses.Value : padrao.ValidadeEmMeses,
             NumeroCertificado = await _geradorNumero.GerarAsync("CERT", ct),
         };
 
@@ -79,4 +105,6 @@ public class CriarSessaoTreinamentoCommandHandler : IRequestHandler<CriarSessaoT
         await _db.SaveChangesAsync(ct);
         return sessao.Id;
     }
+
+    private static string? Limpar(string? valor) => string.IsNullOrWhiteSpace(valor) ? null : valor.Trim();
 }

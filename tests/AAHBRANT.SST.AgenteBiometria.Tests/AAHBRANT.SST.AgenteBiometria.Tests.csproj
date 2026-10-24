@@ -21,6 +21,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\..\src\AAHBRANT.SST.AgenteBiometria\AAHBRANT.SST.AgenteBiometria.csproj" />
+    <ProjectReference Include="..\..\src\AAHBRANT.SST.AgenteBiometria.Instalador\AAHBRANT.SST.AgenteBiometria.Instalador.csproj" Aliases="instalador" />
   </ItemGroup>
 
 </Project>

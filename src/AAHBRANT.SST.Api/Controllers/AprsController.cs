@@ -3,6 +3,7 @@ using AAHBRANT.SST.Application.Aprs.Queries;
 using MediatR;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using AAHBRANT.SST.Api.Autorizacao;
 
 namespace AAHBRANT.SST.Api.Controllers;
 
@@ -11,8 +12,13 @@ namespace AAHBRANT.SST.Api.Controllers;
 public class AprsController : ControllerBase
 {
     private readonly IMediator _mediator;
+    private readonly IUsuarioAtualResolver _usuarioAtual;
 
-    public AprsController(IMediator mediator) => _mediator = mediator;
+    public AprsController(IMediator mediator, IUsuarioAtualResolver usuarioAtual)
+    {
+        _mediator = mediator;
+        _usuarioAtual = usuarioAtual;
+    }
 
     [Authorize(Policy = "apr:ver")]
     [HttpGet]
@@ -44,7 +50,9 @@ public class AprsController : ControllerBase
         return NoContent();
     }
 
-    [Authorize(Policy = "apr:editar")]
+    // Exclusao definitiva e privilegio de Administrador (pedido do usuario, 23/09): quem tem
+    // permissao de editar corrige o registro, mas nao o apaga. Ver PoliticasAutorizacao.
+    [Authorize(Policy = PoliticasAutorizacao.SomenteAdministrador)]
     [HttpDelete("{id:guid}")]
     public async Task<IActionResult> Excluir(Guid id, CancellationToken ct)
     {
@@ -54,9 +62,10 @@ public class AprsController : ControllerBase
 
     [Authorize(Policy = "apr:aprovar")]
     [HttpPost("{id:guid}/aprovar")]
-    public async Task<IActionResult> Aprovar(Guid id, AprovarAprRequestBody body, CancellationToken ct)
+    public async Task<IActionResult> Aprovar(Guid id, CancellationToken ct)
     {
-        await _mediator.Send(new AprovarAprCommand(id, body.AprovadoPorUsuarioId), ct);
+        var usuarioId = await _usuarioAtual.ObterIdAsync(User, ct);
+        await _mediator.Send(new AprovarAprCommand(id, usuarioId), ct);
         return NoContent();
     }
 
@@ -78,5 +87,4 @@ public class AprsController : ControllerBase
     }
 }
 
-public record AprovarAprRequestBody(Guid AprovadoPorUsuarioId);
 public record ReprovarAprRequestBody(string Motivo);

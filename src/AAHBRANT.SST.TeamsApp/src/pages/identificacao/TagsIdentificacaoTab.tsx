@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Button, DataTable, Field, FeedbackInline, Input, Select, Text, useConfirmar, type Coluna } from '@ui';
+import { BotaoAcao, Button, DataTable, Field, FeedbackInline, Input, Select, Text, useConfirmar, type Coluna } from '@ui';
 import {
   Add24Regular,
   ArrowDownload24Regular,
@@ -323,20 +323,20 @@ export function TagsIdentificacaoTab() {
             chaveLinha={(qr) => qr.tagId}
             acoesLinha={(qr) => (
               <>
-                <Button
-                  appearance="subtle"
+                <BotaoAcao
+                  tom="ver"
                   icon={<Open24Regular />}
                   onClick={() => window.open(qr.urlPerfil, '_blank')}
                   aria-label="Abrir perfil"
                 />
-                <Button
-                  appearance="subtle"
+                <BotaoAcao
+                  tom="ver"
                   icon={<Copy24Regular />}
                   onClick={() => copiarLink(qr.urlPerfil)}
                   aria-label="Copiar link"
                 />
-                <Button
-                  appearance="subtle"
+                <BotaoAcao
+                  tom="baixar"
                   icon={<ArrowDownload24Regular />}
                   onClick={() => baixarQrFuncionario(qr)}
                   aria-label="Baixar QR Code"
@@ -424,8 +424,8 @@ export function TagsIdentificacaoTab() {
           acoesLinha={(tag) => (
             <>
               {tag.status === StatusTag.Disponivel && (
-                <Button
-                  appearance="subtle"
+                <BotaoAcao
+                  tom="ver"
                   icon={<Link24Regular />}
                   onClick={() => iniciarVinculo(tag.id)}
                   aria-label="Vincular"
@@ -433,23 +433,30 @@ export function TagsIdentificacaoTab() {
               )}
               {tag.status === StatusTag.Vinculada && (
                 <>
-                  <Button
-                    appearance="subtle"
+                  <BotaoAcao
+                    tom="ver"
                     icon={<QrCode24Regular />}
-                    onClick={() => window.open(`${window.location.origin}${window.location.pathname}#/p/${tag.uid}`, '_blank')}
+                    // Nunca usar window.location.pathname aqui: se essa tela for aberta de dentro do
+                    // Teams (cujo manifesto costuma apontar direto pra ".../index.html"), o link
+                    // gravado na tag física herdava esse "/index.html" — e como o MSAL calcula o
+                    // redirectUri de login a partir do pathname da página (ver browserAuth.ts), quem
+                    // escaneasse a tag fora do Teams caía num redirect_uri nunca cadastrado no App
+                    // Registration (erro AADSTS50011). A raiz sempre serve o index.html (nginx.conf),
+                    // então basta a origem — sem depender de onde este botão foi clicado.
+                    onClick={() => window.open(`${window.location.origin}/#/p/${tag.uid}`, '_blank')}
                     aria-label="Abrir crachá/card público desta tag"
                     title="Abrir crachá/card público (o link para gravar na NTAG215 ou gerar o QR Code)"
                   />
-                  <Button
-                    appearance="subtle"
+                  <BotaoAcao
+                    tom="ver"
                     icon={<LinkDismiss24Regular />}
                     onClick={() => desvincular(tag.id)}
                     aria-label="Desvincular"
                   />
                 </>
               )}
-              <Button
-                appearance="subtle"
+              <BotaoAcao
+                tom="excluir"
                 icon={<Delete24Regular />}
                 onClick={() => excluir(tag.id)}
                 aria-label="Excluir"

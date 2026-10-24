@@ -1,4 +1,6 @@
+using AAHBRANT.SST.Application.Common;
 using AAHBRANT.SST.Application.Common.Interfaces;
+using AAHBRANT.SST.Application.Common.Seguranca;
 using AAHBRANT.SST.Domain.Entidades;
 using FluentValidation;
 using MediatR;
@@ -8,6 +10,8 @@ namespace AAHBRANT.SST.Application.Aprs.Commands;
 
 // A APR sempre nasce em elaboração ("aprovação" é uma etapa distinta do cadastro) — o campo
 // Status não é exposto aqui; a mudança de status passa por AprovarAprCommand/ReprovarAprCommand.
+// NumeroApr não é mais informado por quem cadastra (pedido do usuário, 03/09): o sistema gera
+// sozinho, ver GeradorNumeroDocumentoService.
 public record CriarAprCommand(
     Guid AtividadeId,
     string Local,
@@ -42,6 +46,8 @@ public class CriarAprCommandHandler : IRequestHandler<CriarAprCommand, Guid>
 
     public async Task<Guid> Handle(CriarAprCommand request, CancellationToken ct)
     {
+        await _db.GarantirAtividadeNoEscopoAsync(request.AtividadeId, ct);
+
         var atividadeExiste = await _db.Atividades.AnyAsync(a => a.Id == request.AtividadeId, ct);
         if (!atividadeExiste)
             throw new KeyNotFoundException($"Atividade {request.AtividadeId} não encontrada.");

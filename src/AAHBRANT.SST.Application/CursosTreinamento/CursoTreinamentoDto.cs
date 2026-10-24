@@ -6,4 +6,7 @@ public record CursoTreinamentoDto(
     string? NormaReferencia,
     int CargaHorariaMinima,
     int ValidadeEmMeses,
-    string? ConteudoProgramatico);
+    string? ConteudoProgramatico,
+    bool EhIntegracaoSeguranca,
+    // Marcador que habilita a entrega de EPI (22/09) — ver CursoTreinamento.AtendeNr6.
+    bool AtendeNr6);

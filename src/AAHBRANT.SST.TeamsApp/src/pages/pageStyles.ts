@@ -4,10 +4,11 @@ import { designTokens } from '@ui';
 export const usePageStyles = makeStyles({
   card: {
     backgroundColor: designTokens.colorSurface,
-    borderRadius: '16px',
+    borderRadius: '14px',
     border: `1px solid ${designTokens.colorCardBorder}`,
     boxShadow: designTokens.cardShadow,
-    padding: '24px 28px',
+    padding: '24px',
+    overflow: 'hidden',
   },
   toolbar: {
     display: 'flex',

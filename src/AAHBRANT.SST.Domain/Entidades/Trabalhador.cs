@@ -36,6 +36,15 @@ public class Trabalhador : AuditableEntity
     public string? CpfHash { get; set; }
 
     public TipoVinculo Vinculo { get; set; } = TipoVinculo.Clt;
+
+    // Módulo Terceirizado (docs/superpowers/specs/2026-09-18-modulo-terceirizado-design.md) — só
+    // preenchidos quando Vinculo = Terceirizado; nulos para CLT/Autonomo/Estagiario. Preenchidos por
+    // CadastrarPessoaTerceirizadaCommand (Task 8), nunca editados manualmente depois.
+    public Guid? EmpresaId { get; set; }
+    public Empresa? Empresa { get; set; }
+    public Guid? ContratoId { get; set; }
+    public Contrato? Contrato { get; set; }
+
     public DateTime DataAdmissao { get; set; }
     public DateTime? DataDemissao { get; set; }
 
@@ -76,6 +85,11 @@ public class Trabalhador : AuditableEntity
     // sensível (LGPD art. 5º II, art. 11), só preenchido se a obra usa leitor biométrico.
     public DateTime? TermoAceiteAssinaturaEletronicaEm { get; set; }
     public DateTime? ConsentimentoBiometriaEm { get; set; }
+    // Versão do texto do termo aceito (TermoConsentimentoBiometria.VersaoAtual na hora do aceite) e data da
+    // revogação, quando houver (LGPD art. 8º §5º: o consentimento pode ser revogado a qualquer momento).
+    // Revogar apaga ConsentimentoBiometriaEm, então todas as checagens existentes já barram a biometria.
+    public string? ConsentimentoBiometriaVersao { get; set; }
+    public DateTime? ConsentimentoBiometriaRevogadoEm { get; set; }
 
     // Id do Person no Azure Face API (PersonGroup da obra) — gerado no cadastro facial. Reaproveita
     // ConsentimentoBiometriaEm acima como consentimento LGPD (mesma categoria de dado biométrico

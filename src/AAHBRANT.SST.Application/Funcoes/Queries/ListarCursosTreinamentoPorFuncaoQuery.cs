@@ -23,6 +23,8 @@ public class ListarCursosTreinamentoPorFuncaoQueryHandler
                 c.NormaReferencia,
                 c.CargaHorariaMinima,
                 c.ValidadeEmMeses,
-                c.ConteudoProgramatico))
+                c.ConteudoProgramatico,
+                c.EhIntegracaoSeguranca,
+                c.AtendeNr6))
             .ToListAsync(ct);
 }

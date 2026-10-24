@@ -1,0 +1,274 @@
+using AAHBRANT.SST.Application.SuporteIa;
+using AAHBRANT.SST.Application.SuporteIa.Commands;
+using AAHBRANT.SST.Application.SuporteIa.Queries;
+using AAHBRANT.SST.Application.Common.Interfaces;
+using AAHBRANT.SST.Domain.Enums;
+using MediatR;
+using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
+using System.Security.Claims;
+
+namespace AAHBRANT.SST.Api.Controllers;
+
+[ApiController]
+[Route("api/suporte-ia")]
+public class SuporteIaController : ControllerBase
+{
+    private readonly IMediator _mediator;
+    private readonly IAppDbContext _db;
+    private readonly IConfiguration _configuracao;
+    private readonly IAuthorizationService _autorizacao;
+    private readonly ITranscricaoAudioService _transcricao;
+    private readonly IClassificadorRelatoSuporteIa _classificador;
+    private readonly ILogger<SuporteIaController> _logger;
+
+    // gpt-4o-transcribe aceita até 25 MB por arquivo.
+    private const long TamanhoMaximoAudio = 25_000_000;
+
+    public SuporteIaController(
+        IMediator mediator,
+        IAppDbContext db,
+        IConfiguration configuracao,
+        IAuthorizationService autorizacao,
+        ITranscricaoAudioService transcricao,
+        IClassificadorRelatoSuporteIa classificador,
+        ILogger<SuporteIaController> logger)
+    {
+        _mediator = mediator;
+        _db = db;
+        _configuracao = configuracao;
+        _autorizacao = autorizacao;
+        _transcricao = transcricao;
+        _classificador = classificador;
+        _logger = logger;
+    }
+
+    [Authorize(Policy = "suporte-ia:usar")]
+    [HttpPost]
+    public async Task<IActionResult> Criar(CriarSuporteIaRequestBody body, CancellationToken ct)
+    {
+        var solicitante = await ResolverSolicitanteAsync(body.SolicitanteEmail, ct);
+
+        var resultado = await _mediator.Send(new CriarSolicitacaoSuporteIaCommand(
+            body.Tipo,
+            body.SeveridadeInformada,
+            body.Titulo,
+            body.Descricao,
+            body.Modulo,
+            body.UrlContexto,
+            solicitante.UsuarioId,
+            solicitante.Nome ?? body.SolicitanteNome,
+            solicitante.Email), ct);
+
+        return CreatedAtAction(nameof(Listar), new { id = resultado.Id }, resultado);
+    }
+
+    // "Relatar por voz": o áudio vira texto e a IA sugere tipo, severidade, título, módulo e descrição.
+    // Nada é salvo aqui — o usuário confere a sugestão e só então abre o chamado pelo fluxo normal
+    // (Criar). Se a classificação falhar, devolve só a transcrição para o usuário completar o resto.
+    [Authorize(Policy = "suporte-ia:usar")]
+    [HttpPost("relato-voz")]
+    [RequestSizeLimit(TamanhoMaximoAudio + 1_000_000)]
+    public async Task<IActionResult> RelatoVoz([FromForm] RelatoVozSuporteIaRequestBody body, CancellationToken ct)
+    {
+        if (!_transcricao.Configurado)
+            return StatusCode(StatusCodes.Status503ServiceUnavailable, new { erro = "Transcrição de áudio ainda não está configurada neste ambiente." });
+
+        if (body.Audio is null || body.Audio.Length == 0)
+            return BadRequest(new { erro = "Nenhum áudio recebido." });
+
+        if (body.Audio.Length > TamanhoMaximoAudio)
+            return BadRequest(new { erro = "Áudio muito longo. Grave até cerca de 10 minutos." });
+
+        await using var stream = body.Audio.OpenReadStream();
+        var nomeArquivo = string.IsNullOrWhiteSpace(body.Audio.FileName) ? "audio.webm" : body.Audio.FileName;
+        var transcricao = await _transcricao.TranscreverAsync(stream, nomeArquivo, body.Audio.ContentType, ct);
+        if (string.IsNullOrWhiteSpace(transcricao))
+            return Ok(new { transcricao, sugestao = (ChamadoSugeridoSuporteIa?)null });
+
+        ChamadoSugeridoSuporteIa? sugestao = null;
+        try
+        {
+            sugestao = await _classificador.ClassificarAsync(transcricao, ct);
+        }
+        catch (Exception ex) when (ex is not OperationCanceledException)
+        {
+            _logger.LogWarning(ex, "Relato por voz transcrito, mas a classificação falhou; devolvendo só a transcrição.");
+        }
+
+        return Ok(new { transcricao, sugestao });
+    }
+
+    // Fala já transcrita pelo ditado do navegador (sem custo): a IA só classifica o texto.
+    [Authorize(Policy = "suporte-ia:usar")]
+    [HttpPost("relato-texto")]
+    public async Task<IActionResult> RelatoTexto(RelatoTextoSuporteIaRequestBody body, CancellationToken ct)
+    {
+        var transcricao = (body.Relato ?? string.Empty).Trim();
+        if (transcricao.Length == 0)
+            return BadRequest(new { erro = "Nenhum relato recebido." });
+
+        ChamadoSugeridoSuporteIa? sugestao = null;
+        try
+        {
+            sugestao = await _classificador.ClassificarAsync(transcricao, ct);
+        }
+        catch (Exception ex) when (ex is not OperationCanceledException)
+        {
+            _logger.LogWarning(ex, "Relato ditado recebido, mas a classificação falhou; devolvendo só o texto.");
+        }
+
+        return Ok(new { transcricao, sugestao });
+    }
+
+    [Authorize(Policy = "suporte-ia:usar")]
+    [HttpGet]
+    public async Task<IActionResult> Listar([FromQuery] StatusSolicitacaoSuporteIa? status, CancellationToken ct)
+    {
+        var solicitante = await ResolverSolicitanteAsync(null, ct);
+        return Ok(await _mediator.Send(new ListarSolicitacoesSuporteIaQuery(
+            status,
+            solicitante.UsuarioId,
+            solicitante.Email,
+            IncluirTodos: false), ct));
+    }
+
+    [Authorize(Policy = "suporte-ia:administrar")]
+    [HttpGet("admin")]
+    public async Task<IActionResult> ListarTodos([FromQuery] StatusSolicitacaoSuporteIa? status, CancellationToken ct)
+    {
+        var solicitante = await ResolverSolicitanteAsync(null, ct);
+        return Ok(await _mediator.Send(new ListarSolicitacoesSuporteIaQuery(
+            status, solicitante.UsuarioId, solicitante.Email, IncluirTodos: true), ct));
+    }
+
+    [Authorize(Policy = "suporte-ia:usar")]
+    [HttpGet("{id:guid}")]
+    public async Task<IActionResult> Obter(Guid id, CancellationToken ct)
+    {
+        var solicitante = await ResolverSolicitanteAsync(null, ct);
+        var souAdmin = await SouAdminAsync(ct);
+        return Ok(await _mediator.Send(new ObterSolicitacaoSuporteIaQuery(
+            id, solicitante.UsuarioId, solicitante.Email, IncluirTodos: souAdmin), ct));
+    }
+
+    [Authorize(Policy = "suporte-ia:administrar")]
+    [HttpPost("{id:guid}/aprovar")]
+    public async Task<IActionResult> Aprovar(Guid id, CancellationToken ct)
+    {
+        var responsavel = await ResolverSolicitanteAsync(null, ct);
+        return Ok(await _mediator.Send(new AprovarSolicitacaoSuporteIaCommand(id, responsavel.UsuarioId, responsavel.Nome), ct));
+    }
+
+    [Authorize(Policy = "suporte-ia:administrar")]
+    [HttpPost("{id:guid}/concluir")]
+    public async Task<IActionResult> Concluir(Guid id, ConcluirSuporteIaRequestBody body, CancellationToken ct)
+        => Ok(await _mediator.Send(new ConcluirExecucaoSuporteIaCommand(id, body.NotaFechamento), ct));
+
+    [Authorize(Policy = "suporte-ia:administrar")]
+    [HttpPost("{id:guid}/recusar")]
+    public async Task<IActionResult> Recusar(Guid id, RecusarSuporteIaRequestBody body, CancellationToken ct)
+        => Ok(await _mediator.Send(new RecusarSolicitacaoSuporteIaCommand(id, body.NotaFechamento), ct));
+
+    [Authorize(Policy = "suporte-ia:usar")]
+    [HttpPost("{id:guid}/validar")]
+    public async Task<IActionResult> Validar(Guid id, ValidarSuporteIaRequestBody body, CancellationToken ct)
+    {
+        var solicitante = await ResolverSolicitanteAsync(null, ct);
+        return Ok(await _mediator.Send(new ValidarSolicitacaoSuporteIaCommand(
+            id, body.Confirmado, body.Comentario, solicitante.UsuarioId, solicitante.Email), ct));
+    }
+
+    private async Task<bool> SouAdminAsync(CancellationToken ct)
+    {
+        var resultado = await _autorizacao.AuthorizeAsync(User, "suporte-ia:administrar");
+        return resultado.Succeeded;
+    }
+
+    private async Task<SolicitanteAtual> ResolverSolicitanteAsync(string? emailFallback, CancellationToken ct)
+    {
+        var azureAdObjectId = User.FindFirst("oid")?.Value
+            ?? User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+
+        var email = User.FindFirst("preferred_username")?.Value
+            ?? User.FindFirst("email")?.Value
+            ?? emailFallback;
+
+        var nome = User.Identity?.Name
+            ?? User.FindFirst("name")?.Value
+            ?? email;
+
+        if (!string.IsNullOrWhiteSpace(azureAdObjectId))
+        {
+            var usuario = await _db.Usuarios
+                .Where(u => u.AzureAdObjectId == azureAdObjectId)
+                .Select(u => new { u.Id, u.Nome, u.Email })
+                .FirstOrDefaultAsync(ct);
+
+            if (usuario is not null)
+            {
+                return new SolicitanteAtual(usuario.Id, usuario.Nome, usuario.Email);
+            }
+        }
+
+        if (!string.IsNullOrWhiteSpace(email))
+        {
+            var usuario = await _db.Usuarios
+                .Where(u => u.Email == email)
+                .Select(u => new { u.Id, u.Nome, u.Email })
+                .FirstOrDefaultAsync(ct);
+
+            if (usuario is not null)
+            {
+                return new SolicitanteAtual(usuario.Id, usuario.Nome, usuario.Email);
+            }
+        }
+
+        var autenticacaoEntraIdHabilitada = !string.IsNullOrWhiteSpace(_configuracao["AzureAd:TenantId"]);
+        if (!autenticacaoEntraIdHabilitada)
+        {
+            var emailDev = email ?? "dev.local@sst";
+            return new SolicitanteAtual(null, nome ?? "Usuário dev", emailDev);
+        }
+
+        return new SolicitanteAtual(null, nome, email);
+    }
+}
+
+public record SolicitanteAtual(Guid? UsuarioId, string? Nome, string? Email);
+
+public class CriarSuporteIaRequestBody
+{
+    public TipoSolicitacaoSuporteIa Tipo { get; set; }
+    public SeveridadeSolicitacaoSuporteIa SeveridadeInformada { get; set; } = SeveridadeSolicitacaoSuporteIa.Media;
+    public string Titulo { get; set; } = string.Empty;
+    public string Descricao { get; set; } = string.Empty;
+    public string? Modulo { get; set; }
+    public string? UrlContexto { get; set; }
+    public string? SolicitanteNome { get; set; }
+    public string? SolicitanteEmail { get; set; }
+}
+
+public record RelatoTextoSuporteIaRequestBody(string? Relato);
+
+public class RelatoVozSuporteIaRequestBody
+{
+    public IFormFile? Audio { get; set; }
+}
+
+public class ConcluirSuporteIaRequestBody
+{
+    public string? NotaFechamento { get; set; }
+}
+
+public class RecusarSuporteIaRequestBody
+{
+    public string NotaFechamento { get; set; } = string.Empty;
+}
+
+public class ValidarSuporteIaRequestBody
+{
+    public bool Confirmado { get; set; }
+    public string? Comentario { get; set; }
+}

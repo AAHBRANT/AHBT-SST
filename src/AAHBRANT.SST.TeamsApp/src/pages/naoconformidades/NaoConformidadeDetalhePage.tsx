@@ -319,7 +319,8 @@ export function NaoConformidadeDetalhePage() {
   if (nc?.status === StatusNaoConformidade.AguardandoValidacao) {
     acoes.push({
       chave: 'encerrar',
-      rotulo: 'Encerrar',
+      rotulo: 'Finalizar não conformidade',
+      finalizacao: true,
       descricao: 'Valida e encerra a não conformidade',
       tom: 'primario',
       aoExecutar: encerrar,
@@ -392,7 +393,7 @@ export function NaoConformidadeDetalhePage() {
     <DetailPageLayout
       cabecalho={{
         titulo: nc.descricao,
-        subtitulo: [origemNaoConformidadeLabel[nc.origemDeteccao], nc.local, nc.atividadeNome]
+        subtitulo: [origemNaoConformidadeLabel[nc.origemDeteccao], nc.obraNome, nc.local, nc.atividadeNome]
           .filter(Boolean)
           .join(' · '),
         status: <StatusChip tom={tomStatus[nc.status] ?? 'neutro'}>{statusNaoConformidadeLabel[nc.status]}</StatusChip>,

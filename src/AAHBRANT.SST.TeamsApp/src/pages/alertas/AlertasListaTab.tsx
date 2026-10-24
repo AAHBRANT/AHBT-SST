@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import {
+  BotaoAcao,
   Button,
   Campo,
   Card,
@@ -369,12 +370,12 @@ export function AlertasListaTab() {
             acao: { rotulo: 'Registrar alerta manual', aoClicar: abrirPainel },
           }}
           acoesLinha={(alerta) => (
-            <div style={{ display: 'flex', gap: 4 }}>
+            <div style={{ display: 'flex', gap: 6 }}>
               {alerta.status === StatusAlerta.Aberto && (
-                <Button
-                  appearance="subtle"
+                <BotaoAcao
+                  tom="ver"
                   icon={<PlayCircle24Regular />}
-                  title="Iniciar tratamento"
+                  aria-label="Iniciar tratamento"
                   onClick={() =>
                     executar(
                       api.alertas.iniciarTratamento,
@@ -386,26 +387,26 @@ export function AlertasListaTab() {
                 />
               )}
               {(alerta.status === StatusAlerta.Aberto || alerta.status === StatusAlerta.EmTratamento) && (
-                <Button
-                  appearance="subtle"
+                <BotaoAcao
+                  tom="ver"
                   icon={<CheckmarkCircle24Regular />}
-                  title="Resolver"
+                  aria-label="Resolver"
                   onClick={() =>
                     executar(api.alertas.resolver, alerta.id, 'Falha ao resolver alerta.', 'Alerta resolvido com sucesso.')
                   }
                 />
               )}
               {(alerta.status === StatusAlerta.Aberto || alerta.status === StatusAlerta.EmTratamento) && (
-                <Button
-                  appearance="subtle"
+                <BotaoAcao
+                  tom="ver"
                   icon={<DismissCircle24Regular />}
-                  title="Ignorar"
+                  aria-label="Ignorar"
                   onClick={() =>
                     executar(api.alertas.ignorar, alerta.id, 'Falha ao ignorar alerta.', 'Alerta ignorado com sucesso.')
                   }
                 />
               )}
-              <Button appearance="subtle" icon={<Delete24Regular />} title="Excluir" onClick={() => excluir(alerta.id)} />
+              <BotaoAcao tom="excluir" icon={<Delete24Regular />} aria-label="Excluir" onClick={() => excluir(alerta.id)} />
             </div>
           )}
         />

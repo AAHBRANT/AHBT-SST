@@ -37,8 +37,28 @@ public class AcaoPlano : AuditableEntity
     public PrioridadeAcao Prioridade { get; set; }
     public DateTime? Prazo { get; set; }
 
+    // De onde a ação veio quando sugerida pela IA no relato de ocorrência: o perigo/controle do PGR,
+    // o requisito legal ou o nível da hierarquia de prevenção — ou "sem base, validar". Nulo nas
+    // ações criadas à mão.
+    public string? Fundamentacao { get; set; }
+
     public StatusControleRisco Status { get; set; } = StatusControleRisco.Pendente;
     public DateTime? DataConclusao { get; set; }
+
+    // Conclusão manual pela tela da ocorrência (23/10/2026): quem marcou como concluída (pelo login)
+    // e o que foi feito. Nulos nas ações concluídas sozinhas (DDS encerrado, reunião registrada).
+    public Guid? ConcluidoPorUsuarioId { get; set; }
+    public Usuario? ConcluidoPorUsuario { get; set; }
+    public string? DescricaoConclusao { get; set; }
+
+    // Vínculo que conclui a ação automaticamente (ver TipoResolucaoAcaoPlano). Só um dos três
+    // alvos é preenchido, conforme o tipo.
+    public TipoResolucaoAcaoPlano? TipoResolucao { get; set; }
+    public Guid? ResolucaoCursoTreinamentoId { get; set; }
+    public CursoTreinamento? ResolucaoCursoTreinamento { get; set; }
+    public TipoInspecao? ResolucaoTipoInspecao { get; set; }
+    public Guid? ResolucaoCatalogoEpiId { get; set; }
+    public CatalogoEpi? ResolucaoCatalogoEpi { get; set; }
 
     public DateTime? DataValidacao { get; set; }
     public Guid? ValidadoPorUsuarioId { get; set; }

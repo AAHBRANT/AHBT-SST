@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
+  BotaoAcao,
   Button,
   Campo,
   CampoData,
@@ -16,10 +17,11 @@ import {
   PainelCriacaoInline,
   Select,
   StatusChip,
+  useConfirmar,
   type Coluna,
   type Tom,
 } from '@ui';
-import { AddCircle24Regular } from '@fluentui/react-icons';
+import { Delete24Regular, AddCircle24Regular } from '@fluentui/react-icons';
 import {
   api,
   origemNaoConformidadeLabel,
@@ -28,9 +30,11 @@ import {
   type Atividade,
   type NaoConformidade,
   type NovaNaoConformidade,
+  type Obra,
   type Risco,
   type Usuario,
 } from '../../lib/api';
+import { useSouAdministrador } from '../../lib/UsuarioLogadoContext';
 
 function novaInicial(): NovaNaoConformidade {
   return {
@@ -38,6 +42,7 @@ function novaInicial(): NovaNaoConformidade {
     requisitoRelacionado: '',
     descricao: '',
     local: '',
+    obraId: '',
     atividadeId: '',
     riscoId: '',
     responsavelUsuarioId: '',
@@ -69,11 +74,15 @@ const tomStatus: Record<number, Tom> = {
 export function NaoConformidadesTab() {
   const navigate = useNavigate();
   const [naoConformidades, setNaoConformidades] = useState<NaoConformidade[]>([]);
+  const [obras, setObras] = useState<Obra[]>([]);
   const [atividades, setAtividades] = useState<Atividade[]>([]);
   const [riscos, setRiscos] = useState<Risco[]>([]);
   const [usuarios, setUsuarios] = useState<Usuario[]>([]);
   const [nova, setNova] = useState<NovaNaoConformidade>(novaInicial());
   const [erro, setErro] = useState<string | null>(null);
+  const [excluindoId, setExcluindoId] = useState<string | null>(null);
+  const souAdministrador = useSouAdministrador();
+  const { confirmar, dialogElement } = useConfirmar();
   const [erroPainel, setErroPainel] = useState<string | null>(null);
   const [carregando, setCarregando] = useState(false);
   const [carregandoLista, setCarregandoLista] = useState(true);
@@ -82,16 +91,18 @@ export function NaoConformidadesTab() {
   async function carregar() {
     try {
       setErro(null);
-      const [listaNc, listaAtividades, listaRiscos, listaUsuarios] = await Promise.all([
+      const [listaNc, listaAtividades, listaRiscos, listaUsuarios, listaObras] = await Promise.all([
         api.naoConformidades.listar(),
         api.atividades.listar(),
         api.riscos.listar(),
         api.usuarios.listar(),
+        api.obras.listar(),
       ]);
       setNaoConformidades(listaNc);
       setAtividades(listaAtividades);
       setRiscos(listaRiscos);
       setUsuarios(listaUsuarios);
+      setObras(listaObras);
     } catch (e) {
       setErro(e instanceof Error ? e.message : 'Falha ao carregar não conformidades.');
     } finally {
@@ -116,6 +127,11 @@ export function NaoConformidadesTab() {
       setErroPainel('Informe a descrição da não conformidade.');
       return;
     }
+    // A obra é obrigatória (vai junto ao G-QUALI); sem escolha, o servidor usa a obra da atividade/risco.
+    if (!nova.obraId && !nova.atividadeId && !nova.riscoId) {
+      setErroPainel('Informe a obra da não conformidade.');
+      return;
+    }
     try {
       setCarregando(true);
       setErroPainel(null);
@@ -123,6 +139,7 @@ export function NaoConformidadesTab() {
         ...nova,
         requisitoRelacionado: nova.requisitoRelacionado || null,
         local: nova.local || null,
+        obraId: nova.obraId || null,
         atividadeId: nova.atividadeId || null,
         riscoId: nova.riscoId || null,
         responsavelUsuarioId: nova.responsavelUsuarioId || null,
@@ -141,6 +158,7 @@ export function NaoConformidadesTab() {
   const colunas: Coluna<NaoConformidade>[] = [
     { chave: 'origem', rotulo: 'Origem', render: (nc) => origemNaoConformidadeLabel[nc.origemDeteccao] },
     { chave: 'descricao', rotulo: 'Descrição' },
+    { chave: 'obra', rotulo: 'Obra', render: (nc) => nc.obraNome ?? '—' },
     { chave: 'atividade', rotulo: 'Atividade', render: (nc) => nc.atividadeNome ?? '—' },
     { chave: 'responsavel', rotulo: 'Responsável', render: (nc) => nc.responsavelUsuarioNome ?? '—' },
     { chave: 'prazo', rotulo: 'Prazo', largura: '108px', render: (nc) => nc.prazo?.slice(0, 10) ?? '—' },
@@ -151,8 +169,31 @@ export function NaoConformidadesTab() {
     },
   ];
 
+  // Exclusão definitiva, só para Administrador (o servidor recusa os demais — ver
+  // PoliticasAutorizacao). Serve para tirar da lista um registro lançado por engano; o caminho
+  // normal de encerrar uma não conformidade continua sendo mudar o status dela.
+  async function excluir(nc: NaoConformidade) {
+    const confirmado = await confirmar({
+      titulo: 'Excluir não conformidade',
+      mensagem: `Excluir a não conformidade "${nc.descricao}"? Esta ação não pode ser desfeita.`,
+      rotuloConfirmar: 'Excluir',
+    });
+    if (!confirmado) return;
+    try {
+      setExcluindoId(nc.id);
+      setErro(null);
+      await api.naoConformidades.excluir(nc.id);
+      await carregar();
+    } catch (e) {
+      setErro(e instanceof Error ? e.message : 'Falha ao excluir a não conformidade.');
+    } finally {
+      setExcluindoId(null);
+    }
+  }
+
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+      {dialogElement}
       <PageHeader
         titulo="Não conformidades"
         acoes={
@@ -212,10 +253,28 @@ export function NaoConformidadesTab() {
                 </Field>
               </Campo>
               <Campo span={3}>
+                <Field label="Obra" required>
+                  <Select value={nova.obraId ?? ''} onChange={(_, d) => setNova({ ...nova, obraId: d.value })}>
+                    <option value="">Selecione</option>
+                    {obras.map((obra) => (
+                      <option key={obra.id} value={obra.id}>
+                        {obra.codigo} — {obra.nome}
+                      </option>
+                    ))}
+                  </Select>
+                </Field>
+              </Campo>
+              <Campo span={3}>
                 <Field label="Atividade">
                   <Select
                     value={nova.atividadeId ?? ''}
-                    onChange={(_, d) => setNova({ ...nova, atividadeId: d.value })}
+                    onChange={(_, d) =>
+                      setNova({
+                        ...nova,
+                        atividadeId: d.value,
+                        obraId: nova.obraId || atividades.find((a) => a.id === d.value)?.obraId || '',
+                      })
+                    }
                   >
                     <option value="">Nenhuma</option>
                     {atividades.map((atividade) => (
@@ -277,6 +336,24 @@ export function NaoConformidadesTab() {
           chaveLinha={(nc) => nc.id}
           carregando={carregandoLista}
           aoClicarLinha={(nc) => navigate(`/nao-conformidades/${nc.id}`)}
+          acoesLinha={(nc) => (
+            <>
+              {/* Exclusão é privilégio de Administrador (o servidor recusa os demais) — ver PoliticasAutorizacao. */}
+              {souAdministrador && (
+                <BotaoAcao
+                  tom="excluir"
+                  icon={<Delete24Regular />}
+                  disabled={excluindoId === nc.id}
+                  onClick={(evento) => {
+                    evento.stopPropagation();
+                    excluir(nc);
+                  }}
+                  aria-label="Excluir não conformidade"
+                  title="Excluir esta não conformidade (somente administrador)"
+                />
+              )}
+            </>
+          )}
           vazio={{
             titulo: 'Nenhuma não conformidade registrada ainda.',
             descricao: 'Registre a primeira não conformidade para começar.',

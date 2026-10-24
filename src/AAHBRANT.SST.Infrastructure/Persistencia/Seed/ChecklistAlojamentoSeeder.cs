@@ -10,9 +10,13 @@ namespace AAHBRANT.SST.Infrastructure.Persistencia.Seed;
 // Alojamento.xlsx" (SGI/05.SST/03.Alojamento), que por sua vez operacionaliza a "Instrução
 // Técnica Alojamento.docx" da AAHBRANT (NR-18 18.5 / NR-24) — pedido do usuário em 2026-09-09.
 // A planilha só tem colunas "Atende"/"Observações", sem indicar quais itens exigem evidência
-// fotográfica — por isso ExigeFotografia/ExigeResponsavel/ExigePrazo nascem todos false aqui
-// (nenhum dado inventado); o time de SST ajusta pela tela de Checklists caso queira exigir foto
-// em itens específicos.
+// fotográfica ou responsável/prazo — por isso ExigeResponsavel/ExigePrazo nascem false aqui
+// (nenhum dado inventado); o time de SST ajusta pela tela de Checklists caso queira exigir
+// responsável/prazo em itens específicos.
+// ExigeFotografia = true em todos os 30 itens: decisão explícita do usuário em 2026-09-15 (Task 6
+// do plano de Alojamento em Inspeções) — cada item do checklist de alojamento passa a exigir
+// evidência fotográfica antes da inspeção poder ser encerrada (ver validação em
+// EncerrarInspecaoCommandHandler).
 // Só roda se NENHUM ChecklistModelo de TipoInspecao.Alojamento existir ainda: se o usuário já
 // criou uma nova versão ou excluiu o modelo pela tela, este seeder não insere nada de volta.
 public static class ChecklistAlojamentoSeeder
@@ -83,7 +87,7 @@ public static class ChecklistAlojamentoSeeder
                 Ordem = ordem++,
                 Secao = secao,
                 Descricao = descricao,
-                ExigeFotografia = false,
+                ExigeFotografia = true,
                 ExigeResponsavel = false,
                 ExigePrazo = false,
             });

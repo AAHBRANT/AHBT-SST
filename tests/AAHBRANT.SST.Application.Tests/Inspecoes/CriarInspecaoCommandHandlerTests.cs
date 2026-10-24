@@ -34,4 +34,22 @@ public class CriarInspecaoCommandHandlerTests
         var inspecao = await db.Inspecoes.FirstAsync(i => i.Id == id);
         Assert.StartsWith("INSP-", inspecao.NumeroDocumento);
     }
+
+    [Fact]
+    public async Task Handle_ChecklistDeAlojamento_LancaInvalidOperationException()
+    {
+        var db = CriarDb(nameof(Handle_ChecklistDeAlojamento_LancaInvalidOperationException));
+        var obra = new Obra { Codigo = "OB2", Nome = "Obra Teste 2" };
+        var usuario = new Usuario { Email = "responsavel2@aahbrant.com", Nome = "Responsável Teste 2" };
+        var checklist = new ChecklistModelo { Nome = "Checklist Alojamento", TipoInspecao = Domain.Enums.TipoInspecao.Alojamento };
+        db.Obras.Add(obra);
+        db.Usuarios.Add(usuario);
+        db.ChecklistModelos.Add(checklist);
+        await db.SaveChangesAsync();
+
+        var handler = new CriarInspecaoCommandHandler(db, new GeradorNumeroDocumentoService(db));
+
+        await Assert.ThrowsAsync<InvalidOperationException>(() =>
+            handler.Handle(new CriarInspecaoCommand(checklist.Id, obra.Id, null, DateTime.UtcNow, usuario.Id), default));
+    }
 }

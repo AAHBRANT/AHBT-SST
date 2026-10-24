@@ -34,6 +34,9 @@ public record DdsSemanalPdfModelo(
     string? ResponsavelObraSstNome,
     string? ResponsavelEmpresaTerceirizadaNome,
     string? ResponsavelEmpresaTerceirizadaFuncao,
+    // Quem assinou cada campo (AssinadoEm em UTC) — nulo = campo ainda não assinado.
+    DdsSemanalAssinaturaDto? AssinaturaResponsavelDds,
+    DdsSemanalAssinaturaDto? AssinaturaResponsavelObraSst,
     string ConteudoHash,
     string UrlValidacaoPublica,
     byte[] QrCodePng,

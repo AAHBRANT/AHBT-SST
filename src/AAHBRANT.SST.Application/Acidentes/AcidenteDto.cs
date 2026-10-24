@@ -3,6 +3,8 @@ using AAHBRANT.SST.Domain.Enums;
 
 namespace AAHBRANT.SST.Application.Acidentes;
 
+public record AcidenteEnvolvidoDto(Guid TrabalhadorId, string Nome);
+
 public class AcidenteDto
 {
     public Guid Id { get; set; }
@@ -13,6 +15,7 @@ public class AcidenteDto
 
     public Guid? TrabalhadorId { get; set; }
     public string? TrabalhadorNome { get; set; }
+    public List<AcidenteEnvolvidoDto> Envolvidos { get; set; } = new();
 
     public Guid? AtividadeId { get; set; }
     public string? AtividadeNome { get; set; }
@@ -42,8 +45,29 @@ public class AcidenteDto
 
 // Composição por query, não por tabela nova — mesmo princípio já usado em NaoConformidadeDetalheDto.
 // As ações do plano vinculadas são lidas de AcaoPlano filtrando por OrigemTipo=nameof(Acidente)/OrigemId=Id.
+public class AcidenteFotoDto
+{
+    public Guid Id { get; set; }
+    public int Ordem { get; set; }
+    public AAHBRANT.SST.Application.Common.DadosCapturaFoto? DadosFoto { get; set; }
+}
+
 public class AcidenteDetalheDto
 {
+    public List<AcidenteFotoDto> Fotos { get; set; } = new();
     public AcidenteDto Acidente { get; set; } = null!;
     public List<AcaoPlanoDto> AcoesPlano { get; set; } = new();
+    public ReuniaoAnaliseDto? Reuniao { get; set; }
 }
+
+// Reunião de análise no Teams (só acidentes registrados por relato).
+public record ReuniaoAnaliseDto(
+    DateTime Inicio,
+    DateTime Fim,
+    IReadOnlyList<string> Participantes,
+    SituacaoReuniaoTeams Situacao,
+    string? LinkTeams,
+    string? MotivoFalha,
+    DateTime? RealizadaEm = null,
+    IReadOnlyList<string>? Presentes = null,
+    string? Ata = null);

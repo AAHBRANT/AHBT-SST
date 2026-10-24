@@ -135,6 +135,11 @@ public static class RbacSeeder
         ("inspecao:responder", "Inspecao", "Responder", "Responder itens do checklist da inspeção"),
         ("inspecao:encerrar", "Inspecao", "Encerrar", "Encerrar inspeção"),
 
+        ("alojamento:ver", "Alojamento", "Ver", "Ver alojamentos cadastrados e seus moradores"),
+        ("alojamento:criar", "Alojamento", "Criar", "Cadastrar alojamento"),
+        ("alojamento:gerenciar-moradores", "Alojamento", "GerenciarMoradores", "Adicionar/remover morador de alojamento"),
+        ("alojamento:configurar", "Alojamento", "Configurar", "Editar configuração global de Alojamento"),
+
         ("checklist:ver", "Checklist", "Ver", "Ver modelos de checklist"),
         ("checklist:gerenciar", "Checklist", "Gerenciar", "Criar/versionar modelo de checklist"),
 
@@ -200,6 +205,9 @@ public static class RbacSeeder
         // terceiros), mas ainda assim exige permissão explícita, mesmo padrão de todo módulo aqui.
         ("calendario:ver", "Calendario", "Ver", "Ver a própria agenda dentro do app (Outlook/Teams + vencimentos do SST)"),
 
+        ("suporte-ia:usar", "SuporteIa", "Usar", "Abrir solicitações e consultar o histórico do suporte com IA"),
+        ("suporte-ia:administrar", "SuporteIa", "Administrar", "Ver e tratar todas as solicitações abertas na Central de Suporte IA"),
+
         // Motor de Aplicabilidade Legal (requisito do usuário, 2026-08-29) — cadastro restrito a
         // quem tem competência para validar conteúdo jurídico (QSMS/Diretoria); "responder" o
         // questionário de aplicabilidade por obra é uma ação mais operacional, por isso permissão
@@ -218,6 +226,18 @@ public static class RbacSeeder
         ("cipa:ver", "Cipa", "Ver", "Ver dimensionamento, processo eleitoral, membros, reuniões, inspeções e SIPAT da CIPA"),
         ("cipa:gerenciar", "Cipa", "Gerenciar", "Cadastrar/editar/excluir dimensionamento, conduzir processo eleitoral, gerenciar membros/treinamentos, reuniões, inspeções e SIPAT da CIPA"),
         ("cipa:exportar", "Cipa", "Exportar", "Exportar atas de eleição e de reunião da CIPA em PDF"),
+
+        ("terceirizado:ver", "Terceirizado", "Ver", "Ver empresas terceirizadas, contratos e pessoas vinculadas"),
+        ("terceirizado:criar", "Terceirizado", "Criar", "Cadastrar empresa terceirizada e pessoas em vagas de contrato"),
+        ("terceirizado:editar", "Terceirizado", "Editar", "Editar empresa terceirizada"),
+        ("terceirizado:excluir", "Terceirizado", "Excluir", "Inativar empresa terceirizada"),
+        // Não concedida a nenhum PerfilAcesso humano — existe só para o AppRole do webhook do G-Juri
+        // (Task 10) casar contra ela via AppRolesReconhecidas. Separada de "terceirizado:criar" de
+        // propósito (revisão técnica durante o planejamento): a permissão de um usuário humano
+        // cadastrar empresas pela tela nunca deve, mesmo que indiretamente, autorizar quem pode
+        // chamar o webhook.
+        ("terceirizado:integracao-gjuri", "Terceirizado", "IntegracaoGJuri", "Receber webhook de contrato validado/encerrado do G-Juri"),
+        ("estoque:integracao-gsupri", "Estoque", "IntegracaoGsupri", "Receber eventos de estoque do G-SUPRI (identidade de aplicação)"),
     };
 
     public static async Task ExecutarAsync(IServiceProvider services, CancellationToken ct = default)

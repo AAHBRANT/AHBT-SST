@@ -3,6 +3,7 @@ using AAHBRANT.SST.Application.InstalacoesEpc.Queries;
 using MediatR;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using AAHBRANT.SST.Api.Autorizacao;
 
 namespace AAHBRANT.SST.Api.Controllers;
 
@@ -51,7 +52,9 @@ public class InstalacoesEpcController : ControllerBase
         return NoContent();
     }
 
-    [Authorize(Policy = "epc:editar")]
+    // Exclusao definitiva e privilegio de Administrador (pedido do usuario, 23/09): quem tem
+    // permissao de editar corrige o registro, mas nao o apaga. Ver PoliticasAutorizacao.
+    [Authorize(Policy = PoliticasAutorizacao.SomenteAdministrador)]
     [HttpDelete("{id:guid}")]
     public async Task<IActionResult> Excluir(Guid id, CancellationToken ct)
     {

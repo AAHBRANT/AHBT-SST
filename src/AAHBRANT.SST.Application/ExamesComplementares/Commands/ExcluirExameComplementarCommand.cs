@@ -1,4 +1,5 @@
 using AAHBRANT.SST.Application.Common.Interfaces;
+using AAHBRANT.SST.Application.Common.Seguranca;
 using FluentValidation;
 using MediatR;
 using Microsoft.EntityFrameworkCore;
@@ -23,7 +24,7 @@ public class ExcluirExameComplementarCommandHandler : IRequestHandler<ExcluirExa
 
     public async Task Handle(ExcluirExameComplementarCommand request, CancellationToken ct)
     {
-        var exame = await _db.ExamesComplementares.FirstOrDefaultAsync(e => e.Id == request.Id, ct)
+        var exame = await _db.ExamesComplementares.NoEscopoDoTrabalhador(_db, e => e.TrabalhadorId).FirstOrDefaultAsync(e => e.Id == request.Id, ct)
             ?? throw new KeyNotFoundException($"Exame complementar {request.Id} não encontrado.");
 
         _db.ExamesComplementares.Remove(exame);

@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Button, Card, DataTable, FeedbackInline, FormRodape, Input, type Coluna } from '@ui';
+import { Button, Card, FeedbackInline, FormRodape, Input, designTokens, tokensUi, useTipografia } from '@ui';
 import { Save24Regular } from '@fluentui/react-icons';
 import { api, type CatalogoUniforme, type ItemTamanhoUniforme } from '../../lib/api';
 import { useSucessoToast } from '../../hooks/useSucessoToast';
@@ -12,6 +12,7 @@ import { useSucessoToast } from '../../hooks/useSucessoToast';
 // no Card, não num PageHeader.
 export function TamanhosUniformeSecao({ trabalhadorId }: { trabalhadorId: string }) {
   const sucessoToast = useSucessoToast();
+  const tipo = useTipografia();
   const [itensCatalogo, setItensCatalogo] = useState<CatalogoUniforme[]>([]);
   const [tamanhos, setTamanhos] = useState<Record<string, string>>({});
   const [erro, setErro] = useState<string | null>(null);
@@ -59,37 +60,45 @@ export function TamanhosUniformeSecao({ trabalhadorId }: { trabalhadorId: string
 
   if (carregandoLista || itensCatalogo.length === 0) return null;
 
-  const colunas: Coluna<CatalogoUniforme>[] = [
-    { chave: 'peca', rotulo: 'Peça', render: (item) => item.nome },
-    {
-      chave: 'tamanho',
-      rotulo: 'Tamanho',
-      render: (item) => (
-        <Input
-          value={tamanhos[item.id] ?? ''}
-          onChange={(_, d) => setTamanhos({ ...tamanhos, [item.id]: d.value })}
-          placeholder="ex.: M, 42..."
-          style={{ width: 100 }}
-        />
-      ),
-    },
-  ];
-
   return (
-    <Card titulo="Tamanhos de uniforme" densidade="compacta">
+    <Card titulo="Tamanhos de uniforme" subtitulo="Usados na separação de kits">
       {erro && (
         <FeedbackInline tom="erro" aoFechar={() => setErro(null)}>
           {erro}
         </FeedbackInline>
       )}
 
-      <DataTable
+      {/* Uma peça por quadro (Proposta 1 de cards, 21/10) no lugar da tabela de duas colunas. */}
+      <div
+        role="group"
         aria-label="Tamanhos de uniforme do trabalhador"
-        densidade="compacta"
-        colunas={colunas}
-        linhas={itensCatalogo}
-        chaveLinha={(i) => i.id}
-      />
+        style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(120px, 1fr))', gap: tokensUi.espaco.sm }}
+      >
+        {itensCatalogo.map((item) => (
+          <label
+            key={item.id}
+            style={{
+              display: 'flex',
+              flexDirection: 'column',
+              gap: 6,
+              padding: tokensUi.espaco.sm,
+              borderRadius: tokensUi.raio.md,
+              border: `1px solid ${designTokens.colorCardBorder}`,
+              backgroundColor: designTokens.colorNeutralLight,
+            }}
+          >
+            <span className={tipo.micro} style={{ color: designTokens.colorNeutralMedium }}>
+              {item.nome}
+            </span>
+            <Input
+              value={tamanhos[item.id] ?? ''}
+              onChange={(_, d) => setTamanhos({ ...tamanhos, [item.id]: d.value })}
+              placeholder="ex.: M, 42"
+              aria-label={`Tamanho de ${item.nome}`}
+            />
+          </label>
+        ))}
+      </div>
 
       <FormRodape>
         <Button appearance="primary" icon={<Save24Regular />} onClick={salvar} disabled={carregando}>
