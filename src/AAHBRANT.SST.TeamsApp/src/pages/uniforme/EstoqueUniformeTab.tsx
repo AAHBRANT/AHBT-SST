@@ -25,7 +25,7 @@ import {
   type MovimentacaoEstoqueUniforme,
   type Obra,
 } from '../../lib/api';
-import { formatarDataHoraBrasilia } from '../../lib/datas';
+import { formatarDataHoraBrasilia } from '../../components/assinatura/assinaturaDigital';
 
 // Estoque de Uniforme — grade por Obra + Tamanho (mesmo princípio de segmentação por Obra do
 // EstoqueTab.tsx do EPI, com uma dimensão a mais: o tamanho). Entrada é sempre manual (sem código

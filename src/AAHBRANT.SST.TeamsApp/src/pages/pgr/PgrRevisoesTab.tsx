@@ -4,27 +4,20 @@ import {
   CampoData,
   Campo,
   Card,
-  DataTable,
   Field,
   FeedbackInline,
   FormGrid,
   FormRodape,
   FormSection,
   Input,
-  type Coluna,
 } from '@ui';
+import { TabelaRevisoesDocumento } from '../../components/revisoes/TabelaRevisoesDocumento';
 import { Add24Regular } from '@fluentui/react-icons';
 import { api, type NovaPgrRevisao, type PgrRevisao } from '../../lib/api';
 
 function revisaoVazia(pgrId: string): NovaPgrRevisao {
   return { pgrId, dataRevisao: '', motivo: '', responsavelUsuarioId: null };
 }
-
-const colunas: Coluna<PgrRevisao>[] = [
-  { chave: 'numeroRevisao', rotulo: 'Nº' },
-  { chave: 'dataRevisao', rotulo: 'Data', render: (r) => r.dataRevisao?.slice(0, 10) ?? '' },
-  { chave: 'motivo', rotulo: 'Motivo' },
-];
 
 // Onda 2 Task 8 (camada ui/): revisão do PGR (§16) é append-only — sem edição/exclusão, só registro
 // incremental (por isso sem `useConfirmar`/`acoesLinha`).
@@ -74,7 +67,8 @@ export function PgrRevisoesTab({ pgrId }: { pgrId: string }) {
         </FeedbackInline>
       )}
 
-      <FormSection titulo="Nova revisão" numero={1} primeira>
+      {/* Registro manual, sem PDF (como antes de 10/10/2026). Revisão com PDF: botão "Nova revisão" na aba PGR. */}
+      <FormSection titulo="Registrar revisão sem PDF" numero={1} primeira>
         <FormGrid>
           <Campo span={3}>
             <Field label="Data da revisão">
@@ -97,13 +91,11 @@ export function PgrRevisoesTab({ pgrId }: { pgrId: string }) {
         </FormRodape>
       </FormSection>
 
-      <DataTable
-        aria-label="Histórico de revisões do PGR"
-        colunas={colunas}
-        linhas={revisoes}
-        chaveLinha={(r) => r.id}
+      <TabelaRevisoesDocumento
+        documento="PGR"
+        revisoes={revisoes}
         carregando={carregandoLista}
-        vazio={{ titulo: 'Nenhuma revisão registrada ainda.' }}
+        obterDocumento={(revisaoId) => api.pgrRevisoes.obterDocumento(revisaoId)}
       />
     </Card>
   );

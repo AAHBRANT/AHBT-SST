@@ -10,6 +10,7 @@ namespace AAHBRANT.SST.Api.Controllers;
 // QR do comprovante em campo (pode não estar logado nem no Teams).
 [ApiController]
 [AllowAnonymous]
+[Microsoft.AspNetCore.RateLimiting.EnableRateLimiting("publico")]
 [Route("sst/validar")]
 public class ValidacaoPublicaController : ControllerBase
 {

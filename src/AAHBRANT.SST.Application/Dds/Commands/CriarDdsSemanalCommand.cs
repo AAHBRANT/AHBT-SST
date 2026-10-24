@@ -26,8 +26,9 @@ public class CriarDdsSemanalCommandValidator : AbstractValidator<CriarDdsSemanal
     {
         RuleFor(x => x.ObraId).NotEmpty();
         RuleFor(x => x.DataInicioSemana).NotEmpty();
+        RuleFor(x => x.Tipo).IsInEnum();
         RuleFor(x => x.EmpresaTerceirizada)
-            .NotEmpty().When(x => x.Tipo == TipoDdsSemanal.Terceirizados)
+            .NotEmpty().When(x => x.Tipo.IncluiTerceirizados())
             .WithMessage("Informe a empresa terceirizada.")
             .MaximumLength(200);
         RuleFor(x => x.LocalFrenteServico).MaximumLength(200);
@@ -64,7 +65,7 @@ public class CriarDdsSemanalCommandHandler : IRequestHandler<CriarDdsSemanalComm
         {
             ObraId = request.ObraId,
             Tipo = request.Tipo,
-            EmpresaTerceirizada = request.Tipo == TipoDdsSemanal.Terceirizados ? request.EmpresaTerceirizada : null,
+            EmpresaTerceirizada = request.Tipo.IncluiTerceirizados() ? request.EmpresaTerceirizada : null,
             NumeroDocumento = await _geradorNumero.GerarAsync("DDS", ct),
             LocalFrenteServico = request.LocalFrenteServico,
             ResponsavelUsuarioId = usuario.Id,

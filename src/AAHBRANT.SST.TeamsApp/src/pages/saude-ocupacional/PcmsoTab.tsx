@@ -31,6 +31,7 @@ import {
   type Pcmso,
 } from '../../lib/api';
 import { useSucessoToast } from '../../hooks/useSucessoToast';
+import { DICA_IA, EnvioPdfComIa, dataCampo, sugerirObra } from '../../components/leitura-ia/EnvioPdfComIa';
 
 function pcmsoVazio(): NovoPcmso {
   return {
@@ -70,6 +71,10 @@ export function PcmsoTab() {
   const [erro, setErro] = useState<string | null>(null);
   const [carregando, setCarregando] = useState(false);
   const [carregandoLista, setCarregandoLista] = useState(true);
+  // Preenchimento pelo PDF (16/10/2026): campos que vieram da IA ganham a dica "confira".
+  const [arquivo, setArquivo] = useState<File | null>(null);
+  const [lendoIa, setLendoIa] = useState(false);
+  const [camposIa, setCamposIa] = useState<Set<keyof NovoPcmso>>(new Set());
   const { confirmar, dialogElement } = useConfirmar();
   const sucessoToast = useSucessoToast();
 
@@ -95,6 +100,39 @@ export function PcmsoTab() {
     return obras.find((o) => o.id === id)?.nome ?? id;
   }
 
+  async function lerPdf(f: File) {
+    setArquivo(f);
+    setCamposIa(new Set());
+    try {
+      setLendoIa(true);
+      setErro(null);
+      const c = await api.leiturasIa.cabecalhoPcmso(f);
+      const novo: Partial<NovoPcmso> = {};
+      const obraId = sugerirObra(`${c.obra ?? ''} ${c.nome ?? ''}`, obras);
+      if (obraId) novo.obraId = obraId;
+      if (c.nome) novo.nome = c.nome;
+      if (c.versao) novo.versao = c.versao;
+      if (c.dataEmissao) novo.dataEmissao = dataCampo(c.dataEmissao);
+      if (c.validade) novo.validade = dataCampo(c.validade);
+      if (c.medicoNome) novo.medicoResponsavelNome = c.medicoNome;
+      if (c.medicoCrm) novo.medicoResponsavelCrm = c.medicoCrm;
+      setNovoPcmso((atual) => ({ ...atual, ...novo }));
+      setCamposIa(new Set(Object.keys(novo) as (keyof NovoPcmso)[]));
+    } catch (e) {
+      setErro(e instanceof Error ? e.message : 'Falha ao ler o PDF com IA. Preencha os campos manualmente.');
+    } finally {
+      setLendoIa(false);
+    }
+  }
+
+  const dica = (campo: keyof NovoPcmso) => (camposIa.has(campo) ? DICA_IA : undefined);
+
+  function limpar() {
+    setNovoPcmso(pcmsoVazio());
+    setArquivo(null);
+    setCamposIa(new Set());
+  }
+
   async function criar() {
     if (!novoPcmso.nome.trim() || !novoPcmso.dataEmissao) {
       setErro('Preencha nome e data de emissão.');
@@ -103,7 +141,7 @@ export function PcmsoTab() {
     try {
       setCarregando(true);
       setErro(null);
-      await api.pcmsos.criar({
+      const { id } = await api.pcmsos.criar({
         ...novoPcmso,
         versao: novoPcmso.versao || null,
         validade: novoPcmso.validade || null,
@@ -111,7 +149,17 @@ export function PcmsoTab() {
         obraId: novoPcmso.obraId || null,
         setorId: novoPcmso.setorId || null,
       });
-      setNovoPcmso(pcmsoVazio());
+      if (arquivo) {
+        // O PDF fica no PCMSO; com obra, já entra na fila da leitura completa (quadros de exames).
+        await api.pcmsos.enviarDocumento(id, arquivo);
+        const temObra = !!novoPcmso.obraId;
+        if (temObra) await api.leiturasIa.iniciar('pcmso', id).catch(() => undefined);
+        limpar();
+        sucessoToast(temObra ? 'PCMSO criado. A IA está lendo o documento completo.' : 'PCMSO criado com o PDF anexado.');
+        navigate(`/saude-ocupacional/pcmso/${id}`);
+        return;
+      }
+      limpar();
       await carregar();
       sucessoToast('PCMSO criado com sucesso.');
     } catch (e) {
@@ -164,15 +212,18 @@ export function PcmsoTab() {
       )}
 
       <Card titulo="PCMSOs">
-        <FormSection titulo="Novo PCMSO" numero={1} primeira>
+        <FormSection titulo="Enviar o PDF do PCMSO" numero={1} primeira>
+          <EnvioPdfComIa arquivo={arquivo} lendo={lendoIa} lido={camposIa.size > 0} aoEscolher={lerPdf} aoRemover={() => setArquivo(null)} />
+        </FormSection>
+        <FormSection titulo="Novo PCMSO" numero={2}>
           <FormGrid>
             <Campo span={4}>
-              <Field label="Nome do Documento" required>
+              <Field label="Nome do Documento" required hint={dica('nome')}>
                 <Input value={novoPcmso.nome} onChange={(_, d) => setNovoPcmso({ ...novoPcmso, nome: d.value })} />
               </Field>
             </Campo>
             <Campo span={2}>
-              <Field label="Versão">
+              <Field label="Versão" hint={dica('versao')}>
                 <Input
                   value={novoPcmso.versao ?? ''}
                   onChange={(_, d) => setNovoPcmso({ ...novoPcmso, versao: d.value })}
@@ -180,7 +231,7 @@ export function PcmsoTab() {
               </Field>
             </Campo>
             <Campo span={3}>
-              <Field label="Obra">
+              <Field label="Obra" hint={dica('obraId')}>
                 <Select
                   value={novoPcmso.obraId ?? ''}
                   onChange={(_, d) => setNovoPcmso({ ...novoPcmso, obraId: d.value, setorId: '' })}
@@ -195,7 +246,7 @@ export function PcmsoTab() {
               </Field>
             </Campo>
             <Campo span={3}>
-              <Field label="Data de emissão" required>
+              <Field label="Data de emissão" required hint={dica('dataEmissao')}>
                 <CampoData
                   value={novoPcmso.dataEmissao}
                   onChange={(_, d) => setNovoPcmso({ ...novoPcmso, dataEmissao: d.value })}
@@ -203,24 +254,35 @@ export function PcmsoTab() {
               </Field>
             </Campo>
             <Campo span={3}>
-              <Field label="Validade">
+              <Field label="Validade" hint={dica('validade')}>
                 <CampoData
                   value={novoPcmso.validade ?? ''}
                   onChange={(_, d) => setNovoPcmso({ ...novoPcmso, validade: d.value })}
                 />
               </Field>
             </Campo>
-            <Campo span={5}>
-              <Field label="Médico responsável">
+            <Campo span={3}>
+              <Field label="Médico responsável" hint={dica('medicoResponsavelNome')}>
                 <Input
                   value={novoPcmso.medicoResponsavelNome ?? ''}
                   onChange={(_, d) => setNovoPcmso({ ...novoPcmso, medicoResponsavelNome: d.value })}
                 />
               </Field>
             </Campo>
+            <Campo span={2}>
+              <Field label="CRM" hint={dica('medicoResponsavelCrm')}>
+                <Input
+                  value={novoPcmso.medicoResponsavelCrm ?? ''}
+                  onChange={(_, d) => setNovoPcmso({ ...novoPcmso, medicoResponsavelCrm: d.value })}
+                />
+              </Field>
+            </Campo>
           </FormGrid>
-          <FormRodape info="Os demais campos (CRM, funções/riscos/exames contemplados, periodicidades, unidades abrangidas, status e Plano de Ação) são preenchidos na tela de detalhe, após criar o registro.">
-            <Button appearance="primary" icon={<Add24Regular />} onClick={criar} disabled={carregando}>
+          <FormRodape info="Os demais campos (funções/riscos/exames contemplados, periodicidades, unidades abrangidas, status e Plano de Ação) são preenchidos na tela de detalhe, após criar o registro.">
+            <Button onClick={limpar} disabled={carregando || lendoIa}>
+              Limpar
+            </Button>
+            <Button appearance="primary" icon={<Add24Regular />} onClick={criar} disabled={carregando || lendoIa}>
               Adicionar PCMSO
             </Button>
           </FormRodape>

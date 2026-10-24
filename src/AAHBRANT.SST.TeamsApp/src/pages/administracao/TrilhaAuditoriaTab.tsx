@@ -17,7 +17,7 @@ import {
 } from '@ui';
 import { Filter24Regular } from '@fluentui/react-icons';
 import { api, type TrilhaAuditoria } from '../../lib/api';
-import { formatarDataHoraBrasilia } from '../../lib/datas';
+import { formatarDataHoraBrasilia } from '../../components/assinatura/assinaturaDigital';
 
 // Onda 2 Task 17 (camada ui/): arquivo citado no Guia de conversão (seção 4) como referência real de
 // `estilos.erro` → `FeedbackInline`. Filtro + tabela vira `FormSection`/`FormGrid`+`DataTable`; o

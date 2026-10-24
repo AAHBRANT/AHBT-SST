@@ -25,11 +25,11 @@ const useStyles = makeStyles({
     borderTop: `1px solid ${tokensUi.bordaSuave}`,
     justifyContent: 'flex-end',
     gap: tokensUi.espaco.sm,
-    '& .fui-Button': { minHeight: '40px' },
+    '& .fui-Button': { minHeight: '42px' },
     '@media (max-width: 1024px)': {
       paddingLeft: tokensUi.espaco.xl,
       paddingRight: tokensUi.espaco.xl,
-      '& .fui-Button': { minHeight: '44px' },
+      '& .fui-Button': { minHeight: '50px' },
     },
     '@media (max-width: 600px)': {
       flexDirection: 'column-reverse',

@@ -42,7 +42,7 @@ public class ObterUsuarioLogadoQueryHandler : IRequestHandler<ObterUsuarioLogado
 
         var usuario = await _db.Usuarios
             .AsNoTracking()
-            .Where(u => u.AzureAdObjectId == request.AzureAdObjectId && u.Status == StatusUsuario.Ativo)
+            .Where(u => u.Ativo && u.AzureAdObjectId == request.AzureAdObjectId && u.Status == StatusUsuario.Ativo)
             .Select(u => new { u.Id, u.Nome, u.Email })
             .FirstOrDefaultAsync(ct);
 
@@ -53,7 +53,7 @@ public class ObterUsuarioLogadoQueryHandler : IRequestHandler<ObterUsuarioLogado
 
         var perfis = await _db.UsuariosPerfilObra
             .AsNoTracking()
-            .Where(v => v.UsuarioId == usuario.Id && v.PerfilAcesso != null)
+            .Where(v => v.Ativo && v.UsuarioId == usuario.Id && v.PerfilAcesso != null && v.PerfilAcesso.Ativo)
             .Select(v => new { v.PerfilAcessoId, Tipo = v.PerfilAcesso!.Tipo })
             .ToListAsync(ct);
 
@@ -62,7 +62,7 @@ public class ObterUsuarioLogadoQueryHandler : IRequestHandler<ObterUsuarioLogado
         var perfilIds = perfis.Select(p => p.PerfilAcessoId).Distinct().ToList();
         var permissoes = await _db.PerfisAcessoPermissoes
             .AsNoTracking()
-            .Where(pp => perfilIds.Contains(pp.PerfilAcessoId) && pp.Permitido && pp.Permissao != null)
+            .Where(pp => pp.Ativo && perfilIds.Contains(pp.PerfilAcessoId) && pp.Permitido && pp.Permissao != null && pp.Permissao.Ativo)
             .Select(pp => pp.Permissao!.Codigo)
             .Distinct()
             .ToListAsync(ct);

@@ -27,6 +27,52 @@ public class DadosCapturaFotoTests
     }
 
     [Fact]
+    public void ExigirCompleta_FotoDaGaleriaComObraELocal_NaoExigeDataNemGeolocalizacao()
+    {
+        var json = JsonSerializer.Serialize(new DadosCapturaFoto
+        {
+            Origem = "arquivo",
+            Local = "Pátio",
+            ObraId = Guid.NewGuid(),
+            ObraNome = "Obra Centro",
+        });
+
+        DadosCapturaFoto.ExigirCompleta(json, "Foto 3");
+    }
+
+    [Fact]
+    public void ExigirCompleta_FotoDaGaleriaSemLocal_NaoExigeDescricaoDoLocal()
+    {
+        var json = JsonSerializer.Serialize(new DadosCapturaFoto
+        {
+            Origem = "arquivo",
+            ObraId = Guid.NewGuid(),
+            ObraNome = "Obra Centro",
+        });
+
+        DadosCapturaFoto.ExigirCompleta(json, "Foto 3");
+    }
+
+    [Fact]
+    public void Pendencias_FotoDaCameraSemLocal_NaoListaDescricaoDoLocal()
+    {
+        var captura = DateTimeOffset.UtcNow;
+        var json = JsonSerializer.Serialize(new DadosCapturaFoto
+        {
+            Origem = "camera",
+            CapturadaEm = captura,
+            ObraId = Guid.NewGuid(),
+            ObraNome = "Obra Centro",
+            Latitude = -7.1,
+            Longitude = -34.8,
+            PrecisaoMetros = 12,
+            LocalizacaoObtidaEm = captura.AddSeconds(-4),
+        });
+
+        Assert.Empty(DadosCapturaFoto.Pendencias(json));
+    }
+
+    [Fact]
     public void ExigirCompleta_SemLocalizacao_InformaPendenciaSemUsarHorarioDeRecebimento()
     {
         var json = JsonSerializer.Serialize(new DadosCapturaFoto

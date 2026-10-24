@@ -29,6 +29,14 @@ public class CursoTreinamento : AuditableEntity
     // 6, então nada muda para o que já estava cadastrado.
     public bool AtendeNr6 { get; set; }
 
+    // Regra fixa (02/10): só o curso cuja norma é a NR-06 habilita a entrega de EPI. Nunca vem do
+    // cliente — Criar/Atualizar derivam o marcador daqui, então nenhum outro curso (ex.: NR-11) pode ser marcado.
+    public static bool NormaHabilitaEpi(string? normaReferencia)
+    {
+        var norma = normaReferencia?.Trim().Replace(" ", "").ToUpperInvariant();
+        return norma is "NR-06" or "NR-6" or "NR06" or "NR6";
+    }
+
     public ICollection<Treinamento> Realizacoes { get; set; } = new List<Treinamento>();
 }
 
@@ -52,6 +60,9 @@ public class Treinamento : AuditableEntity
     // profissional (CREA/MTE) do instrutor — sempre o Técnico de Segurança do Trabalho responsável,
     // que também assina como Responsável Técnico (decisão do usuário: uma assinatura só, não três).
     public string? Local { get; set; }
+    // Conteúdo programático ministrado, gravado no treinamento (19/10). Nulo nos antigos: o
+    // certificado cai no conteúdo do curso e, se vazio, no padrão da NR.
+    public string? ConteudoProgramatico { get; set; }
     public string? InstrutorRegistroProfissional { get; set; }
 
     // Preenchido só quando este Treinamento foi gerado pelo encerramento de uma turma (04/09) —

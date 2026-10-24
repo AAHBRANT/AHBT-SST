@@ -26,11 +26,20 @@ export default defineConfig({
       manifest: {
         name: 'AAHBRANT SST',
         short_name: 'AAHBRANT SST',
+        lang: 'pt-BR',
         description: 'Gestão de Saúde e Segurança do Trabalho',
         theme_color: '#670000',
         background_color: '#ffffff',
         display: 'standalone',
-        icons: [{ src: '/favicon.svg', sizes: 'any', type: 'image/svg+xml' }],
+        // Ícone do colete (mesma arte do app do Teams, manifest/color.png). O Android usa o de
+        // 512 px na tela inicial e aplica a própria máscara (círculo/squircle) via "maskable" —
+        // a arte já preenche o quadrado inteiro com o colete centralizado, então o recorte não
+        // come o desenho. Antes apontava para o favicon.svg padrão do Vite (raio roxo).
+        icons: [
+          { src: '/icons/icon-192.png', sizes: '192x192', type: 'image/png', purpose: 'any' },
+          { src: '/icons/icon-512.png', sizes: '512x512', type: 'image/png', purpose: 'any' },
+          { src: '/icons/icon-512.png', sizes: '512x512', type: 'image/png', purpose: 'maskable' },
+        ],
       },
       workbox: {
         // Chamadas de API não entram no cache do service worker — quem decide o que fica
@@ -57,7 +66,21 @@ export default defineConfig({
         importScripts: ['sw-atualizacao.js'],
         // Fora do precache: ele é buscado pelo próprio navegador ao instalar o SW (com os
         // cabeçalhos no-cache do nginx), não pela página.
-        globIgnores: ['**/sw-atualizacao.js'],
+        // O detector de rosto (MediaPipe) tem um .wasm de ~13 MB: ficaria no precache de TODOS os
+        // usuários, mesmo dos que nunca abrem a câmera facial. Fica fora e entra no cache só no
+        // primeiro uso (runtimeCaching abaixo).
+        globIgnores: ['**/sw-atualizacao.js', '**/vision_bundle-*', '**/vision_wasm_*', '**/blaze_face_*'],
+        runtimeCaching: [
+          {
+            urlPattern: /\/assets\/(vision_bundle|vision_wasm|blaze_face)[^/]*$/,
+            handler: 'CacheFirst',
+            options: {
+              cacheName: 'detector-rosto',
+              expiration: { maxEntries: 12 },
+              cacheableResponse: { statuses: [200] },
+            },
+          },
+        ],
       },
     }),
   ],

@@ -61,6 +61,10 @@ public class ListarDocumentosAssinaturaQueryHandler
                 d.Signatarios.Count, d.PdfConteudo != null, d.TokenValidacaoPublica, string.Empty))
             .ToListAsync(ct);
 
+        // Escopo por obra (auditoria 09/10/2026): sem isto, o painel listava documentos e tokens
+        // públicos de todas as obras para qualquer usuário com "assinatura:ver".
+        documentos = await EscopoDocumentoAssinatura.FiltrarAsync(_db, documentos, d => d.EntidadeTipo, d => d.EntidadeId, ct);
+
         return documentos
             .Select(d => d with { EntidadeTipoRotulo = TipoDocumentoAssinatura.Rotulo(d.EntidadeTipo) })
             .ToList();

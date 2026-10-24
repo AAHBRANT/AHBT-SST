@@ -25,7 +25,7 @@ import {
   type MovimentacaoEstoqueEpc,
   type Obra,
 } from '../../lib/api';
-import { formatarDataHoraBrasilia } from '../../lib/datas';
+import { formatarDataHoraBrasilia } from '../../components/assinatura/assinaturaDigital';
 
 // Estoque de EPC segmentado por Obra — mesma estrutura do estoque de EPI (Fase 3). Entradas/saídas
 // por instalação e remoção são automáticas (ver CriarInstalacaoEpcCommand/RegistrarRemocaoEpcCommand

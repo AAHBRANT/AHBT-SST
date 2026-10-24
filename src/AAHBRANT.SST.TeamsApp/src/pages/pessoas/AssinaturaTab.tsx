@@ -1,13 +1,15 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Button, Card, FeedbackInline, Legenda } from '@ui';
 import { CheckmarkCircle24Regular } from '@fluentui/react-icons';
 import { BotaoBiometriaDigital } from '../../components/assinatura/BotaoBiometriaDigital';
-import { api } from '../../lib/api';
+import { api, type StatusCadastroBiometrico } from '../../lib/api';
 import { capturarDigitalParaCadastro } from '../../lib/agenteBiometricoLocal';
 import { SeletorFotoCamera } from '../../components/SeletorFotoCamera';
 import { ErroFacialDialog } from '../../components/assinatura/ErroFacialDialog';
 import { useGuiaCadastroFacial } from '../../components/pessoas/GuiaCadastroFacialDialog';
 import { FotosCadastroFacial } from '../../components/pessoas/FotosCadastroFacial';
+import { RefazerCadastroFacialDialog } from '../../components/pessoas/RefazerCadastroFacialDialog';
+import { RevogarConsentimentoBiometriaDialog } from '../../components/pessoas/RevogarConsentimentoBiometriaDialog';
 
 interface AssinaturaTabProps {
   trabalhadorId: string;
@@ -27,6 +29,10 @@ function extrairMensagemErro(e: unknown, fallback: string): string {
   return e.message || fallback;
 }
 
+function formatarDataHora(iso: string | null): string {
+  return iso ? new Date(iso).toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' }) : '';
+}
+
 // Aba de configuração do Motor de Assinatura Eletrônica para este trabalhador (docs/Motor-Assinatura-
 // Eletronica.md §3/§5). Decisão do usuário (31/08): único método de cadastro nesta tela passa a ser a
 // digital via leitor local Futronic FS80H — os cartões de PIN de assinatura (crachá/QR) e credencial
@@ -37,6 +43,36 @@ function extrairMensagemErro(e: unknown, fallback: string): string {
 // separados no backend. O texto abaixo orienta o operador, mas a captura continua bloqueada pelo
 // backend caso esses registros ainda não existam para o trabalhador.
 export function AssinaturaTab({ trabalhadorId }: AssinaturaTabProps) {
+  // Regra do usuário (30/09): digital e facial são cadastrados uma única vez. Depois de concluído com
+  // sucesso o botão de cadastro some e fica só a confirmação — o backend também recusa um 2º cadastro.
+  const [statusCadastro, setStatusCadastro] = useState<StatusCadastroBiometrico | null>(null);
+  const [erroStatus, setErroStatus] = useState(false);
+  const [revogandoConsentimento, setRevogandoConsentimento] = useState(false);
+  const [versaoStatus, setVersaoStatus] = useState(0);
+
+  useEffect(() => {
+    let cancelado = false;
+    setStatusCadastro(null);
+    setErroStatus(false);
+    api.trabalhadores
+      .obterStatusCadastroBiometrico(trabalhadorId)
+      .then((s) => !cancelado && setStatusCadastro(s))
+      .catch(() => !cancelado && setErroStatus(true));
+    return () => {
+      cancelado = true;
+    };
+  }, [trabalhadorId, versaoStatus]);
+
+  function marcarCadastrado(campo: 'digital' | 'facial') {
+    const agora = new Date().toISOString();
+    setStatusCadastro((s) => {
+      const base = s ?? { temDigital: false, temFacial: false, digitalCadastradaEm: null, facialCadastradoEm: null };
+      return campo === 'digital'
+        ? { ...base, temDigital: true, digitalCadastradaEm: base.digitalCadastradaEm ?? agora }
+        : { ...base, temFacial: true, facialCadastradoEm: base.facialCadastradoEm ?? agora };
+    });
+  }
+
   const [cadastrandoBiometriaLocal, setCadastrandoBiometriaLocal] = useState(false);
   const [erroBiometriaLocal, setErroBiometriaLocal] = useState<string | null>(null);
   const [biometriaLocalCadastrada, setBiometriaLocalCadastrada] = useState(false);
@@ -45,6 +81,21 @@ export function AssinaturaTab({ trabalhadorId }: AssinaturaTabProps) {
   const [erroFacial, setErroFacial] = useState<string | null>(null);
   const [facialCadastrada, setFacialCadastrada] = useState(false);
   const [versaoFotosFacial, setVersaoFotosFacial] = useState(0);
+  // Quem cadastra o facial (técnico) também refaz, só de funcionário da obra dele: o servidor confere
+  // a obra e devolve "não encontrado" para funcionário de outra obra.
+  const [refazendoFacial, setRefazendoFacial] = useState(false);
+
+  async function refazerCadastroFacial(motivo: string) {
+    try {
+      await api.trabalhadores.refazerCadastroFacial(trabalhadorId, motivo);
+    } catch (e) {
+      throw new Error(extrairMensagemErro(e, 'Falha ao refazer o cadastro facial.'));
+    }
+    setRefazendoFacial(false);
+    setFacialCadastrada(false);
+    setStatusCadastro((s) => (s ? { ...s, temFacial: false, facialCadastradoEm: null } : s));
+    setVersaoFotosFacial((v) => v + 1);
+  }
   const { guia: guiaFacial, pedirGuia } = useGuiaCadastroFacial();
 
   const [confirmandoAceite, setConfirmandoAceite] = useState(false);
@@ -66,6 +117,7 @@ export function AssinaturaTab({ trabalhadorId }: AssinaturaTabProps) {
       await api.trabalhadores.registrarTermoAceiteAssinatura(trabalhadorId);
       await api.trabalhadores.registrarConsentimentoBiometria(trabalhadorId);
       setAceiteConfirmado(true);
+      setVersaoStatus((v) => v + 1);
     } catch (e) {
       setErroAceite(extrairMensagemErro(e, 'Falha ao confirmar o aceite.'));
     } finally {
@@ -79,6 +131,7 @@ export function AssinaturaTab({ trabalhadorId }: AssinaturaTabProps) {
       setFacialCadastrada(false);
       await api.trabalhadores.cadastrarFacial(trabalhadorId, arquivo);
       setFacialCadastrada(true);
+      marcarCadastrado('facial');
       setVersaoFotosFacial((v) => v + 1);
     } catch (e) {
       setErroFacial(extrairMensagemErro(e, 'Falha ao cadastrar a face.'));
@@ -90,9 +143,10 @@ export function AssinaturaTab({ trabalhadorId }: AssinaturaTabProps) {
       setCadastrandoBiometriaLocal(true);
       setErroBiometriaLocal(null);
       setBiometriaLocalCadastrada(false);
-      const templateBase64 = await capturarDigitalParaCadastro(setEtapaCaptura);
-      await api.trabalhadores.cadastrarBiometriaLocal(trabalhadorId, templateBase64);
+      const captura = await capturarDigitalParaCadastro(setEtapaCaptura);
+      await api.trabalhadores.cadastrarBiometriaLocal(trabalhadorId, captura.templateBruto, captura.imagemPng);
       setBiometriaLocalCadastrada(true);
+      marcarCadastrado('digital');
     } catch (e) {
       setErroBiometriaLocal(extrairMensagemErro(e, 'Falha ao cadastrar a digital.'));
     } finally {
@@ -131,15 +185,41 @@ export function AssinaturaTab({ trabalhadorId }: AssinaturaTabProps) {
             Termo de Aceite e Consentimento Biométrico confirmados para este trabalhador.
           </FeedbackInline>
         )}
-        <Button
-          icon={<CheckmarkCircle24Regular />}
-          onClick={confirmarAceite}
-          disabled={confirmandoAceite}
-          style={{ marginTop: 8 }}
-        >
-          Confirmar aceite
-        </Button>
+        {statusCadastro?.consentimentoBiometriaEm && (
+          <Legenda>
+            Consentimento de biometria ativo desde {new Date(statusCadastro.consentimentoBiometriaEm).toLocaleString('pt-BR')}
+            {statusCadastro.consentimentoBiometriaVersao ? ` (termo versão ${statusCadastro.consentimentoBiometriaVersao})` : ''}.
+          </Legenda>
+        )}
+        {!statusCadastro?.consentimentoBiometriaEm && statusCadastro?.consentimentoBiometriaRevogadoEm && (
+          <Legenda>
+            Consentimento de biometria revogado em {new Date(statusCadastro.consentimentoBiometriaRevogadoEm).toLocaleString('pt-BR')}.
+          </Legenda>
+        )}
+        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginTop: 8 }}>
+          <Button
+            icon={<CheckmarkCircle24Regular />}
+            onClick={confirmarAceite}
+            disabled={confirmandoAceite}
+          >
+            Confirmar aceite
+          </Button>
+          {statusCadastro?.consentimentoBiometriaEm && (
+            <Button appearance="secondary" onClick={() => setRevogandoConsentimento(true)}>
+              Revogar consentimento
+            </Button>
+          )}
+        </div>
       </Card>
+      <RevogarConsentimentoBiometriaDialog
+        trabalhadorId={trabalhadorId}
+        aberto={revogandoConsentimento}
+        aoFechar={() => setRevogandoConsentimento(false)}
+        aoRevogar={() => {
+          setRevogandoConsentimento(false);
+          setVersaoStatus((v) => v + 1);
+        }}
+      />
 
       <Card densidade="compacta" titulo="Digital (leitor local — Futronic FS80H)">
         <div style={{ marginBottom: 12 }}>
@@ -159,9 +239,18 @@ export function AssinaturaTab({ trabalhadorId }: AssinaturaTabProps) {
           </FeedbackInline>
         )}
         {cadastrandoBiometriaLocal && etapaCaptura && <FeedbackInline tom="info">{etapaCaptura}</FeedbackInline>}
-        <BotaoBiometriaDigital onClick={cadastrarBiometriaLocal} disabled={cadastrandoBiometriaLocal}>
-          Capturar digital
-        </BotaoBiometriaDigital>
+        {statusCadastro === null && !erroStatus && <Legenda>Verificando cadastro…</Legenda>}
+        {erroStatus && <Legenda>Não foi possível verificar se a digital já está cadastrada.</Legenda>}
+        {statusCadastro?.temDigital && !biometriaLocalCadastrada && (
+          <FeedbackInline tom="sucesso">
+            Digital já cadastrada em {formatarDataHora(statusCadastro.digitalCadastradaEm)}.
+          </FeedbackInline>
+        )}
+        {statusCadastro && !statusCadastro.temDigital && (
+          <BotaoBiometriaDigital onClick={cadastrarBiometriaLocal} disabled={cadastrandoBiometriaLocal}>
+            Capturar digital
+          </BotaoBiometriaDigital>
+        )}
       </Card>
 
       <Card densidade="compacta" titulo="Reconhecimento Facial (Azure)">
@@ -183,21 +272,40 @@ export function AssinaturaTab({ trabalhadorId }: AssinaturaTabProps) {
           </Legenda>
         </div>
         {facialCadastrada && <FeedbackInline tom="sucesso">Face cadastrada com sucesso.</FeedbackInline>}
-        <SeletorFotoCamera
-          aoSelecionarArquivo={cadastrarFacial}
-          aoErroValidacao={setErroFacial}
-          rotulo="Facial Azure"
-          tamanho="medium"
-          variante="facialAzure"
-          modoCamera="user"
-          exigirCamera
-          guiaAntesDeAbrir={pedirGuia}
-        />
+        {statusCadastro === null && !erroStatus && <Legenda>Verificando cadastro…</Legenda>}
+        {erroStatus && <Legenda>Não foi possível verificar se o facial já está cadastrado.</Legenda>}
+        {statusCadastro?.temFacial && !facialCadastrada && (
+          <FeedbackInline tom="sucesso">
+            Reconhecimento facial já cadastrado em {formatarDataHora(statusCadastro.facialCadastradoEm)}.
+          </FeedbackInline>
+        )}
+        {statusCadastro?.temFacial && (
+          <Button appearance="secondary" onClick={() => setRefazendoFacial(true)}>
+            Refazer cadastro facial
+          </Button>
+        )}
+        {statusCadastro && !statusCadastro.temFacial && (
+          <SeletorFotoCamera
+            aoSelecionarArquivo={cadastrarFacial}
+            aoErroValidacao={setErroFacial}
+            rotulo="Capturar facial"
+            tamanho="medium"
+            variante="facialAzure"
+            modoCamera="user"
+            exigirCamera
+            guiaAntesDeAbrir={pedirGuia}
+          />
+        )}
         <div style={{ marginTop: 16 }}>
           <FotosCadastroFacial trabalhadorId={trabalhadorId} versao={versaoFotosFacial} />
         </div>
       </Card>
       {guiaFacial}
+      <RefazerCadastroFacialDialog
+        aberto={refazendoFacial}
+        aoConfirmar={refazerCadastroFacial}
+        aoCancelar={() => setRefazendoFacial(false)}
+      />
       <ErroFacialDialog mensagem={erroFacial} aoFechar={() => setErroFacial(null)} />
     </div>
   );

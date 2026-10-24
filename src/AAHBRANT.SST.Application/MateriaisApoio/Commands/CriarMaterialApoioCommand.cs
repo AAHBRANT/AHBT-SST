@@ -1,6 +1,7 @@
 using AAHBRANT.SST.Application.Common;
 using AAHBRANT.SST.Application.Common.Interfaces;
 using AAHBRANT.SST.Domain.Entidades;
+using AAHBRANT.SST.Domain.Enums;
 using FluentValidation;
 using MediatR;
 
@@ -11,7 +12,13 @@ public record CriarMaterialApoioCommand(
     string? Categoria,
     string NomeArquivo,
     string ContentType,
-    byte[] Conteudo) : IRequest<Guid>;
+    byte[] Conteudo,
+    TipoDocumentoSst Tipo = TipoDocumentoSst.MaterialApoio,
+    string? Codigo = null,
+    string? Revisao = null,
+    SituacaoDocumentoSst? Situacao = null,
+    string? FormaConsulta = null,
+    bool IncluirEmTodasOs = false) : IRequest<Guid>;
 
 public class CriarMaterialApoioCommandValidator : AbstractValidator<CriarMaterialApoioCommand>
 {
@@ -34,6 +41,17 @@ public class CriarMaterialApoioCommandValidator : AbstractValidator<CriarMateria
         RuleFor(x => x.NomeArquivo).NotEmpty().MaximumLength(260);
         RuleFor(x => x.ContentType).Must(t => TiposPermitidos.Contains(t))
             .WithMessage("Tipo de arquivo não suportado. Envie imagem (JPEG/PNG), PDF ou Word (.docx).");
+        RuleFor(x => x.Tipo).IsInEnum();
+        // Documento controlado (procedimento, IT, política) precisa de código, revisão e situação.
+        When(x => x.Tipo != TipoDocumentoSst.MaterialApoio, () =>
+        {
+            RuleFor(x => x.Codigo).NotEmpty().WithMessage("Informe o código SGI.").MaximumLength(60);
+            RuleFor(x => x.Revisao).NotEmpty().WithMessage("Informe a revisão.").MaximumLength(20);
+            RuleFor(x => x.Situacao).NotNull().WithMessage("Informe a situação.");
+        });
+        RuleFor(x => x.FormaConsulta).MaximumLength(300);
+        RuleFor(x => x.IncluirEmTodasOs).Equal(false).When(x => x.Tipo != TipoDocumentoSst.Politica)
+            .WithMessage("Só política corporativa pode entrar em todas as Ordens de Serviço.");
         RuleFor(x => x.Conteudo)
             .NotEmpty().WithMessage("O arquivo é obrigatório.")
             .Must(c => c.Length <= TamanhoMaximoBytes).WithMessage("O arquivo deve ter no máximo 20 MB.")
@@ -57,6 +75,12 @@ public class CriarMaterialApoioCommandHandler : IRequestHandler<CriarMaterialApo
             NomeArquivo = request.NomeArquivo,
             ContentType = request.ContentType,
             Conteudo = request.Conteudo,
+            Tipo = request.Tipo,
+            Codigo = request.Tipo == TipoDocumentoSst.MaterialApoio ? null : request.Codigo?.Trim(),
+            Revisao = request.Tipo == TipoDocumentoSst.MaterialApoio ? null : request.Revisao?.Trim(),
+            Situacao = request.Tipo == TipoDocumentoSst.MaterialApoio ? null : request.Situacao,
+            FormaConsulta = request.FormaConsulta?.Trim(),
+            IncluirEmTodasOs = request.IncluirEmTodasOs,
         };
 
         _db.MateriaisApoio.Add(material);

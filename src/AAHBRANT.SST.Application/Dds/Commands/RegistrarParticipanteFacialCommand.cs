@@ -90,7 +90,7 @@ public class RegistrarParticipanteFacialCommandHandler : IRequestHandler<Registr
         try
         {
             var documentoId = await _mediator.Send(new CriarDocumentoAssinaturaCommand(nameof(Domain.Entidades.Dds), request.DdsId), ct);
-            await _registrador.RegistrarAsync(documentoId, resultado, ipAddress: null, ct);
+            await _registrador.RegistrarAsync(documentoId, resultado, ipAddress: null, ct, request.FotoJpeg, "image/jpeg");
         }
         catch (Exception ex)
         {

@@ -1,4 +1,5 @@
 using AAHBRANT.SST.Application.Common.Interfaces;
+using AAHBRANT.SST.Application.Common.Seguranca;
 using AAHBRANT.SST.Domain.Enums;
 using FluentValidation;
 using MediatR;
@@ -15,7 +16,9 @@ public record AtualizarNaoConformidadeCommand(
     Guid? AtividadeId,
     Guid? RiscoId,
     Guid? ResponsavelUsuarioId,
-    DateTime? Prazo) : IRequest;
+    DateTime? Prazo,
+    // Null mantém a obra atual (ou herda da atividade/risco quando a NC antiga ainda não tem obra).
+    Guid? ObraId = null) : IRequest;
 
 public class AtualizarNaoConformidadeCommandValidator : AbstractValidator<AtualizarNaoConformidadeCommand>
 {
@@ -36,7 +39,7 @@ public class AtualizarNaoConformidadeCommandHandler : IRequestHandler<AtualizarN
 
     public async Task Handle(AtualizarNaoConformidadeCommand request, CancellationToken ct)
     {
-        var nc = await _db.NaoConformidades.FirstOrDefaultAsync(n => n.Id == request.Id, ct)
+        var nc = await _db.NaoConformidades.NoEscopoDaObra(_db).FirstOrDefaultAsync(n => n.Id == request.Id, ct)
             ?? throw new KeyNotFoundException($"Não conformidade {request.Id} não encontrada.");
 
         if (request.AtividadeId.HasValue &&
@@ -44,13 +47,14 @@ public class AtualizarNaoConformidadeCommandHandler : IRequestHandler<AtualizarN
             throw new KeyNotFoundException($"Atividade {request.AtividadeId} não encontrada.");
 
         if (request.RiscoId.HasValue &&
-            !await _db.Riscos.AnyAsync(r => r.Id == request.RiscoId, ct))
+            !await _db.Riscos.NoEscopoDaAtividade(_db, r => r.AtividadeId).AnyAsync(r => r.Id == request.RiscoId, ct))
             throw new KeyNotFoundException($"Risco {request.RiscoId} não encontrado.");
 
         if (request.ResponsavelUsuarioId.HasValue &&
             !await _db.Usuarios.AnyAsync(u => u.Id == request.ResponsavelUsuarioId, ct))
             throw new KeyNotFoundException($"Usuário {request.ResponsavelUsuarioId} não encontrado.");
 
+        nc.ObraId = await ObraDaNaoConformidade.ResolverAsync(_db, request.ObraId ?? nc.ObraId, request.AtividadeId, request.RiscoId, ct);
         nc.OrigemDeteccao = request.OrigemDeteccao;
         nc.RequisitoRelacionado = request.RequisitoRelacionado;
         nc.Descricao = request.Descricao;

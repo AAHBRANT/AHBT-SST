@@ -237,6 +237,7 @@ public static class RbacSeeder
         // cadastrar empresas pela tela nunca deve, mesmo que indiretamente, autorizar quem pode
         // chamar o webhook.
         ("terceirizado:integracao-gjuri", "Terceirizado", "IntegracaoGJuri", "Receber webhook de contrato validado/encerrado do G-Juri"),
+        ("estoque:integracao-gsupri", "Estoque", "IntegracaoGsupri", "Receber eventos de estoque do G-SUPRI (identidade de aplicação)"),
     };
 
     public static async Task ExecutarAsync(IServiceProvider services, CancellationToken ct = default)

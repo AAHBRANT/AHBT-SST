@@ -26,6 +26,11 @@ public class Inspecao : AuditableEntity
     public Guid? AlojamentoId { get; set; }
     public Alojamento? Alojamento { get; set; }
 
+    // Inspeção de Veículos (retro, escavadeira, caminhões) — preenchida quando a checklist é de um
+    // veículo cadastrado. Nullable pelo mesmo motivo de AlojamentoId.
+    public Guid? VeiculoId { get; set; }
+    public Veiculo? Veiculo { get; set; }
+
     public Guid ChecklistModeloId { get; set; }
     public ChecklistModelo? ChecklistModelo { get; set; }
 

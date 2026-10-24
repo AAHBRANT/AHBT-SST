@@ -1,3 +1,4 @@
+using AAHBRANT.SST.Application.Assinatura;
 using AAHBRANT.SST.Application.Dds;
 using QuestPDF.Fluent;
 using QuestPDF.Helpers;
@@ -199,14 +200,36 @@ public class DdsSemanalPdfService : IDdsSemanalPdfService
     {
         container.Row(linha =>
         {
-            linha.RelativeItem().Element(c => BlocoAssinatura(c, "RESPONSÁVEL / TREINADOR PELO DDS", modelo.ResponsavelNome, null));
+            linha.RelativeItem().Element(c => BlocoAssinaturaEletronica(c, "RESPONSÁVEL / TREINADOR PELO DDS", modelo.AssinaturaResponsavelDds));
 
             if (terceirizados)
                 linha.RelativeItem().Element(c => BlocoAssinatura(
                     c, "RESPONSÁVEL DA EMPRESA TERCEIRIZADA",
                     modelo.ResponsavelEmpresaTerceirizadaNome, modelo.ResponsavelEmpresaTerceirizadaFuncao));
 
-            linha.RelativeItem().Element(c => BlocoAssinatura(c, "RESPONSÁVEL DA OBRA / SST", modelo.ResponsavelObraSstNome, null));
+            linha.RelativeItem().Element(c => BlocoAssinaturaEletronica(c, "RESPONSÁVEL DA OBRA / SST", modelo.AssinaturaResponsavelObraSst));
+        });
+    }
+
+    // Só mostra assinatura de quem assinou de verdade (pedido do usuário, 02/10): "Assinado
+    // digitalmente em <data e hora>" sobre a linha e o nome do assinante embaixo (horário de
+    // Brasília; AssinadoEm é UTC). Campo ainda não assinado fica identificado como pendente, sem
+    // nome e sem linha de assinatura que pareça preenchida.
+    private static void BlocoAssinaturaEletronica(IContainer container, string titulo, DdsSemanalAssinaturaDto? assinatura)
+    {
+        container.PaddingHorizontal(6).Column(c =>
+        {
+            c.Item().Text(titulo).FontSize(7.5f).Bold().FontColor(CorMarca);
+
+            if (assinatura is null)
+            {
+                c.Item().PaddingTop(10).Text("Aguardando assinatura").FontSize(8).Italic().FontColor(Colors.Grey.Darken1);
+                return;
+            }
+
+            // Padrão único de assinatura (AssinaturaPdfPadrao): nome, linha, cargo e a legenda miúda.
+            c.Item().PaddingTop(2).Element(b => AssinaturaPdfPadrao.Bloco(
+                b, null, assinatura.Nome, assinatura.Funcao, assinatura.AssinadoEm, assinatura.Metodo));
         });
     }
 

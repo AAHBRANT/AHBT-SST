@@ -8,6 +8,8 @@ public class ExameComplementarDto
     public Guid TrabalhadorId { get; set; }
     public Guid? AsoId { get; set; }
     public TipoExameComplementar Tipo { get; set; }
+    public string? CodigoExame { get; set; }
+    public string? NomeExame { get; set; }
     public DateTime DataRealizacao { get; set; }
     public DateTime DataValidade { get; set; }
     public string Resultado { get; set; } = string.Empty;

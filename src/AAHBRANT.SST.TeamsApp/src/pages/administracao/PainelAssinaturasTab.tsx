@@ -20,7 +20,7 @@ import {
 import { ArrowDownload24Regular, Eye24Regular, Filter24Regular, Link24Regular } from '@fluentui/react-icons';
 import { api, statusDocumentoAssinaturaLabel, type DocumentoAssinaturaResumo } from '../../lib/api';
 import { salvarBlob, useVisualizadorPdf } from '../../components/useVisualizadorPdf';
-import { formatarDataHoraBrasilia } from '../../lib/datas';
+import { formatarDataHoraBrasilia } from '../../components/assinatura/assinaturaDigital';
 
 // Status do Motor de Assinatura Eletrônica não tinha mapeamento de cor no Badge original (só
 // appearance="tint" genérico) — julgamento novo desta conversão (Guia item 5): Em andamento = ainda

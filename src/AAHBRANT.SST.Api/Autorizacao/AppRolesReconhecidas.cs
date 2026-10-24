@@ -27,6 +27,7 @@ public static class AppRolesReconhecidas
         // humano cadastrar empresas pela tela nunca deve autorizar, mesmo indiretamente, quem chama
         // o webhook.
         ["Sst.ReceberContratosGJuri"] = new[] { "terceirizado:integracao-gjuri" },
+        ["Sst.ReceberEstoqueGSupri"] = new[] { "estoque:integracao-gsupri" },
     };
 
     private static IEnumerable<string> ObterRoles(ClaimsPrincipal user) =>

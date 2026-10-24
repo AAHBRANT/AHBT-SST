@@ -1,4 +1,5 @@
-using AAHBRANT.SST.Application.Aprs;
+﻿using AAHBRANT.SST.Application.Aprs;
+using AAHBRANT.SST.Application.Acidentes;
 using AAHBRANT.SST.Application.Assinatura;
 using AAHBRANT.SST.Application.Cipa;
 using AAHBRANT.SST.Application.Common.Interfaces;
@@ -40,6 +41,8 @@ public static class DependencyInjection
 
         services.AddDbContext<SstDbContext>(options => options.UseSqlServer(connectionString));
         services.AddScoped<IAppDbContext>(sp => sp.GetRequiredService<SstDbContext>());
+        services.AddScoped<AAHBRANT.SST.Application.IntegracaoGsupri.IIntegracaoGsupriService,
+            AAHBRANT.SST.Infrastructure.Integracao.Gsupri.IntegracaoGsupriService>();
 
         // Precisa estar registrado aqui (não só na Api) — todo composition root que usa
         // SstDbContext depende disso, incluindo o Worker (sem HttpContext/usuário logado; ver
@@ -70,11 +73,38 @@ public static class DependencyInjection
         services.AddHttpClient();
         services.Configure<TelegramSuporteOptions>(configuration.GetSection("Telegram"));
         services.AddScoped<ITelegramSuporteService, TelegramSuporteService>();
+        services.AddScoped<ITelegramResumoService, TelegramResumoService>();
+        services.AddSingleton<AAHBRANT.SST.Application.Dds.IImagemResumoDdsService, AAHBRANT.SST.Infrastructure.Documentos.ImagemResumoDdsService>();
+        services.AddSingleton<AAHBRANT.SST.Application.Relatorios.IImagemListaPresencaService, AAHBRANT.SST.Infrastructure.Documentos.ImagemListaPresencaService>();
         services.AddScoped<ISuporteIaConfiguracao, SuporteIaConfiguracao>();
+        services.Configure<AzureOpenAiOptions>(configuration.GetSection("AzureOpenAI"));
+        services.Configure<ClaudeOptions>(configuration.GetSection("Claude"));
+        services.AddScoped<AAHBRANT.SST.Application.SuporteIa.ITranscricaoAudioService, AzureOpenAiTranscricaoService>();
+        services.AddScoped<AzureOpenAiChatJsonCliente>();
+        // Leitura de PGR/PCMSO com IA (10/10/2026). O consumidor da fila (LeituraIaBackgroundService) é
+        // registrado só na Api.
+        services.AddSingleton<LeituraIa.FilaLeituraIa>();
+        services.AddSingleton<AAHBRANT.SST.Application.LeituraIa.IFilaLeituraIa>(sp => sp.GetRequiredService<LeituraIa.FilaLeituraIa>());
+        services.AddScoped<AAHBRANT.SST.Application.LeituraIa.IExtratorTextoPdf, LeituraIa.PdfPigExtratorTexto>();
+        services.AddScoped<AAHBRANT.SST.Application.LeituraIa.IOcrPaginasPdf, LeituraIa.AzureOpenAiOcrPaginasPdf>();
+        services.AddScoped<AAHBRANT.SST.Application.LeituraIa.ILeitorDocumentoSstIa, LeituraIa.AzureOpenAiLeitorDocumentoSst>();
+        services.AddScoped<AAHBRANT.SST.Application.LeituraIa.ILeitorCabecalhoDocumentoIa, LeituraIa.AzureOpenAiLeitorDocumentoSst>();
+        services.AddScoped<AAHBRANT.SST.Application.LeituraIa.ILeitorContratoTerceirizadoIa, LeituraIa.AzureOpenAiLeitorDocumentoSst>();
+        services.AddScoped<AAHBRANT.SST.Application.LeituraIa.IClassificadorDocumentoTerceirizadoIa, LeituraIa.ClaudeClassificadorDocumentoTerceirizado>();
+        services.AddScoped<AAHBRANT.SST.Application.SuporteIa.IClassificadorRelatoSuporteIa, AzureOpenAiClassificadorRelato>();
+        services.AddScoped<AAHBRANT.SST.Application.Acidentes.RelatoIa.IClassificadorRelatoOcorrencia, AzureOpenAiClassificadorOcorrencia>();
+        services.AddScoped<AAHBRANT.SST.Application.Acidentes.RelatoIa.IAnalistaPlanoOcorrencia, AzureOpenAiAnalistaPlanoOcorrencia>();
+        services.AddScoped<AAHBRANT.SST.Application.Riscos.Medidas.IAnalistaMedidasPrevencao, AzureOpenAiAnalistaMedidasPrevencao>();
+        services.AddScoped<AAHBRANT.SST.Application.GeracaoPgr.IGeradorPgrIa, AzureOpenAiGeradorPgr>();
+        services.AddScoped<AAHBRANT.SST.Application.GeracaoPgr.IExtratorTextoEap, GeracaoPgr.ExtratorTextoEap>();
+        services.AddScoped<AAHBRANT.SST.Application.Atividades.DetalhesOs.IAnalistaItensAtividadeOs, AzureOpenAiAnalistaItensAtividadeOs>();
 
         services.AddScoped<IDdsPdfService, DdsPdfService>();
         services.AddScoped<IDdsSemanalPdfService, DdsSemanalPdfService>();
+        services.AddScoped<IPdfMesclador, PdfMesclador>();
         services.AddScoped<ICipaPdfService, CipaPdfService>();
+        services.AddScoped<AAHBRANT.SST.Application.EscopoPcmso.IEscopoPcmsoPdfService, EscopoPcmsoPdfService>();
+        services.AddScoped<AAHBRANT.SST.Application.EstoquesEpi.Reposicao.ISolicitacaoReposicaoEpiPdfService, SolicitacaoReposicaoEpiPdfService>();
         services.AddScoped<IAprPdfService, AprPdfService>();
         services.AddScoped<IFichaEpiPdfService, EntregaEpiPdfService>();
         services.AddScoped<IPtPdfService, PtPdfService>();
@@ -82,6 +112,7 @@ public static class DependencyInjection
         services.AddScoped<IAtaSessaoTreinamentoPdfService, AtaSessaoTreinamentoPdfService>();
         services.AddScoped<IRelatorioFiscalizacaoPdfService, RelatorioFiscalizacaoPdfService>();
         services.AddScoped<IInspecaoPdfService, InspecaoPdfService>();
+        services.AddScoped<IInvestigacaoOcorrenciaPdfService, InvestigacaoOcorrenciaPdfService>();
         services.AddScoped<IGeradorNumeroDocumentoService, GeradorNumeroDocumentoService>();
 
         // Motor de Assinatura Eletrônica (docs/Motor-Assinatura-Eletronica.md §5) — PIN/crachá-QR
@@ -94,6 +125,7 @@ public static class DependencyInjection
         // (Trabalhador.PinHash, CredenciaisWebAuthn) também foram removidos do schema.
         services.AddScoped<ISegredoDispositivoHasher, SegredoDispositivoHasherService>();
         services.AddScoped<ITemplateBiometricoCriptografia, TemplateBiometricoCriptografiaService>();
+        services.AddScoped<IImagemBiometricaCriptografia, ImagemBiometricaCriptografiaService>();
         services.AddScoped<IDispositivoAgenteAutenticador, DispositivoAgenteAutenticador>();
         services.AddScoped<IAutenticacaoBiometriaLocalService, FutronicAutenticacaoStrategy>();
         services.AddScoped<IAutenticacaoFacialService, AzureFaceAutenticacaoStrategy>();
@@ -112,17 +144,22 @@ public static class DependencyInjection
         // ver GraphActivityNotificacaoTeamsService, que lança exceção graciosamente enquanto isso.
         services.Configure<GraphOptions>(configuration.GetSection("Graph"));
         services.AddScoped<INotificacaoTeamsService, GraphActivityNotificacaoTeamsService>();
+        services.AddScoped<IEmailService, GraphEmailService>();
 
         // Integração do Motor de Alertas com o Calendário do Teams (docs/superpowers/specs/
         // 2026-08-28-calendario-teams-design.md) — mesmo App Registration/GraphOptions do Activity
         // Feed acima, faltando apenas a permissão de aplicativo Calendars.ReadWrite ser provisionada.
-        services.AddScoped<ICalendarioTeamsService, GraphCalendarioTeamsService>();
+        services.AddScoped<GraphCalendarioTeamsService>();
+        services.AddScoped<ICalendarioTeamsService>(sp => sp.GetRequiredService<GraphCalendarioTeamsService>());
+        services.AddScoped<IReuniaoTeamsService>(sp => sp.GetRequiredService<GraphCalendarioTeamsService>());
 
         // Integração G-RH — carga inicial do cadastro de colaboradores (contrato acordado em
         // 2026-09-09, ver ColaboradorGrhClient). ClientSecret fica vazio até o segredo do App
         // Registration ser gerado e provisionado; até lá, ImportarColaboradoresGrhCommand lança
         // exceção graciosamente (mesmo padrão de GraphActivityNotificacaoTeamsService).
         services.Configure<GrhOptions>(configuration.GetSection("Grh"));
+        // Envio das NCs ao G-QUALI (fila de saída). Sem a seção "GQuali" preenchida, o serviço não envia nada.
+        services.Configure<AAHBRANT.SST.Infrastructure.Integracao.GQuali.GQualiOptions>(configuration.GetSection("GQuali"));
         services.AddScoped<IColaboradorGrhClient, ColaboradorGrhClient>();
 
         // Integração G-RH — Alojamento e ASO (2026-09-16): o time do G-RH concordou em construir os

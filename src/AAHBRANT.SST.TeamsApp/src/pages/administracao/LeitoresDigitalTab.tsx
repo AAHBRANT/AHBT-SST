@@ -25,7 +25,7 @@ import {
 import { API_BASE_URL } from '../../lib/apiBase';
 import { api, type DispositivoAgente, type Obra, type RegistroDispositivoAgente } from '../../lib/api';
 import { useSucessoToast } from '../../hooks/useSucessoToast';
-import { lerInstanteUtc } from '../../lib/datas';
+import { lerInstanteUtc } from '../../components/assinatura/assinaturaDigital';
 
 // Sincronizou nos últimos 10 min = agente conectado (ele sincroniza a cada 2 min por padrão).
 const JANELA_ONLINE_MS = 10 * 60 * 1000;

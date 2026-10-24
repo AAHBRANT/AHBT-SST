@@ -9,9 +9,13 @@ export function formatarDataBr(data?: string | null): string {
 // AssinaturaEntregaEpiLoteDialog.tsx sem duplicar o texto jurídico — uma futura correção de
 // redação só precisa mudar num lugar. A cláusula 2 tem o número da lista de presença e a data de
 // treinamento (NR-6) preenchidos quando informados na entrega.
-export function clausulasTermoCompromisso(numeroListaPresencaNr6?: string | null, dataTreinamentoNr6?: string | null): string[] {
+export function clausulasTermoCompromisso(
+  numeroListaPresencaNr6?: string | null,
+  dataTreinamentoNr6?: string | null,
+  nomeObra?: string | null,
+): string[] {
   return [
-    'Declaro ter recebido do Consórcio Ponte Rio Cuiá os Equipamentos de Proteção Individual (EPIs) relacionados nesta ficha, nas datas e quantidades ali indicadas, todos em perfeitas condições de uso e com Certificado de Aprovação (CA) válido.',
+    `Declaro ter recebido do ${nomeObra || 'empregador'} os Equipamentos de Proteção Individual (EPIs) relacionados nesta ficha, nas datas e quantidades ali indicadas, todos em perfeitas condições de uso e com Certificado de Aprovação (CA) válido.`,
     `Declaro ter recebido orientação e treinamento sobre o uso correto, a guarda, a conservação, a higienização e os critérios de substituição de cada EPI relacionado, conforme registrado na Lista de Presença de Treinamento (NR-6) nº ${numeroListaPresencaNr6 || '__________'}, realizada em ${formatarDataBr(dataTreinamentoNr6)}.`,
     'Comprometo-me a utilizar os EPIs exclusivamente para a finalidade a que se destinam, durante toda a execução das minhas atividades laborais, zelando por sua guarda, conservação e higienização adequadas, e a comunicar imediatamente ao Setor de Segurança do Trabalho qualquer dano, extravio ou alteração que os torne impróprios para uso.',
     'Comprometo-me a devolver os EPIs sempre que solicitado, inclusive nos casos de substituição, troca de função, mudança de atividade ou rescisão do meu contrato de trabalho.',

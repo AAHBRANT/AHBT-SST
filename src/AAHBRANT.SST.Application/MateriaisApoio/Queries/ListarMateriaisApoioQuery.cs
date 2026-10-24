@@ -31,6 +31,13 @@ public class ListarMateriaisApoioQueryHandler : IRequestHandler<ListarMateriaisA
                 ContentType = m.ContentType,
                 TamanhoBytes = m.Conteudo.Length,
                 CreatedAtUtc = m.CreatedAtUtc,
+                Tipo = m.Tipo,
+                Codigo = m.Codigo,
+                Revisao = m.Revisao,
+                Situacao = m.Situacao,
+                FormaConsulta = m.FormaConsulta,
+                IncluirEmTodasOs = m.IncluirEmTodasOs,
+                Atividades = _db.AtividadeDocumentos.Count(v => v.MaterialApoioId == m.Id),
             })
             .ToListAsync(ct);
     }

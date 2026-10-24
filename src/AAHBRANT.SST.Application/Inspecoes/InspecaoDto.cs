@@ -10,6 +10,12 @@ public class InspecaoDto
     public string ObraNome { get; set; } = string.Empty;
     public Guid? AtividadeId { get; set; }
     public string? AtividadeNome { get; set; }
+    // Preenchidos só nas inspeções de Veículos (identificação exibida no cabeçalho/PDF).
+    public Guid? VeiculoId { get; set; }
+    public TipoVeiculo? VeiculoTipo { get; set; }
+    public string? VeiculoPlacaPrefixo { get; set; }
+    public string? VeiculoMarcaModelo { get; set; }
+    public string? VeiculoEmpresa { get; set; }
     public Guid ChecklistModeloId { get; set; }
     public string ChecklistModeloNome { get; set; } = string.Empty;
     public int ChecklistModeloVersao { get; set; }

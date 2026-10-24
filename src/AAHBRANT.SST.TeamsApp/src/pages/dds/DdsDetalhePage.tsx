@@ -1,4 +1,4 @@
-import { pendenciasGrade } from '../../lib/dadosFoto';
+﻿import { pendenciasGrade } from '../../lib/dadosFoto';
 import { useEffect, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import {
@@ -158,6 +158,8 @@ export function DdsDetalhePage() {
   const somenteLeitura = dds.status !== StatusDds.EmAndamento;
   const totalFotosEvidencia = detalhe.fotosEvidencia.length;
   const faltamFotosEvidencia = Math.max(0, TOTAL_FOTOS_EVIDENCIA_OBRIGATORIAS - totalFotosEvidencia);
+  const ausentes = detalhe.funcionariosSelecionados ?? [];
+  const nomesAusentes = ausentes.slice(0, 5).map((f) => f.nome).join(', ') + (ausentes.length > 5 ? ` e mais ${ausentes.length - 5}` : '');
 
   const tituloDds =
     dds.temasAtividades.length > 0
@@ -175,7 +177,11 @@ export function DdsDetalhePage() {
       rotulo: 'Finalizar DDS',
       finalizacao: true,
       pendencias: pendenciasGrade(detalhe.fotosEvidencia),
-      descricao: faltamFotosEvidencia > 0 ? `Faltam ${faltamFotosEvidencia} foto(s) de evidência.` : undefined,
+      descricao: [
+        faltamFotosEvidencia > 0 ? `Faltam ${faltamFotosEvidencia} foto(s) de evidência.` : null,
+        // Aviso, não bloqueio: quem não assinou fica sem presença no DDS.
+        ausentes.length > 0 ? `Atenção: ${ausentes.length} funcionário(s) da lista ainda sem presença confirmada (${nomesAusentes}). Se finalizar agora, eles ficam como ausentes.` : null,
+      ].filter(Boolean).join(' ') || undefined,
       tom: 'primario',
       habilitada: true,
       aoExecutar: encerrar,

@@ -1,19 +1,19 @@
-import { useEffect, useRef, useState } from 'react';
+﻿import { useEffect, useRef, useState } from 'react';
 import {
   Button, Card, Checkbox, DataTable, FeedbackInline, Field, Input, Legenda,
   StatusChip, designTokens, type Coluna,
 } from '@ui';
 import {
   ArrowDownload24Regular, Checkmark24Regular, Dismiss24Regular,
-  PeopleTeam24Regular, Search24Regular,
+  PeopleTeam24Regular, Search24Regular, Stop24Regular,
 } from '@fluentui/react-icons';
 import { api, TipoFotoParticipante, type DdsDetalhe, type DdsFuncionario } from '../../lib/api';
-import { capturarDigitalLocal, obterDispositivoLocal, type DispositivoLocal } from '../../lib/agenteBiometricoLocal';
+import { capturarDigitalLocal, credencialLeitura, obterDispositivoLocal, type CapturaLocal, type DispositivoLocal } from '../../lib/agenteBiometricoLocal';
+import { formatarHoraBrasilia } from '../../components/assinatura/assinaturaDigital';
 import { tocarBipeAssinaturaAceita } from '../../lib/bipeAssinatura';
 import { SeletorFotoCamera } from '../../components/SeletorFotoCamera';
 import { BotaoBiometriaDigital } from '../../components/assinatura/BotaoBiometriaDigital';
 import { ErroFacialDialog } from '../../components/assinatura/ErroFacialDialog';
-import { formatarHoraBrasilia } from '../../lib/datas';
 
 const linhaFlex = { display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' as const };
 // O backend devolve { erro, motivo } no corpo das rejeições; mostra só o texto do erro.
@@ -56,6 +56,9 @@ export function ParticipantesDds({ detalhe, somenteLeitura, aoAtualizar }: Props
   const [dispositivo, setDispositivo] = useState<DispositivoLocal | null>(null);
   const [verificandoLeitor, setVerificandoLeitor] = useState(false);
   const emOperacao = useRef(false);
+  const [filaAberta, setFilaAberta] = useState(false);
+  const [resultadoFila, setResultadoFila] = useState<{ tom: 'sucesso' | 'erro' | 'info'; texto: string } | null>(null);
+  const filaAtiva = useRef(false);
   const { dds } = detalhe;
 
   useEffect(() => {
@@ -145,29 +148,69 @@ export function ParticipantesDds({ detalhe, somenteLeitura, aoAtualizar }: Props
     void salvar([...novos]);
   }
 
-  async function confirmarPresenca(funcionario: DdsFuncionario) {
-    if (emOperacao.current || !dispositivo || somenteLeitura) return;
-    emOperacao.current = true;
-    setConfirmandoId(funcionario.trabalhadorId);
-    setErro(null);
-    setMensagem('');
-    try {
-      const captura = await capturarDigitalLocal();
-      if (captura.trabalhadorId !== funcionario.trabalhadorId) {
-        throw new Error(`A digital capturada não corresponde a ${funcionario.nome}. Tente novamente com o funcionário indicado.`);
+  // Fila de digitais: um leitor compartilhado fica aberto e cada funcionário só encosta o dedo — o
+  // agente local faz o match 1:N e o backend confere o score. Só a leitura que dá certo toca o bipe;
+  // digital não reconhecida ou funcionário fora da obra aparece como erro na tela, sem bipe. Sem
+  // dedo no leitor (tempo esgotado) a fila simplesmente rearma a leitura, sem erro.
+  const contextoFila = useRef({ detalhe, dispositivo });
+  contextoFila.current = { detalhe, dispositivo };
+
+  async function processarLeituraFila(captura: CapturaLocal) {
+    const { detalhe: atual, dispositivo: leitor } = contextoFila.current;
+    if (!leitor) return;
+    const jaConfirmado = atual.participantes.find((p) => p.trabalhadorId === captura.trabalhadorId);
+    if (jaConfirmado) {
+      setResultadoFila({ tom: 'info', texto: `${jaConfirmado.trabalhadorNome} já teve a presença confirmada.` });
+      return;
+    }
+    await api.dds.registrarParticipante(dds.id, captura.trabalhadorId, credencialLeitura(leitor, captura.leituras[0]), captura.score, captura.imagemPng);
+    const novo = await api.dds.obterDetalhe(dds.id);
+    aoAtualizar(novo);
+    const nome = novo.participantes.find((p) => p.trabalhadorId === captura.trabalhadorId)?.trabalhadorNome ?? 'Funcionário';
+    tocarBipeAssinaturaAceita();
+    setResultadoFila({ tom: 'sucesso', texto: `Presença de ${nome} confirmada.` });
+  }
+
+  async function lacoFila() {
+    while (filaAtiva.current) {
+      try {
+        const leitor = contextoFila.current.dispositivo;
+        if (!leitor) break;
+        const captura = await capturarDigitalLocal(leitor.dispositivoId);
+        if (!filaAtiva.current) break;
+        await processarLeituraFila(captura);
+        await new Promise((r) => setTimeout(r, 1200));
+      } catch (e) {
+        if (!filaAtiva.current) break;
+        const texto = e instanceof Error ? e.message : '';
+        if (/Nenhum dedo detectado|dentro do tempo limite/i.test(texto)) continue;
+        if (e instanceof TypeError) {
+          setResultadoFila({ tom: 'erro', texto: 'Perdi a conexão com o leitor. Verifique o Agente Biométrico e abra a fila de novo.' });
+          fecharFila();
+          break;
+        }
+        setResultadoFila({ tom: 'erro', texto: `Digital não reconhecida: ${mensagemDoErro(e, 'funcionário não localizado. Tente de novo.')}` });
+        await new Promise((r) => setTimeout(r, 1500));
       }
-      await api.dds.registrarParticipante(dds.id, funcionario.trabalhadorId,
-        dispositivo.dispositivoId, dispositivo.segredoDispositivo, captura.score);
-      tocarBipeAssinaturaAceita();
-      aoAtualizar(await api.dds.obterDetalhe(dds.id));
-      setMensagem(`Presença de ${funcionario.nome} confirmada.`);
-    } catch (e) {
-      setErro(e instanceof Error ? e.message : 'Falha ao confirmar a presença.');
-    } finally {
-      emOperacao.current = false;
-      setConfirmandoId(null);
     }
   }
+
+  function abrirFila() {
+    if (!dispositivo || somenteLeitura || filaAtiva.current) return;
+    filaAtiva.current = true;
+    setFilaAberta(true);
+    setErro(null);
+    setMensagem('');
+    setResultadoFila({ tom: 'info', texto: 'Fila aberta. Próximo funcionário: encoste o dedo no leitor.' });
+    void lacoFila();
+  }
+
+  function fecharFila() {
+    filaAtiva.current = false;
+    setFilaAberta(false);
+  }
+
+  useEffect(() => () => { filaAtiva.current = false; }, []);
 
   // Presença por reconhecimento facial: o operador escolhe o botão facial da linha do funcionário, a
   // foto é identificada no servidor e o rosto precisa ser o do funcionário da linha.
@@ -218,9 +261,6 @@ export function ParticipantesDds({ detalhe, somenteLeitura, aoAtualizar }: Props
         onClick={() => void baixarFoto(f.trabalhadorId)}>Baixar foto</Button> : <Checkmark24Regular aria-label="Presença confirmada" />;
     if (somenteLeitura || !selecionados.has(f.trabalhadorId)) return null;
     return <div style={linhaFlex}>
-      <BotaoBiometriaDigital disabled={ocupado || !dispositivo} onClick={() => void confirmarPresenca(f)}>
-        Confirmar por digital
-      </BotaoBiometriaDigital>
       <SeletorFotoCamera
         aoSelecionarArquivo={(foto) => confirmarPresencaFacial(f, foto)}
         aoErroValidacao={setErroFacial}
@@ -292,6 +332,19 @@ export function ParticipantesDds({ detalhe, somenteLeitura, aoAtualizar }: Props
           onClick={() => void salvar([])}>Limpar seleção</Button>
         {todosSelecionados && <Legenda>Todos os funcionários disponíveis da obra estão selecionados.</Legenda>}
       </div>}
+      {!somenteLeitura && <div style={{ display: 'grid', gap: 8 }}>
+        <div style={linhaFlex}>
+          {filaAberta
+            ? <Button appearance="primary" size="large" icon={<Stop24Regular />} onClick={fecharFila}>Fechar fila</Button>
+            : <BotaoBiometriaDigital disabled={!dispositivo || carregando} onClick={abrirFila}>Abrir fila</BotaoBiometriaDigital>}
+          <Legenda>{filaAberta
+            ? 'Leitor aberto: cada funcionário encosta o dedo e a presença é confirmada sozinha.'
+            : 'Abra a fila para o pessoal registrar a presença pela digital, um após o outro. Pelo rosto, use o botão de cada funcionário.'}</Legenda>
+        </div>
+        {resultadoFila && <div role={resultadoFila.tom === 'erro' ? 'alert' : 'status'}><FeedbackInline tom={resultadoFila.tom}>
+          <strong style={{ fontSize: 18 }}>{resultadoFila.texto}</strong>
+        </FeedbackInline></div>}
+      </div>}
       <div style={{ ...linhaFlex, alignItems: 'end' }}>
         <div style={{ flex: '1 1 260px', minWidth: 0 }}>
           <Field label="Buscar funcionário">
@@ -304,7 +357,7 @@ export function ParticipantesDds({ detalhe, somenteLeitura, aoAtualizar }: Props
       </div>
       <Legenda>{somenteLeitura
         ? 'Lista deste DDS. As presenças confirmadas constam nos relatórios.'
-        : 'Marque ou desmarque para ajustar a lista. A seleção é salva automaticamente; a presença é confirmada pela digital ou pelo reconhecimento facial, à escolha do operador.'}</Legenda>
+        : 'Marque ou desmarque para ajustar a lista. A seleção é salva automaticamente; a presença é confirmada pela fila de digitais ou pelo reconhecimento facial de cada funcionário.'}</Legenda>
       {erroCarga && <FeedbackInline tom="erro" acao={{ rotulo: 'Tentar novamente', aoClicar: () => void carregarFuncionarios() }}>{erroCarga}</FeedbackInline>}
       {erro && <FeedbackInline tom="erro" aoFechar={() => setErro(null)}>{erro}</FeedbackInline>}
       <div role="status" style={{ color: designTokens.colorNeutralMedium, minHeight: 20 }}>
@@ -322,7 +375,7 @@ export function ParticipantesDds({ detalhe, somenteLeitura, aoAtualizar }: Props
       </div>
       {!somenteLeitura && totalPendentes > 0 && !dispositivo && <FeedbackInline tom="aviso"
         acao={{ rotulo: verificandoLeitor ? 'Verificando leitor...' : 'Verificar leitor', aoClicar: () => { if (!verificandoLeitor) void verificarLeitor(); } }}>
-        Para confirmar por digital, conecte o leitor Futronic e abra o Agente Biométrico. O reconhecimento facial não depende do leitor. Você já pode organizar a lista.
+        Para abrir a fila de digitais, conecte o leitor Futronic e abra o Agente Biométrico. O reconhecimento facial não depende do leitor. Você já pode organizar a lista.
       </FeedbackInline>}
       {!somenteLeitura && confirmados.size > 0 && <Legenda>Funcionários com presença confirmada permanecem na lista ao limpar a seleção.</Legenda>}
     </div>

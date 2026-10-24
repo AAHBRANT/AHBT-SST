@@ -23,6 +23,7 @@ import {
   type Obra,
 } from '../../../lib/api';
 import { NaoConformidadesCriticasPanel } from './NaoConformidadesCriticasPanel';
+import { FaixaKpis } from '../../../components/dashboard/FaixaKpis';
 
 const hojeISO = new Date().toISOString().slice(0, 10);
 
@@ -173,12 +174,12 @@ export function NaoConformidadesDashboardTab() {
         </FeedbackInline>
       )}
 
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(185px, 1fr))', gap: 16, marginBottom: 16 }}>
+      <FaixaKpis>
         <KpiCard rotulo="Total de NCs" valor={naoConformidadesFiltradas.length} tom="info" indice={0} icone={<DocumentError24Regular />} />
         <KpiCard rotulo="Abertas" valor={abertas} tom="alerta" indice={1} icone={<Warning24Regular />} />
         <KpiCard rotulo="Em tratamento" valor={emTratamento} tom="atencao" indice={2} icone={<ArrowSync24Regular />} />
         <KpiCard rotulo="Com prazo vencido" valor={prazoVencido} tom="alerta" indice={3} icone={<Alert24Regular />} />
-      </div>
+      </FaixaKpis>
 
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(340px, 1fr))', gap: 16, marginBottom: 16 }}>
         <Card titulo="Status das não conformidades" subtitulo="Situação atual do tratamento de cada NC">

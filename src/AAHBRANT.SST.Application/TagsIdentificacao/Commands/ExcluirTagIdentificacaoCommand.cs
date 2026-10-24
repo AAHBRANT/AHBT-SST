@@ -23,7 +23,7 @@ public class ExcluirTagIdentificacaoCommandHandler : IRequestHandler<ExcluirTagI
 
     public async Task Handle(ExcluirTagIdentificacaoCommand request, CancellationToken ct)
     {
-        var tag = await _db.TagsIdentificacao.FirstOrDefaultAsync(t => t.Id == request.Id, ct)
+        var tag = await _db.TagsIdentificacao.NoEscopoDaObra(_db).FirstOrDefaultAsync(t => t.Id == request.Id, ct)
             ?? throw new KeyNotFoundException($"Tag {request.Id} não encontrada.");
 
         _db.TagsIdentificacao.Remove(tag);

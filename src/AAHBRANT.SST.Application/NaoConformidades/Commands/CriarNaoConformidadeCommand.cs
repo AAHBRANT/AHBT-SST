@@ -1,4 +1,5 @@
 using AAHBRANT.SST.Application.Common.Interfaces;
+using AAHBRANT.SST.Application.Common.Seguranca;
 using AAHBRANT.SST.Domain.Entidades;
 using AAHBRANT.SST.Domain.Enums;
 using FluentValidation;
@@ -15,7 +16,8 @@ public record CriarNaoConformidadeCommand(
     Guid? AtividadeId,
     Guid? RiscoId,
     Guid? ResponsavelUsuarioId,
-    DateTime? Prazo) : IRequest<Guid>;
+    DateTime? Prazo,
+    Guid? ObraId = null) : IRequest<Guid>;
 
 public class CriarNaoConformidadeCommandValidator : AbstractValidator<CriarNaoConformidadeCommand>
 {
@@ -40,15 +42,18 @@ public class CriarNaoConformidadeCommandHandler : IRequestHandler<CriarNaoConfor
             throw new KeyNotFoundException($"Atividade {request.AtividadeId} não encontrada.");
 
         if (request.RiscoId.HasValue &&
-            !await _db.Riscos.AnyAsync(r => r.Id == request.RiscoId, ct))
+            !await _db.Riscos.NoEscopoDaAtividade(_db, r => r.AtividadeId).AnyAsync(r => r.Id == request.RiscoId, ct))
             throw new KeyNotFoundException($"Risco {request.RiscoId} não encontrado.");
 
         if (request.ResponsavelUsuarioId.HasValue &&
             !await _db.Usuarios.AnyAsync(u => u.Id == request.ResponsavelUsuarioId, ct))
             throw new KeyNotFoundException($"Usuário {request.ResponsavelUsuarioId} não encontrado.");
 
+        var obraId = await ObraDaNaoConformidade.ResolverAsync(_db, request.ObraId, request.AtividadeId, request.RiscoId, ct);
+
         var nc = new NaoConformidade
         {
+            ObraId = obraId,
             OrigemDeteccao = request.OrigemDeteccao,
             RequisitoRelacionado = request.RequisitoRelacionado,
             Descricao = request.Descricao,

@@ -1,4 +1,6 @@
+using AAHBRANT.SST.Application.Assinatura;
 using AAHBRANT.SST.Application.Common.Interfaces;
+using AAHBRANT.SST.Application.Common.Seguranca;
 using AAHBRANT.SST.Domain.Enums;
 using FluentValidation;
 using MediatR;
@@ -39,8 +41,20 @@ public class AtualizarTreinamentoCommandHandler : IRequestHandler<AtualizarTrein
 
     public async Task Handle(AtualizarTreinamentoCommand request, CancellationToken ct)
     {
-        var treinamento = await _db.Treinamentos.FirstOrDefaultAsync(x => x.Id == request.Id, ct)
+        await ProtecaoDocumentoAssinado.GarantirEditavelAsync(_db, "Treinamento", request.Id, ct);
+
+        var treinamento = await _db.Treinamentos.NoEscopoDoTrabalhador(_db, x => x.TrabalhadorId).FirstOrDefaultAsync(x => x.Id == request.Id, ct)
             ?? throw new KeyNotFoundException("Treinamento não encontrado.");
+
+        if (request.TrabalhadorId != treinamento.TrabalhadorId)
+            await _db.GarantirTrabalhadorNoEscopoAsync(request.TrabalhadorId, ct);
+
+        // Só quando a edição mexe no que a regra olha: registros antigos abaixo do mínimo continuam
+        // editáveis nos outros campos (ex.: corrigir o nº do certificado).
+        if (request.CargaHorariaRealizada != treinamento.CargaHorariaRealizada
+            || request.CursoTreinamentoId != treinamento.CursoTreinamentoId
+            || request.OrigemCertificado != treinamento.OrigemCertificado)
+            await CargaHorariaMinimaTreinamento.GarantirAsync(_db, request.CursoTreinamentoId, request.CargaHorariaRealizada, request.OrigemCertificado, ct);
 
         treinamento.TrabalhadorId = request.TrabalhadorId;
         treinamento.CursoTreinamentoId = request.CursoTreinamentoId;

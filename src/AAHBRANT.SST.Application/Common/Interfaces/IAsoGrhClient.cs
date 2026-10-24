@@ -22,4 +22,5 @@ public record AsoGrhDto(
     DateTime? DataValidade,
     string? Aptidao,
     string? RestricaoClinica,
-    string? MedicoNome);
+    string? MedicoNome,
+    string? ClassificacaoExame = null);

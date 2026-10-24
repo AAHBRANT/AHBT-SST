@@ -3,7 +3,8 @@ namespace AAHBRANT.SST.Application.SessoesTreinamento;
 public record AtaSessaoTreinamentoPdfParticipanteModelo(
     string TrabalhadorNome,
     string? TrabalhadorMatricula,
-    DateTime? PresencaConfirmadaEm);
+    DateTime? PresencaConfirmadaEm,
+    AAHBRANT.SST.Domain.Enums.MetodoAutenticacaoAssinatura? Metodo = null);
 
 // Ata/Anexo de Evidências da turma (item 5 da proposta do usuário, 04/09) — documento consolidado
 // para auditoria: lista de presença biométrica com horários + as fotos da turma. Distinto do

@@ -13,6 +13,7 @@ public class AlojamentoEntidadeTests
         // filtrado é preciso um provider relacional de verdade. Sqlite in-memory é o mais leve.
         var conexao = new Microsoft.Data.Sqlite.SqliteConnection("DataSource=:memory:");
         conexao.Open();
+        conexao.CreateCollation("Latin1_General_100_BIN2", (a, b) => string.Compare(a, b, StringComparison.Ordinal));
         var options = new DbContextOptionsBuilder<SstDbContext>().UseSqlite(conexao).Options;
         var db = new SstDbContext(options, new CurrentUserService());
         db.Database.EnsureCreated();

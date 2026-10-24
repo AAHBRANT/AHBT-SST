@@ -1,6 +1,6 @@
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
-import { Abas, PageHeader, useAbaNaUrl } from '@ui';
+import { Abas, DashboardTopo, PageHeader, useAbaNaUrl } from '@ui';
 import { PgrsTab } from './PgrsTab';
 import { PgrDashboardTab } from './dashboard/PgrDashboardTab';
 import { MatrizRiscoTab } from '../riscos/MatrizRiscoTab';
@@ -20,9 +20,10 @@ import { RiscosDashboardTab } from '../riscos/dashboard/RiscosDashboardTab';
 //
 // ?aba=riscos continua funcionando (usado pelo redirecionamento do antigo item "Riscos" da
 // sidebar) — mapeado para "matriz", que era a aba inicial de RiscosPage.
-type AbaPgrGro = 'pgrs' | 'matriz' | 'atividades' | 'importar' | 'dashboardPgr' | 'dashboardRiscos';
+type AbaPgrGro = 'pgrs' | 'matriz' | 'atividades' | 'importar';
+type DashboardPgrGro = 'pgr' | 'riscos';
 
-const ABAS_VALIDAS: readonly AbaPgrGro[] = ['pgrs', 'matriz', 'atividades', 'importar', 'dashboardPgr', 'dashboardRiscos'];
+const ABAS_VALIDAS: readonly AbaPgrGro[] = ['pgrs', 'matriz', 'atividades', 'importar'];
 
 // Onda 2 Task 8 (camada ui/): só o título (guia item 3) está no escopo literal desta task — o
 // conteúdo das abas "matriz"/"atividades"/"importar"/"dashboardRiscos" pertence ao módulo `riscos`
@@ -49,10 +50,25 @@ export function PgrRiscosPage({ mostrarTitulo = true }: { mostrarTitulo?: boolea
   }, [searchParams, setSearchParams]);
 
   const [aba, setAba] = useAbaNaUrl<AbaPgrGro>('aba', ABAS_VALIDAS, 'pgrs');
+  const [dashboard, setDashboard] = useState<DashboardPgrGro>('pgr');
 
   return (
     <div>
       {mostrarTitulo && <PageHeader titulo="PGR / GRO" />}
+
+      <DashboardTopo>
+        <Abas
+          nivel="interno"
+          aria-label="Dashboard de PGR ou de Riscos"
+          valor={dashboard}
+          aoMudar={setDashboard}
+          abas={[
+            { valor: 'pgr', rotulo: 'PGR' },
+            { valor: 'riscos', rotulo: 'Riscos' },
+          ]}
+        />
+        {dashboard === 'pgr' ? <PgrDashboardTab /> : <RiscosDashboardTab />}
+      </DashboardTopo>
 
       <Abas
         nivel={mostrarTitulo ? 'pilar' : 'modulo'}
@@ -64,8 +80,6 @@ export function PgrRiscosPage({ mostrarTitulo = true }: { mostrarTitulo?: boolea
           { valor: 'matriz', rotulo: 'Matriz de Risco' },
           { valor: 'atividades', rotulo: 'Atividades' },
           { valor: 'importar', rotulo: 'Importar em Lote' },
-          { valor: 'dashboardPgr', rotulo: 'Dashboard PGR' },
-          { valor: 'dashboardRiscos', rotulo: 'Dashboard Riscos' },
         ]}
       />
 
@@ -73,8 +87,6 @@ export function PgrRiscosPage({ mostrarTitulo = true }: { mostrarTitulo?: boolea
       {aba === 'matriz' && <MatrizRiscoTab />}
       {aba === 'atividades' && <AtividadesTab />}
       {aba === 'importar' && <ImportarLoteTab />}
-      {aba === 'dashboardPgr' && <PgrDashboardTab />}
-      {aba === 'dashboardRiscos' && <RiscosDashboardTab />}
     </div>
   );
 }

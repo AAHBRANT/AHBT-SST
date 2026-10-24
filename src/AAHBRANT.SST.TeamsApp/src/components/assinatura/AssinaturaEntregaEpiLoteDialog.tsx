@@ -13,13 +13,12 @@ import {
 import { Checkmark24Filled, PersonBoard24Regular, Warning24Regular } from '@fluentui/react-icons';
 import { BotaoBiometriaDigital } from './BotaoBiometriaDigital';
 import { api, MetodoAutenticacaoAssinatura, type DocumentoAssinatura } from '../../lib/api';
-import { capturarDigitalLocal, estaAgenteLocalDisponivel, obterDispositivoLocal } from '../../lib/agenteBiometricoLocal';
+import { capturarDigitalLocal, credencialLeitura, estaAgenteLocalDisponivel, obterDispositivoLocal, type DispositivoLocal } from '../../lib/agenteBiometricoLocal';
 import { tocarBipeAssinaturaAceita } from '../../lib/bipeAssinatura';
 import { MutacaoEnfileiradaOfflineError } from '../../lib/offline/syncEngine';
 import { usePageStyles } from '../../pages/pageStyles';
 import { FotoCatalogoEpi } from '../../pages/epi/FotoCatalogoEpi';
 import { SeletorFotoCamera } from '../SeletorFotoCamera';
-import { clausulasTermoCompromisso } from './termoCompromissoEpi';
 import { ErroFacialDialog } from './ErroFacialDialog';
 
 function extrairMensagemErro(e: unknown, fallback: string): string {
@@ -71,8 +70,6 @@ export function AssinaturaEntregaEpiLoteDialog({
   obraId,
   trabalhadorNome,
   dataEntrega,
-  numeroListaPresencaNr6,
-  dataTreinamentoNr6,
 }: AssinaturaEntregaEpiLoteDialogProps) {
   const estilos = usePageStyles();
   const [documentos, setDocumentos] = useState<Record<string, DocumentoAssinatura>>({});
@@ -84,7 +81,7 @@ export function AssinaturaEntregaEpiLoteDialog({
   const [erroFacialReceptor, setErroFacialReceptor] = useState<string | null>(null);
   const [ultimoAssinante, setUltimoAssinante] = useState<string | null>(null);
   const [agenteLocalDisponivel, setAgenteLocalDisponivel] = useState(false);
-  const [dispositivoLocal, setDispositivoLocal] = useState<{ dispositivoId: string; segredoDispositivo: string } | null>(null);
+  const [dispositivoLocal, setDispositivoLocal] = useState<DispositivoLocal | null>(null);
   const [pendenteFacial, setPendenteFacial] = useState(false);
 
   useEffect(() => {
@@ -166,17 +163,20 @@ export function AssinaturaEntregaEpiLoteDialog({
       setProcessandoReceptor(true);
       setErroReceptor(null);
       setUltimoAssinante(null);
-      const captura = await capturarDigitalLocal();
-      let nome: string | null = null;
-      for (const item of itens) {
+      // Uma leitura só para o lote: o agente assina um desafio por documento ainda pendente.
+      const pendentes = itens.flatMap((item) => {
         const doc = documentos[item.entregaId];
-        if (!doc || receptorAssinou(item.entregaId)) continue;
+        return doc && !receptorAssinou(item.entregaId) ? [doc] : [];
+      });
+      const captura = await capturarDigitalLocal(dispositivoLocal.dispositivoId, pendentes.length);
+      let nome: string | null = null;
+      for (const [indice, doc] of pendentes.entries()) {
         const signatario = await api.assinatura.autenticarBiometriaLocal(
           doc.id,
-          dispositivoLocal.dispositivoId,
-          dispositivoLocal.segredoDispositivo,
+          credencialLeitura(dispositivoLocal, captura.leituras[indice]),
           captura.trabalhadorId,
           captura.score,
+          captura.imagemPng,
         );
         nome = signatario.trabalhadorNome;
       }
@@ -276,16 +276,11 @@ export function AssinaturaEntregaEpiLoteDialog({
             </div>
 
             <div className={estilos.card} style={{ marginBottom: 16 }}>
-              <Text weight="semibold" style={{ display: 'block', marginBottom: 8 }}>
-                Termo de Recebimento e Compromisso de Uso
+              <Text size={200}>
+                Ao assinar, o funcionário confirma o recebimento dos EPIs acima. O Termo de Recebimento e Compromisso de Uso
+                é assinado uma única vez, em separado: pelo botão "Assinatura de termo de recebimento e compromisso", no perfil do
+                funcionário (aba EPI &amp; Matriz) ou em EPI › Entregas.
               </Text>
-              <ol style={{ margin: 0, paddingLeft: 20 }}>
-                {clausulasTermoCompromisso(numeroListaPresencaNr6, dataTreinamentoNr6).map((clausula, indice) => (
-                  <li key={indice} style={{ marginBottom: 6 }}>
-                    <Text size={200}>{clausula}</Text>
-                  </li>
-                ))}
-              </ol>
             </div>
 
             <Text weight="semibold" style={{ display: 'block', marginBottom: 12 }}>

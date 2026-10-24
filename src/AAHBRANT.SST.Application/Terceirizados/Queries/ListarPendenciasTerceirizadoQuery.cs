@@ -27,13 +27,23 @@ public class ListarPendenciasTerceirizadoQueryHandler : IRequestHandler<ListarPe
                 pessoasBloqueadas.Add(new PendenciaPessoaDto(t.Id, t.Nome, t.EmpresaId, t.EmpresaRazaoSocial, pendencias));
         }
 
-        var contratosEncerrados = await _db.Contratos
+        // O filtro "tem pessoa ativa" não pode vir depois do Select para o DTO: o EF Core não traduz
+        // um Where sobre a propriedade de um construtor que embute a subconsulta Count (erro 400 no
+        // SQL real, invisível no InMemory). Projeta para tipo anônimo e filtra na memória.
+        var contratosEncerradosBrutos = await _db.Contratos
             .Where(c => c.Status == StatusContrato.Encerrado)
-            .Select(c => new ContratoEncerradoComPessoasAtivasDto(
-                c.Id, c.NumeroContrato, c.Empresa!.RazaoSocial,
-                c.Trabalhadores.Count(t => t.DataDemissao == null)))
-            .Where(c => c.QuantidadePessoasAtivas > 0)
+            .Select(c => new
+            {
+                c.Id,
+                c.NumeroContrato,
+                EmpresaRazaoSocial = c.Empresa!.RazaoSocial,
+                QuantidadePessoasAtivas = c.Trabalhadores.Count(t => t.DataDemissao == null),
+            })
             .ToListAsync(ct);
+        var contratosEncerrados = contratosEncerradosBrutos
+            .Where(c => c.QuantidadePessoasAtivas > 0)
+            .Select(c => new ContratoEncerradoComPessoasAtivasDto(c.Id, c.NumeroContrato, c.EmpresaRazaoSocial, c.QuantidadePessoasAtivas))
+            .ToList();
 
         var alertasEstoqueInsuficiente = await _db.Alertas
             .Where(a => a.Tipo == TipoAlerta.EpiEstoqueInsuficiente && a.Status == StatusAlerta.Aberto)

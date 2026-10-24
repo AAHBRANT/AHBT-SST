@@ -1,4 +1,5 @@
 using AAHBRANT.SST.Application.Common.Interfaces;
+using AAHBRANT.SST.Application.Common.Seguranca;
 using AAHBRANT.SST.Domain.Enums;
 using FluentValidation;
 using MediatR;
@@ -32,7 +33,7 @@ public class RegistrarConclusaoNaoConformidadeCommandHandler : IRequestHandler<R
 
     public async Task Handle(RegistrarConclusaoNaoConformidadeCommand request, CancellationToken ct)
     {
-        var nc = await _db.NaoConformidades.FirstOrDefaultAsync(n => n.Id == request.NaoConformidadeId, ct)
+        var nc = await _db.NaoConformidades.NoEscopoDaObra(_db).FirstOrDefaultAsync(n => n.Id == request.NaoConformidadeId, ct)
             ?? throw new KeyNotFoundException($"Não conformidade {request.NaoConformidadeId} não encontrada.");
 
         if (nc.Status is not (StatusNaoConformidade.EmAndamento or StatusNaoConformidade.Devolvida))

@@ -1,3 +1,4 @@
+using AAHBRANT.SST.Application.Common;
 using AAHBRANT.SST.Application.Common.Interfaces;
 using MediatR;
 using Microsoft.EntityFrameworkCore;
@@ -14,7 +15,7 @@ public class ListarAtividadesQueryHandler : IRequestHandler<ListarAtividadesQuer
 
     public async Task<List<AtividadeDto>> Handle(ListarAtividadesQuery request, CancellationToken ct)
     {
-        var query = _db.Atividades.AsNoTracking().AsQueryable();
+        var query = _db.Atividades.AsNoTracking().EmUso(_db);
 
         if (request.ObraId.HasValue)
             query = query.Where(a => a.ObraId == request.ObraId.Value);

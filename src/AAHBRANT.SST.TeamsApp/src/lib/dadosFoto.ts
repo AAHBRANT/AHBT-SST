@@ -1,5 +1,5 @@
-import { geoLocation } from '@microsoft/teams-js';
-import { aguardarInicializacaoTeams } from '../teams/teamsInit';
+import { criarRastreadorFoto } from './fontesLocalizacao';
+import type { LeituraLocalizacao } from './rastreadorLocalizacao';
 
 export interface ContextoFoto { obraId: string; obraNome: string; local?: string | null }
 export interface DadosFoto {
@@ -30,9 +30,14 @@ export function pendenciasFoto(d?: DadosFoto | null): string[] {
   // serializado pelo servidor, inclusive quando ainda estão pendentes.
   if (!d) return [];
   const pendencias: string[] = [];
+  // Foto anexada da galeria: sem data/posição comprováveis; só exige a obra.
+  // "Local da foto" deixou de ser exigido (pedido do usuário, 08/10) — só aparece em fotos antigas.
+  if (d.origem === 'arquivo') {
+    if (!d.obraId || !d.obraNome?.trim()) pendencias.push('obra vinculada');
+    return pendencias;
+  }
   if (!d?.capturadaEm || !Number.isFinite(Date.parse(d.capturadaEm))) pendencias.push('data e hora da captura');
   if (!d?.obraId || !d.obraNome?.trim()) pendencias.push('obra vinculada');
-  if (!d?.local?.trim()) pendencias.push('descrição do local');
   const lat = d?.latitude, lon = d?.longitude;
   const idade = d?.capturadaEm && d.localizacaoObtidaEm ? Math.abs(Date.parse(d.capturadaEm) - Date.parse(d.localizacaoObtidaEm)) : Infinity;
   if (lat == null || lon == null || !Number.isFinite(lat) || !Number.isFinite(lon)
@@ -62,33 +67,21 @@ export function formatarDataFoto(d?: DadosFoto | null) {
 
 export type LocalizacaoFoto = Pick<DadosFoto, 'latitude' | 'longitude' | 'precisaoMetros' | 'localizacaoObtidaEm' | 'motivoLocalizacao'>;
 
-const MOTIVO_SEM_LOCALIZACAO_TEAMS = 'Este aparelho não fornece localização ao Teams. Use o celular com o aplicativo do Teams atualizado.';
-
-// GPS do navegador/webview. Também é o fallback quando o cliente do Teams não oferece a API própria.
-function obterLocalizacaoNavegador(motivoIndisponivel: string): Promise<LocalizacaoFoto> {
-  if (!navigator.geolocation) return Promise.resolve({ motivoLocalizacao: motivoIndisponivel });
-  return new Promise<LocalizacaoFoto>((resolve) => navigator.geolocation.getCurrentPosition(
-    p => resolve({ latitude: p.coords.latitude, longitude: p.coords.longitude, precisaoMetros: p.coords.accuracy, localizacaoObtidaEm: new Date(p.timestamp).toISOString() }),
-    e => resolve({ motivoLocalizacao: e.code === 1 ? 'Permissão de localização bloqueada. Libere nas configurações do aparelho e do aplicativo.' : e.code === 3 ? 'O aparelho demorou para obter a localização. Tente novamente no local.' : 'O aparelho não conseguiu obter a localização. Tente novamente no local.' }),
-    { enableHighAccuracy: true, maximumAge: 0, timeout: 15_000 },
-  ));
+export function leituraParaLocalizacao(l: LeituraLocalizacao): LocalizacaoFoto {
+  return { latitude: l.latitude, longitude: l.longitude, precisaoMetros: l.precisaoMetros, localizacaoObtidaEm: new Date(l.obtidaEm).toISOString() };
 }
 
-export async function obterLocalizacaoFoto(): Promise<LocalizacaoFoto> {
-  let timer: ReturnType<typeof setTimeout> | undefined;
+// Pedido avulso (ex.: log de assinaturas). A câmera usa o rastreador contínuo direto (useCapturaFoto).
+// Devolve cedo quando há posição boa ou quando todas as fontes falharam; no teto, entrega a melhor
+// posição que tiver, mesmo imprecisa — quem consome decide se a precisão serve.
+export async function obterLocalizacaoFoto(tetoMs = 20_000): Promise<LocalizacaoFoto> {
+  const r = criarRastreadorFoto();
   try {
-    return await Promise.race([
-      (async (): Promise<LocalizacaoFoto> => {
-        if (await aguardarInicializacaoTeams()) {
-          if (!geoLocation.isSupported()) return obterLocalizacaoNavegador(MOTIVO_SEM_LOCALIZACAO_TEAMS);
-          const pos = await geoLocation.getCurrentLocation();
-          return { latitude: pos.latitude, longitude: pos.longitude, precisaoMetros: pos.accuracy, localizacaoObtidaEm: pos.timestamp ? new Date(pos.timestamp).toISOString() : new Date().toISOString() };
-        }
-        return obterLocalizacaoNavegador('Localização indisponível neste navegador.');
-      })(),
-      new Promise<LocalizacaoFoto>(resolve => { timer = setTimeout(() => resolve({ motivoLocalizacao: 'Tempo de localização esgotado. Tente novamente no local.' }), 20_000); }),
-    ]);
+    await r.aguardarPronta(tetoMs);
+    const e = r.estado();
+    if (e.leitura) return leituraParaLocalizacao(e.leitura);
+    return { motivoLocalizacao: e.motivo ?? 'Tempo de localização esgotado. Tente novamente no local.' };
   } catch {
     return { motivoLocalizacao: 'Não foi possível obter a localização. Confira as permissões e tente novamente.' };
-  } finally { clearTimeout(timer); }
+  } finally { r.parar(); }
 }
