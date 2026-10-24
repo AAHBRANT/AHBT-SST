@@ -579,11 +579,19 @@ function Aprovacao({ g, ocupado, devolver, aprovar, baixarPdf }: {
   const [motivo, setMotivo] = useState('');
   const navigate = useNavigate();
 
+  // Aprovado: o PDF só existe a partir daqui, então o download fica neste cartão (antes ficava num
+  // cartão que nunca aparecia depois da aprovação).
   if (g.status === 3) {
     return (
       <Card titulo="PGR aprovado">
         <Text style={{ display: 'block' }}>Aprovado por {g.aprovadoPorNome} em {g.aprovadoEmUtc ? new Date(g.aprovadoEmUtc).toLocaleString('pt-BR') : ''}.</Text>
-        {g.pgrId && <Button appearance="primary" style={{ marginTop: 8 }} onClick={() => navigate(`/prevencao/pgr/${g.pgrId}`)}>Abrir o PGR</Button>}
+        <Text size={200} style={{ display: 'block', margin: '8px 0' }}>
+          PDF do PGR com identificação, GHE, funções, inventário de riscos, medidas aceitas, plano de ação e registro da aprovação.
+        </Text>
+        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+          <Button appearance="primary" disabled={ocupado} onClick={baixarPdf}>Baixar PDF do PGR</Button>
+          {g.pgrId && <Button onClick={() => navigate(`/prevencao/pgr/${g.pgrId}`)}>Abrir o PGR</Button>}
+        </div>
       </Card>
     );
   }
@@ -616,16 +624,7 @@ function Aprovacao({ g, ocupado, devolver, aprovar, baixarPdf }: {
         )}
       </Card>
       <Card titulo="Documento PGR">
-        {g.status === 3 ? (
-          <>
-            <Text size={200} style={{ display: 'block', marginBottom: 8 }}>
-              PDF do PGR com identificação, GHE, funções, inventário de riscos, medidas aceitas, plano de ação e registro da aprovação.
-            </Text>
-            <Button appearance="primary" disabled={ocupado} onClick={baixarPdf}>Baixar PDF do PGR</Button>
-          </>
-        ) : (
-          <Text size={200}>O PDF do PGR fica disponível depois da aprovação do Engenheiro de Segurança.</Text>
-        )}
+        <Text size={200}>O PDF do PGR fica disponível depois da aprovação do Engenheiro de Segurança.</Text>
       </Card>
     </div>
   );
