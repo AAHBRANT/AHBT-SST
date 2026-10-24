@@ -16,7 +16,8 @@ public record ResponderItemInspecaoCommand(
     DateTime? Prazo,
     string? DescricaoPersonalizada,
     string? Local,
-    string? PlanoDeAcao) : IRequest;
+    string? PlanoDeAcao,
+    string? VersaoEsperada = null) : IRequest<string?>;
 
 public class ResponderItemInspecaoCommandValidator : AbstractValidator<ResponderItemInspecaoCommand>
 {
@@ -30,13 +31,13 @@ public class ResponderItemInspecaoCommandValidator : AbstractValidator<Responder
     }
 }
 
-public class ResponderItemInspecaoCommandHandler : IRequestHandler<ResponderItemInspecaoCommand>
+public class ResponderItemInspecaoCommandHandler : IRequestHandler<ResponderItemInspecaoCommand, string?>
 {
     private readonly IAppDbContext _db;
 
     public ResponderItemInspecaoCommandHandler(IAppDbContext db) => _db = db;
 
-    public async Task Handle(ResponderItemInspecaoCommand request, CancellationToken ct)
+    public async Task<string?> Handle(ResponderItemInspecaoCommand request, CancellationToken ct)
     {
         var resposta = await _db.InspecaoItemRespostas.FirstOrDefaultAsync(r => r.Id == request.RespostaId, ct)
             ?? throw new KeyNotFoundException($"Resposta {request.RespostaId} não encontrada.");
@@ -44,6 +45,10 @@ public class ResponderItemInspecaoCommandHandler : IRequestHandler<ResponderItem
         await _db.GarantirObraDoPaiNoEscopoAsync(
             _db.Inspecoes.IgnoreQueryFilters().Where(i => i.Id == resposta.InspecaoId).Select(i => i.ObraId),
             $"Resposta {request.RespostaId} não encontrada.", ct);
+        if (request.VersaoEsperada is not null && request.VersaoEsperada != Convert.ToBase64String(resposta.RowVersion ?? []))
+            throw new DbUpdateConcurrencyException("O item foi alterado enquanto o dispositivo estava offline.");
+        var concluida = await _db.Inspecoes.AnyAsync(i => i.Id == resposta.InspecaoId && i.Status == StatusInspecao.Concluida, ct);
+        if (concluida) throw new InvalidOperationException("A inspeção já foi finalizada.");
 
         if (request.ResponsavelUsuarioId.HasValue)
         {
@@ -61,5 +66,6 @@ public class ResponderItemInspecaoCommandHandler : IRequestHandler<ResponderItem
         resposta.PlanoDeAcao = request.PlanoDeAcao;
 
         await _db.SaveChangesAsync(ct);
+        return resposta.RowVersion is null ? null : Convert.ToBase64String(resposta.RowVersion);
     }
 }

@@ -82,6 +82,7 @@ public class ObterInspecaoDetalheQueryHandler : IRequestHandler<ObterInspecaoDet
             },
             Respostas = respostasOrdenadas.Select(r => new InspecaoItemRespostaDto
             {
+                VersaoResposta = r.RowVersion is null ? null : Convert.ToBase64String(r.RowVersion),
                 Id = r.Id,
                 InspecaoId = r.InspecaoId,
                 ChecklistModeloItemId = r.ChecklistModeloItemId,

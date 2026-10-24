@@ -30,6 +30,7 @@ public class InspecaoDto
 
 public class InspecaoItemRespostaDto
 {
+    public string? VersaoResposta { get; set; }
     public Guid Id { get; set; }
     public Guid InspecaoId { get; set; }
     public Guid ChecklistModeloItemId { get; set; }

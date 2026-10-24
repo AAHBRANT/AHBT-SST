@@ -2685,6 +2685,7 @@ export interface NovaInspecao {
 }
 
 export interface InspecaoItemResposta {
+  versaoResposta?: string | null;
   dadosFoto?: DadosFoto | null;
   dadosFotoDepois?: DadosFoto | null;
   id: string;
