@@ -64,6 +64,12 @@ body,
   /* Botões de ação (BotaoAcao, opção C de 25/09): vinho oficial no claro. */
   --sst-acao-marca-fundo: #670000;     --sst-acao-marca-fundo-hover: #7a0101;
   --sst-acao-marca-tinta: #670000;     --sst-acao-marca-wash: rgba(103, 0, 0, 0.08);
+  /* Padrão de botão (Proposta B · Premium, 21/10/2026 — ver ui/primitivos/Botao/estiloBotao.ts). */
+  --sst-botao-marca: #670000;          --sst-botao-marca-hover: #7a0101;   --sst-botao-marca-pressionado: #590000;
+  --sst-botao-marca-wash-forte: rgba(103, 0, 0, 0.14);
+  --sst-botao-sombra: 0 1px 0 rgba(255, 255, 255, 0.12) inset, 0 4px 14px -6px rgba(103, 0, 0, 0.55);
+  --sst-botao-neutro-borda: #c9c3c8;   --sst-botao-neutro-borda-hover: #8f8890;
+  --sst-botao-neutro-wash: rgba(22, 18, 26, 0.05);
   --sst-border-soft: #dedbea;
   --sst-row-shadow: none;
   --sst-row-shadow-hover: inset 3px 0 0 #96110d;
@@ -107,6 +113,12 @@ body,
   /* No escuro #670000 some sobre o fundo: sólido vai para o vinho do menu ativo e o contorno clareia. */
   --sst-acao-marca-fundo: #96110d;     --sst-acao-marca-fundo-hover: #b03838;
   --sst-acao-marca-tinta: #ec8484;     --sst-acao-marca-wash: rgba(236, 132, 132, 0.14);
+  /* No escuro o vinho #670000 some sobre o fundo: o primário usa o vinho do menu ativo. */
+  --sst-botao-marca: #96110d;          --sst-botao-marca-hover: #b01814;   --sst-botao-marca-pressionado: #7a0d0a;
+  --sst-botao-marca-wash-forte: rgba(236, 132, 132, 0.22);
+  --sst-botao-sombra: 0 4px 14px -6px rgba(0, 0, 0, 0.7);
+  --sst-botao-neutro-borda: #4a5065;   --sst-botao-neutro-borda-hover: #6b728a;
+  --sst-botao-neutro-wash: rgba(255, 255, 255, 0.07);
   --sst-border-soft: #34423d;
   --sst-row-shadow: none;
   --sst-row-shadow-hover: inset 3px 0 0 #c24a4a;

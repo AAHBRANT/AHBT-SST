@@ -124,4 +124,10 @@ public class AprAssinatura : AuditableEntity
 
     public PapelAssinaturaApr Papel { get; set; }
     public DateTime DataAssinatura { get; set; }
+
+    // Como a pessoa foi identificada (02/10) — sai na legenda miúda de assinatura do PDF. Este
+    // registro é sempre uma confirmação de ciência com o usuário logado; a assinatura por
+    // digital/facial passa pelo Motor de Assinatura (DocumentoSignatario). Linhas anteriores à
+    // coluna foram preenchidas com SessaoLogada pela migration, que é o que de fato aconteceu.
+    public MetodoAutenticacaoAssinatura MetodoAutenticacao { get; set; } = MetodoAutenticacaoAssinatura.SessaoLogada;
 }

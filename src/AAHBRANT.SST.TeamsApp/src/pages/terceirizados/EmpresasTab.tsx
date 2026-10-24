@@ -17,9 +17,13 @@ import {
   useConfirmar,
   type Coluna,
 } from '@ui';
-import { Add24Regular, Delete24Regular, Eye24Regular } from '@fluentui/react-icons';
-import { api, type Empresa, type NovaEmpresa } from '../../lib/api';
+import { Add24Regular, Delete24Regular, DocumentPdf24Regular, DocumentBulletList24Regular, Eye24Regular, FolderOpen24Regular } from '@fluentui/react-icons';
+import { api, type Empresa, type NovaEmpresa, type ResumoConformidadeEmpresa } from '../../lib/api';
 import { useSucessoToast } from '../../hooks/useSucessoToast';
+import { CadastroPorContratoPdf } from './CadastroPorContratoPdf';
+import { ImportarPastaTerceirizado } from './ImportarPastaTerceirizado';
+import { ChipFaixa } from './ConformidadeEmpresa';
+import { DocumentosExigidosPainel } from './DocumentosExigidosPainel';
 
 const empresaVazia: NovaEmpresa = {
   razaoSocial: '', nomeFantasia: '', cnpj: '', tipoServicoPrestado: '',
@@ -37,13 +41,28 @@ export function EmpresasTab() {
   const [carregando, setCarregando] = useState(false);
   const [carregandoLista, setCarregandoLista] = useState(true);
   const [painelAberto, setPainelAberto] = useState(false);
+  const [painelPdfAberto, setPainelPdfAberto] = useState(false);
+  // Importação da pasta inteira da terceirizada (23/10/2026).
+  const [painelPastaAberto, setPainelPastaAberto] = useState(false);
+  const [documentosExigidosAberto, setDocumentosExigidosAberto] = useState(false);
+  // Percentual de adequação por empresa (checklist, 21/10/2026). Se o cálculo falhar, a lista
+  // continua aparecendo — só sem a coluna preenchida.
+  const [conformidade, setConformidade] = useState<Map<string, ResumoConformidadeEmpresa>>(new Map());
   const { confirmar, dialogElement } = useConfirmar();
   const sucessoToast = useSucessoToast();
 
   async function carregar() {
     try {
       setErro(null);
-      setEmpresas(await api.terceirizados.empresas.listar());
+      const [lista, resumo] = await Promise.all([
+        api.terceirizados.empresas.listar(),
+        api.terceirizados.empresas.listarConformidade().catch(() => [] as ResumoConformidadeEmpresa[]),
+      ]);
+      const porEmpresa = new Map(resumo.map((r) => [r.empresaId, r]));
+      // Da menos adequada para a mais adequada; sem cálculo (ou sem itens) vai para o fim.
+      const ordem = (e: Empresa) => porEmpresa.get(e.id)?.percentual ?? Number.MAX_SAFE_INTEGER;
+      setConformidade(porEmpresa);
+      setEmpresas([...lista].sort((a, b) => ordem(a) - ordem(b) || a.razaoSocial.localeCompare(b.razaoSocial)));
     } catch (e) {
       setErro(e instanceof Error ? e.message : 'Falha ao carregar empresas.');
     } finally {
@@ -91,24 +110,71 @@ export function EmpresasTab() {
     { chave: 'razaoSocial', rotulo: 'Razão social' },
     { chave: 'cnpj', rotulo: 'CNPJ' },
     { chave: 'tipoServicoPrestado', rotulo: 'Serviço prestado' },
+    {
+      chave: 'adequacao',
+      rotulo: 'Adequação',
+      render: (e) => {
+        const c = conformidade.get(e.id);
+        return c ? <ChipFaixa faixa={c.faixa} percentual={c.percentual} /> : '—';
+      },
+    },
     { chave: 'status', rotulo: 'Status' },
   ];
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
       {dialogElement}
+      <DocumentosExigidosPainel
+        aberto={documentosExigidosAberto}
+        aoFechar={() => setDocumentosExigidosAberto(false)}
+        aoAlterar={() => void carregar()}
+      />
       <PageHeader
         titulo="Empresas terceirizadas"
         acoes={
-          <Button
-            appearance="primary"
-            icon={<Add24Regular />}
-            onClick={() => (painelAberto ? fecharPainel() : setPainelAberto(true))}
-            aria-expanded={painelAberto}
-            aria-controls="painel-nova-empresa"
-          >
-            {painelAberto ? 'Fechar' : 'Cadastrar empresa'}
-          </Button>
+          <>
+            <Button icon={<DocumentBulletList24Regular />} onClick={() => setDocumentosExigidosAberto(true)}>
+              Documentos exigidos
+            </Button>
+            <Button
+              icon={<FolderOpen24Regular />}
+              onClick={() => {
+                fecharPainel();
+                setPainelPdfAberto(false);
+                setPainelPastaAberto(!painelPastaAberto);
+              }}
+              aria-expanded={painelPastaAberto}
+              aria-controls="painel-importar-pasta"
+            >
+              {painelPastaAberto ? 'Fechar' : 'Importar pasta'}
+            </Button>
+            <Button
+              icon={<DocumentPdf24Regular />}
+              onClick={() => {
+                fecharPainel();
+                setPainelPastaAberto(false);
+                setPainelPdfAberto(!painelPdfAberto);
+              }}
+              aria-expanded={painelPdfAberto}
+              aria-controls="painel-cadastro-contrato-pdf"
+            >
+              {painelPdfAberto ? 'Fechar' : 'Cadastrar pelo contrato (PDF)'}
+            </Button>
+            <Button
+              appearance="primary"
+              icon={<Add24Regular />}
+              onClick={() => {
+                setPainelPdfAberto(false);
+                setPainelPastaAberto(false);
+                if (painelAberto) fecharPainel();
+                else setPainelAberto(true);
+              }}
+              aria-expanded={painelAberto}
+              aria-controls="painel-nova-empresa"
+            >
+              {painelAberto ? 'Fechar' : 'Cadastrar empresa'}
+            </Button>
+          </>
         }
       />
       {erro && (
@@ -116,6 +182,20 @@ export function EmpresasTab() {
           {erro}
         </FeedbackInline>
       )}
+      <div id="painel-importar-pasta">
+        <PainelCriacaoInline aberto={painelPastaAberto} titulo="Importar pasta da empresa">
+          {painelPastaAberto && (
+            <ImportarPastaTerceirizado aoCancelar={() => setPainelPastaAberto(false)} aoConcluir={() => void carregar()} />
+          )}
+        </PainelCriacaoInline>
+      </div>
+      <div id="painel-cadastro-contrato-pdf">
+        <PainelCriacaoInline aberto={painelPdfAberto} titulo="Cadastro pelo contrato">
+          {painelPdfAberto && (
+            <CadastroPorContratoPdf aoCancelar={() => setPainelPdfAberto(false)} aoConcluir={() => void carregar()} />
+          )}
+        </PainelCriacaoInline>
+      </div>
       <div id="painel-nova-empresa">
         <PainelCriacaoInline aberto={painelAberto} titulo="Nova empresa terceirizada">
           <FormSection titulo="Dados da empresa" numero={1} primeira>

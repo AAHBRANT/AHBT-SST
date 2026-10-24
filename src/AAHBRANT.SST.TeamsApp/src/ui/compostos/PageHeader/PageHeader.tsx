@@ -1,7 +1,7 @@
 import type { ReactNode } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Button, makeStyles, mergeClasses } from '@fluentui/react-components';
-import { ArrowLeft16Regular } from '@fluentui/react-icons';
+import { makeStyles, mergeClasses } from '@fluentui/react-components';
+import { BotaoVoltar } from '../../primitivos/BotaoVoltar/BotaoVoltar';
 import { designTokens, tokensUi } from '../../tokens/tokens';
 import { useTipografia } from '../../tokens/tipografia';
 
@@ -10,7 +10,7 @@ const useStyles = makeStyles({
   titulo: { margin: 0, display: 'flex', alignItems: 'center', gap: tokensUi.espaco.sm, flexWrap: 'wrap' },
   subtitulo: { color: designTokens.colorNeutralMedium, marginTop: tokensUi.espaco.xs },
   acoes: { display: 'flex', alignItems: 'center', gap: tokensUi.espaco.sm, flexWrap: 'wrap' },
-  voltar: { marginBottom: '6px', color: designTokens.colorNeutralMedium },
+  voltar: { marginBottom: tokensUi.espaco.sm },
 });
 
 export interface PageHeaderProps {
@@ -33,9 +33,7 @@ export function PageHeader({ titulo, subtitulo, status, acoes, filtros, voltarPa
   return (
     <div>
       {voltarPara && (
-        <Button appearance="subtle" size="small" icon={<ArrowLeft16Regular />} className={estilos.voltar} onClick={() => navigate(voltarPara)}>
-          {rotuloVoltar ?? 'Voltar'}
-        </Button>
+        <BotaoVoltar rotulo={rotuloVoltar} className={estilos.voltar} onClick={() => navigate(voltarPara)} />
       )}
       <div className={estilos.root}>
         <div>

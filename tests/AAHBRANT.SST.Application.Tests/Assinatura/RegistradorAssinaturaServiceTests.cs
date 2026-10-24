@@ -48,6 +48,31 @@ public class RegistradorAssinaturaServiceTests
     }
 
     [Fact]
+    public async Task RegistrarAsync_MesmoTecnicoAssinaDdsSemanalNasDuasFuncoesMasNaoRepeteNaMesma()
+    {
+        using var db = DbContextFactory.Criar();
+        var tecnico = new Trabalhador { Nome = "Carlos Técnico", Cpf = "11122233344", Funcao = new Funcao { Nome = "Técnico de Segurança" } };
+        var documento = new DocumentoAssinatura { EntidadeTipo = "DdsSemanal", EntidadeId = Guid.NewGuid() };
+        db.Trabalhadores.Add(tecnico);
+        db.DocumentosAssinatura.Add(documento);
+        await db.SaveChangesAsync();
+
+        var servico = new RegistradorAssinaturaService(db, new AuditoriaServiceFalsa());
+        var resultado = new ResultadoAutenticacaoAssinatura(tecnico.Id, MetodoAutenticacaoAssinatura.SessaoLogada);
+
+        await servico.RegistrarAsync(documento.Id, resultado, null, CancellationToken.None, papel: PapelAssinatura.ResponsavelDds);
+        await servico.RegistrarAsync(documento.Id, resultado, null, CancellationToken.None, papel: PapelAssinatura.ResponsavelObraSst);
+
+        await Assert.ThrowsAsync<InvalidOperationException>(() =>
+            servico.RegistrarAsync(documento.Id, resultado, null, CancellationToken.None, papel: PapelAssinatura.ResponsavelDds));
+
+        var papeis = await db.DocumentoSignatarios.Where(s => s.DocumentoAssinaturaId == documento.Id).Select(s => s.Papel).ToListAsync();
+        Assert.Equal(2, papeis.Count);
+        Assert.Contains(PapelAssinatura.ResponsavelDds, papeis);
+        Assert.Contains(PapelAssinatura.ResponsavelObraSst, papeis);
+    }
+
+    [Fact]
     public async Task RegistrarAsync_MesmoTrabalhadorNaoPodeRepetirAssinaturaDeRecebedor()
     {
         using var db = DbContextFactory.Criar();

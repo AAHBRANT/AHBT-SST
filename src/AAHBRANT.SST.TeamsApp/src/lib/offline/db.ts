@@ -16,6 +16,9 @@ export interface ItemFilaSaida {
   criadoEm: number;
   tentativas: number;
   ultimoErro?: string;
+  // Conta (tenant:oid do token) que registrou a ação. Só ela reenvia: outra pessoa logada no mesmo
+  // navegador não manda a ação em nome dela (auditoria 19/10, A04). Ausente em itens antigos.
+  conta?: string;
 }
 
 export interface ItemCacheJson {
@@ -39,6 +42,9 @@ export interface ItemConflito {
   dadosServidor?: string;
   criadoEm: number;
   lido: boolean;
+  // Ação recusada pelo servidor, guardada inteira (inclusive a foto) para o botão "Tentar de novo" — antes
+  // ficava só o texto "[multipart]" e a foto da assinatura se perdia. Campo sem índice: não muda o schema.
+  item?: Omit<ItemFilaSaida, 'id'>;
 }
 
 class SstOfflineDb extends Dexie {

@@ -31,7 +31,47 @@ public class ExportarDdsPdfQueryHandler : IRequestHandler<ExportarDdsPdfQuery, b
         var logoConteudo = await _db.Obras.Where(o => o.Id == detalhe.Dds.ObraId).Select(o => o.LogoConteudo).FirstOrDefaultAsync(ct);
         var rastreio = await _rastreabilidade.GarantirAsync(nameof(Domain.Entidades.Dds), request.Id, ct);
 
-        var pdf = _pdf.Gerar(MontarModelo(detalhe, logoConteudo, dds.NumeroDocumento, rastreio));
+        // Assinatura do responsável: o usuário responsável se liga a um Trabalhador, e é esse
+        // trabalhador que assina pelo "Assinar DDS" (DocumentoSignatario). Sem vínculo ou sem
+        // assinatura, o PDF mostra "Aguardando assinatura".
+        var responsavel = await _db.Usuarios
+            .Where(u => u.Id == dds.ResponsavelUsuarioId)
+            .Select(u => new
+            {
+                u.TrabalhadorId,
+                Funcao = u.Trabalhador != null && u.Trabalhador.Funcao != null ? u.Trabalhador.Funcao.Nome : null,
+            })
+            .FirstOrDefaultAsync(ct);
+        var trabalhadorResponsavelId = responsavel?.TrabalhadorId;
+        var assinaturaResponsavel = trabalhadorResponsavelId is null
+            ? null
+            : await _db.DocumentoSignatarios
+                .Where(s => s.TrabalhadorId == trabalhadorResponsavelId
+                    && s.DocumentoAssinatura!.EntidadeTipo == nameof(Domain.Entidades.Dds)
+                    && s.DocumentoAssinatura.EntidadeId == request.Id)
+                .OrderBy(s => s.AssinadoEm)
+                .Select(s => new { s.AssinadoEm, s.MetodoAutenticacao })
+                .FirstOrDefaultAsync(ct);
+
+        var fotosBanco = await _db.DdsFotosEvidencia
+            .Where(f => f.DdsId == request.Id && f.Ativo)
+            .OrderBy(f => f.Ordem)
+            .Select(f => new { f.FotoConteudo, f.FotoMetadadosJson })
+            .ToListAsync(ct);
+        var fotos = fotosBanco.Select(f =>
+        {
+            var d = Common.DadosCapturaFoto.Ler(f.FotoMetadadosJson);
+            return new DdsPdfFotoModelo(f.FotoConteudo, d?.CapturadaEm, d?.FusoMinutos, d?.Local, d?.Latitude, d?.Longitude);
+        }).ToList();
+
+        var modelo = MontarModelo(detalhe, logoConteudo, dds.NumeroDocumento, rastreio) with
+        {
+            Fotos = fotos,
+            ResponsavelAssinadoEm = assinaturaResponsavel?.AssinadoEm,
+            ResponsavelMetodo = assinaturaResponsavel?.MetodoAutenticacao,
+            ResponsavelFuncao = responsavel?.Funcao,
+        };
+        var pdf = _pdf.Gerar(modelo);
         // Guarda a cópia exata emitida e o SHA-256 dela — é o que permite conferir, depois,
         // que o arquivo em mãos não foi adulterado (ver HashArquivoCalculador).
         await _rastreabilidade.RegistrarArquivoAsync(rastreio.DocumentoId, pdf, ct);
@@ -48,7 +88,7 @@ public class ExportarDdsPdfQueryHandler : IRequestHandler<ExportarDdsPdfQuery, b
         detalhe.Dds.TemaLivreNome,
         detalhe.Dds.TemaLivreDescricao,
         detalhe.ItensChecklist.Select(i => (i.Descricao, i.Verificado)).ToList(),
-        detalhe.Participantes.Select(p => p.TrabalhadorNome).ToList(),
+        detalhe.Participantes.Select(p => new DdsPdfParticipanteModelo(p.TrabalhadorNome, p.AssinadoEm, p.MetodoAssinatura)).ToList(),
         protocolo,
         rastreio.ConteudoHash,
         rastreio.UrlValidacaoPublica,

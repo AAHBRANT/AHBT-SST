@@ -1,4 +1,5 @@
-import { Abas, useAbaNaUrl, PageHeader } from '@ui';
+import { Abas, DashboardTopo, useAbaNaUrl, PageHeader } from '@ui';
+import { UniformeDashboardTab } from './dashboard/UniformeDashboardTab';
 import { CatalogoUniformeTab } from './CatalogoUniformeTab';
 import { EntregaUniformeTab } from './EntregaUniformeTab';
 import { EstoqueUniformeTab } from './EstoqueUniformeTab';
@@ -19,6 +20,10 @@ export function UniformePage({ mostrarTitulo = true }: { mostrarTitulo?: boolean
   return (
     <div>
       {mostrarTitulo && <PageHeader titulo="Uniforme" />}
+
+      <DashboardTopo>
+        <UniformeDashboardTab />
+      </DashboardTopo>
 
       <Abas
         nivel={mostrarTitulo ? 'pilar' : 'modulo'}

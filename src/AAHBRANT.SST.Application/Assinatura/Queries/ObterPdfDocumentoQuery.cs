@@ -24,9 +24,18 @@ public class ObterPdfDocumentoQueryHandler : IRequestHandler<ObterPdfDocumentoQu
 
     public ObterPdfDocumentoQueryHandler(IAppDbContext db) => _db = db;
 
-    public Task<byte[]?> Handle(ObterPdfDocumentoQuery request, CancellationToken ct) =>
-        _db.DocumentosAssinatura
+    public async Task<byte[]?> Handle(ObterPdfDocumentoQuery request, CancellationToken ct)
+    {
+        var origem = await _db.DocumentosAssinatura
+            .Where(d => d.Id == request.DocumentoAssinaturaId)
+            .Select(d => new { d.EntidadeTipo, d.EntidadeId })
+            .FirstOrDefaultAsync(ct);
+        if (origem is null || !await EscopoDocumentoAssinatura.PodeVerAsync(_db, origem.EntidadeTipo, origem.EntidadeId, ct))
+            return null;
+
+        return await _db.DocumentosAssinatura
             .Where(d => d.Id == request.DocumentoAssinaturaId)
             .Select(d => d.PdfConteudo)
             .FirstOrDefaultAsync(ct);
+    }
 }

@@ -1,3 +1,4 @@
+using AAHBRANT.SST.Application.Common;
 using AAHBRANT.SST.Application.Common.Interfaces;
 using AAHBRANT.SST.Domain.Entidades;
 using FluentValidation;
@@ -118,7 +119,7 @@ public class SincronizarAlojamentoGrhCommandHandler : IRequestHandler<Sincroniza
     private async Task SincronizarMoradoresAsync(
         Guid alojamentoId, IReadOnlyList<AlojamentoMoradorGrhDto> moradoresGrh, CancellationToken ct)
     {
-        var hashesInformados = moradoresGrh.Select(m => _cpfHash.CalcularHash(m.Cpf)).ToHashSet();
+        var hashesInformados = moradoresGrh.Select(m => _cpfHash.CalcularHash(CpfMascarador.ApenasDigitos(m.Cpf))).ToHashSet();
 
         var vinculosAtivosDoAlojamento = await _db.AlojamentoMoradores
             .Include(m => m.Trabalhador)
@@ -134,7 +135,7 @@ public class SincronizarAlojamentoGrhCommandHandler : IRequestHandler<Sincroniza
 
         foreach (var moradorGrh in moradoresGrh)
         {
-            var hash = _cpfHash.CalcularHash(moradorGrh.Cpf);
+            var hash = _cpfHash.CalcularHash(CpfMascarador.ApenasDigitos(moradorGrh.Cpf));
 
             // IgnoreQueryFilters por consistência com a busca de Alojamento acima — trabalhador
             // desligado (Ativo=false) é descartado explicitamente logo abaixo, não pelo filtro.

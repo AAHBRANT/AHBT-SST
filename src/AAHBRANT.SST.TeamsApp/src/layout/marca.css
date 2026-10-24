@@ -1,0 +1,69 @@
+/* Marca AAHBRANT no cabeçalho do G-SST — mesmo padrão do G-QUALI: logo oficial (PNG, sem recolorir),
+   divisor vinho inclinado e brilho recortado pela própria logo ao passar o mouse. */
+
+.gs-logo {
+  position: relative;
+  display: inline-block;
+  line-height: 0;
+}
+.gs-logo img {
+  display: block;
+  height: var(--gs-logo-altura, 30px);
+  width: auto;
+  max-width: none;
+  user-select: none;
+  -webkit-user-drag: none;
+}
+.gs-logo-brilho {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  -webkit-mask-image: var(--gs-logo-url);
+  mask-image: var(--gs-logo-url);
+  -webkit-mask-size: 100% 100%;
+  mask-size: 100% 100%;
+  background-image: linear-gradient(110deg, transparent 38%, rgba(235, 233, 173, 0.95) 50%, transparent 62%);
+  background-size: 260% 100%;
+  background-position: 130% 0;
+  opacity: 0;
+}
+
+.gs-marca-link {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-width: 0;
+  text-decoration: none;
+  color: inherit;
+  border-radius: 6px;
+  outline-offset: 4px;
+}
+.gs-marca-link:hover .gs-logo-brilho,
+.gs-marca-link:focus-visible .gs-logo-brilho {
+  animation: gs-brilho 900ms ease-out;
+}
+.gs-marca-link .gs-logo {
+  flex-shrink: 0;
+  transition: transform 200ms ease;
+}
+.gs-marca-link:hover .gs-logo {
+  transform: translateY(-1px);
+}
+.gs-marca-divisor {
+  width: 1px;
+  align-self: stretch;
+  margin: 6px 0;
+  background: linear-gradient(180deg, transparent, #670000 30%, #670000 70%, transparent);
+  transform: skewX(-18deg);
+  flex-shrink: 0;
+}
+
+@keyframes gs-brilho {
+  0% { opacity: 1; background-position: 130% 0; }
+  100% { opacity: 1; background-position: -30% 0; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .gs-marca-link:hover .gs-logo-brilho { animation: none; }
+  .gs-marca-link:hover .gs-logo { transform: none; }
+}

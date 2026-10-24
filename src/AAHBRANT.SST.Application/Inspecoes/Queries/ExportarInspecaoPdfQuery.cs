@@ -62,6 +62,19 @@ public class ExportarInspecaoPdfQueryHandler : IRequestHandler<ExportarInspecaoP
         var rastreio = await _rastreabilidade.GarantirAsync(nameof(Inspecao), request.Id, ct);
         var assinatura = await ObterAssinaturaFinalizada(request.Id, ct);
 
+        List<string>? identificacaoVeiculo = null;
+        if (detalhe.Inspecao.VeiculoId is not null)
+        {
+            var i = detalhe.Inspecao;
+            identificacaoVeiculo = new List<string>
+            {
+                $"Tipo: {DescreverTipoVeiculo(i.VeiculoTipo)}",
+                $"Placa/Prefixo: {i.VeiculoPlacaPrefixo}",
+            };
+            if (!string.IsNullOrWhiteSpace(i.VeiculoMarcaModelo)) identificacaoVeiculo.Add($"Marca/Modelo: {i.VeiculoMarcaModelo}");
+            if (!string.IsNullOrWhiteSpace(i.VeiculoEmpresa)) identificacaoVeiculo.Add($"Subcontratada: {i.VeiculoEmpresa}");
+        }
+
         var modelo = new InspecaoPdfModelo(
             detalhe.Inspecao.ObraNome,
             obraLogoConteudo,
@@ -77,7 +90,9 @@ public class ExportarInspecaoPdfQueryHandler : IRequestHandler<ExportarInspecaoP
             assinatura?.UrlValidacaoPublica ?? rastreio.UrlValidacaoPublica,
             assinatura?.QrCodePng ?? rastreio.QrCodePng,
             assinatura is not null || rastreio.TemAssinatura,
-            assinatura);
+            assinatura,
+            identificacaoVeiculo,
+            detalhe.Inspecao.TipoInspecao == TipoInspecao.Veiculo);
 
         var pdf = _pdf.Gerar(modelo);
         // Guarda a cópia exata emitida e o SHA-256 dela — é o que permite conferir, depois,
@@ -115,7 +130,9 @@ public class ExportarInspecaoPdfQueryHandler : IRequestHandler<ExportarInspecaoP
                 (s, t) => new InspecaoPdfSignatarioModelo(
                     t.Nome,
                     DescreverMetodoAssinatura(s.MetodoAutenticacao),
-                    s.AssinadoEm))
+                    s.AssinadoEm,
+                    t.Funcao != null ? t.Funcao.Nome : null,
+                    s.MetodoAutenticacao))
             .ToListAsync(ct);
 
         var finalizadoEm = documento.FinalizadoEm!.Value;
@@ -144,7 +161,18 @@ public class ExportarInspecaoPdfQueryHandler : IRequestHandler<ExportarInspecaoP
         TipoInspecao.Comportamental => "Comportamental",
         TipoInspecao.Terceiros => "Terceiros",
         TipoInspecao.Alojamento => "Alojamento",
+        TipoInspecao.Veiculo => "Veículo",
         _ => tipo.ToString(),
+    };
+
+    private static string DescreverTipoVeiculo(TipoVeiculo? tipo) => tipo switch
+    {
+        TipoVeiculo.CaminhaoBasculante => "Caminhão basculante",
+        TipoVeiculo.Retroescavadeira => "Retroescavadeira",
+        TipoVeiculo.EscavadeiraHidraulica => "Escavadeira hidráulica",
+        TipoVeiculo.CaminhaoCarroceria => "Caminhão carroceria",
+        TipoVeiculo.CaminhaoMunck => "Caminhão munck",
+        _ => "Veículo",
     };
 
     private static string DescreverMetodoAssinatura(MetodoAutenticacaoAssinatura metodo) => metodo switch

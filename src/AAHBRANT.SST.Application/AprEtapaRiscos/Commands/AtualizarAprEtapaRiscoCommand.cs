@@ -1,5 +1,6 @@
 using AAHBRANT.SST.Application.Aprs;
 using AAHBRANT.SST.Application.Common.Interfaces;
+using AAHBRANT.SST.Application.Common.Seguranca;
 using FluentValidation;
 using MediatR;
 using Microsoft.EntityFrameworkCore;
@@ -47,6 +48,9 @@ public class AtualizarAprEtapaRiscoCommandHandler : IRequestHandler<AtualizarApr
     {
         var risco = await _db.AprEtapaRiscos.FirstOrDefaultAsync(r => r.Id == request.Id, ct)
             ?? throw new KeyNotFoundException($"Risco de etapa de APR {request.Id} não encontrado.");
+
+        var aprId = await _db.AprEtapas.Where(e => e.Id == risco.AprEtapaId).Select(e => e.AprId).FirstOrDefaultAsync(ct);
+        await _db.GarantirAprNoEscopoAsync(aprId, ct);
 
         risco.PerigoEventoPerigoso = request.PerigoEventoPerigoso;
         risco.FonteCircunstancia = request.FonteCircunstancia;

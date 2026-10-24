@@ -12,6 +12,10 @@ export {
   // faltava na lista original da spec §2.2 por não ter uso ainda; achado na Onda 2 Task 18
   // (QuestionarioAplicabilidadeTab.tsx, único consumidor no app hoje).
   Radio, RadioGroup,
+  // Diálogo modal: EntregasTab (canhoto do carrinho) e outras páginas usam as peças de Dialog direto.
+  Dialog, DialogActions, DialogBody, DialogContent, DialogSurface, DialogTitle,
+  // Switch: liga/desliga simples (CursosTreinamentoTab — curso de Integração de Segurança).
+  Switch,
 } from '@fluentui/react-components';
 
 // Exceção pontual (spec §5.1): primitivos de tabela crus, só para grades que genuinamente não são
@@ -45,6 +49,7 @@ export { SstTooltip, type SstTooltipProps } from './primitivos/Tooltip/SstToolti
 
 export { Abas, type AbasProps, type AbaItem } from './compostos/Abas/Abas';
 export { useAbaNaUrl } from './compostos/Abas/useAbaNaUrl';
+export { DashboardTopo } from './compostos/DashboardTopo/DashboardTopo';
 
 export { DataTable, type DataTableProps, type Coluna } from './compostos/DataTable/DataTable';
 
@@ -56,6 +61,7 @@ export { ListaSelecaoMultipla, type ListaSelecaoMultiplaProps } from './primitiv
 export { SeletorPesquisavel, type SeletorPesquisavelProps, type OpcaoSeletor } from './primitivos/SeletorPesquisavel/SeletorPesquisavel';
 export { useConfirmar, type OpcoesConfirmacao } from './primitivos/ConfirmDialog/useConfirmar';
 export { BotaoAcao, type BotaoAcaoProps, type TomBotaoAcao } from './primitivos/BotaoAcao/BotaoAcao';
+export { BotaoVoltar, type BotaoVoltarProps } from './primitivos/BotaoVoltar/BotaoVoltar';
 
 export { PainelLateral, type PainelLateralProps } from './compostos/PainelLateral/PainelLateral';
 export { PainelCriacaoInline, type PainelCriacaoInlineProps } from './compostos/PainelCriacaoInline/PainelCriacaoInline';

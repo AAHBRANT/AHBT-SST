@@ -1,4 +1,5 @@
 using AAHBRANT.SST.Application.Common.Interfaces;
+using AAHBRANT.SST.Application.Common.Seguranca;
 using MediatR;
 using Microsoft.EntityFrameworkCore;
 
@@ -15,6 +16,7 @@ public class ObterPermissaoTrabalhoDetalheQueryHandler : IRequestHandler<ObterPe
     public async Task<PermissaoTrabalhoDetalheDto?> Handle(ObterPermissaoTrabalhoDetalheQuery request, CancellationToken ct)
     {
         var pt = await _db.PermissoesTrabalho
+            .NoEscopoDaAtividade(_db, p => p.AtividadeId)
             .Include(p => p.Atividade!).ThenInclude(a => a.Obra)
             .Include(p => p.Equipe)
             .Include(p => p.ResponsavelExecucaoUsuario)
@@ -75,6 +77,7 @@ public class ObterPermissaoTrabalhoDetalheQueryHandler : IRequestHandler<ObterPe
                 ResponsavelSstUsuarioId = pt.ResponsavelSstUsuarioId,
                 ResponsavelSstUsuarioNome = pt.ResponsavelSstUsuario?.Nome,
                 DataAssinaturaSst = pt.DataAssinaturaSst,
+                MetodoAssinatura = pt.MetodoAssinatura,
                 SuspensaPorUsuarioId = pt.SuspensaPorUsuarioId,
                 SuspensaPorUsuarioNome = pt.SuspensaPorUsuario?.Nome,
                 DataSuspensao = pt.DataSuspensao,

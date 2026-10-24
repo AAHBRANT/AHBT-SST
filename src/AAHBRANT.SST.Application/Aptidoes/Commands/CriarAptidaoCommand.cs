@@ -1,4 +1,5 @@
 using AAHBRANT.SST.Application.Common.Interfaces;
+using AAHBRANT.SST.Application.Common.Seguranca;
 using AAHBRANT.SST.Domain.Entidades;
 using AAHBRANT.SST.Domain.Enums;
 using FluentValidation;
@@ -34,6 +35,8 @@ public class CriarAptidaoCommandHandler : IRequestHandler<CriarAptidaoCommand, G
 
     public async Task<Guid> Handle(CriarAptidaoCommand request, CancellationToken ct)
     {
+        await _db.GarantirTrabalhadorNoEscopoAsync(request.TrabalhadorId, ct);
+
         var aptidao = new AptidaoAtividadeEspecifica
         {
             TrabalhadorId = request.TrabalhadorId,

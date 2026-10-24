@@ -6,12 +6,21 @@ using Microsoft.Extensions.Options;
 
 namespace AAHBRANT.SST.AgenteBiometria.Endpoints;
 
-public record DispositivoResponse(Guid DispositivoId, string SegredoDispositivo);
+// O segredo do dispositivo não sai mais para o navegador (11/10): com ele, quem tivesse acesso ao navegador
+// conseguia "assinar" por qualquer trabalhador. LeituraAssinada avisa a tela que este agente assina as leituras.
+// Versao: versão do agente instalado no posto (para conferir quem ainda não atualizou).
+public record DispositivoResponse(Guid DispositivoId, bool LeituraAssinada = true, string? Versao = null);
 public record SincronizarResponse(int Total);
-public record CapturaBrutaResponse(byte[] TemplateBruto);
+// ImagemPng: imagem da leitura, guardada (criptografada) como referência do cadastro no log de assinaturas.
+public record CapturaBrutaResponse(byte[] TemplateBruto, byte[]? ImagemPng = null);
 public record CompararTemplatesRequest(byte[] TemplateA, byte[] TemplateB);
 public record CompararTemplatesResponse(double Score);
-public record CapturaResponse(Guid TrabalhadorId, double Score);
+// ImagemPng: imagem da digital lida, guardada como evidência visual da assinatura (Cofre).
+// Desafio/Assinatura: presentes quando a tela mandou um desafio do servidor (ver Capturar). Assinaturas: uma
+// por item de Desafios, na mesma ordem (entrega de EPI em lote: uma leitura assina vários documentos).
+public record CapturaResponse(Guid TrabalhadorId, double Score, byte[]? ImagemPng = null, string? Desafio = null, string? Assinatura = null,
+    List<string>? Assinaturas = null);
+public record CapturarRequest(string? Desafio, List<string>? Desafios = null);
 public record ErroResponse(string Erro);
 
 public static class AgenteEndpoints
@@ -26,7 +35,8 @@ public static class AgenteEndpoints
     }
 
     public static Ok<DispositivoResponse> ObterDispositivo(IOptions<AgenteOptions> options) =>
-        TypedResults.Ok(new DispositivoResponse(options.Value.DispositivoId, options.Value.SegredoDispositivo));
+        TypedResults.Ok(new DispositivoResponse(options.Value.DispositivoId,
+            Versao: Atualizacao.VerificadorAtualizacao.VersaoAtual().ToString(3)));
 
     public static async Task<Ok<SincronizarResponse>> Sincronizar(TemplateCacheService cache, CancellationToken ct)
     {
@@ -38,7 +48,7 @@ public static class AgenteEndpoints
     public static async Task<Ok<CapturaBrutaResponse>> CapturarBruto(IFingerprintReader leitor, IFingerprintMatcher matcher, bool? novoToque, CancellationToken ct)
     {
         var captura = await leitor.CapturarAsync(ct, novoToque ?? false);
-        return TypedResults.Ok(new CapturaBrutaResponse(matcher.ExtrairTemplate(captura)));
+        return TypedResults.Ok(new CapturaBrutaResponse(matcher.ExtrairTemplate(captura), ImagemDigitalPng.Converter(captura)));
     }
 
     // Cadastro com confirmação: duas leituras do mesmo dedo precisam concordar entre si (mesma escala do
@@ -53,13 +63,34 @@ public static class AgenteEndpoints
         return TypedResults.Ok(new CompararTemplatesResponse(matcher.Comparar(corpo.TemplateA, corpo.TemplateB)));
     }
 
-    public static async Task<Results<Ok<CapturaResponse>, NotFound<ErroResponse>>> Capturar(
-        IFingerprintReader leitor, IFingerprintMatcher matcher, TemplateCacheService cache, CancellationToken ct)
+    // Um template corrompido ou de outra versão do SourceAFIS não pode derrubar a leitura de todo mundo
+    // (auditoria 19/10, A08): vale score 0 e fica no log para recadastrar.
+    private static double CompararSemDerrubar(IFingerprintMatcher matcher, byte[] captura, TemplateCacheado candidato)
     {
-        var captura = matcher.ExtrairTemplate(await leitor.CapturarAsync(ct));
+        try
+        {
+            return matcher.Comparar(captura, candidato.TemplateBruto);
+        }
+        catch (Exception ex)
+        {
+            Console.Error.WriteLine($"Template inválido ignorado (trabalhador {candidato.TrabalhadorId}): {ex.GetType().Name}");
+            return 0;
+        }
+    }
+
+    // Texto assinado de cada leitura. Precisa ser idêntico a LeituraBiometricaAssinada.Conteudo no servidor.
+    public static string ConteudoAssinado(string desafio, Guid trabalhadorId, double score) =>
+        string.Join('|', desafio, trabalhadorId.ToString("D"), score.ToString("F2", System.Globalization.CultureInfo.InvariantCulture));
+
+    public static async Task<Results<Ok<CapturaResponse>, NotFound<ErroResponse>>> Capturar(
+        IFingerprintReader leitor, IFingerprintMatcher matcher, TemplateCacheService cache, ChaveAssinaturaAgente chave,
+        CapturarRequest? corpo, CancellationToken ct)
+    {
+        var imagemBruta = await leitor.CapturarAsync(ct);
+        var captura = matcher.ExtrairTemplate(imagemBruta);
 
         var melhor = cache.Templates
-            .Select(t => new { t.TrabalhadorId, Score = matcher.Comparar(captura, t.TemplateBruto) })
+            .Select(t => new { t.TrabalhadorId, Score = CompararSemDerrubar(matcher, captura, t) })
             .OrderByDescending(r => r.Score)
             .FirstOrDefault();
 
@@ -68,6 +99,16 @@ public static class AgenteEndpoints
             return TypedResults.NotFound(new ErroResponse("Nenhum template cadastrado no cache local. Rode /api/sincronizar primeiro."));
         }
 
-        return TypedResults.Ok(new CapturaResponse(melhor.TrabalhadorId, melhor.Score));
+        // Nota arredondada em 2 casas antes de assinar: o servidor confere exatamente o texto assinado, e assim
+        // o número não muda no caminho (JSON do agente -> navegador -> servidor).
+        var score = Math.Round(melhor.Score, 2);
+        // Leitor simulado (testes, sem hardware) nunca assina: com a exigência de leitura assinada ligada no
+        // servidor, uma instalação esquecida em "Simulado" não consegue assinar documento de verdade.
+        var desafio = leitor is SimuladoFingerprintReader ? null : corpo?.Desafio;
+        var assinatura = string.IsNullOrWhiteSpace(desafio) ? null : chave.Assinar(ConteudoAssinado(desafio, melhor.TrabalhadorId, score));
+        var assinaturas = leitor is SimuladoFingerprintReader
+            ? null
+            : corpo?.Desafios?.Select(d => chave.Assinar(ConteudoAssinado(d, melhor.TrabalhadorId, score))).ToList();
+        return TypedResults.Ok(new CapturaResponse(melhor.TrabalhadorId, score, ImagemDigitalPng.Converter(imagemBruta), desafio, assinatura, assinaturas));
     }
 }

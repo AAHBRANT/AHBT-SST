@@ -43,13 +43,16 @@ public class ExportarAprPdfQueryHandler : IRequestHandler<ExportarAprPdfQuery, b
 
     public static AprPdfModelo MontarModelo(AprDetalheDto detalhe, byte[]? obraLogoConteudo, RastreabilidadeDocumentoResultado rastreio)
     {
+        // Mais recente por trabalhador (a lista já vem da mais nova para a mais antiga).
         var assinaturasPorTrabalhador = detalhe.Assinaturas
             .Where(a => a.Papel == PapelAssinaturaApr.Envolvido)
-            .Select(a => a.TrabalhadorId)
-            .ToHashSet();
+            .GroupBy(a => a.TrabalhadorId)
+            .ToDictionary(g => g.Key, g => g.First());
 
         var envolvidos = detalhe.Responsaveis
-            .Select(r => new AprPdfEnvolvido(r.TrabalhadorNome, r.TrabalhadorFuncaoNome, assinaturasPorTrabalhador.Contains(r.TrabalhadorId)))
+            .Select(r => assinaturasPorTrabalhador.TryGetValue(r.TrabalhadorId, out var ass)
+                ? new AprPdfEnvolvido(r.TrabalhadorNome, r.TrabalhadorFuncaoNome, true, ass.DataAssinatura, ass.MetodoAutenticacao)
+                : new AprPdfEnvolvido(r.TrabalhadorNome, r.TrabalhadorFuncaoNome, false))
             .ToList();
 
         var riscos = detalhe.Etapas
@@ -85,8 +88,8 @@ public class ExportarAprPdfQueryHandler : IRequestHandler<ExportarAprPdfQuery, b
             detalhe.Apr.Data,
             envolvidos,
             riscos,
-            new AprPdfAssinatura(elaboracao?.TrabalhadorNome, elaboracao?.TrabalhadorFuncaoNome, elaboracao?.DataAssinatura),
-            new AprPdfAssinatura(supervisao?.TrabalhadorNome, supervisao?.TrabalhadorFuncaoNome, supervisao?.DataAssinatura),
+            new AprPdfAssinatura(elaboracao?.TrabalhadorNome, elaboracao?.TrabalhadorFuncaoNome, elaboracao?.DataAssinatura, elaboracao?.MetodoAutenticacao),
+            new AprPdfAssinatura(supervisao?.TrabalhadorNome, supervisao?.TrabalhadorFuncaoNome, supervisao?.DataAssinatura, supervisao?.MetodoAutenticacao),
             rastreio.ConteudoHash,
             rastreio.UrlValidacaoPublica,
             rastreio.QrCodePng,

@@ -27,8 +27,9 @@ public class VincularTagPorUidCommandHandler : IRequestHandler<VincularTagPorUid
 
     public async Task Handle(VincularTagPorUidCommand request, CancellationToken ct)
     {
-        var tag = await _db.TagsIdentificacao.FirstOrDefaultAsync(t => t.Uid == request.Uid, ct)
+        var tag = await _db.TagsIdentificacao.NoEscopoDaObra(_db).FirstOrDefaultAsync(t => t.Uid == request.Uid, ct)
             ?? throw new KeyNotFoundException($"Tag com Uid '{request.Uid}' não encontrada.");
+        await _db.GarantirEntidadeNoEscopoAsync(request.EntidadeVinculadaTipo, request.EntidadeVinculadaId, ct);
 
         if (tag.Status != StatusTag.Disponivel)
             throw new InvalidOperationException("Só é possível vincular uma tag com status Disponível.");

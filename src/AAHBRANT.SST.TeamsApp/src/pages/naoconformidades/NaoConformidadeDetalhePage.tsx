@@ -393,7 +393,7 @@ export function NaoConformidadeDetalhePage() {
     <DetailPageLayout
       cabecalho={{
         titulo: nc.descricao,
-        subtitulo: [origemNaoConformidadeLabel[nc.origemDeteccao], nc.local, nc.atividadeNome]
+        subtitulo: [origemNaoConformidadeLabel[nc.origemDeteccao], nc.obraNome, nc.local, nc.atividadeNome]
           .filter(Boolean)
           .join(' · '),
         status: <StatusChip tom={tomStatus[nc.status] ?? 'neutro'}>{statusNaoConformidadeLabel[nc.status]}</StatusChip>,

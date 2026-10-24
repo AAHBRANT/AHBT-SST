@@ -137,6 +137,78 @@ public class SincronizarAsoGrhCommandHandlerTests
         Assert.Single(aso.Restricoes);
         Assert.Equal("Não operar em altura", aso.Restricoes.Single().Descricao);
     }
+
+    [Theory]
+    [InlineData("ADMISSIONAL", TipoExameAso.Admissional)]
+    [InlineData("PERIODICO", TipoExameAso.Periodico)]
+    [InlineData("Demissional", TipoExameAso.Demissional)]
+    [InlineData("MUDANÇA DE FUNÇÃO", TipoExameAso.MudancaDeFuncao)]
+    [InlineData(null, TipoExameAso.Periodico)]
+    public async Task Handle_UsaClassificacaoDoExameDoGrh(string? classificacao, TipoExameAso esperado)
+    {
+        var db = DbContextFactory.Criar();
+        await CriarTrabalhadorAsync(db, "38062559890");
+        var handler = new SincronizarAsoGrhCommandHandler(db, CpfHash);
+
+        var id = await handler.Handle(
+            Comando("GRH-ASO-001", "38062559890", new DateTime(2027, 6, 25), aptidao: "APTO")
+                with { Numero = "ASO", ClassificacaoExame = classificacao }, default);
+
+        Assert.Equal(esperado, (await db.Asos.SingleAsync(a => a.Id == id)).Tipo);
+    }
+
+    [Fact]
+    public async Task Handle_SemClassificacao_MantemTipoJaLancadoNoSst()
+    {
+        var db = DbContextFactory.Criar();
+        await CriarTrabalhadorAsync(db, "38062559890");
+        var handler = new SincronizarAsoGrhCommandHandler(db, CpfHash);
+        var id = await handler.Handle(
+            Comando("GRH-ASO-001", "38062559890", new DateTime(2027, 6, 25)) with { ClassificacaoExame = "ADMISSIONAL" }, default);
+
+        await handler.Handle(Comando("GRH-ASO-001", "38062559890", new DateTime(2027, 6, 25)), default);
+
+        Assert.Equal(TipoExameAso.Admissional, (await db.Asos.SingleAsync(a => a.Id == id)).Tipo);
+    }
+
+    [Fact]
+    public async Task Handle_ExameComplementar_NaoCriaAso()
+    {
+        var db = DbContextFactory.Criar();
+        await CriarTrabalhadorAsync(db, "38062559890");
+        var handler = new SincronizarAsoGrhCommandHandler(db, CpfHash);
+
+        var id = await handler.Handle(
+            Comando("GRH-AUDIO-001", "38062559890", new DateTime(2027, 6, 25)) with { Numero = "Audiometria Tonal" }, default);
+
+        Assert.Equal(Guid.Empty, id);
+        Assert.False(await db.Asos.IgnoreQueryFilters().AnyAsync());
+    }
+
+    [Fact]
+    public async Task Handle_ExameComplementarJaImportado_FicaInativoSemApagar()
+    {
+        var db = DbContextFactory.Criar();
+        await CriarTrabalhadorAsync(db, "38062559890");
+        var handler = new SincronizarAsoGrhCommandHandler(db, CpfHash);
+        var id = await handler.Handle(Comando("GRH-AUDIO-001", "38062559890", new DateTime(2027, 6, 25)), default);
+
+        await handler.Handle(
+            Comando("GRH-AUDIO-001", "38062559890", new DateTime(2027, 6, 25)) with { Numero = "Audiometria Tonal" }, default);
+
+        var aso = await db.Asos.IgnoreQueryFilters().SingleAsync(a => a.Id == id);
+        Assert.False(aso.Ativo);
+    }
+
+    [Theory]
+    [InlineData("ASO", false)]
+    [InlineData("aso periódico", false)]
+    [InlineData(null, false)]
+    [InlineData("", false)]
+    [InlineData("Audiometria Tonal", true)]
+    [InlineData("Espirometria", true)]
+    public void EhExameComplementar_PeloNomeDoDocumento(string? numero, bool esperado) =>
+        Assert.Equal(esperado, SincronizarAsoGrhCommandHandler.EhExameComplementar(numero));
 }
 
 // Dublê fino: usa o mesmo CpfHashService real (chaves já configuradas pela DbContextFactory

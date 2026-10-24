@@ -1,4 +1,5 @@
 using AAHBRANT.SST.Application.Common.Interfaces;
+using AAHBRANT.SST.Domain.Common;
 using MediatR;
 using Microsoft.EntityFrameworkCore;
 
@@ -16,7 +17,7 @@ public class ObterRequisitoLegalDetalheQueryHandler : IRequestHandler<ObterRequi
     {
         var requisito = await _db.RequisitosLegais
             .Where(r => r.Id == request.Id)
-            .Select(r => new RequisitoLegalDto(r.Id, r.Norma, r.Artigo, r.Titulo, r.Descricao, r.Categoria, r.Status, r.Fonte))
+            .Select(r => new RequisitoLegalDto(r.Id, r.Norma, r.Artigo, r.Titulo, r.Descricao, r.Categoria, r.Status, r.Fonte, r.ValidadoEmUtc, r.ValidadoPorNome))
             .FirstOrDefaultAsync(ct);
         if (requisito is null) return null;
 
@@ -30,7 +31,8 @@ public class ObterRequisitoLegalDetalheQueryHandler : IRequestHandler<ObterRequi
                 c.PerigoId, c.Perigo!.Nome,
                 c.FuncaoId, c.Funcao!.Nome,
                 c.TipoEquipamento,
-                c.ItemQuestionarioAplicabilidadeId, c.ItemQuestionarioAplicabilidade!.Pergunta))
+                c.ItemQuestionarioAplicabilidadeId, c.ItemQuestionarioAplicabilidade!.Pergunta,
+                c.Origem == OrigemRegistro.Importacao))
             .ToListAsync(ct);
 
         return new RequisitoLegalDetalheDto(requisito, criterios);

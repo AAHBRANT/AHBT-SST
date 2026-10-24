@@ -1,6 +1,7 @@
 using AAHBRANT.SST.Application.Alertas;
 using AAHBRANT.SST.Application.Common;
 using AAHBRANT.SST.Application.Common.Interfaces;
+using AAHBRANT.SST.Application.PlanosIntegracao;
 using AAHBRANT.SST.Domain.Entidades;
 using AAHBRANT.SST.Domain.Enums;
 using FluentValidation;
@@ -114,7 +115,9 @@ public class CadastrarPessoaTerceirizadaCommandHandler : IRequestHandler<Cadastr
 
             var estoque = await _db.EstoquesEpi
                 .FirstOrDefaultAsync(e => e.CatalogoEpiId == catalogoEpiId && e.ObraId == contrato.ObraId, ct);
-            var saldoAtual = estoque?.Saldo ?? 0;
+            // Desconta os kits já separados para funcionários novos da obra (plano de integração).
+            var saldoAtual = (estoque?.Saldo ?? 0) - await SituacaoReservasEpi.ReservadoParaOutrosAsync(
+                _db, contrato.ObraId, catalogoEpiId, trabalhador.Id, ct);
 
             if (saldoAtual >= 1)
             {

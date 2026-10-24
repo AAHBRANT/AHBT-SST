@@ -114,6 +114,7 @@ public class ObterOuCriarInspecaoAlojamentoCommandHandlerTests
     {
         using var conexao = new Microsoft.Data.Sqlite.SqliteConnection("DataSource=:memory:");
         conexao.Open();
+        conexao.CreateCollation("Latin1_General_100_BIN2", (a, b) => string.Compare(a, b, StringComparison.Ordinal));
         var options = new DbContextOptionsBuilder<SstDbContext>().UseSqlite(conexao).Options;
 
         using var dbSetup = new SstDbContext(options, new CurrentUserService());

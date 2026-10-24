@@ -22,12 +22,14 @@ public static class TipoDocumentoAssinatura
         ["ProcessoEleitoralCipa"] = "Ata do Processo Eleitoral da CIPA",
         ["ReuniaoCipa"] = "Ata de Reunião da CIPA",
         ["FichaEpiTrabalhador"] = "Ficha de EPI",
-        ["SessaoTreinamento"] = "Ata de Sessão de Treinamento",
+        ["SessaoTreinamento"] = "Lista de Presença de Treinamento",
         ["Treinamento"] = "Certificado de Treinamento",
         ["EntregaEpi"] = "Entrega de EPI",
+        ["TermoCompromissoEpi"] = "Termo de Recebimento e Compromisso de Uso (EPI)",
         ["DevolucaoEpi"] = "Devolução de EPI",
         ["EntregaUniforme"] = "Entrega de Uniforme",
         ["NaoConformidade"] = "Registro de Não Conformidade",
+        ["SolicitacaoReposicaoEpi"] = "Solicitação de Reposição de EPI",
     };
 
     // Onde estão, de fato, as assinaturas de cada documento consolidado. A frase entra na página

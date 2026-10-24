@@ -1,5 +1,6 @@
 using AAHBRANT.SST.Application.Common;
 using AAHBRANT.SST.Application.Common.Interfaces;
+using AAHBRANT.SST.Application.Common.Seguranca;
 using AAHBRANT.SST.Domain.Entidades;
 using AAHBRANT.SST.Domain.Enums;
 using FluentValidation;
@@ -51,6 +52,8 @@ public class CriarPermissaoTrabalhoCommandHandler : IRequestHandler<CriarPermiss
 
     public async Task<Guid> Handle(CriarPermissaoTrabalhoCommand request, CancellationToken ct)
     {
+        await _db.GarantirAtividadeNoEscopoAsync(request.AtividadeId, ct);
+
         var atividadeExiste = await _db.Atividades.AnyAsync(a => a.Id == request.AtividadeId, ct);
         if (!atividadeExiste)
             throw new KeyNotFoundException($"Atividade {request.AtividadeId} não encontrada.");

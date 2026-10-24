@@ -1,4 +1,5 @@
 using AAHBRANT.SST.Application.Common.Interfaces;
+using AAHBRANT.SST.Application.Common.Seguranca;
 using AAHBRANT.SST.Domain.Enums;
 using FluentValidation;
 using MediatR;
@@ -33,7 +34,9 @@ public class RevalidarPermissaoTrabalhoCommandHandler : IRequestHandler<Revalida
 
     public async Task Handle(RevalidarPermissaoTrabalhoCommand request, CancellationToken ct)
     {
-        var pt = await _db.PermissoesTrabalho.FirstOrDefaultAsync(p => p.Id == request.Id, ct)
+        var pt = await _db.PermissoesTrabalho
+            .NoEscopoDaAtividade(_db, p => p.AtividadeId)
+            .FirstOrDefaultAsync(p => p.Id == request.Id, ct)
             ?? throw new KeyNotFoundException($"Permissão de Trabalho {request.Id} não encontrada.");
 
         if (pt.Status is not (StatusPt.Autorizada or StatusPt.Suspensa))

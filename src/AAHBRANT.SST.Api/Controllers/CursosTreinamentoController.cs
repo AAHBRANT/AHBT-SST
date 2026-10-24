@@ -19,6 +19,27 @@ public class CursosTreinamentoController : ControllerBase
     public async Task<IActionResult> Listar(CancellationToken ct)
         => Ok(await _mediator.Send(new ListarCursosTreinamentoQuery(), ct));
 
+    // Card "Aptidão por treinamento" do Início: por curso exigido na matriz de funções, quantos
+    // trabalhadores ativos estão aptos, a vencer, vencidos ou sem o curso. obraId filtra pela obra.
+    [Authorize(Policy = "treinamento:ver")]
+    [HttpGet("aptidao")]
+    public async Task<IActionResult> ObterAptidao([FromQuery] Guid? obraId, CancellationToken ct)
+        => Ok(await _mediator.Send(new ObterAptidaoPorCursoQuery(obraId), ct));
+
+    // Padrão de cada NR (19/10): título, carga horária mínima, validade e conteúdo programático
+    // mínimo — o cadastro de curso preenche o formulário com isso ao reconhecer a NR digitada.
+    [Authorize(Policy = "treinamento:ver")]
+    [HttpGet("padroes-nr")]
+    public IActionResult ListarPadroesNr()
+        => Ok(Domain.Entidades.CatalogoNormasRegulamentadoras.Todos.Select(p => new
+        {
+            p.Numero,
+            p.Titulo,
+            p.CargaHorariaMinima,
+            p.ValidadeEmMeses,
+            ConteudoProgramatico = p.ConteudoProgramaticoTexto,
+        }));
+
     [Authorize(Policy = "treinamento:ver")]
     [HttpGet("{id:guid}")]
     public async Task<IActionResult> ObterPorId(Guid id, CancellationToken ct)

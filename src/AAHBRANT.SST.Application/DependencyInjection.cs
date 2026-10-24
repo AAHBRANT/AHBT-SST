@@ -20,12 +20,14 @@ public static class DependencyInjection
         services.AddValidatorsFromAssembly(assembly);
         services.AddTransient(typeof(MediatR.IPipelineBehavior<,>), typeof(ValidationBehavior<,>));
 
+        services.AddScoped<AAHBRANT.SST.Application.Relatorios.IPublicadorRelatorio, AAHBRANT.SST.Application.Relatorios.PublicadorRelatorioService>();
         services.AddScoped<IEligibilityRule, AsoValidoRule>();
         services.AddScoped<IEligibilityRule, TreinamentoValidoRule>();
         services.AddScoped<IEligibilityRule, AprValidaRule>();
         services.AddScoped<IEligibilityRule, PermissaoTrabalhoValidaRule>();
         services.AddScoped<IEligibilityService, EligibilityService>();
 
+        services.AddScoped<LeituraIa.ProcessadorLeituraIa>();
         services.AddScoped<IAlertaOrigemProvider, AsoAlertaProvider>();
         services.AddScoped<IAlertaOrigemProvider, TreinamentoAlertaProvider>();
         services.AddScoped<IAlertaOrigemProvider, ExtintorAlertaProvider>();
@@ -34,9 +36,16 @@ public static class DependencyInjection
         services.AddScoped<IAlertaOrigemProvider, DocumentoAlertaProvider>();
         services.AddScoped<IAlertaOrigemProvider, AcaoPlanoAlertaProvider>();
         services.AddScoped<IAlertaOrigemProvider, PgrAlertaProvider>();
+        services.AddScoped<IAlertaOrigemProvider, PcmsoAlertaProvider>();
+        services.AddScoped<IAlertaOrigemProvider, ExamesFuncaoAlertaProvider>();
+        services.AddScoped<IAlertaOrigemProvider, CadastroFacialAlertaProvider>();
+        services.AddScoped<IAlertaOrigemProvider, DocumentoEmpresaTerceirizadaAlertaProvider>();
         services.AddScoped<IAlertaEngineService, AlertaEngineService>();
         services.AddScoped<ISuporteIaTriagemService, HeuristicaSuporteIaTriagemService>();
         services.AddScoped<ITecnicosSegurancaPorObraService, TecnicosSegurancaPorObraService>();
+        services.AddScoped<PlanosIntegracao.IPlanoIntegracaoService, PlanosIntegracao.PlanoIntegracaoService>();
+        services.AddScoped<EstoquesEpi.Minimo.IVerificacaoEstoqueMinimoService, EstoquesEpi.Minimo.VerificacaoEstoqueMinimoService>();
+        services.AddScoped<Common.Seguranca.IAcessoPorObraService, Common.Seguranca.AcessoPorObraService>();
 
         return services;
     }

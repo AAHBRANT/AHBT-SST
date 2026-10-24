@@ -9,7 +9,7 @@ import {
 } from '@fluentui/react-components';
 import { Button, Checkbox, Text, FeedbackInline } from '@ui';
 import { BotaoBiometriaDigital } from '../assinatura/BotaoBiometriaDigital';
-import { api } from '../../lib/api';
+import { api, DedoBiometria } from '../../lib/api';
 import { capturarDigitalParaCadastro, estaAgenteLocalDisponivel } from '../../lib/agenteBiometricoLocal';
 
 interface CadastroDigitalDialogProps {
@@ -17,7 +17,16 @@ interface CadastroDigitalDialogProps {
   trabalhadorNome?: string;
   aoFechar: () => void;
   aoConcluir?: () => void;
+  /** Polegar a cadastrar (ficha do trabalhador, 21/10). Sem ele, vale o cadastro único pós-criação. */
+  dedo?: DedoBiometria;
+  /** Termos de aceite e consentimento já registrados: pula direto para a leitura. */
+  termosJaRegistrados?: boolean;
 }
+
+const NOME_DEDO: Record<number, string> = {
+  [DedoBiometria.PolegarDireito]: 'polegar direito',
+  [DedoBiometria.PolegarEsquerdo]: 'polegar esquerdo',
+};
 
 function extrairMensagemErro(e: unknown, fallback: string): string {
   if (!(e instanceof Error)) return fallback;
@@ -52,7 +61,10 @@ export function CadastroDigitalDialog({
   trabalhadorNome,
   aoFechar,
   aoConcluir,
+  dedo,
+  termosJaRegistrados = false,
 }: CadastroDigitalDialogProps) {
+  const nomeDedo = dedo ? NOME_DEDO[dedo] : undefined;
   const [termoFisicoConfirmado, setTermoFisicoConfirmado] = useState(false);
   const [consentimentosSalvos, setConsentimentosSalvos] = useState(false);
   const [salvandoConsentimentos, setSalvandoConsentimentos] = useState(false);
@@ -72,12 +84,12 @@ export function CadastroDigitalDialog({
   useEffect(() => {
     if (!aberto) return;
     setTermoFisicoConfirmado(false);
-    setConsentimentosSalvos(false);
+    setConsentimentosSalvos(termosJaRegistrados);
     setAgenteDisponivel(null);
     setCapturando(false);
     setCadastrada(false);
     setErro(null);
-  }, [aberto, trabalhadorId]);
+  }, [aberto, trabalhadorId, termosJaRegistrados]);
 
   useEffect(() => {
     if (!consentimentosSalvos) return;
@@ -104,8 +116,8 @@ export function CadastroDigitalDialog({
     try {
       setCapturando(true);
       setErro(null);
-      const templateBase64 = await capturarDigitalParaCadastro(setEtapaCaptura);
-      await api.trabalhadores.cadastrarBiometriaLocal(trabalhadorId, templateBase64);
+      const captura = await capturarDigitalParaCadastro(setEtapaCaptura);
+      await api.trabalhadores.cadastrarBiometriaLocal(trabalhadorId, captura.templateBruto, captura.imagemPng, dedo);
       setCadastrada(true);
       aoConcluir?.();
     } catch (e) {
@@ -120,7 +132,10 @@ export function CadastroDigitalDialog({
     <Dialog open={aberto} onOpenChange={(_, d) => !d.open && aoFechar()}>
       <DialogSurface>
         <DialogBody>
-          <DialogTitle>Cadastrar digital{trabalhadorNome ? ` — ${trabalhadorNome}` : ''}</DialogTitle>
+          <DialogTitle>
+            Cadastrar {nomeDedo ?? 'digital'}
+            {trabalhadorNome ? ` — ${trabalhadorNome}` : ''}
+          </DialogTitle>
           <DialogContent style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
             {erro && <FeedbackInline tom="erro" aoFechar={() => setErro(null)}>{erro}</FeedbackInline>}
 
@@ -167,7 +182,9 @@ export function CadastroDigitalDialog({
                   </FeedbackInline>
                 )}
                 {agenteDisponivel && !cadastrada && (
-                  <Text>Posicione o dedo do funcionário no leitor e clique em "Capturar digital".</Text>
+                  <Text>
+                    Posicione o {nomeDedo ?? 'dedo'} do funcionário no leitor e clique em "Capturar digital".
+                  </Text>
                 )}
                 {cadastrada && (
                   <FeedbackInline tom="sucesso">Digital cadastrada com sucesso.</FeedbackInline>

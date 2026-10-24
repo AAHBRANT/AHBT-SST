@@ -76,9 +76,31 @@ export async function listarConflitosNaoLidos() {
   return todos.filter((c) => !c.lido);
 }
 
+// "Marcar como visto" também descarta a ação guardada (e a foto), liberando o espaço do aparelho.
 export async function marcarConflitoComoLido(id: number) {
-  await offlineDb.conflitos.update(id, { lido: true });
+  await offlineDb.conflitos.update(id, { lido: true, item: undefined });
   notificarMudanca();
+}
+
+// Devolve à fila uma ação que o servidor recusou (ex.: rosto não reconhecido, pessoa sem cadastro na hora),
+// depois de corrigida a causa. Vai com chave de idempotência nova: a tentativa anterior foi recusada.
+export async function reenviarConflito(id: number) {
+  const conflito = await offlineDb.conflitos.get(id);
+  if (!conflito?.item) return;
+  await offlineDb.filaSaida.add({ ...conflito.item, idempotencyKey: crypto.randomUUID(), criadoEm: Date.now(), tentativas: 0, ultimoErro: undefined });
+  await offlineDb.conflitos.delete(id);
+  notificarMudanca();
+  void sincronizarFilaSaida();
+}
+
+// Nome da ação para a pessoa (em vez de "POST /api/documentos/…/autenticacao/facial").
+export function descreverAcaoOffline(url: string, metodo: string): string {
+  if (url.includes('/autenticacao/facial')) return 'Assinatura por reconhecimento facial';
+  if (url.includes('/fotos-evidencia')) return 'Foto de evidência';
+  if (url.includes('/certificado/arquivo')) return 'Certificado de treinamento';
+  if (url.includes('/termoscompromissoepi/')) return 'Termo de compromisso assinado em papel';
+  if (url.includes('/acidentes/')) return 'Foto de acidente';
+  return `${metodo} ${url}`;
 }
 
 function ehErroDeRede(erro: unknown): boolean {
@@ -217,6 +239,30 @@ export async function syncFetchBlob(path: string, authHeaders?: Record<string, s
   }
 }
 
+// ---------- Conta dona da ação ----------
+
+// Lê tid/oid do Bearer (sem validar: só separa as filas por pessoa; quem valida é o servidor).
+function contaDoHeader(authHeaders?: Record<string, string>): string | undefined {
+  const token = authHeaders?.Authorization?.replace(/^Bearer\s+/i, '');
+  const payload = token?.split('.')[1];
+  if (!payload) return undefined;
+  try {
+    const json = JSON.parse(atob(payload.replace(/-/g, '+').replace(/_/g, '/')));
+    return json.oid ? `${json.tid ?? ''}:${json.oid}` : undefined;
+  } catch {
+    return undefined;
+  }
+}
+
+async function contaAtual(authHeaders?: Record<string, string>): Promise<string | undefined> {
+  if (authHeaders?.Authorization) return contaDoHeader(authHeaders);
+  try {
+    return contaDoHeader(await montarHeadersAuth());
+  } catch {
+    return undefined;
+  }
+}
+
 // ---------- Mutação JSON (POST/PUT/DELETE) ----------
 
 export async function syncMutateJson<T>(
@@ -260,7 +306,14 @@ export async function syncMutateJson<T>(
     }
   }
 
+  // Credencial do leitor de digital nunca vai para o IndexedDB (auditoria 19/10, A04): sem internet a
+  // leitura de digital falha e é refeita depois.
+  if (corpo && typeof corpo === 'object' && 'segredoDispositivo' in corpo) {
+    throw new Error('Sem internet: a assinatura por digital precisa de conexão. Tente de novo quando a rede voltar.');
+  }
+
   await offlineDb.filaSaida.add({
+    conta: await contaAtual(authHeaders),
     idempotencyKey,
     url: path,
     metodo,
@@ -321,6 +374,7 @@ export async function syncMutateMultipart<T>(
   });
 
   await offlineDb.filaSaida.add({
+    conta: await contaAtual(authHeaders),
     idempotencyKey,
     url: path,
     metodo: 'POST',
@@ -359,6 +413,11 @@ export async function sincronizarFilaSaida(): Promise<void> {
         // a fila pode ficar dias esperando a internet voltar, e o token capturado offline já
         // estaria expirado.
         const authHeaders = await montarHeadersAuth();
+        // Ação de outra conta fica guardada até a dona dela entrar de novo neste navegador.
+        if (item.conta && contaDoHeader(authHeaders) !== item.conta) {
+          await offlineDb.filaSaida.update(item.id!, { ultimoErro: 'Aguardando a pessoa que registrou entrar para enviar.' });
+          continue;
+        }
         const response = await fetch(`${API_BASE_URL}${item.url}`, {
           method: item.metodo,
           headers: item.isFormData
@@ -378,28 +437,39 @@ export async function sincronizarFilaSaida(): Promise<void> {
           continue;
         }
 
-        // Erro definitivo do servidor (ex.: 400 de validação) não se resolve tentando de novo com
-        // o mesmo corpo — mas também não pode travar o resto da fila. Registra e segue adiante;
-        // depois de 5 tentativas, vira "conflito" para o usuário decidir manualmente (descartar
-        // ou refazer a ação online).
+        // Sem login: todos os itens seguintes falhariam igual. Para aqui e espera a pessoa entrar de novo —
+        // antes isso contava como erro definitivo e, na 5ª vez, a ação (e a foto) era descartada.
+        if (response.status === 401) {
+          await offlineDb.filaSaida.update(item.id!, { ultimoErro: 'Aguardando login para enviar.' });
+          break;
+        }
+
+        // Temporário (servidor fora, cota do reconhecimento facial estourada, tempo esgotado): fica na fila
+        // e tenta de novo na próxima sincronização, sem limite de tentativas.
         const novasTentativas = item.tentativas + 1;
-        if (response.status < 500 && novasTentativas >= 5) {
-          const texto = await lerCorpoErro(response);
-          await offlineDb.conflitos.add({
-            url: item.url,
-            metodo: item.metodo,
-            mensagem: `Falha ao sincronizar após ${novasTentativas} tentativas: ${texto || response.statusText}`,
-            dadosDescartados: item.corpoJson ?? '[multipart]',
-            criadoEm: Date.now(),
-            lido: false,
-          });
-          await offlineDb.filaSaida.delete(item.id!);
-        } else {
+        if (response.status === 408 || response.status === 429 || response.status >= 500) {
           await offlineDb.filaSaida.update(item.id!, {
             tentativas: novasTentativas,
             ultimoErro: `${response.status} ${response.statusText}`,
           });
+          continue;
         }
+
+        // Recusa definitiva (ex.: rosto não reconhecido, validação): repetir o mesmo envio não adianta, e não
+        // pode travar o resto da fila. Vira "conflito" na hora, com a mensagem do servidor e a ação guardada
+        // inteira, para a pessoa tentar de novo depois de resolver a causa ou descartar.
+        const texto = await lerCorpoErro(response);
+        const { id: _id, ...acao } = item;
+        await offlineDb.conflitos.add({
+          url: item.url,
+          metodo: item.metodo,
+          mensagem: extrairMensagemErro(texto, response.status, response.statusText),
+          dadosDescartados: item.corpoJson ?? '[multipart]',
+          criadoEm: Date.now(),
+          lido: false,
+          item: acao,
+        });
+        await offlineDb.filaSaida.delete(item.id!);
       } catch (erro) {
         if (ehErroDeRede(erro)) {
           marcarOnline(false);

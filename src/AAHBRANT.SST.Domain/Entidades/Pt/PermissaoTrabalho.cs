@@ -61,6 +61,11 @@ public class PermissaoTrabalho : AuditableEntity
     public Usuario? ResponsavelSstUsuario { get; set; }
     public DateTime? DataAssinaturaSst { get; set; }
 
+    // Como as três assinaturas acima foram feitas (02/10), para a legenda miúda do PDF. Hoje a
+    // liberação é sempre o clique do usuário logado (AutorizarPermissaoTrabalhoCommand); linhas
+    // anteriores à coluna foram preenchidas com SessaoLogada pela migration.
+    public MetodoAutenticacaoAssinatura MetodoAssinatura { get; set; } = MetodoAutenticacaoAssinatura.SessaoLogada;
+
     // §8 "Suspensão" — SuspenderPermissaoTrabalhoCommand.
     public Guid? SuspensaPorUsuarioId { get; set; }
     public Usuario? SuspensaPorUsuario { get; set; }

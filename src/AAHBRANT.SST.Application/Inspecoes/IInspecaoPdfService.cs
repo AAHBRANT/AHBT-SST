@@ -23,7 +23,9 @@ public record InspecaoPdfItemModelo(
 public record InspecaoPdfSignatarioModelo(
     string Nome,
     string Metodo,
-    DateTime AssinadoEm);
+    DateTime AssinadoEm,
+    string? Funcao = null,
+    AAHBRANT.SST.Domain.Enums.MetodoAutenticacaoAssinatura? MetodoAutenticacao = null);
 
 public record InspecaoPdfAssinaturaModelo(
     DateTime FinalizadoEm,
@@ -47,7 +49,11 @@ public record InspecaoPdfModelo(
     string UrlValidacaoPublica,
     byte[] QrCodePng,
     bool TemAssinatura,
-    InspecaoPdfAssinaturaModelo? Assinatura = null);
+    InspecaoPdfAssinaturaModelo? Assinatura = null,
+    // Inspeção de Veículos: linhas de identificação (tipo, placa/prefixo, modelo, empresa) e layout
+    // compacto — 1 foto por item, só nos Não Conformes, sem local/responsável/prazo por item.
+    IReadOnlyList<string>? IdentificacaoVeiculo = null,
+    bool EvidenciaUnicaSoNaoConforme = false);
 
 public interface IInspecaoPdfService
 {

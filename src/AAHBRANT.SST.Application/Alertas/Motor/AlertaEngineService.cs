@@ -94,10 +94,11 @@ public class AlertaEngineService : IAlertaEngineService
                     ? SeveridadeAlerta.Critico
                     : (SeveridadeAlerta?)regraAplicada?.Severidade;
 
-                if (severidade is null)
+                if (severidade is null || item.Substituido)
                 {
-                    // Item ficou dentro do prazo (ex.: nova higienização registrada) — se havia um
-                    // alerta em aberto gerado por este motor, encerra automaticamente.
+                    // Item ficou dentro do prazo (ex.: nova higienização registrada) ou foi renovado por um
+                    // registro mais recente (Substituido) — se havia um alerta em aberto gerado por este
+                    // motor, encerra automaticamente.
                     if (alertaExistente is not null)
                     {
                         alertaExistente.Status = StatusAlerta.Resolvido;
@@ -122,7 +123,7 @@ public class AlertaEngineService : IAlertaEngineService
                         EntidadeOrigemId = item.EntidadeOrigemId,
                         TrabalhadorId = item.TrabalhadorId,
                         ObraId = item.ObraId,
-                        DestinatarioUsuarioId = regraAplicada?.ResponsavelUsuarioId,
+                        DestinatarioUsuarioId = item.DestinatarioUsuarioId ?? regraAplicada?.ResponsavelUsuarioId,
                     };
                     _db.Alertas.Add(novoAlerta);
 
@@ -137,6 +138,10 @@ public class AlertaEngineService : IAlertaEngineService
                     alertaExistente.Tipo = tipoAlerta;
                     alertaExistente.Severidade = severidade.Value;
                     alertaExistente.Titulo = titulo;
+                    // Itens cuja descrição muda com o tempo (ex.: a lista de exames vencidos do
+                    // trabalhador) mantêm o texto em dia; os que não mandam descrição não mexem nela.
+                    if (item.Descricao is not null)
+                        alertaExistente.Descricao = item.Descricao;
 
                     if (alertaExistente.DestinatarioUsuarioId.HasValue)
                         alertasAtualizadosComDestinatario.Add((alertaExistente, item.DataVencimento));

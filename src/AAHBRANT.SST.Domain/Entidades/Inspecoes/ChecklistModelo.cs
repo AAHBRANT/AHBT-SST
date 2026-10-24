@@ -10,6 +10,9 @@ public class ChecklistModelo : AuditableEntity
 {
     public string Nome { get; set; } = string.Empty;
     public TipoInspecao TipoInspecao { get; set; }
+
+    // Só preenchido quando TipoInspecao = Veiculo: cada tipo de veículo tem o seu checklist.
+    public TipoVeiculo? TipoVeiculo { get; set; }
     public int Versao { get; set; } = 1;
 
     public Guid? ChecklistModeloAnteriorId { get; set; }

@@ -1,3 +1,4 @@
+using AAHBRANT.SST.Application.Relatorios;
 using AAHBRANT.SST.Application.Alertas.Commands;
 using AAHBRANT.SST.Application.Alertas.Queries;
 using AAHBRANT.SST.Domain.Enums;
@@ -29,6 +30,12 @@ public class AlertasController : ControllerBase
     [HttpGet("saude-envio-teams")]
     public async Task<IActionResult> SaudeEnvioTeams(CancellationToken ct)
         => Ok(await _mediator.Send(new ObterSaudeEnvioTeamsQuery(), ct));
+
+    // Prévia do aviso diário de itens vencidos das obras (segunda a sexta, 08:00): quem receberia e o quê, sem enviar nada.
+    [Authorize(Policy = "alerta:ver")]
+    [HttpGet("aviso-documentos-vencidos/previa")]
+    public async Task<IActionResult> PreviaAvisoDocumentosVencidos(CancellationToken ct)
+        => Ok(await _mediator.Send(new PreviaAvisoDocumentosVencidosQuery(), ct));
 
     [Authorize(Policy = "alerta:ver")]
     [HttpGet("{id:guid}")]

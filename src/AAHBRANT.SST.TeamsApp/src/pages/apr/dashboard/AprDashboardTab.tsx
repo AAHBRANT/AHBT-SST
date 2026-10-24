@@ -15,6 +15,7 @@ import {
 import { ClipboardTaskListLtr24Regular, CheckmarkCircle24Regular, Clock24Regular, Warning24Regular } from '@fluentui/react-icons';
 import { api, StatusApr, statusAprLabel, type Apr, type Atividade, type Obra } from '../../../lib/api';
 import { AprVencidaPanel, type AprComContexto } from './AprVencidaPanel';
+import { FaixaKpis } from '../../../components/dashboard/FaixaKpis';
 
 const hojeISO = new Date().toISOString().slice(0, 10);
 
@@ -152,12 +153,12 @@ export function AprDashboardTab() {
         </FeedbackInline>
       )}
 
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(185px, 1fr))', gap: 16, marginBottom: 16 }}>
+      <FaixaKpis>
         <KpiCard rotulo="Total de APRs" valor={aprsFiltradas.length} tom="info" indice={0} icone={<ClipboardTaskListLtr24Regular />} />
         <KpiCard rotulo="Aprovadas" valor={aprovadas} tom="ok" indice={1} icone={<CheckmarkCircle24Regular />} />
         <KpiCard rotulo="Aguardando aprovação" valor={aguardandoAprovacao} tom="atencao" indice={2} icone={<Clock24Regular />} />
         <KpiCard rotulo="Com validade vencida" valor={vencidas} tom="alerta" indice={3} icone={<Warning24Regular />} />
-      </div>
+      </FaixaKpis>
 
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(340px, 1fr))', gap: 16, marginBottom: 16 }}>
         <Card titulo="Status das APRs" subtitulo="Situação atual de cada Análise Preliminar de Risco">

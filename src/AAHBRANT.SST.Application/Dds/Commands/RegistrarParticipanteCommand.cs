@@ -25,7 +25,10 @@ public record RegistrarParticipanteCommand(
     Guid TrabalhadorId,
     Guid DispositivoId,
     string SegredoDispositivo,
-    double Score) : IRequest<Guid>;
+    double Score,
+    byte[]? ImagemDigital = null,
+    string? Desafio = null,
+    string? AssinaturaLeitura = null) : IRequest<Guid>;
 
 public class RegistrarParticipanteCommandValidator : AbstractValidator<RegistrarParticipanteCommand>
 {
@@ -34,7 +37,9 @@ public class RegistrarParticipanteCommandValidator : AbstractValidator<Registrar
         RuleFor(x => x.DdsId).NotEmpty();
         RuleFor(x => x.TrabalhadorId).NotEmpty();
         RuleFor(x => x.DispositivoId).NotEmpty();
-        RuleFor(x => x.SegredoDispositivo).NotEmpty();
+        // Com leitura assinada pelo agente o segredo não trafega mais pelo navegador.
+        RuleFor(x => x.SegredoDispositivo).NotEmpty().When(x => string.IsNullOrEmpty(x.Desafio));
+        RuleFor(x => x.AssinaturaLeitura).NotEmpty().When(x => !string.IsNullOrEmpty(x.Desafio));
         RuleFor(x => x.Score).InclusiveBetween(0, 100);
     }
 }
@@ -76,7 +81,8 @@ public class RegistrarParticipanteCommandHandler : IRequestHandler<RegistrarPart
             throw new InvalidOperationException("Este trabalhador já está registrado como participante deste DDS.");
 
         var resultado = await _autenticacao.AutenticarPorMatchLocalAsync(
-            request.DispositivoId, request.SegredoDispositivo, request.TrabalhadorId, request.Score, ct);
+            request.DispositivoId, request.SegredoDispositivo, request.TrabalhadorId, request.Score,
+            LeituraDo(request.Desafio, request.AssinaturaLeitura), ct);
 
         var participante = new Domain.Entidades.DdsParticipante
         {
@@ -98,7 +104,8 @@ public class RegistrarParticipanteCommandHandler : IRequestHandler<RegistrarPart
         try
         {
             var documentoId = await _mediator.Send(new CriarDocumentoAssinaturaCommand(nameof(Domain.Entidades.Dds), request.DdsId), ct);
-            await _registrador.RegistrarAsync(documentoId, resultado, ipAddress: null, ct);
+            await _registrador.RegistrarAsync(documentoId, resultado, ipAddress: null, ct,
+                request.ImagemDigital, request.ImagemDigital is null ? null : "image/png");
         }
         catch (Exception ex)
         {
@@ -107,4 +114,7 @@ public class RegistrarParticipanteCommandHandler : IRequestHandler<RegistrarPart
 
         return participante.Id;
     }
+
+    private static LeituraBiometricaAssinada? LeituraDo(string? desafio, string? assinatura) =>
+        string.IsNullOrEmpty(desafio) ? null : new LeituraBiometricaAssinada(desafio, assinatura ?? string.Empty);
 }

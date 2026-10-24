@@ -11,7 +11,6 @@ const useEstilos = makeStyles({
     minHeight: '52px',
     minWidth: '148px',
     border: '1px solid transparent',
-    borderRadius: '5px',
     backgroundColor: '#670000',
     color: '#ffffff',
     fontWeight: 800,

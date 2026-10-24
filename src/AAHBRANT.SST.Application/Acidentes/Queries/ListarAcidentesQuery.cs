@@ -27,7 +27,7 @@ public class ListarAcidentesQueryHandler : IRequestHandler<ListarAcidentesQuery,
         if (request.ObraId.HasValue)
             query = query.Where(a => a.ObraId == request.ObraId.Value);
 
-        return await query
+        var lista = await query
             .Include(a => a.Obra)
             .Include(a => a.Trabalhador)
             .Include(a => a.Atividade)
@@ -60,5 +60,10 @@ public class ListarAcidentesQueryHandler : IRequestHandler<ListarAcidentesQuery,
                 DataConclusaoInvestigacao = a.DataConclusaoInvestigacao,
             })
             .ToListAsync(ct);
+
+        var envolvidos = await AcidenteEnvolvidosSync.CarregarAsync(_db, lista.Select(a => a.Id).ToList(), ct);
+        foreach (var a in lista)
+            a.Envolvidos = envolvidos.GetValueOrDefault(a.Id) ?? new();
+        return lista;
     }
 }

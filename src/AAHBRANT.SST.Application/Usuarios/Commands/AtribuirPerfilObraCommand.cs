@@ -1,5 +1,7 @@
 using AAHBRANT.SST.Application.Common.Interfaces;
+using AAHBRANT.SST.Application.Common.Seguranca;
 using AAHBRANT.SST.Domain.Entidades;
+using AAHBRANT.SST.Domain.Enums;
 using FluentValidation;
 using MediatR;
 using Microsoft.EntityFrameworkCore;
@@ -12,7 +14,12 @@ namespace AAHBRANT.SST.Application.Usuarios.Commands;
 public record AtribuirPerfilObraCommand(
     Guid UsuarioId,
     Guid PerfilAcessoId,
-    Guid? ObraId) : IRequest<Guid>;
+    Guid? ObraId,
+    // Preenchidos SEMPRE pelo controller a partir do token (nunca confiar no corpo da requisição):
+    // quem está concedendo o perfil e se a autenticação Entra ID está ligada. Auditoria 06/10/2026
+    // (A1): sem isto, qualquer detentor de usuario:editar atribuía o perfil Administrador a si mesmo.
+    string? SolicitanteAzureAdObjectId = null,
+    bool AutenticacaoHabilitada = false) : IRequest<Guid>;
 
 public class AtribuirPerfilObraCommandValidator : AbstractValidator<AtribuirPerfilObraCommand>
 {
@@ -31,13 +38,39 @@ public class AtribuirPerfilObraCommandHandler : IRequestHandler<AtribuirPerfilOb
 
     public async Task<Guid> Handle(AtribuirPerfilObraCommand request, CancellationToken ct)
     {
-        var usuarioExiste = await _db.Usuarios.AnyAsync(u => u.Id == request.UsuarioId, ct);
-        if (!usuarioExiste)
-            throw new KeyNotFoundException($"Usuário {request.UsuarioId} não encontrado.");
+        var usuario = await _db.Usuarios.FirstOrDefaultAsync(u => u.Id == request.UsuarioId, ct)
+            ?? throw new KeyNotFoundException($"Usuário {request.UsuarioId} não encontrado.");
 
-        var perfilExiste = await _db.PerfisAcesso.AnyAsync(p => p.Id == request.PerfilAcessoId, ct);
-        if (!perfilExiste)
-            throw new KeyNotFoundException($"Perfil de acesso {request.PerfilAcessoId} não encontrado.");
+        var perfil = await _db.PerfisAcesso.FirstOrDefaultAsync(p => p.Id == request.PerfilAcessoId, ct)
+            ?? throw new KeyNotFoundException($"Perfil de acesso {request.PerfilAcessoId} não encontrado.");
+
+        if (request.ObraId.HasValue
+            && !await _db.Obras.AnyAsync(o => o.Id == request.ObraId.Value, ct))
+            throw new KeyNotFoundException($"Obra {request.ObraId} não encontrada.");
+
+        // Com a autenticação ligada, só Administrador concede o perfil Administrador, e ninguém
+        // (exceto Administrador) concede perfil a si mesmo. Com ela desligada (desenvolvimento) o
+        // servidor não distingue usuários, então a regra não se aplica — mesmo comportamento de
+        // PermissaoAuthorizationHandler.
+        if (request.AutenticacaoHabilitada)
+        {
+            var solicitante = request.SolicitanteAzureAdObjectId;
+            var ehAdministrador = !string.IsNullOrWhiteSpace(solicitante)
+                && await _db.Usuarios
+                    .Where(u => u.AzureAdObjectId == solicitante && u.Status == StatusUsuario.Ativo)
+                    .SelectMany(u => u.PerfisPorObra)
+                    .AnyAsync(v => v.PerfilAcesso != null
+                        && v.PerfilAcesso.Tipo == TipoPerfilAcesso.Administrador, ct);
+
+            if (!ehAdministrador)
+            {
+                if (perfil.Tipo == TipoPerfilAcesso.Administrador)
+                    throw new AcessoNegadoException();
+
+                if (!string.IsNullOrWhiteSpace(solicitante) && usuario.AzureAdObjectId == solicitante)
+                    throw new AcessoNegadoException();
+            }
+        }
 
         var jaAtribuido = await _db.UsuariosPerfilObra.AnyAsync(
             x => x.UsuarioId == request.UsuarioId

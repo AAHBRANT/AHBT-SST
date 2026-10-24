@@ -1,8 +1,9 @@
 import { pendenciasGrade } from '../../lib/dadosFoto';
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import {
   BotaoAcao,
+  Button,
   Campo,
   Card,
   Carregando,
@@ -24,6 +25,7 @@ import {
   Checkmark24Filled,
   Eye24Regular,
   Signature24Regular,
+  Stop24Regular,
 } from '@fluentui/react-icons';
 import {
   api,
@@ -32,7 +34,7 @@ import {
   type SessaoTreinamentoDetalhe,
   type ParticipanteSessaoTreinamento,
 } from '../../lib/api';
-import { capturarDigitalLocal, estaAgenteLocalDisponivel, obterDispositivoLocal } from '../../lib/agenteBiometricoLocal';
+import { capturarDigitalLocal, credencialLeitura, estaAgenteLocalDisponivel, obterDispositivoLocal, type DispositivoLocal } from '../../lib/agenteBiometricoLocal';
 import { tocarBipeAssinaturaAceita } from '../../lib/bipeAssinatura';
 import { GradeFotosEvidencia } from '../../components/GradeFotosEvidencia';
 import { SeletorFotoCamera } from '../../components/SeletorFotoCamera';
@@ -88,8 +90,7 @@ export function SessaoTreinamentoDetalhePage() {
   const navigate = useNavigate();
   const [detalhe, setDetalhe] = useState<SessaoTreinamentoDetalhe | null>(null);
   const [agenteDisponivel, setAgenteDisponivel] = useState<boolean | null>(null);
-  const [dispositivoLocal, setDispositivoLocal] = useState<{ dispositivoId: string; segredoDispositivo: string } | null>(null);
-  const [lendoDigital, setLendoDigital] = useState(false);
+  const [dispositivoLocal, setDispositivoLocal] = useState<DispositivoLocal | null>(null);
   const [lendoFacial, setLendoFacial] = useState(false);
   const [mensagemPresenca, setMensagemPresenca] = useState<{ tipo: 'success' | 'info' | 'erro'; texto: string } | null>(null);
   const [erroFacial, setErroFacial] = useState<string | null>(null);
@@ -97,6 +98,12 @@ export function SessaoTreinamentoDetalhePage() {
   const [erro, setErro] = useState<string | null>(null);
   const [processando, setProcessando] = useState(false);
   const [baixandoId, setBaixandoId] = useState<string | null>(null);
+  // Fila contínua (19/10, igual ao DDS): aberta, cada participante encosta o dedo ou olha para a
+  // câmera e a presença é confirmada sozinha, um após o outro, até alguém fechar a fila.
+  const [filaAberta, setFilaAberta] = useState(false);
+  const filaAtiva = useRef(false);
+  const contextoFila = useRef<{ detalhe: SessaoTreinamentoDetalhe | null; dispositivo: DispositivoLocal | null }>({ detalhe: null, dispositivo: null });
+  contextoFila.current = { detalhe, dispositivo: dispositivoLocal };
   const { visualizar, dialogoVisualizador } = useVisualizadorPdf();
   const [baixandoAta, setBaixandoAta] = useState(false);
 
@@ -159,44 +166,66 @@ export function SessaoTreinamentoDetalhePage() {
     }
   }
 
-  // Fluxo em fila (pedido do usuário, 04/09): um único leitor compartilhado — cada participante
-  // simplesmente encosta o dedo, sem precisar ser selecionado antes. O agente local já faz o match
-  // 1:N (contra todo mundo cadastrado) e devolve QUEM ele reconheceu; aqui só se confere se essa
-  // pessoa está inscrita nesta turma e ainda não confirmou presença, e se registra.
-  async function lerProximaDigital() {
-    if (!id || !dispositivoLocal) return;
-    try {
-      setLendoDigital(true);
-      setErro(null);
-      setMensagemPresenca(null);
-      const captura = await capturarDigitalLocal();
+  // Fluxo em fila (pedido do usuário, 04/09; contínua desde 19/10): um único leitor compartilhado —
+  // cada participante encosta o dedo, sem precisar ser selecionado antes. O agente local faz o match
+  // 1:N e devolve QUEM reconheceu; aqui se confere a inscrição na turma e se registra.
+  async function processarLeituraFila(trabalhadorId: string, leitor: DispositivoLocal, captura: Awaited<ReturnType<typeof capturarDigitalLocal>>) {
+    if (!id) return;
+    const atual = contextoFila.current.detalhe;
+    const participante = atual?.participantes.find((p) => p.trabalhadorId === trabalhadorId);
+    if (!participante) {
+      setMensagemPresenca({ tipo: 'erro', texto: 'Esta pessoa não está inscrita nesta turma.' });
+      return;
+    }
+    if (participante.presencaConfirmadaEm) {
+      setMensagemPresenca({ tipo: 'info', texto: `${participante.trabalhadorNome} já teve a presença confirmada.` });
+      return;
+    }
+    await api.sessoesTreinamento.registrarPresenca(id, trabalhadorId, credencialLeitura(leitor, captura.leituras[0]), captura.score);
+    tocarBipeAssinaturaAceita();
+    setMensagemPresenca({ tipo: 'success', texto: `Presença de ${participante.trabalhadorNome} confirmada.` });
+    await carregar();
+  }
 
-      const participante = detalhe?.participantes.find((p) => p.trabalhadorId === captura.trabalhadorId);
-      if (!participante) {
-        setMensagemPresenca({ tipo: 'erro', texto: 'Esta pessoa não está inscrita nesta turma.' });
-        return;
+  async function lacoFila() {
+    while (filaAtiva.current) {
+      try {
+        const leitor = contextoFila.current.dispositivo;
+        if (!leitor) break;
+        const captura = await capturarDigitalLocal(leitor.dispositivoId);
+        if (!filaAtiva.current) break;
+        await processarLeituraFila(captura.trabalhadorId, leitor, captura);
+        await new Promise((r) => setTimeout(r, 1200));
+      } catch (e) {
+        if (!filaAtiva.current) break;
+        const texto = e instanceof Error ? e.message : '';
+        if (/Nenhum dedo detectado|dentro do tempo limite/i.test(texto)) continue;
+        if (e instanceof TypeError) {
+          setMensagemPresenca({ tipo: 'erro', texto: 'Perdi a conexão com o leitor. Verifique o Agente Biométrico e abra a fila de novo.' });
+          fecharFila();
+          break;
+        }
+        setMensagemPresenca({ tipo: 'erro', texto: `Digital não reconhecida: ${texto || 'tente de novo.'}` });
+        await new Promise((r) => setTimeout(r, 1500));
       }
-      if (participante.presencaConfirmadaEm) {
-        setMensagemPresenca({ tipo: 'info', texto: `Presença de ${participante.trabalhadorNome} já havia sido confirmada.` });
-        return;
-      }
-
-      await api.sessoesTreinamento.registrarPresenca(
-        id,
-        captura.trabalhadorId,
-        dispositivoLocal.dispositivoId,
-        dispositivoLocal.segredoDispositivo,
-        captura.score,
-      );
-      setMensagemPresenca({ tipo: 'success', texto: `Presença de ${participante.trabalhadorNome} confirmada.` });
-      tocarBipeAssinaturaAceita();
-      await carregar();
-    } catch (e) {
-      setErro(e instanceof Error ? e.message : 'Falha na validação biométrica.');
-    } finally {
-      setLendoDigital(false);
     }
   }
+
+  function abrirFila() {
+    if (!dispositivoLocal || filaAtiva.current) return;
+    filaAtiva.current = true;
+    setFilaAberta(true);
+    setErro(null);
+    setMensagemPresenca({ tipo: 'info', texto: 'Fila aberta. Próximo participante: encoste o dedo no leitor.' });
+    void lacoFila();
+  }
+
+  function fecharFila() {
+    filaAtiva.current = false;
+    setFilaAberta(false);
+  }
+
+  useEffect(() => () => { filaAtiva.current = false; }, []);
 
   async function confirmarPresencaFacial(arquivo: File) {
     if (!id || !detalhe) return;
@@ -247,9 +276,9 @@ export function SessaoTreinamentoDetalhePage() {
     if (!id) return;
     try {
       setBaixandoAta(true);
-      salvarBlob(await api.sessoesTreinamento.baixarAta(id), `ata-turma-treinamento-${id}.pdf`);
+      salvarBlob(await api.sessoesTreinamento.baixarAta(id), `lista-presenca-treinamento-${id}.pdf`);
     } catch (e) {
-      setErro(e instanceof Error ? e.message : 'Falha ao baixar a ata em PDF.');
+      setErro(e instanceof Error ? e.message : 'Falha ao baixar a lista de presença em PDF.');
     } finally {
       setBaixandoAta(false);
     }
@@ -271,8 +300,8 @@ export function SessaoTreinamentoDetalhePage() {
     if (!id) return;
     const sessaoId = id;
     void visualizar({
-      titulo: 'Ata / anexo de evidências da turma',
-      nomeArquivo: `ata-turma-treinamento-${sessaoId}.pdf`,
+      titulo: 'Lista de presença de treinamento',
+      nomeArquivo: `lista-presenca-treinamento-${sessaoId}.pdf`,
       obter: () => api.sessoesTreinamento.baixarAta(sessaoId),
     });
   }
@@ -359,17 +388,17 @@ export function SessaoTreinamentoDetalhePage() {
         rotuloVoltar: 'Voltar para Turmas',
         acoes: (
           <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-            <BotaoAcao tom="ver" icon={<Eye24Regular />} onClick={visualizarAta} aria-label="Visualizar ata">
-              Visualizar ata
+            <BotaoAcao tom="ver" icon={<Eye24Regular />} onClick={visualizarAta} aria-label="Visualizar lista de presença">
+              Visualizar lista de presença
             </BotaoAcao>
             <BotaoAcao
               tom="baixar"
               icon={<ArrowDownload24Regular />}
               onClick={baixarAta}
               disabled={baixandoAta}
-              aria-label="Baixar ata / anexo de evidências"
+              aria-label="Baixar lista de presença"
             >
-              Baixar ata / anexo de evidências
+              Baixar lista de presença
             </BotaoAcao>
           </div>
         ),
@@ -435,18 +464,25 @@ export function SessaoTreinamentoDetalhePage() {
         {!somenteLeitura && (
           <div style={{ marginBottom: 16, display: 'flex', flexDirection: 'column', gap: 8 }}>
             <Legenda>
-              Em fila: cada participante usa a digital ou o reconhecimento facial e o sistema reconhece quem é — não
-              precisa selecionar ninguém antes.
+              {filaAberta
+                ? 'Leitor aberto: cada participante encosta o dedo e a presença é confirmada sozinha.'
+                : 'Abra a fila para o pessoal registrar a presença pela digital ou pelo rosto, um após o outro — não precisa selecionar ninguém antes.'}
             </Legenda>
             <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
-              <BotaoBiometriaDigital onClick={lerProximaDigital} disabled={!agenteDisponivel || !dispositivoLocal || lendoDigital || lendoFacial}>
-                {lendoDigital ? 'Lendo digital...' : 'Ler digital do próximo participante'}
-              </BotaoBiometriaDigital>
+              {filaAberta ? (
+                <Button appearance="primary" size="large" icon={<Stop24Regular />} onClick={fecharFila}>
+                  Fechar fila
+                </Button>
+              ) : (
+                <BotaoBiometriaDigital onClick={abrirFila} disabled={!agenteDisponivel || !dispositivoLocal || lendoFacial}>
+                  Abrir fila
+                </BotaoBiometriaDigital>
+              )}
               <SeletorFotoCamera
                 aoSelecionarArquivo={confirmarPresencaFacial}
                 aoErroValidacao={setErroFacial}
                 rotulo="Facial Azure"
-                desabilitado={lendoDigital || lendoFacial}
+                desabilitado={filaAberta || lendoFacial}
                 tamanho="medium"
                 variante="facialAzure"
                 modoCamera="user"

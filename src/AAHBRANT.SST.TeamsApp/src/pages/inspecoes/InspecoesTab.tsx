@@ -23,10 +23,12 @@ import {
 import { Add24Regular, Delete24Regular } from '@fluentui/react-icons';
 import { useSouAdministrador } from '../../lib/UsuarioLogadoContext';
 import { hojeIso } from '../../lib/datas';
+import { useRegistrosTravados } from '../../hooks/useRegistrosTravados';
 import {
   api,
   statusInspecaoLabel,
   tipoInspecaoLabel,
+  TipoInspecao,
   type Atividade,
   type ChecklistModelo,
   type Inspecao,
@@ -59,6 +61,8 @@ const tomPorStatusInspecao: Record<number, Tom> = {
 export function InspecoesTab() {
   const navigate = useNavigate();
   const [inspecoes, setInspecoes] = useState<Inspecao[]>([]);
+  // Já assinados não podem ser excluídos (o servidor recusa): o botão some deles.
+  const travados = useRegistrosTravados('Inspecao', inspecoes.map((i) => i.id));
   const [obras, setObras] = useState<Obra[]>([]);
   const [atividades, setAtividades] = useState<Atividade[]>([]);
   const [checklists, setChecklists] = useState<ChecklistModelo[]>([]);
@@ -220,7 +224,7 @@ export function InspecoesTab() {
                     onChange={(_, d) => setNovaInspecao({ ...novaInspecao, checklistModeloId: d.value })}
                   >
                     <option value="">Selecione</option>
-                    {checklists.map((c) => (
+                    {checklists.filter((c) => c.tipoInspecao !== TipoInspecao.Veiculo).map((c) => (
                       <option key={c.id} value={c.id}>
                         {c.nome} (v{c.versao} — {tipoInspecaoLabel[c.tipoInspecao]})
                       </option>
@@ -304,7 +308,7 @@ export function InspecoesTab() {
           acoesLinha={(i) => (
             <>
               {/* Exclusão é privilégio de Administrador (o servidor recusa os demais) — ver PoliticasAutorizacao. */}
-              {souAdministrador && (
+              {souAdministrador && !travados.has(i.id) && (
                 <BotaoAcao
                   tom="excluir"
                   icon={<Delete24Regular />}

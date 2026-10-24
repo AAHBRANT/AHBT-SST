@@ -33,6 +33,9 @@ public class AlertaEngineWorker : BackgroundService
                 using var escopo = _services.CreateScope();
                 var motor = escopo.ServiceProvider.GetRequiredService<IAlertaEngineService>();
                 await motor.ProcessarAsync(stoppingToken);
+                // Rede de segurança do alerta de estoque mínimo de EPI (os movimentos já verificam na hora).
+                var estoqueMinimo = escopo.ServiceProvider.GetRequiredService<AAHBRANT.SST.Application.EstoquesEpi.Minimo.IVerificacaoEstoqueMinimoService>();
+                await estoqueMinimo.VerificarAsync(null, stoppingToken);
                 _logger.LogInformation("Motor de Alertas processado com sucesso em {Momento}.", DateTime.UtcNow);
             }
             catch (Exception ex)

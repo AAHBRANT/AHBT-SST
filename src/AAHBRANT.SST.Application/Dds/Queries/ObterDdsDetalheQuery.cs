@@ -46,7 +46,7 @@ public class ObterDdsDetalheQueryHandler : IRequestHandler<ObterDdsDetalheQuery,
         // a lógica de quem pode assinar (isso continua no Motor de Assinatura).
         var assinadosEmPorTrabalhador = await _db.DocumentoSignatarios
             .Where(s => s.DocumentoAssinatura!.EntidadeTipo == nameof(Domain.Entidades.Dds) && s.DocumentoAssinatura!.EntidadeId == dds.Id)
-            .ToDictionaryAsync(s => s.TrabalhadorId, s => s.AssinadoEm, ct);
+            .ToDictionaryAsync(s => s.TrabalhadorId, s => new { s.AssinadoEm, s.MetodoAutenticacao }, ct);
 
         dds.ItensChecklist = itens;
         dds.Participantes = participantes;
@@ -66,7 +66,7 @@ public class ObterDdsDetalheQueryHandler : IRequestHandler<ObterDdsDetalheQuery,
             }).ToList(),
             Participantes = participantes.Select(p =>
             {
-                assinadosEmPorTrabalhador.TryGetValue(p.TrabalhadorId, out var assinadoEm);
+                var assinou = assinadosEmPorTrabalhador.TryGetValue(p.TrabalhadorId, out var assinatura);
                 return new DdsParticipanteDto
                 {
                     Id = p.Id,
@@ -74,7 +74,8 @@ public class ObterDdsDetalheQueryHandler : IRequestHandler<ObterDdsDetalheQuery,
                     TrabalhadorNome = p.Trabalhador?.Nome ?? string.Empty,
                     FotoTipo = p.FotoTipo,
                     ScoreConfianca = p.ScoreConfianca,
-                    AssinadoEm = assinadoEm == default ? null : assinadoEm,
+                    AssinadoEm = assinou ? assinatura!.AssinadoEm : null,
+                    MetodoAssinatura = assinou ? assinatura!.MetodoAutenticacao : null,
                 };
             }).ToList(),
             FotosEvidencia = fotosEvidencia.Select(f => new DdsFotoEvidenciaDto { Id = f.Id, Ordem = f.Ordem, DadosFoto = AAHBRANT.SST.Application.Common.DadosCapturaFoto.Ler(f.FotoMetadadosJson) }).ToList(),

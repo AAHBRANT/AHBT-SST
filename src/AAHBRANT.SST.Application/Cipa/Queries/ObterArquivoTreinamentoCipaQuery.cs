@@ -1,5 +1,6 @@
 using AAHBRANT.SST.Application.Cipa.Commands;
 using AAHBRANT.SST.Application.Common.Interfaces;
+using AAHBRANT.SST.Application.Common.Seguranca;
 using MediatR;
 using Microsoft.EntityFrameworkCore;
 
@@ -23,6 +24,9 @@ public class ObterArquivoTreinamentoCipaQueryHandler : IRequestHandler<ObterArqu
     {
         var treinamento = await _db.TreinamentosCipa.FirstOrDefaultAsync(t => t.Id == request.TreinamentoId, ct);
         if (treinamento is null) return null;
+        if (!await _db.ObraDoPaiNoEscopoAsync(
+                _db.MembrosCipa.IgnoreQueryFilters().Where(m => m.Id == treinamento.MembroCipaId).Select(m => m.ObraId), ct))
+            return null;
 
         var (conteudo, contentType, sufixo) = request.Tipo == TipoArquivoTreinamentoCipa.Certificado
             ? (treinamento.CertificadoConteudo, treinamento.CertificadoContentType, "certificado")

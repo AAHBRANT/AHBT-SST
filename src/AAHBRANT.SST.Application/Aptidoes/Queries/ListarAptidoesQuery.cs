@@ -1,4 +1,5 @@
 using AAHBRANT.SST.Application.Common.Interfaces;
+using AAHBRANT.SST.Application.Common.Seguranca;
 using MediatR;
 using Microsoft.EntityFrameworkCore;
 
@@ -14,7 +15,7 @@ public class ListarAptidoesQueryHandler : IRequestHandler<ListarAptidoesQuery, L
 
     public async Task<List<AptidaoDto>> Handle(ListarAptidoesQuery request, CancellationToken ct)
     {
-        var query = _db.AptidoesAtividadeEspecifica.AsQueryable();
+        var query = _db.AptidoesAtividadeEspecifica.NoEscopoDoTrabalhador(_db, a => a.TrabalhadorId);
 
         if (request.TrabalhadorId.HasValue)
             query = query.Where(a => a.TrabalhadorId == request.TrabalhadorId.Value);

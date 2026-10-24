@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   BotaoAcao,
@@ -6,9 +6,10 @@ import {
   Card, PageHeader, DataTable, StatusChip, nivelVencimento, tomDeVencimento, rotuloDeVencimento,
   PainelCriacaoInline, FormSection, FormGrid, FormRodape, Campo, SeletorPesquisavel, FeedbackInline,
   useConfirmar,
+  Dialog, DialogActions, DialogBody, DialogContent, DialogSurface, DialogTitle, Spinner,
   type Coluna,
 } from '@ui';
-import { Add24Regular, ArrowDownload24Regular, Delete24Regular, Eye24Regular, Signature24Regular } from '@fluentui/react-icons';
+import { Add24Regular, ArrowDownload24Regular, Delete24Regular, Eye24Regular, Print24Regular, Signature24Regular } from '@fluentui/react-icons';
 import {
   api,
   motivoEntregaEpiLabel,
@@ -27,9 +28,11 @@ import {
 import { useSouAdministrador } from '../../lib/UsuarioLogadoContext';
 import { salvarBlob, useVisualizadorPdf } from '../../components/useVisualizadorPdf';
 import { AssinaturaEntregaEpiLoteDialog, type ItemLoteAssinaturaEpi } from '../../components/assinatura/AssinaturaEntregaEpiLoteDialog';
+import { TermoCompromissoEpiDialog } from '../../components/assinatura/TermoCompromissoEpiDialog';
 import { AssinaturaDevolucaoEpiDialog } from '../../components/assinatura/AssinaturaDevolucaoEpiDialog';
 import { FotoCatalogoEpi } from './FotoCatalogoEpi';
 import { SeletorItensEpi, type ItemCarrinhoEpi } from './SeletorItensEpi';
+import { useRegistrosTravados } from '../../hooks/useRegistrosTravados';
 import { CarrinhoEntregaEpi } from './CarrinhoEntregaEpi';
 
 // Campos aplicados a todas as entregas do carrinho de uma vez (mesmo funcionário, mesma data,
@@ -41,7 +44,8 @@ interface CamposComunsEntrega {
   vistoConsorcioResponsavel: string;
   motivo: string;
   observacoes: string;
-  motivoTipo: number;
+  // null = técnico ainda não escolheu a observação (select começa vazio e é obrigatório).
+  motivoTipo: number | null;
   numeroListaPresencaNr6: string;
   dataTreinamentoNr6: string;
 }
@@ -53,7 +57,7 @@ function camposComunsVazios(): CamposComunsEntrega {
     vistoConsorcioResponsavel: '',
     motivo: '',
     observacoes: '',
-    motivoTipo: MotivoEntregaEpi.Inicial,
+    motivoTipo: null,
     numeroListaPresencaNr6: '',
     dataTreinamentoNr6: '',
   };
@@ -130,6 +134,8 @@ interface EntregasTabProps {
 export function EntregasTab({ aoNavegarParaMatriz }: EntregasTabProps) {
   const navigate = useNavigate();
   const [entregas, setEntregas] = useState<EntregaEpi[]>([]);
+  // Entregas já assinadas não podem ser excluídas (o servidor recusa): o botão some delas.
+  const travadas = useRegistrosTravados('EntregaEpi', entregas.map((e) => e.id));
   const [epis, setEpis] = useState<CatalogoEpi[]>([]);
   const [episPermitidos, setEpisPermitidos] = useState<CatalogoEpi[]>([]);
   const [obras, setObras] = useState<Obra[]>([]);
@@ -151,11 +157,17 @@ export function EntregasTab({ aoNavegarParaMatriz }: EntregasTabProps) {
   const souAdministrador = useSouAdministrador();
   const { confirmar, dialogElement } = useConfirmar();
   const { visualizar, dialogoVisualizador } = useVisualizadorPdf();
+  // Canhoto do carrinho: o Teams bloqueia window.open (nada acontecia ao clicar em imprimir), então o
+  // canhoto abre numa janela da própria tela, num iframe com o HTML, e imprime a partir dali.
+  const [canhotoAberto, setCanhotoAberto] = useState(false);
+  const [canhotoHtml, setCanhotoHtml] = useState<string | null>(null);
+  const canhotoFrameRef = useRef<HTMLIFrameElement>(null);
   const [devolucaoId, setDevolucaoId] = useState<string | null>(null);
   const [devolucaoData, setDevolucaoData] = useState('');
   const [devolucaoQtd, setDevolucaoQtd] = useState('');
   const [loteParaAssinar, setLoteParaAssinar] = useState<LoteParaAssinar | null>(null);
   const [devolucaoParaAssinar, setDevolucaoParaAssinar] = useState<EntregaEpi | null>(null);
+  const [termoDoTrabalhadorId, setTermoDoTrabalhadorId] = useState<string | null>(null);
   const [statusIntegracao, setStatusIntegracao] = useState<StatusIntegracao | null>(null);
   // Validade do treinamento de NR-06 do funcionário selecionado (22/09). Fora de `dadosComuns`
   // porque não é dado da entrega — só o que a trava precisa para recusar NR-06 vencida.
@@ -259,7 +271,10 @@ export function EntregasTab({ aoNavegarParaMatriz }: EntregasTabProps) {
         // treinamentos, e a tela acusava falta de NR-06 em obra que só não tinha configurado o
         // curso de Integração. O `return` agora é dentro do try, então o `finally` roda e a tela
         // não fica presa em "Verificando…".
-        const cursoIntegracao = cursos.find((c) => c.ehIntegracaoSeguranca);
+        // 02/10: Integração de Segurança NÃO é mais exigida para entregar EPI (só a NR-06). O backend
+        // não chama mais a trava; aqui a verificação fica desligada para a tela não bloquear à toa.
+        const EXIGE_INTEGRACAO_PARA_EPI = false;
+        const cursoIntegracao = EXIGE_INTEGRACAO_PARA_EPI ? cursos.find((c) => c.ehIntegracaoSeguranca) : undefined;
         if (!cursoIntegracao) {
           setStatusIntegracao({ tipo: 'sem-curso' });
           return;
@@ -431,6 +446,13 @@ export function EntregasTab({ aoNavegarParaMatriz }: EntregasTabProps) {
       setErroPainel('Adicione ao menos um EPI ao carrinho antes de confirmar.');
       return;
     }
+    // A observação (antigo "Motivo") não vem mais pré-selecionada: técnicos pulavam o campo e tudo
+    // era gravado como "Entrega inicial". Agora é escolha ativa e obrigatória.
+    const motivoTipo = dadosComuns.motivoTipo;
+    if (motivoTipo === null) {
+      setErroPainel('Selecione a Observação da entrega (entrega inicial, dano, extravio, vencimento ou troca de função).');
+      return;
+    }
     // Pedido do usuário (22/09): nº da lista de presença e data do treinamento de NR-06 deixaram de
     // ser digitáveis (só vêm do treinamento cadastrado, ver useEffect sincronizarDadosTrabalhador
     // acima) — sem essa checagem aqui, um funcionário sem NR-06 cadastrada geraria uma ficha de EPI
@@ -468,7 +490,7 @@ export function EntregasTab({ aoNavegarParaMatriz }: EntregasTabProps) {
           vistoConsorcioResponsavel: dadosComuns.vistoConsorcioResponsavel || null,
           motivo: dadosComuns.motivo || null,
           observacoes: dadosComuns.observacoes || null,
-          motivoTipo: dadosComuns.motivoTipo,
+          motivoTipo,
           numeroListaPresencaNr6: dadosComuns.numeroListaPresencaNr6 || null,
           dataTreinamentoNr6: dadosComuns.dataTreinamentoNr6 || null,
         };
@@ -518,10 +540,8 @@ export function EntregasTab({ aoNavegarParaMatriz }: EntregasTabProps) {
   // a ficha oficial (essa só existe depois de "Confirmar entrega" + assinatura eletrônica).
   async function imprimirRascunhoCarrinho() {
     if (!dadosComuns.trabalhadorId || carrinho.length === 0) return;
-    const janela = window.open('', '_blank', 'width=420,height=720');
-    if (!janela) return;
-    janela.document.write('<!DOCTYPE html><html lang="pt-br"><head><meta charset="UTF-8"><title>EPIs recebidos</title></head><body>Gerando canhoto...</body></html>');
-    janela.document.close();
+    setCanhotoHtml(null);
+    setCanhotoAberto(true);
 
     function blobParaDataUrl(blob: Blob): Promise<string> {
       return new Promise((resolve, reject) => {
@@ -546,7 +566,7 @@ export function EntregasTab({ aoNavegarParaMatriz }: EntregasTabProps) {
     const dataFmt = dadosComuns.dataEntrega ? dadosComuns.dataEntrega.split('-').reverse().join('/') : '—';
     const dataTreinamentoFmt = dadosComuns.dataTreinamentoNr6 ? dadosComuns.dataTreinamentoNr6.split('-').reverse().join('/') : '—';
     const emitidoEm = new Date().toLocaleString('pt-BR');
-    const motivo = motivoEntregaEpiLabel[dadosComuns.motivoTipo] ?? '—';
+    const motivo = (dadosComuns.motivoTipo === null ? undefined : motivoEntregaEpiLabel[dadosComuns.motivoTipo]) ?? '—';
     const observacaoMotivo = dadosComuns.motivo || '—';
     const observacoes = dadosComuns.observacoes || '—';
     const vistoResponsavel = dadosComuns.vistoConsorcioResponsavel || '—';
@@ -570,7 +590,7 @@ export function EntregasTab({ aoNavegarParaMatriz }: EntregasTabProps) {
         </div>`;
       })
     )).join('');
-    janela.document.write(`<!DOCTYPE html><html lang="pt-br"><head><meta charset="UTF-8"><title>Canhoto de recibo - EPI</title>
+    setCanhotoHtml(`<!DOCTYPE html><html lang="pt-br"><head><meta charset="UTF-8"><title>Canhoto de recibo - EPI</title>
       <style>
         @page { size: 80mm auto; margin: 4mm; }
         * { box-sizing: border-box; }
@@ -603,8 +623,8 @@ export function EntregasTab({ aoNavegarParaMatriz }: EntregasTabProps) {
         ${linhas}
 
         <h2>Documentação e motivo</h2>
-        <div class="campo"><b>Motivo</b><span>${escapeHtml(motivo)}</span></div>
-        <div class="campo"><b>Obs. motivo</b><span>${escapeHtml(observacaoMotivo)}</span></div>
+        <div class="campo"><b>Observação</b><span>${escapeHtml(motivo)}</span></div>
+        <div class="campo"><b>Detalhes</b><span>${escapeHtml(observacaoMotivo)}</span></div>
         <div class="campo"><b>Lista NR-6</b><span>${escapeHtml(numeroLista)}</span></div>
         <div class="campo"><b>Trein. NR-6</b><span>${dataTreinamentoFmt}</span></div>
         <div class="campo"><b>Responsável</b><span>${escapeHtml(vistoResponsavel)}</span></div>
@@ -612,9 +632,13 @@ export function EntregasTab({ aoNavegarParaMatriz }: EntregasTabProps) {
 
         <p class="aviso">Comprovante de conferência prévia. A ficha oficial é emitida após confirmar e assinar eletronicamente a entrega.</p>
       </body></html>`);
-    janela.document.close();
-    janela.focus();
-    janela.print();
+  }
+
+  function imprimirCanhoto() {
+    const frame = canhotoFrameRef.current?.contentWindow;
+    if (!frame) return;
+    frame.focus();
+    frame.print();
   }
 
   // Todo caminho de fechar o painel limpa o carrinho e o erro do formulário — senão reabrir mostra
@@ -731,6 +755,33 @@ export function EntregasTab({ aoNavegarParaMatriz }: EntregasTabProps) {
     <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
       {dialogElement}
       {dialogoVisualizador}
+      <Dialog open={canhotoAberto} onOpenChange={(_, d) => { if (!d.open) setCanhotoAberto(false); }}>
+        <DialogSurface style={{ maxWidth: 480 }}>
+          <DialogBody>
+            <DialogTitle>EPIs recebidos — canhoto</DialogTitle>
+            <DialogContent>
+              {canhotoHtml ? (
+                <iframe
+                  ref={canhotoFrameRef}
+                  title="Canhoto de EPIs recebidos"
+                  srcDoc={canhotoHtml}
+                  style={{ width: '100%', height: '65vh', border: '1px solid #ddd', background: '#fff' }}
+                />
+              ) : (
+                <div style={{ padding: 48, textAlign: 'center' }}>
+                  <Spinner label="Gerando canhoto..." />
+                </div>
+              )}
+            </DialogContent>
+            <DialogActions>
+              <Button appearance="secondary" onClick={() => setCanhotoAberto(false)}>Fechar</Button>
+              <Button appearance="primary" icon={<Print24Regular />} disabled={!canhotoHtml} onClick={imprimirCanhoto}>
+                Imprimir
+              </Button>
+            </DialogActions>
+          </DialogBody>
+        </DialogSurface>
+      </Dialog>
       <PageHeader
         titulo="Entregas de EPI"
         subtitulo={`${entregas.filter((e) => !e.dataDevolucao).length} entregas ativas`}
@@ -828,11 +879,16 @@ export function EntregasTab({ aoNavegarParaMatriz }: EntregasTabProps) {
 
                 <FormGrid>
                   <Campo span={6}>
-                    <Field label="Motivo">
+                    <Field label="Observação" required>
                       <Select
-                        value={dadosComuns.motivoTipo}
-                        onChange={(_, d) => setDadosComuns({ ...dadosComuns, motivoTipo: Number(d.value) })}
+                        value={dadosComuns.motivoTipo === null ? '' : String(dadosComuns.motivoTipo)}
+                        onChange={(_, d) =>
+                          setDadosComuns({ ...dadosComuns, motivoTipo: d.value === '' ? null : Number(d.value) })
+                        }
                       >
+                        <option value="" disabled>
+                          Selecione...
+                        </option>
                         {Object.entries(motivoEntregaEpiLabel).map(([valor, rotulo]) => (
                           <option key={valor} value={valor}>
                             {rotulo}
@@ -842,7 +898,7 @@ export function EntregasTab({ aoNavegarParaMatriz }: EntregasTabProps) {
                     </Field>
                   </Campo>
                   <Campo span={6}>
-                    <Field label="Observação do motivo">
+                    <Field label="Detalhes da observação (opcional)">
                       <Input
                         value={dadosComuns.motivo}
                         onChange={(_, d) => setDadosComuns({ ...dadosComuns, motivo: d.value })}
@@ -947,8 +1003,15 @@ export function EntregasTab({ aoNavegarParaMatriz }: EntregasTabProps) {
                 tom="ver"
                 icon={<Signature24Regular />}
                 onClick={() => navigate(`/epi/${e.id}/assinar`)}
-                aria-label="Assinar ficha"
-                title="Assinar ficha"
+                aria-label="Assinar esta entrega"
+                title="Assinar esta entrega"
+              />
+              <BotaoAcao
+                tom="ver"
+                icon={<Signature24Regular />}
+                onClick={() => setTermoDoTrabalhadorId(e.trabalhadorId)}
+                aria-label="Assinatura de termo de recebimento e compromisso"
+                title="Assinatura de termo de recebimento e compromisso"
               />
               <BotaoAcao
                 tom="ver"
@@ -967,7 +1030,7 @@ export function EntregasTab({ aoNavegarParaMatriz }: EntregasTabProps) {
               />
               {/* Só Administrador (pedido do usuário, 23/09): o servidor recusa a exclusão de quem
                   não for, então mostrar o botão para os outros só geraria erro na cara do técnico. */}
-              {souAdministrador && (
+              {souAdministrador && !travadas.has(e.id) && (
                 <BotaoAcao
                   tom="excluir"
                   icon={<Delete24Regular />}
@@ -992,6 +1055,15 @@ export function EntregasTab({ aoNavegarParaMatriz }: EntregasTabProps) {
           dataEntrega={loteParaAssinar.dataEntrega}
           numeroListaPresencaNr6={loteParaAssinar.numeroListaPresencaNr6}
           dataTreinamentoNr6={loteParaAssinar.dataTreinamentoNr6}
+        />
+      )}
+
+      {termoDoTrabalhadorId && (
+        <TermoCompromissoEpiDialog
+          open
+          onClose={() => setTermoDoTrabalhadorId(null)}
+          trabalhadorId={termoDoTrabalhadorId}
+          trabalhadorNome={nomeTrabalhador(termoDoTrabalhadorId)}
         />
       )}
 

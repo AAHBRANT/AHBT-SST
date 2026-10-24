@@ -1,4 +1,5 @@
 using AAHBRANT.SST.Application.Common.Interfaces;
+using AAHBRANT.SST.Application.Common.Seguranca;
 using AAHBRANT.SST.Domain.Entidades;
 using AAHBRANT.SST.Domain.Enums;
 using FluentValidation;
@@ -39,6 +40,9 @@ public class CriarTreinamentoCommandHandler : IRequestHandler<CriarTreinamentoCo
 
     public async Task<Guid> Handle(CriarTreinamentoCommand request, CancellationToken ct)
     {
+        await _db.GarantirTrabalhadorNoEscopoAsync(request.TrabalhadorId, ct);
+        await CargaHorariaMinimaTreinamento.GarantirAsync(_db, request.CursoTreinamentoId, request.CargaHorariaRealizada, request.OrigemCertificado, ct);
+
         var treinamento = new Treinamento
         {
             TrabalhadorId = request.TrabalhadorId,

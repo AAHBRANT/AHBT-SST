@@ -7,7 +7,6 @@ import {
   DialogSurface,
   DialogTitle,
   Field,
-  Input,
   Select,
   Text,
 } from '@fluentui/react-components';
@@ -26,7 +25,7 @@ interface DialogoCameraFotoProps {
 export function DialogoCameraFoto({ captura }: DialogoCameraFotoProps) {
   const {
     stream,
-    videoRef,
+    aoMontarVideo,
     modoCamera,
     dispositivosVideo,
     dispositivoAtualId,
@@ -35,12 +34,11 @@ export function DialogoCameraFoto({ captura }: DialogoCameraFotoProps) {
     trocarDispositivo,
   } = captura;
 
-  // Reconhecimento facial (câmera frontal) ganha uma guia oval sobreposta ao vídeo — pedido do
-  // usuário (22/09): ajuda a pessoa a centralizar o rosto no quadro antes de capturar, melhorando a
-  // qualidade da foto enviada ao Azure Face API. É só uma guia visual (máscara + contorno), não faz
-  // detecção de rosto em tempo real — isso exigiria uma biblioteca de IA extra no navegador; a
-  // validação de qualidade do rosto em si já é feita pelo Azure Face API no cadastro/autenticação.
-  const mostrarGuiaRosto = modoCamera === 'user';
+  // Câmera simples (23/10): o usuário pediu para voltar ao "clica e captura". Saíram a guia oval, o
+  // detector de rosto ao vivo (quadrado verde e mensagens de luz/posição), a captura automática e a
+  // fila facial do DDS/Treinamento. useDetectorRosto, useCapturaAutomatica, QuadradoRosto e
+  // FilaFacialDds continuam no projeto, só sem uso, caso se queira religar. A validação real segue
+  // sendo a do Azure Face API depois da foto.
 
   return (
     <>
@@ -52,18 +50,9 @@ export function DialogoCameraFoto({ captura }: DialogoCameraFotoProps) {
             {captura.contextoFoto && <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr)', gap: 12, marginBottom: 16, overflowWrap: 'anywhere' }}>
               <Text weight="semibold">Obra: {captura.contextoFoto.obraNome || 'não identificada'}</Text>
               <Text size={200}>A data e a hora serão registradas ao capturar.</Text>
-              <Field label="Local da foto" required>
-                <Input value={captura.localFoto} maxLength={200} placeholder="Ex.: galpão 2, área de montagem"
-                  onChange={(_, d) => captura.setLocalFoto(d.value)} />
-              </Field>
-              <FeedbackInline tom={captura.localizando ? 'info' : captura.localizacao.latitude != null ? 'info' : 'aviso'}>
-                {captura.localizando ? 'Obtendo localização… aguarde antes de capturar.'
-                  : captura.localizacao.motivoLocalizacao || (captura.localizacao.latitude != null
-                    ? `Localização obtida${captura.localizacao.precisaoMetros != null ? ` · precisão ${Math.round(captura.localizacao.precisaoMetros)} m` : ' · precisão não informada pelo aparelho'}.`
-                    : 'Localização ainda não obtida. A foto ficará com pendência.')}
-              </FeedbackInline>
+              <StatusLocalizacao captura={captura} />
               <Button onClick={() => void captura.tentarLocalizacao()} disabled={captura.localizando}>Tentar localização novamente</Button>
-              {!captura.exigirCamera && <Button appearance="subtle" onClick={captura.anexarDaGaleria} disabled={!captura.localFoto.trim()}>
+              {!captura.exigirCamera && <Button appearance="subtle" onClick={captura.anexarDaGaleria}>
                 Anexar foto da galeria (sem geolocalização)
               </Button>}
             </div>}
@@ -84,7 +73,7 @@ export function DialogoCameraFoto({ captura }: DialogoCameraFotoProps) {
 
             <div style={{ position: 'relative' }}>
               <video
-                ref={videoRef}
+                ref={aoMontarVideo}
                 autoPlay
                 playsInline
                 muted
@@ -95,36 +84,7 @@ export function DialogoCameraFoto({ captura }: DialogoCameraFotoProps) {
                   transform: modoCamera === 'user' ? 'scaleX(-1)' : undefined,
                 }}
               />
-              {mostrarGuiaRosto && (
-                <div
-                  aria-hidden
-                  style={{
-                    position: 'absolute',
-                    inset: 0,
-                    borderRadius: 8,
-                    pointerEvents: 'none',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                  }}
-                >
-                  <div
-                    style={{
-                      width: '55%',
-                      aspectRatio: '3 / 4',
-                      borderRadius: '50%',
-                      border: '3px solid rgba(255, 255, 255, 0.85)',
-                      boxShadow: '0 0 0 2000px rgba(0, 0, 0, 0.35)',
-                    }}
-                  />
-                </div>
-              )}
             </div>
-            {mostrarGuiaRosto && (
-              <Text size={200} style={{ display: 'block', marginTop: 8, textAlign: 'center' }}>
-                Centralize o rosto dentro do círculo antes de capturar.
-              </Text>
-            )}
 
           </DialogContent>
           <DialogActions>
@@ -162,4 +122,27 @@ export function DialogoCameraFoto({ captura }: DialogoCameraFotoProps) {
     </Dialog>
     </>
   );
+}
+
+// Mensagem do rastreio contínuo de localização (08/10) — um texto por estado, ver rastreadorLocalizacao.ts.
+function StatusLocalizacao({ captura }: { captura: UseCapturaFoto }) {
+  const e = captura.estadoLocalizacao;
+  const precisao = e?.leitura?.precisaoMetros;
+  if (captura.aguardandoLocalizacao) {
+    return <FeedbackInline tom="info">Foto tirada. Aguardando a localização (até 15 s)…</FeedbackInline>;
+  }
+  if (!e || e.status === 'buscando') {
+    return <FeedbackInline tom="info">Buscando localização… Pode enquadrar a foto. Se ela não chegar até o clique, a captura espera até 15 s.</FeedbackInline>;
+  }
+  if (e.status === 'imprecisa') {
+    return <FeedbackInline tom="aviso">
+      Melhorando a precisão{precisao != null ? `: ${Math.round(precisao)} m` : ''}. O limite é 100 m. Aguarde alguns segundos, de preferência em área aberta.
+    </FeedbackInline>;
+  }
+  if (e.status === 'pronta') {
+    return <FeedbackInline tom="sucesso">
+      Localização obtida{precisao != null ? ` · precisão ${Math.round(precisao)} m` : ' · precisão não informada pelo aparelho'}. Atualizando automaticamente.
+    </FeedbackInline>;
+  }
+  return <FeedbackInline tom="erro">{e.motivo ?? 'Não foi possível obter a localização. A foto ficará com pendência.'}</FeedbackInline>;
 }

@@ -4,6 +4,18 @@ using Microsoft.EntityFrameworkCore.Metadata.Builders;
 
 namespace AAHBRANT.SST.Infrastructure.Persistencia.Configuracoes;
 
+public class AcidenteEnvolvidoConfiguracao : IEntityTypeConfiguration<AcidenteEnvolvido>
+{
+    public void Configure(EntityTypeBuilder<AcidenteEnvolvido> builder)
+    {
+        builder.HasOne(e => e.Acidente).WithMany().HasForeignKey(e => e.AcidenteId).OnDelete(DeleteBehavior.Cascade);
+        builder.HasOne(e => e.Trabalhador).WithMany().HasForeignKey(e => e.TrabalhadorId).OnDelete(DeleteBehavior.Restrict);
+        builder.HasIndex(e => new { e.AcidenteId, e.TrabalhadorId }).IsUnique().HasFilter("[Ativo] = 1");
+        builder.HasIndex(e => e.TrabalhadorId);
+        builder.HasQueryFilter(e => e.Ativo);
+    }
+}
+
 public class AcidenteConfiguracao : IEntityTypeConfiguration<Acidente>
 {
     public void Configure(EntityTypeBuilder<Acidente> builder)

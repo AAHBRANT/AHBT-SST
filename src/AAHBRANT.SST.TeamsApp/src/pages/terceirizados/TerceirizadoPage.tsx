@@ -1,4 +1,5 @@
-import { Abas, PageHeader, useAbaNaUrl } from '@ui';
+import { Abas, DashboardTopo, PageHeader, useAbaNaUrl } from '@ui';
+import { TerceirizadosDashboardTab } from './dashboard/TerceirizadosDashboardTab';
 import { EmpresasTab } from './EmpresasTab';
 import { PessoasTab } from './PessoasTab';
 import { PendenciasTab } from './PendenciasTab';
@@ -15,6 +16,10 @@ export function TerceirizadoPage() {
   return (
     <div>
       <PageHeader titulo="Terceirizado" />
+
+      <DashboardTopo>
+        <TerceirizadosDashboardTab />
+      </DashboardTopo>
 
       <Abas
         nivel="pilar"

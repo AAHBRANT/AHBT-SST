@@ -1,3 +1,4 @@
+using AAHBRANT.SST.Domain.Enums;
 using AAHBRANT.SST.Application.MateriaisApoio.Commands;
 using AAHBRANT.SST.Application.MateriaisApoio.Queries;
 using MediatR;
@@ -36,8 +37,19 @@ public class MateriaisApoioController : ControllerBase
         await body.Arquivo.CopyToAsync(stream, ct);
 
         var id = await _mediator.Send(new CriarMaterialApoioCommand(
-            body.Nome, body.Categoria, body.Arquivo.FileName, body.Arquivo.ContentType, stream.ToArray()), ct);
+            body.Nome, body.Categoria, body.Arquivo.FileName, body.Arquivo.ContentType, stream.ToArray(),
+            body.Tipo, body.Codigo, body.Revisao, body.Situacao, body.FormaConsulta, body.IncluirEmTodasOs), ct);
         return CreatedAtAction(nameof(ObterConteudo), new { id }, new { id });
+    }
+
+    // Dados do documento controlado (situação, revisão...), sem trocar o arquivo.
+    [Authorize(Policy = "materialapoio:criar")]
+    [HttpPut("{id:guid}")]
+    public async Task<IActionResult> Atualizar(Guid id, AtualizarDocumentoSstCommand command, CancellationToken ct)
+    {
+        if (id != command.Id) return BadRequest("Id da rota difere do corpo da requisição.");
+        await _mediator.Send(command, ct);
+        return NoContent();
     }
 
     [Authorize(Policy = "materialapoio:excluir")]
@@ -54,4 +66,10 @@ public class CriarMaterialApoioRequestBody
     public string Nome { get; set; } = string.Empty;
     public string? Categoria { get; set; }
     public IFormFile Arquivo { get; set; } = null!;
+    public TipoDocumentoSst Tipo { get; set; } = TipoDocumentoSst.MaterialApoio;
+    public string? Codigo { get; set; }
+    public string? Revisao { get; set; }
+    public SituacaoDocumentoSst? Situacao { get; set; }
+    public string? FormaConsulta { get; set; }
+    public bool IncluirEmTodasOs { get; set; }
 }

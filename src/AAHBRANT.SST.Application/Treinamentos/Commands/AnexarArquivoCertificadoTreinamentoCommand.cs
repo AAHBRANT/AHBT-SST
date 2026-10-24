@@ -1,5 +1,6 @@
 using AAHBRANT.SST.Application.Common;
 using AAHBRANT.SST.Application.Common.Interfaces;
+using AAHBRANT.SST.Application.Common.Seguranca;
 using AAHBRANT.SST.Domain.Entidades;
 using FluentValidation;
 using MediatR;
@@ -47,7 +48,7 @@ public class AnexarArquivoCertificadoTreinamentoCommandHandler : IRequestHandler
 
     public async Task<Guid> Handle(AnexarArquivoCertificadoTreinamentoCommand request, CancellationToken ct)
     {
-        var treinamentoExiste = await _db.Treinamentos.AnyAsync(t => t.Id == request.TreinamentoId, ct);
+        var treinamentoExiste = await _db.Treinamentos.NoEscopoDoTrabalhador(_db, t => t.TrabalhadorId).AnyAsync(t => t.Id == request.TreinamentoId, ct);
         if (!treinamentoExiste)
             throw new KeyNotFoundException($"Treinamento {request.TreinamentoId} não encontrado.");
 

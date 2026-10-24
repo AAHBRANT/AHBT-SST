@@ -80,6 +80,8 @@ jobs:
           # do Container App; se algum dia este job precisar de uma credencial de verdade, ela tem
           # de entrar por secrets do repositório, nunca aqui.
           ConnectionStrings__SstDatabase: 'Server=localhost;Database=sst_ci;User Id=ci;Password=naoUsado;TrustServerCertificate=True'
+          AzureAd__TenantId: '00000000-0000-0000-0000-000000000001'
+          AzureAd__ClientId: '00000000-0000-0000-0000-000000000002'
           # Base64 de 32 bytes ASCII legíveis ("chave-de-ci-sem-valor-real-...") — decodifique e
           # veja: é texto dizendo que não vale nada. Tamanho de chave AES-256 só para o caso de
           # alguma validação de comprimento aparecer no futuro.

@@ -1,4 +1,5 @@
 using AAHBRANT.SST.Application.Common.Interfaces;
+using AAHBRANT.SST.Application.Common.Seguranca;
 using MediatR;
 using Microsoft.EntityFrameworkCore;
 
@@ -16,6 +17,7 @@ public class ObterAsoPorIdQueryHandler : IRequestHandler<ObterAsoPorIdQuery, Aso
     {
         return await _db.Asos
             .Where(a => a.Id == request.Id)
+            .NoEscopoDoTrabalhador(_db, a => a.TrabalhadorId)
             .Select(a => new AsoDto
             {
                 Id = a.Id,

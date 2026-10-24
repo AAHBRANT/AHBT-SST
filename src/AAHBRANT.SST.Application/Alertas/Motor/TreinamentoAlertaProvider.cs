@@ -20,8 +20,15 @@ public class TreinamentoAlertaProvider : IAlertaOrigemProvider
             .Include(t => t.CursoTreinamento)
             .ToListAsync(ct);
 
+        // O treinamento vigente de cada trabalhador em cada curso é o de validade mais distante; os
+        // anteriores foram renovados e não podem manter alerta de vencido aberto.
+        var vigentePorCurso = treinamentos
+            .GroupBy(t => (t.TrabalhadorId, t.CursoTreinamentoId))
+            .ToDictionary(g => g.Key, g => g.OrderByDescending(t => t.DataValidade).ThenByDescending(t => t.DataRealizacao).First().Id);
+
         return treinamentos.Select(t => new AlertaOrigemItem
         {
+            Substituido = vigentePorCurso[(t.TrabalhadorId, t.CursoTreinamentoId)] != t.Id,
             EntidadeOrigemTipo = "Treinamento",
             EntidadeOrigemId = t.Id,
             DataVencimento = t.DataValidade,

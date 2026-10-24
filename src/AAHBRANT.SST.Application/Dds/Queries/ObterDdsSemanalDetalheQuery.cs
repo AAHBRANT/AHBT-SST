@@ -1,4 +1,5 @@
 using AAHBRANT.SST.Application.Common.Interfaces;
+using AAHBRANT.SST.Domain.Enums;
 using MediatR;
 using Microsoft.EntityFrameworkCore;
 
@@ -54,10 +55,26 @@ public class ObterDdsSemanalDetalheQueryHandler : IRequestHandler<ObterDdsSemana
             });
         }
 
+        var assinaturas = await _db.DocumentoSignatarios
+            .Where(s => s.Papel != null
+                && s.DocumentoAssinatura!.EntidadeTipo == nameof(Domain.Entidades.DdsSemanal)
+                && s.DocumentoAssinatura!.EntidadeId == semanal.Id)
+            .Select(s => new { s.Papel, s.AssinadoEm, s.MetodoAutenticacao, Nome = s.Trabalhador!.Nome,
+                Funcao = s.Trabalhador.Funcao != null ? s.Trabalhador.Funcao.Nome : null })
+            .ToListAsync(ct);
+
+        DdsSemanalAssinaturaDto? AssinaturaDo(PapelAssinatura papel) => assinaturas
+            .Where(a => a.Papel == papel)
+            .OrderBy(a => a.AssinadoEm)
+            .Select(a => new DdsSemanalAssinaturaDto(a.Nome, a.AssinadoEm, a.MetodoAutenticacao, a.Funcao))
+            .FirstOrDefault();
+
         return new DdsSemanalDetalheDto
         {
             Semanal = ListarDdsSemanaisQueryHandler.MapearParaDto(semanal),
             Dias = dias,
+            AssinaturaResponsavelDds = AssinaturaDo(PapelAssinatura.ResponsavelDds),
+            AssinaturaResponsavelObraSst = AssinaturaDo(PapelAssinatura.ResponsavelObraSst),
         };
     }
 }

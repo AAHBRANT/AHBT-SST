@@ -62,7 +62,7 @@ export function CofreAssinaturasTab({ trabalhadorId, assinaturas }: CofreAssinat
       chave: 'evidencia',
       rotulo: 'Evidência',
       render: (a) => a.temFotoEvidencia
-        ? `Foto facial${a.fotoEvidenciaHash ? ` · ${a.fotoEvidenciaHash.slice(0, 12)}...` : ''}`
+        ? `${a.metodo === 6 ? 'Foto facial' : 'Imagem da digital'}${a.fotoEvidenciaHash ? ` · ${a.fotoEvidenciaHash.slice(0, 12)}...` : ''}`
         : 'Sem foto',
     },
   ];
@@ -86,8 +86,8 @@ export function CofreAssinaturasTab({ trabalhadorId, assinaturas }: CofreAssinat
                 icon={<Image24Regular />}
                 onClick={() => abrirFotoEvidencia(a.signatarioId)}
                 disabled={!a.temFotoEvidencia || abrindoFotoId === a.signatarioId}
-                aria-label="Abrir foto da assinatura"
-                title={a.temFotoEvidencia ? 'Abrir foto capturada na assinatura' : 'Foto não disponível'}
+                aria-label="Abrir imagem da assinatura"
+                title={a.temFotoEvidencia ? 'Abrir imagem capturada na assinatura (foto do rosto ou impressão digital)' : 'Imagem não disponível'}
               />
               <BotaoAcao
                 tom="ver"
