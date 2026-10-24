@@ -123,6 +123,8 @@ public class SstDbContext : DbContext, IAppDbContext
     public DbSet<AlojamentoMorador> AlojamentoMoradores => Set<AlojamentoMorador>();
     public DbSet<ConfiguracaoAlojamento> ConfiguracoesAlojamento => Set<ConfiguracaoAlojamento>();
     public DbSet<Veiculo> Veiculos => Set<Veiculo>();
+    public DbSet<TemaInspecao> TemasInspecao => Set<TemaInspecao>();
+    public DbSet<ItemInspecionavel> ItensInspecionaveis => Set<ItemInspecionavel>();
 
     public DbSet<Dds> Dds => Set<Dds>();
     public DbSet<DdsAtividade> DdsAtividades => Set<DdsAtividade>();
@@ -292,6 +294,8 @@ public class SstDbContext : DbContext, IAppDbContext
             p.Ativo && (_usuarioAtual.TemAcessoGlobal || _usuarioAtual.ObrasPermitidas.Contains(p.ObraId)));
         modelBuilder.Entity<Veiculo>().HasQueryFilter(v =>
             v.Ativo && (_usuarioAtual.TemAcessoGlobal || _usuarioAtual.ObrasPermitidas.Contains(v.ObraId)));
+        modelBuilder.Entity<ItemInspecionavel>().HasQueryFilter(i =>
+            i.Ativo && (_usuarioAtual.TemAcessoGlobal || _usuarioAtual.ObrasPermitidas.Contains(i.ObraId)));
         // ASO NÃO tem filtro global por obra (tentado em #115 e revertido): o ASO só chega à obra pelo
         // Trabalhador, e navegar até ele dentro do filtro faz o filtro de Trabalhador (Ativo) valer
         // também — o ASO de quem foi desligado sumia das telas, até para acesso global (comprovado em

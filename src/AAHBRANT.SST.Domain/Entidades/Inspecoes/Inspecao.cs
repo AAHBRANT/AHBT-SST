@@ -31,6 +31,11 @@ public class Inspecao : AuditableEntity
     public Guid? VeiculoId { get; set; }
     public Veiculo? Veiculo { get; set; }
 
+    // Inspeção de item de um tema criado pelo usuário (ex.: um andaime) — preenchida quando a checklist é
+    // de um ItemInspecionavel cadastrado. Nullable pelo mesmo motivo de VeiculoId.
+    public Guid? ItemInspecionavelId { get; set; }
+    public ItemInspecionavel? ItemInspecionavel { get; set; }
+
     public Guid ChecklistModeloId { get; set; }
     public ChecklistModelo? ChecklistModelo { get; set; }
 

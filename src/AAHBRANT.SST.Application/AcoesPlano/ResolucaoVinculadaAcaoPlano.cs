@@ -179,6 +179,7 @@ public static class ResolucaoVinculadaAcaoPlano
         TipoInspecao.Terceiros => "Terceiros",
         TipoInspecao.Alojamento => "Alojamento",
         TipoInspecao.Veiculo => "Veículo",
+        TipoInspecao.Tema => "Tema",
         _ => "tipo escolhido",
     };
 }

@@ -348,8 +348,19 @@ export function InspecaoDetalhePage() {
 
   const inspecao = detalhe.inspecao;
   const ehInspecaoAlojamento = inspecao.tipoInspecao === TipoInspecao.Alojamento;
-  // Veículos: 1 foto por item, obrigatória só quando o item é Não Conforme (decisão de 02/10/2026).
   const ehInspecaoVeiculo = inspecao.tipoInspecao === TipoInspecao.Veiculo;
+  const ehInspecaoTema = inspecao.tipoInspecao === TipoInspecao.Tema;
+  // Veículos e temas criados pelo usuário: 1 foto por item, obrigatória só quando o item é Não Conforme
+  // (decisão de 02/10/2026).
+  const usaLayoutCompacto = ehInspecaoVeiculo || ehInspecaoTema;
+  // Volta para o card de onde a inspeção foi aberta (Alojamento, Veículos ou o tema do item).
+  const voltarPara = ehInspecaoAlojamento
+    ? '/operacao?secao=inspecoes&cartao=alojamento'
+    : ehInspecaoVeiculo
+      ? '/operacao?secao=inspecoes&cartao=veiculos'
+      : ehInspecaoTema && inspecao.temaInspecaoId
+        ? `/operacao?secao=inspecoes&cartao=tema:${inspecao.temaInspecaoId}`
+        : '/prevencao/inspecoes';
 
   const acoes: AcaoWorkflow[] = [];
   if (inspecao.status === StatusInspecao.EmAndamento && !sync.finalizacaoPendente) {
@@ -362,7 +373,7 @@ export function InspecaoDetalhePage() {
         if (r.statusItem == null) p.push('resposta do checklist');
         if (r.exigeFotografia && !r.temFoto) p.push('foto anterior obrigatória');
         if (ehInspecaoAlojamento && r.exigeFotografia && !r.temFotoDepois) p.push('foto posterior obrigatória');
-        if (ehInspecaoVeiculo && r.statusItem === StatusItemChecklist.NaoConforme && !r.temFoto) p.push('foto da não conformidade obrigatória');
+        if (usaLayoutCompacto && r.statusItem === StatusItemChecklist.NaoConforme && !r.temFoto) p.push('foto da não conformidade obrigatória');
         if (r.temFoto && r.dadosFoto) p.push(...pendenciasFoto(r.dadosFoto).map(d => 'foto anterior: ' + d));
         if (r.temFotoDepois && r.dadosFotoDepois) p.push(...pendenciasFoto(r.dadosFotoDepois).map(d => 'foto posterior: ' + d));
         return p.length ? [r.descricao + ': ' + p.join('; ')] : [];
@@ -377,13 +388,15 @@ export function InspecaoDetalhePage() {
   return (
     <DetailPageLayout
       cabecalho={{
-        titulo: `${tipoInspecaoLabel[inspecao.tipoInspecao]} — ${inspecao.checklistModeloNome} (v${inspecao.checklistModeloVersao})`,
+        titulo: ehInspecaoTema
+          ? `${inspecao.temaInspecaoNome ?? 'Tema'} — ${inspecao.itemInspecionavelIdentificacao ?? inspecao.checklistModeloNome}`
+          : `${tipoInspecaoLabel[inspecao.tipoInspecao]} — ${inspecao.checklistModeloNome} (v${inspecao.checklistModeloVersao})`,
         status: (
           <StatusChip tom={tomPorStatusInspecao[inspecao.status] ?? 'neutro'}>
             {sync.finalizacaoPendente ? 'Finalização pendente' : statusInspecaoLabel[inspecao.status]}
           </StatusChip>
         ),
-        voltarPara: '/prevencao/inspecoes',
+        voltarPara,
         rotuloVoltar: 'Voltar para Inspeções',
         acoes: (
           <>
@@ -409,7 +422,16 @@ export function InspecaoDetalhePage() {
       lateral={
         <>
           <Card densidade="compacta" titulo="Resumo">
-            {ehInspecaoVeiculo ? (
+            {ehInspecaoTema ? (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+                <DadoResumo rotulo="Tema" valor={inspecao.temaInspecaoNome ?? '—'} />
+                <DadoResumo rotulo="Item" valor={inspecao.itemInspecionavelIdentificacao ?? '—'} />
+                <DadoResumo rotulo="Obra" valor={inspecao.obraNome} />
+                <DadoResumo rotulo="Data do preenchimento" valor={formatarDataIso(inspecao.data)} />
+                <DadoResumo rotulo="Responsável" valor={inspecao.responsavelUsuarioNome} />
+                <DadoResumo rotulo="Itens respondidos" valor={`${inspecao.itensRespondidos}/${inspecao.totalItens}`} />
+              </div>
+            ) : ehInspecaoVeiculo ? (
               <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
                 <DadoResumo rotulo="Placa/Prefixo" valor={inspecao.veiculoPlacaPrefixo ?? '—'} />
                 <DadoResumo rotulo="Tipo de veículo" valor={inspecao.veiculoTipo ? tipoVeiculoLabel[inspecao.veiculoTipo] : '—'} />
@@ -516,7 +538,7 @@ export function InspecaoDetalhePage() {
               )}
               <Card densidade="compacta">
               {sync.itensPendentes.includes(resposta.id) && <StatusChip tom="atencao">Item salvo no tablet — envio pendente</StatusChip>}
-              {ehInspecaoVeiculo ? (
+              {usaLayoutCompacto ? (
                 <>
                   <div style={{ display: 'grid', gridTemplateColumns: 'minmax(260px, 1fr) minmax(220px, 320px)', gap: 16, alignItems: 'start' }}>
                     <div>

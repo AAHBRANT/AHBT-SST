@@ -2543,6 +2543,8 @@ export const TipoInspecao = {
   Terceiros: 13,
   Alojamento: 14,
   Veiculo: 15,
+  // Tema criado pelo usuário (ex.: Andaime), com itens cadastrados por obra.
+  Tema: 16,
 } as const;
 
 export const tipoInspecaoLabel: Record<number, string> = {
@@ -2561,6 +2563,7 @@ export const tipoInspecaoLabel: Record<number, string> = {
   13: 'Terceiros',
   14: 'Alojamento',
   15: 'Veículo',
+  16: 'Tema',
 };
 
 // Tipos de veículo/equipamento com checklist próprio (planilha CHECK LIST - AT CUIA, 02/10/2026).
@@ -2616,6 +2619,8 @@ export interface ChecklistModelo {
   nome: string;
   tipoInspecao: number;
   tipoVeiculo?: number | null;
+  // Só nos checklists de temas criados pelo usuário (tipoInspecao = Tema).
+  temaInspecaoId?: string | null;
   versao: number;
   checklistModeloAnteriorId?: string | null;
   quantidadeItens: number;
@@ -2664,6 +2669,11 @@ export interface Inspecao {
   veiculoPlacaPrefixo?: string | null;
   veiculoMarcaModelo?: string | null;
   veiculoEmpresa?: string | null;
+  // Só nas inspeções de itens de temas criados pelo usuário (ex.: um andaime do tema Andaime).
+  itemInspecionavelId?: string | null;
+  itemInspecionavelIdentificacao?: string | null;
+  temaInspecaoId?: string | null;
+  temaInspecaoNome?: string | null;
   checklistModeloId: string;
   checklistModeloNome: string;
   checklistModeloVersao: number;
@@ -2774,6 +2784,36 @@ export interface DadosVeiculo {
   cor?: string | null;
   empresa?: string | null;
   responsavel?: string | null;
+}
+
+// Tema de inspeção criado pelo usuário (ex.: Andaime): um card ao lado de Alojamento e Veículos.
+export interface TemaInspecaoResumo {
+  id: string;
+  nome: string;
+  totalItens: number;
+  itensComInspecaoEmAndamento: number;
+  totalInspecoes: number;
+  checklistModeloId?: string | null;
+  totalItensChecklist: number;
+}
+
+export interface ItemInspecionavelResumo {
+  id: string;
+  temaInspecaoId: string;
+  obraId: string;
+  obraNome: string;
+  identificacao: string;
+  descricao?: string | null;
+  statusUltimaInspecao: 'nunca' | 'inspecionado';
+  diasDesdeUltimaInspecao?: number | null;
+  inspecaoEmAndamento?: AlojamentoInspecaoResumo | null;
+  ultimaInspecaoConcluida?: AlojamentoInspecaoResumo | null;
+  historicoInspecoes: AlojamentoInspecaoResumo[];
+}
+
+export interface NovoTemaInspecaoItem {
+  descricao: string;
+  secao?: string | null;
 }
 
 export interface InspecaoAtual {
@@ -6078,6 +6118,20 @@ export const api = {
     excluir: (id: string) => request<void>(`/api/veiculos/${id}`, { method: 'DELETE' }),
     obterOuCriarInspecaoAtual: (veiculoId: string) =>
       request<InspecaoAtual>(`/api/veiculos/${veiculoId}/inspecao-atual`, { method: 'POST' }),
+  },
+  // Temas de inspeção criados pelo usuário (card "+" da aba Inspeções).
+  temasInspecao: {
+    listar: () => request<TemaInspecaoResumo[]>('/api/temas-inspecao'),
+    criar: (nome: string, itens: NovoTemaInspecaoItem[]) =>
+      request<{ id: string }>('/api/temas-inspecao', { method: 'POST', body: JSON.stringify({ nome, itens }) }),
+    listarItens: (temaId: string, obraId?: string) =>
+      request<ItemInspecionavelResumo[]>(`/api/temas-inspecao/${temaId}/itens${obraId ? `?obraId=${obraId}` : ''}`),
+    criarItem: (temaId: string, dados: { obraId: string; identificacao: string; descricao?: string | null }) =>
+      request<{ id: string }>(`/api/temas-inspecao/${temaId}/itens`, { method: 'POST', body: JSON.stringify(dados) }),
+    // Só Administrador (exclusão lógica; o histórico de inspeções é preservado).
+    excluirItem: (itemId: string) => request<void>(`/api/temas-inspecao/itens/${itemId}`, { method: 'DELETE' }),
+    obterOuCriarInspecaoAtual: (itemId: string) =>
+      request<InspecaoAtual>(`/api/temas-inspecao/itens/${itemId}/inspecao-atual`, { method: 'POST' }),
   },
   ordensServico: {
     obterMinuta: (trabalhadorId: string) => request<MinutaOrdemServico>(`/api/trabalhadores/${trabalhadorId}/ordem-servico/minuta`),

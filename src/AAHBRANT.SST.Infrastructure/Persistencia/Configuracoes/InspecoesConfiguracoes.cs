@@ -13,6 +13,9 @@ public class ChecklistModeloConfiguracao : IEntityTypeConfiguration<ChecklistMod
             .HasForeignKey(c => c.ChecklistModeloAnteriorId).OnDelete(DeleteBehavior.Restrict);
         builder.HasIndex(c => c.TipoInspecao);
         builder.HasIndex(c => c.TipoVeiculo);
+        builder.HasOne(c => c.TemaInspecao).WithMany()
+            .HasForeignKey(c => c.TemaInspecaoId).OnDelete(DeleteBehavior.Restrict);
+        builder.HasIndex(c => c.TemaInspecaoId);
         builder.HasQueryFilter(c => c.Ativo);
     }
 }
@@ -43,6 +46,8 @@ public class InspecaoConfiguracao : IEntityTypeConfiguration<Inspecao>
             .HasForeignKey(i => i.AlojamentoId).OnDelete(DeleteBehavior.Restrict);
         builder.HasOne(i => i.Veiculo).WithMany()
             .HasForeignKey(i => i.VeiculoId).OnDelete(DeleteBehavior.Restrict);
+        builder.HasOne(i => i.ItemInspecionavel).WithMany()
+            .HasForeignKey(i => i.ItemInspecionavelId).OnDelete(DeleteBehavior.Restrict);
         builder.HasOne(i => i.ChecklistModelo).WithMany()
             .HasForeignKey(i => i.ChecklistModeloId).OnDelete(DeleteBehavior.Restrict);
         builder.HasOne(i => i.ResponsavelUsuario).WithMany()
@@ -61,6 +66,10 @@ public class InspecaoConfiguracao : IEntityTypeConfiguration<Inspecao>
         builder.HasIndex(i => i.VeiculoId)
             .IsUnique()
             .HasFilter("[VeiculoId] IS NOT NULL AND [Status] = 1 AND [Ativo] = 1");
+        // Idem para itens de tema: uma única inspeção em andamento por item.
+        builder.HasIndex(i => i.ItemInspecionavelId)
+            .IsUnique()
+            .HasFilter("[ItemInspecionavelId] IS NOT NULL AND [Status] = 1 AND [Ativo] = 1");
         builder.HasQueryFilter(i => i.Ativo);
     }
 }

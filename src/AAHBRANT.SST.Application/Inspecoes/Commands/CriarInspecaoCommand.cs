@@ -60,6 +60,11 @@ public class CriarInspecaoCommandHandler : IRequestHandler<CriarInspecaoCommand,
             throw new InvalidOperationException(
                 "Inspeções de Veículos devem ser criadas pela aba Veículos, não pelo painel genérico de Nova Inspeção.");
 
+        // Idem para temas criados pelo usuário: a inspeção nasce do card do item (ObterOuCriarInspecaoItemCommand).
+        if (checklist.TipoInspecao == TipoInspecao.Tema)
+            throw new InvalidOperationException(
+                "Inspeções de temas devem ser criadas pelo card do tema, não pelo painel genérico de Nova Inspeção.");
+
         var obraExiste = await _db.Obras.AnyAsync(o => o.Id == request.ObraId, ct);
         if (!obraExiste)
             throw new KeyNotFoundException($"Obra {request.ObraId} não encontrada.");

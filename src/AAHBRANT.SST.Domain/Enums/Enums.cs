@@ -580,7 +580,9 @@ public enum TipoInspecao
     Comportamental = 12,
     Terceiros = 13,
     Alojamento = 14,
-    Veiculo = 15
+    Veiculo = 15,
+    // Tema criado pelo usuário (ex.: Andaime): ItemInspecionavel + checklist próprio do tema.
+    Tema = 16
 }
 
 // Tipos de veículo/equipamento pesado com checklist próprio (planilha "CHECK LIST - AT CUIA", 02/10/2026).
