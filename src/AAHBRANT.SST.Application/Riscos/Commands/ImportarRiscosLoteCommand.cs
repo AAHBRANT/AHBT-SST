@@ -1,3 +1,4 @@
+using AAHBRANT.SST.Application.MatrizRisco;
 using AAHBRANT.SST.Application.Common.Interfaces;
 using AAHBRANT.SST.Application.Riscos;
 using AAHBRANT.SST.Domain.Entidades;
@@ -66,6 +67,7 @@ public class ImportarRiscosLoteCommandHandler : IRequestHandler<ImportarRiscosLo
 
         var matriz = await _db.MatrizRiscoConfigs
             .Include(c => c.Celulas)
+            .VigenteMaisRecente()
             .FirstOrDefaultAsync(ct)
             ?? throw new InvalidOperationException("Nenhuma MatrizRiscoConfig cadastrada.");
 

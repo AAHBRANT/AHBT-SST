@@ -1,3 +1,4 @@
+using AAHBRANT.SST.Application.MatrizRisco;
 using AAHBRANT.SST.Application.Common;
 using AAHBRANT.SST.Application.Common.Interfaces;
 using AAHBRANT.SST.Domain.Enums;
@@ -103,7 +104,7 @@ public class GerarPdfGeracaoPgrEapQueryHandler : IRequestHandler<GerarPdfGeracao
                 r.ResponsavelUsuarioId is { } u ? nomesResp.GetValueOrDefault(u) : null)).ToList()
             : new List<RevisaoPdf> { new(0, g.DataElaboracao, "Emissão inicial.", g.ElaboradoPorNome) };
 
-        var config = await _db.MatrizRiscoConfigs.Include(m => m.Celulas).FirstOrDefaultAsync(ct);
+        var config = await _db.MatrizRiscoConfigs.Include(m => m.Celulas).VigenteMaisRecente().FirstOrDefaultAsync(ct);
         var matriz = config is null
             ? null
             : new MatrizRiscoPdf(

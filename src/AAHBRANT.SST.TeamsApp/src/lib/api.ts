@@ -1416,15 +1416,29 @@ export interface MatrizRiscoCelula {
   nivelRisco: number;
 }
 
+// Matriz versionada (25/10/2026): a vigente só se consulta; mudar é criar uma nova versão que a substitui.
 export interface MatrizRiscoConfig {
   id: string;
   nome: string;
   numNiveisProbabilidade: number;
   numNiveisSeveridade: number;
+  versao: number;
+  vigente: boolean;
+  vigenteDesdeUtc: string;
+  substituidaEmUtc?: string | null;
+  motivoRevisao?: string | null;
+  revisadaPorNome?: string | null;
   celulas: MatrizRiscoCelula[];
 }
 
-export type NovaMatrizRiscoConfig = Omit<MatrizRiscoConfig, 'id'>;
+export interface NovaVersaoMatrizRisco {
+  nome: string;
+  numNiveisProbabilidade: number;
+  numNiveisSeveridade: number;
+  celulas: MatrizRiscoCelula[];
+  // Obrigatório a partir da versão 2.
+  motivo?: string | null;
+}
 
 export interface Risco {
   id: string;
@@ -5612,10 +5626,13 @@ export const api = {
     excluir: (id: string) => request<void>(`/api/perigos/${id}`, { method: 'DELETE' }),
   },
   matrizRisco: {
+    // Todas as versões, da mais nova (a vigente) para a mais antiga.
     listar: () => request<MatrizRiscoConfig[]>('/api/matrizrisco'),
-    criar: (matriz: NovaMatrizRiscoConfig) =>
+    // A matriz que classifica os riscos hoje; undefined enquanto a empresa não cadastrou a primeira.
+    vigente: () => request<MatrizRiscoConfig | undefined>('/api/matrizrisco/vigente'),
+    // Cria a primeira matriz ou uma nova versão que substitui a vigente (só o Engenheiro de Segurança).
+    novaVersao: (matriz: NovaVersaoMatrizRisco) =>
       request<{ id: string }>('/api/matrizrisco', { method: 'POST', body: JSON.stringify(matriz) }),
-    excluir: (id: string) => request<void>(`/api/matrizrisco/${id}`, { method: 'DELETE' }),
   },
   riscos: {
     listar: (atividadeId?: string) => request<Risco[]>(`/api/riscos${atividadeId ? `?atividadeId=${atividadeId}` : ''}`),

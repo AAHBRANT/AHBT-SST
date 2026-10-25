@@ -4,6 +4,7 @@ using Microsoft.EntityFrameworkCore;
 
 namespace AAHBRANT.SST.Application.MatrizRisco.Queries;
 
+// Todas as versões, da mais nova para a mais antiga: a vigente primeiro e o histórico depois.
 public record ListarMatrizRiscoConfigsQuery : IRequest<List<MatrizRiscoConfigDto>>;
 
 public class ListarMatrizRiscoConfigsQueryHandler : IRequestHandler<ListarMatrizRiscoConfigsQuery, List<MatrizRiscoConfigDto>>
@@ -16,21 +17,25 @@ public class ListarMatrizRiscoConfigsQueryHandler : IRequestHandler<ListarMatriz
     {
         var configs = await _db.MatrizRiscoConfigs
             .Include(c => c.Celulas)
-            .OrderBy(c => c.Nome)
+            .OrderByDescending(c => c.Versao)
             .ToListAsync(ct);
 
-        return configs.Select(c => new MatrizRiscoConfigDto
-        {
-            Id = c.Id,
-            Nome = c.Nome,
-            NumNiveisProbabilidade = c.NumNiveisProbabilidade,
-            NumNiveisSeveridade = c.NumNiveisSeveridade,
-            Celulas = c.Celulas.Select(cel => new MatrizRiscoCelulaDto
-            {
-                Probabilidade = cel.Probabilidade,
-                Severidade = cel.Severidade,
-                NivelRisco = cel.NivelRisco
-            }).ToList()
-        }).ToList();
+        return configs.Select(MatrizRiscoMapeamento.ParaDto).ToList();
+    }
+}
+
+// A matriz que classifica os riscos hoje; nulo enquanto a empresa não cadastrou a primeira.
+public record ObterMatrizRiscoVigenteQuery : IRequest<MatrizRiscoConfigDto?>;
+
+public class ObterMatrizRiscoVigenteQueryHandler : IRequestHandler<ObterMatrizRiscoVigenteQuery, MatrizRiscoConfigDto?>
+{
+    private readonly IAppDbContext _db;
+
+    public ObterMatrizRiscoVigenteQueryHandler(IAppDbContext db) => _db = db;
+
+    public async Task<MatrizRiscoConfigDto?> Handle(ObterMatrizRiscoVigenteQuery request, CancellationToken ct)
+    {
+        var config = await _db.MatrizRiscoConfigs.Include(c => c.Celulas).VigenteMaisRecente().FirstOrDefaultAsync(ct);
+        return config is null ? null : MatrizRiscoMapeamento.ParaDto(config);
     }
 }
