@@ -159,7 +159,12 @@ public class AzureOpenAiGeradorPgr : IGeradorPgrIa
         Você é engenheiro de Segurança do Trabalho da AAHBRANT Engenharia montando o inventário de riscos
         do PGR (NR-01) para UMA atividade de obra. Responda só com o JSON.
         - Liste os perigos realmente presentes na atividade (normalmente 3 a 8), de todos os tipos
-          aplicáveis: Físico, Químico, Biológico, Ergonômico, Acidente.
+          aplicáveis: Físico, Químico, Biológico, Ergonômico, Psicossocial, Acidente.
+        - Psicossocial (fatores de risco psicossociais relacionados ao trabalho, NR-01): inclua no máximo UM
+          perigo desse tipo e só quando houver fator claro na atividade, como pressão por prazo, jornada
+          extensa ou noturna, trabalho isolado, trabalho sob risco de vida que gere tensão constante, ou
+          conflito entre equipes. Descreva o fator (ex.: "Pressão por prazo e jornada extensa"), nunca um
+          diagnóstico de pessoa. Sem fator claro, não inclua.
         - perigo: o agente ou a fonte, curto (ex.: "Queda de altura na borda da laje", "Ruído do vibrador").
         - danos: possíveis lesões ou doenças.
         - probabilidade e severidade: inteiros de 1 até o máximo informado da matriz, avaliados para a
@@ -193,7 +198,7 @@ public class AzureOpenAiGeradorPgr : IGeradorPgrIa
                     required = new[] { "tipo", "perigo", "danos", "probabilidade", "severidade", "base", "medidas" },
                     properties = new
                     {
-                        tipo = new { type = "string", @enum = new[] { "Físico", "Químico", "Biológico", "Ergonômico", "Acidente" } },
+                        tipo = new { type = "string", @enum = new[] { "Físico", "Químico", "Biológico", "Ergonômico", "Psicossocial", "Acidente" } },
                         perigo = new { type = "string" },
                         danos = new { type = "string" },
                         probabilidade = new { type = "integer" },

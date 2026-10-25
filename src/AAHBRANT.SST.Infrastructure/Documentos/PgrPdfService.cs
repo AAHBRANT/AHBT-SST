@@ -142,17 +142,14 @@ public class PgrPdfService : IPgrPdfService
                     "Sem revisões registradas.");
 
                 // 2. Introdução
-                Titulo(c, Secoes[1]);
-                Paragrafo(c, $"A {d.ObraNome} mantém como política conhecer os perigos e riscos presentes nas suas atividades e ambientes de trabalho e buscar, de forma contínua, a eliminação, a redução e o controle desses riscos, preservando a integridade física e a saúde dos trabalhadores.");
+                TituloComPrimeiro(c, Secoes[1], b => Paragrafo(b, $"A {d.ObraNome} mantém como política conhecer os perigos e riscos presentes nas suas atividades e ambientes de trabalho e buscar, de forma contínua, a eliminação, a redução e o controle desses riscos, preservando a integridade física e a saúde dos trabalhadores."));
                 Paragrafo(c, "Este Programa de Gerenciamento de Riscos (PGR) é específico para as atividades da obra e foi elaborado a partir da estrutura analítica do projeto (EAP). Cada atividade foi analisada para antecipar os perigos, avaliar os riscos e definir as medidas de prevenção.");
 
                 // 3. Objetivos
-                Titulo(c, Secoes[2]);
-                Paragrafo(c, "Formalizar o compromisso da organização com a programação das ações de preservação da integridade física e da saúde dos trabalhadores nas atividades da obra, com o inventário de riscos, as medidas de prevenção e o plano de ação.");
+                TituloComPrimeiro(c, Secoes[2], b => Paragrafo(b, "Formalizar o compromisso da organização com a programação das ações de preservação da integridade física e da saúde dos trabalhadores nas atividades da obra, com o inventário de riscos, as medidas de prevenção e o plano de ação."));
 
                 // 4. Responsabilidades
-                Titulo(c, Secoes[3]);
-                Subtitulo(c, "Da organização");
+                TituloComPrimeiro(c, Secoes[3], b => Subtitulo(b, "Da organização"));
                 Lista(c, new[]
                 {
                     "Assegurar o cumprimento da programação estabelecida neste PGR.",
@@ -172,8 +169,7 @@ public class PgrPdfService : IPgrPdfService
                 });
 
                 // 5. Etapas e matriz de risco
-                Titulo(c, Secoes[4]);
-                Subtitulo(c, "Antecipação e identificação de riscos");
+                TituloComPrimeiro(c, Secoes[4], b => Subtitulo(b, "Antecipação e identificação de riscos"));
                 Paragrafo(c, "Antes do início dos serviços, os perigos de cada atividade da EAP são antecipados e as providências de proteção são definidas. O risco é a exposição ao perigo e resulta do cruzamento entre probabilidade e severidade na matriz abaixo.");
                 Subtitulo(c, "Matriz de risco");
                 MatrizRisco(c, d.Matriz);
@@ -236,7 +232,7 @@ public class PgrPdfService : IPgrPdfService
 
                     foreach (var atividade in ghe.Atividades)
                         foreach (var risco in atividade.Riscos.Where(r => !r.Excluido))
-                            FichaRisco(c, d.Matriz, atividade, risco);
+                            FichaRisco(c, d.Matriz, atividade, risco, d.Epis);
                 }
 
                 // 7. Plano de ação
@@ -247,22 +243,23 @@ public class PgrPdfService : IPgrPdfService
                 if (acoes.Count == 0)
                     c.Item().Text("Nenhuma ação registrada.").Italic().FontColor(Secundario);
                 else
-                    Tabela(c, new[] { ("Nº", 0.5f), ("Ação", 5f), ("Responsável", 1.9f), ("Prazo", 1.2f), ("Situação", 1.2f) },
+                {
+                    Tabela(c, new[] { ("Nº", 0.5f), ("Ação", 3.8f), ("Responsável", 1.8f), ("Início", 1.45f), ("Prazo", 1.45f), ("Situação", 1.25f) },
                         acoes.Select((a, i) => new[]
                         {
                             (i + 1).ToString("00"), a.Descricao.Trim(), a.ResponsavelNome ?? "A definir",
-                            a.Prazo?.ToString("dd/MM/yyyy") ?? "A definir", "Pendente",
+                            a.Inicio?.ToString("dd/MM/yyyy") ?? "—", a.Prazo?.ToString("dd/MM/yyyy") ?? "A definir", "Pendente",
                         }),
                         "");
+                    Cronograma(c, acoes);
+                }
 
                 // 8. Acompanhamento e monitoramento
-                Titulo(c, Secoes[7]);
-                Paragrafo(c, "A eficácia das medidas de controle será acompanhada por novas avaliações e inspeções, pelo controle estatístico das ocorrências de acidentes e pela análise dos exames médicos previstos no PCMSO.");
+                TituloComPrimeiro(c, Secoes[7], b => Paragrafo(b, "A eficácia das medidas de controle será acompanhada por novas avaliações e inspeções, pelo controle estatístico das ocorrências de acidentes e pela análise dos exames médicos previstos no PCMSO."));
                 Paragrafo(c, "Para os perigos geradores de riscos de acidentes serão programadas inspeções periódicas. Serão feitas avaliações extraordinárias sempre que houver mudança significativa nas condições de trabalho, alteração nos resultados dos exames médicos ou acidente com perda de tempo.");
 
                 // 9. Prioridades e avaliação
-                Titulo(c, Secoes[8]);
-                Paragrafo(c, "As medidas de proteção serão definidas, sempre que viável tecnicamente, nesta ordem de prioridade:");
+                TituloComPrimeiro(c, Secoes[8], b => Paragrafo(b, "As medidas de proteção serão definidas, sempre que viável tecnicamente, nesta ordem de prioridade:"));
                 Lista(c, new[]
                 {
                     "eliminação dos perigos;",
@@ -273,8 +270,7 @@ public class PgrPdfService : IPgrPdfService
                 Paragrafo(c, "Este PGR será avaliado e revisado anualmente e a qualquer momento em que fatos justifiquem a revisão.");
 
                 // 10. Plano de emergência
-                Titulo(c, Secoes[9]);
-                Paragrafo(c, "A organização manterá um Plano de Emergência que oriente os trabalhadores sobre como agir em acidentes e anormalidades. Trabalhadores devem ser treinados periodicamente e visitantes devem receber instruções gerais. Cenários a contemplar:");
+                TituloComPrimeiro(c, Secoes[9], b => Paragrafo(b, "A organização manterá um Plano de Emergência que oriente os trabalhadores sobre como agir em acidentes e anormalidades. Trabalhadores devem ser treinados periodicamente e visitantes devem receber instruções gerais. Cenários a contemplar:"));
                 Lista(c, comp.CenariosEmergencia.Count > 0 ? comp.CenariosEmergencia : CenariosEmergenciaPgr.Padrao);
                 Subtitulo(c, "Contatos de emergência");
                 Tabela(c, new[] { ("Local / setor", 2.6f), ("Endereço", 3f), ("Telefone", 1.5f), ("Distância e tempo", 1.8f) },
@@ -290,10 +286,14 @@ public class PgrPdfService : IPgrPdfService
                 var comRota = comp.ContatosEmergencia.Where(x => !string.IsNullOrWhiteSpace(x.Rota)).ToList();
                 if (comRota.Count > 0)
                 {
-                    Subtitulo(c, "Como chegar a partir da obra");
+                    var primeiraRota = true;
                     foreach (var x in comRota)
+                    {
+                        var abrir = primeiraRota; // o subtítulo vai junto da primeira rota, para não ficar sozinho no fim da página
+                        primeiraRota = false;
                         c.Item().ShowEntire().Column(rc =>
                         {
+                            if (abrir) Subtitulo(rc, "Como chegar a partir da obra");
                             rc.Item().PaddingTop(2).Text(x.Local).SemiBold();
                             var passos = x.Rota!.Split('\n', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
                             for (var i = 0; i < passos.Length; i++)
@@ -303,27 +303,31 @@ public class PgrPdfService : IPgrPdfService
                                     pr.RelativeItem().Text(passos[i]).FontSize(8.5f);
                                 });
                         });
+                    }
                     var calculadoEm = comp.RotasCalculadasEmUtc is { } quando ? $" em {HorarioBrasilia.De(quando):dd/MM/yyyy}" : string.Empty;
                     c.Item().PaddingTop(2).Text($"Rotas de carro calculadas com {comp.RotasFonte ?? "mapa online"}{calculadoEm}. Confirme o trajeto e os telefones no local antes de usar; trânsito e obras na via podem alterar o caminho.")
                         .FontSize(8).FontColor(Secundario).Italic();
                 }
 
                 // 11. Considerações finais
-                Titulo(c, Secoes[10]);
-                c.Item().Text($"{d.ObraNome}, {DataPorExtenso(HorarioBrasilia.De(d.AprovadoEmUtc ?? d.GeradoEmUtc))}.").FontColor(Secundario);
-                c.Item().Text(t =>
+                // Data, aprovação e assinaturas ficam sempre juntos, na mesma página do título.
+                TituloComPrimeiro(c, Secoes[10], b =>
                 {
-                    t.Span("Aprovado pelo Engenheiro de Segurança do Trabalho: ");
-                    t.Span(d.AprovadoPorNome ?? "não informado").SemiBold();
-                    if (d.AprovadoEmUtc is { } ap) t.Span($" em {HorarioBrasilia.De(ap):dd/MM/yyyy HH:mm}.");
-                });
-                c.Item().ShowEntire().PaddingTop(34).Row(r =>
-                {
-                    Assinatura(r, d.AprovadoPorNome ?? "Engenheiro de Segurança do Trabalho",
-                        "Responsável técnico pela elaboração do PGR" + (string.IsNullOrWhiteSpace(comp.ResponsavelTecnicoRegistro) ? "" : $" · {comp.ResponsavelTecnicoRegistro}"));
-                    r.ConstantItem(36);
-                    Assinatura(r, string.IsNullOrWhiteSpace(comp.ResponsavelImplantacaoNome) ? " " : comp.ResponsavelImplantacaoNome,
-                        "Responsável pela implantação do PGR" + (string.IsNullOrWhiteSpace(comp.ResponsavelImplantacaoCargo) ? "" : $" · {comp.ResponsavelImplantacaoCargo}"));
+                    b.Item().Text($"{d.ObraNome}, {DataPorExtenso(HorarioBrasilia.De(d.AprovadoEmUtc ?? d.GeradoEmUtc))}.").FontColor(Secundario);
+                    b.Item().Text(t =>
+                    {
+                        t.Span("Aprovado pelo Engenheiro de Segurança do Trabalho: ");
+                        t.Span(d.AprovadoPorNome ?? "não informado").SemiBold();
+                        if (d.AprovadoEmUtc is { } ap) t.Span($" em {HorarioBrasilia.De(ap):dd/MM/yyyy HH:mm}.");
+                    });
+                    b.Item().PaddingTop(34).Row(r =>
+                    {
+                        Assinatura(r, d.AprovadoPorNome ?? "Engenheiro de Segurança do Trabalho",
+                            "Responsável técnico pela elaboração do PGR" + (string.IsNullOrWhiteSpace(comp.ResponsavelTecnicoRegistro) ? "" : $" · {comp.ResponsavelTecnicoRegistro}"));
+                        r.ConstantItem(36);
+                        Assinatura(r, string.IsNullOrWhiteSpace(comp.ResponsavelImplantacaoNome) ? " " : comp.ResponsavelImplantacaoNome,
+                            "Responsável pela implantação do PGR" + (string.IsNullOrWhiteSpace(comp.ResponsavelImplantacaoCargo) ? "" : $" · {comp.ResponsavelImplantacaoCargo}"));
+                    });
                 });
             });
             Rodape(p);
@@ -368,15 +372,27 @@ public class PgrPdfService : IPgrPdfService
             });
         });
 
-    private static void Titulo(ColumnDescriptor c, Secao s) =>
-        c.Item().Section(s.Id).EnsureSpace(120).PaddingTop(16).Column(col =>
+    private static void CabecalhoSecao(ColumnDescriptor col, Secao s)
+    {
+        col.Item().Row(r =>
         {
-            col.Item().Row(r =>
-            {
-                r.ConstantItem(28).Text(s.Numero).FontSize(15).Bold().FontColor(Marca);
-                r.RelativeItem().Text(s.Titulo).FontSize(15).Bold();
-            });
-            col.Item().PaddingTop(5).LineHorizontal(0.5f).LineColor(Linha);
+            r.ConstantItem(28).Text(s.Numero).FontSize(15).Bold().FontColor(Marca);
+            r.RelativeItem().Text(s.Titulo).FontSize(15).Bold();
+        });
+        col.Item().PaddingTop(5).LineHorizontal(0.5f).LineColor(Linha);
+    }
+
+    // Título de seção que começa por tabela ou campos (o conteúdo pode ser longo demais para um bloco único).
+    private static void Titulo(ColumnDescriptor c, Secao s) =>
+        c.Item().Section(s.Id).PaddingTop(16).Column(col => CabecalhoSecao(col, s));
+
+    // Título e primeiro bloco de texto num bloco só: a quebra de página nunca deixa o título sozinho no fim da folha.
+    private static void TituloComPrimeiro(ColumnDescriptor c, Secao s, Action<ColumnDescriptor> primeiro) =>
+        c.Item().ShowEntire().Section(s.Id).PaddingTop(16).Column(col =>
+        {
+            col.Spacing(7);
+            CabecalhoSecao(col, s);
+            primeiro(col);
         });
 
     private static void Subtitulo(ColumnDescriptor c, string texto) =>
@@ -470,7 +486,52 @@ public class PgrPdfService : IPgrPdfService
     }
 
     // Ficha de risco, no desenho do modelo: identificação, prevenção e controle, exposição e avaliação.
-    private static void FichaRisco(ColumnDescriptor c, MatrizRiscoPdf? m, AtividadeGerada atividade, RiscoGerado r)
+    // Cronograma mensal do modelo da obra: uma grade de janeiro a dezembro por ano, com os meses de cada ação marcados
+    // de Início a Prazo (sem início, só o mês do prazo). Ação sem prazo fica só na tabela acima.
+    private static void Cronograma(ColumnDescriptor c, List<AcaoPlanoGerada> acoes)
+    {
+        var numeradas = acoes.Select((a, i) => (Numero: i + 1, Acao: a)).Where(x => x.Acao.Prazo is not null).ToList();
+        if (numeradas.Count == 0) return;
+        var primeiroAno = numeradas.Min(x => (x.Acao.Inicio is { } ini && ini <= x.Acao.Prazo ? ini : x.Acao.Prazo!.Value).Year);
+        var ultimoAno = numeradas.Max(x => x.Acao.Prazo!.Value.Year);
+        string[] meses = { "JAN", "FEV", "MAR", "ABR", "MAI", "JUN", "JUL", "AGO", "SET", "OUT", "NOV", "DEZ" };
+
+        for (var ano = primeiroAno; ano <= Math.Min(ultimoAno, primeiroAno + 2); ano++)
+        {
+            var anoAtual = ano;
+            var abrir = ano == primeiroAno; // o subtítulo vai junto da primeira grade, para não ficar sozinho no fim da página
+            c.Item().ShowEntire().PaddingTop(2).Column(bloco =>
+            {
+                if (abrir) Subtitulo(bloco, "Cronograma");
+                bloco.Item().Table(t =>
+                {
+                t.ColumnsDefinition(cd =>
+                {
+                    cd.RelativeColumn(3f);
+                    for (var m = 0; m < 12; m++) cd.RelativeColumn(0.5f);
+                });
+                t.Header(h =>
+                {
+                    h.Cell().BorderBottom(1).BorderColor(Texto).PaddingVertical(4).Text($"AÇÃO · {anoAtual}").FontSize(7.5f).SemiBold().FontColor(Secundario);
+                    foreach (var mes in meses)
+                        h.Cell().BorderBottom(1).BorderColor(Texto).PaddingVertical(4).AlignCenter().Text(mes).FontSize(6.5f).SemiBold().FontColor(Secundario);
+                });
+                foreach (var (numero, acao) in numeradas)
+                {
+                    var ativos = CronogramaPlano.MesesAtivos(acao.Inicio, acao.Prazo, anoAtual);
+                    var resumo = acao.Descricao.Trim();
+                    if (resumo.Length > 44) resumo = resumo[..43] + "…";
+                    t.Cell().BorderBottom(0.5f).BorderColor(Linha).PaddingVertical(4).PaddingRight(4).Text($"{numero:00} · {resumo}").FontSize(8);
+                    foreach (var ativo in ativos)
+                        t.Cell().BorderBottom(0.5f).BorderColor(Linha).Background(ativo ? "#e2bcbc" : "#ffffff").Height(16).Text("");
+                }
+                });
+            });
+        }
+    }
+
+    private static void FichaRisco(ColumnDescriptor c, MatrizRiscoPdf? m, AtividadeGerada atividade, RiscoGerado r,
+        IReadOnlyDictionary<Guid, CatalogoEpiInfo>? epis)
     {
         var nivel = NivelDe(m, r);
         var medidas = r.Medidas
@@ -510,13 +571,28 @@ public class PgrPdfService : IPgrPdfService
                                     col.Item().Text(t =>
                                     {
                                         t.Span(x.Texto.Trim()).FontSize(8.5f);
+                                        // EPI ligado ao catálogo: nome, CA e validade (NR-06) logo depois do texto da medida.
+                                        if (x.CatalogoEpiId is { } epiId && epis is not null && epis.TryGetValue(epiId, out var epi))
+                                            t.Span($" — {epi.Nome}, {(string.IsNullOrWhiteSpace(epi.Ca) ? "sem CA informado" : $"CA {epi.Ca}")}"
+                                                   + (epi.CaValidade is { } val ? $" (validade {val:dd/MM/yyyy})" : string.Empty)).FontSize(8).SemiBold();
                                         t.Span($"  ({NomeFase(x.Fase)})").FontSize(7.5f).FontColor(Secundario);
                                     });
                             });
                         });
                 }
                 Grupo(b, "Exposição");
-                Linha2(b, "Critério", "Qualitativo, pela matriz de risco");
+                var exposicao = r.Exposicao ?? new ExposicaoRisco();
+                Linha2(b, "Critério", exposicao.Criterio == CriteriosExposicao.Quantitativo ? "Quantitativo, com medição" : "Qualitativo, pela matriz de risco");
+                if (!string.IsNullOrWhiteSpace(exposicao.Perfil)) Linha2(b, "Perfil de exposição", exposicao.Perfil);
+                if (exposicao.Medicoes.Count > 0)
+                    Tabela(b, new[] { ("Data", 1.1f), ("Medição", 1.2f), ("Limite", 1.1f), ("Nível de ação", 1.1f), ("Empresa", 1.4f), ("Técnica", 1.3f), ("Equipamento", 1.4f) },
+                        exposicao.Medicoes.Select(med => new[]
+                        {
+                            med.Data?.ToString("dd/MM/yyyy") ?? "—",
+                            med.Valor is { } v ? $"{v.ToString("0.##", CultureInfo.InvariantCulture).Replace('.', ',')} {med.Unidade}".Trim() : "—",
+                            med.LimiteTolerancia ?? "—", med.NivelAcao ?? "—", med.Empresa ?? "—", med.Tecnica ?? "—", med.Equipamento ?? "—",
+                        }),
+                        "");
                 Grupo(b, "Avaliação de risco");
                 b.Item().Row(a =>
                 {

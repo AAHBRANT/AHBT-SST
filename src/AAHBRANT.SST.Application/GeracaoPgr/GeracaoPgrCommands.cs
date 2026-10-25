@@ -66,6 +66,16 @@ internal static class SerializacaoGeracao
             throw new InvalidOperationException("O PGR está aguardando aprovação. Devolva para ajustes antes de alterar.");
     }
 
+    // EPIs do catálogo referenciados nas medidas do rascunho, com o CA de hoje.
+    public static async Task<Dictionary<Guid, CatalogoEpiInfo>> CarregarEpisAsync(IAppDbContext db, EstruturaGeracaoPgr e, CancellationToken ct)
+    {
+        var ids = e.Ghes.SelectMany(g => g.Atividades).SelectMany(a => a.Riscos).SelectMany(r => r.Medidas)
+            .Where(m => m.CatalogoEpiId is not null).Select(m => m.CatalogoEpiId!.Value).Distinct().ToList();
+        if (ids.Count == 0) return new();
+        return await db.CatalogoEpis.Where(x => ids.Contains(x.Id))
+            .ToDictionaryAsync(x => x.Id, x => new CatalogoEpiInfo(x.Nome, x.CertificadoAprovacaoNumero, x.CertificadoAprovacaoValidade), ct);
+    }
+
     public static async Task<string?> NomeUsuarioAsync(IAppDbContext db, Guid? usuarioId, string? nomeToken, CancellationToken ct)
     {
         var nome = usuarioId is { } id ? await db.Usuarios.Where(u => u.Id == id).Select(u => u.Nome).FirstOrDefaultAsync(ct) : null;
@@ -76,8 +86,10 @@ internal static class SerializacaoGeracao
 // O que ainda impede a aprovação. A tela mostra a lista; o botão Aprovar só libera com ela vazia.
 public static class PendenciasGeracaoPgr
 {
-    public static List<string> Calcular(EstruturaGeracaoPgr e, int maxP, int maxS)
+    // epis: EPIs do catálogo usados nas medidas, para conferir o CA (NR-06). Sem o dicionário, o CA não é conferido.
+    public static List<string> Calcular(EstruturaGeracaoPgr e, int maxP, int maxS, IReadOnlyDictionary<Guid, CatalogoEpiInfo>? epis = null)
     {
+        var hoje = DateTime.UtcNow.Date;
         var p = new List<string>();
         if (e.DataTermino is null) p.Add("Informe o término da vigência do PGR.");
         var comp = e.Complementares;
@@ -113,6 +125,26 @@ public static class PendenciasGeracaoPgr
             if (semCategoria > 0) p.Add($"{nome}: {semCategoria} medida(s) aceita(s) sem classificação (eliminação, EPC, administrativa ou EPI).");
             foreach (var r in riscos.Where(r => r.Probabilidade < 1 || r.Probabilidade > maxP || r.Severidade < 1 || r.Severidade > maxS))
                 p.Add($"{nome}: {r.Perigo} com probabilidade/severidade fora da matriz.");
+
+            foreach (var r in riscos)
+            {
+                var exp = r.Exposicao ?? new ExposicaoRisco();
+                if (exp.Criterio == CriteriosExposicao.Quantitativo && exp.Medicoes.Count == 0)
+                    p.Add($"{nome}: {r.Perigo} é quantitativo, mas não tem medição.");
+                if (exp.Medicoes.Any(m => m.Data is null || m.Valor is null || string.IsNullOrWhiteSpace(m.Unidade)))
+                    p.Add($"{nome}: medição de {r.Perigo} incompleta (informe data, valor e unidade).");
+
+                if (epis is null) continue;
+                foreach (var m in r.Medidas.Where(m => m.Decisao == "Aceita" && m.CatalogoEpiId is not null))
+                {
+                    if (!epis.TryGetValue(m.CatalogoEpiId!.Value, out var epi))
+                        p.Add($"{nome}: o EPI escolhido para {r.Perigo} não existe mais no catálogo.");
+                    else if (string.IsNullOrWhiteSpace(epi.Ca))
+                        p.Add($"{nome}: o EPI {epi.Nome} está sem número de CA no catálogo.");
+                    else if (epi.CaValidade is { } validade && validade.Date < hoje)
+                        p.Add($"{nome}: o CA do EPI {epi.Nome} venceu em {validade:dd/MM/yyyy}.");
+                }
+            }
         }
         return p;
     }
@@ -151,7 +183,7 @@ public class ObterGeracaoPgrEapQueryHandler : IRequestHandler<ObterGeracaoPgrEap
             AprovadoEmUtc = g.AprovadoEmUtc,
             PgrId = g.PgrId,
             Estrutura = estrutura,
-            PendenciasAprovacao = PendenciasGeracaoPgr.Calcular(estrutura, maxP, maxS),
+            PendenciasAprovacao = PendenciasGeracaoPgr.Calcular(estrutura, maxP, maxS, await SerializacaoGeracao.CarregarEpisAsync(_db, estrutura, ct)),
             FuncoesCadastradas = await _db.Funcoes.OrderBy(f => f.Nome).Select(f => new FuncaoCadastroDto(f.Id, f.Nome)).ToListAsync(ct),
             MaxProbabilidade = maxP,
             MaxSeveridade = maxS,
@@ -438,7 +470,8 @@ public class AprovarGeracaoPgrCommandHandler : IRequestHandler<AprovarGeracaoPgr
         var e = SerializacaoGeracao.Ler(g.EstruturaJson);
         var matriz = await _db.MatrizRiscoConfigs.Include(c => c.Celulas).FirstOrDefaultAsync(ct)
             ?? throw new InvalidOperationException("Nenhuma matriz de risco cadastrada.");
-        var pendencias = PendenciasGeracaoPgr.Calcular(e, matriz.NumNiveisProbabilidade, matriz.NumNiveisSeveridade);
+        var pendencias = PendenciasGeracaoPgr.Calcular(e, matriz.NumNiveisProbabilidade, matriz.NumNiveisSeveridade,
+            await SerializacaoGeracao.CarregarEpisAsync(_db, e, ct));
         if (pendencias.Count > 0)
             throw new InvalidOperationException("Ainda há pendências: " + string.Join(" ", pendencias.Take(5)));
 

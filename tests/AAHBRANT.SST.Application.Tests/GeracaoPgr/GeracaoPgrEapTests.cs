@@ -166,6 +166,93 @@ public class GeracaoPgrEapTests
         Assert.Null(dto.Estrutura.DataTermino); // a vigência é nova a cada geração
     }
 
+    // Estrutura sem nenhuma pendência, com um EPI do catálogo ligado à medida.
+    private static EstruturaGeracaoPgr EstruturaValida(Guid? epi, Action<RiscoGerado>? ajustarRisco = null)
+    {
+        var risco = new RiscoGerado
+        {
+            Tipo = "Físico", Perigo = "Ruído de equipamentos", Probabilidade = 2, Severidade = 2, Revisado = true,
+            Medidas = new() { new MedidaGerada { Texto = "Protetor auricular", Categoria = CategoriasMedida.Epi, CatalogoEpiId = epi, Decisao = "Aceita" } },
+        };
+        ajustarRisco?.Invoke(risco);
+        return new EstruturaGeracaoPgr
+        {
+            DataTermino = new DateTime(2028, 1, 1),
+            Complementares = ComplementaresCompletos(),
+            Ghes = new()
+            {
+                new GheGerado
+                {
+                    Numero = 1, Nome = "Estrutura",
+                    Funcoes = new() { new FuncaoGerada { Nome = "ARMADOR", Descricao = "Monta armaduras" } },
+                    Atividades = new() { new AtividadeGerada { CodigoEap = "1.1", Nome = "Laje", RiscosGerados = true, Riscos = new() { risco } } },
+                },
+            },
+        }.Normalizar();
+    }
+
+    [Fact]
+    public void Pendencias_QuantitativoExigeMedicaoCompleta()
+    {
+        Assert.Empty(PendenciasGeracaoPgr.Calcular(EstruturaValida(null), 5, 5));
+
+        var semMedicao = EstruturaValida(null, r => r.Exposicao.Criterio = CriteriosExposicao.Quantitativo);
+        Assert.Contains(PendenciasGeracaoPgr.Calcular(semMedicao, 5, 5), p => p.Contains("quantitativo") && p.Contains("Ruído"));
+
+        var incompleta = EstruturaValida(null, r =>
+        {
+            r.Exposicao.Criterio = CriteriosExposicao.Quantitativo;
+            r.Exposicao.Medicoes.Add(new MedicaoExposicao { Data = new DateTime(2026, 10, 1), Unidade = "dB(A)" }); // sem valor
+        });
+        Assert.Contains(PendenciasGeracaoPgr.Calcular(incompleta, 5, 5), p => p.Contains("incompleta"));
+
+        var completa = EstruturaValida(null, r =>
+        {
+            r.Exposicao.Criterio = CriteriosExposicao.Quantitativo;
+            r.Exposicao.Medicoes.Add(new MedicaoExposicao { Data = new DateTime(2026, 10, 1), Valor = 82.5m, Unidade = "dB(A)", LimiteTolerancia = "85 dB(A)" });
+        });
+        Assert.Empty(PendenciasGeracaoPgr.Calcular(completa, 5, 5));
+    }
+
+    [Fact]
+    public void Pendencias_ConferemOCaDoEpiLigadoNaMedida()
+    {
+        var ok = Guid.NewGuid();
+        var vencido = Guid.NewGuid();
+        var semCa = Guid.NewGuid();
+        var removido = Guid.NewGuid();
+        var epis = new Dictionary<Guid, CatalogoEpiInfo>
+        {
+            [ok] = new("Protetor auricular", "12345", DateTime.UtcNow.AddYears(1)),
+            [vencido] = new("Luva", "999", DateTime.UtcNow.AddDays(-3)),
+            [semCa] = new("Bota", null, null),
+        };
+
+        Assert.Empty(PendenciasGeracaoPgr.Calcular(EstruturaValida(ok), 5, 5, epis));
+        Assert.Contains(PendenciasGeracaoPgr.Calcular(EstruturaValida(vencido), 5, 5, epis), p => p.Contains("venceu em"));
+        Assert.Contains(PendenciasGeracaoPgr.Calcular(EstruturaValida(semCa), 5, 5, epis), p => p.Contains("sem número de CA"));
+        Assert.Contains(PendenciasGeracaoPgr.Calcular(EstruturaValida(removido), 5, 5, epis), p => p.Contains("não existe mais"));
+        // EPI sem vínculo com o catálogo não bloqueia: o PDF mostra só o texto da medida.
+        Assert.Empty(PendenciasGeracaoPgr.Calcular(EstruturaValida(null), 5, 5, epis));
+    }
+
+    [Fact]
+    public void Cronograma_MarcaOsMesesDeInicioAPrazo_EAnoACano()
+    {
+        var inicio = new DateTime(2026, 11, 10);
+        var prazo = new DateTime(2027, 1, 20);
+
+        var em2026 = CronogramaPlano.MesesAtivos(inicio, prazo, 2026);
+        var em2027 = CronogramaPlano.MesesAtivos(inicio, prazo, 2027);
+        Assert.Equal(new[] { 11, 12 }, Enumerable.Range(1, 12).Where(m => em2026[m - 1]).ToArray());
+        Assert.Equal(new[] { 1 }, Enumerable.Range(1, 12).Where(m => em2027[m - 1]).ToArray());
+
+        // Sem início: só o mês do prazo. Início depois do prazo: também só o prazo. Sem prazo: nada.
+        Assert.Equal(new[] { 12 }, Enumerable.Range(1, 12).Where(m => CronogramaPlano.MesesAtivos(null, new DateTime(2026, 12, 15), 2026)[m - 1]).ToArray());
+        Assert.Equal(new[] { 3 }, Enumerable.Range(1, 12).Where(m => CronogramaPlano.MesesAtivos(new DateTime(2026, 8, 1), new DateTime(2026, 3, 5), 2026)[m - 1]).ToArray());
+        Assert.DoesNotContain(true, CronogramaPlano.MesesAtivos(inicio, null, 2026));
+    }
+
     [Fact]
     public void Pendencias_ExigemTermino_ResponsavelEPrazoDaAcao_ECategoriaDaMedidaAceita()
     {

@@ -70,6 +70,29 @@ public class GerarPdfGeracaoPgrEapTests
     }
 
     [Fact]
+    public async Task GeraPdf_LevaOCaDoEpiLigadoNaMedida()
+    {
+        var (db, geracao) = await CriarAsync(StatusGeracaoPgrEap.Aprovado, "{}");
+        var epi = new CatalogoEpi { Nome = "Protetor auricular", CertificadoAprovacaoNumero = "12345", CertificadoAprovacaoValidade = new DateTime(2028, 5, 1) };
+        db.CatalogoEpis.Add(epi);
+        await db.SaveChangesAsync();
+        geracao.EstruturaJson = $$"""
+            {"ghes":[{"numero":1,"nome":"Estrutura","funcoes":[],"atividades":[{"codigoEap":"1.1","nome":"Laje","riscosGerados":true,
+            "riscos":[{"tipo":"Físico","perigo":"Ruído","probabilidade":2,"severidade":2,"medidas":[
+            {"fase":2,"texto":"Protetor auricular","categoria":"EPI","catalogoEpiId":"{{epi.Id}}","decisao":"Aceita"}]}]}]}]}
+            """;
+        await db.SaveChangesAsync();
+        var pdf = new PdfFalso();
+
+        await new GerarPdfGeracaoPgrEapQueryHandler(db, pdf).Handle(new GerarPdfGeracaoPgrEapQuery(geracao.Id), default);
+
+        var info = Assert.Single(pdf.Dados!.Epis!).Value;
+        Assert.Equal("Protetor auricular", info.Nome);
+        Assert.Equal("12345", info.Ca);
+        Assert.Equal(new DateTime(2028, 5, 1), info.CaValidade);
+    }
+
+    [Fact]
     public async Task NaoGera_PdfEnquantoNaoAprovado()
     {
         var (db, geracao) = await CriarAsync(StatusGeracaoPgrEap.AguardandoAprovacao, "{}");

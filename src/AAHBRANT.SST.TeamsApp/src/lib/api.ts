@@ -2910,15 +2910,25 @@ export interface MinutaOrdemServico {
 // Gerador de PGR pela EAP (21/10/2026). Status: 1 Rascunho, 2 Aguardando aprovação, 3 Aprovado, 4 Devolvido.
 export interface ItemEapGerado { codigo: string; nome: string; nivel: number; periodo?: string | null; usar: boolean; conferir: boolean }
 export type CategoriaMedida = 'Eliminação' | 'EPC' | 'Administrativa' | 'EPI';
-export interface MedidaGerada { fase: 1 | 2 | 3; texto: string; categoria?: CategoriaMedida | null; decisao: 'Pendente' | 'Aceita' | 'Descartada' }
+export interface MedidaGerada {
+  fase: 1 | 2 | 3; texto: string; categoria?: CategoriaMedida | null; decisao: 'Pendente' | 'Aceita' | 'Descartada';
+  // EPI do catálogo (só na categoria EPI): leva o CA ao documento.
+  catalogoEpiId?: string | null;
+}
+export interface MedicaoExposicao {
+  data?: string | null; valor?: number | null; unidade?: string | null; limiteTolerancia?: string | null; nivelAcao?: string | null;
+  empresa?: string | null; tecnica?: string | null; equipamento?: string | null;
+}
+export interface ExposicaoRisco { criterio: 'Qualitativo' | 'Quantitativo'; perfil?: string | null; medicoes: MedicaoExposicao[] }
 export interface RiscoGerado {
   id: string; tipo: string; perigo: string; danos?: string | null; probabilidade: number; severidade: number;
   base: string[]; medidas: MedidaGerada[]; revisado: boolean; excluido: boolean;
+  exposicao: ExposicaoRisco;
 }
 export interface AtividadeGerada { codigoEap: string; nome: string; riscosGerados: boolean; riscos: RiscoGerado[] }
 export interface FuncaoGerada { funcaoId?: string | null; nome: string; descricao?: string | null; sugeridaPelaIa: boolean }
 export interface GheGerado { numero: number; nome: string; ambiente?: string | null; jornada?: string | null; funcoes: FuncaoGerada[]; atividades: AtividadeGerada[] }
-export interface AcaoPlanoGerada { descricao: string; responsavelUsuarioId?: string | null; responsavelNome?: string | null; prazo?: string | null }
+export interface AcaoPlanoGerada { descricao: string; responsavelUsuarioId?: string | null; responsavelNome?: string | null; inicio?: string | null; prazo?: string | null }
 export interface ContatoEmergencia {
   chave?: 'hospital' | 'samu' | 'bombeiros' | 'pm' | 'seguranca' | null;
   local: string; endereco?: string | null; telefone?: string | null;

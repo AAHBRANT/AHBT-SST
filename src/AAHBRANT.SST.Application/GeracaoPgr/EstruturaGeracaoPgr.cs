@@ -127,6 +127,8 @@ public class AcaoPlanoGerada
     public string Descricao { get; set; } = string.Empty;
     public Guid? ResponsavelUsuarioId { get; set; }
     public string? ResponsavelNome { get; set; }
+    // Início opcional: com ele o cronograma mensal marca todos os meses de Início a Prazo.
+    public DateTime? Inicio { get; set; }
     public DateTime? Prazo { get; set; }
 }
 
@@ -185,6 +187,61 @@ public class RiscoGerado
     // O engenheiro (ou o técnico, antes de enviar) conferiu P, S, danos e o texto do risco.
     public bool Revisado { get; set; }
     public bool Excluido { get; set; }
+    // Como o risco foi avaliado e as medições feitas (ruído, calor, poeira...). Preenchido pelo técnico: a IA não mede nada.
+    public ExposicaoRisco Exposicao { get; set; } = new();
+}
+
+public static class CriteriosExposicao
+{
+    public const string Qualitativo = "Qualitativo";
+    public const string Quantitativo = "Quantitativo";
+}
+
+// Exposição do risco no documento (24/10/2026): critério de avaliação, perfil de exposição e, quando
+// quantitativo, as medições com método, equipamento, data e resultado.
+public class ExposicaoRisco
+{
+    public string Criterio { get; set; } = CriteriosExposicao.Qualitativo;
+    // Quem se expõe, com que frequência e por quanto tempo (texto livre do técnico).
+    public string? Perfil { get; set; }
+    public List<MedicaoExposicao> Medicoes { get; set; } = new();
+}
+
+public class MedicaoExposicao
+{
+    public DateTime? Data { get; set; }
+    public decimal? Valor { get; set; }
+    // Unidade do valor: dB(A) para ruído, °C (IBUTG) para calor, m/s² para vibração, mg/m³ para poeira...
+    public string? Unidade { get; set; }
+    // Limite de tolerância e nível de ação, com a unidade (ex.: "85 dB(A)"); o técnico confere na NR-15 e nas NHO.
+    public string? LimiteTolerancia { get; set; }
+    public string? NivelAcao { get; set; }
+    public string? Empresa { get; set; }
+    public string? Tecnica { get; set; }
+    public string? Equipamento { get; set; }
+}
+
+// EPI do catálogo, com o CA como está hoje no cadastro (a validade é conferida na aprovação e no PDF).
+public record CatalogoEpiInfo(string Nome, string? Ca, DateTime? CaValidade);
+
+// Cronograma mensal do plano de ação: meses do ano em que cada ação está em andamento, de Início a Prazo.
+public static class CronogramaPlano
+{
+    // Sem prazo a ação não entra no cronograma. Sem início, marca só o mês do prazo.
+    public static bool[] MesesAtivos(DateTime? inicio, DateTime? prazo, int ano)
+    {
+        var meses = new bool[12];
+        if (prazo is null) return meses;
+        var fim = prazo.Value;
+        var comeco = inicio is { } i && i <= fim ? i : fim;
+        for (var m = 1; m <= 12; m++)
+        {
+            var primeiroDia = new DateTime(ano, m, 1);
+            var ultimoDia = primeiroDia.AddMonths(1).AddDays(-1);
+            meses[m - 1] = comeco.Date <= ultimoDia && fim.Date >= primeiroDia;
+        }
+        return meses;
+    }
 }
 
 public class MedidaGerada
@@ -196,6 +253,8 @@ public class MedidaGerada
     // engenheiro classifica antes de aprovar. Só vive no rascunho e no PDF; a medida da Ordem de Serviço
     // não guarda categoria.
     public string? Categoria { get; set; }
+    // EPI do catálogo (só nas medidas da categoria EPI): leva o CA válido ao documento (NR-06).
+    public Guid? CatalogoEpiId { get; set; }
     // "Pendente", "Aceita" ou "Descartada".
     public string Decisao { get; set; } = "Pendente";
 }
