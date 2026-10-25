@@ -74,6 +74,41 @@ public class PgrPdfServiceTests
     }
 
     [Fact]
+    public void Gerar_ComExposicaoEpiComCaECronogramaDeDoisAnos_DevolvePdfValido()
+    {
+        var epiId = Guid.NewGuid();
+        var dados = DadosCompletos() with { Epis = new Dictionary<Guid, CatalogoEpiInfo> { [epiId] = new("Protetor auricular", "12345", new DateTime(2028, 5, 1)) } };
+        var risco = dados.Estrutura.Ghes[0].Atividades[0].Riscos[0];
+        risco.Tipo = "Físico";
+        risco.Perigo = "Ruído de equipamentos";
+        risco.Exposicao = new ExposicaoRisco
+        {
+            Criterio = CriteriosExposicao.Quantitativo,
+            Perfil = "Equipe de 12 pessoas, 6 horas por dia.",
+            Medicoes = new()
+            {
+                new MedicaoExposicao
+                {
+                    Data = new DateTime(2026, 10, 5), Valor = 87.4m, Unidade = "dB(A)", LimiteTolerancia = "85 dB(A)", NivelAcao = "80 dB(A)",
+                    Empresa = "Higiene Ocupacional Ltda", Tecnica = "Dosimetria", Equipamento = "Dosímetro XYZ",
+                },
+            },
+        };
+        risco.Medidas.Add(new MedidaGerada { Fase = 2, Texto = "Protetor auricular", Categoria = CategoriasMedida.Epi, CatalogoEpiId = epiId, Decisao = "Aceita" });
+        dados.Estrutura.AcoesPlano = new()
+        {
+            new AcaoPlanoGerada { Descricao = "Dosimetria de ruído nas frentes de escavação", ResponsavelNome = "Téc. Ana", Inicio = new DateTime(2026, 11, 10), Prazo = new DateTime(2027, 1, 20) },
+            new AcaoPlanoGerada { Descricao = "Treinamento de conservação auditiva", ResponsavelNome = "Eng. Carlos", Prazo = new DateTime(2026, 12, 15) },
+            new AcaoPlanoGerada { Descricao = "Ação sem prazo definido" },
+        };
+
+        var pdf = new PgrPdfService().Gerar(dados, null);
+
+        Assert.Equal("%PDF", System.Text.Encoding.ASCII.GetString(pdf, 0, 4));
+        Assert.True(pdf.Length > 1000);
+    }
+
+    [Fact]
     public void Gerar_ComContatosDeEmergenciaERotas_DevolvePdfComOsTextosDaFicha()
     {
         var dados = DadosCompletos();

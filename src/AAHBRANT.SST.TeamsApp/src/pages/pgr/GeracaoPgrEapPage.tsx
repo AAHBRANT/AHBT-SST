@@ -4,15 +4,16 @@ import {
   Button, Card, Carregando, Checkbox, FeedbackInline, Field, Input, PageHeader, Select, StatusChip, Text, Textarea, designTokens,
 } from '@ui';
 import {
-  api, StatusUsuario, type AcaoPlanoGerada, type AtividadeGerada, type CategoriaMedida, type EstruturaGeracaoPgr, type GeracaoPgrEap,
+  api, StatusUsuario, type AcaoPlanoGerada, type AtividadeGerada, type CatalogoEpi, type CategoriaMedida, type EstruturaGeracaoPgr, type GeracaoPgrEap,
   type GheGerado, type Obra, type RiscoGerado, type Usuario,
 } from '../../lib/api';
 import { rotuloStatusGeracao } from './GeracoesPgrEapCard';
 import { DadosComplementaresPgr } from './DadosComplementaresPgr';
+import { ExposicaoRiscoEditor, SeletorEpi } from './ExposicaoRiscoEditor';
 
 const PASSOS = ['Enviar a EAP', 'Conferir a leitura', 'Funções e GHE', 'Inventário de riscos', 'Aprovar'];
 const FASES: Record<number, string> = { 1: 'Antes', 2: 'Durante', 3: 'Após' };
-const TIPOS = ['Físico', 'Químico', 'Biológico', 'Ergonômico', 'Acidente'];
+const TIPOS = ['Físico', 'Químico', 'Biológico', 'Ergonômico', 'Psicossocial', 'Acidente'];
 // Ordem de prioridade da NR-01; o PDF separa EPC e EPI por estas categorias.
 const CATEGORIAS: CategoriaMedida[] = ['Eliminação', 'EPC', 'Administrativa', 'EPI'];
 const dataInput = (iso?: string | null) => (iso ? iso.slice(0, 10) : '');
@@ -371,8 +372,10 @@ function Inventario({ g, e, editavel, ocupado, alterar, gerarAtividade, salvar, 
   gerarPendentes: () => void;
 }) {
   const [usuarios, setUsuarios] = useState<Usuario[]>([]);
+  const [epis, setEpis] = useState<CatalogoEpi[]>([]);
   useEffect(() => {
     api.usuarios.listar(StatusUsuario.Ativo).then(setUsuarios).catch(() => setUsuarios([]));
+    api.catalogosEpi.listar().then(setEpis).catch(() => setEpis([]));
   }, []);
   const riscos = e.ghes.flatMap((x) => x.atividades.flatMap((a) => a.riscos)).filter((r) => !r.excluido);
   const medidas = riscos.flatMap((r) => r.medidas);
@@ -418,7 +421,7 @@ function Inventario({ g, e, editavel, ocupado, alterar, gerarAtividade, salvar, 
               </div>
               {!a.riscosGerados && <Text size={200}>Riscos ainda não gerados.</Text>}
               {a.riscos.map((r, ri) => !r.excluido && (
-                <RiscoEditor key={r.id} r={r} maxP={g.maxProbabilidade} maxS={g.maxSeveridade} editavel={editavel}
+                <RiscoEditor key={r.id} r={r} maxP={g.maxProbabilidade} maxS={g.maxSeveridade} editavel={editavel} epis={epis}
                   alterar={(f) => alterar((x) => f(x.ghes[gi].atividades[ai].riscos[ri]))} />
               ))}
             </div>
@@ -465,11 +468,12 @@ function Inventario({ g, e, editavel, ocupado, alterar, gerarAtividade, salvar, 
   );
 }
 
-function RiscoEditor({ r, maxP, maxS, editavel, alterar }: {
+function RiscoEditor({ r, maxP, maxS, editavel, epis, alterar }: {
   r: RiscoGerado;
   maxP: number;
   maxS: number;
   editavel: boolean;
+  epis: CatalogoEpi[];
   alterar: (f: (r: RiscoGerado) => void) => void;
 }) {
   const nivel = r.probabilidade * r.severidade;
@@ -515,6 +519,9 @@ function RiscoEditor({ r, maxP, maxS, editavel, alterar }: {
                 {CATEGORIAS.map((c) => <option key={c} value={c}>{c}</option>)}
               </Select>
             ) : <StatusChip tom="neutro">{m.categoria ?? 'Sem classificação'}</StatusChip>}
+            {m.categoria === 'EPI' && (
+              <SeletorEpi medida={m} epis={epis} editavel={editavel} alterar={(f) => alterar((x) => f(x.medidas[mi]))} />
+            )}
             <Text style={{ flex: 1 }}>{m.texto}</Text>
             {m.decisao === 'Aceita' ? <StatusChip tom="ok">Aceita</StatusChip> : <StatusChip tom="atencao">Sugestão da IA</StatusChip>}
             {editavel && m.decisao === 'Pendente' && <Button size="small" appearance="primary" onClick={() => alterar((x) => { x.medidas[mi].decisao = 'Aceita'; })}>Aceitar</Button>}
@@ -523,6 +530,7 @@ function RiscoEditor({ r, maxP, maxS, editavel, alterar }: {
         ))}
         {editavel && <NovaMedida aoAdicionar={(fase, categoria, texto) => alterar((x) => { x.medidas.push({ fase, texto, categoria, decisao: 'Aceita' }); })} />}
       </div>
+      <ExposicaoRiscoEditor r={r} editavel={editavel} alterar={alterar} />
     </div>
   );
 }
@@ -565,7 +573,9 @@ function AcaoPlanoLinha({ acao, usuarios, editavel, alterar, remover }: {
         <option value="">Responsável…</option>
         {usuarios.map((u) => <option key={u.id} value={u.id}>{u.nome}</option>)}
       </Select>
-      <Input type="date" value={dataInput(acao.prazo)} disabled={!editavel} aria-label="Prazo"
+      <Input type="date" value={dataInput(acao.inicio)} disabled={!editavel} aria-label="Início (opcional)" title="Início (opcional)"
+        onChange={(_, d) => alterar((x) => { x.inicio = d.value || null; })} />
+      <Input type="date" value={dataInput(acao.prazo)} disabled={!editavel} aria-label="Prazo" title="Prazo"
         onChange={(_, d) => alterar((x) => { x.prazo = d.value || null; })} />
       {editavel && <Button size="small" onClick={remover}>Remover</Button>}
     </div>
