@@ -520,7 +520,7 @@ function RiscoEditor({ r, maxP, maxS, editavel, epis, alterar }: {
               </Select>
             ) : <StatusChip tom="neutro">{m.categoria ?? 'Sem classificação'}</StatusChip>}
             {m.categoria === 'EPI' && (
-              <SeletorEpi medida={m} epis={epis} editavel={editavel && m.decisao !== 'Descartada'} alterar={(f) => alterar((x) => f(x.medidas[mi]))} />
+              <SeletorEpi medida={m} epis={epis} editavel={editavel} alterar={(f) => alterar((x) => f(x.medidas[mi]))} />
             )}
             <Text style={{ flex: 1 }}>{m.texto}</Text>
             {m.decisao === 'Aceita' ? <StatusChip tom="ok">Aceita</StatusChip> : <StatusChip tom="atencao">Sugestão da IA</StatusChip>}
