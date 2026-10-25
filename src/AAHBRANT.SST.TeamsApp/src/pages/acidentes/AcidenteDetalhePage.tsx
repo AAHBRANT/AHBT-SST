@@ -38,6 +38,7 @@ import { MapaCorporal } from '../../components/mapaCorporal/MapaCorporal';
 import { CartaoReuniaoAnalise } from './CartaoReuniaoAnalise';
 import { CampoComoSeResolve, payloadResolucao, pendenciaResolucao, resolucaoVazia, type ResolucaoEmEdicao } from './CampoComoSeResolve';
 import { useVisualizadorPdf } from '../../components/useVisualizadorPdf';
+import { useSucessoToast } from '../../hooks/useSucessoToast';
 import {
   api,
   metodologiaInvestigacaoLabel,
@@ -97,6 +98,7 @@ export function AcidenteDetalhePage() {
   // Reabrir desfaz uma conclusão feita por engano. Não existe mais conclusão manual (24/10/2026): a ação
   // conclui quando o fato vinculado acontece (treinamento, inspeção pelo responsável designado, EPI, DDS, reunião).
   const { confirmar, dialogElement: dialogoConfirmacao } = useConfirmar();
+  const sucessoToast = useSucessoToast();
   // "Como se resolve": na nova ação e no Alterar de uma ação existente.
   const [resolucaoNova, setResolucaoNova] = useState<ResolucaoEmEdicao>(resolucaoVazia());
   const [acaoAlterando, setAcaoAlterando] = useState<AcaoPlano | null>(null);
@@ -309,6 +311,29 @@ export function AcidenteDetalhePage() {
       await carregar();
     } catch (e) {
       setErro(e instanceof Error ? e.message : 'Falha ao reabrir a ação do plano.');
+    } finally {
+      setProcessando(false);
+    }
+  }
+
+  async function reabrirSemExecucao() {
+    if (!id) return;
+    const ok = await confirmar({
+      titulo: 'Reabrir ações concluídas sem execução?',
+      mensagem:
+        'Reabre todas as ações do plano que foram concluídas sem o fato que as resolve: concluídas à mão, treinamento ou inspeção que não aconteceu, DDS ou reunião ainda não realizados. As que foram concluídas pelo fato real ficam como estão.',
+      rotuloConfirmar: 'Reabrir ações',
+      tom: 'neutro',
+    });
+    if (!ok) return;
+    try {
+      setProcessando(true);
+      setErro(null);
+      const { reabertas } = await api.acidentes.reabrirAcoesSemExecucao(id);
+      await carregar();
+      sucessoToast(reabertas === 0 ? 'Nenhuma ação estava concluída sem execução.' : `${reabertas} ${reabertas === 1 ? 'ação reaberta' : 'ações reabertas'}.`);
+    } catch (e) {
+      setErro(e instanceof Error ? e.message : 'Falha ao reabrir as ações do plano.');
     } finally {
       setProcessando(false);
     }
@@ -685,6 +710,13 @@ export function AcidenteDetalhePage() {
       </Card>
 
       <Card titulo="Ações do plano">
+        {a.status !== StatusAcidente.Concluido && detalhe.acoesPlano.some((acao) => acao.status === StatusAcaoPlano.Concluido || !!acao.dataValidacao) && (
+          <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 8 }}>
+            <Button appearance="secondary" size="small" onClick={() => void reabrirSemExecucao()} disabled={processando}>
+              Reabrir ações concluídas sem execução
+            </Button>
+          </div>
+        )}
         <DataTable
           aria-label="Ações do plano"
           colunas={colunasAcoes}

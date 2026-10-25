@@ -199,6 +199,12 @@ public class AcidentesController : ControllerBase
         return NoContent();
     }
 
+    // Reabre de uma vez as ações do plano concluídas sem o fato que as resolve (concluídas à mão por engano).
+    [Authorize(Policy = "acidente:editar")]
+    [HttpPost("{id:guid}/acoes-plano/reabrir-sem-execucao")]
+    public async Task<IActionResult> ReabrirAcoesSemExecucao(Guid id, CancellationToken ct)
+        => Ok(new { reabertas = await _mediator.Send(new ReabrirAcoesSemExecucaoCommand(id), ct) });
+
     // Relatório de Investigação de Ocorrência (PDF) — mesma permissão de quem vê a ocorrência.
     [Authorize(Policy = "acidente:ver")]
     [HttpGet("{id:guid}/pdf")]
