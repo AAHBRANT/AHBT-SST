@@ -1,3 +1,4 @@
+using AAHBRANT.SST.Application.MatrizRisco;
 using AAHBRANT.SST.Application.Common.Interfaces;
 using AAHBRANT.SST.Domain.Enums;
 using Microsoft.EntityFrameworkCore;
@@ -12,6 +13,7 @@ public static class NivelRiscoLookup
     {
         var config = await db.MatrizRiscoConfigs
             .Include(c => c.Celulas)
+            .VigenteMaisRecente()
             .FirstOrDefaultAsync(ct)
             ?? throw new InvalidOperationException("Nenhuma MatrizRiscoConfig cadastrada.");
 

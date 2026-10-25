@@ -18,20 +18,6 @@ public class ObterMatrizRiscoConfigPorIdQueryHandler : IRequestHandler<ObterMatr
             .Include(c => c.Celulas)
             .FirstOrDefaultAsync(c => c.Id == request.Id, ct);
 
-        if (config is null) return null;
-
-        return new MatrizRiscoConfigDto
-        {
-            Id = config.Id,
-            Nome = config.Nome,
-            NumNiveisProbabilidade = config.NumNiveisProbabilidade,
-            NumNiveisSeveridade = config.NumNiveisSeveridade,
-            Celulas = config.Celulas.Select(cel => new MatrizRiscoCelulaDto
-            {
-                Probabilidade = cel.Probabilidade,
-                Severidade = cel.Severidade,
-                NivelRisco = cel.NivelRisco
-            }).ToList()
-        };
+        return config is null ? null : MatrizRiscoMapeamento.ParaDto(config);
     }
 }

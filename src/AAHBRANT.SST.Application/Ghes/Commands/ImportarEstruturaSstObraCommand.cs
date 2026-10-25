@@ -1,3 +1,4 @@
+using AAHBRANT.SST.Application.MatrizRisco;
 using AAHBRANT.SST.Application.Common;
 using AAHBRANT.SST.Application.Common.Interfaces;
 using AAHBRANT.SST.Application.Common.Seguranca;
@@ -154,7 +155,7 @@ public class ImportarEstruturaSstObraCommandHandler : IRequestHandler<ImportarEs
                 antigo.Ativo = false;
         }
 
-        var matriz = await _db.MatrizRiscoConfigs.Include(c => c.Celulas).FirstOrDefaultAsync(ct)
+        var matriz = await _db.MatrizRiscoConfigs.Include(c => c.Celulas).VigenteMaisRecente().FirstOrDefaultAsync(ct)
             ?? throw new InvalidOperationException("Nenhuma matriz de risco cadastrada.");
 
         // Função é global: casa pelo nome normalizado (sem acento/caixa/espaço extra) e pelos apelidos,

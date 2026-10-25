@@ -1,3 +1,4 @@
+using AAHBRANT.SST.Application.MatrizRisco;
 using System.Text.Json;
 using AAHBRANT.SST.Application.Common.Interfaces;
 using AAHBRANT.SST.Application.Ghes.Commands;
@@ -166,7 +167,7 @@ public class ProcessadorLeituraIa
 
     private async Task<Dictionary<(int P, int S), int>> MatrizAsync(CancellationToken ct)
     {
-        var matriz = await _db.MatrizRiscoConfigs.Include(m => m.Celulas).FirstOrDefaultAsync(ct)
+        var matriz = await _db.MatrizRiscoConfigs.Include(m => m.Celulas).VigenteMaisRecente().FirstOrDefaultAsync(ct)
             ?? throw new LeituraIaException("Nenhuma matriz de risco cadastrada. Configure a matriz antes de ler o PGR.");
         return matriz.Celulas.ToDictionary(c => (c.Probabilidade, c.Severidade), c => (int)c.NivelRisco);
     }

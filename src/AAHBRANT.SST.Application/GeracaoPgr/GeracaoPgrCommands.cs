@@ -1,3 +1,4 @@
+using AAHBRANT.SST.Application.MatrizRisco;
 using System.Text.Json;
 using AAHBRANT.SST.Application.Common;
 using AAHBRANT.SST.Application.Common.Interfaces;
@@ -130,7 +131,7 @@ public class ObterGeracaoPgrEapQueryHandler : IRequestHandler<ObterGeracaoPgrEap
     {
         var g = await SerializacaoGeracao.CarregarAsync(_db, request.Id, ct);
         var estrutura = SerializacaoGeracao.Ler(g.EstruturaJson);
-        var matriz = await _db.MatrizRiscoConfigs.FirstOrDefaultAsync(ct);
+        var matriz = await _db.MatrizRiscoConfigs.VigenteMaisRecente().FirstOrDefaultAsync(ct);
         var maxP = matriz?.NumNiveisProbabilidade ?? 5;
         var maxS = matriz?.NumNiveisSeveridade ?? 5;
 
@@ -342,7 +343,7 @@ public class GerarRiscosAtividadeGeracaoPgrCommandHandler : IRequestHandler<Gera
         var atividade = ghe.Atividades.FirstOrDefault(a => a.CodigoEap == request.CodigoEap)
             ?? throw new KeyNotFoundException("Atividade não encontrada no GHE.");
 
-        var matriz = await _db.MatrizRiscoConfigs.FirstOrDefaultAsync(ct)
+        var matriz = await _db.MatrizRiscoConfigs.VigenteMaisRecente().FirstOrDefaultAsync(ct)
             ?? throw new InvalidOperationException("Nenhuma matriz de risco cadastrada.");
         // Só requisitos validados (Ativo) podem ser citados como base.
         var requisitos = await _db.RequisitosLegais.Where(q => q.Status == StatusRequisitoLegal.Ativo)
@@ -436,7 +437,7 @@ public class AprovarGeracaoPgrCommandHandler : IRequestHandler<AprovarGeracaoPgr
             throw new InvalidOperationException("Só um PGR aguardando aprovação pode ser aprovado.");
 
         var e = SerializacaoGeracao.Ler(g.EstruturaJson);
-        var matriz = await _db.MatrizRiscoConfigs.Include(c => c.Celulas).FirstOrDefaultAsync(ct)
+        var matriz = await _db.MatrizRiscoConfigs.Include(c => c.Celulas).VigenteMaisRecente().FirstOrDefaultAsync(ct)
             ?? throw new InvalidOperationException("Nenhuma matriz de risco cadastrada.");
         var pendencias = PendenciasGeracaoPgr.Calcular(e, matriz.NumNiveisProbabilidade, matriz.NumNiveisSeveridade);
         if (pendencias.Count > 0)
