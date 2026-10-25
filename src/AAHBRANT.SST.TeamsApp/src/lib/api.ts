@@ -6555,6 +6555,9 @@ export const api = {
     concluirAcao: (acaoId: string, descricaoConclusao: string) =>
       request<void>(`/api/acidentes/acoes-plano/${acaoId}/concluir`, { method: 'POST', body: JSON.stringify({ descricaoConclusao }) }),
     reabrirAcao: (acaoId: string) => request<void>(`/api/acidentes/acoes-plano/${acaoId}/reabrir`, { method: 'POST' }),
+    // Reabre as ações concluídas sem o fato que as resolve (ex.: concluídas à mão). Devolve quantas reabriu.
+    reabrirAcoesSemExecucao: (id: string) =>
+      request<{ reabertas: number }>(`/api/acidentes/${id}/acoes-plano/reabrir-sem-execucao`, { method: 'POST' }),
     definirResolucaoAcao: (
       acaoId: string,
       dados: { tipoResolucao: number | null; cursoTreinamentoId: string | null; tipoInspecao: number | null; temaInspecaoId: string | null; catalogoEpiId: string | null },
