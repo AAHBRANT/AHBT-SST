@@ -22,7 +22,7 @@ public class ClaudeSchemaUnioesTests
         type = "object", properties = campos, required = campos.Keys.ToArray(), additionalProperties = false,
     };
 
-    private static (AzureOpenAiChatJsonCliente Chat, List<string> Corpos) Criar(string conteudoResposta)
+    private static (ClaudeChatJsonCliente Chat, List<string> Corpos) Criar(string conteudoResposta)
     {
         var corpos = new List<string>();
         var fabrica = new HttpClientFactoryFalso(req =>
@@ -31,8 +31,8 @@ public class ClaudeSchemaUnioesTests
             var json = JsonSerializer.Serialize(new { content = new[] { new { type = "text", text = conteudoResposta } } });
             return new HttpResponseMessage(HttpStatusCode.OK) { Content = new StringContent(json, Encoding.UTF8, "application/json") };
         });
-        var chat = new AzureOpenAiChatJsonCliente(fabrica, Options.Create(new AzureOpenAiOptions()),
-            Options.Create(new ClaudeOptions { ApiKey = "chave-de-teste" }), NullLogger<AzureOpenAiChatJsonCliente>.Instance);
+        var chat = new ClaudeChatJsonCliente(fabrica, Options.Create(new AzureOpenAiOptions()),
+            Options.Create(new ClaudeOptions { ApiKey = "chave-de-teste" }), NullLogger<ClaudeChatJsonCliente>.Instance);
         return (chat, corpos);
     }
 

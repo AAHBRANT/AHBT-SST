@@ -39,9 +39,9 @@ public class AzureOpenAiClassificadorRelato : IClassificadorRelatoSuporteIa
         },
     };
 
-    private readonly AzureOpenAiChatJsonCliente _chat;
+    private readonly ClaudeChatJsonCliente _chat;
 
-    public AzureOpenAiClassificadorRelato(AzureOpenAiChatJsonCliente chat) => _chat = chat;
+    public AzureOpenAiClassificadorRelato(ClaudeChatJsonCliente chat) => _chat = chat;
 
     public async Task<ChamadoSugeridoSuporteIa> ClassificarAsync(string relato, CancellationToken ct)
     {
@@ -51,9 +51,9 @@ public class AzureOpenAiClassificadorRelato : IClassificadorRelatoSuporteIa
         return new ChamadoSugeridoSuporteIa(
             Enum.TryParse<TipoSolicitacaoSuporteIa>(sugestao.Tipo, out var tipo) ? tipo : TipoSolicitacaoSuporteIa.Duvida,
             Enum.TryParse<SeveridadeSolicitacaoSuporteIa>(sugestao.Severidade, out var severidade) ? severidade : SeveridadeSolicitacaoSuporteIa.Media,
-            AzureOpenAiChatJsonCliente.Limitar(sugestao.Titulo, 180),
-            AzureOpenAiChatJsonCliente.LimitarOuNulo(sugestao.Modulo, 120),
-            AzureOpenAiChatJsonCliente.Limitar(sugestao.Descricao, 4000));
+            ClaudeChatJsonCliente.Limitar(sugestao.Titulo, 180),
+            ClaudeChatJsonCliente.LimitarOuNulo(sugestao.Modulo, 120),
+            ClaudeChatJsonCliente.Limitar(sugestao.Descricao, 4000));
     }
 
     private sealed record RespostaModelo(string? Tipo, string? Severidade, string? Titulo, string? Modulo, string? Descricao);

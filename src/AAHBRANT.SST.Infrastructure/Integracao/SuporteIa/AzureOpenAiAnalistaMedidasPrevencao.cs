@@ -55,9 +55,9 @@ public class AzureOpenAiAnalistaMedidasPrevencao : IAnalistaMedidasPrevencao
         },
     };
 
-    private readonly AzureOpenAiChatJsonCliente _chat;
+    private readonly ClaudeChatJsonCliente _chat;
 
-    public AzureOpenAiAnalistaMedidasPrevencao(AzureOpenAiChatJsonCliente chat) => _chat = chat;
+    public AzureOpenAiAnalistaMedidasPrevencao(ClaudeChatJsonCliente chat) => _chat = chat;
 
     public async Task<IReadOnlyList<MedidaSugeridaIa>> SepararAsync(ContextoMedidasRisco c, CancellationToken ct)
     {

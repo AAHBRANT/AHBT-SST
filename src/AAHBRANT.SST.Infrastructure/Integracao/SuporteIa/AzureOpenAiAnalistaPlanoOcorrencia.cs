@@ -96,9 +96,9 @@ public class AzureOpenAiAnalistaPlanoOcorrencia : IAnalistaPlanoOcorrencia
         },
     };
 
-    private readonly AzureOpenAiChatJsonCliente _chat;
+    private readonly ClaudeChatJsonCliente _chat;
 
-    public AzureOpenAiAnalistaPlanoOcorrencia(AzureOpenAiChatJsonCliente chat) => _chat = chat;
+    public AzureOpenAiAnalistaPlanoOcorrencia(ClaudeChatJsonCliente chat) => _chat = chat;
 
     public async Task<AnalisePlanoIa> AnalisarAsync(ContextoAnaliseOcorrencia c, CancellationToken ct)
     {

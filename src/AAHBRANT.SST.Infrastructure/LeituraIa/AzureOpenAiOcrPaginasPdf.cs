@@ -28,10 +28,10 @@ public class AzureOpenAiOcrPaginasPdf : IOcrPaginasPdf
         additionalProperties = false,
     };
 
-    private readonly AzureOpenAiChatJsonCliente _chat;
+    private readonly ClaudeChatJsonCliente _chat;
     private readonly ILogger<AzureOpenAiOcrPaginasPdf> _logger;
 
-    public AzureOpenAiOcrPaginasPdf(AzureOpenAiChatJsonCliente chat, ILogger<AzureOpenAiOcrPaginasPdf> logger)
+    public AzureOpenAiOcrPaginasPdf(ClaudeChatJsonCliente chat, ILogger<AzureOpenAiOcrPaginasPdf> logger)
     {
         _chat = chat;
         _logger = logger;

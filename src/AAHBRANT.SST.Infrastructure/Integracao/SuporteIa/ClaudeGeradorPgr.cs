@@ -9,11 +9,11 @@ namespace AAHBRANT.SST.Infrastructure.Integracao.SuporteIa;
 /// conferência (P/S dentro da matriz, normas citadas só entre as validadas, atividades que existem na
 /// EAP) é feita no servidor, e a aprovação é do Engenheiro de Segurança.
 /// </summary>
-public class AzureOpenAiGeradorPgr : IGeradorPgrIa
+public class ClaudeGeradorPgr : IGeradorPgrIa
 {
-    private readonly AzureOpenAiChatJsonCliente _chat;
+    private readonly ClaudeChatJsonCliente _chat;
 
-    public AzureOpenAiGeradorPgr(AzureOpenAiChatJsonCliente chat) => _chat = chat;
+    public ClaudeGeradorPgr(ClaudeChatJsonCliente chat) => _chat = chat;
 
     // ---- 1. Ler a EAP ----
 

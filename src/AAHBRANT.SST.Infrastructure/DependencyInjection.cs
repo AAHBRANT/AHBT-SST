@@ -80,7 +80,7 @@ public static class DependencyInjection
         services.Configure<AzureOpenAiOptions>(configuration.GetSection("AzureOpenAI"));
         services.Configure<ClaudeOptions>(configuration.GetSection("Claude"));
         services.AddScoped<AAHBRANT.SST.Application.SuporteIa.ITranscricaoAudioService, AzureOpenAiTranscricaoService>();
-        services.AddScoped<AzureOpenAiChatJsonCliente>();
+        services.AddScoped<ClaudeChatJsonCliente>();
         // Leitura de PGR/PCMSO com IA (10/10/2026). O consumidor da fila (LeituraIaBackgroundService) é
         // registrado só na Api.
         services.AddSingleton<LeituraIa.FilaLeituraIa>();
@@ -95,7 +95,7 @@ public static class DependencyInjection
         services.AddScoped<AAHBRANT.SST.Application.Acidentes.RelatoIa.IClassificadorRelatoOcorrencia, AzureOpenAiClassificadorOcorrencia>();
         services.AddScoped<AAHBRANT.SST.Application.Acidentes.RelatoIa.IAnalistaPlanoOcorrencia, AzureOpenAiAnalistaPlanoOcorrencia>();
         services.AddScoped<AAHBRANT.SST.Application.Riscos.Medidas.IAnalistaMedidasPrevencao, AzureOpenAiAnalistaMedidasPrevencao>();
-        services.AddScoped<AAHBRANT.SST.Application.GeracaoPgr.IGeradorPgrIa, AzureOpenAiGeradorPgr>();
+        services.AddScoped<AAHBRANT.SST.Application.GeracaoPgr.IGeradorPgrIa, ClaudeGeradorPgr>();
         // Mapas do plano de emergência: serviços públicos do OpenStreetMap, que exigem identificar o aplicativo.
         services.Configure<AAHBRANT.SST.Infrastructure.Integracao.Mapas.MapasOptions>(configuration.GetSection("Mapas"));
         services.AddHttpClient<AAHBRANT.SST.Application.GeracaoPgr.IProvedorMapaEmergencia, AAHBRANT.SST.Infrastructure.Integracao.Mapas.OpenStreetMapEmergenciaProvedor>(http =>
