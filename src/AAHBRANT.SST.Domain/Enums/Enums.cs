@@ -146,7 +146,13 @@ public enum TipoAlerta
     // Plano de integração do funcionário (admissão, troca de função, transferência), 21/10/2026.
     IntegracaoFuncionarioNovo = 33,
     // Disponível do EPI na obra abaixo do estoque mínimo definido (especificação 21/10/2026, Módulo 2).
-    EstoqueEpiAbaixoMinimo = 34
+    EstoqueEpiAbaixoMinimo = 34,
+    // Documento exigido da empresa terceirizada (PGR, PCMSO...) perto de vencer ou vencido (21/10/2026).
+    DocumentoTerceirizadoVencendo = 35,
+    DocumentoTerceirizadoVencido = 36,
+    // ASO desativado porque sumiu do G-RH (aviso ao Técnico de Segurança da obra, 26/10/2026). Criado no ato pela
+    // sincronização, não pelo Motor Central de Alertas periódico.
+    AsoDesativadoGrh = 37
 }
 
 public enum SeveridadeAlerta
@@ -181,7 +187,9 @@ public enum TipoModuloAlerta
     // Cadastros faciais com falhas repetidas: o técnico refaz a foto (CadastroFacialAlertaProvider), 12/10/2026.
     CadastroFacial = 14,
     // Validade do PCMSO (PcmsoAlertaProvider), 16/10/2026.
-    Pcmso = 15
+    Pcmso = 15,
+    // Documentos da empresa terceirizada (DocumentoEmpresaTerceirizadaAlertaProvider), 21/10/2026.
+    DocumentoTerceirizado = 16
 }
 
 public enum StatusAlerta
@@ -549,6 +557,16 @@ public enum ItemEpcPt
 // Alojamento (14) não está nessa lista literal, mas é citado explicitamente como "Inspeção
 // Específica" em REFORMULAÇÃO.md §PR-SST-005 — adicionado para o checklist de estrutura de
 // alojamento (NR-18 18.5 / NR-24), pedido do usuário em 2026-09-09.
+// Como uma ação do plano se conclui sozinha (23/10/2026, etapa 2): só o fato real a conclui —
+// turma do curso escolhido concluída com os envolvidos, inspeção do tipo escolhido finalizada na
+// obra, entrega do EPI escolhido assinada pelos envolvidos. Nulo = ação manual.
+public enum TipoResolucaoAcaoPlano
+{
+    Treinamento = 1,
+    Inspecao = 2,
+    EntregaEpi = 3
+}
+
 public enum TipoInspecao
 {
     Obra = 1,
@@ -565,7 +583,9 @@ public enum TipoInspecao
     Comportamental = 12,
     Terceiros = 13,
     Alojamento = 14,
-    Veiculo = 15
+    Veiculo = 15,
+    // Tema criado pelo usuário (ex.: Andaime): ItemInspecionavel + checklist próprio do tema.
+    Tema = 16
 }
 
 // Tipos de veículo/equipamento pesado com checklist próprio (planilha "CHECK LIST - AT CUIA", 02/10/2026).
@@ -1033,4 +1053,18 @@ public enum DedoBiometria
     NaoInformado = 0,
     PolegarDireito = 1,
     PolegarEsquerdo = 2,
+}
+
+// Cursos obrigatórios por função a partir do PGR (21/10): só Aprovado conta para a aptidão.
+public enum StatusCursoObrigatorio
+{
+    Sugerido = 1,
+    Aprovado = 2,
+    Recusado = 3,
+}
+
+public enum OrigemCursoObrigatorio
+{
+    Pgr = 1,
+    Manual = 2,
 }

@@ -82,6 +82,20 @@ public class ArquivoCertificadoTreinamentoConfiguracao : IEntityTypeConfiguratio
     }
 }
 
+public class ArquivoAsoConfiguracao : IEntityTypeConfiguration<ArquivoAso>
+{
+    public void Configure(EntityTypeBuilder<ArquivoAso> builder)
+    {
+        builder.Property(a => a.NomeArquivo).IsRequired().HasMaxLength(260);
+        builder.Property(a => a.ContentType).IsRequired().HasMaxLength(150);
+        builder.HasOne(a => a.Aso).WithOne(a => a.Arquivo)
+            .HasForeignKey<ArquivoAso>(a => a.AsoId)
+            .OnDelete(DeleteBehavior.Cascade);
+        builder.HasIndex(a => a.AsoId).IsUnique();
+        builder.HasQueryFilter(a => a.Ativo);
+    }
+}
+
 public class CatalogoEpiConfiguracao : IEntityTypeConfiguration<CatalogoEpi>
 {
     public void Configure(EntityTypeBuilder<CatalogoEpi> builder)

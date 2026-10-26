@@ -4,6 +4,7 @@ namespace AAHBRANT.SST.Application.Inspecoes;
 
 public class InspecaoDto
 {
+    public string? NumeroDocumento { get; set; }
     public Guid Id { get; set; }
     public TipoInspecao TipoInspecao { get; set; }
     public Guid ObraId { get; set; }
@@ -16,6 +17,11 @@ public class InspecaoDto
     public string? VeiculoPlacaPrefixo { get; set; }
     public string? VeiculoMarcaModelo { get; set; }
     public string? VeiculoEmpresa { get; set; }
+    // Preenchidos só nas inspeções de temas criados pelo usuário (ex.: um andaime do tema "Andaime").
+    public Guid? ItemInspecionavelId { get; set; }
+    public string? ItemInspecionavelIdentificacao { get; set; }
+    public Guid? TemaInspecaoId { get; set; }
+    public string? TemaInspecaoNome { get; set; }
     public Guid ChecklistModeloId { get; set; }
     public string ChecklistModeloNome { get; set; } = string.Empty;
     public int ChecklistModeloVersao { get; set; }
@@ -30,6 +36,7 @@ public class InspecaoDto
 
 public class InspecaoItemRespostaDto
 {
+    public string? VersaoResposta { get; set; }
     public Guid Id { get; set; }
     public Guid InspecaoId { get; set; }
     public Guid ChecklistModeloItemId { get; set; }

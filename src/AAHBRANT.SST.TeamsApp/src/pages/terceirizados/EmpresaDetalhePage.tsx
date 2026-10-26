@@ -24,6 +24,7 @@ import { api, type Empresa, type Contrato, type AtualizarEmpresa, type Obra, typ
 import { useSucessoToast } from '../../hooks/useSucessoToast';
 import { FormularioContrato } from './FormularioContrato';
 import { CadastroPorContratoPdf } from './CadastroPorContratoPdf';
+import { CardConformidade } from './ConformidadeEmpresa';
 import { useVisualizadorPdf } from '../../components/useVisualizadorPdf';
 import { formularioContratoVazio, paraDadosContrato, type ValorFormularioContrato } from './valorFormularioContrato';
 
@@ -302,6 +303,8 @@ export function EmpresaDetalhePage() {
           </Text>
         </div>
       </Card>
+
+      <CardConformidade key={contratos.length} empresaId={empresa.id} podeEditar={empresa.status === 'Ativa'} />
 
       <Card
         titulo="Contratos"

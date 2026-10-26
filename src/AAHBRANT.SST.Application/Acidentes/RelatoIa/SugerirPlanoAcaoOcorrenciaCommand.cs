@@ -48,7 +48,18 @@ public record AcaoPlanoSugeridaDto(
     string PapelResponsavel,
     string? AvisoResponsavel,
     string Fundamentacao,
-    bool BaseConfirmada);
+    bool BaseConfirmada,
+    // Como a ação se resolve (sempre um fato do sistema). Nulo quando a IA não achou item que case:
+    // a tela obriga o técnico a escolher antes de registrar.
+    VinculoSugeridoDto? Vinculo = null);
+
+public record VinculoSugeridoDto(
+    TipoResolucaoAcaoPlano TipoResolucao,
+    Guid? CursoTreinamentoId,
+    TipoInspecao? TipoInspecao,
+    Guid? TemaInspecaoId,
+    Guid? CatalogoEpiId,
+    string Rotulo);
 
 public class SugerirPlanoAcaoOcorrenciaCommandValidator : AbstractValidator<SugerirPlanoAcaoOcorrenciaCommand>
 {
@@ -108,6 +119,8 @@ public class SugerirPlanoAcaoOcorrenciaCommandHandler : IRequestHandler<SugerirP
 
         var requisitos = await RequisitosAplicaveisAsync(request.AtividadeId, ct);
 
+        var vinculos = await VinculosCatalogoAsync(ct);
+
         var analise = await _analista.AnalisarAsync(new ContextoAnaliseOcorrencia(
             request.Tipo.ToString(),
             request.Gravidade.ToString(),
@@ -117,7 +130,8 @@ public class SugerirPlanoAcaoOcorrenciaCommandHandler : IRequestHandler<SugerirP
             request.Atendimento,
             atividade,
             riscos,
-            requisitos), ct);
+            requisitos,
+            vinculos.Disponiveis), ct);
 
         var responsaveis = await CarregarResponsaveisAsync(request.ObraId, ct);
         var agora = DateTime.UtcNow;
@@ -141,7 +155,8 @@ public class SugerirPlanoAcaoOcorrenciaCommandHandler : IRequestHandler<SugerirP
                     papel,
                     aviso,
                     base_.Texto,
-                    base_.Confirmada);
+                    base_.Confirmada,
+                    vinculos.Resolver(a.VinculoTipo, a.VinculoAlvo));
             })
             .ToList();
 
@@ -155,6 +170,72 @@ public class SugerirPlanoAcaoOcorrenciaCommandHandler : IRequestHandler<SugerirP
                 CalendarioObra.ProximoDiaUtil(CalendarioObra.AgoraEmBrasilia())),
             await SugerirReuniaoAsync(request, responsaveis, ct));
     }
+
+    // Catálogos que a IA pode citar e o caminho de volta: nome escolhido → item real. O que não casar
+    // vira "sem vínculo" (nunca inventa curso, EPI ou tema).
+    private sealed class CatalogoVinculos
+    {
+        public required List<(Guid Id, string Nome)> Temas { get; init; }
+        public required List<(Guid Id, string Nome)> Cursos { get; init; }
+        public required List<(Guid Id, string Nome)> Epis { get; init; }
+
+        public VinculosDisponiveisIa Disponiveis => new(
+            TiposInspecaoSugeriveis.Select(t => ResolucaoVinculadaAcaoPlano.DescreverTipoInspecao(t)).ToList(),
+            Temas.Select(t => t.Nome).ToList(),
+            Cursos.Select(c => c.Nome).ToList(),
+            Epis.Select(e => e.Nome).ToList());
+
+        public VinculoSugeridoDto? Resolver(string? tipo, string? alvo)
+        {
+            if (string.IsNullOrWhiteSpace(alvo)) return null;
+            var nome = alvo.Trim();
+            switch (tipo)
+            {
+                case "Inspecao":
+                {
+                    var tema = Temas.FirstOrDefault(t => string.Equals(t.Nome, nome, StringComparison.OrdinalIgnoreCase));
+                    if (tema.Id != Guid.Empty)
+                        return new VinculoSugeridoDto(TipoResolucaoAcaoPlano.Inspecao, null, TipoInspecao.Tema, tema.Id, null, $"Inspeção de {tema.Nome}");
+                    var tipoInspecao = TiposInspecaoSugeriveis.Cast<TipoInspecao?>().FirstOrDefault(t =>
+                        string.Equals(ResolucaoVinculadaAcaoPlano.DescreverTipoInspecao(t), nome, StringComparison.OrdinalIgnoreCase));
+                    return tipoInspecao is null
+                        ? null
+                        : new VinculoSugeridoDto(TipoResolucaoAcaoPlano.Inspecao, null, tipoInspecao, null, null, $"Inspeção de {nome}");
+                }
+                case "Treinamento":
+                {
+                    var curso = Cursos.FirstOrDefault(c => string.Equals(c.Nome, nome, StringComparison.OrdinalIgnoreCase));
+                    return curso.Id == Guid.Empty
+                        ? null
+                        : new VinculoSugeridoDto(TipoResolucaoAcaoPlano.Treinamento, curso.Id, null, null, null, $"Treinamento {curso.Nome}");
+                }
+                case "EntregaEpi":
+                {
+                    var epi = Epis.FirstOrDefault(e => string.Equals(e.Nome, nome, StringComparison.OrdinalIgnoreCase));
+                    return epi.Id == Guid.Empty
+                        ? null
+                        : new VinculoSugeridoDto(TipoResolucaoAcaoPlano.EntregaEpi, null, null, null, epi.Id, $"Entrega de {epi.Nome}");
+                }
+                default:
+                    return null;
+            }
+        }
+    }
+
+    // Tipos fixos que ainda têm inspeção própria; Tema (genérico) entra pelos temas cadastrados.
+    private static readonly TipoInspecao[] TiposInspecaoSugeriveis =
+    {
+        TipoInspecao.Obra, TipoInspecao.Canteiro, TipoInspecao.Epi, TipoInspecao.Epc, TipoInspecao.Maquinas, TipoInspecao.Ferramentas,
+        TipoInspecao.Andaimes, TipoInspecao.Escadas, TipoInspecao.Eletrica, TipoInspecao.Altura, TipoInspecao.EspacoConfinado,
+        TipoInspecao.Comportamental, TipoInspecao.Terceiros, TipoInspecao.Alojamento, TipoInspecao.Veiculo,
+    };
+
+    private async Task<CatalogoVinculos> VinculosCatalogoAsync(CancellationToken ct) => new()
+    {
+        Temas = (await _db.TemasInspecao.OrderBy(t => t.Nome).Select(t => new { t.Id, t.Nome }).ToListAsync(ct)).Select(t => (t.Id, t.Nome)).ToList(),
+        Cursos = (await _db.CursosTreinamento.OrderBy(c => c.Nome).Select(c => new { c.Id, c.Nome }).Take(200).ToListAsync(ct)).Select(c => (c.Id, c.Nome)).ToList(),
+        Epis = (await _db.CatalogoEpis.OrderBy(e => e.Nome).Select(e => new { e.Id, e.Nome }).Take(200).ToListAsync(ct)).Select(e => (e.Id, e.Nome)).ToList(),
+    };
 
     private async Task<List<RequisitoLegalResumo>> RequisitosAplicaveisAsync(Guid? atividadeId, CancellationToken ct)
     {

@@ -13,4 +13,9 @@ public class AsoDto
     public string? ObservacoesClinicas { get; set; }
     public string? MedicoNome { get; set; }
     public string? MedicoCrm { get; set; }
+
+    // Regra única do ASO vigente (ver AsoVigente): o do exame mais recente da pessoa. Os demais são superados e
+    // não podem aparecer como vencidos nem bloquear. Preenchido por AsoVigente.Marcar.
+    public bool Vigente { get; set; }
+    public DateTime? SubstituidoPorDataExame { get; set; }
 }

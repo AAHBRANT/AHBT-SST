@@ -3,6 +3,14 @@ import { GradeFotosEvidencia } from '../../components/GradeFotosEvidencia';
 import { useEffect, useState } from 'react';
 import { useParams } from 'react-router-dom';
 import {
+  BotaoAcao,
+  Dialog,
+  DialogActions,
+  DialogBody,
+  DialogContent,
+  DialogSurface,
+  DialogTitle,
+  useConfirmar,
   Button,
   Campo,
   Card,
@@ -25,7 +33,12 @@ import {
   type Tom,
   Legenda,
 } from '@ui';
-import { Save24Regular, Video24Regular } from '@fluentui/react-icons';
+import { ArrowDownload24Regular, Eye24Regular, Save24Regular } from '@fluentui/react-icons';
+import { MapaCorporal } from '../../components/mapaCorporal/MapaCorporal';
+import { CartaoReuniaoAnalise } from './CartaoReuniaoAnalise';
+import { CampoComoSeResolve, payloadResolucao, pendenciaResolucao, resolucaoVazia, type ResolucaoEmEdicao } from './CampoComoSeResolve';
+import { useVisualizadorPdf } from '../../components/useVisualizadorPdf';
+import { useSucessoToast } from '../../hooks/useSucessoToast';
 import {
   api,
   metodologiaInvestigacaoLabel,
@@ -36,11 +49,13 @@ import {
   tipoOcorrenciaLabel,
   StatusAcaoPlano,
   StatusAcidente,
+  TipoOcorrencia,
   type AcaoPlano,
+  type Acidente,
   type AcidenteDetalhe,
+  type AtualizarAcidentePayload,
   type NovaAcaoPlano,
   type Usuario,
-  SituacaoReuniaoTeams,
 } from '../../lib/api';
 
 function novaAcaoInicial(): Omit<NovaAcaoPlano, 'origemTipo' | 'origemId'> {
@@ -78,10 +93,20 @@ export function AcidenteDetalhePage() {
   const [usuarios, setUsuarios] = useState<Usuario[]>([]);
   const [metodologia, setMetodologia] = useState<string>('');
   const [causas, setCausas] = useState<string>('');
+  const [regioesCorpo, setRegioesCorpo] = useState<string[]>([]);
   const [novaAcao, setNovaAcao] = useState(novaAcaoInicial());
-  const [usuarioValidador, setUsuarioValidador] = useState('');
+  // Reabrir desfaz uma conclusão feita por engano. Não existe mais conclusão manual (24/10/2026): a ação
+  // conclui quando o fato vinculado acontece (treinamento, inspeção pelo responsável designado, EPI, DDS, reunião).
+  const { confirmar, dialogElement: dialogoConfirmacao } = useConfirmar();
+  const sucessoToast = useSucessoToast();
+  // "Como se resolve": na nova ação e no Alterar de uma ação existente.
+  const [resolucaoNova, setResolucaoNova] = useState<ResolucaoEmEdicao>(resolucaoVazia());
+  const [acaoAlterando, setAcaoAlterando] = useState<AcaoPlano | null>(null);
+  const [resolucaoAlterando, setResolucaoAlterando] = useState<ResolucaoEmEdicao>(resolucaoVazia());
   const [erro, setErro] = useState<string | null>(null);
   const [processando, setProcessando] = useState(false);
+  const [baixandoPdf, setBaixandoPdf] = useState(false);
+  const { visualizar, dialogoVisualizador } = useVisualizadorPdf();
 
   useEffect(() => {
     let ativo = true;
@@ -106,6 +131,7 @@ export function AcidenteDetalhePage() {
       setUsuarios(listaUsuarios);
       setMetodologia(det.acidente.metodologiaInvestigacao ? String(det.acidente.metodologiaInvestigacao) : '');
       setCausas(det.acidente.causas ?? '');
+      setRegioesCorpo(det.acidente.regioesCorpo ?? []);
     } catch (e) {
       setErro(e instanceof Error ? e.message : 'Falha ao carregar acidente.');
     }
@@ -116,35 +142,60 @@ export function AcidenteDetalhePage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id]);
 
+  // O PUT regrava a ocorrência inteira: parte do que está gravado e troca só o que a tela editou.
+  // Sem regioesCorpo no corpo, a API mantém o mapa corporal gravado.
+  function dadosGravados(a: Acidente): AtualizarAcidentePayload {
+    return {
+      tipo: a.tipo,
+      obraId: a.obraId,
+      trabalhadorId: a.trabalhadorId,
+      trabalhadoresIds: a.envolvidos.map((e) => e.trabalhadorId),
+      atividadeId: a.atividadeId,
+      local: a.local,
+      data: a.data,
+      hora: a.hora,
+      descricao: a.descricao,
+      lesao: a.lesao,
+      consequencia: a.consequencia,
+      atendimento: a.atendimento,
+      houveAfastamento: a.houveAfastamento,
+      diasAfastamento: a.diasAfastamento,
+      numeroCat: a.numeroCat,
+      gravidade: a.gravidade,
+      // Exigido na incapacidade permanente parcial; nos demais casos a API recalcula pela tabela.
+      diasDebitadosInformados: a.diasDebitados || null,
+      metodologiaInvestigacao: a.metodologiaInvestigacao,
+      causas: a.causas,
+    };
+  }
+
   async function salvarInvestigacao() {
     if (!id || !detalhe) return;
     try {
       setProcessando(true);
       setErro(null);
-      const a = detalhe.acidente;
       await api.acidentes.atualizar(id, {
-        tipo: a.tipo,
-        obraId: a.obraId,
-        trabalhadorId: a.trabalhadorId,
-        trabalhadoresIds: a.envolvidos.map((e) => e.trabalhadorId),
-        atividadeId: a.atividadeId,
-        local: a.local,
-        data: a.data,
-        hora: a.hora,
-        descricao: a.descricao,
-        lesao: a.lesao,
-        consequencia: a.consequencia,
-        atendimento: a.atendimento,
-        houveAfastamento: a.houveAfastamento,
-        diasAfastamento: a.diasAfastamento,
-        numeroCat: a.numeroCat,
-        gravidade: a.gravidade,
+        ...dadosGravados(detalhe.acidente),
         metodologiaInvestigacao: metodologia ? Number(metodologia) : null,
         causas: causas || null,
       });
       await carregar();
     } catch (e) {
       setErro(e instanceof Error ? e.message : 'Falha ao salvar dados da investigação.');
+    } finally {
+      setProcessando(false);
+    }
+  }
+
+  async function salvarRegioesCorpo() {
+    if (!id || !detalhe) return;
+    try {
+      setProcessando(true);
+      setErro(null);
+      await api.acidentes.atualizar(id, { ...dadosGravados(detalhe.acidente), regioesCorpo });
+      await carregar();
+    } catch (e) {
+      setErro(e instanceof Error ? e.message : 'Falha ao salvar as partes do corpo atingidas.');
     } finally {
       setProcessando(false);
     }
@@ -178,6 +229,16 @@ export function AcidenteDetalhePage() {
       setErro('Informe a descrição da ação do plano.');
       return;
     }
+    if (!novaAcao.responsavelUsuarioId) {
+      setErro('Designe quem vai resolver a ação.');
+      return;
+    }
+    const pendencia = pendenciaResolucao(resolucaoNova);
+    if (pendencia) {
+      setErro(pendencia);
+      return;
+    }
+    const resolucao = payloadResolucao(resolucaoNova);
     try {
       setProcessando(true);
       setErro(null);
@@ -187,8 +248,14 @@ export function AcidenteDetalhePage() {
         ...novaAcao,
         responsavelUsuarioId: novaAcao.responsavelUsuarioId || null,
         prazo: novaAcao.prazo || null,
+        tipoResolucao: resolucao.tipoResolucao,
+        resolucaoCursoTreinamentoId: resolucao.cursoTreinamentoId,
+        resolucaoTipoInspecao: resolucao.tipoInspecao,
+        resolucaoTemaInspecaoId: resolucao.temaInspecaoId,
+        resolucaoCatalogoEpiId: resolucao.catalogoEpiId,
       });
       setNovaAcao(novaAcaoInicial());
+      setResolucaoNova(resolucaoVazia());
       await carregar();
     } catch (e) {
       setErro(e instanceof Error ? e.message : 'Falha ao criar ação do plano.');
@@ -197,21 +264,108 @@ export function AcidenteDetalhePage() {
     }
   }
 
-  async function validarAcao(acaoId: string) {
-    if (!usuarioValidador) {
-      setErro('Selecione o usuário responsável pela validação.');
+  function abrirAlterarResolucao(acao: AcaoPlano) {
+    setErro(null);
+    setResolucaoAlterando({
+      tipoResolucao: acao.tipoResolucao ?? null,
+      cursoTreinamentoId: acao.resolucaoCursoTreinamentoId ?? '',
+      tipoInspecao: acao.resolucaoTipoInspecao ? String(acao.resolucaoTipoInspecao) : '',
+      temaInspecaoId: acao.resolucaoTemaInspecaoId ?? '',
+      catalogoEpiId: acao.resolucaoCatalogoEpiId ?? '',
+    });
+    setAcaoAlterando(acao);
+  }
+
+  async function salvarResolucao() {
+    if (!acaoAlterando) return;
+    const pendencia = pendenciaResolucao(resolucaoAlterando);
+    if (pendencia) {
+      setErro(pendencia);
       return;
     }
     try {
       setProcessando(true);
       setErro(null);
-      await api.acoesPlano.validar(acaoId, usuarioValidador);
+      await api.acidentes.definirResolucaoAcao(acaoAlterando.id, payloadResolucao(resolucaoAlterando));
+      setAcaoAlterando(null);
       await carregar();
     } catch (e) {
-      setErro(e instanceof Error ? e.message : 'Falha ao validar ação do plano.');
+      setErro(e instanceof Error ? e.message : 'Falha ao alterar como a ação se resolve.');
     } finally {
       setProcessando(false);
     }
+  }
+
+  async function reabrirAcao(acao: AcaoPlano) {
+    const ok = await confirmar({
+      titulo: 'Reabrir ação?',
+      mensagem: `"${acao.descricao}" volta para Pendente e o registro de conclusão é apagado. Use quando ela foi concluída por engano.`,
+      rotuloConfirmar: 'Reabrir ação',
+      tom: 'neutro',
+    });
+    if (!ok) return;
+    try {
+      setProcessando(true);
+      setErro(null);
+      await api.acidentes.reabrirAcao(acao.id);
+      await carregar();
+    } catch (e) {
+      setErro(e instanceof Error ? e.message : 'Falha ao reabrir a ação do plano.');
+    } finally {
+      setProcessando(false);
+    }
+  }
+
+  async function reabrirSemExecucao() {
+    if (!id) return;
+    const ok = await confirmar({
+      titulo: 'Reabrir ações concluídas sem execução?',
+      mensagem:
+        'Reabre todas as ações do plano que foram concluídas sem o fato que as resolve: concluídas à mão, treinamento ou inspeção que não aconteceu, DDS ou reunião ainda não realizados. As que foram concluídas pelo fato real ficam como estão.',
+      rotuloConfirmar: 'Reabrir ações',
+      tom: 'neutro',
+    });
+    if (!ok) return;
+    try {
+      setProcessando(true);
+      setErro(null);
+      const { reabertas } = await api.acidentes.reabrirAcoesSemExecucao(id);
+      await carregar();
+      sucessoToast(reabertas === 0 ? 'Nenhuma ação estava concluída sem execução.' : `${reabertas} ${reabertas === 1 ? 'ação reaberta' : 'ações reabertas'}.`);
+    } catch (e) {
+      setErro(e instanceof Error ? e.message : 'Falha ao reabrir as ações do plano.');
+    } finally {
+      setProcessando(false);
+    }
+  }
+
+  function nomeArquivoPdf(det: AcidenteDetalhe) {
+    return `investigacao-${tipoOcorrenciaLabel[det.acidente.tipo].toLowerCase().replace(/\s+/g, '-')}-${det.acidente.data?.slice(0, 10)}.pdf`;
+  }
+
+  // Relatório de Investigação de Ocorrência — sai a qualquer momento; o próprio PDF mostra a situação.
+  async function baixarPdf() {
+    if (!id || !detalhe) return;
+    try {
+      setBaixandoPdf(true);
+      setErro(null);
+      const blob = await api.acidentes.baixarPdf(id);
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = nomeArquivoPdf(detalhe);
+      link.click();
+      URL.revokeObjectURL(url);
+    } catch (e) {
+      setErro(e instanceof Error ? e.message : 'Falha ao gerar o relatório de investigação.');
+    } finally {
+      setBaixandoPdf(false);
+    }
+  }
+
+  function visualizarPdf() {
+    if (!id || !detalhe) return;
+    void visualizar({ titulo: 'Relatório de investigação', nomeArquivo: nomeArquivoPdf(detalhe), obter: () => api.acidentes.baixarPdf(id) });
   }
 
   if (!id) return <FeedbackInline tom="erro">Acidente não encontrado.</FeedbackInline>;
@@ -241,6 +395,7 @@ export function AcidenteDetalhePage() {
       finalizacao: a.status === StatusAcidente.EmInvestigacao,
       pendencias: a.status === StatusAcidente.EmInvestigacao ? [
         ...(a.tipo === 1 ? pendenciasGrade(detalhe.fotos ?? []) : []),
+        ...(detalhe.reuniao?.realizadaEm ? [] : ['Registre a reunião de análise como realizada.']),
         ...(detalhe.acoesPlano.some(acao => acao.status !== StatusAcaoPlano.Concluido) ? ['Conclua as ações do plano que estão pendentes.'] : []),
       ] : [],
       descricao: 'Confira se as ações do plano em aberto já foram concluídas antes de avançar.',
@@ -262,15 +417,55 @@ export function AcidenteDetalhePage() {
         </div>
       ),
     },
+    {
+      chave: 'resolucao',
+      rotulo: 'Como se resolve',
+      render: (acao) => (
+        <div style={{ display: 'grid', gap: 2 }}>
+          <span>
+            <StatusChip tom={acao.tipoResolucaoAutomatica ? 'info' : 'atencao'}>{acao.tipoResolucaoAutomatica ? 'Automática' : 'Sem vínculo'}</StatusChip>
+          </span>
+          {acao.tipoResolucaoAutomatica ? (
+            <Legenda>{acao.resolucaoAutomatica}</Legenda>
+          ) : acao.status === StatusAcaoPlano.Concluido ? (
+            acao.descricaoConclusao && <Legenda>"{acao.descricaoConclusao}"</Legenda>
+          ) : (
+            <Legenda>Defina como se resolve (Alterar). Sem isso a ação não conclui.</Legenda>
+          )}
+        </div>
+      ),
+    },
     { chave: 'responsavel', rotulo: 'Responsável', render: (acao) => acao.responsavelUsuarioNome ?? '—' },
     { chave: 'prioridade', rotulo: 'Prioridade', render: (acao) => prioridadeAcaoLabel[acao.prioridade] },
     { chave: 'prazo', rotulo: 'Prazo', render: (acao) => acao.prazo?.slice(0, 10) ?? '—' },
     {
       chave: 'status',
       rotulo: 'Status',
-      render: (acao) => (
-        <StatusChip tom={tomPorStatusAcaoPlano[acao.status] ?? 'neutro'}>{statusAcaoPlanoLabel[acao.status]}</StatusChip>
-      ),
+      render: (acao) => {
+        const concluida = acao.status === StatusAcaoPlano.Concluido;
+        const quem = acao.concluidoPorUsuarioNome ?? acao.validadoPorUsuarioNome;
+        if (!concluida && acao.tipoResolucaoAutomatica)
+          return (
+            <div style={{ display: 'grid', gap: 2 }}>
+              <span>
+                <StatusChip tom="atencao">{acao.rotuloAguardando ?? 'Aguardando'}</StatusChip>
+              </span>
+              {acao.progressoResolucao && <Legenda>{acao.progressoResolucao}</Legenda>}
+            </div>
+          );
+        return (
+          <div style={{ display: 'grid', gap: 2 }}>
+            <span>
+              <StatusChip tom={tomPorStatusAcaoPlano[acao.status] ?? 'neutro'}>
+                {concluida && acao.dataConclusao
+                  ? `Concluída ${acao.dataConclusao.slice(8, 10)}/${acao.dataConclusao.slice(5, 7)}`
+                  : statusAcaoPlanoLabel[acao.status]}
+              </StatusChip>
+            </span>
+            {concluida && quem && <Legenda>por {quem}</Legenda>}
+          </div>
+        );
+      },
     },
   ];
 
@@ -283,6 +478,17 @@ export function AcidenteDetalhePage() {
         ),
         voltarPara: `/ocorrencias?secao=${secaoOcorrencia}`,
         rotuloVoltar: 'Voltar para Ocorrências',
+        acoes: (
+          <>
+            <BotaoAcao tom="ver" icon={<Eye24Regular />} onClick={visualizarPdf} aria-label="Visualizar relatório de investigação">
+              Visualizar relatório
+            </BotaoAcao>
+            <BotaoAcao tom="baixar" icon={<ArrowDownload24Regular />} onClick={baixarPdf} disabled={baixandoPdf} aria-label="Baixar relatório de investigação em PDF">
+              Baixar PDF
+            </BotaoAcao>
+            {dialogoVisualizador}
+          </>
+        ),
       }}
       lateral={
         <>
@@ -363,8 +569,17 @@ export function AcidenteDetalhePage() {
         </FeedbackInline>
       )}
 
-      {a.tipo === 1 && <Card titulo="Fotos do local do acidente">
-        <GradeFotosEvidencia titulo="Três fotos obrigatórias" total={3}
+      <CartaoReuniaoAnalise
+        acidenteId={a.id}
+        reuniao={detalhe.reuniao ?? null}
+        usuarios={usuarios}
+        somenteLeitura={a.status === StatusAcidente.Concluido}
+        aoAtualizar={carregar}
+      />
+
+      <Card titulo={a.tipo === 1 ? 'Fotos do local do acidente' : 'Fotos do local'}>
+        <GradeFotosEvidencia titulo={a.tipo === 1 ? 'Três fotos obrigatórias' : 'Até três fotos (opcionais)'} total={3}
+          opcional={a.tipo !== 1}
           subtitulo="Registre a visão geral, o ponto da ocorrência e um detalhe relevante. Confira os dados antes de sair do local."
           contextoFoto={{ obraId: a.obraId, obraNome: a.obraNome ?? '', local: a.local }}
           fotos={(detalhe.fotos ?? []).map(f => ({ ...f, url: fotoUrls[f.id] }))}
@@ -372,8 +587,29 @@ export function AcidenteDetalhePage() {
           onSelecionarFoto={async (ordem, arquivo) => { await api.acidentes.anexarFoto(a.id, ordem, arquivo); await carregar(); }}
           onRemoverFoto={async fotoId => { try { await api.acidentes.removerFoto(fotoId); await carregar(); } catch (e) { setErro(e instanceof Error ? e.message : 'Falha ao remover foto.'); } }}
           onErroValidacao={setErro} />
-      </Card>}
+      </Card>
       <Text style={{ display: 'block' }}>{a.descricao}</Text>
+
+      {(a.tipo === TipoOcorrencia.Acidente || a.tipo === TipoOcorrencia.DoencaOcupacional || Boolean(a.lesao) || regioesCorpo.length > 0) && (
+        <Card titulo="Partes do corpo atingidas" subtitulo="Saem no relatório de investigação, junto com a lesão.">
+          <MapaCorporal
+            selecionadas={regioesCorpo}
+            aoAlterar={a.status === StatusAcidente.Concluido ? undefined : setRegioesCorpo}
+          />
+          {a.status !== StatusAcidente.Concluido && (
+            <FormRodape>
+              <Button
+                appearance="primary"
+                icon={<Save24Regular />}
+                onClick={salvarRegioesCorpo}
+                disabled={processando || [...regioesCorpo].sort().join() === [...(a.regioesCorpo ?? [])].sort().join()}
+              >
+                Salvar partes do corpo
+              </Button>
+            </FormRodape>
+          )}
+        </Card>
+      )}
 
       <Card titulo="Investigação (Seção 28 — análise de causas)">
         <FormSection titulo="Dados da Investigação" numero={1} primeira>
@@ -427,12 +663,12 @@ export function AcidenteDetalhePage() {
               </Field>
             </Campo>
             <Campo span={3}>
-              <Field label="Responsável">
+              <Field label="Responsável" required dica="Quem vai resolver a ação. Para inspeção, só vale a inspeção finalizada por esta pessoa.">
                 <Select
                   value={novaAcao.responsavelUsuarioId ?? ''}
                   onChange={(_, d) => setNovaAcao({ ...novaAcao, responsavelUsuarioId: d.value })}
                 >
-                  <option value="">Nenhum</option>
+                  <option value="">Selecione</option>
                   {usuarios.map((usuario) => (
                     <option key={usuario.id} value={usuario.id}>
                       {usuario.nome}
@@ -463,6 +699,7 @@ export function AcidenteDetalhePage() {
                 />
               </Field>
             </Campo>
+            <CampoComoSeResolve valor={resolucaoNova} aoMudar={setResolucaoNova} />
           </FormGrid>
         </FormSection>
         <FormRodape>
@@ -472,72 +709,69 @@ export function AcidenteDetalhePage() {
         </FormRodape>
       </Card>
 
-      {detalhe.reuniao && (
-        <Card titulo="Reunião de análise do acidente">
-          <div style={{ display: 'grid', gap: 10 }}>
-            <Text>
-              {new Date(detalhe.reuniao.inicio).toLocaleDateString('pt-BR', { weekday: 'long', day: '2-digit', month: '2-digit' })}
-              {' · '}
-              {detalhe.reuniao.inicio.slice(11, 16)} às {detalhe.reuniao.fim.slice(11, 16)}
-            </Text>
-            <Legenda>Participantes: {detalhe.reuniao.participantes.join(', ') || '—'}</Legenda>
-            {detalhe.reuniao.situacao === SituacaoReuniaoTeams.Criada ? (
-              <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
-                <StatusChip tom="ok">Marcada no Teams</StatusChip>
-                {detalhe.reuniao.linkTeams && (
-                  <Button
-                    appearance="primary"
-                    size="small"
-                    icon={<Video24Regular />}
-                    as="a"
-                    href={detalhe.reuniao.linkTeams}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                  >
-                    Entrar na reunião
-                  </Button>
-                )}
-              </div>
-            ) : (
-              <FeedbackInline tom="aviso">
-                {detalhe.reuniao.motivoFalha ?? 'A reunião não foi marcada no Teams. Marque-a manualmente.'}
-              </FeedbackInline>
-            )}
-            <Legenda>A ação "Realizar a reunião de análise" do plano é concluída pelo técnico depois da reunião.</Legenda>
+      <Card titulo="Ações do plano">
+        {a.status !== StatusAcidente.Concluido && detalhe.acoesPlano.some((acao) => acao.status === StatusAcaoPlano.Concluido || !!acao.dataValidacao) && (
+          <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 8 }}>
+            <Button appearance="secondary" size="small" onClick={() => void reabrirSemExecucao()} disabled={processando}>
+              Reabrir ações concluídas sem execução
+            </Button>
           </div>
-        </Card>
-      )}
-
-      <Card
-        titulo="Ações do plano"
-        acoes={
-          <Field label="Validar como">
-            <Select value={usuarioValidador} onChange={(_, d) => setUsuarioValidador(d.value)}>
-              <option value="">Selecione um usuário</option>
-              {usuarios.map((usuario) => (
-                <option key={usuario.id} value={usuario.id}>
-                  {usuario.nome}
-                </option>
-              ))}
-            </Select>
-          </Field>
-        }
-      >
+        )}
         <DataTable
           aria-label="Ações do plano"
           colunas={colunasAcoes}
           linhas={detalhe.acoesPlano}
           chaveLinha={(acao) => acao.id}
           vazio={{ titulo: 'Nenhuma ação do plano cadastrada ainda.' }}
-          acoesLinha={(acao) =>
-            acao.status !== StatusAcaoPlano.Concluido && !acao.dataValidacao ? (
-              <Button appearance="subtle" onClick={() => validarAcao(acao.id)} disabled={processando}>
-                Validar
+          acoesLinha={(acao) => {
+            if (a.status === StatusAcidente.Concluido) return null;
+            const concluida = acao.status === StatusAcaoPlano.Concluido || !!acao.dataValidacao;
+            if (concluida)
+              return (
+                <Button appearance="subtle" onClick={() => void reabrirAcao(acao)} disabled={processando}>
+                  Reabrir
+                </Button>
+              );
+            // DDS e reunião se resolvem pelo próprio fluxo; não têm botão.
+            if (acao.tipoResolucaoAutomatica === 'Dds' || acao.tipoResolucaoAutomatica === 'Reuniao') return null;
+            return (
+              <Button
+                appearance={acao.tipoResolucao ? 'subtle' : 'primary'}
+                size="small"
+                onClick={() => abrirAlterarResolucao(acao)}
+                disabled={processando}
+              >
+                {acao.tipoResolucao ? 'Alterar' : 'Definir como se resolve'}
               </Button>
-            ) : null
-          }
+            );
+          }}
         />
       </Card>
+      {dialogoConfirmacao}
+      <Dialog open={!!acaoAlterando} onOpenChange={(_, d) => { if (!d.open) setAcaoAlterando(null); }}>
+        <DialogSurface>
+          <DialogBody>
+            <DialogTitle>Como esta ação se resolve?</DialogTitle>
+            <DialogContent>
+              <div style={{ display: 'grid', gap: 10 }}>
+                <Text>"{acaoAlterando?.descricao}"</Text>
+                <FormGrid>
+                  <CampoComoSeResolve valor={resolucaoAlterando} aoMudar={setResolucaoAlterando} />
+                </FormGrid>
+                {erro && acaoAlterando && <FeedbackInline tom="erro">{erro}</FeedbackInline>}
+              </div>
+            </DialogContent>
+            <DialogActions>
+              <Button appearance="secondary" onClick={() => setAcaoAlterando(null)} disabled={processando}>
+                Cancelar
+              </Button>
+              <Button appearance="primary" onClick={() => void salvarResolucao()} disabled={processando}>
+                Salvar
+              </Button>
+            </DialogActions>
+          </DialogBody>
+        </DialogSurface>
+      </Dialog>
     </DetailPageLayout>
   );
 }

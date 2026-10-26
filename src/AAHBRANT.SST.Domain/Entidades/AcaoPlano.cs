@@ -45,6 +45,24 @@ public class AcaoPlano : AuditableEntity
     public StatusControleRisco Status { get; set; } = StatusControleRisco.Pendente;
     public DateTime? DataConclusao { get; set; }
 
+    // Conclusão manual pela tela da ocorrência (23/10/2026): quem marcou como concluída (pelo login)
+    // e o que foi feito. Nulos nas ações concluídas sozinhas (DDS encerrado, reunião registrada).
+    public Guid? ConcluidoPorUsuarioId { get; set; }
+    public Usuario? ConcluidoPorUsuario { get; set; }
+    public string? DescricaoConclusao { get; set; }
+
+    // Vínculo que conclui a ação automaticamente (ver TipoResolucaoAcaoPlano). Só um dos três
+    // alvos é preenchido, conforme o tipo.
+    public TipoResolucaoAcaoPlano? TipoResolucao { get; set; }
+    public Guid? ResolucaoCursoTreinamentoId { get; set; }
+    public CursoTreinamento? ResolucaoCursoTreinamento { get; set; }
+    public TipoInspecao? ResolucaoTipoInspecao { get; set; }
+    // Inspeção de um tema criado pelo usuário (ex.: Andaime): ResolucaoTipoInspecao = Tema e este é o tema.
+    public Guid? ResolucaoTemaInspecaoId { get; set; }
+    public TemaInspecao? ResolucaoTemaInspecao { get; set; }
+    public Guid? ResolucaoCatalogoEpiId { get; set; }
+    public CatalogoEpi? ResolucaoCatalogoEpi { get; set; }
+
     public DateTime? DataValidacao { get; set; }
     public Guid? ValidadoPorUsuarioId { get; set; }
     public Usuario? ValidadoPorUsuario { get; set; }

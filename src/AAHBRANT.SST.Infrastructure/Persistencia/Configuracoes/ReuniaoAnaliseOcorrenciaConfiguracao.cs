@@ -13,6 +13,9 @@ public class ReuniaoAnaliseOcorrenciaConfiguracao : IEntityTypeConfiguration<Reu
         builder.Property(r => r.GraphEventId).HasMaxLength(500);
         builder.Property(r => r.LinkTeams).HasMaxLength(2000);
         builder.Property(r => r.MotivoFalha).HasMaxLength(500);
+        builder.Property(r => r.ParticipantesUsuarioIds).HasMaxLength(2000);
+        builder.Property(r => r.Presentes).HasMaxLength(2000);
+        builder.Property(r => r.Ata).HasMaxLength(4000);
 
         builder.HasOne(r => r.Acidente).WithMany()
             .HasForeignKey(r => r.AcidenteId).OnDelete(DeleteBehavior.Restrict);

@@ -30,6 +30,7 @@ public class ObterChecklistModeloDetalheQueryHandler : IRequestHandler<ObterChec
                 Nome = checklist.Nome,
                 TipoInspecao = checklist.TipoInspecao,
                 TipoVeiculo = checklist.TipoVeiculo,
+                TemaInspecaoId = checklist.TemaInspecaoId,
                 Versao = checklist.Versao,
                 ChecklistModeloAnteriorId = checklist.ChecklistModeloAnteriorId,
                 QuantidadeItens = itens.Count

@@ -159,7 +159,12 @@ public class AzureOpenAiGeradorPgr : IGeradorPgrIa
         Você é engenheiro de Segurança do Trabalho da AAHBRANT Engenharia montando o inventário de riscos
         do PGR (NR-01) para UMA atividade de obra. Responda só com o JSON.
         - Liste os perigos realmente presentes na atividade (normalmente 3 a 8), de todos os tipos
-          aplicáveis: Físico, Químico, Biológico, Ergonômico, Acidente.
+          aplicáveis: Físico, Químico, Biológico, Ergonômico, Psicossocial, Acidente.
+        - Psicossocial (fatores de risco psicossociais relacionados ao trabalho, NR-01): inclua no máximo UM
+          perigo desse tipo e só quando houver fator claro na atividade, como pressão por prazo, jornada
+          extensa ou noturna, trabalho isolado, trabalho sob risco de vida que gere tensão constante, ou
+          conflito entre equipes. Descreva o fator (ex.: "Pressão por prazo e jornada extensa"), nunca um
+          diagnóstico de pessoa. Sem fator claro, não inclua.
         - perigo: o agente ou a fonte, curto (ex.: "Queda de altura na borda da laje", "Ruído do vibrador").
         - danos: possíveis lesões ou doenças.
         - probabilidade e severidade: inteiros de 1 até o máximo informado da matriz, avaliados para a
@@ -170,6 +175,9 @@ public class AzureOpenAiGeradorPgr : IGeradorPgrIa
           trabalhador entenda, seguindo a hierarquia da NR-01 (eliminação, proteção coletiva,
           administrativa, EPI por último). fase: "Antes" (preparação, inspeção, liberação, PT/APR),
           "Durante" (execução) ou "Apos" (desmobilização, limpeza, guarda). 2 a 6 medidas por perigo.
+          categoria: "Eliminacao" (elimina o perigo), "EPC" (proteção coletiva), "Administrativa"
+          (procedimento, treinamento, sinalização, inspeção) ou "EPI" (equipamento de proteção individual).
+          Cada medida tem uma única categoria; não misture EPC e EPI no mesmo texto.
         Não invente procedimento interno nem nome de documento da empresa.
         """;
 
@@ -190,7 +198,7 @@ public class AzureOpenAiGeradorPgr : IGeradorPgrIa
                     required = new[] { "tipo", "perigo", "danos", "probabilidade", "severidade", "base", "medidas" },
                     properties = new
                     {
-                        tipo = new { type = "string", @enum = new[] { "Físico", "Químico", "Biológico", "Ergonômico", "Acidente" } },
+                        tipo = new { type = "string", @enum = new[] { "Físico", "Químico", "Biológico", "Ergonômico", "Psicossocial", "Acidente" } },
                         perigo = new { type = "string" },
                         danos = new { type = "string" },
                         probabilidade = new { type = "integer" },
@@ -203,11 +211,12 @@ public class AzureOpenAiGeradorPgr : IGeradorPgrIa
                             {
                                 type = "object",
                                 additionalProperties = false,
-                                required = new[] { "fase", "texto" },
+                                required = new[] { "fase", "texto", "categoria" },
                                 properties = new
                                 {
                                     fase = new { type = "string", @enum = new[] { "Antes", "Durante", "Apos" } },
                                     texto = new { type = "string" },
+                                    categoria = new { type = "string", @enum = new[] { "Eliminacao", "EPC", "Administrativa", "EPI" } },
                                 },
                             },
                         },
@@ -242,9 +251,78 @@ public class AzureOpenAiGeradorPgr : IGeradorPgrIa
             {
                 Fase = m.Fase == "Antes" ? 1 : m.Fase == "Apos" ? 3 : 2,
                 Texto = (m.Texto ?? "").Trim(),
+                Categoria = CategoriasMedida.Normalizar(m.Categoria),
             }).ToList(),
         }).ToList();
     }
+
+    // ---- 4. Emergência: escolher o local mais adequado e justificar ----
+
+    private const string InstrucoesEmergencia = """
+        Você é engenheiro de Segurança do Trabalho da AAHBRANT Engenharia montando o plano de emergência do PGR
+        de uma obra. O mapa já devolveu locais REAIS, com distância e tempo de rota de carro a partir da obra.
+        Responda só com o JSON.
+        - recomendados: escolha UM candidato para cada tipo presente (Hospital, Corpo de Bombeiros, Delegacia
+          ou posto de polícia), usando o campo id exatamente como veio. Critérios, nesta ordem: para hospital,
+          prefira o que atende urgência (atendeUrgencia = true) quando o tempo de rota for razoável (até cerca
+          de 10 minutos a mais que o mais rápido) e considere os riscos da obra (queda de altura, soterramento,
+          eletricidade, esmagamento pedem pronto-socorro com trauma); depois o menor tempo de rota.
+        - justificativa: uma frase curta (até 160 caracteres) dizendo por que o escolhido é a melhor opção,
+          citando tempo ou distância e, se for o caso, o atendimento de urgência. Use SÓ os dados fornecidos.
+          Nunca invente nome, endereço, telefone, rua nem capacidade do local.
+        - cenarios: dos cenários possíveis informados, liste (copiando o texto exato) os que se aplicam aos
+          riscos da obra, além dos cinco primeiros que sempre valem.
+        """;
+
+    private static readonly object SchemaEmergencia = new
+    {
+        type = "object",
+        additionalProperties = false,
+        required = new[] { "recomendados", "cenarios" },
+        properties = new
+        {
+            recomendados = new
+            {
+                type = "array",
+                items = new
+                {
+                    type = "object",
+                    additionalProperties = false,
+                    required = new[] { "id", "justificativa" },
+                    properties = new
+                    {
+                        id = new { type = "string" },
+                        justificativa = new { type = "string" },
+                    },
+                },
+            },
+            cenarios = new { type = "array", items = new { type = "string" } },
+        },
+    };
+
+    public async Task<SugestaoEmergenciaIa> SugerirEmergenciaAsync(ContextoEmergenciaIa c, CancellationToken ct)
+    {
+        var sb = new StringBuilder();
+        sb.AppendLine($"Obra: {c.Obra}");
+        sb.AppendLine($"Localização da obra: {c.Localizacao}");
+        sb.AppendLine("Riscos da obra:");
+        foreach (var r in c.Riscos) sb.AppendLine($"- {r}");
+        if (c.Riscos.Count == 0) sb.AppendLine("(ainda sem riscos gerados)");
+        sb.AppendLine("Candidatos (locais reais do mapa, com rota de carro a partir da obra):");
+        foreach (var k in c.Candidatos)
+            sb.AppendLine($"- id={k.Id} | tipo={k.Tipo} | nome={k.Nome} | atendeUrgencia={(k.AtendeUrgencia ? "true" : "false")} | {k.TempoMinutos} min | {k.DistanciaKm:0.0} km");
+        sb.AppendLine("Cenários possíveis:");
+        foreach (var n in c.CenariosPossiveis) sb.AppendLine($"- {n}");
+
+        var r2 = await _chat.ObterAsync<RespostaEmergencia>(InstrucoesEmergencia, sb.ToString(), "emergencia_obra", SchemaEmergencia, ct, maxTokens: 3000, timeoutSegundos: 90);
+        return new SugestaoEmergenciaIa(
+            (r2.Recomendados ?? new()).Where(x => !string.IsNullOrWhiteSpace(x.Id))
+                .Select(x => new RecomendacaoEmergenciaIa(x.Id!.Trim(), x.Justificativa?.Trim())).ToList(),
+            (r2.Cenarios ?? new()).Where(x => !string.IsNullOrWhiteSpace(x)).Select(x => x.Trim()).ToList());
+    }
+
+    private sealed record RespostaEmergencia(List<RecomendacaoModelo>? Recomendados, List<string>? Cenarios);
+    private sealed record RecomendacaoModelo(string? Id, string? Justificativa);
 
     private sealed record RespostaEap(List<ItemEapModelo>? Itens);
     private sealed record ItemEapModelo(string? Codigo, string? Nome, int Nivel, string? Periodo, bool Usar, bool Conferir);
@@ -253,5 +331,5 @@ public class AzureOpenAiGeradorPgr : IGeradorPgrIa
     private sealed record FuncaoModelo(string? Nome, string? Descricao);
     private sealed record RespostaRiscos(List<RiscoModelo>? Riscos);
     private sealed record RiscoModelo(string? Tipo, string? Perigo, string? Danos, int Probabilidade, int Severidade, List<string>? Base, List<MedidaModelo>? Medidas);
-    private sealed record MedidaModelo(string? Fase, string? Texto);
+    private sealed record MedidaModelo(string? Fase, string? Texto, string? Categoria);
 }

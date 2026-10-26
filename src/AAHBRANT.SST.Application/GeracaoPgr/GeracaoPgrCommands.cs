@@ -1,3 +1,4 @@
+using AAHBRANT.SST.Application.MatrizRisco;
 using System.Text.Json;
 using AAHBRANT.SST.Application.Common;
 using AAHBRANT.SST.Application.Common.Interfaces;
@@ -46,7 +47,7 @@ internal static class SerializacaoGeracao
     private static readonly JsonSerializerOptions Opcoes = new(JsonSerializerDefaults.Web);
 
     public static EstruturaGeracaoPgr Ler(string json) =>
-        string.IsNullOrWhiteSpace(json) ? new() : JsonSerializer.Deserialize<EstruturaGeracaoPgr>(json, Opcoes) ?? new();
+        (string.IsNullOrWhiteSpace(json) ? new() : JsonSerializer.Deserialize<EstruturaGeracaoPgr>(json, Opcoes) ?? new()).Normalizar();
 
     public static string Gravar(EstruturaGeracaoPgr e) => JsonSerializer.Serialize(e, Opcoes);
 
@@ -66,6 +67,16 @@ internal static class SerializacaoGeracao
             throw new InvalidOperationException("O PGR está aguardando aprovação. Devolva para ajustes antes de alterar.");
     }
 
+    // EPIs do catálogo referenciados nas medidas do rascunho, com o CA de hoje.
+    public static async Task<Dictionary<Guid, CatalogoEpiInfo>> CarregarEpisAsync(IAppDbContext db, EstruturaGeracaoPgr e, CancellationToken ct)
+    {
+        var ids = e.Ghes.SelectMany(g => g.Atividades).SelectMany(a => a.Riscos).SelectMany(r => r.Medidas)
+            .Where(m => m.CatalogoEpiId is not null).Select(m => m.CatalogoEpiId!.Value).Distinct().ToList();
+        if (ids.Count == 0) return new();
+        return await db.CatalogoEpis.Where(x => ids.Contains(x.Id))
+            .ToDictionaryAsync(x => x.Id, x => new CatalogoEpiInfo(x.Nome, x.CertificadoAprovacaoNumero, x.CertificadoAprovacaoValidade), ct);
+    }
+
     public static async Task<string?> NomeUsuarioAsync(IAppDbContext db, Guid? usuarioId, string? nomeToken, CancellationToken ct)
     {
         var nome = usuarioId is { } id ? await db.Usuarios.Where(u => u.Id == id).Select(u => u.Nome).FirstOrDefaultAsync(ct) : null;
@@ -83,9 +94,25 @@ public static class PendenciasGeracaoPgr
         return usadas.Count > 0 ? usadas : e.Itens.Where(i => i.Usar).ToList();
     }
 
-    public static List<string> Calcular(EstruturaGeracaoPgr e, int maxP, int maxS)
+    // epis: EPIs do catálogo usados nas medidas, para conferir o CA (NR-06). Sem o dicionário, o CA não é conferido.
+    public static List<string> Calcular(EstruturaGeracaoPgr e, int maxP, int maxS, IReadOnlyDictionary<Guid, CatalogoEpiInfo>? epis = null)
     {
+        var hoje = DateTime.UtcNow.Date;
         var p = new List<string>();
+        if (e.DataTermino is null) p.Add("Informe o término da vigência do PGR.");
+        var comp = e.Complementares;
+        if (string.IsNullOrWhiteSpace(comp.Cnae)) p.Add("Informe o CNAE da obra.");
+        if (comp.GrauRisco is not (>= 1 and <= 4)) p.Add("Informe o grau de risco da obra (1 a 4, NR-04).");
+        if (string.IsNullOrWhiteSpace(comp.ResponsavelTecnicoRegistro)) p.Add("Informe o registro profissional (CREA) do responsável técnico.");
+        if (string.IsNullOrWhiteSpace(comp.ResponsavelImplantacaoNome)) p.Add("Informe o responsável pela implantação do PGR.");
+        if (string.IsNullOrWhiteSpace(comp.ContatosEmergencia.FirstOrDefault(x => x.Chave == "hospital")?.Telefone))
+            p.Add("Informe o telefone do hospital de referência no plano de emergência.");
+        foreach (var a in e.AcoesPlano.Where(a => !string.IsNullOrWhiteSpace(a.Descricao)))
+        {
+            var resumo = a.Descricao.Length <= 40 ? a.Descricao : a.Descricao[..40] + "…";
+            if (a.ResponsavelUsuarioId is null && string.IsNullOrWhiteSpace(a.ResponsavelNome)) p.Add($"Plano de ação \"{resumo}\" sem responsável.");
+            if (a.Prazo is null) p.Add($"Plano de ação \"{resumo}\" sem prazo.");
+        }
         if (e.Ghes.Count == 0) p.Add("Nenhum GHE definido.");
 
         foreach (var dup in e.Ghes.GroupBy(g => g.Numero).Where(x => x.Count() > 1))
@@ -115,8 +142,30 @@ public static class PendenciasGeracaoPgr
             if (naoRevisados > 0) p.Add($"{nome}: {naoRevisados} risco(s) não revisado(s).");
             var medidas = riscos.SelectMany(r => r.Medidas).Count(m => m.Decisao == "Pendente");
             if (medidas > 0) p.Add($"{nome}: {medidas} medida(s) sem decisão.");
+            var semCategoria = riscos.SelectMany(r => r.Medidas).Count(m => m.Decisao == "Aceita" && !CategoriasMedida.Valida(m.Categoria));
+            if (semCategoria > 0) p.Add($"{nome}: {semCategoria} medida(s) aceita(s) sem classificação (eliminação, EPC, administrativa ou EPI).");
             foreach (var r in riscos.Where(r => r.Probabilidade < 1 || r.Probabilidade > maxP || r.Severidade < 1 || r.Severidade > maxS))
                 p.Add($"{nome}: {r.Perigo} com probabilidade/severidade fora da matriz.");
+
+            foreach (var r in riscos)
+            {
+                var exp = r.Exposicao ?? new ExposicaoRisco();
+                if (exp.Criterio == CriteriosExposicao.Quantitativo && exp.Medicoes.Count == 0)
+                    p.Add($"{nome}: {r.Perigo} é quantitativo, mas não tem medição.");
+                if (exp.Medicoes.Any(m => m.Data is null || m.Valor is null || string.IsNullOrWhiteSpace(m.Unidade)))
+                    p.Add($"{nome}: medição de {r.Perigo} incompleta (informe data, valor e unidade).");
+
+                if (epis is null) continue;
+                foreach (var m in r.Medidas.Where(m => m.Decisao == "Aceita" && m.CatalogoEpiId is not null))
+                {
+                    if (!epis.TryGetValue(m.CatalogoEpiId!.Value, out var epi))
+                        p.Add($"{nome}: o EPI escolhido para {r.Perigo} não existe mais no catálogo.");
+                    else if (string.IsNullOrWhiteSpace(epi.Ca))
+                        p.Add($"{nome}: o EPI {epi.Nome} está sem número de CA no catálogo.");
+                    else if (epi.CaValidade is { } validade && validade.Date < hoje)
+                        p.Add($"{nome}: o CA do EPI {epi.Nome} venceu em {validade:dd/MM/yyyy}.");
+                }
+            }
         }
         return p;
     }
@@ -134,7 +183,7 @@ public class ObterGeracaoPgrEapQueryHandler : IRequestHandler<ObterGeracaoPgrEap
     {
         var g = await SerializacaoGeracao.CarregarAsync(_db, request.Id, ct);
         var estrutura = SerializacaoGeracao.Ler(g.EstruturaJson);
-        var matriz = await _db.MatrizRiscoConfigs.FirstOrDefaultAsync(ct);
+        var matriz = await _db.MatrizRiscoConfigs.VigenteMaisRecente().FirstOrDefaultAsync(ct);
         var maxP = matriz?.NumNiveisProbabilidade ?? 5;
         var maxS = matriz?.NumNiveisSeveridade ?? 5;
 
@@ -155,7 +204,7 @@ public class ObterGeracaoPgrEapQueryHandler : IRequestHandler<ObterGeracaoPgrEap
             AprovadoEmUtc = g.AprovadoEmUtc,
             PgrId = g.PgrId,
             Estrutura = estrutura,
-            PendenciasAprovacao = PendenciasGeracaoPgr.Calcular(estrutura, maxP, maxS),
+            PendenciasAprovacao = PendenciasGeracaoPgr.Calcular(estrutura, maxP, maxS, await SerializacaoGeracao.CarregarEpisAsync(_db, estrutura, ct)),
             FuncoesCadastradas = await _db.Funcoes.OrderBy(f => f.Nome).Select(f => new FuncaoCadastroDto(f.Id, f.Nome)).ToListAsync(ct),
             MaxProbabilidade = maxP,
             MaxSeveridade = maxS,
@@ -226,6 +275,15 @@ public class CriarGeracaoPgrEapCommandHandler : IRequestHandler<CriarGeracaoPgrE
         if (itens.Count == 0)
             throw new InvalidOperationException("A IA não encontrou pacotes ou atividades na EAP enviada.");
 
+        // Dados da obra (emergência, CNAE, CREA...) já preenchidos na última geração aprovada seguem para esta.
+        var estrutura = new EstruturaGeracaoPgr { Itens = itens };
+        var anterior = await _db.GeracoesPgrEap
+            .Where(x => x.ObraId == request.ObraId && x.Status == StatusGeracaoPgrEap.Aprovado)
+            .OrderByDescending(x => x.AprovadoEmUtc)
+            .Select(x => x.EstruturaJson)
+            .FirstOrDefaultAsync(ct);
+        if (anterior is not null) estrutura.Complementares = SerializacaoGeracao.Ler(anterior).Complementares;
+
         var g = new GeracaoPgrEap
         {
             ObraId = request.ObraId,
@@ -236,7 +294,7 @@ public class CriarGeracaoPgrEapCommandHandler : IRequestHandler<CriarGeracaoPgrE
             ElaboradoPorNome = await SerializacaoGeracao.NomeUsuarioAsync(_db, request.UsuarioId, request.NomeUsuario, ct),
             NomeArquivoEap = request.NomeArquivo,
             Passo = 2,
-            EstruturaJson = SerializacaoGeracao.Gravar(new EstruturaGeracaoPgr { Itens = itens }),
+            EstruturaJson = SerializacaoGeracao.Gravar(estrutura),
         };
         _db.GeracoesPgrEap.Add(g);
         await _db.SaveChangesAsync(ct);
@@ -359,7 +417,7 @@ public class GerarRiscosAtividadeGeracaoPgrCommandHandler : IRequestHandler<Gera
         var atividade = ghe.Atividades.FirstOrDefault(a => a.CodigoEap == request.CodigoEap)
             ?? throw new KeyNotFoundException("Atividade não encontrada no GHE.");
 
-        var matriz = await _db.MatrizRiscoConfigs.FirstOrDefaultAsync(ct)
+        var matriz = await _db.MatrizRiscoConfigs.VigenteMaisRecente().FirstOrDefaultAsync(ct)
             ?? throw new InvalidOperationException("Nenhuma matriz de risco cadastrada.");
         // Só requisitos validados (Ativo) podem ser citados como base.
         var requisitos = await _db.RequisitosLegais.Where(q => q.Status == StatusRequisitoLegal.Ativo)
@@ -457,9 +515,10 @@ public class AprovarGeracaoPgrCommandHandler : IRequestHandler<AprovarGeracaoPgr
             throw new InvalidOperationException("Só um PGR aguardando aprovação pode ser aprovado.");
 
         var e = SerializacaoGeracao.Ler(g.EstruturaJson);
-        var matriz = await _db.MatrizRiscoConfigs.Include(c => c.Celulas).FirstOrDefaultAsync(ct)
+        var matriz = await _db.MatrizRiscoConfigs.Include(c => c.Celulas).VigenteMaisRecente().FirstOrDefaultAsync(ct)
             ?? throw new InvalidOperationException("Nenhuma matriz de risco cadastrada.");
-        var pendencias = PendenciasGeracaoPgr.Calcular(e, matriz.NumNiveisProbabilidade, matriz.NumNiveisSeveridade);
+        var pendencias = PendenciasGeracaoPgr.Calcular(e, matriz.NumNiveisProbabilidade, matriz.NumNiveisSeveridade,
+            await SerializacaoGeracao.CarregarEpisAsync(_db, e, ct));
         if (pendencias.Count > 0)
             throw new InvalidOperationException("Ainda há pendências: " + string.Join(" ", pendencias.Take(5)));
 
@@ -482,6 +541,7 @@ public class AprovarGeracaoPgrCommandHandler : IRequestHandler<AprovarGeracaoPgr
             Descricao = $"Gerado pela EAP da obra ({g.NomeArquivoEap}) e aprovado por {aprovador}.",
             DataElaboracao = g.DataElaboracao,
             DataProximaRevisao = g.DataProximaRevisao,
+            DataTermino = e.DataTermino,
             ResponsavelUsuarioId = request.UsuarioId,
             Status = StatusPgr.Vigente,
         };
@@ -570,8 +630,15 @@ public class AprovarGeracaoPgrCommandHandler : IRequestHandler<AprovarGeracaoPgr
             }
         }
 
-        foreach (var item in e.PlanoAcao.Where(x => !string.IsNullOrWhiteSpace(x)))
-            _db.PlanoAcaoItens.Add(new PlanoAcaoItem { Pgr = pgr, Descricao = Limitar(item.Trim(), 500), Status = StatusControleRisco.Pendente });
+        foreach (var item in e.AcoesPlano.Where(x => !string.IsNullOrWhiteSpace(x.Descricao)))
+            _db.PlanoAcaoItens.Add(new PlanoAcaoItem
+            {
+                Pgr = pgr,
+                Descricao = Limitar(item.Descricao.Trim(), 500),
+                ResponsavelUsuarioId = item.ResponsavelUsuarioId,
+                Prazo = item.Prazo,
+                Status = StatusControleRisco.Pendente,
+            });
 
         g.Status = StatusGeracaoPgrEap.Aprovado;
         g.AprovadoEmUtc = agora;
@@ -579,6 +646,9 @@ public class AprovarGeracaoPgrCommandHandler : IRequestHandler<AprovarGeracaoPgr
         g.AprovadoPorNome = aprovador;
         g.Pgr = pgr;
         await _db.SaveChangesAsync(ct);
+        // Cursos obrigatórios por função saem do PGR recém-aprovado, como sugestão para o engenheiro
+        // revisar na obra (21/10). Só acrescenta: nada aprovado ou recusado antes é tocado.
+        await CursosObrigatorios.GeradorCursosObrigatorios.GerarAsync(_db, g.ObraId, ct);
         return pgr.Id;
     }
 

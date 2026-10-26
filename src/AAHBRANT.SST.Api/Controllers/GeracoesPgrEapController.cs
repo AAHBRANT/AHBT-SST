@@ -88,6 +88,22 @@ public class GeracoesPgrEapController : ControllerBase
         return NoContent();
     }
 
+    // Sugestão do plano de emergência: locais, rotas e recomendação da IA a partir do endereço da obra.
+    // Não grava nada; o técnico aplica o que quiser na ficha e salva.
+    [Authorize(Policy = "pgr:criar")]
+    [HttpPost("{id:guid}/sugerir-emergencia")]
+    public async Task<IActionResult> SugerirEmergencia(Guid id, CancellationToken ct)
+        => Ok(await _mediator.Send(new SugerirEmergenciaGeracaoPgrCommand(id), ct));
+
+    // PDF do PGR aprovado (só depois da aprovação do Engenheiro de Segurança).
+    [Authorize(Policy = "pgr:ver")]
+    [HttpGet("{id:guid}/pdf")]
+    public async Task<IActionResult> BaixarPdf(Guid id, CancellationToken ct)
+    {
+        var arquivo = await _mediator.Send(new GerarPdfGeracaoPgrEapQuery(id), ct);
+        return File(arquivo.Conteudo, "application/pdf", arquivo.NomeArquivo);
+    }
+
     [Authorize(Policy = PoliticasAutorizacao.SomenteEngenheiroSeguranca)]
     [HttpPost("{id:guid}/aprovar")]
     public async Task<IActionResult> Aprovar(Guid id, CancellationToken ct)

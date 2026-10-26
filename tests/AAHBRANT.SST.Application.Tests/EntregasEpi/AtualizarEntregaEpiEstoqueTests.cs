@@ -22,6 +22,7 @@ public class AtualizarEntregaEpiEstoqueTests
             new EstoqueEpi { CatalogoEpiId = capacete.Id, ObraId = trabalhador.ObraId, Saldo = 10 },
             new EstoqueEpi { CatalogoEpiId = bota.Id, ObraId = trabalhador.ObraId, Saldo = 5 });
         await db.SaveChangesAsync();
+        await Nr6DeTeste.SemearAsync(db, trabalhador.Id);
         return (trabalhador, capacete, bota);
     }
 

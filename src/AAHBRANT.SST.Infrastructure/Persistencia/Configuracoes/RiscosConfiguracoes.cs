@@ -115,6 +115,12 @@ public class MatrizRiscoConfigConfiguracao : IEntityTypeConfiguration<MatrizRisc
     public void Configure(EntityTypeBuilder<MatrizRiscoConfig> builder)
     {
         builder.Property(m => m.Nome).IsRequired().HasMaxLength(150);
+        builder.Property(m => m.MotivoRevisao).HasMaxLength(500);
+        builder.Property(m => m.RevisadaPorNome).HasMaxLength(200);
+        // O número da versão é único: duas revisões criadas ao mesmo tempo não ficam com o mesmo número (a segunda falha).
+        // A troca da vigente acontece num único SaveChanges, então não há índice único em Vigente; quem lê usa
+        // sempre a vigente de maior versão (MatrizRiscoVigente).
+        builder.HasIndex(m => m.Versao).IsUnique().HasFilter("[Ativo] = 1");
         builder.HasQueryFilter(m => m.Ativo);
     }
 }

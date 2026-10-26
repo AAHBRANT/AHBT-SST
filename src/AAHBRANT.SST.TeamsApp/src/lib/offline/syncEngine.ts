@@ -1,6 +1,8 @@
 import { API_BASE_URL } from '../apiBase';
 import { montarHeadersAuth } from '../authHeaders';
 import { offlineDb, type ItemFilaSaida } from './db';
+import { contaOffline } from './conta';
+import { aplicarAcaoInspecao, ehEncerramentoInspecao, ehCriacaoInspecao } from './inspecaoEstado';
 
 // Motor de sincronização offline — piloto nos módulos de campo (DDS, Inspeções, Checklists, APRs).
 //
@@ -35,7 +37,7 @@ export class ConflitoSincronizacaoError extends Error {
 type Ouvinte = () => void;
 const ouvintes = new Set<Ouvinte>();
 
-function notificarMudanca() {
+export function notificarMudanca() {
   ouvintes.forEach((fn) => fn());
 }
 
@@ -78,6 +80,20 @@ export async function listarConflitosNaoLidos() {
 
 // "Marcar como visto" também descarta a ação guardada (e a foto), liberando o espaço do aparelho.
 export async function marcarConflitoComoLido(id: number) {
+  const conflito = await offlineDb.conflitos.get(id);
+  if (conflito?.item && ehCriacaoInspecao(conflito.item)) {
+    // A interface confirma explicitamente o descarte de toda a criação local e dos seus anexos.
+    const item = conflito.item;
+    await offlineDb.transaction('rw', offlineDb.conflitos, offlineDb.filaSaida, offlineDb.inspecoesLocais, async () => {
+      const fila = (await offlineDb.filaSaida.toArray()).filter(i => i.inspecaoId === item.inspecaoId && i.conta === item.conta);
+      await offlineDb.filaSaida.bulkDelete(fila.map(i => i.id!));
+      const conflitos = (await offlineDb.conflitos.toArray()).filter(c => c.item?.inspecaoId === item.inspecaoId && c.item?.conta === item.conta);
+      await offlineDb.conflitos.bulkDelete(conflitos.map(c => c.id!));
+      await offlineDb.inspecoesLocais.delete(`${item.conta}|${item.inspecaoId}`);
+    });
+    notificarMudanca();
+    return;
+  }
   await offlineDb.conflitos.update(id, { lido: true, item: undefined });
   notificarMudanca();
 }
@@ -87,6 +103,18 @@ export async function marcarConflitoComoLido(id: number) {
 export async function reenviarConflito(id: number) {
   const conflito = await offlineDb.conflitos.get(id);
   if (!conflito?.item) return;
+  if (conflito.item.inspecaoId) {
+    const headers = await montarHeadersAuth();
+    const conta = contaDoHeader(headers) ?? (import.meta.env.DEV ? 'desenvolvimento' : undefined);
+    if (conta !== conflito.item.conta) throw new Error('Entre com a conta que registrou esta inspeção para reenviar.');
+    if (!ehCriacaoInspecao(conflito.item)) {
+    const response = await fetch(`${API_BASE_URL}/api/inspecoes/${conflito.item.inspecaoId}`, { headers });
+    if (!response.ok) throw new Error('Não foi possível conferir a versão atual da inspeção. Tente novamente com internet e login ativo.');
+    const detalhe = await response.json();
+    const respostaId = /^\/api\/inspecoes\/respostas\/([^/]+)/.exec(conflito.item.url)?.[1];
+    conflito.item.versaoResposta = detalhe.respostas.find((r: { id: string }) => r.id === respostaId)?.versaoResposta;
+    }
+  }
   await offlineDb.filaSaida.add({ ...conflito.item, idempotencyKey: crypto.randomUUID(), criadoEm: Date.now(), tentativas: 0, ultimoErro: undefined });
   await offlineDb.conflitos.delete(id);
   notificarMudanca();
@@ -95,6 +123,9 @@ export async function reenviarConflito(id: number) {
 
 // Nome da ação para a pessoa (em vez de "POST /api/documentos/…/autenticacao/facial").
 export function descreverAcaoOffline(url: string, metodo: string): string {
+  if (url === '/api/inspecoes' && metodo === 'POST') return 'Criação da inspeção';
+  if (/\/inspecoes\/[^/]+\/encerrar$/.test(url)) return 'Finalização da inspeção';
+  if (url.includes('/inspecoes/respostas/')) return url.endsWith('/foto') || url.endsWith('/foto-depois') ? 'Foto da inspeção' : 'Resposta do checklist';
   if (url.includes('/autenticacao/facial')) return 'Assinatura por reconhecimento facial';
   if (url.includes('/fotos-evidencia')) return 'Foto de evidência';
   if (url.includes('/certificado/arquivo')) return 'Certificado de treinamento';
@@ -256,6 +287,7 @@ function contaDoHeader(authHeaders?: Record<string, string>): string | undefined
 
 async function contaAtual(authHeaders?: Record<string, string>): Promise<string | undefined> {
   if (authHeaders?.Authorization) return contaDoHeader(authHeaders);
+  if (!navigator.onLine) return contaOffline();
   try {
     return contaDoHeader(await montarHeadersAuth());
   } catch {
@@ -391,6 +423,7 @@ export async function syncMutateMultipart<T>(
 // ---------- Esvaziamento da fila ----------
 
 let sincronizando = false;
+let novaSincronizacaoSolicitada = false;
 
 function reconstruirFormData(item: ItemFilaSaida): FormData {
   const formData = new FormData();
@@ -400,40 +433,106 @@ function reconstruirFormData(item: ItemFilaSaida): FormData {
 }
 
 export async function sincronizarFilaSaida(): Promise<void> {
-  if (sincronizando || !online) {
+  if (sincronizando) {
+    novaSincronizacaoSolicitada = true;
+    return;
+  }
+  if (!navigator.onLine) {
     return;
   }
   sincronizando = true;
 
   try {
-    const itens = await offlineDb.filaSaida.orderBy('criadoEm').toArray();
-    for (const item of itens) {
+    const itens = (await offlineDb.filaSaida.orderBy('criadoEm').toArray())
+      .sort((a, b) => (ehCriacaoInspecao(a) ? -1 : Number(ehEncerramentoInspecao(a))) - (ehCriacaoInspecao(b) ? -1 : Number(ehEncerramentoInspecao(b))));
+    const bloqueadas = new Set((await offlineDb.conflitos.toArray())
+      .filter(c => !c.lido && c.item?.inspecaoId).map(c => `${c.item!.conta}|${c.item!.inspecaoId}`));
+    for (const planejado of itens) {
+      const item = await offlineDb.filaSaida.get(planejado.id!);
+      if (!item) continue;
+      if (ehEncerramentoInspecao(item)) {
+        const mesmaInspecao = (acao: Omit<ItemFilaSaida, 'id'>) => item.inspecaoId
+          ? acao.inspecaoId === item.inspecaoId && acao.conta === item.conta : acao.url.startsWith('/api/inspecoes/');
+        const pendencias = (await offlineDb.filaSaida.toArray()).some(i => i.id !== item.id && !ehEncerramentoInspecao(i) && mesmaInspecao(i));
+        const recusas = (await offlineDb.conflitos.toArray()).some(c => !c.lido && c.item && mesmaInspecao(c.item));
+        if (pendencias || recusas) {
+          await offlineDb.filaSaida.update(item.id!, { ultimoErro: 'Aguardando respostas e fotos desta inspeção.' });
+          continue;
+        }
+      }
+      const grupo = item.inspecaoId ? `${item.conta}|${item.inspecaoId}` : undefined;
+      if (grupo && bloqueadas.has(grupo)) {
+        await offlineDb.filaSaida.update(item.id!, { ultimoErro: 'Aguardando resolver os envios anteriores desta inspeção.' });
+        continue;
+      }
       try {
         // Busca o header de autenticação de novo a cada item (não no momento do enfileiramento):
         // a fila pode ficar dias esperando a internet voltar, e o token capturado offline já
         // estaria expirado.
         const authHeaders = await montarHeadersAuth();
         // Ação de outra conta fica guardada até a dona dela entrar de novo neste navegador.
-        if (item.conta && contaDoHeader(authHeaders) !== item.conta) {
+        const donaAtual = contaDoHeader(authHeaders) ?? (import.meta.env.DEV ? 'desenvolvimento' : undefined);
+        if (item.conta && donaAtual !== item.conta) {
           await offlineDb.filaSaida.update(item.id!, { ultimoErro: 'Aguardando a pessoa que registrou entrar para enviar.' });
           continue;
         }
+        const form = item.isFormData ? reconstruirFormData(item) : undefined;
+        if (form && item.versaoResposta != null) form.set('versaoEsperada', item.versaoResposta);
+        const corpo = !item.isFormData && item.versaoResposta != null
+          ? JSON.stringify({ ...JSON.parse(item.corpoJson ?? '{}'), versaoEsperada: item.versaoResposta }) : item.corpoJson;
         const response = await fetch(`${API_BASE_URL}${item.url}`, {
           method: item.metodo,
           headers: item.isFormData
             ? { 'Idempotency-Key': item.idempotencyKey, ...authHeaders }
             : { 'Content-Type': 'application/json', 'Idempotency-Key': item.idempotencyKey, ...authHeaders },
-          body: item.isFormData ? reconstruirFormData(item) : item.corpoJson,
+          body: form ?? corpo,
         });
+        marcarOnline(true);
 
-        if (response.status === 409) {
+        if (response.status === 409 && !item.inspecaoId) {
           await registrarConflito(item.url, item.metodo, item.corpoJson ?? '[multipart]', response);
           await offlineDb.filaSaida.delete(item.id!);
           continue;
         }
 
         if (response.ok) {
-          await offlineDb.filaSaida.delete(item.id!);
+          const retorno = item.inspecaoId && !ehEncerramentoInspecao(item) ? await response.json().catch(() => ({})) : {};
+          const novaVersao: string | null | undefined = retorno.versaoResposta;
+          await offlineDb.transaction('rw', offlineDb.filaSaida, offlineDb.inspecoesLocais, async () => {
+            if (item.inspecaoId) {
+              const chave = `${item.conta}|${item.inspecaoId}`;
+              const local = await offlineDb.inspecoesLocais.get(chave);
+              if (local) {
+                if (ehCriacaoInspecao(item)) {
+                  if (retorno.id !== item.inspecaoId || !retorno.versoesRespostas) throw new Error('A criação ainda não foi confirmada pelo servidor. Mantenha a inspeção neste dispositivo e tente novamente após a atualização.');
+                  local.criadaLocalmente = false;
+                  local.confirmado.inspecao.numeroDocumento = retorno.numeroDocumento;
+                  const seguintes = (await offlineDb.filaSaida.toArray()).filter(i => i.inspecaoId === item.inspecaoId && i.conta === item.conta && i.id !== item.id);
+                  for (const r of local.confirmado.respostas) {
+                    r.versaoResposta = retorno.versoesRespostas[r.id];
+                    if (local.rascunhos[r.id] && local.rascunhos[r.id].versaoResposta == null) local.rascunhos[r.id].versaoResposta = r.versaoResposta;
+                    for (const acao of seguintes.filter(i => /^\/api\/inspecoes\/respostas\/([^/]+)/.exec(i.url)?.[1] === r.id))
+                      await offlineDb.filaSaida.update(acao.id!, { versaoResposta: r.versaoResposta });
+                  }
+                }
+                aplicarAcaoInspecao(item, local.confirmado, true);
+                const respostaId = /^\/api\/inspecoes\/respostas\/([^/]+)/.exec(item.url)?.[1];
+                const resposta = local.confirmado.respostas.find(r => r.id === respostaId);
+                if (resposta && novaVersao != null) {
+                  resposta.versaoResposta = novaVersao;
+                  if (respostaId && local.rascunhos[respostaId]?.versaoResposta === item.versaoResposta) {
+                    local.rascunhos[respostaId].versaoResposta = novaVersao;
+                  }
+                  const seguintes = (await offlineDb.filaSaida.toArray()).filter(i => i.id !== item.id && i.inspecaoId === item.inspecaoId && i.conta === item.conta
+                    && /^\/api\/inspecoes\/respostas\/([^/]+)/.exec(i.url)?.[1] === respostaId && i.versaoResposta === item.versaoResposta);
+                  for (const seguinte of seguintes) await offlineDb.filaSaida.update(seguinte.id!, { versaoResposta: novaVersao });
+                }
+                local.revisaoServidor += 1;
+                await offlineDb.inspecoesLocais.put(local);
+              }
+            }
+            await offlineDb.filaSaida.delete(item.id!);
+          });
           continue;
         }
 
@@ -448,6 +547,7 @@ export async function sincronizarFilaSaida(): Promise<void> {
         // e tenta de novo na próxima sincronização, sem limite de tentativas.
         const novasTentativas = item.tentativas + 1;
         if (response.status === 408 || response.status === 429 || response.status >= 500) {
+          if (grupo) bloqueadas.add(grupo);
           await offlineDb.filaSaida.update(item.id!, {
             tentativas: novasTentativas,
             ultimoErro: `${response.status} ${response.statusText}`,
@@ -460,10 +560,11 @@ export async function sincronizarFilaSaida(): Promise<void> {
         // inteira, para a pessoa tentar de novo depois de resolver a causa ou descartar.
         const texto = await lerCorpoErro(response);
         const { id: _id, ...acao } = item;
+        if (grupo) bloqueadas.add(grupo);
         await offlineDb.conflitos.add({
           url: item.url,
           metodo: item.metodo,
-          mensagem: extrairMensagemErro(texto, response.status, response.statusText),
+          mensagem: response.status === 409 ? 'Este item mudou no servidor enquanto você estava offline. A versão do servidor foi mantida; confira os dados antes de tentar novamente.' : extrairMensagemErro(texto, response.status, response.statusText),
           dadosDescartados: item.corpoJson ?? '[multipart]',
           criadoEm: Date.now(),
           lido: false,
@@ -475,12 +576,17 @@ export async function sincronizarFilaSaida(): Promise<void> {
           marcarOnline(false);
           break; // ainda offline de verdade — para e tenta tudo de novo na próxima reconexão
         }
-        throw erro;
+        await offlineDb.filaSaida.update(item.id!, { ultimoErro: erro instanceof Error ? erro.message : 'Aguardando autenticação para enviar.' });
+        break;
       }
     }
   } finally {
     sincronizando = false;
     notificarMudanca();
+    if (novaSincronizacaoSolicitada) {
+      novaSincronizacaoSolicitada = false;
+      void sincronizarFilaSaida().catch(() => undefined);
+    }
   }
 }
 

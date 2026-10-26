@@ -4,13 +4,19 @@ import {
   Button, Card, Carregando, Checkbox, FeedbackInline, Field, Input, PageHeader, Select, StatusChip, Text, Textarea, designTokens,
 } from '@ui';
 import {
-  api, type AtividadeGerada, type EstruturaGeracaoPgr, type GeracaoPgrEap, type GheGerado, type Obra, type RiscoGerado,
+  api, StatusUsuario, type AcaoPlanoGerada, type AtividadeGerada, type CatalogoEpi, type CategoriaMedida, type EstruturaGeracaoPgr, type GeracaoPgrEap,
+  type GheGerado, type Obra, type RiscoGerado, type Usuario,
 } from '../../lib/api';
 import { rotuloStatusGeracao } from './GeracoesPgrEapCard';
+import { DadosComplementaresPgr } from './DadosComplementaresPgr';
+import { ExposicaoRiscoEditor, SeletorEpi } from './ExposicaoRiscoEditor';
 
 const PASSOS = ['Enviar a EAP', 'Conferir a leitura', 'Funções e GHE', 'Inventário de riscos', 'Aprovar'];
 const FASES: Record<number, string> = { 1: 'Antes', 2: 'Durante', 3: 'Após' };
-const TIPOS = ['Físico', 'Químico', 'Biológico', 'Ergonômico', 'Acidente'];
+const TIPOS = ['Físico', 'Químico', 'Biológico', 'Ergonômico', 'Psicossocial', 'Acidente'];
+// Ordem de prioridade da NR-01; o PDF separa EPC e EPI por estas categorias.
+const CATEGORIAS: CategoriaMedida[] = ['Eliminação', 'EPC', 'Administrativa', 'EPI'];
+const dataInput = (iso?: string | null) => (iso ? iso.slice(0, 10) : '');
 const copiar = <T,>(x: T): T => JSON.parse(JSON.stringify(x)) as T;
 
 // Assistente "Gerar PGR pela EAP" (21/10/2026), no desenho aprovado (5 passos). Tudo o que a IA gera é
@@ -278,6 +284,15 @@ function Assistente({ id }: { id: string }) {
             const { pgrId } = await api.geracoesPgrEap.aprovar(id);
             navigate(`/prevencao/pgr/${pgrId}`);
           })}
+          baixarPdf={() => void executar('Gerando o PDF…', async () => {
+            const blob = await api.geracoesPgrEap.baixarPdf(id);
+            const url = URL.createObjectURL(blob);
+            const link = document.createElement('a');
+            link.href = url;
+            link.download = `${g.nome.replace(/[\\/:*?"<>|]/g, '-')}.pdf`;
+            link.click();
+            URL.revokeObjectURL(url);
+          })}
         />
       )}
     </div>
@@ -356,6 +371,12 @@ function Inventario({ g, e, editavel, ocupado, alterar, gerarAtividade, salvar, 
   enviar: () => void;
   gerarPendentes: () => void;
 }) {
+  const [usuarios, setUsuarios] = useState<Usuario[]>([]);
+  const [epis, setEpis] = useState<CatalogoEpi[]>([]);
+  useEffect(() => {
+    api.usuarios.listar(StatusUsuario.Ativo).then(setUsuarios).catch(() => setUsuarios([]));
+    api.catalogosEpi.listar().then(setEpis).catch(() => setEpis([]));
+  }, []);
   const riscos = e.ghes.flatMap((x) => x.atividades.flatMap((a) => a.riscos)).filter((r) => !r.excluido);
   const medidas = riscos.flatMap((r) => r.medidas);
   const semGerar = e.ghes.flatMap((x) => x.atividades).filter((a) => !a.riscosGerados).length;
@@ -400,7 +421,7 @@ function Inventario({ g, e, editavel, ocupado, alterar, gerarAtividade, salvar, 
               </div>
               {!a.riscosGerados && <Text size={200}>Riscos ainda não gerados.</Text>}
               {a.riscos.map((r, ri) => !r.excluido && (
-                <RiscoEditor key={r.id} r={r} maxP={g.maxProbabilidade} maxS={g.maxSeveridade} editavel={editavel}
+                <RiscoEditor key={r.id} r={r} maxP={g.maxProbabilidade} maxS={g.maxSeveridade} editavel={editavel} epis={epis}
                   alterar={(f) => alterar((x) => f(x.ghes[gi].atividades[ai].riscos[ri]))} />
               ))}
             </div>
@@ -408,14 +429,33 @@ function Inventario({ g, e, editavel, ocupado, alterar, gerarAtividade, salvar, 
         </Card>
       ))}
 
-      <Card titulo="Plano de ação (opcional)">
-        <Textarea
-          value={e.planoAcao.join('\n')}
-          disabled={!editavel}
-          placeholder="Uma ação por linha"
-          style={{ width: '100%' }}
-          onChange={(_, d) => alterar((x) => { x.planoAcao = d.value.split('\n'); })}
-        />
+      <Card titulo="Vigência do programa">
+        <Field label="Término da vigência (obrigatório)">
+          <Input
+            type="date"
+            value={dataInput(e.dataTermino)}
+            disabled={!editavel}
+            onChange={(_, d) => alterar((x) => { x.dataTermino = d.value || null; })}
+          />
+        </Field>
+        <Text size={200} style={{ display: 'block', marginTop: 4 }}>
+          É a data em que o PGR vence. Sem ela, o alerta de PGR vencido não funciona.
+        </Text>
+      </Card>
+
+      <DadosComplementaresPgr geracaoId={g.id} e={e} editavel={editavel} alterar={alterar} />
+
+      <Card titulo="Plano de ação">
+        {(e.acoesPlano ?? []).map((a, i) => (
+          <AcaoPlanoLinha key={i} acao={a} usuarios={usuarios} editavel={editavel}
+            alterar={(f) => alterar((x) => f(x.acoesPlano[i]))}
+            remover={() => alterar((x) => { x.acoesPlano.splice(i, 1); })} />
+        ))}
+        {editavel && (
+          <Button size="small" onClick={() => alterar((x) => { (x.acoesPlano ??= []).push({ descricao: '', responsavelUsuarioId: null, responsavelNome: null, prazo: null }); })}>
+            Adicionar ação
+          </Button>
+        )}
       </Card>
 
       {editavel && (
@@ -428,11 +468,12 @@ function Inventario({ g, e, editavel, ocupado, alterar, gerarAtividade, salvar, 
   );
 }
 
-function RiscoEditor({ r, maxP, maxS, editavel, alterar }: {
+function RiscoEditor({ r, maxP, maxS, editavel, epis, alterar }: {
   r: RiscoGerado;
   maxP: number;
   maxS: number;
   editavel: boolean;
+  epis: CatalogoEpi[];
   alterar: (f: (r: RiscoGerado) => void) => void;
 }) {
   const nivel = r.probabilidade * r.severidade;
@@ -471,46 +512,99 @@ function RiscoEditor({ r, maxP, maxS, editavel, alterar }: {
         {r.medidas.map((m, mi) => m.decisao !== 'Descartada' && (
           <div key={mi} style={{ display: 'flex', gap: 6, alignItems: 'center', padding: '3px 0', flexWrap: 'wrap' }}>
             <StatusChip tom="neutro">{FASES[m.fase]}</StatusChip>
+            {editavel ? (
+              <Select value={m.categoria ?? ''} aria-label="Classificação da medida"
+                onChange={(_, d) => alterar((x) => { x.medidas[mi].categoria = (d.value || null) as CategoriaMedida | null; })}>
+                <option value="">Classificar…</option>
+                {CATEGORIAS.map((c) => <option key={c} value={c}>{c}</option>)}
+              </Select>
+            ) : <StatusChip tom="neutro">{m.categoria ?? 'Sem classificação'}</StatusChip>}
+            {m.categoria === 'EPI' && (
+              <SeletorEpi medida={m} epis={epis} editavel={editavel} alterar={(f) => alterar((x) => f(x.medidas[mi]))} />
+            )}
             <Text style={{ flex: 1 }}>{m.texto}</Text>
             {m.decisao === 'Aceita' ? <StatusChip tom="ok">Aceita</StatusChip> : <StatusChip tom="atencao">Sugestão da IA</StatusChip>}
             {editavel && m.decisao === 'Pendente' && <Button size="small" appearance="primary" onClick={() => alterar((x) => { x.medidas[mi].decisao = 'Aceita'; })}>Aceitar</Button>}
             {editavel && <Button size="small" onClick={() => alterar((x) => { x.medidas[mi].decisao = 'Descartada'; })}>Descartar</Button>}
           </div>
         ))}
-        {editavel && <NovaMedida aoAdicionar={(fase, texto) => alterar((x) => { x.medidas.push({ fase, texto, decisao: 'Aceita' }); })} />}
+        {editavel && <NovaMedida aoAdicionar={(fase, categoria, texto) => alterar((x) => { x.medidas.push({ fase, texto, categoria, decisao: 'Aceita' }); })} />}
       </div>
+      <ExposicaoRiscoEditor r={r} editavel={editavel} alterar={alterar} />
     </div>
   );
 }
 
-function NovaMedida({ aoAdicionar }: { aoAdicionar: (fase: 1 | 2 | 3, texto: string) => void }) {
+function NovaMedida({ aoAdicionar }: { aoAdicionar: (fase: 1 | 2 | 3, categoria: CategoriaMedida, texto: string) => void }) {
   const [fase, setFase] = useState<1 | 2 | 3>(2);
+  const [categoria, setCategoria] = useState<CategoriaMedida>('Administrativa');
   const [texto, setTexto] = useState('');
   return (
     <div style={{ display: 'flex', gap: 6, marginTop: 4, flexWrap: 'wrap' }}>
       <Select value={String(fase)} onChange={(_, d) => setFase(Number(d.value) as 1 | 2 | 3)} aria-label="Fase">
         {[1, 2, 3].map((f) => <option key={f} value={f}>{FASES[f]}</option>)}
       </Select>
+      <Select value={categoria} onChange={(_, d) => setCategoria(d.value as CategoriaMedida)} aria-label="Classificação">
+        {CATEGORIAS.map((c) => <option key={c} value={c}>{c}</option>)}
+      </Select>
       <Input value={texto} onChange={(_, d) => setTexto(d.value)} placeholder="Nova medida…" style={{ flex: 1, minWidth: 200 }} maxLength={1000} />
-      <Button size="small" disabled={!texto.trim()} onClick={() => { aoAdicionar(fase, texto.trim()); setTexto(''); }}>Adicionar</Button>
+      <Button size="small" disabled={!texto.trim()} onClick={() => { aoAdicionar(fase, categoria, texto.trim()); setTexto(''); }}>Adicionar</Button>
     </div>
   );
 }
 
-function Aprovacao({ g, ocupado, devolver, aprovar }: {
+// Uma ação do plano: descrição, responsável (usuário ativo) e prazo.
+function AcaoPlanoLinha({ acao, usuarios, editavel, alterar, remover }: {
+  acao: AcaoPlanoGerada;
+  usuarios: Usuario[];
+  editavel: boolean;
+  alterar: (f: (x: AcaoPlanoGerada) => void) => void;
+  remover: () => void;
+}) {
+  return (
+    <div style={{ display: 'flex', gap: 6, marginBottom: 6, flexWrap: 'wrap', alignItems: 'center' }}>
+      <Input value={acao.descricao} disabled={!editavel} placeholder="Ação a executar" maxLength={500} style={{ flex: 2, minWidth: 220 }}
+        onChange={(_, d) => alterar((x) => { x.descricao = d.value; })} />
+      <Select value={acao.responsavelUsuarioId ?? ''} disabled={!editavel} aria-label="Responsável" style={{ minWidth: 180 }}
+        onChange={(_, d) => alterar((x) => {
+          x.responsavelUsuarioId = d.value || null;
+          x.responsavelNome = usuarios.find((u) => u.id === d.value)?.nome ?? null;
+        })}>
+        <option value="">Responsável…</option>
+        {usuarios.map((u) => <option key={u.id} value={u.id}>{u.nome}</option>)}
+      </Select>
+      <Input type="date" value={dataInput(acao.inicio)} disabled={!editavel} aria-label="Início (opcional)" title="Início (opcional)"
+        onChange={(_, d) => alterar((x) => { x.inicio = d.value || null; })} />
+      <Input type="date" value={dataInput(acao.prazo)} disabled={!editavel} aria-label="Prazo" title="Prazo"
+        onChange={(_, d) => alterar((x) => { x.prazo = d.value || null; })} />
+      {editavel && <Button size="small" onClick={remover}>Remover</Button>}
+    </div>
+  );
+}
+
+function Aprovacao({ g, ocupado, devolver, aprovar, baixarPdf }: {
   g: GeracaoPgrEap;
   ocupado: boolean;
   devolver: (motivo: string) => void;
   aprovar: () => void;
+  baixarPdf: () => void;
 }) {
   const [motivo, setMotivo] = useState('');
   const navigate = useNavigate();
 
+  // Aprovado: o PDF só existe a partir daqui, então o download fica neste cartão (antes ficava num
+  // cartão que nunca aparecia depois da aprovação).
   if (g.status === 3) {
     return (
       <Card titulo="PGR aprovado">
         <Text style={{ display: 'block' }}>Aprovado por {g.aprovadoPorNome} em {g.aprovadoEmUtc ? new Date(g.aprovadoEmUtc).toLocaleString('pt-BR') : ''}.</Text>
-        {g.pgrId && <Button appearance="primary" style={{ marginTop: 8 }} onClick={() => navigate(`/prevencao/pgr/${g.pgrId}`)}>Abrir o PGR</Button>}
+        <Text size={200} style={{ display: 'block', margin: '8px 0' }}>
+          PDF do PGR com identificação, GHE, funções, inventário de riscos, medidas aceitas, plano de ação e registro da aprovação.
+        </Text>
+        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+          <Button appearance="primary" disabled={ocupado} onClick={baixarPdf}>Baixar PDF do PGR</Button>
+          {g.pgrId && <Button onClick={() => navigate(`/prevencao/pgr/${g.pgrId}`)}>Abrir o PGR</Button>}
+        </div>
       </Card>
     );
   }
@@ -543,9 +637,7 @@ function Aprovacao({ g, ocupado, devolver, aprovar }: {
         )}
       </Card>
       <Card titulo="Documento PGR">
-        <Text size={200}>
-          O PDF do PGR gerado pelo sistema entra na próxima etapa. Até lá, depois de aprovado, o PGR fica completo no sistema (GHE, inventário, medidas e plano de ação) e o PDF da consultoria pode ser anexado na aba PGR, como hoje.
-        </Text>
+        <Text size={200}>O PDF do PGR fica disponível depois da aprovação do Engenheiro de Segurança.</Text>
       </Card>
     </div>
   );

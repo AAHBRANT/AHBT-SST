@@ -1,3 +1,4 @@
+using AAHBRANT.SST.Application.Asos;
 using AAHBRANT.SST.Application.Common.Interfaces;
 using AAHBRANT.SST.Domain.Enums;
 using AAHBRANT.SST.Domain.Interfaces;
@@ -19,11 +20,11 @@ public class AsoAlertaProvider : IAlertaOrigemProvider
             .Include(a => a.Trabalhador)
             .ToListAsync(ct);
 
-        // O ASO vigente de cada trabalhador é o de validade mais distante; os anteriores foram renovados
-        // e não podem manter alerta de vencido aberto.
-        var vigentePorTrabalhador = asos
-            .GroupBy(a => a.TrabalhadorId)
-            .ToDictionary(g => g.Key, g => g.OrderByDescending(a => a.DataValidade).ThenByDescending(a => a.DataExame).First().Id);
+        // O ASO vigente de cada trabalhador é o do exame mais recente (AsoVigente, regra única); os anteriores
+        // foram renovados e não podem manter alerta de vencido aberto.
+        var vigentePorTrabalhador = AsoVigente.PorTrabalhador(
+                asos.Select(a => new AsoResumo(a.Id, a.TrabalhadorId, a.DataExame, a.DataValidade, a.ResultadoStatus)))
+            .ToDictionary(kv => kv.Key, kv => kv.Value.Id);
 
         return asos.Select(aso => new AlertaOrigemItem
         {

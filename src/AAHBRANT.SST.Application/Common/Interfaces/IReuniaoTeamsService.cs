@@ -19,6 +19,15 @@ public interface IReuniaoTeamsService
         DateTime fim,
         IReadOnlyList<string> emailsConvidados,
         CancellationToken ct = default);
+
+    /// <summary>Muda só o horário da reunião já criada; o Teams avisa os convidados.</summary>
+    /// <param name="inicio">Horário de Brasília.</param>
+    Task RemarcarReuniaoAsync(
+        Guid organizadorUsuarioId,
+        string graphEventId,
+        DateTime inicio,
+        DateTime fim,
+        CancellationToken ct = default);
 }
 
 public record ReuniaoTeamsCriada(string GraphEventId, string? LinkTeams);

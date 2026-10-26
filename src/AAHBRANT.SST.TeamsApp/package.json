@@ -9,7 +9,10 @@
     "lint": "oxlint",
     "preview": "vite preview",
     "ui:snapshots": "playwright test -c playwright.config.ts",
-    "test:dds": "playwright test -c playwright.dds.config.ts"
+    "test:dds": "playwright test -c playwright.dds.config.ts",
+    "test:pwa": "npm run build && playwright test -c playwright.pwa.config.ts",
+    "test:offline": "playwright test -c playwright.offline.config.ts",
+    "test:inspecao-offline": "playwright test -c playwright.inspecao-offline.config.ts"
   },
   "dependencies": {
     "@azure/msal-browser": "^5.21.0",
@@ -17,6 +20,7 @@
     "@fluentui/react-icons": "^2.0.337",
     "@mediapipe/tasks-vision": "1.1.0",
     "@microsoft/teams-js": "^2.55.0",
+    "@tanstack/react-query": "^5.104.0",
     "dexie": "^4.4.5",
     "framer-motion": "^13.1.1",
     "pdfjs-dist": "^6.3.289",

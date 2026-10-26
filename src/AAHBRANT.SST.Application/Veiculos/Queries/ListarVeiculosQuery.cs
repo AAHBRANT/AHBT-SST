@@ -1,5 +1,6 @@
 using AAHBRANT.SST.Application.Alojamentos.Queries;
 using AAHBRANT.SST.Application.Common.Interfaces;
+using AAHBRANT.SST.Application.Inspecoes;
 using AAHBRANT.SST.Domain.Enums;
 using MediatR;
 using Microsoft.EntityFrameworkCore;
@@ -26,7 +27,11 @@ public record VeiculoResumoDto(
     int? DiasDesdeUltimaInspecao,
     AlojamentoInspecaoResumoDto? InspecaoEmAndamento,
     AlojamentoInspecaoResumoDto? UltimaInspecaoConcluida,
-    List<AlojamentoInspecaoResumoDto> HistoricoInspecoes);
+    List<AlojamentoInspecaoResumoDto> HistoricoInspecoes,
+    int? PeriodicidadeInspecaoDias = null,
+    Guid? ResponsavelInspecaoUsuarioId = null,
+    string? ResponsavelInspecaoNome = null,
+    DateTime? ProximaInspecaoEm = null);
 
 public class ListarVeiculosQueryHandler : IRequestHandler<ListarVeiculosQuery, List<VeiculoResumoDto>>
 {
@@ -54,6 +59,10 @@ public class ListarVeiculosQueryHandler : IRequestHandler<ListarVeiculosQuery, L
                 v.Cor,
                 v.Empresa,
                 v.Responsavel,
+                v.PeriodicidadeInspecaoDias,
+                v.ResponsavelInspecaoUsuarioId,
+                ResponsavelInspecaoNome = v.ResponsavelInspecaoUsuario != null ? v.ResponsavelInspecaoUsuario.Nome : null,
+                v.CreatedAtUtc,
                 Inspecoes = _db.Inspecoes
                     .Where(i => i.VeiculoId == v.Id)
                     .OrderByDescending(i => i.Data)
@@ -84,7 +93,9 @@ public class ListarVeiculosQueryHandler : IRequestHandler<ListarVeiculosQuery, L
                 v.Id, v.ObraId, v.Tipo, v.PlacaPrefixo, v.MarcaModelo, v.Ano, v.Cor, v.Empresa, v.Responsavel,
                 ultimaConcluida is null ? "nunca" : "inspecionado",
                 ultimaConcluida is null ? null : (int)(hoje - ultimaConcluida.Data).TotalDays,
-                emAndamento, ultimaConcluida, v.Inspecoes);
+                emAndamento, ultimaConcluida, v.Inspecoes,
+                v.PeriodicidadeInspecaoDias, v.ResponsavelInspecaoUsuarioId, v.ResponsavelInspecaoNome,
+                PeriodicidadeInspecao.ProximaEm(v.PeriodicidadeInspecaoDias, ultimaConcluida?.Data, v.CreatedAtUtc));
         }).ToList();
     }
 }

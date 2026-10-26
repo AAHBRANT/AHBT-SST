@@ -40,8 +40,11 @@ public class SstDbContext : DbContext, IAppDbContext
     public DbSet<CursoTreinamento> CursosTreinamento => Set<CursoTreinamento>();
     public DbSet<Treinamento> Treinamentos => Set<Treinamento>();
     public DbSet<ArquivoCertificadoTreinamento> ArquivosCertificadoTreinamento => Set<ArquivoCertificadoTreinamento>();
+    public DbSet<ArquivoAso> ArquivosAso => Set<ArquivoAso>();
     public DbSet<TermoCompromissoEpiManual> TermosCompromissoEpiManual => Set<TermoCompromissoEpiManual>();
     public DbSet<MatrizTreinamentoFuncao> MatrizTreinamentoFuncoes => Set<MatrizTreinamentoFuncao>();
+    public DbSet<RegraCursoObrigatorio> RegrasCursoObrigatorio => Set<RegraCursoObrigatorio>();
+    public DbSet<CursoObrigatorioFuncaoObra> CursosObrigatoriosFuncaoObra => Set<CursoObrigatorioFuncaoObra>();
     public DbSet<SessaoTreinamento> SessoesTreinamento => Set<SessaoTreinamento>();
     public DbSet<ParticipanteSessaoTreinamento> ParticipantesSessaoTreinamento => Set<ParticipanteSessaoTreinamento>();
     public DbSet<FotoEvidenciaSessaoTreinamento> FotosEvidenciaSessaoTreinamento => Set<FotoEvidenciaSessaoTreinamento>();
@@ -54,6 +57,9 @@ public class SstDbContext : DbContext, IAppDbContext
     public DbSet<PlanoIntegracao> PlanosIntegracao => Set<PlanoIntegracao>();
     public DbSet<SolicitacaoReposicaoEpi> SolicitacoesReposicaoEpi => Set<SolicitacaoReposicaoEpi>();
     public DbSet<ArquivoContrato> ArquivosContrato => Set<ArquivoContrato>();
+    public DbSet<DocumentoExigidoEmpresa> DocumentosExigidosEmpresa => Set<DocumentoExigidoEmpresa>();
+    public DbSet<DocumentoEmpresaTerceirizada> DocumentosEmpresaTerceirizada => Set<DocumentoEmpresaTerceirizada>();
+    public DbSet<ArquivoDocumentoEmpresaTerceirizada> ArquivosDocumentoEmpresaTerceirizada => Set<ArquivoDocumentoEmpresaTerceirizada>();
     public DbSet<CatalogoEpc> CatalogoEpcs => Set<CatalogoEpc>();
     public DbSet<InstalacaoEpc> InstalacoesEpc => Set<InstalacaoEpc>();
     public DbSet<EstoqueEpc> EstoquesEpc => Set<EstoqueEpc>();
@@ -117,6 +123,8 @@ public class SstDbContext : DbContext, IAppDbContext
     public DbSet<AlojamentoMorador> AlojamentoMoradores => Set<AlojamentoMorador>();
     public DbSet<ConfiguracaoAlojamento> ConfiguracoesAlojamento => Set<ConfiguracaoAlojamento>();
     public DbSet<Veiculo> Veiculos => Set<Veiculo>();
+    public DbSet<TemaInspecao> TemasInspecao => Set<TemaInspecao>();
+    public DbSet<ItemInspecionavel> ItensInspecionaveis => Set<ItemInspecionavel>();
 
     public DbSet<Dds> Dds => Set<Dds>();
     public DbSet<DdsAtividade> DdsAtividades => Set<DdsAtividade>();
@@ -244,6 +252,8 @@ public class SstDbContext : DbContext, IAppDbContext
             a.Ativo && (_usuarioAtual.TemAcessoGlobal || _usuarioAtual.ObrasPermitidas.Contains(a.ObraId)));
         modelBuilder.Entity<Ghe>().HasQueryFilter(g =>
             g.Ativo && (_usuarioAtual.TemAcessoGlobal || _usuarioAtual.ObrasPermitidas.Contains(g.ObraId)));
+        modelBuilder.Entity<CursoObrigatorioFuncaoObra>().HasQueryFilter(c =>
+            c.Ativo && (_usuarioAtual.TemAcessoGlobal || _usuarioAtual.ObrasPermitidas.Contains(c.ObraId)));
         modelBuilder.Entity<ExameFuncaoObra>().HasQueryFilter(e =>
             e.Ativo && (_usuarioAtual.TemAcessoGlobal || _usuarioAtual.ObrasPermitidas.Contains(e.ObraId)));
         modelBuilder.Entity<LeituraDocumentoIa>().HasQueryFilter(l =>
@@ -284,6 +294,8 @@ public class SstDbContext : DbContext, IAppDbContext
             p.Ativo && (_usuarioAtual.TemAcessoGlobal || _usuarioAtual.ObrasPermitidas.Contains(p.ObraId)));
         modelBuilder.Entity<Veiculo>().HasQueryFilter(v =>
             v.Ativo && (_usuarioAtual.TemAcessoGlobal || _usuarioAtual.ObrasPermitidas.Contains(v.ObraId)));
+        modelBuilder.Entity<ItemInspecionavel>().HasQueryFilter(i =>
+            i.Ativo && (_usuarioAtual.TemAcessoGlobal || _usuarioAtual.ObrasPermitidas.Contains(i.ObraId)));
         // ASO NÃO tem filtro global por obra (tentado em #115 e revertido): o ASO só chega à obra pelo
         // Trabalhador, e navegar até ele dentro do filtro faz o filtro de Trabalhador (Ativo) valer
         // também — o ASO de quem foi desligado sumia das telas, até para acesso global (comprovado em

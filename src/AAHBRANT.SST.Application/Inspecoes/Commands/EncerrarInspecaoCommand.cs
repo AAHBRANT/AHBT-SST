@@ -35,6 +35,7 @@ public class EncerrarInspecaoCommandHandler : IRequestHandler<EncerrarInspecaoCo
     {
         var inspecao = await _db.Inspecoes
             .Include(i => i.Respostas).ThenInclude(r => r.ChecklistModeloItem)
+            .Include(i => i.ItemInspecionavel)
             .FirstOrDefaultAsync(i => i.Id == request.Id, ct)
             ?? throw new KeyNotFoundException($"Inspeção {request.Id} não encontrada.");
 
@@ -55,8 +56,21 @@ public class EncerrarInspecaoCommandHandler : IRequestHandler<EncerrarInspecaoCo
             throw new InvalidOperationException(
                 $"Não é possível encerrar: os seguintes itens exigem foto e ainda não têm: {string.Join("; ", itensSemFotoObrigatoria)}");
 
-        // Veículos: 1 foto, obrigatória APENAS nos itens marcados como Não Conforme (decisão do
-        // usuário, 02/10/2026). Item Conforme/Não Aplicável não exige nem usa foto.
+        // Veículos e temas criados pelo usuário: 1 foto, obrigatória APENAS nos itens marcados como Não
+        // Conforme (decisão do usuário, 02/10/2026). Item Conforme/Não Aplicável não exige nem usa foto.
+        // Temas criados pelo usuário (24/10/2026): foto em TODOS os itens, qualquer que seja a resposta.
+        if (inspecao.TipoInspecao == TipoInspecao.Tema)
+        {
+            var semFoto = inspecao.Respostas
+                .Where(r => r.Ativo && r.FotoConteudo.Length == 0)
+                .Select(r => r.DescricaoPersonalizada ?? r.ChecklistModeloItem!.Descricao)
+                .ToList();
+
+            if (semFoto.Count > 0)
+                throw new InvalidOperationException(
+                    $"Não é possível encerrar: os itens a seguir exigem foto e ainda não têm: {string.Join("; ", semFoto)}");
+        }
+
         if (inspecao.TipoInspecao == TipoInspecao.Veiculo)
         {
             var ncSemFoto = inspecao.Respostas
@@ -117,5 +131,9 @@ public class EncerrarInspecaoCommandHandler : IRequestHandler<EncerrarInspecaoCo
             });
 
         await _db.SaveChangesAsync(ct);
+
+        // Ações do plano de ocorrências desta obra que se resolvem com uma inspeção deste tipo.
+        var ocorrencias = await AAHBRANT.SST.Application.AcoesPlano.ResolucaoVinculadaAcaoPlano.OcorrenciasComInspecaoAsync(_db, inspecao.ObraId, inspecao.TipoInspecao, inspecao.ItemInspecionavel?.TemaInspecaoId, ct);
+        await AAHBRANT.SST.Application.AcoesPlano.ResolucaoVinculadaAcaoPlano.ConcluirAtendidasAsync(_db, ocorrencias, ct);
     }
 }

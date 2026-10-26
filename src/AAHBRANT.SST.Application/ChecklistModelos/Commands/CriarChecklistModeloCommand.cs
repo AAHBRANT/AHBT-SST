@@ -28,6 +28,9 @@ public class CriarChecklistModeloCommandValidator : AbstractValidator<CriarCheck
         RuleFor(x => x.TipoVeiculo).Null()
             .When(x => x.TipoInspecao != TipoInspecao.Veiculo)
             .WithMessage("O tipo de veículo só se aplica a checklists de Veículos.");
+        // O checklist de um tema nasce junto com o tema (CriarTemaInspecaoCommand), nunca avulso.
+        RuleFor(x => x.TipoInspecao).NotEqual(TipoInspecao.Tema)
+            .WithMessage("O checklist de um tema é criado junto com o tema, no card de Inspeções.");
         RuleFor(x => x.Itens).NotEmpty();
         RuleForEach(x => x.Itens).ChildRules(item =>
         {

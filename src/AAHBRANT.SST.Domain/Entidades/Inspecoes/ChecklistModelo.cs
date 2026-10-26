@@ -13,6 +13,10 @@ public class ChecklistModelo : AuditableEntity
 
     // Só preenchido quando TipoInspecao = Veiculo: cada tipo de veículo tem o seu checklist.
     public TipoVeiculo? TipoVeiculo { get; set; }
+
+    // Só preenchido quando TipoInspecao = Tema: cada tema criado pelo usuário tem o seu checklist.
+    public Guid? TemaInspecaoId { get; set; }
+    public TemaInspecao? TemaInspecao { get; set; }
     public int Versao { get; set; } = 1;
 
     public Guid? ChecklistModeloAnteriorId { get; set; }

@@ -1408,6 +1408,220 @@ public static class NovidadesSeeder
                     "Não havia uma etapa formal de aprovação do PGR dentro do sistema.",
                     "Tudo o que a IA gera fica como sugestão até o Engenheiro de Segurança aprovar ou devolver para ajustes. Na aprovação, o PGR passa a vigente, com os riscos avaliados e as medidas validadas, e começa a alimentar a Ordem de Serviço. O PGR pelo PDF da consultoria continua funcionando igual."),
             }),
+        new(
+            Versao: "5.75.0",
+            Titulo: "Logo da AAHBRANT no topo do sistema",
+            DataPublicacao: new DateTime(2026, 10, 21, 0, 0, 0, DateTimeKind.Utc),
+            Itens: new[]
+            {
+                new NovidadeSeedItem(CategoriaNovidade.Melhoria,
+                    "Cabeçalho com a marca AAHBRANT",
+                    "O topo mostrava só o ícone do colete e o nome \"SST\", sem a logo da empresa.",
+                    "Agora o canto esquerdo mostra a logo oficial da AAHBRANT e o nome G-SST, no mesmo padrão do G-QUALI. Clique na marca para voltar ao Início."),
+            }),
+        new(
+            Versao: "5.76.0",
+            Titulo: "Cursos obrigatórios por função saem do PGR",
+            DataPublicacao: new DateTime(2026, 10, 21, 0, 0, 0, DateTimeKind.Utc),
+            Itens: new[]
+            {
+                new NovidadeSeedItem(CategoriaNovidade.Novidade,
+                    "Cursos obrigatórios por obra, a partir do PGR",
+                    "Os cursos obrigatórios eram marcados à mão, função por função, e valiam igual para todas as obras.",
+                    "Em Treinamentos › Cursos obrigatórios por obra, o sistema lê os riscos e atividades do PGR e sugere os cursos pelas NRs, com o motivo de cada um. O Engenheiro de Segurança aprova ou recusa com justificativa. Só o aprovado conta na Aptidão por treinamento do Início."),
+                new NovidadeSeedItem(CategoriaNovidade.Novidade,
+                    "Regras por NR editáveis pelo QSMS",
+                    "Não havia como dizer ao sistema quando uma NR passa a ser obrigatória.",
+                    "Em Treinamentos › Regras por NR fica a tabela: NR-06 e NR-18 para todas as funções e, para as demais, as palavras do PGR que tornam o curso obrigatório (altura → NR-35, choque elétrico → NR-10 e outras)."),
+            }),
+        new(
+            Versao: "5.77.0",
+            Titulo: "Escopo do PCMSO para o médico, a partir do PGR",
+            DataPublicacao: new DateTime(2026, 10, 21, 0, 0, 0, DateTimeKind.Utc),
+            Itens: new[]
+            {
+                new NovidadeSeedItem(CategoriaNovidade.Novidade,
+                    "Escopo para o médico elaborar o PCMSO",
+                    "Para o médico começar o PCMSO era preciso juntar à mão as funções, os GHE e os riscos do PGR da obra.",
+                    "Em Saúde Ocupacional › Escopo para o médico, escolha a obra: o sistema monta o documento com a identificação da obra, as funções por GHE, o inventário de riscos e as atividades críticas. Dá para visualizar, baixar o PDF ou enviar ao médico por e-mail. Exames, periodicidade e critérios de aptidão ficam com o médico."),
+            }),
+        new(
+            Versao: "5.78.0",
+            Titulo: "Relatar por voz com o ditado do próprio aparelho",
+            DataPublicacao: new DateTime(2026, 10, 22, 0, 0, 0, DateTimeKind.Utc),
+            Itens: new[]
+            {
+                new NovidadeSeedItem(CategoriaNovidade.Melhoria,
+                    "Ditado por voz direto no navegador",
+                    "No Suporte IA e nas Ocorrências, a fala era gravada e enviada ao servidor para virar texto.",
+                    "Agora o próprio Teams/navegador transforma a fala em texto enquanto você fala; o áudio não sai do aparelho. A IA continua preenchendo o formulário a partir do texto. Se o seu aparelho não tiver ditado, escreva o relato."),
+            }),
+        new(
+            Versao: "5.79.0",
+            Titulo: "Câmera do reconhecimento facial mais simples",
+            DataPublicacao: new DateTime(2026, 10, 23, 0, 0, 0, DateTimeKind.Utc),
+            Itens: new[]
+            {
+                new NovidadeSeedItem(CategoriaNovidade.Melhoria,
+                    "Clique e capture, sem posicionamento",
+                    "A câmera do facial mostrava círculo, quadrado verde e avisos de luz e posição, capturava sozinha e tinha uma fila facial no DDS e no Treinamento.",
+                    "Agora a câmera abre, você clica em Capturar e pronto. A fila facial saiu: cada funcionário confirma a presença pelo próprio botão. O sistema continua conferindo o rosto depois da foto; se não servir, é só tirar outra. A fila da digital continua igual."),
+            }),
+        new(
+            Versao: "5.80.0",
+            Titulo: "Fotos também em incidentes e quase-acidentes",
+            DataPublicacao: new DateTime(2026, 10, 23, 0, 0, 0, DateTimeKind.Utc),
+            Itens: new[]
+            {
+                new NovidadeSeedItem(CategoriaNovidade.Melhoria,
+                    "Fotos do local em todas as ocorrências",
+                    "Só o acidente tinha espaço para fotos do local.",
+                    "Agora incidentes e quase-acidentes também aceitam até três fotos do local, com data e localização. Nesses dois tipos as fotos são opcionais e não travam o encerramento. No acidente continuam as três fotos obrigatórias."),
+            }),
+        new(
+            Versao: "5.81.0",
+            Titulo: "Relato por voz não para mais sozinho",
+            DataPublicacao: new DateTime(2026, 10, 23, 0, 0, 0, DateTimeKind.Utc),
+            Itens: new[]
+            {
+                new NovidadeSeedItem(CategoriaNovidade.Correcao,
+                    "Ditado continua até você clicar em parar",
+                    "No Relatar por voz, uma pausa na fala fazia o ditado se desligar sozinho.",
+                    "Agora o ditado segue ouvindo mesmo com pausas e só termina quando você clica em parar."),
+            }),
+        new(
+            Versao: "5.82.0",
+            Titulo: "Relato por voz volta a gravar o áudio",
+            DataPublicacao: new DateTime(2026, 10, 23, 0, 0, 0, DateTimeKind.Utc),
+            Itens: new[]
+            {
+                new NovidadeSeedItem(CategoriaNovidade.Melhoria,
+                    "Transcrição mais precisa",
+                    "O ditado feito pelo próprio navegador errava muitas palavras.",
+                    "O Relatar por voz voltou a gravar o áudio e transcrever no servidor, que entende melhor a fala. Grave, clique em parar e a IA preenche o formulário."),
+            }),
+        new(
+            Versao: "5.83.0",
+            Titulo: "Leitura do contrato de terceirizada pela IA voltou",
+            DataPublicacao: new DateTime(2026, 10, 23, 0, 0, 0, DateTimeKind.Utc),
+            Itens: new[]
+            {
+                new NovidadeSeedItem(CategoriaNovidade.Correcao,
+                    "Cadastro pelo contrato preenche de novo",
+                    "Ao enviar o PDF do contrato no Terceirizado, aparecia \"A IA não conseguiu analisar o relato agora\" e nada era preenchido.",
+                    "Agora a IA volta a ler o contrato e preencher empresa, vigência, efetivo e pessoas. Confira os campos antes de cadastrar."),
+            }),
+        new(
+            Versao: "5.84.0",
+            Titulo: "Importar a pasta inteira da terceirizada",
+            DataPublicacao: new DateTime(2026, 10, 23, 0, 0, 0, DateTimeKind.Utc),
+            Itens: new[]
+            {
+                new NovidadeSeedItem(CategoriaNovidade.Novidade,
+                    "Uma pasta, tudo cadastrado",
+                    "Cada documento da terceirizada (contrato, PGR, ASO, certificados) era cadastrado um por um.",
+                    "Em Terceirizado > Empresas, clique em Importar pasta e arraste a pasta da empresa, mesmo misturada. A IA separa o contrato, os documentos da empresa e o ASO e os certificados de cada funcionário. Você confere tudo e clica em Cadastrar tudo. O ASO agora também guarda o PDF."),
+            }),
+        new(
+            Versao: "5.85.0",
+            Titulo: "Reunião de análise em toda ocorrência e relatório em PDF",
+            DataPublicacao: new DateTime(2026, 10, 23, 0, 0, 0, DateTimeKind.Utc),
+            Itens: new[]
+            {
+                new NovidadeSeedItem(CategoriaNovidade.Novidade,
+                    "Reunião de análise na tela da ocorrência",
+                    "A reunião de análise só aparecia no relato com IA de acidente e doença ocupacional. Num quase acidente, por exemplo, não havia onde marcar.",
+                    "Toda ocorrência agora tem o cartão Reunião de análise. Agende pelo Teams, remarque se precisar e, depois, registre que aconteceu com os presentes e a ata. A investigação só pode ser finalizada com a reunião realizada."),
+                new NovidadeSeedItem(CategoriaNovidade.Novidade,
+                    "A investigação vira documento",
+                    "A investigação de acidentes, incidentes e quase acidentes ficava só na tela, sem um documento para imprimir ou arquivar.",
+                    "Abra a ocorrência e clique em Visualizar relatório ou Baixar PDF. Sai tudo num documento só: identificação, descrição, consequências, causas, plano de ação, reunião de análise com a ata, fotos e espaço para as assinaturas do técnico e do engenheiro."),
+            }),
+        new(
+            Versao: "5.86.0",
+            Titulo: "Plano de ação da ocorrência: concluir com confirmação e reabrir",
+            DataPublicacao: new DateTime(2026, 10, 23, 0, 0, 0, DateTimeKind.Utc),
+            Itens: new[]
+            {
+                new NovidadeSeedItem(CategoriaNovidade.Melhoria,
+                    "Nada é concluído sem querer",
+                    "O botão Validar das ações do plano concluía a ação com um clique, sem perguntar, e não havia como desfazer.",
+                    "Agora cada ação manual tem Marcar como concluída, que pede para descrever o que foi feito e registra quem concluiu. Ações concluídas por engano podem ser reabertas com o botão Reabrir. A coluna Como se resolve mostra as ações que o sistema conclui sozinho, como o DDS do tema e a reunião de análise."),
+            }),
+        new(
+            Versao: "5.87.0",
+            Titulo: "Ações do plano que se resolvem sozinhas",
+            DataPublicacao: new DateTime(2026, 10, 23, 0, 0, 0, DateTimeKind.Utc),
+            Itens: new[]
+            {
+                new NovidadeSeedItem(CategoriaNovidade.Novidade,
+                    "Treinamento, inspeção e EPI concluem a ação",
+                    "Ações como \"reciclar NR-35 dos envolvidos\" dependiam de alguém lembrar de marcar como concluída.",
+                    "Ao criar uma ação na ocorrência, escolha Como se resolve: Treinamento concluído (curso), Inspeção finalizada (tipo) ou Entrega de EPI assinada (EPI). A ação só se conclui quando aquele fato acontece — turma do curso com os envolvidos presentes, inspeção do tipo na obra ou entrega assinada por cada envolvido. Ações já criadas podem ser vinculadas pelo botão Alterar."),
+            }),
+        new(
+            Versao: "5.88.0",
+            Titulo: "Trocar a logo da obra pelo arquivo",
+            DataPublicacao: new DateTime(2026, 10, 26, 0, 0, 0, DateTimeKind.Utc),
+            Itens: new[]
+            {
+                new NovidadeSeedItem(CategoriaNovidade.Correcao,
+                    "Logo da obra abre o seletor de arquivos",
+                    "Ao clicar na logo na tela de Obras, o sistema abria a câmera e não deixava escolher um arquivo.",
+                    "Agora o clique abre direto o seletor de arquivos (PNG ou JPEG), para enviar de novo a logo que aparece no cabeçalho dos documentos."),
+            }),
+        new(
+            Versao: "5.89.0",
+            Titulo: "Reunião de análise volta a ser criada no Teams",
+            DataPublicacao: new DateTime(2026, 10, 26, 0, 0, 0, DateTimeKind.Utc),
+            Itens: new[]
+            {
+                new NovidadeSeedItem(CategoriaNovidade.Correcao,
+                    "Reunião de análise de acidente criada pela caixa do SST",
+                    "Ao registrar um acidente ou quase acidente, a reunião de análise aparecia como \"Fora do Teams\" com erro de acesso negado.",
+                    "Agora o convite sai da caixa do SST, com o link do Teams, e os participantes entram como convidados. Reuniões que falharam podem ser criadas de novo pelo botão Tentar de novo no Teams."),
+            }),
+        new(
+            Versao: "5.90.0",
+            Titulo: "ASO que some do G-RH sai do SST e o técnico é avisado",
+            DataPublicacao: new DateTime(2026, 10, 26, 0, 0, 0, DateTimeKind.Utc),
+            Itens: new[]
+            {
+                new NovidadeSeedItem(CategoriaNovidade.Correcao,
+                    "ASO apagado no G-RH deixa de aparecer como pendente no SST",
+                    "Quando um ASO era apagado ou trocado no G-RH, o registro antigo ficava parado no SST como \"Pendente\" e a pessoa aparecia bloqueada mesmo com outro ASO apto válido.",
+                    "A sincronização com o G-RH agora desativa o ASO que não existe mais lá. Nada é apagado do banco, e se o documento voltar ao G-RH o ASO é reativado sozinho. Se o G-RH devolver lista vazia ou muitos ASOs sumirem de uma vez, nada é desativado."),
+                new NovidadeSeedItem(CategoriaNovidade.Novidade,
+                    "Aviso ao Técnico de Segurança quando um ASO é desativado",
+                    "Ninguém ficava sabendo que um ASO tinha saído do G-RH.",
+                    "O Técnico de Segurança da obra recebe um e-mail e um aviso no sininho do Teams com a lista das pessoas, a data do exame e da validade, se estava apto e se a pessoa continua com outro ASO válido ou ficou bloqueada."),
+            }),
+        new(
+            Versao: "5.91.0",
+            Titulo: "ASO: o exame mais recente manda, em todas as telas",
+            DataPublicacao: new DateTime(2026, 10, 26, 0, 0, 0, DateTimeKind.Utc),
+            Itens: new[]
+            {
+                new NovidadeSeedItem(CategoriaNovidade.Correcao,
+                    "ASO antigo não aparece mais como vencido",
+                    "Na aba ASOs, o ASO antigo de quem já tinha um exame novo aparecia como \"Vencido · Refazer exame\", e cada tela escolhia o ASO \"mais recente\" de um jeito, então o mesmo funcionário podia aparecer bloqueado numa tela e liberado em outra.",
+                    "Agora vale uma regra só: o ASO vigente é o do exame mais recente. Os anteriores aparecem como \"Superado\", em cinza, com a data do exame que os substituiu, e nunca como vencidos nem bloqueiam. A mesma regra vale no Início, nos indicadores e na lista de Pessoas, no perfil, na liberação para trabalho, na Ordem de Serviço, no QR e nos alertas."),
+                new NovidadeSeedItem(CategoriaNovidade.Melhoria,
+                    "ASO sem parecer deixa de aparecer como Apto",
+                    "Na aba ASOs, o exame sem parecer do médico era mostrado como Apto.",
+                    "O exame mais recente sem parecer aparece como \"Sem parecer\" e não libera a pessoa até o resultado ser lançado no G-RH ou editado no ASO."),
+            }),
+        new(
+            Versao: "5.92.0",
+            Titulo: "Início: veja quem está bloqueado e por quê",
+            DataPublicacao: new DateTime(2026, 10, 26, 0, 0, 0, DateTimeKind.Utc),
+            Itens: new[]
+            {
+                new NovidadeSeedItem(CategoriaNovidade.Melhoria,
+                    "Lista de bloqueados no card \"Podem trabalhar hoje\"",
+                    "O card mostrava só o número de bloqueados, sem dizer quem eram nem o motivo.",
+                    "Clique no card (ou em \"Ver quem está bloqueado\") para abrir a lista com o nome, a função e a obra de cada pessoa e o motivo do bloqueio: ASO vencido, inapto, sem parecer ou ausente, e treinamento vencido ou nunca feito. É possível filtrar por ASO ou treinamento e abrir o perfil da pessoa."),
+            }),
     };
 
     public static async Task ExecutarAsync(IServiceProvider services, CancellationToken ct = default)

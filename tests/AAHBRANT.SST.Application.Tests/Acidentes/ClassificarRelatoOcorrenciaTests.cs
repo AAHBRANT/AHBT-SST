@@ -114,6 +114,40 @@ public class ClassificarRelatoOcorrenciaTests
         Assert.Equal(new[] { "Houve CAT?" }, falso.ComplementosRecebidos.Select(c => c.Pergunta));
     }
 
+    // Visto ao vivo: a IA repetia perguntas já respondidas. Pergunta sobre campo que a própria sugestão
+    // já preenche, ou igual a uma já respondida, não volta para a tela.
+    [Fact]
+    public async Task Handle_DescartaPerguntaJaRespondidaOuDeCampoJaPreenchido()
+    {
+        var db = DbContextFactory.Criar();
+        var obra = new Obra { Codigo = "OB1", Nome = "Obra" };
+        db.Add(obra);
+        await db.SaveChangesAsync();
+        var falso = new ClassificadorFalso(new OcorrenciaSugeridaIa(
+            "Acidente", "SemAfastamento", "Pavimento 3", null, "10:00", "d", "Entorse", null, null,
+            HouveAfastamento: false, DiasAfastamento: null, null, Array.Empty<string>(),
+            new[]
+            {
+                new PerguntaRelatoOcorrencia("local", "Em que local exatamente ocorreu?"),
+                new PerguntaRelatoOcorrencia("hora", "Qual foi o horário?"),
+                new PerguntaRelatoOcorrencia("afastamento", "Houve afastamento?"),
+                new PerguntaRelatoOcorrencia("outro", "A escada tinha corrimão?"),
+                new PerguntaRelatoOcorrencia("outro", "Havia sinalização de piso molhado?"),
+                new PerguntaRelatoOcorrencia("data", "Em que dia aconteceu?"),
+            }));
+
+        var r = await new ClassificarRelatoOcorrenciaCommandHandler(db, falso).Handle(
+            new ClassificarRelatoOcorrenciaCommand("relato", obra.Id, new[]
+            {
+                new RespostaPerguntaRelato("A escada tinha corrimão?", "Sim"),
+            }),
+            default);
+
+        Assert.Equal(
+            new[] { "Havia sinalização de piso molhado?", "Em que dia aconteceu?" },
+            r.Perguntas.Select(p => p.Pergunta));
+    }
+
     private sealed class ClassificadorFalso : IClassificadorRelatoOcorrencia
     {
         private readonly OcorrenciaSugeridaIa _resposta;

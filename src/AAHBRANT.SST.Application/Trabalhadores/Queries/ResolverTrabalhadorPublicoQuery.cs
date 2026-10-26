@@ -1,3 +1,4 @@
+using AAHBRANT.SST.Application.Asos;
 using AAHBRANT.SST.Application.Common.Interfaces;
 using AAHBRANT.SST.Application.Common.Seguranca;
 using AAHBRANT.SST.Domain.Enums;
@@ -62,19 +63,12 @@ public class ResolverTrabalhadorPublicoQueryHandler : IRequestHandler<ResolverTr
         string? statusAptidao = null;
         if (request.IncluirDadosSensiveis && _db.ObraNoEscopo(trabalhador.ObraId))
         {
-            var resultadoAsoMaisRecente = await _db.Asos
+            // ASO vigente (regra única, ver AsoVigente): o exame mais recente decide, e a validade conta.
+            var vigente = AsoVigente.Eleger(await _db.Asos
                 .Where(a => a.TrabalhadorId == trabalhadorId)
-                .OrderByDescending(a => a.DataExame)
-                .Select(a => (ResultadoAso?)a.ResultadoStatus)
-                .FirstOrDefaultAsync(ct);
-            statusAptidao = resultadoAsoMaisRecente switch
-            {
-                null => "Sem ASO",
-                ResultadoAso.Apto => "Apto",
-                ResultadoAso.AptoComRestricao => "Apto com restrição",
-                ResultadoAso.Inapto => "Inapto",
-                _ => "Pendente",
-            };
+                .Select(a => new AsoResumo(a.Id, a.TrabalhadorId, a.DataExame, a.DataValidade, a.ResultadoStatus))
+                .ToListAsync(ct));
+            statusAptidao = AsoVigente.RotuloAptidao(vigente, DateTime.UtcNow.Date);
         }
 
         var episAtivos = await _db.EntregasEpi

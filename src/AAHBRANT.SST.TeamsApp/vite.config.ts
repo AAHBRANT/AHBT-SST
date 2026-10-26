@@ -1,4 +1,4 @@
-﻿import fs from 'node:fs'
+import fs from 'node:fs'
 import path from 'node:path'
 import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
@@ -26,11 +26,20 @@ export default defineConfig({
       manifest: {
         name: 'AAHBRANT SST',
         short_name: 'AAHBRANT SST',
+        lang: 'pt-BR',
         description: 'Gestão de Saúde e Segurança do Trabalho',
-        theme_color: '#670000',
+        theme_color: '#ffffff',
         background_color: '#ffffff',
         display: 'standalone',
-        icons: [{ src: '/favicon.svg', sizes: 'any', type: 'image/svg+xml' }],
+        // Ícone do colete sobre fundo branco (PR #184). O Android usa o de 512 px na tela inicial e
+        // aplica a própria máscara (círculo/squircle) via "maskable" — a versão maskable tem margem
+        // para o recorte não comer o desenho. A versão sobre fundo vinho (mesma arte do app do
+        // Teams) continua em public/icons/.
+        icons: [
+          { src: '/pwa-192.png', sizes: '192x192', type: 'image/png' },
+          { src: '/pwa-512.png', sizes: '512x512', type: 'image/png' },
+          { src: '/pwa-maskable-512.png', sizes: '512x512', type: 'image/png', purpose: 'maskable' },
+        ],
       },
       workbox: {
         // Chamadas de API não entram no cache do service worker — quem decide o que fica
@@ -48,19 +57,13 @@ export default defineConfig({
         // Bundle passou de 2 MiB (limite padrão do workbox) com a chegada dos módulos
         // Uniforme/EPC (merge de 2026-09-10) — sem isso o build falha ao gerar o service worker.
         maximumFileSizeToCacheInBytes: 3 * 1024 * 1024,
-        // skipWaiting+clientsClaim fazem o SW novo assumir as abas abertas, mas a PÁGINA continua
-        // rodando o JS antigo até recarregar — e dentro do Teams (aba viva por dias, sem navegação)
-        // isso nunca acontece; era por isso que o Teams mostrava uma versão e o navegador outra
-        // (13/09). public/sw-atualizacao.js roda dentro do SW e, ao ativar uma troca de versão,
-        // manda todas as janelas controladas navegarem para a própria URL (recarregar). É o único
-        // código novo que alcança um cliente já preso no bundle antigo.
-        importScripts: ['sw-atualizacao.js'],
-        // Fora do precache: ele é buscado pelo próprio navegador ao instalar o SW (com os
-        // cabeçalhos no-cache do nginx), não pela página.
+        // main.tsx recarrega as páginas em controllerchange quando o novo SW assume.
+        // Não importar sw-atualizacao.js: esse arquivo não existe em public/ e o fallback
+        // do nginx responde HTML, impedindo o SW inteiro de instalar e preparar o modo offline.
         // O detector de rosto (MediaPipe) tem um .wasm de ~13 MB: ficaria no precache de TODOS os
         // usuários, mesmo dos que nunca abrem a câmera facial. Fica fora e entra no cache só no
         // primeiro uso (runtimeCaching abaixo).
-        globIgnores: ['**/sw-atualizacao.js', '**/vision_bundle-*', '**/vision_wasm_*', '**/blaze_face_*'],
+        globIgnores: ['**/vision_bundle-*', '**/vision_wasm_*', '**/blaze_face_*'],
         runtimeCaching: [
           {
             urlPattern: /\/assets\/(vision_bundle|vision_wasm|blaze_face)[^/]*$/,

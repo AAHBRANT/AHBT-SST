@@ -4,6 +4,7 @@ import { Mic24Regular, RecordStop24Filled, Sparkle24Regular } from '@fluentui/re
 import {
   api,
   type PerguntaRelatoOcorrencia,
+  type RespostaPerguntaRelato,
   type RelatoOcorrenciaResposta,
   type RelatoOcorrenciaSugestao,
 } from '../../lib/api';
@@ -21,6 +22,11 @@ interface Props {
   /** A classificação falhou: só a transcrição voltou, vai para a descrição. */
   aoSoTranscrever: (transcricao: string) => void;
   aoErro: (mensagem: string) => void;
+  /**
+   * Campos que o técnico preencheu à mão no formulário, no momento do envio — vão junto das respostas
+   * para a IA não perguntar o que já está na tela.
+   */
+  camposPreenchidos?: () => RespostaPerguntaRelato[];
 }
 
 const bloco = {
@@ -48,18 +54,24 @@ const botaoParar = { backgroundColor: tokensUi.status.alerta.tinta, color: desig
 
 // "Relatar por voz" / "Escrever relato" do registro de ocorrência: a IA preenche o formulário e faz
 // até 4 perguntas sobre o que faltou; as respostas (escritas ou faladas) reclassificam o relato.
-export function RelatoOcorrenciaIa({ obraId, desabilitado, aoSugerir, aoSoTranscrever, aoErro }: Props) {
+export function RelatoOcorrenciaIa({ obraId, desabilitado, aoSugerir, aoSoTranscrever, aoErro, camposPreenchidos }: Props) {
   const [modoTexto, setModoTexto] = useState(false);
   const [textoRelato, setTextoRelato] = useState('');
   const [relatoBase, setRelatoBase] = useState<string | null>(null);
   const [perguntas, setPerguntas] = useState<PerguntaRelatoOcorrencia[]>([]);
   const [respostas, setRespostas] = useState<Record<number, string>>({});
+  // Respostas de todas as rodadas desde o relato. Antes cada rodada mandava só as respostas da rodada
+  // atual, e a IA voltava a fazer as perguntas das rodadas anteriores (visto ao vivo com o técnico).
+  const [respondidas, setRespondidas] = useState<RespostaPerguntaRelato[]>([]);
   const [processando, setProcessando] = useState(false);
   const [completando, setCompletando] = useState(false);
 
   const receber = useCallback(
     (resultado: RelatoOcorrenciaResposta, primeiraRodada: boolean) => {
-      if (primeiraRodada) setRelatoBase(resultado.transcricao);
+      if (primeiraRodada) {
+        setRelatoBase(resultado.transcricao);
+        setRespondidas([]);
+      }
       if (!resultado.sugestao) {
         aoSoTranscrever(resultado.transcricao);
         setPerguntas([]);
@@ -78,13 +90,15 @@ export function RelatoOcorrenciaIa({ obraId, desabilitado, aoSugerir, aoSoTransc
   // Responder por voz: a fala vira a resposta de todas as perguntas abertas de uma vez.
   const respostaVoz = useGravacaoVoz(
     api.acidentes.transcrever,
-    (r) => void completar([{ pergunta: perguntas.map((p) => p.pergunta).join(' '), resposta: r.transcricao }]),
+    // 500 = limite da pergunta no ClassificarRelatoOcorrenciaCommandValidator (4 perguntas juntas passavam dele).
+    (r) => void completar([{ pergunta: perguntas.map((p) => p.pergunta).join(' ').slice(0, 500), resposta: r.transcricao }]),
     aoErro,
   );
 
   function novoRelato() {
     setPerguntas([]);
     setRespostas({});
+    setRespondidas([]);
     setRelatoBase(null);
   }
 
@@ -103,10 +117,14 @@ export function RelatoOcorrenciaIa({ obraId, desabilitado, aoSugerir, aoSoTransc
 
   async function completar(complementos = perguntas.map((p, i) => ({ pergunta: p.pergunta, resposta: respostas[i] ?? '' }))) {
     if (!relatoBase || complementos.every((c) => !c.resposta.trim())) return;
+    const novas = complementos.filter((c) => c.resposta.trim());
+    const acumuladas = [...respondidas, ...novas];
     try {
       setProcessando(true);
       setCompletando(true);
-      receber(await api.acidentes.relatoTexto(obraId, relatoBase, complementos), false);
+      const resultado = await api.acidentes.relatoTexto(obraId, relatoBase, [...acumuladas, ...(camposPreenchidos?.() ?? [])]);
+      setRespondidas(acumuladas);
+      receber(resultado, false);
     } catch (e) {
       aoErro(e instanceof Error ? e.message : 'A IA não conseguiu completar o registro agora.');
     } finally {

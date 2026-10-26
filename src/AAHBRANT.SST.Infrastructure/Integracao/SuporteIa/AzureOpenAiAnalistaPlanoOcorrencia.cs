@@ -41,6 +41,12 @@ public class AzureOpenAiAnalistaPlanoOcorrencia : IAnalistaPlanoOcorrencia
           para procedimento e análise técnica; Gestor de Obra para recursos, compras e estoque;
           Gestor QSMS para padrão corporativo).
         - Não inclua ações de DDS nem de reunião de análise nas acoes (são tratadas à parte).
+        - vinculoTipo e vinculoAlvo: TODA ação se resolve por um fato do sistema, nunca à mão. Escolha
+          como a ação será comprovada: "Inspecao" (vinculoAlvo = um tipo de inspeção ou tema de
+          inspeção da lista abaixo, ex.: inspecionar andaimes), "Treinamento" (um curso da lista) ou
+          "EntregaEpi" (um EPI da lista). vinculoAlvo deve ser o nome EXATO de um item das listas
+          abaixo; se nenhum item servir, use null nos dois campos (o técnico escolhe). Ação que pede
+          inspeção deve usar Inspecao; que pede capacitação, Treinamento; que pede EPI, EntregaEpi.
         - temaDds: tema para o DDS do próximo dia útil na mesma obra, sobre a situação ou a atividade
           da ocorrência, focado em prevenção. nome: até 60 caracteres. roteiro: até 900 caracteres,
           texto para o encarregado ler em voz alta, com: o que aconteceu (refira-se como "recentemente
@@ -71,7 +77,7 @@ public class AzureOpenAiAnalistaPlanoOcorrencia : IAnalistaPlanoOcorrencia
                 {
                     type = "object",
                     additionalProperties = false,
-                    required = new[] { "tipo", "descricao", "prioridade", "papelResponsavel", "baseOrigem", "basePerigo", "baseControle", "baseReferencia" },
+                    required = new[] { "tipo", "descricao", "prioridade", "papelResponsavel", "baseOrigem", "basePerigo", "baseControle", "baseReferencia", "vinculoTipo", "vinculoAlvo" },
                     properties = new
                     {
                         tipo = new { type = "string", @enum = new[] { "Corretiva", "Preventiva", "Melhoria" } },
@@ -82,6 +88,8 @@ public class AzureOpenAiAnalistaPlanoOcorrencia : IAnalistaPlanoOcorrencia
                         basePerigo = new { type = new[] { "string", "null" } },
                         baseControle = new { type = new[] { "string", "null" } },
                         baseReferencia = new { type = new[] { "string", "null" } },
+                        vinculoTipo = new { type = new[] { "string", "null" }, @enum = new object?[] { "Inspecao", "Treinamento", "EntregaEpi", null } },
+                        vinculoAlvo = new { type = new[] { "string", "null" } },
                     },
                 },
             },
@@ -108,6 +116,13 @@ public class AzureOpenAiAnalistaPlanoOcorrencia : IAnalistaPlanoOcorrencia
         foreach (var q in c.RequisitosLegais)
             bases.AppendLine($"- {FundamentacaoAcaoPlano.IdentificadorRequisito(q)} | {q.Titulo} | {q.Descricao}");
 
+        var v = c.Vinculos;
+        bases.AppendLine();
+        bases.AppendLine("Tipos de inspeção (vinculoTipo Inspecao): " + (v is null || v.TiposInspecao.Count == 0 ? "(nenhum)" : string.Join("; ", v.TiposInspecao)));
+        bases.AppendLine("Temas de inspeção criados pela empresa (vinculoTipo Inspecao): " + (v is null || v.TemasInspecao.Count == 0 ? "(nenhum)" : string.Join("; ", v.TemasInspecao)));
+        bases.AppendLine("Cursos de treinamento (vinculoTipo Treinamento): " + (v is null || v.Cursos.Count == 0 ? "(nenhum)" : string.Join("; ", v.Cursos)));
+        bases.AppendLine("EPIs do catálogo (vinculoTipo EntregaEpi): " + (v is null || v.Epis.Count == 0 ? "(nenhum)" : string.Join("; ", v.Epis)));
+
         var registro = $"""
             Tipo: {c.Tipo}
             Gravidade: {c.Gravidade}
@@ -123,7 +138,7 @@ public class AzureOpenAiAnalistaPlanoOcorrencia : IAnalistaPlanoOcorrencia
             r2.Metodologia,
             r2.Causas,
             (r2.Acoes ?? new List<AcaoModelo>())
-                .Select(a => new AcaoSugeridaIa(a.Tipo, a.Descricao, a.Prioridade, a.PapelResponsavel, a.BaseOrigem, a.BasePerigo, a.BaseControle, a.BaseReferencia))
+                .Select(a => new AcaoSugeridaIa(a.Tipo, a.Descricao, a.Prioridade, a.PapelResponsavel, a.BaseOrigem, a.BasePerigo, a.BaseControle, a.BaseReferencia, a.VinculoTipo, a.VinculoAlvo))
                 .ToList(),
             r2.TemaDds?.Nome,
             r2.TemaDds?.Roteiro);
@@ -135,5 +150,6 @@ public class AzureOpenAiAnalistaPlanoOcorrencia : IAnalistaPlanoOcorrencia
 
     private sealed record AcaoModelo(
         string? Tipo, string? Descricao, string? Prioridade, string? PapelResponsavel,
-        string? BaseOrigem, string? BasePerigo, string? BaseControle, string? BaseReferencia);
+        string? BaseOrigem, string? BasePerigo, string? BaseControle, string? BaseReferencia,
+        string? VinculoTipo = null, string? VinculoAlvo = null);
 }

@@ -30,8 +30,11 @@ public interface IAppDbContext
     DbSet<CursoTreinamento> CursosTreinamento { get; }
     DbSet<Treinamento> Treinamentos { get; }
     DbSet<ArquivoCertificadoTreinamento> ArquivosCertificadoTreinamento { get; }
+    DbSet<ArquivoAso> ArquivosAso { get; }
     DbSet<TermoCompromissoEpiManual> TermosCompromissoEpiManual { get; }
     DbSet<MatrizTreinamentoFuncao> MatrizTreinamentoFuncoes { get; }
+    DbSet<RegraCursoObrigatorio> RegrasCursoObrigatorio { get; }
+    DbSet<CursoObrigatorioFuncaoObra> CursosObrigatoriosFuncaoObra { get; }
     DbSet<SessaoTreinamento> SessoesTreinamento { get; }
     DbSet<ParticipanteSessaoTreinamento> ParticipantesSessaoTreinamento { get; }
     DbSet<FotoEvidenciaSessaoTreinamento> FotosEvidenciaSessaoTreinamento { get; }
@@ -44,6 +47,9 @@ public interface IAppDbContext
     DbSet<PlanoIntegracao> PlanosIntegracao { get; }
     DbSet<SolicitacaoReposicaoEpi> SolicitacoesReposicaoEpi { get; }
     DbSet<ArquivoContrato> ArquivosContrato { get; }
+    DbSet<DocumentoExigidoEmpresa> DocumentosExigidosEmpresa { get; }
+    DbSet<DocumentoEmpresaTerceirizada> DocumentosEmpresaTerceirizada { get; }
+    DbSet<ArquivoDocumentoEmpresaTerceirizada> ArquivosDocumentoEmpresaTerceirizada { get; }
     DbSet<CatalogoEpc> CatalogoEpcs { get; }
     DbSet<InstalacaoEpc> InstalacoesEpc { get; }
     DbSet<EstoqueEpc> EstoquesEpc { get; }
@@ -105,6 +111,8 @@ public interface IAppDbContext
     DbSet<AlojamentoMorador> AlojamentoMoradores { get; }
     DbSet<ConfiguracaoAlojamento> ConfiguracoesAlojamento { get; }
     DbSet<Veiculo> Veiculos { get; }
+    DbSet<TemaInspecao> TemasInspecao { get; }
+    DbSet<ItemInspecionavel> ItensInspecionaveis { get; }
 
     // Qualificação explícita necessária: "Dds" sem prefixo é ambíguo aqui — a namespace
     // AAHBRANT.SST.Application.Dds (Commands/Queries deste módulo) sombreia o tipo importado por

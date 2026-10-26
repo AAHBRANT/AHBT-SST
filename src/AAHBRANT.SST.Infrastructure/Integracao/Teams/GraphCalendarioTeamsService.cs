@@ -149,9 +149,10 @@ public class GraphCalendarioTeamsService : ICalendarioTeamsService, IReuniaoTeam
         IReadOnlyList<string> emailsConvidados, CancellationToken ct = default)
     {
         var (httpClient, aadObjectId) = await PrepararRequisicaoAsync(organizadorUsuarioId, ct);
+        var caixa = string.IsNullOrWhiteSpace(_opcoes.CaixaReunioes) ? aadObjectId : _opcoes.CaixaReunioes.Trim();
 
         using var requisicao = new HttpRequestMessage(
-            HttpMethod.Post, $"https://graph.microsoft.com/v1.0/users/{aadObjectId}/events")
+            HttpMethod.Post, $"https://graph.microsoft.com/v1.0/users/{Uri.EscapeDataString(caixa)}/events")
         {
             Content = JsonContent.Create(MontarReuniao(titulo, descricao, inicio, fim, emailsConvidados)),
         };
@@ -163,6 +164,27 @@ public class GraphCalendarioTeamsService : ICalendarioTeamsService, IReuniaoTeam
         return new ReuniaoTeamsCriada(
             corpo?.Id ?? throw new InvalidOperationException("Graph não retornou o id da reunião criada."),
             corpo.OnlineMeeting?.JoinUrl);
+    }
+
+    // PATCH só de start/end: assunto, convidados e link continuam os mesmos e o Exchange manda a
+    // atualização do convite para todos.
+    public async Task RemarcarReuniaoAsync(
+        Guid organizadorUsuarioId, string graphEventId, DateTime inicio, DateTime fim, CancellationToken ct = default)
+    {
+        var (httpClient, aadObjectId) = await PrepararRequisicaoAsync(organizadorUsuarioId, ct);
+
+        using var requisicao = new HttpRequestMessage(
+            HttpMethod.Patch, $"https://graph.microsoft.com/v1.0/users/{aadObjectId}/events/{graphEventId}")
+        {
+            Content = JsonContent.Create(new
+            {
+                start = new { dateTime = inicio.ToString("yyyy-MM-ddTHH:mm:ss"), timeZone = "America/Sao_Paulo" },
+                end = new { dateTime = fim.ToString("yyyy-MM-ddTHH:mm:ss"), timeZone = "America/Sao_Paulo" },
+            }),
+        };
+
+        var resposta = await httpClient.SendAsync(requisicao, ct);
+        await GarantirSucessoAsync(resposta, organizadorUsuarioId, ct);
     }
 
     internal static object MontarReuniao(string titulo, string descricao, DateTime inicio, DateTime fim, IReadOnlyList<string> emails)

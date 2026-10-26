@@ -26,13 +26,31 @@ public class FluxoLeituraIaTests
         public IReadOnlyList<string> ExtrairPaginas(byte[] pdf) => new[] { new string('x', 600) };
     }
 
+    private sealed class ExtratorDigitalizado : IExtratorTextoPdf
+    {
+        public IReadOnlyList<string> ExtrairPaginas(byte[] pdf) => new[] { "", " ", "" };
+    }
+
+    private sealed class OcrFalso(string textoPorPagina) : IOcrPaginasPdf
+    {
+        public int? LimitePedido { get; private set; }
+
+        public Task<IReadOnlyList<string>> CompletarAsync(byte[] pdf, IReadOnlyList<string> paginas, int maxPaginasOcr, CancellationToken ct)
+        {
+            LimitePedido = maxPaginasOcr;
+            return Task.FromResult<IReadOnlyList<string>>(paginas.Select(_ => textoPorPagina).ToList());
+        }
+    }
+
     private sealed class LeitorFalso : ILeitorDocumentoSstIa
     {
         public LeituraPgrIa Pgr { get; set; } = null!;
         public Exception? Falha { get; set; }
+        public int Chamadas { get; private set; }
 
         public async Task<LeituraPgrIa> LerPgrAsync(IReadOnlyList<string> paginas, Func<string, int, int, Task> progresso, CancellationToken ct)
         {
+            Chamadas++;
             await progresso("lendo", 1, 2);
             if (Falha is not null) throw Falha;
             return Pgr;
@@ -158,5 +176,59 @@ public class FluxoLeituraIaTests
         var id2 = await LerAsync(db, pgr.Id, leitor);
         Assert.NotEqual(id, id2);
         Assert.Equal(StatusLeituraIa.Concluida, (await db.LeiturasDocumentoIa.SingleAsync(x => x.Id == id2)).Status);
+    }
+
+    [Fact]
+    public async Task Pgr_digitalizado_e_lido_pelo_ocr()
+    {
+        var (db, pgr, _) = await SemearAsync(nameof(Pgr_digitalizado_e_lido_pelo_ocr));
+        var id = await new IniciarLeituraIaCommandHandler(db, new FilaFalsa()).Handle(new IniciarLeituraIaCommand(DocumentoLeituraIa.Pgr, pgr.Id), CancellationToken.None);
+        var ocr = new OcrFalso(new string('t', 300));
+
+        await new ProcessadorLeituraIa(db, new ExtratorDigitalizado(), new LeitorFalso { Pgr = Pgr((1, "Pedreiro", "Altura", 3, 4)) },
+                new NotificacaoFalsa(), NullLogger<ProcessadorLeituraIa>.Instance, ocr)
+            .ProcessarAsync(id, CancellationToken.None);
+
+        var leitura = await db.LeiturasDocumentoIa.SingleAsync(l => l.Id == id);
+        Assert.Equal(StatusLeituraIa.Concluida, leitura.Status);
+        Assert.Equal(ProcessadorLeituraIa.PaginasOcr, ocr.LimitePedido);
+    }
+
+    [Fact]
+    public async Task Pgr_digitalizado_que_o_ocr_nao_le_falha_com_mensagem_clara()
+    {
+        var (db, pgr, _) = await SemearAsync(nameof(Pgr_digitalizado_que_o_ocr_nao_le_falha_com_mensagem_clara));
+        var id = await new IniciarLeituraIaCommandHandler(db, new FilaFalsa()).Handle(new IniciarLeituraIaCommand(DocumentoLeituraIa.Pgr, pgr.Id), CancellationToken.None);
+
+        await new ProcessadorLeituraIa(db, new ExtratorDigitalizado(), new LeitorFalso(), new NotificacaoFalsa(),
+                NullLogger<ProcessadorLeituraIa>.Instance, new OcrFalso(""))
+            .ProcessarAsync(id, CancellationToken.None);
+
+        var leitura = await db.LeiturasDocumentoIa.SingleAsync(l => l.Id == id);
+        Assert.Equal(StatusLeituraIa.Falhou, leitura.Status);
+        Assert.Contains("nem pelas imagens das páginas", leitura.Erro);
+    }
+
+    // Sem matriz a leitura não serviria para nada: falha antes de gastar a IA (OCR e leitura).
+    [Fact]
+    public async Task Pgr_sem_matriz_de_risco_falha_antes_de_chamar_a_ia()
+    {
+        var db = CriarDb(nameof(Pgr_sem_matriz_de_risco_falha_antes_de_chamar_a_ia));
+        var pgr = new Pgr { Obra = new Obra { Codigo = "R", Nome = "Roger" }, Nome = "PGR", DataElaboracao = new DateTime(2024, 10, 10),
+            DocumentoConteudo = new byte[] { 1 }, DocumentoContentType = "application/pdf" };
+        db.Add(pgr);
+        await db.SaveChangesAsync();
+        var id = await new IniciarLeituraIaCommandHandler(db, new FilaFalsa()).Handle(new IniciarLeituraIaCommand(DocumentoLeituraIa.Pgr, pgr.Id), CancellationToken.None);
+        var leitor = new LeitorFalso { Pgr = Pgr((1, "Pedreiro", "Altura", 3, 4)) };
+        var ocr = new OcrFalso(new string('t', 300));
+
+        await new ProcessadorLeituraIa(db, new ExtratorDigitalizado(), leitor, new NotificacaoFalsa(), NullLogger<ProcessadorLeituraIa>.Instance, ocr)
+            .ProcessarAsync(id, CancellationToken.None);
+
+        var leitura = await db.LeiturasDocumentoIa.SingleAsync(l => l.Id == id);
+        Assert.Equal(StatusLeituraIa.Falhou, leitura.Status);
+        Assert.Contains("Nenhuma matriz de risco cadastrada", leitura.Erro);
+        Assert.Null(ocr.LimitePedido);
+        Assert.Equal(0, leitor.Chamadas);
     }
 }

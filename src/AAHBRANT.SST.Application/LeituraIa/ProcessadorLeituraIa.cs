@@ -1,3 +1,4 @@
+using AAHBRANT.SST.Application.MatrizRisco;
 using System.Text.Json;
 using AAHBRANT.SST.Application.Common.Interfaces;
 using AAHBRANT.SST.Application.Ghes.Commands;
@@ -20,16 +21,22 @@ public class ProcessadorLeituraIa
     private readonly ILeitorDocumentoSstIa _leitor;
     private readonly INotificacaoTeamsService _notificacao;
     private readonly ILogger<ProcessadorLeituraIa> _logger;
+    private readonly IOcrPaginasPdf? _ocr;
+
+    // PGR/PCMSO digitalizado: até 80 páginas por OCR (os maiores PCMSO de obra têm ~60). Roda em segundo
+    // plano, então o tempo não é problema; o custo é uma chamada da IA por página digitalizada.
+    public const int PaginasOcr = 80;
 
     public ProcessadorLeituraIa(
         IAppDbContext db, IExtratorTextoPdf extrator, ILeitorDocumentoSstIa leitor,
-        INotificacaoTeamsService notificacao, ILogger<ProcessadorLeituraIa> logger)
+        INotificacaoTeamsService notificacao, ILogger<ProcessadorLeituraIa> logger, IOcrPaginasPdf? ocr = null)
     {
         _db = db;
         _extrator = extrator;
         _leitor = leitor;
         _notificacao = notificacao;
         _logger = logger;
+        _ocr = ocr;
     }
 
     public async Task ProcessarAsync(Guid leituraId, CancellationToken ct)
@@ -50,9 +57,19 @@ public class ProcessadorLeituraIa
             if (pdf is not { Length: > 0 })
                 throw new LeituraIaException("O documento não tem PDF anexado.");
 
+            // Matriz antes de qualquer chamada à IA (OCR incluído): sem ela a leitura do PGR só falhava na
+            // montagem, depois de pagar a leitura inteira.
+            var matriz = leitura.Documento == DocumentoLeituraIa.Pgr ? await MatrizAsync(ct) : null;
+
             var paginas = _extrator.ExtrairPaginas(pdf);
+            if (_ocr is not null && paginas.Any(PaginasDigitalizadas.SemTexto))
+            {
+                leitura.Etapa = "Lendo as páginas digitalizadas (OCR)";
+                await _db.SaveChangesAsync(ct);
+                paginas = await _ocr.CompletarAsync(pdf, paginas, PaginasOcr, ct);
+            }
             if (paginas.Sum(p => p.Trim().Length) < 500)
-                throw new LeituraIaException("O PDF não tem texto legível (provavelmente foi digitalizado como imagem). Anexe o PDF original do documento.");
+                throw new LeituraIaException("Não foi possível ler o texto do PDF, nem pelas imagens das páginas. Anexe um PDF com melhor qualidade ou o original do documento.");
 
             async Task Progresso(string etapa, int feito, int total)
             {
@@ -63,7 +80,7 @@ public class ProcessadorLeituraIa
             }
 
             var resultado = leitura.Documento == DocumentoLeituraIa.Pgr
-                ? await MontarPgrAsync(leitura, await _leitor.LerPgrAsync(paginas, Progresso, ct), ct)
+                ? await MontarPgrAsync(leitura, matriz!, await _leitor.LerPgrAsync(paginas, Progresso, ct), ct)
                 : await MontarPcmsoAsync(leitura, await _leitor.LerPcmsoAsync(paginas, Progresso, ct), ct);
 
             leitura.ResultadoJson = JsonSerializer.Serialize(resultado, Json);
@@ -85,9 +102,9 @@ public class ProcessadorLeituraIa
         }
     }
 
-    private async Task<ResultadoLeituraIa> MontarPgrAsync(LeituraDocumentoIa leitura, LeituraPgrIa lida, CancellationToken ct)
+    private async Task<ResultadoLeituraIa> MontarPgrAsync(LeituraDocumentoIa leitura, Dictionary<(int P, int S), int> matriz,
+        LeituraPgrIa lida, CancellationToken ct)
     {
-        var matriz = await MatrizAsync(ct);
         var divergencias = MontagemLeituraIa.ConferirPgr(lida, matriz, DateTime.UtcNow.Date);
         var funcoes = MontagemLeituraIa.CasarFuncoes(
             lida.Ghes.SelectMany(g => g.Funcoes.Select(f => (f.Nome, f.Cbo, (int?)g.Numero, 0))),
@@ -150,7 +167,7 @@ public class ProcessadorLeituraIa
 
     private async Task<Dictionary<(int P, int S), int>> MatrizAsync(CancellationToken ct)
     {
-        var matriz = await _db.MatrizRiscoConfigs.Include(m => m.Celulas).FirstOrDefaultAsync(ct)
+        var matriz = await _db.MatrizRiscoConfigs.Include(m => m.Celulas).VigenteMaisRecente().FirstOrDefaultAsync(ct)
             ?? throw new LeituraIaException("Nenhuma matriz de risco cadastrada. Configure a matriz antes de ler o PGR.");
         return matriz.Celulas.ToDictionary(c => (c.Probabilidade, c.Severidade), c => (int)c.NivelRisco);
     }

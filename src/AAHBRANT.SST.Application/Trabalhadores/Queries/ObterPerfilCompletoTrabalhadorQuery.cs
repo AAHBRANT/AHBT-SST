@@ -160,7 +160,6 @@ public class ObterPerfilCompletoTrabalhadorQueryHandler : IRequestHandler<ObterP
 
         var asos = await _db.Asos
             .Where(a => a.TrabalhadorId == request.Id)
-            .OrderByDescending(a => a.DataValidade)
             .Select(a => new AsoDto
             {
                 Id = a.Id,
@@ -175,17 +174,12 @@ public class ObterPerfilCompletoTrabalhadorQueryHandler : IRequestHandler<ObterP
             })
             .ToListAsync(ct);
 
-        // Badge de aptidão: resultado do ASO mais recente por DataExame (o ASO mais recente pode não
-        // ser o de maior DataValidade — ex.: um retorno ao trabalho reexamina antes do vencimento).
-        var asoMaisRecente = asos.OrderByDescending(a => a.DataExame).FirstOrDefault();
-        var statusAptidao = asoMaisRecente switch
-        {
-            null => "Sem ASO",
-            { ResultadoStatus: ResultadoAso.Apto } => "Apto",
-            { ResultadoStatus: ResultadoAso.AptoComRestricao } => "Apto com restrição",
-            { ResultadoStatus: ResultadoAso.Inapto } => "Inapto",
-            _ => "Pendente",
-        };
+        // ASO vigente (regra única, ver AsoVigente): o do exame mais recente. Ele vem primeiro na lista, e é o que
+        // o PDF de fiscalização imprime; os demais são histórico superado.
+        AsoVigente.Marcar(asos);
+        asos = asos.OrderBy(a => AsoVigente.Resumo(a), AsoVigente.Comparador).ToList();
+        var vigente = asos.Count == 0 ? (AsoResumo?)null : AsoVigente.Resumo(asos[0]);
+        var statusAptidao = AsoVigente.RotuloAptidao(vigente, DateTime.UtcNow.Date);
 
         var entregasEpi = await _db.EntregasEpi
             .Where(x => x.TrabalhadorId == request.Id)

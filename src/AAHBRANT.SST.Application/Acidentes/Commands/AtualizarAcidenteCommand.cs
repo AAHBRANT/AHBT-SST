@@ -28,7 +28,10 @@ public record AtualizarAcidenteCommand(
     string? Causas,
     GravidadeAcidente Gravidade,
     int? DiasDebitadosInformados,
-    List<Guid>? TrabalhadoresIds = null) : IRequest;
+    List<Guid>? TrabalhadoresIds = null,
+    // null = mantém as partes do corpo já gravadas (telas que salvam outros dados não mandam o mapa);
+    // lista vazia = limpa.
+    List<string>? RegioesCorpo = null) : IRequest;
 
 public class AtualizarAcidenteCommandValidator : AbstractValidator<AtualizarAcidenteCommand>
 {
@@ -48,6 +51,9 @@ public class AtualizarAcidenteCommandValidator : AbstractValidator<AtualizarAcid
             .NotNull().WithMessage("Informe os Dias Debitados consultando o Quadro III da NBR 14280.")
             .GreaterThan(0)
             .When(x => x.Gravidade == GravidadeAcidente.IncapacidadePermanenteParcial);
+        RuleFor(x => x.RegioesCorpo!.Count).LessThanOrEqualTo(RegioesCorpoAcidente.MaximoRegioes)
+            .When(x => x.RegioesCorpo is not null);
+        RuleForEach(x => x.RegioesCorpo).Must(RegioesCorpoAcidente.CodigoValido).WithMessage("Parte do corpo inválida: {PropertyValue}.");
     }
 }
 
@@ -86,6 +92,8 @@ public class AtualizarAcidenteCommandHandler : IRequestHandler<AtualizarAcidente
         acidente.Hora = request.Hora;
         acidente.Descricao = request.Descricao;
         acidente.Lesao = request.Lesao;
+        if (request.RegioesCorpo is not null)
+            acidente.RegioesCorpo = RegioesCorpoAcidente.Gravar(request.RegioesCorpo);
         acidente.Consequencia = request.Consequencia;
         acidente.Atendimento = request.Atendimento;
         acidente.HouveAfastamento = request.HouveAfastamento;

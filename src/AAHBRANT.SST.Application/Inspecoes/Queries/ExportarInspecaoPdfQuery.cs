@@ -74,6 +74,16 @@ public class ExportarInspecaoPdfQueryHandler : IRequestHandler<ExportarInspecaoP
             if (!string.IsNullOrWhiteSpace(i.VeiculoMarcaModelo)) identificacaoVeiculo.Add($"Marca/Modelo: {i.VeiculoMarcaModelo}");
             if (!string.IsNullOrWhiteSpace(i.VeiculoEmpresa)) identificacaoVeiculo.Add($"Subcontratada: {i.VeiculoEmpresa}");
         }
+        else if (detalhe.Inspecao.ItemInspecionavelId is not null)
+        {
+            // Item de tema criado pelo usuário (ex.: um andaime): mesma linha de identificação dos veículos.
+            var i = detalhe.Inspecao;
+            identificacaoVeiculo = new List<string>
+            {
+                $"Tema: {i.TemaInspecaoNome ?? "—"}",
+                $"Item: {i.ItemInspecionavelIdentificacao ?? "—"}",
+            };
+        }
 
         var modelo = new InspecaoPdfModelo(
             detalhe.Inspecao.ObraNome,
@@ -92,7 +102,7 @@ public class ExportarInspecaoPdfQueryHandler : IRequestHandler<ExportarInspecaoP
             assinatura is not null || rastreio.TemAssinatura,
             assinatura,
             identificacaoVeiculo,
-            detalhe.Inspecao.TipoInspecao == TipoInspecao.Veiculo);
+            detalhe.Inspecao.TipoInspecao is TipoInspecao.Veiculo or TipoInspecao.Tema);
 
         var pdf = _pdf.Gerar(modelo);
         // Guarda a cópia exata emitida e o SHA-256 dela — é o que permite conferir, depois,
@@ -162,6 +172,7 @@ public class ExportarInspecaoPdfQueryHandler : IRequestHandler<ExportarInspecaoP
         TipoInspecao.Terceiros => "Terceiros",
         TipoInspecao.Alojamento => "Alojamento",
         TipoInspecao.Veiculo => "Veículo",
+        TipoInspecao.Tema => "Tema",
         _ => tipo.ToString(),
     };
 

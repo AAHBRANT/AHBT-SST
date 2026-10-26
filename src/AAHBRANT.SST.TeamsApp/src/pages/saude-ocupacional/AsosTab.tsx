@@ -66,21 +66,25 @@ function formatarData(iso: string) {
   return `${dia}/${mes}/${ano}`;
 }
 
-// ASO dentro da validade é apto (regra do usuário, 13/10): o G-RH manda o ASO sem o campo de
-// aptidão, então "Pendente" é só falta do dado e é mostrado como Apto nesta lista.
-function parecerExibido(resultado: number) {
-  return resultado === ResultadoAso.Pendente ? ResultadoAso.Apto : resultado;
-}
-
 // "Situação hoje" cruza validade e parecer (pedido do usuário, 13/10): antes a linha mostrava
 // "Vencido" na validade e "Apto" no resultado lado a lado, e quem lia entendia que o trabalhador
 // estava liberado. Vencimento vence qualquer parecer; parecer só decide quando o exame ainda vale.
+// Regra única do ASO vigente (26/10): só o ASO do exame mais recente da pessoa é avaliado; os anteriores aparecem como
+// "Superado" (histórico, nunca "Vencido" nem bloqueio) e o exame sem parecer aparece como "Sem parecer", não como Apto.
 function situacaoHoje(aso: Aso): { tom: Tom; rotulo: string; detalhe?: string } {
+  if (aso.vigente === false)
+    return {
+      tom: 'neutro',
+      rotulo: 'Superado',
+      detalhe: aso.substituidoPorDataExame ? `Substituído pelo exame de ${formatarData(aso.substituidoPorDataExame)}` : 'Substituído por exame mais recente',
+    };
   const dias = diasAteValidade(aso.dataValidade);
   if (dias < 0)
     return { tom: 'alerta', rotulo: 'Vencido', detalhe: `Refazer exame · venceu há ${-dias} ${-dias === 1 ? 'dia' : 'dias'}` };
   if (aso.resultadoStatus === ResultadoAso.Inapto)
     return { tom: 'alerta', rotulo: 'Não liberado', detalhe: 'Inapto no exame' };
+  if (aso.resultadoStatus === ResultadoAso.Pendente)
+    return { tom: 'atencao', rotulo: 'Sem parecer', detalhe: 'Lançar o resultado no G-RH ou editar o ASO' };
   if (dias <= LIMIAR_ALERTA_DIAS)
     return { tom: 'atencao', rotulo: dias === 0 ? 'Vence hoje' : `Vence em ${dias} ${dias === 1 ? 'dia' : 'dias'}`, detalhe: 'Agendar periódico' };
   if (aso.resultadoStatus === ResultadoAso.AptoComRestricao) return { tom: 'atencao', rotulo: 'Liberado com restrição' };
@@ -102,9 +106,10 @@ function agruparRepetidos(lista: Aso[]): AsoAgrupado[] {
     if (!atual) {
       grupos.set(chave, { ...aso, copias: 1 });
     } else if (atual.resultadoStatus === ResultadoAso.Pendente && aso.resultadoStatus !== ResultadoAso.Pendente) {
-      grupos.set(chave, { ...aso, copias: atual.copias + 1 });
+      grupos.set(chave, { ...aso, copias: atual.copias + 1, vigente: atual.vigente || aso.vigente });
     } else {
       atual.copias += 1;
+      atual.vigente = atual.vigente || aso.vigente;
     }
   }
   return [...grupos.values()];
@@ -287,15 +292,15 @@ export function AsosTab() {
               </option>
             ))}
           </Select>
-        ) : diasAteValidade(a.dataValidade) < 0 ? (
-          // Exame vencido: o parecer é só histórico, então fica apagado e sem pulsar.
+        ) : a.vigente === false || diasAteValidade(a.dataValidade) < 0 ? (
+          // Exame vencido ou superado: o parecer é só histórico, então fica apagado e sem pulsar.
           <>
-            <StatusChip tom="neutro">{resultadoAsoLabel[parecerExibido(a.resultadoStatus)]}</StatusChip>
+            <StatusChip tom="neutro">{resultadoAsoLabel[a.resultadoStatus]}</StatusChip>
             <span style={estiloLinhaApoio}>no exame de {formatarData(a.dataExame)}</span>
           </>
         ) : (
-          <StatusChip tom={tomPorResultadoAso[parecerExibido(a.resultadoStatus)] ?? 'neutro'}>
-            {resultadoAsoLabel[parecerExibido(a.resultadoStatus)]}
+          <StatusChip tom={tomPorResultadoAso[a.resultadoStatus] ?? 'neutro'}>
+            {resultadoAsoLabel[a.resultadoStatus]}
           </StatusChip>
         ),
     },

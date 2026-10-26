@@ -1,4 +1,6 @@
 import Dexie, { type Table } from 'dexie';
+import type { InspecaoDetalhe, ChecklistModeloDetalhe, Obra, Atividade, Usuario } from '../api';
+import type { DadosFoto } from '../dadosFoto';
 
 // Banco local (IndexedDB) do modo offline. Um por dispositivo/navegador — não é compartilhado
 // entre usuários nem sincronizado por conta própria; é só a "caixa de saída" e o cache de leitura
@@ -19,6 +21,38 @@ export interface ItemFilaSaida {
   // Conta (tenant:oid do token) que registrou a ação. Só ela reenvia: outra pessoa logada no mesmo
   // navegador não manda a ação em nome dela (auditoria 19/10, A04). Ausente em itens antigos.
   conta?: string;
+  // Agrupa as dependências de uma inspeção: encerrar nunca ultrapassa respostas/fotos pendentes.
+  inspecaoId?: string;
+  versaoResposta?: string | null;
+}
+
+export interface RascunhoItemInspecao {
+  versaoResposta?: string | null;
+  descricao: string; statusItem: string; observacao: string; local: string;
+  planoDeAcao: string; responsavelUsuarioId: string; prazo: string;
+}
+
+export interface InspecaoLocal {
+  criadaLocalmente?: boolean;
+  chave: string;
+  conta: string;
+  id: string;
+  detalhe: InspecaoDetalhe;
+  confirmado: InspecaoDetalhe;
+  revisaoServidor: number;
+  rascunhos: Record<string, RascunhoItemInspecao>;
+  fotos: Record<string, { blob: Blob; dados?: DadosFoto; rascunho?: boolean }>;
+  atualizadoEm: number;
+}
+
+export interface PreparacaoInspecoes {
+  totalModelos?: number;
+  conta: string;
+  modelos: Record<string, ChecklistModeloDetalhe>;
+  obras: Obra[];
+  atividades: Atividade[];
+  usuarios: Usuario[];
+  atualizadoEm: number;
 }
 
 export interface ItemCacheJson {
@@ -52,6 +86,8 @@ class SstOfflineDb extends Dexie {
   cacheJson!: Table<ItemCacheJson, string>;
   cacheBlob!: Table<ItemCacheBlob, string>;
   conflitos!: Table<ItemConflito, number>;
+  inspecoesLocais!: Table<InspecaoLocal, string>;
+  preparacaoInspecoes!: Table<PreparacaoInspecoes, string>;
 
   constructor() {
     super('aahbrant-sst-offline');
@@ -61,6 +97,8 @@ class SstOfflineDb extends Dexie {
       cacheBlob: 'url, atualizadoEm',
       conflitos: '++id, criadoEm',
     });
+    this.version(2).stores({ inspecoesLocais: 'chave, conta, id' });
+    this.version(3).stores({ preparacaoInspecoes: 'conta' });
   }
 }
 

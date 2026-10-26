@@ -8,6 +8,8 @@ public class ChecklistModeloDto
     public string Nome { get; set; } = string.Empty;
     public TipoInspecao TipoInspecao { get; set; }
     public TipoVeiculo? TipoVeiculo { get; set; }
+    // Só nos checklists de temas criados pelo usuário (TipoInspecao = Tema).
+    public Guid? TemaInspecaoId { get; set; }
     public int Versao { get; set; }
     public Guid? ChecklistModeloAnteriorId { get; set; }
     public int QuantidadeItens { get; set; }

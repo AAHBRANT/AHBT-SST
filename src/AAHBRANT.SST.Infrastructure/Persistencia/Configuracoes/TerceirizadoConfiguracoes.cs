@@ -37,6 +37,49 @@ public class ArquivoContratoConfiguracao : IEntityTypeConfiguration<ArquivoContr
     }
 }
 
+public class DocumentoExigidoEmpresaConfiguracao : IEntityTypeConfiguration<DocumentoExigidoEmpresa>
+{
+    public void Configure(EntityTypeBuilder<DocumentoExigidoEmpresa> builder)
+    {
+        builder.ToTable("DocumentosExigidosEmpresa");
+        builder.Property(d => d.Nome).IsRequired().HasMaxLength(120);
+        builder.Property(d => d.Descricao).HasMaxLength(500);
+        // Sem filtro de Ativo: desativado continua aparecendo na configuração (para reativar) e
+        // nos documentos já enviados; quem monta o checklist filtra por Ativo.
+    }
+}
+
+public class DocumentoEmpresaTerceirizadaConfiguracao : IEntityTypeConfiguration<DocumentoEmpresaTerceirizada>
+{
+    public void Configure(EntityTypeBuilder<DocumentoEmpresaTerceirizada> builder)
+    {
+        builder.ToTable("DocumentosEmpresaTerceirizada");
+        builder.Property(d => d.NomeArquivo).IsRequired().HasMaxLength(260);
+        builder.Property(d => d.ContentType).IsRequired().HasMaxLength(150);
+        builder.HasOne(d => d.Empresa).WithMany(e => e.Documentos)
+            .HasForeignKey(d => d.EmpresaId)
+            .OnDelete(DeleteBehavior.Cascade);
+        builder.HasOne(d => d.DocumentoExigido).WithMany()
+            .HasForeignKey(d => d.DocumentoExigidoEmpresaId)
+            .OnDelete(DeleteBehavior.Restrict);
+        builder.HasIndex(d => new { d.EmpresaId, d.DocumentoExigidoEmpresaId }).IsUnique();
+        builder.HasQueryFilter(d => d.Ativo);
+    }
+}
+
+public class ArquivoDocumentoEmpresaTerceirizadaConfiguracao : IEntityTypeConfiguration<ArquivoDocumentoEmpresaTerceirizada>
+{
+    public void Configure(EntityTypeBuilder<ArquivoDocumentoEmpresaTerceirizada> builder)
+    {
+        builder.ToTable("ArquivosDocumentoEmpresaTerceirizada");
+        builder.HasOne(a => a.Documento).WithOne(d => d.Arquivo)
+            .HasForeignKey<ArquivoDocumentoEmpresaTerceirizada>(a => a.DocumentoEmpresaTerceirizadaId)
+            .OnDelete(DeleteBehavior.Cascade);
+        builder.HasIndex(a => a.DocumentoEmpresaTerceirizadaId).IsUnique();
+        builder.HasQueryFilter(a => a.Ativo);
+    }
+}
+
 public class ContratoConfiguracao : IEntityTypeConfiguration<Contrato>
 {
     public void Configure(EntityTypeBuilder<Contrato> builder)

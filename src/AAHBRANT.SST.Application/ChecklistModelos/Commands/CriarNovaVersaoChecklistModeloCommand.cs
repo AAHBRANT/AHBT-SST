@@ -38,6 +38,8 @@ public class CriarNovaVersaoChecklistModeloCommandHandler : IRequestHandler<Cria
             Nome = anterior.Nome,
             TipoInspecao = anterior.TipoInspecao,
             TipoVeiculo = anterior.TipoVeiculo,
+            // Sem copiar o tema, a nova versão do checklist de um tema deixaria de ser achada por ele.
+            TemaInspecaoId = anterior.TemaInspecaoId,
             Versao = anterior.Versao + 1,
             ChecklistModeloAnteriorId = anterior.Id,
         };

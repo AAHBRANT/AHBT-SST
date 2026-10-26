@@ -194,6 +194,7 @@ export function ObrasPage() {
             temFoto={o.temLogo}
             baixarFoto={api.obras.baixarLogo}
             tamanho="compacta"
+            permitirCamera={false}
             aoSelecionarArquivo={(arquivo) => enviarLogo(o.id, arquivo)}
             aoErroValidacao={setErroLista}
           />
