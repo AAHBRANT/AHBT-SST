@@ -87,9 +87,9 @@ public class AzureOpenAiClassificadorOcorrencia : IClassificadorRelatoOcorrencia
 
     private static readonly CultureInfo PtBr = new("pt-BR");
 
-    private readonly AzureOpenAiChatJsonCliente _chat;
+    private readonly ClaudeChatJsonCliente _chat;
 
-    public AzureOpenAiClassificadorOcorrencia(AzureOpenAiChatJsonCliente chat) => _chat = chat;
+    public AzureOpenAiClassificadorOcorrencia(ClaudeChatJsonCliente chat) => _chat = chat;
 
     public async Task<OcorrenciaSugeridaIa> ClassificarAsync(
         string relato,

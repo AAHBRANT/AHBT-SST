@@ -7,21 +7,21 @@ using Microsoft.Extensions.Options;
 namespace AAHBRANT.SST.Infrastructure.Integracao.SuporteIa;
 
 /// <summary>
-/// Chamada de chat ao deployment gpt5mini do Azure OpenAI com saída estruturada (json_schema
+/// Chamada de chat ao Claude (Anthropic) com saída estruturada (json_schema
 /// strict). Compartilhada pelos classificadores de relato (Suporte IA e Ocorrências).
 /// </summary>
-public class AzureOpenAiChatJsonCliente
+public class ClaudeChatJsonCliente
 {
     private readonly IHttpClientFactory _httpClientFactory;
     private readonly IOptions<AzureOpenAiOptions> _options;
     private readonly IOptions<ClaudeOptions> _claude;
-    private readonly ILogger<AzureOpenAiChatJsonCliente> _logger;
+    private readonly ILogger<ClaudeChatJsonCliente> _logger;
 
-    public AzureOpenAiChatJsonCliente(
+    public ClaudeChatJsonCliente(
         IHttpClientFactory httpClientFactory,
         IOptions<AzureOpenAiOptions> options,
         IOptions<ClaudeOptions> claude,
-        ILogger<AzureOpenAiChatJsonCliente> logger)
+        ILogger<ClaudeChatJsonCliente> logger)
     {
         _httpClientFactory = httpClientFactory;
         _options = options;

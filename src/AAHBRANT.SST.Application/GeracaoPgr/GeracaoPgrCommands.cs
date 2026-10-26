@@ -87,6 +87,13 @@ internal static class SerializacaoGeracao
 // O que ainda impede a aprovação. A tela mostra a lista; o botão Aprovar só libera com ela vazia.
 public static class PendenciasGeracaoPgr
 {
+    // Itens da EAP marcados que entram nos GHEs (mesma regra da sugestão de GHEs).
+    public static List<ItemEapGerado> AtividadesDaEap(EstruturaGeracaoPgr e)
+    {
+        var usadas = e.Itens.Where(i => i.Usar && i.Nivel >= 2).ToList();
+        return usadas.Count > 0 ? usadas : e.Itens.Where(i => i.Usar).ToList();
+    }
+
     // epis: EPIs do catálogo usados nas medidas, para conferir o CA (NR-06). Sem o dicionário, o CA não é conferido.
     public static List<string> Calcular(EstruturaGeracaoPgr e, int maxP, int maxS, IReadOnlyDictionary<Guid, CatalogoEpiInfo>? epis = null)
     {
@@ -107,6 +114,19 @@ public static class PendenciasGeracaoPgr
             if (a.Prazo is null) p.Add($"Plano de ação \"{resumo}\" sem prazo.");
         }
         if (e.Ghes.Count == 0) p.Add("Nenhum GHE definido.");
+
+        foreach (var dup in e.Ghes.GroupBy(g => g.Numero).Where(x => x.Count() > 1))
+            p.Add($"Número de GHE repetido: {dup.Key:00}.");
+        foreach (var dup in e.Ghes.Where(g => !string.IsNullOrWhiteSpace(g.Nome)).GroupBy(g => FuncaoSstClassifier.Normalizar(g.Nome)).Where(x => x.Count() > 1))
+            p.Add($"GHE com nome repetido: {dup.First().Nome}. Junte ou renomeie.");
+        foreach (var dup in e.Ghes.SelectMany(g => g.Atividades.Select(a => (g.Numero, a))).GroupBy(x => x.a.CodigoEap).Where(x => x.Count() > 1))
+            p.Add($"Atividade {dup.Key} {dup.First().a.Nome} está em mais de um GHE ({string.Join(", ", dup.Select(y => $"{y.Numero:00}").Distinct())}).");
+        if (e.Ghes.Count > 0)
+        {
+            var noGhe = e.Ghes.SelectMany(g => g.Atividades.Select(a => a.CodigoEap)).ToHashSet();
+            foreach (var i in AtividadesDaEap(e).Where(i => !noGhe.Contains(i.Codigo)))
+                p.Add($"Atividade da EAP sem GHE: {i.Codigo} {i.Nome}.");
+        }
         foreach (var g in e.Ghes)
         {
             var nome = $"GHE {g.Numero:00}";
@@ -322,8 +342,7 @@ public class SugerirGhesGeracaoPgrCommandHandler : IRequestHandler<SugerirGhesGe
         SerializacaoGeracao.GarantirEditavel(g);
         var e = SerializacaoGeracao.Ler(g.EstruturaJson);
 
-        var usadas = e.Itens.Where(i => i.Usar && i.Nivel >= 2).ToList();
-        if (usadas.Count == 0) usadas = e.Itens.Where(i => i.Usar).ToList();
+        var usadas = PendenciasGeracaoPgr.AtividadesDaEap(e);
         if (usadas.Count == 0) throw new InvalidOperationException("Marque ao menos um item da EAP para entrar no PGR.");
 
         var funcoes = await _db.Funcoes.Select(f => new { f.Id, f.Nome }).ToListAsync(ct);
@@ -332,16 +351,39 @@ public class SugerirGhesGeracaoPgrCommandHandler : IRequestHandler<SugerirGhesGe
         // Casa a função sugerida com o cadastro pelo nome normalizado (a IA recebeu a lista exata).
         var porNome = funcoes.GroupBy(f => FuncaoSstClassifier.Normalizar(f.Nome)).ToDictionary(x => x.Key, x => x.First().Id);
         var codigos = usadas.ToDictionary(i => i.Codigo, i => i.Nome);
-        var numero = 1;
         foreach (var ghe in ghes)
         {
-            ghe.Numero = numero++;
             foreach (var f in ghe.Funcoes)
                 f.FuncaoId = porNome.TryGetValue(FuncaoSstClassifier.Normalizar(f.Nome), out var id) ? id : null;
             // Só atividades que existem na EAP marcada; o nome vem da EAP, não da IA.
             ghe.Atividades = ghe.Atividades.Where(a => codigos.ContainsKey(a.CodigoEap))
                 .GroupBy(a => a.CodigoEap).Select(x => new AtividadeGerada { CodigoEap = x.Key, Nome = codigos[x.Key] }).ToList();
         }
+
+        // Cada atividade da EAP fica em um único GHE (vale a primeira ocorrência): a IA pode repetir, e a
+        // repetição geraria o mesmo risco duas vezes no PGR.
+        var vistas = new HashSet<string>();
+        foreach (var ghe in ghes) ghe.Atividades = ghe.Atividades.Where(a => vistas.Add(a.CodigoEap)).ToList();
+
+        // GHEs com o mesmo nome viram um só, e a mesma função não entra duas vezes no GHE.
+        var unicos = new List<GheGerado>();
+        foreach (var ghe in ghes)
+        {
+            var chave = FuncaoSstClassifier.Normalizar(ghe.Nome);
+            var existente = chave.Length == 0 ? null : unicos.FirstOrDefault(x => FuncaoSstClassifier.Normalizar(x.Nome) == chave);
+            if (existente is null) { unicos.Add(ghe); continue; }
+            existente.Atividades.AddRange(ghe.Atividades);
+            existente.Funcoes.AddRange(ghe.Funcoes);
+        }
+        foreach (var ghe in unicos)
+        {
+            var funcoesVistas = new HashSet<string>();
+            ghe.Funcoes = ghe.Funcoes.Where(f => funcoesVistas.Add(FuncaoSstClassifier.Normalizar(f.Nome))).ToList();
+        }
+
+        var numero = 1;
+        foreach (var ghe in unicos) ghe.Numero = numero++;
+        ghes = unicos;
 
         e.Ghes = ghes.Where(x => x.Funcoes.Count > 0 || x.Atividades.Count > 0).ToList();
         g.EstruturaJson = SerializacaoGeracao.Gravar(e);
@@ -395,7 +437,11 @@ public class GerarRiscosAtividadeGeracaoPgrCommandHandler : IRequestHandler<Gera
             r.Revisado = false;
         }
 
-        atividade.Riscos = atividade.Riscos.Where(r => r.Revisado && !r.Excluido).Concat(riscos).ToList();
+        // A IA não vê o que já foi revisado e repete perigos: fica um só por perigo, o revisado ganha.
+        var mantidos = atividade.Riscos.Where(r => r.Revisado && !r.Excluido).ToList();
+        var perigosVistos = mantidos.Select(r => FuncaoSstClassifier.Normalizar(r.Perigo)).ToHashSet();
+        riscos = riscos.Where(r => perigosVistos.Add(FuncaoSstClassifier.Normalizar(r.Perigo))).ToList();
+        atividade.Riscos = mantidos.Concat(riscos).ToList();
         atividade.RiscosGerados = true;
         g.EstruturaJson = SerializacaoGeracao.Gravar(e);
         g.Passo = Math.Max(g.Passo, 4);

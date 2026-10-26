@@ -80,9 +80,9 @@ public class ClaudeClassificadorDocumentoTerceirizado : IClassificadorDocumentoT
         additionalProperties = false,
     };
 
-    private readonly AzureOpenAiChatJsonCliente _chat;
+    private readonly ClaudeChatJsonCliente _chat;
 
-    public ClaudeClassificadorDocumentoTerceirizado(AzureOpenAiChatJsonCliente chat) => _chat = chat;
+    public ClaudeClassificadorDocumentoTerceirizado(ClaudeChatJsonCliente chat) => _chat = chat;
 
     public async Task<DocumentoTerceirizadoLidoIa> ClassificarAsync(string nomeArquivo, IReadOnlyList<string> paginas, byte[]? imagem,
         IReadOnlyList<string> documentosEmpresa, IReadOnlyList<string> cursos, CancellationToken ct)

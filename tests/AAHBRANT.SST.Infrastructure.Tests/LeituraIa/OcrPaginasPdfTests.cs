@@ -90,10 +90,10 @@ public class OcrPaginasPdfTests
             var json = System.Text.Json.JsonSerializer.Serialize(new { content = new[] { new { type = "text", text = conteudo } } });
             return new HttpResponseMessage(status) { Content = new StringContent(json, Encoding.UTF8, "application/json") };
         });
-        var chat = new AzureOpenAiChatJsonCliente(fabrica,
+        var chat = new ClaudeChatJsonCliente(fabrica,
             Options.Create(new AzureOpenAiOptions()),
             Options.Create(new ClaudeOptions { ApiKey = "chave-de-teste" }),
-            NullLogger<AzureOpenAiChatJsonCliente>.Instance);
+            NullLogger<ClaudeChatJsonCliente>.Instance);
         return (new AzureOpenAiOcrPaginasPdf(chat, NullLogger<AzureOpenAiOcrPaginasPdf>.Instance), corpos);
     }
 

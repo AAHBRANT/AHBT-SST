@@ -15,9 +15,9 @@ public class AzureOpenAiLeitorDocumentoSst : ILeitorDocumentoSstIa, ILeitorCabec
     private const int Paralelismo = 4;
     private const int MaxPaginasPorParte = 10;
 
-    private readonly AzureOpenAiChatJsonCliente _chat;
+    private readonly ClaudeChatJsonCliente _chat;
 
-    public AzureOpenAiLeitorDocumentoSst(AzureOpenAiChatJsonCliente chat) => _chat = chat;
+    public AzureOpenAiLeitorDocumentoSst(ClaudeChatJsonCliente chat) => _chat = chat;
 
     // ===================== PGR =====================
 

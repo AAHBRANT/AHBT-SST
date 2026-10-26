@@ -55,9 +55,9 @@ public class AzureOpenAiAnalistaItensAtividadeOs : IAnalistaItensAtividadeOs
         },
     };
 
-    private readonly AzureOpenAiChatJsonCliente _chat;
+    private readonly ClaudeChatJsonCliente _chat;
 
-    public AzureOpenAiAnalistaItensAtividadeOs(AzureOpenAiChatJsonCliente chat) => _chat = chat;
+    public AzureOpenAiAnalistaItensAtividadeOs(ClaudeChatJsonCliente chat) => _chat = chat;
 
     public async Task<IReadOnlyList<ItemSugeridoIa>> SugerirAsync(ContextoItensAtividadeOs c, CancellationToken ct)
     {
