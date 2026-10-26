@@ -149,9 +149,10 @@ public class GraphCalendarioTeamsService : ICalendarioTeamsService, IReuniaoTeam
         IReadOnlyList<string> emailsConvidados, CancellationToken ct = default)
     {
         var (httpClient, aadObjectId) = await PrepararRequisicaoAsync(organizadorUsuarioId, ct);
+        var caixa = string.IsNullOrWhiteSpace(_opcoes.CaixaReunioes) ? aadObjectId : _opcoes.CaixaReunioes.Trim();
 
         using var requisicao = new HttpRequestMessage(
-            HttpMethod.Post, $"https://graph.microsoft.com/v1.0/users/{aadObjectId}/events")
+            HttpMethod.Post, $"https://graph.microsoft.com/v1.0/users/{Uri.EscapeDataString(caixa)}/events")
         {
             Content = JsonContent.Create(MontarReuniao(titulo, descricao, inicio, fim, emailsConvidados)),
         };

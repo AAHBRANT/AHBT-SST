@@ -1570,6 +1570,17 @@ public static class NovidadesSeeder
                     "Ao clicar na logo na tela de Obras, o sistema abria a câmera e não deixava escolher um arquivo.",
                     "Agora o clique abre direto o seletor de arquivos (PNG ou JPEG), para enviar de novo a logo que aparece no cabeçalho dos documentos."),
             }),
+        new(
+            Versao: "5.89.0",
+            Titulo: "Reunião de análise volta a ser criada no Teams",
+            DataPublicacao: new DateTime(2026, 10, 26, 0, 0, 0, DateTimeKind.Utc),
+            Itens: new[]
+            {
+                new NovidadeSeedItem(CategoriaNovidade.Correcao,
+                    "Reunião de análise de acidente criada pela caixa do SST",
+                    "Ao registrar um acidente ou quase acidente, a reunião de análise aparecia como \"Fora do Teams\" com erro de acesso negado.",
+                    "Agora o convite sai da caixa do SST, com o link do Teams, e os participantes entram como convidados. Reuniões que falharam podem ser criadas de novo pelo botão Tentar de novo no Teams."),
+            }),
     };
 
     public static async Task ExecutarAsync(IServiceProvider services, CancellationToken ct = default)
