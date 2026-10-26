@@ -10,7 +10,7 @@ import {
 import { Button, Checkbox, Text, FeedbackInline } from '@ui';
 import { BotaoBiometriaDigital } from '../assinatura/BotaoBiometriaDigital';
 import { api, DedoBiometria } from '../../lib/api';
-import { capturarDigitalParaCadastro, estaAgenteLocalDisponivel } from '../../lib/agenteBiometricoLocal';
+import { capturarDigitalParaCadastro, estaAgenteLocalDisponivel, sincronizarTemplatesLocal } from '../../lib/agenteBiometricoLocal';
 
 interface CadastroDigitalDialogProps {
   trabalhadorId: string | null;
@@ -118,6 +118,9 @@ export function CadastroDigitalDialog({
       setErro(null);
       const captura = await capturarDigitalParaCadastro(setEtapaCaptura);
       await api.trabalhadores.cadastrarBiometriaLocal(trabalhadorId, captura.templateBruto, captura.imagemPng, dedo);
+      // O agente só atualiza o cache sozinho a cada 2 minutos; sem isto, assinar logo após cadastrar
+      // compara com as digitais antigas e dá "similaridade menor". Se falhar, o cache se atualiza sozinho.
+      await sincronizarTemplatesLocal().catch(() => undefined);
       setCadastrada(true);
       aoConcluir?.();
     } catch (e) {
