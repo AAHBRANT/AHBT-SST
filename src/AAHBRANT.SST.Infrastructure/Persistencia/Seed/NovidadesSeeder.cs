@@ -1611,6 +1611,17 @@ public static class NovidadesSeeder
                     "Na aba ASOs, o exame sem parecer do médico era mostrado como Apto.",
                     "O exame mais recente sem parecer aparece como \"Sem parecer\" e não libera a pessoa até o resultado ser lançado no G-RH ou editado no ASO."),
             }),
+        new(
+            Versao: "5.92.0",
+            Titulo: "Início: veja quem está bloqueado e por quê",
+            DataPublicacao: new DateTime(2026, 10, 26, 0, 0, 0, DateTimeKind.Utc),
+            Itens: new[]
+            {
+                new NovidadeSeedItem(CategoriaNovidade.Melhoria,
+                    "Lista de bloqueados no card \"Podem trabalhar hoje\"",
+                    "O card mostrava só o número de bloqueados, sem dizer quem eram nem o motivo.",
+                    "Clique no card (ou em \"Ver quem está bloqueado\") para abrir a lista com o nome, a função e a obra de cada pessoa e o motivo do bloqueio: ASO vencido, inapto, sem parecer ou ausente, e treinamento vencido ou nunca feito. É possível filtrar por ASO ou treinamento e abrir o perfil da pessoa."),
+            }),
     };
 
     public static async Task ExecutarAsync(IServiceProvider services, CancellationToken ct = default)

@@ -26,11 +26,20 @@ public record ObterLiberacaoParaTrabalhoQuery(Guid? ObraId = null) : IRequest<Li
 /// <param name="SemAso">Dos sem ASO válido: nenhum ASO cadastrado.</param>
 /// <remarks>Uma pessoa pode ter mais de um motivo, então os motivos não somam o total de bloqueados. Já os 4 motivos
 /// do ASO são exclusivos e somam SemAsoValido.</remarks>
+/// <param name="PessoasBloqueadas">Quem está bloqueado, com função, obra e o motivo de cada bloqueio.</param>
 public record LiberacaoTrabalhoDto(int Ativos, int Liberados, int SemAsoValido, int TreinamentoPendente,
-    int AsoSemResultado = 0, int AsoInapto = 0, int AsoVencido = 0, int SemAso = 0)
+    int AsoSemResultado = 0, int AsoInapto = 0, int AsoVencido = 0, int SemAso = 0,
+    IReadOnlyList<PessoaBloqueadaDto>? PessoasBloqueadas = null)
 {
     public int Bloqueados => Ativos - Liberados;
+    public IReadOnlyList<PessoaBloqueadaDto> PessoasBloqueadas { get; init; } = PessoasBloqueadas ?? [];
 }
+
+/// <param name="Tipo">"Aso" ou "Treinamento", para o filtro da tela.</param>
+public record MotivoBloqueioDto(string Tipo, string Texto);
+
+public record PessoaBloqueadaDto(Guid TrabalhadorId, string Nome, string? Funcao, string? Obra,
+    IReadOnlyList<MotivoBloqueioDto> Motivos);
 
 public class ObterLiberacaoParaTrabalhoQueryHandler : IRequestHandler<ObterLiberacaoParaTrabalhoQuery, LiberacaoTrabalhoDto>
 {
@@ -45,13 +54,16 @@ public class ObterLiberacaoParaTrabalhoQueryHandler : IRequestHandler<ObterLiber
         // navegação obrigatória faria o INNER JOIN esconder a linha quando o pai está excluído (soft delete).
         var trabalhadoresQuery = _db.Trabalhadores.Where(t => t.DataDemissao == null);
         if (request.ObraId is { } obraId) trabalhadoresQuery = trabalhadoresQuery.Where(t => t.ObraId == obraId);
-        var trabalhadores = await trabalhadoresQuery.Select(t => new { t.Id, t.FuncaoId, t.Vinculo }).ToListAsync(ct);
+        var trabalhadores = await trabalhadoresQuery.Select(t => new { t.Id, t.Nome, t.ObraId, t.FuncaoId, t.Vinculo }).ToListAsync(ct);
         var ids = trabalhadores.Select(t => t.Id).ToList();
 
-        var funcoesIsentas = (await _db.Funcoes.Select(f => new { f.Id, f.Nome }).ToListAsync(ct))
+        var funcoes = await _db.Funcoes.Select(f => new { f.Id, f.Nome }).ToListAsync(ct);
+        var nomeFuncao = funcoes.ToDictionary(f => f.Id, f => f.Nome);
+        var funcoesIsentas = funcoes
             .Where(f => FuncaoSstClassifier.EhTecnicoSeguranca(f.Nome))
             .Select(f => f.Id)
             .ToHashSet();
+        var nomeObra = (await _db.Obras.Select(o => new { o.Id, o.Nome }).ToListAsync(ct)).ToDictionary(o => o.Id, o => o.Nome);
 
         // ASO vigente de cada pessoa (regra única, ver AsoVigente): o exame mais recente decide.
         var vigentes = AsoVigente.PorTrabalhador((await _db.Asos
@@ -59,7 +71,7 @@ public class ObterLiberacaoParaTrabalhoQueryHandler : IRequestHandler<ObterLiber
                 .Select(a => new AsoResumo(a.Id, a.TrabalhadorId, a.DataExame, a.DataValidade, a.ResultadoStatus))
                 .ToListAsync(ct)));
 
-        var cursosExistentes = (await _db.CursosTreinamento.Select(c => new { c.Id, c.EhIntegracaoSeguranca }).ToListAsync(ct))
+        var cursosExistentes = (await _db.CursosTreinamento.Select(c => new { c.Id, c.Nome, c.NormaReferencia, c.EhIntegracaoSeguranca }).ToListAsync(ct))
             .ToDictionary(c => c.Id);
         var cursoIntegracaoId = cursosExistentes.Values.FirstOrDefault(c => c.EhIntegracaoSeguranca)?.Id;
 
@@ -70,23 +82,30 @@ public class ObterLiberacaoParaTrabalhoQueryHandler : IRequestHandler<ObterLiber
             .GroupBy(m => m.FuncaoId)
             .ToDictionary(g => g.Key, g => g.Select(m => m.CursoTreinamentoId).Distinct().ToList());
 
-        var treinamentosValidos = (await _db.Treinamentos
-                .Where(t => ids.Contains(t.TrabalhadorId))
-                .Select(t => new { t.TrabalhadorId, t.CursoTreinamentoId, t.DataValidade })
-                .ToListAsync(ct))
+        var todosTreinamentos = await _db.Treinamentos
+            .Where(t => ids.Contains(t.TrabalhadorId))
+            .Select(t => new { t.TrabalhadorId, t.CursoTreinamentoId, t.DataValidade })
+            .ToListAsync(ct);
+        var treinamentosValidos = todosTreinamentos
             .Where(t => t.DataValidade.Date >= hoje)
             .Select(t => (t.TrabalhadorId, t.CursoTreinamentoId))
             .ToHashSet();
+        var ultimaValidadeTreinamento = todosTreinamentos
+            .GroupBy(t => (t.TrabalhadorId, t.CursoTreinamentoId))
+            .ToDictionary(g => g.Key, g => g.Max(t => t.DataValidade));
 
         var liberados = 0;
         var semAso = 0;
         var treinamentoPendente = 0;
         int asoSemResultado = 0, asoInapto = 0, asoVencido = 0, semAsoNenhum = 0;
+        var bloqueadas = new List<PessoaBloqueadaDto>();
 
         foreach (var trabalhador in trabalhadores)
         {
-            var situacaoAso = AsoVigente.Classificar(vigentes.TryGetValue(trabalhador.Id, out var vigente) ? vigente : null, hoje);
+            AsoResumo? vigente = vigentes.TryGetValue(trabalhador.Id, out var achado) ? achado : null;
+            var situacaoAso = AsoVigente.Classificar(vigente, hoje);
             var asoOk = situacaoAso == SituacaoAso.Liberado;
+            var motivos = new List<MotivoBloqueioDto>();
 
             var treinamentosOk = true;
             if (!funcoesIsentas.Contains(trabalhador.FuncaoId))
@@ -97,7 +116,15 @@ public class ObterLiberacaoParaTrabalhoQueryHandler : IRequestHandler<ObterLiber
                 // A Integração de Segurança é obrigatória só para terceirizado (regra do módulo Terceirizado).
                 if (trabalhador.Vinculo == TipoVinculo.Terceirizado && cursoIntegracaoId is { } integracao && !exigidos.Contains(integracao))
                     exigidos.Add(integracao);
-                treinamentosOk = exigidos.All(curso => treinamentosValidos.Contains((trabalhador.Id, curso)));
+                foreach (var cursoId in exigidos.Where(curso => !treinamentosValidos.Contains((trabalhador.Id, curso))))
+                {
+                    treinamentosOk = false;
+                    var curso = cursosExistentes[cursoId];
+                    var rotulo = string.IsNullOrWhiteSpace(curso.NormaReferencia) ? curso.Nome : curso.NormaReferencia;
+                    motivos.Add(new MotivoBloqueioDto("Treinamento", ultimaValidadeTreinamento.TryGetValue((trabalhador.Id, cursoId), out var validade)
+                        ? $"{rotulo} vencido em {validade:dd/MM/yyyy}"
+                        : $"{rotulo} nunca feito"));
+                }
             }
 
             if (!asoOk)
@@ -106,17 +133,33 @@ public class ObterLiberacaoParaTrabalhoQueryHandler : IRequestHandler<ObterLiber
                 // Uma categoria por pessoa, pelo ASO vigente.
                 switch (situacaoAso)
                 {
-                    case SituacaoAso.SemParecer: asoSemResultado++; break;
-                    case SituacaoAso.Inapto: asoInapto++; break;
-                    case SituacaoAso.Vencido: asoVencido++; break;
-                    default: semAsoNenhum++; break;
+                    case SituacaoAso.SemParecer:
+                        asoSemResultado++;
+                        motivos.Insert(0, new("Aso", "ASO sem parecer · lançar o resultado"));
+                        break;
+                    case SituacaoAso.Inapto:
+                        asoInapto++;
+                        motivos.Insert(0, new("Aso", "ASO inapto"));
+                        break;
+                    case SituacaoAso.Vencido:
+                        asoVencido++;
+                        motivos.Insert(0, new("Aso", $"ASO vencido em {vigente!.Value.DataValidade:dd/MM/yyyy}"));
+                        break;
+                    default:
+                        semAsoNenhum++;
+                        motivos.Insert(0, new("Aso", "Sem ASO cadastrado"));
+                        break;
                 }
             }
             if (!treinamentosOk) treinamentoPendente++;
             if (asoOk && treinamentosOk) liberados++;
+            else
+                bloqueadas.Add(new PessoaBloqueadaDto(trabalhador.Id, trabalhador.Nome,
+                    nomeFuncao.GetValueOrDefault(trabalhador.FuncaoId), nomeObra.GetValueOrDefault(trabalhador.ObraId), motivos));
         }
 
         return new LiberacaoTrabalhoDto(trabalhadores.Count, liberados, semAso, treinamentoPendente,
-            asoSemResultado, asoInapto, asoVencido, semAsoNenhum);
+            asoSemResultado, asoInapto, asoVencido, semAsoNenhum,
+            bloqueadas.OrderBy(b => b.Nome, StringComparer.CurrentCultureIgnoreCase).ToList());
     }
 }
