@@ -1,3 +1,4 @@
+using AAHBRANT.SST.Application.Asos;
 using AAHBRANT.SST.Application.Common;
 using AAHBRANT.SST.Application.Common.Interfaces;
 using AAHBRANT.SST.Domain.Enums;
@@ -52,18 +53,11 @@ public class ObterLiberacaoParaTrabalhoQueryHandler : IRequestHandler<ObterLiber
             .Select(f => f.Id)
             .ToHashSet();
 
-        var asos = await _db.Asos
-            .Where(a => ids.Contains(a.TrabalhadorId))
-            .Select(a => new { a.TrabalhadorId, a.DataValidade, a.ResultadoStatus })
-            .ToListAsync(ct);
-        var asosNaValidade = asos.Where(a => a.DataValidade.Date >= hoje).ToList();
-        var idsComAsoValido = asosNaValidade
-            .Where(a => a.ResultadoStatus == ResultadoAso.Apto || a.ResultadoStatus == ResultadoAso.AptoComRestricao)
-            .Select(a => a.TrabalhadorId)
-            .ToHashSet();
-        var idsComAsoSemResultado = asosNaValidade.Where(a => a.ResultadoStatus == ResultadoAso.Pendente).Select(a => a.TrabalhadorId).ToHashSet();
-        var idsComAsoInapto = asosNaValidade.Where(a => a.ResultadoStatus == ResultadoAso.Inapto).Select(a => a.TrabalhadorId).ToHashSet();
-        var idsComAlgumAso = asos.Select(a => a.TrabalhadorId).ToHashSet();
+        // ASO vigente de cada pessoa (regra única, ver AsoVigente): o exame mais recente decide.
+        var vigentes = AsoVigente.PorTrabalhador((await _db.Asos
+                .Where(a => ids.Contains(a.TrabalhadorId))
+                .Select(a => new AsoResumo(a.Id, a.TrabalhadorId, a.DataExame, a.DataValidade, a.ResultadoStatus))
+                .ToListAsync(ct)));
 
         var cursosExistentes = (await _db.CursosTreinamento.Select(c => new { c.Id, c.EhIntegracaoSeguranca }).ToListAsync(ct))
             .ToDictionary(c => c.Id);
@@ -91,7 +85,8 @@ public class ObterLiberacaoParaTrabalhoQueryHandler : IRequestHandler<ObterLiber
 
         foreach (var trabalhador in trabalhadores)
         {
-            var asoOk = idsComAsoValido.Contains(trabalhador.Id);
+            var situacaoAso = AsoVigente.Classificar(vigentes.TryGetValue(trabalhador.Id, out var vigente) ? vigente : null, hoje);
+            var asoOk = situacaoAso == SituacaoAso.Liberado;
 
             var treinamentosOk = true;
             if (!funcoesIsentas.Contains(trabalhador.FuncaoId))
@@ -108,11 +103,14 @@ public class ObterLiberacaoParaTrabalhoQueryHandler : IRequestHandler<ObterLiber
             if (!asoOk)
             {
                 semAso++;
-                // Uma categoria por pessoa, nesta ordem de prioridade.
-                if (idsComAsoSemResultado.Contains(trabalhador.Id)) asoSemResultado++;
-                else if (idsComAsoInapto.Contains(trabalhador.Id)) asoInapto++;
-                else if (idsComAlgumAso.Contains(trabalhador.Id)) asoVencido++;
-                else semAsoNenhum++;
+                // Uma categoria por pessoa, pelo ASO vigente.
+                switch (situacaoAso)
+                {
+                    case SituacaoAso.SemParecer: asoSemResultado++; break;
+                    case SituacaoAso.Inapto: asoInapto++; break;
+                    case SituacaoAso.Vencido: asoVencido++; break;
+                    default: semAsoNenhum++; break;
+                }
             }
             if (!treinamentosOk) treinamentoPendente++;
             if (asoOk && treinamentosOk) liberados++;

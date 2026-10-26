@@ -32,6 +32,7 @@ const tomAptidao: Record<string, Tom> = {
   Apto: 'ok',
   'Apto com restrição': 'atencao',
   Inapto: 'alerta',
+  'ASO vencido': 'alerta',
 };
 
 const DIAS_ALERTA_VENCIMENTO_EPI = 30;

@@ -52,6 +52,7 @@ import {
   type Treinamento,
 } from '../../lib/api';
 import { formatarCpf } from '../../lib/cpf';
+import { elegerAsoVigente } from '../../lib/aso';
 import { chaves, queryClient, useAsos, useErroCarga, useFuncoes, useObras, useTrabalhadores } from '../../lib/consultas';
 import { CadastroDigitalDialog } from '../../components/pessoas/CadastroDigitalDialog';
 import { RequisitosFuncaoDialog } from '../../components/pessoas/RequisitosFuncaoDialog';
@@ -60,10 +61,9 @@ import { FaixaKpis } from '../../components/dashboard/FaixaKpis';
 import { useSucessoToast } from '../../hooks/useSucessoToast';
 import { PessoasDashboardTab } from './dashboard/PessoasDashboardTab';
 
+// ASO vigente (regra única, lib/aso.ts): o do exame mais recente. Os anteriores não entram na situação da pessoa.
 function ultimoAso(asos: Aso[], trabalhadorId: string): Aso | undefined {
-  return asos
-    .filter((a) => a.trabalhadorId === trabalhadorId)
-    .sort((a, b) => new Date(b.dataExame).getTime() - new Date(a.dataExame).getTime())[0];
+  return elegerAsoVigente(asos.filter((a) => a.trabalhadorId === trabalhadorId));
 }
 
 function dataBr(iso: string): string {
@@ -114,10 +114,11 @@ const rotuloGeral: Record<Situacao['geral'], { texto: string; tom: Tom }> = {
 
 function situacaoAso(aso: Aso | undefined): Item {
   if (!aso) return { tom: 'alerta', texto: 'sem ASO cadastrado' };
-  if (aso.resultadoStatus === ResultadoAso.Pendente) return { tom: 'alerta', texto: 'ASO pendente' };
-  if (aso.resultadoStatus === ResultadoAso.Inapto) return { tom: 'alerta', texto: 'inapto' };
+  // Vencimento vence qualquer parecer; o parecer só decide quando o exame ainda vale.
   const nivel = nivelVencimento(aso.dataValidade);
   if (nivel === 'vencido') return { tom: 'alerta', texto: `vencido em ${dataBr(aso.dataValidade)}` };
+  if (aso.resultadoStatus === ResultadoAso.Pendente) return { tom: 'alerta', texto: 'ASO sem parecer' };
+  if (aso.resultadoStatus === ResultadoAso.Inapto) return { tom: 'alerta', texto: 'inapto' };
   if (nivel === 'alerta') return { tom: 'atencao', texto: `vence em ${dataBr(aso.dataValidade)}` };
   if (aso.resultadoStatus === ResultadoAso.AptoComRestricao) return { tom: 'atencao', texto: 'apto com restrição' };
   return { tom: 'ok', texto: `válido até ${dataBr(aso.dataValidade)}` };

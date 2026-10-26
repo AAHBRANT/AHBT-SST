@@ -224,9 +224,12 @@ export interface Aso {
   observacoesClinicas?: string | null;
   medicoNome?: string | null;
   medicoCrm?: string | null;
+  // Regra única do ASO vigente (o do exame mais recente da pessoa), marcada pela API. Os demais são superados.
+  vigente?: boolean;
+  substituidoPorDataExame?: string | null;
 }
 
-export type NovoAso = Omit<Aso, 'id'>;
+export type NovoAso = Omit<Aso, 'id' | 'vigente' | 'substituidoPorDataExame'>;
 
 // PR-SST-003 — exames complementares do PCMSO (audiometria, acuidade visual etc.), vinculados
 // opcionalmente a um ASO.

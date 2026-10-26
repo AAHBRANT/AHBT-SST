@@ -34,6 +34,7 @@ import {
   type Trabalhador,
   type Treinamento,
 } from '../lib/api';
+import { asoLiberado, asoVigentePorTrabalhador, situacaoDoVigente } from '../lib/aso';
 import { Button, Card, FeedbackInline, KpiCard, Legenda, Select, StatusChip, StatusDonutChart, usePaletaGraficos, type FatiaDonut, type Tom } from '@ui';
 import { AptidaoTreinamentosCard } from '../components/dashboard/AptidaoTreinamentosCard';
 import { ConformidadePorObraCard, type ConformidadeObra } from '../components/dashboard/ConformidadePorObraCard';
@@ -391,18 +392,10 @@ export function DashboardPage() {
   ];
 
   // ---------- Status de aptidão ocupacional (ASO) ----------
-  // Mesmo critério usado no dashboard de Pessoas: resultado do ASO mais recente de cada trabalhador.
+  // Regra única do ASO vigente (lib/aso.ts, a mesma do backend): o ASO do exame mais recente de cada trabalhador decide;
+  // os anteriores nunca contam como vencidos nem pendentes.
 
-  const asoMaisRecentePorTrabalhador = useMemo(() => {
-    const mapa = new Map<string, Aso>();
-    for (const trabalhador of trabalhadoresAtivos) {
-      const aso = asosFiltrados
-        .filter((a) => a.trabalhadorId === trabalhador.id)
-        .sort((a, b) => b.dataValidade.localeCompare(a.dataValidade))[0];
-      if (aso) mapa.set(trabalhador.id, aso);
-    }
-    return mapa;
-  }, [trabalhadoresAtivos, asosFiltrados]);
+  const asoMaisRecentePorTrabalhador = useMemo(() => asoVigentePorTrabalhador(asosFiltrados), [asosFiltrados]);
 
   // Já considera a validade: um ASO "apto" que venceu deixa de contar como apto (antes aparecia como apto).
   const statusAsoGeral = useMemo(() => {
@@ -410,11 +403,12 @@ export function DashboardPage() {
     const hojeMs = new Date(hojeISO).getTime();
     for (const trabalhador of trabalhadoresAtivos) {
       const aso = asoMaisRecentePorTrabalhador.get(trabalhador.id);
-      if (!aso || aso.resultadoStatus === ResultadoAso.Pendente) contagem.pendentes += 1;
-      else if (aso.resultadoStatus === ResultadoAso.Inapto) contagem.inaptos += 1;
-      else if (aso.dataValidade.slice(0, 10) < hojeISO) contagem.vencidos += 1;
-      else if (aso.resultadoStatus === ResultadoAso.AptoComRestricao) contagem.restricao += 1;
-      else if ((new Date(aso.dataValidade.slice(0, 10)).getTime() - hojeMs) / 86_400_000 <= 30) contagem.vencem += 1;
+      const situacao = situacaoDoVigente(aso, hojeISO);
+      if (situacao === 'SemAso' || situacao === 'SemParecer') contagem.pendentes += 1;
+      else if (situacao === 'Inapto') contagem.inaptos += 1;
+      else if (situacao === 'Vencido') contagem.vencidos += 1;
+      else if (aso!.resultadoStatus === ResultadoAso.AptoComRestricao) contagem.restricao += 1;
+      else if ((new Date(aso!.dataValidade.slice(0, 10)).getTime() - hojeMs) / 86_400_000 <= 30) contagem.vencem += 1;
       else contagem.aptos += 1;
     }
     return contagem;
@@ -436,11 +430,7 @@ export function DashboardPage() {
   const conformidadePorObra: ConformidadeObra[] = useMemo(() => {
     if (obraSelecionadaId) return [];
     const pct = (ok: number, total: number) => (total > 0 ? Math.round((ok / total) * 100) : null);
-    const asoMaisRecente = new Map<string, Aso>();
-    for (const aso of asos) {
-      const atual = asoMaisRecente.get(aso.trabalhadorId);
-      if (!atual || aso.dataValidade > atual.dataValidade) asoMaisRecente.set(aso.trabalhadorId, aso);
-    }
+    const asoMaisRecente = asoVigentePorTrabalhador(asos);
     const linhas: ConformidadeObra[] = [];
     for (const obra of obrasAtivas) {
       const ativos = trabalhadores.filter((t) => t.obraId === obra.id && !t.dataDemissao);
@@ -449,15 +439,7 @@ export function DashboardPage() {
       const epi = pct(entregas.filter((e) => !(e.dataValidade && e.dataValidade < hojeISO)).length, entregas.length);
       const trein = treinamentos.filter((t) => ids.has(t.trabalhadorId));
       const treinamentosPct = pct(trein.filter((t) => t.dataValidade >= hojeISO).length, trein.length);
-      const asosEmDia = ativos.filter((t) => {
-        const aso = asoMaisRecente.get(t.id);
-        return (
-          !!aso &&
-          aso.resultadoStatus !== ResultadoAso.Pendente &&
-          aso.resultadoStatus !== ResultadoAso.Inapto &&
-          aso.dataValidade >= hojeISO
-        );
-      }).length;
+      const asosEmDia = ativos.filter((t) => asoLiberado(asoMaisRecente.get(t.id), hojeISO)).length;
       const asoPct = pct(asosEmDia, ativos.length);
       const disponiveis = [epi, treinamentosPct, asoPct].filter((v): v is number => v !== null);
       if (disponiveis.length === 0) continue;

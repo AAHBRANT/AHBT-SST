@@ -1,3 +1,4 @@
+using AAHBRANT.SST.Application.Asos;
 using AAHBRANT.SST.Application.Common;
 using AAHBRANT.SST.Application.Common.Interfaces;
 using AAHBRANT.SST.Application.Common.Seguranca;
@@ -156,15 +157,11 @@ public class ObterMinutaOrdemServicoQueryHandler : IRequestHandler<ObterMinutaOr
             minuta.Treinamentos.Add(new TreinamentoOsDto(c.Nome, c.NormaReferencia, validade, situacao));
         }
 
-        // ASO mais recente; válido = apto (ou apto com restrição) dentro da validade.
-        var aso = await _db.Asos.Where(a => a.TrabalhadorId == t.Id)
-            .OrderByDescending(a => a.DataExame).Select(a => new { a.ResultadoStatus, a.DataValidade }).FirstOrDefaultAsync(ct);
-        if (aso is not null)
-        {
-            var valido = aso.DataValidade.Date >= hoje
-                && (aso.ResultadoStatus == ResultadoAso.Apto || aso.ResultadoStatus == ResultadoAso.AptoComRestricao);
-            minuta.Aso = new AsoOsDto(aso.ResultadoStatus, aso.DataValidade, valido);
-        }
+        // ASO vigente (o do exame mais recente, ver AsoVigente); válido = apto (ou apto com restrição) dentro da validade.
+        var aso = AsoVigente.Eleger(await _db.Asos.Where(a => a.TrabalhadorId == t.Id)
+            .Select(a => new AsoResumo(a.Id, a.TrabalhadorId, a.DataExame, a.DataValidade, a.ResultadoStatus)).ToListAsync(ct));
+        if (aso is { } vigenteOs)
+            minuta.Aso = new AsoOsDto(vigenteOs.Resultado, vigenteOs.DataValidade, AsoVigente.EstaLiberado(vigenteOs, hoje));
 
         minuta.Politicas = await _db.MateriaisApoio
             .Where(m => m.Tipo == TipoDocumentoSst.Politica && m.Situacao == SituacaoDocumentoSst.Vigente && m.IncluirEmTodasOs)

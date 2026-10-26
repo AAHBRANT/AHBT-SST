@@ -1,3 +1,4 @@
+using AAHBRANT.SST.Application.Asos;
 using AAHBRANT.SST.Application.Common.Interfaces;
 using AAHBRANT.SST.Application.SessoesTreinamento;
 using AAHBRANT.SST.Domain.Enums;
@@ -81,9 +82,8 @@ public class ListarPlanosIntegracaoPendentesQueryHandler : IRequestHandler<Lista
             var rotaPerfil = $"/pessoas/{t.Id}";
 
             // 1. ASO admissional apto
-            var asoApto = await _db.Asos.AnyAsync(a => a.TrabalhadorId == t.Id
-                && (a.ResultadoStatus == ResultadoAso.Apto || a.ResultadoStatus == ResultadoAso.AptoComRestricao)
-                && a.DataValidade.Date >= hoje, ct);
+            var asoApto = AsoVigente.EstaLiberado(AsoVigente.Eleger(await _db.Asos.Where(a => a.TrabalhadorId == t.Id)
+                .Select(a => new AsoResumo(a.Id, a.TrabalhadorId, a.DataExame, a.DataValidade, a.ResultadoStatus)).ToListAsync(ct)), hoje);
             passos.Add(new("aso", "ASO admissional apto", asoApto ? SituacaoPasso.Feito : SituacaoPasso.Pendente,
                 asoApto ? null : "Sem ASO apto registrado. Vem do RH ou pode ser lançado no perfil.", rotaPerfil));
 
