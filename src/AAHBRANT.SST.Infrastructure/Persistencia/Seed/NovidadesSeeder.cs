@@ -1581,6 +1581,21 @@ public static class NovidadesSeeder
                     "Ao registrar um acidente ou quase acidente, a reunião de análise aparecia como \"Fora do Teams\" com erro de acesso negado.",
                     "Agora o convite sai da caixa do SST, com o link do Teams, e os participantes entram como convidados. Reuniões que falharam podem ser criadas de novo pelo botão Tentar de novo no Teams."),
             }),
+        new(
+            Versao: "5.90.0",
+            Titulo: "ASO que some do G-RH sai do SST e o técnico é avisado",
+            DataPublicacao: new DateTime(2026, 10, 26, 0, 0, 0, DateTimeKind.Utc),
+            Itens: new[]
+            {
+                new NovidadeSeedItem(CategoriaNovidade.Correcao,
+                    "ASO apagado no G-RH deixa de aparecer como pendente no SST",
+                    "Quando um ASO era apagado ou trocado no G-RH, o registro antigo ficava parado no SST como \"Pendente\" e a pessoa aparecia bloqueada mesmo com outro ASO apto válido.",
+                    "A sincronização com o G-RH agora desativa o ASO que não existe mais lá. Nada é apagado do banco, e se o documento voltar ao G-RH o ASO é reativado sozinho. Se o G-RH devolver lista vazia ou muitos ASOs sumirem de uma vez, nada é desativado."),
+                new NovidadeSeedItem(CategoriaNovidade.Novidade,
+                    "Aviso ao Técnico de Segurança quando um ASO é desativado",
+                    "Ninguém ficava sabendo que um ASO tinha saído do G-RH.",
+                    "O Técnico de Segurança da obra recebe um e-mail e um aviso no sininho do Teams com a lista das pessoas, a data do exame e da validade, se estava apto e se a pessoa continua com outro ASO válido ou ficou bloqueada."),
+            }),
     };
 
     public static async Task ExecutarAsync(IServiceProvider services, CancellationToken ct = default)

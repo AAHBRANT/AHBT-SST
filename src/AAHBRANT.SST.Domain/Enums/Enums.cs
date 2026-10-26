@@ -149,7 +149,10 @@ public enum TipoAlerta
     EstoqueEpiAbaixoMinimo = 34,
     // Documento exigido da empresa terceirizada (PGR, PCMSO...) perto de vencer ou vencido (21/10/2026).
     DocumentoTerceirizadoVencendo = 35,
-    DocumentoTerceirizadoVencido = 36
+    DocumentoTerceirizadoVencido = 36,
+    // ASO desativado porque sumiu do G-RH (aviso ao Técnico de Segurança da obra, 26/10/2026). Criado no ato pela
+    // sincronização, não pelo Motor Central de Alertas periódico.
+    AsoDesativadoGrh = 37
 }
 
 public enum SeveridadeAlerta
