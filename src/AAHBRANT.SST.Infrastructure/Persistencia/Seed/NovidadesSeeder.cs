@@ -1596,6 +1596,32 @@ public static class NovidadesSeeder
                     "Ninguém ficava sabendo que um ASO tinha saído do G-RH.",
                     "O Técnico de Segurança da obra recebe um e-mail e um aviso no sininho do Teams com a lista das pessoas, a data do exame e da validade, se estava apto e se a pessoa continua com outro ASO válido ou ficou bloqueada."),
             }),
+        new(
+            Versao: "5.91.0",
+            Titulo: "ASO: o exame mais recente manda, em todas as telas",
+            DataPublicacao: new DateTime(2026, 10, 26, 0, 0, 0, DateTimeKind.Utc),
+            Itens: new[]
+            {
+                new NovidadeSeedItem(CategoriaNovidade.Correcao,
+                    "ASO antigo não aparece mais como vencido",
+                    "Na aba ASOs, o ASO antigo de quem já tinha um exame novo aparecia como \"Vencido · Refazer exame\", e cada tela escolhia o ASO \"mais recente\" de um jeito, então o mesmo funcionário podia aparecer bloqueado numa tela e liberado em outra.",
+                    "Agora vale uma regra só: o ASO vigente é o do exame mais recente. Os anteriores aparecem como \"Superado\", em cinza, com a data do exame que os substituiu, e nunca como vencidos nem bloqueiam. A mesma regra vale no Início, nos indicadores e na lista de Pessoas, no perfil, na liberação para trabalho, na Ordem de Serviço, no QR e nos alertas."),
+                new NovidadeSeedItem(CategoriaNovidade.Melhoria,
+                    "ASO sem parecer deixa de aparecer como Apto",
+                    "Na aba ASOs, o exame sem parecer do médico era mostrado como Apto.",
+                    "O exame mais recente sem parecer aparece como \"Sem parecer\" e não libera a pessoa até o resultado ser lançado no G-RH ou editado no ASO."),
+            }),
+        new(
+            Versao: "5.92.0",
+            Titulo: "Início: veja quem está bloqueado e por quê",
+            DataPublicacao: new DateTime(2026, 10, 26, 0, 0, 0, DateTimeKind.Utc),
+            Itens: new[]
+            {
+                new NovidadeSeedItem(CategoriaNovidade.Melhoria,
+                    "Lista de bloqueados no card \"Podem trabalhar hoje\"",
+                    "O card mostrava só o número de bloqueados, sem dizer quem eram nem o motivo.",
+                    "Clique no card (ou em \"Ver quem está bloqueado\") para abrir a lista com o nome, a função e a obra de cada pessoa e o motivo do bloqueio: ASO vencido, inapto, sem parecer ou ausente, e treinamento vencido ou nunca feito. É possível filtrar por ASO ou treinamento e abrir o perfil da pessoa."),
+            }),
     };
 
     public static async Task ExecutarAsync(IServiceProvider services, CancellationToken ct = default)

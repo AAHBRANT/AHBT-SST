@@ -24,6 +24,7 @@ import {
   type Trabalhador,
   type Treinamento,
 } from '../../../lib/api';
+import { asoVigentePorTrabalhador, situacaoDoVigente } from '../../../lib/aso';
 import { AptitudeEnginePanel } from './AptitudeEnginePanel';
 import { NR_POR_FUNCAO_NOME, normalizarNomeFuncao } from './nrPorFuncao';
 import { FaixaKpis } from '../../../components/dashboard/FaixaKpis';
@@ -99,12 +100,13 @@ export function PessoasDashboardTab() {
     [trabalhadores, obraId, funcaoId],
   );
 
+  // Regra única do ASO vigente (lib/aso.ts, a mesma do backend): o ASO do exame mais recente decide; os anteriores
+  // nunca contam como vencidos nem pendentes.
   const asoMaisRecentePorTrabalhador = useMemo(() => {
+    const vigentes = asoVigentePorTrabalhador(asos);
     const mapa = new Map<string, Aso>();
     for (const trabalhador of trabalhadoresFiltrados) {
-      const aso = asos
-        .filter((a) => a.trabalhadorId === trabalhador.id)
-        .sort((a, b) => b.dataValidade.localeCompare(a.dataValidade))[0];
+      const aso = vigentes.get(trabalhador.id);
       if (aso) mapa.set(trabalhador.id, aso);
     }
     return mapa;
@@ -115,14 +117,17 @@ export function PessoasDashboardTab() {
     let restricao = 0;
     let inaptos = 0;
     let pendentes = 0;
+    let vencidos = 0;
     for (const trabalhador of trabalhadoresFiltrados) {
       const aso = asoMaisRecentePorTrabalhador.get(trabalhador.id);
-      if (!aso || aso.resultadoStatus === ResultadoAso.Pendente) pendentes += 1;
-      else if (aso.resultadoStatus === ResultadoAso.Inapto) inaptos += 1;
-      else if (aso.resultadoStatus === ResultadoAso.AptoComRestricao) restricao += 1;
+      const situacao = situacaoDoVigente(aso);
+      if (situacao === 'SemAso' || situacao === 'SemParecer') pendentes += 1;
+      else if (situacao === 'Inapto') inaptos += 1;
+      else if (situacao === 'Vencido') vencidos += 1;
+      else if (aso!.resultadoStatus === ResultadoAso.AptoComRestricao) restricao += 1;
       else aptos += 1;
     }
-    return { aptos, restricao, inaptos, pendentes };
+    return { aptos, restricao, inaptos, pendentes, vencidos };
   }, [trabalhadoresFiltrados, asoMaisRecentePorTrabalhador]);
 
   const statusGeralDados: FatiaDonut[] = [
@@ -130,6 +135,7 @@ export function PessoasDashboardTab() {
     { rotulo: 'Restrição temporária', valor: statusGeral.restricao, cor: paleta.atencao },
     { rotulo: 'Inaptos', valor: statusGeral.inaptos, cor: paleta.alerta },
     { rotulo: 'Documentação pendente', valor: statusGeral.pendentes, cor: paleta.info },
+    { rotulo: 'ASO vencido', valor: statusGeral.vencidos, cor: paleta.marca },
   ];
 
   const vencimentoAso = useMemo(() => {
@@ -138,6 +144,9 @@ export function PessoasDashboardTab() {
     let em30 = 0;
     let emDia = 0;
     for (const aso of asoMaisRecentePorTrabalhador.values()) {
+      // O gráfico é de vencimento: só entram o vigente liberado (apto na validade) e o vencido; Inapto e Sem parecer ficam fora.
+      const situacao = situacaoDoVigente(aso);
+      if (situacao !== 'Liberado' && situacao !== 'Vencido') continue;
       const dias = diffDias(aso.dataValidade);
       if (dias < 0) vencidos += 1;
       else if (dias <= 15) em15 += 1;
@@ -189,7 +198,7 @@ export function PessoasDashboardTab() {
   }, [trabalhadoresFiltrados, treinamentos, cursos, funcoes, paleta]);
 
   const asosVencendo30Dias = vencimentoAso.em15 + vencimentoAso.em30;
-  const bloqueados = statusGeral.inaptos + statusGeral.pendentes;
+  const bloqueados = statusGeral.inaptos + statusGeral.pendentes + statusGeral.vencidos;
 
   return (
     <div>

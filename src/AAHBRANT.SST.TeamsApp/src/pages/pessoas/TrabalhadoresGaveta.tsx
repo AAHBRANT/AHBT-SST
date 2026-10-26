@@ -11,6 +11,7 @@ import {
   type Obra,
   type Trabalhador,
 } from '../../lib/api';
+import { asoVigentePorTrabalhador, situacaoDoVigente } from '../../lib/aso';
 
 // Situação clínica do ASO mais recente do trabalhador — mesma leitura direta do
 // campo Aso.resultadoStatus usada em PessoasDashboardTab (sem reclassificar por
@@ -68,14 +69,8 @@ export function TrabalhadoresGaveta({
     if (aberta && buscaInicial) setBusca(buscaInicial);
   }, [aberta, buscaInicial]);
 
-  const asoMaisRecentePorTrabalhador = useMemo(() => {
-    const mapa = new Map<string, Aso>();
-    for (const aso of asos) {
-      const atual = mapa.get(aso.trabalhadorId);
-      if (!atual || aso.dataExame > atual.dataExame) mapa.set(aso.trabalhadorId, aso);
-    }
-    return mapa;
-  }, [asos]);
+  // ASO vigente de cada pessoa (regra única, lib/aso.ts): o do exame mais recente, com desempate fixo.
+  const asoMaisRecentePorTrabalhador = useMemo(() => asoVigentePorTrabalhador(asos), [asos]);
 
   function nomeObra(id: string) {
     return obras.find((o) => o.id === id)?.nome ?? id;
@@ -119,11 +114,12 @@ export function TrabalhadoresGaveta({
       rotulo: 'Situação',
       render: (t) => {
         const aso = asoMaisRecentePorTrabalhador.get(t.id);
+        const vencido = situacaoDoVigente(aso) === 'Vencido';
         return (
           <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 4 }}>
             {t.matricula && <span style={{ fontSize: 11 }}>Mat. {t.matricula}</span>}
-            <StatusChip tom={aso ? tomAso[aso.resultadoStatus] ?? 'info' : 'neutro'}>
-              {aso ? resultadoAsoLabel[aso.resultadoStatus] : 'Sem ASO'}
+            <StatusChip tom={!aso ? 'neutro' : vencido ? 'alerta' : tomAso[aso.resultadoStatus] ?? 'info'}>
+              {!aso ? 'Sem ASO' : vencido ? 'ASO vencido' : resultadoAsoLabel[aso.resultadoStatus]}
             </StatusChip>
           </div>
         );

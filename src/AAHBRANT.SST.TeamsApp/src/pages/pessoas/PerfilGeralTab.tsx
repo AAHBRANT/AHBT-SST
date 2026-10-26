@@ -27,6 +27,7 @@ import {
   type CursoTreinamento,
   type PerfilCompletoTrabalhador,
 } from '../../lib/api';
+import { elegerAsoVigente } from '../../lib/aso';
 import { AnelProgresso } from './AnelProgresso';
 import { KpiFichaCartao } from './KpiFichaCartao';
 
@@ -115,13 +116,9 @@ export function PerfilGeralTab({ perfil }: { perfil: PerfilCompletoTrabalhador }
   // Container Apps separados, ver ObterPerfilCompletoTrabalhadorQuery.cs).
   const trocasNoAno = perfil.trocasNoAno ?? 0;
 
-  // asos vem do backend ordenado por DataValidade desc; o "ativo" pra fins de aptidão é o mais
-  // recente por DataExame (mesmo critério que o backend usa pro badge statusAptidao do cabeçalho —
-  // um retorno ao trabalho pode reexaminar antes do vencimento do ASO anterior).
-  const asoAtivo = useMemo(
-    () => (perfil.asos.length === 0 ? undefined : [...perfil.asos].sort((a, b) => b.dataExame.localeCompare(a.dataExame))[0]),
-    [perfil.asos],
-  );
+  // O "ASO ativo" é o vigente (lib/aso.ts, a mesma regra do backend e do badge statusAptidao do cabeçalho): o do exame
+  // mais recente. O backend já devolve a lista com o vigente primeiro e marcado.
+  const asoAtivo = useMemo(() => elegerAsoVigente(perfil.asos), [perfil.asos]);
   const diasAso = asoAtivo ? diasAte(asoAtivo.dataValidade) : 0;
   const nivelAso = asoAtivo ? nivelVencimento(asoAtivo.dataValidade) : null;
 

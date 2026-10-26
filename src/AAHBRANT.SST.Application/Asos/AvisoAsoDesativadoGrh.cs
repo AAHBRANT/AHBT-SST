@@ -100,13 +100,13 @@ public static class AvisoAsoDesativadoGrh
             .Where(f => funcaoIds.Contains(f.Id))
             .Select(f => new { f.Id, f.Nome }).ToDictionaryAsync(f => f.Id, f => f.Nome, ct);
 
-        var idsComAsoValido = (await db.Asos
+        // Quem continua liberado pelo ASO vigente (regra única, ver AsoVigente), já sem os ASOs desativados.
+        var idsComAsoValido = AsoVigente.PorTrabalhador(await db.Asos
                 .Where(a => trabalhadorIds.Contains(a.TrabalhadorId))
-                .Where(a => a.ResultadoStatus == ResultadoAso.Apto || a.ResultadoStatus == ResultadoAso.AptoComRestricao)
-                .Select(a => new { a.TrabalhadorId, a.DataValidade })
+                .Select(a => new AsoResumo(a.Id, a.TrabalhadorId, a.DataExame, a.DataValidade, a.ResultadoStatus))
                 .ToListAsync(ct))
-            .Where(a => a.DataValidade.Date >= hoje)
-            .Select(a => a.TrabalhadorId)
+            .Where(kv => AsoVigente.EstaLiberado(kv.Value, hoje))
+            .Select(kv => kv.Key)
             .ToHashSet();
 
         var itens = new List<AsoDesativadoItem>();

@@ -25,8 +25,7 @@ public class ListarAsosQueryHandler : IRequestHandler<ListarAsosQuery, List<AsoD
         if (request.ObraId.HasValue)
             query = query.Where(a => a.Trabalhador != null && a.Trabalhador.ObraId == request.ObraId.Value);
 
-        return await query
-            .OrderByDescending(a => a.DataValidade)
+        var asos = await query
             .Select(a => new AsoDto
             {
                 Id = a.Id,
@@ -40,5 +39,13 @@ public class ListarAsosQueryHandler : IRequestHandler<ListarAsosQuery, List<AsoD
                 ObservacoesClinicas = a.ObservacoesClinicas
             })
             .ToListAsync(ct);
+
+        // Vigente por pessoa e ordem sem empate: validade mais distante primeiro e, no empate, o vigente antes do
+        // superado e depois o Id — o resultado nunca depende da ordem em que o banco devolveu as linhas.
+        AsoVigente.Marcar(asos);
+        return asos
+            .OrderByDescending(a => a.DataValidade.Date)
+            .ThenBy(a => AsoVigente.Resumo(a), AsoVigente.Comparador)
+            .ToList();
     }
 }

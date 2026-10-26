@@ -1,3 +1,4 @@
+using AAHBRANT.SST.Application.Asos;
 using AAHBRANT.SST.Application.Common;
 using AAHBRANT.SST.Application.Common.Interfaces;
 using AAHBRANT.SST.Domain.Enums;
@@ -20,10 +21,10 @@ public static class CalculadoraLiberacaoTerceirizado
             .FirstOrDefaultAsync(ct);
         var isentoTreinamentos = FuncaoSstClassifier.EhTecnicoSeguranca(funcaoNome);
 
-        var asoValido = await db.Asos.AnyAsync(a => a.TrabalhadorId == trabalhadorId
-            && (a.ResultadoStatus == ResultadoAso.Apto || a.ResultadoStatus == ResultadoAso.AptoComRestricao)
-            && a.DataValidade.Date >= hoje, ct);
-        if (!asoValido) pendencias.Add("ASO válido pendente");
+        // ASO vigente (o do exame mais recente, ver AsoVigente) precisa estar apto e dentro da validade.
+        var asoVigente = AsoVigente.Eleger(await db.Asos.Where(a => a.TrabalhadorId == trabalhadorId)
+            .Select(a => new AsoResumo(a.Id, a.TrabalhadorId, a.DataExame, a.DataValidade, a.ResultadoStatus)).ToListAsync(ct));
+        if (!AsoVigente.EstaLiberado(asoVigente, hoje)) pendencias.Add("ASO válido pendente");
 
         if (!isentoTreinamentos)
         {
