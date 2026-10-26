@@ -181,4 +181,86 @@ public class GeracaoPgrEapTests
         await Assert.ThrowsAsync<InvalidOperationException>(() =>
             new SalvarGeracaoPgrEapCommandHandler(db).Handle(new SalvarGeracaoPgrEapCommand(id, 4, estrutura), default));
     }
+
+    private static async Task<Guid> CriarGeracaoComDuasAtividadesAsync(Infrastructure.Persistencia.SstDbContext db, Obra obra, IaFalsa ia)
+    {
+        ia.Itens = new()
+        {
+            new ItemEapGerado { Codigo = "1.1", Nome = "Concretagem de laje", Nivel = 2 },
+            new ItemEapGerado { Codigo = "1.2", Nome = "Armação de pilares", Nivel = 2 },
+        };
+        return await new CriarGeracaoPgrEapCommandHandler(db, new ExtratorFalso(), ia).Handle(new CriarGeracaoPgrEapCommand(
+            obra.Id, "PGR Obra Teste", new DateTime(2026, 10, 21), null, "eap.xlsx", "application/x", new byte[] { 1 }, null, "Téc. Ana"), default);
+    }
+
+    [Fact]
+    public async Task SugerirGhes_AtividadeRepetidaEmDoisGhes_FicaSoNoPrimeiro_EGheComMesmoNomeViraUm()
+    {
+        var (db, obra, _) = await CriarAsync();
+        var ia = new IaFalsa();
+        var id = await CriarGeracaoComDuasAtividadesAsync(db, obra, ia);
+        ia.Ghes = new()
+        {
+            new GheGerado { Nome = "Estrutura", Funcoes = new() { new FuncaoGerada { Nome = "Armador", Descricao = "a" } }, Atividades = new() { new AtividadeGerada { CodigoEap = "1.1" } } },
+            new GheGerado { Nome = "estrutura ", Funcoes = new() { new FuncaoGerada { Nome = "ARMADOR", Descricao = "b" }, new FuncaoGerada { Nome = "Pedreiro", Descricao = "c" } }, Atividades = new() { new AtividadeGerada { CodigoEap = "1.1" }, new AtividadeGerada { CodigoEap = "1.2" } } },
+        };
+
+        await new SugerirGhesGeracaoPgrCommandHandler(db, ia).Handle(new SugerirGhesGeracaoPgrCommand(id), default);
+
+        var dto = await new ObterGeracaoPgrEapQueryHandler(db).Handle(new ObterGeracaoPgrEapQuery(id), default);
+        var ghe = Assert.Single(dto.Estrutura.Ghes);
+        Assert.Equal(new[] { "1.1", "1.2" }, ghe.Atividades.Select(a => a.CodigoEap).ToArray());
+        Assert.Equal(2, ghe.Funcoes.Count); // Armador não repete
+    }
+
+    [Fact]
+    public async Task Pendencias_AtividadeDaEapSemGhe_EmDoisGhes_ENomeRepetido_BloqueiamAprovacao()
+    {
+        var (db, obra, _) = await CriarAsync();
+        var ia = new IaFalsa();
+        var id = await CriarGeracaoComDuasAtividadesAsync(db, obra, ia);
+        ia.Ghes = new() { new GheGerado { Nome = "Estrutura", Funcoes = new() { new FuncaoGerada { Nome = "Armador", Descricao = "a" } }, Atividades = new() { new AtividadeGerada { CodigoEap = "1.1" } } } };
+        await new SugerirGhesGeracaoPgrCommandHandler(db, ia).Handle(new SugerirGhesGeracaoPgrCommand(id), default);
+
+        var dto = await new ObterGeracaoPgrEapQueryHandler(db).Handle(new ObterGeracaoPgrEapQuery(id), default);
+        Assert.Contains(dto.PendenciasAprovacao, p => p.Contains("sem GHE: 1.2"));
+
+        // Edição manual que reintroduz as duplicatas.
+        var e = dto.Estrutura;
+        var copia = new GheGerado { Numero = 1, Nome = "ESTRUTURA", Funcoes = e.Ghes[0].Funcoes, Atividades = new() { new AtividadeGerada { CodigoEap = "1.1", Nome = "Concretagem de laje" } } };
+        e.Ghes.Add(copia);
+        var p = PendenciasGeracaoPgr.Calcular(e, 5, 5);
+        Assert.Contains(p, x => x.Contains("Número de GHE repetido"));
+        Assert.Contains(p, x => x.Contains("nome repetido"));
+        Assert.Contains(p, x => x.Contains("mais de um GHE"));
+    }
+
+    [Fact]
+    public async Task GerarRiscos_RefazerNaoDuplicaPerigoJaRevisado_NemPerigoRepetidoNaResposta()
+    {
+        var (db, obra, _) = await CriarAsync();
+        var ia = new IaFalsa();
+        var id = await CriarGeracaoAsync(db, obra, ia);
+        ia.Ghes = new() { new GheGerado { Nome = "Estrutura", Funcoes = new() { new FuncaoGerada { Nome = "ARMADOR", Descricao = "x" } }, Atividades = new() { new AtividadeGerada { CodigoEap = "1.1" } } } };
+        await new SugerirGhesGeracaoPgrCommandHandler(db, ia).Handle(new SugerirGhesGeracaoPgrCommand(id), default);
+        ia.Riscos = new() { new RiscoGerado { Tipo = "Acidente", Perigo = "Queda de altura", Probabilidade = 2, Severidade = 2 } };
+        await new GerarRiscosAtividadeGeracaoPgrCommandHandler(db, ia).Handle(new GerarRiscosAtividadeGeracaoPgrCommand(id, 1, "1.1"), default);
+
+        // Engenheiro revisa o risco gerado e manda refazer: a IA repete o perigo (com outra caixa) e ainda duplica um novo.
+        var estrutura = (await new ObterGeracaoPgrEapQueryHandler(db).Handle(new ObterGeracaoPgrEapQuery(id), default)).Estrutura;
+        estrutura.Ghes[0].Atividades[0].Riscos[0].Revisado = true;
+        await new SalvarGeracaoPgrEapCommandHandler(db).Handle(new SalvarGeracaoPgrEapCommand(id, 4, estrutura), default);
+        ia.Riscos = new()
+        {
+            new RiscoGerado { Tipo = "Acidente", Perigo = "QUEDA DE ALTURA", Probabilidade = 3, Severidade = 3 },
+            new RiscoGerado { Tipo = "Físico", Perigo = "Ruído do vibrador", Probabilidade = 2, Severidade = 2 },
+            new RiscoGerado { Tipo = "Físico", Perigo = "ruido do vibrador", Probabilidade = 2, Severidade = 2 },
+        };
+
+        var n = await new GerarRiscosAtividadeGeracaoPgrCommandHandler(db, ia).Handle(new GerarRiscosAtividadeGeracaoPgrCommand(id, 1, "1.1"), default);
+
+        var riscos = (await new ObterGeracaoPgrEapQueryHandler(db).Handle(new ObterGeracaoPgrEapQuery(id), default)).Estrutura.Ghes[0].Atividades[0].Riscos;
+        Assert.Equal(new[] { "Queda de altura", "Ruído do vibrador" }, riscos.Select(r => r.Perigo).ToArray());
+        Assert.Equal(1, n);
+    }
 }
