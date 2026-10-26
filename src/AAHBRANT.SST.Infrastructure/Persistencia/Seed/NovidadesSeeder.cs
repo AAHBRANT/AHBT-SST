@@ -1622,6 +1622,21 @@ public static class NovidadesSeeder
                     "O card mostrava só o número de bloqueados, sem dizer quem eram nem o motivo.",
                     "Clique no card (ou em \"Ver quem está bloqueado\") para abrir a lista com o nome, a função e a obra de cada pessoa e o motivo do bloqueio: ASO vencido, inapto, sem parecer ou ausente, e treinamento vencido ou nunca feito. É possível filtrar por ASO ou treinamento e abrir o perfil da pessoa."),
             }),
+        new(
+            Versao: "5.93.0",
+            Titulo: "Gerar PGR pela EAP: sem GHE, atividade ou risco repetido",
+            DataPublicacao: new DateTime(2026, 10, 26, 0, 0, 0, DateTimeKind.Utc),
+            Itens: new[]
+            {
+                new NovidadeSeedItem(CategoriaNovidade.Correcao,
+                    "GHEs e atividades não se repetem mais",
+                    "Ao gerar o PGR pela EAP, a mesma atividade podia aparecer em dois GHEs, e GHEs com o mesmo nome ficavam separados, gerando o mesmo risco mais de uma vez.",
+                    "Cada atividade da EAP fica em um único GHE e GHEs com o mesmo nome são unidos. A tela de aprovação avisa quando sobrar atividade sem GHE, atividade em mais de um GHE ou GHE com nome ou número repetido, e não deixa aprovar até resolver."),
+                new NovidadeSeedItem(CategoriaNovidade.Correcao,
+                    "Refazer os riscos não duplica o que você já revisou",
+                    "Ao refazer os riscos de uma atividade, a IA sugeria de novo os perigos que o engenheiro já tinha revisado, e eles apareciam duas vezes.",
+                    "O risco já revisado é mantido e o mesmo perigo não é sugerido de novo, nem repetido dentro da própria sugestão."),
+            }),
     };
 
     public static async Task ExecutarAsync(IServiceProvider services, CancellationToken ct = default)
