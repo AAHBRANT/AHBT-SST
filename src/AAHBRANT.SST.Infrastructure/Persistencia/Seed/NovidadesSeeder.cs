@@ -1559,6 +1559,17 @@ public static class NovidadesSeeder
                     "Ações como \"reciclar NR-35 dos envolvidos\" dependiam de alguém lembrar de marcar como concluída.",
                     "Ao criar uma ação na ocorrência, escolha Como se resolve: Treinamento concluído (curso), Inspeção finalizada (tipo) ou Entrega de EPI assinada (EPI). A ação só se conclui quando aquele fato acontece — turma do curso com os envolvidos presentes, inspeção do tipo na obra ou entrega assinada por cada envolvido. Ações já criadas podem ser vinculadas pelo botão Alterar."),
             }),
+        new(
+            Versao: "5.88.0",
+            Titulo: "Trocar a logo da obra pelo arquivo",
+            DataPublicacao: new DateTime(2026, 10, 26, 0, 0, 0, DateTimeKind.Utc),
+            Itens: new[]
+            {
+                new NovidadeSeedItem(CategoriaNovidade.Correcao,
+                    "Logo da obra abre o seletor de arquivos",
+                    "Ao clicar na logo na tela de Obras, o sistema abria a câmera e não deixava escolher um arquivo.",
+                    "Agora o clique abre direto o seletor de arquivos (PNG ou JPEG), para enviar de novo a logo que aparece no cabeçalho dos documentos."),
+            }),
     };
 
     public static async Task ExecutarAsync(IServiceProvider services, CancellationToken ct = default)
