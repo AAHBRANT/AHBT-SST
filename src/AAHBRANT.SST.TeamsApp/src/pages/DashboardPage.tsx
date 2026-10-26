@@ -42,6 +42,7 @@ import { RotuloEscopo } from '../components/dashboard/RotuloEscopo';
 import { OcorrenciasCard, type PontoOcorrencias, type RegistroRecente, type TipoOcorrenciaResumo } from '../components/dashboard/OcorrenciasCard';
 import { useDashboardStyles } from '../components/dashboard/dashboardStyles';
 import { TaxaGravidadeCard } from '../components/dashboard/TaxaGravidadeCard';
+import { BloqueadosDialog } from '../components/dashboard/BloqueadosDialog';
 
 interface KpiDelta {
   texto: string;
@@ -56,6 +57,8 @@ interface Kpi {
   tom: Tom;
   deltas: KpiDelta[];
   destino: string;
+  // Quando definido, o clique executa isto em vez de navegar para `destino`.
+  aoClicar?: () => void;
 }
 
 interface ItemFeed {
@@ -129,6 +132,7 @@ export function DashboardPage() {
   const [inspecoes, setInspecoes] = useState<Inspecao[]>([]);
   const [aptidaoCursos, setAptidaoCursos] = useState<AptidaoCurso[]>([]);
   const [liberacao, setLiberacao] = useState<LiberacaoTrabalho | null>(null);
+  const [bloqueadosAberto, setBloqueadosAberto] = useState(false);
   const [erro, setErro] = useState<string | null>(null);
 
   useEffect(() => {
@@ -358,9 +362,11 @@ export function DashboardPage() {
             ...(liberacao.asoInapto > 0 ? [{ texto: `${liberacao.asoInapto} inaptos`, tom: 'alerta' as const }] : []),
             ...(liberacao.semAso > 0 ? [{ texto: `${liberacao.semAso} sem ASO`, tom: 'neutro' as const }] : []),
             ...(liberacao.treinamentoPendente > 0 ? [{ texto: `${liberacao.treinamentoPendente} com treinamento pendente`, tom: 'atencao' as const }] : []),
+            ...(liberacao.bloqueados > 0 ? [{ texto: 'Ver quem está bloqueado ›', tom: 'neutro' as const }] : []),
           ]
         : [],
       destino: '/pessoas?aba=trabalhadores',
+      aoClicar: liberacao && liberacao.bloqueados > 0 ? () => setBloqueadosAberto(true) : undefined,
     },
     {
       rotulo: 'Trabalhadores com EPI vencido',
@@ -644,12 +650,18 @@ export function DashboardPage() {
               icone={kpi.icone}
               deltas={kpi.deltas}
               indice={indice}
-              onClick={() => navigate(kpi.destino)}
+              onClick={kpi.aoClicar ?? (() => navigate(kpi.destino))}
               ariaLabel={`Abrir ${kpi.rotulo}`}
             />
           ))}
         </div>
       </div>
+      <BloqueadosDialog
+        aberto={bloqueadosAberto}
+        liberacao={liberacao}
+        aoFechar={() => setBloqueadosAberto(false)}
+        aoAbrirPessoa={(id) => navigate(`/pessoas/${id}`)}
+      />
 
       <div className={dashEstilos.gradeDoisParaUm}>
         <OcorrenciasCard

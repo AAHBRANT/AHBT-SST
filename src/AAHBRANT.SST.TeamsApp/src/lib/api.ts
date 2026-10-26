@@ -142,6 +142,20 @@ export interface LiberacaoTrabalho {
   asoVencido: number;
   semAso: number;
   treinamentoPendente: number;
+  pessoasBloqueadas: PessoaBloqueada[];
+}
+
+export interface MotivoBloqueio {
+  tipo: 'Aso' | 'Treinamento';
+  texto: string;
+}
+
+export interface PessoaBloqueada {
+  trabalhadorId: string;
+  nome: string;
+  funcao?: string | null;
+  obra?: string | null;
+  motivos: MotivoBloqueio[];
 }
 
 export interface Trabalhador {
