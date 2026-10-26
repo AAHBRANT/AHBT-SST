@@ -93,6 +93,12 @@ public class GrhDbPollingService : BackgroundService
                 _logger.LogWarning(
                     "Polling G-RH (ASO): {Sincronizados}/{Recebidos} sincronizados, {Erros} erro(s) (esperado enquanto o cadastro de validade no G-RH está em andamento).",
                     resultadoAsos.TotalSincronizados, resultadoAsos.TotalRecebidos, resultadoAsos.Erros.Count);
+            if (resultadoAsos.Desativados > 0)
+                _logger.LogInformation(
+                    "Polling G-RH (ASO): {Desativados} ASO(s) desativado(s) por terem sumido do G-RH.",
+                    resultadoAsos.Desativados);
+            if (resultadoAsos.DesativacaoIgnorada is { } motivo)
+                _logger.LogWarning("Polling G-RH (ASO): limpeza de ASO ignorada. {Motivo}", motivo);
         }
         catch (Exception ex)
         {
