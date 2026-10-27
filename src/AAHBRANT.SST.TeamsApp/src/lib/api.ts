@@ -5699,6 +5699,8 @@ export const api = {
   geracoesPgrEap: {
     listar: (obraId?: string) => request<ResumoGeracaoPgrEap[]>(`/api/geracoes-pgr-eap${obraId ? `?obraId=${obraId}` : ''}`),
     obter: (id: string) => request<GeracaoPgrEap>(`/api/geracoes-pgr-eap/${id}`),
+    // Só Administrador e só rascunho que nunca foi para aprovação; o servidor confere.
+    excluir: (id: string) => request<void>(`/api/geracoes-pgr-eap/${id}`, { method: 'DELETE' }),
     baixarPdf: async (id: string): Promise<Blob> => {
       const response = await fetch(`${API_BASE_URL}/api/geracoes-pgr-eap/${id}/pdf`, { headers: await montarHeadersAuth() });
       if (!response.ok) throw new Error('Não foi possível gerar o PDF do PGR.');

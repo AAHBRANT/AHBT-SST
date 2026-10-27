@@ -80,6 +80,15 @@ public class GeracoesPgrEapController : ControllerBase
         return NoContent();
     }
 
+    // Exclusão é privilégio de Administrador (regra de 23/09) e só vale para rascunho que não foi para aprovação.
+    [Authorize(Policy = PoliticasAutorizacao.SomenteAdministrador)]
+    [HttpDelete("{id:guid}")]
+    public async Task<IActionResult> Excluir(Guid id, CancellationToken ct)
+    {
+        await _mediator.Send(new ExcluirGeracaoPgrCommand(id), ct);
+        return NoContent();
+    }
+
     [Authorize(Policy = PoliticasAutorizacao.SomenteEngenheiroSeguranca)]
     [HttpPost("{id:guid}/devolver")]
     public async Task<IActionResult> Devolver(Guid id, DevolverRequest corpo, CancellationToken ct)

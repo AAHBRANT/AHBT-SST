@@ -481,4 +481,25 @@ public class GeracaoPgrEapTests
         var nomes = PerigosPadrao.Catalogo.Select(p => AAHBRANT.SST.Application.Common.FuncaoSstClassifier.Normalizar(p.Nome)).ToList();
         Assert.Equal(nomes.Count, nomes.Distinct().Count());
     }
+
+    [Fact]
+    public async Task Excluir_RascunhoSomem_MasEnviadoParaAprovacaoNaoPodeSerExcluido()
+    {
+        var (db, obra, _) = await CriarAsync();
+        var ia = new IaFalsa();
+        var rascunho = await CriarGeracaoAsync(db, obra, ia);
+        var enviado = await CriarGeracaoAsync(db, obra, ia);
+        ia.Ghes = new() { new GheGerado { Nome = "Estrutura", Funcoes = new() { new FuncaoGerada { Nome = "ARMADOR", Descricao = "x" } }, Atividades = new() { new AtividadeGerada { CodigoEap = "1.1" } } } };
+        await new SugerirGhesGeracaoPgrCommandHandler(db, ia).Handle(new SugerirGhesGeracaoPgrCommand(enviado), default);
+        ia.Riscos = new() { new RiscoGerado { Tipo = "Acidente", Perigo = "Queda de altura", Probabilidade = 2, Severidade = 2 } };
+        await new GerarRiscosAtividadeGeracaoPgrCommandHandler(db, ia).Handle(new GerarRiscosAtividadeGeracaoPgrCommand(enviado, 1, "1.1"), default);
+        await new EnviarGeracaoPgrParaAprovacaoCommandHandler(db).Handle(new EnviarGeracaoPgrParaAprovacaoCommand(enviado), default);
+
+        await new ExcluirGeracaoPgrCommandHandler(db).Handle(new ExcluirGeracaoPgrCommand(rascunho), default);
+
+        Assert.False(await db.GeracoesPgrEap.AnyAsync(g => g.Id == rascunho));
+        await Assert.ThrowsAsync<InvalidOperationException>(() =>
+            new ExcluirGeracaoPgrCommandHandler(db).Handle(new ExcluirGeracaoPgrCommand(enviado), default));
+        Assert.True(await db.GeracoesPgrEap.AnyAsync(g => g.Id == enviado));
+    }
 }

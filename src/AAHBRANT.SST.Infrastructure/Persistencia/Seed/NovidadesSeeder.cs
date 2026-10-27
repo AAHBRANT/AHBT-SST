@@ -1652,6 +1652,17 @@ public static class NovidadesSeeder
                     "A IA escrevia o mesmo perigo de formas diferentes e listava até 10 perigos por atividade, o que inflava o inventário.",
                     "A IA passa a usar uma lista de perigos padrão e entrega no máximo 5 por atividade, os de maior nível de risco."),
             }),
+        new(
+            Versao: "5.95.0",
+            Titulo: "Gerar PGR pela EAP: excluir rascunho",
+            DataPublicacao: new DateTime(2026, 10, 27, 0, 0, 0, DateTimeKind.Utc),
+            Itens: new[]
+            {
+                new NovidadeSeedItem(CategoriaNovidade.Melhoria,
+                    "Exclua rascunhos de PGR que não serão usados",
+                    "Os rascunhos do gerador de PGR pela EAP ficavam na lista para sempre, mesmo os testes e os que foram refeitos.",
+                    "O Administrador agora vê o botão \"Excluir\" nas gerações que ainda estão em elaboração e nunca foram enviadas para aprovação. Antes de excluir, o sistema pede confirmação. Gerações enviadas, devolvidas ou aprovadas não podem ser excluídas."),
+            }),
     };
 
     public static async Task ExecutarAsync(IServiceProvider services, CancellationToken ct = default)
