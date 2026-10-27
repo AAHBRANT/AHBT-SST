@@ -358,12 +358,14 @@ public class PgrPdfService : IPgrPdfService
                 TituloComPrimeiro(c, Secoes[10], b =>
                 {
                     b.Item().Text($"{d.ObraNome}, {DataPorExtenso(HorarioBrasilia.De(d.AprovadoEmUtc ?? d.GeradoEmUtc))}.").FontColor(Secundario);
-                    b.Item().Text(t =>
-                    {
-                        t.Span("Aprovado pelo Engenheiro de Segurança do Trabalho: ");
-                        t.Span(d.AprovadoPorNome ?? "não informado").SemiBold();
-                        if (d.AprovadoEmUtc is { } ap) t.Span($" em {HorarioBrasilia.De(ap):dd/MM/yyyy HH:mm}.");
-                    });
+                    // Na minuta ainda não houve aprovação: afirmar o contrário seria falso.
+                    if (!d.Minuta)
+                        b.Item().Text(t =>
+                        {
+                            t.Span("Aprovado pelo Engenheiro de Segurança do Trabalho: ");
+                            t.Span(d.AprovadoPorNome ?? "não informado").SemiBold();
+                            if (d.AprovadoEmUtc is { } ap) t.Span($" em {HorarioBrasilia.De(ap):dd/MM/yyyy HH:mm}.");
+                        });
                     if (d.Assinaturas is { Count: > 0 } assinaturas)
                     {
                         b.Item().PaddingTop(14).Row(r =>

@@ -132,6 +132,30 @@ public class PgrPdfServiceTests
     }
 
     [Fact]
+    public void Gerar_ComAssinaturasEletronicasEMinuta_DevolvePdfValido()
+    {
+        var qr = new AAHBRANT.SST.Infrastructure.Assinatura.QrCodeDocumentoService(
+            Microsoft.Extensions.Options.Options.Create(new AAHBRANT.SST.Infrastructure.Assinatura.AssinaturaOptions { UrlBaseValidacaoPublica = "https://sst.exemplo.com" }))
+            .Gerar("TOKEN123");
+        var assinaturas = new List<AssinaturaPgrPdf>
+        {
+            new("Técnico de Segurança da obra", "Téc. Ana", "CFT 1234", "Técnico de Segurança da obra", new DateTime(2026, 10, 22, 15, 0, 0, DateTimeKind.Utc), false),
+            new("Engenheiro de Segurança do Trabalho", "Eng. Carlos", "CREA 5678", "Engenheiro de Segurança do Trabalho", new DateTime(2026, 10, 22, 16, 0, 0, DateTimeKind.Utc), false),
+        };
+        var assinado = DadosCompletos() with { Assinaturas = assinaturas, Verificacao = new VerificacaoPgrPdf("TOKEN123", qr.UrlValidacao, qr.Png) };
+        var minuta = DadosCompletos() with
+        {
+            Assinaturas = assinaturas.Select(a => a with { AssinadoEmUtc = null }).ToList(), Minuta = true,
+        };
+
+        var pdfAssinado = new PgrPdfService().Gerar(assinado, null);
+        var pdfMinuta = new PgrPdfService().Gerar(minuta, null);
+
+        Assert.Equal("%PDF", System.Text.Encoding.ASCII.GetString(pdfAssinado, 0, 4));
+        Assert.Equal("%PDF", System.Text.Encoding.ASCII.GetString(pdfMinuta, 0, 4));
+    }
+
+    [Fact]
     public void Gerar_SemLogo_DevolvePdfValido()
     {
         var pdf = new PgrPdfService().Gerar(DadosCompletos(), null);
