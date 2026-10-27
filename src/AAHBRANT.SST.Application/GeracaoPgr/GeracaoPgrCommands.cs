@@ -1,3 +1,5 @@
+using AAHBRANT.SST.Application.Assinatura;
+using AAHBRANT.SST.Application.Assinatura.Commands;
 using AAHBRANT.SST.Application.MatrizRisco;
 using System.Text.Json;
 using AAHBRANT.SST.Application.Common;
@@ -451,13 +453,19 @@ public class GerarRiscosAtividadeGeracaoPgrCommandHandler : IRequestHandler<Gera
     }
 }
 
-public record EnviarGeracaoPgrParaAprovacaoCommand(Guid Id) : IRequest;
+// UsuarioId é quem está enviando; precisa ser o técnico escolhido quando ele assina no sistema.
+public record EnviarGeracaoPgrParaAprovacaoCommand(Guid Id, Guid? UsuarioId = null) : IRequest;
 
 public class EnviarGeracaoPgrParaAprovacaoCommandHandler : IRequestHandler<EnviarGeracaoPgrParaAprovacaoCommand>
 {
     private readonly IAppDbContext _db;
+    private readonly IRegistradorAssinaturaService? _registrador;
 
-    public EnviarGeracaoPgrParaAprovacaoCommandHandler(IAppDbContext db) => _db = db;
+    public EnviarGeracaoPgrParaAprovacaoCommandHandler(IAppDbContext db, IRegistradorAssinaturaService? registrador = null)
+    {
+        _db = db;
+        _registrador = registrador;
+    }
 
     public async Task Handle(EnviarGeracaoPgrParaAprovacaoCommand request, CancellationToken ct)
     {
@@ -466,6 +474,19 @@ public class EnviarGeracaoPgrParaAprovacaoCommandHandler : IRequestHandler<Envia
         var e = SerializacaoGeracao.Ler(g.EstruturaJson);
         if (e.Ghes.Count == 0 || e.Ghes.All(x => x.Atividades.All(a => !a.RiscosGerados)))
             throw new InvalidOperationException("Gere o inventário de riscos antes de enviar para aprovação.");
+
+        // Quem assina o PGR precisa estar escolhido antes de enviar; o técnico, se assina no sistema, assina agora.
+        var comp = e.Complementares ?? new DadosComplementaresPgr();
+        AssinaturaGeracaoPgr.ConferirEscolha(comp.Tecnico, AssinaturaGeracaoPgr.RotuloTecnico);
+        AssinaturaGeracaoPgr.ConferirEscolha(comp.Engenheiro, AssinaturaGeracaoPgr.RotuloEngenheiro);
+        if (comp.Tecnico is { AMao: false } tecnico)
+        {
+            if (_registrador is null)
+                throw new InvalidOperationException("A assinatura eletrônica não está disponível.");
+            var trabalhadorId = await AssinaturaGeracaoPgr.ConferirUsuarioAsync(_db, tecnico, AssinaturaGeracaoPgr.RotuloTecnico, request.UsuarioId, ct);
+            await AssinaturaGeracaoPgr.AssinarAsync(_db, _registrador, g.Id, trabalhadorId, PapelAssinatura.TecnicoSegurancaPgr, ct);
+        }
+
         g.Status = StatusGeracaoPgrEap.AguardandoAprovacao;
         g.Passo = 5;
         g.MotivoDevolucao = null;
@@ -494,6 +515,14 @@ public class DevolverGeracaoPgrCommandHandler : IRequestHandler<DevolverGeracaoP
         g.Status = StatusGeracaoPgrEap.Devolvido;
         g.MotivoDevolucao = request.Motivo.Trim();
         g.Passo = 4;
+
+        // O conteúdo vai mudar: a assinatura que o técnico deu sobre a versão anterior não vale para a nova, que ele assina de novo
+        // ao reenviar. A trilha de auditoria guarda que ele assinou.
+        var documento = await _db.DocumentosAssinatura.FirstOrDefaultAsync(
+            d => d.EntidadeTipo == AssinaturaGeracaoPgr.EntidadeTipo && d.EntidadeId == g.Id && d.Status == StatusDocumentoAssinatura.EmAndamento, ct);
+        if (documento is not null)
+            _db.DocumentoSignatarios.RemoveRange(await _db.DocumentoSignatarios.Where(s => s.DocumentoAssinaturaId == documento.Id).ToListAsync(ct));
+
         await _db.SaveChangesAsync(ct);
     }
 }
@@ -506,8 +535,15 @@ public record AprovarGeracaoPgrCommand(Guid Id, Guid? UsuarioId, string? NomeUsu
 public class AprovarGeracaoPgrCommandHandler : IRequestHandler<AprovarGeracaoPgrCommand, Guid>
 {
     private readonly IAppDbContext _db;
+    private readonly IRegistradorAssinaturaService? _registrador;
+    private readonly IMediator? _mediator;
 
-    public AprovarGeracaoPgrCommandHandler(IAppDbContext db) => _db = db;
+    public AprovarGeracaoPgrCommandHandler(IAppDbContext db, IRegistradorAssinaturaService? registrador = null, IMediator? mediator = null)
+    {
+        _db = db;
+        _registrador = registrador;
+        _mediator = mediator;
+    }
 
     public async Task<Guid> Handle(AprovarGeracaoPgrCommand request, CancellationToken ct)
     {
@@ -522,6 +558,28 @@ public class AprovarGeracaoPgrCommandHandler : IRequestHandler<AprovarGeracaoPgr
             await SerializacaoGeracao.CarregarEpisAsync(_db, e, ct));
         if (pendencias.Count > 0)
             throw new InvalidOperationException("Ainda há pendências: " + string.Join(" ", pendencias.Take(5)));
+
+        // Assinatura eletrônica: o técnico já assinou ao enviar; o engenheiro assina agora, antes de a aprovação ser gravada, para
+        // nunca existir PGR aprovado sem a assinatura combinada. Rascunho antigo, sem escolha de quem assina, segue como antes.
+        var comp = e.Complementares ?? new DadosComplementaresPgr();
+        if (comp.Tecnico is { AMao: false } tecnicoEsperado)
+        {
+            var assinouTecnico = await _db.DocumentoSignatarios.AnyAsync(
+                s => s.Papel == PapelAssinatura.TecnicoSegurancaPgr
+                    && _db.DocumentosAssinatura.Any(d => d.Id == s.DocumentoAssinaturaId && d.EntidadeTipo == AssinaturaGeracaoPgr.EntidadeTipo && d.EntidadeId == g.Id), ct);
+            if (!assinouTecnico)
+                throw new InvalidOperationException(
+                    $"O {AssinaturaGeracaoPgr.RotuloTecnico} ({tecnicoEsperado.Nome}) ainda não assinou. Devolva o PGR para ajustes, para ele assinar ao reenviar.");
+        }
+        if (comp.Engenheiro is { AMao: false } engenheiro)
+        {
+            if (_registrador is null)
+                throw new InvalidOperationException("A assinatura eletrônica não está disponível.");
+            AssinaturaGeracaoPgr.ConferirEscolha(engenheiro, AssinaturaGeracaoPgr.RotuloEngenheiro);
+            var trabalhadorEngenheiro = await AssinaturaGeracaoPgr.ConferirUsuarioAsync(
+                _db, engenheiro, AssinaturaGeracaoPgr.RotuloEngenheiro, request.UsuarioId, ct);
+            await AssinaturaGeracaoPgr.AssinarAsync(_db, _registrador, g.Id, trabalhadorEngenheiro, PapelAssinatura.EngenheiroSegurancaPgr, ct);
+        }
 
         var agora = DateTime.UtcNow;
         var aprovador = await SerializacaoGeracao.NomeUsuarioAsync(_db, request.UsuarioId, request.NomeUsuario, ct);
@@ -668,6 +726,18 @@ public class AprovarGeracaoPgrCommandHandler : IRequestHandler<AprovarGeracaoPgr
         // Cursos obrigatórios por função saem do PGR recém-aprovado, como sugestão para o engenheiro
         // revisar na obra (21/10). Só acrescenta: nada aprovado ou recusado antes é tocado.
         await CursosObrigatorios.GeradorCursosObrigatorios.GerarAsync(_db, g.ObraId, ct);
+
+        // Com assinatura eletrônica, o documento do motor é finalizado agora: o PDF assinado (carimbos, QR e código de verificação)
+        // é gerado e guardado, e o download passa a entregar sempre esse arquivo.
+        if (_mediator is not null && (comp.Tecnico is { AMao: false } || comp.Engenheiro is { AMao: false }))
+        {
+            var documentoId = await _db.DocumentosAssinatura
+                .Where(d => d.EntidadeTipo == AssinaturaGeracaoPgr.EntidadeTipo && d.EntidadeId == g.Id)
+                .Select(d => (Guid?)d.Id).FirstOrDefaultAsync(ct);
+            if (documentoId is { } id)
+                await _mediator.Send(new FinalizarDocumentoCommand(id), ct);
+        }
+
         return pgr.Id;
     }
 

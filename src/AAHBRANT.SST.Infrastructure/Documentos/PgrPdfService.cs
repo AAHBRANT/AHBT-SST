@@ -97,7 +97,7 @@ public class PgrPdfService : IPgrPdfService
                     });
                 }
             });
-            Rodape(p);
+            Rodape(p, d);
         });
     }
 
@@ -364,6 +364,31 @@ public class PgrPdfService : IPgrPdfService
                         t.Span(d.AprovadoPorNome ?? "não informado").SemiBold();
                         if (d.AprovadoEmUtc is { } ap) t.Span($" em {HorarioBrasilia.De(ap):dd/MM/yyyy HH:mm}.");
                     });
+                    if (d.Assinaturas is { Count: > 0 } assinaturas)
+                    {
+                        b.Item().PaddingTop(14).Row(r =>
+                        {
+                            for (var i = 0; i < assinaturas.Count; i++)
+                            {
+                                if (i > 0) r.ConstantItem(36);
+                                AssinaturaPgr(r, assinaturas[i], d.Verificacao?.Codigo);
+                            }
+                        });
+                        if (d.Verificacao is { } ver)
+                            b.Item().PaddingTop(14).ShowEntire().Row(r =>
+                            {
+                                r.ConstantItem(70).Height(70).Image(ver.QrPng);
+                                r.ConstantItem(12);
+                                r.RelativeItem().Column(q =>
+                                {
+                                    q.Item().Text("Verificação de autenticidade").SemiBold().FontSize(9).FontColor(Marca);
+                                    q.Item().Text("Aponte a câmera para o QR ou acesse o endereço abaixo e informe o código para conferir que este PGR é o documento assinado no sistema.").FontSize(8).FontColor(Secundario);
+                                    q.Item().PaddingTop(3).Text(ver.Url).FontSize(8).FontColor(Texto);
+                                    q.Item().Text($"Código: {ver.Codigo}").FontSize(8).SemiBold();
+                                });
+                            });
+                        return;
+                    }
                     b.Item().PaddingTop(34).Row(r =>
                     {
                         Assinatura(r, d.AprovadoPorNome ?? "Engenheiro de Segurança do Trabalho",
@@ -374,7 +399,7 @@ public class PgrPdfService : IPgrPdfService
                     });
                 });
             });
-            Rodape(p);
+            Rodape(p, d);
         });
     }
 
@@ -395,16 +420,19 @@ public class PgrPdfService : IPgrPdfService
                 r.RelativeItem().Text("PGR · Programa de Gerenciamento de Riscos").FontSize(8).FontColor(Secundario);
                 r.RelativeItem().AlignRight().Text(d.ObraNome).FontSize(8).FontColor(Secundario);
             });
+            if (d.Minuta)
+                h.Item().PaddingTop(3).Text("MINUTA PARA CONFERÊNCIA · NÃO ASSINADO · SEM VALOR DOCUMENTAL").FontSize(8).Bold().FontColor(Marca);
             h.Item().PaddingTop(4).LineHorizontal(0.5f).LineColor(Linha);
         });
 
-    private static void Rodape(PageDescriptor p) =>
+    private static void Rodape(PageDescriptor p, DadosPgrPdf d) =>
         p.Footer().Column(f =>
         {
             f.Item().LineHorizontal(0.5f).LineColor(Linha);
             f.Item().PaddingTop(4).Row(r =>
             {
-                r.RelativeItem().Text("AAHBRANT SST").FontSize(7.5f).FontColor(Secundario);
+                r.RelativeItem().Text(d.Verificacao is { } v ? $"AAHBRANT SST · código de verificação {v.Codigo}" : "AAHBRANT SST")
+                    .FontSize(7.5f).FontColor(Secundario);
                 r.RelativeItem().AlignRight().Text(t =>
                 {
                     t.DefaultTextStyle(s => s.FontSize(7.5f).FontColor(Secundario));
@@ -486,6 +514,35 @@ public class PgrPdfService : IPgrPdfService
                     t.Cell().ShowEntire().BorderBottom(0.5f).BorderColor(Linha).PaddingVertical(5).PaddingRight(6).Text(valor).FontSize(9);
         });
     }
+
+    // Uma assinatura do PGR: carimbo em cima da linha quando assinou no sistema, espaço em branco quando é à mão ou quando ainda
+    // não assinou (minuta). O carimbo descreve só o que de fato ocorreu: assinatura por sessão autenticada, sem citar certificado.
+    private static void AssinaturaPgr(RowDescriptor r, AssinaturaPgrPdf a, string? codigo) =>
+        r.RelativeItem().Column(col =>
+        {
+            if (a.AssinadoEmUtc is { } quando)
+            {
+                col.Item().Border(0.8f).BorderColor(Marca).Padding(6).Column(s =>
+                {
+                    s.Item().Text("ASSINADO ELETRONICAMENTE").Bold().FontSize(7.5f).FontColor(Marca);
+                    s.Item().PaddingTop(2).Text(a.Nome ?? " ").SemiBold().FontSize(9.5f);
+                    if (!string.IsNullOrWhiteSpace(a.Registro))
+                        s.Item().Text(a.Registro).FontSize(8);
+                    s.Item().PaddingTop(2).Text($"Em {HorarioBrasilia.De(quando):dd/MM/yyyy 'às' HH:mm} (Brasília)").FontSize(8);
+                    s.Item().Text("Autenticação por sessão no sistema AAHBRANT SST").FontSize(7.5f).FontColor(Secundario);
+                    if (!string.IsNullOrWhiteSpace(codigo))
+                        s.Item().Text($"Código {codigo}").FontSize(7.5f).FontColor(Secundario);
+                });
+                col.Item().Height(6);
+            }
+            else
+            {
+                col.Item().Height(a.AMao ? 40 : 30).AlignBottom().Text(a.AMao ? string.Empty : "Aguardando assinatura").FontSize(8).Italic().FontColor(Secundario);
+            }
+            col.Item().BorderTop(0.6f).BorderColor(Texto).PaddingTop(4).Text(string.IsNullOrWhiteSpace(a.Nome) ? " " : a.Nome).SemiBold().FontSize(9);
+            col.Item().Text(a.Descricao + (a.AssinadoEmUtc is null && !string.IsNullOrWhiteSpace(a.Registro) ? $" · {a.Registro}" : string.Empty))
+                .FontSize(8).FontColor(Secundario);
+        });
 
     private static void Assinatura(RowDescriptor r, string nome, string papel) =>
         r.RelativeItem().Column(col =>

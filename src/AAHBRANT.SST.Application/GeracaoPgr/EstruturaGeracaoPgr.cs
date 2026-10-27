@@ -29,6 +29,16 @@ public class EstruturaGeracaoPgr
 
 // Dados complementares do PGR: o técnico preenche uma vez e a tela já abre preenchida nas próximas gerações
 // da mesma obra. Obrigatórios para aprovar, como o término da vigência.
+// Uma das duas assinaturas do PGR: o técnico de segurança da obra (assina ao enviar para aprovação) ou o engenheiro (assina
+// ao aprovar). AMao = assina fora do sistema, e a linha sai em branco no PDF. O registro profissional é digitado em cada PGR.
+public class AssinanteGeracaoPgr
+{
+    public Guid? UsuarioId { get; set; }
+    public string? Nome { get; set; }
+    public string? Registro { get; set; }
+    public bool AMao { get; set; }
+}
+
 public class DadosComplementaresPgr
 {
     // Número e descrição, como no documento (ex.: "4211-1/01 — Construção de rodovias e ferrovias").
@@ -42,6 +52,9 @@ public class DadosComplementaresPgr
     public string? ResponsavelImplantacaoCargo { get; set; }
     public List<ContatoEmergencia> ContatosEmergencia { get; set; } = new();
     public List<string> CenariosEmergencia { get; set; } = new();
+    // Quem assina o PGR (escolhido no passo 4). Nulos em rascunhos antigos, que seguem com a linha em branco no PDF.
+    public AssinanteGeracaoPgr? Tecnico { get; set; }
+    public AssinanteGeracaoPgr? Engenheiro { get; set; }
     // Quando e de onde as rotas foram calculadas (sugestão por mapa): vai no rodapé do plano de emergência.
     public DateTime? RotasCalculadasEmUtc { get; set; }
     public string? RotasFonte { get; set; }

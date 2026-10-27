@@ -29,6 +29,7 @@ public static class TipoDocumentoAssinatura
         ["DevolucaoEpi"] = "Devolução de EPI",
         ["EntregaUniforme"] = "Entrega de Uniforme",
         ["NaoConformidade"] = "Registro de Não Conformidade",
+        ["GeracaoPgrEap"] = "PGR — Programa de Gerenciamento de Riscos",
         ["SolicitacaoReposicaoEpi"] = "Solicitação de Reposição de EPI",
     };
 
