@@ -9,6 +9,7 @@ import {
 } from '../../lib/api';
 import { rotuloStatusGeracao } from './GeracoesPgrEapCard';
 import { DadosComplementaresPgr } from './DadosComplementaresPgr';
+import { QuemAssinaPgr } from './QuemAssinaPgr';
 import { ExposicaoRiscoEditor, SeletorEpi } from './ExposicaoRiscoEditor';
 import { InventarioPorPerigo } from './InventarioPorPerigo';
 import { CronogramaTreinamentosCard } from './CronogramaTreinamentosCard';
@@ -296,7 +297,16 @@ function Assistente({ id }: { id: string }) {
       {passo === 5 && (
         <Aprovacao g={g} ocupado={!!ocupado}
           devolver={(motivo) => void executar('Devolvendo…', async () => { await api.geracoesPgrEap.devolver(id, motivo); await carregar(4); })}
-          aprovar={() => void executar('Aprovando e criando o PGR…', async () => {
+          baixarMinuta={() => void executar('Gerando a minuta…', async () => {
+            const blob = await api.geracoesPgrEap.baixarMinuta(id);
+            const url = URL.createObjectURL(blob);
+            const link = document.createElement('a');
+            link.href = url;
+            link.download = `${g.nome.replace(/[\\/:*?"<>|]/g, '-')} - MINUTA.pdf`;
+            link.click();
+            URL.revokeObjectURL(url);
+          })}
+          aprovar={() => void executar('Assinando e aprovando o PGR…', async () => {
             const { pgrId } = await api.geracoesPgrEap.aprovar(id);
             navigate(`/prevencao/pgr/${pgrId}`);
           })}
@@ -473,6 +483,8 @@ function Inventario({ g, e, editavel, ocupado, alterar, gerarAtividade, salvar, 
 
       <DadosComplementaresPgr geracaoId={g.id} e={e} editavel={editavel} alterar={alterar} />
 
+      <QuemAssinaPgr geracaoId={g.id} e={e} editavel={editavel} alterar={alterar} />
+
       <Card
         titulo="Plano de ação"
         acoes={editavel && (e.acoesPlano ?? []).some((a) => a.descricao.trim())
@@ -494,7 +506,9 @@ function Inventario({ g, e, editavel, ocupado, alterar, gerarAtividade, salvar, 
       {editavel && (
         <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8 }}>
           <Button disabled={ocupado} onClick={salvar}>Salvar</Button>
-          <Button appearance="primary" disabled={ocupado} onClick={enviar}>Enviar para aprovação do engenheiro</Button>
+          <Button appearance="primary" disabled={ocupado} onClick={enviar}>
+            {e.complementares?.tecnico && !e.complementares.tecnico.aMao ? 'Assinar e enviar para aprovação' : 'Enviar para aprovação do engenheiro'}
+          </Button>
         </div>
       )}
     </>
@@ -638,13 +652,16 @@ function AcaoPlanoLinha({ acao, usuarios, editavel, alterar, remover }: {
   );
 }
 
-function Aprovacao({ g, ocupado, devolver, aprovar, baixarPdf }: {
+function Aprovacao({ g, ocupado, devolver, aprovar, baixarPdf, baixarMinuta }: {
   g: GeracaoPgrEap;
   ocupado: boolean;
   devolver: (motivo: string) => void;
   aprovar: () => void;
   baixarPdf: () => void;
+  baixarMinuta: () => void;
 }) {
+  const comp = g.estrutura.complementares;
+  const assinaNoSistema = !!comp?.engenheiro && !comp.engenheiro.aMao;
   const [motivo, setMotivo] = useState('');
   const navigate = useNavigate();
 
@@ -659,7 +676,9 @@ function Aprovacao({ g, ocupado, devolver, aprovar, baixarPdf }: {
             PDF do PGR com identificação, GHE, funções, inventário de riscos, medidas aceitas, plano de ação, cronograma de treinamentos e registro da aprovação.
           </Text>
           <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-            <Button appearance="primary" disabled={ocupado} onClick={baixarPdf}>Baixar PDF do PGR</Button>
+            <Button appearance="primary" disabled={ocupado} onClick={baixarPdf}>
+              {comp?.tecnico && !comp.tecnico.aMao ? 'Baixar PDF assinado' : 'Baixar PDF do PGR'}
+            </Button>
             {g.pgrId && <Button onClick={() => navigate(`/prevencao/pgr/${g.pgrId}`)}>Abrir o PGR</Button>}
           </div>
         </Card>
@@ -695,7 +714,10 @@ function Aprovacao({ g, ocupado, devolver, aprovar, baixarPdf }: {
             </Field>
             <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8, marginTop: 8 }}>
               <Button disabled={ocupado || !motivo.trim()} onClick={() => devolver(motivo.trim())}>Devolver para ajustes</Button>
-              <Button appearance="primary" disabled={ocupado || g.pendenciasAprovacao.length > 0} onClick={aprovar}>Aprovar PGR</Button>
+              <Button disabled={ocupado} onClick={baixarMinuta}>Ver minuta em PDF</Button>
+              <Button appearance="primary" disabled={ocupado || g.pendenciasAprovacao.length > 0} onClick={aprovar}>
+                {assinaNoSistema ? 'Aprovar e assinar o PGR' : 'Aprovar PGR'}
+              </Button>
             </div>
           </>
         ) : (

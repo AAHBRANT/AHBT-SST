@@ -2977,8 +2977,15 @@ export interface ContatoEmergencia {
   local: string; endereco?: string | null; telefone?: string | null;
   distanciaKm?: number | null; tempoMinutos?: number | null; rota?: string | null; recomendado: boolean;
 }
+// Uma das duas assinaturas do PGR (técnico de segurança da obra e engenheiro). aMao = assina fora do sistema.
+export interface AssinanteGeracaoPgr {
+  usuarioId?: string | null; nome?: string | null; registro?: string | null; aMao: boolean;
+}
+export interface AssinanteDisponivel { usuarioId: string; nome: string; vinculado: boolean }
+export interface AssinantesGeracaoPgr { tecnicos: AssinanteDisponivel[]; engenheiros: AssinanteDisponivel[] }
 // Dados da obra que o PGR exige e o sistema não tem em outro lugar: o técnico preenche uma vez.
 export interface DadosComplementaresPgr {
+  tecnico?: AssinanteGeracaoPgr | null; engenheiro?: AssinanteGeracaoPgr | null;
   cnae?: string | null; grauRisco?: number | null; cep?: string | null;
   responsavelTecnicoRegistro?: string | null; responsavelImplantacaoNome?: string | null; responsavelImplantacaoCargo?: string | null;
   contatosEmergencia: ContatoEmergencia[]; cenariosEmergencia: string[];
@@ -5727,6 +5734,14 @@ export const api = {
       if (!response.ok) throw new Error('Não foi possível gerar o PDF do PGR.');
       return response.blob();
     },
+    // Minuta para o engenheiro ler antes de assinar: o mesmo PGR, marcado como não assinado.
+    baixarMinuta: async (id: string): Promise<Blob> => {
+      const response = await fetch(`${API_BASE_URL}/api/geracoes-pgr-eap/${id}/minuta`, { headers: await montarHeadersAuth() });
+      if (!response.ok) throw new Error('Não foi possível gerar a minuta do PGR.');
+      return response.blob();
+    },
+    // Quem pode ser escolhido para assinar: técnico e engenheiro de segurança com perfil na obra.
+    assinantes: (id: string) => request<AssinantesGeracaoPgr>(`/api/geracoes-pgr-eap/${id}/assinantes`),
     criar: async (dados: { obraId: string; nome: string; dataElaboracao: string; dataProximaRevisao?: string | null }, arquivo: File) => {
       const formData = new FormData();
       formData.append('obraId', dados.obraId);
