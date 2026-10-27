@@ -72,6 +72,12 @@ public class GeracoesPgrEapController : ControllerBase
     public async Task<IActionResult> GerarRiscos(Guid id, GerarRiscosRequest corpo, CancellationToken ct)
         => Ok(new { riscos = await _mediator.Send(new GerarRiscosAtividadeGeracaoPgrCommand(id, corpo.GheNumero, corpo.CodigoEap), ct) });
 
+    // Sugere forma de acompanhamento, periodicidade e critério de aferição para as ações do plano que ainda não têm.
+    [Authorize(Policy = "pgr:criar")]
+    [HttpPost("{id:guid}/sugerir-acompanhamento")]
+    public async Task<IActionResult> SugerirAcompanhamento(Guid id, CancellationToken ct)
+        => Ok(new { acoes = await _mediator.Send(new SugerirAcompanhamentoPlanoGeracaoPgrCommand(id), ct) });
+
     [Authorize(Policy = "pgr:criar")]
     [HttpPost("{id:guid}/enviar-aprovacao")]
     public async Task<IActionResult> EnviarAprovacao(Guid id, CancellationToken ct)

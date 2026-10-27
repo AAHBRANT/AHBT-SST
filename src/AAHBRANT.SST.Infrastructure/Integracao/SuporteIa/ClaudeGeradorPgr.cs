@@ -260,6 +260,66 @@ public class ClaudeGeradorPgr : IGeradorPgrIa
         }).ToList();
     }
 
+    // ---- 3b. Acompanhamento e aferição das ações do plano de ação (NR-01, item 1.5.5.2) ----
+
+    private const string InstrucoesAcompanhamento = """
+        Você é engenheiro de Segurança do Trabalho da AAHBRANT Engenharia revisando o plano de ação do PGR de uma obra
+        (NR-01, item 1.5.5.2). Para cada ação informada, sugira como ela será acompanhada e como se saberá que funcionou.
+        Responda só com o JSON, com um item por ação, usando o campo indice exatamente como veio.
+        - forma: UMA das opções: "Inspeção periódica", "Registro de treinamento", "Indicador", "Auditoria", "Medição" ou
+          "Outro". Escolha a que melhor serve para acompanhar a ação.
+        - periodicidade: UMA das opções: "Semanal", "Quinzenal", "Mensal", "Trimestral" ou "A cada ocorrência".
+        - criterio: o que mostra que a ação deu resultado, em uma frase curta (até 200 caracteres), objetiva e que dê para
+          verificar, de preferência com número ou percentual (ex.: "100% dos trabalhadores da função com o curso válido
+          antes de iniciar a atividade"). Não invente norma, documento interno, nome de pessoa nem meta que a ação não
+          sugira; se não houver número razoável, descreva a verificação sem inventar valor.
+        """;
+
+    private static readonly object SchemaAcompanhamento = new
+    {
+        type = "object",
+        additionalProperties = false,
+        required = new[] { "itens" },
+        properties = new
+        {
+            itens = new
+            {
+                type = "array",
+                items = new
+                {
+                    type = "object",
+                    additionalProperties = false,
+                    required = new[] { "indice", "forma", "periodicidade", "criterio" },
+                    properties = new
+                    {
+                        indice = new { type = "integer" },
+                        forma = new { type = "string", @enum = AcompanhamentoPlano.Formas },
+                        periodicidade = new { type = "string", @enum = AcompanhamentoPlano.Periodicidades },
+                        criterio = new { type = "string" },
+                    },
+                },
+            },
+        },
+    };
+
+    public async Task<List<AcompanhamentoSugeridoIa>> SugerirAcompanhamentoAsync(ContextoAcompanhamentoPlano c, CancellationToken ct)
+    {
+        var sb = new StringBuilder();
+        sb.AppendLine($"Obra: {c.Obra}");
+        sb.AppendLine("Perigos do inventário de riscos:");
+        foreach (var r in c.Riscos) sb.AppendLine($"- {r}");
+        if (c.Riscos.Count == 0) sb.AppendLine("(ainda sem riscos gerados)");
+        sb.AppendLine("Ações do plano de ação:");
+        foreach (var a in c.Acoes)
+            sb.AppendLine($"- indice={a.Indice} | acao={a.Descricao} | prazo={(a.Prazo is { } d ? d.ToString("dd/MM/yyyy") : "não definido")}");
+
+        var r2 = await _chat.ObterAsync<RespostaAcompanhamento>(InstrucoesAcompanhamento, sb.ToString(), "acompanhamento_plano", SchemaAcompanhamento, ct, maxTokens: 3000, timeoutSegundos: 90);
+        return (r2.Itens ?? new()).Select(x => new AcompanhamentoSugeridoIa(x.Indice, x.Forma?.Trim(), x.Periodicidade?.Trim(), x.Criterio?.Trim())).ToList();
+    }
+
+    private sealed record RespostaAcompanhamento(List<AcompanhamentoModelo>? Itens);
+    private sealed record AcompanhamentoModelo(int Indice, string? Forma, string? Periodicidade, string? Criterio);
+
     // ---- 4. Emergência: escolher o local mais adequado e justificar ----
 
     private const string InstrucoesEmergencia = """

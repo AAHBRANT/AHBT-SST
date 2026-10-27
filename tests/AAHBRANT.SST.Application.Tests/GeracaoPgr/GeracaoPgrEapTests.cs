@@ -24,6 +24,13 @@ public class GeracaoPgrEapTests
             return Task.FromResult(Riscos);
         }
 
+        public List<AcompanhamentoSugeridoIa> Acompanhamentos { get; set; } = new();
+
+        public ContextoAcompanhamentoPlano? ContextoAcompanhamento { get; private set; }
+
+        public Task<List<AcompanhamentoSugeridoIa>> SugerirAcompanhamentoAsync(ContextoAcompanhamentoPlano contexto, CancellationToken ct) { ContextoAcompanhamento = contexto; return Task.FromResult(Acompanhamentos); }
+
+
         public Task<SugestaoEmergenciaIa> SugerirEmergenciaAsync(ContextoEmergenciaIa contexto, CancellationToken ct) =>
             Task.FromResult(new SugestaoEmergenciaIa(new List<RecomendacaoEmergenciaIa>(), new List<string>()));
     }
@@ -585,5 +592,67 @@ public class GeracaoPgrEapTests
         Assert.Equal(2, plano.Count);
         Assert.Contains("Treinar equipe em altura", plano);
         Assert.Single(await db.Ghes.Where(x => x.Ativo).ToListAsync());
+    }
+
+    [Fact]
+    public async Task SugerirAcompanhamento_SoPreencheCampoVazio_NormalizaOpcoesEMarcaComoSugestaoDaIa()
+    {
+        var (db, obra, _) = await CriarAsync();
+        var ia = new IaFalsa();
+        var id = await CriarGeracaoAsync(db, obra, ia);
+        var estrutura = new EstruturaGeracaoPgr
+        {
+            AcoesPlano = new()
+            {
+                new AcaoPlanoGerada { Descricao = "Instalar linha de vida", Prazo = new DateTime(2026, 12, 1) },
+                new AcaoPlanoGerada { Descricao = "Treinar ajudantes em NR-35", FormaAcompanhamento = "Auditoria", CriterioAfericao = "Digitado pelo técnico" },
+                new AcaoPlanoGerada { Descricao = "   " },
+                new AcaoPlanoGerada { Descricao = "Medir ruído", FormaAcompanhamento = "Medição", PeriodicidadeAcompanhamento = "Mensal", CriterioAfericao = "Abaixo de 85 dB(A)" },
+            },
+        };
+        await new SalvarGeracaoPgrEapCommandHandler(db).Handle(new SalvarGeracaoPgrEapCommand(id, 4, estrutura), default);
+        ia.Acompanhamentos = new()
+        {
+            new AcompanhamentoSugeridoIa(0, "inspeção periódica", "Semanal", "100% dos pontos de ancoragem inspecionados sem não conformidade"),
+            new AcompanhamentoSugeridoIa(1, "Indicador", "Quando der", "Sobrescreveria o que o técnico digitou"),
+            new AcompanhamentoSugeridoIa(3, "Medição", "Mensal", "Sobrescreveria o que já estava preenchido"),
+            new AcompanhamentoSugeridoIa(9, "Auditoria", "Mensal", "Índice que não existe"),
+        };
+
+        var n = await new SugerirAcompanhamentoPlanoGeracaoPgrCommandHandler(db, ia).Handle(new SugerirAcompanhamentoPlanoGeracaoPgrCommand(id), default);
+
+        var acoes = (await new ObterGeracaoPgrEapQueryHandler(db).Handle(new ObterGeracaoPgrEapQuery(id), default)).Estrutura.AcoesPlano;
+        Assert.Equal(1, n); // só a linha de vida mudou: a do treinamento não aceitou a periodicidade fora da lista
+        Assert.Equal(new[] { 0, 1 }, ia.ContextoAcompanhamento!.Acoes.Select(a => a.Indice).ToArray()); // a vazia e a completa ficam de fora
+        var linhaDeVida = acoes[0];
+        Assert.Equal("Inspeção periódica", linhaDeVida.FormaAcompanhamento);
+        Assert.Equal("Semanal", linhaDeVida.PeriodicidadeAcompanhamento);
+        Assert.StartsWith("100%", linhaDeVida.CriterioAfericao);
+        Assert.True(linhaDeVida.AcompanhamentoSugeridoPelaIa);
+        var treinamento = acoes[1];
+        Assert.Equal("Auditoria", treinamento.FormaAcompanhamento); // o técnico digitou: não muda
+        Assert.Equal("Digitado pelo técnico", treinamento.CriterioAfericao);
+        Assert.Null(treinamento.PeriodicidadeAcompanhamento); // "Quando der" não está na lista: fica em branco
+        Assert.True(acoes[1].AcompanhamentoSugeridoPelaIa == false);
+        Assert.Equal("Abaixo de 85 dB(A)", acoes[3].CriterioAfericao);
+        Assert.False(acoes[3].AcompanhamentoSugeridoPelaIa);
+    }
+
+    [Fact]
+    public async Task SugerirAcompanhamento_SemAcaoPendente_NaoChamaAIa()
+    {
+        var (db, obra, _) = await CriarAsync();
+        var ia = new IaFalsa();
+        var id = await CriarGeracaoAsync(db, obra, ia);
+        var estrutura = new EstruturaGeracaoPgr
+        {
+            AcoesPlano = new() { new AcaoPlanoGerada { Descricao = "Medir ruído", FormaAcompanhamento = "Medição", PeriodicidadeAcompanhamento = "Mensal", CriterioAfericao = "Abaixo de 85 dB(A)" } },
+        };
+        await new SalvarGeracaoPgrEapCommandHandler(db).Handle(new SalvarGeracaoPgrEapCommand(id, 4, estrutura), default);
+
+        var n = await new SugerirAcompanhamentoPlanoGeracaoPgrCommandHandler(db, ia).Handle(new SugerirAcompanhamentoPlanoGeracaoPgrCommand(id), default);
+
+        Assert.Equal(0, n);
+        Assert.Null(ia.ContextoAcompanhamento);
     }
 }

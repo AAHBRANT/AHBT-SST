@@ -130,6 +130,36 @@ public class AcaoPlanoGerada
     // Início opcional: com ele o cronograma mensal marca todos os meses de Início a Prazo.
     public DateTime? Inicio { get; set; }
     public DateTime? Prazo { get; set; }
+
+    // Acompanhamento e aferição de resultados (NR-01, item 1.5.5.2, apontamento da supervisão de 03/08/2026): como a
+    // ação será acompanhada, com que frequência e o que mostra que funcionou. Opcionais; a IA sugere e o engenheiro revisa.
+    public string? FormaAcompanhamento { get; set; }
+    public string? PeriodicidadeAcompanhamento { get; set; }
+    public string? CriterioAfericao { get; set; }
+    // Verdadeiro enquanto o acompanhamento veio da IA e ninguém o conferiu; quem edita um campo da ação o desmarca.
+    public bool AcompanhamentoSugeridoPelaIa { get; set; }
+}
+
+// Valores aceitos para forma e periodicidade do acompanhamento. Fora da lista a forma vira "Outro" e a periodicidade fica
+// em branco, para o engenheiro escolher.
+public static class AcompanhamentoPlano
+{
+    public static readonly string[] Formas =
+    {
+        "Inspeção periódica", "Registro de treinamento", "Indicador", "Auditoria", "Medição", "Outro",
+    };
+
+    public static readonly string[] Periodicidades =
+    {
+        "Semanal", "Quinzenal", "Mensal", "Trimestral", "A cada ocorrência",
+    };
+
+    public static string? Forma(string? valor) => Escolher(valor, Formas) ?? (string.IsNullOrWhiteSpace(valor) ? null : "Outro");
+
+    public static string? Periodicidade(string? valor) => Escolher(valor, Periodicidades);
+
+    private static string? Escolher(string? valor, string[] lista) =>
+        lista.FirstOrDefault(x => string.Equals(x, valor?.Trim(), StringComparison.CurrentCultureIgnoreCase));
 }
 
 // Item da EAP lido do arquivo. Nivel 1 = pacote; 2+ = atividade. Usar = entra no PGR (frente de
