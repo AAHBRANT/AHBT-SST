@@ -11,6 +11,7 @@ import { rotuloStatusGeracao } from './GeracoesPgrEapCard';
 import { DadosComplementaresPgr } from './DadosComplementaresPgr';
 import { ExposicaoRiscoEditor, SeletorEpi } from './ExposicaoRiscoEditor';
 import { InventarioPorPerigo } from './InventarioPorPerigo';
+import { CronogramaTreinamentosCard } from './CronogramaTreinamentosCard';
 
 const PASSOS = ['Enviar a EAP', 'Conferir a leitura', 'Funções e GHE', 'Inventário de riscos', 'Aprovar'];
 const FASES: Record<number, string> = { 1: 'Antes', 2: 'Durante', 3: 'Após' };
@@ -608,16 +609,19 @@ function Aprovacao({ g, ocupado, devolver, aprovar, baixarPdf }: {
   // cartão que nunca aparecia depois da aprovação).
   if (g.status === 3) {
     return (
-      <Card titulo="PGR aprovado">
-        <Text style={{ display: 'block' }}>Aprovado por {g.aprovadoPorNome} em {g.aprovadoEmUtc ? new Date(g.aprovadoEmUtc).toLocaleString('pt-BR') : ''}.</Text>
-        <Text size={200} style={{ display: 'block', margin: '8px 0' }}>
-          PDF do PGR com identificação, GHE, funções, inventário de riscos, medidas aceitas, plano de ação e registro da aprovação.
-        </Text>
-        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-          <Button appearance="primary" disabled={ocupado} onClick={baixarPdf}>Baixar PDF do PGR</Button>
-          {g.pgrId && <Button onClick={() => navigate(`/prevencao/pgr/${g.pgrId}`)}>Abrir o PGR</Button>}
-        </div>
-      </Card>
+      <>
+        <Card titulo="PGR aprovado">
+          <Text style={{ display: 'block' }}>Aprovado por {g.aprovadoPorNome} em {g.aprovadoEmUtc ? new Date(g.aprovadoEmUtc).toLocaleString('pt-BR') : ''}.</Text>
+          <Text size={200} style={{ display: 'block', margin: '8px 0' }}>
+            PDF do PGR com identificação, GHE, funções, inventário de riscos, medidas aceitas, plano de ação, cronograma de treinamentos e registro da aprovação.
+          </Text>
+          <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+            <Button appearance="primary" disabled={ocupado} onClick={baixarPdf}>Baixar PDF do PGR</Button>
+            {g.pgrId && <Button onClick={() => navigate(`/prevencao/pgr/${g.pgrId}`)}>Abrir o PGR</Button>}
+          </div>
+        </Card>
+        <CronogramaTreinamentosCard geracaoId={g.id} />
+      </>
     );
   }
 

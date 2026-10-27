@@ -254,6 +254,33 @@ public class PgrPdfService : IPgrPdfService
                     Cronograma(c, acoes);
                 }
 
+                // 7.1 Cronograma de treinamentos (NR-01, item 1.7): cursos obrigatórios por função, tirados do próprio PGR.
+                Subtitulo(c, "7.1 Cronograma de treinamentos");
+                Paragrafo(c, "Treinamentos obrigatórios por função, conforme os perigos e as atividades deste PGR e o item 1.7 da NR-01. Os cursos devem estar concluídos e válidos antes de a função iniciar a atividade que os exige.");
+                var treinamentos = d.Treinamentos ?? Array.Empty<LinhaTreinamentoPdf>();
+                if (treinamentos.Count == 0)
+                    c.Item().Text("Nenhum curso obrigatório registrado para as funções deste PGR.").Italic().FontColor(Secundario);
+                else
+                {
+                    foreach (var grupo in treinamentos.GroupBy(t => t.GheNumero).OrderBy(g => g.Key))
+                    {
+                        var nomeGhe = d.Estrutura.Ghes.FirstOrDefault(g => g.Numero == grupo.Key)?.Nome;
+                        Subtitulo(c, $"GHE {grupo.Key:00}" + (string.IsNullOrWhiteSpace(nomeGhe) ? "" : $" · {nomeGhe}"));
+                        Tabela(c, new[] { ("Função", 1.5f), ("Curso", 2.3f), ("Carga horária", 1.0f), ("Validade", 1.0f), ("Motivo (PGR)", 2.7f), ("Situação", 1.6f) },
+                            grupo.Select(t => new[]
+                            {
+                                t.Funcao, t.Curso,
+                                t.CargaHorariaMinima > 0 ? $"{t.CargaHorariaMinima} h" : "—",
+                                t.ValidadeEmMeses > 0 ? $"{t.ValidadeEmMeses} meses" : "—",
+                                string.IsNullOrWhiteSpace(t.Motivo) ? "—" : t.Motivo!,
+                                t.Aprovado ? "Confirmado" : "A confirmar",
+                            }),
+                            "");
+                    }
+                    c.Item().PaddingTop(4).Text("Cursos \"a confirmar\" são sugestões do sistema e valem como previsão até a validação do Engenheiro de Segurança.")
+                        .FontSize(8.5f).Italic().FontColor(Secundario);
+                }
+
                 // 8. Acompanhamento e monitoramento
                 TituloComPrimeiro(c, Secoes[7], b => Paragrafo(b, "A eficácia das medidas de controle será acompanhada por novas avaliações e inspeções, pelo controle estatístico das ocorrências de acidentes e pela análise dos exames médicos previstos no PCMSO."));
                 Paragrafo(c, "Para os perigos geradores de riscos de acidentes serão programadas inspeções periódicas. Serão feitas avaliações extraordinárias sempre que houver mudança significativa nas condições de trabalho, alteração nos resultados dos exames médicos ou acidente com perda de tempo.");

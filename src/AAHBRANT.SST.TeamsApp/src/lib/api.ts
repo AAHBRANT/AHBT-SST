@@ -2993,6 +2993,12 @@ export interface GeracaoPgrEap {
   aprovadoPorNome?: string | null; aprovadoEmUtc?: string | null; pgrId?: string | null; estrutura: EstruturaGeracaoPgr;
   pendenciasAprovacao: string[]; funcoesCadastradas: { id: string; nome: string }[]; maxProbabilidade: number; maxSeveridade: number;
 }
+// Cursos obrigatórios por função de cada GHE (cronograma de treinamentos do PGR aprovado, NR-01 item 1.7).
+export interface LinhaTreinamentoPgr {
+  gheNumero: number; funcao: string; curso: string; norma?: string | null; cargaHorariaMinima: number; validadeEmMeses: number;
+  motivo?: string | null; aprovado: boolean;
+}
+export interface CronogramaTreinamentosGeracao { ghes: { numero: number; nome: string }[]; linhas: LinhaTreinamentoPgr[] }
 export interface ResumoGeracaoPgrEap { id: string; nome: string; obraNome: string; status: 1 | 2 | 3 | 4; passo: number; criadoEmUtc: string }
 
 export interface DadosDocumentoSst {
@@ -5727,6 +5733,7 @@ export const api = {
     sugerirEmergencia: (id: string) => request<SugestaoEmergencia>(`/api/geracoes-pgr-eap/${id}/sugerir-emergencia`, { method: 'POST' }),
     gerarRiscos: (id: string, gheNumero: number, codigoEap: string) =>
       request<{ riscos: number }>(`/api/geracoes-pgr-eap/${id}/gerar-riscos`, { method: 'POST', body: JSON.stringify({ gheNumero, codigoEap }) }),
+    cronogramaTreinamentos: (id: string) => request<CronogramaTreinamentosGeracao>(`/api/geracoes-pgr-eap/${id}/cronograma-treinamentos`),
     enviarAprovacao: (id: string) => request<void>(`/api/geracoes-pgr-eap/${id}/enviar-aprovacao`, { method: 'POST' }),
     devolver: (id: string, motivo: string) =>
       request<void>(`/api/geracoes-pgr-eap/${id}/devolver`, { method: 'POST', body: JSON.stringify({ motivo }) }),

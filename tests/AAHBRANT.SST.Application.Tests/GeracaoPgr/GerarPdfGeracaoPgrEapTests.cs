@@ -169,4 +169,30 @@ public class GerarPdfGeracaoPgrEapTests
 
         Assert.Empty(pdf.Dados!.Treinamentos!);
     }
+
+    [Fact]
+    public async Task CronogramaTreinamentos_SoDepoisDaAprovacao_ELevaGhesELinhas()
+    {
+        var (db, geracao) = await CriarAsync(StatusGeracaoPgrEap.AguardandoAprovacao, "{}");
+        await Assert.ThrowsAsync<InvalidOperationException>(() =>
+            new ObterCronogramaTreinamentosGeracaoPgrQueryHandler(db).Handle(new ObterCronogramaTreinamentosGeracaoPgrQuery(geracao.Id), default));
+
+        var armador = new Funcao { Nome = "ARMADOR" };
+        var altura = new CursoTreinamento { Nome = "NR-35 Trabalho em Altura", NormaReferencia = "NR-35", CargaHorariaMinima = 8, ValidadeEmMeses = 24 };
+        db.AddRange(armador, altura);
+        await db.SaveChangesAsync();
+        db.CursosObrigatoriosFuncaoObra.Add(new CursoObrigatorioFuncaoObra { ObraId = geracao.ObraId, FuncaoId = armador.Id, CursoTreinamentoId = altura.Id, Status = StatusCursoObrigatorio.Sugerido });
+        geracao.Status = StatusGeracaoPgrEap.Aprovado;
+        geracao.EstruturaJson = """
+            {"Ghes":[{"Numero":1,"Nome":"Estrutura","Funcoes":[{"Nome":"armador","Descricao":"x"}],"Atividades":[]}]}
+            """;
+        await db.SaveChangesAsync();
+
+        var r = await new ObterCronogramaTreinamentosGeracaoPgrQueryHandler(db).Handle(new ObterCronogramaTreinamentosGeracaoPgrQuery(geracao.Id), default);
+
+        Assert.Equal("Estrutura", Assert.Single(r.Ghes).Nome);
+        var linha = Assert.Single(r.Linhas);
+        Assert.Equal("NR-35", linha.Norma);
+        Assert.False(linha.Aprovado); // função achada pelo nome, curso ainda só sugerido
+    }
 }

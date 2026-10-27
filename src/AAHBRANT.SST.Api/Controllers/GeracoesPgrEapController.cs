@@ -104,6 +104,12 @@ public class GeracoesPgrEapController : ControllerBase
     public async Task<IActionResult> SugerirEmergencia(Guid id, CancellationToken ct)
         => Ok(await _mediator.Send(new SugerirEmergenciaGeracaoPgrCommand(id), ct));
 
+    // Cronograma de treinamentos do PGR aprovado (cartão da tela de aprovação; a mesma lista vai na seção 7.1 do PDF).
+    [Authorize(Policy = "pgr:ver")]
+    [HttpGet("{id:guid}/cronograma-treinamentos")]
+    public async Task<IActionResult> CronogramaTreinamentos(Guid id, CancellationToken ct)
+        => Ok(await _mediator.Send(new ObterCronogramaTreinamentosGeracaoPgrQuery(id), ct));
+
     // PDF do PGR aprovado (só depois da aprovação do Engenheiro de Segurança).
     [Authorize(Policy = "pgr:ver")]
     [HttpGet("{id:guid}/pdf")]

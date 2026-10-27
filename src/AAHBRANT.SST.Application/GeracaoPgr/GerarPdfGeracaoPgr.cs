@@ -99,7 +99,7 @@ public class GerarPdfGeracaoPgrEapQueryHandler : IRequestHandler<GerarPdfGeracao
                     id is { } i ? expostosPorFuncao.GetValueOrDefault(i) : 0));
                 if (id is { } idFuncao) funcoesDosGhes.Add((ghe.Numero, f.Nome, idFuncao));
             }
-        var treinamentos = await MontarTreinamentosAsync(g.ObraId, funcoesDosGhes, ct);
+        var treinamentos = await CronogramaTreinamentosPgr.MontarAsync(_db, g.ObraId, funcoesDosGhes, ct);
 
         // Controle de revisões: as registradas no PGR aprovado; sem nenhuma, a emissão inicial (revisão 00).
         var revisoesDb = g.PgrId is { } pgrId
@@ -146,29 +146,5 @@ public class GerarPdfGeracaoPgrEapQueryHandler : IRequestHandler<GerarPdfGeracao
 
         var nomeArquivo = $"PGR - {obra.Nome} - {g.DataElaboracao:yyyyMMdd}.pdf";
         return new ArquivoPgrPdf(_pdf.Gerar(dados, obra.LogoConteudo), nomeArquivo);
-    }
-
-    // Cursos obrigatórios da obra (sugeridos pelo PGR ou aprovados pelo engenheiro) para cada função de cada GHE.
-    // Recusado não entra. Consultas por tabela e junção em memória, para não perder linha de pai excluído.
-    private async Task<List<LinhaTreinamentoPdf>> MontarTreinamentosAsync(
-        Guid obraId, IReadOnlyList<(int Ghe, string Nome, Guid Id)> funcoesDosGhes, CancellationToken ct)
-    {
-        if (funcoesDosGhes.Count == 0) return new();
-        var obrigatorios = await _db.CursosObrigatoriosFuncaoObra
-            .Where(c => c.ObraId == obraId && c.Status != StatusCursoObrigatorio.Recusado)
-            .Select(c => new { c.FuncaoId, c.CursoTreinamentoId, c.Status, c.Motivo }).ToListAsync(ct);
-        if (obrigatorios.Count == 0) return new();
-        var idsCursos = obrigatorios.Select(c => c.CursoTreinamentoId).Distinct().ToList();
-        var cursos = await _db.CursosTreinamento.Where(c => idsCursos.Contains(c.Id))
-            .Select(c => new { c.Id, c.Nome, c.NormaReferencia, c.CargaHorariaMinima, c.ValidadeEmMeses }).ToDictionaryAsync(c => c.Id, ct);
-
-        var linhas = new List<LinhaTreinamentoPdf>();
-        foreach (var (ghe, nome, idFuncao) in funcoesDosGhes)
-            foreach (var o in obrigatorios.Where(x => x.FuncaoId == idFuncao))
-                if (cursos.TryGetValue(o.CursoTreinamentoId, out var curso))
-                    linhas.Add(new LinhaTreinamentoPdf(ghe, nome, curso.Nome, curso.NormaReferencia, curso.CargaHorariaMinima,
-                        curso.ValidadeEmMeses, o.Motivo, o.Status == StatusCursoObrigatorio.Aprovado));
-        return linhas.OrderBy(l => l.GheNumero).ThenBy(l => l.Funcao, StringComparer.CurrentCultureIgnoreCase)
-            .ThenBy(l => l.Norma ?? l.Curso, StringComparer.CurrentCultureIgnoreCase).ToList();
     }
 }
