@@ -158,14 +158,16 @@ public class ClaudeGeradorPgr : IGeradorPgrIa
     private const string InstrucoesRiscos = """
         Você é engenheiro de Segurança do Trabalho da AAHBRANT Engenharia montando o inventário de riscos
         do PGR (NR-01) para UMA atividade de obra. Responda só com o JSON.
-        - Liste os perigos realmente presentes na atividade (normalmente 3 a 8), de todos os tipos
+        - Liste só os perigos realmente relevantes da atividade: no MÁXIMO 5, os mais graves e prováveis, de todos os tipos
           aplicáveis: Físico, Químico, Biológico, Ergonômico, Psicossocial, Acidente.
         - Psicossocial (fatores de risco psicossociais relacionados ao trabalho, NR-01): inclua no máximo UM
           perigo desse tipo e só quando houver fator claro na atividade, como pressão por prazo, jornada
           extensa ou noturna, trabalho isolado, trabalho sob risco de vida que gere tensão constante, ou
           conflito entre equipes. Descreva o fator (ex.: "Pressão por prazo e jornada extensa"), nunca um
           diagnóstico de pessoa. Sem fator claro, não inclua.
-        - perigo: o agente ou a fonte, curto (ex.: "Queda de altura na borda da laje", "Ruído do vibrador").
+        - perigo: use EXATAMENTE o nome da lista de perigos padrão quando o perigo se encaixar (sem acrescentar
+          local, equipamento ou variação no nome: o detalhe vai em danos). Só escreva um nome próprio, curto,
+          quando nenhum da lista servir. Não repita o mesmo perigo na atividade.
         - danos: possíveis lesões ou doenças.
         - probabilidade e severidade: inteiros de 1 até o máximo informado da matriz, avaliados para a
           condição usual da atividade em obra, antes de controles adicionais.
@@ -234,6 +236,8 @@ public class ClaudeGeradorPgr : IGeradorPgrIa
         sb.AppendLine($"Ambiente: {c.Ambiente ?? "não informado"}");
         sb.AppendLine($"Funções: {string.Join(", ", c.Funcoes)}");
         sb.AppendLine($"Matriz de risco: probabilidade de 1 a {c.MaxProbabilidade}; severidade de 1 a {c.MaxSeveridade}.");
+        sb.AppendLine("Perigos padrão (use o nome exato):");
+        foreach (var (tipo, nome) in PerigosPadrao.Catalogo) sb.AppendLine($"- {nome} ({tipo})");
         sb.AppendLine("Requisitos legais validados:");
         foreach (var q in c.RequisitosLegais) sb.AppendLine($"- {q}");
         if (c.RequisitosLegais.Count == 0) sb.AppendLine("(nenhum — deixe base vazia)");

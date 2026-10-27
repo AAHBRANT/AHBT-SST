@@ -441,6 +441,7 @@ public class GerarRiscosAtividadeGeracaoPgrCommandHandler : IRequestHandler<Gera
         var mantidos = atividade.Riscos.Where(r => r.Revisado && !r.Excluido).ToList();
         var perigosVistos = mantidos.Select(r => FuncaoSstClassifier.Normalizar(r.Perigo)).ToHashSet();
         riscos = riscos.Where(r => perigosVistos.Add(FuncaoSstClassifier.Normalizar(r.Perigo))).ToList();
+        riscos = PerigosPadrao.LimitarPorAtividade(riscos, PerigosPadrao.MaxRiscosPorAtividade - mantidos.Count);
         atividade.Riscos = mantidos.Concat(riscos).ToList();
         atividade.RiscosGerados = true;
         g.EstruturaJson = SerializacaoGeracao.Gravar(e);
