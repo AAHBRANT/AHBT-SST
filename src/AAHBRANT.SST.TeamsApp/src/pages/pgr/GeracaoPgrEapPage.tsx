@@ -10,6 +10,7 @@ import {
 import { rotuloStatusGeracao } from './GeracoesPgrEapCard';
 import { DadosComplementaresPgr } from './DadosComplementaresPgr';
 import { ExposicaoRiscoEditor, SeletorEpi } from './ExposicaoRiscoEditor';
+import { InventarioPorPerigo } from './InventarioPorPerigo';
 
 const PASSOS = ['Enviar a EAP', 'Conferir a leitura', 'Funções e GHE', 'Inventário de riscos', 'Aprovar'];
 const FASES: Record<number, string> = { 1: 'Antes', 2: 'Durante', 3: 'Após' };
@@ -373,6 +374,7 @@ function Inventario({ g, e, editavel, ocupado, alterar, gerarAtividade, salvar, 
 }) {
   const [usuarios, setUsuarios] = useState<Usuario[]>([]);
   const [epis, setEpis] = useState<CatalogoEpi[]>([]);
+  const [modo, setModo] = useState<'perigo' | 'atividade'>('perigo');
   useEffect(() => {
     api.usuarios.listar(StatusUsuario.Ativo).then(setUsuarios).catch(() => setUsuarios([]));
     api.catalogosEpi.listar().then(setEpis).catch(() => setEpis([]));
@@ -402,9 +404,19 @@ function Inventario({ g, e, editavel, ocupado, alterar, gerarAtividade, salvar, 
         </FeedbackInline>
       )}
 
+      <div style={{ display: 'flex', gap: 6, alignItems: 'center', marginBottom: 12 }} role="group" aria-label="Forma de revisar">
+        <Text size={200}>Revisar:</Text>
+        <Button size="small" appearance={modo === 'perigo' ? 'primary' : 'secondary'} onClick={() => setModo('perigo')}>Por perigo</Button>
+        <Button size="small" appearance={modo === 'atividade' ? 'primary' : 'secondary'} onClick={() => setModo('atividade')}>Por atividade</Button>
+      </div>
+
       {e.ghes.map((gh, gi) => (
         <Card key={gh.numero} titulo={`GHE ${String(gh.numero).padStart(2, '0')} · ${gh.nome}`}>
-          {gh.atividades.map((a, ai) => (
+          {modo === 'perigo' && (
+            <InventarioPorPerigo gh={gh} gi={gi} editavel={editavel} ocupado={ocupado} alterar={alterar} gerarAtividade={gerarAtividade}
+              renderRisco={(r, alt) => <RiscoEditor r={r} maxP={g.maxProbabilidade} maxS={g.maxSeveridade} editavel={editavel} epis={epis} alterar={alt} />} />
+          )}
+          {modo === 'atividade' && gh.atividades.map((a, ai) => (
             <div key={a.codigoEap} style={{ marginBottom: 16 }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
                 <Text weight="semibold">{a.codigoEap} {a.nome}</Text>

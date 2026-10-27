@@ -448,4 +448,37 @@ public class GeracaoPgrEapTests
         Assert.Equal(new[] { "Queda de altura", "Ruído do vibrador" }, riscos.Select(r => r.Perigo).ToArray());
         Assert.Equal(1, n);
     }
+
+    [Fact]
+    public async Task GerarRiscos_LimitaAoTetoPorAtividade_MantendoOsDeMaiorPxS()
+    {
+        var (db, obra, _) = await CriarAsync();
+        var ia = new IaFalsa();
+        var id = await CriarGeracaoAsync(db, obra, ia);
+        ia.Ghes = new() { new GheGerado { Nome = "Estrutura", Funcoes = new() { new FuncaoGerada { Nome = "ARMADOR", Descricao = "x" } }, Atividades = new() { new AtividadeGerada { CodigoEap = "1.1" } } } };
+        await new SugerirGhesGeracaoPgrCommandHandler(db, ia).Handle(new SugerirGhesGeracaoPgrCommand(id), default);
+        ia.Riscos = new()
+        {
+            new RiscoGerado { Tipo = "Físico", Perigo = "Ruído", Probabilidade = 1, Severidade = 1 },
+            new RiscoGerado { Tipo = "Acidente", Perigo = "Queda de altura", Probabilidade = 3, Severidade = 5 },
+            new RiscoGerado { Tipo = "Acidente", Perigo = "Choque elétrico", Probabilidade = 2, Severidade = 5 },
+            new RiscoGerado { Tipo = "Físico", Perigo = "Vibração", Probabilidade = 1, Severidade = 2 },
+            new RiscoGerado { Tipo = "Químico", Perigo = "Poeira de cimento, sílica e materiais de obra", Probabilidade = 3, Severidade = 3 },
+            new RiscoGerado { Tipo = "Ergonômico", Perigo = "Esforço físico e levantamento de peso", Probabilidade = 2, Severidade = 3 },
+            new RiscoGerado { Tipo = "Acidente", Perigo = "Corte e perfuração por ferramentas e materiais", Probabilidade = 3, Severidade = 2 },
+        };
+
+        var n = await new GerarRiscosAtividadeGeracaoPgrCommandHandler(db, ia).Handle(new GerarRiscosAtividadeGeracaoPgrCommand(id, 1, "1.1"), default);
+
+        var riscos = (await new ObterGeracaoPgrEapQueryHandler(db).Handle(new ObterGeracaoPgrEapQuery(id), default)).Estrutura.Ghes[0].Atividades[0].Riscos;
+        Assert.Equal(PerigosPadrao.MaxRiscosPorAtividade, n);
+        Assert.Equal(new[] { "Queda de altura", "Choque elétrico", "Poeira de cimento, sílica e materiais de obra", "Esforço físico e levantamento de peso", "Corte e perfuração por ferramentas e materiais" }, riscos.Select(r => r.Perigo).ToArray());
+    }
+
+    [Fact]
+    public void CatalogoDePerigosPadrao_NaoTemNomeRepetido()
+    {
+        var nomes = PerigosPadrao.Catalogo.Select(p => AAHBRANT.SST.Application.Common.FuncaoSstClassifier.Normalizar(p.Nome)).ToList();
+        Assert.Equal(nomes.Count, nomes.Distinct().Count());
+    }
 }
