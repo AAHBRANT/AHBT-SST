@@ -39,12 +39,18 @@ public record DadosPgrPdf(
     IReadOnlyList<LinhaFuncaoPdf>? Funcoes = null,
     IReadOnlyList<RevisaoPdf>? Revisoes = null,
     int? NumeroFuncionarios = null,
-    IReadOnlyDictionary<Guid, CatalogoEpiInfo>? Epis = null);
+    IReadOnlyDictionary<Guid, CatalogoEpiInfo>? Epis = null,
+    IReadOnlyList<LinhaTreinamentoPdf>? Treinamentos = null);
 
 // Função de um GHE com o CBO do cadastro e a quantidade de expostos (trabalhadores ativos da obra na função).
 public record LinhaFuncaoPdf(int GheNumero, string Nome, string? Cbo, int Expostos);
 
 public record RevisaoPdf(int Numero, DateTime Data, string Motivo, string? Responsavel);
+
+// Curso obrigatório de uma função de um GHE, para o cronograma de treinamentos do PGR (NR-01, item 1.7).
+// Aprovado = o engenheiro já confirmou o curso para a função na obra; senão ainda é sugestão do sistema.
+public record LinhaTreinamentoPdf(
+    int GheNumero, string Funcao, string Curso, string? Norma, int CargaHorariaMinima, int ValidadeEmMeses, string? Motivo, bool Aprovado);
 
 public record ArquivoPgrPdf(byte[] Conteudo, string NomeArquivo);
 
@@ -81,6 +87,7 @@ public class GerarPdfGeracaoPgrEapQueryHandler : IRequestHandler<GerarPdfGeracao
                 .Select(t => t.FuncaoId).ToListAsync(ct))
             .GroupBy(id => id).ToDictionary(x => x.Key, x => x.Count());
         var linhasFuncao = new List<LinhaFuncaoPdf>();
+        var funcoesDosGhes = new List<(int Ghe, string Nome, Guid Id)>();
         foreach (var ghe in estrutura.Ghes.OrderBy(x => x.Numero))
             foreach (var f in ghe.Funcoes)
             {
@@ -90,7 +97,9 @@ public class GerarPdfGeracaoPgrEapQueryHandler : IRequestHandler<GerarPdfGeracao
                     (id, cbo) = (achada.Id, achada.Cbo);
                 linhasFuncao.Add(new LinhaFuncaoPdf(ghe.Numero, f.Nome, string.IsNullOrWhiteSpace(cbo) ? null : cbo.Trim(),
                     id is { } i ? expostosPorFuncao.GetValueOrDefault(i) : 0));
+                if (id is { } idFuncao) funcoesDosGhes.Add((ghe.Numero, f.Nome, idFuncao));
             }
+        var treinamentos = await MontarTreinamentosAsync(g.ObraId, funcoesDosGhes, ct);
 
         // Controle de revisões: as registradas no PGR aprovado; sem nenhuma, a emissão inicial (revisão 00).
         var revisoesDb = g.PgrId is { } pgrId
@@ -132,9 +141,34 @@ public class GerarPdfGeracaoPgrEapQueryHandler : IRequestHandler<GerarPdfGeracao
             linhasFuncao,
             revisoes,
             expostosPorFuncao.Values.Sum(),
-            await SerializacaoGeracao.CarregarEpisAsync(_db, estrutura, ct));
+            await SerializacaoGeracao.CarregarEpisAsync(_db, estrutura, ct),
+            treinamentos);
 
         var nomeArquivo = $"PGR - {obra.Nome} - {g.DataElaboracao:yyyyMMdd}.pdf";
         return new ArquivoPgrPdf(_pdf.Gerar(dados, obra.LogoConteudo), nomeArquivo);
+    }
+
+    // Cursos obrigatórios da obra (sugeridos pelo PGR ou aprovados pelo engenheiro) para cada função de cada GHE.
+    // Recusado não entra. Consultas por tabela e junção em memória, para não perder linha de pai excluído.
+    private async Task<List<LinhaTreinamentoPdf>> MontarTreinamentosAsync(
+        Guid obraId, IReadOnlyList<(int Ghe, string Nome, Guid Id)> funcoesDosGhes, CancellationToken ct)
+    {
+        if (funcoesDosGhes.Count == 0) return new();
+        var obrigatorios = await _db.CursosObrigatoriosFuncaoObra
+            .Where(c => c.ObraId == obraId && c.Status != StatusCursoObrigatorio.Recusado)
+            .Select(c => new { c.FuncaoId, c.CursoTreinamentoId, c.Status, c.Motivo }).ToListAsync(ct);
+        if (obrigatorios.Count == 0) return new();
+        var idsCursos = obrigatorios.Select(c => c.CursoTreinamentoId).Distinct().ToList();
+        var cursos = await _db.CursosTreinamento.Where(c => idsCursos.Contains(c.Id))
+            .Select(c => new { c.Id, c.Nome, c.NormaReferencia, c.CargaHorariaMinima, c.ValidadeEmMeses }).ToDictionaryAsync(c => c.Id, ct);
+
+        var linhas = new List<LinhaTreinamentoPdf>();
+        foreach (var (ghe, nome, idFuncao) in funcoesDosGhes)
+            foreach (var o in obrigatorios.Where(x => x.FuncaoId == idFuncao))
+                if (cursos.TryGetValue(o.CursoTreinamentoId, out var curso))
+                    linhas.Add(new LinhaTreinamentoPdf(ghe, nome, curso.Nome, curso.NormaReferencia, curso.CargaHorariaMinima,
+                        curso.ValidadeEmMeses, o.Motivo, o.Status == StatusCursoObrigatorio.Aprovado));
+        return linhas.OrderBy(l => l.GheNumero).ThenBy(l => l.Funcao, StringComparer.CurrentCultureIgnoreCase)
+            .ThenBy(l => l.Norma ?? l.Curso, StringComparer.CurrentCultureIgnoreCase).ToList();
     }
 }

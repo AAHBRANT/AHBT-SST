@@ -124,4 +124,49 @@ public class GerarPdfGeracaoPgrEapTests
         // Plano no formato antigo (uma ação por linha) é lido como ação sem responsável nem prazo.
         Assert.Equal("Instalar linha de vida", pdf.Dados.Estrutura.AcoesPlano.Single().Descricao);
     }
+
+    [Fact]
+    public async Task GeraPdf_LevaOsCursosObrigatoriosDaFuncaoNaObra_SemORecusadoNemDeOutraObra()
+    {
+        var (db, geracao) = await CriarAsync(StatusGeracaoPgrEap.Aprovado, "{}");
+        var outraObra = new Obra { Codigo = "OB-02", Nome = "Outra obra" };
+        var armador = new Funcao { Nome = "ARMADOR" };
+        var altura = new CursoTreinamento { Nome = "NR-35 Trabalho em Altura", NormaReferencia = "NR-35", CargaHorariaMinima = 8, ValidadeEmMeses = 24 };
+        var basico = new CursoTreinamento { Nome = "NR-18 Condições e Meio Ambiente", NormaReferencia = "NR-18", CargaHorariaMinima = 6, ValidadeEmMeses = 12 };
+        var epi = new CursoTreinamento { Nome = "NR-06 Uso de EPI", NormaReferencia = "NR-06", CargaHorariaMinima = 4, ValidadeEmMeses = 12 };
+        db.AddRange(outraObra, armador, altura, basico, epi);
+        await db.SaveChangesAsync();
+        db.CursosObrigatoriosFuncaoObra.AddRange(
+            new CursoObrigatorioFuncaoObra { ObraId = geracao.ObraId, FuncaoId = armador.Id, CursoTreinamentoId = altura.Id, Status = StatusCursoObrigatorio.Aprovado, Motivo = "Perigo \"Queda de altura\" na atividade 3.2" },
+            new CursoObrigatorioFuncaoObra { ObraId = geracao.ObraId, FuncaoId = armador.Id, CursoTreinamentoId = basico.Id, Status = StatusCursoObrigatorio.Sugerido },
+            new CursoObrigatorioFuncaoObra { ObraId = geracao.ObraId, FuncaoId = armador.Id, CursoTreinamentoId = epi.Id, Status = StatusCursoObrigatorio.Recusado },
+            new CursoObrigatorioFuncaoObra { ObraId = outraObra.Id, FuncaoId = armador.Id, CursoTreinamentoId = epi.Id, Status = StatusCursoObrigatorio.Aprovado });
+        geracao.EstruturaJson = $$"""
+            {"Ghes":[{"Numero":1,"Nome":"Estrutura","Funcoes":[{"FuncaoId":"{{armador.Id}}","Nome":"ARMADOR","Descricao":"x"}],"Atividades":[]}]}
+            """;
+        await db.SaveChangesAsync();
+        var pdf = new PdfFalso();
+
+        await new GerarPdfGeracaoPgrEapQueryHandler(db, pdf).Handle(new GerarPdfGeracaoPgrEapQuery(geracao.Id), default);
+
+        var linhas = pdf.Dados!.Treinamentos!;
+        Assert.Equal(new[] { "NR-18", "NR-35" }, linhas.Select(l => l.Norma).ToArray());
+        var nr35 = linhas.Single(l => l.Norma == "NR-35");
+        Assert.True(nr35.Aprovado);
+        Assert.Equal(8, nr35.CargaHorariaMinima);
+        Assert.Equal(24, nr35.ValidadeEmMeses);
+        Assert.Equal("ARMADOR", nr35.Funcao);
+        Assert.False(linhas.Single(l => l.Norma == "NR-18").Aprovado);
+    }
+
+    [Fact]
+    public async Task GeraPdf_SemCursosObrigatorios_TreinamentosVemVazio()
+    {
+        var (db, geracao) = await CriarAsync(StatusGeracaoPgrEap.Aprovado, "{}");
+        var pdf = new PdfFalso();
+
+        await new GerarPdfGeracaoPgrEapQueryHandler(db, pdf).Handle(new GerarPdfGeracaoPgrEapQuery(geracao.Id), default);
+
+        Assert.Empty(pdf.Dados!.Treinamentos!);
+    }
 }
