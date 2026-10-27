@@ -671,6 +671,14 @@ export interface RegraCursoObrigatorio {
 
 export type SalvarRegraCursoObrigatorio = Omit<RegraCursoObrigatorio, 'id' | 'cursoNome'> & { id?: string | null };
 
+// Comparativo de funções do PGR vigente com as funções com exames no PCMSO. 1 em ordem, 2 falta no PCMSO, 3 falta no PGR, 4 falta nos dois.
+export interface ComparativoFuncaoPgrPcmso {
+  funcaoId: string; funcao: string; ghesPgr: number[]; examesPcmso: number; trabalhadores: number; situacao: 1 | 2 | 3 | 4;
+}
+export interface ComparativoPgrPcmso {
+  obraId: string; obraNome: string; pgrNome?: string | null; motivoSemRascunho?: string | null; funcoes: ComparativoFuncaoPgrPcmso[];
+}
+
 // Escopo para o médico elaborar o PCMSO (21/10), montado a partir do PGR vigente da obra.
 export interface EscopoPcmso {
   obraId: string;
@@ -5269,6 +5277,9 @@ export const api = {
   escopoPcmso: {
     obter: (obraId: string) => request<EscopoPcmso>(`/api/escopo-pcmso/obras/${obraId}`),
     pdf: (obraId: string) => baixarArquivoRelatorio(`/api/escopo-pcmso/obras/${obraId}/pdf`),
+    comparativo: (obraId: string) => request<ComparativoPgrPcmso>(`/api/escopo-pcmso/obras/${obraId}/comparativo`),
+    // Só funções e riscos do PGR vigente; exames e médico ficam em branco. O servidor recusa se já houver PCMSO ativo na obra.
+    criarRascunho: (obraId: string) => request<{ id: string }>(`/api/escopo-pcmso/obras/${obraId}/rascunho`, { method: 'POST' }),
     enviar: (obraId: string, emailMedico: string, nomeMedico?: string, mensagem?: string) =>
       request<void>(`/api/escopo-pcmso/obras/${obraId}/enviar`, {
         method: 'POST',

@@ -38,6 +38,21 @@ public class EscopoPcmsoController : ControllerBase
             User.FindFirst("name")?.Value), ct);
         return NoContent();
     }
+
+    // Funções do PGR vigente contra as funções com exames no PCMSO e os trabalhadores ativos da obra.
+    [Authorize(Policy = "pcmso:ver")]
+    [HttpGet("obras/{obraId:guid}/comparativo")]
+    public async Task<IActionResult> Comparativo(Guid obraId, CancellationToken ct)
+    {
+        var comparativo = await _mediator.Send(new ObterComparativoPgrPcmsoQuery(obraId), ct);
+        return comparativo is null ? NotFound() : Ok(comparativo);
+    }
+
+    // Rascunho do PCMSO a partir do PGR vigente: só funções e riscos, sem exames. Recusa se já houver PCMSO ativo.
+    [Authorize(Policy = "pcmso:criar")]
+    [HttpPost("obras/{obraId:guid}/rascunho")]
+    public async Task<IActionResult> CriarRascunho(Guid obraId, CancellationToken ct)
+        => Ok(new { id = await _mediator.Send(new CriarRascunhoPcmsoDoPgrCommand(obraId), ct) });
 }
 
 public class EnviarEscopoPcmsoRequest

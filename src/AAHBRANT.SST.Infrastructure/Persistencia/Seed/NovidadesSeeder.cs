@@ -1689,6 +1689,21 @@ public static class NovidadesSeeder
                     "A supervisão apontou que o PGR não tinha um campo para as etapas de treinamento dos trabalhadores (NR-01, item 1.7).",
                     "O PDF do PGR ganhou a seção 7.1, \"Cronograma de treinamentos\", com os cursos obrigatórios de cada função, a carga horária mínima, a validade, o motivo tirado do PGR e a situação. Na tela de aprovação, depois de aprovar, aparece o mesmo cronograma, com o aviso de quantos cursos ainda estão a confirmar pelo engenheiro."),
             }),
+        new(
+            Versao: "5.98.0",
+            Titulo: "Saúde Ocupacional: comparativo PGR × PCMSO e rascunho do PCMSO",
+            DataPublicacao: new DateTime(2026, 10, 27, 0, 0, 0, DateTimeKind.Utc),
+            Itens: new[]
+            {
+                new NovidadeSeedItem(CategoriaNovidade.Melhoria,
+                    "Veja as funções do PGR e do PCMSO lado a lado",
+                    "A supervisão apontou funções diferentes entre o PGR e o PCMSO, e não havia como ver isso no sistema.",
+                    "A aba \"PGR × PCMSO\" em Saúde Ocupacional compara, por obra, as funções do PGR vigente com as funções que têm exames definidos no PCMSO e mostra quantos trabalhadores ativos há em cada uma. Aponta o que falta no PCMSO, o que falta no PGR e o que falta nos dois. Quando duas funções parecem a mesma, a correção é no cadastro de funções."),
+                new NovidadeSeedItem(CategoriaNovidade.Melhoria,
+                    "Crie o rascunho do PCMSO a partir do PGR",
+                    "O PCMSO era sempre montado do zero, sem aproveitar as funções e os riscos do PGR.",
+                    "O botão \"Criar rascunho do PCMSO\" cria o documento já com as funções e os riscos do PGR vigente. Exames, periodicidades e médico ficam em branco para o médico. O botão está na aba PGR × PCMSO, no escopo para o médico e na tela do PGR aprovado, e não cria se a obra já tiver PCMSO em vigor, em aprovação ou em rascunho."),
+            }),
     };
 
     public static async Task ExecutarAsync(IServiceProvider services, CancellationToken ct = default)
