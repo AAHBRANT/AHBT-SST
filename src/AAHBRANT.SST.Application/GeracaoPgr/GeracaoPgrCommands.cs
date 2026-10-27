@@ -532,21 +532,35 @@ public class AprovarGeracaoPgrCommandHandler : IRequestHandler<AprovarGeracaoPgr
             antigo.Ativo = false;
             foreach (var f in antigo.Funcoes) f.Ativo = false;
         }
-        foreach (var vigente in await _db.Pgrs.Where(p => p.ObraId == g.ObraId && p.Status == StatusPgr.Vigente).ToListAsync(ct))
-            vigente.Status = StatusPgr.Encerrado;
+        // Obra que já tem PGR vigente: a nova geração entra como REVISÃO dele (mesmo PGR, com histórico), em vez de
+        // um PGR separado. Se houver mais de um vigente (não deveria), revisa o mais recente e encerra os outros.
+        var vigentes = (await _db.Pgrs.Where(p => p.ObraId == g.ObraId && p.Status == StatusPgr.Vigente).ToListAsync(ct))
+            .OrderByDescending(p => p.DataElaboracao).ToList();
+        var pgr = vigentes.FirstOrDefault();
+        foreach (var outro in vigentes.Skip(1)) outro.Status = StatusPgr.Encerrado;
 
-        var pgr = new Pgr
+        if (pgr is null)
         {
-            ObraId = g.ObraId,
-            Nome = g.Nome,
-            Descricao = $"Gerado pela EAP da obra ({g.NomeArquivoEap}) e aprovado por {aprovador}.",
-            DataElaboracao = g.DataElaboracao,
-            DataProximaRevisao = g.DataProximaRevisao,
-            DataTermino = e.DataTermino,
-            ResponsavelUsuarioId = request.UsuarioId,
-            Status = StatusPgr.Vigente,
-        };
-        _db.Pgrs.Add(pgr);
+            pgr = new Pgr
+            {
+                ObraId = g.ObraId,
+                Nome = g.Nome,
+                Descricao = $"Gerado pela EAP da obra ({g.NomeArquivoEap}) e aprovado por {aprovador}.",
+                DataElaboracao = g.DataElaboracao,
+                DataProximaRevisao = g.DataProximaRevisao,
+                DataTermino = e.DataTermino,
+                ResponsavelUsuarioId = request.UsuarioId,
+                Status = StatusPgr.Vigente,
+            };
+            _db.Pgrs.Add(pgr);
+        }
+        else
+        {
+            await RegistrarRevisaoAsync(pgr, g, aprovador, request.UsuarioId, agora, ct);
+            pgr.DataProximaRevisao = g.DataProximaRevisao;
+            pgr.DataTermino = e.DataTermino;
+            pgr.ResponsavelUsuarioId = request.UsuarioId;
+        }
 
         var funcoesPorId = await _db.Funcoes.ToDictionaryAsync(f => f.Id, ct);
         var funcoesPorNome = new Dictionary<string, Funcao>();
@@ -631,7 +645,11 @@ public class AprovarGeracaoPgrCommandHandler : IRequestHandler<AprovarGeracaoPgr
             }
         }
 
-        foreach (var item in e.AcoesPlano.Where(x => !string.IsNullOrWhiteSpace(x.Descricao)))
+        // Numa revisão o plano de ação que já existe fica (pode estar em andamento); só entram as ações que ainda não estão lá.
+        var descricoesDoPlano = (await _db.PlanoAcaoItens.Where(x => x.PgrId == pgr.Id).Select(x => x.Descricao).ToListAsync(ct))
+            .Select(FuncaoSstClassifier.Normalizar).ToHashSet();
+        foreach (var item in e.AcoesPlano.Where(x => !string.IsNullOrWhiteSpace(x.Descricao)
+                     && descricoesDoPlano.Add(FuncaoSstClassifier.Normalizar(Limitar(x.Descricao.Trim(), 500)))))
             _db.PlanoAcaoItens.Add(new PlanoAcaoItem
             {
                 Pgr = pgr,
@@ -651,6 +669,43 @@ public class AprovarGeracaoPgrCommandHandler : IRequestHandler<AprovarGeracaoPgr
         // revisar na obra (21/10). Só acrescenta: nada aprovado ou recusado antes é tocado.
         await CursosObrigatorios.GeradorCursosObrigatorios.GerarAsync(_db, g.ObraId, ct);
         return pgr.Id;
+    }
+
+    // Cria a próxima revisão do PGR vigente. O PDF anexado antes (consultoria) não se perde: vai para a revisão
+    // anterior, como faz "Nova revisão". O PDF desta geração é gerado sob demanda pela própria geração, então a
+    // revisão nova não guarda arquivo.
+    private async Task RegistrarRevisaoAsync(Pgr pgr, GeracaoPgrEap g, string aprovador, Guid? usuarioId, DateTime agora, CancellationToken ct)
+    {
+        var existentes = await _db.PgrRevisoes.Where(r => r.PgrId == pgr.Id)
+            .Select(r => new { r.NumeroRevisao, TemPdf = r.DocumentoConteudo != null }).ToListAsync(ct);
+        var numero = existentes.Count == 0 ? 1 : existentes.Max(r => r.NumeroRevisao) + 1;
+
+        if (pgr.DocumentoConteudo is { Length: > 0 } && !existentes.Any(r => r.TemPdf))
+        {
+            var numeroAnterior = RevisaoDocumento.NumeroLivreAbaixo(numero, existentes.Select(r => r.NumeroRevisao))
+                ?? throw new InvalidOperationException("O PDF atual do PGR precisa ser guardado como revisão anterior, mas não há número livre.");
+            _db.PgrRevisoes.Add(new PgrRevisao
+            {
+                PgrId = pgr.Id,
+                NumeroRevisao = numeroAnterior,
+                DataRevisao = pgr.DataElaboracao,
+                Motivo = RevisaoDocumento.MotivoDocumentoAnterior,
+                DocumentoConteudo = pgr.DocumentoConteudo,
+                DocumentoContentType = pgr.DocumentoContentType,
+                DocumentoNomeArquivo = RevisaoDocumento.NomeDocumentoAnterior,
+            });
+            pgr.DocumentoConteudo = null;
+            pgr.DocumentoContentType = null;
+        }
+
+        _db.PgrRevisoes.Add(new PgrRevisao
+        {
+            PgrId = pgr.Id,
+            NumeroRevisao = numero,
+            DataRevisao = agora,
+            Motivo = $"Nova geração pela EAP da obra ({g.NomeArquivoEap}), aprovada por {aprovador}.",
+            ResponsavelUsuarioId = usuarioId,
+        });
     }
 
     private static NivelRisco Nivel(MatrizRiscoConfig matriz, RiscoGerado r) =>
