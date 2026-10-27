@@ -344,9 +344,13 @@ public class GeracaoPgrEapTests
         await new EnviarGeracaoPgrParaAprovacaoCommandHandler(db).Handle(new EnviarGeracaoPgrParaAprovacaoCommand(id), default);
         var pgrId = await new AprovarGeracaoPgrCommandHandler(db).Handle(new AprovarGeracaoPgrCommand(id, null, "Eng. Carlos"), default);
 
-        var pgr = await db.Pgrs.SingleAsync(p => p.Id == pgrId);
+        // Obra que já tinha PGR vigente: a geração vira revisão dele, não um PGR separado.
+        Assert.Equal(antigo.Id, pgrId);
+        var pgr = await db.Pgrs.SingleAsync();
         Assert.Equal(StatusPgr.Vigente, pgr.Status);
-        Assert.Equal(StatusPgr.Encerrado, (await db.Pgrs.SingleAsync(p => p.Id == antigo.Id)).Status);
+        var revisao = Assert.Single(await db.PgrRevisoes.Where(r => r.PgrId == pgr.Id).ToListAsync());
+        Assert.Equal(1, revisao.NumeroRevisao);
+        Assert.Contains("Eng. Carlos", revisao.Motivo);
         var ghe = await db.Ghes.Include(g => g.Funcoes).SingleAsync();
         Assert.Equal("Monta armaduras", ghe.Funcoes.Single().DescricaoAtividades);
         Assert.Equal(armador.Id, ghe.Funcoes.Single().FuncaoId);
@@ -501,5 +505,85 @@ public class GeracaoPgrEapTests
         await Assert.ThrowsAsync<InvalidOperationException>(() =>
             new ExcluirGeracaoPgrCommandHandler(db).Handle(new ExcluirGeracaoPgrCommand(enviado), default));
         Assert.True(await db.GeracoesPgrEap.AnyAsync(g => g.Id == enviado));
+    }
+
+    private static EstruturaGeracaoPgr EstruturaSimplesAprovavel(string acao) => new()
+    {
+        Ghes = new()
+        {
+            new GheGerado
+            {
+                Numero = 1, Nome = "Estrutura", Ambiente = "Laje",
+                Funcoes = new() { new FuncaoGerada { Nome = "ARMADOR", Descricao = "Monta armaduras" } },
+                Atividades = new()
+                {
+                    new AtividadeGerada
+                    {
+                        CodigoEap = "1.1", Nome = "Concretagem de laje", RiscosGerados = true,
+                        Riscos = new()
+                        {
+                            new RiscoGerado { Tipo = "Acidente", Perigo = "Queda de altura", Probabilidade = 4, Severidade = 5, Revisado = true,
+                                Medidas = new() { new MedidaGerada { Fase = 1, Texto = "Instale guarda-corpo", Categoria = CategoriasMedida.Epc, Decisao = "Aceita" } } },
+                        },
+                    },
+                },
+            },
+        },
+        DataTermino = new DateTime(2027, 10, 21),
+        AcoesPlano = new() { new AcaoPlanoGerada { Descricao = acao, ResponsavelNome = "Téc. Ana", Prazo = new DateTime(2026, 12, 15) } },
+        Complementares = ComplementaresCompletos(),
+    };
+
+    private static async Task<Guid> AprovarAsync(Infrastructure.Persistencia.SstDbContext db, Obra obra, IaFalsa ia, EstruturaGeracaoPgr estrutura)
+    {
+        var id = await CriarGeracaoAsync(db, obra, ia);
+        await new SalvarGeracaoPgrEapCommandHandler(db).Handle(new SalvarGeracaoPgrEapCommand(id, 4, estrutura), default);
+        await new EnviarGeracaoPgrParaAprovacaoCommandHandler(db).Handle(new EnviarGeracaoPgrParaAprovacaoCommand(id), default);
+        return await new AprovarGeracaoPgrCommandHandler(db).Handle(new AprovarGeracaoPgrCommand(id, null, "Eng. Carlos"), default);
+    }
+
+    [Fact]
+    public async Task Aprovar_ObraSemPgrVigente_CriaPgrNovoSemRevisao()
+    {
+        var (db, obra, _) = await CriarAsync();
+        var pgrId = await AprovarAsync(db, obra, new IaFalsa(), EstruturaSimplesAprovavel("Instalar linha de vida"));
+
+        var pgr = await db.Pgrs.SingleAsync();
+        Assert.Equal(pgrId, pgr.Id);
+        Assert.Equal(StatusPgr.Vigente, pgr.Status);
+        Assert.Empty(await db.PgrRevisoes.ToListAsync());
+    }
+
+    [Fact]
+    public async Task Aprovar_SegundaGeracaoNaObra_ViraRevisaoDoMesmoPgr_ComPdfAnteriorArquivadoEPlanoSemDuplicar()
+    {
+        var (db, obra, _) = await CriarAsync();
+        var ia = new IaFalsa();
+        var pdf = new byte[] { 0x25, 0x50, 0x44, 0x46 };
+        var existente = new Pgr
+        {
+            ObraId = obra.Id, Nome = "PGR da consultoria", DataElaboracao = new DateTime(2026, 1, 10), Status = StatusPgr.Vigente,
+            DocumentoConteudo = pdf, DocumentoContentType = "application/pdf",
+        };
+        existente.PlanoDeAcao.Add(new PlanoAcaoItem { Descricao = "Instalar linha de vida", Status = StatusControleRisco.EmAndamento });
+        db.Pgrs.Add(existente);
+        await db.SaveChangesAsync();
+
+        var pgrId = await AprovarAsync(db, obra, ia, EstruturaSimplesAprovavel("instalar  linha de vida"));
+        var pgrId2 = await AprovarAsync(db, obra, ia, EstruturaSimplesAprovavel("Treinar equipe em altura"));
+
+        Assert.Equal(existente.Id, pgrId);
+        Assert.Equal(existente.Id, pgrId2);
+        var pgr = await db.Pgrs.SingleAsync();
+        Assert.Equal(StatusPgr.Vigente, pgr.Status);
+        Assert.Null(pgr.DocumentoConteudo);
+        var revisoes = await db.PgrRevisoes.Where(r => r.PgrId == pgr.Id).OrderBy(r => r.NumeroRevisao).ToListAsync();
+        Assert.Equal(new[] { 0, 1, 2 }, revisoes.Select(r => r.NumeroRevisao).ToArray());
+        Assert.Equal(pdf, revisoes[0].DocumentoConteudo);
+        Assert.Null(revisoes[1].DocumentoConteudo);
+        var plano = await db.PlanoAcaoItens.Where(i => i.PgrId == pgr.Id).Select(i => i.Descricao).ToListAsync();
+        Assert.Equal(2, plano.Count);
+        Assert.Contains("Treinar equipe em altura", plano);
+        Assert.Single(await db.Ghes.Where(x => x.Ativo).ToListAsync());
     }
 }
