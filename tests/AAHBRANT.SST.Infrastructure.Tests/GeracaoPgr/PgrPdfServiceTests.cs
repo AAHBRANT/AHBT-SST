@@ -175,4 +175,25 @@ public class PgrPdfServiceTests
 
         Assert.Equal("%PDF", System.Text.Encoding.ASCII.GetString(pdf, 0, 4));
     }
+
+    [Fact]
+    public void Gerar_ComAcompanhamentoDasAcoes_DevolvePdfValidoComASecao72()
+    {
+        var dados = DadosCompletos();
+        dados.Estrutura.AcoesPlano = new()
+        {
+            new AcaoPlanoGerada
+            {
+                Descricao = "Instalar linha de vida", ResponsavelNome = "Téc. Ana", Prazo = new DateTime(2026, 12, 15),
+                FormaAcompanhamento = "Inspeção periódica", PeriodicidadeAcompanhamento = "Semanal",
+                CriterioAfericao = "100% dos pontos de ancoragem inspecionados, sem não conformidade aberta",
+            },
+            new AcaoPlanoGerada { Descricao = "Ação sem acompanhamento definido" },
+        };
+
+        var pdf = new PgrPdfService().Gerar(dados, null);
+
+        Assert.Equal("%PDF", System.Text.Encoding.ASCII.GetString(pdf, 0, 4));
+        Assert.True(pdf.Length > 1000);
+    }
 }

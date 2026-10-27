@@ -2967,7 +2967,11 @@ export interface RiscoGerado {
 export interface AtividadeGerada { codigoEap: string; nome: string; riscosGerados: boolean; riscos: RiscoGerado[] }
 export interface FuncaoGerada { funcaoId?: string | null; nome: string; descricao?: string | null; sugeridaPelaIa: boolean }
 export interface GheGerado { numero: number; nome: string; ambiente?: string | null; jornada?: string | null; funcoes: FuncaoGerada[]; atividades: AtividadeGerada[] }
-export interface AcaoPlanoGerada { descricao: string; responsavelUsuarioId?: string | null; responsavelNome?: string | null; inicio?: string | null; prazo?: string | null }
+export interface AcaoPlanoGerada {
+  descricao: string; responsavelUsuarioId?: string | null; responsavelNome?: string | null; inicio?: string | null; prazo?: string | null;
+  // Acompanhamento e aferição (NR-01, item 1.5.5.2). acompanhamentoSugeridoPelaIa fica verdadeiro até alguém conferir.
+  formaAcompanhamento?: string | null; periodicidadeAcompanhamento?: string | null; criterioAfericao?: string | null; acompanhamentoSugeridoPelaIa?: boolean;
+}
 export interface ContatoEmergencia {
   chave?: 'hospital' | 'samu' | 'bombeiros' | 'pm' | 'seguranca' | null;
   local: string; endereco?: string | null; telefone?: string | null;
@@ -5740,6 +5744,8 @@ export const api = {
     salvar: (id: string, passo: number, estrutura: EstruturaGeracaoPgr) =>
       request<void>(`/api/geracoes-pgr-eap/${id}`, { method: 'PUT', body: JSON.stringify({ passo, estrutura }) }),
     sugerirGhes: (id: string) => request<void>(`/api/geracoes-pgr-eap/${id}/sugerir-ghes`, { method: 'POST' }),
+    // Só preenche campo vazio das ações já salvas; devolve quantas ações receberam sugestão.
+    sugerirAcompanhamento: (id: string) => request<{ acoes: number }>(`/api/geracoes-pgr-eap/${id}/sugerir-acompanhamento`, { method: 'POST' }),
     // Locais, rotas e recomendação da IA a partir do endereço da obra; não grava nada.
     sugerirEmergencia: (id: string) => request<SugestaoEmergencia>(`/api/geracoes-pgr-eap/${id}/sugerir-emergencia`, { method: 'POST' }),
     gerarRiscos: (id: string, gheNumero: number, codigoEap: string) =>

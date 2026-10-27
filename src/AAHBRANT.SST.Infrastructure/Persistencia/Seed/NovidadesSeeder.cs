@@ -1704,6 +1704,17 @@ public static class NovidadesSeeder
                     "O PCMSO era sempre montado do zero, sem aproveitar as funções e os riscos do PGR.",
                     "O botão \"Criar rascunho do PCMSO\" cria o documento já com as funções e os riscos do PGR vigente. Exames, periodicidades e médico ficam em branco para o médico. O botão está na aba PGR × PCMSO, no escopo para o médico e na tela do PGR aprovado, e não cria se a obra já tiver PCMSO em vigor, em aprovação ou em rascunho."),
             }),
+        new(
+            Versao: "5.99.0",
+            Titulo: "PGR: acompanhamento e aferição no plano de ação",
+            DataPublicacao: new DateTime(2026, 10, 27, 0, 0, 0, DateTimeKind.Utc),
+            Itens: new[]
+            {
+                new NovidadeSeedItem(CategoriaNovidade.Melhoria,
+                    "Cada ação do plano diz como será acompanhada",
+                    "A supervisão apontou que o plano de ação do PGR não indicava a forma de acompanhamento nem a aferição de resultados (NR-01, item 1.5.5.2).",
+                    "No passo 4 de gerar o PGR pela EAP, cada ação do plano ganhou três campos: como acompanhar, periodicidade e como aferir o resultado. O botão \"Sugerir acompanhamento\" pede à IA uma sugestão só para as ações que ainda não têm, sem mexer no que você já preencheu. As sugestões ficam marcadas como \"Sugestão da IA, confira\" até alguém editar. O PDF do PGR traz a nova seção 7.2, \"Acompanhamento e aferição de resultados\"."),
+            }),
     };
 
     public static async Task ExecutarAsync(IServiceProvider services, CancellationToken ct = default)

@@ -281,6 +281,25 @@ public class PgrPdfService : IPgrPdfService
                         .FontSize(8.5f).Italic().FontColor(Secundario);
                 }
 
+                // 7.2 Acompanhamento e aferição de resultados (NR-01, item 1.5.5.2): como cada ação do plano será
+                // acompanhada, com que frequência e o que mostra que funcionou. Numeração igual à da tabela da seção 7.
+                if (acoes.Count > 0)
+                {
+                    Subtitulo(c, "7.2 Acompanhamento e aferição de resultados");
+                    Paragrafo(c, "Forma de acompanhamento de cada ação do plano de ação, com a frequência e o critério usado para verificar o resultado (NR-01, item 1.5.5.2).");
+                    Tabela(c, new[] { ("Nº", 0.5f), ("Ação", 2.9f), ("Forma de acompanhamento", 1.8f), ("Periodicidade", 1.7f), ("Como aferir o resultado", 3.0f) },
+                        acoes.Select((a, i) => new[]
+                        {
+                            (i + 1).ToString("00"), a.Descricao.Trim(),
+                            string.IsNullOrWhiteSpace(a.FormaAcompanhamento) ? "A definir" : a.FormaAcompanhamento!,
+                            string.IsNullOrWhiteSpace(a.PeriodicidadeAcompanhamento) ? "A definir" : a.PeriodicidadeAcompanhamento!,
+                            string.IsNullOrWhiteSpace(a.CriterioAfericao) ? "A definir" : a.CriterioAfericao!.Trim(),
+                        }),
+                        "");
+                    c.Item().PaddingTop(4).Text("Ações sem acompanhamento definido aparecem como \"A definir\".")
+                        .FontSize(8.5f).Italic().FontColor(Secundario);
+                }
+
                 // 8. Acompanhamento e monitoramento
                 TituloComPrimeiro(c, Secoes[7], b => Paragrafo(b, "A eficácia das medidas de controle será acompanhada por novas avaliações e inspeções, pelo controle estatístico das ocorrências de acidentes e pela análise dos exames médicos previstos no PCMSO."));
                 Paragrafo(c, "Para os perigos geradores de riscos de acidentes serão programadas inspeções periódicas. Serão feitas avaliações extraordinárias sempre que houver mudança significativa nas condições de trabalho, alteração nos resultados dos exames médicos ou acidente com perda de tempo.");
