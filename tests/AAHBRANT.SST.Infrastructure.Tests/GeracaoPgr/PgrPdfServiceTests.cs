@@ -149,4 +149,30 @@ public class PgrPdfServiceTests
 
         Assert.Equal("%PDF", System.Text.Encoding.ASCII.GetString(pdf, 0, 4));
     }
+
+    [Fact]
+    public void Gerar_ComCursosObrigatorios_DevolvePdfValidoComASecaoDeTreinamentos()
+    {
+        var dados = DadosCompletos() with
+        {
+            Treinamentos = new List<LinhaTreinamentoPdf>
+            {
+                new(1, "ARMADOR", "NR-35 Trabalho em Altura", "NR-35", 8, 24, "Perigo \"Queda de altura\" na atividade 1.1 Concretagem de laje", true),
+                new(1, "ARMADOR", "NR-12 Máquinas e Equipamentos", "NR-12", 0, 0, null, false),
+            },
+        };
+
+        var pdf = new PgrPdfService().Gerar(dados, null);
+
+        Assert.Equal("%PDF", System.Text.Encoding.ASCII.GetString(pdf, 0, 4));
+        Assert.True(pdf.Length > 1000);
+    }
+
+    [Fact]
+    public void Gerar_SemCursosObrigatorios_DevolvePdfValido()
+    {
+        var pdf = new PgrPdfService().Gerar(DadosCompletos() with { Treinamentos = null }, null);
+
+        Assert.Equal("%PDF", System.Text.Encoding.ASCII.GetString(pdf, 0, 4));
+    }
 }

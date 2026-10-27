@@ -39,12 +39,18 @@ public record DadosPgrPdf(
     IReadOnlyList<LinhaFuncaoPdf>? Funcoes = null,
     IReadOnlyList<RevisaoPdf>? Revisoes = null,
     int? NumeroFuncionarios = null,
-    IReadOnlyDictionary<Guid, CatalogoEpiInfo>? Epis = null);
+    IReadOnlyDictionary<Guid, CatalogoEpiInfo>? Epis = null,
+    IReadOnlyList<LinhaTreinamentoPdf>? Treinamentos = null);
 
 // Função de um GHE com o CBO do cadastro e a quantidade de expostos (trabalhadores ativos da obra na função).
 public record LinhaFuncaoPdf(int GheNumero, string Nome, string? Cbo, int Expostos);
 
 public record RevisaoPdf(int Numero, DateTime Data, string Motivo, string? Responsavel);
+
+// Curso obrigatório de uma função de um GHE, para o cronograma de treinamentos do PGR (NR-01, item 1.7).
+// Aprovado = o engenheiro já confirmou o curso para a função na obra; senão ainda é sugestão do sistema.
+public record LinhaTreinamentoPdf(
+    int GheNumero, string Funcao, string Curso, string? Norma, int CargaHorariaMinima, int ValidadeEmMeses, string? Motivo, bool Aprovado);
 
 public record ArquivoPgrPdf(byte[] Conteudo, string NomeArquivo);
 
@@ -81,6 +87,7 @@ public class GerarPdfGeracaoPgrEapQueryHandler : IRequestHandler<GerarPdfGeracao
                 .Select(t => t.FuncaoId).ToListAsync(ct))
             .GroupBy(id => id).ToDictionary(x => x.Key, x => x.Count());
         var linhasFuncao = new List<LinhaFuncaoPdf>();
+        var funcoesDosGhes = new List<(int Ghe, string Nome, Guid Id)>();
         foreach (var ghe in estrutura.Ghes.OrderBy(x => x.Numero))
             foreach (var f in ghe.Funcoes)
             {
@@ -90,7 +97,9 @@ public class GerarPdfGeracaoPgrEapQueryHandler : IRequestHandler<GerarPdfGeracao
                     (id, cbo) = (achada.Id, achada.Cbo);
                 linhasFuncao.Add(new LinhaFuncaoPdf(ghe.Numero, f.Nome, string.IsNullOrWhiteSpace(cbo) ? null : cbo.Trim(),
                     id is { } i ? expostosPorFuncao.GetValueOrDefault(i) : 0));
+                if (id is { } idFuncao) funcoesDosGhes.Add((ghe.Numero, f.Nome, idFuncao));
             }
+        var treinamentos = await CronogramaTreinamentosPgr.MontarAsync(_db, g.ObraId, funcoesDosGhes, ct);
 
         // Controle de revisões: as registradas no PGR aprovado; sem nenhuma, a emissão inicial (revisão 00).
         var revisoesDb = g.PgrId is { } pgrId
@@ -132,7 +141,8 @@ public class GerarPdfGeracaoPgrEapQueryHandler : IRequestHandler<GerarPdfGeracao
             linhasFuncao,
             revisoes,
             expostosPorFuncao.Values.Sum(),
-            await SerializacaoGeracao.CarregarEpisAsync(_db, estrutura, ct));
+            await SerializacaoGeracao.CarregarEpisAsync(_db, estrutura, ct),
+            treinamentos);
 
         var nomeArquivo = $"PGR - {obra.Nome} - {g.DataElaboracao:yyyyMMdd}.pdf";
         return new ArquivoPgrPdf(_pdf.Gerar(dados, obra.LogoConteudo), nomeArquivo);

@@ -1678,6 +1678,17 @@ public static class NovidadesSeeder
                     "No inventário por perigo, atividades com o mesmo nível de risco apareciam como \"fora do padrão\" sem explicação.",
                     "A marca passa a mostrar se o nível é diferente ou se há medidas a mais ou a menos que o padrão, e ao abrir a atividade aparece o que difere. Diferença só de redação, com os mesmos números, não conta."),
             }),
+        new(
+            Versao: "5.97.0",
+            Titulo: "PGR: cronograma de treinamentos",
+            DataPublicacao: new DateTime(2026, 10, 27, 0, 0, 0, DateTimeKind.Utc),
+            Itens: new[]
+            {
+                new NovidadeSeedItem(CategoriaNovidade.Melhoria,
+                    "O PGR agora traz o cronograma de treinamentos",
+                    "A supervisão apontou que o PGR não tinha um campo para as etapas de treinamento dos trabalhadores (NR-01, item 1.7).",
+                    "O PDF do PGR ganhou a seção 7.1, \"Cronograma de treinamentos\", com os cursos obrigatórios de cada função, a carga horária mínima, a validade, o motivo tirado do PGR e a situação. Na tela de aprovação, depois de aprovar, aparece o mesmo cronograma, com o aviso de quantos cursos ainda estão a confirmar pelo engenheiro."),
+            }),
     };
 
     public static async Task ExecutarAsync(IServiceProvider services, CancellationToken ct = default)
