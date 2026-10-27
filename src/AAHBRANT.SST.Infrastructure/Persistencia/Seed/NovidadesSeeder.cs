@@ -1663,6 +1663,21 @@ public static class NovidadesSeeder
                     "Os rascunhos do gerador de PGR pela EAP ficavam na lista para sempre, mesmo os testes e os que foram refeitos.",
                     "O Administrador agora vê o botão \"Excluir\" nas gerações que ainda estão em elaboração e nunca foram enviadas para aprovação. Antes de excluir, o sistema pede confirmação. Gerações enviadas, devolvidas ou aprovadas não podem ser excluídas."),
             }),
+        new(
+            Versao: "5.96.0",
+            Titulo: "Gerar PGR pela EAP: nova geração vira revisão do PGR",
+            DataPublicacao: new DateTime(2026, 10, 27, 0, 0, 0, DateTimeKind.Utc),
+            Itens: new[]
+            {
+                new NovidadeSeedItem(CategoriaNovidade.Melhoria,
+                    "A nova geração entra como revisão do PGR vigente",
+                    "Ao aprovar um PGR gerado pela EAP numa obra que já tinha PGR vigente, o sistema criava outro PGR e encerrava o anterior, sem histórico de revisões.",
+                    "Agora a aprovação cria a próxima revisão no mesmo PGR. Um PDF anexado antes fica guardado na revisão anterior, e as ações do plano de ação que já existiam são mantidas. Obras sem PGR vigente continuam criando o PGR novo."),
+                new NovidadeSeedItem(CategoriaNovidade.Melhoria,
+                    "A marca \"fora do padrão\" agora diz o motivo",
+                    "No inventário por perigo, atividades com o mesmo nível de risco apareciam como \"fora do padrão\" sem explicação.",
+                    "A marca passa a mostrar se o nível é diferente ou se há medidas a mais ou a menos que o padrão, e ao abrir a atividade aparece o que difere. Diferença só de redação, com os mesmos números, não conta."),
+            }),
     };
 
     public static async Task ExecutarAsync(IServiceProvider services, CancellationToken ct = default)

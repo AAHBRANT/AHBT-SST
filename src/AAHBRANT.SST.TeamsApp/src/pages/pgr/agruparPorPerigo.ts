@@ -2,7 +2,43 @@ import type { AtividadeGerada, GheGerado, RiscoGerado } from '../../lib/api';
 
 const normalizar = (s: string) => s.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase().replace(/\s+/g, ' ').trim();
 export const nivelDe = (r: RiscoGerado) => r.probabilidade * r.severidade;
-export const assinaturaMedidas = (r: RiscoGerado) => r.medidas.filter((m) => m.decisao !== 'Descartada').map((m) => normalizar(m.texto)).sort().join('|');
+type Medida = RiscoGerado['medidas'][number];
+const medidasAtivas = (r: RiscoGerado) => r.medidas.filter((m) => m.decisao !== 'Descartada');
+const palavras = (t: string) => new Set(normalizar(t).replace(/[^a-z0-9 ]/g, ' ').split(' ').filter((p) => p.length > 3 && !/^\d+$/.test(p)));
+const numeros = (t: string) => (t.match(/\d+(?:[.,]\d+)?/g) ?? []).sort().join(',');
+
+// Duas medidas são "a mesma" quando têm a mesma fase e categoria, os mesmos números (7 m e 15 m mudam a regra) e
+// ao menos 60% das palavras da frase mais curta em comum. A IA reescreve a medida a cada atividade e às vezes
+// acrescenta um trecho, então só a redação não conta.
+export function medidasEquivalentes(a: Medida, b: Medida): boolean {
+  if (a.fase !== b.fase || (a.categoria ?? '') !== (b.categoria ?? '')) return false;
+  if (numeros(a.texto) !== numeros(b.texto)) return false;
+  const pa = palavras(a.texto);
+  const pb = palavras(b.texto);
+  const menor = Math.min(pa.size, pb.size);
+  if (menor === 0) return normalizar(a.texto) === normalizar(b.texto);
+  return [...pa].filter((p) => pb.has(p)).length / menor >= 0.6;
+}
+
+export interface DiferencaDoPadrao {
+  nivel: { atividade: number; padrao: number } | null;
+  aMais: Medida[];
+  aMenos: Medida[];
+  igual: boolean;
+}
+
+// O que a atividade tem de diferente do padrão: nível, medidas só dela ("a mais") e medidas só do padrão ("a menos").
+export function compararComPadrao(padrao: RiscoGerado, r: RiscoGerado): DiferencaDoPadrao {
+  const livres = medidasAtivas(padrao);
+  const aMais: Medida[] = [];
+  for (const m of medidasAtivas(r)) {
+    const i = livres.findIndex((p) => medidasEquivalentes(p, m));
+    if (i >= 0) livres.splice(i, 1);
+    else aMais.push(m);
+  }
+  const nivel = nivelDe(r) !== nivelDe(padrao) ? { atividade: nivelDe(r), padrao: nivelDe(padrao) } : null;
+  return { nivel, aMais, aMenos: livres, igual: !nivel && aMais.length === 0 && livres.length === 0 };
+}
 
 export interface RefRisco { ai: number; ri: number; atividade: AtividadeGerada; r: RiscoGerado }
 export interface GrupoPerigo { chave: string; nome: string; tipo: string; itens: RefRisco[]; padrao: RefRisco }

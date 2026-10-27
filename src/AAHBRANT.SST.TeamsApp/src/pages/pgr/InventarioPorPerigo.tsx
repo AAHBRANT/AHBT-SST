@@ -1,7 +1,7 @@
 import { useState, type ReactNode } from 'react';
 import { Button, StatusChip, Text } from '@ui';
 import type { AtividadeGerada, EstruturaGeracaoPgr, GheGerado, RiscoGerado } from '../../lib/api';
-import { agruparPorPerigo, assinaturaMedidas, nivelDe, type GrupoPerigo, type RefRisco } from './agruparPorPerigo';
+import { agruparPorPerigo, compararComPadrao, nivelDe, type DiferencaDoPadrao, type GrupoPerigo, type RefRisco } from './agruparPorPerigo';
 
 const FASES: Record<number, string> = { 1: 'Antes', 2: 'Durante', 3: 'Após' };
 const linha = { borderTop: '1px solid var(--colorNeutralStroke2)' } as const;
@@ -44,10 +44,8 @@ export function InventarioPorPerigo({ gh, gi, editavel, ocupado, alterar, gerarA
         const niveis = gr.itens.map((i) => nivelDe(i.r));
         const min = Math.min(...niveis);
         const max = Math.max(...niveis);
-        const nivelPadrao = nivelDe(gr.padrao.r);
-        const assPadrao = assinaturaMedidas(gr.padrao.r);
-        const diferentes = (i: RefRisco) => nivelDe(i.r) !== nivelPadrao || assinaturaMedidas(i.r) !== assPadrao;
-        const nDif = gr.itens.filter(diferentes).length;
+        const difs = new Map(gr.itens.map((i) => [i, compararComPadrao(gr.padrao.r, i.r)] as const));
+        const nDif = [...difs.values()].filter((d) => !d.igual).length;
         const pendentes = gr.itens.some((i) => !i.r.revisado || i.r.medidas.some((m) => m.decisao === 'Pendente'));
         const tom = max >= 20 ? 'alerta' : max >= 10 ? 'atencao' : 'info';
         const medidasPadrao = gr.padrao.r.medidas.filter((m) => m.decisao !== 'Descartada');
@@ -64,6 +62,7 @@ export function InventarioPorPerigo({ gh, gi, editavel, ocupado, alterar, gerarA
                   <Text size={200}>em {gr.itens.length} atividade(s)</Text>
                   <StatusChip tom={tom}>P × S = {min === max ? max : `${min}–${max}`}</StatusChip>
                   {nDif > 0 && <StatusChip tom="atencao">{nDif} fora do padrão</StatusChip>}
+                  {nDif === 0 && gr.itens.length > 1 && <StatusChip tom="ok">todas iguais ao padrão</StatusChip>}
                   {!pendentes && <StatusChip tom="ok">Revisado</StatusChip>}
                 </div>
               </div>
@@ -91,7 +90,7 @@ export function InventarioPorPerigo({ gh, gi, editavel, ocupado, alterar, gerarA
               {() => (
                 <div style={{ padding: '0 12px 10px' }}>
                   {gr.itens.map((i) => (
-                    <LinhaAtividade key={`${i.ai}-${i.ri}`} i={i} fora={diferentes(i)}
+                    <LinhaAtividade key={`${i.ai}-${i.ri}`} i={i} dif={difs.get(i)!} ehPadrao={i === gr.padrao}
                       editor={() => renderRisco(i.r, (f) => alterar((x) => f(x.ghes[gi].atividades[i.ai].riscos[i.ri])))} />
                   ))}
                 </div>
@@ -106,16 +105,17 @@ export function InventarioPorPerigo({ gh, gi, editavel, ocupado, alterar, gerarA
 
 // O editor completo do risco só é montado quando a linha é aberta: um PGR de obra grande tem mais de mil riscos
 // e montar todos os editores de uma vez trava a tela.
-function LinhaAtividade({ i, fora, editor }: { i: RefRisco; fora: boolean; editor: () => ReactNode }) {
+function LinhaAtividade({ i, dif, ehPadrao, editor }: { i: RefRisco; dif: DiferencaDoPadrao; ehPadrao: boolean; editor: () => ReactNode }) {
   const [aberto, setAberto] = useState(false);
   return (
     <details style={{ borderTop: '1px dashed var(--colorNeutralStroke2)', padding: '4px 0' }} onToggle={(ev) => setAberto(ev.currentTarget.open)}>
       <summary style={{ cursor: 'pointer', display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
         <Text size={200}>{i.atividade.codigoEap} {i.atividade.nome}</Text>
         <StatusChip tom="neutro">P × S = {nivelDe(i.r)}</StatusChip>
-        {fora ? <StatusChip tom="atencao">fora do padrão</StatusChip> : <Text size={200}>igual ao padrão</Text>}
+        {ehPadrao ? <Text size={200}>padrão</Text> : dif.igual ? <Text size={200}>igual ao padrão</Text> : <MotivosDiferenca dif={dif} />}
         {i.r.revisado && <StatusChip tom="ok">Revisado</StatusChip>}
       </summary>
+      {aberto && !ehPadrao && !dif.igual && <DetalheDiferenca dif={dif} />}
       {aberto && editor()}
     </details>
   );
@@ -129,5 +129,32 @@ function DetalheLazy({ resumo, children }: { resumo: ReactNode; children: () => 
       <summary style={{ padding: '8px 12px', cursor: 'pointer' }}>{resumo}</summary>
       {aberto && children()}
     </details>
+  );
+}
+
+const plural = (n: number, um: string, varios: string) => (n === 1 ? `1 ${um}` : `${n} ${varios}`);
+
+// Diz por que a atividade está fora do padrão: nível, medidas só dela ou medidas que só o padrão tem.
+function MotivosDiferenca({ dif }: { dif: DiferencaDoPadrao }) {
+  return (
+    <>
+      {dif.nivel && <StatusChip tom="atencao">nível diferente</StatusChip>}
+      {dif.aMais.length > 0 && <StatusChip tom="atencao">{plural(dif.aMais.length, 'medida a mais', 'medidas a mais')}</StatusChip>}
+      {dif.aMenos.length > 0 && <StatusChip tom="atencao">{plural(dif.aMenos.length, 'medida a menos', 'medidas a menos')}</StatusChip>}
+    </>
+  );
+}
+
+function DetalheDiferenca({ dif }: { dif: DiferencaDoPadrao }) {
+  return (
+    <div style={{ margin: '6px 0', padding: '6px 10px', borderLeft: '3px solid var(--colorPaletteYellowBorder1)', background: 'var(--colorPaletteYellowBackground1)', borderRadius: '0 6px 6px 0' }}>
+      {dif.nivel && <Text size={200} style={{ display: 'block' }}><b>Nível:</b> {dif.nivel.atividade} nesta atividade, {dif.nivel.padrao} no padrão.</Text>}
+      {dif.aMais.length > 0 && (
+        <Text size={200} style={{ display: 'block' }}><b>Só nesta atividade:</b> {dif.aMais.map((m) => m.texto).join(' • ')}</Text>
+      )}
+      {dif.aMenos.length > 0 && (
+        <Text size={200} style={{ display: 'block' }}><b>Só no padrão:</b> {dif.aMenos.map((m) => m.texto).join(' • ')}</Text>
+      )}
+    </div>
   );
 }

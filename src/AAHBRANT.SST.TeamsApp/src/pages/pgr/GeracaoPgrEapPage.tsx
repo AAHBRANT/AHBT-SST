@@ -632,7 +632,7 @@ function Aprovacao({ g, ocupado, devolver, aprovar, baixarPdf }: {
             </ul>
           )}
         <Text size={200} style={{ display: 'block', margin: '8px 0' }}>
-          Ao aprovar: os riscos ficam avaliados por você, as medidas aceitas ficam validadas, o PGR passa a vigente (o PGR vigente anterior da obra é encerrado) e começa a alimentar a Ordem de Serviço.
+          Ao aprovar: os riscos ficam avaliados por você, as medidas aceitas ficam validadas e o PGR começa a alimentar a Ordem de Serviço. Se a obra já tem PGR vigente, esta geração entra como uma nova revisão dele, com o histórico de revisões mantido; se não tem, nasce o PGR vigente.
         </Text>
         {g.status === 2 ? (
           <>
