@@ -32,7 +32,12 @@ public class ExtratorTextoEap : IExtratorTextoEap
             ".xls" => throw new InvalidOperationException("Planilha no formato antigo (.xls). Salve como .xlsx e envie de novo."),
             _ => throw new InvalidOperationException("Formato não suportado. Envie Excel (.xlsx), XML do MS Project ou PDF."),
         };
-        return texto.Length <= MaxCaracteres ? texto : texto[..MaxCaracteres];
+        // Cortar em silêncio fazia a IA nunca ver o fim da EAP (os itens sumiam da tela sem aviso), então recusa e explica.
+        if (texto.Length > MaxCaracteres)
+            throw new InvalidOperationException(
+                $"A EAP é grande demais para a IA ler inteira ({texto.Length:N0} caracteres; o limite é {MaxCaracteres:N0}). " +
+                "Envie só a estrutura (sem as linhas de composição de custo) ou divida o arquivo por etapa.");
+        return texto;
     }
 
     private static string LerExcel(byte[] conteudo)
@@ -43,13 +48,26 @@ public class ExtratorTextoEap : IExtratorTextoEap
         foreach (var aba in livro.Worksheets)
         {
             sb.AppendLine($"# Aba: {aba.Name}");
+            var colunaTipo = ColunaTipo(aba);
             foreach (var linha in aba.RowsUsed())
             {
+                // Planilha de orçamento: a estrutura são as linhas "ITEM EAP"; as "COMPOSIÇÃO" são insumos de custo (centenas de
+                // linhas longas) que não entram no PGR e estouravam o limite de texto antes de a IA chegar ao fim da EAP.
+                if (colunaTipo is { } c && linha.Cell(c).GetString().Trim().StartsWith("COMPOSI", StringComparison.OrdinalIgnoreCase))
+                    continue;
                 var celulas = linha.CellsUsed().Select(c => c.GetFormattedString().Trim()).Where(v => v.Length > 0).ToList();
                 if (celulas.Count > 0) sb.AppendLine(string.Join(" | ", celulas));
             }
         }
         return sb.ToString();
+    }
+
+    // Coluna cujo cabeçalho (primeira linha usada) é "tipo"; nulo quando a aba não tem.
+    private static int? ColunaTipo(IXLWorksheet aba)
+    {
+        var cabecalho = aba.FirstRowUsed();
+        var celula = cabecalho?.CellsUsed().FirstOrDefault(c => string.Equals(c.GetString().Trim(), "tipo", StringComparison.OrdinalIgnoreCase));
+        return celula?.Address.ColumnNumber;
     }
 
     private static string LerMsProjectXml(byte[] conteudo)
