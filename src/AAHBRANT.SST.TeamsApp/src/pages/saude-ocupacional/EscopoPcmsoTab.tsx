@@ -22,6 +22,7 @@ import {
 } from '@ui';
 import { api, type EscopoPcmso, type Obra } from '../../lib/api';
 import { salvarBlob, useVisualizadorPdf } from '../../components/useVisualizadorPdf';
+import { BotaoRascunhoPcmso } from './BotaoRascunhoPcmso';
 
 // Escopo para o médico elaborar o PCMSO (Etapa 2, desenho aprovado em 21/10): tudo sai do PGR
 // vigente da obra. O sistema NÃO sugere exames — exames, periodicidade e critérios de aptidão
@@ -146,6 +147,7 @@ export function EscopoPcmsoTab() {
                 Visualizar PDF
               </Button>
               <Button onClick={baixar}>Baixar PDF</Button>
+              <BotaoRascunhoPcmso obraId={obraId} />
               <Button appearance="primary" onClick={() => setDialogoEnvio(true)}>
                 Enviar ao médico por e-mail
               </Button>

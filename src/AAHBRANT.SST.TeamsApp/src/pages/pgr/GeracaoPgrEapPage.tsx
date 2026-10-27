@@ -12,6 +12,7 @@ import { DadosComplementaresPgr } from './DadosComplementaresPgr';
 import { ExposicaoRiscoEditor, SeletorEpi } from './ExposicaoRiscoEditor';
 import { InventarioPorPerigo } from './InventarioPorPerigo';
 import { CronogramaTreinamentosCard } from './CronogramaTreinamentosCard';
+import { BotaoRascunhoPcmso } from '../saude-ocupacional/BotaoRascunhoPcmso';
 
 const PASSOS = ['Enviar a EAP', 'Conferir a leitura', 'Funções e GHE', 'Inventário de riscos', 'Aprovar'];
 const FASES: Record<number, string> = { 1: 'Antes', 2: 'Durante', 3: 'Após' };
@@ -621,6 +622,13 @@ function Aprovacao({ g, ocupado, devolver, aprovar, baixarPdf }: {
           </div>
         </Card>
         <CronogramaTreinamentosCard geracaoId={g.id} />
+        <Card titulo="PCMSO da obra">
+          <Text size={200} style={{ display: 'block', marginBottom: 8 }}>
+            Cria um rascunho do PCMSO já com as funções e os riscos deste PGR. Exames, periodicidades e médico ficam em branco para o médico.
+            Não cria se a obra já tiver PCMSO em vigor, em aprovação ou em rascunho.
+          </Text>
+          <BotaoRascunhoPcmso obraId={g.obraId} />
+        </Card>
       </>
     );
   }
