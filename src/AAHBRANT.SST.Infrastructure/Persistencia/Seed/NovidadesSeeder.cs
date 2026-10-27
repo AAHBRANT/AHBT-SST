@@ -1637,6 +1637,21 @@ public static class NovidadesSeeder
                     "Ao refazer os riscos de uma atividade, a IA sugeria de novo os perigos que o engenheiro já tinha revisado, e eles apareciam duas vezes.",
                     "O risco já revisado é mantido e o mesmo perigo não é sugerido de novo, nem repetido dentro da própria sugestão."),
             }),
+        new(
+            Versao: "5.94.0",
+            Titulo: "Gerar PGR pela EAP: revisão por perigo e menos riscos por atividade",
+            DataPublicacao: new DateTime(2026, 10, 27, 0, 0, 0, DateTimeKind.Utc),
+            Itens: new[]
+            {
+                new NovidadeSeedItem(CategoriaNovidade.Melhoria,
+                    "Revise cada perigo uma vez só",
+                    "No inventário de riscos do PGR gerado pela EAP, o mesmo perigo aparecia em dezenas de atividades e era preciso revisar um por um.",
+                    "A tela do passo 4 agora mostra os perigos de cada GHE agrupados, com as atividades onde aparecem. Um clique aceita as medidas do perigo em todas elas, e as atividades com nível ou medidas diferentes ficam marcadas para edição. A visão \"Por atividade\" continua disponível."),
+                new NovidadeSeedItem(CategoriaNovidade.Melhoria,
+                    "Perigos padronizados e no máximo 5 por atividade",
+                    "A IA escrevia o mesmo perigo de formas diferentes e listava até 10 perigos por atividade, o que inflava o inventário.",
+                    "A IA passa a usar uma lista de perigos padrão e entrega no máximo 5 por atividade, os de maior nível de risco."),
+            }),
     };
 
     public static async Task ExecutarAsync(IServiceProvider services, CancellationToken ct = default)
