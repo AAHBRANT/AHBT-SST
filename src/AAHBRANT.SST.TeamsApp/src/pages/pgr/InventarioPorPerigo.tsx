@@ -1,4 +1,4 @@
-import type { ReactNode } from 'react';
+import { useState, type ReactNode } from 'react';
 import { Button, StatusChip, Text } from '@ui';
 import type { AtividadeGerada, EstruturaGeracaoPgr, GheGerado, RiscoGerado } from '../../lib/api';
 import { agruparPorPerigo, assinaturaMedidas, nivelDe, type GrupoPerigo, type RefRisco } from './agruparPorPerigo';
@@ -73,42 +73,61 @@ export function InventarioPorPerigo({ gh, gi, editavel, ocupado, alterar, gerarA
                 </Button>
               )}
             </div>
-            <details style={linha}>
-              <summary style={{ padding: '8px 12px', cursor: 'pointer' }}>
-                <Text size={200}>Medidas padrão ({medidasPadrao.length}) · atividade {gr.padrao.atividade.codigoEap}</Text>
-              </summary>
-              <div style={{ padding: '0 12px 10px' }}>
-                {medidasPadrao.map((m, mi) => (
-                  <div key={mi} style={{ display: 'flex', gap: 6, alignItems: 'center', padding: '2px 0', flexWrap: 'wrap' }}>
-                    <StatusChip tom="neutro">{FASES[m.fase]}</StatusChip>
-                    <StatusChip tom="neutro">{m.categoria ?? 'Sem classificação'}</StatusChip>
-                    <Text style={{ flex: 1 }}>{m.texto}</Text>
-                    {m.decisao === 'Aceita' ? <StatusChip tom="ok">Aceita</StatusChip> : <StatusChip tom="atencao">Sugestão da IA</StatusChip>}
-                  </div>
-                ))}
-              </div>
-            </details>
-            <details style={linha}>
-              <summary style={{ padding: '8px 12px', cursor: 'pointer' }}>
-                <Text size={200}>Atividades onde aparece ({gr.itens.length})</Text>
-              </summary>
-              <div style={{ padding: '0 12px 10px' }}>
-                {gr.itens.map((i) => (
-                  <details key={`${i.ai}-${i.ri}`} style={{ borderTop: '1px dashed var(--colorNeutralStroke2)', padding: '4px 0' }}>
-                    <summary style={{ cursor: 'pointer', display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
-                      <Text size={200}>{i.atividade.codigoEap} {i.atividade.nome}</Text>
-                      <StatusChip tom="neutro">P × S = {nivelDe(i.r)}</StatusChip>
-                      {diferentes(i) ? <StatusChip tom="atencao">fora do padrão</StatusChip> : <Text size={200}>igual ao padrão</Text>}
-                      {i.r.revisado && <StatusChip tom="ok">Revisado</StatusChip>}
-                    </summary>
-                    {renderRisco(i.r, (f) => alterar((x) => f(x.ghes[gi].atividades[i.ai].riscos[i.ri])))}
-                  </details>
-                ))}
-              </div>
-            </details>
+            <DetalheLazy resumo={<Text size={200}>Medidas padrão ({medidasPadrao.length}) · atividade {gr.padrao.atividade.codigoEap}</Text>}>
+              {() => (
+                <div style={{ padding: '0 12px 10px' }}>
+                  {medidasPadrao.map((m, mi) => (
+                    <div key={mi} style={{ display: 'flex', gap: 6, alignItems: 'center', padding: '2px 0', flexWrap: 'wrap' }}>
+                      <StatusChip tom="neutro">{FASES[m.fase]}</StatusChip>
+                      <StatusChip tom="neutro">{m.categoria ?? 'Sem classificação'}</StatusChip>
+                      <Text style={{ flex: 1 }}>{m.texto}</Text>
+                      {m.decisao === 'Aceita' ? <StatusChip tom="ok">Aceita</StatusChip> : <StatusChip tom="atencao">Sugestão da IA</StatusChip>}
+                    </div>
+                  ))}
+                </div>
+              )}
+            </DetalheLazy>
+            <DetalheLazy resumo={<Text size={200}>Atividades onde aparece ({gr.itens.length})</Text>}>
+              {() => (
+                <div style={{ padding: '0 12px 10px' }}>
+                  {gr.itens.map((i) => (
+                    <LinhaAtividade key={`${i.ai}-${i.ri}`} i={i} fora={diferentes(i)}
+                      editor={() => renderRisco(i.r, (f) => alterar((x) => f(x.ghes[gi].atividades[i.ai].riscos[i.ri])))} />
+                  ))}
+                </div>
+              )}
+            </DetalheLazy>
           </div>
         );
       })}
     </>
+  );
+}
+
+// O editor completo do risco só é montado quando a linha é aberta: um PGR de obra grande tem mais de mil riscos
+// e montar todos os editores de uma vez trava a tela.
+function LinhaAtividade({ i, fora, editor }: { i: RefRisco; fora: boolean; editor: () => ReactNode }) {
+  const [aberto, setAberto] = useState(false);
+  return (
+    <details style={{ borderTop: '1px dashed var(--colorNeutralStroke2)', padding: '4px 0' }} onToggle={(ev) => setAberto(ev.currentTarget.open)}>
+      <summary style={{ cursor: 'pointer', display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
+        <Text size={200}>{i.atividade.codigoEap} {i.atividade.nome}</Text>
+        <StatusChip tom="neutro">P × S = {nivelDe(i.r)}</StatusChip>
+        {fora ? <StatusChip tom="atencao">fora do padrão</StatusChip> : <Text size={200}>igual ao padrão</Text>}
+        {i.r.revisado && <StatusChip tom="ok">Revisado</StatusChip>}
+      </summary>
+      {aberto && editor()}
+    </details>
+  );
+}
+
+// Conteúdo montado só quando o bloco é aberto, para a tela do GHE não carregar milhares de elementos fechados.
+function DetalheLazy({ resumo, children }: { resumo: ReactNode; children: () => ReactNode }) {
+  const [aberto, setAberto] = useState(false);
+  return (
+    <details style={linha} onToggle={(ev) => setAberto(ev.currentTarget.open)}>
+      <summary style={{ padding: '8px 12px', cursor: 'pointer' }}>{resumo}</summary>
+      {aberto && children()}
+    </details>
   );
 }
