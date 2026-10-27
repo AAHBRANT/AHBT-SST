@@ -19,7 +19,17 @@ public interface IGeradorPgrIa
 
     // Escolhe, entre os locais reais que o mapa devolveu, o mais adequado a cada tipo e explica o caminho.
     Task<SugestaoEmergenciaIa> SugerirEmergenciaAsync(ContextoEmergenciaIa contexto, CancellationToken ct);
+
+    // Forma de acompanhamento, periodicidade e critério de aferição para cada ação do plano de ação. Só sugestão.
+    Task<List<AcompanhamentoSugeridoIa>> SugerirAcompanhamentoAsync(ContextoAcompanhamentoPlano contexto, CancellationToken ct);
 }
+
+public record AcaoParaAcompanhamento(int Indice, string Descricao, DateTime? Prazo);
+
+public record ContextoAcompanhamentoPlano(string Obra, IReadOnlyList<AcaoParaAcompanhamento> Acoes, IReadOnlyList<string> Riscos);
+
+// Indice é o da ação na lista enviada; Forma e Periodicidade chegam como a IA escreveu e são normalizadas por quem aplica.
+public record AcompanhamentoSugeridoIa(int Indice, string? Forma, string? Periodicidade, string? Criterio);
 
 public record ContextoRiscosAtividade(
     string Atividade,

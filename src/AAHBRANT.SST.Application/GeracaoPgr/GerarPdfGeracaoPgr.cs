@@ -1,6 +1,8 @@
+using AAHBRANT.SST.Application.Assinatura;
 using AAHBRANT.SST.Application.MatrizRisco;
 using AAHBRANT.SST.Application.Common;
 using AAHBRANT.SST.Application.Common.Interfaces;
+using AAHBRANT.SST.Domain.Entidades;
 using AAHBRANT.SST.Domain.Enums;
 using MediatR;
 using Microsoft.EntityFrameworkCore;
@@ -40,7 +42,19 @@ public record DadosPgrPdf(
     IReadOnlyList<RevisaoPdf>? Revisoes = null,
     int? NumeroFuncionarios = null,
     IReadOnlyDictionary<Guid, CatalogoEpiInfo>? Epis = null,
-    IReadOnlyList<LinhaTreinamentoPdf>? Treinamentos = null);
+    IReadOnlyList<LinhaTreinamentoPdf>? Treinamentos = null,
+    // Assinaturas do PGR (técnico e engenheiro). Nulo em rascunho antigo, que mantém as duas linhas em branco.
+    IReadOnlyList<AssinaturaPgrPdf>? Assinaturas = null,
+    // Código, endereço e QR de verificação: só existem depois de o documento do motor ser finalizado.
+    VerificacaoPgrPdf? Verificacao = null,
+    // Minuta para o engenheiro ler antes de assinar: marcada como "não assinado" em todas as páginas.
+    bool Minuta = false);
+
+// Uma linha de assinatura. AssinadoEmUtc preenchido = carimbo de assinatura eletrônica; AMao = a linha sai em branco, para
+// assinatura fora do sistema; sem as duas coisas, ainda não assinou.
+public record AssinaturaPgrPdf(string Funcao, string? Nome, string? Registro, string Descricao, DateTime? AssinadoEmUtc, bool AMao);
+
+public record VerificacaoPgrPdf(string Codigo, string Url, byte[] QrPng);
 
 // Função de um GHE com o CBO do cadastro e a quantidade de expostos (trabalhadores ativos da obra na função).
 public record LinhaFuncaoPdf(int GheNumero, string Nome, string? Cbo, int Expostos);
@@ -54,29 +68,43 @@ public record LinhaTreinamentoPdf(
 
 public record ArquivoPgrPdf(byte[] Conteudo, string NomeArquivo);
 
-public record GerarPdfGeracaoPgrEapQuery(Guid Id) : IRequest<ArquivoPgrPdf>;
+public record GerarPdfGeracaoPgrEapQuery(Guid Id, bool Minuta = false) : IRequest<ArquivoPgrPdf>;
 
 public class GerarPdfGeracaoPgrEapQueryHandler : IRequestHandler<GerarPdfGeracaoPgrEapQuery, ArquivoPgrPdf>
 {
     private readonly IAppDbContext _db;
     private readonly IPgrPdfService _pdf;
+    private readonly IQrCodeDocumentoService? _qrCode;
 
-    public GerarPdfGeracaoPgrEapQueryHandler(IAppDbContext db, IPgrPdfService pdf)
+    public GerarPdfGeracaoPgrEapQueryHandler(IAppDbContext db, IPgrPdfService pdf, IQrCodeDocumentoService? qrCode = null)
     {
         _db = db;
         _pdf = pdf;
+        _qrCode = qrCode;
     }
 
     public async Task<ArquivoPgrPdf> Handle(GerarPdfGeracaoPgrEapQuery request, CancellationToken ct)
     {
         var g = await SerializacaoGeracao.CarregarAsync(_db, request.Id, ct);
-        if (g.Status != StatusGeracaoPgrEap.Aprovado)
+        if (request.Minuta)
+        {
+            if (g.Status == StatusGeracaoPgrEap.Aprovado)
+                throw new InvalidOperationException("Este PGR já foi aprovado: baixe o PDF assinado.");
+        }
+        else if (g.Status != StatusGeracaoPgrEap.Aprovado)
             throw new InvalidOperationException("O PDF do PGR só é gerado depois da aprovação do Engenheiro de Segurança.");
 
         var obra = await _db.Obras.Where(o => o.Id == g.ObraId)
             .Select(o => new { o.Nome, o.Cnpj, o.Endereco, o.Cidade, o.Uf, o.LogoConteudo })
             .FirstOrDefaultAsync(ct) ?? throw new KeyNotFoundException("Obra não encontrada.");
         var estrutura = SerializacaoGeracao.Ler(g.EstruturaJson);
+        var nomeArquivo = $"PGR - {obra.Nome} - {g.DataElaboracao:yyyyMMdd}{(request.Minuta ? " - MINUTA" : string.Empty)}.pdf";
+        var documentoMotor = request.Minuta
+            ? null
+            : await _db.DocumentosAssinatura.FirstOrDefaultAsync(d => d.EntidadeTipo == AssinaturaGeracaoPgr.EntidadeTipo && d.EntidadeId == g.Id, ct);
+        // PDF assinado e finalizado é prova congelada: o download entrega sempre o mesmo arquivo, e não um PDF refeito.
+        if (documentoMotor is { Status: StatusDocumentoAssinatura.Finalizado, PdfConteudo.Length: > 0 })
+            return new ArquivoPgrPdf(documentoMotor.PdfConteudo!, nomeArquivo);
 
         // CBO do cadastro (por id, ou pelo nome quando a função ainda não tinha id) e expostos = trabalhadores
         // ativos da obra naquela função.
@@ -122,6 +150,14 @@ public class GerarPdfGeracaoPgrEapQueryHandler : IRequestHandler<GerarPdfGeracao
                 config.NumNiveisSeveridade,
                 config.Celulas.Select(c => new CelulaMatrizPdf(c.Probabilidade, c.Severidade, c.NivelRisco)).ToList());
 
+        var assinaturas = await MontarAssinaturasAsync(estrutura, documentoMotor, ct);
+        VerificacaoPgrPdf? verificacao = null;
+        if (documentoMotor?.TokenValidacaoPublica is { } token && _qrCode is not null)
+        {
+            var qr = _qrCode.Gerar(token);
+            verificacao = new VerificacaoPgrPdf(token, qr.UrlValidacao, qr.Png);
+        }
+
         var dados = new DadosPgrPdf(
             obra.Nome,
             obra.Cnpj,
@@ -142,9 +178,41 @@ public class GerarPdfGeracaoPgrEapQueryHandler : IRequestHandler<GerarPdfGeracao
             revisoes,
             expostosPorFuncao.Values.Sum(),
             await SerializacaoGeracao.CarregarEpisAsync(_db, estrutura, ct),
-            treinamentos);
+            treinamentos,
+            assinaturas,
+            verificacao,
+            request.Minuta);
 
-        var nomeArquivo = $"PGR - {obra.Nome} - {g.DataElaboracao:yyyyMMdd}.pdf";
         return new ArquivoPgrPdf(_pdf.Gerar(dados, obra.LogoConteudo), nomeArquivo);
+    }
+
+    // As duas linhas de assinatura, com quem assina e, para quem já assinou no sistema, quando. Nulo quando o rascunho é de
+    // antes da escolha de quem assina: o PDF mantém as linhas em branco de sempre.
+    private async Task<List<AssinaturaPgrPdf>?> MontarAssinaturasAsync(EstruturaGeracaoPgr estrutura, DocumentoAssinatura? documento, CancellationToken ct)
+    {
+        var comp = estrutura.Complementares;
+        if (comp?.Tecnico is null && comp?.Engenheiro is null)
+            return null;
+
+        var assinados = documento is null
+            ? new Dictionary<PapelAssinatura, DateTime>()
+            : (await _db.DocumentoSignatarios.Where(s => s.DocumentoAssinaturaId == documento.Id && s.Papel != null)
+                    .Select(s => new { Papel = s.Papel!.Value, s.AssinadoEm }).ToListAsync(ct))
+                .GroupBy(s => s.Papel).ToDictionary(g => g.Key, g => g.Min(x => x.AssinadoEm));
+
+        AssinaturaPgrPdf? Montar(AssinanteGeracaoPgr? a, PapelAssinatura papel, string funcao, string descricao)
+        {
+            if (a is null) return null;
+            return new AssinaturaPgrPdf(funcao, a.Nome, string.IsNullOrWhiteSpace(a.Registro) ? null : a.Registro.Trim(), descricao,
+                assinados.TryGetValue(papel, out var quando) ? quando : null, a.AMao);
+        }
+
+        return new[]
+        {
+            Montar(comp?.Tecnico, PapelAssinatura.TecnicoSegurancaPgr, "Técnico de Segurança da obra",
+                "Técnico de Segurança da obra · responsável pela implantação do PGR"),
+            Montar(comp?.Engenheiro, PapelAssinatura.EngenheiroSegurancaPgr, "Engenheiro de Segurança do Trabalho",
+                "Engenheiro de Segurança do Trabalho · responsável técnico pela elaboração do PGR"),
+        }.OfType<AssinaturaPgrPdf>().ToList();
     }
 }

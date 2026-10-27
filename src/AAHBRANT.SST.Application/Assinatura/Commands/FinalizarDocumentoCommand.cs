@@ -1,5 +1,6 @@
 using AAHBRANT.SST.Application.Assinatura.Queries;
 using AAHBRANT.SST.Application.Common.Interfaces;
+using AAHBRANT.SST.Application.GeracaoPgr;
 using AAHBRANT.SST.Application.Inspecoes.Queries;
 using AAHBRANT.SST.Domain.Enums;
 using FluentValidation;
@@ -83,6 +84,12 @@ public class FinalizarDocumentoCommandHandler : IRequestHandler<FinalizarDocumen
         {
             await _db.SaveChangesAsync(ct);
             documento.PdfConteudo = await _mediator.Send(new ExportarInspecaoPdfQuery(documento.EntidadeId), ct);
+        }
+        else if (documento.EntidadeTipo == AssinaturaGeracaoPgr.EntidadeTipo)
+        {
+            // PGR: o arquivo guardado é o próprio PGR, com os carimbos das assinaturas, o QR e o código de verificação.
+            await _db.SaveChangesAsync(ct);
+            documento.PdfConteudo = (await _mediator.Send(new GerarPdfGeracaoPgrEapQuery(documento.EntidadeId), ct)).Conteudo;
         }
         else
         {

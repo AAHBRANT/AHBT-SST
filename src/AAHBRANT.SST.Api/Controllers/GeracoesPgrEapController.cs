@@ -72,12 +72,34 @@ public class GeracoesPgrEapController : ControllerBase
     public async Task<IActionResult> GerarRiscos(Guid id, GerarRiscosRequest corpo, CancellationToken ct)
         => Ok(new { riscos = await _mediator.Send(new GerarRiscosAtividadeGeracaoPgrCommand(id, corpo.GheNumero, corpo.CodigoEap), ct) });
 
+    // Sugere forma de acompanhamento, periodicidade e critério de aferição para as ações do plano que ainda não têm.
+    [Authorize(Policy = "pgr:criar")]
+    [HttpPost("{id:guid}/sugerir-acompanhamento")]
+    public async Task<IActionResult> SugerirAcompanhamento(Guid id, CancellationToken ct)
+        => Ok(new { acoes = await _mediator.Send(new SugerirAcompanhamentoPlanoGeracaoPgrCommand(id), ct) });
+
     [Authorize(Policy = "pgr:criar")]
     [HttpPost("{id:guid}/enviar-aprovacao")]
     public async Task<IActionResult> EnviarAprovacao(Guid id, CancellationToken ct)
     {
-        await _mediator.Send(new EnviarGeracaoPgrParaAprovacaoCommand(id), ct);
+        var usuarioId = await _usuarioAtual.ObterIdAsync(User, ct);
+        await _mediator.Send(new EnviarGeracaoPgrParaAprovacaoCommand(id, usuarioId), ct);
         return NoContent();
+    }
+
+    // Quem pode ser escolhido para assinar o PGR desta obra (técnico e engenheiro de segurança).
+    [Authorize(Policy = "pgr:ver")]
+    [HttpGet("{id:guid}/assinantes")]
+    public async Task<IActionResult> Assinantes(Guid id, CancellationToken ct)
+        => Ok(await _mediator.Send(new ListarAssinantesGeracaoPgrQuery(id), ct));
+
+    // Minuta para o engenheiro ler antes de assinar: o mesmo PGR, marcado como não assinado.
+    [Authorize(Policy = "pgr:ver")]
+    [HttpGet("{id:guid}/minuta")]
+    public async Task<IActionResult> Minuta(Guid id, CancellationToken ct)
+    {
+        var arquivo = await _mediator.Send(new GerarPdfGeracaoPgrEapQuery(id, Minuta: true), ct);
+        return File(arquivo.Conteudo, "application/pdf", arquivo.NomeArquivo);
     }
 
     // Exclusão é privilégio de Administrador (regra de 23/09) e só vale para rascunho que não foi para aprovação.

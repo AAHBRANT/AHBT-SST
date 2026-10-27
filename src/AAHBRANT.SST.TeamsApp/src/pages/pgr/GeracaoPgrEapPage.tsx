@@ -9,6 +9,7 @@ import {
 } from '../../lib/api';
 import { rotuloStatusGeracao } from './GeracoesPgrEapCard';
 import { DadosComplementaresPgr } from './DadosComplementaresPgr';
+import { QuemAssinaPgr } from './QuemAssinaPgr';
 import { ExposicaoRiscoEditor, SeletorEpi } from './ExposicaoRiscoEditor';
 import { InventarioPorPerigo } from './InventarioPorPerigo';
 import { CronogramaTreinamentosCard } from './CronogramaTreinamentosCard';
@@ -18,6 +19,9 @@ const PASSOS = ['Enviar a EAP', 'Conferir a leitura', 'Funções e GHE', 'Invent
 const FASES: Record<number, string> = { 1: 'Antes', 2: 'Durante', 3: 'Após' };
 const TIPOS = ['Físico', 'Químico', 'Biológico', 'Ergonômico', 'Psicossocial', 'Acidente'];
 // Ordem de prioridade da NR-01; o PDF separa EPC e EPI por estas categorias.
+// Opções de acompanhamento do plano de ação (NR-01, item 1.5.5.2); as mesmas listas valem no servidor.
+const FORMAS_ACOMPANHAMENTO = ['Inspeção periódica', 'Registro de treinamento', 'Indicador', 'Auditoria', 'Medição', 'Outro'];
+const PERIODICIDADES_ACOMPANHAMENTO = ['Semanal', 'Quinzenal', 'Mensal', 'Trimestral', 'A cada ocorrência'];
 const CATEGORIAS: CategoriaMedida[] = ['Eliminação', 'EPC', 'Administrativa', 'EPI'];
 const dataInput = (iso?: string | null) => (iso ? iso.slice(0, 10) : '');
 const copiar = <T,>(x: T): T => JSON.parse(JSON.stringify(x)) as T;
@@ -136,6 +140,7 @@ function Assistente({ id }: { id: string }) {
   const [erro, setErro] = useState<string | null>(null);
   const [ocupado, setOcupado] = useState<string | null>(null);
   const [salvo, setSalvo] = useState(false);
+  const [aviso, setAviso] = useState<string | null>(null);
 
   async function carregar(irParaPasso?: number) {
     const d = await api.geracoesPgrEap.obter(id);
@@ -211,6 +216,7 @@ function Assistente({ id }: { id: string }) {
       {erro && <FeedbackInline tom="erro" aoFechar={() => setErro(null)}>{erro}</FeedbackInline>}
       {ocupado && <FeedbackInline tom="info">{ocupado}</FeedbackInline>}
       {salvo && <FeedbackInline tom="sucesso" aoFechar={() => setSalvo(false)}>Salvo.</FeedbackInline>}
+      {aviso && <FeedbackInline tom="sucesso" aoFechar={() => setAviso(null)}>{aviso}</FeedbackInline>}
 
       {passo === 2 && (
         <Card titulo={`Estrutura lida da EAP · ${e.itens.length} itens · ${e.itens.filter((i) => i.usar).length} entram no PGR`}>
@@ -277,13 +283,30 @@ function Assistente({ id }: { id: string }) {
             await carregar(5);
           })}
           gerarPendentes={() => void executar('Gerando…', gerarInventario)}
+          sugerirAcompanhamento={() => void executar('Sugerindo o acompanhamento das ações com IA…', async () => {
+            await salvar(4);
+            const r = await api.geracoesPgrEap.sugerirAcompanhamento(id);
+            await carregar(4);
+            setAviso(r.acoes > 0
+              ? `${r.acoes} ação(ões) com sugestão da IA. Confira e edite o que precisar.`
+              : 'Nenhuma ação precisava de sugestão: todas já têm o acompanhamento preenchido.');
+          })}
         />
       )}
 
       {passo === 5 && (
         <Aprovacao g={g} ocupado={!!ocupado}
           devolver={(motivo) => void executar('Devolvendo…', async () => { await api.geracoesPgrEap.devolver(id, motivo); await carregar(4); })}
-          aprovar={() => void executar('Aprovando e criando o PGR…', async () => {
+          baixarMinuta={() => void executar('Gerando a minuta…', async () => {
+            const blob = await api.geracoesPgrEap.baixarMinuta(id);
+            const url = URL.createObjectURL(blob);
+            const link = document.createElement('a');
+            link.href = url;
+            link.download = `${g.nome.replace(/[\\/:*?"<>|]/g, '-')} - MINUTA.pdf`;
+            link.click();
+            URL.revokeObjectURL(url);
+          })}
+          aprovar={() => void executar('Assinando e aprovando o PGR…', async () => {
             const { pgrId } = await api.geracoesPgrEap.aprovar(id);
             navigate(`/prevencao/pgr/${pgrId}`);
           })}
@@ -363,7 +386,7 @@ function GheEditor({ ghe, todos, funcoesCadastradas, editavel, alterar }: {
   );
 }
 
-function Inventario({ g, e, editavel, ocupado, alterar, gerarAtividade, salvar, enviar, gerarPendentes }: {
+function Inventario({ g, e, editavel, ocupado, alterar, gerarAtividade, salvar, enviar, gerarPendentes, sugerirAcompanhamento }: {
   g: GeracaoPgrEap;
   e: EstruturaGeracaoPgr;
   editavel: boolean;
@@ -373,6 +396,7 @@ function Inventario({ g, e, editavel, ocupado, alterar, gerarAtividade, salvar, 
   salvar: () => void;
   enviar: () => void;
   gerarPendentes: () => void;
+  sugerirAcompanhamento: () => void;
 }) {
   const [usuarios, setUsuarios] = useState<Usuario[]>([]);
   const [epis, setEpis] = useState<CatalogoEpi[]>([]);
@@ -459,7 +483,14 @@ function Inventario({ g, e, editavel, ocupado, alterar, gerarAtividade, salvar, 
 
       <DadosComplementaresPgr geracaoId={g.id} e={e} editavel={editavel} alterar={alterar} />
 
-      <Card titulo="Plano de ação">
+      <QuemAssinaPgr geracaoId={g.id} e={e} editavel={editavel} alterar={alterar} />
+
+      <Card
+        titulo="Plano de ação"
+        acoes={editavel && (e.acoesPlano ?? []).some((a) => a.descricao.trim())
+          ? <Button size="small" disabled={ocupado} onClick={sugerirAcompanhamento}>Sugerir acompanhamento</Button>
+          : undefined}
+      >
         {(e.acoesPlano ?? []).map((a, i) => (
           <AcaoPlanoLinha key={i} acao={a} usuarios={usuarios} editavel={editavel}
             alterar={(f) => alterar((x) => f(x.acoesPlano[i]))}
@@ -475,7 +506,9 @@ function Inventario({ g, e, editavel, ocupado, alterar, gerarAtividade, salvar, 
       {editavel && (
         <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8 }}>
           <Button disabled={ocupado} onClick={salvar}>Salvar</Button>
-          <Button appearance="primary" disabled={ocupado} onClick={enviar}>Enviar para aprovação do engenheiro</Button>
+          <Button appearance="primary" disabled={ocupado} onClick={enviar}>
+            {e.complementares?.tecnico && !e.complementares.tecnico.aMao ? 'Assinar e enviar para aprovação' : 'Enviar para aprovação do engenheiro'}
+          </Button>
         </div>
       )}
     </>
@@ -575,34 +608,60 @@ function AcaoPlanoLinha({ acao, usuarios, editavel, alterar, remover }: {
   alterar: (f: (x: AcaoPlanoGerada) => void) => void;
   remover: () => void;
 }) {
+  // Quem edita qualquer campo do acompanhamento confirma a sugestão da IA: a marca some.
+  const editarAcompanhamento = (f: (x: AcaoPlanoGerada) => void) => alterar((x) => { f(x); x.acompanhamentoSugeridoPelaIa = false; });
   return (
-    <div style={{ display: 'flex', gap: 6, marginBottom: 6, flexWrap: 'wrap', alignItems: 'center' }}>
-      <Input value={acao.descricao} disabled={!editavel} placeholder="Ação a executar" maxLength={500} style={{ flex: 2, minWidth: 220 }}
-        onChange={(_, d) => alterar((x) => { x.descricao = d.value; })} />
-      <Select value={acao.responsavelUsuarioId ?? ''} disabled={!editavel} aria-label="Responsável" style={{ minWidth: 180 }}
-        onChange={(_, d) => alterar((x) => {
-          x.responsavelUsuarioId = d.value || null;
-          x.responsavelNome = usuarios.find((u) => u.id === d.value)?.nome ?? null;
-        })}>
-        <option value="">Responsável…</option>
-        {usuarios.map((u) => <option key={u.id} value={u.id}>{u.nome}</option>)}
-      </Select>
-      <Input type="date" value={dataInput(acao.inicio)} disabled={!editavel} aria-label="Início (opcional)" title="Início (opcional)"
-        onChange={(_, d) => alterar((x) => { x.inicio = d.value || null; })} />
-      <Input type="date" value={dataInput(acao.prazo)} disabled={!editavel} aria-label="Prazo" title="Prazo"
-        onChange={(_, d) => alterar((x) => { x.prazo = d.value || null; })} />
-      {editavel && <Button size="small" onClick={remover}>Remover</Button>}
+    <div style={{
+      border: '1px solid var(--colorNeutralStroke2)', borderRadius: 8, padding: 8, marginBottom: 8,
+      background: acao.acompanhamentoSugeridoPelaIa ? 'var(--colorPaletteYellowBackground1)' : undefined,
+    }}>
+      <div style={{ display: 'flex', gap: 6, marginBottom: 6, flexWrap: 'wrap', alignItems: 'center' }}>
+        <Input value={acao.descricao} disabled={!editavel} placeholder="Ação a executar" maxLength={500} style={{ flex: 2, minWidth: 220 }}
+          onChange={(_, d) => alterar((x) => { x.descricao = d.value; })} />
+        <Select value={acao.responsavelUsuarioId ?? ''} disabled={!editavel} aria-label="Responsável" style={{ minWidth: 180 }}
+          onChange={(_, d) => alterar((x) => {
+            x.responsavelUsuarioId = d.value || null;
+            x.responsavelNome = usuarios.find((u) => u.id === d.value)?.nome ?? null;
+          })}>
+          <option value="">Responsável…</option>
+          {usuarios.map((u) => <option key={u.id} value={u.id}>{u.nome}</option>)}
+        </Select>
+        <Input type="date" value={dataInput(acao.inicio)} disabled={!editavel} aria-label="Início (opcional)" title="Início (opcional)"
+          onChange={(_, d) => alterar((x) => { x.inicio = d.value || null; })} />
+        <Input type="date" value={dataInput(acao.prazo)} disabled={!editavel} aria-label="Prazo" title="Prazo"
+          onChange={(_, d) => alterar((x) => { x.prazo = d.value || null; })} />
+        {editavel && <Button size="small" onClick={remover}>Remover</Button>}
+      </div>
+      <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', alignItems: 'center' }}>
+        <Select value={acao.formaAcompanhamento ?? ''} disabled={!editavel} aria-label="Como acompanhar" style={{ minWidth: 190 }}
+          onChange={(_, d) => editarAcompanhamento((x) => { x.formaAcompanhamento = d.value || null; })}>
+          <option value="">Como acompanhar…</option>
+          {FORMAS_ACOMPANHAMENTO.map((f) => <option key={f} value={f}>{f}</option>)}
+        </Select>
+        <Select value={acao.periodicidadeAcompanhamento ?? ''} disabled={!editavel} aria-label="Periodicidade do acompanhamento" style={{ minWidth: 160 }}
+          onChange={(_, d) => editarAcompanhamento((x) => { x.periodicidadeAcompanhamento = d.value || null; })}>
+          <option value="">Periodicidade…</option>
+          {PERIODICIDADES_ACOMPANHAMENTO.map((p) => <option key={p} value={p}>{p}</option>)}
+        </Select>
+        <Input value={acao.criterioAfericao ?? ''} disabled={!editavel} placeholder="Como aferir o resultado (ex.: 100% dos pontos inspecionados)"
+          maxLength={300} style={{ flex: 2, minWidth: 240 }} aria-label="Como aferir o resultado"
+          onChange={(_, d) => editarAcompanhamento((x) => { x.criterioAfericao = d.value || null; })} />
+        {acao.acompanhamentoSugeridoPelaIa && <StatusChip tom="atencao">Sugestão da IA, confira</StatusChip>}
+      </div>
     </div>
   );
 }
 
-function Aprovacao({ g, ocupado, devolver, aprovar, baixarPdf }: {
+function Aprovacao({ g, ocupado, devolver, aprovar, baixarPdf, baixarMinuta }: {
   g: GeracaoPgrEap;
   ocupado: boolean;
   devolver: (motivo: string) => void;
   aprovar: () => void;
   baixarPdf: () => void;
+  baixarMinuta: () => void;
 }) {
+  const comp = g.estrutura.complementares;
+  const assinaNoSistema = !!comp?.engenheiro && !comp.engenheiro.aMao;
   const [motivo, setMotivo] = useState('');
   const navigate = useNavigate();
 
@@ -617,7 +676,9 @@ function Aprovacao({ g, ocupado, devolver, aprovar, baixarPdf }: {
             PDF do PGR com identificação, GHE, funções, inventário de riscos, medidas aceitas, plano de ação, cronograma de treinamentos e registro da aprovação.
           </Text>
           <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-            <Button appearance="primary" disabled={ocupado} onClick={baixarPdf}>Baixar PDF do PGR</Button>
+            <Button appearance="primary" disabled={ocupado} onClick={baixarPdf}>
+              {comp?.tecnico && !comp.tecnico.aMao ? 'Baixar PDF assinado' : 'Baixar PDF do PGR'}
+            </Button>
             {g.pgrId && <Button onClick={() => navigate(`/prevencao/pgr/${g.pgrId}`)}>Abrir o PGR</Button>}
           </div>
         </Card>
@@ -653,7 +714,10 @@ function Aprovacao({ g, ocupado, devolver, aprovar, baixarPdf }: {
             </Field>
             <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8, marginTop: 8 }}>
               <Button disabled={ocupado || !motivo.trim()} onClick={() => devolver(motivo.trim())}>Devolver para ajustes</Button>
-              <Button appearance="primary" disabled={ocupado || g.pendenciasAprovacao.length > 0} onClick={aprovar}>Aprovar PGR</Button>
+              <Button disabled={ocupado} onClick={baixarMinuta}>Ver minuta em PDF</Button>
+              <Button appearance="primary" disabled={ocupado || g.pendenciasAprovacao.length > 0} onClick={aprovar}>
+                {assinaNoSistema ? 'Aprovar e assinar o PGR' : 'Aprovar PGR'}
+              </Button>
             </div>
           </>
         ) : (

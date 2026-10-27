@@ -97,7 +97,7 @@ public class PgrPdfService : IPgrPdfService
                     });
                 }
             });
-            Rodape(p);
+            Rodape(p, d);
         });
     }
 
@@ -126,7 +126,6 @@ public class PgrPdfService : IPgrPdfService
                     Campo(t, "CEP", comp.Cep);
                     Campo(t, "CNAE", comp.Cnae);
                     Campo(t, "Grau de risco (NR-04)", comp.GrauRisco?.ToString());
-                    Campo(t, "Trabalhadores ativos na obra", d.NumeroFuncionarios?.ToString());
                     Campo(t, "Revisão atual", (d.Revisoes is { Count: > 0 } revisoes ? revisoes.Max(r => r.Numero) : 0).ToString("00"));
                     Campo(t, "Início da vigência", d.DataElaboracao.ToString("dd/MM/yyyy"));
                     Campo(t, "Revisão prevista", d.DataProximaRevisao?.ToString("dd/MM/yyyy"));
@@ -134,7 +133,6 @@ public class PgrPdfService : IPgrPdfService
                     Campo(t, "Responsável técnico", d.AprovadoPorNome);
                     Campo(t, "Registro profissional (CREA)", comp.ResponsavelTecnicoRegistro);
                     Campo(t, "Elaborado por", d.ElaboradoPorNome);
-                    Campo(t, "EAP de referência", d.NomeArquivoEap);
                 });
                 Subtitulo(c, "Controle de revisões");
                 Tabela(c, new[] { ("Revisão", 0.9f), ("Data", 1.2f), ("Descrição da alteração", 4f), ("Responsável", 2f) },
@@ -281,6 +279,25 @@ public class PgrPdfService : IPgrPdfService
                         .FontSize(8.5f).Italic().FontColor(Secundario);
                 }
 
+                // 7.2 Acompanhamento e aferição de resultados (NR-01, item 1.5.5.2): como cada ação do plano será
+                // acompanhada, com que frequência e o que mostra que funcionou. Numeração igual à da tabela da seção 7.
+                if (acoes.Count > 0)
+                {
+                    Subtitulo(c, "7.2 Acompanhamento e aferição de resultados");
+                    Paragrafo(c, "Forma de acompanhamento de cada ação do plano de ação, com a frequência e o critério usado para verificar o resultado (NR-01, item 1.5.5.2).");
+                    Tabela(c, new[] { ("Nº", 0.5f), ("Ação", 2.9f), ("Forma de acompanhamento", 1.8f), ("Periodicidade", 1.7f), ("Como aferir o resultado", 3.0f) },
+                        acoes.Select((a, i) => new[]
+                        {
+                            (i + 1).ToString("00"), a.Descricao.Trim(),
+                            string.IsNullOrWhiteSpace(a.FormaAcompanhamento) ? "A definir" : a.FormaAcompanhamento!,
+                            string.IsNullOrWhiteSpace(a.PeriodicidadeAcompanhamento) ? "A definir" : a.PeriodicidadeAcompanhamento!,
+                            string.IsNullOrWhiteSpace(a.CriterioAfericao) ? "A definir" : a.CriterioAfericao!.Trim(),
+                        }),
+                        "");
+                    c.Item().PaddingTop(4).Text("Ações sem acompanhamento definido aparecem como \"A definir\".")
+                        .FontSize(8.5f).Italic().FontColor(Secundario);
+                }
+
                 // 8. Acompanhamento e monitoramento
                 TituloComPrimeiro(c, Secoes[7], b => Paragrafo(b, "A eficácia das medidas de controle será acompanhada por novas avaliações e inspeções, pelo controle estatístico das ocorrências de acidentes e pela análise dos exames médicos previstos no PCMSO."));
                 Paragrafo(c, "Para os perigos geradores de riscos de acidentes serão programadas inspeções periódicas. Serão feitas avaliações extraordinárias sempre que houver mudança significativa nas condições de trabalho, alteração nos resultados dos exames médicos ou acidente com perda de tempo.");
@@ -341,12 +358,39 @@ public class PgrPdfService : IPgrPdfService
                 TituloComPrimeiro(c, Secoes[10], b =>
                 {
                     b.Item().Text($"{d.ObraNome}, {DataPorExtenso(HorarioBrasilia.De(d.AprovadoEmUtc ?? d.GeradoEmUtc))}.").FontColor(Secundario);
-                    b.Item().Text(t =>
+                    // Na minuta ainda não houve aprovação: afirmar o contrário seria falso.
+                    if (!d.Minuta)
+                        b.Item().Text(t =>
+                        {
+                            t.Span("Aprovado pelo Engenheiro de Segurança do Trabalho: ");
+                            t.Span(d.AprovadoPorNome ?? "não informado").SemiBold();
+                            if (d.AprovadoEmUtc is { } ap) t.Span($" em {HorarioBrasilia.De(ap):dd/MM/yyyy HH:mm}.");
+                        });
+                    if (d.Assinaturas is { Count: > 0 } assinaturas)
                     {
-                        t.Span("Aprovado pelo Engenheiro de Segurança do Trabalho: ");
-                        t.Span(d.AprovadoPorNome ?? "não informado").SemiBold();
-                        if (d.AprovadoEmUtc is { } ap) t.Span($" em {HorarioBrasilia.De(ap):dd/MM/yyyy HH:mm}.");
-                    });
+                        b.Item().PaddingTop(14).Row(r =>
+                        {
+                            for (var i = 0; i < assinaturas.Count; i++)
+                            {
+                                if (i > 0) r.ConstantItem(36);
+                                AssinaturaPgr(r, assinaturas[i], d.Verificacao?.Codigo);
+                            }
+                        });
+                        if (d.Verificacao is { } ver)
+                            b.Item().PaddingTop(14).ShowEntire().Row(r =>
+                            {
+                                r.ConstantItem(70).Height(70).Image(ver.QrPng);
+                                r.ConstantItem(12);
+                                r.RelativeItem().Column(q =>
+                                {
+                                    q.Item().Text("Verificação de autenticidade").SemiBold().FontSize(9).FontColor(Marca);
+                                    q.Item().Text("Aponte a câmera para o QR ou acesse o endereço abaixo e informe o código para conferir que este PGR é o documento assinado no sistema.").FontSize(8).FontColor(Secundario);
+                                    q.Item().PaddingTop(3).Text(ver.Url).FontSize(8).FontColor(Texto);
+                                    q.Item().Text($"Código: {ver.Codigo}").FontSize(8).SemiBold();
+                                });
+                            });
+                        return;
+                    }
                     b.Item().PaddingTop(34).Row(r =>
                     {
                         Assinatura(r, d.AprovadoPorNome ?? "Engenheiro de Segurança do Trabalho",
@@ -357,7 +401,7 @@ public class PgrPdfService : IPgrPdfService
                     });
                 });
             });
-            Rodape(p);
+            Rodape(p, d);
         });
     }
 
@@ -378,16 +422,19 @@ public class PgrPdfService : IPgrPdfService
                 r.RelativeItem().Text("PGR · Programa de Gerenciamento de Riscos").FontSize(8).FontColor(Secundario);
                 r.RelativeItem().AlignRight().Text(d.ObraNome).FontSize(8).FontColor(Secundario);
             });
+            if (d.Minuta)
+                h.Item().PaddingTop(3).Text("MINUTA PARA CONFERÊNCIA · NÃO ASSINADO · SEM VALOR DOCUMENTAL").FontSize(8).Bold().FontColor(Marca);
             h.Item().PaddingTop(4).LineHorizontal(0.5f).LineColor(Linha);
         });
 
-    private static void Rodape(PageDescriptor p) =>
+    private static void Rodape(PageDescriptor p, DadosPgrPdf d) =>
         p.Footer().Column(f =>
         {
             f.Item().LineHorizontal(0.5f).LineColor(Linha);
             f.Item().PaddingTop(4).Row(r =>
             {
-                r.RelativeItem().Text("AAHBRANT SST").FontSize(7.5f).FontColor(Secundario);
+                r.RelativeItem().Text(d.Verificacao is { } v ? $"AAHBRANT SST · código de verificação {v.Codigo}" : "AAHBRANT SST")
+                    .FontSize(7.5f).FontColor(Secundario);
                 r.RelativeItem().AlignRight().Text(t =>
                 {
                     t.DefaultTextStyle(s => s.FontSize(7.5f).FontColor(Secundario));
@@ -469,6 +516,35 @@ public class PgrPdfService : IPgrPdfService
                     t.Cell().ShowEntire().BorderBottom(0.5f).BorderColor(Linha).PaddingVertical(5).PaddingRight(6).Text(valor).FontSize(9);
         });
     }
+
+    // Uma assinatura do PGR: carimbo em cima da linha quando assinou no sistema, espaço em branco quando é à mão ou quando ainda
+    // não assinou (minuta). O carimbo descreve só o que de fato ocorreu: assinatura por sessão autenticada, sem citar certificado.
+    private static void AssinaturaPgr(RowDescriptor r, AssinaturaPgrPdf a, string? codigo) =>
+        r.RelativeItem().Column(col =>
+        {
+            if (a.AssinadoEmUtc is { } quando)
+            {
+                col.Item().Border(0.8f).BorderColor(Marca).Padding(6).Column(s =>
+                {
+                    s.Item().Text("ASSINADO ELETRONICAMENTE").Bold().FontSize(7.5f).FontColor(Marca);
+                    s.Item().PaddingTop(2).Text(a.Nome ?? " ").SemiBold().FontSize(9.5f);
+                    if (!string.IsNullOrWhiteSpace(a.Registro))
+                        s.Item().Text(a.Registro).FontSize(8);
+                    s.Item().PaddingTop(2).Text($"Em {HorarioBrasilia.De(quando):dd/MM/yyyy 'às' HH:mm} (Brasília)").FontSize(8);
+                    s.Item().Text("Autenticação por sessão no sistema AAHBRANT SST").FontSize(7.5f).FontColor(Secundario);
+                    if (!string.IsNullOrWhiteSpace(codigo))
+                        s.Item().Text($"Código {codigo}").FontSize(7.5f).FontColor(Secundario);
+                });
+                col.Item().Height(6);
+            }
+            else
+            {
+                col.Item().Height(a.AMao ? 40 : 30).AlignBottom().Text(a.AMao ? string.Empty : "Aguardando assinatura").FontSize(8).Italic().FontColor(Secundario);
+            }
+            col.Item().BorderTop(0.6f).BorderColor(Texto).PaddingTop(4).Text(string.IsNullOrWhiteSpace(a.Nome) ? " " : a.Nome).SemiBold().FontSize(9);
+            col.Item().Text(a.Descricao + (a.AssinadoEmUtc is null && !string.IsNullOrWhiteSpace(a.Registro) ? $" · {a.Registro}" : string.Empty))
+                .FontSize(8).FontColor(Secundario);
+        });
 
     private static void Assinatura(RowDescriptor r, string nome, string papel) =>
         r.RelativeItem().Column(col =>

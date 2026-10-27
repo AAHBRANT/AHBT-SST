@@ -828,6 +828,10 @@ public enum PapelAssinatura
 {
     ResponsavelDds = 1,
     ResponsavelObraSst = 2,
+    // PGR gerado pela EAP: quem prepara escolhe o técnico de segurança da obra e o engenheiro; cada um assina com a
+    // própria sessão e o papel distingue as duas assinaturas do mesmo documento.
+    TecnicoSegurancaPgr = 3,
+    EngenheiroSegurancaPgr = 4,
 }
 
 // [Flags] em Obra.MetodosAutenticacaoHabilitados: cada obra decide se aceita assinatura (Biometria,

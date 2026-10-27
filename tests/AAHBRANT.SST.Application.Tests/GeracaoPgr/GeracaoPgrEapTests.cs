@@ -24,6 +24,13 @@ public class GeracaoPgrEapTests
             return Task.FromResult(Riscos);
         }
 
+        public List<AcompanhamentoSugeridoIa> Acompanhamentos { get; set; } = new();
+
+        public ContextoAcompanhamentoPlano? ContextoAcompanhamento { get; private set; }
+
+        public Task<List<AcompanhamentoSugeridoIa>> SugerirAcompanhamentoAsync(ContextoAcompanhamentoPlano contexto, CancellationToken ct) { ContextoAcompanhamento = contexto; return Task.FromResult(Acompanhamentos); }
+
+
         public Task<SugestaoEmergenciaIa> SugerirEmergenciaAsync(ContextoEmergenciaIa contexto, CancellationToken ct) =>
             Task.FromResult(new SugestaoEmergenciaIa(new List<RecomendacaoEmergenciaIa>(), new List<string>()));
     }
@@ -121,6 +128,8 @@ public class GeracaoPgrEapTests
         {
             Cnae = "4211-1/01 — Construção de rodovias", GrauRisco = 3,
             ResponsavelTecnicoRegistro = "CREA 12345", ResponsavelImplantacaoNome = "Enc. João",
+            // Assinatura à mão: estes testes não exercitam o motor de assinatura eletrônica.
+            Tecnico = new AssinanteGeracaoPgr { AMao = true }, Engenheiro = new AssinanteGeracaoPgr { AMao = true },
         };
         c.SemearPadroes();
         c.ContatosEmergencia.Single(x => x.Chave == "hospital").Telefone = "(31) 3333-4444";
@@ -497,6 +506,14 @@ public class GeracaoPgrEapTests
         await new SugerirGhesGeracaoPgrCommandHandler(db, ia).Handle(new SugerirGhesGeracaoPgrCommand(enviado), default);
         ia.Riscos = new() { new RiscoGerado { Tipo = "Acidente", Perigo = "Queda de altura", Probabilidade = 2, Severidade = 2 } };
         await new GerarRiscosAtividadeGeracaoPgrCommandHandler(db, ia).Handle(new GerarRiscosAtividadeGeracaoPgrCommand(enviado, 1, "1.1"), default);
+        var geracaoEnviada = await db.GeracoesPgrEap.SingleAsync(g => g.Id == enviado);
+        var opcoesJson = new System.Text.Json.JsonSerializerOptions(System.Text.Json.JsonSerializerDefaults.Web);
+        var estruturaEnviada = System.Text.Json.JsonSerializer.Deserialize<EstruturaGeracaoPgr>(geracaoEnviada.EstruturaJson, opcoesJson)!;
+        estruturaEnviada.Complementares ??= new DadosComplementaresPgr();
+        estruturaEnviada.Complementares.Tecnico = new AssinanteGeracaoPgr { AMao = true };
+        estruturaEnviada.Complementares.Engenheiro = new AssinanteGeracaoPgr { AMao = true };
+        geracaoEnviada.EstruturaJson = System.Text.Json.JsonSerializer.Serialize(estruturaEnviada, opcoesJson);
+        await db.SaveChangesAsync();
         await new EnviarGeracaoPgrParaAprovacaoCommandHandler(db).Handle(new EnviarGeracaoPgrParaAprovacaoCommand(enviado), default);
 
         await new ExcluirGeracaoPgrCommandHandler(db).Handle(new ExcluirGeracaoPgrCommand(rascunho), default);
@@ -542,6 +559,114 @@ public class GeracaoPgrEapTests
         return await new AprovarGeracaoPgrCommandHandler(db).Handle(new AprovarGeracaoPgrCommand(id, null, "Eng. Carlos"), default);
     }
 
+    // Registrador falso: grava o signatário como o real faz, sem auditoria nem PDF.
+    private sealed class RegistradorFalso : AAHBRANT.SST.Application.Assinatura.IRegistradorAssinaturaService
+    {
+        private readonly Infrastructure.Persistencia.SstDbContext _db;
+        public RegistradorFalso(Infrastructure.Persistencia.SstDbContext db) => _db = db;
+
+        public async Task<AAHBRANT.SST.Application.Assinatura.Queries.DocumentoSignatarioDto> RegistrarAsync(
+            Guid documentoAssinaturaId, AAHBRANT.SST.Application.Assinatura.ResultadoAutenticacaoAssinatura resultado, string? ipAddress,
+            CancellationToken ct, byte[]? fotoEvidenciaConteudo = null, string? fotoEvidenciaContentType = null, PapelAssinatura? papel = null,
+            AAHBRANT.SST.Application.Assinatura.LocalizacaoAssinatura? localizacao = null)
+        {
+            var agora = DateTime.UtcNow;
+            _db.DocumentoSignatarios.Add(new DocumentoSignatario
+            {
+                DocumentoAssinaturaId = documentoAssinaturaId, TrabalhadorId = resultado.TrabalhadorId,
+                MetodoAutenticacao = resultado.Metodo, Papel = papel, AssinadoEm = agora,
+            });
+            await _db.SaveChangesAsync(ct);
+            return new AAHBRANT.SST.Application.Assinatura.Queries.DocumentoSignatarioDto(resultado.TrabalhadorId, "x", resultado.Metodo, agora);
+        }
+    }
+
+    [Fact]
+    public async Task Assinatura_TecnicoAssinaAoEnviar_SoOEscolhido_EDevolverDerrubaAAssinatura_EEngenheiroAssinaAoAprovar()
+    {
+        var (db, obra, _) = await CriarAsync();
+        var funcao = new Funcao { Nome = "TEC" };
+        var wTec = new Trabalhador { Nome = "Téc. Ana", Cpf = "11122233344", Funcao = funcao, DataAdmissao = DateTime.UtcNow };
+        var wEng = new Trabalhador { Nome = "Eng. Carlos", Cpf = "11122233355", Funcao = funcao, DataAdmissao = DateTime.UtcNow };
+        var uTec = new Usuario { Nome = "Téc. Ana", Email = "ana@x.com", TrabalhadorId = null };
+        var uEng = new Usuario { Nome = "Eng. Carlos", Email = "carlos@x.com" };
+        var uOutro = new Usuario { Nome = "Outro", Email = "o@x.com" };
+        db.AddRange(funcao, wTec, wEng, uTec, uEng, uOutro);
+        await db.SaveChangesAsync();
+        uTec.TrabalhadorId = wTec.Id;
+        uEng.TrabalhadorId = wEng.Id;
+        await db.SaveChangesAsync();
+
+        var estrutura = EstruturaSimplesAprovavel("Instalar linha de vida");
+        estrutura.Complementares!.Tecnico = new AssinanteGeracaoPgr { UsuarioId = uTec.Id, Nome = uTec.Nome, Registro = "CFT 1" };
+        estrutura.Complementares.Engenheiro = new AssinanteGeracaoPgr { UsuarioId = uEng.Id, Nome = uEng.Nome, Registro = "CREA 2" };
+        var id = await CriarGeracaoAsync(db, obra, new IaFalsa());
+        await new SalvarGeracaoPgrEapCommandHandler(db).Handle(new SalvarGeracaoPgrEapCommand(id, 4, estrutura), default);
+        var registrador = new RegistradorFalso(db);
+
+        // Outra pessoa não assina a linha do técnico escolhido.
+        await Assert.ThrowsAsync<InvalidOperationException>(() =>
+            new EnviarGeracaoPgrParaAprovacaoCommandHandler(db, registrador).Handle(new EnviarGeracaoPgrParaAprovacaoCommand(id, uOutro.Id), default));
+        Assert.Empty(await db.DocumentoSignatarios.ToListAsync());
+
+        // O técnico escolhido assina ao enviar.
+        await new EnviarGeracaoPgrParaAprovacaoCommandHandler(db, registrador).Handle(new EnviarGeracaoPgrParaAprovacaoCommand(id, uTec.Id), default);
+        var assinatura = Assert.Single(await db.DocumentoSignatarios.ToListAsync());
+        Assert.Equal(PapelAssinatura.TecnicoSegurancaPgr, assinatura.Papel);
+        Assert.Equal(wTec.Id, assinatura.TrabalhadorId);
+
+        // Devolver derruba a assinatura sobre o conteúdo antigo; reenviar assina de novo, sem duplicar.
+        await new DevolverGeracaoPgrCommandHandler(db).Handle(new DevolverGeracaoPgrCommand(id, "Ajustar"), default);
+        Assert.Empty(await db.DocumentoSignatarios.ToListAsync());
+        await new EnviarGeracaoPgrParaAprovacaoCommandHandler(db, registrador).Handle(new EnviarGeracaoPgrParaAprovacaoCommand(id, uTec.Id), default);
+        Assert.Single(await db.DocumentoSignatarios.ToListAsync());
+
+        // Só o engenheiro escolhido aprova e assina; antes disso nada fica aprovado.
+        await Assert.ThrowsAsync<InvalidOperationException>(() =>
+            new AprovarGeracaoPgrCommandHandler(db, registrador).Handle(new AprovarGeracaoPgrCommand(id, uOutro.Id, "Outro"), default));
+        Assert.Empty(await db.Pgrs.ToListAsync());
+        await new AprovarGeracaoPgrCommandHandler(db, registrador).Handle(new AprovarGeracaoPgrCommand(id, uEng.Id, "Eng. Carlos"), default);
+        Assert.Equal(new[] { PapelAssinatura.TecnicoSegurancaPgr, PapelAssinatura.EngenheiroSegurancaPgr },
+            (await db.DocumentoSignatarios.Select(s => s.Papel!.Value).ToListAsync()).OrderBy(p => p).ToArray());
+    }
+
+    [Fact]
+    public async Task Enviar_SemEscolherQuemAssina_OuSemRegistro_Recusa()
+    {
+        var (db, obra, _) = await CriarAsync();
+        var estrutura = EstruturaSimplesAprovavel("Instalar linha de vida");
+        estrutura.Complementares!.Tecnico = null;
+        var id = await CriarGeracaoAsync(db, obra, new IaFalsa());
+        await new SalvarGeracaoPgrEapCommandHandler(db).Handle(new SalvarGeracaoPgrEapCommand(id, 4, estrutura), default);
+        await Assert.ThrowsAsync<InvalidOperationException>(() =>
+            new EnviarGeracaoPgrParaAprovacaoCommandHandler(db).Handle(new EnviarGeracaoPgrParaAprovacaoCommand(id), default));
+
+        estrutura.Complementares.Tecnico = new AssinanteGeracaoPgr { UsuarioId = Guid.NewGuid(), Nome = "Ana", Registro = " " };
+        await new SalvarGeracaoPgrEapCommandHandler(db).Handle(new SalvarGeracaoPgrEapCommand(id, 4, estrutura), default);
+        var ex = await Assert.ThrowsAsync<InvalidOperationException>(() =>
+            new EnviarGeracaoPgrParaAprovacaoCommandHandler(db).Handle(new EnviarGeracaoPgrParaAprovacaoCommand(id), default));
+        Assert.Contains("registro profissional", ex.Message);
+    }
+
+    [Fact]
+    public async Task Aprovar_Assinatura_Pgr_Aprovado_Sem_Escolha_Antiga_SegueComoAntes()
+    {
+        // Rascunho antigo (sem Tecnico/Engenheiro) aprovado direto no banco de dados continua aprovável.
+        var (db, obra, _) = await CriarAsync();
+        var estrutura = EstruturaSimplesAprovavel("Instalar linha de vida");
+        estrutura.Complementares!.Tecnico = null;
+        estrutura.Complementares.Engenheiro = null;
+        var id = await CriarGeracaoAsync(db, obra, new IaFalsa());
+        await new SalvarGeracaoPgrEapCommandHandler(db).Handle(new SalvarGeracaoPgrEapCommand(id, 4, estrutura), default);
+        var g = await db.GeracoesPgrEap.SingleAsync(x => x.Id == id);
+        g.Status = StatusGeracaoPgrEap.AguardandoAprovacao;
+        await db.SaveChangesAsync();
+
+        var pgrId = await new AprovarGeracaoPgrCommandHandler(db).Handle(new AprovarGeracaoPgrCommand(id, null, "Eng. Carlos"), default);
+
+        Assert.Equal(pgrId, (await db.Pgrs.SingleAsync()).Id);
+    }
+
     [Fact]
     public async Task Aprovar_ObraSemPgrVigente_CriaPgrNovoSemRevisao()
     {
@@ -585,5 +710,67 @@ public class GeracaoPgrEapTests
         Assert.Equal(2, plano.Count);
         Assert.Contains("Treinar equipe em altura", plano);
         Assert.Single(await db.Ghes.Where(x => x.Ativo).ToListAsync());
+    }
+
+    [Fact]
+    public async Task SugerirAcompanhamento_SoPreencheCampoVazio_NormalizaOpcoesEMarcaComoSugestaoDaIa()
+    {
+        var (db, obra, _) = await CriarAsync();
+        var ia = new IaFalsa();
+        var id = await CriarGeracaoAsync(db, obra, ia);
+        var estrutura = new EstruturaGeracaoPgr
+        {
+            AcoesPlano = new()
+            {
+                new AcaoPlanoGerada { Descricao = "Instalar linha de vida", Prazo = new DateTime(2026, 12, 1) },
+                new AcaoPlanoGerada { Descricao = "Treinar ajudantes em NR-35", FormaAcompanhamento = "Auditoria", CriterioAfericao = "Digitado pelo técnico" },
+                new AcaoPlanoGerada { Descricao = "   " },
+                new AcaoPlanoGerada { Descricao = "Medir ruído", FormaAcompanhamento = "Medição", PeriodicidadeAcompanhamento = "Mensal", CriterioAfericao = "Abaixo de 85 dB(A)" },
+            },
+        };
+        await new SalvarGeracaoPgrEapCommandHandler(db).Handle(new SalvarGeracaoPgrEapCommand(id, 4, estrutura), default);
+        ia.Acompanhamentos = new()
+        {
+            new AcompanhamentoSugeridoIa(0, "inspeção periódica", "Semanal", "100% dos pontos de ancoragem inspecionados sem não conformidade"),
+            new AcompanhamentoSugeridoIa(1, "Indicador", "Quando der", "Sobrescreveria o que o técnico digitou"),
+            new AcompanhamentoSugeridoIa(3, "Medição", "Mensal", "Sobrescreveria o que já estava preenchido"),
+            new AcompanhamentoSugeridoIa(9, "Auditoria", "Mensal", "Índice que não existe"),
+        };
+
+        var n = await new SugerirAcompanhamentoPlanoGeracaoPgrCommandHandler(db, ia).Handle(new SugerirAcompanhamentoPlanoGeracaoPgrCommand(id), default);
+
+        var acoes = (await new ObterGeracaoPgrEapQueryHandler(db).Handle(new ObterGeracaoPgrEapQuery(id), default)).Estrutura.AcoesPlano;
+        Assert.Equal(1, n); // só a linha de vida mudou: a do treinamento não aceitou a periodicidade fora da lista
+        Assert.Equal(new[] { 0, 1 }, ia.ContextoAcompanhamento!.Acoes.Select(a => a.Indice).ToArray()); // a vazia e a completa ficam de fora
+        var linhaDeVida = acoes[0];
+        Assert.Equal("Inspeção periódica", linhaDeVida.FormaAcompanhamento);
+        Assert.Equal("Semanal", linhaDeVida.PeriodicidadeAcompanhamento);
+        Assert.StartsWith("100%", linhaDeVida.CriterioAfericao);
+        Assert.True(linhaDeVida.AcompanhamentoSugeridoPelaIa);
+        var treinamento = acoes[1];
+        Assert.Equal("Auditoria", treinamento.FormaAcompanhamento); // o técnico digitou: não muda
+        Assert.Equal("Digitado pelo técnico", treinamento.CriterioAfericao);
+        Assert.Null(treinamento.PeriodicidadeAcompanhamento); // "Quando der" não está na lista: fica em branco
+        Assert.True(acoes[1].AcompanhamentoSugeridoPelaIa == false);
+        Assert.Equal("Abaixo de 85 dB(A)", acoes[3].CriterioAfericao);
+        Assert.False(acoes[3].AcompanhamentoSugeridoPelaIa);
+    }
+
+    [Fact]
+    public async Task SugerirAcompanhamento_SemAcaoPendente_NaoChamaAIa()
+    {
+        var (db, obra, _) = await CriarAsync();
+        var ia = new IaFalsa();
+        var id = await CriarGeracaoAsync(db, obra, ia);
+        var estrutura = new EstruturaGeracaoPgr
+        {
+            AcoesPlano = new() { new AcaoPlanoGerada { Descricao = "Medir ruído", FormaAcompanhamento = "Medição", PeriodicidadeAcompanhamento = "Mensal", CriterioAfericao = "Abaixo de 85 dB(A)" } },
+        };
+        await new SalvarGeracaoPgrEapCommandHandler(db).Handle(new SalvarGeracaoPgrEapCommand(id, 4, estrutura), default);
+
+        var n = await new SugerirAcompanhamentoPlanoGeracaoPgrCommandHandler(db, ia).Handle(new SugerirAcompanhamentoPlanoGeracaoPgrCommand(id), default);
+
+        Assert.Equal(0, n);
+        Assert.Null(ia.ContextoAcompanhamento);
     }
 }

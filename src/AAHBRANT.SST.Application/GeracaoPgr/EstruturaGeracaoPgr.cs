@@ -29,6 +29,16 @@ public class EstruturaGeracaoPgr
 
 // Dados complementares do PGR: o técnico preenche uma vez e a tela já abre preenchida nas próximas gerações
 // da mesma obra. Obrigatórios para aprovar, como o término da vigência.
+// Uma das duas assinaturas do PGR: o técnico de segurança da obra (assina ao enviar para aprovação) ou o engenheiro (assina
+// ao aprovar). AMao = assina fora do sistema, e a linha sai em branco no PDF. O registro profissional é digitado em cada PGR.
+public class AssinanteGeracaoPgr
+{
+    public Guid? UsuarioId { get; set; }
+    public string? Nome { get; set; }
+    public string? Registro { get; set; }
+    public bool AMao { get; set; }
+}
+
 public class DadosComplementaresPgr
 {
     // Número e descrição, como no documento (ex.: "4211-1/01 — Construção de rodovias e ferrovias").
@@ -42,6 +52,9 @@ public class DadosComplementaresPgr
     public string? ResponsavelImplantacaoCargo { get; set; }
     public List<ContatoEmergencia> ContatosEmergencia { get; set; } = new();
     public List<string> CenariosEmergencia { get; set; } = new();
+    // Quem assina o PGR (escolhido no passo 4). Nulos em rascunhos antigos, que seguem com a linha em branco no PDF.
+    public AssinanteGeracaoPgr? Tecnico { get; set; }
+    public AssinanteGeracaoPgr? Engenheiro { get; set; }
     // Quando e de onde as rotas foram calculadas (sugestão por mapa): vai no rodapé do plano de emergência.
     public DateTime? RotasCalculadasEmUtc { get; set; }
     public string? RotasFonte { get; set; }
@@ -130,6 +143,36 @@ public class AcaoPlanoGerada
     // Início opcional: com ele o cronograma mensal marca todos os meses de Início a Prazo.
     public DateTime? Inicio { get; set; }
     public DateTime? Prazo { get; set; }
+
+    // Acompanhamento e aferição de resultados (NR-01, item 1.5.5.2, apontamento da supervisão de 03/08/2026): como a
+    // ação será acompanhada, com que frequência e o que mostra que funcionou. Opcionais; a IA sugere e o engenheiro revisa.
+    public string? FormaAcompanhamento { get; set; }
+    public string? PeriodicidadeAcompanhamento { get; set; }
+    public string? CriterioAfericao { get; set; }
+    // Verdadeiro enquanto o acompanhamento veio da IA e ninguém o conferiu; quem edita um campo da ação o desmarca.
+    public bool AcompanhamentoSugeridoPelaIa { get; set; }
+}
+
+// Valores aceitos para forma e periodicidade do acompanhamento. Fora da lista a forma vira "Outro" e a periodicidade fica
+// em branco, para o engenheiro escolher.
+public static class AcompanhamentoPlano
+{
+    public static readonly string[] Formas =
+    {
+        "Inspeção periódica", "Registro de treinamento", "Indicador", "Auditoria", "Medição", "Outro",
+    };
+
+    public static readonly string[] Periodicidades =
+    {
+        "Semanal", "Quinzenal", "Mensal", "Trimestral", "A cada ocorrência",
+    };
+
+    public static string? Forma(string? valor) => Escolher(valor, Formas) ?? (string.IsNullOrWhiteSpace(valor) ? null : "Outro");
+
+    public static string? Periodicidade(string? valor) => Escolher(valor, Periodicidades);
+
+    private static string? Escolher(string? valor, string[] lista) =>
+        lista.FirstOrDefault(x => string.Equals(x, valor?.Trim(), StringComparison.CurrentCultureIgnoreCase));
 }
 
 // Item da EAP lido do arquivo. Nivel 1 = pacote; 2+ = atividade. Usar = entra no PGR (frente de

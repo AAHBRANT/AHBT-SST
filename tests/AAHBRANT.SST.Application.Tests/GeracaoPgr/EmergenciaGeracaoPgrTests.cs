@@ -57,6 +57,13 @@ public class EmergenciaGeracaoPgrTests
         public Task<List<GheGerado>> SugerirGhesAsync(IReadOnlyList<ItemEapGerado> atividades, IReadOnlyList<string> funcoesCadastradas, CancellationToken ct) => Task.FromResult(new List<GheGerado>());
         public Task<List<RiscoGerado>> GerarRiscosAsync(ContextoRiscosAtividade contexto, CancellationToken ct) => Task.FromResult(new List<RiscoGerado>());
 
+        public List<AcompanhamentoSugeridoIa> Acompanhamentos { get; set; } = new();
+
+        public ContextoAcompanhamentoPlano? ContextoAcompanhamento { get; private set; }
+
+        public Task<List<AcompanhamentoSugeridoIa>> SugerirAcompanhamentoAsync(ContextoAcompanhamentoPlano contexto, CancellationToken ct) { ContextoAcompanhamento = contexto; return Task.FromResult(Acompanhamentos); }
+
+
         public Task<SugestaoEmergenciaIa> SugerirEmergenciaAsync(ContextoEmergenciaIa contexto, CancellationToken ct)
         {
             Contexto = contexto;
