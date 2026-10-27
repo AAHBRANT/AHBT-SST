@@ -126,7 +126,6 @@ public class PgrPdfService : IPgrPdfService
                     Campo(t, "CEP", comp.Cep);
                     Campo(t, "CNAE", comp.Cnae);
                     Campo(t, "Grau de risco (NR-04)", comp.GrauRisco?.ToString());
-                    Campo(t, "Trabalhadores ativos na obra", d.NumeroFuncionarios?.ToString());
                     Campo(t, "Revisão atual", (d.Revisoes is { Count: > 0 } revisoes ? revisoes.Max(r => r.Numero) : 0).ToString("00"));
                     Campo(t, "Início da vigência", d.DataElaboracao.ToString("dd/MM/yyyy"));
                     Campo(t, "Revisão prevista", d.DataProximaRevisao?.ToString("dd/MM/yyyy"));
@@ -134,7 +133,6 @@ public class PgrPdfService : IPgrPdfService
                     Campo(t, "Responsável técnico", d.AprovadoPorNome);
                     Campo(t, "Registro profissional (CREA)", comp.ResponsavelTecnicoRegistro);
                     Campo(t, "Elaborado por", d.ElaboradoPorNome);
-                    Campo(t, "EAP de referência", d.NomeArquivoEap);
                 });
                 Subtitulo(c, "Controle de revisões");
                 Tabela(c, new[] { ("Revisão", 0.9f), ("Data", 1.2f), ("Descrição da alteração", 4f), ("Responsável", 2f) },
