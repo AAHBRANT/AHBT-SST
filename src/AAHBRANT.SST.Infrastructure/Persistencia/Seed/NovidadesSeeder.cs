@@ -1748,6 +1748,17 @@ public static class NovidadesSeeder
                     "Com uma logo larga e fina, como a da AAHBRANT, a marca d'água ficava atrás das linhas de texto e atrapalhava a leitura.",
                     "Quando a logo cadastrada na obra é larga e baixa, o PGR usa um papel timbrado: capa com a logo no alto, \"PGR\" em traço leve e dados do documento em três colunas, barra vinho na lateral e logo no cabeçalho de todas as páginas. Nada fica atrás do texto. As demais logos continuam como marca d'água clara. Vale para os PGRs gerados daqui para frente."),
             }),
+        new(
+            Versao: "5.103.0",
+            Titulo: "Treinamentos e entregas de EPI: sem data futura",
+            DataPublicacao: new DateTime(2026, 10, 28, 0, 0, 0, DateTimeKind.Utc),
+            Itens: new[]
+            {
+                new NovidadeSeedItem(CategoriaNovidade.Melhoria,
+                    "O sistema não aceita mais data futura em treinamento e entrega de EPI",
+                    "Era possível lançar um certificado, uma turma ou uma entrega de EPI com data de amanhã, e o documento saía assinado hoje com a data errada.",
+                    "A data de realização do treinamento (certificado, turma e alteração da data da turma) e a data de entrega de EPI não podem ser posteriores a hoje. O campo de data avisa na hora, em vermelho, e o sistema recusa o salvamento. Registros já existentes não mudam."),
+            }),
     };
 
     public static async Task ExecutarAsync(IServiceProvider services, CancellationToken ct = default)
