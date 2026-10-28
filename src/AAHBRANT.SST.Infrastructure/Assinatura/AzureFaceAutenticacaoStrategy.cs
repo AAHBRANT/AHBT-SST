@@ -238,8 +238,13 @@ public class AzureFaceAutenticacaoStrategy : IAutenticacaoFacialService
             var grupo = await respostaGrupo.Content.ReadFromJsonAsync<GrupoPessoasResposta>(cancellationToken: ct);
             if (string.Equals(grupo?.RecognitionModel, ModeloReconhecimentoAtual, StringComparison.OrdinalIgnoreCase))
             {
-                ModelosPorGrupo[grupoAntigo] = ModeloReconhecimentoAtual;
-                return null;
+                // Modelo atual, mas grupo sem nenhuma pessoa enquanto o banco tem cadastros (ex.: grupo criado
+                // vazio por uma tentativa que falhou): tratado como ausente e reconstruído.
+                if (!await GrupoVazioComCadastrosNoBancoAsync(cliente, grupoAntigo, obra.Id, ct))
+                {
+                    ModelosPorGrupo[grupoAntigo] = ModeloReconhecimentoAtual;
+                    return null;
+                }
             }
         }
 
@@ -322,12 +327,16 @@ public class AzureFaceAutenticacaoStrategy : IAutenticacaoFacialService
         ModelosPorGrupo[grupoNovo] = ModeloReconhecimentoAtual;
 
         // O grupo antigo não é mais usado por ninguém; apagar é só limpeza (melhor esforço).
-        try
+        // Se o grupo reconstruído tem o mesmo id do antigo (grupo vazio refeito), não há o que apagar.
+        if (!string.Equals(grupoAntigo, grupoNovo, StringComparison.Ordinal))
         {
-            await cliente.DeleteAsync($"face/v1.0/persongroups/{grupoAntigo}", ct);
-        }
-        catch (HttpRequestException)
-        {
+            try
+            {
+                await cliente.DeleteAsync($"face/v1.0/persongroups/{grupoAntigo}", ct);
+            }
+            catch (HttpRequestException)
+            {
+            }
         }
 
         return new ResultadoMigracaoModeloFacial(
@@ -706,6 +715,18 @@ public class AzureFaceAutenticacaoStrategy : IAutenticacaoFacialService
         {
             return null;
         }
+    }
+
+    private async Task<bool> GrupoVazioComCadastrosNoBancoAsync(HttpClient cliente, string personGroupId, Guid obraId, CancellationToken ct)
+    {
+        var resposta = await cliente.GetAsync($"face/v1.0/persongroups/{personGroupId}/persons?top=1", ct);
+        if (!resposta.IsSuccessStatusCode)
+            throw new InvalidOperationException($"Falha ao listar pessoas do grupo {personGroupId} no Azure Face API: {resposta.StatusCode}");
+        var pessoas = await resposta.Content.ReadFromJsonAsync<List<PersonCriadoResposta>>(cancellationToken: ct);
+        if (pessoas is { Count: > 0 })
+            return false;
+        return await _db.Trabalhadores.IgnoreQueryFilters()
+            .AnyAsync(t => t.ObraId == obraId && t.AzureFacePersonId != null, ct);
     }
 
     private class GrupoPessoasResposta
