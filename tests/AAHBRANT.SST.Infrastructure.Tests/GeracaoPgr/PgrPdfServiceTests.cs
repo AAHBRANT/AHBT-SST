@@ -218,15 +218,21 @@ public class PgrPdfServiceTests
     }
 
     [Fact]
-    public void MarcaDaguaLogo_LogoPanoramicaFinaFicaMaisLargaEMaisForteQueALogoEncorpada()
+    public void MarcaDaguaLogo_EhLarga_SoParaLogoLargaELegivel()
     {
-        var encorpada = MarcaDaguaLogo.Preparar(LogoDeFundoBranco(), 0.07f)!;
-        var panoramica = MarcaDaguaLogo.Preparar(LogoPanoramicaFina(), 0.07f)!;
+        Assert.True(MarcaDaguaLogo.EhLarga(LogoPanoramicaFina()));   // 900x190, ~4,7:1 (tipo AAHBRANT)
+        Assert.False(MarcaDaguaLogo.EhLarga(LogoDeFundoBranco()));   // 300x180, ~1,7:1 (tipo Ponte Rio Cuiá)
+        Assert.False(MarcaDaguaLogo.EhLarga(new byte[] { 1, 2, 3 }));
+        Assert.False(MarcaDaguaLogo.EhLarga(null));
+    }
 
-        Assert.True(panoramica.Largura > encorpada.Largura);
-        using var a = SixLabors.ImageSharp.Image.Load<SixLabors.ImageSharp.PixelFormats.Rgba32>(encorpada.Png);
-        using var b = SixLabors.ImageSharp.Image.Load<SixLabors.ImageSharp.PixelFormats.Rgba32>(panoramica.Png);
-        Assert.True(b[b.Width / 2, b.Height / 2].R < a[a.Width / 2, a.Height / 2].R, "o tom da logo fina deve ser mais escuro");
+    [Fact]
+    public void Gerar_ComLogoLarga_UsaCabecalhoEDevolvePdfValido()
+    {
+        var pdf = new PgrPdfService().Gerar(DadosCompletos(), LogoPanoramicaFina());
+
+        Assert.Equal("%PDF", System.Text.Encoding.ASCII.GetString(pdf, 0, 4));
+        Assert.True(pdf.Length > new PgrPdfService().Gerar(DadosCompletos(), null).Length, "o PDF deve carregar a logo no cabeçalho");
     }
 
     [Fact]

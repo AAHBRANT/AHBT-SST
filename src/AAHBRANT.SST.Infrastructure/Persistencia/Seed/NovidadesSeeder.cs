@@ -1737,6 +1737,17 @@ public static class NovidadesSeeder
                     "O PDF do PGR mostrava a logo da obra só na capa, pequena, diferente dos outros documentos do sistema.",
                     "O PGR passa a ter a logomarca cadastrada na obra como marca d'água clara, centralizada, atrás do texto, na capa e em todas as páginas. Obra sem logo cadastrada sai sem marca d'água. O arquivo da logo no cadastro da obra não é alterado. Vale para os PGRs gerados daqui para frente; os já assinados não mudam."),
             }),
+        new(
+            Versao: "5.102.0",
+            Titulo: "PGR: papel timbrado para logos largas",
+            DataPublicacao: new DateTime(2026, 10, 27, 0, 0, 0, DateTimeKind.Utc),
+            Itens: new[]
+            {
+                new NovidadeSeedItem(CategoriaNovidade.Melhoria,
+                    "Logo larga e fina ganha papel timbrado no PGR",
+                    "Com uma logo larga e fina, como a da AAHBRANT, a marca d'água ficava atrás das linhas de texto e atrapalhava a leitura.",
+                    "Quando a logo cadastrada na obra é larga e baixa, o PGR usa um papel timbrado: capa com a logo no alto, \"PGR\" em traço leve e dados do documento em três colunas, barra vinho na lateral e logo no cabeçalho de todas as páginas. Nada fica atrás do texto. As demais logos continuam como marca d'água clara. Vale para os PGRs gerados daqui para frente."),
+            }),
     };
 
     public static async Task ExecutarAsync(IServiceProvider services, CancellationToken ct = default)
