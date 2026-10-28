@@ -1748,6 +1748,17 @@ public static class NovidadesSeeder
                     "Com uma logo larga e fina, como a da AAHBRANT, a marca d'água ficava atrás das linhas de texto e atrapalhava a leitura.",
                     "Quando a logo cadastrada na obra é larga e baixa, o PGR usa um papel timbrado: capa com a logo no alto, \"PGR\" em traço leve e dados do documento em três colunas, barra vinho na lateral e logo no cabeçalho de todas as páginas. Nada fica atrás do texto. As demais logos continuam como marca d'água clara. Vale para os PGRs gerados daqui para frente."),
             }),
+        new(
+            Versao: "5.103.0",
+            Titulo: "Treinamentos: o instrutor assina o certificado",
+            DataPublicacao: new DateTime(2026, 10, 28, 0, 0, 0, DateTimeKind.Utc),
+            Itens: new[]
+            {
+                new NovidadeSeedItem(CategoriaNovidade.Novidade,
+                    "Instrutor da turma com assinatura própria",
+                    "O certificado saía assinado como \"instrutor\" por quem estivesse logado ao encerrar a turma, mesmo que o instrutor fosse outra pessoa, e o cargo impresso era sempre Técnico de Segurança.",
+                    "Cada turma passa a ter um instrutor, escolhido entre os perfis de instrutor cadastrados pelo Administrador (formação, MTE ou CREA, número e UF). O instrutor encosta o dedo uma vez no leitor e assina todos os certificados da turma, mesmo que seja de outra obra e desde que esteja autorizado. O certificado mostra o nome, o cargo e o registro dele. A assinatura anterior continua no histórico."),
+            }),
     };
 
     public static async Task ExecutarAsync(IServiceProvider services, CancellationToken ct = default)

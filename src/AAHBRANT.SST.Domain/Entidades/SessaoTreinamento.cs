@@ -22,6 +22,11 @@ public class SessaoTreinamento : AuditableEntity
     public int CargaHorariaRealizada { get; set; }
     public string? InstituicaoInstrutor { get; set; }
 
+    // Instrutor escolhido (perfil de instrutor) — assina os certificados da turma. Nulo nas turmas
+    // anteriores a 28/10; InstituicaoInstrutor continua como texto livre do nome impresso.
+    public Guid? InstrutorTrabalhadorId { get; set; }
+    public Trabalhador? InstrutorTrabalhador { get; set; }
+
     // Dados do certificado gravados na turma (19/10): vêm preenchidos com o padrão da NR do curso,
     // só o Técnico de Segurança altera, e são copiados para cada Treinamento no encerramento — o
     // certificado mostra o que foi ministrado naquele dia, mesmo que o curso mude depois.

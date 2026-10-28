@@ -43,6 +43,7 @@ import { ErroFacialDialog } from '../../components/assinatura/ErroFacialDialog';
 import { BotaoBiometriaDigital } from '../../components/assinatura/BotaoBiometriaDigital';
 import { salvarBlob, useVisualizadorPdf } from '../../components/useVisualizadorPdf';
 import { formatarHoraBrasilia } from '../../components/assinatura/assinaturaDigital';
+import { BlocoInstrutorTurma } from './BlocoInstrutorTurma';
 
 const TOTAL_FOTOS_EVIDENCIA_OBRIGATORIAS = 3;
 
@@ -438,6 +439,13 @@ export function SessaoTreinamentoDetalhePage() {
           {erro}
         </FeedbackInline>
       )}
+
+      <BlocoInstrutorTurma
+        detalhe={detalhe}
+        agenteDisponivel={agenteDisponivel}
+        dispositivoLocal={dispositivoLocal}
+        aoAtualizar={carregar}
+      />
 
       <Card>
         <GradeFotosEvidencia

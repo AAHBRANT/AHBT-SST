@@ -37,6 +37,7 @@ public class ListarSessoesTreinamentoQueryHandler : IRequestHandler<ListarSessoe
         DataRealizacao = sessao.DataRealizacao,
         CargaHorariaRealizada = sessao.CargaHorariaRealizada,
         InstituicaoInstrutor = sessao.InstituicaoInstrutor,
+        InstrutorTrabalhadorId = sessao.InstrutorTrabalhadorId,
         NumeroCertificado = sessao.NumeroCertificado,
         Status = sessao.Status,
         DataEncerramento = sessao.DataEncerramento,

@@ -40,9 +40,12 @@ public class SincronizarTemplatesQueryHandler : IRequestHandler<SincronizarTempl
         // Rota anônima (agente local, sem usuário): o filtro global de RBAC do Trabalhador esconderia todos
         // os trabalhadores. O acesso já foi validado pelo segredo do dispositivo, então o filtro é reaplicado
         // à mão (soft delete + obra do posto) e o JOIN é feito explicitamente.
+        // Também entram os instrutores autorizados a assinar em outras obras (perfil de instrutor): a
+        // digital deles precisa estar no leitor para a assinatura do certificado da turma.
         var trabalhadoresDaObra = _db.Trabalhadores
             .IgnoreQueryFilters()
-            .Where(t => t.Ativo && t.ObraId == dispositivo.ObraId);
+            .Where(t => t.Ativo && (t.ObraId == dispositivo.ObraId
+                || _db.PerfisInstrutor.Any(p => p.TrabalhadorId == t.Id && p.PodeAssinarEmOutrasObras)));
 
         return await _db.TemplatesBiometricoFutronic
             .Join(trabalhadoresDaObra, t => t.TrabalhadorId, tr => tr.Id,

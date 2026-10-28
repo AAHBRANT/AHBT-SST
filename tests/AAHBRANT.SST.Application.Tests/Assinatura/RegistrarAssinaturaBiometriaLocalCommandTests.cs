@@ -11,7 +11,8 @@ public class AutenticacaoBiometriaLocalFalsa : IAutenticacaoBiometriaLocalServic
     public double? ScoreRecebido { get; private set; }
 
     public Task<ResultadoAutenticacaoAssinatura> AutenticarPorMatchLocalAsync(
-        Guid dispositivoId, string segredoDispositivo, Guid trabalhadorId, double score, LeituraBiometricaAssinada? leitura, CancellationToken ct)
+        Guid dispositivoId, string segredoDispositivo, Guid trabalhadorId, double score, LeituraBiometricaAssinada? leitura, CancellationToken ct,
+        bool permitirInstrutorDeOutraObra = false)
     {
         DispositivoIdRecebido = dispositivoId;
         ScoreRecebido = score;

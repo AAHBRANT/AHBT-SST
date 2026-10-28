@@ -137,6 +137,27 @@ public class SessoesTreinamentoController : ControllerBase
         return NoContent();
     }
 
+    // Instrutor da turma (28/10): escolhido entre os perfis de instrutor e quem assina os certificados.
+    [Authorize(Policy = "treinamento:editar")]
+    [HttpPut("{id:guid}/instrutor")]
+    public async Task<IActionResult> DefinirInstrutor(Guid id, DefinirInstrutorRequestBody body, CancellationToken ct)
+    {
+        await _mediator.Send(new DefinirInstrutorSessaoTreinamentoCommand(id, body.InstrutorTrabalhadorId), ct);
+        return NoContent();
+    }
+
+    // O instrutor lê a digital uma vez no leitor da obra e assina todos os certificados da turma.
+    [Authorize(Policy = "treinamento:editar")]
+    [HttpPost("{id:guid}/instrutor/assinar/biometria-local")]
+    public async Task<IActionResult> AssinarComoInstrutor(Guid id, AssinaturaController.AutenticarBiometriaLocalRequestBody body, CancellationToken ct)
+    {
+        var resultado = await _mediator.Send(new AssinarTurmaComoInstrutorCommand(
+            id, body.DispositivoId, body.SegredoDispositivo ?? string.Empty, body.TrabalhadorId, body.Score,
+            body.Desafio, body.AssinaturaLeitura, HttpContext.Connection.RemoteIpAddress?.ToString(), body.ImagemDigital,
+            body.Localizacao?.ParaDominio()), ct);
+        return Ok(resultado);
+    }
+
     [Authorize(Policy = "treinamento:ver")]
     [HttpGet("{id:guid}/ata/pdf")]
     public async Task<IActionResult> ExportarAta(Guid id, CancellationToken ct)
@@ -171,3 +192,4 @@ public class AnexarFotoEvidenciaSessaoTreinamentoRequestBody
 }
 
 public record AlterarDataSessaoTreinamentoRequestBody(DateTime DataRealizacao);
+public record DefinirInstrutorRequestBody(Guid InstrutorTrabalhadorId);

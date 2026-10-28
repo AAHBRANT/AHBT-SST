@@ -99,7 +99,13 @@ public class RegistradorAssinaturaService : IRegistradorAssinaturaService
                 throw new InvalidOperationException("Este funcionário já tem o termo registrado como assinado manualmente (em papel).");
         }
 
-        var trabalhador = await _db.Trabalhadores.Include(t => t.Funcao).FirstAsync(t => t.Id == resultado.TrabalhadorId, ct);
+        // Instrutor da turma (papel Instrutor): só quem tem perfil de instrutor ativo pode assinar assim, e ele
+        // pode ser de outra obra — o filtro de escopo do Trabalhador esconderia quem não é da obra de quem opera.
+        var comoInstrutor = papel == PapelAssinatura.Instrutor;
+        if (comoInstrutor && !await _db.PerfisInstrutor.AnyAsync(p => p.TrabalhadorId == resultado.TrabalhadorId, ct))
+            throw new InvalidOperationException("Este trabalhador não tem perfil de instrutor cadastrado.");
+        var trabalhador = await (comoInstrutor ? _db.Trabalhadores.IgnoreQueryFilters() : _db.Trabalhadores)
+            .Include(t => t.Funcao).FirstAsync(t => t.Id == resultado.TrabalhadorId, ct);
         var permiteDuplaAssinaturaTecnicoEpi = documento.EntidadeTipo == "EntregaEpi"
             && FuncaoSstClassifier.EhTecnicoSeguranca(trabalhador.Funcao?.Nome);
         var novoEhAssinaturaDeResponsavel = EhAssinaturaDeResponsavel(resultado.Metodo);
@@ -112,7 +118,10 @@ public class RegistradorAssinaturaService : IRegistradorAssinaturaService
         if (jaAssinou)
             throw new InvalidOperationException("Este trabalhador já assinou este documento.");
 
-        await GarantirQueEhOSignatarioEsperadoAsync(documento, resultado, trabalhador, ct);
+        // O instrutor não é o dono do certificado: a conferência "a digital é do dono do documento" não vale
+        // para ele (a identidade dele já foi conferida contra o instrutor da turma antes do registro).
+        if (!comoInstrutor)
+            await GarantirQueEhOSignatarioEsperadoAsync(documento, resultado, trabalhador, ct);
 
         // Regras específicas de Inspeção/Patrulha de Segurança (pedido do usuário, 01/09) — o Motor
         // de Assinatura é genérico (qualquer trabalhador assina DDS/PT/EPI), então essas duas
