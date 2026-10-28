@@ -221,14 +221,26 @@ public class AzureFaceAutenticacaoStrategy : IAutenticacaoFacialService
         // Lido direto do Azure (sem o cache): é o que decide se a obra ainda precisa migrar.
         var respostaGrupo = await cliente.GetAsync($"face/v1.0/persongroups/{grupoAntigo}", ct);
         if (respostaGrupo.StatusCode == System.Net.HttpStatusCode.NotFound)
-            return null;
-        if (!respostaGrupo.IsSuccessStatusCode)
-            throw new InvalidOperationException($"Falha ao consultar o grupo {grupoAntigo} no Azure Face API: {respostaGrupo.StatusCode}");
-        var grupo = await respostaGrupo.Content.ReadFromJsonAsync<GrupoPessoasResposta>(cancellationToken: ct);
-        if (string.Equals(grupo?.RecognitionModel, ModeloReconhecimentoAtual, StringComparison.OrdinalIgnoreCase))
         {
-            ModelosPorGrupo[grupoAntigo] = ModeloReconhecimentoAtual;
-            return null;
+            // Grupo ausente no recurso do Azure em uso (ex.: troca de recurso/região do Face): o banco ainda
+            // aponta para ele e os trabalhadores têm PersonId, então todo rosto da obra cai em "não
+            // reconhecido". Se há cadastro para refazer, o grupo é reconstruído das fotos já aprovadas, como
+            // numa migração; sem nenhum cadastro, não há o que recriar.
+            var haCadastros = await _db.Trabalhadores.IgnoreQueryFilters()
+                .AnyAsync(t => t.ObraId == obra.Id && t.AzureFacePersonId != null, ct);
+            if (!haCadastros)
+                return null;
+        }
+        else
+        {
+            if (!respostaGrupo.IsSuccessStatusCode)
+                throw new InvalidOperationException($"Falha ao consultar o grupo {grupoAntigo} no Azure Face API: {respostaGrupo.StatusCode}");
+            var grupo = await respostaGrupo.Content.ReadFromJsonAsync<GrupoPessoasResposta>(cancellationToken: ct);
+            if (string.Equals(grupo?.RecognitionModel, ModeloReconhecimentoAtual, StringComparison.OrdinalIgnoreCase))
+            {
+                ModelosPorGrupo[grupoAntigo] = ModeloReconhecimentoAtual;
+                return null;
+            }
         }
 
         // Id novo e fixo por obra. Se uma migração anterior parou no meio, o grupo novo é apagado e refeito
