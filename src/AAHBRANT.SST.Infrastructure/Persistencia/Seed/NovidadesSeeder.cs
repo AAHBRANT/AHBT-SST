@@ -1739,14 +1739,14 @@ public static class NovidadesSeeder
             }),
         new(
             Versao: "5.102.0",
-            Titulo: "PGR: logo larga no cabeçalho",
+            Titulo: "PGR: papel timbrado para logos largas",
             DataPublicacao: new DateTime(2026, 10, 27, 0, 0, 0, DateTimeKind.Utc),
             Itens: new[]
             {
                 new NovidadeSeedItem(CategoriaNovidade.Melhoria,
-                    "Logo larga e fina vai no cabeçalho do PGR",
+                    "Logo larga e fina ganha papel timbrado no PGR",
                     "Com uma logo larga e fina, como a da AAHBRANT, a marca d'água ficava atrás das linhas de texto e atrapalhava a leitura.",
-                    "Quando a logo cadastrada na obra é larga e baixa, o PGR a coloca no cabeçalho de todas as páginas, com filete vinho, e grande no alto da capa, sem nada atrás do texto. As demais logos continuam como marca d'água clara. Vale para os PGRs gerados daqui para frente."),
+                    "Quando a logo cadastrada na obra é larga e baixa, o PGR usa um papel timbrado: capa com a logo no alto, \"PGR\" em traço leve e dados do documento em três colunas, barra vinho na lateral e logo no cabeçalho de todas as páginas. Nada fica atrás do texto. As demais logos continuam como marca d'água clara. Vale para os PGRs gerados daqui para frente."),
             }),
     };
 

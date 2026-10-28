@@ -19,6 +19,9 @@ public class PgrPdfService : IPgrPdfService
     private const string Secundario = "#777777";
     private const string Linha = "#d9d9d9";
     private const string Fundo = "#f6f6f6";
+    private const string Bege = "#ebe9ad";
+    private const float BarraCapa = 20; // pt — barra vinho lateral das páginas com logo larga
+    private const float BarraInterna = 10;
 
     // Marca d'água da logo da obra (modelo A aprovado em 27/10/2026): centralizada (largura e reforço em MarcaDaguaLogo).
     private const float OpacidadeMarcaCapa = 0.085f;
@@ -63,15 +66,18 @@ public class PgrPdfService : IPgrPdfService
 
     private static void Capa(IDocumentContainer container, DadosPgrPdf d, MarcaDagua? marcaDagua, byte[]? logoLarga)
     {
+        if (logoLarga is not null)
+        {
+            CapaLarga(container, d, logoLarga);
+            return;
+        }
+
         container.Page(p =>
         {
             ConfigurarPagina(p, marcaDagua);
             p.Content().Column(c =>
             {
-                c.Item().Height(60).AlignLeft().Element(e =>
-                {
-                    if (logoLarga is not null) e.Width(250).Height(60).Image(logoLarga).FitArea();
-                });
+                c.Item().Height(60);
                 c.Item().PaddingTop(150).Text("PROGRAMA DE GERENCIAMENTO DE RISCOS").FontSize(9).LetterSpacing(0.12f).FontColor(Secundario);
                 c.Item().PaddingTop(10).Text("PGR").FontSize(54).Bold().FontColor(Texto);
                 c.Item().PaddingTop(10).Width(48).LineHorizontal(2).LineColor(Marca);
@@ -92,7 +98,7 @@ public class PgrPdfService : IPgrPdfService
     {
         container.Page(p =>
         {
-            ConfigurarPagina(p, marcaDagua);
+            ConfigurarPagina(p, marcaDagua, logoLarga is null ? 0 : BarraInterna);
             Cabecalho(p, d, logoLarga);
             p.Content().Column(c =>
             {
@@ -117,7 +123,7 @@ public class PgrPdfService : IPgrPdfService
     {
         container.Page(p =>
         {
-            ConfigurarPagina(p, marcaDagua);
+            ConfigurarPagina(p, marcaDagua, logoLarga is null ? 0 : BarraInterna);
             Cabecalho(p, d, logoLarga);
             p.Content().Column(c =>
             {
@@ -417,33 +423,101 @@ public class PgrPdfService : IPgrPdfService
 
     // ───────────────────────────── Peças reutilizáveis ─────────────────────────────
 
-    private static void ConfigurarPagina(PageDescriptor p, MarcaDagua? marcaDagua)
+    private static void ConfigurarPagina(PageDescriptor p, MarcaDagua? marcaDagua, float barraLateral = 0)
     {
         p.Size(PageSizes.A4);
         p.Margin(2f, Unit.Centimetre);
         p.DefaultTextStyle(s => s.FontSize(9.5f).FontColor(Texto).LineHeight(1.35f));
         if (marcaDagua is not null)
             p.Background().AlignCenter().AlignMiddle().Width(marcaDagua.Largura).Image(marcaDagua.Png).FitWidth();
+        if (barraLateral > 0)
+        {
+            // Papel timbrado (logo larga): barra vinho na lateral esquerda, de ponta a ponta, com um fio bege ao lado.
+            p.MarginLeft(2.4f, Unit.Centimetre);
+            p.Background().Row(r =>
+            {
+                r.ConstantItem(barraLateral).LineVertical(barraLateral).LineColor(Marca);
+                r.ConstantItem(2.5f).LineVertical(2.5f).LineColor(Bege);
+            });
+        }
     }
+
+    // Capa em papel timbrado, usada quando a logo da obra é larga e baixa: logo no alto, "PGR" em traço leve,
+    // filete duplo e os dados do documento em três colunas no pé (modelo "Direção 2" aprovado em 27/10/2026).
+    private static void CapaLarga(IDocumentContainer container, DadosPgrPdf d, byte[] logo)
+    {
+        var revisao = (d.Revisoes is { Count: > 0 } revisoes ? revisoes.Max(r => r.Numero) : 0).ToString("00");
+        container.Page(p =>
+        {
+            ConfigurarPagina(p, null, BarraCapa);
+            p.Content().Column(c =>
+            {
+                c.Item().PaddingTop(16).AlignCenter().Width(290).Height(66).Image(logo).FitArea();
+                c.Item().PaddingTop(140).AlignCenter().Text("PROGRAMA DE GERENCIAMENTO DE RISCOS").FontSize(8).LetterSpacing(0.28f).FontColor(Secundario);
+                c.Item().PaddingTop(14).AlignCenter().Text("PGR").FontSize(104).Light().FontColor("#111111");
+                c.Item().PaddingTop(18).AlignCenter().Width(96).Column(f =>
+                {
+                    f.Item().LineHorizontal(2.4f).LineColor(Marca);
+                    f.Item().PaddingTop(5).LineHorizontal(0.8f).LineColor("#bbbbbb");
+                });
+                c.Item().PaddingTop(30).AlignCenter().Text(d.Nome).FontSize(17).Bold().FontColor("#111111");
+                c.Item().PaddingTop(5).AlignCenter().Text(d.ObraNome).FontSize(11).FontColor(Secundario);
+                if (!string.IsNullOrWhiteSpace(d.ObraEndereco))
+                    c.Item().PaddingTop(2).AlignCenter().Text(d.ObraEndereco).FontSize(9.5f).FontColor(Secundario);
+                var local = string.Join(" / ", new[] { d.ObraCidade, d.ObraUf }.Where(s => !string.IsNullOrWhiteSpace(s)));
+                if (local.Length > 0)
+                    c.Item().PaddingTop(2).AlignCenter().Text(local).FontSize(9.5f).FontColor(Secundario);
+            });
+            p.Footer().Column(f =>
+            {
+                f.Item().LineHorizontal(0.8f).LineColor("#bbbbbb");
+                f.Item().PaddingTop(10).Row(r =>
+                {
+                    DadoDaCapa(r, "Vigência", d.DataElaboracao.ToString("yyyy"));
+                    DadoDaCapa(r, "Revisão", revisao);
+                    DadoDaCapa(r, "Elaborado em", d.DataElaboracao.ToString("dd/MM/yyyy"));
+                });
+            });
+        });
+    }
+
+    private static void DadoDaCapa(RowDescriptor r, string rotulo, string valor) =>
+        r.RelativeItem().Column(c =>
+        {
+            c.Item().Text(rotulo.ToUpperInvariant()).FontSize(6.5f).LetterSpacing(0.18f).FontColor(Secundario);
+            c.Item().PaddingTop(2).Text(valor).FontSize(9.5f).SemiBold().FontColor("#111111");
+        });
 
     private static void Cabecalho(PageDescriptor p, DadosPgrPdf d, byte[]? logoLarga) =>
         p.Header().PaddingBottom(14).Column(h =>
         {
             h.Item().Row(r =>
             {
-                if (logoLarga is not null)
-                    r.ConstantItem(112).AlignMiddle().Width(112).Height(26).Image(logoLarga).FitArea();
-                r.RelativeItem().PaddingLeft(logoLarga is null ? 0 : 10).AlignMiddle()
-                    .Text("PGR · Programa de Gerenciamento de Riscos").FontSize(8).FontColor(Secundario);
-                r.RelativeItem().AlignRight().AlignMiddle().Text(d.ObraNome).FontSize(8).FontColor(Secundario);
+                if (logoLarga is null)
+                {
+                    r.RelativeItem().Text("PGR · Programa de Gerenciamento de Riscos").FontSize(8).FontColor(Secundario);
+                    r.RelativeItem().AlignRight().Text(d.ObraNome).FontSize(8).FontColor(Secundario);
+                    return;
+                }
+
+                // Papel timbrado (logo larga): logo à esquerda; título em caixa alta espaçada e obra à direita.
+                r.ConstantItem(112).AlignMiddle().Width(112).Height(26).Image(logoLarga).FitArea();
+                r.RelativeItem().AlignRight().AlignMiddle().Column(titulo =>
+                {
+                    titulo.Item().AlignRight().Text("PGR · PROGRAMA DE GERENCIAMENTO DE RISCOS").FontSize(6.5f).LetterSpacing(0.16f).FontColor(Secundario);
+                    titulo.Item().AlignRight().Text(d.ObraNome).FontSize(7.5f).SemiBold().FontColor(Texto);
+                });
             });
             if (d.Minuta)
                 h.Item().PaddingTop(3).Text("MINUTA PARA CONFERÊNCIA · NÃO ASSINADO · SEM VALOR DOCUMENTAL").FontSize(8).Bold().FontColor(Marca);
-            // Com logo no cabeçalho o filete vira vinho, como nos demais documentos do sistema.
             if (logoLarga is null)
                 h.Item().PaddingTop(4).LineHorizontal(0.5f).LineColor(Linha);
             else
-                h.Item().PaddingTop(5).LineHorizontal(1.5f).LineColor(Marca);
+            {
+                // Filete duplo: vinho grosso e um fio cinza logo abaixo.
+                h.Item().PaddingTop(5).LineHorizontal(2f).LineColor(Marca);
+                h.Item().PaddingTop(2.5f).LineHorizontal(0.5f).LineColor("#bbbbbb");
+            }
         });
 
     private static void Rodape(PageDescriptor p, DadosPgrPdf d) =>
