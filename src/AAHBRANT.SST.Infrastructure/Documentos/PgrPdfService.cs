@@ -20,6 +20,11 @@ public class PgrPdfService : IPgrPdfService
     private const string Linha = "#d9d9d9";
     private const string Fundo = "#f6f6f6";
 
+    // Marca d'água da logo da obra (modelo A aprovado em 27/10/2026): centralizada, ~62% da largura da folha.
+    private const float LarguraMarcaDagua = 370;
+    private const float OpacidadeMarcaCapa = 0.085f;
+    private const float OpacidadeMarcaPaginas = 0.07f;
+
     private sealed record Secao(string Id, string Numero, string Titulo);
 
     private static readonly Secao[] Secoes =
@@ -40,28 +45,28 @@ public class PgrPdfService : IPgrPdfService
     public byte[] Gerar(DadosPgrPdf d, byte[]? logoObra)
     {
         var emitidoEm = HorarioBrasilia.De(d.GeradoEmUtc);
+        // Marca d'água com a logo cadastrada na Obra em todas as páginas; um pouco mais forte na capa.
+        var marcaCapa = MarcaDaguaLogo.Preparar(logoObra, OpacidadeMarcaCapa);
+        var marcaPaginas = MarcaDaguaLogo.Preparar(logoObra, OpacidadeMarcaPaginas);
 
         return Document.Create(container =>
         {
-            Capa(container, d, logoObra);
-            Sumario(container, d);
-            Conteudo(container, d, emitidoEm);
+            Capa(container, d, marcaCapa);
+            Sumario(container, d, marcaPaginas);
+            Conteudo(container, d, emitidoEm, marcaPaginas);
         }).GeneratePdf();
     }
 
     // ───────────────────────────── Capa e sumário ─────────────────────────────
 
-    private static void Capa(IDocumentContainer container, DadosPgrPdf d, byte[]? logo)
+    private static void Capa(IDocumentContainer container, DadosPgrPdf d, byte[]? marcaDagua)
     {
         container.Page(p =>
         {
-            ConfigurarPagina(p);
+            ConfigurarPagina(p, marcaDagua);
             p.Content().Column(c =>
             {
-                c.Item().Height(60).AlignLeft().Element(e =>
-                {
-                    if (logo is not null) e.Image(logo).FitHeight();
-                });
+                c.Item().Height(60);
                 c.Item().PaddingTop(150).Text("PROGRAMA DE GERENCIAMENTO DE RISCOS").FontSize(9).LetterSpacing(0.12f).FontColor(Secundario);
                 c.Item().PaddingTop(10).Text("PGR").FontSize(54).Bold().FontColor(Texto);
                 c.Item().PaddingTop(10).Width(48).LineHorizontal(2).LineColor(Marca);
@@ -78,11 +83,11 @@ public class PgrPdfService : IPgrPdfService
         });
     }
 
-    private static void Sumario(IDocumentContainer container, DadosPgrPdf d)
+    private static void Sumario(IDocumentContainer container, DadosPgrPdf d, byte[]? marcaDagua)
     {
         container.Page(p =>
         {
-            ConfigurarPagina(p);
+            ConfigurarPagina(p, marcaDagua);
             Cabecalho(p, d);
             p.Content().Column(c =>
             {
@@ -103,11 +108,11 @@ public class PgrPdfService : IPgrPdfService
 
     // ───────────────────────────── Conteúdo ─────────────────────────────
 
-    private static void Conteudo(IDocumentContainer container, DadosPgrPdf d, DateTime emitidoEm)
+    private static void Conteudo(IDocumentContainer container, DadosPgrPdf d, DateTime emitidoEm, byte[]? marcaDagua)
     {
         container.Page(p =>
         {
-            ConfigurarPagina(p);
+            ConfigurarPagina(p, marcaDagua);
             Cabecalho(p, d);
             p.Content().Column(c =>
             {
@@ -407,11 +412,13 @@ public class PgrPdfService : IPgrPdfService
 
     // ───────────────────────────── Peças reutilizáveis ─────────────────────────────
 
-    private static void ConfigurarPagina(PageDescriptor p)
+    private static void ConfigurarPagina(PageDescriptor p, byte[]? marcaDagua)
     {
         p.Size(PageSizes.A4);
         p.Margin(2f, Unit.Centimetre);
         p.DefaultTextStyle(s => s.FontSize(9.5f).FontColor(Texto).LineHeight(1.35f));
+        if (marcaDagua is not null)
+            p.Background().AlignCenter().AlignMiddle().Width(LarguraMarcaDagua).Image(marcaDagua).FitWidth();
     }
 
     private static void Cabecalho(PageDescriptor p, DadosPgrPdf d) =>

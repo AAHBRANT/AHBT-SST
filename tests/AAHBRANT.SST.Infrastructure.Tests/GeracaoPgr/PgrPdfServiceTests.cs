@@ -164,6 +164,48 @@ public class PgrPdfServiceTests
         Assert.Equal("%PDF", System.Text.Encoding.ASCII.GetString(pdf, 0, 4));
     }
 
+    private static byte[] LogoDeFundoBranco()
+    {
+        using var img = new SixLabors.ImageSharp.Image<SixLabors.ImageSharp.PixelFormats.Rgba32>(300, 180, SixLabors.ImageSharp.Color.White);
+        for (var y = 60; y < 120; y++)
+            for (var x = 30; x < 270; x++)
+                img[x, y] = new SixLabors.ImageSharp.PixelFormats.Rgba32(10, 10, 60, 255);
+        using var ms = new MemoryStream();
+        SixLabors.ImageSharp.ImageExtensions.SaveAsPng(img, ms);
+        return ms.ToArray();
+    }
+
+    [Fact]
+    public void Gerar_ComLogoDaObra_UsaMarcaDaguaEDevolvePdfValido()
+    {
+        var semLogo = new PgrPdfService().Gerar(DadosCompletos(), null);
+        var comLogo = new PgrPdfService().Gerar(DadosCompletos(), LogoDeFundoBranco());
+
+        Assert.Equal("%PDF", System.Text.Encoding.ASCII.GetString(comLogo, 0, 4));
+        Assert.True(comLogo.Length > semLogo.Length, "o PDF com logo deve carregar a imagem da marca d'água");
+    }
+
+    [Fact]
+    public void Gerar_ComLogoIlegivel_SaiSemMarcaDaguaEmVezDeFalhar()
+    {
+        var pdf = new PgrPdfService().Gerar(DadosCompletos(), new byte[] { 1, 2, 3, 4 });
+
+        Assert.Equal("%PDF", System.Text.Encoding.ASCII.GetString(pdf, 0, 4));
+    }
+
+    [Fact]
+    public void MarcaDaguaLogo_MantemOFundoBrancoEClareiaOTraco()
+    {
+        var png = MarcaDaguaLogo.Preparar(LogoDeFundoBranco(), 0.07f);
+
+        Assert.NotNull(png);
+        using var img = SixLabors.ImageSharp.Image.Load<SixLabors.ImageSharp.PixelFormats.Rgba32>(png!);
+        Assert.Equal(new SixLabors.ImageSharp.PixelFormats.Rgba32(255, 255, 255, 255), img[2, 2]);
+        var traco = img[img.Width / 2, img.Height / 2];
+        Assert.Equal(255, traco.A);
+        Assert.InRange(traco.R, 230, 252); // ~7% do tom escuro original sobre o branco
+    }
+
     [Fact]
     public void Gerar_SemRiscosNemAprovacao_AindaDevolvePdfValido()
     {

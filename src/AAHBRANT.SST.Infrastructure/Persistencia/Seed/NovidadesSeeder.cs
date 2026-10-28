@@ -1726,6 +1726,17 @@ public static class NovidadesSeeder
                     "O PGR gerado pela EAP saía com as linhas de assinatura em branco, para assinar à mão depois de impresso.",
                     "No passo 4, o novo cartão \"Quem assina\" permite escolher o técnico de segurança da obra e o engenheiro de segurança, e digitar o registro profissional de cada um (ou marcar assinatura à mão). O técnico assina ao enviar para aprovação e o engenheiro ao aprovar, cada um com o próprio acesso ao sistema. Antes de aprovar, o engenheiro pode abrir a minuta em PDF, marcada como não assinada. O PDF final traz o carimbo de cada assinatura com nome, registro, data e hora, o QR e o código de verificação, e não muda mais depois de assinado. É assinatura por acesso autenticado ao sistema, não certificado digital ICP-Brasil."),
             }),
+        new(
+            Versao: "5.101.0",
+            Titulo: "PGR: logomarca da obra em todas as páginas",
+            DataPublicacao: new DateTime(2026, 10, 27, 0, 0, 0, DateTimeKind.Utc),
+            Itens: new[]
+            {
+                new NovidadeSeedItem(CategoriaNovidade.Melhoria,
+                    "Marca d'água com a logo da obra no PDF do PGR",
+                    "O PDF do PGR mostrava a logo da obra só na capa, pequena, diferente dos outros documentos do sistema.",
+                    "O PGR passa a ter a logomarca cadastrada na obra como marca d'água clara, centralizada, atrás do texto, na capa e em todas as páginas. Obra sem logo cadastrada sai sem marca d'água. O arquivo da logo no cadastro da obra não é alterado. Vale para os PGRs gerados daqui para frente; os já assinados não mudam."),
+            }),
     };
 
     public static async Task ExecutarAsync(IServiceProvider services, CancellationToken ct = default)
