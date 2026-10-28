@@ -1759,6 +1759,17 @@ public static class NovidadesSeeder
                     "O certificado saía assinado como \"instrutor\" por quem estivesse logado ao encerrar a turma, mesmo que o instrutor fosse outra pessoa, e o cargo impresso era sempre Técnico de Segurança.",
                     "Cada turma passa a ter um instrutor, escolhido entre os perfis de instrutor cadastrados pelo Administrador (formação, MTE ou CREA, número e UF). O instrutor encosta o dedo uma vez no leitor e assina todos os certificados da turma, mesmo que seja de outra obra e desde que esteja autorizado. O certificado mostra o nome, o cargo e o registro dele. A assinatura anterior continua no histórico."),
             }),
+        new(
+            Versao: "5.104.0",
+            Titulo: "Treinamentos e entregas de EPI: sem data futura",
+            DataPublicacao: new DateTime(2026, 10, 28, 0, 0, 0, DateTimeKind.Utc),
+            Itens: new[]
+            {
+                new NovidadeSeedItem(CategoriaNovidade.Melhoria,
+                    "O sistema não aceita mais data futura em treinamento e entrega de EPI",
+                    "Era possível lançar um certificado, uma turma ou uma entrega de EPI com data de amanhã, e o documento saía assinado hoje com a data errada.",
+                    "A data de realização do treinamento (certificado, turma e alteração da data da turma) e a data de entrega de EPI não podem ser posteriores a hoje. O campo de data avisa na hora, em vermelho, e o sistema recusa o salvamento. Registros já existentes não mudam."),
+            }),
     };
 
     public static async Task ExecutarAsync(IServiceProvider services, CancellationToken ct = default)

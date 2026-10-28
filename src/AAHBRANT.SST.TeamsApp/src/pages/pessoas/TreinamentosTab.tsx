@@ -209,6 +209,7 @@ export function TreinamentosTab({ trabalhadorId, obraId }: { trabalhadorId: stri
               <Campo span={6}>
                 <Field label="Data de realização">
                   <CampoData
+                    naoFutura
                     value={novoTreinamento.dataRealizacao}
                     onChange={(_, d) => setNovoTreinamento({ ...novoTreinamento, dataRealizacao: d.value })}
                   />

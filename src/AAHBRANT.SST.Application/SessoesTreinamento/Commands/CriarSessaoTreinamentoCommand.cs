@@ -1,3 +1,4 @@
+using AAHBRANT.SST.Application.Common;
 using AAHBRANT.SST.Application.Common.Interfaces;
 using AAHBRANT.SST.Domain.Entidades;
 using FluentValidation;
@@ -40,7 +41,7 @@ public class CriarSessaoTreinamentoCommandValidator : AbstractValidator<CriarSes
     {
         RuleFor(x => x.ObraId).NotEmpty();
         RuleFor(x => x.CursoTreinamentoId).NotEmpty();
-        RuleFor(x => x.DataRealizacao).NotEmpty();
+        RuleFor(x => x.DataRealizacao).NotEmpty().NaoFutura("A data de realização");
         RuleFor(x => x.CargaHorariaRealizada).GreaterThanOrEqualTo(0);
         RuleFor(x => x.TrabalhadoresIds).NotEmpty().WithMessage("Selecione ao menos um participante.");
     }

@@ -835,6 +835,7 @@ export function EntregasTab({ aoNavegarParaMatriz }: EntregasTabProps) {
                   <Campo span={6}>
                     <Field label="Data de entrega" required>
                       <CampoData
+                        naoFutura
                         value={dadosComuns.dataEntrega}
                         onChange={(_, d) => setDadosComuns({ ...dadosComuns, dataEntrega: d.value })}
                       />
