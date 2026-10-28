@@ -832,6 +832,22 @@ public enum PapelAssinatura
     // própria sessão e o papel distingue as duas assinaturas do mesmo documento.
     TecnicoSegurancaPgr = 3,
     EngenheiroSegurancaPgr = 4,
+    // Instrutor da turma de treinamento: assina o certificado com o perfil de instrutor (pode ser de outra obra).
+    Instrutor = 5,
+}
+
+// Formação do instrutor de treinamento; sai impressa no certificado.
+public enum FormacaoInstrutor
+{
+    TecnicoSegurancaTrabalho = 1,
+    EngenheiroSegurancaTrabalho = 2,
+}
+
+// Conselho do registro profissional do instrutor (MTE para técnico, CREA para engenheiro).
+public enum ConselhoInstrutor
+{
+    Mte = 1,
+    Crea = 2,
 }
 
 // [Flags] em Obra.MetodosAutenticacaoHabilitados: cada obra decide se aceita assinatura (Biometria,

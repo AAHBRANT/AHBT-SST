@@ -153,6 +153,7 @@ public class SstDbContext : DbContext, IAppDbContext
     public DbSet<DispositivoAgenteBiometrico> DispositivosAgenteBiometrico => Set<DispositivoAgenteBiometrico>();
     public DbSet<DesafioBiometria> DesafiosBiometria => Set<DesafioBiometria>();
     public DbSet<TemplateBiometricoFutronic> TemplatesBiometricoFutronic => Set<TemplateBiometricoFutronic>();
+    public DbSet<PerfilInstrutor> PerfisInstrutor => Set<PerfilInstrutor>();
     public DbSet<FotoCadastroFacial> FotosCadastroFacial => Set<FotoCadastroFacial>();
     public DbSet<FalhaReconhecimentoFacial> FalhasReconhecimentoFacial => Set<FalhaReconhecimentoFacial>();
     public DbSet<RelatorioGerado> RelatoriosGerados => Set<RelatorioGerado>();
@@ -308,6 +309,9 @@ public class SstDbContext : DbContext, IAppDbContext
         // também, escondendo o histórico de quem foi desligado (comprovado em teste). Ver PR #116.
         modelBuilder.Entity<SessaoTreinamento>().HasQueryFilter(s =>
             s.Ativo && (_usuarioAtual.TemAcessoGlobal || _usuarioAtual.ObrasPermitidas.Contains(s.ObraId)));
+        modelBuilder.Entity<SessaoTreinamento>()
+            .HasOne(s => s.InstrutorTrabalhador).WithMany()
+            .HasForeignKey(s => s.InstrutorTrabalhadorId).OnDelete(DeleteBehavior.Restrict);
         modelBuilder.Entity<Contrato>().HasQueryFilter(c =>
             c.Ativo && (_usuarioAtual.TemAcessoGlobal || _usuarioAtual.ObrasPermitidas.Contains(c.ObraId)));
         modelBuilder.Entity<InstalacaoEpc>().HasQueryFilter(i =>

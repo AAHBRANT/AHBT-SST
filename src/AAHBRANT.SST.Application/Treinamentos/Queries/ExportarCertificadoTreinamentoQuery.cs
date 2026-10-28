@@ -1,5 +1,6 @@
 using AAHBRANT.SST.Application.Assinatura;
 using AAHBRANT.SST.Application.Common;
+using AAHBRANT.SST.Application.Instrutores;
 using AAHBRANT.SST.Application.Common.Interfaces;
 using AAHBRANT.SST.Domain.Entidades;
 using AAHBRANT.SST.Domain.Enums;
@@ -57,9 +58,38 @@ public class ExportarCertificadoTreinamentoQueryHandler : IRequestHandler<Export
         // antes disto, o QR só existia depois de uma finalização que, para Treinamento, nada nunca dispara.
         var rastreio = await _rastreabilidade.GarantirAsync("Treinamento", request.TreinamentoId, ct);
 
+        // Instrutor escolhido na turma (perfil de instrutor): nome, cargo pela formação e registro. IgnoreQueryFilters
+        // porque o instrutor pode ser de outra obra e o escopo de obra o esconderia.
+        var instrutorNome = treinamento.InstituicaoInstrutor;
+        var instrutorRegistro = treinamento.InstrutorRegistroProfissional;
+        string? instrutorCargo = null;
+        if (treinamento.SessaoTreinamentoId is not null)
+        {
+            var instrutorId = await _db.SessoesTreinamento.IgnoreQueryFilters()
+                .Where(s => s.Id == treinamento.SessaoTreinamentoId)
+                .Select(s => s.InstrutorTrabalhadorId)
+                .FirstOrDefaultAsync(ct);
+            if (instrutorId is not null)
+            {
+                var nome = await _db.Trabalhadores.IgnoreQueryFilters()
+                    .Where(t => t.Id == instrutorId).Select(t => t.Nome).FirstOrDefaultAsync(ct);
+                var perfil = await _db.PerfisInstrutor.FirstOrDefaultAsync(p => p.TrabalhadorId == instrutorId, ct);
+                if (!string.IsNullOrWhiteSpace(nome)) instrutorNome = nome;
+                if (perfil is not null)
+                {
+                    instrutorCargo = DescricaoInstrutor.Formacao(perfil.Formacao);
+                    instrutorRegistro = DescricaoInstrutor.Registro(perfil.Conselho, perfil.NumeroRegistro, perfil.UfRegistro) ?? instrutorRegistro;
+                }
+            }
+        }
+
+        // O selo do instrutor é achado pelo nome. Quando o instrutor da turma assinou, a assinatura automática
+        // antiga (sessão logada de quem encerrou a turma) deixa de aparecer no certificado; ela continua no cofre.
+        var assinouComoInstrutor = documento?.Signatarios.FirstOrDefault(s => s.Papel == PapelAssinatura.Instrutor);
         var signatarios = documento?.Signatarios
+            .Where(s => !(assinouComoInstrutor is not null && s.Papel is null && s.MetodoAutenticacao == MetodoAutenticacaoAssinatura.SessaoLogada))
             .Select(s => new CertificadoTreinamentoPdfSignatarioModelo(
-                s.Trabalhador?.Nome ?? string.Empty, s.AssinadoEm, s.MetodoAutenticacao, s.Trabalhador?.Funcao?.Nome,
+                s.Papel == PapelAssinatura.Instrutor ? instrutorNome ?? string.Empty : s.Trabalhador?.Nome ?? string.Empty, s.AssinadoEm, s.MetodoAutenticacao, s.Trabalhador?.Funcao?.Nome,
                 HashAssinatura(s.Id, s.TrabalhadorId, s.AssinadoEm, s.MetodoAutenticacao, rastreio.ConteudoHash)))
             .ToList() ?? new List<CertificadoTreinamentoPdfSignatarioModelo>();
         var qrCodePng = rastreio.QrCodePng;
@@ -106,8 +136,8 @@ public class ExportarCertificadoTreinamentoQueryHandler : IRequestHandler<Export
             treinamento.CargaHorariaRealizada,
             treinamento.DataRealizacao,
             treinamento.DataValidade,
-            treinamento.InstituicaoInstrutor,
-            treinamento.InstrutorRegistroProfissional,
+            instrutorNome,
+            instrutorRegistro,
             treinamento.NumeroCertificado,
             treinamento.Local,
             conteudoProgramatico,
@@ -119,7 +149,8 @@ public class ExportarCertificadoTreinamentoQueryHandler : IRequestHandler<Export
             rastreio.QrCodePng,
             rastreio.TemAssinatura,
             CatalogoNormasRegulamentadoras.NormalizarNumero(treinamento.CursoTreinamento.NormaReferencia),
-            padraoNr?.Titulo);
+            padraoNr?.Titulo,
+            instrutorCargo);
 
         var pdf = _pdf.Gerar(modelo);
         // Guarda a cópia exata emitida e o SHA-256 dela — é o que permite conferir, depois,

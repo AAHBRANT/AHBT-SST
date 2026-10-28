@@ -46,7 +46,11 @@ public record CertificadoTreinamentoPdfModelo(
     // Número normalizado ("NR-35") e título da norma vindos de CatalogoNormasRegulamentadoras —
     // destaque da frente no modelo de certificado de 19/10.
     string? NormaNumero = null,
-    string? NormaTitulo = null);
+    string? NormaTitulo = null,
+    // Instrutor do perfil de instrutor (28/10): cargo conforme a formação (Técnico ou Engenheiro de
+    // Segurança) e a assinatura dele, quando já assinou. Nulos nas turmas sem instrutor escolhido, que
+    // mantêm o texto fixo anterior.
+    string? InstrutorCargo = null);
 
 public interface ICertificadoTreinamentoPdfService
 {

@@ -1750,6 +1750,17 @@ public static class NovidadesSeeder
             }),
         new(
             Versao: "5.103.0",
+            Titulo: "Treinamentos: o instrutor assina o certificado",
+            DataPublicacao: new DateTime(2026, 10, 28, 0, 0, 0, DateTimeKind.Utc),
+            Itens: new[]
+            {
+                new NovidadeSeedItem(CategoriaNovidade.Novidade,
+                    "Instrutor da turma com assinatura própria",
+                    "O certificado saía assinado como \"instrutor\" por quem estivesse logado ao encerrar a turma, mesmo que o instrutor fosse outra pessoa, e o cargo impresso era sempre Técnico de Segurança.",
+                    "Cada turma passa a ter um instrutor, escolhido entre os perfis de instrutor cadastrados pelo Administrador (formação, MTE ou CREA, número e UF). O instrutor encosta o dedo uma vez no leitor e assina todos os certificados da turma, mesmo que seja de outra obra e desde que esteja autorizado. O certificado mostra o nome, o cargo e o registro dele. A assinatura anterior continua no histórico."),
+            }),
+        new(
+            Versao: "5.104.0",
             Titulo: "Treinamentos e entregas de EPI: sem data futura",
             DataPublicacao: new DateTime(2026, 10, 28, 0, 0, 0, DateTimeKind.Utc),
             Itens: new[]

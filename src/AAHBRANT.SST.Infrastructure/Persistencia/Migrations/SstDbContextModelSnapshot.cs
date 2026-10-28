@@ -6921,6 +6921,70 @@ namespace AAHBRANT.SST.Infrastructure.Persistencia.Migrations
                     b.ToTable("PerfisAcessoPermissoes");
                 });
 
+            modelBuilder.Entity("AAHBRANT.SST.Domain.Entidades.PerfilInstrutor", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<bool>("Ativo")
+                        .HasColumnType("bit");
+
+                    b.Property<DateTime?>("AutorizadoOutrasObrasEm")
+                        .HasColumnType("datetime2");
+
+                    b.Property<Guid?>("AutorizadoOutrasObrasPorUsuarioId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<int?>("Conselho")
+                        .HasColumnType("int");
+
+                    b.Property<DateTime>("CreatedAtUtc")
+                        .HasColumnType("datetime2");
+
+                    b.Property<Guid?>("CreatedBy")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<int>("Formacao")
+                        .HasColumnType("int");
+
+                    b.Property<string>("NumeroRegistro")
+                        .HasMaxLength(30)
+                        .HasColumnType("nvarchar(30)");
+
+                    b.Property<int>("Origem")
+                        .HasColumnType("int");
+
+                    b.Property<bool>("PodeAssinarEmOutrasObras")
+                        .HasColumnType("bit");
+
+                    b.Property<byte[]>("RowVersion")
+                        .IsConcurrencyToken()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("rowversion");
+
+                    b.Property<Guid>("TrabalhadorId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("UfRegistro")
+                        .HasMaxLength(2)
+                        .HasColumnType("nvarchar(2)");
+
+                    b.Property<DateTime?>("UpdatedAtUtc")
+                        .HasColumnType("datetime2");
+
+                    b.Property<Guid?>("UpdatedBy")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("TrabalhadorId")
+                        .IsUnique()
+                        .HasFilter("[Ativo] = 1");
+
+                    b.ToTable("PerfisInstrutor");
+                });
+
             modelBuilder.Entity("AAHBRANT.SST.Domain.Entidades.Perigo", b =>
                 {
                     b.Property<Guid>("Id")
@@ -8689,6 +8753,9 @@ namespace AAHBRANT.SST.Infrastructure.Persistencia.Migrations
                     b.Property<string>("InstrutorRegistroProfissional")
                         .HasColumnType("nvarchar(max)");
 
+                    b.Property<Guid?>("InstrutorTrabalhadorId")
+                        .HasColumnType("uniqueidentifier");
+
                     b.Property<string>("Local")
                         .HasColumnType("nvarchar(max)");
 
@@ -8721,6 +8788,8 @@ namespace AAHBRANT.SST.Infrastructure.Persistencia.Migrations
                     b.HasKey("Id");
 
                     b.HasIndex("CursoTreinamentoId");
+
+                    b.HasIndex("InstrutorTrabalhadorId");
 
                     b.HasIndex("ObraId");
 
@@ -11566,6 +11635,17 @@ namespace AAHBRANT.SST.Infrastructure.Persistencia.Migrations
                     b.Navigation("Permissao");
                 });
 
+            modelBuilder.Entity("AAHBRANT.SST.Domain.Entidades.PerfilInstrutor", b =>
+                {
+                    b.HasOne("AAHBRANT.SST.Domain.Entidades.Trabalhador", "Trabalhador")
+                        .WithMany()
+                        .HasForeignKey("TrabalhadorId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("Trabalhador");
+                });
+
             modelBuilder.Entity("AAHBRANT.SST.Domain.Entidades.PermissaoTrabalho", b =>
                 {
                     b.HasOne("AAHBRANT.SST.Domain.Entidades.Atividade", "Atividade")
@@ -12026,6 +12106,11 @@ namespace AAHBRANT.SST.Infrastructure.Persistencia.Migrations
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
+                    b.HasOne("AAHBRANT.SST.Domain.Entidades.Trabalhador", "InstrutorTrabalhador")
+                        .WithMany()
+                        .HasForeignKey("InstrutorTrabalhadorId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
                     b.HasOne("AAHBRANT.SST.Domain.Entidades.Obra", "Obra")
                         .WithMany()
                         .HasForeignKey("ObraId")
@@ -12033,6 +12118,8 @@ namespace AAHBRANT.SST.Infrastructure.Persistencia.Migrations
                         .IsRequired();
 
                     b.Navigation("CursoTreinamento");
+
+                    b.Navigation("InstrutorTrabalhador");
 
                     b.Navigation("Obra");
                 });

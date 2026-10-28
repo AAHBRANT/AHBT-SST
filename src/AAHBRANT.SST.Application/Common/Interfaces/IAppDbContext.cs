@@ -144,6 +144,7 @@ public interface IAppDbContext
     DbSet<DispositivoAgenteBiometrico> DispositivosAgenteBiometrico { get; }
     DbSet<DesafioBiometria> DesafiosBiometria { get; }
     DbSet<TemplateBiometricoFutronic> TemplatesBiometricoFutronic { get; }
+    DbSet<PerfilInstrutor> PerfisInstrutor { get; }
     DbSet<FotoCadastroFacial> FotosCadastroFacial { get; }
     DbSet<FalhaReconhecimentoFacial> FalhasReconhecimentoFacial { get; }
     DbSet<RelatorioGerado> RelatoriosGerados { get; }
