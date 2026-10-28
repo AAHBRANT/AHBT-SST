@@ -81,6 +81,22 @@ public class DesafioBiometriaConfiguracao : IEntityTypeConfiguration<DesafioBiom
     }
 }
 
+public class PerfilInstrutorConfiguracao : IEntityTypeConfiguration<PerfilInstrutor>
+{
+    public void Configure(EntityTypeBuilder<PerfilInstrutor> builder)
+    {
+        builder.Property(p => p.NumeroRegistro).HasMaxLength(30);
+        builder.Property(p => p.UfRegistro).HasMaxLength(2);
+
+        builder.HasOne(p => p.Trabalhador).WithMany()
+            .HasForeignKey(p => p.TrabalhadorId).OnDelete(DeleteBehavior.Restrict);
+        // Um perfil por trabalhador (entre os não excluídos).
+        builder.HasIndex(p => p.TrabalhadorId).IsUnique().HasFilter("[Ativo] = 1");
+
+        builder.HasQueryFilter(p => p.Ativo);
+    }
+}
+
 public class TemplateBiometricoFutronicConfiguracao : IEntityTypeConfiguration<TemplateBiometricoFutronic>
 {
     public void Configure(EntityTypeBuilder<TemplateBiometricoFutronic> builder)

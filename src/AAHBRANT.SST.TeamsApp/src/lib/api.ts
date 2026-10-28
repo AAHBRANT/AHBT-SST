@@ -792,6 +792,7 @@ export interface SessaoTreinamento {
   dataRealizacao: string;
   cargaHorariaRealizada: number;
   instituicaoInstrutor?: string | null;
+  instrutorTrabalhadorId?: string | null;
   numeroCertificado?: string | null;
   status: number;
   dataEncerramento?: string | null;
@@ -849,6 +850,47 @@ export interface SessaoTreinamentoDetalhe {
   sessao: SessaoTreinamento;
   participantes: ParticipanteSessaoTreinamento[];
   fotosEvidencia: FotoEvidenciaSessaoTreinamento[];
+  instrutor?: InstrutorSessaoTreinamento | null;
+}
+
+// Instrutor escolhido para a turma (28/10) e o andamento da assinatura dele nos certificados.
+export interface InstrutorSessaoTreinamento {
+  trabalhadorId: string;
+  nome: string;
+  formacaoDescricao: string;
+  registroDescricao?: string | null;
+  podeAssinarEmOutrasObras: boolean;
+  totalCertificados: number;
+  certificadosAssinados: number;
+}
+
+export const FormacaoInstrutor = { TecnicoSegurancaTrabalho: 1, EngenheiroSegurancaTrabalho: 2 } as const;
+export const ConselhoInstrutor = { Mte: 1, Crea: 2 } as const;
+
+// Perfil de instrutor de treinamento (28/10): quem pode assinar como instrutor nas turmas.
+export interface PerfilInstrutor {
+  id: string;
+  trabalhadorId: string;
+  trabalhadorNome: string;
+  funcaoNome?: string | null;
+  obraNome?: string | null;
+  formacao: number;
+  formacaoDescricao: string;
+  conselho?: number | null;
+  numeroRegistro?: string | null;
+  ufRegistro?: string | null;
+  registroDescricao?: string | null;
+  podeAssinarEmOutrasObras: boolean;
+  autorizadoOutrasObrasEm?: string | null;
+}
+
+export interface SalvarPerfilInstrutorCorpo {
+  trabalhadorId: string;
+  formacao: number;
+  conselho?: number | null;
+  numeroRegistro?: string | null;
+  ufRegistro?: string | null;
+  podeAssinarEmOutrasObras: boolean;
 }
 
 // Módulo de Requisitos Legais — Motor de Aplicabilidade Legal (requisito do usuário, 2026-08-29).
@@ -5383,7 +5425,25 @@ export const api = {
     removerManual: (trabalhadorId: string) =>
       request<void>(`/api/termoscompromissoepi/${trabalhadorId}/manual`, { method: 'DELETE' }),
   },
+  instrutores: {
+    listar: () => request<PerfilInstrutor[]>('/api/instrutores'),
+    salvar: (corpo: SalvarPerfilInstrutorCorpo) =>
+      request<{ id: string }>('/api/instrutores', { method: 'PUT', body: JSON.stringify(corpo) }),
+  },
   sessoesTreinamento: {
+    definirInstrutor: (sessaoId: string, instrutorTrabalhadorId: string) =>
+      request<void>(`/api/sessoestreinamento/${sessaoId}/instrutor`, {
+        method: 'PUT',
+        body: JSON.stringify({ instrutorTrabalhadorId }),
+      }),
+    // O instrutor lê a digital uma vez e assina todos os certificados da turma.
+    assinarComoInstrutor: async (sessaoId: string, credencial: CredencialLeitura, trabalhadorId: string, score: number, imagemDigital?: string | null) => {
+      const localizacao = localizacaoParaCorpo(await obterLocalizacaoAssinatura());
+      return request<{ assinados: number; jaAssinados: number; falhas: number; primeiraFalha?: string | null }>(
+        `/api/sessoestreinamento/${sessaoId}/instrutor/assinar/biometria-local`,
+        { method: 'POST', body: JSON.stringify({ ...credencial, trabalhadorId, score, imagemDigital: imagemDigital ?? null, localizacao }) },
+      );
+    },
     listar: (obraId?: string) => request<SessaoTreinamento[]>(`/api/sessoestreinamento${obraId ? `?obraId=${obraId}` : ''}`),
     obterDetalhe: (id: string) => request<SessaoTreinamentoDetalhe>(`/api/sessoestreinamento/${id}`),
     padrao: (cursoTreinamentoId: string, obraId?: string) =>

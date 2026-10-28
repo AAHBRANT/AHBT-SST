@@ -12,6 +12,7 @@ public class SessaoTreinamentoDto
     public DateTime DataRealizacao { get; set; }
     public int CargaHorariaRealizada { get; set; }
     public string? InstituicaoInstrutor { get; set; }
+    public Guid? InstrutorTrabalhadorId { get; set; }
     public string? NumeroCertificado { get; set; }
     public StatusSessaoTreinamento Status { get; set; }
     public DateTime? DataEncerramento { get; set; }
@@ -51,4 +52,18 @@ public class SessaoTreinamentoDetalheDto
     public SessaoTreinamentoDto Sessao { get; set; } = null!;
     public List<ParticipanteSessaoTreinamentoDto> Participantes { get; set; } = new();
     public List<FotoEvidenciaSessaoTreinamentoDto> FotosEvidencia { get; set; } = new();
+
+    // Instrutor escolhido para a turma (nulo nas turmas antigas) e o andamento da assinatura dele.
+    public InstrutorSessaoTreinamentoDto? Instrutor { get; set; }
+}
+
+public class InstrutorSessaoTreinamentoDto
+{
+    public Guid TrabalhadorId { get; set; }
+    public string Nome { get; set; } = string.Empty;
+    public string FormacaoDescricao { get; set; } = string.Empty;
+    public string? RegistroDescricao { get; set; }
+    public bool PodeAssinarEmOutrasObras { get; set; }
+    public int TotalCertificados { get; set; }
+    public int CertificadosAssinados { get; set; }
 }

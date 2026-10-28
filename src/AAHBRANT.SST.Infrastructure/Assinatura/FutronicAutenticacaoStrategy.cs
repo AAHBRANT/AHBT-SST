@@ -21,19 +21,28 @@ public class FutronicAutenticacaoStrategy : IAutenticacaoBiometriaLocalService
     }
 
     public async Task<ResultadoAutenticacaoAssinatura> AutenticarPorMatchLocalAsync(
-        Guid dispositivoId, string segredoDispositivo, Guid trabalhadorId, double score, LeituraBiometricaAssinada? leitura, CancellationToken ct)
+        Guid dispositivoId, string segredoDispositivo, Guid trabalhadorId, double score, LeituraBiometricaAssinada? leitura, CancellationToken ct,
+        bool permitirInstrutorDeOutraObra = false)
     {
         var dispositivo = leitura is null
             ? await ValidarLeituraSemAssinaturaAsync(dispositivoId, segredoDispositivo, ct)
             : await ValidarLeituraAssinadaAsync(dispositivoId, leitura, trabalhadorId, score, ct);
 
-        var trabalhador = await _db.Trabalhadores.FirstOrDefaultAsync(t => t.Id == trabalhadorId, ct);
-        if (trabalhador is null || trabalhador.ObraId != dispositivo.ObraId)
+        // Instrutor visitante: perfil ativo com autorização para assinar em outras obras. O filtro de escopo
+        // do Trabalhador esconderia quem é de outra obra, então a busca o ignora só neste caso.
+        var instrutorVisitante = permitirInstrutorDeOutraObra
+            && await _db.PerfisInstrutor.AnyAsync(p => p.TrabalhadorId == trabalhadorId && p.PodeAssinarEmOutrasObras, ct);
+        var consultaTrabalhador = instrutorVisitante
+            ? _db.Trabalhadores.IgnoreQueryFilters().Where(t => t.Ativo)
+            : _db.Trabalhadores;
+        var trabalhador = await consultaTrabalhador.FirstOrDefaultAsync(t => t.Id == trabalhadorId, ct);
+        if (trabalhador is null || (trabalhador.ObraId != dispositivo.ObraId && !instrutorVisitante))
         {
             throw new KeyNotFoundException("Trabalhador não encontrado.");
         }
 
-        var obra = await _db.Obras.FirstOrDefaultAsync(o => o.Id == trabalhador.ObraId, ct);
+        // A obra que precisa aceitar biometria é a do leitor onde a digital foi lida.
+        var obra = await _db.Obras.FirstOrDefaultAsync(o => o.Id == dispositivo.ObraId, ct);
         if (obra is null || !obra.MetodosAutenticacaoHabilitados.HasFlag(MetodoAutenticacaoObra.Biometria))
         {
             throw new InvalidOperationException("Este método de assinatura não está habilitado para a obra deste trabalhador.");

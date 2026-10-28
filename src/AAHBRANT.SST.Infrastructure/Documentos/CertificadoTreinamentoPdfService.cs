@@ -346,12 +346,16 @@ public class CertificadoTreinamentoPdfService : ICertificadoTreinamentoPdfServic
         var assinaturaColaborador = modelo.Signatarios.FirstOrDefault(s => MesmoNome(s.TrabalhadorNome, modelo.TrabalhadorNome));
         var assinaturaInstrutor = modelo.Signatarios.FirstOrDefault(s => MesmoNome(s.TrabalhadorNome, instrutorNome));
         var nomeTecnico = string.IsNullOrWhiteSpace(instrutorNome) ? null : instrutorNome;
-        var registro = string.IsNullOrWhiteSpace(modelo.InstrutorRegistroProfissional) ? null : $"Registro: {modelo.InstrutorRegistroProfissional}";
+        // O perfil de instrutor já entrega o registro pronto ("MTE nº 123/PB"); o texto livre antigo segue com o prefixo.
+        var registro = string.IsNullOrWhiteSpace(modelo.InstrutorRegistroProfissional)
+            ? null
+            : modelo.InstrutorCargo is null ? $"Registro: {modelo.InstrutorRegistroProfissional}" : modelo.InstrutorRegistroProfissional;
+        var cargoInstrutor = modelo.InstrutorCargo ?? "Técnico de Segurança do Trabalho";
 
         container.ShowEntire().Row(linha =>
         {
             linha.RelativeItem();
-            linha.RelativeItem(2).Element(c => BlocoAssinatura(c, nomeTecnico, "Técnico de Segurança do Trabalho", registro is null ? "Instrutor e Responsável Técnico" : $"Instrutor e Responsável Técnico · {registro}", assinaturaInstrutor));
+            linha.RelativeItem(2).Element(c => BlocoAssinatura(c, nomeTecnico, cargoInstrutor, registro is null ? "Instrutor e Responsável Técnico" : $"Instrutor e Responsável Técnico · {registro}", assinaturaInstrutor));
             linha.ConstantItem(60);
             linha.RelativeItem(2).Element(c => BlocoAssinatura(c,
                 modelo.TrabalhadorNome,

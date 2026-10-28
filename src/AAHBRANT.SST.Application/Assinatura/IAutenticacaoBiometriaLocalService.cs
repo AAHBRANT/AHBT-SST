@@ -7,8 +7,13 @@ namespace AAHBRANT.SST.Application.Assinatura;
 // assinatura em vez de confiar no que o navegador manda. O caminho antigo (segredo + nota sem assinatura)
 // só vale para leitores que ainda não registraram a chave, e pode ser desligado em
 // Assinatura:ExigirLeituraAssinadaBiometria.
+//
+// permitirInstrutorDeOutraObra: só a assinatura do instrutor da turma passa true. Aceita um trabalhador de
+// outra obra se ele tiver perfil de instrutor autorizado a assinar em outras obras (a digital dele é
+// sincronizada nos leitores delas). Qualquer outro fluxo continua restrito à obra do leitor.
 public interface IAutenticacaoBiometriaLocalService
 {
     Task<ResultadoAutenticacaoAssinatura> AutenticarPorMatchLocalAsync(
-        Guid dispositivoId, string segredoDispositivo, Guid trabalhadorId, double score, LeituraBiometricaAssinada? leitura, CancellationToken ct);
+        Guid dispositivoId, string segredoDispositivo, Guid trabalhadorId, double score, LeituraBiometricaAssinada? leitura, CancellationToken ct,
+        bool permitirInstrutorDeOutraObra = false);
 }
