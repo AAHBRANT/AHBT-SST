@@ -13,18 +13,32 @@ internal sealed record MarcaDagua(byte[] Png, float Largura);
 // original. Assim a marca d'água funciona com logo de fundo branco e de fundo transparente, e o
 // arquivo cadastrado na Obra não é alterado. A imagem fica sobre o papel branco, atrás do texto.
 //
-// Logos largas e baixas (ex.: a da AAHBRANT, ~4,6:1) ocupam pouca área e sumiam com a opacidade das
-// logos mais "quadradas" (pedido do usuário, 27/10: "mais forte"). Por isso a logo panorâmica é
-// desenhada mais larga e a opacidade sobe conforme a área de tinta que ela efetivamente ocupa na
-// folha, até um teto. As logos já encorpadas (Ponte Rio Cuiá, Parque do Roger) ficam como estavam.
+// Logos largas e baixas (ex.: a da AAHBRANT, ~4,6:1) não servem como marca d'água: ficam atrás das
+// linhas de texto e atrapalham a leitura (pedido do usuário, 27/10). O PGR as coloca no cabeçalho
+// (ver EhLarga) e só as demais passam por aqui. A opacidade sobe conforme a área de tinta que a logo
+// ocupa na folha, até um teto, para logos mais leves não sumirem.
 internal static class MarcaDaguaLogo
 {
     private const int LarguraMaximaImagem = 1000;
     private const float LarguraPadrao = 370;
-    private const float LarguraPanoramica = 470; // largura útil do texto numa A4 com margem de 2 cm
-    private const float AspectoPanoramico = 1.8f;
+    private const float AspectoLogoLarga = 1.8f; // Ponte Rio Cuiá ~1,6 e Parque do Roger ~1,0 ficam abaixo
     private const float AreaDeTintaReferencia = 20000; // pt² de tinta das logos que já ficam bem como estão
     private const float ReforcoMaximo = 2.5f;
+
+    // Logo larga e baixa (largura ≥ 1,8 × altura). Logo ilegível devolve false.
+    public static bool EhLarga(byte[]? logo)
+    {
+        if (logo is null || logo.Length == 0) return false;
+        try
+        {
+            var info = Image.Identify(logo);
+            return info.Height > 0 && info.Width / (float)info.Height >= AspectoLogoLarga;
+        }
+        catch (Exception ex) when (ex is UnknownImageFormatException or InvalidImageContentException or NotSupportedException)
+        {
+            return false;
+        }
+    }
 
     private static byte Misturar(byte canal, float peso) =>
         (byte)Math.Clamp((int)MathF.Round(255f - (255f - canal) * peso), 0, 255);
@@ -43,7 +57,7 @@ internal static class MarcaDaguaLogo
                 imagem.Mutate(x => x.Resize(LarguraMaximaImagem, 0));
 
             var aspecto = imagem.Width / (float)imagem.Height;
-            var largura = aspecto >= AspectoPanoramico ? LarguraPanoramica : LarguraPadrao;
+            var largura = LarguraPadrao;
 
             double somaTinta = 0;
             imagem.ProcessPixelRows(linhas =>

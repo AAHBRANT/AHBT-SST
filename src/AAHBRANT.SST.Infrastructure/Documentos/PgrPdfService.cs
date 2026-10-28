@@ -44,28 +44,34 @@ public class PgrPdfService : IPgrPdfService
     public byte[] Gerar(DadosPgrPdf d, byte[]? logoObra)
     {
         var emitidoEm = HorarioBrasilia.De(d.GeradoEmUtc);
-        // Marca d'água com a logo cadastrada na Obra em todas as páginas; um pouco mais forte na capa.
-        var marcaCapa = MarcaDaguaLogo.Preparar(logoObra, OpacidadeMarcaCapa);
-        var marcaPaginas = MarcaDaguaLogo.Preparar(logoObra, OpacidadeMarcaPaginas);
+        // Logo larga e baixa (ex.: AAHBRANT) atrapalharia a leitura como marca d'água, atrás das linhas de
+        // texto: vai no cabeçalho de todas as páginas e grande no alto da capa (pedido do usuário, 27/10).
+        // As demais logos viram marca d'água clara, um pouco mais forte na capa.
+        var logoLarga = MarcaDaguaLogo.EhLarga(logoObra) ? logoObra : null;
+        var marcaCapa = logoLarga is null ? MarcaDaguaLogo.Preparar(logoObra, OpacidadeMarcaCapa) : null;
+        var marcaPaginas = logoLarga is null ? MarcaDaguaLogo.Preparar(logoObra, OpacidadeMarcaPaginas) : null;
 
         return Document.Create(container =>
         {
-            Capa(container, d, marcaCapa);
-            Sumario(container, d, marcaPaginas);
-            Conteudo(container, d, emitidoEm, marcaPaginas);
+            Capa(container, d, marcaCapa, logoLarga);
+            Sumario(container, d, marcaPaginas, logoLarga);
+            Conteudo(container, d, emitidoEm, marcaPaginas, logoLarga);
         }).GeneratePdf();
     }
 
     // ───────────────────────────── Capa e sumário ─────────────────────────────
 
-    private static void Capa(IDocumentContainer container, DadosPgrPdf d, MarcaDagua? marcaDagua)
+    private static void Capa(IDocumentContainer container, DadosPgrPdf d, MarcaDagua? marcaDagua, byte[]? logoLarga)
     {
         container.Page(p =>
         {
             ConfigurarPagina(p, marcaDagua);
             p.Content().Column(c =>
             {
-                c.Item().Height(60);
+                c.Item().Height(60).AlignLeft().Element(e =>
+                {
+                    if (logoLarga is not null) e.Width(250).Height(60).Image(logoLarga).FitArea();
+                });
                 c.Item().PaddingTop(150).Text("PROGRAMA DE GERENCIAMENTO DE RISCOS").FontSize(9).LetterSpacing(0.12f).FontColor(Secundario);
                 c.Item().PaddingTop(10).Text("PGR").FontSize(54).Bold().FontColor(Texto);
                 c.Item().PaddingTop(10).Width(48).LineHorizontal(2).LineColor(Marca);
@@ -82,12 +88,12 @@ public class PgrPdfService : IPgrPdfService
         });
     }
 
-    private static void Sumario(IDocumentContainer container, DadosPgrPdf d, MarcaDagua? marcaDagua)
+    private static void Sumario(IDocumentContainer container, DadosPgrPdf d, MarcaDagua? marcaDagua, byte[]? logoLarga)
     {
         container.Page(p =>
         {
             ConfigurarPagina(p, marcaDagua);
-            Cabecalho(p, d);
+            Cabecalho(p, d, logoLarga);
             p.Content().Column(c =>
             {
                 c.Item().PaddingBottom(14).Text("Sumário").FontSize(20).Bold().FontColor(Texto);
@@ -107,12 +113,12 @@ public class PgrPdfService : IPgrPdfService
 
     // ───────────────────────────── Conteúdo ─────────────────────────────
 
-    private static void Conteudo(IDocumentContainer container, DadosPgrPdf d, DateTime emitidoEm, MarcaDagua? marcaDagua)
+    private static void Conteudo(IDocumentContainer container, DadosPgrPdf d, DateTime emitidoEm, MarcaDagua? marcaDagua, byte[]? logoLarga)
     {
         container.Page(p =>
         {
             ConfigurarPagina(p, marcaDagua);
-            Cabecalho(p, d);
+            Cabecalho(p, d, logoLarga);
             p.Content().Column(c =>
             {
                 c.Spacing(7);
@@ -420,17 +426,24 @@ public class PgrPdfService : IPgrPdfService
             p.Background().AlignCenter().AlignMiddle().Width(marcaDagua.Largura).Image(marcaDagua.Png).FitWidth();
     }
 
-    private static void Cabecalho(PageDescriptor p, DadosPgrPdf d) =>
+    private static void Cabecalho(PageDescriptor p, DadosPgrPdf d, byte[]? logoLarga) =>
         p.Header().PaddingBottom(14).Column(h =>
         {
             h.Item().Row(r =>
             {
-                r.RelativeItem().Text("PGR · Programa de Gerenciamento de Riscos").FontSize(8).FontColor(Secundario);
-                r.RelativeItem().AlignRight().Text(d.ObraNome).FontSize(8).FontColor(Secundario);
+                if (logoLarga is not null)
+                    r.ConstantItem(112).AlignMiddle().Width(112).Height(26).Image(logoLarga).FitArea();
+                r.RelativeItem().PaddingLeft(logoLarga is null ? 0 : 10).AlignMiddle()
+                    .Text("PGR · Programa de Gerenciamento de Riscos").FontSize(8).FontColor(Secundario);
+                r.RelativeItem().AlignRight().AlignMiddle().Text(d.ObraNome).FontSize(8).FontColor(Secundario);
             });
             if (d.Minuta)
                 h.Item().PaddingTop(3).Text("MINUTA PARA CONFERÊNCIA · NÃO ASSINADO · SEM VALOR DOCUMENTAL").FontSize(8).Bold().FontColor(Marca);
-            h.Item().PaddingTop(4).LineHorizontal(0.5f).LineColor(Linha);
+            // Com logo no cabeçalho o filete vira vinho, como nos demais documentos do sistema.
+            if (logoLarga is null)
+                h.Item().PaddingTop(4).LineHorizontal(0.5f).LineColor(Linha);
+            else
+                h.Item().PaddingTop(5).LineHorizontal(1.5f).LineColor(Marca);
         });
 
     private static void Rodape(PageDescriptor p, DadosPgrPdf d) =>
