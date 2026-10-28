@@ -30,7 +30,7 @@ public class CriarEntregaEpiCommandValidator : AbstractValidator<CriarEntregaEpi
     {
         RuleFor(x => x.TrabalhadorId).NotEmpty();
         RuleFor(x => x.CatalogoEpiId).NotEmpty();
-        RuleFor(x => x.DataEntrega).NotEmpty();
+        RuleFor(x => x.DataEntrega).NotEmpty().NaoFutura("A data de entrega");
         RuleFor(x => x.Quantidade).GreaterThan(0);
         RuleFor(x => x.MotivoTipo).IsInEnum();
         RuleFor(x => x.NumeroListaPresencaNr6).MaximumLength(50);

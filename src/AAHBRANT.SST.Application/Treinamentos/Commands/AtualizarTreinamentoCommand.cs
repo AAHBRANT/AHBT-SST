@@ -1,3 +1,4 @@
+using AAHBRANT.SST.Application.Common;
 using AAHBRANT.SST.Application.Assinatura;
 using AAHBRANT.SST.Application.Common.Interfaces;
 using AAHBRANT.SST.Application.Common.Seguranca;
@@ -28,7 +29,7 @@ public class AtualizarTreinamentoCommandValidator : AbstractValidator<AtualizarT
         RuleFor(x => x.Id).NotEmpty();
         RuleFor(x => x.TrabalhadorId).NotEmpty();
         RuleFor(x => x.CursoTreinamentoId).NotEmpty();
-        RuleFor(x => x.DataRealizacao).NotEmpty();
+        RuleFor(x => x.DataRealizacao).NotEmpty().NaoFutura("A data de realização");
         RuleFor(x => x.DataValidade).NotEmpty().GreaterThanOrEqualTo(x => x.DataRealizacao);
         RuleFor(x => x.OrigemCertificado).IsInEnum();
     }

@@ -5,6 +5,13 @@ interface CampoDataProps extends Omit<InputProps, 'value' | 'onChange' | 'type'>
   /** Data em ISO (yyyy-MM-dd), ou string vazia se não preenchida — mesmo formato de <Input type="date">. */
   value: string;
   onChange: NonNullable<InputProps['onChange']>;
+  /** Fato já ocorrido (realização de treinamento, entrega de EPI): avisa na hora se a data é futura. */
+  naoFutura?: boolean;
+}
+
+function hojeIso(): string {
+  const d = new Date();
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
 }
 
 function isoParaExibicao(iso: string): string {
@@ -42,25 +49,35 @@ function mascaraParaIso(mascara: string): string {
 // direto, sem parar em nenhum segmento nem abrir seletor nenhum. Mantém o mesmo contrato de
 // value/onChange de <Input type="date"> (ambos em ISO yyyy-MM-dd) pra ser um substituto direto em
 // qualquer formulário existente.
-export function CampoData({ value, onChange, ...resto }: CampoDataProps) {
+export function CampoData({ value, onChange, naoFutura, ...resto }: CampoDataProps) {
   const [texto, setTexto] = useState(() => isoParaExibicao(value));
 
   useEffect(() => {
     setTexto(isoParaExibicao(value));
   }, [value]);
 
+  const futura = !!naoFutura && !!value && value.slice(0, 10) > hojeIso();
+
   return (
-    <Input
-      {...resto}
-      value={texto}
-      placeholder="dd/mm/aaaa"
-      inputMode="numeric"
-      onChange={(ev, data) => {
-        const digitos = data.value.replace(/\D/g, '').slice(0, 8);
-        const mascarado = digitosParaMascara(digitos);
-        setTexto(mascarado);
-        onChange(ev, { value: mascaraParaIso(mascarado) });
-      }}
-    />
+    <>
+      <Input
+        {...resto}
+        value={texto}
+        placeholder="dd/mm/aaaa"
+        inputMode="numeric"
+        aria-invalid={futura || undefined}
+        onChange={(ev, data) => {
+          const digitos = data.value.replace(/\D/g, '').slice(0, 8);
+          const mascarado = digitosParaMascara(digitos);
+          setTexto(mascarado);
+          onChange(ev, { value: mascaraParaIso(mascarado) });
+        }}
+      />
+      {futura && (
+        <span role="alert" style={{ display: 'block', color: '#B10E1C', fontSize: 12, marginTop: 2 }}>
+          Data futura não é permitida.
+        </span>
+      )}
+    </>
   );
 }

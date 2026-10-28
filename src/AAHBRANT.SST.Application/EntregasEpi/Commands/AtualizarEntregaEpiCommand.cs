@@ -1,3 +1,4 @@
+using AAHBRANT.SST.Application.Common;
 using AAHBRANT.SST.Application.Assinatura;
 using AAHBRANT.SST.Application.Common.Interfaces;
 using AAHBRANT.SST.Application.EstoquesEpi.Minimo;
@@ -34,7 +35,7 @@ public class AtualizarEntregaEpiCommandValidator : AbstractValidator<AtualizarEn
         RuleFor(x => x.Id).NotEmpty();
         RuleFor(x => x.TrabalhadorId).NotEmpty();
         RuleFor(x => x.CatalogoEpiId).NotEmpty();
-        RuleFor(x => x.DataEntrega).NotEmpty();
+        RuleFor(x => x.DataEntrega).NotEmpty().NaoFutura("A data de entrega");
         RuleFor(x => x.Quantidade).GreaterThan(0);
         RuleFor(x => x.MotivoTipo).IsInEnum();
         RuleFor(x => x.NumeroListaPresencaNr6).MaximumLength(50);

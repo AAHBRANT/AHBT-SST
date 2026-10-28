@@ -1,3 +1,4 @@
+using AAHBRANT.SST.Application.Common;
 using AAHBRANT.SST.Application.Alertas.Motor;
 using AAHBRANT.SST.Application.Common.Interfaces;
 using AAHBRANT.SST.Application.PlanosIntegracao;
@@ -18,7 +19,7 @@ public class AlterarDataSessaoTreinamentoCommandValidator : AbstractValidator<Al
     public AlterarDataSessaoTreinamentoCommandValidator()
     {
         RuleFor(x => x.Id).NotEmpty();
-        RuleFor(x => x.DataRealizacao).NotEmpty();
+        RuleFor(x => x.DataRealizacao).NotEmpty().NaoFutura("A data de realização");
     }
 }
 

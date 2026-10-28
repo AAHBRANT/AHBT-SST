@@ -276,6 +276,7 @@ export function TurmasTab() {
             <Campo span={6}>
               <Field label="Data de realização">
                 <CampoData
+                  naoFutura
                   value={novaTurma.dataRealizacao}
                   onChange={(_, d) => setNovaTurma({ ...novaTurma, dataRealizacao: d.value })}
                 />

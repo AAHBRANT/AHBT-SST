@@ -468,7 +468,7 @@ export function CertificadosTab() {
               </Campo>
               <Campo span={6}>
                 <Field label="Data de realização" required>
-                  <CampoData value={novo.dataRealizacao} onChange={(_, d) => selecionarDataRealizacao(d.value)} />
+                  <CampoData naoFutura value={novo.dataRealizacao} onChange={(_, d) => selecionarDataRealizacao(d.value)} />
                 </Field>
               </Campo>
               <Campo span={6}>
