@@ -196,14 +196,37 @@ public class PgrPdfServiceTests
     [Fact]
     public void MarcaDaguaLogo_MantemOFundoBrancoEClareiaOTraco()
     {
-        var png = MarcaDaguaLogo.Preparar(LogoDeFundoBranco(), 0.07f);
+        var marca = MarcaDaguaLogo.Preparar(LogoDeFundoBranco(), 0.07f);
 
-        Assert.NotNull(png);
-        using var img = SixLabors.ImageSharp.Image.Load<SixLabors.ImageSharp.PixelFormats.Rgba32>(png!);
+        Assert.NotNull(marca);
+        using var img = SixLabors.ImageSharp.Image.Load<SixLabors.ImageSharp.PixelFormats.Rgba32>(marca!.Png);
         Assert.Equal(new SixLabors.ImageSharp.PixelFormats.Rgba32(255, 255, 255, 255), img[2, 2]);
         var traco = img[img.Width / 2, img.Height / 2];
         Assert.Equal(255, traco.A);
         Assert.InRange(traco.R, 230, 252); // ~7% do tom escuro original sobre o branco
+    }
+
+    private static byte[] LogoPanoramicaFina()
+    {
+        using var img = new SixLabors.ImageSharp.Image<SixLabors.ImageSharp.PixelFormats.Rgba32>(900, 190, SixLabors.ImageSharp.Color.White);
+        for (var y = 80; y < 100; y++)
+            for (var x = 20; x < 880; x++)
+                img[x, y] = new SixLabors.ImageSharp.PixelFormats.Rgba32(10, 10, 60, 255);
+        using var ms = new MemoryStream();
+        SixLabors.ImageSharp.ImageExtensions.SaveAsPng(img, ms);
+        return ms.ToArray();
+    }
+
+    [Fact]
+    public void MarcaDaguaLogo_LogoPanoramicaFinaFicaMaisLargaEMaisForteQueALogoEncorpada()
+    {
+        var encorpada = MarcaDaguaLogo.Preparar(LogoDeFundoBranco(), 0.07f)!;
+        var panoramica = MarcaDaguaLogo.Preparar(LogoPanoramicaFina(), 0.07f)!;
+
+        Assert.True(panoramica.Largura > encorpada.Largura);
+        using var a = SixLabors.ImageSharp.Image.Load<SixLabors.ImageSharp.PixelFormats.Rgba32>(encorpada.Png);
+        using var b = SixLabors.ImageSharp.Image.Load<SixLabors.ImageSharp.PixelFormats.Rgba32>(panoramica.Png);
+        Assert.True(b[b.Width / 2, b.Height / 2].R < a[a.Width / 2, a.Height / 2].R, "o tom da logo fina deve ser mais escuro");
     }
 
     [Fact]

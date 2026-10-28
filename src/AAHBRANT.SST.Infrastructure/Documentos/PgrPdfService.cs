@@ -20,8 +20,7 @@ public class PgrPdfService : IPgrPdfService
     private const string Linha = "#d9d9d9";
     private const string Fundo = "#f6f6f6";
 
-    // Marca d'água da logo da obra (modelo A aprovado em 27/10/2026): centralizada, ~62% da largura da folha.
-    private const float LarguraMarcaDagua = 370;
+    // Marca d'água da logo da obra (modelo A aprovado em 27/10/2026): centralizada (largura e reforço em MarcaDaguaLogo).
     private const float OpacidadeMarcaCapa = 0.085f;
     private const float OpacidadeMarcaPaginas = 0.07f;
 
@@ -59,7 +58,7 @@ public class PgrPdfService : IPgrPdfService
 
     // ───────────────────────────── Capa e sumário ─────────────────────────────
 
-    private static void Capa(IDocumentContainer container, DadosPgrPdf d, byte[]? marcaDagua)
+    private static void Capa(IDocumentContainer container, DadosPgrPdf d, MarcaDagua? marcaDagua)
     {
         container.Page(p =>
         {
@@ -83,7 +82,7 @@ public class PgrPdfService : IPgrPdfService
         });
     }
 
-    private static void Sumario(IDocumentContainer container, DadosPgrPdf d, byte[]? marcaDagua)
+    private static void Sumario(IDocumentContainer container, DadosPgrPdf d, MarcaDagua? marcaDagua)
     {
         container.Page(p =>
         {
@@ -108,7 +107,7 @@ public class PgrPdfService : IPgrPdfService
 
     // ───────────────────────────── Conteúdo ─────────────────────────────
 
-    private static void Conteudo(IDocumentContainer container, DadosPgrPdf d, DateTime emitidoEm, byte[]? marcaDagua)
+    private static void Conteudo(IDocumentContainer container, DadosPgrPdf d, DateTime emitidoEm, MarcaDagua? marcaDagua)
     {
         container.Page(p =>
         {
@@ -412,13 +411,13 @@ public class PgrPdfService : IPgrPdfService
 
     // ───────────────────────────── Peças reutilizáveis ─────────────────────────────
 
-    private static void ConfigurarPagina(PageDescriptor p, byte[]? marcaDagua)
+    private static void ConfigurarPagina(PageDescriptor p, MarcaDagua? marcaDagua)
     {
         p.Size(PageSizes.A4);
         p.Margin(2f, Unit.Centimetre);
         p.DefaultTextStyle(s => s.FontSize(9.5f).FontColor(Texto).LineHeight(1.35f));
         if (marcaDagua is not null)
-            p.Background().AlignCenter().AlignMiddle().Width(LarguraMarcaDagua).Image(marcaDagua).FitWidth();
+            p.Background().AlignCenter().AlignMiddle().Width(marcaDagua.Largura).Image(marcaDagua.Png).FitWidth();
     }
 
     private static void Cabecalho(PageDescriptor p, DadosPgrPdf d) =>
