@@ -1,3 +1,4 @@
+using AAHBRANT.SST.Application.Assinatura;
 using AAHBRANT.SST.Application.Obras.Commands;
 using AAHBRANT.SST.Application.Obras.Queries;
 using AAHBRANT.SST.Domain.Enums;
@@ -13,7 +14,15 @@ public class ObrasController : ControllerBase
 {
     private readonly IMediator _mediator;
 
-    public ObrasController(IMediator mediator) => _mediator = mediator;
+    private readonly IServiceScopeFactory _scopeFactory;
+    private readonly ILogger<ObrasController> _logger;
+
+    public ObrasController(IMediator mediator, IServiceScopeFactory scopeFactory, ILogger<ObrasController> logger)
+    {
+        _mediator = mediator;
+        _scopeFactory = scopeFactory;
+        _logger = logger;
+    }
 
     [Authorize(Policy = "organizacional:ver")]
     [HttpGet]
@@ -95,6 +104,36 @@ public class ObrasController : ControllerBase
         var command = new AnexarLogoObraCommand(id, stream.ToArray(), body.Logo.ContentType);
         await _mediator.Send(command, ct);
         return NoContent();
+    }
+
+    // Reconstrói o grupo facial da obra no Azure a partir das fotos de cadastro já guardadas (ninguém é
+    // fotografado de novo). Para quando o banco aponta para um grupo que não existe mais no Azure em uso
+    // e todo rosto da obra volta como "não reconhecido". Reservado ao Administrador (mesma policy da
+    // exclusão). Leva minutos (uma chamada ao Azure por pessoa, respeitando a cota), por isso responde 202
+    // e roda em segundo plano; o resultado vai para o log da API.
+    [Authorize(Policy = "organizacional:excluir")]
+    [HttpPost("{id:guid}/facial/recriar-grupo")]
+    public IActionResult RecriarGrupoFacial(Guid id)
+    {
+        _ = Task.Run(async () =>
+        {
+            try
+            {
+                using var escopo = _scopeFactory.CreateScope();
+                var facial = escopo.ServiceProvider.GetRequiredService<IAutenticacaoFacialService>();
+                var resultado = await facial.MigrarModeloReconhecimentoAsync(id, CancellationToken.None);
+                if (resultado is null)
+                    _logger.LogInformation("Obra {ObraId}: grupo facial já está íntegro, nada a recriar.", id);
+                else
+                    _logger.LogInformation("Obra {ObraId}: grupo facial recriado com {Migrados} cadastro(s); refazer: {Refazer}.",
+                        id, resultado.Migrados, resultado.SemCadastroAposMigracao.Count == 0 ? "ninguém" : string.Join(", ", resultado.SemCadastroAposMigracao));
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Falha ao recriar o grupo facial da obra {ObraId}.", id);
+            }
+        });
+        return Accepted();
     }
 
     [Authorize(Policy = "organizacional:ver")]

@@ -621,6 +621,61 @@ public class AzureFaceAutenticacaoStrategyTests
         Assert.Contains("/face/v1.0/persongroups/obra-antiga", apagados);
     }
 
+    // Grupo que o banco ainda aponta mas sumiu do Azure em uso (troca de recurso): reconstrói das fotos
+    // guardadas e devolve os mesmos trabalhadores ao reconhecimento, sem ninguém ser fotografado de novo.
+    [Fact]
+    public async Task MigrarModeloReconhecimentoAsync_GrupoAusenteNoAzure_ReconstroiDasFotosGuardadas()
+    {
+        var (db, obra, comFoto, recusada) = await CenarioMigracao(nameof(MigrarModeloReconhecimentoAsync_GrupoAusenteNoAzure_ReconstroiDasFotosGuardadas));
+        var grupoNovo = $"obra-{obra.Id:N}-r4";
+        var pessoas = 0;
+        var factory = new HttpClientFactoryFalso(req =>
+        {
+            var caminho = req.RequestUri!.AbsolutePath;
+            if (req.Method == HttpMethod.Get && caminho.EndsWith("/persongroups/obra-antiga"))
+                return Json(new { error = new { code = "PersonGroupNotFound" } }, HttpStatusCode.NotFound);
+            if (req.Method == HttpMethod.Delete)
+                return new HttpResponseMessage(HttpStatusCode.OK);
+            if (req.Method == HttpMethod.Put && caminho.EndsWith($"/persongroups/{grupoNovo}"))
+                return new HttpResponseMessage(HttpStatusCode.OK);
+            if (caminho.EndsWith("/persons"))
+                return Json(new { personId = $"p-novo-{++pessoas}" });
+            if (caminho.EndsWith("/persistedFaces"))
+                return Json(new { persistedFaceId = "f" });
+            if (caminho.EndsWith("/train"))
+                return new HttpResponseMessage(HttpStatusCode.Accepted);
+            if (caminho.EndsWith("/training"))
+                return Json(new { status = "succeeded" });
+            throw new InvalidOperationException("chamada inesperada: " + req.Method + " " + req.RequestUri);
+        });
+        var servico = new AzureFaceAutenticacaoStrategy(db, factory, OpcoesSemPausa());
+
+        var resultado = await servico.MigrarModeloReconhecimentoAsync(obra.Id, default);
+
+        Assert.NotNull(resultado);
+        Assert.Equal(2, resultado!.Migrados);
+        Assert.Equal(grupoNovo, (await db.Obras.FirstAsync(o => o.Id == obra.Id)).AzureFacePersonGroupId);
+        Assert.StartsWith("p-novo-", (await db.Trabalhadores.FirstAsync(t => t.Id == comFoto.Id)).AzureFacePersonId);
+        Assert.StartsWith("p-novo-", (await db.Trabalhadores.FirstAsync(t => t.Id == recusada.Id)).AzureFacePersonId);
+    }
+
+    [Fact]
+    public async Task MigrarModeloReconhecimentoAsync_GrupoAusenteSemNenhumCadastro_NaoFazNada()
+    {
+        var db = CriarDb(nameof(MigrarModeloReconhecimentoAsync_GrupoAusenteSemNenhumCadastro_NaoFazNada));
+        var obra = new Obra { Codigo = "OB1", Nome = "Obra", AzureFacePersonGroupId = "obra-antiga" };
+        db.Obras.Add(obra);
+        await db.SaveChangesAsync();
+        var factory = new HttpClientFactoryFalso(req =>
+            req.Method == HttpMethod.Get && req.RequestUri!.AbsolutePath.EndsWith("/persongroups/obra-antiga")
+                ? Json(new { error = new { code = "PersonGroupNotFound" } }, HttpStatusCode.NotFound)
+                : throw new InvalidOperationException("não deveria chamar: " + req.RequestUri));
+        var servico = new AzureFaceAutenticacaoStrategy(db, factory, OpcoesSemPausa());
+
+        Assert.Null(await servico.MigrarModeloReconhecimentoAsync(obra.Id, default));
+        Assert.Equal("obra-antiga", (await db.Obras.FirstAsync(o => o.Id == obra.Id)).AzureFacePersonGroupId);
+    }
+
     [Fact]
     public async Task MigrarModeloReconhecimentoAsync_GrupoJaNoModeloAtual_NaoFazNada()
     {
@@ -628,11 +683,59 @@ public class AzureFaceAutenticacaoStrategyTests
         var factory = new HttpClientFactoryFalso(req =>
             req.Method == HttpMethod.Get && req.RequestUri!.AbsolutePath.EndsWith("/persongroups/obra-antiga")
                 ? Json(new { recognitionModel = "recognition_04" })
-                : throw new InvalidOperationException("não deveria chamar: " + req.RequestUri));
+                : req.Method == HttpMethod.Get && req.RequestUri!.AbsolutePath.EndsWith("/persongroups/obra-antiga/persons")
+                    ? Json(new[] { new { personId = "p1" } })
+                    : throw new InvalidOperationException("não deveria chamar: " + req.RequestUri));
         var servico = new AzureFaceAutenticacaoStrategy(db, factory, OpcoesSemPausa());
 
         Assert.Null(await servico.MigrarModeloReconhecimentoAsync(obra.Id, default));
         Assert.Equal("obra-antiga", (await db.Obras.FirstAsync(o => o.Id == obra.Id)).AzureFacePersonGroupId);
+    }
+
+    // Grupo já no id e modelo novos, porém sem nenhuma pessoa (criado vazio por uma tentativa que falhou) enquanto
+    // o banco tem cadastros: é reconstruído e, por ter o mesmo id, não é apagado no fim.
+    [Fact]
+    public async Task MigrarModeloReconhecimentoAsync_GrupoNoModeloAtualMasVazio_ReconstroiESemApagarOGrupoNovo()
+    {
+        var (db, obra, comFoto, recusada) = await CenarioMigracao(nameof(MigrarModeloReconhecimentoAsync_GrupoNoModeloAtualMasVazio_ReconstroiESemApagarOGrupoNovo));
+        var grupoVazio = $"obra-{obra.Id:N}-r4";
+        obra.AzureFacePersonGroupId = grupoVazio;
+        await db.SaveChangesAsync();
+        var pessoas = 0;
+        var apagados = new List<string>();
+        var factory = new HttpClientFactoryFalso(req =>
+        {
+            var caminho = req.RequestUri!.AbsolutePath;
+            if (req.Method == HttpMethod.Get && caminho.EndsWith($"/persongroups/{grupoVazio}"))
+                return Json(new { recognitionModel = "recognition_04" });
+            if (req.Method == HttpMethod.Get && caminho.EndsWith("/persons"))
+                return Json(Array.Empty<object>());
+            if (req.Method == HttpMethod.Delete)
+            {
+                apagados.Add(caminho);
+                return new HttpResponseMessage(HttpStatusCode.OK);
+            }
+            if (req.Method == HttpMethod.Put && caminho.EndsWith($"/persongroups/{grupoVazio}"))
+                return new HttpResponseMessage(HttpStatusCode.OK);
+            if (caminho.EndsWith("/persons"))
+                return Json(new { personId = $"p-novo-{++pessoas}" });
+            if (caminho.EndsWith("/persistedFaces"))
+                return Json(new { persistedFaceId = "f" });
+            if (caminho.EndsWith("/train"))
+                return new HttpResponseMessage(HttpStatusCode.Accepted);
+            if (caminho.EndsWith("/training"))
+                return Json(new { status = "succeeded" });
+            throw new InvalidOperationException("chamada inesperada: " + req.Method + " " + req.RequestUri);
+        });
+        var servico = new AzureFaceAutenticacaoStrategy(db, factory, OpcoesSemPausa());
+
+        var resultado = await servico.MigrarModeloReconhecimentoAsync(obra.Id, default);
+
+        Assert.NotNull(resultado);
+        Assert.Equal(2, resultado!.Migrados);
+        Assert.StartsWith("p-novo-", (await db.Trabalhadores.FirstAsync(t => t.Id == comFoto.Id)).AzureFacePersonId);
+        // O único delete é o da limpeza antes de recriar; o grupo reconstruído não é apagado depois.
+        Assert.Single(apagados);
     }
 
     // O faceId da foto de assinatura precisa sair no mesmo modelo do grupo, senão o identify recusa.
