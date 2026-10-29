@@ -1804,6 +1804,21 @@ public static class NovidadesSeeder
                     "Cada tela tinha o próprio filtro de obra, que voltava para \"Todas as obras\" a cada troca de página.",
                     "O seletor \"Obra\" fica no topo, ao lado de \"Atalhos\", em todas as páginas. A obra escolhida vale para o Início e para os painéis de todos os módulos, aparece numa faixa verde no alto da página e fica lembrada no próximo acesso. Para voltar a ver tudo, use \"Ver todas as obras\"."),
             }),
+        new(
+            Versao: "5.107.0",
+            Titulo: "Uniforme: entrega em carrinho com assinatura única",
+            DataPublicacao: new DateTime(2026, 10, 28, 0, 0, 0, DateTimeKind.Utc),
+            Itens: new[]
+            {
+                new NovidadeSeedItem(CategoriaNovidade.Novidade,
+                    "Carrinho de entrega de uniforme",
+                    "A entrega de uniforme era uma peça por vez, com uma tela de assinatura para cada peça.",
+                    "Em Operação › Uniforme › Entrega, clique em \"Nova entrega\", escolha o funcionário e adicione todas as peças da função dele ao carrinho. O tamanho vem do cadastro do funcionário. Peça sem tamanho cadastrado não entra no carrinho e mostra o atalho para cadastrar. Também é possível imprimir o canhoto de recibo antes de confirmar."),
+                new NovidadeSeedItem(CategoriaNovidade.Melhoria,
+                    "Uma assinatura por digital ou facial vale para todas as peças",
+                    "Cada peça pedia uma assinatura própria do funcionário, e o quiosque era o único caminho.",
+                    "Depois de confirmar o carrinho, o entregador assina uma vez e o funcionário assina com um toque no leitor de digital ou com uma foto (facial). Essa assinatura vale para todas as peças do carrinho. Na lista de entregas, o botão de assinatura de cada linha reabre a janela para assinar o que ficou pendente."),
+            }),
     };
 
     public static async Task ExecutarAsync(IServiceProvider services, CancellationToken ct = default)
