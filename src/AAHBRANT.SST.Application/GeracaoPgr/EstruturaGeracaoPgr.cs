@@ -289,6 +289,20 @@ public static class AjudanteGeral
             fica.FuncaoId = idCadastro;
             foreach (var outro in ajudantes.Skip(1)) g.Funcoes.Remove(outro);
         }
+
+        // Um só CBO para o Ajudante Geral em todos os GHEs (orientação do técnico, 29/10/2026): vale o mais usado entre os
+        // GHEs; no empate, o do primeiro GHE.
+        var todos = e.Ghes.SelectMany(g => g.Funcoes).Where(f => f.Nome == Nome).ToList();
+        var escolhido = todos.Where(f => !string.IsNullOrWhiteSpace(f.Cbo))
+            .GroupBy(f => CodigoCbo.Normalizar(f.Cbo) ?? f.Cbo!.Trim())
+            .OrderByDescending(x => x.Count()).Select(x => x.First()).FirstOrDefault();
+        if (escolhido is null) return;
+        foreach (var f in todos)
+        {
+            f.Cbo = escolhido.Cbo;
+            f.CboTitulo = escolhido.CboTitulo;
+            f.CboSugeridoPelaIa = escolhido.CboSugeridoPelaIa;
+        }
     }
 
     public static async Task<Guid?> IdNoCadastroAsync(IAppDbContext db, CancellationToken ct) =>

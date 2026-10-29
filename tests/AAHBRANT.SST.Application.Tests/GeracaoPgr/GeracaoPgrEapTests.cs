@@ -554,6 +554,27 @@ public class GeracaoPgrEapTests
     }
 
     [Fact]
+    public void AjudanteGeral_UmSoCboEmTodosOsGhes_ValeOMaisUsado()
+    {
+        var e = new EstruturaGeracaoPgr
+        {
+            Ghes = new()
+            {
+                new GheGerado { Numero = 1, Funcoes = new() { new FuncaoGerada { Nome = "Servente", Descricao = "Auxilia na demolição", Cbo = "715210" } } },
+                new GheGerado { Numero = 2, Funcoes = new() { new FuncaoGerada { Nome = "Ajudante Geral", Descricao = "Auxilia na limpeza", Cbo = "717020" } } },
+                new GheGerado { Numero = 3, Funcoes = new() { new FuncaoGerada { Nome = "Ajudante de obras", Descricao = "Auxilia no transporte", Cbo = "717020" } } },
+                new GheGerado { Numero = 4, Funcoes = new() { new FuncaoGerada { Nome = "Ajudante de Eletricista", Cbo = "715615" } } },
+            },
+        };
+
+        AjudanteGeral.Unificar(e, null);
+
+        Assert.All(e.Ghes.Take(3).Select(g => g.Funcoes.Single()), f => Assert.Equal(("Ajudante Geral", "717020"), (f.Nome, f.Cbo)));
+        Assert.Equal("Auxilia na demolição", e.Ghes[0].Funcoes[0].Descricao); // a descrição continua a de cada GHE
+        Assert.Equal("715615", e.Ghes[3].Funcoes[0].Cbo);
+    }
+
+    [Fact]
     public async Task SugerirGhes_AjudanteGeral_RecebeServenteDeObrasComoCandidato()
     {
         var (db, obra, _) = await CriarAsync();

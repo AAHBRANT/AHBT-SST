@@ -397,10 +397,12 @@ function GheEditor({ ghe, todos, funcoesCadastradas, editavel, alterar }: {
           </div>
           <div style={{ marginBottom: 6 }}>
             <CampoCbo f={f} editavel={editavel}
-              aoEscolher={(r) => alterar((g) => {
-                g.funcoes[fi].cbo = r.codigo;
-                g.funcoes[fi].cboTitulo = r.titulo;
-                g.funcoes[fi].cboSugeridoPelaIa = false;
+              aoEscolher={(r) => alterar((g, e) => {
+                // O Ajudante Geral tem um só CBO em todos os GHEs: escolher em um vale para todos.
+                const alvos = g.funcoes[fi].nome === 'Ajudante Geral'
+                  ? e.ghes.flatMap((x) => x.funcoes).filter((x) => x.nome === 'Ajudante Geral')
+                  : [g.funcoes[fi]];
+                for (const x of alvos) { x.cbo = r.codigo; x.cboTitulo = r.titulo; x.cboSugeridoPelaIa = false; }
               })} />
           </div>
           <Textarea value={f.descricao ?? ''} disabled={!editavel} maxLength={2000} style={{ width: '100%' }}

@@ -95,6 +95,12 @@ public class ClaudeGeradorPgr : IGeradorPgrIa
         - O ajudante genérico (servente, ajudante de obras, ajudante/servente) se chama SEMPRE "Ajudante Geral",
           em qualquer GHE; só a descrição muda conforme as atividades do GHE. Ajudante de um ofício (ex.: ajudante
           de eletricista, auxiliar de topógrafo) continua com o nome próprio.
+        - A descrição do Ajudante Geral mostra que ele SÓ AUXILIA, nunca executa sozinho: comece cada atividade
+          com "Auxilia" (ex.: "Auxilia na demolição, auxilia na limpeza da área e no transporte manual de material").
+          Nunca atribua a ele atividade que exige habilitação ou treinamento próprio: dirigir veículo, operar máquina
+          ou equipamento, serviço elétrico, solda, montagem de andaime, trabalho em altura como executante. Isso
+          evita caracterizar desvio de função.
+        - Encarregado é por serviço: descreva a coordenação só do serviço daquele GHE.
         - Atividade de código ADM, ou de nome administrativo (administrativo, escritório, almoxarifado,
           apontamento), fica SEMPRE sozinha num GHE de nome "Administrativo", com as funções de apoio (ex.: auxiliar administrativo, almoxarife,
           apontador), nunca junto com frentes de obra.
