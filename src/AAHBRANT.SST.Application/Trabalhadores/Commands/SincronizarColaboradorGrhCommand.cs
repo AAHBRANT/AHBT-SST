@@ -128,14 +128,12 @@ public class SincronizarColaboradorGrhCommandHandler : IRequestHandler<Sincroniz
             .FirstOrDefaultAsync(t => t.CpfHash == hash, ct);
 
         var funcao = await _db.Funcoes.FirstOrDefaultAsync(f => f.Nome == request.CargoNome, ct);
+        // O CBO da função não vem mais do RH: a fonte é a tabela oficial da CBO, escolhida no PGR (decisão do usuário,
+        // 29/10/2026). CargoCboCodigo segue no contrato do evento, mas não é gravado.
         if (funcao is null)
         {
-            funcao = new Funcao { Nome = request.CargoNome, CboCodigo = request.CargoCboCodigo };
+            funcao = new Funcao { Nome = request.CargoNome };
             _db.Funcoes.Add(funcao);
-        }
-        else if (!string.IsNullOrWhiteSpace(request.CargoCboCodigo))
-        {
-            funcao.CboCodigo = request.CargoCboCodigo;
         }
 
         // Incidente real (22/09): o G-RH manda o nome da obra com acentuação normal ("Consórcio

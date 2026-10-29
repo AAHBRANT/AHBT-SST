@@ -22,7 +22,17 @@ public interface IGeradorPgrIa
 
     // Forma de acompanhamento, periodicidade e critério de aferição para cada ação do plano de ação. Só sugestão.
     Task<List<AcompanhamentoSugeridoIa>> SugerirAcompanhamentoAsync(ContextoAcompanhamentoPlano contexto, CancellationToken ct);
+
+    // CBO de cada função, escolhido entre os candidatos da tabela oficial que o servidor mandou. Só sugestão.
+    Task<List<CboSugeridoIa>> SugerirCboAsync(IReadOnlyList<FuncaoParaCbo> funcoes, CancellationToken ct);
 }
+
+public record CandidatoCbo(string Codigo, string Titulo, string? Sinonimo);
+
+public record FuncaoParaCbo(string Nome, string? Descricao, IReadOnlyList<CandidatoCbo> Candidatos);
+
+// Codigo nulo = nenhum candidato serve; quem aplica só aceita código que estava entre os candidatos da função.
+public record CboSugeridoIa(string Funcao, string? Codigo);
 
 public record AcaoParaAcompanhamento(int Indice, string Descricao, DateTime? Prazo);
 

@@ -14,6 +14,7 @@ import { ExposicaoRiscoEditor, SeletorEpi } from './ExposicaoRiscoEditor';
 import { InventarioPorPerigo } from './InventarioPorPerigo';
 import { CronogramaTreinamentosCard } from './CronogramaTreinamentosCard';
 import { BotaoRascunhoPcmso } from '../saude-ocupacional/BotaoRascunhoPcmso';
+import { CampoCbo, ChipCbo, situacaoCbo } from './CampoCbo';
 import { useVisualizadorPdf } from '../../components/useVisualizadorPdf';
 
 const PASSOS = ['Enviar a EAP', 'Conferir a leitura', 'Funções e GHE', 'Inventário de riscos', 'Aprovar'];
@@ -288,6 +289,7 @@ function Assistente({ id }: { id: string }) {
       {passo === 3 && (
         <>
           {e.ghes.length === 0 && <FeedbackInline tom="aviso">Nenhum GHE ainda. Volte ao passo 2 e confirme a estrutura.</FeedbackInline>}
+          <ResumoCbo ghes={e.ghes} />
           {e.ghes.map((gh, gi) => (
             <GheEditor key={gh.numero} ghe={gh} todos={e.ghes} funcoesCadastradas={g.funcoesCadastradas} editavel={editavel}
               alterar={(f) => alterar((x) => f(x.ghes[gi], x))} />
@@ -349,6 +351,25 @@ function Assistente({ id }: { id: string }) {
   );
 }
 
+// Faixa do passo 3 com o que falta conferir no CBO. Sem CBO ou fora da tabela trava o envio para aprovação.
+function ResumoCbo({ ghes }: { ghes: GheGerado[] }) {
+  const funcoes = ghes.flatMap((g) => g.funcoes);
+  const sugeridos = funcoes.filter((f) => situacaoCbo(f) === 'sugerido').length;
+  const fora = funcoes.filter((f) => situacaoCbo(f) === 'fora').length;
+  const vazios = funcoes.filter((f) => situacaoCbo(f) === 'vazio').length;
+  if (sugeridos + fora + vazios === 0) return null;
+  const partes = [
+    sugeridos > 0 && `${sugeridos} sugerido(s) pela IA`,
+    fora > 0 && `${fora} fora da tabela oficial`,
+    vazios > 0 && `${vazios} sem CBO`,
+  ].filter(Boolean).join(' · ');
+  return (
+    <FeedbackInline tom={fora + vazios > 0 ? 'aviso' : 'info'}>
+      CBO para conferir: {partes}.{fora + vazios > 0 ? ' Sem CBO da tabela oficial o PGR não pode ser enviado para aprovação.' : ''}
+    </FeedbackInline>
+  );
+}
+
 function GheEditor({ ghe, todos, funcoesCadastradas, editavel, alterar }: {
   ghe: GheGerado;
   todos: GheGerado[];
@@ -371,7 +392,16 @@ function GheEditor({ ghe, todos, funcoesCadastradas, editavel, alterar }: {
           <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap', marginBottom: 6 }}>
             <Text weight="semibold">{f.nome}</Text>
             {f.funcaoId ? <StatusChip tom="ok">do cadastro</StatusChip> : <StatusChip tom="atencao">função nova</StatusChip>}
+            <ChipCbo f={f} />
             {editavel && <Button size="small" onClick={() => alterar((g) => { g.funcoes.splice(fi, 1); })}>Remover</Button>}
+          </div>
+          <div style={{ marginBottom: 6 }}>
+            <CampoCbo f={f} editavel={editavel}
+              aoEscolher={(r) => alterar((g) => {
+                g.funcoes[fi].cbo = r.codigo;
+                g.funcoes[fi].cboTitulo = r.titulo;
+                g.funcoes[fi].cboSugeridoPelaIa = false;
+              })} />
           </div>
           <Textarea value={f.descricao ?? ''} disabled={!editavel} maxLength={2000} style={{ width: '100%' }}
             onChange={(_, d) => alterar((g) => { g.funcoes[fi].descricao = d.value; g.funcoes[fi].sugeridaPelaIa = false; })} />

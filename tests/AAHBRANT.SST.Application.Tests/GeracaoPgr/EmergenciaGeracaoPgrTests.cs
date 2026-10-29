@@ -63,6 +63,8 @@ public class EmergenciaGeracaoPgrTests
 
         public Task<List<AcompanhamentoSugeridoIa>> SugerirAcompanhamentoAsync(ContextoAcompanhamentoPlano contexto, CancellationToken ct) { ContextoAcompanhamento = contexto; return Task.FromResult(Acompanhamentos); }
 
+        public Task<List<CboSugeridoIa>> SugerirCboAsync(IReadOnlyList<FuncaoParaCbo> funcoes, CancellationToken ct) => Task.FromResult(new List<CboSugeridoIa>());
+
 
         public Task<SugestaoEmergenciaIa> SugerirEmergenciaAsync(ContextoEmergenciaIa contexto, CancellationToken ct)
         {

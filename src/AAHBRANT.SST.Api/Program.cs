@@ -177,6 +177,7 @@ await MateriaisApoioSeeder.ExecutarAsync(app.Services);
 await RequisitosLegaisNrSeeder.ExecutarAsync(app.Services);
 await RegrasCursoObrigatorioSeeder.ExecutarAsync(app.Services);
 await NovidadesSeeder.ExecutarAsync(app.Services);
+await TabelaCboSeeder.ExecutarAsync(app.Services);
 
 if (app.Environment.IsDevelopment())
 {

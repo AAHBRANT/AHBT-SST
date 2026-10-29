@@ -182,6 +182,8 @@ public interface IAppDbContext
     DbSet<NovidadeVersaoItem> NovidadesVersaoItens { get; }
     DbSet<NovidadeVisualizacao> NovidadesVisualizacao { get; }
 
+    DbSet<TituloCbo> TitulosCbo { get; }
+
     Task<int> SaveChangesAsync(CancellationToken cancellationToken = default);
 
     // Descarta entidades rastreadas que não foram salvas (ex.: após uma falha de SaveChangesAsync) —

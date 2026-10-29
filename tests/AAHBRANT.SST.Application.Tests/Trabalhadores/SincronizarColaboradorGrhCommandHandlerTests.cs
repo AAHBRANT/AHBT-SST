@@ -52,7 +52,7 @@ public class SincronizarColaboradorGrhCommandHandlerTests
         Assert.Equal("Adriano Manoel da Silva", trabalhador.Nome);
         Assert.Equal(obra.Id, trabalhador.ObraId);
         Assert.Equal("Operador De Maquina Nivel 3", trabalhador.Funcao!.Nome);
-        Assert.Equal("715125", trabalhador.Funcao!.CboCodigo);
+        Assert.Null(trabalhador.Funcao!.CboCodigo); // CBO vem da tabela oficial pelo PGR, não do RH (29/10/2026)
         Assert.Equal(5400m, trabalhador.Salario);
         Assert.Equal("G", trabalhador.TamanhoBlusaEpi);
         Assert.True(trabalhador.Ativo);
@@ -119,7 +119,21 @@ public class SincronizarColaboradorGrhCommandHandlerTests
         await handler.Handle(Comando("38062559890", "Adriano Manoel da Silva", "Ponte Rio Cuiá", "Cargo Novo Nunca Visto"), default);
 
         var funcao = await db.Funcoes.SingleAsync(f => f.Nome == "Cargo Novo Nunca Visto");
-        Assert.Equal("715125", funcao.CboCodigo);
+        Assert.Null(funcao.CboCodigo);
+    }
+
+    [Fact]
+    public async Task Handle_FuncaoExistenteComCbo_RhNaoSobrescreve()
+    {
+        var db = DbContextFactory.Criar();
+        db.Obras.Add(new Obra { Codigo = "OBRA-1", Nome = "Ponte Rio Cuiá" });
+        db.Funcoes.Add(new Funcao { Nome = "Pedreiro", CboCodigo = "7152-10" });
+        await db.SaveChangesAsync();
+
+        await new SincronizarColaboradorGrhCommandHandler(db, CpfHash)
+            .Handle(Comando("38062559890", "Adriano Manoel da Silva", "Ponte Rio Cuiá", "Pedreiro"), default);
+
+        Assert.Equal("7152-10", (await db.Funcoes.SingleAsync(f => f.Nome == "Pedreiro")).CboCodigo);
     }
 
     [Fact]

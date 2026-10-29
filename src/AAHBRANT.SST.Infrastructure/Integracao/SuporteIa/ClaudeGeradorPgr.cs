@@ -323,6 +323,61 @@ public class ClaudeGeradorPgr : IGeradorPgrIa
     private sealed record RespostaAcompanhamento(List<AcompanhamentoModelo>? Itens);
     private sealed record AcompanhamentoModelo(int Indice, string? Forma, string? Periodicidade, string? Criterio);
 
+    // ---- 3c. CBO das funções, só entre os candidatos da tabela oficial (29/10/2026) ----
+
+    private const string InstrucoesCbo = """
+        Você classifica funções de obra da AAHBRANT Engenharia na CBO 2002 (Classificação Brasileira de Ocupações).
+        Para cada função, escolha UM código entre os candidatos listados abaixo dela: o que corresponde à ocupação que a
+        pessoa exerce, considerando o nome e a descrição das atividades. Os sinônimos ajudam (ex.: "Rasteleiro de asfalto").
+        Use o código EXATAMENTE como veio na lista. Se nenhum candidato corresponder com segurança, devolva codigo null:
+        é melhor deixar em branco para o técnico escolher do que errar. Responda só com o JSON, um item por função.
+        """;
+
+    private static readonly object SchemaCbo = new
+    {
+        type = "object",
+        additionalProperties = false,
+        required = new[] { "itens" },
+        properties = new
+        {
+            itens = new
+            {
+                type = "array",
+                items = new
+                {
+                    type = "object",
+                    additionalProperties = false,
+                    required = new[] { "funcao", "codigo" },
+                    properties = new
+                    {
+                        funcao = new { type = "string" },
+                        codigo = new { type = new[] { "string", "null" } },
+                    },
+                },
+            },
+        },
+    };
+
+    public async Task<List<CboSugeridoIa>> SugerirCboAsync(IReadOnlyList<FuncaoParaCbo> funcoes, CancellationToken ct)
+    {
+        var sb = new StringBuilder();
+        foreach (var f in funcoes)
+        {
+            sb.AppendLine($"Função: {f.Nome}");
+            if (!string.IsNullOrWhiteSpace(f.Descricao)) sb.AppendLine($"Atividades: {f.Descricao}");
+            sb.AppendLine("Candidatos:");
+            foreach (var c in f.Candidatos)
+                sb.AppendLine($"- {c.Codigo} | {c.Titulo}{(c.Sinonimo is null ? "" : $" (sinônimo: {c.Sinonimo})")}");
+            sb.AppendLine();
+        }
+        var r = await _chat.ObterAsync<RespostaCbo>(InstrucoesCbo, sb.ToString(), "cbo_funcoes", SchemaCbo, ct, maxTokens: 3000, timeoutSegundos: 90);
+        return (r.Itens ?? new()).Where(x => !string.IsNullOrWhiteSpace(x.Funcao))
+            .Select(x => new CboSugeridoIa(x.Funcao!.Trim(), x.Codigo?.Trim())).ToList();
+    }
+
+    private sealed record RespostaCbo(List<CboModelo>? Itens);
+    private sealed record CboModelo(string? Funcao, string? Codigo);
+
     // ---- 4. Emergência: escolher o local mais adequado e justificar ----
 
     private const string InstrucoesEmergencia = """
