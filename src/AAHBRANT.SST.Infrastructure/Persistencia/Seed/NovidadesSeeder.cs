@@ -1860,6 +1860,21 @@ public static class NovidadesSeeder
                     "O passo \"Conferir a leitura\" só mostrava o que veio da EAP, sem a parte administrativa da obra.",
                     "Todo PGR novo já traz o item Administrativo / Canteiro, que vira o GHE Administrativo (dá para desmarcar). No mesmo passo, o botão \"Adicionar item\" inclui o que a EAP não trouxe."),
             }),
+        new(
+            Versao: "5.109.0",
+            Titulo: "DDS: fila facial de volta, com bipe de autorizado ou negado",
+            DataPublicacao: new DateTime(2026, 10, 29, 0, 0, 0, DateTimeKind.Utc),
+            Itens: new[]
+            {
+                new NovidadeSeedItem(CategoriaNovidade.Novidade,
+                    "Abrir fila facial no DDS",
+                    "Pelo rosto, cada funcionário precisava do botão da própria linha na lista do DDS.",
+                    "Na lista de funcionários do DDS, o botão \"Abrir fila facial\" abre a câmera em tela cheia. Cada rosto que aparece na frente dela é fotografado e identificado sozinho, sem guia de posição. A presença e a assinatura são registradas com a foto, com bipe de autorizado; quando o rosto não é aceito, toca um bipe de negado."),
+                new NovidadeSeedItem(CategoriaNovidade.Melhoria,
+                    "Reconhecimento facial aceita a partir de 60%",
+                    "O facial só aceitava com 70% ou mais de semelhança com a foto do cadastro.",
+                    "Agora aceita a partir de 60%. A foto tirada na hora fica no registro da assinatura, mostrando quem assinou."),
+            }),
     };
 
     public static async Task ExecutarAsync(IServiceProvider services, CancellationToken ct = default)

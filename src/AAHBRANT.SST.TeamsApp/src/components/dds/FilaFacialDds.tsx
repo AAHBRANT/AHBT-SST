@@ -2,8 +2,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { Button, Dialog, DialogBody, DialogSurface, Text } from '@fluentui/react-components';
 import { Stop24Regular } from '@fluentui/react-icons';
 import { api } from '../../lib/api';
-import { tocarBipeAssinaturaAceita } from '../../lib/bipeAssinatura';
-import { QuadradoRosto, CORES_DETECTOR } from '../camera/QuadradoRosto';
+import { tocarBipeAssinaturaAceita, tocarBipeNegado } from '../../lib/bipeAssinatura';
 import { useDetectorRosto } from '../camera/useDetectorRosto';
 
 export interface ResultadoFilaFacial {
@@ -24,14 +23,29 @@ interface FilaFacialDdsProps {
 
 type Resultado = { tom: 'ok' | 'info' | 'erro'; texto: string };
 
-// Quantos ciclos seguidos (~120 ms cada) o rosto precisa estar bom e parado antes da captura automática.
-const CICLOS_ESTAVEL = 8;
+// Quantos ciclos seguidos (~120 ms cada) o rosto precisa estar no quadro antes da captura automática.
+const CICLOS_ESTAVEL = 6;
+// Lado mínimo do rosto, em pixels do vídeo, para valer a pena mandar ao Azure. Bem abaixo dos 200 px do
+// cadastro: aqui só se identifica, e o usuário (29/10) não quer exigir posição nem luz na fila.
+const LADO_MINIMO_ROSTO_FILA_PX = 120;
 // Quanto o resultado fica na tela antes de a fila aceitar a próxima pessoa.
 const RESULTADO_MS = { ok: 2200, info: 2200, erro: 3200 } as const;
 // Depois do resultado, a próxima captura só arma quando o rosto sai do quadro (ciclos sem rosto)...
 const CICLOS_SEM_ROSTO_PARA_ARMAR = 6;
 // ...ou depois deste tempo, para a fila não travar se a próxima pessoa já estiver no quadro.
 const REARMAR_APOS_MS = 5000;
+
+// Na fila basta um rosto só, inteiro no quadro e não muito longe: sem oval, sem checagem de luz ou de
+// centro (pedido do usuário, 29/10). Quem decide se é a pessoa é o Azure, no servidor.
+function rostoServeParaFila(
+  estado: string | undefined,
+  caixa: { largura: number; altura: number } | null,
+  video: HTMLVideoElement | null,
+): boolean {
+  if (!estado || estado === 'nenhum' || estado === 'varios' || estado === 'fora' || !caixa || !video?.videoWidth) return false;
+  const lado = Math.min(caixa.largura * video.videoWidth, caixa.altura * video.videoHeight);
+  return lado >= LADO_MINIMO_ROSTO_FILA_PX;
+}
 
 function mensagemDoErro(e: unknown): string {
   if (!(e instanceof Error)) return 'Não foi possível confirmar a presença. Tente de novo.';
@@ -63,8 +77,7 @@ export function FilaFacialDds({ ddsId, enviarFoto, aberto, aoFechar, aoPresencaC
   const [erroCamera, setErroCamera] = useState<string | null>(null);
   const [resultado, setResultado] = useState<Resultado | null>(null);
   const [confirmadas, setConfirmadas] = useState(0);
-  // Proporção real do vídeo da câmera (largura/altura): o quadrado do rosto é posicionado por porcentagem
-  // e só alinha se a caixa do vídeo tiver exatamente essa proporção, sem faixas pretas.
+  // Proporção real do vídeo da câmera (largura/altura), para a imagem ocupar a área sem faixas pretas.
   const [proporcao, setProporcao] = useState('16 / 9');
 
   const detector = useDetectorRosto(videoRef, aberto && !!stream);
@@ -134,15 +147,16 @@ export function FilaFacialDds({ ddsId, enviarFoto, aberto, aoFechar, aoPresencaC
       const r = enviarRef.current
         ? await enviarRef.current(foto)
         : await api.dds.registrarParticipanteFacialFila(ddsId ?? '', foto);
+      tocarBipeAssinaturaAceita();
       if (r.jaConfirmado) {
         novo = { tom: 'info', texto: `${r.trabalhadorNome} já teve a presença confirmada.` };
       } else {
-        tocarBipeAssinaturaAceita();
         setConfirmadas((n) => n + 1);
         aoConfirmadaRef.current();
         novo = { tom: 'ok', texto: `Presença de ${r.trabalhadorNome} confirmada.` };
       }
     } catch (e) {
+      tocarBipeNegado();
       novo = { tom: 'erro', texto: mensagemDoErro(e) };
     }
     setResultado(novo);
@@ -167,20 +181,17 @@ export function FilaFacialDds({ ddsId, enviarFoto, aberto, aoFechar, aoPresencaC
       ciclosBons.current = 0;
       return;
     }
-    ciclosBons.current = avaliacao.liberaCaptura ? ciclosBons.current + 1 : 0;
+    ciclosBons.current = rostoServeParaFila(avaliacao.estado, detector.caixa, videoRef.current) ? ciclosBons.current + 1 : 0;
     if (ciclosBons.current >= CICLOS_ESTAVEL) void capturarEEnviar();
-  }, [avaliacao, aberto, detector.situacao, capturarEEnviar]);
+  }, [avaliacao, aberto, detector.situacao, detector.caixa, capturarEEnviar]);
 
-  const cor = avaliacao ? CORES_DETECTOR[avaliacao.tom] : CORES_DETECTOR.ok;
   const corResultado = resultado ? { ok: '#1f8a4c', info: '#1b6ec2', erro: '#d13438' }[resultado.tom] : undefined;
   const mensagemGuia = erroCamera
     ?? (detector.situacao === 'indisponivel'
       ? 'O detector de rosto não carregou. Use a fila da digital ou recarregue a página.'
       : detector.situacao === 'carregando' || !stream
         ? 'Preparando a câmera…'
-        : avaliacao?.liberaCaptura
-          ? 'Fique parado, vou capturar…'
-          : avaliacao?.mensagem ?? 'Próximo funcionário: olhe para a câmera.');
+        : 'Próximo funcionário: olhe para a câmera.');
 
   return (
     <Dialog open={aberto} onOpenChange={(_, d) => !d.open && aoFechar()}>
@@ -204,7 +215,6 @@ export function FilaFacialDds({ ddsId, enviarFoto, aberto, aoFechar, aoPresencaC
                 }}
                 style={{ width: '100%', height: '100%', display: 'block', transform: 'scaleX(-1)' }}
               />
-              <QuadradoRosto caixa={detector.caixa} cor={cor} />
             </div>
             {resultado && (
               <div
@@ -221,7 +231,7 @@ export function FilaFacialDds({ ddsId, enviarFoto, aberto, aoFechar, aoPresencaC
           </div>
 
           <div role="status" aria-live="polite" style={{ textAlign: 'center', minHeight: 48 }}>
-            <span style={{ fontSize: 'clamp(20px, 3.4vw, 32px)', fontWeight: 600, color: avaliacao && !avaliacao.liberaCaptura ? cor : undefined }}>
+            <span style={{ fontSize: 'clamp(20px, 3.4vw, 32px)', fontWeight: 600 }}>
               {mensagemGuia}
             </span>
           </div>
