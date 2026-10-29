@@ -1066,7 +1066,8 @@ public enum StatusReservaEpi
 
 // Dedo de cada digital cadastrada no leitor Futronic (pedido do usuário, 21/10): a ficha do
 // trabalhador cadastra o polegar direito e o polegar esquerdo em botões separados, e cada um só pode
-// ser cadastrado uma vez. NaoInformado cobre os cadastros feitos antes desta separação (um só
+// ser cadastrado uma vez. 29/10: na tela passou a ser o indicador esquerdo/direito; os nomes do enum
+// ficaram como estão porque o banco grava o número. NaoInformado cobre os cadastros feitos antes desta separação (um só
 // template por trabalhador, sem registro do dedo) e o fluxo antigo pós-criação do funcionário.
 public enum DedoBiometria
 {

@@ -17,15 +17,15 @@ interface CadastroDigitalDialogProps {
   trabalhadorNome?: string;
   aoFechar: () => void;
   aoConcluir?: () => void;
-  /** Polegar a cadastrar (ficha do trabalhador, 21/10). Sem ele, vale o cadastro único pós-criação. */
+  /** Indicador a cadastrar (ficha do trabalhador, 21/10). Sem ele, vale o cadastro único pós-criação. */
   dedo?: DedoBiometria;
   /** Termos de aceite e consentimento já registrados: pula direto para a leitura. */
   termosJaRegistrados?: boolean;
 }
 
 const NOME_DEDO: Record<number, string> = {
-  [DedoBiometria.PolegarDireito]: 'polegar direito',
-  [DedoBiometria.PolegarEsquerdo]: 'polegar esquerdo',
+  [DedoBiometria.PolegarEsquerdo]: 'indicador esquerdo',
+  [DedoBiometria.PolegarDireito]: 'indicador direito',
 };
 
 function extrairMensagemErro(e: unknown, fallback: string): string {

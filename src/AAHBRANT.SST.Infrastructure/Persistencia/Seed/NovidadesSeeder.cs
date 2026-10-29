@@ -1830,6 +1830,17 @@ public static class NovidadesSeeder
                     "Cada peça pedia uma assinatura própria do funcionário, e o quiosque era o único caminho.",
                     "Depois de confirmar o carrinho, o entregador assina uma vez e o funcionário assina com um toque no leitor de digital ou com uma foto (facial). Essa assinatura vale para todas as peças do carrinho. Na lista de entregas, o botão de assinatura de cada linha reabre a janela para assinar o que ficou pendente."),
             }),
+        new(
+            Versao: "5.107.1",
+            Titulo: "Digital: cadastro pelo indicador esquerdo e direito",
+            DataPublicacao: new DateTime(2026, 10, 29, 0, 0, 0, DateTimeKind.Utc),
+            Itens: new[]
+            {
+                new NovidadeSeedItem(CategoriaNovidade.Melhoria,
+                    "Indicador esquerdo à esquerda, indicador direito à direita",
+                    "A ficha do funcionário pedia o polegar direito e o polegar esquerdo, com o direito aparecendo primeiro.",
+                    "Na ficha do funcionário, o cartão Biometria digital agora pede o indicador esquerdo, na coluna da esquerda, e o indicador direito, na coluna da direita, na mesma posição das mãos. A janela de cadastro e o perfil também passaram a dizer \"indicador\"."),
+            }),
     };
 
     public static async Task ExecutarAsync(IServiceProvider services, CancellationToken ct = default)
