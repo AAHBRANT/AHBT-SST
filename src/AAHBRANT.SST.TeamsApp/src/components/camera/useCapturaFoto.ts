@@ -259,12 +259,28 @@ export function useCapturaFoto({
   // mesmo computador (pedido do usuário, 22/09).
   async function trocarDispositivo(deviceId: string) {
     if (!navigator.mediaDevices?.getUserMedia) return;
+    // Celular/tablet Android só deixa uma câmera aberta por vez: pedir a traseira com a frontal
+    // ainda ligada falhava com NotReadableError (visto em 29/10). Por isso solta a atual antes.
+    const anteriorId = dispositivoAtualId;
+    stream?.getTracks().forEach((track) => track.stop());
+    const abrir = async (id: string) => {
+      try {
+        return await navigator.mediaDevices.getUserMedia({ video: { deviceId: { exact: id }, ...resolucaoIdeal(modoCamera) } });
+      } catch {
+        // Algumas câmeras traseiras não aceitam a resolução pedida junto com o deviceId — tenta sem ela.
+        return navigator.mediaDevices.getUserMedia({ video: { deviceId: { exact: id } } });
+      }
+    };
     try {
-      const novoStream = await navigator.mediaDevices.getUserMedia({ video: { deviceId: { exact: deviceId }, ...resolucaoIdeal(modoCamera) } });
+      const novoStream = await abrir(deviceId);
       setStream(novoStream);
       setDispositivoAtualId(deviceId);
       salvarCameraPreferida(deviceId);
     } catch {
+      // Religa a câmera anterior para o diálogo não ficar com a tela preta.
+      if (anteriorId) {
+        try { setStream(await abrir(anteriorId)); } catch { setStream(null); }
+      }
       aoErroValidacao?.('Não foi possível trocar para essa câmera. Verifique se ela ainda está conectada.');
     }
   }
