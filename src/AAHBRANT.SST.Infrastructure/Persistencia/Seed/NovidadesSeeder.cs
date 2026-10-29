@@ -1804,6 +1804,17 @@ public static class NovidadesSeeder
                     "Cada tela tinha o próprio filtro de obra, que voltava para \"Todas as obras\" a cada troca de página.",
                     "O seletor \"Obra\" fica no topo, ao lado de \"Atalhos\", em todas as páginas. A obra escolhida vale para o Início e para os painéis de todos os módulos, aparece numa faixa verde no alto da página e fica lembrada no próximo acesso. Para voltar a ver tudo, use \"Ver todas as obras\"."),
             }),
+        new(
+            Versao: "5.106.1",
+            Titulo: "Dias sem acidente: contagem começa em 28/10/2026",
+            DataPublicacao: new DateTime(2026, 10, 28, 0, 0, 0, DateTimeKind.Utc),
+            Itens: new[]
+            {
+                new NovidadeSeedItem(CategoriaNovidade.Melhoria,
+                    "Contagem de dias sem acidente a partir de hoje",
+                    "A contagem partia da data de início de cada obra e mostrava números como 737 dias.",
+                    "A contagem de todas as obras começa em 28/10/2026. Um acidente registrado depois dessa data recomeça a contagem da obra a partir dele."),
+            }),
     };
 
     public static async Task ExecutarAsync(IServiceProvider services, CancellationToken ct = default)
