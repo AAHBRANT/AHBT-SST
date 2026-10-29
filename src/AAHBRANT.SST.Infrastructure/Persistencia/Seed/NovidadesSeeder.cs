@@ -1871,6 +1871,17 @@ public static class NovidadesSeeder
                     "Na entrega de EPI e de uniforme, a assinatura facial aceitava \"Anexar foto da galeria\", o que permitia assinar com uma foto guardada do funcionário.",
                     "A assinatura facial dessas entregas agora exige a câmera ao vivo, como já acontecia no cadastro facial, no quiosque, no DDS e nos treinamentos. O funcionário precisa estar na frente da câmera na hora da entrega."),
             }),
+        new(
+            Versao: "5.108.3",
+            Titulo: "PGR: riscos classificados pela tabela de cores",
+            DataPublicacao: new DateTime(2026, 10, 29, 0, 0, 0, DateTimeKind.Utc),
+            Itens: new[]
+            {
+                new NovidadeSeedItem(CategoriaNovidade.Melhoria,
+                    "Cor do grupo de risco no PGR",
+                    "O PGR mostrava o tipo de risco só como texto cinza no canto da ficha.",
+                    "Os riscos seguem a tabela de cores do mapa de riscos: físico verde, químico vermelho, biológico marrom, ergonômico e psicossocial amarelo, acidente azul. O PDF traz a tabela na seção da matriz, o resumo por grupo, selos em cada GHE e a cor em cada ficha. No passo Inventário de riscos do gerador, cada risco também aparece com a cor do grupo."),
+            }),
     };
 
     public static async Task ExecutarAsync(IServiceProvider services, CancellationToken ct = default)

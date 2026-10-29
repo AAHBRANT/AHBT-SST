@@ -19,6 +19,15 @@ import { useVisualizadorPdf } from '../../components/useVisualizadorPdf';
 const PASSOS = ['Enviar a EAP', 'Conferir a leitura', 'Funções e GHE', 'Inventário de riscos', 'Aprovar'];
 const FASES: Record<number, string> = { 1: 'Antes', 2: 'Durante', 3: 'Após' };
 const TIPOS = ['Físico', 'Químico', 'Biológico', 'Ergonômico', 'Psicossocial', 'Acidente'];
+// Tabela de cores do mapa de riscos (29/10/2026), a mesma do PDF (GruposRisco.cs). Psicossocial vai com o ergonômico.
+const GRUPO_RISCO: Record<string, { numero: number; cor: string; nome: string }> = {
+  'Físico': { numero: 1, cor: '#2e7d32', nome: 'Verde' },
+  'Químico': { numero: 2, cor: '#c62828', nome: 'Vermelho' },
+  'Biológico': { numero: 3, cor: '#6d4c41', nome: 'Marrom' },
+  'Ergonômico': { numero: 4, cor: '#f9a825', nome: 'Amarelo' },
+  'Psicossocial': { numero: 4, cor: '#f9a825', nome: 'Amarelo' },
+  'Acidente': { numero: 5, cor: '#1565c0', nome: 'Azul' },
+};
 // Ordem de prioridade da NR-01; o PDF separa EPC e EPI por estas categorias.
 // Opções de acompanhamento do plano de ação (NR-01, item 1.5.5.2); as mesmas listas valem no servidor.
 const FORMAS_ACOMPANHAMENTO = ['Inspeção periódica', 'Registro de treinamento', 'Indicador', 'Auditoria', 'Medição', 'Outro'];
@@ -540,14 +549,16 @@ function RiscoEditor({ r, maxP, maxS, editavel, epis, alterar }: {
 }) {
   const nivel = r.probabilidade * r.severidade;
   const tom = nivel >= 20 ? 'alerta' : nivel >= 10 ? 'atencao' : 'info';
+  const grupo = GRUPO_RISCO[r.tipo];
   return (
     <div style={{
-      border: '1px solid var(--colorNeutralStroke2)', borderRadius: 6, padding: 10, marginTop: 8,
+      border: '1px solid var(--colorNeutralStroke2)', borderLeft: `6px solid ${grupo?.cor ?? 'var(--colorNeutralStroke2)'}`,
+      borderRadius: 6, padding: 10, marginTop: 8,
       background: r.revisado ? undefined : 'var(--colorPaletteYellowBackground1)',
     }}>
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: 8, alignItems: 'end' }}>
         <Field label="Perigo"><Input value={r.perigo} disabled={!editavel} onChange={(_, d) => alterar((x) => { x.perigo = d.value; })} /></Field>
-        <Field label="Tipo">
+        <Field label="Tipo" hint={grupo ? `Grupo ${grupo.numero} · ${grupo.nome}` : undefined}>
           <Select value={r.tipo} disabled={!editavel} onChange={(_, d) => alterar((x) => { x.tipo = d.value; })}>
             {TIPOS.map((t) => <option key={t}>{t}</option>)}
           </Select>

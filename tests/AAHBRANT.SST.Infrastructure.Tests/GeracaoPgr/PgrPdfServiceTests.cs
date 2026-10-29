@@ -168,6 +168,21 @@ public class PgrPdfServiceTests
     }
 
     [Fact]
+    public void Gerar_ComRiscosDeTodosOsGrupos_ETipoForaDaTabela_DevolvePdfValido()
+    {
+        var dados = DadosCompletos();
+        var riscos = dados.Estrutura.Ghes[0].Atividades[0].Riscos;
+        foreach (var tipo in new[] { "Físico", "Químico", "Biológico", "Ergonômico", "Psicossocial", "Outro" })
+            riscos.Add(new RiscoGerado { Tipo = tipo, Perigo = $"Perigo {tipo}", Danos = "x", Probabilidade = 2, Severidade = 3 });
+
+        var pdf = new PgrPdfService().Gerar(dados, null);
+
+        Assert.Equal("%PDF", System.Text.Encoding.ASCII.GetString(pdf, 0, 4));
+        // Para conferir as cores a olho: PGR_PDF_SAIDA=<arquivo.pdf> dotnet test --filter ...
+        if (Environment.GetEnvironmentVariable("PGR_PDF_SAIDA") is { Length: > 0 } saida) File.WriteAllBytes(saida, pdf);
+    }
+
+    [Fact]
     public void Gerar_SemLogo_DevolvePdfValido()
     {
         var pdf = new PgrPdfService().Gerar(DadosCompletos(), null);
